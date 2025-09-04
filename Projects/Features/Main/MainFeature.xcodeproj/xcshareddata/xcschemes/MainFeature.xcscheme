@@ -14,38 +14,10 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "196740ACF910C84B83DA0C19"
-               BuildableName = "MainFeatureExample.app"
-               BlueprintName = "MainFeatureExample"
-               ReferencedContainer = "container:Projects/Features/Main/MainFeature.xcodeproj">
-            </BuildableReference>
-         </BuildActionEntry>
-         <BuildActionEntry
-            buildForTesting = "YES"
-            buildForRunning = "YES"
-            buildForProfiling = "YES"
-            buildForArchiving = "YES"
-            buildForAnalyzing = "YES">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "774D2609A6447DD433C758C6"
-               BuildableName = "MainFeatureImplement.framework"
-               BlueprintName = "MainFeatureImplement"
-               ReferencedContainer = "container:Projects/Features/Main/MainFeature.xcodeproj">
-            </BuildableReference>
-         </BuildActionEntry>
-         <BuildActionEntry
-            buildForTesting = "YES"
-            buildForRunning = "YES"
-            buildForProfiling = "YES"
-            buildForArchiving = "YES"
-            buildForAnalyzing = "YES">
-            <BuildableReference
-               BuildableIdentifier = "primary"
                BlueprintIdentifier = "2C807400BAD063AB2728ED4A"
                BuildableName = "MainFeatureInterface.framework"
                BlueprintName = "MainFeatureInterface"
-               ReferencedContainer = "container:Projects/Features/Main/MainFeature.xcodeproj">
+               ReferencedContainer = "container:MainFeature.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
          <BuildActionEntry
@@ -59,7 +31,7 @@
                BlueprintIdentifier = "DAAFA2BC309C1634F4522436"
                BuildableName = "MainFeatureTesting.framework"
                BlueprintName = "MainFeatureTesting"
-               ReferencedContainer = "container:Projects/Features/Main/MainFeature.xcodeproj">
+               ReferencedContainer = "container:MainFeature.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
          <BuildActionEntry
@@ -70,24 +42,10 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "995076E945AA3C9CDF3EEBC2"
-               BuildableName = "MainFeatureTests.xctest"
-               BlueprintName = "MainFeatureTests"
-               ReferencedContainer = "container:Projects/Features/Main/MainFeature.xcodeproj">
-            </BuildableReference>
-         </BuildActionEntry>
-         <BuildActionEntry
-            buildForTesting = "YES"
-            buildForRunning = "YES"
-            buildForProfiling = "YES"
-            buildForArchiving = "YES"
-            buildForAnalyzing = "YES">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "7E5E4A7FE525EE0F284B72F0"
-               BuildableName = "StopLateApp.app"
-               BlueprintName = "StopLateApp"
-               ReferencedContainer = "container:Projects/App/StopLateApp.xcodeproj">
+               BlueprintIdentifier = "196740ACF910C84B83DA0C19"
+               BuildableName = "MainFeatureExample.app"
+               BlueprintName = "MainFeatureExample"
+               ReferencedContainer = "container:MainFeature.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -106,7 +64,7 @@
                BlueprintIdentifier = "995076E945AA3C9CDF3EEBC2"
                BuildableName = "MainFeatureTests.xctest"
                BlueprintName = "MainFeatureTests"
-               ReferencedContainer = "container:Projects/Features/Main/MainFeature.xcodeproj">
+               ReferencedContainer = "container:MainFeature.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -128,7 +86,7 @@
             BlueprintIdentifier = "196740ACF910C84B83DA0C19"
             BuildableName = "MainFeatureExample.app"
             BlueprintName = "MainFeatureExample"
-            ReferencedContainer = "container:Projects/Features/Main/MainFeature.xcodeproj">
+            ReferencedContainer = "container:MainFeature.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -145,7 +103,7 @@
             BlueprintIdentifier = "196740ACF910C84B83DA0C19"
             BuildableName = "MainFeatureExample.app"
             BlueprintName = "MainFeatureExample"
-            ReferencedContainer = "container:Projects/Features/Main/MainFeature.xcodeproj">
+            ReferencedContainer = "container:MainFeature.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

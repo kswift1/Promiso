@@ -1,102 +1,127 @@
 // Tuist/Templates/feature/feature.swift
 import ProjectDescription
 
-let name: Template.Attribute = .required("name") // --name MyFeature
-let org  = "com.example"                         // 필요시 수정
+let name: Template.Attribute = .required("name")
+let org  = "com.example"
 let ios  = "16.4"
 
 let template = Template(
-  description: "TMA 스타일 Feature 모듈(Interface/Implement/Testing/Tests)",
+  description: "Feature (Interface/Implement/Testing/Tests + ExampleApp) - TCA 1.22.2",
   attributes: [name],
   items: [
 
-    // Interface
+    // ── 단일 Project.swift (5 타깃: Interface/Implement/Testing/Tests/ExampleApp)
     .string(
-      path: "Projects/Features/{{ name }}/Interface/Project.swift",
-      contents:
-"""
+      path: "Projects/Features/{{ name }}/Project.swift",
+      contents: #"""
 import ProjectDescription
 
 let project = Project(
-  name: "{{ name }}FeatureInterface",
+  name: "{{ name }}Feature",
+  packages: [
+    .package(url: "https://github.com/pointfreeco/swift-composable-architecture",
+             .upToNextMajor(from: "1.22.2"))
+  ],
   targets: [
+
+    // Interface
     .target(
       name: "{{ name }}FeatureInterface",
       destinations: .iOS,
       product: .framework,
-      bundleId: "\(org).features.{{ name | lowercase }}.interface",
-      deploymentTargets: .iOS("\(ios)"),
-      sources: ["Sources/**"],
+      bundleId: "\#(org).features.{{ name | lowercase }}.interface",
+      deploymentTargets: .iOS("\#(ios)"),
+      sources: ["Interface/Sources/**"],
+      dependencies: []
+    ),
+
+    // Implement
+    .target(
+      name: "{{ name }}FeatureImplement",
+      destinations: .iOS,
+      product: .framework,
+      bundleId: "\#(org).features.{{ name | lowercase }}.implement",
+      deploymentTargets: .iOS("\#(ios)"),
+      sources: ["Implement/Sources/**"],
       dependencies: [
-        .project(target: "SharedModels", path: "../../../Shared/SharedModels")
+        .project(target: "{{ name }}FeatureInterface", path: "."),
+        .package(product: "ComposableArchitecture")
+      ]
+    ),
+
+    // Testing
+    .target(
+      name: "{{ name }}FeatureTesting",
+      destinations: .iOS,
+      product: .framework,
+      bundleId: "\#(org).features.{{ name | lowercase }}.testing",
+      deploymentTargets: .iOS("\#(ios)"),
+      sources: ["Testing/Sources/**"],
+      dependencies: [
+        .project(target: "{{ name }}FeatureInterface", path: ".")
+      ]
+    ),
+
+    // Unit Tests
+    .target(
+      name: "{{ name }}FeatureTests",
+      destinations: .iOS,
+      product: .unitTests,
+      bundleId: "\#(org).features.{{ name | lowercase }}.tests",
+      deploymentTargets: .iOS("\#(ios)"),
+      sources: ["Tests/Sources/**"],
+      dependencies: [
+        .project(target: "{{ name }}FeatureImplement", path: "."),
+        .package(product: "ComposableArchitecture")
+      ]
+    ),
+
+    // Example App (Demo)
+    .target(
+      name: "{{ name }}FeatureExample",
+      destinations: .iOS,
+      product: .app,
+      bundleId: "\#(org).features.{{ name | lowercase }}.example",
+      deploymentTargets: .iOS("\#(ios)"),
+      infoPlist: .extendingDefault(with: [
+        "UILaunchStoryboardName": .string("LaunchScreen")
+      ]),
+      sources: ["Example/Sources/**"],
+      resources: ["Example/Resources/**"],
+      dependencies: [
+        .project(target: "{{ name }}FeatureImplement", path: ".")
       ]
     )
   ]
 )
-"""
+"""#
     ),
+
+    // ── 소스 뼈대
+
+    // Interface
     .string(
       path: "Projects/Features/{{ name }}/Interface/Sources/{{ name }}Entry.swift",
-      contents:
-"""
+      contents: #"""
 import SwiftUI
-import SharedModels
 
 public struct {{ name }}Entry {
   public var makeView: (_ config: Config) -> AnyView
   public init(makeView: @escaping (_ config: Config) -> AnyView) { self.makeView = makeView }
 }
 
-public struct Config: Sendable {
-  public let groupID: GroupID
-  public init(groupID: GroupID) { self.groupID = groupID }
-}
-
-public enum {{ name }}Route: Hashable {
-  case root
-}
-"""
+public struct Config: Sendable { public init() {} }
+public enum {{ name }}Route: Hashable { case root }
+"""#
     ),
 
     // Implement
     .string(
-      path: "Projects/Features/{{ name }}/Implement/Project.swift",
-      contents:
-"""
-import ProjectDescription
-
-let project = Project(
-  name: "{{ name }}FeatureImplement",
-  packages: [
-    .package(url: "https://github.com/pointfreeco/swift-composable-architecture", .upToNextMajor(from: "1.17.0"))
-  ],
-  targets: [
-    .target(
-      name: "{{ name }}FeatureImplement",
-      destinations: .iOS,
-      product: .framework,
-      bundleId: "\(org).features.{{ name | lowercase }}.implement",
-      deploymentTargets: .iOS("\(ios)"),
-      sources: ["Sources/**"],
-      dependencies: [
-        .project(target: "{{ name }}FeatureInterface", path: "../Interface"),
-        .project(target: "SharedModels", path: "../../../Shared/SharedModels"),
-        .project(target: "DesignSystem", path: "../../../Shared/DesignSystem"),
-        .package(product: "ComposableArchitecture")
-      ]
-    )
-  ]
-)
-"""
-    ),
-    .string(
       path: "Projects/Features/{{ name }}/Implement/Sources/{{ name }}Feature.swift",
-      contents:
-"""
+      contents: #"""
 import SwiftUI
 import ComposableArchitecture
 import {{ name }}FeatureInterface
-import DesignSystem
 
 public enum {{ name }} {}
 
@@ -104,106 +129,136 @@ extension {{ name }} {
   @Reducer
   public struct Feature {
     public init() {}
-    public struct State: Equatable { public init() {} }
-    public enum Action: Equatable { case didTap }
+
+    @ObservableState
+    public struct State: Equatable {
+      public init() {}
+    }
+
+    public enum Action: Equatable {
+      case didTap
+    }
+
     public var body: some ReducerOf<Self> {
       Reduce { state, action in
-        .none
+        switch action {
+        case .didTap:
+          return .none
+        }
       }
     }
   }
 
   public struct RootView: View {
     let store: StoreOf<Feature>
+
     public init(store: StoreOf<Feature>) { self.store = store }
+
     public var body: some View {
-      VStack(spacing: DS.Spacing.l) {
-        Text("{{ name }} Feature")
-        Button("Tap") { store.send(.didTap) }
+      WithPerceptionTracking {
+        VStack(spacing: 16) {
+          Text("{{ name }} Feature").font(.title2)
+          Button("Tap") { store.send(.didTap) }
+            .buttonStyle(.borderedProminent)
+        }
+        .padding()
       }
-      .padding()
-      .background(DS.Color.bg)
     }
   }
 }
+"""#
+    ),
+
+    .string(
+      path: "Projects/Features/{{ name }}/Implement/Sources/{{ name }}Entry+Live.swift",
+      contents: #"""
+import SwiftUI
+import ComposableArchitecture
+import {{ name }}FeatureInterface
 
 public extension {{ name }}Entry {
   static func live() -> Self {
     .init { _ in
-      let store = Store(initialState: {{ name }}.Feature.State()) { {{ name }}.Feature() }
+      let store = Store(initialState: {{ name }}.Feature.State()) {
+        {{ name }}.Feature()
+      }
       return AnyView({{ name }}.RootView(store: store))
     }
   }
 }
-"""
+"""#
     ),
 
-    // Testing (Mocks/Previews)
+    // Testing placeholder
     .string(
-      path: "Projects/Features/{{ name }}/Testing/Project.swift",
-      contents:
-"""
-import ProjectDescription
-
-let project = Project(
-  name: "{{ name }}FeatureTesting",
-  targets: [
-    .target(
-      name: "{{ name }}FeatureTesting",
-      destinations: .iOS,
-      product: .framework,
-      bundleId: "\(org).features.{{ name | lowercase }}.testing",
-      deploymentTargets: .iOS("\(ios)"),
-      sources: ["Sources/**"],
-      dependencies: [
-        .project(target: "{{ name }}FeatureInterface", path: "../Interface")
-      ]
-    )
-  ]
-)
-"""
+      path: "Projects/Features/{{ name }}/Testing/Sources/Placeholder.swift",
+      contents: "// Testing placeholder"
     ),
 
-    // Unit Tests
-    .string(
-      path: "Projects/Features/{{ name }}/Tests/Project.swift",
-      contents:
-"""
-import ProjectDescription
-
-let project = Project(
-  name: "{{ name }}FeatureTests",
-  targets: [
-    .target(
-      name: "{{ name }}FeatureTests",
-      destinations: .iOS,
-      product: .unitTests,
-      bundleId: "\(org).features.{{ name | lowercase }}.tests",
-      deploymentTargets: .iOS("\(ios)"),
-      sources: ["Sources/**"],
-      dependencies: [
-        .project(target: "{{ name }}FeatureImplement", path: "../Implement")
-      ]
-    )
-  ]
-)
-"""
-    ),
+    // Tests
     .string(
       path: "Projects/Features/{{ name }}/Tests/Sources/{{ name }}FeatureTests.swift",
-      contents:
-"""
+      contents: #"""
 import XCTest
 import ComposableArchitecture
 @testable import {{ name }}FeatureImplement
 
 final class {{ name }}FeatureTests: XCTestCase {
-  func test_nop() {
-    let store = TestStore(initialState: {{ name }}.Feature.State()) { {{ name }}.Feature() }
-    // TODO: write tests
+  func test_placeholder() async {
+    let store = TestStore(initialState: {{ name }}.Feature.State()) {
+      {{ name }}.Feature()
+    }
+    await store.send(.didTap)
   }
 }
-"""
+"""#
+    ),
+
+    // Example App Sources
+    .string(
+      path: "Projects/Features/{{ name }}/Example/Sources/ExampleApp.swift",
+      contents: #"""
+import SwiftUI
+import ComposableArchitecture
+import {{ name }}FeatureImplement
+
+@main
+struct {{ name }}FeatureExampleApp: App {
+  var body: some Scene {
+    WindowGroup {
+      let store = Store(initialState: {{ name }}.Feature.State()) {
+        {{ name }}.Feature()
+      }
+      {{ name }}.RootView(store: store)
+    }
+  }
+}
+"""#
+    ),
+
+    // Example App LaunchScreen
+    .string(
+      path: "Projects/Features/{{ name }}/Example/Resources/LaunchScreen.storyboard",
+      contents: #"""
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="16096" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" launchScreen="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="UIViewController">
+  <scenes>
+    <scene sceneID="tne-QT-ifu">
+      <objects>
+        <viewController id="BYZ-38-t0r">
+          <view key="view" contentMode="scaleToFill" id="8bC-Xf-vdC">
+            <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
+            <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+            <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+            <viewLayoutGuide key="safeArea" id="6Tk-OE-BBY"/>
+          </view>
+        </viewController>
+        <placeholder placeholderIdentifier="IBFirstResponder" id="dkx-z0-nzr" userLabel="First Responder"/>
+      </objects>
+    </scene>
+  </scenes>
+</document>
+"""#
     )
   ]
 )

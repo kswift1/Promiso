@@ -1,7 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Workspace
    version = "1.0">
-   <FileRef
-      location = "group:StopLate.xcodeproj">
-   </FileRef>
+   <Group
+      location = "group:Projects"
+      name = "Projects">
+      <FileRef
+         location = "group:App/StopLateApp.xcodeproj">
+      </FileRef>
+      <Group
+         location = "group:Features"
+         name = "Features">
+         <FileRef
+            location = "group:Main/MainFeature.xcodeproj">
+         </FileRef>
+      </Group>
+   </Group>
 </Workspace>
