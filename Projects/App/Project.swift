@@ -15,7 +15,8 @@ let project = Project(
       sources: ["Sources/**"],
       resources: ["Resources/**"],
       dependencies: [
-        // 나중에 Feature/Client 구현 모듈을 여기에 추가
+        .project(target: "MainFeatureInterface", path: "../Features/Main"),
+          .project(target: "MainFeatureImplement", path: "../Features/Main"),
       ]
     )
   ]
