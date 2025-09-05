@@ -2,8 +2,6 @@
 import ProjectDescription
 
 let name: Template.Attribute = .required("name")
-let org  = "com.example"
-let ios  = "16.4"
 
 let template = Template(
   description: "Feature (Interface/Implement/Testing/Tests + ExampleApp) - TCA 1.22.2",
@@ -15,13 +13,10 @@ let template = Template(
       path: "Projects/Features/{{ name }}/Project.swift",
       contents: #"""
 import ProjectDescription
+import ProjectDescriptionHelpers
 
 let project = Project(
   name: "{{ name }}Feature",
-  packages: [
-    .package(url: "https://github.com/pointfreeco/swift-composable-architecture",
-             .upToNextMajor(from: "1.22.2"))
-  ],
   targets: [
 
     // Interface
@@ -29,8 +24,8 @@ let project = Project(
       name: "{{ name }}FeatureInterface",
       destinations: .iOS,
       product: .framework,
-      bundleId: "\#(org).features.{{ name | lowercase }}.interface",
-      deploymentTargets: .iOS("\#(ios)"),
+      bundleId: "\(AppConfig.name).features.{{ name | lowercase }}.interface",
+      deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Interface/Sources/**"],
       dependencies: []
     ),
@@ -40,12 +35,12 @@ let project = Project(
       name: "{{ name }}FeatureImplement",
       destinations: .iOS,
       product: .framework,
-      bundleId: "\#(org).features.{{ name | lowercase }}.implement",
-      deploymentTargets: .iOS("\#(ios)"),
+      bundleId: "\(AppConfig.name).features.{{ name | lowercase }}.implement",
+      deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Implement/Sources/**"],
       dependencies: [
         .project(target: "{{ name }}FeatureInterface", path: "."),
-        .package(product: "ComposableArchitecture")
+        .external(name: "ComposableArchitecture")
       ]
     ),
 
@@ -54,8 +49,8 @@ let project = Project(
       name: "{{ name }}FeatureTesting",
       destinations: .iOS,
       product: .framework,
-      bundleId: "\#(org).features.{{ name | lowercase }}.testing",
-      deploymentTargets: .iOS("\#(ios)"),
+      bundleId: "\(AppConfig.name).features.{{ name | lowercase }}.testing",
+      deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Testing/Sources/**"],
       dependencies: [
         .project(target: "{{ name }}FeatureInterface", path: ".")
@@ -67,12 +62,12 @@ let project = Project(
       name: "{{ name }}FeatureTests",
       destinations: .iOS,
       product: .unitTests,
-      bundleId: "\#(org).features.{{ name | lowercase }}.tests",
-      deploymentTargets: .iOS("\#(ios)"),
+      bundleId: "\(AppConfig.name).features.{{ name | lowercase }}.tests",
+      deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Tests/Sources/**"],
       dependencies: [
         .project(target: "{{ name }}FeatureImplement", path: "."),
-        .package(product: "ComposableArchitecture")
+        .external(name: "ComposableArchitecture")
       ]
     ),
 
@@ -81,8 +76,8 @@ let project = Project(
       name: "{{ name }}FeatureExample",
       destinations: .iOS,
       product: .app,
-      bundleId: "\#(org).features.{{ name | lowercase }}.example",
-      deploymentTargets: .iOS("\#(ios)"),
+      bundleId: "\(AppConfig.name).features.{{ name | lowercase }}.example",
+      deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       infoPlist: .extendingDefault(with: [
         "UILaunchStoryboardName": .string("LaunchScreen")
       ]),

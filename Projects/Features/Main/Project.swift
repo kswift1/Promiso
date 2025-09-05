@@ -2,10 +2,6 @@ import ProjectDescription
 
 let project = Project(
   name: "MainFeature",
-  packages: [
-    .package(url: "https://github.com/pointfreeco/swift-composable-architecture",
-             .upToNextMajor(from: "1.22.2"))
-  ],
   targets: [
 
     // Interface
@@ -29,7 +25,7 @@ let project = Project(
       sources: ["Implement/Sources/**"],
       dependencies: [
         .project(target: "MainFeatureInterface", path: "."),
-        .package(product: "ComposableArchitecture")
+        .external(name: "ComposableArchitecture")
       ]
     ),
 
@@ -56,7 +52,7 @@ let project = Project(
       sources: ["Tests/Sources/**"],
       dependencies: [
         .project(target: "MainFeatureImplement", path: "."),
-        .package(product: "ComposableArchitecture")
+        .external(name: "ComposableArchitecture")
       ]
     ),
 

@@ -1,14 +1,15 @@
 import ProjectDescription
+import ProjectDescriptionHelpers
 
 let project = Project(
-  name: "StopLateApp",
+  name: AppConfig.name,
   targets: [
     .target(
-      name: "StopLateApp",
+      name: AppConfig.name,
       destinations: .iOS,
       product: .app,
-      bundleId: "com.example.StopLate",
-      deploymentTargets: .iOS("16.4"),
+      bundleId: AppConfig.bundleId,
+      deploymentTargets: .iOS(AppConfig.deploymentTargets),
       infoPlist: .extendingDefault(with: [
         "UILaunchStoryboardName": .string("LaunchScreen")
       ]),
