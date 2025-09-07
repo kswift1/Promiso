@@ -7,10 +7,10 @@ let template = Template(
   description: "Feature (Interface/Implement/Testing/Tests + ExampleApp) - TCA 1.22.2",
   attributes: [name],
   items: [
-
+    
     // ── 단일 Project.swift (5 타깃: Interface/Implement/Testing/Tests/ExampleApp)
     .string(
-      path: "Projects/Features/{{ name }}/Project.swift",
+      path: "Projects/Features/{{ name }}Feature/Project.swift",
       contents: #"""
 import ProjectDescription
 import ProjectDescriptionHelpers
@@ -21,7 +21,7 @@ let project = Project(
 
     // Interface
     .target(
-      name: "{{ name }}FeatureInterface",
+      name: "{{ name }}Interface",
       destinations: .iOS,
       product: .framework,
       bundleId: "\(AppConfig.name).features.{{ name | lowercase }}.interface",
@@ -32,48 +32,48 @@ let project = Project(
 
     // Implement
     .target(
-      name: "{{ name }}FeatureImplement",
+      name: "{{ name }}Implement",
       destinations: .iOS,
       product: .framework,
       bundleId: "\(AppConfig.name).features.{{ name | lowercase }}.implement",
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Implement/Sources/**"],
       dependencies: [
-        .project(target: "{{ name }}FeatureInterface", path: "."),
+        .project(target: "{{ name }}Interface", path: "."),
         .external(name: "ComposableArchitecture")
       ]
     ),
 
     // Testing
     .target(
-      name: "{{ name }}FeatureTesting",
+      name: "{{ name }}Testing",
       destinations: .iOS,
       product: .framework,
       bundleId: "\(AppConfig.name).features.{{ name | lowercase }}.testing",
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Testing/Sources/**"],
       dependencies: [
-        .project(target: "{{ name }}FeatureInterface", path: ".")
+        .project(target: "{{ name }}Interface", path: ".")
       ]
     ),
 
     // Unit Tests
     .target(
-      name: "{{ name }}FeatureTests",
+      name: "{{ name }}Tests",
       destinations: .iOS,
       product: .unitTests,
       bundleId: "\(AppConfig.name).features.{{ name | lowercase }}.tests",
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Tests/Sources/**"],
       dependencies: [
-        .project(target: "{{ name }}FeatureImplement", path: "."),
+        .project(target: "{{ name }}Implement", path: "."),
         .external(name: "ComposableArchitecture")
       ]
     ),
 
     // Example App (Demo)
     .target(
-      name: "{{ name }}FeatureExample",
+      name: "{{ name }}Example",
       destinations: .iOS,
       product: .app,
       bundleId: "\(AppConfig.name).features.{{ name | lowercase }}.example",
@@ -84,20 +84,20 @@ let project = Project(
       sources: ["Example/Sources/**"],
       resources: ["Example/Resources/**"],
       dependencies: [
-        .project(target: "{{ name }}FeatureImplement", path: ".")
+        .project(target: "{{ name }}Implement", path: ".")
       ]
     )
   ]
 )
 """#
     ),
-
+    
     // ── 소스 뼈대
-
+    
     // Interface
-    .string(
-      path: "Projects/Features/{{ name }}/Interface/Sources/{{ name }}Entry.swift",
-      contents: #"""
+      .string(
+        path: "Projects/Features/{{ name }}Feature/Interface/Sources/{{ name }}Entry.swift",
+        contents: #"""
 import SwiftUI
 
 public struct {{ name }}Entry {
@@ -108,15 +108,15 @@ public struct {{ name }}Entry {
 public struct Config: Sendable { public init() {} }
 public enum {{ name }}Route: Hashable { case root }
 """#
-    ),
-
+      ),
+    
     // Implement
     .string(
-      path: "Projects/Features/{{ name }}/Implement/Sources/{{ name }}Feature.swift",
+      path: "Projects/Features/{{ name }}Feature/Implement/Sources/{{ name }}Feature.swift",
       contents: #"""
 import SwiftUI
 import ComposableArchitecture
-import {{ name }}FeatureInterface
+import {{ name }}Interface
 
 public enum {{ name }} {}
 
@@ -163,13 +163,13 @@ extension {{ name }} {
 }
 """#
     ),
-
-    .string(
-      path: "Projects/Features/{{ name }}/Implement/Sources/{{ name }}Entry+Live.swift",
-      contents: #"""
+    
+      .string(
+        path: "Projects/Features/{{ name }}Feature/Implement/Sources/{{ name }}Entry+Live.swift",
+        contents: #"""
 import SwiftUI
 import ComposableArchitecture
-import {{ name }}FeatureInterface
+import {{ name }}Interface
 
 public extension {{ name }}Entry {
   static func live() -> Self {
@@ -182,17 +182,17 @@ public extension {{ name }}Entry {
   }
 }
 """#
-    ),
-
+      ),
+    
     // Testing placeholder
     .string(
-      path: "Projects/Features/{{ name }}/Testing/Sources/Placeholder.swift",
+      path: "Projects/Features/{{ name }}Feature/Testing/Sources/Placeholder.swift",
       contents: "// Testing placeholder"
     ),
-
+    
     // Tests
     .string(
-      path: "Projects/Features/{{ name }}/Tests/Sources/{{ name }}FeatureTests.swift",
+      path: "Projects/Features/{{ name }}Feature/Tests/Sources/{{ name }}FeatureTests.swift",
       contents: #"""
 import XCTest
 import ComposableArchitecture
@@ -208,10 +208,10 @@ final class {{ name }}FeatureTests: XCTestCase {
 }
 """#
     ),
-
+    
     // Example App Sources
     .string(
-      path: "Projects/Features/{{ name }}/Example/Sources/ExampleApp.swift",
+      path: "Projects/Features/{{ name }}Feature/Example/Sources/ExampleApp.swift",
       contents: #"""
 import SwiftUI
 import ComposableArchitecture
@@ -230,10 +230,10 @@ struct {{ name }}FeatureExampleApp: App {
 }
 """#
     ),
-
+    
     // Example App LaunchScreen
     .string(
-      path: "Projects/Features/{{ name }}/Example/Resources/LaunchScreen.storyboard",
+      path: "Projects/Features/{{ name }}Feature/Example/Resources/LaunchScreen.storyboard",
       contents: #"""
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="16096" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" launchScreen="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="UIViewController">
@@ -254,6 +254,29 @@ struct {{ name }}FeatureExampleApp: App {
   </scenes>
 </document>
 """#
-    )
+    ),
+    .string(
+      path: "Tuist/ProjectDescriptionHelpers/FeatureFactory/Features/Features+{{ name }}.swift",
+      contents: #"""
+    import ProjectDescription
+    
+    // ===============================================
+    // 🚨 This file is auto-generated.
+    // Do NOT edit this file manually.
+    //
+    // Generated by: `tuist scaffold feature --name {{ name }}`
+    // Location: Tuist/Templates/feature/feature.swift
+    //
+    // Purpose:
+    // - Register Feature identifier safely
+    // - Use as: Feature.{{ name | lowerFirstWord }}
+    // ===============================================
+    
+    public extension Feature {
+      /// Example: Feature.rootTab / Feature.home / Feature.calendar ...
+      static let {{ name | lowerFirstWord }} = Feature("{{ name }}")
+    }
+    """#
+    ),
   ]
 )
