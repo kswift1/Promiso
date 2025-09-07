@@ -10,7 +10,9 @@ public enum AppFeatureDeps {
     dependencyPathFromThisProject: String = "../Features"
   ) -> [TargetDependency] {
     let allFeatures: [Feature] = [
+      // 🤖 Auto-generated features
       .rootTab,
+      .schedule,
     ]
     return allFeatures
       .flatMap { feature($0, path: dependencyPathFromThisProject) }
@@ -18,7 +20,7 @@ public enum AppFeatureDeps {
   
   /// 특정 피쳐의 Interface + Implement 의존성을 생성하는 슈가 함수
   /// - Parameters:
-  ///   - feature: Feature 구조체 (예: .rootTab, .home)
+  ///   - feature: Feature 구조체 (예: .home, .calendar)
   ///   - path: 베이스 경로 (예: "../Features")
   /// - Returns: Interface + Implement 의존성 배열
   private static func feature(_ feature: Feature, path: String) -> [TargetDependency] {
