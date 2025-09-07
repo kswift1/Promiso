@@ -15,10 +15,12 @@ let project = Project(
       ]),
       sources: ["Sources/**"],
       resources: ["Resources/**"],
-      dependencies: [
-        .project(target: "MainFeatureInterface", path: "../Features/Main"),
-          .project(target: "MainFeatureImplement", path: "../Features/Main"),
-      ]
+      dependencies:
+        AppFeatureDeps.allFeaturesDeps(
+          dependencyPathFromThisProject: "../Features" // App/Project.swift 기준
+        ) + [
+          .external(name: "ComposableArchitecture")
+        ]
     )
   ]
 )

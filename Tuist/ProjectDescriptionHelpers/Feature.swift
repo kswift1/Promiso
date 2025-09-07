@@ -1,4 +1,3 @@
-// Tuist/ProjectDescriptionHelpers/Features.swift
 import ProjectDescription
 
 /// 확장 가능한 Feature 식별자 (enum 대신 struct로 설계: 케이스를 확장 파일로 자동 추가 가능)
@@ -7,6 +6,7 @@ public struct Feature: RawRepresentable, Hashable, Sendable, CustomStringConvert
   public init(_ rawValue: String) { self.rawValue = rawValue }
   public init(rawValue: String) { self.rawValue = rawValue }
   public var description: String { rawValue }
+  
 }
 
 /// 공통 경로/이름 규칙
