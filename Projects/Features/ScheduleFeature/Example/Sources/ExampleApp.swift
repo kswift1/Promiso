@@ -32,36 +32,12 @@ private struct ExampleContentView: View {
   
   var body: some View {
     List {
-      // Default State Section
       Section("기본 상태") {
         NavigationLink("기본 Schedule") {
           defaultExample
         }
       }
       
-      // Loading State Section
-      Section("로딩 상태") {
-        NavigationLink("로딩 상태") {
-          loadingExample
-        }
-      }
-      
-      // Error State Section
-      Section("에러 상태") {
-        NavigationLink("네트워크 에러") {
-          errorExample(ScheduleError.networkError)
-        }
-        
-        NavigationLink("데이터 에러") {
-          errorExample(ScheduleError.dataError)
-        }
-        
-        NavigationLink("커스텀 에러") {
-          errorExample(ScheduleError.custom("문제가 발생했습니다!"))
-        }
-      }
-      
-      // Entry Point Section
       Section("Entry Point Integration") {
         NavigationLink("Live Entry") {
           entryExample
@@ -77,34 +53,6 @@ private struct ExampleContentView: View {
   private var defaultExample: some View {
     let store = Store(initialState: Schedule.Feature.State()) {
       Schedule.Feature()
-        ._printChanges()
-    }
-    
-    Schedule.RootView(store: store)
-  }
-  
-  /// Loading state example
-  @ViewBuilder
-  private var loadingExample: some View {
-    let store = Store(
-      initialState: Schedule.Feature.State(isLoading: true)
-    ) {
-      Schedule.Feature()
-        ._printChanges()
-    }
-    
-    Schedule.RootView(store: store)
-  }
-  
-  /// Error state example
-  /// - Parameter error: The error to display
-  @ViewBuilder
-  private func errorExample(_ error: ScheduleError) -> some View {
-    let store = Store(
-      initialState: Schedule.Feature.State(error: error)
-    ) {
-      Schedule.Feature()
-        ._printChanges()
     }
     
     Schedule.RootView(store: store)
@@ -120,42 +68,10 @@ private struct ExampleContentView: View {
 
 // MARK: - SwiftUI Previews
 
-/// SwiftUI previews for different feature states
-#Preview("Default State") {
+#Preview {
   let store = Store(initialState: Schedule.Feature.State()) {
     Schedule.Feature()
   }
   
-  return NavigationStack {
-    Schedule.RootView(store: store)
-  }
-}
-
-#Preview("Loading State") {
-  let store = Store(
-    initialState: Schedule.Feature.State(isLoading: true)
-  ) {
-    Schedule.Feature()
-  }
-  
-  return NavigationStack {
-    Schedule.RootView(store: store)
-  }
-}
-
-#Preview("Error State") {
-  let store = Store(
-    initialState: Schedule.Feature.State(error: .networkError)
-  ) {
-    Schedule.Feature()
-  }
-  
-  return NavigationStack {
-    Schedule.RootView(store: store)
-  }
-}
-
-#Preview("Entry Point") {
-  let entry = ScheduleEntry.preview()
-  return entry.makeView(.init())
+  Schedule.RootView(store: store)
 }

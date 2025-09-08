@@ -20,7 +20,7 @@ extension Schedule {
   
   /// Schedule Feature state management를 위한 Main reducer
   /// Feature의 모든 business logic과 side effect를 처리
-  ///
+  /// 
   /// SwiftUI integration을 위해 @ObservableState와 함께 TCA 1.22.2 Reducer protocol을 준수
   @Reducer
   public struct Feature {
@@ -33,31 +33,16 @@ extension Schedule {
     
     /// Schedule Feature의 완전한 state를 나타냄
     /// 예측 가능성을 유지하기 위해 모든 state 변경은 Action을 통해 처리되어야 함
-    ///
+    /// 
     /// @ObservableState는 추가 wrapper 없이 직접적인 SwiftUI integration을 가능하게 함
     @ObservableState
     public struct State: Equatable {
-      // MARK: UI State
-      /// Feature가 현재 async operation을 수행 중인지 추적
-      public var isLoading: Bool = false
-      
-      /// 사용자 대상 error message 표시를 위한 Error state
-      public var error: ScheduleError?
-      
       // Feature별 state 프로퍼티를 여기에 추가
       // 예시: public var items: IdentifiedArrayOf<ScheduleItem> = []
       // 예시: public var selectedItem: ScheduleItem?
       
       /// State를 위한 기본 initializer
-      /// 모든 state 프로퍼티에 대해 합리적인 기본값을 제공
-      
-      public init(
-        isLoading: Bool = false,
-        error: ScheduleError? = nil
-      ) {
-        self.isLoading = isLoading
-        self.error = error
-      }
+      public init() {}
     }
     
     // MARK: - Action
@@ -68,20 +53,6 @@ extension Schedule {
       // MARK: Lifecycle Actions
       /// view가 처음 나타날 때 트리거
       case onAppear
-      
-      /// view가 data를 새로고침해야 할 때 트리거
-      case refresh
-      
-      // MARK: User Actions
-      /// 사용자 상호작용 예시 - Feature별 action으로 교체
-      case didTapAction
-      
-      // MARK: Internal Actions
-      /// async operation 완료 처리를 위한 Internal action
-      //      case loadDataResponse(Result<Void, ScheduleError>)
-      
-      /// error state 해제를 위한 Action
-      case dismissError
       
       // Feature별 action을 여기에 추가
       // 예시: case itemSelected(ScheduleItem)
@@ -97,38 +68,6 @@ extension Schedule {
         switch action {
         case .onAppear:
           // view가 나타날 때 Feature 초기화
-          state.isLoading = true
-          state.error = nil
-          
-          // async data loading 시뮬레이션
-          return .none
-          
-        case .refresh:
-          // pull-to-refresh 또는 명시적 refresh 요청 처리
-          state.isLoading = true
-          state.error = nil
-          
-          return .none
-          
-        case .didTapAction:
-          // 사용자 상호작용 처리
-          // 여기에 business logic을 추가
-          return .none
-//          
-//        case let .loadDataResponse(.success):
-//          // 성공적인 data loading 처리
-//          state.isLoading = false
-//          return .none
-          
-//        case let .loadDataResponse(.failure(error)):
-//          // data loading 실패 처리
-//          state.isLoading = false
-//          state.error = error
-//          return .none
-          
-        case .dismissError:
-          // error state 정리
-          state.error = nil
           return .none
         }
       }
@@ -152,104 +91,29 @@ extension Schedule {
     // MARK: - Body
     
     public var body: some View {
-      NavigationStack {
-        contentView
-          .navigationTitle("Schedule")
-          .onAppear {
-            store.send(.onAppear)
-          }
-          .refreshable {
-            store.send(.refresh)
-          }
-          .alert(
-            "Error",
-            isPresented: .constant(store.error != nil),
-            presenting: store.error
-          ) { error in
-            Button("OK") {
-              store.send(.dismissError)
-            }
-          } message: { error in
-            Text(error.localizedDescription)
-          }
-      }
-    }
-    
-    // MARK: - Content View
-    
-    /// Feature의 interface를 보여주는 Main content view
-    @ViewBuilder
-    private var contentView: some View {
-      if store.isLoading {
-        loadingView
-      } else {
-        mainContentView
-      }
-    }
-    
-    /// Loading state view
-    @ViewBuilder
-    private var loadingView: some View {
-      ProgressView("Loading...")
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-    
-    /// data가 로드되었을 때의 Main content
-    @ViewBuilder
-    private var mainContentView: some View {
-      VStack(spacing: 24) {
-        // Feature 아이콘 또는 헤더
-        Image(systemName: "star.circle.fill")
-          .font(.system(size: 60))
-          .foregroundColor(.accentColor)
-        
-        // Feature 제목
+      VStack {
         Text("Schedule Feature")
           .font(.title2)
           .fontWeight(.semibold)
         
-        // Feature 설명
         Text("Schedule Feature implementation입니다.")
           .font(.body)
           .foregroundColor(.secondary)
           .multilineTextAlignment(.center)
-        
-        // Action 버튼
-        Button("Tap Action") {
-          store.send(.didTapAction)
-        }
-        .buttonStyle(.borderedProminent)
-        
-        Spacer()
       }
       .padding()
+      .onAppear {
+        store.send(.onAppear)
+      }
     }
   }
 }
 
 // MARK: - Error Types
-
-/// Schedule Feature에 특화된 Error type
-/// 사용자 친화적인 메시지와 함께 구조화된 error handling을 제공
-public enum ScheduleError: Error, Equatable, LocalizedError {
-  /// Network 연결 또는 server error
-  case networkError
-  
-  /// Data parsing 또는 validation error
-  case dataError
-  
-  /// 커스텀 메시지를 가진 Generic error
-  case custom(String)
-  
-  /// 사용자 친화적인 error 설명
-  public var errorDescription: String? {
-    switch self {
-    case .networkError:
-      return "네트워크 연결에 실패했습니다. 다시 시도해 주세요."
-    case .dataError:
-      return "데이터를 처리할 수 없습니다. 다시 시도해 주세요."
-    case .custom(let message):
-      return message
-    }
-  }
-}
+// Feature별 Error type이 필요한 경우 여기에 추가
+// 예시:
+// public enum ScheduleError: Error, Equatable, LocalizedError {
+//   case networkError
+//   case dataError
+//   case custom(String)
+// }

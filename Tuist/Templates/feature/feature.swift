@@ -209,27 +209,12 @@ extension {{ name }} {
     /// @ObservableState는 추가 wrapper 없이 직접적인 SwiftUI integration을 가능하게 함
     @ObservableState
     public struct State: Equatable {
-      // MARK: UI State
-      /// Feature가 현재 async operation을 수행 중인지 추적
-      public var isLoading: Bool = false
-      
-      /// 사용자 대상 error message 표시를 위한 Error state
-      public var error: {{ name }}Error?
-      
       // Feature별 state 프로퍼티를 여기에 추가
       // 예시: public var items: IdentifiedArrayOf<{{ name }}Item> = []
       // 예시: public var selectedItem: {{ name }}Item?
       
       /// State를 위한 기본 initializer
-      /// 모든 state 프로퍼티에 대해 합리적인 기본값을 제공
-      
-      public init(
-        isLoading: Bool = false,
-        error: {{ name }}Error? = nil
-      ) {
-        self.isLoading = isLoading
-        self.error = error
-      }
+      public init() {}
     }
     
     // MARK: - Action
@@ -240,20 +225,6 @@ extension {{ name }} {
       // MARK: Lifecycle Actions
       /// view가 처음 나타날 때 트리거
       case onAppear
-      
-      /// view가 data를 새로고침해야 할 때 트리거
-      case refresh
-      
-      // MARK: User Actions
-      /// 사용자 상호작용 예시 - Feature별 action으로 교체
-      case didTapAction
-      
-      // MARK: Internal Actions
-      /// async operation 완료 처리를 위한 Internal action
-      case loadDataResponse(Result<Void, {{ name }}Error>)
-      
-      /// error state 해제를 위한 Action
-      case dismissError
       
       // Feature별 action을 여기에 추가
       // 예시: case itemSelected({{ name }}Item)
@@ -269,42 +240,6 @@ extension {{ name }} {
         switch action {
         case .onAppear:
           // view가 나타날 때 Feature 초기화
-          state.isLoading = true
-          state.error = nil
-          
-          // async data loading 시뮬레이션
-          return .run { send in
-            await send(.loadDataResponse(.success(())))
-          }
-          
-        case .refresh:
-          // pull-to-refresh 또는 명시적 refresh 요청 처리
-          state.isLoading = true
-          state.error = nil
-          
-          return .run { send in
-            await send(.loadDataResponse(.success(())))
-          }
-          
-        case .didTapAction:
-          // 사용자 상호작용 처리
-          // 여기에 business logic을 추가
-          return .none
-          
-        case let .loadDataResponse(.success):
-          // 성공적인 data loading 처리
-          state.isLoading = false
-          return .none
-          
-        case let .loadDataResponse(.failure(error)):
-          // data loading 실패 처리
-          state.isLoading = false
-          state.error = error
-          return .none
-          
-        case .dismissError:
-          // error state 정리
-          state.error = nil
           return .none
         }
       }
@@ -317,7 +252,7 @@ extension {{ name }} {
   /// 적절한 accessibility와 state handling을 통해 SwiftUI best practice를 따름
   public struct RootView: View {
     /// Feature의 state와 action dispatch 기능을 포함하는 Store
-    @Bindable private var store: StoreOf<Feature>
+    private var store: StoreOf<Feature>
     
     /// Designated initializer
     /// - Parameter store: state management와 action dispatch를 위한 TCA store
@@ -328,107 +263,32 @@ extension {{ name }} {
     // MARK: - Body
     
     public var body: some View {
-      NavigationStack {
-        contentView
-          .navigationTitle("{{ name }}")
-          .onAppear {
-            store.send(.onAppear)
-          }
-          .refreshable {
-            store.send(.refresh)
-          }
-          .alert(
-            "Error",
-            isPresented: .constant(store.error != nil),
-            presenting: store.error
-          ) { error in
-            Button("OK") {
-              store.send(.dismissError)
-            }
-          } message: { error in
-            Text(error.localizedDescription)
-          }
-      }
-    }
-    
-    // MARK: - Content View
-    
-    /// Feature의 interface를 보여주는 Main content view
-    @ViewBuilder
-    private var contentView: some View {
-      if store.isLoading {
-        loadingView
-      } else {
-        mainContentView
-      }
-    }
-    
-    /// Loading state view
-    @ViewBuilder
-    private var loadingView: some View {
-      ProgressView("Loading...")
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-    
-    /// data가 로드되었을 때의 Main content
-    @ViewBuilder
-    private var mainContentView: some View {
-      VStack(spacing: 24) {
-        // Feature 아이콘 또는 헤더
-        Image(systemName: "star.circle.fill")
-          .font(.system(size: 60))
-          .foregroundColor(.accentColor)
-        
-        // Feature 제목
+      VStack {
         Text("{{ name }} Feature")
           .font(.title2)
           .fontWeight(.semibold)
         
-        // Feature 설명
         Text("{{ name }} Feature implementation입니다.")
           .font(.body)
           .foregroundColor(.secondary)
           .multilineTextAlignment(.center)
-        
-        // Action 버튼
-        Button("Tap Action") {
-          store.send(.didTapAction)
-        }
-        .buttonStyle(.borderedProminent)
-        
-        Spacer()
       }
       .padding()
+      .onAppear {
+        store.send(.onAppear)
+      }
     }
   }
 }
 
 // MARK: - Error Types
-
-/// {{ name }} Feature에 특화된 Error type
-/// 사용자 친화적인 메시지와 함께 구조화된 error handling을 제공
-public enum {{ name }}Error: Error, Equatable, LocalizedError {
-  /// Network 연결 또는 server error
-  case networkError
-  
-  /// Data parsing 또는 validation error
-  case dataError
-  
-  /// 커스텀 메시지를 가진 Generic error
-  case custom(String)
-  
-  /// 사용자 친화적인 error 설명
-  public var errorDescription: String? {
-    switch self {
-    case .networkError:
-      return "네트워크 연결에 실패했습니다. 다시 시도해 주세요."
-    case .dataError:
-      return "데이터를 처리할 수 없습니다. 다시 시도해 주세요."
-    case .custom(let message):
-      return message
-    }
-  }
-}
+// Feature별 Error type이 필요한 경우 여기에 추가
+// 예시:
+// public enum {{ name }}Error: Error, Equatable, LocalizedError {
+//   case networkError
+//   case dataError
+//   case custom(String)
+// }
 """#
     ),
     
@@ -448,44 +308,10 @@ import {{ name }}FeatureInterface
 public extension {{ name }}Entry {
   
   /// {{ name }} Feature entry의 live instance를 생성
-  /// 메인 애플리케이션에서 사용해야 하는 production implementation
-  /// 
-  /// Live implementation:
-  /// - 기본 initial state로 TCA store를 생성
-  /// - production dependency로 reducer를 구성
-  /// - 적절히 구성된 SwiftUI view를 반환
-  /// 
-  /// - Returns: production 사용을 위해 구성된 {{ name }}Entry
   static func live() -> Self {
-    .init { config in
-      // initial state로 TCA store 생성
-      let store = Store(
-        initialState: {{ name }}.Feature.State()
-      ) {
-        {{ name }}.Feature()
-          // Feature가 성장함에 따라 dependency를 여기에 추가
-          // 예시: ._printChanges() for debugging
-      }
-      
-      // AnyView로 감싼 root view 반환
-      return AnyView(
-        {{ name }}.RootView(store: store)
-      )
-    }
-  }
-  
-  /// SwiftUI preview와 testing을 위한 preview instance를 생성함
-  /// 이 버전은 mock data와 간소화된 configuration을 사용함
-  /// 
-  /// - Parameter state: preview 시나리오를 위한 선택적 initial state
-  /// - Returns: preview 사용을 위해 구성된 {{ name }}Entry
-  static func preview(
-    state: {{ name }}.Feature.State = .init()
-  ) -> Self {
     .init { _ in
-      let store = Store(initialState: state) {
+      let store = Store(initialState: {{ name }}.Feature.State()) {
         {{ name }}.Feature()
-          ._printChanges()
       }
       
       return AnyView(
@@ -494,16 +320,14 @@ public extension {{ name }}Entry {
     }
   }
   
-  /// unit testing을 위한 mock instance를 생성함
-  /// 특정 시나리오 테스트를 위한 커스텀 store injection을 허용함
-  /// 
-  /// - Parameter store: testing을 위해 미리 구성된 store
-  /// - Returns: testing을 위해 구성된 {{ name }}Entry
-  static func mock(
-    store: StoreOf<{{ name }}.Feature>
-  ) -> Self {
+  /// SwiftUI preview를 위한 preview instance를 생성
+  static func preview() -> Self {
     .init { _ in
-      AnyView(
+      let store = Store(initialState: {{ name }}.Feature.State()) {
+        {{ name }}.Feature()
+      }
+      
+      return AnyView(
         {{ name }}.RootView(store: store)
       )
     }
@@ -537,141 +361,16 @@ import ComposableArchitecture
 @MainActor
 final class {{ name }}FeatureTests: XCTestCase {
   
-  // MARK: - Lifecycle Tests
-  
-  /// initial state와 onAppear 동작을 테스트
-  func test_onAppear_startsLoadingAndCompletes() async {
+  /// 기본 onAppear 동작을 테스트
+  func test_onAppear() async {
     let store = TestStore(initialState: {{ name }}.Feature.State()) {
       {{ name }}.Feature()
     }
     
-    // onAppear가 loading을 트리거하는지 테스트
-    await store.send(.onAppear) {
-      $0.isLoading = true
-      $0.error = nil
-    }
-    
-    // async 완료를 테스트
-    await store.receive(.loadDataResponse(.success(()))) {
-      $0.isLoading = false
-    }
+    await store.send(.onAppear)
   }
   
-  /// refresh 기능을 테스트
-  func test_refresh_reloadsData() async {
-    let store = TestStore(
-      initialState: {{ name }}.Feature.State(isLoading: false)
-    ) {
-      {{ name }}.Feature()
-    }
-    
-    await store.send(.refresh) {
-      $0.isLoading = true
-      $0.error = nil
-    }
-    
-    await store.receive(.loadDataResponse(.success(()))) {
-      $0.isLoading = false
-    }
-  }
-  
-  // MARK: - Error Handling Tests
-  
-  /// Tests error handling during data loading
-  func test_loadDataFailure_setsErrorState() async {
-    let store = TestStore(initialState: {{ name }}.Feature.State()) {
-      {{ name }}.Feature()
-    }
-    
-    let error = {{ name }}Error.networkError
-    
-    await store.send(.onAppear) {
-      $0.isLoading = true
-    }
-    
-    await store.receive(.loadDataResponse(.failure(error))) {
-      $0.isLoading = false
-      $0.error = error
-    }
-  }
-  
-  /// Tests error dismissal functionality
-  func test_dismissError_clearsErrorState() async {
-    let store = TestStore(
-      initialState: {{ name }}.Feature.State(
-        error: {{ name }}Error.dataError
-      )
-    ) {
-      {{ name }}.Feature()
-    }
-    
-    await store.send(.dismissError) {
-      $0.error = nil
-    }
-  }
-  
-  // MARK: - User Interaction Tests
-  
-  /// Tests user action handling
-  func test_didTapAction_handlesUserInteraction() async {
-    let store = TestStore(initialState: {{ name }}.Feature.State()) {
-      {{ name }}.Feature()
-    }
-    
-    await store.send(.didTapAction)
-    // Add assertions for expected state changes or side effects
-  }
-  
-  // MARK: - State Tests
-  
-  /// Tests initial state configuration
-  func test_initialState_hasCorrectDefaults() {
-    let state = {{ name }}.Feature.State()
-    
-    XCTAssertFalse(state.isLoading)
-    XCTAssertNil(state.error)
-    // Add assertions for additional state properties
-  }
-  
-  /// Tests state equality for proper SwiftUI updates
-  func test_state_equatableConformance() {
-    let state1 = {{ name }}.Feature.State(isLoading: true)
-    let state2 = {{ name }}.Feature.State(isLoading: true)
-    let state3 = {{ name }}.Feature.State(isLoading: false)
-    
-    XCTAssertEqual(state1, state2)
-    XCTAssertNotEqual(state1, state3)
-  }
-}
-
-// MARK: - Error Tests
-
-/// Test suite for {{ name }}Error type and error handling
-final class {{ name }}ErrorTests: XCTestCase {
-  
-  /// Tests error localized descriptions
-  func test_errorDescriptions_provideUserFriendlyMessages() {
-    let networkError = {{ name }}Error.networkError
-    let dataError = {{ name }}Error.dataError
-    let customError = {{ name }}Error.custom("Test message")
-    
-    XCTAssertEqual(networkError.errorDescription, "Network connection failed. Please try again.")
-    XCTAssertEqual(dataError.errorDescription, "Unable to process data. Please try again.")
-    XCTAssertEqual(customError.errorDescription, "Test message")
-  }
-  
-  /// Tests error equality for state management
-  func test_errorEquality() {
-    let error1 = {{ name }}Error.networkError
-    let error2 = {{ name }}Error.networkError
-    let error3 = {{ name }}Error.dataError
-    let error4 = {{ name }}Error.custom("Test")
-    let error5 = {{ name }}Error.custom("Test")
-    
-    XCTAssertEqual(error1, error2)
-    XCTAssertNotEqual(error1, error3)
-    XCTAssertEqual(error4, error5)
-  }
+  // 추가 테스트를 여기에 작성
 }
 
 // MARK: - Integration Tests
@@ -683,15 +382,6 @@ final class {{ name }}EntryTests: XCTestCase {
   /// Tests live entry point creation
   func test_liveEntry_createsValidInstance() {
     let entry = {{ name }}Entry.live()
-    let view = entry.makeView(.init())
-    
-    XCTAssertNotNil(view)
-  }
-  
-  /// Tests preview entry point with custom state
-  func test_previewEntry_acceptsCustomState() {
-    let customState = {{ name }}.Feature.State(isLoading: true)
-    let entry = {{ name }}Entry.preview(state: customState)
     let view = entry.makeView(.init())
     
     XCTAssertNotNil(view)
@@ -738,36 +428,12 @@ private struct ExampleContentView: View {
   
   var body: some View {
     List {
-      // Default State Section
       Section("기본 상태") {
         NavigationLink("기본 {{ name }}") {
           defaultExample
         }
       }
       
-      // Loading State Section
-      Section("로딩 상태") {
-        NavigationLink("로딩 상태") {
-          loadingExample
-        }
-      }
-      
-      // Error State Section
-      Section("에러 상태") {
-        NavigationLink("네트워크 에러") {
-          errorExample({{ name }}Error.networkError)
-        }
-        
-        NavigationLink("데이터 에러") {
-          errorExample({{ name }}Error.dataError)
-        }
-        
-        NavigationLink("커스텀 에러") {
-          errorExample({{ name }}Error.custom("문제가 발생했습니다!"))
-        }
-      }
-      
-      // Entry Point Section
       Section("Entry Point Integration") {
         NavigationLink("Live Entry") {
           entryExample
@@ -783,34 +449,6 @@ private struct ExampleContentView: View {
   private var defaultExample: some View {
     let store = Store(initialState: {{ name }}.Feature.State()) {
       {{ name }}.Feature()
-        ._printChanges()
-    }
-    
-    {{ name }}.RootView(store: store)
-  }
-  
-  /// Loading state example
-  @ViewBuilder
-  private var loadingExample: some View {
-    let store = Store(
-      initialState: {{ name }}.Feature.State(isLoading: true)
-    ) {
-      {{ name }}.Feature()
-        ._printChanges()
-    }
-    
-    {{ name }}.RootView(store: store)
-  }
-  
-  /// Error state example
-  /// - Parameter error: The error to display
-  @ViewBuilder
-  private func errorExample(_ error: {{ name }}Error) -> some View {
-    let store = Store(
-      initialState: {{ name }}.Feature.State(error: error)
-    ) {
-      {{ name }}.Feature()
-        ._printChanges()
     }
     
     {{ name }}.RootView(store: store)
@@ -826,44 +464,12 @@ private struct ExampleContentView: View {
 
 // MARK: - SwiftUI Previews
 
-/// SwiftUI previews for different feature states
-#Preview("Default State") {
+#Preview {
   let store = Store(initialState: {{ name }}.Feature.State()) {
     {{ name }}.Feature()
   }
   
-  return NavigationStack {
-    {{ name }}.RootView(store: store)
-  }
-}
-
-#Preview("Loading State") {
-  let store = Store(
-    initialState: {{ name }}.Feature.State(isLoading: true)
-  ) {
-    {{ name }}.Feature()
-  }
-  
-  return NavigationStack {
-    {{ name }}.RootView(store: store)
-  }
-}
-
-#Preview("Error State") {
-  let store = Store(
-    initialState: {{ name }}.Feature.State(error: .networkError)
-  ) {
-    {{ name }}.Feature()
-  }
-  
-  return NavigationStack {
-    {{ name }}.RootView(store: store)
-  }
-}
-
-#Preview("Entry Point") {
-  let entry = {{ name }}Entry.preview()
-  return entry.makeView(.init())
+  {{ name }}.RootView(store: store)
 }
 """#
     ),
