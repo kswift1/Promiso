@@ -5,6 +5,7 @@
 import SwiftUI
 import ComposableArchitecture
 import RootTabFeatureInterface
+import Perception
 
 // Tab 타입을 RootTabFeatureInterface에서 가져옴
 public typealias Tab = RootTabFeatureInterface.Tab
@@ -89,7 +90,7 @@ extension RootTab {
   /// 적절한 accessibility와 state handling을 통해 SwiftUI best practice를 따름
   public struct RootView: View {
     /// Feature의 state와 action dispatch 기능을 포함하는 Store
-    @ComposableArchitecture.Bindable private var store: StoreOf<RootTab.Feature>
+    private let store: StoreOf<RootTab.Feature>
     
     /// Designated initializer
     /// - Parameter store: state management와 action dispatch를 위한 TCA store
@@ -100,18 +101,22 @@ extension RootTab {
     // MARK: - Body
     
     public var body: some View {
-      TabView(selection: $store.selectedTab.sending(\.tabSelected)) {
-        ForEach(Tab.allCases.sorted(by: { $0.order < $1.order }), id: \.self) { tab in
-          tabContentView(for: tab)
-            .tabItem {
-              Image(systemName: tab.iconName)
-              Text(tab.rawValue)
-            }
-            .tag(tab)
+      WithPerceptionTracking {
+        @Perception.Bindable var store = store
+        
+        TabView(selection: $store.selectedTab.sending(\.tabSelected)) {
+          ForEach(Tab.allCases.sorted(by: { $0.order < $1.order }), id: \.self) { tab in
+            tabContentView(for: tab)
+              .tabItem {
+                Image(systemName: tab.iconName)
+                Text(tab.rawValue)
+              }
+              .tag(tab)
+          }
         }
-      }
-      .onAppear {
-        store.send(.onAppear)
+        .onAppear {
+          store.send(.onAppear)
+        }
       }
     }
     
