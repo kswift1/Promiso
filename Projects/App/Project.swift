@@ -16,10 +16,8 @@ let project = Project(
       sources: ["Sources/**"],
       resources: ["Resources/**"],
       dependencies:
-        AppFeatureDeps.allFeaturesDeps(
-          dependencyPathFromThisProject: "../Features" // App/Project.swift 기준
-        ) + [
-          .external(name: "ComposableArchitecture")
+        AppFeatureDeps.allFeaturesDeps() + [
+          ExternalDependency.tca
         ]
     )
   ]

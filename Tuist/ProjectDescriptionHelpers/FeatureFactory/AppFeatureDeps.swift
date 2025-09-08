@@ -4,29 +4,24 @@ import ProjectDescription
 public enum AppFeatureDeps {
   
   /// 모든 피쳐의 의존성을 자동으로 수집하여 반환
-  /// - Parameter dependencyPathFromThisProject: App/Project.swift 기준 상대 경로
   /// - Returns: 모든 피쳐의 Interface + Implement 의존성 배열
-  public static func allFeaturesDeps(
-    dependencyPathFromThisProject: String = "../Features"
-  ) -> [TargetDependency] {
+  public static func allFeaturesDeps() -> [TargetDependency] {
     let allFeatures: [Feature] = [
       // 🤖 Auto-generated features
       .rootTab,
       .schedule,
     ]
     return allFeatures
-      .flatMap { feature($0, path: dependencyPathFromThisProject) }
+      .flatMap { feature($0) }
   }
   
   /// 특정 피쳐의 Interface + Implement 의존성을 생성하는 슈가 함수
-  /// - Parameters:
-  ///   - feature: Feature 구조체 (예: .home, .calendar)
-  ///   - path: 베이스 경로 (예: "../Features")
+  /// - Parameter feature: Feature 구조체 (예: .rootTab, .schedule)
   /// - Returns: Interface + Implement 의존성 배열
-  private static func feature(_ feature: Feature, path: String) -> [TargetDependency] {
+  private static func feature(_ feature: Feature) -> [TargetDependency] {
     return [
-      .project(target: "\(feature.rawValue)Interface", path: "\(path)/\(feature.rawValue)Feature"),
-      .project(target: "\(feature.rawValue)Implement", path: "\(path)/\(feature.rawValue)Feature"),
+      .project(target: "\(feature.fullName)Interface", path: "../Features/\(feature.fullName)"),
+      .project(target: "\(feature.fullName)Implement", path: "../Features/\(feature.fullName)"),
     ]
   }
 }

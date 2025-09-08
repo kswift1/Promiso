@@ -1,77 +1,73 @@
 import ProjectDescription
 import ProjectDescriptionHelpers
 
+private let feature: Feature = .schedule
+
 let project = Project(
-  name: "ScheduleFeature",
+  name: feature.fullName,
   targets: [
 
     // Interface
     .target(
-      name: "ScheduleInterface",
+      name: "\(feature.fullName)Interface",
       destinations: .iOS,
       product: .framework,
-      bundleId: "\(AppConfig.name).features.schedule.interface",
+      bundleId: "\(feature.defaultBundleIdPrefix).interface",
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Interface/Sources/**"],
-      dependencies: []
+      dependencies: DefaultExternalDependency.interface
     ),
 
     // Implement
     .target(
-      name: "ScheduleImplement",
+      name: "\(feature.fullName)Implement",
       destinations: .iOS,
       product: .framework,
-      bundleId: "\(AppConfig.name).features.schedule.implement",
+      bundleId: "\(feature.defaultBundleIdPrefix).implement",
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Implement/Sources/**"],
       dependencies: [
-        .project(target: "ScheduleInterface", path: "."),
-        .external(name: "ComposableArchitecture")
-      ]
+        FeatureDependency.interface(feature)
+      ] + DefaultExternalDependency.implement
     ),
 
     // Testing
     .target(
-      name: "ScheduleTesting",
+      name: "\(feature.fullName)Testing",
       destinations: .iOS,
       product: .framework,
-      bundleId: "\(AppConfig.name).features.schedule.testing",
+      bundleId: "\(feature.defaultBundleIdPrefix).testing",
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Testing/Sources/**"],
       dependencies: [
-        .project(target: "ScheduleInterface", path: ".")
-      ]
+        FeatureDependency.interface(feature)
+      ] + DefaultExternalDependency.testing
     ),
 
     // Unit Tests
     .target(
-      name: "ScheduleTests",
+      name: "\(feature.fullName)Tests",
       destinations: .iOS,
       product: .unitTests,
-      bundleId: "\(AppConfig.name).features.schedule.tests",
+      bundleId: "\(feature.defaultBundleIdPrefix).tests",
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Tests/Sources/**"],
-      dependencies: [
-        .project(target: "ScheduleImplement", path: "."),
-        .external(name: "ComposableArchitecture")
-      ]
+      dependencies: FeatureDependency.all(feature) + DefaultExternalDependency.tests
     ),
 
     // Example App (Demo)
     .target(
-      name: "ScheduleExample",
+      name: "\(feature.fullName)Example",
       destinations: .iOS,
       product: .app,
-      bundleId: "\(AppConfig.name).features.schedule.example",
+      bundleId: "\(feature.defaultBundleIdPrefix).example",
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       infoPlist: .extendingDefault(with: [
         "UILaunchStoryboardName": .string("LaunchScreen")
       ]),
       sources: ["Example/Sources/**"],
       resources: ["Example/Resources/**"],
-      dependencies: [
-        .project(target: "ScheduleImplement", path: ".")
-      ]
+      dependencies: FeatureDependency.all(feature) + DefaultExternalDependency.example
     )
   ]
 )

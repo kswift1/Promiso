@@ -5,9 +5,9 @@
 //  Created by 김성원 on 9/4/25.
 //
 
-import MainFeatureInterface
-import MainFeatureImplement
+import RootTabFeatureInterface
+import RootTabFeatureImplement
 
 enum Factories {
-  static func main() -> MainEntry { .live() }
+  static func main() -> RootTabEntry { .live() }
 }

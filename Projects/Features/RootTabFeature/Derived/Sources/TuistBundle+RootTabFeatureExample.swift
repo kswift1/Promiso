@@ -11,12 +11,12 @@ import Foundation
 // MARK: - Swift Bundle Accessor for Frameworks
 private class BundleFinder {}
 extension Foundation.Bundle {
-/// Since ScheduleExample is a application, the bundle for classes within this module can be used directly.
+/// Since RootTabFeatureExample is a application, the bundle for classes within this module can be used directly.
     static let module = Bundle(for: BundleFinder.self)
 }
 // MARK: - Objective-C Bundle Accessor
 @objc
-public class ScheduleExampleResources: NSObject {
+public class RootTabFeatureExampleResources: NSObject {
 @objc public class var bundle: Bundle {
     return .module
 }

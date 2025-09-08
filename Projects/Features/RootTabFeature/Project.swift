@@ -1,77 +1,73 @@
 import ProjectDescription
 import ProjectDescriptionHelpers
 
+private let feature: Feature = .rootTab
+
 let project = Project(
-  name: "RootTabFeature",
+  name: feature.fullName,
   targets: [
 
     // Interface
     .target(
-      name: "RootTabInterface",
+      name: "\(feature.fullName)Interface",
       destinations: .iOS,
       product: .framework,
-      bundleId: "\(AppConfig.name).features.roottab.interface",
+      bundleId: "\(feature.defaultBundleIdPrefix).interface",
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Interface/Sources/**"],
-      dependencies: []
+      dependencies: DefaultExternalDependency.interface
     ),
 
     // Implement
     .target(
-      name: "RootTabImplement",
+      name: "\(feature.fullName)Implement",
       destinations: .iOS,
       product: .framework,
-      bundleId: "\(AppConfig.name).features.roottab.implement",
+      bundleId: "\(feature.defaultBundleIdPrefix).implement",
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Implement/Sources/**"],
       dependencies: [
-        .project(target: "RootTabInterface", path: "."),
-        .external(name: "ComposableArchitecture")
-      ]
+        FeatureDependency.interface(feature)
+      ] + DefaultExternalDependency.implement
     ),
 
     // Testing
     .target(
-      name: "RootTabTesting",
+      name: "\(feature.fullName)Testing",
       destinations: .iOS,
       product: .framework,
-      bundleId: "\(AppConfig.name).features.roottab.testing",
+      bundleId: "\(feature.defaultBundleIdPrefix).testing",
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Testing/Sources/**"],
       dependencies: [
-        .project(target: "RootTabInterface", path: ".")
-      ]
+        FeatureDependency.interface(feature)
+      ] + DefaultExternalDependency.testing
     ),
 
     // Unit Tests
     .target(
-      name: "RootTabTests",
+      name: "\(feature.fullName)Tests",
       destinations: .iOS,
       product: .unitTests,
-      bundleId: "\(AppConfig.name).features.roottab.tests",
+      bundleId: "\(feature.defaultBundleIdPrefix).tests",
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Tests/Sources/**"],
-      dependencies: [
-        .project(target: "RootTabImplement", path: "."),
-        .external(name: "ComposableArchitecture")
-      ]
+      dependencies: FeatureDependency.all(feature) + DefaultExternalDependency.tests
     ),
 
     // Example App (Demo)
     .target(
-      name: "RootTabExample",
+      name: "\(feature.fullName)Example",
       destinations: .iOS,
       product: .app,
-      bundleId: "\(AppConfig.name).features.roottab.example",
+      bundleId: "\(feature.defaultBundleIdPrefix).example",
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       infoPlist: .extendingDefault(with: [
         "UILaunchStoryboardName": .string("LaunchScreen")
       ]),
       sources: ["Example/Sources/**"],
       resources: ["Example/Resources/**"],
-      dependencies: [
-        .project(target: "RootTabImplement", path: ".")
-      ]
+      dependencies: FeatureDependency.all(feature) + DefaultExternalDependency.example
     )
   ]
 )

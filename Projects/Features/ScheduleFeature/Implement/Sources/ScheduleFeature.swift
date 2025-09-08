@@ -20,7 +20,7 @@ extension Schedule {
   
   /// Schedule Feature state management를 위한 Main reducer
   /// Feature의 모든 business logic과 side effect를 처리
-  /// 
+  ///
   /// SwiftUI integration을 위해 @ObservableState와 함께 TCA 1.22.2 Reducer protocol을 준수
   @Reducer
   public struct Feature {
@@ -33,7 +33,7 @@ extension Schedule {
     
     /// Schedule Feature의 완전한 state를 나타냄
     /// 예측 가능성을 유지하기 위해 모든 state 변경은 Action을 통해 처리되어야 함
-    /// 
+    ///
     /// @ObservableState는 추가 wrapper 없이 직접적인 SwiftUI integration을 가능하게 함
     @ObservableState
     public struct State: Equatable {
@@ -78,7 +78,7 @@ extension Schedule {
       
       // MARK: Internal Actions
       /// async operation 완료 처리를 위한 Internal action
-      case loadDataResponse(Result<Void, ScheduleError>)
+      //      case loadDataResponse(Result<Void, ScheduleError>)
       
       /// error state 해제를 위한 Action
       case dismissError
@@ -101,34 +101,30 @@ extension Schedule {
           state.error = nil
           
           // async data loading 시뮬레이션
-          return .run { send in
-            await send(.loadDataResponse(.success(())))
-          }
+          return .none
           
         case .refresh:
           // pull-to-refresh 또는 명시적 refresh 요청 처리
           state.isLoading = true
           state.error = nil
           
-          return .run { send in
-            await send(.loadDataResponse(.success(())))
-          }
+          return .none
           
         case .didTapAction:
           // 사용자 상호작용 처리
           // 여기에 business logic을 추가
           return .none
+//          
+//        case let .loadDataResponse(.success):
+//          // 성공적인 data loading 처리
+//          state.isLoading = false
+//          return .none
           
-        case let .loadDataResponse(.success):
-          // 성공적인 data loading 처리
-          state.isLoading = false
-          return .none
-          
-        case let .loadDataResponse(.failure(error)):
-          // data loading 실패 처리
-          state.isLoading = false
-          state.error = error
-          return .none
+//        case let .loadDataResponse(.failure(error)):
+//          // data loading 실패 처리
+//          state.isLoading = false
+//          state.error = error
+//          return .none
           
         case .dismissError:
           // error state 정리
@@ -145,7 +141,7 @@ extension Schedule {
   /// 적절한 accessibility와 state handling을 통해 SwiftUI best practice를 따름
   public struct RootView: View {
     /// Feature의 state와 action dispatch 기능을 포함하는 Store
-    @Bindable private var store: StoreOf<Feature>
+    private var store: StoreOf<Feature>
     
     /// Designated initializer
     /// - Parameter store: state management와 action dispatch를 위한 TCA store

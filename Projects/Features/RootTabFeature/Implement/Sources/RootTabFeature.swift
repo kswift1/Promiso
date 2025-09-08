@@ -78,7 +78,7 @@ extension RootTab {
       
       // MARK: Internal Actions
       /// async operation 완료 처리를 위한 Internal action
-      case loadDataResponse(Result<Void, RootTabError>)
+//      case loadDataResponse(Result<Void, RootTabError>)
       
       /// error state 해제를 위한 Action
       case dismissError
@@ -101,34 +101,26 @@ extension RootTab {
           state.error = nil
           
           // async data loading 시뮬레이션
-          return .run { send in
-            await send(.loadDataResponse(.success(())))
-          }
+          return .none
           
         case .refresh:
           // pull-to-refresh 또는 명시적 refresh 요청 처리
           state.isLoading = true
           state.error = nil
           
-          return .run { send in
-            await send(.loadDataResponse(.success(())))
-          }
+          return .none
           
         case .didTapAction:
           // 사용자 상호작용 처리
           // 여기에 business logic을 추가
           return .none
           
-        case let .loadDataResponse(.success):
-          // 성공적인 data loading 처리
-          state.isLoading = false
-          return .none
+//        case let .loadDataResponse(.success):
+//          // 성공적인 data loading 처리
+//          state.isLoading = false
+//          return .none
           
-        case let .loadDataResponse(.failure(error)):
-          // data loading 실패 처리
-          state.isLoading = false
-          state.error = error
-          return .none
+//        case let .loadDat	
           
         case .dismissError:
           // error state 정리
@@ -145,7 +137,7 @@ extension RootTab {
   /// 적절한 accessibility와 state handling을 통해 SwiftUI best practice를 따름
   public struct RootView: View {
     /// Feature의 state와 action dispatch 기능을 포함하는 Store
-    @Bindable private var store: StoreOf<Feature>
+    private var store: StoreOf<Feature>
     
     /// Designated initializer
     /// - Parameter store: state management와 action dispatch를 위한 TCA store
