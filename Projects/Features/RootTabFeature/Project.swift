@@ -27,7 +27,8 @@ let project = Project(
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Implement/Sources/**"],
       dependencies: [
-        FeatureDependency.interface(feature)
+        FeatureDependency.interface(feature),
+        FeatureDependency.interface(.schedule, isExternal: true)
       ] + DefaultExternalDependency.implement
     ),
 

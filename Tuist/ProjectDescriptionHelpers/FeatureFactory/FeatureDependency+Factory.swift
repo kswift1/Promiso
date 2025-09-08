@@ -12,10 +12,10 @@ public enum FeatureDependency {
     ]
   }
   
-  public static func interface(_ feature: Feature) -> TargetDependency {
+  public static func interface(_ feature: Feature, isExternal: Bool = false) -> TargetDependency {
     .project(
       target: "\(feature.fullName)Interface",
-      path: "."
+      path: isExternal ? "../\(feature.fullName)" : "."
     )
   }
   

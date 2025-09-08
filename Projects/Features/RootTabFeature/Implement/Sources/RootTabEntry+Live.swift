@@ -30,10 +30,9 @@ public extension RootTabEntry {
           // 예시: ._printChanges() for debugging
       }
       
-      // AnyView로 감싼 root view 반환
-      return AnyView(
-        RootTab.RootView(store: store)
-      )
+      // 주의: 이 메서드는 App에서 직접 RootView를 생성하므로 사용되지 않습니다
+      // placeholder로만 유지
+      fatalError("RootTabEntry.live()는 사용되지 않습니다. App에서 직접 RootView를 생성하세요.")
     }
   }
   
@@ -51,9 +50,8 @@ public extension RootTabEntry {
           ._printChanges()
       }
       
-      return AnyView(
-        RootTab.RootView(store: store)
-      )
+      // Preview에서도 App 방식과 동일하게 처리
+      fatalError("RootTabEntry.preview()는 사용되지 않습니다. App에서 직접 RootView를 생성하세요.")
     }
   }
   
@@ -66,9 +64,8 @@ public extension RootTabEntry {
     store: StoreOf<RootTab.Feature>
   ) -> Self {
     .init { _ in
-      AnyView(
-        RootTab.RootView(store: store)
-      )
+      // Mock에서도 App 방식과 동일하게 처리
+      fatalError("RootTabEntry.mock()는 사용되지 않습니다. App에서 직접 RootView를 생성하세요.")
     }
   }
 }
