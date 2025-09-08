@@ -6,6 +6,9 @@ import SwiftUI
 import ComposableArchitecture
 import RootTabFeatureInterface
 
+// Tab 타입을 RootTabFeatureInterface에서 가져옴
+public typealias Tab = RootTabFeatureInterface.Tab
+
 // MARK: - Feature Namespace
 
 /// RootTab Feature 컴포넌트를 위한 Namespace
@@ -20,7 +23,7 @@ extension RootTab {
   
   /// RootTab Feature state management를 위한 Main reducer
   /// Feature의 모든 business logic과 side effect를 처리
-  /// 
+  ///
   /// SwiftUI integration을 위해 @ObservableState와 함께 TCA 1.22.2 Reducer protocol을 준수
   @Reducer
   public struct Feature {
@@ -33,16 +36,17 @@ extension RootTab {
     
     /// RootTab Feature의 완전한 state를 나타냄
     /// 예측 가능성을 유지하기 위해 모든 state 변경은 Action을 통해 처리되어야 함
-    /// 
+    ///
     /// @ObservableState는 추가 wrapper 없이 직접적인 SwiftUI integration을 가능하게 함
     @ObservableState
     public struct State: Equatable {
-      // Feature별 state 프로퍼티를 여기에 추가
-      // 예시: public var items: IdentifiedArrayOf<RootTabItem> = []
-      // 예시: public var selectedItem: RootTabItem?
+      /// 현재 선택된 탭
+      public var selectedTab: Tab = .home
       
       /// State를 위한 기본 initializer
-      public init() {}
+      public init(selectedTab: Tab = .home) {
+        self.selectedTab = selectedTab
+      }
     }
     
     // MARK: - Action
@@ -54,9 +58,9 @@ extension RootTab {
       /// view가 처음 나타날 때 트리거
       case onAppear
       
-      // Feature별 action을 여기에 추가
-      // 예시: case itemSelected(RootTabItem)
-      // 예시: case deleteItem(RootTabItem.ID)
+      // MARK: Tab Actions
+      /// 탭이 선택되었을 때 트리거
+      case tabSelected(Tab)
     }
     
     // MARK: - Reducer Body
@@ -67,7 +71,12 @@ extension RootTab {
       Reduce { state, action in
         switch action {
         case .onAppear:
-          // view가 나타날 때 Feature 초기화
+          // 탭바가 처음 나타날 때 초기화
+          return .none
+          
+        case let .tabSelected(tab):
+          // 탭이 선택되었을 때 상태 업데이트
+          state.selectedTab = tab
           return .none
         }
       }
@@ -80,7 +89,7 @@ extension RootTab {
   /// 적절한 accessibility와 state handling을 통해 SwiftUI best practice를 따름
   public struct RootView: View {
     /// Feature의 state와 action dispatch 기능을 포함하는 Store
-    private var store: StoreOf<Feature>
+    @ComposableArchitecture.Bindable private var store: StoreOf<RootTab.Feature>
     
     /// Designated initializer
     /// - Parameter store: state management와 action dispatch를 위한 TCA store
@@ -91,19 +100,49 @@ extension RootTab {
     // MARK: - Body
     
     public var body: some View {
-      VStack {
-        Text("RootTab Feature")
-          .font(.title2)
-          .fontWeight(.semibold)
-        
-        Text("RootTab Feature implementation입니다.")
-          .font(.body)
-          .foregroundColor(.secondary)
-          .multilineTextAlignment(.center)
+      TabView(selection: $store.selectedTab.sending(\.tabSelected)) {
+        ForEach(Tab.allCases.sorted(by: { $0.order < $1.order }), id: \.self) { tab in
+          tabContentView(for: tab)
+            .tabItem {
+              Image(systemName: tab.iconName)
+              Text(tab.rawValue)
+            }
+            .tag(tab)
+        }
       }
-      .padding()
       .onAppear {
         store.send(.onAppear)
+      }
+    }
+    
+    // MARK: - Tab Content Views
+    
+    /// 각 탭에 해당하는 콘텐츠 뷰를 생성
+    /// 현재는 플레이스홀더로 구현, 추후 실제 Feature들로 교체 예정
+    @ViewBuilder
+    private func tabContentView(for tab: Tab) -> some View {
+      NavigationStack {
+        VStack(spacing: 24) {
+          // 탭 아이콘
+          Image(systemName: tab.iconName)
+            .font(.system(size: 60))
+            .foregroundColor(.accentColor)
+          
+          // 탭 제목
+          Text(tab.rawValue)
+            .font(.title2)
+            .fontWeight(.semibold)
+          
+          // 탭 설명
+          Text("\(tab.rawValue) 기능이 구현될 예정입니다.")
+            .font(.body)
+            .foregroundColor(.secondary)
+            .multilineTextAlignment(.center)
+          
+          Spacer()
+        }
+        .padding()
+        .navigationTitle(tab.rawValue)
       }
     }
   }

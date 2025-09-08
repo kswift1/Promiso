@@ -4,7 +4,7 @@ import ComposableArchitecture
 import RootTabFeatureImplement
 
 @main
-struct StopLateApp: App {
+struct PromisoApp: App {
   var body: some Scene {
     WindowGroup {
       Factories

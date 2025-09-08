@@ -9,7 +9,7 @@ import ComposableArchitecture
 
 /// RootTab Feature integration을 위한 Entry Point
 /// 상위 애플리케이션에 RootTab Feature를 임베딩하기 위한 깔끔한 interface 제공
-/// 
+///
 /// 사용법:
 /// ```swift
 /// let entry = RootTabEntry.live()
@@ -23,8 +23,8 @@ public struct RootTabEntry {
   
   /// Feature entry instance 생성을 위한 Designated initializer
   /// - Parameter makeView: Feature의 interface contract에 맞는 View factory closure
-  public init(makeView: @escaping (_ config: Config) -> AnyView) { 
-    self.makeView = makeView 
+  public init(makeView: @escaping (_ config: Config) -> AnyView) {
+    self.makeView = makeView
   }
 }
 
@@ -41,17 +41,47 @@ public struct Config: Sendable, Equatable {
   public init() {}
 }
 
-// MARK: - Navigation
+// MARK: - Tab Navigation
+
+/// 탭바의 각 탭을 나타내는 Tab 정의
+public enum Tab: String, CaseIterable, Hashable, Sendable {
+  case home = "홈"
+  case schedule = "약속"
+  case calendar = "달력"
+  case group = "그룹"
+  
+  /// 탭 아이콘의 SF Symbol 이름
+  public var iconName: String {
+    switch self {
+    case .home: return "house.fill"
+    case .schedule: return "calendar.badge.clock"
+    case .calendar: return "calendar"
+    case .group: return "person.3.fill"
+    }
+  }
+  
+  /// 탭의 표시 순서
+  public var order: Int {
+    switch self {
+    case .home: return 0
+    case .schedule: return 1
+    case .calendar: return 2
+    case .group: return 3
+    }
+  }
+}
 
 /// RootTab Feature navigation을 위한 Route 정의
 /// Feature 내에서 deep linking과 programmatic navigation에 사용
-public enum RootTabRoute: Hashable, CaseIterable {
-  /// Feature의 main entry point를 나타내는 Root route
-  case root
+public enum RootTabRoute: Hashable {
+  public static var allCases: [RootTabRoute] {
+    [.root] + Tab.allCases.map(RootTabRoute.tab)
+  }
+  /// 특정 탭으로의 route
+  case tab(Tab)
   
-  // Feature가 성장함에 따라 추가 route를 여기에 추가
-  // 예시: case detail(id: String)
-  // 예시: case settings
+  /// Feature의 main entry point를 나타내는 Root route (기본 홈 탭)
+  case root
 }
 
 // MARK: - Domain Models
