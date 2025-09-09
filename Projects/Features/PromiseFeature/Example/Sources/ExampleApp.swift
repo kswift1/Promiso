@@ -1,24 +1,24 @@
-// MARK: - ScheduleFeatureExampleApp.swift
-// Schedule Feature 개발과 테스트를 위한 독립 실행형 example 애플리케이션
+// MARK: - PromiseFeatureExampleApp.swift
+// Promise Feature 개발과 테스트를 위한 독립 실행형 example 애플리케이션
 // 이 앱은 Feature 개발과 visual testing을 위한 격리된 환경을 제공
 
 import SwiftUI
 import ComposableArchitecture
-import ScheduleFeatureImplement
-import ScheduleFeatureInterface
+import PromiseFeatureImplement
+import PromiseFeatureInterface
 
 // MARK: - Example Application
 
-/// Schedule Feature를 위한 독립 실행형 example 앱
+/// Promise Feature를 위한 독립 실행형 example 앱
 /// 다양한 테스트 시나리오와 함께 격리된 개발 환경을 제공
 @main
-struct ScheduleFeatureExampleApp: App {
+struct PromiseFeatureExampleApp: App {
   
   var body: some Scene {
     WindowGroup {
       NavigationStack {
         ExampleContentView()
-          .navigationTitle("Schedule Examples")
+          .navigationTitle("Promise Examples")
           .navigationBarTitleDisplayMode(.large)
       }
     }
@@ -33,7 +33,7 @@ private struct ExampleContentView: View {
   var body: some View {
     List {
       Section("기본 상태") {
-        NavigationLink("기본 Schedule") {
+        NavigationLink("기본 Promise") {
           defaultExample
         }
       }
@@ -51,17 +51,17 @@ private struct ExampleContentView: View {
   /// Default feature state example
   @ViewBuilder
   private var defaultExample: some View {
-    let store = Store(initialState: Schedule.Feature.State()) {
-      Schedule.Feature()
+    let store = Store(initialState: Promise.Feature.State()) {
+      Promise.Feature()
     }
     
-    Schedule.RootView(store: store)
+    Promise.RootView(store: store)
   }
   
   /// Entry point integration example
   @ViewBuilder
   private var entryExample: some View {
-    let entry = ScheduleEntry.live()
+    let entry = PromiseEntry.live()
     entry.makeView(.init())
   }
 }
@@ -69,9 +69,9 @@ private struct ExampleContentView: View {
 // MARK: - SwiftUI Previews
 
 #Preview {
-  let store = Store(initialState: Schedule.Feature.State()) {
-    Schedule.Feature()
+  let store = Store(initialState: Promise.Feature.State()) {
+    Promise.Feature()
   }
   
-  Schedule.RootView(store: store)
+  Promise.RootView(store: store)
 }

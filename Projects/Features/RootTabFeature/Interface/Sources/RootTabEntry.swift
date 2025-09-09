@@ -46,13 +46,13 @@ public struct Config: Sendable, Equatable {
 /// 탭바의 각 탭을 나타내는 Tab 정의
 public enum Tab: String, CaseIterable, Hashable, Sendable {
   case home = "홈"
-  case schedule = "약속"
+  case promise = "약속"
   
   /// 탭 아이콘의 SF Symbol 이름
   public var iconName: String {
     switch self {
     case .home: return "house.fill"
-    case .schedule: return "calendar.badge.clock"
+    case .promise: return "calendar.badge.clock"
     }
   }
   
@@ -60,7 +60,7 @@ public enum Tab: String, CaseIterable, Hashable, Sendable {
   public var order: Int {
     switch self {
     case .home: return 0
-    case .schedule: return 1
+    case .promise: return 1
     }
   }
 }

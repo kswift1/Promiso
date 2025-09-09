@@ -1,21 +1,21 @@
-// MARK: - ScheduleEntry.swift
-// Schedule Feature의 Interface layer - TMA (Tuist Modular Architecture) 패턴을 따름
-// 이 파일은 Schedule Feature의 public contract와 integration point를 정의
+// MARK: - PromiseEntry.swift
+// Promise Feature의 Interface layer - TMA (Tuist Modular Architecture) 패턴을 따름
+// 이 파일은 Promise Feature의 public contract와 integration point를 정의
 
 import SwiftUI
 import ComposableArchitecture
 
 // MARK: - Feature Entry Point
 
-/// Schedule Feature integration을 위한 Entry Point
-/// 상위 애플리케이션에 Schedule Feature를 임베딩하기 위한 깔끔한 interface 제공
+/// Promise Feature integration을 위한 Entry Point
+/// 상위 애플리케이션에 Promise Feature를 임베딩하기 위한 깔끔한 interface 제공
 /// 
 /// 사용법:
 /// ```swift
-/// let entry = ScheduleEntry.live()
+/// let entry = PromiseEntry.live()
 /// let view = entry.makeView(.init())
 /// ```
-public struct ScheduleEntry {
+public struct PromiseEntry {
   /// 이 Feature의 main view를 생성하는 Factory function
   /// - Parameter config: Feature 동작을 커스터마이징하기 위한 Configuration 객체
   /// - Returns: Feature의 root interface를 포함하는 Type-erased SwiftUI view
@@ -30,7 +30,7 @@ public struct ScheduleEntry {
 
 // MARK: - Configuration
 
-/// Schedule Feature 동작을 커스터마이징하기 위한 Configuration 객체
+/// Promise Feature 동작을 커스터마이징하기 위한 Configuration 객체
 /// concurrency boundaries에서 안전한 사용을 위해 Sendable을 준수
 public struct Config: Sendable, Equatable {
   // 필요에 따라 configuration 프로퍼티를 여기에 추가
@@ -43,9 +43,9 @@ public struct Config: Sendable, Equatable {
 
 // MARK: - Navigation
 
-/// Schedule Feature navigation을 위한 Route 정의
+/// Promise Feature navigation을 위한 Route 정의
 /// Feature 내에서 deep linking과 programmatic navigation에 사용
-public enum ScheduleRoute: Hashable, CaseIterable {
+public enum PromiseRoute: Hashable, CaseIterable {
   /// Feature의 main entry point를 나타내는 Root route
   case root
   
@@ -56,12 +56,12 @@ public enum ScheduleRoute: Hashable, CaseIterable {
 
 // MARK: - Domain Models
 
-/// Schedule Feature에 특화된 Domain model과 data structure
+/// Promise Feature에 특화된 Domain model과 data structure
 /// Feature의 핵심 책임에 집중하여 가볍게 유지
-extension ScheduleEntry {
+extension PromiseEntry {
   // Feature별 domain model을 여기에 추가
   // 예시:
-  // public struct ScheduleItem: Equatable, Identifiable {
+  // public struct PromiseItem: Equatable, Identifiable {
   //   public let id: UUID
   //   public let name: String
   //   public init(id: UUID, name: String) { ... }

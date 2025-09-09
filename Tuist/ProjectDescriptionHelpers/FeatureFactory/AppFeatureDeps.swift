@@ -9,8 +9,8 @@ public enum AppFeatureDeps {
     let allFeatures: [Feature] = [
       // 🤖 Auto-generated features
       .rootTab,
-      .schedule,
       .home,
+      .promise,
     ]
     return allFeatures
       .flatMap { feature($0) }

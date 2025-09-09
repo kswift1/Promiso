@@ -6,7 +6,7 @@ import SwiftUI
 import ComposableArchitecture
 import RootTabFeatureInterface
 import Perception
-import ScheduleFeatureInterface
+import PromiseFeatureInterface
 import HomeFeatureInterface
 
 // Tab 타입을 RootTabFeatureInterface에서 가져옴
@@ -65,25 +65,25 @@ extension RootTab {
   /// RootTab Feature의 Root View
   public struct RootView: View {
     private let store: StoreOf<RootTab.Feature>
-    private let scheduleEntry: ScheduleEntry
+    private let promiseEntry: PromiseEntry
     private let homeEntry: HomeEntry
     
-    public init(store: StoreOf<RootTab.Feature>, scheduleEntry: ScheduleEntry, homeEntry: HomeEntry) {
+    public init(store: StoreOf<RootTab.Feature>, promiseEntry: PromiseEntry, homeEntry: HomeEntry) {
       self.store = store
-      self.scheduleEntry = scheduleEntry
+      self.promiseEntry = promiseEntry
       self.homeEntry = homeEntry
     }
     
     public var body: some View {
       WithPerceptionTracking {
-        TabViewContent(store: store, scheduleEntry: scheduleEntry, homeEntry: homeEntry)
+        TabViewContent(store: store, promiseEntry: promiseEntry, homeEntry: homeEntry)
       }
     }
   }
   
   private struct TabViewContent: View {
     let store: StoreOf<RootTab.Feature>
-    let scheduleEntry: ScheduleEntry
+    let promiseEntry: PromiseEntry
     let homeEntry: HomeEntry
     
     var body: some View {
@@ -109,8 +109,8 @@ extension RootTab {
       switch tab {
       case .home:
         HomeTabView(homeEntry: homeEntry)
-      case .schedule:
-        ScheduleTabView(scheduleEntry: scheduleEntry)
+      case .promise:
+        PromiseTabView(promiseEntry: promiseEntry)
       }
     }
   }
@@ -148,14 +148,14 @@ private struct HomeTabView: View {
   }
 }
 
-// MARK: - Schedule Tab View
+// MARK: - Promise Tab View
 
-/// Schedule 탭의 내용을 표시하는 View
-/// ScheduleEntry를 주입받아 사용
-private struct ScheduleTabView: View {
-  let scheduleEntry: ScheduleEntry
+/// Promise 탭의 내용을 표시하는 View
+/// PromiseEntry를 주입받아 사용
+private struct PromiseTabView: View {
+  let promiseEntry: PromiseEntry
   
   var body: some View {
-    scheduleEntry.makeView(.init())
+    promiseEntry.makeView(.init())
   }
 }

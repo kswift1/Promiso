@@ -28,7 +28,7 @@ let project = Project(
       sources: ["Implement/Sources/**"],
       dependencies: [
         FeatureDependency.interface(feature),
-        FeatureDependency.interface(.schedule, isExternal: true)
+        FeatureDependency.interface(.promise, isExternal: true)
       ] + DefaultExternalDependency.implement
     ),
 

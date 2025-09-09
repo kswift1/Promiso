@@ -1,7 +1,7 @@
 import ProjectDescription
 import ProjectDescriptionHelpers
 
-private let feature: Feature = .schedule
+private let feature: Feature = .promise
 
 let project = Project(
   name: feature.fullName,
