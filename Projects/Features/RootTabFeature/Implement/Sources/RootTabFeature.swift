@@ -7,6 +7,7 @@ import ComposableArchitecture
 import RootTabFeatureInterface
 import Perception
 import ScheduleFeatureInterface
+import HomeFeatureInterface
 
 // Tab 타입을 RootTabFeatureInterface에서 가져옴
 public typealias Tab = RootTabFeatureInterface.Tab
@@ -30,7 +31,7 @@ extension RootTab {
     @ObservableState
     public struct State: Equatable {
       /// 현재 선택된 탭
-      public var selectedTab: Tab = .schedule
+      public var selectedTab: Tab = .home
       
       /// State 초기화
       public init() {}
@@ -65,15 +66,17 @@ extension RootTab {
   public struct RootView: View {
     private let store: StoreOf<RootTab.Feature>
     private let scheduleEntry: ScheduleEntry
+    private let homeEntry: HomeEntry
     
-    public init(store: StoreOf<RootTab.Feature>, scheduleEntry: ScheduleEntry) {
+    public init(store: StoreOf<RootTab.Feature>, scheduleEntry: ScheduleEntry, homeEntry: HomeEntry) {
       self.store = store
       self.scheduleEntry = scheduleEntry
+      self.homeEntry = homeEntry
     }
     
     public var body: some View {
       WithPerceptionTracking {
-        TabViewContent(store: store, scheduleEntry: scheduleEntry)
+        TabViewContent(store: store, scheduleEntry: scheduleEntry, homeEntry: homeEntry)
       }
     }
   }
@@ -81,30 +84,33 @@ extension RootTab {
   private struct TabViewContent: View {
     let store: StoreOf<RootTab.Feature>
     let scheduleEntry: ScheduleEntry
+    let homeEntry: HomeEntry
     
     var body: some View {
-      @Perception.Bindable var store = store
-      TabView(selection: $store.selectedTab.sending(\.tabSelected)) {
-        ForEach(Tab.allCases, id: \.self) { tab in
-          tabContentView(for: tab)
-            .tabItem {
-              Label(tab.rawValue, systemImage: tab.iconName)
-            }
-            .tag(tab)
+      WithPerceptionTracking {
+        @Perception.Bindable var store = store
+        TabView(selection: $store.selectedTab.sending(\.tabSelected)) {
+          ForEach(Tab.allCases, id: \.self) { tab in
+            tabContentView(for: tab)
+              .tabItem {
+                Label(tab.rawValue, systemImage: tab.iconName)
+              }
+              .tag(tab)
+          }
         }
-      }
-      .onAppear {
-        store.send(.onAppear)
+        .onAppear {
+          store.send(.onAppear)
+        }
       }
     }
     
     @ViewBuilder
     private func tabContentView(for tab: Tab) -> some View {
       switch tab {
+      case .home:
+        HomeTabView(homeEntry: homeEntry)
       case .schedule:
-        scheduleEntry.makeView(.init())
-      default:
-        PlaceholderTabView(tab: tab)
+        ScheduleTabView(scheduleEntry: scheduleEntry)
       }
     }
   }
@@ -127,5 +133,29 @@ extension RootTab {
       .frame(maxWidth: .infinity, maxHeight: .infinity)
       .background(Color(.systemBackground))
     }
+  }
+}
+
+// MARK: - Home Tab View
+
+/// Home 탭의 내용을 표시하는 View
+/// HomeEntry를 주입받아 사용
+private struct HomeTabView: View {
+  let homeEntry: HomeEntry
+  
+  var body: some View {
+    homeEntry.makeView(.init())
+  }
+}
+
+// MARK: - Schedule Tab View
+
+/// Schedule 탭의 내용을 표시하는 View
+/// ScheduleEntry를 주입받아 사용
+private struct ScheduleTabView: View {
+  let scheduleEntry: ScheduleEntry
+  
+  var body: some View {
+    scheduleEntry.makeView(.init())
   }
 }

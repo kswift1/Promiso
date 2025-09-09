@@ -3,6 +3,8 @@ import ComposableArchitecture
 import RootTabFeatureImplement
 import ScheduleFeatureInterface
 import ScheduleFeatureImplement
+import HomeFeatureInterface
+import HomeFeatureImplement
 
 @main
 struct PromisoApp: App {
@@ -13,11 +15,12 @@ struct PromisoApp: App {
         RootTab.Feature()
       }
       
-      // ScheduleEntry를 App에서 생성 (Implement에 의존)
+      // Entry들을 App에서 생성 (Implement에 의존)
       let scheduleEntry = ScheduleEntry.live()
+      let homeEntry = HomeEntry.live()
       
       // 의존성을 주입하여 RootView 생성
-      RootTab.RootView(store: store, scheduleEntry: scheduleEntry)
+      RootTab.RootView(store: store, scheduleEntry: scheduleEntry, homeEntry: homeEntry)
     }
   }
 }

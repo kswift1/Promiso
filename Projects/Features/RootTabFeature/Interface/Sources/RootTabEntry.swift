@@ -47,16 +47,12 @@ public struct Config: Sendable, Equatable {
 public enum Tab: String, CaseIterable, Hashable, Sendable {
   case home = "홈"
   case schedule = "약속"
-  case calendar = "달력"
-  case group = "그룹"
   
   /// 탭 아이콘의 SF Symbol 이름
   public var iconName: String {
     switch self {
     case .home: return "house.fill"
     case .schedule: return "calendar.badge.clock"
-    case .calendar: return "calendar"
-    case .group: return "person.3.fill"
     }
   }
   
@@ -65,8 +61,6 @@ public enum Tab: String, CaseIterable, Hashable, Sendable {
     switch self {
     case .home: return 0
     case .schedule: return 1
-    case .calendar: return 2
-    case .group: return 3
     }
   }
 }

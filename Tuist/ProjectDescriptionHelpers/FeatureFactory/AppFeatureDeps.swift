@@ -10,6 +10,7 @@ public enum AppFeatureDeps {
       // 🤖 Auto-generated features
       .rootTab,
       .schedule,
+      .home,
     ]
     return allFeatures
       .flatMap { feature($0) }
