@@ -96,7 +96,7 @@ extension Promise {
         GroupItem(id: "3", name: "대학 친구들", members: ["나", "민수", "수진"], isActive: false)
       ]
       
-      /// State를 위한 기본 initializer
+      /// State 초기화
       public init() {}
     }
     
@@ -137,19 +137,19 @@ extension Promise {
           state.selectedSegment = segment
           return .none
           
-        case .proposalSelected(let id):
+        case .proposalSelected(_):
           // 제안 상세보기로 이동
           return .none
           
         case .acceptProposal(let id):
-          // 제안 수락 처리
+          // 제안 수락 로직
           if let index = state.receivedProposals.firstIndex(where: { $0.id == id }) {
             state.receivedProposals[index].status = .accepted
           }
           return .none
           
         case .rejectProposal(let id):
-          // 제안 거절 처리
+          // 제안 거절 로직
           if let index = state.receivedProposals.firstIndex(where: { $0.id == id }) {
             state.receivedProposals[index].status = .rejected
           }
@@ -159,35 +159,51 @@ extension Promise {
           // 새 제안 만들기 화면으로 이동
           return .none
           
-        case .groupSelected(let groupId):
-          // 그룹 변경 처리
-          if let group = state.availableGroups.first(where: { $0.id == groupId }) {
-            state.currentGroup = group.name
-            // 그룹별 제안 데이터 로드
+        case .groupSelected(let id):
+          // 그룹 선택 로직
+          if let selectedGroup = state.availableGroups.first(where: { $0.id == id }) {
+            state.currentGroup = selectedGroup.name
+            // 모든 그룹의 isActive를 false로 설정
+            for i in state.availableGroups.indices {
+              state.availableGroups[i].isActive = false
+            }
+            // 선택된 그룹의 isActive를 true로 설정
+            if let index = state.availableGroups.firstIndex(where: { $0.id == id }) {
+              state.availableGroups[index].isActive = true
+            }
           }
           return .none
         }
       }
     }
   }
-  
-  // MARK: - Root View
-  
-  /// Promise Feature를 위한 Main view implementation
-  /// 적절한 accessibility와 state handling을 통해 SwiftUI best practice를 따름
+}
+
+// MARK: - View Implementation
+
+extension Promise {
+  /// Promise Feature의 Root View
   public struct RootView: View {
-    /// Feature의 state와 action dispatch 기능을 포함하는 Store
-    private var store: StoreOf<Feature>
+    private let store: StoreOf<Promise.Feature>
     
-    /// Designated initializer
-    /// - Parameter store: state management와 action dispatch를 위한 TCA store
-    public init(store: StoreOf<Feature>) {
+    public init(store: StoreOf<Promise.Feature>) {
       self.store = store
     }
     
     // MARK: - Body
     
     public var body: some View {
+      WithPerceptionTracking {
+        mainContentView
+          .onAppear {
+            store.send(.onAppear)
+          }
+      }
+    }
+    
+    // MARK: - Main Content View
+    
+    private var mainContentView: some View {
       WithPerceptionTracking {
         ScrollView {
           VStack(spacing: 20) {
@@ -206,83 +222,87 @@ extension Promise {
           .padding(.horizontal, 16)
           .padding(.bottom, 20)
         }
-        .onAppear {
-          store.send(.onAppear)
-        }
       }
     }
+    
     
     // MARK: - Current Group Section
     
     private var currentGroupSection: some View {
-      HStack {
-        Image(systemName: "person.2.fill")
-          .foregroundColor(.blue)
-          .font(.title2)
-        
-        VStack(alignment: .leading, spacing: 4) {
-          Text(store.currentGroup)
-            .font(.headline)
-            .fontWeight(.semibold)
-            .foregroundColor(.primary)
+      WithPerceptionTracking {
+        HStack {
+          Image(systemName: "person.2.fill")
+            .foregroundColor(.blue)
+            .font(.title2)
           
-          Text("현재 그룹")
-            .font(.caption)
-            .foregroundColor(.secondary)
+          VStack(alignment: .leading, spacing: 4) {
+            Text(store.currentGroup)
+              .font(.headline)
+              .fontWeight(.semibold)
+              .foregroundColor(.primary)
+            
+            Text("현재 그룹")
+              .font(.caption)
+              .foregroundColor(.secondary)
+          }
+          
+          Spacer()
+          
+          Button(action: {
+            // 그룹 선택 화면으로 이동
+          }) {
+            Image(systemName: "chevron.right")
+              .foregroundColor(.secondary)
+              .font(.caption)
+          }
         }
-        
-        Spacer()
-        
-        Button(action: {
-          // 그룹 선택 화면으로 이동
-        }) {
-          Image(systemName: "chevron.right")
-            .foregroundColor(.secondary)
-            .font(.caption)
-        }
+        .padding(16)
+        .background(Color.blue.opacity(0.1))
+        .cornerRadius(12)
       }
-      .padding(16)
-      .background(Color.blue.opacity(0.1))
-      .cornerRadius(12)
     }
     
     // MARK: - Segment Control
     
     private var segmentControl: some View {
-      HStack(spacing: 0) {
-        ForEach(PromiseSegment.allCases, id: \.self) { segment in
-          Button(action: {
-            store.send(.segmentChanged(segment))
-          }) {
-            Text(segment.title)
-              .font(.subheadline)
-              .fontWeight(.medium)
-              .foregroundColor(store.selectedSegment == segment ? .white : .primary)
-              .frame(maxWidth: .infinity)
-              .padding(.vertical, 12)
-              .background(
-                RoundedRectangle(cornerRadius: 8)
-                  .fill(store.selectedSegment == segment ? Color.blue : Color.clear)
-              )
+      WithPerceptionTracking {
+        HStack(spacing: 0) {
+          ForEach(PromiseSegment.allCases, id: \.self) { segment in
+            Button(action: {
+              store.send(.segmentChanged(segment))
+            }) {
+              Text(segment.title)
+                .font(.subheadline)
+                .fontWeight(.medium)
+                .foregroundColor(store.selectedSegment == segment ? .white : .primary)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(
+                  RoundedRectangle(cornerRadius: 8)
+                    .fill(store.selectedSegment == segment ? Color.blue : Color.clear)
+                )
+            }
           }
         }
+        .padding(4)
+        .background(Color.gray.opacity(0.1))
+        .cornerRadius(12)
       }
-      .padding(4)
-      .background(Color.gray.opacity(0.1))
-      .cornerRadius(12)
     }
     
     // MARK: - Proposals List
     
     private var proposalsList: some View {
-      LazyVStack(spacing: 12) {
-        ForEach(currentProposals) { proposal in
-          ProposalCard(proposal: proposal) {
-            store.send(.proposalSelected(proposal.id))
-          } onAccept: {
-            store.send(.acceptProposal(proposal.id))
-          } onReject: {
-            store.send(.rejectProposal(proposal.id))
+      WithPerceptionTracking {
+        LazyVStack(spacing: 12) {
+          ForEach(currentProposals) { proposal in
+            ProposalCard(proposal: proposal) {
+              store.send(.proposalSelected(proposal.id))
+            } onAccept: {
+              store.send(.acceptProposal(proposal.id))
+            } onReject: {
+              store.send(.rejectProposal(proposal.id))
+            }
           }
         }
       }
@@ -297,12 +317,13 @@ extension Promise {
         HStack {
           Image(systemName: "plus.circle.fill")
             .font(.title2)
+            .foregroundColor(.white)
           
-          Text("새 제안 만들기")
+          Text("새 약속 만들기")
             .font(.headline)
             .fontWeight(.semibold)
+            .foregroundColor(.white)
         }
-        .foregroundColor(.white)
         .frame(maxWidth: .infinity)
         .padding(.vertical, 16)
         .background(Color.blue)
@@ -321,101 +342,112 @@ extension Promise {
       }
     }
   }
+}
+
+// MARK: - Proposal Card View
+
+private struct ProposalCard: View {
+  let proposal: ProposalItem
+  let onTap: () -> Void
+  let onAccept: () -> Void
+  let onReject: () -> Void
   
-  // MARK: - Proposal Card
-  
-  private struct ProposalCard: View {
-    let proposal: ProposalItem
-    let onTap: () -> Void
-    let onAccept: () -> Void
-    let onReject: () -> Void
-    
-    var body: some View {
-      VStack(alignment: .leading, spacing: 12) {
-        // 헤더
-        HStack {
-          Text(proposal.emoji)
-            .font(.title2)
+  var body: some View {
+    VStack(alignment: .leading, spacing: 12) {
+      HStack {
+        Text(proposal.emoji)
+          .font(.title)
+        
+        VStack(alignment: .leading, spacing: 4) {
+          Text(proposal.title)
+            .font(.headline)
+            .fontWeight(.semibold)
+            .foregroundColor(.primary)
           
-          VStack(alignment: .leading, spacing: 2) {
-            Text(proposal.title)
-              .font(.headline)
-              .fontWeight(.semibold)
-            
-            Text("\(proposal.time) • \(proposal.location)")
-              .font(.subheadline)
+          HStack {
+            Image(systemName: "clock")
+              .foregroundColor(.secondary)
+              .font(.caption)
+            Text(proposal.time)
+              .font(.caption)
               .foregroundColor(.secondary)
           }
           
-          Spacer()
-          
-          if proposal.isReceived {
-            Text("받은 제안")
+          HStack {
+            Image(systemName: "location")
+              .foregroundColor(.secondary)
               .font(.caption)
-              .fontWeight(.medium)
-              .foregroundColor(.orange)
-              .padding(.horizontal, 8)
-              .padding(.vertical, 4)
-              .background(Color.orange.opacity(0.1))
-              .cornerRadius(6)
+            Text(proposal.location)
+              .font(.caption)
+              .foregroundColor(.secondary)
+          }
+          
+          HStack {
+            Image(systemName: "person")
+              .foregroundColor(.secondary)
+              .font(.caption)
+            Text("with \(proposal.with)")
+              .font(.caption)
+              .foregroundColor(.secondary)
           }
         }
         
-        // 함께하는 사람
-        HStack {
-          Image(systemName: "person.fill")
-            .foregroundColor(.secondary)
-            .font(.caption)
-          
-          Text("\(proposal.with)와 함께")
-            .font(.subheadline)
-            .foregroundColor(.secondary)
-          
-          Spacer()
-        }
+        Spacer()
         
-        // 액션 버튼들 (받은 제안인 경우)
-        if proposal.isReceived && proposal.status == .pending {
-          HStack(spacing: 12) {
-            Button(action: onReject) {
-              Text("거절")
-                .font(.subheadline)
-                .fontWeight(.medium)
-                .foregroundColor(.red)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 8)
-                .background(Color.red.opacity(0.1))
-                .cornerRadius(8)
-            }
-            
-            Button(action: onAccept) {
-              Text("수락")
-                .font(.subheadline)
-                .fontWeight(.medium)
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 8)
-                .background(Color.blue)
-                .cornerRadius(8)
-            }
-          }
-        }
+        statusBadge
       }
-      .padding(16)
-      .background(Color.white)
-      .cornerRadius(12)
-      .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
-      .onTapGesture {
-        onTap()
+      
+      if proposal.isReceived && proposal.status == .pending {
+        HStack(spacing: 12) {
+          Button(action: onReject) {
+            Text("거절")
+              .font(.subheadline)
+              .fontWeight(.medium)
+              .foregroundColor(.red)
+              .frame(maxWidth: .infinity)
+              .padding(.vertical, 8)
+              .background(Color.red.opacity(0.1))
+              .cornerRadius(8)
+          }
+          
+          Button(action: onAccept) {
+            Text("수락")
+              .font(.subheadline)
+              .fontWeight(.medium)
+              .foregroundColor(.white)
+              .frame(maxWidth: .infinity)
+              .padding(.vertical, 8)
+              .background(Color.blue)
+              .cornerRadius(8)
+          }
+        }
       }
     }
+    .padding(16)
+    .background(Color(.systemBackground))
+    .cornerRadius(12)
+    .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
+    .onTapGesture {
+      onTap()
+    }
+  }
+  
+  private var statusBadge: some View {
+    Text(proposal.status.title)
+      .font(.caption)
+      .fontWeight(.medium)
+      .foregroundColor(proposal.status.textColor)
+      .padding(.horizontal, 8)
+      .padding(.vertical, 4)
+      .background(proposal.status.backgroundColor)
+      .cornerRadius(6)
   }
 }
 
 // MARK: - Data Models
 
 /// 약속 세그먼트를 나타내는 열거형
-public enum PromiseSegment: CaseIterable, Equatable {
+public enum PromiseSegment: CaseIterable, Equatable, Sendable {
   case received
   case sent
   
@@ -427,7 +459,7 @@ public enum PromiseSegment: CaseIterable, Equatable {
   }
 }
 
-/// 제안 아이템을 나타내는 모델
+/// 제안 아이템을 나타내는 구조체
 public struct ProposalItem: Equatable, Identifiable {
   public let id: String
   public let title: String
@@ -437,17 +469,6 @@ public struct ProposalItem: Equatable, Identifiable {
   public let with: String
   public var status: ProposalStatus
   public let isReceived: Bool
-  
-  public init(id: String, title: String, emoji: String, time: String, location: String, with: String, status: ProposalStatus, isReceived: Bool) {
-    self.id = id
-    self.title = title
-    self.emoji = emoji
-    self.time = time
-    self.location = location
-    self.with = with
-    self.status = status
-    self.isReceived = isReceived
-  }
 }
 
 /// 제안 상태를 나타내는 열거형
@@ -455,29 +476,36 @@ public enum ProposalStatus: Equatable {
   case pending
   case accepted
   case rejected
-  case cancelled
+  
+  public var title: String {
+    switch self {
+    case .pending: return "대기중"
+    case .accepted: return "수락됨"
+    case .rejected: return "거절됨"
+    }
+  }
+  
+  public var textColor: Color {
+    switch self {
+    case .pending: return .orange
+    case .accepted: return .green
+    case .rejected: return .red
+    }
+  }
+  
+  public var backgroundColor: Color {
+    switch self {
+    case .pending: return .orange.opacity(0.1)
+    case .accepted: return .green.opacity(0.1)
+    case .rejected: return .red.opacity(0.1)
+    }
+  }
 }
 
-/// 그룹 아이템을 나타내는 모델
+/// 그룹 아이템을 나타내는 구조체
 public struct GroupItem: Equatable, Identifiable {
   public let id: String
   public let name: String
   public let members: [String]
-  public let isActive: Bool
-  
-  public init(id: String, name: String, members: [String], isActive: Bool) {
-    self.id = id
-    self.name = name
-    self.members = members
-    self.isActive = isActive
-  }
+  public var isActive: Bool
 }
-
-// MARK: - Error Types
-// Feature별 Error type이 필요한 경우 여기에 추가
-// 예시:
-// public enum PromiseError: Error, Equatable, LocalizedError {
-//   case networkError
-//   case dataError
-//   case custom(String)
-// }
