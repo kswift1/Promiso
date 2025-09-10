@@ -17,9 +17,7 @@ public extension HomeEntry {
         Home.Feature()
       }
       
-      return AnyView(
-        Home.RootView(store: store)
-      )
+      Home.RootView(store: store)
     }
   }
   
@@ -30,9 +28,7 @@ public extension HomeEntry {
         Home.Feature()
       }
       
-      return AnyView(
-        Home.RootView(store: store)
-      )
+      Home.RootView(store: store)
     }
   }
 }

@@ -17,9 +17,7 @@ public extension PromiseEntry {
         Promise.Feature()
       }
       
-      return AnyView(
-        Promise.RootView(store: store)
-      )
+      Promise.RootView(store: store)
     }
   }
   
@@ -30,9 +28,7 @@ public extension PromiseEntry {
         Promise.Feature()
       }
       
-      return AnyView(
-        Promise.RootView(store: store)
-      )
+      Promise.RootView(store: store)
     }
   }
 }

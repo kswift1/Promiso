@@ -16,15 +16,15 @@ import ComposableArchitecture
 /// let view = entry.makeView(.init())
 /// ```
 public struct PromiseEntry {
-  /// 이 Feature의 main view를 생성하는 Factory function
-  /// - Parameter config: Feature 동작을 커스터마이징하기 위한 Configuration 객체
-  /// - Returns: Feature의 root interface를 포함하는 Type-erased SwiftUI view
-  public var makeView: (_ config: Config) -> AnyView
+  private let _makeView: (Config) -> AnyView
   
-  /// Feature entry instance 생성을 위한 Designated initializer
-  /// - Parameter makeView: Feature의 interface contract에 맞는 View factory closure
-  public init(makeView: @escaping (_ config: Config) -> AnyView) { 
-    self.makeView = makeView 
+  public init<Content: View>(@ViewBuilder makeView: @escaping (Config) -> Content) {
+    self._makeView = { config in AnyView(makeView(config)) }
+  }
+  
+  @ViewBuilder
+  public func makeView(_ config: Config) -> some View {
+    _makeView(config)
   }
 }
 
