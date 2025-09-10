@@ -34,14 +34,8 @@ extension RootTab {
       /// 현재 선택된 탭
       public var selectedTab: Tab = .home
       
-      /// 사이드 드로어 표시 여부
-      public var showDrawer: Bool = false
-      
-      /// 드래그 오프셋
-      public var dragOffset: CGFloat = 0
-      
-      /// 오버레이 투명도 (드래그 위치에 따라 동적 변경)
-      public var overlayOpacity: Double = 0.0
+      /// 사이드 드로어 상태
+      public var sideDrawer: SideDrawerFeature.State = SideDrawerFeature.State()
       
       /// State 초기화
       public init() {}
@@ -52,14 +46,8 @@ extension RootTab {
       case onAppear
       /// 탭이 선택되었을 때 호출
       case tabSelected(Tab)
-      /// 드로어 토글
-      case toggleDrawer
-      /// 드로어 닫기
-      case closeDrawer
-      /// 드래그 변경
-      case dragChanged(CGFloat)
-      /// 드래그 종료
-      case dragEnded
+      /// 사이드 드로어 관련 액션
+      case sideDrawer(SideDrawerFeature.Action)
     }
     
     public var body: some ReducerOf<Self> {
@@ -75,78 +63,17 @@ extension RootTab {
             await impactFeedback.impactOccurred()
           }
           
-        case .toggleDrawer:
-          state.showDrawer.toggle()
-          state.overlayOpacity = state.showDrawer ? 0.1 : 0.0
-          return .run { _ in
-            let impactFeedback = await UIImpactFeedbackGenerator(style: .medium)
-            await impactFeedback.impactOccurred()
-          }
-          
-        case .closeDrawer:
-          state.showDrawer = false
-          state.dragOffset = 0
-          state.overlayOpacity = 0.0
-          return .run { _ in
-            let impactFeedback = await UIImpactFeedbackGenerator(style: .light)
-            await impactFeedback.impactOccurred()
-          }
-          
-        case .dragChanged(let offset):
-          state.dragOffset = offset
-          // 드래그 위치에 따라 opacity 계산
-          if state.showDrawer {
-            // 드로어가 열려있을 때: 닫히는 방향으로 드래그하면 opacity 감소
-            let progress = max(0, min(1, (256 + offset) / 256))
-            state.overlayOpacity = 0.1 * progress
-          } else {
-            // 드로어가 닫혀있을 때: 열리는 방향으로 드래그하면 opacity 증가
-            let progress = max(0, min(1, offset / 256))
-            state.overlayOpacity = 0.1 * progress
-          }
-          return .none
-          
-        case .dragEnded:
-          let threshold: CGFloat = 100
-          var shouldProvideHaptic = false
-          
-          if state.showDrawer {
-            // 드로어가 열려있을 때: 음수 오프셋이 임계값보다 크면 닫기
-            if state.dragOffset < -threshold {
-              state.showDrawer = false
-              state.overlayOpacity = 0.0
-              shouldProvideHaptic = true
-            } else {
-               state.overlayOpacity = 0.1
-            }
-          } else {
-            // 드로어가 닫혀있을 때: 양수 오프셋이 임계값보다 크면 열기
-            if state.dragOffset > threshold {
-              state.showDrawer = true
-               state.overlayOpacity = 0.1
-              shouldProvideHaptic = true
-            } else {
-              state.overlayOpacity = 0.0
-            }
-          }
-          state.dragOffset = 0
-          
-          if shouldProvideHaptic {
-            return .run { _ in
-              let impactFeedback = await UIImpactFeedbackGenerator(style: .medium)
-              await impactFeedback.impactOccurred()
-            }
-          } else {
-          return .none
-          }
-        }
+        case .sideDrawer(let sideDrawerAction):
+          return SideDrawerFeature().reduce(into: &state.sideDrawer, action: sideDrawerAction)
+            .map(Action.sideDrawer)
         }
       }
     }
   }
-  
+}
+
 // MARK: - View
-  
+
 extension RootTab {
   /// RootTab Feature의 Root View
   public struct RootView: View {
@@ -166,49 +93,49 @@ extension RootTab {
           ZStack(alignment: .leading) {
             // 메인 탭 콘텐츠
             TabViewContent(store: store, promiseEntry: promiseEntry, homeEntry: homeEntry)
-              .offset(x: store.showDrawer ? 256 + store.dragOffset : store.dragOffset)
-              .animation(.spring(response: 0.3, dampingFraction: 0.8, blendDuration: 0), value: store.showDrawer)
-              .animation(.interactiveSpring(response: 0.2, dampingFraction: 0.9, blendDuration: 0), value: store.dragOffset)
+              .offset(x: store.sideDrawer.showDrawer ? 256 + store.sideDrawer.dragOffset : store.sideDrawer.dragOffset)
+              .animation(.spring(response: 0.3, dampingFraction: 0.8, blendDuration: 0), value: store.sideDrawer.showDrawer)
+              .animation(.interactiveSpring(response: 0.2, dampingFraction: 0.9, blendDuration: 0), value: store.sideDrawer.dragOffset)
               .gesture(
                 DragGesture()
                   .onChanged { value in
                     // 드래그 방향에 따라 드로어 상태 변경
-                    if !store.showDrawer && value.translation.width > 0 {
+                    if !store.sideDrawer.showDrawer && value.translation.width > 0 {
                       // 드로어가 닫혀있을 때 오른쪽으로 드래그하면 드로어 열기
                       let offset = min(value.translation.width, 256)
-                      store.send(.dragChanged(offset))
-                    } else if store.showDrawer && value.translation.width < 0 {
+                      store.send(.sideDrawer(.dragChanged(offset)))
+                    } else if store.sideDrawer.showDrawer && value.translation.width < 0 {
                       // 드로어가 열려있을 때 왼쪽으로 드래그하면 드로어 닫기
                       let offset = max(value.translation.width, -256)
-                      store.send(.dragChanged(offset))
+                      store.send(.sideDrawer(.dragChanged(offset)))
                     }
                   }
                   .onEnded { _ in
-                    store.send(.dragEnded)
+                    store.send(.sideDrawer(.dragEnded))
                   }
               )
             
             // 전체 화면 오버레이 (드로어가 열려있을 때만)
-            if store.showDrawer || store.overlayOpacity > 0 {
-              Color.black.opacity(store.overlayOpacity)
+            if store.sideDrawer.showDrawer || store.sideDrawer.overlayOpacity > 0 {
+              Color.black.opacity(store.sideDrawer.overlayOpacity)
                 .ignoresSafeArea()
                 .onTapGesture {
-                  store.send(.closeDrawer)
+                  store.send(.sideDrawer(.close))
                 }
                 .transition(.opacity)
-                .animation(.interactiveSpring(response: 0.3, dampingFraction: 0.9, blendDuration: 0), value: store.overlayOpacity)
+                .animation(.interactiveSpring(response: 0.3, dampingFraction: 0.9, blendDuration: 0), value: store.sideDrawer.overlayOpacity)
                 .allowsHitTesting(true)
                 .gesture(
                   DragGesture()
                     .onChanged { value in
                       // 오버레이에서도 드래그로 닫기 가능
-                      if store.showDrawer && value.translation.width < 0 {
+                      if store.sideDrawer.showDrawer && value.translation.width < 0 {
                         let offset = max(value.translation.width, -256)
-                        store.send(.dragChanged(offset))
+                        store.send(.sideDrawer(.dragChanged(offset)))
                       }
                     }
                     .onEnded { _ in
-                      store.send(.dragEnded)
+                      store.send(.sideDrawer(.dragEnded))
                     }
                 )
             }
@@ -216,19 +143,19 @@ extension RootTab {
             // 사이드 드로어 (오버레이 위에 표시)
             sideDrawerView
               .frame(width: 256)
-              .offset(x: store.showDrawer ? store.dragOffset : -256 + store.dragOffset)
-              .animation(.spring(response: 0.3, dampingFraction: 0.8, blendDuration: 0), value: store.showDrawer)
-              .animation(.interactiveSpring(response: 0.2, dampingFraction: 0.9, blendDuration: 0), value: store.dragOffset)
+              .offset(x: store.sideDrawer.showDrawer ? store.sideDrawer.dragOffset : -256 + store.sideDrawer.dragOffset)
+              .animation(.spring(response: 0.3, dampingFraction: 0.8, blendDuration: 0), value: store.sideDrawer.showDrawer)
+              .animation(.interactiveSpring(response: 0.2, dampingFraction: 0.9, blendDuration: 0), value: store.sideDrawer.dragOffset)
               .gesture(
                 DragGesture()
                   .onChanged { value in
-                    if store.showDrawer && value.translation.width < 0 {
+                    if store.sideDrawer.showDrawer && value.translation.width < 0 {
                       let offset = max(value.translation.width, -256)
-                      store.send(.dragChanged(offset))
+                      store.send(.sideDrawer(.dragChanged(offset)))
                     }
                   }
                   .onEnded { _ in
-                    store.send(.dragEnded)
+                    store.send(.sideDrawer(.dragEnded))
                   }
               )
           }
@@ -305,7 +232,7 @@ private struct HomeTabView: View {
       // 햄버거 메뉴가 있는 헤더
       HStack {
         Button(action: {
-          store.send(.toggleDrawer)
+          store.send(.sideDrawer(.toggle))
         }) {
           Image(systemName: "line.3.horizontal")
             .font(.title2)
@@ -351,7 +278,7 @@ private struct PromiseTabView: View {
       // 햄버거 메뉴가 있는 헤더
       HStack {
         Button(action: {
-          store.send(.toggleDrawer)
+          store.send(.sideDrawer(.toggle))
         }) {
           Image(systemName: "line.3.horizontal")
             .font(.title2)
@@ -401,7 +328,7 @@ extension RootTab.RootView {
         
         Spacer()
       }
-           .frame(width: 256, alignment: .leading)
+      .frame(width: 256, alignment: .leading)
       .background(Color.white)
       .shadow(color: .black.opacity(0.1), radius: 5, x: 2, y: 0)
     }
@@ -425,7 +352,7 @@ extension RootTab.RootView {
           Spacer()
           
           Button(action: {
-            store.send(.closeDrawer)
+            store.send(.sideDrawer(.close))
           }) {
             Image(systemName: "xmark")
               .foregroundColor(.secondary)
@@ -454,7 +381,7 @@ extension RootTab.RootView {
         ForEach(sampleGroups) { group in
           Button(action: {
             // 그룹 선택 로직
-            store.send(.closeDrawer)
+            store.send(.sideDrawer(.close))
           }) {
             HStack {
               Image(systemName: "person.2.fill")
@@ -503,7 +430,7 @@ extension RootTab.RootView {
         ForEach(sampleSettings) { setting in
           Button(action: {
             // 설정 액션
-            store.send(.closeDrawer)
+            store.send(.sideDrawer(.close))
           }) {
             HStack {
               Image(systemName: setting.iconName)
