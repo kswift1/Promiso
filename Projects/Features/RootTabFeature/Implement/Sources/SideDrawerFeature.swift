@@ -1,6 +1,7 @@
 import ComposableArchitecture
-import SwiftUI // For CGFloat, Color, etc.
-import UIKit // For UIImpactFeedbackGenerator
+import SwiftUI
+import Dependencies
+import CoreUtilities
 
 // MARK: - Feature Namespace
 
@@ -10,6 +11,8 @@ public enum SideDrawer {}
 
 @Reducer
 public struct SideDrawerFeature {
+  @Dependency(\.hapticFeedback) var hapticFeedback
+  
   public init() {}
 
   @ObservableState
@@ -42,8 +45,7 @@ public struct SideDrawerFeature {
         state.showDrawer.toggle()
         state.overlayOpacity = state.showDrawer ? 0.1 : 0.0
         return .run { _ in
-          let impactFeedback = await UIImpactFeedbackGenerator(style: .medium)
-          await impactFeedback.impactOccurred()
+          await hapticFeedback.medium()
         }
 
       case .close:
@@ -51,8 +53,7 @@ public struct SideDrawerFeature {
         state.dragOffset = 0
         state.overlayOpacity = 0.0
         return .run { _ in
-          let impactFeedback = await UIImpactFeedbackGenerator(style: .light)
-          await impactFeedback.impactOccurred()
+          await hapticFeedback.medium()
         }
 
       case .dragChanged(let offset):
@@ -96,8 +97,7 @@ public struct SideDrawerFeature {
 
         if shouldProvideHaptic {
           return .run { _ in
-            let impactFeedback = await UIImpactFeedbackGenerator(style: .medium)
-            await impactFeedback.impactOccurred()
+            await hapticFeedback.medium()
           }
         } else {
           return .none

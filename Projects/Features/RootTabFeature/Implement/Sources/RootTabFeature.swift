@@ -8,7 +8,8 @@ import RootTabFeatureInterface
 import Perception
 import PromiseFeatureInterface
 import HomeFeatureInterface
-import UIKit
+import Dependencies
+import CoreUtilities
 
 // Tab 타입을 RootTabFeatureInterface에서 가져옴
 public typealias Tab = RootTabFeatureInterface.Tab
@@ -27,6 +28,8 @@ extension RootTab {
   /// RootTab Feature의 Reducer
   @Reducer
   public struct Feature {
+    @Dependency(\.hapticFeedback) var hapticFeedback
+    
     public init() {}
     
     @ObservableState
@@ -59,8 +62,7 @@ extension RootTab {
         case .tabSelected(let tab):
           state.selectedTab = tab
           return .run { _ in
-            let impactFeedback = await UIImpactFeedbackGenerator(style: .light)
-            await impactFeedback.impactOccurred()
+            await hapticFeedback.buttonTap()
           }
           
         case .sideDrawer(let sideDrawerAction):
