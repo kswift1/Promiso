@@ -11,7 +11,6 @@ public enum AppFeatureDeps {
       .rootTab,
       .home,
       .promise,
-      .test,
     ]
     return allFeatures
       .flatMap { feature($0) }

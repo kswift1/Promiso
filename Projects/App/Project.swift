@@ -18,7 +18,8 @@ let project = Project(
       dependencies:
         AppFeatureDeps.allFeaturesDeps() + [
           ExternalDependency.tca
-        ]
+        ],
+      settings: .withTeamId()
     )
   ]
 )

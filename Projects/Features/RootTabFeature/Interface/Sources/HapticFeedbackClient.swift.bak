@@ -1,0 +1,39 @@
+import Dependencies
+import Foundation
+
+@DependencyClient
+public struct HapticFeedbackClient {
+  public var light: () async -> Void
+  public var medium: () async -> Void
+  public var heavy: () async -> Void
+}
+
+extension HapticFeedbackClient: DependencyKey {
+  public static let liveValue = Self(
+    light: {
+      let impactFeedback = await UIImpactFeedbackGenerator(style: .light)
+      await impactFeedback.impactOccurred()
+    },
+    medium: {
+      let impactFeedback = await UIImpactFeedbackGenerator(style: .medium)
+      await impactFeedback.impactOccurred()
+    },
+    heavy: {
+      let impactFeedback = await UIImpactFeedbackGenerator(style: .heavy)
+      await impactFeedback.impactOccurred()
+    }
+  )
+  
+  public static let testValue = Self(
+    light: { },
+    medium: { },
+    heavy: { }
+  )
+}
+
+extension DependencyValues {
+  public var hapticFeedback: HapticFeedbackClient {
+    get { self[HapticFeedbackClient.self] }
+    set { self[HapticFeedbackClient.self] = newValue }
+  }
+}

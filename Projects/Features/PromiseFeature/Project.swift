@@ -3,6 +3,21 @@ import ProjectDescriptionHelpers
 
 private let feature: Feature = .promise
 
+// Pre-computed dependency arrays to avoid compiler timeout
+private let interfaceDependencies = SharedDependencies.interface + DefaultExternalDependency.interface
+
+private let implementDependencies = [
+  FeatureDependency.interface(feature)
+] + SharedDependencies.implement + SharedDependencies.promiseSpecific + DefaultExternalDependency.implement
+
+private let testingDependencies = [
+  FeatureDependency.interface(feature)
+] + SharedDependencies.testing + DefaultExternalDependency.testing
+
+private let testsDependencies = FeatureDependency.all(feature) + DefaultExternalDependency.tests
+
+private let exampleDependencies = FeatureDependency.all(feature) + DefaultExternalDependency.example
+
 let project = Project(
   name: feature.fullName,
   targets: [
@@ -15,7 +30,7 @@ let project = Project(
       bundleId: "\(feature.defaultBundleIdPrefix).interface",
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Interface/Sources/**"],
-      dependencies: DefaultExternalDependency.interface
+      dependencies: interfaceDependencies
     ),
 
     // Implement
@@ -26,9 +41,7 @@ let project = Project(
       bundleId: "\(feature.defaultBundleIdPrefix).implement",
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Implement/Sources/**"],
-      dependencies: [
-        FeatureDependency.interface(feature)
-      ] + DefaultExternalDependency.implement
+      dependencies: implementDependencies
     ),
 
     // Testing
@@ -39,9 +52,7 @@ let project = Project(
       bundleId: "\(feature.defaultBundleIdPrefix).testing",
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Testing/Sources/**"],
-      dependencies: [
-        FeatureDependency.interface(feature)
-      ] + DefaultExternalDependency.testing
+      dependencies: testingDependencies
     ),
 
     // Unit Tests
@@ -52,7 +63,7 @@ let project = Project(
       bundleId: "\(feature.defaultBundleIdPrefix).tests",
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Tests/Sources/**"],
-      dependencies: FeatureDependency.all(feature) + DefaultExternalDependency.tests
+      dependencies: testsDependencies
     ),
 
     // Example App (Demo)
@@ -67,7 +78,8 @@ let project = Project(
       ]),
       sources: ["Example/Sources/**"],
       resources: ["Example/Resources/**"],
-      dependencies: FeatureDependency.all(feature) + DefaultExternalDependency.example
+      dependencies: exampleDependencies,
+      settings: .withTeamId()
     )
   ]
 )

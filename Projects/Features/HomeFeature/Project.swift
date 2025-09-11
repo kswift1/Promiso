@@ -15,7 +15,7 @@ let project = Project(
       bundleId: "\(feature.defaultBundleIdPrefix).interface",
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Interface/Sources/**"],
-      dependencies: DefaultExternalDependency.interface
+      dependencies: SharedDependencies.interface + DefaultExternalDependency.interface
     ),
 
     // Implement
@@ -28,7 +28,7 @@ let project = Project(
       sources: ["Implement/Sources/**"],
       dependencies: [
         FeatureDependency.interface(feature)
-      ] + DefaultExternalDependency.implement
+      ] + SharedDependencies.implement + SharedDependencies.homeSpecific + DefaultExternalDependency.implement
     ),
 
     // Testing
@@ -41,7 +41,7 @@ let project = Project(
       sources: ["Testing/Sources/**"],
       dependencies: [
         FeatureDependency.interface(feature)
-      ] + DefaultExternalDependency.testing
+      ] + SharedDependencies.testing + DefaultExternalDependency.testing
     ),
 
     // Unit Tests
@@ -67,7 +67,8 @@ let project = Project(
       ]),
       sources: ["Example/Sources/**"],
       resources: ["Example/Resources/**"],
-      dependencies: FeatureDependency.all(feature) + DefaultExternalDependency.example
+      dependencies: FeatureDependency.all(feature) + DefaultExternalDependency.example,
+      settings: .withTeamId()
     )
   ]
 )

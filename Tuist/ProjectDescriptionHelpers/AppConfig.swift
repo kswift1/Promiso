@@ -8,6 +8,9 @@ public enum AppConfig {
 
   public static let deploymentTargets = "16.4"
   public static let defaultRegions = ["en", "ko"]
+  
+  public static let marketingNumber = "1.0.0"
+  public static let teamId = "9R8LL9TAP9"
 }
 
 public enum Paths {
