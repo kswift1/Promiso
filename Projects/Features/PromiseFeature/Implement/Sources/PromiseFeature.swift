@@ -20,7 +20,7 @@ extension Promise {
   
   /// Promise Feature state management를 위한 Main reducer
   /// Feature의 모든 business logic과 side effect를 처리
-  /// 
+  ///
   /// SwiftUI integration을 위해 @ObservableState와 함께 TCA 1.22.2 Reducer protocol을 준수
   @Reducer
   public struct Feature {
@@ -33,7 +33,7 @@ extension Promise {
     
     /// Promise Feature의 완전한 state를 나타냄
     /// 예측 가능성을 유지하기 위해 모든 state 변경은 Action을 통해 처리되어야 함
-    /// 
+    ///
     /// @ObservableState는 추가 wrapper 없이 직접적인 SwiftUI integration을 가능하게 함
     @ObservableState
     public struct State: Equatable {
@@ -53,7 +53,7 @@ extension Promise {
           isReceived: true
         ),
         ProposalItem(
-          id: "2", 
+          id: "2",
           title: "주말 브런치",
           emoji: "🥐",
           time: "오전 11:00",
@@ -265,9 +265,9 @@ extension Promise {
     // MARK: - Segment Control
     
     private var segmentControl: some View {
-      WithPerceptionTracking {
-        HStack(spacing: 0) {
-          ForEach(PromiseSegment.allCases, id: \.self) { segment in
+      HStack(spacing: 0) {
+        ForEach(PromiseSegment.allCases, id: \.self) { segment in
+          WithPerceptionTracking {
             Button(action: {
               store.send(.segmentChanged(segment))
             }) {
@@ -284,18 +284,18 @@ extension Promise {
             }
           }
         }
-        .padding(4)
-        .background(Color.gray.opacity(0.1))
-        .cornerRadius(12)
       }
+      .padding(4)
+      .background(Color.gray.opacity(0.1))
+      .cornerRadius(12)
     }
     
     // MARK: - Proposals List
     
     private var proposalsList: some View {
-      WithPerceptionTracking {
-        LazyVStack(spacing: 12) {
-          ForEach(currentProposals) { proposal in
+      LazyVStack(spacing: 12) {
+        ForEach(currentProposals) { proposal in
+          WithPerceptionTracking {
             ProposalCard(proposal: proposal) {
               store.send(.proposalSelected(proposal.id))
             } onAccept: {
@@ -311,23 +311,25 @@ extension Promise {
     // MARK: - Create New Proposal Button
     
     private var createNewProposalButton: some View {
-      Button(action: {
-        store.send(.createNewProposal)
-      }) {
-        HStack {
-          Image(systemName: "plus.circle.fill")
-            .font(.title2)
-            .foregroundColor(.white)
-          
-          Text("새 약속 만들기")
-            .font(.headline)
-            .fontWeight(.semibold)
-            .foregroundColor(.white)
+      WithPerceptionTracking {
+        Button(action: {
+          store.send(.createNewProposal)
+        }) {
+          HStack {
+            Image(systemName: "plus.circle.fill")
+              .font(.title2)
+              .foregroundColor(.white)
+            
+            Text("새 약속 만들기")
+              .font(.headline)
+              .fontWeight(.semibold)
+              .foregroundColor(.white)
+          }
+          .frame(maxWidth: .infinity)
+          .padding(.vertical, 16)
+          .background(Color.blue)
+          .cornerRadius(12)
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 16)
-        .background(Color.blue)
-        .cornerRadius(12)
       }
     }
     

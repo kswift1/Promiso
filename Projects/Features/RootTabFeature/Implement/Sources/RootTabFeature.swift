@@ -20,9 +20,9 @@ public typealias Tab = RootTabFeatureInterface.Tab
 /// 조직적 구조를 제공하고 다른 Feature들과의 naming conflict를 방지
 public enum RootTab {}
 
-  
-  // MARK: - Reducer
-  
+
+// MARK: - Reducer
+
 extension RootTab {
   /// RootTab Feature의 Reducer
   @Reducer
@@ -89,66 +89,45 @@ extension RootTab {
     
     public var body: some View {
       WithPerceptionTracking {
-        GeometryReader { geometry in
-          ZStack(alignment: .leading) {
-            // 메인 탭 콘텐츠
-            TabViewContent(store: store, promiseEntry: promiseEntry, homeEntry: homeEntry)
-              .offset(x: store.sideDrawer.showDrawer ? 256 + store.sideDrawer.dragOffset : store.sideDrawer.dragOffset)
-              .animation(.spring(response: 0.3, dampingFraction: 0.8, blendDuration: 0), value: store.sideDrawer.showDrawer)
-              .animation(.interactiveSpring(response: 0.2, dampingFraction: 0.9, blendDuration: 0), value: store.sideDrawer.dragOffset)
-              .gesture(
-                DragGesture()
-                  .onChanged { value in
-                    // 드래그 방향에 따라 드로어 상태 변경
-                    if !store.sideDrawer.showDrawer && value.translation.width > 0 {
-                      // 드로어가 닫혀있을 때 오른쪽으로 드래그하면 드로어 열기
-                      let offset = min(value.translation.width, 256)
-                      store.send(.sideDrawer(.dragChanged(offset)))
-                    } else if store.sideDrawer.showDrawer && value.translation.width < 0 {
-                      // 드로어가 열려있을 때 왼쪽으로 드래그하면 드로어 닫기
-                      let offset = max(value.translation.width, -256)
-                      store.send(.sideDrawer(.dragChanged(offset)))
-                    }
+        ZStack(alignment: .leading) {
+          // 메인 탭 콘텐츠
+          TabViewContent(store: store, promiseEntry: promiseEntry, homeEntry: homeEntry)
+            .offset(x: store.sideDrawer.showDrawer ? 256 + store.sideDrawer.dragOffset : store.sideDrawer.dragOffset)
+            .animation(.spring(response: 0.3, dampingFraction: 0.8, blendDuration: 0), value: store.sideDrawer.showDrawer)
+            .animation(.interactiveSpring(response: 0.2, dampingFraction: 0.9, blendDuration: 0), value: store.sideDrawer.dragOffset)
+            .gesture(
+              DragGesture()
+                .onChanged { value in
+                  // 드래그 방향에 따라 드로어 상태 변경
+                  if !store.sideDrawer.showDrawer && value.translation.width > 0 {
+                    // 드로어가 닫혀있을 때 오른쪽으로 드래그하면 드로어 열기
+                    let offset = min(value.translation.width, 256)
+                    store.send(.sideDrawer(.dragChanged(offset)))
+                  } else if store.sideDrawer.showDrawer && value.translation.width < 0 {
+                    // 드로어가 열려있을 때 왼쪽으로 드래그하면 드로어 닫기
+                    let offset = max(value.translation.width, -256)
+                    store.send(.sideDrawer(.dragChanged(offset)))
                   }
-                  .onEnded { _ in
-                    store.send(.sideDrawer(.dragEnded))
-                  }
-              )
-            
-            // 전체 화면 오버레이 (드로어가 열려있을 때만)
-            if store.sideDrawer.showDrawer || store.sideDrawer.overlayOpacity > 0 {
-              Color.black.opacity(store.sideDrawer.overlayOpacity)
-                .ignoresSafeArea()
-                .onTapGesture {
-                  store.send(.sideDrawer(.close))
                 }
-                .transition(.opacity)
-                .animation(.interactiveSpring(response: 0.3, dampingFraction: 0.9, blendDuration: 0), value: store.sideDrawer.overlayOpacity)
-                .allowsHitTesting(true)
-                .gesture(
-                  DragGesture()
-                    .onChanged { value in
-                      // 오버레이에서도 드래그로 닫기 가능
-                      if store.sideDrawer.showDrawer && value.translation.width < 0 {
-                        let offset = max(value.translation.width, -256)
-                        store.send(.sideDrawer(.dragChanged(offset)))
-                      }
-                    }
-                    .onEnded { _ in
-                      store.send(.sideDrawer(.dragEnded))
-                    }
-                )
-            }
-            
-            // 사이드 드로어 (오버레이 위에 표시)
-            sideDrawerView
-              .frame(width: 256)
-              .offset(x: store.sideDrawer.showDrawer ? store.sideDrawer.dragOffset : -256 + store.sideDrawer.dragOffset)
-              .animation(.spring(response: 0.3, dampingFraction: 0.8, blendDuration: 0), value: store.sideDrawer.showDrawer)
-              .animation(.interactiveSpring(response: 0.2, dampingFraction: 0.9, blendDuration: 0), value: store.sideDrawer.dragOffset)
+                .onEnded { _ in
+                  store.send(.sideDrawer(.dragEnded))
+                }
+            )
+          
+          // 전체 화면 오버레이 (드로어가 열려있을 때만)
+          if store.sideDrawer.showDrawer || store.sideDrawer.overlayOpacity > 0 {
+            Color.black.opacity(store.sideDrawer.overlayOpacity)
+              .ignoresSafeArea()
+              .onTapGesture {
+                store.send(.sideDrawer(.close))
+              }
+              .transition(.opacity)
+              .animation(.interactiveSpring(response: 0.3, dampingFraction: 0.9, blendDuration: 0), value: store.sideDrawer.overlayOpacity)
+              .allowsHitTesting(true)
               .gesture(
                 DragGesture()
                   .onChanged { value in
+                    // 오버레이에서도 드래그로 닫기 가능
                     if store.sideDrawer.showDrawer && value.translation.width < 0 {
                       let offset = max(value.translation.width, -256)
                       store.send(.sideDrawer(.dragChanged(offset)))
@@ -159,6 +138,25 @@ extension RootTab {
                   }
               )
           }
+          
+          // 사이드 드로어 (오버레이 위에 표시)
+          sideDrawerView
+            .frame(width: 256)
+            .offset(x: store.sideDrawer.showDrawer ? store.sideDrawer.dragOffset : -256 + store.sideDrawer.dragOffset)
+            .animation(.spring(response: 0.3, dampingFraction: 0.8, blendDuration: 0), value: store.sideDrawer.showDrawer)
+            .animation(.interactiveSpring(response: 0.2, dampingFraction: 0.9, blendDuration: 0), value: store.sideDrawer.dragOffset)
+            .gesture(
+              DragGesture()
+                .onChanged { value in
+                  if store.sideDrawer.showDrawer && value.translation.width < 0 {
+                    let offset = max(value.translation.width, -256)
+                    store.send(.sideDrawer(.dragChanged(offset)))
+                  }
+                }
+                .onEnded { _ in
+                  store.send(.sideDrawer(.dragEnded))
+                }
+            )
         }
       }
     }
