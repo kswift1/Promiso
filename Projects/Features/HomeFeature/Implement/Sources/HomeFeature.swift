@@ -37,8 +37,6 @@ extension Home {
     /// @ObservableState는 추가 wrapper 없이 직접적인 SwiftUI integration을 가능하게 함
     @ObservableState
     public struct State: Equatable {
-      // MARK: - Current Group
-      public var currentGroup: String = "지민과 나"
       
       // MARK: - Today's Promises
       public var todaysPromises: [PromiseItem] = [
@@ -153,8 +151,6 @@ extension Home {
       WithPerceptionTracking {
         ScrollView {
           VStack(spacing: 24) {
-            // 현재 그룹 표시
-            currentGroupSection
             
             // 오늘의 약속
             todaysPromisesSection
@@ -173,38 +169,6 @@ extension Home {
           store.send(.onAppear)
         }
       }
-    }
-    
-    // MARK: - Current Group Section
-    
-    private var currentGroupSection: some View {
-      VStack(alignment: .leading, spacing: 12) {
-        HStack {
-          Image(systemName: "person.2.fill")
-            .foregroundColor(.blue)
-            .font(.title2)
-          
-          VStack(alignment: .leading, spacing: 2) {
-            Text(store.currentGroup)
-              .font(.headline)
-              .fontWeight(.semibold)
-              .foregroundColor(.blue)
-            
-            Text("활성 그룹")
-              .font(.caption)
-              .foregroundColor(.blue.opacity(0.8))
-          }
-          
-          Spacer()
-        }
-      }
-      .padding(16)
-      .background(Color.blue.opacity(0.1))
-      .cornerRadius(12)
-      .overlay(
-        RoundedRectangle(cornerRadius: 12)
-          .stroke(Color.blue.opacity(0.2), lineWidth: 1)
-      )
     }
     
     // MARK: - Today's Promises Section
