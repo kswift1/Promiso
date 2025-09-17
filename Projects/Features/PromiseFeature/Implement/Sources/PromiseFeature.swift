@@ -23,11 +23,11 @@ extension Promise {
   ///
   /// SwiftUI integration을 위해 @ObservableState와 함께 TCA 1.22.2 Reducer protocol을 준수
   @Reducer
-  public struct Feature {
+  struct Feature {
     
     /// Reducer를 위한 기본 initializer
     /// Feature가 성장함에 따라 dependency나 configuration을 여기에 추가
-    public init() {}
+    init() {}
     
     // MARK: - State
     
@@ -39,54 +39,7 @@ extension Promise {
     public struct State: Equatable {
       // MARK: - Segment Control
       public var selectedSegment: PromiseSegment = .received
-      
-      // MARK: - Received Proposals
-      public var receivedProposals: [ProposalItem] = [
-        ProposalItem(
-          id: "1",
-          title: "카페 데이트",
-          emoji: "☕",
-          time: "오후 2:00",
-          location: "스타벅스 강남점",
-          with: "지민",
-          status: .pending,
-          isReceived: true
-        ),
-        ProposalItem(
-          id: "2",
-          title: "주말 브런치",
-          emoji: "🥐",
-          time: "오전 11:00",
-          location: "브런치 카페",
-          with: "지민",
-          status: .pending,
-          isReceived: true
-        )
-      ]
-      
-      // MARK: - Sent Proposals
-      public var sentProposals: [ProposalItem] = [
-        ProposalItem(
-          id: "3",
-          title: "영화 관람",
-          emoji: "🎬",
-          time: "오후 7:00",
-          location: "CGV 강남",
-          with: "지민",
-          status: .accepted,
-          isReceived: false
-        ),
-        ProposalItem(
-          id: "4",
-          title: "저녁 식사",
-          emoji: "🍽️",
-          time: "오후 6:30",
-          location: "맛집 레스토랑",
-          with: "지민",
-          status: .pending,
-          isReceived: false
-        )
-      ]
+      public var proposals: ProposalModel = .example
       
       // MARK: - Groups
       public var currentGroup: String = "지민과 나"
@@ -143,15 +96,15 @@ extension Promise {
           
         case .acceptProposal(let id):
           // 제안 수락 로직
-          if let index = state.receivedProposals.firstIndex(where: { $0.id == id }) {
-            state.receivedProposals[index].status = .accepted
+          if let index = state.proposals.receivedProposals.firstIndex(where: { $0.id == id }) {
+            state.proposals.receivedProposals[index].status = .accepted
           }
           return .none
           
         case .rejectProposal(let id):
           // 제안 거절 로직
-          if let index = state.receivedProposals.firstIndex(where: { $0.id == id }) {
-            state.receivedProposals[index].status = .rejected
+          if let index = state.proposals.receivedProposals.firstIndex(where: { $0.id == id }) {
+            state.proposals.receivedProposals[index].status = .rejected
           }
           return .none
           
@@ -183,10 +136,10 @@ extension Promise {
 
 extension Promise {
   /// Promise Feature의 Root View
-  public struct RootView: View {
+  struct RootView: View {
     private let store: StoreOf<Promise.Feature>
     
-    public init(store: StoreOf<Promise.Feature>) {
+    init(store: StoreOf<Promise.Feature>) {
       self.store = store
     }
     
@@ -335,12 +288,14 @@ extension Promise {
     
     // MARK: - Computed Properties
     
-    private var currentProposals: [ProposalItem] {
+    private var currentProposals: [ProposalModel.ProposalItem] {
       switch store.selectedSegment {
       case .received:
-        return store.receivedProposals
+        return store.proposals.receivedProposals
       case .sent:
-        return store.sentProposals
+        return store.proposals.sentProposals
+      case .confirmed:
+        return store.proposals.confirmedProposals
       }
     }
   }
@@ -349,7 +304,7 @@ extension Promise {
 // MARK: - Proposal Card View
 
 private struct ProposalCard: View {
-  let proposal: ProposalItem
+  let proposal: ProposalModel.ProposalItem
   let onTap: () -> Void
   let onAccept: () -> Void
   let onReject: () -> Void
@@ -401,16 +356,6 @@ private struct ProposalCard: View {
       
       if proposal.isReceived && proposal.status == .pending {
         HStack(spacing: 12) {
-          Button(action: onReject) {
-            Text("거절")
-              .font(.subheadline)
-              .fontWeight(.medium)
-              .foregroundColor(.red)
-              .frame(maxWidth: .infinity)
-              .padding(.vertical, 8)
-              .background(Color.red.opacity(0.1))
-              .cornerRadius(8)
-          }
           
           Button(action: onAccept) {
             Text("수락")
@@ -420,6 +365,17 @@ private struct ProposalCard: View {
               .frame(maxWidth: .infinity)
               .padding(.vertical, 8)
               .background(Color.blue)
+              .cornerRadius(8)
+          }
+          
+          Button(action: onReject) {
+            Text("거절")
+              .font(.subheadline)
+              .fontWeight(.medium)
+              .foregroundColor(.red)
+              .frame(maxWidth: .infinity)
+              .padding(.vertical, 8)
+              .background(Color.red.opacity(0.1))
               .cornerRadius(8)
           }
         }
@@ -452,33 +408,18 @@ private struct ProposalCard: View {
 public enum PromiseSegment: CaseIterable, Equatable, Sendable {
   case received
   case sent
+  case confirmed
   
   public var title: String {
     switch self {
     case .received: return "받은 제안"
     case .sent: return "보낸 제안"
+    case .confirmed: return "확정된 제안"
     }
   }
 }
 
-/// 제안 아이템을 나타내는 구조체
-public struct ProposalItem: Equatable, Identifiable {
-  public let id: String
-  public let title: String
-  public let emoji: String
-  public let time: String
-  public let location: String
-  public let with: String
-  public var status: ProposalStatus
-  public let isReceived: Bool
-}
-
-/// 제안 상태를 나타내는 열거형
-public enum ProposalStatus: Equatable {
-  case pending
-  case accepted
-  case rejected
-  
+extension ProposalModel.ProposalItem.ProposalStatus {
   public var title: String {
     switch self {
     case .pending: return "대기중"

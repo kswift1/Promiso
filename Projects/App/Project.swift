@@ -11,7 +11,8 @@ let project = Project(
       bundleId: AppConfig.bundleId,
       deploymentTargets: .iOS(AppConfig.deploymentTargets),
       infoPlist: .extendingDefault(with: [
-        "UILaunchStoryboardName": .string("LaunchScreen")
+        "UILaunchStoryboardName": .string("LaunchScreen"),
+        "UIDesignRequiresCompatibility": .boolean(true)
       ]),
       sources: ["Sources/**"],
       resources: ["Resources/**"],

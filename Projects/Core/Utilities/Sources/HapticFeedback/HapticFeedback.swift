@@ -1,5 +1,4 @@
 import Dependencies
-import CoreDependencies
 import UIKit
 
 // MARK: - Haptic Feedback Types

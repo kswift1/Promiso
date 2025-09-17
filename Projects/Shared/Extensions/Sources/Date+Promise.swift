@@ -105,23 +105,6 @@ public extension Date {
     }.filter { $0 > Date() } // 미래 시간만 반환
   }
   
-  /// 약속 상태를 시간 기준으로 판단
-  var promiseStatusByTime: PromiseStatus {
-    let now = Date()
-    let interval = self.timeIntervalSince(now)
-    
-    if interval > 0 {
-      // 미래 시간
-      return .scheduled
-    } else if interval > -3600 {
-      // 1시간 이내 과거 (진행 중으로 간주)
-      return .ongoing
-    } else {
-      // 1시간 이상 과거 (놓친 것으로 간주)
-      return .missed
-    }
-  }
-  
   /// 약속이 이번 주인지 확인
   var isThisWeekPromise: Bool {
     let calendar = Calendar.current

@@ -1,27 +1,25 @@
 import ProjectDescription
 
 public extension Settings {
-  /// 팀 ID가 설정된 기본 설정
+  /// App 타깃용 기본 Settings (Team, 버전, 코드사인)
   static func withTeamId(
     base: [String: SettingValue] = [:],
-    configurations: [Configuration] = [.debug(name: "Debug"), .release(name: "Release")]
+    configurations: [Configuration] = [
+      .debug(name: "Debug"),
+      .release(name: "Release")
+    ],
+    defaultSettings: DefaultSettings = .recommended
   ) -> Settings {
     var baseSettings = base
     baseSettings["DEVELOPMENT_TEAM"] = .string(AppConfig.teamId)
+    baseSettings["CODE_SIGN_STYLE"] = .string("Automatic")
     baseSettings["MARKETING_VERSION"] = .string(AppConfig.marketingNumber)
-    
+//    baseSettings["CURRENT_PROJECT_VERSION"] = .string(AppConfig.buildNumber)
+
     return .settings(
       base: baseSettings,
-      configurations: configurations
+      configurations: configurations,
+      defaultSettings: defaultSettings
     )
-  }
-}
-
-public extension SettingsDictionary {
-  /// 팀 ID가 포함된 기본 설정 딕셔너리
-  static var withTeamId: SettingsDictionary {
-    return [
-      "DEVELOPMENT_TEAM": .string(AppConfig.teamId)
-    ]
   }
 }

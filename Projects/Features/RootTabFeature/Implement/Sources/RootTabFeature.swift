@@ -11,9 +11,7 @@ import HomeFeatureInterface
 import Dependencies
 import CoreUtilities
 
-// Tab 타입을 RootTabFeatureInterface에서 가져옴
 public typealias Tab = RootTabFeatureInterface.Tab
-
 
 // MARK: - Feature Namespace
 
@@ -191,7 +189,7 @@ extension RootTab {
     private func tabContentView(for tab: Tab) -> some View {
       switch tab {
       case .home:
-        HomeTabView(homeEntry: homeEntry, store: store)
+        homeEntry.makeView(.init())
       case .promise:
         PromiseTabView(promiseEntry: promiseEntry, store: store)
       }
@@ -215,52 +213,6 @@ extension RootTab {
       }
       .frame(maxWidth: .infinity, maxHeight: .infinity)
       .background(Color(.systemBackground))
-    }
-  }
-}
-
-// MARK: - Home Tab View
-
-/// Home 탭의 내용을 표시하는 View
-/// HomeEntry를 주입받아 사용
-private struct HomeTabView: View {
-  let homeEntry: HomeEntry
-  let store: StoreOf<RootTab.Feature>
-  
-  var body: some View {
-    VStack(spacing: 0) {
-      // 햄버거 메뉴가 있는 헤더
-      HStack {
-        Button(action: {
-          store.send(.sideDrawer(.toggle))
-        }) {
-          Image(systemName: "line.3.horizontal")
-            .font(.title2)
-            .foregroundColor(.primary)
-        }
-        
-        Spacer()
-        
-        Text("홈")
-          .font(.title2)
-          .fontWeight(.semibold)
-        
-        Spacer()
-        
-        // 햄버거 버튼과 균형을 맞추기 위한 투명한 버튼
-        Button(action: {}) {
-          Image(systemName: "line.3.horizontal")
-            .font(.title2)
-            .foregroundColor(.clear)
-        }
-        .disabled(true)
-      }
-      .padding(.horizontal, 16)
-      .padding(.top, 8)
-      .padding(.bottom, 8)
-      
-      // Home Feature 콘텐츠
-      homeEntry.makeView(.init())
     }
   }
 }

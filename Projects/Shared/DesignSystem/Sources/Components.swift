@@ -377,34 +377,3 @@ public struct PromiseStatusBadge: View {
     .foregroundColor(statusColor)
   }
 }
-
-// MARK: - Priority Badge
-
-/// 우선순위 배지 컴포넌트
-public struct PriorityBadge: View {
-  private let priority: PromisePriority
-  
-  @Environment(\.theme) private var theme
-  
-  public init(priority: PromisePriority) {
-    self.priority = priority
-  }
-  
-  public var body: some View {
-    HStack(spacing: theme.spacing.xs) {
-      Text(priority.emoji)
-        .font(theme.typography.caption2)
-      
-      Text(priority.displayName)
-        .font(theme.typography.caption2)
-        .fontWeight(.medium)
-    }
-    .padding(.horizontal, theme.spacing.xs)
-    .padding(.vertical, 2)
-    .background(
-      Capsule()
-        .fill(theme.colors.textTertiary.opacity(0.2))
-    )
-    .foregroundColor(theme.colors.textSecondary)
-  }
-}
