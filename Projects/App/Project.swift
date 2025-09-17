@@ -19,7 +19,7 @@ let project = Project(
       dependencies:
         AppFeatureDeps.allFeaturesDeps() + [
           ExternalDependency.tca
-        ],
+        ] + DefaultExternalDependency.firebase(.firestore),
       settings: .withTeamId()
     )
   ]

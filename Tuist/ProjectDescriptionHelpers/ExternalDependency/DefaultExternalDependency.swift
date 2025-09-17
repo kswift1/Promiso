@@ -26,3 +26,17 @@ public enum DefaultExternalDependency {
     ExternalDependency.tca
   ]
 }
+
+// MARK: - FirebaseDefaultExternalDependency
+extension DefaultExternalDependency {
+
+  // 모듈 나열형
+  public static func firebase(_ modules: FirebaseModule...) -> [TargetDependency] {
+    modules.map { $0.dep }
+  }
+
+  // 배열도 지원
+  public static func firebase(_ modules: [FirebaseModule]) -> [TargetDependency] {
+    modules.map { $0.dep }
+  }
+}

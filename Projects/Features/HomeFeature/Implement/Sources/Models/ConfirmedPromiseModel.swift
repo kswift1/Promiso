@@ -1,5 +1,5 @@
 import SharedModels
 
-struct ConfirmedPromiseModel: Identifiable {
+struct ConfirmedPromiseModel {
   
 }

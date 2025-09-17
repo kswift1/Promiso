@@ -2,38 +2,42 @@
 @preconcurrency import PackageDescription
 
 #if TUIST
-    import struct ProjectDescription.PackageSettings
-    
-    let packageSettings = PackageSettings(
-        productTypes: [
-            "ComposableArchitecture": .framework
-        ]
-    )
+import struct ProjectDescription.PackageSettings
+
+let packageSettings = PackageSettings(
+  productTypes: [
+    "ComposableArchitecture": .framework,
+    "FirebaseFirestore": .framework
+  ]
+)
 #endif
 
 // MARK: - Package Dependencies
 
 enum Dependencies {
-    // MARK: - Architecture
-    nonisolated(unsafe) static let tca = Package.Dependency.package(
-        url: "https://github.com/pointfreeco/swift-composable-architecture",
-        .upToNextMajor(from: "1.22.2")
+  // MARK: - Architecture
+  static func tca() -> Package.Dependency {
+    .package(
+      url: "https://github.com/pointfreeco/swift-composable-architecture",
+      .upToNextMajor(from: "1.22.2")
     )
-    
-    // MARK: - Networking
-    // nonisolated(unsafe) static let alamofire = Package.Dependency.package(
-    //     url: "https://github.com/Alamofire/Alamofire",
-    //     .upToNextMajor(from: "5.0.0")
-    // )
-    
-    // MARK: - All Dependencies
-    nonisolated(unsafe) static let all: [Package.Dependency] = [
-        tca,
-        // alamofire,
-    ]
+  }
+  
+  static func firebase() -> Package.Dependency {
+    .package(
+      url: "https://github.com/firebase/firebase-ios-sdk.git",
+      .upToNextMajor(from: "12.3.0")
+    )
+  }
+  
+  // MARK: - All Dependencies
+  static var all: [Package.Dependency] { [
+    tca(),
+    firebase(),
+  ]}
 }
 
 let package = Package(
-    name: "StopLate",
-    dependencies: Dependencies.all
+  name: "StopLate",
+  dependencies: Dependencies.all
 )

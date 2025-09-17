@@ -8,6 +8,9 @@ import HomeFeatureImplement
 
 @main
 struct PromisoApp: App {
+  
+  @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
+  
   var body: some Scene {
     WindowGroup {
       // App 레이어에서 모든 의존성을 주입
