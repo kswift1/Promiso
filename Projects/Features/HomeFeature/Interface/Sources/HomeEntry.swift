@@ -3,7 +3,6 @@
 // 이 파일은 Home Feature의 public contract와 integration point를 정의
 
 import SwiftUI
-import ComposableArchitecture
 
 // MARK: - Feature Entry Point
 

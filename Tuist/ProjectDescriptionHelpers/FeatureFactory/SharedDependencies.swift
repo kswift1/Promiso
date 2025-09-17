@@ -1,31 +1,32 @@
 import ProjectDescription
 
-/// Shared와 Core 모듈에 대한 의존성을 관리하는 헬퍼
+/// Shared, Core, Domain 모듈에 대한 의존성을 관리하는 헬퍼
 public enum SharedDependencies {
   
   // MARK: - Core Dependencies
   
   /// Core 모듈들에 대한 의존성
   public static let core: [TargetDependency] = [
-    .project(target: "CoreDependencies", path: "../../Core"),
-    .project(target: "CoreUtilities", path: "../../Core"),
-    .project(target: "CoreLogger", path: "../../Core"),
-    .project(target: "CoreAnalytics", path: "../../Core"),
     .project(target: "CoreNetworking", path: "../../Core"),
-    .project(target: "CoreStorage", path: "../../Core")
+    .project(target: "CoreInfrastructure", path: "../../Core")
   ]
   
   /// 기본적인 Core 의존성 (Interface 레이어용)
   public static let coreBasic: [TargetDependency] = [
-    .project(target: "CoreDependencies", path: "../../Core"),
-    .project(target: "CoreUtilities", path: "../../Core")
+    .project(target: "CoreInfrastructure", path: "../../Core")
+  ]
+  
+  // MARK: - Domain Dependencies
+  
+  /// Domain 모듈에 대한 의존성
+  public static let domain: [TargetDependency] = [
+    .project(target: "Domain", path: "../../Domain")
   ]
   
   // MARK: - Shared Dependencies
   
   /// Shared 모듈들에 대한 의존성
   public static let shared: [TargetDependency] = [
-    .project(target: "SharedModels", path: "../../Shared"),
     .project(target: "SharedServices", path: "../../Shared"),
     .project(target: "SharedDesignSystem", path: "../../Shared"),
     .project(target: "SharedExtensions", path: "../../Shared"),
@@ -35,23 +36,21 @@ public enum SharedDependencies {
   
   /// 기본적인 Shared 의존성 (Interface 레이어용)
   public static let sharedBasic: [TargetDependency] = [
-    .project(target: "SharedModels", path: "../../Shared"),
     .project(target: "SharedConstants", path: "../../Shared")
   ]
   
   // MARK: - Combined Dependencies
   
   /// Interface 레이어에서 사용할 기본 의존성들
-  public static let interface: [TargetDependency] = coreBasic + sharedBasic
+  public static let interface: [TargetDependency] = domain + coreBasic + sharedBasic
   
   /// Implement 레이어에서 사용할 전체 의존성들
-  public static let implement: [TargetDependency] = core + shared
+  public static let implement: [TargetDependency] = domain + core + shared
   
   /// Testing 레이어에서 사용할 의존성들
   public static let testing: [TargetDependency] = [
-    .project(target: "CoreDependencies", path: "../../Core"),
-    .project(target: "CoreUtilities", path: "../../Core"),
-    .project(target: "SharedModels", path: "../../Shared")
+    .project(target: "Domain", path: "../../Domain"),
+    .project(target: "CoreInfrastructure", path: "../../Core")
   ]
   
   // MARK: - Feature-specific Dependencies

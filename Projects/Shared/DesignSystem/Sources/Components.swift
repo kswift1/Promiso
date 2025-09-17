@@ -1,6 +1,6 @@
 import SwiftUI
-import SharedModels
-import CoreUtilities
+import Domain
+import CoreInfrastructure
 
 // MARK: - Primary Button
 

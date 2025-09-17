@@ -1,7 +1,7 @@
 import ComposableArchitecture
 import SwiftUI
 import Dependencies
-import CoreUtilities
+import CoreInfrastructure
 
 // MARK: - Feature Namespace
 

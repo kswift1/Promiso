@@ -1,5 +1,5 @@
 import SwiftUI
-import SharedModels
+import Domain
 
 // MARK: - App Theme
 

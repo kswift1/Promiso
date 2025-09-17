@@ -1,6 +1,6 @@
 import Foundation
-import SharedModels
-import CoreUtilities
+import Domain
+import CoreInfrastructure
 
 // MARK: - Promise-specific Date Extensions
 

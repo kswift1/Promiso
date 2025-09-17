@@ -4,7 +4,7 @@
 //import CoreNetworking
 //import CoreStorage
 //import CoreLogger
-//import SharedModels
+//import Domain
 //
 //// MARK: - Auth Request Models
 //

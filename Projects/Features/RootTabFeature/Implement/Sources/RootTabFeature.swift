@@ -9,7 +9,7 @@ import Perception
 import PromiseFeatureInterface
 import HomeFeatureInterface
 import Dependencies
-import CoreUtilities
+import CoreInfrastructure
 
 public typealias Tab = RootTabFeatureInterface.Tab
 

@@ -4,18 +4,6 @@ import ProjectDescriptionHelpers
 let project = Project(
   name: "Shared",
   targets: [
-    // Models Module - 도메인 모델들
-    .target(
-      name: "SharedModels",
-      destinations: .iOS,
-      product: .framework,
-      bundleId: "\(AppConfig.name).shared.models",
-      deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
-      sources: ["Models/Sources/**"],
-      dependencies: [
-        .project(target: "CoreUtilities", path: "../Core")
-      ] + DefaultExternalDependency.interface
-    ),
     
     // DesignSystem Module - UI 컴포넌트, 테마
     .target(
@@ -27,8 +15,8 @@ let project = Project(
       sources: ["DesignSystem/Sources/**"],
       resources: ["DesignSystem/Resources/**"],
       dependencies: [
-        .target(name: "SharedModels"),
-        .project(target: "CoreUtilities", path: "../Core")
+        .project(target: "Domain", path: "../Domain"),
+        .project(target: "CoreInfrastructure", path: "../Core")
       ] + DefaultExternalDependency.interface
     ),
     
@@ -41,13 +29,9 @@ let project = Project(
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Services/Sources/**"],
       dependencies: [
-        .target(name: "SharedModels"),
-        .project(target: "CoreDependencies", path: "../Core"),
+        .project(target: "Domain", path: "../Domain"),
         .project(target: "CoreNetworking", path: "../Core"),
-        .project(target: "CoreStorage", path: "../Core"),
-        .project(target: "CoreLogger", path: "../Core"),
-        .project(target: "CoreAnalytics", path: "../Core"),
-        .project(target: "CoreUtilities", path: "../Core")
+        .project(target: "CoreInfrastructure", path: "../Core")
       ] + DefaultExternalDependency.interface
     ),
     
@@ -60,8 +44,8 @@ let project = Project(
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Extensions/Sources/**"],
       dependencies: [
-        .target(name: "SharedModels"),
-        .project(target: "CoreUtilities", path: "../Core")
+        .project(target: "Domain", path: "../Domain"),
+        .project(target: "CoreInfrastructure", path: "../Core")
       ] + DefaultExternalDependency.interface
     ),
     
@@ -97,7 +81,7 @@ let project = Project(
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Tests/**"],
       dependencies: [
-        .target(name: "SharedModels"),
+        .project(target: "Domain", path: "../Domain"),
         .target(name: "SharedDesignSystem"),
         .target(name: "SharedServices"),
         .target(name: "SharedExtensions"),

@@ -1,0 +1,31 @@
+import ProjectDescription
+import ProjectDescriptionHelpers
+
+let project = Project(
+  name: "Domain",
+  targets: [
+    // Domain Module - 순수 도메인 로직
+    .target(
+      name: "Domain",
+      destinations: .iOS,
+      product: .framework,
+      bundleId: "\(AppConfig.name).domain",
+      deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
+      sources: ["Sources/**"],
+      dependencies: DefaultExternalDependency.interface
+    ),
+    
+    // Tests
+    .target(
+      name: "DomainTests",
+      destinations: .iOS,
+      product: .unitTests,
+      bundleId: "\(AppConfig.name).domain.tests",
+      deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
+      sources: ["Tests/**"],
+      dependencies: [
+        .target(name: "Domain")
+      ] + DefaultExternalDependency.tests
+    )
+  ]
+)

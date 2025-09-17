@@ -1,9 +1,7 @@
 import Foundation
 import Dependencies
-import CoreDependencies
 import CoreNetworking
-import CoreLogger
-import SharedModels
+import Domain
 
 // MARK: - Promise Request Models
 
