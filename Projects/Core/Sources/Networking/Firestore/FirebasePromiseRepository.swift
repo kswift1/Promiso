@@ -2,7 +2,6 @@ import Foundation
 import FirebaseFirestore
 import Combine
 import Domain
-import CoreInfrastructure
 
 /// Promise 관련 Firestore CRUD 및 쿼리 작업을 담당하는 Repository
 public class FirebasePromiseRepository: PromiseRepositoryProtocol {

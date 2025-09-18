@@ -4,12 +4,7 @@
 #if TUIST
 import struct ProjectDescription.PackageSettings
 
-let packageSettings = PackageSettings(
-  productTypes: [
-    "ComposableArchitecture": .framework,
-    "FirebaseFirestore": .framework
-  ]
-)
+let packageSettings = PackageSettings()
 #endif
 
 // MARK: - Package Dependencies

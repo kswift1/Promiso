@@ -180,33 +180,6 @@ public class PromiseRepository: PromiseRepositoryProtocol {
   }
 }
 
-// MARK: - Combine Extensions
-extension Publishers {
-  struct FirestoreQuery: Publisher {
-    typealias Output = QuerySnapshot
-    typealias Failure = Error
-    
-    let query: Query
-    
-    func receive<S>(subscriber: S) where S : Subscriber, Failure == S.Failure, Output == S.Input {
-      let subscription = FirestoreQuerySubscription(query: query, subscriber: subscriber)
-      subscriber.receive(subscription: subscription)
-    }
-  }
-  
-  struct FirestoreDocument: Publisher {
-    typealias Output = DocumentSnapshot?
-    typealias Failure = Error
-    
-    let document: DocumentReference
-    
-    func receive<S>(subscriber: S) where S : Subscriber, Failure == S.Failure, Output == S.Input {
-      let subscription = FirestoreDocumentSubscription(document: document, subscriber: subscriber)
-      subscriber.receive(subscription: subscription)
-    }
-  }
-}
-
 private class FirestoreQuerySubscription<S: Subscriber>: Subscription where S.Input == QuerySnapshot, S.Failure == Error {
   private var listener: ListenerRegistration?
   private let query: Query
