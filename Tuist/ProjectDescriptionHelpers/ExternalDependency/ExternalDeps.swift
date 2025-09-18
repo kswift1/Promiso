@@ -4,20 +4,23 @@ import ProjectDescription
 public enum ExternalDeps: CaseIterable {
   /// The Composable Architecture
   case tca
-  
+
   /// Firebase
+  case firebaseCore
   case firebaseAuth
   case firebaseFirestore
   case firebaseCrashlytics
-  
+
   public static func allExternalDeps() -> [TargetDependency] {
     ExternalDeps.allCases.map { $0.targetDependency }
   }
-  
+
   private var targetDependency: TargetDependency {
     switch self {
     case .tca:
       return .external(name: "ComposableArchitecture")
+    case .firebaseCore:
+      return .external(name: "FirebaseCore")
     case .firebaseAuth:
       return .external(name: "FirebaseAuth")
     case .firebaseFirestore:

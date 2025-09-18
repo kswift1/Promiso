@@ -16,7 +16,8 @@ let project = Project(
       dependencies: [
         .project(target: "Domain", path: "../Domain"),
         .project(target: "ExternalDependency", path: "../ExternalDependency")
-      ]
+      ],
+      settings: .standard()
     ),
     
     // Infrastructure Module - 통합 인프라 서비스
@@ -29,7 +30,8 @@ let project = Project(
       sources: ["Sources/Infrastructure/**"],
       dependencies: [
         .project(target: "ExternalDependency", path: "../ExternalDependency")
-      ]
+      ],
+      settings: .standard()
     )
   ]
 )

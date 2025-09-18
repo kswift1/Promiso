@@ -11,7 +11,8 @@ let project = Project(
       product: .framework,
       bundleId: "\(AppConfig.name).domain",
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
-      sources: ["Sources/**"]
+      sources: ["Sources/**"],
+      settings: .standard()
     ),
     
     // Tests
@@ -24,7 +25,8 @@ let project = Project(
       sources: ["Tests/**"],
       dependencies: [
         .target(name: "Domain")
-      ]
+      ],
+      settings: .standard()
     )
   ]
 )

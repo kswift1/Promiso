@@ -22,9 +22,8 @@ let project = Project(
         .project(target: "CoreNetworking", path: "../Core"),
         .project(target: "Domain", path: "../Domain"),
         .project(target: "ExternalDependency", path: "../ExternalDependency")
-      ]
-      ,
-      settings: .withTeamId()
+      ],
+      settings: .standard()
     )
   ]
 )

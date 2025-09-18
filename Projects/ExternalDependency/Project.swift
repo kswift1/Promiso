@@ -11,7 +11,8 @@ let project = Project(
       bundleId: "\(AppConfig.name).externaldependency",
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Sources/**"],
-      dependencies: ExternalDeps.allExternalDeps()
+      dependencies: ExternalDeps.allExternalDeps(),
+      settings: .standard()
     )
   ]
 )

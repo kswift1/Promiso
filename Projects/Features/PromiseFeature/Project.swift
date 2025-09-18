@@ -15,7 +15,8 @@ let project = Project(
       bundleId: "\(feature.defaultBundleIdPrefix).interface",
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Interface/Sources/**"],
-      dependencies: feature.interfaceDependencies
+      dependencies: feature.interfaceDependencies,
+      settings: .standard()
     ),
 
     // Implement
@@ -26,7 +27,8 @@ let project = Project(
       bundleId: "\(feature.defaultBundleIdPrefix).implement",
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Implement/Sources/**"],
-      dependencies: feature.implementDependencies
+      dependencies: feature.implementDependencies,
+      settings: .standard()
     ),
 
     // Testing
@@ -37,7 +39,8 @@ let project = Project(
       bundleId: "\(feature.defaultBundleIdPrefix).testing",
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Testing/Sources/**"],
-      dependencies: feature.testingDependencies
+      dependencies: feature.testingDependencies,
+      settings: .standard()
     ),
 
     // Unit Tests
@@ -48,7 +51,8 @@ let project = Project(
       bundleId: "\(feature.defaultBundleIdPrefix).tests",
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Tests/Sources/**"],
-      dependencies: feature.testsDependencies
+      dependencies: feature.testsDependencies,
+      settings: .standard()
     ),
 
     // Example App (Demo)
@@ -64,7 +68,7 @@ let project = Project(
       sources: ["Example/Sources/**"],
       resources: ["Example/Resources/**"],
       dependencies: feature.exampleDependencies,
-      settings: .withTeamId()
+      settings: .standard()
     )
   ]
 )
