@@ -1,0 +1,29 @@
+import ProjectDescription
+
+/// 외부 라이브러리 의존성 상수
+public enum ExternalDeps: CaseIterable {
+  /// The Composable Architecture
+  case tca
+  
+  /// Firebase
+  case firebaseAuth
+  case firebaseFirestore
+  case firebaseCrashlytics
+  
+  public static func allExternalDeps() -> [TargetDependency] {
+    ExternalDeps.allCases.map { $0.targetDependency }
+  }
+  
+  private var targetDependency: TargetDependency {
+    switch self {
+    case .tca:
+      return .external(name: "ComposableArchitecture")
+    case .firebaseAuth:
+      return .external(name: "FirebaseAuth")
+    case .firebaseFirestore:
+      return .external(name: "FirebaseFirestore")
+    case .firebaseCrashlytics:
+      return .external(name: "FirebaseCrashlytics")
+    }
+  }
+}

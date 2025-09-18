@@ -38,6 +38,6 @@ enum Dependencies {
 }
 
 let package = Package(
-  name: "StopLate",
+  name: "Promiso",
   dependencies: Dependencies.all
 )

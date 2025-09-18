@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-import SharedConstants
+import Shared
 
 struct HomeHeader: View {
   private var badgeCount: Int

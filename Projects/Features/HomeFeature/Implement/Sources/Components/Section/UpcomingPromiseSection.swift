@@ -7,7 +7,7 @@
 
 import SwiftUI
 import ComposableArchitecture
-import SharedConstants
+import Shared
 
 struct UpcomingPromiseSection: View {
   private let store: StoreOf<Home.Feature>

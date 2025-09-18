@@ -16,10 +16,14 @@ let project = Project(
       ]),
       sources: ["Sources/**"],
       resources: ["Resources/**"],
-      dependencies:
-        AppFeatureDeps.allFeaturesDeps() + [
-          ExternalDependency.tca
-        ] + DefaultExternalDependency.firebase(.firestore),
+      dependencies: AppFeatureDeps.allFeaturesDeps() + [
+        .project(target: "Shared", path: "../Shared"),
+        .project(target: "CoreInfrastructure", path: "../Core"),
+        .project(target: "CoreNetworking", path: "../Core"),
+        .project(target: "Domain", path: "../Domain"),
+        .project(target: "ExternalDependency", path: "../ExternalDependency")
+      ]
+      ,
       settings: .withTeamId()
     )
   ]

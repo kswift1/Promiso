@@ -27,3 +27,27 @@ public enum FeaturePath {
   public static func testsName(_ feature: Feature) -> String { "\(feature.rawValue)FeatureTests" }
   public static func exampleName(_ feature: Feature) -> String { "\(feature.rawValue)FeatureExample" }
 }
+
+public extension Feature {
+  // Pre-computed dependency arrays to avoid compiler timeout
+  var interfaceDependencies: [TargetDependency] {
+    SharedDependencies.featureDefaultDeps
+  }
+  
+  var implementDependencies: [TargetDependency] {
+    [FeatureDependency.interface(self)] + SharedDependencies.featureDefaultDeps
+  }
+  
+  var testingDependencies: [TargetDependency] {
+    [FeatureDependency.interface(self)] + SharedDependencies.featureDefaultDeps
+  }
+  
+  var testsDependencies: [TargetDependency] {
+    FeatureDependency.all(self) + SharedDependencies.featureDefaultDeps
+  }
+  
+  var exampleDependencies: [TargetDependency] {
+    FeatureDependency.all(self) + SharedDependencies.featureDefaultDeps
+  }
+  
+}

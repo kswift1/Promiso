@@ -8,7 +8,7 @@
 import SwiftUI
 import ComposableArchitecture
 
-import SharedConstants
+import Shared
 
 struct TodayPromiseSection: View {
   

@@ -1,6 +1,5 @@
 import Foundation
 import Dependencies
-import CoreNetworking
 import Domain
 
 // MARK: - Promise Request Models

@@ -3,23 +3,6 @@ import ProjectDescriptionHelpers
 
 private let feature: Feature = .rootTab
 
-// Pre-computed dependency arrays to avoid compiler timeout
-private let interfaceDependencies = SharedDependencies.interface + DefaultExternalDependency.interface
-
-private let implementDependencies = [
-  FeatureDependency.interface(feature),
-  FeatureDependency.interface(.home, isExternal: true),
-  FeatureDependency.interface(.promise, isExternal: true)
-] + SharedDependencies.implement + DefaultExternalDependency.implement
-
-private let testingDependencies = [
-  FeatureDependency.interface(feature)
-] + SharedDependencies.testing + DefaultExternalDependency.testing
-
-private let testsDependencies = FeatureDependency.all(feature) + DefaultExternalDependency.tests
-
-private let exampleDependencies = FeatureDependency.all(feature) + DefaultExternalDependency.example
-
 let project = Project(
   name: feature.fullName,
   targets: [
@@ -32,7 +15,7 @@ let project = Project(
       bundleId: "\(feature.defaultBundleIdPrefix).interface",
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Interface/Sources/**"],
-      dependencies: interfaceDependencies
+      dependencies: feature.interfaceDependencies
     ),
 
     // Implement
@@ -43,7 +26,10 @@ let project = Project(
       bundleId: "\(feature.defaultBundleIdPrefix).implement",
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Implement/Sources/**"],
-      dependencies: implementDependencies
+      dependencies: feature.implementDependencies + [
+        FeatureDependency.interface(.home, isExternal: true),
+        FeatureDependency.interface(.promise, isExternal: true)
+      ]
     ),
 
     // Testing
@@ -54,7 +40,7 @@ let project = Project(
       bundleId: "\(feature.defaultBundleIdPrefix).testing",
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Testing/Sources/**"],
-      dependencies: testingDependencies
+      dependencies: feature.testingDependencies
     ),
 
     // Unit Tests
@@ -65,7 +51,7 @@ let project = Project(
       bundleId: "\(feature.defaultBundleIdPrefix).tests",
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Tests/Sources/**"],
-      dependencies: testsDependencies
+      dependencies: feature.testsDependencies
     ),
 
     // Example App (Demo)
@@ -80,7 +66,7 @@ let project = Project(
       ]),
       sources: ["Example/Sources/**"],
       resources: ["Example/Resources/**"],
-      dependencies: exampleDependencies,
+      dependencies: feature.exampleDependencies,
       settings: .withTeamId()
     )
   ]
