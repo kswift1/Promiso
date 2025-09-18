@@ -8,7 +8,7 @@ let project = Project(
       name: "Shared",
       destinations: .iOS,
       product: .framework,
-      bundleId: "\(AppConfig.name).shared",
+      bundleId: AppConfig.moduleBundleId("shared"),
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Sources/**"],
       resources: ["Resources/**"],

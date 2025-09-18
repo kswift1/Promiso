@@ -8,7 +8,7 @@ let project = Project(
       name: "ExternalDependency",
       destinations: .iOS,
       product: .framework,
-      bundleId: "\(AppConfig.name).externaldependency",
+      bundleId: AppConfig.moduleBundleId("externaldependency"),
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Sources/**"],
       dependencies: ExternalDeps.allExternalDeps(),

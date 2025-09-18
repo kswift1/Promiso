@@ -7,7 +7,7 @@ public struct Feature: RawRepresentable, Hashable, Sendable, CustomStringConvert
   public init(rawValue: String) { self.rawValue = rawValue }
   public var description: String { rawValue }
   public var fullName: String { rawValue + "Feature" }
-  public var defaultBundleIdPrefix: String { "\(AppConfig.name).features.\(rawValue)" }
+  public var defaultBundleIdPrefix: String { "\(AppConfig.bundlePrefix).features.\(rawValue.lowercased())" }
 }
 
 /// 공통 경로/이름 규칙

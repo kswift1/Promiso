@@ -9,7 +9,7 @@ let project = Project(
       name: "Domain",
       destinations: .iOS,
       product: .framework,
-      bundleId: "\(AppConfig.name).domain",
+      bundleId: AppConfig.moduleBundleId("domain"),
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Sources/**"],
       settings: .standard()
@@ -20,7 +20,7 @@ let project = Project(
       name: "DomainTests",
       destinations: .iOS,
       product: .unitTests,
-      bundleId: "\(AppConfig.name).domain.tests",
+      bundleId: AppConfig.moduleBundleId("domain.tests"),
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Tests/**"],
       dependencies: [

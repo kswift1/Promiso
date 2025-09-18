@@ -10,7 +10,7 @@ let project = Project(
       name: "CoreNetworking",
       destinations: .iOS,
       product: .framework,
-      bundleId: "\(AppConfig.name).core.networking",
+      bundleId: AppConfig.moduleBundleId("core.networking"),
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Sources/Networking/**"],
       dependencies: [
@@ -25,7 +25,7 @@ let project = Project(
       name: "CoreInfrastructure",
       destinations: .iOS,
       product: .framework,
-      bundleId: "\(AppConfig.name).core.infrastructure",
+      bundleId: AppConfig.moduleBundleId("core.infrastructure"),
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Sources/Infrastructure/**"],
       dependencies: [
