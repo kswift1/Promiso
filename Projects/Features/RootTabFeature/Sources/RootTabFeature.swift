@@ -100,24 +100,6 @@ extension RootTab {
             .offset(x: store.sideDrawer.showDrawer ? 256 + store.sideDrawer.dragOffset : store.sideDrawer.dragOffset)
             .animation(.spring(response: 0.3, dampingFraction: 0.8, blendDuration: 0), value: store.sideDrawer.showDrawer)
             .animation(.interactiveSpring(response: 0.2, dampingFraction: 0.9, blendDuration: 0), value: store.sideDrawer.dragOffset)
-            .gesture(
-              DragGesture()
-                .onChanged { value in
-                  // 드래그 방향에 따라 드로어 상태 변경
-                  if !store.sideDrawer.showDrawer && value.translation.width > 0 {
-                    // 드로어가 닫혀있을 때 오른쪽으로 드래그하면 드로어 열기
-                    let offset = min(value.translation.width, 256)
-                    store.send(.sideDrawer(.dragChanged(offset)))
-                  } else if store.sideDrawer.showDrawer && value.translation.width < 0 {
-                    // 드로어가 열려있을 때 왼쪽으로 드래그하면 드로어 닫기
-                    let offset = max(value.translation.width, -256)
-                    store.send(.sideDrawer(.dragChanged(offset)))
-                  }
-                }
-                .onEnded { _ in
-                  store.send(.sideDrawer(.dragEnded))
-                }
-            )
           
           // 전체 화면 오버레이 (드로어가 열려있을 때만)
           if store.sideDrawer.showDrawer || store.sideDrawer.overlayOpacity > 0 {
@@ -129,19 +111,6 @@ extension RootTab {
               .transition(.opacity)
               .animation(.interactiveSpring(response: 0.3, dampingFraction: 0.9, blendDuration: 0), value: store.sideDrawer.overlayOpacity)
               .allowsHitTesting(true)
-              .gesture(
-                DragGesture()
-                  .onChanged { value in
-                    // 오버레이에서도 드래그로 닫기 가능
-                    if store.sideDrawer.showDrawer && value.translation.width < 0 {
-                      let offset = max(value.translation.width, -256)
-                      store.send(.sideDrawer(.dragChanged(offset)))
-                    }
-                  }
-                  .onEnded { _ in
-                    store.send(.sideDrawer(.dragEnded))
-                  }
-              )
           }
           
           // 사이드 드로어 (오버레이 위에 표시)
@@ -150,19 +119,33 @@ extension RootTab {
             .offset(x: store.sideDrawer.showDrawer ? store.sideDrawer.dragOffset : -256 + store.sideDrawer.dragOffset)
             .animation(.spring(response: 0.3, dampingFraction: 0.8, blendDuration: 0), value: store.sideDrawer.showDrawer)
             .animation(.interactiveSpring(response: 0.2, dampingFraction: 0.9, blendDuration: 0), value: store.sideDrawer.dragOffset)
-            .gesture(
-              DragGesture()
-                .onChanged { value in
-                  if store.sideDrawer.showDrawer && value.translation.width < 0 {
-                    let offset = max(value.translation.width, -256)
-                    store.send(.sideDrawer(.dragChanged(offset)))
-                  }
-                }
-                .onEnded { _ in
-                  store.send(.sideDrawer(.dragEnded))
-                }
-            )
         }
+        .highPriorityGesture(
+          DragGesture()
+            .onChanged { value in
+              let dragDistance = value.translation.width
+              
+              let isDraggingToOpen = !store.sideDrawer.showDrawer && dragDistance > 0
+              let isDraggingToClose = store.sideDrawer.showDrawer && dragDistance < 0
+              
+              guard isDraggingToOpen || isDraggingToClose else { return }
+              
+              // Offset 계산 (드로어 너비 256 제한)
+              let clampedOffset: CGFloat
+              if isDraggingToOpen {
+                clampedOffset = min(dragDistance, 256)
+              } else {
+                clampedOffset = max(dragDistance, -256)
+              }
+              
+              // Store에 변경사항 전달
+              store.send(.sideDrawer(.dragChanged(clampedOffset)))
+            }
+            .onEnded{ _ in
+              store.send(.sideDrawer(.dragEnded))
+            },
+          isEnabled: store.state.selectedTab == .promise
+        )
       }
     }
   }
@@ -202,26 +185,6 @@ extension RootTab {
         }
         Promise.RootView(store: promiseStore)
       }
-    }
-  }
-  
-  private struct PlaceholderTabView: View {
-    let tab: Tab
-    
-    var body: some View {
-      VStack {
-        Image(systemName: tab.iconName)
-          .font(.largeTitle)
-          .foregroundColor(.secondary)
-        Text(tab.rawValue)
-          .font(.title2)
-          .foregroundColor(.secondary)
-        Text("준비 중입니다")
-          .font(.caption)
-          .foregroundColor(.secondary)
-      }
-      .frame(maxWidth: .infinity, maxHeight: .infinity)
-      .background(Color(.systemBackground))
     }
   }
 }
