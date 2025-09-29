@@ -4,11 +4,11 @@ import ProjectDescription
 let name: Template.Attribute = .required("name")
 
 let template = Template(
-  description: "Feature (Interface/Implement/Testing/Tests + ExampleApp) - TCA 1.22.2",
+  description: "Feature (TCA 중심 구조) - TCA 1.22.2",
   attributes: [name],
   items: [
     
-    // ── 단일 Project.swift (5개 타겟: Interface/Implement/Testing/Tests/ExampleApp)
+    // ── 단일 Project.swift (3개 타겟: Feature/Tests/ExampleApp)
     .string(
       path: "Projects/Features/{{ name }}Feature/Project.swift",
       contents: #"""
@@ -17,72 +17,45 @@ import ProjectDescriptionHelpers
 
 private let feature: Feature = .{{ name | lowerFirstWord }}
 
-// Pre-computed dependency arrays to avoid compiler timeout
-private let interfaceDependencies = SharedDependencies.interface + DefaultExternalDependency.interface
-
-private let implementDependencies = [
-  FeatureDependency.interface(feature)
-] + SharedDependencies.implement + SharedDependencies.{{ name | lowerFirstWord }}Specific + DefaultExternalDependency.implement
-
-private let testingDependencies = [
-  FeatureDependency.interface(feature)
-] + SharedDependencies.testing + DefaultExternalDependency.testing
-
-private let testsDependencies = FeatureDependency.all(feature) + DefaultExternalDependency.tests
-
-private let exampleDependencies = FeatureDependency.all(feature) + DefaultExternalDependency.example
-
 let project = Project(
   name: feature.fullName,
   targets: [
 
-    // Interface
+    // Main Feature (TCA)
     .target(
-      name: "\(feature.fullName)Interface",
+      name: "{{ name }}Feature",
       destinations: .iOS,
       product: .framework,
-      bundleId: "\(feature.defaultBundleIdPrefix).interface",
+      bundleId: "\(feature.defaultBundleIdPrefix)",
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
-      sources: ["Interface/Sources/**"],
-      dependencies: interfaceDependencies
-    ),
-
-    // Implement
-    .target(
-      name: "\(feature.fullName)Implement",
-      destinations: .iOS,
-      product: .framework,
-      bundleId: "\(feature.defaultBundleIdPrefix).implement",
-      deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
-      sources: ["Implement/Sources/**"],
-      dependencies: implementDependencies
-    ),
-
-    // Testing
-    .target(
-      name: "\(feature.fullName)Testing",
-      destinations: .iOS,
-      product: .framework,
-      bundleId: "\(feature.defaultBundleIdPrefix).testing",
-      deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
-      sources: ["Testing/Sources/**"],
-      dependencies: testingDependencies
+      sources: ["Sources/**"],
+      dependencies: [
+        .project(target: "Shared", path: "../../Shared"),
+        .project(target: "CoreInfrastructure", path: "../../Core"),
+        .project(target: "CoreNetworking", path: "../../Core"),
+        .project(target: "Domain", path: "../../Domain"),
+        .project(target: "ExternalDependency", path: "../../ExternalDependency")
+      ],
+      settings: .standard()
     ),
 
     // Unit Tests
     .target(
-      name: "\(feature.fullName)Tests",
+      name: "{{ name }}FeatureTests",
       destinations: .iOS,
       product: .unitTests,
       bundleId: "\(feature.defaultBundleIdPrefix).tests",
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Tests/Sources/**"],
-      dependencies: testsDependencies
+      dependencies: [
+        .target(name: "{{ name }}Feature")
+      ],
+      settings: .standard()
     ),
 
     // Example App (Demo)
     .target(
-      name: "\(feature.fullName)Example",
+      name: "{{ name }}FeatureExample",
       destinations: .iOS,
       product: .app,
       bundleId: "\(feature.defaultBundleIdPrefix).example",
@@ -92,103 +65,26 @@ let project = Project(
       ]),
       sources: ["Example/Sources/**"],
       resources: ["Example/Resources/**"],
-      dependencies: exampleDependencies,
-      settings: .withTeamId()
+      dependencies: [
+        .target(name: "{{ name }}Feature")
+      ],
+      settings: .standard()
     )
   ]
 )
 """#
     ),
     
-    // ── 소스 코드 뼈대
-    
-    // Interface
-      .string(
-        path: "Projects/Features/{{ name }}Feature/Interface/Sources/{{ name }}Entry.swift",
-        contents: #"""
-// MARK: - {{ name }}Entry.swift
-// {{ name }} Feature의 Interface layer - TMA (Tuist Modular Architecture) 패턴을 따름
-// 이 파일은 {{ name }} Feature의 public contract와 integration point를 정의
-
-import SwiftUI
-import ComposableArchitecture
-
-// MARK: - Feature Entry Point
-
-/// {{ name }} Feature integration을 위한 Entry Point
-/// 상위 애플리케이션에 {{ name }} Feature를 임베딩하기 위한 깔끔한 interface 제공
-/// 
-/// 사용법:
-/// ```swift
-/// let entry = {{ name }}Entry.live()
-/// let view = entry.makeView(.init())
-/// ```
-public struct {{ name }}Entry {
-  private let _makeView: (Config) -> AnyView
-  
-  public init<Content: View>(@ViewBuilder makeView: @escaping (Config) -> Content) {
-    self._makeView = { config in AnyView(makeView(config)) }
-  }
-  
-  @ViewBuilder
-  public func makeView(_ config: Config) -> some View {
-    _makeView(config)
-  }
-}
-
-// MARK: - Configuration
-
-/// {{ name }} Feature 동작을 커스터마이징하기 위한 Configuration 객체
-/// concurrency boundaries에서 안전한 사용을 위해 Sendable을 준수
-public struct Config: Sendable, Equatable {
-  // 필요에 따라 configuration 프로퍼티를 여기에 추가
-  // 예시: public let theme: Theme
-  // 예시: public let analyticsEnabled: Bool
-  
-  /// 표준 configuration을 생성하는 기본 initializer
-  public init() {}
-}
-
-// MARK: - Navigation
-
-/// {{ name }} Feature navigation을 위한 Route 정의
-/// Feature 내에서 deep linking과 programmatic navigation에 사용
-public enum {{ name }}Route: Hashable, CaseIterable {
-  /// Feature의 main entry point를 나타내는 Root route
-  case root
-  
-  // Feature가 성장함에 따라 추가 route를 여기에 추가
-  // 예시: case detail(id: String)
-  // 예시: case settings
-}
-
-// MARK: - Domain Models
-
-/// {{ name }} Feature에 특화된 Domain model과 data structure
-/// Feature의 핵심 책임에 집중하여 가볍게 유지
-extension {{ name }}Entry {
-  // Feature별 domain model을 여기에 추가
-  // 예시:
-  // public struct {{ name }}Item: Equatable, Identifiable {
-  //   public let id: UUID
-  //   public let name: String
-  //   public init(id: UUID, name: String) { ... }
-  // }
-}
-"""#
-      ),
-    
-    // Implement
+    // ── TCA Feature 구현
     .string(
-      path: "Projects/Features/{{ name }}Feature/Implement/Sources/{{ name }}Feature.swift",
+      path: "Projects/Features/{{ name }}Feature/Sources/{{ name }}Feature.swift",
       contents: #"""
 // MARK: - {{ name }}Feature.swift
-// TCA 1.22.2를 사용한 {{ name }} Feature의 Implementation layer
-// 이 파일은 핵심 business logic, state management, view implementation을 포함
+// TCA 1.22.2를 사용한 {{ name }} Feature의 완전한 구현
+// State, Action, Reducer, View를 모두 포함한 단일 모듈
 
 import SwiftUI
 import ComposableArchitecture
-import {{ name }}FeatureInterface
 import Perception
 
 // MARK: - Feature Namespace
@@ -307,53 +203,7 @@ extension {{ name }} {
 """#
     ),
     
-      .string(
-        path: "Projects/Features/{{ name }}Feature/Implement/Sources/{{ name }}Entry+Live.swift",
-        contents: #"""
-// MARK: - {{ name }}Entry+Live.swift
-// {{ name }} Feature entry point의 Live implementation
-// 이 파일은 Interface layer와 구체적인 Implementation layer를 연결
-
-import SwiftUI
-import ComposableArchitecture
-import {{ name }}FeatureInterface
-
-// MARK: - Live Implementation
-
-public extension {{ name }}Entry {
-  
-  /// {{ name }} Feature entry의 live instance를 생성
-  static func live() -> Self {
-    .init { _ in
-      let store = Store(initialState: {{ name }}.Feature.State()) {
-        {{ name }}.Feature()
-      }
-      
-      {{ name }}.RootView(store: store)
-    }
-  }
-  
-  /// SwiftUI preview를 위한 preview instance를 생성
-  static func preview() -> Self {
-    .init { _ in
-      let store = Store(initialState: {{ name }}.Feature.State()) {
-        {{ name }}.Feature()
-      }
-      
-      {{ name }}.RootView(store: store)
-    }
-  }
-}
-"""#
-      ),
-    
-    // Testing placeholder
-    .string(
-      path: "Projects/Features/{{ name }}Feature/Testing/Sources/Placeholder.swift",
-      contents: "// Testing 플레이스홀더"
-    ),
-    
-    // Tests
+    // ── Tests
     .string(
       path: "Projects/Features/{{ name }}Feature/Tests/Sources/{{ name }}FeatureTests.swift",
       contents: #"""
@@ -363,7 +213,7 @@ public extension {{ name }}Entry {
 
 import XCTest
 import ComposableArchitecture
-@testable import {{ name }}FeatureImplement
+@testable import {{ name }}Feature
 
 // MARK: - Feature Tests
 
@@ -386,22 +236,23 @@ final class {{ name }}FeatureTests: XCTestCase {
 
 // MARK: - Integration Tests
 
-/// Integration tests for feature entry points and view integration
+/// Integration tests for feature integration
 @MainActor
-final class {{ name }}EntryTests: XCTestCase {
+final class {{ name }}FeatureIntegrationTests: XCTestCase {
   
-  /// Tests live entry point creation
-  func test_liveEntry_createsValidInstance() {
-    let entry = {{ name }}Entry.live()
-    let view = entry.makeView(.init())
+  /// Tests feature creation and basic functionality
+  func test_feature_createsValidInstance() {
+    let store = Store(initialState: {{ name }}.Feature.State()) {
+      {{ name }}.Feature()
+    }
     
-    XCTAssertNotNil(view)
+    XCTAssertNotNil(store)
   }
 }
 """#
     ),
     
-    // Example App Sources
+    // ── Example App Sources
     .string(
       path: "Projects/Features/{{ name }}Feature/Example/Sources/ExampleApp.swift",
       contents: #"""
@@ -411,8 +262,7 @@ final class {{ name }}EntryTests: XCTestCase {
 
 import SwiftUI
 import ComposableArchitecture
-import {{ name }}FeatureImplement
-import {{ name }}FeatureInterface
+import {{ name }}Feature
 
 // MARK: - Example Application
 
@@ -444,12 +294,6 @@ private struct ExampleContentView: View {
           defaultExample
         }
       }
-      
-      Section("Entry Point Integration") {
-        NavigationLink("Live Entry") {
-          entryExample
-        }
-      }
     }
   }
   
@@ -463,13 +307,6 @@ private struct ExampleContentView: View {
     }
     
     {{ name }}.RootView(store: store)
-  }
-  
-  /// Entry point integration example
-  @ViewBuilder
-  private var entryExample: some View {
-    let entry = {{ name }}Entry.live()
-    entry.makeView(.init())
   }
 }
 
@@ -485,7 +322,7 @@ private struct ExampleContentView: View {
 """#
     ),
     
-    // Example App LaunchScreen
+    // ── Example App LaunchScreen
     .string(
       path: "Projects/Features/{{ name }}Feature/Example/Resources/LaunchScreen.storyboard",
       contents: #"""
@@ -509,28 +346,30 @@ private struct ExampleContentView: View {
 </document>
 """#
     ),
+    
+    // ── Feature Extension
     .string(
       path: "Tuist/ProjectDescriptionHelpers/FeatureFactory/Features/Features+{{ name }}.swift",
       contents: #"""
-    import ProjectDescription
-    
-    // ===============================================
-    // 🚨 이 파일은 자동 생성됩니다.
-    // 이 파일을 수동으로 편집하지 마세요.
-    //
-    // 생성자: `tuist scaffold feature --name {{ name }}`
-    // 위치: Tuist/Templates/feature/feature.swift
-    //
-    // 목적:
-    // - Feature identifier를 안전하게 등록
-    // - 사용법: Feature.{{ name | lowerFirstWord }}
-    // ===============================================
-    
-    public extension Feature {
-      /// 예시: Feature.rootTab / Feature.home / Feature.calendar ...
-      static let {{ name | lowerFirstWord }} = Feature("{{ name }}")
-    }
-    """#
+import ProjectDescription
+
+// ===============================================
+// 🚨 이 파일은 자동 생성됩니다.
+// 이 파일을 수동으로 편집하지 마세요.
+//
+// 생성자: `tuist scaffold feature --name {{ name }}`
+// 위치: Tuist/Templates/feature/feature.swift
+//
+// 목적:
+// - Feature identifier를 안전하게 등록
+// - 사용법: Feature.{{ name | lowerFirstWord }}
+// ===============================================
+
+public extension Feature {
+  /// 예시: Feature.rootTab / Feature.home / Feature.calendar ...
+  static let {{ name | lowerFirstWord }} = Feature("{{ name }}")
+}
+"""#
     ),
   ]
 )

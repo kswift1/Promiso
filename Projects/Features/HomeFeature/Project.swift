@@ -7,57 +7,41 @@ let project = Project(
   name: feature.fullName,
   targets: [
 
-    // Interface
+    // Main Feature (TCA)
     .target(
-      name: "\(feature.fullName)Interface",
+      name: "HomeFeature",
       destinations: .iOS,
       product: .framework,
-      bundleId: "\(feature.defaultBundleIdPrefix).interface",
+      bundleId: "\(feature.defaultBundleIdPrefix)",
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
-      sources: ["Interface/Sources/**"],
-      dependencies: feature.interfaceDependencies,
-      settings: .standard()
-    ),
-
-    // Implement
-    .target(
-      name: "\(feature.fullName)Implement",
-      destinations: .iOS,
-      product: .framework,
-      bundleId: "\(feature.defaultBundleIdPrefix).implement",
-      deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
-      sources: ["Implement/Sources/**"],
-      dependencies: feature.implementDependencies,
-      settings: .standard()
-    ),
-
-    // Testing
-    .target(
-      name: "\(feature.fullName)Testing",
-      destinations: .iOS,
-      product: .framework,
-      bundleId: "\(feature.defaultBundleIdPrefix).testing",
-      deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
-      sources: ["Testing/Sources/**"],
-      dependencies: feature.testingDependencies,
+      sources: ["Sources/**"],
+      dependencies: [
+        .project(target: "Shared", path: "../../Shared"),
+        .project(target: "CoreInfrastructure", path: "../../Core"),
+        .project(target: "CoreNetworking", path: "../../Core"),
+        .project(target: "Domain", path: "../../Domain"),
+        .project(target: "ExternalDependency", path: "../../ExternalDependency")
+      ],
       settings: .standard()
     ),
 
     // Unit Tests
     .target(
-      name: "\(feature.fullName)Tests",
+      name: "HomeFeatureTests",
       destinations: .iOS,
       product: .unitTests,
       bundleId: "\(feature.defaultBundleIdPrefix).tests",
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Tests/Sources/**"],
-      dependencies: feature.testsDependencies,
+      dependencies: [
+        .target(name: "HomeFeature")
+      ],
       settings: .standard()
     ),
 
     // Example App (Demo)
     .target(
-      name: "\(feature.fullName)Example",
+      name: "HomeFeatureExample",
       destinations: .iOS,
       product: .app,
       bundleId: "\(feature.defaultBundleIdPrefix).example",
@@ -67,7 +51,9 @@ let project = Project(
       ]),
       sources: ["Example/Sources/**"],
       resources: ["Example/Resources/**"],
-      dependencies: feature.exampleDependencies,
+      dependencies: [
+        .target(name: "HomeFeature")
+      ],
       settings: .standard()
     )
   ]

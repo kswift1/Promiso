@@ -1,0 +1,141 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===== USERS COLLECTION =====
+    match /users/{userId} {
+      // 사용자는 자신의 문서만 읽고 쓸 수 있음
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      // 사용자의 그룹 서브컬렉션
+      match /groups/{groupId} {
+        // 그룹 멤버만 읽기 가능
+        allow read: if request.auth != null && 
+          exists(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid));
+        
+        // 그룹 관리자만 쓰기 가능
+        allow write: if request.auth != null && 
+          get(/databases/$(database)/documents/groups/$(groupId)).data.createdBy == request.auth.uid;
+      }
+    }
+    
+    // ===== GROUPS COLLECTION =====
+    match /groups/{groupId} {
+      // 그룹 멤버만 읽기 가능
+      allow read: if request.auth != null && 
+        exists(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid));
+      
+      // 그룹 생성자만 쓰기 가능
+      allow create: if request.auth != null && 
+        request.auth.uid == resource.data.createdBy;
+      
+      // 그룹 관리자만 업데이트 가능
+      allow update: if request.auth != null && 
+        get(/databases/$(database)/documents/groups/$(groupId)).data.createdBy == request.auth.uid;
+      
+      // 그룹 멤버 서브컬렉션
+      match /members/{userId} {
+        // 그룹 멤버만 읽기 가능
+        allow read: if request.auth != null && 
+          exists(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid));
+        
+        // 그룹 관리자만 멤버 추가/제거 가능
+        allow write: if request.auth != null && 
+          get(/databases/$(database)/documents/groups/$(groupId)).data.createdBy == request.auth.uid;
+      }
+    }
+    
+    // ===== PROMISES COLLECTION =====
+    match /promises/{promiseId} {
+      // 그룹 멤버만 읽기 가능
+      allow read: if request.auth != null && 
+        exists(/databases/$(database)/documents/groups/$(resource.data.groupId)/members/$(request.auth.uid));
+      
+      // 그룹 멤버만 약속 생성 가능
+      allow create: if request.auth != null && 
+        exists(/databases/$(database)/documents/groups/$(request.resource.data.groupId)/members/$(request.auth.uid)) &&
+        request.auth.uid == request.resource.data.hostId;
+      
+      // 호스트만 약속 업데이트 가능 (단, counts, isConfirmed, confirmedAt는 서버만)
+      allow update: if request.auth != null && 
+        exists(/databases/$(database)/documents/groups/$(resource.data.groupId)/members/$(request.auth.uid)) &&
+        request.auth.uid == resource.data.hostId &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['counts', 'isConfirmed', 'confirmedAt']);
+      
+      // 호스트만 약속 삭제 가능 (soft delete)
+      allow delete: if request.auth != null && 
+        request.auth.uid == resource.data.hostId;
+      
+      // 참석 서브컬렉션
+      match /attendances/{userId} {
+        // 그룹 멤버만 읽기 가능
+        allow read: if request.auth != null && 
+          exists(/databases/$(database)/documents/groups/$(get(/databases/$(database)/documents/promises/$(promiseId)).data.groupId)/members/$(request.auth.uid));
+        
+        // 본인만 참석 상태 업데이트 가능
+        allow update: if request.auth != null && 
+          request.auth.uid == userId &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'respondedAt', 'message', 'lastViewedAt']);
+        
+        // 호스트만 초대 생성 가능
+        allow create: if request.auth != null && 
+          request.auth.uid == get(/databases/$(database)/documents/promises/$(promiseId)).data.hostId;
+      }
+    }
+    
+    // ===== NOTIFICATIONS COLLECTION =====
+    match /notifications/{notificationId} {
+      // 본인만 읽기 가능
+      allow read: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+      
+      // 본인만 읽음 상태 업데이트 가능
+      allow update: if request.auth != null && 
+        request.auth.uid == resource.data.userId &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead', 'readAt']);
+      
+      // 서버(Cloud Functions)만 알림 생성 가능
+      allow create: if false; // Cloud Functions에서만 생성
+    }
+    
+    // ===== ADMIN FUNCTIONS =====
+    // 서버 전용 함수들 (Cloud Functions에서만 접근 가능)
+    match /admin/{document=**} {
+      allow read, write: if false; // Cloud Functions에서만 접근
+    }
+    
+    // ===== SYSTEM FUNCTIONS =====
+    // 시스템 업데이트용 (Cloud Functions에서만 접근 가능)
+    match /system/{document=**} {
+      allow read, write: if false; // Cloud Functions에서만 접근
+    }
+  }
+}
+
+// ===== HELPER FUNCTIONS =====
+
+// 사용자가 그룹 멤버인지 확인
+function isGroupMember(groupId, userId) {
+  return exists(/databases/$(database)/documents/groups/$(groupId)/members/$(userId));
+}
+
+// 사용자가 그룹 관리자인지 확인
+function isGroupAdmin(groupId, userId) {
+  return get(/databases/$(database)/documents/groups/$(groupId)).data.createdBy == userId;
+}
+
+// 사용자가 약속 호스트인지 확인
+function isPromiseHost(promiseId, userId) {
+  return get(/databases/$(database)/documents/promises/$(promiseId)).data.hostId == userId;
+}
+
+// 인증된 사용자인지 확인
+function isAuthenticated() {
+  return request.auth != null;
+}
+
+// 요청이 서버에서 오는지 확인 (Cloud Functions)
+function isServerRequest() {
+  return request.auth != null && request.auth.token.admin == true;
+}

@@ -134,8 +134,6 @@ struct TodayPromiseSection: View {
   }
 }
 
-import HomeFeatureInterface
-
 #Preview {
   let store = Store(initialState: Home.Feature.State()) {
     Home.Feature()

@@ -1,10 +1,8 @@
 import SwiftUI
 import ComposableArchitecture
-import RootTabFeatureImplement
-import PromiseFeatureInterface
-import PromiseFeatureImplement
-import HomeFeatureInterface
-import HomeFeatureImplement
+import RootTabFeature
+import HomeFeature
+import PromiseFeature
 
 @main
 struct PromisoApp: App {
@@ -18,12 +16,8 @@ struct PromisoApp: App {
         RootTab.Feature()
       }
       
-      // Entry들을 App에서 생성 (Implement에 의존)
-      let promiseEntry = PromiseEntry.live()
-      let homeEntry = HomeEntry.live()
-      
-      // 의존성을 주입하여 RootView 생성
-      RootTab.RootView(store: store, promiseEntry: promiseEntry, homeEntry: homeEntry)
+      // TCA Feature들을 직접 사용
+      RootTab.RootView(store: store)
     }
   }
 }

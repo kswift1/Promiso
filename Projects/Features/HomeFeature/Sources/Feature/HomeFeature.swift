@@ -4,7 +4,6 @@
 
 import SwiftUI
 import ComposableArchitecture
-import HomeFeatureInterface
 
 // MARK: - Feature Namespace
 

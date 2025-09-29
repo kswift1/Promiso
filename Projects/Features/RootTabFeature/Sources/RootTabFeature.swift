@@ -4,14 +4,24 @@
 
 import SwiftUI
 import ComposableArchitecture
-import RootTabFeatureInterface
 import Perception
-import PromiseFeatureInterface
-import HomeFeatureInterface
 import Dependencies
 import CoreInfrastructure
 
-public typealias Tab = RootTabFeatureInterface.Tab
+import HomeFeature
+import PromiseFeature
+
+public enum Tab: String, CaseIterable {
+  case home = "홈"
+  case promise = "약속"
+  
+  var iconName: String {
+    switch self {
+    case .home: return "house.fill"
+    case .promise: return "calendar.badge.plus"
+    }
+  }
+}
 
 // MARK: - Feature Namespace
 
@@ -33,13 +43,12 @@ extension RootTab {
     @ObservableState
     public struct State: Equatable {
       /// 현재 선택된 탭
-      public var selectedTab: Tab = .home
+      var selectedTab: Tab = .home
       
       /// 사이드 드로어 상태
-      public var sideDrawer: SideDrawerFeature.State = SideDrawerFeature.State()
+      var sideDrawer: SideDrawerFeature.State = SideDrawerFeature.State()
       
-      /// State 초기화
-      public init() {}
+      public init () {}
     }
     
     public enum Action: Equatable {
@@ -78,20 +87,16 @@ extension RootTab {
   /// RootTab Feature의 Root View
   public struct RootView: View {
     private let store: StoreOf<RootTab.Feature>
-    private let promiseEntry: PromiseEntry
-    private let homeEntry: HomeEntry
     
-    public init(store: StoreOf<RootTab.Feature>, promiseEntry: PromiseEntry, homeEntry: HomeEntry) {
+    public init(store: StoreOf<RootTab.Feature>) {
       self.store = store
-      self.promiseEntry = promiseEntry
-      self.homeEntry = homeEntry
     }
     
     public var body: some View {
       WithPerceptionTracking {
         ZStack(alignment: .leading) {
           // 메인 탭 콘텐츠
-          TabViewContent(store: store, promiseEntry: promiseEntry, homeEntry: homeEntry)
+          TabViewContent(store: store)
             .offset(x: store.sideDrawer.showDrawer ? 256 + store.sideDrawer.dragOffset : store.sideDrawer.dragOffset)
             .animation(.spring(response: 0.3, dampingFraction: 0.8, blendDuration: 0), value: store.sideDrawer.showDrawer)
             .animation(.interactiveSpring(response: 0.2, dampingFraction: 0.9, blendDuration: 0), value: store.sideDrawer.dragOffset)
@@ -164,8 +169,6 @@ extension RootTab {
   
   private struct TabViewContent: View {
     let store: StoreOf<RootTab.Feature>
-    let promiseEntry: PromiseEntry
-    let homeEntry: HomeEntry
     
     var body: some View {
       WithPerceptionTracking {
@@ -189,9 +192,15 @@ extension RootTab {
     private func tabContentView(for tab: Tab) -> some View {
       switch tab {
       case .home:
-        homeEntry.makeView(.init())
+        let homeStore = Store(initialState: Home.Feature.State()) {
+          Home.Feature()
+        }
+        Home.RootView(store: homeStore)
       case .promise:
-        PromiseTabView(promiseEntry: promiseEntry, store: store)
+        let promiseStore = Store(initialState: Promise.Feature.State()) {
+          Promise.Feature()
+        }
+        Promise.RootView(store: promiseStore)
       }
     }
   }
@@ -217,51 +226,6 @@ extension RootTab {
   }
 }
 
-// MARK: - Promise Tab View
-
-/// Promise 탭의 내용을 표시하는 View
-/// PromiseEntry를 주입받아 사용
-private struct PromiseTabView: View {
-  let promiseEntry: PromiseEntry
-  let store: StoreOf<RootTab.Feature>
-  
-  var body: some View {
-    VStack(spacing: 0) {
-      // 햄버거 메뉴가 있는 헤더
-      HStack {
-        Button(action: {
-          store.send(.sideDrawer(.toggle))
-        }) {
-          Image(systemName: "line.3.horizontal")
-            .font(.title2)
-            .foregroundColor(.primary)
-        }
-        
-        Spacer()
-        
-        Text("약속")
-          .font(.title2)
-          .fontWeight(.semibold)
-        
-        Spacer()
-        
-        // 햄버거 버튼과 균형을 맞추기 위한 투명한 버튼
-        Button(action: {}) {
-          Image(systemName: "line.3.horizontal")
-            .font(.title2)
-            .foregroundColor(.clear)
-        }
-        .disabled(true)
-      }
-      .padding(.horizontal, 16)
-      .padding(.top, 8)
-      .padding(.bottom, 8)
-      
-      // Promise Feature 콘텐츠
-      promiseEntry.makeView(.init())
-    }
-  }
-}
 
 // MARK: - Side Drawer View
 
