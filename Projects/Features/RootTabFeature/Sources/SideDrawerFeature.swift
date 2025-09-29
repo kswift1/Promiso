@@ -12,11 +12,11 @@ public enum SideDrawer {}
 @Reducer
 public struct SideDrawerFeature {
   @Dependency(\.hapticFeedback) var hapticFeedback
-  
-  public init() {}
 
   @ObservableState
   public struct State: Equatable {
+    /// 드래그 최대값
+    public let maxDragOffset: CGFloat
     /// 사이드 드로어 표시 여부
     public var showDrawer: Bool = false
     /// 드래그 오프셋
@@ -24,7 +24,9 @@ public struct SideDrawerFeature {
     /// 오버레이 투명도 (드래그 위치에 따라 동적 변경)
     public var overlayOpacity: Double = 0.0
 
-    public init() {}
+    public init(maxDragOffset: CGFloat) {
+      self.maxDragOffset = maxDragOffset
+    }
   }
 
   public enum Action: Equatable {
@@ -61,17 +63,17 @@ public struct SideDrawerFeature {
         // 드래그 위치에 따라 opacity 계산
         if state.showDrawer {
           // 드로어가 열려있을 때: 닫히는 방향으로 드래그하면 opacity 감소
-          let progress = max(0, min(1, (256 + offset) / 256))
+          let progress = max(0, min(1, (state.maxDragOffset + offset) / state.maxDragOffset))
           state.overlayOpacity = 0.1 * progress
         } else {
           // 드로어가 닫혀있을 때: 열리는 방향으로 드래그하면 opacity 증가
-          let progress = max(0, min(1, offset / 256))
+          let progress = max(0, min(1, offset / state.maxDragOffset))
           state.overlayOpacity = 0.1 * progress
         }
         return .none
 
       case .dragEnded:
-        let threshold: CGFloat = 100
+        let threshold: CGFloat = state.maxDragOffset * 0.4
         var shouldProvideHaptic = false
 
         if state.showDrawer {

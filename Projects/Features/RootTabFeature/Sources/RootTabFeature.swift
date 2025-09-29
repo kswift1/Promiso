@@ -7,6 +7,7 @@ import ComposableArchitecture
 import Perception
 import Dependencies
 import CoreInfrastructure
+import Shared
 
 import HomeFeature
 import PromiseFeature
@@ -46,7 +47,7 @@ extension RootTab {
       var selectedTab: Tab = .home
       
       /// 사이드 드로어 상태
-      var sideDrawer: SideDrawerFeature.State = SideDrawerFeature.State()
+      var sideDrawer: SideDrawerFeature.State = SideDrawerFeature.State(maxDragOffset: AppConstants.UI.SideDrawer.width)
       
       public init () {}
     }
@@ -73,7 +74,8 @@ extension RootTab {
           }
           
         case .sideDrawer(let sideDrawerAction):
-          return SideDrawerFeature().reduce(into: &state.sideDrawer, action: sideDrawerAction)
+          return SideDrawerFeature()
+            .reduce(into: &state.sideDrawer, action: sideDrawerAction)
             .map(Action.sideDrawer)
         }
       }
@@ -97,7 +99,7 @@ extension RootTab {
         ZStack(alignment: .leading) {
           // 메인 탭 콘텐츠
           TabViewContent(store: store)
-            .offset(x: store.sideDrawer.showDrawer ? 256 + store.sideDrawer.dragOffset : store.sideDrawer.dragOffset)
+            .offset(x: store.sideDrawer.showDrawer ? AppConstants.UI.SideDrawer.width + store.sideDrawer.dragOffset : store.sideDrawer.dragOffset)
             .animation(.spring(response: 0.3, dampingFraction: 0.8, blendDuration: 0), value: store.sideDrawer.showDrawer)
             .animation(.interactiveSpring(response: 0.2, dampingFraction: 0.9, blendDuration: 0), value: store.sideDrawer.dragOffset)
           
@@ -115,8 +117,8 @@ extension RootTab {
           
           // 사이드 드로어 (오버레이 위에 표시)
           sideDrawerView
-            .frame(width: 256)
-            .offset(x: store.sideDrawer.showDrawer ? store.sideDrawer.dragOffset : -256 + store.sideDrawer.dragOffset)
+            .frame(width: AppConstants.UI.SideDrawer.width)
+            .offset(x: store.sideDrawer.showDrawer ? store.sideDrawer.dragOffset : AppConstants.UI.SideDrawer.minDragOffset + store.sideDrawer.dragOffset)
             .animation(.spring(response: 0.3, dampingFraction: 0.8, blendDuration: 0), value: store.sideDrawer.showDrawer)
             .animation(.interactiveSpring(response: 0.2, dampingFraction: 0.9, blendDuration: 0), value: store.sideDrawer.dragOffset)
         }
@@ -130,12 +132,12 @@ extension RootTab {
               
               guard isDraggingToOpen || isDraggingToClose else { return }
               
-              // Offset 계산 (드로어 너비 256 제한)
+              // Offset 계산
               let clampedOffset: CGFloat
               if isDraggingToOpen {
-                clampedOffset = min(dragDistance, 256)
+                clampedOffset = min(dragDistance, AppConstants.UI.SideDrawer.maxDragOffset)
               } else {
-                clampedOffset = max(dragDistance, -256)
+                clampedOffset = max(dragDistance, AppConstants.UI.SideDrawer.minDragOffset)
               }
               
               // Store에 변경사항 전달
@@ -207,7 +209,7 @@ extension RootTab.RootView {
         
         Spacer()
       }
-      .frame(width: 256, alignment: .leading)
+      .frame(width: AppConstants.UI.SideDrawer.width, alignment: .leading)
       .background(Color.white)
       .shadow(color: .black.opacity(0.1), radius: 5, x: 2, y: 0)
     }

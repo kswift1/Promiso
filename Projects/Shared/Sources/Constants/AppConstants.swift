@@ -70,6 +70,12 @@ public enum AppConstants {
     // Safe Margins
     public static let safeMargin: CGFloat = 16
     public static let minimumTouchSize: CGFloat = 44
+    
+    public enum SideDrawer {
+      public static let width: CGFloat = 256
+      public static let maxDragOffset: CGFloat = 256
+      public static let minDragOffset: CGFloat = -256
+    }
   }
   
   // MARK: - User Defaults Keys
