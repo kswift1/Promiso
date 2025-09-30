@@ -182,10 +182,10 @@ extension RootTab {
         }
         Home.RootView(store: homeStore)
       case .promise:
-        let promiseStore = Store(initialState: Promise.Feature.State()) {
-          Promise.Feature()
+        let promiseStore = Store(initialState: PromiseMain.Feature.State()) {
+          PromiseMain.Feature()
         }
-        Promise.RootView(store: promiseStore)
+        PromiseMain.RootView(store: promiseStore)
       }
     }
   }

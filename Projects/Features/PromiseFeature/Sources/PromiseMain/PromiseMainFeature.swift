@@ -9,11 +9,11 @@ import ComposableArchitecture
 
 /// Promise Feature 컴포넌트를 위한 Namespace
 /// 조직적 구조를 제공하고 다른 Feature들과의 naming conflict를 방지
-public enum Promise {}
+public enum PromiseMain {}
 
 // MARK: - Core Feature Implementation
 
-extension Promise {
+extension PromiseMain {
   
   // MARK: - Reducer
   
@@ -39,6 +39,9 @@ extension Promise {
       // MARK: - Segment Control
       public var selectedSegment: PromiseSegment = .received
       public var proposals: ProposalModel = .example
+      
+      // MARK: - Presents
+      @Presents var createPromise: CreatePromise.Feature.State?
       
       // MARK: - Groups
       public var currentGroup: String = "지민과 나"
@@ -68,7 +71,9 @@ extension Promise {
       case proposalSelected(String) // Proposal ID
       case acceptProposal(String) // Proposal ID
       case rejectProposal(String) // Proposal ID
-      case createNewProposal
+      
+      case createNewProposal // 새 제안 만들기 버튼 클릭
+      case createPromise(PresentationAction<CreatePromise.Feature.Action>)
       
       // MARK: Group Actions
       case groupSelected(String) // Group ID
@@ -108,7 +113,22 @@ extension Promise {
           return .none
           
         case .createNewProposal:
-          // 새 제안 만들기 화면으로 이동
+          // CreatePromise Feature의 State를 생성하여 할당
+          state.createPromise = CreatePromise.Feature.State()
+          return .none
+          
+        case .createPromise(.presented(.dismiss)):
+          // 시트 닫기
+          state.createPromise = nil
+          return .none
+          
+        case .createPromise(.presented(.promiseCreated)):
+          // 약속 생성 완료 후 처리
+          state.createPromise = nil
+          // 추가 로직 (예: 목록 새로고침)
+          return .none
+          
+        case .createPromise:
           return .none
           
         case .groupSelected(let id):
@@ -127,18 +147,21 @@ extension Promise {
           return .none
         }
       }
+      .ifLet(\.$createPromise, action: \.createPromise) {
+        CreatePromise.Feature()
+      }
     }
   }
 }
 
 // MARK: - View Implementation
 
-extension Promise {
+extension PromiseMain {
   /// Promise Feature의 Root View
   public struct RootView: View {
-    private let store: StoreOf<Promise.Feature>
+    @Perception.Bindable private var store: StoreOf<PromiseMain.Feature>
     
-    public init(store: StoreOf<Promise.Feature>) {
+    public init(store: StoreOf<PromiseMain.Feature>) {
       self.store = store
     }
     
@@ -173,6 +196,14 @@ extension Promise {
           }
           .padding(.horizontal, 16)
           .padding(.bottom, 20)
+          .fullScreenCover(
+            store: store.scope(
+              state: \.$createPromise,
+              action: \.createPromise
+            )
+          ) { childStore in
+            CreatePromise.RootView(store: childStore)
+          }
         }
       }
     }
@@ -451,3 +482,4 @@ public struct GroupItem: Equatable, Identifiable {
   public let members: [String]
   public var isActive: Bool
 }
+
