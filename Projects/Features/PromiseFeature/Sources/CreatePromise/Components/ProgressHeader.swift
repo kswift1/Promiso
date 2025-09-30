@@ -37,10 +37,7 @@ struct ProgressHeader: View {
       // 프로그레스 바
       HStack(spacing: 8) {
         ForEach(0...totalSteps-1, id: \.self) { step in
-          ProgressSegment(
-            isActive: step <= currentStep,
-            isAnimating: step == currentStep
-          )
+          ProgressSegment(isActive: step <= currentStep)
         }
       }
       .padding(.horizontal, 16)
@@ -59,32 +56,43 @@ struct ProgressHeader: View {
 
 // MARK: - Progress Segment
 struct ProgressSegment: View {
+  @State private var hasAppeared: Bool = false
   let isActive: Bool
-  let isAnimating: Bool
-  
-  @State private var animationAmount: CGFloat = 0
-  
+
+  private let firstDelay: TimeInterval = 0.2
+  private let animationDuration: TimeInterval = 0.5
+
   var body: some View {
     GeometryReader { geometry in
       ZStack(alignment: .leading) {
         // 배경
         Rectangle()
           .fill(Color(.systemGray5))
-        
+
         // 활성화된 프로그레스
-        if isActive {
-          Rectangle()
-            .fill(Color.blue)
-            .frame(width: isAnimating ? geometry.size.width * animationAmount : geometry.size.width)
-        }
+        Rectangle()
+          .fill(Color.blue)
+          .frame(width: (isActive && hasAppeared) ? geometry.size.width : 0)
       }
     }
     .frame(height: 4)
     .clipShape(Capsule())
     .onAppear {
-      if isAnimating {
-        withAnimation(.easeInOut(duration: 0.3)) {
-          animationAmount = 1.0
+      withAnimation(.easeInOut(duration: animationDuration).delay(firstDelay)) {
+        hasAppeared = true
+      }
+    }
+    .onChange(of: isActive) { oldValue, newValue in
+      guard hasAppeared else { return }
+      if newValue {
+        // 다음 단계로: 채워지는 애니메이션 (easeOut - 빠르게 시작, 천천히 끝)
+        withAnimation(.easeOut(duration: animationDuration)) {
+          // isActive 변경 시 자동으로 애니메이션
+        }
+      } else {
+        // 이전 단계로: 비워지는 애니메이션 (easeIn - 천천히 시작, 빠르게 끝)
+        withAnimation(.easeIn(duration: animationDuration)) {
+          // isActive 변경 시 자동으로 애니메이션
         }
       }
     }
