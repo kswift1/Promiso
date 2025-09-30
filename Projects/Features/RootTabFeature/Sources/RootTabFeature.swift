@@ -95,8 +95,7 @@ extension RootTab {
     }
     
     public var body: some View {
-      WithPerceptionTracking {
-        ZStack(alignment: .leading) {
+      ZStack(alignment: .leading) {
           // 메인 탭 콘텐츠
           TabViewContent(store: store)
             .offset(x: store.sideDrawer.showDrawer ? AppConstants.UI.SideDrawer.width + store.sideDrawer.dragOffset : store.sideDrawer.dragOffset)
@@ -149,16 +148,13 @@ extension RootTab {
           isEnabled: store.state.selectedTab == .promise
         )
       }
-    }
   }
   
   private struct TabViewContent: View {
-    let store: StoreOf<RootTab.Feature>
-    
+    @Bindable var store: StoreOf<RootTab.Feature>
+
     var body: some View {
-      WithPerceptionTracking {
-        @Perception.Bindable var store = store
-        TabView(selection: $store.selectedTab.sending(\.tabSelected)) {
+      TabView(selection: $store.selectedTab.sending(\.tabSelected)) {
           ForEach(Tab.allCases, id: \.self) { tab in
             tabContentView(for: tab)
               .tabItem {
@@ -171,7 +167,6 @@ extension RootTab {
           store.send(.onAppear)
         }
       }
-    }
     
     @ViewBuilder
     private func tabContentView(for tab: Tab) -> some View {
@@ -196,8 +191,7 @@ extension RootTab {
 
 extension RootTab.RootView {
   private var sideDrawerView: some View {
-    WithPerceptionTracking {
-      VStack(alignment: .leading, spacing: 0) {
+    VStack(alignment: .leading, spacing: 0) {
         // 드로어 헤더
         drawerHeader
         
@@ -213,11 +207,9 @@ extension RootTab.RootView {
       .background(Color.white)
       .shadow(color: .black.opacity(0.1), radius: 5, x: 2, y: 0)
     }
-  }
   
   private var drawerHeader: some View {
-    WithPerceptionTracking {
-      VStack(alignment: .leading, spacing: 8) {
+    VStack(alignment: .leading, spacing: 8) {
         HStack {
           VStack(alignment: .leading, spacing: 4) {
             Text("Promiso")
@@ -243,15 +235,13 @@ extension RootTab.RootView {
         .padding(.horizontal, 20)
         .padding(.top, 20)
         .padding(.bottom, 16)
-        
+
         Divider()
       }
     }
-  }
   
   private var drawerGroupsList: some View {
-    WithPerceptionTracking {
-      VStack(alignment: .leading, spacing: 0) {
+    VStack(alignment: .leading, spacing: 0) {
         Text("그룹")
           .font(.headline)
           .fontWeight(.semibold)
@@ -296,11 +286,9 @@ extension RootTab.RootView {
         }
       }
     }
-  }
-  
+
   private var drawerSettingsMenu: some View {
-    WithPerceptionTracking {
-      VStack(alignment: .leading, spacing: 0) {
+    VStack(alignment: .leading, spacing: 0) {
         Text("설정")
           .font(.headline)
           .fontWeight(.semibold)
@@ -336,7 +324,6 @@ extension RootTab.RootView {
         }
       }
     }
-  }
 }
 
 // MARK: - Sample Data

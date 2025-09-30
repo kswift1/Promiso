@@ -59,8 +59,7 @@ extension CreatePromise {
     }
     
     var body: some View {
-      WithPerceptionTracking {
-        VStack(spacing: 0) {
+      VStack(spacing: 0) {
           
           // Progress Header
           ProgressHeader(
@@ -101,7 +100,6 @@ extension CreatePromise {
         }
         .navigationBarHidden(true)
       }
-    }
   }
 }
 

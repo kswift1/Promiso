@@ -19,29 +19,23 @@ struct TodayPromiseSection: View {
   }
   
   var body: some View {
-    WithPerceptionTracking {
-      VStack(alignment: .leading, spacing: 12) {
-        SectionHeader(
-          title: "오늘 확정된 약속",
-          accessoryView: {
-            WithPerceptionTracking {
-              Text("\(store.todaysPromises.count)개")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-            }
-          }
-        )
-        
-        ForEach(store.todaysPromises.indices, id: \.self) { index in
-          WithPerceptionTracking {
-            let promise = store.todaysPromises[index]
-            let isLast = index == store.todaysPromises.indices.last
-            promiseCard(promise, isLast: isLast)
-          }
+    VStack(alignment: .leading, spacing: 12) {
+      SectionHeader(
+        title: "오늘 확정된 약속",
+        accessoryView: {
+          Text("\(store.todaysPromises.count)개")
+            .font(.subheadline)
+            .foregroundColor(.secondary)
         }
+      )
+
+      ForEach(store.todaysPromises.indices, id: \.self) { index in
+        let promise = store.todaysPromises[index]
+        let isLast = index == store.todaysPromises.indices.last
+        promiseCard(promise, isLast: isLast)
       }
-      .padding(.horizontal, AppConstants.UI.safeMargin)
     }
+    .padding(.horizontal, AppConstants.UI.safeMargin)
   }
   
   private func promiseCard(_ promise: Home.PromiseItem, isLast: Bool) -> some View {

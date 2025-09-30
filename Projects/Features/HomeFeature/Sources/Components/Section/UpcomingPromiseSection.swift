@@ -17,18 +17,14 @@ struct UpcomingPromiseSection: View {
   }
   
   var body: some View {
-    WithPerceptionTracking {
-      VStack(alignment: .leading, spacing: 12) {
-        SectionHeader(title: "다가오는 약속")
-        
-        ForEach(store.pendingResponses) { response in
-          WithPerceptionTracking {
-            upcomingPromiseCard()
-          }
-        }
+    VStack(alignment: .leading, spacing: 12) {
+      SectionHeader(title: "다가오는 약속")
+
+      ForEach(store.pendingResponses) { response in
+        upcomingPromiseCard()
       }
-      .padding(.horizontal, AppConstants.UI.safeMargin)
     }
+    .padding(.horizontal, AppConstants.UI.safeMargin)
   }
   
   // FIXME:

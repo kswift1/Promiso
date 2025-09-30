@@ -11,7 +11,7 @@ public enum AppConfig {
     return "\(bundlePrefix).\(module.lowercased())"
   }
 
-  public static let deploymentTargets = "16.4"
+  public static let deploymentTargets = "17.0"
   public static let defaultRegions = ["en", "ko"]
   
   public static let marketingNumber = "1.0.0"

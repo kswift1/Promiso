@@ -159,8 +159,8 @@ extension PromiseMain {
 extension PromiseMain {
   /// Promise Feature의 Root View
   public struct RootView: View {
-    @Perception.Bindable private var store: StoreOf<PromiseMain.Feature>
-    
+    @Bindable private var store: StoreOf<PromiseMain.Feature>
+
     public init(store: StoreOf<PromiseMain.Feature>) {
       self.store = store
     }
@@ -168,42 +168,38 @@ extension PromiseMain {
     // MARK: - Body
     
     public var body: some View {
-      WithPerceptionTracking {
-        mainContentView
-          .onAppear {
-            store.send(.onAppear)
-          }
-      }
+      mainContentView
+        .onAppear {
+          store.send(.onAppear)
+        }
     }
     
     // MARK: - Main Content View
-    
+
     private var mainContentView: some View {
-      WithPerceptionTracking {
-        ScrollView {
-          VStack(spacing: 20) {
-            // 현재 그룹 표시
-            currentGroupSection
-            
-            // 세그먼트 컨트롤
-            segmentControl
-            
-            // 제안 목록
-            proposalsList
-            
-            // 새 제안 만들기 버튼
-            createNewProposalButton
-          }
-          .padding(.horizontal, 16)
-          .padding(.bottom, 20)
-          .fullScreenCover(
-            store: store.scope(
-              state: \.$createPromise,
-              action: \.createPromise
-            )
-          ) { childStore in
-            CreatePromise.RootView(store: childStore)
-          }
+      ScrollView {
+        VStack(spacing: 20) {
+          // 현재 그룹 표시
+          currentGroupSection
+          
+          // 세그먼트 컨트롤
+          segmentControl
+          
+          // 제안 목록
+          proposalsList
+          
+          // 새 제안 만들기 버튼
+          createNewProposalButton
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 20)
+        .fullScreenCover(
+          store: store.scope(
+            state: \.$createPromise,
+            action: \.createPromise
+          )
+        ) { childStore in
+          CreatePromise.RootView(store: childStore)
         }
       }
     }
@@ -212,37 +208,35 @@ extension PromiseMain {
     // MARK: - Current Group Section
     
     private var currentGroupSection: some View {
-      WithPerceptionTracking {
-        HStack {
-          Image(systemName: "person.2.fill")
-            .foregroundColor(.blue)
-            .font(.title2)
+      HStack {
+        Image(systemName: "person.2.fill")
+          .foregroundColor(.blue)
+          .font(.title2)
+        
+        VStack(alignment: .leading, spacing: 4) {
+          Text(store.currentGroup)
+            .font(.headline)
+            .fontWeight(.semibold)
+            .foregroundColor(.primary)
           
-          VStack(alignment: .leading, spacing: 4) {
-            Text(store.currentGroup)
-              .font(.headline)
-              .fontWeight(.semibold)
-              .foregroundColor(.primary)
-            
-            Text("현재 그룹")
-              .font(.caption)
-              .foregroundColor(.secondary)
-          }
-          
-          Spacer()
-          
-          Button(action: {
-            // 그룹 선택 화면으로 이동
-          }) {
-            Image(systemName: "chevron.right")
-              .foregroundColor(.secondary)
-              .font(.caption)
-          }
+          Text("현재 그룹")
+            .font(.caption)
+            .foregroundColor(.secondary)
         }
-        .padding(16)
-        .background(Color.blue.opacity(0.1))
-        .cornerRadius(12)
+        
+        Spacer()
+        
+        Button(action: {
+          // 그룹 선택 화면으로 이동
+        }) {
+          Image(systemName: "chevron.right")
+            .foregroundColor(.secondary)
+            .font(.caption)
+        }
       }
+      .padding(16)
+      .background(Color.blue.opacity(0.1))
+      .cornerRadius(12)
     }
     
     // MARK: - Segment Control
@@ -250,21 +244,19 @@ extension PromiseMain {
     private var segmentControl: some View {
       HStack(spacing: 0) {
         ForEach(PromiseSegment.allCases, id: \.self) { segment in
-          WithPerceptionTracking {
-            Button(action: {
-              store.send(.segmentChanged(segment))
-            }) {
-              Text(segment.title)
-                .font(.subheadline)
-                .fontWeight(.medium)
-                .foregroundColor(store.selectedSegment == segment ? .white : .primary)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .background(
-                  RoundedRectangle(cornerRadius: 8)
-                    .fill(store.selectedSegment == segment ? Color.blue : Color.clear)
-                )
-            }
+          Button(action: {
+            store.send(.segmentChanged(segment))
+          }) {
+            Text(segment.title)
+              .font(.subheadline)
+              .fontWeight(.medium)
+              .foregroundColor(store.selectedSegment == segment ? .white : .primary)
+              .frame(maxWidth: .infinity)
+              .padding(.vertical, 12)
+              .background(
+                RoundedRectangle(cornerRadius: 8)
+                  .fill(store.selectedSegment == segment ? Color.blue : Color.clear)
+              )
           }
         }
       }
@@ -278,14 +270,12 @@ extension PromiseMain {
     private var proposalsList: some View {
       LazyVStack(spacing: 12) {
         ForEach(currentProposals) { proposal in
-          WithPerceptionTracking {
-            ProposalCard(proposal: proposal) {
-              store.send(.proposalSelected(proposal.id))
-            } onAccept: {
-              store.send(.acceptProposal(proposal.id))
-            } onReject: {
-              store.send(.rejectProposal(proposal.id))
-            }
+          ProposalCard(proposal: proposal) {
+            store.send(.proposalSelected(proposal.id))
+          } onAccept: {
+            store.send(.acceptProposal(proposal.id))
+          } onReject: {
+            store.send(.rejectProposal(proposal.id))
           }
         }
       }
@@ -294,25 +284,23 @@ extension PromiseMain {
     // MARK: - Create New Proposal Button
     
     private var createNewProposalButton: some View {
-      WithPerceptionTracking {
-        Button(action: {
-          store.send(.createNewProposal)
-        }) {
-          HStack {
-            Image(systemName: "plus.circle.fill")
-              .font(.title2)
-              .foregroundColor(.white)
-            
-            Text("새 약속 만들기")
-              .font(.headline)
-              .fontWeight(.semibold)
-              .foregroundColor(.white)
-          }
-          .frame(maxWidth: .infinity)
-          .padding(.vertical, 16)
-          .background(Color.blue)
-          .cornerRadius(12)
+      Button(action: {
+        store.send(.createNewProposal)
+      }) {
+        HStack {
+          Image(systemName: "plus.circle.fill")
+            .font(.title2)
+            .foregroundColor(.white)
+          
+          Text("새 약속 만들기")
+            .font(.headline)
+            .fontWeight(.semibold)
+            .foregroundColor(.white)
         }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 16)
+        .background(Color.blue)
+        .cornerRadius(12)
       }
     }
     

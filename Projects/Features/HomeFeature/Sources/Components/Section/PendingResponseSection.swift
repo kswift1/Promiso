@@ -17,28 +17,24 @@ struct PendingResponseSection: View {
   }
   
   var body: some View {
-    WithPerceptionTracking {
-      VStack(alignment: .leading, spacing: 12) {
-        
-        SectionHeader(
-          title: "답변 필요한 제안",
-          accessoryView: {
-            WithPerceptionTracking {
-              Button("모두 보기 →") {
-                store.send(.viewPendingResponses)
-              }
-              .font(.subheadline)
-              .foregroundColor(.blue)
-            }
+    VStack(alignment: .leading, spacing: 12) {
+
+      SectionHeader(
+        title: "답변 필요한 제안",
+        accessoryView: {
+          Button("모두 보기 →") {
+            store.send(.viewPendingResponses)
           }
-        )
-        
-        ForEach(store.pendingResponses) { response in
-          pendingResponseCard(response)
+          .font(.subheadline)
+          .foregroundColor(.blue)
         }
+      )
+
+      ForEach(store.pendingResponses) { response in
+        pendingResponseCard(response)
       }
-      .padding(.horizontal, AppConstants.UI.safeMargin)
     }
+    .padding(.horizontal, AppConstants.UI.safeMargin)
   }
   
   func pendingResponseCard(_ response: Home.PendingResponse) -> some View {

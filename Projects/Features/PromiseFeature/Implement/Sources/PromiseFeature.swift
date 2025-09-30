@@ -146,19 +146,16 @@ extension Promise {
     // MARK: - Body
     
     public var body: some View {
-      WithPerceptionTracking {
-        mainContentView
-          .onAppear {
-            store.send(.onAppear)
-          }
+      mainContentView
+        .onAppear {
+          store.send(.onAppear)
+        }
       }
-    }
     
     // MARK: - Main Content View
     
     private var mainContentView: some View {
-      WithPerceptionTracking {
-        ScrollView {
+      ScrollView {
           VStack(spacing: 20) {
             // 현재 그룹 표시
             currentGroupSection
@@ -176,14 +173,12 @@ extension Promise {
           .padding(.bottom, 20)
         }
       }
-    }
     
     
     // MARK: - Current Group Section
     
     private var currentGroupSection: some View {
-      WithPerceptionTracking {
-        HStack {
+      HStack {
           Image(systemName: "person.2.fill")
             .foregroundColor(.blue)
             .font(.title2)
@@ -213,15 +208,13 @@ extension Promise {
         .background(Color.blue.opacity(0.1))
         .cornerRadius(12)
       }
-    }
     
     // MARK: - Segment Control
     
     private var segmentControl: some View {
       HStack(spacing: 0) {
         ForEach(PromiseSegment.allCases, id: \.self) { segment in
-          WithPerceptionTracking {
-            Button(action: {
+          Button(action: {
               store.send(.segmentChanged(segment))
             }) {
               Text(segment.title)
@@ -235,7 +228,6 @@ extension Promise {
                     .fill(store.selectedSegment == segment ? Color.blue : Color.clear)
                 )
             }
-          }
         }
       }
       .padding(4)
@@ -248,15 +240,13 @@ extension Promise {
     private var proposalsList: some View {
       LazyVStack(spacing: 12) {
         ForEach(currentProposals) { proposal in
-          WithPerceptionTracking {
-            ProposalCard(proposal: proposal) {
+          ProposalCard(proposal: proposal) {
               store.send(.proposalSelected(proposal.id))
             } onAccept: {
               store.send(.acceptProposal(proposal.id))
             } onReject: {
               store.send(.rejectProposal(proposal.id))
             }
-          }
         }
       }
     }
@@ -264,8 +254,7 @@ extension Promise {
     // MARK: - Create New Proposal Button
     
     private var createNewProposalButton: some View {
-      WithPerceptionTracking {
-        Button(action: {
+      Button(action: {
           store.send(.createNewProposal)
         }) {
           HStack {
@@ -283,7 +272,6 @@ extension Promise {
           .background(Color.blue)
           .cornerRadius(12)
         }
-      }
     }
     
     // MARK: - Computed Properties

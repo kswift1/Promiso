@@ -165,8 +165,7 @@ extension Home {
     // MARK: - Body
     
     public var body: some View {
-      WithPerceptionTracking {
-        ScrollView {
+      ScrollView {
           LazyVStack(spacing: 24) {
             // 헤더
             HomeHeader(badgeCount: 3)
@@ -188,7 +187,6 @@ extension Home {
           store.send(.onAppear)
         }
       }
-    }
     
     
     
