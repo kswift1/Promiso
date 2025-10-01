@@ -16,28 +16,48 @@ public enum CreatePromise {
   
   @Reducer
   public struct Feature {
-
+    
     @Dependency(\.continuousClock) var clock
     @Dependency(\.groupClient) var groupClient
-
-    private enum CancelID {
+    
+    private enum CancelID: Hashable {
       case emojiSuggestDebounce
     }
-
+    
     @ObservableState
     public struct State: Equatable {
       var currentStep: CreatePromiseStep = .first
       var promiseProposal: PromiseProposal = .empty
       var groupListState: LoadingState<[GroupModel]> = .idle
-
+      
       var firstButtonDisabled: Bool {
         !(!promiseProposal.title.isEmpty && promiseProposal.groupID != nil)
       }
-
+      
       var secondButtonDisabled: Bool {
-        true
+        // 시작 시간이 현재보다 미래인지 확인
+        guard promiseProposal.startedAt > Date() else { return true }
+        
+        // 종료 시간을 사용하는 경우, 시작 시간보다 이후인지 확인
+        if let endedAt = promiseProposal.endedAt {
+          guard endedAt > promiseProposal.startedAt else { return true }
+        }
+        
+        // 최소 참가 인원이 유효한지 확인
+        guard let minimumParticipants = promiseProposal.minimumParticipants, minimumParticipants >= 2 else {
+          return true
+        }
+        
+        return false
       }
-
+      
+      var maxParticipants: Int { 10 }
+      
+      // 종료 시간 사용 여부
+      var useEndTime: Bool {
+        promiseProposal.endedAt != nil
+      }
+      
       var thirdButtonDisabled: Bool {
         true
       }
@@ -52,6 +72,13 @@ public enum CreatePromise {
       case promiseCreated
       case setTitle(String)
       case groupSelected(String)
+      case setStartDate(Date)
+      case setEndDate(Date?)
+      case toggleUseEndTime
+      //      case setLocation(Location?)
+      case setMinimumParticipants(Int)
+      case incrementParticipants
+      case decrementParticipants
       case retryLoadGroups  // 재시도
       case _titleDebounced(String)
       case _emojiSuggestionsResponse([EmojiSuggestion])
@@ -91,7 +118,7 @@ public enum CreatePromise {
           
           return .merge(
             .cancel(id: CancelID.emojiSuggestDebounce),
-            .run { [title] send in
+            .run { [clock, title] send in
               try await clock.sleep(for: .milliseconds(1_000))   // 디바운스
               await send(._titleDebounced(title))
             }
@@ -101,10 +128,47 @@ public enum CreatePromise {
         case .groupSelected(let groupId):
           state.promiseProposal.groupID = groupId
           return .none
-
+          
         case .retryLoadGroups:
           return .send(._fetchGroupList)
-
+          
+        case .setEndDate(let date):
+          state.promiseProposal.endedAt = date
+          return .none
+          
+        case .toggleUseEndTime:
+          if state.promiseProposal.endedAt == nil {
+            // 종료 시간 활성화: 시작 시간 + 2시간
+            state.promiseProposal.endedAt = state.promiseProposal.startedAt.addingTimeInterval(7200)
+          } else {
+            // 종료 시간 비활성화
+            state.promiseProposal.endedAt = nil
+          }
+          return .none
+          
+          //        case .setLocation(let location):
+          //          state.promiseProposal.location = location
+          //          return .none
+          
+        case .setMinimumParticipants(let count):
+          let validCount = max(2, min(count, state.maxParticipants))
+          state.promiseProposal.minimumParticipants = validCount
+          return .none
+          
+        case .incrementParticipants:
+          let current = state.promiseProposal.minimumParticipants ?? 2
+          if current < state.maxParticipants {
+            state.promiseProposal.minimumParticipants = current + 1
+          }
+          return .none
+          
+        case .decrementParticipants:
+          let current = state.promiseProposal.minimumParticipants ?? 2
+          if current > 2 {
+            state.promiseProposal.minimumParticipants = current - 1
+          }
+          return .none
+          
           // 디바운스 종료 → 실제 추천 호출
         case ._titleDebounced(let title):
           // 빈 문자열이면 추천 비움
@@ -123,7 +187,7 @@ public enum CreatePromise {
           
         case ._fetchGroupList:
           state.groupListState = .loading
-
+          
           return .run { [groupClient] send in
             do {
               let groups = try await groupClient.fetchGroups()
@@ -132,13 +196,21 @@ public enum CreatePromise {
               await send(._groupListResponse(.failure(error)))
             }
           }
-
+          
         case ._groupListResponse(.success(let groups)):
           state.groupListState = .loaded(groups)
           return .none
-
+          
         case ._groupListResponse(.failure(let error)):
           state.groupListState = .failed(error)
+          return .none
+        case .setStartDate(let date):
+          state.promiseProposal.startedAt = date
+          
+          // 종료 시간이 시작 시간보다 이전이면 자동 조정
+          if let endDate = state.promiseProposal.endedAt, endDate <= date {
+            state.promiseProposal.endedAt = date.addingTimeInterval(7200) // 2시간 후
+          }
           return .none
         }
       }
@@ -254,7 +326,7 @@ fileprivate struct StepButton: View {
   let title: String
   var disabled: Bool
   var action: () -> Void
-
+  
   var body: some View {
     Button(action: action) {
       Text(title)
@@ -268,3 +340,20 @@ fileprivate struct StepButton: View {
     .disabled(disabled)
   }
 }
+
+// MARK: - CreatePromiseStep Extension
+extension CreatePromiseStep {
+  @ViewBuilder
+  func contentView(store: StoreOf<CreatePromise.Feature>) -> some View {
+    switch self {
+    case .first:
+      CreatePromiseStep1View(store: store)
+    case .second:
+      CreatePromiseStep2View(store: store)
+    case .third:
+      Text("Step 3 - 추가 옵션")
+        .font(.title2)
+    }
+  }
+}
+

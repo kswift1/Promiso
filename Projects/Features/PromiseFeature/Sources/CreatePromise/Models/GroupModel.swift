@@ -11,5 +11,5 @@ public struct GroupModel: Equatable, Identifiable, Sendable {
   public let id: String
   let emoji: String
   let title: String
-  let membersCount: Int
+  let memberCount: Int
 }

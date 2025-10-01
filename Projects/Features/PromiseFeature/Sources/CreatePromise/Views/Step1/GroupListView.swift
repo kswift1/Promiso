@@ -13,32 +13,32 @@ import Shared
 /// 그룹 리스트 뷰
 struct GroupListView: View {
   let store: StoreOf<CreatePromise.Feature>
-
+  
   var body: some View {
     VStack(alignment: .leading, spacing: 16) {
       // LoadingState에 따른 UI
       switch store.groupListState {
       case .idle:
         EmptyView()
-
+        
       case .loading:
         loadingView
-
+        
       case .loaded(let groups):
         if groups.isEmpty {
           emptyStateView
         } else {
           groupsListView(groups: groups)
         }
-
+        
       case .failed(let error):
         errorView(error: error)
       }
     }
   }
-
+  
   // MARK: - Loading View
-
+  
   private var loadingView: some View {
     VStack(spacing: 12) {
       ForEach(0..<3, id: \.self) { _ in
@@ -46,9 +46,9 @@ struct GroupListView: View {
       }
     }
   }
-
+  
   // MARK: - Groups List View
-
+  
   private func groupsListView(groups: [GroupModel]) -> some View {
     VStack(spacing: 12) {
       ForEach(groups) { group in
@@ -61,24 +61,24 @@ struct GroupListView: View {
       }
     }
   }
-
+  
   // MARK: - Empty State View
-
+  
   private var emptyStateView: some View {
     VStack(spacing: 16) {
       Image(systemName: "person.2.slash")
         .font(.system(size: 48))
         .foregroundColor(.secondary)
-
+      
       Text("아직 가입한 그룹이 없어요")
         .font(.headline)
         .foregroundColor(.primary)
-
+      
       Text("새로운 그룹을 만들어 친구들을 초대해보세요")
         .font(.subheadline)
         .foregroundColor(.secondary)
         .multilineTextAlignment(.center)
-
+      
       Button {
         // TODO: 그룹 생성 화면으로 이동
       } label: {
@@ -97,24 +97,24 @@ struct GroupListView: View {
     .padding(.vertical, 32)
     .frame(maxWidth: .infinity)
   }
-
+  
   // MARK: - Error View
-
+  
   private func errorView(error: Error) -> some View {
     VStack(spacing: 16) {
       Image(systemName: "exclamationmark.triangle")
         .font(.system(size: 48))
         .foregroundColor(.orange)
-
+      
       Text("그룹을 불러오지 못했어요")
         .font(.headline)
         .foregroundColor(.primary)
-
+      
       Text(error.localizedDescription)
         .font(.subheadline)
         .foregroundColor(.secondary)
         .multilineTextAlignment(.center)
-
+      
       Button {
         store.send(.retryLoadGroups)
       } label: {
@@ -162,7 +162,7 @@ struct GroupCard: View {
             .font(.system(size: 17, weight: .semibold))
             .foregroundColor(.primary)
           
-          Text("\(model.membersCount)명")
+          Text("\(model.memberCount)명")
             .font(.system(size: 14))
             .foregroundColor(.secondary)
         }
@@ -196,18 +196,18 @@ private struct GroupSkeletonCard: View {
       // 이모지 스켈레톤
       SkeletonView(cornerRadius: 12)
         .frame(width: 56, height: 56)
-
+      
       // 텍스트 스켈레톤
       VStack(alignment: .leading, spacing: 8) {
         SkeletonView()
           .frame(width: 120, height: 16)
-
+        
         SkeletonView()
           .frame(width: 60, height: 14)
       }
-
+      
       Spacer()
-
+      
       // 체크박스 스켈레톤
       SkeletonView(cornerRadius: 12)
         .frame(width: 24, height: 24)
@@ -235,7 +235,7 @@ private struct GroupSkeletonCard: View {
           return []
         }
       }
-
+      
       GroupListView(store: store)
         .padding()
         .onAppear {
@@ -243,7 +243,7 @@ private struct GroupSkeletonCard: View {
         }
     }
   }
-
+  
   return PreviewWrapper()
 }
 
@@ -255,12 +255,14 @@ private struct GroupSkeletonCard: View {
       } withDependencies: {
         $0.groupClient.fetchGroups = {
           [
-            GroupModel(id: "1", emoji: "👞", title: "구두", membersCount: 3),
-            GroupModel(id: "2", emoji: "🥐", title: "빵", membersCount: 5),
+            .init(id: "g1", emoji: "👥", title: "지민과 나", memberCount: 2),
+            .init(id: "g2", emoji: "🏢", title: "회사 동료들", memberCount: 8),
+            .init(id: "g3", emoji: "🎓", title: "대학 친구들", memberCount: 12),
+            .init(id: "g4", emoji: "👨‍👩‍👦", title: "가족", memberCount: 4)
           ]
         }
       }
-
+      
       GroupListView(store: store)
         .padding()
         .onAppear {
@@ -268,7 +270,7 @@ private struct GroupSkeletonCard: View {
         }
     }
   }
-
+  
   return PreviewWrapper()
 }
 
@@ -280,7 +282,7 @@ private struct GroupSkeletonCard: View {
       } withDependencies: {
         $0.groupClient.fetchGroups = { [] }
       }
-
+      
       GroupListView(store: store)
         .padding()
         .onAppear {
@@ -288,7 +290,7 @@ private struct GroupSkeletonCard: View {
         }
     }
   }
-
+  
   return PreviewWrapper()
 }
 
@@ -302,7 +304,7 @@ private struct GroupSkeletonCard: View {
           throw GroupClientError.networkError
         }
       }
-
+      
       GroupListView(store: store)
         .padding()
         .onAppear {
@@ -310,6 +312,6 @@ private struct GroupSkeletonCard: View {
         }
     }
   }
-
+  
   return PreviewWrapper()
 }

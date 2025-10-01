@@ -8,7 +8,7 @@ public enum GroupClientError: Error, Equatable {
   case notFound
   case serverError
   case unknown
-
+  
   public var localizedDescription: String {
     switch self {
     case .networkError:
@@ -30,13 +30,13 @@ public enum GroupClientError: Error, Equatable {
 public struct GroupClient: Sendable {
   /// 사용자의 그룹 목록 가져오기
   public var fetchGroups: @Sendable () async throws -> [GroupModel] = { [] }
-
+  
   /// 특정 그룹 상세 정보 가져오기
   public var fetchGroup: @Sendable (_ groupId: String) async throws -> GroupModel
-
+  
   /// 새 그룹 생성
   public var createGroup: @Sendable (_ name: String, _ emoji: String) async throws -> GroupModel
-
+  
   /// 그룹 나가기
   public var leaveGroup: @Sendable (_ groupId: String) async throws -> Void
 }
@@ -45,23 +45,24 @@ public struct GroupClient: Sendable {
 
 extension GroupClient: TestDependencyKey {
   public static let testValue = Self()
-
+  
   public static let previewValue = Self(
     fetchGroups: {
       try await Task.sleep(for: .seconds(1))
       return [
-        GroupModel(id: "1", emoji: "👞", title: "구두", membersCount: 3),
-        GroupModel(id: "2", emoji: "🥐", title: "빵", membersCount: 5),
-        GroupModel(id: "3", emoji: "🎸", title: "기타", membersCount: 2),
+        .init(id: "g1", emoji: "👥", title: "지민과 나", memberCount: 2),
+        .init(id: "g2", emoji: "🏢", title: "회사 동료들", memberCount: 8),
+        .init(id: "g3", emoji: "🎓", title: "대학 친구들", memberCount: 12),
+        .init(id: "g4", emoji: "👨‍👩‍👦", title: "가족", memberCount: 4)
       ]
     },
     fetchGroup: { id in
       try await Task.sleep(for: .seconds(0.5))
-      return GroupModel(id: id, emoji: "👞", title: "구두", membersCount: 3)
+      return GroupModel(id: id, emoji: "👞", title: "구두", memberCount: 3)
     },
     createGroup: { name, emoji in
       try await Task.sleep(for: .seconds(1))
-      return GroupModel(id: UUID().uuidString, emoji: emoji, title: name, membersCount: 1)
+      return GroupModel(id: UUID().uuidString, emoji: emoji, title: name, memberCount: 1)
     },
     leaveGroup: { _ in
       try await Task.sleep(for: .seconds(0.5))
@@ -83,24 +84,24 @@ extension GroupClient: DependencyKey {
     fetchGroups: {
       // TODO: 실제 API 호출 구현
       try await Task.sleep(for: .seconds(2))
-
+      
       // 임시 데이터
       return [
-        GroupModel(id: "1", emoji: "👞", title: "구두", membersCount: 3),
-        GroupModel(id: "2", emoji: "🥐", title: "빵", membersCount: 5),
-        GroupModel(id: "3", emoji: "🎸", title: "기타", membersCount: 2),
-        GroupModel(id: "4", emoji: "🏀", title: "농구", membersCount: 8),
+        .init(id: "g1", emoji: "👥", title: "지민과 나", memberCount: 2),
+        .init(id: "g2", emoji: "🏢", title: "회사 동료들", memberCount: 8),
+        .init(id: "g3", emoji: "🎓", title: "대학 친구들", memberCount: 12),
+        .init(id: "g4", emoji: "👨‍👩‍👦", title: "가족", memberCount: 4)
       ]
     },
     fetchGroup: { groupId in
       // TODO: 실제 API 호출 구현
       try await Task.sleep(for: .seconds(1))
-      return GroupModel(id: groupId, emoji: "👞", title: "구두", membersCount: 3)
+      return GroupModel(id: groupId, emoji: "👞", title: "구두", memberCount: 3)
     },
     createGroup: { name, emoji in
       // TODO: 실제 API 호출 구현
       try await Task.sleep(for: .seconds(1))
-      return GroupModel(id: UUID().uuidString, emoji: emoji, title: name, membersCount: 1)
+      return GroupModel(id: UUID().uuidString, emoji: emoji, title: name, memberCount: 1)
     },
     leaveGroup: { groupId in
       // TODO: 실제 API 호출 구현
