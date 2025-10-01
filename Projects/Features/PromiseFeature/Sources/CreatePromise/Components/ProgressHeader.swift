@@ -154,7 +154,7 @@ extension CreatePromiseStep {
     }
   }
   
-  var contentView: HeaderContentView {
+  var headerView: HeaderContentView {
     HeaderContentView(title: title, subtitle: subtitle)
   }
   

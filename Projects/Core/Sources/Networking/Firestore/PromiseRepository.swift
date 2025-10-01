@@ -12,7 +12,7 @@ public class PromiseRepository: PromiseRepositoryProtocol {
   // MARK: - CRUD Operations
   
   /// 약속 생성
-  public func createPromise(_ promise: Promise) async throws -> String {
+  public func createPromise(_ promise: PromiseModel) async throws -> String {
     let promiseRef = db.collection("promises").document()
     let promiseData: [String: Any] = [
       "id": promise.id,
@@ -36,7 +36,7 @@ public class PromiseRepository: PromiseRepositoryProtocol {
   }
   
   /// 약속 업데이트
-  public func updatePromise(_ promise: Promise) async throws {
+  public func updatePromise(_ promise: PromiseModel) async throws {
     let ref = db.collection("promises").document(promise.id)
     let updateData: [String: Any] = [
       "title": promise.title,
@@ -55,13 +55,13 @@ public class PromiseRepository: PromiseRepositoryProtocol {
   }
   
   /// 약속 조회
-  public func getPromise(id: String) async throws -> Promise? {
+  public func getPromise(id: String) async throws -> PromiseModel? {
     let document = try await db.collection("promises").document(id).getDocument()
     return try documentSnapshotToPromise(document)
   }
   
   /// 오늘 약속 조회
-  public func getTodayPromises(userId: String, groupId: String?) async throws -> [Promise] {
+  public func getTodayPromises(userId: String, groupId: String?) async throws -> [PromiseModel] {
     let today = Date()
     let calendar = Calendar.current
     let startOfDay = calendar.startOfDay(for: today)
@@ -83,7 +83,7 @@ public class PromiseRepository: PromiseRepositoryProtocol {
   }
   
   /// 다가오는 약속 조회
-  public func getUpcomingPromises(userId: String, limit: Int) async throws -> [Promise] {
+  public func getUpcomingPromises(userId: String, limit: Int) async throws -> [PromiseModel] {
     let now = Date()
     let query = db.collection("promises")
       .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: now))
@@ -97,13 +97,13 @@ public class PromiseRepository: PromiseRepositoryProtocol {
   }
   
   /// 답변 필요한 제안 조회 (현재는 임시 구현)
-  public func getPendingProposals(userId: String, limit: Int) async throws -> [Promise] {
+  public func getPendingProposals(userId: String, limit: Int) async throws -> [PromiseModel] {
     // TODO: 실제 구현 필요. 현재는 임시 데이터 반환
     return []
   }
   
   /// 활성 약속 조회
-  public func getActivePromises(groupId: String, limit: Int) async throws -> [Promise] {
+  public func getActivePromises(groupId: String, limit: Int) async throws -> [PromiseModel] {
     let query = db.collection("promises")
       .whereField("groupId", isEqualTo: groupId)
       .whereField("status", isEqualTo: PromiseStatus.active.rawValue)
@@ -116,7 +116,7 @@ public class PromiseRepository: PromiseRepositoryProtocol {
   }
   
   /// 오늘 약속 실시간 관찰
-  public func observeTodayPromises(userId: String, groupId: String?) -> AnyPublisher<[Promise], Error> {
+  public func observeTodayPromises(userId: String, groupId: String?) -> AnyPublisher<[PromiseModel], Error> {
     let today = Date()
     let calendar = Calendar.current
     let startOfDay = calendar.startOfDay(for: today)
@@ -137,7 +137,7 @@ public class PromiseRepository: PromiseRepositoryProtocol {
   }
   
   /// 약속 실시간 관찰 (단일 문서)
-  public func observePromise(id: String) -> AnyPublisher<Promise?, Error> {
+  public func observePromise(id: String) -> AnyPublisher<PromiseModel?, Error> {
     let ref = db.collection("promises").document(id)
     
     return Publishers.FirestoreDocument(document: ref)
@@ -150,10 +150,10 @@ public class PromiseRepository: PromiseRepositoryProtocol {
   
   // MARK: - Helper Methods
   
-  private func documentToPromise(_ document: QueryDocumentSnapshot) throws -> Promise? {
+  private func documentToPromise(_ document: QueryDocumentSnapshot) throws -> PromiseModel? {
     let data = document.data()
     
-    return Promise(
+    return PromiseModel(
       id: data["id"] as? String ?? document.documentID,
       title: data["title"] as? String ?? "",
       minimumParticipants: data["minimumParticipants"] as? Int ?? 1,
@@ -164,11 +164,11 @@ public class PromiseRepository: PromiseRepositoryProtocol {
     )
   }
   
-  private func documentSnapshotToPromise(_ document: DocumentSnapshot) throws -> Promise? {
+  private func documentSnapshotToPromise(_ document: DocumentSnapshot) throws -> PromiseModel? {
     guard document.exists else { return nil }
     let data = document.data() ?? [:]
     
-    return Promise(
+    return PromiseModel(
       id: data["id"] as? String ?? document.documentID,
       title: data["title"] as? String ?? "",
       minimumParticipants: data["minimumParticipants"] as? Int ?? 1,

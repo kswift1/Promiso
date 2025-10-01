@@ -1,0 +1,110 @@
+import ComposableArchitecture
+import Foundation
+
+/// 그룹 API 에러
+public enum GroupClientError: Error, Equatable {
+  case networkError
+  case unauthorized
+  case notFound
+  case serverError
+  case unknown
+
+  public var localizedDescription: String {
+    switch self {
+    case .networkError:
+      return "네트워크 연결을 확인해주세요"
+    case .unauthorized:
+      return "로그인이 필요합니다"
+    case .notFound:
+      return "그룹을 찾을 수 없습니다"
+    case .serverError:
+      return "서버 오류가 발생했습니다"
+    case .unknown:
+      return "알 수 없는 오류가 발생했습니다"
+    }
+  }
+}
+
+/// 그룹 클라이언트 프로토콜
+@DependencyClient
+public struct GroupClient: Sendable {
+  /// 사용자의 그룹 목록 가져오기
+  public var fetchGroups: @Sendable () async throws -> [GroupModel] = { [] }
+
+  /// 특정 그룹 상세 정보 가져오기
+  public var fetchGroup: @Sendable (_ groupId: String) async throws -> GroupModel
+
+  /// 새 그룹 생성
+  public var createGroup: @Sendable (_ name: String, _ emoji: String) async throws -> GroupModel
+
+  /// 그룹 나가기
+  public var leaveGroup: @Sendable (_ groupId: String) async throws -> Void
+}
+
+// MARK: - Dependency Values
+
+extension GroupClient: TestDependencyKey {
+  public static let testValue = Self()
+
+  public static let previewValue = Self(
+    fetchGroups: {
+      try await Task.sleep(for: .seconds(1))
+      return [
+        GroupModel(id: "1", emoji: "👞", title: "구두", membersCount: 3),
+        GroupModel(id: "2", emoji: "🥐", title: "빵", membersCount: 5),
+        GroupModel(id: "3", emoji: "🎸", title: "기타", membersCount: 2),
+      ]
+    },
+    fetchGroup: { id in
+      try await Task.sleep(for: .seconds(0.5))
+      return GroupModel(id: id, emoji: "👞", title: "구두", membersCount: 3)
+    },
+    createGroup: { name, emoji in
+      try await Task.sleep(for: .seconds(1))
+      return GroupModel(id: UUID().uuidString, emoji: emoji, title: name, membersCount: 1)
+    },
+    leaveGroup: { _ in
+      try await Task.sleep(for: .seconds(0.5))
+    }
+  )
+}
+
+extension DependencyValues {
+  public var groupClient: GroupClient {
+    get { self[GroupClient.self] }
+    set { self[GroupClient.self] = newValue }
+  }
+}
+
+// MARK: - Live Implementation
+
+extension GroupClient: DependencyKey {
+  public static let liveValue = Self(
+    fetchGroups: {
+      // TODO: 실제 API 호출 구현
+      try await Task.sleep(for: .seconds(2))
+
+      // 임시 데이터
+      return [
+        GroupModel(id: "1", emoji: "👞", title: "구두", membersCount: 3),
+        GroupModel(id: "2", emoji: "🥐", title: "빵", membersCount: 5),
+        GroupModel(id: "3", emoji: "🎸", title: "기타", membersCount: 2),
+        GroupModel(id: "4", emoji: "🏀", title: "농구", membersCount: 8),
+      ]
+    },
+    fetchGroup: { groupId in
+      // TODO: 실제 API 호출 구현
+      try await Task.sleep(for: .seconds(1))
+      return GroupModel(id: groupId, emoji: "👞", title: "구두", membersCount: 3)
+    },
+    createGroup: { name, emoji in
+      // TODO: 실제 API 호출 구현
+      try await Task.sleep(for: .seconds(1))
+      return GroupModel(id: UUID().uuidString, emoji: emoji, title: name, membersCount: 1)
+    },
+    leaveGroup: { groupId in
+      // TODO: 실제 API 호출 구현
+      try await Task.sleep(for: .seconds(1))
+    }
+  )
+}

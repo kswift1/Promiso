@@ -2,7 +2,7 @@ import Foundation
 
 // MARK: - Promise Domain Model
 
-public struct Promise: Identifiable, Equatable, Hashable {
+public struct PromiseModel: Identifiable, Equatable, Hashable {
   public let id: String
   public let emoji: String?
   public let title: String
@@ -100,7 +100,7 @@ public struct Promise: Identifiable, Equatable, Hashable {
 }
 
 // MARK: - Business Logic
-extension Promise {
+extension PromiseModel {
   /// 실시간 공유 가능 여부 (30분 전부터)
   public var isRealtimeShareable: Bool {
     let timeDifference = startAt.timeIntervalSince(Date())

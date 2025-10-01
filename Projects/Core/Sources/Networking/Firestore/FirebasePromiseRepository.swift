@@ -15,7 +15,7 @@ public class FirebasePromiseRepository: PromiseRepositoryProtocol {
   // MARK: - CRUD Operations
   
   /// 약속 생성
-  public func createPromise(_ promise: Promise) async throws -> String {
+  public func createPromise(_ promise: PromiseModel) async throws -> String {
     // TODO: Domain 모델을 Firestore 문서로 변환하여 저장
     // 현재는 기본 구조만 제공
     let promiseRef = db.collection("promises").document()
@@ -33,7 +33,7 @@ public class FirebasePromiseRepository: PromiseRepositoryProtocol {
   }
   
   /// 약속 업데이트
-  public func updatePromise(_ promise: Promise) async throws {
+  public func updatePromise(_ promise: PromiseModel) async throws {
     // TODO: Domain 모델을 Firestore 문서로 변환하여 업데이트
     let ref = db.collection("promises").document(promise.id)
     try await ref.updateData([
@@ -54,7 +54,7 @@ public class FirebasePromiseRepository: PromiseRepositoryProtocol {
   }
   
   /// 약속 조회
-  public func getPromise(id: String) async throws -> Promise? {
+  public func getPromise(id: String) async throws -> PromiseModel? {
     // TODO: Firestore 문서를 Domain 모델로 변환하여 반환
     let ref = db.collection("promises").document(id)
     let document = try await ref.getDocument()
@@ -64,7 +64,7 @@ public class FirebasePromiseRepository: PromiseRepositoryProtocol {
     // 임시 구현 - 실제로는 Firestore 문서를 Domain 모델로 변환
     guard let data = document.data() else { return nil }
     
-    return Promise(
+    return PromiseModel(
       id: data["id"] as? String ?? id,
       title: data["title"] as? String ?? "",
       minimumParticipants: data["minimumParticipants"] as? Int ?? 1,
@@ -78,7 +78,7 @@ public class FirebasePromiseRepository: PromiseRepositoryProtocol {
   // MARK: - Query Operations
   
   /// 오늘의 약속 조회
-  public func getTodayPromises(userId: String, groupId: String?) async throws -> [Promise] {
+  public func getTodayPromises(userId: String, groupId: String?) async throws -> [PromiseModel] {
     // TODO: Firestore 쿼리를 구현하여 Domain 모델 배열 반환
     let todayKey = calendarKeyGenerator.generateYyyymmddKey(for: Date())
     let query = db.collection("promises")
@@ -92,19 +92,19 @@ public class FirebasePromiseRepository: PromiseRepositoryProtocol {
   }
   
   /// 다가오는 약속 조회
-  public func getUpcomingPromises(userId: String, limit: Int) async throws -> [Promise] {
+  public func getUpcomingPromises(userId: String, limit: Int) async throws -> [PromiseModel] {
     // TODO: Firestore 쿼리를 구현
     return []
   }
   
   /// 답변 필요한 제안 조회
-  public func getPendingProposals(userId: String, limit: Int) async throws -> [Promise] {
+  public func getPendingProposals(userId: String, limit: Int) async throws -> [PromiseModel] {
     // TODO: Firestore 쿼리를 구현
     return []
   }
   
   /// 그룹의 활성 약속 조회
-  public func getActivePromises(groupId: String, limit: Int) async throws -> [Promise] {
+  public func getActivePromises(groupId: String, limit: Int) async throws -> [PromiseModel] {
     // TODO: Firestore 쿼리를 구현
     return []
   }
@@ -112,7 +112,7 @@ public class FirebasePromiseRepository: PromiseRepositoryProtocol {
   // MARK: - Real-time Operations
   
   /// 오늘의 약속 실시간 관찰
-  public func observeTodayPromises(userId: String, groupId: String?) -> AnyPublisher<[Promise], Error> {
+  public func observeTodayPromises(userId: String, groupId: String?) -> AnyPublisher<[PromiseModel], Error> {
     let todayKey = calendarKeyGenerator.generateYyyymmddKey(for: Date())
     let query = db.collection("promises")
       .whereField("localYyyymmdd", isEqualTo: todayKey)
@@ -128,7 +128,7 @@ public class FirebasePromiseRepository: PromiseRepositoryProtocol {
   }
   
   /// 약속 실시간 관찰
-  public func observePromise(id: String) -> AnyPublisher<Promise?, Error> {
+  public func observePromise(id: String) -> AnyPublisher<PromiseModel?, Error> {
     let ref = db.collection("promises").document(id)
     
     return Publishers.FirestoreDocument(document: ref)
@@ -141,10 +141,10 @@ public class FirebasePromiseRepository: PromiseRepositoryProtocol {
   
   // MARK: - Helper Methods
   
-  private func documentToPromise(_ document: QueryDocumentSnapshot) throws -> Promise? {
+  private func documentToPromise(_ document: QueryDocumentSnapshot) throws -> PromiseModel? {
     let data = document.data()
     
-    return Promise(
+    return PromiseModel(
       id: data["id"] as? String ?? document.documentID,
       title: data["title"] as? String ?? "",
       minimumParticipants: data["minimumParticipants"] as? Int ?? 1,
@@ -155,11 +155,11 @@ public class FirebasePromiseRepository: PromiseRepositoryProtocol {
     )
   }
   
-  private func documentSnapshotToPromise(_ document: DocumentSnapshot) throws -> Promise? {
+  private func documentSnapshotToPromise(_ document: DocumentSnapshot) throws -> PromiseModel? {
     guard document.exists else { return nil }
     let data = document.data() ?? [:]
     
-    return Promise(
+    return PromiseModel(
       id: data["id"] as? String ?? document.documentID,
       title: data["title"] as? String ?? "",
       minimumParticipants: data["minimumParticipants"] as? Int ?? 1,

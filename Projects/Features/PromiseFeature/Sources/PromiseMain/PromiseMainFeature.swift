@@ -59,7 +59,7 @@ extension PromiseMain {
     
     /// Promise Feature 내에서 발생할 수 있는 모든 가능한 action
     /// 각 action은 고유한 user intent나 system event를 나타내야 함
-    public enum Action: Equatable, Sendable {
+    public enum Action: Sendable {
       // MARK: Lifecycle Actions
       /// view가 처음 나타날 때 트리거
       case onAppear

@@ -7,6 +7,32 @@
 
 import Foundation
 
+struct PromiseProposal: Equatable {
+  var title: String
+  var emoji: String?
+  var groupID: String?
+  var startedAt: Date
+  var endedAt: Date?
+  var minimumParticipants: Int?
+  var place: String?
+  var details: String?
+  var reminder: Date?
+}
+
+extension PromiseProposal {
+  static let empty: PromiseProposal = .init(
+    title: "",
+    emoji: nil,
+    groupID: nil,
+    startedAt: .init(),
+    endedAt: nil,
+    minimumParticipants: nil,
+    place: nil,
+    details: nil,
+    reminder: nil
+  )
+}
+
 public struct ProposalModel: Equatable {
   var receivedProposals: [ProposalItem]
   var sentProposals: [ProposalItem]

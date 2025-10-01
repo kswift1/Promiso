@@ -8,22 +8,55 @@
 import SwiftUI
 import ComposableArchitecture
 
+import Domain
+import Shared
+
 public enum CreatePromise {
+  
   
   @Reducer
   public struct Feature {
-    
+
+    @Dependency(\.continuousClock) var clock
+    @Dependency(\.groupClient) var groupClient
+
+    private enum CancelID {
+      case emojiSuggestDebounce
+    }
+
     @ObservableState
     public struct State: Equatable {
       var currentStep: CreatePromiseStep = .first
+      var promiseProposal: PromiseProposal = .empty
+      var groupListState: LoadingState<[GroupModel]> = .idle
+
+      var firstButtonDisabled: Bool {
+        !(!promiseProposal.title.isEmpty && promiseProposal.groupID != nil)
+      }
+
+      var secondButtonDisabled: Bool {
+        true
+      }
+
+      var thirdButtonDisabled: Bool {
+        true
+      }
     }
     
-    public enum Action: Equatable, Sendable {
+    public enum Action: Sendable {
+      case onAppear
       case nextStep
       case previousStep
       case requestCreatingPromise
       case dismiss
       case promiseCreated
+      case setTitle(String)
+      case groupSelected(String)
+      case retryLoadGroups  // 재시도
+      case _titleDebounced(String)
+      case _emojiSuggestionsResponse([EmojiSuggestion])
+      case _fetchGroupList
+      case _groupListResponse(Result<[GroupModel], Error>)
     }
     
     public init() {}
@@ -31,17 +64,81 @@ public enum CreatePromise {
     public var body: some ReducerOf<Self> {
       Reduce { state, action in
         switch action {
+        case .onAppear:
+          // FetchGroups
+          return .send(._fetchGroupList)
+          
         case .nextStep:
           state.currentStep.next()
           return .none
+          
         case .previousStep:
           state.currentStep.previous()
           return .none
+          
         case .requestCreatingPromise:
           return .none
+          
         case .dismiss:
           return .none
+          
         case .promiseCreated:
+          return .none
+          
+          // 사용자가 제목 입력
+        case .setTitle(let title):
+          state.promiseProposal.title = title
+          
+          return .merge(
+            .cancel(id: CancelID.emojiSuggestDebounce),
+            .run { [title] send in
+              try await clock.sleep(for: .milliseconds(1_000))   // 디바운스
+              await send(._titleDebounced(title))
+            }
+              .cancellable(id: CancelID.emojiSuggestDebounce, cancelInFlight: true)
+          )
+          
+        case .groupSelected(let groupId):
+          state.promiseProposal.groupID = groupId
+          return .none
+
+        case .retryLoadGroups:
+          return .send(._fetchGroupList)
+
+          // 디바운스 종료 → 실제 추천 호출
+        case ._titleDebounced(let title):
+          // 빈 문자열이면 추천 비움
+          guard !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return .none
+          }
+          return .run { [title] send in
+            let picks = await EmojiSuggestorProvider.shared.suggest(for: title, topK: 10)
+            await send(._emojiSuggestionsResponse(picks))
+          }
+          
+          // 추천 결과 수신 → 상태 반영
+        case ._emojiSuggestionsResponse(let picks):
+          state.promiseProposal.emoji = picks.first?.emoji ?? ""
+          return .none
+          
+        case ._fetchGroupList:
+          state.groupListState = .loading
+
+          return .run { [groupClient] send in
+            do {
+              let groups = try await groupClient.fetchGroups()
+              await send(._groupListResponse(.success(groups)))
+            } catch {
+              await send(._groupListResponse(.failure(error)))
+            }
+          }
+
+        case ._groupListResponse(.success(let groups)):
+          state.groupListState = .loaded(groups)
+          return .none
+
+        case ._groupListResponse(.failure(let error)):
+          state.groupListState = .failed(error)
           return .none
         }
       }
@@ -60,46 +157,46 @@ extension CreatePromise {
     
     var body: some View {
       VStack(spacing: 0) {
-          
-          // Progress Header
-          ProgressHeader(
-            currentStep: store.currentStep.rawValue,
-            totalSteps: CreatePromiseStep.allCases.count,
-            title: "약속 만들기"
-          ) {
-            store.send(.dismiss)
-          }
-          
-          // Content
-          ScrollView {
-            VStack(spacing: 24) {
-              // HeaderContentView
-              CreatePromiseStep.allCases[store.currentStep.rawValue].contentView
-              
-              
-            }
-            .padding(16)
-          }
-          
-          Spacer()
-          
-          // Bottom Buttons
-          HStack(spacing: 12) {
-            store.currentStep.leftButton(store: store)
-            
-            store.currentStep.rightButton(store: store)
+        
+        // Progress Header
+        ProgressHeader(
+          currentStep: store.currentStep.rawValue,
+          totalSteps: CreatePromiseStep.allCases.count,
+          title: "약속 만들기"
+        ) {
+          store.send(.dismiss)
+        }
+        
+        // Content
+        ScrollView {
+          VStack(spacing: 24) {
+            store.currentStep.contentView(store: store)
           }
           .padding(16)
-          .background(Color(.systemBackground))
-          .overlay(
-            Rectangle()
-              .fill(Color(.systemGray5))
-              .frame(height: 1),
-            alignment: .top
-          )
         }
-        .navigationBarHidden(true)
+        
+        Spacer()
+        
+        // Bottom Buttons
+        HStack(spacing: 12) {
+          store.currentStep.leftButton(store: store)
+          
+          store.currentStep.rightButton(store: store)
+        }
+        .padding(16)
+        .background(Color(.systemBackground))
+        .overlay(
+          Rectangle()
+            .fill(Color(.systemGray5))
+            .frame(height: 1),
+          alignment: .top
+        )
       }
+      .navigationBarHidden(true)
+      .onAppear {
+        store.send(.onAppear)
+      }
+    }
   }
 }
 
@@ -129,31 +226,45 @@ extension CreatePromiseStep {
   @ViewBuilder
   func rightButton(store: StoreOf<CreatePromise.Feature>) -> some View {
     switch self {
-    case .first, .second:
-      Button(action: {
-        store.send(.nextStep, animation: .easeInOut(duration: 0.25))
-      }) {
-        Text("다음")
-          .font(.system(size: 16, weight: .semibold))
-          .foregroundColor(.white)
-          .frame(maxWidth: .infinity)
-          .frame(height: 50)
-          .background(Color.blue)
-          .cornerRadius(12)
-      }
+    case .first:
+      StepButton(
+        title: "다음",
+        disabled: store.state.firstButtonDisabled) {
+          store.send(.nextStep, animation: .easeInOut(duration: 0.25))
+        }
+      
+    case .second:
+      StepButton(
+        title: "다음",
+        disabled: store.state.secondButtonDisabled) {
+          store.send(.nextStep, animation: .easeInOut(duration: 0.25))
+        }
       
     case .third:
-      Button(action: {
-        store.send(.requestCreatingPromise, animation: .spring(response: 0.3, dampingFraction: 0.9))
-      }) {
-        Text("약속 제안하기")
-          .font(.system(size: 16, weight: .semibold))
-          .foregroundColor(.white)
-          .frame(maxWidth: .infinity)
-          .frame(height: 50)
-          .background(Color.blue)
-          .cornerRadius(12)
-      }
+      StepButton(
+        title: "약속 제안하기",
+        disabled: store.state.thirdButtonDisabled) {
+          store.send(.requestCreatingPromise, animation: .spring(response: 0.3, dampingFraction: 0.9))
+        }
     }
+  }
+}
+
+fileprivate struct StepButton: View {
+  let title: String
+  var disabled: Bool
+  var action: () -> Void
+
+  var body: some View {
+    Button(action: action) {
+      Text(title)
+        .font(.system(size: 16, weight: .semibold))
+        .foregroundColor(.white)
+        .frame(maxWidth: .infinity)
+        .frame(height: 50)
+        .background(disabled ? Color.gray.opacity(0.4) : Color.blue)
+        .cornerRadius(12)
+    }
+    .disabled(disabled)
   }
 }

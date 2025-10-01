@@ -158,7 +158,7 @@ public class FirestoreSecurityManager {
     case .group:
       try validateGroupData(data as! Group)
     case .promise:
-      try validatePromiseData(data as! Promise)
+      try validatePromiseData(data as! PromiseModel)
     case .attendance:
       // TODO: Attendance 도메인 모델 추가 시 구현
       break
@@ -198,7 +198,7 @@ public class FirestoreSecurityManager {
     // }
   }
   
-  private func validatePromiseData(_ promise: Promise) throws {
+  private func validatePromiseData(_ promise: PromiseModel) throws {
     guard !promise.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
       throw SecurityError.invalidData("약속 제목은 비어있을 수 없습니다.")
     }
