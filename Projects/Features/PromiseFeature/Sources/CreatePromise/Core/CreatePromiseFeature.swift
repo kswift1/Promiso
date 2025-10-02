@@ -61,7 +61,7 @@ public enum CreatePromise {
       }
       
       var thirdButtonDisabled: Bool {
-        true
+        false // Step3는 선택사항이므로 항상 진행 가능
       }
     }
     
@@ -81,6 +81,8 @@ public enum CreatePromise {
       case setMinimumParticipants(Int)
       case incrementParticipants
       case decrementParticipants
+      case setArrivalSharingTime(Int?)
+      case setDescription(String)
       case retryLoadGroups  // 재시도
       case _titleDebounced(String)
       case _emojiSuggestionsResponse([EmojiSuggestion])
@@ -129,9 +131,10 @@ public enum CreatePromise {
           
         case .groupSelected(let group):
           state.promiseProposal.group = group
-
-          // 그룹 선택 시 최소 참가 인원 자동 설정 (최대 인원의 절반, 반올림)
-          if state.promiseProposal.minimumParticipants == nil {
+          
+          if group.memberCount == 2 {
+            state.promiseProposal.minimumParticipants = 2
+          } else {
             let defaultMinimum = Int(ceil(Double(group.memberCount) / 2.0))
             state.promiseProposal.minimumParticipants = defaultMinimum
           }
@@ -178,6 +181,15 @@ public enum CreatePromise {
           if current > 2 {
             state.promiseProposal.minimumParticipants = current - 1
           }
+          return .none
+
+        case .setArrivalSharingTime(let minutes):
+          state.promiseProposal.arrivalSharingTime = minutes
+          return .none
+
+        case .setDescription(let description):
+          let trimmed = String(description.prefix(500))
+          state.promiseProposal.details = trimmed.isEmpty ? nil : trimmed
           return .none
           
           // 디바운스 종료 → 실제 추천 호출
@@ -239,37 +251,41 @@ extension CreatePromise {
     }
     
     var body: some View {
-      VStack(spacing: 0) {
-        
-        // Progress Header
-        ProgressHeader(
-          currentStep: store.currentStep.rawValue,
-          totalSteps: CreatePromiseStep.allCases.count,
-          title: "약속 만들기"
-        ) {
-          store.send(.dismiss)
+      GeometryReader { geometry in
+        VStack(spacing: 0) {
+
+          // Progress Header
+          ProgressHeader(
+            currentStep: store.currentStep.rawValue,
+            totalSteps: CreatePromiseStep.allCases.count,
+            title: "약속 만들기"
+          ) {
+            store.send(.dismiss)
+          }
+
+          store.currentStep.contentView(store: store)
+
+          Spacer()
+
+          // Bottom Buttons (키보드에 가려지지 않도록 고정)
+          HStack(spacing: 12) {
+            store.currentStep.leftButton(store: store)
+
+            store.currentStep.rightButton(store: store)
+          }
+          .padding(16)
+          .background(Color(.systemBackground))
+          .overlay(
+            Rectangle()
+              .fill(Color(.systemGray5))
+              .frame(height: 1),
+            alignment: .top
+          )
         }
-        
-        store.currentStep.contentView(store: store)
-        
-        Spacer()
-        
-        // Bottom Buttons
-        HStack(spacing: 12) {
-          store.currentStep.leftButton(store: store)
-          
-          store.currentStep.rightButton(store: store)
-        }
-        .padding(16)
-        .background(Color(.systemBackground))
-        .overlay(
-          Rectangle()
-            .fill(Color(.systemGray5))
-            .frame(height: 1),
-          alignment: .top
-        )
+        .frame(height: geometry.size.height)
       }
       .navigationBarHidden(true)
+      .ignoresSafeArea(.keyboard, edges: .bottom)
       .onAppear {
         store.send(.onAppear)
       }
@@ -356,8 +372,7 @@ extension CreatePromiseStep {
     case .second:
       CreatePromiseStep2View(store: store)
     case .third:
-      Text("Step 3 - 추가 옵션")
-        .font(.title2)
+      CreatePromiseStep3View(store: store)
     }
   }
 }

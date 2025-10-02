@@ -4,7 +4,7 @@ import ComposableArchitecture
 // MARK: - Step 2 Content View
 struct CreatePromiseStep2View: View {
   let store: StoreOf<CreatePromise.Feature>
-
+  
   var body: some View {
     ScrollViewReader { proxy in
       ScrollView {
@@ -12,19 +12,20 @@ struct CreatePromiseStep2View: View {
           // 헤더
           CreatePromiseStep.second.headerView
             .id("header")
-
+          
           // 시작 날짜/시간
           StartDateTimeSection(store: store, scrollProxy: proxy)
             .id("startDateTime")
-
+          
           // 종료 날짜/시간 (선택)
           EndDateTimeSection(store: store, scrollProxy: proxy)
             .id("endDateTime")
-
+          
+          // FIXME:
           // 장소 (선택)
           LocationSection(store: store)
             .id("location")
-
+          
           // 최소 참가 인원
           MinimumParticipantsSection(store: store, scrollProxy: proxy)
             .id("minimumParticipants")

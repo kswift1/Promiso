@@ -17,6 +17,7 @@ struct PromiseProposal: Equatable {
   var place: String?
   var details: String?
   var reminder: Date?
+  var arrivalSharingTime: Int? = nil // 도착 상황 공유 시작 시간 (분 단위)
 }
 
 extension PromiseProposal {
@@ -24,7 +25,7 @@ extension PromiseProposal {
     title: "",
     emoji: nil,
     group: nil,
-    startedAt: .init(),
+    startedAt: Date().addingTimeInterval(3600),
     endedAt: nil,
     minimumParticipants: nil,
     place: nil,
