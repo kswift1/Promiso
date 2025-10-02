@@ -3,7 +3,8 @@ import ComposableArchitecture
 
 struct EndDateTimeSection: View {
   let store: StoreOf<CreatePromise.Feature>
-  
+  var scrollProxy: ScrollViewProxy? = nil
+
   var body: some View {
     SectionPlaceHolder(
       placeHolderTitle: "종료 시간",
@@ -28,7 +29,9 @@ struct EndDateTimeSection: View {
                   store.promiseProposal.endedAt ?? store.promiseProposal.startedAt.addingTimeInterval(7200)
                 },
                 set: { store.send(.setEndDate($0)) }
-              )
+              ),
+              scrollProxy: scrollProxy,
+              scrollToId: "endDateTime"
             )
           }
         }
@@ -42,7 +45,9 @@ struct EndTimePicker: View {
   let startDate: Date
   @Binding var endDate: Date
   @State private var expandedSection: ExpandedSection? = nil
-  
+  var scrollProxy: ScrollViewProxy? = nil
+  var scrollToId: String? = nil
+
   enum ExpandedSection {
     case date, time
   }
@@ -99,6 +104,14 @@ struct EndTimePicker: View {
               expandedSection = nil
             } else {
               expandedSection = .date
+              // 달력이 펼쳐질 때 해당 섹션으로 스크롤
+              if let scrollProxy = scrollProxy, let scrollToId = scrollToId {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                  withAnimation {
+                    scrollProxy.scrollTo(scrollToId, anchor: .top)
+                  }
+                }
+              }
             }
           }
         }) {
@@ -130,6 +143,14 @@ struct EndTimePicker: View {
               expandedSection = nil
             } else {
               expandedSection = .time
+              // 시간 피커가 펼쳐질 때 해당 섹션으로 스크롤
+              if let scrollProxy = scrollProxy, let scrollToId = scrollToId {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                  withAnimation {
+                    scrollProxy.scrollTo(scrollToId, anchor: .top)
+                  }
+                }
+              }
             }
           }
         }) {
@@ -212,7 +233,12 @@ struct EndTimePicker: View {
         promiseProposal: PromiseProposal(
           title: "영화 관람",
           emoji: "🍿",
-          groupID: "1",
+          group: .init(
+            id: "g1",
+            emoji: "👥",
+            title: "지민과 나",
+            memberCount: 2
+          ),
           startedAt: Date().addingTimeInterval(7200),
           endedAt: nil,
           minimumParticipants: 2
@@ -232,7 +258,12 @@ struct EndTimePicker: View {
         promiseProposal: PromiseProposal(
           title: "영화 관람",
           emoji: "🍿",
-          groupID: "1",
+          group: .init(
+            id: "g1",
+            emoji: "👥",
+            title: "지민과 나",
+            memberCount: 2
+          ),
           startedAt: Date().addingTimeInterval(7200),
           endedAt: Date().addingTimeInterval(7200 + 7200),
           minimumParticipants: 2
@@ -252,7 +283,12 @@ struct EndTimePicker: View {
         promiseProposal: PromiseProposal(
           title: "해외 출장",
           emoji: "✈️",
-          groupID: "1",
+          group: .init(
+            id: "g1",
+            emoji: "👥",
+            title: "지민과 나",
+            memberCount: 2
+          ),
           startedAt: Date().addingTimeInterval(7200),
           endedAt: Date().addingTimeInterval(7200 + 86400 + 19800),
           minimumParticipants: 2
@@ -309,7 +345,12 @@ struct EndTimePicker: View {
           promiseProposal: PromiseProposal(
             title: "저녁 식사",
             emoji: "🍽️",
-            groupID: "1",
+            group: .init(
+              id: "g1",
+              emoji: "👥",
+              title: "지민과 나",
+              memberCount: 2
+            ),
             startedAt: Date().addingTimeInterval(7200),
             endedAt: Date().addingTimeInterval(7200 + 7200),
             minimumParticipants: 2
@@ -384,7 +425,12 @@ struct EndTimePicker: View {
             promiseProposal: PromiseProposal(
               title: "카페 미팅",
               emoji: "☕",
-              groupID: "1",
+              group: .init(
+                id: "g1",
+                emoji: "👥",
+                title: "지민과 나",
+                memberCount: 2
+              ),
               startedAt: Date().addingTimeInterval(7200),
               endedAt: Date().addingTimeInterval(7200 + 5400),
               minimumParticipants: 2

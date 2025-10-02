@@ -31,7 +31,7 @@ public enum CreatePromise {
       var groupListState: LoadingState<[GroupModel]> = .idle
       
       var firstButtonDisabled: Bool {
-        !(!promiseProposal.title.isEmpty && promiseProposal.groupID != nil)
+        !(!promiseProposal.title.isEmpty && promiseProposal.group != nil)
       }
       
       var secondButtonDisabled: Bool {
@@ -51,7 +51,9 @@ public enum CreatePromise {
         return false
       }
       
-      var maxParticipants: Int { 10 }
+      var maxParticipants: Int? {
+        promiseProposal.group?.memberCount
+      }
       
       // 종료 시간 사용 여부
       var useEndTime: Bool {
@@ -71,7 +73,7 @@ public enum CreatePromise {
       case dismiss
       case promiseCreated
       case setTitle(String)
-      case groupSelected(String)
+      case groupSelected(GroupModel)
       case setStartDate(Date)
       case setEndDate(Date?)
       case toggleUseEndTime
@@ -125,8 +127,15 @@ public enum CreatePromise {
               .cancellable(id: CancelID.emojiSuggestDebounce, cancelInFlight: true)
           )
           
-        case .groupSelected(let groupId):
-          state.promiseProposal.groupID = groupId
+        case .groupSelected(let group):
+          state.promiseProposal.group = group
+
+          // 그룹 선택 시 최소 참가 인원 자동 설정 (최대 인원의 절반, 반올림)
+          if state.promiseProposal.minimumParticipants == nil {
+            let defaultMinimum = Int(ceil(Double(group.memberCount) / 2.0))
+            state.promiseProposal.minimumParticipants = defaultMinimum
+          }
+
           return .none
           
         case .retryLoadGroups:
@@ -151,13 +160,15 @@ public enum CreatePromise {
           //          return .none
           
         case .setMinimumParticipants(let count):
-          let validCount = max(2, min(count, state.maxParticipants))
+          guard let maxParticipants = state.maxParticipants else { return .none }
+          let validCount = max(2, min(count, maxParticipants))
           state.promiseProposal.minimumParticipants = validCount
           return .none
-          
+
         case .incrementParticipants:
+          guard let maxParticipants = state.maxParticipants else { return .none }
           let current = state.promiseProposal.minimumParticipants ?? 2
-          if current < state.maxParticipants {
+          if current < maxParticipants {
             state.promiseProposal.minimumParticipants = current + 1
           }
           return .none

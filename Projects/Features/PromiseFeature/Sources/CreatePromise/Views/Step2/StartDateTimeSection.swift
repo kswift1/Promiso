@@ -6,7 +6,9 @@ struct InlineDateTimePicker: View {
   @Binding var date: Date
   @State private var expandedSection: ExpandedSection? = nil
   var minimumDate: Date = Date()
-  
+  var scrollProxy: ScrollViewProxy? = nil
+  var scrollToId: String? = nil
+
   enum ExpandedSection {
     case date, time
   }
@@ -35,6 +37,14 @@ struct InlineDateTimePicker: View {
               expandedSection = nil
             } else {
               expandedSection = .date
+              // 달력이 펼쳐질 때 해당 섹션으로 스크롤
+              if let scrollProxy = scrollProxy, let scrollToId = scrollToId {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                  withAnimation {
+                    scrollProxy.scrollTo(scrollToId, anchor: .top)
+                  }
+                }
+              }
             }
           }
         }) {
@@ -66,6 +76,14 @@ struct InlineDateTimePicker: View {
               expandedSection = nil
             } else {
               expandedSection = .time
+              // 시간 피커가 펼쳐질 때 해당 섹션으로 스크롤
+              if let scrollProxy = scrollProxy, let scrollToId = scrollToId {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                  withAnimation {
+                    scrollProxy.scrollTo(scrollToId, anchor: .top)
+                  }
+                }
+              }
             }
           }
         }) {
@@ -131,6 +149,7 @@ struct InlineDateTimePicker: View {
 // MARK: - StartDateTimeSection
 struct StartDateTimeSection: View {
   let store: StoreOf<CreatePromise.Feature>
+  var scrollProxy: ScrollViewProxy? = nil
   
   private var timeUntilStart: TimeInterval {
     store.promiseProposal.startedAt.timeIntervalSinceNow
@@ -150,7 +169,9 @@ struct StartDateTimeSection: View {
           date: Binding(
             get: { store.promiseProposal.startedAt },
             set: { store.send(.setStartDate($0)) }
-          )
+          ),
+          scrollProxy: scrollProxy,
+          scrollToId: "startDateTime"
         )
         
         // 경고 메시지
@@ -229,7 +250,12 @@ struct StartDateTimeSection: View {
           promiseProposal: PromiseProposal(
             title: "영화 관람",
             emoji: "🍿",
-            groupID: "1",
+            group: .init(
+              id: "g1",
+              emoji: "👥",
+              title: "지민과 나",
+              memberCount: 2
+            ),
             startedAt: Date().addingTimeInterval(7200),
             minimumParticipants: 2
           )
@@ -250,7 +276,12 @@ struct StartDateTimeSection: View {
           promiseProposal: PromiseProposal(
             title: "긴급 회의",
             emoji: "💼",
-            groupID: "1",
+            group: .init(
+              id: "g1",
+              emoji: "👥",
+              title: "지민과 나",
+              memberCount: 2
+            ),
             startedAt: Date().addingTimeInterval(1800),
             minimumParticipants: 2
           )
@@ -278,7 +309,12 @@ struct StartDateTimeSection: View {
                 promiseProposal: PromiseProposal(
                   title: "저녁 식사",
                   emoji: "🍽️",
-                  groupID: "1",
+                  group: .init(
+                    id: "g1",
+                    emoji: "👥",
+                    title: "지민과 나",
+                    memberCount: 2
+                  ),
                   startedAt: date,
                   minimumParticipants: 2
                 )
@@ -311,7 +347,12 @@ struct StartDateTimeSection: View {
             promiseProposal: PromiseProposal(
               title: "카페 미팅",
               emoji: "☕",
-              groupID: "1",
+              group: .init(
+                id: "g1",
+                emoji: "👥",
+                title: "지민과 나",
+                memberCount: 2
+              ),
               startedAt: Date().addingTimeInterval(7200),
               minimumParticipants: 2
             )

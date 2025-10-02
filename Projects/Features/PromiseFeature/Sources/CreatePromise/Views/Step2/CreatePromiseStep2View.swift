@@ -4,26 +4,33 @@ import ComposableArchitecture
 // MARK: - Step 2 Content View
 struct CreatePromiseStep2View: View {
   let store: StoreOf<CreatePromise.Feature>
-  
+
   var body: some View {
-    ScrollView {
-      VStack(alignment: .leading, spacing: 32) {
-        // 헤더
-        CreatePromiseStep.second.headerView
-        
-        // 시작 날짜/시간
-        StartDateTimeSection(store: store)
-        
-        // 종료 날짜/시간 (선택)
-        EndDateTimeSection(store: store)
-        
-        // 장소 (선택)
-        LocationSection(store: store)
-        
-        // 최소 참가 인원
-        MinimumParticipantsSection(store: store)
+    ScrollViewReader { proxy in
+      ScrollView {
+        VStack(alignment: .leading, spacing: 32) {
+          // 헤더
+          CreatePromiseStep.second.headerView
+            .id("header")
+
+          // 시작 날짜/시간
+          StartDateTimeSection(store: store, scrollProxy: proxy)
+            .id("startDateTime")
+
+          // 종료 날짜/시간 (선택)
+          EndDateTimeSection(store: store, scrollProxy: proxy)
+            .id("endDateTime")
+
+          // 장소 (선택)
+          LocationSection(store: store)
+            .id("location")
+
+          // 최소 참가 인원
+          MinimumParticipantsSection(store: store, scrollProxy: proxy)
+            .id("minimumParticipants")
+        }
+        .padding(16)
       }
-      .padding(16)
     }
   }
 }
@@ -99,82 +106,6 @@ struct LocationSection: View {
   }
 }
 
-// MARK: - Minimum Participants Section
-struct MinimumParticipantsSection: View {
-  let store: StoreOf<CreatePromise.Feature>
-  
-  var body: some View {
-    VStack(alignment: .leading, spacing: 12) {
-      HStack {
-        Image(systemName: "person.2.fill")
-          .foregroundColor(.blue)
-        Text("최소 참가 인원")
-          .font(.system(size: 16, weight: .semibold))
-        Text("*")
-          .foregroundColor(.red)
-      }
-      
-      // 참가 인원 선택
-      HStack(spacing: 16) {
-        Button(action: {
-          store.send(.decrementParticipants)
-        }) {
-          Image(systemName: "minus.circle.fill")
-            .font(.system(size: 32))
-            .foregroundColor(store.promiseProposal.minimumParticipants ?? 0 <= 2 ? Color(.systemGray4) : .blue)
-        }
-        .disabled(store.promiseProposal.minimumParticipants ?? 0 <= 2)
-        
-        VStack(spacing: 4) {
-          Text("\(store.promiseProposal.minimumParticipants)명")
-            .font(.system(size: 36, weight: .bold))
-            .foregroundColor(.primary)
-          
-          Text("최대 \(store.maxParticipants)명")
-            .font(.system(size: 13))
-            .foregroundColor(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-        
-        Button(action: {
-          store.send(.incrementParticipants)
-        }) {
-          Image(systemName: "plus.circle.fill")
-            .font(.system(size: 32))
-            .foregroundColor(store.promiseProposal.minimumParticipants ?? 0 >= store.maxParticipants ? Color(.systemGray4) : .blue)
-        }
-        .disabled(store.promiseProposal.minimumParticipants ?? 0 >= store.maxParticipants)
-      }
-      .padding(.vertical, 8)
-      
-      // 안내 박스
-      HStack(spacing: 12) {
-        Image(systemName: "checkmark.circle.fill")
-          .font(.system(size: 20))
-          .foregroundColor(.blue)
-        
-        Text("최소 \(store.promiseProposal.minimumParticipants)명이 참석하면 약속이 자동으로 확정됩니다")
-          .font(.system(size: 14))
-          .foregroundColor(.primary)
-      }
-      .padding(16)
-      .background(Color.blue.opacity(0.1))
-      .clipShape(RoundedRectangle(cornerRadius: 12))
-      
-      // 경고 메시지 (최대 인원과 같을 때)
-      if store.promiseProposal.minimumParticipants == store.maxParticipants {
-        HStack(spacing: 6) {
-          Image(systemName: "exclamationmark.triangle.fill")
-            .font(.system(size: 12))
-          Text("최소 참가 인원이 그룹 멤버 수와 같습니다. 한 명이라도 불참하면 약속이 취소됩니다.")
-            .font(.system(size: 13))
-        }
-        .foregroundColor(.orange)
-        .padding(.horizontal, 4)
-      }
-    }
-  }
-}
 
 // MARK: - Location Picker View
 //struct LocationPickerView: View {
@@ -306,75 +237,27 @@ struct MinimumParticipantsSection: View {
 //  }
 //}
 
-// MARK: - Previews
-#Preview("Step 2 - 기본 상태") {
-  CreatePromiseStep2View(
-    store: Store(
-      initialState: CreatePromise.Feature.State(
-        currentStep: .second,
-        promiseProposal: PromiseProposal(
-          title: "영화 관람",
-          emoji: "🍿",
-          groupID: "1",
-          startedAt: Date().addingTimeInterval(3600 * 2), // 2시간 후
-          minimumParticipants: 2
-        ),
-        groupListState: .loaded([
-          GroupModel(id: "1", emoji: "🎓", title: "대학 친구들", memberCount: 4)
-        ])
-      )
-    ) {
-      CreatePromise.Feature()
-    }
-  )
-  .padding()
-}
-
-#Preview("Step 2 - 종료 시간 포함") {
-  CreatePromiseStep2View(
-    store: Store(
-      initialState: CreatePromise.Feature.State(
-        currentStep: .second,
-        promiseProposal: PromiseProposal(
-          title: "영화 관람",
-          emoji: "🍿",
-          groupID: "1",
-          startedAt: Date().addingTimeInterval(3600 * 2),
-          endedAt: Date().addingTimeInterval(3600 * 4), // 4시간 후
-          minimumParticipants: 3
-        ),
-        groupListState: .loaded([
-          GroupModel(id: "1", emoji: "🎓", title: "대학 친구들", memberCount: 5)
-        ])
-      )
-    ) {
-      CreatePromise.Feature()
-    }
-  )
-  .padding()
-}
-
-//#Preview("Step 2 - 장소 포함") {
+//// MARK: - Previews
+//#Preview("Step 2 - 기본 상태") {
 //  CreatePromiseStep2View(
 //    store: Store(
 //      initialState: CreatePromise.Feature.State(
 //        currentStep: .second,
 //        promiseProposal: PromiseProposal(
-//          title: "카페 미팅",
-//          emoji: "☕",
-//          groupID: "1",
-//          startedAt: Date().addingTimeInterval(3600 * 3),
-//          location: Location(
-//            name: "CGV 강남",
-//            address: "서울특별시 강남구 강남대로 438",
-//            latitude: 37.501234,
-//            longitude: 127.026789,
-//            placeId: nil
+//          title: "영화 관람",
+//          emoji: "🍿",
+//          group: .init(
+//            id: "",
+//            emoji: "",
+//            title: "",
+//            memberCount: 3
 //          ),
+//          startedAt: Date().addingTimeInterval(3600 * 2),
+//          // 2시간 후
 //          minimumParticipants: 2
 //        ),
 //        groupListState: .loaded([
-//          GroupModel(id: "1", name: "개발팀", emoji: "💼", colorHex: "3B82F6", memberCount: 8)
+//          GroupModel(id: "1", emoji: "🎓", title: "대학 친구들", memberCount: 4)
 //        ])
 //      )
 //    ) {
@@ -383,78 +266,132 @@ struct MinimumParticipantsSection: View {
 //  )
 //  .padding()
 //}
-
-#Preview("Step 2 - 1시간 이내 경고") {
-  CreatePromiseStep2View(
-    store: Store(
-      initialState: CreatePromise.Feature.State(
-        currentStep: .second,
-        promiseProposal: PromiseProposal(
-          title: "긴급 회의",
-          emoji: "💼",
-          groupID: "1",
-          startedAt: Date().addingTimeInterval(1800), // 30분 후
-          minimumParticipants: 2
-        ),
-        groupListState: .loaded([
-          GroupModel(id: "1", emoji: "💼", title: "개발팀", memberCount: 6)
-        ])
-      )
-    ) {
-      CreatePromise.Feature()
-    }
-  )
-  .padding()
-}
-
-#Preview("Step 2 - 최대 인원 선택") {
-  CreatePromiseStep2View(
-    store: Store(
-      initialState: CreatePromise.Feature.State(
-        currentStep: .second,
-        promiseProposal: PromiseProposal(
-          title: "팀 전체 회의",
-          emoji: "💼",
-          groupID: "1",
-          startedAt: Date().addingTimeInterval(3600 * 24), // 하루 후
-          minimumParticipants: 4 // 최대와 같음
-        ),
-        groupListState: .loaded([
-          GroupModel(id: "1", emoji: "👥", title: "소규모 팀", memberCount: 4)
-        ])
-      )
-    ) {
-      CreatePromise.Feature()
-    }
-  )
-  .padding()
-}
-
-#Preview("Location Picker") {
-//  LocationPickerView(
-//    selectedLocation: .constant(nil)
+//
+//#Preview("Step 2 - 종료 시간 포함") {
+//  CreatePromiseStep2View(
+//    store: Store(
+//      initialState: CreatePromise.Feature.State(
+//        currentStep: .second,
+//        promiseProposal: PromiseProposal(
+//          title: "영화 관람",
+//          emoji: "🍿",
+//          groupID: "1",
+//          startedAt: Date().addingTimeInterval(3600 * 2),
+//          endedAt: Date().addingTimeInterval(3600 * 4), // 4시간 후
+//          minimumParticipants: 3
+//        ),
+//        groupListState: .loaded([
+//          GroupModel(id: "1", emoji: "🎓", title: "대학 친구들", memberCount: 5)
+//        ])
+//      )
+//    ) {
+//      CreatePromise.Feature()
+//    }
 //  )
-}
-
-#Preview("전체 화면 - Step 2") {
-  CreatePromise.RootView(
-    store: Store(
-      initialState: CreatePromise.Feature.State(
-        currentStep: .second,
-        promiseProposal: PromiseProposal(
-          title: "영화 관람",
-          emoji: "🍿",
-          groupID: "1",
-          startedAt: Date().addingTimeInterval(3600 * 2),
-          minimumParticipants: 2
-        ),
-        groupListState: .loaded([
-          GroupModel(id: "1", emoji: "🎓", title: "대학 친구들", memberCount: 4),
-          GroupModel(id: "2", emoji: "💼", title: "개발팀", memberCount: 8)
-        ])
-      )
-    ) {
-      CreatePromise.Feature()
-    }
-  )
-}
+//  .padding()
+//}
+//
+////#Preview("Step 2 - 장소 포함") {
+////  CreatePromiseStep2View(
+////    store: Store(
+////      initialState: CreatePromise.Feature.State(
+////        currentStep: .second,
+////        promiseProposal: PromiseProposal(
+////          title: "카페 미팅",
+////          emoji: "☕",
+////          groupID: "1",
+////          startedAt: Date().addingTimeInterval(3600 * 3),
+////          location: Location(
+////            name: "CGV 강남",
+////            address: "서울특별시 강남구 강남대로 438",
+////            latitude: 37.501234,
+////            longitude: 127.026789,
+////            placeId: nil
+////          ),
+////          minimumParticipants: 2
+////        ),
+////        groupListState: .loaded([
+////          GroupModel(id: "1", name: "개발팀", emoji: "💼", colorHex: "3B82F6", memberCount: 8)
+////        ])
+////      )
+////    ) {
+////      CreatePromise.Feature()
+////    }
+////  )
+////  .padding()
+////}
+//
+//#Preview("Step 2 - 1시간 이내 경고") {
+//  CreatePromiseStep2View(
+//    store: Store(
+//      initialState: CreatePromise.Feature.State(
+//        currentStep: .second,
+//        promiseProposal: PromiseProposal(
+//          title: "긴급 회의",
+//          emoji: "💼",
+//          groupID: "1",
+//          startedAt: Date().addingTimeInterval(1800), // 30분 후
+//          minimumParticipants: 2
+//        ),
+//        groupListState: .loaded([
+//          GroupModel(id: "1", emoji: "💼", title: "개발팀", memberCount: 6)
+//        ])
+//      )
+//    ) {
+//      CreatePromise.Feature()
+//    }
+//  )
+//  .padding()
+//}
+//
+//#Preview("Step 2 - 최대 인원 선택") {
+//  CreatePromiseStep2View(
+//    store: Store(
+//      initialState: CreatePromise.Feature.State(
+//        currentStep: .second,
+//        promiseProposal: PromiseProposal(
+//          title: "팀 전체 회의",
+//          emoji: "💼",
+//          groupID: "1",
+//          startedAt: Date().addingTimeInterval(3600 * 24), // 하루 후
+//          minimumParticipants: 4 // 최대와 같음
+//        ),
+//        groupListState: .loaded([
+//          GroupModel(id: "1", emoji: "👥", title: "소규모 팀", memberCount: 4)
+//        ])
+//      )
+//    ) {
+//      CreatePromise.Feature()
+//    }
+//  )
+//  .padding()
+//}
+//
+//#Preview("Location Picker") {
+////  LocationPickerView(
+////    selectedLocation: .constant(nil)
+////  )
+//}
+//
+//#Preview("전체 화면 - Step 2") {
+//  CreatePromise.RootView(
+//    store: Store(
+//      initialState: CreatePromise.Feature.State(
+//        currentStep: .second,
+//        promiseProposal: PromiseProposal(
+//          title: "영화 관람",
+//          emoji: "🍿",
+//          groupID: "1",
+//          startedAt: Date().addingTimeInterval(3600 * 2),
+//          minimumParticipants: 2
+//        ),
+//        groupListState: .loaded([
+//          GroupModel(id: "1", emoji: "🎓", title: "대학 친구들", memberCount: 4),
+//          GroupModel(id: "2", emoji: "💼", title: "개발팀", memberCount: 8)
+//        ])
+//      )
+//    ) {
+//      CreatePromise.Feature()
+//    }
+//  )
+//}

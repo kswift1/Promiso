@@ -54,9 +54,9 @@ struct GroupListView: View {
       ForEach(groups) { group in
         GroupCard(
           model: group,
-          isSelected: store.promiseProposal.groupID == group.id
+          isSelected: store.promiseProposal.group?.id == group.id
         ) {
-          store.send(.groupSelected(group.id))
+          store.send(.groupSelected(group))
         }
       }
     }

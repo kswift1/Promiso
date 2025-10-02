@@ -57,7 +57,7 @@ struct TitleInputTextField: View {
                 promiseProposal: PromiseProposal(
                     title: "영화 관람",
                     emoji: "🍿",
-                    groupID: nil,
+                    group: nil,
                     startedAt: Date(),
                     minimumParticipants: 2
                 )
@@ -76,7 +76,7 @@ struct TitleInputTextField: View {
                 promiseProposal: PromiseProposal(
                     title: "강남역에서 저녁 먹고 영화 보기",
                     emoji: "🍿",
-                    groupID: nil,
+                    group: nil,
                     startedAt: Date(),
                     minimumParticipants: 2
                 )
@@ -95,7 +95,7 @@ struct TitleInputTextField: View {
                 promiseProposal: PromiseProposal(
                     title: "123456789012345678901234567890", // 정확히 30자
                     emoji: "📅",
-                    groupID: nil,
+                    group: nil,
                     startedAt: Date(),
                     minimumParticipants: 2
                 )
@@ -114,7 +114,7 @@ struct TitleInputTextField: View {
                 promiseProposal: PromiseProposal(
                     title: "다크모드 테스트",
                     emoji: "🌙",
-                    groupID: nil,
+                    group: nil,
                     startedAt: Date(),
                     minimumParticipants: 2
                 )
@@ -155,7 +155,7 @@ struct TitleInputTextField: View {
                             promiseProposal: PromiseProposal(
                                 title: "점심식사",
                                 emoji: "🍽️",
-                                groupID: nil,
+                                group: nil,
                                 startedAt: Date(),
                                 minimumParticipants: 2
                             )
@@ -176,7 +176,7 @@ struct TitleInputTextField: View {
                             promiseProposal: PromiseProposal(
                                 title: "강남에서 저녁 먹고 영화 보기",
                                 emoji: "🍿",
-                                groupID: nil,
+                                group: nil,
                                 startedAt: Date(),
                                 minimumParticipants: 2
                             )
@@ -197,7 +197,7 @@ struct TitleInputTextField: View {
                             promiseProposal: PromiseProposal(
                                 title: "12345678901234567890123456789",
                                 emoji: "📝",
-                                groupID: nil,
+                                group: nil,
                                 startedAt: Date(),
                                 minimumParticipants: 2
                             )

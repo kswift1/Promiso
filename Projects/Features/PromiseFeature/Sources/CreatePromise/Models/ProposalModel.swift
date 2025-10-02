@@ -10,7 +10,7 @@ import Foundation
 struct PromiseProposal: Equatable {
   var title: String
   var emoji: String?
-  var groupID: String?
+  var group: GroupModel?
   var startedAt: Date
   var endedAt: Date?
   var minimumParticipants: Int?
@@ -23,7 +23,7 @@ extension PromiseProposal {
   static let empty: PromiseProposal = .init(
     title: "",
     emoji: nil,
-    groupID: nil,
+    group: nil,
     startedAt: .init(),
     endedAt: nil,
     minimumParticipants: nil,
