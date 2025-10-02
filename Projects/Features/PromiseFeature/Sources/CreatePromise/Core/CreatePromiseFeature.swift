@@ -19,7 +19,8 @@ public enum CreatePromise {
     
     @Dependency(\.continuousClock) var clock
     @Dependency(\.groupClient) var groupClient
-    
+    @Dependency(\.promiseClient) var promiseClient
+
     private enum CancelID: Hashable {
       case emojiSuggestDebounce
     }
@@ -29,6 +30,8 @@ public enum CreatePromise {
       var currentStep: CreatePromiseStep = .first
       var promiseProposal: PromiseProposal = .empty
       var groupListState: LoadingState<[GroupModel]> = .idle
+      var isCreatingPromise: Bool = false
+      var creationError: PromiseClientError?
       
       var firstButtonDisabled: Bool {
         !(!promiseProposal.title.isEmpty && promiseProposal.group != nil)
@@ -61,7 +64,7 @@ public enum CreatePromise {
       }
       
       var thirdButtonDisabled: Bool {
-        false // Step3는 선택사항이므로 항상 진행 가능
+        isCreatingPromise // 생성 중일 때만 비활성화
       }
     }
     
@@ -84,10 +87,12 @@ public enum CreatePromise {
       case setArrivalSharingTime(Int?)
       case setDescription(String)
       case retryLoadGroups  // 재시도
+      case clearCreationError
       case _titleDebounced(String)
       case _emojiSuggestionsResponse([EmojiSuggestion])
       case _fetchGroupList
       case _groupListResponse(Result<[GroupModel], Error>)
+      case _createPromiseResponse(Result<String, Error>)
     }
     
     public init() {}
@@ -108,13 +113,25 @@ public enum CreatePromise {
           return .none
           
         case .requestCreatingPromise:
-          return .none
+          state.isCreatingPromise = true
+          state.creationError = nil
+
+          return .run { [proposal = state.promiseProposal, promiseClient] send in
+            do {
+              // TODO: 실제 사용자 ID를 가져와야 함
+              let hostId = "sungwon"
+              let promiseId = try await promiseClient.createPromise(proposal, hostId)
+              await send(._createPromiseResponse(.success(promiseId)))
+            } catch {
+              await send(._createPromiseResponse(.failure(error)))
+            }
+          }
           
         case .dismiss:
           return .none
           
         case .promiseCreated:
-          return .none
+          return .send(.dismiss)
           
           // 사용자가 제목 입력
         case .setTitle(let title):
@@ -143,6 +160,10 @@ public enum CreatePromise {
           
         case .retryLoadGroups:
           return .send(._fetchGroupList)
+
+        case .clearCreationError:
+          state.creationError = nil
+          return .none
           
         case .setEndDate(let date):
           state.promiseProposal.endedAt = date
@@ -227,6 +248,22 @@ public enum CreatePromise {
         case ._groupListResponse(.failure(let error)):
           state.groupListState = .failed(error)
           return .none
+
+        case ._createPromiseResponse(.success(let promiseId)):
+          state.isCreatingPromise = false
+          print("✅ 약속 생성 성공: \(promiseId)")
+          return .send(.promiseCreated)
+
+        case ._createPromiseResponse(.failure(let error)):
+          state.isCreatingPromise = false
+          if let promiseError = error as? PromiseClientError {
+            state.creationError = promiseError
+          } else {
+            state.creationError = .unknown
+          }
+          print("❌ 약속 생성 실패: \(error.localizedDescription)")
+          return .none
+
         case .setStartDate(let date):
           state.promiseProposal.startedAt = date
           
@@ -289,6 +326,21 @@ extension CreatePromise {
       .onAppear {
         store.send(.onAppear)
       }
+      .alert(
+        "약속 생성 실패",
+        isPresented: Binding(
+          get: { store.creationError != nil },
+          set: { if !$0 { store.send(.clearCreationError) } }
+        )
+      ) {
+        Button("확인", role: .cancel) {
+          store.send(.clearCreationError)
+        }
+      } message: {
+        if let error = store.creationError {
+          Text(error.localizedDescription)
+        }
+      }
     }
   }
 }
@@ -336,7 +388,8 @@ extension CreatePromiseStep {
     case .third:
       StepButton(
         title: "약속 제안하기",
-        disabled: store.state.thirdButtonDisabled) {
+        disabled: store.state.thirdButtonDisabled,
+        isLoading: store.state.isCreatingPromise) {
           store.send(.requestCreatingPromise, animation: .spring(response: 0.3, dampingFraction: 0.9))
         }
     }
@@ -346,17 +399,26 @@ extension CreatePromiseStep {
 fileprivate struct StepButton: View {
   let title: String
   var disabled: Bool
+  var isLoading: Bool = false
   var action: () -> Void
-  
+
   var body: some View {
     Button(action: action) {
-      Text(title)
-        .font(.system(size: 16, weight: .semibold))
-        .foregroundColor(.white)
-        .frame(maxWidth: .infinity)
-        .frame(height: 50)
-        .background(disabled ? Color.gray.opacity(0.4) : Color.blue)
-        .cornerRadius(12)
+      HStack(spacing: 8) {
+        Text(title)
+          .font(.system(size: 16, weight: .semibold))
+          .foregroundColor(.white)
+
+        if isLoading {
+          ProgressView()
+            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+            .scaleEffect(0.7)
+        }
+      }
+      .frame(maxWidth: .infinity)
+      .frame(height: 50)
+      .background(disabled ? Color.gray.opacity(0.4) : Color.blue)
+      .cornerRadius(12)
     }
     .disabled(disabled)
   }

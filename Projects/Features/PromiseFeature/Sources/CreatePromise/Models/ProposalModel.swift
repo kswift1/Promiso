@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct PromiseProposal: Equatable {
+public struct PromiseProposal: Equatable {
   var title: String
   var emoji: String?
   var group: GroupModel?

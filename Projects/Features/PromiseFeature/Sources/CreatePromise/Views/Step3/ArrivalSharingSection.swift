@@ -9,68 +9,82 @@ struct ArrivalSharingSection: View {
       placeHolderTitle: "도착 상황 공유 시작",
       isRequired: false
     ) {
-      VStack(alignment: .leading, spacing: 16) {
-        // 설명
-        HStack(alignment: .top, spacing: 12) {
-          Image(systemName: "location.fill.viewfinder")
-            .font(.system(size: 20))
-            .foregroundColor(.blue)
+      content
+    }
+  }
 
-          VStack(alignment: .leading, spacing: 4) {
-            Text("약속 시간 전부터 멤버들이 서로의 도착 예정 시간을 볼 수 있습니다")
-              .font(.system(size: 14))
-              .foregroundColor(.primary)
-              .fixedSize(horizontal: false, vertical: true)
-
-            Text("라이브 액티비티로 실시간 도착 현황을 확인할 수 있어요")
-              .font(.system(size: 13))
-              .foregroundColor(.secondary)
-              .fixedSize(horizontal: false, vertical: true)
-          }
-        }
-        .padding(16)
-        .background(Color.blue.opacity(0.1))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-
-        // 옵션 선택
-        VStack(spacing: 12) {
-          ForEach(ArrivalSharingOption.allCases, id: \.self) { option in
-            ArrivalSharingButton(
-              option: option,
-              isSelected: store.arrivalSharingTime == option.minutes,
-              action: {
-                let newValue = store.arrivalSharingTime == option.minutes ? nil : option.minutes
-                store.send(.setArrivalSharingTime(newValue), animation: .spring(response: 0.3, dampingFraction: 0.7))
-              }
-            )
-          }
-        }
-
-        // 추가 안내
-        if store.arrivalSharingTime != nil {
-          HStack(spacing: 8) {
-            Image(systemName: "info.circle.fill")
-              .font(.system(size: 12))
-              .foregroundColor(.green)
-
-            VStack(alignment: .leading, spacing: 2) {
-              Text("설정한 시간부터 라이브 액티비티가 시작됩니다")
-                .font(.system(size: 13))
-                .foregroundColor(.primary)
-
-              Text("멤버들의 출발 여부와 도착 예정 시간을 실시간으로 확인할 수 있어요")
-                .font(.system(size: 12))
-                .foregroundColor(.secondary)
-            }
-
-            Spacer(minLength: 0)
-          }
-          .padding(12)
-          .background(Color.green.opacity(0.1))
-          .clipShape(RoundedRectangle(cornerRadius: 10))
-        }
+  private var content: some View {
+    VStack(alignment: .leading, spacing: 16) {
+      descriptionSection
+      optionsSection
+      if store.promiseProposal.arrivalSharingTime != nil {
+        additionalInfoSection
       }
     }
+  }
+
+  private var descriptionSection: some View {
+    HStack(alignment: .top, spacing: 12) {
+      Image(systemName: "location.fill.viewfinder")
+        .font(.system(size: 20))
+        .foregroundColor(.blue)
+
+      VStack(alignment: .leading, spacing: 4) {
+        Text("약속 시간 전부터 멤버들이 서로의 도착 예정 시간을 볼 수 있습니다")
+          .font(.system(size: 14))
+          .foregroundColor(.primary)
+          .fixedSize(horizontal: false, vertical: true)
+
+        Text("라이브 액티비티로 실시간 도착 현황을 확인할 수 있어요")
+          .font(.system(size: 13))
+          .foregroundColor(.secondary)
+          .fixedSize(horizontal: false, vertical: true)
+      }
+    }
+    .padding(16)
+    .background(Color.blue.opacity(0.1))
+    .clipShape(RoundedRectangle(cornerRadius: 12))
+  }
+
+  private var optionsSection: some View {
+    VStack(spacing: 12) {
+      ForEach(ArrivalSharingOption.allCases, id: \.self) { option in
+        let isSelected = store.promiseProposal.arrivalSharingTime == option.minutes
+        let currentValue = store.promiseProposal.arrivalSharingTime
+
+        ArrivalSharingButton(
+          option: option,
+          isSelected: isSelected,
+          action: {
+            let newValue = currentValue == option.minutes ? nil : option.minutes
+            store.send(.setArrivalSharingTime(newValue), animation: .spring(response: 0.3, dampingFraction: 0.7))
+          }
+        )
+      }
+    }
+  }
+
+  private var additionalInfoSection: some View {
+    HStack(spacing: 8) {
+      Image(systemName: "info.circle.fill")
+        .font(.system(size: 12))
+        .foregroundColor(.green)
+
+      VStack(alignment: .leading, spacing: 2) {
+        Text("설정한 시간부터 라이브 액티비티가 시작됩니다")
+          .font(.system(size: 13))
+          .foregroundColor(.primary)
+
+        Text("멤버들의 출발 여부와 도착 예정 시간을 실시간으로 확인할 수 있어요")
+          .font(.system(size: 12))
+          .foregroundColor(.secondary)
+      }
+
+      Spacer(minLength: 0)
+    }
+    .padding(12)
+    .background(Color.green.opacity(0.1))
+    .clipShape(RoundedRectangle(cornerRadius: 10))
   }
 }
 
@@ -187,9 +201,9 @@ struct ArrivalSharingButton: View {
               memberCount: 4
             ),
             startedAt: Date().addingTimeInterval(7200),
-            minimumParticipants: 2
-          ),
-          arrivalSharingTime: nil
+            minimumParticipants: 2,
+            arrivalSharingTime: nil
+          )
         )
       ) {
         CreatePromise.Feature()
@@ -214,9 +228,9 @@ struct ArrivalSharingButton: View {
               memberCount: 4
             ),
             startedAt: Date().addingTimeInterval(7200),
-            minimumParticipants: 2
-          ),
-          arrivalSharingTime: 60
+            minimumParticipants: 2,
+            arrivalSharingTime: 60
+          )
         )
       ) {
         CreatePromise.Feature()
@@ -241,9 +255,9 @@ struct ArrivalSharingButton: View {
               memberCount: 6
             ),
             startedAt: Date().addingTimeInterval(10800),
-            minimumParticipants: 4
-          ),
-          arrivalSharingTime: 120
+            minimumParticipants: 4,
+            arrivalSharingTime: 120
+          )
         )
       ) {
         CreatePromise.Feature()
