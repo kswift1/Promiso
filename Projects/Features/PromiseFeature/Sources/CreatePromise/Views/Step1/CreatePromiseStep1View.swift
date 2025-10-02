@@ -10,31 +10,34 @@ struct CreatePromiseStep1View: View {
   }
   
   var body: some View {
-    VStack(alignment: .leading, spacing: 32) {
-      // 헤더
-      HStack {
-        CreatePromiseStep.first.headerView
-        
-        Spacer()
-        
-        if let emoji = store.promiseProposal.emoji {
-          Text(emoji)
-            .font(.system(size: 48))
+    ScrollView {
+      VStack(alignment: .leading, spacing: 32) {
+        // 헤더
+        HStack {
+          CreatePromiseStep.first.headerView
+          
+          Spacer()
+          
+          if let emoji = store.promiseProposal.emoji {
+            Text(emoji)
+              .font(.system(size: 48))
+          }
         }
+        
+        // 제목 입력
+        SectionPlaceHolder(
+          placeHolderTitle: "제목",
+          isRequired: true) {
+            TitleInputTextField(store: store)
+          }
+        
+        SectionPlaceHolder(
+          placeHolderTitle: "그룹 선택",
+          isRequired: true) {
+            GroupListView(store: store)
+          }
       }
-      
-      // 제목 입력
-      SectionPlaceHolder(
-        placeHolderTitle: "제목",
-        isRequired: true) {
-          TitleInputTextField(store: store)
-        }
-      
-      SectionPlaceHolder(
-        placeHolderTitle: "그룹 선택",
-        isRequired: true) {
-          GroupListView(store: store)
-        }
+      .padding(16)
     }
   }
 }

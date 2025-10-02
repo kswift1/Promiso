@@ -239,13 +239,7 @@ extension CreatePromise {
           store.send(.dismiss)
         }
         
-        // Content
-        ScrollView {
-          VStack(spacing: 24) {
-            store.currentStep.contentView(store: store)
-          }
-          .padding(16)
-        }
+        store.currentStep.contentView(store: store)
         
         Spacer()
         

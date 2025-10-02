@@ -6,21 +6,24 @@ struct CreatePromiseStep2View: View {
   let store: StoreOf<CreatePromise.Feature>
   
   var body: some View {
-    VStack(alignment: .leading, spacing: 32) {
-      // 헤더
-      CreatePromiseStep.second.headerView
-      
-      // 시작 날짜/시간
-      StartDateTimeSection(store: store)
-      
-      // 종료 날짜/시간 (선택)
-      EndDateTimeSection(store: store)
-      
-      // 장소 (선택)
-      LocationSection(store: store)
-      
-      // 최소 참가 인원
-      MinimumParticipantsSection(store: store)
+    ScrollView {
+      VStack(alignment: .leading, spacing: 32) {
+        // 헤더
+        CreatePromiseStep.second.headerView
+        
+        // 시작 날짜/시간
+        StartDateTimeSection(store: store)
+        
+        // 종료 날짜/시간 (선택)
+        EndDateTimeSection(store: store)
+        
+        // 장소 (선택)
+        LocationSection(store: store)
+        
+        // 최소 참가 인원
+        MinimumParticipantsSection(store: store)
+      }
+      .padding(16)
     }
   }
 }
