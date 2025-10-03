@@ -1,7 +1,7 @@
 # Promiso Project Makefile
 # Usage: make feature FEATURE_NAME=YourFeature
 
-.PHONY: feature remove-feature help
+.PHONY: feature remove-feature deps help
 
 # 기본값 설정
 FEATURE_NAME ?=
@@ -68,12 +68,18 @@ remove-feature:
 	@echo "🎉 피쳐 '$(FEATURE_NAME)'가 성공적으로 삭제되었습니다!"
 	@echo "🔧 다음 단계: 필요시 관련 코드에서 $(FEATURE_NAME) 참조를 제거하세요."
 
+# 의존성 그래프 시각화
+deps:
+	@echo "📊 의존성 그래프 분석 중..."
+	@./scripts/dependency-graph.sh
+
 # 도움말
 help:
 	@echo "Promiso Project Commands:"
 	@echo ""
 	@echo "  make feature FEATURE_NAME=YourFeature        - 새 피쳐 생성 (TCA 중심 구조)"
 	@echo "  make remove-feature FEATURE_NAME=YourFeature - 기존 피쳐 삭제"
+	@echo "  make deps                                    - 의존성 그래프 시각화"
 	@echo "  make help                                    - 이 도움말 표시"
 	@echo ""
 	@echo "예시:"
