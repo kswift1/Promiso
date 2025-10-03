@@ -13,18 +13,18 @@ struct MinimumParticipantsSection: View {
   
   // 기본값: 최대 인원의 절반 (반올림)
   private var defaultMinimum: Int {
-    guard let maxParticipants = store.maxParticipants else { return 2 }
+    guard let maxParticipants = store.promiseProposal.group?.memberCount else { return 2 }
     return Int(ceil(Double(maxParticipants) / 2.0))
   }
   
   // 2명 고정 여부
   private var isFixedAtTwo: Bool {
-    store.maxParticipants == 2
+    store.promiseProposal.group?.memberCount == 2
   }
   
   // 최대 인원 (기본값 2명)
   private var maxParticipants: Int {
-    store.maxParticipants ?? 2
+    store.promiseProposal.group?.memberCount ?? 2
   }
   
   var body: some View {
@@ -86,8 +86,12 @@ struct MinimumParticipantsSection: View {
   // MARK: - 조정 가능한 UI
   private var adjustableParticipantsView: some View {
     HStack(spacing: 16) {
-      Button(action: {
-        store.send(.decrementParticipants, animation: .spring(response: 0.3, dampingFraction: 0.7))
+      Button(
+        action: {
+          store.send(
+            .view(.decrementParticipants),
+            animation: .spring(response: 0.3, dampingFraction: 0.7)
+          )
         scrollToMinimumParticipants()
       }) {
         Image(systemName: "minus.circle.fill")
@@ -108,8 +112,12 @@ struct MinimumParticipantsSection: View {
       }
       .frame(maxWidth: .infinity)
       
-      Button(action: {
-        store.send(.incrementParticipants, animation: .spring(response: 0.3, dampingFraction: 0.7))
+      Button(
+        action: {
+          store.send(
+            .view(.incrementParticipants),
+            animation: .spring(response: 0.3, dampingFraction: 0.7)
+          )
         scrollToMinimumParticipants()
       }) {
         Image(systemName: "plus.circle.fill")

@@ -169,7 +169,7 @@ struct StartDateTimeSection: View {
         InlineDateTimePicker(
           date: Binding(
             get: { store.promiseProposal.startedAt },
-            set: { store.send(.setStartDate($0)) }
+            set: { store.send(.view(.setStartDate($0))) }
           ),
           scrollProxy: scrollProxy,
           scrollToId: "startDateTime"

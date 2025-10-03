@@ -1,10 +1,3 @@
-// MARK: - PromiseFeature.swift
-// TCA 1.22.2를 사용한 Promise Feature의 Implementation layer
-// 이 파일은 핵심 business logic, state management, view implementation을 포함
-
-import SwiftUI
-import ComposableArchitecture
-
 // MARK: - Feature Namespace
 
 /// Promise Feature 컴포넌트를 위한 Namespace
@@ -117,34 +110,24 @@ extension PromiseMain {
           state.createPromise = CreatePromise.Feature.State()
           return .none
           
-        case .createPromise(.presented(.dismiss)):
-          // 시트 닫기
-          state.createPromise = nil
-          return .none
-          
-        case .createPromise(.presented(.promiseCreated)):
-          // 약속 생성 완료 후 처리
-          state.createPromise = nil
-          // 추가 로직 (예: 목록 새로고침)
-          return .none
-          
-        case .createPromise:
-          return .none
-          
         case .groupSelected(let id):
-          // 그룹 선택 로직
-          if let selectedGroup = state.availableGroups.first(where: { $0.id == id }) {
-            state.currentGroup = selectedGroup.name
-            // 모든 그룹의 isActive를 false로 설정
-            for i in state.availableGroups.indices {
-              state.availableGroups[i].isActive = false
-            }
-            // 선택된 그룹의 isActive를 true로 설정
-            if let index = state.availableGroups.firstIndex(where: { $0.id == id }) {
-              state.availableGroups[index].isActive = true
-            }
-          }
           return .none
+          
+        case .createPromise(let action):
+          switch action {
+            
+          case .presented(.delegate(.dismiss)):
+            state.createPromise = nil
+            return .none
+            
+          case .presented(.delegate(.promiseCreated(let promiseId))):
+            state.createPromise = nil
+            // FIXME: 필요 시 목록 갱신 등 후처리...
+            return .none
+            
+          default:
+            return .none
+          }
         }
       }
       .ifLet(\.$createPromise, action: \.createPromise) {
@@ -160,7 +143,7 @@ extension PromiseMain {
   /// Promise Feature의 Root View
   public struct RootView: View {
     @Bindable private var store: StoreOf<PromiseMain.Feature>
-
+    
     public init(store: StoreOf<PromiseMain.Feature>) {
       self.store = store
     }
@@ -175,7 +158,7 @@ extension PromiseMain {
     }
     
     // MARK: - Main Content View
-
+    
     private var mainContentView: some View {
       ScrollView {
         VStack(spacing: 20) {

@@ -7,7 +7,7 @@
 
 import Foundation
 
-// UI 전용 Proposal 모델 (PromiseProposal은 Clients 모듈로 이동)
+// UI 전용 Proposal 모델
 
 public struct ProposalModel: Equatable {
   var receivedProposals: [ProposalItem]

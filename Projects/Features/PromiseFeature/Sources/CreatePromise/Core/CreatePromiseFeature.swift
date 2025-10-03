@@ -5,13 +5,6 @@
 //  Created by 김성원 on 9/30/25.
 //
 
-import SwiftUI
-import ComposableArchitecture
-
-import Clients
-import Domain
-import Shared
-
 public enum CreatePromise {
   
   
@@ -22,6 +15,7 @@ public enum CreatePromise {
     @Dependency(\.groupClient) var groupClient
     @Dependency(\.promiseClient) var promiseClient
 
+    
     private enum CancelID: Hashable {
       case emojiSuggestDebounce
     }
@@ -55,45 +49,50 @@ public enum CreatePromise {
         return false
       }
       
-      var maxParticipants: Int? {
-        promiseProposal.group?.memberCount
-      }
-      
-      // 종료 시간 사용 여부
-      var useEndTime: Bool {
-        promiseProposal.endedAt != nil
-      }
-      
       var thirdButtonDisabled: Bool {
         isCreatingPromise // 생성 중일 때만 비활성화
       }
     }
     
     public enum Action: Sendable {
-      case onAppear
-      case nextStep
-      case previousStep
-      case requestCreatingPromise
-      case dismiss
-      case promiseCreated
-      case setTitle(String)
-      case groupSelected(GroupModel)
-      case setStartDate(Date)
-      case setEndDate(Date?)
-      case toggleUseEndTime
-      //      case setLocation(Location?)
-      case setMinimumParticipants(Int)
-      case incrementParticipants
-      case decrementParticipants
-      case setArrivalSharingTime(Int?)
-      case setDescription(String)
-      case retryLoadGroups  // 재시도
-      case clearCreationError
-      case _titleDebounced(String)
-      case _emojiSuggestionsResponse([EmojiSuggestion])
-      case _fetchGroupList
-      case _groupListResponse(Result<[GroupModel], Error>)
-      case _createPromiseResponse(Result<String, Error>)
+      case view(View)
+      case binding(BindingAction<State>)
+      case `internal`(Internal)
+      case delegate(Delegate)
+      
+      // 사용자가 트리거하는 UI 이벤트
+      public enum View: Sendable {
+        case onAppear
+        case nextStep
+        case previousStep
+        case requestCreatingPromise
+        case setTitle(String)
+        case groupSelected(GroupModel)
+        case setStartDate(Date)
+        case setEndDate(Date?)
+        case toggleUseEndTime
+        case incrementParticipants
+        case decrementParticipants
+        case setArrivalSharingTime(Int?)
+        case setDescription(String)
+        case retryLoadGroups
+        case clearCreationError
+      }
+      
+      // 내부에서만 발생하는 이벤트 (이펙트 응답/디바운스 등)
+      public enum Internal: Sendable {
+        case titleDebounced(String)
+        case emojiSuggestionsResponse([EmojiSuggestion])
+        case fetchGroupList
+        case groupListResponse(Result<[GroupModel], Error>)
+        case createPromiseResponse(Result<String, Clients.PromiseClientError>)
+      }
+      
+      // 상위 전달 이벤트 (네비/라우팅/완료 알림 등)
+      public enum Delegate: Sendable {
+        case promiseCreated(id: String)
+        case dismiss
+      }
     }
     
     public init() {}
@@ -101,177 +100,155 @@ public enum CreatePromise {
     public var body: some ReducerOf<Self> {
       Reduce { state, action in
         switch action {
-        case .onAppear:
-          // FetchGroups
-          return .send(._fetchGroupList)
           
-        case .nextStep:
-          state.currentStep.next()
-          return .none
-          
-        case .previousStep:
-          state.currentStep.previous()
-          return .none
-          
-        case .requestCreatingPromise:
-          state.isCreatingPromise = true
-          state.creationError = nil
-
-          return .run { [proposal = state.promiseProposal, promiseClient] send in
-            do {
-              // TODO: 실제 사용자 ID를 가져와야 함
-              let hostId = "sungwon"
-              let promiseId = try await promiseClient.createPromise(proposal, hostId)
-              await send(._createPromiseResponse(.success(promiseId)))
-            } catch {
-              await send(._createPromiseResponse(.failure(error)))
+          // MARK: - View
+        case .view(let viewAction):
+          switch viewAction {
+            
+          case .onAppear:
+            return .send(.internal(.fetchGroupList))
+            
+          case .nextStep:
+            state.currentStep.next()
+            return .none
+            
+          case .previousStep:
+            state.currentStep.previous()
+            return .none
+            
+          case .requestCreatingPromise:
+            state.isCreatingPromise = true
+            state.creationError = nil
+            return .run { [proposal = state.promiseProposal, promiseClient] send in
+              do {
+                let hostId = "sungwon" // TODO: 실제 사용자 ID
+                let promiseId = try await promiseClient.createPromise(proposal, hostId)
+                await send(.internal(.createPromiseResponse(.success(promiseId))))
+              } catch let e as Clients.PromiseClientError {
+                await send(.internal(.createPromiseResponse(.failure(e))))
+              } catch {
+                await send(.internal(.createPromiseResponse(.failure(.unknown))))
+              }
             }
-          }
-          
-        case .dismiss:
-          return .none
-          
-        case .promiseCreated:
-          return .send(.dismiss)
-          
-          // 사용자가 제목 입력
-        case .setTitle(let title):
-          state.promiseProposal.title = title
-          
-          return .merge(
-            .cancel(id: CancelID.emojiSuggestDebounce),
-            .run { [clock, title] send in
-              try await clock.sleep(for: .milliseconds(1_000))   // 디바운스
-              await send(._titleDebounced(title))
+            
+          case .setTitle(let title):
+            state.promiseProposal.title = title
+            return .merge(
+              .cancel(id: CancelID.emojiSuggestDebounce),
+              .run { [clock, title] send in
+                try await clock.sleep(for: .milliseconds(1_000))
+                await send(.internal(.titleDebounced(title)))
+              }
+                .cancellable(id: CancelID.emojiSuggestDebounce, cancelInFlight: true)
+            )
+            
+          case .groupSelected(let group):
+            state.promiseProposal.group = group
+            if group.memberCount == 2 {
+              state.promiseProposal.minimumParticipants = 2
+            } else {
+              let defaultMinimum = Int(ceil(Double(group.memberCount) / 2.0))
+              state.promiseProposal.minimumParticipants = defaultMinimum
             }
-              .cancellable(id: CancelID.emojiSuggestDebounce, cancelInFlight: true)
-          )
-          
-        case .groupSelected(let group):
-          state.promiseProposal.group = group
-          
-          if group.memberCount == 2 {
-            state.promiseProposal.minimumParticipants = 2
-          } else {
-            let defaultMinimum = Int(ceil(Double(group.memberCount) / 2.0))
-            state.promiseProposal.minimumParticipants = defaultMinimum
-          }
-
-          return .none
-          
-        case .retryLoadGroups:
-          return .send(._fetchGroupList)
-
-        case .clearCreationError:
-          state.creationError = nil
-          return .none
-          
-        case .setEndDate(let date):
-          state.promiseProposal.endedAt = date
-          return .none
-          
-        case .toggleUseEndTime:
-          if state.promiseProposal.endedAt == nil {
-            // 종료 시간 활성화: 시작 시간 + 2시간
-            state.promiseProposal.endedAt = state.promiseProposal.startedAt.addingTimeInterval(7200)
-          } else {
-            // 종료 시간 비활성화
-            state.promiseProposal.endedAt = nil
-          }
-          return .none
-          
-          //        case .setLocation(let location):
-          //          state.promiseProposal.location = location
-          //          return .none
-          
-        case .setMinimumParticipants(let count):
-          guard let maxParticipants = state.maxParticipants else { return .none }
-          let validCount = max(2, min(count, maxParticipants))
-          state.promiseProposal.minimumParticipants = validCount
-          return .none
-
-        case .incrementParticipants:
-          guard let maxParticipants = state.maxParticipants else { return .none }
-          let current = state.promiseProposal.minimumParticipants ?? 2
-          if current < maxParticipants {
-            state.promiseProposal.minimumParticipants = current + 1
-          }
-          return .none
-          
-        case .decrementParticipants:
-          let current = state.promiseProposal.minimumParticipants ?? 2
-          if current > 2 {
-            state.promiseProposal.minimumParticipants = current - 1
-          }
-          return .none
-
-        case .setArrivalSharingTime(let minutes):
-          state.promiseProposal.arrivalSharingTime = minutes
-          return .none
-
-        case .setDescription(let description):
-          let trimmed = String(description.prefix(500))
-          state.promiseProposal.details = trimmed.isEmpty ? nil : trimmed
-          return .none
-          
-          // 디바운스 종료 → 실제 추천 호출
-        case ._titleDebounced(let title):
-          // 빈 문자열이면 추천 비움
-          guard !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return .none
+            
+          case .retryLoadGroups:
+            return .send(.internal(.fetchGroupList))
+            
+          case .clearCreationError:
+            state.creationError = nil
+            return .none
+            
+          case .setEndDate(let date):
+            state.promiseProposal.endedAt = date
+            return .none
+            
+          case .toggleUseEndTime:
+            if state.promiseProposal.endedAt == nil {
+              state.promiseProposal.endedAt = state.promiseProposal.startedAt.addingTimeInterval(7200)
+            } else {
+              state.promiseProposal.endedAt = nil
+            }
+            return .none
+            
+          case .incrementParticipants:
+            guard let max = state.promiseProposal.group?.memberCount else { return .none }
+            let current = state.promiseProposal.minimumParticipants ?? 2
+            if current < max { state.promiseProposal.minimumParticipants = current + 1 }
+            return .none
+            
+          case .decrementParticipants:
+            let current = state.promiseProposal.minimumParticipants ?? 2
+            if current > 2 { state.promiseProposal.minimumParticipants = current - 1 }
+            return .none
+            
+          case .setArrivalSharingTime(let minutes):
+            state.promiseProposal.arrivalSharingTime = minutes
+            return .none
+            
+          case .setDescription(let description):
+            let trimmed = String(description.prefix(500))
+            state.promiseProposal.details = trimmed.isEmpty ? nil : trimmed
+            return .none
+            
+          case .setStartDate(let date):
+            state.promiseProposal.startedAt = date
+            if let end = state.promiseProposal.endedAt, end <= date {
+              state.promiseProposal.endedAt = date.addingTimeInterval(7200)
+            }
             return .none
           }
-          return .run { [title] send in
-            let picks = await EmojiSuggestorProvider.shared.suggest(for: title, topK: 10)
-            await send(._emojiSuggestionsResponse(picks))
-          }
           
-          // 추천 결과 수신 → 상태 반영
-        case ._emojiSuggestionsResponse(let picks):
-          state.promiseProposal.emoji = picks.first?.emoji ?? ""
-          return .none
-          
-        case ._fetchGroupList:
-          state.groupListState = .loading
-          
-          return .run { [groupClient] send in
-            do {
-              let groups = try await groupClient.fetchGroups()
-              await send(._groupListResponse(.success(groups)))
-            } catch {
-              await send(._groupListResponse(.failure(error)))
+          // MARK: - Internal
+        case .internal(let internalAction):
+          switch internalAction {
+            
+          case .titleDebounced(let title):
+            guard !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return .none }
+            return .run { [title] send in
+              let picks = await EmojiSuggestorProvider.shared.suggest(for: title, topK: 10)
+              await send(.internal(.emojiSuggestionsResponse(picks)))
             }
+            
+          case .emojiSuggestionsResponse(let picks):
+            state.promiseProposal.emoji = picks.first?.emoji ?? ""
+            return .none
+            
+          case .fetchGroupList:
+            state.groupListState = .loading
+            return .run { [groupClient] send in
+              do {
+                let groups = try await groupClient.fetchGroups()
+                await send(.internal(.groupListResponse(.success(groups))))
+              } catch {
+                await send(.internal(.groupListResponse(.failure(error))))
+              }
+            }
+            
+          case .groupListResponse(.success(let groups)):
+            state.groupListState = .loaded(groups)
+            return .none
+            
+          case .groupListResponse(.failure(let error)):
+            state.groupListState = .failed(error)
+            return .none
+            
+          case .createPromiseResponse(.success(let id)):
+            state.isCreatingPromise = false
+            return .send(.delegate(.promiseCreated(id: id)))
+            
+          case .createPromiseResponse(.failure(let e)):
+            state.isCreatingPromise = false
+            state.creationError = e
+            return .none
           }
           
-        case ._groupListResponse(.success(let groups)):
-          state.groupListState = .loaded(groups)
+          // MARK: - Binding
+        case .binding:
           return .none
           
-        case ._groupListResponse(.failure(let error)):
-          state.groupListState = .failed(error)
-          return .none
-
-        case ._createPromiseResponse(.success(let promiseId)):
-          state.isCreatingPromise = false
-          print("✅ 약속 생성 성공: \(promiseId)")
-          return .send(.promiseCreated)
-
-        case ._createPromiseResponse(.failure(let error)):
-          state.isCreatingPromise = false
-          if let promiseError = error as? Clients.PromiseClientError {
-            state.creationError = promiseError
-          } else {
-            state.creationError = .unknown
-          }
-          print("❌ 약속 생성 실패: \(error.localizedDescription)")
-          return .none
-
-        case .setStartDate(let date):
-          state.promiseProposal.startedAt = date
-          
-          // 종료 시간이 시작 시간보다 이전이면 자동 조정
-          if let endDate = state.promiseProposal.endedAt, endDate <= date {
-            state.promiseProposal.endedAt = date.addingTimeInterval(7200) // 2시간 후
-          }
+          // MARK: - Delegate (여기선 부모가 처리하므로 기본은 .none)
+        case .delegate:
           return .none
         }
       }
@@ -291,24 +268,24 @@ extension CreatePromise {
     var body: some View {
       GeometryReader { geometry in
         VStack(spacing: 0) {
-
+          
           // Progress Header
           ProgressHeader(
             currentStep: store.currentStep.rawValue,
             totalSteps: CreatePromiseStep.allCases.count,
             title: "약속 만들기"
           ) {
-            store.send(.dismiss)
+            store.send(.delegate(.dismiss))
           }
-
+          
           store.currentStep.contentView(store: store)
-
+          
           Spacer()
-
+          
           // Bottom Buttons (키보드에 가려지지 않도록 고정)
           HStack(spacing: 12) {
             store.currentStep.leftButton(store: store)
-
+            
             store.currentStep.rightButton(store: store)
           }
           .padding(16)
@@ -325,17 +302,17 @@ extension CreatePromise {
       .navigationBarHidden(true)
       .ignoresSafeArea(.keyboard, edges: .bottom)
       .onAppear {
-        store.send(.onAppear)
+        store.send(.view(.onAppear))
       }
       .alert(
         "약속 생성 실패",
         isPresented: Binding(
           get: { store.creationError != nil },
-          set: { if !$0 { store.send(.clearCreationError) } }
+          set: { if !$0 { store.send(.view(.clearCreationError)) } }
         )
       ) {
         Button("확인", role: .cancel) {
-          store.send(.clearCreationError)
+          store.send(.view(.clearCreationError))
         }
       } message: {
         if let error = store.creationError {
@@ -355,7 +332,7 @@ extension CreatePromiseStep {
       
     case .second, .third:
       Button(action: {
-        store.send(.previousStep, animation: .default)
+        store.send(.view(.previousStep), animation: .default)
       }) {
         Text("이전")
           .font(.system(size: 16, weight: .semibold))
@@ -376,14 +353,20 @@ extension CreatePromiseStep {
       StepButton(
         title: "다음",
         disabled: store.state.firstButtonDisabled) {
-          store.send(.nextStep, animation: .easeInOut(duration: 0.25))
+          store.send(
+            .view(.nextStep),
+            animation: .easeInOut(duration: 0.25)
+          )
         }
       
     case .second:
       StepButton(
         title: "다음",
         disabled: store.state.secondButtonDisabled) {
-          store.send(.nextStep, animation: .easeInOut(duration: 0.25))
+          store.send(
+            .view(.nextStep),
+            animation: .easeInOut(duration: 0.25)
+          )
         }
       
     case .third:
@@ -391,7 +374,10 @@ extension CreatePromiseStep {
         title: "약속 제안하기",
         disabled: store.state.thirdButtonDisabled,
         isLoading: store.state.isCreatingPromise) {
-          store.send(.requestCreatingPromise, animation: .spring(response: 0.3, dampingFraction: 0.9))
+          store.send(
+            .view(.requestCreatingPromise),
+            animation: .spring(response: 0.3, dampingFraction: 0.9)
+          )
         }
     }
   }
@@ -402,14 +388,14 @@ fileprivate struct StepButton: View {
   var disabled: Bool
   var isLoading: Bool = false
   var action: () -> Void
-
+  
   var body: some View {
     Button(action: action) {
       HStack(spacing: 8) {
         Text(title)
           .font(.system(size: 16, weight: .semibold))
           .foregroundColor(.white)
-
+        
         if isLoading {
           ProgressView()
             .progressViewStyle(CircularProgressViewStyle(tint: .white))

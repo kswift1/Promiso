@@ -4,8 +4,6 @@
 
 import SwiftUI
 import ComposableArchitecture
-import Perception
-import Dependencies
 import CoreInfrastructure
 import Shared
 

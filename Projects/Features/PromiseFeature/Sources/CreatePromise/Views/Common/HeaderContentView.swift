@@ -1,6 +1,3 @@
-import SwiftUI
-import Clients
-
 struct HeaderContentView: View {
     let title: String
     let subtitle: String

@@ -1,6 +1,3 @@
-import SwiftUI
-import Clients
-
 // MARK: - Progress Header Component
 struct ProgressHeader: View {
     let currentStep: Int

@@ -58,7 +58,10 @@ struct ArrivalSharingSection: View {
           isSelected: isSelected,
           action: {
             let newValue = currentValue == option.minutes ? nil : option.minutes
-            store.send(.setArrivalSharingTime(newValue), animation: .spring(response: 0.3, dampingFraction: 0.7))
+            store.send(
+              .view(.setArrivalSharingTime(newValue)),
+              animation: .spring(response: 0.3, dampingFraction: 0.7)
+            )
           }
         )
       }

@@ -23,7 +23,7 @@ struct DescriptionSection: View {
 
           TextEditor(text: Binding(
             get: { store.promiseProposal.details ?? "" },
-            set: { store.send(.setDescription($0)) }
+            set: { store.send(.view(.setDescription($0))) }
           ))
           .font(.system(size: 15))
           .frame(height: 120)

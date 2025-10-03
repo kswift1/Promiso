@@ -1,19 +1,7 @@
-//
-//  GroupListView.swift
-//  PromiseFeature
-//
-//  그룹 리스트 뷰 (LoadingState 기반)
-//
-
-import SwiftUI
-import Clients
-import ComposableArchitecture
-import Domain
-import Shared
-
 /// 그룹 리스트 뷰
 struct GroupListView: View {
   let store: StoreOf<CreatePromise.Feature>
+  @FocusState.Binding var isFocused: Bool
   
   var body: some View {
     VStack(alignment: .leading, spacing: 16) {
@@ -57,7 +45,8 @@ struct GroupListView: View {
           model: group,
           isSelected: store.promiseProposal.group?.id == group.id
         ) {
-          store.send(.groupSelected(group))
+          isFocused = false
+          store.send(.view(.groupSelected(group)))
         }
       }
     }
@@ -117,7 +106,7 @@ struct GroupListView: View {
         .multilineTextAlignment(.center)
       
       Button {
-        store.send(.retryLoadGroups)
+        store.send(.view(.retryLoadGroups))
       } label: {
         HStack {
           Image(systemName: "arrow.clockwise")
@@ -227,76 +216,77 @@ private struct GroupSkeletonCard: View {
 
 #Preview("Loading") {
   struct PreviewWrapper: View {
+    @FocusState private var focus: Bool
     var body: some View {
       let store = Store(initialState: CreatePromise.Feature.State()) {
         CreatePromise.Feature()
       } withDependencies: {
         $0.groupClient.fetchGroups = {
-          try await Task.sleep(for: .seconds(100))
+          try await Task.sleep(for: .seconds(100)) // 로딩 유지
           return []
         }
       }
-      
-      GroupListView(store: store)
+
+      GroupListView(store: store, isFocused: $focus)
         .padding()
         .onAppear {
-          store.send(._fetchGroupList)
+          store.send(.internal(.fetchGroupList))
         }
     }
   }
-  
   return PreviewWrapper()
 }
 
 #Preview("Loaded") {
   struct PreviewWrapper: View {
+    @FocusState private var focus: Bool
     var body: some View {
       let store = Store(initialState: CreatePromise.Feature.State()) {
         CreatePromise.Feature()
       } withDependencies: {
         $0.groupClient.fetchGroups = {
           [
-            .init(id: "g1", emoji: "👥", title: "지민과 나", memberCount: 2),
+            .init(id: "g1", emoji: "👥", title: "지민과 나",   memberCount: 2),
             .init(id: "g2", emoji: "🏢", title: "회사 동료들", memberCount: 8),
             .init(id: "g3", emoji: "🎓", title: "대학 친구들", memberCount: 12),
-            .init(id: "g4", emoji: "👨‍👩‍👦", title: "가족", memberCount: 4)
+            .init(id: "g4", emoji: "👨‍👩‍👦", title: "가족",    memberCount: 4)
           ]
         }
       }
-      
-      GroupListView(store: store)
+
+      GroupListView(store: store, isFocused: $focus)
         .padding()
         .onAppear {
-          store.send(._fetchGroupList)
+          store.send(.internal(.fetchGroupList))
         }
     }
   }
-  
   return PreviewWrapper()
 }
 
 #Preview("Empty") {
   struct PreviewWrapper: View {
+    @FocusState private var focus: Bool
     var body: some View {
       let store = Store(initialState: CreatePromise.Feature.State()) {
         CreatePromise.Feature()
       } withDependencies: {
         $0.groupClient.fetchGroups = { [] }
       }
-      
-      GroupListView(store: store)
+
+      GroupListView(store: store, isFocused: $focus)
         .padding()
         .onAppear {
-          store.send(._fetchGroupList)
+          store.send(.internal(.fetchGroupList))
         }
     }
   }
-  
   return PreviewWrapper()
 }
 
 #Preview("Error") {
   struct PreviewWrapper: View {
+    @FocusState private var focus: Bool
     var body: some View {
       let store = Store(initialState: CreatePromise.Feature.State()) {
         CreatePromise.Feature()
@@ -305,14 +295,13 @@ private struct GroupSkeletonCard: View {
           throw GroupClientError.networkError
         }
       }
-      
-      GroupListView(store: store)
+
+      GroupListView(store: store, isFocused: $focus)
         .padding()
         .onAppear {
-          store.send(._fetchGroupList)
+          store.send(.internal(.fetchGroupList))
         }
     }
   }
-  
   return PreviewWrapper()
 }

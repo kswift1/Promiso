@@ -5,6 +5,10 @@ import ComposableArchitecture
 struct EndDateTimeSection: View {
   let store: StoreOf<CreatePromise.Feature>
   var scrollProxy: ScrollViewProxy? = nil
+  
+  private var useEndTime: Bool {
+    store.state.promiseProposal.endedAt != nil
+  }
 
   var body: some View {
     SectionPlaceHolder(
@@ -12,9 +16,9 @@ struct EndDateTimeSection: View {
       isRequired: false,
       placeHolderAccessory: {
         Toggle("", isOn: Binding(
-          get: { store.useEndTime },
+          get: { useEndTime },
           set: { _ in
-            store.send(.toggleUseEndTime, animation: .spring(response: 0.4, dampingFraction: 0.85))
+            store.send(.view(.toggleUseEndTime), animation: .spring(response: 0.4, dampingFraction: 0.85))
           }
         ))
         .labelsHidden()
@@ -22,14 +26,14 @@ struct EndDateTimeSection: View {
       content: {
         VStack {
           // Duration Picker
-          if store.useEndTime {
+          if useEndTime {
             EndTimePicker(
               startDate: store.promiseProposal.startedAt,
               endDate: Binding(
                 get: {
                   store.promiseProposal.endedAt ?? store.promiseProposal.startedAt.addingTimeInterval(7200)
                 },
-                set: { store.send(.setEndDate($0)) }
+                set: { store.send(.view(.setEndDate($0))) }
               ),
               scrollProxy: scrollProxy,
               scrollToId: "endDateTime"
