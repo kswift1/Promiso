@@ -14,11 +14,13 @@ feature:
 		exit 1; \
 	fi
 	@echo "🚀 피쳐 '$(FEATURE_NAME)' 생성 중..."
-	@echo "1/3 피쳐 스캐폴드 생성..."
+	@echo "1/4 피쳐 스캐폴드 생성..."
 	tuist scaffold feature --name $(FEATURE_NAME)
-	@echo "2/3 프로젝트 생성..."
+	@echo "2/4 AppFeatureDeps.swift에 의존성 추가..."
+	@./scripts/add_feature_dependency.sh $(FEATURE_NAME)
+	@echo "3/4 프로젝트 생성..."
 	tuist install && tuist generate
-	@echo "3/3 완료! ✅"
+	@echo "4/4 완료! ✅"
 	@echo ""
 	@echo "🎉 피쳐 '$(FEATURE_NAME)'가 성공적으로 생성되었습니다!"
 	@echo "📂 위치: Projects/Features/$(FEATURE_NAME)Feature/"
@@ -36,6 +38,7 @@ remove-feature:
 	@echo "⚠️  주의: 다음 작업이 수행됩니다:"
 	@echo "   - Projects/Features/$(FEATURE_NAME)Feature/ 폴더 완전 삭제"
 	@echo "   - Tuist/ProjectDescriptionHelpers/FeatureFactory/Features/Features+$(FEATURE_NAME).swift 삭제"
+	@echo "   - AppFeatureDeps.swift에서 의존성 제거"
 	@echo "   - 프로젝트 재생성"
 	@echo ""
 	@read -p "정말로 계속하시겠습니까? (y/N): " confirm; \
@@ -44,21 +47,23 @@ remove-feature:
 		exit 1; \
 	fi
 	@echo ""
-	@echo "1/3 피쳐 폴더 삭제..."
+	@echo "1/4 피쳐 폴더 삭제..."
 	@if [ -d "Projects/Features/$(FEATURE_NAME)Feature" ]; then \
 		rm -rf "Projects/Features/$(FEATURE_NAME)Feature"; \
 		echo "  ✅ Projects/Features/$(FEATURE_NAME)Feature/ 삭제 완료"; \
 	else \
 		echo "  ℹ️  Projects/Features/$(FEATURE_NAME)Feature/ 폴더가 존재하지 않습니다."; \
 	fi
-	@echo "2/3 Feature 확장 파일 삭제..."
+	@echo "2/4 Feature 확장 파일 삭제..."
 	@if [ -f "Tuist/ProjectDescriptionHelpers/FeatureFactory/Features/Features+$(FEATURE_NAME).swift" ]; then \
 		rm -f "Tuist/ProjectDescriptionHelpers/FeatureFactory/Features/Features+$(FEATURE_NAME).swift"; \
 		echo "  ✅ Features+$(FEATURE_NAME).swift 삭제 완료"; \
 	else \
 		echo "  ℹ️  Features+$(FEATURE_NAME).swift 파일이 존재하지 않습니다."; \
 	fi
-	@echo "3/3 프로젝트 재생성..."
+	@echo "3/4 AppFeatureDeps.swift에서 의존성 제거..."
+	@./scripts/remove_feature_dependency.sh $(FEATURE_NAME)
+	@echo "4/4 프로젝트 재생성..."
 	@if tuist install && tuist generate; then \
 		echo "  ✅ 프로젝트 재생성 완료"; \
 	else \

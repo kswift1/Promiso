@@ -16,16 +16,7 @@ let project = Project(
       ]),
       sources: ["Sources/**"],
       resources: ["Resources/**"],
-      dependencies: [
-        .project(target: "Shared", path: "../Shared"),
-        .project(target: "CoreInfrastructure", path: "../Core"),
-        .project(target: "CoreNetworking", path: "../Core"),
-        .project(target: "Domain", path: "../Domain"),
-        .project(target: "ExternalDependency", path: "../ExternalDependency"),
-        .project(target: "RootTabFeature", path: "../Features/RootTabFeature"),
-        .project(target: "HomeFeature", path: "../Features/HomeFeature"),
-        .project(target: "PromiseFeature", path: "../Features/PromiseFeature")
-      ],
+      dependencies: AppFeatureDeps.allDeps,
       settings: .standard()
     )
   ]

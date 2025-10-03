@@ -32,7 +32,7 @@ cp "$DEPS_FILE" "$DEPS_FILE.backup"
 FEATURE_CAMEL=$(echo "${FEATURE_NAME:0:1}" | tr '[:upper:]' '[:lower:]')$(echo "${FEATURE_NAME:1}")
 
 # 4. 이미 추가되어 있는지 확인 (배열 내부에서만 검색)
-if awk '/let allFeatures.*\[/,/^    \]$/ { if (/\.'$FEATURE_CAMEL'/) found=1 } END { exit !found }' "$DEPS_FILE"; then
+if awk '/let allFeatures.*\[/,/\]$$$$/ { if (/\.'$FEATURE_CAMEL'/) found=1 } END { exit !found }' "$DEPS_FILE"; then
     echo "  ℹ️  피쳐 '$FEATURE_NAME'는 이미 의존성에 추가되어 있습니다."
     rm "$DEPS_FILE.backup"
     exit 0
@@ -139,7 +139,7 @@ if [ $? -eq 0 ]; then
     
     # 7. 변경 사항 확인용 출력
     echo "  📋 현재 등록된 피쳐들:"
-    awk '/let allFeatures.*\[/,/^    \]$/ { if (/^      \./) print "    " $0 }' "$DEPS_FILE"
+    awk '/let allFeatures: \[Feature\] = \[/,/^    \]/ { if (/^      \.[a-zA-Z]/) print "    " $0 }' "$DEPS_FILE"
     
     rm "$DEPS_FILE.backup"
 else
