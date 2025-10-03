@@ -1,44 +1,19 @@
 //
 //  ProposalModel.swift
-//  PromiseFeatureExample
+//  PromiseFeature
 //
 //  Created by 김성원 on 9/12/25.
 //
 
 import Foundation
 
-public struct PromiseProposal: Equatable {
-  var title: String
-  var emoji: String?
-  var group: GroupModel?
-  var startedAt: Date
-  var endedAt: Date?
-  var minimumParticipants: Int?
-  var place: String?
-  var details: String?
-  var reminder: Date?
-  var arrivalSharingTime: Int? = nil // 도착 상황 공유 시작 시간 (분 단위)
-}
-
-extension PromiseProposal {
-  static let empty: PromiseProposal = .init(
-    title: "",
-    emoji: nil,
-    group: nil,
-    startedAt: Date().addingTimeInterval(3600),
-    endedAt: nil,
-    minimumParticipants: nil,
-    place: nil,
-    details: nil,
-    reminder: nil
-  )
-}
+// UI 전용 Proposal 모델 (PromiseProposal은 Clients 모듈로 이동)
 
 public struct ProposalModel: Equatable {
   var receivedProposals: [ProposalItem]
   var sentProposals: [ProposalItem]
   var confirmedProposals: [ProposalItem]
-  
+
   /// 제안 아이템을 나타내는 구조체
   public struct ProposalItem: Equatable, Identifiable {
     public let id: String
@@ -49,7 +24,7 @@ public struct ProposalModel: Equatable {
     public let with: String
     public var status: ProposalStatus
     public let isReceived: Bool
-    
+
     public enum ProposalStatus: Equatable {
       case pending
       case accepted

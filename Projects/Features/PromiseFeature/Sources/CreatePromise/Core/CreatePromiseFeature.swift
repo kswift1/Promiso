@@ -8,6 +8,7 @@
 import SwiftUI
 import ComposableArchitecture
 
+import Clients
 import Domain
 import Shared
 
@@ -31,7 +32,7 @@ public enum CreatePromise {
       var promiseProposal: PromiseProposal = .empty
       var groupListState: LoadingState<[GroupModel]> = .idle
       var isCreatingPromise: Bool = false
-      var creationError: PromiseClientError?
+      var creationError: Clients.PromiseClientError?
       
       var firstButtonDisabled: Bool {
         !(!promiseProposal.title.isEmpty && promiseProposal.group != nil)
@@ -256,7 +257,7 @@ public enum CreatePromise {
 
         case ._createPromiseResponse(.failure(let error)):
           state.isCreatingPromise = false
-          if let promiseError = error as? PromiseClientError {
+          if let promiseError = error as? Clients.PromiseClientError {
             state.creationError = promiseError
           } else {
             state.creationError = .unknown

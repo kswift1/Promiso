@@ -1,4 +1,5 @@
 import SwiftUI
+import Clients
 
 struct SectionPlaceHolder<PlaceHolderAccessory: View, Content: View>: View {
   private let placeHolderTitle: String

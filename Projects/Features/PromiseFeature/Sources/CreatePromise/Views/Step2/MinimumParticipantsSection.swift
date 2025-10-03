@@ -1,4 +1,5 @@
 import SwiftUI
+import Clients
 import ComposableArchitecture
 
 struct MinimumParticipantsSection: View {

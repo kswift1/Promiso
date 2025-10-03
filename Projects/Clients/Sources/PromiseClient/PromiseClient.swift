@@ -1,7 +1,18 @@
+//
+//  PromiseClient.swift
+//  Clients
+//
+//  TCA Dependency Client for Promise operations
+//  Acts as an adapter between Feature layer and Domain layer
+//
+
 import ComposableArchitecture
 import Foundation
 import Combine
 import Domain
+import CoreNetworking
+
+// MARK: - Error
 
 /// 약속 API 에러
 public enum PromiseClientError: Error, Equatable {
@@ -30,7 +41,10 @@ public enum PromiseClientError: Error, Equatable {
   }
 }
 
-/// 약속 클라이언트 프로토콜
+// MARK: - Client
+
+/// TCA용 약속 클라이언트
+/// Feature 레이어에 최적화된 API 제공
 @DependencyClient
 public struct PromiseClient: Sendable {
   /// 약속 생성
@@ -52,7 +66,7 @@ public struct PromiseClient: Sendable {
   public var getUpcomingPromises: @Sendable (_ userId: String, _ limit: Int) async throws -> [PromiseModel]
 }
 
-// MARK: - Dependency Values
+// MARK: - Test & Preview Values
 
 extension PromiseClient: TestDependencyKey {
   public static let testValue = Self()
@@ -83,6 +97,8 @@ extension PromiseClient: TestDependencyKey {
   )
 }
 
+// MARK: - Dependency Registration
+
 extension DependencyValues {
   public var promiseClient: PromiseClient {
     get { self[PromiseClient.self] }
@@ -94,15 +110,17 @@ extension DependencyValues {
 
 extension PromiseClient: DependencyKey {
   public static let liveValue: PromiseClient = {
-    @Dependency(\.promiseRepository) var repository
+    // Domain Repository 주입
+    let repository: PromiseRepositoryProtocol = PromiseRepository()
 
     return Self(
       createPromise: { proposal, hostId in
-        // PromiseProposal -> PromiseModel 변환
+        // Validation
         guard let group = proposal.group else {
           throw PromiseClientError.invalidData
         }
 
+        // PromiseProposal (Feature 모델) → PromiseModel (Domain 모델) 변환
         let promiseModel = PromiseModel(
           id: UUID().uuidString,
           emoji: proposal.emoji,
@@ -119,96 +137,30 @@ extension PromiseClient: DependencyKey {
           location: proposal.place.map { LocationInfo(name: $0) }
         )
 
+        // Domain Repository 호출
         return try await repository.createPromise(promiseModel)
       },
+
       updatePromise: { promiseId, proposal in
         // TODO: 실제 업데이트 로직 구현
         try await Task.sleep(for: .seconds(1))
       },
+
       deletePromise: { promiseId in
         try await repository.deletePromise(id: promiseId)
       },
+
       getPromise: { promiseId in
         try await repository.getPromise(id: promiseId)
       },
+
       getTodayPromises: { userId, groupId in
         try await repository.getTodayPromises(userId: userId, groupId: groupId)
       },
+
       getUpcomingPromises: { userId, limit in
         try await repository.getUpcomingPromises(userId: userId, limit: limit)
       }
     )
   }()
-}
-
-// MARK: - Helper: PromiseRepository Dependency
-
-extension DependencyValues {
-  var promiseRepository: PromiseRepositoryProtocol {
-    get { self[PromiseRepositoryKey.self] }
-    set { self[PromiseRepositoryKey.self] = newValue }
-  }
-}
-
-private enum PromiseRepositoryKey: DependencyKey {
-  static let liveValue: PromiseRepositoryProtocol = {
-    // Core 모듈의 PromiseRepository를 사용
-    // 실제 앱에서는 Dependency Injection을 통해 주입됨
-    // 현재는 임시로 Mock 반환
-    MockPromiseRepository()
-  }()
-}
-
-// MARK: - Mock Repository (임시)
-
-private class MockPromiseRepository: PromiseRepositoryProtocol {
-  func createPromise(_ promise: PromiseModel) async throws -> String {
-    try await Task.sleep(for: .seconds(1))
-    return UUID().uuidString
-  }
-
-  func updatePromise(_ promise: PromiseModel) async throws {
-    try await Task.sleep(for: .seconds(1))
-  }
-
-  func deletePromise(id: String) async throws {
-    try await Task.sleep(for: .seconds(0.5))
-  }
-
-  func getPromise(id: String) async throws -> PromiseModel? {
-    try await Task.sleep(for: .seconds(0.5))
-    return nil
-  }
-
-  func getTodayPromises(userId: String, groupId: String?) async throws -> [PromiseModel] {
-    try await Task.sleep(for: .seconds(1))
-    return []
-  }
-
-  func getUpcomingPromises(userId: String, limit: Int) async throws -> [PromiseModel] {
-    try await Task.sleep(for: .seconds(1))
-    return []
-  }
-
-  func getPendingProposals(userId: String, limit: Int) async throws -> [PromiseModel] {
-    try await Task.sleep(for: .seconds(1))
-    return []
-  }
-
-  func getActivePromises(groupId: String, limit: Int) async throws -> [PromiseModel] {
-    try await Task.sleep(for: .seconds(1))
-    return []
-  }
-
-  func observeTodayPromises(userId: String, groupId: String?) -> AnyPublisher<[PromiseModel], Error> {
-    Just([])
-      .setFailureType(to: Error.self)
-      .eraseToAnyPublisher()
-  }
-
-  func observePromise(id: String) -> AnyPublisher<PromiseModel?, Error> {
-    Just(nil)
-      .setFailureType(to: Error.self)
-      .eraseToAnyPublisher()
-  }
 }

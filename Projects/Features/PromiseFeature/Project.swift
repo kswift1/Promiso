@@ -16,9 +16,8 @@ let project = Project(
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Sources/**"],
       dependencies: [
+        .project(target: "Clients", path: "../../Clients"),
         .project(target: "Shared", path: "../../Shared"),
-        .project(target: "CoreInfrastructure", path: "../../Core"),
-        .project(target: "CoreNetworking", path: "../../Core"),
         .project(target: "Domain", path: "../../Domain"),
         .project(target: "ExternalDependency", path: "../../ExternalDependency")
       ],

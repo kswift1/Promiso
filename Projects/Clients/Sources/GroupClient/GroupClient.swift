@@ -1,5 +1,14 @@
+//
+//  GroupClient.swift
+//  Clients
+//
+//  TCA Dependency Client for Group operations
+//
+
 import ComposableArchitecture
 import Foundation
+
+// MARK: - Error
 
 /// 그룹 API 에러
 public enum GroupClientError: Error, Equatable {
@@ -8,7 +17,7 @@ public enum GroupClientError: Error, Equatable {
   case notFound
   case serverError
   case unknown
-  
+
   public var localizedDescription: String {
     switch self {
     case .networkError:
@@ -25,27 +34,29 @@ public enum GroupClientError: Error, Equatable {
   }
 }
 
-/// 그룹 클라이언트 프로토콜
+// MARK: - Client
+
+/// TCA용 그룹 클라이언트
 @DependencyClient
 public struct GroupClient: Sendable {
   /// 사용자의 그룹 목록 가져오기
   public var fetchGroups: @Sendable () async throws -> [GroupModel] = { [] }
-  
+
   /// 특정 그룹 상세 정보 가져오기
   public var fetchGroup: @Sendable (_ groupId: String) async throws -> GroupModel
-  
+
   /// 새 그룹 생성
   public var createGroup: @Sendable (_ name: String, _ emoji: String) async throws -> GroupModel
-  
+
   /// 그룹 나가기
   public var leaveGroup: @Sendable (_ groupId: String) async throws -> Void
 }
 
-// MARK: - Dependency Values
+// MARK: - Test & Preview Values
 
 extension GroupClient: TestDependencyKey {
   public static let testValue = Self()
-  
+
   public static let previewValue = Self(
     fetchGroups: {
       try await Task.sleep(for: .seconds(1))
@@ -70,6 +81,8 @@ extension GroupClient: TestDependencyKey {
   )
 }
 
+// MARK: - Dependency Registration
+
 extension DependencyValues {
   public var groupClient: GroupClient {
     get { self[GroupClient.self] }
@@ -82,9 +95,9 @@ extension DependencyValues {
 extension GroupClient: DependencyKey {
   public static let liveValue = Self(
     fetchGroups: {
-      // TODO: 실제 API 호출 구현
+      // TODO: Domain Repository 연결
       try await Task.sleep(for: .seconds(2))
-      
+
       // 임시 데이터
       return [
         .init(id: "g1", emoji: "👥", title: "지민과 나", memberCount: 2),
@@ -94,17 +107,17 @@ extension GroupClient: DependencyKey {
       ]
     },
     fetchGroup: { groupId in
-      // TODO: 실제 API 호출 구현
+      // TODO: Domain Repository 연결
       try await Task.sleep(for: .seconds(1))
       return GroupModel(id: groupId, emoji: "👞", title: "구두", memberCount: 3)
     },
     createGroup: { name, emoji in
-      // TODO: 실제 API 호출 구현
+      // TODO: Domain Repository 연결
       try await Task.sleep(for: .seconds(1))
       return GroupModel(id: UUID().uuidString, emoji: emoji, title: name, memberCount: 1)
     },
     leaveGroup: { groupId in
-      // TODO: 실제 API 호출 구현
+      // TODO: Domain Repository 연결
       try await Task.sleep(for: .seconds(1))
     }
   )
