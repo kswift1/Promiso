@@ -30,9 +30,8 @@ let project = Project(
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Sources/**"],
       dependencies: [
+        .project(target: "Clients", path: "../../Clients"),
         .project(target: "Shared", path: "../../Shared"),
-        .project(target: "CoreInfrastructure", path: "../../Core"),
-        .project(target: "CoreNetworking", path: "../../Core"),
         .project(target: "Domain", path: "../../Domain"),
         .project(target: "ExternalDependency", path: "../../ExternalDependency")
       ],
@@ -74,7 +73,23 @@ let project = Project(
 )
 """#
     ),
-    
+
+    // ── Exported Dependencies
+    .string(
+      path: "Projects/Features/{{ name }}Feature/Sources/ExportedImports.swift",
+      contents: #"""
+// MARK: - Default Exports (자동 생성)
+@_exported import Clients
+@_exported import ComposableArchitecture
+@_exported import SwiftUI
+@_exported import Shared
+
+// MARK: - Feature Exports (필요시 추가)
+// 다른 Feature를 의존하는 경우 여기에 추가하세요
+// 예: @_exported import SomeOtherFeature
+"""#
+    ),
+
     // ── TCA Feature 구현
     .string(
       path: "Projects/Features/{{ name }}Feature/Sources/{{ name }}Feature.swift",
@@ -82,10 +97,6 @@ let project = Project(
 // MARK: - {{ name }}Feature.swift
 // TCA 1.22.2를 사용한 {{ name }} Feature의 완전한 구현
 // State, Action, Reducer, View를 모두 포함한 단일 모듈
-
-import SwiftUI
-import ComposableArchitecture
-import Perception
 
 // MARK: - Feature Namespace
 
@@ -172,21 +183,19 @@ extension {{ name }} {
     // MARK: - Body
     
     public var body: some View {
-      WithPerceptionTracking {
-        VStack {
-          Text("{{ name }} Feature")
-            .font(.title2)
-            .fontWeight(.semibold)
-          
-          Text("{{ name }} Feature implementation입니다.")
-            .font(.body)
-            .foregroundColor(.secondary)
-            .multilineTextAlignment(.center)
-        }
-        .padding()
-        .onAppear {
-          store.send(.onAppear)
-        }
+      VStack {
+        Text("{{ name }} Feature")
+          .font(.title2)
+          .fontWeight(.semibold)
+
+        Text("{{ name }} Feature implementation입니다.")
+          .font(.body)
+          .foregroundColor(.secondary)
+          .multilineTextAlignment(.center)
+      }
+      .padding()
+      .onAppear {
+        store.send(.onAppear)
       }
     }
   }
