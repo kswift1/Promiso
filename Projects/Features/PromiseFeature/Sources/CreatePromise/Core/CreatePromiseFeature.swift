@@ -27,6 +27,20 @@ public enum CreatePromise {
       var groupListState: LoadingState<[GroupModel]> = .idle
       var isCreatingPromise: Bool = false
       var creationError: Clients.PromiseClientError?
+
+      public init(
+        currentStep: CreatePromiseStep = .first,
+        promiseProposal: PromiseProposal = .empty,
+        groupListState: LoadingState<[GroupModel]> = .idle,
+        isCreatingPromise: Bool = false,
+        creationError: Clients.PromiseClientError? = nil
+      ) {
+        self.currentStep = currentStep
+        self.promiseProposal = promiseProposal
+        self.groupListState = groupListState
+        self.isCreatingPromise = isCreatingPromise
+        self.creationError = creationError
+      }
       
       var firstButtonDisabled: Bool {
         !(!promiseProposal.title.isEmpty && promiseProposal.group != nil)
@@ -257,15 +271,15 @@ public enum CreatePromise {
 }
 
 extension CreatePromise {
-  
-  struct RootView: View {
+
+  public struct RootView: View {
     private let store: StoreOf<CreatePromise.Feature>
-    
-    init(store: StoreOf<CreatePromise.Feature>) {
+
+    public init(store: StoreOf<CreatePromise.Feature>) {
       self.store = store
     }
-    
-    var body: some View {
+
+    public var body: some View {
       GeometryReader { geometry in
         VStack(spacing: 0) {
           

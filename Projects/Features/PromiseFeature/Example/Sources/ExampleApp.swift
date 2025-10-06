@@ -4,8 +4,7 @@
 
 import SwiftUI
 import ComposableArchitecture
-import PromiseFeatureImplement
-import PromiseFeatureInterface
+import PromiseFeature
 
 // MARK: - Example Application
 
@@ -13,7 +12,7 @@ import PromiseFeatureInterface
 /// 다양한 테스트 시나리오와 함께 격리된 개발 환경을 제공
 @main
 struct PromiseFeatureExampleApp: App {
-  
+
   var body: some Scene {
     WindowGroup {
       NavigationStack {
@@ -29,49 +28,52 @@ struct PromiseFeatureExampleApp: App {
 
 /// 다양한 Feature 시나리오를 보여주는 Main content view
 private struct ExampleContentView: View {
-  
+
   var body: some View {
     List {
-      Section("기본 상태") {
-        NavigationLink("기본 Promise") {
-          defaultExample
+      Section("약속 메인") {
+        NavigationLink("PromiseMain Feature") {
+          promiseMainExample
         }
       }
-      
-      Section("Entry Point Integration") {
-        NavigationLink("Live Entry") {
-          entryExample
+
+      Section("약속 생성") {
+        NavigationLink("CreatePromise Feature") {
+          createPromiseExample
         }
       }
     }
   }
-  
+
   // MARK: - Example Views
-  
-  /// Default feature state example
+
+  /// PromiseMain feature example with preview data
   @ViewBuilder
-  private var defaultExample: some View {
-    let store = Store(initialState: Promise.Feature.State()) {
-      Promise.Feature()
+  private var promiseMainExample: some View {
+    let store = Store(initialState: PromiseMain.Feature.State.preview) {
+      PromiseMain.Feature()
     }
-    
-    Promise.RootView(store: store)
+
+    PromiseMain.RootView(store: store)
   }
-  
-  /// Entry point integration example
+
+  /// CreatePromise feature example
   @ViewBuilder
-  private var entryExample: some View {
-    let entry = PromiseEntry.live()
-    entry.makeView(.init())
+  private var createPromiseExample: some View {
+    let store = Store(initialState: CreatePromise.Feature.State()) {
+      CreatePromise.Feature()
+    }
+
+    CreatePromise.RootView(store: store)
   }
 }
 
 // MARK: - SwiftUI Previews
 
 #Preview {
-  let store = Store(initialState: Promise.Feature.State()) {
-    Promise.Feature()
+  let store = Store(initialState: PromiseMain.Feature.State.preview) {
+    PromiseMain.Feature()
   }
-  
-  Promise.RootView(store: store)
+
+  PromiseMain.RootView(store: store)
 }

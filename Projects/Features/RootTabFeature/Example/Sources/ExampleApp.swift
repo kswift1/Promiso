@@ -4,8 +4,7 @@
 
 import SwiftUI
 import ComposableArchitecture
-import RootTabFeatureImplement
-import RootTabFeatureInterface
+import RootTabFeature
 
 // MARK: - Example Application
 
@@ -32,46 +31,16 @@ private struct ExampleContentView: View {
   
   var body: some View {
     List {
-      // Default State Section
-      Section("기본 상태") {
-        NavigationLink("기본 RootTab") {
+      Section("RootTab Feature") {
+        NavigationLink("RootTab with Promise") {
           defaultExample
-        }
-      }
-      
-      // Loading State Section
-      Section("로딩 상태") {
-        NavigationLink("로딩 상태") {
-          loadingExample
-        }
-      }
-      
-      // Error State Section
-      Section("에러 상태") {
-        NavigationLink("네트워크 에러") {
-          errorExample(RootTabError.networkError)
-        }
-        
-        NavigationLink("데이터 에러") {
-          errorExample(RootTabError.dataError)
-        }
-        
-        NavigationLink("커스텀 에러") {
-          errorExample(RootTabError.custom("문제가 발생했습니다!"))
-        }
-      }
-      
-      // Entry Point Section
-      Section("Entry Point Integration") {
-        NavigationLink("Live Entry") {
-          entryExample
         }
       }
     }
   }
-  
+
   // MARK: - Example Views
-  
+
   /// Default feature state example
   @ViewBuilder
   private var defaultExample: some View {
@@ -79,83 +48,17 @@ private struct ExampleContentView: View {
       RootTab.Feature()
         ._printChanges()
     }
-    
+
     RootTab.RootView(store: store)
-  }
-  
-  /// Loading state example
-  @ViewBuilder
-  private var loadingExample: some View {
-    let store = Store(
-      initialState: RootTab.Feature.State(isLoading: true)
-    ) {
-      RootTab.Feature()
-        ._printChanges()
-    }
-    
-    RootTab.RootView(store: store)
-  }
-  
-  /// Error state example
-  /// - Parameter error: The error to display
-  @ViewBuilder
-  private func errorExample(_ error: RootTabError) -> some View {
-    let store = Store(
-      initialState: RootTab.Feature.State(error: error)
-    ) {
-      RootTab.Feature()
-        ._printChanges()
-    }
-    
-    RootTab.RootView(store: store)
-  }
-  
-  /// Entry point integration example
-  @ViewBuilder
-  private var entryExample: some View {
-    let entry = RootTabEntry.live()
-    entry.makeView(.init())
   }
 }
 
 // MARK: - SwiftUI Previews
 
-/// SwiftUI previews for different feature states
-#Preview("Default State") {
+#Preview {
   let store = Store(initialState: RootTab.Feature.State()) {
     RootTab.Feature()
   }
-  
-  return NavigationStack {
-    RootTab.RootView(store: store)
-  }
-}
 
-#Preview("Loading State") {
-  let store = Store(
-    initialState: RootTab.Feature.State(isLoading: true)
-  ) {
-    RootTab.Feature()
-  }
-  
-  return NavigationStack {
-    RootTab.RootView(store: store)
-  }
-}
-
-#Preview("Error State") {
-  let store = Store(
-    initialState: RootTab.Feature.State(error: .networkError)
-  ) {
-    RootTab.Feature()
-  }
-  
-  return NavigationStack {
-    RootTab.RootView(store: store)
-  }
-}
-
-#Preview("Entry Point") {
-  let entry = RootTabEntry.preview()
-  return entry.makeView(.init())
+  return RootTab.RootView(store: store)
 }

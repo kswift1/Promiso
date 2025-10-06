@@ -1,6 +1,6 @@
 import Foundation
 
-enum CreatePromiseStep: Int, CaseIterable {
+public enum CreatePromiseStep: Int, CaseIterable {
   case first
   case second
   case third

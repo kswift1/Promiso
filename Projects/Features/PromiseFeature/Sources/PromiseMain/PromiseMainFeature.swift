@@ -29,47 +29,77 @@ extension PromiseMain {
     /// @ObservableState는 추가 wrapper 없이 직접적인 SwiftUI integration을 가능하게 함
     @ObservableState
     public struct State: Equatable {
-      // MARK: - Segment Control
-      public var selectedSegment: PromiseSegment = .received
-      public var proposals: ProposalModel = .example
+      // MARK: - Status Filter
+      public var selectedFilter: StatusFilter = .all
+      
+      // MARK: - Promises
+      public var promisesState: LoadingState<[PromiseItem]> = .idle
+      
+      // MARK: - Groups
+      public var currentGroup: CurrentGroup?
+      public var groupMembers: [GroupMember] = []
       
       // MARK: - Presents
       @Presents var createPromise: CreatePromise.Feature.State?
-      
-      // MARK: - Groups
-      public var currentGroup: String = "지민과 나"
-      public var availableGroups: [GroupItem] = [
-        GroupItem(id: "1", name: "지민과 나", members: ["나", "지민"], isActive: true),
-        GroupItem(id: "2", name: "회사 동료들", members: ["나", "철수", "영희"], isActive: false),
-        GroupItem(id: "3", name: "대학 친구들", members: ["나", "민수", "수진"], isActive: false)
-      ]
+      @Presents var groupDetail: GroupDetailState?
       
       /// State 초기화
       public init() {}
+      
+      // Computed property for backward compatibility
+      public var promises: [PromiseItem] {
+        promisesState.value ?? []
+      }
+    }
+    
+    // MARK: - Group Detail State
+    public struct GroupDetailState: Equatable {
+      public var isPresented: Bool = false
     }
     
     // MARK: - Action
     
     /// Promise Feature 내에서 발생할 수 있는 모든 가능한 action
-    /// 각 action은 고유한 user intent나 system event를 나타내야 함
+    /// 각 action은 고유한 user intent na system event를 나타내야 함
     public enum Action: Sendable {
-      // MARK: Lifecycle Actions
-      /// view가 처음 나타날 때 트리거
-      case onAppear
+      case view(View)
+      case binding(BindingAction<State>)
+      case `internal`(Internal)
+      case delegate(Delegate)
       
-      // MARK: Segment Actions
-      case segmentChanged(PromiseSegment)
-      
-      // MARK: Proposal Actions
-      case proposalSelected(String) // Proposal ID
-      case acceptProposal(String) // Proposal ID
-      case rejectProposal(String) // Proposal ID
-      
-      case createNewProposal // 새 제안 만들기 버튼 클릭
+      // Presentation actions
       case createPromise(PresentationAction<CreatePromise.Feature.Action>)
+      case groupDetail(PresentationAction<GroupDetailAction>)
       
-      // MARK: Group Actions
-      case groupSelected(String) // Group ID
+      // MARK: - View Actions (사용자가 직접 트리거)
+      public enum View: Sendable {
+        case onAppear
+        case filterChanged(StatusFilter)
+        case promiseAccepted(String)  // Promise ID
+        case promiseRejected(String)  // Promise ID
+        case openSideDrawer  // 햄버거 버튼
+        case groupManageTapped  // 톱니 버튼
+        case createNewPromise
+        case groupDetailDismissed
+      }
+      
+      // MARK: - Internal Actions (내부 로직/이펙트 응답)
+      public enum Internal: Sendable {
+        case loadPromisesResponse(Result<[PromiseItem], Error>)
+        case toggleGroupNotifications
+      }
+      
+      // MARK: - Delegate Actions (부모로 전달)
+      public enum Delegate: Sendable {
+        case requestOpenSideDrawer
+      }
+    }
+    
+    // MARK: - Group Detail Action
+    public enum GroupDetailAction: Sendable, Equatable {
+      case dismiss
+      case settings
+      case toggleNotifications
     }
     
     // MARK: - Reducer Body
@@ -79,55 +109,93 @@ extension PromiseMain {
     public var body: some ReducerOf<Self> {
       Reduce { state, action in
         switch action {
-        case .onAppear:
-          // view가 나타날 때 Feature 초기화
-          return .none
           
-        case .segmentChanged(let segment):
-          state.selectedSegment = segment
-          return .none
-          
-        case .proposalSelected(_):
-          // 제안 상세보기로 이동
-          return .none
-          
-        case .acceptProposal(let id):
-          // 제안 수락 로직
-          if let index = state.proposals.receivedProposals.firstIndex(where: { $0.id == id }) {
-            state.proposals.receivedProposals[index].status = .accepted
-          }
-          return .none
-          
-        case .rejectProposal(let id):
-          // 제안 거절 로직
-          if let index = state.proposals.receivedProposals.firstIndex(where: { $0.id == id }) {
-            state.proposals.receivedProposals[index].status = .rejected
-          }
-          return .none
-          
-        case .createNewProposal:
-          // CreatePromise Feature의 State를 생성하여 할당
-          state.createPromise = CreatePromise.Feature.State()
-          return .none
-          
-        case .groupSelected(let id):
-          return .none
-          
-        case .createPromise(let action):
-          switch action {
-            
-          case .presented(.delegate(.dismiss)):
-            state.createPromise = nil
+        case .view(let viewAction):
+          switch viewAction {
+          case .onAppear:
+            // TODO: Load promises and group data
             return .none
             
-          case .presented(.delegate(.promiseCreated(let promiseId))):
-            state.createPromise = nil
-            // FIXME: 필요 시 목록 갱신 등 후처리...
+          case .filterChanged(let filter):
+            state.selectedFilter = filter
             return .none
             
-          default:
+          case .promiseAccepted(_):
+            // TODO: Accept promise logic
+            return .none
+          case .promiseRejected(_):
+            // TODO: Reject promise logic
+            return .none
+            
+          case .openSideDrawer:
+            // 사이드 드로워 열기 요청을 부모로 전달
+            return .send(.delegate(.requestOpenSideDrawer))
+            
+          case .groupManageTapped:
+            // 그룹 관리 화면 열기
+            state.groupDetail = GroupDetailState(isPresented: true)
+            return .none
+            
+          case .createNewPromise:
+            state.createPromise = CreatePromise.Feature.State()
+            return .none
+            
+          case .groupDetailDismissed:
+            state.groupDetail = nil
             return .none
           }
+          
+          // MARK: - Internal Actions
+        case .internal(let internalAction):
+          switch internalAction {
+            
+          case .loadPromisesResponse(.success(let promises)):
+            state.promisesState = .loaded(promises)
+            return .none
+            
+          case .loadPromisesResponse(.failure(let error)):
+            state.promisesState = .failed(error)
+            return .none
+            
+          case .toggleGroupNotifications:
+            // TODO: Toggle notifications
+            return .none
+          }
+          
+          // MARK: - Presentation Actions
+        case .createPromise(.presented(.delegate(.dismiss))):
+          state.createPromise = nil
+          return .none
+          
+        case .createPromise(.presented(.delegate(.promiseCreated))):
+          state.createPromise = nil
+          // TODO: Reload promises list
+          return .none
+          
+        case .createPromise:
+          return .none
+          
+        case .groupDetail(.presented(.dismiss)):
+          state.groupDetail = nil
+          return .none
+          
+        case .groupDetail(.presented(.settings)):
+          // TODO: Navigate to settings
+          return .none
+          
+        case .groupDetail(.presented(.toggleNotifications)):
+          return .send(.internal(.toggleGroupNotifications))
+          
+        case .groupDetail:
+          return .none
+          
+          // MARK: - Binding & Delegate
+        case .binding:
+          return .none
+          
+        case .delegate:
+          // Delegate 액션은 부모에서 처리
+          return .none
         }
       }
       .ifLet(\.$createPromise, action: \.createPromise) {
@@ -151,306 +219,64 @@ extension PromiseMain {
     // MARK: - Body
     
     public var body: some View {
-      mainContentView
-        .onAppear {
-          store.send(.onAppear)
-        }
-    }
-    
-    // MARK: - Main Content View
-    
-    private var mainContentView: some View {
-      ScrollView {
-        VStack(spacing: 20) {
-          // 현재 그룹 표시
-          currentGroupSection
-          
-          // 세그먼트 컨트롤
-          segmentControl
-          
-          // 제안 목록
-          proposalsList
-          
-          // 새 제안 만들기 버튼
-          createNewProposalButton
-        }
-        .padding(.horizontal, 16)
-        .padding(.bottom, 20)
-        .fullScreenCover(
-          store: store.scope(
-            state: \.$createPromise,
-            action: \.createPromise
+      VStack(spacing: 0) {
+        // Group Header
+        if let group = store.currentGroup {
+          GroupHeaderView(
+            group: group,
+            onMenuTap: { store.send(.view(.openSideDrawer)) },
+            onManageTap: { store.send(.view(.groupManageTapped)) },
+            onAddPromiseTap: { store.send(.view(.createNewPromise)) }
           )
-        ) { childStore in
-          CreatePromise.RootView(store: childStore)
-        }
-      }
-    }
-    
-    
-    // MARK: - Current Group Section
-    
-    private var currentGroupSection: some View {
-      HStack {
-        Image(systemName: "person.2.fill")
-          .foregroundColor(.blue)
-          .font(.title2)
-        
-        VStack(alignment: .leading, spacing: 4) {
-          Text(store.currentGroup)
-            .font(.headline)
-            .fontWeight(.semibold)
-            .foregroundColor(.primary)
           
-          Text("현재 그룹")
-            .font(.caption)
-            .foregroundColor(.secondary)
+          Divider()
         }
         
-        Spacer()
+        // Status Filter
+        StatusFilterView(
+          selectedFilter: Binding(
+            get: { store.selectedFilter },
+            set: { store.send(.view(.filterChanged($0))) }
+          )
+        )
+        .padding(.horizontal, 16)
+        .padding(.top, 12)
         
-        Button(action: {
-          // 그룹 선택 화면으로 이동
-        }) {
-          Image(systemName: "chevron.right")
-            .foregroundColor(.secondary)
-            .font(.caption)
-        }
+        // Promise Timeline
+        PromiseTimelineView(
+          promisesState: store.promisesState,
+          selectedFilter: store.selectedFilter,
+          onAccept: { promiseId in store.send(.view(.promiseAccepted(promiseId))) },
+          onReject: { promiseId in store.send(.view(.promiseRejected(promiseId))) }
+        )
       }
-      .padding(16)
-      .background(Color.blue.opacity(0.1))
-      .cornerRadius(12)
-    }
-    
-    // MARK: - Segment Control
-    
-    private var segmentControl: some View {
-      HStack(spacing: 0) {
-        ForEach(PromiseSegment.allCases, id: \.self) { segment in
-          Button(action: {
-            store.send(.segmentChanged(segment))
-          }) {
-            Text(segment.title)
-              .font(.subheadline)
-              .fontWeight(.medium)
-              .foregroundColor(store.selectedSegment == segment ? .white : .primary)
-              .frame(maxWidth: .infinity)
-              .padding(.vertical, 12)
-              .background(
-                RoundedRectangle(cornerRadius: 8)
-                  .fill(store.selectedSegment == segment ? Color.blue : Color.clear)
-              )
-          }
-        }
+      .background(Color(.systemGray6))
+      .onAppear {
+        store.send(.view(.onAppear))
       }
-      .padding(4)
-      .background(Color.gray.opacity(0.1))
-      .cornerRadius(12)
-    }
-    
-    // MARK: - Proposals List
-    
-    private var proposalsList: some View {
-      LazyVStack(spacing: 12) {
-        ForEach(currentProposals) { proposal in
-          ProposalCard(proposal: proposal) {
-            store.send(.proposalSelected(proposal.id))
-          } onAccept: {
-            store.send(.acceptProposal(proposal.id))
-          } onReject: {
-            store.send(.rejectProposal(proposal.id))
-          }
+      .fullScreenCover(
+        store: store.scope(
+          state: \.$createPromise,
+          action: \.createPromise
+        )
+      ) { childStore in
+        CreatePromise.RootView(store: childStore)
+      }
+      .sheet(isPresented: Binding(
+        get: { store.groupDetail != nil },
+        set: { if !$0 { store.send(.view(.groupDetailDismissed)) } }
+      )) {
+        if let group = store.currentGroup {
+          GroupDetailView(
+            group: group,
+            members: store.groupMembers,
+            onDismiss: { store.send(.groupDetail(.presented(.dismiss))) },
+            onSettings: { store.send(.groupDetail(.presented(.settings))) },
+            onToggleNotifications: { store.send(.groupDetail(.presented(.toggleNotifications))) }
+          )
         }
       }
     }
-    
-    // MARK: - Create New Proposal Button
-    
-    private var createNewProposalButton: some View {
-      Button(action: {
-        store.send(.createNewProposal)
-      }) {
-        HStack {
-          Image(systemName: "plus.circle.fill")
-            .font(.title2)
-            .foregroundColor(.white)
-          
-          Text("새 약속 만들기")
-            .font(.headline)
-            .fontWeight(.semibold)
-            .foregroundColor(.white)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 16)
-        .background(Color.blue)
-        .cornerRadius(12)
-      }
-    }
-    
-    // MARK: - Computed Properties
-    
-    private var currentProposals: [ProposalModel.ProposalItem] {
-      switch store.selectedSegment {
-      case .received:
-        return store.proposals.receivedProposals
-      case .sent:
-        return store.proposals.sentProposals
-      case .confirmed:
-        return store.proposals.confirmedProposals
-      }
-    }
   }
-}
-
-// MARK: - Proposal Card View
-
-private struct ProposalCard: View {
-  let proposal: ProposalModel.ProposalItem
-  let onTap: () -> Void
-  let onAccept: () -> Void
-  let onReject: () -> Void
-  
-  var body: some View {
-    VStack(alignment: .leading, spacing: 12) {
-      HStack {
-        Text(proposal.emoji)
-          .font(.title)
-        
-        VStack(alignment: .leading, spacing: 4) {
-          Text(proposal.title)
-            .font(.headline)
-            .fontWeight(.semibold)
-            .foregroundColor(.primary)
-          
-          HStack {
-            Image(systemName: "clock")
-              .foregroundColor(.secondary)
-              .font(.caption)
-            Text(proposal.time)
-              .font(.caption)
-              .foregroundColor(.secondary)
-          }
-          
-          HStack {
-            Image(systemName: "location")
-              .foregroundColor(.secondary)
-              .font(.caption)
-            Text(proposal.location)
-              .font(.caption)
-              .foregroundColor(.secondary)
-          }
-          
-          HStack {
-            Image(systemName: "person")
-              .foregroundColor(.secondary)
-              .font(.caption)
-            Text("with \(proposal.with)")
-              .font(.caption)
-              .foregroundColor(.secondary)
-          }
-        }
-        
-        Spacer()
-        
-        statusBadge
-      }
-      
-      if proposal.isReceived && proposal.status == .pending {
-        HStack(spacing: 12) {
-          
-          Button(action: onAccept) {
-            Text("수락")
-              .font(.subheadline)
-              .fontWeight(.medium)
-              .foregroundColor(.white)
-              .frame(maxWidth: .infinity)
-              .padding(.vertical, 8)
-              .background(Color.blue)
-              .cornerRadius(8)
-          }
-          
-          Button(action: onReject) {
-            Text("거절")
-              .font(.subheadline)
-              .fontWeight(.medium)
-              .foregroundColor(.red)
-              .frame(maxWidth: .infinity)
-              .padding(.vertical, 8)
-              .background(Color.red.opacity(0.1))
-              .cornerRadius(8)
-          }
-        }
-      }
-    }
-    .padding(16)
-    .background(Color(.systemBackground))
-    .cornerRadius(12)
-    .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
-    .onTapGesture {
-      onTap()
-    }
-  }
-  
-  private var statusBadge: some View {
-    Text(proposal.status.title)
-      .font(.caption)
-      .fontWeight(.medium)
-      .foregroundColor(proposal.status.textColor)
-      .padding(.horizontal, 8)
-      .padding(.vertical, 4)
-      .background(proposal.status.backgroundColor)
-      .cornerRadius(6)
-  }
-}
-
-// MARK: - Data Models
-
-/// 약속 세그먼트를 나타내는 열거형
-public enum PromiseSegment: CaseIterable, Equatable, Sendable {
-  case received
-  case sent
-  case confirmed
-  
-  public var title: String {
-    switch self {
-    case .received: return "받은 제안"
-    case .sent: return "보낸 제안"
-    case .confirmed: return "확정된 제안"
-    }
-  }
-}
-
-extension ProposalModel.ProposalItem.ProposalStatus {
-  public var title: String {
-    switch self {
-    case .pending: return "대기중"
-    case .accepted: return "수락됨"
-    case .rejected: return "거절됨"
-    }
-  }
-  
-  public var textColor: Color {
-    switch self {
-    case .pending: return .orange
-    case .accepted: return .green
-    case .rejected: return .red
-    }
-  }
-  
-  public var backgroundColor: Color {
-    switch self {
-    case .pending: return .orange.opacity(0.1)
-    case .accepted: return .green.opacity(0.1)
-    case .rejected: return .red.opacity(0.1)
-    }
-  }
-}
-
-/// 그룹 아이템을 나타내는 구조체
-public struct GroupItem: Equatable, Identifiable {
-  public let id: String
-  public let name: String
-  public let members: [String]
-  public var isActive: Bool
 }
 
