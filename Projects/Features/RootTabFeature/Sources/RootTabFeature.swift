@@ -50,6 +50,9 @@ extension RootTab {
       /// Promise Main State
       var promiseMain: PromiseMain.Feature.State = PromiseMain.Feature.State.preview
 
+      /// Create Group State
+      @Presents var createGroup: CreateGroup.Feature.State?
+
       public init () {}
     }
 
@@ -62,6 +65,10 @@ extension RootTab {
       case sideDrawer(SideDrawerFeature.Action)
       /// Promise Main 액션
       case promiseMain(PromiseMain.Feature.Action)
+      /// Create Group 액션
+      case createGroup(PresentationAction<CreateGroup.Feature.Action>)
+      /// 그룹 추가 버튼 탭
+      case addGroupTapped
     }
     
     public var body: some ReducerOf<Self> {
@@ -91,7 +98,26 @@ extension RootTab {
 
         case .promiseMain:
           return .none
+
+        case .addGroupTapped:
+          state.createGroup = CreateGroup.Feature.State()
+          return .send(.sideDrawer(.close))
+
+        case .createGroup(.presented(.delegate(.dismiss))):
+          state.createGroup = nil
+          return .none
+
+        case .createGroup(.presented(.delegate(.groupCreated))):
+          state.createGroup = nil
+          // TODO: Reload groups list
+          return .none
+
+        case .createGroup:
+          return .none
         }
+      }
+      .ifLet(\.$createGroup, action: \.createGroup) {
+        CreateGroup.Feature()
       }
     }
   }
@@ -167,6 +193,14 @@ extension RootTab {
             store.send(.sideDrawer(.dragEnded))
           }
       )
+      .fullScreenCover(
+        store: store.scope(
+          state: \.$createGroup,
+          action: \.createGroup
+        )
+      ) { childStore in
+        CreateGroup.RootView(store: childStore)
+      }
     }
   }
   
@@ -232,27 +266,15 @@ extension RootTab.RootView {
   
   private var drawerHeader: some View {
     VStack(alignment: .leading, spacing: 8) {
-      HStack {
-        VStack(alignment: .leading, spacing: 4) {
-          Text("Promiso")
-            .font(.title2)
-            .fontWeight(.bold)
-            .foregroundColor(.primary)
-          
-          Text("약속을 지키는 습관")
-            .font(.caption)
-            .foregroundColor(.secondary)
-        }
+      VStack(alignment: .leading, spacing: 4) {
+        Text("Promiso")
+          .font(.title2)
+          .fontWeight(.bold)
+          .foregroundColor(.primary)
         
-        Spacer()
-        
-        Button(action: {
-          store.send(.sideDrawer(.close))
-        }) {
-          Image(systemName: "xmark")
-            .foregroundColor(.secondary)
-            .font(.title3)
-        }
+        Text("약속을 지키는 습관")
+          .font(.caption)
+          .foregroundColor(.secondary)
       }
       .padding(.horizontal, 20)
       .padding(.top, 20)
@@ -270,7 +292,7 @@ extension RootTab.RootView {
         .padding(.horizontal, 20)
         .padding(.top, 20)
         .padding(.bottom, 12)
-      
+
       ForEach(sampleGroups) { group in
         Button(action: {
           // 그룹 선택 로직
@@ -280,20 +302,20 @@ extension RootTab.RootView {
             Image(systemName: "person.2.fill")
               .foregroundColor(group.isActive ? .blue : .secondary)
               .font(.title3)
-            
+
             VStack(alignment: .leading, spacing: 2) {
               Text(group.name)
                 .font(.subheadline)
                 .fontWeight(.medium)
                 .foregroundColor(.primary)
-              
+
               Text("\(group.memberCount)명")
                 .font(.caption)
                 .foregroundColor(.secondary)
             }
-            
+
             Spacer()
-            
+
             if group.isActive {
               Image(systemName: "checkmark.circle.fill")
                 .foregroundColor(.blue)
@@ -306,6 +328,27 @@ extension RootTab.RootView {
         }
         .buttonStyle(PlainButtonStyle())
       }
+
+      // 추가하기 버튼
+      Button(action: {
+        store.send(.addGroupTapped)
+      }) {
+        HStack {
+          Image(systemName: "plus.circle.fill")
+            .foregroundColor(.blue)
+            .font(.title3)
+
+          Text("추가하기")
+            .font(.subheadline)
+            .fontWeight(.medium)
+            .foregroundColor(.blue)
+
+          Spacer()
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
+      }
+      .buttonStyle(PlainButtonStyle())
     }
   }
   
