@@ -3,36 +3,43 @@ import Clients
 import ComposableArchitecture
 
 struct TitleInputTextField: View {
-  private let store: StoreOf<CreatePromise.Feature>
-  private let titlePrefix: Int
+  let title: String
+  let emoji: String?
+  let titlePrefix: Int
+  let onTitleChange: (String) -> Void
   @FocusState.Binding var isFocused: Bool
   
-  init(store: StoreOf<CreatePromise.Feature>, titlePrefix: Int = 30, isFocused: FocusState<Bool>.Binding) {
-    self.store = store
+  init(
+    title: String,
+    emoji: String?,
+    titlePrefix: Int = 30,
+    isFocused: FocusState<Bool>.Binding,
+    onTitleChange: @escaping (String) -> Void
+  ) {
+    self.title = title
+    self.emoji = emoji
     self.titlePrefix = titlePrefix
     self._isFocused = isFocused
+    self.onTitleChange = onTitleChange
   }
   
   var body: some View {
     VStack(alignment: .trailing, spacing: 2) {
       TextField("예: 영화 관람, 카페 미팅", text: Binding(
-        get: { store.promiseProposal.title },
-        set: { store.send(.view(.setTitle($0))) }
+        get: { title },
+        set: { newValue in
+          let trimmed = String(newValue.prefix(titlePrefix))
+          onTitleChange(trimmed)
+        }
       ))
       .focused($isFocused)
-      .onChange(of: store.promiseProposal.title, { _, newValue in
-        if newValue.count > 30 {
-          let trimmed = String(newValue.prefix(30))
-          store.send(.view(.setTitle(trimmed)))
-        }
-      })
       .font(.system(size: 17))
       .padding(18)
       .background(Color(.systemGray6))
       .clipShape(RoundedRectangle(cornerRadius: 16))
       .frame(maxWidth: .infinity, minHeight: 80)
       
-      Text("\(store.promiseProposal.title.count)/\(titlePrefix)")
+      Text("\(title.count)/\(titlePrefix)")
         .font(.system(size: 13))
         .foregroundColor(.secondary)
     }
@@ -43,190 +50,61 @@ struct TitleInputTextField: View {
 
 #Preview("빈 상태") {
   @Previewable @FocusState var isFocused: Bool
+  @Previewable @State var title = ""
   TitleInputTextField(
-    store: Store(
-      initialState: CreatePromise.Feature.State(
-        promiseProposal: PromiseProposal.empty
-      )
-    ) {
-      CreatePromise.Feature()
-    },
-    isFocused: $isFocused
+    title: title,
+    emoji: nil,
+    isFocused: $isFocused,
+    onTitleChange: { title = $0 }
   )
   .padding()
 }
 
 #Preview("텍스트 입력됨") {
   @Previewable @FocusState var isFocused: Bool
+  @Previewable @State var title = "영화 관람"
   TitleInputTextField(
-    store: Store(
-      initialState: CreatePromise.Feature.State(
-        promiseProposal: PromiseProposal(
-          title: "영화 관람",
-          emoji: "🍿",
-          group: nil,
-          startedAt: Date(),
-          minimumParticipants: 2
-        )
-      )
-    ) {
-      CreatePromise.Feature()
-    },
-    isFocused: $isFocused
+    title: title,
+    emoji: "🍿",
+    isFocused: $isFocused,
+    onTitleChange: { title = $0 }
   )
   .padding()
 }
 
 #Preview("긴 텍스트") {
   @Previewable @FocusState var isFocused: Bool
+  @Previewable @State var title = "강남역에서 저녁 먹고 영화 보기"
   TitleInputTextField(
-    store: Store(
-      initialState: CreatePromise.Feature.State(
-        promiseProposal: PromiseProposal(
-          title: "강남역에서 저녁 먹고 영화 보기",
-          emoji: "🍿",
-          group: nil,
-          startedAt: Date(),
-          minimumParticipants: 2
-        )
-      )
-    ) {
-      CreatePromise.Feature()
-    },
-    isFocused: $isFocused
+    title: title,
+    emoji: "🍿",
+    isFocused: $isFocused,
+    onTitleChange: { title = $0 }
   )
   .padding()
 }
 
 #Preview("최대 길이 (30자)") {
   @Previewable @FocusState var isFocused: Bool
+  @Previewable @State var title = "123456789012345678901234567890"
   TitleInputTextField(
-    store: Store(
-      initialState: CreatePromise.Feature.State(
-        promiseProposal: PromiseProposal(
-          title: "123456789012345678901234567890", // 정확히 30자
-          emoji: "📅",
-          group: nil,
-          startedAt: Date(),
-          minimumParticipants: 2
-        )
-      )
-    ) {
-      CreatePromise.Feature()
-    },
-    isFocused: $isFocused
+    title: title,
+    emoji: "📅",
+    isFocused: $isFocused,
+    onTitleChange: { title = $0 }
   )
   .padding()
 }
 
 #Preview("다크모드") {
   @Previewable @FocusState var isFocused: Bool
+  @Previewable @State var title = "다크모드 테스트"
   TitleInputTextField(
-    store: Store(
-      initialState: CreatePromise.Feature.State(
-        promiseProposal: PromiseProposal(
-          title: "다크모드 테스트",
-          emoji: "🌙",
-          group: nil,
-          startedAt: Date(),
-          minimumParticipants: 2
-        )
-      )
-    ) {
-      CreatePromise.Feature()
-    },
-    isFocused: $isFocused
+    title: title,
+    emoji: "🌙",
+    isFocused: $isFocused,
+    onTitleChange: { title = $0 }
   )
   .padding()
   .preferredColorScheme(.dark)
-}
-
-#Preview("여러 상태 비교") {
-  @Previewable @FocusState var isFocused: Bool
-  ScrollView {
-    VStack(spacing: 24) {
-      VStack(alignment: .leading, spacing: 8) {
-        Text("빈 상태")
-          .font(.caption)
-          .foregroundColor(.secondary)
-        TitleInputTextField(
-          store: Store(
-            initialState: CreatePromise.Feature.State(
-              promiseProposal: .empty
-            )
-          ) {
-            CreatePromise.Feature()
-          },
-          isFocused: $isFocused
-        )
-      }
-      
-      VStack(alignment: .leading, spacing: 8) {
-        Text("짧은 텍스트 (5자)")
-          .font(.caption)
-          .foregroundColor(.secondary)
-        TitleInputTextField(
-          store: Store(
-            initialState: CreatePromise.Feature.State(
-              promiseProposal: PromiseProposal(
-                title: "점심식사",
-                emoji: "🍽️",
-                group: nil,
-                startedAt: Date(),
-                minimumParticipants: 2
-              )
-            )
-          ) {
-            CreatePromise.Feature()
-          },
-          isFocused: $isFocused
-        )
-      }
-      
-      VStack(alignment: .leading, spacing: 8) {
-        Text("중간 길이 텍스트 (15자)")
-          .font(.caption)
-          .foregroundColor(.secondary)
-        TitleInputTextField(
-          store: Store(
-            initialState: CreatePromise.Feature.State(
-              promiseProposal: PromiseProposal(
-                title: "강남에서 저녁 먹고 영화 보기",
-                emoji: "🍿",
-                group: nil,
-                startedAt: Date(),
-                minimumParticipants: 2
-              )
-            )
-          ) {
-            CreatePromise.Feature()
-          },
-          isFocused: $isFocused
-        )
-      }
-      
-      VStack(alignment: .leading, spacing: 8) {
-        Text("최대 길이 (30자)")
-          .font(.caption)
-          .foregroundColor(.secondary)
-        TitleInputTextField(
-          store: Store(
-            initialState: CreatePromise.Feature.State(
-              promiseProposal: PromiseProposal(
-                title: "12345678901234567890123456789",
-                emoji: "📝",
-                group: nil,
-                startedAt: Date(),
-                minimumParticipants: 2
-              )
-            )
-          ) {
-            CreatePromise.Feature()
-          },
-          isFocused: $isFocused
-        )
-      }
-    }
-    .padding()
-  }
 }

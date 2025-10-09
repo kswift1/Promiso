@@ -30,13 +30,24 @@ struct CreatePromiseStep1View: View {
         SectionPlaceHolder(
           placeHolderTitle: "제목",
           isRequired: true) {
-            TitleInputTextField(store: store, isFocused: $isTitleFocused)
+            TitleInputTextField(
+              title: store.promiseProposal.title,
+              emoji: store.promiseProposal.emoji,
+              isFocused: $isTitleFocused,
+              onTitleChange: { store.send(.view(.setTitle($0))) }
+            )
           }
         
         SectionPlaceHolder(
           placeHolderTitle: "그룹 선택",
           isRequired: true) {
-            GroupListView(store: store, isFocused: $isTitleFocused)
+            GroupListView(
+              groupListState: store.groupListState,
+              selectedGroupId: store.promiseProposal.group?.id,
+              onGroupSelected: { store.send(.view(.groupSelected($0))) },
+              onRetry: { store.send(.view(.retryLoadGroups)) },
+              isFocused: $isTitleFocused
+            )
           }
       }
       .padding(16)

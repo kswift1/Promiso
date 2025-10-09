@@ -1,12 +1,15 @@
 /// 그룹 리스트 뷰
 struct GroupListView: View {
-  let store: StoreOf<CreatePromise.Feature>
+  let groupListState: LoadingState<[GroupModel]>
+  let selectedGroupId: String?
+  let onGroupSelected: (GroupModel) -> Void
+  let onRetry: () -> Void
   @FocusState.Binding var isFocused: Bool
   
   var body: some View {
     VStack(alignment: .leading, spacing: 16) {
       // LoadingState에 따른 UI
-      switch store.groupListState {
+      switch groupListState {
       case .idle:
         EmptyView()
         
@@ -43,10 +46,10 @@ struct GroupListView: View {
       ForEach(groups) { group in
         GroupCard(
           model: group,
-          isSelected: store.promiseProposal.group?.id == group.id
+          isSelected: selectedGroupId == group.id
         ) {
           isFocused = false
-          store.send(.view(.groupSelected(group)))
+          onGroupSelected(group)
         }
       }
     }
@@ -106,7 +109,7 @@ struct GroupListView: View {
         .multilineTextAlignment(.center)
       
       Button {
-        store.send(.view(.retryLoadGroups))
+        onRetry()
       } label: {
         HStack {
           Image(systemName: "arrow.clockwise")
@@ -215,93 +218,54 @@ private struct GroupSkeletonCard: View {
 // MARK: - Preview
 
 #Preview("Loading") {
-  struct PreviewWrapper: View {
-    @FocusState private var focus: Bool
-    var body: some View {
-      let store = Store(initialState: CreatePromise.Feature.State()) {
-        CreatePromise.Feature()
-      } withDependencies: {
-        $0.groupClient.fetchGroups = {
-          try await Task.sleep(for: .seconds(100)) // 로딩 유지
-          return []
-        }
-      }
-
-      GroupListView(store: store, isFocused: $focus)
-        .padding()
-        .onAppear {
-          store.send(.internal(.fetchGroupList))
-        }
-    }
-  }
-  return PreviewWrapper()
+  @Previewable @FocusState var focus: Bool
+  GroupListView(
+    groupListState: .loading,
+    selectedGroupId: nil,
+    onGroupSelected: { _ in },
+    onRetry: {},
+    isFocused: $focus
+  )
+  .padding()
 }
 
 #Preview("Loaded") {
-  struct PreviewWrapper: View {
-    @FocusState private var focus: Bool
-    var body: some View {
-      let store = Store(initialState: CreatePromise.Feature.State()) {
-        CreatePromise.Feature()
-      } withDependencies: {
-        $0.groupClient.fetchGroups = {
-          [
-            .init(id: "g1", emoji: "👥", title: "지민과 나",   memberCount: 2),
-            .init(id: "g2", emoji: "🏢", title: "회사 동료들", memberCount: 8),
-            .init(id: "g3", emoji: "🎓", title: "대학 친구들", memberCount: 12),
-            .init(id: "g4", emoji: "👨‍👩‍👦", title: "가족",    memberCount: 4)
-          ]
-        }
-      }
-
-      GroupListView(store: store, isFocused: $focus)
-        .padding()
-        .onAppear {
-          store.send(.internal(.fetchGroupList))
-        }
-    }
-  }
-  return PreviewWrapper()
+  @Previewable @FocusState var focus: Bool
+  GroupListView(
+    groupListState: .loaded([
+      .init(id: "g1", emoji: "👥", title: "지민과 나", memberCount: 2),
+      .init(id: "g2", emoji: "🏢", title: "회사 동료들", memberCount: 8),
+      .init(id: "g3", emoji: "🎓", title: "대학 친구들", memberCount: 12),
+      .init(id: "g4", emoji: "👨‍👩‍👦", title: "가족", memberCount: 4)
+    ]),
+    selectedGroupId: "g2",
+    onGroupSelected: { group in print("Selected: \(group.title)") },
+    onRetry: {},
+    isFocused: $focus
+  )
+  .padding()
 }
 
 #Preview("Empty") {
-  struct PreviewWrapper: View {
-    @FocusState private var focus: Bool
-    var body: some View {
-      let store = Store(initialState: CreatePromise.Feature.State()) {
-        CreatePromise.Feature()
-      } withDependencies: {
-        $0.groupClient.fetchGroups = { [] }
-      }
-
-      GroupListView(store: store, isFocused: $focus)
-        .padding()
-        .onAppear {
-          store.send(.internal(.fetchGroupList))
-        }
-    }
-  }
-  return PreviewWrapper()
+  @Previewable @FocusState var focus: Bool
+  GroupListView(
+    groupListState: .loaded([]),
+    selectedGroupId: nil,
+    onGroupSelected: { _ in },
+    onRetry: {},
+    isFocused: $focus
+  )
+  .padding()
 }
 
 #Preview("Error") {
-  struct PreviewWrapper: View {
-    @FocusState private var focus: Bool
-    var body: some View {
-      let store = Store(initialState: CreatePromise.Feature.State()) {
-        CreatePromise.Feature()
-      } withDependencies: {
-        $0.groupClient.fetchGroups = {
-          throw GroupClientError.networkError
-        }
-      }
-
-      GroupListView(store: store, isFocused: $focus)
-        .padding()
-        .onAppear {
-          store.send(.internal(.fetchGroupList))
-        }
-    }
-  }
-  return PreviewWrapper()
+  @Previewable @FocusState var focus: Bool
+  GroupListView(
+    groupListState: .failed(GroupClientError.networkError),
+    selectedGroupId: nil,
+    onGroupSelected: { _ in },
+    onRetry: { print("Retry tapped") },
+    isFocused: $focus
+  )
+  .padding()
 }
