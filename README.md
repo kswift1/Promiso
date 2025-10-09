@@ -50,8 +50,8 @@
 
 ```bash
 # 1. 저장소 클론
-git clone https://github.com/your-org/promiso.git
-cd promiso
+git clone https://github.com/kswift1/Promiso.git
+cd Promiso
 
 # 2. Tuist 의존성 설치 및 프로젝트 생성
 tuist install
@@ -119,7 +119,6 @@ tuist test
 
 자세한 내용은 다음 문서를 참고하세요:
 
-- [CLAUDE.md](./CLAUDE.md) - AI 개발 가이드
 - [Architecture Decision Record](./docs/architecture/001-dependency-architecture.md) - 아키텍처 결정 문서
 - [Clients Layer](./Projects/Clients/README.md) - Adapter Layer 가이드
 - [Domain Layer](./Projects/Domain/README.md) - Domain Layer 가이드
@@ -206,17 +205,6 @@ make feature FEATURE_NAME=Login             # Login 피쳐 생성
 make remove-feature FEATURE_NAME=Login      # Login 피쳐 삭제
 make deps                                   # 의존성 그래프 시각화
 ```
-
-## 🤝 기여하기
-
-1. Feature 브랜치 생성 (`git checkout -b feature/AmazingFeature`)
-2. 변경사항 커밋 (`git commit -m 'Add some AmazingFeature'`)
-3. 브랜치에 푸시 (`git push origin feature/AmazingFeature`)
-4. Pull Request 생성
-
-## 📝 라이선스
-
-This project is licensed under the MIT License.
 
 ## 🙋‍♂️ 문의
 
