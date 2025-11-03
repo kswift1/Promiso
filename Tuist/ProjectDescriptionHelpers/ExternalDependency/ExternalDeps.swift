@@ -10,6 +10,9 @@ public enum ExternalDeps: CaseIterable {
   case firebaseAuth
   case firebaseFirestore
   case firebaseCrashlytics
+  
+  /// SwiftUI Debugging Tool
+  case loupe
 
   public static func allExternalDeps() -> [TargetDependency] {
     ExternalDeps.allCases.map { $0.targetDependency }
@@ -27,6 +30,8 @@ public enum ExternalDeps: CaseIterable {
       return .external(name: "FirebaseFirestore")
     case .firebaseCrashlytics:
       return .external(name: "FirebaseCrashlytics")
+    case .loupe:
+      return .external(name: "RenderMeThis")
     }
   }
 }

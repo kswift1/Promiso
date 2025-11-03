@@ -25,10 +25,18 @@ enum Dependencies {
     )
   }
   
+  static func loupe() -> Package.Dependency {
+    .package(
+      url: "https://github.com/Aeastr/Loupe.git",
+      .upToNextMajor(from: "2.1.0")
+    )
+  }
+  
   // MARK: - All Dependencies
   static var all: [Package.Dependency] { [
     tca(),
     firebase(),
+    loupe(),
   ]}
 }
 
