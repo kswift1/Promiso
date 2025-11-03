@@ -2,9 +2,6 @@
 // TCA 1.22.2를 사용한 Home Feature의 Implementation layer
 // 이 파일은 핵심 business logic, state management, view implementation을 포함
 
-import SwiftUI
-import ComposableArchitecture
-
 // MARK: - Feature Namespace
 
 /// Home Feature 컴포넌트를 위한 Namespace
@@ -167,8 +164,6 @@ extension Home {
     public var body: some View {
       ScrollView {
         LazyVStack(spacing: 24) {
-//            // 헤더
-//            HomeHeader(badgeCount: 3)
           
           // 오늘 확정된 약속
           TodayPromiseSection(store: store)
@@ -184,15 +179,12 @@ extension Home {
       }
       .background(Color(.systemGroupedBackground))
       .navigationTitle("오늘의 일정")
-//      .navigationSubtitle("모든 그룹의 약속을 한눈에")
       .toolbar {
         ToolbarItem(placement: .topBarTrailing) {
-          Button {
-            // FIXME: Alert Open
-          } label: {
-            Image(systemName: "bell")
-          }
-          .badge(3) // FIXME: Alert Badge
+          NotificationButton(
+            badgeCount: 13, // FIXME:
+            action: { print("tapped") } // FIXME:
+          )
         }
       }
       .onAppear {

@@ -1,4 +1,5 @@
 // MARK: - Feature Namespace
+import Shared
 
 /// Promise Feature 컴포넌트를 위한 Namespace
 /// 조직적 구조를 제공하고 다른 Feature들과의 naming conflict를 방지
@@ -255,11 +256,10 @@ extension PromiseMain {
       //        .navigationSubtitle("1개 진행중 / 0개 완료 / 0개 만료 1개 진행중 / 0개 완료 / 0개 만료 1개 진행중 / 0개 완료 / 0개 만료")
       .toolbar {
         ToolbarItem(placement: .cancellationAction) {
-          Button {
-            store.send(.view(.openSideDrawer))
-          } label: {
-            Image(systemName: "line.3.horizontal")
-          }
+          ToolbarButton(
+            imageName: "line.3.horizontal",
+            action: { store.send(.view(.openSideDrawer)) }
+          )
         }
         
         if let groupName = store.currentGroup?.name {
@@ -270,19 +270,17 @@ extension PromiseMain {
         
         
         ToolbarItem(placement: .confirmationAction) {
-          Button {
-            store.send(.view(.createNewPromise))
-          } label: {
-            Image(systemName: "plus")
-          }
+          ToolbarButton(
+            imageName: "plus",
+            action: { store.send(.view(.createNewPromise)) }
+          )
         }
         
         ToolbarItem(placement: .confirmationAction) {
-          Button {
-            store.send(.view(.groupManageTapped))
-          } label: {
-            Image(systemName: "gearshape")
-          }
+          ToolbarButton(
+            imageName: "gearshape",
+            action: { store.send(.view(.groupManageTapped)) }
+          )
         }
       }
       .onAppear {

@@ -12,7 +12,7 @@ let project = Project(
       deploymentTargets: .iOS(AppConfig.deploymentTargets),
       infoPlist: .extendingDefault(with: [
         "UILaunchStoryboardName": .string("LaunchScreen"),
-        "UIDesignRequiresCompatibility": .boolean(true)
+        "UIDesignRequiresCompatibility": .boolean(false)
       ]),
       sources: ["Sources/**"],
       resources: ["Resources/**"],
