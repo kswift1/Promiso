@@ -221,16 +221,16 @@ extension PromiseMain {
     public var body: some View {
       VStack(spacing: 0) {
         // Group Header
-        if let group = store.currentGroup {
-          GroupHeaderView(
-            group: group,
-            onMenuTap: { store.send(.view(.openSideDrawer)) },
-            onManageTap: { store.send(.view(.groupManageTapped)) },
-            onAddPromiseTap: { store.send(.view(.createNewPromise)) }
-          )
-          
-          Divider()
-        }
+        //          if let group = store.currentGroup {
+        //            GroupHeaderView(
+        //              group: group,
+        //              onMenuTap: { store.send(.view(.openSideDrawer)) },
+        //              onManageTap: { store.send(.view(.groupManageTapped)) },
+        //              onAddPromiseTap: { store.send(.view(.createNewPromise)) }
+        //            )
+        //
+        //            Divider()
+        //          }
         
         // Status Filter
         StatusFilterView(
@@ -250,7 +250,41 @@ extension PromiseMain {
           onReject: { promiseId in store.send(.view(.promiseRejected(promiseId))) }
         )
       }
-      .background(Color(.systemGray6))
+      .background(Color(.systemGroupedBackground))
+      .navigationBarTitleDisplayMode(.inline)
+      //        .navigationSubtitle("1개 진행중 / 0개 완료 / 0개 만료 1개 진행중 / 0개 완료 / 0개 만료 1개 진행중 / 0개 완료 / 0개 만료")
+      .toolbar {
+        ToolbarItem(placement: .cancellationAction) {
+          Button {
+            store.send(.view(.openSideDrawer))
+          } label: {
+            Image(systemName: "line.3.horizontal")
+          }
+        }
+        
+        if let groupName = store.currentGroup?.name {
+          ToolbarItem(placement: .principal) {
+            Text(groupName)
+          }
+        }
+        
+        
+        ToolbarItem(placement: .confirmationAction) {
+          Button {
+            store.send(.view(.createNewPromise))
+          } label: {
+            Image(systemName: "plus")
+          }
+        }
+        
+        ToolbarItem(placement: .confirmationAction) {
+          Button {
+            store.send(.view(.groupManageTapped))
+          } label: {
+            Image(systemName: "gearshape")
+          }
+        }
+      }
       .onAppear {
         store.send(.view(.onAppear))
       }
@@ -279,4 +313,3 @@ extension PromiseMain {
     }
   }
 }
-

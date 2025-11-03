@@ -166,31 +166,39 @@ extension Home {
     
     public var body: some View {
       ScrollView {
-          LazyVStack(spacing: 24) {
-            // 헤더
-            HomeHeader(badgeCount: 3)
-            
-            // 오늘 확정된 약속
-            TodayPromiseSection(store: store)
-            
-            // 다가오는 약속
-            UpcomingPromiseSection(store: store)
-            
-            // 답변 필요한 제안
-            PendingResponseSection(store: store)
-            
-          }
-          .padding(.top, 8)
+        LazyVStack(spacing: 24) {
+//            // 헤더
+//            HomeHeader(badgeCount: 3)
+          
+          // 오늘 확정된 약속
+          TodayPromiseSection(store: store)
+          
+          // 다가오는 약속
+          UpcomingPromiseSection(store: store)
+          
+          // 답변 필요한 제안
+          PendingResponseSection(store: store)
+          
         }
-        .background(Color(.systemGroupedBackground))
-        .onAppear {
-          store.send(.onAppear)
+        .padding(.top, 8)
+      }
+      .background(Color(.systemGroupedBackground))
+      .navigationTitle("오늘의 일정")
+//      .navigationSubtitle("모든 그룹의 약속을 한눈에")
+      .toolbar {
+        ToolbarItem(placement: .topBarTrailing) {
+          Button {
+            // FIXME: Alert Open
+          } label: {
+            Image(systemName: "bell")
+          }
+          .badge(3) // FIXME: Alert Badge
         }
       }
-    
-    
-    
-    
+      .onAppear {
+        store.send(.onAppear)
+      }
+    }
   }
   
   // MARK: - Data Models

@@ -2,13 +2,8 @@
 // TCA 1.22.2를 사용한 RootTab Feature의 Implementation layer
 // 이 파일은 핵심 business logic, state management, view implementation을 포함
 
-import SwiftUI
-import ComposableArchitecture
 import CoreInfrastructure
 import Shared
-
-import HomeFeature
-import PromiseFeature
 
 public enum Tab: String, CaseIterable {
   case home = "홈"
@@ -43,19 +38,19 @@ extension RootTab {
     public struct State: Equatable {
       /// 현재 선택된 탭
       var selectedTab: Tab = .home
-
+      
       /// 사이드 드로어 상태
       var sideDrawer: SideDrawerFeature.State = SideDrawerFeature.State(maxDragOffset: AppConstants.UI.SideDrawer.width)
-
+      
       /// Promise Main State
       var promiseMain: PromiseMain.Feature.State = PromiseMain.Feature.State.preview
-
+      
       /// Create Group State
       @Presents var createGroup: CreateGroup.Feature.State?
-
+      
       public init () {}
     }
-
+    
     public enum Action {
       /// 앱이 나타날 때 호출
       case onAppear
@@ -75,43 +70,43 @@ extension RootTab {
       Scope(state: \.promiseMain, action: \.promiseMain) {
         PromiseMain.Feature()
       }
-
+      
       Reduce { state, action in
         switch action {
         case .onAppear:
           return .none
-
+          
         case .tabSelected(let tab):
           state.selectedTab = tab
           return .run { _ in
             await hapticFeedback.buttonTap()
           }
-
+          
         case .sideDrawer(let sideDrawerAction):
           return SideDrawerFeature()
             .reduce(into: &state.sideDrawer, action: sideDrawerAction)
             .map(Action.sideDrawer)
-
+          
         case .promiseMain(.delegate(.requestOpenSideDrawer)):
           // PromiseMain에서 사이드 드로워 열기 요청
           return .send(.sideDrawer(.toggle))
-
+          
         case .promiseMain:
           return .none
-
+          
         case .addGroupTapped:
           state.createGroup = CreateGroup.Feature.State()
           return .send(.sideDrawer(.close))
-
+          
         case .createGroup(.presented(.delegate(.dismiss))):
           state.createGroup = nil
           return .none
-
+          
         case .createGroup(.presented(.delegate(.groupCreated))):
           state.createGroup = nil
           // TODO: Reload groups list
           return .none
-
+          
         case .createGroup:
           return .none
         }
@@ -141,7 +136,7 @@ extension RootTab {
           .offset(x: store.sideDrawer.showDrawer ? AppConstants.UI.SideDrawer.width + store.sideDrawer.dragOffset : store.sideDrawer.dragOffset)
           .animation(.spring(response: 0.3, dampingFraction: 0.8, blendDuration: 0), value: store.sideDrawer.showDrawer)
           .animation(.interactiveSpring(response: 0.2, dampingFraction: 0.9, blendDuration: 0), value: store.sideDrawer.dragOffset)
-
+        
         // 전체 화면 오버레이 (드로어가 열려있을 때만)
         if store.sideDrawer.showDrawer || store.sideDrawer.overlayOpacity > 0 {
           Color.black.opacity(store.sideDrawer.overlayOpacity)
@@ -153,7 +148,7 @@ extension RootTab {
             .animation(.interactiveSpring(response: 0.3, dampingFraction: 0.9, blendDuration: 0), value: store.sideDrawer.overlayOpacity)
             .allowsHitTesting(true)
         }
-
+        
         // 사이드 드로어 (오버레이 위에 표시)
         sideDrawerView
           .frame(width: AppConstants.UI.SideDrawer.width)
@@ -165,19 +160,19 @@ extension RootTab {
         DragGesture(minimumDistance: 15)
           .onChanged { value in
             guard store.state.selectedTab == .promise else { return }
-
+            
             let dragDistance = value.translation.width
             let horizontalMovement = abs(dragDistance)
             let verticalMovement = abs(value.translation.height)
-
+            
             // 수평 드래그가 수직보다 명확히 클 때만 처리 (스크롤과 구분)
             guard horizontalMovement > verticalMovement * 1.5 else { return }
-
+            
             let isDraggingToOpen = !store.sideDrawer.showDrawer && dragDistance > 0
             let isDraggingToClose = store.sideDrawer.showDrawer && dragDistance < 0
-
+            
             guard isDraggingToOpen || isDraggingToClose else { return }
-
+            
             // Offset 계산
             let clampedOffset: CGFloat
             if isDraggingToOpen {
@@ -185,7 +180,7 @@ extension RootTab {
             } else {
               clampedOffset = max(dragDistance, AppConstants.UI.SideDrawer.minDragOffset)
             }
-
+            
             store.send(.sideDrawer(.dragChanged(clampedOffset)))
           }
           .onEnded { _ in
@@ -206,7 +201,7 @@ extension RootTab {
   
   private struct TabViewContent: View {
     @Bindable var store: StoreOf<RootTab.Feature>
-
+    
     var body: some View {
       TabView(selection: $store.selectedTab.sending(\.tabSelected)) {
         ForEach(Tab.allCases, id: \.self) { tab in
@@ -221,22 +216,26 @@ extension RootTab {
         store.send(.onAppear)
       }
     }
-
+    
     @ViewBuilder
     private func tabContentView(for tab: Tab) -> some View {
       switch tab {
       case .home:
-        let homeStore = Store(initialState: Home.Feature.State()) {
-          Home.Feature()
+        NavigationStack {
+          let homeStore = Store(initialState: Home.Feature.State()) {
+            Home.Feature()
+          }
+          Home.RootView(store: homeStore)
         }
-        Home.RootView(store: homeStore)
       case .promise:
-        PromiseMain.RootView(
-          store: store.scope(
-            state: \.promiseMain,
-            action: \.promiseMain
+        NavigationStack {
+          PromiseMain.RootView(
+            store: store.scope(
+              state: \.promiseMain,
+              action: \.promiseMain
+            )
           )
-        )
+        }
       }
     }
   }
@@ -292,7 +291,7 @@ extension RootTab.RootView {
         .padding(.horizontal, 20)
         .padding(.top, 20)
         .padding(.bottom, 12)
-
+      
       ForEach(sampleGroups) { group in
         Button(action: {
           // 그룹 선택 로직
@@ -302,20 +301,20 @@ extension RootTab.RootView {
             Image(systemName: "person.2.fill")
               .foregroundColor(group.isActive ? .blue : .secondary)
               .font(.title3)
-
+            
             VStack(alignment: .leading, spacing: 2) {
               Text(group.name)
                 .font(.subheadline)
                 .fontWeight(.medium)
                 .foregroundColor(.primary)
-
+              
               Text("\(group.memberCount)명")
                 .font(.caption)
                 .foregroundColor(.secondary)
             }
-
+            
             Spacer()
-
+            
             if group.isActive {
               Image(systemName: "checkmark.circle.fill")
                 .foregroundColor(.blue)
@@ -328,7 +327,7 @@ extension RootTab.RootView {
         }
         .buttonStyle(PlainButtonStyle())
       }
-
+      
       // 추가하기 버튼
       Button(action: {
         store.send(.addGroupTapped)
@@ -337,12 +336,12 @@ extension RootTab.RootView {
           Image(systemName: "plus.circle.fill")
             .foregroundColor(.blue)
             .font(.title3)
-
+          
           Text("추가하기")
             .font(.subheadline)
             .fontWeight(.medium)
             .foregroundColor(.blue)
-
+          
           Spacer()
         }
         .padding(.horizontal, 20)

@@ -7,3 +7,4 @@
 @_exported import FirebaseAuth
 @_exported import FirebaseFirestore
 @_exported import FirebaseCrashlytics
+@_exported import RenderMeThis
