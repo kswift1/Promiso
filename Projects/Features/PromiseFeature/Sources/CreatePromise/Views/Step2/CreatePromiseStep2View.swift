@@ -12,7 +12,6 @@ struct CreatePromiseStep2View: View {
         VStack(alignment: .leading, spacing: 32) {
           // 헤더
           CreatePromiseStep.second.headerView
-            .id("header")
           
           // 시작 날짜/시간
           StartDateTimeSection(store: store, scrollProxy: proxy)
@@ -25,11 +24,9 @@ struct CreatePromiseStep2View: View {
           // FIXME:
           // 장소 (선택)
           LocationSection(store: store)
-            .id("location")
           
           // 최소 참가 인원
           MinimumParticipantsSection(store: store, scrollProxy: proxy)
-            .id("minimumParticipants")
         }
         .padding(16)
       }

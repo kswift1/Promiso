@@ -98,6 +98,7 @@ struct MinimumParticipantsSection: View {
           .font(.system(size: 32))
           .foregroundColor(currentMinimum <= 2 ? Color(.systemGray4) : .blue)
       }
+      .buttonRepeatBehavior(.enabled)
       .disabled(currentMinimum <= 2)
       
       VStack(spacing: 4) {
@@ -124,6 +125,7 @@ struct MinimumParticipantsSection: View {
           .font(.system(size: 32))
           .foregroundColor(currentMinimum >= maxParticipants ? Color(.systemGray4) : .blue)
       }
+      .buttonRepeatBehavior(.enabled)
       .disabled(currentMinimum >= maxParticipants)
     }
     .padding(.vertical, 8)
