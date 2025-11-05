@@ -95,9 +95,9 @@ extension Home {
     /// Home Feature 내에서 발생할 수 있는 모든 가능한 action
     /// 각 action은 고유한 user intent나 system event를 나타내야 함
     public enum Action: Equatable, Sendable {
+      case view(View)
+      case delegate(Delegate)
       // MARK: Lifecycle Actions
-      /// view가 처음 나타날 때 트리거
-      case onAppear
       
       // MARK: Promise Actions
       case startLiveActivity(String) // Promise ID
@@ -107,6 +107,17 @@ extension Home {
       // MARK: Response Actions
       case viewPendingResponses
       case respondToProposal(String, Bool) // ID, Accept/Reject
+      
+      public enum View: Sendable {
+        /// view가 처음 나타날 때 트리거
+        case onAppear
+        /// SideDrawer 열기
+        case openSideDrawer
+      }
+      
+      public enum Delegate: Sendable {
+        case openSideDrawer
+      }
     }
     
     // MARK: - Reducer Body
@@ -116,9 +127,13 @@ extension Home {
     public var body: some ReducerOf<Self> {
       Reduce { state, action in
         switch action {
-        case .onAppear:
-          // view가 나타날 때 Feature 초기화
-          return .none
+        case .view(let view):
+          switch view {
+          case .onAppear:
+            return .none
+          case .openSideDrawer:
+            return .send(.delegate(.openSideDrawer))
+          }
           
         case .startLiveActivity(let promiseId):
           // Live Activity 시작 로직
@@ -139,6 +154,9 @@ extension Home {
         case .respondToProposal(let id, let accept):
           // 제안에 응답
           state.pendingResponses.removeAll { $0.id == id }
+          return .none
+          
+        case .delegate:
           return .none
         }
       }
@@ -180,6 +198,13 @@ extension Home {
       .background(Color(.systemGroupedBackground))
       .navigationTitle("오늘의 일정")
       .toolbar {
+        ToolbarItem(placement: .topBarLeading) {
+          ToolbarButton(
+            imageName: "line.3.horizontal",
+            action: { store.send((.view(.openSideDrawer))) }
+          )
+        }
+        
         ToolbarItem(placement: .topBarTrailing) {
           NotificationButton(
             badgeCount: 13, // FIXME:
@@ -188,7 +213,7 @@ extension Home {
         }
       }
       .onAppear {
-        store.send(.onAppear)
+        store.send(.view(.onAppear))
       }
     }
   }

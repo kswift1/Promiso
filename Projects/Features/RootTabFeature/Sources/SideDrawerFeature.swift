@@ -26,7 +26,7 @@ public struct SideDrawerFeature {
     }
   }
 
-  public enum Action: Equatable {
+  public enum Action: Equatable, Sendable {
     /// 드로어 토글
     case toggle
     /// 드로어 닫기

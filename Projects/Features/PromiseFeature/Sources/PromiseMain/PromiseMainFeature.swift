@@ -220,94 +220,363 @@ extension PromiseMain {
     // MARK: - Body
     
     public var body: some View {
-      VStack(spacing: 0) {
-        // Group Header
-        //          if let group = store.currentGroup {
-        //            GroupHeaderView(
-        //              group: group,
-        //              onMenuTap: { store.send(.view(.openSideDrawer)) },
-        //              onManageTap: { store.send(.view(.groupManageTapped)) },
-        //              onAddPromiseTap: { store.send(.view(.createNewPromise)) }
-        //            )
-        //
-        //            Divider()
-        //          }
-        
-        // Status Filter
-        StatusFilterView(
-          selectedFilter: Binding(
-            get: { store.selectedFilter },
-            set: { store.send(.view(.filterChanged($0))) }
-          )
-        )
-        .padding(.horizontal, 16)
-        .padding(.top, 12)
-        
-        // Promise Timeline
-        PromiseTimelineView(
-          promisesState: store.promisesState,
-          selectedFilter: store.selectedFilter,
-          onAccept: { promiseId in store.send(.view(.promiseAccepted(promiseId))) },
-          onReject: { promiseId in store.send(.view(.promiseRejected(promiseId))) }
-        )
-      }
-      .background(Color(.systemGroupedBackground))
-      .navigationBarTitleDisplayMode(.inline)
+      //      VStack(spacing: 0) {
+      //        // Status Filter
+      //        StatusFilterView(
+      //          selectedFilter: Binding(
+      //            get: { store.selectedFilter },
+      //            set: { store.send(.view(.filterChanged($0))) }
+      //          )
+      //        )
+      //        .padding(.horizontal, 16)
+      //        .padding(.top, 12)
+      //
+      //        // Promise Timeline
+      //        PromiseTimelineView(
+      //          promisesState: store.promisesState,
+      //          selectedFilter: store.selectedFilter,
+      //          onAccept: { promiseId in store.send(.view(.promiseAccepted(promiseId))) },
+      //          onReject: { promiseId in store.send(.view(.promiseRejected(promiseId))) }
+      //        )
+      //      }
+      GroupDetailEmptyView()
+        .background(Color(.systemGroupedBackground))
+        .navigationBarTitleDisplayMode(.inline)
       //        .navigationSubtitle("1개 진행중 / 0개 완료 / 0개 만료 1개 진행중 / 0개 완료 / 0개 만료 1개 진행중 / 0개 완료 / 0개 만료")
-      .toolbar {
-        ToolbarItem(placement: .cancellationAction) {
-          ToolbarButton(
-            imageName: "line.3.horizontal",
-            action: { store.send(.view(.openSideDrawer)) }
-          )
-        }
-        
-        if let groupName = store.currentGroup?.name {
-          ToolbarItem(placement: .principal) {
-            Text(groupName)
+        .toolbar {
+          ToolbarItem(placement: .topBarLeading) {
+            ToolbarButton(
+              imageName: "line.3.horizontal",
+              action: { store.send(.view(.openSideDrawer)) }
+            )
+          }
+          
+          if let groupName = store.currentGroup?.name {
+            ToolbarItem(placement: .principal) {
+              Text(groupName)
+            }
+          }
+          
+          ToolbarTitleMenu {
+            Button("one") {
+              
+            }
+            
+            Button("tow") {
+              
+            }
+            
+            Button("three") {
+              
+            }
+          }
+          
+          
+          ToolbarItem(placement: .topBarTrailing) {
+            ToolbarButton(
+              imageName: "plus",
+              action: { store.send(.view(.createNewPromise)) }
+            )
+          }
+          
+          ToolbarItem(placement: .topBarTrailing) {
+            ToolbarButton(
+              imageName: "gearshape",
+              action: { store.send(.view(.groupManageTapped)) }
+            )
           }
         }
-        
-        
-        ToolbarItem(placement: .confirmationAction) {
-          ToolbarButton(
-            imageName: "plus",
-            action: { store.send(.view(.createNewPromise)) }
-          )
+        .onAppear {
+          store.send(.view(.onAppear))
         }
+        .fullScreenCover(
+          store: store.scope(
+            state: \.$createPromise,
+            action: \.createPromise
+          )
+        ) { childStore in
+          CreatePromise.RootView(store: childStore)
+        }
+        .sheet(isPresented: Binding(
+          get: { store.groupDetail != nil },
+          set: { if !$0 { store.send(.view(.groupDetailDismissed)) } }
+        )) {
+          if let group = store.currentGroup {
+            GroupDetailView(
+              group: group,
+              members: store.groupMembers,
+              onDismiss: { store.send(.groupDetail(.presented(.dismiss))) },
+              onSettings: { store.send(.groupDetail(.presented(.settings))) },
+              onToggleNotifications: { store.send(.groupDetail(.presented(.toggleNotifications))) }
+            )
+          }
+        }
+    }
+  }
+}
+
+import SwiftUI
+
+// 그룹 상세 화면 - 그룹이 없을 때
+struct GroupDetailEmptyView: View {
+  @State private var showCreateGroup = false
+  @State private var showJoinGroup = false
+  @State private var showSideDrawer = false
+  
+  var body: some View {
+    VStack(spacing: 0) {
+      // Empty State Content
+      ScrollView {
+        VStack(spacing: 0) {
+          Spacer()
+            .frame(height: 80)
+          
+          VStack(spacing: 32) {
+            // Illustration
+            ZStack {
+              Circle()
+                .fill(
+                  LinearGradient(
+                    colors: [Color.blue.opacity(0.15), Color.purple.opacity(0.1)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                  )
+                )
+                .frame(width: 120, height: 120)
+              
+              Image(systemName: "person.3.fill")
+                .font(.system(size: 56))
+                .foregroundStyle(
+                  LinearGradient(
+                    colors: [.blue, .purple],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                  )
+                )
+            }
+            
+            // Text
+            VStack(spacing: 12) {
+              Text("그룹이 선택되지 않았어요")
+                .font(.title3.bold())
+              
+              Text("그룹을 만들거나 참여해서\n친구들과 약속을 시작해보세요")
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .lineSpacing(4)
+            }
+            
+            // Action Buttons
+            VStack(spacing: 12) {
+              if #available(iOS 26.0, *) {
+                Button(action: { showCreateGroup = true }) {
+                  HStack(spacing: 8) {
+                    Image(systemName: "plus.circle.fill")
+                      .font(.title3)
+                    Text("그룹 만들기")
+                      .font(.headline)
+                  }
+                  .frame(maxWidth: .infinity)
+                  .frame(height: 52)
+                  //                  .foregroundStyle(.white)
+                }
+                .buttonStyle(.glassProminent)
+                //                .buttonStyle(.glass)
+              } else {
+                Button(action: { showCreateGroup = true }) {
+                  HStack(spacing: 8) {
+                    Image(systemName: "plus.circle.fill")
+                      .font(.title3)
+                    Text("그룹 만들기")
+                      .font(.headline)
+                  }
+                  .frame(maxWidth: .infinity)
+                  .frame(height: 52)
+                  .background(Color.blue)
+                  .foregroundStyle(.white)
+                  .clipShape(RoundedRectangle(cornerRadius: 14))
+                }
+                
+              }
+              
+              Button(action: { showJoinGroup = true }) {
+                HStack(spacing: 8) {
+                  Image(systemName: "link.circle.fill")
+                    .font(.title3)
+                  Text("초대 코드로 참여하기")
+                    .font(.headline)
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 52)
+                .background(Color(.systemGray6))
+                .foregroundStyle(.primary)
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+              }
+            }
+            .padding(.horizontal, 40)
+          }
+          
+          Spacer()
+            .frame(height: 80)
+        }
+      }
+    }
+    .sheet(isPresented: $showSideDrawer) {
+      //        SideDrawerEmptyView()
+    }
+    .sheet(isPresented: $showCreateGroup) {
+      CreateGroupSheetPlaceholder()
+    }
+    .sheet(isPresented: $showJoinGroup) {
+      JoinGroupSheetPlaceholder()
+    }
+    
+  }
+}
+
+struct FilterChipDisabled: View {
+  let title: String
+  var icon: String? = nil
+  
+  var body: some View {
+    HStack(spacing: 4) {
+      if let icon {
+        Image(systemName: icon)
+          .font(.caption)
+          .foregroundStyle(.secondary)
+      }
+      Text(title)
+        .font(.subheadline)
+    }
+    .padding(.horizontal, 16)
+    .padding(.vertical, 8)
+    .foregroundStyle(.secondary)
+    .background(Color(.systemBackground))
+    .clipShape(Capsule())
+    .opacity(0.5)
+  }
+}
+
+// 약속 탭 - 그룹이 없을 때
+struct PromisesTabEmptyView: View {
+  @State private var showCreateGroup = false
+  @State private var showJoinGroup = false
+  
+  var body: some View {
+    NavigationStack {
+      ZStack {
+        Color(.systemGroupedBackground)
+          .ignoresSafeArea()
         
-        ToolbarItem(placement: .confirmationAction) {
-          ToolbarButton(
-            imageName: "gearshape",
-            action: { store.send(.view(.groupManageTapped)) }
-          )
+        VStack(spacing: 32) {
+          Spacer()
+          
+          VStack(spacing: 24) {
+            // Illustration
+            ZStack {
+              Circle()
+                .fill(
+                  LinearGradient(
+                    colors: [Color.blue.opacity(0.15), Color.purple.opacity(0.1)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                  )
+                )
+                .frame(width: 120, height: 120)
+              
+              Image(systemName: "calendar.badge.exclamationmark")
+                .font(.system(size: 56))
+                .foregroundStyle(
+                  LinearGradient(
+                    colors: [.blue, .purple],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                  )
+                )
+            }
+            
+            // Text
+            VStack(spacing: 12) {
+              Text("약속을 확인할 그룹이 없어요")
+                .font(.title3.bold())
+              
+              Text("먼저 그룹을 만들거나\n초대를 받아보세요")
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .lineSpacing(4)
+            }
+            
+            // Action Buttons
+            VStack(spacing: 12) {
+              Button(action: { showCreateGroup = true }) {
+                HStack(spacing: 8) {
+                  Image(systemName: "plus.circle.fill")
+                    .font(.title3)
+                  Text("그룹 만들기")
+                    .font(.headline)
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 52)
+                .background(Color.blue)
+                .foregroundStyle(.white)
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+              }
+              
+              Button(action: { showJoinGroup = true }) {
+                HStack(spacing: 8) {
+                  Image(systemName: "link.circle.fill")
+                    .font(.title3)
+                  Text("초대 코드로 참여하기")
+                    .font(.headline)
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 52)
+                .background(Color(.systemGray6))
+                .foregroundStyle(.primary)
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+              }
+            }
+            .padding(.horizontal, 40)
+          }
+          
+          Spacer()
+          Spacer()
         }
       }
-      .onAppear {
-        store.send(.view(.onAppear))
+      .sheet(isPresented: $showCreateGroup) {
+        CreateGroupSheetPlaceholder()
       }
-      .fullScreenCover(
-        store: store.scope(
-          state: \.$createPromise,
-          action: \.createPromise
-        )
-      ) { childStore in
-        CreatePromise.RootView(store: childStore)
+      .sheet(isPresented: $showJoinGroup) {
+        JoinGroupSheetPlaceholder()
       }
-      .sheet(isPresented: Binding(
-        get: { store.groupDetail != nil },
-        set: { if !$0 { store.send(.view(.groupDetailDismissed)) } }
-      )) {
-        if let group = store.currentGroup {
-          GroupDetailView(
-            group: group,
-            members: store.groupMembers,
-            onDismiss: { store.send(.groupDetail(.presented(.dismiss))) },
-            onSettings: { store.send(.groupDetail(.presented(.settings))) },
-            onToggleNotifications: { store.send(.groupDetail(.presented(.toggleNotifications))) }
-          )
-        }
+    }
+  }
+}
+
+struct CreateGroupSheetPlaceholder: View {
+  var body: some View {
+    NavigationView {
+      ZStack {
+        Color(.systemGroupedBackground).ignoresSafeArea()
+        Text("그룹 만들기 화면")
       }
+      .navigationTitle("새 그룹")
+      .navigationBarTitleDisplayMode(.inline)
+    }
+  }
+}
+
+struct JoinGroupSheetPlaceholder: View {
+  var body: some View {
+    NavigationView {
+      ZStack {
+        Color(.systemGroupedBackground).ignoresSafeArea()
+        Text("초대 코드 입력 화면")
+      }
+      .navigationTitle("그룹 참여")
+      .navigationBarTitleDisplayMode(.inline)
     }
   }
 }

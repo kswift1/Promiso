@@ -43,6 +43,9 @@ extension RootTab {
       var sideDrawer: SideDrawerFeature.State = SideDrawerFeature.State(maxDragOffset: AppConstants.UI.SideDrawer.width)
       
       /// Promise Main State
+      var home: Home.Feature.State = Home.Feature.State()
+      
+      /// Promise Main State
       var promiseMain: PromiseMain.Feature.State = PromiseMain.Feature.State.preview
       
       /// Create Group State
@@ -58,6 +61,8 @@ extension RootTab {
       case tabSelected(Tab)
       /// 사이드 드로어 관련 액션
       case sideDrawer(SideDrawerFeature.Action)
+      /// Home Main 액션
+      case home(Home.Feature.Action)
       /// Promise Main 액션
       case promiseMain(PromiseMain.Feature.Action)
       /// Create Group 액션
@@ -69,6 +74,10 @@ extension RootTab {
     public var body: some ReducerOf<Self> {
       Scope(state: \.promiseMain, action: \.promiseMain) {
         PromiseMain.Feature()
+      }
+      
+      Scope(state: \.home, action: \.home) {
+        Home.Feature()
       }
       
       Reduce { state, action in
@@ -86,6 +95,12 @@ extension RootTab {
           return SideDrawerFeature()
             .reduce(into: &state.sideDrawer, action: sideDrawerAction)
             .map(Action.sideDrawer)
+          
+        case .home(.delegate(.openSideDrawer)):
+          return .send(.sideDrawer(.toggle))
+          
+        case .home:
+          return .none
           
         case .promiseMain(.delegate(.requestOpenSideDrawer)):
           // PromiseMain에서 사이드 드로워 열기 요청
@@ -159,7 +174,6 @@ extension RootTab {
       .simultaneousGesture(
         DragGesture(minimumDistance: 15)
           .onChanged { value in
-            guard store.state.selectedTab == .promise else { return }
             
             let dragDistance = value.translation.width
             let horizontalMovement = abs(dragDistance)
@@ -184,7 +198,6 @@ extension RootTab {
             store.send(.sideDrawer(.dragChanged(clampedOffset)))
           }
           .onEnded { _ in
-            guard store.state.selectedTab == .promise else { return }
             store.send(.sideDrawer(.dragEnded))
           }
       )
@@ -222,11 +235,14 @@ extension RootTab {
       switch tab {
       case .home:
         NavigationStack {
-          let homeStore = Store(initialState: Home.Feature.State()) {
-            Home.Feature()
-          }
-          Home.RootView(store: homeStore)
+          Home.RootView(
+            store: store.scope(
+              state: \.home,
+              action: \.home
+            )
+          )
         }
+        
       case .promise:
         NavigationStack {
           PromiseMain.RootView(
@@ -246,6 +262,7 @@ extension RootTab {
 
 extension RootTab.RootView {
   private var sideDrawerView: some View {
+//    SideDrawerEmptyStatePreview()
     VStack(alignment: .leading, spacing: 0) {
       // 드로어 헤더
       drawerHeader
