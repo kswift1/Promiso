@@ -46,7 +46,10 @@ extension RootTab {
       var home: Home.Feature.State = Home.Feature.State()
       
       /// Promise Main State
-      var promiseMain: PromiseMain.Feature.State = PromiseMain.Feature.State.preview
+      var promiseMain: PromiseMain.Feature.State = PromiseMain.Feature.State(
+        // FIXME: 스플래시에서 유저정보 가져와서 세팅 필요 - 2025.11.05
+        currentUser: .init(id: "", email: "", nickname: "")
+      )
       
       /// Create Group State
       @Presents var createGroup: CreateGroup.Feature.State?
@@ -171,36 +174,36 @@ extension RootTab {
           .animation(.spring(response: 0.3, dampingFraction: 0.8, blendDuration: 0), value: store.sideDrawer.showDrawer)
           .animation(.interactiveSpring(response: 0.2, dampingFraction: 0.9, blendDuration: 0), value: store.sideDrawer.dragOffset)
       }
-      .simultaneousGesture(
-        DragGesture(minimumDistance: 15)
-          .onChanged { value in
-            
-            let dragDistance = value.translation.width
-            let horizontalMovement = abs(dragDistance)
-            let verticalMovement = abs(value.translation.height)
-            
-            // 수평 드래그가 수직보다 명확히 클 때만 처리 (스크롤과 구분)
-            guard horizontalMovement > verticalMovement * 1.5 else { return }
-            
-            let isDraggingToOpen = !store.sideDrawer.showDrawer && dragDistance > 0
-            let isDraggingToClose = store.sideDrawer.showDrawer && dragDistance < 0
-            
-            guard isDraggingToOpen || isDraggingToClose else { return }
-            
-            // Offset 계산
-            let clampedOffset: CGFloat
-            if isDraggingToOpen {
-              clampedOffset = min(dragDistance, AppConstants.UI.SideDrawer.maxDragOffset)
-            } else {
-              clampedOffset = max(dragDistance, AppConstants.UI.SideDrawer.minDragOffset)
-            }
-            
-            store.send(.sideDrawer(.dragChanged(clampedOffset)))
-          }
-          .onEnded { _ in
-            store.send(.sideDrawer(.dragEnded))
-          }
-      )
+//      .simultaneousGesture(
+//        DragGesture(minimumDistance: 15)
+//          .onChanged { value in
+//            
+//            let dragDistance = value.translation.width
+//            let horizontalMovement = abs(dragDistance)
+//            let verticalMovement = abs(value.translation.height)
+//            
+//            // 수평 드래그가 수직보다 명확히 클 때만 처리 (스크롤과 구분)
+//            guard horizontalMovement > verticalMovement * 1.5 else { return }
+//            
+//            let isDraggingToOpen = !store.sideDrawer.showDrawer && dragDistance > 0
+//            let isDraggingToClose = store.sideDrawer.showDrawer && dragDistance < 0
+//            
+//            guard isDraggingToOpen || isDraggingToClose else { return }
+//            
+//            // Offset 계산
+//            let clampedOffset: CGFloat
+//            if isDraggingToOpen {
+//              clampedOffset = min(dragDistance, AppConstants.UI.SideDrawer.maxDragOffset)
+//            } else {
+//              clampedOffset = max(dragDistance, AppConstants.UI.SideDrawer.minDragOffset)
+//            }
+//            
+//            store.send(.sideDrawer(.dragChanged(clampedOffset)))
+//          }
+//          .onEnded { _ in
+//            store.send(.sideDrawer(.dragEnded))
+//          }
+//      )
       .fullScreenCover(
         store: store.scope(
           state: \.$createGroup,

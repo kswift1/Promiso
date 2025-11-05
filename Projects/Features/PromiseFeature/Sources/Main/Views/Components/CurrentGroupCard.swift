@@ -76,9 +76,24 @@ struct CurrentGroupCard: View {
       emoji: "👥",
       activeCount: 2,
       pendingCount: 1,
-      memberCount: 2,
       role: .admin,
-      notifications: true
+      notifications: true,
+      members: [
+        GroupMember(
+          id: "1",
+          name: "성원",
+          emoji: "🧑‍💻",
+          role: .admin,
+          isMe: true
+        ),
+        GroupMember(
+          id: "2",
+          name: "지민",
+          emoji: "👩‍🎨",
+          role: .member,
+          isMe: false
+        ),
+      ]
     ),
     onTap: {},
     onSettings: {}

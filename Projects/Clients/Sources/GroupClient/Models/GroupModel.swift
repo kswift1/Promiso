@@ -26,3 +26,4 @@ public struct GroupModel: Equatable, Identifiable, Sendable {
     self.memberCount = memberCount
   }
 }
+

@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Domain
 
 /// Feature에서 사용하는 약속 제안 모델
 public struct PromiseProposal: Equatable, Sendable {
@@ -57,4 +58,23 @@ extension PromiseProposal {
     details: nil,
     reminder: nil
   )
+  
+  /// PromiseProposal (Feature 모델) → PromiseModel (Domain 모델) 변환
+  func toDomainModel(hostId: String, group: GroupModel) -> Domain.PromiseModel {
+    PromiseModel(
+      id: UUID().uuidString,
+      emoji: emoji,
+      title: title,
+      description: details,
+      minimumParticipants: minimumParticipants ?? 2,
+      requiredCount: minimumParticipants ?? 2,
+      isConfirmed: false,
+      host: UserModel(id: hostId, email: "", nickname: ""),
+      group: Group(id: group.id, name: group.title),
+      startAt: startedAt,
+      endAt: endedAt,
+      status: .active,
+      location: place.map { LocationInfo(name: $0) }
+    )
+  }
 }

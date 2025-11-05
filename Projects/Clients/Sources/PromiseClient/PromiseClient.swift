@@ -22,7 +22,7 @@ public enum PromiseClientError: Error, Equatable {
   case serverError
   case invalidData
   case unknown
-
+  
   public var localizedDescription: String {
     switch self {
     case .networkError:
@@ -49,28 +49,31 @@ public enum PromiseClientError: Error, Equatable {
 public struct PromiseClient: Sendable {
   /// 약속 생성
   public var createPromise: @Sendable (_ proposal: PromiseProposal, _ hostId: String) async throws -> String = { _, _ in "" }
-
+  
   /// 약속 수정
   public var updatePromise: @Sendable (_ promiseId: String, _ proposal: PromiseProposal) async throws -> Void
-
+  
   /// 약속 삭제
   public var deletePromise: @Sendable (_ promiseId: String) async throws -> Void
-
+  
   /// 약속 조회
-  public var getPromise: @Sendable (_ promiseId: String) async throws -> PromiseModel?
-
+  public var getPromise: @Sendable (_ promiseId: String) async throws -> PromiseItem?
+  
   /// 오늘의 약속 조회
-  public var getTodayPromises: @Sendable (_ userId: String, _ groupId: String?) async throws -> [PromiseModel]
-
+  public var getTodayPromises: @Sendable (_ userId: String, _ groupId: String?) async throws -> [PromiseItem]
+  
   /// 다가오는 약속 조회
-  public var getUpcomingPromises: @Sendable (_ userId: String, _ limit: Int) async throws -> [PromiseModel]
+  public var getUpcomingPromises: @Sendable (_ userId: String, _ limit: Int) async throws -> [PromiseItem]
+  
+  /// 그룹의 활성 약속 조회
+  public var getActivePromises: @Sendable (_ groupId: String, _ limit: Int) async throws -> [PromiseItem]
 }
 
 // MARK: - Test & Preview Values
 
 extension PromiseClient: TestDependencyKey {
   public static let testValue = Self()
-
+  
   public static let previewValue = Self(
     createPromise: { proposal, hostId in
       try await Task.sleep(for: .seconds(1))
@@ -93,6 +96,23 @@ extension PromiseClient: TestDependencyKey {
     getUpcomingPromises: { userId, limit in
       try await Task.sleep(for: .seconds(1))
       return []
+    },
+    getActivePromises: {
+      groupId,
+      limit in
+      try await Task.sleep(for: .seconds(1))
+      return [
+        .init(
+          id: "",
+          title: "",
+          emoji: "",
+          time: "",
+          date: "",
+          location: "",
+          with: "",
+          status: .needResponse
+        )
+      ]
     }
   )
 }
@@ -112,54 +132,63 @@ extension PromiseClient: DependencyKey {
   public static let liveValue: PromiseClient = {
     // Domain Repository 주입
     let repository: PromiseRepositoryProtocol = PromiseRepository()
-
+    
     return Self(
-      createPromise: { proposal, hostId in
+      createPromise: {
+        proposal,
+        hostId in
         // Validation
         guard let group = proposal.group else {
           throw PromiseClientError.invalidData
         }
-
-        // PromiseProposal (Feature 모델) → PromiseModel (Domain 모델) 변환
-        let promiseModel = PromiseModel(
-          id: UUID().uuidString,
-          emoji: proposal.emoji,
-          title: proposal.title,
-          description: proposal.details,
-          minimumParticipants: proposal.minimumParticipants ?? 2,
-          requiredCount: proposal.minimumParticipants ?? 2,
-          isConfirmed: false,
-          host: User(id: hostId, email: "", nickname: ""),
-          group: Group(id: group.id, name: group.title),
-          startAt: proposal.startedAt,
-          endAt: proposal.endedAt,
-          status: .active,
-          location: proposal.place.map { LocationInfo(name: $0) }
-        )
-
+        
         // Domain Repository 호출
-        return try await repository.createPromise(promiseModel)
+        return try await repository.createPromise(
+          proposal.toDomainModel(hostId: hostId, group: group)
+        )
       },
-
+      
       updatePromise: { promiseId, proposal in
         // TODO: 실제 업데이트 로직 구현
         try await Task.sleep(for: .seconds(1))
       },
-
+      
       deletePromise: { promiseId in
         try await repository.deletePromise(id: promiseId)
       },
-
+      
       getPromise: { promiseId in
-        try await repository.getPromise(id: promiseId)
+        //        try await repository.getPromise(id: promiseId)
+        // TODO: Domain Repository 연결
+        try await Task.sleep(for: .seconds(1))
+        return .init(
+          id: "",
+          title: "",
+          emoji: "",
+          time: "",
+          date: "",
+          location: "",
+          with: "",
+          status: .needResponse
+        )
       },
-
+      
       getTodayPromises: { userId, groupId in
-        try await repository.getTodayPromises(userId: userId, groupId: groupId)
+        // TODO: Domain Repository 연결
+        try await Task.sleep(for: .seconds(1))
+        return PromiseItem.exampleArr
       },
-
+      
       getUpcomingPromises: { userId, limit in
-        try await repository.getUpcomingPromises(userId: userId, limit: limit)
+        // TODO: Domain Repository 연결
+        try await Task.sleep(for: .seconds(1))
+        return PromiseItem.exampleArr
+      },
+      
+      getActivePromises: { groupId, limit in
+        // TODO: Domain Repository 연결
+        try await Task.sleep(for: .seconds(1))
+        return PromiseItem.exampleArr
       }
     )
   }()

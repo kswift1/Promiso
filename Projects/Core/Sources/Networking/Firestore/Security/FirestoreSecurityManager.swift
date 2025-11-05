@@ -154,7 +154,7 @@ public class FirestoreSecurityManager {
   public func validateDataIntegrity<T: Codable>(_ data: T, type: DataType) throws {
     switch type {
     case .user:
-      try validateUserData(data as! User)
+      try validateUserData(data as! UserModel)
     case .group:
       try validateGroupData(data as! Group)
     case .promise:
@@ -170,7 +170,7 @@ public class FirestoreSecurityManager {
   
   // MARK: - Private Validation Methods
   
-  private func validateUserData(_ user: User) throws {
+  private func validateUserData(_ user: UserModel) throws {
     guard !user.nickname.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
       throw SecurityError.invalidData("사용자 이름은 비어있을 수 없습니다.")
     }

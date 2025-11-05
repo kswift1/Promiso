@@ -1,6 +1,8 @@
 // MARK: - Feature Namespace
-import Shared
+import SwiftUI
 
+import Domain
+import Shared
 /// Promise Feature 컴포넌트를 위한 Namespace
 /// 조직적 구조를 제공하고 다른 Feature들과의 naming conflict를 방지
 public enum PromiseMain {}
@@ -18,6 +20,9 @@ extension PromiseMain {
   @Reducer
   public struct Feature {
     
+    @Dependency(\.groupClient) var groupClient
+    @Dependency(\.promiseClient) var promiseClient
+    
     /// Reducer를 위한 기본 initializer
     /// Feature가 성장함에 따라 dependency나 configuration을 여기에 추가
     public init() {}
@@ -30,26 +35,43 @@ extension PromiseMain {
     /// @ObservableState는 추가 wrapper 없이 직접적인 SwiftUI integration을 가능하게 함
     @ObservableState
     public struct State: Equatable {
-      // MARK: - Status Filter
+      
+      public let currentUser: UserModel
+      
+      //  Status Filter
       public var selectedFilter: StatusFilter = .all
       
-      // MARK: - Promises
+      //  Promises
       public var promisesState: LoadingState<[PromiseItem]> = .idle
       
-      // MARK: - Groups
-      public var currentGroup: CurrentGroup?
-      public var groupMembers: [GroupMember] = []
+      // Groups
+      var allGroups: [GroupModel]?
+      var currentGroup: GroupModel?
       
-      // MARK: - Presents
+      // Presents
       @Presents var createPromise: CreatePromise.Feature.State?
       @Presents var groupDetail: GroupDetailState?
       
-      /// State 초기화
-      public init() {}
+      //  Computed Property
+      /// 현재 그룹을 제외한 다른 그룹들
+      var availableGroups: [GroupModel]? {
+        guard let currentId = currentGroup?.id else {
+          return allGroups
+        }
+        return allGroups?.filter { $0.id != currentId }
+      }
       
-      // Computed property for backward compatibility
-      public var promises: [PromiseItem] {
-        promisesState.value ?? []
+      private var hasNoGroups: Bool {
+        allGroups?.isEmpty == true && currentGroup == nil
+      }
+      
+      /// 활성화된 그룹이 없는 경우
+      var shouldShowEmptyGroupView: Bool {
+        !promisesState.isLoading && hasNoGroups
+      }
+      
+      public init(currentUser: UserModel) {
+        self.currentUser = currentUser
       }
     }
     
@@ -75,6 +97,7 @@ extension PromiseMain {
       // MARK: - View Actions (사용자가 직접 트리거)
       public enum View: Sendable {
         case onAppear
+        case groupChanged(GroupModel)
         case filterChanged(StatusFilter)
         case promiseAccepted(String)  // Promise ID
         case promiseRejected(String)  // Promise ID
@@ -82,10 +105,19 @@ extension PromiseMain {
         case groupManageTapped  // 톱니 버튼
         case createNewPromise
         case groupDetailDismissed
+        case createGroup
+        case joinGroup
       }
       
       // MARK: - Internal Actions (내부 로직/이펙트 응답)
       public enum Internal: Sendable {
+        /// Groups 불러오기
+        case fetchGroupList
+        case groupListResponse(Result<[GroupModel], Error>)
+        
+        case setDefaultGroup(groups: [GroupModel])
+        
+        case fetchPromises(groupId: String)
         case loadPromisesResponse(Result<[PromiseItem], Error>)
         case toggleGroupNotifications
       }
@@ -114,8 +146,14 @@ extension PromiseMain {
         case .view(let viewAction):
           switch viewAction {
           case .onAppear:
-            // TODO: Load promises and group data
-            return .none
+            return .send(.internal(.fetchGroupList))
+            
+          case .groupChanged(let group):
+            guard group != state.currentGroup else { return .none }
+            state.currentGroup = group
+            state.promisesState = .loading
+            guard let groupId = state.currentGroup?.id else { return .none }
+            return .send(.internal(.fetchPromises(groupId: groupId)))
             
           case .filterChanged(let filter):
             state.selectedFilter = filter
@@ -144,11 +182,70 @@ extension PromiseMain {
           case .groupDetailDismissed:
             state.groupDetail = nil
             return .none
+            
+          case .createGroup:
+            // FIXME:
+            return .none
+            
+          case .joinGroup:
+            // FIXME:
+            return .none
           }
           
           // MARK: - Internal Actions
         case .internal(let internalAction):
           switch internalAction {
+          case .fetchGroupList:
+            state.promisesState = .loading
+            return .run { [groupClient] send in
+              do {
+                let groups = try await groupClient.fetchGroups()
+                await send(.internal(.groupListResponse(.success(groups))))
+              } catch {
+                await send(.internal(.groupListResponse(.failure(error))))
+              }
+            }
+            
+          case .groupListResponse(.success(let groups)):
+            state.allGroups = groups
+            return .send(.internal(.setDefaultGroup(groups: groups)))
+            
+          case .groupListResponse(.failure(let error)):
+            state.promisesState = .failed(error)
+            return .none
+            
+          case .setDefaultGroup(let groups):
+            
+            // 1. 유저의 pinnedGroupId 확인
+            let pinnedId = state.currentUser.pinnedGroupId
+            
+            // 2. 매칭되는 그룹 찾기
+            if let pinnedGroup = groups.first(where: { $0.id == pinnedId }) {
+              state.currentGroup = pinnedGroup
+            } else if let firstGroup = groups.first {
+              state.currentGroup = firstGroup
+            } else {
+              // 그룹이 없음 -> 빈 상태
+              state.currentGroup = nil
+              state.promisesState = .loaded([])
+            }
+            
+            // 3. 선택된 그룹의 약속 로드
+            if let currentGroupId = state.currentGroup?.id {
+              return .send(.internal(.fetchPromises(groupId: currentGroupId)))
+            } else {
+              return .none
+            }
+            
+          case .fetchPromises(groupId: let groupId):
+            return .run { [groupId] send in
+              do {
+                let promises = try await promiseClient.getActivePromises(groupId: groupId, limit: 20)
+                await send(.internal(.loadPromisesResponse(.success(promises))))
+              } catch {
+                await send(.internal(.loadPromisesResponse(.failure(error))))
+              }
+            }
             
           case .loadPromisesResponse(.success(let promises)):
             state.promisesState = .loaded(promises)
@@ -220,112 +317,68 @@ extension PromiseMain {
     // MARK: - Body
     
     public var body: some View {
-      //      VStack(spacing: 0) {
-      //        // Status Filter
-      //        StatusFilterView(
-      //          selectedFilter: Binding(
-      //            get: { store.selectedFilter },
-      //            set: { store.send(.view(.filterChanged($0))) }
-      //          )
-      //        )
-      //        .padding(.horizontal, 16)
-      //        .padding(.top, 12)
-      //
-      //        // Promise Timeline
-      //        PromiseTimelineView(
-      //          promisesState: store.promisesState,
-      //          selectedFilter: store.selectedFilter,
-      //          onAccept: { promiseId in store.send(.view(.promiseAccepted(promiseId))) },
-      //          onReject: { promiseId in store.send(.view(.promiseRejected(promiseId))) }
-      //        )
-      //      }
-      GroupDetailEmptyView()
-        .background(Color(.systemGroupedBackground))
-        .navigationBarTitleDisplayMode(.inline)
-      //        .navigationSubtitle("1개 진행중 / 0개 완료 / 0개 만료 1개 진행중 / 0개 완료 / 0개 만료 1개 진행중 / 0개 완료 / 0개 만료")
-        .toolbar {
-          ToolbarItem(placement: .topBarLeading) {
-            ToolbarButton(
-              imageName: "line.3.horizontal",
-              action: { store.send(.view(.openSideDrawer)) }
-            )
-          }
-          
-          if let groupName = store.currentGroup?.name {
-            ToolbarItem(placement: .principal) {
-              Text(groupName)
-            }
-          }
-          
-          ToolbarTitleMenu {
-            Button("one") {
-              
-            }
-            
-            Button("tow") {
-              
-            }
-            
-            Button("three") {
-              
-            }
-          }
-          
-          
-          ToolbarItem(placement: .topBarTrailing) {
-            ToolbarButton(
-              imageName: "plus",
-              action: { store.send(.view(.createNewPromise)) }
-            )
-          }
-          
-          ToolbarItem(placement: .topBarTrailing) {
-            ToolbarButton(
-              imageName: "gearshape",
-              action: { store.send(.view(.groupManageTapped)) }
-            )
-          }
+      Group {
+        if store.shouldShowEmptyGroupView {
+          groupDetailEmptyView
+        } else {
+          groupDetailView
         }
-        .onAppear {
-          store.send(.view(.onAppear))
+      }
+      .background(Color(.systemGroupedBackground))
+      .navigationBarTitleDisplayMode(.inline)
+      .toolbar { toolbarContent }
+      .onAppear {
+        store.send(.view(.onAppear))
+      }
+      .fullScreenCover(
+        store: store.scope(
+          state: \.$createPromise,
+          action: \.createPromise
+        )
+      ) { childStore in
+        CreatePromise.RootView(store: childStore)
+      }
+      .sheet(isPresented: Binding(
+        get: { store.groupDetail != nil },
+        set: { if !$0 { store.send(.view(.groupDetailDismissed)) } }
+      )) {
+        if let group = store.currentGroup {
+          // FIXME: 
+//          GroupDetailView(
+//            group: group,
+//            onDismiss: { store.send(.groupDetail(.presented(.dismiss))) },
+//            onSettings: { store.send(.groupDetail(.presented(.settings))) },
+//            onToggleNotifications: { store.send(.groupDetail(.presented(.toggleNotifications))) }
+//          )
         }
-        .fullScreenCover(
-          store: store.scope(
-            state: \.$createPromise,
-            action: \.createPromise
-          )
-        ) { childStore in
-          CreatePromise.RootView(store: childStore)
-        }
-        .sheet(isPresented: Binding(
-          get: { store.groupDetail != nil },
-          set: { if !$0 { store.send(.view(.groupDetailDismissed)) } }
-        )) {
-          if let group = store.currentGroup {
-            GroupDetailView(
-              group: group,
-              members: store.groupMembers,
-              onDismiss: { store.send(.groupDetail(.presented(.dismiss))) },
-              onSettings: { store.send(.groupDetail(.presented(.settings))) },
-              onToggleNotifications: { store.send(.groupDetail(.presented(.toggleNotifications))) }
-            )
-          }
-        }
+      }
     }
-  }
-}
-
-import SwiftUI
-
-// 그룹 상세 화면 - 그룹이 없을 때
-struct GroupDetailEmptyView: View {
-  @State private var showCreateGroup = false
-  @State private var showJoinGroup = false
-  @State private var showSideDrawer = false
-  
-  var body: some View {
-    VStack(spacing: 0) {
-      // Empty State Content
+    
+    @ViewBuilder
+    private var groupDetailView: some View {
+      ScrollView {
+        // Status Filter
+        StatusFilterView(
+          selectedFilter: Binding(
+            get: { store.selectedFilter },
+            set: { store.send(.view(.filterChanged($0))) }
+          )
+        )
+        .padding(.horizontal, 16)
+        .padding(.top, 12)
+        
+        // Promise Timeline
+        PromiseTimelineView(
+          promisesState: store.promisesState,
+          selectedFilter: store.selectedFilter,
+          onAccept: { promiseId in store.send(.view(.promiseAccepted(promiseId))) },
+          onReject: { promiseId in store.send(.view(.promiseRejected(promiseId))) }
+        )
+      }
+    }
+    
+    @ViewBuilder
+    private var groupDetailEmptyView: some View {
       ScrollView {
         VStack(spacing: 0) {
           Spacer()
@@ -369,38 +422,23 @@ struct GroupDetailEmptyView: View {
             
             // Action Buttons
             VStack(spacing: 12) {
-              if #available(iOS 26.0, *) {
-                Button(action: { showCreateGroup = true }) {
-                  HStack(spacing: 8) {
-                    Image(systemName: "plus.circle.fill")
-                      .font(.title3)
-                    Text("그룹 만들기")
-                      .font(.headline)
-                  }
-                  .frame(maxWidth: .infinity)
-                  .frame(height: 52)
-                  //                  .foregroundStyle(.white)
+              Button {
+                store.send(.view(.createGroup))
+              } label: {
+                HStack(spacing: 8) {
+                  Image(systemName: "plus.circle.fill")
+                    .font(.title3)
+                  Text("그룹 만들기")
+                    .font(.headline)
                 }
-                .buttonStyle(.glassProminent)
-                //                .buttonStyle(.glass)
-              } else {
-                Button(action: { showCreateGroup = true }) {
-                  HStack(spacing: 8) {
-                    Image(systemName: "plus.circle.fill")
-                      .font(.title3)
-                    Text("그룹 만들기")
-                      .font(.headline)
-                  }
-                  .frame(maxWidth: .infinity)
-                  .frame(height: 52)
-                  .background(Color.blue)
-                  .foregroundStyle(.white)
-                  .clipShape(RoundedRectangle(cornerRadius: 14))
-                }
-                
+                .frame(maxWidth: .infinity)
+                .frame(height: 52)
               }
-              
-              Button(action: { showJoinGroup = true }) {
+              .adaptivePrimaryButton()
+
+              Button {
+                store.send(.view(.joinGroup))
+              } label: {
                 HStack(spacing: 8) {
                   Image(systemName: "link.circle.fill")
                     .font(.title3)
@@ -409,10 +447,9 @@ struct GroupDetailEmptyView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .frame(height: 52)
-                .background(Color(.systemGray6))
-                .foregroundStyle(.primary)
-                .clipShape(RoundedRectangle(cornerRadius: 14))
+                .foregroundStyle(.blue)
               }
+              .adaptiveSecondaryButton()
             }
             .padding(.horizontal, 40)
           }
@@ -422,161 +459,43 @@ struct GroupDetailEmptyView: View {
         }
       }
     }
-    .sheet(isPresented: $showSideDrawer) {
-      //        SideDrawerEmptyView()
-    }
-    .sheet(isPresented: $showCreateGroup) {
-      CreateGroupSheetPlaceholder()
-    }
-    .sheet(isPresented: $showJoinGroup) {
-      JoinGroupSheetPlaceholder()
-    }
     
-  }
-}
-
-struct FilterChipDisabled: View {
-  let title: String
-  var icon: String? = nil
-  
-  var body: some View {
-    HStack(spacing: 4) {
-      if let icon {
-        Image(systemName: icon)
-          .font(.caption)
-          .foregroundStyle(.secondary)
-      }
-      Text(title)
-        .font(.subheadline)
-    }
-    .padding(.horizontal, 16)
-    .padding(.vertical, 8)
-    .foregroundStyle(.secondary)
-    .background(Color(.systemBackground))
-    .clipShape(Capsule())
-    .opacity(0.5)
-  }
-}
-
-// 약속 탭 - 그룹이 없을 때
-struct PromisesTabEmptyView: View {
-  @State private var showCreateGroup = false
-  @State private var showJoinGroup = false
-  
-  var body: some View {
-    NavigationStack {
-      ZStack {
-        Color(.systemGroupedBackground)
-          .ignoresSafeArea()
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+      if let availableGroups = store.availableGroups,
+         let currentGroup = store.currentGroup {
+        ToolbarItem(placement: .principal) {
+          Text(currentGroup.title)
+        }
         
-        VStack(spacing: 32) {
-          Spacer()
-          
-          VStack(spacing: 24) {
-            // Illustration
-            ZStack {
-              Circle()
-                .fill(
-                  LinearGradient(
-                    colors: [Color.blue.opacity(0.15), Color.purple.opacity(0.1)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                  )
-                )
-                .frame(width: 120, height: 120)
-              
-              Image(systemName: "calendar.badge.exclamationmark")
-                .font(.system(size: 56))
-                .foregroundStyle(
-                  LinearGradient(
-                    colors: [.blue, .purple],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                  )
-                )
-            }
-            
-            // Text
-            VStack(spacing: 12) {
-              Text("약속을 확인할 그룹이 없어요")
-                .font(.title3.bold())
-              
-              Text("먼저 그룹을 만들거나\n초대를 받아보세요")
-                .font(.body)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .lineSpacing(4)
-            }
-            
-            // Action Buttons
-            VStack(spacing: 12) {
-              Button(action: { showCreateGroup = true }) {
-                HStack(spacing: 8) {
-                  Image(systemName: "plus.circle.fill")
-                    .font(.title3)
-                  Text("그룹 만들기")
-                    .font(.headline)
-                }
-                .frame(maxWidth: .infinity)
-                .frame(height: 52)
-                .background(Color.blue)
-                .foregroundStyle(.white)
-                .clipShape(RoundedRectangle(cornerRadius: 14))
-              }
-              
-              Button(action: { showJoinGroup = true }) {
-                HStack(spacing: 8) {
-                  Image(systemName: "link.circle.fill")
-                    .font(.title3)
-                  Text("초대 코드로 참여하기")
-                    .font(.headline)
-                }
-                .frame(maxWidth: .infinity)
-                .frame(height: 52)
-                .background(Color(.systemGray6))
-                .foregroundStyle(.primary)
-                .clipShape(RoundedRectangle(cornerRadius: 14))
+        if availableGroups.isNotEmpty {
+          ToolbarTitleMenu {
+            ForEach(availableGroups, id: \.id) { group in
+              Button(group.title) {
+                store.send(.view(.groupChanged(group)))
               }
             }
-            .padding(.horizontal, 40)
           }
-          
-          Spacer()
-          Spacer()
+        }
+        
+        ToolbarItem(placement: .topBarTrailing) {
+          ToolbarButton(
+            imageName: "plus",
+            action: { store.send(.view(.createNewPromise)) }
+          )
+        }
+        
+        ToolbarItem(placement: .topBarTrailing) {
+          ToolbarButton(
+            imageName: "gearshape",
+            action: { store.send(.view(.groupManageTapped)) }
+          )
+        }
+      } else {
+        ToolbarItem(placement: .principal) {
+          Text(" ")
         }
       }
-      .sheet(isPresented: $showCreateGroup) {
-        CreateGroupSheetPlaceholder()
-      }
-      .sheet(isPresented: $showJoinGroup) {
-        JoinGroupSheetPlaceholder()
-      }
-    }
-  }
-}
-
-struct CreateGroupSheetPlaceholder: View {
-  var body: some View {
-    NavigationView {
-      ZStack {
-        Color(.systemGroupedBackground).ignoresSafeArea()
-        Text("그룹 만들기 화면")
-      }
-      .navigationTitle("새 그룹")
-      .navigationBarTitleDisplayMode(.inline)
-    }
-  }
-}
-
-struct JoinGroupSheetPlaceholder: View {
-  var body: some View {
-    NavigationView {
-      ZStack {
-        Color(.systemGroupedBackground).ignoresSafeArea()
-        Text("초대 코드 입력 화면")
-      }
-      .navigationTitle("그룹 참여")
-      .navigationBarTitleDisplayMode(.inline)
     }
   }
 }

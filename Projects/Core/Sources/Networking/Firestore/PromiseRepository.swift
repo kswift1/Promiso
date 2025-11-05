@@ -158,7 +158,7 @@ public class PromiseRepository: PromiseRepositoryProtocol {
       title: data["title"] as? String ?? "",
       minimumParticipants: data["minimumParticipants"] as? Int ?? 1,
       requiredCount: data["requiredCount"] as? Int ?? 1,
-      host: User(id: "temp", email: "temp@example.com", nickname: "temp"),
+      host: UserModel(id: "temp", email: "temp@example.com", nickname: "temp"),
       group: Group(id: "temp", name: "temp"),
       startAt: (data["startAt"] as? Timestamp)?.dateValue() ?? Date()
     )
@@ -173,7 +173,7 @@ public class PromiseRepository: PromiseRepositoryProtocol {
       title: data["title"] as? String ?? "",
       minimumParticipants: data["minimumParticipants"] as? Int ?? 1,
       requiredCount: data["requiredCount"] as? Int ?? 1,
-      host: User(id: "temp", email: "temp@example.com", nickname: "temp"),
+      host: UserModel(id: "temp", email: "temp@example.com", nickname: "temp"),
       group: Group(id: "temp", name: "temp"),
       startAt: (data["startAt"] as? Timestamp)?.dateValue() ?? Date()
     )

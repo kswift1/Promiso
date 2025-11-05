@@ -15,21 +15,26 @@ import SwiftUI
 extension PromiseMain.Feature.State {
   // MARK: - Preview Helper
   public static var preview: Self {
-    var state = Self()
-    state.currentGroup = CurrentGroup(
+    var state = Self(currentUser: .init(id: "", email: "", nickname: ""))
+//    state.currentGroup = CurrentGroup(
+//      id: "1",
+//      name: "지민과 나",
+//      emoji: "👥",
+//      activeCount: 2,
+//      pendingCount: 1,
+//      role: .admin,
+//      notifications: true,
+//      members: [
+//        GroupMember(id: "1", name: "성원", emoji: "🧑‍💻", role: .admin, isMe: true),
+//        GroupMember(id: "2", name: "지민", emoji: "👩‍🎨", role: .member, isMe: false),
+//      ]
+//    )
+    state.currentGroup = .init(
       id: "1",
-      name: "지민과 나",
       emoji: "👥",
-      activeCount: 2,
-      pendingCount: 1,
-      memberCount: 2,
-      role: .admin,
-      notifications: true
+      title: "지민과 나",
+      memberCount: 2
     )
-    state.groupMembers = [
-      GroupMember(id: "1", name: "성원", emoji: "🧑‍💻", role: .admin, isMe: true),
-      GroupMember(id: "2", name: "지민", emoji: "👩‍🎨", role: .member, isMe: false),
-    ]
     state.promisesState = .loaded([
       PromiseItem(
         id: "1",
@@ -75,16 +80,18 @@ extension PromiseMain.Feature.State {
   }
 
   public static var loading: Self {
-    var state = Self()
-    state.currentGroup = CurrentGroup(
+    var state = Self(
+      currentUser: .init(
+        id: "",
+        email: "",
+        nickname: ""
+      )
+    )
+    state.currentGroup = .init(
       id: "1",
-      name: "지민과 나",
       emoji: "👥",
-      activeCount: 2,
-      pendingCount: 1,
-      memberCount: 2,
-      role: .admin,
-      notifications: true
+      title: "지민과 나",
+      memberCount: 2
     )
     state.promisesState = .loading
     return state

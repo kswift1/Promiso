@@ -2,7 +2,6 @@ import SwiftUI
 
 struct GroupDetailView: View {
   let group: CurrentGroup
-  let members: [GroupMember]
   let onDismiss: () -> Void
   let onSettings: () -> Void
   let onToggleNotifications: () -> Void
@@ -22,7 +21,7 @@ struct GroupDetailView: View {
             HStack(spacing: 16) {
               StatItem(
                 icon: "person.2.fill",
-                value: "\(group.memberCount)",
+                value: "\(group.members.count)",
                 label: "멤버"
               )
 
@@ -72,12 +71,12 @@ struct GroupDetailView: View {
 
           // Members Section
           VStack(alignment: .leading, spacing: 16) {
-            Text("멤버 (\(members.count))")
+            Text("멤버 (\(group.members.count))")
               .font(.system(size: 18, weight: .bold))
               .padding(.horizontal, 16)
 
             VStack(spacing: 12) {
-              ForEach(members) { member in
+              ForEach(group.members) { member in
                 MemberRow(member: member)
               }
             }
@@ -224,26 +223,25 @@ private struct MemberRow: View {
       emoji: "👥",
       activeCount: 2,
       pendingCount: 1,
-      memberCount: 2,
       role: .admin,
-      notifications: true
+      notifications: true,
+      members: [
+        GroupMember(
+          id: "1",
+          name: "성원",
+          emoji: "🧑‍💻",
+          role: .admin,
+          isMe: true
+        ),
+        GroupMember(
+          id: "2",
+          name: "지민",
+          emoji: "👩‍🎨",
+          role: .member,
+          isMe: false
+        ),
+      ]
     ),
-    members: [
-      GroupMember(
-        id: "1",
-        name: "성원",
-        emoji: "🧑‍💻",
-        role: .admin,
-        isMe: true
-      ),
-      GroupMember(
-        id: "2",
-        name: "지민",
-        emoji: "👩‍🎨",
-        role: .member,
-        isMe: false
-      ),
-    ],
     onDismiss: {},
     onSettings: {},
     onToggleNotifications: {}
