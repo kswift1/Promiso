@@ -353,9 +353,10 @@ extension CreatePromiseStep {
           .foregroundColor(.primary)
           .frame(maxWidth: .infinity)
           .frame(height: 50)
-          .background(Color(.systemGray6))
+//          .background()
           .cornerRadius(12)
       }
+      .adaptiveSecondaryButton(fallBackBackground: Color(.systemGray6))
     }
   }
   
@@ -418,10 +419,11 @@ fileprivate struct StepButton: View {
       }
       .frame(maxWidth: .infinity)
       .frame(height: 50)
-      .background(disabled ? Color.gray.opacity(0.4) : Color.blue)
+//      .background(disabled ? Color.gray.opacity(0.4) : Color.blue)
       .cornerRadius(12)
     }
     .disabled(disabled)
+    .adaptivePrimaryButton()
   }
 }
 

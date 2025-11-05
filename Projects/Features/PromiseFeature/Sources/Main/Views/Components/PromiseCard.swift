@@ -77,26 +77,24 @@ struct PromiseCard: View {
 
       // Action Buttons
       if promise.status == .needResponse {
-        HStack(spacing: 8) {
+        HStack(spacing: 12) {
           Button(action: onAccept) {
             Text("수락")
               .font(.system(size: 14, weight: .semibold))
               .foregroundColor(.white)
               .frame(maxWidth: .infinity)
-              .padding(.vertical, 12)
-              .background(Color.blue)
-              .clipShape(RoundedRectangle(cornerRadius: 12))
+              .frame(height: 24)
           }
+          .adaptivePrimaryButton()
 
           Button(action: onReject) {
             Text("거절")
               .font(.system(size: 14, weight: .semibold))
               .foregroundColor(.primary)
               .frame(maxWidth: .infinity)
-              .padding(.vertical, 12)
-              .background(Color(.systemGray6))
-              .clipShape(RoundedRectangle(cornerRadius: 12))
+              .frame(height: 24)
           }
+          .adaptiveSecondaryButton(fallBackBackground: Color(.systemGroupedBackground))
         }
       }
     }

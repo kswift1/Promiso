@@ -188,7 +188,7 @@ extension PromiseClient: DependencyKey {
       getActivePromises: { groupId, limit in
         // TODO: Domain Repository 연결
         try await Task.sleep(for: .seconds(1))
-        return PromiseItem.exampleArr
+        return Bool.random() ? PromiseItem.exampleArr : []
       }
     )
   }()

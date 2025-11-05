@@ -1,3 +1,9 @@
+// 2025.11.05
+// - 필터 적용시 애니메이션 (Like DiffableDatasource)
+// - EmptyView 스켈레톤 맞추기?
+// - 약속 만들기 가능하면 가져온 그룹 데이터 활용하기?
+// - 반대 속성 버튼 동시 탭 막기 (수락 / 거절), adaptiveButton disabled 대응 (26 미만 버전)
+
 // MARK: - Feature Namespace
 import SwiftUI
 
@@ -35,14 +41,14 @@ extension PromiseMain {
     /// @ObservableState는 추가 wrapper 없이 직접적인 SwiftUI integration을 가능하게 함
     @ObservableState
     public struct State: Equatable {
-      
-      public let currentUser: UserModel
+      var isInitialized: Bool = false
+      let currentUser: UserModel
       
       //  Status Filter
-      public var selectedFilter: StatusFilter = .all
+      var selectedFilter: StatusFilter = .all
       
       //  Promises
-      public var promisesState: LoadingState<[PromiseItem]> = .idle
+      var promisesState: LoadingState<[PromiseItem]> = .idle
       
       // Groups
       var allGroups: [GroupModel]?
@@ -146,12 +152,15 @@ extension PromiseMain {
         case .view(let viewAction):
           switch viewAction {
           case .onAppear:
+            guard !state.isInitialized else { return .none }
+            state.isInitialized = true
             return .send(.internal(.fetchGroupList))
             
           case .groupChanged(let group):
             guard group != state.currentGroup else { return .none }
             state.currentGroup = group
             state.promisesState = .loading
+            state.selectedFilter = .all
             guard let groupId = state.currentGroup?.id else { return .none }
             return .send(.internal(.fetchPromises(groupId: groupId)))
             

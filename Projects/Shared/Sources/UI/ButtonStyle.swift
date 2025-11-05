@@ -18,13 +18,17 @@ public extension View {
   }
   
   /// Secondary 버튼 스타일 (iOS 26: glass, 이전: 회색 배경)
-  func adaptiveSecondaryButton() -> some View {
+  func adaptiveSecondaryButton(fallBackBackground: Color = .white) -> some View {
     if #available(iOS 26.0, *) {
-      return AnyView(self.buttonStyle(.glass))
+      return AnyView(
+        self
+          .buttonStyle(.glass)
+          .tint(fallBackBackground)
+      )
     } else {
       return AnyView(
         self
-          .background(Color(.white))
+          .background(fallBackBackground)
           .foregroundStyle(.blue)
           .clipShape(RoundedRectangle(cornerRadius: 14))
       )
