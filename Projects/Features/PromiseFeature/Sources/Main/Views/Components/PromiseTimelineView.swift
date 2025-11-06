@@ -4,7 +4,9 @@ struct PromiseTimelineView: View {
   let promisesState: LoadingState<[PromiseItem]>
   let selectedFilter: StatusFilter
   let onAccept: (String) -> Void
+  let acceptLoading: Bool
   let onReject: (String) -> Void
+  let rejectLoading: Bool
 
   private var promises: [PromiseItem] {
     promisesState.value ?? []
@@ -89,7 +91,9 @@ struct PromiseTimelineView: View {
             PromiseCard(
               promise: promise,
               onAccept: { onAccept(promise.id) },
-              onReject: { onReject(promise.id) }
+              acceptLoading: acceptLoading,
+              onReject: { onReject(promise.id) },
+              rejectLoading: rejectLoading
             )
           }
         }
@@ -166,44 +170,48 @@ private struct EmptyPromisesView: View {
 
 // MARK: - Preview
 
-#Preview {
-  VStack(spacing: 0) {
-    PromiseTimelineView(
-      promisesState: .loaded(PromiseItem.exampleArr),
-      selectedFilter: .all,
-      onAccept: { _ in },
-      onReject: { _ in }
-    )
-  }
-  .background(Color(.systemGray6))
-}
-
-#Preview("Loading State") {
-  PromiseTimelineView(
-    promisesState: .loading,
-    selectedFilter: .all,
-    onAccept: { _ in },
-    onReject: { _ in }
-  )
-  .background(Color(.systemGray6))
-}
-
-#Preview("Empty State") {
-  PromiseTimelineView(
-    promisesState: .loaded([]),
-    selectedFilter: .all,
-    onAccept: { _ in },
-    onReject: { _ in }
-  )
-  .background(Color(.systemGray6))
-}
-
-#Preview("Error State") {
-  PromiseTimelineView(
-    promisesState: .failed(NSError(domain: "PromiseError", code: -1, userInfo: [NSLocalizedDescriptionKey: "약속 목록을 불러오는데 실패했습니다."])),
-    selectedFilter: .all,
-    onAccept: { _ in },
-    onReject: { _ in }
-  )
-  .background(Color(.systemGray6))
-}
+//#Preview {
+//  VStack(spacing: 0) {
+//    PromiseTimelineView(
+//      promisesState: .loaded(PromiseItem.exampleArr),
+//      selectedFilter: .all,
+//      onAccept: { _ in },
+//      onReject: { _ in },
+//      
+//    )
+//  }
+//  .background(Color(.systemGray6))
+//}
+//
+//#Preview("Loading State") {
+//  PromiseTimelineView(
+//    promisesState: .loading,
+//    selectedFilter: .all,
+//    onAccept: { _ in },
+//    onReject: { _ in },
+//    buttonDisabled: false
+//  )
+//  .background(Color(.systemGray6))
+//}
+//
+//#Preview("Empty State") {
+//  PromiseTimelineView(
+//    promisesState: .loaded([]),
+//    selectedFilter: .all,
+//    onAccept: { _ in },
+//    onReject: { _ in },
+//    buttonDisabled: false
+//  )
+//  .background(Color(.systemGray6))
+//}
+//
+//#Preview("Error State") {
+//  PromiseTimelineView(
+//    promisesState: .failed(NSError(domain: "PromiseError", code: -1, userInfo: [NSLocalizedDescriptionKey: "약속 목록을 불러오는데 실패했습니다."])),
+//    selectedFilter: .all,
+//    onAccept: { _ in },
+//    onReject: { _ in },
+//    buttonDisabled: false
+//  )
+//  .background(Color(.systemGray6))
+//}

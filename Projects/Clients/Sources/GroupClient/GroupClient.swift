@@ -99,12 +99,18 @@ extension GroupClient: DependencyKey {
       try await Task.sleep(for: .seconds(0.4))
 
       // 임시 데이터
-      return Bool.random() ? [
+//      return Bool.random() ? [
+//        .init(id: "g1", emoji: "👥", title: "지민과 나", memberCount: 2),
+//        .init(id: "g2", emoji: "🏢", title: "회사 동료들", memberCount: 8),
+//        .init(id: "g3", emoji: "🎓", title: "대학 친구들", memberCount: 12),
+//        .init(id: "g4", emoji: "👨‍👩‍👦", title: "가족", memberCount: 4)
+//      ] : []
+      return [
         .init(id: "g1", emoji: "👥", title: "지민과 나", memberCount: 2),
         .init(id: "g2", emoji: "🏢", title: "회사 동료들", memberCount: 8),
         .init(id: "g3", emoji: "🎓", title: "대학 친구들", memberCount: 12),
         .init(id: "g4", emoji: "👨‍👩‍👦", title: "가족", memberCount: 4)
-      ] : []
+      ]
     },
     fetchGroup: { groupId in
       // TODO: Domain Repository 연결

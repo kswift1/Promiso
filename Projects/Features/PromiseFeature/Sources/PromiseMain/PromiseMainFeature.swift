@@ -17,6 +17,16 @@ public enum PromiseMain {}
 
 extension PromiseMain {
   
+  private enum CancelID {
+    case respond
+  }
+  
+  enum RespondingState: Equatable {
+    case idle
+    case accepting
+    case rejecting
+  }
+  
   // MARK: - Reducer
   
   /// Promise Feature state management를 위한 Main reducer
@@ -49,6 +59,7 @@ extension PromiseMain {
       
       //  Promises
       var promisesState: LoadingState<[PromiseItem]> = .idle
+      var proposalResponding: RespondingState = .idle
       
       // Groups
       var allGroups: [GroupModel]?
@@ -58,23 +69,6 @@ extension PromiseMain {
       @Presents var createPromise: CreatePromise.Feature.State?
       @Presents var groupDetail: GroupDetailState?
       
-      //  Computed Property
-      /// 현재 그룹을 제외한 다른 그룹들
-      var availableGroups: [GroupModel]? {
-        guard let currentId = currentGroup?.id else {
-          return allGroups
-        }
-        return allGroups?.filter { $0.id != currentId }
-      }
-      
-      private var hasNoGroups: Bool {
-        allGroups?.isEmpty == true && currentGroup == nil
-      }
-      
-      /// 활성화된 그룹이 없는 경우
-      var shouldShowEmptyGroupView: Bool {
-        !promisesState.isLoading && hasNoGroups
-      }
       
       public init(currentUser: UserModel) {
         self.currentUser = currentUser
@@ -105,8 +99,8 @@ extension PromiseMain {
         case onAppear
         case groupChanged(GroupModel)
         case filterChanged(StatusFilter)
-        case promiseAccepted(String)  // Promise ID
-        case promiseRejected(String)  // Promise ID
+        case proposalAccepted(String)  // Promise ID
+        case proposalRejected(String)  // Promise ID
         case openSideDrawer  // 햄버거 버튼
         case groupManageTapped  // 톱니 버튼
         case createNewPromise
@@ -125,6 +119,7 @@ extension PromiseMain {
         
         case fetchPromises(groupId: String)
         case loadPromisesResponse(Result<[PromiseItem], Error>)
+        case proposalRespondDone
         case toggleGroupNotifications
       }
       
@@ -168,12 +163,30 @@ extension PromiseMain {
             state.selectedFilter = filter
             return .none
             
-          case .promiseAccepted(_):
-            // TODO: Accept promise logic
-            return .none
-          case .promiseRejected(_):
-            // TODO: Reject promise logic
-            return .none
+          case .proposalAccepted(_):
+            guard state.proposalResponding == .idle else { return .none }
+            state.proposalResponding = .accepting
+            return .run { send in
+              // FIXME:
+              try await Task.sleep(for: .seconds(1))
+              print("Accepted")
+              
+//              try await promiseClient.accept(id)
+              await send(.internal(.proposalRespondDone))
+            }
+            .cancellable(id: CancelID.respond, cancelInFlight: true)
+
+          case .proposalRejected(_):
+            guard state.proposalResponding == .idle else { return .none }
+            state.proposalResponding = .rejecting
+            return .run { send in
+              // FIXME:
+              try await Task.sleep(for: .seconds(5.3))
+              print("Rejected")
+//              try await promiseClient.reject(id)
+              await send(.internal(.proposalRespondDone))
+            }
+            .cancellable(id: CancelID.respond, cancelInFlight: true)
             
           case .openSideDrawer:
             // 사이드 드로워 열기 요청을 부모로 전달
@@ -264,6 +277,9 @@ extension PromiseMain {
             state.promisesState = .failed(error)
             return .none
             
+          case .proposalRespondDone:
+            state.proposalResponding = .idle
+            return .none
           case .toggleGroupNotifications:
             // TODO: Toggle notifications
             return .none
@@ -380,8 +396,10 @@ extension PromiseMain {
         PromiseTimelineView(
           promisesState: store.promisesState,
           selectedFilter: store.selectedFilter,
-          onAccept: { promiseId in store.send(.view(.promiseAccepted(promiseId))) },
-          onReject: { promiseId in store.send(.view(.promiseRejected(promiseId))) }
+          onAccept: { promiseId in store.send(.view(.proposalAccepted(promiseId))) },
+          acceptLoading: store.proposalIsAccepting,
+          onReject: { promiseId in store.send(.view(.proposalRejected(promiseId))) },
+          rejectLoading: store.proposalIsRejecting
         )
       }
     }
@@ -506,5 +524,36 @@ extension PromiseMain {
         }
       }
     }
+  }
+}
+
+private extension PromiseMain.Feature.State {
+  
+  /// 현재 그룹을 제외한 다른 그룹들
+  var availableGroups: [GroupModel]? {
+    guard let currentId = currentGroup?.id else {
+      return allGroups
+    }
+    return allGroups?.filter { $0.id != currentId }
+  }
+  
+  /// 속한 그룹이 없는 경우
+  private var hasNoGroups: Bool {
+    allGroups?.isEmpty == true && currentGroup == nil
+  }
+  
+  /// 활성화된 그룹이 없는 경우
+  var shouldShowEmptyGroupView: Bool {
+    !promisesState.isLoading && hasNoGroups
+  }
+  
+  /// 제안 수락 로딩중
+  var proposalIsAccepting: Bool {
+    proposalResponding == .accepting
+  }
+  
+  /// 제안 수락 로딩중
+  var proposalIsRejecting: Bool {
+    proposalResponding == .rejecting
   }
 }

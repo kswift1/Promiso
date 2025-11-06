@@ -1,21 +1,28 @@
 import Clients
+import Shared
 
 struct PromiseCard: View {
   let promise: PromiseItem
   let onAccept: () -> Void
+  let acceptLoading: Bool
   let onReject: () -> Void
-
+  let rejectLoading: Bool
+  
+  var buttonDisabled: Bool {
+    acceptLoading || rejectLoading
+  }
+  
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
       // Header
       HStack(alignment: .top, spacing: 12) {
         Text(promise.emoji)
           .font(.system(size: 40))
-
+        
         VStack(alignment: .leading, spacing: 8) {
           Text(promise.title)
             .font(.system(size: 18, weight: .bold))
-
+          
           // Time
           HStack(spacing: 6) {
             Image(systemName: "clock")
@@ -24,7 +31,7 @@ struct PromiseCard: View {
               .font(.system(size: 14))
           }
           .foregroundColor(.secondary)
-
+          
           // Location
           HStack(spacing: 6) {
             Image(systemName: "mappin.and.ellipse")
@@ -38,7 +45,7 @@ struct PromiseCard: View {
             }
           }
           .foregroundColor(.secondary)
-
+          
           // With
           HStack(spacing: 6) {
             Image(systemName: "person")
@@ -48,22 +55,22 @@ struct PromiseCard: View {
           }
           .foregroundColor(.secondary)
         }
-
+        
         Spacer()
       }
-
+      
       // Status & Responses
       HStack(spacing: 8) {
         StatusBadge(status: promise.status)
-
+        
         if let responses = promise.responses {
           Text("\(responses.current)/\(responses.total)명 응답")
             .font(.system(size: 12))
             .foregroundColor(.secondary)
         }
-
+        
         Spacer()
-
+        
         if let deadline = promise.deadline, promise.status == .needResponse {
           HStack(spacing: 4) {
             Image(systemName: "clock.fill")
@@ -74,27 +81,25 @@ struct PromiseCard: View {
           .foregroundColor(.orange)
         }
       }
-
-      // Action Buttons
+      
       if promise.status == .needResponse {
         HStack(spacing: 12) {
-          Button(action: onAccept) {
-            Text("수락")
-              .font(.system(size: 14, weight: .semibold))
-              .foregroundColor(.white)
-              .frame(maxWidth: .infinity)
-              .frame(height: 24)
-          }
-          .adaptivePrimaryButton()
-
-          Button(action: onReject) {
-            Text("거절")
-              .font(.system(size: 14, weight: .semibold))
-              .foregroundColor(.primary)
-              .frame(maxWidth: .infinity)
-              .frame(height: 24)
-          }
-          .adaptiveSecondaryButton(fallBackBackground: Color(.systemGroupedBackground))
+          IndicatorButton.promiseAction(
+            "수락",
+            isLoading: acceptLoading,
+            isDisabled: rejectLoading, // 거절 중이면 비활성화
+            style: .primary,
+            action: onAccept
+          )
+          
+          IndicatorButton.promiseAction(
+            "거절",
+            isLoading: rejectLoading,
+            isDisabled: acceptLoading, // 수락 중이면 비활성화
+            style: .secondary,
+            fallbackBackground: Color(.systemGroupedBackground),
+            action: onReject
+          )
         }
       }
     }
@@ -110,12 +115,12 @@ struct PromiseCard: View {
 
 private struct StatusBadge: View {
   let status: PromiseStatus
-
+  
   var body: some View {
     HStack(spacing: 4) {
       Image(systemName: status.iconName)
         .font(.system(size: 12, weight: .semibold))
-
+      
       Text(status.displayText)
         .font(.system(size: 12, weight: .semibold))
     }
@@ -125,7 +130,7 @@ private struct StatusBadge: View {
     .foregroundColor(foregroundColor)
     .clipShape(Capsule())
   }
-
+  
   private var backgroundColor: Color {
     switch status {
     case .needResponse:
@@ -136,7 +141,7 @@ private struct StatusBadge: View {
       return Color.blue.opacity(0.1)
     }
   }
-
+  
   private var foregroundColor: Color {
     switch status {
     case .needResponse:
@@ -149,49 +154,7 @@ private struct StatusBadge: View {
   }
 }
 
-// MARK: - Preview
-
-#Preview {
-  VStack(spacing: 16) {
-    PromiseCard(
-      promise: PromiseItem(
-        id: "1",
-        title: "카페 데이트",
-        emoji: "☕",
-        time: "오후 2:00",
-        date: "오늘",
-        location: "스타벅스 강남점",
-        distance: "1.2km",
-        with: "지민",
-        status: .needResponse,
-        responses: PromiseResponse(current: 0, total: 2),
-        deadline: "3시간 후"
-      ),
-      onAccept: {},
-      onReject: {}
-    )
-
-    PromiseCard(
-      promise: PromiseItem(
-        id: "2",
-        title: "저녁 식사",
-        emoji: "🍽️",
-        time: "오후 7:00",
-        date: "오늘",
-        location: "이탈리안 레스토랑",
-        distance: "2.5km",
-        with: "지민",
-        status: .confirmed,
-        responses: PromiseResponse(current: 2, total: 2),
-        deadline: nil
-      ),
-      onAccept: {},
-      onReject: {}
-    )
-  }
-  .padding()
-  .background(Color(.systemGray6))
-}
+// MARK: - Extension
 
 extension PromiseStatus {
   var displayText: String {
@@ -201,15 +164,7 @@ extension PromiseStatus {
     case .sent: return "응답 대기"
     }
   }
-
-  var color: String {
-    switch self {
-    case .needResponse: return "orange"
-    case .confirmed: return "green"
-    case .sent: return "blue"
-    }
-  }
-
+  
   var iconName: String {
     switch self {
     case .needResponse: return "exclamationmark.circle.fill"
