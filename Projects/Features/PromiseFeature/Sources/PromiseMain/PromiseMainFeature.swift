@@ -489,18 +489,36 @@ extension PromiseMain {
     
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-      if let availableGroups = store.availableGroups,
-         let currentGroup = store.currentGroup {
+      if let currentGroup = store.currentGroup {
         ToolbarItem(placement: .principal) {
           Text(currentGroup.title)
         }
         
-        if availableGroups.isNotEmpty {
-          ToolbarTitleMenu {
-            ForEach(availableGroups, id: \.id) { group in
-              Button(group.title) {
+        ToolbarTitleMenu {
+          if let allGroups = store.allGroups, allGroups.isNotEmpty {
+            ForEach(allGroups, id: \.id) { group in
+              Button {
                 store.send(.view(.groupChanged(group)))
+              } label: {
+                if group == currentGroup {
+                  Label(group.title, systemImage: "checkmark")
+                } else {
+                  Text(group.title)
+                }
               }
+              .disabled(group == currentGroup)
+            }
+            
+            Divider()
+          }
+          
+          Menu("그룹 추가") {
+            Button("그룹 만들기", systemImage: "plus") {
+              store.send(.view(.createGroup))
+            }
+            
+            Button("초대 코드로 참여하기", systemImage: "link") {
+              store.send(.view(.joinGroup))
             }
           }
         }
@@ -520,7 +538,7 @@ extension PromiseMain {
         }
       } else {
         ToolbarItem(placement: .principal) {
-          Text(" ")
+          EmptyView()
         }
       }
     }
@@ -528,14 +546,6 @@ extension PromiseMain {
 }
 
 private extension PromiseMain.Feature.State {
-  
-  /// 현재 그룹을 제외한 다른 그룹들
-  var availableGroups: [GroupModel]? {
-    guard let currentId = currentGroup?.id else {
-      return allGroups
-    }
-    return allGroups?.filter { $0.id != currentId }
-  }
   
   /// 속한 그룹이 없는 경우
   private var hasNoGroups: Bool {
