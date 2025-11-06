@@ -21,7 +21,7 @@ let project = Project(
         .project(target: "Domain", path: "../../Domain"),
         .project(target: "ExternalDependency", path: "../../ExternalDependency"),
         .project(target: "HomeFeature", path: "../HomeFeature"),
-        .project(target: "PromiseFeature", path: "../PromiseFeature")
+        .project(target: "GroupFeature", path: "../GroupFeature")
       ],
       settings: .standard()
     ),

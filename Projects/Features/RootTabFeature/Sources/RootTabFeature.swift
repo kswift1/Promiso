@@ -7,12 +7,12 @@ import Shared
 
 public enum Tab: String, CaseIterable {
   case home = "홈"
-  case promise = "약속"
+  case group = "그룹"
   
   var iconName: String {
     switch self {
     case .home: return "house.fill"
-    case .promise: return "calendar.badge.plus"
+    case .group: return "person.3.fill"
     }
   }
 }
@@ -42,11 +42,11 @@ extension RootTab {
       /// 사이드 드로어 상태
       var sideDrawer: SideDrawerFeature.State = SideDrawerFeature.State(maxDragOffset: AppConstants.UI.SideDrawer.width)
       
-      /// Promise Main State
+      /// Group Main State
       var home: Home.Feature.State = Home.Feature.State()
       
-      /// Promise Main State
-      var promiseMain: PromiseMain.Feature.State = PromiseMain.Feature.State(
+      /// Group Main State
+      var groupMain: GroupMain.Feature.State = GroupMain.Feature.State(
         // FIXME: 스플래시에서 유저정보 가져와서 세팅 필요 - 2025.11.05
         currentUser: .init(id: "", email: "", nickname: "")
       )
@@ -66,8 +66,8 @@ extension RootTab {
       case sideDrawer(SideDrawerFeature.Action)
       /// Home Main 액션
       case home(Home.Feature.Action)
-      /// Promise Main 액션
-      case promiseMain(PromiseMain.Feature.Action)
+      /// Group Main 액션
+      case groupMain(GroupMain.Feature.Action)
       /// Create Group 액션
       case createGroup(PresentationAction<CreateGroup.Feature.Action>)
       /// 그룹 추가 버튼 탭
@@ -75,8 +75,8 @@ extension RootTab {
     }
     
     public var body: some ReducerOf<Self> {
-      Scope(state: \.promiseMain, action: \.promiseMain) {
-        PromiseMain.Feature()
+      Scope(state: \.groupMain, action: \.groupMain) {
+        GroupMain.Feature()
       }
       
       Scope(state: \.home, action: \.home) {
@@ -105,11 +105,11 @@ extension RootTab {
         case .home:
           return .none
           
-        case .promiseMain(.delegate(.requestOpenSideDrawer)):
-          // PromiseMain에서 사이드 드로워 열기 요청
+        case .groupMain(.delegate(.requestOpenSideDrawer)):
+          // GroupMain에서 사이드 드로워 열기 요청
           return .send(.sideDrawer(.toggle))
           
-        case .promiseMain:
+        case .groupMain:
           return .none
           
         case .addGroupTapped:
@@ -246,12 +246,12 @@ extension RootTab {
           )
         }
         
-      case .promise:
+      case .group:
         NavigationStack {
-          PromiseMain.RootView(
+          GroupMain.RootView(
             store: store.scope(
-              state: \.promiseMain,
-              action: \.promiseMain
+              state: \.groupMain,
+              action: \.groupMain
             )
           )
         }

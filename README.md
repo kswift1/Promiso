@@ -68,7 +68,7 @@ Projects/
 ├── App/                    # 메인 애플리케이션
 ├── Features/              # 피쳐 모듈 (Presentation)
 │   ├── HomeFeature/
-│   ├── PromiseFeature/
+│   ├── GroupFeature/
 │   └── RootTabFeature/
 ├── Clients/               # TCA Dependencies (Adapter)
 │   ├── PromiseClient/
@@ -109,7 +109,7 @@ make deps
 tuist build
 
 # 특정 피쳐 빌드
-tuist build PromiseFeature
+tuist build GroupFeature
 
 # 테스트 실행
 tuist test
@@ -176,7 +176,7 @@ public final class PromiseRepository: PromiseRepositoryProtocol {
 tuist test
 
 # 특정 피쳐 테스트
-tuist test PromiseFeatureTests
+tuist test GroupFeatureTests
 ```
 
 ### TCA 테스트 예시

@@ -3,16 +3,16 @@ import SwiftUI
 // MARK: - Preview
 
 #Preview {
-  PromiseMain.RootView(
+  GroupMain.RootView(
     store: Store(
-      initialState: PromiseMain.Feature.State.preview
+      initialState: GroupMain.Feature.State.preview
     ) {
-      PromiseMain.Feature()
+      GroupMain.Feature()
     }
   )
 }
 
-extension PromiseMain.Feature.State {
+extension GroupMain.Feature.State {
   // MARK: - Preview Helper
   public static var preview: Self {
     var state = Self(currentUser: .init(id: "", email: "", nickname: ""))

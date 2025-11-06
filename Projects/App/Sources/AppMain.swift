@@ -2,7 +2,7 @@ import SwiftUI
 import ComposableArchitecture
 import RootTabFeature
 import HomeFeature
-import PromiseFeature
+import GroupFeature
 
 @main
 struct PromisoApp: App {

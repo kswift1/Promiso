@@ -1,7 +1,7 @@
 import ProjectDescription
 import ProjectDescriptionHelpers
 
-private let feature: Feature = .promise
+private let feature: Feature = .group
 
 let project = Project(
   name: feature.fullName,
@@ -9,7 +9,7 @@ let project = Project(
 
     // Main Feature (TCA)
     .target(
-      name: "PromiseFeature",
+      name: "GroupFeature",
       destinations: .iOS,
       product: .framework,
       bundleId: "\(feature.defaultBundleIdPrefix)",
@@ -26,21 +26,21 @@ let project = Project(
 
     // Unit Tests
     .target(
-      name: "PromiseFeatureTests",
+      name: "GroupFeatureTests",
       destinations: .iOS,
       product: .unitTests,
       bundleId: "\(feature.defaultBundleIdPrefix).tests",
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Tests/Sources/**"],
       dependencies: [
-        .target(name: "PromiseFeature")
+        .target(name: "GroupFeature")
       ],
       settings: .standard()
     ),
 
     // Example App (Demo)
     .target(
-      name: "PromiseFeatureExample",
+      name: "GroupFeatureExample",
       destinations: .iOS,
       product: .app,
       bundleId: "\(feature.defaultBundleIdPrefix).example",
@@ -51,7 +51,7 @@ let project = Project(
       sources: ["Example/Sources/**"],
       resources: ["Example/Resources/**"],
       dependencies: [
-        .target(name: "PromiseFeature")
+        .target(name: "GroupFeature")
       ],
       settings: .standard()
     )

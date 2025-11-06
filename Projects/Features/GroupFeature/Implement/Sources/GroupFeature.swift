@@ -1,24 +1,24 @@
-// MARK: - PromiseFeature.swift
-// TCA 1.22.2를 사용한 Promise Feature의 Implementation layer
+// MARK: - GroupFeature.swift
+// TCA 1.22.2를 사용한 Group Feature의 Implementation layer
 // 이 파일은 핵심 business logic, state management, view implementation을 포함
 
 import SwiftUI
 import ComposableArchitecture
-import PromiseFeatureInterface
+import GroupFeatureInterface
 
 // MARK: - Feature Namespace
 
-/// Promise Feature 컴포넌트를 위한 Namespace
+/// Group Feature 컴포넌트를 위한 Namespace
 /// 조직적 구조를 제공하고 다른 Feature들과의 naming conflict를 방지
-public enum Promise {}
+public enum Group {}
 
 // MARK: - Core Feature Implementation
 
-extension Promise {
+extension Group {
   
   // MARK: - Reducer
   
-  /// Promise Feature state management를 위한 Main reducer
+  /// Group Feature state management를 위한 Main reducer
   /// Feature의 모든 business logic과 side effect를 처리
   ///
   /// SwiftUI integration을 위해 @ObservableState와 함께 TCA 1.22.2 Reducer protocol을 준수
@@ -31,7 +31,7 @@ extension Promise {
     
     // MARK: - State
     
-    /// Promise Feature의 완전한 state를 나타냄
+    /// Group Feature의 완전한 state를 나타냄
     /// 예측 가능성을 유지하기 위해 모든 state 변경은 Action을 통해 처리되어야 함
     ///
     /// @ObservableState는 추가 wrapper 없이 직접적인 SwiftUI integration을 가능하게 함
@@ -55,7 +55,7 @@ extension Promise {
     
     // MARK: - Action
     
-    /// Promise Feature 내에서 발생할 수 있는 모든 가능한 action
+    /// Group Feature 내에서 발생할 수 있는 모든 가능한 action
     /// 각 action은 고유한 user intent나 system event를 나타내야 함
     public enum Action: Equatable, Sendable {
       // MARK: Lifecycle Actions
@@ -134,12 +134,12 @@ extension Promise {
 
 // MARK: - View Implementation
 
-extension Promise {
-  /// Promise Feature의 Root View
+extension Group {
+  /// Group Feature의 Root View
   struct RootView: View {
-    private let store: StoreOf<Promise.Feature>
+    private let store: StoreOf<Group.Feature>
     
-    init(store: StoreOf<Promise.Feature>) {
+    init(store: StoreOf<Group.Feature>) {
       self.store = store
     }
     

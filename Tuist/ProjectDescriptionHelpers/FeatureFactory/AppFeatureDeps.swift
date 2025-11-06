@@ -23,7 +23,7 @@ public enum AppFeatureDeps {
       // 🤖 Auto-generated features
       .rootTab,
       .home,
-      .promise,
+      .group,
     ]
     return allFeatures.map { feature($0) }
   }()

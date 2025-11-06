@@ -9,13 +9,13 @@ import SwiftUI
 
 import Domain
 import Shared
-/// Promise Feature 컴포넌트를 위한 Namespace
+/// Group Feature 컴포넌트를 위한 Namespace
 /// 조직적 구조를 제공하고 다른 Feature들과의 naming conflict를 방지
-public enum PromiseMain {}
+public enum GroupMain {}
 
 // MARK: - Core Feature Implementation
 
-extension PromiseMain {
+extension GroupMain {
   
   private enum CancelID: Hashable {
     case respond(String)
@@ -29,7 +29,7 @@ extension PromiseMain {
   
   // MARK: - Reducer
   
-  /// Promise Feature state management를 위한 Main reducer
+  /// Group Feature state management를 위한 Main reducer
   /// Feature의 모든 business logic과 side effect를 처리
   ///
   /// SwiftUI integration을 위해 @ObservableState와 함께 TCA 1.22.2 Reducer protocol을 준수
@@ -45,7 +45,7 @@ extension PromiseMain {
     
     // MARK: - State
     
-    /// Promise Feature의 완전한 state를 나타냄
+    /// Group Feature의 완전한 state를 나타냄
     /// 예측 가능성을 유지하기 위해 모든 state 변경은 Action을 통해 처리되어야 함
     ///
     /// @ObservableState는 추가 wrapper 없이 직접적인 SwiftUI integration을 가능하게 함
@@ -82,7 +82,7 @@ extension PromiseMain {
     
     // MARK: - Action
     
-    /// Promise Feature 내에서 발생할 수 있는 모든 가능한 action
+    /// Group Feature 내에서 발생할 수 있는 모든 가능한 action
     /// 각 action은 고유한 user intent na system event를 나타내야 함
     public enum Action: Sendable {
       case view(View)
@@ -330,12 +330,12 @@ extension PromiseMain {
 
 // MARK: - View Implementation
 
-extension PromiseMain {
-  /// Promise Feature의 Root View
+extension GroupMain {
+  /// Group Feature의 Root View
   public struct RootView: View {
-    @Bindable private var store: StoreOf<PromiseMain.Feature>
+    @Bindable private var store: StoreOf<GroupMain.Feature>
     
-    public init(store: StoreOf<PromiseMain.Feature>) {
+    public init(store: StoreOf<GroupMain.Feature>) {
       self.store = store
     }
     
@@ -545,7 +545,7 @@ extension PromiseMain {
   }
 }
 
-private extension PromiseMain.Feature.State {
+private extension GroupMain.Feature.State {
   
   /// 속한 그룹이 없는 경우
   private var hasNoGroups: Bool {
@@ -572,7 +572,7 @@ private extension PromiseMain.Feature.State {
   }
   
   /// 특정 약속의 응답 상태 조회
-  func respondingState(for promiseId: String) -> PromiseMain.RespondingState {
+  func respondingState(for promiseId: String) -> GroupMain.RespondingState {
     proposalResponding[promiseId] ?? .idle
   }
 }

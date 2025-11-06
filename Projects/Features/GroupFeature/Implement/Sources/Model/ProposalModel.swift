@@ -1,19 +1,17 @@
 //
 //  ProposalModel.swift
-//  PromiseFeature
+//  GroupFeatureExample
 //
 //  Created by 김성원 on 9/12/25.
 //
 
 import Foundation
 
-// UI 전용 Proposal 모델
-
-public struct ProposalModel: Equatable {
+struct ProposalModel: Equatable {
   var receivedProposals: [ProposalItem]
   var sentProposals: [ProposalItem]
   var confirmedProposals: [ProposalItem]
-
+  
   /// 제안 아이템을 나타내는 구조체
   public struct ProposalItem: Equatable, Identifiable {
     public let id: String
@@ -24,7 +22,7 @@ public struct ProposalModel: Equatable {
     public let with: String
     public var status: ProposalStatus
     public let isReceived: Bool
-
+    
     public enum ProposalStatus: Equatable {
       case pending
       case accepted
@@ -35,7 +33,7 @@ public struct ProposalModel: Equatable {
 
 // FIXME:
 extension ProposalModel {
-  public static var example: ProposalModel = .init(
+  static var example: ProposalModel = .init(
     receivedProposals: [
       ProposalItem(
         id: "1",

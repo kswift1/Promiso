@@ -6,4 +6,4 @@
 
 // MARK: - Feature Exports (필요시 추가)
 @_exported import HomeFeature
-@_exported import PromiseFeature
+@_exported import GroupFeature

@@ -31,7 +31,7 @@ Clients/
 
 ### Feature에서 사용
 ```swift
-// PromiseFeature/CreatePromiseFeature.swift
+// GroupFeature/CreateGroupFeature.swift
 import Clients
 import ComposableArchitecture
 

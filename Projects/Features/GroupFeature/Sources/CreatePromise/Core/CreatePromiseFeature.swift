@@ -1,6 +1,6 @@
 //
-//  CreatePromiseFeature.swift
-//  PromiseFeature
+//  CreateGroupFeature.swift
+//  GroupFeature
 //
 //  Created by 김성원 on 9/30/25.
 //

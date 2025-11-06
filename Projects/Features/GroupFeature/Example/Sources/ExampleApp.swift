@@ -1,23 +1,23 @@
-// MARK: - PromiseFeatureExampleApp.swift
-// Promise Feature 개발과 테스트를 위한 독립 실행형 example 애플리케이션
+// MARK: - GroupFeatureExampleApp.swift
+// Group Feature 개발과 테스트를 위한 독립 실행형 example 애플리케이션
 // 이 앱은 Feature 개발과 visual testing을 위한 격리된 환경을 제공
 
 import SwiftUI
 import ComposableArchitecture
-import PromiseFeature
+import GroupFeature
 
 // MARK: - Example Application
 
-/// Promise Feature를 위한 독립 실행형 example 앱
+/// Group Feature를 위한 독립 실행형 example 앱
 /// 다양한 테스트 시나리오와 함께 격리된 개발 환경을 제공
 @main
-struct PromiseFeatureExampleApp: App {
+struct GroupFeatureExampleApp: App {
 
   var body: some Scene {
     WindowGroup {
       NavigationStack {
         ExampleContentView()
-          .navigationTitle("Promise Examples")
+          .navigationTitle("Group Examples")
           .navigationBarTitleDisplayMode(.large)
       }
     }
@@ -32,8 +32,8 @@ private struct ExampleContentView: View {
   var body: some View {
     List {
       Section("약속 메인") {
-        NavigationLink("PromiseMain Feature") {
-          promiseMainExample
+        NavigationLink("GroupMain Feature") {
+          groupMainExample
         }
       }
 
@@ -47,14 +47,14 @@ private struct ExampleContentView: View {
 
   // MARK: - Example Views
 
-  /// PromiseMain feature example with preview data
+  /// GroupMain feature example with preview data
   @ViewBuilder
-  private var promiseMainExample: some View {
-    let store = Store(initialState: PromiseMain.Feature.State.preview) {
-      PromiseMain.Feature()
+  private var groupMainExample: some View {
+    let store = Store(initialState: GroupMain.Feature.State.preview) {
+      GroupMain.Feature()
     }
 
-    PromiseMain.RootView(store: store)
+    GroupMain.RootView(store: store)
   }
 
   /// CreatePromise feature example
@@ -71,9 +71,9 @@ private struct ExampleContentView: View {
 // MARK: - SwiftUI Previews
 
 #Preview {
-  let store = Store(initialState: PromiseMain.Feature.State.preview) {
-    PromiseMain.Feature()
+  let store = Store(initialState: GroupMain.Feature.State.preview) {
+    GroupMain.Feature()
   }
 
-  PromiseMain.RootView(store: store)
+  GroupMain.RootView(store: store)
 }

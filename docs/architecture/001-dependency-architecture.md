@@ -26,7 +26,7 @@ Infrastructure (Core)
 - **역할**: UI 로직 및 사용자 인터랙션
 - **기술**: SwiftUI + TCA (Reducer, State, Action)
 - **의존성**: Clients, Domain (모델 참조), Shared
-- **예시**: `PromiseFeature`, `HomeFeature`
+- **예시**: `GroupFeature`, `HomeFeature`
 
 ### 2. Adapter Layer (`Projects/Clients/`)
 - **역할**: TCA 의존성 제공 및 모델 변환
@@ -64,7 +64,7 @@ Infrastructure (Core)
 
 ```swift
 // 1️⃣ Feature Layer
-// File: PromiseFeature/CreatePromiseFeature.swift
+// File: GroupFeature/CreateGroupFeature.swift
 case .createPromise:
   @Dependency(\.promiseClient) var promiseClient
   return .run { [proposal = state.promiseProposal] send in

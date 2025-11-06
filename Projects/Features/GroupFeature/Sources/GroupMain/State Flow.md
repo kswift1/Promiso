@@ -1,7 +1,7 @@
-# Promise Feature - State Flow
+# Group Feature - State Flow
 
 ## 개요
-그룹의 약속을 조회하고 관리하는 Promise Feature의 화면 렌더링 플로우를 설명합니다.
+그룹의 약속을 조회하고 관리하는 Group Feature의 화면 렌더링 플로우를 설명합니다.
 
 ---
 
