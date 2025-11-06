@@ -17,8 +17,8 @@ public enum PromiseMain {}
 
 extension PromiseMain {
   
-  private enum CancelID {
-    case respond
+  private enum CancelID: Hashable {
+    case respond(String)
   }
   
   enum RespondingState: Equatable {
@@ -59,7 +59,7 @@ extension PromiseMain {
       
       //  Promises
       var promisesState: LoadingState<[PromiseItem]> = .idle
-      var proposalResponding: RespondingState = .idle
+      var proposalResponding: [String: RespondingState] = [:]
       
       // Groups
       var allGroups: [GroupModel]?
@@ -119,7 +119,7 @@ extension PromiseMain {
         
         case fetchPromises(groupId: String)
         case loadPromisesResponse(Result<[PromiseItem], Error>)
-        case proposalRespondDone
+        case proposalRespondDone(promiseId: String)
         case toggleGroupNotifications
       }
       
@@ -163,30 +163,30 @@ extension PromiseMain {
             state.selectedFilter = filter
             return .none
             
-          case .proposalAccepted(_):
-            guard state.proposalResponding == .idle else { return .none }
-            state.proposalResponding = .accepting
-            return .run { send in
+          case .proposalAccepted(let promiseId):
+            guard state.proposalResponding[promiseId] ?? .idle == .idle else { return .none }
+            state.proposalResponding[promiseId] = .accepting
+            return .run { [promiseId] send in
               // FIXME:
               try await Task.sleep(for: .seconds(1))
               print("Accepted")
               
-//              try await promiseClient.accept(id)
-              await send(.internal(.proposalRespondDone))
+//              try await promiseClient.accept(promiseId)
+              await send(.internal(.proposalRespondDone(promiseId: promiseId)))
             }
-            .cancellable(id: CancelID.respond, cancelInFlight: true)
+            .cancellable(id: CancelID.respond(promiseId), cancelInFlight: true)
 
-          case .proposalRejected(_):
-            guard state.proposalResponding == .idle else { return .none }
-            state.proposalResponding = .rejecting
-            return .run { send in
+          case .proposalRejected(let promiseId):
+            guard state.proposalResponding[promiseId] ?? .idle == .idle else { return .none }
+            state.proposalResponding[promiseId] = .rejecting
+            return .run { [promiseId] send in
               // FIXME:
               try await Task.sleep(for: .seconds(5.3))
               print("Rejected")
-//              try await promiseClient.reject(id)
-              await send(.internal(.proposalRespondDone))
+//              try await promiseClient.reject(promiseId)
+              await send(.internal(.proposalRespondDone(promiseId: promiseId)))
             }
-            .cancellable(id: CancelID.respond, cancelInFlight: true)
+            .cancellable(id: CancelID.respond(promiseId), cancelInFlight: true)
             
           case .openSideDrawer:
             // 사이드 드로워 열기 요청을 부모로 전달
@@ -277,8 +277,8 @@ extension PromiseMain {
             state.promisesState = .failed(error)
             return .none
             
-          case .proposalRespondDone:
-            state.proposalResponding = .idle
+          case .proposalRespondDone(let promiseId):
+            state.proposalResponding[promiseId] = nil
             return .none
           case .toggleGroupNotifications:
             // TODO: Toggle notifications
@@ -397,9 +397,9 @@ extension PromiseMain {
           promisesState: store.promisesState,
           selectedFilter: store.selectedFilter,
           onAccept: { promiseId in store.send(.view(.proposalAccepted(promiseId))) },
-          acceptLoading: store.proposalIsAccepting,
+          acceptLoadingIds: store.acceptingProposalIds,
           onReject: { promiseId in store.send(.view(.proposalRejected(promiseId))) },
-          rejectLoading: store.proposalIsRejecting
+          rejectLoadingIds: store.rejectingProposalIds
         )
       }
     }
@@ -547,13 +547,22 @@ private extension PromiseMain.Feature.State {
     !promisesState.isLoading && hasNoGroups
   }
   
-  /// 제안 수락 로딩중
-  var proposalIsAccepting: Bool {
-    proposalResponding == .accepting
+  /// 현재 수락 처리중인 약속 ID 목록
+  var acceptingProposalIds: Set<String> {
+    Set(proposalResponding.compactMap { entry in
+      entry.value == .accepting ? entry.key : nil
+    })
   }
   
-  /// 제안 수락 로딩중
-  var proposalIsRejecting: Bool {
-    proposalResponding == .rejecting
+  /// 현재 거절 처리중인 약속 ID 목록
+  var rejectingProposalIds: Set<String> {
+    Set(proposalResponding.compactMap { entry in
+      entry.value == .rejecting ? entry.key : nil
+    })
+  }
+  
+  /// 특정 약속의 응답 상태 조회
+  func respondingState(for promiseId: String) -> PromiseMain.RespondingState {
+    proposalResponding[promiseId] ?? .idle
   }
 }

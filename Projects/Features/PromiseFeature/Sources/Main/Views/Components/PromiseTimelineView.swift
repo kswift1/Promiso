@@ -4,9 +4,9 @@ struct PromiseTimelineView: View {
   let promisesState: LoadingState<[PromiseItem]>
   let selectedFilter: StatusFilter
   let onAccept: (String) -> Void
-  let acceptLoading: Bool
+  let acceptLoadingIds: Set<String>
   let onReject: (String) -> Void
-  let rejectLoading: Bool
+  let rejectLoadingIds: Set<String>
 
   private var promises: [PromiseItem] {
     promisesState.value ?? []
@@ -91,9 +91,9 @@ struct PromiseTimelineView: View {
             PromiseCard(
               promise: promise,
               onAccept: { onAccept(promise.id) },
-              acceptLoading: acceptLoading,
+              acceptLoading: acceptLoadingIds.contains(promise.id),
               onReject: { onReject(promise.id) },
-              rejectLoading: rejectLoading
+              rejectLoading: rejectLoadingIds.contains(promise.id)
             )
           }
         }
