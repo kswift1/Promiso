@@ -13,7 +13,7 @@ extension CreateGroup {
   // MARK: - Reducer
 
   @Reducer
-  public struct Feature {
+  public struct Feature: Equatable {
 
     public init() {}
 

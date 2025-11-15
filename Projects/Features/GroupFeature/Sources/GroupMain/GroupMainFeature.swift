@@ -6,14 +6,11 @@
 
 // MARK: - Feature Namespace
 import SwiftUI
-
 import Domain
 import Shared
-/// Group Feature 컴포넌트를 위한 Namespace
-/// 조직적 구조를 제공하고 다른 Feature들과의 naming conflict를 방지
-public enum GroupMain {}
+import ComposableArchitecture
 
-// MARK: - Core Feature Implementation
+public enum GroupMain {}
 
 extension GroupMain {
   
@@ -22,124 +19,93 @@ extension GroupMain {
   }
   
   enum RespondingState: Equatable {
-    case idle
-    case accepting
-    case rejecting
+    case idle, accepting, rejecting
   }
   
-  // MARK: - Reducer
-  
-  /// Group Feature state management를 위한 Main reducer
-  /// Feature의 모든 business logic과 side effect를 처리
-  ///
-  /// SwiftUI integration을 위해 @ObservableState와 함께 TCA 1.22.2 Reducer protocol을 준수
+  // MARK: - Feature Reducer
   @Reducer
   public struct Feature {
     
     @Dependency(\.groupClient) var groupClient
     @Dependency(\.promiseClient) var promiseClient
     
-    /// Reducer를 위한 기본 initializer
-    /// Feature가 성장함에 따라 dependency나 configuration을 여기에 추가
     public init() {}
     
-    // MARK: - State
-    
-    /// Group Feature의 완전한 state를 나타냄
-    /// 예측 가능성을 유지하기 위해 모든 state 변경은 Action을 통해 처리되어야 함
-    ///
-    /// @ObservableState는 추가 wrapper 없이 직접적인 SwiftUI integration을 가능하게 함
     @ObservableState
-    public struct State: Equatable {
+    public struct State {
       var isInitialized: Bool = false
       let currentUser: UserModel
       
-      //  Status Filter
       var selectedFilter: StatusFilter = .all
       
-      //  Promises
       var promisesState: LoadingState<[PromiseItem]> = .idle
       var proposalResponding: [String: RespondingState] = [:]
+      var path = StackState<Path.State>()
       
-      // Groups
       var allGroups: [GroupModel]?
       var currentGroup: GroupModel?
       
-      // Presents
       @Presents var createPromise: CreatePromise.Feature.State?
       @Presents var groupDetail: GroupDetailState?
-      
       
       public init(currentUser: UserModel) {
         self.currentUser = currentUser
       }
     }
+    @Reducer
+    public enum Path {
+      case createGroupFeature(CreateGroup.Feature)
+    }
     
-    // MARK: - Group Detail State
     public struct GroupDetailState: Equatable {
       public var isPresented: Bool = false
     }
     
-    // MARK: - Action
-    
-    /// Group Feature 내에서 발생할 수 있는 모든 가능한 action
-    /// 각 action은 고유한 user intent na system event를 나타내야 함
     public enum Action: Sendable {
       case view(View)
       case binding(BindingAction<State>)
       case `internal`(Internal)
       case delegate(Delegate)
       
-      // Presentation actions
       case createPromise(PresentationAction<CreatePromise.Feature.Action>)
       case groupDetail(PresentationAction<GroupDetailAction>)
+      case path(StackActionOf<Path>)
       
-      // MARK: - View Actions (사용자가 직접 트리거)
       public enum View: Sendable {
         case onAppear
         case groupChanged(GroupModel)
         case filterChanged(StatusFilter)
-        case proposalAccepted(String)  // Promise ID
-        case proposalRejected(String)  // Promise ID
-        case openSideDrawer  // 햄버거 버튼
-        case groupManageTapped  // 톱니 버튼
+        case proposalAccepted(String)
+        case proposalRejected(String)
+        case openSideDrawer
+        case groupManageTapped
         case createNewPromise
         case groupDetailDismissed
         case createGroup
         case joinGroup
       }
       
-      // MARK: - Internal Actions (내부 로직/이펙트 응답)
       public enum Internal: Sendable {
-        /// Groups 불러오기
         case fetchGroupList
         case groupListResponse(Result<[GroupModel], Error>)
-        
         case setDefaultGroup(groups: [GroupModel])
-        
         case fetchPromises(groupId: String)
         case loadPromisesResponse(Result<[PromiseItem], Error>)
         case proposalRespondDone(promiseId: String)
         case toggleGroupNotifications
       }
       
-      // MARK: - Delegate Actions (부모로 전달)
       public enum Delegate: Sendable {
         case requestOpenSideDrawer
       }
     }
     
-    // MARK: - Group Detail Action
     public enum GroupDetailAction: Sendable, Equatable {
-      case dismiss
-      case settings
-      case toggleNotifications
+      case dismiss, settings, toggleNotifications
     }
+
     
     // MARK: - Reducer Body
-    
-    /// business logic을 구현하는 Main reducer body
-    /// 모든 action에 대한 state transition과 side effect를 처리
     public var body: some ReducerOf<Self> {
       Reduce { state, action in
         switch action {
@@ -156,44 +122,31 @@ extension GroupMain {
             state.currentGroup = group
             state.promisesState = .loading
             state.selectedFilter = .all
-            guard let groupId = state.currentGroup?.id else { return .none }
-            return .send(.internal(.fetchPromises(groupId: groupId)))
+            guard let id = state.currentGroup?.id else { return .none }
+            return .send(.internal(.fetchPromises(groupId: id)))
             
           case .filterChanged(let filter):
             state.selectedFilter = filter
             return .none
             
-          case .proposalAccepted(let promiseId):
-            guard state.proposalResponding[promiseId] ?? .idle == .idle else { return .none }
-            state.proposalResponding[promiseId] = .accepting
-            return .run { [promiseId] send in
-              // FIXME:
-              try await Task.sleep(for: .seconds(1))
-              print("Accepted")
-              
-//              try await promiseClient.accept(promiseId)
-              await send(.internal(.proposalRespondDone(promiseId: promiseId)))
-            }
-            .cancellable(id: CancelID.respond(promiseId), cancelInFlight: true)
-
-          case .proposalRejected(let promiseId):
-            guard state.proposalResponding[promiseId] ?? .idle == .idle else { return .none }
-            state.proposalResponding[promiseId] = .rejecting
-            return .run { [promiseId] send in
-              // FIXME:
-              try await Task.sleep(for: .seconds(5.3))
-              print("Rejected")
-//              try await promiseClient.reject(promiseId)
-              await send(.internal(.proposalRespondDone(promiseId: promiseId)))
-            }
-            .cancellable(id: CancelID.respond(promiseId), cancelInFlight: true)
+          case .proposalAccepted(let id):
+            guard state.proposalResponding[id] ?? .idle == .idle else { return .none }
+            state.proposalResponding[id] = .accepting
+            return .run { [id] send in
+              await send(.internal(.proposalRespondDone(promiseId: id)))
+            }.cancellable(id: CancelID.respond(id), cancelInFlight: true)
+            
+          case .proposalRejected(let id):
+            guard state.proposalResponding[id] ?? .idle == .idle else { return .none }
+            state.proposalResponding[id] = .rejecting
+            return .run { [id] send in
+              await send(.internal(.proposalRespondDone(promiseId: id)))
+            }.cancellable(id: CancelID.respond(id), cancelInFlight: true)
             
           case .openSideDrawer:
-            // 사이드 드로워 열기 요청을 부모로 전달
             return .send(.delegate(.requestOpenSideDrawer))
             
           case .groupManageTapped:
-            // 그룹 관리 화면 열기
             state.groupDetail = GroupDetailState(isPresented: true)
             return .none
             
@@ -206,26 +159,20 @@ extension GroupMain {
             return .none
             
           case .createGroup:
-            // FIXME:
+            state.path.append(.createGroupFeature(.init()))
+//            state.path.append(.createGroup(.init()))
             return .none
             
           case .joinGroup:
-            // FIXME:
             return .none
           }
           
-          // MARK: - Internal Actions
         case .internal(let internalAction):
           switch internalAction {
           case .fetchGroupList:
-            state.promisesState = .loading
             return .run { [groupClient] send in
-              do {
-                let groups = try await groupClient.fetchGroups()
-                await send(.internal(.groupListResponse(.success(groups))))
-              } catch {
-                await send(.internal(.groupListResponse(.failure(error))))
-              }
+              do { await send(.internal(.groupListResponse(.success(try await groupClient.fetchGroups())))) }
+              catch { await send(.internal(.groupListResponse(.failure(error)))) }
             }
             
           case .groupListResponse(.success(let groups)):
@@ -237,36 +184,25 @@ extension GroupMain {
             return .none
             
           case .setDefaultGroup(let groups):
-            
-            // 1. 유저의 pinnedGroupId 확인
-            let pinnedId = state.currentUser.pinnedGroupId
-            
-            // 2. 매칭되는 그룹 찾기
-            if let pinnedGroup = groups.first(where: { $0.id == pinnedId }) {
+            if let pinned = state.currentUser.pinnedGroupId,
+               let pinnedGroup = groups.first(where: { $0.id == pinned }) {
               state.currentGroup = pinnedGroup
-            } else if let firstGroup = groups.first {
-              state.currentGroup = firstGroup
             } else {
-              // 그룹이 없음 -> 빈 상태
-              state.currentGroup = nil
-              state.promisesState = .loaded([])
+              state.currentGroup = groups.first
             }
             
-            // 3. 선택된 그룹의 약속 로드
-            if let currentGroupId = state.currentGroup?.id {
-              return .send(.internal(.fetchPromises(groupId: currentGroupId)))
-            } else {
-              return .none
+            if let id = state.currentGroup?.id {
+              return .send(.internal(.fetchPromises(groupId: id)))
             }
+            return .none
             
-          case .fetchPromises(groupId: let groupId):
-            return .run { [groupId] send in
+          case .fetchPromises(let id):
+            return .run { [promiseClient, id] send in
               do {
-                let promises = try await promiseClient.getActivePromises(groupId: groupId, limit: 20)
+                let promises = try await promiseClient.getActivePromises(id, 20)
                 await send(.internal(.loadPromisesResponse(.success(promises))))
-              } catch {
-                await send(.internal(.loadPromisesResponse(.failure(error))))
               }
+              catch { await send(.internal(.loadPromisesResponse(.failure(error)))) }
             }
             
           case .loadPromisesResponse(.success(let promises)):
@@ -277,61 +213,65 @@ extension GroupMain {
             state.promisesState = .failed(error)
             return .none
             
-          case .proposalRespondDone(let promiseId):
-            state.proposalResponding[promiseId] = nil
+          case .proposalRespondDone(let id):
+            // FIXME: proposal responding 액션 구현
+            state.proposalResponding[id] = nil
             return .none
+            
           case .toggleGroupNotifications:
-            // TODO: Toggle notifications
             return .none
           }
           
-          // MARK: - Presentation Actions
         case .createPromise(.presented(.delegate(.dismiss))):
           state.createPromise = nil
           return .none
           
-        case .createPromise(.presented(.delegate(.promiseCreated))):
-          state.createPromise = nil
-          // TODO: Reload promises list
+        case .createPromise:
           return .none
           
-        case .createPromise:
+//        case let .path(.element(id: id, action: .createGroup(.delegate(.dismiss)))):
+//          state.path[id: id] = nil
+//          return .none
+//        
+//        case let .path(.element(id: id, action: .createGroup(.delegate(.groupCreated)))):
+//          state.path[id: id] = nil
+//          return .send(.internal(.fetchGroupList))
+//        
+//        case let .path(.popFromID(id: id)):
+//          state.path[id: id] = nil
+//          return .none
+//        
+//        case .path(.popToRoot):
+//          state.path = .init()
+//          return .none
+        
+        case .path:
           return .none
           
         case .groupDetail(.presented(.dismiss)):
           state.groupDetail = nil
           return .none
           
-        case .groupDetail(.presented(.settings)):
-          // TODO: Navigate to settings
-          return .none
-          
-        case .groupDetail(.presented(.toggleNotifications)):
-          return .send(.internal(.toggleGroupNotifications))
-          
         case .groupDetail:
           return .none
           
-          // MARK: - Binding & Delegate
-        case .binding:
+        case .binding, .delegate:
           return .none
           
-        case .delegate:
-          // Delegate 액션은 부모에서 처리
+        case .path:
           return .none
         }
       }
-      .ifLet(\.$createPromise, action: \.createPromise) {
-        CreatePromise.Feature()
-      }
+      .ifLet(\.$createPromise, action: \.createPromise) { CreatePromise.Feature() }
+      .forEach(\.path, action: \.path)
     }
   }
 }
 
+
 // MARK: - View Implementation
 
 extension GroupMain {
-  /// Group Feature의 Root View
   public struct RootView: View {
     @Bindable private var store: StoreOf<GroupMain.Feature>
     
@@ -339,9 +279,22 @@ extension GroupMain {
       self.store = store
     }
     
-    // MARK: - Body
-    
     public var body: some View {
+      NavigationStackStore(
+        store.scope(state: \.path, action: \.path)) {
+          rootContent
+        } destination: { store in
+          switch store.case {
+          case .createGroupFeature(let createGroupStore):
+            CreateGroup.RootView(store: createGroupStore)
+          }
+        }
+    }
+
+
+    
+    @ViewBuilder
+    private var rootContent: some View {
       Group {
         if store.shouldShowEmptyGroupView {
           groupDetailEmptyView
@@ -352,32 +305,21 @@ extension GroupMain {
       .background(Color(.systemGroupedBackground))
       .navigationBarTitleDisplayMode(.inline)
       .toolbar { toolbarContent }
-      .onAppear {
-        store.send(.view(.onAppear))
-      }
+      .onAppear { store.send(.view(.onAppear)) }
+      
       .fullScreenCover(
-        store: store.scope(
-          state: \.$createPromise,
-          action: \.createPromise
-        )
+        store: store.scope(state: \.$createPromise, action: \.createPromise)
       ) { childStore in
         CreatePromise.RootView(store: childStore)
       }
-      .sheet(isPresented: Binding(
-        get: { store.groupDetail != nil },
-        set: { if !$0 { store.send(.view(.groupDetailDismissed)) } }
-      )) {
-        if let group = store.currentGroup {
-          // FIXME: 
-//          GroupDetailView(
-//            group: group,
-//            onDismiss: { store.send(.groupDetail(.presented(.dismiss))) },
-//            onSettings: { store.send(.groupDetail(.presented(.settings))) },
-//            onToggleNotifications: { store.send(.groupDetail(.presented(.toggleNotifications))) }
-//          )
-        }
+      
+      .sheet(
+        store: store.scope(state: \.$groupDetail, action: \.groupDetail)
+      ) { childStore in
+//        GroupDetailView(store: childStore)
       }
     }
+
     
     @ViewBuilder
     private var groupDetailView: some View {
@@ -576,3 +518,18 @@ private extension GroupMain.Feature.State {
     proposalResponding[promiseId] ?? .idle
   }
 }
+
+//private struct DestinationView: View {
+//  let store: Store<GroupMain.Path.State, GroupMain.Path.Action>
+//  
+//  var body: some View {
+//    SwitchStore(store) {
+//      CaseLet(
+//        /GroupMain.Path.State.createGroup,
+//        action: GroupMain.Path.Action.createGroup
+//      ) { createGroupStore in
+//        CreateGroup.RootView(store: createGroupStore)
+//      }
+//    }
+//  }
+//}

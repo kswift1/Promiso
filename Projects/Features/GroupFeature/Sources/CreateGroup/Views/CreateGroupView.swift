@@ -11,7 +11,6 @@ extension CreateGroup {
     }
 
     public var body: some View {
-      NavigationStack {
         ScrollView {
           VStack(spacing: 24) {
             // Photo Upload Section
@@ -54,22 +53,11 @@ extension CreateGroup {
               description: store.description
             )
           }
-          .padding(.horizontal, 20)
-          .padding(.vertical, 24)
-        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 24)
         .background(Color(.systemGray6))
         .navigationTitle("그룹 만들기")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-          ToolbarItem(placement: .topBarLeading) {
-            Button(action: { store.send(.view(.cancelTapped)) }) {
-              Image(systemName: "xmark")
-                .font(.system(size: 16, weight: .medium))
-                .foregroundColor(.primary)
-                .frame(width: 32, height: 32)
-            }
-          }
-        }
         .safeAreaInset(edge: .bottom) {
           BottomButton(
             isValid: store.isValid,

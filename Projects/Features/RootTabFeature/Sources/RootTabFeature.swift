@@ -35,7 +35,7 @@ extension RootTab {
     public init() {}
     
     @ObservableState
-    public struct State: Equatable {
+    public struct State {
       /// 현재 선택된 탭
       var selectedTab: Tab = .home
       
@@ -51,9 +51,6 @@ extension RootTab {
         currentUser: .init(id: "", email: "", nickname: "")
       )
       
-      /// Create Group State
-      @Presents var createGroup: CreateGroup.Feature.State?
-      
       public init () {}
     }
     
@@ -68,10 +65,6 @@ extension RootTab {
       case home(Home.Feature.Action)
       /// Group Main 액션
       case groupMain(GroupMain.Feature.Action)
-      /// Create Group 액션
-      case createGroup(PresentationAction<CreateGroup.Feature.Action>)
-      /// 그룹 추가 버튼 탭
-      case addGroupTapped
     }
     
     public var body: some ReducerOf<Self> {
@@ -108,29 +101,11 @@ extension RootTab {
         case .groupMain(.delegate(.requestOpenSideDrawer)):
           // GroupMain에서 사이드 드로워 열기 요청
           return .send(.sideDrawer(.toggle))
-          
+        
         case .groupMain:
           return .none
           
-        case .addGroupTapped:
-          state.createGroup = CreateGroup.Feature.State()
-          return .send(.sideDrawer(.close))
-          
-        case .createGroup(.presented(.delegate(.dismiss))):
-          state.createGroup = nil
-          return .none
-          
-        case .createGroup(.presented(.delegate(.groupCreated))):
-          state.createGroup = nil
-          // TODO: Reload groups list
-          return .none
-          
-        case .createGroup:
-          return .none
         }
-      }
-      .ifLet(\.$createGroup, action: \.createGroup) {
-        CreateGroup.Feature()
       }
     }
   }
@@ -204,14 +179,6 @@ extension RootTab {
 //            store.send(.sideDrawer(.dragEnded))
 //          }
 //      )
-      .fullScreenCover(
-        store: store.scope(
-          state: \.$createGroup,
-          action: \.createGroup
-        )
-      ) { childStore in
-        CreateGroup.RootView(store: childStore)
-      }
     }
   }
   
@@ -350,7 +317,8 @@ extension RootTab.RootView {
       
       // 추가하기 버튼
       Button(action: {
-        store.send(.addGroupTapped)
+        store.send(.sideDrawer(.close))
+        store.send(.groupMain(.view(.createGroup)))
       }) {
         HStack {
           Image(systemName: "plus.circle.fill")
