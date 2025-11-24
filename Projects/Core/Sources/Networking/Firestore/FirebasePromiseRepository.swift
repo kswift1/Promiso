@@ -18,7 +18,7 @@ public class FirebasePromiseRepository: PromiseRepositoryProtocol {
   public func createPromise(_ promise: PromiseModel) async throws -> String {
     // TODO: Domain 모델을 Firestore 문서로 변환하여 저장
     // 현재는 기본 구조만 제공
-    let promiseRef = db.collection("promises").document()
+    let promiseRef = db.environmentCollection("promises").document()
     try await promiseRef.setData([
       "id": promise.id,
       "title": promise.title,
@@ -35,7 +35,7 @@ public class FirebasePromiseRepository: PromiseRepositoryProtocol {
   /// 약속 업데이트
   public func updatePromise(_ promise: PromiseModel) async throws {
     // TODO: Domain 모델을 Firestore 문서로 변환하여 업데이트
-    let ref = db.collection("promises").document(promise.id)
+    let ref = db.environmentCollection("promises").document(promise.id)
     try await ref.updateData([
       "title": promise.title,
       "description": promise.description as Any,
@@ -46,7 +46,7 @@ public class FirebasePromiseRepository: PromiseRepositoryProtocol {
   
   /// 약속 삭제 (soft delete)
   public func deletePromise(id: String) async throws {
-    let ref = db.collection("promises").document(id)
+    let ref = db.environmentCollection("promises").document(id)
     try await ref.updateData([
       "isDeleted": true,
       "updatedAt": Timestamp(date: Date())
@@ -56,7 +56,7 @@ public class FirebasePromiseRepository: PromiseRepositoryProtocol {
   /// 약속 조회
   public func getPromise(id: String) async throws -> PromiseModel? {
     // TODO: Firestore 문서를 Domain 모델로 변환하여 반환
-    let ref = db.collection("promises").document(id)
+    let ref = db.environmentCollection("promises").document(id)
     let document = try await ref.getDocument()
     
     guard document.exists else { return nil }
@@ -81,7 +81,7 @@ public class FirebasePromiseRepository: PromiseRepositoryProtocol {
   public func getTodayPromises(userId: String, groupId: String?) async throws -> [PromiseModel] {
     // TODO: Firestore 쿼리를 구현하여 Domain 모델 배열 반환
     let todayKey = calendarKeyGenerator.generateYyyymmddKey(for: Date())
-    let query = db.collection("promises")
+    let query = db.environmentCollection("promises")
       .whereField("localYyyymmdd", isEqualTo: todayKey)
       .whereField("isDeleted", isEqualTo: false)
     
@@ -114,7 +114,7 @@ public class FirebasePromiseRepository: PromiseRepositoryProtocol {
   /// 오늘의 약속 실시간 관찰
   public func observeTodayPromises(userId: String, groupId: String?) -> AnyPublisher<[PromiseModel], Error> {
     let todayKey = calendarKeyGenerator.generateYyyymmddKey(for: Date())
-    let query = db.collection("promises")
+    let query = db.environmentCollection("promises")
       .whereField("localYyyymmdd", isEqualTo: todayKey)
       .whereField("isDeleted", isEqualTo: false)
     
@@ -129,7 +129,7 @@ public class FirebasePromiseRepository: PromiseRepositoryProtocol {
   
   /// 약속 실시간 관찰
   public func observePromise(id: String) -> AnyPublisher<PromiseModel?, Error> {
-    let ref = db.collection("promises").document(id)
+    let ref = db.environmentCollection("promises").document(id)
     
     return Publishers.FirestoreDocument(document: ref)
       .map { document in

@@ -13,7 +13,7 @@ public class PromiseRepository: PromiseRepositoryProtocol {
   
   /// 약속 생성
   public func createPromise(_ promise: PromiseModel) async throws -> String {
-    let promiseRef = db.collection("promises").document()
+    let promiseRef = db.environmentCollection("promises").document()
     let promiseData: [String: Any] = [
       "id": promise.id,
       "title": promise.title,
@@ -37,7 +37,7 @@ public class PromiseRepository: PromiseRepositoryProtocol {
   
   /// 약속 업데이트
   public func updatePromise(_ promise: PromiseModel) async throws {
-    let ref = db.collection("promises").document(promise.id)
+    let ref = db.environmentCollection("promises").document(promise.id)
     let updateData: [String: Any] = [
       "title": promise.title,
       "description": promise.description as Any,
@@ -50,13 +50,13 @@ public class PromiseRepository: PromiseRepositoryProtocol {
   
   /// 약속 삭제 (soft delete)
   public func deletePromise(id: String) async throws {
-    let ref = db.collection("promises").document(id)
+    let ref = db.environmentCollection("promises").document(id)
     try await ref.updateData(["isDeleted": true, "updatedAt": Timestamp(date: Date())])
   }
   
   /// 약속 조회
   public func getPromise(id: String) async throws -> PromiseModel? {
-    let document = try await db.collection("promises").document(id).getDocument()
+    let document = try await db.environmentCollection("promises").document(id).getDocument()
     return try documentSnapshotToPromise(document)
   }
   
@@ -67,7 +67,7 @@ public class PromiseRepository: PromiseRepositoryProtocol {
     let startOfDay = calendar.startOfDay(for: today)
     let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
     
-    var query = db.collection("promises")
+    var query = db.environmentCollection("promises")
       .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: startOfDay))
       .whereField("startAt", isLessThan: Timestamp(date: endOfDay))
       .whereField("status", isEqualTo: PromiseStatus.active.rawValue)
@@ -85,7 +85,7 @@ public class PromiseRepository: PromiseRepositoryProtocol {
   /// 다가오는 약속 조회
   public func getUpcomingPromises(userId: String, limit: Int) async throws -> [PromiseModel] {
     let now = Date()
-    let query = db.collection("promises")
+    let query = db.environmentCollection("promises")
       .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: now))
       .whereField("status", isEqualTo: PromiseStatus.active.rawValue)
       .whereField("isDeleted", isEqualTo: false)
@@ -104,7 +104,7 @@ public class PromiseRepository: PromiseRepositoryProtocol {
   
   /// 활성 약속 조회
   public func getActivePromises(groupId: String, limit: Int) async throws -> [PromiseModel] {
-    let query = db.collection("promises")
+    let query = db.environmentCollection("promises")
       .whereField("groupId", isEqualTo: groupId)
       .whereField("status", isEqualTo: PromiseStatus.active.rawValue)
       .whereField("isDeleted", isEqualTo: false)
@@ -122,7 +122,7 @@ public class PromiseRepository: PromiseRepositoryProtocol {
     let startOfDay = calendar.startOfDay(for: today)
     let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
     
-    let query = db.collection("promises")
+    let query = db.environmentCollection("promises")
       .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: startOfDay))
       .whereField("startAt", isLessThan: Timestamp(date: endOfDay))
       .whereField("status", isEqualTo: PromiseStatus.active.rawValue)
@@ -138,7 +138,7 @@ public class PromiseRepository: PromiseRepositoryProtocol {
   
   /// 약속 실시간 관찰 (단일 문서)
   public func observePromise(id: String) -> AnyPublisher<PromiseModel?, Error> {
-    let ref = db.collection("promises").document(id)
+    let ref = db.environmentCollection("promises").document(id)
     
     return Publishers.FirestoreDocument(document: ref)
       .map { document in

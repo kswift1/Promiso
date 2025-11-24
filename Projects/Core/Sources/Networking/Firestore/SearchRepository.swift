@@ -17,7 +17,7 @@ public class SearchRepository {
     let searchTerm = query.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
     guard !searchTerm.isEmpty else { return [] }
     
-    var firestoreQuery = db.collection("promises")
+    var firestoreQuery = db.environmentCollection("promises")
       .whereField("titleLower", isGreaterThanOrEqualTo: searchTerm)
       .whereField("titleLower", isLessThan: searchTerm + "\u{f8ff}")
       .whereField("status", isEqualTo: PromiseStatus.active.rawValue)
@@ -46,7 +46,7 @@ public class SearchRepository {
     // Firestore의 제한으로 인해 첫 번째 키워드만 사용
     let firstKeyword = keywords.first!.lowercased()
     
-    var firestoreQuery = db.collection("promises")
+    var firestoreQuery = db.environmentCollection("promises")
       .whereField("description", isGreaterThanOrEqualTo: firstKeyword)
       .whereField("description", isLessThan: firstKeyword + "\u{f8ff}")
       .whereField("status", isEqualTo: PromiseStatus.active.rawValue)
@@ -80,7 +80,7 @@ public class SearchRepository {
     let searchTerm = locationName.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
     guard !searchTerm.isEmpty else { return [] }
     
-    var firestoreQuery = db.collection("promises")
+    var firestoreQuery = db.environmentCollection("promises")
       .whereField("location.name", isGreaterThanOrEqualTo: searchTerm)
       .whereField("location.name", isLessThan: searchTerm + "\u{f8ff}")
       .whereField("status", isEqualTo: PromiseStatus.active.rawValue)
@@ -108,7 +108,7 @@ public class SearchRepository {
     let searchTerm = query.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
     guard !searchTerm.isEmpty else { return [] }
     
-    let firestoreQuery = db.collection("groups")
+    let firestoreQuery = db.environmentCollection("groups")
       .whereField("name", isGreaterThanOrEqualTo: searchTerm)
       .whereField("name", isLessThan: searchTerm + "\u{f8ff}")
       .whereField("isDeleted", isEqualTo: false)
@@ -131,7 +131,7 @@ public class SearchRepository {
     let searchTerm = query.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
     guard !searchTerm.isEmpty else { return [] }
     
-    let firestoreQuery = db.collection("users")
+    let firestoreQuery = db.environmentCollection("users")
       .whereField("name", isGreaterThanOrEqualTo: searchTerm)
       .whereField("name", isLessThan: searchTerm + "\u{f8ff}")
       .order(by: "name")
@@ -178,7 +178,7 @@ public class SearchRepository {
     let startKey = calendarKeyGenerator.generateYyyymmddKey(for: startDate)
     let endKey = calendarKeyGenerator.generateYyyymmddKey(for: endDate)
     
-    var firestoreQuery = db.collection("promises")
+    var firestoreQuery = db.environmentCollection("promises")
       .whereField("localYyyymmdd", isGreaterThanOrEqualTo: startKey)
       .whereField("localYyyymmdd", isLessThanOrEqualTo: endKey)
       .whereField("status", isEqualTo: PromiseStatus.active.rawValue)
@@ -203,7 +203,7 @@ public class SearchRepository {
     groupId: String? = nil,
     limit: Int = 20
   ) async throws -> [PromiseDocument] {
-    var firestoreQuery = db.collection("promises")
+    var firestoreQuery = db.environmentCollection("promises")
       .whereField("hostId", isEqualTo: hostId)
       .whereField("status", isEqualTo: PromiseStatus.active.rawValue)
       .whereField("isDeleted", isEqualTo: false)
@@ -233,7 +233,7 @@ public class SearchRepository {
       return Just([]).setFailureType(to: Error.self).eraseToAnyPublisher()
     }
     
-    var firestoreQuery = db.collection("promises")
+    var firestoreQuery = db.environmentCollection("promises")
       .whereField("titleLower", isGreaterThanOrEqualTo: searchTerm)
       .whereField("titleLower", isLessThan: searchTerm + "\u{f8ff}")
       .whereField("status", isEqualTo: PromiseStatus.active.rawValue)

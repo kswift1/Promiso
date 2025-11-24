@@ -34,7 +34,7 @@ public class FirestoreSecurityManager {
   public func isGroupMember(groupId: String, userId: String? = nil) async throws -> Bool {
     guard let userId = userId ?? currentUserId else { return false }
     
-    let ref = db.collection("groups")
+    let ref = db.environmentCollection("groups")
       .document(groupId)
       .collection("members")
       .document(userId)
@@ -47,7 +47,7 @@ public class FirestoreSecurityManager {
   public func isGroupAdmin(groupId: String, userId: String? = nil) async throws -> Bool {
     guard let userId = userId ?? currentUserId else { return false }
     
-    let ref = db.collection("groups").document(groupId)
+    let ref = db.environmentCollection("groups").document(groupId)
     let document = try await ref.getDocument()
     
     // TODO: GroupDocument 대신 Domain 모델 사용하도록 수정
@@ -61,7 +61,7 @@ public class FirestoreSecurityManager {
   public func isPromiseHost(promiseId: String, userId: String? = nil) async throws -> Bool {
     guard let userId = userId ?? currentUserId else { return false }
     
-    let ref = db.collection("promises").document(promiseId)
+    let ref = db.environmentCollection("promises").document(promiseId)
     let document = try await ref.getDocument()
     
     // TODO: PromiseDocument 대신 Domain 모델 사용하도록 수정
@@ -76,7 +76,7 @@ public class FirestoreSecurityManager {
     guard let userId = userId ?? currentUserId else { return false }
     
     // 약속 정보 조회
-    let promiseRef = db.collection("promises").document(promiseId)
+    let promiseRef = db.environmentCollection("promises").document(promiseId)
     let promiseDoc = try await promiseRef.getDocument()
     
     // TODO: PromiseDocument 대신 Domain 모델 사용하도록 수정
@@ -112,7 +112,7 @@ public class FirestoreSecurityManager {
   public func canAccessNotificationData(notificationId: String) async throws -> Bool {
     guard let currentUserId = currentUserId else { return false }
     
-    let ref = db.collection("notifications").document(notificationId)
+    let ref = db.environmentCollection("notifications").document(notificationId)
     let document = try await ref.getDocument()
     
     // TODO: NotificationDocument 대신 Domain 모델 사용하도록 수정

@@ -48,7 +48,7 @@ public class CacheManager {
     }
     
     // Firestore에서 최신 사용자 정보 조회
-    let ref = db.collection("users").document(userId)
+    let ref = db.environmentCollection("users").document(userId)
     let document = try await ref.getDocument()
     
     guard document.exists,
@@ -78,7 +78,7 @@ public class CacheManager {
     }
     
     // Firestore에서 최신 그룹 정보 조회
-    let ref = db.collection("groups").document(groupId)
+    let ref = db.environmentCollection("groups").document(groupId)
     let document = try await ref.getDocument()
     
     guard document.exists,
@@ -131,7 +131,7 @@ public class CacheManager {
   /// 사용자 이름 변경 시 관련 데이터 업데이트
   private func updateUserNameInRelatedData(userId: String, newName: String) async throws {
     // 약속의 hostName 업데이트
-    let promisesQuery = db.collection("promises")
+    let promisesQuery = db.environmentCollection("promises")
       .whereField("hostId", isEqualTo: userId)
       .whereField("isDeleted", isEqualTo: false)
     
@@ -165,7 +165,7 @@ public class CacheManager {
   /// 그룹 이름 변경 시 관련 데이터 업데이트
   private func updateGroupNameInRelatedData(groupId: String, newName: String) async throws {
     // 약속의 groupName 업데이트
-    let promisesQuery = db.collection("promises")
+    let promisesQuery = db.environmentCollection("promises")
       .whereField("groupId", isEqualTo: groupId)
       .whereField("isDeleted", isEqualTo: false)
     
@@ -183,7 +183,7 @@ public class CacheManager {
   
   /// 실제 참석 데이터로부터 카운터 계산
   private func calculateActualCounts(promiseId: String) async throws -> PromiseCounts {
-    let attendancesQuery = db.collection("promises")
+    let attendancesQuery = db.environmentCollection("promises")
       .document(promiseId)
       .collection("attendances")
     
@@ -210,14 +210,14 @@ public class CacheManager {
   /// 자주 사용되는 데이터 캐시 워밍
   public func warmCache(for userId: String) async throws {
     // 사용자 정보 캐시
-    let userRef = db.collection("users").document(userId)
+    let userRef = db.environmentCollection("users").document(userId)
     let userDoc = try await userRef.getDocument()
     if let user = try? userDoc.data(as: UserDocument.self) {
       setCache(user, forKey: "user_\(userId)")
     }
     
     // 사용자가 속한 그룹들 캐시
-    let groupsQuery = db.collection("users")
+    let groupsQuery = db.environmentCollection("users")
       .document(userId)
       .collection("groups")
       .whereField("isDeleted", isEqualTo: false)

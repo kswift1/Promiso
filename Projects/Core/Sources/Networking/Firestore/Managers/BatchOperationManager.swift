@@ -64,7 +64,7 @@ public class BatchOperationManager {
     let batch = db.batch()
     
     for attendance in attendances {
-      let ref = db.collection("promises")
+      let ref = db.environmentCollection("promises")
         .document(promiseId)
         .collection("attendances")
         .document(attendance.userId)
@@ -82,7 +82,7 @@ public class BatchOperationManager {
     let batch = db.batch()
     
     for update in updates {
-      let ref = db.collection("promises")
+      let ref = db.environmentCollection("promises")
         .document(promiseId)
         .collection("attendances")
         .document(update.userId)
@@ -109,7 +109,7 @@ public class BatchOperationManager {
     let batch = db.batch()
     
     for member in members {
-      let ref = db.collection("groups")
+      let ref = db.environmentCollection("groups")
         .document(groupId)
         .collection("members")
         .document(member.userId)
@@ -134,7 +134,7 @@ public class BatchOperationManager {
     let batch = db.batch()
     
     for notification in notifications {
-      let ref = db.collection("notifications").document()
+      let ref = db.environmentCollection("notifications").document()
       try batch.setData(from: notification, forDocument: ref)
     }
     

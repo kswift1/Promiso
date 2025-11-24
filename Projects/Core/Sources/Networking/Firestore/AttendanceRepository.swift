@@ -13,7 +13,7 @@ public class AttendanceRepository {
     _ attendance: AttendanceDocument,
     promiseId: String
   ) async throws {
-    let ref = db.collection("promises")
+    let ref = db.environmentCollection("promises")
       .document(promiseId)
       .collection("attendances")
       .document(attendance.userId)
@@ -28,7 +28,7 @@ public class AttendanceRepository {
     status: AttendanceStatus,
     message: String? = nil
   ) async throws {
-    let ref = db.collection("promises")
+    let ref = db.environmentCollection("promises")
       .document(promiseId)
       .collection("attendances")
       .document(userId)
@@ -47,7 +47,7 @@ public class AttendanceRepository {
   
   /// 참석 상태 조회
   public func getAttendance(promiseId: String, userId: String) async throws -> AttendanceDocument? {
-    let ref = db.collection("promises")
+    let ref = db.environmentCollection("promises")
       .document(promiseId)
       .collection("attendances")
       .document(userId)
@@ -60,7 +60,7 @@ public class AttendanceRepository {
   
   /// 약속의 모든 참석 상태 조회
   public func getAttendances(promiseId: String) async throws -> [AttendanceDocument] {
-    let query = db.collection("promises")
+    let query = db.environmentCollection("promises")
       .document(promiseId)
       .collection("attendances")
       .order(by: "invitedAt")
@@ -130,7 +130,7 @@ public class AttendanceRepository {
     let batch = db.batch()
     
     for attendance in attendances {
-      let ref = db.collection("promises")
+      let ref = db.environmentCollection("promises")
         .document(promiseId)
         .collection("attendances")
         .document(attendance.userId)
@@ -149,7 +149,7 @@ public class AttendanceRepository {
     let batch = db.batch()
     
     for update in updates {
-      let ref = db.collection("promises")
+      let ref = db.environmentCollection("promises")
         .document(promiseId)
         .collection("attendances")
         .document(update.userId)
@@ -173,7 +173,7 @@ public class AttendanceRepository {
   
   /// 약속의 참석 상태 실시간 리스너
   public func observeAttendances(promiseId: String) -> AnyPublisher<[AttendanceDocument], Error> {
-    let query = db.collection("promises")
+    let query = db.environmentCollection("promises")
       .document(promiseId)
       .collection("attendances")
       .order(by: "invitedAt")
@@ -208,7 +208,7 @@ public class AttendanceRepository {
   // MARK: - Helper Methods
   
   private func getPromiseById(_ promiseId: String) async throws -> PromiseDocument? {
-    let ref = db.collection("promises").document(promiseId)
+    let ref = db.environmentCollection("promises").document(promiseId)
     let document = try await ref.getDocument()
     
     guard document.exists else { return nil }
