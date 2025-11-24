@@ -7,6 +7,7 @@
 
 import ComposableArchitecture
 import Foundation
+import CoreNetworking
 
 // MARK: - Error
 
@@ -46,7 +47,7 @@ public struct GroupClient: Sendable {
   public var fetchGroup: @Sendable (_ groupId: String) async throws -> GroupModel
 
   /// 새 그룹 생성
-  public var createGroup: @Sendable (_ name: String, _ emoji: String) async throws -> GroupModel
+  public var createGroup: @Sendable (_ request: CreateGroupRequest) async throws -> GroupModel
 
   /// 그룹 나가기
   public var leaveGroup: @Sendable (_ groupId: String) async throws -> Void
@@ -71,9 +72,9 @@ extension GroupClient: TestDependencyKey {
       try await Task.sleep(for: .seconds(0.5))
       return GroupModel(id: id, emoji: "👞", title: "구두", memberCount: 3)
     },
-    createGroup: { name, emoji in
+    createGroup: { request in
       try await Task.sleep(for: .seconds(1))
-      return GroupModel(id: UUID().uuidString, emoji: emoji, title: name, memberCount: 1)
+      return GroupModel(id: UUID().uuidString, emoji: "👥", title: request.name, memberCount: 1)
     },
     leaveGroup: { _ in
       try await Task.sleep(for: .seconds(0.5))
@@ -117,10 +118,18 @@ extension GroupClient: DependencyKey {
       try await Task.sleep(for: .seconds(1))
       return GroupModel(id: groupId, emoji: "👞", title: "구두", memberCount: 3)
     },
-    createGroup: { name, emoji in
-      // TODO: Domain Repository 연결
-      try await Task.sleep(for: .seconds(1))
-      return GroupModel(id: UUID().uuidString, emoji: emoji, title: name, memberCount: 1)
+    createGroup: { request in
+      let dataSource = GroupRemoteDataSource()
+      let payload = GroupCreationPayload(
+        name: request.name,
+        maxMembers: request.maxMembers,
+        creatorId: request.creatorId,
+        creatorName: request.creatorName,
+        creatorNickname: request.creatorNickname,
+        creatorProfileImageURL: request.creatorProfileImageURL
+      )
+      let groupId = try await dataSource.createGroup(payload)
+      return GroupModel(id: groupId, emoji: "👥", title: request.name, memberCount: 1)
     },
     leaveGroup: { groupId in
       // TODO: Domain Repository 연결

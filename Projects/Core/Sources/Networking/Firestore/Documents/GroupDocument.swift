@@ -19,6 +19,7 @@ public struct GroupDocument: Codable {
   public let defaultMinimumParticipants: Int
   
   // MARK: - 메타데이터
+  public let inviteCode: String
   public let createdBy: String
   public let createdAt: Timestamp
   public let updatedAt: Timestamp
@@ -34,6 +35,7 @@ public struct GroupDocument: Codable {
     maxMembers: Int? = nil,
     requireApproval: Bool = false,
     defaultMinimumParticipants: Int = 2,
+    inviteCode: String,
     createdBy: String,
     createdAt: Timestamp = Timestamp(),
     updatedAt: Timestamp = Timestamp(),
@@ -48,6 +50,7 @@ public struct GroupDocument: Codable {
     self.maxMembers = maxMembers
     self.requireApproval = requireApproval
     self.defaultMinimumParticipants = defaultMinimumParticipants
+    self.inviteCode = inviteCode
     self.createdBy = createdBy
     self.createdAt = createdAt
     self.updatedAt = updatedAt
@@ -67,6 +70,7 @@ extension GroupDocument {
     case maxMembers
     case requireApproval
     case defaultMinimumParticipants
+    case inviteCode
     case createdBy
     case createdAt
     case updatedAt

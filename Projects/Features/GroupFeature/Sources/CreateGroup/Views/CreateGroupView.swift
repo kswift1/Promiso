@@ -1,6 +1,7 @@
 import SwiftUI
 import PhotosUI
 import ComposableArchitecture
+import Domain
 import UIKit
 
 extension CreateGroup {
@@ -36,6 +37,7 @@ extension CreateGroup {
         .padding(.horizontal, 20)
         .padding(.vertical, 24)
       }
+      .scrollDismissesKeyboard(.interactively)
       .onTapGesture {
         dismissKeyboard()
       }
@@ -54,12 +56,32 @@ extension CreateGroup {
       .safeAreaInset(edge: .bottom) {
         BottomButton(
           isValid: store.isValid,
+          isLoading: store.isCreating,
           action: { store.send(.view(.createGroupTapped)) }
         )
       }
       .onAppear {
         store.send(.view(.onAppear))
       }
+      .alert(
+        "그룹 생성에 실패했어요",
+        isPresented: Binding(
+          get: { store.creationError != nil },
+          set: { isPresented in
+            if !isPresented {
+              store.send(.view(.errorAlertDismissed))
+            }
+          }
+        ),
+        actions: {
+          Button("확인", role: .cancel) {
+            store.send(.view(.errorAlertDismissed))
+          }
+        },
+        message: {
+          Text(store.creationError ?? "잠시 후 다시 시도해주세요.")
+        }
+      )
       .background(Color(.systemGray6))
     }
   }
@@ -200,20 +222,28 @@ private struct MaxMembersSection: View {
 
 private struct BottomButton: View {
   let isValid: Bool
+  let isLoading: Bool
   let action: () -> Void
   
   var body: some View {
     VStack(spacing: 8) {
       Button(action: action) {
-        Text(isValid ? "그룹 만들기" : "그룹 이름을 입력하세요")
-          .font(.system(size: 16, weight: .semibold))
-          .foregroundColor(.white)
-          .frame(maxWidth: .infinity)
-          .padding(.vertical, 16)
-          .background(isValid ? Color.blue : Color(.systemGray4))
-          .cornerRadius(12)
+        HStack {
+          if isLoading {
+            ProgressView()
+              .progressViewStyle(.circular)
+              .tint(.white)
+          }
+          Text(isValid ? "그룹 만들기" : "그룹 이름을 입력하세요")
+            .font(.system(size: 16, weight: .semibold))
+        }
+        .foregroundColor(.white)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 16)
+        .background((isValid && !isLoading) ? Color.blue : Color(.systemGray4))
+        .cornerRadius(12)
       }
-      .disabled(!isValid)
+      .disabled(!isValid || isLoading)
       
       Text("그룹을 만들면 자동으로 관리자가 됩니다")
         .font(.system(size: 12))
@@ -229,7 +259,13 @@ private struct BottomButton: View {
 // MARK: - Preview
 
 #Preview {
-  let store = Store(initialState: CreateGroup.Feature.State()) {
+  let store = Store(initialState: CreateGroup.Feature.State(
+    currentUser: UserModel(
+      id: "preview-user",
+      email: "preview@promiso.com",
+      nickname: "프리뷰"
+    )
+  )) {
     CreateGroup.Feature()
   }
   

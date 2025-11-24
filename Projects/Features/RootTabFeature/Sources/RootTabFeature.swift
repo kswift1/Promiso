@@ -48,7 +48,7 @@ extension RootTab {
       /// Group Main State
       var groupMain: GroupMain.Feature.State = GroupMain.Feature.State(
         // FIXME: 스플래시에서 유저정보 가져와서 세팅 필요 - 2025.11.05
-        currentUser: .init(id: "", email: "", nickname: "")
+        currentUser: .init(id: "sungwon", email: "", nickname: "")
       )
       
       public init () {}

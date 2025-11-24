@@ -1,6 +1,8 @@
 import SwiftUI
 import PhotosUI
 import ComposableArchitecture
+import Domain
+import Clients
 
 // MARK: - Feature Namespace
 
@@ -13,9 +15,14 @@ extension CreateGroup {
   // MARK: - Reducer
 
   @Reducer
-  public struct Feature: Equatable {
+  public struct Feature {
+    @Dependency(\.groupClient) var groupClient
 
     public init() {}
+    
+    private enum CancelID {
+      case createGroup
+    }
 
     // MARK: - State
 
@@ -28,12 +35,27 @@ extension CreateGroup {
       // Group Info
       var groupName: String = ""
       var maxMembers: MaxMembers = .five
+      let currentUser: UserModel
+      
+      // Progress & Error
+      var isCreating: Bool = false
+      var creationError: String?
 
-      public init() {}
+      public init(currentUser: UserModel) {
+        self.currentUser = currentUser
+      }
 
       // Validation
       var isValid: Bool {
-        groupName.count >= 2
+        trimmedGroupName.count >= 2
+      }
+      
+      var canSubmit: Bool {
+        isValid && !isCreating
+      }
+      
+      var trimmedGroupName: String {
+        groupName.trimmingCharacters(in: .whitespacesAndNewlines)
       }
 
       var characterCount: Int {
@@ -56,6 +78,7 @@ extension CreateGroup {
         case photoSelected(PhotosPickerItem?)
         case createGroupTapped
         case cancelTapped
+        case errorAlertDismissed
       }
 
       @CasePathable
@@ -98,12 +121,26 @@ extension CreateGroup {
             }
 
           case .createGroupTapped:
-            guard state.isValid else { return .none }
-            // TODO: Create group API call
-            return .send(.delegate(.groupCreated(id: "temp-id")))
+            guard state.canSubmit else { return .none }
+            state.isCreating = true
+            state.creationError = nil
+            let request = state.makeCreateRequest()
+            return .run { send in
+              do {
+                let group = try await groupClient.createGroup(request)
+                await send(.internal(.createGroupResponse(.success(group.id))))
+              } catch {
+                await send(.internal(.createGroupResponse(.failure(error))))
+              }
+            }
+            .cancellable(id: CancelID.createGroup, cancelInFlight: true)
 
           case .cancelTapped:
             return .send(.delegate(.dismiss))
+            
+          case .errorAlertDismissed:
+            state.creationError = nil
+            return .none
           }
 
         case .internal(let internalAction):
@@ -113,10 +150,12 @@ extension CreateGroup {
             return .none
 
           case .createGroupResponse(.success(let groupId)):
+            state.isCreating = false
             return .send(.delegate(.groupCreated(id: groupId)))
 
-          case .createGroupResponse(.failure):
-            // TODO: Handle error
+          case .createGroupResponse(.failure(let error)):
+            state.isCreating = false
+            state.creationError = error.localizedDescription
             return .none
           }
 
@@ -148,3 +187,18 @@ public enum MaxMembers: Int, CaseIterable, Equatable, Sendable {
     "\(rawValue)명"
   }
 }
+
+private extension CreateGroup.Feature.State {
+  func makeCreateRequest() -> CreateGroupRequest {
+    CreateGroupRequest(
+      name: trimmedGroupName,
+      maxMembers: maxMembers.rawValue,
+      creatorId: currentUser.id,
+      creatorName: currentUser.displayName,
+      creatorNickname: currentUser.nickname,
+      creatorProfileImageURL: currentUser.profileImageUrl,
+      photoData: photoData
+    )
+  }
+}
+

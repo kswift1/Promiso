@@ -162,7 +162,9 @@ extension GroupMain {
             return .none
             
           case .createGroup:
-            state.createGroup = CreateGroup.Feature.State()
+            state.createGroup = CreateGroup.Feature.State(
+              currentUser: state.currentUser
+            )
             return .none
             
           case .joinGroup:
