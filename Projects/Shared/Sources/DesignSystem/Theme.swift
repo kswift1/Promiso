@@ -1,5 +1,4 @@
 import SwiftUI
-import Domain
 
 // MARK: - App Theme
 

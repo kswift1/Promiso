@@ -47,6 +47,7 @@ extension GroupMain {
       
       @Presents var createPromise: CreatePromise.Feature.State?
       @Presents var groupDetail: GroupDetailState?
+      @Presents var createGroup: CreateGroup.Feature.State?
       
       public init(currentUser: UserModel) {
         self.currentUser = currentUser
@@ -69,6 +70,8 @@ extension GroupMain {
       
       case createPromise(PresentationAction<CreatePromise.Feature.Action>)
       case groupDetail(PresentationAction<GroupDetailAction>)
+      case createGroup(PresentationAction<CreateGroup.Feature.Action>)
+      
       case path(StackActionOf<Path>)
       
       public enum View: Sendable {
@@ -103,7 +106,7 @@ extension GroupMain {
     public enum GroupDetailAction: Sendable, Equatable {
       case dismiss, settings, toggleNotifications
     }
-
+    
     
     // MARK: - Reducer Body
     public var body: some ReducerOf<Self> {
@@ -159,8 +162,7 @@ extension GroupMain {
             return .none
             
           case .createGroup:
-            state.path.append(.createGroupFeature(.init()))
-//            state.path.append(.createGroup(.init()))
+            state.createGroup = CreateGroup.Feature.State()
             return .none
             
           case .joinGroup:
@@ -229,22 +231,33 @@ extension GroupMain {
         case .createPromise:
           return .none
           
-//        case let .path(.element(id: id, action: .createGroup(.delegate(.dismiss)))):
-//          state.path[id: id] = nil
-//          return .none
-//        
-//        case let .path(.element(id: id, action: .createGroup(.delegate(.groupCreated)))):
-//          state.path[id: id] = nil
-//          return .send(.internal(.fetchGroupList))
-//        
-//        case let .path(.popFromID(id: id)):
-//          state.path[id: id] = nil
-//          return .none
-//        
-//        case .path(.popToRoot):
-//          state.path = .init()
-//          return .none
-        
+        case .createGroup(.presented(.delegate(.dismiss))):
+          state.createGroup = nil
+          return .none
+          
+        case .createGroup(.presented(.delegate(.groupCreated(id: _)))):
+          state.createGroup = nil
+          return .send(.internal(.fetchGroupList))
+          
+        case .createGroup:
+          return .none
+          
+          //        case let .path(.element(id: id, action: .createGroup(.delegate(.dismiss)))):
+          //          state.path[id: id] = nil
+          //          return .none
+          //
+          //        case let .path(.element(id: id, action: .createGroup(.delegate(.groupCreated)))):
+          //          state.path[id: id] = nil
+          //          return .send(.internal(.fetchGroupList))
+          //
+          //        case let .path(.popFromID(id: id)):
+          //          state.path[id: id] = nil
+          //          return .none
+          //
+          //        case .path(.popToRoot):
+          //          state.path = .init()
+          //          return .none
+          
         case .path:
           return .none
           
@@ -258,11 +271,10 @@ extension GroupMain {
         case .binding, .delegate:
           return .none
           
-        case .path:
-          return .none
         }
       }
       .ifLet(\.$createPromise, action: \.createPromise) { CreatePromise.Feature() }
+      .ifLet(\.$createGroup, action: \.createGroup) { CreateGroup.Feature() }
       .forEach(\.path, action: \.path)
     }
   }
@@ -290,8 +302,8 @@ extension GroupMain {
           }
         }
     }
-
-
+    
+    
     
     @ViewBuilder
     private var rootContent: some View {
@@ -306,20 +318,25 @@ extension GroupMain {
       .navigationBarTitleDisplayMode(.inline)
       .toolbar { toolbarContent }
       .onAppear { store.send(.view(.onAppear)) }
-      
       .fullScreenCover(
         store: store.scope(state: \.$createPromise, action: \.createPromise)
       ) { childStore in
         CreatePromise.RootView(store: childStore)
       }
-      
+      .fullScreenCover(
+        store: store.scope(state: \.$createGroup, action: \.createGroup)
+      ) { childStore in
+        NavigationStack {
+          CreateGroup.RootView(store: childStore)
+        }
+      }
       .sheet(
         store: store.scope(state: \.$groupDetail, action: \.groupDetail)
       ) { childStore in
-//        GroupDetailView(store: childStore)
+        //        GroupDetailView(store: childStore)
       }
     }
-
+    
     
     @ViewBuilder
     private var groupDetailView: some View {
@@ -404,7 +421,7 @@ extension GroupMain {
                 .frame(height: 52)
               }
               .adaptivePrimaryButton()
-
+              
               Button {
                 store.send(.view(.joinGroup))
               } label: {
@@ -437,7 +454,7 @@ extension GroupMain {
         }
         
         ToolbarTitleMenu {
-          if let allGroups = store.allGroups, allGroups.isNotEmpty {
+          if let allGroups = store.allGroups, allGroups.isEmpty == false {
             ForEach(allGroups, id: \.id) { group in
               Button {
                 store.send(.view(.groupChanged(group)))
@@ -518,18 +535,3 @@ private extension GroupMain.Feature.State {
     proposalResponding[promiseId] ?? .idle
   }
 }
-
-//private struct DestinationView: View {
-//  let store: Store<GroupMain.Path.State, GroupMain.Path.Action>
-//  
-//  var body: some View {
-//    SwitchStore(store) {
-//      CaseLet(
-//        /GroupMain.Path.State.createGroup,
-//        action: GroupMain.Path.Action.createGroup
-//      ) { createGroupStore in
-//        CreateGroup.RootView(store: createGroupStore)
-//      }
-//    }
-//  }
-//}

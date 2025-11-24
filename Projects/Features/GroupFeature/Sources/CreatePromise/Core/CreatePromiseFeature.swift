@@ -313,7 +313,6 @@ extension CreatePromise {
         }
         .frame(height: geometry.size.height)
       }
-      .navigationBarHidden(true)
       .ignoresSafeArea(.keyboard, edges: .bottom)
       .onAppear {
         store.send(.view(.onAppear))
@@ -441,4 +440,3 @@ extension CreatePromiseStep {
     }
   }
 }
-

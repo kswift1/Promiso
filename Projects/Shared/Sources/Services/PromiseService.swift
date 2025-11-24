@@ -1,6 +1,5 @@
 import Foundation
 import Dependencies
-import Domain
 
 // MARK: - Promise Request Models
 

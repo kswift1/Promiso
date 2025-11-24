@@ -27,14 +27,7 @@ extension CreateGroup {
 
       // Group Info
       var groupName: String = ""
-      var themeColor: ThemeColor = .blue
-      var description: String = ""
-
-      // Advanced Settings
-      var isAdvancedSettingsExpanded: Bool = false
-      var maxMembers: MaxMembers = .twenty
-      var requireApproval: Bool = false
-      var defaultMinParticipants: Int = 2
+      var maxMembers: MaxMembers = .five
 
       public init() {}
 
@@ -46,10 +39,7 @@ extension CreateGroup {
       var characterCount: Int {
         groupName.count
       }
-
-      var descriptionCount: Int {
-        description.count
-      }
+      
     }
 
     // MARK: - Action
@@ -64,7 +54,6 @@ extension CreateGroup {
       public enum View: Sendable {
         case onAppear
         case photoSelected(PhotosPickerItem?)
-        case toggleAdvancedSettings
         case createGroupTapped
         case cancelTapped
       }
@@ -108,10 +97,6 @@ extension CreateGroup {
               }
             }
 
-          case .toggleAdvancedSettings:
-            state.isAdvancedSettingsExpanded.toggle()
-            return .none
-
           case .createGroupTapped:
             guard state.isValid else { return .none }
             // TODO: Create group API call
@@ -146,40 +131,18 @@ extension CreateGroup {
   }
 }
 
-// MARK: - Theme Color
-
-public enum ThemeColor: String, CaseIterable, Equatable, Sendable {
-  case blue = "파랑"
-  case red = "빨강"
-  case green = "초록"
-  case purple = "보라"
-  case pink = "분홍"
-  case orange = "주황"
-  case teal = "청록"
-  case indigo = "남색"
-
-  var color: Color {
-    switch self {
-    case .blue: return .blue
-    case .red: return .red
-    case .green: return .green
-    case .purple: return .purple
-    case .pink: return .pink
-    case .orange: return .orange
-    case .teal: return .teal
-    case .indigo: return .indigo
-    }
-  }
-}
-
 // MARK: - Max Members
 
 public enum MaxMembers: Int, CaseIterable, Equatable, Sendable {
+  case two = 2
+  case three = 3
+  case four = 4
+  case five = 5
+  case six = 6
+  case seven = 7
+  case eight = 8
+  case nine = 9
   case ten = 10
-  case twenty = 20
-  case thirty = 30
-  case fifty = 50
-  case hundred = 100
 
   var displayText: String {
     "\(rawValue)명"
