@@ -47,7 +47,7 @@ public struct GroupClient: Sendable {
   public var fetchGroup: @Sendable (_ groupId: String) async throws -> GroupModel
 
   /// 새 그룹 생성
-  public var createGroup: @Sendable (_ request: CreateGroupRequest) async throws -> GroupModel
+  public var createGroup: @Sendable (_ request: CreateGroupRequest) async throws -> GroupCreationResult
 
   /// 그룹 나가기
   public var leaveGroup: @Sendable (_ groupId: String) async throws -> Void
@@ -74,7 +74,11 @@ extension GroupClient: TestDependencyKey {
     },
     createGroup: { request in
       try await Task.sleep(for: .seconds(1))
-      return GroupModel(id: UUID().uuidString, emoji: "👥", title: request.name, memberCount: 1)
+      return GroupCreationResult(
+        id: UUID().uuidString,
+        name: request.name,
+        inviteCode: "ABC123"
+      )
     },
     leaveGroup: { _ in
       try await Task.sleep(for: .seconds(0.5))
@@ -128,8 +132,12 @@ extension GroupClient: DependencyKey {
         creatorNickname: request.creatorNickname,
         creatorProfileImageURL: request.creatorProfileImageURL
       )
-      let groupId = try await dataSource.createGroup(payload)
-      return GroupModel(id: groupId, emoji: "👥", title: request.name, memberCount: 1)
+      let result = try await dataSource.createGroup(payload)
+      return GroupCreationResult(
+        id: result.id,
+        name: request.name,
+        inviteCode: result.inviteCode
+      )
     },
     leaveGroup: { groupId in
       // TODO: Domain Repository 연결

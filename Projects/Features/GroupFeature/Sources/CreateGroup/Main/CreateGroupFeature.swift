@@ -40,6 +40,7 @@ extension CreateGroup {
       // Progress & Error
       var isCreating: Bool = false
       var creationError: String?
+      var creationResult: GroupCreationResult?
 
       public init(currentUser: UserModel) {
         self.currentUser = currentUser
@@ -79,12 +80,13 @@ extension CreateGroup {
         case createGroupTapped
         case cancelTapped
         case errorAlertDismissed
+        case successAcknowledged
       }
 
       @CasePathable
       public enum Internal: Sendable {
         case photoLoaded(Data?)
-        case createGroupResponse(Result<String, Error>)
+        case createGroupResponse(Result<GroupCreationResult, Error>)
       }
 
       @CasePathable
@@ -127,8 +129,8 @@ extension CreateGroup {
             let request = state.makeCreateRequest()
             return .run { send in
               do {
-                let group = try await groupClient.createGroup(request)
-                await send(.internal(.createGroupResponse(.success(group.id))))
+                let result = try await groupClient.createGroup(request)
+                await send(.internal(.createGroupResponse(.success(result))))
               } catch {
                 await send(.internal(.createGroupResponse(.failure(error))))
               }
@@ -141,6 +143,11 @@ extension CreateGroup {
           case .errorAlertDismissed:
             state.creationError = nil
             return .none
+            
+          case .successAcknowledged:
+            guard let result = state.creationResult else { return .none }
+            state.creationResult = nil
+            return .send(.delegate(.groupCreated(id: result.id)))
           }
 
         case .internal(let internalAction):
@@ -149,9 +156,10 @@ extension CreateGroup {
             state.photoData = data
             return .none
 
-          case .createGroupResponse(.success(let groupId)):
+          case .createGroupResponse(.success(let result)):
             state.isCreating = false
-            return .send(.delegate(.groupCreated(id: groupId)))
+            state.creationResult = result
+            return .none
 
           case .createGroupResponse(.failure(let error)):
             state.isCreating = false
@@ -163,6 +171,8 @@ extension CreateGroup {
           return .none
 
         case .delegate:
+          state.creationResult = nil
+          state.isCreating = false
           return .none
         }
       }
@@ -201,4 +211,3 @@ private extension CreateGroup.Feature.State {
     )
   }
 }
-

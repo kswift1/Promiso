@@ -2,6 +2,7 @@ import SwiftUI
 import PhotosUI
 import ComposableArchitecture
 import Domain
+import Clients
 import UIKit
 
 extension CreateGroup {
@@ -13,52 +14,55 @@ extension CreateGroup {
     }
     
     public var body: some View {
-      ScrollView {
-        VStack(spacing: 24) {
-          // Photo Upload Section
-          PhotoUploadSection(
-            photoData: store.photoData,
-            selectedPhoto: $store.selectedPhoto.sending(\.view.photoSelected)
-          )
-          
-          // Group Name Section
-          GroupNameSection(
-            groupName: $store.groupName,
-            characterCount: store.characterCount
-          )
-          
-          // Max Members Section
-          MaxMembersSection(
-            maxMembers: $store.maxMembers
-          )
-          
-          Spacer()
+      NavigationStack {
+        ScrollView {
+          VStack(spacing: 24) {
+            PhotoUploadSection(
+              photoData: store.photoData,
+              selectedPhoto: $store.selectedPhoto.sending(\.view.photoSelected)
+            )
+            
+            GroupNameSection(
+              groupName: $store.groupName,
+              characterCount: store.characterCount
+            )
+            
+            MaxMembersSection(
+              maxMembers: $store.maxMembers
+            )
+            
+            Spacer()
+          }
+          .padding(.horizontal, 20)
+          .padding(.vertical, 24)
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 24)
-      }
-      .scrollDismissesKeyboard(.interactively)
-      .onTapGesture {
-        dismissKeyboard()
-      }
-      .navigationTitle("그룹 만들기")
-      .navigationBarTitleDisplayMode(.inline)
-      .toolbar {
-        ToolbarItem(placement: .topBarLeading) {
-          Button {
-            store.send(.view(.cancelTapped))
-          } label: {
-            Image(systemName: "xmark")
-              .font(.system(size: 16, weight: .semibold))
+        .scrollDismissesKeyboard(.interactively)
+        .onTapGesture {
+          dismissKeyboard()
+        }
+        .navigationTitle("그룹 만들기")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+          ToolbarItem(placement: .topBarLeading) {
+            Button {
+              store.send(.view(.cancelTapped))
+            } label: {
+              Image(systemName: "xmark")
+            }
           }
         }
-      }
-      .safeAreaInset(edge: .bottom) {
-        BottomButton(
-          isValid: store.isValid,
-          isLoading: store.isCreating,
-          action: { store.send(.view(.createGroupTapped)) }
-        )
+        .safeAreaInset(edge: .bottom) {
+          BottomButton(
+            isInputValid: store.isValid,
+            isLoading: store.isCreating,
+            action: { store.send(.view(.createGroupTapped)) }
+          )
+        }
+        .navigationDestination(item: $store.creationResult) { result in
+          CreateGroupSuccessView(result: result) {
+            store.send(.view(.successAcknowledged))
+          }
+        }
       }
       .onAppear {
         store.send(.view(.onAppear))
@@ -221,7 +225,7 @@ private struct MaxMembersSection: View {
 // MARK: - Bottom Button
 
 private struct BottomButton: View {
-  let isValid: Bool
+  let isInputValid: Bool
   let isLoading: Bool
   let action: () -> Void
   
@@ -234,16 +238,16 @@ private struct BottomButton: View {
               .progressViewStyle(.circular)
               .tint(.white)
           }
-          Text(isValid ? "그룹 만들기" : "그룹 이름을 입력하세요")
+          Text(isInputValid ? "그룹 만들기" : "그룹 이름을 입력하세요")
             .font(.system(size: 16, weight: .semibold))
         }
         .foregroundColor(.white)
         .frame(maxWidth: .infinity)
         .padding(.vertical, 16)
-        .background((isValid && !isLoading) ? Color.blue : Color(.systemGray4))
+        .background((isInputValid && !isLoading) ? Color.blue : Color(.systemGray4))
         .cornerRadius(12)
       }
-      .disabled(!isValid || isLoading)
+      .disabled(!isInputValid || isLoading)
       
       Text("그룹을 만들면 자동으로 관리자가 됩니다")
         .font(.system(size: 12))

@@ -54,7 +54,7 @@ public final class GroupRemoteDataSource {
     self.environmentManager = environmentManager
   }
   
-  public func createGroup(_ payload: GroupCreationPayload) async throws -> String {
+  public func createGroup(_ payload: GroupCreationPayload) async throws -> (id: String, inviteCode: String) {
     guard !payload.creatorId.isEmpty else {
       throw GroupRemoteDataSourceError.invalidCreator
     }
@@ -98,7 +98,7 @@ public final class GroupRemoteDataSource {
       .document(payload.creatorId)
       .setData(from: memberDocument)
     
-    return groupRef.documentID
+    return (groupRef.documentID, inviteCode)
   }
   
   private func generateUniqueInviteCode(
