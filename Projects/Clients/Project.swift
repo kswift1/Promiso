@@ -15,6 +15,7 @@ let project = Project(
       dependencies: [
         .project(target: "Domain", path: "../Domain"),
         .project(target: "CoreNetworking", path: "../Core"),
+        .project(target: "CoreInfrastructure", path: "../Core"),
         .project(target: "ExternalDependency", path: "../ExternalDependency")
       ]
     ),

@@ -61,7 +61,6 @@ extension Auth {
       case passwordChanged(String)
       case loginTapped
       case signupTapped
-      case kakaoLoginTapped
       case googleLoginTapped
       case appleLoginCompleted(Result<ASAuthorization, Error>)
       case _authResponse(Result<Void, AuthClientError>)
@@ -106,19 +105,6 @@ extension Auth {
           return .run { [email = state.email, password = state.password] send in
             do {
               try await authClient.signup(email, password, "", nil)
-              await send(._authResponse(.success(())))
-            } catch {
-              let clientError = (error as? AuthClientError) ?? .unknown
-              await send(._authResponse(.failure(clientError)))
-            }
-          }
-          
-        case .kakaoLoginTapped:
-          state.isLoading = true
-          state.errorMessage = nil
-          return .run { send in
-            do {
-              _ = try await authClient.signInWithKakao()
               await send(._authResponse(.success(())))
             } catch {
               let clientError = (error as? AuthClientError) ?? .unknown
@@ -191,62 +177,11 @@ extension Auth {
         Text("로그인")
           .font(.title2.bold())
         
-        VStack(alignment: .leading, spacing: 12) {
-          TextField("이메일", text: $store.email.sending(\.emailChanged))
-            .textContentType(.emailAddress)
-            .keyboardType(.emailAddress)
-            .autocapitalization(.none)
-            .disableAutocorrection(true)
-            .textFieldStyle(.roundedBorder)
-          
-          SecureField("비밀번호", text: $store.password.sending(\.passwordChanged))
-            .textContentType(.password)
-            .textFieldStyle(.roundedBorder)
-        }
-        
         if let errorMessage = store.errorMessage {
           Text(errorMessage)
             .foregroundColor(.red)
             .font(.footnote)
         }
-        
-        HStack(spacing: 12) {
-          Button {
-            store.send(.loginTapped)
-          } label: {
-            if store.isLoading {
-              ProgressView()
-                .progressViewStyle(.circular)
-                .frame(maxWidth: .infinity)
-            } else {
-              Text("로그인")
-                .frame(maxWidth: .infinity)
-            }
-          }
-          .buttonStyle(.borderedProminent)
-          .disabled(store.isLoading)
-          
-          Button {
-            store.send(.signupTapped)
-          } label: {
-            Text("회원가입")
-              .frame(maxWidth: .infinity)
-          }
-          .buttonStyle(.bordered)
-          .disabled(store.isLoading)
-        }
-        .padding(.top, 8)
-        
-        Button {
-          store.send(.kakaoLoginTapped)
-        } label: {
-          Text("카카오로 시작하기")
-            .frame(maxWidth: .infinity)
-        }
-        .buttonStyle(.borderedProminent)
-        .tint(.yellow)
-        .foregroundColor(.black)
-        .disabled(store.isLoading)
         
         Button {
           store.send(.googleLoginTapped)
@@ -281,36 +216,6 @@ extension Auth {
         Spacer()
       }
       .padding()
-    }
-    
-    func handleSignInButton() {
-      // Find the current window scene.
-      guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene else {
-        print("There is no active window scene")
-        return
-      }
-      
-      // Get the root view controller from the window scene.
-      guard
-        let rootViewController = windowScene.windows.first(where: { $0.isKeyWindow })?
-          .rootViewController
-      else {
-        print("There is no key window or root view controller")
-        return
-      }
-      
-      // Start the sign-in process.
-      GIDSignIn.sharedInstance.signIn(
-        withPresenting: rootViewController
-      ) { signInResult, error in
-        guard let result = signInResult else {
-          // Inspect error
-          print("Error signing in: \(error?.localizedDescription ?? "No error description")")
-          return
-        }
-        // If sign in succeeded, display the app's main content View.
-        print("ID Token: \(result.user.idToken?.tokenString ?? "")")
-      }
     }
   }
 }

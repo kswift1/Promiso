@@ -9,9 +9,3 @@
 @_exported import FirebaseCrashlytics
 @_exported import RenderMeThis
 @_exported import GoogleSignIn
-@_exported import KakaoSDKCommon
-@_exported import KakaoSDKAuth
-@_exported import KakaoSDKUser
-@_exported import KakaoSDKCommon
-@_exported import KakaoSDKAuth
-@_exported import KakaoSDKUser

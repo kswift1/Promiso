@@ -1,12 +1,12 @@
 import AuthenticationServices
 import ComposableArchitecture
+import CoreInfrastructure
 import FirebaseCore
+import FirebaseAuth
 import Foundation
-import UIKit
 import GoogleSignIn
 import GoogleSignInSwift
-import KakaoSDKAuth
-import KakaoSDKUser
+import UIKit
 
 // MARK: - Error
 
@@ -45,35 +45,37 @@ public struct AuthTokenBundle: Equatable {
   public let provider: AuthProvider
   public let identityToken: String?
   public let accessToken: String?
-  public let refreshToken: String?
   public let userIdentifier: String
   
   public init(
     provider: AuthProvider,
     identityToken: String?,
     accessToken: String?,
-    refreshToken: String?,
     userIdentifier: String
   ) {
     self.provider = provider
     self.identityToken = identityToken
     self.accessToken = accessToken
-    self.refreshToken = refreshToken
     self.userIdentifier = userIdentifier
   }
 }
 
 public enum AuthProvider: Equatable {
   case apple
-  case kakao
   case google
+  
+  var identifier: String {
+    switch self {
+    case .apple: return "apple"
+    case .google: return "google"
+    }
+  }
 }
 
 // MARK: - Platform Auth Providers
 
 public protocol PlatformAuthProviding {
   func signInWithApple(_ authorization: ASAuthorization) async throws -> AuthTokenBundle
-  func signInWithKakao() async throws -> AuthTokenBundle
   func signInWithGoogle() async throws -> AuthTokenBundle
 }
 
@@ -95,46 +97,7 @@ public struct PlatformAuthProvider: PlatformAuthProviding, Sendable {
       provider: .apple,
       identityToken: tokenString,
       accessToken: nil,
-      refreshToken: nil,
       userIdentifier: appleIDCredential.user
-    )
-  }
-  
-  @MainActor
-  public func signInWithKakao() async throws -> AuthTokenBundle {
-    let oauthToken = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<OAuthToken, Error>) in
-      if UserApi.isKakaoTalkLoginAvailable() {
-        UserApi.shared.loginWithKakaoTalk { token, error in
-          if let error { continuation.resume(throwing: error); return }
-          guard let token else { continuation.resume(throwing: AuthClientError.unknown); return }
-          continuation.resume(returning: token)
-        }
-      } else {
-        UserApi.shared.loginWithKakaoAccount { token, error in
-          if let error { continuation.resume(throwing: error); return }
-          guard let token else { continuation.resume(throwing: AuthClientError.unknown); return }
-          continuation.resume(returning: token)
-        }
-      }
-    }
-    
-    let userId: String = try await withCheckedThrowingContinuation { continuation in
-      UserApi.shared.me { user, error in
-        if let error { continuation.resume(throwing: error); return }
-        if let id = user?.id {
-          continuation.resume(returning: String(id))
-        } else {
-          continuation.resume(throwing: AuthClientError.unknown)
-        }
-      }
-    }
-    
-    return AuthTokenBundle(
-      provider: .kakao,
-      identityToken: oauthToken.idToken,
-      accessToken: oauthToken.accessToken,
-      refreshToken: oauthToken.refreshToken,
-      userIdentifier: userId
     )
   }
   
@@ -152,7 +115,6 @@ public struct PlatformAuthProvider: PlatformAuthProviding, Sendable {
       provider: .google,
       identityToken: user.idToken?.tokenString,
       accessToken: user.accessToken.tokenString,
-      refreshToken: nil,
       userIdentifier: user.userID ?? ""
     )
   }
@@ -166,9 +128,9 @@ public struct AuthClient: Sendable {
   public var signup: @Sendable (_ email: String, _ password: String, _ name: String, _ phone: String?) async throws -> Void = { _, _, _, _ in }
   public var logout: @Sendable () async throws -> Void = {}
   public var isAuthenticated: @Sendable () async -> Bool = { false }
-  public var signInWithApple: @Sendable (_ authorization: ASAuthorization) async throws -> AuthTokenBundle = { _ in .init(provider: .apple, identityToken: nil, accessToken: nil, refreshToken: nil, userIdentifier: "") }
-  public var signInWithKakao: @Sendable () async throws -> AuthTokenBundle = { .init(provider: .kakao, identityToken: nil, accessToken: nil, refreshToken: nil, userIdentifier: "") }
-  public var signInWithGoogle: @Sendable () async throws -> AuthTokenBundle = { .init(provider: .google, identityToken: nil, accessToken: nil, refreshToken: nil, userIdentifier: "") }
+  public var signInWithApple: @Sendable (_ authorization: ASAuthorization) async throws -> AuthTokenBundle = { _ in .init(provider: .apple, identityToken: nil, accessToken: nil, userIdentifier: "") }
+  public var signInWithGoogle: @Sendable () async throws -> AuthTokenBundle = { .init(provider: .google, identityToken: nil, accessToken: nil, userIdentifier: "") }
+  public var clearSession: @Sendable () async -> Void = {}
 }
 
 // MARK: - Test / Preview
@@ -179,9 +141,23 @@ extension AuthClient: TestDependencyKey {
     signup: { _, _, _, _ in },
     logout: {},
     isAuthenticated: { false },
-    signInWithApple: { _ in .init(provider: .apple, identityToken: nil, accessToken: nil, refreshToken: nil, userIdentifier: "preview") },
-    signInWithKakao: { .init(provider: .kakao, identityToken: nil, accessToken: nil, refreshToken: nil, userIdentifier: "preview") },
-    signInWithGoogle: { .init(provider: .google, identityToken: nil, accessToken: nil, refreshToken: nil, userIdentifier: "preview") }
+    signInWithApple: {
+      _ in .init(
+        provider: .apple,
+        identityToken: nil,
+        accessToken: nil,
+        userIdentifier: "preview"
+      )
+    },
+    signInWithGoogle: {
+      .init(
+        provider: .google,
+        identityToken: nil,
+        accessToken: nil,
+        userIdentifier: "preview"
+      )
+    },
+    clearSession: {}
   )
   
   public static let testValue = Self(
@@ -190,8 +166,8 @@ extension AuthClient: TestDependencyKey {
     logout: unimplemented("\(Self.self).logout"),
     isAuthenticated: unimplemented("\(Self.self).isAuthenticated", placeholder: false),
     signInWithApple: unimplemented("\(Self.self).signInWithApple"),
-    signInWithKakao: unimplemented("\(Self.self).signInWithKakao"),
-    signInWithGoogle: unimplemented("\(Self.self).signInWithGoogle")
+    signInWithGoogle: unimplemented("\(Self.self).signInWithGoogle"),
+    clearSession: unimplemented("\(Self.self).clearSession")
   )
 }
 
@@ -217,6 +193,7 @@ extension AuthClient: DependencyKey {
   public static let liveValue: AuthClient = {
     let session = InMemoryAuthSession()
     let provider = PlatformAuthProvider()
+    let keychain = KeychainStorage()
     
     return Self(
       login: { email, password in
@@ -233,24 +210,27 @@ extension AuthClient: DependencyKey {
       },
       logout: {
         await session.logout()
+        try? clearStoredSession(in: keychain)
       },
       isAuthenticated: {
         await session.status()
       },
       signInWithApple: { authorization in
         let tokenBundle = try await provider.signInWithApple(authorization)
+        try await signInWithFirebase(bundle: tokenBundle)
         await session.login()
-        return tokenBundle
-      },
-      signInWithKakao: {
-        let tokenBundle = try await provider.signInWithKakao()
-        await session.login()
+        try store(bundle: tokenBundle, in: keychain)
         return tokenBundle
       },
       signInWithGoogle: {
         let tokenBundle = try await provider.signInWithGoogle()
+        try await signInWithFirebase(bundle: tokenBundle)
         await session.login()
+        try store(bundle: tokenBundle, in: keychain)
         return tokenBundle
+      },
+      clearSession: {
+        try? clearStoredSession(in: keychain)
       }
     )
   }()
@@ -262,5 +242,65 @@ extension DependencyValues {
   public var authClient: AuthClient {
     get { self[AuthClient.self] }
     set { self[AuthClient.self] = newValue }
+  }
+}
+
+// MARK: - Keychain helpers
+
+private enum AuthKeychainKeys {
+  static let provider = "auth.provider"
+  static let userId = "auth.userId"
+  static let idToken = "auth.idToken"
+  static let accessToken = "auth.accessToken"
+}
+
+private func store(bundle: AuthTokenBundle, in keychain: KeychainStorage) throws {
+  try keychain.setString(bundle.provider.identifier, for: AuthKeychainKeys.provider)
+  try keychain.setString(bundle.userIdentifier, for: AuthKeychainKeys.userId)
+  
+  if let idToken = bundle.identityToken {
+    try keychain.setString(idToken, for: AuthKeychainKeys.idToken)
+  } else {
+    try? keychain.delete(AuthKeychainKeys.idToken)
+  }
+  
+  if let accessToken = bundle.accessToken {
+    try keychain.setString(accessToken, for: AuthKeychainKeys.accessToken)
+  } else {
+    try? keychain.delete(AuthKeychainKeys.accessToken)
+  }
+}
+
+private func clearStoredSession(in keychain: KeychainStorage) throws {
+  try? keychain.delete(AuthKeychainKeys.provider)
+  try? keychain.delete(AuthKeychainKeys.userId)
+  try? keychain.delete(AuthKeychainKeys.idToken)
+  try? keychain.delete(AuthKeychainKeys.accessToken)
+}
+
+// MARK: - Firebase Auth linkage
+
+private func signInWithFirebase(bundle: AuthTokenBundle) async throws {
+  switch bundle.provider {
+  case .apple:
+    guard let idToken = bundle.identityToken else {
+      throw AuthClientError.missingIdentityToken
+    }
+    let credential = OAuthProvider.appleCredential(
+      withIDToken: idToken,
+      rawNonce: nil,
+      fullName: nil
+    )
+    _ = try await Auth.auth().signIn(with: credential)
+    
+  case .google:
+    guard
+      let idToken = bundle.identityToken,
+      let accessToken = bundle.accessToken
+    else {
+      throw AuthClientError.missingIdentityToken
+    }
+    let credential = GoogleAuthProvider.credential(withIDToken: idToken, accessToken: accessToken)
+    _ = try await Auth.auth().signIn(with: credential)
   }
 }

@@ -11,9 +11,6 @@ public enum ExternalDeps: CaseIterable {
   
   /// SwiftUI Debugging Tool
   case loupe
-  
-  /// Kakao
-  case KakaoSDK
 
   public static func allExternalDeps() -> [TargetDependency] {
     ExternalDeps.allCases.flatMap { $0.targetDependency }
@@ -34,13 +31,6 @@ public enum ExternalDeps: CaseIterable {
       
     case .googleSDK:
       return [.external(name: "GoogleSignInSwift")]
-      
-    case .KakaoSDK:
-      return [
-        "KakaoSDKCommon",
-        "KakaoSDKAuth",
-        "KakaoSDKUser"
-      ].map { .external(name: $0) }
       
     case .loupe:
       return [.external(name: "RenderMeThis")]
