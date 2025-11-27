@@ -1,6 +1,8 @@
 import AuthenticationServices
 import ComposableArchitecture
 import Foundation
+import KakaoSDKAuth
+import KakaoSDKUser
 
 // MARK: - Error
 
@@ -37,13 +39,104 @@ public enum AuthClientError: Error, Equatable {
 
 public struct AuthTokenBundle: Equatable {
   public let provider: AuthProvider
-  public let identityToken: String
+  public let identityToken: String?
+  public let accessToken: String?
+  public let refreshToken: String?
   public let userIdentifier: String
   
-  public init(provider: AuthProvider, identityToken: String, userIdentifier: String) {
+  public init(
+    provider: AuthProvider,
+    identityToken: String?,
+    accessToken: String?,
+    refreshToken: String?,
+    userIdentifier: String
+  ) {
     self.provider = provider
     self.identityToken = identityToken
+    self.accessToken = accessToken
+    self.refreshToken = refreshToken
     self.userIdentifier = userIdentifier
+  }
+}
+
+public enum AuthProvider: Equatable {
+  case apple
+  case kakao
+  case google
+}
+
+// MARK: - Platform Auth Providers
+
+public protocol PlatformAuthProviding {
+  func signInWithApple(_ authorization: ASAuthorization) async throws -> AuthTokenBundle
+  func signInWithKakao() async throws -> AuthTokenBundle
+  func signInWithGoogle() async throws -> AuthTokenBundle
+}
+
+public struct PlatformAuthProvider: PlatformAuthProviding, Sendable {
+  public init() {}
+  
+  public func signInWithApple(_ authorization: ASAuthorization) async throws -> AuthTokenBundle {
+    guard let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential else {
+      throw AuthClientError.invalidAppleCredential
+    }
+    guard let identityToken = appleIDCredential.identityToken,
+          let tokenString = String(data: identityToken, encoding: .utf8) else {
+      throw AuthClientError.missingIdentityToken
+    }
+    
+    return AuthTokenBundle(
+      provider: .apple,
+      identityToken: tokenString,
+      accessToken: nil,
+      refreshToken: nil,
+      userIdentifier: appleIDCredential.user
+    )
+  }
+  
+  public func signInWithKakao() async throws -> AuthTokenBundle {
+    let oauthToken = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<OAuthToken, Error>) in
+      if UserApi.isKakaoTalkLoginAvailable() {
+        DispatchQueue.main.async {
+          UserApi.shared.loginWithKakaoTalk { token, error in
+            if let error { continuation.resume(throwing: error); return }
+            guard let token else { continuation.resume(throwing: AuthClientError.unknown); return }
+            continuation.resume(returning: token)
+          }
+        }
+      } else {
+        DispatchQueue.main.async {
+          UserApi.shared.loginWithKakaoAccount { token, error in
+            if let error { continuation.resume(throwing: error); return }
+            guard let token else { continuation.resume(throwing: AuthClientError.unknown); return }
+            continuation.resume(returning: token)
+          }
+        }
+      }
+    }
+    
+    let userId: String = try await withCheckedThrowingContinuation { continuation in
+      UserApi.shared.me { user, error in
+        if let error { continuation.resume(throwing: error); return }
+        if let id = user?.id {
+          continuation.resume(returning: String(id))
+        } else {
+          continuation.resume(throwing: AuthClientError.unknown)
+        }
+      }
+    }
+    
+    return AuthTokenBundle(
+      provider: .kakao,
+      identityToken: oauthToken.idToken,
+      accessToken: oauthToken.accessToken,
+      refreshToken: oauthToken.refreshToken,
+      userIdentifier: userId
+    )
+  }
+  
+  public func signInWithGoogle() async throws -> AuthTokenBundle {
+    throw AuthClientError.providerUnavailable
   }
 }
 
@@ -56,6 +149,7 @@ public struct AuthClient: Sendable {
   public var logout: @Sendable () async throws -> Void = {}
   public var isAuthenticated: @Sendable () async -> Bool = { false }
   public var signInWithApple: @Sendable (_ authorization: ASAuthorization) async throws -> Void = { _ in }
+  public var signInWithKakao: @Sendable () async throws -> Void = {}
 }
 
 // MARK: - Test / Preview
@@ -66,7 +160,8 @@ extension AuthClient: TestDependencyKey {
     signup: { _, _, _, _ in },
     logout: {},
     isAuthenticated: { false },
-    signInWithApple: { _ in }
+    signInWithApple: { _ in },
+    signInWithKakao: {}
   )
   
   public static let testValue = Self(
@@ -74,7 +169,8 @@ extension AuthClient: TestDependencyKey {
     signup: unimplemented("\(Self.self).signup"),
     logout: unimplemented("\(Self.self).logout"),
     isAuthenticated: unimplemented("\(Self.self).isAuthenticated", placeholder: false),
-    signInWithApple: unimplemented("\(Self.self).signInWithApple")
+    signInWithApple: unimplemented("\(Self.self).signInWithApple"),
+    signInWithKakao: unimplemented("\(Self.self).signInWithKakao")
   )
 }
 
@@ -124,6 +220,13 @@ extension AuthClient: DependencyKey {
         let tokenBundle = try await provider.signInWithApple(authorization)
         
         // TODO: 서버 교환 로직 추가 (tokenBundle.identityToken 전달)
+        _ = tokenBundle.userIdentifier
+        await session.login()
+      },
+      signInWithKakao: {
+        let tokenBundle = try await provider.signInWithKakao()
+        
+        // TODO: 서버 교환 로직 추가 (tokenBundle.accessToken / identityToken 전달)
         _ = tokenBundle.userIdentifier
         await session.login()
       }

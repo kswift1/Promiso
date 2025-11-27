@@ -8,3 +8,6 @@
 @_exported import FirebaseFirestore
 @_exported import FirebaseCrashlytics
 @_exported import RenderMeThis
+@_exported import KakaoSDKCommon
+@_exported import KakaoSDKAuth
+@_exported import KakaoSDKUser

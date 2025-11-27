@@ -57,6 +57,7 @@ extension Auth {
       case passwordChanged(String)
       case loginTapped
       case signupTapped
+      case kakaoLoginTapped
       case appleLoginCompleted(Result<ASAuthorization, Error>)
       case _authResponse(Result<Void, AuthClientError>)
       case delegate(Delegate)
@@ -100,6 +101,19 @@ extension Auth {
           return .run { [email = state.email, password = state.password] send in
             do {
               try await authClient.signup(email, password, "", nil)
+              await send(._authResponse(.success(())))
+            } catch {
+              let clientError = (error as? AuthClientError) ?? .unknown
+              await send(._authResponse(.failure(clientError)))
+            }
+          }
+        
+        case .kakaoLoginTapped:
+          state.isLoading = true
+          state.errorMessage = nil
+          return .run { send in
+            do {
+              try await authClient.signInWithKakao()
               await send(._authResponse(.success(())))
             } catch {
               let clientError = (error as? AuthClientError) ?? .unknown
@@ -204,6 +218,17 @@ extension Auth {
           .disabled(store.isLoading)
         }
         .padding(.top, 8)
+        
+        Button {
+          store.send(.kakaoLoginTapped)
+        } label: {
+          Text("카카오로 시작하기")
+            .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.borderedProminent)
+        .tint(.yellow)
+        .foregroundColor(.black)
+        .disabled(store.isLoading)
         
         SignInWithAppleButton(
           .signIn,
