@@ -2,6 +2,7 @@
 // TCA 1.22.2를 사용한 Auth Feature의 완전한 구현
 // State, Action, Reducer, View를 모두 포함한 단일 모듈
 
+import AuthenticationServices
 import Clients
 import ComposableArchitecture
 import Dependencies
@@ -56,6 +57,7 @@ extension Auth {
       case passwordChanged(String)
       case loginTapped
       case signupTapped
+      case appleLoginCompleted(Result<ASAuthorization, Error>)
       case _authResponse(Result<Void, AuthClientError>)
       case delegate(Delegate)
     }
@@ -104,6 +106,24 @@ extension Auth {
               await send(._authResponse(.failure(clientError)))
             }
           }
+        
+        case .appleLoginCompleted(.success(let authorization)):
+          state.isLoading = true
+          state.errorMessage = nil
+          return .run { send in
+            do {
+              try await authClient.signInWithApple(authorization)
+              await send(._authResponse(.success(())))
+            } catch {
+              let clientError = (error as? AuthClientError) ?? .unknown
+              await send(._authResponse(.failure(clientError)))
+            }
+          }
+        
+        case .appleLoginCompleted(.failure(let error)):
+          state.isLoading = false
+          state.errorMessage = error.localizedDescription
+          return .none
           
         case ._authResponse(.success):
           state.isLoading = false
@@ -184,6 +204,25 @@ extension Auth {
           .disabled(store.isLoading)
         }
         .padding(.top, 8)
+        
+        SignInWithAppleButton(
+          .signIn,
+          onRequest: { request in
+            request.requestedScopes = [.fullName, .email]
+          },
+          onCompletion: { result in
+            switch result {
+            case .success(let authorization):
+              store.send(.appleLoginCompleted(.success(authorization)))
+            case .failure(let error):
+              store.send(.appleLoginCompleted(.failure(error)))
+            }
+          }
+        )
+        .signInWithAppleButtonStyle(.black)
+        .frame(height: 50)
+        .cornerRadius(10)
+        .padding(.top, 4)
         
         Spacer()
       }

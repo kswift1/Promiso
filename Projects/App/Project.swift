@@ -16,6 +16,7 @@ let project = Project(
       ]),
       sources: ["Sources/**"],
       resources: ["Resources/**"],
+      entitlements: .file(path: "Promiso.entitlements"),
       dependencies: AppFeatureDeps.allDeps,
       settings: .standard()
     )
