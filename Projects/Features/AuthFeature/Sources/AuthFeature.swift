@@ -8,6 +8,7 @@ import ComposableArchitecture
 import Dependencies
 import Foundation
 import SwiftUI
+import CryptoKit
 
 
 import GoogleSignIn
@@ -41,16 +42,17 @@ extension Auth {
     /// Auth Feature의 완전한 state를 나타냄
     /// 예측 가능성을 유지하기 위해 모든 state 변경은 Action을 통해 처리되어야 함
     ///
-    /// @ObservableState는 추가 wrapper 없이 직접적인 SwiftUI integration을 가능하게 함
-    @ObservableState
-    public struct State: Equatable {
-      public var email: String = ""
-      public var password: String = ""
-      public var isLoading: Bool = false
-      public var errorMessage: String?
-      
-      public init() {}
-    }
+  /// @ObservableState는 추가 wrapper 없이 직접적인 SwiftUI integration을 가능하게 함
+  @ObservableState
+  public struct State: Equatable {
+    public var email: String = ""
+    public var password: String = ""
+    public var isLoading: Bool = false
+    public var errorMessage: String?
+    public var currentNonce: String?
+    
+    public init() {}
+  }
     
     // MARK: - Action
     
@@ -62,6 +64,7 @@ extension Auth {
       case loginTapped
       case signupTapped
       case googleLoginTapped
+      case appleLoginNoncePrepared(String)
       case appleLoginCompleted(Result<ASAuthorization, Error>)
       case _authResponse(Result<Void, AuthClientError>)
       case delegate(Delegate)
@@ -111,7 +114,7 @@ extension Auth {
               await send(._authResponse(.failure(clientError)))
             }
           }
-        
+          
         case .googleLoginTapped:
           state.isLoading = true
           state.errorMessage = nil
@@ -125,12 +128,20 @@ extension Auth {
             }
           }
           
+        case .appleLoginNoncePrepared(let nonce):
+          state.currentNonce = nonce
+          return .none
+          
         case .appleLoginCompleted(.success(let authorization)):
+          guard let nonce = state.currentNonce else {
+            state.errorMessage = "로그인 요청에 실패했습니다. 다시 시도해주세요."
+            return .none
+          }
           state.isLoading = true
           state.errorMessage = nil
           return .run { send in
             do {
-              _ = try await authClient.signInWithApple(authorization)
+              _ = try await authClient.signInWithApple(authorization, nonce)
               await send(._authResponse(.success(())))
             } catch {
               let clientError = (error as? AuthClientError) ?? .unknown
@@ -197,7 +208,10 @@ extension Auth {
         SignInWithAppleButton(
           .signIn,
           onRequest: { request in
+            let nonce = randomNonceString()
+            store.send(.appleLoginNoncePrepared(nonce))
             request.requestedScopes = [.fullName, .email]
+            request.nonce = sha256(nonce)
           },
           onCompletion: { result in
             switch result {
@@ -216,6 +230,37 @@ extension Auth {
         Spacer()
       }
       .padding()
+    }
+    
+    private func randomNonceString(length: Int = 32) -> String {
+      precondition(length > 0)
+      var randomBytes = [UInt8](repeating: 0, count: length)
+      let errorCode = SecRandomCopyBytes(kSecRandomDefault, randomBytes.count, &randomBytes)
+      if errorCode != errSecSuccess {
+        fatalError(
+          "Unable to generate nonce. SecRandomCopyBytes failed with OSStatus \(errorCode)"
+        )
+      }
+      
+      let charset: [Character] =
+      Array("0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._")
+      
+      let nonce = randomBytes.map { byte in
+        // Pick a random character from the set, wrapping around if needed.
+        charset[Int(byte) % charset.count]
+      }
+      
+      return String(nonce)
+    }
+    
+    private func sha256(_ input: String) -> String {
+      let inputData = Data(input.utf8)
+      let hashedData = SHA256.hash(data: inputData)
+      let hashString = hashedData.compactMap {
+        String(format: "%02x", $0)
+      }.joined()
+
+      return hashString
     }
   }
 }

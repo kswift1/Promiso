@@ -68,7 +68,6 @@ extension AppEntry {
         switch action {
         case .onAppear:
           return .run { send in
-            try await Task.sleep(for: .seconds(2))
             let isAuthed = await authClient.isAuthenticated()
             await send(._sessionCheckResponse(isAuthed))
           }
