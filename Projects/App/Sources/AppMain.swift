@@ -1,8 +1,6 @@
 import SwiftUI
 import ComposableArchitecture
-import RootTabFeature
-import HomeFeature
-import GroupFeature
+import AppEntryFeature
 
 @main
 struct PromisoApp: App {
@@ -12,12 +10,11 @@ struct PromisoApp: App {
   var body: some Scene {
     WindowGroup {
       // App 레이어에서 모든 의존성을 주입
-      let store = Store(initialState: RootTab.Feature.State()) {
-        RootTab.Feature()
+      let store = Store(initialState: AppEntry.Feature.State()) {
+        AppEntry.Feature()
       }
       
-      // TCA Feature들을 직접 사용
-      RootTab.RootView(store: store)
+      AppEntry.RootView(store: store)
     }
   }
 }

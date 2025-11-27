@@ -24,6 +24,8 @@ public enum AppFeatureDeps {
       .rootTab,
       .home,
       .group,
+      .appEntry,
+      .auth,
     ]
     return allFeatures.map { feature($0) }
   }()

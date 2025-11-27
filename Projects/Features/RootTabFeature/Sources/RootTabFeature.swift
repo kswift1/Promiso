@@ -65,6 +65,12 @@ extension RootTab {
       case home(Home.Feature.Action)
       /// Group Main 액션
       case groupMain(GroupMain.Feature.Action)
+      /// 상위로 전달되는 델리게이트 액션
+      case delegate(Delegate)
+    }
+    
+    public enum Delegate: Equatable {
+      case logoutRequested
     }
     
     public var body: some ReducerOf<Self> {
@@ -103,6 +109,9 @@ extension RootTab {
           return .send(.sideDrawer(.toggle))
         
         case .groupMain:
+          return .none
+          
+        case .delegate:
           return .none
           
         }
@@ -374,6 +383,30 @@ extension RootTab.RootView {
         }
         .buttonStyle(PlainButtonStyle())
       }
+      
+      Divider()
+        .padding(.top, 4)
+      
+      Button(role: .destructive) {
+        store.send(.sideDrawer(.close))
+        store.send(.delegate(.logoutRequested))
+      } label: {
+        HStack {
+          Image(systemName: "arrow.backward.square")
+            .foregroundColor(.red)
+            .font(.title3)
+            .frame(width: 24)
+          
+          Text("로그아웃")
+            .font(.subheadline)
+            .foregroundColor(.red)
+          
+          Spacer()
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
+      }
+      .buttonStyle(PlainButtonStyle())
     }
   }
 }
