@@ -61,3 +61,24 @@ Network Trash Folder
 Temporary Items
 .apdisk
 *.pbxproj
+
+### Projects ###
+*.xcodeproj
+*.xcworkspace
+
+# Google/Firebase secrets
+GoogleService-Info.plist
+Projects/**/Resources/GoogleService-Info.plist
+
+# IDE configs
+.idea/
+.vscode/
+
+# Logs and traces
+*.xcactivitylog
+*.trace
+
+# Tuist/SwiftPM caches
+Tuist/.build/
+.build/
+.swiftpm/
