@@ -113,10 +113,13 @@ extension Home {
         case onAppear
         /// SideDrawer 열기
         case openSideDrawer
+        /// 임시 로그아웃 버튼 탭
+        case logoutTapped
       }
       
       public enum Delegate: Sendable {
         case openSideDrawer
+        case logoutRequested
       }
     }
     
@@ -133,6 +136,8 @@ extension Home {
             return .none
           case .openSideDrawer:
             return .send(.delegate(.openSideDrawer))
+          case .logoutTapped:
+            return .send(.delegate(.logoutRequested))
           }
           
         case .startLiveActivity(let promiseId):
@@ -206,10 +211,16 @@ extension Home {
         }
         
         ToolbarItem(placement: .topBarTrailing) {
-          NotificationButton(
-            badgeCount: 13, // FIXME:
-            action: { print("tapped") } // FIXME:
-          )
+          HStack {
+            NotificationButton(
+              badgeCount: 13, // FIXME:
+              action: { print("tapped") } // FIXME:
+            )
+            Button("로그아웃") {
+              store.send(.view(.logoutTapped))
+            }
+            .foregroundColor(.red)
+          }
         }
       }
       .onAppear {

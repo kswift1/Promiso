@@ -28,8 +28,8 @@ public enum AppConfig {
   
   public static var infoPlist: [String: Plist.Value] {
     // FIXME: API Key들 안보이게 옮기기
-    let googleClientId: String = "1068229870528-4vquo3fuh2pnsvabfkk67okt49vpnv3o.apps.googleusercontent.com"
-    let googleReversedClientId: String = "com.googleusercontent.apps.1068229870528-4vquo3fuh2pnsvabfkk67okt49vpnv3o"
+    let googleClientId: String = "306291841913-08gm6rkpklh6k7qqfim1bkc92uji6bcg.apps.googleusercontent.com"
+    let googleReversedClientId: String = "com.googleusercontent.apps.306291841913-08gm6rkpklh6k7qqfim1bkc92uji6bcg"
     return [
       "CFBundleShortVersionString": .string(AppConfig.marketingNumber),
       "CFBundleVersion": .string(AppConfig.buildVersion),

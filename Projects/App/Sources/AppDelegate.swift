@@ -8,6 +8,7 @@
 import UIKit
 
 import FirebaseCore
+import GoogleSignIn
 
 class AppDelegate: NSObject, UIApplicationDelegate {
   func application(_ application: UIApplication,
@@ -15,5 +16,14 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     FirebaseApp.configure()
     
     return true
+  }
+  
+  /// Google Sign-In 리디렉션 URL 처리
+  func application(
+    _ application: UIApplication,
+    open url: URL,
+    options: [UIApplication.OpenURLOptionsKey : Any] = [:]
+  ) -> Bool {
+    GIDSignIn.sharedInstance.handle(url)
   }
 }

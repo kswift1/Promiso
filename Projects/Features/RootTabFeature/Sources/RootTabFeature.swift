@@ -98,11 +98,14 @@ extension RootTab {
             .reduce(into: &state.sideDrawer, action: sideDrawerAction)
             .map(Action.sideDrawer)
           
-        case .home(.delegate(.openSideDrawer)):
-          return .send(.sideDrawer(.toggle))
-          
-        case .home:
-          return .none
+      case .home(.delegate(.openSideDrawer)):
+        return .send(.sideDrawer(.toggle))
+        
+      case .home(.delegate(.logoutRequested)):
+        return .send(.delegate(.logoutRequested))
+      
+      case .home:
+        return .none
           
         case .groupMain(.delegate(.requestOpenSideDrawer)):
           // GroupMain에서 사이드 드로워 열기 요청
