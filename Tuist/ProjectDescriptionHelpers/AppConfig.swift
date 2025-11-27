@@ -1,4 +1,5 @@
 import ProjectDescription
+import Foundation
 
 public enum AppConfig {
   public static let name = "Promiso"
@@ -14,8 +15,38 @@ public enum AppConfig {
   public static let deploymentTargets = "17.0"
   public static let defaultRegions = ["en", "ko"]
   
-  public static let marketingNumber = "1.0.0"
   public static let teamId = "BAC795627G"
+  public static let marketingNumber: String = "1.0.0"
+  
+  public static let buildVersion: String = {
+    let now = Date()
+    let dataFormatter = DateFormatter()
+    dataFormatter.dateFormat = "YYMMddHHmm"
+    
+    return "\(dataFormatter.string(from: now))001"
+  }()
+  
+  public static var infoPlist: [String: Plist.Value] {
+    let kakaoAPIKey: String = "85c9fc88501e426b848242e7c02d20af"
+    return [
+      "CFBundleShortVersionString": .string(AppConfig.marketingNumber),
+      "CFBundleVersion": .string(AppConfig.buildVersion),
+      "UILaunchStoryboardName": .string("LaunchScreen"),
+      "UIDesignRequiresCompatibility": .boolean(false),
+      "LSApplicationQueriesSchemes": [
+        "kakaokompassauth",
+        "kakaolink",
+        "kakaoplus"
+      ],
+      "CFBundleURLTypes": [
+        [
+          "CFBundleTypeRole": "Editor",
+          "CFBundleURLSchemes": [.string("kakao" + "\(kakaoAPIKey)")]
+        ]
+      ],
+      "KAKAO_API_KEY": .string(kakaoAPIKey),
+    ]
+  }
 }
 
 public enum Paths {

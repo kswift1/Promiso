@@ -10,10 +10,7 @@ let project = Project(
       product: .app,
       bundleId: AppConfig.bundleId,
       deploymentTargets: .iOS(AppConfig.deploymentTargets),
-      infoPlist: .extendingDefault(with: [
-        "UILaunchStoryboardName": .string("LaunchScreen"),
-        "UIDesignRequiresCompatibility": .boolean(false)
-      ]),
+      infoPlist: .extendingDefault(with: AppConfig.infoPlist),
       sources: ["Sources/**"],
       resources: ["Resources/**"],
       entitlements: .file(path: "Promiso.entitlements"),

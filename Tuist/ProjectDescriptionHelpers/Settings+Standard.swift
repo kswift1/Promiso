@@ -15,7 +15,7 @@ public extension Settings {
     baseSettings["CODE_SIGN_STYLE"] = .string("Automatic")
     baseSettings["OTHER_LDFLAGS"] = .string("-ObjC")
     baseSettings["MARKETING_VERSION"] = .string(AppConfig.marketingNumber)
-//    baseSettings["CURRENT_PROJECT_VERSION"] = .string(AppConfig.buildNumber)
+    baseSettings["CURRENT_PROJECT_VERSION"] = .string(AppConfig.buildVersion)
 
     return .settings(
       base: baseSettings,

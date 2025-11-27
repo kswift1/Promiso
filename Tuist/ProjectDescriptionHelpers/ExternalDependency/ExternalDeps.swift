@@ -6,32 +6,40 @@ public enum ExternalDeps: CaseIterable {
   case tca
 
   /// Firebase
-  case firebaseCore
-  case firebaseAuth
-  case firebaseFirestore
-  case firebaseCrashlytics
+  case firebaseSDK
   
   /// SwiftUI Debugging Tool
   case loupe
+  
+  /// Kakao
+  case KakaoSDK
 
   public static func allExternalDeps() -> [TargetDependency] {
-    ExternalDeps.allCases.map { $0.targetDependency }
+    ExternalDeps.allCases.flatMap { $0.targetDependency }
   }
 
-  private var targetDependency: TargetDependency {
+  private var targetDependency: [TargetDependency] {
     switch self {
     case .tca:
-      return .external(name: "ComposableArchitecture")
-    case .firebaseCore:
-      return .external(name: "FirebaseCore")
-    case .firebaseAuth:
-      return .external(name: "FirebaseAuth")
-    case .firebaseFirestore:
-      return .external(name: "FirebaseFirestore")
-    case .firebaseCrashlytics:
-      return .external(name: "FirebaseCrashlytics")
+      return [.external(name: "ComposableArchitecture")]
+      
+    case .firebaseSDK:
+      return [
+        "FirebaseCore",
+        "FirebaseAuth",
+        "FirebaseFirestore",
+        "FirebaseCrashlytics"
+      ].map { .external(name: $0) }
+      
+    case .KakaoSDK:
+      return [
+        "KakaoSDKCommon",
+        "KakaoSDKAuth",
+        "KakaoSDKUser"
+      ].map { .external(name: $0) }
+      
     case .loupe:
-      return .external(name: "RenderMeThis")
+      return [.external(name: "RenderMeThis")]
     }
   }
 }

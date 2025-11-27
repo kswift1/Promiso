@@ -32,11 +32,19 @@ enum Dependencies {
     )
   }
   
+  static func kakao() -> Package.Dependency {
+    .package(
+      url: "https://github.com/kakao/kakao-ios-sdk",
+      .upToNextMajor(from: "2.26.0")
+    )
+  }
+  
   // MARK: - All Dependencies
   static var all: [Package.Dependency] { [
     tca(),
     firebase(),
     loupe(),
+    kakao(),
   ]}
 }
 
