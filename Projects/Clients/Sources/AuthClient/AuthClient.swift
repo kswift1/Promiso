@@ -1,6 +1,10 @@
 import AuthenticationServices
 import ComposableArchitecture
+import FirebaseCore
 import Foundation
+import UIKit
+import GoogleSignIn
+import GoogleSignInSwift
 import KakaoSDKAuth
 import KakaoSDKUser
 
@@ -73,9 +77,11 @@ public protocol PlatformAuthProviding {
   func signInWithGoogle() async throws -> AuthTokenBundle
 }
 
+
 public struct PlatformAuthProvider: PlatformAuthProviding, Sendable {
   public init() {}
   
+  @MainActor
   public func signInWithApple(_ authorization: ASAuthorization) async throws -> AuthTokenBundle {
     guard let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential else {
       throw AuthClientError.invalidAppleCredential
@@ -94,23 +100,20 @@ public struct PlatformAuthProvider: PlatformAuthProviding, Sendable {
     )
   }
   
+  @MainActor
   public func signInWithKakao() async throws -> AuthTokenBundle {
     let oauthToken = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<OAuthToken, Error>) in
       if UserApi.isKakaoTalkLoginAvailable() {
-        DispatchQueue.main.async {
-          UserApi.shared.loginWithKakaoTalk { token, error in
-            if let error { continuation.resume(throwing: error); return }
-            guard let token else { continuation.resume(throwing: AuthClientError.unknown); return }
-            continuation.resume(returning: token)
-          }
+        UserApi.shared.loginWithKakaoTalk { token, error in
+          if let error { continuation.resume(throwing: error); return }
+          guard let token else { continuation.resume(throwing: AuthClientError.unknown); return }
+          continuation.resume(returning: token)
         }
       } else {
-        DispatchQueue.main.async {
-          UserApi.shared.loginWithKakaoAccount { token, error in
-            if let error { continuation.resume(throwing: error); return }
-            guard let token else { continuation.resume(throwing: AuthClientError.unknown); return }
-            continuation.resume(returning: token)
-          }
+        UserApi.shared.loginWithKakaoAccount { token, error in
+          if let error { continuation.resume(throwing: error); return }
+          guard let token else { continuation.resume(throwing: AuthClientError.unknown); return }
+          continuation.resume(returning: token)
         }
       }
     }
@@ -135,8 +138,23 @@ public struct PlatformAuthProvider: PlatformAuthProviding, Sendable {
     )
   }
   
+  @MainActor
   public func signInWithGoogle() async throws -> AuthTokenBundle {
-    throw AuthClientError.providerUnavailable
+    guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+          let rootViewController = windowScene.windows.first(where: { $0.isKeyWindow })?.rootViewController else {
+      throw AuthClientError.providerUnavailable
+    }
+    
+    let signInResult = try await GIDSignIn.sharedInstance.signIn(withPresenting: rootViewController)
+    let user = signInResult.user
+    
+    return AuthTokenBundle(
+      provider: .google,
+      identityToken: user.idToken?.tokenString,
+      accessToken: user.accessToken.tokenString,
+      refreshToken: nil,
+      userIdentifier: user.userID ?? ""
+    )
   }
 }
 
@@ -148,8 +166,9 @@ public struct AuthClient: Sendable {
   public var signup: @Sendable (_ email: String, _ password: String, _ name: String, _ phone: String?) async throws -> Void = { _, _, _, _ in }
   public var logout: @Sendable () async throws -> Void = {}
   public var isAuthenticated: @Sendable () async -> Bool = { false }
-  public var signInWithApple: @Sendable (_ authorization: ASAuthorization) async throws -> Void = { _ in }
-  public var signInWithKakao: @Sendable () async throws -> Void = {}
+  public var signInWithApple: @Sendable (_ authorization: ASAuthorization) async throws -> AuthTokenBundle = { _ in .init(provider: .apple, identityToken: nil, accessToken: nil, refreshToken: nil, userIdentifier: "") }
+  public var signInWithKakao: @Sendable () async throws -> AuthTokenBundle = { .init(provider: .kakao, identityToken: nil, accessToken: nil, refreshToken: nil, userIdentifier: "") }
+  public var signInWithGoogle: @Sendable () async throws -> AuthTokenBundle = { .init(provider: .google, identityToken: nil, accessToken: nil, refreshToken: nil, userIdentifier: "") }
 }
 
 // MARK: - Test / Preview
@@ -160,8 +179,9 @@ extension AuthClient: TestDependencyKey {
     signup: { _, _, _, _ in },
     logout: {},
     isAuthenticated: { false },
-    signInWithApple: { _ in },
-    signInWithKakao: {}
+    signInWithApple: { _ in .init(provider: .apple, identityToken: nil, accessToken: nil, refreshToken: nil, userIdentifier: "preview") },
+    signInWithKakao: { .init(provider: .kakao, identityToken: nil, accessToken: nil, refreshToken: nil, userIdentifier: "preview") },
+    signInWithGoogle: { .init(provider: .google, identityToken: nil, accessToken: nil, refreshToken: nil, userIdentifier: "preview") }
   )
   
   public static let testValue = Self(
@@ -170,7 +190,8 @@ extension AuthClient: TestDependencyKey {
     logout: unimplemented("\(Self.self).logout"),
     isAuthenticated: unimplemented("\(Self.self).isAuthenticated", placeholder: false),
     signInWithApple: unimplemented("\(Self.self).signInWithApple"),
-    signInWithKakao: unimplemented("\(Self.self).signInWithKakao")
+    signInWithKakao: unimplemented("\(Self.self).signInWithKakao"),
+    signInWithGoogle: unimplemented("\(Self.self).signInWithGoogle")
   )
 }
 
@@ -218,17 +239,18 @@ extension AuthClient: DependencyKey {
       },
       signInWithApple: { authorization in
         let tokenBundle = try await provider.signInWithApple(authorization)
-        
-        // TODO: 서버 교환 로직 추가 (tokenBundle.identityToken 전달)
-        _ = tokenBundle.userIdentifier
         await session.login()
+        return tokenBundle
       },
       signInWithKakao: {
         let tokenBundle = try await provider.signInWithKakao()
-        
-        // TODO: 서버 교환 로직 추가 (tokenBundle.accessToken / identityToken 전달)
-        _ = tokenBundle.userIdentifier
         await session.login()
+        return tokenBundle
+      },
+      signInWithGoogle: {
+        let tokenBundle = try await provider.signInWithGoogle()
+        await session.login()
+        return tokenBundle
       }
     )
   }()

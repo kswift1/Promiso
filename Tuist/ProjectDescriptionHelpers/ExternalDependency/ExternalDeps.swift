@@ -7,6 +7,7 @@ public enum ExternalDeps: CaseIterable {
 
   /// Firebase
   case firebaseSDK
+  case googleSDK
   
   /// SwiftUI Debugging Tool
   case loupe
@@ -30,6 +31,9 @@ public enum ExternalDeps: CaseIterable {
         "FirebaseFirestore",
         "FirebaseCrashlytics"
       ].map { .external(name: $0) }
+      
+    case .googleSDK:
+      return [.external(name: "GoogleSignInSwift")]
       
     case .KakaoSDK:
       return [

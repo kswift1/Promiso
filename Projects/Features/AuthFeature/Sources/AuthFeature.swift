@@ -9,6 +9,10 @@ import Dependencies
 import Foundation
 import SwiftUI
 
+
+import GoogleSignIn
+import GoogleSignInSwift
+
 // MARK: - Feature Namespace
 
 /// Auth Feature 컴포넌트를 위한 Namespace
@@ -23,7 +27,7 @@ extension Auth {
   
   /// Auth Feature state management를 위한 Main reducer
   /// Feature의 모든 business logic과 side effect를 처리
-  /// 
+  ///
   /// SwiftUI integration을 위해 @ObservableState와 함께 TCA 1.22.2 Reducer protocol을 준수
   @Reducer
   public struct Feature {
@@ -36,7 +40,7 @@ extension Auth {
     
     /// Auth Feature의 완전한 state를 나타냄
     /// 예측 가능성을 유지하기 위해 모든 state 변경은 Action을 통해 처리되어야 함
-    /// 
+    ///
     /// @ObservableState는 추가 wrapper 없이 직접적인 SwiftUI integration을 가능하게 함
     @ObservableState
     public struct State: Equatable {
@@ -58,6 +62,7 @@ extension Auth {
       case loginTapped
       case signupTapped
       case kakaoLoginTapped
+      case googleLoginTapped
       case appleLoginCompleted(Result<ASAuthorization, Error>)
       case _authResponse(Result<Void, AuthClientError>)
       case delegate(Delegate)
@@ -107,13 +112,13 @@ extension Auth {
               await send(._authResponse(.failure(clientError)))
             }
           }
-        
+          
         case .kakaoLoginTapped:
           state.isLoading = true
           state.errorMessage = nil
           return .run { send in
             do {
-              try await authClient.signInWithKakao()
+              _ = try await authClient.signInWithKakao()
               await send(._authResponse(.success(())))
             } catch {
               let clientError = (error as? AuthClientError) ?? .unknown
@@ -121,19 +126,32 @@ extension Auth {
             }
           }
         
+        case .googleLoginTapped:
+          state.isLoading = true
+          state.errorMessage = nil
+          return .run { send in
+            do {
+              _ = try await authClient.signInWithGoogle()
+              await send(._authResponse(.success(())))
+            } catch {
+              let clientError = (error as? AuthClientError) ?? .unknown
+              await send(._authResponse(.failure(clientError)))
+            }
+          }
+          
         case .appleLoginCompleted(.success(let authorization)):
           state.isLoading = true
           state.errorMessage = nil
           return .run { send in
             do {
-              try await authClient.signInWithApple(authorization)
+              _ = try await authClient.signInWithApple(authorization)
               await send(._authResponse(.success(())))
             } catch {
               let clientError = (error as? AuthClientError) ?? .unknown
               await send(._authResponse(.failure(clientError)))
             }
           }
-        
+          
         case .appleLoginCompleted(.failure(let error)):
           state.isLoading = false
           state.errorMessage = error.localizedDescription
@@ -230,6 +248,17 @@ extension Auth {
         .foregroundColor(.black)
         .disabled(store.isLoading)
         
+        Button {
+          store.send(.googleLoginTapped)
+        } label: {
+          Text("Google로 시작하기")
+            .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.bordered)
+        .tint(.blue)
+        .foregroundColor(.white)
+        .disabled(store.isLoading)
+        
         SignInWithAppleButton(
           .signIn,
           onRequest: { request in
@@ -252,6 +281,36 @@ extension Auth {
         Spacer()
       }
       .padding()
+    }
+    
+    func handleSignInButton() {
+      // Find the current window scene.
+      guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene else {
+        print("There is no active window scene")
+        return
+      }
+      
+      // Get the root view controller from the window scene.
+      guard
+        let rootViewController = windowScene.windows.first(where: { $0.isKeyWindow })?
+          .rootViewController
+      else {
+        print("There is no key window or root view controller")
+        return
+      }
+      
+      // Start the sign-in process.
+      GIDSignIn.sharedInstance.signIn(
+        withPresenting: rootViewController
+      ) { signInResult, error in
+        guard let result = signInResult else {
+          // Inspect error
+          print("Error signing in: \(error?.localizedDescription ?? "No error description")")
+          return
+        }
+        // If sign in succeeded, display the app's main content View.
+        print("ID Token: \(result.user.idToken?.tokenString ?? "")")
+      }
     }
   }
 }

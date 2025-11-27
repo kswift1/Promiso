@@ -26,9 +26,19 @@
 				<string>kakao85c9fc88501e426b848242e7c02d20af</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.1068229870528-4vquo3fuh2pnsvabfkk67okt49vpnv3o</string>
+			</array>
+		</dict>
 	</array>
 	<key>CFBundleVersion</key>
-	<string>2511271729001</string>
+	<string>2511271800001</string>
+	<key>GIDClientID</key>
+	<string>1068229870528-4vquo3fuh2pnsvabfkk67okt49vpnv3o.apps.googleusercontent.com</string>
 	<key>KAKAO_API_KEY</key>
 	<string>85c9fc88501e426b848242e7c02d20af</string>
 	<key>LSApplicationQueriesSchemes</key>

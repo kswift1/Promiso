@@ -27,7 +27,10 @@ public enum AppConfig {
   }()
   
   public static var infoPlist: [String: Plist.Value] {
+    // FIXME: API Key들 안보이게 옮기기
     let kakaoAPIKey: String = "85c9fc88501e426b848242e7c02d20af"
+    let googleClientId: String = "1068229870528-4vquo3fuh2pnsvabfkk67okt49vpnv3o.apps.googleusercontent.com"
+    let googleReversedClientId: String = "com.googleusercontent.apps.1068229870528-4vquo3fuh2pnsvabfkk67okt49vpnv3o"
     return [
       "CFBundleShortVersionString": .string(AppConfig.marketingNumber),
       "CFBundleVersion": .string(AppConfig.buildVersion),
@@ -42,9 +45,14 @@ public enum AppConfig {
         [
           "CFBundleTypeRole": "Editor",
           "CFBundleURLSchemes": [.string("kakao" + "\(kakaoAPIKey)")]
+        ],
+        [
+          "CFBundleTypeRole": "Editor",
+          "CFBundleURLSchemes": [.string(googleReversedClientId)]
         ]
       ],
       "KAKAO_API_KEY": .string(kakaoAPIKey),
+      "GIDClientID": .string(googleClientId)
     ]
   }
 }

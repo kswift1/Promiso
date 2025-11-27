@@ -25,6 +25,13 @@ enum Dependencies {
     )
   }
   
+  static func google() -> Package.Dependency {
+    .package(
+      url: "https://github.com/google/GoogleSignIn-iOS",
+      .upToNextMajor(from: "9.0.0")
+    )
+  }
+  
   static func loupe() -> Package.Dependency {
     .package(
       url: "https://github.com/Aeastr/Loupe.git",
@@ -45,6 +52,7 @@ enum Dependencies {
     firebase(),
     loupe(),
     kakao(),
+    google()
   ]}
 }
 
