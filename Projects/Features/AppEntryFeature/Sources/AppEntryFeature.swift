@@ -21,7 +21,7 @@ extension AppEntry {
   
   @Reducer
   public struct Feature {
-    @Dependency(\.authClient) private var authClient: AuthClient
+    @Dependency(\.authClient) var authClient
     
     public init() {}
     
@@ -33,11 +33,13 @@ extension AppEntry {
         case splash
         case onboarding
         case auth
+        case profile
         case main
       }
       
       public var route: Route = .splash
       public var auth: Auth.Feature.State = .init()
+      var profile: ProfileSetup.State = .init()
       public var main: RootTab.Feature.State = .init()
       
       public init() {}
@@ -46,11 +48,20 @@ extension AppEntry {
     // MARK: - Action
     
     public enum Action {
+      case view(View)
+      case `internal`(Internal)
+      case auth(Auth.Feature.Action)
+      case profile(ProfileSetup.Action)
+      case main(RootTab.Feature.Action)
+    }
+    
+    public enum View {
       case onAppear
       case onboardingStartTapped
-      case auth(Auth.Feature.Action)
-      case main(RootTab.Feature.Action)
-      case _sessionCheckResponse(Bool)
+    }
+    
+    public enum Internal {
+      case sessionCheckResponse(Bool)
     }
     
     // MARK: - Reducer Body
@@ -64,26 +75,47 @@ extension AppEntry {
         RootTab.Feature()
       }
       
+      Scope(state: \.profile, action: \.profile) {
+        ProfileSetup()
+      }
+      
       Reduce { state, action in
         switch action {
-        case .onAppear:
-          return .run { send in
-            let isAuthed = await authClient.isAuthenticated()
-            await send(._sessionCheckResponse(isAuthed))
+        case .view(let viewAction):
+          switch viewAction {
+          case .onAppear:
+            return .run { send in
+              let isAuthed = await authClient.isAuthenticated()
+              await send(.internal(.sessionCheckResponse(isAuthed)))
+            }
+          case .onboardingStartTapped:
+            state.route = .auth
+            state.auth = Auth.Feature.State()
+            return .none
           }
           
-        case ._sessionCheckResponse(let isAuthed):
-          state.route = isAuthed ? .main : .onboarding
-          state.main = RootTab.Feature.State()
-          state.auth = Auth.Feature.State()
+        case .internal(let internalAction):
+          switch internalAction {
+          case .sessionCheckResponse(let isAuthed):
+            state.route = isAuthed ? .main : .onboarding
+            state.main = RootTab.Feature.State()
+            state.auth = Auth.Feature.State()
+            return .none
+          }
+          
+        case .auth(.delegate(.loggedIn(let serviceBundle))):
+          state.profile = ProfileSetup.State(
+            profileImageUrl: serviceBundle?.firebaseUser?.photoURL?.absoluteString,
+            email: serviceBundle?.providerTokenBundle.email ?? serviceBundle?.firebaseUser?.email ?? "",
+            uid: serviceBundle?.providerTokenBundle.userIdentifier ?? serviceBundle?.firebaseUser?.uid ?? "",
+            fullName: serviceBundle?.providerTokenBundle.fullName
+              ?? serviceBundle?.firebaseUser?.displayName
+              ?? ""
+          )
+          state.route = .profile
           return .none
         
-        case .onboardingStartTapped:
-          state.route = .auth
-          state.auth = Auth.Feature.State()
-          return .none
-          
-        case .auth(.delegate(.loggedIn)):
+        case .profile(.delegate(.completed)):
           state.route = .main
           state.main = RootTab.Feature.State()
           return .none
@@ -95,7 +127,7 @@ extension AppEntry {
             try? await authClient.logout()
           }
           
-        case .auth, .main:
+        case .auth, .profile, .main:
           return .none
         }
       }
@@ -126,9 +158,17 @@ extension AppEntry {
         
         case .onboarding:
           OnboardingView {
-            store.send(.onboardingStartTapped)
+            store.send(.view(.onboardingStartTapped))
           }
           .transition(.opacity)
+        
+        case .profile:
+          NavigationStack {
+            AppEntry.ProfileSetup.View(
+              store: store.scope(state: \.profile, action: \.profile)
+            )
+            .transition(.opacity)
+          }
           
         case .main:
           RootTab.RootView(
@@ -139,7 +179,7 @@ extension AppEntry {
       }
       .animation(.easeInOut, value: store.route)
       .onAppear {
-        store.send(.onAppear)
+        store.send(.view(.onAppear))
       }
     }
   }

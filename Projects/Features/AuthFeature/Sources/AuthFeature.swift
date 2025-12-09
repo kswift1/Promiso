@@ -42,36 +42,38 @@ extension Auth {
     /// Auth Feature의 완전한 state를 나타냄
     /// 예측 가능성을 유지하기 위해 모든 state 변경은 Action을 통해 처리되어야 함
     ///
-  /// @ObservableState는 추가 wrapper 없이 직접적인 SwiftUI integration을 가능하게 함
-  @ObservableState
-  public struct State: Equatable {
-    public var email: String = ""
-    public var password: String = ""
-    public var isLoading: Bool = false
-    public var errorMessage: String?
-    public var currentNonce: String?
-    
-    public init() {}
-  }
+    /// @ObservableState는 추가 wrapper 없이 직접적인 SwiftUI integration을 가능하게 함
+    @ObservableState
+    public struct State: Equatable {
+      public var isLoading: Bool = false
+      public var errorMessage: String?
+      public var currentNonce: String?
+      
+      public init() {}
+    }
     
     // MARK: - Action
     
     /// Auth Feature 내에서 발생할 수 있는 모든 가능한 action
     /// 각 action은 고유한 user intent나 system event를 나타내야 함
     public enum Action {
-      case emailChanged(String)
-      case passwordChanged(String)
-      case loginTapped
-      case signupTapped
-      case googleLoginTapped
-      case appleLoginNoncePrepared(String)
-      case appleLoginCompleted(Result<ASAuthorization, Error>)
-      case _authResponse(Result<Void, AuthClientError>)
+      case view(View)
+      case `internal`(Internal)
       case delegate(Delegate)
     }
     
+    public enum View: Sendable {
+      case googleLoginTapped
+    }
+    
+    public enum Internal: Sendable {
+      case appleLoginNoncePrepared(String)
+      case appleLoginCompleted(Result<ASAuthorization, Error>)
+      case authResponse(Result<ServiceTokenBundle?, AuthClientError>)
+    }
+    
     public enum Delegate: Equatable {
-      case loggedIn
+      case loggedIn(ServiceTokenBundle?)
     }
     
     // MARK: - Reducer Body
@@ -81,87 +83,63 @@ extension Auth {
     public var body: some ReducerOf<Self> {
       Reduce { state, action in
         switch action {
-        case .emailChanged(let email):
-          state.email = email
-          return .none
           
-        case .passwordChanged(let password):
-          state.password = password
-          return .none
-          
-        case .loginTapped:
-          state.isLoading = true
-          state.errorMessage = nil
-          return .run { [email = state.email, password = state.password] send in
-            do {
-              try await authClient.login(email, password)
-              await send(._authResponse(.success(())))
-            } catch {
-              let clientError = (error as? AuthClientError) ?? .unknown
-              await send(._authResponse(.failure(clientError)))
+        case .view(let viewAction):
+          switch viewAction {
+          case .googleLoginTapped:
+            state.isLoading = true
+            state.errorMessage = nil
+            return .run { send in
+              do {
+                let bundle = try await authClient.signInWithGoogle()
+                await send(.internal(.authResponse(.success(bundle))))
+                await send(.delegate(.loggedIn(bundle)))
+              } catch {
+                let clientError = (error as? AuthClientError) ?? .unknown
+                await send(.internal(.authResponse(.failure(clientError))))
+              }
             }
+            
           }
           
-        case .signupTapped:
-          state.isLoading = true
-          state.errorMessage = nil
-          return .run { [email = state.email, password = state.password] send in
-            do {
-              try await authClient.signup(email, password, "", nil)
-              await send(._authResponse(.success(())))
-            } catch {
-              let clientError = (error as? AuthClientError) ?? .unknown
-              await send(._authResponse(.failure(clientError)))
+        case .internal(let internalAction):
+          switch internalAction {
+          case .appleLoginNoncePrepared(let nonce):
+            state.currentNonce = nonce
+            return .none
+            
+          case .appleLoginCompleted(.success(let authorization)):
+            guard let nonce = state.currentNonce else {
+              state.errorMessage = "로그인 요청에 실패했습니다. 다시 시도해주세요."
+              return .none
             }
-          }
-          
-        case .googleLoginTapped:
-          state.isLoading = true
-          state.errorMessage = nil
-          return .run { send in
-            do {
-              _ = try await authClient.signInWithGoogle()
-              await send(._authResponse(.success(())))
-            } catch {
-              let clientError = (error as? AuthClientError) ?? .unknown
-              await send(._authResponse(.failure(clientError)))
+            state.isLoading = true
+            state.errorMessage = nil
+            return .run { send in
+              do {
+                let bundle = try await authClient.signInWithApple(authorization, nonce)
+                await send(.delegate(.loggedIn(bundle)))
+                await send(.internal(.authResponse(.success(bundle))))
+              } catch {
+                let clientError = (error as? AuthClientError) ?? .unknown
+                await send(.internal(.authResponse(.failure(clientError))))
+              }
             }
-          }
-          
-        case .appleLoginNoncePrepared(let nonce):
-          state.currentNonce = nonce
-          return .none
-          
-        case .appleLoginCompleted(.success(let authorization)):
-          guard let nonce = state.currentNonce else {
-            state.errorMessage = "로그인 요청에 실패했습니다. 다시 시도해주세요."
+            
+          case .appleLoginCompleted(.failure(let error)):
+            state.isLoading = false
+            state.errorMessage = error.localizedDescription
+            return .none
+            
+          case .authResponse(.success):
+            state.isLoading = false
+            return .none
+            
+          case .authResponse(.failure(let error)):
+            state.isLoading = false
+            state.errorMessage = error.localizedDescription
             return .none
           }
-          state.isLoading = true
-          state.errorMessage = nil
-          return .run { send in
-            do {
-              _ = try await authClient.signInWithApple(authorization, nonce)
-              await send(._authResponse(.success(())))
-            } catch {
-              let clientError = (error as? AuthClientError) ?? .unknown
-              await send(._authResponse(.failure(clientError)))
-            }
-          }
-          
-        case .appleLoginCompleted(.failure(let error)):
-          state.isLoading = false
-          state.errorMessage = error.localizedDescription
-          return .none
-          
-        case ._authResponse(.success):
-          state.isLoading = false
-          return .send(.delegate(.loggedIn))
-          
-        case ._authResponse(.failure(let error)):
-          state.isLoading = false
-          state.errorMessage = error.localizedDescription
-          return .none
           
         case .delegate:
           return .none
@@ -195,7 +173,7 @@ extension Auth {
         }
         
         Button {
-          store.send(.googleLoginTapped)
+          store.send(.view(.googleLoginTapped))
         } label: {
           Text("Google로 시작하기")
             .frame(maxWidth: .infinity)
@@ -209,16 +187,16 @@ extension Auth {
           .signIn,
           onRequest: { request in
             let nonce = randomNonceString()
-            store.send(.appleLoginNoncePrepared(nonce))
+            store.send(.internal(.appleLoginNoncePrepared(nonce)))
             request.requestedScopes = [.fullName, .email]
             request.nonce = sha256(nonce)
           },
           onCompletion: { result in
             switch result {
             case .success(let authorization):
-              store.send(.appleLoginCompleted(.success(authorization)))
+              store.send(.internal(.appleLoginCompleted(.success(authorization))))
             case .failure(let error):
-              store.send(.appleLoginCompleted(.failure(error)))
+              store.send(.internal(.appleLoginCompleted(.failure(error))))
             }
           }
         )
@@ -259,7 +237,7 @@ extension Auth {
       let hashString = hashedData.compactMap {
         String(format: "%02x", $0)
       }.joined()
-
+      
       return hashString
     }
   }

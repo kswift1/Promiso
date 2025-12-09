@@ -51,13 +51,3 @@ private struct ExampleContentView: View {
     AppEntry.RootView(store: store)
   }
 }
-
-// MARK: - SwiftUI Previews
-
-#Preview {
-  let store = Store(initialState: AppEntry.Feature.State()) {
-    AppEntry.Feature()
-  }
-  
-  AppEntry.RootView(store: store)
-}
