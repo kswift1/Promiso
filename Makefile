@@ -1,7 +1,7 @@
 # Promiso Project Makefile
 # Usage: make feature FEATURE_NAME=YourFeature
 
-.PHONY: feature remove-feature deps help
+.PHONY: feature remove-feature deps color help
 
 # 기본값 설정
 FEATURE_NAME ?=
@@ -78,6 +78,12 @@ deps:
 	@echo "📊 의존성 그래프 분석 중..."
 	@./scripts/dependency-graph.sh
 
+# 컬러 에셋 자동 생성
+color:
+	@echo "🎨 컬러 에셋 및 Swift Extension 생성 중..."
+	@./scripts/generate_colors.sh
+	@echo "✅ 완료: Projects/ResourceKit/Resources/Assets.xcassets/Colors 및 Projects/ResourceKit/Sources/Generated/Color+Generated.swift 갱신"
+
 # 도움말
 help:
 	@echo "Promiso Project Commands:"
@@ -85,6 +91,7 @@ help:
 	@echo "  make feature FEATURE_NAME=YourFeature        - 새 피쳐 생성 (TCA 중심 구조)"
 	@echo "  make remove-feature FEATURE_NAME=YourFeature - 기존 피쳐 삭제"
 	@echo "  make deps                                    - 의존성 그래프 시각화"
+	@echo "  make color                                   - 컬러 에셋/Swift Extension 재생성"
 	@echo "  make help                                    - 이 도움말 표시"
 	@echo ""
 	@echo "예시:"
@@ -98,7 +105,3 @@ help:
 	@echo "  - 삭제 전 확인 메시지가 표시됩니다"
 	@echo "  - 삭제된 피쳐를 참조하는 코드는 수동으로 제거해야 합니다"
 	@echo ""
-	@echo "🏗️  새로운 구조 (TCA 중심):"
-	@echo "  - Interface/Implement 패턴 제거"
-	@echo "  - TCA Feature를 직접 사용"
-	@echo "  - 단순하고 직관적인 구조"

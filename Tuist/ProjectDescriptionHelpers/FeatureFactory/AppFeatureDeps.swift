@@ -8,6 +8,7 @@ public enum AppFeatureDeps {
   /// 모든 앱이 필요로 하는 기본 Core 의존성
   public static let coreDeps: [TargetDependency] = [
     .project(target: "Shared", path: "../Shared"),
+    .project(target: "ResourceKit", path: "../ResourceKit"),
     .project(target: "CoreInfrastructure", path: "../Core"),
     .project(target: "CoreNetworking", path: "../Core"),
     .project(target: "Domain", path: "../Domain"),

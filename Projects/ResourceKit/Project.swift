@@ -2,21 +2,17 @@ import ProjectDescription
 import ProjectDescriptionHelpers
 
 let project = Project(
-  name: "Shared",
+  name: "ResourceKit",
   targets: [
     .target(
-      name: "Shared",
+      name: "ResourceKit",
       destinations: .iOS,
       product: .framework,
-      bundleId: AppConfig.moduleBundleId("shared"),
+      bundleId: AppConfig.moduleBundleId("resourcekit"),
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Sources/**"],
       resources: ["Resources/**"],
-      dependencies: [
-        .project(target: "CoreInfrastructure", path: "../Core"),
-        .project(target: "ExternalDependency", path: "../ExternalDependency"),
-        .project(target: "ResourceKit", path: "../ResourceKit")
-      ],
+      dependencies: [],
       settings: .standard()
     )
   ]
