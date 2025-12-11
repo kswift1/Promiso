@@ -476,7 +476,7 @@ extension Auth {
         Button(action: onAppleLogin) {
           HStack(spacing: 12) {
             Image(systemName: "apple.logo")
-              .font(.system(size: 18, weight: .medium))
+              .font(.system(size: 20, weight: .medium))
             Text("Apple로 계속하기")
               .font(.system(size: 16, weight: .semibold))
           }
