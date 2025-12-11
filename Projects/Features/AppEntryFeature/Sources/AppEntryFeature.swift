@@ -31,13 +31,12 @@ extension AppEntry {
     @ObservableState
     public struct State {
       public enum Route: Equatable {
-        case splash
         case auth
         case profile
         case main
       }
       
-      public var route: Route = .splash
+      public var route: Route = .auth
       var showSplash: Bool = true
       var shouldAnimateOut: Bool = false
       var pendingRoute: Route?
@@ -97,6 +96,7 @@ extension AppEntry {
               state.route = next
               state.pendingRoute = nil
               state.shouldAnimateOut = false
+              state.showSplash = false
             }
             return .none
           }
@@ -110,6 +110,7 @@ extension AppEntry {
             state.main = RootTab.Feature.State()
             state.auth = Auth.Feature.State()
             state.shouldAnimateOut = true
+            state.showSplash = true
             return .none
           }
           
@@ -156,9 +157,6 @@ extension AppEntry {
     public var body: some View {
       ZStack {
         switch store.route {
-        case .splash:
-          EmptyView()
-          
         case .auth:
           Auth.RootView(store: store.scope(state: \.auth, action: \.auth))
           
@@ -193,5 +191,3 @@ extension AppEntry {
     }
   }
 }
-
-
