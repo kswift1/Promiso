@@ -9,7 +9,6 @@ struct PromisoApp: App {
   
   var body: some Scene {
     WindowGroup {
-      // App 레이어에서 모든 의존성을 주입
       let store = Store(initialState: AppEntry.Feature.State()) {
         AppEntry.Feature()
       }

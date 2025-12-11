@@ -111,6 +111,7 @@ extension AppEntry {
               store.send(.saveTapped)
             }
             .frame(maxWidth: .infinity)
+            .frame(height: 60)
             .buttonStyle(.borderedProminent)
             .disabled(store.nickname.isEmpty)
             
@@ -202,10 +203,10 @@ private struct NicknameSection: View {
   
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
-      Text("닉네임 설정")
+      Text("닉네임")
         .font(.headline)
       
-      TextField("닉네임", text: $nickname)
+      TextField("닉네임을 입력해주세요", text: $nickname)
         .textFieldStyle(.roundedBorder)
     }
     .frame(maxWidth: .infinity, alignment: .leading)

@@ -33,7 +33,11 @@ public enum AppConfig {
     return [
       "CFBundleShortVersionString": .string(AppConfig.marketingNumber),
       "CFBundleVersion": .string(AppConfig.buildVersion),
-      "UILaunchStoryboardName": .string("LaunchScreen"),
+      "UILaunchScreen": .dictionary([
+        "UIImageName": .string("LaunchImage"),
+        "UIColorName": .string("LaunchBackgroundColor"),
+        "UIImageRespectsSafeAreaInsets": true
+      ]),
       "UIDesignRequiresCompatibility": .boolean(false),
       "CFBundleURLTypes": [
         [

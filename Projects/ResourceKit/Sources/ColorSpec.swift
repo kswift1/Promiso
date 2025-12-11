@@ -21,8 +21,8 @@ public let colorSpecs: [ColorSpec] = [
   .init(assetName: "Aurora.Pink",    lightHex: "#F9A8D4", darkHex: "#DB2777"),
   
   // Brand
-  .init(assetName: "Brand.Primary",   lightHex: "#4F46E5", darkHex: "#6366F1"),
-  .init(assetName: "Brand.Secondary", lightHex: "#7C3AED", darkHex: "#A855F7"),
+  .init(assetName: "Brand.Primary",   lightHex: "#00B8FF", darkHex: "#6366F1"),
+  .init(assetName: "Brand.Secondary", lightHex: "#7E2BFF", darkHex: "#A855F7"),
   
   // Text
   .init(assetName: "Text.Primary",   lightHex: "#111827", darkHex: "#FFFFFF"),
