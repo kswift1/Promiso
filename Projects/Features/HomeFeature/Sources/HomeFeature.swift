@@ -200,7 +200,7 @@ extension Home {
         }
         .padding(.top, 8)
       }
-      .background(Color(.systemGroupedBackground))
+      .auroraBackground()
       .navigationTitle("오늘의 일정")
       .toolbar {
         ToolbarItem(placement: .topBarLeading) {

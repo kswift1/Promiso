@@ -21,7 +21,7 @@ public struct AuroraBackgroundModifier: ViewModifier {
 }
 
 public extension View {
-  public func auroraBackground() -> some View {
+  func auroraBackground() -> some View {
     modifier(AuroraBackgroundModifier())
   }
 }

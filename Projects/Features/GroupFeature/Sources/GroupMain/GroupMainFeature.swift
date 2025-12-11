@@ -316,7 +316,7 @@ extension GroupMain {
           groupDetailView
         }
       }
-      .background(Color(.systemGroupedBackground))
+      .auroraBackground()
       .navigationBarTitleDisplayMode(.inline)
       .toolbar { toolbarContent }
       .onAppear { store.send(.view(.onAppear)) }

@@ -169,6 +169,7 @@ extension AppEntry {
           Auth.RootView(store: store.scope(state: \.auth, action: \.auth))
         case .onboarding:
           OnboardingView { store.send(.view(.onboardingStartTapped)) }
+            .auroraBackground()
         case .profile:
           NavigationStack {
             AppEntry.ProfileSetup.View(
@@ -232,6 +233,7 @@ private struct OnboardingView: View {
       .padding(.bottom, 40)
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .auroraBackground()
   }
 }
 
@@ -259,7 +261,7 @@ fileprivate struct LaunchScreenView<Logo: View>: View {
         .ignoresSafeArea()
       
       // 2. Aurora/Gradient Blobs
-      CommonBackGroundView()
+      AuroraBackgroundView()
     }
     /// Reverse Logo Masking!
     .mask {
