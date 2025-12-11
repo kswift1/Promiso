@@ -35,21 +35,21 @@ public struct AuroraBackgroundView: View {
       ZStack {
         // Top-Left: Purple (animate-pulse equivalent requires state animation in SwiftUI)
         Circle()
-          .fill(Color.aurora.purple.opacity(0.3))
+          .fill(Color.pmaurora.purple.opacity(0.3))
           .frame(width: geometry.size.width * 1.4, height: geometry.size.width * 1.4)
           .position(x: geometry.size.width * 0.1, y: geometry.size.height * 0.1)
           .blur(radius: 120)
         
         // Bottom-Right: Indigo
         Circle()
-          .fill(Color.aurora.indigo.opacity(0.3))
+          .fill(Color.pmaurora.indigo.opacity(0.3))
           .frame(width: geometry.size.width * 1.2, height: geometry.size.width * 1.2)
           .position(x: geometry.size.width * 0.9, y: geometry.size.height * 0.9)
           .blur(radius: 120)
         
         // Center-Left: Pink
         Circle()
-          .fill(Color.aurora.pink.opacity(0.2))
+          .fill(Color.pmaurora.pink.opacity(0.2))
           .frame(width: geometry.size.width * 0.8, height: geometry.size.width * 0.8)
           .position(x: geometry.size.width * 0.5, y: geometry.size.height * 0.6)
           .blur(radius: 100)
