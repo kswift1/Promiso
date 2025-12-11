@@ -39,7 +39,6 @@ extension AppEntry {
       public var route: Route = .auth
       var showSplash: Bool = true
       var shouldAnimateOut: Bool = false
-      var pendingRoute: Route?
       public var auth: Auth.Feature.State = .init()
       var profile: ProfileSetup.State = .init()
       public var main: RootTab.Feature.State = .init()
@@ -92,12 +91,8 @@ extension AppEntry {
             }
             
           case .splashAnimationCompleted:
-            if let next = state.pendingRoute {
-              state.route = next
-              state.pendingRoute = nil
-              state.shouldAnimateOut = false
-              state.showSplash = false
-            }
+            state.shouldAnimateOut = false
+            state.showSplash = false
             return .none
           }
           
@@ -106,11 +101,9 @@ extension AppEntry {
           case .sessionCheckResponse(let isAuthed):
             let next: State.Route = isAuthed ? .main : .auth
             state.route = next
-            state.pendingRoute = next
             state.main = RootTab.Feature.State()
             state.auth = Auth.Feature.State()
             state.shouldAnimateOut = true
-            state.showSplash = true
             return .none
           }
           
