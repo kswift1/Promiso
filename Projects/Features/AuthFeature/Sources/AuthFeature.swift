@@ -9,6 +9,7 @@ import SwiftUI
 import CryptoKit
 import GoogleSignIn
 import GoogleSignInSwift
+import Shared
 
 // MARK: - Feature Namespace
 
@@ -208,8 +209,39 @@ extension Auth {
               .opacity(indicatorProgress == 0 ? 0 : 1)
             
             if showTyping {
-              MultiLineTypingView(
+              TypewriterLinesView(
                 animated: animated,
+                lines: [
+                  .init(
+                    text: "약속을",
+                    font: .system(size: 48, weight: .black),
+                    style: AnyShapeStyle(Color.pmtext.primary)
+                  ),
+                  .init(
+                    text: "더 특별하게.",
+                    font: .system(size: 48, weight: .black),
+                    style: AnyShapeStyle(
+                      LinearGradient(
+                        colors: [
+                          Color.pmindigo.n600,
+                          Color.pmpurple.n600
+                        ],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                      )
+                    )
+                  ),
+                  .init(
+                    text: "소중한 순간들을",
+                    font: .system(size: 18, weight: .medium),
+                    style: AnyShapeStyle(Color.pmtext.secondary)
+                  ),
+                  .init(
+                    text: "Promiso와 함께하세요.",
+                    font: .system(size: 18, weight: .medium),
+                    style: AnyShapeStyle(Color.pmtext.secondary)
+                  )
+                ],
                 typingAnimationCompleted: {
                   if animated {
                     Task {
@@ -221,7 +253,16 @@ extension Auth {
                   } else {
                     showLoginSheet = true
                   }
-                }
+                },
+                lineSpacingProvider: { index in
+                  switch index {
+                  case 0: return 4
+                  case 1: return 24
+                  case 2: return 4
+                  default: return 0
+                  }
+                },
+                typingSpeed: 0.05
               )
             }
           }

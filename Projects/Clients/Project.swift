@@ -9,7 +9,7 @@ let project = Project(
       destinations: .iOS,
       product: .framework,
       bundleId: "com.sungwon.promiso.clients",
-      deploymentTargets: .iOS("17.0"),
+      deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       infoPlist: .default,
       sources: ["Sources/**"],
       dependencies: [
@@ -24,7 +24,7 @@ let project = Project(
       destinations: .iOS,
       product: .unitTests,
       bundleId: "com.sungwon.promiso.clients.tests",
-      deploymentTargets: .iOS("17.0"),
+      deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       infoPlist: .default,
       sources: ["Tests/**"],
       dependencies: [

@@ -2,26 +2,45 @@ import Foundation
 
 // MARK: - User Domain Model
 
-public struct UserModel: Identifiable, Equatable, Hashable {
+public struct UserModel: Identifiable, Equatable, Hashable, Sendable {
   public let id: String
   public let email: String
   public let nickname: String
   public let pinnedGroupId: String?
   public let profileImageUrl: String?
-  
+  public let profileType: ProfileType
+  public let notificationEnabled: Bool
+  public let createdAt: Date
+  public let updatedAt: Date
+
   public init(
     id: String,
     email: String,
     nickname: String,
     pinnedGroupId: String? = nil,
-    profileImageUrl: String? = nil
+    profileImageUrl: String? = nil,
+    profileType: ProfileType = .firebase,
+    notificationEnabled: Bool = true,
+    createdAt: Date = Date(),
+    updatedAt: Date = Date()
   ) {
     self.id = id
     self.email = email
     self.nickname = nickname
     self.pinnedGroupId = pinnedGroupId
     self.profileImageUrl = profileImageUrl
+    self.profileType = profileType
+    self.notificationEnabled = notificationEnabled
+    self.createdAt = createdAt
+    self.updatedAt = updatedAt
   }
+}
+
+// MARK: - ProfileType
+
+public enum ProfileType: String, Codable, Equatable, Hashable, Sendable {
+  case url = "URL"
+  case firebase = "FIREBASE"
 }
 
 // MARK: - User Extensions

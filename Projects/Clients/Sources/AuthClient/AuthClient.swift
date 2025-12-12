@@ -191,6 +191,7 @@ public struct PlatformAuthProvider: PlatformAuthProviding, Sendable {
 @DependencyClient
 public struct AuthClient: Sendable {
   public var logout: @Sendable () async throws -> Void
+  public var currentUser: @Sendable () async -> FirebaseUserSnapshot? = { nil }
   public var isAuthenticated: @Sendable () async -> Bool = { false }
   public var signInWithApple: @Sendable (_ authorization: ASAuthorization, _ nonce: String) async throws -> ServiceTokenBundle
   public var signInWithGoogle: @Sendable () async throws -> ServiceTokenBundle
@@ -202,6 +203,7 @@ public struct AuthClient: Sendable {
 extension AuthClient: TestDependencyKey {
   public static let previewValue = Self(
     logout: {},
+    currentUser: { nil },
     isAuthenticated: { false },
     signInWithApple: {
       _, _ in .init(
@@ -234,6 +236,7 @@ extension AuthClient: TestDependencyKey {
   
   public static let testValue = Self(
     logout: unimplemented("\(Self.self).logout"),
+    currentUser: unimplemented("\(Self.self).currentUser", placeholder: nil),
     isAuthenticated: unimplemented("\(Self.self).isAuthenticated", placeholder: false),
     signInWithApple: unimplemented("\(Self.self).signInWithApple"),
     signInWithGoogle: unimplemented("\(Self.self).signInWithGoogle"),
@@ -244,8 +247,8 @@ extension AuthClient: TestDependencyKey {
 // MARK: - Live
 
 private actor InMemoryAuthSession {
-  private var isAuthed: Bool = false
-  private var currentUser: User? = nil
+  private(set) var isAuthed: Bool = false
+  private(set) var currentUser: User? = nil
   
   func login(with user: User? = nil) {
     isAuthed = true
@@ -255,10 +258,6 @@ private actor InMemoryAuthSession {
   func logout() {
     isAuthed = false
     currentUser = nil
-  }
-  
-  func status() -> Bool {
-    isAuthed
   }
 }
 
@@ -274,9 +273,16 @@ extension AuthClient: DependencyKey {
         try? Auth.auth().signOut()
         try? clearStoredSession(in: keychain)
       },
+      currentUser: {
+        if let user = await session.currentUser {
+          return FirebaseUserSnapshot(user: user)
+        } else {
+          return FirebaseUserSnapshot(user: Auth.auth().currentUser)
+        }
+      },
       isAuthenticated: {
         // InMemory 세션 먼저 체크
-        if await session.status() {
+        if await session.isAuthed {
           return true
         }
         
@@ -290,6 +296,7 @@ extension AuthClient: DependencyKey {
           try await user.reload()
           
           await session.login(with: user)
+          
           return true
           
         } catch let error as NSError {

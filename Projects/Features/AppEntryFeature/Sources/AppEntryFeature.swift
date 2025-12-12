@@ -23,7 +23,8 @@ extension AppEntry {
   @Reducer
   public struct Feature {
     @Dependency(\.authClient) var authClient
-    
+    @Dependency(\.userProfileClient) var userProfileClient
+
     public init() {}
     
     // MARK: - State
@@ -40,7 +41,7 @@ extension AppEntry {
       var showSplash: Bool = true
       var shouldAnimateOut: Bool = false
       public var auth: Auth.Feature.State = .init()
-      var profile: ProfileSetup.State = .init()
+      public var profile: ProfileSetup.State = .init()
       public var main: RootTab.Feature.State = .init()
       
       public init() {}
@@ -62,7 +63,10 @@ extension AppEntry {
     }
     
     public enum Internal {
-      case sessionCheckResponse(Bool)
+      case startSessionCheck
+      case sessionCheckResponse(isAuthenticated: Bool)
+      case startProfileCheck
+      case profileCheckResponse(user: FirebaseUserSnapshot, hasProfile: Bool)
     }
     
     // MARK: - Reducer Body
@@ -85,10 +89,7 @@ extension AppEntry {
         case .view(let viewAction):
           switch viewAction {
           case .onAppear:
-            return .run { send in
-              let isAuthed = await authClient.isAuthenticated()
-              await send(.internal(.sessionCheckResponse(isAuthed)))
-            }
+            return .send(.internal(.startSessionCheck))
             
           case .splashAnimationCompleted:
             state.shouldAnimateOut = false
@@ -98,12 +99,41 @@ extension AppEntry {
           
         case .internal(let internalAction):
           switch internalAction {
-          case .sessionCheckResponse(let isAuthed):
-            let next: State.Route = isAuthed ? .main : .auth
-            state.route = next
-            state.main = RootTab.Feature.State()
-            state.auth = Auth.Feature.State()
+            
+          case .startSessionCheck:
+            return .run { send in
+              // uid까지 함께 반환하도록 클라이언트를 확장했다고 가정
+              let isAuthenticated = await authClient.isAuthenticated()
+              await send(.internal(.sessionCheckResponse(isAuthenticated: isAuthenticated)))
+            }
+            
+          case .sessionCheckResponse(let isAuthenticated):
             state.shouldAnimateOut = true
+            state.showSplash = true
+            
+            if isAuthenticated {
+              return .send(.internal(.startProfileCheck))
+            } else {
+              state.route = .auth
+              return .none
+            }
+            
+          case .startProfileCheck:
+            return .run { send in
+              guard let user = await authClient.currentUser() else { return }
+              // Firestore에서 프로필 존재 여부 확인
+              let hasProfile = (try? await userProfileClient.hasProfile(user.uid)) ?? false
+              await send(.internal(.profileCheckResponse(user: user, hasProfile: hasProfile)))
+            }
+            
+          case .profileCheckResponse(let user, let hasProfile):
+            if hasProfile {
+              state.route = .main
+              state.main = RootTab.Feature.State()
+            } else {
+              state.profile.inject(user: user)
+              state.route = .profile
+            }
             return .none
           }
           
@@ -182,5 +212,19 @@ extension AppEntry {
         store.send(.view(.onAppear))
       }
     }
+  }
+}
+
+extension AppEntry.ProfileSetup.State {
+  mutating func inject(user: FirebaseUserSnapshot) {
+    if let profileImageURL = user.photoURL {
+      self.profileImage = .url(profileImageURL)
+    } else {
+      self.profileImage = .none
+    }
+    self.email = user.email
+    self.uid = user.uid
+    self.fullName = user.displayName ?? ""
+    self.nickname = user.displayName ?? ""
   }
 }

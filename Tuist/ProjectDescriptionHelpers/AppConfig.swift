@@ -12,7 +12,7 @@ public enum AppConfig {
     return "\(bundlePrefix).\(module.lowercased())"
   }
 
-  public static let deploymentTargets = "17.0"
+  public static let deploymentTargets = "18.0"
   public static let defaultRegions = ["en", "ko"]
   
   public static let teamId = "BAC795627G"
