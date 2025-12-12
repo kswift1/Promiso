@@ -6,15 +6,20 @@ import Domain
 
 /// 사용자 프로필 관련 Firestore CRUD 및 쿼리 작업을 담당하는 Repository
 public class FirebaseUserRepository: UserRepositoryProtocol {
-  private let db = Firestore.firestore()
-  private let storage: Storage
+  private let firestoreProvider: FirestoreProviding
+  private let storageProvider: StorageProviding
+  private let collectionName: String
+  private var db: Firestore { firestoreProvider.db }
+  private var storage: Storage { storageProvider.storage }
 
-  public init() {
-    if let bucket = FirebaseApp.app()?.options.storageBucket {
-      self.storage = Storage.storage(url: "gs://\(bucket)")
-    } else {
-      self.storage = Storage.storage()
-    }
+  public init(
+    firestore: FirestoreProviding = DefaultFirestoreProvider(),
+    storage: StorageProviding = DefaultStorageProvider(),
+    collectionName: String = "users"
+  ) {
+    self.firestoreProvider = firestore
+    self.storageProvider = storage
+    self.collectionName = collectionName
   }
 
   // MARK: - CRUD Operations
@@ -22,7 +27,7 @@ public class FirebaseUserRepository: UserRepositoryProtocol {
   /// 사용자 생성
   public func createUser(_ user: UserModel) async throws -> String {
     let data = userToFirestoreData(user)
-    let ref = db.environmentCollection("users").document(user.id)
+    let ref = db.environmentCollection(collectionName).document(user.id)
     try await ref.setData(data)
     return user.id
   }
@@ -32,13 +37,13 @@ public class FirebaseUserRepository: UserRepositoryProtocol {
     var data = userToFirestoreData(user)
     data["updatedAt"] = Timestamp(date: Date())
 
-    let ref = db.environmentCollection("users").document(user.id)
+    let ref = db.environmentCollection(collectionName).document(user.id)
     try await ref.updateData(data)
   }
 
   /// 사용자 삭제 (soft delete)
   public func deleteUser(id: String) async throws {
-    let ref = db.environmentCollection("users").document(id)
+    let ref = db.environmentCollection(collectionName).document(id)
     try await ref.updateData([
       "isDeleted": true,
       "updatedAt": Timestamp(date: Date())
@@ -47,7 +52,7 @@ public class FirebaseUserRepository: UserRepositoryProtocol {
 
   /// 사용자 조회
   public func getUser(id: String) async throws -> UserModel? {
-    let ref = db.environmentCollection("users").document(id)
+    let ref = db.environmentCollection(collectionName).document(id)
     let document = try await ref.getDocument()
 
     guard document.exists else { return nil }
@@ -67,7 +72,7 @@ public class FirebaseUserRepository: UserRepositoryProtocol {
     var allUsers: [UserModel] = []
 
     for chunk in chunks {
-      let query = db.environmentCollection("users")
+      let query = db.environmentCollection(collectionName)
         .whereField(FieldPath.documentID(), in: chunk)
 
       let snapshot = try await query.getDocuments()
@@ -86,7 +91,7 @@ public class FirebaseUserRepository: UserRepositoryProtocol {
     // 닉네임 prefix 매칭으로 구현
     let lowercaseQuery = query.lowercased()
 
-    let querySnapshot = try await db.environmentCollection("users")
+    let querySnapshot = try await db.environmentCollection(collectionName)
       .whereField("nickname_lowercase", isGreaterThanOrEqualTo: lowercaseQuery)
       .whereField("nickname_lowercase", isLessThan: lowercaseQuery + "\u{f8ff}")
       .limit(to: 20)
@@ -115,8 +120,17 @@ public class FirebaseUserRepository: UserRepositoryProtocol {
 
   /// 프로필 존재 여부 확인
   public func hasProfile(uid: String) async throws -> Bool {
-    let document = try await db.environmentCollection("users").document(uid).getDocument()
+    let document = try await db.environmentCollection(collectionName).document(uid).getDocument()
     return document.exists
+  }
+  
+  /// 닉네임 중복 체크
+  public func isNicknameAvailable(_ nickname: String) async throws -> Bool {
+    let snapshot = try await db.environmentCollection(collectionName)
+      .whereField("nickname", isEqualTo: nickname)
+      .limit(to: 1)
+      .getDocuments()
+    return snapshot.documents.isEmpty
   }
 
   // MARK: - Helper Methods
@@ -210,15 +224,6 @@ extension StorageReference {
           continuation.resume(throwing: UserRepositoryError.uploadFailed)
         }
       }
-    }
-  }
-}
-
-extension Array {
-  /// 배열을 지정된 크기로 청크 분할
-  fileprivate func chunked(into size: Int) -> [[Element]] {
-    return stride(from: 0, to: count, by: size).map {
-      Array(self[$0 ..< Swift.min($0 + size, count)])
     }
   }
 }

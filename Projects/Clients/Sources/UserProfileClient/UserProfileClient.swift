@@ -17,6 +17,9 @@ public struct UserProfileClient: Sendable {
   /// 프로필이 존재하는지 확인
   public var hasProfile: @Sendable (_ uid: String) async throws -> Bool
 
+  /// 닉네임 사용 가능 여부 확인
+  public var isNicknameAvailable: @Sendable (_ nickname: String) async throws -> Bool
+
   /// 사용자 프로필 업데이트
   public var updateProfile: @Sendable (_ uid: String, _ profile: UserProfile) async throws -> Void
 
@@ -34,14 +37,16 @@ extension UserProfileClient: TestDependencyKey {
         name: "김민수",
         nickname: "kms",
         email: "minsu@example.com",
-        profileType: .url,
-        profileImageUrl: "https://storage.googleapis.com/example.jpg"
+        profileType: .firebase,
+        profileImageUrl: nil,
+        profileImagePath: "profile_images/preview.jpg"
       )
     },
     uploadProfileImage: { _, _ in
       URL(string: "https://storage.googleapis.com/example.jpg")!
     },
     hasProfile: { _ in true },
+    isNicknameAvailable: { _ in true },
     updateProfile: { _, _ in },
     deleteProfile: { _ in }
   )
@@ -51,6 +56,7 @@ extension UserProfileClient: TestDependencyKey {
     getProfile: unimplemented("\(Self.self).getProfile", placeholder: nil),
     uploadProfileImage: unimplemented("\(Self.self).uploadProfileImage"),
     hasProfile: unimplemented("\(Self.self).hasProfile", placeholder: false),
+    isNicknameAvailable: unimplemented("\(Self.self).isNicknameAvailable", placeholder: true),
     updateProfile: unimplemented("\(Self.self).updateProfile"),
     deleteProfile: unimplemented("\(Self.self).deleteProfile")
   )
@@ -77,6 +83,10 @@ extension UserProfileClient: DependencyKey {
 
       hasProfile: { uid in
         try await repository.hasProfile(uid: uid)
+      },
+      
+      isNicknameAvailable: { nickname in
+        try await repository.isNicknameAvailable(nickname)
       },
 
       updateProfile: { uid, profile in

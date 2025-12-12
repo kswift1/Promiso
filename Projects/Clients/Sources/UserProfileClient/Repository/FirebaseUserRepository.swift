@@ -1,29 +1,53 @@
 import FirebaseFirestore
 import FirebaseStorage
-import Foundation
 import FirebaseCore
+import Foundation
 
-// MARK: - FirebaseUserRepository
+// MARK: - Firestore / Storage Providers
+
+public protocol FirestoreProviding {
+  var db: Firestore { get }
+}
+
+public protocol StorageProviding {
+  var storage: Storage { get }
+}
+
+public struct DefaultFirestoreProvider: FirestoreProviding {
+  public let db: Firestore
+
+  public init(app: FirebaseApp? = FirebaseApp.app()) {
+    self.db = Firestore.firestore()
+  }
+}
+
+public struct DefaultStorageProvider: StorageProviding {
+  public let storage: Storage
+
+  public init(app: FirebaseApp? = FirebaseApp.app()) {
+    if let bucket = app?.options.storageBucket {
+      self.storage = Storage.storage(url: "gs://\(bucket)")
+    } else {
+      self.storage = Storage.storage()
+    }
+  }
+}
 
 /// Firebase Firestore 및 Storage를 사용한 사용자 프로필 저장소 구현
-public final class FirebaseUserRepository: UserRepositoryProtocol, @unchecked Sendable {
-  private let db: Firestore
-  private let storage: Storage
+public final class FirebaseUserRepository: UserRepositoryProtocol {
+  private let firestore: FirestoreProviding
+  private let storageProvider: StorageProviding
+  private var db: Firestore { firestore.db }
+  private var storage: Storage { storageProvider.storage }
   private let collectionName: String
 
   public init(
-    db: Firestore = Firestore.firestore(),
-    storage: Storage = {
-      if let bucket = FirebaseApp.app()?.options.storageBucket {
-        return Storage.storage(url: "gs://\(bucket)")
-      } else {
-        return Storage.storage()
-      }
-    }(),
+    firestore: FirestoreProviding = DefaultFirestoreProvider(),
+    storage: StorageProviding = DefaultStorageProvider(),
     collectionName: String = "users"
   ) {
-    self.db = db
-    self.storage = storage
+    self.firestore = firestore
+    self.storageProvider = storage
     self.collectionName = collectionName
   }
 
@@ -62,6 +86,14 @@ public final class FirebaseUserRepository: UserRepositoryProtocol, @unchecked Se
     let document = try await db.environmentCollection(collectionName).document(uid).getDocument()
     return document.exists
   }
+  
+  public func isNicknameAvailable(_ nickname: String) async throws -> Bool {
+    let snapshot = try await db.environmentCollection(collectionName)
+      .whereField("nickname", isEqualTo: nickname)
+      .limit(to: 1)
+      .getDocuments()
+    return snapshot.documents.isEmpty
+  }
 
   public func updateProfile(uid: String, profile: UserProfile) async throws {
     var updatedProfile = profile
@@ -72,6 +104,7 @@ public final class FirebaseUserRepository: UserRepositoryProtocol, @unchecked Se
       email: profile.email,
       profileType: profile.profileType,
       profileImageUrl: profile.profileImageUrl,
+      profileImagePath: profile.profileImagePath,
       pinnedGroupId: profile.pinnedGroupId,
       notificationSettings: profile.notificationSettings,
       createdAt: profile.createdAt,

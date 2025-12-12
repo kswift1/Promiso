@@ -5,6 +5,9 @@
 //  Created by 김성원 on 12/9/25.
 //
 
+/// TODO: 업로드중일떄 버튼 인디케이터는 동작하나 완료에서 인디케이터라 어색함
+/// 프로필 사진 업로드할떄 구글로 이미지 가지고 들어오는 경우 나중에 할게요 눌러도 세팅값으로 넘어가는 문제, 그외 나중에 할게요 대응 필요
+
 import Foundation
 import SwiftUI
 import PhotosUI
@@ -12,6 +15,7 @@ import Shared
 import ResourceKit
 import Clients
 import ComposableArchitecture
+import CoreInfrastructure
 
 enum ProfileImageType: Equatable {
   case url(URL)
@@ -23,7 +27,7 @@ extension AppEntry {
   @Reducer
   public struct ProfileSetup {
     @Dependency(\.userProfileClient) var userProfileClient
-
+    
     @ObservableState
     public struct State: Equatable {
       public enum Step: Int, CaseIterable, Equatable {
@@ -39,6 +43,9 @@ extension AppEntry {
       var fullName: String
       var nickname: String = ""
       var nicknameError: String?
+      var isCheckingNickname: Bool = false
+      var isNicknameAvailable: Bool?
+      var isSaving: Bool = false
       var step: Step = .welcome
       
       public init(profileImageUrl: String? = nil, email: String = "", uid: String = "", fullName: String = "") {
@@ -61,18 +68,19 @@ extension AppEntry {
       case skipTapped
       case startTapped
       case nicknameChanged(String)
+      case nicknameAvailabilityResponse(Result<Bool, Error>)
       case photoSelected(PhotosPickerItem?)
       case photoLoaded(Data?)
       case `internal`(Internal)
       case delegate(Delegate)
     }
-
+    
     public enum Internal {
       case saveProfile
       case profileSaved
       case profileSaveFailed(Error)
     }
-
+    
     public enum Delegate: Equatable {
       case completed
     }
@@ -81,6 +89,7 @@ extension AppEntry {
       Reduce { state, action in
         switch action {
         case .nextTapped:
+          if state.isSaving { return .none }
           switch state.step {
           case .welcome:
             state.step = .nickname
@@ -90,12 +99,16 @@ extension AppEntry {
               state.nicknameError = error
               return .none
             }
+            if state.isNicknameAvailable != true {
+              state.nicknameError = "닉네임 중복 확인을 완료해주세요"
+              return .none
+            }
             state.step = .photo
             return .none
           case .photo:
             return .send(.internal(.saveProfile))
           }
-
+          
         case .backTapped:
           switch state.step {
           case .welcome:
@@ -107,8 +120,9 @@ extension AppEntry {
             state.step = .nickname
             return .none
           }
-
+          
         case .skipTapped:
+          if state.isSaving { return .none }
           return .send(.internal(.saveProfile))
           
         case .startTapped:
@@ -118,7 +132,24 @@ extension AppEntry {
         case .nicknameChanged(let name):
           state.nickname = name
           state.nicknameError = validateNickname(name)
-          return .none
+          state.isNicknameAvailable = nil
+          
+          guard state.nicknameError == nil, !name.isEmpty else {
+            state.isCheckingNickname = false
+            return .cancel(id: CancelID.nicknameCheck)
+          }
+          
+          state.isCheckingNickname = true
+          return .run { [nickname = name] send in
+            try await Task.sleep(for: .milliseconds(400))
+            do {
+              let isAvailable = try await userProfileClient.isNicknameAvailable(nickname)
+              await send(.nicknameAvailabilityResponse(.success(isAvailable)))
+            } catch {
+              await send(.nicknameAvailabilityResponse(.failure(error)))
+            }
+          }
+          .cancellable(id: CancelID.nicknameCheck, cancelInFlight: true)
           
         case .photoSelected(let item):
           guard let item else { return .none }
@@ -131,57 +162,83 @@ extension AppEntry {
         case .photoLoaded(let data):
           state.profileImage = .data(data)
           return .none
-
+          
+        case .nicknameAvailabilityResponse(let result):
+          state.isCheckingNickname = false
+          switch result {
+          case .success(let isAvailable):
+            state.isNicknameAvailable = isAvailable
+            state.nicknameError = isAvailable ? nil : "이미 사용 중인 닉네임이에요"
+          case .failure:
+            state.isNicknameAvailable = nil
+            state.nicknameError = "닉네임 확인에 실패했어요. 잠시 후 다시 시도해주세요"
+          }
+          return .none
+          
         case .internal(let internalAction):
           switch internalAction {
           case .saveProfile:
+            state.isSaving = true
             return .run { [state] send in
               do {
+                // 지연 시간을 두어 인디케이터 표시를 확인
+                try await Task.sleep(for: .seconds(2))
+                
                 // 1. 프로필 이미지가 있으면 업로드
                 var profileImageUrl: String? = nil
+                var profileImagePath: String? = nil
+                var profileType: ProfileType = .firebase
                 switch state.profileImage {
                 case .data(let data):
                   if let imageData = data {
-//                    let url = try await userProfileClient.uploadProfileImage(state.uid, imageData)
-//                    profileImageUrl = url.absoluteString
+                    let uploadData = compressImageDataForUpload(imageData) ?? imageData
+                    _ = try await userProfileClient.uploadProfileImage(state.uid, uploadData)
+                    profileImagePath = "profile_images/\(state.uid).jpg"
+                    profileType = .firebase
                   }
                 case .url(let url):
                   profileImageUrl = url.absoluteString
+                  profileType = .url
                 case .none:
                   profileImageUrl = nil
+                  profileImagePath = nil
+                  profileType = .firebase
                 }
-
+                
                 // 2. UserProfile 생성
                 let profile = UserProfile(
                   name: state.fullName,
                   nickname: state.nickname,
                   email: state.email,
-                  profileType: profileImageUrl != nil ? .url : .firebase,
+                  profileType: profileType,
                   profileImageUrl: profileImageUrl,
+                  profileImagePath: profileImagePath,
                   pinnedGroupId: nil,
                   notificationSettings: .default,
                   createdAt: Date(),
                   updatedAt: Date()
                 )
-
+                
                 // 3. Firestore에 저장
                 try await userProfileClient.saveProfile(state.uid, profile)
-
+                
                 await send(.internal(.profileSaved))
               } catch {
                 await send(.internal(.profileSaveFailed(error)))
               }
             }
-
+            
           case .profileSaved:
+            state.isSaving = false
             return .send(.delegate(.completed))
-
+            
           case .profileSaveFailed(let error):
+            state.isSaving = false
             print("❌ Profile save failed: \(error)")
             // TODO: 에러 처리 UI 추가
             return .none
           }
-
+          
         case .delegate:
           return .none
         }
@@ -476,24 +533,7 @@ private struct NicknameStepView: SwiftUI.View {
           }
           
           HStack {
-            if store.nickname.isEmpty {
-              Text("한글, 영문, 숫자만 사용 가능해요")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-            } else if let error = store.nicknameError, !error.isEmpty {
-              Text(error)
-                .font(.footnote)
-                .foregroundStyle(.red)
-            } else {
-              HStack(spacing: 4) {
-                Image(systemName: "checkmark.circle.fill")
-                  .foregroundStyle(.green)
-                  .font(.footnote)
-                Text("사용 가능한 닉네임이에요")
-                  .font(.footnote)
-                  .foregroundStyle(.green)
-              }
-            }
+            nicknameStatusView
             
             Spacer()
             
@@ -512,7 +552,11 @@ private struct NicknameStepView: SwiftUI.View {
       GlassActionButton(
         title: "다음",
         isVisible: showButtons,
-        isEnabled: (store.nicknameError?.isEmpty ?? true) && store.nickname.count >= 2 && store.nickname.count <= 12,
+        isEnabled: store.nicknameError == nil
+        && store.nickname.count >= 2
+        && store.nickname.count <= 12
+        && store.isNicknameAvailable == true
+        && !store.isCheckingNickname,
         action: { store.send(.nextTapped) }
       )
       .padding(.horizontal, 24)
@@ -545,6 +589,44 @@ private struct NicknameStepView: SwiftUI.View {
     }
   }
   
+  @ViewBuilder
+  private var nicknameStatusView: some SwiftUI.View {
+    if store.nickname.isEmpty {
+      Text("공백 없이 2-12자로 입력해주세요")
+        .font(.footnote)
+        .foregroundStyle(.secondary)
+    } else if let error = store.nicknameError, !error.isEmpty {
+      Text(error)
+        .font(.footnote)
+        .foregroundStyle(.red)
+    } else if store.isCheckingNickname {
+      HStack(spacing: 6) {
+        ProgressView()
+          .scaleEffect(0.6, anchor: .center)
+        Text("닉네임 확인 중...")
+          .font(.footnote)
+          .foregroundStyle(.secondary)
+      }
+    } else if store.isNicknameAvailable == false {
+        Text("이미 사용 중인 닉네임이에요")
+          .font(.footnote)
+          .foregroundStyle(.red)
+    } else if store.isNicknameAvailable == true {
+      HStack(spacing: 4) {
+        Image(systemName: "checkmark.circle.fill")
+          .foregroundStyle(.green)
+          .font(.footnote)
+        Text("사용 가능한 닉네임이에요")
+          .font(.footnote)
+          .foregroundStyle(.green)
+      }
+    } else {
+      Text("닉네임 중복 확인을 완료해주세요")
+        .font(.footnote)
+        .foregroundStyle(.secondary)
+    }
+  }
+  
   private func handleAnimationCompleted() {
     withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
       showTextField = true
@@ -566,10 +648,18 @@ private struct NicknameStepView: SwiftUI.View {
   
   private func onAppearActions() {
     updateTextFieldVisibility(for: showAnimation)
+    triggerInitialNicknameCheckIfNeeded()
   }
   
   private func onAnimationStateChange(_ newValue: Bool?) {
     updateTextFieldVisibility(for: newValue)
+  }
+
+  private func triggerInitialNicknameCheckIfNeeded() {
+    guard !store.nickname.isEmpty,
+          store.isNicknameAvailable == nil,
+          !store.isCheckingNickname else { return }
+    store.send(.nicknameChanged(store.nickname))
   }
 }
 
@@ -624,14 +714,18 @@ private struct PhotoStepView: SwiftUI.View {
       }
       
       Spacer()
-
+      
       VStack(spacing: 15) {
-        GlassActionButton(
-          title: "완료",
-          isVisible: showButtons,
+        IndicatorButton.standard(
+          "완료",
+          isLoading: store.isSaving,
+          isDisabled: !showButtons || store.isSaving,
           action: { store.send(.nextTapped) }
         )
-
+        .opacity(showButtons ? 1 : 0)
+        .offset(y: showButtons ? 0 : 20)
+        .animation(.spring(response: 0.6, dampingFraction: 0.8), value: showButtons)
+        
         Button {
           store.send(.skipTapped)
         } label: {
@@ -640,6 +734,7 @@ private struct PhotoStepView: SwiftUI.View {
             .foregroundStyle(Color.pmtext.secondary)
         }
         .opacity(showButtons ? 1 : 0)
+        .disabled(store.isSaving)
       }
       .padding(.horizontal, 24)
       .padding(.bottom, 32)
@@ -799,15 +894,22 @@ private struct GlassActionButton: SwiftUI.View {
   }
 }
 
+// MARK: - Effects ID
+
+private enum CancelID {
+  case nicknameCheck
+}
+
 
 // MARK: - Nickname Validation
 
 private func validateNickname(_ name: String) -> String? {
-  if name.count < 2 { return "2자 이상 입력해주세요" }
-  if name.count > 12 { return "12자 이하로 입력해주세요" }
-  let allowed = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789가-힣")
-  if name.rangeOfCharacter(from: allowed.inverted) != nil {
-    return "한글, 영문, 숫자만 입력 가능해요"
-  }
+  let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+
+  if trimmed.isEmpty { return "2자 이상 입력해주세요" }
+  if trimmed.count < 2 { return "2자 이상 입력해주세요" }
+  if trimmed.count > 12 { return "12자 이하로 입력해주세요" }
+  if trimmed.rangeOfCharacter(from: .whitespacesAndNewlines) != nil { return "닉네임엔 공백을 넣을 수 없어요" }
+  if trimmed != name { return "앞뒤 공백 없이 입력해주세요" }
   return nil
 }

@@ -102,7 +102,6 @@ extension AppEntry {
             
           case .startSessionCheck:
             return .run { send in
-              // uid까지 함께 반환하도록 클라이언트를 확장했다고 가정
               let isAuthenticated = await authClient.isAuthenticated()
               await send(.internal(.sessionCheckResponse(isAuthenticated: isAuthenticated)))
             }
@@ -121,7 +120,7 @@ extension AppEntry {
           case .startProfileCheck:
             return .run { send in
               guard let user = await authClient.currentUser() else { return }
-              // Firestore에서 프로필 존재 여부 확인
+              // TODO:  Firestore에서 프로필 존재 여부 - 에러 대응 추가
               let hasProfile = (try? await userProfileClient.hasProfile(user.uid)) ?? false
               await send(.internal(.profileCheckResponse(user: user, hasProfile: hasProfile)))
             }
@@ -137,17 +136,8 @@ extension AppEntry {
             return .none
           }
           
-        case .auth(.delegate(.loggedIn(let serviceBundle))):
-          state.profile = ProfileSetup.State(
-            profileImageUrl: serviceBundle?.firebaseUser?.photoURL?.absoluteString,
-            email: serviceBundle?.providerTokenBundle.email ?? serviceBundle?.firebaseUser?.email ?? "",
-            uid: serviceBundle?.providerTokenBundle.userIdentifier ?? serviceBundle?.firebaseUser?.uid ?? "",
-            fullName: serviceBundle?.providerTokenBundle.fullName
-              ?? serviceBundle?.firebaseUser?.displayName
-              ?? ""
-          )
-          state.route = .profile
-          return .none
+        case .auth(.delegate(.loggedIn)):
+          return .send(.internal(.startProfileCheck))
         
         case .profile(.delegate(.completed)):
           state.route = .main

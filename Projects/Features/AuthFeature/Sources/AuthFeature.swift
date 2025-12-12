@@ -58,7 +58,7 @@ extension Auth {
     }
     
     public enum Delegate: Equatable {
-      case loggedIn(ServiceTokenBundle?)
+      case loggedIn
     }
     
     // MARK: - Reducer Body
@@ -83,7 +83,7 @@ extension Auth {
               do {
                 let bundle = try await authClient.signInWithGoogle()
                 await send(.internal(.authResponse(.success(bundle))))
-                await send(.delegate(.loggedIn(bundle)))
+                await send(.delegate(.loggedIn))
               } catch {
                 let clientError = (error as? AuthClientError) ?? .unknown
                 await send(.internal(.authResponse(.failure(clientError))))
@@ -102,7 +102,7 @@ extension Auth {
             return .run { send in
               do {
                 let bundle = try await authClient.signInWithApple(authorization, nonce)
-                await send(.delegate(.loggedIn(bundle)))
+                await send(.delegate(.loggedIn))
                 await send(.internal(.authResponse(.success(bundle))))
               } catch {
                 let clientError = (error as? AuthClientError) ?? .unknown

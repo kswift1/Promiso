@@ -3,7 +3,7 @@ import Foundation
 // MARK: - UserRepositoryProtocol
 
 /// 사용자 프로필 데이터 저장소 인터페이스
-public protocol UserRepositoryProtocol: Sendable {
+public protocol UserRepositoryProtocol {
   /// 사용자 프로필을 저장소에 저장
   /// - Parameters:
   ///   - uid: 사용자 고유 식별자
@@ -26,6 +26,9 @@ public protocol UserRepositoryProtocol: Sendable {
   /// - Parameter uid: 사용자 고유 식별자
   /// - Returns: 프로필 존재 여부
   func hasProfile(uid: String) async throws -> Bool
+  
+  /// 닉네임 사용 가능 여부 확인
+  func isNicknameAvailable(_ nickname: String) async throws -> Bool
 
   /// 사용자 프로필 업데이트
   /// - Parameters:
@@ -55,8 +58,9 @@ public struct MockUserRepository: UserRepositoryProtocol {
       name: "Mock User",
       nickname: "Mock User Nickname",
       email: "mock@example.com",
-      profileType: .url,
-      profileImageUrl: "https://example.com/mock.jpg"
+      profileType: .firebase,
+      profileImageUrl: nil,
+      profileImagePath: "profile_images/mock.jpg"
     )
   }
 
@@ -65,6 +69,10 @@ public struct MockUserRepository: UserRepositoryProtocol {
   }
 
   public func hasProfile(uid: String) async throws -> Bool {
+    return true
+  }
+  
+  public func isNicknameAvailable(_ nickname: String) async throws -> Bool {
     return true
   }
 

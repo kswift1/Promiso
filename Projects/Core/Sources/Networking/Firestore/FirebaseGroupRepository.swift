@@ -5,8 +5,8 @@ import Domain
 /// 그룹 관련 Repository (Firestore 구현)
 public final class FirebaseGroupRepository: GroupRepositoryProtocol {
   private let firestore: FirestoreProviding
-  private let collectionName: String
   private var db: Firestore { firestore.db }
+  private let collectionName: String
 
   public init(
     firestore: FirestoreProviding = DefaultFirestoreProvider(),

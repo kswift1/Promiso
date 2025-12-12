@@ -2,7 +2,7 @@ import Foundation
 
 // MARK: - User Repository Protocol
 
-public protocol UserRepositoryProtocol: Sendable {
+public protocol UserRepositoryProtocol {
   // MARK: - CRUD Operations
   func createUser(_ user: UserModel) async throws -> String
   func updateUser(_ user: UserModel) async throws
@@ -19,4 +19,7 @@ public protocol UserRepositoryProtocol: Sendable {
 
   /// 프로필 존재 여부 확인
   func hasProfile(uid: String) async throws -> Bool
+  
+  /// 닉네임 사용 가능 여부 확인
+  func isNicknameAvailable(_ nickname: String) async throws -> Bool
 }

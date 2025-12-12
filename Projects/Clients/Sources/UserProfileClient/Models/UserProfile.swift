@@ -8,6 +8,7 @@ public struct UserProfile: Codable, Equatable, Sendable {
   public let email: String?
   public let profileType: ProfileType
   public let profileImageUrl: String?
+  public let profileImagePath: String?
   public let pinnedGroupId: String?
   public let notificationSettings: NotificationSettings
   public let createdAt: Date
@@ -19,6 +20,7 @@ public struct UserProfile: Codable, Equatable, Sendable {
     email: String?,
     profileType: ProfileType,
     profileImageUrl: String? = nil,
+    profileImagePath: String? = nil,
     pinnedGroupId: String? = nil,
     notificationSettings: NotificationSettings = .default,
     createdAt: Date = Date(),
@@ -29,6 +31,7 @@ public struct UserProfile: Codable, Equatable, Sendable {
     self.email = email
     self.profileType = profileType
     self.profileImageUrl = profileImageUrl
+    self.profileImagePath = profileImagePath
     self.pinnedGroupId = pinnedGroupId
     self.notificationSettings = notificationSettings
     self.createdAt = createdAt
@@ -79,6 +82,10 @@ extension UserProfile {
       data["profileImageUrl"] = profileImageUrl
     }
 
+    if let profileImagePath = profileImagePath {
+      data["profileImagePath"] = profileImagePath
+    }
+
     if let pinnedGroupId = pinnedGroupId {
       data["pinnedGroupId"] = pinnedGroupId
     }
@@ -99,6 +106,7 @@ extension UserProfile {
 
     let email = data["email"] as? String
     let profileImageUrl = data["profileImageUrl"] as? String
+    let profileImagePath = data["profileImagePath"] as? String
     let pinnedGroupId = data["pinnedGroupId"] as? String
 
     // Firestore Timestamp를 Date로 변환
@@ -123,6 +131,7 @@ extension UserProfile {
       email: email,
       profileType: profileType,
       profileImageUrl: profileImageUrl,
+      profileImagePath: profileImagePath,
       pinnedGroupId: pinnedGroupId,
       notificationSettings: NotificationSettings(enabled: notificationEnabled),
       createdAt: createdAt,
