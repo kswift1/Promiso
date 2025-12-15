@@ -116,7 +116,7 @@ extension AppEntry {
         self.email = email
         self.uid = uid
         self.fullName = fullName
-        self.nickname = fullName.isEmpty ? "" : fullName
+        self.nickname = fullName.replacingOccurrences(of: " ", with: "")
       }
     }
     
@@ -184,6 +184,7 @@ extension AppEntry {
         case .welcome:
           state.previousStep = state.step
           state.step = .nickname
+          prepareUIState(for: &state, step: .nickname)
           return .none
         case .nickname:
           if let error = validateNickname(state.nickname) {
@@ -196,6 +197,7 @@ extension AppEntry {
           }
           state.previousStep = state.step
           state.step = .photo
+          prepareUIState(for: &state, step: .photo)
           return .none
         case .photo:
           return .send(.internal(.saveProfile))
@@ -208,10 +210,12 @@ extension AppEntry {
         case .nickname:
           state.previousStep = state.step
           state.step = .welcome
+          prepareUIState(for: &state, step: .welcome)
           return .none
         case .photo:
           state.previousStep = state.step
           state.step = .nickname
+          prepareUIState(for: &state, step: .nickname)
           return .none
         }
         
@@ -253,20 +257,15 @@ extension AppEntry {
         
       case .stepDidAppear(let step):
         // step이 변경되어 화면에 나타날 때 애니메이션 상태 초기화
-        if state.completedSteps.contains(step) {
-          // 이미 완료된 step이면 애니메이션 없이 바로 표시
-          state.showAnimation = false
-          state.showButtons = true
-        } else {
-          // 새로운 step이면 애니메이션 준비
-          state.showAnimation = nil
-          state.showButtons = false
+        let isFirstVisit = !state.completedSteps.contains(step)
+        if isFirstVisit {
           return .run { send in
             try await Task.sleep(for: .seconds(0.1))
             await send(.internal(.startAnimation(step)))
           }
+        } else {
+          return .none
         }
-        return .none
         
       case .animationCompleted(let step):
         // 애니메이션 완료 시 버튼 표시
@@ -357,6 +356,14 @@ extension AppEntry {
       }
     }
     
+    // MARK: - UI Helpers
+    
+    private func prepareUIState(for state: inout State, step: State.Step) {
+      let isVisited = state.completedSteps.contains(step)
+      state.showAnimation = isVisited ? false : nil
+      state.showButtons = isVisited
+    }
+    
     public struct View: SwiftUI.View {
       @Bindable private var store: StoreOf<ProfileSetup>
       private let indicatorCount: Int = State.Step.allCases.count
@@ -383,8 +390,7 @@ extension AppEntry {
                   store.send(.view(.nextTapped))
                 }
               )
-              .transition(stepTransition)
-              
+
             case .nickname:
               NicknameStepView(
                 nickname: store.nickname,
@@ -406,8 +412,7 @@ extension AppEntry {
                   store.send(.view(.backTapped))
                 }
               )
-              .transition(stepTransition)
-              
+
             case .photo:
               PhotoStepView(
                 profileImage: store.profileImage,
@@ -431,13 +436,10 @@ extension AppEntry {
                   store.send(.view(.backTapped))
                 }
               )
-              .transition(stepTransition)
             }
           }
-          //          .animation(.interactiveSpring(response: 0.5, dampingFraction: 0.9), value: store.step)
         }
         .toolbarVisibility(.visible, for: .navigationBar)
-        .animation(.easeInOut, value: store.step)
         .auroraBackground()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .task(id: store.step) {
@@ -456,17 +458,6 @@ extension AppEntry {
         .padding(.top, 48)
         .animation(.interactiveSpring(response: 0.45, dampingFraction: 0.85), value: store.step)
       }
-      
-      private var stepTransition: AnyTransition {
-        let isForward = store.step.rawValue > store.previousStep.rawValue
-        let insertionEdge: Edge = isForward ? .trailing : .leading
-        let removalEdge: Edge = isForward ? .leading : .trailing
-        return .asymmetric(
-          insertion: .move(edge: insertionEdge).combined(with: .opacity),
-          removal: .move(edge: removalEdge).combined(with: .opacity)
-        )
-      }
-      
     }
   }
 }
@@ -584,22 +575,22 @@ private struct WelcomeStepView: SwiftUI.View {
           lines: [
             .init(
               text: "반가워요! 👋",
-              font: .system(size: 38, weight: .semibold, design: .default),
+              font: .system(size: 30, weight: .semibold, design: .default),
               style: AnyShapeStyle(Color.pmtext.primary)
             ),
             .init(
               text: "안녕하세요 \(fullName.isEmpty ? "," : "\(fullName) 님,")",
-              font: .system(size: 25, weight: .medium, design: .serif),
+              font: .system(size: 20, weight: .medium, design: .serif),
               style: AnyShapeStyle(Color.pmtext.secondary)
             ),
             .init(
               text: "Promiso를 시작하기 전에",
-              font: .system(size: 25, weight: .medium, design: .serif),
+              font: .system(size: 20, weight: .medium, design: .serif),
               style: AnyShapeStyle(Color.pmtext.secondary)
             ),
             .init(
               text: "간단한 정보를 입력해주세요",
-              font: .system(size: 25, weight: .medium, design: .serif),
+              font: .system(size: 20, weight: .medium, design: .serif),
               style: AnyShapeStyle(Color.pmtext.secondary)
             )
           ],
@@ -611,7 +602,7 @@ private struct WelcomeStepView: SwiftUI.View {
             }
           }
         )
-        .id("welcome-\(showAnimation ?? false)")
+        .id("welcome-\(String(describing: showAnimation))")
       }
       .padding(.horizontal, 24)
       .padding(.top, 12)
@@ -672,7 +663,7 @@ private struct NicknameStepView: SwiftUI.View {
     self.onNicknameChanged = onNicknameChanged
     self.onNextTapped = onNextTapped
     self.onBackTapped = onBackTapped
-    self._localNickname = State(initialValue: nickname)
+    self._localNickname = State(initialValue: nickname.replacingOccurrences(of: " ", with: ""))
   }
   
   var body: some SwiftUI.View {
@@ -683,19 +674,29 @@ private struct NicknameStepView: SwiftUI.View {
           lines: [
             .init(
               text: "어떻게 불러드릴까요?",
-              font: .system(size: 28, weight: .semibold, design: .default),
+              font: .system(size: 30, weight: .semibold, design: .default),
               style: AnyShapeStyle(Color.pmtext.primary)
             ),
             .init(
-              text: "Promiso에서 사용할 닉네임을 알려주세요",
-              font: .system(size: 17, weight: .regular, design: .default),
+              text: "Promiso에서 사용할",
+              font: .system(size: 20, weight: .medium, design: .serif),
+              style: AnyShapeStyle(Color.pmtext.secondary)
+            ),
+            .init(
+              text: "닉네임을 알려주세요",
+              font: .system(size: 20, weight: .medium, design: .serif),
               style: AnyShapeStyle(Color.pmtext.secondary)
             )
           ],
           typingAnimationCompleted: handleAnimationCompleted,
-          lineSpacingProvider: { _ in 6 }
+          lineSpacingProvider: { index in
+            switch index {
+            case 0: return 8
+            default: return 4
+            }
+          }
         )
-        .id("nickname-\(showAnimation ?? false)")
+        .id("nickname-\(String(describing: showAnimation))")
       }
       .padding(.horizontal, 24)
       .padding(.top, 12)
@@ -731,7 +732,6 @@ private struct NicknameStepView: SwiftUI.View {
         }
         .padding(.horizontal, 24)
         .padding(.top, 30)
-        .transition(.move(edge: .bottom).combined(with: .opacity))
       }
       
       Spacer()
@@ -744,10 +744,7 @@ private struct NicknameStepView: SwiftUI.View {
         && nickname.count <= 12
         && isNicknameAvailable == true
         && !isCheckingNickname,
-        action: {
-          isNicknameFocused = false
-          onNextTapped()
-        }
+        action: handleNextTapped
       )
       .padding(.horizontal, 24)
       .padding(.bottom, 32)
@@ -764,11 +761,35 @@ private struct NicknameStepView: SwiftUI.View {
         ToolbarItem(placement: .topBarLeading) {
           ToolbarButton(
             imageName: "chevron.left",
-            action: onBackTapped
+            action: handleBackTapped
           )
           .animation(.spring(response: 0.6, dampingFraction: 0.8), value: showButtons)
         }
       }
+    }
+  }
+
+  // MARK: - Helper Methods
+
+  private func handleNextTapped() {
+    if isNicknameFocused {
+      isNicknameFocused = false
+      DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+        onNextTapped()
+      }
+    } else {
+      onNextTapped()
+    }
+  }
+
+  private func handleBackTapped() {
+    if isNicknameFocused {
+      isNicknameFocused = false
+      DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+        onBackTapped()
+      }
+    } else {
+      onBackTapped()
     }
   }
   
@@ -785,9 +806,7 @@ private struct NicknameStepView: SwiftUI.View {
   @ViewBuilder
   private var nicknameStatusView: some SwiftUI.View {
     if localNickname.isEmpty {
-      Text("공백 없이 2-12자로 입력해주세요")
-        .font(.footnote)
-        .foregroundStyle(.secondary)
+      EmptyView()
     } else if let error = nicknameError, !error.isEmpty {
       Text(error)
         .font(.footnote)
@@ -831,9 +850,8 @@ private struct NicknameStepView: SwiftUI.View {
   private func updateTextFieldVisibility(for animationState: Bool?) {
     switch animationState {
     case false:
-      // 이미 완료된 단계는 바로 표시
+      // 이미 완료된 단계는 애니메이션 없이 바로 표시
       showTextField = true
-      focusNicknameIfNeeded()
     case nil:
       showTextField = false
     default:
@@ -911,19 +929,20 @@ private struct PhotoStepView: SwiftUI.View {
           lines: [
             .init(
               text: "프로필 사진을 설정해주세요",
-              font: .system(size: 28, weight: .semibold, design: .default),
+              font: .system(size: 30, weight: .semibold, design: .default),
               style: AnyShapeStyle(Color.pmtext.primary)
             ),
             .init(
               text: "나중에 설정에서 변경할 수 있어요",
-              font: .system(size: 17, weight: .regular, design: .default),
+              font: .system(size: 20, weight: .medium, design: .serif),
               style: AnyShapeStyle(Color.pmtext.secondary)
             )
           ],
           typingAnimationCompleted: handleAnimationCompleted,
-          lineSpacingProvider: { _ in 6 }
+          lineSpacingProvider: { _ in 8 }
         )
-        .id("photo-\(showAnimation ?? false)")
+        .id("photo-\(String(describing: showAnimation))")
+        .frame(maxWidth: .infinity, alignment: .leading)
       }
       .padding(.horizontal, 24)
       .padding(.top, 12)
@@ -937,31 +956,37 @@ private struct PhotoStepView: SwiftUI.View {
           onPhotoSelected: onPhotoSelected
         )
         .padding(.horizontal, 24)
-        .transition(.move(edge: .bottom).combined(with: .opacity))
       }
       
       Spacer()
       
       if showButtons {
         VStack(spacing: 15) {
-          IndicatorButton(
-            isSaving ? "저장중..." : "완료",
-            isLoading: isSaving,
-            isDisabled: !showButtons || isSaving,
-            style: .primary,
-            indicatorPosition: .trailing,
-            action: onNextTapped
+          GlassActionButton(
+            title: isSaving ? "저장중..." : "완료",
+            isPrimary: true,
+            isVisible: showButtons,
+            isEnabled: !isSaving,
+            action: {
+              guard !isSaving else { return }
+              onNextTapped()
+            }
           )
-          .opacity(showButtons ? 1 : 0)
+          .overlay(alignment: .trailing) {
+            if isSaving {
+              ProgressView()
+                .tint(.white)
+                .padding(.trailing, 16)
+            }
+          }
           .offset(y: showButtons ? 0 : 20)
-          .animation(.spring(response: 0.6, dampingFraction: 0.8), value: showButtons)
           
           Button {
             onSkipTapped()
           } label: {
             Text("나중에 설정할게요")
-              .font(.body.weight(.semibold))
-              .foregroundStyle(Color.pmtext.primary)
+              .font(.callout.weight(.semibold))
+              .foregroundStyle(Color.pmtext.secondary)
           }
           .opacity(showButtons ? 1 : 0)
           .disabled(isSaving)
