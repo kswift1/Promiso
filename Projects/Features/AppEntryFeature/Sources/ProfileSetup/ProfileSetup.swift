@@ -36,17 +36,75 @@ extension AppEntry {
         case photo = 2
       }
       
+      // MARK: - Nested States
+      
+      public struct UIState: Equatable {
+        var showAnimation: Bool?
+        var showButtons: Bool = false
+        var completedSteps: Set<Step> = []
+        var previousStep: Step = .welcome
+      }
+      
+      public struct ValidationState: Equatable {
+        var nicknameError: String?
+        var isCheckingNickname: Bool = false
+        var isNicknameAvailable: Bool?
+      }
+      
+      // MARK: - State Properties
+      
+      // Profile Data
       var selectedPhoto: PhotosPickerItem?
       var profileImage: ProfileImageType
       var email: String?
       var uid: String
       var fullName: String
       var nickname: String = ""
-      var nicknameError: String?
-      var isCheckingNickname: Bool = false
-      var isNicknameAvailable: Bool?
-      var isSaving: Bool = false
+      
+      // Flow State
       var step: Step = .welcome
+      var isSaving: Bool = false
+      
+      // Nested States
+      var ui: UIState = UIState()
+      var validation: ValidationState = ValidationState()
+      
+      // MARK: - Computed Properties for Backward Compatibility
+      
+      var showAnimation: Bool? {
+        get { ui.showAnimation }
+        set { ui.showAnimation = newValue }
+      }
+      
+      var showButtons: Bool {
+        get { ui.showButtons }
+        set { ui.showButtons = newValue }
+      }
+      
+      var completedSteps: Set<Step> {
+        get { ui.completedSteps }
+        set { ui.completedSteps = newValue }
+      }
+      
+      var previousStep: Step {
+        get { ui.previousStep }
+        set { ui.previousStep = newValue }
+      }
+      
+      var nicknameError: String? {
+        get { validation.nicknameError }
+        set { validation.nicknameError = newValue }
+      }
+      
+      var isCheckingNickname: Bool {
+        get { validation.isCheckingNickname }
+        set { validation.isCheckingNickname = newValue }
+      }
+      
+      var isNicknameAvailable: Bool? {
+        get { validation.isNicknameAvailable }
+        set { validation.isNicknameAvailable = newValue }
+      }
       
       public init(profileImageUrl: String? = nil, email: String = "", uid: String = "", fullName: String = "") {
         if let profileImageUrl, profileImageUrl.isNotEmpty,
@@ -63,181 +121,54 @@ extension AppEntry {
     }
     
     public enum Action {
+      case view(ViewAction)
+      case `internal`(InternalAction)
+      case delegate(DelegateAction)
+    }
+    
+    public enum ViewAction {
+      // Navigation Actions
       case nextTapped
       case backTapped
       case skipTapped
-      case startTapped
+      
+      // Input Actions
       case nicknameChanged(String)
-      case nicknameAvailabilityResponse(Result<Bool, Error>)
       case photoSelected(PhotosPickerItem?)
-      case photoLoaded(Data?)
-      case `internal`(Internal)
-      case delegate(Delegate)
+      
+      // Lifecycle Actions
+      case stepDidAppear(State.Step)
+      case animationCompleted(State.Step)
     }
     
-    public enum Internal {
+    public enum InternalAction {
+      // Profile Save Flow
       case saveProfile
       case profileSaved
       case profileSaveFailed(Error)
+      
+      // Animation Flow
+      case startAnimation(State.Step)
+      
+      // Validation Flow
+      case nicknameAvailabilityResponse(Result<Bool, Error>)
+      
+      // Photo Loading
+      case photoLoaded(Data?)
     }
     
-    public enum Delegate: Equatable {
+    public enum DelegateAction: Equatable {
       case completed
     }
     
     public var body: some ReducerOf<Self> {
       Reduce { state, action in
         switch action {
-        case .nextTapped:
-          if state.isSaving { return .none }
-          switch state.step {
-          case .welcome:
-            state.step = .nickname
-            return .none
-          case .nickname:
-            if let error = validateNickname(state.nickname) {
-              state.nicknameError = error
-              return .none
-            }
-            if state.isNicknameAvailable != true {
-              state.nicknameError = "닉네임 중복 확인을 완료해주세요"
-              return .none
-            }
-            state.step = .photo
-            return .none
-          case .photo:
-            return .send(.internal(.saveProfile))
-          }
-          
-        case .backTapped:
-          switch state.step {
-          case .welcome:
-            return .none
-          case .nickname:
-            state.step = .welcome
-            return .none
-          case .photo:
-            state.step = .nickname
-            return .none
-          }
-          
-        case .skipTapped:
-          if state.isSaving { return .none }
-          return .send(.internal(.saveProfile))
-          
-        case .startTapped:
-          state.step = .nickname
-          return .none
-          
-        case .nicknameChanged(let name):
-          state.nickname = name
-          state.nicknameError = validateNickname(name)
-          state.isNicknameAvailable = nil
-          
-          guard state.nicknameError == nil, !name.isEmpty else {
-            state.isCheckingNickname = false
-            return .cancel(id: CancelID.nicknameCheck)
-          }
-          
-          state.isCheckingNickname = true
-          return .run { [nickname = name] send in
-            try await Task.sleep(for: .milliseconds(400))
-            do {
-              let isAvailable = try await userProfileClient.isNicknameAvailable(nickname)
-              await send(.nicknameAvailabilityResponse(.success(isAvailable)))
-            } catch {
-              await send(.nicknameAvailabilityResponse(.failure(error)))
-            }
-          }
-          .cancellable(id: CancelID.nicknameCheck, cancelInFlight: true)
-          
-        case .photoSelected(let item):
-          guard let item else { return .none }
-          return .run { send in
-            if let data = try? await item.loadTransferable(type: Data.self) {
-              await send(.photoLoaded(data))
-            }
-          }
-          
-        case .photoLoaded(let data):
-          state.profileImage = .data(data)
-          return .none
-          
-        case .nicknameAvailabilityResponse(let result):
-          state.isCheckingNickname = false
-          switch result {
-          case .success(let isAvailable):
-            state.isNicknameAvailable = isAvailable
-            state.nicknameError = isAvailable ? nil : "이미 사용 중인 닉네임이에요"
-          case .failure:
-            state.isNicknameAvailable = nil
-            state.nicknameError = "닉네임 확인에 실패했어요. 잠시 후 다시 시도해주세요"
-          }
-          return .none
+        case .view(let viewAction):
+          return handleViewAction(state: &state, action: viewAction)
           
         case .internal(let internalAction):
-          switch internalAction {
-          case .saveProfile:
-            state.isSaving = true
-            return .run { [state] send in
-              do {
-                // 지연 시간을 두어 인디케이터 표시를 확인
-                try await Task.sleep(for: .seconds(2))
-                
-                // 1. 프로필 이미지가 있으면 업로드
-                var profileImageUrl: String? = nil
-                var profileImagePath: String? = nil
-                var profileType: ProfileType = .firebase
-                switch state.profileImage {
-                case .data(let data):
-                  if let imageData = data {
-                    let uploadData = compressImageDataForUpload(imageData) ?? imageData
-                    _ = try await userProfileClient.uploadProfileImage(state.uid, uploadData)
-                    profileImagePath = "profile_images/\(state.uid).jpg"
-                    profileType = .firebase
-                  }
-                case .url(let url):
-                  profileImageUrl = url.absoluteString
-                  profileType = .url
-                case .none:
-                  profileImageUrl = nil
-                  profileImagePath = nil
-                  profileType = .firebase
-                }
-                
-                // 2. UserProfile 생성
-                let profile = UserProfile(
-                  name: state.fullName,
-                  nickname: state.nickname,
-                  email: state.email,
-                  profileType: profileType,
-                  profileImageUrl: profileImageUrl,
-                  profileImagePath: profileImagePath,
-                  pinnedGroupId: nil,
-                  notificationSettings: .default,
-                  createdAt: Date(),
-                  updatedAt: Date()
-                )
-                
-                // 3. Firestore에 저장
-                try await userProfileClient.saveProfile(state.uid, profile)
-                
-                await send(.internal(.profileSaved))
-              } catch {
-                await send(.internal(.profileSaveFailed(error)))
-              }
-            }
-            
-          case .profileSaved:
-            state.isSaving = false
-            return .send(.delegate(.completed))
-            
-          case .profileSaveFailed(let error):
-            state.isSaving = false
-            print("❌ Profile save failed: \(error)")
-            // TODO: 에러 처리 UI 추가
-            return .none
-          }
+          return handleInternalAction(state: &state, action: internalAction)
           
         case .delegate:
           return .none
@@ -245,78 +176,295 @@ extension AppEntry {
       }
     }
     
+    private func handleViewAction(state: inout State, action: ViewAction) -> Effect<Action> {
+      switch action {
+      case .nextTapped:
+        if state.isSaving { return .none }
+        switch state.step {
+        case .welcome:
+          state.previousStep = state.step
+          state.step = .nickname
+          return .none
+        case .nickname:
+          if let error = validateNickname(state.nickname) {
+            state.nicknameError = error
+            return .none
+          }
+          if state.isNicknameAvailable != true {
+            state.nicknameError = "닉네임 중복 확인을 완료해주세요"
+            return .none
+          }
+          state.previousStep = state.step
+          state.step = .photo
+          return .none
+        case .photo:
+          return .send(.internal(.saveProfile))
+        }
+        
+      case .backTapped:
+        switch state.step {
+        case .welcome:
+          return .none
+        case .nickname:
+          state.previousStep = state.step
+          state.step = .welcome
+          return .none
+        case .photo:
+          state.previousStep = state.step
+          state.step = .nickname
+          return .none
+        }
+        
+      case .skipTapped:
+        if state.isSaving { return .none }
+        state.profileImage = .none
+        state.selectedPhoto = nil
+        return .send(.internal(.saveProfile))
+        
+      case .nicknameChanged(let name):
+        state.nickname = name
+        state.nicknameError = validateNickname(name)
+        state.isNicknameAvailable = nil
+        
+        guard state.nicknameError == nil, !name.isEmpty else {
+          state.isCheckingNickname = false
+          return .cancel(id: CancelID.nicknameCheck)
+        }
+        
+        state.isCheckingNickname = true
+        return .run { [nickname = name] send in
+          try await Task.sleep(for: .milliseconds(400))
+          do {
+            let isAvailable = try await userProfileClient.isNicknameAvailable(nickname)
+            await send(.internal(.nicknameAvailabilityResponse(.success(isAvailable))))
+          } catch {
+            await send(.internal(.nicknameAvailabilityResponse(.failure(error))))
+          }
+        }
+        .cancellable(id: CancelID.nicknameCheck, cancelInFlight: true)
+        
+      case .photoSelected(let item):
+        guard let item else { return .none }
+        return .run { send in
+          if let data = try? await item.loadTransferable(type: Data.self) {
+            await send(.internal(.photoLoaded(data)))
+          }
+        }
+        
+      case .stepDidAppear(let step):
+        // step이 변경되어 화면에 나타날 때 애니메이션 상태 초기화
+        if state.completedSteps.contains(step) {
+          // 이미 완료된 step이면 애니메이션 없이 바로 표시
+          state.showAnimation = false
+          state.showButtons = true
+        } else {
+          // 새로운 step이면 애니메이션 준비
+          state.showAnimation = nil
+          state.showButtons = false
+          return .run { send in
+            try await Task.sleep(for: .seconds(0.1))
+            await send(.internal(.startAnimation(step)))
+          }
+        }
+        return .none
+        
+      case .animationCompleted(let step):
+        // 애니메이션 완료 시 버튼 표시
+        state.completedSteps.insert(step)
+        state.showButtons = true
+        return .none
+      }
+    }
+    
+    private func handleInternalAction(state: inout State, action: InternalAction) -> Effect<Action> {
+      switch action {
+      case .photoLoaded(let data):
+        state.profileImage = .data(data)
+        return .none
+        
+      case .nicknameAvailabilityResponse(let result):
+        state.isCheckingNickname = false
+        switch result {
+        case .success(let isAvailable):
+          state.isNicknameAvailable = isAvailable
+          state.nicknameError = isAvailable ? nil : "이미 사용 중인 닉네임이에요"
+        case .failure:
+          state.isNicknameAvailable = nil
+          state.nicknameError = "닉네임 확인에 실패했어요. 잠시 후 다시 시도해주세요"
+        }
+        return .none
+        
+      case .saveProfile:
+        state.isSaving = true
+        return .run { [state] send in
+          do {
+            // 1. 프로필 이미지가 있으면 업로드
+            var profileImageUrl: String? = nil
+            var profileImagePath: String? = nil
+            var profileType: ProfileType = .firebase
+            switch state.profileImage {
+            case .data(let data):
+              if let imageData = data {
+                let uploadData = compressImageDataForUpload(imageData) ?? imageData
+                _ = try await userProfileClient.uploadProfileImage(state.uid, uploadData)
+                profileImagePath = "profile_images/\(state.uid).jpg"
+                profileType = .firebase
+              }
+            case .url(let url):
+              profileImageUrl = url.absoluteString
+              profileType = .url
+            case .none:
+              profileImageUrl = nil
+              profileImagePath = nil
+              profileType = .firebase
+            }
+            
+            // 2. UserProfile 생성
+            let profile = UserProfile(
+              name: state.fullName,
+              nickname: state.nickname,
+              email: state.email,
+              profileType: profileType,
+              profileImageUrl: profileImageUrl,
+              profileImagePath: profileImagePath,
+              pinnedGroupId: nil,
+              notificationSettings: .default,
+              createdAt: Date(),
+              updatedAt: Date()
+            )
+            
+            // 3. Firestore에 저장
+            try await userProfileClient.saveProfile(state.uid, profile)
+            
+            await send(.internal(.profileSaved))
+          } catch {
+            await send(.internal(.profileSaveFailed(error)))
+          }
+        }
+        
+      case .profileSaved:
+        state.isSaving = false
+        return .send(.delegate(.completed))
+        
+      case .profileSaveFailed(let error):
+        state.isSaving = false
+        print("❌ Profile save failed: \(error)")
+        return .none
+        
+      case .startAnimation:
+        state.showAnimation = true
+        return .none
+      }
+    }
+    
     public struct View: SwiftUI.View {
       @Bindable private var store: StoreOf<ProfileSetup>
       private let indicatorCount: Int = State.Step.allCases.count
-      @SwiftUI.State private var showAnimation: Bool?
-      @SwiftUI.State private var showButtons: Bool = false
-      @SwiftUI.State private var completedSteps: Set<State.Step> = []
       
       public init(store: StoreOf<ProfileSetup>) {
         self.store = store
       }
       
       public var body: some SwiftUI.View {
-        content
-          .toolbarVisibility(.visible, for: .navigationBar)
-          .animation(.easeInOut, value: store.step)
-          .auroraBackground()
-          .frame(maxWidth: .infinity, maxHeight: .infinity)
-          .task(id: store.step) {
-            if completedSteps.contains(store.step) {
-              // 이미 완료된 step이면 애니메이션 없이 바로 표시
-              showAnimation = false
-              showButtons = true
-            } else {
-              // 새로운 step이면 애니메이션 재생
-              showAnimation = nil
-              showButtons = false
-              try? await Task.sleep(for: .seconds(1))
-              showAnimation = true
+        VStack(spacing: 0) {
+          pagingIndicator
+          
+          ZStack {
+            switch store.step {
+            case .welcome:
+              WelcomeStepView(
+                fullName: store.fullName,
+                showAnimation: store.showAnimation,
+                showButtons: store.showButtons,
+                onAnimationCompleted: {
+                  store.send(.view(.animationCompleted(.welcome)))
+                },
+                onNextTapped: {
+                  store.send(.view(.nextTapped))
+                }
+              )
+              .transition(stepTransition)
+              
+            case .nickname:
+              NicknameStepView(
+                nickname: store.nickname,
+                nicknameError: store.nicknameError,
+                isCheckingNickname: store.isCheckingNickname,
+                isNicknameAvailable: store.isNicknameAvailable,
+                showAnimation: store.showAnimation,
+                showButtons: store.showButtons,
+                onAnimationCompleted: {
+                  store.send(.view(.animationCompleted(.nickname)))
+                },
+                onNicknameChanged: { newValue in
+                  store.send(.view(.nicknameChanged(newValue)))
+                },
+                onNextTapped: {
+                  store.send(.view(.nextTapped))
+                },
+                onBackTapped: {
+                  store.send(.view(.backTapped))
+                }
+              )
+              .transition(stepTransition)
+              
+            case .photo:
+              PhotoStepView(
+                profileImage: store.profileImage,
+                selectedPhoto: store.selectedPhoto,
+                isSaving: store.isSaving,
+                showAnimation: store.showAnimation,
+                showButtons: store.showButtons,
+                onAnimationCompleted: {
+                  store.send(.view(.animationCompleted(.photo)))
+                },
+                onPhotoSelected: { item in
+                  store.send(.view(.photoSelected(item)))
+                },
+                onNextTapped: {
+                  store.send(.view(.nextTapped))
+                },
+                onSkipTapped: {
+                  store.send(.view(.skipTapped))
+                },
+                onBackTapped: {
+                  store.send(.view(.backTapped))
+                }
+              )
+              .transition(stepTransition)
             }
           }
+          //          .animation(.interactiveSpring(response: 0.5, dampingFraction: 0.9), value: store.step)
+        }
+        .toolbarVisibility(.visible, for: .navigationBar)
+        .animation(.easeInOut, value: store.step)
+        .auroraBackground()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .task(id: store.step) {
+          store.send(.view(.stepDidAppear(store.step)))
+        }
       }
       
-      @ViewBuilder
-      private var content: some SwiftUI.View {
-        switch store.step {
-        case .welcome:
-          WelcomeStepView(
-            store: store,
-            showAnimation: showAnimation,
-            showButtons: showButtons,
-            onAnimationCompleted: {
-              completedSteps.insert(.welcome)
-              withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
-                showButtons = true
-              }
-            }
-          )
-        case .nickname:
-          NicknameStepView(
-            store: store,
-            showAnimation: showAnimation,
-            showButtons: showButtons,
-            onAnimationCompleted: {
-              completedSteps.insert(.nickname)
-              withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
-                showButtons = true
-              }
-            }
-          )
-        case .photo:
-          PhotoStepView(
-            store: store,
-            showAnimation: showAnimation,
-            showButtons: showButtons,
-            onAnimationCompleted: {
-              completedSteps.insert(.photo)
-              withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
-                showButtons = true
-              }
-            }
-          )
-        }
+      private var pagingIndicator: some SwiftUI.View {
+        PagingIndicator(
+          count: indicatorCount,
+          progress: Double(store.step.rawValue),
+          activeColor: Color(red: 0.6, green: 0.4, blue: 0.9)
+        )
+        .frame(maxWidth: .infinity, maxHeight: 10, alignment: .leading)
+        .padding(.horizontal, 24)
+        .padding(.top, 48)
+        .animation(.interactiveSpring(response: 0.45, dampingFraction: 0.85), value: store.step)
+      }
+      
+      private var stepTransition: AnyTransition {
+        let isForward = store.step.rawValue > store.previousStep.rawValue
+        let insertionEdge: Edge = isForward ? .trailing : .leading
+        let removalEdge: Edge = isForward ? .leading : .trailing
+        return .asymmetric(
+          insertion: .move(edge: insertionEdge).combined(with: .opacity),
+          removal: .move(edge: removalEdge).combined(with: .opacity)
+        )
       }
       
     }
@@ -326,6 +474,7 @@ extension AppEntry {
 private struct PhotoSection: SwiftUI.View {
   let profileImage: ProfileImageType
   @Binding var selectedPhoto: PhotosPickerItem?
+  let onPhotoSelected: (PhotosPickerItem?) -> Void
   
   var body: some SwiftUI.View {
     VStack(spacing: 24) {
@@ -343,6 +492,9 @@ private struct PhotoSection: SwiftUI.View {
             profileImageView
           }
         }
+        .onChange(of: selectedPhoto) { _, newValue in
+          onPhotoSelected(newValue)
+        }
         
         // 이미지 선택 후 편집 버튼
         if case .data = profileImage {
@@ -355,6 +507,9 @@ private struct PhotoSection: SwiftUI.View {
                   .font(.system(size: 14, weight: .semibold))
                   .foregroundStyle(.white)
               }
+          }
+          .onChange(of: selectedPhoto) { _, newValue in
+            onPhotoSelected(newValue)
           }
           .offset(x: -4, y: -4)
         }
@@ -403,31 +558,27 @@ private struct PhotoSection: SwiftUI.View {
             .font(.system(size: 32))
             .foregroundStyle(Color(.systemGray3))
           Text("사진 선택")
-            .font(.system(size: 14, weight: .medium))
-            .foregroundStyle(.secondary)
+            .font(.body.weight(.semibold))
+            .foregroundStyle(Color.pmtext.primary.opacity(0.8))
         }
       }
   }
 }
 
-// MARK: - Step Views
-
+// MARK: - Step1: Welcome
 private struct WelcomeStepView: SwiftUI.View {
-  @Bindable var store: StoreOf<AppEntry.ProfileSetup>
+  // Data
+  let fullName: String
   let showAnimation: Bool?
   let showButtons: Bool
+  
+  // Actions
   let onAnimationCompleted: () -> Void
+  let onNextTapped: () -> Void
   
   var body: some SwiftUI.View {
     VStack(alignment: .leading, spacing: 0) {
       VStack(alignment: .leading, spacing: 12) {
-        PagingIndicator(
-          count: 3,
-          progress: 0,
-          activeColor: Color(red: 0.6, green: 0.4, blue: 0.9)
-        )
-        .frame(height: 10)
-        
         TypewriterLinesView(
           animated: showAnimation,
           lines: [
@@ -437,7 +588,7 @@ private struct WelcomeStepView: SwiftUI.View {
               style: AnyShapeStyle(Color.pmtext.primary)
             ),
             .init(
-              text: "안녕하세요 \(store.fullName.isEmpty ? "," : "\(store.fullName) 님,")",
+              text: "안녕하세요 \(fullName.isEmpty ? "," : "\(fullName) 님,")",
               font: .system(size: 25, weight: .medium, design: .serif),
               style: AnyShapeStyle(Color.pmtext.secondary)
             ),
@@ -463,14 +614,14 @@ private struct WelcomeStepView: SwiftUI.View {
         .id("welcome-\(showAnimation ?? false)")
       }
       .padding(.horizontal, 24)
-      .padding(.top, 48)
+      .padding(.top, 12)
       
       Spacer()
       
       GlassActionButton(
         title: "시작하기",
         isVisible: showButtons,
-        action: { store.send(.nextTapped) }
+        action: onNextTapped
       )
       .padding(.horizontal, 24)
       .padding(.bottom, 32)
@@ -478,23 +629,55 @@ private struct WelcomeStepView: SwiftUI.View {
   }
 }
 
+// MARK: - Step2: Nickname
 private struct NicknameStepView: SwiftUI.View {
-  @Bindable var store: StoreOf<AppEntry.ProfileSetup>
+  // Data
+  let nickname: String
+  let nicknameError: String?
+  let isCheckingNickname: Bool
+  let isNicknameAvailable: Bool?
   let showAnimation: Bool?
   let showButtons: Bool
+  
+  // Actions
   let onAnimationCompleted: () -> Void
+  let onNicknameChanged: (String) -> Void
+  let onNextTapped: () -> Void
+  let onBackTapped: () -> Void
+  
+  // Local State
+  @SwiftUI.State private var localNickname: String
   @SwiftUI.State private var showTextField: Bool = false
+  @FocusState private var isNicknameFocused: Bool
+  
+  init(
+    nickname: String,
+    nicknameError: String?,
+    isCheckingNickname: Bool,
+    isNicknameAvailable: Bool?,
+    showAnimation: Bool?,
+    showButtons: Bool,
+    onAnimationCompleted: @escaping () -> Void,
+    onNicknameChanged: @escaping (String) -> Void,
+    onNextTapped: @escaping () -> Void,
+    onBackTapped: @escaping () -> Void
+  ) {
+    self.nickname = nickname
+    self.nicknameError = nicknameError
+    self.isCheckingNickname = isCheckingNickname
+    self.isNicknameAvailable = isNicknameAvailable
+    self.showAnimation = showAnimation
+    self.showButtons = showButtons
+    self.onAnimationCompleted = onAnimationCompleted
+    self.onNicknameChanged = onNicknameChanged
+    self.onNextTapped = onNextTapped
+    self.onBackTapped = onBackTapped
+    self._localNickname = State(initialValue: nickname)
+  }
   
   var body: some SwiftUI.View {
     VStack(alignment: .leading, spacing: 0) {
       VStack(alignment: .leading, spacing: 12) {
-        PagingIndicator(
-          count: 3,
-          progress: 1,
-          activeColor: Color(red: 0.6, green: 0.4, blue: 0.9)
-        )
-        .frame(height: 10)
-        
         TypewriterLinesView(
           animated: showAnimation,
           lines: [
@@ -515,7 +698,7 @@ private struct NicknameStepView: SwiftUI.View {
         .id("nickname-\(showAnimation ?? false)")
       }
       .padding(.horizontal, 24)
-      .padding(.top, 48)
+      .padding(.top, 12)
       
       if showTextField {
         VStack(alignment: .leading, spacing: 12) {
@@ -524,7 +707,11 @@ private struct NicknameStepView: SwiftUI.View {
               .font(.subheadline.weight(.medium))
               .foregroundStyle(.primary)
             
-            TextField("2-12자 이내로 입력해주세요", text: $store.nickname.sending(\.nicknameChanged))
+            TextField("2-12자 이내로 입력해주세요", text: $localNickname)
+              .onChange(of: localNickname) { _, newValue in
+                onNicknameChanged(newValue)
+              }
+              .focused($isNicknameFocused)
               .textFieldStyle(.roundedBorder)
               .overlay(
                 RoundedRectangle(cornerRadius: 6)
@@ -537,7 +724,7 @@ private struct NicknameStepView: SwiftUI.View {
             
             Spacer()
             
-            Text("\(store.nickname.count)/12")
+            Text("\(localNickname.count)/12")
               .font(.footnote)
               .foregroundStyle(.secondary)
           }
@@ -552,26 +739,32 @@ private struct NicknameStepView: SwiftUI.View {
       GlassActionButton(
         title: "다음",
         isVisible: showButtons,
-        isEnabled: store.nicknameError == nil
-        && store.nickname.count >= 2
-        && store.nickname.count <= 12
-        && store.isNicknameAvailable == true
-        && !store.isCheckingNickname,
-        action: { store.send(.nextTapped) }
+        isEnabled: nicknameError == nil
+        && nickname.count >= 2
+        && nickname.count <= 12
+        && isNicknameAvailable == true
+        && !isCheckingNickname,
+        action: {
+          isNicknameFocused = false
+          onNextTapped()
+        }
       )
       .padding(.horizontal, 24)
       .padding(.bottom, 32)
     }
-    .onAppear(perform: onAppearActions)
-    .onChange(of: showAnimation, { _, newValue in
-      onAnimationStateChange(newValue)
-    })
+    .onAppear {
+      updateTextFieldVisibility(for: showAnimation)
+      triggerInitialNicknameCheckIfNeeded()
+    }
+    .onChange(of: nickname) { _, newValue in
+      localNickname = newValue
+    }
     .toolbar {
       if showButtons {
         ToolbarItem(placement: .topBarLeading) {
           ToolbarButton(
             imageName: "chevron.left",
-            action: { store.send(.backTapped) }
+            action: onBackTapped
           )
           .animation(.spring(response: 0.6, dampingFraction: 0.8), value: showButtons)
         }
@@ -580,9 +773,9 @@ private struct NicknameStepView: SwiftUI.View {
   }
   
   private var borderColor: Color {
-    if store.nickname.isEmpty {
+    if localNickname.isEmpty {
       return Color(.systemGray4)
-    } else if let error = store.nicknameError, !error.isEmpty {
+    } else if let error = nicknameError, !error.isEmpty {
       return .red
     } else {
       return .blue
@@ -591,15 +784,15 @@ private struct NicknameStepView: SwiftUI.View {
   
   @ViewBuilder
   private var nicknameStatusView: some SwiftUI.View {
-    if store.nickname.isEmpty {
+    if localNickname.isEmpty {
       Text("공백 없이 2-12자로 입력해주세요")
         .font(.footnote)
         .foregroundStyle(.secondary)
-    } else if let error = store.nicknameError, !error.isEmpty {
+    } else if let error = nicknameError, !error.isEmpty {
       Text(error)
         .font(.footnote)
         .foregroundStyle(.red)
-    } else if store.isCheckingNickname {
+    } else if isCheckingNickname {
       HStack(spacing: 6) {
         ProgressView()
           .scaleEffect(0.6, anchor: .center)
@@ -607,11 +800,11 @@ private struct NicknameStepView: SwiftUI.View {
           .font(.footnote)
           .foregroundStyle(.secondary)
       }
-    } else if store.isNicknameAvailable == false {
-        Text("이미 사용 중인 닉네임이에요")
-          .font(.footnote)
-          .foregroundStyle(.red)
-    } else if store.isNicknameAvailable == true {
+    } else if isNicknameAvailable == false {
+      Text("이미 사용 중인 닉네임이에요")
+        .font(.footnote)
+        .foregroundStyle(.red)
+    } else if isNicknameAvailable == true {
       HStack(spacing: 4) {
         Image(systemName: "checkmark.circle.fill")
           .foregroundStyle(.green)
@@ -631,6 +824,7 @@ private struct NicknameStepView: SwiftUI.View {
     withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
       showTextField = true
     }
+    focusNicknameIfNeeded()
     onAnimationCompleted()
   }
   
@@ -639,6 +833,7 @@ private struct NicknameStepView: SwiftUI.View {
     case false:
       // 이미 완료된 단계는 바로 표시
       showTextField = true
+      focusNicknameIfNeeded()
     case nil:
       showTextField = false
     default:
@@ -646,40 +841,71 @@ private struct NicknameStepView: SwiftUI.View {
     }
   }
   
-  private func onAppearActions() {
-    updateTextFieldVisibility(for: showAnimation)
-    triggerInitialNicknameCheckIfNeeded()
+  private func triggerInitialNicknameCheckIfNeeded() {
+    guard !localNickname.isEmpty,
+          isNicknameAvailable == nil,
+          !isCheckingNickname else { return }
+    onNicknameChanged(localNickname)
   }
   
-  private func onAnimationStateChange(_ newValue: Bool?) {
-    updateTextFieldVisibility(for: newValue)
-  }
-
-  private func triggerInitialNicknameCheckIfNeeded() {
-    guard !store.nickname.isEmpty,
-          store.isNicknameAvailable == nil,
-          !store.isCheckingNickname else { return }
-    store.send(.nicknameChanged(store.nickname))
+  private func focusNicknameIfNeeded() {
+    guard showTextField else { return }
+    isNicknameFocused = true
   }
 }
 
+private extension AppEntry.ProfileSetup.State {
+  
+}
+
+// MARK: - Step3: Profile
 private struct PhotoStepView: SwiftUI.View {
-  @Bindable var store: StoreOf<AppEntry.ProfileSetup>
+  // Data
+  let profileImage: ProfileImageType
+  let selectedPhoto: PhotosPickerItem?
+  let isSaving: Bool
   let showAnimation: Bool?
   let showButtons: Bool
+  
+  // Actions
   let onAnimationCompleted: () -> Void
+  let onPhotoSelected: (PhotosPickerItem?) -> Void
+  let onNextTapped: () -> Void
+  let onSkipTapped: () -> Void
+  let onBackTapped: () -> Void
+  
+  // Local State
+  @SwiftUI.State private var localSelectedPhoto: PhotosPickerItem?
   @SwiftUI.State private var showPhotoSection: Bool = false
+  
+  init(
+    profileImage: ProfileImageType,
+    selectedPhoto: PhotosPickerItem?,
+    isSaving: Bool,
+    showAnimation: Bool?,
+    showButtons: Bool,
+    onAnimationCompleted: @escaping () -> Void,
+    onPhotoSelected: @escaping (PhotosPickerItem?) -> Void,
+    onNextTapped: @escaping () -> Void,
+    onSkipTapped: @escaping () -> Void,
+    onBackTapped: @escaping () -> Void
+  ) {
+    self.profileImage = profileImage
+    self.selectedPhoto = selectedPhoto
+    self.isSaving = isSaving
+    self.showAnimation = showAnimation
+    self.showButtons = showButtons
+    self.onAnimationCompleted = onAnimationCompleted
+    self.onPhotoSelected = onPhotoSelected
+    self.onNextTapped = onNextTapped
+    self.onSkipTapped = onSkipTapped
+    self.onBackTapped = onBackTapped
+    self._localSelectedPhoto = State(initialValue: selectedPhoto)
+  }
   
   var body: some SwiftUI.View {
     VStack(alignment: .leading, spacing: 0) {
       VStack(alignment: .leading, spacing: 12) {
-        PagingIndicator(
-          count: 3,
-          progress: 2,
-          activeColor: Color(red: 0.6, green: 0.4, blue: 0.9)
-        )
-        .frame(height: 10)
-        
         TypewriterLinesView(
           animated: showAnimation,
           lines: [
@@ -700,14 +926,15 @@ private struct PhotoStepView: SwiftUI.View {
         .id("photo-\(showAnimation ?? false)")
       }
       .padding(.horizontal, 24)
-      .padding(.top, 48)
+      .padding(.top, 12)
       
       Spacer()
       
       if showPhotoSection {
         PhotoSection(
-          profileImage: store.profileImage,
-          selectedPhoto: $store.selectedPhoto.sending(\.photoSelected)
+          profileImage: profileImage,
+          selectedPhoto: $localSelectedPhoto,
+          onPhotoSelected: onPhotoSelected
         )
         .padding(.horizontal, 24)
         .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -715,45 +942,52 @@ private struct PhotoStepView: SwiftUI.View {
       
       Spacer()
       
-      VStack(spacing: 15) {
-        IndicatorButton.standard(
-          "완료",
-          isLoading: store.isSaving,
-          isDisabled: !showButtons || store.isSaving,
-          action: { store.send(.nextTapped) }
-        )
-        .opacity(showButtons ? 1 : 0)
-        .offset(y: showButtons ? 0 : 20)
-        .animation(.spring(response: 0.6, dampingFraction: 0.8), value: showButtons)
-        
-        Button {
-          store.send(.skipTapped)
-        } label: {
-          Text("나중에 설정할게요")
-            .font(.subheadline)
-            .foregroundStyle(Color.pmtext.secondary)
+      if showButtons {
+        VStack(spacing: 15) {
+          IndicatorButton(
+            isSaving ? "저장중..." : "완료",
+            isLoading: isSaving,
+            isDisabled: !showButtons || isSaving,
+            style: .primary,
+            indicatorPosition: .trailing,
+            action: onNextTapped
+          )
+          .opacity(showButtons ? 1 : 0)
+          .offset(y: showButtons ? 0 : 20)
+          .animation(.spring(response: 0.6, dampingFraction: 0.8), value: showButtons)
+          
+          Button {
+            onSkipTapped()
+          } label: {
+            Text("나중에 설정할게요")
+              .font(.body.weight(.semibold))
+              .foregroundStyle(Color.pmtext.primary)
+          }
+          .opacity(showButtons ? 1 : 0)
+          .disabled(isSaving)
         }
-        .opacity(showButtons ? 1 : 0)
-        .disabled(store.isSaving)
+        .padding(.horizontal, 24)
+        .padding(.bottom, 32)
       }
-      .padding(.horizontal, 24)
-      .padding(.bottom, 32)
+      
+      
     }
-    .onAppear(perform: onAppearActions)
-    .onChange(of: showAnimation, { _, newValue in
-      onAnimationStateChange(newValue)
-    })
+    .onAppear {
+      updatePhotoSectionVisibility(for: showAnimation)
+    }
+    .onChange(of: selectedPhoto) { _, newValue in
+      localSelectedPhoto = newValue
+    }
     .toolbar {
       if showButtons {
         ToolbarItem(placement: .topBarLeading) {
           ToolbarButton(
             imageName: "chevron.left",
-            action: { store.send(.backTapped) }
+            action: onBackTapped
           )
           .animation(.spring(response: 0.6, dampingFraction: 0.8), value: showButtons)
         }
       }
-      
     }
   }
   
@@ -774,14 +1008,6 @@ private struct PhotoStepView: SwiftUI.View {
     default:
       break
     }
-  }
-  
-  private func onAppearActions() {
-    updatePhotoSectionVisibility(for: showAnimation)
-  }
-  
-  private func onAnimationStateChange(_ newValue: Bool?) {
-    updatePhotoSectionVisibility(for: newValue)
   }
 }
 
@@ -905,8 +1131,7 @@ private enum CancelID {
 
 private func validateNickname(_ name: String) -> String? {
   let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-
-  if trimmed.isEmpty { return "2자 이상 입력해주세요" }
+  
   if trimmed.count < 2 { return "2자 이상 입력해주세요" }
   if trimmed.count > 12 { return "12자 이하로 입력해주세요" }
   if trimmed.rangeOfCharacter(from: .whitespacesAndNewlines) != nil { return "닉네임엔 공백을 넣을 수 없어요" }
