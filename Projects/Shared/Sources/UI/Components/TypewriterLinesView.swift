@@ -25,6 +25,7 @@ public struct TypewriterLinesView: View {
   var typingAnimationCompleted: () -> Void
   var lineSpacingProvider: (Int) -> CGFloat
   var typingSpeed: Double
+  var lineDelayProvider: (Int) -> Double
 
   @State private var currentLine = 0
 
@@ -33,13 +34,15 @@ public struct TypewriterLinesView: View {
     lines: [LineStyle],
     typingAnimationCompleted: @escaping () -> Void,
     lineSpacingProvider: @escaping (Int) -> CGFloat = { _ in return 4 },
-    typingSpeed: Double = 0.05
+    typingSpeed: Double = 0.05,
+    lineDelayProvider: @escaping (Int) -> Double = { _ in return 0.3 }
   ) {
     self.animated = animated
     self.lines = lines
     self.typingAnimationCompleted = typingAnimationCompleted
     self.lineSpacingProvider = lineSpacingProvider
     self.typingSpeed = typingSpeed
+    self.lineDelayProvider = lineDelayProvider
   }
   
   public var body: some View {
@@ -58,7 +61,7 @@ public struct TypewriterLinesView: View {
                     animated: animated
                   ) {
                     if index < lines.count - 1 {
-                      let extraDelay: Double = (index == 1) ? 1.0 : 0.3
+                      let extraDelay = lineDelayProvider(index)
                       DispatchQueue.main.asyncAfter(deadline: .now() + extraDelay) {
                         currentLine += 1
                       }
@@ -129,23 +132,11 @@ public struct TypewriterText: View {
   }
   
   public var body: some View {
-    HStack(spacing: 0) {
-      Text(displayedText)
-        .font(font)
-        .foregroundStyle(style)
-      
-      if animated && displayedText.count < text.count {
-        Text("|")
-          .font(font)
-          .foregroundStyle(style)
-          .opacity(showCursor ? 1 : 0)
-          .animation(
-            .easeInOut(duration: 0.5)
-              .repeatForever(autoreverses: true),
-            value: showCursor
-          )
-      }
-    }
+    Text(displayedText + (animated && displayedText.count < text.count && showCursor ? "|" : ""))
+      .font(font)
+      .foregroundStyle(style)
+      .multilineTextAlignment(.leading)
+      .frame(maxWidth: .infinity, alignment: .leading)
     .onAppear {
       if animated {
         showCursor = true

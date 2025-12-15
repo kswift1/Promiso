@@ -5,9 +5,6 @@
 //  Created by 김성원 on 12/9/25.
 //
 
-/// TODO: 업로드중일떄 버튼 인디케이터는 동작하나 완료에서 인디케이터라 어색함
-/// 프로필 사진 업로드할떄 구글로 이미지 가지고 들어오는 경우 나중에 할게요 눌러도 세팅값으로 넘어가는 문제, 그외 나중에 할게요 대응 필요
-
 import Foundation
 import SwiftUI
 import PhotosUI
@@ -64,6 +61,7 @@ extension AppEntry {
       // Flow State
       var step: Step = .welcome
       var isSaving: Bool = false
+      var isSkippingPhoto: Bool = false
       
       // Nested States
       var ui: UIState = UIState()
@@ -221,8 +219,7 @@ extension AppEntry {
         
       case .skipTapped:
         if state.isSaving { return .none }
-        state.profileImage = .none
-        state.selectedPhoto = nil
+        state.isSkippingPhoto = true
         return .send(.internal(.saveProfile))
         
       case .nicknameChanged(let name):
@@ -301,21 +298,28 @@ extension AppEntry {
             var profileImageUrl: String? = nil
             var profileImagePath: String? = nil
             var profileType: ProfileType = .firebase
-            switch state.profileImage {
-            case .data(let data):
-              if let imageData = data {
-                let uploadData = compressImageDataForUpload(imageData) ?? imageData
-                _ = try await userProfileClient.uploadProfileImage(state.uid, uploadData)
-                profileImagePath = "profile_images/\(state.uid).jpg"
-                profileType = .firebase
-              }
-            case .url(let url):
-              profileImageUrl = url.absoluteString
-              profileType = .url
-            case .none:
+            
+            if state.isSkippingPhoto {
               profileImageUrl = nil
               profileImagePath = nil
               profileType = .firebase
+            } else {
+              switch state.profileImage {
+              case .data(let data):
+                if let imageData = data {
+                  let uploadData = compressImageDataForUpload(imageData) ?? imageData
+                  _ = try await userProfileClient.uploadProfileImage(state.uid, uploadData)
+                  profileImagePath = "profile_images/\(state.uid).jpg"
+                  profileType = .firebase
+                }
+              case .url(let url):
+                profileImageUrl = url.absoluteString
+                profileType = .url
+              case .none:
+                profileImageUrl = nil
+                profileImagePath = nil
+                profileType = .firebase
+              }
             }
             
             // 2. UserProfile 생성
@@ -343,10 +347,12 @@ extension AppEntry {
         
       case .profileSaved:
         state.isSaving = false
+        state.isSkippingPhoto = false
         return .send(.delegate(.completed))
         
       case .profileSaveFailed(let error):
         state.isSaving = false
+        state.isSkippingPhoto = false
         print("❌ Profile save failed: \(error)")
         return .none
         
@@ -491,12 +497,12 @@ private struct PhotoSection: SwiftUI.View {
         if case .data = profileImage {
           PhotosPicker(selection: $selectedPhoto, matching: .images) {
             Circle()
-              .fill(Color.blue)
+              .fill(Color.pmindigo.n500)
               .frame(width: 32, height: 32)
               .overlay {
                 Image(systemName: "pencil")
                   .font(.system(size: 14, weight: .semibold))
-                  .foregroundStyle(.white)
+                  .foregroundStyle(Color.white)
               }
           }
           .onChange(of: selectedPhoto) { _, newValue in
@@ -575,31 +581,31 @@ private struct WelcomeStepView: SwiftUI.View {
           lines: [
             .init(
               text: "반가워요! 👋",
-              font: .system(size: 30, weight: .semibold, design: .default),
+              font: .system(size: 38, weight: .semibold, design: .default),
               style: AnyShapeStyle(Color.pmtext.primary)
             ),
             .init(
               text: "안녕하세요 \(fullName.isEmpty ? "," : "\(fullName) 님,")",
-              font: .system(size: 20, weight: .medium, design: .serif),
+              font: .system(size: 25, weight: .medium, design: .serif),
               style: AnyShapeStyle(Color.pmtext.secondary)
             ),
             .init(
               text: "Promiso를 시작하기 전에",
-              font: .system(size: 20, weight: .medium, design: .serif),
+              font: .system(size: 25, weight: .medium, design: .serif),
               style: AnyShapeStyle(Color.pmtext.secondary)
             ),
             .init(
               text: "간단한 정보를 입력해주세요",
-              font: .system(size: 20, weight: .medium, design: .serif),
+              font: .system(size: 25, weight: .medium, design: .serif),
               style: AnyShapeStyle(Color.pmtext.secondary)
             )
           ],
           typingAnimationCompleted: onAnimationCompleted,
-          lineSpacingProvider: { index in
-            switch index {
-            case 0: return 8
-            default: return 4
-            }
+          lineSpacingProvider: { line in
+            return line == 0 ? 8 : 4
+          },
+          lineDelayProvider: { line in
+            return line == 0 ? 1.0 : 0.3
           }
         )
         .id("welcome-\(String(describing: showAnimation))")
@@ -674,26 +680,26 @@ private struct NicknameStepView: SwiftUI.View {
           lines: [
             .init(
               text: "어떻게 불러드릴까요?",
-              font: .system(size: 30, weight: .semibold, design: .default),
+              font: .system(size: 38, weight: .semibold, design: .default),
               style: AnyShapeStyle(Color.pmtext.primary)
             ),
             .init(
               text: "Promiso에서 사용할",
-              font: .system(size: 20, weight: .medium, design: .serif),
+              font: .system(size: 25, weight: .medium, design: .serif),
               style: AnyShapeStyle(Color.pmtext.secondary)
             ),
             .init(
               text: "닉네임을 알려주세요",
-              font: .system(size: 20, weight: .medium, design: .serif),
+              font: .system(size: 25, weight: .medium, design: .serif),
               style: AnyShapeStyle(Color.pmtext.secondary)
             )
           ],
           typingAnimationCompleted: handleAnimationCompleted,
-          lineSpacingProvider: { index in
-            switch index {
-            case 0: return 8
-            default: return 4
-            }
+          lineSpacingProvider: { line in
+            return line == 0 ? 8 : 4
+          },
+          lineDelayProvider: { line in
+            return line == 0 ? 1.0 : 0.3
           }
         )
         .id("nickname-\(String(describing: showAnimation))")
@@ -928,18 +934,21 @@ private struct PhotoStepView: SwiftUI.View {
           animated: showAnimation,
           lines: [
             .init(
-              text: "프로필 사진을 설정해주세요",
+              text: "프로필 사진을 설정해 주세요",
               font: .system(size: 30, weight: .semibold, design: .default),
               style: AnyShapeStyle(Color.pmtext.primary)
             ),
             .init(
               text: "나중에 설정에서 변경할 수 있어요",
-              font: .system(size: 20, weight: .medium, design: .serif),
+              font: .system(size: 24, weight: .medium, design: .serif),
               style: AnyShapeStyle(Color.pmtext.secondary)
             )
           ],
           typingAnimationCompleted: handleAnimationCompleted,
-          lineSpacingProvider: { _ in 8 }
+          lineSpacingProvider: { _ in 8 },
+          lineDelayProvider: { line in
+            return line == 0 ? 1.0 : 0.3
+          }
         )
         .id("photo-\(String(describing: showAnimation))")
         .frame(maxWidth: .infinity, alignment: .leading)

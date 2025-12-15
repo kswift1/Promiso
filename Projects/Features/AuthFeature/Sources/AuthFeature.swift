@@ -262,7 +262,10 @@ extension Auth {
                   default: return 0
                   }
                 },
-                typingSpeed: 0.05
+                typingSpeed: 0.05,
+                lineDelayProvider: { line in
+                  return line == 1 ? 1.0 : 0.3
+                }
               )
             }
           }
