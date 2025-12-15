@@ -216,5 +216,9 @@ extension AppEntry.ProfileSetup.State {
     self.uid = user.uid
     self.fullName = user.displayName ?? ""
     self.nickname = user.displayName ?? ""
+    self.providerId = user.providerId
+    self.providerUid = user.providerUid
+    self.providerType = user.providerId?.providerTypeIdentifier
+    self.profileInfo = nil
   }
 }

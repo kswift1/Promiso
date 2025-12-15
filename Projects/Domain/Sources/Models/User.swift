@@ -9,6 +9,8 @@ public struct UserModel: Identifiable, Equatable, Hashable, Sendable {
   public let pinnedGroupId: String?
   public let profileImageUrl: String?
   public let profileType: ProfileType
+  public let providerId: String?
+  public let providerUid: String?
   public let notificationEnabled: Bool
   public let createdAt: Date
   public let updatedAt: Date
@@ -20,6 +22,8 @@ public struct UserModel: Identifiable, Equatable, Hashable, Sendable {
     pinnedGroupId: String? = nil,
     profileImageUrl: String? = nil,
     profileType: ProfileType = .firebase,
+    providerId: String? = nil,
+    providerUid: String? = nil,
     notificationEnabled: Bool = true,
     createdAt: Date = Date(),
     updatedAt: Date = Date()
@@ -30,6 +34,8 @@ public struct UserModel: Identifiable, Equatable, Hashable, Sendable {
     self.pinnedGroupId = pinnedGroupId
     self.profileImageUrl = profileImageUrl
     self.profileType = profileType
+    self.providerId = providerId
+    self.providerUid = providerUid
     self.notificationEnabled = notificationEnabled
     self.createdAt = createdAt
     self.updatedAt = updatedAt
@@ -41,6 +47,7 @@ public struct UserModel: Identifiable, Equatable, Hashable, Sendable {
 public enum ProfileType: String, Codable, Equatable, Hashable, Sendable {
   case url = "URL"
   case firebase = "FIREBASE"
+  case none = "NONE"
 }
 
 // MARK: - User Extensions

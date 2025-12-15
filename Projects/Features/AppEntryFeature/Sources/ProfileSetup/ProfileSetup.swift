@@ -57,6 +57,10 @@ extension AppEntry {
       var uid: String
       var fullName: String
       var nickname: String = ""
+      var providerId: String?
+      var providerUid: String?
+      var providerType: String?
+      var profileInfo: ProfileInfo?
       
       // Flow State
       var step: Step = .welcome
@@ -298,11 +302,13 @@ extension AppEntry {
             var profileImageUrl: String? = nil
             var profileImagePath: String? = nil
             var profileType: ProfileType = .firebase
+            var profileInfo: ProfileInfo?
             
             if state.isSkippingPhoto {
               profileImageUrl = nil
               profileImagePath = nil
-              profileType = .firebase
+              profileType = .none
+              profileInfo = nil
             } else {
               switch state.profileImage {
               case .data(let data):
@@ -311,18 +317,28 @@ extension AppEntry {
                   _ = try await userProfileClient.uploadProfileImage(state.uid, uploadData)
                   profileImagePath = "profile_images/\(state.uid).jpg"
                   profileType = .firebase
+                  profileInfo = ProfileInfo(type: .storagePath, url: profileImagePath)
                 }
               case .url(let url):
                 profileImageUrl = url.absoluteString
                 profileType = .url
+                profileInfo = ProfileInfo(type: .externalURL, url: profileImageUrl)
               case .none:
                 profileImageUrl = nil
                 profileImagePath = nil
                 profileType = .firebase
+                profileInfo = nil
               }
             }
             
             // 2. UserProfile 생성
+            let providerType = state.providerType ?? state.providerId?.providerTypeIdentifier
+            let providerInfo: ProviderInfo? = {
+              guard let type = providerType else { return nil }
+              let uid = state.providerUid ?? state.uid
+              return ProviderInfo(uid: uid, type: type)
+            }()
+            
             let profile = UserProfile(
               name: state.fullName,
               nickname: state.nickname,
@@ -330,6 +346,8 @@ extension AppEntry {
               profileType: profileType,
               profileImageUrl: profileImageUrl,
               profileImagePath: profileImagePath,
+              provider: providerInfo,
+              profile: profileInfo,
               pinnedGroupId: nil,
               notificationSettings: .default,
               createdAt: Date(),

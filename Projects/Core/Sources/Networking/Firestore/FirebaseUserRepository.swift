@@ -163,15 +163,35 @@ public class FirebaseUserRepository: UserRepositoryProtocol {
       throw UserRepositoryError.invalidData
     }
 
-    let profileTypeString = data["profileType"] as? String ?? "FIREBASE"
-    let profileType = ProfileType(rawValue: profileTypeString) ?? .firebase
+    let profileDict = data["profile"] as? [String: Any]
+    let profileTypeString = (profileDict?["type"] as? String) ?? data["profileType"] as? String ?? "NONE"
+    let profileType: ProfileType = {
+      switch profileTypeString {
+      case "storagePath": return .firebase
+      case "externalURL": return .url
+      default: return ProfileType(rawValue: profileTypeString) ?? .none
+      }
+    }()
 
-    let notificationEnabled = data["notificationEnabled"] as? Bool ?? true
+    let notificationEnabled = data["notificationEnabled"] as? Bool ?? false
     let pinnedGroupId = data["pinnedGroupId"] as? String
-    let profileImageUrl = data["profileImageUrl"] as? String
+    let profileImageUrl: String? = {
+      if profileTypeString == "externalURL" {
+        return profileDict?["url"] as? String
+      }
+      return data["profileImageUrl"] as? String
+    }()
+    let providerDict = data["provider"] as? [String: Any]
+    let providerId = providerDict?["type"] as? String
+    let providerUid = providerDict?["uid"] as? String
 
-    let createdAt = (data["createdAt"] as? Timestamp)?.dateValue() ?? Date()
-    let updatedAt = (data["updatedAt"] as? Timestamp)?.dateValue() ?? Date()
+    let metadata = data["metadata"] as? [String: Any]
+    let createdAt = (metadata?["createdAt"] as? Timestamp)?.dateValue()
+      ?? (data["createdAt"] as? Timestamp)?.dateValue()
+      ?? Date()
+    let updatedAt = (metadata?["updatedAt"] as? Timestamp)?.dateValue()
+      ?? (data["updatedAt"] as? Timestamp)?.dateValue()
+      ?? Date()
 
     return UserModel(
       id: id,
@@ -180,6 +200,8 @@ public class FirebaseUserRepository: UserRepositoryProtocol {
       pinnedGroupId: pinnedGroupId,
       profileImageUrl: profileImageUrl,
       profileType: profileType,
+      providerId: providerId,
+      providerUid: providerUid,
       notificationEnabled: notificationEnabled,
       createdAt: createdAt,
       updatedAt: updatedAt

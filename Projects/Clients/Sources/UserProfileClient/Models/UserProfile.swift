@@ -6,14 +6,21 @@ public struct UserProfile: Codable, Equatable, Sendable {
   public let name: String
   public let nickname: String
   public let email: String?
+  
+  // Legacy-friendly fields kept for in-memory use
   public let profileType: ProfileType
   public let profileImageUrl: String?
   public let profileImagePath: String?
+  
+  // Structured fields for Firestore
+  public let provider: ProviderInfo?
+  public let profile: ProfileInfo?
+  
   public let pinnedGroupId: String?
   public let notificationSettings: NotificationSettings
   public let createdAt: Date
   public let updatedAt: Date
-
+  
   public init(
     name: String,
     nickname: String,
@@ -21,6 +28,8 @@ public struct UserProfile: Codable, Equatable, Sendable {
     profileType: ProfileType,
     profileImageUrl: String? = nil,
     profileImagePath: String? = nil,
+    provider: ProviderInfo? = nil,
+    profile: ProfileInfo? = nil,
     pinnedGroupId: String? = nil,
     notificationSettings: NotificationSettings = .default,
     createdAt: Date = Date(),
@@ -32,6 +41,8 @@ public struct UserProfile: Codable, Equatable, Sendable {
     self.profileType = profileType
     self.profileImageUrl = profileImageUrl
     self.profileImagePath = profileImagePath
+    self.provider = provider
+    self.profile = profile
     self.pinnedGroupId = pinnedGroupId
     self.notificationSettings = notificationSettings
     self.createdAt = createdAt
@@ -39,23 +50,54 @@ public struct UserProfile: Codable, Equatable, Sendable {
   }
 }
 
-// MARK: - ProfileType
+// MARK: - ProfileType (in-memory / legacy flag)
 
 public enum ProfileType: String, Codable, Equatable, Sendable {
   case url = "URL"
   case firebase = "FIREBASE"
+  case none = "NONE"
+}
+
+// MARK: - Provider Info
+
+public struct ProviderInfo: Codable, Equatable, Sendable {
+  public let uid: String
+  public let type: String
+  
+  public init(uid: String, type: String) {
+    self.uid = uid
+    self.type = type
+  }
+}
+
+// MARK: - Profile Info (structured for Firestore)
+
+public struct ProfileInfo: Codable, Equatable, Sendable {
+  public enum InfoType: String, Codable, Equatable, Sendable {
+    case storagePath
+    case externalURL
+    case none
+  }
+  
+  public let type: InfoType
+  public let url: String?
+  
+  public init(type: InfoType, url: String?) {
+    self.type = type
+    self.url = url
+  }
 }
 
 // MARK: - NotificationSettings
 
 public struct NotificationSettings: Codable, Equatable, Sendable {
   public let enabled: Bool
-
+  
   public init(enabled: Bool) {
     self.enabled = enabled
   }
-
-  public static let `default` = NotificationSettings(enabled: true)
+  
+  public static let `default` = NotificationSettings(enabled: false)
 }
 
 // MARK: - Firestore Encoding/Decoding
@@ -66,72 +108,87 @@ extension UserProfile {
     var data: [String: Any] = [
       "name": name,
       "nickname": nickname,
-      "profileType": profileType.rawValue,
       "notificationSettings": [
         "enabled": notificationSettings.enabled
       ],
-      "createdAt": createdAt,
-      "updatedAt": updatedAt
+      "metadata": [
+        "createdAt": createdAt,
+        "updatedAt": updatedAt
+      ]
     ]
-
+    
     if let email = email {
       data["email"] = email
     }
-
-    if let profileImageUrl = profileImageUrl {
-      data["profileImageUrl"] = profileImageUrl
+    
+    if let provider = provider {
+      data["provider"] = [
+        "uid": provider.uid,
+        "type": provider.type
+      ]
     }
-
-    if let profileImagePath = profileImagePath {
-      data["profileImagePath"] = profileImagePath
+    
+    if let profile = profile, profile.type != .none {
+      data["profile"] = [
+        "type": profile.type.rawValue,
+        "url": profile.url as Any
+      ]
     }
-
+    
     if let pinnedGroupId = pinnedGroupId {
       data["pinnedGroupId"] = pinnedGroupId
     }
-
+    
     return data
   }
-
+  
   /// Firestore 딕셔너리로부터 UserProfile 생성
   public static func fromFirestoreData(_ data: [String: Any]) throws -> UserProfile {
     guard let name = data["name"] as? String,
           let nickname = data["nickname"] as? String,
-          let profileTypeString = data["profileType"] as? String,
-          let profileType = ProfileType(rawValue: profileTypeString),
           let notificationData = data["notificationSettings"] as? [String: Any],
           let notificationEnabled = notificationData["enabled"] as? Bool else {
       throw UserProfileError.invalidData
     }
-
+    
     let email = data["email"] as? String
-    let profileImageUrl = data["profileImageUrl"] as? String
-    let profileImagePath = data["profileImagePath"] as? String
+    
+    let profileDict = data["profile"] as? [String: Any]
+    let profileInfoType = (profileDict?["type"] as? String).flatMap(ProfileInfo.InfoType.init(rawValue:)) ?? .none
+    let profileUrl = profileDict?["url"] as? String
+    
+    let profileImageUrl: String? = profileInfoType == .externalURL ? profileUrl : nil
+    let profileImagePath: String? = profileInfoType == .storagePath ? profileUrl : nil
+    
+    let providerDict = data["provider"] as? [String: Any]
+    let providerId = providerDict?["type"] as? String
+    let providerUid = providerDict?["uid"] as? String
     let pinnedGroupId = data["pinnedGroupId"] as? String
-
-    // Firestore Timestamp를 Date로 변환
-    let createdAt: Date
-    let updatedAt: Date
-
-    if let timestamp = data["createdAt"] as? Date {
-      createdAt = timestamp
-    } else {
-      createdAt = Date()
-    }
-
-    if let timestamp = data["updatedAt"] as? Date {
-      updatedAt = timestamp
-    } else {
-      updatedAt = Date()
-    }
-
+    
+    let metadata = data["metadata"] as? [String: Any]
+    let createdAt = (metadata?["createdAt"] as? Date) ?? (data["createdAt"] as? Date) ?? Date()
+    let updatedAt = (metadata?["updatedAt"] as? Date) ?? (data["updatedAt"] as? Date) ?? Date()
+    
     return UserProfile(
       name: name,
       nickname: nickname,
       email: email,
-      profileType: profileType,
+      profileType: {
+        switch profileInfoType {
+        case .storagePath: return .firebase
+        case .externalURL: return .url
+        case .none: return .none
+        }
+      }(),
       profileImageUrl: profileImageUrl,
       profileImagePath: profileImagePath,
+      provider: {
+        if let providerId, let providerUid {
+          return ProviderInfo(uid: providerUid, type: providerId)
+        }
+        return nil
+      }(),
+      profile: profileInfoType == .none ? nil : ProfileInfo(type: profileInfoType, url: profileUrl),
       pinnedGroupId: pinnedGroupId,
       notificationSettings: NotificationSettings(enabled: notificationEnabled),
       createdAt: createdAt,
@@ -147,7 +204,7 @@ public enum UserProfileError: Error, LocalizedError {
   case userNotFound
   case uploadFailed
   case networkError
-
+  
   public var errorDescription: String? {
     switch self {
     case .invalidData:

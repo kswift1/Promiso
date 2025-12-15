@@ -105,6 +105,8 @@ public final class FirebaseUserRepository: UserRepositoryProtocol {
       profileType: profile.profileType,
       profileImageUrl: profile.profileImageUrl,
       profileImagePath: profile.profileImagePath,
+      provider: profile.provider,
+      profile: profile.profile,
       pinnedGroupId: profile.pinnedGroupId,
       notificationSettings: profile.notificationSettings,
       createdAt: profile.createdAt,

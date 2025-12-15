@@ -49,6 +49,9 @@ public struct FirebaseUserSnapshot: Equatable, Sendable {
   public let photoURL: URL?
   public let creationDate: Date?
   public let lastSignInDate: Date?
+  public let providerId: String?
+  public let providerUid: String?
+  public let providerType: String?
   
   public init(
     uid: String,
@@ -56,7 +59,10 @@ public struct FirebaseUserSnapshot: Equatable, Sendable {
     displayName: String?,
     photoURL: URL?,
     creationDate: Date? = nil,
-    lastSignInDate: Date? = nil
+    lastSignInDate: Date? = nil,
+    providerId: String? = nil,
+    providerUid: String? = nil,
+    providerType: String? = nil
   ) {
     self.uid = uid
     self.email = email
@@ -64,17 +70,24 @@ public struct FirebaseUserSnapshot: Equatable, Sendable {
     self.photoURL = photoURL
     self.creationDate = creationDate
     self.lastSignInDate = lastSignInDate
+    self.providerId = providerId
+    self.providerUid = providerUid
+    self.providerType = providerType
   }
   
   public init?(user: FirebaseAuth.User?) {
     guard let user else { return nil }
+    let providerInfo = user.providerData.first
     self.init(
       uid: user.uid,
       email: user.email,
       displayName: user.displayName,
       photoURL: user.photoURL,
       creationDate: user.metadata.creationDate,
-      lastSignInDate: user.metadata.lastSignInDate
+      lastSignInDate: user.metadata.lastSignInDate,
+      providerId: providerInfo?.providerID,
+      providerUid: providerInfo?.uid,
+      providerType: providerInfo?.providerID.providerTypeIdentifier
     )
   }
 }
@@ -131,6 +144,17 @@ public enum AuthProvider: Equatable, Sendable {
     case .apple: return "apple"
     case .google: return "google"
     }
+  }
+}
+
+// MARK: - Provider Identifier Helpers
+
+public extension String {
+  /// "google.com" -> "google", "apple.com" -> "apple" 등 간단한 매핑
+  var providerTypeIdentifier: String {
+    if self.contains("google") { return "google" }
+    if self.contains("apple") { return "apple" }
+    return self
   }
 }
 
