@@ -13,34 +13,38 @@ extension CreateGroup {
       self.store = store
     }
     
-    public var body: some View {
-      NavigationStack {
-        ScrollView {
-          VStack(spacing: 24) {
-            PhotoUploadSection(
-              photoData: store.photoData,
-              selectedPhoto: $store.selectedPhoto.sending(\.view.photoSelected)
-            )
-            
-            GroupNameSection(
-              groupName: $store.groupName,
-              characterCount: store.characterCount
-            )
-            
-            MaxMembersSection(
-              maxMembers: $store.maxMembers
-            )
-            
-            Spacer()
-          }
-          .padding(.horizontal, 20)
-          .padding(.vertical, 24)
+  public var body: some View {
+    NavigationStack {
+      ScrollView {
+        VStack(spacing: 20) {
+          PhotoUploadSection(
+            photoData: store.photoData,
+            selectedPhoto: $store.selectedPhoto.sending(\.view.photoSelected)
+          )
+          .glassSection()
+          
+          GroupNameSection(
+            groupName: $store.groupName,
+            characterCount: store.characterCount
+          )
+          .glassSection()
+          
+          MaxMembersSection(
+            maxMembers: $store.maxMembers
+          )
+          .glassSection()
+          
+          Spacer(minLength: 12)
         }
-        .scrollDismissesKeyboard(.interactively)
-        .onTapGesture {
-          dismissKeyboard()
-        }
-        .navigationTitle("그룹 만들기")
+        .padding(.horizontal, 20)
+        .padding(.vertical, 24)
+      }
+      .scrollIndicators(.hidden)
+      .scrollDismissesKeyboard(.interactively)
+      .onTapGesture {
+        dismissKeyboard()
+      }
+      .navigationTitle("그룹 만들기")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
           ToolbarItem(placement: .topBarLeading) {
@@ -86,7 +90,7 @@ extension CreateGroup {
           Text(store.creationError ?? "잠시 후 다시 시도해주세요.")
         }
       )
-      .background(Color(.systemGray6))
+      .auroraBackground()
     }
   }
 }
@@ -216,9 +220,6 @@ private struct MaxMembersSection: View {
       .pickerStyle(.menu)
       .tint(.blue)
     }
-    .padding(12)
-    .background(Color(.systemBackground))
-    .cornerRadius(8)
   }
 }
 
@@ -231,23 +232,20 @@ private struct BottomButton: View {
   
   var body: some View {
     VStack(spacing: 8) {
-      Button(action: action) {
-        HStack {
-          if isLoading {
-            ProgressView()
-              .progressViewStyle(.circular)
-              .tint(.white)
-          }
-          Text(isInputValid ? "그룹 만들기" : "그룹 이름을 입력하세요")
-            .font(.system(size: 16, weight: .semibold))
+      GlassActionButton(
+        title: isLoading ? "만드는 중..." : "그룹 만들기",
+        isPrimary: true,
+        isVisible: true,
+        isEnabled: isInputValid && !isLoading,
+        action: action
+      )
+      .overlay(alignment: .trailing) {
+        if isLoading {
+          ProgressView()
+            .tint(.white)
+            .padding(.trailing, 16)
         }
-        .foregroundColor(.white)
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 16)
-        .background((isInputValid && !isLoading) ? Color.blue : Color(.systemGray4))
-        .cornerRadius(12)
       }
-      .disabled(!isInputValid || isLoading)
       
       Text("그룹을 만들면 자동으로 관리자가 됩니다")
         .font(.system(size: 12))
@@ -255,8 +253,46 @@ private struct BottomButton: View {
     }
     .padding(.horizontal, 20)
     .padding(.vertical, 16)
-    .background(Color(.systemBackground))
     .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: -2)
+  }
+}
+
+// MARK: - Glass Section Helper
+
+private extension View {
+  func glassSection() -> some View {
+    self
+      .padding(16)
+      .background(
+        Group {
+          if #available(iOS 26.0, *) {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+              .fill(.clear)
+              .glassEffect(
+                .regular
+                  .tint(.pmindigo.n200.opacity(0.1))
+                  .interactive(),
+                in: .rect(cornerRadius: 16)
+              )
+          } else {
+            glassBackground
+          }
+        }
+      )
+      .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+      .overlay(
+        RoundedRectangle(cornerRadius: 16, style: .continuous)
+          .strokeBorder(Color.white.opacity(0.12))
+      )
+  }
+  
+  var glassBackground: some View {
+    RoundedRectangle(cornerRadius: 16, style: .continuous)
+      .fill(Color.white.opacity(0.06))
+      .background(
+        RoundedRectangle(cornerRadius: 16, style: .continuous)
+          .fill(.ultraThinMaterial)
+      )
   }
 }
 

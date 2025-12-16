@@ -35,20 +35,20 @@ extension GroupMain {
     public struct State {
       var isInitialized: Bool = false
       let currentUser: UserModel
-      
+
       var selectedFilter: StatusFilter = .all
-      
+
       var promisesState: LoadingState<[PromiseItem]> = .idle
       var proposalResponding: [String: RespondingState] = [:]
       var path = StackState<Path.State>()
-      
+
       var allGroups: [GroupModel]?
       var currentGroup: GroupModel?
-      
+
       @Presents var createPromise: CreatePromise.Feature.State?
       @Presents var groupDetail: GroupDetailState?
       @Presents var createGroup: CreateGroup.Feature.State?
-      
+
       public init(currentUser: UserModel) {
         self.currentUser = currentUser
       }
@@ -317,6 +317,7 @@ extension GroupMain {
         }
       }
       .auroraBackground()
+      .toolbarVisibility(.visible, for: .navigationBar)
       .navigationBarTitleDisplayMode(.inline)
       .toolbar { toolbarContent }
       .onAppear { store.send(.view(.onAppear)) }
@@ -410,34 +411,20 @@ extension GroupMain {
             
             // Action Buttons
             VStack(spacing: 12) {
-              Button {
-                store.send(.view(.createGroup))
-              } label: {
-                HStack(spacing: 8) {
-                  Image(systemName: "plus.circle.fill")
-                    .font(.title3)
-                  Text("그룹 만들기")
-                    .font(.headline)
+              GlassActionButton(
+                title: "그룹 만들기",
+                leadingSystemImage: "plus.circle.fill",
+                isPrimary: true,
+                action: { store.send(.view(.createGroup))
                 }
-                .frame(maxWidth: .infinity)
-                .frame(height: 52)
-              }
-              .adaptivePrimaryButton()
+              )
               
-              Button {
-                store.send(.view(.joinGroup))
-              } label: {
-                HStack(spacing: 8) {
-                  Image(systemName: "link.circle.fill")
-                    .font(.title3)
-                  Text("초대 코드로 참여하기")
-                    .font(.headline)
-                }
-                .frame(maxWidth: .infinity)
-                .frame(height: 52)
-                .foregroundStyle(.blue)
-              }
-              .adaptiveSecondaryButton()
+              GlassActionButton(
+                title: "초대 코드로 참여하기",
+                leadingSystemImage: "link.circle.fill",
+                isPrimary: false,
+                action: { store.send(.view(.joinGroup)) }
+              )
             }
             .padding(.horizontal, 40)
           }
