@@ -1,27 +1,28 @@
 import ComposableArchitecture
 import Foundation
+import Domain
 
 // MARK: - Client
 
 @DependencyClient
 public struct UserProfileClient: Sendable {
-  /// 사용자 프로필을 저장소에 저장
-  public var saveProfile: @Sendable (_ uid: String, _ profile: UserProfile) async throws -> Void
+  /// 사용자 프로필을 저장소에 저장 (Adapter가 Domain Model 반환)
+  public var saveProfile: @Sendable (_ uid: String, _ profile: UserProfile) async throws -> UserModel
 
-  /// 사용자 프로필을 저장소에서 가져오기
-  public var getProfile: @Sendable (_ uid: String) async throws -> UserProfile?
+  /// 사용자 프로필을 저장소에서 가져오기 (Adapter가 Domain Model 반환)
+  public var getProfile: @Sendable (_ uid: String) async throws -> UserModel?
 
   /// 프로필 이미지 업로드
   public var uploadProfileImage: @Sendable (_ uid: String, _ imageData: Data) async throws -> URL
 
-  /// 프로필이 존재하는지 확인
-  public var hasProfile: @Sendable (_ uid: String) async throws -> Bool
+  /// 프로필을 반환 (없으면 nil) (Adapter가 Domain Model 반환)
+  public var hasProfile: @Sendable (_ uid: String) async throws -> UserModel?
 
   /// 닉네임 사용 가능 여부 확인
   public var isNicknameAvailable: @Sendable (_ nickname: String) async throws -> Bool
 
-  /// 사용자 프로필 업데이트
-  public var updateProfile: @Sendable (_ uid: String, _ profile: UserProfile) async throws -> Void
+  /// 사용자 프로필 업데이트 (Adapter가 Domain Model 반환)
+  public var updateProfile: @Sendable (_ uid: String, _ profile: UserProfile) async throws -> UserModel
 
   /// 사용자 프로필 삭제
   public var deleteProfile: @Sendable (_ uid: String) async throws -> Void
@@ -31,23 +32,27 @@ public struct UserProfileClient: Sendable {
 
 extension UserProfileClient: TestDependencyKey {
   public static let previewValue = Self(
-    saveProfile: { _, _ in },
-    getProfile: { _ in
-      UserProfile(
+    saveProfile: { uid, profile in
+      profile.toDomain(uid: uid)  // DTO → Domain 변환
+    },
+    getProfile: { uid in
+      let profile = UserProfile(
         name: "김민수",
         nickname: "kms",
         email: "minsu@example.com",
-        profileType: .firebase,
-        profileImageUrl: nil,
-        profileImagePath: "profile_images/preview.jpg"
+        provider: .init(uid: "preview-provider", type: "google"),
+        profile: .init(type: .storagePath, url: "profile_images/preview.jpg")
       )
+      return profile.toDomain(uid: uid)  // DTO → Domain 변환
     },
     uploadProfileImage: { _, _ in
       URL(string: "https://storage.googleapis.com/example.jpg")!
     },
-    hasProfile: { _ in true },
+    hasProfile: { _ in nil },
     isNicknameAvailable: { _ in true },
-    updateProfile: { _, _ in },
+    updateProfile: { uid, profile in
+      profile.toDomain(uid: uid)  // DTO → Domain 변환
+    },
     deleteProfile: { _ in }
   )
 
@@ -55,7 +60,7 @@ extension UserProfileClient: TestDependencyKey {
     saveProfile: unimplemented("\(Self.self).saveProfile"),
     getProfile: unimplemented("\(Self.self).getProfile", placeholder: nil),
     uploadProfileImage: unimplemented("\(Self.self).uploadProfileImage"),
-    hasProfile: unimplemented("\(Self.self).hasProfile", placeholder: false),
+    hasProfile: unimplemented("\(Self.self).hasProfile", placeholder: nil),
     isNicknameAvailable: unimplemented("\(Self.self).isNicknameAvailable", placeholder: true),
     updateProfile: unimplemented("\(Self.self).updateProfile"),
     deleteProfile: unimplemented("\(Self.self).deleteProfile")
@@ -71,10 +76,16 @@ extension UserProfileClient: DependencyKey {
     return Self(
       saveProfile: { uid, profile in
         try await repository.saveProfile(uid: uid, profile: profile)
+        // Adapter 책임: DTO → Domain 변환
+        return profile.toDomain(uid: uid)
       },
 
       getProfile: { uid in
-        try await repository.getProfile(uid: uid)
+        guard let profile = try await repository.getProfile(uid: uid) else {
+          return nil
+        }
+        // Adapter 책임: DTO → Domain 변환
+        return profile.toDomain(uid: uid)
       },
 
       uploadProfileImage: { uid, imageData in
@@ -82,15 +93,21 @@ extension UserProfileClient: DependencyKey {
       },
 
       hasProfile: { uid in
-        try await repository.hasProfile(uid: uid)
+        guard let profile = try await repository.hasProfile(uid: uid) else {
+          return nil
+        }
+        // Adapter 책임: DTO → Domain 변환
+        return profile.toDomain(uid: uid)
       },
-      
+
       isNicknameAvailable: { nickname in
         try await repository.isNicknameAvailable(nickname)
       },
 
       updateProfile: { uid, profile in
         try await repository.updateProfile(uid: uid, profile: profile)
+        // Adapter 책임: DTO → Domain 변환
+        return profile.toDomain(uid: uid)
       },
 
       deleteProfile: { uid in

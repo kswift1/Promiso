@@ -13,6 +13,7 @@ import ResourceKit
 import Clients
 import ComposableArchitecture
 import CoreInfrastructure
+import Domain
 
 enum ProfileImageType: Equatable {
   case url(URL)
@@ -146,21 +147,21 @@ extension AppEntry {
     public enum InternalAction {
       // Profile Save Flow
       case saveProfile
-      case profileSaved
+      case profileSaved(UserModel)  // Clean Architecture: Adapter가 Domain Model 반환
       case profileSaveFailed(Error)
-      
+
       // Animation Flow
       case startAnimation(State.Step)
-      
+
       // Validation Flow
       case nicknameAvailabilityResponse(Result<Bool, Error>)
-      
+
       // Photo Loading
       case photoLoaded(Data?)
     }
     
     public enum DelegateAction: Equatable {
-      case completed
+      case completed(UserModel)  // Clean Architecture: Presentation은 Domain Model만 사용
     }
     
     public var body: some ReducerOf<Self> {
@@ -189,8 +190,9 @@ extension AppEntry {
           prepareUIState(for: &state, step: .nickname)
           return .none
         case .nickname:
-          if let error = validateNickname(state.nickname) {
-            state.nicknameError = error
+          // Domain Layer의 검증 로직 사용
+          if let error = UserModel.validateNickname(state.nickname) {
+            state.nicknameError = error.message
             return .none
           }
           if state.isNicknameAvailable != true {
@@ -228,9 +230,10 @@ extension AppEntry {
         
       case .nicknameChanged(let name):
         state.nickname = name
-        state.nicknameError = validateNickname(name)
+        // Domain Layer의 검증 로직 사용
+        state.nicknameError = UserModel.validateNickname(name)?.message
         state.isNicknameAvailable = nil
-        
+
         guard state.nicknameError == nil, !name.isEmpty else {
           state.isCheckingNickname = false
           return .cancel(id: CancelID.nicknameCheck)
@@ -299,15 +302,9 @@ extension AppEntry {
         return .run { [state] send in
           do {
             // 1. 프로필 이미지가 있으면 업로드
-            var profileImageUrl: String? = nil
-            var profileImagePath: String? = nil
-            var profileType: ProfileType = .firebase
             var profileInfo: ProfileInfo?
             
             if state.isSkippingPhoto {
-              profileImageUrl = nil
-              profileImagePath = nil
-              profileType = .none
               profileInfo = nil
             } else {
               switch state.profileImage {
@@ -315,18 +312,12 @@ extension AppEntry {
                 if let imageData = data {
                   let uploadData = compressImageDataForUpload(imageData) ?? imageData
                   _ = try await userProfileClient.uploadProfileImage(state.uid, uploadData)
-                  profileImagePath = "profile_images/\(state.uid).jpg"
-                  profileType = .firebase
-                  profileInfo = ProfileInfo(type: .storagePath, url: profileImagePath)
+                  let path = "profile_images/\(state.uid).jpg"
+                  profileInfo = ProfileInfo(type: .storagePath, url: path)
                 }
               case .url(let url):
-                profileImageUrl = url.absoluteString
-                profileType = .url
-                profileInfo = ProfileInfo(type: .externalURL, url: profileImageUrl)
+                profileInfo = ProfileInfo(type: .externalURL, url: url.absoluteString)
               case .none:
-                profileImageUrl = nil
-                profileImagePath = nil
-                profileType = .firebase
                 profileInfo = nil
               }
             }
@@ -343,9 +334,6 @@ extension AppEntry {
               name: state.fullName,
               nickname: state.nickname,
               email: state.email,
-              profileType: profileType,
-              profileImageUrl: profileImageUrl,
-              profileImagePath: profileImagePath,
               provider: providerInfo,
               profile: profileInfo,
               pinnedGroupId: nil,
@@ -354,19 +342,19 @@ extension AppEntry {
               updatedAt: Date()
             )
             
-            // 3. Firestore에 저장
-            try await userProfileClient.saveProfile(state.uid, profile)
-            
-            await send(.internal(.profileSaved))
+            // 3. Firestore에 저장 (Adapter가 Domain Model 반환)
+            let userModel = try await userProfileClient.saveProfile(state.uid, profile)
+
+            await send(.internal(.profileSaved(userModel)))
           } catch {
             await send(.internal(.profileSaveFailed(error)))
           }
         }
         
-      case .profileSaved:
+      case .profileSaved(let profile):
         state.isSaving = false
         state.isSkippingPhoto = false
-        return .send(.delegate(.completed))
+        return .send(.delegate(.completed(profile)))
         
       case .profileSaveFailed(let error):
         state.isSaving = false
@@ -1063,130 +1051,8 @@ private struct PhotoStepView: SwiftUI.View {
   }
 }
 
-// MARK: - Glass Action Button
-
-private struct GlassActionButton: SwiftUI.View {
-  let title: String
-  var isPrimary: Bool = true
-  var isVisible: Bool = true
-  var isEnabled: Bool = true
-  let action: () -> Void
-  
-  var body: some SwiftUI.View {
-    Group {
-      if #available(iOS 26.0, *) {
-        // 리퀴드 글래스 버전
-        Button(action: action) {
-          Text(title)
-            .font(.body.weight(.semibold))
-            .foregroundStyle(isPrimary ? Color.white : Color.primary)
-            .frame(maxWidth: .infinity)
-            .frame(height: 52)
-            .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .glassEffect(
-              .regular
-                .tint(
-                  isPrimary
-                  ? .pmindigo.n500.opacity(0.74)   // 조금 더 투명한 느낌
-                  : .purple.opacity(0.14)
-                )
-                .interactive(),
-              in: .rect(cornerRadius: 14)
-            )
-            .shadow(
-              color: isPrimary
-              ? Color(red: 0.6, green: 0.4, blue: 0.9).opacity(0.28)
-              : Color.black.opacity(0.1),
-              radius: 12,
-              y: 6
-            )
-        }
-        .buttonStyle(.plain)
-        .disabled(!isEnabled)
-        .opacity(isEnabled ? 1 : 0.5)
-        .opacity(isVisible ? 1 : 0)
-        .offset(y: isVisible ? 0 : 20)
-      } else {
-        // MARK: - Fallback: 기존 커스텀 글래스 스타일
-        Button(action: action) {
-          Text(title)
-            .font(.body.weight(.semibold))
-            .foregroundStyle(isPrimary ? Color.white : Color.primary)
-            .frame(maxWidth: .infinity)
-            .frame(height: 52)
-            .background(
-              ZStack {
-                if isPrimary {
-                  LinearGradient(
-                    colors: [
-                      Color(red: 0.6, green: 0.4, blue: 0.9),
-                      Color(red: 0.5, green: 0.3, blue: 0.8)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                  )
-                } else {
-                  Color.clear
-                }
-                
-                LinearGradient(
-                  colors: [
-                    Color.white.opacity(isPrimary ? 0.2 : 0.1),
-                    Color.white.opacity(0)
-                  ],
-                  startPoint: .topLeading,
-                  endPoint: .bottomTrailing
-                )
-              }
-            )
-            .overlay(
-              RoundedRectangle(cornerRadius: 14)
-                .stroke(
-                  LinearGradient(
-                    colors: [
-                      Color.white.opacity(isPrimary ? 0.3 : 0.2),
-                      Color.white.opacity(0)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                  ),
-                  lineWidth: 1
-                )
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 14))
-            .shadow(
-              color: isPrimary
-              ? Color(red: 0.6, green: 0.4, blue: 0.9).opacity(0.3)
-              : Color.clear,
-              radius: 12,
-              y: 6
-            )
-        }
-        .disabled(!isEnabled)
-        .opacity(isEnabled ? 1 : 0.5)
-        .opacity(isVisible ? 1 : 0)
-        .offset(y: isVisible ? 0 : 20)
-      }
-    }
-  }
-}
-
 // MARK: - Effects ID
 
 private enum CancelID {
   case nicknameCheck
-}
-
-
-// MARK: - Nickname Validation
-
-private func validateNickname(_ name: String) -> String? {
-  let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-  
-  if trimmed.count < 2 { return "2자 이상 입력해주세요" }
-  if trimmed.count > 12 { return "12자 이하로 입력해주세요" }
-  if trimmed.rangeOfCharacter(from: .whitespacesAndNewlines) != nil { return "닉네임엔 공백을 넣을 수 없어요" }
-  if trimmed != name { return "앞뒤 공백 없이 입력해주세요" }
-  return nil
 }

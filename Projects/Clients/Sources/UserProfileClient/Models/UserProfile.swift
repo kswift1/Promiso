@@ -6,16 +6,8 @@ public struct UserProfile: Codable, Equatable, Sendable {
   public let name: String
   public let nickname: String
   public let email: String?
-  
-  // Legacy-friendly fields kept for in-memory use
-  public let profileType: ProfileType
-  public let profileImageUrl: String?
-  public let profileImagePath: String?
-  
-  // Structured fields for Firestore
   public let provider: ProviderInfo?
   public let profile: ProfileInfo?
-  
   public let pinnedGroupId: String?
   public let notificationSettings: NotificationSettings
   public let createdAt: Date
@@ -25,9 +17,6 @@ public struct UserProfile: Codable, Equatable, Sendable {
     name: String,
     nickname: String,
     email: String?,
-    profileType: ProfileType,
-    profileImageUrl: String? = nil,
-    profileImagePath: String? = nil,
     provider: ProviderInfo? = nil,
     profile: ProfileInfo? = nil,
     pinnedGroupId: String? = nil,
@@ -38,9 +27,6 @@ public struct UserProfile: Codable, Equatable, Sendable {
     self.name = name
     self.nickname = nickname
     self.email = email
-    self.profileType = profileType
-    self.profileImageUrl = profileImageUrl
-    self.profileImagePath = profileImagePath
     self.provider = provider
     self.profile = profile
     self.pinnedGroupId = pinnedGroupId
@@ -48,14 +34,6 @@ public struct UserProfile: Codable, Equatable, Sendable {
     self.createdAt = createdAt
     self.updatedAt = updatedAt
   }
-}
-
-// MARK: - ProfileType (in-memory / legacy flag)
-
-public enum ProfileType: String, Codable, Equatable, Sendable {
-  case url = "URL"
-  case firebase = "FIREBASE"
-  case none = "NONE"
 }
 
 // MARK: - Provider Info
@@ -70,7 +48,7 @@ public struct ProviderInfo: Codable, Equatable, Sendable {
   }
 }
 
-// MARK: - Profile Info (structured for Firestore)
+// MARK: - Profile Info
 
 public struct ProfileInfo: Codable, Equatable, Sendable {
   public enum InfoType: String, Codable, Equatable, Sendable {
@@ -103,7 +81,6 @@ public struct NotificationSettings: Codable, Equatable, Sendable {
 // MARK: - Firestore Encoding/Decoding
 
 extension UserProfile {
-  /// Firestore에 저장할 딕셔너리 형식으로 변환
   public func toFirestoreData() -> [String: Any] {
     var data: [String: Any] = [
       "name": name,
@@ -117,32 +94,31 @@ extension UserProfile {
       ]
     ]
     
-    if let email = email {
+    if let email {
       data["email"] = email
     }
     
-    if let provider = provider {
+    if let provider {
       data["provider"] = [
         "uid": provider.uid,
         "type": provider.type
       ]
     }
     
-    if let profile = profile, profile.type != .none {
+    if let profile, profile.type != .none {
       data["profile"] = [
         "type": profile.type.rawValue,
         "url": profile.url as Any
       ]
     }
     
-    if let pinnedGroupId = pinnedGroupId {
+    if let pinnedGroupId {
       data["pinnedGroupId"] = pinnedGroupId
     }
     
     return data
   }
   
-  /// Firestore 딕셔너리로부터 UserProfile 생성
   public static func fromFirestoreData(_ data: [String: Any]) throws -> UserProfile {
     guard let name = data["name"] as? String,
           let nickname = data["nickname"] as? String,
@@ -152,13 +128,9 @@ extension UserProfile {
     }
     
     let email = data["email"] as? String
-    
     let profileDict = data["profile"] as? [String: Any]
     let profileInfoType = (profileDict?["type"] as? String).flatMap(ProfileInfo.InfoType.init(rawValue:)) ?? .none
     let profileUrl = profileDict?["url"] as? String
-    
-    let profileImageUrl: String? = profileInfoType == .externalURL ? profileUrl : nil
-    let profileImagePath: String? = profileInfoType == .storagePath ? profileUrl : nil
     
     let providerDict = data["provider"] as? [String: Any]
     let providerId = providerDict?["type"] as? String
@@ -173,15 +145,6 @@ extension UserProfile {
       name: name,
       nickname: nickname,
       email: email,
-      profileType: {
-        switch profileInfoType {
-        case .storagePath: return .firebase
-        case .externalURL: return .url
-        case .none: return .none
-        }
-      }(),
-      profileImageUrl: profileImageUrl,
-      profileImagePath: profileImagePath,
       provider: {
         if let providerId, let providerUid {
           return ProviderInfo(uid: providerUid, type: providerId)

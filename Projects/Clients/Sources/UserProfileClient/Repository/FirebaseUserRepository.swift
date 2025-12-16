@@ -82,9 +82,8 @@ public final class FirebaseUserRepository: UserRepositoryProtocol {
     return downloadURL
   }
 
-  public func hasProfile(uid: String) async throws -> Bool {
-    let document = try await db.environmentCollection(collectionName).document(uid).getDocument()
-    return document.exists
+  public func hasProfile(uid: String) async throws -> UserProfile? {
+    try await getProfile(uid: uid)
   }
   
   public func isNicknameAvailable(_ nickname: String) async throws -> Bool {
@@ -102,9 +101,6 @@ public final class FirebaseUserRepository: UserRepositoryProtocol {
       name: profile.name,
       nickname: profile.nickname,
       email: profile.email,
-      profileType: profile.profileType,
-      profileImageUrl: profile.profileImageUrl,
-      profileImagePath: profile.profileImagePath,
       provider: profile.provider,
       profile: profile.profile,
       pinnedGroupId: profile.pinnedGroupId,

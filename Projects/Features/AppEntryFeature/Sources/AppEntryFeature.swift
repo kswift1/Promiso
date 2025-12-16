@@ -10,6 +10,8 @@ import RootTabFeature
 import ResourceKit
 import SwiftUI
 
+import Domain
+
 // MARK: - Feature Namespace
 
 public enum AppEntry {}
@@ -42,7 +44,8 @@ extension AppEntry {
       var shouldAnimateOut: Bool = false
       public var auth: Auth.Feature.State = .init()
       public var profile: ProfileSetup.State = .init()
-      public var main: RootTab.Feature.State = .init()
+      public var currentUser: UserModel?
+      public var main: RootTab.Feature.State?
       
       public init() {}
     }
@@ -66,7 +69,7 @@ extension AppEntry {
       case startSessionCheck
       case sessionCheckResponse(isAuthenticated: Bool)
       case startProfileCheck
-      case profileCheckResponse(user: FirebaseUserSnapshot, hasProfile: Bool)
+      case profileCheckResponse(user: FirebaseUserSnapshot, profile: UserModel?)  // Clean Architecture: Domain Model
     }
     
     // MARK: - Reducer Body
@@ -75,13 +78,23 @@ extension AppEntry {
       Scope(state: \.auth, action: \.auth) {
         Auth.Feature()
       }
-      
-      Scope(state: \.main, action: \.main) {
-        RootTab.Feature()
-      }
-      
+
       Scope(state: \.profile, action: \.profile) {
         ProfileSetup()
+      }
+
+      Reduce { state, action in
+        switch action {
+        case .main:
+          guard state.main != nil else { return .none }
+          return .none
+        default:
+          break
+        }
+        return .none
+      }
+      .ifLet(\.main, action: \.main) {
+        RootTab.Feature()
       }
       
       Reduce { state, action in
@@ -120,15 +133,16 @@ extension AppEntry {
           case .startProfileCheck:
             return .run { send in
               guard let user = await authClient.currentUser() else { return }
-              // TODO:  Firestore에서 프로필 존재 여부 - 에러 대응 추가
-              let hasProfile = (try? await userProfileClient.hasProfile(user.uid)) ?? false
-              await send(.internal(.profileCheckResponse(user: user, hasProfile: hasProfile)))
+              let profile = try? await userProfileClient.hasProfile(user.uid)
+              await send(.internal(.profileCheckResponse(user: user, profile: profile)))
             }
             
-          case .profileCheckResponse(let user, let hasProfile):
-            if hasProfile {
+          case .profileCheckResponse(let user, let profile):
+            if let userModel = profile {
+              // Adapter가 이미 Domain Model 반환
+              state.currentUser = userModel
+              state.main = RootTab.Feature.State(currentUser: userModel)
               state.route = .main
-              state.main = RootTab.Feature.State()
             } else {
               state.profile.inject(user: user)
               state.route = .profile
@@ -139,9 +153,11 @@ extension AppEntry {
         case .auth(.delegate(.loggedIn)):
           return .send(.internal(.startProfileCheck))
         
-        case .profile(.delegate(.completed)):
+        case .profile(.delegate(.completed(let userModel))):
+          // Clean Architecture: ProfileSetup이 Domain Model 전달
+          state.currentUser = userModel
+          state.main = RootTab.Feature.State(currentUser: userModel)
           state.route = .main
-          state.main = RootTab.Feature.State()
           return .none
           
         case .main(.delegate(.logoutRequested)):
@@ -180,7 +196,9 @@ extension AppEntry {
             )
           }
         case .main:
-          RootTab.RootView(store: store.scope(state: \.main, action: \.main))
+          if let mainStore = store.scope(state: \.main, action: \.main) {
+            RootTab.RootView(store: mainStore)
+          }
         }
         
         // 스플래시 오버레이
@@ -204,6 +222,8 @@ extension AppEntry {
     }
   }
 }
+
+// MARK: - ProfileSetup State Extension
 
 extension AppEntry.ProfileSetup.State {
   mutating func inject(user: FirebaseUserSnapshot) {

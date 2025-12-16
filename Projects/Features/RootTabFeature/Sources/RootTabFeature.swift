@@ -4,6 +4,7 @@
 
 import CoreInfrastructure
 import Shared
+import Domain
 
 public enum Tab: String, CaseIterable {
   case home = "홈"
@@ -38,20 +39,20 @@ extension RootTab {
     public struct State {
       /// 현재 선택된 탭
       var selectedTab: Tab = .home
-      
+
       /// 사이드 드로어 상태
       var sideDrawer: SideDrawerFeature.State = SideDrawerFeature.State(maxDragOffset: AppConstants.UI.SideDrawer.width)
-      
-      /// Group Main State
+
+      /// Home Main State
       var home: Home.Feature.State = Home.Feature.State()
-      
+
       /// Group Main State
-      var groupMain: GroupMain.Feature.State = GroupMain.Feature.State(
-        // FIXME: 스플래시에서 유저정보 가져와서 세팅 필요 - 2025.11.05
-        currentUser: .init(id: "sungwon", email: "", nickname: "")
-      )
-      
-      public init () {}
+      var groupMain: GroupMain.Feature.State
+
+      public init(currentUser: UserModel) {
+        self.groupMain = GroupMain.Feature.State(currentUser: currentUser)
+        // Home.Feature.State 도 유저 기반 세팅 필요 시 여기에 주입
+      }
     }
     
     public enum Action {

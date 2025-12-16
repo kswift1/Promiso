@@ -22,10 +22,8 @@ public protocol UserRepositoryProtocol {
   /// - Returns: 업로드된 이미지의 다운로드 URL
   func uploadProfileImage(uid: String, imageData: Data) async throws -> URL
 
-  /// 프로필이 존재하는지 확인
-  /// - Parameter uid: 사용자 고유 식별자
-  /// - Returns: 프로필 존재 여부
-  func hasProfile(uid: String) async throws -> Bool
+  /// 프로필을 반환 (없으면 nil)
+  func hasProfile(uid: String) async throws -> UserProfile?
   
   /// 닉네임 사용 가능 여부 확인
   func isNicknameAvailable(_ nickname: String) async throws -> Bool
@@ -58,9 +56,8 @@ public struct MockUserRepository: UserRepositoryProtocol {
       name: "Mock User",
       nickname: "Mock User Nickname",
       email: "mock@example.com",
-      profileType: .firebase,
-      profileImageUrl: nil,
-      profileImagePath: "profile_images/mock.jpg"
+      provider: ProviderInfo(uid: "mock-provider", type: "google"),
+      profile: ProfileInfo(type: .storagePath, url: "profile_images/mock.jpg")
     )
   }
 
@@ -68,8 +65,8 @@ public struct MockUserRepository: UserRepositoryProtocol {
     return URL(string: "https://example.com/mock.jpg")!
   }
 
-  public func hasProfile(uid: String) async throws -> Bool {
-    return true
+  public func hasProfile(uid: String) async throws -> UserProfile? {
+    return try await getProfile(uid: uid)
   }
   
   public func isNicknameAvailable(_ nickname: String) async throws -> Bool {
