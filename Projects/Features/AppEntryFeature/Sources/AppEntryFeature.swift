@@ -1,7 +1,4 @@
 // MARK: - AppEntryFeature.swift
-// TCA 1.22.2를 사용한 AppEntry Feature의 완전한 구현
-// State, Action, Reducer, View를 모두 포함한 단일 모듈
-
 import AuthFeature
 import Clients
 import ComposableArchitecture
@@ -51,21 +48,21 @@ extension AppEntry {
     // MARK: - Action
 
     public enum Action {
-      case view(View)
-      case `internal`(Internal)
+      case view(ViewAction)
+      case `internal`(InternalAction)
       case destination(PresentationAction<Destination.Action>)
     }
     
-    public enum View {
+    public enum ViewAction {
       case onAppear
       case splashAnimationCompleted
     }
     
-    public enum Internal {
+    public enum InternalAction {
       case startSessionCheck
       case sessionCheckResponse(isAuthenticated: Bool)
       case startProfileCheck
-      case profileCheckResponse(user: FirebaseUserSnapshot, profile: UserModel?)  // Clean Architecture: Domain Model
+      case profileCheckResponse(user: FirebaseUserSnapshot, profile: UserModel?)
     }
 
     // MARK: - Destination Reducer
