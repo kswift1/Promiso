@@ -82,20 +82,6 @@ extension AppEntry {
       Scope(state: \.profile, action: \.profile) {
         ProfileSetup()
       }
-
-      Reduce { state, action in
-        switch action {
-        case .main:
-          guard state.main != nil else { return .none }
-          return .none
-        default:
-          break
-        }
-        return .none
-      }
-      .ifLet(\.main, action: \.main) {
-        RootTab.Feature()
-      }
       
       Reduce { state, action in
         switch action {
@@ -139,7 +125,6 @@ extension AppEntry {
             
           case .profileCheckResponse(let user, let profile):
             if let userModel = profile {
-              // Adapter가 이미 Domain Model 반환
               state.currentUser = userModel
               state.main = RootTab.Feature.State(currentUser: userModel)
               state.route = .main
@@ -170,6 +155,9 @@ extension AppEntry {
         case .auth, .profile, .main:
           return .none
         }
+      }
+      .ifLet(\.main, action: \.main) {
+        RootTab.Feature()
       }
     }
   }

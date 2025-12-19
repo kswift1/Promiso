@@ -6,6 +6,8 @@
 //
 
 import SwiftUI
+import Shared
+import ResourceKit
 
 struct SplashConfig {
   var initialDelay: Double = 0.5
@@ -93,4 +95,3 @@ struct SplashView<Logo: View>: View {
     }
   }
 }
-

@@ -9,7 +9,6 @@ import Foundation
 import SwiftUI
 import PhotosUI
 import Shared
-import ResourceKit
 import Clients
 import ComposableArchitecture
 import CoreInfrastructure
@@ -882,10 +881,6 @@ private struct NicknameStepView: SwiftUI.View {
     guard showTextField else { return }
     isNicknameFocused = true
   }
-}
-
-private extension AppEntry.ProfileSetup.State {
-  
 }
 
 // MARK: - Step3: Profile
