@@ -158,48 +158,56 @@ extension AppEntry {
     public init(store: StoreOf<Feature>) {
       self.store = store
     }
-    
+
     public var body: some View {
       ZStack {
-        switch store.destination {
-        case .auth:
-          if let store = store.scope(state: \.destination?.auth, action: \.destination.auth) {
-            Auth.RootView(store: store)
-          }
-
-        case .profile:
-          if let store = store.scope(state: \.destination?.profile, action: \.destination.profile) {
-            NavigationStack {
-              AppEntry.ProfileSetup.View(store: store)
-            }
-          }
-
-        case .main:
-          if let store = store.scope(state: \.destination?.main, action: \.destination.main) {
-            RootTab.RootView(store: store)
-          }
-
-        case .none:
-          EmptyView()
-        }
-
-        // 스플래시 오버레이
-        if store.splash != .hidden {
-          SplashView(
-            config: .init(forceHideLogo: false),
-            logo: { Image("fingerPromise") },
-            animateOut: store.splash == .animatingOut,
-            isCompleted: {
-              store.send(.view(.splashAnimationCompleted))
-            }
-          )
-          .transition(.opacity)
-        }
+        contentView
+        splashView
       }
       .animation(.easeInOut, value: store.destinationType)
       .animation(.easeInOut, value: store.splash)
       .onAppear {
         store.send(.view(.onAppear))
+      }
+    }
+
+    @ViewBuilder
+    private var contentView: some View {
+      switch store.destination {
+      case .auth:
+        if let store = store.scope(state: \.destination?.auth, action: \.destination.auth) {
+          Auth.RootView(store: store)
+        }
+
+      case .profile:
+        if let store = store.scope(state: \.destination?.profile, action: \.destination.profile) {
+          NavigationStack {
+            AppEntry.ProfileSetup.View(store: store)
+          }
+        }
+
+      case .main:
+        if let store = store.scope(state: \.destination?.main, action: \.destination.main) {
+          RootTab.RootView(store: store)
+        }
+
+      case .none:
+        EmptyView()
+      }
+    }
+
+    @ViewBuilder
+    private var splashView: some View {
+      if store.splash != .hidden {
+        SplashView(
+          config: .init(forceHideLogo: false),
+          logo: { Image("fingerPromise") },
+          animateOut: store.splash == .animatingOut,
+          isCompleted: {
+            store.send(.view(.splashAnimationCompleted))
+          }
+        )
+        .transition(.opacity)
       }
     }
   }
