@@ -13,6 +13,7 @@ struct PromisoApp: App {
   
   var body: some Scene {
     WindowGroup {
+//      TestEmulatorView()
       AppEntry.RootView(store: store)
     }
   }

@@ -69,7 +69,7 @@ firestore/
 
 ### Security
 - **FirestoreSecurityManager**: 클라이언트 보안 관리
-- **firestore.rules**: 서버 보안 규칙
+- **infra/firebase/firestore.rules**: 서버 보안 규칙
 
 ## 🚀 주요 특징
 
