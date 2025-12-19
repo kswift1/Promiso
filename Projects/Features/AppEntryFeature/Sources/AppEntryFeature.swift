@@ -33,6 +33,14 @@ extension AppEntry {
 
     @ObservableState
     public struct State {
+      public enum SplashState: Equatable {
+        case visible
+        case animatingOut
+        case hidden
+      }
+
+      var splash: SplashState = .visible
+
       @Presents public var destination: Destination.State?
 
       public init() {
@@ -80,8 +88,7 @@ extension AppEntry {
             return .send(.internal(.startSessionCheck))
             
           case .splashAnimationCompleted:
-            state.shouldAnimateOut = false
-            state.showSplash = false
+            state.splash = .hidden
             return .none
           }
           
@@ -95,9 +102,8 @@ extension AppEntry {
             }
             
           case .sessionCheckResponse(let isAuthenticated):
-            state.shouldAnimateOut = true
-            state.showSplash = true
-            
+            state.splash = .animatingOut
+
             if isAuthenticated {
               return .send(.internal(.startProfileCheck))
             } else {
@@ -178,11 +184,11 @@ extension AppEntry {
         }
 
         // 스플래시 오버레이
-        if store.showSplash {
+        if store.splash != .hidden {
           SplashView(
             config: .init(forceHideLogo: false),
             logo: { Image("fingerPromise") },
-            animateOut: store.shouldAnimateOut,
+            animateOut: store.splash == .animatingOut,
             isCompleted: {
               store.send(.view(.splashAnimationCompleted))
             }
@@ -191,7 +197,7 @@ extension AppEntry {
         }
       }
       .animation(.easeInOut, value: store.destinationType)
-      .animation(.easeInOut, value: store.showSplash)
+      .animation(.easeInOut, value: store.splash)
       .onAppear {
         store.send(.view(.onAppear))
       }
