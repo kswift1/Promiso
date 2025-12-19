@@ -30,34 +30,22 @@ extension AppEntry {
     public init() {}
     
     // MARK: - State
-    
+
     @ObservableState
     public struct State {
-      public enum Route: Equatable {
-        case auth
-        case profile
-        case main
+      @Presents public var destination: Destination.State?
+
+      public init() {
+        self.destination = .auth(Auth.Feature.State())
       }
-      
-      public var route: Route = .auth
-      var showSplash: Bool = true
-      var shouldAnimateOut: Bool = false
-      public var auth: Auth.Feature.State = .init()
-      public var profile: ProfileSetup.State = .init()
-      public var currentUser: UserModel?
-      public var main: RootTab.Feature.State?
-      
-      public init() {}
     }
-    
+
     // MARK: - Action
-    
+
     public enum Action {
       case view(View)
       case `internal`(Internal)
-      case auth(Auth.Feature.Action)
-      case profile(ProfileSetup.Action)
-      case main(RootTab.Feature.Action)
+      case destination(PresentationAction<Destination.Action>)
     }
     
     public enum View {
@@ -71,18 +59,19 @@ extension AppEntry {
       case startProfileCheck
       case profileCheckResponse(user: FirebaseUserSnapshot, profile: UserModel?)  // Clean Architecture: Domain Model
     }
-    
+
+    // MARK: - Destination Reducer
+
+    @Reducer
+    public enum Destination {
+      case auth(Auth.Feature)
+      case profile(ProfileSetup)
+      case main(RootTab.Feature)
+    }
+
     // MARK: - Reducer Body
     
     public var body: some ReducerOf<Self> {
-      Scope(state: \.auth, action: \.auth) {
-        Auth.Feature()
-      }
-
-      Scope(state: \.profile, action: \.profile) {
-        ProfileSetup()
-      }
-      
       Reduce { state, action in
         switch action {
         case .view(let viewAction):
@@ -112,7 +101,7 @@ extension AppEntry {
             if isAuthenticated {
               return .send(.internal(.startProfileCheck))
             } else {
-              state.route = .auth
+              state.destination = .auth(Auth.Feature.State())
               return .none
             }
             
@@ -125,40 +114,33 @@ extension AppEntry {
             
           case .profileCheckResponse(let user, let profile):
             if let userModel = profile {
-              state.currentUser = userModel
-              state.main = RootTab.Feature.State(currentUser: userModel)
-              state.route = .main
+              state.destination = .main(RootTab.Feature.State(currentUser: userModel))
             } else {
-              state.profile.inject(user: user)
-              state.route = .profile
+              var profileState = ProfileSetup.State()
+              profileState.inject(user: user)
+              state.destination = .profile(profileState)
             }
             return .none
           }
           
-        case .auth(.delegate(.loggedIn)):
+        case .destination(.presented(.auth(.delegate(.loggedIn)))):
           return .send(.internal(.startProfileCheck))
-        
-        case .profile(.delegate(.completed(let userModel))):
-          // Clean Architecture: ProfileSetup이 Domain Model 전달
-          state.currentUser = userModel
-          state.main = RootTab.Feature.State(currentUser: userModel)
-          state.route = .main
+
+        case .destination(.presented(.profile(.delegate(.completed(let userModel))))):
+          state.destination = .main(RootTab.Feature.State(currentUser: userModel))
           return .none
-          
-        case .main(.delegate(.logoutRequested)):
-          state.route = .auth
-          state.auth = Auth.Feature.State()
+
+        case .destination(.presented(.main(.delegate(.logoutRequested)))):
+          state.destination = .auth(Auth.Feature.State())
           return .run { _ in
             try? await authClient.logout()
           }
-          
-        case .auth, .profile, .main:
+
+        case .destination:
           return .none
         }
       }
-      .ifLet(\.main, action: \.main) {
-        RootTab.Feature()
-      }
+      .ifLet(\.$destination, action: \.destination)
     }
   }
   
@@ -173,22 +155,28 @@ extension AppEntry {
     
     public var body: some View {
       ZStack {
-        switch store.route {
+        switch store.destination {
         case .auth:
-          Auth.RootView(store: store.scope(state: \.auth, action: \.auth))
-          
+          if let store = store.scope(state: \.destination?.auth, action: \.destination.auth) {
+            Auth.RootView(store: store)
+          }
+
         case .profile:
-          NavigationStack {
-            AppEntry.ProfileSetup.View(
-              store: store.scope(state: \.profile, action: \.profile)
-            )
+          if let store = store.scope(state: \.destination?.profile, action: \.destination.profile) {
+            NavigationStack {
+              AppEntry.ProfileSetup.View(store: store)
+            }
           }
+
         case .main:
-          if let mainStore = store.scope(state: \.main, action: \.main) {
-            RootTab.RootView(store: mainStore)
+          if let store = store.scope(state: \.destination?.main, action: \.destination.main) {
+            RootTab.RootView(store: store)
           }
+
+        case .none:
+          EmptyView()
         }
-        
+
         // 스플래시 오버레이
         if store.showSplash {
           SplashView(
@@ -202,11 +190,28 @@ extension AppEntry {
           .transition(.opacity)
         }
       }
-      .animation(.easeInOut, value: store.route)
+      .animation(.easeInOut, value: store.destinationType)
       .animation(.easeInOut, value: store.showSplash)
       .onAppear {
         store.send(.view(.onAppear))
       }
+    }
+  }
+}
+
+// MARK: - State Extensions
+
+extension AppEntry.Feature.State {
+  enum DestinationType: Equatable {
+    case auth, profile, main
+  }
+
+  var destinationType: DestinationType? {
+    switch destination {
+    case .auth: return .auth
+    case .profile: return .profile
+    case .main: return .main
+    case nil: return nil
     }
   }
 }
