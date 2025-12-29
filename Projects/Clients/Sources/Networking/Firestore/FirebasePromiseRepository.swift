@@ -1,18 +1,21 @@
 import Foundation
-import Combine
 import FirebaseFirestore
-import Domain
+import Combine
+import Shared
 
 /// Promise 관련 Firestore CRUD 및 쿼리 작업을 담당하는 Repository
-public class PromiseRepository: PromiseRepositoryProtocol {
+public class FirebasePromiseRepository: PromiseRepositoryProtocol {
   private let firestore: FirestoreProviding
   private let collectionName: String
   private var db: Firestore { firestore.db }
+  private let calendarKeyGenerator: CalendarKeyGenerator
   
   public init(
+    calendarKeyGenerator: CalendarKeyGenerator,
     firestore: FirestoreProviding = DefaultFirestoreProvider(),
     collectionName: String = "promises"
   ) {
+    self.calendarKeyGenerator = calendarKeyGenerator
     self.firestore = firestore
     self.collectionName = collectionName
   }
@@ -21,130 +24,118 @@ public class PromiseRepository: PromiseRepositoryProtocol {
   
   /// 약속 생성
   public func createPromise(_ promise: PromiseModel) async throws -> String {
+    // TODO: Domain 모델을 Firestore 문서로 변환하여 저장
+    // 현재는 기본 구조만 제공
     let promiseRef = db.environmentCollection(collectionName).document()
-    let promiseData: [String: Any] = [
+    try await promiseRef.setData([
       "id": promise.id,
       "title": promise.title,
       "description": promise.description as Any,
       "minimumParticipants": promise.minimumParticipants,
       "requiredCount": promise.requiredCount,
       "isConfirmed": promise.isConfirmed,
-      "hostId": promise.host.id,
-      "groupId": promise.group.id,
       "startAt": Timestamp(date: promise.startAt),
-      "endAt": promise.endAt.map { Timestamp(date: $0) } as Any,
-      "status": promise.status.rawValue,
-      "createdAt": Timestamp(date: Date()),
-      "updatedAt": Timestamp(date: Date()),
-      "isDeleted": false
-    ]
-    
-    try await promiseRef.setData(promiseData)
+      "status": promise.status.rawValue
+    ])
     return promiseRef.documentID
   }
   
   /// 약속 업데이트
   public func updatePromise(_ promise: PromiseModel) async throws {
+    // TODO: Domain 모델을 Firestore 문서로 변환하여 업데이트
     let ref = db.environmentCollection(collectionName).document(promise.id)
-    let updateData: [String: Any] = [
+    try await ref.updateData([
       "title": promise.title,
       "description": promise.description as Any,
       "isConfirmed": promise.isConfirmed,
       "updatedAt": Timestamp(date: Date())
-    ]
-    
-    try await ref.updateData(updateData)
+    ])
   }
   
   /// 약속 삭제 (soft delete)
   public func deletePromise(id: String) async throws {
     let ref = db.environmentCollection(collectionName).document(id)
-    try await ref.updateData(["isDeleted": true, "updatedAt": Timestamp(date: Date())])
+    try await ref.updateData([
+      "isDeleted": true,
+      "updatedAt": Timestamp(date: Date())
+    ])
   }
   
   /// 약속 조회
   public func getPromise(id: String) async throws -> PromiseModel? {
-    let document = try await db.environmentCollection(collectionName).document(id).getDocument()
-    return try documentSnapshotToPromise(document)
+    // TODO: Firestore 문서를 Domain 모델로 변환하여 반환
+    let ref = db.environmentCollection(collectionName).document(id)
+    let document = try await ref.getDocument()
+    
+    guard document.exists else { return nil }
+    
+    // 임시 구현 - 실제로는 Firestore 문서를 Domain 모델로 변환
+    guard let data = document.data() else { return nil }
+    
+    return PromiseModel(
+      id: data["id"] as? String ?? id,
+      title: data["title"] as? String ?? "",
+      minimumParticipants: data["minimumParticipants"] as? Int ?? 1,
+      requiredCount: data["requiredCount"] as? Int ?? 1,
+      host: UserModel(id: "temp", email: "temp@example.com", nickname: "temp"),
+      group: Group(id: "temp", name: "temp"),
+      startAt: (data["startAt"] as? Timestamp)?.dateValue() ?? Date()
+    )
   }
   
-  /// 오늘 약속 조회
+  // MARK: - Query Operations
+  
+  /// 오늘의 약속 조회
   public func getTodayPromises(userId: String, groupId: String?) async throws -> [PromiseModel] {
-    let today = Date()
-    let calendar = Calendar.current
-    let startOfDay = calendar.startOfDay(for: today)
-    let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
-    
-    var query = db.environmentCollection(collectionName)
-      .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: startOfDay))
-      .whereField("startAt", isLessThan: Timestamp(date: endOfDay))
-      .whereField("status", isEqualTo: PromiseStatus.active.rawValue)
+    // TODO: Firestore 쿼리를 구현하여 Domain 모델 배열 반환
+    let todayKey = calendarKeyGenerator.generateYyyymmddKey(for: Date())
+    let query = db.environmentCollection(collectionName)
+      .whereField("localYyyymmdd", isEqualTo: todayKey)
       .whereField("isDeleted", isEqualTo: false)
-      .order(by: "startAt")
-    
-    if let groupId = groupId {
-      query = query.whereField("groupId", isEqualTo: groupId)
-    }
     
     let snapshot = try await query.getDocuments()
-    return try snapshot.documents.compactMap { try documentToPromise($0) }
+    return try snapshot.documents.compactMap { document in
+      try self.documentToPromise(document)
+    }
   }
   
   /// 다가오는 약속 조회
   public func getUpcomingPromises(userId: String, limit: Int) async throws -> [PromiseModel] {
-    let now = Date()
-    let query = db.environmentCollection(collectionName)
-      .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: now))
-      .whereField("status", isEqualTo: PromiseStatus.active.rawValue)
-      .whereField("isDeleted", isEqualTo: false)
-      .order(by: "startAt")
-      .limit(to: limit)
-    
-    let snapshot = try await query.getDocuments()
-    return try snapshot.documents.compactMap { try documentToPromise($0) }
-  }
-  
-  /// 답변 필요한 제안 조회 (현재는 임시 구현)
-  public func getPendingProposals(userId: String, limit: Int) async throws -> [PromiseModel] {
-    // TODO: 실제 구현 필요. 현재는 임시 데이터 반환
+    // TODO: Firestore 쿼리를 구현
     return []
   }
   
-  /// 활성 약속 조회
-  public func getActivePromises(groupId: String, limit: Int) async throws -> [PromiseModel] {
-    let query = db.environmentCollection(collectionName)
-      .whereField("groupId", isEqualTo: groupId)
-      .whereField("status", isEqualTo: PromiseStatus.active.rawValue)
-      .whereField("isDeleted", isEqualTo: false)
-      .order(by: "startAt")
-      .limit(to: limit)
-    
-    let snapshot = try await query.getDocuments()
-    return try snapshot.documents.compactMap { try documentToPromise($0) }
+  /// 답변 필요한 제안 조회
+  public func getPendingProposals(userId: String, limit: Int) async throws -> [PromiseModel] {
+    // TODO: Firestore 쿼리를 구현
+    return []
   }
   
-  /// 오늘 약속 실시간 관찰
+  /// 그룹의 활성 약속 조회
+  public func getActivePromises(groupId: String, limit: Int) async throws -> [PromiseModel] {
+    // TODO: Firestore 쿼리를 구현
+    return []
+  }
+  
+  // MARK: - Real-time Operations
+  
+  /// 오늘의 약속 실시간 관찰
   public func observeTodayPromises(userId: String, groupId: String?) -> AnyPublisher<[PromiseModel], Error> {
-    let today = Date()
-    let calendar = Calendar.current
-    let startOfDay = calendar.startOfDay(for: today)
-    let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
-    
-    let query = db.environmentCollection(collectionName)
-      .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: startOfDay))
-      .whereField("startAt", isLessThan: Timestamp(date: endOfDay))
-      .whereField("status", isEqualTo: PromiseStatus.active.rawValue)
+    let todayKey = calendarKeyGenerator.generateYyyymmddKey(for: Date())
+    let query = db.environmentCollection("promises")
+      .whereField("localYyyymmdd", isEqualTo: todayKey)
       .whereField("isDeleted", isEqualTo: false)
-      .order(by: "startAt")
     
     return Publishers.FirestoreQuery(query: query)
       .map { snapshot in
-        snapshot.documents.compactMap { try? self.documentToPromise($0) }
+        snapshot.documents.compactMap { document in
+          try? self.documentToPromise(document)
+        }
       }
       .eraseToAnyPublisher()
   }
   
-  /// 약속 실시간 관찰 (단일 문서)
+  /// 약속 실시간 관찰
   public func observePromise(id: String) -> AnyPublisher<PromiseModel?, Error> {
     let ref = db.environmentCollection("promises").document(id)
     
@@ -185,6 +176,33 @@ public class PromiseRepository: PromiseRepositoryProtocol {
       group: Group(id: "temp", name: "temp"),
       startAt: (data["startAt"] as? Timestamp)?.dateValue() ?? Date()
     )
+  }
+}
+
+// MARK: - Combine Extensions
+extension Publishers {
+  struct FirestoreQuery: Publisher {
+    typealias Output = QuerySnapshot
+    typealias Failure = Error
+    
+    let query: Query
+    
+    func receive<S>(subscriber: S) where S : Subscriber, Failure == S.Failure, Output == S.Input {
+      let subscription = FirestoreQuerySubscription(query: query, subscriber: subscriber)
+      subscriber.receive(subscription: subscription)
+    }
+  }
+  
+  struct FirestoreDocument: Publisher {
+    typealias Output = DocumentSnapshot?
+    typealias Failure = Error
+    
+    let document: DocumentReference
+    
+    func receive<S>(subscriber: S) where S : Subscriber, Failure == S.Failure, Output == S.Input {
+      let subscription = FirestoreDocumentSubscription(document: document, subscriber: subscriber)
+      subscriber.receive(subscription: subscription)
+    }
   }
 }
 

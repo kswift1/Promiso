@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import Domain
+import Shared
 
 /// Feature에서 사용하는 약속 제안 모델
 public struct PromiseProposal: Equatable, Sendable {
@@ -60,7 +60,7 @@ extension PromiseProposal {
   )
   
   /// PromiseProposal (Feature 모델) → PromiseModel (Domain 모델) 변환
-  func toDomainModel(hostId: String, group: GroupModel) -> Domain.PromiseModel {
+  public func toDomainModel(hostId: String, group: GroupModel) -> PromiseModel {
     PromiseModel(
       id: UUID().uuidString,
       emoji: emoji,

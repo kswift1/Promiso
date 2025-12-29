@@ -1,7 +1,7 @@
-import Domain
+import Shared
 
-// MARK: - Promise Status
-public enum PromiseStatus: String, Equatable, Sendable {
+// MARK: - Promise Response Status
+public enum PromiseResponseStatus: String, Equatable, Sendable, Codable {
   case needResponse  // 답변 필요
   case confirmed     // 확정됨
   case sent          // 응답 대기
@@ -19,7 +19,7 @@ public struct PromiseItem: Identifiable, Equatable, Sendable {
   public let location: String
   public let distance: String?
   public let with: String
-  public let status: PromiseStatus
+  public let status: PromiseResponseStatus
   public let responses: PromiseResponse?
   public let deadline: String?
 
@@ -32,7 +32,7 @@ public struct PromiseItem: Identifiable, Equatable, Sendable {
     location: String,
     distance: String? = nil,
     with: String,
-    status: PromiseStatus,
+    status: PromiseResponseStatus,
     responses: PromiseResponse? = nil,
     deadline: String? = nil
   ) {
@@ -50,7 +50,7 @@ public struct PromiseItem: Identifiable, Equatable, Sendable {
   }
   
   // FIXME:
-  public init(domainModel: Domain.PromiseModel) {
+  public init(domainModel: PromiseModel) {
     self.id = domainModel.id
     self.title = domainModel.title
     self.emoji = domainModel.emoji ?? ""

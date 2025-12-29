@@ -90,7 +90,7 @@ public struct PromiseModel: Equatable, Codable {
 ### Infrastructure에서 구현
 ```swift
 // CoreInfrastructure/PromiseRepository.swift
-import Domain
+import Shared
 
 public final class PromiseRepository: PromiseRepositoryProtocol {
   private let db = Firestore.firestore()
@@ -107,7 +107,7 @@ public final class PromiseRepository: PromiseRepositoryProtocol {
 ### Clients에서 사용
 ```swift
 // Clients/PromiseClient.swift
-import Domain
+import Shared
 
 @DependencyClient
 public struct PromiseClient {
@@ -183,7 +183,7 @@ public enum Status {
 ### Mock Repository 구현
 ```swift
 // Tests/MockPromiseRepository.swift
-import Domain
+import Shared
 
 public final class MockPromiseRepository: PromiseRepositoryProtocol {
   public var createPromiseResult: Result<String, Error> = .success("mock-id")

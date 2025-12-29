@@ -18,7 +18,6 @@ let project = Project(
       dependencies: [
         .project(target: "Clients", path: "../../Clients"),
         .project(target: "Shared", path: "../../Shared"),
-        .project(target: "Domain", path: "../../Domain"),
         .project(target: "ExternalDependency", path: "../../ExternalDependency")
       ],
       settings: .standard()

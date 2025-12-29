@@ -1,6 +1,6 @@
 import ComposableArchitecture
 import Foundation
-import Domain
+import Shared
 
 // MARK: - Client
 

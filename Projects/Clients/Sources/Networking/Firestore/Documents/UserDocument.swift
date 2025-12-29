@@ -9,7 +9,7 @@ public struct UserDocument: Codable {
   public let profileImageUrl: String?
   
   // MARK: - 설정
-  public let notificationSettings: NotificationSettings
+  public let notificationSettings: UserDocumentNotificationSettings
   
   // MARK: - 타임스탬프
   public let createdAt: Timestamp
@@ -19,7 +19,7 @@ public struct UserDocument: Codable {
     name: String,
     email: String,
     profileImageUrl: String? = nil,
-    notificationSettings: NotificationSettings = NotificationSettings(),
+    notificationSettings: UserDocumentNotificationSettings = UserDocumentNotificationSettings(),
     createdAt: Timestamp = Timestamp(),
     updatedAt: Timestamp = Timestamp()
   ) {
@@ -32,11 +32,11 @@ public struct UserDocument: Codable {
   }
 }
 
-// MARK: - NotificationSettings
-public struct NotificationSettings: Codable {
+// MARK: - UserDocumentNotificationSettings
+public struct UserDocumentNotificationSettings: Codable {
   public let enabled: Bool
   public let defaultReminderMinutes: Int
-  
+
   public init(
     enabled: Bool = true,
     defaultReminderMinutes: Int = 60
@@ -58,7 +58,7 @@ extension UserDocument {
   }
 }
 
-extension NotificationSettings {
+extension UserDocumentNotificationSettings {
   enum CodingKeys: String, CodingKey {
     case enabled
     case defaultReminderMinutes

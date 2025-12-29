@@ -194,7 +194,7 @@ public extension String {
 public enum LocalizationHelper {
   /// 현재 앱의 언어 설정을 반환
   public static var currentLanguage: String {
-    return Locale.current.languageCode ?? "ko"
+    return Locale.current.identifier
   }
   
   /// 지원하는 언어 목록

@@ -5,6 +5,7 @@
 import SwiftUI
 import ComposableArchitecture
 import GroupFeature
+import Clients
 
 // MARK: - Example Application
 
@@ -52,6 +53,11 @@ private struct ExampleContentView: View {
   private var groupMainExample: some View {
     let store = Store(initialState: GroupMain.Feature.State.preview) {
       GroupMain.Feature()
+    } withDependencies: { dependencies in
+      dependencies.groupClient = .previewValue
+      dependencies.promiseClient = .previewValue
+      dependencies.authClient = .previewValue
+      dependencies.userProfileClient = .previewValue
     }
 
     GroupMain.RootView(store: store)
@@ -62,6 +68,9 @@ private struct ExampleContentView: View {
   private var createPromiseExample: some View {
     let store = Store(initialState: CreatePromise.Feature.State()) {
       CreatePromise.Feature()
+    } withDependencies: { dependencies in
+      dependencies.groupClient = .previewValue
+      dependencies.promiseClient = .previewValue
     }
 
     CreatePromise.RootView(store: store)
@@ -73,6 +82,11 @@ private struct ExampleContentView: View {
 #Preview {
   let store = Store(initialState: GroupMain.Feature.State.preview) {
     GroupMain.Feature()
+  } withDependencies: { dependencies in
+    dependencies.groupClient = .previewValue
+    dependencies.promiseClient = .previewValue
+    dependencies.authClient = .previewValue
+    dependencies.userProfileClient = .previewValue
   }
 
   GroupMain.RootView(store: store)

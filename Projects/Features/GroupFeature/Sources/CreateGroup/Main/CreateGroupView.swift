@@ -1,7 +1,7 @@
 import SwiftUI
 import PhotosUI
 import ComposableArchitecture
-import Domain
+import Shared
 import Clients
 import UIKit
 

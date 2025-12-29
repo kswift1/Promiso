@@ -5,6 +5,7 @@
 import SwiftUI
 import ComposableArchitecture
 import AuthFeature
+import Clients
 
 // MARK: - Example Application
 
@@ -46,6 +47,8 @@ private struct ExampleContentView: View {
   private var defaultExample: some View {
     let store = Store(initialState: Auth.Feature.State()) {
       Auth.Feature()
+    } withDependencies: { dependencies in
+      dependencies.authClient = .previewValue
     }
     
     Auth.RootView(store: store)
@@ -57,6 +60,8 @@ private struct ExampleContentView: View {
 #Preview {
   let store = Store(initialState: Auth.Feature.State()) {
     Auth.Feature()
+  } withDependencies: { dependencies in
+    dependencies.authClient = .previewValue
   }
   
   Auth.RootView(store: store)

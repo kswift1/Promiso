@@ -18,10 +18,10 @@ let project = Project(
       dependencies: [
         .project(target: "Clients", path: "../../Clients"),
         .project(target: "Shared", path: "../../Shared"),
-        .project(target: "Domain", path: "../../Domain"),
-        .project(target: "ExternalDependency", path: "../../ExternalDependency"),
+        .project(target: "ResourceKit", path: "../../ResourceKit"),
         .project(target: "AuthFeature", path: "../AuthFeature"),
-        .project(target: "RootTabFeature", path: "../RootTabFeature")
+        .project(target: "RootTabFeature", path: "../RootTabFeature"),
+        .project(target: "ExternalDependency", path: "../../ExternalDependency")
       ],
       settings: .standard()
     ),

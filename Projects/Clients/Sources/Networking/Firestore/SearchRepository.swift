@@ -1,6 +1,7 @@
 import Foundation
 import FirebaseFirestore
 import Combine
+import Shared
 
 /// 검색 관련 Firestore 작업을 담당하는 Repository
 public class SearchRepository {

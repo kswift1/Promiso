@@ -2,9 +2,9 @@
 // TCA 1.22.2를 사용한 RootTab Feature의 Implementation layer
 // 이 파일은 핵심 business logic, state management, view implementation을 포함
 
-import CoreInfrastructure
 import Shared
-import Domain
+import Shared
+import ComposableArchitecture
 
 public enum Tab: String, CaseIterable {
   case home = "홈"

@@ -6,7 +6,7 @@
 
 // MARK: - Feature Namespace
 import SwiftUI
-import Domain
+import Shared
 import Shared
 import ComposableArchitecture
 

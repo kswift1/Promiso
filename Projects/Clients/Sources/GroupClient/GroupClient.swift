@@ -7,7 +7,8 @@
 
 import ComposableArchitecture
 import Foundation
-import CoreNetworking
+
+import Shared
 
 // MARK: - Error
 
@@ -99,49 +100,26 @@ extension DependencyValues {
 
 extension GroupClient: DependencyKey {
   public static let liveValue = Self(
-    fetchGroups: {
-      // TODO: Domain Repository 연결
-      try await Task.sleep(for: .seconds(0.4))
-
-      // 임시 데이터
-//      return Bool.random() ? [
-//        .init(id: "g1", emoji: "👥", title: "지민과 나", memberCount: 2),
-//        .init(id: "g2", emoji: "🏢", title: "회사 동료들", memberCount: 8),
-//        .init(id: "g3", emoji: "🎓", title: "대학 친구들", memberCount: 12),
-//        .init(id: "g4", emoji: "👨‍👩‍👦", title: "가족", memberCount: 4)
-//      ] : []
-      return [
-//        .init(id: "g1", emoji: "👥", title: "지민과 나", memberCount: 2),
-//        .init(id: "g2", emoji: "🏢", title: "회사 동료들", memberCount: 8),
-//        .init(id: "g3", emoji: "🎓", title: "대학 친구들", memberCount: 12),
-//        .init(id: "g4", emoji: "👨‍👩‍👦", title: "가족", memberCount: 4)
-      ]
-    },
-    fetchGroup: { groupId in
-      // TODO: Domain Repository 연결
-      try await Task.sleep(for: .seconds(1))
-      return GroupModel(id: groupId, emoji: "👞", title: "구두", memberCount: 3)
-    },
+    fetchGroups: unimplemented("\(Self.self).fetchGroups", placeholder: []),
+    fetchGroup: unimplemented("\(Self.self).fetchGroup"),
     createGroup: { request in
-      let dataSource = GroupRemoteDataSource()
-      let payload = GroupCreationPayload(
+      @Dependency(\.createGroupUseCase) var createGroupUseCase
+
+      let input = CreateGroupUseCaseInput(
         name: request.name,
         maxMembers: request.maxMembers,
         creatorId: request.creatorId,
-        creatorName: request.creatorName,
-        creatorNickname: request.creatorNickname,
-        creatorProfileImageURL: request.creatorProfileImageURL
+        photoData: request.photoData
       )
-      let result = try await dataSource.createGroup(payload)
+
+      let output = try await createGroupUseCase.execute(input)
+
       return GroupCreationResult(
-        id: result.id,
+        id: output.id,
         name: request.name,
-        inviteCode: result.inviteCode
+        inviteCode: output.inviteCode
       )
     },
-    leaveGroup: { groupId in
-      // TODO: Domain Repository 연결
-      try await Task.sleep(for: .seconds(1))
-    }
+    leaveGroup: unimplemented("\(Self.self).leaveGroup")
   )
 }

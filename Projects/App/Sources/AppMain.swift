@@ -1,19 +1,20 @@
 import SwiftUI
-import ComposableArchitecture
 import AppEntryFeature
+import ExternalDependency
 
 @main
 struct PromisoApp: App {
   
   @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
   
-  private let store = Store(initialState: AppEntry.Feature.State()) {
-    AppEntry.Feature()
-  }
-  
   var body: some Scene {
     WindowGroup {
-//      TestEmulatorView()
+      let store = Store(initialState: AppEntry.Feature.State()) {
+        AppEntry.Feature()
+      } withDependencies: { dependencies in
+        LiveDependencies.install(into: &dependencies)
+      }
+      
       AppEntry.RootView(store: store)
     }
   }

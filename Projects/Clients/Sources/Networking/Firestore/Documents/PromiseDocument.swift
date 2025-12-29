@@ -1,5 +1,6 @@
 import Foundation
 import FirebaseFirestore
+import Shared
 
 /// Firestore Promises 컬렉션 문서 모델
 public struct PromiseDocument: Codable {
@@ -122,37 +123,6 @@ public struct PromiseCounts: Codable {
   }
 }
 
-// MARK: - PromiseStatus
-public enum PromiseStatus: String, Codable, CaseIterable {
-  case draft = "draft"
-  case active = "active"
-  case cancelled = "cancelled"
-  case completed = "completed"
-}
-
-// MARK: - LocationInfo
-public struct LocationInfo: Codable {
-  public let name: String
-  public let address: String?
-  public let latitude: Double?
-  public let longitude: Double?
-  public let placeId: String?
-  
-  public init(
-    name: String,
-    address: String? = nil,
-    latitude: Double? = nil,
-    longitude: Double? = nil,
-    placeId: String? = nil
-  ) {
-    self.name = name
-    self.address = address
-    self.latitude = latitude
-    self.longitude = longitude
-    self.placeId = placeId
-  }
-}
-
 // MARK: - CodingKeys
 extension PromiseDocument {
   enum CodingKeys: String, CodingKey {
@@ -188,15 +158,5 @@ extension PromiseCounts {
     case accepted
     case declined
     case tentative
-  }
-}
-
-extension LocationInfo {
-  enum CodingKeys: String, CodingKey {
-    case name
-    case address
-    case latitude
-    case longitude
-    case placeId
   }
 }

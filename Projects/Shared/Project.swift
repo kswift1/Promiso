@@ -13,9 +13,20 @@ let project = Project(
       sources: ["Sources/**"],
       resources: ["Resources/**"],
       dependencies: [
-        .project(target: "CoreInfrastructure", path: "../Core"),
-        .project(target: "ExternalDependency", path: "../ExternalDependency"),
-        .project(target: "ResourceKit", path: "../ResourceKit")
+        .project(target: "ResourceKit", path: "../ResourceKit"),
+        .project(target: "ExternalDependency", path: "../ExternalDependency")
+      ],
+      settings: .standard()
+    ),
+    .target(
+      name: "SharedTests",
+      destinations: .iOS,
+      product: .unitTests,
+      bundleId: AppConfig.moduleBundleId("shared.tests"),
+      deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
+      sources: ["Tests/**"],
+      dependencies: [
+        .target(name: "Shared")
       ],
       settings: .standard()
     )

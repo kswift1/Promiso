@@ -45,56 +45,55 @@ public struct TypewriterLinesView: View {
     self.lineDelayProvider = lineDelayProvider
   }
   
+  @ViewBuilder
   public var body: some View {
-    Group {
-      if let animated = animated {
-        VStack(alignment: .leading, spacing: 0) {
-          if animated {
-            ForEach(0..<currentLine + 1, id: \ .self) { index in
-              if index < lines.count {
-                let line = lines[index]
-                if index == currentLine {
-                  TypewriterText(
-                    text: line.text,
-                    font: line.font,
-                    style: line.style,
-                    animated: animated
-                  ) {
-                    if index < lines.count - 1 {
-                      let extraDelay = lineDelayProvider(index)
-                      DispatchQueue.main.asyncAfter(deadline: .now() + extraDelay) {
-                        currentLine += 1
-                      }
-                    } else {
-                      typingAnimationCompleted()
+    if let animated = animated {
+      VStack(alignment: .leading, spacing: 0) {
+        if animated {
+          ForEach(0..<currentLine + 1, id: \.self) { index in
+            if index < lines.count {
+              let line = lines[index]
+              if index == currentLine {
+                TypewriterText(
+                  text: line.text,
+                  font: line.font,
+                  style: line.style,
+                  animated: animated
+                ) {
+                  if index < lines.count - 1 {
+                    let extraDelay = lineDelayProvider(index)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + extraDelay) {
+                      currentLine += 1
                     }
+                  } else {
+                    typingAnimationCompleted()
                   }
-                  .padding(.bottom, spacingForLine(index))
-                } else {
-                  Text(line.text)
-                    .font(line.font)
-                    .foregroundStyle(line.style)
-                    .padding(.bottom, spacingForLine(index))
                 }
+                .padding(.bottom, spacingForLine(index))
+              } else {
+                Text(line.text)
+                  .font(line.font)
+                  .foregroundStyle(line.style)
+                  .padding(.bottom, spacingForLine(index))
               }
             }
-          } else {
-            ForEach(0..<lines.count, id: \ .self) { index in
-              Text(lines[index].text)
-                .font(lines[index].font)
-                .foregroundStyle(lines[index].style)
-                .padding(.bottom, spacingForLine(index))
-            }
+          }
+        } else {
+          ForEach(0..<lines.count, id: \.self) { index in
+            Text(lines[index].text)
+              .font(lines[index].font)
+              .foregroundStyle(lines[index].style)
+              .padding(.bottom, spacingForLine(index))
           }
         }
-        .onAppear {
-          if !animated {
-            typingAnimationCompleted()
-          }
-        }
-      } else {
-        EmptyView()
       }
+      .onAppear {
+        if !animated {
+          typingAnimationCompleted()
+        }
+      }
+    } else {
+      EmptyView()
     }
   }
   

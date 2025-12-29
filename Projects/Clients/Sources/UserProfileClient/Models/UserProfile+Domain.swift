@@ -1,5 +1,5 @@
 import Foundation
-import Domain
+import Shared
 
 // MARK: - UserProfile → Domain Model Conversion
 // Adapter Layer의 책임: DTO를 Domain Model로 변환

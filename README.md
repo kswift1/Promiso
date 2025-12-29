@@ -28,6 +28,11 @@
 │         Shared Layer                    │
 │    (공통 모델, UI 컴포넌트, 유틸리티)          │
 └─────────────────────────────────────────┘
+
+┌─────────────────────────────────────────┐
+│   ExternalDependency / ResourceKit      │
+│ (외부 라이브러리 집약 / 리소스 관리)        │
+└─────────────────────────────────────────┘
 ```
 
 ### 핵심 원칙
@@ -35,6 +40,8 @@
 - **Features**: 각 화면/기능은 독립적인 TCA Feature로 구성
 - **Clients**: Firebase, API 등 외부 의존성은 TCA Dependency로 추상화
 - **Shared**: 여러 Feature가 공유하는 모델과 UI 컴포넌트
+- **ExternalDependency**: 외부 라이브러리를 단일 모듈로 집약해 재노출
+- **ResourceKit**: 디자인 리소스/생성 코드 관리
 - **단방향 의존성**: App → Features → Clients → Shared
 
 ## 🚀 시작하기
@@ -67,41 +74,43 @@ open Promiso.xcworkspace
 Projects/
 ├── App/                           # 메인 애플리케이션
 │   └── Sources/
-│       └── PromisoApp.swift       # 앱 진입점 & Root Feature
+│       ├── AppMain.swift          # 앱 진입점
+│       └── LiveDependencies.swift # 의존성 주입
 │
 ├── Features/                      # 기능별 TCA Features
-│   ├── HomeFeature/
-│   │   ├── HomeFeature.swift      # Reducer (비즈니스 로직)
-│   │   ├── HomeView.swift         # SwiftUI View
-│   │   └── Models/                # Feature 전용 모델
+│   ├── AppEntryFeature/
+│   ├── AuthFeature/
 │   ├── GroupFeature/
-│   │   ├── GroupFeature.swift
-│   │   ├── GroupView.swift
-│   │   └── Subfeatures/           # 하위 기능
-│   │       └── GroupDetailFeature/
+│   ├── HomeFeature/
 │   └── RootTabFeature/
-│       └── RootTabFeature.swift   # 탭 네비게이션
 │
 ├── Clients/                       # TCA Dependencies (외부 의존성)
-│   ├── FirebaseClient/
-│   │   ├── FirebaseClient.swift           # DependencyClient 인터페이스
-│   │   └── FirebaseClient+Live.swift      # Firebase 구현체
 │   ├── AuthClient/
-│   │   ├── AuthClient.swift
-│   │   └── AuthClient+Live.swift
-│   └── LiveActivityClient/
-│       ├── LiveActivityClient.swift
-│       └── LiveActivityClient+Live.swift
+│   ├── GroupClient/
+│   ├── PromiseClient/
+│   ├── UserProfileClient/
+│   ├── Infrastructure/
+│   └── Networking/
 │
-└── Shared/                        # 공통 요소
-    ├── Models/                    # 도메인 모델
-    │   ├── Promise.swift
-    │   ├── Group.swift
-    │   └── User.swift
-    ├── DesignSystem/              # UI 컴포넌트
-    │   ├── Components/
-    │   └── Styles/
-    └── Extensions/
+├── Shared/                        # 공통 요소
+│   ├── Models/
+│   ├── UseCases/
+│   ├── Protocols/
+│   ├── Errors/
+│   ├── DesignSystem/
+│   ├── UI/
+│   ├── Services/
+│   ├── Extensions/
+│   ├── Constants/
+│   ├── Common/
+│   └── Emoji/
+│
+├── ResourceKit/                   # 리소스/생성 코드
+│   ├── Resources/
+│   └── Sources/Generated/
+│
+└── ExternalDependency/            # 외부 라이브러리 집약
+    └── Sources/ExternalDependency.swift
 ```
 
 ## 🛠️ 개발 워크플로우
@@ -145,24 +154,23 @@ tuist test
 ```swift
 // Features/PromiseListFeature/PromiseListFeature.swift
 import ComposableArchitecture
-import FirebaseClient
-import SharedModels
+import Clients
+import Shared
 
 @Reducer
 public struct PromiseListFeature {
     @ObservableState
     public struct State: Equatable {
-        var promises: [Promise] = []
+        var promises: [PromiseModel] = []
         var isLoading = false
     }
     
     public enum Action {
         case onAppear
-        case createPromiseButtonTapped
-        case promisesResponse([Promise])
+        case promisesResponse([PromiseModel])
     }
     
-    @Dependency(\.firebaseClient) var firebaseClient
+    @Dependency(\.promiseClient) var promiseClient
     
     public var body: some ReducerOf<Self> {
         Reduce { state, action in
@@ -170,15 +178,8 @@ public struct PromiseListFeature {
             case .onAppear:
                 state.isLoading = true
                 return .run { send in
-                    // 비즈니스 로직은 Reducer에서 처리
-                    let promises = try await firebaseClient.fetchPromises()
+                    let promises = try await promiseClient.fetchPromises()
                     await send(.promisesResponse(promises))
-                }
-                
-            case .createPromiseButtonTapped:
-                return .run { [promise = state.newPromise] send in
-                    try await firebaseClient.createPromise(promise)
-                    await send(.onAppear) // 목록 새로고침
                 }
                 
             case let .promisesResponse(promises):
@@ -194,74 +195,30 @@ public struct PromiseListFeature {
 ### Client 구조 (외부 의존성 추상화)
 
 ```swift
-// Clients/FirebaseClient/FirebaseClient.swift
+// Clients/PromiseClient/PromiseClient.swift
 import ComposableArchitecture
-import SharedModels
+import Shared
 
 @DependencyClient
-public struct FirebaseClient {
-    public var createPromise: @Sendable (Promise) async throws -> String
-    public var fetchPromises: @Sendable () async throws -> [Promise]
-    public var observePromises: @Sendable (String) -> AsyncStream<[Promise]>
+public struct PromiseClient {
+    public var fetchPromises: @Sendable () async throws -> [PromiseModel]
 }
 
-extension FirebaseClient: DependencyKey {
-    public static let liveValue: FirebaseClient = {
-        // Clients/FirebaseClient/FirebaseClient+Live.swift
+extension PromiseClient: DependencyKey {
+    public static let liveValue: PromiseClient = {
         Self(
-            createPromise: { promise in
-                let db = Firestore.firestore()
-                let docRef = db.collection("promises").document()
-                try await docRef.setData([
-                    "title": promise.title,
-                    "date": promise.date,
-                    // ...
-                ])
-                return docRef.documentID
-            },
             fetchPromises: {
-                let db = Firestore.firestore()
-                let snapshot = try await db.collection("promises").getDocuments()
-                return snapshot.documents.compactMap { doc in
-                    try? doc.data(as: Promise.self)
-                }
-            },
-            observePromises: { userId in
-                AsyncStream { continuation in
-                    let db = Firestore.firestore()
-                    let listener = db.collection("promises")
-                        .whereField("participants", arrayContains: userId)
-                        .addSnapshotListener { snapshot, error in
-                            guard let documents = snapshot?.documents else { return }
-                            let promises = documents.compactMap { 
-                                try? $0.data(as: Promise.self) 
-                            }
-                            continuation.yield(promises)
-                        }
-                    
-                    continuation.onTermination = { _ in
-                        listener.remove()
-                    }
-                }
+                // Networking/Repository 등을 통해 데이터 로딩
+                []
             }
         )
     }()
-    
-    // 테스트용 Mock
-    public static let testValue = Self()
-    
-    // Preview용
-    public static let previewValue = Self(
-        createPromise: { _ in "preview-id" },
-        fetchPromises: { Promise.mocks },
-        observePromises: { _ in AsyncStream { $0.yield(Promise.mocks) } }
-    )
 }
 
 extension DependencyValues {
-    public var firebaseClient: FirebaseClient {
-        get { self[FirebaseClient.self] }
-        set { self[FirebaseClient.self] = newValue }
+    public var promiseClient: PromiseClient {
+        get { self[PromiseClient.self] }
+        set { self[PromiseClient.self] = newValue }
     }
 }
 ```
@@ -274,30 +231,23 @@ extension DependencyValues {
 public struct RootFeature {
     @ObservableState
     public struct State {
-        var promiseList: PromiseListFeature.State
-        var userProfile: UserProfileFeature.State
+        var featureA: FeatureA.State
+        var featureB: FeatureB.State
     }
     
     public enum Action {
-        case promiseList(PromiseListFeature.Action)
-        case userProfile(UserProfileFeature.Action)
+        case featureA(FeatureA.Action)
+        case featureB(FeatureB.Action)
     }
     
     public var body: some ReducerOf<Self> {
-        Scope(state: \.promiseList, action: \.promiseList) {
-            PromiseListFeature()
-        }
-        Scope(state: \.userProfile, action: \.userProfile) {
-            UserProfileFeature()
-        }
+        Scope(state: \.featureA, action: \.featureA) { FeatureA() }
+        Scope(state: \.featureB, action: \.featureB) { FeatureB() }
         
-        // Feature 간 통신 중재
         Reduce { state, action in
             switch action {
-            case .promiseList(.delegate(.promiseCreated)):
-                // 약속 생성 시 프로필 업데이트
-                return .send(.userProfile(.refreshPromiseCount))
-                
+            case .featureA(.delegate(.didComplete)):
+                return .send(.featureB(.refresh))
             default:
                 return .none
             }
@@ -324,14 +274,14 @@ func testCreatePromise() async {
         PromiseListFeature()
     } withDependencies: {
         // Mock 의존성 주입
-        $0.firebaseClient.createPromise = { _ in "test-id" }
+        $0.promiseClient.fetchPromises = { [promise] }
     }
     
-    await store.send(.createPromiseButtonTapped) {
+    await store.send(.onAppear) {
         $0.isLoading = true
     }
     
-    await store.receive(\.promiseCreated) {
+    await store.receive(\.promisesResponse) {
         $0.isLoading = false
         $0.promises.append(promise)
     }
@@ -366,12 +316,12 @@ make clean                                  # 빌드 캐시 정리
 
 ```
 App → Features → Clients → Shared
-  ↓       ↓         ↓         ↓
- 통합     로직        구현       공통
+  ↓       ↓         ↓
+ 통합     로직        구현
 ```
 
 - Features끼리는 서로 의존하지 않음
-- 모든 외부 의존성은 Client로 추상화
-- Shared는 누구에게도 의존하지 않음
+- 모든 외부 의존성은 ExternalDependency 모듈로 집약
+- Shared는 ExternalDependency/ResourceKit 외 내부 모듈에 의존하지 않음
 
 ---

@@ -1,6 +1,6 @@
 import Foundation
 
-import Domain
+import Shared
 
 // MARK: - Current Group
 

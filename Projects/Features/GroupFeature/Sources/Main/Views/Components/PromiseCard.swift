@@ -114,7 +114,7 @@ struct PromiseCard: View {
 }
 
 private struct StatusBadge: View {
-  let status: PromiseStatus
+  let status: PromiseResponseStatus
   
   var body: some View {
     HStack(spacing: 4) {
@@ -156,7 +156,7 @@ private struct StatusBadge: View {
 
 // MARK: - Extension
 
-extension PromiseStatus {
+extension PromiseResponseStatus {
   var displayText: String {
     switch self {
     case .needResponse: return "답변 필요"
@@ -164,7 +164,7 @@ extension PromiseStatus {
     case .sent: return "응답 대기"
     }
   }
-  
+
   var iconName: String {
     switch self {
     case .needResponse: return "exclamationmark.circle.fill"

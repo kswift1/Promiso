@@ -3,16 +3,14 @@ import ProjectDescription
 /// App 타겟의 의존성을 관리하는 헬퍼
 public enum AppFeatureDeps {
 
-  // MARK: - Core Dependencies (공통 모듈)
+  // MARK: - Base Dependencies (공통 모듈)
 
-  /// 모든 앱이 필요로 하는 기본 Core 의존성
+  /// 모든 앱이 필요로 하는 기본 의존성
   public static let coreDeps: [TargetDependency] = [
+    .project(target: "Clients", path: "../Clients"),
     .project(target: "Shared", path: "../Shared"),
     .project(target: "ResourceKit", path: "../ResourceKit"),
-    .project(target: "CoreInfrastructure", path: "../Core"),
-    .project(target: "CoreNetworking", path: "../Core"),
-    .project(target: "Domain", path: "../Domain"),
-    .project(target: "ExternalDependency", path: "../ExternalDependency"),
+    .project(target: "ExternalDependency", path: "../ExternalDependency")
   ]
 
   // MARK: - Feature Dependencies (자동 생성)
@@ -33,7 +31,7 @@ public enum AppFeatureDeps {
 
   // MARK: - All Dependencies
 
-  /// Core + Feature 의존성을 모두 포함
+  /// Base + Feature 의존성을 모두 포함
   public static let allDeps: [TargetDependency] = coreDeps + allFeaturesDeps
 
   // MARK: - Private Helpers

@@ -13,10 +13,7 @@ let project = Project(
       bundleId: AppConfig.moduleBundleId("core.networking"),
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Sources/Networking/**"],
-      dependencies: [
-        .project(target: "Domain", path: "../Domain"),
-        .project(target: "ExternalDependency", path: "../ExternalDependency")
-      ],
+      dependencies: [],
       settings: .standard()
     ),
     
@@ -28,9 +25,7 @@ let project = Project(
       bundleId: AppConfig.moduleBundleId("core.infrastructure"),
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Sources/Infrastructure/**"],
-      dependencies: [
-        .project(target: "ExternalDependency", path: "../ExternalDependency")
-      ],
+      dependencies: [],
       settings: .standard()
     )
   ]

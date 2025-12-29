@@ -5,6 +5,7 @@
 import SwiftUI
 import ComposableArchitecture
 import AppEntryFeature
+import Clients
 
 // MARK: - Example Application
 
@@ -46,6 +47,11 @@ private struct ExampleContentView: View {
   private var defaultExample: some View {
     let store = Store(initialState: AppEntry.Feature.State()) {
       AppEntry.Feature()
+    } withDependencies: { dependencies in
+      dependencies.authClient = .previewValue
+      dependencies.userProfileClient = .previewValue
+      dependencies.groupClient = .previewValue
+      dependencies.promiseClient = .previewValue
     }
     
     AppEntry.RootView(store: store)

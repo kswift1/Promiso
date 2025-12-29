@@ -9,8 +9,7 @@
 import ComposableArchitecture
 import Foundation
 import Combine
-import Domain
-import CoreNetworking
+import Shared
 
 // MARK: - Error
 
@@ -129,68 +128,13 @@ extension DependencyValues {
 // MARK: - Live Implementation
 
 extension PromiseClient: DependencyKey {
-  public static let liveValue: PromiseClient = {
-    // Domain Repository 주입
-    let repository: PromiseRepositoryProtocol = PromiseRepository()
-    
-    return Self(
-      createPromise: {
-        proposal,
-        hostId in
-        // Validation
-        guard let group = proposal.group else {
-          throw PromiseClientError.invalidData
-        }
-        
-        // Domain Repository 호출
-        return try await repository.createPromise(
-          proposal.toDomainModel(hostId: hostId, group: group)
-        )
-      },
-      
-      updatePromise: { promiseId, proposal in
-        // TODO: 실제 업데이트 로직 구현
-        try await Task.sleep(for: .seconds(1))
-      },
-      
-      deletePromise: { promiseId in
-        try await repository.deletePromise(id: promiseId)
-      },
-      
-      getPromise: { promiseId in
-        //        try await repository.getPromise(id: promiseId)
-        // TODO: Domain Repository 연결
-        try await Task.sleep(for: .seconds(1))
-        return .init(
-          id: "",
-          title: "",
-          emoji: "",
-          time: "",
-          date: "",
-          location: "",
-          with: "",
-          status: .needResponse
-        )
-      },
-      
-      getTodayPromises: { userId, groupId in
-        // TODO: Domain Repository 연결
-        try await Task.sleep(for: .seconds(1))
-        return PromiseItem.exampleArr
-      },
-      
-      getUpcomingPromises: { userId, limit in
-        // TODO: Domain Repository 연결
-        try await Task.sleep(for: .seconds(1))
-        return PromiseItem.exampleArr
-      },
-      
-      getActivePromises: { groupId, limit in
-        // TODO: Domain Repository 연결
-//        try await Task.sleep(for: .seconds(1))
-        return PromiseItem.exampleArr
-//        return Bool.random() ? PromiseItem.exampleArr : []
-      }
-    )
-  }()
+  public static let liveValue = Self(
+    createPromise: unimplemented("\(Self.self).createPromise", placeholder: ""),
+    updatePromise: unimplemented("\(Self.self).updatePromise"),
+    deletePromise: unimplemented("\(Self.self).deletePromise"),
+    getPromise: unimplemented("\(Self.self).getPromise", placeholder: nil),
+    getTodayPromises: unimplemented("\(Self.self).getTodayPromises", placeholder: []),
+    getUpcomingPromises: unimplemented("\(Self.self).getUpcomingPromises", placeholder: []),
+    getActivePromises: unimplemented("\(Self.self).getActivePromises", placeholder: [])
+  )
 }

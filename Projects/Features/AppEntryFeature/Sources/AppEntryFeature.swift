@@ -7,7 +7,7 @@ import RootTabFeature
 import ResourceKit
 import SwiftUI
 
-import Domain
+import Shared
 
 // MARK: - Feature Namespace
 
@@ -41,7 +41,7 @@ extension AppEntry {
       @Presents public var destination: Destination.State?
 
       public init() {
-        self.destination = .auth(Auth.Feature.State())
+        self.destination = .auth(AuthFeature.Auth.Feature.State())
       }
     }
 
@@ -69,7 +69,7 @@ extension AppEntry {
 
     @Reducer
     public enum Destination {
-      case auth(Auth.Feature)
+      case auth(AuthFeature.Auth.Feature)
       case profile(ProfileSetup)
       case main(RootTab.Feature)
     }

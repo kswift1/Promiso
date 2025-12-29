@@ -1,6 +1,5 @@
 import AuthenticationServices
 import ComposableArchitecture
-import CoreInfrastructure
 import FirebaseCore
 import FirebaseAuth
 import Foundation
@@ -210,10 +209,12 @@ public struct PlatformAuthProvider: PlatformAuthProviding, Sendable {
   }
 }
 
-// MARK: - Client
-
-@DependencyClient
+// MARK: - Client₩
 public struct AuthClient: Sendable {
+  private let session = InMemoryAuthSession()
+  private let provider = PlatformAuthProvider()
+//  private let keychain = KeychainStorage()
+  
   public var logout: @Sendable () async throws -> Void
   public var currentUser: @Sendable () async -> FirebaseUserSnapshot? = { nil }
   public var isAuthenticated: @Sendable () async -> Bool = { false }
@@ -270,15 +271,16 @@ extension AuthClient: TestDependencyKey {
 
 // MARK: - Live
 
-private actor InMemoryAuthSession {
+actor InMemoryAuthSession {
+  static let shared: InMemoryAuthSession = .init()
   private(set) var isAuthed: Bool = false
   private(set) var currentUser: User? = nil
-  
+
   func login(with user: User? = nil) {
     isAuthed = true
     currentUser = user
   }
-  
+
   func logout() {
     isAuthed = false
     currentUser = nil
@@ -286,16 +288,15 @@ private actor InMemoryAuthSession {
 }
 
 extension AuthClient: DependencyKey {
+
   public static let liveValue: AuthClient = {
-    let session = InMemoryAuthSession()
+    let session = InMemoryAuthSession.shared
     let provider = PlatformAuthProvider()
-    let keychain = KeychainStorage()
-    
-    return Self(
+
+    return AuthClient(
       logout: {
         await session.logout()
         try? Auth.auth().signOut()
-        try? clearStoredSession(in: keychain)
       },
       currentUser: {
         if let user = await session.currentUser {
@@ -305,66 +306,77 @@ extension AuthClient: DependencyKey {
         }
       },
       isAuthenticated: {
-        // InMemory 세션 먼저 체크
-        if await session.isAuthed {
-          return true
-        }
-        
-        // Firebase currentUser 확인
-        guard let user = Auth.auth().currentUser else {
-          return false
-        }
-        printUser(user)
-        // 3. 토큰 유효성 재검증 (네트워크 필요)
+        if await session.isAuthed { return true }
+
+        guard let user = Auth.auth().currentUser else { return false }
+
         do {
           try await user.reload()
-          
           await session.login(with: user)
-          
           return true
-          
         } catch let error as NSError {
-          
-          // 네트워크 에러는 현재 상태 유지
           if error.domain == NSURLErrorDomain {
-            print("⚠️ 네트워크 오류 - 현재 로그인 상태 유지")
             await session.login(with: nil)
             return true
           }
-          
-          // 토큰 만료 등 인증 에러는 로그아웃
+
           if let authError = AuthErrorCode(rawValue: error.code) {
             switch authError {
             case .userTokenExpired, .userNotFound, .invalidUserToken:
               try? Auth.auth().signOut()
-              try? clearStoredSession(in: keychain)
               return false
             default:
               break
             }
           }
-          
-          // 기타 에러는 보수적으로 처리 (현재 상태 유지)
+
           await session.login()
           return true
         }
       },
       signInWithApple: { authorization, nonce in
         let providerTokenBundle = try await provider.signInWithApple(authorization, nonce: nonce)
-        let serviceTokenBundle = try await signInWithFirebase(bundle: providerTokenBundle, rawNonce: nonce)
-        await session.login()
-        try store(bundle: providerTokenBundle, in: keychain)
-        return serviceTokenBundle
+
+        // Firebase 인증
+        guard let idTokenData = providerTokenBundle.identityToken else {
+          throw AuthClientError.missingIdentityToken
+        }
+        let credential = OAuthProvider.appleCredential(
+          withIDToken: idTokenData,
+          rawNonce: nonce,
+          fullName: nil
+        )
+        let authResult = try await Auth.auth().signIn(with: credential)
+        await session.login(with: authResult.user)
+
+        return ServiceTokenBundle(
+          firebaseUser: FirebaseUserSnapshot(user: authResult.user),
+          providerTokenBundle: providerTokenBundle
+        )
       },
       signInWithGoogle: {
         let providerTokenBundle = try await provider.signInWithGoogle()
-        let serviceTokenBundle = try await signInWithFirebase(bundle: providerTokenBundle)
-        await session.login()
-        try store(bundle: providerTokenBundle, in: keychain)
-        return serviceTokenBundle
+
+        // Firebase 인증
+        guard let idToken = providerTokenBundle.identityToken,
+              let accessToken = providerTokenBundle.accessToken else {
+          throw AuthClientError.invalidCredentials
+        }
+
+        let credential = GoogleAuthProvider.credential(
+          withIDToken: idToken,
+          accessToken: accessToken
+        )
+        let authResult = try await Auth.auth().signIn(with: credential)
+        await session.login(with: authResult.user)
+
+        return ServiceTokenBundle(
+          firebaseUser: FirebaseUserSnapshot(user: authResult.user),
+          providerTokenBundle: providerTokenBundle
+        )
       },
       clearSession: {
-        try? clearStoredSession(in: keychain)
+        await session.logout()
       }
     )
   }()
@@ -377,54 +389,6 @@ extension DependencyValues {
     get { self[AuthClient.self] }
     set { self[AuthClient.self] = newValue }
   }
-}
-
-// MARK: - Keychain helpers
-
-private enum AuthKeychainKeys {
-  static let provider = "auth.provider"
-  static let userId = "auth.userId"
-  static let idToken = "auth.idToken"
-  static let accessToken = "auth.accessToken"
-}
-
-private func store(bundle: ProviderTokenBundle, in keychain: KeychainStorage) throws {
-  try keychain.setString(bundle.provider.identifier, for: AuthKeychainKeys.provider)
-  try keychain.setString(bundle.userIdentifier, for: AuthKeychainKeys.userId)
-  
-  if let idToken = bundle.identityToken {
-    try keychain.setString(idToken, for: AuthKeychainKeys.idToken)
-  } else {
-    try? keychain.delete(AuthKeychainKeys.idToken)
-  }
-  
-  if let accessToken = bundle.accessToken {
-    try keychain.setString(accessToken, for: AuthKeychainKeys.accessToken)
-  } else {
-    try? keychain.delete(AuthKeychainKeys.accessToken)
-  }
-}
-
-private func clearStoredSession(in keychain: KeychainStorage) throws {
-  try? keychain.delete(AuthKeychainKeys.provider)
-  try? keychain.delete(AuthKeychainKeys.userId)
-  try? keychain.delete(AuthKeychainKeys.idToken)
-  try? keychain.delete(AuthKeychainKeys.accessToken)
-}
-
-// MARK: - Firebase Auth linkage
-
-private func signInWithFirebase(
-  bundle: ProviderTokenBundle,
-  rawNonce: String? = nil
-) async throws -> ServiceTokenBundle {
-  let credential = try bundle.createFirebaseCredential(rawNonce: rawNonce)
-  let result = try await Auth.auth().signIn(with: credential)
-  printUser(result.user)
-  return ServiceTokenBundle(
-    firebaseUser: FirebaseUserSnapshot(user: result.user),
-    providerTokenBundle: bundle
-  )
 }
 
 private extension ProviderTokenBundle {

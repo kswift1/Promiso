@@ -5,27 +5,24 @@
 
 ## 책임
 1. **@DependencyClient 정의**: Feature에서 사용할 TCA 의존성 제공
-2. **모델 변환**: Feature Model ↔ Domain Model 간 변환
-3. **Domain Repository 호출**: Infrastructure 레이어의 구현체 사용
+2. **모델 변환**: Feature Model ↔ Shared Model 간 변환
+3. **데이터 접근**: Networking/Infrastructure 구현체를 통해 외부 시스템 연동
 
 ## 구조
 ```
 Clients/
+├── AuthClient/
+├── GroupClient/
 ├── PromiseClient/
-│   ├── PromiseClient.swift         # TCA Dependency Client
-│   ├── Models/
-│   │   └── PromiseProposal.swift   # Feature-Layer 모델
-│   └── PromiseClientError.swift    # 에러 정의
-└── GroupClient/
-    ├── GroupClient.swift
-    └── Models/
-        └── GroupModel.swift
+├── UserProfileClient/
+├── Infrastructure/
+└── Networking/
 ```
 
 ## 의존성
-- ✅ **Domain**: Repository Protocol 사용
+- ✅ **Shared**: 공통 모델/프로토콜 사용
+- ✅ **ExternalDependency**: 외부 라이브러리 집약 모듈 사용
 - ✅ **ComposableArchitecture**: @DependencyClient 매크로
-- ✅ **CoreNetworking**: 네트워크 유틸리티 (필요시)
 
 ## 사용 예시
 
@@ -55,7 +52,7 @@ public struct Feature {
 ```swift
 // Clients/PromiseClient/PromiseClient.swift
 import ComposableArchitecture
-import Domain
+import Shared
 
 @DependencyClient
 public struct PromiseClient: Sendable {
@@ -68,16 +65,15 @@ extension PromiseClient: DependencyKey {
 
     return Self(
       createPromise: { proposal, hostId in
-        // Feature Model → Domain Model 변환
-        let domainModel = PromiseModel(
+        // Feature Model → Shared Model 변환
+        let model = PromiseModel(
           id: UUID().uuidString,
           title: proposal.title,
-          emoji: proposal.emoji,
-          // ...
+          emoji: proposal.emoji
         )
 
-        // Domain Repository 호출
-        return try await repository.createPromise(domainModel)
+        // Repository 호출
+        return try await repository.createPromise(model)
       }
     )
   }()
@@ -86,13 +82,13 @@ extension PromiseClient: DependencyKey {
 
 ## 모델 변환 규칙
 
-### Feature Model vs Domain Model
+### Feature Model vs Shared Model
 - **Feature Model** (PromiseProposal): UI 친화적, Optional 많음, Partial 상태
-- **Domain Model** (PromiseModel): 비즈니스 규칙 반영, 완전한 데이터
+- **Shared Model** (PromiseModel): 비즈니스 규칙 반영, 완전한 데이터
 
 ### 변환 시점
-- **Feature → Domain**: Client의 liveValue에서 변환
-- **Domain → Feature**: Repository 응답을 Feature 모델로 변환
+- **Feature → Shared**: Client의 liveValue에서 변환
+- **Shared → Feature**: Repository 응답을 Feature 모델로 변환
 
 ## 테스트
 
@@ -117,10 +113,10 @@ func testCreatePromise() async {
 ```
 
 ## 주의사항
-⚠️ **Infrastructure를 직접 import하지 마세요**
-- ❌ `import CoreInfrastructure`
-- ✅ `import Domain` (Protocol만 사용)
+⚠️ **외부 라이브러리는 ExternalDependency를 통해서만 사용**
+- ❌ 각 모듈에서 직접 SPM 라이브러리 추가
+- ✅ ExternalDependency 모듈 의존
 
-⚠️ **Domain Model을 Feature에 노출하지 마세요**
+⚠️ **Shared Model을 Feature에 직접 노출하지 않도록 주의**
 - Feature는 PromiseProposal 사용
-- Domain의 PromiseModel은 Client 내부에서만 사용
+- Shared의 PromiseModel은 Client 내부에서만 사용

@@ -6,6 +6,7 @@ import SwiftUI
 import ComposableArchitecture
 import HomeFeatureImplement
 import HomeFeatureInterface
+import Clients
 
 // MARK: - Example Application
 
@@ -53,6 +54,8 @@ private struct ExampleContentView: View {
   private var defaultExample: some View {
     let store = Store(initialState: Home.Feature.State()) {
       Home.Feature()
+    } withDependencies: { dependencies in
+      dependencies.promiseClient = .previewValue
     }
     
     Home.RootView(store: store)
@@ -71,6 +74,8 @@ private struct ExampleContentView: View {
 #Preview {
   let store = Store(initialState: Home.Feature.State()) {
     Home.Feature()
+  } withDependencies: { dependencies in
+    dependencies.promiseClient = .previewValue
   }
   
   Home.RootView(store: store)

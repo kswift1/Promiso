@@ -5,6 +5,7 @@
 import SwiftUI
 import ComposableArchitecture
 import RootTabFeature
+import Clients
 
 // MARK: - Example Application
 
@@ -47,6 +48,11 @@ private struct ExampleContentView: View {
     let store = Store(initialState: RootTab.Feature.State()) {
       RootTab.Feature()
         ._printChanges()
+    } withDependencies: { dependencies in
+      dependencies.authClient = .previewValue
+      dependencies.userProfileClient = .previewValue
+      dependencies.groupClient = .previewValue
+      dependencies.promiseClient = .previewValue
     }
 
     RootTab.RootView(store: store)
@@ -58,6 +64,11 @@ private struct ExampleContentView: View {
 #Preview {
   let store = Store(initialState: RootTab.Feature.State()) {
     RootTab.Feature()
+  } withDependencies: { dependencies in
+    dependencies.authClient = .previewValue
+    dependencies.userProfileClient = .previewValue
+    dependencies.groupClient = .previewValue
+    dependencies.promiseClient = .previewValue
   }
 
   return RootTab.RootView(store: store)

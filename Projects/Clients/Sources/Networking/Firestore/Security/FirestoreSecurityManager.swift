@@ -1,7 +1,7 @@
 import Foundation
 // import FirebaseAuth // TODO: FirebaseAuth 의존성 추가 시 활성화
 import FirebaseFirestore
-import Domain
+import Shared
 
 /// Firestore 보안 관리 클래스
 public class FirestoreSecurityManager {

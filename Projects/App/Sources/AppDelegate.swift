@@ -7,12 +7,7 @@
 
 import UIKit
 
-import FirebaseCore
-import FirebaseAuth
-import FirebaseFirestore
-import FirebaseStorage
-import FirebaseFunctions
-import GoogleSignIn
+import ExternalDependency
 
 class AppDelegate: NSObject, UIApplicationDelegate {
   func application(_ application: UIApplication,
@@ -20,7 +15,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     FirebaseApp.configure()
     
 #if DEBUG
-    connectToEmulators()
+//    connectToEmulators()
 #endif
     
     return true
@@ -52,6 +47,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     
     // Functions Emulator
     Functions.functions().useEmulator(withHost: "localhost", port: 5001)
+    Functions.functions(region: "asia-northeast3").useEmulator(withHost: "localhost", port: 5001)
     print("✅ Functions Emulator: localhost:5001")
     
     // Storage Emulator

@@ -11,8 +11,7 @@ import PhotosUI
 import Shared
 import Clients
 import ComposableArchitecture
-import CoreInfrastructure
-import Domain
+import Shared
 
 enum ProfileImageType: Equatable {
   case url(URL)
@@ -307,13 +306,12 @@ extension AppEntry {
               profileInfo = nil
             } else {
               switch state.profileImage {
-              case .data(let data):
-                if let imageData = data {
-                  let uploadData = compressImageDataForUpload(imageData) ?? imageData
-                  _ = try await userProfileClient.uploadProfileImage(state.uid, uploadData)
-                  let path = "profile_images/\(state.uid).jpg"
-                  profileInfo = ProfileInfo(type: .storagePath, url: path)
-                }
+	              case .data(let data):
+	                if let imageData = data {
+	                  _ = try await userProfileClient.uploadProfileImage(state.uid, imageData)
+	                  let path = "profile_images/\(state.uid).jpg"
+	                  profileInfo = ProfileInfo(type: .storagePath, url: path)
+	                }
               case .url(let url):
                 profileInfo = ProfileInfo(type: .externalURL, url: url.absoluteString)
               case .none:
