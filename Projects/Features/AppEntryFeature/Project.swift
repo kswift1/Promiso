@@ -35,7 +35,8 @@ let project = Project(
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Tests/Sources/**"],
       dependencies: [
-        .target(name: "AppEntryFeature")
+        .target(name: "AppEntryFeature"),
+        .project(target: "ExternalDependency", path: "../../ExternalDependency")
       ],
       settings: .standard()
     ),
