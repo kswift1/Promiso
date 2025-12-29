@@ -361,7 +361,6 @@ make clean                                  # 빌드 캐시 정리
 ## 📚 추가 문서
 
 - [TCA 공식 문서](https://pointfreeco.github.io/swift-composable-architecture/)
-- [아키텍처 가이드](./docs/architecture.md)
 
 ### 의존성 규칙
 
