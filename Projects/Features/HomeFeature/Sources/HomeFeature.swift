@@ -8,7 +8,7 @@
 /// 조직적 구조를 제공하고 다른 Feature들과의 naming conflict를 방지
 public enum Home {}
 
-// MARK: - Core Feature Implementation
+// MARK: - Feature Implementation
 
 extension Home {
   

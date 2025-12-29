@@ -25,7 +25,7 @@ private struct UnimplementedGroupRepository: GroupRepositoryProtocol {
 }
 
 private enum GroupRepositoryKey: DependencyKey {
-  static let liveValue: any GroupRepositoryProtocol = UnimplementedGroupRepository()
+  static let liveValue: any GroupRepositoryProtocol = GroupRemoteDataSource()
   static let testValue: any GroupRepositoryProtocol = UnimplementedGroupRepository()
 }
 

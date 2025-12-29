@@ -24,7 +24,7 @@ public class FirebasePromiseRepository: PromiseRepositoryProtocol {
   
   /// 약속 생성
   public func createPromise(_ promise: PromiseModel) async throws -> String {
-    // TODO: Domain 모델을 Firestore 문서로 변환하여 저장
+    // TODO: 모델을 Firestore 문서로 변환하여 저장
     // 현재는 기본 구조만 제공
     let promiseRef = db.environmentCollection(collectionName).document()
     try await promiseRef.setData([
@@ -42,7 +42,7 @@ public class FirebasePromiseRepository: PromiseRepositoryProtocol {
   
   /// 약속 업데이트
   public func updatePromise(_ promise: PromiseModel) async throws {
-    // TODO: Domain 모델을 Firestore 문서로 변환하여 업데이트
+    // TODO: 모델을 Firestore 문서로 변환하여 업데이트
     let ref = db.environmentCollection(collectionName).document(promise.id)
     try await ref.updateData([
       "title": promise.title,
@@ -63,13 +63,13 @@ public class FirebasePromiseRepository: PromiseRepositoryProtocol {
   
   /// 약속 조회
   public func getPromise(id: String) async throws -> PromiseModel? {
-    // TODO: Firestore 문서를 Domain 모델로 변환하여 반환
+    // TODO: Firestore 문서를 모델로 변환하여 반환
     let ref = db.environmentCollection(collectionName).document(id)
     let document = try await ref.getDocument()
     
     guard document.exists else { return nil }
     
-    // 임시 구현 - 실제로는 Firestore 문서를 Domain 모델로 변환
+    // 임시 구현 - 실제로는 Firestore 문서를 Shared 모델로 변환
     guard let data = document.data() else { return nil }
     
     return PromiseModel(
@@ -87,7 +87,7 @@ public class FirebasePromiseRepository: PromiseRepositoryProtocol {
   
   /// 오늘의 약속 조회
   public func getTodayPromises(userId: String, groupId: String?) async throws -> [PromiseModel] {
-    // TODO: Firestore 쿼리를 구현하여 Domain 모델 배열 반환
+    // TODO: Firestore 쿼리를 구현하여 모델 배열 반환
     let todayKey = calendarKeyGenerator.generateYyyymmddKey(for: Date())
     let query = db.environmentCollection(collectionName)
       .whereField("localYyyymmdd", isEqualTo: todayKey)

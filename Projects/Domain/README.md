@@ -1,11 +1,11 @@
 # Domain Module
 
 ## 역할
-**Domain Layer** - 비즈니스 로직 및 규칙을 정의합니다 (Framework 독립적).
+**Shared Layer** - 비즈니스 로직 및 규칙을 정의합니다 (Framework 독립적).
 
 ## 책임
 1. **Repository Protocols**: 데이터 접근 인터페이스 정의
-2. **Domain Models**: 비즈니스 규칙을 표현하는 모델
+2. **Shared Models**: 비즈니스 규칙을 표현하는 모델
 3. **Business Rules**: 도메인 로직 및 검증 규칙
 
 ## 구조
@@ -58,7 +58,7 @@ public protocol PromiseRepositoryProtocol {
 }
 ```
 
-### Domain Model 정의
+### Shared Model 정의
 ```swift
 // Domain/Models/Promise/PromiseModel.swift
 public struct PromiseModel: Equatable, Codable {
@@ -128,7 +128,7 @@ public struct PromiseClient {
 ## 모델 설계 원칙
 
 ### 1. 완전성 (Completeness)
-Domain Model은 비즈니스 규칙을 완전히 표현해야 합니다:
+Shared Model은 비즈니스 규칙을 완전히 표현해야 합니다:
 ```swift
 // ✅ 좋은 예: 비즈니스 규칙 명시
 public struct PromiseModel {
@@ -194,7 +194,7 @@ public final class MockPromiseRepository: PromiseRepositoryProtocol {
 }
 ```
 
-### Domain Logic 테스트
+### Shared Logic 테스트
 ```swift
 @Test
 func testPromiseCanConfirmWithEnoughParticipants() {
@@ -231,6 +231,6 @@ public protocol PromiseRepositoryProtocol { }
 public class PromiseRepository: PromiseRepositoryProtocol { }
 ```
 
-⚠️ **Domain Model은 외부에 노출하지 마세요**
+⚠️ **Shared Model은 외부에 노출하지 마세요**
 - Feature는 Feature Model (PromiseProposal) 사용
-- Domain Model은 Clients 내부에서만 사용
+- Shared Model은 Clients 내부에서만 사용

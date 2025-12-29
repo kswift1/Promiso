@@ -15,7 +15,7 @@ import Shared
 
 public enum Auth {}
 
-// MARK: - Core Feature Implementation
+// MARK: - Feature Implementation
 
 extension Auth {
   

@@ -47,7 +47,7 @@ public enum CreateGroupUseCaseError: Error, LocalizedError, Equatable, Sendable 
   }
 }
 
-// MARK: - Default Implementation (Domain)
+// MARK: - Default Implementation (Shared)
 
 public final class DefaultCreateGroupUseCase: CreateGroupUseCaseProtocol {
   private let repository: GroupRepositoryProtocol

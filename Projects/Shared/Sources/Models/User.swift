@@ -1,6 +1,6 @@
 import Foundation
 
-// MARK: - User Domain Model
+// MARK: - User Shared Model
 
 public struct UserModel: Identifiable, Equatable, Hashable, Sendable {
   public let id: String
@@ -61,7 +61,7 @@ extension UserModel {
   }
 }
 
-// MARK: - Validation (Domain Logic)
+// MARK: - Validation (Shared Logic)
 
 extension UserModel {
   /// 닉네임 유효성 검증 (도메인 로직)

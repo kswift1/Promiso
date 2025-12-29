@@ -3,7 +3,7 @@
 //  Clients
 //
 //  TCA Dependency Client for Promise operations
-//  Acts as an adapter between Feature layer and Domain layer
+//  Acts as an adapter between Feature layer and Shared layer
 //
 
 import ComposableArchitecture
@@ -128,13 +128,36 @@ extension DependencyValues {
 // MARK: - Live Implementation
 
 extension PromiseClient: DependencyKey {
-  public static let liveValue = Self(
-    createPromise: unimplemented("\(Self.self).createPromise", placeholder: ""),
-    updatePromise: unimplemented("\(Self.self).updatePromise"),
-    deletePromise: unimplemented("\(Self.self).deletePromise"),
-    getPromise: unimplemented("\(Self.self).getPromise", placeholder: nil),
-    getTodayPromises: unimplemented("\(Self.self).getTodayPromises", placeholder: []),
-    getUpcomingPromises: unimplemented("\(Self.self).getUpcomingPromises", placeholder: []),
-    getActivePromises: unimplemented("\(Self.self).getActivePromises", placeholder: [])
-  )
+  public static let liveValue: PromiseClient = {
+    let repository: PromiseRepositoryProtocol = PromiseRepository()
+
+    return Self(
+      createPromise: { proposal, hostId in
+        guard let group = proposal.group else {
+          throw PromiseClientError.invalidData
+        }
+        return try await repository.createPromise(
+          proposal.toDomainModel(hostId: hostId, group: group)
+        )
+      },
+      updatePromise: { _, _ in
+        throw PromiseClientError.unknown
+      },
+      deletePromise: { promiseId in
+        try await repository.deletePromise(id: promiseId)
+      },
+      getPromise: { _ in
+        nil
+      },
+      getTodayPromises: { _, _ in
+        []
+      },
+      getUpcomingPromises: { _, _ in
+        []
+      },
+      getActivePromises: { _, _ in
+        []
+      }
+    )
+  }()
 }

@@ -13,7 +13,7 @@ import Shared
 
 public enum AppEntry {}
 
-// MARK: - Core Feature Implementation
+// MARK: - Feature Implementation
 
 extension AppEntry {
   

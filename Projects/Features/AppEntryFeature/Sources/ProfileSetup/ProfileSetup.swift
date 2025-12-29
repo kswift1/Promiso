@@ -145,7 +145,7 @@ extension AppEntry {
     public enum InternalAction {
       // Profile Save Flow
       case saveProfile
-      case profileSaved(UserModel)  // Clean Architecture: Adapter가 Domain Model 반환
+      case profileSaved(UserModel)  // Clean Architecture: Adapter가 Shared Model 반환
       case profileSaveFailed(Error)
 
       // Animation Flow
@@ -159,7 +159,7 @@ extension AppEntry {
     }
     
     public enum DelegateAction: Equatable {
-      case completed(UserModel)  // Clean Architecture: Presentation은 Domain Model만 사용
+      case completed(UserModel)  // Clean Architecture: Presentation은 Shared Model만 사용
     }
     
     public var body: some ReducerOf<Self> {
@@ -188,7 +188,7 @@ extension AppEntry {
           prepareUIState(for: &state, step: .nickname)
           return .none
         case .nickname:
-          // Domain Layer의 검증 로직 사용
+          // Shared Layer의 검증 로직 사용
           if let error = UserModel.validateNickname(state.nickname) {
             state.nicknameError = error.message
             return .none
@@ -228,7 +228,7 @@ extension AppEntry {
         
       case .nicknameChanged(let name):
         state.nickname = name
-        // Domain Layer의 검증 로직 사용
+        // Shared Layer의 검증 로직 사용
         state.nicknameError = UserModel.validateNickname(name)?.message
         state.isNicknameAvailable = nil
 
@@ -339,7 +339,7 @@ extension AppEntry {
               updatedAt: Date()
             )
             
-            // 3. Firestore에 저장 (Adapter가 Domain Model 반환)
+            // 3. Firestore에 저장 (Adapter가 Shared Model 반환)
             let userModel = try await userProfileClient.saveProfile(state.uid, profile)
 
             await send(.internal(.profileSaved(userModel)))

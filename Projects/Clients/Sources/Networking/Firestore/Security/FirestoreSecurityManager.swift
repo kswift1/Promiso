@@ -50,7 +50,7 @@ public class FirestoreSecurityManager {
     let ref = db.environmentCollection("groups").document(groupId)
     let document = try await ref.getDocument()
     
-    // TODO: GroupDocument 대신 Domain 모델 사용하도록 수정
+    // TODO: GroupDocument 대신 Shared 모델 사용하도록 수정
     guard document.exists else { return false }
     let data = document.data() ?? [:]
     let createdBy = data["createdBy"] as? String
@@ -64,7 +64,7 @@ public class FirestoreSecurityManager {
     let ref = db.environmentCollection("promises").document(promiseId)
     let document = try await ref.getDocument()
     
-    // TODO: PromiseDocument 대신 Domain 모델 사용하도록 수정
+    // TODO: PromiseDocument 대신 Shared 모델 사용하도록 수정
     guard document.exists else { return false }
     let data = document.data() ?? [:]
     let hostId = data["hostId"] as? String
@@ -79,7 +79,7 @@ public class FirestoreSecurityManager {
     let promiseRef = db.environmentCollection("promises").document(promiseId)
     let promiseDoc = try await promiseRef.getDocument()
     
-    // TODO: PromiseDocument 대신 Domain 모델 사용하도록 수정
+    // TODO: PromiseDocument 대신 Shared 모델 사용하도록 수정
     guard promiseDoc.exists else { return false }
     let data = promiseDoc.data() ?? [:]
     guard let groupId = data["groupId"] as? String else { return false }
@@ -115,7 +115,7 @@ public class FirestoreSecurityManager {
     let ref = db.environmentCollection("notifications").document(notificationId)
     let document = try await ref.getDocument()
     
-    // TODO: NotificationDocument 대신 Domain 모델 사용하도록 수정
+    // TODO: NotificationDocument 대신 Shared 모델 사용하도록 수정
     guard document.exists else { return false }
     let data = document.data() ?? [:]
     let userId = data["userId"] as? String

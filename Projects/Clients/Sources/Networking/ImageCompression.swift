@@ -1,6 +1,6 @@
 //
 //  Image Compression.swift
-//  CoreInfrastructure
+//  Infrastructure
 //
 //  Created by 김성원 on 12/13/25.
 //

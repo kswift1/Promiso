@@ -59,7 +59,7 @@ extension PromiseProposal {
     reminder: nil
   )
   
-  /// PromiseProposal (Feature 모델) → PromiseModel (Domain 모델) 변환
+  /// PromiseProposal (Feature 모델) → PromiseModel (Shared 모델) 변환
   public func toDomainModel(hostId: String, group: GroupModel) -> PromiseModel {
     PromiseModel(
       id: UUID().uuidString,

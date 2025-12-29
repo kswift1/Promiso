@@ -8,7 +8,7 @@ import Clients
 
 public enum CreateGroup {}
 
-// MARK: - Core Feature Implementation
+// MARK: - Feature Implementation
 
 extension CreateGroup {
 

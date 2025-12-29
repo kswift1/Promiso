@@ -6,22 +6,22 @@ import Shared
 
 @DependencyClient
 public struct UserProfileClient: Sendable {
-  /// 사용자 프로필을 저장소에 저장 (Adapter가 Domain Model 반환)
+  /// 사용자 프로필을 저장소에 저장 (Adapter가 Shared Model 반환)
   public var saveProfile: @Sendable (_ uid: String, _ profile: UserProfile) async throws -> UserModel
 
-  /// 사용자 프로필을 저장소에서 가져오기 (Adapter가 Domain Model 반환)
+  /// 사용자 프로필을 저장소에서 가져오기 (Adapter가 Shared Model 반환)
   public var getProfile: @Sendable (_ uid: String) async throws -> UserModel?
 
   /// 프로필 이미지 업로드
   public var uploadProfileImage: @Sendable (_ uid: String, _ imageData: Data) async throws -> URL
 
-  /// 프로필을 반환 (없으면 nil) (Adapter가 Domain Model 반환)
+  /// 프로필을 반환 (없으면 nil) (Adapter가 Shared Model 반환)
   public var hasProfile: @Sendable (_ uid: String) async throws -> UserModel?
 
   /// 닉네임 사용 가능 여부 확인
   public var isNicknameAvailable: @Sendable (_ nickname: String) async throws -> Bool
 
-  /// 사용자 프로필 업데이트 (Adapter가 Domain Model 반환)
+  /// 사용자 프로필 업데이트 (Adapter가 Shared Model 반환)
   public var updateProfile: @Sendable (_ uid: String, _ profile: UserProfile) async throws -> UserModel
 
   /// 사용자 프로필 삭제
@@ -33,7 +33,7 @@ public struct UserProfileClient: Sendable {
 extension UserProfileClient: TestDependencyKey {
   public static let previewValue = Self(
     saveProfile: { uid, profile in
-      profile.toDomain(uid: uid)  // DTO → Domain 변환
+      profile.toDomain(uid: uid)  // DTO → Shared 변환
     },
     getProfile: { uid in
       let profile = UserProfile(
@@ -43,7 +43,7 @@ extension UserProfileClient: TestDependencyKey {
         provider: .init(uid: "preview-provider", type: "google"),
         profile: .init(type: .storagePath, url: "profile_images/preview.jpg")
       )
-      return profile.toDomain(uid: uid)  // DTO → Domain 변환
+      return profile.toDomain(uid: uid)  // DTO → Shared 변환
     },
     uploadProfileImage: { _, _ in
       URL(string: "https://storage.googleapis.com/example.jpg")!
@@ -51,7 +51,7 @@ extension UserProfileClient: TestDependencyKey {
     hasProfile: { _ in nil },
     isNicknameAvailable: { _ in true },
     updateProfile: { uid, profile in
-      profile.toDomain(uid: uid)  // DTO → Domain 변환
+      profile.toDomain(uid: uid)  // DTO → Shared 변환
     },
     deleteProfile: { _ in }
   )
@@ -76,7 +76,7 @@ extension UserProfileClient: DependencyKey {
     return Self(
       saveProfile: { uid, profile in
         try await repository.saveProfile(uid: uid, profile: profile)
-        // Adapter 책임: DTO → Domain 변환
+        // Adapter 책임: DTO → Shared 변환
         return profile.toDomain(uid: uid)
       },
 
@@ -84,7 +84,7 @@ extension UserProfileClient: DependencyKey {
         guard let profile = try await repository.getProfile(uid: uid) else {
           return nil
         }
-        // Adapter 책임: DTO → Domain 변환
+        // Adapter 책임: DTO → Shared 변환
         return profile.toDomain(uid: uid)
       },
 
@@ -96,7 +96,7 @@ extension UserProfileClient: DependencyKey {
         guard let profile = try await repository.hasProfile(uid: uid) else {
           return nil
         }
-        // Adapter 책임: DTO → Domain 변환
+        // Adapter 책임: DTO → Shared 변환
         return profile.toDomain(uid: uid)
       },
 
@@ -106,7 +106,7 @@ extension UserProfileClient: DependencyKey {
 
       updateProfile: { uid, profile in
         try await repository.updateProfile(uid: uid, profile: profile)
-        // Adapter 책임: DTO → Domain 변환
+        // Adapter 책임: DTO → Shared 변환
         return profile.toDomain(uid: uid)
       },
 

@@ -54,9 +54,9 @@ public enum GroupRoute: Hashable, CaseIterable {
   // 예시: case settings
 }
 
-// MARK: - Domain Models
+// MARK: - Shared Models
 
-/// Group Feature에 특화된 Domain model과 data structure
+/// Group Feature에 특화된 Shared model과 data structure
 /// Feature의 핵심 책임에 집중하여 가볍게 유지
 extension GroupEntry {
   // Feature별 domain model을 여기에 추가

@@ -1,6 +1,6 @@
 import Foundation
 
-// MARK: - Group Domain Model
+// MARK: - Group Shared Model
 
 public struct Group: Identifiable, Equatable, Hashable {
   public let id: String

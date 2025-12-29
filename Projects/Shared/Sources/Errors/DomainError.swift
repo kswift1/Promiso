@@ -1,6 +1,6 @@
 import Foundation
 
-// MARK: - Domain Error
+// MARK: - Shared Error
 
 public enum DomainError: Error, LocalizedError {
   case promiseNotFound

@@ -1,6 +1,6 @@
 import Foundation
 
-// MARK: - Promise Domain Model
+// MARK: - Promise Shared Model
 
 public struct PromiseModel: Identifiable, Equatable, Hashable {
   public let id: String
