@@ -387,3 +387,38 @@ struct DependencyTests {
     }
   }
 }
+
+// MARK: - ProfileSetup Effects
+
+@Suite("ProfileSetup Effects")
+@MainActor
+struct ProfileSetupEffectsTests {
+
+  @Test("프로필 저장 시 UserProfileClient.saveProfileWithImage 호출")
+  func saveProfileCallsClient() async {
+    await confirmation("saveProfileWithImage is called", expectedCount: 1) { @Sendable confirm in
+      let state = AppEntry.ProfileSetup.State(
+        profileImageUrl: nil,
+        email: "test@example.com",
+        uid: "test-uid",
+        fullName: "Test User"
+      )
+
+      let store = Store(initialState: state) {
+        AppEntry.ProfileSetup()
+      } withDependencies: {
+        $0.userProfileClient.saveProfileWithImage = { uid, profile, _ in
+          confirm()
+          return UserModel(
+            id: uid,
+            email: profile.email ?? "",
+            nickname: profile.nickname
+          )
+        }
+      }
+
+      await store.send(.internal(.saveProfile))
+      try? await Task.sleep(for: .milliseconds(100))
+    }
+  }
+}

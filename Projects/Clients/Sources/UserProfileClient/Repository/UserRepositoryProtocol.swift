@@ -22,6 +22,10 @@ public protocol UserRepositoryProtocol {
   /// - Returns: 업로드된 이미지의 다운로드 URL
   func uploadProfileImage(uid: String, imageData: Data) async throws -> URL
 
+  /// 프로필 이미지 삭제
+  /// - Parameter uid: 사용자 고유 식별자
+  func deleteProfileImage(uid: String) async throws
+
   /// 프로필을 반환 (없으면 nil)
   func hasProfile(uid: String) async throws -> UserProfile?
   
@@ -63,6 +67,10 @@ public struct MockUserRepository: UserRepositoryProtocol {
 
   public func uploadProfileImage(uid: String, imageData: Data) async throws -> URL {
     return URL(string: "https://example.com/mock.jpg")!
+  }
+
+  public func deleteProfileImage(uid: String) async throws {
+    // Mock implementation
   }
 
   public func hasProfile(uid: String) async throws -> UserProfile? {

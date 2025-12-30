@@ -54,6 +54,12 @@ public final class FirebaseUserRepository: UserRepositoryProtocol {
     return downloadURL
   }
 
+  public func deleteProfileImage(uid: String) async throws {
+    let storageRef = storage.reference()
+    let profileImageRef = storageRef.child("profile_images/\(uid).jpg")
+    try await profileImageRef.delete()
+  }
+
   public func hasProfile(uid: String) async throws -> UserProfile? {
     try await getProfile(uid: uid)
   }

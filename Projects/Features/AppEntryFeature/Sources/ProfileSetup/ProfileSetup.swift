@@ -59,7 +59,6 @@ extension AppEntry {
       var providerId: String?
       var providerUid: String?
       var providerType: String?
-      var profileInfo: ProfileInfo?
       
       // Flow State
       var step: Step = .welcome
@@ -299,27 +298,7 @@ extension AppEntry {
         state.isSaving = true
         return .run { [state] send in
           do {
-            // 1. 프로필 이미지가 있으면 업로드
-            var profileInfo: ProfileInfo?
-            
-            if state.isSkippingPhoto {
-              profileInfo = nil
-            } else {
-              switch state.profileImage {
-	              case .data(let data):
-	                if let imageData = data {
-	                  _ = try await userProfileClient.uploadProfileImage(state.uid, imageData)
-	                  let path = "profile_images/\(state.uid).jpg"
-	                  profileInfo = ProfileInfo(type: .storagePath, url: path)
-	                }
-              case .url(let url):
-                profileInfo = ProfileInfo(type: .externalURL, url: url.absoluteString)
-              case .none:
-                profileInfo = nil
-              }
-            }
-            
-            // 2. UserProfile 생성
+            // 1. UserProfile 생성
             let providerType = state.providerType ?? state.providerId?.providerTypeIdentifier
             let providerInfo: ProviderInfo? = {
               guard let type = providerType else { return nil }
@@ -332,15 +311,31 @@ extension AppEntry {
               nickname: state.nickname,
               email: state.email,
               provider: providerInfo,
-              profile: profileInfo,
+              profile: nil,
               pinnedGroupId: nil,
               notificationSettings: .default,
               createdAt: Date(),
               updatedAt: Date()
             )
             
-            // 3. Firestore에 저장 (Adapter가 Shared Model 반환)
-            let userModel = try await userProfileClient.saveProfile(state.uid, profile)
+            let imageInput: UserProfileImageInput = {
+              if state.isSkippingPhoto { return .skip }
+              switch state.profileImage {
+              case .data(let data):
+                return .data(data)
+              case .url(let url):
+                return .url(url)
+              case .none:
+                return .none
+              }
+            }()
+
+            // 2. 저장 + 이미지 처리
+            let userModel = try await userProfileClient.saveProfileWithImage(
+              state.uid,
+              profile,
+              imageInput
+            )
 
             await send(.internal(.profileSaved(userModel)))
           } catch {

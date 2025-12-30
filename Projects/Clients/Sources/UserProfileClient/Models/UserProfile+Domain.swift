@@ -7,7 +7,7 @@ import Shared
 extension UserProfile {
   /// UserProfile (DTO) → UserModel (Shared) 변환
   /// Adapter Layer에서 변환 책임을 가짐
-  public func toDomain(uid: String) -> UserModel {
+  public func toUserModel(uid: String) -> UserModel {
     return UserModel(
       id: uid,
       email: email ?? "",

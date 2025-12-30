@@ -9,6 +9,13 @@ public struct UserProfileClient: Sendable {
   /// 사용자 프로필을 저장소에 저장 (Adapter가 Shared Model 반환)
   public var saveProfile: @Sendable (_ uid: String, _ profile: UserProfile) async throws -> UserModel
 
+  /// 프로필 저장 + 이미지 처리 (Adapter가 Shared Model 반환)
+  public var saveProfileWithImage: @Sendable (
+    _ uid: String,
+    _ profile: UserProfile,
+    _ imageInput: UserProfileImageInput
+  ) async throws -> UserModel
+
   /// 사용자 프로필을 저장소에서 가져오기 (Adapter가 Shared Model 반환)
   public var getProfile: @Sendable (_ uid: String) async throws -> UserModel?
 
@@ -33,7 +40,10 @@ public struct UserProfileClient: Sendable {
 extension UserProfileClient: TestDependencyKey {
   public static let previewValue = Self(
     saveProfile: { uid, profile in
-      profile.toDomain(uid: uid)  // DTO → Shared 변환
+      profile.toUserModel(uid: uid)
+    },
+    saveProfileWithImage: { uid, profile, _ in
+      profile.toUserModel(uid: uid)
     },
     getProfile: { uid in
       let profile = UserProfile(
@@ -43,7 +53,7 @@ extension UserProfileClient: TestDependencyKey {
         provider: .init(uid: "preview-provider", type: "google"),
         profile: .init(type: .storagePath, url: "profile_images/preview.jpg")
       )
-      return profile.toDomain(uid: uid)  // DTO → Shared 변환
+      return profile.toUserModel(uid: uid)
     },
     uploadProfileImage: { _, _ in
       URL(string: "https://storage.googleapis.com/example.jpg")!
@@ -51,13 +61,14 @@ extension UserProfileClient: TestDependencyKey {
     hasProfile: { _ in nil },
     isNicknameAvailable: { _ in true },
     updateProfile: { uid, profile in
-      profile.toDomain(uid: uid)  // DTO → Shared 변환
+      profile.toUserModel(uid: uid)
     },
     deleteProfile: { _ in }
   )
 
   public static let testValue = Self(
     saveProfile: unimplemented("\(Self.self).saveProfile"),
+    saveProfileWithImage: unimplemented("\(Self.self).saveProfileWithImage"),
     getProfile: unimplemented("\(Self.self).getProfile", placeholder: nil),
     uploadProfileImage: unimplemented("\(Self.self).uploadProfileImage"),
     hasProfile: unimplemented("\(Self.self).hasProfile", placeholder: nil),
@@ -71,47 +82,44 @@ extension UserProfileClient: TestDependencyKey {
 
 extension UserProfileClient: DependencyKey {
   public static let liveValue: UserProfileClient = {
-    let repository: UserRepositoryProtocol = FirebaseUserRepository()
+    let dataSource = UserProfileRemoteDataSource()
 
     return Self(
       saveProfile: { uid, profile in
-        try await repository.saveProfile(uid: uid, profile: profile)
-        // Adapter 책임: DTO → Shared 변환
-        return profile.toDomain(uid: uid)
+        try await dataSource.saveProfile(uid: uid, profile: profile)
+        return profile.toUserModel(uid: uid)
+      },
+      saveProfileWithImage: { uid, profile, imageInput in
+        try await dataSource.saveProfileWithImage(
+          uid: uid,
+          profile: profile,
+          imageInput: imageInput
+        )
       },
 
       getProfile: { uid in
-        guard let profile = try await repository.getProfile(uid: uid) else {
-          return nil
-        }
-        // Adapter 책임: DTO → Shared 변환
-        return profile.toDomain(uid: uid)
+        try await dataSource.getProfileModel(uid: uid)
       },
 
       uploadProfileImage: { uid, imageData in
-        try await repository.uploadProfileImage(uid: uid, imageData: imageData)
+        try await dataSource.uploadProfileImage(uid: uid, imageData: imageData)
       },
 
       hasProfile: { uid in
-        guard let profile = try await repository.hasProfile(uid: uid) else {
-          return nil
-        }
-        // Adapter 책임: DTO → Shared 변환
-        return profile.toDomain(uid: uid)
+        try await dataSource.hasProfileModel(uid: uid)
       },
 
       isNicknameAvailable: { nickname in
-        try await repository.isNicknameAvailable(nickname)
+        try await dataSource.isNicknameAvailable(nickname)
       },
 
       updateProfile: { uid, profile in
-        try await repository.updateProfile(uid: uid, profile: profile)
-        // Adapter 책임: DTO → Shared 변환
-        return profile.toDomain(uid: uid)
+        try await dataSource.updateProfile(uid: uid, profile: profile)
+        return profile.toUserModel(uid: uid)
       },
 
       deleteProfile: { uid in
-        try await repository.deleteProfile(uid: uid)
+        try await dataSource.deleteProfile(uid: uid)
       }
     )
   }()

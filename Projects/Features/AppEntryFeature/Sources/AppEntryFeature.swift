@@ -243,6 +243,5 @@ extension AppEntry.ProfileSetup.State {
     self.providerId = user.providerId
     self.providerUid = user.providerUid
     self.providerType = user.providerId?.providerTypeIdentifier
-    self.profileInfo = nil
   }
 }
