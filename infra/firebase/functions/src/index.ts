@@ -7,9 +7,13 @@ import {
   TestCallableRequest,
   TestCallableResponse,
 } from "./types/api";
+import {getEnvironmentCollection, logEnvironmentInfo} from "./utils/firestore";
 
 // Firebase Admin 초기화
 admin.initializeApp();
+
+// 환경 정보 로깅
+logEnvironmentInfo();
 
 // 공통 옵션(비용/스케일 제어)
 setGlobalOptions({maxInstances: 10});
@@ -114,8 +118,9 @@ export const createGroup = onCall<CreateGroupRequest>(
       maxAttempts: 5,
     });
 
-    // 5. Firestore에 저장
-    const groupRef = db.collection("groups").doc();
+    // 5. Firestore에 저장 (환경별 경로)
+    const groupsCollection = getEnvironmentCollection("groups", db);
+    const groupRef = groupsCollection.doc();
     const now = admin.firestore.FieldValue.serverTimestamp();
 
     await groupRef.set({
@@ -194,7 +199,7 @@ async function generateUniqueInviteCode(params: {
   maxAttempts: number;
 }): Promise<string> {
   const {db, length, maxAttempts} = params;
-  const groups = db.collection("groups");
+  const groups = getEnvironmentCollection("groups", db);
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const code = randomInviteCode(length);

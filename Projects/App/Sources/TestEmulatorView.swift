@@ -5,8 +5,10 @@ import FirebaseAuth
 import FirebaseFirestore
 import FirebaseFunctions
 import FirebaseStorage
+import Networking
 
 struct TestEmulatorView: View {
+  @StateObject private var environmentManager = FirestoreEnvironmentManager.shared
   @State private var result: String = "Ready to test"
   @State private var isLoading: Bool = false
   
@@ -15,7 +17,30 @@ struct TestEmulatorView: View {
       Text("🎮 Emulator Test")
         .font(.largeTitle)
         .bold()
-      
+
+      // 환경 전환 UI
+      VStack(spacing: 8) {
+        Text("Firestore Environment")
+          .font(.headline)
+
+        Picker("Environment", selection: Binding(
+          get: { environmentManager.current },
+          set: { environmentManager.setEnvironment($0) }
+        )) {
+          ForEach(FirestoreEnvironment.allCases, id: \.self) { env in
+            Text(env.rawValue).tag(env)
+          }
+        }
+        .pickerStyle(.segmented)
+
+        Text("Current: \(environmentPath)")
+          .font(.caption)
+          .foregroundColor(.secondary)
+      }
+      .padding()
+      .background(Color.blue.opacity(0.1))
+      .cornerRadius(10)
+
       Text(result)
         .padding()
         .frame(maxWidth: .infinity)
@@ -54,7 +79,18 @@ struct TestEmulatorView: View {
     }
     .padding()
   }
-  
+
+  // MARK: - Computed Properties
+
+  private var environmentPath: String {
+    switch environmentManager.current {
+    case .dev:
+      return "dev/root/{collection}"
+    case .release:
+      return "{collection}"
+    }
+  }
+
   // MARK: - Test Functions
   
   func testAuth() {
@@ -81,23 +117,28 @@ struct TestEmulatorView: View {
   func testFirestore() {
     isLoading = true
     result = "Testing Firestore..."
-    
+
     Task {
       do {
         let db = Firestore.firestore()
-        
+
+        // 환경별 경로 사용
+        let collection = db.environmentCollection("test")
+
         // 테스트 데이터 쓰기
-        try await db.collection("test").document("doc1").setData([
+        try await collection.document("doc1").setData([
           "message": "Hello Emulator!",
-          "timestamp": FieldValue.serverTimestamp()
+          "timestamp": FieldValue.serverTimestamp(),
+          "environment": environmentManager.current.rawValue
         ])
-        
+
         // 읽기
-        let doc = try await db.collection("test").document("doc1").getDocument()
+        let doc = try await collection.document("doc1").getDocument()
         let message = doc.data()?["message"] as? String ?? ""
-        
+        let env = doc.data()?["environment"] as? String ?? ""
+
         await MainActor.run {
-          result = "✅ Firestore Success!\nMessage: \(message)"
+          result = "✅ Firestore Success!\nMessage: \(message)\nEnv: \(env)\nPath: \(collection.path)"
           isLoading = false
         }
       } catch {

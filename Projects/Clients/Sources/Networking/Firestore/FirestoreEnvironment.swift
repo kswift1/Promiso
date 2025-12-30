@@ -4,7 +4,7 @@ import FirebaseFirestore
 public enum FirestoreEnvironment: String, CaseIterable, Sendable {
   case dev = "Dev"
   case release = "Release"
-  
+
   static var `default`: FirestoreEnvironment {
     #if DEBUG
     return .dev
@@ -12,7 +12,15 @@ public enum FirestoreEnvironment: String, CaseIterable, Sendable {
     return .release
     #endif
   }
-  
+
+  /// Firestore 경로 prefix (dev/ 또는 없음)
+  var pathPrefix: String? {
+    switch self {
+    case .dev: return "dev"
+    case .release: return nil
+    }
+  }
+
   var rootCollectionName: String { rawValue }
 }
 
@@ -54,7 +62,13 @@ public final class FirestoreEnvironmentManager: ObservableObject {
     _ name: String,
     in db: Firestore = Firestore.firestore()
   ) -> CollectionReference {
-    rootDocument(in: db).collection(name)
+    if let prefix = current.pathPrefix {
+      // Dev: dev/{collection}
+      return db.collection(prefix).document("root").collection(name)
+    } else {
+      // Release: {collection}
+      return db.collection(name)
+    }
   }
 }
 

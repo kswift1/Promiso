@@ -1,7 +1,37 @@
 openapi: 3.0.3
 info:
   title: Promiso Firebase Functions API
-  description: iOS 앱과 Firebase Functions 간 통신 규격
+  description: |
+    iOS 앱과 Firebase Functions 간 통신 규격
+
+    ## 환경 분리 (Environment Separation)
+
+    **Firestore 경로가 환경별로 자동 분리됩니다:**
+
+    | 환경 | Firestore 경로 | Functions Endpoint |
+    |------|---------------|-------------------|
+    | **Dev** (Emulator) | `dev/root/groups/{id}` | `localhost:5001` |
+    | **Release** (Production) | `groups/{id}` | `asia-northeast3-{projectId}.cloudfunctions.net` |
+
+    ### iOS 설정
+    ```swift
+    #if DEBUG
+    // Dev 환경: Emulator 사용
+    FirestoreEnvironmentManager.shared.setEnvironment(.dev)
+    Functions.functions().useEmulator(withHost: "localhost", port: 5001)
+    #else
+    // Release 환경: Production 사용
+    FirestoreEnvironmentManager.shared.setEnvironment(.release)
+    #endif
+    ```
+
+    ### Functions 설정
+    환경은 자동 감지됩니다:
+    - Emulator: `FUNCTIONS_EMULATOR=true` → Dev 경로
+    - Production: 그 외 → Release 경로
+
+    모든 API 호출은 환경에 관계없이 동일한 방식으로 사용 가능합니다.
+
   version: 1.0.0
   contact:
     name: Promiso Team
