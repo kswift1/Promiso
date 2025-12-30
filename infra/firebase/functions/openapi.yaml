@@ -1,0 +1,308 @@
+openapi: 3.0.3
+info:
+  title: Promiso Firebase Functions API
+  description: iOS 앱과 Firebase Functions 간 통신 규격
+  version: 1.0.0
+  contact:
+    name: Promiso Team
+
+servers:
+  - url: https://asia-northeast3-{projectId}.cloudfunctions.net
+    description: Production (Seoul)
+    variables:
+      projectId:
+        default: your-project-id
+        description: Firebase Project ID
+
+  - url: http://localhost:5001/{projectId}/asia-northeast3
+    description: Local Emulator
+    variables:
+      projectId:
+        default: your-project-id
+
+tags:
+  - name: Group
+    description: 그룹 관련 API
+  - name: Test
+    description: 테스트용 API
+
+paths:
+  /createGroup:
+    post:
+      tags:
+        - Group
+      summary: 그룹 생성
+      description: |
+        새로운 그룹을 생성하고 초대 코드를 발급합니다.
+
+        **인증 필수**: Firebase Authentication 토큰 필요
+      operationId: createGroup
+      security:
+        - firebaseAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - data
+              properties:
+                data:
+                  $ref: '#/components/schemas/CreateGroupRequest'
+            examples:
+              basic:
+                summary: 기본 그룹 생성
+                value:
+                  data:
+                    name: 주말 등산 모임
+                    maxMembers: 5
+              withPhoto:
+                summary: 사진 포함
+                value:
+                  data:
+                    name: 주말 등산 모임
+                    maxMembers: 5
+                    photoPath: groups/abc123/photo.jpg
+
+      responses:
+        '200':
+          description: 그룹 생성 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    $ref: '#/components/schemas/CreateGroupResponse'
+              examples:
+                success:
+                  value:
+                    result:
+                      id: xYz9Abc123Def456
+                      inviteCode: AB12CD
+
+        '400':
+          description: 잘못된 파라미터
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FunctionsError'
+              examples:
+                invalidName:
+                  value:
+                    error:
+                      code: invalid-argument
+                      message: 그룹 이름은 최소 2글자 이상이어야 합니다
+                invalidMaxMembers:
+                  value:
+                    error:
+                      code: invalid-argument
+                      message: 최대 인원(maxMembers)은 2~10 사이여야 합니다
+
+        '401':
+          description: 인증 실패
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FunctionsError'
+              examples:
+                unauthenticated:
+                  value:
+                    error:
+                      code: unauthenticated
+                      message: 로그인이 필요합니다
+
+        '500':
+          description: 서버 오류
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FunctionsError'
+              examples:
+                inviteCodeFailed:
+                  value:
+                    error:
+                      code: internal
+                      message: 초대 코드를 생성하지 못했어요. 잠시 후 다시 시도해주세요.
+
+  /testCallable:
+    post:
+      tags:
+        - Test
+      summary: 테스트용 Callable Function
+      description: Firebase Functions 연결을 테스트합니다.
+      operationId: testCallable
+      security:
+        - firebaseAuth: []
+        - {} # 인증 선택적
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                data:
+                  $ref: '#/components/schemas/TestCallableRequest'
+            examples:
+              withName:
+                value:
+                  data:
+                    name: 홍길동
+              noName:
+                value:
+                  data: {}
+
+      responses:
+        '200':
+          description: 테스트 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    $ref: '#/components/schemas/TestCallableResponse'
+              examples:
+                authenticated:
+                  value:
+                    result:
+                      message: Hello 홍길동!
+                      authenticated: true
+                      uid: abc123xyz
+                guest:
+                  value:
+                    result:
+                      message: Hello Guest!
+                      authenticated: false
+                      uid: null
+
+components:
+  securitySchemes:
+    firebaseAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Firebase Authentication 토큰
+
+  schemas:
+    # ========================================
+    # createGroup
+    # ========================================
+
+    CreateGroupRequest:
+      type: object
+      required:
+        - name
+        - maxMembers
+      properties:
+        name:
+          type: string
+          minLength: 2
+          description: 그룹 이름
+          example: 주말 등산 모임
+
+        maxMembers:
+          type: integer
+          minimum: 2
+          maximum: 10
+          description: 최대 인원
+          example: 5
+
+        photoPath:
+          type: string
+          nullable: true
+          description: 그룹 이미지 Storage 경로
+          example: groups/abc123/photo.jpg
+
+    CreateGroupResponse:
+      type: object
+      required:
+        - id
+        - inviteCode
+      properties:
+        id:
+          type: string
+          description: 생성된 그룹 ID (Firestore Document ID)
+          example: xYz9Abc123Def456
+
+        inviteCode:
+          type: string
+          pattern: ^[A-Z0-9]{6}$
+          description: 초대 코드 (6자리 영숫자)
+          example: AB12CD
+
+    # ========================================
+    # testCallable
+    # ========================================
+
+    TestCallableRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: 사용자 이름
+          example: 홍길동
+
+    TestCallableResponse:
+      type: object
+      required:
+        - message
+        - authenticated
+        - uid
+      properties:
+        message:
+          type: string
+          description: 인사 메시지
+          example: Hello 홍길동!
+
+        authenticated:
+          type: boolean
+          description: 인증 여부
+          example: true
+
+        uid:
+          type: string
+          nullable: true
+          description: 사용자 UID (인증된 경우)
+          example: abc123xyz
+
+    # ========================================
+    # Error
+    # ========================================
+
+    FunctionsError:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+              enum:
+                - unauthenticated
+                - invalid-argument
+                - permission-denied
+                - not-found
+                - already-exists
+                - resource-exhausted
+                - internal
+                - unavailable
+                - deadline-exceeded
+              description: Firebase Functions 에러 코드
+              example: invalid-argument
+
+            message:
+              type: string
+              description: 에러 메시지
+              example: 그룹 이름은 최소 2글자 이상이어야 합니다
+
+            details:
+              type: object
+              description: 추가 에러 정보 (선택적)
+              additionalProperties: true

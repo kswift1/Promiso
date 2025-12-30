@@ -22,9 +22,6 @@ const REGION = "asia-northeast3";
 
 /**
  * 테스트용 HTTP 함수
- *
- * @remarks
- * 배포 테스트 및 기본 연결 확인용
  */
 export const helloWorld = onRequest(
   {region: REGION},
@@ -39,17 +36,13 @@ export const helloWorld = onRequest(
 /**
  * 테스트용 Callable 함수
  *
- * @remarks
- * Callable Function 연결 테스트용
- * 인증은 선택적이며, 인증 여부를 응답에 포함
- *
  * @param request.data - TestCallableRequest
  * @returns TestCallableResponse
  */
 export const testCallable = onCall<TestCallableRequest>(
   {region: REGION},
   (request): TestCallableResponse => {
-    const name = request.data?.name ?? "Guest";
+    const name = request.data.name ?? "Guest";
     return {
       message: `Hello ${name}!`,
       authenticated: request.auth != null,
@@ -65,29 +58,23 @@ export const testCallable = onCall<TestCallableRequest>(
 /**
  * 그룹 생성
  *
- * @remarks
  * **인증 필수**
- *
- * 새로운 그룹을 생성하고 유니크한 초대 코드를 발급합니다.
- * iOS CreateGroup Feature와 연동됩니다.
  *
  * @param request.data - CreateGroupRequest
  * @returns CreateGroupResponse
- *
  * @throws HttpsError
- * - unauthenticated: 로그인이 필요합니다
- * - invalid-argument: 잘못된 파라미터 (name, maxMembers)
+ * - unauthenticated: 로그인 필요
+ * - invalid-argument: 잘못된 파라미터
  * - internal: 초대 코드 생성 실패
  *
  * @example
  * ```typescript
- * // iOS에서 호출
- * let data: [String: Any] = [
- *   "name": "주말 등산 모임",
- *   "maxMembers": 5,
- *   "photoPath": "groups/abc/photo.jpg"
- * ]
- * let result = try await functions.httpsCallable("createGroup").call(data)
+ * const result = await functions.httpsCallable('createGroup')({
+ *   name: "주말 등산 모임",
+ *   maxMembers: 5,
+ *   photoPath: "groups/abc/photo.jpg"
+ * });
+ * console.log(result.data); // {id: "...", inviteCode: "AB12CD"}
  * ```
  */
 export const createGroup = onCall<CreateGroupRequest>(
@@ -181,12 +168,13 @@ function validateCreateGroupRequest(data: CreateGroupRequest): void {
 }
 
 /**
- * Generates a unique invite code that does not collide with existing groups.
- * @param {Object} params Params.
- * @param {FirebaseFirestore.Firestore} params.db Firestore instance.
- * @param {number} params.length Invite code length.
- * @param {number} params.maxAttempts Maximum retry attempts.
- * @return {Promise<string>} A unique invite code.
+ * 유니크한 초대 코드 생성
+ *
+ * @param params.db - Firestore 인스턴스
+ * @param params.length - 코드 길이
+ * @param params.maxAttempts - 최대 재시도 횟수
+ * @returns 유니크한 초대 코드
+ * @throws HttpsError (internal) - 생성 실패 시
  */
 async function generateUniqueInviteCode(params: {
   db: FirebaseFirestore.Firestore;
@@ -202,7 +190,10 @@ async function generateUniqueInviteCode(params: {
       .where("inviteCode", "==", code)
       .limit(1)
       .get();
-    if (snapshot.empty) return code;
+
+    if (snapshot.empty) {
+      return code;
+    }
   }
 
   throw new HttpsError(
@@ -212,15 +203,19 @@ async function generateUniqueInviteCode(params: {
 }
 
 /**
- * Generates a random invite code.
- * @param {number} length Invite code length.
- * @return {string} Random invite code.
+ * 랜덤 초대 코드 생성 (영숫자 대문자)
+ *
+ * @param length - 코드 길이
+ * @returns 랜덤 코드
  */
 function randomInviteCode(length: number): string {
   const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   let code = "";
+
   for (let i = 0; i < length; i++) {
-    code += characters.charAt(Math.floor(Math.random() * characters.length));
+    const randomIndex = Math.floor(Math.random() * characters.length);
+    code += characters.charAt(randomIndex);
   }
+
   return code;
 }
