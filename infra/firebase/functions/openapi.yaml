@@ -11,7 +11,7 @@ info:
     | 환경 | Firestore 경로 | Functions Endpoint |
     |------|---------------|-------------------|
     | **Dev** (Emulator) | `dev/root/groups/{id}` | `localhost:5001` |
-    | **Release** (Production) | `groups/{id}` | `asia-northeast3-{projectId}.cloudfunctions.net` |
+    | **Release** (Production) | `prod/root/groups/{id}` | `asia-northeast3-{projectId}.cloudfunctions.net` |
 
     ### iOS 설정
     ```swift
@@ -87,12 +87,20 @@ paths:
                   data:
                     name: 주말 등산 모임
                     maxMembers: 5
-              withPhoto:
-                summary: 사진 포함
+              withDescription:
+                summary: 설명 포함
                 value:
                   data:
                     name: 주말 등산 모임
                     maxMembers: 5
+                    description: 주말마다 등산하는 모임입니다
+              withPhoto:
+                summary: 사진 및 설명 포함
+                value:
+                  data:
+                    name: 주말 등산 모임
+                    maxMembers: 5
+                    description: 주말마다 등산하는 모임입니다
                     photoPath: groups/abc123/photo.jpg
 
       responses:
@@ -110,6 +118,7 @@ paths:
                   value:
                     result:
                       id: xYz9Abc123Def456
+                      name: 주말 등산 모임
                       inviteCode: AB12CD
 
         '400':
@@ -239,6 +248,12 @@ components:
           description: 최대 인원
           example: 5
 
+        description:
+          type: string
+          nullable: true
+          description: 그룹 설명 (선택적)
+          example: 주말마다 등산하는 모임입니다
+
         photoPath:
           type: string
           nullable: true
@@ -249,12 +264,18 @@ components:
       type: object
       required:
         - id
+        - name
         - inviteCode
       properties:
         id:
           type: string
           description: 생성된 그룹 ID (Firestore Document ID)
           example: xYz9Abc123Def456
+
+        name:
+          type: string
+          description: 그룹 이름
+          example: 주말 등산 모임
 
         inviteCode:
           type: string

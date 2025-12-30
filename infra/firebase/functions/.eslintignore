@@ -1,0 +1,6 @@
+# Build output
+lib/**
+
+# Example files
+*.example.ts
+*.example.js

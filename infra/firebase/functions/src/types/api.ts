@@ -23,6 +23,9 @@ export interface CreateGroupRequest {
   /** 최대 인원 (2~10 사이) */
   maxMembers: number;
 
+  /** 그룹 설명 (선택적) */
+  description?: string | null;
+
   /** 그룹 이미지 Storage 경로 (선택적) */
   photoPath?: string | null;
 }
@@ -33,6 +36,9 @@ export interface CreateGroupRequest {
 export interface CreateGroupResponse {
   /** 생성된 그룹 ID (Firestore Document ID) */
   id: string;
+
+  /** 그룹 이름 */
+  name: string;
 
   /** 초대 코드 (6자리 영숫자) */
   inviteCode: string;

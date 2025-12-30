@@ -13,7 +13,7 @@ export enum FirestoreEnvironment {
 /**
  * 현재 Functions 실행 환경 감지
  *
- * @returns 현재 환경 (Dev or Release)
+ * @return {FirestoreEnvironment} 현재 환경 (Dev or Release)
  *
  * @remarks
  * - Emulator: FUNCTIONS_EMULATOR 환경 변수가 "true"
@@ -27,21 +27,21 @@ export function getCurrentEnvironment(): FirestoreEnvironment {
 /**
  * 환경에 맞는 Firestore 컬렉션 참조 반환
  *
- * @param collectionName - 컬렉션 이름 (예: "groups", "users")
- * @param db - Firestore 인스턴스 (기본값: admin.firestore())
- * @returns 환경별 컬렉션 참조
+ * @param {string} collectionName - 컬렉션 이름 (예: "groups", "users")
+ * @param {FirebaseFirestore.Firestore} db - Firestore 인스턴스
+ * @return {FirebaseFirestore.CollectionReference} 환경별 컬렉션 참조
  *
  * @remarks
  * **경로 구조**:
  * - Dev (Emulator): `dev/root/{collectionName}`
- * - Release (Production): `{collectionName}`
+ * - Release (Production): `prod/root/{collectionName}`
  *
  * **iOS와 동일한 경로 구조**를 사용하여 데이터 일관성 보장
  *
  * @example
  * ```typescript
  * // Dev: dev/root/groups
- * // Release: groups
+ * // Release: prod/root/groups
  * const groupsRef = getEnvironmentCollection("groups");
  * ```
  */
@@ -57,13 +57,15 @@ export function getEnvironmentCollection(
     return db.collection("dev").doc("root").collection(collectionName);
 
   case FirestoreEnvironment.Release:
-    // Release: {collection}
-    return db.collection(collectionName);
+    // Release: prod/root/{collection}
+    return db.collection("prod").doc("root").collection(collectionName);
   }
 }
 
 /**
  * 환경 정보 로깅
+ *
+ * @return {void}
  *
  * @remarks
  * Functions 시작 시 호출하여 현재 환경 확인
@@ -76,9 +78,12 @@ export function logEnvironmentInfo(): void {
 
 /**
  * 환경별 경로 패턴 반환
+ *
+ * @param {FirestoreEnvironment} env - 환경
+ * @return {string} 경로 패턴
  */
 function getPathPattern(env: FirestoreEnvironment): string {
-  return env === FirestoreEnvironment.Dev
-    ? "dev/root/{collection}"
-    : "{collection}";
+  return env === FirestoreEnvironment.Dev ?
+    "dev/root/{collection}" :
+    "prod/root/{collection}";
 }

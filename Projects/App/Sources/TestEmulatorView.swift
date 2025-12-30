@@ -1,11 +1,9 @@
-// TestEmulatorView.swift
-
 import SwiftUI
 import FirebaseAuth
 import FirebaseFirestore
 import FirebaseFunctions
 import FirebaseStorage
-import Networking
+import Clients
 
 struct TestEmulatorView: View {
   @StateObject private var environmentManager = FirestoreEnvironmentManager.shared

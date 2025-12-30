@@ -126,6 +126,7 @@ export const createGroup = onCall<CreateGroupRequest>(
     // 6. 응답 반환 (타입 안전)
     return {
       id: groupRef.id,
+      name: data.name,
       inviteCode,
     };
   },

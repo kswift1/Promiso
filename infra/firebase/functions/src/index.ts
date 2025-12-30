@@ -112,6 +112,30 @@ export const createGroup = onCall<CreateGroupRequest>(
     const creatorId = request.auth.uid;
     const db = admin.firestore();
 
+    // 4-1. 생성자 정보 조회
+    const usersCollection = getEnvironmentCollection("users", db);
+    const userDoc = await usersCollection.doc(creatorId).get();
+
+    if (!userDoc.exists) {
+      throw new HttpsError(
+        "not-found",
+        "사용자 정보를 찾을 수 없습니다. 다시 로그인해주세요.",
+      );
+    }
+
+    const userData = userDoc.data();
+    if (!userData) {
+      throw new HttpsError(
+        "internal",
+        "사용자 데이터를 읽을 수 없습니다.",
+      );
+    }
+
+    const creatorName = userData.name as string;
+    const creatorNickname = userData.nickname as string;
+    const creatorProfileImageUrl = (userData.profile?.url as string) ?? null;
+
+    // 4-2. 초대 코드 생성
     const inviteCode = await generateUniqueInviteCode({
       db,
       length: 6,
@@ -123,9 +147,10 @@ export const createGroup = onCall<CreateGroupRequest>(
     const groupRef = groupsCollection.doc();
     const now = admin.firestore.FieldValue.serverTimestamp();
 
+    // 5-1. 그룹 기본 정보 생성
     await groupRef.set({
       name: data.name,
-      description: null,
+      description: data.description ?? null,
       emoji: null,
       themeColor: null,
       photoPath: data.photoPath ?? null,
@@ -141,9 +166,36 @@ export const createGroup = onCall<CreateGroupRequest>(
       isDeleted: false,
     });
 
+    // 5-2. 그룹 멤버에 생성자 추가
+    await groupRef.collection("members").doc(creatorId).set({
+      userId: creatorId,
+      userName: creatorName,
+      userNickname: creatorNickname,
+      profileImageUrl: creatorProfileImageUrl,
+      role: "admin",
+      joinedAt: now,
+      invitedBy: creatorId,
+      isActive: true,
+      leftAt: null,
+    });
+
+    // 5-3. 사용자의 그룹 목록에 추가
+    await usersCollection
+      .doc(creatorId)
+      .collection("groups")
+      .doc(groupRef.id)
+      .set({
+        groupId: groupRef.id,
+        groupName: data.name,
+        role: "admin",
+        joinedAt: now,
+        notifications: true,
+      });
+
     // 6. 응답 반환 (타입 안전)
     return {
       id: groupRef.id,
+      name: data.name,
       inviteCode,
     };
   },
@@ -156,8 +208,9 @@ export const createGroup = onCall<CreateGroupRequest>(
 /**
  * CreateGroupRequest 유효성 검사
  *
- * @param data - CreateGroupRequest
- * @throws HttpsError (invalid-argument)
+ * @param {CreateGroupRequest} data - CreateGroupRequest
+ * @throws {HttpsError} invalid-argument
+ * @return {void}
  */
 function validateCreateGroupRequest(data: CreateGroupRequest): void {
   // name 검증
