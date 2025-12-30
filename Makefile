@@ -1,7 +1,7 @@
 # Promiso Project Makefile
 # Usage: make feature FEATURE_NAME=YourFeature
 
-.PHONY: feature remove-feature deps color help
+.PHONY: feature remove-feature deps color emulator-start functions-build functions-api-preview help
 
 # 기본값 설정
 FEATURE_NAME ?=
@@ -84,6 +84,27 @@ color:
 	@./scripts/generate_colors.sh
 	@echo "✅ 완료: Projects/ResourceKit/Resources/Assets.xcassets/Colors 및 Projects/ResourceKit/Sources/Generated/Color+Generated.swift 갱신"
 
+# Firebase Emulator 전체 실행 (Functions/Firestore/Auth/Storage)
+emulator-start:
+	@echo "🧪 Firebase 전체 에뮬레이터 실행 중..."
+	@cd infra/firebase/functions && firebase emulators:start --only functions,firestore,auth,storage
+	@echo "🌐 Emulator UI: http://127.0.0.1:4000"
+	@open http://127.0.0.1:4000 || true
+
+# Firebase Functions 빌드
+functions-build:
+	@echo "🔧 Firebase Functions 빌드 중..."
+	@cd infra/firebase/functions && npm run build
+
+# Firebase Functions OpenAPI 미리보기
+functions-api-preview:
+	@echo "📖 OpenAPI 미리보기 실행 중..."
+	@cd infra/firebase/functions && npm run api:preview
+	@echo "🌐 OpenAPI Preview: http://localhost:8080"
+	@open http://localhost:8080 || true
+
+
+
 # 도움말
 help:
 	@echo "Promiso Project Commands:"
@@ -92,6 +113,9 @@ help:
 	@echo "  make remove-feature FEATURE_NAME=YourFeature - 기존 피쳐 삭제"
 	@echo "  make deps                                    - 의존성 그래프 시각화"
 	@echo "  make color                                   - 컬러 에셋/Swift Extension 재생성"
+	@echo "  make emulator-start                          - Functions/Firestore/Auth/Storage 에뮬레이터 실행"
+	@echo "  make functions-build                         - Firebase Functions 빌드"
+	@echo "  make functions-api-preview                   - OpenAPI 미리보기 실행"
 	@echo "  make help                                    - 이 도움말 표시"
 	@echo ""
 	@echo "예시:"
