@@ -1,4 +1,5 @@
 import * as admin from "firebase-admin";
+import {FieldValue} from "firebase-admin/firestore";
 import {setGlobalOptions} from "firebase-functions/v2";
 import {HttpsError, onCall, onRequest} from "firebase-functions/v2/https";
 import {
@@ -103,7 +104,7 @@ export const createGroup = onCall<CreateGroupRequest>(
 
     // 5. Firestore에 저장
     const groupRef = db.collection("groups").doc();
-    const now = admin.firestore.FieldValue.serverTimestamp();
+    const now = FieldValue.serverTimestamp();
 
     await groupRef.set({
       name: data.name,
@@ -160,10 +161,17 @@ function validateCreateGroupRequest(data: CreateGroupRequest): void {
     );
   }
 
-  if (data.maxMembers < 2 || data.maxMembers > 10) {
+  if (data.maxMembers < 2) {
     throw new HttpsError(
       "invalid-argument",
-      "최대 인원(maxMembers)은 2~10 사이여야 합니다",
+      "최대 인원(maxMembers)은 2 이상이어야 합니다",
+    );
+  }
+
+  if (data.env && data.env !== "stage" && data.env !== "prod") {
+    throw new HttpsError(
+      "invalid-argument",
+      "env는 stage 또는 prod만 허용됩니다",
     );
   }
 }

@@ -20,8 +20,11 @@ export interface CreateGroupRequest {
   /** 그룹 이름 (최소 2글자 이상) */
   name: string;
 
-  /** 최대 인원 (2~10 사이) */
+  /** 최대 인원 (2 이상) */
   maxMembers: number;
+
+  /** 환경 구분 (선택적: stage 또는 prod) */
+  env?: "stage" | "prod" | null;
 
   /** 그룹 설명 (선택적) */
   description?: string | null;

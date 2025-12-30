@@ -1,4 +1,5 @@
 import * as admin from "firebase-admin";
+import {FieldValue} from "firebase-admin/firestore";
 import {setGlobalOptions} from "firebase-functions/v2";
 import {HttpsError, onCall, onRequest} from "firebase-functions/v2/https";
 import {
@@ -113,7 +114,7 @@ export const createGroup = onCall<CreateGroupRequest>(
     const db = admin.firestore();
 
     // 4-1. 생성자 정보 조회
-    const usersCollection = getEnvironmentCollection("users", db);
+    const usersCollection = getEnvironmentCollection("users", db, data.env);
     const userDoc = await usersCollection.doc(creatorId).get();
 
     if (!userDoc.exists) {
@@ -143,9 +144,9 @@ export const createGroup = onCall<CreateGroupRequest>(
     });
 
     // 5. Firestore에 저장 (환경별 경로)
-    const groupsCollection = getEnvironmentCollection("groups", db);
+    const groupsCollection = getEnvironmentCollection("groups", db, data.env);
     const groupRef = groupsCollection.doc();
-    const now = admin.firestore.FieldValue.serverTimestamp();
+    const now = FieldValue.serverTimestamp();
 
     // 5-1. 그룹 기본 정보 생성
     await groupRef.set({
@@ -230,10 +231,17 @@ function validateCreateGroupRequest(data: CreateGroupRequest): void {
     );
   }
 
-  if (data.maxMembers < 2 || data.maxMembers > 10) {
+  if (data.maxMembers < 2) {
     throw new HttpsError(
       "invalid-argument",
-      "최대 인원(maxMembers)은 2~10 사이여야 합니다",
+      "최대 인원(maxMembers)은 2 이상이어야 합니다",
+    );
+  }
+
+  if (data.env && data.env !== "stage" && data.env !== "prod") {
+    throw new HttpsError(
+      "invalid-argument",
+      "env는 stage 또는 prod만 허용됩니다",
     );
   }
 }

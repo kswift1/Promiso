@@ -10,25 +10,26 @@ info:
 
     | 환경 | Firestore 경로 | Functions Endpoint |
     |------|---------------|-------------------|
-    | **Dev** (Emulator) | `dev/root/groups/{id}` | `localhost:5001` |
-    | **Release** (Production) | `prod/root/groups/{id}` | `asia-northeast3-{projectId}.cloudfunctions.net` |
+    | **Local** (Emulator) | `dev/root/groups/{id}` | `localhost:5001` |
+    | **Stage** | `stage/root/groups/{id}` | `asia-northeast3-{projectId}.cloudfunctions.net` |
+    | **Prod** | `prod/root/groups/{id}` | `asia-northeast3-{projectId}.cloudfunctions.net` |
 
     ### iOS 설정
     ```swift
     #if DEBUG
-    // Dev 환경: Emulator 사용
+    // Local 환경: Emulator 사용
     FirestoreEnvironmentManager.shared.setEnvironment(.dev)
     Functions.functions().useEmulator(withHost: "localhost", port: 5001)
     #else
-    // Release 환경: Production 사용
-    FirestoreEnvironmentManager.shared.setEnvironment(.release)
+    // Stage/Prod 환경: Production 사용
+    FirestoreEnvironmentManager.shared.setEnvironment(.stage) // or .release
     #endif
     ```
 
     ### Functions 설정
-    환경은 자동 감지됩니다:
-    - Emulator: `FUNCTIONS_EMULATOR=true` → Dev 경로
-    - Production: 그 외 → Release 경로
+    환경은 다음 규칙으로 결정됩니다:
+    - Emulator: `FUNCTIONS_EMULATOR=true` → Local(Dev) 경로
+    - Production: 요청의 `env` 파라미터로 Stage/Prod 분기
 
     모든 API 호출은 환경에 관계없이 동일한 방식으로 사용 가능합니다.
 
@@ -87,6 +88,7 @@ paths:
                   data:
                     name: 주말 등산 모임
                     maxMembers: 5
+                    env: stage
               withDescription:
                 summary: 설명 포함
                 value:
@@ -137,7 +139,12 @@ paths:
                   value:
                     error:
                       code: invalid-argument
-                      message: 최대 인원(maxMembers)은 2~10 사이여야 합니다
+                      message: 최대 인원(maxMembers)은 2 이상이어야 합니다
+                invalidEnv:
+                  value:
+                    error:
+                      code: invalid-argument
+                      message: env는 stage 또는 prod만 허용됩니다
 
         '401':
           description: 인증 실패
@@ -244,9 +251,16 @@ components:
         maxMembers:
           type: integer
           minimum: 2
-          maximum: 10
           description: 최대 인원
           example: 5
+
+        env:
+          type: string
+          enum:
+            - stage
+            - prod
+          description: 환경 구분 (선택적)
+          example: stage
 
         description:
           type: string
