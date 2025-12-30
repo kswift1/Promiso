@@ -203,10 +203,8 @@ private extension CreateGroup.Feature.State {
     CreateGroupRequest(
       name: trimmedGroupName,
       maxMembers: maxMembers.rawValue,
+      description: nil, // TODO: UI에서 description 입력 받도록 수정
       creatorId: currentUser.id,
-      creatorName: currentUser.displayName,
-      creatorNickname: currentUser.nickname,
-      creatorProfileImageURL: currentUser.profileImageUrl,
       photoData: photoData
     )
   }

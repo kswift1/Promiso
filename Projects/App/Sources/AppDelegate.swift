@@ -14,10 +14,11 @@ class AppDelegate: NSObject, UIApplicationDelegate {
                    didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
     FirebaseApp.configure()
 
-#if DEBUG
-    connectToEmulators()
-#endif
-    
+// MARK: - Emulator 사용 시 주석 해제
+//#if DEBUG
+//    connectToEmulators()
+//#endif
+
     return true
   }
   

@@ -103,21 +103,14 @@ extension GroupClient: DependencyKey {
     fetchGroups: unimplemented("\(Self.self).fetchGroups", placeholder: []),
     fetchGroup: unimplemented("\(Self.self).fetchGroup"),
     createGroup: { request in
-      @Dependency(\.createGroupUseCase) var createGroupUseCase
+      let dataSource = GroupRemoteDataSource()
 
-      let input = CreateGroupUseCaseInput(
+      return try await dataSource.createGroup(
         name: request.name,
         maxMembers: request.maxMembers,
+        description: request.description,
         creatorId: request.creatorId,
         photoData: request.photoData
-      )
-
-      let output = try await createGroupUseCase.execute(input)
-
-      return GroupCreationResult(
-        id: output.id,
-        name: request.name,
-        inviteCode: output.inviteCode
       )
     },
     leaveGroup: unimplemented("\(Self.self).leaveGroup")
