@@ -84,8 +84,10 @@ struct TestEmulatorView: View {
     switch environmentManager.current {
     case .dev:
       return "dev/root/{collection}"
+    case .stage:
+      return "stage/root/{collection}"
     case .release:
-      return "{collection}"
+      return "prod/root/{collection}"
     }
   }
 

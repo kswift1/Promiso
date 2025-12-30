@@ -27,11 +27,11 @@ public final class FirebaseUserRepository: UserRepositoryProtocol {
   public func saveProfile(uid: String, profile: UserProfile) async throws {
     let data = profile.toFirestoreData()
     try await
-    db.collection(collectionName).document(uid).setData(data, merge: true)
+    db.environmentCollection(collectionName).document(uid).setData(data, merge: true)
   }
 
   public func getProfile(uid: String) async throws -> UserProfile? {
-    let document = try await db.collection(collectionName).document(uid).getDocument()
+    let document = try await db.environmentCollection(collectionName).document(uid).getDocument()
 
     guard document.exists, let data = document.data() else {
       return nil
@@ -59,7 +59,7 @@ public final class FirebaseUserRepository: UserRepositoryProtocol {
   }
   
   public func isNicknameAvailable(_ nickname: String) async throws -> Bool {
-    let snapshot = try await db.collection(collectionName)
+    let snapshot = try await db.environmentCollection(collectionName)
       .whereField("nickname", isEqualTo: nickname)
       .limit(to: 1)
       .getDocuments()
@@ -82,11 +82,11 @@ public final class FirebaseUserRepository: UserRepositoryProtocol {
     )
 
     let data = updatedProfile.toFirestoreData()
-    try await db.collection(collectionName).document(uid).updateData(data)
+    try await db.environmentCollection(collectionName).document(uid).updateData(data)
   }
 
   public func deleteProfile(uid: String) async throws {
-    try await db.collection(collectionName).document(uid).delete()
+    try await db.environmentCollection(collectionName).document(uid).delete()
 
     // 프로필 이미지도 삭제
     let storageRef = storage.reference()

@@ -34,6 +34,7 @@ extension CreateGroup {
 
       // Group Info
       var groupName: String = ""
+      var groupDescription: String = ""
       var maxMembers: MaxMembers = .five
       let currentUser: UserModel
       
@@ -61,6 +62,10 @@ extension CreateGroup {
 
       var characterCount: Int {
         groupName.count
+      }
+
+      var descriptionCharacterCount: Int {
+        groupDescription.count
       }
       
     }
@@ -203,9 +208,15 @@ private extension CreateGroup.Feature.State {
     CreateGroupRequest(
       name: trimmedGroupName,
       maxMembers: maxMembers.rawValue,
-      description: nil, // TODO: UI에서 description 입력 받도록 수정
+      description: groupDescription.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty,
       creatorId: currentUser.id,
       photoData: photoData
     )
+  }
+}
+
+private extension String {
+  var nilIfEmpty: String? {
+    isEmpty ? nil : self
   }
 }

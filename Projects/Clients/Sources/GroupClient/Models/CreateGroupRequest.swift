@@ -8,7 +8,7 @@ public struct CreateGroupRequest: Equatable, Sendable {
   /// 그룹 이름 (최소 2글자)
   public let name: String
 
-  /// 최대 인원 (2~10)
+  /// 최대 인원 (2 이상)
   public let maxMembers: Int
 
   /// 그룹 설명 (선택적)

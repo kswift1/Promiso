@@ -3,25 +3,28 @@ import FirebaseFirestore
 
 public enum FirestoreEnvironment: String, CaseIterable, Sendable {
   case dev = "Dev"
+  case stage = "Stage"
   case release = "Release"
 
   static var `default`: FirestoreEnvironment {
     #if DEBUG
-    return .dev
+    return .stage
     #else
     return .release
     #endif
   }
 
-  /// Firestore 경로 prefix (dev/ 또는 없음)
+  /// Firestore 경로 prefix (dev/stage/prod)
   var pathPrefix: String? {
     switch self {
     case .dev: return "dev"
-    case .release: return nil
+    case .stage: return "stage"
+    case .release: return "prod"
     }
   }
 
-  var rootCollectionName: String { rawValue }
+  /// Root 문서가 위치하는 최상위 컬렉션 이름
+  var rootCollectionName: String { pathPrefix ?? "prod" }
 }
 
 public final class FirestoreEnvironmentManager: ObservableObject {
@@ -54,6 +57,9 @@ public final class FirestoreEnvironmentManager: ObservableObject {
     userDefaults.set(environment.rawValue, forKey: storageKey)
   }
   
+  /// 환경에 맞는 root 문서 참조 반환
+  ///
+  /// 경로: {prefix}/root (prefix = dev|prod)
   public func rootDocument(in db: Firestore = Firestore.firestore()) -> DocumentReference {
     db.collection(current.rootCollectionName).document("root")
   }
@@ -63,12 +69,12 @@ public final class FirestoreEnvironmentManager: ObservableObject {
     in db: Firestore = Firestore.firestore()
   ) -> CollectionReference {
     if let prefix = current.pathPrefix {
-      // Dev: dev/{collection}
+      // Dev/Release: {prefix}/root/{collection}
       return db.collection(prefix).document("root").collection(name)
-    } else {
-      // Release: {collection}
-      return db.collection(name)
     }
+
+    // Fallback (should not happen)
+    return db.collection(name)
   }
 }
 

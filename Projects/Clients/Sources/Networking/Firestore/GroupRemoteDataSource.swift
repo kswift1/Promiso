@@ -1,12 +1,13 @@
 import Foundation
-import FirebaseStorage
+import FirebaseFirestore
 import FirebaseFunctions
+import FirebaseStorage
 
 /// 그룹 생성 에러
 public enum GroupRemoteDataSourceError: Error, LocalizedError {
   case invalidResponse
   case imageUploadFailed
-
+  
   public var errorDescription: String? {
     switch self {
     case .invalidResponse:
@@ -25,20 +26,23 @@ public enum GroupRemoteDataSourceError: Error, LocalizedError {
 public final class GroupRemoteDataSource: @unchecked Sendable {
   private let functions: Functions
   private let storage: Storage
-
+  private let db: Firestore
+  
   public init(
     functions: Functions = Functions.functions(region: "asia-northeast3"),
-    storage: Storage = Storage.storage()
+    storage: Storage = Storage.storage(),
+    db: Firestore = Firestore.firestore()
   ) {
     self.functions = functions
     self.storage = storage
+    self.db = db
   }
-
+  
   /// 그룹 생성
   ///
   /// - Parameters:
   ///   - name: 그룹 이름
-  ///   - maxMembers: 최대 인원 (2~10)
+  ///   - maxMembers: 최대 인원 (2 이상)
   ///   - description: 그룹 설명 (선택적)
   ///   - creatorId: 생성자 ID (Firebase Auth UID)
   ///   - photoData: 그룹 이미지 데이터 (선택적)
@@ -66,35 +70,39 @@ public final class GroupRemoteDataSource: @unchecked Sendable {
         imageData: photoData
       )
     }
-
+    
     // 2. Firebase Functions 호출
     do {
       var callableData: [String: Any] = [
         "name": name,
         "maxMembers": maxMembers,
       ]
-
+      
       if let description {
         callableData["description"] = description
       }
-
+      
+      if let env = functionsEnvironmentParam() {
+        callableData["env"] = env
+      }
+      
       if let uploadedPhotoPath {
         callableData["photoPath"] = uploadedPhotoPath
       }
-
+      
       let result = try await functions.httpsCallable("createGroup").call(callableData)
-
+      
       guard let data = result.data as? [String: Any] else {
         throw GroupRemoteDataSourceError.invalidResponse
       }
-
+      
       let id = data["id"] as? String
       let inviteCode = data["inviteCode"] as? String
-
+      
       guard let id, let inviteCode else {
         throw GroupRemoteDataSourceError.invalidResponse
       }
-
+      
       return GroupCreationResult(
         id: id,
         name: name,
@@ -108,9 +116,57 @@ public final class GroupRemoteDataSource: @unchecked Sendable {
       throw error
     }
   }
-
+  
+  private func functionsEnvironmentParam() -> String? {
+    switch FirestoreEnvironmentManager.shared.current {
+    case .dev:
+      return nil
+    case .stage:
+      return "stage"
+    case .release:
+      return "prod"
+    }
+  }
+  
+  /// 사용자가 속한 그룹 목록 조회
+  public func fetchGroups(userId: String) async throws -> [GroupModel] {
+    let membershipSnapshot = try await db.environmentCollection("users")
+      .document(userId)
+      .collection("groups")
+      .getDocuments()
+    
+    let groupIds = membershipSnapshot.documents.map { $0.documentID }
+    guard !groupIds.isEmpty else { return [] }
+    
+    var groups: [GroupModel] = []
+    groups.reserveCapacity(groupIds.count)
+    
+    for groupId in groupIds {
+      let groupRef = db.environmentCollection("groups").document(groupId)
+      let groupSnapshot = try await groupRef.getDocument()
+      guard groupSnapshot.exists else { continue }
+      
+      let groupDocument = try groupSnapshot.data(as: GroupDocument.self)
+      guard !groupDocument.isDeleted else { continue }
+      
+      let emoji = groupDocument.emoji?.trimmingCharacters(in: .whitespacesAndNewlines)
+      let displayEmoji = (emoji?.isEmpty == false) ? emoji! : "👥"
+      
+      groups.append(
+        GroupModel(
+          id: groupId,
+          emoji: displayEmoji,
+          title: groupDocument.name,
+          memberCount: groupDocument.memberCount
+        )
+      )
+    }
+    
+    return groups
+  }
+  
   // MARK: - Image Upload
-
+  
   /// 그룹 이미지 업로드
   private func uploadGroupImage(
     creatorId: String,
@@ -119,10 +175,10 @@ public final class GroupRemoteDataSource: @unchecked Sendable {
     let uploadData = compressImageDataForUpload(imageData) ?? imageData
     let photoPath = "group_images/tmp/\(creatorId)/\(UUID().uuidString).jpg"
     let ref = storage.reference().child(photoPath)
-
+    
     let metadata = StorageMetadata()
     metadata.contentType = "image/jpeg"
-
+    
     do {
       _ = try await ref.putDataAsync(uploadData, metadata: metadata)
       return photoPath
@@ -130,7 +186,7 @@ public final class GroupRemoteDataSource: @unchecked Sendable {
       throw GroupRemoteDataSourceError.imageUploadFailed
     }
   }
-
+  
   /// 이미지 삭제
   private func deleteImage(at path: String) async throws {
     let ref = storage.reference().child(path)

@@ -8,39 +8,63 @@ import UIKit
 extension CreateGroup {
   public struct RootView: View {
     @Bindable private var store: StoreOf<CreateGroup.Feature>
+    @FocusState private var focusedField: Field?
     
     public init(store: StoreOf<CreateGroup.Feature>) {
       self.store = store
     }
     
+    private enum Field: Hashable {
+      case groupName
+      case groupDescription
+    }
+    
   public var body: some View {
     NavigationStack {
-      ScrollView {
-        VStack(spacing: 20) {
-          PhotoUploadSection(
-            photoData: store.photoData,
-            selectedPhoto: $store.selectedPhoto.sending(\.view.photoSelected)
-          )
-          .glassSection()
-          
-          GroupNameSection(
-            groupName: $store.groupName,
-            characterCount: store.characterCount
-          )
-          .glassSection()
-          
-          MaxMembersSection(
-            maxMembers: $store.maxMembers
-          )
-          .glassSection()
-          
-          Spacer(minLength: 12)
+      ScrollViewReader { proxy in
+        ScrollView {
+          VStack(spacing: 20) {
+            PhotoUploadSection(
+              photoData: store.photoData,
+              selectedPhoto: $store.selectedPhoto.sending(\.view.photoSelected)
+            )
+            .glassSection()
+            
+            GroupNameSection(
+              groupName: $store.groupName,
+              characterCount: store.characterCount
+            )
+            .focused($focusedField, equals: .groupName)
+            .id(Field.groupName)
+            .glassSection()
+            
+            GroupDescriptionSection(
+              groupDescription: $store.groupDescription,
+              characterCount: store.descriptionCharacterCount
+            )
+            .focused($focusedField, equals: .groupDescription)
+            .id(Field.groupDescription)
+            .glassSection()
+            
+            MaxMembersSection(
+              maxMembers: $store.maxMembers
+            )
+            .glassSection()
+            
+            Spacer(minLength: 12)
+          }
+          .padding(.horizontal, 20)
+          .padding(.vertical, 24)
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 24)
+        .scrollIndicators(.hidden)
+        .scrollDismissesKeyboard(.interactively)
+        .onChange(of: focusedField) { _, newValue in
+          guard let newValue else { return }
+          withAnimation(.easeInOut(duration: 0.2)) {
+            proxy.scrollTo(newValue, anchor: .center)
+          }
+        }
       }
-      .scrollIndicators(.hidden)
-      .scrollDismissesKeyboard(.interactively)
       .onTapGesture {
         dismissKeyboard()
       }
@@ -195,6 +219,41 @@ private struct GroupNameSection: View {
           .foregroundColor(.red)
           .frame(maxWidth: .infinity, alignment: .leading)
       }
+    }
+  }
+}
+
+// MARK: - Group Description Section
+
+private struct GroupDescriptionSection: View {
+  @Binding var groupDescription: String
+  let characterCount: Int
+
+  var body: some View {
+    VStack(spacing: 12) {
+      HStack {
+        Text("그룹 설명")
+          .font(.system(size: 16, weight: .semibold))
+          .foregroundColor(.primary)
+
+        Spacer()
+
+        Text("\(characterCount)/200")
+          .font(.system(size: 13))
+          .foregroundColor(.secondary)
+      }
+
+      TextField("그룹 설명을 입력하세요 (선택)", text: $groupDescription, axis: .vertical)
+        .lineLimit(3, reservesSpace: true)
+        .textFieldStyle(.plain)
+        .padding(12)
+        .background(Color(.systemBackground))
+        .cornerRadius(8)
+        .onChange(of: groupDescription) { _, newValue in
+          if newValue.count > 200 {
+            groupDescription = String(newValue.prefix(200))
+          }
+        }
     }
   }
 }

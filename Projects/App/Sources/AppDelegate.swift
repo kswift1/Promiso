@@ -15,9 +15,9 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     FirebaseApp.configure()
 
 // MARK: - Emulator 사용 시 주석 해제
-//#if DEBUG
+#if DEBUG
 //    connectToEmulators()
-//#endif
+#endif
 
     return true
   }
@@ -33,27 +33,28 @@ class AppDelegate: NSObject, UIApplicationDelegate {
   
 #if DEBUG
   private func connectToEmulators() {
+    let emulatorHost = "192.168.0.2"
     print("🎮 Connecting to Firebase Emulators...")
     
     // Auth Emulator
-    Auth.auth().useEmulator(withHost: "localhost", port: 9099)
-    print("✅ Auth Emulator: localhost:9099")
+    Auth.auth().useEmulator(withHost: emulatorHost, port: 9099)
+    print("✅ Auth Emulator: \(emulatorHost):9099")
     
     // Firestore Emulator
     let settings = Firestore.firestore().settings
-    settings.host = "localhost:8080"
+    settings.host = "\(emulatorHost):8081"
     settings.isSSLEnabled = false
     Firestore.firestore().settings = settings
-    print("✅ Firestore Emulator: localhost:8080")
+    print("✅ Firestore Emulator: \(emulatorHost):8081")
     
     // Functions Emulator
-    Functions.functions().useEmulator(withHost: "localhost", port: 5001)
-    Functions.functions(region: "asia-northeast3").useEmulator(withHost: "localhost", port: 5001)
-    print("✅ Functions Emulator: localhost:5001")
+    Functions.functions().useEmulator(withHost: emulatorHost, port: 5001)
+    Functions.functions(region: "asia-northeast3").useEmulator(withHost: emulatorHost, port: 5001)
+    print("✅ Functions Emulator: \(emulatorHost):5001")
     
     // Storage Emulator
-    Storage.storage().useEmulator(withHost: "localhost", port: 9199)
-    print("✅ Storage Emulator: localhost:9199")
+    Storage.storage().useEmulator(withHost: emulatorHost, port: 9199)
+    print("✅ Storage Emulator: \(emulatorHost):9199")
     
     print("🎉 All emulators connected!")
   }

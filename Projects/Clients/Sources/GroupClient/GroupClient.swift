@@ -9,6 +9,7 @@ import ComposableArchitecture
 import Foundation
 
 import Shared
+import FirebaseAuth
 
 // MARK: - Error
 
@@ -100,7 +101,14 @@ extension DependencyValues {
 
 extension GroupClient: DependencyKey {
   public static let liveValue = Self(
-    fetchGroups: unimplemented("\(Self.self).fetchGroups", placeholder: []),
+    fetchGroups: {
+      guard let userId = Auth.auth().currentUser?.uid else {
+        throw GroupClientError.unauthorized
+      }
+
+      let dataSource = GroupRemoteDataSource()
+      return try await dataSource.fetchGroups(userId: userId)
+    },
     fetchGroup: unimplemented("\(Self.self).fetchGroup"),
     createGroup: { request in
       let dataSource = GroupRemoteDataSource()
