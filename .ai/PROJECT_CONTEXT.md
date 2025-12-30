@@ -2,6 +2,13 @@
 
 > 이 문서는 Claude Code, Codex, GitHub Copilot 등 AI 도구가 프로젝트를 이해하고 일관된 코드를 생성하도록 돕습니다.
 
+## 🎯 작업 원칙
+
+1. **아키텍처 준수**: App → Features → Clients → Shared (단방향 의존성)
+2. **변경 최소화**: 필요한 범위로 제한하고, 기존 모듈 구조/Tuist 구성 존중
+3. **언어**: 문서 작성 및 사용자 답변은 한국어 우선 (기술 용어/코드는 원문 유지)
+4. **일관성**: 기존 코드 패턴과 컨벤션 준수
+
 ## 📋 프로젝트 개요
 
 **프로젝트명**: Promiso
@@ -700,53 +707,11 @@ enum DelegateAction: Equatable { }
 - [Point-Free Episodes](https://www.pointfree.co)
 - [프로젝트 아키텍처 문서](./docs/architecture.md)
 
-## 🤖 AI 도구 사용 시 프롬프트 템플릿
+## 🤖 AI 도구 사용
 
-### 새 Feature 생성
-```
-SwiftUI와 TCA를 사용해서 [기능명] Feature를 만들어줘.
+AI 도구(Claude Code, GitHub Copilot 등)를 사용할 때는 **[PROMPTS.md](.ai/PROMPTS.md)**를 참고하세요.
 
-요구사항:
-- Namespace 패턴 사용 (public enum FeatureName {})
-- [구체적인 기능 설명]
-- [필요한 Client] 의존성 사용
-- @ObservableState 사용
-- Action 계층화 (view/internal/delegate)
-- async/await 기반 비동기 처리
-- 에러 핸들링 포함
-- Swift Testing 프레임워크 사용
-- Preview 코드 포함
-
-참고할 기존 Feature: [유사한 Feature명]
-```
-
-### Client 생성
-```
-[Client명]을 TCA Dependency로 만들어줘.
-
-인터페이스:
-- [함수1]: [파라미터] -> [리턴 타입]
-- [함수2]: [파라미터] -> [리턴 타입]
-
-구현:
-- [구현 방법 - Firebase/URLSession/등]
-- testValue와 previewValue 포함
-- DependencyKey와 TestDependencyKey 모두 구현
-```
-
-### 리팩토링
-```
-이 코드를 TCA 베스트 프랙티스에 맞게 리팩토링해줘:
-
-[코드 붙여넣기]
-
-개선 포인트:
-- Namespace 패턴 적용
-- Action 계층화 (view/internal/delegate)
-- Delegate 패턴 추가
-- 에러 핸들링 개선
-- Swift Testing으로 테스트 가능하도록 구조 변경
-```
+프롬프트 템플릿, 사용 예시, 베스트 프랙티스가 포함되어 있습니다.
 
 ---
 
