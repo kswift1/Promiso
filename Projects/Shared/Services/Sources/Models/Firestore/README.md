@@ -68,7 +68,6 @@ firestore/
 - **CalendarKeyGenerator**: 날짜 키 생성 유틸리티
 
 ### Security
-- **FirestoreSecurityManager**: 클라이언트 보안 관리
 - **infra/firebase/firestore.rules**: 서버 보안 규칙
 
 ## 🚀 주요 특징

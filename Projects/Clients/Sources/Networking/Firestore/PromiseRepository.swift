@@ -123,39 +123,6 @@ public class PromiseRepository: PromiseRepositoryProtocol {
     return try snapshot.documents.compactMap { try documentToPromise($0) }
   }
   
-  /// 오늘 약속 실시간 관찰
-  public func observeTodayPromises(userId: String, groupId: String?) -> AnyPublisher<[PromiseModel], Error> {
-    let today = Date()
-    let calendar = Calendar.current
-    let startOfDay = calendar.startOfDay(for: today)
-    let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
-    
-    let query = db.environmentCollection(collectionName)
-      .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: startOfDay))
-      .whereField("startAt", isLessThan: Timestamp(date: endOfDay))
-      .whereField("status", isEqualTo: PromiseStatus.active.rawValue)
-      .whereField("isDeleted", isEqualTo: false)
-      .order(by: "startAt")
-    
-    return Publishers.FirestoreQuery(query: query)
-      .map { snapshot in
-        snapshot.documents.compactMap { try? self.documentToPromise($0) }
-      }
-      .eraseToAnyPublisher()
-  }
-  
-  /// 약속 실시간 관찰 (단일 문서)
-  public func observePromise(id: String) -> AnyPublisher<PromiseModel?, Error> {
-    let ref = db.environmentCollection("promises").document(id)
-    
-    return Publishers.FirestoreDocument(document: ref)
-      .map { document in
-        guard let document = document else { return nil }
-        return try? self.documentSnapshotToPromise(document)
-      }
-      .eraseToAnyPublisher()
-  }
-  
   // MARK: - Helper Methods
   
   private func documentToPromise(_ document: QueryDocumentSnapshot) throws -> PromiseModel? {
