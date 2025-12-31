@@ -29,8 +29,8 @@ export interface CreateGroupRequest {
   /** 그룹 설명 (선택적) */
   description?: string | null;
 
-  /** 그룹 이미지 Storage 경로 (선택적) */
-  photoPath?: string | null;
+  /** 그룹 이미지 정보 (선택적) */
+  photo?: RemoteImage | null;
 }
 
 /**
@@ -98,8 +98,8 @@ export interface GroupDocument {
   /** 테마 색상 (현재 미사용) */
   themeColor: string | null;
 
-  /** 그룹 이미지 경로 */
-  photoPath: string | null;
+  /** 그룹 이미지 정보 */
+  photo: RemoteImage | null;
 
   /** 현재 멤버 수 */
   memberCount: number;
@@ -130,4 +130,13 @@ export interface GroupDocument {
 
   /** 삭제 여부 */
   isDeleted: boolean;
+}
+
+// ============================================================================
+// Shared
+// ============================================================================
+
+export interface RemoteImage {
+  type: "storagePath" | "externalURL";
+  url: string;
 }

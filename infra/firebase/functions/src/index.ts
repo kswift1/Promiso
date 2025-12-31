@@ -90,7 +90,7 @@ export const testCallable = onCall<TestCallableRequest>(
  * let data: [String: Any] = [
  *   "name": "주말 등산 모임",
  *   "maxMembers": 5,
- *   "photoPath": "groups/abc/photo.jpg"
+ *   "photo": { "type": "storagePath", "url": "groups/abc/photo.jpg" }
  * ]
  * let result = try await functions.httpsCallable("createGroup").call(data)
  * ```
@@ -154,7 +154,7 @@ export const createGroup = onCall<CreateGroupRequest>(
       description: data.description ?? null,
       emoji: null,
       themeColor: null,
-      photoPath: data.photoPath ?? null,
+      photo: data.photo ?? null,
       memberCount: 1,
       activePromiseCount: 0,
       maxMembers: data.maxMembers,

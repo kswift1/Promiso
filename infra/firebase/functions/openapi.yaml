@@ -103,7 +103,9 @@ paths:
                     name: 주말 등산 모임
                     maxMembers: 5
                     description: 주말마다 등산하는 모임입니다
-                    photoPath: groups/abc123/photo.jpg
+                    photo:
+                      type: storagePath
+                      url: groups/abc123/photo.jpg
 
       responses:
         '200':
@@ -268,11 +270,21 @@ components:
           description: 그룹 설명 (선택적)
           example: 주말마다 등산하는 모임입니다
 
-        photoPath:
-          type: string
+        photo:
+          type: object
           nullable: true
-          description: 그룹 이미지 Storage 경로
-          example: groups/abc123/photo.jpg
+          description: 그룹 이미지 정보
+          properties:
+            type:
+              type: string
+              enum:
+                - storagePath
+                - externalURL
+            url:
+              type: string
+          example:
+            type: storagePath
+            url: groups/abc123/photo.jpg
 
     CreateGroupResponse:
       type: object

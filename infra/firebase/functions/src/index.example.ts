@@ -73,7 +73,7 @@ export const testCallable = onCall<TestCallableRequest>(
  * const result = await functions.httpsCallable('createGroup')({
  *   name: "주말 등산 모임",
  *   maxMembers: 5,
- *   photoPath: "groups/abc/photo.jpg"
+ *   photo: { type: "storagePath", url: "groups/abc/photo.jpg" }
  * });
  * console.log(result.data); // {id: "...", inviteCode: "AB12CD"}
  * ```
@@ -111,7 +111,7 @@ export const createGroup = onCall<CreateGroupRequest>(
       description: null,
       emoji: null,
       themeColor: null,
-      photoPath: data.photoPath ?? null,
+      photo: data.photo ?? null,
       memberCount: 1,
       activePromiseCount: 0,
       maxMembers: data.maxMembers,
