@@ -2,6 +2,7 @@ import Foundation
 import FirebaseFirestore
 import FirebaseFunctions
 import FirebaseStorage
+import Shared
 
 /// 그룹 생성 에러
 public enum GroupRemoteDataSourceError: Error, LocalizedError {
@@ -87,7 +88,10 @@ public final class GroupRemoteDataSource: @unchecked Sendable {
       }
       
       if let uploadedPhotoPath {
-        callableData["photoPath"] = uploadedPhotoPath
+        callableData["photo"] = [
+          "type": "storagePath",
+          "url": uploadedPhotoPath,
+        ]
       }
       
       let result = try await functions.httpsCallable("createGroup").call(callableData)
@@ -149,21 +153,61 @@ public final class GroupRemoteDataSource: @unchecked Sendable {
       let groupDocument = try groupSnapshot.data(as: GroupDocument.self)
       guard !groupDocument.isDeleted else { continue }
       
-      let emoji = groupDocument.emoji?.trimmingCharacters(in: .whitespacesAndNewlines)
-      let displayEmoji = (emoji?.isEmpty == false) ? emoji! : "👥"
-      
-      groups.append(
-        GroupModel(
-          id: groupId,
-          emoji: displayEmoji,
-          title: groupDocument.name,
-          memberCount: groupDocument.memberCount
-        )
-      )
+      groups.append(groupDocument.toModel(id: groupId))
     }
     
     return groups
   }
+
+  /// 그룹 ID 목록으로 상세 그룹 조회
+  public func fetchGroupsByIds(ids: [String]) async throws -> [GroupModel] {
+    guard !ids.isEmpty else { return [] }
+
+    var groups: [GroupModel] = []
+    groups.reserveCapacity(ids.count)
+
+    for groupId in ids {
+      let groupRef = db.environmentCollection("groups").document(groupId)
+      let groupSnapshot = try await groupRef.getDocument()
+      guard groupSnapshot.exists else { continue }
+
+      let groupDocument = try groupSnapshot.data(as: GroupDocument.self)
+      guard !groupDocument.isDeleted else { continue }
+
+      groups.append(groupDocument.toModel(id: groupId))
+    }
+
+    return groups
+  }
+
+  /// 단일 그룹 상세 조회
+  public func fetchGroup(groupId: String) async throws -> GroupModel {
+    let groupRef = db.environmentCollection("groups").document(groupId)
+    let groupSnapshot = try await groupRef.getDocument()
+    guard groupSnapshot.exists else {
+      throw GroupRemoteDataSourceError.invalidResponse
+    }
+
+    let groupDocument = try groupSnapshot.data(as: GroupDocument.self)
+    guard !groupDocument.isDeleted else {
+      throw GroupRemoteDataSourceError.invalidResponse
+    }
+
+    return groupDocument.toModel(id: groupId)
+  }
+
+  /// 네비게이션용 그룹 요약 목록 조회
+  public func fetchGroupSummaries(userId: String) async throws -> [GroupSummary] {
+    let membershipSnapshot = try await db.environmentCollection("users")
+      .document(userId)
+      .collection("groups")
+      .getDocuments()
+
+    return membershipSnapshot.documents.compactMap { document in
+      GroupSummary(documentId: document.documentID, data: document.data())
+    }
+  }
+
   
   // MARK: - Image Upload
   
@@ -199,6 +243,28 @@ public final class GroupRemoteDataSource: @unchecked Sendable {
         }
       }
     }
+  }
+}
+
+// MARK: - GroupSummary Mapping
+
+private extension GroupSummary {
+  init?(documentId: String, data: [String: Any]) {
+    let groupName = data["groupName"] as? String ?? ""
+    let trimmedName = groupName.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmedName.isEmpty else { return nil }
+
+    let role = data["role"] as? String
+    let notifications = data["notifications"] as? Bool
+    let joinedAt = (data["joinedAt"] as? Timestamp)?.dateValue()
+
+    self.init(
+      id: documentId,
+      groupName: trimmedName,
+      role: role,
+      joinedAt: joinedAt,
+      notifications: notifications
+    )
   }
 }
 

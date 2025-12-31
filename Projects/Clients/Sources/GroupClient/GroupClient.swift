@@ -45,6 +45,12 @@ public struct GroupClient: Sendable {
   /// 사용자의 그룹 목록 가져오기
   public var fetchGroups: @Sendable () async throws -> [GroupModel] = { [] }
 
+  /// 네비게이션용 그룹 요약 목록 가져오기
+  public var fetchGroupSummaries: @Sendable () async throws -> [GroupSummary] = { [] }
+
+  /// 그룹 ID 목록으로 상세 그룹 가져오기
+  public var fetchGroupsByIds: @Sendable (_ ids: [String]) async throws -> [GroupModel] = { _ in [] }
+
   /// 특정 그룹 상세 정보 가져오기
   public var fetchGroup: @Sendable (_ groupId: String) async throws -> GroupModel
 
@@ -58,21 +64,43 @@ public struct GroupClient: Sendable {
 // MARK: - Test & Preview Values
 
 extension GroupClient: TestDependencyKey {
-  public static let testValue = Self()
+  public static let testValue = Self(
+    fetchGroups: unimplemented("\(Self.self).fetchGroups", placeholder: []),
+    fetchGroupSummaries: unimplemented("\(Self.self).fetchGroupSummaries", placeholder: []),
+    fetchGroupsByIds: unimplemented("\(Self.self).fetchGroupsByIds", placeholder: []),
+    fetchGroup: unimplemented("\(Self.self).fetchGroup"),
+    createGroup: unimplemented("\(Self.self).createGroup"),
+    leaveGroup: unimplemented("\(Self.self).leaveGroup")
+  )
 
   public static let previewValue = Self(
     fetchGroups: {
       try await Task.sleep(for: .seconds(0.3))
       return [
-        .init(id: "g1", emoji: "👥", title: "지민과 나", memberCount: 2),
-        .init(id: "g2", emoji: "🏢", title: "회사 동료들", memberCount: 8),
-        .init(id: "g3", emoji: "🎓", title: "대학 친구들", memberCount: 12),
-        .init(id: "g4", emoji: "👨‍👩‍👦", title: "가족", memberCount: 4)
+        .init(id: "g1", name: "지민과 나", emoji: "👥", memberCount: 2),
+        .init(id: "g2", name: "회사 동료들", emoji: "🏢", memberCount: 8),
+        .init(id: "g3", name: "대학 친구들", emoji: "🎓", memberCount: 12),
+        .init(id: "g4", name: "가족", emoji: "👨‍👩‍👦", memberCount: 4)
       ]
+    },
+    fetchGroupSummaries: {
+      try await Task.sleep(for: .seconds(0.2))
+      return [
+        .init(id: "g1", groupName: "지민과 나", role: "admin", notifications: true),
+        .init(id: "g2", groupName: "회사 동료들", role: "member", notifications: true),
+        .init(id: "g3", groupName: "대학 친구들", role: "member", notifications: false),
+        .init(id: "g4", groupName: "가족", role: "member", notifications: true)
+      ]
+    },
+    fetchGroupsByIds: { ids in
+      try await Task.sleep(for: .seconds(0.2))
+      return ids.map { id in
+        GroupModel(id: id, name: "그룹 \(id)", emoji: "👥", memberCount: 4)
+      }
     },
     fetchGroup: { id in
       try await Task.sleep(for: .seconds(0.5))
-      return GroupModel(id: id, emoji: "👞", title: "구두", memberCount: 3)
+      return GroupModel(id: id, name: "구두", emoji: "👞", memberCount: 3)
     },
     createGroup: { request in
       try await Task.sleep(for: .seconds(1))
@@ -109,7 +137,22 @@ extension GroupClient: DependencyKey {
       let dataSource = GroupRemoteDataSource()
       return try await dataSource.fetchGroups(userId: userId)
     },
-    fetchGroup: unimplemented("\(Self.self).fetchGroup"),
+    fetchGroupSummaries: {
+      guard let userId = Auth.auth().currentUser?.uid else {
+        throw GroupClientError.unauthorized
+      }
+
+      let dataSource = GroupRemoteDataSource()
+      return try await dataSource.fetchGroupSummaries(userId: userId)
+    },
+    fetchGroupsByIds: { ids in
+      let dataSource = GroupRemoteDataSource()
+      return try await dataSource.fetchGroupsByIds(ids: ids)
+    },
+    fetchGroup: { groupId in
+      let dataSource = GroupRemoteDataSource()
+      return try await dataSource.fetchGroup(groupId: groupId)
+    },
     createGroup: { request in
       let dataSource = GroupRemoteDataSource()
 
