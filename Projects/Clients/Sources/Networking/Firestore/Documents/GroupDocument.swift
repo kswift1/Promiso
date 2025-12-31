@@ -1,5 +1,6 @@
 import Foundation
 import FirebaseFirestore
+import Shared
 
 /// Firestore Groups 컬렉션 문서 모델
 public struct GroupDocument: Codable {
@@ -8,6 +9,7 @@ public struct GroupDocument: Codable {
   public let description: String?
   public let emoji: String?
   public let themeColor: String?
+  public let photo: RemoteImage?
   
   // MARK: - 카운터 (캐시)
   public let memberCount: Int
@@ -30,6 +32,7 @@ public struct GroupDocument: Codable {
     description: String? = nil,
     emoji: String? = nil,
     themeColor: String? = nil,
+    photo: RemoteImage? = nil,
     memberCount: Int = 0,
     activePromiseCount: Int = 0,
     maxMembers: Int? = nil,
@@ -45,6 +48,7 @@ public struct GroupDocument: Codable {
     self.description = description
     self.emoji = emoji
     self.themeColor = themeColor
+    self.photo = photo
     self.memberCount = memberCount
     self.activePromiseCount = activePromiseCount
     self.maxMembers = maxMembers
@@ -65,6 +69,7 @@ extension GroupDocument {
     case description
     case emoji
     case themeColor
+    case photo
     case memberCount
     case activePromiseCount
     case maxMembers
@@ -75,5 +80,33 @@ extension GroupDocument {
     case createdAt
     case updatedAt
     case isDeleted
+  }
+}
+
+// MARK: - Domain Mapping
+
+extension GroupDocument {
+  func toModel(id: String) -> GroupModel {
+    let emojiValue = emoji?.trimmingCharacters(in: .whitespacesAndNewlines)
+    let displayEmoji = (emojiValue?.isEmpty == false) ? emojiValue! : "👥"
+
+    return GroupModel(
+      id: id,
+      name: name,
+      description: description,
+      emoji: displayEmoji,
+      themeColor: themeColor,
+      photo: photo,
+      memberCount: memberCount,
+      activePromiseCount: activePromiseCount,
+      maxMembers: maxMembers,
+      requireApproval: requireApproval,
+      defaultMinimumParticipants: defaultMinimumParticipants,
+      inviteCode: inviteCode,
+      createdBy: createdBy,
+      createdAt: createdAt.dateValue(),
+      updatedAt: updatedAt.dateValue(),
+      isDeleted: isDeleted
+    )
   }
 }
