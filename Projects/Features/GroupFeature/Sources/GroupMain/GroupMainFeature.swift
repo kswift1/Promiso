@@ -3,7 +3,6 @@
 // - EmptyView 스켈레톤 맞추기?
 // - 약속 만들기 가능하면 가져온 그룹 데이터 활용하기?
 // - 반대 속성 버튼 동시 탭 막기 (수락 / 거절), adaptiveButton disabled 대응 (26 미만 버전)
-// - 그룹 상세 불러오는거 병렬로 적용하기 (12/31)
 
 // MARK: - Feature Namespace
 import SwiftUI

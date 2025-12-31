@@ -145,42 +145,13 @@ public final class GroupRemoteDataSource: @unchecked Sendable {
     let groupIds = membershipSnapshot.documents.map { $0.documentID }
     guard !groupIds.isEmpty else { return [] }
     
-    var groups: [GroupModel] = []
-    groups.reserveCapacity(groupIds.count)
-    
-    for groupId in groupIds {
-      let groupRef = db.environmentCollection("groups").document(groupId)
-      let groupSnapshot = try await groupRef.getDocument()
-      guard groupSnapshot.exists else { continue }
-      
-      let groupDocument = try groupSnapshot.data(as: GroupDocument.self)
-      guard !groupDocument.isDeleted else { continue }
-      
-      groups.append(groupDocument.toModel(id: groupId))
-    }
-    
-    return groups
+    return try await fetchGroupsInParallel(ids: groupIds)
   }
 
   /// 그룹 ID 목록으로 상세 그룹 조회
   public func fetchGroupsByIds(ids: [String]) async throws -> [GroupModel] {
     guard !ids.isEmpty else { return [] }
-
-    var groups: [GroupModel] = []
-    groups.reserveCapacity(ids.count)
-
-    for groupId in ids {
-      let groupRef = db.environmentCollection("groups").document(groupId)
-      let groupSnapshot = try await groupRef.getDocument()
-      guard groupSnapshot.exists else { continue }
-
-      let groupDocument = try groupSnapshot.data(as: GroupDocument.self)
-      guard !groupDocument.isDeleted else { continue }
-
-      groups.append(groupDocument.toModel(id: groupId))
-    }
-
-    return groups
+    return try await fetchGroupsInParallel(ids: ids)
   }
 
   /// 단일 그룹 상세 조회
@@ -197,6 +168,32 @@ public final class GroupRemoteDataSource: @unchecked Sendable {
     }
 
     return groupDocument.toModel(id: groupId)
+  }
+
+  private func fetchGroupsInParallel(ids: [String]) async throws -> [GroupModel] {
+    try await withThrowingTaskGroup(of: GroupModel?.self) { group in
+      for groupId in ids {
+        group.addTask { [db] in
+          let groupRef = db.environmentCollection("groups").document(groupId)
+          let groupSnapshot = try await groupRef.getDocument()
+          guard groupSnapshot.exists else { return nil }
+
+          let groupDocument = try groupSnapshot.data(as: GroupDocument.self)
+          guard !groupDocument.isDeleted else { return nil }
+
+          return groupDocument.toModel(id: groupId)
+        }
+      }
+
+      var groups: [GroupModel] = []
+      for try await groupModel in group {
+        if let groupModel {
+          groups.append(groupModel)
+        }
+      }
+
+      return groups
+    }
   }
 
   /// 네비게이션용 그룹 요약 목록 조회
