@@ -38,7 +38,10 @@ public final class UserProfileRemoteDataSource: @unchecked Sendable {
         if let imageData = data {
           _ = try await uploadProfileImage(uid: uid, imageData: imageData)
           didUploadImage = true
-          profileInfo = ProfileInfo(type: .storagePath, url: "profile_images/\(uid).jpg")
+          profileInfo = ProfileInfo(
+            type: .storagePath,
+            url: "profile_images/\(uid)/main.jpg"
+          )
         }
       case .url(let url):
         profileInfo = ProfileInfo(type: .externalURL, url: url.absoluteString)
@@ -86,7 +89,7 @@ public final class UserProfileRemoteDataSource: @unchecked Sendable {
   }
 
   public func uploadProfileImage(uid: String, imageData: Data) async throws -> URL {
-    let profileImageRef = storage.reference().child("profile_images/\(uid).jpg")
+    let profileImageRef = storage.reference().child("profile_images/\(uid)/main.jpg")
 
     let metadata = StorageMetadata()
     metadata.contentType = "image/jpeg"
@@ -97,7 +100,7 @@ public final class UserProfileRemoteDataSource: @unchecked Sendable {
   }
 
   public func deleteProfileImage(uid: String) async throws {
-    let profileImageRef = storage.reference().child("profile_images/\(uid).jpg")
+    let profileImageRef = storage.reference().child("profile_images/\(uid)/main.jpg")
     try await profileImageRef.delete()
   }
 

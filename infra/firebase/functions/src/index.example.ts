@@ -144,6 +144,14 @@ export const createGroup = onCall<CreateGroupRequest>(
  * @throws HttpsError (invalid-argument)
  */
 function validateCreateGroupRequest(data: CreateGroupRequest): void {
+  const groupId = data.groupId.trim();
+  if (groupId.length == 0) {
+    throw new HttpsError(
+      "invalid-argument",
+      "groupId는 비어있을 수 없습니다",
+    );
+  }
+
   // name 검증
   const name = data.name.trim();
   if (name.length < 2) {

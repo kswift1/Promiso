@@ -17,6 +17,9 @@
  * - creatorId는 자동으로 request.auth.uid에서 추출
  */
 export interface CreateGroupRequest {
+  /** 클라이언트에서 생성한 그룹 ID */
+  groupId: string;
+
   /** 그룹 이름 (최소 2글자 이상) */
   name: string;
 

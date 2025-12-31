@@ -63,11 +63,13 @@ public final class GroupRemoteDataSource: @unchecked Sendable {
     creatorId: String,
     photoData: Data?
   ) async throws -> GroupCreationResult {
+    let groupId = UUID().uuidString
+
     // 1. 이미지 업로드 (선택적)
     var uploadedPhotoPath: String?
     if let photoData {
       uploadedPhotoPath = try await uploadGroupImage(
-        creatorId: creatorId,
+        groupId: groupId,
         imageData: photoData
       )
     }
@@ -75,6 +77,7 @@ public final class GroupRemoteDataSource: @unchecked Sendable {
     // 2. Firebase Functions 호출
     do {
       var callableData: [String: Any] = [
+        "groupId": groupId,
         "name": name,
         "maxMembers": maxMembers,
       ]
@@ -213,11 +216,11 @@ public final class GroupRemoteDataSource: @unchecked Sendable {
   
   /// 그룹 이미지 업로드
   private func uploadGroupImage(
-    creatorId: String,
+    groupId: String,
     imageData: Data
   ) async throws -> String {
     let uploadData = compressImageDataForUpload(imageData) ?? imageData
-    let photoPath = "group_images/tmp/\(creatorId)/\(UUID().uuidString).jpg"
+    let photoPath = "group_images/\(groupId)/main.jpg"
     let ref = storage.reference().child(photoPath)
     
     let metadata = StorageMetadata()

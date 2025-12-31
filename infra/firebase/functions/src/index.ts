@@ -145,7 +145,16 @@ export const createGroup = onCall<CreateGroupRequest>(
 
     // 5. Firestore에 저장 (환경별 경로)
     const groupsCollection = getEnvironmentCollection("groups", db, data.env);
-    const groupRef = groupsCollection.doc();
+    const requestedGroupId = data.groupId.trim();
+    const groupRef = groupsCollection.doc(requestedGroupId);
+
+    const existingGroup = await groupRef.get();
+    if (existingGroup.exists) {
+      throw new HttpsError(
+        "already-exists",
+        "이미 존재하는 그룹 ID입니다.",
+      );
+    }
     const now = FieldValue.serverTimestamp();
 
     // 5-1. 그룹 기본 정보 생성
@@ -214,6 +223,14 @@ export const createGroup = onCall<CreateGroupRequest>(
  * @return {void}
  */
 function validateCreateGroupRequest(data: CreateGroupRequest): void {
+  const groupId = data.groupId.trim();
+  if (groupId.length == 0) {
+    throw new HttpsError(
+      "invalid-argument",
+      "groupId는 비어있을 수 없습니다",
+    );
+  }
+
   // name 검증
   const name = data.name.trim();
   if (name.length < 2) {

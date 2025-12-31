@@ -86,6 +86,7 @@ paths:
                 summary: 기본 그룹 생성
                 value:
                   data:
+                    groupId: 0ec6e63d-8d80-4a76-9e1b-7f226c1c6b55
                     name: 주말 등산 모임
                     maxMembers: 5
                     env: stage
@@ -93,6 +94,7 @@ paths:
                 summary: 설명 포함
                 value:
                   data:
+                    groupId: 0ec6e63d-8d80-4a76-9e1b-7f226c1c6b55
                     name: 주말 등산 모임
                     maxMembers: 5
                     description: 주말마다 등산하는 모임입니다
@@ -100,12 +102,13 @@ paths:
                 summary: 사진 및 설명 포함
                 value:
                   data:
+                    groupId: 0ec6e63d-8d80-4a76-9e1b-7f226c1c6b55
                     name: 주말 등산 모임
                     maxMembers: 5
                     description: 주말마다 등산하는 모임입니다
                     photo:
                       type: storagePath
-                      url: groups/abc123/photo.jpg
+                      url: group_images/0ec6e63d-8d80-4a76-9e1b-7f226c1c6b55/main.jpg
 
       responses:
         '200':
@@ -121,7 +124,7 @@ paths:
                 success:
                   value:
                     result:
-                      id: xYz9Abc123Def456
+                      id: 0ec6e63d-8d80-4a76-9e1b-7f226c1c6b55
                       name: 주말 등산 모임
                       inviteCode: AB12CD
 
@@ -241,9 +244,15 @@ components:
     CreateGroupRequest:
       type: object
       required:
+        - groupId
         - name
         - maxMembers
       properties:
+        groupId:
+          type: string
+          description: 클라이언트에서 생성한 그룹 ID
+          example: 0ec6e63d-8d80-4a76-9e1b-7f226c1c6b55
+
         name:
           type: string
           minLength: 2

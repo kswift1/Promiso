@@ -51,7 +51,7 @@ extension UserProfileClient: TestDependencyKey {
         nickname: "kms",
         email: "minsu@example.com",
         provider: .init(uid: "preview-provider", type: "google"),
-        profile: .init(type: .storagePath, url: "profile_images/preview.jpg")
+        profile: .init(type: .storagePath, url: "profile_images/preview/main.jpg")
       )
       return profile.toUserModel(uid: uid)
     },
