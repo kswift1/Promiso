@@ -70,7 +70,7 @@ extension PromiseProposal {
       requiredCount: minimumParticipants ?? 2,
       isConfirmed: false,
       host: UserModel(id: hostId, email: "", nickname: ""),
-      group: Group(id: group.id, name: group.title),
+      group: Group(id: group.id, name: group.name),
       startAt: startedAt,
       endAt: endedAt,
       status: .active,

@@ -236,12 +236,12 @@ struct EndTimePicker: View {
     store: Store(
       initialState: CreatePromise.Feature.State(
         promiseProposal: PromiseProposal(
-          title: "영화 관람",
+           title: "영화 관람",
           emoji: "🍿",
           group: .init(
             id: "g1",
+            name: "지민과 나",
             emoji: "👥",
-            title: "지민과 나",
             memberCount: 2
           ),
           startedAt: Date().addingTimeInterval(7200),
@@ -261,12 +261,12 @@ struct EndTimePicker: View {
     store: Store(
       initialState: CreatePromise.Feature.State(
         promiseProposal: PromiseProposal(
-          title: "영화 관람",
+           title: "영화 관람",
           emoji: "🍿",
           group: .init(
             id: "g1",
+            name: "지민과 나",
             emoji: "👥",
-            title: "지민과 나",
             memberCount: 2
           ),
           startedAt: Date().addingTimeInterval(7200),
@@ -286,12 +286,11 @@ struct EndTimePicker: View {
     store: Store(
       initialState: CreatePromise.Feature.State(
         promiseProposal: PromiseProposal(
-          title: "해외 출장",
+           title: "해외 출장",
           emoji: "✈️",
           group: .init(
             id: "g1",
-            emoji: "👥",
-            title: "지민과 나",
+            name: "지민과 나", emoji: "👥",
             memberCount: 2
           ),
           startedAt: Date().addingTimeInterval(7200),
@@ -348,12 +347,11 @@ struct EndTimePicker: View {
       store: Store(
         initialState: CreatePromise.Feature.State(
           promiseProposal: PromiseProposal(
-            title: "저녁 식사",
+             title: "저녁 식사",
             emoji: "🍽️",
             group: .init(
               id: "g1",
-              emoji: "👥",
-              title: "지민과 나",
+              name: "지민과 나", emoji: "👥",
               memberCount: 2
             ),
             startedAt: Date().addingTimeInterval(7200),
@@ -428,12 +426,12 @@ struct EndTimePicker: View {
         store: Store(
           initialState: CreatePromise.Feature.State(
             promiseProposal: PromiseProposal(
-              title: "카페 미팅",
+               title: "카페 미팅",
               emoji: "☕",
               group: .init(
                 id: "g1",
+                name: "지민과 나",
                 emoji: "👥",
-                title: "지민과 나",
                 memberCount: 2
               ),
               startedAt: Date().addingTimeInterval(7200),

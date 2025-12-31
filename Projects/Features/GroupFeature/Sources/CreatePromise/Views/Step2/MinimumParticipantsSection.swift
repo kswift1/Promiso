@@ -190,12 +190,12 @@ struct MinimumParticipantsSection: View {
     store: Store(
       initialState: CreatePromise.Feature.State(
         promiseProposal: PromiseProposal(
-          title: "영화 관람",
+           title: "영화 관람",
           emoji: "🍿",
           group: .init(
             id: "g1",
+            name: "지민과 나",
             emoji: "👥",
-            title: "지민과 나",
             memberCount: 2
           ),
           startedAt: Date().addingTimeInterval(7200),
@@ -214,12 +214,12 @@ struct MinimumParticipantsSection: View {
     store: Store(
       initialState: CreatePromise.Feature.State(
         promiseProposal: PromiseProposal(
-          title: "카페 미팅",
+           title: "카페 미팅",
           emoji: "☕",
           group: .init(
             id: "g2",
+            name: "회사 동료들",
             emoji: "🏢",
-            title: "회사 동료들",
             memberCount: 4
           ),
           startedAt: Date().addingTimeInterval(7200),
@@ -238,12 +238,11 @@ struct MinimumParticipantsSection: View {
     store: Store(
       initialState: CreatePromise.Feature.State(
         promiseProposal: PromiseProposal(
-          title: "저녁 식사",
+           title: "저녁 식사",
           emoji: "🍽️",
           group: .init(
             id: "g5",
-            emoji: "🍴",
-            title: "주말 모임",
+            name: "주말 모임", emoji: "🍴",
             memberCount: 5
           ),
           startedAt: Date().addingTimeInterval(7200),
@@ -262,12 +261,11 @@ struct MinimumParticipantsSection: View {
     store: Store(
       initialState: CreatePromise.Feature.State(
         promiseProposal: PromiseProposal(
-          title: "팀 회의",
+           title: "팀 회의",
           emoji: "💼",
           group: .init(
             id: "g10",
-            emoji: "🏢",
-            title: "전체 팀",
+            name: "전체 팀", emoji: "🏢",
             memberCount: 10
           ),
           startedAt: Date().addingTimeInterval(7200),
@@ -287,12 +285,12 @@ struct MinimumParticipantsSection: View {
       store: Store(
         initialState: CreatePromise.Feature.State(
           promiseProposal: PromiseProposal(
-            title: "저녁 식사",
+             title: "저녁 식사",
             emoji: "🍽️",
             group: .init(
               id: "g6",
+              name: "친구들",
               emoji: "👥",
-              title: "친구들",
               memberCount: 6
             ),
             startedAt: Date().addingTimeInterval(7200),
@@ -331,12 +329,12 @@ struct MinimumParticipantsSection: View {
         store: Store(
           initialState: CreatePromise.Feature.State(
             promiseProposal: PromiseProposal(
-              title: "저녁 식사",
+               title: "저녁 식사",
               emoji: "🍽️",
               group: .init(
                 id: "g5",
+                name: "주말 모임",
                 emoji: "🍴",
-                title: "주말 모임",
                 memberCount: 5
               ),
               startedAt: Date().addingTimeInterval(7200),

@@ -249,12 +249,12 @@ struct StartDateTimeSection: View {
       store: Store(
         initialState: CreatePromise.Feature.State(
           promiseProposal: PromiseProposal(
-            title: "영화 관람",
+             title: "영화 관람",
             emoji: "🍿",
             group: .init(
               id: "g1",
+              name: "지민과 나",
               emoji: "👥",
-              title: "지민과 나",
               memberCount: 2
             ),
             startedAt: Date().addingTimeInterval(7200),
@@ -275,12 +275,12 @@ struct StartDateTimeSection: View {
       store: Store(
         initialState: CreatePromise.Feature.State(
           promiseProposal: PromiseProposal(
-            title: "긴급 회의",
+             title: "긴급 회의",
             emoji: "💼",
             group: .init(
               id: "g1",
+              name: "지민과 나",
               emoji: "👥",
-              title: "지민과 나",
               memberCount: 2
             ),
             startedAt: Date().addingTimeInterval(1800),
@@ -308,12 +308,12 @@ struct StartDateTimeSection: View {
             store: Store(
               initialState: CreatePromise.Feature.State(
                 promiseProposal: PromiseProposal(
-                  title: "저녁 식사",
+                   title: "저녁 식사",
                   emoji: "🍽️",
                   group: .init(
                     id: "g1",
+                    name: "지민과 나",
                     emoji: "👥",
-                    title: "지민과 나",
                     memberCount: 2
                   ),
                   startedAt: date,
@@ -346,12 +346,12 @@ struct StartDateTimeSection: View {
         store: Store(
           initialState: CreatePromise.Feature.State(
             promiseProposal: PromiseProposal(
-              title: "카페 미팅",
+               title: "카페 미팅",
               emoji: "☕",
               group: .init(
                 id: "g1",
+                name: "지민과 나",
                 emoji: "👥",
-                title: "지민과 나",
                 memberCount: 2
               ),
               startedAt: Date().addingTimeInterval(7200),

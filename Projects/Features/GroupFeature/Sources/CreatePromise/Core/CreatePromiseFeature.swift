@@ -25,6 +25,7 @@ public enum CreatePromise {
       var currentStep: CreatePromiseStep = .first
       var promiseProposal: PromiseProposal = .empty
       var groupListState: LoadingState<[GroupModel]> = .idle
+      var groupSummaries: [GroupSummary]?
       var isCreatingPromise: Bool = false
       var creationError: Clients.PromiseClientError?
 
@@ -32,12 +33,14 @@ public enum CreatePromise {
         currentStep: CreatePromiseStep = .first,
         promiseProposal: PromiseProposal = .empty,
         groupListState: LoadingState<[GroupModel]> = .idle,
+        groupSummaries: [GroupSummary]? = nil,
         isCreatingPromise: Bool = false,
         creationError: Clients.PromiseClientError? = nil
       ) {
         self.currentStep = currentStep
         self.promiseProposal = promiseProposal
         self.groupListState = groupListState
+        self.groupSummaries = groupSummaries
         self.isCreatingPromise = isCreatingPromise
         self.creationError = creationError
       }
@@ -230,9 +233,15 @@ public enum CreatePromise {
             
           case .fetchGroupList:
             state.groupListState = .loading
-            return .run { [groupClient] send in
+            return .run { [groupClient, groupSummaries = state.groupSummaries] send in
               do {
-                let groups = try await groupClient.fetchGroups()
+                let groups: [GroupModel]
+                if let groupSummaries, groupSummaries.isEmpty == false {
+                  let ids = groupSummaries.map(\.id)
+                  groups = try await groupClient.fetchGroupsByIds(ids)
+                } else {
+                  groups = try await groupClient.fetchGroups()
+                }
                 await send(.internal(.groupListResponse(.success(groups))))
               } catch {
                 await send(.internal(.groupListResponse(.failure(error))))

@@ -3,6 +3,7 @@
 // - EmptyView 스켈레톤 맞추기?
 // - 약속 만들기 가능하면 가져온 그룹 데이터 활용하기?
 // - 반대 속성 버튼 동시 탭 막기 (수락 / 거절), adaptiveButton disabled 대응 (26 미만 버전)
+// - 그룹 상세 불러오는거 병렬로 적용하기 (12/31)
 
 // MARK: - Feature Namespace
 import SwiftUI
@@ -42,7 +43,7 @@ extension GroupMain {
       var proposalResponding: [String: RespondingState] = [:]
       var path = StackState<Path.State>()
 
-      var allGroups: [GroupModel]?
+      var allGroupSummaries: [GroupSummary]?
       var currentGroup: GroupModel?
 
       @Presents var createPromise: CreatePromise.Feature.State?
@@ -76,7 +77,7 @@ extension GroupMain {
       
       public enum View: Sendable {
         case onAppear
-        case groupChanged(GroupModel)
+        case groupChanged(GroupSummary)
         case filterChanged(StatusFilter)
         case proposalAccepted(String)
         case proposalRejected(String)
@@ -90,8 +91,10 @@ extension GroupMain {
       
       public enum Internal: Sendable {
         case fetchGroupList
-        case groupListResponse(Result<[GroupModel], Error>)
-        case setDefaultGroup(groups: [GroupModel])
+        case groupListResponse(Result<[GroupSummary], Error>)
+        case setDefaultGroup(groups: [GroupSummary])
+        case fetchCurrentGroup(id: String)
+        case currentGroupResponse(Result<GroupModel, Error>)
         case fetchPromises(groupId: String)
         case loadPromisesResponse(Result<[PromiseItem], Error>)
         case proposalRespondDone(promiseId: String)
@@ -121,12 +124,11 @@ extension GroupMain {
             return .send(.internal(.fetchGroupList))
             
           case .groupChanged(let group):
-            guard group != state.currentGroup else { return .none }
-            state.currentGroup = group
+            guard group.id != state.currentGroup?.id else { return .none }
+            state.currentGroup = nil
             state.promisesState = .loading
             state.selectedFilter = .all
-            guard let id = state.currentGroup?.id else { return .none }
-            return .send(.internal(.fetchPromises(groupId: id)))
+            return .send(.internal(.fetchCurrentGroup(id: group.id)))
             
           case .filterChanged(let filter):
             state.selectedFilter = filter
@@ -154,7 +156,9 @@ extension GroupMain {
             return .none
             
           case .createNewPromise:
-            state.createPromise = CreatePromise.Feature.State()
+            state.createPromise = CreatePromise.Feature.State(
+              groupSummaries: state.allGroupSummaries
+            )
             return .none
             
           case .groupDetailDismissed:
@@ -175,13 +179,17 @@ extension GroupMain {
           switch internalAction {
           case .fetchGroupList:
             return .run { [groupClient] send in
-              do { await send(.internal(.groupListResponse(.success(try await groupClient.fetchGroups())))) }
-              catch { await send(.internal(.groupListResponse(.failure(error)))) }
+              do {
+                await send(.internal(.groupListResponse(.success(try await groupClient.fetchGroupSummaries()))))
+              }
+              catch {
+                await send(.internal(.groupListResponse(.failure(error))))
+              }
             }
             
-          case .groupListResponse(.success(let groups)):
-            state.allGroups = groups
-            return .send(.internal(.setDefaultGroup(groups: groups)))
+          case .groupListResponse(.success(let groupSummaries)):
+            state.allGroupSummaries = groupSummaries
+            return .send(.internal(.setDefaultGroup(groups: groupSummaries)))
             
           case .groupListResponse(.failure(let error)):
             state.promisesState = .failed(error)
@@ -190,14 +198,28 @@ extension GroupMain {
           case .setDefaultGroup(let groups):
             if let pinned = state.currentUser.pinnedGroupId,
                let pinnedGroup = groups.first(where: { $0.id == pinned }) {
-              state.currentGroup = pinnedGroup
+              return .send(.internal(.fetchCurrentGroup(id: pinnedGroup.id)))
             } else {
-              state.currentGroup = groups.first
+              guard let firstGroup = groups.first else { return .none }
+              return .send(.internal(.fetchCurrentGroup(id: firstGroup.id)))
             }
-            
-            if let id = state.currentGroup?.id {
-              return .send(.internal(.fetchPromises(groupId: id)))
+
+          case .fetchCurrentGroup(let id):
+            return .run { [groupClient, id] send in
+              do {
+                let group = try await groupClient.fetchGroup(id)
+                await send(.internal(.currentGroupResponse(.success(group))))
+              } catch {
+                await send(.internal(.currentGroupResponse(.failure(error))))
+              }
             }
+
+          case .currentGroupResponse(.success(let group)):
+            state.currentGroup = group
+            return .send(.internal(.fetchPromises(groupId: group.id)))
+
+          case .currentGroupResponse(.failure(let error)):
+            state.promisesState = .failed(error)
             return .none
             
           case .fetchPromises(let id):
@@ -285,219 +307,13 @@ extension GroupMain {
 
 // MARK: - View Implementation
 
-extension GroupMain {
-  public struct RootView: View {
-    @Bindable private var store: StoreOf<GroupMain.Feature>
-    
-    public init(store: StoreOf<GroupMain.Feature>) {
-      self.store = store
-    }
-    
-    public var body: some View {
-      NavigationStackStore(
-        store.scope(state: \.path, action: \.path)) {
-          rootContent
-        } destination: { store in
-          switch store.case {
-          case .createGroupFeature(let createGroupStore):
-            CreateGroup.RootView(store: createGroupStore)
-          }
-        }
-    }
-    
-    
-    
-    @ViewBuilder
-    private var rootContent: some View {
-      Group {
-        if store.shouldShowEmptyGroupView {
-          groupDetailEmptyView
-        } else {
-          groupDetailView
-        }
-      }
-      .auroraBackground()
-      .toolbarVisibility(.visible, for: .navigationBar)
-      .navigationBarTitleDisplayMode(.inline)
-      .toolbar { toolbarContent }
-      .onAppear { store.send(.view(.onAppear)) }
-      .fullScreenCover(
-        store: store.scope(state: \.$createPromise, action: \.createPromise)
-      ) { childStore in
-        CreatePromise.RootView(store: childStore)
-      }
-      .fullScreenCover(
-        store: store.scope(state: \.$createGroup, action: \.createGroup)
-      ) { childStore in
-        NavigationStack {
-          CreateGroup.RootView(store: childStore)
-        }
-      }
-      .sheet(
-        store: store.scope(state: \.$groupDetail, action: \.groupDetail)
-      ) { childStore in
-        //        GroupDetailView(store: childStore)
-      }
-    }
-    
-    
-    @ViewBuilder
-    private var groupDetailView: some View {
-      ScrollView {
-        // Status Filter
-        StatusFilterView(
-          selectedFilter: Binding(
-            get: { store.selectedFilter },
-            set: { store.send(.view(.filterChanged($0))) }
-          )
-        )
-        .padding(.horizontal, 16)
-        .padding(.top, 12)
-        
-        // Promise Timeline
-        PromiseTimelineView(
-          promisesState: store.promisesState,
-          selectedFilter: store.selectedFilter,
-          onAccept: { promiseId in store.send(.view(.proposalAccepted(promiseId))) },
-          acceptLoadingIds: store.acceptingProposalIds,
-          onReject: { promiseId in store.send(.view(.proposalRejected(promiseId))) },
-          rejectLoadingIds: store.rejectingProposalIds
-        )
-      }
-    }
-    
-    @ViewBuilder
-    private var groupDetailEmptyView: some View {
-      ScrollView {
-        VStack(spacing: 0) {
-          Spacer()
-            .frame(height: 80)
-          
-          VStack(spacing: 32) {
-            // Illustration
-            ZStack {
-              Circle()
-                .fill(
-                  LinearGradient(
-                    colors: [Color.blue.opacity(0.15), Color.purple.opacity(0.1)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                  )
-                )
-                .frame(width: 120, height: 120)
-              
-              Image(systemName: "person.3.fill")
-                .font(.system(size: 56))
-                .foregroundStyle(
-                  LinearGradient(
-                    colors: [.blue, .purple],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                  )
-                )
-            }
-            
-            // Text
-            VStack(spacing: 12) {
-              Text("그룹이 선택되지 않았어요")
-                .font(.title3.bold())
-              
-              Text("그룹을 만들거나 참여해서\n친구들과 약속을 시작해보세요")
-                .font(.body)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .lineSpacing(4)
-            }
-            
-            // Action Buttons
-            VStack(spacing: 12) {
-              GlassActionButton(
-                title: "그룹 만들기",
-                leadingSystemImage: "plus.circle.fill",
-                isPrimary: true,
-                action: { store.send(.view(.createGroup))
-                }
-              )
-              
-              GlassActionButton(
-                title: "초대 코드로 참여하기",
-                leadingSystemImage: "link.circle.fill",
-                isPrimary: false,
-                action: { store.send(.view(.joinGroup)) }
-              )
-            }
-            .padding(.horizontal, 40)
-          }
-          
-          Spacer()
-            .frame(height: 80)
-        }
-      }
-    }
-    
-    @ToolbarContentBuilder
-    private var toolbarContent: some ToolbarContent {
-      if let currentGroup = store.currentGroup {
-        ToolbarItem(placement: .principal) {
-          Text(currentGroup.title)
-        }
-        
-        ToolbarTitleMenu {
-          if let allGroups = store.allGroups, allGroups.isEmpty == false {
-            ForEach(allGroups, id: \.id) { group in
-              Button {
-                store.send(.view(.groupChanged(group)))
-              } label: {
-                if group == currentGroup {
-                  Label(group.title, systemImage: "checkmark")
-                } else {
-                  Text(group.title)
-                }
-              }
-              .disabled(group == currentGroup)
-            }
-            
-            Divider()
-          }
-          
-          Menu("그룹 추가") {
-            Button("그룹 만들기", systemImage: "plus") {
-              store.send(.view(.createGroup))
-            }
-            
-            Button("초대 코드로 참여하기", systemImage: "link") {
-              store.send(.view(.joinGroup))
-            }
-          }
-        }
-        
-        ToolbarItem(placement: .topBarTrailing) {
-          ToolbarButton(
-            imageName: "plus",
-            action: { store.send(.view(.createNewPromise)) }
-          )
-        }
-        
-        ToolbarItem(placement: .topBarTrailing) {
-          ToolbarButton(
-            imageName: "gearshape",
-            action: { store.send(.view(.groupManageTapped)) }
-          )
-        }
-      } else {
-        ToolbarItem(placement: .principal) {
-          EmptyView()
-        }
-      }
-    }
-  }
-}
+
 
 private extension GroupMain.Feature.State {
   
   /// 속한 그룹이 없는 경우
   private var hasNoGroups: Bool {
-    allGroups?.isEmpty == true && currentGroup == nil
+    allGroupSummaries?.isEmpty == true && currentGroup == nil
   }
   
   /// 활성화된 그룹이 없는 경우

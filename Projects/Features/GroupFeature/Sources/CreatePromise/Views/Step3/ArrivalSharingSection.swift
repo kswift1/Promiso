@@ -196,12 +196,12 @@ struct ArrivalSharingButton: View {
       store: Store(
         initialState: CreatePromise.Feature.State(
           promiseProposal: PromiseProposal(
-            title: "저녁 식사",
+             title: "저녁 식사",
             emoji: "🍽️",
             group: .init(
               id: "g1",
+              name: "친구들",
               emoji: "👥",
-              title: "친구들",
               memberCount: 4
             ),
             startedAt: Date().addingTimeInterval(7200),
@@ -223,12 +223,12 @@ struct ArrivalSharingButton: View {
       store: Store(
         initialState: CreatePromise.Feature.State(
           promiseProposal: PromiseProposal(
-            title: "저녁 식사",
+             title: "저녁 식사",
             emoji: "🍽️",
             group: .init(
               id: "g1",
+              name: "친구들",
               emoji: "👥",
-              title: "친구들",
               memberCount: 4
             ),
             startedAt: Date().addingTimeInterval(7200),
@@ -250,12 +250,12 @@ struct ArrivalSharingButton: View {
       store: Store(
         initialState: CreatePromise.Feature.State(
           promiseProposal: PromiseProposal(
-            title: "주말 등산",
+             title: "주말 등산",
             emoji: "⛰️",
             group: .init(
               id: "g2",
+              name: "등산 모임",
               emoji: "🥾",
-              title: "등산 모임",
               memberCount: 6
             ),
             startedAt: Date().addingTimeInterval(10800),

@@ -151,7 +151,7 @@ struct GroupCard: View {
         
         // 그룹 정보
         VStack(alignment: .leading, spacing: 4) {
-          Text(model.title)
+          Text(model.name)
             .font(.system(size: 17, weight: .semibold))
             .foregroundColor(.primary)
           
@@ -233,13 +233,13 @@ private struct GroupSkeletonCard: View {
   @Previewable @FocusState var focus: Bool
   GroupListView(
     groupListState: .loaded([
-      .init(id: "g1", emoji: "👥", title: "지민과 나", memberCount: 2),
-      .init(id: "g2", emoji: "🏢", title: "회사 동료들", memberCount: 8),
-      .init(id: "g3", emoji: "🎓", title: "대학 친구들", memberCount: 12),
-      .init(id: "g4", emoji: "👨‍👩‍👦", title: "가족", memberCount: 4)
+      .init(id: "g1", name: "지민과 나", emoji: "👥", memberCount: 2),
+      .init(id: "g2", name: "회사 동료들", emoji: "🏢", memberCount: 8),
+      .init(id: "g3", name: "대학 친구들", emoji: "🎓", memberCount: 12),
+      .init(id: "g4", name: "가족", emoji: "👨‍👩‍👦", memberCount: 4)
     ]),
     selectedGroupId: "g2",
-    onGroupSelected: { group in print("Selected: \(group.title)") },
+    onGroupSelected: { group in print("Selected: \(group.name)") },
     onRetry: {},
     isFocused: $focus
   )
