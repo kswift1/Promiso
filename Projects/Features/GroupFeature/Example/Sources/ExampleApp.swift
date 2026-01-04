@@ -51,7 +51,13 @@ private struct ExampleContentView: View {
   /// GroupMain feature example with preview data
   @ViewBuilder
   private var groupMainExample: some View {
-    let store = Store(initialState: GroupMain.Feature.State.preview) {
+    let previewUser = UserModel(
+      id: "preview-user-id",
+      email: "preview@example.com",
+      nickname: "Preview User"
+    )
+
+    let store = Store(initialState: GroupMain.Feature.State(currentUser: previewUser)) {
       GroupMain.Feature()
     } withDependencies: { dependencies in
       dependencies.groupClient = .previewValue
@@ -80,7 +86,13 @@ private struct ExampleContentView: View {
 // MARK: - SwiftUI Previews
 
 #Preview {
-  let store = Store(initialState: GroupMain.Feature.State.preview) {
+  let previewUser = UserModel(
+    id: "preview-user-id",
+    email: "preview@example.com",
+    nickname: "Preview User"
+  )
+
+  let store = Store(initialState: GroupMain.Feature.State(currentUser: previewUser)) {
     GroupMain.Feature()
   } withDependencies: { dependencies in
     dependencies.groupClient = .previewValue
