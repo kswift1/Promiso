@@ -15,7 +15,7 @@ extension JoinGroup {
 
   public enum Step: Equatable {
     case enterCode
-    case preview(GroupModel)
+    case preview(GroupPreview)
   }
 
   // MARK: - Reducer
@@ -94,7 +94,7 @@ extension JoinGroup {
 
       @CasePathable
       public enum Internal: Sendable {
-        case previewGroupResponse(Result<GroupModel, Error>)
+        case previewGroupResponse(Result<GroupPreview, Error>)
         case joinGroupResponse(Result<GroupModel, Error>)
       }
 
@@ -181,9 +181,10 @@ extension JoinGroup {
 
         case .internal(let internalAction):
           switch internalAction {
-          case .previewGroupResponse(.success(let group)):
+          case .previewGroupResponse(.success(let preview)):
             state.isLoadingPreview = false
-            state.step = .preview(group)
+            print("preview: \(preview)")
+            state.step = .preview(preview)
             return .none
 
           case .previewGroupResponse(.failure(let error)):

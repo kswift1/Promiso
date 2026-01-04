@@ -35,20 +35,20 @@ extension GroupMain {
     public struct State {
       var isInitialized: Bool = false
       let currentUser: UserModel
-
+      
       var selectedFilter: StatusFilter = .all
-
+      
       var promisesState: LoadingState<[PromiseItem]> = .idle
       var proposalResponding: [String: RespondingState] = [:]
       var path = StackState<Path.State>()
-
+      
       var allGroupSummaries: [GroupSummary]?
       var currentGroup: GroupModel?
-
+      
       @Presents var createPromise: CreatePromise.Feature.State?
       @Presents var createGroup: CreateGroup.Feature.State?
       @Presents var joinGroup: JoinGroup.Feature.State?
-
+      
       public init(currentUser: UserModel) {
         self.currentUser = currentUser
       }
@@ -68,7 +68,7 @@ extension GroupMain {
       case createPromise(PresentationAction<CreatePromise.Feature.Action>)
       case createGroup(PresentationAction<CreateGroup.Feature.Action>)
       case joinGroup(PresentationAction<JoinGroup.Feature.Action>)
-
+      
       case path(StackActionOf<Path>)
       
       public enum ViewAction: Sendable {
@@ -113,7 +113,7 @@ extension GroupMain {
             guard !state.isInitialized else { return .none }
             state.isInitialized = true
             return .send(.internal(.fetchGroupList))
-
+            
           case .refreshTriggered:
             if let currentGroupId = state.currentGroup?.id {
               state.promisesState = .loading
@@ -122,7 +122,7 @@ extension GroupMain {
                 .send(.internal(.fetchPromises(groupId: currentGroupId)))
               )
             }
-
+            
             return .send(.internal(.fetchGroupList))
             
           case .groupChanged(let group):
@@ -170,7 +170,7 @@ extension GroupMain {
               currentUser: state.currentUser
             )
             return .none
-
+            
           case .joinGroup:
             state.joinGroup = JoinGroup.Feature.State(
               currentUser: state.currentUser
@@ -206,7 +206,7 @@ extension GroupMain {
               guard let firstGroup = groups.first else { return .none }
               return .send(.internal(.fetchCurrentGroup(id: firstGroup.id)))
             }
-
+            
           case .fetchCurrentGroup(let id):
             return .run { [groupClient, id] send in
               do {
@@ -216,11 +216,11 @@ extension GroupMain {
                 await send(.internal(.currentGroupResponse(.failure(error))))
               }
             }
-
+            
           case .currentGroupResponse(.success(let group)):
             state.currentGroup = group
             return .send(.internal(.fetchPromises(groupId: group.id)))
-
+            
           case .currentGroupResponse(.failure(let error)):
             state.promisesState = .failed(error)
             return .none
@@ -261,41 +261,25 @@ extension GroupMain {
         case .createGroup(.presented(.delegate(.dismiss))):
           state.createGroup = nil
           return .none
-
+          
         case .createGroup(.presented(.delegate(.groupCreated(id: _)))):
           state.createGroup = nil
           return .send(.internal(.fetchGroupList))
-
+          
         case .createGroup:
           return .none
-
+          
         case .joinGroup(.presented(.delegate(.dismiss))):
           state.joinGroup = nil
           return .none
-
+          
         case .joinGroup(.presented(.delegate(.groupJoined(_)))):
           state.joinGroup = nil
           return .send(.internal(.fetchGroupList))
-
+          
         case .joinGroup:
           return .none
-
-          //        case let .path(.element(id: id, action: .createGroup(.delegate(.dismiss)))):
-          //          state.path[id: id] = nil
-          //          return .none
-          //
-          //        case let .path(.element(id: id, action: .createGroup(.delegate(.groupCreated)))):
-          //          state.path[id: id] = nil
-          //          return .send(.internal(.fetchGroupList))
-          //
-          //        case let .path(.popFromID(id: id)):
-          //          state.path[id: id] = nil
-          //          return .none
-          //
-          //        case .path(.popToRoot):
-          //          state.path = .init()
-          //          return .none
-
+          
         case .path:
           return .none
           

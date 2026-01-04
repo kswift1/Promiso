@@ -217,7 +217,7 @@ public final class GroupRemoteDataSource: @unchecked Sendable {
   ///
   /// Firebase Functions의 previewGroup을 호출합니다.
   /// 실제로 참여하지 않고 그룹 정보만 조회합니다.
-  public func previewGroup(inviteCode: String) async throws -> GroupModel {
+  public func previewGroup(inviteCode: String) async throws -> GroupPreview {
     var callableData: [String: Any] = [
       "inviteCode": inviteCode.uppercased()
     ]
@@ -236,8 +236,12 @@ public final class GroupRemoteDataSource: @unchecked Sendable {
       throw GroupRemoteDataSourceError.invalidResponse
     }
 
+    let membersData = data["members"] as? [[String: Any]] ?? []
+    let members = membersData.compactMap(parseMemberPreview(_:))
+
     // 그룹 상세 정보 조회
-    return try await fetchGroup(groupId: groupId)
+    let group = try await fetchGroup(groupId: groupId)
+    return GroupPreview(group: group, members: members)
   }
 
   /// 초대 코드로 그룹 참여
@@ -314,6 +318,32 @@ public final class GroupRemoteDataSource: @unchecked Sendable {
         }
       }
     }
+  }
+
+  private func parseMemberPreview(_ data: [String: Any]) -> GroupMemberPreview? {
+    guard let userId = data["userId"] as? String else { return nil }
+    let name = data["name"] as? String ?? ""
+    let profileImage = parseRemoteImage(data["profileImage"])
+
+    return GroupMemberPreview(
+      userId: userId,
+      name: name,
+      profileImage: profileImage
+    )
+  }
+
+  private func parseRemoteImage(_ value: Any?) -> RemoteImage? {
+    guard let payload = value as? [String: Any],
+          let type = payload["type"] as? String,
+          let url = payload["url"] as? String else {
+      return nil
+    }
+
+    guard let sourceType = RemoteImage.SourceType(rawValue: type) else {
+      return nil
+    }
+
+    return RemoteImage(type: sourceType, url: url)
   }
 }
 

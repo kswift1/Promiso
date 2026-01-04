@@ -1,6 +1,7 @@
 import SwiftUI
 import ComposableArchitecture
 import Shared
+import Clients
 import Nuke
 
 extension JoinGroup {
@@ -16,8 +17,12 @@ extension JoinGroup {
         switch store.step {
         case .enterCode:
           EnterCodeView(store: store)
-        case .preview(let group):
-          PreviewView(store: store, group: group)
+        case .preview(let preview):
+          PreviewView(
+            store: store,
+            group: preview.group,
+            members: preview.members
+          )
         }
       }
       .auroraBackground()
@@ -313,6 +318,7 @@ private struct EnterCodeView: View {
 private struct PreviewView: View {
   @Bindable var store: StoreOf<JoinGroup.Feature>
   let group: GroupModel
+  let members: [GroupMemberPreview]
   
   var body: some View {
     VStack(spacing: 0) {
@@ -322,10 +328,21 @@ private struct PreviewView: View {
             .frame(height: 20)
           
           // Group Info
-          groupInfoSection
+          cardContainer {
+            groupInfoSection
+          }
           
+          // Member Preview
+          if members.isEmpty == false {
+            cardContainer {
+              memberPreviewSection
+            }
+          }
+
           // Details
-          detailsSection
+          cardContainer {
+            detailsSection
+          }
           
           Spacer()
             .frame(height: 20)
@@ -375,6 +392,42 @@ private struct PreviewView: View {
       }
     }
   }
+
+  // MARK: - Member Preview Section
+
+  @ViewBuilder
+  private var memberPreviewSection: some View {
+    VStack(spacing: 12) {
+      HStack {
+        Text("멤버")
+          .font(.subheadline.weight(.semibold))
+          .foregroundStyle(.secondary)
+
+        Spacer()
+
+        Text("\(members.count)명")
+          .font(.subheadline.weight(.semibold))
+          .foregroundStyle(.secondary)
+      }
+
+      GroupMemberStackView(members: members)
+
+      Text(memberNamesText)
+        .font(.footnote)
+        .foregroundStyle(.secondary)
+        .lineLimit(1)
+    }
+  }
+
+  private var memberNamesText: String {
+    let displayNames = members.prefix(3).map(\.name)
+    let baseText = displayNames.joined(separator: " · ")
+    let overflow = max(members.count - displayNames.count, 0)
+    if overflow > 0 {
+      return "\(baseText) · +\(overflow)"
+    }
+    return baseText
+  }
   
   // MARK: - Details Section
   
@@ -386,6 +439,14 @@ private struct PreviewView: View {
         title: "현재 인원",
         value: "\(group.memberCount)명"
       )
+
+      if let maxMembers = group.maxMembers {
+        detailRow(
+          icon: "person.3.fill",
+          title: "최대 인원",
+          value: "\(maxMembers)명"
+        )
+      }
     }
   }
   
@@ -460,6 +521,115 @@ private struct PreviewView: View {
     .disabled(!store.canJoin)
     .animation(.easeInOut(duration: 0.2), value: store.canJoin)
     .animation(.easeInOut(duration: 0.2), value: store.isJoining)
+  }
+
+  private func cardContainer<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+    content()
+      .padding(16)
+      .frame(maxWidth: .infinity)
+      .background(Color(.systemBackground))
+      .clipShape(RoundedRectangle(cornerRadius: 16))
+      .shadow(color: .black.opacity(0.06), radius: 12, x: 0, y: 6)
+  }
+}
+
+private struct GroupMemberStackView: View {
+  let members: [GroupMemberPreview]
+
+  private var displayMembers: [GroupMemberPreview] {
+    Array(members.prefix(5))
+  }
+
+  private var overflowCount: Int {
+    max(members.count - displayMembers.count, 0)
+  }
+
+  var body: some View {
+    HStack(spacing: -12) {
+      ForEach(displayMembers) { member in
+        MemberAvatarView(member: member)
+          .zIndex(Double(displayMembers.count) - Double(displayMembers.firstIndex(where: { $0.id == member.id }) ?? 0))
+      }
+
+      if overflowCount > 0 {
+        OverflowAvatarView(count: overflowCount)
+      }
+    }
+    .padding(.vertical, 4)
+  }
+}
+
+private struct MemberAvatarView: View {
+  let member: GroupMemberPreview
+  @State private var loadedImage: UIImage?
+  @State private var isLoading = false
+
+  var body: some View {
+    ZStack {
+      Circle()
+        .fill(Color(.systemGray5))
+        .frame(width: 44, height: 44)
+
+      if let loadedImage {
+        Image(uiImage: loadedImage)
+          .resizable()
+          .scaledToFill()
+          .frame(width: 44, height: 44)
+          .clipShape(Circle())
+      } else if isLoading {
+        ProgressView()
+          .tint(.secondary)
+      } else {
+        Text(initials)
+          .font(.system(size: 16, weight: .semibold))
+          .foregroundStyle(.secondary)
+      }
+    }
+    .overlay(
+      Circle()
+        .stroke(Color(.systemBackground), lineWidth: 2)
+    )
+    .task {
+      await loadImage()
+    }
+  }
+
+  private var initials: String {
+    String(member.name.prefix(1))
+  }
+
+  private func loadImage() async {
+    guard let profileImage = member.profileImage else { return }
+    isLoading = true
+    defer { isLoading = false }
+
+    do {
+      guard let url = try await profileImage.toURL() else { return }
+      let request = ImageRequest(url: url)
+      loadedImage = try await ImagePipeline.shared.image(for: request)
+    } catch {
+      loadedImage = nil
+    }
+  }
+}
+
+private struct OverflowAvatarView: View {
+  let count: Int
+
+  var body: some View {
+    ZStack {
+      Circle()
+        .fill(Color(.systemGray4))
+        .frame(width: 44, height: 44)
+
+      Text("+\(count)")
+        .font(.system(size: 14, weight: .semibold))
+        .foregroundStyle(.secondary)
+    }
+    .overlay(
+      Circle()
+        .stroke(Color(.systemBackground), lineWidth: 2)
+    )
   }
 }
 

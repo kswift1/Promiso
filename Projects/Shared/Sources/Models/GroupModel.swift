@@ -26,6 +26,9 @@ public struct GroupModel: Equatable, Identifiable, Sendable {
   public let updatedAt: Date
   public let isDeleted: Bool
 
+  /// 멤버 미리보기 리스트 (미리보기 응답에서만 사용, 최대 10명)
+  public let members: [GroupMemberPreview]?
+
   public init(
     id: String,
     name: String,
@@ -42,7 +45,8 @@ public struct GroupModel: Equatable, Identifiable, Sendable {
     createdBy: String = "",
     createdAt: Date = Date(),
     updatedAt: Date = Date(),
-    isDeleted: Bool = false
+    isDeleted: Bool = false,
+    members: [GroupMemberPreview]? = nil
   ) {
     self.id = id
     self.name = name
@@ -60,5 +64,6 @@ public struct GroupModel: Equatable, Identifiable, Sendable {
     self.createdAt = createdAt
     self.updatedAt = updatedAt
     self.isDeleted = isDeleted
+    self.members = members
   }
 }

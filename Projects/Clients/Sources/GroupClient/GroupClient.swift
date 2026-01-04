@@ -58,7 +58,7 @@ public struct GroupClient: Sendable {
   public var createGroup: @Sendable (_ request: CreateGroupRequest) async throws -> GroupCreationResult
 
   /// 초대 코드로 그룹 미리보기
-  public var previewGroup: @Sendable (_ inviteCode: String) async throws -> GroupModel
+  public var previewGroup: @Sendable (_ inviteCode: String) async throws -> GroupPreview
 
   /// 초대 코드로 그룹 참여
   public var joinGroup: @Sendable (_ inviteCode: String) async throws -> GroupModel
@@ -120,14 +120,22 @@ extension GroupClient: TestDependencyKey {
     },
     previewGroup: { inviteCode in
       try await Task.sleep(for: .seconds(0.5))
-      return GroupModel(
-        id: UUID().uuidString,
-        name: "주말 등산 모임",
-        description: "매주 토요일마다 등산을 가는 모임입니다",
-        emoji: "🏔️",
-        memberCount: 8,
-        maxMembers: 10,
-        inviteCode: inviteCode
+      return GroupPreview(
+        group: GroupModel(
+          id: UUID().uuidString,
+          name: "주말 등산 모임",
+          description: "매주 토요일마다 등산을 가는 모임입니다",
+          emoji: "🏔️",
+          memberCount: 8,
+          maxMembers: 10,
+          inviteCode: inviteCode
+        ),
+        members: [
+          .init(userId: "u1", name: "성원", profileImage: nil),
+          .init(userId: "u2", name: "지민", profileImage: nil),
+          .init(userId: "u3", name: "민수", profileImage: nil),
+          .init(userId: "u4", name: "서연", profileImage: nil)
+        ]
       )
     },
     joinGroup: { inviteCode in
