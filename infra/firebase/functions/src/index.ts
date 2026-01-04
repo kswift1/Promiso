@@ -712,7 +712,16 @@ export const createPromise = onCall<CreatePromiseRequest>(
     const localYyyymm = `${year}${month}`;
     const localYyyymmdd = `${year}${month}${day}`;
 
-    // 9. 약속 문서 생성
+    // 9. 그룹 멤버 목록 조회
+    const membersSnapshot = await groupDoc.ref
+      .collection("members")
+      .where("isActive", "==", true)
+      .get();
+
+    const members = membersSnapshot.docs.map((doc) => doc.data());
+    const totalMembers = Math.max(members.length, 1);
+
+    // 10. 약속 문서 생성
     const promiseRef = promisesCollection.doc();
     const promiseId = promiseRef.id;
 
@@ -729,9 +738,10 @@ export const createPromise = onCall<CreatePromiseRequest>(
       groupId: data.groupId,
       groupName: groupData.name,
       counts: {
-        total: 0,
-        accepted: 0,
+        total: totalMembers,
+        accepted: 1,
         declined: 0,
+        pending: Math.max(totalMembers - 1, 0),
         tentative: 0,
       },
       startAt: admin.firestore.Timestamp.fromDate(startAtDate),
@@ -739,23 +749,64 @@ export const createPromise = onCall<CreatePromiseRequest>(
       localYyyymm: localYyyymm,
       localYyyymmdd: localYyyymmdd,
       localTz: "Asia/Seoul",
-      status: "draft",
+      status: "pending",
       location: data.place ? {name: data.place} : null,
+      arrivalSharingTime: data.arrivalSharingTime ?? null,
       titleLower: data.title.toLowerCase(),
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
       isDeleted: false,
     };
 
-    await promiseRef.set(promiseData);
+    const batch = db.batch();
+    batch.set(promiseRef, promiseData);
 
-    // 10. 그룹의 activePromiseCount 증가
-    await groupsCollection.doc(data.groupId).update({
+    // 11. 참석자 문서 생성
+    for (const member of members) {
+      const memberId = member.userId as string | undefined;
+      if (!memberId) {
+        continue;
+      }
+
+      const nickname = (member.userNickname as string | undefined)?.trim();
+      const name = (member.userName as string | undefined)?.trim();
+      let displayName = "Unknown";
+      if (nickname && nickname.length > 0) {
+        displayName = nickname;
+      } else if (name && name.length > 0) {
+        displayName = name;
+      }
+
+      const isHost = memberId === userId;
+
+      batch.set(
+        promiseRef.collection("attendances").doc(memberId),
+        {
+          userId: memberId,
+          userName: displayName,
+          profileImageUrl: member.profileImageUrl ?? null,
+          status: isHost ? "accepted" : "pending",
+          isHost: isHost,
+          respondedAt: isHost ? FieldValue.serverTimestamp() : null,
+          message: null,
+          notificationSent: false,
+          lastViewedAt: null,
+          reminderSentAt: null,
+          invitedAt: FieldValue.serverTimestamp(),
+          invitedBy: userId,
+        },
+      );
+    }
+
+    // 12. 그룹의 activePromiseCount 증가
+    batch.update(groupsCollection.doc(data.groupId), {
       activePromiseCount: FieldValue.increment(1),
       updatedAt: FieldValue.serverTimestamp(),
     });
 
-    // 11. 응답 반환
+    await batch.commit();
+
+    // 13. 응답 반환
     return {
       promiseId: promiseId,
       title: data.title,
