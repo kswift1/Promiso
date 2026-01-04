@@ -8,9 +8,12 @@ public enum ExternalDeps: CaseIterable {
   /// Firebase
   case firebaseSDK
   case googleSDK
-  
+
   /// SwiftUI Debugging Tool
   case loupe
+
+  /// Image Loading & Caching
+  case nuke
 
   public static func allExternalDeps() -> [TargetDependency] {
     ExternalDeps.allCases.flatMap { $0.targetDependency }
@@ -20,7 +23,7 @@ public enum ExternalDeps: CaseIterable {
     switch self {
     case .tca:
       return [.external(name: "ComposableArchitecture")]
-      
+
     case .firebaseSDK:
       return [
         "FirebaseCore",
@@ -30,12 +33,17 @@ public enum ExternalDeps: CaseIterable {
         "FirebaseStorage",
         "FirebaseFunctions"
       ].map { .external(name: $0) }
-      
+
     case .googleSDK:
       return [.external(name: "GoogleSignInSwift")]
-      
+
     case .loupe:
       return [.external(name: "RenderMeThis")]
+
+    case .nuke:
+      return [
+        .external(name: "Nuke")
+      ]
     }
   }
 }

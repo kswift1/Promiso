@@ -38,13 +38,21 @@ enum Dependencies {
       .upToNextMajor(from: "2.1.0")
     )
   }
-  
+
+  static func nuke() -> Package.Dependency {
+    .package(
+      url: "https://github.com/kean/Nuke.git",
+      .upToNextMajor(from: "12.8.0")
+    )
+  }
+
   // MARK: - All Dependencies
   static var all: [Package.Dependency] { [
     tca(),
     firebase(),
     loupe(),
-    google()
+    google(),
+    nuke(),
   ]}
 }
 

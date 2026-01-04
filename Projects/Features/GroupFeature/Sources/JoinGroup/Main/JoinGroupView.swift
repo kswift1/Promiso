@@ -1,6 +1,7 @@
 import SwiftUI
 import ComposableArchitecture
 import Shared
+import Nuke
 
 extension JoinGroup {
   public struct RootView: View {
@@ -318,30 +319,17 @@ private struct PreviewView: View {
   }
   
   // MARK: - Group Info Section
-  
+
   @ViewBuilder
   private var groupInfoSection: some View {
     VStack(spacing: 16) {
-      // Icon/Emoji
-      ZStack {
-        Circle()
-          .fill(
-            LinearGradient(
-              colors: [Color.blue.opacity(0.15), Color.purple.opacity(0.1)],
-              startPoint: .topLeading,
-              endPoint: .bottomTrailing
-            )
-          )
-          .frame(width: 100, height: 100)
-        
-        Text(group.emoji)
-          .font(.system(size: 50))
-      }
-      
+      // Group Photo or Emoji
+      GroupImageView(photo: group.photo, emoji: group.emoji)
+
       // Name
       Text(group.name)
         .font(.title.bold())
-      
+
       // Description
       if let description = group.description, !description.isEmpty {
         Text(description)
@@ -457,5 +445,66 @@ private struct PreviewView: View {
     .disabled(!store.canJoin)
     .animation(.easeInOut(duration: 0.2), value: store.canJoin)
     .animation(.easeInOut(duration: 0.2), value: store.isJoining)
+  }
+}
+
+// MARK: - Group Image View
+
+private struct GroupImageView: View {
+  let photo: RemoteImage?
+  let emoji: String
+  @State private var loadedImage: UIImage?
+  @State private var isLoading = false
+
+  var body: some View {
+    ZStack {
+      Circle()
+        .fill(
+          LinearGradient(
+            colors: [Color.blue.opacity(0.15), Color.purple.opacity(0.1)],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+          )
+        )
+        .frame(width: 100, height: 100)
+
+      if let uiImage = loadedImage {
+        // 이미지 로딩 완료
+        Image(uiImage: uiImage)
+          .resizable()
+          .aspectRatio(contentMode: .fill)
+          .frame(width: 100, height: 100)
+          .clipShape(Circle())
+      } else if isLoading {
+        // 로딩 중
+        ProgressView()
+      } else {
+        // 이미지 없음 또는 로딩 전
+        Text(emoji)
+          .font(.system(size: 50))
+      }
+    }
+    .task {
+      await loadImage()
+    }
+  }
+
+  private func loadImage() async {
+    guard let photo = photo else { return }
+
+    isLoading = true
+    defer { isLoading = false }
+
+    do {
+      // RemoteImage를 URL로 변환
+      guard let url = try await photo.toURL() else { return }
+
+      // Nuke ImagePipeline을 사용하여 이미지 로딩
+      let request = ImageRequest(url: url)
+      loadedImage = try await ImagePipeline.shared.image(for: request)
+    } catch {
+      print("Failed to load image: \(error)")
+      // 에러 발생 시 이모지 표시 (loadedImage가 nil이므로 자동으로 이모지 표시됨)
+    }
   }
 }
