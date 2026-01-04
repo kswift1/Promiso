@@ -46,35 +46,30 @@ extension GroupMain {
       var currentGroup: GroupModel?
 
       @Presents var createPromise: CreatePromise.Feature.State?
-      @Presents var groupDetail: GroupDetailState?
       @Presents var createGroup: CreateGroup.Feature.State?
 
       public init(currentUser: UserModel) {
         self.currentUser = currentUser
       }
     }
+    
     @Reducer
     public enum Path {
-      case createGroupFeature(CreateGroup.Feature)
-    }
-    
-    public struct GroupDetailState: Equatable {
-      public var isPresented: Bool = false
+      case manageGroupFeature(ManageGroup.Feature)
     }
     
     public enum Action: Sendable {
-      case view(View)
+      case view(ViewAction)
       case binding(BindingAction<State>)
       case `internal`(Internal)
       case delegate(Delegate)
       
       case createPromise(PresentationAction<CreatePromise.Feature.Action>)
-      case groupDetail(PresentationAction<GroupDetailAction>)
       case createGroup(PresentationAction<CreateGroup.Feature.Action>)
       
       case path(StackActionOf<Path>)
       
-      public enum View: Sendable {
+      public enum ViewAction: Sendable {
         case onAppear
         case refreshTriggered
         case groupChanged(GroupSummary)
@@ -84,7 +79,6 @@ extension GroupMain {
         case openSideDrawer
         case groupManageTapped
         case createNewPromise
-        case groupDetailDismissed
         case createGroup
         case joinGroup
       }
@@ -105,11 +99,6 @@ extension GroupMain {
         case requestOpenSideDrawer
       }
     }
-    
-    public enum GroupDetailAction: Sendable, Equatable {
-      case dismiss, settings, toggleNotifications
-    }
-    
     
     // MARK: - Reducer Body
     public var body: some ReducerOf<Self> {
@@ -163,17 +152,15 @@ extension GroupMain {
             return .send(.delegate(.requestOpenSideDrawer))
             
           case .groupManageTapped:
-            state.groupDetail = GroupDetailState(isPresented: true)
+            guard let currentGroup = state.currentGroup else { return .none }
+            let summary = state.allGroupSummaries?.first { $0.id == currentGroup.id }
+            state.path.append(.manageGroupFeature(.init(group: currentGroup, summary: summary)))
             return .none
             
           case .createNewPromise:
             state.createPromise = CreatePromise.Feature.State(
               groupSummaries: state.allGroupSummaries
             )
-            return .none
-            
-          case .groupDetailDismissed:
-            state.groupDetail = nil
             return .none
             
           case .createGroup:
@@ -294,13 +281,6 @@ extension GroupMain {
           //          return .none
           
         case .path:
-          return .none
-          
-        case .groupDetail(.presented(.dismiss)):
-          state.groupDetail = nil
-          return .none
-          
-        case .groupDetail:
           return .none
           
         case .binding, .delegate:

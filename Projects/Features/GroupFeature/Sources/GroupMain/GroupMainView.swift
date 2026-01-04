@@ -1,4 +1,5 @@
-import Foundation
+import SwiftUI
+import ComposableArchitecture
 
 extension GroupMain {
   public struct RootView: View {
@@ -14,8 +15,8 @@ extension GroupMain {
           rootContent
         } destination: { store in
           switch store.case {
-          case .createGroupFeature(let createGroupStore):
-            CreateGroup.RootView(store: createGroupStore)
+          case .manageGroupFeature(let manageGroupStore):
+            ManageGroup.RootView(store: manageGroupStore)
           }
         }
     }
@@ -45,11 +46,6 @@ extension GroupMain {
         NavigationStack {
           CreateGroup.RootView(store: childStore)
         }
-      }
-      .sheet(
-        store: store.scope(state: \.$groupDetail, action: \.groupDetail)
-      ) { childStore in
-        //        GroupDetailView(store: childStore)
       }
     }
     
