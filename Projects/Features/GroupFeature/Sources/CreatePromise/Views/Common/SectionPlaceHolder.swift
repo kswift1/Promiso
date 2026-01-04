@@ -20,22 +20,23 @@ struct SectionPlaceHolder<PlaceHolderAccessory: View, Content: View>: View {
   }
   
   var body: some View {
-    VStack(alignment: .leading, spacing: 6) {
-      HStack(spacing: 3) {
+    VStack(alignment: .leading, spacing: 12) {
+      HStack(spacing: 4) {
         Text(placeHolderTitle)
-          .font(.system(size: 14))
-        
+          .font(.system(size: 15, weight: .semibold))
+          .foregroundStyle(.primary)
+
         if isRequired {
           Text("*")
-            .font(.system(size: 14))
+            .font(.system(size: 16, weight: .bold))
             .foregroundStyle(.red)
         }
-        
+
         Spacer()
-        
+
         placeHolderAccessory()
       }
-      
+
       content()
     }
   }

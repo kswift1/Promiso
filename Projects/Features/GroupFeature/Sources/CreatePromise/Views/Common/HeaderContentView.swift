@@ -1,15 +1,52 @@
+import SwiftUI
+
 struct HeaderContentView: View {
     let title: String
     let subtitle: String
-    
+    let icon: String
+
+    init(title: String, subtitle: String, icon: String = "sparkles") {
+        self.title = title
+        self.subtitle = subtitle
+        self.icon = icon
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text(title)
-                .font(.title2)
-                .fontWeight(.bold)
-            Text(subtitle)
-                .font(.subheadline)
-                .foregroundColor(.secondary)
+        HStack(alignment: .top, spacing: 16) {
+            // Icon with gradient background
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [Color.blue.opacity(0.15), Color.purple.opacity(0.1)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 56, height: 56)
+
+                Image(systemName: icon)
+                    .font(.system(size: 24))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [.blue, .purple],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text(title)
+                    .font(.title2.bold())
+
+                Text(subtitle)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineSpacing(4)
+            }
+
+            Spacer()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -17,9 +54,17 @@ struct HeaderContentView: View {
 
 extension CreatePromiseStep {
     var headerView: HeaderContentView {
-        HeaderContentView(title: title, subtitle: subtitle)
+        HeaderContentView(title: title, subtitle: subtitle, icon: icon)
     }
-    
+
+    private var icon: String {
+        switch self {
+        case .first: "doc.text.fill"
+        case .second: "calendar.badge.clock"
+        case .third: "slider.horizontal.3"
+        }
+    }
+
     private var title: String {
         switch self {
         case .first: "어떤 약속인가요?"
@@ -27,7 +72,7 @@ extension CreatePromiseStep {
         case .third: "추가 설정"
         }
     }
-    
+
     private var subtitle: String {
         switch self {
         case .first: "기본 정보를 입력해주세요"

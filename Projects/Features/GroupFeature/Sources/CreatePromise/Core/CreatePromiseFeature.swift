@@ -46,7 +46,21 @@ public enum CreatePromise {
       }
       
       var firstButtonDisabled: Bool {
-        !(!promiseProposal.title.isEmpty && promiseProposal.group != nil)
+        // 제목이 비어있거나 그룹이 선택되지 않았거나 그룹 멤버가 1명 이하인 경우
+        if promiseProposal.title.isEmpty {
+          return true
+        }
+
+        guard let group = promiseProposal.group else {
+          return true
+        }
+
+        // 그룹 멤버가 1명 이하면 비활성화
+        if group.memberCount <= 1 {
+          return true
+        }
+
+        return false
       }
       
       var secondButtonDisabled: Bool {
@@ -144,7 +158,7 @@ public enum CreatePromise {
               } catch let e as Clients.PromiseClientError {
                 await send(.internal(.createPromiseResponse(.failure(e))))
               } catch {
-                await send(.internal(.createPromiseResponse(.failure(.unknown))))
+                await send(.internal(.createPromiseResponse(.failure(.unknown(error.localizedDescription)))))
               }
             }
             
@@ -351,20 +365,23 @@ extension CreatePromiseStep {
     switch self {
     case .first:
       EmptyView()
-      
+
     case .second, .third:
       Button(action: {
         store.send(.view(.previousStep), animation: .default)
       }) {
-        Text("이전")
-          .font(.system(size: 16, weight: .semibold))
-          .foregroundColor(.primary)
-          .frame(maxWidth: .infinity)
-          .frame(height: 50)
-//          .background()
-          .cornerRadius(12)
+        HStack(spacing: 8) {
+          Image(systemName: "chevron.left")
+            .font(.system(size: 14, weight: .semibold))
+          Text("이전")
+            .font(.system(size: 16, weight: .semibold))
+        }
+        .foregroundColor(.primary)
+        .frame(maxWidth: .infinity)
+        .frame(height: 56)
+        .background(Color(.systemGray5))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
       }
-      .adaptiveSecondaryButton(fallBackBackground: Color(.systemGray6))
     }
   }
   
@@ -411,27 +428,43 @@ fileprivate struct StepButton: View {
   var disabled: Bool
   var isLoading: Bool = false
   var action: () -> Void
-  
+
   var body: some View {
     Button(action: action) {
       HStack(spacing: 8) {
-        Text(title)
-          .font(.system(size: 16, weight: .semibold))
-          .foregroundColor(.white)
-        
         if isLoading {
           ProgressView()
             .progressViewStyle(CircularProgressViewStyle(tint: .white))
-            .scaleEffect(0.7)
+            .scaleEffect(0.8)
+        } else {
+          Image(systemName: title == "완료" ? "checkmark.circle.fill" : "arrow.right.circle.fill")
+            .font(.system(size: 18))
         }
+
+        Text(title)
+          .font(.headline)
       }
       .frame(maxWidth: .infinity)
-      .frame(height: 50)
-//      .background(disabled ? Color.gray.opacity(0.4) : Color.blue)
-      .cornerRadius(12)
+      .frame(height: 56)
+      .background(
+        LinearGradient(
+          colors: disabled ? [Color(.systemGray4)] : [.blue, .purple],
+          startPoint: .topLeading,
+          endPoint: .bottomTrailing
+        )
+      )
+      .foregroundStyle(.white)
+      .clipShape(RoundedRectangle(cornerRadius: 16))
+      .shadow(
+        color: disabled ? .clear : .blue.opacity(0.3),
+        radius: 12,
+        x: 0,
+        y: 6
+      )
     }
     .disabled(disabled)
-    .adaptivePrimaryButton()
+    .animation(.easeInOut(duration: 0.2), value: disabled)
+    .animation(.easeInOut(duration: 0.2), value: isLoading)
   }
 }
 

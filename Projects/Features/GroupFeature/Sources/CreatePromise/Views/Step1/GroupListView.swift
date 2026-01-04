@@ -59,32 +59,63 @@ struct GroupListView: View {
   
   private var emptyStateView: some View {
     VStack(spacing: 16) {
-      Image(systemName: "person.2.slash")
-        .font(.system(size: 48))
-        .foregroundColor(.secondary)
-      
+      ZStack {
+        Circle()
+          .fill(
+            LinearGradient(
+              colors: [Color.blue.opacity(0.15), Color.purple.opacity(0.1)],
+              startPoint: .topLeading,
+              endPoint: .bottomTrailing
+            )
+          )
+          .frame(width: 96, height: 96)
+
+        Image(systemName: "person.2.slash")
+          .font(.system(size: 40))
+          .foregroundStyle(
+            LinearGradient(
+              colors: [.blue, .purple],
+              startPoint: .topLeading,
+              endPoint: .bottomTrailing
+            )
+          )
+      }
+
       Text("아직 가입한 그룹이 없어요")
         .font(.headline)
         .foregroundColor(.primary)
-      
+
       Text("새로운 그룹을 만들어 친구들을 초대해보세요")
         .font(.subheadline)
         .foregroundColor(.secondary)
         .multilineTextAlignment(.center)
-      
+
       Button {
         // TODO: 그룹 생성 화면으로 이동
       } label: {
-        HStack {
+        HStack(spacing: 8) {
           Image(systemName: "plus.circle.fill")
+            .font(.system(size: 18))
           Text("새 그룹 만들기")
-            .fontWeight(.semibold)
+            .font(.headline)
         }
-        .foregroundColor(.white)
+        .foregroundStyle(.white)
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
-        .background(Color.blue)
-        .cornerRadius(12)
+        .frame(height: 50)
+        .background(
+          LinearGradient(
+            colors: [.blue, .purple],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+          )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .shadow(
+          color: .blue.opacity(0.3),
+          radius: 10,
+          x: 0,
+          y: 5
+        )
       }
     }
     .padding(.vertical, 32)
@@ -95,32 +126,63 @@ struct GroupListView: View {
   
   private func errorView(error: Error) -> some View {
     VStack(spacing: 16) {
-      Image(systemName: "exclamationmark.triangle")
-        .font(.system(size: 48))
-        .foregroundColor(.orange)
-      
+      ZStack {
+        Circle()
+          .fill(
+            LinearGradient(
+              colors: [Color.orange.opacity(0.15), Color.red.opacity(0.1)],
+              startPoint: .topLeading,
+              endPoint: .bottomTrailing
+            )
+          )
+          .frame(width: 96, height: 96)
+
+        Image(systemName: "exclamationmark.triangle")
+          .font(.system(size: 40))
+          .foregroundStyle(
+            LinearGradient(
+              colors: [.orange, .red],
+              startPoint: .topLeading,
+              endPoint: .bottomTrailing
+            )
+          )
+      }
+
       Text("그룹을 불러오지 못했어요")
         .font(.headline)
         .foregroundColor(.primary)
-      
+
       Text(error.localizedDescription)
         .font(.subheadline)
         .foregroundColor(.secondary)
         .multilineTextAlignment(.center)
-      
+
       Button {
         onRetry()
       } label: {
-        HStack {
+        HStack(spacing: 8) {
           Image(systemName: "arrow.clockwise")
+            .font(.system(size: 18))
           Text("다시 시도")
-            .fontWeight(.semibold)
+            .font(.headline)
         }
-        .foregroundColor(.white)
+        .foregroundStyle(.white)
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
-        .background(Color.blue)
-        .cornerRadius(12)
+        .frame(height: 50)
+        .background(
+          LinearGradient(
+            colors: [.blue, .purple],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+          )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .shadow(
+          color: .blue.opacity(0.3),
+          radius: 10,
+          x: 0,
+          y: 5
+        )
       }
     }
     .padding(.vertical, 32)
@@ -133,51 +195,96 @@ struct GroupCard: View {
   let model: GroupModel
   let isSelected: Bool
   let action: () -> Void
-  
+
   init(model: GroupModel, isSelected: Bool, action: @escaping () -> Void) {
     self.model = model
     self.isSelected = isSelected
     self.action = action
   }
-  
+
+  private var isDisabled: Bool {
+    model.memberCount <= 1
+  }
+
   var body: some View {
-    Button(action: action) {
-      HStack(spacing: 12) {
-        // 그룹 이모지
-        Text(model.emoji)
-          .font(.system(size: 28))
-          .frame(width: 48, height: 48)
-          .clipShape(Circle())
-        
-        // 그룹 정보
-        VStack(alignment: .leading, spacing: 4) {
-          Text(model.name)
-            .font(.system(size: 17, weight: .semibold))
-            .foregroundColor(.primary)
-          
-          Text("\(model.memberCount)명")
-            .font(.system(size: 14))
-            .foregroundColor(.secondary)
-        }
-        
-        Spacer()
-        
-        // 선택 표시
-        Image(systemName: "chevron.right")
-          .font(.system(size: 13))
-          .foregroundColor(isSelected ? .blue : Color(.systemGray4))
+    Button(action: {
+      if !isDisabled {
+        action()
       }
-      .padding(16)
+    }) {
+      VStack(spacing: 0) {
+        HStack(spacing: 12) {
+          // 그룹 이모지
+          Text(model.emoji)
+            .font(.system(size: 28))
+            .frame(width: 48, height: 48)
+            .clipShape(Circle())
+            .opacity(isDisabled ? 0.5 : 1.0)
+
+          // 그룹 정보
+          VStack(alignment: .leading, spacing: 4) {
+            Text(model.name)
+              .font(.system(size: 17, weight: .semibold))
+              .foregroundColor(isDisabled ? .secondary : .primary)
+
+            Text("\(model.memberCount)명")
+              .font(.system(size: 14))
+              .foregroundColor(.secondary)
+          }
+
+          Spacer()
+
+          // 선택 표시 또는 경고 아이콘
+          if isDisabled {
+            Image(systemName: "exclamationmark.triangle.fill")
+              .font(.system(size: 16))
+              .foregroundColor(.orange)
+          } else {
+            Image(systemName: "chevron.right")
+              .font(.system(size: 13))
+              .foregroundColor(isSelected ? .blue : Color(.systemGray4))
+          }
+        }
+        .padding(16)
+
+        // 1명인 경우 경고 메시지
+        if isDisabled {
+          HStack(spacing: 8) {
+            Image(systemName: "info.circle.fill")
+              .font(.system(size: 12))
+              .foregroundColor(.orange)
+
+            Text("약속을 만들려면 최소 2명 이상의 멤버가 필요합니다")
+              .font(.system(size: 12))
+              .foregroundColor(.secondary)
+
+            Spacer()
+          }
+          .padding(.horizontal, 16)
+          .padding(.bottom, 12)
+          .background(Color.orange.opacity(0.05))
+        }
+      }
       .background(
         RoundedRectangle(cornerRadius: 16)
-          .fill(isSelected ? Color.blue.opacity(0.05) : Color(.systemGray6))
+          .fill(
+            isDisabled
+            ? Color(.systemGray6).opacity(0.5)
+            : (isSelected ? Color.blue.opacity(0.05) : Color(.systemGray6))
+          )
       )
       .overlay(
         RoundedRectangle(cornerRadius: 16)
-          .stroke(isSelected ? Color.blue : Color.clear, lineWidth: 2)
+          .stroke(
+            isDisabled
+            ? Color(.systemGray4)
+            : (isSelected ? Color.blue : Color.clear),
+            lineWidth: isDisabled ? 1 : 2
+          )
       )
     }
     .buttonStyle(PlainButtonStyle())
+    .disabled(isDisabled)
   }
 }
 

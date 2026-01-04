@@ -1,37 +1,44 @@
+import SwiftUI
+
 // MARK: - Progress Header Component
 struct ProgressHeader: View {
     let currentStep: Int
     let totalSteps: Int
     let title: String
     var onDismiss: () -> Void
-    
+
     var body: some View {
         VStack(spacing: 0) {
             // 상단 헤더 영역
             HStack {
                 // 닫기 버튼
                 Button(action: onDismiss) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 20, weight: .medium))
-                        .foregroundColor(.primary)
-                        .frame(width: 44, height: 44)
+                    ZStack {
+                        Circle()
+                            .fill(Color(.systemGray6))
+                            .frame(width: 36, height: 36)
+
+                        Image(systemName: "xmark")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.primary)
+                    }
                 }
-                
+
                 Spacer()
-                
+
                 // 제목
                 Text(title)
                     .font(.system(size: 18, weight: .bold))
                     .foregroundColor(.primary)
-                
+
                 Spacer()
-                
+
                 Color.clear
-                    .frame(width: 44, height: 44)
+                    .frame(width: 36, height: 36)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
-            
+
             // 프로그레스 바
             HStack(spacing: 8) {
                 ForEach(0...totalSteps-1, id: \.self) { step in
@@ -56,20 +63,26 @@ struct ProgressHeader: View {
 struct ProgressSegment: View {
     @State private var hasAppeared: Bool = false
     let isActive: Bool
-    
+
     private let firstDelay: TimeInterval = 0.2
     private let animationDuration: TimeInterval = 0.5
-    
+
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
                 // 배경
                 Rectangle()
                     .fill(Color(.systemGray5))
-                
-                // 활성화된 프로그레스
+
+                // 활성화된 프로그레스 (Gradient)
                 Rectangle()
-                    .fill(Color.blue)
+                    .fill(
+                        LinearGradient(
+                            colors: [.blue, .purple],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
                     .frame(width: (isActive && hasAppeared) ? geometry.size.width : 0)
             }
         }
