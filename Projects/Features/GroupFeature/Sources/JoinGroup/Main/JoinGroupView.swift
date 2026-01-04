@@ -158,27 +158,62 @@ private struct EnterCodeView: View {
   @ViewBuilder
   private var codeInputSection: some View {
     VStack(spacing: 16) {
-      // Code Display Boxes
+      // Code Display Boxes with overlay TextField
       HStack(spacing: 12) {
         ForEach(0..<6, id: \.self) { index in
           codeCharacterBox(at: index)
         }
       }
-      
-      // Hidden TextField for actual input
-      TextField("", text: .init(
-        get: { store.inviteCode },
-        set: { store.send(.view(.codeChanged($0))) }
-      ))
-      .keyboardType(.asciiCapable)
-      .autocapitalization(.allCharacters)
-      .disableAutocorrection(true)
-      .focused($isCodeFieldFocused)
-      .opacity(0)
-      .frame(height: 0)
+      .overlay(
+        // Transparent TextField overlay for paste support
+        TextField("", text: .init(
+          get: { store.inviteCode },
+          set: { store.send(.view(.codeChanged($0))) }
+        ))
+        .keyboardType(.asciiCapable)
+        .autocapitalization(.allCharacters)
+        .disableAutocorrection(true)
+        .textContentType(.oneTimeCode) // OTP 자동완성 및 복사-붙여넣기 지원
+        .focused($isCodeFieldFocused)
+        .foregroundColor(.clear) // 텍스트 색상 투명
+        .accentColor(.clear) // 커서 색상 투명
+        .background(Color.clear)
+        .onChange(of: store.inviteCode) { oldValue, newValue in
+          // 6자리가 완성되면 자동으로 다음 단계로
+          if newValue.count == 6 && store.canProceedToPreview {
+            // 키보드 내리기
+            isCodeFieldFocused = false
+            // 약간의 딜레이 후 다음 단계로 (UX 향상)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+              store.send(.view(.nextTapped))
+            }
+          }
+        }
+      )
     }
     .onTapGesture {
       isCodeFieldFocused = true
+    }
+    .contextMenu {
+      // 복사-붙여넣기 메뉴
+      if UIPasteboard.general.hasStrings {
+        Button {
+          if let pasteText = UIPasteboard.general.string {
+            store.send(.view(.codeChanged(pasteText)))
+            isCodeFieldFocused = true
+          }
+        } label: {
+          Label("붙여넣기", systemImage: "doc.on.clipboard")
+        }
+      }
+
+      if !store.inviteCode.isEmpty {
+        Button {
+          UIPasteboard.general.string = store.inviteCode
+        } label: {
+          Label("복사", systemImage: "doc.on.doc")
+        }
+      }
     }
   }
   
@@ -348,28 +383,8 @@ private struct PreviewView: View {
     VStack(spacing: 12) {
       detailRow(
         icon: "person.2.fill",
-        title: "멤버 수",
+        title: "현재 인원",
         value: "\(group.memberCount)명"
-      )
-      
-      if let maxMembers = group.maxMembers {
-        detailRow(
-          icon: "person.3.fill",
-          title: "최대 인원",
-          value: "\(maxMembers)명"
-        )
-      }
-      
-      detailRow(
-        icon: "calendar.badge.clock",
-        title: "진행 중 약속",
-        value: "\(group.activePromiseCount)개"
-      )
-      
-      detailRow(
-        icon: "link.circle.fill",
-        title: "초대 코드",
-        value: group.inviteCode
       )
     }
   }
