@@ -5,6 +5,10 @@ import {HttpsError, onCall, onRequest} from "firebase-functions/v2/https";
 import {
   CreateGroupRequest,
   CreateGroupResponse,
+  JoinGroupRequest,
+  JoinGroupResponse,
+  PreviewGroupRequest,
+  PreviewGroupResponse,
   TestCallableRequest,
   TestCallableResponse,
 } from "./types/api";
@@ -207,6 +211,254 @@ export const createGroup = onCall<CreateGroupRequest>(
       id: groupRef.id,
       name: data.name,
       inviteCode,
+    };
+  },
+);
+
+/**
+ * 그룹 미리보기
+ *
+ * @remarks
+ * **인증 불필요**
+ *
+ * 초대 코드를 사용하여 그룹 정보를 미리 볼 수 있습니다.
+ * 실제로 참여하지 않고 그룹 ID만 반환합니다.
+ * iOS JoinGroup Feature에서 참여 전 확인용으로 사용됩니다.
+ *
+ * @param request.data - PreviewGroupRequest
+ * @returns PreviewGroupResponse
+ *
+ * @throws HttpsError
+ * - invalid-argument: 잘못된 초대 코드
+ * - not-found: 그룹을 찾을 수 없습니다
+ * - internal: 서버 오류
+ *
+ * @example
+ * ```typescript
+ * // iOS에서 호출
+ * let data: [String: Any] = [
+ *   "inviteCode": "ABC123"
+ * ]
+ * let result = try await functions.httpsCallable("previewGroup").call(data)
+ * ```
+ */
+export const previewGroup = onCall<PreviewGroupRequest>(
+  {region: REGION},
+  async (request): Promise<PreviewGroupResponse> => {
+    // 1. 데이터 추출 및 검증
+    const data = request.data;
+    const inviteCode = data.inviteCode?.trim().toUpperCase();
+
+    if (!inviteCode || inviteCode.length !== 6) {
+      throw new HttpsError(
+        "invalid-argument",
+        "초대 코드는 6자리여야 합니다",
+      );
+    }
+
+    if (data.env && data.env !== "stage" && data.env !== "prod") {
+      throw new HttpsError(
+        "invalid-argument",
+        "env는 stage 또는 prod만 허용됩니다",
+      );
+    }
+
+    // 2. 초대 코드로 그룹 찾기
+    const db = admin.firestore();
+    const groupsCollection = getEnvironmentCollection("groups", db, data.env);
+    const groupSnapshot = await groupsCollection
+      .where("inviteCode", "==", inviteCode)
+      .where("isDeleted", "==", false)
+      .limit(1)
+      .get();
+
+    if (groupSnapshot.empty) {
+      throw new HttpsError(
+        "not-found",
+        "초대 코드에 해당하는 그룹을 찾을 수 없습니다",
+      );
+    }
+
+    const groupDoc = groupSnapshot.docs[0];
+    const groupId = groupDoc.id;
+
+    // 3. 그룹 ID 반환 (상세 정보는 클라이언트에서 fetchGroup으로 조회)
+    return {
+      groupId: groupId,
+    };
+  },
+);
+
+/**
+ * 그룹 참여
+ *
+ * @remarks
+ * **인증 필수**
+ *
+ * 초대 코드를 사용하여 기존 그룹에 참여합니다.
+ * iOS JoinGroup Feature와 연동됩니다.
+ *
+ * @param request.data - JoinGroupRequest
+ * @returns JoinGroupResponse
+ *
+ * @throws HttpsError
+ * - unauthenticated: 로그인이 필요합니다
+ * - invalid-argument: 잘못된 초대 코드
+ * - not-found: 그룹을 찾을 수 없습니다
+ * - already-exists: 이미 참여한 그룹입니다
+ * - resource-exhausted: 그룹 정원이 초과되었습니다
+ * - internal: 서버 오류
+ *
+ * @example
+ * ```typescript
+ * // iOS에서 호출
+ * let data: [String: Any] = [
+ *   "inviteCode": "ABC123"
+ * ]
+ * let result = try await functions.httpsCallable("joinGroup").call(data)
+ * ```
+ */
+export const joinGroup = onCall<JoinGroupRequest>(
+  {region: REGION},
+  async (request): Promise<JoinGroupResponse> => {
+    // 1. 인증 확인
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "로그인이 필요합니다");
+    }
+
+    // 2. 데이터 추출 및 검증
+    const data = request.data;
+    const inviteCode = data.inviteCode?.trim().toUpperCase();
+
+    if (!inviteCode || inviteCode.length !== 6) {
+      throw new HttpsError(
+        "invalid-argument",
+        "초대 코드는 6자리여야 합니다",
+      );
+    }
+
+    if (data.env && data.env !== "stage" && data.env !== "prod") {
+      throw new HttpsError(
+        "invalid-argument",
+        "env는 stage 또는 prod만 허용됩니다",
+      );
+    }
+
+    // 3. 비즈니스 로직
+    const userId = request.auth.uid;
+    const db = admin.firestore();
+
+    // 3-1. 초대 코드로 그룹 찾기
+    const groupsCollection = getEnvironmentCollection("groups", db, data.env);
+    const groupSnapshot = await groupsCollection
+      .where("inviteCode", "==", inviteCode)
+      .where("isDeleted", "==", false)
+      .limit(1)
+      .get();
+
+    if (groupSnapshot.empty) {
+      throw new HttpsError(
+        "not-found",
+        "초대 코드에 해당하는 그룹을 찾을 수 없습니다",
+      );
+    }
+
+    const groupDoc = groupSnapshot.docs[0];
+    const groupId = groupDoc.id;
+    const groupData = groupDoc.data();
+    const groupName = groupData.name as string;
+    const memberCount = groupData.memberCount as number;
+    const maxMembers = groupData.maxMembers as number | undefined;
+
+    // 3-2. 이미 참여한 멤버인지 확인
+    const memberDoc = await groupDoc.ref
+      .collection("members")
+      .doc(userId)
+      .get();
+
+    if (memberDoc.exists) {
+      const memberData = memberDoc.data();
+      if (memberData?.isActive) {
+        throw new HttpsError(
+          "already-exists",
+          "이미 참여한 그룹입니다",
+        );
+      }
+    }
+
+    // 3-3. 정원 확인
+    if (maxMembers && memberCount >= maxMembers) {
+      throw new HttpsError(
+        "resource-exhausted",
+        "그룹 정원이 초과되었습니다",
+      );
+    }
+
+    // 3-4. 사용자 정보 조회
+    const usersCollection = getEnvironmentCollection("users", db, data.env);
+    const userDoc = await usersCollection.doc(userId).get();
+
+    if (!userDoc.exists) {
+      throw new HttpsError(
+        "not-found",
+        "사용자 정보를 찾을 수 없습니다. 다시 로그인해주세요.",
+      );
+    }
+
+    const userData = userDoc.data();
+    if (!userData) {
+      throw new HttpsError(
+        "internal",
+        "사용자 데이터를 읽을 수 없습니다.",
+      );
+    }
+
+    const userName = userData.name as string;
+    const userNickname = userData.nickname as string;
+    const userProfileImageUrl = (userData.profile?.url as string) ?? null;
+
+    const now = FieldValue.serverTimestamp();
+
+    // 4. Firestore에 저장 (트랜잭션 사용)
+    await db.runTransaction(async (transaction) => {
+      // 4-1. 그룹 멤버에 추가
+      const memberRef = groupDoc.ref.collection("members").doc(userId);
+      transaction.set(memberRef, {
+        userId: userId,
+        userName: userName,
+        userNickname: userNickname,
+        profileImageUrl: userProfileImageUrl,
+        role: "member",
+        joinedAt: now,
+        invitedBy: null,
+        isActive: true,
+        leftAt: null,
+      });
+
+      // 4-2. 사용자의 그룹 목록에 추가
+      const userGroupRef = usersCollection
+        .doc(userId)
+        .collection("groups")
+        .doc(groupId);
+      transaction.set(userGroupRef, {
+        groupId: groupId,
+        groupName: groupName,
+        role: "member",
+        joinedAt: now,
+        notifications: true,
+      });
+
+      // 4-3. memberCount 증가
+      transaction.update(groupDoc.ref, {
+        memberCount: FieldValue.increment(1),
+        updatedAt: now,
+      });
+    });
+
+    // 5. 응답 반환
+    return {
+      groupId: groupId,
+      groupName: groupName,
     };
   },
 );

@@ -65,6 +65,103 @@ export enum CreateGroupError {
 }
 
 // ============================================================================
+// previewGroup
+// ============================================================================
+
+/**
+ * 그룹 미리보기 요청
+ *
+ * @remarks
+ * - 인증 불필요 (초대 코드만으로 조회 가능)
+ * - 실제로 그룹에 참여하지 않고 정보만 조회
+ */
+export interface PreviewGroupRequest {
+  /** 6자리 초대 코드 */
+  inviteCode: string;
+
+  /** 환경 구분 (선택적: stage 또는 prod) */
+  env?: "stage" | "prod" | null;
+}
+
+/**
+ * 그룹 미리보기 응답
+ */
+export interface PreviewGroupResponse {
+  /** 그룹 ID */
+  groupId: string;
+}
+
+/**
+ * 그룹 미리보기 에러
+ */
+export enum PreviewGroupError {
+  /** 잘못된 초대 코드 */
+  INVALID_INVITE_CODE = "invalid-argument",
+
+  /** 그룹을 찾을 수 없음 */
+  GROUP_NOT_FOUND = "not-found",
+
+  /** 서버 오류 */
+  INTERNAL = "internal",
+}
+
+// ============================================================================
+// joinGroup
+// ============================================================================
+
+/**
+ * 그룹 참여 요청
+ *
+ * @remarks
+ * - 인증 필수 (Firebase Auth)
+ * - userId는 자동으로 request.auth.uid에서 추출
+ */
+export interface JoinGroupRequest {
+  /** 6자리 초대 코드 */
+  inviteCode: string;
+
+  /** 환경 구분 (선택적: stage 또는 prod) */
+  env?: "stage" | "prod" | null;
+
+  /** 참여하려는 사용자 ID (내부적으로 auth.uid 사용, 명시적 파라미터는 검증용) */
+  userId?: string;
+}
+
+/**
+ * 그룹 참여 응답
+ */
+export interface JoinGroupResponse {
+  /** 참여한 그룹 ID */
+  groupId: string;
+
+  /** 그룹 이름 */
+  groupName: string;
+}
+
+/**
+ * 그룹 참여 에러
+ */
+export enum JoinGroupError {
+  /** 인증되지 않은 사용자 */
+  UNAUTHENTICATED = "unauthenticated",
+
+  /** 잘못된 초대 코드 */
+  INVALID_INVITE_CODE = "invalid-argument",
+
+  /** 그룹을 찾을 수 없음 */
+  GROUP_NOT_FOUND = "not-found",
+
+  /** 이미 참여한 그룹 */
+  ALREADY_MEMBER = "already-exists",
+
+  /** 그룹 정원 초과 */
+  GROUP_FULL = "resource-exhausted",
+
+  /** 서버 오류 */
+  INTERNAL = "internal",
+}
+
+// ============================================================================
 // testCallable (테스트용)
 // ============================================================================
 

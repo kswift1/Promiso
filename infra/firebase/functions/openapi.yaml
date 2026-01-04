@@ -177,6 +177,119 @@ paths:
                       code: internal
                       message: 초대 코드를 생성하지 못했어요. 잠시 후 다시 시도해주세요.
 
+  /joinGroup:
+    post:
+      tags:
+        - Group
+      summary: 그룹 참여
+      description: |
+        초대 코드를 사용하여 기존 그룹에 참여합니다.
+
+        **인증 필수**: Firebase Authentication 토큰 필요
+      operationId: joinGroup
+      security:
+        - firebaseAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - data
+              properties:
+                data:
+                  $ref: '#/components/schemas/JoinGroupRequest'
+            examples:
+              basic:
+                summary: 기본 그룹 참여
+                value:
+                  data:
+                    inviteCode: ABC123
+                    env: stage
+
+      responses:
+        '200':
+          description: 그룹 참여 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    $ref: '#/components/schemas/JoinGroupResponse'
+              examples:
+                success:
+                  value:
+                    result:
+                      groupId: 0ec6e63d-8d80-4a76-9e1b-7f226c1c6b55
+                      groupName: 주말 등산 모임
+
+        '400':
+          description: 잘못된 파라미터
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FunctionsError'
+              examples:
+                invalidCode:
+                  value:
+                    error:
+                      code: invalid-argument
+                      message: 초대 코드는 6자리여야 합니다
+
+        '401':
+          description: 인증 실패
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FunctionsError'
+              examples:
+                unauthenticated:
+                  value:
+                    error:
+                      code: unauthenticated
+                      message: 로그인이 필요합니다
+
+        '404':
+          description: 그룹을 찾을 수 없음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FunctionsError'
+              examples:
+                groupNotFound:
+                  value:
+                    error:
+                      code: not-found
+                      message: 초대 코드에 해당하는 그룹을 찾을 수 없습니다
+
+        '409':
+          description: 이미 참여한 그룹
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FunctionsError'
+              examples:
+                alreadyMember:
+                  value:
+                    error:
+                      code: already-exists
+                      message: 이미 참여한 그룹입니다
+
+        '429':
+          description: 그룹 정원 초과
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FunctionsError'
+              examples:
+                groupFull:
+                  value:
+                    error:
+                      code: resource-exhausted
+                      message: 그룹 정원이 초과되었습니다
+
   /testCallable:
     post:
       tags:
@@ -317,6 +430,50 @@ components:
           pattern: ^[A-Z0-9]{6}$
           description: 초대 코드 (6자리 영숫자)
           example: AB12CD
+
+    # ========================================
+    # joinGroup
+    # ========================================
+
+    JoinGroupRequest:
+      type: object
+      required:
+        - inviteCode
+      properties:
+        inviteCode:
+          type: string
+          pattern: ^[A-Z0-9]{6}$
+          description: 6자리 초대 코드
+          example: ABC123
+
+        env:
+          type: string
+          enum:
+            - stage
+            - prod
+          description: 환경 구분 (선택적)
+          example: stage
+
+        userId:
+          type: string
+          description: 참여하려는 사용자 ID (내부적으로 auth.uid 사용, 검증용)
+          example: user123
+
+    JoinGroupResponse:
+      type: object
+      required:
+        - groupId
+        - groupName
+      properties:
+        groupId:
+          type: string
+          description: 참여한 그룹 ID
+          example: 0ec6e63d-8d80-4a76-9e1b-7f226c1c6b55
+
+        groupName:
+          type: string
+          description: 그룹 이름
+          example: 주말 등산 모임
 
     # ========================================
     # testCallable
