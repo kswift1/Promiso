@@ -76,6 +76,7 @@ extension GroupMain {
       
       public enum View: Sendable {
         case onAppear
+        case refreshTriggered
         case groupChanged(GroupSummary)
         case filterChanged(StatusFilter)
         case proposalAccepted(String)
@@ -120,6 +121,17 @@ extension GroupMain {
           case .onAppear:
             guard !state.isInitialized else { return .none }
             state.isInitialized = true
+            return .send(.internal(.fetchGroupList))
+
+          case .refreshTriggered:
+            if let currentGroupId = state.currentGroup?.id {
+              state.promisesState = .loading
+              return .merge(
+                .send(.internal(.fetchCurrentGroup(id: currentGroupId))),
+                .send(.internal(.fetchPromises(groupId: currentGroupId)))
+              )
+            }
+
             return .send(.internal(.fetchGroupList))
             
           case .groupChanged(let group):

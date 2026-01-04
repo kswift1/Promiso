@@ -77,6 +77,9 @@ extension GroupMain {
           rejectLoadingIds: store.rejectingProposalIds
         )
       }
+      .refreshable {
+        store.send(.view(.refreshTriggered))
+      }
     }
     
     @ViewBuilder
