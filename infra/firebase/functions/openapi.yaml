@@ -437,6 +437,115 @@ paths:
                       code: internal
                       message: 약속 생성 중 오류가 발생했습니다
 
+  /respondPromise:
+    post:
+      tags:
+        - Promise
+      summary: 약속 응답
+      description: |
+        약속 참석자 응답을 수락/거절/미정으로 업데이트합니다.
+
+        **인증 필수**: Firebase Authentication 토큰 필요
+        **약속 참석자만 가능**
+      operationId: respondPromise
+      security:
+        - firebaseAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - data
+              properties:
+                data:
+                  $ref: '#/components/schemas/RespondPromiseRequest'
+            examples:
+              accept:
+                summary: 약속 수락
+                value:
+                  data:
+                    promiseId: promise_abc123
+                    status: accepted
+                    env: stage
+              decline:
+                summary: 약속 거절
+                value:
+                  data:
+                    promiseId: promise_abc123
+                    status: declined
+                    env: stage
+
+      responses:
+        '200':
+          description: 약속 응답 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    $ref: '#/components/schemas/RespondPromiseResponse'
+              examples:
+                success:
+                  value:
+                    result:
+                      promiseId: promise_abc123
+                      status: accepted
+
+        '400':
+          description: 잘못된 파라미터
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FunctionsError'
+              examples:
+                invalidStatus:
+                  value:
+                    error:
+                      code: invalid-argument
+                      message: status는 accepted/declined/tentative 중 하나여야 합니다
+
+        '401':
+          description: 인증 실패
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FunctionsError'
+              examples:
+                unauthenticated:
+                  value:
+                    error:
+                      code: unauthenticated
+                      message: 로그인이 필요합니다
+
+        '403':
+          description: 권한 없음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FunctionsError'
+              examples:
+                notMember:
+                  value:
+                    error:
+                      code: permission-denied
+                      message: 약속 참석자만 응답할 수 있습니다
+
+        '404':
+          description: 약속을 찾을 수 없음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FunctionsError'
+              examples:
+                promiseNotFound:
+                  value:
+                    error:
+                      code: not-found
+                      message: 약속을 찾을 수 없습니다
+
   /testCallable:
     post:
       tags:
@@ -731,6 +840,54 @@ components:
               type: integer
               description: Nanoseconds
               example: 0
+
+    RespondPromiseRequest:
+      type: object
+      required:
+        - promiseId
+        - status
+      properties:
+        promiseId:
+          type: string
+          description: 약속 ID
+          example: promise_abc123
+
+        status:
+          type: string
+          enum:
+            - accepted
+            - declined
+            - tentative
+          description: 응답 상태
+          example: accepted
+
+        env:
+          type: string
+          enum:
+            - stage
+            - prod
+          description: 환경 구분 (선택적)
+          example: stage
+
+    RespondPromiseResponse:
+      type: object
+      required:
+        - promiseId
+        - status
+      properties:
+        promiseId:
+          type: string
+          description: 약속 ID
+          example: promise_abc123
+
+        status:
+          type: string
+          enum:
+            - accepted
+            - declined
+            - tentative
+          description: 응답 상태
+          example: accepted
 
     # ========================================
     # testCallable

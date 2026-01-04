@@ -10,6 +10,8 @@ import {
   GroupMemberPreview,
   JoinGroupRequest,
   JoinGroupResponse,
+  RespondPromiseRequest,
+  RespondPromiseResponse,
   PreviewGroupRequest,
   PreviewGroupResponse,
   TestCallableRequest,
@@ -812,6 +814,178 @@ export const createPromise = onCall<CreatePromiseRequest>(
       title: data.title,
       groupId: data.groupId,
       startAt: admin.firestore.Timestamp.fromDate(startAtDate),
+    };
+  },
+);
+
+/**
+ * 약속 응답
+ *
+ * @remarks
+ * **인증 필수**
+ *
+ * 약속 참석자 응답을 수락/거절/미정으로 업데이트합니다.
+ * iOS GroupMain Feature와 연동됩니다.
+ *
+ * @param request.data - RespondPromiseRequest
+ * @returns RespondPromiseResponse
+ *
+ * @throws HttpsError
+ * - unauthenticated: 로그인이 필요합니다
+ * - invalid-argument: 잘못된 요청 데이터
+ * - not-found: 약속을 찾을 수 없습니다
+ * - permission-denied: 약속 참석자가 아닙니다
+ * - internal: 서버 오류
+ */
+export const respondPromise = onCall<RespondPromiseRequest>(
+  {region: REGION},
+  async (request): Promise<RespondPromiseResponse> => {
+    if (!request.auth) {
+      throw new HttpsError(
+        "unauthenticated",
+        "로그인이 필요합니다",
+      );
+    }
+
+    const userId = request.auth.uid;
+    const data = request.data;
+    const status = data.status?.trim();
+
+    if (!data.promiseId || !status) {
+      throw new HttpsError(
+        "invalid-argument",
+        "약속 ID와 응답 상태는 필수입니다",
+      );
+    }
+
+    if (!["accepted", "declined", "tentative"].includes(status)) {
+      throw new HttpsError(
+        "invalid-argument",
+        "status는 accepted/declined/tentative 중 하나여야 합니다",
+      );
+    }
+
+    if (data.env && data.env !== "stage" && data.env !== "prod") {
+      throw new HttpsError(
+        "invalid-argument",
+        "env는 stage 또는 prod만 허용됩니다",
+      );
+    }
+
+    const db = admin.firestore();
+    const promisesCollection = getEnvironmentCollection(
+      "promises",
+      db,
+      data.env,
+    );
+
+    const promiseRef = promisesCollection.doc(data.promiseId);
+
+    await db.runTransaction(async (transaction) => {
+      const promiseSnapshot = await transaction.get(promiseRef);
+      if (!promiseSnapshot.exists) {
+        throw new HttpsError(
+          "not-found",
+          "약속을 찾을 수 없습니다",
+        );
+      }
+
+      const promiseData = promiseSnapshot.data();
+      if (!promiseData) {
+        throw new HttpsError(
+          "internal",
+          "약속 데이터를 가져올 수 없습니다",
+        );
+      }
+
+      const attendanceRef = promiseRef
+        .collection("attendances")
+        .doc(userId);
+      const attendanceSnapshot = await transaction.get(attendanceRef);
+
+      if (!attendanceSnapshot.exists) {
+        throw new HttpsError(
+          "permission-denied",
+          "약속 참석자만 응답할 수 있습니다",
+        );
+      }
+
+      const attendanceData = attendanceSnapshot.data();
+      const previousStatus = attendanceData?.status ?? "pending";
+
+      if (previousStatus === status) {
+        return;
+      }
+
+      const counts = promiseData.counts || {
+        total: 0,
+        accepted: 0,
+        declined: 0,
+        pending: 0,
+        tentative: 0,
+      };
+
+      const adjust = (value: number, delta: number) =>
+        Math.max(value + delta, 0);
+
+      const nextCounts = {
+        total: counts.total ?? 0,
+        accepted: counts.accepted ?? 0,
+        declined: counts.declined ?? 0,
+        pending: counts.pending ?? 0,
+        tentative: counts.tentative ?? 0,
+      };
+
+      switch (previousStatus) {
+      case "accepted":
+        nextCounts.accepted = adjust(nextCounts.accepted, -1);
+        break;
+      case "declined":
+        nextCounts.declined = adjust(nextCounts.declined, -1);
+        break;
+      case "tentative":
+        nextCounts.tentative = adjust(nextCounts.tentative, -1);
+        break;
+      default:
+        nextCounts.pending = adjust(nextCounts.pending, -1);
+        break;
+      }
+
+      switch (status) {
+      case "accepted":
+        nextCounts.accepted = adjust(nextCounts.accepted, 1);
+        break;
+      case "declined":
+        nextCounts.declined = adjust(nextCounts.declined, 1);
+        break;
+      case "tentative":
+        nextCounts.tentative = adjust(nextCounts.tentative, 1);
+        break;
+      default:
+        nextCounts.pending = adjust(nextCounts.pending, 1);
+        break;
+      }
+
+      const minimumParticipants = promiseData.minimumParticipants ?? 2;
+      const isConfirmed = nextCounts.accepted >= minimumParticipants;
+
+      transaction.update(promiseRef, {
+        counts: nextCounts,
+        isConfirmed: isConfirmed,
+        confirmedAt: isConfirmed ? FieldValue.serverTimestamp() : null,
+        status: isConfirmed ? "active" : "pending",
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+
+      transaction.update(attendanceRef, {
+        status: status,
+        respondedAt: FieldValue.serverTimestamp(),
+      });
+    });
+
+    return {
+      promiseId: data.promiseId,
+      status: status as "accepted" | "declined" | "tentative",
     };
   },
 );

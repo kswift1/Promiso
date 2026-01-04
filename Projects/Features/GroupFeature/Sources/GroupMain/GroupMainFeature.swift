@@ -95,6 +95,8 @@ extension GroupMain {
         case fetchPromises(groupId: String)
         case loadPromisesResponse(Result<[PromiseItem], Error>)
         case proposalRespondDone(promiseId: String)
+        case proposalRespondFailed(promiseId: String, error: Error)
+        case respondPromise(promiseId: String, status: PromiseAttendanceStatus)
         case toggleGroupNotifications
       }
       
@@ -140,16 +142,18 @@ extension GroupMain {
           case .proposalAccepted(let id):
             guard state.proposalResponding[id] ?? .idle == .idle else { return .none }
             state.proposalResponding[id] = .accepting
-            return .run { [id] send in
-              await send(.internal(.proposalRespondDone(promiseId: id)))
-            }.cancellable(id: CancelID.respond(id), cancelInFlight: true)
+            return .send(
+              .internal(.respondPromise(promiseId: id, status: .accepted))
+            )
+            .cancellable(id: CancelID.respond(id), cancelInFlight: true)
             
           case .proposalRejected(let id):
             guard state.proposalResponding[id] ?? .idle == .idle else { return .none }
             state.proposalResponding[id] = .rejecting
-            return .run { [id] send in
-              await send(.internal(.proposalRespondDone(promiseId: id)))
-            }.cancellable(id: CancelID.respond(id), cancelInFlight: true)
+            return .send(
+              .internal(.respondPromise(promiseId: id, status: .declined))
+            )
+            .cancellable(id: CancelID.respond(id), cancelInFlight: true)
             
           case .openSideDrawer:
             return .send(.delegate(.requestOpenSideDrawer))
@@ -254,9 +258,27 @@ extension GroupMain {
             return .none
             
           case .proposalRespondDone(let id):
-            // FIXME: proposal responding 액션 구현
             state.proposalResponding[id] = nil
             return .none
+
+          case .proposalRespondFailed(let id, let error):
+            state.proposalResponding[id] = nil
+            state.promisesState = .failed(error)
+            return .none
+
+          case .respondPromise(let promiseId, let status):
+            return .run { [promiseClient, promiseId, status] send in
+              do {
+                try await promiseClient.respondPromise(promiseId, status)
+                await send(.internal(.proposalRespondDone(promiseId: promiseId)))
+
+                if let currentGroupId = state.currentGroup?.id {
+                  await send(.internal(.fetchPromises(groupId: currentGroupId)))
+                }
+              } catch {
+                await send(.internal(.proposalRespondFailed(promiseId: promiseId, error: error)))
+              }
+            }
             
           case .toggleGroupNotifications:
             return .none

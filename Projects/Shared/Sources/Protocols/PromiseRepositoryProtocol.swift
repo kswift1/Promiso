@@ -6,6 +6,7 @@ import Combine
 public protocol PromiseRepositoryProtocol {
   // MARK: - CRUD Operations
   func createPromise(_ promise: PromiseModel, arrivalSharingTime: Int?) async throws -> String
+  func respondToPromise(promiseId: String, status: String) async throws
   func updatePromise(_ promise: PromiseModel) async throws
   func deletePromise(id: String) async throws
   func getPromise(id: String) async throws -> PromiseModel?

@@ -8,6 +8,13 @@ public enum PromiseResponseStatus: String, Equatable, Sendable, Codable {
   case sent          // 응답 대기
 }
 
+// MARK: - Attendance Status
+public enum PromiseAttendanceStatus: String, Equatable, Sendable, Codable {
+  case accepted
+  case declined
+  case tentative
+}
+
 // MARK: - Promise Item
 
 /// Feature에서 사용하는 Promise 모델

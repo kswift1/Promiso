@@ -77,6 +77,20 @@ public class PromiseRepository: PromiseRepositoryProtocol {
     return promiseId
   }
 
+  /// 약속 응답 업데이트
+  public func respondToPromise(promiseId: String, status: String) async throws {
+    var callableData: [String: Any] = [
+      "promiseId": promiseId,
+      "status": status,
+    ]
+
+    if let env = functionsEnvironmentParam() {
+      callableData["env"] = env
+    }
+
+    _ = try await functions.httpsCallable("respondPromise").call(callableData)
+  }
+
   private func functionsEnvironmentParam() -> String? {
     switch FirestoreEnvironmentManager.shared.current {
     case .dev:

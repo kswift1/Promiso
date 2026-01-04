@@ -330,6 +330,59 @@ export enum CreatePromiseError {
 }
 
 // ============================================================================
+// respondPromise
+// ============================================================================
+
+/**
+ * 약속 응답 요청
+ *
+ * @remarks
+ * - 인증 필수 (Firebase Auth)
+ * - 약속 참석자만 응답 가능
+ */
+export interface RespondPromiseRequest {
+  /** 약속 ID */
+  promiseId: string;
+
+  /** 응답 상태 */
+  status: "accepted" | "declined" | "tentative";
+
+  /** 환경 구분 (선택적: stage 또는 prod) */
+  env?: "stage" | "prod" | null;
+}
+
+/**
+ * 약속 응답 응답
+ */
+export interface RespondPromiseResponse {
+  /** 약속 ID */
+  promiseId: string;
+
+  /** 응답 상태 */
+  status: "accepted" | "declined" | "tentative";
+}
+
+/**
+ * 약속 응답 에러
+ */
+export enum RespondPromiseError {
+  /** 인증 필요 */
+  UNAUTHENTICATED = "unauthenticated",
+
+  /** 잘못된 요청 */
+  INVALID_ARGUMENT = "invalid-argument",
+
+  /** 약속을 찾을 수 없음 */
+  PROMISE_NOT_FOUND = "not-found",
+
+  /** 권한 없음 */
+  PERMISSION_DENIED = "permission-denied",
+
+  /** 서버 오류 */
+  INTERNAL = "internal",
+}
+
+// ============================================================================
 // Shared
 // ============================================================================
 

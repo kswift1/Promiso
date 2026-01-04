@@ -72,6 +72,9 @@ public struct PromiseClient: Sendable {
   
   /// 그룹의 활성 약속 조회
   public var getActivePromises: @Sendable (_ groupId: String, _ limit: Int) async throws -> [PromiseItem]
+
+  /// 약속 응답
+  public var respondPromise: @Sendable (_ promiseId: String, _ status: PromiseAttendanceStatus) async throws -> Void
 }
 
 // MARK: - Test & Preview Values
@@ -118,6 +121,9 @@ extension PromiseClient: TestDependencyKey {
           status: .needResponse
         )
       ]
+    },
+    respondPromise: { _, _ in
+      try await Task.sleep(for: .seconds(0.3))
     }
   )
 }
@@ -195,6 +201,12 @@ extension PromiseClient: DependencyKey {
           limit: limit
         )
         return promises.map { PromiseItem(domainModel: $0) }
+      },
+      respondPromise: { promiseId, status in
+        try await repository.respondToPromise(
+          promiseId: promiseId,
+          status: status.rawValue
+        )
       }
     )
   }()
