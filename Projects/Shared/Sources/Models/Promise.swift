@@ -30,6 +30,9 @@ public struct PromiseModel: Identifiable, Equatable, Hashable {
   
   // MARK: - 위치
   public let location: LocationInfo?
+
+  // MARK: - 도착 공유 시간
+  public let arrivalSharingTime: Int?
   
   // MARK: - 메타데이터
   public let createdAt: Date
@@ -58,6 +61,7 @@ public struct PromiseModel: Identifiable, Equatable, Hashable {
     endAt: Date? = nil,
     status: PromiseStatus = .draft,
     location: LocationInfo? = nil,
+    arrivalSharingTime: Int? = nil,
     createdAt: Date = Date(),
     updatedAt: Date = Date(),
     isDeleted: Bool = false,
@@ -81,6 +85,7 @@ public struct PromiseModel: Identifiable, Equatable, Hashable {
     self.endAt = endAt
     self.status = status
     self.location = location
+    self.arrivalSharingTime = arrivalSharingTime
     self.createdAt = createdAt
     self.updatedAt = updatedAt
     self.isDeleted = isDeleted

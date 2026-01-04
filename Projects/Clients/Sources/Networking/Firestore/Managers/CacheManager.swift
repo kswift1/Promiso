@@ -2,6 +2,8 @@ import Foundation
 import FirebaseFirestore
 import Combine
 
+import Shared
+
 /// Firestore 캐시 일관성 검증 및 관리
 public class CacheManager {
   private let db = Firestore.firestore()

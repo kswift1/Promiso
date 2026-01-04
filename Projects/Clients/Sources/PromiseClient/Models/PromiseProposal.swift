@@ -74,7 +74,8 @@ extension PromiseProposal {
       startAt: startedAt,
       endAt: endedAt,
       status: .active,
-      location: place.map { LocationInfo(name: $0) }
+      location: place.map { LocationInfo(name: $0) },
+      arrivalSharingTime: arrivalSharingTime
     )
   }
 }

@@ -38,6 +38,9 @@ public struct PromiseDocument: Codable {
   
   // MARK: - 위치
   public let location: LocationInfo?
+
+  // MARK: - 도착 공유 시간
+  public let arrivalSharingTime: Int?
   
   // MARK: - 검색 최적화
   public let titleLower: String // 소문자 변환된 제목
@@ -67,6 +70,7 @@ public struct PromiseDocument: Codable {
     localTz: String = "Asia/Seoul",
     status: PromiseStatus = .draft,
     location: LocationInfo? = nil,
+    arrivalSharingTime: Int? = nil,
     titleLower: String? = nil,
     createdAt: Timestamp = Timestamp(),
     updatedAt: Timestamp = Timestamp(),
@@ -91,35 +95,11 @@ public struct PromiseDocument: Codable {
     self.localTz = localTz
     self.status = status
     self.location = location
+    self.arrivalSharingTime = arrivalSharingTime
     self.titleLower = titleLower ?? title.lowercased()
     self.createdAt = createdAt
     self.updatedAt = updatedAt
     self.isDeleted = isDeleted
-  }
-}
-
-// MARK: - PromiseCounts
-public struct PromiseCounts: Codable {
-  public let total: Int
-  public let accepted: Int
-  public let declined: Int
-  public let tentative: Int
-  
-  // pending은 계산값: total - (accepted + declined + tentative)
-  public var pending: Int {
-    return total - (accepted + declined + tentative)
-  }
-  
-  public init(
-    total: Int = 0,
-    accepted: Int = 0,
-    declined: Int = 0,
-    tentative: Int = 0
-  ) {
-    self.total = total
-    self.accepted = accepted
-    self.declined = declined
-    self.tentative = tentative
   }
 }
 
@@ -145,18 +125,10 @@ extension PromiseDocument {
     case localTz
     case status
     case location
+    case arrivalSharingTime
     case titleLower
     case createdAt
     case updatedAt
     case isDeleted
-  }
-}
-
-extension PromiseCounts {
-  enum CodingKeys: String, CodingKey {
-    case total
-    case accepted
-    case declined
-    case tentative
   }
 }

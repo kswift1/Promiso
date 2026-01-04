@@ -189,8 +189,12 @@ extension PromiseClient: DependencyKey {
       getUpcomingPromises: { _, _ in
         []
       },
-      getActivePromises: { _, _ in
-        []
+      getActivePromises: { groupId, limit in
+        let promises = try await repository.getActivePromises(
+          groupId: groupId,
+          limit: limit
+        )
+        return promises.map { PromiseItem(domainModel: $0) }
       }
     )
   }()

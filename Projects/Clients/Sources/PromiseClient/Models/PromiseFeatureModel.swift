@@ -1,3 +1,4 @@
+import Foundation
 import Shared
 
 // MARK: - Promise Response Status
@@ -53,15 +54,59 @@ public struct PromiseItem: Identifiable, Equatable, Sendable {
   public init(domainModel: PromiseModel) {
     self.id = domainModel.id
     self.title = domainModel.title
-    self.emoji = domainModel.emoji ?? ""
-    self.time = "domainModel.time"
-    self.date = "domainModel.date"
-    self.location = domainModel.location?.name ?? ""
+    self.emoji = domainModel.emoji?.isEmpty == false ? domainModel.emoji! : "📌"
+    self.time = Self.timeText(from: domainModel.startAt)
+    self.date = Self.dateText(from: domainModel.startAt)
+    self.location = domainModel.location?.name ?? "장소 미정"
     self.distance = nil
-    self.with = "with"
-    self.status = .confirmed
-    self.responses = nil
+    self.with = domainModel.host.nickname.isEmpty
+      ? domainModel.group.name
+      : domainModel.host.nickname
+    self.status = Self.responseStatus(from: domainModel)
+    if domainModel.counts.total > 0 {
+      self.responses = PromiseResponse(
+        current: domainModel.counts.accepted,
+        total: domainModel.counts.total
+      )
+    } else {
+      self.responses = nil
+    }
     self.deadline = nil
+  }
+
+  private static func responseStatus(from model: PromiseModel) -> PromiseResponseStatus {
+    if model.status == .active || model.isConfirmed {
+      return .confirmed
+    }
+
+    if model.counts.pending > 0 {
+      return .needResponse
+    }
+
+    return .sent
+  }
+
+  private static func timeText(from date: Date) -> String {
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "ko_KR")
+    formatter.dateFormat = "a h:mm"
+    return formatter.string(from: date)
+  }
+
+  private static func dateText(from date: Date) -> String {
+    let calendar = Calendar.current
+    if calendar.isDateInToday(date) {
+      return "오늘"
+    }
+
+    if calendar.isDateInTomorrow(date) {
+      return "내일"
+    }
+
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "ko_KR")
+    formatter.dateFormat = "M월 d일"
+    return formatter.string(from: date)
   }
 }
 

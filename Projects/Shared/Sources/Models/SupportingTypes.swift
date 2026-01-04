@@ -16,20 +16,24 @@ public struct PromiseCounts: Hashable, Codable, Equatable {
   public let total: Int
   public let accepted: Int
   public let declined: Int
-  public let pending: Int
-  
+  public let tentative: Int
+
+  public var pending: Int {
+    return max(total - (accepted + declined + tentative), 0)
+  }
+
   public init(
     total: Int = 0,
     accepted: Int = 0,
     declined: Int = 0,
-    pending: Int = 0
+    tentative: Int = 0
   ) {
     self.total = total
     self.accepted = accepted
     self.declined = declined
-    self.pending = pending
+    self.tentative = tentative
   }
-  
+
   public var isConfirmed: Bool {
     return accepted >= 1 // 최소 1명 이상 수락하면 확정
   }

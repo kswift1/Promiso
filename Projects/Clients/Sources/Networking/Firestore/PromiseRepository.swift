@@ -159,7 +159,6 @@ public class PromiseRepository: PromiseRepositoryProtocol {
   public func getActivePromises(groupId: String, limit: Int) async throws -> [PromiseModel] {
     let query = db.environmentCollection(collectionName)
       .whereField("groupId", isEqualTo: groupId)
-      .whereField("status", isEqualTo: PromiseStatus.active.rawValue)
       .whereField("isDeleted", isEqualTo: false)
       .order(by: "startAt")
       .limit(to: limit)
@@ -171,31 +170,56 @@ public class PromiseRepository: PromiseRepositoryProtocol {
   // MARK: - Helper Methods
   
   private func documentToPromise(_ document: QueryDocumentSnapshot) throws -> PromiseModel? {
-    let data = document.data()
-    
-    return PromiseModel(
-      id: data["id"] as? String ?? document.documentID,
-      title: data["title"] as? String ?? "",
-      minimumParticipants: data["minimumParticipants"] as? Int ?? 1,
-      requiredCount: data["requiredCount"] as? Int ?? 1,
-      host: UserModel(id: "temp", email: "temp@example.com", nickname: "temp"),
-      group: Group(id: "temp", name: "temp"),
-      startAt: (data["startAt"] as? Timestamp)?.dateValue() ?? Date()
-    )
+    let promiseDocument = try document.data(as: PromiseDocument.self)
+    return promiseModel(from: promiseDocument, id: document.documentID)
   }
   
   private func documentSnapshotToPromise(_ document: DocumentSnapshot) throws -> PromiseModel? {
     guard document.exists else { return nil }
-    let data = document.data() ?? [:]
-    
+    let promiseDocument = try document.data(as: PromiseDocument.self)
+    return promiseModel(from: promiseDocument, id: document.documentID)
+  }
+
+  private func promiseModel(from document: PromiseDocument, id: String) -> PromiseModel? {
+    if document.status == .cancelled || document.status == .completed {
+      return nil
+    }
+
+    let host = UserModel(
+      id: document.hostId,
+      email: "",
+      nickname: document.hostName
+    )
+
+    let group = Group(
+      id: document.groupId,
+      name: document.groupName
+    )
+
     return PromiseModel(
-      id: data["id"] as? String ?? document.documentID,
-      title: data["title"] as? String ?? "",
-      minimumParticipants: data["minimumParticipants"] as? Int ?? 1,
-      requiredCount: data["requiredCount"] as? Int ?? 1,
-      host: UserModel(id: "temp", email: "temp@example.com", nickname: "temp"),
-      group: Group(id: "temp", name: "temp"),
-      startAt: (data["startAt"] as? Timestamp)?.dateValue() ?? Date()
+      id: id,
+      emoji: document.emoji,
+      title: document.title,
+      description: document.description,
+      minimumParticipants: document.minimumParticipants,
+      requiredCount: document.requiredCount,
+      isConfirmed: document.isConfirmed,
+      confirmedAt: document.confirmedAt?.dateValue(),
+      host: host,
+      group: group,
+      counts: document.counts,
+      startAt: document.startAt.dateValue(),
+      endAt: document.endAt?.dateValue(),
+      status: document.status,
+      location: document.location,
+      arrivalSharingTime: document.arrivalSharingTime,
+      createdAt: document.createdAt.dateValue(),
+      updatedAt: document.updatedAt.dateValue(),
+      isDeleted: document.isDeleted,
+      localYyyymm: document.localYyyymm,
+      localYyyymmdd: document.localYyyymmdd,
+      localTz: document.localTz,
+      titleLower: document.titleLower
     )
   }
 }
