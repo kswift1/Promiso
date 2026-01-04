@@ -57,6 +57,12 @@ public struct GroupClient: Sendable {
   /// 새 그룹 생성
   public var createGroup: @Sendable (_ request: CreateGroupRequest) async throws -> GroupCreationResult
 
+  /// 초대 코드로 그룹 미리보기
+  public var previewGroup: @Sendable (_ inviteCode: String) async throws -> GroupModel
+
+  /// 초대 코드로 그룹 참여
+  public var joinGroup: @Sendable (_ inviteCode: String) async throws -> GroupModel
+
   /// 그룹 나가기
   public var leaveGroup: @Sendable (_ groupId: String) async throws -> Void
 }
@@ -70,6 +76,8 @@ extension GroupClient: TestDependencyKey {
     fetchGroupsByIds: unimplemented("\(Self.self).fetchGroupsByIds", placeholder: []),
     fetchGroup: unimplemented("\(Self.self).fetchGroup"),
     createGroup: unimplemented("\(Self.self).createGroup"),
+    previewGroup: unimplemented("\(Self.self).previewGroup"),
+    joinGroup: unimplemented("\(Self.self).joinGroup"),
     leaveGroup: unimplemented("\(Self.self).leaveGroup")
   )
 
@@ -108,6 +116,28 @@ extension GroupClient: TestDependencyKey {
         id: UUID().uuidString,
         name: request.name,
         inviteCode: "ABC123"
+      )
+    },
+    previewGroup: { inviteCode in
+      try await Task.sleep(for: .seconds(0.5))
+      return GroupModel(
+        id: UUID().uuidString,
+        name: "주말 등산 모임",
+        description: "매주 토요일마다 등산을 가는 모임입니다",
+        emoji: "🏔️",
+        memberCount: 8,
+        maxMembers: 10,
+        inviteCode: inviteCode
+      )
+    },
+    joinGroup: { inviteCode in
+      try await Task.sleep(for: .seconds(1))
+      return GroupModel(
+        id: UUID().uuidString,
+        name: "새 그룹",
+        emoji: "🎉",
+        memberCount: 5,
+        inviteCode: inviteCode
       )
     },
     leaveGroup: { _ in
@@ -163,6 +193,18 @@ extension GroupClient: DependencyKey {
         creatorId: request.creatorId,
         photoData: request.photoData
       )
+    },
+    previewGroup: { inviteCode in
+      let dataSource = GroupRemoteDataSource()
+      return try await dataSource.previewGroup(inviteCode: inviteCode)
+    },
+    joinGroup: { inviteCode in
+      guard let userId = Auth.auth().currentUser?.uid else {
+        throw GroupClientError.unauthorized
+      }
+
+      let dataSource = GroupRemoteDataSource()
+      return try await dataSource.joinGroup(inviteCode: inviteCode, userId: userId)
     },
     leaveGroup: unimplemented("\(Self.self).leaveGroup")
   )

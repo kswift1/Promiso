@@ -47,6 +47,13 @@ extension GroupMain {
           CreateGroup.RootView(store: childStore)
         }
       }
+      .fullScreenCover(
+        store: store.scope(state: \.$joinGroup, action: \.joinGroup)
+      ) { childStore in
+        NavigationStack {
+          JoinGroup.RootView(store: childStore)
+        }
+      }
     }
     
     

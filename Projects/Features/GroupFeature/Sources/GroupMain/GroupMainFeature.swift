@@ -47,6 +47,7 @@ extension GroupMain {
 
       @Presents var createPromise: CreatePromise.Feature.State?
       @Presents var createGroup: CreateGroup.Feature.State?
+      @Presents var joinGroup: JoinGroup.Feature.State?
 
       public init(currentUser: UserModel) {
         self.currentUser = currentUser
@@ -66,7 +67,8 @@ extension GroupMain {
       
       case createPromise(PresentationAction<CreatePromise.Feature.Action>)
       case createGroup(PresentationAction<CreateGroup.Feature.Action>)
-      
+      case joinGroup(PresentationAction<JoinGroup.Feature.Action>)
+
       case path(StackActionOf<Path>)
       
       public enum ViewAction: Sendable {
@@ -168,8 +170,11 @@ extension GroupMain {
               currentUser: state.currentUser
             )
             return .none
-            
+
           case .joinGroup:
+            state.joinGroup = JoinGroup.Feature.State(
+              currentUser: state.currentUser
+            )
             return .none
           }
           
@@ -256,14 +261,25 @@ extension GroupMain {
         case .createGroup(.presented(.delegate(.dismiss))):
           state.createGroup = nil
           return .none
-          
+
         case .createGroup(.presented(.delegate(.groupCreated(id: _)))):
           state.createGroup = nil
           return .send(.internal(.fetchGroupList))
-          
+
         case .createGroup:
           return .none
-          
+
+        case .joinGroup(.presented(.delegate(.dismiss))):
+          state.joinGroup = nil
+          return .none
+
+        case .joinGroup(.presented(.delegate(.groupJoined(_)))):
+          state.joinGroup = nil
+          return .send(.internal(.fetchGroupList))
+
+        case .joinGroup:
+          return .none
+
           //        case let .path(.element(id: id, action: .createGroup(.delegate(.dismiss)))):
           //          state.path[id: id] = nil
           //          return .none
@@ -279,7 +295,7 @@ extension GroupMain {
           //        case .path(.popToRoot):
           //          state.path = .init()
           //          return .none
-          
+
         case .path:
           return .none
           
@@ -290,6 +306,7 @@ extension GroupMain {
       }
       .ifLet(\.$createPromise, action: \.createPromise) { CreatePromise.Feature() }
       .ifLet(\.$createGroup, action: \.createGroup) { CreateGroup.Feature() }
+      .ifLet(\.$joinGroup, action: \.joinGroup) { JoinGroup.Feature() }
       .forEach(\.path, action: \.path)
     }
   }

@@ -208,7 +208,78 @@ public final class GroupRemoteDataSource: @unchecked Sendable {
     }
   }
 
-  
+  /// 초대 코드로 그룹 미리보기
+  ///
+  /// - Parameters:
+  ///   - inviteCode: 6자리 초대 코드
+  /// - Returns: 그룹 정보
+  /// - Throws: GroupRemoteDataSourceError
+  ///
+  /// Firebase Functions의 previewGroup을 호출합니다.
+  /// 실제로 참여하지 않고 그룹 정보만 조회합니다.
+  public func previewGroup(inviteCode: String) async throws -> GroupModel {
+    var callableData: [String: Any] = [
+      "inviteCode": inviteCode.uppercased()
+    ]
+
+    if let env = functionsEnvironmentParam() {
+      callableData["env"] = env
+    }
+
+    let result = try await functions.httpsCallable("previewGroup").call(callableData)
+
+    guard let data = result.data as? [String: Any] else {
+      throw GroupRemoteDataSourceError.invalidResponse
+    }
+
+    guard let groupId = data["groupId"] as? String else {
+      throw GroupRemoteDataSourceError.invalidResponse
+    }
+
+    // 그룹 상세 정보 조회
+    return try await fetchGroup(groupId: groupId)
+  }
+
+  /// 초대 코드로 그룹 참여
+  ///
+  /// - Parameters:
+  ///   - inviteCode: 6자리 초대 코드
+  ///   - userId: 참여하려는 사용자 ID (Firebase Auth UID)
+  /// - Returns: 참여한 그룹 정보
+  /// - Throws: GroupRemoteDataSourceError
+  ///
+  /// Firebase Functions의 joinGroup을 호출합니다.
+  /// Functions에서 다음 작업을 수행합니다:
+  /// 1. inviteCode로 그룹 조회
+  /// 2. users/{userId}에서 사용자 정보 조회
+  /// 3. groups/{groupId}/members/{userId} 생성
+  /// 4. users/{userId}/groups/{groupId} 생성
+  /// 5. memberCount 증가
+  public func joinGroup(inviteCode: String, userId: String) async throws -> GroupModel {
+    var callableData: [String: Any] = [
+      "inviteCode": inviteCode.uppercased(),
+      "userId": userId
+    ]
+
+    if let env = functionsEnvironmentParam() {
+      callableData["env"] = env
+    }
+
+    let result = try await functions.httpsCallable("joinGroup").call(callableData)
+
+    guard let data = result.data as? [String: Any] else {
+      throw GroupRemoteDataSourceError.invalidResponse
+    }
+
+    guard let groupId = data["groupId"] as? String else {
+      throw GroupRemoteDataSourceError.invalidResponse
+    }
+
+    // 그룹 상세 정보 조회
+    return try await fetchGroup(groupId: groupId)
+  }
+
+
   // MARK: - Image Upload
   
   /// 그룹 이미지 업로드
