@@ -266,6 +266,12 @@ extension GroupMain {
           state.createPromise = nil
           return .none
           
+        case .createPromise(.presented(.delegate(.promiseCreated(id: _)))):
+          state.createPromise = nil
+          guard let currentGroupId = state.currentGroup?.id else { return .none }
+          state.promisesState = .loading
+          return .send(.internal(.fetchPromises(groupId: currentGroupId)))
+          
         case .createPromise:
           return .none
           
