@@ -14,92 +14,196 @@ struct CreateGroupSuccessView: View {
   let onConfirm: () -> Void
   @State private var isCopied = false
   
+  private var deeplinkURL: URL {
+    URL(string: "promiso://join/\(result.inviteCode)")!
+  }
+
   private var shareMessage: String {
-    "\(result.name) 그룹 초대 코드: \(result.inviteCode)"
+    """
+    \(result.name) 그룹에 초대합니다! 🎉
+
+    아래 링크를 클릭하여 참여하세요:
+    \(deeplinkURL.absoluteString)
+
+    또는 초대 코드를 직접 입력하세요: \(result.inviteCode)
+    """
   }
   
   var body: some View {
     ScrollView {
-      VStack(spacing: 28) {
-        VStack(spacing: 12) {
-          Image(systemName: "checkmark.seal.fill")
-            .font(.system(size: 60))
-            .foregroundStyle(Color.blue)
-          
-          Text("그룹이 만들어졌어요!")
-            .font(.system(size: 26, weight: .bold))
-            .multilineTextAlignment(.center)
-          
-          Text("친구들에게 초대 코드를 공유해\n함께 약속을 만들어보세요.")
-            .font(.system(size: 16))
-            .foregroundColor(.secondary)
-            .multilineTextAlignment(.center)
+      VStack(spacing: 32) {
+        Spacer()
+          .frame(height: 20)
+
+        // Success Icon & Message
+        VStack(spacing: 20) {
+          // Icon with gradient background
+          ZStack {
+            Circle()
+              .fill(
+                LinearGradient(
+                  colors: [Color.blue.opacity(0.15), Color.purple.opacity(0.1)],
+                  startPoint: .topLeading,
+                  endPoint: .bottomTrailing
+                )
+              )
+              .frame(width: 120, height: 120)
+
+            Image(systemName: "checkmark.circle.fill")
+              .font(.system(size: 60))
+              .foregroundStyle(
+                LinearGradient(
+                  colors: [.blue, .purple],
+                  startPoint: .topLeading,
+                  endPoint: .bottomTrailing
+                )
+              )
+          }
+
+          VStack(spacing: 12) {
+            Text("그룹이 만들어졌어요!")
+              .font(.title.bold())
+
+            Text("친구들에게 초대 코드를 공유해\n함께 약속을 만들어보세요")
+              .font(.body)
+              .foregroundStyle(.secondary)
+              .multilineTextAlignment(.center)
+              .lineSpacing(4)
+          }
         }
-        .frame(maxWidth: .infinity)
-        .padding(.top, 32)
-        
+
+        // Invite Code Section
         VStack(spacing: 16) {
-          Text("초대 코드")
-            .font(.system(size: 15, weight: .semibold))
-            .frame(maxWidth: .infinity, alignment: .leading)
-          
+          HStack {
+            Image(systemName: "link.circle.fill")
+              .font(.system(size: 20))
+              .foregroundStyle(
+                LinearGradient(
+                  colors: [.blue, .purple],
+                  startPoint: .topLeading,
+                  endPoint: .bottomTrailing
+                )
+              )
+
+            Text("초대 코드")
+              .font(.headline)
+
+            Spacer()
+          }
+
+          // Code Display with Copy Button
           HStack(spacing: 12) {
             Text(result.inviteCode)
-              .font(.system(size: 34, weight: .heavy, design: .monospaced))
-              .frame(maxWidth: .infinity, alignment: .center)
-              .padding(.vertical, 14)
-              .background(Color(.systemGray6))
-              .cornerRadius(16)
-            
+              .font(.system(size: 32, weight: .bold, design: .rounded))
+              .tracking(4)
+              .frame(maxWidth: .infinity)
+              .padding(.vertical, 20)
+              .background(
+                RoundedRectangle(cornerRadius: 16)
+                  .fill(Color(.systemGray6))
+                  .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 4)
+              )
+
             Button(action: copyCode) {
-              Image(systemName: isCopied ? "checkmark" : "doc.on.doc")
-                .font(.system(size: 20, weight: .semibold))
-                .frame(width: 56, height: 56)
-                .background(isCopied ? Color.green.opacity(0.2) : Color(.systemGray6))
-                .foregroundColor(isCopied ? .green : .primary)
-                .clipShape(RoundedRectangle(cornerRadius: 14))
+              ZStack {
+                RoundedRectangle(cornerRadius: 16)
+                  .fill(
+                    isCopied
+                    ? LinearGradient(
+                      colors: [.green, .green],
+                      startPoint: .topLeading,
+                      endPoint: .bottomTrailing
+                    )
+                    : LinearGradient(
+                      colors: [.blue, .purple],
+                      startPoint: .topLeading,
+                      endPoint: .bottomTrailing
+                    )
+                  )
+                  .frame(width: 60, height: 60)
+                  .shadow(
+                    color: isCopied ? .green.opacity(0.3) : .blue.opacity(0.3),
+                    radius: 8,
+                    x: 0,
+                    y: 4
+                  )
+
+                Image(systemName: isCopied ? "checkmark" : "doc.on.doc")
+                  .font(.system(size: 22, weight: .semibold))
+                  .foregroundStyle(.white)
+              }
             }
+            .animation(.spring(response: 0.3), value: isCopied)
           }
-          
+
           if isCopied {
-            Text("복사되었습니다!")
-              .font(.system(size: 13, weight: .semibold))
-              .foregroundColor(.green)
-              .frame(maxWidth: .infinity, alignment: .leading)
-              .transition(.opacity)
+            HStack(spacing: 8) {
+              Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 14))
+              Text("복사되었습니다!")
+                .font(.subheadline.weight(.medium))
+            }
+            .foregroundStyle(.green)
+            .transition(.scale.combined(with: .opacity))
           }
         }
-        .padding(20)
-        .background(Color(.systemBackground))
-        .cornerRadius(20)
-        .shadow(color: .black.opacity(0.05), radius: 15, x: 0, y: 8)
-        
+        .padding(24)
+        .background(
+          RoundedRectangle(cornerRadius: 20)
+            .fill(Color(.systemBackground))
+            .shadow(color: .black.opacity(0.08), radius: 16, x: 0, y: 8)
+        )
+
+        // Action Buttons
         VStack(spacing: 12) {
           ShareLink(item: shareMessage) {
-            Label("공유하기", systemImage: "square.and.arrow.up")
-              .font(.system(size: 17, weight: .semibold))
-              .frame(maxWidth: .infinity)
+            HStack(spacing: 8) {
+              Image(systemName: "square.and.arrow.up")
+                .font(.system(size: 18))
+              Text("공유하기")
+                .font(.headline)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 56)
+            .background(
+              LinearGradient(
+                colors: [.blue, .purple],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+              )
+            )
+            .foregroundStyle(.white)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .shadow(
+              color: .blue.opacity(0.3),
+              radius: 12,
+              x: 0,
+              y: 6
+            )
           }
-          .buttonStyle(.borderedProminent)
-          
+
           Button(action: onConfirm) {
             Text("완료")
-              .font(.system(size: 17, weight: .semibold))
+              .font(.headline)
               .frame(maxWidth: .infinity)
-              .padding(.vertical, 14)
-              .background(Color(.systemGray6))
-              .cornerRadius(14)
+              .frame(height: 56)
+              .background(Color(.systemGray5))
+              .foregroundStyle(.white)
+              .clipShape(RoundedRectangle(cornerRadius: 16))
           }
         }
+
+        Spacer()
+          .frame(height: 20)
       }
       .padding(.horizontal, 24)
-      .padding(.bottom, 40)
     }
     .navigationBarBackButtonHidden()
     .toolbar {
       ToolbarItem(placement: .topBarTrailing) {
         Button(action: onConfirm) {
           Image(systemName: "xmark")
+            .font(.system(size: 16, weight: .semibold))
         }
       }
     }

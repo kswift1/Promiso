@@ -84,11 +84,28 @@ export interface PreviewGroupRequest {
 }
 
 /**
+ * 그룹 멤버 미리보기 정보
+ */
+export interface GroupMemberPreview {
+  /** 사용자 ID */
+  userId: string;
+
+  /** 사용자 이름 */
+  name: string;
+
+  /** 프로필 이미지 */
+  profileImage: RemoteImage | null;
+}
+
+/**
  * 그룹 미리보기 응답
  */
 export interface PreviewGroupResponse {
   /** 그룹 ID */
   groupId: string;
+
+  /** 멤버 미리보기 리스트 (최대 10명) */
+  members: GroupMemberPreview[];
 }
 
 /**

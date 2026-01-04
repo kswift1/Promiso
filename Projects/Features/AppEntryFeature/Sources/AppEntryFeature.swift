@@ -40,6 +40,9 @@ extension AppEntry {
 
       @Presents public var destination: Destination.State?
 
+      /// 딥링크로 전달된 초대 코드 (앱이 준비된 후 처리)
+      var pendingInviteCode: String?
+
       public init() {
         self.destination = .auth(AuthFeature.Auth.Feature.State())
       }
@@ -56,6 +59,7 @@ extension AppEntry {
     public enum ViewAction {
       case onAppear
       case splashAnimationCompleted
+      case handleDeeplink(URL)
     }
     
     public enum InternalAction {
@@ -83,10 +87,26 @@ extension AppEntry {
           switch viewAction {
           case .onAppear:
             return .send(.internal(.startSessionCheck))
-            
+
           case .splashAnimationCompleted:
             state.splash = .hidden
             return .none
+
+          case .handleDeeplink(let url):
+            // promiso://join/{inviteCode} 형식 파싱
+            guard url.scheme == "promiso",
+                  url.host == "join",
+                  let inviteCode = url.pathComponents.dropFirst().first else {
+              return .none
+            }
+
+            // 메인 화면이 준비되어 있으면 바로 전달, 아니면 pending으로 저장
+            if case .main = state.destination {
+              return .send(.destination(.presented(.main(.openJoinGroupWithCode(inviteCode)))))
+            } else {
+              state.pendingInviteCode = inviteCode
+              return .none
+            }
           }
           
         case .internal(let internalAction):
@@ -118,6 +138,11 @@ extension AppEntry {
           case .profileCheckResponse(let user, let profile):
             if let userModel = profile {
               state.destination = .main(RootTab.Feature.State(currentUser: userModel))
+              // pending invite code가 있으면 메인 화면에 전달
+              if let inviteCode = state.pendingInviteCode {
+                state.pendingInviteCode = nil
+                return .send(.destination(.presented(.main(.openJoinGroupWithCode(inviteCode)))))
+              }
             } else {
               var profileState = ProfileSetup.State()
               profileState.inject(user: user)

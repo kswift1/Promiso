@@ -68,10 +68,13 @@ extension RootTab {
       case groupMain(GroupMain.Feature.Action)
       /// 상위로 전달되는 델리게이트 액션
       case delegate(Delegate)
+      /// 딥링크로 그룹 참여 열기
+      case openJoinGroupWithCode(String)
     }
     
     public enum Delegate: Equatable {
       case logoutRequested
+      case openJoinGroup(inviteCode: String)
     }
     
     public var body: some ReducerOf<Self> {
@@ -111,13 +114,18 @@ extension RootTab {
         case .groupMain(.delegate(.requestOpenSideDrawer)):
           // GroupMain에서 사이드 드로워 열기 요청
           return .send(.sideDrawer(.toggle))
-        
+
         case .groupMain:
           return .none
-          
+
+        case .openJoinGroupWithCode(let inviteCode):
+          // 그룹 탭으로 전환하고 초대 코드와 함께 그룹 참여 열기
+          state.selectedTab = .group
+          return .send(.groupMain(.view(.joinGroupWithCode(inviteCode))))
+
         case .delegate:
           return .none
-          
+
         }
       }
     }

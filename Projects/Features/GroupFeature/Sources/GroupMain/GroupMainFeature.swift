@@ -83,6 +83,7 @@ extension GroupMain {
         case createNewPromise
         case createGroup
         case joinGroup
+        case joinGroupWithCode(String) // 딥링크로 초대 코드와 함께 열기
       }
       
       public enum Internal: Sendable {
@@ -176,6 +177,16 @@ extension GroupMain {
               currentUser: state.currentUser
             )
             return .none
+
+          case .joinGroupWithCode(let inviteCode):
+            var joinState = JoinGroup.Feature.State(
+              currentUser: state.currentUser
+            )
+            // 초대 코드 자동 입력 및 미리보기 자동 시작
+            joinState.inviteCode = inviteCode
+            state.joinGroup = joinState
+            // 자동으로 미리보기 시작
+            return .send(.joinGroup(.presented(.view(.nextTapped))))
           }
           
         case .internal(let internalAction):

@@ -15,6 +15,9 @@ struct PromisoApp: App {
   var body: some Scene {
     WindowGroup {
       AppEntry.RootView(store: store)
+        .onOpenURL { url in
+          store.send(.view(.handleDeeplink(url)))
+        }
     }
   }
 }

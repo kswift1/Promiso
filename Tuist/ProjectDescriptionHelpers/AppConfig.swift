@@ -43,6 +43,11 @@ public enum AppConfig {
         [
           "CFBundleTypeRole": "Editor",
           "CFBundleURLSchemes": [.string(googleReversedClientId)]
+        ],
+        [
+          "CFBundleTypeRole": "Editor",
+          "CFBundleURLName": "com.promiso.deeplink",
+          "CFBundleURLSchemes": [.string("promiso")]
         ]
       ],
       "GIDClientID": .string(googleClientId)

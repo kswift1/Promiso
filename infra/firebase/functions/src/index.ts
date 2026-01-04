@@ -5,6 +5,7 @@ import {HttpsError, onCall, onRequest} from "firebase-functions/v2/https";
 import {
   CreateGroupRequest,
   CreateGroupResponse,
+  GroupMemberPreview,
   JoinGroupRequest,
   JoinGroupResponse,
   PreviewGroupRequest,
@@ -282,9 +283,44 @@ export const previewGroup = onCall<PreviewGroupRequest>(
     const groupDoc = groupSnapshot.docs[0];
     const groupId = groupDoc.id;
 
-    // 3. 그룹 ID 반환 (상세 정보는 클라이언트에서 fetchGroup으로 조회)
+    // 3. 멤버 리스트 조회 (최대 10명)
+    const membersSnapshot = await groupDoc.ref
+      .collection("members")
+      .where("isActive", "==", true)
+      .limit(10)
+      .get();
+
+    // 4. 각 멤버의 프로필 정보 조회
+    const usersCollection = getEnvironmentCollection(
+      "users",
+      db,
+      data.env,
+    );
+
+    const members: GroupMemberPreview[] = [];
+    for (const memberDoc of membersSnapshot.docs) {
+      const memberData = memberDoc.data();
+      const userId = memberData.userId;
+      if (!userId) {
+        continue;
+      }
+
+      const userDoc = await usersCollection.doc(userId).get();
+      if (userDoc.exists) {
+        const userProfile = userDoc.data();
+        const nickname = (userProfile?.nickname as string | undefined)?.trim();
+        members.push({
+          userId: userId,
+          name: nickname && nickname.length > 0 ? nickname : "Unknown",
+          profileImage: userProfile?.profile || null,
+        });
+      }
+    }
+
+    // 5. 그룹 ID와 멤버 리스트 반환
     return {
       groupId: groupId,
+      members: members,
     };
   },
 );
