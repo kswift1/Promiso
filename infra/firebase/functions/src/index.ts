@@ -5,6 +5,8 @@ import {HttpsError, onCall, onRequest} from "firebase-functions/v2/https";
 import {
   CreateGroupRequest,
   CreateGroupResponse,
+  CreatePromiseRequest,
+  CreatePromiseResponse,
   GroupMemberPreview,
   JoinGroupRequest,
   JoinGroupResponse,
@@ -595,3 +597,170 @@ function randomInviteCode(length: number): string {
   }
   return code;
 }
+
+/**
+ * 약속 생성
+ *
+ * @remarks
+ * **인증 필수**
+ *
+ * 그룹에 새로운 약속을 생성합니다.
+ * iOS CreatePromise Feature와 연동됩니다.
+ *
+ * @param request.data - CreatePromiseRequest
+ * @returns CreatePromiseResponse
+ *
+ * @throws HttpsError
+ * - unauthenticated: 로그인이 필요합니다
+ * - invalid-argument: 잘못된 요청 데이터
+ * - not-found: 그룹을 찾을 수 없습니다
+ * - permission-denied: 그룹 멤버가 아닙니다
+ * - internal: 서버 오류
+ */
+export const createPromise = onCall<CreatePromiseRequest>(
+  {region: REGION},
+  async (request): Promise<CreatePromiseResponse> => {
+    // 1. 인증 확인
+    if (!request.auth) {
+      throw new HttpsError(
+        "unauthenticated",
+        "로그인이 필요합니다",
+      );
+    }
+
+    const userId = request.auth.uid;
+    const data = request.data;
+
+    // 3. 데이터 검증
+    if (
+      !data.groupId ||
+      !data.title ||
+      !data.startAt ||
+      !data.minimumParticipants
+    ) {
+      throw new HttpsError(
+        "invalid-argument",
+        "그룹 ID, 제목, 시작 시간, 최소 참가 인원은 필수입니다",
+      );
+    }
+
+    if (data.minimumParticipants < 2) {
+      throw new HttpsError(
+        "invalid-argument",
+        "최소 참가 인원은 2명 이상이어야 합니다",
+      );
+    }
+
+    const db = admin.firestore();
+    const groupsCollection = getEnvironmentCollection(
+      "groups",
+      db,
+      data.env,
+    );
+    const promisesCollection = getEnvironmentCollection(
+      "promises",
+      db,
+      data.env,
+    );
+    const usersCollection = getEnvironmentCollection("users", db, data.env);
+
+    // 4. 그룹 존재 확인
+    const groupDoc = await groupsCollection.doc(data.groupId).get();
+    if (!groupDoc.exists) {
+      throw new HttpsError(
+        "not-found",
+        "그룹을 찾을 수 없습니다",
+      );
+    }
+
+    const groupData = groupDoc.data();
+    if (!groupData) {
+      throw new HttpsError(
+        "internal",
+        "그룹 데이터를 가져올 수 없습니다",
+      );
+    }
+
+    // 5. 멤버십 확인
+    const membershipQuery = await groupDoc.ref
+      .collection("members")
+      .where("userId", "==", userId)
+      .where("isActive", "==", true)
+      .limit(1)
+      .get();
+
+    if (membershipQuery.empty) {
+      throw new HttpsError(
+        "permission-denied",
+        "그룹 멤버만 약속을 생성할 수 있습니다",
+      );
+    }
+
+    // 6. 사용자 정보 조회 (호스트 이름 캐싱용)
+    const userDoc = await usersCollection.doc(userId).get();
+    const userData = userDoc.data();
+    const hostName = userData?.nickname || "Unknown";
+
+    // 7. 시작/종료 시간 파싱
+    const startAtDate = new Date(data.startAt);
+    const endAtDate = data.endAt ? new Date(data.endAt) : null;
+
+    // 8. 날짜 인덱스 생성 (로컬 시간 기준)
+    const year = startAtDate.getFullYear();
+    const month = String(startAtDate.getMonth() + 1).padStart(2, "0");
+    const day = String(startAtDate.getDate()).padStart(2, "0");
+    const localYyyymm = `${year}${month}`;
+    const localYyyymmdd = `${year}${month}${day}`;
+
+    // 9. 약속 문서 생성
+    const promiseRef = promisesCollection.doc();
+    const promiseId = promiseRef.id;
+
+    const promiseData = {
+      emoji: data.emoji || null,
+      title: data.title,
+      description: data.description || null,
+      minimumParticipants: data.minimumParticipants,
+      requiredCount: data.minimumParticipants,
+      isConfirmed: false,
+      confirmedAt: null,
+      hostId: userId,
+      hostName: hostName,
+      groupId: data.groupId,
+      groupName: groupData.name,
+      counts: {
+        total: 0,
+        accepted: 0,
+        declined: 0,
+        tentative: 0,
+      },
+      startAt: admin.firestore.Timestamp.fromDate(startAtDate),
+      endAt: endAtDate ? admin.firestore.Timestamp.fromDate(endAtDate) : null,
+      localYyyymm: localYyyymm,
+      localYyyymmdd: localYyyymmdd,
+      localTz: "Asia/Seoul",
+      status: "draft",
+      location: data.place ? {name: data.place} : null,
+      titleLower: data.title.toLowerCase(),
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+      isDeleted: false,
+    };
+
+    await promiseRef.set(promiseData);
+
+    // 10. 그룹의 activePromiseCount 증가
+    await groupsCollection.doc(data.groupId).update({
+      activePromiseCount: FieldValue.increment(1),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+
+    // 11. 응답 반환
+    return {
+      promiseId: promiseId,
+      title: data.title,
+      groupId: data.groupId,
+      startAt: admin.firestore.Timestamp.fromDate(startAtDate),
+    };
+  },
+);

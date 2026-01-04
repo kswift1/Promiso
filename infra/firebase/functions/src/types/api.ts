@@ -250,6 +250,86 @@ export interface GroupDocument {
 }
 
 // ============================================================================
+// createPromise
+// ============================================================================
+
+/**
+ * 약속 생성 요청
+ *
+ * @remarks
+ * - 인증 필수 (Firebase Auth)
+ * - hostId는 자동으로 request.auth.uid에서 추출
+ */
+export interface CreatePromiseRequest {
+  /** 그룹 ID */
+  groupId: string;
+
+  /** 약속 제목 */
+  title: string;
+
+  /** 약속 이모지 (선택적) */
+  emoji?: string | null;
+
+  /** 약속 설명 (선택적) */
+  description?: string | null;
+
+  /** 시작 시간 (ISO 8601 문자열) */
+  startAt: string;
+
+  /** 종료 시간 (선택적, ISO 8601 문자열) */
+  endAt?: string | null;
+
+  /** 최소 참가 인원 */
+  minimumParticipants: number;
+
+  /** 장소 이름 (선택적) */
+  place?: string | null;
+
+  /** 도착 상황 공유 시작 시간 (분 단위, 선택적) */
+  arrivalSharingTime?: number | null;
+
+  /** 환경 구분 (선택적: stage 또는 prod) */
+  env?: "stage" | "prod" | null;
+}
+
+/**
+ * 약속 생성 응답
+ */
+export interface CreatePromiseResponse {
+  /** 생성된 약속 ID */
+  promiseId: string;
+
+  /** 약속 제목 */
+  title: string;
+
+  /** 그룹 ID */
+  groupId: string;
+
+  /** 시작 시간 */
+  startAt: FirebaseFirestore.Timestamp;
+}
+
+/**
+ * 약속 생성 에러
+ */
+export enum CreatePromiseError {
+  /** 인증 필요 */
+  UNAUTHENTICATED = "unauthenticated",
+
+  /** 잘못된 요청 */
+  INVALID_ARGUMENT = "invalid-argument",
+
+  /** 그룹을 찾을 수 없음 */
+  GROUP_NOT_FOUND = "not-found",
+
+  /** 그룹 멤버가 아님 */
+  NOT_GROUP_MEMBER = "permission-denied",
+
+  /** 서버 오류 */
+  INTERNAL = "internal",
+}
+
+// ============================================================================
 // Shared
 // ============================================================================
 

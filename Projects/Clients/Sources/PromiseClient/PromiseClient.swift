@@ -19,9 +19,11 @@ public enum PromiseClientError: Error, Equatable {
   case unauthorized
   case notFound
   case serverError
-  case invalidData
-  case unknown
-  
+  case invalidData(String?)
+  case groupNotFound
+  case notGroupMember
+  case unknown(String?)
+
   public var localizedDescription: String {
     switch self {
     case .networkError:
@@ -32,10 +34,14 @@ public enum PromiseClientError: Error, Equatable {
       return "약속을 찾을 수 없습니다"
     case .serverError:
       return "서버 오류가 발생했습니다"
-    case .invalidData:
-      return "잘못된 데이터입니다"
-    case .unknown:
-      return "알 수 없는 오류가 발생했습니다"
+    case .invalidData(let message):
+      return message ?? "잘못된 데이터입니다"
+    case .groupNotFound:
+      return "그룹을 찾을 수 없습니다"
+    case .notGroupMember:
+      return "그룹 멤버만 약속을 만들 수 있습니다"
+    case .unknown(let message):
+      return message ?? "알 수 없는 오류가 발생했습니다"
     }
   }
 }
@@ -131,17 +137,45 @@ extension PromiseClient: DependencyKey {
   public static let liveValue: PromiseClient = {
     let repository: PromiseRepositoryProtocol = PromiseRepository()
 
-    return Self(
+    return PromiseClient(
       createPromise: { proposal, hostId in
         guard let group = proposal.group else {
-          throw PromiseClientError.invalidData
+          throw PromiseClientError.invalidData(nil)
         }
-        return try await repository.createPromise(
-          proposal.toDomainModel(hostId: hostId, group: group)
-        )
+
+        do {
+          return try await repository.createPromise(
+            proposal.toDomainModel(hostId: hostId, group: group),
+            arrivalSharingTime: proposal.arrivalSharingTime
+          )
+        } catch let error as NSError {
+          // Firebase Functions 에러 메시지 추출
+          let errorMessage = error.localizedDescription
+          print("error: \(errorMessage)")
+          // Firebase Functions 에러를 PromiseClientError로 변환
+          switch error.domain {
+          case "FIRFunctionsErrorDomain":
+            switch error.code {
+            case 16: // unauthenticated
+              throw PromiseClientError.unauthorized
+            case 3, 9: // invalid-argument
+              throw PromiseClientError.invalidData(errorMessage)
+            case 5: // not-found
+              throw PromiseClientError.groupNotFound
+            case 7: // permission-denied
+              throw PromiseClientError.notGroupMember
+            case 13: // internal
+              throw PromiseClientError.serverError
+            default:
+              throw PromiseClientError.unknown(errorMessage)
+            }
+          default:
+            throw PromiseClientError.networkError
+          }
+        }
       },
       updatePromise: { _, _ in
-        throw PromiseClientError.unknown
+        throw PromiseClientError.unknown(nil)
       },
       deletePromise: { promiseId in
         try await repository.deletePromise(id: promiseId)

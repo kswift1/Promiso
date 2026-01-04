@@ -1,46 +1,91 @@
 import Foundation
 import Combine
 import FirebaseFirestore
+import FirebaseFunctions
 import Shared
 
 /// Promise 관련 Firestore CRUD 및 쿼리 작업을 담당하는 Repository
 public class PromiseRepository: PromiseRepositoryProtocol {
   private let firestore: FirestoreProviding
+  private let functions: Functions
   private let collectionName: String
   private var db: Firestore { firestore.db }
-  
+
   public init(
     firestore: FirestoreProviding = DefaultFirestoreProvider(),
+    functions: Functions = Functions.functions(region: "asia-northeast3"),
     collectionName: String = "promises"
   ) {
     self.firestore = firestore
+    self.functions = functions
     self.collectionName = collectionName
   }
   
   // MARK: - CRUD Operations
-  
+
   /// 약속 생성
-  public func createPromise(_ promise: PromiseModel) async throws -> String {
-    let promiseRef = db.environmentCollection(collectionName).document()
-    let promiseData: [String: Any] = [
-      "id": promise.id,
-      "title": promise.title,
-      "description": promise.description as Any,
-      "minimumParticipants": promise.minimumParticipants,
-      "requiredCount": promise.requiredCount,
-      "isConfirmed": promise.isConfirmed,
-      "hostId": promise.host.id,
+  /// Firebase Functions의 createPromise를 호출합니다.
+  public func createPromise(_ promise: PromiseModel, arrivalSharingTime: Int?) async throws -> String {
+    // ISO 8601 형식으로 날짜 변환
+    let dateFormatter = ISO8601DateFormatter()
+    dateFormatter.timeZone = TimeZone(identifier: "Asia/Seoul")
+    dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+    var callableData: [String: Any] = [
       "groupId": promise.group.id,
-      "startAt": Timestamp(date: promise.startAt),
-      "endAt": promise.endAt.map { Timestamp(date: $0) } as Any,
-      "status": promise.status.rawValue,
-      "createdAt": Timestamp(date: Date()),
-      "updatedAt": Timestamp(date: Date()),
-      "isDeleted": false
+      "title": promise.title,
+      "startAt": dateFormatter.string(from: promise.startAt),
+      "minimumParticipants": promise.minimumParticipants
     ]
-    
-    try await promiseRef.setData(promiseData)
-    return promiseRef.documentID
+
+    // 선택적 필드 추가
+    if let emoji = promise.emoji, !emoji.isEmpty {
+      callableData["emoji"] = emoji
+    }
+
+    if let description = promise.description, !description.isEmpty {
+      callableData["description"] = description
+    }
+
+    if let endAt = promise.endAt {
+      callableData["endAt"] = dateFormatter.string(from: endAt)
+    }
+
+    if let location = promise.location, !location.name.isEmpty {
+      callableData["place"] = location.name
+    }
+
+    if let arrivalSharingTime = arrivalSharingTime {
+      callableData["arrivalSharingTime"] = arrivalSharingTime
+    }
+
+    // env 파라미터 추가
+    if let env = functionsEnvironmentParam() {
+      callableData["env"] = env
+    }
+
+    // Firebase Functions 호출
+    let result = try await functions.httpsCallable("createPromise").call(callableData)
+
+    guard let data = result.data as? [String: Any],
+          let promiseId = data["promiseId"] as? String else {
+      throw NSError(domain: "PromiseRepository", code: -1, userInfo: [
+        NSLocalizedDescriptionKey: "약속 생성 응답이 올바르지 않습니다"
+      ])
+    }
+
+    return promiseId
+  }
+
+  private func functionsEnvironmentParam() -> String? {
+    switch FirestoreEnvironmentManager.shared.current {
+    case .dev:
+      return nil
+    case .stage:
+      return "stage"
+    case .release:
+      return "prod"
+    }
   }
   
   /// 약속 업데이트

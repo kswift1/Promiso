@@ -54,6 +54,8 @@ servers:
 tags:
   - name: Group
     description: 그룹 관련 API
+  - name: Promise
+    description: 약속 관련 API
   - name: Test
     description: 테스트용 API
 
@@ -290,6 +292,151 @@ paths:
                       code: resource-exhausted
                       message: 그룹 정원이 초과되었습니다
 
+  /createPromise:
+    post:
+      tags:
+        - Promise
+      summary: 약속 생성
+      description: |
+        그룹 내에서 새로운 약속을 생성합니다.
+
+        **인증 필수**: Firebase Authentication 토큰 필요
+        **그룹 멤버십 필수**: 약속을 생성하려면 해당 그룹의 멤버여야 합니다
+      operationId: createPromise
+      security:
+        - firebaseAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - data
+              properties:
+                data:
+                  $ref: '#/components/schemas/CreatePromiseRequest'
+            examples:
+              basic:
+                summary: 기본 약속 생성
+                value:
+                  data:
+                    groupId: 0ec6e63d-8d80-4a76-9e1b-7f226c1c6b55
+                    title: 주말 등산
+                    startAt: "2024-12-25T10:00:00+09:00"
+                    minimumParticipants: 3
+                    env: stage
+              withDetails:
+                summary: 상세 정보 포함
+                value:
+                  data:
+                    groupId: 0ec6e63d-8d80-4a76-9e1b-7f226c1c6b55
+                    title: 주말 등산
+                    emoji: "🏔️"
+                    description: 북한산 백운대 등반
+                    startAt: "2024-12-25T10:00:00+09:00"
+                    endAt: "2024-12-25T16:00:00+09:00"
+                    minimumParticipants: 3
+                    place: 북한산 백운대 입구
+                    arrivalSharingTime: 30
+                    env: stage
+
+      responses:
+        '200':
+          description: 약속 생성 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    $ref: '#/components/schemas/CreatePromiseResponse'
+              examples:
+                success:
+                  value:
+                    result:
+                      promiseId: xyz789abc123
+                      title: 주말 등산
+                      groupId: 0ec6e63d-8d80-4a76-9e1b-7f226c1c6b55
+                      startAt:
+                        _seconds: 1735084800
+                        _nanoseconds: 0
+
+        '400':
+          description: 잘못된 파라미터
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FunctionsError'
+              examples:
+                invalidTitle:
+                  value:
+                    error:
+                      code: invalid-argument
+                      message: 약속 제목은 필수입니다
+                invalidMinimumParticipants:
+                  value:
+                    error:
+                      code: invalid-argument
+                      message: 최소 참가 인원은 2명 이상이어야 합니다
+                invalidDate:
+                  value:
+                    error:
+                      code: invalid-argument
+                      message: 시작 시간은 ISO 8601 형식이어야 합니다
+
+        '401':
+          description: 인증 실패
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FunctionsError'
+              examples:
+                unauthenticated:
+                  value:
+                    error:
+                      code: unauthenticated
+                      message: 로그인이 필요합니다
+
+        '403':
+          description: 권한 없음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FunctionsError'
+              examples:
+                notMember:
+                  value:
+                    error:
+                      code: permission-denied
+                      message: 그룹 멤버만 약속을 만들 수 있습니다
+
+        '404':
+          description: 그룹을 찾을 수 없음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FunctionsError'
+              examples:
+                groupNotFound:
+                  value:
+                    error:
+                      code: not-found
+                      message: 그룹을 찾을 수 없습니다
+
+        '500':
+          description: 서버 오류
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FunctionsError'
+              examples:
+                internal:
+                  value:
+                    error:
+                      code: internal
+                      message: 약속 생성 중 오류가 발생했습니다
+
   /testCallable:
     post:
       tags:
@@ -474,6 +621,116 @@ components:
           type: string
           description: 그룹 이름
           example: 주말 등산 모임
+
+    # ========================================
+    # createPromise
+    # ========================================
+
+    CreatePromiseRequest:
+      type: object
+      required:
+        - groupId
+        - title
+        - startAt
+        - minimumParticipants
+      properties:
+        groupId:
+          type: string
+          description: 약속을 생성할 그룹 ID
+          example: 0ec6e63d-8d80-4a76-9e1b-7f226c1c6b55
+
+        title:
+          type: string
+          minLength: 1
+          description: 약속 제목
+          example: 주말 등산
+
+        emoji:
+          type: string
+          nullable: true
+          description: 약속 이모지 (선택적)
+          example: "🏔️"
+
+        description:
+          type: string
+          nullable: true
+          description: 약속 설명 (선택적)
+          example: 북한산 백운대 등반
+
+        startAt:
+          type: string
+          format: date-time
+          description: 시작 시간 (ISO 8601 문자열)
+          example: "2024-12-25T10:00:00+09:00"
+
+        endAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 종료 시간 (선택적, ISO 8601 문자열)
+          example: "2024-12-25T16:00:00+09:00"
+
+        minimumParticipants:
+          type: integer
+          minimum: 2
+          description: 최소 참가 인원
+          example: 3
+
+        place:
+          type: string
+          nullable: true
+          description: 장소 이름 (선택적)
+          example: 북한산 백운대 입구
+
+        arrivalSharingTime:
+          type: integer
+          nullable: true
+          description: 도착 상황 공유 시작 시간 (분 단위, 선택적)
+          example: 30
+
+        env:
+          type: string
+          enum:
+            - stage
+            - prod
+          description: 환경 구분 (선택적)
+          example: stage
+
+    CreatePromiseResponse:
+      type: object
+      required:
+        - promiseId
+        - title
+        - groupId
+        - startAt
+      properties:
+        promiseId:
+          type: string
+          description: 생성된 약속 ID
+          example: xyz789abc123
+
+        title:
+          type: string
+          description: 약속 제목
+          example: 주말 등산
+
+        groupId:
+          type: string
+          description: 그룹 ID
+          example: 0ec6e63d-8d80-4a76-9e1b-7f226c1c6b55
+
+        startAt:
+          type: object
+          description: 시작 시간 (Firebase Timestamp)
+          properties:
+            _seconds:
+              type: integer
+              description: Unix timestamp (초)
+              example: 1735084800
+            _nanoseconds:
+              type: integer
+              description: Nanoseconds
+              example: 0
 
     # ========================================
     # testCallable
