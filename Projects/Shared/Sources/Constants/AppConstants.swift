@@ -264,6 +264,26 @@ public enum Environment {
       return true
     }
   }
+
+  /// Firebase Functions env 파라미터
+  public var firebaseEnv: String {
+    switch self {
+    case .development, .staging:
+      return "stage"
+    case .production:
+      return "prod"
+    }
+  }
+
+  /// Firebase Storage 경로 prefix
+  public var storagePrefix: String {
+    switch self {
+    case .development, .staging:
+      return "stage"
+    case .production:
+      return "prod"
+    }
+  }
 }
 
 // MARK: - Build Configuration
