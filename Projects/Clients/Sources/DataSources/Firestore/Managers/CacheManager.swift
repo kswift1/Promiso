@@ -2,7 +2,7 @@ import Foundation
 import FirebaseFirestore
 import Combine
 
-import Shared
+import PromisoShared
 
 /// Firestore 캐시 일관성 검증 및 관리
 public class CacheManager {
@@ -38,38 +38,6 @@ public class CacheManager {
     cacheQueue.async(flags: .barrier) {
       self.cache.removeAll()
     }
-  }
-  
-  // MARK: - Cache Consistency Validation
-  
-  /// 사용자 이름 캐시 일관성 검증
-  public func validateUserNameCache(userId: String) async throws -> Bool {
-    // 캐시된 사용자 정보 조회
-    guard let cachedUser = getCache(UserDocument.self, forKey: "user_\(userId)") else {
-      return false
-    }
-    
-    // Firestore에서 최신 사용자 정보 조회
-    let ref = db.environmentCollection("users").document(userId)
-    let document = try await ref.getDocument()
-    
-    guard document.exists,
-          let latestUser = try? document.data(as: UserDocument.self) else {
-      return false
-    }
-    
-    // 이름이 변경되었는지 확인
-    let isConsistent = cachedUser.name == latestUser.name
-    
-    if !isConsistent {
-      // 캐시 업데이트
-      setCache(latestUser, forKey: "user_\(userId)")
-      
-      // 관련된 모든 캐시된 데이터에서 사용자 이름 업데이트
-      try await updateUserNameInRelatedData(userId: userId, newName: latestUser.name)
-    }
-    
-    return isConsistent
   }
   
   /// 그룹 이름 캐시 일관성 검증
@@ -210,40 +178,40 @@ public class CacheManager {
   // MARK: - Cache Warming
   
   /// 자주 사용되는 데이터 캐시 워밍
-  public func warmCache(for userId: String) async throws {
-    // 사용자 정보 캐시
-    let userRef = db.environmentCollection("users").document(userId)
-    let userDoc = try await userRef.getDocument()
-    if let user = try? userDoc.data(as: UserDocument.self) {
-      setCache(user, forKey: "user_\(userId)")
-    }
-    
-    // 사용자가 속한 그룹들 캐시
-    let groupsQuery = db.environmentCollection("users")
-      .document(userId)
-      .collection("groups")
-      .whereField("isDeleted", isEqualTo: false)
-    
-    let groupsSnapshot = try await groupsQuery.getDocuments()
-    for document in groupsSnapshot.documents {
-      if let group = try? document.data(as: GroupDocument.self) {
-        setCache(group, forKey: "group_\(document.documentID)")
-      }
-    }
-    
-    // 사용자의 대기 중인 약속들 캐시
-    let pendingQuery = db.collectionGroup("attendances")
-      .whereField("userId", isEqualTo: userId)
-      .whereField("status", isEqualTo: AttendanceStatus.pending.rawValue)
-      .limit(to: 20)
-    
-    let pendingSnapshot = try await pendingQuery.getDocuments()
-    for document in pendingSnapshot.documents {
-      if let attendance = try? document.data(as: AttendanceDocument.self) {
-        setCache(attendance, forKey: "attendance_\(document.documentID)")
-      }
-    }
-  }
+//  public func warmCache(for userId: String) async throws {
+//    // 사용자 정보 캐시
+//    let userRef = db.environmentCollection("users").document(userId)
+//    let userDoc = try await userRef.getDocument()
+//    if let user = try? userDoc.data(as: UserDocument.self) {
+//      setCache(user, forKey: "user_\(userId)")
+//    }
+//    
+//    // 사용자가 속한 그룹들 캐시
+//    let groupsQuery = db.environmentCollection("users")
+//      .document(userId)
+//      .collection("groups")
+//      .whereField("isDeleted", isEqualTo: false)
+//    
+//    let groupsSnapshot = try await groupsQuery.getDocuments()
+//    for document in groupsSnapshot.documents {
+//      if let group = try? document.data(as: GroupDocument.self) {
+//        setCache(group, forKey: "group_\(document.documentID)")
+//      }
+//    }
+//    
+//    // 사용자의 대기 중인 약속들 캐시
+//    let pendingQuery = db.collectionGroup("attendances")
+//      .whereField("userId", isEqualTo: userId)
+//      .whereField("status", isEqualTo: AttendanceStatus.pending.rawValue)
+//      .limit(to: 20)
+//    
+//    let pendingSnapshot = try await pendingQuery.getDocuments()
+//    for document in pendingSnapshot.documents {
+//      if let attendance = try? document.data(as: AttendanceDocument.self) {
+//        setCache(attendance, forKey: "attendance_\(document.documentID)")
+//      }
+//    }
+//  }
   
   // MARK: - Cache Statistics
   

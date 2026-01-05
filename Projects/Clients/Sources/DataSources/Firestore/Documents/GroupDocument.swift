@@ -1,6 +1,6 @@
 import Foundation
 import FirebaseFirestore
-import Shared
+import PromisoShared
 
 /// Firestore Groups 컬렉션 문서 모델
 public struct GroupDocument: Codable {

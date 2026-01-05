@@ -1,10 +1,3 @@
-//
-//  Image Compression.swift
-//  Infrastructure
-//
-//  Created by 김성원 on 12/13/25.
-//
-
 import Foundation
 import UIKit
 

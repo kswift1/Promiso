@@ -2,7 +2,7 @@ import Foundation
 import FirebaseFirestore
 import FirebaseFunctions
 import FirebaseStorage
-import Shared
+import PromisoShared
 
 /// 그룹 생성 에러
 public enum GroupRemoteDataSourceError: Error, LocalizedError {

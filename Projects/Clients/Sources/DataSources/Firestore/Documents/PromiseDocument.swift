@@ -1,6 +1,6 @@
 import Foundation
 import FirebaseFirestore
-import Shared
+import PromisoShared
 
 /// Firestore Promises 컬렉션 문서 모델
 public struct PromiseDocument: Codable {

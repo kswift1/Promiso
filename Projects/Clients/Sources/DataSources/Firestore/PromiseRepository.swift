@@ -2,7 +2,7 @@ import Foundation
 import Combine
 import FirebaseFirestore
 import FirebaseFunctions
-import Shared
+import PromisoShared
 
 /// Promise 관련 Firestore CRUD 및 쿼리 작업을 담당하는 Repository
 public class PromiseRepository: PromiseRepositoryProtocol {
@@ -199,10 +199,13 @@ public class PromiseRepository: PromiseRepositoryProtocol {
       return nil
     }
 
-    let host = UserModel(
-      id: document.hostId,
+    let host = UserPrivate(
+      userId: document.hostId,
+      name: document.hostName,
+      nickname: document.hostName,
       email: "",
-      nickname: document.hostName
+      provider: "",
+      metadata: Metadata(createdAt: Date(), updatedAt: Date())
     )
 
     let group = Group(

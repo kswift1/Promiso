@@ -1,7 +1,7 @@
 import Foundation
 import FirebaseFirestore
 import Combine
-import Shared
+import PromisoShared
 
 /// 검색 관련 Firestore 작업을 담당하는 Repository
 //public class SearchRepository {
@@ -260,12 +260,12 @@ import Shared
 public struct SearchResults {
   public let promises: [PromiseDocument]
   public let groups: [GroupDocument]
-  public let users: [UserDocument]
+  public let users: [UserPrivate]
   
   public init(
     promises: [PromiseDocument],
     groups: [GroupDocument],
-    users: [UserDocument]
+    users: [UserPrivate]
   ) {
     self.promises = promises
     self.groups = groups
