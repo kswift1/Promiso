@@ -15,7 +15,7 @@ public struct PromiseModel: Identifiable, Equatable, Hashable {
   public var confirmedAt: Date?
   
   // MARK: - 관계
-  public let host: UserModel
+  public let host: UserPrivate
   public let group: Group
   
   // MARK: - 카운터
@@ -54,7 +54,7 @@ public struct PromiseModel: Identifiable, Equatable, Hashable {
     requiredCount: Int,
     isConfirmed: Bool = false,
     confirmedAt: Date? = nil,
-    host: UserModel,
+    host: UserPrivate,
     group: Group,
     counts: PromiseCounts = PromiseCounts(),
     startAt: Date,

@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import PromisoShared
 
 /// groups 컬렉션 스키마에 대응하는 앱 모델
 public struct GroupModel: Equatable, Identifiable, Sendable {

@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import PromisoShared
 
 /// 그룹 멤버 미리보기 정보
 public struct GroupMemberPreview: Equatable, Identifiable, Sendable {

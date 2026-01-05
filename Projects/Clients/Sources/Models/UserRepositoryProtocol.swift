@@ -4,14 +4,14 @@ import Foundation
 
 public protocol UserRepositoryProtocol {
   // MARK: - CRUD Operations
-  func createUser(_ user: UserModel) async throws -> String
-  func updateUser(_ user: UserModel) async throws
+  func createUser(_ user: UserPrivate) async throws -> String
+  func updateUser(_ user: UserPrivate) async throws
   func deleteUser(id: String) async throws
-  func getUser(id: String) async throws -> UserModel?
+  func getUser(id: String) async throws -> UserPrivate?
 
   // MARK: - Query Operations
-  func getUsersByIds(_ ids: [String]) async throws -> [UserModel]
-  func searchUsers(query: String) async throws -> [UserModel]
+  func getUsersByIds(_ ids: [String]) async throws -> [UserPrivate]
+  func searchUsers(query: String) async throws -> [UserPrivate]
 
   // MARK: - Profile Operations
   /// 프로필 이미지 업로드
