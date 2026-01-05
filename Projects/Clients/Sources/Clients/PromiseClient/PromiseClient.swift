@@ -9,7 +9,7 @@
 import ComposableArchitecture
 import Foundation
 import Combine
-import Shared
+import PromisoShared
 
 // MARK: - Error
 

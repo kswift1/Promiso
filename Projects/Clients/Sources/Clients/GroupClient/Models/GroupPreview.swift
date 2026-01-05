@@ -1,5 +1,5 @@
 import Foundation
-import Shared
+import PromisoShared
 
 public struct GroupPreview: Equatable, Sendable {
   public let group: GroupModel

@@ -8,7 +8,7 @@
 import ComposableArchitecture
 import Foundation
 
-import Shared
+import PromisoShared
 import FirebaseAuth
 
 // MARK: - Error

@@ -1,5 +1,5 @@
 import Foundation
-import Shared
+import PromisoShared
 
 // MARK: - Promise Response Status
 public enum PromiseResponseStatus: String, Equatable, Sendable, Codable {

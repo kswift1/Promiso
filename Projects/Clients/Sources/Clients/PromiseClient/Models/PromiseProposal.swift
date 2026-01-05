@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import Shared
+import PromisoShared
 
 /// Feature에서 사용하는 약속 제안 모델
 public struct PromiseProposal: Equatable, Sendable {
@@ -69,7 +69,14 @@ extension PromiseProposal {
       minimumParticipants: minimumParticipants ?? 2,
       requiredCount: minimumParticipants ?? 2,
       isConfirmed: false,
-      host: UserModel(id: hostId, email: "", nickname: ""),
+      host: UserPrivate(
+        userId: hostId,
+        name: "",
+        nickname: "",
+        email: "",
+        provider: "",
+        metadata: Metadata(createdAt: Date(), updatedAt: Date())
+      ),
       group: Group(id: group.id, name: group.name),
       startAt: startedAt,
       endAt: endedAt,

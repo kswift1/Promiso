@@ -96,10 +96,17 @@ public struct ServiceTokenBundle: Equatable, Sendable {
   public let firebaseUser: FirebaseUserSnapshot?
   /// 제공 토큰 번들
   public let providerTokenBundle: ProviderTokenBundle
-  
-  public init(firebaseUser: FirebaseUserSnapshot?, providerTokenBundle: ProviderTokenBundle) {
+  /// 신규 사용자 여부 (회원가입 시 true)
+  public let isNewUser: Bool
+
+  public init(
+    firebaseUser: FirebaseUserSnapshot?,
+    providerTokenBundle: ProviderTokenBundle,
+    isNewUser: Bool = false
+  ) {
     self.firebaseUser = firebaseUser
     self.providerTokenBundle = providerTokenBundle
+    self.isNewUser = isNewUser
   }
 }
 
@@ -240,7 +247,8 @@ extension AuthClient: TestDependencyKey {
           userIdentifier: "preview",
           email: "preview@apple.com",
           fullName: "Preview User"
-        )
+        ),
+        isNewUser: false
       )
     },
     signInWithGoogle: {
@@ -253,7 +261,8 @@ extension AuthClient: TestDependencyKey {
           userIdentifier: "preview-google",
           email: "preview@google.com",
           fullName: "Preview G"
-        )
+        ),
+        isNewUser: false
       )
     },
     clearSession: {}
@@ -349,9 +358,13 @@ extension AuthClient: DependencyKey {
         let authResult = try await Auth.auth().signIn(with: credential)
         await session.login(with: authResult.user)
 
+        // 신규 사용자 여부 확인
+        let isNewUser = authResult.additionalUserInfo?.isNewUser ?? false
+
         return ServiceTokenBundle(
           firebaseUser: FirebaseUserSnapshot(user: authResult.user),
-          providerTokenBundle: providerTokenBundle
+          providerTokenBundle: providerTokenBundle,
+          isNewUser: isNewUser
         )
       },
       signInWithGoogle: {
@@ -370,9 +383,13 @@ extension AuthClient: DependencyKey {
         let authResult = try await Auth.auth().signIn(with: credential)
         await session.login(with: authResult.user)
 
+        // 신규 사용자 여부 확인
+        let isNewUser = authResult.additionalUserInfo?.isNewUser ?? false
+
         return ServiceTokenBundle(
           firebaseUser: FirebaseUserSnapshot(user: authResult.user),
-          providerTokenBundle: providerTokenBundle
+          providerTokenBundle: providerTokenBundle,
+          isNewUser: isNewUser
         )
       },
       clearSession: {
