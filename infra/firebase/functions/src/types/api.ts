@@ -418,11 +418,15 @@ export interface CreateUserResponse {
  * @remarks
  * - 인증 필수 (Firebase Auth)
  * - userId 생략 시 본인 정보 조회
- * - 본인 조회 시 UserPrivateResponse, 타인 조회 시 UserPublicResponse 반환
+ * - isPublic=false: UserPrivateResponse (email, provider 포함, auth 서브컬렉션 읽기)
+ * - isPublic=true: UserPublicResponse (email, provider 제외, auth 서브컬렉션 읽기 없음)
  */
 export interface GetUserRequest {
   /** 조회할 사용자 ID (생략 시 본인) */
   userId?: string | null;
+
+  /** 공개 정보만 조회할지 여부 (true: auth 서브컬렉션 읽기 생략) */
+  isPublic?: boolean | null;
 
   /** 환경 구분 (선택적: stage 또는 prod) */
   env?: "stage" | "prod" | null;

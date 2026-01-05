@@ -121,10 +121,11 @@ export const createUser = onCall<CreateUserRequest>(
     try {
       // 4. Firestore에 저장
       await db.runTransaction(async (transaction) => {
-        // 4-1. 메인 문서 생성 (email 제외)
+        // 4-1. 메인 문서 생성 (email 제외, profile 필드는 null로 초기화)
         transaction.set(userRef, {
           name: data.name,
           nickname: nickname,
+          profile: null,
           metaData: {
             createdAt: now,
             updatedAt: now,
@@ -152,6 +153,7 @@ export const createUser = onCall<CreateUserRequest>(
         createdAt: admin.firestore.Timestamp.now(),
       };
     } catch (error) {
+      console.error("❌ createUser error:", error);
       throw new HttpsError(
         "internal",
         "사용자 생성 중 오류가 발생했습니다",
@@ -167,8 +169,8 @@ export const createUser = onCall<CreateUserRequest>(
  * **인증 필수**
  *
  * 특정 사용자의 정보를 조회합니다.
- * - userId 생략 시: 본인 정보 조회 (UserPrivateResponse - email 포함)
- * - userId 지정 시: 타인 정보 조회 (UserPublicResponse - email 제외)
+ * - isPublic=false: UserPrivateResponse (email, provider 포함, auth 서브컬렉션 읽기)
+ * - isPublic=true: UserPublicResponse (email, provider 제외, auth 서브컬렉션 읽기 생략)
  *
  * @param request.data - GetUserRequest
  * @returns UserPrivateResponse | UserPublicResponse
@@ -188,7 +190,7 @@ export const getUser = onCall<GetUserRequest>(
     const requesterId = request.auth.uid;
     const data = request.data || {};
     const targetUserId = data.userId || requesterId;
-    const isSelf = targetUserId === requesterId;
+    const isPublic = data.isPublic ?? false;
 
     const db = admin.firestore();
     const usersCollection = getEnvironmentCollection("users", db, data.env);
@@ -227,8 +229,8 @@ export const getUser = onCall<GetUserRequest>(
       },
     };
 
-    // 4. 본인 조회 시 auth 서브컬렉션에서 email, provider 추가
-    if (isSelf) {
+    // 4. Private 정보 조회 시 auth 서브컬렉션에서 email, provider 추가
+    if (!isPublic) {
       const authDoc = await userRef.collection("auth").doc("main").get();
       const authData = authDoc.data();
 
@@ -248,7 +250,7 @@ export const getUser = onCall<GetUserRequest>(
       return privateResponse;
     }
 
-    // 5. 타인 조회 시 공통 정보만 반환
+    // 5. Public 정보만 반환
     return baseResponse;
   },
 );
@@ -354,13 +356,33 @@ export const uploadProfileImage = onCall<UploadProfileImageRequest>(
     }
 
     try {
-      // 3. Storage에서 downloadURL 생성
+      console.log("📸 uploadProfileImage started", {
+        userId,
+        imagePath: data.imagePath,
+        env: data.env,
+      });
+
+      // 3. Storage에서 downloadURL 생성 (token 방식)
       const bucket = admin.storage().bucket();
       const file = bucket.file(data.imagePath);
-      const [url] = await file.getSignedUrl({
-        action: "read",
-        expires: "03-01-2500", // 장기간 유효한 URL
+
+      // download token 생성 및 설정 (간단한 UUID 생성)
+      const downloadToken = crypto.randomUUID();
+
+      await file.setMetadata({
+        metadata: {
+          firebaseStorageDownloadTokens: downloadToken,
+        },
       });
+
+      console.log("✅ Download token set:", downloadToken);
+
+      // Firebase Storage download URL 구성
+      const bucketName = bucket.name;
+      const encodedPath = encodeURIComponent(data.imagePath);
+      const url = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodedPath}?alt=media&token=${downloadToken}`;
+
+      console.log("✅ Download URL generated:", url);
 
       const now = FieldValue.serverTimestamp();
       const profileData = {
@@ -373,10 +395,14 @@ export const uploadProfileImage = onCall<UploadProfileImageRequest>(
       const usersCollection = getEnvironmentCollection("users", db, data.env);
       const userRef = usersCollection.doc(userId);
 
+      console.log("📝 Updating Firestore profile field...");
+
       await userRef.update({
         "profile": profileData,
         "metaData.updatedAt": now,
       });
+
+      console.log("✅ Firestore profile updated successfully");
 
       // 5. 응답 반환 (thumbUrl은 Cloud Function이 비동기로 생성)
       return {
@@ -387,6 +413,7 @@ export const uploadProfileImage = onCall<UploadProfileImageRequest>(
         },
       };
     } catch (error) {
+      console.error("❌ uploadProfileImage error:", error);
       throw new HttpsError(
         "internal",
         "프로필 이미지 업로드 중 오류가 발생했습니다",
