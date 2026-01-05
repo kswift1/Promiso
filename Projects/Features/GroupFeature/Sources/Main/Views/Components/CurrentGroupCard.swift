@@ -53,16 +53,48 @@ struct CurrentGroupCard: View {
           .foregroundColor(.secondary)
       }
       .padding(16)
-      .background(
-        LinearGradient(
-          colors: [Color.blue.opacity(0.1), Color.blue.opacity(0.15)],
-          startPoint: .topLeading,
-          endPoint: .bottomTrailing
-        )
-      )
-      .clipShape(RoundedRectangle(cornerRadius: 16))
+      .adaptiveGlassCardBackground(tint: .blue)
     }
     .buttonStyle(PlainButtonStyle())
+  }
+}
+
+// MARK: - Glass Effect Modifier
+
+private extension View {
+  /// iOS 26: thinMaterial glass effect with tint, 이전: gradient background
+  func adaptiveGlassCardBackground(tint: Color) -> some View {
+    if #available(iOS 26.0, *) {
+      return AnyView(
+        self
+          .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
+          .background(
+            LinearGradient(
+              colors: [tint.opacity(0.15), tint.opacity(0.25)],
+              startPoint: .topLeading,
+              endPoint: .bottomTrailing
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+          )
+          .overlay(
+            RoundedRectangle(cornerRadius: 16)
+              .strokeBorder(tint.opacity(0.3), lineWidth: 1.5)
+          )
+          .shadow(color: tint.opacity(0.2), radius: 12, x: 0, y: 6)
+      )
+    } else {
+      return AnyView(
+        self
+          .background(
+            LinearGradient(
+              colors: [tint.opacity(0.1), tint.opacity(0.15)],
+              startPoint: .topLeading,
+              endPoint: .bottomTrailing
+            )
+          )
+          .clipShape(RoundedRectangle(cornerRadius: 16))
+      )
+    }
   }
 }
 

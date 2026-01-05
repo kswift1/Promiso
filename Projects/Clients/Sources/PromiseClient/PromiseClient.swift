@@ -118,7 +118,9 @@ extension PromiseClient: TestDependencyKey {
           date: "",
           location: "",
           with: "",
-          status: .needResponse
+          hostNickname: "",
+          status: .needResponse,
+          hostId: ""
         )
       ]
     },

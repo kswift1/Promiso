@@ -27,9 +27,20 @@ public struct PromiseItem: Identifiable, Equatable, Sendable {
   public let location: String
   public let distance: String?
   public let with: String
+  public let description: String?
+  public let hostNickname: String
+  public let hostProfileImageUrl: String?
   public let status: PromiseResponseStatus
   public let responses: PromiseResponse?
   public let deadline: String?
+  public let hostId: String
+  public let currentUserId: String?
+
+  /// 현재 사용자가 host인지 여부
+  public var isHost: Bool {
+    guard let currentUserId = currentUserId else { return false }
+    return hostId == currentUserId
+  }
 
   public init(
     id: String,
@@ -40,9 +51,14 @@ public struct PromiseItem: Identifiable, Equatable, Sendable {
     location: String,
     distance: String? = nil,
     with: String,
+    description: String? = nil,
+    hostNickname: String,
+    hostProfileImageUrl: String? = nil,
     status: PromiseResponseStatus,
     responses: PromiseResponse? = nil,
-    deadline: String? = nil
+    deadline: String? = nil,
+    hostId: String,
+    currentUserId: String? = nil
   ) {
     self.id = id
     self.title = title
@@ -52,13 +68,18 @@ public struct PromiseItem: Identifiable, Equatable, Sendable {
     self.location = location
     self.distance = distance
     self.with = with
+    self.description = description
+    self.hostNickname = hostNickname
+    self.hostProfileImageUrl = hostProfileImageUrl
     self.status = status
     self.responses = responses
     self.deadline = deadline
+    self.hostId = hostId
+    self.currentUserId = currentUserId
   }
   
   // FIXME:
-  public init(domainModel: PromiseModel) {
+  public init(domainModel: PromiseModel, currentUserId: String? = nil) {
     self.id = domainModel.id
     self.title = domainModel.title
     self.emoji = domainModel.emoji?.isEmpty == false ? domainModel.emoji! : "📌"
@@ -69,6 +90,9 @@ public struct PromiseItem: Identifiable, Equatable, Sendable {
     self.with = domainModel.host.nickname.isEmpty
       ? domainModel.group.name
       : domainModel.host.nickname
+    self.description = domainModel.description
+    self.hostNickname = domainModel.host.nickname
+    self.hostProfileImageUrl = domainModel.host.profileImageUrl
     self.status = Self.responseStatus(from: domainModel)
     if domainModel.counts.total > 0 {
       self.responses = PromiseResponse(
@@ -79,6 +103,8 @@ public struct PromiseItem: Identifiable, Equatable, Sendable {
       self.responses = nil
     }
     self.deadline = nil
+    self.hostId = domainModel.host.id
+    self.currentUserId = currentUserId
   }
 
   private static func responseStatus(from model: PromiseModel) -> PromiseResponseStatus {
@@ -140,9 +166,14 @@ public extension PromiseItem {
       location: "스타벅스 강남점",
       distance: "1.2km",
       with: "지민",
+      description: "오랜만에 만나서 수다 떨어요!",
+      hostNickname: "지민",
+      hostProfileImageUrl: nil,
       status: .needResponse,
       responses: PromiseResponse(current: 0, total: 2),
-      deadline: "3시간 후"
+      deadline: "3시간 후",
+      hostId: "user123",
+      currentUserId: "user123"
     ),
     PromiseItem(
       id: "2",
@@ -153,9 +184,14 @@ public extension PromiseItem {
       location: "이탈리안 레스토랑",
       distance: "2.5km",
       with: "지민",
+      description: "맛있는 파스타 먹으러 가요",
+      hostNickname: "지민",
+      hostProfileImageUrl: nil,
       status: .confirmed,
       responses: PromiseResponse(current: 2, total: 2),
-      deadline: nil
+      deadline: nil,
+      hostId: "user456",
+      currentUserId: "user123"
     ),
     PromiseItem(
       id: "3",
@@ -163,12 +199,17 @@ public extension PromiseItem {
       emoji: "🎬",
       time: "오후 3:00",
       date: "내일",
-      location: "CGV 강남",
-      distance: "3.1km",
+      location: "장소 미정",
+      distance: nil,
       with: "지민",
+      description: nil,
+      hostNickname: "지민",
+      hostProfileImageUrl: nil,
       status: .sent,
       responses: PromiseResponse(current: 1, total: 2),
-      deadline: nil
+      deadline: nil,
+      hostId: "user456",
+      currentUserId: "user123"
     ),
     PromiseItem(
       id: "4",
@@ -179,9 +220,14 @@ public extension PromiseItem {
       location: "한강공원",
       distance: "5.0km",
       with: "지민",
+      description: "아침 일찍 만나서 5km 뛰어요! 준비운동 필수",
+      hostNickname: "지민",
+      hostProfileImageUrl: nil,
       status: .needResponse,
       responses: PromiseResponse(current: 0, total: 2),
-      deadline: "1일 후"
+      deadline: "1일 후",
+      hostId: "user123",
+      currentUserId: "user123"
     ),
   ]
 }

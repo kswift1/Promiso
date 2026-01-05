@@ -59,8 +59,8 @@ extension GroupMain {
     
     @ViewBuilder
     private var groupDetailView: some View {
-      ScrollView {
-        // Status Filter
+      VStack(spacing: 0) {
+        // Status Filter (고정)
         StatusFilterView(
           selectedFilter: Binding(
             get: { store.selectedFilter },
@@ -69,19 +69,23 @@ extension GroupMain {
         )
         .padding(.horizontal, 16)
         .padding(.top, 12)
-        
-        // Promise Timeline
+        .padding(.bottom, 8)
+
+        // Promise Timeline (스크롤 가능)
         PromiseTimelineView(
           promisesState: store.promisesState,
           selectedFilter: store.selectedFilter,
+          responseStatuses: store.myResponses,
           onAccept: { promiseId in store.send(.view(.proposalAccepted(promiseId))) },
-          acceptLoadingIds: store.acceptingProposalIds,
           onReject: { promiseId in store.send(.view(.proposalRejected(promiseId))) },
-          rejectLoadingIds: store.rejectingProposalIds
+          onDelete: { promiseId in store.send(.view(.promiseDeleted(promiseId))) },
+          onChangeResponse: { promiseId, status in
+            store.send(.view(.responseChanged(promiseId, status)))
+          }
         )
-      }
-      .refreshable {
-        store.send(.view(.refreshTriggered))
+        .refreshable {
+          store.send(.view(.refreshTriggered))
+        }
       }
     }
     
@@ -222,20 +226,6 @@ private extension GroupMain.Feature.State {
   /// 활성화된 그룹이 없는 경우
   var shouldShowEmptyGroupView: Bool {
     !promisesState.isLoading && hasNoGroups
-  }
-  
-  /// 현재 수락 처리중인 약속 ID 목록
-  var acceptingProposalIds: Set<String> {
-    Set(proposalResponding.compactMap { entry in
-      entry.value == .accepting ? entry.key : nil
-    })
-  }
-  
-  /// 현재 거절 처리중인 약속 ID 목록
-  var rejectingProposalIds: Set<String> {
-    Set(proposalResponding.compactMap { entry in
-      entry.value == .rejecting ? entry.key : nil
-    })
   }
   
   /// 특정 약속의 응답 상태 조회
