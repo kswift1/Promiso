@@ -76,13 +76,6 @@ export const createUser = onCall<CreateUserRequest>(
     const data = request.data;
 
     // 2. 유효성 검사
-    if (!data.name || data.name.trim().length === 0) {
-      throw new HttpsError(
-        "invalid-argument",
-        "이름은 필수입니다",
-      );
-    }
-
     const nickname = data.nickname.trim();
     if (nickname.length < 2 || nickname.length > 12) {
       throw new HttpsError(
@@ -90,6 +83,9 @@ export const createUser = onCall<CreateUserRequest>(
         "닉네임은 2~12자여야 합니다",
       );
     }
+
+    // name이 없으면 nickname으로 대체
+    const name = data.name?.trim() || nickname;
 
     if (
       !data.provider ||
@@ -123,7 +119,7 @@ export const createUser = onCall<CreateUserRequest>(
       await db.runTransaction(async (transaction) => {
         // 4-1. 메인 문서 생성 (email 제외, profile 필드는 null로 초기화)
         transaction.set(userRef, {
-          name: data.name,
+          name: name,
           nickname: nickname,
           profile: null,
           metaData: {

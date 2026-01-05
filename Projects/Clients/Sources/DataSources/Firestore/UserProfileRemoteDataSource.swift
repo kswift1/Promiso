@@ -8,7 +8,7 @@ import PromisoShared
 
 /// 사용자 생성 요청
 private struct CreateUserRequest: Encodable {
-  let name: String
+  let name: String?
   let nickname: String
   let provider: ProviderRequest
   let env: String?
@@ -134,12 +134,12 @@ public final class UserProfileRemoteDataSource: @unchecked Sendable {
 
   /// 사용자 생성 (회원가입)
   /// - Parameters:
-  ///   - name: 실명
+  ///   - name: 실명 (nil이면 닉네임으로 대체됨)
   ///   - nickname: 닉네임
   ///   - provider: 인증 제공자 정보
   /// - Returns: 생성된 사용자 ID
   public func createUser(
-    name: String,
+    name: String?,
     nickname: String,
     provider: ProviderInfo
   ) async throws -> String {

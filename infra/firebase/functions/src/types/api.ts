@@ -379,10 +379,11 @@ export enum RespondPromiseError {
  * - 인증 필수 (Firebase Auth)
  * - userId는 자동으로 request.auth.uid에서 추출
  * - email은 메인 문서가 아닌 auth 서브컬렉션에만 저장됨
+ * - name이 null이면 nickname으로 대체됨
  */
 export interface CreateUserRequest {
-  /** provider에서 받은 이름 (변경 불가) */
-  name: string;
+  /** provider에서 받은 이름 (선택적, null이면 nickname 사용) */
+  name?: string | null;
 
   /** 사용자가 설정한 닉네임 (2~12자) */
   nickname: string;

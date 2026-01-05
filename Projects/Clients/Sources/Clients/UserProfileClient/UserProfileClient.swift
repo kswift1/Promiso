@@ -45,7 +45,7 @@ public enum UserProfile: Equatable, Sendable {
 public struct UserProfileClient: Sendable {
   /// 프로필 이미지와 함께 사용자 생성 (회원가입 전체 플로우)
   /// - Parameters:
-  ///   - name: 실명
+  ///   - name: 실명 (nil이면 닉네임으로 대체됨)
   ///   - nickname: 닉네임
   ///   - providerType: OAuth 제공자 타입
   ///   - providerUid: OAuth 제공자 UID
@@ -53,7 +53,7 @@ public struct UserProfileClient: Sendable {
   ///   - profileImageData: 프로필 이미지 (선택)
   /// - Returns: 생성된 사용자 프로필
   public var createUserWithProfile: @Sendable (
-    _ name: String,
+    _ name: String?,
     _ nickname: String,
     _ providerType: String,
     _ providerUid: String,
@@ -97,7 +97,7 @@ extension UserProfileClient: TestDependencyKey {
     createUserWithProfile: { name, nickname, _, _, email, _ in
       UserPrivate(
         userId: "preview-user-id",
-        name: name,
+        name: name ?? nickname,
         nickname: nickname,
         email: email,
         provider: "google",
