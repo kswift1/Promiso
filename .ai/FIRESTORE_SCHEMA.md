@@ -323,32 +323,25 @@ promises/{promiseId}
 | `isConfirmed` | Boolean | ✅ | false | 약속 확정 여부 |
 | `confirmedAt` | Timestamp | ❌ | null | 확정 시각 |
 | `hostId` | String | ✅ | - | 호스트(생성자) ID |
-| `hostName` | String | ✅ | - | 호스트 이름 (캐시) |
 | `groupId` | String | ✅ | - | 그룹 ID |
-| `groupName` | String | ✅ | - | 그룹 이름 (캐시) |
 | `counts` | Map | ✅ | - | 참석 상태별 카운트 |
 | `counts.total` | Number | ✅ | 0 | 전체 초대 인원 |
 | `counts.accepted` | Number | ✅ | 0 | 수락 인원 |
 | `counts.declined` | Number | ✅ | 0 | 거절 인원 |
 | `counts.pending` | Number | ✅ | 0 | 대기 인원 |
-| `counts.tentative` | Number | ✅ | 0 | 미정 인원 |
 | `startAt` | Timestamp | ✅ | - | 시작 시각 |
 | `endAt` | Timestamp | ✅ | - | 종료 시각 |
-| `krYyyymm` | Number | ✅ | - | 한국 시간 년월 (예: 202401) |
-| `krYyyymmdd` | Number | ✅ | - | 한국 시간 년월일 (예: 20240115) |
 | `timezone` | String | ✅ | "Asia/Seoul" | 타임존 |
-| `status` | String | ✅ | "active" | 약속 상태 (`active` \| `completed` \| `cancelled`) |
-| `location` | Map | ❌ | null | 장소 정보 |
-| `location.name` | String | ✅ | - | 장소명 |
-| `location.address` | String | ✅ | - | 주소 |
-| `location.latitude` | Number | ✅ | - | 위도 |
-| `location.longitude` | Number | ✅ | - | 경도 |
-| `location.placeId` | String | ❌ | - | Google Places ID |
-| `reminders` | Map | ✅ | - | 알림 설정 |
-| `reminders.minutesBefore` | Array | ✅ | [60, 30] | 알림 시간 배열 (분 단위) |
+| `status` | String | ✅ | "active" | 약속 상태 (`active` \| `completed` \| `cancelled`) | // 어떤 약속상태인지?
 | `createdAt` | Timestamp | ✅ | - | 생성 시각 |
 | `updatedAt` | Timestamp | ✅ | - | 수정 시각 |
 | `isDeleted` | Boolean | ✅ | false | 삭제 여부 (소프트 삭제) |
+
+#### 📝 설계 메모
+
+- 표시용 이름은 `hostId`, `groupId` 기반으로 조회
+- `location`, `reminders`는 후속 단계에서 확장 예정
+- `status` 의미(상태 전이 포함) 정의 필요
 
 #### 📝 예시 데이터
 
@@ -362,32 +355,17 @@ promises/{promiseId}
   "isConfirmed": true,
   "confirmedAt": "2024-01-14T18:00:00+09:00",
   "hostId": "user_kim123",
-  "hostName": "김민수",
   "groupId": "group_friends",
-  "groupName": "대학 친구들",
   "counts": {
     "total": 4,
     "accepted": 3,
     "declined": 1,
-    "pending": 0,
-    "tentative": 0
+    "pending": 0
   },
   "startAt": "2024-01-15T19:00:00+09:00",
   "endAt": "2024-01-15T21:30:00+09:00",
-  "krYyyymm": 202401,
-  "krYyyymmdd": 20240115,
   "timezone": "Asia/Seoul",
   "status": "active",
-  "location": {
-    "name": "CGV 강남",
-    "address": "서울특별시 강남구 강남대로 438",
-    "latitude": 37.501234,
-    "longitude": 127.026789,
-    "placeId": "ChIJN1t_tDeuEmsRUsoyG83frY4"
-  },
-  "reminders": {
-    "minutesBefore": [60, 30]
-  },
   "createdAt": "2024-01-14T10:00:00+09:00",
   "updatedAt": "2024-01-14T18:00:00+09:00",
   "isDeleted": false
@@ -587,10 +565,13 @@ db.collection("promises")
 #### 오늘의 약속 조회
 
 ```swift
-let today = 20240115 // YYYYMMDD
+let calendar = Calendar.current
+let startOfDay = calendar.startOfDay(for: Date())
+let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
 db.collection("promises")
   .whereField("groupId", isEqualTo: groupId)
-  .whereField("krYyyymmdd", isEqualTo: today)
+  .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: startOfDay))
+  .whereField("startAt", isLessThan: Timestamp(date: endOfDay))
   .whereField("isDeleted", isEqualTo: false)
   .order(by: "startAt", descending: false)
   .getDocuments()
@@ -599,10 +580,13 @@ db.collection("promises")
 #### 특정 월의 약속 조회
 
 ```swift
-let month = 202401 // YYYYMM
+let calendar = Calendar.current
+let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: Date()))!
+let endOfMonth = calendar.date(byAdding: .month, value: 1, to: startOfMonth)!
 db.collection("promises")
   .whereField("groupId", isEqualTo: groupId)
-  .whereField("krYyyymm", isEqualTo: month)
+  .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: startOfMonth))
+  .whereField("startAt", isLessThan: Timestamp(date: endOfMonth))
   .whereField("isDeleted", isEqualTo: false)
   .order(by: "startAt", descending: false)
   .getDocuments()
@@ -716,14 +700,6 @@ service cloud.firestore {
 | `promises_by_group_date` | groupId | ASC | 그룹별 날짜 조회 |
 |  | isDeleted | ASC |  |
 |  | startAt | ASC |  |
-| `promises_by_group_month` | groupId | ASC | 월별 조회 |
-|  | krYyyymm | ASC |  |
-|  | isDeleted | ASC |  |
-|  | startAt | ASC |  |
-| `promises_by_group_day` | groupId | ASC | 일별 조회 |
-|  | krYyyymmdd | ASC |  |
-|  | isDeleted | ASC |  |
-|  | startAt | ASC |  |
 
 #### 2. notifications 컬렉션
 
@@ -749,3 +725,14 @@ service cloud.firestore {
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|----------|--------|
 | 1.0 | 2024-12-30 | 초안 작성 (groups 컬렉션 추가) | Claude |
+| 1.1 | 2025-01-05 | promises 스키마 주석 반영 및 필드 정리 | Codex |
+
+---
+
+## 백로그
+
+### v1.1
+
+- 표시용 이름 조회 방식(캐시/조인/배치 업데이트) 결정
+- `status` 상태 정의 및 전이 규칙 문서화
+- `location`, `reminders` 필드 도입 시점 및 스키마 확정
