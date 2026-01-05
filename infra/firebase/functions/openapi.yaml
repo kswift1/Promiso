@@ -89,10 +89,19 @@ paths:
                   $ref: '#/components/schemas/CreateUserRequest'
             examples:
               basic:
-                summary: 기본 사용자 생성
+                summary: 기본 사용자 생성 (이름 포함)
                 value:
                   data:
                     name: 김성원
+                    nickname: 성원
+                    provider:
+                      type: google
+                      uid: "100163668057674322269"
+                      email: kswen0203@gmail.com
+              withoutName:
+                summary: 이름 없이 생성 (nickname 사용)
+                value:
+                  data:
                     nickname: 성원
                     provider:
                       type: google
@@ -975,13 +984,13 @@ components:
     CreateUserRequest:
       type: object
       required:
-        - name
         - nickname
         - provider
       properties:
         name:
           type: string
-          description: provider에서 받은 이름
+          nullable: true
+          description: provider에서 받은 이름 (선택적, null이면 nickname 사용)
           example: 김성원
         nickname:
           type: string

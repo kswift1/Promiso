@@ -81,7 +81,7 @@ Firestore Root
 
 | 필드명 | 타입 | 필수 | 설명 |
 |--------|------|------|------|
-| `name` | String | ✅ | provider에서 받은 이름 (변경 불가) |
+| `name` | String | ✅ | provider에서 받은 이름 또는 닉네임 (생성 시 없으면 nickname 사용) |
 | `nickname` | String | ✅ | 사용자가 설정한 표시명 |
 | `profile` | Profile | ❌ | 프로필 이미지 정보 (하단 참조) |
 | `metaData` | MetaData | ✅ | 메타데이터 (하단 참조) |
