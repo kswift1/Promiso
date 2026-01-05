@@ -8,10 +8,9 @@
 import Foundation
 import SwiftUI
 import PhotosUI
-import Shared
+import PromisoShared
 import Clients
 import ComposableArchitecture
-import Shared
 
 enum ProfileImageType: Equatable {
   case url(URL)
@@ -64,10 +63,13 @@ extension AppEntry {
       var step: Step = .welcome
       var isSaving: Bool = false
       var isSkippingPhoto: Bool = false
-      
+
       // Nested States
       var ui: UIState = UIState()
       var validation: ValidationState = ValidationState()
+
+      // Alert State
+      @Presents var alert: AlertState<Action.Alert>?
       
       // MARK: - Computed Properties for Backward Compatibility
       
@@ -124,6 +126,11 @@ extension AppEntry {
       case view(ViewAction)
       case `internal`(InternalAction)
       case delegate(DelegateAction)
+      case alert(PresentationAction<Alert>)
+
+      public enum Alert: Equatable {
+        case confirmError
+      }
     }
     
     public enum ViewAction {
@@ -144,7 +151,7 @@ extension AppEntry {
     public enum InternalAction {
       // Profile Save Flow
       case saveProfile
-      case profileSaved(UserModel)  // Clean Architecture: Adapter가 Shared Model 반환
+      case profileSaved(UserPrivate)
       case profileSaveFailed(Error)
 
       // Animation Flow
@@ -158,7 +165,7 @@ extension AppEntry {
     }
     
     public enum DelegateAction: Equatable {
-      case completed(UserModel)  // Clean Architecture: Presentation은 Shared Model만 사용
+      case completed(UserPrivate)
     }
     
     public var body: some ReducerOf<Self> {
@@ -166,14 +173,18 @@ extension AppEntry {
         switch action {
         case .view(let viewAction):
           return handleViewAction(state: &state, action: viewAction)
-          
+
         case .internal(let internalAction):
           return handleInternalAction(state: &state, action: internalAction)
-          
+
         case .delegate:
+          return .none
+
+        case .alert:
           return .none
         }
       }
+      .ifLet(\.$alert, action: \.alert)
     }
     
     private func handleViewAction(state: inout State, action: ViewAction) -> Effect<Action> {
@@ -188,7 +199,7 @@ extension AppEntry {
           return .none
         case .nickname:
           // Shared Layer의 검증 로직 사용
-          if let error = UserModel.validateNickname(state.nickname) {
+          if let error = UserPublic.validateNickname(state.nickname) {
             state.nicknameError = error.message
             return .none
           }
@@ -228,7 +239,7 @@ extension AppEntry {
       case .nicknameChanged(let name):
         state.nickname = name
         // Shared Layer의 검증 로직 사용
-        state.nicknameError = UserModel.validateNickname(name)?.message
+        state.nicknameError = UserPublic.validateNickname(name)?.message
         state.isNicknameAvailable = nil
 
         guard state.nicknameError == nil, !name.isEmpty else {
@@ -297,48 +308,52 @@ extension AppEntry {
       case .saveProfile:
         state.isSaving = true
         return .run { [state] send in
+          // Provider 정보 추출
+          guard let providerType = state.providerType ?? state.providerId?.providerTypeIdentifier else {
+            let error = NSError(domain: "ProfileSetup", code: -1, userInfo: [
+              NSLocalizedDescriptionKey: "Provider type is missing"
+            ])
+            await send(.internal(.profileSaveFailed(error)))
+            return
+          }
+          let providerUid = state.providerUid ?? state.uid
+          let email = state.email ?? ""
+
+          // 프로필 이미지 데이터 추출
+          let imageData: Data? = if !state.isSkippingPhoto, case .data(let data) = state.profileImage {
+            data
+          } else {
+            nil
+          }
+
+          // 사용자 생성 + 프로필 이미지 업로드 + 조회 (Client에서 일괄 처리)
           do {
-            // 1. UserProfile 생성
-            let providerType = state.providerType ?? state.providerId?.providerTypeIdentifier
-            let providerInfo: ProviderInfo? = {
-              guard let type = providerType else { return nil }
-              let uid = state.providerUid ?? state.uid
-              return ProviderInfo(uid: uid, type: type)
-            }()
-            
-            let profile = UserProfile(
-              name: state.fullName,
-              nickname: state.nickname,
-              email: state.email,
-              provider: providerInfo,
-              profile: nil,
-              pinnedGroupId: nil,
-              notificationSettings: .default,
-              createdAt: Date(),
-              updatedAt: Date()
+            let userModel = try await userProfileClient.createUserWithProfile(
+              state.fullName,
+              state.nickname,
+              providerType,
+              providerUid,
+              email,
+              imageData
             )
-            
-            let imageInput: UserProfileImageInput = {
-              if state.isSkippingPhoto { return .skip }
-              switch state.profileImage {
-              case .data(let data):
-                return .data(data)
-              case .url(let url):
-                return .url(url)
-              case .none:
-                return .none
-              }
-            }()
-
-            // 2. 저장 + 이미지 처리
-            let userModel = try await userProfileClient.saveProfileWithImage(
-              state.uid,
-              profile,
-              imageInput
-            )
-
             await send(.internal(.profileSaved(userModel)))
+          } catch let error as UserProfileError {
+            // uploadFailed 에러는 무시하고 프로필 조회만 시도
+            if error == .uploadFailed {
+              print("⚠️ Profile image upload failed, continuing without image...")
+              do {
+                // 이미지 없이 프로필 조회 (프로필은 이미 생성됨)
+                let userModel = try await userProfileClient.getPrivateProfile(.me)
+                await send(.internal(.profileSaved(userModel)))
+              } catch {
+                await send(.internal(.profileSaveFailed(error)))
+              }
+            } else {
+              // 그 외 에러는 실패 처리
+              await send(.internal(.profileSaveFailed(error)))
+            }
           } catch {
+            // 알 수 없는 에러도 실패 처리
             await send(.internal(.profileSaveFailed(error)))
           }
         }
@@ -351,7 +366,18 @@ extension AppEntry {
       case .profileSaveFailed(let error):
         state.isSaving = false
         state.isSkippingPhoto = false
-        print("❌ Profile save failed: \(error)")
+        print("❌ Profile save failed: \(error.localizedDescription)")
+
+        state.alert = AlertState {
+          TextState("프로필 저장 실패")
+        } actions: {
+          ButtonState(role: .cancel) {
+            TextState("확인")
+          }
+        } message: {
+          TextState(error.localizedDescription)
+        }
+
         return .none
         
       case .startAnimation:
@@ -449,6 +475,7 @@ extension AppEntry {
         .task(id: store.step) {
           store.send(.view(.stepDidAppear(store.step)))
         }
+        .alert($store.scope(state: \.alert, action: \.alert))
       }
       
       private var pagingIndicator: some SwiftUI.View {

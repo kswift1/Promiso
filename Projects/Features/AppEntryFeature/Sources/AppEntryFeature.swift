@@ -7,7 +7,7 @@ import RootTabFeature
 import ResourceKit
 import SwiftUI
 
-import Shared
+import PromisoShared
 
 // MARK: - Feature Namespace
 
@@ -66,7 +66,7 @@ extension AppEntry {
       case startSessionCheck
       case sessionCheckResponse(isAuthenticated: Bool)
       case startProfileCheck
-      case profileCheckResponse(user: FirebaseUserSnapshot, profile: UserModel?)
+      case profileCheckResponse(user: FirebaseUserSnapshot, profile: UserPrivate?)
     }
 
     // MARK: - Destination Reducer
@@ -131,8 +131,8 @@ extension AppEntry {
           case .startProfileCheck:
             return .run { send in
               guard let user = await authClient.currentUser() else { return }
-              let profile = try? await userProfileClient.hasProfile(user.uid)
-              await send(.internal(.profileCheckResponse(user: user, profile: profile)))
+              let privateProfile = try? await userProfileClient.getPrivateProfile(target: .me)
+              await send(.internal(.profileCheckResponse(user: user, profile: privateProfile)))
             }
             
           case .profileCheckResponse(let user, let profile):
