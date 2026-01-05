@@ -2,7 +2,7 @@
 @_exported import Clients
 @_exported import ComposableArchitecture
 @_exported import SwiftUI
-@_exported import Shared
+@_exported import PromisoShared
 @_exported import AuthFeature
 @_exported import RootTabFeature
 

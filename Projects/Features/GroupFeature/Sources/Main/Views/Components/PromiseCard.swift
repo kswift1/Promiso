@@ -1,5 +1,5 @@
 import Clients
-import Shared
+import PromisoShared
 import SwiftUI
 
 struct PromiseCard: View {

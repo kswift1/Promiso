@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-import Shared
+import PromisoShared
 import ResourceKit
 
 struct SplashConfig {

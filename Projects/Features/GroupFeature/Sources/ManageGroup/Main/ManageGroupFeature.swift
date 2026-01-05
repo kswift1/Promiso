@@ -1,6 +1,6 @@
 import Clients
 import ComposableArchitecture
-import Shared
+import PromisoShared
 
 public enum ManageGroup {}
 

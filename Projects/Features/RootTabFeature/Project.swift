@@ -17,7 +17,7 @@ let project = Project(
       sources: ["Sources/**"],
       dependencies: [
         .project(target: "Clients", path: "../../Clients"),
-        .project(target: "Shared", path: "../../Shared"),
+        .project(target: "PromisoShared", path: "../../Shared"),
         .project(target: "HomeFeature", path: "../HomeFeature"),
         .project(target: "GroupFeature", path: "../GroupFeature"),
         .project(target: "ExternalDependency", path: "../../ExternalDependency")

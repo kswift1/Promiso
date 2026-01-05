@@ -2,7 +2,7 @@
 @_exported import Clients
 @_exported import ComposableArchitecture
 @_exported import SwiftUI
-@_exported import Shared
+@_exported import PromisoShared
 
 // MARK: - Feature Exports (필요시 추가)
 @_exported import HomeFeature

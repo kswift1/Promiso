@@ -6,6 +6,7 @@ import SwiftUI
 import ComposableArchitecture
 import GroupFeature
 import Clients
+import PromisoShared
 
 // MARK: - Example Application
 
@@ -51,10 +52,14 @@ private struct ExampleContentView: View {
   /// GroupMain feature example with preview data
   @ViewBuilder
   private var groupMainExample: some View {
-    let previewUser = UserModel(
-      id: "preview-user-id",
+    let previewUser = UserPrivate(
+      userId: "preview-user-id",
+      name: "Preview User",
+      nickname: "PreviewNick",
       email: "preview@example.com",
-      nickname: "Preview User"
+      provider: "google",
+      profile: nil,
+      metadata: Metadata(createdAt: Date(), updatedAt: Date())
     )
 
     let store = Store(initialState: GroupMain.Feature.State(currentUser: previewUser)) {
@@ -86,10 +91,14 @@ private struct ExampleContentView: View {
 // MARK: - SwiftUI Previews
 
 #Preview {
-  let previewUser = UserModel(
-    id: "preview-user-id",
+  let previewUser = UserPrivate(
+    userId: "preview-user-id",
+    name: "Preview User",
+    nickname: "PreviewNick",
     email: "preview@example.com",
-    nickname: "Preview User"
+    provider: "google",
+    profile: nil,
+    metadata: Metadata(createdAt: Date(), updatedAt: Date())
   )
 
   let store = Store(initialState: GroupMain.Feature.State(currentUser: previewUser)) {

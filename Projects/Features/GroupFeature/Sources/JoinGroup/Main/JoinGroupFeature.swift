@@ -1,6 +1,7 @@
 import SwiftUI
 import ComposableArchitecture
-import Shared
+
+import PromisoShared
 import Clients
 
 // MARK: - Feature Namespace
@@ -40,7 +41,7 @@ extension JoinGroup {
 
       // Invite Code
       var inviteCode: String = ""
-      let currentUser: UserModel
+      let currentUser: UserPrivate
 
       // Progress & Error
       var isLoadingPreview: Bool = false
@@ -49,7 +50,7 @@ extension JoinGroup {
       var joinError: String?
       var joinResult: GroupModel?
 
-      public init(currentUser: UserModel) {
+      public init(currentUser: UserPrivate) {
         self.currentUser = currentUser
       }
 

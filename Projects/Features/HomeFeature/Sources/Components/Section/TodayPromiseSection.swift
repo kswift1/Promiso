@@ -8,7 +8,7 @@
 import SwiftUI
 import ComposableArchitecture
 
-import Shared
+import PromisoShared
 
 struct TodayPromiseSection: View {
   

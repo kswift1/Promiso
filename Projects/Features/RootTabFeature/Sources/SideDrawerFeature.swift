@@ -1,6 +1,7 @@
 import ComposableArchitecture
 import CoreGraphics
-import Shared
+
+import PromisoShared
 
 // MARK: - Feature Namespace
 

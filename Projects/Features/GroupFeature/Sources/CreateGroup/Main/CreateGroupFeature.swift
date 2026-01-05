@@ -1,7 +1,7 @@
 import SwiftUI
 import PhotosUI
 import ComposableArchitecture
-import Shared
+import PromisoShared
 import Clients
 
 // MARK: - Feature Namespace
@@ -36,14 +36,14 @@ extension CreateGroup {
       var groupName: String = ""
       var groupDescription: String = ""
       var maxMembers: MaxMembers = .five
-      let currentUser: UserModel
+      let currentUser: UserPrivate
       
       // Progress & Error
       var isCreating: Bool = false
       var creationError: String?
       var creationResult: GroupCreationResult?
 
-      public init(currentUser: UserModel) {
+      public init(currentUser: UserPrivate) {
         self.currentUser = currentUser
       }
 

@@ -19,11 +19,17 @@ struct PromiseTimelineView: View {
       return promises
     case .needResponse:
       return promises.filter {
-        responseStatuses[$0.id] == nil
+        if responseStatuses[$0.id] != nil {
+          return false
+        }
+        return $0.status == .needResponse
       }
     case .responded:
       return promises.filter {
-        responseStatuses[$0.id] != nil
+        if responseStatuses[$0.id] != nil {
+          return true
+        }
+        return $0.status != .needResponse
       }
     }
   }

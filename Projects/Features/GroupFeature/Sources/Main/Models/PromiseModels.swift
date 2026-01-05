@@ -1,6 +1,6 @@
 import Foundation
 
-import Shared
+import PromisoShared
 
 // MARK: - Current Group
 

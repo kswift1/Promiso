@@ -1,7 +1,8 @@
 import SwiftUI
 import PhotosUI
 import ComposableArchitecture
-import Shared
+
+import PromisoShared
 import Clients
 import UIKit
 
@@ -357,16 +358,16 @@ private extension View {
 
 // MARK: - Preview
 
-#Preview {
-  let store = Store(initialState: CreateGroup.Feature.State(
-    currentUser: UserModel(
-      id: "preview-user",
-      email: "preview@promiso.com",
-      nickname: "프리뷰"
-    )
-  )) {
-    CreateGroup.Feature()
-  }
-  
-  return CreateGroup.RootView(store: store)
-}
+//#Preview {
+//  let store = Store(initialState: CreateGroup.Feature.State(
+//    currentUser: UserModel(
+//      id: "preview-user",
+//      email: "preview@promiso.com",
+//      nickname: "프리뷰"
+//    )
+//  )) {
+//    CreateGroup.Feature()
+//  }
+//  
+//  return CreateGroup.RootView(store: store)
+//}

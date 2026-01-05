@@ -1,5 +1,5 @@
 import Foundation
-import Shared
+import PromisoShared
 
 struct ConfirmedPromiseModel: Equatable, Identifiable, Hashable {
   let id: String

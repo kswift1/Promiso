@@ -9,7 +9,7 @@ import SwiftUI
 import CryptoKit
 import GoogleSignIn
 import GoogleSignInSwift
-import Shared
+import PromisoShared
 
 // MARK: - Feature Namespace
 

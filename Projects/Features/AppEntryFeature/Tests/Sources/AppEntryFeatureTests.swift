@@ -4,7 +4,7 @@
 import Testing
 import ComposableArchitecture
 import Clients
-import Shared
+import PromisoShared
 @testable import AppEntryFeature
 
 // MARK: - State Tests

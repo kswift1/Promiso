@@ -2,9 +2,9 @@
 // TCA 1.22.2를 사용한 RootTab Feature의 Implementation layer
 // 이 파일은 핵심 business logic, state management, view implementation을 포함
 
-import Shared
-import Shared
 import ComposableArchitecture
+
+import PromisoShared
 
 public enum Tab: String, CaseIterable {
   case home = "홈"
@@ -49,7 +49,7 @@ extension RootTab {
       /// Group Main State
       var groupMain: GroupMain.Feature.State
 
-      public init(currentUser: UserModel) {
+      public init(currentUser: UserPrivate) {
         self.groupMain = GroupMain.Feature.State(currentUser: currentUser)
         // Home.Feature.State 도 유저 기반 세팅 필요 시 여기에 주입
       }

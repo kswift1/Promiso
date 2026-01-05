@@ -7,7 +7,7 @@
 
 import SwiftUI
 import ComposableArchitecture
-import Shared
+import PromisoShared
 
 struct PendingResponseSection: View {
   private let store: StoreOf<Home.Feature>

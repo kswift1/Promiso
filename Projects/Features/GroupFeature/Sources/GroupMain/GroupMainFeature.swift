@@ -1,14 +1,4 @@
-// 2025.11.05
-// - 필터 적용시 애니메이션 (Like DiffableDatasource)
-// - EmptyView 스켈레톤 맞추기?
-// - 약속 만들기 가능하면 가져온 그룹 데이터 활용하기?
-// - 반대 속성 버튼 동시 탭 막기 (수락 / 거절), adaptiveButton disabled 대응 (26 미만 버전)
-
-// MARK: - Feature Namespace
-import SwiftUI
-import Shared
-import Shared
-import ComposableArchitecture
+import PromisoShared
 
 public enum GroupMain {}
 
@@ -45,7 +35,7 @@ extension GroupMain {
     @ObservableState
     public struct State {
       var isInitialized: Bool = false
-      let currentUser: UserModel
+      let currentUser: UserPrivate
       
       var selectedFilter: StatusFilter = .all
       
@@ -61,7 +51,7 @@ extension GroupMain {
       @Presents var createGroup: CreateGroup.Feature.State?
       @Presents var joinGroup: JoinGroup.Feature.State?
       
-      public init(currentUser: UserModel) {
+      public init(currentUser: UserPrivate) {
         self.currentUser = currentUser
       }
     }
@@ -273,13 +263,8 @@ extension GroupMain {
         state.promisesState = .failed(error)
         return .none
       case .setDefaultGroup(let groups):
-        if let pinned = state.currentUser.pinnedGroupId,
-           let pinnedGroup = groups.first(where: { $0.id == pinned }) {
-          return .send(.internal(.fetchCurrentGroup(id: pinnedGroup.id)))
-        } else {
-          guard let firstGroup = groups.first else { return .none }
-          return .send(.internal(.fetchCurrentGroup(id: firstGroup.id)))
-        }
+        guard let firstGroup = groups.first else { return .none }
+        return .send(.internal(.fetchCurrentGroup(id: firstGroup.id)))
       case .fetchCurrentGroup(let id):
         return .run { [groupClient, id] send in
           do {
