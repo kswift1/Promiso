@@ -210,7 +210,6 @@ export const createGroupV2 = onCall<CreateGroupV2Request>(...);
 ### 3. 문서 업데이트
 
 - `openapi.yaml` 업데이트
-- `.ai/API_SPEC.md` 업데이트
 - iOS 코드 수정 필요 여부 기록
 
 ---
@@ -232,8 +231,7 @@ export const createGroupV2 = onCall<CreateGroupV2Request>(...);
 
 ### 문서화
 
-- [ ] `openapi.yaml` 업데이트
-- [ ] `.ai/API_SPEC.md` 업데이트 (예시 코드 포함)
+- [ ] `openapi.yaml` 업데이트 (예시 코드 포함)
 - [ ] `npm run api:validate` 통과
 
 ### 테스트
@@ -333,7 +331,7 @@ var data: [String: Any] = [
 
 ## 📚 참고 문서
 
-- [API 명세서](./../../../.ai/API_SPEC.md)
+- [API 명세서 (OpenAPI)](./openapi.yaml)
 - [OpenAPI Specification](https://swagger.io/specification/)
 - [Firebase Functions Docs](https://firebase.google.com/docs/functions)
 - [TypeScript 타입 정의](./src/types/api.ts)
@@ -362,7 +360,6 @@ OpenAPI YAML을 진실의 원천으로:
 # 커밋 전 체크
 git diff src/index.ts
 git diff openapi.yaml  # 함께 수정되었는지 확인
-git diff .ai/API_SPEC.md
 ```
 
 ### 4. Breaking Changes 최소화

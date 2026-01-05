@@ -33,7 +33,7 @@ info:
 
     모든 API 호출은 환경에 관계없이 동일한 방식으로 사용 가능합니다.
 
-  version: 1.0.0
+  version: 2.0.0
   contact:
     name: Promiso Team
 
@@ -52,6 +52,10 @@ servers:
         default: your-project-id
 
 tags:
+  - name: User
+    description: 사용자 관련 API
+  - name: Settings
+    description: 설정 관련 API
   - name: Group
     description: 그룹 관련 API
   - name: Promise
@@ -60,6 +64,337 @@ tags:
     description: 테스트용 API
 
 paths:
+  /createUser:
+    post:
+      tags:
+        - User
+      summary: 회원가입 (사용자 생성)
+      description: |
+        Firebase Auth 가입 후 Firestore에 사용자 정보를 생성합니다.
+
+        **인증 필수**: Firebase Authentication 토큰 필요
+      operationId: createUser
+      security:
+        - firebaseAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - data
+              properties:
+                data:
+                  $ref: '#/components/schemas/CreateUserRequest'
+            examples:
+              basic:
+                summary: 기본 사용자 생성
+                value:
+                  data:
+                    name: 김성원
+                    nickname: 성원
+                    provider:
+                      type: google
+                      uid: "100163668057674322269"
+                      email: kswen0203@gmail.com
+      responses:
+        '200':
+          description: 사용자 생성 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    $ref: '#/components/schemas/CreateUserResponse'
+              examples:
+                success:
+                  value:
+                    result:
+                      userId: sFeDJwqJbqScbSUp4Jz54MDlnFv1
+                      createdAt: "2025-01-05T10:00:00Z"
+        '400':
+          $ref: '#/components/responses/InvalidArgument'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '409':
+          description: 이미 존재하는 사용자
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FunctionsError'
+              examples:
+                alreadyExists:
+                  value:
+                    error:
+                      code: already-exists
+                      message: 이미 존재하는 사용자입니다
+
+  /getUser:
+    post:
+      tags:
+        - User
+      summary: 사용자 정보 조회
+      description: |
+        특정 사용자의 정보를 조회합니다. userId를 생략하면 본인 정보를 조회합니다.
+
+        **인증 필수**: Firebase Authentication 토큰 필요
+      operationId: getUser
+      security:
+        - firebaseAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                data:
+                  $ref: '#/components/schemas/GetUserRequest'
+            examples:
+              self:
+                summary: 본인 정보 조회
+                value:
+                  data: {}
+              other:
+                summary: 다른 사용자 조회
+                value:
+                  data:
+                    userId: otherUserId
+      responses:
+        '200':
+          description: 사용자 조회 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    $ref: '#/components/schemas/UserResponse'
+              examples:
+                withProfile:
+                  value:
+                    result:
+                      userId: sFeDJwqJbqScbSUp4Jz54MDlnFv1
+                      name: 김성원
+                      nickname: 성원
+                      email: kswen0203@gmail.com
+                      profile:
+                        url: https://storage.googleapis.com/.../profile.jpg
+                        thumbUrl: https://storage.googleapis.com/.../thumb_profile.jpg
+                        updatedAt: "2025-01-05T10:00:00Z"
+                      metaData:
+                        createdAt: "2024-12-19T10:00:00Z"
+                        updatedAt: "2025-01-05T10:00:00Z"
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: 사용자를 찾을 수 없음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FunctionsError'
+              examples:
+                notFound:
+                  value:
+                    error:
+                      code: not-found
+                      message: 사용자를 찾을 수 없습니다
+
+  /updateUser:
+    post:
+      tags:
+        - User
+      summary: 사용자 정보 수정
+      description: |
+        사용자의 기본 정보를 수정합니다. nickname만 수정 가능합니다.
+
+        **인증 필수**: Firebase Authentication 토큰 필요
+      operationId: updateUser
+      security:
+        - firebaseAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - data
+              properties:
+                data:
+                  $ref: '#/components/schemas/UpdateUserRequest'
+            examples:
+              basic:
+                summary: 닉네임 변경
+                value:
+                  data:
+                    nickname: 새로운닉네임
+      responses:
+        '200':
+          description: 사용자 정보 수정 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    $ref: '#/components/schemas/UpdateUserResponse'
+              examples:
+                success:
+                  value:
+                    result:
+                      success: true
+                      updatedAt: "2025-01-05T10:30:00Z"
+        '400':
+          $ref: '#/components/responses/InvalidArgument'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+
+  /uploadProfileImage:
+    post:
+      tags:
+        - User
+      summary: 프로필 이미지 업로드
+      description: |
+        프로필 이미지를 업로드하고 썸네일을 자동 생성합니다.
+
+        **플로우**: iOS에서 먼저 Storage에 업로드 → 경로를 이 API에 전달
+
+        **인증 필수**: Firebase Authentication 토큰 필요
+      operationId: uploadProfileImage
+      security:
+        - firebaseAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - data
+              properties:
+                data:
+                  $ref: '#/components/schemas/UploadProfileImageRequest'
+            examples:
+              basic:
+                summary: 프로필 이미지 업로드
+                value:
+                  data:
+                    imagePath: profile_images/sFeDJwqJbqScbSUp4Jz54MDlnFv1.jpg
+      responses:
+        '200':
+          description: 프로필 이미지 업로드 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    $ref: '#/components/schemas/UploadProfileImageResponse'
+              examples:
+                success:
+                  value:
+                    result:
+                      profile:
+                        url: https://storage.googleapis.com/.../profile.jpg
+                        updatedAt: "2025-01-05T10:00:00Z"
+        '400':
+          $ref: '#/components/responses/InvalidArgument'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+
+  /getUserSettings:
+    post:
+      tags:
+        - Settings
+      summary: 사용자 설정 조회
+      description: |
+        사용자의 설정 정보를 조회합니다.
+
+        **인증 필수**: Firebase Authentication 토큰 필요
+      operationId: getUserSettings
+      security:
+        - firebaseAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                data:
+                  type: object
+            examples:
+              basic:
+                value:
+                  data: {}
+      responses:
+        '200':
+          description: 설정 조회 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    $ref: '#/components/schemas/UserSettingsResponse'
+              examples:
+                success:
+                  value:
+                    result:
+                      notificationEnabled: true
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+
+  /updateUserSettings:
+    post:
+      tags:
+        - Settings
+      summary: 사용자 설정 수정
+      description: |
+        사용자의 설정을 수정합니다.
+
+        **인증 필수**: Firebase Authentication 토큰 필요
+      operationId: updateUserSettings
+      security:
+        - firebaseAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - data
+              properties:
+                data:
+                  $ref: '#/components/schemas/UpdateUserSettingsRequest'
+            examples:
+              disableNotification:
+                summary: 알림 비활성화
+                value:
+                  data:
+                    notificationEnabled: false
+      responses:
+        '200':
+          description: 설정 수정 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    $ref: '#/components/schemas/UpdateUserSettingsResponse'
+              examples:
+                success:
+                  value:
+                    result:
+                      success: true
+        '400':
+          $ref: '#/components/responses/InvalidArgument'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+
   /createGroup:
     post:
       tags:
@@ -605,9 +940,342 @@ components:
       bearerFormat: JWT
       description: Firebase Authentication 토큰
 
+  responses:
+    Unauthenticated:
+      description: 인증 실패
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/FunctionsError'
+          examples:
+            unauthenticated:
+              value:
+                error:
+                  code: unauthenticated
+                  message: 로그인이 필요합니다
+
+    InvalidArgument:
+      description: 잘못된 파라미터
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/FunctionsError'
+          examples:
+            invalidArgument:
+              value:
+                error:
+                  code: invalid-argument
+                  message: 잘못된 파라미터입니다
+
   schemas:
     # ========================================
-    # createGroup
+    # User
+    # ========================================
+
+    CreateUserRequest:
+      type: object
+      required:
+        - name
+        - nickname
+        - provider
+      properties:
+        name:
+          type: string
+          description: provider에서 받은 이름
+          example: 김성원
+        nickname:
+          type: string
+          minLength: 2
+          maxLength: 12
+          description: 사용자가 설정한 닉네임
+          example: 성원
+        provider:
+          type: object
+          required:
+            - type
+            - uid
+            - email
+          properties:
+            type:
+              type: string
+              enum:
+                - google
+                - apple
+              description: 인증 제공자 타입
+              example: google
+            uid:
+              type: string
+              description: 제공자 기준 사용자 ID
+              example: "100163668057674322269"
+            email:
+              type: string
+              format: email
+              description: 제공자에서 받은 이메일
+              example: kswen0203@gmail.com
+
+    CreateUserResponse:
+      type: object
+      required:
+        - userId
+        - createdAt
+      properties:
+        userId:
+          type: string
+          description: 생성된 사용자 ID (Firebase Auth UID)
+          example: sFeDJwqJbqScbSUp4Jz54MDlnFv1
+        createdAt:
+          type: string
+          format: date-time
+          description: 계정 생성 시각
+          example: "2025-01-05T10:00:00Z"
+
+    GetUserRequest:
+      type: object
+      properties:
+        userId:
+          type: string
+          nullable: true
+          description: 조회할 사용자 ID (생략 시 본인)
+          example: otherUserId
+
+    UserPublic:
+      type: object
+      description: 타인 조회 시 반환되는 사용자 정보 (이메일 제외)
+      required:
+        - userId
+        - name
+        - nickname
+        - metaData
+      properties:
+        userId:
+          type: string
+          description: 사용자 ID
+          example: sFeDJwqJbqScbSUp4Jz54MDlnFv1
+        name:
+          type: string
+          description: provider에서 받은 이름
+          example: 김성원
+        nickname:
+          type: string
+          description: 사용자 설정 닉네임
+          example: 성원
+        profile:
+          type: object
+          nullable: true
+          description: 프로필 이미지 정보
+          required:
+            - url
+            - updatedAt
+          properties:
+            url:
+              type: string
+              format: uri
+              description: 원본 이미지 URL
+              example: https://storage.googleapis.com/.../profile.jpg
+            thumbUrl:
+              type: string
+              format: uri
+              nullable: true
+              description: 썸네일 URL
+              example: https://storage.googleapis.com/.../thumb_profile.jpg
+            updatedAt:
+              type: string
+              format: date-time
+              description: 업데이트 시각
+              example: "2025-01-05T10:00:00Z"
+        metaData:
+          type: object
+          required:
+            - createdAt
+            - updatedAt
+          properties:
+            createdAt:
+              type: string
+              format: date-time
+              description: 생성 시각
+              example: "2024-12-19T10:00:00Z"
+            updatedAt:
+              type: string
+              format: date-time
+              description: 수정 시각
+              example: "2025-01-05T10:00:00Z"
+
+    UserPrivate:
+      type: object
+      description: 본인 조회 시 반환되는 사용자 정보 (이메일 포함)
+      required:
+        - userId
+        - name
+        - nickname
+        - email
+        - provider
+        - metaData
+      properties:
+        userId:
+          type: string
+          description: 사용자 ID
+          example: sFeDJwqJbqScbSUp4Jz54MDlnFv1
+        name:
+          type: string
+          description: provider에서 받은 이름
+          example: 김성원
+        nickname:
+          type: string
+          description: 사용자 설정 닉네임
+          example: 성원
+        email:
+          type: string
+          format: email
+          description: 이메일 주소 (auth 서브컬렉션에서 조회)
+          example: kswen0203@gmail.com
+        provider:
+          type: string
+          description: 인증 제공자 타입 (auth 서브컬렉션에서 조회)
+          example: google
+        profile:
+          type: object
+          nullable: true
+          description: 프로필 이미지 정보
+          required:
+            - url
+            - updatedAt
+          properties:
+            url:
+              type: string
+              format: uri
+              description: 원본 이미지 URL
+              example: https://storage.googleapis.com/.../profile.jpg
+            thumbUrl:
+              type: string
+              format: uri
+              nullable: true
+              description: 썸네일 URL
+              example: https://storage.googleapis.com/.../thumb_profile.jpg
+            updatedAt:
+              type: string
+              format: date-time
+              description: 업데이트 시각
+              example: "2025-01-05T10:00:00Z"
+        metaData:
+          type: object
+          required:
+            - createdAt
+            - updatedAt
+          properties:
+            createdAt:
+              type: string
+              format: date-time
+              description: 생성 시각
+              example: "2024-12-19T10:00:00Z"
+            updatedAt:
+              type: string
+              format: date-time
+              description: 수정 시각
+              example: "2025-01-05T10:00:00Z"
+
+    UserResponse:
+      oneOf:
+        - $ref: '#/components/schemas/UserPublic'
+        - $ref: '#/components/schemas/UserPrivate'
+      description: |
+        조건부 응답 스키마:
+        - 본인 조회 시: UserPrivate (이메일 포함)
+        - 타인 조회 시: UserPublic (이메일 제외)
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        nickname:
+          type: string
+          minLength: 2
+          maxLength: 12
+          nullable: true
+          description: 닉네임
+          example: 새로운닉네임
+
+    UpdateUserResponse:
+      type: object
+      required:
+        - success
+        - updatedAt
+      properties:
+        success:
+          type: boolean
+          description: 성공 여부
+          example: true
+        updatedAt:
+          type: string
+          format: date-time
+          description: 수정 시각
+          example: "2025-01-05T10:30:00Z"
+
+    UploadProfileImageRequest:
+      type: object
+      required:
+        - imagePath
+      properties:
+        imagePath:
+          type: string
+          description: Firebase Storage에 업로드된 이미지 경로
+          example: profile_images/sFeDJwqJbqScbSUp4Jz54MDlnFv1.jpg
+
+    UploadProfileImageResponse:
+      type: object
+      required:
+        - profile
+      properties:
+        profile:
+          type: object
+          required:
+            - url
+            - updatedAt
+          properties:
+            url:
+              type: string
+              format: uri
+              description: 원본 이미지 downloadURL
+              example: https://storage.googleapis.com/.../profile.jpg
+            updatedAt:
+              type: string
+              format: date-time
+              description: 업데이트 시각
+              example: "2025-01-05T10:00:00Z"
+
+    # ========================================
+    # Settings
+    # ========================================
+
+    UserSettingsResponse:
+      type: object
+      required:
+        - notificationEnabled
+      properties:
+        notificationEnabled:
+          type: boolean
+          description: 알림 활성화 여부
+          example: true
+
+    UpdateUserSettingsRequest:
+      type: object
+      properties:
+        notificationEnabled:
+          type: boolean
+          nullable: true
+          description: 알림 활성화 여부
+          example: false
+
+    UpdateUserSettingsResponse:
+      type: object
+      required:
+        - success
+      properties:
+        success:
+          type: boolean
+          description: 성공 여부
+          example: true
+
+    # ========================================
+    # Group
     # ========================================
 
     CreateGroupRequest:

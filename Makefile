@@ -99,9 +99,18 @@ functions-build:
 # Firebase Functions OpenAPI 미리보기
 functions-api-preview:
 	@echo "📖 OpenAPI 미리보기 실행 중..."
-	@cd infra/firebase/functions && npm run api:preview
-	@echo "🌐 OpenAPI Preview: http://localhost:8080"
-	@open http://localhost:8080 || true
+	@cd infra/firebase/functions && ( \
+		npm run api:preview & \
+		pid=$$!; \
+		if command -v nc >/dev/null 2>&1; then \
+			until nc -z localhost 8080; do sleep 0.2; done; \
+		else \
+			until lsof -iTCP:8080 -sTCP:LISTEN >/dev/null 2>&1; do sleep 0.2; done; \
+		fi; \
+		echo "🌐 OpenAPI Preview: http://localhost:8080"; \
+		open http://localhost:8080 || true; \
+		wait $$pid; \
+	)
 
 
 

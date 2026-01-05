@@ -6,6 +6,9 @@
 2. [전체 구조](#전체-구조)
 3. [컬렉션 상세](#컬렉션-상세)
    - [1. users](#1-users-컬렉션)
+     - [1-1. auth](#1-1-usersuseridauthmain-서브컬렉션)
+     - [1-2. settings](#1-2-usersuseridsettingsmain-서브컬렉션)
+     - [1-3. groups](#1-3-usersuseridgroups-서브컬렉션)
    - [2. groups](#2-groups-컬렉션)
    - [3. promises](#3-promises-컬렉션)
    - [4. notifications](#4-notifications-컬렉션)
@@ -37,6 +40,10 @@ Firestore Root
 │
 ├─ users/                           # 사용자 정보
 │  └─ {userId}/                     # 사용자 문서
+│     ├─ auth/                      # 인증 정보 (서브컬렉션)
+│     │  └─ main                    # 고정 문서 ID
+│     ├─ settings/                  # 설정 정보 (서브컬렉션)
+│     │  └─ main                    # 고정 문서 ID
 │     └─ groups/                    # 사용자가 속한 그룹 목록 (서브컬렉션)
 │        └─ {groupId}/              # 그룹 참여 정보
 │
@@ -60,7 +67,7 @@ Firestore Root
 
 ### 1. users (컬렉션)
 
-사용자 기본 정보 및 설정을 저장합니다.
+사용자 기본 정보를 저장합니다.
 
 #### 🔑 문서 위치 (Document Path)
 
@@ -72,45 +79,66 @@ Firestore Root
 
 #### 📊 필드 구조
 
-| 필드명 | 타입 | 필수 | 기본값 | 설명 |
-|--------|------|------|--------|------|
-| `name` | String | ✅ | - | 사용자 실명 |
-| `nickname` | String | ✅ | - | 서비스 내 표시 닉네임 |
-| `email` | String | ❌ | null | 이메일 주소 (로그인 제공자에 따라 없을 수 있음) |
-| `notificationSettings` | Map | ✅ | - | 알림 설정 객체 |
-| `notificationSettings.enabled` | Boolean | ✅ | false | 알림 활성화 여부 |
-| `provider` | Map | ✅ | - | 로그인 제공자 정보 |
-| `provider.uid` | String | ✅ | - | 제공자 기준 사용자 ID |
-| `provider.type` | String | ✅ | - | 로그인 타입 (google, apple 등) |
-| `profile` | Map | ❌ | - | 프로필 이미지 정보 |
-| `profile.type` | String | ❌ | - | `storagePath` \| `externalURL` |
-| `profile.url` | String | ❌ | - | 이미지 경로 또는 URL |
-| `pinnedGroupId` | String | ❌ | null | 고정된 그룹 ID |
-| `metadata` | Map | ✅ | - | 메타데이터 |
-| `metadata.createdAt` | Timestamp | ✅ | - | 계정 생성 시각 |
-| `metadata.updatedAt` | Timestamp | ✅ | - | 마지막 수정 시각 |
+| 필드명 | 타입 | 필수 | 설명 |
+|--------|------|------|------|
+| `name` | String | ✅ | provider에서 받은 이름 (변경 불가) |
+| `nickname` | String | ✅ | 사용자가 설정한 표시명 |
+| `profile` | Profile | ❌ | 프로필 이미지 정보 (하단 참조) |
+| `metaData` | MetaData | ✅ | 메타데이터 (하단 참조) |
 
-#### 🖼️ 프로필 이미지 규칙
+> ⚠️ **이메일은 보안을 위해 `users/{userId}/auth/main` 서브컬렉션에만 저장됩니다.**
+
+#### 📦 Profile
+
+| 필드명 | 타입 | 필수 | 설명 |
+|--------|------|------|------|
+| `url` | String | ✅ | 원본 이미지 (Firebase Storage downloadURL) |
+| `thumbUrl` | String | ❌ | 썸네일 (Cloud Functions 자동 생성, 생성 전에는 없을 수 있음) |
+| `updatedAt` | Timestamp | ✅ | 프로필 이미지 업데이트 시각 |
+
+#### 📦 MetaData
+
+| 필드명 | 타입 | 필수 | 설명 |
+|--------|------|------|------|
+| `createdAt` | Timestamp | ✅ | 계정 생성 시각 |
+| `updatedAt` | Timestamp | ✅ | 마지막 수정 시각 |
+
+#### 📝 Functions 사용 필드
+
+- `name`, `nickname`, `profile.thumbUrl`을 그룹/약속 캐시 값으로 사용
+
+#### 🖼️ 프로필 이미지 플로우
+
+**업로드 → 썸네일 자동 생성**
+```
+1. 사용자가 이미지 업로드 → Firebase Storage
+2. profile.url 업데이트 (원본 downloadURL)
+3. Cloud Function 트리거 → 썸네일 생성
+4. profile.thumbUrl 자동 업데이트 (Cloud Functions)
+```
 
 **1️⃣ 이미지 없음**
 ```json
 // profile 필드를 아예 저장하지 않음
 ```
 
-**2️⃣ Firebase Storage 이미지 사용**
+**2️⃣ 이미지 업로드 직후 (썸네일 생성 전)**
 ```json
 "profile": {
-  "type": "storagePath",
-  "url": "profile_images/sFeDJwqJbqScbSUp4Jz54MDlnFv1.jpg"
+  "url": "https://storage.googleapis.com/.../original.jpg",
+  "updatedAt": "2025-01-05T10:00:00Z"
 }
+// thumbUrl은 아직 없음 (Cloud Functions 생성 대기 중)
 ```
 
-**3️⃣ 외부 이미지 URL 사용**
+**3️⃣ 썸네일 생성 완료**
 ```json
 "profile": {
-  "type": "externalURL",
-  "url": "https://example.com/profile.jpg"
+  "url": "https://storage.googleapis.com/.../original.jpg",
+  "thumbUrl": "https://storage.googleapis.com/.../thumb_200x200.jpg",
+  "updatedAt": "2025-01-05T10:00:00Z"
 }
+// Cloud Functions가 thumbUrl 추가 (updatedAt은 변경 안 함)
 ```
 
 #### 📝 예시 도큐먼트
@@ -119,29 +147,103 @@ Firestore Root
 {
   "name": "김성원",
   "nickname": "성원",
-  "email": "kswen0203@gmail.com",
-  "notificationSettings": {
-    "enabled": true
-  },
-  "provider": {
-    "uid": "100163668057674322269",
-    "type": "google"
-  },
   "profile": {
-    "type": "storagePath",
-    "url": "profile_images/sFeDJwqJbqScbSUp4Jz54MDlnFv1.jpg"
+    "url": "https://storage.googleapis.com/promiso-dev.appspot.com/profile_images/sFeDJwqJbqScbSUp4Jz54MDlnFv1.jpg",
+    "thumbUrl": "https://storage.googleapis.com/promiso-dev.appspot.com/profile_images/thumb_sFeDJwqJbqScbSUp4Jz54MDlnFv1.jpg",
+    "updatedAt": "2025-01-05T10:00:00Z"
   },
-  "pinnedGroupId": null,
-  "metadata": {
-    "createdAt": "<Timestamp>",
-    "updatedAt": "<Timestamp>"
+  "metaData": {
+    "createdAt": "2024-12-19T10:00:00Z",
+    "updatedAt": "2025-01-05T10:00:00Z"
   }
 }
 ```
 
 ---
 
-### 1-1. users/{userId}/groups (서브컬렉션)
+### 1-1. users/{userId}/auth/main (서브컬렉션)
+
+사용자의 인증 정보를 저장합니다. (보안 목적으로 분리)
+
+#### 📍 문서 경로
+
+```
+users/{userId}/auth/main
+```
+
+#### 🔑 문서 ID
+
+- 고정값: `main`
+
+#### 📊 필드 구조
+
+| 필드명 | 타입 | 필수 | 설명 |
+|--------|------|------|------|
+| `provider` | Provider | ✅ | 인증 제공자 정보 (하단 참조) |
+
+#### 📦 Provider 구조
+
+| 필드명 | 타입 | 필수 | 설명 |
+|--------|------|------|------|
+| `type` | String | ✅ | 인증 제공자 타입 (`google`, `apple` 등) |
+| `uid` | String | ✅ | 제공자 기준 사용자 고유 ID |
+| `email` | String | ✅ | 제공자에서 받은 이메일 |
+
+#### 📝 예시 데이터
+
+```json
+{
+  "provider": {
+    "type": "google",
+    "uid": "100163668057674322269",
+    "email": "kswen0203@gmail.com"
+  }
+}
+```
+
+#### 💡 설계 의도
+
+- **보안**: Firestore Security Rules로 owner만 읽기 가능하도록 제어
+- **분리**: 민감한 인증 정보를 메인 문서와 분리
+
+---
+
+### 1-2. users/{userId}/settings/main (서브컬렉션)
+
+사용자의 설정 정보를 저장합니다.
+
+#### 📍 문서 경로
+
+```
+users/{userId}/settings/main
+```
+
+#### 🔑 문서 ID
+
+- 고정값: `main`
+
+#### 📊 필드 구조
+
+| 필드명 | 타입 | 필수 | 기본값 | 설명 |
+|--------|------|------|--------|------|
+| `notificationEnabled` | Boolean | ✅ | true | 푸시 알림 활성화 여부 |
+
+#### 📝 예시 데이터
+
+```json
+{
+  "notificationEnabled": true
+}
+```
+
+#### 💡 설계 의도
+
+- **확장성**: 나중에 theme, language, privacy 등 추가 설정 확장 가능
+- **독립성**: 설정 변경 시 메인 문서 updatedAt 영향 없음
+
+---
+
+### 1-3. users/{userId}/groups (서브컬렉션)
 
 사용자가 속한 그룹 목록을 저장합니다. (캐싱 목적)
 
@@ -228,7 +330,10 @@ groups/{groupId}
   "description": "주말마다 등산하는 모임입니다",
   "emoji": "🏔️",
   "themeColor": "#4CAF50",
-  "photoPath": "groups/abc123/photo.jpg",
+  "photo": {
+    "type": "storagePath",
+    "url": "groups/abc123/photo.jpg"
+  },
   "memberCount": 5,
   "activePromiseCount": 2,
   "maxMembers": 10,
@@ -323,25 +428,34 @@ promises/{promiseId}
 | `isConfirmed` | Boolean | ✅ | false | 약속 확정 여부 |
 | `confirmedAt` | Timestamp | ❌ | null | 확정 시각 |
 | `hostId` | String | ✅ | - | 호스트(생성자) ID |
+| `hostName` | String | ✅ | - | 호스트 이름 (캐시) |
 | `groupId` | String | ✅ | - | 그룹 ID |
+| `groupName` | String | ✅ | - | 그룹 이름 (캐시) |
 | `counts` | Map | ✅ | - | 참석 상태별 카운트 |
 | `counts.total` | Number | ✅ | 0 | 전체 초대 인원 |
 | `counts.accepted` | Number | ✅ | 0 | 수락 인원 |
 | `counts.declined` | Number | ✅ | 0 | 거절 인원 |
 | `counts.pending` | Number | ✅ | 0 | 대기 인원 |
+| `counts.tentative` | Number | ✅ | 0 | 미정 인원 |
 | `startAt` | Timestamp | ✅ | - | 시작 시각 |
 | `endAt` | Timestamp | ✅ | - | 종료 시각 |
-| `timezone` | String | ✅ | "Asia/Seoul" | 타임존 |
-| `status` | String | ✅ | "active" | 약속 상태 (`active` \| `completed` \| `cancelled`) | // 어떤 약속상태인지?
+| `localYyyymm` | String | ✅ | - | 로컬 년월 (YYYYMM) |
+| `localYyyymmdd` | String | ✅ | - | 로컬 년월일 (YYYYMMDD) |
+| `localTz` | String | ✅ | "Asia/Seoul" | 타임존 |
+| `status` | String | ✅ | "pending" | 약속 상태 (`pending` \| `active` \| `completed` \| `cancelled`) |
+| `location` | Map | ❌ | null | 장소 정보 |
+| `location.name` | String | ✅ | - | 장소명 |
+| `arrivalSharingTime` | Number | ❌ | null | 도착 공유 시작 (분 단위) |
+| `titleLower` | String | ✅ | - | 제목 소문자 (검색용) |
 | `createdAt` | Timestamp | ✅ | - | 생성 시각 |
 | `updatedAt` | Timestamp | ✅ | - | 수정 시각 |
 | `isDeleted` | Boolean | ✅ | false | 삭제 여부 (소프트 삭제) |
 
 #### 📝 설계 메모
 
-- 표시용 이름은 `hostId`, `groupId` 기반으로 조회
-- `location`, `reminders`는 후속 단계에서 확장 예정
-- `status` 의미(상태 전이 포함) 정의 필요
+- `hostName`, `groupName`은 표시용 캐시
+- `status` 상태 전이 규칙 정의 필요 (pending -> active -> completed/cancelled)
+- `localYyyymm`, `localYyyymmdd`는 월/일 조회용 인덱스
 
 #### 📝 예시 데이터
 
@@ -355,17 +469,27 @@ promises/{promiseId}
   "isConfirmed": true,
   "confirmedAt": "2024-01-14T18:00:00+09:00",
   "hostId": "user_kim123",
+  "hostName": "김민수",
   "groupId": "group_friends",
+  "groupName": "대학 친구들",
   "counts": {
     "total": 4,
     "accepted": 3,
     "declined": 1,
-    "pending": 0
+    "pending": 0,
+    "tentative": 0
   },
   "startAt": "2024-01-15T19:00:00+09:00",
   "endAt": "2024-01-15T21:30:00+09:00",
-  "timezone": "Asia/Seoul",
+  "localYyyymm": "202401",
+  "localYyyymmdd": "20240115",
+  "localTz": "Asia/Seoul",
   "status": "active",
+  "location": {
+    "name": "CGV 강남"
+  },
+  "arrivalSharingTime": 30,
+  "titleLower": "영화 관람",
   "createdAt": "2024-01-14T10:00:00+09:00",
   "updatedAt": "2024-01-14T18:00:00+09:00",
   "isDeleted": false
@@ -517,11 +641,24 @@ db.collection("users")
   .getDocuments()
 ```
 
-#### 고정 그룹 조회
+#### 사용자 설정 조회
 
 ```swift
-let user = db.collection("users").document(userId).getDocument()
-let pinnedGroupId = user.data()["pinnedGroupId"] as? String
+db.collection("users")
+  .document(userId)
+  .collection("settings")
+  .document("main")
+  .getDocument()
+```
+
+#### 사용자 인증 정보 조회 (서버 전용)
+
+```swift
+db.collection("users")
+  .document(userId)
+  .collection("auth")
+  .document("main")
+  .getDocument()
 ```
 
 ---
@@ -565,13 +702,10 @@ db.collection("promises")
 #### 오늘의 약속 조회
 
 ```swift
-let calendar = Calendar.current
-let startOfDay = calendar.startOfDay(for: Date())
-let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
+let today = "20240115" // YYYYMMDD
 db.collection("promises")
   .whereField("groupId", isEqualTo: groupId)
-  .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: startOfDay))
-  .whereField("startAt", isLessThan: Timestamp(date: endOfDay))
+  .whereField("localYyyymmdd", isEqualTo: today)
   .whereField("isDeleted", isEqualTo: false)
   .order(by: "startAt", descending: false)
   .getDocuments()
@@ -580,13 +714,10 @@ db.collection("promises")
 #### 특정 월의 약속 조회
 
 ```swift
-let calendar = Calendar.current
-let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: Date()))!
-let endOfMonth = calendar.date(byAdding: .month, value: 1, to: startOfMonth)!
+let month = "202401" // YYYYMM
 db.collection("promises")
   .whereField("groupId", isEqualTo: groupId)
-  .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: startOfMonth))
-  .whereField("startAt", isLessThan: Timestamp(date: endOfMonth))
+  .whereField("localYyyymm", isEqualTo: month)
   .whereField("isDeleted", isEqualTo: false)
   .order(by: "startAt", descending: false)
   .getDocuments()
@@ -621,6 +752,17 @@ service cloud.firestore {
     match /users/{userId} {
       // 본인만 읽기/쓰기 가능
       allow read, write: if request.auth != null && request.auth.uid == userId;
+
+      // 인증 정보 (본인만 읽기 가능)
+      match /auth/{docId} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow write: if false; // 인증 정보는 서버에서만 쓰기
+      }
+
+      // 설정 정보 (본인만 읽기/쓰기 가능)
+      match /settings/{docId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
 
       // 사용자가 속한 그룹 목록
       match /groups/{groupId} {
@@ -700,6 +842,14 @@ service cloud.firestore {
 | `promises_by_group_date` | groupId | ASC | 그룹별 날짜 조회 |
 |  | isDeleted | ASC |  |
 |  | startAt | ASC |  |
+| `promises_by_group_month` | groupId | ASC | 월별 조회 |
+|  | localYyyymm | ASC |  |
+|  | isDeleted | ASC |  |
+|  | startAt | ASC |  |
+| `promises_by_group_day` | groupId | ASC | 일별 조회 |
+|  | localYyyymmdd | ASC |  |
+|  | isDeleted | ASC |  |
+|  | startAt | ASC |  |
 
 #### 2. notifications 컬렉션
 
@@ -725,7 +875,15 @@ service cloud.firestore {
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|----------|--------|
 | 1.0 | 2024-12-30 | 초안 작성 (groups 컬렉션 추가) | Claude |
-| 1.1 | 2025-01-05 | promises 스키마 주석 반영 및 필드 정리 | Codex |
+| 1.1 | 2025-01-05 | Functions 기준 User/Group/Promise 스키마 정리 | Codex |
+| 1.2 | 2025-01-05 | User 스키마 재설계 | Claude |
+|  |  | - name: provider에서 받은 이름 (변경 불가) |  |
+|  |  | - nickname: 사용자가 설정한 표시명 |  |
+|  |  | - profile.thumbUrl 추가 (Cloud Functions 자동 생성) |  |
+|  |  | - auth 서브컬렉션 분리 (보안) |  |
+|  |  | - settings 서브컬렉션 분리 (확장성) |  |
+|  |  | - pinnedGroupId 제거 |  |
+|  |  | - profileType 제거 |  |
 
 ---
 

@@ -44,8 +44,7 @@ npm run build:watch
 
 1. `src/index.ts`에 함수 추가
 2. `src/types/api.ts`에 타입 정의
-3. `.ai/API_SPEC.md` 문서 업데이트
-4. `openapi.yaml` 업데이트
+3. `openapi.yaml` 업데이트
 
 ## 📚 API 문서
 
@@ -66,13 +65,7 @@ npm run api:docs
 
 ### 상세 방법
 
-#### 1. Markdown 문서 (추천 - 상세 예시 포함)
-```bash
-# 프로젝트 루트에서
-open .ai/API_SPEC.md
-```
-
-#### 2. Swagger UI (추천 - 인터랙티브)
+#### 1. Swagger UI (추천 - 인터랙티브)
 ```bash
 cd infra/firebase/functions
 
@@ -80,9 +73,15 @@ cd infra/firebase/functions
 npm run api:preview
 ```
 
-#### 3. VS Code 확장
-- 확장 설치: `Swagger Viewer` 또는 `OpenAPI (Swagger) Editor`
+#### 2. VS Code 확장 (추천 - 빠른 확인)
+- 확장 설치: `42Crunch.vscode-openapi` 또는 `Swagger Viewer`
 - `openapi.yaml` 열고 미리보기
+
+#### 3. 직접 보기
+```bash
+# 프로젝트 루트에서
+open infra/firebase/functions/openapi.yaml
+```
 
 #### 4. Online Swagger Editor (공유 시)
 ```bash
@@ -138,7 +137,7 @@ firebase deploy --only functions:createGroup
 - [ ] TypeScript 빌드 성공 (`npm run build`)
 - [ ] Lint 통과 (`npm run lint`)
 - [ ] 로컬 테스트 완료 (`npm run serve`)
-- [ ] API 문서 업데이트 (`.ai/API_SPEC.md`, `openapi.yaml`)
+- [ ] API 문서 업데이트 (`openapi.yaml`)
 - [ ] 타입 정의 업데이트 (`src/types/api.ts`)
 
 ## 📂 프로젝트 구조
@@ -157,7 +156,8 @@ functions/
 
 ## 🔗 관련 문서
 
-- [API 명세서](../../../.ai/API_SPEC.md)
+- [API 명세서 (OpenAPI)](./openapi.yaml)
+- [Firestore 스키마](../../../.ai/FIRESTORE_SCHEMA.md)
 - [프로젝트 아키텍처](../../../.ai/PROJECT_CONTEXT.md)
 - [Firebase Functions 공식 문서](https://firebase.google.com/docs/functions)
 
