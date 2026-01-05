@@ -6,7 +6,7 @@ public enum SharedDependencies {
   
   /// Shared 모듈들에 대한 의존성
   public static let shared: [TargetDependency] = [
-    .project(target: "Shared", path: "../../Shared"),
+    .project(target: "PromisoShared", path: "../../Shared"),
     .project(target: "ResourceKit", path: "../../ResourceKit"),
     .project(target: "ExternalDependency", path: "../../ExternalDependency")
   ]

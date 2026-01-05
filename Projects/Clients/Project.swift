@@ -13,7 +13,7 @@ let project = Project(
       infoPlist: .default,
       sources: ["Sources/**"],
       dependencies: [
-        .project(target: "Shared", path: "../Shared"),
+        .project(target: "PromisoShared", path: "../Shared"),
         .project(target: "ExternalDependency", path: "../ExternalDependency")
       ]
     ),

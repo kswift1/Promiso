@@ -2,10 +2,10 @@ import ProjectDescription
 import ProjectDescriptionHelpers
 
 let project = Project(
-  name: "Shared",
+  name: "PromisoShared",
   targets: [
     .target(
-      name: "Shared",
+      name: "PromisoShared",
       destinations: .iOS,
       product: .framework,
       bundleId: AppConfig.moduleBundleId("shared"),
@@ -19,14 +19,14 @@ let project = Project(
       settings: .standard()
     ),
     .target(
-      name: "SharedTests",
+      name: "PromisoSharedTests",
       destinations: .iOS,
       product: .unitTests,
       bundleId: AppConfig.moduleBundleId("shared.tests"),
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Tests/**"],
       dependencies: [
-        .target(name: "Shared")
+        .target(name: "PromisoShared")
       ],
       settings: .standard()
     )
