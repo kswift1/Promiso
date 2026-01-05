@@ -179,20 +179,6 @@ export enum JoinGroupError {
 }
 
 // ============================================================================
-// testCallable (테스트용)
-// ============================================================================
-
-export interface TestCallableRequest {
-  name?: string;
-}
-
-export interface TestCallableResponse {
-  message: string;
-  authenticated: boolean;
-  uid: string | null;
-}
-
-// ============================================================================
 // Firestore Group Document Schema
 // ============================================================================
 
@@ -383,10 +369,202 @@ export enum RespondPromiseError {
 }
 
 // ============================================================================
+// User APIs
+// ============================================================================
+
+/**
+ * 사용자 생성 요청 (회원가입)
+ *
+ * @remarks
+ * - 인증 필수 (Firebase Auth)
+ * - userId는 자동으로 request.auth.uid에서 추출
+ * - email은 메인 문서가 아닌 auth 서브컬렉션에만 저장됨
+ */
+export interface CreateUserRequest {
+  /** provider에서 받은 이름 (변경 불가) */
+  name: string;
+
+  /** 사용자가 설정한 닉네임 (2~12자) */
+  nickname: string;
+
+  /** 인증 제공자 정보 */
+  provider: {
+    /** 인증 제공자 타입 (google, apple 등) */
+    type: string;
+    /** 제공자 기준 사용자 ID */
+    uid: string;
+    /** 제공자에서 받은 이메일 */
+    email: string;
+  };
+
+  /** 환경 구분 (선택적: stage 또는 prod) */
+  env?: "stage" | "prod" | null;
+}
+
+/**
+ * 사용자 생성 응답
+ */
+export interface CreateUserResponse {
+  /** 생성된 사용자 ID (Firebase Auth UID) */
+  userId: string;
+
+  /** 계정 생성 시각 */
+  createdAt: FirebaseFirestore.Timestamp;
+}
+
+/**
+ * 사용자 조회 요청
+ *
+ * @remarks
+ * - 인증 필수 (Firebase Auth)
+ * - userId 생략 시 본인 정보 조회
+ * - 본인 조회 시 UserPrivateResponse, 타인 조회 시 UserPublicResponse 반환
+ */
+export interface GetUserRequest {
+  /** 조회할 사용자 ID (생략 시 본인) */
+  userId?: string | null;
+
+  /** 환경 구분 (선택적: stage 또는 prod) */
+  env?: "stage" | "prod" | null;
+}
+
+/**
+ * 사용자 정보 (타인 조회용 - 이메일 제외)
+ */
+export interface UserPublicResponse {
+  /** 사용자 ID */
+  userId: string;
+
+  /** provider에서 받은 이름 */
+  name: string;
+
+  /** 사용자 설정 닉네임 */
+  nickname: string;
+
+  /** 프로필 이미지 정보 */
+  profile?: ProfileImage | null;
+
+  /** 메타데이터 */
+  metaData: MetaData;
+}
+
+/**
+ * 사용자 정보 (본인 조회용 - 이메일 포함)
+ */
+export interface UserPrivateResponse extends UserPublicResponse {
+  /** 이메일 주소 (auth 서브컬렉션에서 조회) */
+  email: string;
+
+  /** 인증 제공자 타입 (auth 서브컬렉션에서 조회) */
+  provider: string;
+}
+
+/**
+ * 사용자 수정 요청
+ *
+ * @remarks
+ * - 인증 필수 (Firebase Auth)
+ * - name, email은 수정 불가 (provider 정보이므로)
+ */
+export interface UpdateUserRequest {
+  /** 닉네임 (2~12자) */
+  nickname?: string | null;
+
+  /** 환경 구분 (선택적: stage 또는 prod) */
+  env?: "stage" | "prod" | null;
+}
+
+/**
+ * 사용자 수정 응답
+ */
+export interface UpdateUserResponse {
+  /** 성공 여부 */
+  success: boolean;
+
+  /** 수정 시각 */
+  updatedAt: FirebaseFirestore.Timestamp;
+}
+
+/**
+ * 프로필 이미지 업로드 요청
+ *
+ * @remarks
+ * - 인증 필수 (Firebase Auth)
+ * - iOS에서 먼저 Storage에 업로드 후 경로를 전달
+ */
+export interface UploadProfileImageRequest {
+  /** Firebase Storage에 업로드된 이미지 경로 */
+  imagePath: string;
+
+  /** 환경 구분 (선택적: stage 또는 prod) */
+  env?: "stage" | "prod" | null;
+}
+
+/**
+ * 프로필 이미지 업로드 응답
+ */
+export interface UploadProfileImageResponse {
+  /** 프로필 이미지 정보 */
+  profile: ProfileImage;
+}
+
+/**
+ * 사용자 설정 조회 응답
+ */
+export interface GetUserSettingsResponse {
+  /** 알림 활성화 여부 */
+  notificationEnabled: boolean;
+}
+
+/**
+ * 사용자 설정 수정 요청
+ */
+export interface UpdateUserSettingsRequest {
+  /** 알림 활성화 여부 */
+  notificationEnabled?: boolean | null;
+
+  /** 환경 구분 (선택적: stage 또는 prod) */
+  env?: "stage" | "prod" | null;
+}
+
+/**
+ * 사용자 설정 수정 응답
+ */
+export interface UpdateUserSettingsResponse {
+  /** 성공 여부 */
+  success: boolean;
+}
+
+// ============================================================================
 // Shared
 // ============================================================================
 
 export interface RemoteImage {
   type: "storagePath" | "externalURL";
   url: string;
+}
+
+/**
+ * 프로필 이미지 정보
+ */
+export interface ProfileImage {
+  /** 원본 이미지 URL */
+  url: string;
+
+  /** 썸네일 URL (Cloud Functions 자동 생성) */
+  thumbUrl?: string | null;
+
+  /** 업데이트 시각 */
+  updatedAt: FirebaseFirestore.Timestamp;
+}
+
+/**
+ * 메타데이터
+ */
+export interface MetaData {
+  /** 생성 시각 */
+  createdAt: FirebaseFirestore.Timestamp;
+
+  /** 수정 시각 */
+  updatedAt: FirebaseFirestore.Timestamp;
 }

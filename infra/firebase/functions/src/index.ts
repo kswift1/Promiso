@@ -1,12 +1,16 @@
 import * as admin from "firebase-admin";
 import {FieldValue} from "firebase-admin/firestore";
 import {setGlobalOptions} from "firebase-functions/v2";
-import {HttpsError, onCall, onRequest} from "firebase-functions/v2/https";
+import {HttpsError, onCall} from "firebase-functions/v2/https";
 import {
   CreateGroupRequest,
   CreateGroupResponse,
   CreatePromiseRequest,
   CreatePromiseResponse,
+  CreateUserRequest,
+  CreateUserResponse,
+  GetUserRequest,
+  GetUserSettingsResponse,
   GroupMemberPreview,
   JoinGroupRequest,
   JoinGroupResponse,
@@ -14,8 +18,14 @@ import {
   RespondPromiseResponse,
   PreviewGroupRequest,
   PreviewGroupResponse,
-  TestCallableRequest,
-  TestCallableResponse,
+  UpdateUserRequest,
+  UpdateUserResponse,
+  UpdateUserSettingsRequest,
+  UpdateUserSettingsResponse,
+  UploadProfileImageRequest,
+  UploadProfileImageResponse,
+  UserPrivateResponse,
+  UserPublicResponse,
 } from "./types/api";
 import {getEnvironmentCollection, logEnvironmentInfo} from "./utils/firestore";
 
@@ -31,43 +41,467 @@ setGlobalOptions({maxInstances: 10});
 const REGION = "asia-northeast3";
 
 // ============================================================================
-// Test Functions
+// User Functions
 // ============================================================================
 
 /**
- * 테스트용 HTTP 함수
+ * 사용자 생성 (회원가입)
  *
  * @remarks
- * 배포 테스트 및 기본 연결 확인용
+ * **인증 필수**
+ *
+ * Firebase Auth 가입 후 Firestore에 사용자 정보를 생성합니다.
+ * - 메인 문서 (users/{userId}): name, nickname, metaData
+ * - auth 서브컬렉션: provider 정보 (email 포함)
+ * - settings 서브컬렉션: 기본 설정
+ *
+ * @param request.data - CreateUserRequest
+ * @returns CreateUserResponse
+ *
+ * @throws HttpsError
+ * - unauthenticated: 로그인이 필요합니다
+ * - invalid-argument: 잘못된 파라미터
+ * - already-exists: 이미 존재하는 사용자
+ * - internal: 서버 오류
  */
-export const helloWorld = onRequest(
+export const createUser = onCall<CreateUserRequest>(
   {region: REGION},
-  (request, response) => {
-    response.json({
-      message: "Hello from Firebase!",
-      timestamp: new Date().toISOString(),
-    });
+  async (request): Promise<CreateUserResponse> => {
+    // 1. 인증 확인
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "로그인이 필요합니다");
+    }
+
+    const userId = request.auth.uid;
+    const data = request.data;
+
+    // 2. 유효성 검사
+    if (!data.name || data.name.trim().length === 0) {
+      throw new HttpsError(
+        "invalid-argument",
+        "이름은 필수입니다",
+      );
+    }
+
+    const nickname = data.nickname.trim();
+    if (nickname.length < 2 || nickname.length > 12) {
+      throw new HttpsError(
+        "invalid-argument",
+        "닉네임은 2~12자여야 합니다",
+      );
+    }
+
+    if (
+      !data.provider ||
+      !data.provider.type ||
+      !data.provider.uid ||
+      !data.provider.email
+    ) {
+      throw new HttpsError(
+        "invalid-argument",
+        "인증 제공자 정보는 필수입니다",
+      );
+    }
+
+    const db = admin.firestore();
+    const usersCollection = getEnvironmentCollection("users", db, data.env);
+    const userRef = usersCollection.doc(userId);
+
+    // 3. 이미 존재하는 사용자인지 확인
+    const existingUser = await userRef.get();
+    if (existingUser.exists) {
+      throw new HttpsError(
+        "already-exists",
+        "이미 존재하는 사용자입니다",
+      );
+    }
+
+    const now = FieldValue.serverTimestamp();
+
+    try {
+      // 4. Firestore에 저장
+      await db.runTransaction(async (transaction) => {
+        // 4-1. 메인 문서 생성 (email 제외)
+        transaction.set(userRef, {
+          name: data.name,
+          nickname: nickname,
+          metaData: {
+            createdAt: now,
+            updatedAt: now,
+          },
+        });
+
+        // 4-2. auth 서브컬렉션 생성 (provider 정보 및 email 포함)
+        transaction.set(userRef.collection("auth").doc("main"), {
+          provider: {
+            type: data.provider.type,
+            uid: data.provider.uid,
+            email: data.provider.email,
+          },
+        });
+
+        // 4-3. settings 서브컬렉션 생성 (기본값)
+        transaction.set(userRef.collection("settings").doc("main"), {
+          notificationEnabled: true,
+        });
+      });
+
+      // 5. 응답 반환
+      return {
+        userId: userId,
+        createdAt: admin.firestore.Timestamp.now(),
+      };
+    } catch (error) {
+      throw new HttpsError(
+        "internal",
+        "사용자 생성 중 오류가 발생했습니다",
+      );
+    }
   },
 );
 
 /**
- * 테스트용 Callable 함수
+ * 사용자 정보 조회
  *
  * @remarks
- * Callable Function 연결 테스트용
- * 인증은 선택적이며, 인증 여부를 응답에 포함
+ * **인증 필수**
  *
- * @param request.data - TestCallableRequest
- * @returns TestCallableResponse
+ * 특정 사용자의 정보를 조회합니다.
+ * - userId 생략 시: 본인 정보 조회 (UserPrivateResponse - email 포함)
+ * - userId 지정 시: 타인 정보 조회 (UserPublicResponse - email 제외)
+ *
+ * @param request.data - GetUserRequest
+ * @returns UserPrivateResponse | UserPublicResponse
+ *
+ * @throws HttpsError
+ * - unauthenticated: 로그인이 필요합니다
+ * - not-found: 사용자를 찾을 수 없습니다
  */
-export const testCallable = onCall<TestCallableRequest>(
+export const getUser = onCall<GetUserRequest>(
   {region: REGION},
-  (request): TestCallableResponse => {
-    const name = request.data?.name ?? "Guest";
+  async (request): Promise<UserPrivateResponse | UserPublicResponse> => {
+    // 1. 인증 확인
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "로그인이 필요합니다");
+    }
+
+    const requesterId = request.auth.uid;
+    const data = request.data || {};
+    const targetUserId = data.userId || requesterId;
+    const isSelf = targetUserId === requesterId;
+
+    const db = admin.firestore();
+    const usersCollection = getEnvironmentCollection("users", db, data.env);
+    const userRef = usersCollection.doc(targetUserId);
+
+    // 2. 메인 문서 조회
+    const userDoc = await userRef.get();
+    if (!userDoc.exists) {
+      throw new HttpsError(
+        "not-found",
+        "사용자를 찾을 수 없습니다",
+      );
+    }
+
+    const userData = userDoc.data();
+    if (!userData) {
+      throw new HttpsError(
+        "internal",
+        "사용자 데이터를 읽을 수 없습니다",
+      );
+    }
+
+    // 3. 공통 응답 구성
+    const baseResponse: UserPublicResponse = {
+      userId: targetUserId,
+      name: userData.name as string,
+      nickname: userData.nickname as string,
+      profile: userData.profile ? {
+        url: userData.profile.url,
+        thumbUrl: userData.profile.thumbUrl ?? null,
+        updatedAt: userData.profile.updatedAt,
+      } : null,
+      metaData: {
+        createdAt: userData.metaData.createdAt,
+        updatedAt: userData.metaData.updatedAt,
+      },
+    };
+
+    // 4. 본인 조회 시 auth 서브컬렉션에서 email, provider 추가
+    if (isSelf) {
+      const authDoc = await userRef.collection("auth").doc("main").get();
+      const authData = authDoc.data();
+
+      if (!authData || !authData.provider) {
+        throw new HttpsError(
+          "internal",
+          "인증 정보를 찾을 수 없습니다",
+        );
+      }
+
+      const privateResponse: UserPrivateResponse = {
+        ...baseResponse,
+        email: authData.provider.email as string,
+        provider: authData.provider.type as string,
+      };
+
+      return privateResponse;
+    }
+
+    // 5. 타인 조회 시 공통 정보만 반환
+    return baseResponse;
+  },
+);
+
+/**
+ * 사용자 정보 수정
+ *
+ * @remarks
+ * **인증 필수**
+ *
+ * 사용자의 기본 정보를 수정합니다.
+ * - name, email은 수정 불가 (provider 정보이므로)
+ *
+ * @param request.data - UpdateUserRequest
+ * @returns UpdateUserResponse
+ *
+ * @throws HttpsError
+ * - unauthenticated: 로그인이 필요합니다
+ * - invalid-argument: 잘못된 파라미터
+ */
+export const updateUser = onCall<UpdateUserRequest>(
+  {region: REGION},
+  async (request): Promise<UpdateUserResponse> => {
+    // 1. 인증 확인
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "로그인이 필요합니다");
+    }
+
+    const userId = request.auth.uid;
+    const data = request.data;
+
+    // 2. 유효성 검사
+    if (data.nickname) {
+      const nickname = data.nickname.trim();
+      if (nickname.length < 2 || nickname.length > 12) {
+        throw new HttpsError(
+          "invalid-argument",
+          "닉네임은 2~12자여야 합니다",
+        );
+      }
+    }
+
+    const db = admin.firestore();
+    const usersCollection = getEnvironmentCollection("users", db, data.env);
+    const userRef = usersCollection.doc(userId);
+
+    const now = FieldValue.serverTimestamp();
+    const updateData: Record<string, unknown> = {
+      "metaData.updatedAt": now,
+    };
+
+    // 3. 업데이트할 필드 추가
+    if (data.nickname) {
+      updateData.nickname = data.nickname.trim();
+    }
+
+    // 4. Firestore 업데이트
+    await userRef.update(updateData);
+
+    // 5. 응답 반환
     return {
-      message: `Hello ${name}!`,
-      authenticated: request.auth != null,
-      uid: request.auth?.uid ?? null,
+      success: true,
+      updatedAt: admin.firestore.Timestamp.now(),
+    };
+  },
+);
+
+/**
+ * 프로필 이미지 업로드
+ *
+ * @remarks
+ * **인증 필수**
+ *
+ * 프로필 이미지를 업로드하고 Firestore에 정보를 저장합니다.
+ * - iOS에서 먼저 Storage에 업로드 후 경로를 전달
+ * - 썸네일은 Cloud Function에서 비동기로 자동 생성
+ *
+ * @param request.data - UploadProfileImageRequest
+ * @returns UploadProfileImageResponse
+ *
+ * @throws HttpsError
+ * - unauthenticated: 로그인이 필요합니다
+ * - invalid-argument: 잘못된 파라미터
+ * - internal: 서버 오류
+ */
+export const uploadProfileImage = onCall<UploadProfileImageRequest>(
+  {region: REGION},
+  async (request): Promise<UploadProfileImageResponse> => {
+    // 1. 인증 확인
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "로그인이 필요합니다");
+    }
+
+    const userId = request.auth.uid;
+    const data = request.data;
+
+    // 2. 유효성 검사
+    if (!data.imagePath || data.imagePath.trim().length === 0) {
+      throw new HttpsError(
+        "invalid-argument",
+        "이미지 경로는 필수입니다",
+      );
+    }
+
+    try {
+      // 3. Storage에서 downloadURL 생성
+      const bucket = admin.storage().bucket();
+      const file = bucket.file(data.imagePath);
+      const [url] = await file.getSignedUrl({
+        action: "read",
+        expires: "03-01-2500", // 장기간 유효한 URL
+      });
+
+      const now = FieldValue.serverTimestamp();
+      const profileData = {
+        url: url,
+        updatedAt: now,
+      };
+
+      // 4. Firestore 업데이트
+      const db = admin.firestore();
+      const usersCollection = getEnvironmentCollection("users", db, data.env);
+      const userRef = usersCollection.doc(userId);
+
+      await userRef.update({
+        "profile": profileData,
+        "metaData.updatedAt": now,
+      });
+
+      // 5. 응답 반환 (thumbUrl은 Cloud Function이 비동기로 생성)
+      return {
+        profile: {
+          url: url,
+          thumbUrl: null,
+          updatedAt: admin.firestore.Timestamp.now(),
+        },
+      };
+    } catch (error) {
+      throw new HttpsError(
+        "internal",
+        "프로필 이미지 업로드 중 오류가 발생했습니다",
+      );
+    }
+  },
+);
+
+/**
+ * 사용자 설정 조회
+ *
+ * @remarks
+ * **인증 필수**
+ *
+ * 사용자의 설정 정보를 조회합니다.
+ *
+ * @param request.data - { env?: "stage" | "prod" }
+ * @returns GetUserSettingsResponse
+ *
+ * @throws HttpsError
+ * - unauthenticated: 로그인이 필요합니다
+ * - not-found: 설정을 찾을 수 없습니다
+ */
+export const getUserSettings = onCall(
+  {region: REGION},
+  async (request): Promise<GetUserSettingsResponse> => {
+    // 1. 인증 확인
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "로그인이 필요합니다");
+    }
+
+    const userId = request.auth.uid;
+    const data = request.data || {};
+
+    const db = admin.firestore();
+    const usersCollection = getEnvironmentCollection("users", db, data.env);
+    const settingsRef = usersCollection
+      .doc(userId)
+      .collection("settings")
+      .doc("main");
+
+    // 2. 설정 조회
+    const settingsDoc = await settingsRef.get();
+    if (!settingsDoc.exists) {
+      throw new HttpsError(
+        "not-found",
+        "설정을 찾을 수 없습니다",
+      );
+    }
+
+    const settingsData = settingsDoc.data();
+    if (!settingsData) {
+      throw new HttpsError(
+        "internal",
+        "설정 데이터를 읽을 수 없습니다",
+      );
+    }
+
+    // 3. 응답 반환
+    return {
+      notificationEnabled: settingsData.notificationEnabled ?? true,
+    };
+  },
+);
+
+/**
+ * 사용자 설정 수정
+ *
+ * @remarks
+ * **인증 필수**
+ *
+ * 사용자의 설정을 수정합니다.
+ *
+ * @param request.data - UpdateUserSettingsRequest
+ * @returns UpdateUserSettingsResponse
+ *
+ * @throws HttpsError
+ * - unauthenticated: 로그인이 필요합니다
+ */
+export const updateUserSettings = onCall<UpdateUserSettingsRequest>(
+  {region: REGION},
+  async (request): Promise<UpdateUserSettingsResponse> => {
+    // 1. 인증 확인
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "로그인이 필요합니다");
+    }
+
+    const userId = request.auth.uid;
+    const data = request.data;
+
+    const db = admin.firestore();
+    const usersCollection = getEnvironmentCollection("users", db, data.env);
+    const settingsRef = usersCollection
+      .doc(userId)
+      .collection("settings")
+      .doc("main");
+
+    const updateData: Record<string, unknown> = {};
+
+    // 2. 업데이트할 필드 추가
+    if (
+      data.notificationEnabled !== undefined &&
+      data.notificationEnabled !== null
+    ) {
+      updateData.notificationEnabled = data.notificationEnabled;
+    }
+
+    // 3. Firestore 업데이트
+    if (Object.keys(updateData).length > 0) {
+      await settingsRef.update(updateData);
+    }
+
+    // 4. 응답 반환
+    return {
+      success: true,
     };
   },
 );

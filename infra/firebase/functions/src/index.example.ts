@@ -1,12 +1,10 @@
 import * as admin from "firebase-admin";
 import {FieldValue} from "firebase-admin/firestore";
 import {setGlobalOptions} from "firebase-functions/v2";
-import {HttpsError, onCall, onRequest} from "firebase-functions/v2/https";
+import {HttpsError, onCall} from "firebase-functions/v2/https";
 import {
   CreateGroupRequest,
   CreateGroupResponse,
-  TestCallableRequest,
-  TestCallableResponse,
 } from "./types/api";
 
 // Firebase Admin 초기화
@@ -16,41 +14,6 @@ admin.initializeApp();
 setGlobalOptions({maxInstances: 10});
 
 const REGION = "asia-northeast3";
-
-// ============================================================================
-// Test Functions
-// ============================================================================
-
-/**
- * 테스트용 HTTP 함수
- */
-export const helloWorld = onRequest(
-  {region: REGION},
-  (request, response) => {
-    response.json({
-      message: "Hello from Firebase!",
-      timestamp: new Date().toISOString(),
-    });
-  },
-);
-
-/**
- * 테스트용 Callable 함수
- *
- * @param request.data - TestCallableRequest
- * @returns TestCallableResponse
- */
-export const testCallable = onCall<TestCallableRequest>(
-  {region: REGION},
-  (request): TestCallableResponse => {
-    const name = request.data.name ?? "Guest";
-    return {
-      message: `Hello ${name}!`,
-      authenticated: request.auth != null,
-      uid: request.auth?.uid ?? null,
-    };
-  },
-);
 
 // ============================================================================
 // Group Functions
