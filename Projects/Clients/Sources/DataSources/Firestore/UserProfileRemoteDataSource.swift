@@ -1,0 +1,340 @@
+import Foundation
+import FirebaseFirestore
+import FirebaseFunctions
+import FirebaseStorage
+import PromisoShared
+
+// MARK: - Request DTOs
+
+/// 사용자 생성 요청
+private struct CreateUserRequest: Encodable {
+  let name: String
+  let nickname: String
+  let provider: ProviderRequest
+  let env: String?
+
+  struct ProviderRequest: Encodable {
+    let type: String
+    let uid: String
+    let email: String
+  }
+}
+
+/// 사용자 조회 요청
+private struct GetUserRequest: Encodable {
+  let userId: String?
+  let isPublic: Bool?
+  let env: String?
+}
+
+/// 사용자 업데이트 요청
+private struct UpdateUserRequest: Encodable {
+  let nickname: String
+  let env: String?
+}
+
+/// 프로필 이미지 업로드 요청
+private struct UploadProfileImageRequest: Encodable {
+  let imagePath: String
+  let env: String?
+}
+
+/// 사용자 설정 조회 요청
+private struct GetUserSettingsRequest: Encodable {
+  let env: String?
+}
+
+/// 사용자 설정 업데이트 요청
+private struct UpdateUserSettingsRequest: Encodable {
+  let notificationEnabled: Bool
+  let env: String?
+}
+
+// MARK: - Response DTOs
+
+/// Firebase Functions 응답 구조
+private struct UserProfileResponse: Codable {
+  let userId: String
+  let name: String
+  let nickname: String
+  let email: String?
+  let provider: String?
+  let metaData: MetadataResponse
+  let profile: ProfileImageResponse?
+
+  struct MetadataResponse: Codable {
+    let createdAt: FirebaseTimestamp
+    let updatedAt: FirebaseTimestamp
+  }
+
+  struct ProfileImageResponse: Codable {
+    let url: String
+    let thumbUrl: String?
+    let updatedAt: FirebaseTimestamp
+
+    var isValid: Bool {
+      url != "<null>"
+    }
+  }
+
+  struct FirebaseTimestamp: Codable {
+    let _seconds: TimeInterval
+    let _nanoseconds: TimeInterval?
+
+    var date: Date {
+      Date(timeIntervalSince1970: _seconds + (_nanoseconds ?? 0) / 1_000_000_000)
+    }
+  }
+
+  func toUserModel() -> UserPrivate {
+    let profileImage: ProfileImage? = if let profile = profile, profile.isValid {
+      ProfileImage(
+        url: profile.url,
+        thumbUrl: profile.thumbUrl == "<null>" ? nil : profile.thumbUrl,
+        updatedAt: profile.updatedAt.date
+      )
+    } else {
+      nil
+    }
+
+    return UserPrivate(
+      userId: userId,
+      name: name,
+      nickname: nickname,
+      email: email ?? "",
+      provider: provider ?? "",
+      profile: profileImage,
+      metadata: Metadata(
+        createdAt: metaData.createdAt.date,
+        updatedAt: metaData.updatedAt.date
+      )
+    )
+  }
+}
+
+// MARK: - Data Source
+
+/// Firebase Functions를 통한 사용자 프로필 데이터 관리
+public final class UserProfileRemoteDataSource: @unchecked Sendable {
+  private let functions: Functions
+  private let storage: Storage
+  private let environment: Environment
+
+  public init(
+    functions: Functions = Functions.functions(region: "asia-northeast3"),
+    storage: Storage = Storage.storage(),
+    environment: Environment = .current
+  ) {
+    self.functions = functions
+    self.storage = storage
+    self.environment = environment
+  }
+
+  // MARK: - User CRUD Operations
+
+  /// 사용자 생성 (회원가입)
+  /// - Parameters:
+  ///   - name: 실명
+  ///   - nickname: 닉네임
+  ///   - provider: 인증 제공자 정보
+  /// - Returns: 생성된 사용자 ID
+  public func createUser(
+    name: String,
+    nickname: String,
+    provider: ProviderInfo
+  ) async throws -> String {
+    let request = CreateUserRequest(
+      name: name,
+      nickname: nickname,
+      provider: CreateUserRequest.ProviderRequest(
+        type: provider.type,
+        uid: provider.uid,
+        email: provider.email
+      ),
+      env: environment.firebaseEnv
+    )
+
+    let result = try await functions.httpsCallable("createUser").call(request.asDictionary())
+    guard let response = result.data as? [String: Any],
+          let userId = response["userId"] as? String else {
+      throw UserProfileError.invalidData
+    }
+
+    return userId
+  }
+
+  /// 사용자 프로필 조회
+  /// - Parameters:
+  ///   - uid: 사용자 ID (nil이면 본인)
+  ///   - isPublic: 공개 정보만 조회할지 여부 (true: auth 서브컬렉션 읽기 생략, 1회 읽기)
+  /// - Returns: UserProfile (isPublic에 따라 .private 또는 .public)
+  public func getProfileModel(uid: String? = nil, isPublic: Bool = false) async throws -> UserProfile {
+    let request = GetUserRequest(
+      userId: uid,
+      isPublic: isPublic,
+      env: environment.firebaseEnv
+    )
+
+    let result = try await functions.httpsCallable("getUser").call(request.asDictionary())
+    guard let response = result.data as? [String: Any] else {
+      throw UserProfileError.invalidData
+    }
+
+    return try parseUserProfile(from: response, isPublic: isPublic)
+  }
+
+  /// 사용자 프로필 업데이트
+  /// - Parameters:
+  ///   - uid: 사용자 ID
+  ///   - nickname: 변경할 닉네임
+  public func updateProfile(uid: String, nickname: String) async throws {
+    let request = UpdateUserRequest(
+      nickname: nickname,
+      env: environment.firebaseEnv
+    )
+
+    _ = try await functions.httpsCallable("updateUser").call(request.asDictionary())
+  }
+
+  // MARK: - Profile Image Operations
+
+  /// 프로필 이미지 업로드
+  /// - Parameters:
+  ///   - uid: 사용자 ID
+  ///   - imageData: 이미지 데이터
+  /// - Returns: 업로드된 이미지 URL
+  public func uploadProfileImage(uid: String, imageData: Data) async throws -> URL {
+    // 1. 환경별 Storage 경로 생성 (타임스탬프 추가로 충돌 방지)
+    let envPrefix = environment.storagePrefix
+    let timestamp = Int(Date().timeIntervalSince1970)
+    let imagePath = "\(envPrefix)/profile_images/\(uid)/\(timestamp).jpg"
+    let profileImageRef = storage.reference().child(imagePath)
+
+    let metadata = StorageMetadata()
+    metadata.contentType = "image/jpeg"
+
+    let uploadData = compressImageDataForUpload(imageData) ?? imageData
+
+    do {
+      _ = try await profileImageRef.putDataAsync(uploadData, metadata: metadata)
+    } catch {
+      print("❌ Storage upload error:", error)
+      throw UserProfileError.uploadFailed
+    }
+
+    // 2. Storage 경로와 env를 Functions에 전달
+    let request = UploadProfileImageRequest(
+      imagePath: imagePath,
+      env: environment.firebaseEnv
+    )
+
+    let result = try await functions.httpsCallable("uploadProfileImage").call(request.asDictionary())
+    guard let response = result.data as? [String: Any],
+          let profileData = response["profile"] as? [String: Any],
+          let urlString = profileData["url"] as? String,
+          let url = URL(string: urlString) else {
+      throw UserProfileError.uploadFailed
+    }
+
+    return url
+  }
+
+  /// 프로필 이미지 삭제
+  /// - Parameter uid: 사용자 ID
+  public func deleteProfileImage(uid: String) async throws {
+    let envPrefix = environment.storagePrefix
+    let imagePath = "\(envPrefix)/profile_images/\(uid)/main.jpg"
+    let profileImageRef = storage.reference().child(imagePath)
+    try await profileImageRef.delete()
+  }
+
+  // MARK: - Settings Operations
+
+  /// 사용자 설정 조회
+  /// - Returns: 알림 설정 활성화 여부
+  public func getUserSettings() async throws -> Bool {
+    let request = GetUserSettingsRequest(env: environment.firebaseEnv)
+
+    let result = try await functions.httpsCallable("getUserSettings").call(request.asDictionary())
+    guard let response = result.data as? [String: Any],
+          let notificationEnabled = response["notificationEnabled"] as? Bool else {
+      throw UserProfileError.invalidData
+    }
+
+    return notificationEnabled
+  }
+
+  /// 사용자 설정 업데이트
+  /// - Parameter notificationEnabled: 알림 활성화 여부
+  public func updateUserSettings(notificationEnabled: Bool) async throws {
+    let request = UpdateUserSettingsRequest(
+      notificationEnabled: notificationEnabled,
+      env: environment.firebaseEnv
+    )
+
+    _ = try await functions.httpsCallable("updateUserSettings").call(request.asDictionary())
+  }
+
+  // MARK: - Utility Operations
+
+  /// 닉네임 사용 가능 여부 확인
+  /// - Note: 현재는 클라이언트에서 직접 확인 불가능 (Functions에서만 가능)
+  ///         향후 필요시 Functions API 추가 필요
+  public func isNicknameAvailable(_ nickname: String) async throws -> Bool {
+    // TODO: Functions API 추가 필요
+    // 현재는 updateUser 시도 후 에러로 판단
+    return true
+  }
+  
+}
+
+// MARK: - Private Helpers
+
+private extension UserProfileRemoteDataSource {
+  /// Functions 응답을 UserProfile로 파싱
+  func parseUserProfile(from data: [String: Any], isPublic: Bool) throws -> UserProfile {
+    let jsonData = try JSONSerialization.data(withJSONObject: data)
+    let decoder = JSONDecoder()
+    let response = try decoder.decode(UserProfileResponse.self, from: jsonData)
+    let userPrivate = response.toUserModel()
+
+    if isPublic {
+      return .public(userPrivate.toPublic())
+    } else {
+      return .private(userPrivate)
+    }
+  }
+}
+
+// MARK: - Encodable Extension
+
+private extension Encodable {
+  /// Encodable을 Dictionary로 변환
+  func asDictionary() throws -> [String: Any] {
+    let encoder = JSONEncoder()
+    encoder.outputFormatting = .prettyPrinted
+    let data = try encoder.encode(self)
+    guard let dictionary = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+      throw UserProfileError.invalidData
+    }
+    return dictionary
+  }
+}
+
+// MARK: - StorageReference Extension
+
+private extension StorageReference {
+  func putDataAsync(_ data: Data, metadata: StorageMetadata?) async throws -> StorageMetadata {
+    try await withCheckedThrowingContinuation { continuation in
+      putData(data, metadata: metadata) { metadata, error in
+        if let error {
+          continuation.resume(throwing: error)
+        } else if let metadata {
+          continuation.resume(returning: metadata)
+        } else {
+          continuation.resume(throwing: UserProfileError.uploadFailed)
+        }
+      }
+    }
+  }
+}
