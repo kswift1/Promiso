@@ -9,15 +9,21 @@ import {
   CreatePromiseResponse,
   CreateUserRequest,
   CreateUserResponse,
+  DeleteGroupRequest,
+  DeleteGroupResponse,
   GetUserRequest,
   GetUserSettingsResponse,
   GroupMemberPreview,
   JoinGroupRequest,
   JoinGroupResponse,
+  LeaveGroupRequest,
+  LeaveGroupResponse,
   RespondPromiseRequest,
   RespondPromiseResponse,
   PreviewGroupRequest,
   PreviewGroupResponse,
+  UpdateGroupRequest,
+  UpdateGroupResponse,
   UpdateUserRequest,
   UpdateUserResponse,
   UpdateUserSettingsRequest,
@@ -848,6 +854,233 @@ export const joinGroup = onCall<JoinGroupRequest>(
     return {
       groupId: groupId,
       groupName: groupName,
+    };
+  },
+);
+
+/**
+ * 그룹 나가기
+ *
+ * @remarks
+ * **인증 필수**
+ *
+ * 사용자가 그룹에서 나갑니다:
+ * 1. groups/{groupId}의 memberIds에서 사용자 제거
+ * 2. users/{userId}의 groups Map에서 해당 그룹 삭제
+ * 3. 호스트(admin)는 나갈 수 없음
+ *
+ * @param request.data - LeaveGroupRequest
+ * @returns LeaveGroupResponse
+ *
+ * @throws HttpsError
+ * - unauthenticated: 로그인이 필요합니다
+ * - invalid-argument: 잘못된 파라미터
+ * - permission-denied: 호스트는 나갈 수 없습니다
+ * - not-found: 그룹을 찾을 수 없습니다
+ * - internal: 서버 오류
+ */
+export const leaveGroup = onCall<LeaveGroupRequest>(
+  {region: REGION},
+  async (request): Promise<LeaveGroupResponse> => {
+    // 1. 인증 확인
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "로그인이 필요합니다");
+    }
+
+    // 2. 데이터 추출 및 검증
+    const data = request.data;
+    const groupId = data.groupId?.trim();
+    const userId = request.auth.uid;
+
+    if (!groupId) {
+      throw new HttpsError(
+        "invalid-argument",
+        "그룹 ID는 필수입니다",
+      );
+    }
+
+    if (data.env && data.env !== "stage" && data.env !== "prod") {
+      throw new HttpsError(
+        "invalid-argument",
+        "env는 stage 또는 prod만 허용됩니다",
+      );
+    }
+
+    // 3. 비즈니스 로직
+    const db = admin.firestore();
+    const groupsCollection = getEnvironmentCollection("groups", db, data.env);
+    const usersCollection = getEnvironmentCollection("users", db, data.env);
+
+    // 3-1. 그룹 존재 확인
+    const groupRef = groupsCollection.doc(groupId);
+    const groupDoc = await groupRef.get();
+
+    if (!groupDoc.exists) {
+      throw new HttpsError(
+        "not-found",
+        "그룹을 찾을 수 없습니다",
+      );
+    }
+
+    const groupData = groupDoc.data();
+    if (!groupData) {
+      throw new HttpsError(
+        "not-found",
+        "그룹 데이터를 찾을 수 없습니다",
+      );
+    }
+
+    const createdBy = groupData.createdBy as string;
+    const memberIds = (groupData.memberIds as string[]) ?? [];
+
+    // 3-2. 멤버인지 확인
+    if (!memberIds.includes(userId)) {
+      throw new HttpsError(
+        "permission-denied",
+        "그룹 멤버가 아닙니다",
+      );
+    }
+
+    // 3-3. 호스트인지 확인 (호스트는 나갈 수 없음)
+    if (createdBy === userId) {
+      throw new HttpsError(
+        "permission-denied",
+        "그룹 호스트는 나갈 수 없습니다. 그룹을 삭제하거나 다른 멤버에게 호스트를 이전하세요.",
+      );
+    }
+
+    const now = FieldValue.serverTimestamp();
+
+    // 4. Firestore에서 제거 (트랜잭션 사용)
+    await db.runTransaction(async (transaction) => {
+      // 4-1. 그룹의 memberIds에서 제거
+      transaction.update(groupRef, {
+        memberIds: FieldValue.arrayRemove(userId),
+        updatedAt: now,
+      });
+
+      // 4-2. 사용자의 그룹 목록에서 삭제
+      const userRef = usersCollection.doc(userId);
+      transaction.update(userRef, {
+        [`groups.${groupId}`]: FieldValue.delete(),
+        updatedAt: now,
+      });
+    });
+
+    // 5. 응답 반환
+    return {
+      success: true,
+    };
+  },
+);
+
+/**
+ * 그룹 삭제
+ *
+ * @remarks
+ * **인증 필수**
+ *
+ * 호스트(admin)가 그룹을 삭제합니다:
+ * 1. 호스트 권한 확인
+ * 2. groups/{groupId}를 soft delete (isDeleted: true)
+ * 3. 모든 멤버의 users/{userId}/groups Map에서 해당 그룹 삭제
+ *
+ * @param request.data - DeleteGroupRequest
+ * @returns DeleteGroupResponse
+ *
+ * @throws HttpsError
+ * - unauthenticated: 로그인이 필요합니다
+ * - invalid-argument: 잘못된 파라미터
+ * - permission-denied: 호스트만 삭제할 수 있습니다
+ * - not-found: 그룹을 찾을 수 없습니다
+ * - internal: 서버 오류
+ */
+export const deleteGroup = onCall<DeleteGroupRequest>(
+  {region: REGION},
+  async (request): Promise<DeleteGroupResponse> => {
+    // 1. 인증 확인
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "로그인이 필요합니다");
+    }
+
+    // 2. 데이터 추출 및 검증
+    const data = request.data;
+    const groupId = data.groupId?.trim();
+    const userId = request.auth.uid;
+
+    if (!groupId) {
+      throw new HttpsError(
+        "invalid-argument",
+        "그룹 ID는 필수입니다",
+      );
+    }
+
+    if (data.env && data.env !== "stage" && data.env !== "prod") {
+      throw new HttpsError(
+        "invalid-argument",
+        "env는 stage 또는 prod만 허용됩니다",
+      );
+    }
+
+    // 3. 비즈니스 로직
+    const db = admin.firestore();
+    const groupsCollection = getEnvironmentCollection("groups", db, data.env);
+    const usersCollection = getEnvironmentCollection("users", db, data.env);
+
+    // 3-1. 그룹 존재 및 권한 확인
+    const groupRef = groupsCollection.doc(groupId);
+    const groupDoc = await groupRef.get();
+
+    if (!groupDoc.exists) {
+      throw new HttpsError(
+        "not-found",
+        "그룹을 찾을 수 없습니다",
+      );
+    }
+
+    const groupData = groupDoc.data();
+    if (!groupData) {
+      throw new HttpsError(
+        "not-found",
+        "그룹 데이터를 찾을 수 없습니다",
+      );
+    }
+
+    const createdBy = groupData.createdBy as string;
+    const memberIds = (groupData.memberIds as string[]) ?? [];
+
+    // 3-2. 호스트인지 확인
+    if (createdBy !== userId) {
+      throw new HttpsError(
+        "permission-denied",
+        "그룹 호스트만 삭제할 수 있습니다",
+      );
+    }
+
+    const now = FieldValue.serverTimestamp();
+
+    // 4. Firestore에서 삭제 (트랜잭션 사용)
+    await db.runTransaction(async (transaction) => {
+      // 4-1. 그룹 soft delete
+      transaction.update(groupRef, {
+        isDeleted: true,
+        deletedAt: now,
+        updatedAt: now,
+      });
+
+      // 4-2. 모든 멤버의 그룹 목록에서 삭제
+      for (const memberId of memberIds) {
+        const userRef = usersCollection.doc(memberId);
+        transaction.update(userRef, {
+          [`groups.${groupId}`]: FieldValue.delete(),
+          updatedAt: now,
+        });
+      }
+    });
+
+    // 5. 응답 반환
+    return {
+      success: true,
     };
   },
 );

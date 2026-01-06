@@ -36,21 +36,22 @@ extension GroupMain {
     public struct State {
       var isInitialized: Bool = false
       let currentUser: UserPrivate
-      
+
       var selectedFilter: StatusFilter = .all
-      
+
       var promisesState: LoadingState<[PromiseItem]> = .idle
       var proposalResponding: [String: RespondingState] = [:]
       var myResponses: [String: PromiseAttendanceStatus] = [:]
       var path = StackState<Path.State>()
-      
+
       var allGroupSummaries: [GroupSummary]?
       var currentGroup: GroupModel?
-      
+      var currentGroupMembers: [UserPublic]?
+
       @Presents var createPromise: CreatePromise.Feature.State?
       @Presents var createGroup: CreateGroup.Feature.State?
       @Presents var joinGroup: JoinGroup.Feature.State?
-      
+
       public init(currentUser: UserPrivate) {
         self.currentUser = currentUser
       }
@@ -96,6 +97,8 @@ extension GroupMain {
         case setDefaultGroup(groups: [GroupSummary])
         case fetchCurrentGroup(id: String)
         case currentGroupResponse(Result<GroupModel, GroupMainError>)
+        case fetchGroupMembers(groupId: String)
+        case groupMembersResponse(Result<[UserPublic], GroupMainError>)
         case fetchPromises(groupId: String)
         case loadPromisesResponse(Result<[PromiseItem], GroupMainError>)
         case proposalRespondDone(promiseId: String, status: PromiseAttendanceStatus)
@@ -146,6 +149,18 @@ extension GroupMain {
           return .send(.internal(.fetchGroupList))
         case .joinGroup:
           return .none
+        case .path(.element(id: _, action: .manageGroupFeature(.delegate(.groupLeft)))):
+          // 그룹 나가기 성공 -> 그룹 목록 새로고침
+          state.path.removeAll()
+          state.currentGroup = nil
+          state.currentGroupMembers = nil
+          return .send(.internal(.fetchGroupList))
+        case .path(.element(id: _, action: .manageGroupFeature(.delegate(.groupDeleted)))):
+          // 그룹 삭제 성공 -> 그룹 목록 새로고침
+          state.path.removeAll()
+          state.currentGroup = nil
+          state.currentGroupMembers = nil
+          return .send(.internal(.fetchGroupList))
         case .path:
           return .none
         case .binding, .delegate:
@@ -172,6 +187,7 @@ extension GroupMain {
           state.promisesState = .loading
           return .merge(
             .send(.internal(.fetchCurrentGroup(id: currentGroupId))),
+            .send(.internal(.fetchGroupMembers(groupId: currentGroupId))),
             .send(.internal(.fetchPromises(groupId: currentGroupId)))
           )
         }
@@ -179,6 +195,7 @@ extension GroupMain {
       case .groupChanged(let group):
         guard group.id != state.currentGroup?.id else { return .none }
         state.currentGroup = nil
+        state.currentGroupMembers = nil
         state.promisesState = .loading
         state.selectedFilter = .all
         return .send(.internal(.fetchCurrentGroup(id: group.id)))
@@ -213,7 +230,12 @@ extension GroupMain {
       case .groupManageTapped:
         guard let currentGroup = state.currentGroup else { return .none }
         let summary = state.allGroupSummaries?.first { $0.id == currentGroup.id }
-        state.path.append(.manageGroupFeature(.init(group: currentGroup, summary: summary)))
+        state.path.append(.manageGroupFeature(.init(
+          group: currentGroup,
+          summary: summary,
+          currentUserId: state.currentUser.userId,
+          preloadedMembers: state.currentGroupMembers
+        )))
         return .none
       case .createNewPromise:
         state.createPromise = CreatePromise.Feature.State(
@@ -276,9 +298,28 @@ extension GroupMain {
         }
       case .currentGroupResponse(.success(let group)):
         state.currentGroup = group
-        return .send(.internal(.fetchPromises(groupId: group.id)))
+        return .merge(
+          .send(.internal(.fetchGroupMembers(groupId: group.id))),
+          .send(.internal(.fetchPromises(groupId: group.id)))
+        )
       case .currentGroupResponse(.failure(let error)):
         state.promisesState = .failed(error)
+        return .none
+      case .fetchGroupMembers(let groupId):
+        return .run { [groupClient] send in
+          do {
+            let members = try await groupClient.fetchGroupMembers(groupId)
+            await send(.internal(.groupMembersResponse(.success(members))))
+          } catch {
+            await send(.internal(.groupMembersResponse(.failure(GroupMainError(error)))))
+          }
+        }
+      case .groupMembersResponse(.success(let members)):
+        state.currentGroupMembers = members
+        return .none
+      case .groupMembersResponse(.failure):
+        // 멤버 조회 실패는 치명적이지 않으므로 무시
+        state.currentGroupMembers = nil
         return .none
       case .fetchPromises(let id):
         let currentUserId = state.currentUser.id

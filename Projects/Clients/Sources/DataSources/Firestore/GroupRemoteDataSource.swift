@@ -256,7 +256,6 @@ public final class GroupRemoteDataSource: @unchecked Sendable {
   /// 1. inviteCode로 그룹 조회
   /// 2. memberIds 배열에 userId 추가 (arrayUnion)
   /// 3. users/{userId}/groups/{groupId} 생성
-  /// 4. memberCount 증가
   public func joinGroup(inviteCode: String, userId: String) async throws -> GroupModel {
     var callableData: [String: Any] = [
       "inviteCode": inviteCode.uppercased(),
@@ -279,6 +278,52 @@ public final class GroupRemoteDataSource: @unchecked Sendable {
 
     // 그룹 상세 정보 조회
     return try await fetchGroup(groupId: groupId)
+  }
+
+  /// 그룹 나가기
+  ///
+  /// - Parameters:
+  ///   - groupId: 나갈 그룹 ID
+  /// - Throws: GroupRemoteDataSourceError
+  ///
+  /// Firebase Functions의 leaveGroup을 호출합니다.
+  /// Functions에서 다음 작업을 수행합니다:
+  /// 1. 호스트인지 확인 (호스트는 나갈 수 없음)
+  /// 2. groups/{groupId}의 memberIds에서 userId 제거
+  /// 3. users/{userId}/groups Map에서 해당 그룹 삭제
+  public func leaveGroup(groupId: String) async throws {
+    var callableData: [String: Any] = [
+      "groupId": groupId
+    ]
+
+    if let env = functionsEnvironmentParam() {
+      callableData["env"] = env
+    }
+
+    _ = try await functions.httpsCallable("leaveGroup").call(callableData)
+  }
+
+  /// 그룹 삭제
+  ///
+  /// - Parameters:
+  ///   - groupId: 삭제할 그룹 ID
+  /// - Throws: GroupRemoteDataSourceError
+  ///
+  /// Firebase Functions의 deleteGroup을 호출합니다.
+  /// Functions에서 다음 작업을 수행합니다:
+  /// 1. 호스트인지 확인
+  /// 2. groups/{groupId}를 soft delete (isDeleted: true)
+  /// 3. 모든 멤버의 users/{userId}/groups Map에서 해당 그룹 삭제
+  public func deleteGroup(groupId: String) async throws {
+    var callableData: [String: Any] = [
+      "groupId": groupId
+    ]
+
+    if let env = functionsEnvironmentParam() {
+      callableData["env"] = env
+    }
+
+    _ = try await functions.httpsCallable("deleteGroup").call(callableData)
   }
 
 

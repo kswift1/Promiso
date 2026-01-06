@@ -597,3 +597,93 @@ export interface UserDocument {
     [groupId: string]: UserGroupInfo;
   };
 }
+
+// ============================================================================
+// leaveGroup
+// ============================================================================
+
+/**
+ * 그룹 나가기 요청
+ *
+ * @remarks
+ * - 인증 필수 (Firebase Auth)
+ * - userId는 자동으로 request.auth.uid에서 추출
+ * - 호스트(admin)는 나갈 수 없음 (먼저 deleteGroup 해야 함)
+ */
+export interface LeaveGroupRequest {
+  /** 그룹 ID */
+  groupId: string;
+
+  /** 환경 구분 (선택적: stage 또는 prod) */
+  env?: "stage" | "prod" | null;
+}
+
+/**
+ * 그룹 나가기 응답
+ */
+export interface LeaveGroupResponse {
+  /** 성공 여부 */
+  success: boolean;
+}
+
+// ============================================================================
+// updateGroup
+// ============================================================================
+
+/**
+ * 그룹 정보 수정 요청
+ *
+ * @remarks
+ * - 인증 필수 (Firebase Auth)
+ * - 호스트(admin)만 수정 가능
+ * - 설명과 이미지 URL을 수정할 수 있음
+ */
+export interface UpdateGroupRequest {
+  /** 그룹 ID */
+  groupId: string;
+
+  /** 그룹 설명 (선택적) */
+  description?: string | null;
+
+  /** 그룹 이미지 URL (선택적) */
+  imageUrl?: string | null;
+
+  /** 환경 구분 (선택적: stage 또는 prod) */
+  env?: "stage" | "prod" | null;
+}
+
+/**
+ * 그룹 정보 수정 응답
+ */
+export interface UpdateGroupResponse {
+  /** 성공 여부 */
+  success: boolean;
+}
+
+// ============================================================================
+// deleteGroup
+// ============================================================================
+
+/**
+ * 그룹 삭제 요청
+ *
+ * @remarks
+ * - 인증 필수 (Firebase Auth)
+ * - 호스트(admin)만 삭제 가능
+ * - Soft delete: isDeleted 플래그를 true로 설정
+ */
+export interface DeleteGroupRequest {
+  /** 그룹 ID */
+  groupId: string;
+
+  /** 환경 구분 (선택적: stage 또는 prod) */
+  env?: "stage" | "prod" | null;
+}
+
+/**
+ * 그룹 삭제 응답
+ */
+export interface DeleteGroupResponse {
+  /** 성공 여부 */
+  success: boolean;
+}

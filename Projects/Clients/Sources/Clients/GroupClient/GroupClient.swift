@@ -58,6 +58,9 @@ public struct GroupClient: Sendable {
 
   /// 그룹 나가기
   public var leaveGroup: @Sendable (_ groupId: String) async throws -> Void
+
+  /// 그룹 삭제 (호스트만 가능)
+  public var deleteGroup: @Sendable (_ groupId: String) async throws -> Void
 }
 
 // MARK: - Test & Preview Values
@@ -72,7 +75,8 @@ extension GroupClient: TestDependencyKey {
     createGroup: unimplemented("\(Self.self).createGroup"),
     previewGroup: unimplemented("\(Self.self).previewGroup"),
     joinGroup: unimplemented("\(Self.self).joinGroup"),
-    leaveGroup: unimplemented("\(Self.self).leaveGroup")
+    leaveGroup: unimplemented("\(Self.self).leaveGroup"),
+    deleteGroup: unimplemented("\(Self.self).deleteGroup")
   )
 
   public static let previewValue = Self(
@@ -169,6 +173,9 @@ extension GroupClient: TestDependencyKey {
     },
     leaveGroup: { _ in
       try await Task.sleep(for: .seconds(0.5))
+    },
+    deleteGroup: { _ in
+      try await Task.sleep(for: .seconds(0.5))
     }
   )
 }
@@ -234,7 +241,12 @@ extension GroupClient: DependencyKey {
 
         return try await dataSource.joinGroup(inviteCode: inviteCode, userId: currentUser.uid)
       },
-      leaveGroup: unimplemented("\(Self.self).leaveGroup")
+      leaveGroup: { groupId in
+        try await dataSource.leaveGroup(groupId: groupId)
+      },
+      deleteGroup: { groupId in
+        try await dataSource.deleteGroup(groupId: groupId)
+      }
     )
   }()
 }
