@@ -4,15 +4,18 @@ import FirebaseFunctions
 import FirebaseStorage
 import PromisoShared
 
-/// 그룹 생성 에러
+/// 그룹 원격 데이터 소스 에러
 public enum GroupRemoteDataSourceError: Error, LocalizedError {
-  case invalidResponse
+  case invalidFunctionResponse
+  case invalidRequestData
   case imageUploadFailed
-  
+
   public var errorDescription: String? {
     switch self {
-    case .invalidResponse:
+    case .invalidFunctionResponse:
       return "서버 응답이 올바르지 않아요. 잠시 후 다시 시도해주세요."
+    case .invalidRequestData:
+      return "요청 데이터가 올바르지 않아요."
     case .imageUploadFailed:
       return "그룹 사진 업로드에 실패했어요. 잠시 후 다시 시도해주세요."
     }
@@ -21,8 +24,6 @@ public enum GroupRemoteDataSourceError: Error, LocalizedError {
 
 /// Firebase Functions를 통한 그룹 데이터 관리
 ///
-/// 4-Layer 아키텍처:
-/// - App → Features → Clients → Shared
 /// - GroupRemoteDataSource는 Clients 레이어에 속함
 public final class GroupRemoteDataSource: @unchecked Sendable {
   private let functions: Functions
@@ -98,14 +99,14 @@ public final class GroupRemoteDataSource: @unchecked Sendable {
       let result = try await functions.httpsCallable("createGroup").call(callableData)
       
       guard let data = result.data as? [String: Any] else {
-        throw GroupRemoteDataSourceError.invalidResponse
+        throw GroupRemoteDataSourceError.invalidFunctionResponse
       }
-      
+
       let id = data["id"] as? String
       let inviteCode = data["inviteCode"] as? String
-      
+
       guard let id, let inviteCode else {
-        throw GroupRemoteDataSourceError.invalidResponse
+        throw GroupRemoteDataSourceError.invalidFunctionResponse
       }
       
       return GroupCreationResult(
@@ -157,12 +158,12 @@ public final class GroupRemoteDataSource: @unchecked Sendable {
     let groupRef = db.environmentCollection("groups").document(groupId)
     let groupSnapshot = try await groupRef.getDocument()
     guard groupSnapshot.exists else {
-      throw GroupRemoteDataSourceError.invalidResponse
+      throw GroupRemoteDataSourceError.invalidFunctionResponse
     }
 
     let groupDocument = try groupSnapshot.data(as: GroupDocument.self)
     guard !groupDocument.isDeleted else {
-      throw GroupRemoteDataSourceError.invalidResponse
+      throw GroupRemoteDataSourceError.invalidFunctionResponse
     }
 
     return groupDocument.toModel(id: groupId)
@@ -227,11 +228,11 @@ public final class GroupRemoteDataSource: @unchecked Sendable {
     let result = try await functions.httpsCallable("previewGroup").call(callableData)
 
     guard let data = result.data as? [String: Any] else {
-      throw GroupRemoteDataSourceError.invalidResponse
+      throw GroupRemoteDataSourceError.invalidFunctionResponse
     }
 
     guard let groupId = data["groupId"] as? String else {
-      throw GroupRemoteDataSourceError.invalidResponse
+      throw GroupRemoteDataSourceError.invalidFunctionResponse
     }
 
     let membersData = data["members"] as? [[String: Any]] ?? []
@@ -269,11 +270,11 @@ public final class GroupRemoteDataSource: @unchecked Sendable {
     let result = try await functions.httpsCallable("joinGroup").call(callableData)
 
     guard let data = result.data as? [String: Any] else {
-      throw GroupRemoteDataSourceError.invalidResponse
+      throw GroupRemoteDataSourceError.invalidFunctionResponse
     }
 
     guard let groupId = data["groupId"] as? String else {
-      throw GroupRemoteDataSourceError.invalidResponse
+      throw GroupRemoteDataSourceError.invalidFunctionResponse
     }
 
     // 그룹 상세 정보 조회

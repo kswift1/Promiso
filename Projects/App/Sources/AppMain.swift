@@ -10,6 +10,8 @@ struct PromisoApp: App {
   
   private let store = Store(initialState: AppEntry.Feature.State()) {
     AppEntry.Feature()
+  } withDependencies: { deps in
+    deps.authClient = .liveValue
   }
   
   var body: some Scene {
