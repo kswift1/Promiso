@@ -418,6 +418,7 @@ paths:
         - groups/{groupId} 문서 생성 (memberIds: [creatorId] 포함)
         - users/{creatorId}/groups/{groupId} 서브컬렉션 생성
         - 멤버 정보는 memberIds 배열로 관리 (users 컬렉션 참조)
+        - photo가 storagePath 타입이면 downloadURL 생성 후 externalURL로 저장
       operationId: createGroup
       security:
         - firebaseAuth: []
@@ -1339,7 +1340,11 @@ components:
         photo:
           type: object
           nullable: true
-          description: 그룹 이미지 정보
+          description: |
+            그룹 이미지 정보
+            - storagePath: iOS에서 Storage 업로드 후 경로 전달 → Functions에서 downloadURL 생성
+            - externalURL: 외부 URL을 직접 전달
+            - Firestore에는 항상 downloadURL(externalURL)로 저장됨
           properties:
             type:
               type: string
@@ -1350,7 +1355,7 @@ components:
               type: string
           example:
             type: storagePath
-            url: groups/abc123/photo.jpg
+            url: group_images/abc123/main.jpg
 
     CreateGroupResponse:
       type: object

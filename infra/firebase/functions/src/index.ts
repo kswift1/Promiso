@@ -14,6 +14,7 @@ import {
   GroupMemberPreview,
   JoinGroupRequest,
   JoinGroupResponse,
+  RemoteImage,
   RespondPromiseRequest,
   RespondPromiseResponse,
   PreviewGroupRequest,
@@ -358,25 +359,8 @@ export const uploadProfileImage = onCall<UploadProfileImageRequest>(
         env: data.env,
       });
 
-      // 3. Storage에서 downloadURL 생성 (token 방식)
-      const bucket = admin.storage().bucket();
-      const file = bucket.file(data.imagePath);
-
-      // download token 생성 및 설정 (간단한 UUID 생성)
-      const downloadToken = crypto.randomUUID();
-
-      await file.setMetadata({
-        metadata: {
-          firebaseStorageDownloadTokens: downloadToken,
-        },
-      });
-
-      console.log("✅ Download token set:", downloadToken);
-
-      // Firebase Storage download URL 구성
-      const bucketName = bucket.name;
-      const encodedPath = encodeURIComponent(data.imagePath);
-      const url = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodedPath}?alt=media&token=${downloadToken}`;
+      // 3. Storage에서 downloadURL 생성
+      const url = await generateDownloadURL(data.imagePath);
 
       console.log("✅ Download URL generated:", url);
 
@@ -601,13 +585,25 @@ export const createGroup = onCall<CreateGroupRequest>(
     }
     const now = FieldValue.serverTimestamp();
 
+    // 4-2. photo가 storagePath 타입이면 downloadURL 생성
+    let photoData: RemoteImage | null = null;
+    if (data.photo && data.photo.type === "storagePath") {
+      const downloadUrl = await generateDownloadURL(data.photo.url);
+      photoData = {
+        type: "externalURL",
+        url: downloadUrl,
+      };
+    } else if (data.photo && data.photo.type === "externalURL") {
+      photoData = data.photo;
+    }
+
     // 5-1. 그룹 기본 정보 생성 (memberIds 포함)
     await groupRef.set({
       name: data.name,
       description: data.description ?? null,
       emoji: null,
       themeColor: null,
-      photo: data.photo ?? null,
+      photo: photoData,
       memberIds: [creatorId],
       memberCount: 1,
       activePromiseCount: 0,
@@ -925,6 +921,33 @@ function validateCreateGroupRequest(data: CreateGroupRequest): void {
       "env는 stage 또는 prod만 허용됩니다",
     );
   }
+}
+
+/**
+ * Storage 경로에서 downloadURL 생성
+ *
+ * @param {string} storagePath - Storage 파일 경로
+ * @return {Promise<string>} Download URL
+ */
+async function generateDownloadURL(storagePath: string): Promise<string> {
+  const bucket = admin.storage().bucket();
+  const file = bucket.file(storagePath);
+
+  // download token 생성 및 설정
+  const downloadToken = crypto.randomUUID();
+
+  await file.setMetadata({
+    metadata: {
+      firebaseStorageDownloadTokens: downloadToken,
+    },
+  });
+
+  // Firebase Storage download URL 구성
+  const bucketName = bucket.name;
+  const encodedPath = encodeURIComponent(storagePath);
+  const url = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodedPath}?alt=media&token=${downloadToken}`;
+
+  return url;
 }
 
 /**
