@@ -107,24 +107,30 @@ public class BatchOperationManager {
     members: [(userId: String, userName: String, profileImageUrl: String?)]
   ) async throws {
     let batch = db.batch()
-    
+    let groupRef = db.environmentCollection("groups").document(groupId)
+
+    // memberIds 배열에 사용자 ID 추가
+    let userIds = members.map { $0.userId }
+    batch.updateData([
+      "memberIds": FieldValue.arrayUnion(userIds),
+      "memberCount": FieldValue.increment(Int64(members.count))
+    ], forDocument: groupRef)
+
+    // 각 사용자의 groups 서브컬렉션에 추가
     for member in members {
-      let ref = db.environmentCollection("groups")
-        .document(groupId)
-        .collection("members")
+      let userGroupRef = db.environmentCollection("users")
         .document(member.userId)
-      
-      let memberData: [String: Any] = [
-        "userId": member.userId,
-        "userName": member.userName,
-        "profileImageUrl": member.profileImageUrl as Any,
+        .collection("groups")
+        .document(groupId)
+
+      batch.setData([
+        "groupId": groupId,
         "joinedAt": Timestamp(),
-        "role": "member"
-      ]
-      
-      batch.setData(memberData, forDocument: ref)
+        "role": "member",
+        "notifications": true
+      ], forDocument: userGroupRef)
     }
-    
+
     try await batch.commit()
   }
   

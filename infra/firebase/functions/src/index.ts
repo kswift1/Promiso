@@ -578,31 +578,9 @@ export const createGroup = onCall<CreateGroupRequest>(
     // 4. 비즈니스 로직
     const creatorId = request.auth.uid;
     const db = admin.firestore();
-
-    // 4-1. 생성자 정보 조회
     const usersCollection = getEnvironmentCollection("users", db, data.env);
-    const userDoc = await usersCollection.doc(creatorId).get();
 
-    if (!userDoc.exists) {
-      throw new HttpsError(
-        "not-found",
-        "사용자 정보를 찾을 수 없습니다. 다시 로그인해주세요.",
-      );
-    }
-
-    const userData = userDoc.data();
-    if (!userData) {
-      throw new HttpsError(
-        "internal",
-        "사용자 데이터를 읽을 수 없습니다.",
-      );
-    }
-
-    const creatorName = userData.name as string;
-    const creatorNickname = userData.nickname as string;
-    const creatorProfileImageUrl = (userData.profile?.url as string) ?? null;
-
-    // 4-2. 초대 코드 생성
+    // 4-1. 초대 코드 생성
     const inviteCode = await generateUniqueInviteCode({
       db,
       length: 6,
@@ -623,13 +601,14 @@ export const createGroup = onCall<CreateGroupRequest>(
     }
     const now = FieldValue.serverTimestamp();
 
-    // 5-1. 그룹 기본 정보 생성
+    // 5-1. 그룹 기본 정보 생성 (memberIds 포함)
     await groupRef.set({
       name: data.name,
       description: data.description ?? null,
       emoji: null,
       themeColor: null,
       photo: data.photo ?? null,
+      memberIds: [creatorId],
       memberCount: 1,
       activePromiseCount: 0,
       maxMembers: data.maxMembers,
@@ -642,20 +621,7 @@ export const createGroup = onCall<CreateGroupRequest>(
       isDeleted: false,
     });
 
-    // 5-2. 그룹 멤버에 생성자 추가
-    await groupRef.collection("members").doc(creatorId).set({
-      userId: creatorId,
-      userName: creatorName,
-      userNickname: creatorNickname,
-      profileImageUrl: creatorProfileImageUrl,
-      role: "admin",
-      joinedAt: now,
-      invitedBy: creatorId,
-      isActive: true,
-      leftAt: null,
-    });
-
-    // 5-3. 사용자의 그룹 목록에 추가
+    // 5-2. 사용자의 그룹 목록에 추가
     await usersCollection
       .doc(creatorId)
       .collection("groups")
@@ -743,15 +709,10 @@ export const previewGroup = onCall<PreviewGroupRequest>(
 
     const groupDoc = groupSnapshot.docs[0];
     const groupId = groupDoc.id;
+    const groupData = groupDoc.data();
+    const memberIds = (groupData.memberIds as string[]) ?? [];
 
-    // 3. 멤버 리스트 조회 (최대 10명)
-    const membersSnapshot = await groupDoc.ref
-      .collection("members")
-      .where("isActive", "==", true)
-      .limit(10)
-      .get();
-
-    // 4. 각 멤버의 프로필 정보 조회
+    // 3. 멤버 프로필 정보 조회 (memberIds에서 최대 10명)
     const usersCollection = getEnvironmentCollection(
       "users",
       db,
@@ -759,13 +720,9 @@ export const previewGroup = onCall<PreviewGroupRequest>(
     );
 
     const members: GroupMemberPreview[] = [];
-    for (const memberDoc of membersSnapshot.docs) {
-      const memberData = memberDoc.data();
-      const userId = memberData.userId;
-      if (!userId) {
-        continue;
-      }
+    const memberIdsToFetch = memberIds.slice(0, 10);
 
+    for (const userId of memberIdsToFetch) {
       const userDoc = await usersCollection.doc(userId).get();
       if (userDoc.exists) {
         const userProfile = userDoc.data();
@@ -778,7 +735,7 @@ export const previewGroup = onCall<PreviewGroupRequest>(
       }
     }
 
-    // 5. 그룹 ID와 멤버 리스트 반환
+    // 4. 그룹 ID와 멤버 리스트 반환
     return {
       groupId: groupId,
       members: members,
@@ -866,21 +823,14 @@ export const joinGroup = onCall<JoinGroupRequest>(
     const groupName = groupData.name as string;
     const memberCount = groupData.memberCount as number;
     const maxMembers = groupData.maxMembers as number | undefined;
+    const memberIds = (groupData.memberIds as string[]) ?? [];
 
     // 3-2. 이미 참여한 멤버인지 확인
-    const memberDoc = await groupDoc.ref
-      .collection("members")
-      .doc(userId)
-      .get();
-
-    if (memberDoc.exists) {
-      const memberData = memberDoc.data();
-      if (memberData?.isActive) {
-        throw new HttpsError(
-          "already-exists",
-          "이미 참여한 그룹입니다",
-        );
-      }
+    if (memberIds.includes(userId)) {
+      throw new HttpsError(
+        "already-exists",
+        "이미 참여한 그룹입니다",
+      );
     }
 
     // 3-3. 정원 확인
@@ -891,45 +841,16 @@ export const joinGroup = onCall<JoinGroupRequest>(
       );
     }
 
-    // 3-4. 사용자 정보 조회
-    const usersCollection = getEnvironmentCollection("users", db, data.env);
-    const userDoc = await usersCollection.doc(userId).get();
-
-    if (!userDoc.exists) {
-      throw new HttpsError(
-        "not-found",
-        "사용자 정보를 찾을 수 없습니다. 다시 로그인해주세요.",
-      );
-    }
-
-    const userData = userDoc.data();
-    if (!userData) {
-      throw new HttpsError(
-        "internal",
-        "사용자 데이터를 읽을 수 없습니다.",
-      );
-    }
-
-    const userName = userData.name as string;
-    const userNickname = userData.nickname as string;
-    const userProfileImageUrl = (userData.profile?.url as string) ?? null;
-
     const now = FieldValue.serverTimestamp();
+    const usersCollection = getEnvironmentCollection("users", db, data.env);
 
     // 4. Firestore에 저장 (트랜잭션 사용)
     await db.runTransaction(async (transaction) => {
-      // 4-1. 그룹 멤버에 추가
-      const memberRef = groupDoc.ref.collection("members").doc(userId);
-      transaction.set(memberRef, {
-        userId: userId,
-        userName: userName,
-        userNickname: userNickname,
-        profileImageUrl: userProfileImageUrl,
-        role: "member",
-        joinedAt: now,
-        invitedBy: null,
-        isActive: true,
-        leftAt: null,
+      // 4-1. 그룹의 memberIds에 추가
+      transaction.update(groupDoc.ref, {
+        memberIds: FieldValue.arrayUnion(userId),
+        memberCount: FieldValue.increment(1),
+        updatedAt: now,
       });
 
       // 4-2. 사용자의 그룹 목록에 추가
@@ -943,12 +864,6 @@ export const joinGroup = onCall<JoinGroupRequest>(
         role: "member",
         joinedAt: now,
         notifications: true,
-      });
-
-      // 4-3. memberCount 증가
-      transaction.update(groupDoc.ref, {
-        memberCount: FieldValue.increment(1),
-        updatedAt: now,
       });
     });
 

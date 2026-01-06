@@ -10,7 +10,10 @@ public struct GroupDocument: Codable {
   public let emoji: String?
   public let themeColor: String?
   public let photo: RemoteImage?
-  
+
+  // MARK: - 멤버 관리
+  public let memberIds: [String]
+
   // MARK: - 카운터 (캐시)
   public let memberCount: Int
   public let activePromiseCount: Int
@@ -33,6 +36,7 @@ public struct GroupDocument: Codable {
     emoji: String? = nil,
     themeColor: String? = nil,
     photo: RemoteImage? = nil,
+    memberIds: [String] = [],
     memberCount: Int = 0,
     activePromiseCount: Int = 0,
     maxMembers: Int? = nil,
@@ -49,6 +53,7 @@ public struct GroupDocument: Codable {
     self.emoji = emoji
     self.themeColor = themeColor
     self.photo = photo
+    self.memberIds = memberIds
     self.memberCount = memberCount
     self.activePromiseCount = activePromiseCount
     self.maxMembers = maxMembers
@@ -70,6 +75,7 @@ extension GroupDocument {
     case emoji
     case themeColor
     case photo
+    case memberIds
     case memberCount
     case activePromiseCount
     case maxMembers

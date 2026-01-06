@@ -204,6 +204,9 @@ export interface GroupDocument {
   /** 그룹 이미지 정보 */
   photo: RemoteImage | null;
 
+  /** 멤버 ID 목록 (users 컬렉션 참조용) */
+  memberIds: string[];
+
   /** 현재 멤버 수 */
   memberCount: number;
 

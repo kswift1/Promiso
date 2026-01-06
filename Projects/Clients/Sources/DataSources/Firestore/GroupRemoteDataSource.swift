@@ -52,10 +52,8 @@ public final class GroupRemoteDataSource: @unchecked Sendable {
   ///
   /// Firebase Functions의 createGroup을 호출합니다.
   /// Functions에서 다음 작업을 수행합니다:
-  /// 1. users/{creatorId}에서 생성자 정보 조회
-  /// 2. groups/{groupId} 생성
-  /// 3. groups/{groupId}/members/{creatorId} 생성
-  /// 4. users/{creatorId}/groups/{groupId} 생성
+  /// 1. groups/{groupId} 생성 (memberIds: [creatorId] 포함)
+  /// 2. users/{creatorId}/groups/{groupId} 생성
   public func createGroup(
     name: String,
     maxMembers: Int,
@@ -255,10 +253,9 @@ public final class GroupRemoteDataSource: @unchecked Sendable {
   /// Firebase Functions의 joinGroup을 호출합니다.
   /// Functions에서 다음 작업을 수행합니다:
   /// 1. inviteCode로 그룹 조회
-  /// 2. users/{userId}에서 사용자 정보 조회
-  /// 3. groups/{groupId}/members/{userId} 생성
-  /// 4. users/{userId}/groups/{groupId} 생성
-  /// 5. memberCount 증가
+  /// 2. memberIds 배열에 userId 추가 (arrayUnion)
+  /// 3. users/{userId}/groups/{groupId} 생성
+  /// 4. memberCount 증가
   public func joinGroup(inviteCode: String, userId: String) async throws -> GroupModel {
     var callableData: [String: Any] = [
       "inviteCode": inviteCode.uppercased(),
