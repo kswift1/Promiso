@@ -32,8 +32,8 @@ export interface CreateGroupRequest {
   /** 그룹 설명 (선택적) */
   description?: string | null;
 
-  /** 그룹 이미지 정보 (선택적) */
-  photo?: RemoteImage | null;
+  /** 그룹 이미지 URL (선택적) */
+  imageUrl?: string | null;
 }
 
 /**
@@ -186,41 +186,26 @@ export enum JoinGroupError {
  * Firestore groups 컬렉션 스키마
  *
  * @remarks
- * iOS의 Group 모델과 일치해야 합니다.
+ * iOS의 GroupModel과 일치해야 합니다.
  */
 export interface GroupDocument {
   /** 그룹 이름 */
   name: string;
 
-  /** 그룹 설명 (현재 미사용) */
+  /** 그룹 설명 */
   description: string | null;
 
-  /** 그룹 이모지 (현재 미사용) */
-  emoji: string | null;
-
-  /** 테마 색상 (현재 미사용) */
-  themeColor: string | null;
-
-  /** 그룹 이미지 정보 */
-  photo: RemoteImage | null;
+  /** 그룹 이미지 URL */
+  imageUrl: string | null;
 
   /** 멤버 ID 목록 (users 컬렉션 참조용) */
   memberIds: string[];
-
-  /** 현재 멤버 수 */
-  memberCount: number;
 
   /** 활성 약속 수 */
   activePromiseCount: number;
 
   /** 최대 인원 */
   maxMembers: number;
-
-  /** 가입 승인 필요 여부 */
-  requireApproval: boolean;
-
-  /** 기본 최소 참여 인원 */
-  defaultMinimumParticipants: number;
 
   /** 초대 코드 (6자리) */
   inviteCode: string;
@@ -575,4 +560,40 @@ export interface MetaData {
 
   /** 수정 시각 */
   updatedAt: FirebaseFirestore.Timestamp;
+}
+
+// ============================================================================
+// User Document Schema (users/{userId}/groups 서브컬렉션 → Map으로 변경)
+// ============================================================================
+
+/**
+ * 사용자별 그룹 정보 (users/{userId} 문서 내 groups Map)
+ */
+export interface UserGroupInfo {
+  /** 그룹 이름 (캐시) */
+  groupName: string;
+
+  /** 사용자 역할 (admin, member) */
+  role: string;
+
+  /** 그룹 가입 시각 */
+  joinedAt: FirebaseFirestore.Timestamp;
+
+  /** 알림 활성화 여부 */
+  notifications: boolean;
+}
+
+/**
+ * 사용자 문서 스키마 (users/{userId})
+ *
+ * @remarks
+ * - groups는 Map<groupId, UserGroupInfo> 형태
+ * - 기존 서브컬렉션 방식에서 Map으로 변경하여 읽기 비용 절감
+ * - 사용자가 10개 그룹에 속해도 1회 읽기로 모든 그룹 정보 조회
+ */
+export interface UserDocument {
+  /** 그룹 목록 (groupId를 키로 하는 Map) */
+  groups?: {
+    [groupId: string]: UserGroupInfo;
+  };
 }

@@ -8,7 +8,7 @@
    - [1. users](#1-users-컬렉션)
      - [1-1. auth](#1-1-usersuseridauthmain-서브컬렉션)
      - [1-2. settings](#1-2-usersuseridsettingsmain-서브컬렉션)
-     - [1-3. groups](#1-3-usersuseridgroups-서브컬렉션)
+     - [1-3. groups (Map)](#1-3-usersuseridgroups-map)
    - [2. groups](#2-groups-컬렉션)
    - [3. promises](#3-promises-컬렉션)
    - [4. notifications](#4-notifications-컬렉션)
@@ -40,17 +40,15 @@ Firestore Root
 │
 ├─ users/                           # 사용자 정보
 │  └─ {userId}/                     # 사용자 문서
+│     ├─ groups (Map)               # 사용자가 속한 그룹 목록 (Map 필드)
+│     │                             # { [groupId]: { groupName, role, joinedAt, notifications } }
 │     ├─ auth/                      # 인증 정보 (서브컬렉션)
 │     │  └─ main                    # 고정 문서 ID
-│     ├─ settings/                  # 설정 정보 (서브컬렉션)
-│     │  └─ main                    # 고정 문서 ID
-│     └─ groups/                    # 사용자가 속한 그룹 목록 (서브컬렉션)
-│        └─ {groupId}/              # 그룹 참여 정보
+│     └─ settings/                  # 설정 정보 (서브컬렉션)
+│        └─ main                    # 고정 문서 ID
 │
 ├─ groups/                          # 그룹 정보
 │  └─ {groupId}/                    # 그룹 문서
-│     └─ members/                   # 그룹 멤버 목록 (서브컬렉션)
-│        └─ {userId}/               # 멤버 정보
 │
 ├─ promises/                        # 약속 정보
 │  └─ {promiseId}/                  # 약속 문서
@@ -84,6 +82,7 @@ Firestore Root
 | `name` | String | ✅ | provider에서 받은 이름 또는 닉네임 (생성 시 없으면 nickname 사용) |
 | `nickname` | String | ✅ | 사용자가 설정한 표시명 |
 | `profile` | Profile | ❌ | 프로필 이미지 정보 (하단 참조) |
+| `groups` | Map<String, UserGroupInfo> | ❌ | 사용자가 속한 그룹 목록 (Map 필드, 하단 참조) |
 | `metaData` | MetaData | ✅ | 메타데이터 (하단 참조) |
 
 > ⚠️ **이메일은 보안을 위해 `users/{userId}/auth/main` 서브컬렉션에만 저장됩니다.**
@@ -243,25 +242,25 @@ users/{userId}/settings/main
 
 ---
 
-### 1-3. users/{userId}/groups (서브컬렉션)
+### 1-3. users/{userId}.groups (Map)
 
 사용자가 속한 그룹 목록을 저장합니다. (캐싱 목적)
 
-#### 📍 문서 경로
+#### 📍 필드 경로
 
 ```
-users/{userId}/groups/{groupId}
+users/{userId}.groups
 ```
 
-#### 🔑 문서 ID
+#### 🗂️ Map 구조
 
-- 그룹 ID와 동일 (예: `group_friends`)
+- **Key**: `{groupId}` (그룹 ID, 예: `0ec6e63d-8d80-4a76-9e1b-7f226c1c6b55`)
+- **Value**: `UserGroupInfo` 객체 (하단 참조)
 
-#### 📊 필드 구조
+#### 📊 UserGroupInfo 구조
 
 | 필드명 | 타입 | 필수 | 설명 |
 |--------|------|------|------|
-| `groupId` | String | ✅ | 그룹 ID (groups 컬렉션 참조) |
 | `groupName` | String | ✅ | 그룹 이름 (캐시) |
 | `role` | String | ✅ | 역할 (`admin` \| `member`) |
 | `joinedAt` | Timestamp | ✅ | 그룹 가입 시각 |
@@ -271,19 +270,30 @@ users/{userId}/groups/{groupId}
 
 ```json
 {
-  "groupId": "group_friends",
-  "groupName": "대학 친구들",
-  "role": "admin",
-  "joinedAt": "2024-01-01T10:00:00+09:00",
-  "notifications": true
+  "groups": {
+    "0ec6e63d-8d80-4a76-9e1b-7f226c1c6b55": {
+      "groupName": "대학 친구들",
+      "role": "admin",
+      "joinedAt": "2024-01-01T10:00:00+09:00",
+      "notifications": true
+    },
+    "abc123def456": {
+      "groupName": "회사 동료",
+      "role": "member",
+      "joinedAt": "2024-02-15T10:00:00+09:00",
+      "notifications": true
+    }
+  }
 }
 ```
 
 #### 💡 설계 의도
 
-- **빠른 조회**: 사용자의 그룹 목록을 빠르게 가져오기 위함
+- **읽기 비용 절감**: 서브컬렉션 방식(N회 읽기) → Map 방식(1회 읽기)
+  - 10개 그룹 기준: 10 reads → 1 read (90% 절감)
+- **빠른 조회**: 단일 문서 읽기로 모든 그룹 정보 조회
 - **캐싱**: groupName을 캐싱하여 groups 컬렉션 조회 횟수 감소
-- **권한 관리**: 사용자별 읽기 권한 설정 용이
+- **정렬**: iOS에서 joinedAt 기준 정렬
 
 ---
 
@@ -308,7 +318,7 @@ groups/{groupId}
 |--------|------|------|--------|------|
 | `name` | String | ✅ | - | 그룹 이름 |
 | `description` | String | ❌ | null | 그룹 설명 |
-| `imageUrl` | String | ❌ | null | 그룹 이미지 Storage 경로 |
+| `imageUrl` | String | ❌ | null | 그룹 이미지 downloadURL (Firebase Storage) |
 | `memberIds` | Array<String> | ✅ | [] | 멤버 ID 목록 |
 | `activePromiseCount` | Number | ✅ | 0 | 활성 약속 수 |
 | `maxMembers` | Number | ✅ | - | 최대 인원 (2~10) |
@@ -324,12 +334,7 @@ groups/{groupId}
 {
   "name": "주말 등산 모임",
   "description": "주말마다 등산하는 모임입니다",
-  "emoji": "🏔️",
-  "themeColor": "#4CAF50",
-  "photo": {
-    "type": "storagePath",
-    "url": "groups/abc123/photo.jpg"
-  },
+  "imageUrl": "https://firebasestorage.googleapis.com/v0/b/promiso-20274.firebasestorage.app/o/group_images%2F0ec6e63d-8d80-4a76-9e1b-7f226c1c6b55%2Fmain.jpg?alt=media",
   "memberIds": [
     "sFeDJwqJbqScbSUp4Jz54MDlnFv1",
     "user2Id",
@@ -337,11 +342,8 @@ groups/{groupId}
     "user4Id",
     "user5Id"
   ],
-  "memberCount": 5,
   "activePromiseCount": 2,
   "maxMembers": 10,
-  "requireApproval": false,
-  "defaultMinimumParticipants": 3,
   "inviteCode": "AB12CD",
   "createdBy": "sFeDJwqJbqScbSUp4Jz54MDlnFv1",
   "createdAt": "<Timestamp>",
@@ -364,15 +366,35 @@ groups/{groupId}
 // createGroup
 await groupRef.set({
   memberIds: [creatorId],
-  memberCount: 1,
   // ...
 });
 
+await usersCollection.doc(creatorId).set({
+  groups: {
+    [groupId]: {
+      groupName: name,
+      role: "admin",
+      joinedAt: now,
+      notifications: true
+    }
+  }
+}, { merge: true });
+
 // joinGroup
 await groupRef.update({
-  memberIds: FieldValue.arrayUnion(userId),
-  memberCount: FieldValue.increment(1)
+  memberIds: FieldValue.arrayUnion(userId)
 });
+
+await usersCollection.doc(userId).set({
+  groups: {
+    [groupId]: {
+      groupName: groupName,
+      role: "member",
+      joinedAt: now,
+      notifications: true
+    }
+  }
+}, { merge: true });
 ```
 
 **2. 멤버 리스트 조회 (previewGroup 등)**
@@ -642,11 +664,18 @@ notifications/{notificationId}
 #### 내가 속한 그룹 목록 조회
 
 ```swift
-db.collection("users")
+// 1. users/{userId} 문서 조회 (1 read)
+let userDoc = try await db.collection("users")
   .document(userId)
-  .collection("groups")
-  .order(by: "joinedAt", descending: true)
-  .getDocuments()
+  .getDocument()
+
+// 2. groups Map에서 그룹 정보 추출
+let groupsMap = userDoc.data()?["groups"] as? [String: [String: Any]] ?? [:]
+
+// 3. iOS에서 joinedAt으로 정렬
+let groupSummaries = groupsMap.compactMap { (groupId, groupData) in
+  GroupSummary(id: groupId, data: groupData)
+}.sorted { $0.joinedAt ?? Date() > $1.joinedAt ?? Date() }
 ```
 
 #### 사용자 설정 조회
@@ -676,11 +705,33 @@ db.collection("users")
 #### 그룹 멤버 목록 조회
 
 ```swift
-db.collection("groups")
+// 1. groups/{groupId} 조회 → memberIds 가져오기 (1 read)
+let groupDoc = try await db.collection("groups")
   .document(groupId)
-  .collection("members")
-  .order(by: "joinedAt", descending: false)
-  .getDocuments()
+  .getDocument()
+
+let memberIds = groupDoc.data()?["memberIds"] as? [String] ?? []
+
+// 2. 각 userId로 users/{userId} 조회 (병렬, N reads)
+let userDocs = try await withThrowingTaskGroup(of: DocumentSnapshot.self) { group in
+  for userId in memberIds {
+    group.addTask {
+      try await db.collection("users").document(userId).getDocument()
+    }
+  }
+  return try await group.reduce(into: []) { $0.append($1) }
+}
+
+// 3. 사용자 정보 직접 사용 (항상 최신)
+let members = userDocs.compactMap { doc -> UserPublic? in
+  let data = doc.data()
+  return UserPublic(
+    userId: doc.documentID,
+    name: data?["name"] as? String ?? "",
+    nickname: data?["nickname"] as? String ?? "",
+    profile: parseProfile(data?["profile"])
+  )
+}
 ```
 
 #### 초대 코드로 그룹 찾기
@@ -772,40 +823,25 @@ service cloud.firestore {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
 
-      // 사용자가 속한 그룹 목록
-      match /groups/{groupId} {
-        allow read: if request.auth != null && request.auth.uid == userId;
-        allow write: if request.auth != null && request.auth.uid == userId;
-      }
+      // groups Map 필드는 users/{userId} 문서의 일부로 관리됨
     }
 
     // ===== 그룹 =====
     match /groups/{groupId} {
-      // 멤버만 읽기 가능
+      // 멤버만 읽기 가능 (memberIds 배열에 포함된 경우)
       allow read: if request.auth != null &&
-                     exists(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid));
+                     resource.data.memberIds.hasAny([request.auth.uid]);
 
-      // 관리자만 수정 가능
+      // 관리자만 수정 가능 (users/{userId}.groups[groupId].role이 admin인 경우)
       allow update: if request.auth != null &&
-                       get(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid)).data.role == "admin";
-
-      // 그룹 멤버 목록
-      match /members/{userId} {
-        // 그룹 멤버만 읽기 가능
-        allow read: if request.auth != null &&
-                       exists(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid));
-
-        // 관리자만 멤버 추가/삭제 가능
-        allow write: if request.auth != null &&
-                        get(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid)).data.role == "admin";
-      }
+                       get(/databases/$(database)/documents/users/$(request.auth.uid)).data.groups[groupId].role == "admin";
     }
 
     // ===== 약속 =====
     match /promises/{promiseId} {
-      // 그룹 멤버만 읽기 가능
+      // 그룹 멤버만 읽기 가능 (groups/{groupId}.memberIds 배열에 포함된 경우)
       allow read: if request.auth != null &&
-                     exists(/databases/$(database)/documents/groups/$(resource.data.groupId)/members/$(request.auth.uid));
+                     get(/databases/$(database)/documents/groups/$(resource.data.groupId)).data.memberIds.hasAny([request.auth.uid]);
 
       // 호스트만 수정/삭제 가능
       allow update, delete: if request.auth != null &&
@@ -815,7 +851,7 @@ service cloud.firestore {
       match /attendances/{userId} {
         // 그룹 멤버만 읽기 가능
         allow read: if request.auth != null &&
-                       exists(/databases/$(database)/documents/groups/$(get(/databases/$(database)/documents/promises/$(promiseId)).data.groupId)/members/$(request.auth.uid));
+                       get(/databases/$(database)/documents/groups/$(get(/databases/$(database)/documents/promises/$(promiseId)).data.groupId)).data.memberIds.hasAny([request.auth.uid]);
 
         // 본인 응답만 수정 가능
         allow write: if request.auth != null && request.auth.uid == userId;
@@ -874,7 +910,6 @@ service cloud.firestore {
 | 컬렉션 그룹 | 필드 | 순서 | 용도 |
 |------------|------|------|------|
 | `attendances` | userId | ASC | 사용자의 모든 참석 정보 |
-| `members` | userId | ASC | 사용자의 모든 그룹 멤버십 |
 
 ---
 
@@ -892,6 +927,11 @@ service cloud.firestore {
 |  |  | - settings 서브컬렉션 분리 (확장성) |  |
 |  |  | - pinnedGroupId 제거 |  |
 |  |  | - profileType 제거 |  |
+| 1.3 | 2025-01-06 | Group 스키마 최적화 | Claude |
+|  |  | - users/{userId}/groups 서브컬렉션 → users/{userId}.groups Map으로 변경 (읽기 비용 90% 절감) |  |
+|  |  | - GroupDocument: emoji, themeColor, photo, memberCount, requireApproval, defaultMinimumParticipants 제거 |  |
+|  |  | - GroupDocument.imageUrl: storagePath → downloadURL로 변경 |  |
+|  |  | - groups/{groupId}/members 서브컬렉션 제거 (memberIds 배열로 대체) |  |
 
 ---
 

@@ -172,9 +172,9 @@ extension GroupMain {
                 store.send(.view(.groupChanged(group)))
               } label: {
                 if group.id == currentGroup.id {
-                  Label(group.title, systemImage: "checkmark")
+                  Label(group.name, systemImage: "checkmark")
                 } else {
-                  Text(group.title)
+                  Text(group.name)
                 }
               }
               .disabled(group.id == currentGroup.id)

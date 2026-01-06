@@ -416,9 +416,9 @@ paths:
 
         **내부 동작**:
         - groups/{groupId} 문서 생성 (memberIds: [creatorId] 포함)
-        - users/{creatorId}/groups/{groupId} 서브컬렉션 생성
+        - users/{creatorId} 문서의 groups Map에 추가 (서브컬렉션 → Map으로 변경)
         - 멤버 정보는 memberIds 배열로 관리 (users 컬렉션 참조)
-        - photo가 storagePath 타입이면 downloadURL 생성 후 externalURL로 저장
+        - imageUrl을 그대로 Firestore에 저장 (iOS에서 업로드 후 downloadURL 전달)
       operationId: createGroup
       security:
         - firebaseAuth: []
@@ -450,17 +450,15 @@ paths:
                     name: 주말 등산 모임
                     maxMembers: 5
                     description: 주말마다 등산하는 모임입니다
-              withPhoto:
-                summary: 사진 및 설명 포함
+              withImage:
+                summary: 이미지 및 설명 포함
                 value:
                   data:
                     groupId: 0ec6e63d-8d80-4a76-9e1b-7f226c1c6b55
                     name: 주말 등산 모임
                     maxMembers: 5
                     description: 주말마다 등산하는 모임입니다
-                    photo:
-                      type: storagePath
-                      url: group_images/0ec6e63d-8d80-4a76-9e1b-7f226c1c6b55/main.jpg
+                    imageUrl: https://firebasestorage.googleapis.com/v0/b/promiso-20274.firebasestorage.app/o/group_images%2F0ec6e63d-8d80-4a76-9e1b-7f226c1c6b55%2Fmain.jpg?alt=media
 
       responses:
         '200':
@@ -542,8 +540,7 @@ paths:
         **내부 동작**:
         - inviteCode로 그룹 조회
         - memberIds 배열에 userId 추가 (FieldValue.arrayUnion)
-        - users/{userId}/groups/{groupId} 서브컬렉션 생성
-        - memberCount 증가
+        - users/{userId} 문서의 groups Map에 추가 (서브컬렉션 → Map으로 변경)
       operationId: joinGroup
       security:
         - firebaseAuth: []
@@ -1337,25 +1334,11 @@ components:
           description: 그룹 설명 (선택적)
           example: 주말마다 등산하는 모임입니다
 
-        photo:
-          type: object
+        imageUrl:
+          type: string
           nullable: true
-          description: |
-            그룹 이미지 정보
-            - storagePath: iOS에서 Storage 업로드 후 경로 전달 → Functions에서 downloadURL 생성
-            - externalURL: 외부 URL을 직접 전달
-            - Firestore에는 항상 downloadURL(externalURL)로 저장됨
-          properties:
-            type:
-              type: string
-              enum:
-                - storagePath
-                - externalURL
-            url:
-              type: string
-          example:
-            type: storagePath
-            url: group_images/abc123/main.jpg
+          description: 그룹 이미지 다운로드 URL (선택적)
+          example: https://firebasestorage.googleapis.com/v0/b/promiso-20274.firebasestorage.app/o/group_images%2Fabc123%2Fmain.jpg?alt=media
 
     CreateGroupResponse:
       type: object
@@ -1437,14 +1420,12 @@ components:
         - 멤버 정보는 users 컬렉션에서 직접 조회
         - members 서브컬렉션 없음 (캐시 동기화 불필요)
         - 항상 최신 사용자 정보 보장
+        - memberCount는 memberIds.length로 실시간 계산
       required:
         - name
         - memberIds
-        - memberCount
         - activePromiseCount
         - maxMembers
-        - requireApproval
-        - defaultMinimumParticipants
         - inviteCode
         - createdBy
         - createdAt
@@ -1459,28 +1440,18 @@ components:
           type: string
           nullable: true
           description: 그룹 설명
-        emoji:
+          example: 주말마다 등산하는 모임입니다
+        imageUrl:
           type: string
           nullable: true
-          description: 그룹 이모지
-        themeColor:
-          type: string
-          nullable: true
-          description: 테마 색상
-        photo:
-          type: object
-          nullable: true
-          description: 그룹 이미지
+          description: 그룹 이미지 URL
+          example: https://firebasestorage.googleapis.com/v0/b/promiso-20274.firebasestorage.app/o/group_images%2Fabc123%2Fmain.jpg?alt=media
         memberIds:
           type: array
           items:
             type: string
           description: 멤버 ID 목록 (users 컬렉션 참조)
           example: ["user1", "user2", "user3"]
-        memberCount:
-          type: integer
-          description: 현재 멤버 수
-          example: 5
         activePromiseCount:
           type: integer
           description: 활성 약속 수
@@ -1489,14 +1460,6 @@ components:
           type: integer
           description: 최대 인원
           example: 10
-        requireApproval:
-          type: boolean
-          description: 가입 승인 필요 여부
-          example: false
-        defaultMinimumParticipants:
-          type: integer
-          description: 기본 최소 참여 인원
-          example: 2
         inviteCode:
           type: string
           description: 초대 코드 (6자리)
@@ -1517,6 +1480,67 @@ components:
           type: boolean
           description: 삭제 여부
           example: false
+
+    # ========================================
+    # User Document Schema
+    # ========================================
+
+    UserDocument:
+      type: object
+      description: |
+        Firestore users/{userId} 문서 구조
+
+        **그룹 목록 관리 방식**: groups Map
+        - 기존: users/{userId}/groups/{groupId} 서브컬렉션 → N회 읽기
+        - 변경: users/{userId} 문서 내 groups Map → 1회 읽기
+        - 사용자가 10개 그룹에 속해도 1회 읽기로 모든 그룹 정보 조회
+        - 읽기 비용 90% 절감 (10개 그룹 기준)
+      properties:
+        groups:
+          type: object
+          description: 그룹 목록 (groupId를 키로 하는 Map)
+          additionalProperties:
+            $ref: '#/components/schemas/UserGroupInfo'
+          example:
+            "groupId1":
+              groupName: 주말 등산 모임
+              role: admin
+              joinedAt: "2024-01-01T00:00:00Z"
+              notifications: true
+            "groupId2":
+              groupName: 회사 동료
+              role: member
+              joinedAt: "2024-01-15T00:00:00Z"
+              notifications: true
+
+    UserGroupInfo:
+      type: object
+      description: 사용자별 그룹 정보
+      required:
+        - groupName
+        - role
+        - joinedAt
+        - notifications
+      properties:
+        groupName:
+          type: string
+          description: 그룹 이름 (캐시)
+          example: 주말 등산 모임
+        role:
+          type: string
+          description: 사용자 역할
+          enum:
+            - admin
+            - member
+          example: admin
+        joinedAt:
+          type: string
+          format: date-time
+          description: 그룹 가입 시각
+        notifications:
+          type: boolean
+          description: 알림 활성화 여부
+          example: true
 
     # ========================================
     # createPromise

@@ -14,7 +14,6 @@ import {
   GroupMemberPreview,
   JoinGroupRequest,
   JoinGroupResponse,
-  RemoteImage,
   RespondPromiseRequest,
   RespondPromiseResponse,
   PreviewGroupRequest,
@@ -540,7 +539,7 @@ export const updateUserSettings = onCall<UpdateUserSettingsRequest>(
  * let data: [String: Any] = [
  *   "name": "주말 등산 모임",
  *   "maxMembers": 5,
- *   "photo": { "type": "storagePath", "url": "groups/abc/photo.jpg" }
+ *   "imageUrl": "https://firebasestorage.googleapis.com/..."
  * ]
  * let result = try await functions.httpsCallable("createGroup").call(data)
  * ```
@@ -585,31 +584,14 @@ export const createGroup = onCall<CreateGroupRequest>(
     }
     const now = FieldValue.serverTimestamp();
 
-    // 4-2. photo가 storagePath 타입이면 downloadURL 생성
-    let photoData: RemoteImage | null = null;
-    if (data.photo && data.photo.type === "storagePath") {
-      const downloadUrl = await generateDownloadURL(data.photo.url);
-      photoData = {
-        type: "externalURL",
-        url: downloadUrl,
-      };
-    } else if (data.photo && data.photo.type === "externalURL") {
-      photoData = data.photo;
-    }
-
     // 5-1. 그룹 기본 정보 생성 (memberIds 포함)
     await groupRef.set({
       name: data.name,
       description: data.description ?? null,
-      emoji: null,
-      themeColor: null,
-      photo: photoData,
+      imageUrl: data.imageUrl ?? null,
       memberIds: [creatorId],
-      memberCount: 1,
       activePromiseCount: 0,
       maxMembers: data.maxMembers,
-      requireApproval: false,
-      defaultMinimumParticipants: 2,
       inviteCode,
       createdBy: creatorId,
       createdAt: now,
@@ -617,18 +599,19 @@ export const createGroup = onCall<CreateGroupRequest>(
       isDeleted: false,
     });
 
-    // 5-2. 사용자의 그룹 목록에 추가
+    // 5-2. 사용자의 그룹 목록에 추가 (Map 방식)
     await usersCollection
       .doc(creatorId)
-      .collection("groups")
-      .doc(groupRef.id)
       .set({
-        groupId: groupRef.id,
-        groupName: data.name,
-        role: "admin",
-        joinedAt: now,
-        notifications: true,
-      });
+        groups: {
+          [groupRef.id]: {
+            groupName: data.name,
+            role: "admin",
+            joinedAt: now,
+            notifications: true,
+          },
+        },
+      }, {merge: true});
 
     // 6. 응답 반환 (타입 안전)
     return {
@@ -817,7 +800,6 @@ export const joinGroup = onCall<JoinGroupRequest>(
     const groupId = groupDoc.id;
     const groupData = groupDoc.data();
     const groupName = groupData.name as string;
-    const memberCount = groupData.memberCount as number;
     const maxMembers = groupData.maxMembers as number | undefined;
     const memberIds = (groupData.memberIds as string[]) ?? [];
 
@@ -830,7 +812,7 @@ export const joinGroup = onCall<JoinGroupRequest>(
     }
 
     // 3-3. 정원 확인
-    if (maxMembers && memberCount >= maxMembers) {
+    if (maxMembers && memberIds.length >= maxMembers) {
       throw new HttpsError(
         "resource-exhausted",
         "그룹 정원이 초과되었습니다",
@@ -845,22 +827,21 @@ export const joinGroup = onCall<JoinGroupRequest>(
       // 4-1. 그룹의 memberIds에 추가
       transaction.update(groupDoc.ref, {
         memberIds: FieldValue.arrayUnion(userId),
-        memberCount: FieldValue.increment(1),
         updatedAt: now,
       });
 
-      // 4-2. 사용자의 그룹 목록에 추가
-      const userGroupRef = usersCollection
-        .doc(userId)
-        .collection("groups")
-        .doc(groupId);
-      transaction.set(userGroupRef, {
-        groupId: groupId,
-        groupName: groupName,
-        role: "member",
-        joinedAt: now,
-        notifications: true,
-      });
+      // 4-2. 사용자의 그룹 목록에 추가 (Map 방식)
+      const userRef = usersCollection.doc(userId);
+      transaction.set(userRef, {
+        groups: {
+          [groupId]: {
+            groupName: groupName,
+            role: "member",
+            joinedAt: now,
+            notifications: true,
+          },
+        },
+      }, {merge: true});
     });
 
     // 5. 응답 반환

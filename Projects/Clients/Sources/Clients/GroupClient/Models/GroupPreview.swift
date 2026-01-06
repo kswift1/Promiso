@@ -13,19 +13,3 @@ public struct GroupPreview: Equatable, Sendable {
     self.members = members
   }
 }
-
-//public struct GroupMemberPreview: Identifiable, Equatable, Sendable {
-//  public let id: String
-//  public let name: String
-//  public let profileImage: RemoteImage?
-//
-//  public init(
-//    userId: String,
-//    name: String,
-//    profileImage: RemoteImage?
-//  ) {
-//    self.id = userId
-//    self.name = name
-//    self.profileImage = profileImage
-//  }
-//}

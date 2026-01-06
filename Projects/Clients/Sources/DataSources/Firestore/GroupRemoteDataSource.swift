@@ -64,15 +64,15 @@ public final class GroupRemoteDataSource: @unchecked Sendable {
   ) async throws -> GroupCreationResult {
     let groupId = UUID().uuidString
 
-    // 1. 이미지 업로드 (선택적)
-    var uploadedPhotoPath: String?
+    // 1. 이미지 업로드 (선택적) - downloadURL 반환
+    var imageUrl: String?
     if let photoData {
-      uploadedPhotoPath = try await uploadGroupImage(
+      imageUrl = try await uploadGroupImage(
         groupId: groupId,
         imageData: photoData
       )
     }
-    
+
     // 2. Firebase Functions 호출
     do {
       var callableData: [String: Any] = [
@@ -80,24 +80,21 @@ public final class GroupRemoteDataSource: @unchecked Sendable {
         "name": name,
         "maxMembers": maxMembers,
       ]
-      
+
       if let description {
         callableData["description"] = description
       }
-      
+
       if let env = functionsEnvironmentParam() {
         callableData["env"] = env
       }
-      
-      if let uploadedPhotoPath {
-        callableData["photo"] = [
-          "type": "storagePath",
-          "url": uploadedPhotoPath,
-        ]
+
+      if let imageUrl {
+        callableData["imageUrl"] = imageUrl
       }
-      
+
       let result = try await functions.httpsCallable("createGroup").call(callableData)
-      
+
       guard let data = result.data as? [String: Any] else {
         throw GroupRemoteDataSourceError.invalidFunctionResponse
       }
@@ -108,17 +105,15 @@ public final class GroupRemoteDataSource: @unchecked Sendable {
       guard let id, let inviteCode else {
         throw GroupRemoteDataSourceError.invalidFunctionResponse
       }
-      
+
       return GroupCreationResult(
         id: id,
         name: name,
         inviteCode: inviteCode
       )
     } catch {
-      // 실패 시 업로드된 이미지 삭제
-      if let uploadedPhotoPath {
-        try? await deleteImage(at: uploadedPhotoPath)
-      }
+      // 실패 시 업로드된 이미지 삭제 (이미지 URL로는 삭제 불가, photoPath 필요)
+      // TODO: 실패 시 이미지 정리 로직 개선 필요
       throw error
     }
   }
@@ -196,14 +191,19 @@ public final class GroupRemoteDataSource: @unchecked Sendable {
   }
 
   /// 네비게이션용 그룹 요약 목록 조회
+  /// Map 방식으로 변경: N회 읽기 → 1회 읽기로 비용 절감
   public func fetchGroupSummaries(userId: String) async throws -> [GroupSummary] {
-    let membershipSnapshot = try await db.environmentCollection("users")
+    let userDoc = try await db.environmentCollection("users")
       .document(userId)
-      .collection("groups")
-      .getDocuments()
+      .getDocument()
 
-    return membershipSnapshot.documents.compactMap { document in
-      GroupSummary(documentId: document.documentID, data: document.data())
+    guard let data = userDoc.data(),
+          let groupsMap = data["groups"] as? [String: [String: Any]] else {
+      return []
+    }
+
+    return groupsMap.compactMap { (groupId, groupData) in
+      GroupSummary(id: groupId, data: groupData)
     }
   }
 
@@ -284,7 +284,7 @@ public final class GroupRemoteDataSource: @unchecked Sendable {
 
   // MARK: - Image Upload
   
-  /// 그룹 이미지 업로드
+  /// 그룹 이미지 업로드 및 다운로드 URL 반환
   private func uploadGroupImage(
     groupId: String,
     imageData: Data
@@ -292,13 +292,14 @@ public final class GroupRemoteDataSource: @unchecked Sendable {
     let uploadData = compressImageDataForUpload(imageData) ?? imageData
     let photoPath = "group_images/\(groupId)/main.jpg"
     let ref = storage.reference().child(photoPath)
-    
+
     let metadata = StorageMetadata()
     metadata.contentType = "image/jpeg"
-    
+
     do {
       _ = try await ref.putDataAsync(uploadData, metadata: metadata)
-      return photoPath
+      let downloadURL = try await ref.downloadURL()
+      return downloadURL.absoluteString
     } catch {
       throw GroupRemoteDataSourceError.imageUploadFailed
     }
@@ -358,7 +359,7 @@ public final class GroupRemoteDataSource: @unchecked Sendable {
 // MARK: - GroupSummary Mapping
 
 private extension GroupSummary {
-  init?(documentId: String, data: [String: Any]) {
+  init?(id: String, data: [String: Any]) {
     let groupName = data["groupName"] as? String ?? ""
     let trimmedName = groupName.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !trimmedName.isEmpty else { return nil }
@@ -368,8 +369,8 @@ private extension GroupSummary {
     let joinedAt = (data["joinedAt"] as? Timestamp)?.dateValue()
 
     self.init(
-      id: documentId,
-      groupName: trimmedName,
+      id: id,
+      name: trimmedName,
       role: role,
       joinedAt: joinedAt,
       notifications: notifications

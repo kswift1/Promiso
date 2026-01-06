@@ -36,7 +36,7 @@ const REGION = "asia-northeast3";
  * const result = await functions.httpsCallable('createGroup')({
  *   name: "주말 등산 모임",
  *   maxMembers: 5,
- *   photo: { type: "storagePath", url: "groups/abc/photo.jpg" }
+ *   imageUrl: "https://firebasestorage.googleapis.com/..."
  * });
  * console.log(result.data); // {id: "...", inviteCode: "AB12CD"}
  * ```
@@ -71,15 +71,11 @@ export const createGroup = onCall<CreateGroupRequest>(
 
     await groupRef.set({
       name: data.name,
-      description: null,
-      emoji: null,
-      themeColor: null,
-      photo: data.photo ?? null,
-      memberCount: 1,
+      description: data.description ?? null,
+      imageUrl: data.imageUrl ?? null,
+      memberIds: [creatorId],
       activePromiseCount: 0,
       maxMembers: data.maxMembers,
-      requireApproval: false,
-      defaultMinimumParticipants: 2,
       inviteCode,
       createdBy: creatorId,
       createdAt: now,
