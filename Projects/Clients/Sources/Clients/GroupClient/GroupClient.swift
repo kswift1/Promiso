@@ -8,9 +8,6 @@
 import ComposableArchitecture
 import Foundation
 
-import PromisoShared
-import FirebaseAuth
-
 // MARK: - Error
 
 /// 그룹 API 에러
@@ -166,54 +163,51 @@ extension DependencyValues {
 // MARK: - Live Implementation
 
 extension GroupClient: DependencyKey {
-  public static let liveValue = Self(
-    fetchGroups: {
-      guard let userId = Auth.auth().currentUser?.uid else {
-        throw GroupClientError.unauthorized
-      }
+  public static let liveValue: GroupClient = {
+    @Dependency(\.authClient) var authClient
+    let dataSource = GroupRemoteDataSource()
 
-      let dataSource = GroupRemoteDataSource()
-      return try await dataSource.fetchGroups(userId: userId)
-    },
-    fetchGroupSummaries: {
-      guard let userId = Auth.auth().currentUser?.uid else {
-        throw GroupClientError.unauthorized
-      }
+    return Self(
+      fetchGroups: {
+        guard let currentUser = await authClient.currentUser() else {
+          throw GroupClientError.unauthorized
+        }
 
-      let dataSource = GroupRemoteDataSource()
-      return try await dataSource.fetchGroupSummaries(userId: userId)
-    },
-    fetchGroupsByIds: { ids in
-      let dataSource = GroupRemoteDataSource()
-      return try await dataSource.fetchGroupsByIds(ids: ids)
-    },
-    fetchGroup: { groupId in
-      let dataSource = GroupRemoteDataSource()
-      return try await dataSource.fetchGroup(groupId: groupId)
-    },
-    createGroup: { request in
-      let dataSource = GroupRemoteDataSource()
+        return try await dataSource.fetchGroups(userId: currentUser.uid)
+      },
+      fetchGroupSummaries: {
+        guard let currentUser = await authClient.currentUser() else {
+          throw GroupClientError.unauthorized
+        }
 
-      return try await dataSource.createGroup(
-        name: request.name,
-        maxMembers: request.maxMembers,
-        description: request.description,
-        creatorId: request.creatorId,
-        photoData: request.photoData
-      )
-    },
-    previewGroup: { inviteCode in
-      let dataSource = GroupRemoteDataSource()
-      return try await dataSource.previewGroup(inviteCode: inviteCode)
-    },
-    joinGroup: { inviteCode in
-      guard let userId = Auth.auth().currentUser?.uid else {
-        throw GroupClientError.unauthorized
-      }
+        return try await dataSource.fetchGroupSummaries(userId: currentUser.uid)
+      },
+      fetchGroupsByIds: { ids in
+        return try await dataSource.fetchGroupsByIds(ids: ids)
+      },
+      fetchGroup: { groupId in
+        return try await dataSource.fetchGroup(groupId: groupId)
+      },
+      createGroup: { request in
+        return try await dataSource.createGroup(
+          name: request.name,
+          maxMembers: request.maxMembers,
+          description: request.description,
+          creatorId: request.creatorId,
+          photoData: request.photoData
+        )
+      },
+      previewGroup: { inviteCode in
+        return try await dataSource.previewGroup(inviteCode: inviteCode)
+      },
+      joinGroup: { inviteCode in
+        guard let currentUser = await authClient.currentUser() else {
+          throw GroupClientError.unauthorized
+        }
 
-      let dataSource = GroupRemoteDataSource()
-      return try await dataSource.joinGroup(inviteCode: inviteCode, userId: userId)
-    },
-    leaveGroup: unimplemented("\(Self.self).leaveGroup")
-  )
+        return try await dataSource.joinGroup(inviteCode: inviteCode, userId: currentUser.uid)
+      },
+      leaveGroup: unimplemented("\(Self.self).leaveGroup")
+    )
+  }()
 }
