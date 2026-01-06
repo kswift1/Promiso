@@ -183,6 +183,44 @@ public final class UserProfileRemoteDataSource: @unchecked Sendable {
     return try parseUserProfile(from: response, isPublic: isPublic)
   }
 
+  /// 여러 사용자의 공개 프로필 조회 (배치)
+  /// - Parameters:
+  ///   - userIds: 사용자 ID 목록
+  /// - Returns: 공개 프로필 배열 (조회 실패한 사용자는 제외됨)
+  /// - Note: 병렬로 처리되며, 일부 실패해도 성공한 프로필만 반환
+  public func getUsersByIds(userIds: [String]) async throws -> [UserPublic] {
+    guard !userIds.isEmpty else { return [] }
+
+    // 병렬로 각 사용자 조회
+    let results = await withTaskGroup(of: (String, Result<UserProfile, Error>).self) { group in
+      for userId in userIds {
+        group.addTask {
+          let result = await Result {
+            try await self.getProfileModel(uid: userId, isPublic: true)
+          }
+          return (userId, result)
+        }
+      }
+
+      var profiles: [(String, UserProfile)] = []
+      for await (userId, result) in group {
+        if case .success(let profile) = result {
+          profiles.append((userId, profile))
+        }
+      }
+      return profiles
+    }
+
+    // UserPublic으로 변환 (순서는 원본 userIds 순서 유지)
+    return userIds.compactMap { userId in
+      guard let (_, profile) = results.first(where: { $0.0 == userId }),
+            case .public(let userPublic) = profile else {
+        return nil
+      }
+      return userPublic
+    }
+  }
+
   /// 사용자 프로필 업데이트
   /// - Parameters:
   ///   - uid: 사용자 ID

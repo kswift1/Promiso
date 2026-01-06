@@ -103,6 +103,7 @@ extension GroupDocument {
       emoji: displayEmoji,
       themeColor: themeColor,
       photo: photo,
+      memberIds: memberIds,
       memberCount: memberCount,
       activePromiseCount: activePromiseCount,
       maxMembers: maxMembers,

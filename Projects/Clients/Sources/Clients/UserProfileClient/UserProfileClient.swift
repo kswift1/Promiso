@@ -71,6 +71,11 @@ public struct UserProfileClient: Sendable {
   /// - Returns: 공개 프로필
   public var getPublicProfile: @Sendable (_ target: UserTarget) async throws -> UserPublic
 
+  /// 여러 사용자의 공개 프로필 배치 조회
+  /// - Parameter userIds: 사용자 ID 목록
+  /// - Returns: 공개 프로필 배열 (조회 실패한 사용자는 제외됨)
+  public var getUsersByIds: @Sendable (_ userIds: [String]) async throws -> [UserPublic]
+
   /// 닉네임 사용 가능 여부 확인
   /// - Parameter nickname: 확인할 닉네임
   /// - Returns: 사용 가능 여부
@@ -169,6 +174,21 @@ extension UserProfileClient: TestDependencyKey {
         )
       }
     },
+    getUsersByIds: { userIds in
+      return userIds.enumerated().map { index, userId in
+        UserPublic(
+          userId: userId,
+          name: "사용자\(index + 1)",
+          nickname: "user\(index + 1)",
+          profile: ProfileImage(
+            url: "https://example.com/profile\(index + 1).jpg",
+            thumbUrl: nil,
+            updatedAt: Date()
+          ),
+          metadata: Metadata(createdAt: Date(), updatedAt: Date())
+        )
+      }
+    },
     isNicknameAvailable: { _ in true },
     updateProfile: { _ in },
     updateProfileImage: { _ in
@@ -183,6 +203,7 @@ extension UserProfileClient: TestDependencyKey {
     createUserWithProfile: unimplemented("\(Self.self).createUserWithProfile"),
     getPrivateProfile: unimplemented("\(Self.self).getPrivateProfile"),
     getPublicProfile: unimplemented("\(Self.self).getPublicProfile"),
+    getUsersByIds: unimplemented("\(Self.self).getUsersByIds", placeholder: []),
     isNicknameAvailable: unimplemented("\(Self.self).isNicknameAvailable", placeholder: true),
     updateProfile: unimplemented("\(Self.self).updateProfile"),
     updateProfileImage: unimplemented("\(Self.self).updateProfileImage"),
@@ -247,6 +268,10 @@ extension UserProfileClient: DependencyKey {
           throw UserProfileError.invalidData
         }
         return user
+      },
+
+      getUsersByIds: { userIds in
+        try await dataSource.getUsersByIds(userIds: userIds)
       },
 
       isNicknameAvailable: { nickname in

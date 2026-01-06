@@ -16,6 +16,7 @@ public struct GroupModel: Equatable, Identifiable, Sendable {
   public let emoji: String
   public let themeColor: String?
   public let photo: RemoteImage?
+  public let memberIds: [String]
   public let memberCount: Int
   public let activePromiseCount: Int
   public let maxMembers: Int?
@@ -37,6 +38,7 @@ public struct GroupModel: Equatable, Identifiable, Sendable {
     emoji: String = "👥",
     themeColor: String? = nil,
     photo: RemoteImage? = nil,
+    memberIds: [String] = [],
     memberCount: Int = 0,
     activePromiseCount: Int = 0,
     maxMembers: Int? = nil,
@@ -55,6 +57,7 @@ public struct GroupModel: Equatable, Identifiable, Sendable {
     self.emoji = emoji
     self.themeColor = themeColor
     self.photo = photo
+    self.memberIds = memberIds
     self.memberCount = memberCount
     self.activePromiseCount = activePromiseCount
     self.maxMembers = maxMembers

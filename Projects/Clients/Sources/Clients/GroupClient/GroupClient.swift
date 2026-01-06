@@ -1,10 +1,3 @@
-//
-//  GroupClient.swift
-//  Clients
-//
-//  TCA Dependency Client for Group operations
-//
-
 import ComposableArchitecture
 import Foundation
 
@@ -51,6 +44,9 @@ public struct GroupClient: Sendable {
   /// 특정 그룹 상세 정보 가져오기
   public var fetchGroup: @Sendable (_ groupId: String) async throws -> GroupModel
 
+  /// 그룹 멤버 목록 가져오기
+  public var fetchGroupMembers: @Sendable (_ groupId: String) async throws -> [UserPublic]
+
   /// 새 그룹 생성
   public var createGroup: @Sendable (_ request: CreateGroupRequest) async throws -> GroupCreationResult
 
@@ -72,6 +68,7 @@ extension GroupClient: TestDependencyKey {
     fetchGroupSummaries: unimplemented("\(Self.self).fetchGroupSummaries", placeholder: []),
     fetchGroupsByIds: unimplemented("\(Self.self).fetchGroupsByIds", placeholder: []),
     fetchGroup: unimplemented("\(Self.self).fetchGroup"),
+    fetchGroupMembers: unimplemented("\(Self.self).fetchGroupMembers", placeholder: []),
     createGroup: unimplemented("\(Self.self).createGroup"),
     previewGroup: unimplemented("\(Self.self).previewGroup"),
     joinGroup: unimplemented("\(Self.self).joinGroup"),
@@ -106,6 +103,32 @@ extension GroupClient: TestDependencyKey {
     fetchGroup: { id in
       try await Task.sleep(for: .seconds(0.5))
       return GroupModel(id: id, name: "구두", emoji: "👞", memberCount: 3)
+    },
+    fetchGroupMembers: { _ in
+      try await Task.sleep(for: .seconds(0.3))
+      return [
+        UserPublic(
+          userId: "u1",
+          name: "김민수",
+          nickname: "kms",
+          profile: ProfileImage(url: "https://example.com/1.jpg", thumbUrl: nil, updatedAt: Date()),
+          metadata: Metadata(createdAt: Date(), updatedAt: Date())
+        ),
+        UserPublic(
+          userId: "u2",
+          name: "이영희",
+          nickname: "yhlee",
+          profile: ProfileImage(url: "https://example.com/2.jpg", thumbUrl: nil, updatedAt: Date()),
+          metadata: Metadata(createdAt: Date(), updatedAt: Date())
+        ),
+        UserPublic(
+          userId: "u3",
+          name: "박철수",
+          nickname: "pcs",
+          profile: ProfileImage(url: "https://example.com/3.jpg", thumbUrl: nil, updatedAt: Date()),
+          metadata: Metadata(createdAt: Date(), updatedAt: Date())
+        )
+      ]
     },
     createGroup: { request in
       try await Task.sleep(for: .seconds(1))
@@ -165,6 +188,7 @@ extension DependencyValues {
 extension GroupClient: DependencyKey {
   public static let liveValue: GroupClient = {
     @Dependency(\.authClient) var authClient
+    @Dependency(\.userProfileClient) var userProfileClient
     let dataSource = GroupRemoteDataSource()
 
     return Self(
@@ -187,6 +211,10 @@ extension GroupClient: DependencyKey {
       },
       fetchGroup: { groupId in
         return try await dataSource.fetchGroup(groupId: groupId)
+      },
+      fetchGroupMembers: { groupId in
+        let group = try await dataSource.fetchGroup(groupId: groupId)
+        return try await userProfileClient.getUsersByIds(group.memberIds)
       },
       createGroup: { request in
         return try await dataSource.createGroup(
