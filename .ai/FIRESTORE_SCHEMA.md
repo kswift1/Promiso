@@ -311,6 +311,7 @@ groups/{groupId}
 | `emoji` | String | ❌ | null | 그룹 대표 이모지 |
 | `themeColor` | String | ❌ | null | 그룹 테마 색상 (HEX) |
 | `photoPath` | String | ❌ | null | 그룹 이미지 Storage 경로 |
+| `memberIds` | Array<String> | ✅ | [] | 멤버 ID 목록 |
 | `memberCount` | Number | ✅ | 1 | 현재 멤버 수 |
 | `activePromiseCount` | Number | ✅ | 0 | 활성 약속 수 |
 | `maxMembers` | Number | ✅ | - | 최대 인원 (2~10) |
@@ -334,6 +335,13 @@ groups/{groupId}
     "type": "storagePath",
     "url": "groups/abc123/photo.jpg"
   },
+  "memberIds": [
+    "sFeDJwqJbqScbSUp4Jz54MDlnFv1",
+    "user2Id",
+    "user3Id",
+    "user4Id",
+    "user5Id"
+  ],
   "memberCount": 5,
   "activePromiseCount": 2,
   "maxMembers": 10,
@@ -347,57 +355,62 @@ groups/{groupId}
 }
 ```
 
----
-
-### 2-1. groups/{groupId}/members (서브컬렉션)
-
-그룹 멤버 정보를 저장합니다.
-
-#### 📍 문서 경로
-
-```
-groups/{groupId}/members/{userId}
-```
-
-#### 🔑 문서 ID
-
-- 사용자 ID와 동일 (예: `sFeDJwqJbqScbSUp4Jz54MDlnFv1`)
-
-#### 📊 필드 구조
-
-| 필드명 | 타입 | 필수 | 기본값 | 설명 |
-|--------|------|------|--------|------|
-| `userId` | String | ✅ | - | 사용자 ID |
-| `userName` | String | ✅ | - | 사용자 이름 (캐시) |
-| `userNickname` | String | ✅ | - | 사용자 닉네임 (캐시) |
-| `profileImageUrl` | String | ❌ | null | 프로필 이미지 URL (캐시) |
-| `role` | String | ✅ | "member" | 역할 (`admin` \| `member`) |
-| `joinedAt` | Timestamp | ✅ | - | 가입 시각 |
-| `invitedBy` | String | ✅ | - | 초대한 사용자 ID |
-| `isActive` | Boolean | ✅ | true | 활성 상태 (탈퇴 시 false) |
-| `leftAt` | Timestamp | ❌ | null | 탈퇴 시각 |
-
-#### 📝 예시 데이터
-
-```json
-{
-  "userId": "sFeDJwqJbqScbSUp4Jz54MDlnFv1",
-  "userName": "김성원",
-  "userNickname": "성원",
-  "profileImageUrl": "https://storage.googleapis.com/.../profile.jpg",
-  "role": "admin",
-  "joinedAt": "<Timestamp>",
-  "invitedBy": "sFeDJwqJbqScbSUp4Jz54MDlnFv1",
-  "isActive": true,
-  "leftAt": null
-}
-```
-
 #### 💡 설계 의도
 
-- **빠른 조회**: 그룹 멤버 목록을 빠르게 가져오기
-- **캐싱**: userName, userNickname, profileImageUrl 캐싱
-- **권한 관리**: role 필드로 관리자/일반 멤버 구분
+- **단순성**: 멤버 정보는 users 컬렉션에서 직접 조회 (캐시 동기화 불필요)
+- **데이터 일관성**: 항상 최신 사용자 정보 보장 (프로필 변경 즉시 반영)
+- **확장성**: memberIds 배열로 멤버 관리
+- **복잡도 감소**: Cloud Functions Trigger 불필요
+
+#### 🔄 멤버 조회 방식
+
+**1. 그룹 생성/참여**
+```typescript
+// createGroup
+await groupRef.set({
+  memberIds: [creatorId],
+  memberCount: 1,
+  // ...
+});
+
+// joinGroup
+await groupRef.update({
+  memberIds: FieldValue.arrayUnion(userId),
+  memberCount: FieldValue.increment(1)
+});
+```
+
+**2. 멤버 리스트 조회 (previewGroup 등)**
+```typescript
+// 1. groups/{groupId} 조회 → memberIds 가져오기 (1 read)
+const groupDoc = await groupRef.get();
+const memberIds = groupDoc.data().memberIds;
+
+// 2. 각 userId로 users/{userId} 조회 (병렬) (N reads)
+const userPromises = memberIds.map(userId =>
+  usersCollection.doc(userId).get()
+);
+const userDocs = await Promise.all(userPromises);
+
+// 3. 사용자 정보 직접 사용 (항상 최신)
+const members = userDocs.map(doc => ({
+  userId: doc.id,
+  name: doc.data().nickname,
+  profileImage: doc.data().profile
+}));
+```
+
+#### ⚡ 성능 및 비용 효과
+
+| 항목 | memberIds 방식 | 비고 |
+|------|---------------|------|
+| 그룹 조회 reads | 1회 (groups 문서) | |
+| 멤버 정보 reads | N회 (users 컬렉션, 병렬) | 10명 = 10 reads |
+| **총 reads** | **11회** | 10명 기준 |
+| 프로필 변경 writes | 0회 | 동기화 불필요 |
+| 응답 속도 | 빠름 (병렬 조회) | |
+| 데이터 일관성 | **항상 최신** | ✅ |
+| 복잡도 | **낮음** | Trigger 불필요 |
 
 ---
 
