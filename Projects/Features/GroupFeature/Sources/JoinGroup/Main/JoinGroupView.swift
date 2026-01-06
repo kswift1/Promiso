@@ -319,43 +319,88 @@ private struct PreviewView: View {
   @Bindable var store: StoreOf<JoinGroup.Feature>
   let group: GroupModel
   let members: [UserPublic]
-  
+
   var body: some View {
     VStack(spacing: 0) {
       ScrollView {
-        VStack(spacing: 32) {
-          Spacer()
-            .frame(height: 20)
-          
-          // Group Info
-          cardContainer {
-            groupInfoSection
-          }
-          
-          // Member Preview
-          if members.isEmpty == false {
-            cardContainer {
-              memberPreviewSection
+        VStack(spacing: 24) {
+          // Header Section
+          headerSection
+            .padding(.top, 32)
+
+          // Group Info Card
+          VStack(alignment: .leading, spacing: 20) {
+            // Description
+            if let description = group.description, !description.isEmpty {
+              VStack(alignment: .leading, spacing: 8) {
+                Label("소개", systemImage: "text.alignleft")
+                  .font(.subheadline.weight(.semibold))
+                  .foregroundStyle(.secondary)
+
+                Text(description)
+                  .font(.body)
+                  .foregroundStyle(.primary)
+                  .lineSpacing(4)
+              }
             }
+
+            // Stats
+            HStack(spacing: 24) {
+              statItem(
+                icon: "person.2.fill",
+                label: "현재 인원",
+                value: "\(group.memberIds.count)"
+              )
+
+              Divider()
+                .frame(height: 40)
+
+              statItem(
+                icon: "person.3.fill",
+                label: "최대 인원",
+                value: "\(group.maxMembers)"
+              )
+            }
+            .frame(maxWidth: .infinity)
+          }
+          .padding(20)
+          .background(Color(.systemBackground))
+          .clipShape(RoundedRectangle(cornerRadius: 20))
+          .shadow(color: .black.opacity(0.06), radius: 16, x: 0, y: 8)
+
+          // Members Section
+          if !members.isEmpty {
+            VStack(alignment: .leading, spacing: 16) {
+              HStack {
+                Label("멤버", systemImage: "person.2")
+                  .font(.headline)
+                  .foregroundStyle(.primary)
+
+                Spacer()
+
+                Text("\(members.count)명")
+                  .font(.subheadline.weight(.semibold))
+                  .foregroundStyle(.secondary)
+              }
+
+              memberGridView
+            }
+            .padding(20)
+            .background(Color(.systemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 20))
+            .shadow(color: .black.opacity(0.06), radius: 16, x: 0, y: 8)
           }
 
-          // Details
-          cardContainer {
-            detailsSection
-          }
-          
           Spacer()
-            .frame(height: 20)
+            .frame(height: 8)
         }
-        .padding(.horizontal, 24)
+        .padding(.horizontal, 20)
       }
-      
+
       // Join Button
-      VStack(spacing: 12) {
-        joinButton
-      }
-      .padding(.horizontal, 24)
-      .padding(.bottom, 32)
+      joinButton
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
     }
     .toolbar {
       ToolbarItem(placement: .topBarLeading) {
@@ -369,90 +414,29 @@ private struct PreviewView: View {
       }
     }
   }
-  
-  // MARK: - Group Info Section
+
+  // MARK: - Header Section
 
   @ViewBuilder
-  private var groupInfoSection: some View {
-    VStack(spacing: 16) {
+  private var headerSection: some View {
+    VStack(spacing: 20) {
       // Group Image
       GroupImageView(imageUrl: group.imageUrl)
 
-      // Name
+      // Group Name
       Text(group.name)
-        .font(.title.bold())
-
-      // Description
-      if let description = group.description, !description.isEmpty {
-        Text(description)
-          .font(.body)
-          .foregroundStyle(.secondary)
-          .multilineTextAlignment(.center)
-          .lineSpacing(4)
-      }
+        .font(.system(size: 32, weight: .bold))
+        .multilineTextAlignment(.center)
     }
   }
 
-  // MARK: - Member Preview Section
+  // MARK: - Stat Item
 
   @ViewBuilder
-  private var memberPreviewSection: some View {
-    VStack(spacing: 12) {
-      HStack {
-        Text("멤버")
-          .font(.subheadline.weight(.semibold))
-          .foregroundStyle(.secondary)
-
-        Spacer()
-
-        Text("\(members.count)명")
-          .font(.subheadline.weight(.semibold))
-          .foregroundStyle(.secondary)
-      }
-
-      GroupMemberStackView(members: members)
-
-      Text(memberNamesText)
-        .font(.footnote)
-        .foregroundStyle(.secondary)
-        .lineLimit(1)
-    }
-  }
-
-  private var memberNamesText: String {
-    let displayNames = members.prefix(3).map(\.name)
-    let baseText = displayNames.joined(separator: " · ")
-    let overflow = max(members.count - displayNames.count, 0)
-    if overflow > 0 {
-      return "\(baseText) · +\(overflow)"
-    }
-    return baseText
-  }
-  
-  // MARK: - Details Section
-  
-  @ViewBuilder
-  private var detailsSection: some View {
-    VStack(spacing: 12) {
-      detailRow(
-        icon: "person.2.fill",
-        title: "현재 인원",
-        value: "\(group.memberIds.count)명"
-      )
-
-      detailRow(
-        icon: "person.3.fill",
-        title: "최대 인원",
-        value: "\(group.maxMembers)명"
-      )
-    }
-  }
-  
-  @ViewBuilder
-  private func detailRow(icon: String, title: String, value: String) -> some View {
-    HStack(spacing: 16) {
+  private func statItem(icon: String, label: String, value: String) -> some View {
+    VStack(spacing: 8) {
       Image(systemName: icon)
-        .font(.system(size: 20))
+        .font(.system(size: 24))
         .foregroundStyle(
           LinearGradient(
             colors: [.blue, .purple],
@@ -460,25 +444,44 @@ private struct PreviewView: View {
             endPoint: .bottomTrailing
           )
         )
-        .frame(width: 32)
-      
-      Text(title)
-        .font(.body)
-        .foregroundStyle(.secondary)
-      
-      Spacer()
-      
+
       Text(value)
-        .font(.body.bold())
+        .font(.system(size: 28, weight: .bold))
         .foregroundStyle(.primary)
+
+      Text(label)
+        .font(.caption)
+        .foregroundStyle(.secondary)
     }
-    .padding(16)
-    .background(Color(.systemGray6))
-    .clipShape(RoundedRectangle(cornerRadius: 12))
+    .frame(maxWidth: .infinity)
   }
-  
+
+  // MARK: - Member Grid View
+
+  @ViewBuilder
+  private var memberGridView: some View {
+    let columns = [
+      GridItem(.flexible(), spacing: 16),
+      GridItem(.flexible(), spacing: 16),
+      GridItem(.flexible(), spacing: 16)
+    ]
+
+    let displayMembers = Array(members.prefix(6))
+    let overflowCount = max(members.count - 6, 0)
+
+    LazyVGrid(columns: columns, spacing: 16) {
+      ForEach(displayMembers) { member in
+        MemberGridItem(member: member)
+      }
+
+      if overflowCount > 0 {
+        OverflowGridItem(count: overflowCount)
+      }
+    }
+  }
+
   // MARK: - Join Button
-  
+
   @ViewBuilder
   private var joinButton: some View {
     Button {
@@ -490,19 +493,17 @@ private struct PreviewView: View {
             .tint(.white)
         } else {
           Image(systemName: "checkmark.circle.fill")
-            .font(.system(size: 18))
+            .font(.system(size: 20))
         }
-        
+
         Text(store.isJoining ? "참여 중..." : "그룹 참여하기")
-          .font(.headline)
+          .font(.system(size: 18, weight: .semibold))
       }
       .frame(maxWidth: .infinity)
       .frame(height: 56)
       .background(
         LinearGradient(
-          colors: store.canJoin
-          ? [.blue, .purple]
-          : [Color(.systemGray4)],
+          colors: store.canJoin ? [.blue, .purple] : [Color(.systemGray4)],
           startPoint: .topLeading,
           endPoint: .bottomTrailing
         )
@@ -520,73 +521,66 @@ private struct PreviewView: View {
     .animation(.easeInOut(duration: 0.2), value: store.canJoin)
     .animation(.easeInOut(duration: 0.2), value: store.isJoining)
   }
-
-  private func cardContainer<Content: View>(@ViewBuilder content: () -> Content) -> some View {
-    content()
-      .padding(16)
-      .frame(maxWidth: .infinity)
-      .background(Color(.systemBackground))
-      .clipShape(RoundedRectangle(cornerRadius: 16))
-      .shadow(color: .black.opacity(0.06), radius: 12, x: 0, y: 6)
-  }
 }
 
-private struct GroupMemberStackView: View {
-  let members: [UserPublic]
+// MARK: - Member Grid Item
 
-  private var displayMembers: [UserPublic] {
-    Array(members.prefix(5))
-  }
-
-  private var overflowCount: Int {
-    max(members.count - displayMembers.count, 0)
-  }
-
-  var body: some View {
-    HStack(spacing: -12) {
-      ForEach(displayMembers) { member in
-        MemberAvatarView(member: member)
-          .zIndex(Double(displayMembers.count) - Double(displayMembers.firstIndex(where: { $0.id == member.id }) ?? 0))
-      }
-
-      if overflowCount > 0 {
-        OverflowAvatarView(count: overflowCount)
-      }
-    }
-    .padding(.vertical, 4)
-  }
-}
-
-private struct MemberAvatarView: View {
+private struct MemberGridItem: View {
   let member: UserPublic
   @State private var loadedImage: UIImage?
   @State private var isLoading = false
 
   var body: some View {
-    ZStack {
-      Circle()
-        .fill(Color(.systemGray5))
-        .frame(width: 44, height: 44)
+    VStack(spacing: 8) {
+      ZStack {
+        Circle()
+          .fill(
+            LinearGradient(
+              colors: [Color.blue.opacity(0.1), Color.purple.opacity(0.05)],
+              startPoint: .topLeading,
+              endPoint: .bottomTrailing
+            )
+          )
+          .frame(width: 64, height: 64)
 
-      if let loadedImage {
-        Image(uiImage: loadedImage)
-          .resizable()
-          .scaledToFill()
-          .frame(width: 44, height: 44)
-          .clipShape(Circle())
-      } else if isLoading {
-        ProgressView()
-          .tint(.secondary)
-      } else {
-        Text(initials)
-          .font(.system(size: 16, weight: .semibold))
-          .foregroundStyle(.secondary)
+        if let loadedImage {
+          Image(uiImage: loadedImage)
+            .resizable()
+            .scaledToFill()
+            .frame(width: 64, height: 64)
+            .clipShape(Circle())
+        } else if isLoading {
+          ProgressView()
+            .tint(.secondary)
+        } else {
+          Text(initials)
+            .font(.system(size: 24, weight: .semibold))
+            .foregroundStyle(
+              LinearGradient(
+                colors: [.blue, .purple],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+              )
+            )
+        }
       }
+      .overlay(
+        Circle()
+          .strokeBorder(
+            LinearGradient(
+              colors: [.blue.opacity(0.3), .purple.opacity(0.2)],
+              startPoint: .topLeading,
+              endPoint: .bottomTrailing
+            ),
+            lineWidth: 2
+          )
+      )
+
+      Text(member.nickname)
+        .font(.caption)
+        .foregroundStyle(.primary)
+        .lineLimit(1)
     }
-    .overlay(
-      Circle()
-        .stroke(Color(.systemBackground), lineWidth: 2)
-    )
     .task {
       await loadImage()
     }
@@ -611,23 +605,31 @@ private struct MemberAvatarView: View {
   }
 }
 
-private struct OverflowAvatarView: View {
+// MARK: - Overflow Grid Item
+
+private struct OverflowGridItem: View {
   let count: Int
 
   var body: some View {
-    ZStack {
-      Circle()
-        .fill(Color(.systemGray4))
-        .frame(width: 44, height: 44)
+    VStack(spacing: 8) {
+      ZStack {
+        Circle()
+          .fill(Color(.systemGray5))
+          .frame(width: 64, height: 64)
 
-      Text("+\(count)")
-        .font(.system(size: 14, weight: .semibold))
+        Text("+\(count)")
+          .font(.system(size: 20, weight: .bold))
+          .foregroundStyle(.secondary)
+      }
+      .overlay(
+        Circle()
+          .strokeBorder(Color(.systemGray4), lineWidth: 2)
+      )
+
+      Text("더보기")
+        .font(.caption)
         .foregroundStyle(.secondary)
     }
-    .overlay(
-      Circle()
-        .stroke(Color(.systemBackground), lineWidth: 2)
-    )
   }
 }
 
@@ -648,25 +650,44 @@ private struct GroupImageView: View {
             endPoint: .bottomTrailing
           )
         )
-        .frame(width: 100, height: 100)
+        .frame(width: 120, height: 120)
 
       if let uiImage = loadedImage {
         // 이미지 로딩 완료
         Image(uiImage: uiImage)
           .resizable()
           .aspectRatio(contentMode: .fill)
-          .frame(width: 100, height: 100)
+          .frame(width: 120, height: 120)
           .clipShape(Circle())
       } else if isLoading {
         // 로딩 중
         ProgressView()
+          .scaleEffect(1.2)
       } else {
         // 이미지 없음 - system image 표시
         Image(systemName: "person.2.circle.fill")
-          .font(.system(size: 50))
-          .foregroundStyle(.blue.opacity(0.6))
+          .font(.system(size: 60))
+          .foregroundStyle(
+            LinearGradient(
+              colors: [.blue.opacity(0.7), .purple.opacity(0.5)],
+              startPoint: .topLeading,
+              endPoint: .bottomTrailing
+            )
+          )
       }
     }
+    .overlay(
+      Circle()
+        .strokeBorder(
+          LinearGradient(
+            colors: [.blue.opacity(0.3), .purple.opacity(0.2)],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+          ),
+          lineWidth: 3
+        )
+    )
+    .shadow(color: .blue.opacity(0.2), radius: 16, x: 0, y: 8)
     .task {
       await loadImage()
     }
