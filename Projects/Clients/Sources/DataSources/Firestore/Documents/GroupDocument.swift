@@ -7,22 +7,17 @@ public struct GroupDocument: Codable {
   // MARK: - 기본 정보
   public let name: String
   public let description: String?
-  public let emoji: String?
-  public let themeColor: String?
-  public let photo: RemoteImage?
+  public let imageUrl: String?
 
   // MARK: - 멤버 관리
   public let memberIds: [String]
 
   // MARK: - 카운터 (캐시)
-  public let memberCount: Int
   public let activePromiseCount: Int
-  
+
   // MARK: - 설정
-  public let maxMembers: Int?
-  public let requireApproval: Bool
-  public let defaultMinimumParticipants: Int
-  
+  public let maxMembers: Int
+
   // MARK: - 메타데이터
   public let inviteCode: String
   public let createdBy: String
@@ -33,15 +28,10 @@ public struct GroupDocument: Codable {
   public init(
     name: String,
     description: String? = nil,
-    emoji: String? = nil,
-    themeColor: String? = nil,
-    photo: RemoteImage? = nil,
+    imageUrl: String? = nil,
     memberIds: [String] = [],
-    memberCount: Int = 0,
     activePromiseCount: Int = 0,
-    maxMembers: Int? = nil,
-    requireApproval: Bool = false,
-    defaultMinimumParticipants: Int = 2,
+    maxMembers: Int,
     inviteCode: String,
     createdBy: String,
     createdAt: Timestamp = Timestamp(),
@@ -50,15 +40,10 @@ public struct GroupDocument: Codable {
   ) {
     self.name = name
     self.description = description
-    self.emoji = emoji
-    self.themeColor = themeColor
-    self.photo = photo
+    self.imageUrl = imageUrl
     self.memberIds = memberIds
-    self.memberCount = memberCount
     self.activePromiseCount = activePromiseCount
     self.maxMembers = maxMembers
-    self.requireApproval = requireApproval
-    self.defaultMinimumParticipants = defaultMinimumParticipants
     self.inviteCode = inviteCode
     self.createdBy = createdBy
     self.createdAt = createdAt
@@ -72,15 +57,10 @@ extension GroupDocument {
   enum CodingKeys: String, CodingKey {
     case name
     case description
-    case emoji
-    case themeColor
-    case photo
+    case imageUrl
     case memberIds
-    case memberCount
     case activePromiseCount
     case maxMembers
-    case requireApproval
-    case defaultMinimumParticipants
     case inviteCode
     case createdBy
     case createdAt
@@ -93,22 +73,14 @@ extension GroupDocument {
 
 extension GroupDocument {
   func toModel(id: String) -> GroupModel {
-    let emojiValue = emoji?.trimmingCharacters(in: .whitespacesAndNewlines)
-    let displayEmoji = (emojiValue?.isEmpty == false) ? emojiValue! : "👥"
-
     return GroupModel(
       id: id,
       name: name,
       description: description,
-      emoji: displayEmoji,
-      themeColor: themeColor,
-      photo: photo,
+      imageUrl: imageUrl,
       memberIds: memberIds,
-      memberCount: memberCount,
       activePromiseCount: activePromiseCount,
       maxMembers: maxMembers,
-      requireApproval: requireApproval,
-      defaultMinimumParticipants: defaultMinimumParticipants,
       inviteCode: inviteCode,
       createdBy: createdBy,
       createdAt: createdAt.dateValue(),

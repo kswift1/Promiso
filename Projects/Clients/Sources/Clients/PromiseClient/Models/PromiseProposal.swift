@@ -77,7 +77,7 @@ extension PromiseProposal {
         provider: "",
         metadata: Metadata(createdAt: Date(), updatedAt: Date())
       ),
-      group: Group(id: group.id, name: group.name),
+      group: group,
       startAt: startedAt,
       endAt: endedAt,
       status: .active,

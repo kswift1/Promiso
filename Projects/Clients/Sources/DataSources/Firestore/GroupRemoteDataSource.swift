@@ -318,15 +318,25 @@ public final class GroupRemoteDataSource: @unchecked Sendable {
     }
   }
 
-  private func parseMemberPreview(_ data: [String: Any]) -> GroupMemberPreview? {
+  private func parseMemberPreview(_ data: [String: Any]) -> UserPublic? {
     guard let userId = data["userId"] as? String else { return nil }
     let name = data["name"] as? String ?? ""
-    let profileImage = parseRemoteImage(data["profileImage"])
+    let nickname = data["nickname"] as? String ?? name
 
-    return GroupMemberPreview(
+    let profileImage: ProfileImage?
+    if let remoteImage = parseRemoteImage(data["profileImage"]),
+       remoteImage.type == .externalURL {
+      profileImage = ProfileImage(url: remoteImage.url, thumbUrl: nil, updatedAt: Date())
+    } else {
+      profileImage = nil
+    }
+
+    return UserPublic(
       userId: userId,
       name: name,
-      profileImage: profileImage
+      nickname: nickname,
+      profile: profileImage,
+      metadata: Metadata(createdAt: Date(), updatedAt: Date())
     )
   }
 

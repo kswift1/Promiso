@@ -318,7 +318,7 @@ private struct EnterCodeView: View {
 private struct PreviewView: View {
   @Bindable var store: StoreOf<JoinGroup.Feature>
   let group: GroupModel
-  let members: [GroupMemberPreview]
+  let members: [UserPublic]
   
   var body: some View {
     VStack(spacing: 0) {
@@ -375,8 +375,8 @@ private struct PreviewView: View {
   @ViewBuilder
   private var groupInfoSection: some View {
     VStack(spacing: 16) {
-      // Group Photo or Emoji
-      GroupImageView(photo: group.photo, emoji: group.emoji)
+      // Group Image
+      GroupImageView(imageUrl: group.imageUrl)
 
       // Name
       Text(group.name)
@@ -437,16 +437,14 @@ private struct PreviewView: View {
       detailRow(
         icon: "person.2.fill",
         title: "현재 인원",
-        value: "\(group.memberCount)명"
+        value: "\(group.memberIds.count)명"
       )
 
-      if let maxMembers = group.maxMembers {
-        detailRow(
-          icon: "person.3.fill",
-          title: "최대 인원",
-          value: "\(maxMembers)명"
-        )
-      }
+      detailRow(
+        icon: "person.3.fill",
+        title: "최대 인원",
+        value: "\(group.maxMembers)명"
+      )
     }
   }
   
@@ -534,9 +532,9 @@ private struct PreviewView: View {
 }
 
 private struct GroupMemberStackView: View {
-  let members: [GroupMemberPreview]
+  let members: [UserPublic]
 
-  private var displayMembers: [GroupMemberPreview] {
+  private var displayMembers: [UserPublic] {
     Array(members.prefix(5))
   }
 
@@ -560,7 +558,7 @@ private struct GroupMemberStackView: View {
 }
 
 private struct MemberAvatarView: View {
-  let member: GroupMemberPreview
+  let member: UserPublic
   @State private var loadedImage: UIImage?
   @State private var isLoading = false
 
@@ -599,12 +597,12 @@ private struct MemberAvatarView: View {
   }
 
   private func loadImage() async {
-    guard let profileImage = member.profileImage else { return }
+    guard let profile = member.profile else { return }
     isLoading = true
     defer { isLoading = false }
 
     do {
-      guard let url = try await profileImage.toURL() else { return }
+      guard let url = URL(string: profile.url) else { return }
       let request = ImageRequest(url: url)
       loadedImage = try await ImagePipeline.shared.image(for: request)
     } catch {
@@ -636,8 +634,7 @@ private struct OverflowAvatarView: View {
 // MARK: - Group Image View
 
 private struct GroupImageView: View {
-  let photo: RemoteImage?
-  let emoji: String
+  let imageUrl: String?
   @State private var loadedImage: UIImage?
   @State private var isLoading = false
 
@@ -664,9 +661,10 @@ private struct GroupImageView: View {
         // 로딩 중
         ProgressView()
       } else {
-        // 이미지 없음 또는 로딩 전
-        Text(emoji)
+        // 이미지 없음 - system image 표시
+        Image(systemName: "person.2.circle.fill")
           .font(.system(size: 50))
+          .foregroundStyle(.blue.opacity(0.6))
       }
     }
     .task {
@@ -675,21 +673,19 @@ private struct GroupImageView: View {
   }
 
   private func loadImage() async {
-    guard let photo = photo else { return }
+    guard let imageUrl = imageUrl,
+          let url = URL(string: imageUrl) else { return }
 
     isLoading = true
     defer { isLoading = false }
 
     do {
-      // RemoteImage를 URL로 변환
-      guard let url = try await photo.toURL() else { return }
-
       // Nuke ImagePipeline을 사용하여 이미지 로딩
       let request = ImageRequest(url: url)
       loadedImage = try await ImagePipeline.shared.image(for: request)
     } catch {
       print("Failed to load image: \(error)")
-      // 에러 발생 시 이모지 표시 (loadedImage가 nil이므로 자동으로 이모지 표시됨)
+      // 에러 발생 시 system image 표시 (loadedImage가 nil이므로 자동으로 표시됨)
     }
   }
 }

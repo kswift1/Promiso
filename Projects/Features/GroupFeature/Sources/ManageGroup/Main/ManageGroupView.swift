@@ -27,43 +27,41 @@ extension ManageGroup {
     }
 
     public var body: some View {
-      WithViewStore(store, observe: { $0 }) { viewStore in
-        ScrollView {
-          VStack(spacing: 24) {
-            // Group Info
-            VStack(spacing: 12) {
-              Text(viewStore.group.emoji)
-                .font(.system(size: 80))
+      ScrollView {
+        VStack(spacing: 24) {
+          // Group Info
+          VStack(spacing: 12) {
+            Image(systemName: "person.2.circle.fill")
+              .font(.system(size: 80))
+              .foregroundStyle(.blue.opacity(0.6))
 
-              Text(viewStore.group.name)
-                .font(.system(size: 24, weight: .bold))
+            Text(store.group.name)
+              .font(.system(size: 24, weight: .bold))
 
-              if let description = viewStore.group.description, description.isEmpty == false {
-                Text(description)
-                  .font(.system(size: 14))
-                  .foregroundStyle(.secondary)
-                  .multilineTextAlignment(.center)
-              }
+            if let description = store.group.description, description.isEmpty == false {
+              Text(description)
+                .font(.system(size: 14))
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
             }
-            .padding(.top, 12)
+          }
+          .padding(.top, 12)
 
-            // Group Details
-            VStack(spacing: 12) {
-              detailRow(title: "멤버", value: "\(viewStore.group.memberCount)명")
-              detailRow(title: "진행중 약속", value: "\(viewStore.group.activePromiseCount)개")
+          // Group Details
+          VStack(spacing: 12) {
+            detailRow(title: "멤버", value: "\(store.group.memberIds.count)명")
+            detailRow(title: "진행중 약속", value: "\(store.group.activePromiseCount)개")
 
-              if let maxMembers = viewStore.group.maxMembers {
-                detailRow(title: "최대 인원", value: "\(maxMembers)명")
-              }
+            detailRow(title: "최대 인원", value: "\(store.group.maxMembers)명")
 
-              if let role = viewStore.summary?.role {
-                detailRow(title: "내 역할", value: role)
-              }
-
-              if let notifications = viewStore.summary?.notifications {
-                detailRow(title: "알림", value: notifications ? "켜짐" : "꺼짐")
-              }
+            if let role = store.summary?.role {
+              detailRow(title: "내 역할", value: role)
             }
+
+            if let notifications = store.summary?.notifications {
+              detailRow(title: "알림", value: notifications ? "켜짐" : "꺼짐")
+            }
+          }
 
             // Invite Section
             VStack(spacing: 16) {
@@ -86,7 +84,7 @@ extension ManageGroup {
 
               // Code Display with Copy Button
               HStack(spacing: 12) {
-                Text(viewStore.group.inviteCode)
+                Text(store.group.inviteCode)
                   .font(.system(size: 28, weight: .bold, design: .rounded))
                   .tracking(3)
                   .frame(maxWidth: .infinity)
@@ -178,8 +176,7 @@ extension ManageGroup {
         }
         .navigationTitle("그룹 관리")
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear { viewStore.send(.view(.onAppear)) }
-      }
+        .onAppear { store.send(.view(.onAppear)) }
     }
 
     private func detailRow(title: String, value: String) -> some View {

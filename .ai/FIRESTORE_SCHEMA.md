@@ -308,15 +308,10 @@ groups/{groupId}
 |--------|------|------|--------|------|
 | `name` | String | ✅ | - | 그룹 이름 |
 | `description` | String | ❌ | null | 그룹 설명 |
-| `emoji` | String | ❌ | null | 그룹 대표 이모지 |
-| `themeColor` | String | ❌ | null | 그룹 테마 색상 (HEX) |
-| `photoPath` | String | ❌ | null | 그룹 이미지 Storage 경로 |
+| `imageUrl` | String | ❌ | null | 그룹 이미지 Storage 경로 |
 | `memberIds` | Array<String> | ✅ | [] | 멤버 ID 목록 |
-| `memberCount` | Number | ✅ | 1 | 현재 멤버 수 |
 | `activePromiseCount` | Number | ✅ | 0 | 활성 약속 수 |
 | `maxMembers` | Number | ✅ | - | 최대 인원 (2~10) |
-| `requireApproval` | Boolean | ✅ | false | 가입 승인 필요 여부 |
-| `defaultMinimumParticipants` | Number | ✅ | 2 | 기본 최소 참가자 수 |
 | `inviteCode` | String | ✅ | - | 초대 코드 (6자리 영숫자, 유니크) |
 | `createdBy` | String | ✅ | - | 생성자 ID |
 | `createdAt` | Timestamp | ✅ | - | 생성 시각 |

@@ -13,18 +13,18 @@ struct MinimumParticipantsSection: View {
   
   // 기본값: 최대 인원의 절반 (반올림)
   private var defaultMinimum: Int {
-    guard let maxParticipants = store.promiseProposal.group?.memberCount else { return 2 }
+    guard let maxParticipants = store.promiseProposal.group?.memberIds.count else { return 2 }
     return Int(ceil(Double(maxParticipants) / 2.0))
   }
   
   // 2명 고정 여부
   private var isFixedAtTwo: Bool {
-    store.promiseProposal.group?.memberCount == 2
+    store.promiseProposal.group?.memberIds.count == 2
   }
-  
+
   // 최대 인원 (기본값 2명)
   private var maxParticipants: Int {
-    store.promiseProposal.group?.memberCount ?? 2
+    store.promiseProposal.group?.memberIds.count ?? 2
   }
   
   var body: some View {
@@ -195,8 +195,9 @@ struct MinimumParticipantsSection: View {
           group: .init(
             id: "g1",
             name: "지민과 나",
-            emoji: "👥",
-            memberCount: 2
+            maxMembers: 2,
+            inviteCode: "PREVIEW",
+            createdBy: "preview"
           ),
           startedAt: Date().addingTimeInterval(7200),
           minimumParticipants: 2
@@ -219,8 +220,9 @@ struct MinimumParticipantsSection: View {
           group: .init(
             id: "g2",
             name: "회사 동료들",
-            emoji: "🏢",
-            memberCount: 4
+            maxMembers: 4,
+            inviteCode: "PREVIEW",
+            createdBy: "preview"
           ),
           startedAt: Date().addingTimeInterval(7200),
           minimumParticipants: 2
@@ -242,8 +244,10 @@ struct MinimumParticipantsSection: View {
           emoji: "🍽️",
           group: .init(
             id: "g5",
-            name: "주말 모임", emoji: "🍴",
-            memberCount: 5
+            name: "주말 모임",
+            maxMembers: 5,
+            inviteCode: "PREVIEW",
+            createdBy: "preview"
           ),
           startedAt: Date().addingTimeInterval(7200),
           minimumParticipants: 3
@@ -265,8 +269,10 @@ struct MinimumParticipantsSection: View {
           emoji: "💼",
           group: .init(
             id: "g10",
-            name: "전체 팀", emoji: "🏢",
-            memberCount: 10
+            name: "전체 팀",
+            maxMembers: 10,
+            inviteCode: "PREVIEW",
+            createdBy: "preview"
           ),
           startedAt: Date().addingTimeInterval(7200),
           minimumParticipants: 10
@@ -290,8 +296,9 @@ struct MinimumParticipantsSection: View {
             group: .init(
               id: "g6",
               name: "친구들",
-              emoji: "👥",
-              memberCount: 6
+              maxMembers: 6,
+              inviteCode: "PREVIEW",
+              createdBy: "preview"
             ),
             startedAt: Date().addingTimeInterval(7200),
             minimumParticipants: 4
@@ -334,8 +341,9 @@ struct MinimumParticipantsSection: View {
               group: .init(
                 id: "g5",
                 name: "주말 모임",
-                emoji: "🍴",
-                memberCount: 5
+                maxMembers: 5,
+                inviteCode: "PREVIEW",
+                createdBy: "preview"
               ),
               startedAt: Date().addingTimeInterval(7200),
               minimumParticipants: 3

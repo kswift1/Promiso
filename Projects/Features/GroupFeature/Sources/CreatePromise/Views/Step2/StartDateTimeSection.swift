@@ -254,8 +254,9 @@ struct StartDateTimeSection: View {
             group: .init(
               id: "g1",
               name: "지민과 나",
-              emoji: "👥",
-              memberCount: 2
+              maxMembers: 2,
+              inviteCode: "PREVIEW",
+              createdBy: "preview"
             ),
             startedAt: Date().addingTimeInterval(7200),
             minimumParticipants: 2
@@ -280,8 +281,9 @@ struct StartDateTimeSection: View {
             group: .init(
               id: "g1",
               name: "지민과 나",
-              emoji: "👥",
-              memberCount: 2
+              maxMembers: 2,
+              inviteCode: "PREVIEW",
+              createdBy: "preview"
             ),
             startedAt: Date().addingTimeInterval(1800),
             minimumParticipants: 2
@@ -313,8 +315,9 @@ struct StartDateTimeSection: View {
                   group: .init(
                     id: "g1",
                     name: "지민과 나",
-                    emoji: "👥",
-                    memberCount: 2
+                    maxMembers: 2,
+                    inviteCode: "PREVIEW",
+                    createdBy: "preview"
                   ),
                   startedAt: date,
                   minimumParticipants: 2
@@ -351,8 +354,9 @@ struct StartDateTimeSection: View {
               group: .init(
                 id: "g1",
                 name: "지민과 나",
-                emoji: "👥",
-                memberCount: 2
+                maxMembers: 2,
+                inviteCode: "PREVIEW",
+                createdBy: "preview"
               ),
               startedAt: Date().addingTimeInterval(7200),
               minimumParticipants: 2

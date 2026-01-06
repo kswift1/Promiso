@@ -241,8 +241,9 @@ struct EndTimePicker: View {
           group: .init(
             id: "g1",
             name: "지민과 나",
-            emoji: "👥",
-            memberCount: 2
+            maxMembers: 2,
+            inviteCode: "PREVIEW",
+            createdBy: "preview"
           ),
           startedAt: Date().addingTimeInterval(7200),
           endedAt: nil,
@@ -266,8 +267,9 @@ struct EndTimePicker: View {
           group: .init(
             id: "g1",
             name: "지민과 나",
-            emoji: "👥",
-            memberCount: 2
+            maxMembers: 2,
+            inviteCode: "PREVIEW",
+            createdBy: "preview"
           ),
           startedAt: Date().addingTimeInterval(7200),
           endedAt: Date().addingTimeInterval(7200 + 7200),
@@ -290,8 +292,10 @@ struct EndTimePicker: View {
           emoji: "✈️",
           group: .init(
             id: "g1",
-            name: "지민과 나", emoji: "👥",
-            memberCount: 2
+            name: "지민과 나",
+            maxMembers: 2,
+            inviteCode: "PREVIEW",
+            createdBy: "preview"
           ),
           startedAt: Date().addingTimeInterval(7200),
           endedAt: Date().addingTimeInterval(7200 + 86400 + 19800),
@@ -351,8 +355,10 @@ struct EndTimePicker: View {
             emoji: "🍽️",
             group: .init(
               id: "g1",
-              name: "지민과 나", emoji: "👥",
-              memberCount: 2
+              name: "지민과 나",
+              maxMembers: 2,
+              inviteCode: "PREVIEW",
+              createdBy: "preview"
             ),
             startedAt: Date().addingTimeInterval(7200),
             endedAt: Date().addingTimeInterval(7200 + 7200),
@@ -431,8 +437,9 @@ struct EndTimePicker: View {
               group: .init(
                 id: "g1",
                 name: "지민과 나",
-                emoji: "👥",
-                memberCount: 2
+                maxMembers: 2,
+                inviteCode: "PREVIEW",
+                createdBy: "preview"
               ),
               startedAt: Date().addingTimeInterval(7200),
               endedAt: Date().addingTimeInterval(7200 + 5400),

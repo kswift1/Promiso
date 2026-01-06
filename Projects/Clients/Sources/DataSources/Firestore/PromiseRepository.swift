@@ -208,9 +208,12 @@ public class PromiseRepository: PromiseRepositoryProtocol {
       metadata: Metadata(createdAt: Date(), updatedAt: Date())
     )
 
-    let group = Group(
+    let group = GroupModel(
       id: document.groupId,
-      name: document.groupName
+      name: document.groupName,
+      maxMembers: 0,
+      inviteCode: "",
+      createdBy: ""
     )
 
     return PromiseModel(

@@ -79,10 +79,10 @@ extension GroupClient: TestDependencyKey {
     fetchGroups: {
       try await Task.sleep(for: .seconds(0.3))
       return [
-        .init(id: "g1", name: "지민과 나", emoji: "👥", memberCount: 2),
-        .init(id: "g2", name: "회사 동료들", emoji: "🏢", memberCount: 8),
-        .init(id: "g3", name: "대학 친구들", emoji: "🎓", memberCount: 12),
-        .init(id: "g4", name: "가족", emoji: "👨‍👩‍👦", memberCount: 4)
+        .init(id: "g1", name: "지민과 나", maxMembers: 2, inviteCode: "ABC123", createdBy: "preview-user"),
+        .init(id: "g2", name: "회사 동료들", maxMembers: 10, inviteCode: "DEF456", createdBy: "preview-user"),
+        .init(id: "g3", name: "대학 친구들", maxMembers: 10, inviteCode: "GHI789", createdBy: "preview-user"),
+        .init(id: "g4", name: "가족", maxMembers: 5, inviteCode: "JKL012", createdBy: "preview-user")
       ]
     },
     fetchGroupSummaries: {
@@ -97,12 +97,12 @@ extension GroupClient: TestDependencyKey {
     fetchGroupsByIds: { ids in
       try await Task.sleep(for: .seconds(0.2))
       return ids.map { id in
-        GroupModel(id: id, name: "그룹 \(id)", emoji: "👥", memberCount: 4)
+        GroupModel(id: id, name: "그룹 \(id)", maxMembers: 10, inviteCode: "PREVIEW", createdBy: "preview-user")
       }
     },
     fetchGroup: { id in
       try await Task.sleep(for: .seconds(0.5))
-      return GroupModel(id: id, name: "구두", emoji: "👞", memberCount: 3)
+      return GroupModel(id: id, name: "구두", maxMembers: 5, inviteCode: "PREVIEW", createdBy: "preview-user")
     },
     fetchGroupMembers: { _ in
       try await Task.sleep(for: .seconds(0.3))
@@ -145,16 +145,15 @@ extension GroupClient: TestDependencyKey {
           id: UUID().uuidString,
           name: "주말 등산 모임",
           description: "매주 토요일마다 등산을 가는 모임입니다",
-          emoji: "🏔️",
-          memberCount: 8,
           maxMembers: 10,
-          inviteCode: inviteCode
+          inviteCode: inviteCode,
+          createdBy: "preview-user"
         ),
         members: [
-          .init(userId: "u1", name: "성원", profileImage: nil),
-          .init(userId: "u2", name: "지민", profileImage: nil),
-          .init(userId: "u3", name: "민수", profileImage: nil),
-          .init(userId: "u4", name: "서연", profileImage: nil)
+          UserPublic(userId: "u1", name: "성원", nickname: "성원", metadata: Metadata(createdAt: Date(), updatedAt: Date())),
+          UserPublic(userId: "u2", name: "지민", nickname: "지민", metadata: Metadata(createdAt: Date(), updatedAt: Date())),
+          UserPublic(userId: "u3", name: "민수", nickname: "민수", metadata: Metadata(createdAt: Date(), updatedAt: Date())),
+          UserPublic(userId: "u4", name: "서연", nickname: "서연", metadata: Metadata(createdAt: Date(), updatedAt: Date()))
         ]
       )
     },
@@ -163,9 +162,9 @@ extension GroupClient: TestDependencyKey {
       return GroupModel(
         id: UUID().uuidString,
         name: "새 그룹",
-        emoji: "🎉",
-        memberCount: 5,
-        inviteCode: inviteCode
+        maxMembers: 10,
+        inviteCode: inviteCode,
+        createdBy: "preview-user"
       )
     },
     leaveGroup: { _ in

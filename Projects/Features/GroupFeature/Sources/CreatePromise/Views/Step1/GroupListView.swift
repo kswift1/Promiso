@@ -203,7 +203,7 @@ struct GroupCard: View {
   }
 
   private var isDisabled: Bool {
-    model.memberCount <= 1
+    model.memberIds.count <= 1
   }
 
   var body: some View {
@@ -214,11 +214,11 @@ struct GroupCard: View {
     }) {
       VStack(spacing: 0) {
         HStack(spacing: 12) {
-          // 그룹 이모지
-          Text(model.emoji)
+          // 그룹 아이콘
+          Image(systemName: "person.2.circle.fill")
             .font(.system(size: 28))
+            .foregroundStyle(.blue.opacity(0.6))
             .frame(width: 48, height: 48)
-            .clipShape(Circle())
             .opacity(isDisabled ? 0.5 : 1.0)
 
           // 그룹 정보
@@ -227,7 +227,7 @@ struct GroupCard: View {
               .font(.system(size: 17, weight: .semibold))
               .foregroundColor(isDisabled ? .secondary : .primary)
 
-            Text("\(model.memberCount)명")
+            Text("\(model.memberIds.count)명")
               .font(.system(size: 14))
               .foregroundColor(.secondary)
           }
@@ -340,10 +340,10 @@ private struct GroupSkeletonCard: View {
   @Previewable @FocusState var focus: Bool
   GroupListView(
     groupListState: .loaded([
-      .init(id: "g1", name: "지민과 나", emoji: "👥", memberCount: 2),
-      .init(id: "g2", name: "회사 동료들", emoji: "🏢", memberCount: 8),
-      .init(id: "g3", name: "대학 친구들", emoji: "🎓", memberCount: 12),
-      .init(id: "g4", name: "가족", emoji: "👨‍👩‍👦", memberCount: 4)
+      .init(id: "g1", name: "지민과 나", maxMembers: 2, inviteCode: "ABC123", createdBy: "preview"),
+      .init(id: "g2", name: "회사 동료들", maxMembers: 10, inviteCode: "DEF456", createdBy: "preview"),
+      .init(id: "g3", name: "대학 친구들", maxMembers: 10, inviteCode: "GHI789", createdBy: "preview"),
+      .init(id: "g4", name: "가족", maxMembers: 5, inviteCode: "JKL012", createdBy: "preview")
     ]),
     selectedGroupId: "g2",
     onGroupSelected: { group in print("Selected: \(group.name)") },

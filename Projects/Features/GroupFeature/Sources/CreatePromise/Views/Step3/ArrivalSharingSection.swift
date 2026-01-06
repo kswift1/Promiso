@@ -201,8 +201,9 @@ struct ArrivalSharingButton: View {
             group: .init(
               id: "g1",
               name: "친구들",
-              emoji: "👥",
-              memberCount: 4
+              maxMembers: 4,
+              inviteCode: "PREVIEW",
+              createdBy: "preview"
             ),
             startedAt: Date().addingTimeInterval(7200),
             minimumParticipants: 2,
@@ -228,8 +229,9 @@ struct ArrivalSharingButton: View {
             group: .init(
               id: "g1",
               name: "친구들",
-              emoji: "👥",
-              memberCount: 4
+              maxMembers: 4,
+              inviteCode: "PREVIEW",
+              createdBy: "preview"
             ),
             startedAt: Date().addingTimeInterval(7200),
             minimumParticipants: 2,
@@ -255,8 +257,9 @@ struct ArrivalSharingButton: View {
             group: .init(
               id: "g2",
               name: "등산 모임",
-              emoji: "🥾",
-              memberCount: 6
+              maxMembers: 6,
+              inviteCode: "PREVIEW",
+              createdBy: "preview"
             ),
             startedAt: Date().addingTimeInterval(10800),
             minimumParticipants: 4,

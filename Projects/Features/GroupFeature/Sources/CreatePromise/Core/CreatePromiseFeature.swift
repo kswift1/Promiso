@@ -56,7 +56,7 @@ public enum CreatePromise {
         }
 
         // 그룹 멤버가 1명 이하면 비활성화
-        if group.memberCount <= 1 {
+        if group.memberIds.count <= 1 {
           return true
         }
 
@@ -175,10 +175,10 @@ public enum CreatePromise {
             
           case .groupSelected(let group):
             state.promiseProposal.group = group
-            if group.memberCount == 2 {
+            if group.memberIds.count == 2 {
               state.promiseProposal.minimumParticipants = 2
             } else {
-              let defaultMinimum = Int(ceil(Double(group.memberCount) / 2.0))
+              let defaultMinimum = Int(ceil(Double(group.memberIds.count) / 2.0))
               state.promiseProposal.minimumParticipants = defaultMinimum
             }
             return .none
@@ -203,7 +203,7 @@ public enum CreatePromise {
             return .none
             
           case .incrementParticipants:
-            guard let max = state.promiseProposal.group?.memberCount else { return .none }
+            guard let max = state.promiseProposal.group?.memberIds.count else { return .none }
             let current = state.promiseProposal.minimumParticipants ?? 2
             if current < max { state.promiseProposal.minimumParticipants = current + 1 }
             return .none

@@ -42,7 +42,7 @@ struct PromisePreviewSection: View {
             if let group = store.promiseProposal.group {
               PreviewInfoRow(
                 icon: "person.2.fill",
-                text: "\(group.emoji) \(group.name)"
+                text: group.name
               )
             }
 
@@ -164,7 +164,7 @@ struct PromisePreviewFullScreen: View {
               DetailRow(
                 icon: "person.2.fill",
                 title: "그룹",
-                content: "\(group.emoji) \(group.name)"
+                content: group.name
               )
 
               Divider()
