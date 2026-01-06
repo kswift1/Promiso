@@ -413,6 +413,11 @@ paths:
         새로운 그룹을 생성하고 초대 코드를 발급합니다.
 
         **인증 필수**: Firebase Authentication 토큰 필요
+
+        **내부 동작**:
+        - groups/{groupId} 문서 생성 (memberIds: [creatorId] 포함)
+        - users/{creatorId}/groups/{groupId} 서브컬렉션 생성
+        - 멤버 정보는 memberIds 배열로 관리 (users 컬렉션 참조)
       operationId: createGroup
       security:
         - firebaseAuth: []
@@ -532,6 +537,12 @@ paths:
         초대 코드를 사용하여 기존 그룹에 참여합니다.
 
         **인증 필수**: Firebase Authentication 토큰 필요
+
+        **내부 동작**:
+        - inviteCode로 그룹 조회
+        - memberIds 배열에 userId 추가 (FieldValue.arrayUnion)
+        - users/{userId}/groups/{groupId} 서브컬렉션 생성
+        - memberCount 증가
       operationId: joinGroup
       security:
         - firebaseAuth: []
@@ -1407,6 +1418,100 @@ components:
           type: string
           description: 그룹 이름
           example: 주말 등산 모임
+
+    # ========================================
+    # Firestore Document Schemas
+    # ========================================
+
+    GroupDocument:
+      type: object
+      description: |
+        Firestore groups/{groupId} 문서 구조
+
+        **멤버 관리 방식**: memberIds 배열
+        - 멤버 정보는 users 컬렉션에서 직접 조회
+        - members 서브컬렉션 없음 (캐시 동기화 불필요)
+        - 항상 최신 사용자 정보 보장
+      required:
+        - name
+        - memberIds
+        - memberCount
+        - activePromiseCount
+        - maxMembers
+        - requireApproval
+        - defaultMinimumParticipants
+        - inviteCode
+        - createdBy
+        - createdAt
+        - updatedAt
+        - isDeleted
+      properties:
+        name:
+          type: string
+          description: 그룹 이름
+          example: 주말 등산 모임
+        description:
+          type: string
+          nullable: true
+          description: 그룹 설명
+        emoji:
+          type: string
+          nullable: true
+          description: 그룹 이모지
+        themeColor:
+          type: string
+          nullable: true
+          description: 테마 색상
+        photo:
+          type: object
+          nullable: true
+          description: 그룹 이미지
+        memberIds:
+          type: array
+          items:
+            type: string
+          description: 멤버 ID 목록 (users 컬렉션 참조)
+          example: ["user1", "user2", "user3"]
+        memberCount:
+          type: integer
+          description: 현재 멤버 수
+          example: 5
+        activePromiseCount:
+          type: integer
+          description: 활성 약속 수
+          example: 3
+        maxMembers:
+          type: integer
+          description: 최대 인원
+          example: 10
+        requireApproval:
+          type: boolean
+          description: 가입 승인 필요 여부
+          example: false
+        defaultMinimumParticipants:
+          type: integer
+          description: 기본 최소 참여 인원
+          example: 2
+        inviteCode:
+          type: string
+          description: 초대 코드 (6자리)
+          example: AB12CD
+        createdBy:
+          type: string
+          description: 생성자 UID
+          example: sFeDJwqJbqScbSUp4Jz54MDlnFv1
+        createdAt:
+          type: string
+          format: date-time
+          description: 생성 시각
+        updatedAt:
+          type: string
+          format: date-time
+          description: 수정 시각
+        isDeleted:
+          type: boolean
+          description: 삭제 여부
+          example: false
 
     # ========================================
     # createPromise
