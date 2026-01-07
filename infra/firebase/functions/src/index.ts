@@ -1511,7 +1511,8 @@ export const respondPromise = onCall<RespondPromiseRequest>(
         newAcceptedCount += 1;
       }
 
-      const minimumParticipants = (promiseData.minimumParticipants as number) ?? 2;
+      const minimumParticipants =
+        (promiseData.minimumParticipants as number) ?? 2;
       const isConfirmed = newAcceptedCount >= minimumParticipants;
       updateData["status"] = isConfirmed ? "active" : "pending";
 
