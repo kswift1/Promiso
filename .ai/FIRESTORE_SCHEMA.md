@@ -11,6 +11,8 @@
      - [1-3. groups (Map)](#1-3-usersuseridgroups-map)
    - [2. groups](#2-groups-컬렉션)
    - [3. promises](#3-promises-컬렉션)
+     - [3-1. votes (Map)](#3-1-promisespromiseidvotes-map)
+     - [3-2. location (Map)](#3-2-promisespromiseidlocation-map)
    - [4. notifications](#4-notifications-컬렉션)
 4. [쿼리 패턴](#쿼리-패턴)
 5. [보안 규칙](#보안-규칙)
@@ -52,8 +54,10 @@ Firestore Root
 │
 ├─ promises/                        # 약속 정보
 │  └─ {promiseId}/                  # 약속 문서
-│     └─ attendances/               # 참석자 정보 (서브컬렉션)
-│        └─ {userId}/               # 참석자별 응답 상태
+│     ├─ votes (Map)                # 투표 상태별 userId 배열
+│     │                             # { accepted: [...], declined: [...] }
+│     └─ location (Map)             # 장소 정보 (선택)
+│                                   # { name: "..." }
 │
 └─ notifications/                   # 알림 정보
    └─ {notificationId}/             # 알림 문서
@@ -444,148 +448,183 @@ promises/{promiseId}
 #### 🔑 문서 ID
 
 - Firestore 자동 생성 ID 사용
-- 예시: `promise_movie_abc123`, `promise_coffee_def456`
+- 예시: `xYz9Abc123Def456`
 
 #### 📊 필드 구조
 
 | 필드명 | 타입 | 필수 | 기본값 | 설명 |
 |--------|------|------|--------|------|
-| `emoji` | String | ✅ | - | 약속 대표 이모지 |
 | `title` | String | ✅ | - | 약속 제목 |
+| `emoji` | String | ❌ | null | 약속 대표 이모지 |
 | `description` | String | ❌ | null | 약속 설명 |
-| `minimumParticipants` | Number | ✅ | 2 | 최소 참가자 수 |
-| `requiredCount` | Number | ✅ | - | 확정 필요 인원 (= minimumParticipants) |
-| `isConfirmed` | Boolean | ✅ | false | 약속 확정 여부 |
-| `confirmedAt` | Timestamp | ❌ | null | 확정 시각 |
 | `hostId` | String | ✅ | - | 호스트(생성자) ID |
-| `hostName` | String | ✅ | - | 호스트 이름 (캐시) |
 | `groupId` | String | ✅ | - | 그룹 ID |
-| `groupName` | String | ✅ | - | 그룹 이름 (캐시) |
-| `counts` | Map | ✅ | - | 참석 상태별 카운트 |
-| `counts.total` | Number | ✅ | 0 | 전체 초대 인원 |
-| `counts.accepted` | Number | ✅ | 0 | 수락 인원 |
-| `counts.declined` | Number | ✅ | 0 | 거절 인원 |
-| `counts.pending` | Number | ✅ | 0 | 대기 인원 |
-| `counts.tentative` | Number | ✅ | 0 | 미정 인원 |
+| `minimumParticipants` | Number | ✅ | 2 | 최소 참가자 수 (확정 기준) |
+| `votes` | Votes | ✅ | - | 투표 정보 (하단 참조) |
 | `startAt` | Timestamp | ✅ | - | 시작 시각 |
-| `endAt` | Timestamp | ✅ | - | 종료 시각 |
-| `localYyyymm` | String | ✅ | - | 로컬 년월 (YYYYMM) |
-| `localYyyymmdd` | String | ✅ | - | 로컬 년월일 (YYYYMMDD) |
-| `localTz` | String | ✅ | "Asia/Seoul" | 타임존 |
+| `endAt` | Timestamp | ❌ | null | 종료 시각 |
+| `location` | Location | ❌ | null | 장소 정보 (하단 참조) |
 | `status` | String | ✅ | "pending" | 약속 상태 (`pending` \| `active` \| `completed` \| `cancelled`) |
-| `location` | Map | ❌ | null | 장소 정보 |
-| `location.name` | String | ✅ | - | 장소명 |
-| `arrivalSharingTime` | Number | ❌ | null | 도착 공유 시작 (분 단위) |
-| `titleLower` | String | ✅ | - | 제목 소문자 (검색용) |
 | `createdAt` | Timestamp | ✅ | - | 생성 시각 |
 | `updatedAt` | Timestamp | ✅ | - | 수정 시각 |
 | `isDeleted` | Boolean | ✅ | false | 삭제 여부 (소프트 삭제) |
-
-#### 📝 설계 메모
-
-- `hostName`, `groupName`은 표시용 캐시
-- `status` 상태 전이 규칙 정의 필요 (pending -> active -> completed/cancelled)
-- `localYyyymm`, `localYyyymmdd`는 월/일 조회용 인덱스
 
 #### 📝 예시 데이터
 
 ```json
 {
-  "emoji": "🍿",
   "title": "영화 관람",
+  "emoji": "🍿",
   "description": "마블 신작 보러 가기",
-  "minimumParticipants": 2,
-  "requiredCount": 2,
-  "isConfirmed": true,
-  "confirmedAt": "2024-01-14T18:00:00+09:00",
   "hostId": "user_kim123",
-  "hostName": "김민수",
   "groupId": "group_friends",
-  "groupName": "대학 친구들",
-  "counts": {
-    "total": 4,
-    "accepted": 3,
-    "declined": 1,
-    "pending": 0,
-    "tentative": 0
+  "minimumParticipants": 2,
+  "votes": {
+    "accepted": ["user_kim123", "user_lee456", "user_park789"],
+    "declined": ["user_choi012"],
+    "until": "2024-01-15T19:00:00+09:00"
   },
   "startAt": "2024-01-15T19:00:00+09:00",
   "endAt": "2024-01-15T21:30:00+09:00",
-  "localYyyymm": "202401",
-  "localYyyymmdd": "20240115",
-  "localTz": "Asia/Seoul",
-  "status": "active",
   "location": {
     "name": "CGV 강남"
   },
-  "arrivalSharingTime": 30,
-  "titleLower": "영화 관람",
+  "status": "active",
   "createdAt": "2024-01-14T10:00:00+09:00",
   "updatedAt": "2024-01-14T18:00:00+09:00",
   "isDeleted": false
 }
 ```
 
+#### 💡 설계 의도
+
+- **읽기 비용 절감**: 1 promise + N attendances → 1 promise (90% 절감)
+- **단순화**: 서브컬렉션 관리 불필요, 트랜잭션 단순화
+- **실시간 업데이트**: 단일 문서 리스너로 모든 투표 상태 감지
+- **문서 크기**: userId 28자 × 10명 × 2상태 ≈ 1KB (그룹 최대 10명)
+
 ---
 
-### 3-1. promises/{promiseId}/attendances (서브컬렉션)
+### 3-1. promises/{promiseId}.votes (Map)
 
-약속 참석자별 응답 상태를 저장합니다.
+투표 상태별 userId 배열을 저장합니다.
 
-#### 📍 문서 경로
+#### 📍 필드 경로
 
 ```
-promises/{promiseId}/attendances/{userId}
+promises/{promiseId}.votes
 ```
 
-#### 🔑 문서 ID
-
-- 사용자 ID와 동일 (예: `user_kim123`)
-
-#### 📊 필드 구조
+#### 📦 Votes 구조
 
 | 필드명 | 타입 | 필수 | 기본값 | 설명 |
 |--------|------|------|--------|------|
-| `userId` | String | ✅ | - | 사용자 ID |
-| `userName` | String | ✅ | - | 사용자 이름 (캐시) |
-| `profileImageUrl` | String | ❌ | null | 프로필 이미지 (캐시) |
-| `status` | String | ✅ | "pending" | 응답 상태 |
-| `isHost` | Boolean | ✅ | false | 호스트 여부 |
-| `respondedAt` | Timestamp | ❌ | null | 응답 시각 |
-| `message` | String | ❌ | null | 코멘트 |
-| `notificationSent` | Boolean | ✅ | false | 알림 전송 여부 |
-| `lastViewedAt` | Timestamp | ❌ | null | 마지막 조회 시각 |
-| `reminderSentAt` | Timestamp | ❌ | null | 리마인더 전송 시각 |
-| `invitedAt` | Timestamp | ✅ | - | 초대 시각 |
-| `invitedBy` | String | ✅ | - | 초대한 사용자 ID |
+| `accepted` | Array<String> | ✅ | [] | 참여 확정한 userId 목록 |
+| `declined` | Array<String> | ✅ | [] | 참여 불가한 userId 목록 |
+| `until` | Timestamp | ✅ | startAt | 투표 마감 시각 (기본값: startAt)
 
-#### 📊 status 값 정의
+#### 📊 투표 상태 (VoteStatus)
 
-| 값 | 의미 | 설명 |
-|----|------|------|
-| `pending` | 대기 | 아직 응답하지 않음 |
-| `accepted` | 수락 | 참석 확정 |
-| `declined` | 거절 | 참석 불가 |
-| `tentative` | 미정 | 아직 확실하지 않음 |
+| 상태 | 저장 방식 | 설명 |
+|------|----------|------|
+| `pending` | 계산 | groups/{groupId}.memberIds - votes.accepted - votes.declined |
+| `accepted` | votes.accepted 배열 | 참여 확정 |
+| `declined` | votes.declined 배열 | 참여 불가 |
+
+#### 🔧 Set-like 동작
+
+Firestore에는 Set 타입이 없지만, `arrayUnion`/`arrayRemove`로 Set처럼 사용:
+
+```typescript
+// 추가 (중복 자동 방지)
+await promiseRef.update({
+  "votes.accepted": FieldValue.arrayUnion(userId)
+});
+
+// 제거
+await promiseRef.update({
+  "votes.accepted": FieldValue.arrayRemove(userId)
+});
+
+// 포함 여부 확인 (쿼리)
+.where("votes.accepted", "array-contains", userId)
+```
+
+#### 📝 계산 로직
+
+```swift
+// pending 멤버 계산
+func pendingMembers(memberIds: [String]) -> [String] {
+  memberIds.filter { !votes.accepted.contains($0) && !votes.declined.contains($0) }
+}
+
+// 확정 여부
+var isConfirmed: Bool {
+  votes.accepted.count >= minimumParticipants
+}
+
+// 내 투표 상태
+func myVoteStatus(userId: String) -> VoteStatus {
+  if votes.accepted.contains(userId) { return .accepted }
+  if votes.declined.contains(userId) { return .declined }
+  return .pending
+}
+```
 
 #### 📝 예시 데이터
 
 ```json
 {
-  "userId": "user_kim123",
-  "userName": "김민수",
-  "profileImageUrl": "https://storage.googleapis.com/.../kim123.jpg",
-  "status": "accepted",
-  "isHost": true,
-  "respondedAt": "2024-01-14T10:00:00+09:00",
-  "message": "저는 무조건 가요!",
-  "notificationSent": true,
-  "lastViewedAt": "2024-01-15T18:30:00+09:00",
-  "reminderSentAt": "2024-01-15T18:00:00+09:00",
-  "invitedAt": "2024-01-14T10:00:00+09:00",
-  "invitedBy": "user_kim123"
+  "votes": {
+    "accepted": ["user_kim123", "user_lee456", "user_park789"],
+    "declined": ["user_choi012"],
+    "until": "2024-01-15T19:00:00+09:00"
+  }
 }
 ```
+
+#### 💡 설계 의도
+
+- **attendances 서브컬렉션 제거**: votes Map으로 대체하여 읽기 비용 90% 절감
+- **counts 필드 제거**: votes 배열에서 실시간 계산
+- **pending 상태**: memberIds에서 계산 (저장하지 않음)
+- **until**: 생성 시 startAt으로 설정, 추후 투표 기간 커스텀 가능
+- **status 상태 전이**: pending → active (확정 시) → completed/cancelled
+
+---
+
+### 3-2. promises/{promiseId}.location (Map)
+
+약속 장소 정보를 저장합니다.
+
+#### 📍 필드 경로
+
+```
+promises/{promiseId}.location
+```
+
+#### 📦 Location 구조
+
+| 필드명 | 타입 | 필수 | 설명 |
+|--------|------|------|------|
+| `name` | String | ✅ | 장소명 |
+
+> 💡 향후 확장 시 `address`, `latitude`, `longitude`, `placeId` 등 추가 가능
+
+#### 📝 예시 데이터
+
+```json
+{
+  "location": {
+    "name": "CGV 강남"
+  }
+}
+```
+
+#### 💡 설계 의도
+
+- **단순성**: MVP에서는 장소명만 저장
+- **확장성**: 위치 정보 필요시 필드 추가
 
 ---
 
@@ -847,15 +886,7 @@ service cloud.firestore {
       allow update, delete: if request.auth != null &&
                                resource.data.hostId == request.auth.uid;
 
-      // 참석자 정보
-      match /attendances/{userId} {
-        // 그룹 멤버만 읽기 가능
-        allow read: if request.auth != null &&
-                       get(/databases/$(database)/documents/groups/$(get(/databases/$(database)/documents/promises/$(promiseId)).data.groupId)).data.memberIds.hasAny([request.auth.uid]);
-
-        // 본인 응답만 수정 가능
-        allow write: if request.auth != null && request.auth.uid == userId;
-      }
+      // votes 필드 업데이트는 그룹 멤버만 가능 (Cloud Functions 통해 처리 권장)
     }
 
     // ===== 알림 =====
@@ -905,11 +936,12 @@ service cloud.firestore {
 | `notifications_by_user` | userId | ASC | 사용자별 알림 목록 |
 |  | createdAt | DESC |  |
 
-#### 3. Collection Group 인덱스
+#### 3. 추가 인덱스 (votes 쿼리용)
 
-| 컬렉션 그룹 | 필드 | 순서 | 용도 |
+| 인덱스 이름 | 필드 | 순서 | 용도 |
 |------------|------|------|------|
-| `attendances` | userId | ASC | 사용자의 모든 참석 정보 |
+| `promises_by_accepted_user` | votes.accepted | array-contains | 내가 참여 확정한 약속 |
+| `promises_by_declined_user` | votes.declined | array-contains | 내가 거절한 약속 |
 
 ---
 
@@ -932,13 +964,22 @@ service cloud.firestore {
 |  |  | - GroupDocument: emoji, themeColor, photo, memberCount, requireApproval, defaultMinimumParticipants 제거 |  |
 |  |  | - GroupDocument.imageUrl: storagePath → downloadURL로 변경 |  |
 |  |  | - groups/{groupId}/members 서브컬렉션 제거 (memberIds 배열로 대체) |  |
+| 1.4 | 2025-01-07 | Promise 스키마 재설계 | Claude |
+|  |  | - attendances 서브컬렉션 제거 → votes Map으로 대체 (읽기 비용 90% 절감) |  |
+|  |  | - counts 필드 제거 → votes 배열에서 계산 |  |
+|  |  | - requiredCount → minimumParticipants로 이름 변경 |  |
+|  |  | - hostName, groupName 캐시 필드 제거 |  |
+|  |  | - tentative 상태 제거 (accepted/declined만 저장, pending은 계산) |  |
+|  |  | - votesUntil 필드 추가 (투표 마감 시각) |  |
+|  |  | - votes Map: Set-like 동작 (arrayUnion/arrayRemove) 문서화 |  |
+|  |  | - location Map 별도 섹션으로 분리 |  |
 
 ---
 
 ## 백로그
 
-### v1.1
+### v1.5
 
-- 표시용 이름 조회 방식(캐시/조인/배치 업데이트) 결정
-- `status` 상태 정의 및 전이 규칙 문서화
-- `location`, `reminders` 필드 도입 시점 및 스키마 확정
+- `location` Map 확장: address, latitude, longitude, placeId 추가
+- `reminders` 기능 도입 시 스키마 확정
+- 실시간 위치 공유 (arrivalSharing) 스키마 설계

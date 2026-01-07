@@ -796,10 +796,11 @@ paths:
         - Promise
       summary: 약속 응답
       description: |
-        약속 참석자 응답을 수락/거절/미정으로 업데이트합니다.
+        약속 참석자 응답을 수락/거절로 업데이트합니다.
+        votes.accepted 또는 votes.declined 배열에 userId를 추가/제거합니다.
 
         **인증 필수**: Firebase Authentication 토큰 필요
-        **약속 참석자만 가능**
+        **그룹 멤버만 가능**
       operationId: respondPromise
       security:
         - firebaseAuth: []
@@ -816,14 +817,14 @@ paths:
                   $ref: '#/components/schemas/RespondPromiseRequest'
             examples:
               accept:
-                summary: 약속 수락
+                summary: 참여
                 value:
                   data:
                     promiseId: promise_abc123
                     status: accepted
                     env: stage
               decline:
-                summary: 약속 거절
+                summary: 참여불가
                 value:
                   data:
                     promiseId: promise_abc123
@@ -858,7 +859,7 @@ paths:
                   value:
                     error:
                       code: invalid-argument
-                      message: status는 accepted/declined/tentative 중 하나여야 합니다
+                      message: status는 accepted/declined 중 하나여야 합니다
 
         '401':
           description: 인증 실패
@@ -1543,6 +1544,125 @@ components:
           example: true
 
     # ========================================
+    # Promise Document Schema
+    # ========================================
+
+    PromiseDocument:
+      type: object
+      description: |
+        Firestore promises/{promiseId} 문서 구조
+
+        **투표 관리 방식**: votes Map
+        - attendances 서브컬렉션 제거
+        - votes.accepted: 참여 확정한 userId 배열
+        - votes.declined: 참여 불가한 userId 배열
+        - votes.until: 투표 마감 시각 (기본값: startAt)
+        - pending: memberIds - accepted - declined (계산)
+      required:
+        - title
+        - hostId
+        - groupId
+        - minimumParticipants
+        - votes
+        - startAt
+        - status
+        - createdAt
+        - updatedAt
+        - isDeleted
+      properties:
+        title:
+          type: string
+          description: 약속 제목
+          example: 영화 관람
+        emoji:
+          type: string
+          nullable: true
+          description: 약속 이모지
+          example: "🍿"
+        description:
+          type: string
+          nullable: true
+          description: 약속 설명
+          example: 마블 신작 보러 가기
+        hostId:
+          type: string
+          description: 호스트 ID
+          example: user_kim123
+        groupId:
+          type: string
+          description: 그룹 ID
+          example: group_friends
+        minimumParticipants:
+          type: integer
+          minimum: 2
+          description: 최소 참가자 수 (확정 기준)
+          example: 2
+        votes:
+          type: object
+          description: 투표 정보 (상태별 userId 배열 + 마감 시각)
+          required:
+            - accepted
+            - declined
+            - until
+          properties:
+            accepted:
+              type: array
+              items:
+                type: string
+              description: 참여 확정한 userId 목록
+              example: ["user_kim123", "user_lee456"]
+            declined:
+              type: array
+              items:
+                type: string
+              description: 참여 불가한 userId 목록
+              example: ["user_park789"]
+            until:
+              type: string
+              format: date-time
+              description: 투표 마감 시각 (기본값: startAt)
+              example: "2024-01-15T19:00:00+09:00"
+        startAt:
+          type: string
+          format: date-time
+          description: 시작 시각
+        endAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 종료 시각
+        location:
+          type: object
+          nullable: true
+          description: 장소 정보
+          properties:
+            name:
+              type: string
+              description: 장소명
+              example: CGV 강남
+        status:
+          type: string
+          enum:
+            - pending
+            - active
+            - completed
+            - cancelled
+          description: 약속 상태
+          example: active
+        createdAt:
+          type: string
+          format: date-time
+          description: 생성 시각
+        updatedAt:
+          type: string
+          format: date-time
+          description: 수정 시각
+        isDeleted:
+          type: boolean
+          description: 삭제 여부
+          example: false
+
+    # ========================================
     # createPromise
     # ========================================
 
@@ -1668,8 +1788,7 @@ components:
           enum:
             - accepted
             - declined
-            - tentative
-          description: 응답 상태
+          description: 응답 상태 (accepted=참여, declined=참여불가)
           example: accepted
 
         env:
@@ -1696,8 +1815,7 @@ components:
           enum:
             - accepted
             - declined
-            - tentative
-          description: 응답 상태
+          description: 응답 상태 (accepted=참여, declined=참여불가)
           example: accepted
 
     # ========================================
