@@ -1,7 +1,11 @@
 import PromisoShared
 import Clients
 
-// TODO: 공유기능 고도화 해서 딥링크 연결
+// TODO 1: 공유기능 고도화 해서 딥링크 연결
+// TODO 2: 과거 데이터 보여주기 기능
+// TODO 3: 페이징 기능 추가, 페이징 시 구독 관리 생각
+// TODO 4: 구독 관리 예외 케이스 추가 (백그라운드, 일정기간 지나거나 등등)
+// TODO 5: 약속 정보 변경 (제목, 설명, 시간, 충족 인원 모두)
 
 public enum GroupMain {}
 
@@ -370,6 +374,13 @@ extension GroupMain {
 
         case .createPromise(.presented(.delegate(.promiseCreated))):
           state.createPromise = nil
+          return .none
+
+        case .createPromise(.presented(.delegate(.createGroupRequested))):
+          state.createPromise = nil
+          state.createGroup = CreateGroup.Feature.State(
+            currentUser: state.currentUser
+          )
           return .none
 
         case .createPromise:

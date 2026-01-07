@@ -4,6 +4,7 @@ struct GroupListView: View {
   let selectedGroupId: String?
   let onGroupSelected: (GroupModel) -> Void
   let onRetry: () -> Void
+  let onCreateGroup: () -> Void
   @FocusState.Binding var isFocused: Bool
   
   var body: some View {
@@ -91,7 +92,7 @@ struct GroupListView: View {
         .multilineTextAlignment(.center)
 
       Button {
-        // TODO: 그룹 생성 화면으로 이동
+        onCreateGroup()
       } label: {
         HStack(spacing: 8) {
           Image(systemName: "plus.circle.fill")
@@ -331,6 +332,7 @@ private struct GroupSkeletonCard: View {
     selectedGroupId: nil,
     onGroupSelected: { _ in },
     onRetry: {},
+    onCreateGroup: {},
     isFocused: $focus
   )
   .padding()
@@ -348,6 +350,7 @@ private struct GroupSkeletonCard: View {
     selectedGroupId: "g2",
     onGroupSelected: { group in print("Selected: \(group.name)") },
     onRetry: {},
+    onCreateGroup: {},
     isFocused: $focus
   )
   .padding()
@@ -360,6 +363,7 @@ private struct GroupSkeletonCard: View {
     selectedGroupId: nil,
     onGroupSelected: { _ in },
     onRetry: {},
+    onCreateGroup: {},
     isFocused: $focus
   )
   .padding()
@@ -372,6 +376,7 @@ private struct GroupSkeletonCard: View {
     selectedGroupId: nil,
     onGroupSelected: { _ in },
     onRetry: { print("Retry tapped") },
+    onCreateGroup: {},
     isFocused: $focus
   )
   .padding()

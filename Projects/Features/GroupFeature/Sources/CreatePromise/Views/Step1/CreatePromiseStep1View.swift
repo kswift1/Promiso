@@ -46,6 +46,7 @@ struct CreatePromiseStep1View: View {
               selectedGroupId: store.promise.group?.id,
               onGroupSelected: { store.send(.view(.groupSelected($0))) },
               onRetry: { store.send(.view(.retryLoadGroups)) },
+              onCreateGroup: { store.send(.view(.createGroupTapped)) },
               isFocused: $isTitleFocused
             )
           }

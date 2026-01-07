@@ -103,6 +103,7 @@ public enum CreatePromise {
         case setDescription(String)
         case retryLoadGroups
         case clearCreationError
+        case createGroupTapped
       }
       
       // 내부에서만 발생하는 이벤트 (이펙트 응답/디바운스 등)
@@ -118,6 +119,7 @@ public enum CreatePromise {
       public enum Delegate: Sendable {
         case promiseCreated(id: String)
         case dismiss
+        case createGroupRequested
       }
     }
     
@@ -221,6 +223,9 @@ public enum CreatePromise {
               state.promise.endAt = date.addingTimeInterval(7200)
             }
             return .none
+
+          case .createGroupTapped:
+            return .send(.delegate(.createGroupRequested))
           }
           
           // MARK: - Internal
