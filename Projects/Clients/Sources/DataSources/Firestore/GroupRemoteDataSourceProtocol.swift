@@ -12,7 +12,7 @@ public protocol GroupRemoteDataSourceProtocol {
     description: String?,
     creatorId: String,
     photoData: Data?
-  ) async throws -> GroupCreationResult
+  ) async throws -> GroupCreationResultModel
 
   /// 단일 그룹 상세 조회
   func fetchGroup(groupId: String) async throws -> GroupModel
@@ -37,7 +37,7 @@ public protocol GroupRemoteDataSourceProtocol {
   // MARK: - Invite Operations
 
   /// 초대 코드로 그룹 미리보기
-  func previewGroup(inviteCode: String) async throws -> GroupPreview
+  func previewGroup(inviteCode: String) async throws -> GroupPreviewModel
 
   /// 초대 코드로 그룹 참여
   func joinGroup(inviteCode: String, userId: String) async throws -> GroupModel

@@ -48,10 +48,10 @@ public struct GroupClient: Sendable {
   public var fetchGroupMembers: @Sendable (_ groupId: String) async throws -> [UserPublicModel]
 
   /// 새 그룹 생성
-  public var createGroup: @Sendable (_ request: CreateGroupRequest) async throws -> GroupCreationResult
+  public var createGroup: @Sendable (_ request: CreateGroupRequestModel) async throws -> GroupCreationResultModel
 
   /// 초대 코드로 그룹 미리보기
-  public var previewGroup: @Sendable (_ inviteCode: String) async throws -> GroupPreview
+  public var previewGroup: @Sendable (_ inviteCode: String) async throws -> GroupPreviewModel
 
   /// 초대 코드로 그룹 참여
   public var joinGroup: @Sendable (_ inviteCode: String) async throws -> GroupModel
@@ -136,7 +136,7 @@ extension GroupClient: TestDependencyKey {
     },
     createGroup: { request in
       try await Task.sleep(for: .seconds(1))
-      return GroupCreationResult(
+      return GroupCreationResultModel(
         id: UUID().uuidString,
         name: request.name,
         inviteCode: "ABC123"
@@ -144,7 +144,7 @@ extension GroupClient: TestDependencyKey {
     },
     previewGroup: { inviteCode in
       try await Task.sleep(for: .seconds(0.5))
-      return GroupPreview(
+      return GroupPreviewModel(
         group: GroupModel(
           id: UUID().uuidString,
           name: "주말 등산 모임",

@@ -16,7 +16,7 @@ extension JoinGroup {
 
   public enum Step: Equatable {
     case enterCode
-    case preview(GroupPreview)
+    case preview(GroupPreviewModel)
   }
 
   // MARK: - Reducer
@@ -95,7 +95,7 @@ extension JoinGroup {
 
       @CasePathable
       public enum Internal: Sendable {
-        case previewGroupResponse(Result<GroupPreview, Error>)
+        case previewGroupResponse(Result<GroupPreviewModel, Error>)
         case joinGroupResponse(Result<GroupModel, Error>)
       }
 

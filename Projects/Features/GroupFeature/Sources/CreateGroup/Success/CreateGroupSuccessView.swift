@@ -10,7 +10,7 @@ import SwiftUI
 import Clients
 
 struct CreateGroupSuccessView: View {
-  let result: GroupCreationResult
+  let result: GroupCreationResultModel
   let onConfirm: () -> Void
   @State private var isCopied = false
   

@@ -41,7 +41,7 @@ extension CreateGroup {
       // Progress & Error
       var isCreating: Bool = false
       var creationError: String?
-      var creationResult: GroupCreationResult?
+      var creationResult: GroupCreationResultModel?
 
       public init(currentUser: UserPrivateModel) {
         self.currentUser = currentUser
@@ -91,7 +91,7 @@ extension CreateGroup {
       @CasePathable
       public enum Internal: Sendable {
         case photoLoaded(Data?)
-        case createGroupResponse(Result<GroupCreationResult, Error>)
+        case createGroupResponse(Result<GroupCreationResultModel, Error>)
       }
 
       @CasePathable
@@ -204,8 +204,8 @@ public enum MaxMembers: Int, CaseIterable, Equatable, Sendable {
 }
 
 private extension CreateGroup.Feature.State {
-  func makeCreateRequest() -> CreateGroupRequest {
-    CreateGroupRequest(
+  func makeCreateRequest() -> CreateGroupRequestModel {
+    CreateGroupRequestModel(
       name: trimmedGroupName,
       maxMembers: maxMembers.rawValue,
       description: groupDescription.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty,

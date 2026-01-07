@@ -61,7 +61,7 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
     description: String?,
     creatorId: String,
     photoData: Data?
-  ) async throws -> GroupCreationResult {
+  ) async throws -> GroupCreationResultModel {
     let groupId = UUID().uuidString
 
     // 1. 이미지 업로드 (선택적) - downloadURL 반환
@@ -106,7 +106,7 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
         throw GroupRemoteDataSourceError.invalidFunctionResponse
       }
 
-      return GroupCreationResult(
+      return GroupCreationResultModel(
         id: id,
         name: name,
         inviteCode: inviteCode
@@ -221,7 +221,7 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
   ///
   /// Firebase Functions의 previewGroup을 호출합니다.
   /// 실제로 참여하지 않고 그룹 정보만 조회합니다.
-  public func previewGroup(inviteCode: String) async throws -> GroupPreview {
+  public func previewGroup(inviteCode: String) async throws -> GroupPreviewModel {
     var callableData: [String: Any] = [
       "inviteCode": inviteCode.uppercased()
     ]
@@ -245,7 +245,7 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
 
     // 그룹 상세 정보 조회
     let group = try await fetchGroup(groupId: groupId)
-    return GroupPreview(group: group, members: members)
+    return GroupPreviewModel(group: group, members: members)
   }
 
   /// 초대 코드로 그룹 참여
