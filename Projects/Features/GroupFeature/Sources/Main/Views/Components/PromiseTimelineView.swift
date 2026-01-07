@@ -1,6 +1,15 @@
 import SwiftUI
 import Clients
 
+// MARK: - Swipe Action Config
+
+private struct SwipeActionConfig {
+  let title: String
+  let systemImage: String
+  let color: Color
+  let action: () -> Void
+}
+
 struct PromiseTimelineView: View {
   let promisesState: LoadingState<[PromiseModel]>
   let selectedFilter: StatusFilter
@@ -159,6 +168,54 @@ private struct PromiseRow: View {
 
   @State private var shakeOffset: CGFloat = 0
 
+  private var myVoteStatus: VoteStatus {
+    promise.myVoteStatus(userId: currentUserId)
+  }
+
+  // Leading swipe action (왼쪽 → 오른쪽)
+  private var leadingAction: SwipeActionConfig {
+    switch myVoteStatus {
+    case .accepted:
+      // 이미 수락한 경우 → 되돌리기
+      return SwipeActionConfig(
+        title: "되돌리기",
+        systemImage: "arrow.uturn.backward.circle.fill",
+        color: .blue,
+        action: { onChangeResponse?(promise.id, .pending) }
+      )
+    case .declined, .pending:
+      // 거절했거나 미응답 → 수락
+      return SwipeActionConfig(
+        title: "수락",
+        systemImage: "checkmark.circle.fill",
+        color: .green,
+        action: { onAccept(promise.id) }
+      )
+    }
+  }
+
+  // Trailing swipe action (오른쪽 → 왼쪽)
+  private var trailingAction: SwipeActionConfig {
+    switch myVoteStatus {
+    case .declined:
+      // 이미 거절한 경우 → 되돌리기
+      return SwipeActionConfig(
+        title: "되돌리기",
+        systemImage: "arrow.uturn.backward.circle.fill",
+        color: .blue,
+        action: { onChangeResponse?(promise.id, .pending) }
+      )
+    case .accepted, .pending:
+      // 수락했거나 미응답 → 거절
+      return SwipeActionConfig(
+        title: "거절",
+        systemImage: "xmark.circle.fill",
+        color: .red,
+        action: { onReject(promise.id) }
+      )
+    }
+  }
+
   var body: some View {
     ZStack {
       // 배경 힌트 레이어 - 리스트 행 전체 영역
@@ -185,16 +242,16 @@ private struct PromiseRow: View {
     .listRowSeparator(.hidden)
     .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
     .swipeActions(edge: .leading, allowsFullSwipe: true) {
-      Button(action: { onAccept(promise.id) }) {
-        Label("수락", systemImage: "checkmark.circle.fill")
+      Button(action: leadingAction.action) {
+        Label(leadingAction.title, systemImage: leadingAction.systemImage)
       }
-      .tint(.green)
+      .tint(leadingAction.color)
     }
     .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-      Button(action: { onReject(promise.id) }) {
-        Label("거절", systemImage: "xmark.circle.fill")
+      Button(action: trailingAction.action) {
+        Label(trailingAction.title, systemImage: trailingAction.systemImage)
       }
-      .tint(.red)
+      .tint(trailingAction.color)
     }
     .transition(
       .asymmetric(
@@ -207,13 +264,13 @@ private struct PromiseRow: View {
   @ViewBuilder
   private var swipeHintBackground: some View {
     ZStack {
-      // Leading (수락)
+      // Leading
       HStack {
         let progress = clamp((shakeOffset - 8) / 40)
         swipeHintBubble(
-          title: "수락",
-          systemImage: "checkmark.circle.fill",
-          fillColor: .green,
+          title: leadingAction.title,
+          systemImage: leadingAction.systemImage,
+          fillColor: leadingAction.color,
           progress: progress
         )
         .opacity(progress)
@@ -224,15 +281,15 @@ private struct PromiseRow: View {
       }
       .padding(.leading, 0)
 
-      // Trailing (거절)
+      // Trailing
       HStack {
         Spacer()
 
         let progress = clamp((abs(shakeOffset) - 8) / 40)
         swipeHintBubble(
-          title: "거절",
-          systemImage: "xmark.circle.fill",
-          fillColor: .red,
+          title: trailingAction.title,
+          systemImage: trailingAction.systemImage,
+          fillColor: trailingAction.color,
           progress: progress
         )
         .opacity(progress)
