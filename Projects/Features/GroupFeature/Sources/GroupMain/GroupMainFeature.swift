@@ -37,6 +37,9 @@ extension GroupMain {
       var currentGroup: GroupModel?
       var currentGroupMembers: [UserPublicModel]?
 
+      // 공유 시트용
+      var sharePromise: PromiseModel?
+
       @Presents var createPromise: CreatePromise.Feature.State?
       @Presents var createGroup: CreateGroup.Feature.State?
       @Presents var joinGroup: JoinGroup.Feature.State?
@@ -74,6 +77,8 @@ extension GroupMain {
         case promiseDeleted(String)
         case responseChanged(String, PromiseAttendanceStatus)
         case promiseTapped(PromiseModel)
+        case promiseShared(String)
+        case sharePromiseDismissed
         case openSideDrawer
         case groupManageTapped
         case createNewPromise
@@ -235,6 +240,16 @@ extension GroupMain {
           currentUserId: state.currentUser.userId,
           groupMembers: state.currentGroupMembers
         )))
+        return .none
+      case .promiseShared(let promiseId):
+        // 약속 공유 - 공유 시트 표시를 위한 상태 설정
+        guard let promise = state.promisesState.value?.first(where: { $0.id == promiseId }) else {
+          return .none
+        }
+        state.sharePromise = promise
+        return .none
+      case .sharePromiseDismissed:
+        state.sharePromise = nil
         return .none
       case .openSideDrawer:
         return .send(.delegate(.requestOpenSideDrawer))

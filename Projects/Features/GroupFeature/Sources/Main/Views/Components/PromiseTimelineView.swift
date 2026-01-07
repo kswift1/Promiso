@@ -11,6 +11,7 @@ struct PromiseTimelineView: View {
   let onReject: (String) -> Void
   let onDelete: ((String) -> Void)?
   let onChangeResponse: ((String, PromiseAttendanceStatus) -> Void)?
+  let onShare: ((String) -> Void)?
 
   private var promises: [PromiseModel] {
     promisesState.value ?? []
@@ -109,7 +110,8 @@ struct PromiseTimelineView: View {
               onAccept: onAccept,
               onReject: onReject,
               onDelete: onDelete,
-              onChangeResponse: onChangeResponse
+              onChangeResponse: onChangeResponse,
+              onShare: onShare
             )
           }
         } header: {
@@ -150,6 +152,7 @@ private struct PromiseRow: View {
   let onReject: (String) -> Void
   let onDelete: ((String) -> Void)?
   let onChangeResponse: ((String, PromiseAttendanceStatus) -> Void)?
+  let onShare: ((String) -> Void)?
 
   @State private var shakeOffset: CGFloat = 0
 
@@ -163,10 +166,12 @@ private struct PromiseRow: View {
         promise: promise,
         currentUserId: currentUserId,
         respondingState: respondingState,
+        onTap: onTap,
         onAccept: { onAccept(promise.id) },
         onReject: { onReject(promise.id) },
         onDelete: onDelete.map { delete in { delete(promise.id) } },
-        onChangeResponse: onChangeResponse.map { change in { status in change(promise.id, status) } }
+        onChangeResponse: onChangeResponse.map { change in { status in change(promise.id, status) } },
+        onShare: onShare.map { share in { share(promise.id) } }
       )
       .contentShape(Rectangle())
       .onTapGesture(perform: onTap)

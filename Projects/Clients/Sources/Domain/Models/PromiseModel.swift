@@ -295,3 +295,20 @@ extension PromiseModel {
     isTitleValid && isGroupValid && isStartTimeValid && isEndTimeValid && isMinimumParticipantsValid
   }
 }
+
+// MARK: - Share
+
+extension PromiseModel {
+  /// 공유용 텍스트
+  public var shareText: String {
+    var text = "\(displayEmoji) \(title)\n"
+    text += "📅 \(dateText) \(timeText)\n"
+    if let location = location {
+      text += "📍 \(location.name)\n"
+    }
+    if let description = description, !description.isEmpty {
+      text += "\n\(description)"
+    }
+    return text
+  }
+}

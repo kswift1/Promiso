@@ -6,10 +6,12 @@ struct PromiseCard: View {
   let promise: PromiseModel
   let currentUserId: String
   let respondingState: GroupMain.RespondingState
+  let onTap: () -> Void
   let onAccept: () -> Void
   let onReject: () -> Void
   let onDelete: (() -> Void)?
   let onChangeResponse: ((PromiseAttendanceStatus) -> Void)?
+  let onShare: (() -> Void)?
 
   private var isLocationUndecided: Bool {
     promise.locationText == "장소 미정"
@@ -188,12 +190,14 @@ struct PromiseCard: View {
       }
 
       // 항상 표시되는 옵션들
-      Button(action: {}) {
+      Button(action: onTap) {
         Label("상세 보기", systemImage: "info.circle")
       }
 
-      Button(action: {}) {
-        Label("공유하기", systemImage: "square.and.arrow.up")
+      if let onShare {
+        Button(action: onShare) {
+          Label("공유하기", systemImage: "square.and.arrow.up")
+        }
       }
     }
   }

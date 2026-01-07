@@ -56,6 +56,12 @@ extension GroupMain {
           JoinGroup.RootView(store: childStore)
         }
       }
+      .sheet(item: Binding(
+        get: { store.sharePromise },
+        set: { _ in store.send(.view(.sharePromiseDismissed)) }
+      )) { promise in
+        ShareSheet(items: [promise.shareText])
+      }
     }
     
     
@@ -85,7 +91,8 @@ extension GroupMain {
           onDelete: { promiseId in store.send(.view(.promiseDeleted(promiseId))) },
           onChangeResponse: { promiseId, status in
             store.send(.view(.responseChanged(promiseId, status)))
-          }
+          },
+          onShare: { promiseId in store.send(.view(.promiseShared(promiseId))) }
         )
         .refreshable {
           store.send(.view(.refreshTriggered))
@@ -236,4 +243,18 @@ private extension GroupMain.Feature.State {
   func respondingState(for promiseId: String) -> GroupMain.RespondingState {
     proposalResponding[promiseId] ?? .idle
   }
+}
+
+// MARK: - ShareSheet
+
+import UIKit
+
+struct ShareSheet: UIViewControllerRepresentable {
+  let items: [Any]
+
+  func makeUIViewController(context: Context) -> UIActivityViewController {
+    UIActivityViewController(activityItems: items, applicationActivities: nil)
+  }
+
+  func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
