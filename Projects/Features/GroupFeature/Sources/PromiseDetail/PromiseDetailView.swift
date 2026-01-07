@@ -504,8 +504,6 @@ private struct MemberListSheet: View {
   let members: [UserPublicModel]
   let colorType: PromiseDetail.Feature.ParticipantColorType
 
-  @SwiftUI.Environment(\.dismiss) private var dismiss
-
   private var color: Color {
     switch colorType {
     case .accepted: return .green
@@ -531,13 +529,6 @@ private struct MemberListSheet: View {
       }
       .navigationTitle("\(title) (\(members.count)명)")
       .navigationBarTitleDisplayMode(.inline)
-      .toolbar {
-        ToolbarItem(placement: .navigationBarTrailing) {
-          Button("닫기") {
-            dismiss()
-          }
-        }
-      }
     }
     .presentationDetents([.medium, .large])
     .presentationDragIndicator(.visible)
