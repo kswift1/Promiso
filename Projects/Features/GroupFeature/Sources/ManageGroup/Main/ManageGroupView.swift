@@ -119,6 +119,7 @@ extension ManageGroup {
         }
         .padding(.horizontal, 20)
       }
+      .auroraBackground()
       .navigationTitle("그룹 상세")
       .navigationBarTitleDisplayMode(.inline)
       .onAppear { store.send(.view(.onAppear)) }
