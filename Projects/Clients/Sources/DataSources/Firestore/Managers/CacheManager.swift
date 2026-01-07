@@ -43,7 +43,7 @@ public class CacheManager {
   /// 그룹 이름 캐시 일관성 검증
   public func validateGroupNameCache(groupId: String) async throws -> Bool {
     // 캐시된 그룹 정보 조회
-    guard let cachedGroup = getCache(GroupDocument.self, forKey: "group_\(groupId)") else {
+    guard let cachedGroup = getCache(GroupDTO.self, forKey: "group_\(groupId)") else {
       return false
     }
     
@@ -52,7 +52,7 @@ public class CacheManager {
     let document = try await ref.getDocument()
     
     guard document.exists,
-          let latestGroup = try? document.data(as: GroupDocument.self) else {
+          let latestGroup = try? document.data(as: GroupDTO.self) else {
       return false
     }
     

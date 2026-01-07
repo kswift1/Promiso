@@ -161,12 +161,12 @@ public final class GroupRemoteDataSource: @unchecked Sendable {
       throw GroupRemoteDataSourceError.invalidFunctionResponse
     }
 
-    let groupDocument = try groupSnapshot.data(as: GroupDocument.self)
-    guard !groupDocument.isDeleted else {
+    let dto = try groupSnapshot.data(as: GroupDTO.self)
+    guard !dto.isDeleted else {
       throw GroupRemoteDataSourceError.invalidFunctionResponse
     }
 
-    return groupDocument.toModel(id: groupId)
+    return GroupModel(dto: dto, id: groupId)
   }
 
   private func fetchGroupsInParallel(ids: [String]) async throws -> [GroupModel] {
@@ -177,10 +177,10 @@ public final class GroupRemoteDataSource: @unchecked Sendable {
           let groupSnapshot = try await groupRef.getDocument()
           guard groupSnapshot.exists else { return nil }
 
-          let groupDocument = try groupSnapshot.data(as: GroupDocument.self)
-          guard !groupDocument.isDeleted else { return nil }
+          let dto = try groupSnapshot.data(as: GroupDTO.self)
+          guard !dto.isDeleted else { return nil }
 
-          return groupDocument.toModel(id: groupId)
+          return GroupModel(dto: dto, id: groupId)
         }
       }
 
