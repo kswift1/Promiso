@@ -176,33 +176,53 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
     return try snapshot.documents.compactMap { try documentToPromise($0) }
   }
 
-  /// 활성 약속 실시간 구독
+  /// 활성 약속 실시간 구독 (과거 약속 제외)
   public func subscribeToActivePromises(groupId: String, limit: Int) -> AsyncStream<[PromiseModel]> {
-    AsyncStream { continuation in
+    print("[PromiseDataSource] 🔔 subscribeToActivePromises 호출: groupId=\(groupId)")
+    return AsyncStream { continuation in
+      print("[PromiseDataSource] 🔔 AsyncStream 생성됨")
+
       let query = db.environmentCollection(collectionName)
         .whereField("groupId", isEqualTo: groupId)
         .whereField("isDeleted", isEqualTo: false)
+        .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: Date()))
         .order(by: "startAt")
         .limit(to: limit)
 
+      print("[PromiseDataSource] 🔔 Firestore 리스너 등록 중...")
       let listener = query.addSnapshotListener { [weak self] snapshot, error in
-        guard let self = self else { return }
-
-        if let error = error {
-          print("[PromiseRemoteDataSource] Listener error: \(error.localizedDescription)")
+        guard let self = self else {
+          print("[PromiseDataSource] ⚠️ self가 nil")
           return
         }
 
-        guard let snapshot = snapshot else { return }
-
-        let promises = snapshot.documents.compactMap { doc -> PromiseModel? in
-          try? self.documentToPromise(doc)
+        if let error = error {
+          print("[PromiseDataSource] ❌ Listener error: \(error.localizedDescription)")
+          return
         }
+
+        guard let snapshot = snapshot else {
+          print("[PromiseDataSource] ⚠️ snapshot이 nil")
+          return
+        }
+
+        print("[PromiseDataSource] 📥 스냅샷 수신: \(snapshot.documents.count)개 문서")
+        let promises = snapshot.documents.compactMap { doc -> PromiseModel? in
+          do {
+            let promise = try self.documentToPromise(doc)
+            return promise
+          } catch {
+            print("[PromiseDataSource] ❌ 파싱 에러: \(error)")
+            return nil
+          }
+        }
+        print("[PromiseDataSource] ✅ 파싱 완료: \(promises.count)개 약속")
 
         continuation.yield(promises)
       }
 
-      continuation.onTermination = { _ in
+      continuation.onTermination = { reason in
+        print("[PromiseDataSource] 🛑 리스너 종료: \(reason)")
         listener.remove()
       }
     }
