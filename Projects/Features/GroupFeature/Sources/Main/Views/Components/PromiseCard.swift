@@ -5,6 +5,7 @@ import SwiftUI
 struct PromiseCard: View {
   let promise: PromiseModel
   let currentUserId: String
+  let host: UserPublicModel?
   let respondingState: GroupMain.RespondingState
   let onTap: () -> Void
   let onAccept: () -> Void
@@ -33,26 +34,23 @@ struct PromiseCard: View {
     VStack(alignment: .leading, spacing: 14) {
       // Host Section
       HStack(spacing: 10) {
-        // Profile Image (placeholder - host info would need to be fetched separately)
-        Circle()
-          .fill(
-            LinearGradient(
-              colors: [.blue.opacity(0.7), .purple.opacity(0.7)],
-              startPoint: .topLeading,
-              endPoint: .bottomTrailing
-            )
-          )
-          .frame(width: 32, height: 32)
-          .overlay(
-            Text("H")
-              .font(.system(size: 14, weight: .bold))
-              .foregroundColor(.white)
-          )
+        // Profile Image
+        HostProfileImage(host: host, isCurrentUser: isHost)
 
         VStack(alignment: .leading, spacing: 2) {
-          Text(isHost ? "내가 만든 약속" : "약속")
-            .font(.system(size: 13, weight: .semibold))
-            .foregroundColor(.primary)
+          if isHost {
+            Text("내가 만든 약속")
+              .font(.system(size: 13, weight: .semibold))
+              .foregroundColor(.primary)
+          } else if let hostName = host?.displayName {
+            Text("\(hostName)님의 약속")
+              .font(.system(size: 13, weight: .semibold))
+              .foregroundColor(.primary)
+          } else {
+            Text("약속")
+              .font(.system(size: 13, weight: .semibold))
+              .foregroundColor(.primary)
+          }
 
           if isHost {
             Text("호스트")
@@ -228,6 +226,59 @@ private extension View {
           )
       )
     }
+  }
+}
+
+// MARK: - Host Profile Image
+
+private struct HostProfileImage: View {
+  let host: UserPublicModel?
+  let isCurrentUser: Bool
+
+  private var initials: String {
+    if isCurrentUser { return "나" }
+    guard let name = host?.displayName, !name.isEmpty else { return "?" }
+    return String(name.prefix(1))
+  }
+
+  var body: some View {
+    if let profileUrl = host?.profileImageUrl, let url = URL(string: profileUrl) {
+      AsyncImage(url: url) { phase in
+        switch phase {
+        case .success(let image):
+          image
+            .resizable()
+            .aspectRatio(contentMode: .fill)
+            .frame(width: 32, height: 32)
+            .clipShape(Circle())
+        case .failure, .empty:
+          fallbackView
+        @unknown default:
+          fallbackView
+        }
+      }
+    } else {
+      fallbackView
+    }
+  }
+
+  private var fallbackView: some View {
+    Circle()
+      .fill(
+        LinearGradient(
+          colors: isCurrentUser
+            ? [.blue.opacity(0.7), .purple.opacity(0.7)]
+            : [.gray.opacity(0.5), .gray.opacity(0.3)],
+          startPoint: .topLeading,
+          endPoint: .bottomTrailing
+        )
+      )
+      .frame(width: 32, height: 32)
+      .overlay(
+        Text(initials)
+          .font(.system(size: 14, weight: .bold))
+          .foregroundColor(.white)
+      )
   }
 }
 

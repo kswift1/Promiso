@@ -84,6 +84,7 @@ extension GroupMain {
           promisesState: store.promisesState,
           selectedFilter: store.selectedFilter,
           currentUserId: store.currentUser.userId,
+          groupMembers: store.currentGroupMembers,
           respondingStates: store.proposalResponding,
           onTap: { promise in store.send(.view(.promiseTapped(promise))) },
           onAccept: { promiseId in store.send(.view(.proposalAccepted(promiseId))) },

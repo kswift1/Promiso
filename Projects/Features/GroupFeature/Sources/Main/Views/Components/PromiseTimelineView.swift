@@ -5,6 +5,7 @@ struct PromiseTimelineView: View {
   let promisesState: LoadingState<[PromiseModel]>
   let selectedFilter: StatusFilter
   let currentUserId: String
+  let groupMembers: [UserPublicModel]?
   let respondingStates: [String: GroupMain.RespondingState]
   let onTap: (PromiseModel) -> Void
   let onAccept: (String) -> Void
@@ -105,6 +106,7 @@ struct PromiseTimelineView: View {
             PromiseRow(
               promise: promise,
               currentUserId: currentUserId,
+              host: groupMembers?.first { $0.userId == promise.hostId },
               respondingState: respondingStates[promise.id] ?? .idle,
               onTap: { onTap(promise) },
               onAccept: onAccept,
@@ -146,6 +148,7 @@ struct PromiseTimelineView: View {
 private struct PromiseRow: View {
   let promise: PromiseModel
   let currentUserId: String
+  let host: UserPublicModel?
   let respondingState: GroupMain.RespondingState
   let onTap: () -> Void
   let onAccept: (String) -> Void
@@ -165,6 +168,7 @@ private struct PromiseRow: View {
       PromiseCard(
         promise: promise,
         currentUserId: currentUserId,
+        host: host,
         respondingState: respondingState,
         onTap: onTap,
         onAccept: { onAccept(promise.id) },
