@@ -5,6 +5,7 @@ struct PromiseTimelineView: View {
   let promisesState: LoadingState<[PromiseModel]>
   let selectedFilter: StatusFilter
   let currentUserId: String
+  let respondingStates: [String: GroupMain.RespondingState]
   let onAccept: (String) -> Void
   let onReject: (String) -> Void
   let onDelete: ((String) -> Void)?
@@ -102,6 +103,7 @@ struct PromiseTimelineView: View {
             PromiseRow(
               promise: promise,
               currentUserId: currentUserId,
+              respondingState: respondingStates[promise.id] ?? .idle,
               onAccept: onAccept,
               onReject: onReject,
               onDelete: onDelete,
@@ -140,6 +142,7 @@ struct PromiseTimelineView: View {
 private struct PromiseRow: View {
   let promise: PromiseModel
   let currentUserId: String
+  let respondingState: GroupMain.RespondingState
   let onAccept: (String) -> Void
   let onReject: (String) -> Void
   let onDelete: ((String) -> Void)?
@@ -156,6 +159,7 @@ private struct PromiseRow: View {
       PromiseCard(
         promise: promise,
         currentUserId: currentUserId,
+        respondingState: respondingState,
         onAccept: { onAccept(promise.id) },
         onReject: { onReject(promise.id) },
         onDelete: onDelete.map { delete in { delete(promise.id) } },

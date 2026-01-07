@@ -171,11 +171,43 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
       .whereField("isDeleted", isEqualTo: false)
       .order(by: "startAt")
       .limit(to: limit)
-    
+
     let snapshot = try await query.getDocuments()
     return try snapshot.documents.compactMap { try documentToPromise($0) }
   }
-  
+
+  /// 활성 약속 실시간 구독
+  public func subscribeToActivePromises(groupId: String, limit: Int) -> AsyncStream<[PromiseModel]> {
+    AsyncStream { continuation in
+      let query = db.environmentCollection(collectionName)
+        .whereField("groupId", isEqualTo: groupId)
+        .whereField("isDeleted", isEqualTo: false)
+        .order(by: "startAt")
+        .limit(to: limit)
+
+      let listener = query.addSnapshotListener { [weak self] snapshot, error in
+        guard let self = self else { return }
+
+        if let error = error {
+          print("[PromiseRemoteDataSource] Listener error: \(error.localizedDescription)")
+          return
+        }
+
+        guard let snapshot = snapshot else { return }
+
+        let promises = snapshot.documents.compactMap { doc -> PromiseModel? in
+          try? self.documentToPromise(doc)
+        }
+
+        continuation.yield(promises)
+      }
+
+      continuation.onTermination = { _ in
+        listener.remove()
+      }
+    }
+  }
+
   // MARK: - Helper Methods
 
   private func documentToPromise(_ document: QueryDocumentSnapshot) throws -> PromiseModel? {

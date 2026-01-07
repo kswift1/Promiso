@@ -76,6 +76,7 @@ extension GroupMain {
           promisesState: store.promisesState,
           selectedFilter: store.selectedFilter,
           currentUserId: store.currentUser.userId,
+          respondingStates: store.proposalResponding,
           onAccept: { promiseId in store.send(.view(.proposalAccepted(promiseId))) },
           onReject: { promiseId in store.send(.view(.proposalRejected(promiseId))) },
           onDelete: { promiseId in store.send(.view(.promiseDeleted(promiseId))) },

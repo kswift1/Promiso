@@ -5,6 +5,7 @@ import SwiftUI
 struct PromiseCard: View {
   let promise: PromiseModel
   let currentUserId: String
+  let respondingState: GroupMain.RespondingState
   let onAccept: () -> Void
   let onReject: () -> Void
   let onDelete: (() -> Void)?
@@ -61,7 +62,7 @@ struct PromiseCard: View {
         Spacer()
 
         // Status Badge
-        StatusBadge(status: responseStatus)
+        StatusBadge(status: responseStatus, respondingState: respondingState)
       }
 
       Divider()
@@ -260,20 +261,61 @@ private struct ResponseBadge: View {
 
 private struct StatusBadge: View {
   let status: PromiseResponseStatus
+  let respondingState: GroupMain.RespondingState
+
+  private var isResponding: Bool {
+    respondingState != .idle
+  }
+
+  private var respondingText: String {
+    switch respondingState {
+    case .accepting:
+      return "수락 중"
+    case .rejecting:
+      return "거절 중"
+    case .resetting:
+      return "되돌리는 중"
+    case .idle:
+      return ""
+    }
+  }
+
+  private var respondingColor: Color {
+    switch respondingState {
+    case .accepting:
+      return .green
+    case .rejecting:
+      return .red
+    case .resetting:
+      return .blue
+    case .idle:
+      return .clear
+    }
+  }
 
   var body: some View {
     HStack(spacing: 4) {
-      Image(systemName: status.iconName)
-        .font(.system(size: 12, weight: .semibold))
+      if isResponding {
+        ProgressView()
+          .progressViewStyle(CircularProgressViewStyle(tint: respondingColor))
+          .scaleEffect(0.7)
 
-      Text(status.displayText)
-        .font(.system(size: 12, weight: .semibold))
+        Text(respondingText)
+          .font(.system(size: 12, weight: .semibold))
+      } else {
+        Image(systemName: status.iconName)
+          .font(.system(size: 12, weight: .semibold))
+
+        Text(status.displayText)
+          .font(.system(size: 12, weight: .semibold))
+      }
     }
     .padding(.horizontal, 10)
     .padding(.vertical, 6)
-    .background(backgroundColor)
-    .foregroundColor(foregroundColor)
+    .background(isResponding ? respondingColor.opacity(0.1) : backgroundColor)
+    .foregroundColor(isResponding ? respondingColor : foregroundColor)
     .clipShape(Capsule())
+    .animation(.easeInOut(duration: 0.2), value: isResponding)
   }
 
   private var backgroundColor: Color {

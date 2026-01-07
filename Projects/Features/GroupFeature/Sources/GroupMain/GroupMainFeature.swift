@@ -6,6 +6,7 @@ public enum GroupMain {}
 extension GroupMain {
   private enum CancelID: Hashable {
     case respond(String)
+    case promiseSubscription
   }
   
   enum RespondingState: Equatable {
@@ -88,8 +89,8 @@ extension GroupMain {
         case currentGroupResponse(Result<GroupModel, AppError>)
         case fetchGroupMembers(groupId: String)
         case groupMembersResponse(Result<[UserPublicModel], AppError>)
-        case fetchPromises(groupId: String)
-        case loadPromisesResponse(Result<[PromiseModel], AppError>)
+        case subscribeToPromises(groupId: String)
+        case promisesUpdated([PromiseModel])
         case proposalRespondDone(promiseId: String, status: PromiseAttendanceStatus)
         case proposalRespondFailed(promiseId: String, error: AppError)
         case respondPromise(promiseId: String, status: PromiseAttendanceStatus)
@@ -117,9 +118,8 @@ extension GroupMain {
           return .none
         case .createPromise(.presented(.delegate(.promiseCreated(id: _)))):
           state.createPromise = nil
-          guard let currentGroupId = state.currentGroup?.id else { return .none }
-          state.promisesState = .loading
-          return .send(.internal(.fetchPromises(groupId: currentGroupId)))
+          // 리스너가 자동으로 새 약속을 감지함
+          return .none
         case .createPromise:
           return .none
         case .createGroup(.presented(.delegate(.dismiss))):
@@ -279,7 +279,7 @@ extension GroupMain {
           return .merge(
             .send(.internal(.fetchCurrentGroup(id: currentGroupId))),
             .send(.internal(.fetchGroupMembers(groupId: currentGroupId))),
-            .send(.internal(.fetchPromises(groupId: currentGroupId)))
+            .send(.internal(.subscribeToPromises(groupId: currentGroupId)))
           )
         }
         // 현재 그룹이 없거나 삭제된 경우 첫 번째 그룹으로 설정
@@ -303,7 +303,7 @@ extension GroupMain {
         state.currentGroup = group
         return .merge(
           .send(.internal(.fetchGroupMembers(groupId: group.id))),
-          .send(.internal(.fetchPromises(groupId: group.id)))
+          .send(.internal(.subscribeToPromises(groupId: group.id)))
         )
       case .currentGroupResponse(.failure(let error)):
         state.promisesState = .failed(error)
@@ -324,19 +324,16 @@ extension GroupMain {
         // 멤버 조회 실패는 치명적이지 않으므로 무시
         state.currentGroupMembers = nil
         return .none
-      case .fetchPromises(let id):
-        return .run { [promiseClient, id] send in
-          do {
-            let promises = try await promiseClient.getActivePromises(id, 20)
-            await send(.internal(.loadPromisesResponse(.success(promises))))
+      case .subscribeToPromises(let groupId):
+        state.promisesState = .loading
+        return .run { [promiseClient, groupId] send in
+          for await promises in promiseClient.subscribeToPromises(groupId, 20) {
+            await send(.internal(.promisesUpdated(promises)))
           }
-          catch { await send(.internal(.loadPromisesResponse(.failure(AppError(error))))) }
         }
-      case .loadPromisesResponse(.success(let promises)):
+        .cancellable(id: CancelID.promiseSubscription, cancelInFlight: true)
+      case .promisesUpdated(let promises):
         state.promisesState = .loaded(promises)
-        return .none
-      case .loadPromisesResponse(.failure(let error)):
-        state.promisesState = .failed(error)
         return .none
       case .proposalRespondDone(let id, let status):
         state.proposalResponding[id] = nil
@@ -347,27 +344,21 @@ extension GroupMain {
         state.promisesState = .failed(error)
         return .none
       case .respondPromise(let promiseId, let status):
-        let currentGroupId = state.currentGroup?.id
-        return .run { [promiseClient, promiseId, status, currentGroupId] send in
+        return .run { [promiseClient, promiseId, status] send in
           do {
             try await promiseClient.respondPromise(promiseId, status)
             await send(.internal(.proposalRespondDone(promiseId: promiseId, status: status)))
-            if let currentGroupId {
-              await send(.internal(.fetchPromises(groupId: currentGroupId)))
-            }
+            // 리스너가 자동으로 변경사항을 감지함
           } catch {
             await send(.internal(.proposalRespondFailed(promiseId: promiseId, error: AppError(error))))
           }
         }
       case .deletePromise(let promiseId):
-        let currentGroupId = state.currentGroup?.id
-        return .run { [promiseClient, promiseId, currentGroupId] send in
+        return .run { [promiseClient, promiseId] send in
           do {
             try await promiseClient.deletePromise(promiseId)
             await send(.internal(.deletePromiseDone(promiseId: promiseId)))
-            if let currentGroupId {
-              await send(.internal(.fetchPromises(groupId: currentGroupId)))
-            }
+            // 리스너가 자동으로 변경사항을 감지함
           } catch {
             await send(.internal(.deletePromiseFailed(promiseId: promiseId, error: AppError(error))))
           }
