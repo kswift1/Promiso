@@ -1,7 +1,8 @@
 import Clients
+import Nuke
 import SwiftUI
 import ComposableArchitecture
-import Nuke
+import PromisoShared
 
 extension ManageGroup {
   public struct RootView: View {
@@ -463,44 +464,16 @@ extension ManageGroup {
 private struct MemberGridItem: View {
   let member: UserPublicModel
   let isHost: Bool
-  @State private var loadedImage: UIImage?
-  @State private var isLoading = false
 
   var body: some View {
     VStack(spacing: 8) {
       ZStack(alignment: .topTrailing) {
-        ZStack {
-          Circle()
-            .fill(
-              LinearGradient(
-                colors: [Color.blue.opacity(0.1), Color.purple.opacity(0.05)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-              )
-            )
-            .frame(width: 64, height: 64)
-
-          if let loadedImage {
-            Image(uiImage: loadedImage)
-              .resizable()
-              .scaledToFill()
-              .frame(width: 64, height: 64)
-              .clipShape(Circle())
-          } else if isLoading {
-            ProgressView()
-              .tint(.secondary)
-          } else {
-            Text(initials)
-              .font(.system(size: 24, weight: .semibold))
-              .foregroundStyle(
-                LinearGradient(
-                  colors: [.blue, .purple],
-                  startPoint: .topLeading,
-                  endPoint: .bottomTrailing
-                )
-              )
-          }
-        }
+        ProfileAvatarView(
+          profileImageUrl: member.profileImageUrl,
+          displayName: member.displayName,
+          size: 64,
+          borderWidth: 0
+        )
         .overlay(
           Circle()
             .strokeBorder(
@@ -531,27 +504,6 @@ private struct MemberGridItem: View {
         .font(.caption)
         .foregroundStyle(.primary)
         .lineLimit(1)
-    }
-    .task {
-      await loadImage()
-    }
-  }
-
-  private var initials: String {
-    String(member.name.prefix(1))
-  }
-
-  private func loadImage() async {
-    guard let profile = member.profile else { return }
-    isLoading = true
-    defer { isLoading = false }
-
-    do {
-      guard let url = URL(string: profile.url) else { return }
-      let request = ImageRequest(url: url)
-      loadedImage = try await ImagePipeline.shared.image(for: request)
-    } catch {
-      loadedImage = nil
     }
   }
 }

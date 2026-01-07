@@ -1,6 +1,7 @@
 import SwiftUI
 import ComposableArchitecture
 import Clients
+import PromisoShared
 
 extension PromiseDetail {
   public struct RootView: View {
@@ -374,24 +375,37 @@ private struct ParticipantGroup: View {
       // 참여자 아바타 (최대 5명)
       HStack(spacing: -8) {
         ForEach(userIds.prefix(5), id: \.self) { userId in
-          Circle()
-            .fill(color.opacity(0.2))
-            .frame(width: 28, height: 28)
-            .overlay(
-              Text(memberInitial(for: userId))
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(color)
+          if let member = members?.first(where: { $0.userId == userId }) {
+            ProfileAvatarView(
+              profileImageUrl: member.profileImageUrl,
+              displayName: member.displayName,
+              size: 28
             )
+          } else {
+            ProfileAvatarView(
+              profileImageUrl: nil,
+              displayName: "?",
+              size: 28
+            )
+          }
         }
 
         if userIds.count > 5 {
-          Circle()
-            .fill(Color.gray.opacity(0.2))
+          Text("+\(userIds.count - 5)")
+            .font(.system(size: 10, weight: .bold))
+            .foregroundColor(.white)
             .frame(width: 28, height: 28)
+            .background(
+              LinearGradient(
+                colors: [Color(red: 0.6, green: 0.6, blue: 0.65), Color(red: 0.45, green: 0.45, blue: 0.5)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+              )
+            )
+            .clipShape(Circle())
             .overlay(
-              Text("+\(userIds.count - 5)")
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(.secondary)
+              Circle()
+                .stroke(Color.white, lineWidth: 2)
             )
         }
       }
@@ -399,13 +413,6 @@ private struct ParticipantGroup: View {
     .padding(.horizontal, 16)
     .padding(.vertical, 12)
     .glassCard()
-  }
-
-  private func memberInitial(for userId: String) -> String {
-    if let member = members?.first(where: { $0.userId == userId }) {
-      return String(member.displayName.prefix(1))
-    }
-    return "?"
   }
 }
 

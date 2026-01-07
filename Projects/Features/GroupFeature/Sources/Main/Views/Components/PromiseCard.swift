@@ -1,5 +1,4 @@
 import Clients
-import Nuke
 import PromisoShared
 import SwiftUI
 
@@ -47,7 +46,12 @@ struct PromiseCard: View {
       // Host Section
       HStack(spacing: 10) {
         // Profile Image
-        HostProfileImage(host: host, isCurrentUser: isHost)
+        ProfileAvatarView(
+          profileImageUrl: host?.profileImageUrl,
+          displayName: host?.displayName ?? "",
+          isCurrentUser: isHost,
+          size: 32
+        )
 
         VStack(alignment: .leading, spacing: 2) {
           if isHost {
@@ -119,8 +123,15 @@ struct PromiseCard: View {
         Spacer()
       }
 
-      // Bottom Section - Participants & Vote counts
-      HStack(spacing: 12) {
+      // Bottom Section - Participant count & Avatars
+      HStack {
+        // Participant count
+        Text("\(promise.votes.acceptedCount)/\(promise.minimumParticipants)명 참여")
+          .font(.system(size: 13, weight: .medium))
+          .foregroundColor(.secondary)
+
+        Spacer()
+
         // Participant Avatars
         if !acceptedMembers.isEmpty {
           ParticipantsAvatarView(
@@ -128,32 +139,6 @@ struct PromiseCard: View {
             currentUserId: currentUserId,
             maxDisplay: 4
           )
-        }
-
-        // Vote counts
-        HStack(spacing: 4) {
-          Image(systemName: "checkmark.circle.fill")
-            .font(.system(size: 11))
-            .foregroundColor(.green)
-          Text("\(promise.votes.acceptedCount)/\(promise.minimumParticipants)")
-            .font(.system(size: 12, weight: .semibold))
-        }
-        .foregroundColor(.secondary)
-
-        Spacer()
-
-        if let deadline = promise.deadlineText, responseStatus == .needResponse {
-          HStack(spacing: 4) {
-            Image(systemName: "clock.fill")
-              .font(.system(size: 11))
-            Text(deadline)
-              .font(.system(size: 12, weight: .semibold))
-          }
-          .foregroundColor(.orange)
-          .padding(.horizontal, 8)
-          .padding(.vertical, 4)
-          .background(Color.orange.opacity(0.1))
-          .clipShape(Capsule())
         }
       }
 
@@ -255,9 +240,11 @@ private struct ParticipantsAvatarView: View {
   var body: some View {
     HStack(spacing: -8) {
       ForEach(displayMembers) { member in
-        MemberAvatar(
-          member: member,
-          isCurrentUser: member.userId == currentUserId
+        ProfileAvatarView(
+          profileImageUrl: member.profileImageUrl,
+          displayName: member.displayName,
+          isCurrentUser: member.userId == currentUserId,
+          size: 24
         )
       }
 
@@ -266,135 +253,19 @@ private struct ParticipantsAvatarView: View {
           .font(.system(size: 10, weight: .bold))
           .foregroundColor(.white)
           .frame(width: 24, height: 24)
-          .background(Color(red: 0.5, green: 0.5, blue: 0.53))
+          .background(
+            LinearGradient(
+              colors: [Color(red: 0.6, green: 0.6, blue: 0.65), Color(red: 0.45, green: 0.45, blue: 0.5)],
+              startPoint: .topLeading,
+              endPoint: .bottomTrailing
+            )
+          )
           .clipShape(Circle())
           .overlay(
             Circle()
               .stroke(Color.white, lineWidth: 2)
           )
       }
-    }
-  }
-}
-
-private struct MemberAvatar: View {
-  let member: UserPublicModel
-  let isCurrentUser: Bool
-  @State private var loadedImage: UIImage?
-
-  private var initials: String {
-    if isCurrentUser { return "나" }
-    guard !member.displayName.isEmpty else { return "?" }
-    return String(member.displayName.prefix(1))
-  }
-
-  var body: some View {
-    ZStack {
-      fallbackContent
-
-      if let loadedImage {
-        Image(uiImage: loadedImage)
-          .resizable()
-          .aspectRatio(contentMode: .fill)
-      }
-    }
-    .frame(width: 24, height: 24)
-    .clipShape(Circle())
-    .overlay(
-      Circle()
-        .stroke(Color.white, lineWidth: 2)
-    )
-    .task(id: member.profileImageUrl) {
-      await loadImage()
-    }
-  }
-
-  private var fallbackContent: some View {
-    Circle()
-      .fill(
-        LinearGradient(
-          colors: isCurrentUser
-            ? [Color(red: 0.3, green: 0.5, blue: 0.9), Color(red: 0.6, green: 0.4, blue: 0.8)]
-            : [Color(red: 0.55, green: 0.55, blue: 0.58), Color(red: 0.45, green: 0.45, blue: 0.48)],
-          startPoint: .topLeading,
-          endPoint: .bottomTrailing
-        )
-      )
-      .overlay(
-        Text(initials)
-          .font(.system(size: 10, weight: .bold))
-          .foregroundColor(.white)
-      )
-  }
-
-  private func loadImage() async {
-    guard let urlString = member.profileImageUrl,
-          let url = URL(string: urlString) else { return }
-    do {
-      let request = ImageRequest(url: url)
-      loadedImage = try await ImagePipeline.shared.image(for: request)
-    } catch {
-      loadedImage = nil
-    }
-  }
-}
-
-// MARK: - Host Profile Image
-
-private struct HostProfileImage: View {
-  let host: UserPublicModel?
-  let isCurrentUser: Bool
-  @State private var loadedImage: UIImage?
-
-  private var initials: String {
-    if isCurrentUser { return "나" }
-    guard let name = host?.displayName, !name.isEmpty else { return "?" }
-    return String(name.prefix(1))
-  }
-
-  var body: some View {
-    ZStack {
-      fallbackView
-
-      if let loadedImage {
-        Image(uiImage: loadedImage)
-          .resizable()
-          .aspectRatio(contentMode: .fill)
-      }
-    }
-    .frame(width: 32, height: 32)
-    .clipShape(Circle())
-    .task(id: host?.profileImageUrl) {
-      await loadImage()
-    }
-  }
-
-  private var fallbackView: some View {
-    Circle()
-      .fill(
-        LinearGradient(
-          colors: isCurrentUser
-            ? [Color(red: 0.3, green: 0.5, blue: 0.9), Color(red: 0.6, green: 0.4, blue: 0.8)]
-            : [Color(red: 0.55, green: 0.55, blue: 0.58), Color(red: 0.45, green: 0.45, blue: 0.48)],
-          startPoint: .topLeading,
-          endPoint: .bottomTrailing
-        )
-      )
-      .overlay(
-        Text(initials)
-          .font(.system(size: 14, weight: .bold))
-          .foregroundColor(.white)
-      )
-  }
-
-  private func loadImage() async {
-    guard let urlString = host?.profileImageUrl,
-          let url = URL(string: urlString) else { return }
-    do {
-      let request = ImageRequest(url: url)
-      loadedImage = try await ImagePipeline.shared.image(for: request)
-    } catch {
-      loadedImage = nil
     }
   }
 }
