@@ -11,14 +11,14 @@ import Foundation
 public struct GroupSummary: Equatable, Identifiable, Sendable {
   public let id: String
   public let name: String
-  public let role: String?
+  public let role: GroupRole?
   public let joinedAt: Date?
   public let notifications: Bool?
 
-  init(
+  public init(
     id: String,
     name: String,
-    role: String? = nil,
+    role: GroupRole? = nil,
     joinedAt: Date? = nil,
     notifications: Bool? = nil
   ) {

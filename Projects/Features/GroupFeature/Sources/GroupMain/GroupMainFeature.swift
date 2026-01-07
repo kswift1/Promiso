@@ -181,16 +181,13 @@ extension GroupMain {
       case .onAppear:
         guard !state.isInitialized else { return .none }
         state.isInitialized = true
-        return .send(.internal(.fetchGroupList))
+        // 초기 로드: currentUser.groupSummaries 사용
+        let summaries = state.currentUser.groupSummaries
+        state.allGroupSummaries = state.currentUser.groupSummaries
+        return .send(.internal(.setDefaultGroup(groups: summaries)))
       case .refreshTriggered:
-        if let currentGroupId = state.currentGroup?.id {
-          state.promisesState = .loading
-          return .merge(
-            .send(.internal(.fetchCurrentGroup(id: currentGroupId))),
-            .send(.internal(.fetchGroupMembers(groupId: currentGroupId))),
-            .send(.internal(.fetchPromises(groupId: currentGroupId)))
-          )
-        }
+        // 리로드: 서버에서 최신 데이터 조회
+        state.promisesState = .loading
         return .send(.internal(.fetchGroupList))
       case .groupChanged(let group):
         guard group.id != state.currentGroup?.id else { return .none }
@@ -280,6 +277,16 @@ extension GroupMain {
         }
       case .groupListResponse(.success(let groupSummaries)):
         state.allGroupSummaries = groupSummaries
+        // 현재 선택된 그룹이 있으면 해당 그룹 데이터도 새로고침
+        if let currentGroupId = state.currentGroup?.id,
+           groupSummaries.contains(where: { $0.id == currentGroupId }) {
+          return .merge(
+            .send(.internal(.fetchCurrentGroup(id: currentGroupId))),
+            .send(.internal(.fetchGroupMembers(groupId: currentGroupId))),
+            .send(.internal(.fetchPromises(groupId: currentGroupId)))
+          )
+        }
+        // 현재 그룹이 없거나 삭제된 경우 첫 번째 그룹으로 설정
         return .send(.internal(.setDefaultGroup(groups: groupSummaries)))
       case .groupListResponse(.failure(let error)):
         state.promisesState = .failed(error)

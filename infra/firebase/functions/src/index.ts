@@ -22,8 +22,6 @@ import {
   RespondPromiseResponse,
   PreviewGroupRequest,
   PreviewGroupResponse,
-  UpdateGroupRequest,
-  UpdateGroupResponse,
   UpdateUserRequest,
   UpdateUserResponse,
   UpdateUserSettingsRequest,
@@ -229,6 +227,7 @@ export const getUser = onCall<GetUserRequest>(
         createdAt: userData.metaData.createdAt,
         updatedAt: userData.metaData.updatedAt,
       },
+      groups: userData.groups ?? null,
     };
 
     // 4. Private 정보 조회 시 auth 서브컬렉션에서 email, provider 추가

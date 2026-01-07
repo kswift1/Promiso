@@ -439,6 +439,9 @@ export interface UserPublicResponse {
 
   /** 메타데이터 */
   metaData: MetaData;
+
+  /** 사용자가 속한 그룹 목록 */
+  groups?: { [groupId: string]: UserGroupInfo } | null;
 }
 
 /**

@@ -12,6 +12,7 @@ private struct UserProfileResponse: Codable {
   let provider: String?
   let metaData: MetadataResponse
   let profile: ProfileImageResponse?
+  let groups: [String: GroupInfoResponse]?
 
   struct MetadataResponse: Codable {
     let createdAt: FirebaseTimestamp
@@ -25,6 +26,22 @@ private struct UserProfileResponse: Codable {
 
     var isValid: Bool {
       url != "<null>"
+    }
+  }
+
+  struct GroupInfoResponse: Codable {
+    let groupName: String
+    let role: GroupRole
+    let joinedAt: FirebaseTimestamp
+    let notifications: Bool
+
+    func toModel() -> UserGroupInfo {
+      UserGroupInfo(
+        groupName: groupName,
+        role: role,
+        joinedAt: joinedAt.date,
+        notifications: notifications
+      )
     }
   }
 
@@ -48,6 +65,8 @@ private struct UserProfileResponse: Codable {
       nil
     }
 
+    let groupsModel: [String: UserGroupInfo] = groups?.mapValues { $0.toModel() } ?? [:]
+
     return UserPrivate(
       userId: userId,
       name: name,
@@ -58,7 +77,8 @@ private struct UserProfileResponse: Codable {
       metadata: Metadata(
         createdAt: metaData.createdAt.date,
         updatedAt: metaData.updatedAt.date
-      )
+      ),
+      groups: groupsModel
     )
   }
 }

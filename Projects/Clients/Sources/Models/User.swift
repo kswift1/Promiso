@@ -69,6 +69,45 @@ public struct Metadata: Codable, Equatable, Hashable, Sendable {
   }
 }
 
+// MARK: - GroupRole
+
+/// 그룹 내 사용자 역할
+public enum GroupRole: String, Codable, Equatable, Hashable, Sendable {
+  /// 그룹 관리자 (생성자)
+  case admin
+  /// 일반 멤버
+  case member
+}
+
+// MARK: - UserGroupInfo
+
+/// 사용자별 그룹 정보 (users/{userId}.groups Map의 값)
+public struct UserGroupInfo: Codable, Equatable, Hashable, Sendable {
+  /// 그룹 이름 (캐시)
+  public let groupName: String
+
+  /// 사용자 역할
+  public let role: GroupRole
+
+  /// 그룹 가입 시각
+  public let joinedAt: Date
+
+  /// 알림 활성화 여부
+  public let notifications: Bool
+
+  public init(
+    groupName: String,
+    role: GroupRole,
+    joinedAt: Date = Date(),
+    notifications: Bool = true
+  ) {
+    self.groupName = groupName
+    self.role = role
+    self.joinedAt = joinedAt
+    self.notifications = notifications
+  }
+}
+
 // MARK: - UserPublic
 
 /// 공개 사용자 정보 모델 (타인 조회용)
@@ -107,6 +146,8 @@ public struct UserPrivate: UserPrivateInfo, Identifiable, Equatable, Hashable, S
   public let metadata: Metadata
   public let email: String
   public let provider: String
+  /// 사용자가 속한 그룹 목록 (groupId -> UserGroupInfo)
+  public let groups: [String: UserGroupInfo]
 
   public var id: String { userId }
 
@@ -117,7 +158,8 @@ public struct UserPrivate: UserPrivateInfo, Identifiable, Equatable, Hashable, S
     email: String,
     provider: String,
     profile: ProfileImage? = nil,
-    metadata: Metadata
+    metadata: Metadata,
+    groups: [String: UserGroupInfo] = [:]
   ) {
     self.userId = userId
     self.name = name
@@ -126,6 +168,7 @@ public struct UserPrivate: UserPrivateInfo, Identifiable, Equatable, Hashable, S
     self.provider = provider
     self.profile = profile
     self.metadata = metadata
+    self.groups = groups
   }
 }
 
@@ -208,5 +251,18 @@ extension UserPrivate {
       profile: profile,
       metadata: metadata
     )
+  }
+
+  /// groups Map을 GroupSummary 배열로 변환 (joinedAt 내림차순 정렬)
+  public var groupSummaries: [GroupSummary] {
+    groups.map { (groupId, info) in
+      GroupSummary(
+        id: groupId,
+        name: info.groupName,
+        role: info.role,
+        joinedAt: info.joinedAt,
+        notifications: info.notifications
+      )
+    }.sorted { ($0.joinedAt ?? .distantPast) > ($1.joinedAt ?? .distantPast) }
   }
 }

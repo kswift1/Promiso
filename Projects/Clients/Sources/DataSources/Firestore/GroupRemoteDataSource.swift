@@ -54,7 +54,7 @@ public final class GroupRemoteDataSource: @unchecked Sendable {
   /// Firebase Functions의 createGroup을 호출합니다.
   /// Functions에서 다음 작업을 수행합니다:
   /// 1. groups/{groupId} 생성 (memberIds: [creatorId] 포함)
-  /// 2. users/{creatorId}/groups/{groupId} 생성
+  /// 2. users/{creatorId}.groups Map에 그룹 정보 추가
   public func createGroup(
     name: String,
     maxMembers: Int,
@@ -130,15 +130,20 @@ public final class GroupRemoteDataSource: @unchecked Sendable {
   }
   
   /// 사용자가 속한 그룹 목록 조회
+  /// Map 방식: users/{userId}.groups에서 groupId 목록을 가져온 후 상세 조회
   public func fetchGroups(userId: String) async throws -> [GroupModel] {
-    let membershipSnapshot = try await db.environmentCollection("users")
+    let userDoc = try await db.environmentCollection("users")
       .document(userId)
-      .collection("groups")
-      .getDocuments()
-    
-    let groupIds = membershipSnapshot.documents.map { $0.documentID }
+      .getDocument()
+
+    guard let data = userDoc.data(),
+          let groupsMap = data["groups"] as? [String: [String: Any]] else {
+      return []
+    }
+
+    let groupIds = Array(groupsMap.keys)
     guard !groupIds.isEmpty else { return [] }
-    
+
     return try await fetchGroupsInParallel(ids: groupIds)
   }
 
@@ -255,7 +260,7 @@ public final class GroupRemoteDataSource: @unchecked Sendable {
   /// Functions에서 다음 작업을 수행합니다:
   /// 1. inviteCode로 그룹 조회
   /// 2. memberIds 배열에 userId 추가 (arrayUnion)
-  /// 3. users/{userId}/groups/{groupId} 생성
+  /// 3. users/{userId}.groups Map에 그룹 정보 추가
   public func joinGroup(inviteCode: String, userId: String) async throws -> GroupModel {
     var callableData: [String: Any] = [
       "inviteCode": inviteCode.uppercased(),
@@ -409,7 +414,8 @@ private extension GroupSummary {
     let trimmedName = groupName.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !trimmedName.isEmpty else { return nil }
 
-    let role = data["role"] as? String
+    let roleString = data["role"] as? String
+    let role = roleString.flatMap { GroupRole(rawValue: $0) }
     let notifications = data["notifications"] as? Bool
     let joinedAt = (data["joinedAt"] as? Timestamp)?.dateValue()
 
