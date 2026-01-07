@@ -119,12 +119,13 @@ extension AppEntry {
             }
             
           case .sessionCheckResponse(let isAuthenticated):
-            state.splash = .animatingOut
-
             if isAuthenticated {
               return .send(.internal(.startProfileCheck))
             } else {
               state.destination = .auth(Auth.Feature.State())
+              if state.splash == .visible {
+                state.splash = .animatingOut
+              }
               return .none
             }
             
@@ -138,6 +139,9 @@ extension AppEntry {
           case .profileCheckResponse(let user, let profile):
             if let userModel = profile {
               state.destination = .main(RootTab.Feature.State(currentUser: userModel))
+              if state.splash == .visible {
+                state.splash = .animatingOut
+              }
               // pending invite code가 있으면 메인 화면에 전달
               if let inviteCode = state.pendingInviteCode {
                 state.pendingInviteCode = nil
@@ -147,6 +151,9 @@ extension AppEntry {
               var profileState = ProfileSetup.State()
               profileState.inject(user: user)
               state.destination = .profile(profileState)
+              if state.splash == .visible {
+                state.splash = .animatingOut
+              }
             }
             return .none
           }
