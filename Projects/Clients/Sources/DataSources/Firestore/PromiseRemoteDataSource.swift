@@ -4,8 +4,8 @@ import FirebaseFirestore
 import FirebaseFunctions
 import PromisoShared
 
-/// Promise 관련 Firestore CRUD 및 쿼리 작업을 담당하는 Repository
-public class PromiseRepository: PromiseRepositoryProtocol {
+/// Promise 관련 Firestore CRUD 및 쿼리 작업을 담당하는 DataSource
+public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
   private let firestore: FirestoreProviding
   private let functions: Functions
   private let collectionName: String
@@ -65,7 +65,7 @@ public class PromiseRepository: PromiseRepositoryProtocol {
 
     guard let data = result.data as? [String: Any],
           let promiseId = data["promiseId"] as? String else {
-      throw NSError(domain: "PromiseRepository", code: -1, userInfo: [
+      throw NSError(domain: "PromiseRemoteDataSource", code: -1, userInfo: [
         NSLocalizedDescriptionKey: "약속 생성 응답이 올바르지 않습니다"
       ])
     }

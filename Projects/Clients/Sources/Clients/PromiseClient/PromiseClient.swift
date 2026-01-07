@@ -128,7 +128,7 @@ extension DependencyValues {
 
 extension PromiseClient: DependencyKey {
   public static let liveValue: PromiseClient = {
-    let repository: PromiseRepositoryProtocol = PromiseRepository()
+    let dataSource: PromiseRemoteDataSourceProtocol = PromiseRemoteDataSource()
 
     return PromiseClient(
       createPromise: { promise in
@@ -137,7 +137,7 @@ extension PromiseClient: DependencyKey {
         }
 
         do {
-          return try await repository.createPromise(promise)
+          return try await dataSource.createPromise(promise)
         } catch let error as NSError {
           // Firebase Functions 에러 메시지 추출
           let errorMessage = error.localizedDescription
@@ -165,25 +165,25 @@ extension PromiseClient: DependencyKey {
         }
       },
       updatePromise: { promise in
-        try await repository.updatePromise(promise)
+        try await dataSource.updatePromise(promise)
       },
       deletePromise: { promiseId in
-        try await repository.deletePromise(id: promiseId)
+        try await dataSource.deletePromise(id: promiseId)
       },
       getPromise: { promiseId in
-        try await repository.getPromise(id: promiseId)
+        try await dataSource.getPromise(id: promiseId)
       },
       getTodayPromises: { userId, groupId in
-        try await repository.getTodayPromises(userId: userId, groupId: groupId)
+        try await dataSource.getTodayPromises(userId: userId, groupId: groupId)
       },
       getUpcomingPromises: { userId, limit in
-        try await repository.getUpcomingPromises(userId: userId, limit: limit)
+        try await dataSource.getUpcomingPromises(userId: userId, limit: limit)
       },
       getActivePromises: { groupId, limit in
-        try await repository.getActivePromises(groupId: groupId, limit: limit)
+        try await dataSource.getActivePromises(groupId: groupId, limit: limit)
       },
       respondPromise: { promiseId, status in
-        try await repository.respondToPromise(
+        try await dataSource.respondToPromise(
           promiseId: promiseId,
           status: status.rawValue
         )
