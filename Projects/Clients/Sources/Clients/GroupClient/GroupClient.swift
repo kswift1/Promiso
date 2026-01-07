@@ -36,7 +36,7 @@ public struct GroupClient: Sendable {
   public var fetchGroups: @Sendable () async throws -> [GroupModel] = { [] }
 
   /// 네비게이션용 그룹 요약 목록 가져오기
-  public var fetchGroupSummaries: @Sendable () async throws -> [GroupSummary] = { [] }
+  public var fetchGroupSummaries: @Sendable () async throws -> [UserGroupInfo] = { [] }
 
   /// 그룹 ID 목록으로 상세 그룹 가져오기
   public var fetchGroupsByIds: @Sendable (_ ids: [String]) async throws -> [GroupModel] = { _ in [] }
@@ -92,10 +92,10 @@ extension GroupClient: TestDependencyKey {
     fetchGroupSummaries: {
       try await Task.sleep(for: .seconds(0.2))
       return [
-        .init(id: "g1", name: "지민과 나", role: .admin, notifications: true),
-        .init(id: "g2", name: "회사 동료들", role: .member, notifications: true),
-        .init(id: "g3", name: "대학 친구들", role: .member, notifications: false),
-        .init(id: "g4", name: "가족", role: .member, notifications: true)
+        UserGroupInfo(id: "g1", name: "지민과 나", role: .admin, notifications: true),
+        UserGroupInfo(id: "g2", name: "회사 동료들", role: .member, notifications: true),
+        UserGroupInfo(id: "g3", name: "대학 친구들", role: .member, notifications: false),
+        UserGroupInfo(id: "g4", name: "가족", role: .member, notifications: true)
       ]
     },
     fetchGroupsByIds: { ids in

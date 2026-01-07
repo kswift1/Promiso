@@ -33,7 +33,7 @@ extension GroupMain {
       var myResponses: [String: PromiseAttendanceStatus] = [:]
       var path = StackState<Path.State>()
 
-      var allGroupSummaries: [GroupSummary]?
+      var allGroupSummaries: [UserGroupInfo]?
       var currentGroup: GroupModel?
       var currentGroupMembers: [UserPublicModel]?
 
@@ -66,7 +66,7 @@ extension GroupMain {
       public enum ViewAction: Sendable {
         case onAppear
         case refreshTriggered
-        case groupChanged(GroupSummary)
+        case groupChanged(UserGroupInfo)
         case filterChanged(StatusFilter)
         case proposalAccepted(String)
         case proposalRejected(String)
@@ -82,8 +82,8 @@ extension GroupMain {
       
       public enum Internal: Sendable {
         case fetchGroupList
-        case groupListResponse(Result<[GroupSummary], AppError>)
-        case setDefaultGroup(groups: [GroupSummary])
+        case groupListResponse(Result<[UserGroupInfo], AppError>)
+        case setDefaultGroup(groups: [UserGroupInfo])
         case fetchCurrentGroup(id: String)
         case currentGroupResponse(Result<GroupModel, AppError>)
         case fetchGroupMembers(groupId: String)
@@ -170,9 +170,9 @@ extension GroupMain {
       case .onAppear:
         guard !state.isInitialized else { return .none }
         state.isInitialized = true
-        // 초기 로드: currentUser.groupSummaries 사용
-        let summaries = state.currentUser.groupSummaries
-        state.allGroupSummaries = state.currentUser.groupSummaries
+        // 초기 로드: currentUser.sortedGroups 사용
+        let summaries = state.currentUser.sortedGroups
+        state.allGroupSummaries = state.currentUser.sortedGroups
         return .send(.internal(.setDefaultGroup(groups: summaries)))
       case .refreshTriggered:
         // 리로드: 서버에서 최신 데이터 조회

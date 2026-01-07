@@ -25,7 +25,7 @@ public enum CreatePromise {
       var currentStep: CreatePromiseStep = .first
       var promise: PromiseModel = .empty
       var groupListState: LoadingState<[GroupModel]> = .idle
-      var groupSummaries: [GroupSummary]?
+      var groupSummaries: [UserGroupInfo]?
       var isCreatingPromise: Bool = false
       var creationError: Clients.PromiseClientError?
 
@@ -33,7 +33,7 @@ public enum CreatePromise {
         currentStep: CreatePromiseStep = .first,
         promise: PromiseModel = .empty,
         groupListState: LoadingState<[GroupModel]> = .idle,
-        groupSummaries: [GroupSummary]? = nil,
+        groupSummaries: [UserGroupInfo]? = nil,
         isCreatingPromise: Bool = false,
         creationError: Clients.PromiseClientError? = nil
       ) {

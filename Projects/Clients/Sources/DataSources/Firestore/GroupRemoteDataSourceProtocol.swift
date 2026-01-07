@@ -32,7 +32,7 @@ public protocol GroupRemoteDataSourceProtocol {
   func fetchGroupsByIds(ids: [String]) async throws -> [GroupModel]
 
   /// 네비게이션용 그룹 요약 목록 조회
-  func fetchGroupSummaries(userId: String) async throws -> [GroupSummary]
+  func fetchGroupSummaries(userId: String) async throws -> [UserGroupInfo]
 
   // MARK: - Invite Operations
 

@@ -197,7 +197,7 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
 
   /// 네비게이션용 그룹 요약 목록 조회
   /// Map 방식으로 변경: N회 읽기 → 1회 읽기로 비용 절감
-  public func fetchGroupSummaries(userId: String) async throws -> [GroupSummary] {
+  public func fetchGroupSummaries(userId: String) async throws -> [UserGroupInfo] {
     let userDoc = try await db.environmentCollection("users")
       .document(userId)
       .getDocument()
@@ -208,7 +208,7 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
     }
 
     return groupsMap.compactMap { (groupId, groupData) in
-      GroupSummary(id: groupId, data: groupData)
+      UserGroupInfo(id: groupId, data: groupData)
     }
   }
 
@@ -406,9 +406,9 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
   }
 }
 
-// MARK: - GroupSummary Mapping
+// MARK: - UserGroupInfo Mapping
 
-private extension GroupSummary {
+private extension UserGroupInfo {
   init?(id: String, data: [String: Any]) {
     let groupName = data["groupName"] as? String ?? ""
     let trimmedName = groupName.trimmingCharacters(in: .whitespacesAndNewlines)

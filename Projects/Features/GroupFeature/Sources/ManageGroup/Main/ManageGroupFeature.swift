@@ -13,7 +13,7 @@ extension ManageGroup {
     @ObservableState
     public struct State: Equatable {
       public let group: GroupModel
-      public let summary: GroupSummary?
+      public let summary: UserGroupInfo?
       public let currentUserId: String
 
       // Members
@@ -28,7 +28,7 @@ extension ManageGroup {
 
       public init(
         group: GroupModel,
-        summary: GroupSummary?,
+        summary: UserGroupInfo?,
         currentUserId: String,
         preloadedMembers: [UserPublicModel]? = nil
       ) {

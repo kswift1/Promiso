@@ -57,14 +57,15 @@ extension UserDTO {
       nil
     }
 
-    let groupsModel: [String: UserGroupInfo] = groups?.mapValues { dto in
+    let groupsModel: [UserGroupInfo] = groups?.map { (groupId, dto) in
       UserGroupInfo(
-        groupName: dto.groupName,
+        id: groupId,
+        name: dto.groupName,
         role: dto.role,
         joinedAt: dto.joinedAt.date,
         notifications: dto.notifications
       )
-    } ?? [:]
+    } ?? []
 
     return UserPrivateModel(
       userId: userId,
