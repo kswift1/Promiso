@@ -145,9 +145,8 @@ public enum CreatePromise {
           case .requestCreatingPromise:
             state.isCreatingPromise = true
             state.creationError = nil
-            // hostId와 groupId 설정
+            // groupId 설정 (hostId는 서버에서 auth.uid로 설정)
             var promiseToCreate = state.promise
-            promiseToCreate.hostId = "sungwon" // TODO: 실제 사용자 ID
             promiseToCreate.groupId = state.promise.group?.id ?? ""
             return .run { [promise = promiseToCreate, promiseClient] send in
               do {
