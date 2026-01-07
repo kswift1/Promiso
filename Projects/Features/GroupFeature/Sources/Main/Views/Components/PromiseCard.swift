@@ -1,11 +1,12 @@
 import Clients
+import Nuke
 import PromisoShared
 import SwiftUI
 
 struct PromiseCard: View {
   let promise: PromiseModel
   let currentUserId: String
-  let host: UserPublicModel?
+  let groupMembers: [UserPublicModel]?
   let respondingState: GroupMain.RespondingState
   let onTap: () -> Void
   let onAccept: () -> Void
@@ -13,6 +14,17 @@ struct PromiseCard: View {
   let onDelete: (() -> Void)?
   let onChangeResponse: ((PromiseAttendanceStatus) -> Void)?
   let onShare: (() -> Void)?
+
+  private var host: UserPublicModel? {
+    groupMembers?.first { $0.userId == promise.hostId }
+  }
+
+  private var acceptedMembers: [UserPublicModel] {
+    guard let members = groupMembers else { return [] }
+    return promise.votes.accepted.compactMap { acceptedId in
+      members.first { $0.userId == acceptedId }
+    }
+  }
 
   private var isLocationUndecided: Bool {
     promise.locationText == "장소 미정"
@@ -50,12 +62,6 @@ struct PromiseCard: View {
             Text("약속")
               .font(.system(size: 13, weight: .semibold))
               .foregroundColor(.primary)
-          }
-
-          if isHost {
-            Text("호스트")
-              .font(.system(size: 11, weight: .medium))
-              .foregroundColor(.blue)
           }
         }
 
@@ -113,17 +119,19 @@ struct PromiseCard: View {
         Spacer()
       }
 
-      // Bottom Section - Vote counts
-      HStack(spacing: 8) {
+      // Bottom Section - Participants & Vote counts
+      HStack(spacing: 12) {
+        // Participant Avatars
+        if !acceptedMembers.isEmpty {
+          ParticipantsAvatarView(
+            members: acceptedMembers,
+            currentUserId: currentUserId,
+            maxDisplay: 4
+          )
+        }
+
+        // Vote counts
         HStack(spacing: 4) {
-          Image(systemName: "hand.raised.fill")
-            .font(.system(size: 11))
-          Text("\(promise.votes.votedCount)명 투표")
-            .font(.system(size: 12, weight: .semibold))
-
-          Text("·")
-            .font(.system(size: 12))
-
           Image(systemName: "checkmark.circle.fill")
             .font(.system(size: 11))
             .foregroundColor(.green)
@@ -229,11 +237,114 @@ private extension View {
   }
 }
 
+// MARK: - Participants Avatar View
+
+private struct ParticipantsAvatarView: View {
+  let members: [UserPublicModel]
+  let currentUserId: String
+  let maxDisplay: Int
+
+  private var displayMembers: [UserPublicModel] {
+    Array(members.prefix(maxDisplay))
+  }
+
+  private var remainingCount: Int {
+    max(0, members.count - maxDisplay)
+  }
+
+  var body: some View {
+    HStack(spacing: -8) {
+      ForEach(displayMembers) { member in
+        MemberAvatar(
+          member: member,
+          isCurrentUser: member.userId == currentUserId
+        )
+      }
+
+      if remainingCount > 0 {
+        Text("+\(remainingCount)")
+          .font(.system(size: 10, weight: .bold))
+          .foregroundColor(.white)
+          .frame(width: 24, height: 24)
+          .background(Color(red: 0.5, green: 0.5, blue: 0.53))
+          .clipShape(Circle())
+          .overlay(
+            Circle()
+              .stroke(Color.white, lineWidth: 2)
+          )
+      }
+    }
+  }
+}
+
+private struct MemberAvatar: View {
+  let member: UserPublicModel
+  let isCurrentUser: Bool
+  @State private var loadedImage: UIImage?
+
+  private var initials: String {
+    if isCurrentUser { return "나" }
+    guard !member.displayName.isEmpty else { return "?" }
+    return String(member.displayName.prefix(1))
+  }
+
+  var body: some View {
+    ZStack {
+      fallbackContent
+
+      if let loadedImage {
+        Image(uiImage: loadedImage)
+          .resizable()
+          .aspectRatio(contentMode: .fill)
+      }
+    }
+    .frame(width: 24, height: 24)
+    .clipShape(Circle())
+    .overlay(
+      Circle()
+        .stroke(Color.white, lineWidth: 2)
+    )
+    .task(id: member.profileImageUrl) {
+      await loadImage()
+    }
+  }
+
+  private var fallbackContent: some View {
+    Circle()
+      .fill(
+        LinearGradient(
+          colors: isCurrentUser
+            ? [Color(red: 0.3, green: 0.5, blue: 0.9), Color(red: 0.6, green: 0.4, blue: 0.8)]
+            : [Color(red: 0.55, green: 0.55, blue: 0.58), Color(red: 0.45, green: 0.45, blue: 0.48)],
+          startPoint: .topLeading,
+          endPoint: .bottomTrailing
+        )
+      )
+      .overlay(
+        Text(initials)
+          .font(.system(size: 10, weight: .bold))
+          .foregroundColor(.white)
+      )
+  }
+
+  private func loadImage() async {
+    guard let urlString = member.profileImageUrl,
+          let url = URL(string: urlString) else { return }
+    do {
+      let request = ImageRequest(url: url)
+      loadedImage = try await ImagePipeline.shared.image(for: request)
+    } catch {
+      loadedImage = nil
+    }
+  }
+}
+
 // MARK: - Host Profile Image
 
 private struct HostProfileImage: View {
   let host: UserPublicModel?
   let isCurrentUser: Bool
+  @State private var loadedImage: UIImage?
 
   private var initials: String {
     if isCurrentUser { return "나" }
@@ -242,23 +353,19 @@ private struct HostProfileImage: View {
   }
 
   var body: some View {
-    if let profileUrl = host?.profileImageUrl, let url = URL(string: profileUrl) {
-      AsyncImage(url: url) { phase in
-        switch phase {
-        case .success(let image):
-          image
-            .resizable()
-            .aspectRatio(contentMode: .fill)
-            .frame(width: 32, height: 32)
-            .clipShape(Circle())
-        case .failure, .empty:
-          fallbackView
-        @unknown default:
-          fallbackView
-        }
-      }
-    } else {
+    ZStack {
       fallbackView
+
+      if let loadedImage {
+        Image(uiImage: loadedImage)
+          .resizable()
+          .aspectRatio(contentMode: .fill)
+      }
+    }
+    .frame(width: 32, height: 32)
+    .clipShape(Circle())
+    .task(id: host?.profileImageUrl) {
+      await loadImage()
     }
   }
 
@@ -267,18 +374,28 @@ private struct HostProfileImage: View {
       .fill(
         LinearGradient(
           colors: isCurrentUser
-            ? [.blue.opacity(0.7), .purple.opacity(0.7)]
-            : [.gray.opacity(0.5), .gray.opacity(0.3)],
+            ? [Color(red: 0.3, green: 0.5, blue: 0.9), Color(red: 0.6, green: 0.4, blue: 0.8)]
+            : [Color(red: 0.55, green: 0.55, blue: 0.58), Color(red: 0.45, green: 0.45, blue: 0.48)],
           startPoint: .topLeading,
           endPoint: .bottomTrailing
         )
       )
-      .frame(width: 32, height: 32)
       .overlay(
         Text(initials)
           .font(.system(size: 14, weight: .bold))
           .foregroundColor(.white)
       )
+  }
+
+  private func loadImage() async {
+    guard let urlString = host?.profileImageUrl,
+          let url = URL(string: urlString) else { return }
+    do {
+      let request = ImageRequest(url: url)
+      loadedImage = try await ImagePipeline.shared.image(for: request)
+    } catch {
+      loadedImage = nil
+    }
   }
 }
 
