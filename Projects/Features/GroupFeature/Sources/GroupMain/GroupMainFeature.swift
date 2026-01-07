@@ -31,7 +31,6 @@ extension GroupMain {
 
       var promisesState: LoadingState<[PromiseModel]> = .idle
       var proposalResponding: [String: RespondingState] = [:]
-      var myResponses: [String: PromiseAttendanceStatus] = [:]
       var path = StackState<Path.State>()
 
       var allGroupSummaries: [UserGroupInfo]?
@@ -50,6 +49,7 @@ extension GroupMain {
     @Reducer
     public enum Path {
       case manageGroupFeature(ManageGroup.Feature)
+      case promiseDetail(PromiseDetail.Feature)
     }
     
     public enum Action: Sendable {
@@ -73,6 +73,7 @@ extension GroupMain {
         case proposalRejected(String)
         case promiseDeleted(String)
         case responseChanged(String, PromiseAttendanceStatus)
+        case promiseTapped(PromiseModel)
         case openSideDrawer
         case groupManageTapped
         case createNewPromise
@@ -150,6 +151,16 @@ extension GroupMain {
           state.currentGroup = nil
           state.currentGroupMembers = nil
           return .send(.internal(.fetchGroupList))
+        case .path(.element(id: _, action: .promiseDetail(.delegate(.dismiss)))):
+          _ = state.path.popLast()
+          return .none
+        case .path(.element(id: _, action: .promiseDetail(.delegate(.promiseDeleted)))):
+          _ = state.path.popLast()
+          // 리스너가 자동으로 업데이트함
+          return .none
+        case .path(.element(id: _, action: .promiseDetail(.delegate(.promiseUpdated)))):
+          // 리스너가 자동으로 업데이트함
+          return .none
         case .path:
           return .none
         case .binding, .delegate:
@@ -218,6 +229,13 @@ extension GroupMain {
           .internal(.respondPromise(promiseId: id, status: status))
         )
         .cancellable(id: CancelID.respond(id), cancelInFlight: true)
+      case .promiseTapped(let promise):
+        state.path.append(.promiseDetail(.init(
+          promise: promise,
+          currentUserId: state.currentUser.userId,
+          groupMembers: state.currentGroupMembers
+        )))
+        return .none
       case .openSideDrawer:
         return .send(.delegate(.requestOpenSideDrawer))
       case .groupManageTapped:
@@ -326,18 +344,22 @@ extension GroupMain {
         return .none
       case .subscribeToPromises(let groupId):
         state.promisesState = .loading
+        print("[GroupMain] 🔔 subscribeToPromises 시작: groupId=\(groupId)")
         return .run { [promiseClient, groupId] send in
+          print("[GroupMain] 🔔 리스너 연결 시작...")
           for await promises in promiseClient.subscribeToPromises(groupId, 20) {
+            print("[GroupMain] 📥 promises 수신: \(promises.count)개")
             await send(.internal(.promisesUpdated(promises)))
           }
+          print("[GroupMain] ⚠️ 리스너 스트림 종료됨")
         }
         .cancellable(id: CancelID.promiseSubscription, cancelInFlight: true)
       case .promisesUpdated(let promises):
+        print("[GroupMain] ✅ promisesUpdated: \(promises.count)개 로드됨")
         state.promisesState = .loaded(promises)
         return .none
-      case .proposalRespondDone(let id, let status):
+      case .proposalRespondDone(let id, _):
         state.proposalResponding[id] = nil
-        state.myResponses[id] = status
         return .none
       case .proposalRespondFailed(let id, let error):
         state.proposalResponding[id] = nil

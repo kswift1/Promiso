@@ -17,6 +17,8 @@ extension GroupMain {
           switch store.case {
           case .manageGroupFeature(let manageGroupStore):
             ManageGroup.RootView(store: manageGroupStore)
+          case .promiseDetail(let promiseDetailStore):
+            PromiseDetail.RootView(store: promiseDetailStore)
           }
         }
     }
@@ -77,6 +79,7 @@ extension GroupMain {
           selectedFilter: store.selectedFilter,
           currentUserId: store.currentUser.userId,
           respondingStates: store.proposalResponding,
+          onTap: { promise in store.send(.view(.promiseTapped(promise))) },
           onAccept: { promiseId in store.send(.view(.proposalAccepted(promiseId))) },
           onReject: { promiseId in store.send(.view(.proposalRejected(promiseId))) },
           onDelete: { promiseId in store.send(.view(.promiseDeleted(promiseId))) },
