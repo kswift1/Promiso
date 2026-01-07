@@ -22,7 +22,7 @@ public class BatchOperationManager {
   
   /// 대량 알림 발송
   public func batchSendNotifications(
-    notifications: [NotificationDocument]
+    notifications: [NotificationDTO]
   ) async throws {
     let batches = notifications.chunked(into: maxBatchSize)
     
@@ -66,7 +66,7 @@ public class BatchOperationManager {
   }
   
   private func processBatchNotifications(
-    notifications: [NotificationDocument]
+    notifications: [NotificationDTO]
   ) async throws {
     let batch = db.batch()
     

@@ -2,7 +2,7 @@ import Foundation
 import FirebaseFirestore
 
 /// Firestore Notifications 컬렉션 문서 모델
-public struct NotificationDocument: Codable {
+public struct NotificationDTO: Codable {
   // MARK: - 기본 정보
   public let userId: String
   public let type: NotificationType
@@ -70,7 +70,7 @@ public enum NotificationType: String, Codable, CaseIterable {
 }
 
 // MARK: - CodingKeys
-extension NotificationDocument {
+extension NotificationDTO {
   enum CodingKeys: String, CodingKey {
     case userId
     case type
