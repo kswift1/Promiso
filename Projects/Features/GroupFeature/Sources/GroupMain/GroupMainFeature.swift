@@ -191,8 +191,9 @@ extension GroupMain {
         state.allGroupSummaries = state.currentUser.sortedGroups
         return .send(.internal(.setDefaultGroup(groups: summaries)))
       case .refreshTriggered:
-        // 리로드: 서버에서 최신 데이터 조회
-        state.promisesState = .loading
+        if !state.promisesState.isLoaded {
+          state.promisesState = .loading
+        }
         return .send(.internal(.fetchGroupList))
       case .groupChanged(let group):
         guard group.id != state.currentGroup?.id else { return .none }
@@ -309,11 +310,8 @@ extension GroupMain {
         // 현재 선택된 그룹이 있으면 해당 그룹 데이터도 새로고침
         if let currentGroupId = state.currentGroup?.id,
            groupSummaries.contains(where: { $0.id == currentGroupId }) {
-          return .merge(
-            .send(.internal(.fetchCurrentGroup(id: currentGroupId))),
-            .send(.internal(.fetchGroupMembers(groupId: currentGroupId))),
-            .send(.internal(.subscribeToPromises(groupId: currentGroupId)))
-          )
+          // fetchCurrentGroup → currentGroupResponse에서 subscribeToPromises 호출됨
+          return .send(.internal(.fetchCurrentGroup(id: currentGroupId)))
         }
         // 현재 그룹이 없거나 삭제된 경우 첫 번째 그룹으로 설정
         return .send(.internal(.setDefaultGroup(groups: groupSummaries)))
@@ -358,7 +356,10 @@ extension GroupMain {
         state.currentGroupMembers = nil
         return .none
       case .subscribeToPromises(let groupId):
-        state.promisesState = .loading
+        // 이미 데이터가 있으면 로딩 상태 유지 (깜빡임 방지)
+        if !state.promisesState.isLoaded {
+          state.promisesState = .loading
+        }
         print("[GroupMain] 🔔 subscribeToPromises 시작: groupId=\(groupId)")
         return .run { [promiseClient, groupId] send in
           print("[GroupMain] 🔔 리스너 연결 시작...")
