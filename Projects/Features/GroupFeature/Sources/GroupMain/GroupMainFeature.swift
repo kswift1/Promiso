@@ -4,18 +4,6 @@ import Clients
 public enum GroupMain {}
 
 extension GroupMain {
-  public struct GroupMainError: Error, LocalizedError, Sendable, Equatable {
-    let message: String
-
-    init(_ error: Error) {
-      self.message = error.localizedDescription
-    }
-
-    public var errorDescription: String? {
-      message
-    }
-  }
-  
   private enum CancelID: Hashable {
     case respond(String)
   }
@@ -94,20 +82,20 @@ extension GroupMain {
       
       public enum Internal: Sendable {
         case fetchGroupList
-        case groupListResponse(Result<[GroupSummary], GroupMainError>)
+        case groupListResponse(Result<[GroupSummary], AppError>)
         case setDefaultGroup(groups: [GroupSummary])
         case fetchCurrentGroup(id: String)
-        case currentGroupResponse(Result<GroupModel, GroupMainError>)
+        case currentGroupResponse(Result<GroupModel, AppError>)
         case fetchGroupMembers(groupId: String)
-        case groupMembersResponse(Result<[UserPublic], GroupMainError>)
+        case groupMembersResponse(Result<[UserPublic], AppError>)
         case fetchPromises(groupId: String)
-        case loadPromisesResponse(Result<[PromiseModel], GroupMainError>)
+        case loadPromisesResponse(Result<[PromiseModel], AppError>)
         case proposalRespondDone(promiseId: String, status: PromiseAttendanceStatus)
-        case proposalRespondFailed(promiseId: String, error: GroupMainError)
+        case proposalRespondFailed(promiseId: String, error: AppError)
         case respondPromise(promiseId: String, status: PromiseAttendanceStatus)
         case deletePromise(promiseId: String)
         case deletePromiseDone(promiseId: String)
-        case deletePromiseFailed(promiseId: String, error: GroupMainError)
+        case deletePromiseFailed(promiseId: String, error: AppError)
         case toggleGroupNotifications
       }
       
@@ -273,7 +261,7 @@ extension GroupMain {
             await send(.internal(.groupListResponse(.success(try await groupClient.fetchGroupSummaries()))))
           }
           catch {
-            await send(.internal(.groupListResponse(.failure(GroupMainError(error)))))
+            await send(.internal(.groupListResponse(.failure(AppError(error)))))
           }
         }
       case .groupListResponse(.success(let groupSummaries)):
@@ -301,7 +289,7 @@ extension GroupMain {
             let group = try await groupClient.fetchGroup(id)
             await send(.internal(.currentGroupResponse(.success(group))))
           } catch {
-            await send(.internal(.currentGroupResponse(.failure(GroupMainError(error)))))
+            await send(.internal(.currentGroupResponse(.failure(AppError(error)))))
           }
         }
       case .currentGroupResponse(.success(let group)):
@@ -319,7 +307,7 @@ extension GroupMain {
             let members = try await groupClient.fetchGroupMembers(groupId)
             await send(.internal(.groupMembersResponse(.success(members))))
           } catch {
-            await send(.internal(.groupMembersResponse(.failure(GroupMainError(error)))))
+            await send(.internal(.groupMembersResponse(.failure(AppError(error)))))
           }
         }
       case .groupMembersResponse(.success(let members)):
@@ -335,7 +323,7 @@ extension GroupMain {
             let promises = try await promiseClient.getActivePromises(id, 20)
             await send(.internal(.loadPromisesResponse(.success(promises))))
           }
-          catch { await send(.internal(.loadPromisesResponse(.failure(GroupMainError(error))))) }
+          catch { await send(.internal(.loadPromisesResponse(.failure(AppError(error))))) }
         }
       case .loadPromisesResponse(.success(let promises)):
         state.promisesState = .loaded(promises)
@@ -361,7 +349,7 @@ extension GroupMain {
               await send(.internal(.fetchPromises(groupId: currentGroupId)))
             }
           } catch {
-            await send(.internal(.proposalRespondFailed(promiseId: promiseId, error: GroupMainError(error))))
+            await send(.internal(.proposalRespondFailed(promiseId: promiseId, error: AppError(error))))
           }
         }
       case .deletePromise(let promiseId):
@@ -374,7 +362,7 @@ extension GroupMain {
               await send(.internal(.fetchPromises(groupId: currentGroupId)))
             }
           } catch {
-            await send(.internal(.deletePromiseFailed(promiseId: promiseId, error: GroupMainError(error))))
+            await send(.internal(.deletePromiseFailed(promiseId: promiseId, error: AppError(error))))
           }
         }
       case .deletePromiseDone:
