@@ -146,19 +146,6 @@ private struct PromiseRow: View {
   let onChangeResponse: ((String, PromiseAttendanceStatus) -> Void)?
 
   @State private var shakeOffset: CGFloat = 0
-  @State private var hasShaken = false
-
-  private var isHost: Bool {
-    promise.isHost(userId: currentUserId)
-  }
-
-  private var myVoteStatus: VoteStatus {
-    promise.myVoteStatus(userId: currentUserId)
-  }
-
-  private var needsResponse: Bool {
-    promise.responseStatus(currentUserId: currentUserId) == .needResponse
-  }
 
   var body: some View {
     ZStack {
@@ -180,35 +167,16 @@ private struct PromiseRow: View {
     .listRowSeparator(.hidden)
     .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
     .swipeActions(edge: .leading, allowsFullSwipe: true) {
-      if let onChangeResponse = onChangeResponse {
-        Button(action: { onChangeResponse(promise.id, .accepted) }) {
-          Label("수락", systemImage: "checkmark.circle.fill")
-        }
-        .tint(.green)
+      Button(action: { onAccept(promise.id) }) {
+        Label("수락", systemImage: "checkmark.circle.fill")
       }
+      .tint(.green)
     }
     .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-      if myVoteStatus != .pending, let onChangeResponse = onChangeResponse {
-        switch myVoteStatus {
-        case .accepted:
-          Button(action: { onChangeResponse(promise.id, .declined) }) {
-            Label("거절로 변경", systemImage: "xmark.circle.fill")
-          }
-          .tint(.orange)
-        case .declined:
-          Button(action: { onChangeResponse(promise.id, .accepted) }) {
-            Label("수락", systemImage: "checkmark.circle.fill")
-          }
-          .tint(.green)
-        case .pending:
-          EmptyView()
-        }
+      Button(action: { onReject(promise.id) }) {
+        Label("거절", systemImage: "xmark.circle.fill")
       }
-      if isHost, let onDelete = onDelete {
-        Button(role: .destructive, action: { onDelete(promise.id) }) {
-          Label("삭제", systemImage: "trash.fill")
-        }
-      }
+      .tint(.red)
     }
     .transition(
       .asymmetric(
@@ -238,15 +206,15 @@ private struct PromiseRow: View {
       }
       .padding(.leading, 0)
 
-      // Trailing (거절/삭제)
+      // Trailing (거절)
       HStack {
         Spacer()
 
         let progress = clamp((abs(shakeOffset) - 8) / 40)
         swipeHintBubble(
-          title: isHost ? "삭제" : "거절",
-          systemImage: isHost ? "trash.fill" : "xmark",
-          fillColor: isHost ? .red : .orange,
+          title: "거절",
+          systemImage: "xmark.circle.fill",
+          fillColor: .red,
           progress: progress
         )
         .opacity(progress)

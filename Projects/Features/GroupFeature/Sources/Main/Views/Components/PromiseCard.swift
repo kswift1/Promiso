@@ -147,15 +147,8 @@ struct PromiseCard: View {
     .padding(16)
     .adaptiveGlassCardBackground()
     .contextMenu {
-      // Host인 경우 삭제 옵션
-      if isHost, let onDelete = onDelete {
-        Button(role: .destructive, action: onDelete) {
-          Label("약속 삭제", systemImage: "trash")
-        }
-      }
-
-      // 응답을 수정할 수 있는 경우
-      if myVoteStatus != .pending, let onChangeResponse = onChangeResponse {
+      // 응답 변경 옵션
+      if let onChangeResponse = onChangeResponse {
         Section("응답 변경") {
           if myVoteStatus != .accepted {
             Button(action: { onChangeResponse(.accepted) }) {
@@ -168,6 +161,19 @@ struct PromiseCard: View {
               Label("거절", systemImage: "xmark.circle.fill")
             }
           }
+
+          if myVoteStatus != .pending {
+            Button(action: { onChangeResponse(.pending) }) {
+              Label("미정으로 되돌리기", systemImage: "arrow.uturn.backward.circle.fill")
+            }
+          }
+        }
+      }
+
+      // Host인 경우 삭제 옵션
+      if isHost, let onDelete = onDelete {
+        Button(role: .destructive, action: onDelete) {
+          Label("약속 삭제", systemImage: "trash")
         }
       }
 
@@ -220,6 +226,8 @@ private struct ResponseBadge: View {
       return "수락함"
     case .declined:
       return "거절함"
+    case .pending:
+      return ""
     }
   }
 
@@ -229,6 +237,8 @@ private struct ResponseBadge: View {
       return .green
     case .declined:
       return .red
+    case .pending:
+      return .blue
     }
   }
 

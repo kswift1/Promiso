@@ -1400,10 +1400,10 @@ export const respondPromise = onCall<RespondPromiseRequest>(
       );
     }
 
-    if (!["accepted", "declined"].includes(status)) {
+    if (!["accepted", "declined", "pending"].includes(status)) {
       throw new HttpsError(
         "invalid-argument",
-        "status는 accepted/declined 중 하나여야 합니다",
+        "status는 accepted/declined/pending 중 하나여야 합니다",
       );
     }
 
@@ -1478,7 +1478,8 @@ export const respondPromise = onCall<RespondPromiseRequest>(
       // 이미 같은 상태면 스킵
       if (
         (status === "accepted" && isInAccepted) ||
-        (status === "declined" && isInDeclined)
+        (status === "declined" && isInDeclined) ||
+        (status === "pending" && !isInAccepted && !isInDeclined)
       ) {
         return;
       }
@@ -1496,16 +1497,17 @@ export const respondPromise = onCall<RespondPromiseRequest>(
         updateData["votes.declined"] = FieldValue.arrayRemove(userId);
       }
 
-      // 새 상태로 추가
+      // 새 상태로 추가 (pending이면 제거만 하고 추가 안함)
       if (status === "accepted") {
         updateData["votes.accepted"] = FieldValue.arrayUnion(userId);
-      } else {
+      } else if (status === "declined") {
         updateData["votes.declined"] = FieldValue.arrayUnion(userId);
       }
+      // status === "pending"이면 제거만 하고 아무 배열에도 추가하지 않음
 
       // 5. 확정 여부 계산 (새 상태 기준)
       let newAcceptedCount = acceptedList.length;
-      if (isInAccepted && status === "declined") {
+      if (isInAccepted && (status === "declined" || status === "pending")) {
         newAcceptedCount -= 1;
       } else if (!isInAccepted && status === "accepted") {
         newAcceptedCount += 1;
@@ -1521,7 +1523,7 @@ export const respondPromise = onCall<RespondPromiseRequest>(
 
     return {
       promiseId: data.promiseId,
-      status: status as "accepted" | "declined",
+      status: status as "accepted" | "declined" | "pending",
     };
   },
 );

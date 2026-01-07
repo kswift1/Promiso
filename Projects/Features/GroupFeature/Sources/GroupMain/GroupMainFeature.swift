@@ -9,7 +9,7 @@ extension GroupMain {
   }
   
   enum RespondingState: Equatable {
-    case idle, accepting, rejecting
+    case idle, accepting, rejecting, resetting
   }
    
   // MARK: - Feature Reducer
@@ -26,7 +26,7 @@ extension GroupMain {
       var isInitialized: Bool = false
       let currentUser: UserPrivateModel
 
-      var selectedFilter: StatusFilter = .all
+      var selectedFilter: StatusFilter = .needResponse
 
       var promisesState: LoadingState<[PromiseModel]> = .idle
       var proposalResponding: [String: RespondingState] = [:]
@@ -183,7 +183,7 @@ extension GroupMain {
         state.currentGroup = nil
         state.currentGroupMembers = nil
         state.promisesState = .loading
-        state.selectedFilter = .all
+        state.selectedFilter = .needResponse
         return .send(.internal(.fetchCurrentGroup(id: group.id)))
       case .filterChanged(let filter):
         state.selectedFilter = filter
@@ -206,7 +206,14 @@ extension GroupMain {
         return .send(.internal(.deletePromise(promiseId: id)))
       case .responseChanged(let id, let status):
         guard state.proposalResponding[id] ?? .idle == .idle else { return .none }
-        state.proposalResponding[id] = status == .accepted ? .accepting : .rejecting
+        switch status {
+        case .accepted:
+          state.proposalResponding[id] = .accepting
+        case .declined:
+          state.proposalResponding[id] = .rejecting
+        case .pending:
+          state.proposalResponding[id] = .resetting
+        }
         return .send(
           .internal(.respondPromise(promiseId: id, status: status))
         )

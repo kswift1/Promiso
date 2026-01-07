@@ -29,7 +29,7 @@ public struct PromiseModel: Identifiable, Equatable, Hashable, Sendable {
   public var location: LocationInfoModel?
 
   // MARK: - 상태
-  public var status: PromiseStatus
+  public var status: PromiseStatus 
 
   // MARK: - 메타데이터
   public var createdAt: Date
@@ -115,6 +115,7 @@ public enum PromiseResponseStatus: String, Equatable, Sendable, Codable {
 // MARK: - Attendance Status
 
 public enum PromiseAttendanceStatus: String, Equatable, Sendable, Codable {
+  case pending
   case accepted
   case declined
 }

@@ -796,8 +796,10 @@ paths:
         - Promise
       summary: 약속 응답
       description: |
-        약속 참석자 응답을 수락/거절로 업데이트합니다.
-        votes.accepted 또는 votes.declined 배열에 userId를 추가/제거합니다.
+        약속 참석자 응답을 수락/거절/미정으로 업데이트합니다.
+        - accepted: votes.accepted 배열에 userId 추가
+        - declined: votes.declined 배열에 userId 추가
+        - pending: 두 배열에서 userId 제거 (미정으로 되돌리기)
 
         **인증 필수**: Firebase Authentication 토큰 필요
         **그룹 멤버만 가능**
@@ -830,6 +832,13 @@ paths:
                     promiseId: promise_abc123
                     status: declined
                     env: stage
+              pending:
+                summary: 미정으로 되돌리기
+                value:
+                  data:
+                    promiseId: promise_abc123
+                    status: pending
+                    env: stage
 
       responses:
         '200':
@@ -859,7 +868,7 @@ paths:
                   value:
                     error:
                       code: invalid-argument
-                      message: status는 accepted/declined 중 하나여야 합니다
+                      message: status는 accepted/declined/pending 중 하나여야 합니다
 
         '401':
           description: 인증 실패
@@ -1788,7 +1797,8 @@ components:
           enum:
             - accepted
             - declined
-          description: 응답 상태 (accepted=참여, declined=참여불가)
+            - pending
+          description: 응답 상태 (accepted=참여, declined=참여불가, pending=미정)
           example: accepted
 
         env:
@@ -1815,7 +1825,8 @@ components:
           enum:
             - accepted
             - declined
-          description: 응답 상태 (accepted=참여, declined=참여불가)
+            - pending
+          description: 응답 상태 (accepted=참여, declined=참여불가, pending=미정)
           example: accepted
 
     # ========================================

@@ -22,7 +22,7 @@ struct StatusFilterView: View {
 
 #Preview {
   struct PreviewWrapper: View {
-    @State private var filter: StatusFilter = .all
+    @State private var filter: StatusFilter = .needResponse
 
     var body: some View {
       VStack(spacing: 20) {

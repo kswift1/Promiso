@@ -334,7 +334,7 @@ export interface RespondPromiseResponse {
   promiseId: string;
 
   /** 응답 상태 */
-  status: "accepted" | "declined";
+  status: "accepted" | "declined" | "pending";
 }
 
 /**
