@@ -36,14 +36,14 @@ extension CreateGroup {
       var groupName: String = ""
       var groupDescription: String = ""
       var maxMembers: MaxMembers = .five
-      let currentUser: UserPrivate
+      let currentUser: UserPrivateModel
       
       // Progress & Error
       var isCreating: Bool = false
       var creationError: String?
       var creationResult: GroupCreationResult?
 
-      public init(currentUser: UserPrivate) {
+      public init(currentUser: UserPrivateModel) {
         self.currentUser = currentUser
       }
 

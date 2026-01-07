@@ -52,7 +52,7 @@ private struct ExampleContentView: View {
   /// GroupMain feature example with preview data
   @ViewBuilder
   private var groupMainExample: some View {
-    let previewUser = UserPrivate(
+    let previewUser = UserPrivateModel(
       userId: "preview-user-id",
       name: "Preview User",
       nickname: "PreviewNick",
@@ -91,7 +91,7 @@ private struct ExampleContentView: View {
 // MARK: - SwiftUI Previews
 
 #Preview {
-  let previewUser = UserPrivate(
+  let previewUser = UserPrivateModel(
     userId: "preview-user-id",
     name: "Preview User",
     nickname: "PreviewNick",

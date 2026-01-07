@@ -50,87 +50,6 @@ private struct UpdateUserSettingsRequest: Encodable {
   let env: String?
 }
 
-// MARK: - Response DTOs
-
-/// Firebase Functions 응답 구조
-private struct UserProfileResponse: Codable {
-  let userId: String
-  let name: String
-  let nickname: String
-  let email: String?
-  let provider: String?
-  let metaData: MetadataResponse
-  let profile: ProfileImageResponse?
-  let groups: [String: GroupInfoResponse]?
-
-  struct MetadataResponse: Codable {
-    let createdAt: FirebaseTimestamp
-    let updatedAt: FirebaseTimestamp
-  }
-
-  struct ProfileImageResponse: Codable {
-    let url: String
-    let thumbUrl: String?
-    let updatedAt: FirebaseTimestamp
-
-    var isValid: Bool {
-      url != "<null>"
-    }
-  }
-
-  struct GroupInfoResponse: Codable {
-    let groupName: String
-    let role: GroupRole
-    let joinedAt: FirebaseTimestamp
-    let notifications: Bool
-
-    func toModel() -> UserGroupInfo {
-      UserGroupInfo(
-        groupName: groupName,
-        role: role,
-        joinedAt: joinedAt.date,
-        notifications: notifications
-      )
-    }
-  }
-
-  struct FirebaseTimestamp: Codable {
-    let _seconds: TimeInterval
-    let _nanoseconds: TimeInterval?
-
-    var date: Date {
-      Date(timeIntervalSince1970: _seconds + (_nanoseconds ?? 0) / 1_000_000_000)
-    }
-  }
-
-  func toUserModel() -> UserPrivate {
-    let profileImage: ProfileImage? = if let profile = profile, profile.isValid {
-      ProfileImage(
-        url: profile.url,
-        thumbUrl: profile.thumbUrl == "<null>" ? nil : profile.thumbUrl,
-        updatedAt: profile.updatedAt.date
-      )
-    } else {
-      nil
-    }
-
-    let groupsModel: [String: UserGroupInfo] = groups?.mapValues { $0.toModel() } ?? [:]
-
-    return UserPrivate(
-      userId: userId,
-      name: name,
-      nickname: nickname,
-      email: email ?? "",
-      provider: provider ?? "",
-      profile: profileImage,
-      metadata: Metadata(
-        createdAt: metaData.createdAt.date,
-        updatedAt: metaData.updatedAt.date
-      ),
-      groups: groupsModel
-    )
-  }
-}
 
 // MARK: - Data Source
 
@@ -208,7 +127,7 @@ public final class UserProfileRemoteDataSource: @unchecked Sendable {
   ///   - userIds: 사용자 ID 목록
   /// - Returns: 공개 프로필 배열 (조회 실패한 사용자는 제외됨)
   /// - Note: 병렬로 처리되며, 일부 실패해도 성공한 프로필만 반환
-  public func getUsersByIds(userIds: [String]) async throws -> [UserPublic] {
+  public func getUsersByIds(userIds: [String]) async throws -> [UserPublicModel] {
     guard !userIds.isEmpty else { return [] }
 
     // 병렬로 각 사용자 조회
@@ -231,7 +150,7 @@ public final class UserProfileRemoteDataSource: @unchecked Sendable {
       return profiles
     }
 
-    // UserPublic으로 변환 (순서는 원본 userIds 순서 유지)
+    // UserPublicModel으로 변환 (순서는 원본 userIds 순서 유지)
     return userIds.compactMap { userId in
       guard let (_, profile) = results.first(where: { $0.0 == userId }),
             case .public(let userPublic) = profile else {
@@ -353,8 +272,8 @@ private extension UserProfileRemoteDataSource {
   func parseUserProfile(from data: [String: Any], isPublic: Bool) throws -> UserProfile {
     let jsonData = try JSONSerialization.data(withJSONObject: data)
     let decoder = JSONDecoder()
-    let response = try decoder.decode(UserProfileResponse.self, from: jsonData)
-    let userPrivate = response.toUserModel()
+    let dto = try decoder.decode(UserDTO.self, from: jsonData)
+    let userPrivate = dto.toModel()
 
     if isPublic {
       return .public(userPrivate.toPublic())

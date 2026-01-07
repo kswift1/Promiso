@@ -41,7 +41,7 @@ extension JoinGroup {
 
       // Invite Code
       var inviteCode: String = ""
-      let currentUser: UserPrivate
+      let currentUser: UserPrivateModel
 
       // Progress & Error
       var isLoadingPreview: Bool = false
@@ -50,7 +50,7 @@ extension JoinGroup {
       var joinError: String?
       var joinResult: GroupModel?
 
-      public init(currentUser: UserPrivate) {
+      public init(currentUser: UserPrivateModel) {
         self.currentUser = currentUser
       }
 

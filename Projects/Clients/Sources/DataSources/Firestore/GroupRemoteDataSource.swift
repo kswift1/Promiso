@@ -369,7 +369,7 @@ public final class GroupRemoteDataSource: @unchecked Sendable {
     }
   }
 
-  private func parseMemberPreview(_ data: [String: Any]) -> UserPublic? {
+  private func parseMemberPreview(_ data: [String: Any]) -> UserPublicModel? {
     guard let userId = data["userId"] as? String else { return nil }
     let name = data["name"] as? String ?? ""
     let nickname = data["nickname"] as? String ?? name
@@ -382,7 +382,7 @@ public final class GroupRemoteDataSource: @unchecked Sendable {
       profileImage = nil
     }
 
-    return UserPublic(
+    return UserPublicModel(
       userId: userId,
       name: name,
       nickname: nickname,

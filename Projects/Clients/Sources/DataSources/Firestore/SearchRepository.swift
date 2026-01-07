@@ -260,12 +260,12 @@ import PromisoShared
 public struct SearchResults {
   public let promises: [PromiseDTO]
   public let groups: [GroupDocument]
-  public let users: [UserPrivate]
+  public let users: [UserPrivateModel]
 
   public init(
     promises: [PromiseDTO],
     groups: [GroupDocument],
-    users: [UserPrivate]
+    users: [UserPrivateModel]
   ) {
     self.promises = promises
     self.groups = groups

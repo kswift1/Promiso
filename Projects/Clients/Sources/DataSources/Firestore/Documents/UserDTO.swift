@@ -1,51 +1,39 @@
 import Foundation
-import FirebaseFirestore
 
-import PromisoShared
-
-/// Firebase Functions 응답 구조
-private struct UserProfileResponse: Codable {
+/// Firebase Functions User 응답 DTO
+struct UserDTO: Codable {
   let userId: String
   let name: String
   let nickname: String
   let email: String?
   let provider: String?
-  let metaData: MetadataResponse
-  let profile: ProfileImageResponse?
-  let groups: [String: GroupInfoResponse]?
+  let metaData: MetadataDTO
+  let profile: ProfileImageDTO?
+  let groups: [String: UserGroupInfoDTO]?
 
-  struct MetadataResponse: Codable {
-    let createdAt: FirebaseTimestamp
-    let updatedAt: FirebaseTimestamp
+  struct MetadataDTO: Codable {
+    let createdAt: FirebaseTimestampDTO
+    let updatedAt: FirebaseTimestampDTO
   }
 
-  struct ProfileImageResponse: Codable {
+  struct ProfileImageDTO: Codable {
     let url: String
     let thumbUrl: String?
-    let updatedAt: FirebaseTimestamp
+    let updatedAt: FirebaseTimestampDTO
 
     var isValid: Bool {
       url != "<null>"
     }
   }
 
-  struct GroupInfoResponse: Codable {
+  struct UserGroupInfoDTO: Codable {
     let groupName: String
     let role: GroupRole
-    let joinedAt: FirebaseTimestamp
+    let joinedAt: FirebaseTimestampDTO
     let notifications: Bool
-
-    func toModel() -> UserGroupInfo {
-      UserGroupInfo(
-        groupName: groupName,
-        role: role,
-        joinedAt: joinedAt.date,
-        notifications: notifications
-      )
-    }
   }
 
-  struct FirebaseTimestamp: Codable {
+  struct FirebaseTimestampDTO: Codable {
     let _seconds: TimeInterval
     let _nanoseconds: TimeInterval?
 
@@ -53,8 +41,12 @@ private struct UserProfileResponse: Codable {
       Date(timeIntervalSince1970: _seconds + (_nanoseconds ?? 0) / 1_000_000_000)
     }
   }
+}
 
-  func toUserModel() -> UserPrivate {
+// MARK: - Model Conversion
+
+extension UserDTO {
+  func toModel() -> UserPrivateModel {
     let profileImage: ProfileImage? = if let profile = profile, profile.isValid {
       ProfileImage(
         url: profile.url,
@@ -65,9 +57,16 @@ private struct UserProfileResponse: Codable {
       nil
     }
 
-    let groupsModel: [String: UserGroupInfo] = groups?.mapValues { $0.toModel() } ?? [:]
+    let groupsModel: [String: UserGroupInfo] = groups?.mapValues { dto in
+      UserGroupInfo(
+        groupName: dto.groupName,
+        role: dto.role,
+        joinedAt: dto.joinedAt.date,
+        notifications: dto.notifications
+      )
+    } ?? [:]
 
-    return UserPrivate(
+    return UserPrivateModel(
       userId: userId,
       name: name,
       nickname: nickname,

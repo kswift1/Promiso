@@ -66,7 +66,7 @@ extension AppEntry {
       case startSessionCheck
       case sessionCheckResponse(isAuthenticated: Bool)
       case startProfileCheck
-      case profileCheckResponse(user: FirebaseUserSnapshot, profile: UserPrivate?)
+      case profileCheckResponse(user: FirebaseUserSnapshot, profile: UserPrivateModel?)
     }
 
     // MARK: - Destination Reducer

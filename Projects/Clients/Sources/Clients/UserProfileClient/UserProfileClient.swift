@@ -14,12 +14,12 @@ public enum UserTarget: Equatable, Sendable {
 /// 프로필 조회 결과
 public enum UserProfile: Equatable, Sendable {
   /// 비공개 프로필 (본인 정보, email/provider 포함)
-  case `private`(UserPrivate)
+  case `private`(UserPrivateModel)
   /// 공개 프로필 (타인 정보, email/provider 제외)
-  case `public`(UserPublic)
+  case `public`(UserPublicModel)
 
   /// 공개 프로필로 변환
-  public var asPublic: UserPublic {
+  public var asPublic: UserPublicModel {
     switch self {
     case .private(let user):
       return user.toPublic()
@@ -29,7 +29,7 @@ public enum UserProfile: Equatable, Sendable {
   }
 
   /// 비공개 프로필로 변환 (공개 프로필인 경우 nil)
-  public var asPrivate: UserPrivate? {
+  public var asPrivate: UserPrivateModel? {
     switch self {
     case .private(let user):
       return user
@@ -59,22 +59,22 @@ public struct UserProfileClient: Sendable {
     _ providerUid: String,
     _ email: String,
     _ profileImageData: Data?
-  ) async throws -> UserPrivate
+  ) async throws -> UserPrivateModel
 
   /// 비공개 프로필 조회 (email/provider 포함, 2회 읽기)
   /// - Parameter target: 조회 대상 (.me: 본인, .user(id): 특정 사용자)
   /// - Returns: 비공개 프로필
-  public var getPrivateProfile: @Sendable (_ target: UserTarget) async throws -> UserPrivate
+  public var getPrivateProfile: @Sendable (_ target: UserTarget) async throws -> UserPrivateModel
 
   /// 공개 프로필 조회 (email/provider 제외, 1회 읽기)
   /// - Parameter target: 조회 대상 (.me: 본인, .user(id): 특정 사용자)
   /// - Returns: 공개 프로필
-  public var getPublicProfile: @Sendable (_ target: UserTarget) async throws -> UserPublic
+  public var getPublicProfile: @Sendable (_ target: UserTarget) async throws -> UserPublicModel
 
   /// 여러 사용자의 공개 프로필 배치 조회
   /// - Parameter userIds: 사용자 ID 목록
   /// - Returns: 공개 프로필 배열 (조회 실패한 사용자는 제외됨)
-  public var getUsersByIds: @Sendable (_ userIds: [String]) async throws -> [UserPublic]
+  public var getUsersByIds: @Sendable (_ userIds: [String]) async throws -> [UserPublicModel]
 
   /// 닉네임 사용 가능 여부 확인
   /// - Parameter nickname: 확인할 닉네임
@@ -100,7 +100,7 @@ public struct UserProfileClient: Sendable {
 extension UserProfileClient: TestDependencyKey {
   public static let previewValue = Self(
     createUserWithProfile: { name, nickname, _, _, email, _ in
-      UserPrivate(
+      UserPrivateModel(
         userId: "preview-user-id",
         name: name ?? nickname,
         nickname: nickname,
@@ -117,7 +117,7 @@ extension UserProfileClient: TestDependencyKey {
     getPrivateProfile: { target in
       switch target {
       case .me:
-        return UserPrivate(
+        return UserPrivateModel(
           userId: "preview-uid",
           name: "김민수",
           nickname: "kms",
@@ -131,7 +131,7 @@ extension UserProfileClient: TestDependencyKey {
           metadata: Metadata(createdAt: Date(), updatedAt: Date())
         )
       case .user(let userId):
-        return UserPrivate(
+        return UserPrivateModel(
           userId: userId,
           name: "이영희",
           nickname: "yhlee",
@@ -149,7 +149,7 @@ extension UserProfileClient: TestDependencyKey {
     getPublicProfile: { target in
       switch target {
       case .me:
-        return UserPublic(
+        return UserPublicModel(
           userId: "preview-uid",
           name: "김민수",
           nickname: "kms",
@@ -161,7 +161,7 @@ extension UserProfileClient: TestDependencyKey {
           metadata: Metadata(createdAt: Date(), updatedAt: Date())
         )
       case .user(let userId):
-        return UserPublic(
+        return UserPublicModel(
           userId: userId,
           name: "이영희",
           nickname: "yhlee",
@@ -176,7 +176,7 @@ extension UserProfileClient: TestDependencyKey {
     },
     getUsersByIds: { userIds in
       return userIds.enumerated().map { index, userId in
-        UserPublic(
+        UserPublicModel(
           userId: userId,
           name: "사용자\(index + 1)",
           nickname: "user\(index + 1)",

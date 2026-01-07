@@ -151,7 +151,7 @@ extension AppEntry {
     public enum InternalAction {
       // Profile Save Flow
       case saveProfile
-      case profileSaved(UserPrivate)
+      case profileSaved(UserPrivateModel)
       case profileSaveFailed(Error)
 
       // Animation Flow
@@ -165,7 +165,7 @@ extension AppEntry {
     }
     
     public enum DelegateAction: Equatable {
-      case completed(UserPrivate)
+      case completed(UserPrivateModel)
     }
     
     public var body: some ReducerOf<Self> {
@@ -199,7 +199,7 @@ extension AppEntry {
           return .none
         case .nickname:
           // Shared Layer의 검증 로직 사용
-          if let error = UserPublic.validateNickname(state.nickname) {
+          if let error = UserPublicModel.validateNickname(state.nickname) {
             state.nicknameError = error.message
             return .none
           }
@@ -239,7 +239,7 @@ extension AppEntry {
       case .nicknameChanged(let name):
         state.nickname = name
         // Shared Layer의 검증 로직 사용
-        state.nicknameError = UserPublic.validateNickname(name)?.message
+        state.nicknameError = UserPublicModel.validateNickname(name)?.message
         state.isNicknameAvailable = nil
 
         guard state.nicknameError == nil, !name.isEmpty else {

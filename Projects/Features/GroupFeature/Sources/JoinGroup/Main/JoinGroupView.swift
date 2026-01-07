@@ -318,7 +318,7 @@ private struct EnterCodeView: View {
 private struct PreviewView: View {
   @Bindable var store: StoreOf<JoinGroup.Feature>
   let group: GroupModel
-  let members: [UserPublic]
+  let members: [UserPublicModel]
 
   var body: some View {
     VStack(spacing: 0) {
@@ -526,7 +526,7 @@ private struct PreviewView: View {
 // MARK: - Member Grid Item
 
 private struct MemberGridItem: View {
-  let member: UserPublic
+  let member: UserPublicModel
   @State private var loadedImage: UIImage?
   @State private var isLoading = false
 

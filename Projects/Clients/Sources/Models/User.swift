@@ -108,10 +108,10 @@ public struct UserGroupInfo: Codable, Equatable, Hashable, Sendable {
   }
 }
 
-// MARK: - UserPublic
+// MARK: - UserPublicModel
 
 /// 공개 사용자 정보 모델 (타인 조회용)
-public struct UserPublic: UserPublicInfo, Identifiable, Equatable, Hashable, Sendable {
+public struct UserPublicModel: UserPublicInfo, Identifiable, Equatable, Hashable, Sendable {
   public let userId: String
   public let name: String
   public let nickname: String
@@ -135,10 +135,10 @@ public struct UserPublic: UserPublicInfo, Identifiable, Equatable, Hashable, Sen
   }
 }
 
-// MARK: - UserPrivate
+// MARK: - UserPrivateModel
 
 /// 비공개 사용자 정보 모델 (본인 조회용)
-public struct UserPrivate: UserPrivateInfo, Identifiable, Equatable, Hashable, Sendable {
+public struct UserPrivateModel: UserPrivateInfo, Identifiable, Equatable, Hashable, Sendable {
   public let userId: String
   public let name: String
   public let nickname: String
@@ -190,7 +190,7 @@ extension UserPublicInfo {
 
 // MARK: - Validation (Shared Logic)
 
-extension UserPublic {
+extension UserPublicModel {
   /// 닉네임 유효성 검증 (도메인 로직)
   /// - Parameter nickname: 검증할 닉네임
   /// - Returns: 유효하지 않으면 에러, 유효하면 nil
@@ -241,10 +241,10 @@ extension UserPublic {
 
 // MARK: - Conversion Extensions
 
-extension UserPrivate {
-  /// UserPrivate → UserPublic 변환 (이메일 제거)
-  public func toPublic() -> UserPublic {
-    UserPublic(
+extension UserPrivateModel {
+  /// UserPrivateModel → UserPublicModel 변환 (이메일 제거)
+  public func toPublic() -> UserPublicModel {
+    UserPublicModel(
       userId: userId,
       name: name,
       nickname: nickname,

@@ -24,7 +24,7 @@ extension GroupMain {
     @ObservableState
     public struct State {
       var isInitialized: Bool = false
-      let currentUser: UserPrivate
+      let currentUser: UserPrivateModel
 
       var selectedFilter: StatusFilter = .all
 
@@ -35,13 +35,13 @@ extension GroupMain {
 
       var allGroupSummaries: [GroupSummary]?
       var currentGroup: GroupModel?
-      var currentGroupMembers: [UserPublic]?
+      var currentGroupMembers: [UserPublicModel]?
 
       @Presents var createPromise: CreatePromise.Feature.State?
       @Presents var createGroup: CreateGroup.Feature.State?
       @Presents var joinGroup: JoinGroup.Feature.State?
 
-      public init(currentUser: UserPrivate) {
+      public init(currentUser: UserPrivateModel) {
         self.currentUser = currentUser
       }
     }
@@ -87,7 +87,7 @@ extension GroupMain {
         case fetchCurrentGroup(id: String)
         case currentGroupResponse(Result<GroupModel, AppError>)
         case fetchGroupMembers(groupId: String)
-        case groupMembersResponse(Result<[UserPublic], AppError>)
+        case groupMembersResponse(Result<[UserPublicModel], AppError>)
         case fetchPromises(groupId: String)
         case loadPromisesResponse(Result<[PromiseModel], AppError>)
         case proposalRespondDone(promiseId: String, status: PromiseAttendanceStatus)

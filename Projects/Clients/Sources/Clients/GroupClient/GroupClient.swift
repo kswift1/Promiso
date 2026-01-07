@@ -45,7 +45,7 @@ public struct GroupClient: Sendable {
   public var fetchGroup: @Sendable (_ groupId: String) async throws -> GroupModel
 
   /// 그룹 멤버 목록 가져오기
-  public var fetchGroupMembers: @Sendable (_ groupId: String) async throws -> [UserPublic]
+  public var fetchGroupMembers: @Sendable (_ groupId: String) async throws -> [UserPublicModel]
 
   /// 새 그룹 생성
   public var createGroup: @Sendable (_ request: CreateGroupRequest) async throws -> GroupCreationResult
@@ -111,21 +111,21 @@ extension GroupClient: TestDependencyKey {
     fetchGroupMembers: { _ in
       try await Task.sleep(for: .seconds(0.3))
       return [
-        UserPublic(
+        UserPublicModel(
           userId: "u1",
           name: "김민수",
           nickname: "kms",
           profile: ProfileImage(url: "https://example.com/1.jpg", thumbUrl: nil, updatedAt: Date()),
           metadata: Metadata(createdAt: Date(), updatedAt: Date())
         ),
-        UserPublic(
+        UserPublicModel(
           userId: "u2",
           name: "이영희",
           nickname: "yhlee",
           profile: ProfileImage(url: "https://example.com/2.jpg", thumbUrl: nil, updatedAt: Date()),
           metadata: Metadata(createdAt: Date(), updatedAt: Date())
         ),
-        UserPublic(
+        UserPublicModel(
           userId: "u3",
           name: "박철수",
           nickname: "pcs",
@@ -154,10 +154,10 @@ extension GroupClient: TestDependencyKey {
           createdBy: "preview-user"
         ),
         members: [
-          UserPublic(userId: "u1", name: "성원", nickname: "성원", metadata: Metadata(createdAt: Date(), updatedAt: Date())),
-          UserPublic(userId: "u2", name: "지민", nickname: "지민", metadata: Metadata(createdAt: Date(), updatedAt: Date())),
-          UserPublic(userId: "u3", name: "민수", nickname: "민수", metadata: Metadata(createdAt: Date(), updatedAt: Date())),
-          UserPublic(userId: "u4", name: "서연", nickname: "서연", metadata: Metadata(createdAt: Date(), updatedAt: Date()))
+          UserPublicModel(userId: "u1", name: "성원", nickname: "성원", metadata: Metadata(createdAt: Date(), updatedAt: Date())),
+          UserPublicModel(userId: "u2", name: "지민", nickname: "지민", metadata: Metadata(createdAt: Date(), updatedAt: Date())),
+          UserPublicModel(userId: "u3", name: "민수", nickname: "민수", metadata: Metadata(createdAt: Date(), updatedAt: Date())),
+          UserPublicModel(userId: "u4", name: "서연", nickname: "서연", metadata: Metadata(createdAt: Date(), updatedAt: Date()))
         ]
       )
     },

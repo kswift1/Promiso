@@ -49,7 +49,7 @@ extension RootTab {
       /// Group Main State
       var groupMain: GroupMain.Feature.State
 
-      public init(currentUser: UserPrivate) {
+      public init(currentUser: UserPrivateModel) {
         self.groupMain = GroupMain.Feature.State(currentUser: currentUser)
         // Home.Feature.State 도 유저 기반 세팅 필요 시 여기에 주입
       }

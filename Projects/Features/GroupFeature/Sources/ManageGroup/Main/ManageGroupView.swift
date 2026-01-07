@@ -255,7 +255,7 @@ extension ManageGroup {
     }
 
     @ViewBuilder
-    private func memberGridView(members: [UserPublic]) -> some View {
+    private func memberGridView(members: [UserPublicModel]) -> some View {
       let columns = [
         GridItem(.flexible(), spacing: 16),
         GridItem(.flexible(), spacing: 16),
@@ -460,7 +460,7 @@ extension ManageGroup {
 // MARK: - Member Grid Item
 
 private struct MemberGridItem: View {
-  let member: UserPublic
+  let member: UserPublicModel
   let isHost: Bool
   @State private var loadedImage: UIImage?
   @State private var isLoading = false

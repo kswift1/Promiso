@@ -17,8 +17,8 @@ extension ManageGroup {
       public let currentUserId: String
 
       // Members
-      var membersState: LoadingState<[UserPublic]> = .idle
-      var members: [UserPublic] = []
+      var membersState: LoadingState<[UserPublicModel]> = .idle
+      var members: [UserPublicModel] = []
 
       // Leave/Delete
       var isLeavingGroup: Bool = false
@@ -30,7 +30,7 @@ extension ManageGroup {
         group: GroupModel,
         summary: GroupSummary?,
         currentUserId: String,
-        preloadedMembers: [UserPublic]? = nil
+        preloadedMembers: [UserPublicModel]? = nil
       ) {
         self.group = group
         self.summary = summary
@@ -66,7 +66,7 @@ extension ManageGroup {
 
       public enum Internal: Sendable {
         case fetchMembers
-        case membersResponse(Result<[UserPublic], Error>)
+        case membersResponse(Result<[UserPublicModel], Error>)
         case leaveGroupResponse(Result<Void, Error>)
         case deleteGroupResponse(Result<Void, Error>)
       }
