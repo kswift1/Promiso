@@ -274,10 +274,8 @@ extension GroupMain {
 
           case .currentGroupResponse(.success(let group)):
             state.currentGroup = group
-            return .merge(
-              .send(.internal(.fetchGroupMembers(groupId: group.id))),
-              .send(.internal(.subscribeToPromises(groupId: group.id)))
-            )
+            // 멤버 정보 먼저 fetch 후 promises subscribe
+            return .send(.internal(.fetchGroupMembers(groupId: group.id)))
 
           case .currentGroupResponse(.failure(let error)):
             state.promisesState = .failed(error)
@@ -295,11 +293,15 @@ extension GroupMain {
 
           case .groupMembersResponse(.success(let members)):
             state.currentGroupMembers = members
-            return .none
+            // 멤버 로드 완료 후 promises subscribe
+            guard let groupId = state.currentGroup?.id else { return .none }
+            return .send(.internal(.subscribeToPromises(groupId: groupId)))
 
           case .groupMembersResponse(.failure):
             state.currentGroupMembers = nil
-            return .none
+            // 멤버 조회 실패해도 promises는 subscribe
+            guard let groupId = state.currentGroup?.id else { return .none }
+            return .send(.internal(.subscribeToPromises(groupId: groupId)))
 
           case .subscribeToPromises(let groupId):
             if !state.promisesState.isLoaded {
