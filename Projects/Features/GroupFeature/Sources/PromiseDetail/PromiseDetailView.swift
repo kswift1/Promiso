@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import ComposableArchitecture
 import Clients
 import PromisoShared
@@ -6,6 +7,7 @@ import PromisoShared
 extension PromiseDetail {
   public struct RootView: View {
     @Bindable private var store: StoreOf<Feature>
+    @State private var isDescriptionExpanded = false
 
     public init(store: StoreOf<Feature>) {
       self.store = store
@@ -57,10 +59,7 @@ extension PromiseDetail {
 
         // 설명
         if let description = store.promise.description, !description.isEmpty {
-          Text(description)
-            .font(.system(size: 15))
-            .foregroundStyle(.secondary)
-            .multilineTextAlignment(.center)
+          ExpandableText(text: description, isExpanded: $isDescriptionExpanded)
         }
 
         // 상태 배지
@@ -78,18 +77,16 @@ extension PromiseDetail {
 
         VStack(spacing: 0) {
           // 날짜 & 시간
-          InfoRow(
-            icon: "calendar",
-            iconColor: .blue,
+          EmojiInfoRow(
+            emoji: "📅",
             title: "날짜",
             value: formatFullDate(store.promise.startAt)
           )
 
           Divider().padding(.leading, 44)
 
-          InfoRow(
-            icon: "clock.fill",
-            iconColor: .orange,
+          EmojiInfoRow(
+            emoji: "⏰",
             title: "시간",
             value: store.promise.timeText
           )
@@ -98,9 +95,8 @@ extension PromiseDetail {
           if store.promise.location != nil {
             Divider().padding(.leading, 44)
 
-            InfoRow(
-              icon: "mappin.circle.fill",
-              iconColor: .red,
+            EmojiInfoRow(
+              emoji: "📍",
               title: "장소",
               value: store.promise.locationText
             )
@@ -110,9 +106,8 @@ extension PromiseDetail {
           if let deadline = store.promise.deadlineText {
             Divider().padding(.leading, 44)
 
-            InfoRow(
-              icon: "hourglass",
-              iconColor: .purple,
+            EmojiInfoRow(
+              emoji: "⏳",
               title: "투표 마감",
               value: deadline
             )
@@ -155,29 +150,19 @@ extension PromiseDetail {
           }
 
           // 대기 (그룹 멤버 - 수락 - 거절)
-          let pendingCount = (store.groupMembers?.count ?? 0)
-            - store.promise.votes.acceptedCount
-            - store.promise.votes.declinedCount
+          if let members = store.groupMembers {
+            let respondedIds = Set(store.promise.votes.accepted + store.promise.votes.declined)
+            let pendingUserIds = members.filter { !respondedIds.contains($0.userId) }.map(\.userId)
 
-          if pendingCount > 0 {
-            HStack {
-              Circle()
-                .fill(Color.gray.opacity(0.3))
-                .frame(width: 8, height: 8)
-
-              Text("미응답")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(.secondary)
-
-              Text("\(pendingCount)명")
-                .font(.system(size: 14))
-                .foregroundStyle(.tertiary)
-
-              Spacer()
+            if !pendingUserIds.isEmpty {
+              ParticipantGroup(
+                title: "미응답",
+                count: pendingUserIds.count,
+                userIds: pendingUserIds,
+                members: members,
+                color: .gray
+              )
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .glassCard()
           }
         }
       }
@@ -323,17 +308,66 @@ private struct SectionHeader: View {
   }
 }
 
-private struct InfoRow: View {
-  let icon: String
-  let iconColor: Color
+private struct ExpandableText: View {
+  let text: String
+  @Binding var isExpanded: Bool
+  @State private var isTruncated = false
+  private let lineLimit = 3
+
+  var body: some View {
+    VStack(spacing: 4) {
+      Text(text)
+        .font(.system(size: 15))
+        .foregroundStyle(.secondary)
+        .multilineTextAlignment(.center)
+        .lineLimit(isExpanded ? nil : lineLimit)
+        .background(
+          GeometryReader { geometry in
+            Color.clear.onAppear {
+              checkTruncation(geometry: geometry)
+            }
+          }
+        )
+
+      if isTruncated || isExpanded {
+        Button {
+          withAnimation(.easeInOut(duration: 0.2)) {
+            isExpanded.toggle()
+          }
+        } label: {
+          Text(isExpanded ? "접기" : "더보기")
+            .font(.system(size: 13, weight: .medium))
+            .foregroundStyle(.blue)
+        }
+      }
+    }
+  }
+
+  private func checkTruncation(geometry: GeometryProxy) {
+    let font = UIFont.systemFont(ofSize: 15)
+    let attributes: [NSAttributedString.Key: Any] = [.font: font]
+    let size = CGSize(width: geometry.size.width, height: .greatestFiniteMagnitude)
+    let boundingRect = (text as NSString).boundingRect(
+      with: size,
+      options: [.usesLineFragmentOrigin, .usesFontLeading],
+      attributes: attributes,
+      context: nil
+    )
+    let lineHeight = font.lineHeight
+    let numberOfLines = Int(ceil(boundingRect.height / lineHeight))
+    isTruncated = numberOfLines > lineLimit
+  }
+}
+
+private struct EmojiInfoRow: View {
+  let emoji: String
   let title: String
   let value: String
 
   var body: some View {
-    HStack(spacing: 12) {
-      Image(systemName: icon)
+    HStack(spacing: 10) {
+      Text(emoji)
         .font(.system(size: 18))
-        .foregroundStyle(iconColor)
         .frame(width: 28)
 
       Text(title)
