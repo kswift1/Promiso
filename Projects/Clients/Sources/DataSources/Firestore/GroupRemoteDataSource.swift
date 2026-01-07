@@ -25,7 +25,7 @@ public enum GroupRemoteDataSourceError: Error, LocalizedError {
 /// Firebase Functions를 통한 그룹 데이터 관리
 ///
 /// - GroupRemoteDataSource는 Clients 레이어에 속함
-public final class GroupRemoteDataSource: @unchecked Sendable {
+public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchecked Sendable {
   private let functions: Functions
   private let storage: Storage
   private let db: Firestore

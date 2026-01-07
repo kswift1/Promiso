@@ -54,7 +54,7 @@ private struct UpdateUserSettingsRequest: Encodable {
 // MARK: - Data Source
 
 /// Firebase Functions를 통한 사용자 프로필 데이터 관리
-public final class UserProfileRemoteDataSource: @unchecked Sendable {
+public final class UserProfileRemoteDataSource: UserProfileRemoteDataSourceProtocol, @unchecked Sendable {
   private let functions: Functions
   private let storage: Storage
   private let environment: Environment
