@@ -42,6 +42,18 @@ extension PromiseDetail {
       .onAppear {
         store.send(.view(.onAppear))
       }
+      .sheet(
+        item: Binding(
+          get: { store.memberSheet },
+          set: { _ in store.send(.view(.memberSheetDismissed)) }
+        )
+      ) { sheetState in
+        MemberListSheet(
+          title: sheetState.title,
+          members: sheetState.members,
+          colorType: sheetState.colorType
+        )
+      }
     }
 
     // MARK: - Header Section
@@ -129,24 +141,36 @@ extension PromiseDetail {
         VStack(spacing: 12) {
           // 수락
           if !store.promise.votes.accepted.isEmpty {
-            ParticipantGroup(
+            ParticipantGroupRow(
               title: "참여",
               count: store.promise.votes.acceptedCount,
               userIds: store.promise.votes.accepted,
               members: store.groupMembers,
-              color: .green
-            )
+              colorType: .accepted
+            ) {
+              store.send(.view(.participantGroupTapped(
+                title: "참여",
+                userIds: store.promise.votes.accepted,
+                colorType: .accepted
+              )))
+            }
           }
 
           // 거절
           if !store.promise.votes.declined.isEmpty {
-            ParticipantGroup(
+            ParticipantGroupRow(
               title: "불참",
               count: store.promise.votes.declinedCount,
               userIds: store.promise.votes.declined,
               members: store.groupMembers,
-              color: .red
-            )
+              colorType: .declined
+            ) {
+              store.send(.view(.participantGroupTapped(
+                title: "불참",
+                userIds: store.promise.votes.declined,
+                colorType: .declined
+              )))
+            }
           }
 
           // 대기 (그룹 멤버 - 수락 - 거절)
@@ -155,13 +179,19 @@ extension PromiseDetail {
             let pendingUserIds = members.filter { !respondedIds.contains($0.userId) }.map(\.userId)
 
             if !pendingUserIds.isEmpty {
-              ParticipantGroup(
+              ParticipantGroupRow(
                 title: "미응답",
                 count: pendingUserIds.count,
                 userIds: pendingUserIds,
                 members: members,
-                color: .gray
-              )
+                colorType: .pending
+              ) {
+                store.send(.view(.participantGroupTapped(
+                  title: "미응답",
+                  userIds: pendingUserIds,
+                  colorType: .pending
+                )))
+              }
             }
           }
         }
@@ -384,69 +414,169 @@ private struct EmojiInfoRow: View {
   }
 }
 
-private struct ParticipantGroup: View {
+private struct ParticipantGroupRow: View {
   let title: String
   let count: Int
   let userIds: [String]
   let members: [UserPublicModel]?
-  let color: Color
+  let colorType: PromiseDetail.Feature.ParticipantColorType
+  let onTap: () -> Void
+
+  private var color: Color {
+    switch colorType {
+    case .accepted: return .green
+    case .declined: return .red
+    case .pending: return .gray
+    }
+  }
 
   var body: some View {
-    HStack {
-      Circle()
-        .fill(color)
-        .frame(width: 8, height: 8)
+    Button(action: onTap) {
+      HStack {
+        Circle()
+          .fill(color)
+          .frame(width: 8, height: 8)
 
-      Text(title)
-        .font(.system(size: 14, weight: .medium))
+        Text(title)
+          .font(.system(size: 14, weight: .medium))
+          .foregroundStyle(.primary)
 
-      Text("\(count)명")
-        .font(.system(size: 14))
-        .foregroundStyle(.secondary)
+        Text("\(count)명")
+          .font(.system(size: 14))
+          .foregroundStyle(.secondary)
 
-      Spacer()
+        Spacer()
 
-      // 참여자 아바타 (최대 5명)
-      HStack(spacing: -8) {
-        ForEach(userIds.prefix(5), id: \.self) { userId in
-          if let member = members?.first(where: { $0.userId == userId }) {
-            ProfileAvatarView(
-              profileImageUrl: member.profileImageUrl,
-              displayName: member.displayName,
-              size: 28
-            )
-          } else {
-            ProfileAvatarView(
-              profileImageUrl: nil,
-              displayName: "?",
-              size: 28
-            )
+        // 참여자 아바타 (최대 5명)
+        HStack(spacing: -8) {
+          ForEach(userIds.prefix(5), id: \.self) { userId in
+            if let member = members?.first(where: { $0.userId == userId }) {
+              ProfileAvatarView(
+                profileImageUrl: member.profileImageUrl,
+                displayName: member.displayName,
+                size: 28
+              )
+            } else {
+              ProfileAvatarView(
+                profileImageUrl: nil,
+                displayName: "?",
+                size: 28
+              )
+            }
+          }
+
+          if userIds.count > 5 {
+            Text("+\(userIds.count - 5)")
+              .font(.system(size: 10, weight: .bold))
+              .foregroundColor(.white)
+              .frame(width: 28, height: 28)
+              .background(
+                LinearGradient(
+                  colors: [Color(red: 0.6, green: 0.6, blue: 0.65), Color(red: 0.45, green: 0.45, blue: 0.5)],
+                  startPoint: .topLeading,
+                  endPoint: .bottomTrailing
+                )
+              )
+              .clipShape(Circle())
+              .overlay(
+                Circle()
+                  .stroke(Color.white, lineWidth: 2)
+              )
           }
         }
 
-        if userIds.count > 5 {
-          Text("+\(userIds.count - 5)")
-            .font(.system(size: 10, weight: .bold))
-            .foregroundColor(.white)
-            .frame(width: 28, height: 28)
-            .background(
-              LinearGradient(
-                colors: [Color(red: 0.6, green: 0.6, blue: 0.65), Color(red: 0.45, green: 0.45, blue: 0.5)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-              )
-            )
-            .clipShape(Circle())
-            .overlay(
-              Circle()
-                .stroke(Color.white, lineWidth: 2)
-            )
+        Image(systemName: "chevron.right")
+          .font(.system(size: 12, weight: .semibold))
+          .foregroundStyle(.tertiary)
+      }
+      .padding(.horizontal, 16)
+      .padding(.vertical, 12)
+      .glassCard()
+    }
+    .buttonStyle(.plain)
+  }
+}
+
+// MARK: - Member List Sheet
+
+private struct MemberListSheet: View {
+  let title: String
+  let members: [UserPublicModel]
+  let colorType: PromiseDetail.Feature.ParticipantColorType
+
+  @SwiftUI.Environment(\.dismiss) private var dismiss
+
+  private var color: Color {
+    switch colorType {
+    case .accepted: return .green
+    case .declined: return .red
+    case .pending: return .gray
+    }
+  }
+
+  var body: some View {
+    NavigationView {
+      ScrollView {
+        LazyVStack(spacing: 0) {
+          ForEach(members) { member in
+            MemberRow(member: member, color: color)
+
+            if member.id != members.last?.id {
+              Divider()
+                .padding(.leading, 72)
+            }
+          }
+        }
+        .padding(.vertical, 8)
+      }
+      .navigationTitle("\(title) (\(members.count)명)")
+      .navigationBarTitleDisplayMode(.inline)
+      .toolbar {
+        ToolbarItem(placement: .navigationBarTrailing) {
+          Button("닫기") {
+            dismiss()
+          }
         }
       }
     }
-    .padding(.horizontal, 16)
+    .presentationDetents([.medium, .large])
+    .presentationDragIndicator(.visible)
+  }
+}
+
+private struct MemberRow: View {
+  let member: UserPublicModel
+  let color: Color
+
+  var body: some View {
+    HStack(spacing: 16) {
+      ProfileAvatarView(
+        profileImageUrl: member.profileImageUrl,
+        displayName: member.displayName,
+        size: 48,
+        borderWidth: 0
+      )
+
+      VStack(alignment: .leading, spacing: 4) {
+        Text(member.displayName)
+          .font(.system(size: 16, weight: .medium))
+          .foregroundStyle(.primary)
+
+        if !member.nickname.isEmpty && member.nickname != member.displayName {
+          Text("@\(member.nickname)")
+            .font(.system(size: 13))
+            .foregroundStyle(.secondary)
+        }
+      }
+
+      Spacer()
+
+      Circle()
+        .fill(color)
+        .frame(width: 10, height: 10)
+    }
+    .padding(.horizontal, 20)
     .padding(.vertical, 12)
-    .glassCard()
   }
 }
 
@@ -540,3 +670,4 @@ private extension View {
       )
   }
 }
+

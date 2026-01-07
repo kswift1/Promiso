@@ -20,6 +20,9 @@ extension PromiseDetail {
       // 그룹 멤버 정보 (참여자 이름 표시용)
       var groupMembers: [UserPublicModel]?
 
+      // 멤버 시트 상태
+      @Presents var memberSheet: MemberSheetState?
+
       public init(
         promise: PromiseModel,
         currentUserId: String,
@@ -47,11 +50,26 @@ extension PromiseDetail {
       case idle, accepting, rejecting, resetting
     }
 
+    public struct MemberSheetState: Equatable, Identifiable {
+      public var id: String { title }
+      let title: String
+      let members: [UserPublicModel]
+      let colorType: ParticipantColorType
+    }
+
+    public enum ParticipantColorType: Sendable, Equatable {
+      case accepted   // green
+      case declined   // red
+      case pending    // gray
+    }
+
+    @CasePathable
     public enum Action: Sendable {
       case view(ViewAction)
       case `internal`(Internal)
       case delegate(Delegate)
 
+      @CasePathable
       public enum ViewAction: Sendable {
         case onAppear
         case dismissTapped
@@ -61,6 +79,8 @@ extension PromiseDetail {
         case deleteTapped
         case editTapped
         case shareTapped
+        case participantGroupTapped(title: String, userIds: [String], colorType: ParticipantColorType)
+        case memberSheetDismissed
       }
 
       public enum Internal: Sendable {
@@ -130,6 +150,22 @@ extension PromiseDetail {
 
       case .shareTapped:
         // TODO: 공유 기능
+        return .none
+
+      case let .participantGroupTapped(title, userIds, colorType):
+        guard let members = state.groupMembers else { return .none }
+        let resolvedMembers = userIds.compactMap { userId in
+          members.first { $0.userId == userId }
+        }
+        state.memberSheet = MemberSheetState(
+          title: title,
+          members: resolvedMembers,
+          colorType: colorType
+        )
+        return .none
+
+      case .memberSheetDismissed:
+        state.memberSheet = nil
         return .none
       }
     }
