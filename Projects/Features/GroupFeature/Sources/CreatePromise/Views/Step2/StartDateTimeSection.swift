@@ -151,15 +151,15 @@ struct InlineDateTimePicker: View {
 struct StartDateTimeSection: View {
   let store: StoreOf<CreatePromise.Feature>
   var scrollProxy: ScrollViewProxy? = nil
-  
+
   private var timeUntilStart: TimeInterval {
-    store.promiseProposal.startedAt.timeIntervalSinceNow
+    store.promise.startAt.timeIntervalSinceNow
   }
-  
+
   private var showWarning: Bool {
     timeUntilStart < 3600 && timeUntilStart > 0
   }
-  
+
   var body: some View {
     SectionPlaceHolder(
       placeHolderTitle: "시작 시간",
@@ -168,7 +168,7 @@ struct StartDateTimeSection: View {
       VStack(spacing: 0) {
         InlineDateTimePicker(
           date: Binding(
-            get: { store.promiseProposal.startedAt },
+            get: { store.promise.startAt },
             set: { store.send(.view(.setStartDate($0))) }
           ),
           scrollProxy: scrollProxy,
@@ -201,229 +201,17 @@ struct StartDateTimeSection: View {
 
 // MARK: - Previews
 
-#Preview("접힌 상태") {
+#Preview("DateTimePicker") {
   struct PreviewWrapper: View {
     @State private var date = Date().addingTimeInterval(7200)
-    
+
     var body: some View {
       VStack(spacing: 24) {
-        Text("개별 터치 방식")
-          .font(.headline)
-        
-        Text("날짜 또는 시간 영역을 각각 터치해보세요")
-          .font(.caption)
-          .foregroundColor(.secondary)
-        
         InlineDateTimePicker(date: $date)
       }
       .padding()
     }
   }
-  
-  return PreviewWrapper()
-}
 
-#Preview("날짜 펼쳐진 상태") {
-  struct PreviewWrapper: View {
-    @State private var date = Date().addingTimeInterval(7200)
-    
-    var body: some View {
-      ScrollView {
-        VStack(spacing: 24) {
-          Text("날짜 피커")
-            .font(.headline)
-          
-          InlineDateTimePicker(date: $date)
-        }
-        .padding()
-      }
-    }
-  }
-  
-  return PreviewWrapper()
-}
-
-#Preview("Section - 정상") {
-  ScrollView {
-    StartDateTimeSection(
-      store: Store(
-        initialState: CreatePromise.Feature.State(
-          promiseProposal: PromiseProposal(
-             title: "영화 관람",
-            emoji: "🍿",
-            group: .init(
-              id: "g1",
-              name: "지민과 나",
-              maxMembers: 2,
-              inviteCode: "PREVIEW",
-              createdBy: "preview"
-            ),
-            startedAt: Date().addingTimeInterval(7200),
-            minimumParticipants: 2
-          )
-        )
-      ) {
-        CreatePromise.Feature()
-      }
-    )
-    .padding()
-  }
-}
-
-#Preview("Section - 경고") {
-  ScrollView {
-    StartDateTimeSection(
-      store: Store(
-        initialState: CreatePromise.Feature.State(
-          promiseProposal: PromiseProposal(
-             title: "긴급 회의",
-            emoji: "💼",
-            group: .init(
-              id: "g1",
-              name: "지민과 나",
-              maxMembers: 2,
-              inviteCode: "PREVIEW",
-              createdBy: "preview"
-            ),
-            startedAt: Date().addingTimeInterval(1800),
-            minimumParticipants: 2
-          )
-        )
-      ) {
-        CreatePromise.Feature()
-      }
-    )
-    .padding()
-  }
-}
-
-#Preview("다크모드") {
-  struct PreviewWrapper: View {
-    @State private var date = Date().addingTimeInterval(3600)
-    
-    var body: some View {
-      ScrollView {
-        VStack(spacing: 24) {
-          InlineDateTimePicker(date: $date)
-          
-          StartDateTimeSection(
-            store: Store(
-              initialState: CreatePromise.Feature.State(
-                promiseProposal: PromiseProposal(
-                   title: "저녁 식사",
-                  emoji: "🍽️",
-                  group: .init(
-                    id: "g1",
-                    name: "지민과 나",
-                    maxMembers: 2,
-                    inviteCode: "PREVIEW",
-                    createdBy: "preview"
-                  ),
-                  startedAt: date,
-                  minimumParticipants: 2
-                )
-              )
-            ) {
-              CreatePromise.Feature()
-            }
-          )
-        }
-        .padding()
-      }
-    }
-  }
-  
-  return PreviewWrapper()
-    .preferredColorScheme(.dark)
-}
-
-#Preview("전체 폼") {
-  ScrollView {
-    VStack(spacing: 24) {
-      Text("약속 만들기 - Step 2")
-        .font(.title2)
-        .fontWeight(.bold)
-        .frame(maxWidth: .infinity, alignment: .leading)
-      
-      StartDateTimeSection(
-        store: Store(
-          initialState: CreatePromise.Feature.State(
-            promiseProposal: PromiseProposal(
-               title: "카페 미팅",
-              emoji: "☕",
-              group: .init(
-                id: "g1",
-                name: "지민과 나",
-                maxMembers: 2,
-                inviteCode: "PREVIEW",
-                createdBy: "preview"
-              ),
-              startedAt: Date().addingTimeInterval(7200),
-              minimumParticipants: 2
-            )
-          )
-        ) {
-          CreatePromise.Feature()
-        }
-      )
-      
-      SectionPlaceHolder(
-        placeHolderTitle: "장소",
-        isRequired: false
-      ) {
-        TextField("장소를 검색하세요", text: .constant(""))
-          .padding(16)
-          .background(Color(.systemGray6))
-          .clipShape(RoundedRectangle(cornerRadius: 12))
-      }
-      
-      SectionPlaceHolder(
-        placeHolderTitle: "최소 참가 인원",
-        isRequired: true
-      ) {
-        HStack {
-          Text("2명")
-            .font(.title3)
-            .fontWeight(.semibold)
-          Spacer()
-        }
-        .padding(16)
-        .background(Color(.systemGray6))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-      }
-    }
-    .padding()
-  }
-}
-
-#Preview("인터랙티브 테스트") {
-  struct PreviewWrapper: View {
-    @State private var date = Date().addingTimeInterval(7200)
-    
-    var body: some View {
-      ScrollView {
-        VStack(spacing: 24) {
-          Text("각 영역을 개별로 터치해보세요")
-            .font(.headline)
-          
-          InlineDateTimePicker(date: $date)
-          
-          Divider()
-            .padding(.vertical, 8)
-          
-          VStack(alignment: .leading, spacing: 8) {
-            Text("선택된 날짜/시간")
-              .font(.caption)
-              .foregroundColor(.secondary)
-            Text(date.formatted(date: .long, time: .shortened))
-              .font(.body)
-          }
-          .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .padding()
-      }
-    }
-  }
-  
   return PreviewWrapper()
 }

@@ -5,33 +5,9 @@ import FirebaseFirestore
 public class BatchOperationManager {
   private let db = Firestore.firestore()
   private let maxBatchSize = 500 // Firestore 배치 제한
-  
+
   // MARK: - Batch Operations
-  
-  /// 대량 사용자 초대 처리
-  public func batchInviteUsers(
-    promiseId: String,
-    attendances: [AttendanceDocument]
-  ) async throws {
-    let batches = attendances.chunked(into: maxBatchSize)
-    
-    for batch in batches {
-      try await processBatchInvite(promiseId: promiseId, attendances: batch)
-    }
-  }
-  
-  /// 대량 참석 상태 업데이트
-  public func batchUpdateAttendances(
-    promiseId: String,
-    updates: [(userId: String, status: AttendanceStatus, message: String?)]
-  ) async throws {
-    let batches = updates.chunked(into: maxBatchSize)
-    
-    for batch in batches {
-      try await processBatchUpdate(promiseId: promiseId, updates: batch)
-    }
-  }
-  
+
   /// 대량 그룹 멤버 추가
   public func batchAddGroupMembers(
     groupId: String,
@@ -56,52 +32,7 @@ public class BatchOperationManager {
   }
   
   // MARK: - Private Batch Processors
-  
-  private func processBatchInvite(
-    promiseId: String,
-    attendances: [AttendanceDocument]
-  ) async throws {
-    let batch = db.batch()
-    
-    for attendance in attendances {
-      let ref = db.environmentCollection("promises")
-        .document(promiseId)
-        .collection("attendances")
-        .document(attendance.userId)
-      
-      try batch.setData(from: attendance, forDocument: ref)
-    }
-    
-    try await batch.commit()
-  }
-  
-  private func processBatchUpdate(
-    promiseId: String,
-    updates: [(userId: String, status: AttendanceStatus, message: String?)]
-  ) async throws {
-    let batch = db.batch()
-    
-    for update in updates {
-      let ref = db.environmentCollection("promises")
-        .document(promiseId)
-        .collection("attendances")
-        .document(update.userId)
-      
-      var updateData: [String: Any] = [
-        "status": update.status.rawValue,
-        "respondedAt": Timestamp()
-      ]
-      
-      if let message = update.message {
-        updateData["message"] = message
-      }
-      
-      batch.updateData(updateData, forDocument: ref)
-    }
-    
-    try await batch.commit()
-  }
-  
+
   private func processBatchAddMembers(
     groupId: String,
     members: [(userId: String, userName: String, profileImageUrl: String?)]

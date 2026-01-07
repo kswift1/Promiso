@@ -17,12 +17,12 @@ struct PromisePreviewSection: View {
         VStack(spacing: 0) {
           // 제목
           HStack(spacing: 12) {
-            if let emoji = store.promiseProposal.emoji {
+            if let emoji = store.promise.emoji {
               Text(emoji)
                 .font(.system(size: 32))
             }
 
-            Text(store.promiseProposal.title)
+            Text(store.promise.title)
               .font(.system(size: 20, weight: .bold))
               .foregroundColor(.primary)
 
@@ -39,7 +39,7 @@ struct PromisePreviewSection: View {
 
           // 상세 정보
           VStack(spacing: 12) {
-            if let group = store.promiseProposal.group {
+            if let group = store.promise.group {
               PreviewInfoRow(
                 icon: "person.2.fill",
                 text: group.name
@@ -51,22 +51,22 @@ struct PromisePreviewSection: View {
               text: formattedDateTime
             )
 
-            if let endedAt = store.promiseProposal.endedAt {
+            if let endAt = store.promise.endAt {
               PreviewInfoRow(
                 icon: "clock",
-                text: "종료: \(formattedTime(endedAt))"
+                text: "종료: \(formattedTime(endAt))"
               )
             }
 
             PreviewInfoRow(
               icon: "person.3.fill",
-              text: "최소 \(store.promiseProposal.minimumParticipants ?? 2)명 참석 시 약속 확정"
+              text: "최소 \(store.promise.minimumParticipants)명 참석 시 약속 확정"
             )
 
-            if let place = store.promiseProposal.place {
+            if let location = store.promise.location {
               PreviewInfoRow(
                 icon: "mappin.circle.fill",
-                text: place
+                text: location.name
               )
             }
           }
@@ -101,7 +101,7 @@ struct PromisePreviewSection: View {
     let formatter = DateFormatter()
     formatter.locale = Locale(identifier: "ko_KR")
     formatter.dateFormat = "M월 d일 (E) a h:mm"
-    return formatter.string(from: store.promiseProposal.startedAt)
+    return formatter.string(from: store.promise.startAt)
   }
 
   private func formattedTime(_ date: Date) -> String {
@@ -144,12 +144,12 @@ struct PromisePreviewFullScreen: View {
         VStack(spacing: 24) {
           // 헤더
           VStack(spacing: 12) {
-            if let emoji = store.promiseProposal.emoji {
+            if let emoji = store.promise.emoji {
               Text(emoji)
                 .font(.system(size: 72))
             }
 
-            Text(store.promiseProposal.title)
+            Text(store.promise.title)
               .font(.system(size: 28, weight: .bold))
 
             Text("멤버들이 받게 될 약속 초대입니다")
@@ -160,7 +160,7 @@ struct PromisePreviewFullScreen: View {
 
           // 상세 정보 카드
           VStack(spacing: 0) {
-            if let group = store.promiseProposal.group {
+            if let group = store.promise.group {
               DetailRow(
                 icon: "person.2.fill",
                 title: "그룹",
@@ -177,14 +177,14 @@ struct PromisePreviewFullScreen: View {
               content: formattedDateTime
             )
 
-            if let endDate = store.promiseProposal.endedAt {
+            if let endAt = store.promise.endAt {
               Divider()
                 .padding(.leading, 52)
 
               DetailRow(
                 icon: "clock",
                 title: "종료 시간",
-                content: formattedEndDateTime(endDate)
+                content: formattedEndDateTime(endAt)
               )
             }
 
@@ -194,28 +194,28 @@ struct PromisePreviewFullScreen: View {
             DetailRow(
               icon: "person.3.fill",
               title: "참석 조건",
-              content: "최소 \(store.promiseProposal.minimumParticipants ?? 2)명 참석 시 약속 확정"
+              content: "최소 \(store.promise.minimumParticipants)명 참석 시 약속 확정"
             )
 
-            if let place = store.promiseProposal.place {
+            if let location = store.promise.location {
               Divider()
                 .padding(.leading, 52)
 
               DetailRow(
                 icon: "mappin.circle.fill",
                 title: "장소",
-                content: place
+                content: location.name
               )
             }
 
-            if let details = store.promiseProposal.details, !details.isEmpty {
+            if let description = store.promise.description, !description.isEmpty {
               Divider()
                 .padding(.leading, 52)
 
               DetailRow(
                 icon: "text.alignleft",
                 title: "상세 설명",
-                content: details
+                content: description
               )
             }
           }
@@ -258,7 +258,7 @@ struct PromisePreviewFullScreen: View {
   }
 
   private var formattedDateTime: String {
-    formattedDateTime(store.promiseProposal.startedAt)
+    formattedDateTime(store.promise.startAt)
   }
 
   private func formattedEndDateTime(_ date: Date) -> String {

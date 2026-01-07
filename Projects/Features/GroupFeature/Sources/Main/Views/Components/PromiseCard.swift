@@ -3,62 +3,56 @@ import PromisoShared
 import SwiftUI
 
 struct PromiseCard: View {
-  let promise: PromiseItem
-  let responseStatus: PromiseAttendanceStatus?
+  let promise: PromiseModel
+  let currentUserId: String
   let onAccept: () -> Void
   let onReject: () -> Void
   let onDelete: (() -> Void)?
   let onChangeResponse: ((PromiseAttendanceStatus) -> Void)?
 
   private var isLocationUndecided: Bool {
-    promise.location == "장소 미정"
+    promise.locationText == "장소 미정"
+  }
+
+  private var isHost: Bool {
+    promise.isHost(userId: currentUserId)
+  }
+
+  private var myVoteStatus: VoteStatus {
+    promise.myVoteStatus(userId: currentUserId)
+  }
+
+  private var responseStatus: PromiseResponseStatus {
+    promise.responseStatus(currentUserId: currentUserId)
   }
 
   var body: some View {
     VStack(alignment: .leading, spacing: 14) {
       // Host Section
       HStack(spacing: 10) {
-        // Profile Image
-        if let profileUrl = promise.hostProfileImageUrl {
-          AsyncImage(url: URL(string: profileUrl)) { image in
-            image
-              .resizable()
-              .scaledToFill()
-          } placeholder: {
-            Circle()
-              .fill(Color(.systemGray5))
-              .overlay(
-                Text(promise.hostNickname.prefix(1).uppercased())
-                  .font(.system(size: 12, weight: .semibold))
-                  .foregroundColor(.secondary)
-              )
-          }
+        // Profile Image (placeholder - host info would need to be fetched separately)
+        Circle()
+          .fill(
+            LinearGradient(
+              colors: [.blue.opacity(0.7), .purple.opacity(0.7)],
+              startPoint: .topLeading,
+              endPoint: .bottomTrailing
+            )
+          )
           .frame(width: 32, height: 32)
-          .clipShape(Circle())
-        } else {
-          Circle()
-            .fill(
-              LinearGradient(
-                colors: [.blue.opacity(0.7), .purple.opacity(0.7)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-              )
-            )
-            .frame(width: 32, height: 32)
-            .overlay(
-              Text(promise.hostNickname.prefix(1).uppercased())
-                .font(.system(size: 14, weight: .bold))
-                .foregroundColor(.white)
-            )
-        }
+          .overlay(
+            Text("H")
+              .font(.system(size: 14, weight: .bold))
+              .foregroundColor(.white)
+          )
 
         VStack(alignment: .leading, spacing: 2) {
-          Text(promise.hostNickname)
+          Text(isHost ? "내가 만든 약속" : "약속")
             .font(.system(size: 13, weight: .semibold))
             .foregroundColor(.primary)
 
-          if promise.isHost {
-            Text("나")
+          if isHost {
+            Text("호스트")
               .font(.system(size: 11, weight: .medium))
               .foregroundColor(.blue)
           }
@@ -67,14 +61,14 @@ struct PromiseCard: View {
         Spacer()
 
         // Status Badge
-        StatusBadge(status: promise.status)
+        StatusBadge(status: responseStatus)
       }
 
       Divider()
 
       // Main Content
       HStack(alignment: .top, spacing: 12) {
-        Text(promise.emoji)
+        Text(promise.displayEmoji)
           .font(.system(size: 44))
 
         VStack(alignment: .leading, spacing: 10) {
@@ -91,12 +85,12 @@ struct PromiseCard: View {
           }
 
           VStack(alignment: .leading, spacing: 6) {
-            // Time
+            // Date & Time
             HStack(spacing: 6) {
-              Image(systemName: "clock.fill")
+              Image(systemName: "calendar")
                 .font(.system(size: 13))
                 .foregroundColor(.blue)
-              Text(promise.time)
+              Text("\(promise.dateText) \(promise.timeText)")
                 .font(.system(size: 14, weight: .medium))
             }
             .foregroundColor(.primary)
@@ -107,13 +101,8 @@ struct PromiseCard: View {
                 Image(systemName: "mappin.circle.fill")
                   .font(.system(size: 13))
                   .foregroundColor(.red)
-                Text(promise.location)
+                Text(promise.locationText)
                   .font(.system(size: 14, weight: .medium))
-                if let distance = promise.distance {
-                  Text("· \(distance)")
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
-                }
               }
               .foregroundColor(.primary)
             }
@@ -123,21 +112,19 @@ struct PromiseCard: View {
         Spacer()
       }
 
-      // Bottom Section
+      // Bottom Section - Vote counts
       HStack(spacing: 8) {
-        if let responses = promise.responses {
-          HStack(spacing: 4) {
-            Image(systemName: "person.2.fill")
-              .font(.system(size: 11))
-            Text("\(responses.current)/\(responses.total)명")
-              .font(.system(size: 12, weight: .semibold))
-          }
-          .foregroundColor(.secondary)
+        HStack(spacing: 4) {
+          Image(systemName: "person.2.fill")
+            .font(.system(size: 11))
+          Text("\(promise.votes.acceptedCount)/\(promise.minimumParticipants)명")
+            .font(.system(size: 12, weight: .semibold))
         }
+        .foregroundColor(.secondary)
 
         Spacer()
 
-        if let deadline = promise.deadline, promise.status == .needResponse {
+        if let deadline = promise.deadlineText, responseStatus == .needResponse {
           HStack(spacing: 4) {
             Image(systemName: "clock.fill")
               .font(.system(size: 11))
@@ -152,38 +139,33 @@ struct PromiseCard: View {
         }
       }
 
-      if let responseStatus {
-        ResponseBadge(status: responseStatus)
+      // My response badge
+      if myVoteStatus != .pending {
+        ResponseBadge(status: myVoteStatus == .accepted ? .accepted : .declined)
       }
     }
     .padding(16)
     .adaptiveGlassCardBackground()
     .contextMenu {
       // Host인 경우 삭제 옵션
-      if promise.isHost, let onDelete = onDelete {
+      if isHost, let onDelete = onDelete {
         Button(role: .destructive, action: onDelete) {
           Label("약속 삭제", systemImage: "trash")
         }
       }
 
       // 응답을 수정할 수 있는 경우
-      if let responseStatus = responseStatus, let onChangeResponse = onChangeResponse {
+      if myVoteStatus != .pending, let onChangeResponse = onChangeResponse {
         Section("응답 변경") {
-          if responseStatus != .accepted {
+          if myVoteStatus != .accepted {
             Button(action: { onChangeResponse(.accepted) }) {
               Label("수락", systemImage: "checkmark.circle.fill")
             }
           }
 
-          if responseStatus != .declined {
+          if myVoteStatus != .declined {
             Button(action: { onChangeResponse(.declined) }) {
               Label("거절", systemImage: "xmark.circle.fill")
-            }
-          }
-
-          if responseStatus != .tentative {
-            Button(action: { onChangeResponse(.tentative) }) {
-              Label("미정", systemImage: "questionmark.circle.fill")
             }
           }
         }
@@ -204,7 +186,6 @@ struct PromiseCard: View {
 // MARK: - Glass Effect Modifier
 
 private extension View {
-  /// iOS 26: ultraThinMaterial glass effect, 이전: systemBackground with border
   func adaptiveGlassCardBackground() -> some View {
     if #available(iOS 26.0, *) {
       return AnyView(
@@ -239,8 +220,6 @@ private struct ResponseBadge: View {
       return "수락함"
     case .declined:
       return "거절함"
-    case .tentative:
-      return "미정"
     }
   }
 
@@ -250,8 +229,6 @@ private struct ResponseBadge: View {
       return .green
     case .declined:
       return .red
-    case .tentative:
-      return .orange
     }
   }
 

@@ -55,28 +55,28 @@ struct LocationSection: View {
         showLocationPicker = true
       }) {
         HStack(spacing: 12) {
-          if let place = store.promiseProposal.place {
+          if let location = store.promise.location {
             VStack(alignment: .leading, spacing: 4) {
-              Text(place)
+              Text(location.name)
                 .font(.system(size: 16, weight: .medium))
                 .foregroundColor(.primary)
-              
-              //              if let address = location.address {
-              //                Text(address)
-              //                  .font(.system(size: 14))
-              //                  .foregroundColor(.secondary)
-              //                  .lineLimit(1)
-              //              }
+
+              if let address = location.address {
+                Text(address)
+                  .font(.system(size: 14))
+                  .foregroundColor(.secondary)
+                  .lineLimit(1)
+              }
             }
           } else {
             Text("장소를 검색하거나 입력하세요")
               .font(.system(size: 16))
               .foregroundColor(.secondary)
           }
-          
+
           Spacer()
-          
-          Image(systemName: store.promiseProposal.place != nil ? "pencil" : "magnifyingglass")
+
+          Image(systemName: store.promise.location != nil ? "pencil" : "magnifyingglass")
             .foregroundColor(.blue)
         }
         .padding(16)

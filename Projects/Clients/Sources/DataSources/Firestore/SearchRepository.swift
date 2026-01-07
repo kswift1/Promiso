@@ -258,12 +258,12 @@ import PromisoShared
 
 // MARK: - Search Results Model
 public struct SearchResults {
-  public let promises: [PromiseDocument]
+  public let promises: [PromiseDTO]
   public let groups: [GroupDocument]
   public let users: [UserPrivate]
-  
+
   public init(
-    promises: [PromiseDocument],
+    promises: [PromiseDTO],
     groups: [GroupDocument],
     users: [UserPrivate]
   ) {
@@ -271,11 +271,11 @@ public struct SearchResults {
     self.groups = groups
     self.users = users
   }
-  
+
   public var isEmpty: Bool {
     return promises.isEmpty && groups.isEmpty && users.isEmpty
   }
-  
+
   public var totalCount: Int {
     return promises.count + groups.count + users.count
   }

@@ -5,9 +5,9 @@ import ComposableArchitecture
 struct EndDateTimeSection: View {
   let store: StoreOf<CreatePromise.Feature>
   var scrollProxy: ScrollViewProxy? = nil
-  
+
   private var useEndTime: Bool {
-    store.state.promiseProposal.endedAt != nil
+    store.state.promise.endAt != nil
   }
 
   var body: some View {
@@ -28,10 +28,10 @@ struct EndDateTimeSection: View {
           // Duration Picker
           if useEndTime {
             EndTimePicker(
-              startDate: store.promiseProposal.startedAt,
+              startDate: store.promise.startAt,
               endDate: Binding(
                 get: {
-                  store.promiseProposal.endedAt ?? store.promiseProposal.startedAt.addingTimeInterval(7200)
+                  store.promise.endAt ?? store.promise.startAt.addingTimeInterval(7200)
                 },
                 set: { store.send(.view(.setEndDate($0))) }
               ),
@@ -231,88 +231,10 @@ struct EndTimePicker: View {
 
 // MARK: - Previews
 
-#Preview("Toggle OFF") {
-  EndDateTimeSection(
-    store: Store(
-      initialState: CreatePromise.Feature.State(
-        promiseProposal: PromiseProposal(
-           title: "영화 관람",
-          emoji: "🍿",
-          group: .init(
-            id: "g1",
-            name: "지민과 나",
-            maxMembers: 2,
-            inviteCode: "PREVIEW",
-            createdBy: "preview"
-          ),
-          startedAt: Date().addingTimeInterval(7200),
-          endedAt: nil,
-          minimumParticipants: 2
-        )
-      )
-    ) {
-      CreatePromise.Feature()
-    }
-  )
-  .padding()
-}
-
-#Preview("Toggle ON - 2시간") {
-  EndDateTimeSection(
-    store: Store(
-      initialState: CreatePromise.Feature.State(
-        promiseProposal: PromiseProposal(
-           title: "영화 관람",
-          emoji: "🍿",
-          group: .init(
-            id: "g1",
-            name: "지민과 나",
-            maxMembers: 2,
-            inviteCode: "PREVIEW",
-            createdBy: "preview"
-          ),
-          startedAt: Date().addingTimeInterval(7200),
-          endedAt: Date().addingTimeInterval(7200 + 7200),
-          minimumParticipants: 2
-        )
-      )
-    ) {
-      CreatePromise.Feature()
-    }
-  )
-  .padding()
-}
-
-#Preview("Toggle ON - 1일 5시간 30분") {
-  EndDateTimeSection(
-    store: Store(
-      initialState: CreatePromise.Feature.State(
-        promiseProposal: PromiseProposal(
-           title: "해외 출장",
-          emoji: "✈️",
-          group: .init(
-            id: "g1",
-            name: "지민과 나",
-            maxMembers: 2,
-            inviteCode: "PREVIEW",
-            createdBy: "preview"
-          ),
-          startedAt: Date().addingTimeInterval(7200),
-          endedAt: Date().addingTimeInterval(7200 + 86400 + 19800),
-          minimumParticipants: 2
-        )
-      )
-    ) {
-      CreatePromise.Feature()
-    }
-  )
-  .padding()
-}
-
-#Preview("날짜 피커 펼쳐짐") {
+#Preview("EndTimePicker") {
   struct PreviewWrapper: View {
     @State private var endDate = Date().addingTimeInterval(10800)
-    
+
     var body: some View {
       ScrollView {
         EndTimePicker(
@@ -323,213 +245,6 @@ struct EndTimePicker: View {
       }
     }
   }
-  
-  return PreviewWrapper()
-}
 
-#Preview("시간 피커 펼쳐짐") {
-  struct PreviewWrapper: View {
-    @State private var endDate = Date().addingTimeInterval(10800)
-    
-    var body: some View {
-      ScrollView {
-        EndTimePicker(
-          startDate: Date().addingTimeInterval(7200),
-          endDate: $endDate
-        )
-        .padding()
-      }
-    }
-  }
-  
-  return PreviewWrapper()
-}
-
-#Preview("다크모드") {
-  VStack(spacing: 24) {
-    EndDateTimeSection(
-      store: Store(
-        initialState: CreatePromise.Feature.State(
-          promiseProposal: PromiseProposal(
-             title: "저녁 식사",
-            emoji: "🍽️",
-            group: .init(
-              id: "g1",
-              name: "지민과 나",
-              maxMembers: 2,
-              inviteCode: "PREVIEW",
-              createdBy: "preview"
-            ),
-            startedAt: Date().addingTimeInterval(7200),
-            endedAt: Date().addingTimeInterval(7200 + 7200),
-            minimumParticipants: 2
-          )
-        )
-      ) {
-        CreatePromise.Feature()
-      }
-    )
-  }
-  .padding()
-  .preferredColorScheme(.dark)
-}
-
-#Preview("전체 폼") {
-  ScrollView {
-    VStack(spacing: 24) {
-      Text("Step 2 - 날짜/시간")
-        .font(.title2)
-        .fontWeight(.bold)
-        .frame(maxWidth: .infinity, alignment: .leading)
-      
-      SectionPlaceHolder(
-        placeHolderTitle: "시작 시간",
-        isRequired: true
-      ) {
-        // 시작 시간 예시
-        HStack(spacing: 16) {
-          HStack(spacing: 8) {
-            Image(systemName: "calendar")
-              .font(.system(size: 16))
-              .foregroundColor(.blue)
-            
-            VStack(alignment: .leading, spacing: 2) {
-              Text("날짜")
-                .font(.system(size: 11))
-                .foregroundColor(.secondary)
-              Text("2024.10.15.")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundColor(.primary)
-            }
-          }
-          .frame(maxWidth: .infinity, alignment: .leading)
-          
-          Divider()
-            .frame(height: 32)
-          
-          HStack(spacing: 8) {
-            Image(systemName: "clock")
-              .font(.system(size: 16))
-              .foregroundColor(.blue)
-            
-            VStack(alignment: .leading, spacing: 2) {
-              Text("시간")
-                .font(.system(size: 11))
-                .foregroundColor(.secondary)
-              Text("오후 7:00")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundColor(.primary)
-            }
-          }
-          .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .padding(16)
-        .background(Color(.systemGray6))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-      }
-      
-      EndDateTimeSection(
-        store: Store(
-          initialState: CreatePromise.Feature.State(
-            promiseProposal: PromiseProposal(
-               title: "카페 미팅",
-              emoji: "☕",
-              group: .init(
-                id: "g1",
-                name: "지민과 나",
-                maxMembers: 2,
-                inviteCode: "PREVIEW",
-                createdBy: "preview"
-              ),
-              startedAt: Date().addingTimeInterval(7200),
-              endedAt: Date().addingTimeInterval(7200 + 5400),
-              minimumParticipants: 2
-            )
-          )
-        ) {
-          CreatePromise.Feature()
-        }
-      )
-    }
-    .padding()
-  }
-}
-
-#Preview("인터랙티브 테스트") {
-  struct PreviewWrapper: View {
-    @State private var startDate = Date()
-    @State private var endDate = Date().addingTimeInterval(7200)
-    
-    var body: some View {
-      ScrollView {
-        VStack(spacing: 24) {
-          Text("시작 시간과 종료 시간 비교")
-            .font(.headline)
-          
-          VStack(alignment: .leading, spacing: 8) {
-            Text("시작 시간")
-              .font(.caption)
-              .foregroundColor(.secondary)
-            
-            // 시작 시간 (InlineDateTimePicker 예시)
-            HStack(spacing: 16) {
-              HStack(spacing: 8) {
-                Image(systemName: "calendar")
-                  .font(.system(size: 16))
-                  .foregroundColor(.blue)
-                
-                VStack(alignment: .leading, spacing: 2) {
-                  Text("날짜")
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
-                  Text(startDate.formatted(date: .abbreviated, time: .omitted))
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(.primary)
-                }
-              }
-              .frame(maxWidth: .infinity, alignment: .leading)
-              
-              Divider()
-                .frame(height: 32)
-              
-              HStack(spacing: 8) {
-                Image(systemName: "clock")
-                  .font(.system(size: 16))
-                  .foregroundColor(.blue)
-                
-                VStack(alignment: .leading, spacing: 2) {
-                  Text("시간")
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
-                  Text(startDate.formatted(date: .omitted, time: .shortened))
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(.primary)
-                }
-              }
-              .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .padding(16)
-            .background(Color(.systemGray6))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-          }
-          
-          Divider()
-          
-          VStack(alignment: .leading, spacing: 8) {
-            Text("종료 시간")
-              .font(.caption)
-              .foregroundColor(.secondary)
-            
-            EndTimePicker(
-              startDate: startDate,
-              endDate: $endDate
-            )
-          }
-        }
-        .padding()
-      }
-    }
-  }
-  
   return PreviewWrapper()
 }

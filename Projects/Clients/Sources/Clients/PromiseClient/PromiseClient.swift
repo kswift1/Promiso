@@ -53,25 +53,25 @@ public enum PromiseClientError: Error, Equatable {
 @DependencyClient
 public struct PromiseClient: Sendable {
   /// 약속 생성
-  public var createPromise: @Sendable (_ proposal: PromiseProposal, _ hostId: String) async throws -> String = { _, _ in "" }
-  
+  public var createPromise: @Sendable (_ promise: PromiseModel) async throws -> String = { _ in "" }
+
   /// 약속 수정
-  public var updatePromise: @Sendable (_ promiseId: String, _ proposal: PromiseProposal) async throws -> Void
-  
+  public var updatePromise: @Sendable (_ promise: PromiseModel) async throws -> Void
+
   /// 약속 삭제
   public var deletePromise: @Sendable (_ promiseId: String) async throws -> Void
-  
+
   /// 약속 조회
-  public var getPromise: @Sendable (_ promiseId: String) async throws -> PromiseItem?
-  
+  public var getPromise: @Sendable (_ promiseId: String) async throws -> PromiseModel?
+
   /// 오늘의 약속 조회
-  public var getTodayPromises: @Sendable (_ userId: String, _ groupId: String?) async throws -> [PromiseItem]
-  
+  public var getTodayPromises: @Sendable (_ userId: String, _ groupId: String?) async throws -> [PromiseModel]
+
   /// 다가오는 약속 조회
-  public var getUpcomingPromises: @Sendable (_ userId: String, _ limit: Int) async throws -> [PromiseItem]
-  
+  public var getUpcomingPromises: @Sendable (_ userId: String, _ limit: Int) async throws -> [PromiseModel]
+
   /// 그룹의 활성 약속 조회
-  public var getActivePromises: @Sendable (_ groupId: String, _ limit: Int) async throws -> [PromiseItem]
+  public var getActivePromises: @Sendable (_ groupId: String, _ limit: Int) async throws -> [PromiseModel]
 
   /// 약속 응답
   public var respondPromise: @Sendable (_ promiseId: String, _ status: PromiseAttendanceStatus) async throws -> Void
@@ -81,48 +81,33 @@ public struct PromiseClient: Sendable {
 
 extension PromiseClient: TestDependencyKey {
   public static let testValue = Self()
-  
+
   public static let previewValue = Self(
-    createPromise: { proposal, hostId in
+    createPromise: { _ in
       try await Task.sleep(for: .seconds(1))
       return UUID().uuidString
     },
-    updatePromise: { promiseId, proposal in
+    updatePromise: { _ in
       try await Task.sleep(for: .seconds(1))
     },
-    deletePromise: { promiseId in
+    deletePromise: { _ in
       try await Task.sleep(for: .seconds(0.5))
     },
-    getPromise: { promiseId in
+    getPromise: { _ in
       try await Task.sleep(for: .seconds(0.5))
       return nil
     },
-    getTodayPromises: { userId, groupId in
+    getTodayPromises: { _, _ in
       try await Task.sleep(for: .seconds(1))
       return []
     },
-    getUpcomingPromises: { userId, limit in
+    getUpcomingPromises: { _, _ in
       try await Task.sleep(for: .seconds(1))
       return []
     },
-    getActivePromises: {
-      groupId,
-      limit in
+    getActivePromises: { _, _ in
       try await Task.sleep(for: .seconds(1))
-      return [
-        .init(
-          id: "",
-          title: "",
-          emoji: "",
-          time: "",
-          date: "",
-          location: "",
-          with: "",
-          hostNickname: "",
-          status: .needResponse,
-          hostId: ""
-        )
-      ]
+      return PromiseModel.examples
     },
     respondPromise: { _, _ in
       try await Task.sleep(for: .seconds(0.3))
@@ -146,16 +131,13 @@ extension PromiseClient: DependencyKey {
     let repository: PromiseRepositoryProtocol = PromiseRepository()
 
     return PromiseClient(
-      createPromise: { proposal, hostId in
-        guard let group = proposal.group else {
+      createPromise: { promise in
+        guard !promise.groupId.isEmpty else {
           throw PromiseClientError.invalidData(nil)
         }
 
         do {
-          return try await repository.createPromise(
-            proposal.toDomainModel(hostId: hostId, group: group),
-            arrivalSharingTime: proposal.arrivalSharingTime
-          )
+          return try await repository.createPromise(promise)
         } catch let error as NSError {
           // Firebase Functions 에러 메시지 추출
           let errorMessage = error.localizedDescription
@@ -182,27 +164,23 @@ extension PromiseClient: DependencyKey {
           }
         }
       },
-      updatePromise: { _, _ in
-        throw PromiseClientError.unknown(nil)
+      updatePromise: { promise in
+        try await repository.updatePromise(promise)
       },
       deletePromise: { promiseId in
         try await repository.deletePromise(id: promiseId)
       },
-      getPromise: { _ in
-        nil
+      getPromise: { promiseId in
+        try await repository.getPromise(id: promiseId)
       },
-      getTodayPromises: { _, _ in
-        []
+      getTodayPromises: { userId, groupId in
+        try await repository.getTodayPromises(userId: userId, groupId: groupId)
       },
-      getUpcomingPromises: { _, _ in
-        []
+      getUpcomingPromises: { userId, limit in
+        try await repository.getUpcomingPromises(userId: userId, limit: limit)
       },
       getActivePromises: { groupId, limit in
-        let promises = try await repository.getActivePromises(
-          groupId: groupId,
-          limit: limit
-        )
-        return promises.map { PromiseItem(domainModel: $0) }
+        try await repository.getActivePromises(groupId: groupId, limit: limit)
       },
       respondPromise: { promiseId, status in
         try await repository.respondToPromise(
@@ -212,4 +190,45 @@ extension PromiseClient: DependencyKey {
       }
     )
   }()
+}
+
+// MARK: - Example Data
+
+extension PromiseModel {
+  public static let examples: [PromiseModel] = [
+    PromiseModel(
+      id: "1",
+      title: "카페 데이트",
+      emoji: "☕",
+      description: "오랜만에 만나서 수다 떨어요!",
+      hostId: "user123",
+      groupId: "group1",
+      minimumParticipants: 2,
+      votes: PromiseVotesModel(
+        accepted: [],
+        declined: [],
+        until: Date().addingTimeInterval(10800)
+      ),
+      startAt: Date().addingTimeInterval(7200),
+      location: LocationInfoModel(name: "스타벅스 강남점"),
+      status: .pending
+    ),
+    PromiseModel(
+      id: "2",
+      title: "저녁 식사",
+      emoji: "🍽️",
+      description: "맛있는 파스타 먹으러 가요",
+      hostId: "user456",
+      groupId: "group1",
+      minimumParticipants: 2,
+      votes: PromiseVotesModel(
+        accepted: ["user123", "user456"],
+        declined: [],
+        until: Date()
+      ),
+      startAt: Date().addingTimeInterval(18000),
+      location: LocationInfoModel(name: "이탈리안 레스토랑"),
+      status: .active
+    )
+  ]
 }

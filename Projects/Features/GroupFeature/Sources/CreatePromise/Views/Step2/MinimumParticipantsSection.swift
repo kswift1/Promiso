@@ -5,26 +5,20 @@ import ComposableArchitecture
 struct MinimumParticipantsSection: View {
   let store: StoreOf<CreatePromise.Feature>
   var scrollProxy: ScrollViewProxy? = nil
-  
-  // 현재 최소 참가 인원 (안전한 접근)
+
+  // 현재 최소 참가 인원
   private var currentMinimum: Int {
-    store.promiseProposal.minimumParticipants ?? defaultMinimum
+    store.promise.minimumParticipants
   }
-  
-  // 기본값: 최대 인원의 절반 (반올림)
-  private var defaultMinimum: Int {
-    guard let maxParticipants = store.promiseProposal.group?.memberIds.count else { return 2 }
-    return Int(ceil(Double(maxParticipants) / 2.0))
-  }
-  
+
   // 2명 고정 여부
   private var isFixedAtTwo: Bool {
-    store.promiseProposal.group?.memberIds.count == 2
+    store.promise.group?.memberIds.count == 2
   }
 
   // 최대 인원 (기본값 2명)
   private var maxParticipants: Int {
-    store.promiseProposal.group?.memberIds.count ?? 2
+    store.promise.group?.memberIds.count ?? 2
   }
   
   var body: some View {
@@ -184,176 +178,4 @@ struct MinimumParticipantsSection: View {
 }
 
 // MARK: - Previews
-
-#Preview("2명 그룹 (고정)") {
-  MinimumParticipantsSection(
-    store: Store(
-      initialState: CreatePromise.Feature.State(
-        promiseProposal: PromiseProposal(
-           title: "영화 관람",
-          emoji: "🍿",
-          group: .init(
-            id: "g1",
-            name: "지민과 나",
-            maxMembers: 2,
-            inviteCode: "PREVIEW",
-            createdBy: "preview"
-          ),
-          startedAt: Date().addingTimeInterval(7200),
-          minimumParticipants: 2
-        )
-      )
-    ) {
-      CreatePromise.Feature()
-    }
-  )
-  .padding()
-}
-
-#Preview("4명 그룹 - 최소 2명") {
-  MinimumParticipantsSection(
-    store: Store(
-      initialState: CreatePromise.Feature.State(
-        promiseProposal: PromiseProposal(
-           title: "카페 미팅",
-          emoji: "☕",
-          group: .init(
-            id: "g2",
-            name: "회사 동료들",
-            maxMembers: 4,
-            inviteCode: "PREVIEW",
-            createdBy: "preview"
-          ),
-          startedAt: Date().addingTimeInterval(7200),
-          minimumParticipants: 2
-        )
-      )
-    ) {
-      CreatePromise.Feature()
-    }
-  )
-  .padding()
-}
-
-#Preview("5명 그룹 - 기본값 3명") {
-  MinimumParticipantsSection(
-    store: Store(
-      initialState: CreatePromise.Feature.State(
-        promiseProposal: PromiseProposal(
-           title: "저녁 식사",
-          emoji: "🍽️",
-          group: .init(
-            id: "g5",
-            name: "주말 모임",
-            maxMembers: 5,
-            inviteCode: "PREVIEW",
-            createdBy: "preview"
-          ),
-          startedAt: Date().addingTimeInterval(7200),
-          minimumParticipants: 3
-        )
-      )
-    ) {
-      CreatePromise.Feature()
-    }
-  )
-  .padding()
-}
-
-#Preview("10명 그룹 - 최대와 같음 (경고)") {
-  MinimumParticipantsSection(
-    store: Store(
-      initialState: CreatePromise.Feature.State(
-        promiseProposal: PromiseProposal(
-           title: "팀 회의",
-          emoji: "💼",
-          group: .init(
-            id: "g10",
-            name: "전체 팀",
-            maxMembers: 10,
-            inviteCode: "PREVIEW",
-            createdBy: "preview"
-          ),
-          startedAt: Date().addingTimeInterval(7200),
-          minimumParticipants: 10
-        )
-      )
-    ) {
-      CreatePromise.Feature()
-    }
-  )
-  .padding()
-}
-
-#Preview("다크모드") {
-  VStack(spacing: 24) {
-    MinimumParticipantsSection(
-      store: Store(
-        initialState: CreatePromise.Feature.State(
-          promiseProposal: PromiseProposal(
-             title: "저녁 식사",
-            emoji: "🍽️",
-            group: .init(
-              id: "g6",
-              name: "친구들",
-              maxMembers: 6,
-              inviteCode: "PREVIEW",
-              createdBy: "preview"
-            ),
-            startedAt: Date().addingTimeInterval(7200),
-            minimumParticipants: 4
-          )
-        )
-      ) {
-        CreatePromise.Feature()
-      }
-    )
-  }
-  .padding()
-  .preferredColorScheme(.dark)
-}
-
-#Preview("전체 폼") {
-  ScrollView {
-    VStack(spacing: 24) {
-      Text("약속 만들기 - Step 3")
-        .font(.title2)
-        .fontWeight(.bold)
-        .frame(maxWidth: .infinity, alignment: .leading)
-      
-      SectionPlaceHolder(
-        placeHolderTitle: "제목",
-        isRequired: true
-      ) {
-        Text("저녁 식사")
-          .padding(16)
-          .frame(maxWidth: .infinity, alignment: .leading)
-          .background(Color(.systemGray6))
-          .clipShape(RoundedRectangle(cornerRadius: 12))
-      }
-      
-      MinimumParticipantsSection(
-        store: Store(
-          initialState: CreatePromise.Feature.State(
-            promiseProposal: PromiseProposal(
-               title: "저녁 식사",
-              emoji: "🍽️",
-              group: .init(
-                id: "g5",
-                name: "주말 모임",
-                maxMembers: 5,
-                inviteCode: "PREVIEW",
-                createdBy: "preview"
-              ),
-              startedAt: Date().addingTimeInterval(7200),
-              minimumParticipants: 3
-            )
-          )
-        ) {
-          CreatePromise.Feature()
-        }
-      )
-    }
-    .padding()
-  }
-}
+// Preview 코드는 PromiseModel로 마이그레이션 후 다시 추가

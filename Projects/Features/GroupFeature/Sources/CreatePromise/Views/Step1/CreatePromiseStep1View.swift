@@ -17,33 +17,33 @@ struct CreatePromiseStep1View: View {
         // 헤더
         HStack {
           CreatePromiseStep.first.headerView
-          
+
           Spacer()
-          
-          if let emoji = store.promiseProposal.emoji {
+
+          if let emoji = store.promise.emoji {
             Text(emoji)
               .font(.system(size: 48))
           }
         }
-        
+
         // 제목 입력
         SectionPlaceHolder(
           placeHolderTitle: "제목",
           isRequired: true) {
             TitleInputTextField(
-              title: store.promiseProposal.title,
-              emoji: store.promiseProposal.emoji,
+              title: store.promise.title,
+              emoji: store.promise.emoji,
               isFocused: $isTitleFocused,
               onTitleChange: { store.send(.view(.setTitle($0))) }
             )
           }
-        
+
         SectionPlaceHolder(
           placeHolderTitle: "그룹 선택",
           isRequired: true) {
             GroupListView(
               groupListState: store.groupListState,
-              selectedGroupId: store.promiseProposal.group?.id,
+              selectedGroupId: store.promise.group?.id,
               onGroupSelected: { store.send(.view(.groupSelected($0))) },
               onRetry: { store.send(.view(.retryLoadGroups)) },
               isFocused: $isTitleFocused

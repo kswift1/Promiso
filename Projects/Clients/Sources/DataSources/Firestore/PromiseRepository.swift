@@ -25,14 +25,14 @@ public class PromiseRepository: PromiseRepositoryProtocol {
 
   /// 약속 생성
   /// Firebase Functions의 createPromise를 호출합니다.
-  public func createPromise(_ promise: PromiseModel, arrivalSharingTime: Int?) async throws -> String {
+  public func createPromise(_ promise: PromiseModel) async throws -> String {
     // ISO 8601 형식으로 날짜 변환
     let dateFormatter = ISO8601DateFormatter()
     dateFormatter.timeZone = TimeZone(identifier: "Asia/Seoul")
     dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
 
     var callableData: [String: Any] = [
-      "groupId": promise.group.id,
+      "groupId": promise.groupId,
       "title": promise.title,
       "startAt": dateFormatter.string(from: promise.startAt),
       "minimumParticipants": promise.minimumParticipants
@@ -53,10 +53,6 @@ public class PromiseRepository: PromiseRepositoryProtocol {
 
     if let location = promise.location, !location.name.isEmpty {
       callableData["place"] = location.name
-    }
-
-    if let arrivalSharingTime = arrivalSharingTime {
-      callableData["arrivalSharingTime"] = arrivalSharingTime
     }
 
     // env 파라미터 추가
@@ -108,10 +104,9 @@ public class PromiseRepository: PromiseRepositoryProtocol {
     let updateData: [String: Any] = [
       "title": promise.title,
       "description": promise.description as Any,
-      "isConfirmed": promise.isConfirmed,
       "updatedAt": Timestamp(date: Date())
     ]
-    
+
     try await ref.updateData(updateData)
   }
   
@@ -182,65 +177,26 @@ public class PromiseRepository: PromiseRepositoryProtocol {
   }
   
   // MARK: - Helper Methods
-  
-  private func documentToPromise(_ document: QueryDocumentSnapshot) throws -> PromiseModel? {
-    let promiseDocument = try document.data(as: PromiseDocument.self)
-    return promiseModel(from: promiseDocument, id: document.documentID)
-  }
-  
-  private func documentSnapshotToPromise(_ document: DocumentSnapshot) throws -> PromiseModel? {
-    guard document.exists else { return nil }
-    let promiseDocument = try document.data(as: PromiseDocument.self)
-    return promiseModel(from: promiseDocument, id: document.documentID)
-  }
 
-  private func promiseModel(from document: PromiseDocument, id: String) -> PromiseModel? {
-    if document.status == .cancelled || document.status == .completed {
+  private func documentToPromise(_ document: QueryDocumentSnapshot) throws -> PromiseModel? {
+    let dto = try document.data(as: PromiseDTO.self)
+    // cancelled 또는 completed 상태는 제외
+    let status = PromiseStatus(rawValue: dto.status)
+    if status == .cancelled || status == .completed {
       return nil
     }
+    return PromiseModel(dto: dto, id: document.documentID)
+  }
 
-    let host = UserPrivate(
-      userId: document.hostId,
-      name: document.hostName,
-      nickname: document.hostName,
-      email: "",
-      provider: "",
-      metadata: Metadata(createdAt: Date(), updatedAt: Date())
-    )
-
-    let group = GroupModel(
-      id: document.groupId,
-      name: document.groupName,
-      maxMembers: 0,
-      inviteCode: "",
-      createdBy: ""
-    )
-
-    return PromiseModel(
-      id: id,
-      emoji: document.emoji,
-      title: document.title,
-      description: document.description,
-      minimumParticipants: document.minimumParticipants,
-      requiredCount: document.requiredCount,
-      isConfirmed: document.isConfirmed,
-      confirmedAt: document.confirmedAt?.dateValue(),
-      host: host,
-      group: group,
-      counts: document.counts,
-      startAt: document.startAt.dateValue(),
-      endAt: document.endAt?.dateValue(),
-      status: document.status,
-      location: document.location,
-      arrivalSharingTime: document.arrivalSharingTime,
-      createdAt: document.createdAt.dateValue(),
-      updatedAt: document.updatedAt.dateValue(),
-      isDeleted: document.isDeleted,
-      localYyyymm: document.localYyyymm,
-      localYyyymmdd: document.localYyyymmdd,
-      localTz: document.localTz,
-      titleLower: document.titleLower
-    )
+  private func documentSnapshotToPromise(_ document: DocumentSnapshot) throws -> PromiseModel? {
+    guard document.exists else { return nil }
+    let dto = try document.data(as: PromiseDTO.self)
+    // cancelled 또는 completed 상태는 제외
+    let status = PromiseStatus(rawValue: dto.status)
+    if status == .cancelled || status == .completed {
+      return nil
+    }
+    return PromiseModel(dto: dto, id: document.documentID)
   }
 }
 

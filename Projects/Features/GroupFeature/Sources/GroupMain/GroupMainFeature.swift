@@ -1,4 +1,5 @@
 import PromisoShared
+import Clients
 
 public enum GroupMain {}
 
@@ -22,7 +23,7 @@ extension GroupMain {
   enum RespondingState: Equatable {
     case idle, accepting, rejecting
   }
-  
+   
   // MARK: - Feature Reducer
   @Reducer
   public struct Feature {
@@ -39,7 +40,7 @@ extension GroupMain {
 
       var selectedFilter: StatusFilter = .all
 
-      var promisesState: LoadingState<[PromiseItem]> = .idle
+      var promisesState: LoadingState<[PromiseModel]> = .idle
       var proposalResponding: [String: RespondingState] = [:]
       var myResponses: [String: PromiseAttendanceStatus] = [:]
       var path = StackState<Path.State>()
@@ -100,7 +101,7 @@ extension GroupMain {
         case fetchGroupMembers(groupId: String)
         case groupMembersResponse(Result<[UserPublic], GroupMainError>)
         case fetchPromises(groupId: String)
-        case loadPromisesResponse(Result<[PromiseItem], GroupMainError>)
+        case loadPromisesResponse(Result<[PromiseModel], GroupMainError>)
         case proposalRespondDone(promiseId: String, status: PromiseAttendanceStatus)
         case proposalRespondFailed(promiseId: String, error: GroupMainError)
         case respondPromise(promiseId: String, status: PromiseAttendanceStatus)
@@ -329,29 +330,9 @@ extension GroupMain {
         state.currentGroupMembers = nil
         return .none
       case .fetchPromises(let id):
-        let currentUserId = state.currentUser.id
-        return .run { [promiseClient, id, currentUserId] send in
+        return .run { [promiseClient, id] send in
           do {
-            var promises = try await promiseClient.getActivePromises(id, 20)
-            // Set currentUserId for each promise to enable isHost check
-            promises = promises.map { promise in
-              PromiseItem(
-                id: promise.id,
-                title: promise.title,
-                emoji: promise.emoji,
-                time: promise.time,
-                date: promise.date,
-                location: promise.location,
-                distance: promise.distance,
-                with: promise.with,
-                hostNickname: promise.hostNickname,
-                status: promise.status,
-                responses: promise.responses,
-                deadline: promise.deadline,
-                hostId: promise.hostId,
-                currentUserId: currentUserId
-              )
-            }
+            let promises = try await promiseClient.getActivePromises(id, 20)
             await send(.internal(.loadPromisesResponse(.success(promises))))
           }
           catch { await send(.internal(.loadPromisesResponse(.failure(GroupMainError(error))))) }

@@ -70,109 +70,44 @@ public class CacheManager {
     return isConsistent
   }
   
-  /// 약속 카운터 캐시 일관성 검증
-  public func validatePromiseCountsCache(promiseId: String) async throws -> Bool {
-    // 캐시된 약속 정보 조회
-    guard let cachedPromise = getCache(PromiseDocument.self, forKey: "promise_\(promiseId)") else {
+  /// 약속 투표 캐시 일관성 검증
+  /// votes Map 방식에서는 단일 문서에 투표 정보가 저장되므로 별도 검증 불필요
+  public func validatePromiseVotesCache(promiseId: String) async throws -> Bool {
+    // votes Map은 약속 문서 내에 저장되므로
+    // 문서를 읽으면 항상 최신 상태를 얻음
+    guard let cachedPromise = getCache(PromiseDTO.self, forKey: "promise_\(promiseId)") else {
       return false
     }
-    
-    // 실제 참석 데이터로부터 카운터 계산
-    let actualCounts = try await calculateActualCounts(promiseId: promiseId)
-    
-    // 카운터가 일치하는지 확인
-    let isConsistent = cachedPromise.counts.accepted == actualCounts.accepted &&
-                      cachedPromise.counts.declined == actualCounts.declined &&
-                      cachedPromise.counts.tentative == actualCounts.tentative &&
-                      cachedPromise.counts.total == actualCounts.total
-    
-    if !isConsistent {
-      // 약속 문서의 카운터 업데이트 (Cloud Function에서 처리해야 함)
-      print("⚠️ Promise counts inconsistency detected for promise \(promiseId)")
-      print("Cached: \(cachedPromise.counts)")
-      print("Actual: \(actualCounts)")
+
+    // Firestore에서 최신 정보 조회
+    let ref = db.environmentCollection("promises").document(promiseId)
+    let document = try await ref.getDocument()
+
+    guard document.exists,
+          let latestPromise = try? document.data(as: PromiseDTO.self) else {
+      return false
     }
-    
+
+    // 투표 상태 비교
+    let isConsistent = cachedPromise.votes.accepted == latestPromise.votes.accepted &&
+                      cachedPromise.votes.declined == latestPromise.votes.declined
+
+    if !isConsistent {
+      // 캐시 업데이트
+      setCache(latestPromise, forKey: "promise_\(promiseId)")
+    }
+
     return isConsistent
   }
   
-  // MARK: - Batch Cache Updates
-  
-  /// 사용자 이름 변경 시 관련 데이터 업데이트
-  private func updateUserNameInRelatedData(userId: String, newName: String) async throws {
-    // 약속의 hostName 업데이트
-    let promisesQuery = db.environmentCollection("promises")
-      .whereField("hostId", isEqualTo: userId)
-      .whereField("isDeleted", isEqualTo: false)
-    
-    let promisesSnapshot = try await promisesQuery.getDocuments()
-    
-    let batch = db.batch()
-    for document in promisesSnapshot.documents {
-      batch.updateData(["hostName": newName], forDocument: document.reference)
-    }
-    
-    if !promisesSnapshot.documents.isEmpty {
-      try await batch.commit()
-    }
-    
-    // 참석 데이터의 userName 업데이트
-    let attendancesQuery = db.collectionGroup("attendances")
-      .whereField("userId", isEqualTo: userId)
-    
-    let attendancesSnapshot = try await attendancesQuery.getDocuments()
-    
-    let attendanceBatch = db.batch()
-    for document in attendancesSnapshot.documents {
-      attendanceBatch.updateData(["userName": newName], forDocument: document.reference)
-    }
-    
-    if !attendancesSnapshot.documents.isEmpty {
-      try await attendanceBatch.commit()
-    }
-  }
-  
-  /// 그룹 이름 변경 시 관련 데이터 업데이트
+  // MARK: - Private Helpers
+
+  /// 그룹 이름 변경 시 캐시 무효화
+  /// votes Map 방식에서는 hostName/groupName을 저장하지 않으므로
+  /// 캐시된 그룹 정보만 업데이트하면 됨
   private func updateGroupNameInRelatedData(groupId: String, newName: String) async throws {
-    // 약속의 groupName 업데이트
-    let promisesQuery = db.environmentCollection("promises")
-      .whereField("groupId", isEqualTo: groupId)
-      .whereField("isDeleted", isEqualTo: false)
-    
-    let promisesSnapshot = try await promisesQuery.getDocuments()
-    
-    let batch = db.batch()
-    for document in promisesSnapshot.documents {
-      batch.updateData(["groupName": newName], forDocument: document.reference)
-    }
-    
-    if !promisesSnapshot.documents.isEmpty {
-      try await batch.commit()
-    }
-  }
-  
-  /// 실제 참석 데이터로부터 카운터 계산
-  private func calculateActualCounts(promiseId: String) async throws -> PromiseCounts {
-    let attendancesQuery = db.environmentCollection("promises")
-      .document(promiseId)
-      .collection("attendances")
-    
-    let snapshot = try await attendancesQuery.getDocuments()
-    let attendances = try snapshot.documents.compactMap { document in
-      try document.data(as: AttendanceDocument.self)
-    }
-    
-    let total = attendances.count
-    let accepted = attendances.filter { $0.status == .accepted }.count
-    let declined = attendances.filter { $0.status == .declined }.count
-    let tentative = attendances.filter { $0.status == .tentative }.count
-    
-    return PromiseCounts(
-      total: total,
-      accepted: accepted,
-      declined: declined,
-      tentative: tentative
-    )
+    // 그룹 캐시 업데이트는 validateGroupNameCache에서 이미 처리됨
+    // 약속 문서에는 groupName이 저장되지 않으므로 추가 작업 불필요
   }
   
   // MARK: - Cache Warming

@@ -13,7 +13,7 @@ struct DescriptionSection: View {
     ) {
       VStack(alignment: .trailing, spacing: 8) {
         ZStack(alignment: .topLeading) {
-          if store.promiseProposal.details?.isEmpty ?? true {
+          if store.promise.description?.isEmpty ?? true {
             Text("약속에 대한 추가 정보를 입력하세요\n예: 주차 정보, 복장, 준비물 등")
               .font(.system(size: 15))
               .foregroundColor(.secondary)
@@ -22,7 +22,7 @@ struct DescriptionSection: View {
           }
 
           TextEditor(text: Binding(
-            get: { store.promiseProposal.details ?? "" },
+            get: { store.promise.description ?? "" },
             set: { store.send(.view(.setDescription($0))) }
           ))
           .font(.system(size: 15))
@@ -35,7 +35,7 @@ struct DescriptionSection: View {
           .focused($isFocused)
         }
 
-        Text("\(store.promiseProposal.details?.count ?? 0)/500")
+        Text("\(store.promise.description?.count ?? 0)/500")
           .font(.system(size: 13))
           .foregroundColor(.secondary)
       }

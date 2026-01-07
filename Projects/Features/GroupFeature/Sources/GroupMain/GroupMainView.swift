@@ -75,7 +75,7 @@ extension GroupMain {
         PromiseTimelineView(
           promisesState: store.promisesState,
           selectedFilter: store.selectedFilter,
-          responseStatuses: store.myResponses,
+          currentUserId: store.currentUser.userId,
           onAccept: { promiseId in store.send(.view(.proposalAccepted(promiseId))) },
           onReject: { promiseId in store.send(.view(.proposalRejected(promiseId))) },
           onDelete: { promiseId in store.send(.view(.promiseDeleted(promiseId))) },

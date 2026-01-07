@@ -1,8 +1,9 @@
 import Foundation
+import FirebaseFirestore
 
 // MARK: - Promise Status
 
-public enum PromiseStatus: String, CaseIterable, Codable {
+public enum PromiseStatus: String, CaseIterable, Codable, Sendable {
   case draft = "draft"           // 초안
   case pending = "pending"       // 대기 중
   case active = "active"         // 활성 (확정됨)
@@ -10,38 +11,65 @@ public enum PromiseStatus: String, CaseIterable, Codable {
   case cancelled = "cancelled"   // 취소
 }
 
-// MARK: - Promise Counts
+// MARK: - Promise Votes Model
 
-public struct PromiseCounts: Hashable, Codable, Equatable {
-  public let total: Int
-  public let accepted: Int
-  public let declined: Int
-  public let tentative: Int
-
-  public var pending: Int {
-    return max(total - (accepted + declined + tentative), 0)
-  }
+/// 투표 정보 (votes Map)
+public struct PromiseVotesModel: Hashable, Codable, Equatable, Sendable {
+  /// 참여 확정한 userId 목록
+  public let accepted: [String]
+  /// 참여 불가한 userId 목록
+  public let declined: [String]
+  /// 투표 마감 시각
+  public let until: Date
 
   public init(
-    total: Int = 0,
-    accepted: Int = 0,
-    declined: Int = 0,
-    tentative: Int = 0
+    accepted: [String] = [],
+    declined: [String] = [],
+    until: Date = Date()
   ) {
-    self.total = total
     self.accepted = accepted
     self.declined = declined
-    self.tentative = tentative
+    self.until = until
   }
 
-  public var isConfirmed: Bool {
-    return accepted >= 1 // 최소 1명 이상 수락하면 확정
+  // MARK: - 계산 프로퍼티
+
+  public var acceptedCount: Int { accepted.count }
+  public var declinedCount: Int { declined.count }
+
+  /// pending 멤버 계산 (memberIds - accepted - declined)
+  public func pendingMembers(memberIds: [String]) -> [String] {
+    memberIds.filter { !accepted.contains($0) && !declined.contains($0) }
+  }
+
+  public func pendingCount(memberIds: [String]) -> Int {
+    pendingMembers(memberIds: memberIds).count
+  }
+
+  /// 확정 여부 (accepted >= minimumParticipants)
+  public func isConfirmed(minimumParticipants: Int) -> Bool {
+    accepted.count >= minimumParticipants
+  }
+
+  /// 내 투표 상태
+  public func myStatus(userId: String) -> VoteStatus {
+    if accepted.contains(userId) { return .accepted }
+    if declined.contains(userId) { return .declined }
+    return .pending
   }
 }
 
-// MARK: - Location Info
+// MARK: - Vote Status
 
-public struct LocationInfo: Hashable, Codable, Equatable {
+public enum VoteStatus: String, Codable, Equatable, Sendable {
+  case pending   // 투표 대기 (계산)
+  case accepted  // 참여 확정
+  case declined  // 참여 불가
+}
+
+// MARK: - Location Info Model
+
+public struct LocationInfoModel: Hashable, Codable, Equatable, Sendable {
   public let name: String
   public let address: String?
   public let latitude: Double?
@@ -101,4 +129,24 @@ public enum ProposalStatus: String, CaseIterable, Codable {
   case accepted = "accepted"   // 수락됨
   case declined = "declined"   // 거절됨
   case expired = "expired"     // 만료됨
+}
+
+// MARK: - DTO -> Model 변환
+
+extension PromiseVotesModel {
+  /// DTO에서 Model 생성
+  public init(dto: VotesDTO) {
+    self.init(
+      accepted: dto.accepted,
+      declined: dto.declined,
+      until: dto.until.dateValue()
+    )
+  }
+}
+
+extension LocationInfoModel {
+  /// DTO에서 Model 생성
+  public init(dto: LocationDTO) {
+    self.init(name: dto.name)
+  }
 }

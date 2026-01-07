@@ -23,7 +23,7 @@ public enum CreatePromise {
     @ObservableState
     public struct State: Equatable {
       var currentStep: CreatePromiseStep = .first
-      var promiseProposal: PromiseProposal = .empty
+      var promise: PromiseModel = .empty
       var groupListState: LoadingState<[GroupModel]> = .idle
       var groupSummaries: [GroupSummary]?
       var isCreatingPromise: Bool = false
@@ -31,27 +31,27 @@ public enum CreatePromise {
 
       public init(
         currentStep: CreatePromiseStep = .first,
-        promiseProposal: PromiseProposal = .empty,
+        promise: PromiseModel = .empty,
         groupListState: LoadingState<[GroupModel]> = .idle,
         groupSummaries: [GroupSummary]? = nil,
         isCreatingPromise: Bool = false,
         creationError: Clients.PromiseClientError? = nil
       ) {
         self.currentStep = currentStep
-        self.promiseProposal = promiseProposal
+        self.promise = promise
         self.groupListState = groupListState
         self.groupSummaries = groupSummaries
         self.isCreatingPromise = isCreatingPromise
         self.creationError = creationError
       }
-      
+
       var firstButtonDisabled: Bool {
         // 제목이 비어있거나 그룹이 선택되지 않았거나 그룹 멤버가 1명 이하인 경우
-        if promiseProposal.title.isEmpty {
+        if !promise.isTitleValid {
           return true
         }
 
-        guard let group = promiseProposal.group else {
+        guard let group = promise.group else {
           return true
         }
 
@@ -62,24 +62,20 @@ public enum CreatePromise {
 
         return false
       }
-      
+
       var secondButtonDisabled: Bool {
         // 시작 시간이 현재보다 미래인지 확인
-        guard promiseProposal.startedAt > Date() else { return true }
-        
+        guard promise.isStartTimeValid else { return true }
+
         // 종료 시간을 사용하는 경우, 시작 시간보다 이후인지 확인
-        if let endedAt = promiseProposal.endedAt {
-          guard endedAt > promiseProposal.startedAt else { return true }
-        }
-        
+        guard promise.isEndTimeValid else { return true }
+
         // 최소 참가 인원이 유효한지 확인
-        guard let minimumParticipants = promiseProposal.minimumParticipants, minimumParticipants >= 2 else {
-          return true
-        }
-        
+        guard promise.isMinimumParticipantsValid else { return true }
+
         return false
       }
-      
+
       var thirdButtonDisabled: Bool {
         isCreatingPromise // 생성 중일 때만 비활성화
       }
@@ -104,7 +100,6 @@ public enum CreatePromise {
         case toggleUseEndTime
         case incrementParticipants
         case decrementParticipants
-        case setArrivalSharingTime(Int?)
         case setDescription(String)
         case retryLoadGroups
         case clearCreationError
@@ -150,10 +145,13 @@ public enum CreatePromise {
           case .requestCreatingPromise:
             state.isCreatingPromise = true
             state.creationError = nil
-            return .run { [proposal = state.promiseProposal, promiseClient] send in
+            // hostId와 groupId 설정
+            var promiseToCreate = state.promise
+            promiseToCreate.hostId = "sungwon" // TODO: 실제 사용자 ID
+            promiseToCreate.groupId = state.promise.group?.id ?? ""
+            return .run { [promise = promiseToCreate, promiseClient] send in
               do {
-                let hostId = "sungwon" // TODO: 실제 사용자 ID
-                let promiseId = try await promiseClient.createPromise(proposal, hostId)
+                let promiseId = try await promiseClient.createPromise(promise)
                 await send(.internal(.createPromiseResponse(.success(promiseId))))
               } catch let e as Clients.PromiseClientError {
                 await send(.internal(.createPromiseResponse(.failure(e))))
@@ -163,7 +161,7 @@ public enum CreatePromise {
             }
             
           case .setTitle(let title):
-            state.promiseProposal.title = title
+            state.promise.title = title
             return .merge(
               .cancel(id: CancelID.emojiSuggestDebounce),
               .run { [clock, title] send in
@@ -172,60 +170,56 @@ public enum CreatePromise {
               }
                 .cancellable(id: CancelID.emojiSuggestDebounce, cancelInFlight: true)
             )
-            
+
           case .groupSelected(let group):
-            state.promiseProposal.group = group
+            state.promise.group = group
             if group.memberIds.count == 2 {
-              state.promiseProposal.minimumParticipants = 2
+              state.promise.minimumParticipants = 2
             } else {
               let defaultMinimum = Int(ceil(Double(group.memberIds.count) / 2.0))
-              state.promiseProposal.minimumParticipants = defaultMinimum
+              state.promise.minimumParticipants = defaultMinimum
             }
             return .none
-            
+
           case .retryLoadGroups:
             return .send(.internal(.fetchGroupList))
-            
+
           case .clearCreationError:
             state.creationError = nil
             return .none
-            
+
           case .setEndDate(let date):
-            state.promiseProposal.endedAt = date
+            state.promise.endAt = date
             return .none
-            
+
           case .toggleUseEndTime:
-            if state.promiseProposal.endedAt == nil {
-              state.promiseProposal.endedAt = state.promiseProposal.startedAt.addingTimeInterval(7200)
+            if state.promise.endAt == nil {
+              state.promise.endAt = state.promise.startAt.addingTimeInterval(7200)
             } else {
-              state.promiseProposal.endedAt = nil
+              state.promise.endAt = nil
             }
             return .none
-            
+
           case .incrementParticipants:
-            guard let max = state.promiseProposal.group?.memberIds.count else { return .none }
-            let current = state.promiseProposal.minimumParticipants ?? 2
-            if current < max { state.promiseProposal.minimumParticipants = current + 1 }
+            guard let max = state.promise.group?.memberIds.count else { return .none }
+            let current = state.promise.minimumParticipants
+            if current < max { state.promise.minimumParticipants = current + 1 }
             return .none
-            
+
           case .decrementParticipants:
-            let current = state.promiseProposal.minimumParticipants ?? 2
-            if current > 2 { state.promiseProposal.minimumParticipants = current - 1 }
+            let current = state.promise.minimumParticipants
+            if current > 2 { state.promise.minimumParticipants = current - 1 }
             return .none
-            
-          case .setArrivalSharingTime(let minutes):
-            state.promiseProposal.arrivalSharingTime = minutes
-            return .none
-            
+
           case .setDescription(let description):
             let trimmed = String(description.prefix(500))
-            state.promiseProposal.details = trimmed.isEmpty ? nil : trimmed
+            state.promise.description = trimmed.isEmpty ? nil : trimmed
             return .none
-            
+
           case .setStartDate(let date):
-            state.promiseProposal.startedAt = date
-            if let end = state.promiseProposal.endedAt, end <= date {
-              state.promiseProposal.endedAt = date.addingTimeInterval(7200)
+            state.promise.startAt = date
+            if let end = state.promise.endAt, end <= date {
+              state.promise.endAt = date.addingTimeInterval(7200)
             }
             return .none
           }
@@ -242,7 +236,7 @@ public enum CreatePromise {
             }
             
           case .emojiSuggestionsResponse(let picks):
-            state.promiseProposal.emoji = picks.first?.emoji ?? ""
+            state.promise.emoji = picks.first?.emoji
             return .none
             
           case .fetchGroupList:
