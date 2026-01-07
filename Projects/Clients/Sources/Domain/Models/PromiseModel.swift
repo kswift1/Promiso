@@ -107,9 +107,10 @@ extension PromiseModel {
 // MARK: - Promise Response Status
 
 public enum PromiseResponseStatus: String, Equatable, Sendable, Codable {
-  case needResponse  // 답변 필요
-  case confirmed     // 확정됨
-  case sent          // 응답 대기
+  case needResponse  // 내가 미응답
+  case responded     // 내가 응답함 (확정 대기)
+  case confirmed     // 약속 확정됨
+  case failed        // 약속 불발 (투표 마감 + 미확정)
 }
 
 // MARK: - Attendance Status
@@ -235,18 +236,28 @@ extension PromiseModel {
     }
   }
 
-  /// 응답 상태
+  /// 응답 상태 (우선순위: 확정 > 불발 > 미응답 > 응답완료)
   public func responseStatus(currentUserId: String?) -> PromiseResponseStatus {
+    // 1. 약속이 확정됨
     if status == .active || isConfirmed {
       return .confirmed
     }
+
+    // 2. 투표 마감 + 미확정 = 불발
+    if isVotingClosed && !isConfirmed {
+      return .failed
+    }
+
+    // 3. 내가 미응답
     if let userId = currentUserId {
       let myStatus = votes.myStatus(userId: userId)
       if myStatus == .pending {
         return .needResponse
       }
     }
-    return .sent
+
+    // 4. 내가 응답함 (확정 대기)
+    return .responded
   }
 }
 

@@ -37,6 +37,9 @@ public struct PromiseVotesModel: Hashable, Codable, Equatable, Sendable {
   public var acceptedCount: Int { accepted.count }
   public var declinedCount: Int { declined.count }
 
+  /// 투표한 인원 (accepted + declined)
+  public var votedCount: Int { accepted.count + declined.count }
+
   /// pending 멤버 계산 (memberIds - accepted - declined)
   public func pendingMembers(memberIds: [String]) -> [String] {
     memberIds.filter { !accepted.contains($0) && !declined.contains($0) }

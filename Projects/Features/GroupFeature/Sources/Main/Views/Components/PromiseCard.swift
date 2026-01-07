@@ -116,9 +116,18 @@ struct PromiseCard: View {
       // Bottom Section - Vote counts
       HStack(spacing: 8) {
         HStack(spacing: 4) {
-          Image(systemName: "person.2.fill")
+          Image(systemName: "hand.raised.fill")
             .font(.system(size: 11))
-          Text("\(promise.votes.acceptedCount)/\(promise.minimumParticipants)명")
+          Text("\(promise.votes.votedCount)명 투표")
+            .font(.system(size: 12, weight: .semibold))
+
+          Text("·")
+            .font(.system(size: 12))
+
+          Image(systemName: "checkmark.circle.fill")
+            .font(.system(size: 11))
+            .foregroundColor(.green)
+          Text("\(promise.votes.acceptedCount)/\(promise.minimumParticipants)")
             .font(.system(size: 12, weight: .semibold))
         }
         .foregroundColor(.secondary)
@@ -322,10 +331,12 @@ private struct StatusBadge: View {
     switch status {
     case .needResponse:
       return Color.orange.opacity(0.1)
+    case .responded:
+      return Color.blue.opacity(0.1)
     case .confirmed:
       return Color.green.opacity(0.1)
-    case .sent:
-      return Color.blue.opacity(0.1)
+    case .failed:
+      return Color.gray.opacity(0.1)
     }
   }
 
@@ -333,10 +344,12 @@ private struct StatusBadge: View {
     switch status {
     case .needResponse:
       return Color.orange
+    case .responded:
+      return Color.blue
     case .confirmed:
       return Color.green
-    case .sent:
-      return Color.blue
+    case .failed:
+      return Color.gray
     }
   }
 }
@@ -346,17 +359,19 @@ private struct StatusBadge: View {
 extension PromiseResponseStatus {
   var displayText: String {
     switch self {
-    case .needResponse: return "답변 필요"
+    case .needResponse: return "응답 필요"
+    case .responded: return "확정 대기"
     case .confirmed: return "확정됨"
-    case .sent: return "응답 대기"
+    case .failed: return "불발"
     }
   }
 
   var iconName: String {
     switch self {
     case .needResponse: return "exclamationmark.circle.fill"
+    case .responded: return "clock.fill"
     case .confirmed: return "checkmark.circle.fill"
-    case .sent: return "paperplane.fill"
+    case .failed: return "xmark.circle.fill"
     }
   }
 }
