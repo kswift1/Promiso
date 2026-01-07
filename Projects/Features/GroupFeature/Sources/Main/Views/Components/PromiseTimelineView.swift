@@ -28,16 +28,17 @@ struct PromiseTimelineView: View {
   }
 
   private var filteredPromises: [PromiseModel] {
+    let totalMembers = groupMembers?.count
     switch selectedFilter {
     case .all:
       return promises
     case .needResponse:
       return promises.filter {
-        $0.responseStatus(currentUserId: currentUserId) == .needResponse
+        $0.responseStatus(currentUserId: currentUserId, totalGroupMembers: totalMembers) == .needResponse
       }
     case .responded:
       return promises.filter {
-        $0.responseStatus(currentUserId: currentUserId) != .needResponse
+        $0.responseStatus(currentUserId: currentUserId, totalGroupMembers: totalMembers) != .needResponse
       }
     }
   }

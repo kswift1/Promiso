@@ -39,7 +39,7 @@ extension PromiseDetail {
       }
 
       var responseStatus: PromiseResponseStatus {
-        promise.responseStatus(currentUserId: currentUserId)
+        promise.responseStatus(currentUserId: currentUserId, totalGroupMembers: groupMembers?.count)
       }
     }
 

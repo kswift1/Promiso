@@ -237,7 +237,10 @@ extension PromiseModel {
   }
 
   /// 응답 상태 (우선순위: 확정 > 불발 > 미응답 > 응답완료)
-  public func responseStatus(currentUserId: String?) -> PromiseResponseStatus {
+  /// - Parameters:
+  ///   - currentUserId: 현재 사용자 ID
+  ///   - totalGroupMembers: 실제 그룹 멤버 수 (nil이면 투표 마감 기준으로만 판단)
+  public func responseStatus(currentUserId: String?, totalGroupMembers: Int? = nil) -> PromiseResponseStatus {
     // 1. 약속이 확정됨
     if status == .active || isConfirmed {
       return .confirmed
@@ -248,7 +251,23 @@ extension PromiseModel {
       return .failed
     }
 
-    // 3. 내가 미응답
+    // 3. 모든 멤버 응답 완료 + 최소 인원 미달 = 불발
+    if let totalMembers = totalGroupMembers {
+      let respondedCount = votes.acceptedCount + votes.declinedCount
+      let allResponded = respondedCount >= totalMembers
+      let cannotReachMinimum = (totalMembers - votes.declinedCount) < minimumParticipants
+
+      if allResponded && !isConfirmed {
+        return .failed
+      }
+
+      // 남은 인원이 모두 찬성해도 최소 인원 도달 불가 = 불발
+      if cannotReachMinimum {
+        return .failed
+      }
+    }
+
+    // 4. 내가 미응답
     if let userId = currentUserId {
       let myStatus = votes.myStatus(userId: userId)
       if myStatus == .pending {
@@ -256,7 +275,7 @@ extension PromiseModel {
       }
     }
 
-    // 4. 내가 응답함 (확정 대기)
+    // 5. 내가 응답함 (확정 대기)
     return .responded
   }
 }

@@ -38,7 +38,7 @@ struct PromiseCard: View {
   }
 
   private var responseStatus: PromiseResponseStatus {
-    promise.responseStatus(currentUserId: currentUserId)
+    promise.responseStatus(currentUserId: currentUserId, totalGroupMembers: groupMembers?.count)
   }
 
   var body: some View {
@@ -55,15 +55,15 @@ struct PromiseCard: View {
 
         VStack(alignment: .leading, spacing: 2) {
           if isHost {
-            Text("내가 만든 약속")
+            Text("내 약속 제안")
               .font(.system(size: 13, weight: .semibold))
               .foregroundColor(.primary)
           } else if let hostName = host?.displayName {
-            Text("\(hostName)님의 약속")
+            Text("\(hostName)님의 약속 제안")
               .font(.system(size: 13, weight: .semibold))
               .foregroundColor(.primary)
           } else {
-            Text("약속")
+            Text("약속 제안")
               .font(.system(size: 13, weight: .semibold))
               .foregroundColor(.primary)
           }
@@ -97,10 +97,9 @@ struct PromiseCard: View {
 
           VStack(alignment: .leading, spacing: 6) {
             // Date & Time
-            HStack(spacing: 6) {
-              Image(systemName: "calendar")
-                .font(.system(size: 13))
-                .foregroundColor(.blue)
+            HStack(spacing: 4) {
+              Text("⏰")
+                .font(.system(size: 14))
               Text("\(promise.dateText) \(promise.timeText)")
                 .font(.system(size: 14, weight: .medium))
             }
