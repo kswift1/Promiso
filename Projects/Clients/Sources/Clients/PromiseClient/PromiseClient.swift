@@ -44,6 +44,26 @@ public enum PromiseClientError: Error, Equatable {
       return message ?? "알 수 없는 오류가 발생했습니다"
     }
   }
+
+  /// NSError를 PromiseClientError로 변환
+  init(from error: Error) {
+    let nsError = error as NSError
+    let message = nsError.localizedDescription
+
+    guard nsError.domain == "FIRFunctionsErrorDomain" else {
+      self = .networkError
+      return
+    }
+
+    switch nsError.code {
+    case 16: self = .unauthorized
+    case 3, 9: self = .invalidData(message)
+    case 5: self = .groupNotFound
+    case 7: self = .notGroupMember
+    case 13: self = .serverError
+    default: self = .unknown(message)
+    }
+  }
 }
 
 // MARK: - Client
@@ -138,30 +158,8 @@ extension PromiseClient: DependencyKey {
 
         do {
           return try await dataSource.createPromise(promise)
-        } catch let error as NSError {
-          // Firebase Functions 에러 메시지 추출
-          let errorMessage = error.localizedDescription
-          print("error: \(errorMessage)")
-          // Firebase Functions 에러를 PromiseClientError로 변환
-          switch error.domain {
-          case "FIRFunctionsErrorDomain":
-            switch error.code {
-            case 16: // unauthenticated
-              throw PromiseClientError.unauthorized
-            case 3, 9: // invalid-argument
-              throw PromiseClientError.invalidData(errorMessage)
-            case 5: // not-found
-              throw PromiseClientError.groupNotFound
-            case 7: // permission-denied
-              throw PromiseClientError.notGroupMember
-            case 13: // internal
-              throw PromiseClientError.serverError
-            default:
-              throw PromiseClientError.unknown(errorMessage)
-            }
-          default:
-            throw PromiseClientError.networkError
-          }
+        } catch {
+          throw PromiseClientError(from: error)
         }
       },
       updatePromise: { promise in
