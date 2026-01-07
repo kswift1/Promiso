@@ -312,14 +312,15 @@ export enum CreatePromiseError {
  *
  * @remarks
  * - 인증 필수 (Firebase Auth)
- * - 약속 참석자만 응답 가능
+ * - 그룹 멤버만 응답 가능
+ * - votes Map 방식: arrayUnion/arrayRemove로 업데이트
  */
 export interface RespondPromiseRequest {
   /** 약속 ID */
   promiseId: string;
 
-  /** 응답 상태 */
-  status: "accepted" | "declined" | "tentative";
+  /** 응답 상태 (accepted: 참여 확정, declined: 참여 불가) */
+  status: "accepted" | "declined";
 
   /** 환경 구분 (선택적: stage 또는 prod) */
   env?: "stage" | "prod" | null;
@@ -333,7 +334,7 @@ export interface RespondPromiseResponse {
   promiseId: string;
 
   /** 응답 상태 */
-  status: "accepted" | "declined" | "tentative";
+  status: "accepted" | "declined";
 }
 
 /**

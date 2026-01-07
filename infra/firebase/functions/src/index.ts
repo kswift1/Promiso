@@ -1217,6 +1217,12 @@ function randomInviteCode(length: number): string {
  * 그룹에 새로운 약속을 생성합니다.
  * iOS CreatePromise Feature와 연동됩니다.
  *
+ * **votes Map 방식**:
+ * - votes.accepted: 참여 확정 userId 배열
+ * - votes.declined: 참여 불가 userId 배열
+ * - votes.until: 투표 마감 시각 (기본값: startAt)
+ * - pending: memberIds - accepted - declined (계산)
+ *
  * @param request.data - CreatePromiseRequest
  * @returns CreatePromiseResponse
  *
@@ -1241,7 +1247,7 @@ export const createPromise = onCall<CreatePromiseRequest>(
     const userId = request.auth.uid;
     const data = request.data;
 
-    // 3. 데이터 검증
+    // 2. 데이터 검증
     if (
       !data.groupId ||
       !data.title ||
@@ -1272,9 +1278,8 @@ export const createPromise = onCall<CreatePromiseRequest>(
       db,
       data.env,
     );
-    const usersCollection = getEnvironmentCollection("users", db, data.env);
 
-    // 4. 그룹 존재 확인
+    // 3. 그룹 존재 확인
     const groupDoc = await groupsCollection.doc(data.groupId).get();
     if (!groupDoc.exists) {
       throw new HttpsError(
@@ -1291,78 +1296,40 @@ export const createPromise = onCall<CreatePromiseRequest>(
       );
     }
 
-    // 5. 멤버십 확인
-    const membershipQuery = await groupDoc.ref
-      .collection("members")
-      .where("userId", "==", userId)
-      .where("isActive", "==", true)
-      .limit(1)
-      .get();
-
-    if (membershipQuery.empty) {
+    // 4. 멤버십 확인 (memberIds 배열 사용)
+    const memberIds = (groupData.memberIds as string[]) ?? [];
+    if (!memberIds.includes(userId)) {
       throw new HttpsError(
         "permission-denied",
         "그룹 멤버만 약속을 생성할 수 있습니다",
       );
     }
 
-    // 6. 사용자 정보 조회 (호스트 이름 캐싱용)
-    const userDoc = await usersCollection.doc(userId).get();
-    const userData = userDoc.data();
-    const hostName = userData?.nickname || "Unknown";
-
-    // 7. 시작/종료 시간 파싱
+    // 5. 시작/종료 시간 파싱
     const startAtDate = new Date(data.startAt);
+    const startAtTimestamp = admin.firestore.Timestamp.fromDate(startAtDate);
     const endAtDate = data.endAt ? new Date(data.endAt) : null;
 
-    // 8. 날짜 인덱스 생성 (로컬 시간 기준)
-    const year = startAtDate.getFullYear();
-    const month = String(startAtDate.getMonth() + 1).padStart(2, "0");
-    const day = String(startAtDate.getDate()).padStart(2, "0");
-    const localYyyymm = `${year}${month}`;
-    const localYyyymmdd = `${year}${month}${day}`;
-
-    // 9. 그룹 멤버 목록 조회
-    const membersSnapshot = await groupDoc.ref
-      .collection("members")
-      .where("isActive", "==", true)
-      .get();
-
-    const members = membersSnapshot.docs.map((doc) => doc.data());
-    const totalMembers = Math.max(members.length, 1);
-
-    // 10. 약속 문서 생성
+    // 6. 약속 문서 생성
     const promiseRef = promisesCollection.doc();
     const promiseId = promiseRef.id;
 
     const promiseData = {
-      emoji: data.emoji || null,
       title: data.title,
+      emoji: data.emoji || null,
       description: data.description || null,
-      minimumParticipants: data.minimumParticipants,
-      requiredCount: data.minimumParticipants,
-      isConfirmed: false,
-      confirmedAt: null,
       hostId: userId,
-      hostName: hostName,
       groupId: data.groupId,
-      groupName: groupData.name,
-      counts: {
-        total: totalMembers,
-        accepted: 1,
-        declined: 0,
-        pending: Math.max(totalMembers - 1, 0),
-        tentative: 0,
+      minimumParticipants: data.minimumParticipants,
+      votes: {
+        accepted: [userId], // 호스트는 자동 accepted
+        declined: [],
+        until: startAtTimestamp, // 기본값: startAt
       },
-      startAt: admin.firestore.Timestamp.fromDate(startAtDate),
+      startAt: startAtTimestamp,
       endAt: endAtDate ? admin.firestore.Timestamp.fromDate(endAtDate) : null,
-      localYyyymm: localYyyymm,
-      localYyyymmdd: localYyyymmdd,
-      localTz: "Asia/Seoul",
-      status: "pending",
       location: data.place ? {name: data.place} : null,
-      arrivalSharingTime: data.arrivalSharingTime ?? null,
-      titleLower: data.title.toLowerCase(),
+      status: "pending",
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
       isDeleted: false,
@@ -1371,44 +1338,7 @@ export const createPromise = onCall<CreatePromiseRequest>(
     const batch = db.batch();
     batch.set(promiseRef, promiseData);
 
-    // 11. 참석자 문서 생성
-    for (const member of members) {
-      const memberId = member.userId as string | undefined;
-      if (!memberId) {
-        continue;
-      }
-
-      const nickname = (member.userNickname as string | undefined)?.trim();
-      const name = (member.userName as string | undefined)?.trim();
-      let displayName = "Unknown";
-      if (nickname && nickname.length > 0) {
-        displayName = nickname;
-      } else if (name && name.length > 0) {
-        displayName = name;
-      }
-
-      const isHost = memberId === userId;
-
-      batch.set(
-        promiseRef.collection("attendances").doc(memberId),
-        {
-          userId: memberId,
-          userName: displayName,
-          profileImageUrl: member.profileImageUrl ?? null,
-          status: isHost ? "accepted" : "pending",
-          isHost: isHost,
-          respondedAt: isHost ? FieldValue.serverTimestamp() : null,
-          message: null,
-          notificationSent: false,
-          lastViewedAt: null,
-          reminderSentAt: null,
-          invitedAt: FieldValue.serverTimestamp(),
-          invitedBy: userId,
-        },
-      );
-    }
-
-    // 12. 그룹의 activePromiseCount 증가
+    // 7. 그룹의 activePromiseCount 증가
     batch.update(groupsCollection.doc(data.groupId), {
       activePromiseCount: FieldValue.increment(1),
       updatedAt: FieldValue.serverTimestamp(),
@@ -1416,12 +1346,12 @@ export const createPromise = onCall<CreatePromiseRequest>(
 
     await batch.commit();
 
-    // 13. 응답 반환
+    // 8. 응답 반환
     return {
       promiseId: promiseId,
       title: data.title,
       groupId: data.groupId,
-      startAt: admin.firestore.Timestamp.fromDate(startAtDate),
+      startAt: startAtTimestamp,
     };
   },
 );
@@ -1432,8 +1362,12 @@ export const createPromise = onCall<CreatePromiseRequest>(
  * @remarks
  * **인증 필수**
  *
- * 약속 참석자 응답을 수락/거절/미정으로 업데이트합니다.
+ * 약속 참석자 응답을 수락/거절로 업데이트합니다.
  * iOS GroupMain Feature와 연동됩니다.
+ *
+ * **votes Map 방식**:
+ * - votes.accepted / votes.declined 배열을 arrayUnion/arrayRemove로 업데이트
+ * - Set-like 동작: 중복 자동 방지
  *
  * @param request.data - RespondPromiseRequest
  * @returns RespondPromiseResponse
@@ -1442,7 +1376,7 @@ export const createPromise = onCall<CreatePromiseRequest>(
  * - unauthenticated: 로그인이 필요합니다
  * - invalid-argument: 잘못된 요청 데이터
  * - not-found: 약속을 찾을 수 없습니다
- * - permission-denied: 약속 참석자가 아닙니다
+ * - permission-denied: 그룹 멤버가 아닙니다
  * - internal: 서버 오류
  */
 export const respondPromise = onCall<RespondPromiseRequest>(
@@ -1466,10 +1400,10 @@ export const respondPromise = onCall<RespondPromiseRequest>(
       );
     }
 
-    if (!["accepted", "declined", "tentative"].includes(status)) {
+    if (!["accepted", "declined"].includes(status)) {
       throw new HttpsError(
         "invalid-argument",
-        "status는 accepted/declined/tentative 중 하나여야 합니다",
+        "status는 accepted/declined 중 하나여야 합니다",
       );
     }
 
@@ -1486,10 +1420,16 @@ export const respondPromise = onCall<RespondPromiseRequest>(
       db,
       data.env,
     );
+    const groupsCollection = getEnvironmentCollection(
+      "groups",
+      db,
+      data.env,
+    );
 
     const promiseRef = promisesCollection.doc(data.promiseId);
 
     await db.runTransaction(async (transaction) => {
+      // 1. 약속 조회
       const promiseSnapshot = await transaction.get(promiseRef);
       if (!promiseSnapshot.exists) {
         throw new HttpsError(
@@ -1506,94 +1446,81 @@ export const respondPromise = onCall<RespondPromiseRequest>(
         );
       }
 
-      const attendanceRef = promiseRef
-        .collection("attendances")
-        .doc(userId);
-      const attendanceSnapshot = await transaction.get(attendanceRef);
+      // 2. 그룹 조회 및 멤버십 확인
+      const groupId = promiseData.groupId as string;
+      const groupDoc = await transaction.get(groupsCollection.doc(groupId));
 
-      if (!attendanceSnapshot.exists) {
+      if (!groupDoc.exists) {
         throw new HttpsError(
-          "permission-denied",
-          "약속 참석자만 응답할 수 있습니다",
+          "not-found",
+          "그룹을 찾을 수 없습니다",
         );
       }
 
-      const attendanceData = attendanceSnapshot.data();
-      const previousStatus = attendanceData?.status ?? "pending";
+      const groupData = groupDoc.data();
+      const memberIds = (groupData?.memberIds as string[]) ?? [];
 
-      if (previousStatus === status) {
+      if (!memberIds.includes(userId)) {
+        throw new HttpsError(
+          "permission-denied",
+          "그룹 멤버만 응답할 수 있습니다",
+        );
+      }
+
+      // 3. 현재 투표 상태 확인
+      const votes = promiseData.votes || {accepted: [], declined: []};
+      const acceptedList = (votes.accepted as string[]) ?? [];
+      const declinedList = (votes.declined as string[]) ?? [];
+
+      const isInAccepted = acceptedList.includes(userId);
+      const isInDeclined = declinedList.includes(userId);
+
+      // 이미 같은 상태면 스킵
+      if (
+        (status === "accepted" && isInAccepted) ||
+        (status === "declined" && isInDeclined)
+      ) {
         return;
       }
 
-      const counts = promiseData.counts || {
-        total: 0,
-        accepted: 0,
-        declined: 0,
-        pending: 0,
-        tentative: 0,
-      };
-
-      const adjust = (value: number, delta: number) =>
-        Math.max(value + delta, 0);
-
-      const nextCounts = {
-        total: counts.total ?? 0,
-        accepted: counts.accepted ?? 0,
-        declined: counts.declined ?? 0,
-        pending: counts.pending ?? 0,
-        tentative: counts.tentative ?? 0,
-      };
-
-      switch (previousStatus) {
-      case "accepted":
-        nextCounts.accepted = adjust(nextCounts.accepted, -1);
-        break;
-      case "declined":
-        nextCounts.declined = adjust(nextCounts.declined, -1);
-        break;
-      case "tentative":
-        nextCounts.tentative = adjust(nextCounts.tentative, -1);
-        break;
-      default:
-        nextCounts.pending = adjust(nextCounts.pending, -1);
-        break;
-      }
-
-      switch (status) {
-      case "accepted":
-        nextCounts.accepted = adjust(nextCounts.accepted, 1);
-        break;
-      case "declined":
-        nextCounts.declined = adjust(nextCounts.declined, 1);
-        break;
-      case "tentative":
-        nextCounts.tentative = adjust(nextCounts.tentative, 1);
-        break;
-      default:
-        nextCounts.pending = adjust(nextCounts.pending, 1);
-        break;
-      }
-
-      const minimumParticipants = promiseData.minimumParticipants ?? 2;
-      const isConfirmed = nextCounts.accepted >= minimumParticipants;
-
-      transaction.update(promiseRef, {
-        counts: nextCounts,
-        isConfirmed: isConfirmed,
-        confirmedAt: isConfirmed ? FieldValue.serverTimestamp() : null,
-        status: isConfirmed ? "active" : "pending",
+      // 4. votes 배열 업데이트 (Set-like 동작)
+      // 먼저 기존 상태에서 제거
+      const updateData: Record<string, unknown> = {
         updatedAt: FieldValue.serverTimestamp(),
-      });
+      };
 
-      transaction.update(attendanceRef, {
-        status: status,
-        respondedAt: FieldValue.serverTimestamp(),
-      });
+      if (isInAccepted) {
+        updateData["votes.accepted"] = FieldValue.arrayRemove(userId);
+      }
+      if (isInDeclined) {
+        updateData["votes.declined"] = FieldValue.arrayRemove(userId);
+      }
+
+      // 새 상태로 추가
+      if (status === "accepted") {
+        updateData["votes.accepted"] = FieldValue.arrayUnion(userId);
+      } else {
+        updateData["votes.declined"] = FieldValue.arrayUnion(userId);
+      }
+
+      // 5. 확정 여부 계산 (새 상태 기준)
+      let newAcceptedCount = acceptedList.length;
+      if (isInAccepted && status === "declined") {
+        newAcceptedCount -= 1;
+      } else if (!isInAccepted && status === "accepted") {
+        newAcceptedCount += 1;
+      }
+
+      const minimumParticipants = (promiseData.minimumParticipants as number) ?? 2;
+      const isConfirmed = newAcceptedCount >= minimumParticipants;
+      updateData["status"] = isConfirmed ? "active" : "pending";
+
+      transaction.update(promiseRef, updateData);
     });
 
     return {
       promiseId: data.promiseId,
-      status: status as "accepted" | "declined" | "tentative",
+      status: status as "accepted" | "declined",
     };
   },
 );

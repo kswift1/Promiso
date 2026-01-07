@@ -1620,7 +1620,7 @@ components:
             until:
               type: string
               format: date-time
-              description: 투표 마감 시각 (기본값: startAt)
+              description: "투표 마감 시각 (기본값: startAt)"
               example: "2024-01-15T19:00:00+09:00"
         startAt:
           type: string
