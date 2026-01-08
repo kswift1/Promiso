@@ -598,7 +598,7 @@ private struct StatusBadgeView: View {
     case .confirmed:
       return "확정됨"
     case .failed:
-      return "불발"
+      return "미성사"
     }
   }
 

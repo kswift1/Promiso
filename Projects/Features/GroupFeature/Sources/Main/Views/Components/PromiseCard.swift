@@ -418,7 +418,7 @@ extension PromiseResponseStatus {
     case .needResponse: return "응답 필요"
     case .responded: return "확정 대기"
     case .confirmed: return "확정됨"
-    case .failed: return "불발"
+    case .failed: return "미성사"
     }
   }
 

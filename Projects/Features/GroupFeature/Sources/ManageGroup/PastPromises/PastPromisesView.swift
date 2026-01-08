@@ -222,7 +222,7 @@ private struct PastPromiseCardRow: View {
   }
 
   private var statusText: String {
-    promise.isConfirmed ? "완료" : "불발"
+    promise.isConfirmed ? "완료" : "미성사"
   }
 
   private var statusColor: Color {
