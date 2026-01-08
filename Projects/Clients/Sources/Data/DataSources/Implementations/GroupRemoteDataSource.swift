@@ -63,6 +63,7 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
     photoData: Data?
   ) async throws -> GroupCreationResultModel {
     let groupId = UUID().uuidString
+    let photoPath = "group_images/\(groupId)/main.jpg"
 
     // 1. 이미지 업로드 (선택적) - downloadURL 반환
     var imageUrl: String?
@@ -112,8 +113,10 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
         inviteCode: inviteCode
       )
     } catch {
-      // 실패 시 업로드된 이미지 삭제 (이미지 URL로는 삭제 불가, photoPath 필요)
-      // TODO: 실패 시 이미지 정리 로직 개선 필요
+      // 실패 시 업로드된 이미지 삭제
+      if imageUrl != nil {
+        try? await deleteImage(at: photoPath)
+      }
       throw error
     }
   }

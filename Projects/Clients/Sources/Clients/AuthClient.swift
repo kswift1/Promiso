@@ -220,7 +220,6 @@ public struct PlatformAuthProvider: PlatformAuthProviding, Sendable {
 public struct AuthClient: Sendable {
   private let session = InMemoryAuthSession()
   private let provider = PlatformAuthProvider()
-//  private let keychain = KeychainStorage()
   
   public var logout: @Sendable () async throws -> Void
   public var currentUser: @Sendable () async -> FirebaseUserSnapshot? = { nil }

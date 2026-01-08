@@ -2,16 +2,6 @@ import PromisoShared
 import Clients
 import SwiftUI
 
-// MIDDLE
-// TODO 5: 약속 정보 변경 (제목, 설명, 시간, 충족 인원 모두)
-// TODO 7: 그룹 상세 - 그룹 이미지 공통 관리 및 변경 기능, 소개도
-
-// LOW
-// TODO 3: 요금제별 활성 약속 limit 변경 예정 - 현재는 10 통일
-// TODO 1: 공유기능 고도화 해서 딥링크 연결
-// TODO 8: 약속 카드 최종 개선방향 고민
-// TODO 9: 최종 read 수 최적화 고민
-
 public enum GroupMain {}
 
 extension GroupMain {
