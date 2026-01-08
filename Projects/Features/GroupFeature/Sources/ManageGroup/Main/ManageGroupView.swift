@@ -109,6 +109,28 @@ extension ManageGroup {
           .clipShape(RoundedRectangle(cornerRadius: 20))
           .shadow(color: .black.opacity(0.06), radius: 16, x: 0, y: 8)
 
+          // Past Promises Section
+          Button {
+            store.send(.view(.pastPromisesTapped))
+          } label: {
+            HStack {
+              Label("지난 약속", systemImage: "clock.arrow.circlepath")
+                .font(.headline)
+                .foregroundStyle(.primary)
+
+              Spacer()
+
+              Image(systemName: "chevron.right")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(.tertiary)
+            }
+            .padding(20)
+            .background(Color(.systemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 20))
+            .shadow(color: .black.opacity(0.06), radius: 16, x: 0, y: 8)
+          }
+          .buttonStyle(.plain)
+
           // Invite Section
           inviteSection
 

@@ -63,6 +63,7 @@ extension ManageGroup {
 
       public enum ViewAction: Sendable {
         case onAppear
+        case pastPromisesTapped
         case leaveGroupTapped
         case deleteGroupTapped
         case confirmLeave
@@ -82,6 +83,7 @@ extension ManageGroup {
       public enum Delegate: Sendable {
         case groupLeft
         case groupDeleted
+        case pastPromisesTapped
       }
     }
 
@@ -96,6 +98,9 @@ extension ManageGroup {
             // 이미 멤버가 로드되어 있으면 조회하지 않음
             guard case .idle = state.membersState else { return .none }
             return .send(.internal(.fetchMembers))
+
+          case .pastPromisesTapped:
+            return .send(.delegate(.pastPromisesTapped))
 
           case .leaveGroupTapped:
             // 리브 확인 alert는 View에서 처리

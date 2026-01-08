@@ -2,7 +2,6 @@ import PromisoShared
 import Clients
 
 // HIGH
-// TODO 2: 과거 데이터 보여주기 기능
 // TODO 3: 페이징 기능 추가, 페이징 시 구독 관리 생각
 // TODO 4: 구독 관리 예외 케이스 추가 (백그라운드, 일정기간 지나거나 등등)
 
@@ -67,6 +66,8 @@ extension GroupMain {
     public enum Path {
       case manageGroupFeature(ManageGroup.Feature)
       case promiseDetail(PromiseDetail.Feature)
+      case pastPromises(PastPromises.Feature)
+      case pastPromiseDetail(PastPromiseDetail.Feature)
     }
 
     public enum Action: Sendable {
@@ -429,6 +430,23 @@ extension GroupMain {
           state.currentGroup = nil
           state.currentGroupMembers = nil
           return .send(.internal(.fetchGroupList))
+
+        case .path(.element(id: _, action: .manageGroupFeature(.delegate(.pastPromisesTapped)))):
+          guard let groupId = state.currentGroup?.id else { return .none }
+          state.path.append(.pastPromises(.init(
+            groupId: groupId,
+            currentUserId: state.currentUser.userId,
+            groupMembers: state.currentGroupMembers
+          )))
+          return .none
+
+        case .path(.element(id: _, action: .pastPromises(.delegate(.promiseSelected(let promise))))):
+          state.path.append(.pastPromiseDetail(.init(
+            promise: promise,
+            currentUserId: state.currentUser.userId,
+            groupMembers: state.currentGroupMembers
+          )))
+          return .none
 
         case .path(.element(id: _, action: .promiseDetail(.delegate(.dismiss)))):
           _ = state.path.popLast()

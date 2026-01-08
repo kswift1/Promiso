@@ -176,6 +176,19 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
     return try snapshot.documents.compactMap { try documentToPromise($0) }
   }
 
+  /// 과거 약속 조회 (startAt < 현재시간, 최신순 정렬)
+  public func getPastPromises(groupId: String, limit: Int) async throws -> [PromiseModel] {
+    let query = db.environmentCollection(collectionName)
+      .whereField("groupId", isEqualTo: groupId)
+      .whereField("isDeleted", isEqualTo: false)
+      .whereField("startAt", isLessThan: Timestamp(date: Date()))
+      .order(by: "startAt", descending: true)
+      .limit(to: limit)
+
+    let snapshot = try await query.getDocuments()
+    return try snapshot.documents.compactMap { try documentToPastPromise($0) }
+  }
+
   /// 활성 약속 실시간 구독 (과거 약속 제외)
   public func subscribeToActivePromises(groupId: String, limit: Int) -> AsyncStream<[PromiseModel]> {
     print("[PromiseDataSource] 🔔 subscribeToActivePromises 호출: groupId=\(groupId)")
@@ -246,6 +259,16 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
     // cancelled 또는 completed 상태는 제외
     let status = PromiseStatus(rawValue: dto.status)
     if status == .cancelled || status == .completed {
+      return nil
+    }
+    return PromiseModel(dto: dto, id: document.documentID)
+  }
+
+  /// 과거 약속용 파싱 (cancelled만 제외, completed는 포함)
+  private func documentToPastPromise(_ document: QueryDocumentSnapshot) throws -> PromiseModel? {
+    let dto = try document.data(as: PromiseDTO.self)
+    let status = PromiseStatus(rawValue: dto.status)
+    if status == .cancelled {
       return nil
     }
     return PromiseModel(dto: dto, id: document.documentID)

@@ -93,6 +93,9 @@ public struct PromiseClient: Sendable {
   /// 그룹의 활성 약속 조회
   public var getActivePromises: @Sendable (_ groupId: String, _ limit: Int) async throws -> [PromiseModel]
 
+  /// 그룹의 과거 약속 조회
+  public var getPastPromises: @Sendable (_ groupId: String, _ limit: Int) async throws -> [PromiseModel]
+
   /// 그룹의 활성 약속 실시간 구독
   public var subscribeToPromises: @Sendable (_ groupId: String, _ limit: Int) -> AsyncStream<[PromiseModel]> = { _, _ in AsyncStream { _ in } }
 
@@ -131,6 +134,10 @@ extension PromiseClient: TestDependencyKey {
     getActivePromises: { _, _ in
       try await Task.sleep(for: .seconds(1))
       return PromiseModel.examples
+    },
+    getPastPromises: { _, _ in
+      try await Task.sleep(for: .seconds(1))
+      return []
     },
     subscribeToPromises: { _, _ in
       AsyncStream { continuation in
@@ -190,6 +197,9 @@ extension PromiseClient: DependencyKey {
       },
       getActivePromises: { groupId, limit in
         try await dataSource.getActivePromises(groupId: groupId, limit: limit)
+      },
+      getPastPromises: { groupId, limit in
+        try await dataSource.getPastPromises(groupId: groupId, limit: limit)
       },
       subscribeToPromises: { groupId, limit in
         dataSource.subscribeToActivePromises(groupId: groupId, limit: limit)

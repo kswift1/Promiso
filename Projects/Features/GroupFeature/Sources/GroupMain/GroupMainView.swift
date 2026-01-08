@@ -19,6 +19,10 @@ extension GroupMain {
             ManageGroup.RootView(store: manageGroupStore)
           case .promiseDetail(let promiseDetailStore):
             PromiseDetail.RootView(store: promiseDetailStore)
+          case .pastPromises(let pastPromisesStore):
+            PastPromises.RootView(store: pastPromisesStore)
+          case .pastPromiseDetail(let pastPromiseDetailStore):
+            PastPromiseDetail.RootView(store: pastPromiseDetailStore)
           }
         }
     }
