@@ -301,6 +301,75 @@ export enum CreatePromiseError {
 }
 
 // ============================================================================
+// updatePromise
+// ============================================================================
+
+/**
+ * 약속 수정 요청
+ *
+ * @remarks
+ * - 인증 필수 (Firebase Auth)
+ * - 호스트만 수정 가능
+ * - 시작 전 약속만 수정 가능 (startAt > now)
+ */
+export interface UpdatePromiseRequest {
+  /** 약속 ID */
+  promiseId: string;
+
+  /** 약속 제목 (선택적) */
+  title?: string | null;
+
+  /** 약속 이모지 (선택적) */
+  emoji?: string | null;
+
+  /** 약속 설명 (선택적) */
+  description?: string | null;
+
+  /** 시작 시간 (선택적, ISO 8601 문자열) */
+  startAt?: string | null;
+
+  /** 종료 시간 (선택적, ISO 8601 문자열) */
+  endAt?: string | null;
+
+  /** 최소 참가 인원 (선택적) */
+  minimumParticipants?: number | null;
+
+  /** 환경 구분 (선택적: stage 또는 prod) */
+  env?: "stage" | "prod" | null;
+}
+
+/**
+ * 약속 수정 응답
+ */
+export interface UpdatePromiseResponse {
+  /** 성공 여부 */
+  success: boolean;
+}
+
+/**
+ * 약속 수정 에러
+ */
+export enum UpdatePromiseError {
+  /** 인증 필요 */
+  UNAUTHENTICATED = "unauthenticated",
+
+  /** 잘못된 요청 */
+  INVALID_ARGUMENT = "invalid-argument",
+
+  /** 약속을 찾을 수 없음 */
+  PROMISE_NOT_FOUND = "not-found",
+
+  /** 호스트만 수정 가능 */
+  NOT_HOST = "permission-denied",
+
+  /** 이미 시작된 약속 */
+  ALREADY_STARTED = "failed-precondition",
+
+  /** 서버 오류 */
+  INTERNAL = "internal",
+}
+
+// ============================================================================
 // respondPromise
 // ============================================================================
 

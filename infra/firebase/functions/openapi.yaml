@@ -909,6 +909,138 @@ paths:
                       code: not-found
                       message: 약속을 찾을 수 없습니다
 
+  /updatePromise:
+    post:
+      tags:
+        - Promise
+      summary: 약속 수정
+      description: |
+        약속 정보를 수정합니다.
+
+        **인증 필수**: Firebase Authentication 토큰 필요
+        **호스트만 가능**: 약속을 생성한 호스트만 수정 가능
+        **시작 전만 가능**: 시작 시간이 지난 약속은 수정 불가
+      operationId: updatePromise
+      security:
+        - firebaseAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - data
+              properties:
+                data:
+                  $ref: '#/components/schemas/UpdatePromiseRequest'
+            examples:
+              titleOnly:
+                summary: 제목만 수정
+                value:
+                  data:
+                    promiseId: promise_abc123
+                    title: 새로운 약속 제목
+                    env: stage
+              fullUpdate:
+                summary: 전체 수정
+                value:
+                  data:
+                    promiseId: promise_abc123
+                    title: 주말 등산
+                    emoji: "🏔️"
+                    description: 북한산 백운대 등반
+                    startAt: "2024-12-25T10:00:00+09:00"
+                    endAt: "2024-12-25T16:00:00+09:00"
+                    minimumParticipants: 3
+                    env: stage
+
+      responses:
+        '200':
+          description: 약속 수정 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    $ref: '#/components/schemas/UpdatePromiseResponse'
+              examples:
+                success:
+                  value:
+                    result:
+                      success: true
+
+        '400':
+          description: 잘못된 파라미터
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FunctionsError'
+              examples:
+                invalidTitle:
+                  value:
+                    error:
+                      code: invalid-argument
+                      message: 약속 제목은 필수입니다
+                invalidStartAt:
+                  value:
+                    error:
+                      code: invalid-argument
+                      message: 시작 시간은 현재보다 미래여야 합니다
+
+        '401':
+          description: 인증 실패
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FunctionsError'
+              examples:
+                unauthenticated:
+                  value:
+                    error:
+                      code: unauthenticated
+                      message: 로그인이 필요합니다
+
+        '403':
+          description: 권한 없음 (호스트가 아님)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FunctionsError'
+              examples:
+                notHost:
+                  value:
+                    error:
+                      code: permission-denied
+                      message: 약속 호스트만 수정할 수 있습니다
+
+        '404':
+          description: 약속을 찾을 수 없음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FunctionsError'
+              examples:
+                promiseNotFound:
+                  value:
+                    error:
+                      code: not-found
+                      message: 약속을 찾을 수 없습니다
+
+        '412':
+          description: 약속이 이미 시작됨
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FunctionsError'
+              examples:
+                alreadyStarted:
+                  value:
+                    error:
+                      code: failed-precondition
+                      message: 이미 시작된 약속은 수정할 수 없습니다
+
   /testCallable:
     post:
       tags:
@@ -1819,6 +1951,78 @@ components:
           example: accepted
 
     # ========================================
+    # updatePromise
+    # ========================================
+
+    UpdatePromiseRequest:
+      type: object
+      required:
+        - promiseId
+      properties:
+        promiseId:
+          type: string
+          description: 수정할 약속 ID
+          example: promise_abc123
+
+        title:
+          type: string
+          nullable: true
+          minLength: 1
+          description: 약속 제목 (선택적)
+          example: 주말 등산
+
+        emoji:
+          type: string
+          nullable: true
+          description: 약속 이모지 (선택적, null이면 제거)
+          example: "🏔️"
+
+        description:
+          type: string
+          nullable: true
+          description: 약속 설명 (선택적, null이면 제거)
+          example: 북한산 백운대 등반
+
+        startAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 시작 시간 (선택적, ISO 8601 문자열)
+          example: "2024-12-25T10:00:00+09:00"
+
+        endAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 종료 시간 (선택적, null이면 제거)
+          example: "2024-12-25T16:00:00+09:00"
+
+        minimumParticipants:
+          type: integer
+          minimum: 2
+          nullable: true
+          description: 최소 참가 인원 (선택적)
+          example: 3
+
+        env:
+          type: string
+          enum:
+            - stage
+            - prod
+          description: 환경 구분 (선택적)
+          example: stage
+
+    UpdatePromiseResponse:
+      type: object
+      required:
+        - success
+      properties:
+        success:
+          type: boolean
+          description: 수정 성공 여부
+          example: true
+
+    # ========================================
     # testCallable
     # ========================================
 
@@ -1877,6 +2081,7 @@ components:
                 - not-found
                 - already-exists
                 - resource-exhausted
+                - failed-precondition
                 - internal
                 - unavailable
                 - deadline-exceeded
