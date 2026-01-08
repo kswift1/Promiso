@@ -4,7 +4,8 @@ import ComposableArchitecture
 extension GroupMain {
   public struct RootView: View {
     @Bindable private var store: StoreOf<GroupMain.Feature>
-    
+    @SwiftUI.Environment(\.scenePhase) private var scenePhase: ScenePhase
+
     public init(store: StoreOf<GroupMain.Feature>) {
       self.store = store
     }
@@ -65,6 +66,9 @@ extension GroupMain {
         set: { _ in store.send(.view(.sharePromiseDismissed)) }
       )) { promise in
         ShareSheet(items: [promise.shareText])
+      }
+      .onChange(of: scenePhase) { _, newPhase in
+        store.send(.view(.scenePhaseChanged(newPhase)))
       }
     }
     

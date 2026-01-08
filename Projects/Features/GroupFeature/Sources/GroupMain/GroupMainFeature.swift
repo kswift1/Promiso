@@ -1,15 +1,13 @@
 import PromisoShared
 import Clients
-
-// HIGH
-// TODO 3: 페이징 기능 추가, 페이징 시 구독 관리 생각
-// TODO 4: 구독 관리 예외 케이스 추가 (백그라운드, 일정기간 지나거나 등등)
+import SwiftUI
 
 // MIDDLE
 // TODO 5: 약속 정보 변경 (제목, 설명, 시간, 충족 인원 모두)
 // TODO 7: 그룹 상세 - 그룹 이미지 공통 관리 및 변경 기능, 소개도
 
 // LOW
+// TODO 3: 요금제별 활성 약속 limit 제한 예정 - 현재는 20
 // TODO 1: 공유기능 고도화 해서 딥링크 연결
 // TODO 8: 약속 카드 최종 개선방향 고민
 // TODO 9: 최종 read 수 최적화 고민
@@ -85,6 +83,7 @@ extension GroupMain {
       public enum ViewAction: Sendable {
         case onAppear
         case refreshTriggered
+        case scenePhaseChanged(ScenePhase)
         case groupChanged(UserGroupInfo)
         case filterChanged(StatusFilter)
         case proposalAccepted(String)
@@ -111,6 +110,7 @@ extension GroupMain {
         case fetchGroupMembers(groupId: String)
         case groupMembersResponse(Result<[UserPublicModel], AppError>)
         case subscribeToPromises(groupId: String)
+        case cancelSubscription
         case promisesUpdated([PromiseModel])
         case proposalRespondDone(promiseId: String, status: PromiseAttendanceStatus)
         case proposalRespondFailed(promiseId: String, error: AppError)
@@ -145,6 +145,19 @@ extension GroupMain {
               state.promisesState = .loading
             }
             return .send(.internal(.fetchGroupList))
+
+          case .scenePhaseChanged(let phase):
+            switch phase {
+            case .background:
+              return .send(.internal(.cancelSubscription))
+            case .active:
+              guard let groupId = state.currentGroup?.id else { return .none }
+              return .send(.internal(.subscribeToPromises(groupId: groupId)))
+            case .inactive:
+              return .none
+            @unknown default:
+              return .none
+            }
 
           case .groupChanged(let group):
             guard group.id != state.currentGroup?.id else { return .none }
@@ -331,6 +344,10 @@ extension GroupMain {
               print("[GroupMain] ⚠️ 리스너 스트림 종료됨")
             }
             .cancellable(id: CancelID.promiseSubscription, cancelInFlight: true)
+
+          case .cancelSubscription:
+            print("[GroupMain] ⏸️ 백그라운드 진입 - 구독 취소")
+            return .cancel(id: CancelID.promiseSubscription)
 
           case .promisesUpdated(let promises):
             print("[GroupMain] ✅ promisesUpdated: \(promises.count)개 로드됨")
