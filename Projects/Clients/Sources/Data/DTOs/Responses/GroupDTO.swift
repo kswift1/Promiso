@@ -11,9 +11,6 @@ struct GroupDTO: Codable {
   // MARK: - 멤버 관리
   let memberIds: [String]
 
-  // MARK: - 카운터 (캐시)
-  let activePromiseCount: Int
-
   // MARK: - 설정
   let maxMembers: Int
 

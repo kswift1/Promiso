@@ -76,7 +76,7 @@ extension ManageGroup {
               statItem(
                 icon: "clock.fill",
                 label: "진행중 약속",
-                value: "\(store.group.activePromiseCount)"
+                value: "\(store.activePromiseCount)"
               )
             }
             .frame(maxWidth: .infinity)

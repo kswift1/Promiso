@@ -29,15 +29,18 @@ struct PromiseTimelineView: View {
 
   private var filteredPromises: [PromiseModel] {
     let totalMembers = groupMembers?.count
+    // 과거 약속 및 완료/취소된 약속 제외
+    let activePromises = promises.filter { !$0.isPast && $0.status != .completed && $0.status != .cancelled }
+
     switch selectedFilter {
     case .all:
-      return promises
+      return activePromises
     case .needResponse:
-      return promises.filter {
+      return activePromises.filter {
         $0.responseStatus(currentUserId: currentUserId, totalGroupMembers: totalMembers) == .needResponse
       }
     case .responded:
-      return promises.filter {
+      return activePromises.filter {
         $0.responseStatus(currentUserId: currentUserId, totalGroupMembers: totalMembers) != .needResponse
       }
     }

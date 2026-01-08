@@ -595,7 +595,6 @@ export const createGroup = onCall<CreateGroupRequest>(
       description: data.description ?? null,
       imageUrl: data.imageUrl ?? null,
       memberIds: [creatorId],
-      activePromiseCount: 0,
       maxMembers: data.maxMembers,
       inviteCode,
       createdBy: creatorId,
@@ -1335,16 +1334,7 @@ export const createPromise = onCall<CreatePromiseRequest>(
       isDeleted: false,
     };
 
-    const batch = db.batch();
-    batch.set(promiseRef, promiseData);
-
-    // 7. 그룹의 activePromiseCount 증가
-    batch.update(groupsCollection.doc(data.groupId), {
-      activePromiseCount: FieldValue.increment(1),
-      updatedAt: FieldValue.serverTimestamp(),
-    });
-
-    await batch.commit();
+    await promiseRef.set(promiseData);
 
     // 8. 응답 반환
     return {

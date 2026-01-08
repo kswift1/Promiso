@@ -1434,7 +1434,6 @@ components:
       required:
         - name
         - memberIds
-        - activePromiseCount
         - maxMembers
         - inviteCode
         - createdBy
@@ -1462,10 +1461,6 @@ components:
             type: string
           description: 멤버 ID 목록 (users 컬렉션 참조)
           example: ["user1", "user2", "user3"]
-        activePromiseCount:
-          type: integer
-          description: 활성 약속 수
-          example: 3
         maxMembers:
           type: integer
           description: 최대 인원

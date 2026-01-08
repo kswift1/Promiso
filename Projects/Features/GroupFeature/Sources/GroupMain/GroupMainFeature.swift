@@ -5,7 +5,6 @@ import Clients
 // TODO 2: 과거 데이터 보여주기 기능
 // TODO 3: 페이징 기능 추가, 페이징 시 구독 관리 생각
 // TODO 4: 구독 관리 예외 케이스 추가 (백그라운드, 일정기간 지나거나 등등)
-// TODO 6: 그룹 상세 - 진행중 약속 정리 필요 (과거 데이터도 다나와)
 
 // MIDDLE
 // TODO 5: 약속 정보 변경 (제목, 설명, 시간, 충족 인원 모두)
@@ -215,7 +214,8 @@ extension GroupMain {
               group: currentGroup,
               summary: summary,
               currentUserId: state.currentUser.userId,
-              preloadedMembers: state.currentGroupMembers
+              preloadedMembers: state.currentGroupMembers,
+              promises: state.promisesState.value ?? []
             )))
             return .none
 

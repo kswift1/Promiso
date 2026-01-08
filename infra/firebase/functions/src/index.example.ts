@@ -74,7 +74,6 @@ export const createGroup = onCall<CreateGroupRequest>(
       description: data.description ?? null,
       imageUrl: data.imageUrl ?? null,
       memberIds: [creatorId],
-      activePromiseCount: 0,
       maxMembers: data.maxMembers,
       inviteCode,
       createdBy: creatorId,

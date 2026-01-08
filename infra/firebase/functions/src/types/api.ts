@@ -201,9 +201,6 @@ export interface GroupDocument {
   /** 멤버 ID 목록 (users 컬렉션 참조용) */
   memberIds: string[];
 
-  /** 활성 약속 수 */
-  activePromiseCount: number;
-
   /** 최대 인원 */
   maxMembers: number;
 

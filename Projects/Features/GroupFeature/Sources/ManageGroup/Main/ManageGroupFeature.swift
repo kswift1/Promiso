@@ -15,6 +15,7 @@ extension ManageGroup {
       public let group: GroupModel
       public let summary: UserGroupInfo?
       public let currentUserId: String
+      public let promises: [PromiseModel]
 
       // Members
       var membersState: LoadingState<[UserPublicModel]> = .idle
@@ -30,11 +31,13 @@ extension ManageGroup {
         group: GroupModel,
         summary: UserGroupInfo?,
         currentUserId: String,
-        preloadedMembers: [UserPublicModel]? = nil
+        preloadedMembers: [UserPublicModel]? = nil,
+        promises: [PromiseModel] = []
       ) {
         self.group = group
         self.summary = summary
         self.currentUserId = currentUserId
+        self.promises = promises
 
         // preloadedMembers가 있으면 바로 사용
         if let preloadedMembers = preloadedMembers {
@@ -45,6 +48,11 @@ extension ManageGroup {
 
       var isHost: Bool {
         group.createdBy == currentUserId
+      }
+
+      /// 진행중인 약속 수 (과거/완료/취소 제외)
+      var activePromiseCount: Int {
+        promises.filter { !$0.isPast && $0.status != .completed && $0.status != .cancelled }.count
       }
     }
 

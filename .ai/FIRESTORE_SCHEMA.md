@@ -324,7 +324,6 @@ groups/{groupId}
 | `description` | String | ❌ | null | 그룹 설명 |
 | `imageUrl` | String | ❌ | null | 그룹 이미지 downloadURL (Firebase Storage) |
 | `memberIds` | Array<String> | ✅ | [] | 멤버 ID 목록 |
-| `activePromiseCount` | Number | ✅ | 0 | 활성 약속 수 |
 | `maxMembers` | Number | ✅ | - | 최대 인원 (2~10) |
 | `inviteCode` | String | ✅ | - | 초대 코드 (6자리 영숫자, 유니크) |
 | `createdBy` | String | ✅ | - | 생성자 ID |
@@ -346,7 +345,6 @@ groups/{groupId}
     "user4Id",
     "user5Id"
   ],
-  "activePromiseCount": 2,
   "maxMembers": 10,
   "inviteCode": "AB12CD",
   "createdBy": "sFeDJwqJbqScbSUp4Jz54MDlnFv1",
