@@ -176,14 +176,20 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
     return try snapshot.documents.compactMap { try documentToPromise($0) }
   }
 
-  /// 과거 약속 조회 (startAt < 현재시간, 최신순 정렬)
-  public func getPastPromises(groupId: String, limit: Int) async throws -> [PromiseModel] {
-    let query = db.environmentCollection(collectionName)
+  /// 과거 약속 조회 (startAt < 현재시간, 최신순 정렬, 커서 기반 페이징)
+  public func getPastPromises(groupId: String, limit: Int, lastStartAt: Date?) async throws -> [PromiseModel] {
+    var query = db.environmentCollection(collectionName)
       .whereField("groupId", isEqualTo: groupId)
       .whereField("isDeleted", isEqualTo: false)
       .whereField("startAt", isLessThan: Timestamp(date: Date()))
       .order(by: "startAt", descending: true)
-      .limit(to: limit)
+
+    // 커서 기반 페이징: lastStartAt 이후 데이터만 조회
+    if let lastStartAt {
+      query = query.start(after: [Timestamp(date: lastStartAt)])
+    }
+
+    query = query.limit(to: limit)
 
     let snapshot = try await query.getDocuments()
     return try snapshot.documents.compactMap { try documentToPastPromise($0) }

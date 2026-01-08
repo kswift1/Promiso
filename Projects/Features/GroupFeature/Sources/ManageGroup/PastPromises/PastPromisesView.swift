@@ -136,11 +136,29 @@ extension PastPromises {
                 groupMembers: store.groupMembers,
                 onTap: { store.send(.view(.promiseTapped(promise))) }
               )
+              .onAppear {
+                // 마지막 아이템이 나타나면 더 불러오기
+                if promise.id == store.promisesState.value?.last?.id {
+                  store.send(.view(.loadMoreTriggered))
+                }
+              }
             }
           } header: {
             sectionHeader(for: section.date)
           }
           .listSectionSeparator(.hidden)
+        }
+
+        // 로딩 인디케이터
+        if store.isLoadingMore {
+          HStack {
+            Spacer()
+            ProgressView()
+              .padding(.vertical, 16)
+            Spacer()
+          }
+          .listRowBackground(Color.clear)
+          .listRowSeparator(.hidden)
         }
       }
       .listStyle(.plain)
@@ -169,7 +187,16 @@ extension PastPromises {
     private func formatDateHeader(_ date: Date) -> String {
       let formatter = DateFormatter()
       formatter.locale = Locale(identifier: "ko_KR")
-      formatter.dateFormat = "M월 d일"
+
+      let currentYear = Calendar.current.component(.year, from: Date())
+      let dateYear = Calendar.current.component(.year, from: date)
+
+      if dateYear == currentYear {
+        formatter.dateFormat = "M월 d일"
+      } else {
+        formatter.dateFormat = "yyyy년 M월 d일"
+      }
+
       return formatter.string(from: date)
     }
   }
