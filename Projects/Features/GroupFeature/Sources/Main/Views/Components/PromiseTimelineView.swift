@@ -19,6 +19,7 @@ struct PromiseTimelineView: View {
   let onTap: (PromiseModel) -> Void
   let onAccept: (String) -> Void
   let onReject: (String) -> Void
+  let onEdit: ((PromiseModel) -> Void)?
   let onDelete: ((String) -> Void)?
   let onChangeResponse: ((String, PromiseAttendanceStatus) -> Void)?
   let onShare: ((String) -> Void)?
@@ -124,6 +125,7 @@ struct PromiseTimelineView: View {
               onTap: { onTap(promise) },
               onAccept: onAccept,
               onReject: onReject,
+              onEdit: onEdit.map { edit in { edit(promise) } },
               onDelete: onDelete,
               onChangeResponse: onChangeResponse,
               onShare: onShare
@@ -166,6 +168,7 @@ private struct PromiseRow: View {
   let onTap: () -> Void
   let onAccept: (String) -> Void
   let onReject: (String) -> Void
+  let onEdit: (() -> Void)?
   let onDelete: ((String) -> Void)?
   let onChangeResponse: ((String, PromiseAttendanceStatus) -> Void)?
   let onShare: ((String) -> Void)?
@@ -234,6 +237,7 @@ private struct PromiseRow: View {
         onTap: onTap,
         onAccept: { onAccept(promise.id) },
         onReject: { onReject(promise.id) },
+        onEdit: onEdit,
         onDelete: onDelete.map { delete in { delete(promise.id) } },
         onChangeResponse: onChangeResponse.map { change in { status in change(promise.id, status) } },
         onShare: onShare.map { share in { share(promise.id) } }

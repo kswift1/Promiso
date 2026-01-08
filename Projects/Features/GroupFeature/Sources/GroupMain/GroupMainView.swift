@@ -66,6 +66,12 @@ extension GroupMain {
       )) { promise in
         ShareSheet(items: [promise.shareText])
       }
+      .sheet(
+        store: store.scope(state: \.$editPromise, action: \.editPromise)
+      ) { editStore in
+        EditPromise.RootView(store: editStore)
+      }
+      .alert(store: store.scope(state: \.$deleteAlert, action: \.deleteAlert))
     }
     
     
@@ -93,7 +99,8 @@ extension GroupMain {
           onTap: { promise in store.send(.view(.promiseTapped(promise))) },
           onAccept: { promiseId in store.send(.view(.proposalAccepted(promiseId))) },
           onReject: { promiseId in store.send(.view(.proposalRejected(promiseId))) },
-          onDelete: { promiseId in store.send(.view(.promiseDeleted(promiseId))) },
+          onEdit: { promise in store.send(.view(.promiseEditTapped(promise))) },
+          onDelete: { promiseId in store.send(.view(.promiseDeleteRequested(promiseId))) },
           onChangeResponse: { promiseId, status in
             store.send(.view(.responseChanged(promiseId, status)))
           },

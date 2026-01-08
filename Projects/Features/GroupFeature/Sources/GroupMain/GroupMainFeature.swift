@@ -44,6 +44,11 @@ extension GroupMain {
       @Presents var createPromise: CreatePromise.Feature.State?
       @Presents var createGroup: CreateGroup.Feature.State?
       @Presents var joinGroup: JoinGroup.Feature.State?
+      @Presents var editPromise: EditPromise.Feature.State?
+      @Presents var deleteAlert: AlertState<DeleteAlertAction>?
+
+      /// 삭제 대상 약속 ID (알럿 확인 시 사용)
+      var promiseToDelete: String?
 
       public init(currentUser: UserPrivateModel) {
         self.currentUser = currentUser
@@ -58,6 +63,11 @@ extension GroupMain {
       case pastPromiseDetail(PastPromiseDetail.Feature)
     }
 
+    @CasePathable
+    public enum DeleteAlertAction: Sendable {
+      case confirmDelete
+    }
+
     public enum Action: Sendable {
       case view(ViewAction)
       case binding(BindingAction<State>)
@@ -67,6 +77,8 @@ extension GroupMain {
       case createPromise(PresentationAction<CreatePromise.Feature.Action>)
       case createGroup(PresentationAction<CreateGroup.Feature.Action>)
       case joinGroup(PresentationAction<JoinGroup.Feature.Action>)
+      case editPromise(PresentationAction<EditPromise.Feature.Action>)
+      case deleteAlert(PresentationAction<DeleteAlertAction>)
 
       case path(StackActionOf<Path>)
 
@@ -77,7 +89,8 @@ extension GroupMain {
         case filterChanged(StatusFilter)
         case proposalAccepted(String)
         case proposalRejected(String)
-        case promiseDeleted(String)
+        case promiseDeleteRequested(String)
+        case promiseEditTapped(PromiseModel)
         case responseChanged(String, PromiseAttendanceStatus)
         case promiseTapped(PromiseModel)
         case promiseShared(String)
@@ -159,8 +172,32 @@ extension GroupMain {
             return .send(.internal(.respondPromise(promiseId: id, status: .declined)))
               .cancellable(id: CancelID.respond(id), cancelInFlight: true)
 
-          case .promiseDeleted(let id):
-            return .send(.internal(.deletePromise(promiseId: id)))
+          case .promiseDeleteRequested(let id):
+            guard let promise = state.promisesState.value?.first(where: { $0.id == id }) else {
+              return .none
+            }
+            state.promiseToDelete = id
+            state.deleteAlert = AlertState {
+              TextState("약속 삭제")
+            } actions: {
+              ButtonState(role: .cancel) {
+                TextState("취소")
+              }
+              ButtonState(role: .destructive, action: .confirmDelete) {
+                TextState("삭제")
+              }
+            } message: {
+              TextState("'\(promise.title)' 약속을 삭제하시겠습니까?\n삭제된 약속은 복구할 수 없습니다.")
+            }
+            return .none
+
+          case .promiseEditTapped(let promise):
+            let maxMembers = state.currentGroupMembers?.count ?? promise.minimumParticipants
+            state.editPromise = EditPromise.Feature.State(
+              promise: promise,
+              maxMembers: maxMembers
+            )
+            return .none
 
           case .responseChanged(let id, let status):
             guard state.proposalResponding[id] ?? .idle == .idle else { return .none }
@@ -411,6 +448,26 @@ extension GroupMain {
         case .joinGroup:
           return .none
 
+        case .editPromise(.presented(.delegate(.cancelled))):
+          state.editPromise = nil
+          return .none
+
+        case .editPromise(.presented(.delegate(.promiseUpdated))):
+          state.editPromise = nil
+          return .none
+
+        case .editPromise:
+          return .none
+
+        case .deleteAlert(.presented(.confirmDelete)):
+          guard let promiseId = state.promiseToDelete else { return .none }
+          state.promiseToDelete = nil
+          return .send(.internal(.deletePromise(promiseId: promiseId)))
+
+        case .deleteAlert:
+          state.promiseToDelete = nil
+          return .none
+
         // MARK: - Path Actions
         case .path(.element(id: _, action: .manageGroupFeature(.delegate(.groupLeft)))):
           state.path.removeAll()
@@ -462,6 +519,8 @@ extension GroupMain {
       .ifLet(\.$createPromise, action: \.createPromise) { CreatePromise.Feature() }
       .ifLet(\.$createGroup, action: \.createGroup) { CreateGroup.Feature() }
       .ifLet(\.$joinGroup, action: \.joinGroup) { JoinGroup.Feature() }
+      .ifLet(\.$editPromise, action: \.editPromise) { EditPromise.Feature() }
+      .ifLet(\.$deleteAlert, action: \.deleteAlert)
       .forEach(\.path, action: \.path)
     }
   }

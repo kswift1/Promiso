@@ -10,9 +10,15 @@ struct PromiseCard: View {
   let onTap: () -> Void
   let onAccept: () -> Void
   let onReject: () -> Void
+  let onEdit: (() -> Void)?
   let onDelete: (() -> Void)?
   let onChangeResponse: ((PromiseAttendanceStatus) -> Void)?
   let onShare: (() -> Void)?
+
+  /// 수정 가능 여부 (호스트 && 시작 전)
+  private var canEdit: Bool {
+    isHost && promise.startAt > Date()
+  }
 
   private var host: UserPublicModel? {
     groupMembers?.first { $0.userId == promise.hostId }
@@ -172,10 +178,18 @@ struct PromiseCard: View {
         }
       }
 
-      // Host인 경우 삭제 옵션
-      if isHost, let onDelete = onDelete {
-        Button(role: .destructive, action: onDelete) {
-          Label("약속 삭제", systemImage: "trash")
+      // Host인 경우 수정/삭제 옵션
+      if isHost {
+        if canEdit, let onEdit = onEdit {
+          Button(action: onEdit) {
+            Label("약속 수정", systemImage: "pencil")
+          }
+        }
+
+        if let onDelete = onDelete {
+          Button(role: .destructive, action: onDelete) {
+            Label("약속 삭제", systemImage: "trash")
+          }
         }
       }
 

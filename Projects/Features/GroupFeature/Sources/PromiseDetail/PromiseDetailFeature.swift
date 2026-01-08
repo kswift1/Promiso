@@ -26,6 +26,9 @@ extension PromiseDetail {
       // 수정 시트 상태
       @Presents var editPromise: EditPromise.Feature.State?
 
+      // 삭제 확인 알럿
+      @Presents var alert: AlertState<Action.Alert>?
+
       public init(
         promise: PromiseModel,
         currentUserId: String,
@@ -77,6 +80,7 @@ extension PromiseDetail {
       case `internal`(Internal)
       case delegate(Delegate)
       case editPromise(PresentationAction<EditPromise.Feature.Action>)
+      case alert(PresentationAction<Alert>)
 
       @CasePathable
       public enum ViewAction: Sendable {
@@ -90,6 +94,11 @@ extension PromiseDetail {
         case shareTapped
         case participantGroupTapped(title: String, userIds: [String], colorType: ParticipantColorType)
         case memberSheetDismissed
+      }
+
+      @CasePathable
+      public enum Alert: Sendable {
+        case confirmDelete
       }
 
       public enum Internal: Sendable {
@@ -127,11 +136,17 @@ extension PromiseDetail {
           return .send(.delegate(.promiseUpdated(promise)))
         case .editPromise:
           return .none
+        case .alert(.presented(.confirmDelete)):
+          state.isDeleting = true
+          return .send(.internal(.deletePromise))
+        case .alert:
+          return .none
         }
       }
       .ifLet(\.$editPromise, action: \.editPromise) {
         EditPromise.Feature()
       }
+      .ifLet(\.$alert, action: \.alert)
     }
 
     private func handleViewAction(
@@ -162,8 +177,20 @@ extension PromiseDetail {
 
       case .deleteTapped:
         guard !state.isDeleting else { return .none }
-        state.isDeleting = true
-        return .send(.internal(.deletePromise))
+        let promiseTitle = state.promise.title
+        state.alert = AlertState {
+          TextState("약속 삭제")
+        } actions: {
+          ButtonState(role: .cancel) {
+            TextState("취소")
+          }
+          ButtonState(role: .destructive, action: .confirmDelete) {
+            TextState("삭제")
+          }
+        } message: {
+          TextState("'\(promiseTitle)' 약속을 삭제하시겠습니까?\n삭제된 약속은 복구할 수 없습니다.")
+        }
+        return .none
 
       case .editTapped:
         guard state.canEdit else { return .none }

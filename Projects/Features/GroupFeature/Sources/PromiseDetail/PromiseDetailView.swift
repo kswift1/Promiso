@@ -20,25 +20,13 @@ extension PromiseDetail {
           scheduleSection
           participantsSection
           responseSection
-
-          if store.isHost {
-            hostActionsSection
-          }
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 24)
       }
       .auroraBackground()
       .navigationBarTitleDisplayMode(.inline)
-      .toolbar {
-        ToolbarItem(placement: .topBarTrailing) {
-          Button {
-            store.send(.view(.shareTapped))
-          } label: {
-            Image(systemName: "square.and.arrow.up")
-          }
-        }
-      }
+      .toolbar { toolbarContent }
       .onAppear {
         store.send(.view(.onAppear))
       }
@@ -59,6 +47,7 @@ extension PromiseDetail {
       ) { editStore in
         EditPromise.RootView(store: editStore)
       }
+      .alert(store: store.scope(state: \.$alert, action: \.alert))
     }
 
     // MARK: - Header Section
@@ -255,57 +244,36 @@ extension PromiseDetail {
       }
     }
 
-    // MARK: - Host Actions Section
+    // MARK: - Toolbar
 
-    private var hostActionsSection: some View {
-      VStack(spacing: 12) {
-        SectionHeader(title: "호스트 옵션")
-
-        VStack(spacing: 0) {
-          // 수정 버튼 (시작 전에만 표시)
-          if store.canEdit {
-            Button {
-              store.send(.view(.editTapped))
-            } label: {
-              HStack {
-                Image(systemName: "pencil")
-                  .foregroundStyle(.blue)
-                Text("약속 수정")
-                  .foregroundStyle(.primary)
-                Spacer()
-                Image(systemName: "chevron.right")
-                  .font(.system(size: 14))
-                  .foregroundStyle(.tertiary)
-              }
-              .padding(.horizontal, 16)
-              .padding(.vertical, 14)
-            }
-
-            Divider().padding(.leading, 44)
-          }
-
-          Button {
-            store.send(.view(.deleteTapped))
-          } label: {
-            HStack {
-              if store.isDeleting {
-                ProgressView()
-                  .progressViewStyle(CircularProgressViewStyle(tint: .red))
-                  .scaleEffect(0.8)
-              } else {
-                Image(systemName: "trash")
-                  .foregroundStyle(.red)
-              }
-              Text("약속 삭제")
-                .foregroundStyle(.red)
-              Spacer()
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-          }
-          .disabled(store.isDeleting)
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+      ToolbarItem(placement: .topBarTrailing) {
+        ToolbarButton(imageName: "square.and.arrow.up") {
+          store.send(.view(.shareTapped))
         }
-        .glassCard()
+      }
+
+      if store.isHost {
+        ToolbarItem(placement: .topBarTrailing) {
+          Menu {
+            if store.canEdit {
+              Button {
+                store.send(.view(.editTapped))
+              } label: {
+                Label("약속 수정", systemImage: "pencil")
+              }
+            }
+
+            Button(role: .destructive) {
+              store.send(.view(.deleteTapped))
+            } label: {
+              Label("약속 삭제", systemImage: "trash")
+            }
+          } label: {
+            Image(systemName: "ellipsis.circle")
+          }
+        }
       }
     }
 
