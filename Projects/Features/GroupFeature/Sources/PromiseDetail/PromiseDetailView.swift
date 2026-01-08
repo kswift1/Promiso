@@ -54,6 +54,11 @@ extension PromiseDetail {
           colorType: sheetState.colorType
         )
       }
+      .sheet(
+        store: store.scope(state: \.$editPromise, action: \.editPromise)
+      ) { editStore in
+        EditPromise.RootView(store: editStore)
+      }
     }
 
     // MARK: - Header Section
@@ -257,24 +262,27 @@ extension PromiseDetail {
         SectionHeader(title: "호스트 옵션")
 
         VStack(spacing: 0) {
-          Button {
-            store.send(.view(.editTapped))
-          } label: {
-            HStack {
-              Image(systemName: "pencil")
-                .foregroundStyle(.blue)
-              Text("약속 수정")
-                .foregroundStyle(.primary)
-              Spacer()
-              Image(systemName: "chevron.right")
-                .font(.system(size: 14))
-                .foregroundStyle(.tertiary)
+          // 수정 버튼 (시작 전에만 표시)
+          if store.canEdit {
+            Button {
+              store.send(.view(.editTapped))
+            } label: {
+              HStack {
+                Image(systemName: "pencil")
+                  .foregroundStyle(.blue)
+                Text("약속 수정")
+                  .foregroundStyle(.primary)
+                Spacer()
+                Image(systemName: "chevron.right")
+                  .font(.system(size: 14))
+                  .foregroundStyle(.tertiary)
+              }
+              .padding(.horizontal, 16)
+              .padding(.vertical, 14)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-          }
 
-          Divider().padding(.leading, 44)
+            Divider().padding(.leading, 44)
+          }
 
           Button {
             store.send(.view(.deleteTapped))

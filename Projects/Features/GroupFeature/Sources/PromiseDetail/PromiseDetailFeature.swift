@@ -23,6 +23,9 @@ extension PromiseDetail {
       // 멤버 시트 상태
       @Presents var memberSheet: MemberSheetState?
 
+      // 수정 시트 상태
+      @Presents var editPromise: EditPromise.Feature.State?
+
       public init(
         promise: PromiseModel,
         currentUserId: String,
@@ -43,6 +46,11 @@ extension PromiseDetail {
 
       var responseStatus: PromiseResponseStatus {
         promise.responseStatus(currentUserId: currentUserId, totalGroupMembers: groupMembers?.count)
+      }
+
+      /// 수정 가능 여부 (호스트 && 시작 전)
+      var canEdit: Bool {
+        isHost && promise.startAt > Date()
       }
     }
 
@@ -68,6 +76,7 @@ extension PromiseDetail {
       case view(ViewAction)
       case `internal`(Internal)
       case delegate(Delegate)
+      case editPromise(PresentationAction<EditPromise.Feature.Action>)
 
       @CasePathable
       public enum ViewAction: Sendable {
@@ -109,7 +118,19 @@ extension PromiseDetail {
           return handleInternalAction(&state, internalAction)
         case .delegate:
           return .none
+        case .editPromise(.presented(.delegate(.cancelled))):
+          state.editPromise = nil
+          return .none
+        case .editPromise(.presented(.delegate(.promiseUpdated(let promise)))):
+          state.editPromise = nil
+          state.promise = promise
+          return .send(.delegate(.promiseUpdated(promise)))
+        case .editPromise:
+          return .none
         }
+      }
+      .ifLet(\.$editPromise, action: \.editPromise) {
+        EditPromise.Feature()
       }
     }
 
@@ -145,7 +166,12 @@ extension PromiseDetail {
         return .send(.internal(.deletePromise))
 
       case .editTapped:
-        // TODO: 수정 화면 연결
+        guard state.canEdit else { return .none }
+        let maxMembers = state.groupMembers?.count ?? state.promise.minimumParticipants
+        state.editPromise = EditPromise.Feature.State(
+          promise: state.promise,
+          maxMembers: maxMembers
+        )
         return .none
 
       case .shareTapped:

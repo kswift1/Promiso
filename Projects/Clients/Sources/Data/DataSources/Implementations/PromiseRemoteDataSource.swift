@@ -99,15 +99,44 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
   }
   
   /// 약속 업데이트
+  /// Firebase Functions의 updatePromise를 호출합니다.
   public func updatePromise(_ promise: PromiseModel) async throws {
-    let ref = db.environmentCollection(collectionName).document(promise.id)
-    let updateData: [String: Any] = [
+    // ISO 8601 형식으로 날짜 변환
+    let dateFormatter = ISO8601DateFormatter()
+    dateFormatter.timeZone = TimeZone(identifier: "Asia/Seoul")
+    dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+    var callableData: [String: Any] = [
+      "promiseId": promise.id,
       "title": promise.title,
-      "description": promise.description as Any,
-      "updatedAt": Timestamp(date: Date())
+      "startAt": dateFormatter.string(from: promise.startAt),
+      "minimumParticipants": promise.minimumParticipants
     ]
 
-    try await ref.updateData(updateData)
+    // 선택적 필드 추가
+    if let emoji = promise.emoji {
+      callableData["emoji"] = emoji.isEmpty ? NSNull() : emoji
+    }
+
+    if let description = promise.description {
+      callableData["description"] = description.isEmpty ? NSNull() : description
+    } else {
+      callableData["description"] = NSNull()
+    }
+
+    if let endAt = promise.endAt {
+      callableData["endAt"] = dateFormatter.string(from: endAt)
+    } else {
+      callableData["endAt"] = NSNull()
+    }
+
+    // env 파라미터 추가
+    if let env = functionsEnvironmentParam() {
+      callableData["env"] = env
+    }
+
+    // Firebase Functions 호출
+    _ = try await functions.httpsCallable("updatePromise").call(callableData)
   }
   
   /// 약속 삭제 (soft delete)
