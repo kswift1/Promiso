@@ -48,6 +48,12 @@ extension PromiseDetail {
         EditPromise.RootView(store: editStore)
       }
       .alert(store: store.scope(state: \.$alert, action: \.alert))
+      .sheet(isPresented: Binding(
+        get: { store.showShareSheet },
+        set: { _ in store.send(.view(.shareSheetDismissed)) }
+      )) {
+        ShareSheet(items: [store.promise.shareText])
+      }
     }
 
     // MARK: - Header Section
@@ -637,4 +643,5 @@ private extension View {
       )
   }
 }
+
 

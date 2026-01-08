@@ -16,6 +16,7 @@ extension PromiseDetail {
       let currentUserId: String
       var respondingState: RespondingState = .idle
       var isDeleting: Bool = false
+      var showShareSheet: Bool = false
 
       // 그룹 멤버 정보 (참여자 이름 표시용)
       var groupMembers: [UserPublicModel]?
@@ -92,6 +93,7 @@ extension PromiseDetail {
         case deleteTapped
         case editTapped
         case shareTapped
+        case shareSheetDismissed
         case participantGroupTapped(title: String, userIds: [String], colorType: ParticipantColorType)
         case memberSheetDismissed
       }
@@ -202,7 +204,11 @@ extension PromiseDetail {
         return .none
 
       case .shareTapped:
-        // TODO: 공유 기능
+        state.showShareSheet = true
+        return .none
+
+      case .shareSheetDismissed:
+        state.showShareSheet = false
         return .none
 
       case let .participantGroupTapped(title, userIds, colorType):
