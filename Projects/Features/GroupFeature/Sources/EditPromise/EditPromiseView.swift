@@ -40,13 +40,17 @@ extension EditPromise {
             }
             .padding(16)
           }
+          .scrollDismissesKeyboard(.interactively)
         }
         .navigationTitle("약속 수정")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
           ToolbarItem(placement: .topBarLeading) {
-            Button("취소") {
+            Button {
               store.send(.view(.cancelTapped))
+            } label: {
+              Image(systemName: "xmark")
+                .font(.system(size: 16, weight: .medium))
             }
           }
 
@@ -58,8 +62,8 @@ extension EditPromise {
                 ProgressView()
                   .progressViewStyle(CircularProgressViewStyle())
               } else {
-                Text("저장")
-                  .fontWeight(.semibold)
+                Image(systemName: "checkmark")
+                  .font(.system(size: 16, weight: .semibold))
               }
             }
             .disabled(!store.canSave || store.isUpdating)
@@ -98,16 +102,10 @@ extension EditPromise {
         }
 
         HStack(spacing: 12) {
-          // 이모지 버튼
-          Button {
-            // TODO: 이모지 피커 표시
-          } label: {
-            Text(store.editedPromise.displayEmoji)
-              .font(.system(size: 32))
-              .frame(width: 56, height: 56)
-              .background(Color(.systemGray6))
-              .clipShape(RoundedRectangle(cornerRadius: 12))
-          }
+          // 이모지 (자동 설정)
+          Text(store.editedPromise.displayEmoji)
+            .font(.system(size: 32))
+            .frame(width: 56, height: 56)
 
           // 제목 입력
           VStack(alignment: .trailing, spacing: 2) {
@@ -120,6 +118,16 @@ extension EditPromise {
             .padding(16)
             .background(Color(.systemGray6))
             .clipShape(RoundedRectangle(cornerRadius: 12))
+            .toolbar {
+              ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button {
+                  focusedField = nil
+                } label: {
+                  Image(systemName: "keyboard.chevron.compact.down")
+                }
+              }
+            }
 
             Text("\(store.editedPromise.title.count)/30")
               .font(.system(size: 12))
