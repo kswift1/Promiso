@@ -51,21 +51,25 @@ private struct UpdateUserSettingsRequest: Encodable {
 }
 
 
+
 // MARK: - Data Source
 
 /// Firebase Functions를 통한 사용자 프로필 데이터 관리
 public final class UserProfileRemoteDataSource: UserProfileRemoteDataSourceProtocol, @unchecked Sendable {
   private let functions: Functions
   private let storage: Storage
+  private let db: Firestore
   private let environment: Environment
 
   public init(
     functions: Functions = Functions.functions(region: "asia-northeast3"),
     storage: Storage = Storage.storage(),
+    db: Firestore = Firestore.firestore(),
     environment: Environment = .current
   ) {
     self.functions = functions
     self.storage = storage
+    self.db = db
     self.environment = environment
   }
 
@@ -255,12 +259,15 @@ public final class UserProfileRemoteDataSource: UserProfileRemoteDataSourceProto
   // MARK: - Utility Operations
 
   /// 닉네임 사용 가능 여부 확인
-  /// - Note: 현재는 클라이언트에서 직접 확인 불가능 (Functions에서만 가능)
-  ///         향후 필요시 Functions API 추가 필요
+  /// - Parameter nickname: 확인할 닉네임
+  /// - Returns: 사용 가능 여부
   public func isNicknameAvailable(_ nickname: String) async throws -> Bool {
-    // TODO: Functions API 추가 필요
-    // 현재는 updateUser 시도 후 에러로 판단
-    return true
+    let snapshot = try await db.environmentCollection("users")
+      .whereField("nickname", isEqualTo: nickname)
+      .limit(to: 1)
+      .getDocuments()
+
+    return snapshot.documents.isEmpty
   }
   
 }

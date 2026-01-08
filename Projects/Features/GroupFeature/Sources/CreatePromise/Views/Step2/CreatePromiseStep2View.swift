@@ -21,9 +21,9 @@ struct CreatePromiseStep2View: View {
           EndDateTimeSection(store: store, scrollProxy: proxy)
             .id("endDateTime")
           
-          // FIXME:
+          // TODO: Phase2 장소 추가
           // 장소 (선택)
-          LocationSection(store: store)
+//          LocationSection(store: store)
           
           // 최소 참가 인원
           MinimumParticipantsSection(store: store, scrollProxy: proxy)
