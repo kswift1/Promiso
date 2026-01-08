@@ -22,10 +22,13 @@ public enum CreatePromise {
     
     @ObservableState
     public struct State: Equatable {
+      static let maxActivePromisesPerGroup = 10
+
       var currentStep: CreatePromiseStep = .first
       var promise: PromiseModel = .empty
       var groupListState: LoadingState<[GroupModel]> = .idle
       var groupSummaries: [UserGroupInfo]?
+      var groupPromiseCounts: [String: Int] = [:]
       var isCreatingPromise: Bool = false
       var creationError: Clients.PromiseClientError?
 
@@ -34,6 +37,7 @@ public enum CreatePromise {
         promise: PromiseModel = .empty,
         groupListState: LoadingState<[GroupModel]> = .idle,
         groupSummaries: [UserGroupInfo]? = nil,
+        groupPromiseCounts: [String: Int] = [:],
         isCreatingPromise: Bool = false,
         creationError: Clients.PromiseClientError? = nil
       ) {
@@ -41,8 +45,15 @@ public enum CreatePromise {
         self.promise = promise
         self.groupListState = groupListState
         self.groupSummaries = groupSummaries
+        self.groupPromiseCounts = groupPromiseCounts
         self.isCreatingPromise = isCreatingPromise
         self.creationError = creationError
+      }
+
+      /// 그룹이 활성 약속 제한에 도달했는지 확인
+      func isGroupAtLimit(_ groupId: String) -> Bool {
+        guard let count = groupPromiseCounts[groupId] else { return false }
+        return count >= Self.maxActivePromisesPerGroup
       }
 
       var firstButtonDisabled: Bool {
@@ -112,6 +123,8 @@ public enum CreatePromise {
         case emojiSuggestionsResponse([EmojiSuggestion])
         case fetchGroupList
         case groupListResponse(Result<[GroupModel], Error>)
+        case fetchPromiseCounts([String])
+        case promiseCountsResponse([String: Int])
         case createPromiseResponse(Result<String, Clients.PromiseClientError>)
       }
       
@@ -262,12 +275,36 @@ public enum CreatePromise {
             
           case .groupListResponse(.success(let groups)):
             state.groupListState = .loaded(groups)
-            return .none
+            let groupIds = groups.map(\.id)
+            return .send(.internal(.fetchPromiseCounts(groupIds)))
             
           case .groupListResponse(.failure(let error)):
             state.groupListState = .failed(error)
             return .none
-            
+
+          case .fetchPromiseCounts(let groupIds):
+            return .run { [promiseClient] send in
+              var counts: [String: Int] = [:]
+              await withTaskGroup(of: (String, Int?).self) { group in
+                for groupId in groupIds {
+                  group.addTask {
+                    let count = try? await promiseClient.getActivePromiseCount(groupId)
+                    return (groupId, count)
+                  }
+                }
+                for await (groupId, count) in group {
+                  if let count {
+                    counts[groupId] = count
+                  }
+                }
+              }
+              await send(.internal(.promiseCountsResponse(counts)))
+            }
+
+          case .promiseCountsResponse(let counts):
+            state.groupPromiseCounts = counts
+            return .none
+
           case .createPromiseResponse(.success(let id)):
             state.isCreatingPromise = false
             return .send(.delegate(.promiseCreated(id: id)))

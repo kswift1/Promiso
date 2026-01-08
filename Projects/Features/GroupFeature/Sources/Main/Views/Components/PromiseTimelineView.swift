@@ -29,8 +29,8 @@ struct PromiseTimelineView: View {
 
   private var filteredPromises: [PromiseModel] {
     let totalMembers = groupMembers?.count
-    // 과거 약속 및 완료/취소된 약속 제외
-    let activePromises = promises.filter { !$0.isPast && $0.status != .completed && $0.status != .cancelled }
+    // 과거 약속 제외 (isPast: endAt 또는 startAt 기준)
+    let activePromises = promises.filter { !$0.isPast }
 
     switch selectedFilter {
     case .all:

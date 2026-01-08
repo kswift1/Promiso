@@ -1328,7 +1328,6 @@ export const createPromise = onCall<CreatePromiseRequest>(
       startAt: startAtTimestamp,
       endAt: endAtDate ? admin.firestore.Timestamp.fromDate(endAtDate) : null,
       location: data.place ? {name: data.place} : null,
-      status: "pending",
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
       isDeleted: false,
@@ -1494,19 +1493,6 @@ export const respondPromise = onCall<RespondPromiseRequest>(
         updateData["votes.declined"] = FieldValue.arrayUnion(userId);
       }
       // status === "pending"이면 제거만 하고 아무 배열에도 추가하지 않음
-
-      // 5. 확정 여부 계산 (새 상태 기준)
-      let newAcceptedCount = acceptedList.length;
-      if (isInAccepted && (status === "declined" || status === "pending")) {
-        newAcceptedCount -= 1;
-      } else if (!isInAccepted && status === "accepted") {
-        newAcceptedCount += 1;
-      }
-
-      const minimumParticipants =
-        (promiseData.minimumParticipants as number) ?? 2;
-      const isConfirmed = newAcceptedCount >= minimumParticipants;
-      updateData["status"] = isConfirmed ? "active" : "pending";
 
       transaction.update(promiseRef, updateData);
     });

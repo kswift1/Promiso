@@ -2,6 +2,8 @@
 struct GroupListView: View {
   let groupListState: LoadingState<[GroupModel]>
   let selectedGroupId: String?
+  let groupPromiseCounts: [String: Int]
+  let maxActivePromises: Int
   let onGroupSelected: (GroupModel) -> Void
   let onRetry: () -> Void
   let onCreateGroup: () -> Void
@@ -47,7 +49,9 @@ struct GroupListView: View {
       ForEach(groups) { group in
         GroupCard(
           model: group,
-          isSelected: selectedGroupId == group.id
+          isSelected: selectedGroupId == group.id,
+          activePromiseCount: groupPromiseCounts[group.id],
+          maxActivePromises: maxActivePromises
         ) {
           isFocused = false
           onGroupSelected(group)
@@ -195,16 +199,44 @@ struct GroupListView: View {
 struct GroupCard: View {
   let model: GroupModel
   let isSelected: Bool
+  let activePromiseCount: Int?
+  let maxActivePromises: Int
   let action: () -> Void
 
-  init(model: GroupModel, isSelected: Bool, action: @escaping () -> Void) {
+  init(
+    model: GroupModel,
+    isSelected: Bool,
+    activePromiseCount: Int? = nil,
+    maxActivePromises: Int = 10,
+    action: @escaping () -> Void
+  ) {
     self.model = model
     self.isSelected = isSelected
+    self.activePromiseCount = activePromiseCount
+    self.maxActivePromises = maxActivePromises
     self.action = action
   }
 
-  private var isDisabled: Bool {
+  private var isAtLimit: Bool {
+    guard let count = activePromiseCount else { return false }
+    return count >= maxActivePromises
+  }
+
+  private var hasTooFewMembers: Bool {
     model.memberIds.count <= 1
+  }
+
+  private var isDisabled: Bool {
+    hasTooFewMembers || isAtLimit
+  }
+
+  private var disabledReason: String? {
+    if hasTooFewMembers {
+      return "약속을 만들려면 최소 2명 이상의 멤버가 필요합니다"
+    } else if isAtLimit {
+      return "활성 약속이 \(maxActivePromises)개에 도달했습니다"
+    }
+    return nil
   }
 
   var body: some View {
@@ -248,14 +280,14 @@ struct GroupCard: View {
         }
         .padding(16)
 
-        // 1명인 경우 경고 메시지
-        if isDisabled {
+        // 비활성화 사유 메시지
+        if let reason = disabledReason {
           HStack(spacing: 8) {
             Image(systemName: "info.circle.fill")
               .font(.system(size: 12))
               .foregroundColor(.orange)
 
-            Text("약속을 만들려면 최소 2명 이상의 멤버가 필요합니다")
+            Text(reason)
               .font(.system(size: 12))
               .foregroundColor(.secondary)
 
@@ -330,6 +362,8 @@ private struct GroupSkeletonCard: View {
   GroupListView(
     groupListState: .loading,
     selectedGroupId: nil,
+    groupPromiseCounts: [:],
+    maxActivePromises: 10,
     onGroupSelected: { _ in },
     onRetry: {},
     onCreateGroup: {},
@@ -348,6 +382,8 @@ private struct GroupSkeletonCard: View {
       .init(id: "g4", name: "가족", maxMembers: 5, inviteCode: "JKL012", createdBy: "preview")
     ]),
     selectedGroupId: "g2",
+    groupPromiseCounts: ["g2": 5, "g3": 10], // g3 is at limit
+    maxActivePromises: 10,
     onGroupSelected: { group in print("Selected: \(group.name)") },
     onRetry: {},
     onCreateGroup: {},
@@ -361,6 +397,8 @@ private struct GroupSkeletonCard: View {
   GroupListView(
     groupListState: .loaded([]),
     selectedGroupId: nil,
+    groupPromiseCounts: [:],
+    maxActivePromises: 10,
     onGroupSelected: { _ in },
     onRetry: {},
     onCreateGroup: {},
@@ -374,6 +412,8 @@ private struct GroupSkeletonCard: View {
   GroupListView(
     groupListState: .failed(GroupClientError.networkError),
     selectedGroupId: nil,
+    groupPromiseCounts: [:],
+    maxActivePromises: 10,
     onGroupSelected: { _ in },
     onRetry: { print("Retry tapped") },
     onCreateGroup: {},

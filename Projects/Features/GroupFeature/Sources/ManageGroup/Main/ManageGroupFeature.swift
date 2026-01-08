@@ -50,9 +50,9 @@ extension ManageGroup {
         group.createdBy == currentUserId
       }
 
-      /// 진행중인 약속 수 (과거/완료/취소 제외)
+      /// 진행중인 약속 수 (과거 제외)
       var activePromiseCount: Int {
-        promises.filter { !$0.isPast && $0.status != .completed && $0.status != .cancelled }.count
+        promises.filter { !$0.isPast }.count
       }
     }
 

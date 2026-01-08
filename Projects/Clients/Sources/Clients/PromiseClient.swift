@@ -96,6 +96,9 @@ public struct PromiseClient: Sendable {
   /// 그룹의 과거 약속 조회 (커서 기반 페이징)
   public var getPastPromises: @Sendable (_ groupId: String, _ limit: Int, _ lastStartAt: Date?) async throws -> [PromiseModel]
 
+  /// 그룹의 활성 약속 개수 조회
+  public var getActivePromiseCount: @Sendable (_ groupId: String) async throws -> Int
+
   /// 그룹의 활성 약속 실시간 구독
   public var subscribeToPromises: @Sendable (_ groupId: String, _ limit: Int) -> AsyncStream<[PromiseModel]> = { _, _ in AsyncStream { _ in } }
 
@@ -138,6 +141,10 @@ extension PromiseClient: TestDependencyKey {
     getPastPromises: { _, _, _ in
       try await Task.sleep(for: .seconds(1))
       return []
+    },
+    getActivePromiseCount: { _ in
+      try await Task.sleep(for: .seconds(0.3))
+      return 3
     },
     subscribeToPromises: { _, _ in
       AsyncStream { continuation in
@@ -201,6 +208,9 @@ extension PromiseClient: DependencyKey {
       getPastPromises: { groupId, limit, lastStartAt in
         try await dataSource.getPastPromises(groupId: groupId, limit: limit, lastStartAt: lastStartAt)
       },
+      getActivePromiseCount: { groupId in
+        try await dataSource.getActivePromiseCount(groupId: groupId)
+      },
       subscribeToPromises: { groupId, limit in
         dataSource.subscribeToActivePromises(groupId: groupId, limit: limit)
       },
@@ -232,8 +242,7 @@ extension PromiseModel {
         until: Date().addingTimeInterval(10800)
       ),
       startAt: Date().addingTimeInterval(7200),
-      location: LocationInfoModel(name: "스타벅스 강남점"),
-      status: .pending
+      location: LocationInfoModel(name: "스타벅스 강남점")
     ),
     PromiseModel(
       id: "2",
@@ -249,8 +258,7 @@ extension PromiseModel {
         until: Date()
       ),
       startAt: Date().addingTimeInterval(18000),
-      location: LocationInfoModel(name: "이탈리안 레스토랑"),
-      status: .active
+      location: LocationInfoModel(name: "이탈리안 레스토랑")
     )
   ]
 }

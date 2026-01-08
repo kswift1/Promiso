@@ -1562,6 +1562,10 @@ components:
         - votes.declined: 참여 불가한 userId 배열
         - votes.until: 투표 마감 시각 (기본값: startAt)
         - pending: memberIds - accepted - declined (계산)
+
+        **상태 계산 (클라이언트)**:
+        - isConfirmed: votes.accepted.count >= minimumParticipants
+        - isPast: endAt < now 또는 startAt < now
       required:
         - title
         - hostId
@@ -1569,7 +1573,6 @@ components:
         - minimumParticipants
         - votes
         - startAt
-        - status
         - createdAt
         - updatedAt
         - isDeleted
@@ -1644,15 +1647,6 @@ components:
               type: string
               description: 장소명
               example: CGV 강남
-        status:
-          type: string
-          enum:
-            - pending
-            - active
-            - completed
-            - cancelled
-          description: 약속 상태
-          example: active
         createdAt:
           type: string
           format: date-time

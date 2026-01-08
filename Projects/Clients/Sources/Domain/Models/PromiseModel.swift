@@ -28,9 +28,6 @@ public struct PromiseModel: Identifiable, Equatable, Hashable, Sendable {
   // MARK: - 위치
   public var location: LocationInfoModel?
 
-  // MARK: - 상태
-  public var status: PromiseStatus 
-
   // MARK: - 메타데이터
   public var createdAt: Date
   public var updatedAt: Date
@@ -49,7 +46,6 @@ public struct PromiseModel: Identifiable, Equatable, Hashable, Sendable {
     startAt: Date = Date().addingTimeInterval(3600),
     endAt: Date? = nil,
     location: LocationInfoModel? = nil,
-    status: PromiseStatus = .pending,
     createdAt: Date = Date(),
     updatedAt: Date = Date(),
     isDeleted: Bool = false
@@ -66,7 +62,6 @@ public struct PromiseModel: Identifiable, Equatable, Hashable, Sendable {
     self.startAt = startAt
     self.endAt = endAt
     self.location = location
-    self.status = status
     self.createdAt = createdAt
     self.updatedAt = updatedAt
     self.isDeleted = isDeleted
@@ -96,7 +91,6 @@ extension PromiseModel {
       startAt: dto.startAt.dateValue(),
       endAt: dto.endAt?.dateValue(),
       location: dto.location.map { LocationInfoModel(dto: $0) },
-      status: PromiseStatus(rawValue: dto.status) ?? .pending,
       createdAt: dto.createdAt.dateValue(),
       updatedAt: dto.updatedAt.dateValue(),
       isDeleted: dto.isDeleted
@@ -241,8 +235,8 @@ extension PromiseModel {
   ///   - currentUserId: 현재 사용자 ID
   ///   - totalGroupMembers: 실제 그룹 멤버 수 (nil이면 투표 마감 기준으로만 판단)
   public func responseStatus(currentUserId: String?, totalGroupMembers: Int? = nil) -> PromiseResponseStatus {
-    // 1. 약속이 확정됨
-    if status == .active || isConfirmed {
+    // 1. 약속이 확정됨 (isConfirmed: votes.accepted.count >= minimumParticipants)
+    if isConfirmed {
       return .confirmed
     }
 

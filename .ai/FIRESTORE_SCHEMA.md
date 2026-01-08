@@ -462,7 +462,6 @@ promises/{promiseId}
 | `startAt` | Timestamp | ✅ | - | 시작 시각 |
 | `endAt` | Timestamp | ❌ | null | 종료 시각 |
 | `location` | Location | ❌ | null | 장소 정보 (하단 참조) |
-| `status` | String | ✅ | "pending" | 약속 상태 (`pending` \| `active` \| `completed` \| `cancelled`) |
 | `createdAt` | Timestamp | ✅ | - | 생성 시각 |
 | `updatedAt` | Timestamp | ✅ | - | 수정 시각 |
 | `isDeleted` | Boolean | ✅ | false | 삭제 여부 (소프트 삭제) |
@@ -487,7 +486,6 @@ promises/{promiseId}
   "location": {
     "name": "CGV 강남"
   },
-  "status": "active",
   "createdAt": "2024-01-14T10:00:00+09:00",
   "updatedAt": "2024-01-14T18:00:00+09:00",
   "isDeleted": false
@@ -587,7 +585,8 @@ func myVoteStatus(userId: String) -> VoteStatus {
 - **counts 필드 제거**: votes 배열에서 실시간 계산
 - **pending 상태**: memberIds에서 계산 (저장하지 않음)
 - **until**: 생성 시 startAt으로 설정, 추후 투표 기간 커스텀 가능
-- **status 상태 전이**: pending → active (확정 시) → completed/cancelled
+- **확정 여부**: `votes.accepted.count >= minimumParticipants`로 계산 (isConfirmed)
+- **과거 여부**: `endAt < now` 또는 `startAt < now`로 계산 (isPast) - 클라이언트에서 처리
 
 ---
 

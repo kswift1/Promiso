@@ -352,19 +352,11 @@ private struct PastStatusBadge: View {
   let promise: PromiseModel
 
   private var statusText: String {
-    if promise.status == .completed || promise.isConfirmed {
-      return "완료"
-    } else {
-      return "불발"
-    }
+    promise.isConfirmed ? "완료" : "불발"
   }
 
   private var color: Color {
-    if promise.status == .completed || promise.isConfirmed {
-      return .green
-    } else {
-      return .gray
-    }
+    promise.isConfirmed ? .green : .gray
   }
 
   var body: some View {

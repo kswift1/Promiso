@@ -44,6 +44,8 @@ struct CreatePromiseStep1View: View {
             GroupListView(
               groupListState: store.groupListState,
               selectedGroupId: store.promise.group?.id,
+              groupPromiseCounts: store.groupPromiseCounts,
+              maxActivePromises: CreatePromise.Feature.State.maxActivePromisesPerGroup,
               onGroupSelected: { store.send(.view(.groupSelected($0))) },
               onRetry: { store.send(.view(.retryLoadGroups)) },
               onCreateGroup: { store.send(.view(.createGroupTapped)) },

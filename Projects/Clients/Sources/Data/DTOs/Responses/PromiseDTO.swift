@@ -33,8 +33,6 @@ public struct PromiseDTO: Codable {
   // MARK: - 위치
   public let location: LocationDTO?
 
-  // MARK: - 상태
-  public let status: String
 
   // MARK: - 메타데이터
   public let createdAt: Timestamp
@@ -52,7 +50,6 @@ public struct PromiseDTO: Codable {
     startAt: Timestamp,
     endAt: Timestamp? = nil,
     location: LocationDTO? = nil,
-    status: String = "pending",
     createdAt: Timestamp = Timestamp(),
     updatedAt: Timestamp = Timestamp(),
     isDeleted: Bool = false
@@ -67,7 +64,6 @@ public struct PromiseDTO: Codable {
     self.startAt = startAt
     self.endAt = endAt
     self.location = location
-    self.status = status
     self.createdAt = createdAt
     self.updatedAt = updatedAt
     self.isDeleted = isDeleted
@@ -120,7 +116,6 @@ extension PromiseDTO {
       startAt: Timestamp(date: model.startAt),
       endAt: model.endAt.map { Timestamp(date: $0) },
       location: model.location.map { LocationDTO(model: $0) },
-      status: model.status.rawValue,
       createdAt: Timestamp(date: model.createdAt),
       updatedAt: Timestamp(date: model.updatedAt),
       isDeleted: model.isDeleted

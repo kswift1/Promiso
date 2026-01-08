@@ -132,7 +132,6 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
     var query = db.environmentCollection(collectionName)
       .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: startOfDay))
       .whereField("startAt", isLessThan: Timestamp(date: endOfDay))
-      .whereField("status", isEqualTo: PromiseStatus.active.rawValue)
       .whereField("isDeleted", isEqualTo: false)
       .order(by: "startAt")
     
@@ -144,18 +143,18 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
     return try snapshot.documents.compactMap { try documentToPromise($0) }
   }
   
-  /// 다가오는 약속 조회
+  /// 다가오는 약속 조회 (확정된 약속만 - 클라이언트에서 isConfirmed 필터링)
   public func getUpcomingPromises(userId: String, limit: Int) async throws -> [PromiseModel] {
     let now = Date()
     let query = db.environmentCollection(collectionName)
       .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: now))
-      .whereField("status", isEqualTo: PromiseStatus.active.rawValue)
       .whereField("isDeleted", isEqualTo: false)
       .order(by: "startAt")
       .limit(to: limit)
-    
+
     let snapshot = try await query.getDocuments()
-    return try snapshot.documents.compactMap { try documentToPromise($0) }
+    // 확정된 약속만 반환 (isConfirmed = votes.accepted.count >= minimumParticipants)
+    return try snapshot.documents.compactMap { try documentToPromise($0) }.filter { $0.isConfirmed }
   }
   
   /// 답변 필요한 제안 조회 (현재는 임시 구현)
@@ -195,6 +194,19 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
     return try snapshot.documents.compactMap { try documentToPastPromise($0) }
   }
 
+  /// 그룹의 활성 약속 개수 조회 (Firestore count aggregation 사용)
+  /// subscribeToActivePromises와 동일한 조건 (startAt >= now, isDeleted == false)
+  /// 과거 여부는 클라이언트에서 isPast로 계산
+  public func getActivePromiseCount(groupId: String) async throws -> Int {
+    let query = db.environmentCollection(collectionName)
+      .whereField("groupId", isEqualTo: groupId)
+      .whereField("isDeleted", isEqualTo: false)
+      .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: Date()))
+
+    let snapshot = try await query.count.getAggregation(source: .server)
+    return Int(truncating: snapshot.count)
+  }
+
   /// 활성 약속 실시간 구독 (과거 약속 제외)
   public func subscribeToActivePromises(groupId: String, limit: Int) -> AsyncStream<[PromiseModel]> {
     print("[PromiseDataSource] 🔔 subscribeToActivePromises 호출: groupId=\(groupId)")
@@ -226,6 +238,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
         }
 
         print("[PromiseDataSource] 📥 스냅샷 수신: \(snapshot.documents.count)개 문서")
+        let now = Date()
         let promises = snapshot.documents.compactMap { doc -> PromiseModel? in
           do {
             let promise = try self.documentToPromise(doc)
@@ -236,6 +249,10 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
           }
         }
         print("[PromiseDataSource] ✅ 파싱 완료: \(promises.count)개 약속")
+        print("[PromiseDataSource] 📅 현재 시간: \(now)")
+        for promise in promises {
+          print("[PromiseDataSource] - \(promise.title): startAt=\(promise.startAt), endAt=\(String(describing: promise.endAt)), isPast=\(promise.isPast), isConfirmed=\(promise.isConfirmed)")
+        }
 
         continuation.yield(promises)
       }
@@ -251,32 +268,18 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
 
   private func documentToPromise(_ document: QueryDocumentSnapshot) throws -> PromiseModel? {
     let dto = try document.data(as: PromiseDTO.self)
-    // cancelled 또는 completed 상태는 제외
-    let status = PromiseStatus(rawValue: dto.status)
-    if status == .cancelled || status == .completed {
-      return nil
-    }
     return PromiseModel(dto: dto, id: document.documentID)
   }
 
   private func documentSnapshotToPromise(_ document: DocumentSnapshot) throws -> PromiseModel? {
     guard document.exists else { return nil }
     let dto = try document.data(as: PromiseDTO.self)
-    // cancelled 또는 completed 상태는 제외
-    let status = PromiseStatus(rawValue: dto.status)
-    if status == .cancelled || status == .completed {
-      return nil
-    }
     return PromiseModel(dto: dto, id: document.documentID)
   }
 
-  /// 과거 약속용 파싱 (cancelled만 제외, completed는 포함)
+  /// 과거 약속용 파싱
   private func documentToPastPromise(_ document: QueryDocumentSnapshot) throws -> PromiseModel? {
     let dto = try document.data(as: PromiseDTO.self)
-    let status = PromiseStatus(rawValue: dto.status)
-    if status == .cancelled {
-      return nil
-    }
     return PromiseModel(dto: dto, id: document.documentID)
   }
 }

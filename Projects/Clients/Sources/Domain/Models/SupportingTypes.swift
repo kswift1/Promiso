@@ -1,16 +1,6 @@
 import Foundation
 import FirebaseFirestore
 
-// MARK: - Promise Status
-
-public enum PromiseStatus: String, CaseIterable, Codable, Sendable {
-  case draft = "draft"           // 초안
-  case pending = "pending"       // 대기 중
-  case active = "active"         // 활성 (확정됨)
-  case completed = "completed"   // 완료
-  case cancelled = "cancelled"   // 취소
-}
-
 // MARK: - Promise Votes Model
 
 /// 투표 정보 (votes Map)
