@@ -73,7 +73,6 @@ extension GroupMain {
       public enum ViewAction: Sendable {
         case onAppear
         case refreshTriggered
-        case scenePhaseChanged(ScenePhase)
         case groupChanged(UserGroupInfo)
         case filterChanged(StatusFilter)
         case proposalAccepted(String)
@@ -135,19 +134,6 @@ extension GroupMain {
               state.promisesState = .loading
             }
             return .send(.internal(.fetchGroupList))
-
-          case .scenePhaseChanged(let phase):
-            switch phase {
-            case .background:
-              return .send(.internal(.cancelSubscription))
-            case .active:
-              guard let groupId = state.currentGroup?.id else { return .none }
-              return .send(.internal(.subscribeToPromises(groupId: groupId)))
-            case .inactive:
-              return .none
-            @unknown default:
-              return .none
-            }
 
           case .groupChanged(let group):
             guard group.id != state.currentGroup?.id else { return .none }
