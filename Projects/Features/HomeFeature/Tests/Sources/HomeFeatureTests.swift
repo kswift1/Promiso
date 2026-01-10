@@ -1,41 +1,68 @@
 // MARK: - HomeFeatureTests.swift
-// TCA TestStore를 사용한 Home Feature의 포괄적인 test suite
-// 이 파일은 business logic의 정확성과 state management의 무결성을 보장
+// TCA TestStore를 사용한 Home Feature의 test suite
 
 import XCTest
 import ComposableArchitecture
-@testable import HomeFeatureImplement
+@testable import HomeFeature
+@testable import Clients
 
 // MARK: - Feature Tests
 
-/// Home Feature reducer와 business logic을 위한 Test suite
-/// 예측 가능한 state testing과 side effect 검증을 위해 TCA의 TestStore를 사용
 @MainActor
 final class HomeFeatureTests: XCTestCase {
-  
+
+  private var mockUser: UserPrivateModel {
+    UserPrivateModel(
+      userId: "test-user-123",
+      name: "테스트",
+      nickname: "테스트유저",
+      email: "test@example.com",
+      provider: "apple",
+      profile: nil,
+      metadata: Metadata(createdAt: Date(), updatedAt: Date()),
+      groups: []
+    )
+  }
+
   /// 기본 onAppear 동작을 테스트
-  func test_onAppear() async {
-    let store = TestStore(initialState: Home.Feature.State()) {
+  func test_onAppear_triggersFetchAllData() async {
+    let store = TestStore(initialState: Home.Feature.State(currentUser: mockUser)) {
+      Home.Feature()
+    } withDependencies: {
+      $0.promiseClient = .previewValue
+    }
+
+    await store.send(.view(.onAppear)) {
+      $0.hasLoadedOnce = true
+    }
+
+    await store.receive(.internal(.fetchAllData)) {
+      $0.todaysPromisesState = .loading
+      $0.pendingResponsesState = .loading
+      $0.upcomingPromisesState = .loading
+    }
+  }
+
+  /// 두 번째 onAppear에서는 데이터를 다시 로드하지 않음
+  func test_onAppear_doesNotReloadIfAlreadyLoaded() async {
+    var state = Home.Feature.State(currentUser: mockUser)
+    state.hasLoadedOnce = true
+
+    let store = TestStore(initialState: state) {
       Home.Feature()
     }
-    
-    await store.send(.onAppear)
+
+    await store.send(.view(.onAppear))
+    // No effect expected
   }
-  
-  // 추가 테스트를 여기에 작성
-}
 
-// MARK: - Integration Tests
+  /// 사이드 드로어 열기 테스트
+  func test_openSideDrawer_sendsDelegateAction() async {
+    let store = TestStore(initialState: Home.Feature.State(currentUser: mockUser)) {
+      Home.Feature()
+    }
 
-/// Integration tests for feature entry points and view integration
-@MainActor
-final class HomeEntryTests: XCTestCase {
-  
-  /// Tests live entry point creation
-  func test_liveEntry_createsValidInstance() {
-    let entry = HomeEntry.live()
-    let view = entry.makeView(.init())
-    
-    XCTAssertNotNil(view)
+    await store.send(.view(.openSideDrawer))
+    await store.receive(.delegate(.openSideDrawer))
   }
 }

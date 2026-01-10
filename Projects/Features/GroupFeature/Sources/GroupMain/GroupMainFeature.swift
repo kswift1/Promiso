@@ -34,7 +34,7 @@ extension GroupMain {
       var proposalResponding: [String: RespondingState] = [:]
       var path = StackState<Path.State>()
 
-      var allGroupSummaries: [UserGroupInfo]?
+      public var allGroupSummaries: [UserGroupInfo]?
       var currentGroup: GroupModel?
       var currentGroupMembers: [UserPublicModel]?
 

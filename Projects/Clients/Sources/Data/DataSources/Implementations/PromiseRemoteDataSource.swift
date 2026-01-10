@@ -172,7 +172,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
     return try snapshot.documents.compactMap { try documentToPromise($0) }
   }
   
-  /// 다가오는 약속 조회 (확정된 약속만 - 클라이언트에서 isConfirmed 필터링)
+  /// 다가오는 약속 조회 (모든 약속 - 클라이언트에서 필터링)
   public func getUpcomingPromises(userId: String, limit: Int) async throws -> [PromiseModel] {
     let now = Date()
     let query = db.environmentCollection(collectionName)
@@ -182,8 +182,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
       .limit(to: limit)
 
     let snapshot = try await query.getDocuments()
-    // 확정된 약속만 반환 (isConfirmed = votes.accepted.count >= minimumParticipants)
-    return try snapshot.documents.compactMap { try documentToPromise($0) }.filter { $0.isConfirmed }
+    return try snapshot.documents.compactMap { try documentToPromise($0) }
   }
   
   /// 답변 필요한 제안 조회 (현재는 임시 구현)

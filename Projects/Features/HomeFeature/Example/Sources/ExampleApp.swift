@@ -1,20 +1,16 @@
 // MARK: - HomeFeatureExampleApp.swift
 // Home Feature 개발과 테스트를 위한 독립 실행형 example 애플리케이션
-// 이 앱은 Feature 개발과 visual testing을 위한 격리된 환경을 제공
 
 import SwiftUI
 import ComposableArchitecture
-import HomeFeatureImplement
-import HomeFeatureInterface
+import HomeFeature
 import Clients
 
 // MARK: - Example Application
 
-/// Home Feature를 위한 독립 실행형 example 앱
-/// 다양한 테스트 시나리오와 함께 격리된 개발 환경을 제공
 @main
 struct HomeFeatureExampleApp: App {
-  
+
   var body: some Scene {
     WindowGroup {
       NavigationStack {
@@ -28,9 +24,8 @@ struct HomeFeatureExampleApp: App {
 
 // MARK: - Content View
 
-/// 다양한 Feature 시나리오를 보여주는 Main content view
 private struct ExampleContentView: View {
-  
+
   var body: some View {
     List {
       Section("기본 상태") {
@@ -38,45 +33,54 @@ private struct ExampleContentView: View {
           defaultExample
         }
       }
-      
-      Section("Entry Point Integration") {
-        NavigationLink("Live Entry") {
-          entryExample
-        }
-      }
     }
   }
-  
+
   // MARK: - Example Views
-  
-  /// Default feature state example
+
+  /// Default feature state example with mock user
   @ViewBuilder
   private var defaultExample: some View {
-    let store = Store(initialState: Home.Feature.State()) {
+    let mockUser = UserPrivateModel(
+      userId: "test-user-123",
+      name: "테스트",
+      nickname: "테스트유저",
+      email: "test@example.com",
+      provider: "apple",
+      profile: nil,
+      metadata: Metadata(createdAt: Date(), updatedAt: Date()),
+      groups: []
+    )
+
+    let store = Store(initialState: Home.Feature.State(currentUser: mockUser)) {
       Home.Feature()
     } withDependencies: { dependencies in
       dependencies.promiseClient = .previewValue
     }
-    
+
     Home.RootView(store: store)
-  }
-  
-  /// Entry point integration example
-  @ViewBuilder
-  private var entryExample: some View {
-    let entry = HomeEntry.live()
-    entry.makeView(.init())
   }
 }
 
 // MARK: - SwiftUI Previews
 
 #Preview {
-  let store = Store(initialState: Home.Feature.State()) {
+  let mockUser = UserPrivateModel(
+    userId: "test-user-123",
+    name: "테스트",
+    nickname: "테스트유저",
+    email: "test@example.com",
+    provider: "apple",
+    profile: nil,
+    metadata: Metadata(createdAt: Date(), updatedAt: Date()),
+    groups: []
+  )
+
+  let store = Store(initialState: Home.Feature.State(currentUser: mockUser)) {
     Home.Feature()
   } withDependencies: { dependencies in
     dependencies.promiseClient = .previewValue
   }
-  
+
   Home.RootView(store: store)
 }

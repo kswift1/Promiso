@@ -1,204 +1,258 @@
 // MARK: - HomeFeature.swift
 // TCA 1.22.2를 사용한 Home Feature의 Implementation layer
-// 이 파일은 핵심 business logic, state management, view implementation을 포함
 
 // MARK: - Feature Namespace
 
 /// Home Feature 컴포넌트를 위한 Namespace
-/// 조직적 구조를 제공하고 다른 Feature들과의 naming conflict를 방지
 public enum Home {}
 
 // MARK: - Feature Implementation
 
 extension Home {
-  
+
   // MARK: - Reducer
-  
-  /// Home Feature state management를 위한 Main reducer
-  /// Feature의 모든 business logic과 side effect를 처리
-  ///
-  /// SwiftUI integration을 위해 @ObservableState와 함께 TCA 1.22.2 Reducer protocol을 준수
+
   @Reducer
   public struct Feature {
-    
-    /// Reducer를 위한 기본 initializer
-    /// Feature가 성장함에 따라 dependency나 configuration을 여기에 추가
+    @Dependency(\.promiseClient) var promiseClient
+
     public init() {}
-    
+
     // MARK: - State
-    
-    /// Home Feature의 완전한 state를 나타냄
-    /// 예측 가능성을 유지하기 위해 모든 state 변경은 Action을 통해 처리되어야 함
-    ///
-    /// @ObservableState는 추가 wrapper 없이 직접적인 SwiftUI integration을 가능하게 함
+
     @ObservableState
     public struct State: Equatable {
-      
-      // MARK: - Today's Confirmed Promises
-      public var todaysPromises: [PromiseItem] = [
-        PromiseItem(
-          id: "1",
-          title: "영화 관람",
-          emoji: "🍿",
-          time: "오후 7:00",
-          location: "CGV 강남",
-          with: "지민과 나",
-          status: .today,
-          liveActivityStatus: .canStart
-        ),
-        PromiseItem(
-          id: "2",
-          title: "팀 회식",
-          emoji: "🍺",
-          time: "오후 9:00",
-          location: "강남역 근처",
-          with: "회사 동료들",
-          status: .today,
-          liveActivityStatus: .scheduled
-        )
-      ]
-      
-      // MARK: - Pending Responses
-      public var pendingResponses: [PendingResponse] = [
-        PendingResponse(
-          id: "1",
-          title: "주말 브런치",
-          emoji: "⚠️",
-          from: "지민",
-          group: "지민과 나",
-          daysLeft: 1
-        ),
-        PendingResponse(
-          id: "2",
-          title: "월례 회의",
-          emoji: "📅",
-          from: "철수",
-          group: "회사 동료들",
-          daysLeft: 3
-        )
-      ]
-      
-      public var upcomingPromises: [PromiseItem] = [
-        
-      ]
-      
-      // MARK: - Weekly Summary
-      public var weeklyPromiseCount: Int = 7
-      public var pendingResponseCount: Int = 3
-      
-      /// State를 위한 기본 initializer
-      public init() {}
-    }
-    
-    // MARK: - Action
-    
-    /// Home Feature 내에서 발생할 수 있는 모든 가능한 action
-    /// 각 action은 고유한 user intent나 system event를 나타내야 함
-    public enum Action: Equatable, Sendable {
-      case view(View)
-      case delegate(Delegate)
-      // MARK: Lifecycle Actions
-      
-      // MARK: Promise Actions
-      case startLiveActivity(String) // Promise ID
-      case viewWeeklyPromises
-      case createNewProposal
-      
-      // MARK: Response Actions
-      case viewPendingResponses
-      case respondToProposal(String, Bool) // ID, Accept/Reject
-      
-      public enum View: Sendable {
-        /// view가 처음 나타날 때 트리거
-        case onAppear
-        /// SideDrawer 열기
-        case openSideDrawer
-        /// 임시 로그아웃 버튼 탭
-        case logoutTapped
+      /// 현재 유저 정보
+      var currentUser: UserPrivateModel
+
+      /// 오늘의 약속 로딩 상태
+      var todaysPromisesState: LoadingState<[PromiseModel]> = .idle
+
+      /// 응답 필요한 약속 로딩 상태
+      var pendingResponsesState: LoadingState<[PromiseModel]> = .idle
+
+      /// 다가오는 약속 로딩 상태
+      var upcomingPromisesState: LoadingState<[PromiseModel]> = .idle
+
+      /// 초기 로드 여부
+      var hasLoadedOnce: Bool = false
+
+      public init(currentUser: UserPrivateModel) {
+        self.currentUser = currentUser
       }
-      
+
+      // MARK: - Computed Properties
+
+      /// 오늘 확정된 약속 (시간순)
+      var todaysPromises: [PromiseModel] {
+        (todaysPromisesState.value ?? [])
+          .filter { $0.isConfirmed }
+          .sorted { $0.startAt < $1.startAt }
+      }
+
+      /// 응답 필요한 약속
+      var pendingResponses: [PromiseModel] {
+        (pendingResponsesState.value ?? [])
+          .sorted { $0.votes.until < $1.votes.until }
+      }
+
+      /// 다가오는 약속 (확정된 것만)
+      var upcomingPromises: [PromiseModel] {
+        (upcomingPromisesState.value ?? [])
+          .filter { $0.isConfirmed }
+          .sorted { $0.startAt < $1.startAt }
+      }
+
+      /// 전체 로딩 중 여부
+      var isLoading: Bool {
+        todaysPromisesState.isLoading ||
+        pendingResponsesState.isLoading ||
+        upcomingPromisesState.isLoading
+      }
+
+      /// 응답 필요 개수 (배지용)
+      var pendingResponseCount: Int {
+        pendingResponses.count
+      }
+    }
+
+    // MARK: - Action
+
+    @CasePathable
+    public enum Action: Sendable {
+      case view(View)
+      case `internal`(Internal)
+      case delegate(Delegate)
+
+      @CasePathable
+      public enum View: Sendable {
+        /// 화면 나타남
+        case onAppear
+        /// 사이드 드로어 열기
+        case openSideDrawer
+        /// 약속 카드 탭
+        case promiseTapped(PromiseModel)
+        /// 응답하기 버튼 탭
+        case respondTapped(PromiseModel)
+        /// Pull to refresh
+        case refreshTriggered
+      }
+
+      public enum Internal: Sendable {
+        case fetchAllData
+        case todaysPromisesResponse(Result<[PromiseModel], Error>)
+        case pendingResponsesResponse(Result<[PromiseModel], Error>)
+        case upcomingPromisesResponse(Result<[PromiseModel], Error>)
+      }
+
       public enum Delegate: Sendable {
         case openSideDrawer
-        case logoutRequested
+        case navigateToGroup(groupId: String)
       }
     }
-    
+
     // MARK: - Reducer Body
-    
-    /// business logic을 구현하는 Main reducer body
-    /// 모든 action에 대한 state transition과 side effect를 처리
+
     public var body: some ReducerOf<Self> {
       Reduce { state, action in
         switch action {
-        case .view(let view):
-          switch view {
-          case .onAppear:
-            return .none
-          case .openSideDrawer:
-            return .send(.delegate(.openSideDrawer))
-          case .logoutTapped:
-            return .send(.delegate(.logoutRequested))
-          }
-          
-        case .startLiveActivity(let promiseId):
-          // Live Activity 시작 로직
-          return .none
-          
-        case .viewWeeklyPromises:
-          // 주간 약속 보기로 이동
-          return .none
-          
-        case .createNewProposal:
-          // 새 제안 만들기
-          return .none
-          
-        case .viewPendingResponses:
-          // 대기 중인 응답 보기로 이동
-          return .none
-          
-        case .respondToProposal(let id, let accept):
-          // 제안에 응답
-          state.pendingResponses.removeAll { $0.id == id }
-          return .none
-          
+        case .view(let viewAction):
+          return handleViewAction(&state, viewAction)
+        case .internal(let internalAction):
+          return handleInternalAction(&state, internalAction)
         case .delegate:
           return .none
         }
       }
     }
+
+    // MARK: - View Action Handler
+
+    private func handleViewAction(
+      _ state: inout State,
+      _ action: Action.View
+    ) -> Effect<Action> {
+      switch action {
+      case .onAppear:
+        guard !state.hasLoadedOnce else { return .none }
+        state.hasLoadedOnce = true
+        return .send(.internal(.fetchAllData))
+
+      case .openSideDrawer:
+        return .send(.delegate(.openSideDrawer))
+
+      case .promiseTapped(let promise):
+        return .send(.delegate(.navigateToGroup(groupId: promise.groupId)))
+
+      case .respondTapped(let promise):
+        return .send(.delegate(.navigateToGroup(groupId: promise.groupId)))
+
+      case .refreshTriggered:
+        return .send(.internal(.fetchAllData))
+      }
+    }
+
+    // MARK: - Internal Action Handler
+
+    private func handleInternalAction(
+      _ state: inout State,
+      _ action: Action.Internal
+    ) -> Effect<Action> {
+      switch action {
+      case .fetchAllData:
+        state.todaysPromisesState = .loading
+        state.pendingResponsesState = .loading
+        state.upcomingPromisesState = .loading
+
+        let userId = state.currentUser.userId
+        let tomorrow = Calendar.current.startOfDay(for: Date().addingTimeInterval(86400))
+
+        return .merge(
+          // 오늘의 약속 (모든 그룹)
+          .run { [promiseClient] send in
+            do {
+              let promises = try await promiseClient.getTodayPromises(userId, nil)
+              await send(.internal(.todaysPromisesResponse(.success(promises))))
+            } catch {
+              await send(.internal(.todaysPromisesResponse(.failure(error))))
+            }
+          },
+          // 응답 필요 + 다가오는 약속 (한 번 호출, 10개 제한)
+          .run { [promiseClient] send in
+            do {
+              let allPromises = try await promiseClient.getUpcomingPromises(userId, 10)
+
+              // 응답 필요: pending 상태, 투표 마감 전
+              let pending = allPromises.filter { promise in
+                promise.myVoteStatus(userId: userId) == .pending && !promise.isVotingClosed
+              }
+              await send(.internal(.pendingResponsesResponse(.success(pending))))
+
+              // 다가오는 약속: 내일 이후, 확정된 것
+              let upcoming = allPromises.filter { $0.startAt >= tomorrow && $0.isConfirmed }
+              await send(.internal(.upcomingPromisesResponse(.success(upcoming))))
+            } catch {
+              await send(.internal(.pendingResponsesResponse(.failure(error))))
+              await send(.internal(.upcomingPromisesResponse(.failure(error))))
+            }
+          }
+        )
+
+      case .todaysPromisesResponse(let result):
+        switch result {
+        case .success(let promises):
+          state.todaysPromisesState = .loaded(promises)
+        case .failure(let error):
+          state.todaysPromisesState = .failed(error)
+        }
+        return .none
+
+      case .pendingResponsesResponse(let result):
+        switch result {
+        case .success(let promises):
+          state.pendingResponsesState = .loaded(promises)
+        case .failure(let error):
+          state.pendingResponsesState = .failed(error)
+        }
+        return .none
+
+      case .upcomingPromisesResponse(let result):
+        switch result {
+        case .success(let promises):
+          state.upcomingPromisesState = .loaded(promises)
+        case .failure(let error):
+          state.upcomingPromisesState = .failed(error)
+        }
+        return .none
+      }
+    }
   }
-  
+
   // MARK: - Root View
-  
-  /// Home Feature를 위한 Main view implementation
-  /// 적절한 accessibility와 state handling을 통해 SwiftUI best practice를 따름
+
   public struct RootView: View {
-    /// Feature의 state와 action dispatch 기능을 포함하는 Store
     private var store: StoreOf<Feature>
-    
-    /// Designated initializer
-    /// - Parameter store: state management와 action dispatch를 위한 TCA store
+
     public init(store: StoreOf<Feature>) {
       self.store = store
     }
-    
-    // MARK: - Body
-    
+
     public var body: some View {
       ScrollView {
         LazyVStack(spacing: 24) {
-          
           // 오늘 확정된 약속
           TodayPromiseSection(store: store)
-          
+
+          // 응답 필요한 제안
+          PendingResponseSection(store: store)
+
           // 다가오는 약속
           UpcomingPromiseSection(store: store)
-          
-          // 답변 필요한 제안
-          PendingResponseSection(store: store)
-          
         }
         .padding(.top, 8)
+      }
+      .refreshable {
+        store.send(.view(.refreshTriggered))
       }
       .auroraBackground()
       .navigationTitle("오늘의 일정")
@@ -206,84 +260,20 @@ extension Home {
         ToolbarItem(placement: .topBarLeading) {
           ToolbarButton(
             imageName: "line.3.horizontal",
-            action: { store.send((.view(.openSideDrawer))) }
+            action: { store.send(.view(.openSideDrawer)) }
           )
         }
-        
+
         ToolbarItem(placement: .topBarTrailing) {
-          HStack {
-            NotificationButton(
-              badgeCount: 13, // FIXME:
-              action: { print("tapped") } // FIXME:
-            )
-            Button("로그아웃") {
-              store.send(.view(.logoutTapped))
-            }
-            .foregroundColor(.red)
-          }
+          NotificationButton(
+            badgeCount: store.pendingResponseCount,
+            action: { }
+          )
         }
       }
       .onAppear {
         store.send(.view(.onAppear))
       }
-    }
-  }
-  
-  // MARK: - Data Models
-  
-  /// 약속 아이템을 나타내는 모델
-  public struct PromiseItem: Equatable, Identifiable {
-    public let id: String
-    public let title: String
-    public let emoji: String
-    public let time: String
-    public let location: String
-    public let with: String
-    public let status: PromiseStatus
-    public let liveActivityStatus: LiveActivityStatus
-    
-    public init(id: String, title: String, emoji: String, time: String, location: String, with: String, status: PromiseStatus, liveActivityStatus: LiveActivityStatus) {
-      self.id = id
-      self.title = title
-      self.emoji = emoji
-      self.time = time
-      self.location = location
-      self.with = with
-      self.status = status
-      self.liveActivityStatus = liveActivityStatus
-    }
-  }
-  
-  /// 약속 상태를 나타내는 열거형
-  public enum PromiseStatus: Equatable {
-    case today
-    case upcoming
-    case confirmed
-  }
-  
-  /// Live Activity 상태를 나타내는 열거형
-  public enum LiveActivityStatus: Equatable {
-    case canStart
-    case scheduled
-    case active
-  }
-  
-  /// 대기 중인 응답을 나타내는 모델
-  public struct PendingResponse: Equatable, Identifiable {
-    public let id: String
-    public let title: String
-    public let emoji: String
-    public let from: String
-    public let group: String
-    public let daysLeft: Int
-    
-    public init(id: String, title: String, emoji: String, from: String, group: String, daysLeft: Int) {
-      self.id = id
-      self.title = title
-      self.emoji = emoji
-      self.from = from
-      self.group = group
-      self.daysLeft = daysLeft
     }
   }
 }

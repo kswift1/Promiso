@@ -1,81 +1,147 @@
 //
 //  PendingResponseSection.swift
-//  HomeFeatureExample
-//
-//  Created by 김성원 on 9/14/25.
+//  HomeFeature
 //
 
 import SwiftUI
 import ComposableArchitecture
+import Clients
 import PromisoShared
 
 struct PendingResponseSection: View {
   private let store: StoreOf<Home.Feature>
-  
+
   init(store: StoreOf<Home.Feature>) {
     self.store = store
   }
-  
+
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
-
       SectionHeader(
-        title: "답변 필요한 제안",
+        title: "응답 필요",
         accessoryView: {
-          Button("모두 보기 →") {
-            store.send(.viewPendingResponses)
+          if store.pendingResponsesState.isLoading {
+            ProgressView()
+              .scaleEffect(0.8)
+          } else if !store.pendingResponses.isEmpty {
+            Text("\(store.pendingResponses.count)개")
+              .font(.subheadline)
+              .foregroundColor(.orange)
           }
-          .font(.subheadline)
-          .foregroundColor(.blue)
         }
       )
 
-      ForEach(store.pendingResponses) { response in
-        pendingResponseCard(response)
+      if store.pendingResponsesState.isLoading {
+        loadingPlaceholder
+      } else if store.pendingResponses.isEmpty {
+        emptyStateView
+      } else {
+        ForEach(store.pendingResponses) { promise in
+          pendingResponseCard(promise)
+        }
       }
     }
     .padding(.horizontal, AppConstants.UI.safeMargin)
   }
-  
-  func pendingResponseCard(_ response: Home.PendingResponse) -> some View {
-    VStack(alignment: .leading, spacing: 12) {
+
+  private var loadingPlaceholder: some View {
+    VStack(spacing: 8) {
+      ForEach(0..<2, id: \.self) { _ in
+        RoundedRectangle(cornerRadius: 12)
+          .fill(Color(.systemGray6))
+          .frame(height: 100)
+      }
+    }
+  }
+
+  private var emptyStateView: some View {
+    HStack {
+      Image(systemName: "checkmark.circle")
+        .font(.system(size: 20))
+        .foregroundStyle(.secondary)
+
+      Text("응답이 필요한 약속이 없어요")
+        .font(.subheadline)
+        .foregroundStyle(.secondary)
+
+      Spacer()
+    }
+    .padding(16)
+    .background(Color(.systemGray6).opacity(0.5))
+    .cornerRadius(12)
+  }
+
+  private func pendingResponseCard(_ promise: PromiseModel) -> some View {
+    let daysLeft = Calendar.current.dateComponents([.day], from: Date(), to: promise.votes.until).day ?? 0
+    let isUrgent = daysLeft <= 1
+
+    return VStack(alignment: .leading, spacing: 12) {
       HStack {
-        Text(response.emoji)
+        Text(promise.displayEmoji)
           .font(.title2)
-        
-        Text(response.title)
+
+        Text(promise.title)
           .font(.headline)
           .fontWeight(.semibold)
-        
+
         Spacer()
-        
+
         // D-Day 태그
-        Text("D-\(response.daysLeft)")
+        Text(daysLeft <= 0 ? "오늘 마감" : "D-\(daysLeft)")
           .font(.caption)
           .fontWeight(.bold)
           .padding(.horizontal, 8)
           .padding(.vertical, 4)
-          .background(response.daysLeft == 1 ? Color.orange.opacity(0.2) : Color.gray.opacity(0.2))
-          .foregroundColor(response.daysLeft == 1 ? .orange : .gray)
+          .background(isUrgent ? Color.orange.opacity(0.2) : Color.gray.opacity(0.2))
+          .foregroundColor(isUrgent ? .orange : .gray)
           .cornerRadius(8)
       }
-      
-      Text("\(response.from)님이 제안 · \(response.group)")
-        .font(.subheadline)
-        .foregroundColor(.secondary)
-      
-      // 답변하기 버튼
-      Button("지금 답변하기 →") {
-        store.send(.respondToProposal(response.id, true))
+
+      // 그룹 정보
+      HStack(spacing: 4) {
+        if let groupName = promise.group?.name {
+          Text(groupName)
+            .font(.subheadline)
+            .foregroundColor(.secondary)
+        }
+
+        Text("·")
+          .foregroundColor(.secondary)
+
+        Text(promise.dateText)
+          .font(.subheadline)
+          .foregroundColor(.secondary)
+
+        Text(promise.timeText)
+          .font(.subheadline)
+          .foregroundColor(.secondary)
       }
-      .font(.subheadline)
-      .fontWeight(.medium)
-      .foregroundColor(.blue)
+
+      // 답변하기 버튼
+      Button {
+        store.send(.view(.respondTapped(promise)))
+      } label: {
+        Text("지금 답변하기 →")
+          .font(.subheadline)
+          .fontWeight(.medium)
+          .foregroundColor(.blue)
+      }
       .frame(maxWidth: .infinity, alignment: .leading)
     }
     .padding(16)
     .background(Color(.systemBackground))
     .cornerRadius(12)
     .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
+    .overlay(
+      RoundedRectangle(cornerRadius: 12)
+        .stroke(isUrgent ? Color.orange.opacity(0.3) : Color.clear, lineWidth: 1)
+    )
+    .onTapGesture {
+      store.send(.view(.promiseTapped(promise)))
+    }
   }
+}
+
+#Preview {
+  Text("PendingResponseSection Preview")
 }

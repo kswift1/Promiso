@@ -1,6 +1,5 @@
 // MARK: - RootTabFeatureExampleApp.swift
 // RootTab Feature 개발과 테스트를 위한 독립 실행형 example 애플리케이션
-// 이 앱은 Feature 개발과 visual testing을 위한 격리된 환경을 제공
 
 import SwiftUI
 import ComposableArchitecture
@@ -9,11 +8,9 @@ import Clients
 
 // MARK: - Example Application
 
-/// RootTab Feature를 위한 독립 실행형 example 앱
-/// 다양한 테스트 시나리오와 함께 격리된 개발 환경을 제공
 @main
 struct RootTabFeatureExampleApp: App {
-  
+
   var body: some Scene {
     WindowGroup {
       NavigationStack {
@@ -25,11 +22,23 @@ struct RootTabFeatureExampleApp: App {
   }
 }
 
+// MARK: - Mock User
+
+private let mockUser = UserPrivateModel(
+  userId: "test-user-123",
+  name: "테스트",
+  nickname: "테스트유저",
+  email: "test@example.com",
+  provider: "apple",
+  profile: nil,
+  metadata: Metadata(createdAt: Date(), updatedAt: Date()),
+  groups: []
+)
+
 // MARK: - Content View
 
-/// 다양한 Feature 시나리오를 보여주는 Main content view
 private struct ExampleContentView: View {
-  
+
   var body: some View {
     List {
       Section("RootTab Feature") {
@@ -42,10 +51,9 @@ private struct ExampleContentView: View {
 
   // MARK: - Example Views
 
-  /// Default feature state example
   @ViewBuilder
   private var defaultExample: some View {
-    let store = Store(initialState: RootTab.Feature.State()) {
+    let store = Store(initialState: RootTab.Feature.State(currentUser: mockUser)) {
       RootTab.Feature()
         ._printChanges()
     } withDependencies: { dependencies in
@@ -62,7 +70,7 @@ private struct ExampleContentView: View {
 // MARK: - SwiftUI Previews
 
 #Preview {
-  let store = Store(initialState: RootTab.Feature.State()) {
+  let store = Store(initialState: RootTab.Feature.State(currentUser: mockUser)) {
     RootTab.Feature()
   } withDependencies: { dependencies in
     dependencies.authClient = .previewValue
@@ -71,5 +79,5 @@ private struct ExampleContentView: View {
     dependencies.promiseClient = .previewValue
   }
 
-  return RootTab.RootView(store: store)
+  RootTab.RootView(store: store)
 }

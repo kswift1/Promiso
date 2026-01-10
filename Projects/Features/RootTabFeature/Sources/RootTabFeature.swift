@@ -44,14 +44,14 @@ extension RootTab {
       var sideDrawer: SideDrawerFeature.State = SideDrawerFeature.State(maxDragOffset: AppConstants.UI.SideDrawer.width)
 
       /// Home Main State
-      var home: Home.Feature.State = Home.Feature.State()
+      var home: Home.Feature.State
 
       /// Group Main State
       var groupMain: GroupMain.Feature.State
 
       public init(currentUser: UserPrivateModel) {
         self.groupMain = GroupMain.Feature.State(currentUser: currentUser)
-        // Home.Feature.State 도 유저 기반 세팅 필요 시 여기에 주입
+        self.home = Home.Feature.State(currentUser: currentUser)
       }
     }
     
@@ -104,10 +104,16 @@ extension RootTab {
           
       case .home(.delegate(.openSideDrawer)):
         return .send(.sideDrawer(.toggle))
-        
-      case .home(.delegate(.logoutRequested)):
-        return .send(.delegate(.logoutRequested))
-      
+
+      case .home(.delegate(.navigateToGroup(let groupId))):
+        // 1. 그룹 탭으로 전환
+        state.selectedTab = .group
+        // 2. 해당 그룹 선택
+        if let groupInfo = state.groupMain.allGroupSummaries?.first(where: { $0.id == groupId }) {
+          return .send(.groupMain(.view(.groupChanged(groupInfo))))
+        }
+        return .none
+
       case .home:
         return .none
           
