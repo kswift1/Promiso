@@ -4,6 +4,7 @@
 
 import SwiftUI
 import ComposableArchitecture
+import PromisoShared
 
 // MARK: - Feature Namespace
 
@@ -320,12 +321,10 @@ extension CalendarFeature {
         calendarGridSection
           .animation(.easeInOut(duration: 0.3), value: store.displayMode)
 
-        Divider()
-
-        // 약속 리스트
+        // 약속 리스트 (시트 스타일)
         promiseListSection
       }
-      .background(Color(.systemBackground))
+      .auroraBackground()
       .onAppear {
         store.send(.view(.onAppear))
       }
@@ -382,58 +381,62 @@ extension CalendarFeature {
     // MARK: - Promise List Section
 
     private var promiseListSection: some View {
-      ScrollViewReader { proxy in
-        ScrollView {
-          LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
-            if store.sectionDates.isEmpty {
-              emptyStateView
-            } else {
-              ForEach(store.sectionDates, id: \.self) { date in
-                Section {
-                  let calendar = Calendar.current
-                  let dateKey = calendar.startOfDay(for: date)
-                  let dayPromises = store.promisesByDate[dateKey] ?? []
+      VStack(spacing: 0) {
+        ScrollViewReader { proxy in
+          ScrollView {
+            LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
+              if store.sectionDates.isEmpty {
+                emptyStateView
+              } else {
+                ForEach(store.sectionDates, id: \.self) { date in
+                  Section {
+                    let calendar = Calendar.current
+                    let dateKey = calendar.startOfDay(for: date)
+                    let dayPromises = store.promisesByDate[dateKey] ?? []
 
-                  if dayPromises.isEmpty {
-                    EmptyDayPlaceholder(date: date)
-                  } else {
-                    ForEach(dayPromises) { promise in
-                      PromiseCardView(
-                        promise: promise,
-                        onTap: { store.send(.view(.promiseTapped(promise))) },
-                        onRespond: promise.needsMyResponse
-                          ? { store.send(.view(.promiseRespondTapped(promise))) }
-                          : nil
-                      )
-                      .padding(.horizontal, 16)
-                      .padding(.vertical, 6)
+                    if dayPromises.isEmpty {
+                      EmptyDayPlaceholder(date: date)
+                    } else {
+                      ForEach(dayPromises) { promise in
+                        PromiseCardView(
+                          promise: promise,
+                          onTap: { store.send(.view(.promiseTapped(promise))) },
+                          onRespond: promise.needsMyResponse
+                            ? { store.send(.view(.promiseRespondTapped(promise))) }
+                            : nil
+                        )
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 6)
+                      }
                     }
+                  } header: {
+                    PromiseListSectionHeader(
+                      date: date,
+                      isSelected: Calendar.current.isDate(date, inSameDayAs: store.selectedDate)
+                    )
+                    .id(date)
                   }
-                } header: {
-                  PromiseListSectionHeader(
-                    date: date,
-                    isSelected: Calendar.current.isDate(date, inSameDayAs: store.selectedDate)
-                  )
-                  .id(date)
                 }
               }
-            }
 
-            Spacer()
-              .frame(height: 100)
+              Spacer()
+                .frame(height: 100)
+            }
           }
-          .padding(.top, 8)
-        }
-        .onChange(of: store.selectedDate) { _, newDate in
-          // 선택된 날짜로 스크롤
-          let calendar = Calendar.current
-          if let targetDate = store.sectionDates.first(where: { calendar.isDate($0, inSameDayAs: newDate) }) {
-            withAnimation(.easeInOut(duration: 0.3)) {
-              proxy.scrollTo(targetDate, anchor: .top)
+          .onChange(of: store.selectedDate) { _, newDate in
+            // 선택된 날짜로 스크롤
+            let calendar = Calendar.current
+            if let targetDate = store.sectionDates.first(where: { calendar.isDate($0, inSameDayAs: newDate) }) {
+              withAnimation(.easeInOut(duration: 0.3)) {
+                proxy.scrollTo(targetDate, anchor: .top)
+              }
             }
           }
         }
       }
+      .background(Color(.systemBackground))
+      .clipShape(RoundedCorner(radius: 20, corners: [.topLeft, .topRight]))
+      .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: -4)
     }
 
     // MARK: - Empty State
@@ -550,6 +553,22 @@ private struct CalendarHeader: View {
     }
     .padding(.horizontal, 16)
     .padding(.vertical, 12)
+  }
+}
+
+// MARK: - Rounded Corner Shape
+
+private struct RoundedCorner: Shape {
+  var radius: CGFloat = .infinity
+  var corners: UIRectCorner = .allCorners
+
+  func path(in rect: CGRect) -> Path {
+    let path = UIBezierPath(
+      roundedRect: rect,
+      byRoundingCorners: corners,
+      cornerRadii: CGSize(width: radius, height: radius)
+    )
+    return Path(path.cgPath)
   }
 }
 
