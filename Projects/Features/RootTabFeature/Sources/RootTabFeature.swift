@@ -50,7 +50,7 @@ extension RootTab {
       var home: Home.Feature.State
 
       /// Calendar State
-      var calendar: CalendarTab.Feature.State
+      var calendar: CalendarFeature.Feature.State
 
       /// Group Main State
       var groupMain: GroupMain.Feature.State
@@ -58,7 +58,7 @@ extension RootTab {
       public init(currentUser: UserPrivateModel) {
         self.groupMain = GroupMain.Feature.State(currentUser: currentUser)
         self.home = Home.Feature.State(currentUser: currentUser)
-        self.calendar = CalendarTab.Feature.State(currentUser: currentUser)
+        self.calendar = CalendarFeature.Feature.State()
       }
     }
     
@@ -72,7 +72,7 @@ extension RootTab {
       /// Home Main 액션
       case home(Home.Feature.Action)
       /// Calendar 액션
-      case calendar(CalendarTab.Feature.Action)
+      case calendar(CalendarFeature.Feature.Action)
       /// Group Main 액션
       case groupMain(GroupMain.Feature.Action)
       /// 상위로 전달되는 델리게이트 액션
@@ -96,7 +96,7 @@ extension RootTab {
       }
 
       Scope(state: \.calendar, action: \.calendar) {
-        CalendarTab.Feature()
+        CalendarFeature.Feature()
       }
 
       Reduce { state, action in
@@ -258,7 +258,7 @@ extension RootTab {
 
       case .calendar:
         NavigationStack {
-          CalendarTab.RootView(
+          CalendarFeature.RootView(
             store: store.scope(
               state: \.calendar,
               action: \.calendar
