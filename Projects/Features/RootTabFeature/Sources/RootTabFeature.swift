@@ -5,15 +5,18 @@
 import ComposableArchitecture
 
 import PromisoShared
+import CalendarFeature
 
 public enum Tab: String, CaseIterable {
   case home = "홈"
   case group = "그룹"
-  
+  case calendar = "캘린더"
+
   var iconName: String {
     switch self {
     case .home: return "house.fill"
     case .group: return "person.3.fill"
+    case .calendar: return "calendar"
     }
   }
 }
@@ -46,12 +49,16 @@ extension RootTab {
       /// Home Main State
       var home: Home.Feature.State
 
+      /// Calendar State
+      var calendar: CalendarTab.Feature.State
+
       /// Group Main State
       var groupMain: GroupMain.Feature.State
 
       public init(currentUser: UserPrivateModel) {
         self.groupMain = GroupMain.Feature.State(currentUser: currentUser)
         self.home = Home.Feature.State(currentUser: currentUser)
+        self.calendar = CalendarTab.Feature.State(currentUser: currentUser)
       }
     }
     
@@ -64,6 +71,8 @@ extension RootTab {
       case sideDrawer(SideDrawerFeature.Action)
       /// Home Main 액션
       case home(Home.Feature.Action)
+      /// Calendar 액션
+      case calendar(CalendarTab.Feature.Action)
       /// Group Main 액션
       case groupMain(GroupMain.Feature.Action)
       /// 상위로 전달되는 델리게이트 액션
@@ -81,11 +90,15 @@ extension RootTab {
       Scope(state: \.groupMain, action: \.groupMain) {
         GroupMain.Feature()
       }
-      
+
       Scope(state: \.home, action: \.home) {
         Home.Feature()
       }
-      
+
+      Scope(state: \.calendar, action: \.calendar) {
+        CalendarTab.Feature()
+      }
+
       Reduce { state, action in
         switch action {
         case .onAppear:
@@ -116,7 +129,10 @@ extension RootTab {
 
       case .home:
         return .none
-          
+
+      case .calendar:
+        return .none
+
         case .groupMain(.delegate(.requestOpenSideDrawer)):
           // GroupMain에서 사이드 드로워 열기 요청
           return .send(.sideDrawer(.toggle))
@@ -239,7 +255,17 @@ extension RootTab {
             )
           )
         }
-        
+
+      case .calendar:
+        NavigationStack {
+          CalendarTab.RootView(
+            store: store.scope(
+              state: \.calendar,
+              action: \.calendar
+            )
+          )
+        }
+
       case .group:
         NavigationStack {
           GroupMain.RootView(
