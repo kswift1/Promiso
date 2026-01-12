@@ -410,17 +410,17 @@ extension CalendarFeature {
                       }
                     }
                   } header: {
-                    PromiseListSectionHeader(
+                    DiaryStyleSectionHeader(
                       date: date,
-                      isSelected: Calendar.current.isDate(date, inSameDayAs: store.selectedDate)
+                      isFirst: date == store.sectionDates.first
                     )
                     .id(date)
                   }
                 }
               }
-
-              Spacer()
-                .frame(height: 100)
+            }
+            .safeAreaInset(edge: .bottom) {
+              Spacer().frame(height: 20)
             }
           }
           .onChange(of: store.selectedDate) { _, newDate in
@@ -434,9 +434,11 @@ extension CalendarFeature {
           }
         }
       }
+      .frame(maxWidth: .infinity, maxHeight: .infinity)
       .background(Color(.systemBackground))
-      .clipShape(RoundedCorner(radius: 20, corners: [.topLeft, .topRight]))
+      .clipShape(RoundedCorner(radius: 24, corners: [.topLeft, .topRight]))
       .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: -4)
+      .ignoresSafeArea(edges: .bottom)
     }
 
     // MARK: - Empty State
@@ -556,6 +558,65 @@ private struct CalendarHeader: View {
   }
 }
 
+// MARK: - Cached DateFormatters
+
+private enum DateFormatterCache {
+  static let sectionHeader: DateFormatter = {
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "ko_KR")
+    formatter.dateFormat = "M월 d일 (E)"
+    return formatter
+  }()
+
+  static let weekday: DateFormatter = {
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "ko_KR")
+    formatter.dateFormat = "E"
+    return formatter
+  }()
+
+  static let monthDay: DateFormatter = {
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "ko_KR")
+    formatter.dateFormat = "M월 d일"
+    return formatter
+  }()
+}
+
+private let sharedCalendar = Calendar.current
+
+// MARK: - Diary Style Section Header
+
+private struct DiaryStyleSectionHeader: View {
+  let date: Date
+  let isFirst: Bool
+
+  var body: some View {
+    HStack {
+      Text(formattedDate)
+        .font(.system(size: 20, weight: .bold))
+        .foregroundColor(.primary)
+        .textCase(nil)
+
+      Rectangle()
+        .fill(Color(.systemGray4))
+        .frame(height: 1)
+    }
+    .padding(.horizontal, 16)
+    .padding(.top, isFirst ? 12 : 24)
+    .padding(.bottom, 12)
+    .background(Color.clear)
+  }
+
+  private var formattedDate: String {
+    let baseDate = DateFormatterCache.sectionHeader.string(from: date)
+    if sharedCalendar.isDateInToday(date) {
+      return "\(baseDate) · 오늘"
+    }
+    return baseDate
+  }
+}
+
 // MARK: - Rounded Corner Shape
 
 private struct RoundedCorner: Shape {
@@ -569,6 +630,48 @@ private struct RoundedCorner: Shape {
       cornerRadii: CGSize(width: radius, height: radius)
     )
     return Path(path.cgPath)
+  }
+}
+
+// MARK: - Visible Date Preference Key
+
+private struct VisibleDatePreferenceKey: PreferenceKey {
+  static var defaultValue: Date?
+  static func reduce(value: inout Date?, nextValue: () -> Date?) {
+    value = nextValue() ?? value
+  }
+}
+
+// MARK: - Floating Date Header
+
+private struct FloatingDateHeader: View {
+  let date: Date
+
+  var body: some View {
+    HStack(spacing: 8) {
+      Text(DateFormatterCache.weekday.string(from: date))
+        .font(.system(size: 13, weight: .medium))
+        .foregroundColor(.secondary)
+
+      Text(DateFormatterCache.monthDay.string(from: date))
+        .font(.system(size: 15, weight: .semibold))
+        .foregroundColor(.primary)
+
+      if sharedCalendar.isDateInToday(date) {
+        Text("오늘")
+          .font(.system(size: 11, weight: .semibold))
+          .foregroundColor(.white)
+          .padding(.horizontal, 6)
+          .padding(.vertical, 2)
+          .background(Color.blue)
+          .cornerRadius(6)
+      }
+    }
+    .padding(.horizontal, 16)
+    .padding(.vertical, 10)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(.ultraThinMaterial)
+    .clipShape(RoundedCorner(radius: 24, corners: [.topLeft, .topRight]))
   }
 }
 

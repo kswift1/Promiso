@@ -1,5 +1,5 @@
 // MARK: - WeekStripView.swift
-// 주간 캘린더 스트립 뷰 - TabView 기반 페이징
+// 주간 캘린더 스트립 뷰 - TabView 기반 페이징 + 동적 로딩
 
 import SwiftUI
 
@@ -12,9 +12,20 @@ private struct WeekContentHeightKey: PreferenceKey {
   }
 }
 
+// MARK: - Shared Calendar
+
+private let weekStripCalendar = Calendar.current
+
+// MARK: - Constants
+
+private enum WeekPagesConfig {
+  static let pageRange = 12        // 전후 12주 (약 3개월)
+  static let reloadThreshold = 4   // 경계에서 4주 이내면 재생성
+}
+
 // MARK: - Paging Week Strip View
 
-/// TabView 기반 주간 날짜 스트립 (네이티브 페이징)
+/// TabView 기반 주간 날짜 스트립 (동적 페이지 로딩)
 struct PagingWeekStripView: View {
   @Binding var currentWeekStart: Date
   let selectedDate: Date
@@ -22,25 +33,11 @@ struct PagingWeekStripView: View {
   let namespace: Namespace.ID
   let onDateSelected: (Date) -> Void
 
-  // 로컬 상태로 TabView selection 관리 (스와이프 중 깜빡임 방지)
+  // 로컬 상태
   @State private var localSelection: Date
   @State private var contentHeight: CGFloat = 60
-
-  private let calendar = Calendar.current
-
-  // 충분히 큰 범위의 페이지를 미리 생성 (재생성 안함)
-  private var weekPages: [Date] {
-    let range = -52...52  // 전후 1년
-    return range.compactMap { offset in
-      // 기준점을 오늘로 고정
-      let today = calendar.startOfDay(for: Date())
-      guard let weekStart = calendar.date(byAdding: .day, value: -calendar.component(.weekday, from: today) + 1, to: today),
-            let targetWeek = calendar.date(byAdding: .weekOfYear, value: offset, to: weekStart) else {
-        return nil
-      }
-      return targetWeek.startOfWeek
-    }
-  }
+  @State private var weekPages: [Date] = []
+  @State private var centerWeek: Date
 
   init(
     currentWeekStart: Binding<Date>,
@@ -54,7 +51,11 @@ struct PagingWeekStripView: View {
     self.promisesByDate = promisesByDate
     self.namespace = namespace
     self.onDateSelected = onDateSelected
-    self._localSelection = State(initialValue: currentWeekStart.wrappedValue.startOfWeek)
+
+    let initialWeek = currentWeekStart.wrappedValue.startOfWeek
+    self._localSelection = State(initialValue: initialWeek)
+    self._centerWeek = State(initialValue: initialWeek)
+    self._weekPages = State(initialValue: Self.generatePages(around: initialWeek))
   }
 
   var body: some View {
@@ -80,15 +81,51 @@ struct PagingWeekStripView: View {
     .onChange(of: currentWeekStart) { _, newValue in
       // 외부에서 변경된 경우 (오늘 버튼 등)
       let normalized = newValue.startOfWeek
-      if !calendar.isDate(localSelection, inSameDayAs: normalized) {
+      if !weekStripCalendar.isDate(localSelection, inSameDayAs: normalized) {
+        // 페이지 범위 밖이면 재생성
+        if !weekPages.contains(where: { weekStripCalendar.isDate($0, inSameDayAs: normalized) }) {
+          reloadPages(around: normalized)
+        }
         localSelection = normalized
       }
     }
     .onChange(of: localSelection) { oldValue, newValue in
-      // 스와이프로 페이지가 변경 완료된 경우에만 외부 알림
-      if !calendar.isDate(oldValue, inSameDayAs: newValue) {
+      // 스와이프로 페이지가 변경 완료된 경우
+      if !weekStripCalendar.isDate(oldValue, inSameDayAs: newValue) {
         currentWeekStart = newValue
+
+        // 경계 근처면 페이지 재생성
+        checkAndReloadIfNeeded(currentPage: newValue)
       }
+    }
+  }
+
+  // MARK: - Page Management
+
+  private static func generatePages(around centerWeek: Date) -> [Date] {
+    let range = -WeekPagesConfig.pageRange...WeekPagesConfig.pageRange
+    return range.compactMap { offset in
+      weekStripCalendar.date(byAdding: .weekOfYear, value: offset, to: centerWeek)?.startOfWeek
+    }
+  }
+
+  private func reloadPages(around newCenter: Date) {
+    centerWeek = newCenter
+    weekPages = Self.generatePages(around: newCenter)
+  }
+
+  private func checkAndReloadIfNeeded(currentPage: Date) {
+    guard let currentIndex = weekPages.firstIndex(where: {
+      weekStripCalendar.isDate($0, inSameDayAs: currentPage)
+    }) else { return }
+
+    let distanceFromStart = currentIndex
+    let distanceFromEnd = weekPages.count - 1 - currentIndex
+
+    // 경계에서 threshold 이내면 재생성
+    if distanceFromStart <= WeekPagesConfig.reloadThreshold ||
+       distanceFromEnd <= WeekPagesConfig.reloadThreshold {
+      reloadPages(around: currentPage)
     }
   }
 
@@ -96,7 +133,7 @@ struct PagingWeekStripView: View {
 
   private func getWeekDates(for weekStart: Date) -> [Date] {
     (0..<7).compactMap { dayOffset in
-      calendar.date(byAdding: .day, value: dayOffset, to: weekStart)
+      weekStripCalendar.date(byAdding: .day, value: dayOffset, to: weekStart)
     }
   }
 }
@@ -111,15 +148,13 @@ struct WeekStripContent: View {
   let namespace: Namespace.ID
   let onDateSelected: (Date) -> Void
 
-  private let calendar = Calendar.current
-
   var body: some View {
     HStack(spacing: 0) {
       ForEach(weekDates, id: \.self) { date in
         DayCell(
           date: date,
-          isSelected: calendar.isDate(date, inSameDayAs: selectedDate),
-          isToday: calendar.isDateInToday(date),
+          isSelected: weekStripCalendar.isDate(date, inSameDayAs: selectedDate),
+          isToday: weekStripCalendar.isDateInToday(date),
           isCurrentMonth: true,
           promiseStatuses: getPromiseStatuses(for: date),
           namespace: namespace,
@@ -142,7 +177,7 @@ struct WeekStripContent: View {
   // MARK: - Helper
 
   private func getPromiseStatuses(for date: Date) -> [MockPromiseStatus] {
-    let dateKey = calendar.startOfDay(for: date)
+    let dateKey = weekStripCalendar.startOfDay(for: date)
     guard let promises = promisesByDate[dateKey] else { return [] }
     return promises.map { $0.status }
   }

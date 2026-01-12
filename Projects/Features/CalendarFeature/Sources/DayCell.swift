@@ -3,6 +3,10 @@
 
 import SwiftUI
 
+// MARK: - Shared Calendar Instance
+
+private let sharedCalendar = Calendar.current
+
 // MARK: - Day Cell View
 
 /// 캘린더 날짜 셀
@@ -15,7 +19,10 @@ struct DayCell: View {
   let namespace: Namespace.ID
   let onTap: () -> Void
 
-  private let calendar = Calendar.current
+  // 캐싱된 날짜 숫자 (Calendar.component 사용으로 DateFormatter 제거)
+  private var dayNumber: String {
+    String(sharedCalendar.component(.day, from: date))
+  }
 
   var body: some View {
     Button(action: onTap) {
@@ -57,12 +64,6 @@ struct DayCell: View {
 
   // MARK: - Computed Properties
 
-  private var dayNumber: String {
-    let formatter = DateFormatter()
-    formatter.dateFormat = "d"
-    return formatter.string(from: date)
-  }
-
   private var textColor: Color {
     if isSelected {
       return .white
@@ -75,7 +76,7 @@ struct DayCell: View {
     }
 
     // 주말 색상
-    let weekday = calendar.component(.weekday, from: date)
+    let weekday = sharedCalendar.component(.weekday, from: date)
     if weekday == 1 { // 일요일
       return .red.opacity(0.8)
     }

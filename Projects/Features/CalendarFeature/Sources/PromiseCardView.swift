@@ -149,59 +149,110 @@ struct PromiseCardView: View {
   }
 }
 
-// MARK: - Promise List Section Header
+// MARK: - Cached Formatters
 
-/// 날짜별 섹션 헤더
-struct PromiseListSectionHeader: View {
+private enum PromiseViewFormatterCache {
+  static let shortWeekday: DateFormatter = {
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "ko_KR")
+    formatter.dateFormat = "E"
+    return formatter
+  }()
+}
+
+private let promiseViewCalendar = Calendar.current
+
+// MARK: - Day Row View (날짜 왼쪽, 카드 오른쪽)
+
+/// 날짜와 약속 카드를 가로로 배치하는 뷰
+struct DayRowView: View {
   let date: Date
   let isSelected: Bool
-
-  private let calendar = Calendar.current
+  let promises: [MockPromise]
+  let onPromiseTap: (MockPromise) -> Void
+  let onPromiseRespond: (MockPromise) -> Void
 
   var body: some View {
-    HStack(spacing: 10) {
-      // 요일
-      Text(dayOfWeek)
-        .font(.system(size: 14, weight: .semibold))
-        .foregroundColor(isSelected ? .blue : .secondary)
+    HStack(alignment: .top, spacing: 12) {
+      // 왼쪽: 날짜 영역
+      dateColumn
+        .frame(width: 50)
 
-      // 날짜
-      Text(formattedDate)
-        .font(.system(size: 20, weight: .bold))
-        .foregroundColor(isSelected ? .blue : .primary)
-
-      // 오늘 뱃지
-      if calendar.isDateInToday(date) {
-        Text("오늘")
-          .font(.system(size: 11, weight: .semibold))
-          .foregroundColor(.white)
-          .padding(.horizontal, 8)
-          .padding(.vertical, 3)
-          .background(Color.blue)
-          .cornerRadius(8)
+      // 오른쪽: 약속 카드들
+      VStack(spacing: 8) {
+        if promises.isEmpty {
+          emptyPlaceholder
+        } else {
+          ForEach(promises) { promise in
+            PromiseCardView(
+              promise: promise,
+              onTap: { onPromiseTap(promise) },
+              onRespond: promise.needsMyResponse
+                ? { onPromiseRespond(promise) }
+                : nil
+            )
+          }
+        }
       }
-
-      Spacer()
     }
     .padding(.horizontal, 16)
-    .padding(.vertical, 12)
-    .background(.ultraThinMaterial)
+  }
+
+  // MARK: - Date Column
+
+  private var dateColumn: some View {
+    VStack(spacing: 2) {
+      // 요일 (짧게)
+      Text(shortWeekday)
+        .font(.system(size: 13, weight: .medium))
+        .foregroundColor(isSelected ? .blue : .secondary)
+
+      // 날짜 숫자
+      Text(dayNumber)
+        .font(.system(size: 22, weight: .bold))
+        .foregroundColor(dateNumberColor)
+
+      // 오늘 표시 (점)
+      if promiseViewCalendar.isDateInToday(date) {
+        Circle()
+          .fill(Color.blue)
+          .frame(width: 6, height: 6)
+      }
+    }
+    .padding(.top, 8)
+  }
+
+  // MARK: - Empty Placeholder
+
+  private var emptyPlaceholder: some View {
+    Text("약속 없음")
+      .font(.system(size: 14))
+      .foregroundColor(.secondary)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .padding(.vertical, 16)
   }
 
   // MARK: - Computed Properties
 
-  private var dayOfWeek: String {
-    let formatter = DateFormatter()
-    formatter.locale = Locale(identifier: "ko_KR")
-    formatter.dateFormat = "EEEE"
-    return formatter.string(from: date)
+  private var shortWeekday: String {
+    PromiseViewFormatterCache.shortWeekday.string(from: date)
   }
 
-  private var formattedDate: String {
-    let formatter = DateFormatter()
-    formatter.locale = Locale(identifier: "ko_KR")
-    formatter.dateFormat = "M월 d일"
-    return formatter.string(from: date)
+  private var dayNumber: String {
+    String(promiseViewCalendar.component(.day, from: date))
+  }
+
+  private var dateNumberColor: Color {
+    if isSelected {
+      return .blue
+    }
+    if promiseViewCalendar.isDateInToday(date) {
+      return .blue
+    }
+    let weekday = promiseViewCalendar.component(.weekday, from: date)
+    if weekday == 1 { return .red.opacity(0.8) }
+    if weekday == 7 { return .blue.opacity(0.8) }
+    return .primary
   }
 }
 
