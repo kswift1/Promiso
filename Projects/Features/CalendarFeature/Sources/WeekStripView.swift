@@ -79,14 +79,17 @@ struct PagingWeekStripView: View {
       }
     }
     .onChange(of: currentWeekStart) { _, newValue in
-      // 외부에서 변경된 경우 (오늘 버튼 등)
+      // 외부에서 변경된 경우 (화살표 버튼, 오늘 버튼 등)
       let normalized = newValue.startOfWeek
       if !weekStripCalendar.isDate(localSelection, inSameDayAs: normalized) {
         // 페이지 범위 밖이면 재생성
         if !weekPages.contains(where: { weekStripCalendar.isDate($0, inSameDayAs: normalized) }) {
           reloadPages(around: normalized)
         }
-        localSelection = normalized
+        // 슬라이드 애니메이션 적용
+        withAnimation(.easeInOut(duration: 0.3)) {
+          localSelection = normalized
+        }
       }
     }
     .onChange(of: localSelection) { oldValue, newValue in
