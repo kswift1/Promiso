@@ -8,11 +8,13 @@
 import UIKit
 
 import ExternalDependency
+import Clarity
 
 class AppDelegate: NSObject, UIApplicationDelegate {
   func application(_ application: UIApplication,
                    didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
     FirebaseApp.configure()
+    configureClaritySDK()
 
 // MARK: - Emulator 사용 시 주석 해제
 #if DEBUG
@@ -20,6 +22,19 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 #endif
 
     return true
+  }
+
+  // MARK: - Microsoft Clarity SDK
+  private func configureClaritySDK() {
+    let projectId = "v0o95eccpc"
+
+    #if DEBUG
+    let config = ClarityConfig(projectId: projectId, logLevel: .verbose)
+    #else
+    let config = ClarityConfig(projectId: projectId, logLevel: .none)
+    #endif
+
+    ClaritySDK.initialize(config: config)
   }
   
   /// Google Sign-In 리디렉션 URL 처리
