@@ -29,7 +29,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     let projectId = "v0o95eccpc"
 
     #if DEBUG
-    let config = ClarityConfig(projectId: projectId, logLevel: .verbose)
+    let config = ClarityConfig(projectId: projectId, logLevel: .debug)
     #else
     let config = ClarityConfig(projectId: projectId, logLevel: .none)
     #endif
