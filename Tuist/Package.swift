@@ -46,6 +46,13 @@ enum Dependencies {
     )
   }
 
+  static func clarity() -> Package.Dependency {
+    .package(
+      url: "https://github.com/microsoft/clarity-apps",
+      .upToNextMajor(from: "3.4.0")
+    )
+  }
+
   // MARK: - All Dependencies
   static var all: [Package.Dependency] { [
     tca(),
@@ -53,6 +60,7 @@ enum Dependencies {
     loupe(),
     google(),
     nuke(),
+    clarity(),
   ]}
 }
 
