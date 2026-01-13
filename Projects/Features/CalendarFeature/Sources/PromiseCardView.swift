@@ -301,12 +301,7 @@ struct CompactDayRow: View {
       }
       .padding(.horizontal, 16)
       .padding(.vertical, 12)
-      .background(rowBackground)
-      .cornerRadius(12)
-      .overlay(
-        RoundedRectangle(cornerRadius: 12)
-          .stroke(isSelected ? Color.blue.opacity(0.3) : Color.clear, lineWidth: 1.5)
-      )
+      .adaptiveGlassBackground()
     }
     .buttonStyle(.plain)
     .padding(.horizontal, 16)
@@ -335,13 +330,6 @@ struct CompactDayRow: View {
       return .blue
     }
     return .primary
-  }
-
-  private var rowBackground: Color {
-    if isSelected {
-      return Color.blue.opacity(0.08)
-    }
-    return Color(.secondarySystemBackground).opacity(0.5)
   }
 }
 
