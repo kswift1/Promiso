@@ -161,6 +161,7 @@ struct WeekStripContent: View {
           isCurrentMonth: true,
           promiseStatuses: getPromiseStatuses(for: date),
           namespace: namespace,
+          selectionId: "weekSelection",
           onTap: { onDateSelected(date) }
         )
       }

@@ -162,10 +162,9 @@ struct MonthGridContent: View {
             isCurrentMonth: isCurrentMonth(date),
             promiseStatuses: getPromiseStatuses(for: date),
             namespace: namespace,
+            selectionId: "monthSelection",
             onTap: {
               onDateSelected(date)
-              // 날짜 탭 시 주간 뷰로 전환
-              onCollapseToWeek(date)
             }
           )
         }

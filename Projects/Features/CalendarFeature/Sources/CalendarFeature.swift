@@ -42,6 +42,9 @@ extension CalendarFeature {
       /// 주간 ↔ 월간 전환 애니메이션 진행 중
       var isTransitioning: Bool = false
 
+      /// 스크롤 위치 (리스트에서 스크롤할 날짜)
+      var scrolledID: Date?
+
       public init(
         displayMode: CalendarDisplayMode = .week,
         selectedDate: Date = Date()
@@ -127,12 +130,12 @@ extension CalendarFeature {
 
     @CasePathable
     public enum Action: Sendable {
-      case view(View)
-      case `internal`(Internal)
+      case view(ViewAction)
+      case `internal`(InternalAction)
       case delegate(Delegate)
 
       @CasePathable
-      public enum View: Sendable {
+      public enum ViewAction: Sendable {
         case onAppear
         case toggleDisplayMode
         case selectDate(Date)
@@ -145,9 +148,12 @@ extension CalendarFeature {
         // TabView 페이징으로 변경된 날짜
         case weekPageChanged(Date)
         case monthPageChanged(Date)
+        // 스크롤 관련
+        case scrollTo(Date?)
+        case resetScroll
       }
 
-      public enum Internal: Sendable {
+      public enum InternalAction: Sendable {
         case transitionCompleted
       }
 
@@ -176,7 +182,7 @@ extension CalendarFeature {
 
     private func handleViewAction(
       _ state: inout State,
-      _ action: Action.View
+      _ action: Action.ViewAction
     ) -> Effect<Action> {
       let calendar = Calendar.current
 
@@ -255,6 +261,11 @@ extension CalendarFeature {
         state.displayMode = .week
         state.isTransitioning = true
 
+        // 전환 전에 미리 스크롤 위치 설정 (애니메이션 없이 바로 해당 위치에 표시)
+        let calendar = Calendar.current
+        let targetDate = calendar.startOfDay(for: date)
+        state.scrolledID = targetDate
+
         return .run { send in
           try await Task.sleep(nanoseconds: 300_000_000)
           await send(.internal(.transitionCompleted))
@@ -269,6 +280,22 @@ extension CalendarFeature {
         // TabView 페이징으로 월이 변경됨
         state.currentMonth = newMonth.startOfMonth
         return .none
+
+      case .scrollTo(let date):
+        // 특정 날짜로 스크롤
+        guard let date = date else {
+          state.scrolledID = nil
+          return .none
+        }
+        let calendar = Calendar.current
+        if let targetDate = state.sectionDates.first(where: { calendar.isDate($0, inSameDayAs: date) }) {
+          state.scrolledID = targetDate
+        }
+        return .none
+
+      case .resetScroll:
+        state.scrolledID = nil
+        return .none
       }
     }
 
@@ -276,7 +303,7 @@ extension CalendarFeature {
 
     private func handleInternalAction(
       _ state: inout State,
-      _ action: Action.Internal
+      _ action: Action.InternalAction
     ) -> Effect<Action> {
       switch action {
       case .transitionCompleted:
@@ -382,56 +409,10 @@ extension CalendarFeature {
 
     private var promiseListSection: some View {
       VStack(spacing: 0) {
-        ScrollViewReader { proxy in
-          ScrollView {
-            LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
-              if store.sectionDates.isEmpty {
-                emptyStateView
-              } else {
-                ForEach(store.sectionDates, id: \.self) { date in
-                  Section {
-                    let calendar = Calendar.current
-                    let dateKey = calendar.startOfDay(for: date)
-                    let dayPromises = store.promisesByDate[dateKey] ?? []
-
-                    if dayPromises.isEmpty {
-                      EmptyDayPlaceholder(date: date)
-                    } else {
-                      ForEach(dayPromises) { promise in
-                        PromiseCardView(
-                          promise: promise,
-                          onTap: { store.send(.view(.promiseTapped(promise))) },
-                          onRespond: promise.needsMyResponse
-                            ? { store.send(.view(.promiseRespondTapped(promise))) }
-                            : nil
-                        )
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 6)
-                      }
-                    }
-                  } header: {
-                    DiaryStyleSectionHeader(
-                      date: date,
-                      isFirst: date == store.sectionDates.first
-                    )
-                    .id(date)
-                  }
-                }
-              }
-            }
-            .safeAreaInset(edge: .bottom) {
-              Spacer().frame(height: 20)
-            }
-          }
-          .onChange(of: store.selectedDate) { _, newDate in
-            // 선택된 날짜로 스크롤
-            let calendar = Calendar.current
-            if let targetDate = store.sectionDates.first(where: { calendar.isDate($0, inSameDayAs: newDate) }) {
-              withAnimation(.easeInOut(duration: 0.3)) {
-                proxy.scrollTo(targetDate, anchor: .top)
-              }
-            }
-          }
+        if store.displayMode == .week {
+          weekScrollView
+        } else {
+          monthScrollView
         }
       }
       .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -439,6 +420,156 @@ extension CalendarFeature {
       .clipShape(RoundedCorner(radius: 24, corners: [.topLeft, .topRight]))
       .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: -4)
       .ignoresSafeArea(edges: .bottom)
+    }
+
+    // MARK: - Week Scroll View
+
+    private var weekScrollView: some View {
+      ScrollViewReader { proxy in
+        ScrollView {
+          weekPromiseListContent
+        }
+        .onAppear {
+          // 전환 시 scrolledID가 설정되어 있으면 즉시 해당 위치로 이동 (애니메이션 없음)
+          if let targetDate = store.scrolledID {
+            proxy.scrollTo(targetDate, anchor: .top)
+          }
+        }
+        .onChange(of: store.selectedDate) { _, newDate in
+          guard !store.isTransitioning else { return }
+          let calendar = Calendar.current
+          if let targetDate = store.sectionDates.first(where: { calendar.isDate($0, inSameDayAs: newDate) }) {
+            withAnimation(.easeInOut(duration: 0.3)) {
+              proxy.scrollTo(targetDate, anchor: .top)
+            }
+          }
+        }
+      }
+    }
+
+    // MARK: - Month Scroll View
+
+    private var monthScrollView: some View {
+      ScrollViewReader { proxy in
+        ScrollView {
+          monthPromiseListContent
+        }
+        .onChange(of: store.selectedDate) { _, newDate in
+          guard !store.isTransitioning else { return }
+          let calendar = Calendar.current
+          if let targetDate = store.sectionDates.first(where: { calendar.isDate($0, inSameDayAs: newDate) }) {
+            withAnimation(.easeInOut(duration: 0.3)) {
+              proxy.scrollTo(targetDate, anchor: .center)
+            }
+          }
+        }
+      }
+    }
+
+    // MARK: - Week Promise List Content
+
+    private var weekPromiseListContent: some View {
+      LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
+        if store.sectionDates.isEmpty {
+          emptyStateView
+        } else {
+          ForEach(store.sectionDates, id: \.self) { date in
+            weekModeSection(for: date)
+          }
+        }
+      }
+      .padding(.bottom, 500)
+    }
+
+    // MARK: - Month Promise List Content
+
+    private var monthPromiseListContent: some View {
+      LazyVStack(spacing: 0) {
+        if store.sectionDates.isEmpty {
+          emptyStateView
+        } else {
+          monthModeHeader
+          ForEach(store.sectionDates, id: \.self) { date in
+            monthModeRow(for: date)
+          }
+        }
+      }
+      .padding(.bottom, 200)
+    }
+
+    // MARK: - Week Mode Section (상세 카드)
+
+    @ViewBuilder
+    private func weekModeSection(for date: Date) -> some View {
+      Section {
+        let calendar = Calendar.current
+        let dateKey = calendar.startOfDay(for: date)
+        let dayPromises = store.promisesByDate[dateKey] ?? []
+
+        if dayPromises.isEmpty {
+          EmptyDayPlaceholder(date: date)
+        } else {
+          ForEach(dayPromises) { promise in
+            PromiseCardView(
+              promise: promise,
+              onTap: { store.send(.view(.promiseTapped(promise))) },
+              onRespond: promise.needsMyResponse
+                ? { store.send(.view(.promiseRespondTapped(promise))) }
+                : nil
+            )
+            .padding(.horizontal, 16)
+            .padding(.vertical, 6)
+          }
+        }
+      } header: {
+        DiaryStyleSectionHeader(
+          date: date,
+          isFirst: date == store.sectionDates.first
+        )
+        .id(date)
+      }
+    }
+
+    // MARK: - Month Mode Header
+
+    private var monthModeHeader: some View {
+      HStack {
+        Text("이번 달 일정")
+          .font(.system(size: 20, weight: .bold))
+          .foregroundColor(.primary)
+
+        Spacer()
+
+        Text("\(store.sectionDates.count)일")
+          .font(.system(size: 14, weight: .medium))
+          .foregroundColor(.secondary)
+      }
+      .padding(.horizontal, 16)
+      .padding(.top, 16)
+      .padding(.bottom, 8)
+    }
+
+    // MARK: - Month Mode Row (간소화된 행)
+
+    @ViewBuilder
+    private func monthModeRow(for date: Date) -> some View {
+      let calendar = Calendar.current
+      let dateKey = calendar.startOfDay(for: date)
+      let dayPromises = store.promisesByDate[dateKey] ?? []
+      let isSelected = calendar.isDate(date, inSameDayAs: store.selectedDate)
+
+      if !dayPromises.isEmpty {
+        CompactPromiseRow(
+          date: date,
+          promises: dayPromises,
+          isSelected: isSelected,
+          onTap: {
+            // 탭하면 주간 뷰로 전환
+            store.send(.view(.collapseToWeek(date)), animation: .easeInOut(duration: 0.3))
+          }
+        )
+        .id(date)
+      }
     }
 
     // MARK: - Empty State
@@ -609,11 +740,7 @@ private struct DiaryStyleSectionHeader: View {
   }
 
   private var formattedDate: String {
-    let baseDate = DateFormatterCache.sectionHeader.string(from: date)
-    if sharedCalendar.isDateInToday(date) {
-      return "\(baseDate) · 오늘"
-    }
-    return baseDate
+    DateFormatterCache.sectionHeader.string(from: date)
   }
 }
 

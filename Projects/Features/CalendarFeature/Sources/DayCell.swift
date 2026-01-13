@@ -17,6 +17,7 @@ struct DayCell: View {
   let isCurrentMonth: Bool
   let promiseStatuses: [MockPromiseStatus]
   let namespace: Namespace.ID
+  let selectionId: String  // 주간/월간 구분용 ID
   let onTap: () -> Void
 
   // 캐싱된 날짜 숫자 (Calendar.component 사용으로 DateFormatter 제거)
@@ -33,7 +34,7 @@ struct DayCell: View {
           if isSelected {
             Circle()
               .fill(Color.blue)
-              .matchedGeometryEffect(id: "daySelection", in: namespace)
+              .matchedGeometryEffect(id: selectionId, in: namespace)
           } else if isToday {
             Circle()
               .stroke(Color.blue, lineWidth: 2)
@@ -109,6 +110,7 @@ struct DayCell: View {
         isCurrentMonth: true,
         promiseStatuses: [.confirmed, .pending],
         namespace: namespace,
+        selectionId: "preview",
         onTap: {}
       )
 
@@ -119,6 +121,7 @@ struct DayCell: View {
         isCurrentMonth: true,
         promiseStatuses: [.proposed],
         namespace: namespace,
+        selectionId: "preview",
         onTap: {}
       )
 
@@ -129,6 +132,7 @@ struct DayCell: View {
         isCurrentMonth: true,
         promiseStatuses: [],
         namespace: namespace,
+        selectionId: "preview",
         onTap: {}
       )
 
@@ -139,6 +143,7 @@ struct DayCell: View {
         isCurrentMonth: false,
         promiseStatuses: [.confirmed],
         namespace: namespace,
+        selectionId: "preview",
         onTap: {}
       )
     }

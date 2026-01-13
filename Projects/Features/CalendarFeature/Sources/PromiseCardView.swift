@@ -256,6 +256,121 @@ struct DayRowView: View {
   }
 }
 
+// MARK: - Compact Promise Row (월간 뷰용)
+
+/// 월간 뷰용 간소화된 약속 행
+struct CompactPromiseRow: View {
+  let date: Date
+  let promises: [MockPromise]
+  let isSelected: Bool
+  let onTap: () -> Void
+
+  var body: some View {
+    Button(action: onTap) {
+      HStack(spacing: 12) {
+        // 날짜
+        VStack(spacing: 2) {
+          ZStack {
+            if isSelected {
+              Circle()
+                .fill(Color.blue)
+                .frame(width: 32, height: 32)
+            }
+            Text(dayNumber)
+              .font(.system(size: 18, weight: .bold))
+              .foregroundColor(dateTextColor)
+          }
+          Text(weekday)
+            .font(.system(size: 11, weight: .medium))
+            .foregroundColor(isSelected ? .blue : .secondary)
+        }
+        .frame(width: 36)
+
+        // 구분선
+        Rectangle()
+          .fill(Color(.separator).opacity(0.3))
+          .frame(width: 1, height: 32)
+
+        // 약속 요약
+        if let firstPromise = promises.first {
+          HStack(spacing: 8) {
+            Text(firstPromise.emoji)
+              .font(.system(size: 16))
+
+            VStack(alignment: .leading, spacing: 2) {
+              HStack(spacing: 4) {
+                Text(firstPromise.title)
+                  .font(.system(size: 15, weight: .medium))
+                  .foregroundColor(.primary)
+                  .lineLimit(1)
+
+                if promises.count > 1 {
+                  Text("외 \(promises.count - 1)건")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+                }
+              }
+
+              Text(firstPromise.timeText)
+                .font(.system(size: 12))
+                .foregroundColor(.secondary)
+            }
+          }
+        }
+
+        Spacer()
+
+        // 화살표
+        Image(systemName: "chevron.right")
+          .font(.system(size: 12, weight: .semibold))
+          .foregroundColor(.secondary.opacity(0.5))
+      }
+      .padding(.horizontal, 16)
+      .padding(.vertical, 12)
+      .background(rowBackground)
+      .cornerRadius(12)
+      .overlay(
+        RoundedRectangle(cornerRadius: 12)
+          .stroke(isSelected ? Color.blue.opacity(0.3) : Color.clear, lineWidth: 1.5)
+      )
+    }
+    .buttonStyle(.plain)
+    .padding(.horizontal, 16)
+    .padding(.vertical, 4)
+  }
+
+  // MARK: - Computed Properties
+
+  private var dayNumber: String {
+    String(promiseViewCalendar.component(.day, from: date))
+  }
+
+  private var weekday: String {
+    PromiseViewFormatterCache.shortWeekday.string(from: date)
+  }
+
+  private var isToday: Bool {
+    promiseViewCalendar.isDateInToday(date)
+  }
+
+  private var dateTextColor: Color {
+    if isSelected {
+      return .white
+    }
+    if isToday {
+      return .blue
+    }
+    return .primary
+  }
+
+  private var rowBackground: Color {
+    if isSelected {
+      return Color.blue.opacity(0.08)
+    }
+    return Color(.secondarySystemBackground).opacity(0.5)
+  }
+}
+
 // MARK: - Empty Day Placeholder
 
 /// 약속이 없는 날 표시
