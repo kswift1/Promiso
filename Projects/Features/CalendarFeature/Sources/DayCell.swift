@@ -3,6 +3,7 @@
 
 import SwiftUI
 import Clients
+import ResourceKit
 
 // MARK: - Shared Calendar Instance
 
@@ -57,11 +58,11 @@ struct DayCell: View {
           // 선택 상태 배경
           if isSelected {
             Circle()
-              .fill(Color.blue)
+              .fill(Color.pmindigo.n500)
               .matchedGeometryEffect(id: selectionId, in: namespace)
           } else if isToday {
             Circle()
-              .stroke(Color.blue, lineWidth: 2)
+              .stroke(Color.pmindigo.n500, lineWidth: 2)
           }
 
           Text(dayNumber)
@@ -102,7 +103,7 @@ struct DayCell: View {
       return .white
     }
     if isToday {
-      return .blue
+      return Color.pmindigo.n500
     }
     if !isCurrentMonth {
       return .secondary.opacity(0.5)

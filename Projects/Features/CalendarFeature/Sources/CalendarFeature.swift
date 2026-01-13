@@ -6,6 +6,7 @@ import SwiftUI
 import ComposableArchitecture
 import PromisoShared
 import Clients
+import ResourceKit
 import os.log
 
 // MARK: - Debug Logger
@@ -1092,10 +1093,10 @@ private struct CalendarHeader: View {
         Button(action: onMoveToToday) {
           Text("오늘")
             .font(.system(size: 14, weight: .semibold))
-            .foregroundColor(.blue)
+            .foregroundColor(Color.pmindigo.n500)
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
-            .background(Color.blue.opacity(0.1))
+            .background(Color.pmindigo.n500.opacity(0.1))
             .cornerRadius(8)
         }
       }
@@ -1225,7 +1226,7 @@ private struct FloatingDateHeader: View {
           .foregroundColor(.white)
           .padding(.horizontal, 6)
           .padding(.vertical, 2)
-          .background(Color.blue)
+          .background(Color.pmindigo.n500)
           .cornerRadius(6)
       }
     }

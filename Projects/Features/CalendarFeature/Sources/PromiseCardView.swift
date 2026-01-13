@@ -3,6 +3,7 @@
 
 import SwiftUI
 import Clients
+import ResourceKit
 
 // MARK: - Promise Response Status UI Extension
 
@@ -143,17 +144,16 @@ extension PromiseCardView {
   @ViewBuilder
   fileprivate func respondButton(action: @escaping () -> Void) -> some View {
     Button(action: action) {
-      HStack(spacing: 6) {
+      HStack(spacing: 8) {
         Image(systemName: "hand.tap.fill")
-          .font(.system(size: 12))
+          .font(.system(size: 14, weight: .medium))
         Text("응답하기")
-          .font(.system(size: 14, weight: .semibold))
+          .font(.system(size: 15, weight: .semibold))
       }
       .foregroundColor(.white)
       .frame(maxWidth: .infinity)
-      .padding(.vertical, 10)
-      .background(Color.blue)
-      .cornerRadius(10)
+      .padding(.vertical, 12)
+      .adaptiveGlassRespondButton()
     }
     .buttonStyle(.plain)
   }
@@ -170,6 +170,29 @@ private extension View {
     } else {
       self
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+    }
+  }
+
+  @ViewBuilder
+  func adaptiveGlassRespondButton() -> some View {
+    if #available(iOS 26.0, *) {
+      self
+        .glassEffect(
+          .regular.tint(Color.pmindigo.n500.opacity(0.8)).interactive(),
+          in: .rect(cornerRadius: 10)
+        )
+        .shadow(color: Color.pmindigo.n500.opacity(0.3), radius: 8, y: 4)
+    } else {
+      self
+        .background(
+          LinearGradient(
+            colors: [Color.pmindigo.n500, Color.pmindigo.n600],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+          ),
+          in: RoundedRectangle(cornerRadius: 10)
+        )
+        .shadow(color: Color.pmindigo.n500.opacity(0.3), radius: 8, y: 4)
     }
   }
 }
@@ -222,7 +245,7 @@ struct CompactDayRow: View {
           ZStack {
             if isSelected {
               Circle()
-                .fill(Color.blue)
+                .fill(Color.pmindigo.n500)
                 .frame(width: 32, height: 32)
             }
             Text(dayNumber)
@@ -231,7 +254,7 @@ struct CompactDayRow: View {
           }
           Text(weekday)
             .font(.system(size: 11, weight: .medium))
-            .foregroundColor(isSelected ? .blue : .secondary)
+            .foregroundColor(isSelected ? Color.pmindigo.n500 : .secondary)
         }
         .frame(width: 36)
 
@@ -327,7 +350,7 @@ struct CompactDayRow: View {
       return .white
     }
     if isToday {
-      return .blue
+      return Color.pmindigo.n500
     }
     return .primary
   }
