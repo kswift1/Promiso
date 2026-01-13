@@ -247,6 +247,11 @@ extension CalendarFeature {
       var isSelectedDateToday: Bool {
         Calendar.current.isDateInToday(selectedDate)
       }
+
+      /// 초기 로딩 중 (데이터가 없고 로딩 중일 때)
+      var isInitialLoading: Bool {
+        isLoadingPromises && loadedMonths.isEmpty
+      }
     }
 
     // MARK: - Action
@@ -864,7 +869,9 @@ extension CalendarFeature {
           .padding(.vertical, 8)
         }
 
-        if store.sectionDates.isEmpty {
+        if store.isInitialLoading {
+          loadingView
+        } else if store.sectionDates.isEmpty {
           emptyStateView
         } else {
           ForEach(store.sectionDates, id: \.self) { date in
@@ -879,7 +886,9 @@ extension CalendarFeature {
 
     private var monthPromiseListContent: some View {
       LazyVStack(spacing: 0) {
-        if store.sectionDates.isEmpty {
+        if store.isInitialLoading {
+          loadingView
+        } else if store.sectionDates.isEmpty {
           emptyStateView
         } else {
           monthModeHeader
@@ -995,6 +1004,28 @@ extension CalendarFeature {
         )
         .id(date)
       }
+    }
+
+    // MARK: - Loading View
+
+    private var loadingView: some View {
+      VStack(spacing: 16) {
+        Spacer()
+          .frame(height: 60)
+
+        ProgressView()
+          .scaleEffect(1.2)
+          .tint(Color.pmindigo.n500)
+
+        Text("약속을 불러오는 중...")
+          .font(.system(size: 15))
+          .foregroundColor(.secondary)
+
+        Spacer()
+          .frame(height: 60)
+      }
+      .frame(maxWidth: .infinity)
+      .padding(.horizontal, 20)
     }
 
     // MARK: - Empty State
