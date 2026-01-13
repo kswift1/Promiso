@@ -468,9 +468,14 @@ extension CalendarFeature {
       case .weekPageChanged(let newWeekStart):
         // TabView 페이징으로 주가 변경됨
         state.currentWeekStart = newWeekStart
-        // selectedDate도 동기화 (주의 첫날로)
-        state.selectedDate = newWeekStart
-        debugLog("📆 weekPageChanged - 주 시작: \(formatDate(newWeekStart))")
+
+        // selectedDate가 이미 해당 주 내에 있으면 유지, 아니면 주의 첫날로 동기화
+        let calendar = Calendar.current
+        let selectedWeekStart = state.selectedDate.startOfWeek
+        if !calendar.isDate(selectedWeekStart, inSameDayAs: newWeekStart) {
+          state.selectedDate = newWeekStart
+        }
+        debugLog("📆 weekPageChanged - 주 시작: \(formatDate(newWeekStart)), 선택된 날짜: \(formatDate(state.selectedDate))")
 
         // 해당 월 로드 (캐시되지 않은 경우만)
         let monthStart = newWeekStart.startOfMonth
@@ -497,9 +502,13 @@ extension CalendarFeature {
         // TabView 페이징으로 월이 변경됨
         let monthStart = newMonth.startOfMonth
         state.currentMonth = monthStart
-        // selectedDate도 동기화 (월의 첫날로)
-        state.selectedDate = monthStart
-        debugLog("📆 monthPageChanged - 월: \(formatMonth(newMonth))")
+
+        // selectedDate가 이미 해당 월 내에 있으면 유지, 아니면 월의 첫날로 동기화
+        let selectedMonthStart = state.selectedDate.startOfMonth
+        if !Calendar.current.isDate(selectedMonthStart, inSameDayAs: monthStart) {
+          state.selectedDate = monthStart
+        }
+        debugLog("📆 monthPageChanged - 월: \(formatMonth(newMonth)), 선택된 날짜: \(formatDate(state.selectedDate))")
 
         // 해당 월 로드 (캐시되지 않은 경우만)
         var effects: [Effect<Action>] = []
