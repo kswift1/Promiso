@@ -58,7 +58,7 @@ extension RootTab {
       public init(currentUser: UserPrivateModel) {
         self.groupMain = GroupMain.Feature.State(currentUser: currentUser)
         self.home = Home.Feature.State(currentUser: currentUser)
-        self.calendar = CalendarFeature.Feature.State()
+        self.calendar = CalendarFeature.Feature.State(currentUserId: currentUser.id)
       }
     }
     

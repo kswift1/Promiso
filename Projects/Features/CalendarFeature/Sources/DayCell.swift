@@ -2,6 +2,7 @@
 // 캘린더 날짜 셀 컴포넌트
 
 import SwiftUI
+import Clients
 
 // MARK: - Shared Calendar Instance
 
@@ -15,7 +16,7 @@ struct DayCell: View {
   let isSelected: Bool
   let isToday: Bool
   let isCurrentMonth: Bool
-  let promiseStatuses: [MockPromiseStatus]
+  let promiseStatuses: [PromiseResponseStatus]
   let systemEventCount: Int  // 시스템 캘린더 이벤트 개수
   let namespace: Namespace.ID
   let selectionId: String  // 주간/월간 구분용 ID
@@ -26,7 +27,7 @@ struct DayCell: View {
     isSelected: Bool,
     isToday: Bool,
     isCurrentMonth: Bool,
-    promiseStatuses: [MockPromiseStatus],
+    promiseStatuses: [PromiseResponseStatus],
     systemEventCount: Int = 0,
     namespace: Namespace.ID,
     selectionId: String,
@@ -139,7 +140,7 @@ struct DayCell: View {
         isSelected: false,
         isToday: true,
         isCurrentMonth: true,
-        promiseStatuses: [.confirmed, .pending],
+        promiseStatuses: [.confirmed, .responded],
         namespace: namespace,
         selectionId: "preview",
         onTap: {}
@@ -150,7 +151,7 @@ struct DayCell: View {
         isSelected: true,
         isToday: false,
         isCurrentMonth: true,
-        promiseStatuses: [.proposed],
+        promiseStatuses: [.needResponse],
         namespace: namespace,
         selectionId: "preview",
         onTap: {}

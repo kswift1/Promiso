@@ -99,6 +99,13 @@ public struct PromiseClient: Sendable {
   /// 그룹의 활성 약속 개수 조회
   public var getActivePromiseCount: @Sendable (_ groupId: String) async throws -> Int
 
+  /// 날짜 범위로 약속 조회 (캘린더용)
+  public var getPromisesByDateRange: @Sendable (
+    _ userId: String,
+    _ startDate: Date,
+    _ endDate: Date
+  ) async throws -> [PromiseModel]
+
   /// 그룹의 활성 약속 실시간 구독
   public var subscribeToPromises: @Sendable (_ groupId: String, _ limit: Int) -> AsyncStream<[PromiseModel]> = { _, _ in AsyncStream { _ in } }
 
@@ -145,6 +152,10 @@ extension PromiseClient: TestDependencyKey {
     getActivePromiseCount: { _ in
       try await Task.sleep(for: .seconds(0.3))
       return 3
+    },
+    getPromisesByDateRange: { _, _, _ in
+      try await Task.sleep(for: .seconds(0.5))
+      return PromiseModel.examples
     },
     subscribeToPromises: { _, _ in
       AsyncStream { continuation in
@@ -210,6 +221,9 @@ extension PromiseClient: DependencyKey {
       },
       getActivePromiseCount: { groupId in
         try await dataSource.getActivePromiseCount(groupId: groupId)
+      },
+      getPromisesByDateRange: { userId, startDate, endDate in
+        try await dataSource.getPromisesByDateRange(userId: userId, startDate: startDate, endDate: endDate)
       },
       subscribeToPromises: { groupId, limit in
         dataSource.subscribeToActivePromises(groupId: groupId, limit: limit)

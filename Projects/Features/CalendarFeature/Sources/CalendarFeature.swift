@@ -1,11 +1,52 @@
 // MARK: - CalendarFeature.swift
 // 캘린더 Feature - TCA Reducer 및 메인 뷰
-// 주간/월간 토글, 목업 데이터 기반 UI
+// 주간/월간 토글, 실제 데이터 연동
 
 import SwiftUI
 import ComposableArchitecture
 import PromisoShared
 import Clients
+import os.log
+
+// MARK: - Debug Logger
+
+private let calendarLogger = Logger(subsystem: "com.promiso", category: "CalendarFeature")
+
+/// 디버그 모드 플래그 (Release에서는 false)
+#if DEBUG
+private let isDebugLoggingEnabled = true
+#else
+private let isDebugLoggingEnabled = false
+#endif
+
+private func debugLog(_ message: String, type: OSLogType = .debug) {
+  guard isDebugLoggingEnabled else { return }
+  calendarLogger.log(level: type, "📅 \(message)")
+}
+
+// MARK: - Debug Formatting Helpers
+
+private let debugDateFormatter: DateFormatter = {
+  let formatter = DateFormatter()
+  formatter.locale = Locale(identifier: "ko_KR")
+  formatter.dateFormat = "yyyy-MM-dd"
+  return formatter
+}()
+
+private let debugMonthFormatter: DateFormatter = {
+  let formatter = DateFormatter()
+  formatter.locale = Locale(identifier: "ko_KR")
+  formatter.dateFormat = "yyyy년 M월"
+  return formatter
+}()
+
+private func formatDate(_ date: Date) -> String {
+  debugDateFormatter.string(from: date)
+}
+
+private func formatMonth(_ date: Date) -> String {
+  debugMonthFormatter.string(from: date)
+}
 
 // MARK: - Feature Namespace
 
@@ -25,6 +66,9 @@ extension CalendarFeature {
 
     @ObservableState
     public struct State: Equatable, Sendable {
+      /// 현재 사용자 ID
+      var currentUserId: String
+
       /// 표시 모드 (주간/월간)
       var displayMode: CalendarDisplayMode = .week
 
@@ -37,8 +81,17 @@ extension CalendarFeature {
       /// 선택된 날짜
       var selectedDate: Date
 
-      /// 목업 약속 데이터
-      var mockPromises: [MockPromise]
+      /// 약속 데이터 (실제 서버 데이터) - 현재 표시 범위용
+      var promises: [PromiseModel] = []
+
+      /// 월별 약속 캐시 (키: 월 시작일)
+      var cachedPromisesByMonth: [Date: [PromiseModel]] = [:]
+
+      /// 이미 로드된 월 (중복 요청 방지)
+      var loadedMonths: Set<Date> = []
+
+      /// 약속 로딩 중
+      var isLoadingPromises: Bool = false
 
       /// 주간 ↔ 월간 전환 애니메이션 진행 중
       var isTransitioning: Bool = false
@@ -58,14 +111,15 @@ extension CalendarFeature {
       var isLoadingCalendarEvents: Bool = false
 
       public init(
+        currentUserId: String,
         displayMode: CalendarDisplayMode = .week,
         selectedDate: Date = Date()
       ) {
+        self.currentUserId = currentUserId
         self.displayMode = displayMode
         self.selectedDate = selectedDate
         self.currentWeekStart = selectedDate.startOfWeek
         self.currentMonth = selectedDate.startOfMonth
-        self.mockPromises = MockDataGenerator.generateMockPromises()
       }
 
       // MARK: - Computed Properties
@@ -78,13 +132,35 @@ extension CalendarFeature {
         }
       }
 
-      /// 날짜별로 그룹화된 약속
-      var promisesByDate: [Date: [MockPromise]] {
+      /// 날짜별로 그룹화된 약속 (캐시에서 현재 표시 범위 필터링)
+      var promisesByDate: [Date: [PromiseModel]] {
         let calendar = Calendar.current
-        var grouped: [Date: [MockPromise]] = [:]
+        var grouped: [Date: [PromiseModel]] = [:]
 
-        for promise in mockPromises {
-          let dateKey = calendar.startOfDay(for: promise.date)
+        // 현재 표시 범위에 해당하는 월들의 캐시된 약속 수집
+        let relevantMonths: [Date]
+        if displayMode == .week {
+          // 주간 뷰: 해당 주가 걸쳐있는 월들 (최대 2개월)
+          let weekEnd = calendar.date(byAdding: .day, value: 6, to: currentWeekStart) ?? currentWeekStart
+          let startMonth = currentWeekStart.startOfMonth
+          let endMonth = weekEnd.startOfMonth
+          relevantMonths = startMonth == endMonth ? [startMonth] : [startMonth, endMonth]
+        } else {
+          // 월간 뷰: 현재 월만
+          relevantMonths = [currentMonth.startOfMonth]
+        }
+
+        // 관련 월들의 캐시된 약속 합치기
+        var allPromises: [PromiseModel] = []
+        for month in relevantMonths {
+          if let cached = cachedPromisesByMonth[month] {
+            allPromises.append(contentsOf: cached)
+          }
+        }
+
+        // 날짜별 그룹화
+        for promise in allPromises {
+          let dateKey = calendar.startOfDay(for: promise.startAt)
           if grouped[dateKey] != nil {
             grouped[dateKey]?.append(promise)
           } else {
@@ -92,9 +168,12 @@ extension CalendarFeature {
           }
         }
 
-        // 시간순 정렬
+        // 시간순 정렬 및 중복 제거
         for (date, promises) in grouped {
-          grouped[date] = promises.sorted { $0.startTime < $1.startTime }
+          let uniquePromises = Array(Set(promises.map { $0.id }).compactMap { id in
+            promises.first { $0.id == id }
+          })
+          grouped[date] = uniquePromises.sorted { $0.startAt < $1.startAt }
         }
 
         return grouped
@@ -179,8 +258,8 @@ extension CalendarFeature {
         case moveToToday
         case moveToPreviousPeriod
         case moveToNextPeriod
-        case promiseTapped(MockPromise)
-        case promiseRespondTapped(MockPromise)
+        case promiseTapped(PromiseModel)
+        case promiseRespondTapped(PromiseModel)
         case collapseToWeek(Date)
         // TabView 페이징으로 변경된 날짜
         case weekPageChanged(Date)
@@ -195,6 +274,10 @@ extension CalendarFeature {
 
       public enum InternalAction: Sendable {
         case transitionCompleted
+        // 약속 데이터 관련 (월 단위 캐싱)
+        case fetchPromisesForMonth(Date)  // 특정 월 데이터 로드
+        case prefetchAdjacentMonths       // 인접 월 프리페치
+        case promisesResponseForMonth(month: Date, Result<[PromiseModel], Error>)
         // EventKit 관련
         case checkCalendarPermission
         case calendarPermissionResponse(CalendarAuthorizationStatus)
@@ -203,13 +286,21 @@ extension CalendarFeature {
       }
 
       public enum Delegate: Sendable {
-        case navigateToPromiseDetail(MockPromise)
-        case navigateToPromiseRespond(MockPromise)
+        case navigateToPromiseDetail(PromiseModel)
+        case navigateToPromiseRespond(PromiseModel)
       }
+    }
+
+    // MARK: - Cancellation IDs
+
+    private enum CancelID: Hashable {
+      case fetchPromises
+      case fetchCalendarEvents
     }
 
     // MARK: - Dependencies
 
+    @Dependency(\.promiseClient) var promiseClient
     @Dependency(\.eventKitClient) var eventKitClient
 
     // MARK: - Reducer Body
@@ -237,8 +328,16 @@ extension CalendarFeature {
 
       switch action {
       case .onAppear:
-        // 캘린더 권한 확인
-        return .send(.internal(.checkCalendarPermission))
+        // 현재 표시 범위의 월 데이터 로드 + 캘린더 권한 확인
+        let monthsToLoad = getMonthsToLoad(state: state)
+        debugLog("🚀 onAppear - 로드할 월: \(monthsToLoad.map { formatMonth($0) })")
+        debugLog("📦 현재 캐시 상태: \(state.loadedMonths.map { formatMonth($0) })")
+
+        var effects: [Effect<Action>] = monthsToLoad.map { month in
+          .send(.internal(.fetchPromisesForMonth(month)))
+        }
+        effects.append(.send(.internal(.checkCalendarPermission)))
+        return .merge(effects)
 
       case .toggleDisplayMode:
         state.isTransitioning = true
@@ -324,20 +423,57 @@ extension CalendarFeature {
       case .weekPageChanged(let newWeekStart):
         // TabView 페이징으로 주가 변경됨
         state.currentWeekStart = newWeekStart
-        // 새 주의 캘린더 이벤트 가져오기
-        if state.calendarPermissionStatus.canReadEvents {
-          return .send(.internal(.fetchCalendarEvents))
+        debugLog("📆 weekPageChanged - 주 시작: \(formatDate(newWeekStart))")
+
+        // 해당 주가 속한 월 로드 (캐시되지 않은 경우만)
+        let allMonths = getMonthsToLoad(state: state)
+        let monthsToLoad = allMonths.filter { !state.loadedMonths.contains($0) }
+
+        if monthsToLoad.isEmpty {
+          debugLog("✅ 캐시 HIT - 필요한 월 모두 캐시됨: \(allMonths.map { formatMonth($0) })")
+        } else {
+          debugLog("🔄 캐시 MISS - 로드 필요: \(monthsToLoad.map { formatMonth($0) })")
         }
-        return .none
+
+        var effects: [Effect<Action>] = monthsToLoad.map { month in
+          .send(.internal(.fetchPromisesForMonth(month)))
+        }
+
+        // 캘린더 이벤트 로드
+        if state.calendarPermissionStatus.canReadEvents {
+          effects.append(.send(.internal(.fetchCalendarEvents)))
+        }
+
+        // 인접 월 프리페치
+        effects.append(.send(.internal(.prefetchAdjacentMonths)))
+
+        return effects.isEmpty ? .none : .merge(effects)
 
       case .monthPageChanged(let newMonth):
         // TabView 페이징으로 월이 변경됨
         state.currentMonth = newMonth.startOfMonth
-        // 새 월의 캘린더 이벤트 가져오기
-        if state.calendarPermissionStatus.canReadEvents {
-          return .send(.internal(.fetchCalendarEvents))
+        debugLog("📆 monthPageChanged - 월: \(formatMonth(newMonth))")
+
+        // 해당 월 로드 (캐시되지 않은 경우만)
+        let monthStart = newMonth.startOfMonth
+        var effects: [Effect<Action>] = []
+
+        if !state.loadedMonths.contains(monthStart) {
+          debugLog("🔄 캐시 MISS - 로드 필요: \(formatMonth(monthStart))")
+          effects.append(.send(.internal(.fetchPromisesForMonth(monthStart))))
+        } else {
+          debugLog("✅ 캐시 HIT - 이미 로드됨: \(formatMonth(monthStart))")
         }
-        return .none
+
+        // 캘린더 이벤트 로드
+        if state.calendarPermissionStatus.canReadEvents {
+          effects.append(.send(.internal(.fetchCalendarEvents)))
+        }
+
+        // 인접 월 프리페치
+        effects.append(.send(.internal(.prefetchAdjacentMonths)))
+
+        return effects.isEmpty ? .none : .merge(effects)
 
       case .scrollTo(let date):
         // 특정 날짜로 스크롤
@@ -388,6 +524,89 @@ extension CalendarFeature {
         state.isTransitioning = false
         return .none
 
+      case .fetchPromisesForMonth(let month):
+        let monthStart = month.startOfMonth
+
+        // 이미 로드된 월이면 스킵
+        guard !state.loadedMonths.contains(monthStart) else {
+          debugLog("⏭️ fetchPromisesForMonth 스킵 - 이미 로드됨: \(formatMonth(monthStart))")
+          return .none
+        }
+
+        state.isLoadingPromises = true
+        debugLog("🌐 API 요청 시작 - \(formatMonth(monthStart))")
+
+        // 월의 시작과 끝 계산
+        let calendar = Calendar.current
+        let endDate = calendar.date(byAdding: .month, value: 1, to: monthStart) ?? monthStart
+        let userId = state.currentUserId
+
+        return .run { [promiseClient] send in
+          let startTime = Date()
+          do {
+            let promises = try await promiseClient.getPromisesByDateRange(userId, monthStart, endDate)
+            let elapsed = Date().timeIntervalSince(startTime)
+            debugLog("✅ API 응답 성공 - \(formatMonth(monthStart)): \(promises.count)개 약속, \(String(format: "%.2f", elapsed))초")
+            await send(.internal(.promisesResponseForMonth(month: monthStart, .success(promises))))
+          } catch {
+            let elapsed = Date().timeIntervalSince(startTime)
+            debugLog("❌ API 응답 실패 - \(formatMonth(monthStart)): \(error.localizedDescription), \(String(format: "%.2f", elapsed))초", type: .error)
+            await send(.internal(.promisesResponseForMonth(month: monthStart, .failure(error))))
+          }
+        }
+        .cancellable(id: CancelID.fetchPromises, cancelInFlight: true)
+
+      case .prefetchAdjacentMonths:
+        // 현재 월 기준 전/후 월 프리페치
+        let calendar = Calendar.current
+        let currentMonth: Date
+
+        if state.displayMode == .week {
+          currentMonth = state.currentWeekStart.startOfMonth
+        } else {
+          currentMonth = state.currentMonth.startOfMonth
+        }
+
+        var monthsToFetch: [Date] = []
+
+        if let prevMonth = calendar.date(byAdding: .month, value: -1, to: currentMonth)?.startOfMonth,
+           !state.loadedMonths.contains(prevMonth) {
+          monthsToFetch.append(prevMonth)
+        }
+
+        if let nextMonth = calendar.date(byAdding: .month, value: 1, to: currentMonth)?.startOfMonth,
+           !state.loadedMonths.contains(nextMonth) {
+          monthsToFetch.append(nextMonth)
+        }
+
+        if monthsToFetch.isEmpty {
+          debugLog("⏭️ 프리페치 스킵 - 인접 월 모두 캐시됨")
+          return .none
+        }
+
+        debugLog("🔮 프리페치 시작 - \(monthsToFetch.map { formatMonth($0) })")
+
+        // 프리페치는 백그라운드에서 조용히 실행 (로딩 표시 없음)
+        return .merge(monthsToFetch.map { month in
+          .send(.internal(.fetchPromisesForMonth(month)))
+        })
+
+      case .promisesResponseForMonth(let month, let result):
+        state.isLoadingPromises = false
+
+        switch result {
+        case .success(let promises):
+          // 월별 캐시에 저장
+          state.cachedPromisesByMonth[month] = promises
+          state.loadedMonths.insert(month)
+          debugLog("💾 캐시 저장 완료 - \(formatMonth(month)): \(promises.count)개 약속")
+          debugLog("📦 현재 캐시 상태: \(state.loadedMonths.map { formatMonth($0) })")
+        case .failure(let error):
+          // 실패해도 재시도 가능하도록 loadedMonths에 추가하지 않음
+          debugLog("⚠️ 캐시 저장 실패 - \(formatMonth(month)): \(error.localizedDescription)", type: .error)
+        }
+        return .none
+
       case .checkCalendarPermission:
         let status = eventKitClient.authorizationStatus()
         state.calendarPermissionStatus = status
@@ -435,6 +654,29 @@ extension CalendarFeature {
           state.calendarEvents = []
         }
         return .none
+      }
+    }
+
+    // MARK: - Helper Functions
+
+    /// 현재 표시 범위에 필요한 월 목록 반환
+    private func getMonthsToLoad(state: State) -> [Date] {
+      let calendar = Calendar.current
+
+      if state.displayMode == .week {
+        // 주간 뷰: 해당 주가 걸쳐있는 월들
+        let weekEnd = calendar.date(byAdding: .day, value: 6, to: state.currentWeekStart) ?? state.currentWeekStart
+        let startMonth = state.currentWeekStart.startOfMonth
+        let endMonth = weekEnd.startOfMonth
+
+        if startMonth == endMonth {
+          return [startMonth]
+        } else {
+          return [startMonth, endMonth]
+        }
+      } else {
+        // 월간 뷰: 현재 월만
+        return [state.currentMonth.startOfMonth]
       }
     }
   }
@@ -497,6 +739,7 @@ extension CalendarFeature {
           selectedDate: store.selectedDate,
           promisesByDate: store.promisesByDate,
           calendarEventsByDate: store.calendarEventsByDate,
+          currentUserId: store.currentUserId,
           namespace: calendarAnimation,
           onDateSelected: { date in
             store.send(.view(.selectDate(date)), animation: .easeInOut(duration: 0.2))
@@ -517,6 +760,7 @@ extension CalendarFeature {
           selectedDate: store.selectedDate,
           promisesByDate: store.promisesByDate,
           calendarEventsByDate: store.calendarEventsByDate,
+          currentUserId: store.currentUserId,
           namespace: calendarAnimation,
           onDateSelected: { date in
             store.send(.view(.selectDate(date)), animation: .easeInOut(duration: 0.2))
@@ -652,8 +896,9 @@ extension CalendarFeature {
           ForEach(dayPromises) { promise in
             PromiseCardView(
               promise: promise,
+              currentUserId: store.currentUserId,
               onTap: { store.send(.view(.promiseTapped(promise))) },
-              onRespond: promise.needsMyResponse
+              onRespond: promise.responseStatus(currentUserId: store.currentUserId) == .needResponse
                 ? { store.send(.view(.promiseRespondTapped(promise))) }
                 : nil
             )
@@ -717,6 +962,7 @@ extension CalendarFeature {
           promises: dayPromises,
           calendarEvents: dayEvents,
           isSelected: isSelected,
+          currentUserId: store.currentUserId,
           onTap: {
             // 탭하면 주간 뷰로 전환
             store.send(.view(.collapseToWeek(date)), animation: .easeInOut(duration: 0.3))
@@ -959,7 +1205,7 @@ private struct FloatingDateHeader: View {
 // MARK: - Preview
 
 #Preview("Calendar Feature - Week Mode") {
-  let store = Store(initialState: CalendarFeature.Feature.State(displayMode: .week)) {
+  let store = Store(initialState: CalendarFeature.Feature.State(currentUserId: "preview_user", displayMode: .week)) {
     CalendarFeature.Feature()
   }
 
@@ -967,7 +1213,7 @@ private struct FloatingDateHeader: View {
 }
 
 #Preview("Calendar Feature - Month Mode") {
-  let store = Store(initialState: CalendarFeature.Feature.State(displayMode: .month)) {
+  let store = Store(initialState: CalendarFeature.Feature.State(currentUserId: "preview_user", displayMode: .month)) {
     CalendarFeature.Feature()
   }
 

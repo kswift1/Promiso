@@ -30,8 +30,9 @@ private enum WeekPagesConfig {
 struct PagingWeekStripView: View {
   @Binding var currentWeekStart: Date
   let selectedDate: Date
-  let promisesByDate: [Date: [MockPromise]]
+  let promisesByDate: [Date: [PromiseModel]]
   let calendarEventsByDate: [Date: [CalendarEvent]]
+  let currentUserId: String
   let namespace: Namespace.ID
   let onDateSelected: (Date) -> Void
 
@@ -44,8 +45,9 @@ struct PagingWeekStripView: View {
   init(
     currentWeekStart: Binding<Date>,
     selectedDate: Date,
-    promisesByDate: [Date: [MockPromise]],
+    promisesByDate: [Date: [PromiseModel]],
     calendarEventsByDate: [Date: [CalendarEvent]] = [:],
+    currentUserId: String,
     namespace: Namespace.ID,
     onDateSelected: @escaping (Date) -> Void
   ) {
@@ -53,6 +55,7 @@ struct PagingWeekStripView: View {
     self.selectedDate = selectedDate
     self.promisesByDate = promisesByDate
     self.calendarEventsByDate = calendarEventsByDate
+    self.currentUserId = currentUserId
     self.namespace = namespace
     self.onDateSelected = onDateSelected
 
@@ -70,6 +73,7 @@ struct PagingWeekStripView: View {
           selectedDate: selectedDate,
           promisesByDate: promisesByDate,
           calendarEventsByDate: calendarEventsByDate,
+          currentUserId: currentUserId,
           namespace: namespace,
           onDateSelected: onDateSelected
         )
@@ -152,8 +156,9 @@ struct PagingWeekStripView: View {
 struct WeekStripContent: View {
   let weekDates: [Date]
   let selectedDate: Date
-  let promisesByDate: [Date: [MockPromise]]
+  let promisesByDate: [Date: [PromiseModel]]
   let calendarEventsByDate: [Date: [CalendarEvent]]
+  let currentUserId: String
   let namespace: Namespace.ID
   let onDateSelected: (Date) -> Void
 
@@ -187,10 +192,10 @@ struct WeekStripContent: View {
 
   // MARK: - Helper
 
-  private func getPromiseStatuses(for date: Date) -> [MockPromiseStatus] {
+  private func getPromiseStatuses(for date: Date) -> [PromiseResponseStatus] {
     let dateKey = weekStripCalendar.startOfDay(for: date)
     guard let promises = promisesByDate[dateKey] else { return [] }
-    return promises.map { $0.status }
+    return promises.map { $0.responseStatus(currentUserId: currentUserId) }
   }
 
   private func getSystemEventCount(for date: Date) -> Int {
@@ -215,6 +220,7 @@ struct WeekStripContent: View {
       currentWeekStart: $currentWeekStart,
       selectedDate: selectedDate,
       promisesByDate: [:],
+      currentUserId: "preview_user",
       namespace: namespace,
       onDateSelected: { selectedDate = $0 }
     )

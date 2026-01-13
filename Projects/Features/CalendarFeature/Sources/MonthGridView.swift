@@ -30,8 +30,9 @@ private enum MonthPagesConfig {
 struct PagingMonthGridView: View {
   @Binding var currentMonth: Date
   let selectedDate: Date
-  let promisesByDate: [Date: [MockPromise]]
+  let promisesByDate: [Date: [PromiseModel]]
   let calendarEventsByDate: [Date: [CalendarEvent]]
+  let currentUserId: String
   let namespace: Namespace.ID
   let onDateSelected: (Date) -> Void
   let onCollapseToWeek: (Date) -> Void
@@ -45,8 +46,9 @@ struct PagingMonthGridView: View {
   init(
     currentMonth: Binding<Date>,
     selectedDate: Date,
-    promisesByDate: [Date: [MockPromise]],
+    promisesByDate: [Date: [PromiseModel]],
     calendarEventsByDate: [Date: [CalendarEvent]] = [:],
+    currentUserId: String,
     namespace: Namespace.ID,
     onDateSelected: @escaping (Date) -> Void,
     onCollapseToWeek: @escaping (Date) -> Void
@@ -55,6 +57,7 @@ struct PagingMonthGridView: View {
     self.selectedDate = selectedDate
     self.promisesByDate = promisesByDate
     self.calendarEventsByDate = calendarEventsByDate
+    self.currentUserId = currentUserId
     self.namespace = namespace
     self.onDateSelected = onDateSelected
     self.onCollapseToWeek = onCollapseToWeek
@@ -73,6 +76,7 @@ struct PagingMonthGridView: View {
           selectedDate: selectedDate,
           promisesByDate: promisesByDate,
           calendarEventsByDate: calendarEventsByDate,
+          currentUserId: currentUserId,
           namespace: namespace,
           onDateSelected: onDateSelected,
           onCollapseToWeek: onCollapseToWeek
@@ -148,8 +152,9 @@ struct PagingMonthGridView: View {
 struct MonthGridContent: View {
   let currentMonth: Date
   let selectedDate: Date
-  let promisesByDate: [Date: [MockPromise]]
+  let promisesByDate: [Date: [PromiseModel]]
   let calendarEventsByDate: [Date: [CalendarEvent]]
+  let currentUserId: String
   let namespace: Namespace.ID
   let onDateSelected: (Date) -> Void
   let onCollapseToWeek: (Date) -> Void
@@ -216,10 +221,10 @@ struct MonthGridContent: View {
     return dateMonth == currentMonthValue
   }
 
-  private func getPromiseStatuses(for date: Date) -> [MockPromiseStatus] {
+  private func getPromiseStatuses(for date: Date) -> [PromiseResponseStatus] {
     let dateKey = monthGridCalendar.startOfDay(for: date)
     guard let promises = promisesByDate[dateKey] else { return [] }
-    return promises.map { $0.status }
+    return promises.map { $0.responseStatus(currentUserId: currentUserId) }
   }
 
   private func getSystemEventCount(for date: Date) -> Int {
@@ -244,6 +249,7 @@ struct MonthGridContent: View {
       currentMonth: $currentMonth,
       selectedDate: selectedDate,
       promisesByDate: [:],
+      currentUserId: "preview_user",
       namespace: namespace,
       onDateSelected: { selectedDate = $0 },
       onCollapseToWeek: { _ in }

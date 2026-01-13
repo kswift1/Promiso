@@ -222,6 +222,18 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
     return try snapshot.documents.compactMap { try documentToPastPromise($0) }
   }
 
+  /// 날짜 범위로 약속 조회 (캘린더용)
+  public func getPromisesByDateRange(userId: String, startDate: Date, endDate: Date) async throws -> [PromiseModel] {
+    let query = db.environmentCollection(collectionName)
+      .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: startDate))
+      .whereField("startAt", isLessThan: Timestamp(date: endDate))
+      .whereField("isDeleted", isEqualTo: false)
+      .order(by: "startAt")
+
+    let snapshot = try await query.getDocuments()
+    return try snapshot.documents.compactMap { try documentToPromise($0) }
+  }
+
   /// 그룹의 활성 약속 개수 조회 (Firestore count aggregation 사용)
   /// subscribeToActivePromises와 동일한 조건 (startAt >= now, isDeleted == false)
   /// 과거 여부는 클라이언트에서 isPast로 계산
