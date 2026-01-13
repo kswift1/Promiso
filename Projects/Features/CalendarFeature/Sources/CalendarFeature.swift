@@ -7,6 +7,7 @@ import ComposableArchitecture
 import PromisoShared
 import Clients
 import ResourceKit
+import SharedFeature
 import os.log
 
 // MARK: - Debug Logger
@@ -92,7 +93,7 @@ extension CalendarFeature {
     // MARK: - State
 
     @ObservableState
-    public struct State: Equatable, Sendable {
+    public struct State {
       /// 현재 사용자 ID
       var currentUserId: String
 
@@ -136,6 +137,16 @@ extension CalendarFeature {
 
       /// 캘린더 이벤트 로딩 중
       var isLoadingCalendarEvents: Bool = false
+
+      // MARK: - Group 캐시
+
+      /// 그룹 정보 캐시 (키: groupId)
+      var cachedGroups: [String: GroupModel] = [:]
+
+      // MARK: - Navigation
+
+      /// 네비게이션 경로 (약속 상세 등)
+      var path = StackState<Path.State>()
 
       public init(
         currentUserId: String,
@@ -254,13 +265,20 @@ extension CalendarFeature {
       }
     }
 
+    // MARK: - Path (Navigation)
+
+    @Reducer
+    public enum Path {
+      case promiseDetail(PromiseDetail.Feature)
+    }
+
     // MARK: - Action
 
     @CasePathable
     public enum Action: Sendable {
       case view(ViewAction)
       case `internal`(InternalAction)
-      case delegate(Delegate)
+      case path(StackActionOf<Path>)
 
       @CasePathable
       public enum ViewAction: Sendable {
@@ -290,16 +308,14 @@ extension CalendarFeature {
         case fetchPromisesForMonth(Date)  // 특정 월 데이터 로드
         case prefetchAdjacentMonths       // 인접 월 프리페치
         case promisesResponseForMonth(month: Date, Result<[PromiseModel], Error>)
+        // 그룹 데이터 관련
+        case fetchGroupsForPromises([String])  // groupIds
+        case groupsResponse(Result<[GroupModel], Error>)
         // EventKit 관련
         case checkCalendarPermission
         case calendarPermissionResponse(CalendarAuthorizationStatus)
         case fetchCalendarEvents
         case calendarEventsResponse(Result<[CalendarEvent], Error>)
-      }
-
-      public enum Delegate: Sendable {
-        case navigateToPromiseDetail(PromiseModel)
-        case navigateToPromiseRespond(PromiseModel)
       }
     }
 
@@ -314,6 +330,7 @@ extension CalendarFeature {
 
     @Dependency(\.promiseClient) var promiseClient
     @Dependency(\.eventKitClient) var eventKitClient
+    @Dependency(\.groupClient) var groupClient
 
     // MARK: - Reducer Body
 
@@ -324,10 +341,31 @@ extension CalendarFeature {
           return handleViewAction(&state, viewAction)
         case .internal(let internalAction):
           return handleInternalAction(&state, internalAction)
-        case .delegate:
+        case .path(.element(id: _, action: .promiseDetail(.delegate(.dismiss)))):
+          _ = state.path.popLast()
+          return .none
+        case .path(.element(id: _, action: .promiseDetail(.delegate(.promiseDeleted)))):
+          _ = state.path.popLast()
+          // 데이터 새로고침
+          let currentMonth = state.selectedDate.startOfMonth
+          state.loadedMonths.remove(currentMonth)
+          state.cachedPromisesByMonth.removeValue(forKey: currentMonth)
+          return .send(.internal(.fetchPromisesForMonth(currentMonth)))
+        case .path(.element(id: _, action: .promiseDetail(.delegate(.promiseUpdated(let promise))))):
+          // 로컬 캐시 업데이트
+          let monthKey = promise.startAt.startOfMonth
+          if var monthPromises = state.cachedPromisesByMonth[monthKey] {
+            if let index = monthPromises.firstIndex(where: { $0.id == promise.id }) {
+              monthPromises[index] = promise
+              state.cachedPromisesByMonth[monthKey] = monthPromises
+            }
+          }
+          return .none
+        case .path:
           return .none
         }
       }
+      .forEach(\.path, action: \.path)
     }
 
     // MARK: - View Action Handler
@@ -443,10 +481,20 @@ extension CalendarFeature {
         return .none
 
       case .promiseTapped(let promise):
-        return .send(.delegate(.navigateToPromiseDetail(promise)))
+        // 약속 상세 화면으로 이동
+        state.path.append(.promiseDetail(.init(
+          promise: promise,
+          currentUserId: state.currentUserId
+        )))
+        return .none
 
       case .promiseRespondTapped(let promise):
-        return .send(.delegate(.navigateToPromiseRespond(promise)))
+        // 약속 상세 화면으로 이동 (응답 가능)
+        state.path.append(.promiseDetail(.init(
+          promise: promise,
+          currentUserId: state.currentUserId
+        )))
+        return .none
 
       case .collapseToWeek(let date):
         guard state.displayMode == .month else { return .none }
@@ -650,9 +698,57 @@ extension CalendarFeature {
           state.loadedMonths.insert(month)
           debugLog("💾 캐시 저장 완료 - \(formatMonth(month)): \(promises.count)개 약속")
           debugLog("📦 현재 캐시 상태: \(state.loadedMonths.map { formatMonth($0) })")
+
+          // 아직 캐시에 없는 그룹 ID 추출
+          let groupIds = Set(promises.map { $0.groupId })
+          let uncachedGroupIds = groupIds.filter { !state.cachedGroups.keys.contains($0) }
+
+          if !uncachedGroupIds.isEmpty {
+            debugLog("🏠 그룹 정보 fetch 필요: \(uncachedGroupIds.count)개")
+            return .send(.internal(.fetchGroupsForPromises(Array(uncachedGroupIds))))
+          }
         case .failure(let error):
           // 실패해도 재시도 가능하도록 loadedMonths에 추가하지 않음
           debugLog("⚠️ 캐시 저장 실패 - \(formatMonth(month)): \(error.localizedDescription)", type: .error)
+        }
+        return .none
+
+      case .fetchGroupsForPromises(let groupIds):
+        guard !groupIds.isEmpty else { return .none }
+
+        return .run { [groupClient] send in
+          do {
+            let groups = try await groupClient.fetchGroupsByIds(groupIds)
+            await send(.internal(.groupsResponse(.success(groups))))
+          } catch {
+            debugLog("❌ 그룹 정보 fetch 실패: \(error.localizedDescription)", type: .error)
+            await send(.internal(.groupsResponse(.failure(error))))
+          }
+        }
+
+      case .groupsResponse(let result):
+        switch result {
+        case .success(let groups):
+          // 그룹 정보 캐시에 저장
+          for group in groups {
+            state.cachedGroups[group.id] = group
+          }
+          debugLog("🏠 그룹 정보 캐시 완료: \(groups.count)개")
+
+          // 캐시된 약속에 그룹 정보 연결
+          for (monthKey, promises) in state.cachedPromisesByMonth {
+            let updatedPromises = promises.map { promise -> PromiseModel in
+              var updated = promise
+              if updated.group == nil, let group = state.cachedGroups[promise.groupId] {
+                updated.group = group
+              }
+              return updated
+            }
+            state.cachedPromisesByMonth[monthKey] = updatedPromises
+          }
+        case .failure:
+          // 실패해도 앱 동작에는 영향 없음 (그룹명만 표시 안됨)
+          break
         }
         return .none
 
@@ -721,33 +817,40 @@ extension CalendarFeature {
     }
 
     public var body: some View {
-      VStack(spacing: 0) {
-        // 헤더
-        CalendarHeader(
-          title: store.headerTitle,
-          displayMode: store.displayMode,
-          isSelectedDateToday: store.isSelectedDateToday,
-          onToggleMode: { store.send(.view(.toggleDisplayMode), animation: .easeInOut(duration: 0.3)) },
-          onMoveToToday: { store.send(.view(.moveToToday), animation: .easeInOut(duration: 0.25)) },
-          onMovePrevious: { store.send(.view(.moveToPreviousPeriod), animation: .easeInOut(duration: 0.25)) },
-          onMoveNext: { store.send(.view(.moveToNextPeriod), animation: .easeInOut(duration: 0.25)) }
-        )
+      NavigationStack(path: $store.scope(state: \.path, action: \.path)) {
+        VStack(spacing: 0) {
+          // 헤더
+          CalendarHeader(
+            title: store.headerTitle,
+            displayMode: store.displayMode,
+            isSelectedDateToday: store.isSelectedDateToday,
+            onToggleMode: { store.send(.view(.toggleDisplayMode), animation: .easeInOut(duration: 0.3)) },
+            onMoveToToday: { store.send(.view(.moveToToday), animation: .easeInOut(duration: 0.25)) },
+            onMovePrevious: { store.send(.view(.moveToPreviousPeriod), animation: .easeInOut(duration: 0.25)) },
+            onMoveNext: { store.send(.view(.moveToNextPeriod), animation: .easeInOut(duration: 0.25)) }
+          )
 
-        Divider()
+          Divider()
 
-        // 공통 요일 헤더
-        WeekdayHeader()
+          // 공통 요일 헤더
+          WeekdayHeader()
 
-        // 캘린더 그리드 (주간/월간)
-        calendarGridSection
-          .animation(.easeInOut(duration: 0.3), value: store.displayMode)
+          // 캘린더 그리드 (주간/월간)
+          calendarGridSection
+            .animation(.easeInOut(duration: 0.3), value: store.displayMode)
 
-        // 약속 리스트 (시트 스타일)
-        promiseListSection
-      }
-      .auroraBackground()
-      .onAppear {
-        store.send(.view(.onAppear))
+          // 약속 리스트 (시트 스타일)
+          promiseListSection
+        }
+        .auroraBackground()
+        .onAppear {
+          store.send(.view(.onAppear))
+        }
+      } destination: { store in
+        switch store.case {
+        case .promiseDetail(let promiseDetailStore):
+          PromiseDetail.RootView(store: promiseDetailStore)
+        }
       }
     }
 

@@ -4,6 +4,7 @@
 import SwiftUI
 import Clients
 import ResourceKit
+import PromisoShared
 
 // MARK: - Promise Response Status UI Extension
 
@@ -75,11 +76,30 @@ struct PromiseCardView: View {
 
         // 메인 콘텐츠
         VStack(alignment: .leading, spacing: 8) {
-          // 상단: 시간 + 상태
+          // 상단: 시간 + 그룹 + 상태
           HStack(spacing: 6) {
             Text(promise.timeText)
               .font(.system(size: 13, weight: .medium))
               .foregroundColor(.secondary)
+
+            // 그룹 썸네일 + 그룹명 표시
+            if let group = promise.group {
+              Text("·")
+                .foregroundColor(.secondary.opacity(0.5))
+
+              HStack(spacing: 4) {
+                GroupThumbnailView(
+                  imageUrl: group.imageUrl,
+                  name: group.name,
+                  size: 16
+                )
+
+                Text(group.name)
+                  .font(.system(size: 12, weight: .medium))
+                  .foregroundColor(.secondary)
+                  .lineLimit(1)
+              }
+            }
 
             Text("·")
               .foregroundColor(.secondary.opacity(0.5))
@@ -92,7 +112,7 @@ struct PromiseCardView: View {
 
             // 참여자 수
             HStack(spacing: 3) {
-              Image(systemName: "person.2.fill")
+              Image(systemName: "person.fill")
                 .font(.system(size: 10))
               Text("\(promise.votes.acceptedCount)/\(promise.minimumParticipants)")
                 .font(.system(size: 12))
@@ -132,6 +152,7 @@ struct PromiseCardView: View {
       .padding(.horizontal, 12)
       .padding(.vertical, 14)
       .frame(maxWidth: .infinity, alignment: .leading)
+      .contentShape(Rectangle())
       .adaptiveGlassBackground()
     }
     .buttonStyle(.plain)
@@ -324,6 +345,7 @@ struct CompactDayRow: View {
       }
       .padding(.horizontal, 16)
       .padding(.vertical, 12)
+      .contentShape(Rectangle())
       .adaptiveGlassBackground()
     }
     .buttonStyle(.plain)
@@ -377,12 +399,25 @@ struct EmptyDayPlaceholder: View {
 // MARK: - Preview
 
 #Preview("Promise Card - Confirmed") {
+  let sampleGroup = GroupModel(
+    id: "group1",
+    name: "가족 모임",
+    memberIds: ["user1", "user2"],
+    maxMembers: 10,
+    inviteCode: "ABC123",
+    createdBy: "user1",
+    createdAt: Date(),
+    updatedAt: Date(),
+    isDeleted: false
+  )
+
   let promise = PromiseModel(
     id: "1",
     title: "점심 약속",
     emoji: "🍽️",
     hostId: "user1",
     groupId: "group1",
+    group: sampleGroup,
     minimumParticipants: 2,
     votes: PromiseVotesModel(
       accepted: ["user1", "user2"],
@@ -402,12 +437,25 @@ struct EmptyDayPlaceholder: View {
 }
 
 #Preview("Promise Card - Needs Response") {
+  let sampleGroup = GroupModel(
+    id: "group1",
+    name: "친구들",
+    memberIds: ["user1", "user2"],
+    maxMembers: 10,
+    inviteCode: "XYZ789",
+    createdBy: "user2",
+    createdAt: Date(),
+    updatedAt: Date(),
+    isDeleted: false
+  )
+
   let promise = PromiseModel(
     id: "2",
     title: "카페 데이트",
     emoji: "☕",
     hostId: "user2",
     groupId: "group1",
+    group: sampleGroup,
     minimumParticipants: 2,
     votes: PromiseVotesModel(
       accepted: ["user2"],

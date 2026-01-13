@@ -271,6 +271,7 @@ extension GroupMain {
             joinState.inviteCode = inviteCode
             state.joinGroup = joinState
             return .send(.joinGroup(.presented(.view(.nextTapped))))
+
           }
 
         // MARK: - Internal Actions

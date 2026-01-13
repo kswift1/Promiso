@@ -257,14 +257,13 @@ extension RootTab {
         }
 
       case .calendar:
-        NavigationStack {
-          CalendarFeature.RootView(
-            store: store.scope(
-              state: \.calendar,
-              action: \.calendar
-            )
+        // CalendarFeature는 자체 NavigationStack을 가짐
+        CalendarFeature.RootView(
+          store: store.scope(
+            state: \.calendar,
+            action: \.calendar
           )
-        }
+        )
 
       case .group:
         NavigationStack {
