@@ -48,6 +48,32 @@ private func formatMonth(_ date: Date) -> String {
   debugMonthFormatter.string(from: date)
 }
 
+// MARK: - Calendar List Item (통합 정렬용)
+
+/// 약속과 캘린더 이벤트를 통합하여 시간순 정렬하기 위한 타입
+enum CalendarListItem: Identifiable {
+  case promise(PromiseModel)
+  case calendarEvent(CalendarEvent)
+
+  var id: String {
+    switch self {
+    case .promise(let promise):
+      return "promise_\(promise.id)"
+    case .calendarEvent(let event):
+      return "event_\(event.id)"
+    }
+  }
+
+  var startTime: Date {
+    switch self {
+    case .promise(let promise):
+      return promise.startAt
+    case .calendarEvent(let event):
+      return event.startDate
+    }
+  }
+}
+
 // MARK: - Feature Namespace
 
 public enum CalendarFeature {}
@@ -892,30 +918,33 @@ extension CalendarFeature {
         if dayPromises.isEmpty && dayEvents.isEmpty {
           EmptyDayPlaceholder(date: date)
         } else {
-          // 약속 카드들
-          ForEach(dayPromises) { promise in
-            PromiseCardView(
-              promise: promise,
-              currentUserId: store.currentUserId,
-              onTap: { store.send(.view(.promiseTapped(promise))) },
-              onRespond: promise.responseStatus(currentUserId: store.currentUserId) == .needResponse
-                ? { store.send(.view(.promiseRespondTapped(promise))) }
-                : nil
-            )
-            .padding(.horizontal, 16)
-            .padding(.vertical, 6)
-          }
+          // 약속과 캘린더 이벤트를 시간순으로 통합 정렬
+          let sortedItems = mergeAndSortItems(promises: dayPromises, events: dayEvents)
 
-          // 캘린더 이벤트 카드들
-          ForEach(dayEvents) { event in
-            CalendarEventCardView(
-              event: event,
-              onTap: {
-                // 시스템 캘린더 앱으로 이동 (선택적)
-              }
-            )
-            .padding(.horizontal, 16)
-            .padding(.vertical, 4)
+          ForEach(sortedItems) { item in
+            switch item {
+            case .promise(let promise):
+              PromiseCardView(
+                promise: promise,
+                currentUserId: store.currentUserId,
+                onTap: { store.send(.view(.promiseTapped(promise))) },
+                onRespond: promise.responseStatus(currentUserId: store.currentUserId) == .needResponse
+                  ? { store.send(.view(.promiseRespondTapped(promise))) }
+                  : nil
+              )
+              .padding(.horizontal, 16)
+              .padding(.vertical, 6)
+
+            case .calendarEvent(let event):
+              CalendarEventCardView(
+                event: event,
+                onTap: {
+                  // 시스템 캘린더 앱으로 이동 (선택적)
+                }
+              )
+              .padding(.horizontal, 16)
+              .padding(.vertical, 4)
+            }
           }
         }
       } header: {
@@ -925,6 +954,19 @@ extension CalendarFeature {
         )
         .id(date)
       }
+    }
+
+    /// 약속과 캘린더 이벤트를 시간순으로 통합 정렬
+    private func mergeAndSortItems(
+      promises: [PromiseModel],
+      events: [CalendarEvent]
+    ) -> [CalendarListItem] {
+      var items: [CalendarListItem] = []
+
+      items.append(contentsOf: promises.map { CalendarListItem.promise($0) })
+      items.append(contentsOf: events.map { CalendarListItem.calendarEvent($0) })
+
+      return items.sorted { $0.startTime < $1.startTime }
     }
 
     // MARK: - Month Mode Header
