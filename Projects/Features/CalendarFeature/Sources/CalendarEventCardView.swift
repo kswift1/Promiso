@@ -60,14 +60,25 @@ struct CalendarEventCardView: View {
       }
       .padding(.horizontal, 12)
       .padding(.vertical, 10)
-      .background(Color(.tertiarySystemBackground))
-      .cornerRadius(12)
-      .overlay(
-        RoundedRectangle(cornerRadius: 12)
-          .stroke(Color(.separator).opacity(0.2), lineWidth: 1)
-      )
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .adaptiveGlassBackground()
     }
     .buttonStyle(.plain)
+  }
+}
+
+// MARK: - Adaptive Glass Background
+
+private extension View {
+  @ViewBuilder
+  func adaptiveGlassBackground() -> some View {
+    if #available(iOS 26.0, *) {
+      self
+        .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 12))
+    } else {
+      self
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+    }
   }
 }
 

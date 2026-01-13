@@ -66,20 +66,49 @@ struct PromiseCardView: View {
 
   var body: some View {
     Button(action: onTap) {
-      VStack(alignment: .leading, spacing: 12) {
-        // 상단: 상태 + 시간
-        HStack(spacing: 8) {
-          // 상태 아이콘
-          Image(systemName: responseStatus.icon)
-            .font(.system(size: 14))
-            .foregroundColor(responseStatus.color)
+      HStack(spacing: 12) {
+        // 왼쪽: 상태 컬러 바
+        RoundedRectangle(cornerRadius: 2)
+          .fill(responseStatus.color)
+          .frame(width: 4)
 
-          // 시간
-          Text(promise.timeText)
-            .font(.system(size: 14, weight: .medium))
+        // 메인 콘텐츠
+        VStack(alignment: .leading, spacing: 8) {
+          // 상단: 시간 + 상태
+          HStack(spacing: 6) {
+            Text(promise.timeText)
+              .font(.system(size: 13, weight: .medium))
+              .foregroundColor(.secondary)
+
+            Text("·")
+              .foregroundColor(.secondary.opacity(0.5))
+
+            Text(responseStatus.statusText)
+              .font(.system(size: 12, weight: .medium))
+              .foregroundColor(responseStatus.color)
+
+            Spacer()
+
+            // 참여자 수
+            HStack(spacing: 3) {
+              Image(systemName: "person.2.fill")
+                .font(.system(size: 10))
+              Text("\(promise.votes.acceptedCount)/\(promise.minimumParticipants)")
+                .font(.system(size: 12))
+            }
             .foregroundColor(.secondary)
+          }
 
-          Spacer()
+          // 제목 행
+          HStack(spacing: 8) {
+            Text(promise.displayEmoji)
+              .font(.system(size: 18))
+
+            Text(promise.title)
+              .font(.system(size: 16, weight: .semibold))
+              .foregroundColor(.primary)
+              .lineLimit(1)
+          }
 
           // 위치 (있는 경우)
           if let location = promise.location {
@@ -87,64 +116,32 @@ struct PromiseCardView: View {
               Image(systemName: "location.fill")
                 .font(.system(size: 10))
               Text(location.name)
-                .font(.system(size: 12))
+                .font(.system(size: 13))
                 .lineLimit(1)
             }
             .foregroundColor(.secondary.opacity(0.8))
-            .frame(maxWidth: 120, alignment: .trailing)
           }
-        }
 
-        // 제목 행
-        HStack(spacing: 8) {
-          Text(promise.displayEmoji)
-            .font(.system(size: 20))
-
-          Text(promise.title)
-            .font(.system(size: 17, weight: .semibold))
-            .foregroundColor(.primary)
-            .lineLimit(1)
-        }
-
-        // 하단: 참여자 + 상태 텍스트
-        HStack {
-          // 참여자 요약
-          HStack(spacing: 4) {
-            Image(systemName: "person.2.fill")
-              .font(.system(size: 11))
-            Text("\(promise.votes.acceptedCount)/\(promise.minimumParticipants)")
-              .font(.system(size: 13))
+          // 응답하기 버튼 (필요한 경우)
+          if needsMyResponse, let onRespond = onRespond {
+            respondButton(action: onRespond)
           }
-          .foregroundColor(.secondary)
-
-          Spacer()
-
-          // 상태 상세 텍스트
-          Text(statusDetailText)
-            .font(.system(size: 12, weight: .medium))
-            .foregroundColor(responseStatus.color)
-        }
-
-        // 응답하기 버튼 (필요한 경우)
-        if needsMyResponse, let onRespond = onRespond {
-          respondButton(action: onRespond)
         }
       }
-      .padding(16)
-      .background(cardBackground)
-      .cornerRadius(16)
-      .overlay(
-        RoundedRectangle(cornerRadius: 16)
-          .stroke(borderColor, lineWidth: 1)
-      )
+      .padding(.horizontal, 12)
+      .padding(.vertical, 14)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .adaptiveGlassBackground()
     }
     .buttonStyle(.plain)
   }
+}
 
-  // MARK: - Subviews
+// MARK: - Subviews
 
+extension PromiseCardView {
   @ViewBuilder
-  private func respondButton(action: @escaping () -> Void) -> some View {
+  fileprivate func respondButton(action: @escaping () -> Void) -> some View {
     Button(action: action) {
       HStack(spacing: 6) {
         Image(systemName: "hand.tap.fill")
@@ -160,48 +157,19 @@ struct PromiseCardView: View {
     }
     .buttonStyle(.plain)
   }
+}
 
-  // MARK: - Computed Properties
+// MARK: - Adaptive Glass Background
 
-  private var statusDetailText: String {
-    switch responseStatus {
-    case .confirmed:
-      return "\(responseStatus.statusText) · \(promise.votes.acceptedCount)/\(promise.minimumParticipants)"
-    case .responded:
-      if let deadline = promise.deadlineText {
-        return "\(responseStatus.statusText) · \(promise.votes.acceptedCount)/\(promise.minimumParticipants) · 마감 \(deadline)"
-      }
-      return "\(responseStatus.statusText) · \(promise.votes.acceptedCount)/\(promise.minimumParticipants)"
-    case .needResponse:
-      return "내 응답 대기중"
-    case .failed:
-      return "약속 미성사"
-    }
-  }
-
-  private var cardBackground: Color {
-    switch responseStatus {
-    case .needResponse:
-      return Color.yellow.opacity(0.08)
-    case .responded:
-      return Color.orange.opacity(0.06)
-    case .confirmed:
-      return Color(.secondarySystemBackground)
-    case .failed:
-      return Color(.systemGray6)
-    }
-  }
-
-  private var borderColor: Color {
-    switch responseStatus {
-    case .needResponse:
-      return Color.yellow.opacity(0.3)
-    case .responded:
-      return Color.orange.opacity(0.2)
-    case .confirmed:
-      return Color(.separator).opacity(0.3)
-    case .failed:
-      return Color(.separator).opacity(0.2)
+private extension View {
+  @ViewBuilder
+  func adaptiveGlassBackground() -> some View {
+    if #available(iOS 26.0, *) {
+      self
+        .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 12))
+    } else {
+      self
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
     }
   }
 }

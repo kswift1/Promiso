@@ -158,31 +158,14 @@ extension CalendarFeature {
         }
       }
 
-      /// 날짜별로 그룹화된 약속 (캐시에서 현재 표시 범위 필터링)
+      /// 날짜별로 그룹화된 약속 (현재 월 캐시에서 조회)
       var promisesByDate: [Date: [PromiseModel]] {
         let calendar = Calendar.current
         var grouped: [Date: [PromiseModel]] = [:]
 
-        // 현재 표시 범위에 해당하는 월들의 캐시된 약속 수집
-        let relevantMonths: [Date]
-        if displayMode == .week {
-          // 주간 뷰: 해당 주가 걸쳐있는 월들 (최대 2개월)
-          let weekEnd = calendar.date(byAdding: .day, value: 6, to: currentWeekStart) ?? currentWeekStart
-          let startMonth = currentWeekStart.startOfMonth
-          let endMonth = weekEnd.startOfMonth
-          relevantMonths = startMonth == endMonth ? [startMonth] : [startMonth, endMonth]
-        } else {
-          // 월간 뷰: 현재 월만
-          relevantMonths = [currentMonth.startOfMonth]
-        }
-
-        // 관련 월들의 캐시된 약속 합치기
-        var allPromises: [PromiseModel] = []
-        for month in relevantMonths {
-          if let cached = cachedPromisesByMonth[month] {
-            allPromises.append(contentsOf: cached)
-          }
-        }
+        // 선택된 날짜의 월 기준으로 캐시 조회
+        let currentMonthKey = selectedDate.startOfMonth
+        let allPromises = cachedPromisesByMonth[currentMonthKey] ?? []
 
         // 날짜별 그룹화
         for promise in allPromises {
@@ -194,12 +177,9 @@ extension CalendarFeature {
           }
         }
 
-        // 시간순 정렬 및 중복 제거
+        // 시간순 정렬
         for (date, promises) in grouped {
-          let uniquePromises = Array(Set(promises.map { $0.id }).compactMap { id in
-            promises.first { $0.id == id }
-          })
-          grouped[date] = uniquePromises.sorted { $0.startAt < $1.startAt }
+          grouped[date] = promises.sorted { $0.startAt < $1.startAt }
         }
 
         return grouped
@@ -376,50 +356,83 @@ extension CalendarFeature {
           state.currentMonth = state.selectedDate.startOfMonth
         }
 
-        return .run { send in
-          try await Task.sleep(nanoseconds: 300_000_000)
-          await send(.internal(.transitionCompleted))
+        // 월간 모드로 전환 시 해당 월 데이터 로드
+        let monthsToLoad = getMonthsToLoad(state: state).filter { !state.loadedMonths.contains($0) }
+        debugLog("🔄 모드 전환 - 로드 필요 월: \(monthsToLoad.map { formatMonth($0) })")
+
+        var effects: [Effect<Action>] = monthsToLoad.map { month in
+          .send(.internal(.fetchPromisesForMonth(month)))
         }
 
+        effects.append(.run { send in
+          try await Task.sleep(nanoseconds: 300_000_000)
+          await send(.internal(.transitionCompleted))
+        })
+
+        return .merge(effects)
+
       case .selectDate(let date):
+        let previousMonth = state.selectedDate.startOfMonth
         state.selectedDate = date
+        let newMonth = date.startOfMonth
+
+        // 월이 바뀌면 데이터 로드
+        if previousMonth != newMonth && !state.loadedMonths.contains(newMonth) {
+          debugLog("🔄 날짜 선택으로 월 변경 - 로드 필요: \(formatMonth(newMonth))")
+          return .send(.internal(.fetchPromisesForMonth(newMonth)))
+        }
         return .none
 
       case .moveToToday:
         let today = Date()
+        let previousMonth = state.selectedDate.startOfMonth
         state.selectedDate = today
         state.currentWeekStart = today.startOfWeek
         state.currentMonth = today.startOfMonth
+        let newMonth = today.startOfMonth
+
+        // 월이 바뀌면 데이터 로드
+        if previousMonth != newMonth && !state.loadedMonths.contains(newMonth) {
+          debugLog("🔄 오늘로 이동 - 로드 필요: \(formatMonth(newMonth))")
+          return .send(.internal(.fetchPromisesForMonth(newMonth)))
+        }
         return .none
 
       case .moveToPreviousPeriod:
+        let previousMonth = state.selectedDate.startOfMonth
         if state.displayMode == .week {
           if let newWeekStart = calendar.date(byAdding: .weekOfYear, value: -1, to: state.currentWeekStart) {
             state.currentWeekStart = newWeekStart
-            // 선택된 날짜도 같이 이동
-            if let newSelectedDate = calendar.date(byAdding: .weekOfYear, value: -1, to: state.selectedDate) {
-              state.selectedDate = newSelectedDate
-            }
+            state.selectedDate = newWeekStart
           }
         } else {
           if let newMonth = calendar.date(byAdding: .month, value: -1, to: state.currentMonth) {
             state.currentMonth = newMonth
+            state.selectedDate = newMonth
           }
+        }
+        let newMonth = state.selectedDate.startOfMonth
+        if previousMonth != newMonth && !state.loadedMonths.contains(newMonth) {
+          return .send(.internal(.fetchPromisesForMonth(newMonth)))
         }
         return .none
 
       case .moveToNextPeriod:
+        let previousMonth = state.selectedDate.startOfMonth
         if state.displayMode == .week {
           if let newWeekStart = calendar.date(byAdding: .weekOfYear, value: 1, to: state.currentWeekStart) {
             state.currentWeekStart = newWeekStart
-            if let newSelectedDate = calendar.date(byAdding: .weekOfYear, value: 1, to: state.selectedDate) {
-              state.selectedDate = newSelectedDate
-            }
+            state.selectedDate = newWeekStart
           }
         } else {
           if let newMonth = calendar.date(byAdding: .month, value: 1, to: state.currentMonth) {
             state.currentMonth = newMonth
+            state.selectedDate = newMonth
           }
+        }
+        let newMonth = state.selectedDate.startOfMonth
+        if previousMonth != newMonth && !state.loadedMonths.contains(newMonth) {
+          return .send(.internal(.fetchPromisesForMonth(newMonth)))
         }
         return .none
 
@@ -449,20 +462,19 @@ extension CalendarFeature {
       case .weekPageChanged(let newWeekStart):
         // TabView 페이징으로 주가 변경됨
         state.currentWeekStart = newWeekStart
+        // selectedDate도 동기화 (주의 첫날로)
+        state.selectedDate = newWeekStart
         debugLog("📆 weekPageChanged - 주 시작: \(formatDate(newWeekStart))")
 
-        // 해당 주가 속한 월 로드 (캐시되지 않은 경우만)
-        let allMonths = getMonthsToLoad(state: state)
-        let monthsToLoad = allMonths.filter { !state.loadedMonths.contains($0) }
+        // 해당 월 로드 (캐시되지 않은 경우만)
+        let monthStart = newWeekStart.startOfMonth
+        var effects: [Effect<Action>] = []
 
-        if monthsToLoad.isEmpty {
-          debugLog("✅ 캐시 HIT - 필요한 월 모두 캐시됨: \(allMonths.map { formatMonth($0) })")
+        if !state.loadedMonths.contains(monthStart) {
+          debugLog("🔄 캐시 MISS - 로드 필요: \(formatMonth(monthStart))")
+          effects.append(.send(.internal(.fetchPromisesForMonth(monthStart))))
         } else {
-          debugLog("🔄 캐시 MISS - 로드 필요: \(monthsToLoad.map { formatMonth($0) })")
-        }
-
-        var effects: [Effect<Action>] = monthsToLoad.map { month in
-          .send(.internal(.fetchPromisesForMonth(month)))
+          debugLog("✅ 캐시 HIT - 이미 로드됨: \(formatMonth(monthStart))")
         }
 
         // 캘린더 이벤트 로드
@@ -477,11 +489,13 @@ extension CalendarFeature {
 
       case .monthPageChanged(let newMonth):
         // TabView 페이징으로 월이 변경됨
-        state.currentMonth = newMonth.startOfMonth
+        let monthStart = newMonth.startOfMonth
+        state.currentMonth = monthStart
+        // selectedDate도 동기화 (월의 첫날로)
+        state.selectedDate = monthStart
         debugLog("📆 monthPageChanged - 월: \(formatMonth(newMonth))")
 
         // 해당 월 로드 (캐시되지 않은 경우만)
-        let monthStart = newMonth.startOfMonth
         var effects: [Effect<Action>] = []
 
         if !state.loadedMonths.contains(monthStart) {
@@ -583,15 +597,9 @@ extension CalendarFeature {
         .cancellable(id: CancelID.fetchPromises, cancelInFlight: true)
 
       case .prefetchAdjacentMonths:
-        // 현재 월 기준 전/후 월 프리페치
+        // 선택된 날짜 기준 전/후 월 프리페치
         let calendar = Calendar.current
-        let currentMonth: Date
-
-        if state.displayMode == .week {
-          currentMonth = state.currentWeekStart.startOfMonth
-        } else {
-          currentMonth = state.currentMonth.startOfMonth
-        }
+        let currentMonth = state.selectedDate.startOfMonth
 
         var monthsToFetch: [Date] = []
 
@@ -649,18 +657,10 @@ extension CalendarFeature {
       case .fetchCalendarEvents:
         state.isLoadingCalendarEvents = true
 
-        // 현재 표시 범위에 맞춰 이벤트 조회
-        let startDate: Date
-        let endDate: Date
+        // 선택된 날짜의 월 기준으로 이벤트 조회
         let calendar = Calendar.current
-
-        if state.displayMode == .week {
-          startDate = state.currentWeekStart
-          endDate = calendar.date(byAdding: .day, value: 7, to: startDate) ?? startDate
-        } else {
-          startDate = state.currentMonth.startOfMonth
-          endDate = calendar.date(byAdding: .month, value: 1, to: startDate) ?? startDate
-        }
+        let startDate = state.selectedDate.startOfMonth
+        let endDate = calendar.date(byAdding: .month, value: 1, to: startDate) ?? startDate
 
         return .run { [eventKitClient] send in
           do {
@@ -685,25 +685,10 @@ extension CalendarFeature {
 
     // MARK: - Helper Functions
 
-    /// 현재 표시 범위에 필요한 월 목록 반환
+    /// 현재 표시 범위에 필요한 월 목록 반환 (항상 월 단위로 관리)
     private func getMonthsToLoad(state: State) -> [Date] {
-      let calendar = Calendar.current
-
-      if state.displayMode == .week {
-        // 주간 뷰: 해당 주가 걸쳐있는 월들
-        let weekEnd = calendar.date(byAdding: .day, value: 6, to: state.currentWeekStart) ?? state.currentWeekStart
-        let startMonth = state.currentWeekStart.startOfMonth
-        let endMonth = weekEnd.startOfMonth
-
-        if startMonth == endMonth {
-          return [startMonth]
-        } else {
-          return [startMonth, endMonth]
-        }
-      } else {
-        // 월간 뷰: 현재 월만
-        return [state.currentMonth.startOfMonth]
-      }
+      // 선택된 날짜 기준 현재 월
+      return [state.selectedDate.startOfMonth]
     }
   }
 }
@@ -948,10 +933,7 @@ extension CalendarFeature {
           }
         }
       } header: {
-        DiaryStyleSectionHeader(
-          date: date,
-          isFirst: date == store.sectionDates.first
-        )
+        DiaryStyleSectionHeader(date: date)
         .id(date)
       }
     }
@@ -1162,7 +1144,6 @@ private let sharedCalendar = Calendar.current
 
 private struct DiaryStyleSectionHeader: View {
   let date: Date
-  let isFirst: Bool
 
   var body: some View {
     HStack {
@@ -1171,18 +1152,30 @@ private struct DiaryStyleSectionHeader: View {
         .foregroundColor(.primary)
         .textCase(nil)
 
-      Rectangle()
-        .fill(Color(.systemGray4))
-        .frame(height: 1)
+      Spacer()
     }
     .padding(.horizontal, 16)
-    .padding(.top, isFirst ? 12 : 24)
-    .padding(.bottom, 12)
-    .background(Color.clear)
+    .padding(.vertical, 8)
+    .adaptiveGlassSectionBackground()
   }
 
   private var formattedDate: String {
     DateFormatterCache.sectionHeader.string(from: date)
+  }
+}
+
+// MARK: - Adaptive Glass Section Background
+
+private extension View {
+  @ViewBuilder
+  func adaptiveGlassSectionBackground() -> some View {
+    if #available(iOS 26.0, *) {
+      self
+        .glassEffect(.regular, in: .rect)
+    } else {
+      self
+        .background(.ultraThinMaterial)
+    }
   }
 }
 
