@@ -2,6 +2,7 @@
 // 월간 캘린더 그리드 뷰 - TabView 기반 페이징 + 동적 로딩
 
 import SwiftUI
+import Clients
 
 // MARK: - Height Preference Key
 
@@ -30,6 +31,7 @@ struct PagingMonthGridView: View {
   @Binding var currentMonth: Date
   let selectedDate: Date
   let promisesByDate: [Date: [MockPromise]]
+  let calendarEventsByDate: [Date: [CalendarEvent]]
   let namespace: Namespace.ID
   let onDateSelected: (Date) -> Void
   let onCollapseToWeek: (Date) -> Void
@@ -44,6 +46,7 @@ struct PagingMonthGridView: View {
     currentMonth: Binding<Date>,
     selectedDate: Date,
     promisesByDate: [Date: [MockPromise]],
+    calendarEventsByDate: [Date: [CalendarEvent]] = [:],
     namespace: Namespace.ID,
     onDateSelected: @escaping (Date) -> Void,
     onCollapseToWeek: @escaping (Date) -> Void
@@ -51,6 +54,7 @@ struct PagingMonthGridView: View {
     self._currentMonth = currentMonth
     self.selectedDate = selectedDate
     self.promisesByDate = promisesByDate
+    self.calendarEventsByDate = calendarEventsByDate
     self.namespace = namespace
     self.onDateSelected = onDateSelected
     self.onCollapseToWeek = onCollapseToWeek
@@ -68,6 +72,7 @@ struct PagingMonthGridView: View {
           currentMonth: month,
           selectedDate: selectedDate,
           promisesByDate: promisesByDate,
+          calendarEventsByDate: calendarEventsByDate,
           namespace: namespace,
           onDateSelected: onDateSelected,
           onCollapseToWeek: onCollapseToWeek
@@ -144,6 +149,7 @@ struct MonthGridContent: View {
   let currentMonth: Date
   let selectedDate: Date
   let promisesByDate: [Date: [MockPromise]]
+  let calendarEventsByDate: [Date: [CalendarEvent]]
   let namespace: Namespace.ID
   let onDateSelected: (Date) -> Void
   let onCollapseToWeek: (Date) -> Void
@@ -161,6 +167,7 @@ struct MonthGridContent: View {
             isToday: monthGridCalendar.isDateInToday(date),
             isCurrentMonth: isCurrentMonth(date),
             promiseStatuses: getPromiseStatuses(for: date),
+            systemEventCount: getSystemEventCount(for: date),
             namespace: namespace,
             selectionId: "monthSelection",
             onTap: {
@@ -213,6 +220,11 @@ struct MonthGridContent: View {
     let dateKey = monthGridCalendar.startOfDay(for: date)
     guard let promises = promisesByDate[dateKey] else { return [] }
     return promises.map { $0.status }
+  }
+
+  private func getSystemEventCount(for date: Date) -> Int {
+    let dateKey = monthGridCalendar.startOfDay(for: date)
+    return calendarEventsByDate[dateKey]?.count ?? 0
   }
 }
 

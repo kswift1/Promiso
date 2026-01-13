@@ -2,6 +2,7 @@
 // 주간 캘린더 스트립 뷰 - TabView 기반 페이징 + 동적 로딩
 
 import SwiftUI
+import Clients
 
 // MARK: - Height Preference Key
 
@@ -30,6 +31,7 @@ struct PagingWeekStripView: View {
   @Binding var currentWeekStart: Date
   let selectedDate: Date
   let promisesByDate: [Date: [MockPromise]]
+  let calendarEventsByDate: [Date: [CalendarEvent]]
   let namespace: Namespace.ID
   let onDateSelected: (Date) -> Void
 
@@ -43,12 +45,14 @@ struct PagingWeekStripView: View {
     currentWeekStart: Binding<Date>,
     selectedDate: Date,
     promisesByDate: [Date: [MockPromise]],
+    calendarEventsByDate: [Date: [CalendarEvent]] = [:],
     namespace: Namespace.ID,
     onDateSelected: @escaping (Date) -> Void
   ) {
     self._currentWeekStart = currentWeekStart
     self.selectedDate = selectedDate
     self.promisesByDate = promisesByDate
+    self.calendarEventsByDate = calendarEventsByDate
     self.namespace = namespace
     self.onDateSelected = onDateSelected
 
@@ -65,6 +69,7 @@ struct PagingWeekStripView: View {
           weekDates: getWeekDates(for: weekStart),
           selectedDate: selectedDate,
           promisesByDate: promisesByDate,
+          calendarEventsByDate: calendarEventsByDate,
           namespace: namespace,
           onDateSelected: onDateSelected
         )
@@ -148,6 +153,7 @@ struct WeekStripContent: View {
   let weekDates: [Date]
   let selectedDate: Date
   let promisesByDate: [Date: [MockPromise]]
+  let calendarEventsByDate: [Date: [CalendarEvent]]
   let namespace: Namespace.ID
   let onDateSelected: (Date) -> Void
 
@@ -160,6 +166,7 @@ struct WeekStripContent: View {
           isToday: weekStripCalendar.isDateInToday(date),
           isCurrentMonth: true,
           promiseStatuses: getPromiseStatuses(for: date),
+          systemEventCount: getSystemEventCount(for: date),
           namespace: namespace,
           selectionId: "weekSelection",
           onTap: { onDateSelected(date) }
@@ -184,6 +191,11 @@ struct WeekStripContent: View {
     let dateKey = weekStripCalendar.startOfDay(for: date)
     guard let promises = promisesByDate[dateKey] else { return [] }
     return promises.map { $0.status }
+  }
+
+  private func getSystemEventCount(for date: Date) -> Int {
+    let dateKey = weekStripCalendar.startOfDay(for: date)
+    return calendarEventsByDate[dateKey]?.count ?? 0
   }
 }
 

@@ -5,6 +5,7 @@
 import SwiftUI
 import ComposableArchitecture
 import PromisoShared
+import Clients
 
 // MARK: - Feature Namespace
 
@@ -44,6 +45,17 @@ extension CalendarFeature {
 
       /// 스크롤 위치 (리스트에서 스크롤할 날짜)
       var scrolledID: Date?
+
+      // MARK: - EventKit 관련 상태
+
+      /// 시스템 캘린더 이벤트
+      var calendarEvents: [CalendarEvent] = []
+
+      /// 캘린더 권한 상태
+      var calendarPermissionStatus: CalendarAuthorizationStatus = .notDetermined
+
+      /// 캘린더 이벤트 로딩 중
+      var isLoadingCalendarEvents: Bool = false
 
       public init(
         displayMode: CalendarDisplayMode = .week,
@@ -88,19 +100,44 @@ extension CalendarFeature {
         return grouped
       }
 
+      /// 날짜별로 그룹화된 캘린더 이벤트
+      var calendarEventsByDate: [Date: [CalendarEvent]] {
+        let calendar = Calendar.current
+        var grouped: [Date: [CalendarEvent]] = [:]
+
+        for event in calendarEvents {
+          let dateKey = calendar.startOfDay(for: event.startDate)
+          if grouped[dateKey] != nil {
+            grouped[dateKey]?.append(event)
+          } else {
+            grouped[dateKey] = [event]
+          }
+        }
+
+        // 시간순 정렬
+        for (date, events) in grouped {
+          grouped[date] = events.sorted { $0.startDate < $1.startDate }
+        }
+
+        return grouped
+      }
+
       /// 표시할 섹션 날짜들
       var sectionDates: [Date] {
         if displayMode == .week {
           return weekDates.sorted()
         } else {
-          // 월간: 약속이 있는 날짜만
+          // 월간: 약속 또는 캘린더 이벤트가 있는 날짜
           let calendar = Calendar.current
           let monthStart = currentMonth.startOfMonth
           guard let monthEnd = calendar.date(byAdding: .month, value: 1, to: monthStart) else {
             return []
           }
 
-          return promisesByDate.keys
+          var allDates = Set(promisesByDate.keys)
+          allDates.formUnion(calendarEventsByDate.keys)
+
+          return allDates
             .filter { $0 >= monthStart && $0 < monthEnd }
             .sorted()
         }
@@ -151,10 +188,18 @@ extension CalendarFeature {
         // 스크롤 관련
         case scrollTo(Date?)
         case resetScroll
+        // EventKit 관련
+        case requestCalendarPermission
+        case openSettings
       }
 
       public enum InternalAction: Sendable {
         case transitionCompleted
+        // EventKit 관련
+        case checkCalendarPermission
+        case calendarPermissionResponse(CalendarAuthorizationStatus)
+        case fetchCalendarEvents
+        case calendarEventsResponse(Result<[CalendarEvent], Error>)
       }
 
       public enum Delegate: Sendable {
@@ -162,6 +207,10 @@ extension CalendarFeature {
         case navigateToPromiseRespond(MockPromise)
       }
     }
+
+    // MARK: - Dependencies
+
+    @Dependency(\.eventKitClient) var eventKitClient
 
     // MARK: - Reducer Body
 
@@ -188,7 +237,8 @@ extension CalendarFeature {
 
       switch action {
       case .onAppear:
-        return .none
+        // 캘린더 권한 확인
+        return .send(.internal(.checkCalendarPermission))
 
       case .toggleDisplayMode:
         state.isTransitioning = true
@@ -274,11 +324,19 @@ extension CalendarFeature {
       case .weekPageChanged(let newWeekStart):
         // TabView 페이징으로 주가 변경됨
         state.currentWeekStart = newWeekStart
+        // 새 주의 캘린더 이벤트 가져오기
+        if state.calendarPermissionStatus.canReadEvents {
+          return .send(.internal(.fetchCalendarEvents))
+        }
         return .none
 
       case .monthPageChanged(let newMonth):
         // TabView 페이징으로 월이 변경됨
         state.currentMonth = newMonth.startOfMonth
+        // 새 월의 캘린더 이벤트 가져오기
+        if state.calendarPermissionStatus.canReadEvents {
+          return .send(.internal(.fetchCalendarEvents))
+        }
         return .none
 
       case .scrollTo(let date):
@@ -296,6 +354,26 @@ extension CalendarFeature {
       case .resetScroll:
         state.scrolledID = nil
         return .none
+
+      case .requestCalendarPermission:
+        return .run { [eventKitClient] send in
+          do {
+            let granted = try await eventKitClient.requestAccess()
+            let status = eventKitClient.authorizationStatus()
+            await send(.internal(.calendarPermissionResponse(status)))
+            if granted {
+              await send(.internal(.fetchCalendarEvents))
+            }
+          } catch {
+            // 에러 무시 - 권한 거부로 처리
+          }
+        }
+
+      case .openSettings:
+        if let url = URL(string: UIApplication.openSettingsURLString) {
+          UIApplication.shared.open(url)
+        }
+        return .none
       }
     }
 
@@ -308,6 +386,54 @@ extension CalendarFeature {
       switch action {
       case .transitionCompleted:
         state.isTransitioning = false
+        return .none
+
+      case .checkCalendarPermission:
+        let status = eventKitClient.authorizationStatus()
+        state.calendarPermissionStatus = status
+
+        if status.canReadEvents {
+          return .send(.internal(.fetchCalendarEvents))
+        }
+        return .none
+
+      case .calendarPermissionResponse(let status):
+        state.calendarPermissionStatus = status
+        return .none
+
+      case .fetchCalendarEvents:
+        state.isLoadingCalendarEvents = true
+
+        // 현재 표시 범위에 맞춰 이벤트 조회
+        let startDate: Date
+        let endDate: Date
+        let calendar = Calendar.current
+
+        if state.displayMode == .week {
+          startDate = state.currentWeekStart
+          endDate = calendar.date(byAdding: .day, value: 7, to: startDate) ?? startDate
+        } else {
+          startDate = state.currentMonth.startOfMonth
+          endDate = calendar.date(byAdding: .month, value: 1, to: startDate) ?? startDate
+        }
+
+        return .run { [eventKitClient] send in
+          do {
+            let events = try await eventKitClient.fetchEvents(startDate, endDate)
+            await send(.internal(.calendarEventsResponse(.success(events))))
+          } catch {
+            await send(.internal(.calendarEventsResponse(.failure(error))))
+          }
+        }
+
+      case .calendarEventsResponse(let result):
+        state.isLoadingCalendarEvents = false
+        switch result {
+        case .success(let events):
+          state.calendarEvents = events
+        case .failure:
+          state.calendarEvents = []
+        }
         return .none
       }
     }
@@ -370,6 +496,7 @@ extension CalendarFeature {
           ),
           selectedDate: store.selectedDate,
           promisesByDate: store.promisesByDate,
+          calendarEventsByDate: store.calendarEventsByDate,
           namespace: calendarAnimation,
           onDateSelected: { date in
             store.send(.view(.selectDate(date)), animation: .easeInOut(duration: 0.2))
@@ -389,6 +516,7 @@ extension CalendarFeature {
           ),
           selectedDate: store.selectedDate,
           promisesByDate: store.promisesByDate,
+          calendarEventsByDate: store.calendarEventsByDate,
           namespace: calendarAnimation,
           onDateSelected: { date in
             store.send(.view(.selectDate(date)), animation: .easeInOut(duration: 0.2))
@@ -470,6 +598,16 @@ extension CalendarFeature {
 
     private var weekPromiseListContent: some View {
       LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
+        // 캘린더 권한 배너
+        if !store.calendarPermissionStatus.canReadEvents {
+          CalendarPermissionBanner(
+            permissionStatus: store.calendarPermissionStatus,
+            onRequestPermission: { store.send(.view(.requestCalendarPermission)) },
+            onOpenSettings: { store.send(.view(.openSettings)) }
+          )
+          .padding(.vertical, 8)
+        }
+
         if store.sectionDates.isEmpty {
           emptyStateView
         } else {
@@ -505,10 +643,12 @@ extension CalendarFeature {
         let calendar = Calendar.current
         let dateKey = calendar.startOfDay(for: date)
         let dayPromises = store.promisesByDate[dateKey] ?? []
+        let dayEvents = store.calendarEventsByDate[dateKey] ?? []
 
-        if dayPromises.isEmpty {
+        if dayPromises.isEmpty && dayEvents.isEmpty {
           EmptyDayPlaceholder(date: date)
         } else {
+          // 약속 카드들
           ForEach(dayPromises) { promise in
             PromiseCardView(
               promise: promise,
@@ -519,6 +659,18 @@ extension CalendarFeature {
             )
             .padding(.horizontal, 16)
             .padding(.vertical, 6)
+          }
+
+          // 캘린더 이벤트 카드들
+          ForEach(dayEvents) { event in
+            CalendarEventCardView(
+              event: event,
+              onTap: {
+                // 시스템 캘린더 앱으로 이동 (선택적)
+              }
+            )
+            .padding(.horizontal, 16)
+            .padding(.vertical, 4)
           }
         }
       } header: {
@@ -556,12 +708,14 @@ extension CalendarFeature {
       let calendar = Calendar.current
       let dateKey = calendar.startOfDay(for: date)
       let dayPromises = store.promisesByDate[dateKey] ?? []
+      let dayEvents = store.calendarEventsByDate[dateKey] ?? []
       let isSelected = calendar.isDate(date, inSameDayAs: store.selectedDate)
 
-      if !dayPromises.isEmpty {
-        CompactPromiseRow(
+      if !dayPromises.isEmpty || !dayEvents.isEmpty {
+        CompactDayRow(
           date: date,
           promises: dayPromises,
+          calendarEvents: dayEvents,
           isSelected: isSelected,
           onTap: {
             // 탭하면 주간 뷰로 전환

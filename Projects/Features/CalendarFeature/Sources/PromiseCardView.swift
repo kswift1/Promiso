@@ -2,6 +2,7 @@
 // 약속 카드 뷰 컴포넌트
 
 import SwiftUI
+import Clients
 
 // MARK: - Promise Card View
 
@@ -314,6 +315,147 @@ struct CompactPromiseRow: View {
               Text(firstPromise.timeText)
                 .font(.system(size: 12))
                 .foregroundColor(.secondary)
+            }
+          }
+        }
+
+        Spacer()
+
+        // 화살표
+        Image(systemName: "chevron.right")
+          .font(.system(size: 12, weight: .semibold))
+          .foregroundColor(.secondary.opacity(0.5))
+      }
+      .padding(.horizontal, 16)
+      .padding(.vertical, 12)
+      .background(rowBackground)
+      .cornerRadius(12)
+      .overlay(
+        RoundedRectangle(cornerRadius: 12)
+          .stroke(isSelected ? Color.blue.opacity(0.3) : Color.clear, lineWidth: 1.5)
+      )
+    }
+    .buttonStyle(.plain)
+    .padding(.horizontal, 16)
+    .padding(.vertical, 4)
+  }
+
+  // MARK: - Computed Properties
+
+  private var dayNumber: String {
+    String(promiseViewCalendar.component(.day, from: date))
+  }
+
+  private var weekday: String {
+    PromiseViewFormatterCache.shortWeekday.string(from: date)
+  }
+
+  private var isToday: Bool {
+    promiseViewCalendar.isDateInToday(date)
+  }
+
+  private var dateTextColor: Color {
+    if isSelected {
+      return .white
+    }
+    if isToday {
+      return .blue
+    }
+    return .primary
+  }
+
+  private var rowBackground: Color {
+    if isSelected {
+      return Color.blue.opacity(0.08)
+    }
+    return Color(.secondarySystemBackground).opacity(0.5)
+  }
+}
+
+// MARK: - Compact Day Row (약속 + 캘린더 이벤트 통합)
+
+/// 월간 뷰용 컴팩트 행 (약속과 캘린더 이벤트 모두 표시)
+struct CompactDayRow: View {
+  let date: Date
+  let promises: [MockPromise]
+  let calendarEvents: [CalendarEvent]
+  let isSelected: Bool
+  let onTap: () -> Void
+
+  var body: some View {
+    Button(action: onTap) {
+      HStack(spacing: 12) {
+        // 날짜
+        VStack(spacing: 2) {
+          ZStack {
+            if isSelected {
+              Circle()
+                .fill(Color.blue)
+                .frame(width: 32, height: 32)
+            }
+            Text(dayNumber)
+              .font(.system(size: 18, weight: .bold))
+              .foregroundColor(dateTextColor)
+          }
+          Text(weekday)
+            .font(.system(size: 11, weight: .medium))
+            .foregroundColor(isSelected ? .blue : .secondary)
+        }
+        .frame(width: 36)
+
+        // 구분선
+        Rectangle()
+          .fill(Color(.separator).opacity(0.3))
+          .frame(width: 1, height: 32)
+
+        // 일정 요약
+        VStack(alignment: .leading, spacing: 4) {
+          // 약속이 있으면 약속 먼저 표시
+          if let firstPromise = promises.first {
+            HStack(spacing: 8) {
+              Text(firstPromise.emoji)
+                .font(.system(size: 16))
+
+              VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 4) {
+                  Text(firstPromise.title)
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(.primary)
+                    .lineLimit(1)
+
+                  if promises.count > 1 {
+                    Text("외 \(promises.count - 1)건")
+                      .font(.system(size: 12))
+                      .foregroundColor(.secondary)
+                  }
+                }
+
+                Text(firstPromise.timeText)
+                  .font(.system(size: 12))
+                  .foregroundColor(.secondary)
+              }
+            }
+          }
+
+          // 캘린더 이벤트가 있으면 표시
+          if !calendarEvents.isEmpty {
+            HStack(spacing: 6) {
+              Circle()
+                .fill(Color.gray)
+                .frame(width: 6, height: 6)
+
+              if let firstEvent = calendarEvents.first {
+                Text(firstEvent.title)
+                  .font(.system(size: 13))
+                  .foregroundColor(.secondary)
+                  .lineLimit(1)
+
+                if calendarEvents.count > 1 {
+                  Text("외 \(calendarEvents.count - 1)건")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary.opacity(0.7))
+                }
+              }
             }
           }
         }
