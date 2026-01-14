@@ -1,12 +1,30 @@
 rules_version = '2';
-
-// Craft rules based on data in your Firestore database
-// allow write: if firestore.get(
-//    /databases/(default)/documents/users/$(request.auth.uid)).data.isAdmin;
 service firebase.storage {
   match /b/{bucket}/o {
+    // 공통 함수: 이미지 유효성 검사
+    function isValidImage() {
+      return request.resource.size < 5 * 1024 * 1024
+             && request.resource.contentType.matches('image/.*');
+    }
+
+    // 프로필 이미지
+    match /{env}/profile_images/{userId}/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+                   && request.auth.uid == userId
+                   && isValidImage();
+    }
+
+    // 그룹 이미지
+    match /{env}/group_images/{groupId}/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+                   && isValidImage();
+    }
+
+    // 그 외 모든 경로 차단
     match /{allPaths=**} {
-      allow read, write: if true;
+      allow read, write: if false;
     }
   }
 }

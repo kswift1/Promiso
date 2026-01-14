@@ -63,7 +63,8 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
     photoData: Data?
   ) async throws -> GroupCreationResultModel {
     let groupId = UUID().uuidString
-    let photoPath = "group_images/\(groupId)/main.jpg"
+    let envPrefix = FirebaseEnvironmentManager.shared.current.storagePrefix
+    let photoPath = "\(envPrefix)/group_images/\(groupId)/main.jpg"
 
     // 1. 이미지 업로드 (선택적) - downloadURL 반환
     var imageUrl: String?
@@ -343,7 +344,8 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
     imageData: Data
   ) async throws -> String {
     let uploadData = compressImageDataForUpload(imageData) ?? imageData
-    let photoPath = "group_images/\(groupId)/main.jpg"
+    let envPrefix = FirebaseEnvironmentManager.shared.current.storagePrefix
+    let photoPath = "\(envPrefix)/group_images/\(groupId)/main.jpg"
     let ref = storage.reference().child(photoPath)
 
     let metadata = StorageMetadata()
