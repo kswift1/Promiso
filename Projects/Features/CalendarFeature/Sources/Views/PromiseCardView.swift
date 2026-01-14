@@ -180,44 +180,6 @@ extension PromiseCardView {
   }
 }
 
-// MARK: - Adaptive Glass Background
-
-private extension View {
-  @ViewBuilder
-  func adaptiveGlassBackground() -> some View {
-    if #available(iOS 26.0, *) {
-      self
-        .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 12))
-    } else {
-      self
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
-    }
-  }
-
-  @ViewBuilder
-  func adaptiveGlassRespondButton() -> some View {
-    if #available(iOS 26.0, *) {
-      self
-        .glassEffect(
-          .regular.tint(Color.pmindigo.n500.opacity(0.8)).interactive(),
-          in: .rect(cornerRadius: 10)
-        )
-        .shadow(color: Color.pmindigo.n500.opacity(0.3), radius: 8, y: 4)
-    } else {
-      self
-        .background(
-          LinearGradient(
-            colors: [Color.pmindigo.n500, Color.pmindigo.n600],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-          ),
-          in: RoundedRectangle(cornerRadius: 10)
-        )
-        .shadow(color: Color.pmindigo.n500.opacity(0.3), radius: 8, y: 4)
-    }
-  }
-}
-
 // MARK: - Cached Formatters
 
 private enum PromiseViewFormatterCache {

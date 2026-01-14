@@ -28,21 +28,6 @@ struct DiaryStyleSectionHeader: View {
   }
 }
 
-// MARK: - Adaptive Glass Section Background
-
-extension View {
-  @ViewBuilder
-  func adaptiveGlassSectionBackground() -> some View {
-    if #available(iOS 26.0, *) {
-      self
-        .glassEffect(.regular, in: .rect)
-    } else {
-      self
-        .background(.ultraThinMaterial)
-    }
-  }
-}
-
 // MARK: - Rounded Corner Shape
 
 struct RoundedCorner: Shape {

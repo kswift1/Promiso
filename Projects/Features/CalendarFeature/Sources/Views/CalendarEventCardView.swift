@@ -68,21 +68,6 @@ struct CalendarEventCardView: View {
   }
 }
 
-// MARK: - Adaptive Glass Background
-
-private extension View {
-  @ViewBuilder
-  func adaptiveGlassBackground() -> some View {
-    if #available(iOS 26.0, *) {
-      self
-        .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 12))
-    } else {
-      self
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
-    }
-  }
-}
-
 // MARK: - Calendar Permission Banner
 
 /// 캘린더 권한 요청 배너
