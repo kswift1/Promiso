@@ -5,17 +5,20 @@ import ComposableArchitecture
 
 import PromisoShared
 import CalendarFeature
+import ProfileFeature
 
 public enum Tab: String, CaseIterable {
   case home = "홈"
   case group = "그룹"
   case calendar = "캘린더"
+  case profile = "프로필"
 
   var iconName: String {
     switch self {
     case .home: return "house.fill"
     case .group: return "person.3.fill"
     case .calendar: return "calendar"
+    case .profile: return "person.fill"
     }
   }
 }
@@ -48,10 +51,14 @@ extension RootTab {
       /// Group Main State
       var groupMain: GroupMain.Feature.State
 
+      /// Profile State
+      var profile: Profile.Feature.State
+
       public init(currentUser: UserPrivateModel) {
         self.groupMain = GroupMain.Feature.State(currentUser: currentUser)
         self.home = Home.Feature.State(currentUser: currentUser)
         self.calendar = CalendarFeature.Feature.State(currentUser: currentUser)
+        self.profile = Profile.Feature.State()
       }
     }
 
@@ -66,6 +73,8 @@ extension RootTab {
       case calendar(CalendarFeature.Feature.Action)
       /// Group Main 액션
       case groupMain(GroupMain.Feature.Action)
+      /// Profile 액션
+      case profile(Profile.Feature.Action)
       /// 상위로 전달되는 델리게이트 액션
       case delegate(Delegate)
       /// 딥링크로 그룹 참여 열기
@@ -88,6 +97,10 @@ extension RootTab {
 
       Scope(state: \.calendar, action: \.calendar) {
         CalendarFeature.Feature()
+      }
+
+      Scope(state: \.profile, action: \.profile) {
+        Profile.Feature()
       }
 
       Reduce { state, action in
@@ -115,6 +128,9 @@ extension RootTab {
           return .none
 
         case .groupMain:
+          return .none
+
+        case .profile:
           return .none
 
         case .openJoinGroupWithCode(let inviteCode):
@@ -181,6 +197,16 @@ extension RootTab {
             store: store.scope(
               state: \.groupMain,
               action: \.groupMain
+            )
+          )
+        }
+
+      case .profile:
+        NavigationStack {
+          Profile.RootView(
+            store: store.scope(
+              state: \.profile,
+              action: \.profile
             )
           )
         }
