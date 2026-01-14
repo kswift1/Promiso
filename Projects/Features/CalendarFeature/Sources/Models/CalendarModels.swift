@@ -2,6 +2,7 @@
 // 캘린더 UI용 모델 및 목업 데이터
 
 import SwiftUI
+import SharedFeature
 
 #if canImport(UIKit)
 import UIKit
@@ -301,37 +302,5 @@ public enum MockDataGenerator {
     }
 
     return promises
-  }
-}
-
-// MARK: - Date Extensions for Calendar
-
-extension Date {
-  /// 해당 날짜가 속한 주의 시작일 (일요일)
-  var startOfWeek: Date {
-    let calendar = Calendar.current
-    let weekday = calendar.component(.weekday, from: self)
-    let daysToSubtract = weekday - 1
-    return calendar.date(byAdding: .day, value: -daysToSubtract, to: calendar.startOfDay(for: self)) ?? self
-  }
-
-  /// 해당 날짜가 속한 월의 시작일
-  var startOfMonth: Date {
-    let calendar = Calendar.current
-    let components = calendar.dateComponents([.year, .month], from: self)
-    return calendar.date(from: components) ?? self
-  }
-
-  /// 해당 월의 일수
-  var daysInMonth: Int {
-    let calendar = Calendar.current
-    let range = calendar.range(of: .day, in: .month, for: self)
-    return range?.count ?? 30
-  }
-
-  /// 해당 월 1일의 요일 (1: 일요일 ~ 7: 토요일)
-  var firstWeekdayOfMonth: Int {
-    let calendar = Calendar.current
-    return calendar.component(.weekday, from: startOfMonth)
   }
 }
