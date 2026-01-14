@@ -62,4 +62,20 @@ public struct GroupModel: Equatable, Hashable, Identifiable, Sendable {
     self.updatedAt = dto.updatedAt.dateValue()
     self.isDeleted = dto.isDeleted
   }
+
+  /// UserGroupInfo에서 간단한 GroupModel 생성 (표시용)
+  /// 상세 정보가 필요 없는 경우 사용
+//  public init(from info: UserGroupInfo) {
+//    self.id = info.id
+//    self.name = info.name
+//    self.description = nil
+//    self.imageUrl = nil
+//    self.memberIds = []
+//    self.maxMembers = 10
+//    self.inviteCode = ""
+//    self.createdBy = ""
+//    self.createdAt = info.joinedAt ?? Date()
+//    self.updatedAt = info.joinedAt ?? Date()
+//    self.isDeleted = false
+//  }
 }

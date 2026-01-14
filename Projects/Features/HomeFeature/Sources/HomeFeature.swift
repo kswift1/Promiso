@@ -165,38 +165,45 @@ extension Home {
         state.upcomingPromisesState = .loading
 
         let userId = state.currentUser.userId
+        let groupIds = state.currentUser.groups.map { $0.id }
         let tomorrow = Calendar.current.startOfDay(for: Date().addingTimeInterval(86400))
 
-        return .merge(
-          // 오늘의 약속 (모든 그룹)
-          .run { [promiseClient] send in
-            do {
-              let promises = try await promiseClient.getTodayPromises(userId, nil)
-              await send(.internal(.todaysPromisesResponse(.success(promises))))
-            } catch {
-              await send(.internal(.todaysPromisesResponse(.failure(error))))
-            }
-          },
-          // 응답 필요 + 다가오는 약속 (한 번 호출, 10개 제한)
-          .run { [promiseClient] send in
-            do {
-              let allPromises = try await promiseClient.getUpcomingPromises(userId, 10)
+        // 그룹이 없으면 빈 결과 반환
+        guard !groupIds.isEmpty else {
+          state.todaysPromisesState = .loaded([])
+          state.pendingResponsesState = .loaded([])
+          state.upcomingPromisesState = .loaded([])
+          return .none
+        }
 
-              // 응답 필요: pending 상태, 투표 마감 전
-              let pending = allPromises.filter { promise in
-                promise.myVoteStatus(userId: userId) == .pending && !promise.isVotingClosed
-              }
-              await send(.internal(.pendingResponsesResponse(.success(pending))))
+        return .run { [promiseClient] send in
+          do {
+            // 1. 오늘의 약속 조회
+            async let todayPromisesTask = promiseClient.getTodayPromises(groupIds)
+            // 2. 다가오는 약속 조회
+            async let upcomingPromisesTask = promiseClient.getUpcomingPromises(groupIds, 10)
 
-              // 다가오는 약속: 내일 이후, 확정된 것
-              let upcoming = allPromises.filter { $0.startAt >= tomorrow && $0.isConfirmed }
-              await send(.internal(.upcomingPromisesResponse(.success(upcoming))))
-            } catch {
-              await send(.internal(.pendingResponsesResponse(.failure(error))))
-              await send(.internal(.upcomingPromisesResponse(.failure(error))))
+            let (todayPromises, allUpcoming) = try await (todayPromisesTask, upcomingPromisesTask)
+
+            // 오늘의 약속 응답
+            await send(.internal(.todaysPromisesResponse(.success(todayPromises))))
+
+            // 응답 필요: pending 상태, 투표 마감 전
+            let pending = allUpcoming.filter { promise in
+              promise.myVoteStatus(userId: userId) == .pending && !promise.isVotingClosed
             }
+            await send(.internal(.pendingResponsesResponse(.success(pending))))
+
+            // 다가오는 약속: 내일 이후, 확정된 것
+            let upcoming = allUpcoming.filter { $0.startAt >= tomorrow && $0.isConfirmed }
+            await send(.internal(.upcomingPromisesResponse(.success(upcoming))))
+
+          } catch {
+            await send(.internal(.todaysPromisesResponse(.failure(error))))
+            await send(.internal(.pendingResponsesResponse(.failure(error))))
+            await send(.internal(.upcomingPromisesResponse(.failure(error))))
           }
-        )
+        }
 
       case .todaysPromisesResponse(let result):
         switch result {

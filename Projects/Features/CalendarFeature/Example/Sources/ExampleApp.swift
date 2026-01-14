@@ -4,6 +4,7 @@
 import SwiftUI
 import ComposableArchitecture
 import CalendarFeature
+import Clients
 
 // MARK: - Example Application
 
@@ -80,7 +81,7 @@ private struct ExampleContentView: View {
 
   @ViewBuilder
   private var weekModeExample: some View {
-    let store = Store(initialState: CalendarFeature.Feature.State(displayMode: .week)) {
+    let store = Store(initialState: CalendarFeature.Feature.State(currentUser: .exampleUser, displayMode: .week)) {
       CalendarFeature.Feature()
     }
 
@@ -91,7 +92,7 @@ private struct ExampleContentView: View {
 
   @ViewBuilder
   private var monthModeExample: some View {
-    let store = Store(initialState: CalendarFeature.Feature.State(displayMode: .month)) {
+    let store = Store(initialState: CalendarFeature.Feature.State(currentUser: .exampleUser, displayMode: .month)) {
       CalendarFeature.Feature()
     }
 
@@ -119,7 +120,7 @@ private struct ExampleContentView: View {
 }
 
 #Preview("Week Mode") {
-  let store = Store(initialState: CalendarFeature.Feature.State(displayMode: .week)) {
+  let store = Store(initialState: CalendarFeature.Feature.State(currentUser: .exampleUser, displayMode: .week)) {
     CalendarFeature.Feature()
   }
 
@@ -127,7 +128,7 @@ private struct ExampleContentView: View {
 }
 
 #Preview("Month Mode") {
-  let store = Store(initialState: CalendarFeature.Feature.State(displayMode: .month)) {
+  let store = Store(initialState: CalendarFeature.Feature.State(currentUser: .exampleUser, displayMode: .month)) {
     CalendarFeature.Feature()
   }
 

@@ -12,12 +12,11 @@ public protocol PromiseRemoteDataSourceProtocol {
   func getPromise(id: String) async throws -> PromiseModel?
 
   // MARK: - Query Operations
-  func getTodayPromises(userId: String, groupId: String?) async throws -> [PromiseModel]
-  func getUpcomingPromises(userId: String, limit: Int) async throws -> [PromiseModel]
-  func getPendingProposals(userId: String, limit: Int) async throws -> [PromiseModel]
+  func getTodayPromises(groupIds: [String]) async throws -> [PromiseModel]
+  func getUpcomingPromises(groupIds: [String], limit: Int) async throws -> [PromiseModel]
   func getActivePromises(groupId: String, limit: Int) async throws -> [PromiseModel]
   func getPastPromises(groupId: String, limit: Int, lastStartAt: Date?) async throws -> [PromiseModel]
-  func getPromisesByDateRange(userId: String, startDate: Date, endDate: Date) async throws -> [PromiseModel]
+  func getPromisesByDateRange(groupIds: [String], startDate: Date, endDate: Date) async throws -> [PromiseModel]
 
   // MARK: - Count Operations
   func getActivePromiseCount(groupId: String) async throws -> Int

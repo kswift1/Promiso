@@ -94,8 +94,8 @@ extension CalendarFeature {
 
     @ObservableState
     public struct State {
-      /// 현재 사용자 ID
-      var currentUserId: String
+      /// 현재 사용자 정보
+      var currentUser: UserPrivateModel
 
       /// 표시 모드 (주간/월간)
       var displayMode: CalendarDisplayMode = .week
@@ -138,7 +138,7 @@ extension CalendarFeature {
       /// 캘린더 이벤트 로딩 중
       var isLoadingCalendarEvents: Bool = false
 
-      // MARK: - Group 캐시
+      // MARK: - Group 관련
 
       /// 그룹 정보 캐시 (키: groupId)
       var cachedGroups: [String: GroupModel] = [:]
@@ -148,16 +148,29 @@ extension CalendarFeature {
       /// 네비게이션 경로 (약속 상세 등)
       var path = StackState<Path.State>()
 
+      // MARK: - Computed Properties
+
+      /// 현재 사용자 ID
+      var currentUserId: String { currentUser.userId }
+
+      /// 현재 사용자가 속한 그룹 ID 목록
+      var userGroupIds: [String] { currentUser.groups.map { $0.id } }
+
       public init(
-        currentUserId: String,
+        currentUser: UserPrivateModel,
         displayMode: CalendarDisplayMode = .week,
         selectedDate: Date = Date()
       ) {
-        self.currentUserId = currentUserId
+        self.currentUser = currentUser
         self.displayMode = displayMode
         self.selectedDate = selectedDate
         self.currentWeekStart = selectedDate.startOfWeek
         self.currentMonth = selectedDate.startOfMonth
+
+        // 사용자 그룹 정보를 캐시로 초기화 (추가 API 호출 불필요)
+        for groupInfo in currentUser.groups {
+          self.cachedGroups[groupInfo.id] = GroupModel(from: groupInfo)
+        }
       }
 
       // MARK: - Computed Properties
@@ -308,9 +321,6 @@ extension CalendarFeature {
         case fetchPromisesForMonth(Date)  // 특정 월 데이터 로드
         case prefetchAdjacentMonths       // 인접 월 프리페치
         case promisesResponseForMonth(month: Date, Result<[PromiseModel], Error>)
-        // 그룹 데이터 관련
-        case fetchGroupsForPromises([String])  // groupIds
-        case groupsResponse(Result<[GroupModel], Error>)
         // EventKit 관련
         case checkCalendarPermission
         case calendarPermissionResponse(CalendarAuthorizationStatus)
@@ -330,7 +340,6 @@ extension CalendarFeature {
 
     @Dependency(\.promiseClient) var promiseClient
     @Dependency(\.eventKitClient) var eventKitClient
-    @Dependency(\.groupClient) var groupClient
 
     // MARK: - Reducer Body
 
@@ -378,15 +387,20 @@ extension CalendarFeature {
 
       switch action {
       case .onAppear:
-        // 현재 표시 범위의 월 데이터 로드 + 캘린더 권한 확인
+        debugLog("🚀 onAppear - 약속 로드 시작 (그룹: \(state.userGroupIds.count)개)")
         let monthsToLoad = getMonthsToLoad(state: state)
-        debugLog("🚀 onAppear - 로드할 월: \(monthsToLoad.map { formatMonth($0) })")
-        debugLog("📦 현재 캐시 상태: \(state.loadedMonths.map { formatMonth($0) })")
 
-        var effects: [Effect<Action>] = monthsToLoad.map { month in
-          .send(.internal(.fetchPromisesForMonth(month)))
+        var effects: [Effect<Action>] = [
+          .send(.internal(.checkCalendarPermission))
+        ]
+
+        // 그룹이 있으면 약속 데이터 로드
+        if !state.userGroupIds.isEmpty {
+          effects.append(contentsOf: monthsToLoad.map { month in
+            Effect<Action>.send(.internal(.fetchPromisesForMonth(month)))
+          })
         }
-        effects.append(.send(.internal(.checkCalendarPermission)))
+
         return .merge(effects)
 
       case .toggleDisplayMode:
@@ -636,18 +650,24 @@ extension CalendarFeature {
           return .none
         }
 
+        // 그룹이 없으면 스킵
+        guard !state.userGroupIds.isEmpty else {
+          debugLog("⏭️ fetchPromisesForMonth 스킵 - 그룹 없음")
+          return .none
+        }
+
         state.isLoadingPromises = true
         debugLog("🌐 API 요청 시작 - \(formatMonth(monthStart))")
 
         // 월의 시작과 끝 계산
         let calendar = Calendar.current
         let endDate = calendar.date(byAdding: .month, value: 1, to: monthStart) ?? monthStart
-        let userId = state.currentUserId
+        let groupIds = state.userGroupIds
 
         return .run { [promiseClient] send in
           let startTime = Date()
           do {
-            let promises = try await promiseClient.getPromisesByDateRange(userId, monthStart, endDate)
+            let promises = try await promiseClient.getPromisesByDateRange(groupIds, monthStart, endDate)
             let elapsed = Date().timeIntervalSince(startTime)
             debugLog("✅ API 응답 성공 - \(formatMonth(monthStart)): \(promises.count)개 약속, \(String(format: "%.2f", elapsed))초")
             await send(.internal(.promisesResponseForMonth(month: monthStart, .success(promises))))
@@ -693,62 +713,21 @@ extension CalendarFeature {
 
         switch result {
         case .success(let promises):
-          // 월별 캐시에 저장
-          state.cachedPromisesByMonth[month] = promises
+          // 약속에 캐시된 그룹 정보 연결 후 저장
+          let updatedPromises = promises.map { promise -> PromiseModel in
+            var updated = promise
+            if let group = state.cachedGroups[promise.groupId] {
+              updated.group = group
+            }
+            return updated
+          }
+          state.cachedPromisesByMonth[month] = updatedPromises
           state.loadedMonths.insert(month)
           debugLog("💾 캐시 저장 완료 - \(formatMonth(month)): \(promises.count)개 약속")
-          debugLog("📦 현재 캐시 상태: \(state.loadedMonths.map { formatMonth($0) })")
 
-          // 아직 캐시에 없는 그룹 ID 추출
-          let groupIds = Set(promises.map { $0.groupId })
-          let uncachedGroupIds = groupIds.filter { !state.cachedGroups.keys.contains($0) }
-
-          if !uncachedGroupIds.isEmpty {
-            debugLog("🏠 그룹 정보 fetch 필요: \(uncachedGroupIds.count)개")
-            return .send(.internal(.fetchGroupsForPromises(Array(uncachedGroupIds))))
-          }
         case .failure(let error):
           // 실패해도 재시도 가능하도록 loadedMonths에 추가하지 않음
           debugLog("⚠️ 캐시 저장 실패 - \(formatMonth(month)): \(error.localizedDescription)", type: .error)
-        }
-        return .none
-
-      case .fetchGroupsForPromises(let groupIds):
-        guard !groupIds.isEmpty else { return .none }
-
-        return .run { [groupClient] send in
-          do {
-            let groups = try await groupClient.fetchGroupsByIds(groupIds)
-            await send(.internal(.groupsResponse(.success(groups))))
-          } catch {
-            debugLog("❌ 그룹 정보 fetch 실패: \(error.localizedDescription)", type: .error)
-            await send(.internal(.groupsResponse(.failure(error))))
-          }
-        }
-
-      case .groupsResponse(let result):
-        switch result {
-        case .success(let groups):
-          // 그룹 정보 캐시에 저장
-          for group in groups {
-            state.cachedGroups[group.id] = group
-          }
-          debugLog("🏠 그룹 정보 캐시 완료: \(groups.count)개")
-
-          // 캐시된 약속에 그룹 정보 연결
-          for (monthKey, promises) in state.cachedPromisesByMonth {
-            let updatedPromises = promises.map { promise -> PromiseModel in
-              var updated = promise
-              if updated.group == nil, let group = state.cachedGroups[promise.groupId] {
-                updated.group = group
-              }
-              return updated
-            }
-            state.cachedPromisesByMonth[monthKey] = updatedPromises
-          }
-        case .failure:
-          // 실패해도 앱 동작에는 영향 없음 (그룹명만 표시 안됨)
-          break
         }
         return .none
 
@@ -1384,7 +1363,15 @@ private struct FloatingDateHeader: View {
 // MARK: - Preview
 
 #Preview("Calendar Feature - Week Mode") {
-  let store = Store(initialState: CalendarFeature.Feature.State(currentUserId: "preview_user", displayMode: .week)) {
+  let previewUser = UserPrivateModel(
+    userId: "preview_user",
+    name: "Preview User",
+    nickname: "프리뷰",
+    email: "preview@example.com",
+    provider: "google",
+    metadata: Metadata()
+  )
+  let store = Store(initialState: CalendarFeature.Feature.State(currentUser: previewUser, displayMode: .week)) {
     CalendarFeature.Feature()
   }
 
@@ -1392,7 +1379,15 @@ private struct FloatingDateHeader: View {
 }
 
 #Preview("Calendar Feature - Month Mode") {
-  let store = Store(initialState: CalendarFeature.Feature.State(currentUserId: "preview_user", displayMode: .month)) {
+  let previewUser = UserPrivateModel(
+    userId: "preview_user",
+    name: "Preview User",
+    nickname: "프리뷰",
+    email: "preview@example.com",
+    provider: "google",
+    metadata: Metadata()
+  )
+  let store = Store(initialState: CalendarFeature.Feature.State(currentUser: previewUser, displayMode: .month)) {
     CalendarFeature.Feature()
   }
 
