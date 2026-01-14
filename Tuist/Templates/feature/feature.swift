@@ -31,7 +31,8 @@ let project = Project(
       sources: ["Sources/**"],
       dependencies: [
         .project(target: "Clients", path: "../../Clients"),
-        .project(target: "Shared", path: "../../Shared"),
+        .project(target: "PromisoShared", path: "../../Shared"),
+        .project(target: "ResourceKit", path: "../../ResourceKit"),
         .project(target: "ExternalDependency", path: "../../ExternalDependency")
       ],
       settings: .standard()
@@ -81,7 +82,8 @@ let project = Project(
 @_exported import Clients
 @_exported import ComposableArchitecture
 @_exported import SwiftUI
-@_exported import Shared
+@_exported import PromisoShared
+@_exported import ResourceKit
 
 // MARK: - Feature Exports (필요시 추가)
 // 다른 Feature를 의존하는 경우 여기에 추가하세요
@@ -180,19 +182,22 @@ extension {{ name }} {
     }
     
     // MARK: - Body
-    
-    public var body: some View {
-      VStack {
-        Text("{{ name }} Feature")
-          .font(.title2)
-          .fontWeight(.semibold)
 
-        Text("{{ name }} Feature implementation입니다.")
-          .font(.body)
-          .foregroundColor(.secondary)
-          .multilineTextAlignment(.center)
+    public var body: some View {
+      ScrollView {
+        VStack(spacing: 24) {
+          Text("{{ name }} Feature")
+            .font(.title2)
+            .fontWeight(.semibold)
+
+          Text("{{ name }} Feature implementation입니다.")
+            .font(.body)
+            .foregroundColor(.secondary)
+            .multilineTextAlignment(.center)
+        }
+        .padding()
       }
-      .padding()
+      .auroraBackground()
       .onAppear {
         store.send(.onAppear)
       }
