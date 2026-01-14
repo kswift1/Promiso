@@ -1,6 +1,7 @@
 import ComposableArchitecture
 import EventKit
 import Foundation
+import PromisoShared
 import SwiftUI
 
 // MARK: - Authorization Status
@@ -66,11 +67,8 @@ public struct CalendarEvent: Identifiable, Equatable, Sendable {
       return "종일"
     }
 
-    let formatter = DateFormatter()
-    formatter.dateFormat = "a h:mm"
-    formatter.locale = Locale(identifier: "ko_KR")
-    let start = formatter.string(from: startDate)
-    let end = formatter.string(from: endDate)
+    let start = KoreanDateFormatters.time.string(from: startDate)
+    let end = KoreanDateFormatters.time.string(from: endDate)
     return "\(start) - \(end)"
   }
 }
