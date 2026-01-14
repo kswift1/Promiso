@@ -129,8 +129,8 @@ extension EventKitClient: TestDependencyKey {
         CalendarEvent(
           id: "cal-1",
           title: "팀 미팅",
-          startDate: calendar.date(bySettingHour: 10, minute: 0, second: 0, of: startDate)!,
-          endDate: calendar.date(bySettingHour: 11, minute: 0, second: 0, of: startDate)!,
+          startDate: calendar.date(bySettingHour: 10, minute: 0, second: 0, of: startDate) ?? startDate,
+          endDate: calendar.date(bySettingHour: 11, minute: 0, second: 0, of: startDate) ?? startDate,
           location: "회의실 A",
           isAllDay: false,
           calendarName: "업무",
