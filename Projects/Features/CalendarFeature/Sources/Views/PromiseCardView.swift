@@ -180,17 +180,6 @@ extension PromiseCardView {
   }
 }
 
-// MARK: - Cached Formatters
-
-private enum PromiseViewFormatterCache {
-  static let shortWeekday: DateFormatter = {
-    let formatter = DateFormatter()
-    formatter.locale = Locale(identifier: "ko_KR")
-    formatter.dateFormat = "E"
-    return formatter
-  }()
-}
-
 private let promiseViewCalendar = Calendar.current
 
 // MARK: - Compact Day Row (약속 + 캘린더 이벤트 통합)
@@ -322,7 +311,7 @@ struct CompactDayRow: View {
   }
 
   private var weekday: String {
-    PromiseViewFormatterCache.shortWeekday.string(from: date)
+    KoreanDateFormatters.weekday.string(from: date)
   }
 
   private var isToday: Bool {
