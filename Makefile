@@ -5,6 +5,7 @@
 
 # 기본값 설정
 FEATURE_NAME ?=
+FORCE ?=
 
 # 피쳐 생성 + 의존성 자동 추가 + 프로젝트 생성
 feature:
@@ -41,10 +42,14 @@ remove-feature:
 	@echo "   - AppFeatureDeps.swift에서 의존성 제거"
 	@echo "   - 프로젝트 재생성"
 	@echo ""
-	@read -p "정말로 계속하시겠습니까? (y/N): " confirm; \
-	if [ "$$confirm" != "y" ] && [ "$$confirm" != "Y" ]; then \
-		echo "❌ 작업이 취소되었습니다."; \
-		exit 1; \
+	@if [ -z "$(FORCE)" ]; then \
+		read -p "정말로 계속하시겠습니까? (y/N): " confirm; \
+		if [ "$$confirm" != "y" ] && [ "$$confirm" != "Y" ]; then \
+			echo "❌ 작업이 취소되었습니다."; \
+			exit 1; \
+		fi; \
+	else \
+		echo "⚡ FORCE 모드: 확인 없이 진행합니다."; \
 	fi
 	@echo ""
 	@echo "1/4 피쳐 폴더 삭제..."
@@ -118,8 +123,9 @@ functions-api-preview:
 help:
 	@echo "Promiso Project Commands:"
 	@echo ""
-	@echo "  make feature FEATURE_NAME=YourFeature        - 새 피쳐 생성 (TCA 중심 구조)"
-	@echo "  make remove-feature FEATURE_NAME=YourFeature - 기존 피쳐 삭제"
+	@echo "  make feature FEATURE_NAME=YourFeature              - 새 피쳐 생성 (TCA 중심 구조)"
+	@echo "  make remove-feature FEATURE_NAME=YourFeature      - 기존 피쳐 삭제 (확인 필요)"
+	@echo "  make remove-feature FEATURE_NAME=YourFeature FORCE=1 - 기존 피쳐 삭제 (확인 없이)"
 	@echo "  make deps                                    - 의존성 그래프 시각화"
 	@echo "  make color                                   - 컬러 에셋/Swift Extension 재생성"
 	@echo "  make emulator-start                          - Functions/Firestore/Auth/Storage 에뮬레이터 실행"
@@ -130,11 +136,12 @@ help:
 	@echo "예시:"
 	@echo "  make feature FEATURE_NAME=Login              - Login 피쳐 생성"
 	@echo "  make feature FEATURE_NAME=Profile            - Profile 피쳐 생성"
-	@echo "  make remove-feature FEATURE_NAME=Login       - Login 피쳐 삭제"
-	@echo "  make remove-feature FEATURE_NAME=Profile     - Profile 피쳐 삭제"
+	@echo "  make remove-feature FEATURE_NAME=Login         - Login 피쳐 삭제"
+	@echo "  make remove-feature FEATURE_NAME=Profile      - Profile 피쳐 삭제"
+	@echo "  make remove-feature FEATURE_NAME=Test FORCE=1 - Test 피쳐 강제 삭제"
 	@echo ""
 	@echo "⚠️  주의사항:"
 	@echo "  - remove-feature는 피쳐 폴더와 관련 파일을 완전히 삭제합니다"
-	@echo "  - 삭제 전 확인 메시지가 표시됩니다"
+	@echo "  - 삭제 전 확인 메시지가 표시됩니다 (FORCE=1로 생략 가능)"
 	@echo "  - 삭제된 피쳐를 참조하는 코드는 수동으로 제거해야 합니다"
 	@echo ""

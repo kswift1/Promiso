@@ -30,7 +30,7 @@ cp "$DEPS_FILE" "$DEPS_FILE.backup"
 FEATURE_CAMEL=$(echo "${FEATURE_NAME:0:1}" | tr '[:upper:]' '[:lower:]')$(echo "${FEATURE_NAME:1}")
 
 # 3. 피쳐가 의존성에 있는지 확인
-if ! awk '/let allFeatures.*\[/,/\]$$$$/ { if (/\.'$FEATURE_CAMEL'/) found=1 } END { exit !found }' "$DEPS_FILE"; then
+if ! awk '/let allFeatures.*\[/,/^\s*\]/ { if (/\.'$FEATURE_CAMEL'/) found=1 } END { exit !found }' "$DEPS_FILE"; then
     echo "  ℹ️  피쳐 '$FEATURE_NAME'는 의존성에 없습니다."
     rm "$DEPS_FILE.backup"
     exit 0
