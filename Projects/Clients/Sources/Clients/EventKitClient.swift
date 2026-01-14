@@ -244,6 +244,14 @@ private extension EKAuthorizationStatus {
   }
 }
 
+// MARK: - Constants
+
+private enum EventKitConstants {
+  static let untitledEvent = "제목 없음"
+  static let defaultCalendarName = "캘린더"
+  static let defaultColorHex = "#808080"
+}
+
 // MARK: - EKEvent Extension
 
 private extension EKEvent {
@@ -252,17 +260,17 @@ private extension EKEvent {
     if let cgColor = calendar?.cgColor {
       colorHex = UIColor(cgColor: cgColor).hexString
     } else {
-      colorHex = "#808080"
+      colorHex = EventKitConstants.defaultColorHex
     }
 
     return CalendarEvent(
       id: eventIdentifier ?? UUID().uuidString,
-      title: title ?? "제목 없음",
+      title: title ?? EventKitConstants.untitledEvent,
       startDate: startDate,
       endDate: endDate,
       location: location,
       isAllDay: isAllDay,
-      calendarName: calendar?.title ?? "캘린더",
+      calendarName: calendar?.title ?? EventKitConstants.defaultCalendarName,
       calendarColorHex: colorHex
     )
   }
