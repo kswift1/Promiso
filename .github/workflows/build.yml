@@ -22,10 +22,8 @@ jobs:
         with:
           xcode-version: latest-stable
 
-      - name: Install Tuist
-        run: |
-          brew install tuist
-          tuist version
+      - name: Setup Tuist
+        uses: jdx/mise-action@v2
 
       - name: Cache Tuist
         uses: actions/cache@v4
