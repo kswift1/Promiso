@@ -1,0 +1,46 @@
+# Gemini Code Assist Configuration for Promiso iOS
+
+have_fun: false
+
+memory_config:
+  disabled: false
+
+code_review:
+  disable: false
+  # LOW, MEDIUM, HIGH, CRITICAL 중 선택
+  comment_severity_threshold: MEDIUM
+  # 최대 리뷰 코멘트 수 (-1 = 무제한)
+  max_review_comments: 20
+  pull_request_opened:
+    help: false
+    summary: true
+    code_review: true
+    # Draft PR도 리뷰
+    include_drafts: true
+
+# 리뷰에서 제외할 파일/폴더
+ignore_patterns:
+  # Xcode 프로젝트 파일
+  - "**/*.xcodeproj/**"
+  - "**/*.xcworkspace/**"
+  # 빌드 산출물
+  - "**/DerivedData/**"
+  - "**/build/**"
+  - "**/.build/**"
+  # 의존성
+  - "**/Pods/**"
+  - "**/Carthage/**"
+  - "**/.swiftpm/**"
+  - "**/Tuist/**"
+  - "**/Derived/**"
+  # 리소스 (자동 생성)
+  - "**/Assets.xcassets/**"
+  - "**/Generated/**"
+  # 설정 파일
+  - "**/*.plist"
+  - "**/GoogleService-Info.plist"
+  - "**/*.entitlements"
+  # 기타
+  - "**/Fastlane/**"
+  - "**/*.lock"
+  - "**/Gemfile"

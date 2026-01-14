@@ -88,8 +88,6 @@ extension Home {
       public enum View: Sendable {
         /// 화면 나타남
         case onAppear
-        /// 사이드 드로어 열기
-        case openSideDrawer
         /// 약속 카드 탭
         case promiseTapped(PromiseModel)
         /// 응답하기 버튼 탭
@@ -106,7 +104,6 @@ extension Home {
       }
 
       public enum Delegate: Sendable {
-        case openSideDrawer
         case navigateToGroup(groupId: String)
       }
     }
@@ -117,120 +114,101 @@ extension Home {
       Reduce { state, action in
         switch action {
         case .view(let viewAction):
-          return handleViewAction(&state, viewAction)
+          switch viewAction {
+          case .onAppear:
+            guard !state.hasLoadedOnce else { return .none }
+            state.hasLoadedOnce = true
+            return .send(.internal(.fetchAllData))
+
+          case .promiseTapped(let promise):
+            return .send(.delegate(.navigateToGroup(groupId: promise.groupId)))
+
+          case .respondTapped(let promise):
+            return .send(.delegate(.navigateToGroup(groupId: promise.groupId)))
+
+          case .refreshTriggered:
+            return .send(.internal(.fetchAllData))
+          }
+
         case .internal(let internalAction):
-          return handleInternalAction(&state, internalAction)
+          switch internalAction {
+          case .fetchAllData:
+            state.todaysPromisesState = .loading
+            state.pendingResponsesState = .loading
+            state.upcomingPromisesState = .loading
+
+            let userId = state.currentUser.userId
+            let groupIds = state.currentUser.groups.map { $0.id }
+            let tomorrow = Calendar.current.startOfDay(for: Date().addingTimeInterval(86400))
+
+            // 그룹이 없으면 빈 결과 반환
+            guard !groupIds.isEmpty else {
+              state.todaysPromisesState = .loaded([])
+              state.pendingResponsesState = .loaded([])
+              state.upcomingPromisesState = .loaded([])
+              return .none
+            }
+
+            return .run { [promiseClient] send in
+              do {
+                // 1. 오늘의 약속 조회
+                async let todayPromisesTask = promiseClient.getTodayPromises(groupIds)
+                // 2. 다가오는 약속 조회
+                async let upcomingPromisesTask = promiseClient.getUpcomingPromises(groupIds, 10)
+
+                let (todayPromises, allUpcoming) = try await (todayPromisesTask, upcomingPromisesTask)
+
+                // 오늘의 약속 응답
+                await send(.internal(.todaysPromisesResponse(.success(todayPromises))))
+
+                // 응답 필요: pending 상태, 투표 마감 전
+                let pending = allUpcoming.filter { promise in
+                  promise.myVoteStatus(userId: userId) == .pending && !promise.isVotingClosed
+                }
+                await send(.internal(.pendingResponsesResponse(.success(pending))))
+
+                // 다가오는 약속: 내일 이후, 확정된 것
+                let upcoming = allUpcoming.filter { $0.startAt >= tomorrow && $0.isConfirmed }
+                await send(.internal(.upcomingPromisesResponse(.success(upcoming))))
+
+              } catch {
+                await send(.internal(.todaysPromisesResponse(.failure(error))))
+                await send(.internal(.pendingResponsesResponse(.failure(error))))
+                await send(.internal(.upcomingPromisesResponse(.failure(error))))
+              }
+            }
+
+          case .todaysPromisesResponse(let result):
+            switch result {
+            case .success(let promises):
+              state.todaysPromisesState = .loaded(promises)
+            case .failure(let error):
+              state.todaysPromisesState = .failed(error)
+            }
+            return .none
+
+          case .pendingResponsesResponse(let result):
+            switch result {
+            case .success(let promises):
+              state.pendingResponsesState = .loaded(promises)
+            case .failure(let error):
+              state.pendingResponsesState = .failed(error)
+            }
+            return .none
+
+          case .upcomingPromisesResponse(let result):
+            switch result {
+            case .success(let promises):
+              state.upcomingPromisesState = .loaded(promises)
+            case .failure(let error):
+              state.upcomingPromisesState = .failed(error)
+            }
+            return .none
+          }
+
         case .delegate:
           return .none
         }
-      }
-    }
-
-    // MARK: - View Action Handler
-
-    private func handleViewAction(
-      _ state: inout State,
-      _ action: Action.View
-    ) -> Effect<Action> {
-      switch action {
-      case .onAppear:
-        guard !state.hasLoadedOnce else { return .none }
-        state.hasLoadedOnce = true
-        return .send(.internal(.fetchAllData))
-
-      case .openSideDrawer:
-        return .send(.delegate(.openSideDrawer))
-
-      case .promiseTapped(let promise):
-        return .send(.delegate(.navigateToGroup(groupId: promise.groupId)))
-
-      case .respondTapped(let promise):
-        return .send(.delegate(.navigateToGroup(groupId: promise.groupId)))
-
-      case .refreshTriggered:
-        return .send(.internal(.fetchAllData))
-      }
-    }
-
-    // MARK: - Internal Action Handler
-
-    private func handleInternalAction(
-      _ state: inout State,
-      _ action: Action.Internal
-    ) -> Effect<Action> {
-      switch action {
-      case .fetchAllData:
-        state.todaysPromisesState = .loading
-        state.pendingResponsesState = .loading
-        state.upcomingPromisesState = .loading
-
-        let userId = state.currentUser.userId
-        let groupIds = state.currentUser.groups.map { $0.id }
-        let tomorrow = Calendar.current.startOfDay(for: Date().addingTimeInterval(86400))
-
-        // 그룹이 없으면 빈 결과 반환
-        guard !groupIds.isEmpty else {
-          state.todaysPromisesState = .loaded([])
-          state.pendingResponsesState = .loaded([])
-          state.upcomingPromisesState = .loaded([])
-          return .none
-        }
-
-        return .run { [promiseClient] send in
-          do {
-            // 1. 오늘의 약속 조회
-            async let todayPromisesTask = promiseClient.getTodayPromises(groupIds)
-            // 2. 다가오는 약속 조회
-            async let upcomingPromisesTask = promiseClient.getUpcomingPromises(groupIds, 10)
-
-            let (todayPromises, allUpcoming) = try await (todayPromisesTask, upcomingPromisesTask)
-
-            // 오늘의 약속 응답
-            await send(.internal(.todaysPromisesResponse(.success(todayPromises))))
-
-            // 응답 필요: pending 상태, 투표 마감 전
-            let pending = allUpcoming.filter { promise in
-              promise.myVoteStatus(userId: userId) == .pending && !promise.isVotingClosed
-            }
-            await send(.internal(.pendingResponsesResponse(.success(pending))))
-
-            // 다가오는 약속: 내일 이후, 확정된 것
-            let upcoming = allUpcoming.filter { $0.startAt >= tomorrow && $0.isConfirmed }
-            await send(.internal(.upcomingPromisesResponse(.success(upcoming))))
-
-          } catch {
-            await send(.internal(.todaysPromisesResponse(.failure(error))))
-            await send(.internal(.pendingResponsesResponse(.failure(error))))
-            await send(.internal(.upcomingPromisesResponse(.failure(error))))
-          }
-        }
-
-      case .todaysPromisesResponse(let result):
-        switch result {
-        case .success(let promises):
-          state.todaysPromisesState = .loaded(promises)
-        case .failure(let error):
-          state.todaysPromisesState = .failed(error)
-        }
-        return .none
-
-      case .pendingResponsesResponse(let result):
-        switch result {
-        case .success(let promises):
-          state.pendingResponsesState = .loaded(promises)
-        case .failure(let error):
-          state.pendingResponsesState = .failed(error)
-        }
-        return .none
-
-      case .upcomingPromisesResponse(let result):
-        switch result {
-        case .success(let promises):
-          state.upcomingPromisesState = .loaded(promises)
-        case .failure(let error):
-          state.upcomingPromisesState = .failed(error)
-        }
-        return .none
       }
     }
   }
@@ -264,13 +242,6 @@ extension Home {
       .auroraBackground()
       .navigationTitle("오늘의 일정")
       .toolbar {
-        ToolbarItem(placement: .topBarLeading) {
-          ToolbarButton(
-            imageName: "line.3.horizontal",
-            action: { store.send(.view(.openSideDrawer)) }
-          )
-        }
-
         ToolbarItem(placement: .topBarTrailing) {
           NotificationButton(
             badgeCount: store.pendingResponseCount,

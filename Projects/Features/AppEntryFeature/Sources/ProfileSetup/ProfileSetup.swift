@@ -172,10 +172,196 @@ extension AppEntry {
       Reduce { state, action in
         switch action {
         case .view(let viewAction):
-          return handleViewAction(state: &state, action: viewAction)
+          switch viewAction {
+          case .nextTapped:
+            if state.isSaving { return .none }
+            switch state.step {
+            case .welcome:
+              state.previousStep = state.step
+              state.step = .nickname
+              prepareUIState(for: &state, step: .nickname)
+              return .none
+            case .nickname:
+              // Shared Layer의 검증 로직 사용
+              if let error = UserPublicModel.validateNickname(state.nickname) {
+                state.nicknameError = error.message
+                return .none
+              }
+              if state.isNicknameAvailable != true {
+                state.nicknameError = "닉네임 중복 확인을 완료해주세요"
+                return .none
+              }
+              state.previousStep = state.step
+              state.step = .photo
+              prepareUIState(for: &state, step: .photo)
+              return .none
+            case .photo:
+              return .send(.internal(.saveProfile))
+            }
+
+          case .backTapped:
+            switch state.step {
+            case .welcome:
+              return .none
+            case .nickname:
+              state.previousStep = state.step
+              state.step = .welcome
+              prepareUIState(for: &state, step: .welcome)
+              return .none
+            case .photo:
+              state.previousStep = state.step
+              state.step = .nickname
+              prepareUIState(for: &state, step: .nickname)
+              return .none
+            }
+
+          case .skipTapped:
+            if state.isSaving { return .none }
+            state.isSkippingPhoto = true
+            return .send(.internal(.saveProfile))
+
+          case .nicknameChanged(let name):
+            state.nickname = name
+            // Shared Layer의 검증 로직 사용
+            state.nicknameError = UserPublicModel.validateNickname(name)?.message
+            state.isNicknameAvailable = nil
+
+            guard state.nicknameError == nil, !name.isEmpty else {
+              state.isCheckingNickname = false
+              return .cancel(id: CancelID.nicknameCheck)
+            }
+
+            state.isCheckingNickname = true
+            return .run { [nickname = name] send in
+              try await Task.sleep(for: .milliseconds(400))
+              do {
+                let isAvailable = try await userProfileClient.isNicknameAvailable(nickname)
+                await send(.internal(.nicknameAvailabilityResponse(.success(isAvailable))))
+              } catch {
+                await send(.internal(.nicknameAvailabilityResponse(.failure(error))))
+              }
+            }
+            .cancellable(id: CancelID.nicknameCheck, cancelInFlight: true)
+
+          case .photoSelected(let item):
+            guard let item else { return .none }
+            return .run { send in
+              if let data = try? await item.loadTransferable(type: Data.self) {
+                await send(.internal(.photoLoaded(data)))
+              }
+            }
+
+          case .stepDidAppear(let step):
+            // step이 변경되어 화면에 나타날 때 애니메이션 상태 초기화
+            let isFirstVisit = !state.completedSteps.contains(step)
+            if isFirstVisit {
+              return .run { send in
+                try await Task.sleep(for: .seconds(0.1))
+                await send(.internal(.startAnimation(step)))
+              }
+            } else {
+              return .none
+            }
+
+          case .animationCompleted(let step):
+            // 애니메이션 완료 시 버튼 표시
+            state.completedSteps.insert(step)
+            state.showButtons = true
+            return .none
+          }
 
         case .internal(let internalAction):
-          return handleInternalAction(state: &state, action: internalAction)
+          switch internalAction {
+          case .photoLoaded(let data):
+            state.profileImage = .data(data)
+            return .none
+
+          case .nicknameAvailabilityResponse(let result):
+            state.isCheckingNickname = false
+            switch result {
+            case .success(let isAvailable):
+              state.isNicknameAvailable = isAvailable
+              state.nicknameError = isAvailable ? nil : "이미 사용 중인 닉네임이에요"
+            case .failure:
+              state.isNicknameAvailable = nil
+              state.nicknameError = "닉네임 확인에 실패했어요. 잠시 후 다시 시도해주세요"
+            }
+            return .none
+
+          case .saveProfile:
+            state.isSaving = true
+            return .run { [state] send in
+              // Provider 정보 추출
+              guard let providerType = state.providerType ?? state.providerId?.providerTypeIdentifier else {
+                let error = NSError(domain: "ProfileSetup", code: -1, userInfo: [
+                  NSLocalizedDescriptionKey: "Provider type is missing"
+                ])
+                await send(.internal(.profileSaveFailed(error)))
+                return
+              }
+              let providerUid = state.providerUid ?? state.uid
+              let email = state.email ?? ""
+
+              // 프로필 이미지 데이터 추출
+              let imageData: Data? = if !state.isSkippingPhoto, case .data(let data) = state.profileImage {
+                data
+              } else {
+                nil
+              }
+
+              // 사용자 생성 + 프로필 이미지 업로드 + 조회 (Client에서 일괄 처리)
+              do {
+                let userModel = try await userProfileClient.createUserWithProfile(
+                  state.fullName,
+                  state.nickname,
+                  providerType,
+                  providerUid,
+                  email,
+                  imageData
+                )
+                await send(.internal(.profileSaved(userModel)))
+              } catch {
+                if let userProfileError = error as? UserProfileError, userProfileError == .uploadFailed {
+                  // uploadFailed 에러는 무시하고 프로필 조회만 시도
+                  print("⚠️ Profile image upload failed, continuing without image...")
+                  do {
+                    let userModel = try await userProfileClient.getPrivateProfile(.me)
+                    await send(.internal(.profileSaved(userModel)))
+                  } catch let fetchError {
+                    await send(.internal(.profileSaveFailed(fetchError)))
+                  }
+                } else {
+                  await send(.internal(.profileSaveFailed(error)))
+                }
+              }
+            }
+
+          case .profileSaved(let profile):
+            state.isSaving = false
+            state.isSkippingPhoto = false
+            return .send(.delegate(.completed(profile)))
+
+          case .profileSaveFailed(let error):
+            state.isSaving = false
+            state.isSkippingPhoto = false
+            print("❌ Profile save failed: \(error.localizedDescription)")
+
+            state.alert = AlertState {
+              TextState("프로필 저장 실패")
+            } actions: {
+              ButtonState(role: .cancel) {
+                TextState("확인")
+              }
+            } message: {
+              TextState(error.localizedDescription)
+            }
+
+            return .none
+
+          case .startAnimation:
+            state.showAnimation = true
+            return .none
+          }
 
         case .delegate:
           return .none
@@ -185,205 +371,6 @@ extension AppEntry {
         }
       }
       .ifLet(\.$alert, action: \.alert)
-    }
-    
-    private func handleViewAction(state: inout State, action: ViewAction) -> Effect<Action> {
-      switch action {
-      case .nextTapped:
-        if state.isSaving { return .none }
-        switch state.step {
-        case .welcome:
-          state.previousStep = state.step
-          state.step = .nickname
-          prepareUIState(for: &state, step: .nickname)
-          return .none
-        case .nickname:
-          // Shared Layer의 검증 로직 사용
-          if let error = UserPublicModel.validateNickname(state.nickname) {
-            state.nicknameError = error.message
-            return .none
-          }
-          if state.isNicknameAvailable != true {
-            state.nicknameError = "닉네임 중복 확인을 완료해주세요"
-            return .none
-          }
-          state.previousStep = state.step
-          state.step = .photo
-          prepareUIState(for: &state, step: .photo)
-          return .none
-        case .photo:
-          return .send(.internal(.saveProfile))
-        }
-        
-      case .backTapped:
-        switch state.step {
-        case .welcome:
-          return .none
-        case .nickname:
-          state.previousStep = state.step
-          state.step = .welcome
-          prepareUIState(for: &state, step: .welcome)
-          return .none
-        case .photo:
-          state.previousStep = state.step
-          state.step = .nickname
-          prepareUIState(for: &state, step: .nickname)
-          return .none
-        }
-        
-      case .skipTapped:
-        if state.isSaving { return .none }
-        state.isSkippingPhoto = true
-        return .send(.internal(.saveProfile))
-        
-      case .nicknameChanged(let name):
-        state.nickname = name
-        // Shared Layer의 검증 로직 사용
-        state.nicknameError = UserPublicModel.validateNickname(name)?.message
-        state.isNicknameAvailable = nil
-
-        guard state.nicknameError == nil, !name.isEmpty else {
-          state.isCheckingNickname = false
-          return .cancel(id: CancelID.nicknameCheck)
-        }
-        
-        state.isCheckingNickname = true
-        return .run { [nickname = name] send in
-          try await Task.sleep(for: .milliseconds(400))
-          do {
-            let isAvailable = try await userProfileClient.isNicknameAvailable(nickname)
-            await send(.internal(.nicknameAvailabilityResponse(.success(isAvailable))))
-          } catch {
-            await send(.internal(.nicknameAvailabilityResponse(.failure(error))))
-          }
-        }
-        .cancellable(id: CancelID.nicknameCheck, cancelInFlight: true)
-        
-      case .photoSelected(let item):
-        guard let item else { return .none }
-        return .run { send in
-          if let data = try? await item.loadTransferable(type: Data.self) {
-            await send(.internal(.photoLoaded(data)))
-          }
-        }
-        
-      case .stepDidAppear(let step):
-        // step이 변경되어 화면에 나타날 때 애니메이션 상태 초기화
-        let isFirstVisit = !state.completedSteps.contains(step)
-        if isFirstVisit {
-          return .run { send in
-            try await Task.sleep(for: .seconds(0.1))
-            await send(.internal(.startAnimation(step)))
-          }
-        } else {
-          return .none
-        }
-        
-      case .animationCompleted(let step):
-        // 애니메이션 완료 시 버튼 표시
-        state.completedSteps.insert(step)
-        state.showButtons = true
-        return .none
-      }
-    }
-    
-    private func handleInternalAction(state: inout State, action: InternalAction) -> Effect<Action> {
-      switch action {
-      case .photoLoaded(let data):
-        state.profileImage = .data(data)
-        return .none
-        
-      case .nicknameAvailabilityResponse(let result):
-        state.isCheckingNickname = false
-        switch result {
-        case .success(let isAvailable):
-          state.isNicknameAvailable = isAvailable
-          state.nicknameError = isAvailable ? nil : "이미 사용 중인 닉네임이에요"
-        case .failure:
-          state.isNicknameAvailable = nil
-          state.nicknameError = "닉네임 확인에 실패했어요. 잠시 후 다시 시도해주세요"
-        }
-        return .none
-        
-      case .saveProfile:
-        state.isSaving = true
-        return .run { [state] send in
-          // Provider 정보 추출
-          guard let providerType = state.providerType ?? state.providerId?.providerTypeIdentifier else {
-            let error = NSError(domain: "ProfileSetup", code: -1, userInfo: [
-              NSLocalizedDescriptionKey: "Provider type is missing"
-            ])
-            await send(.internal(.profileSaveFailed(error)))
-            return
-          }
-          let providerUid = state.providerUid ?? state.uid
-          let email = state.email ?? ""
-
-          // 프로필 이미지 데이터 추출
-          let imageData: Data? = if !state.isSkippingPhoto, case .data(let data) = state.profileImage {
-            data
-          } else {
-            nil
-          }
-
-          // 사용자 생성 + 프로필 이미지 업로드 + 조회 (Client에서 일괄 처리)
-          do {
-            let userModel = try await userProfileClient.createUserWithProfile(
-              state.fullName,
-              state.nickname,
-              providerType,
-              providerUid,
-              email,
-              imageData
-            )
-            await send(.internal(.profileSaved(userModel)))
-          } catch let error as UserProfileError {
-            // uploadFailed 에러는 무시하고 프로필 조회만 시도
-            if error == .uploadFailed {
-              print("⚠️ Profile image upload failed, continuing without image...")
-              do {
-                // 이미지 없이 프로필 조회 (프로필은 이미 생성됨)
-                let userModel = try await userProfileClient.getPrivateProfile(.me)
-                await send(.internal(.profileSaved(userModel)))
-              } catch {
-                await send(.internal(.profileSaveFailed(error)))
-              }
-            } else {
-              // 그 외 에러는 실패 처리
-              await send(.internal(.profileSaveFailed(error)))
-            }
-          } catch {
-            // 알 수 없는 에러도 실패 처리
-            await send(.internal(.profileSaveFailed(error)))
-          }
-        }
-        
-      case .profileSaved(let profile):
-        state.isSaving = false
-        state.isSkippingPhoto = false
-        return .send(.delegate(.completed(profile)))
-        
-      case .profileSaveFailed(let error):
-        state.isSaving = false
-        state.isSkippingPhoto = false
-        print("❌ Profile save failed: \(error.localizedDescription)")
-
-        state.alert = AlertState {
-          TextState("프로필 저장 실패")
-        } actions: {
-          ButtonState(role: .cancel) {
-            TextState("확인")
-          }
-        } message: {
-          TextState(error.localizedDescription)
-        }
-
-        return .none
-        
-      case .startAnimation:
-        state.showAnimation = true
-        return .none
-      }
     }
     
     // MARK: - UI Helpers
