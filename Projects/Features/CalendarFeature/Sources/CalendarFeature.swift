@@ -314,6 +314,8 @@ extension CalendarFeature {
 
       public enum InternalAction: Sendable {
         case transitionCompleted
+        // 초기화 관련
+        case loadInitialData              // 캐시 초기화 + 약속 로드
         // 약속 데이터 관련 (월 단위 캐싱)
         case fetchPromisesForMonth(Date)  // 특정 월 데이터 로드
         case prefetchAdjacentMonths       // 인접 월 프리페치
@@ -384,21 +386,11 @@ extension CalendarFeature {
 
       switch action {
       case .onAppear:
-        debugLog("🚀 onAppear - 약속 로드 시작 (그룹: \(state.userGroupIds.count)개)")
-        let monthsToLoad = getMonthsToLoad(state: state)
-
-        var effects: [Effect<Action>] = [
-          .send(.internal(.checkCalendarPermission))
-        ]
-
-        // 그룹이 있으면 약속 데이터 로드
-        if !state.userGroupIds.isEmpty {
-          effects.append(contentsOf: monthsToLoad.map { month in
-            Effect<Action>.send(.internal(.fetchPromisesForMonth(month)))
-          })
-        }
-
-        return .merge(effects)
+        debugLog("🚀 onAppear - 캘린더 탭 진입")
+        return .merge(
+          .send(.internal(.checkCalendarPermission)),
+          .send(.internal(.loadInitialData))
+        )
 
       case .toggleDisplayMode:
         state.isTransitioning = true
@@ -637,6 +629,22 @@ extension CalendarFeature {
       case .transitionCompleted:
         state.isTransitioning = false
         return .none
+
+      case .loadInitialData:
+        // 1. 캐시 초기화
+        state.loadedMonths.removeAll()
+        state.cachedPromisesByMonth.removeAll()
+        debugLog("📦 초기 데이터 로드 (캐시 초기화 완료, 그룹: \(state.userGroupIds.count)개)")
+
+        // 2. 그룹이 있으면 약속 로드
+        guard !state.userGroupIds.isEmpty else {
+          return .none
+        }
+
+        let monthsToLoad = getMonthsToLoad(state: state)
+        return .merge(monthsToLoad.map { month in
+          Effect<Action>.send(.internal(.fetchPromisesForMonth(month)))
+        })
 
       case .fetchPromisesForMonth(let month):
         let monthStart = month.startOfMonth
