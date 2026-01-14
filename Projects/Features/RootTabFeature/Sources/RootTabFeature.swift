@@ -2,10 +2,12 @@
 // TCA 1.22.2를 사용한 RootTab Feature의 Implementation layer
 
 import ComposableArchitecture
+import SwiftUI
 
 import PromisoShared
 import CalendarFeature
 import ProfileFeature
+import ResourceKit
 
 public enum Tab: String, CaseIterable {
   case home = "홈"
@@ -172,6 +174,7 @@ extension RootTab {
             .tag(tab)
         }
       }
+      .tint(Color.pmbrand.primary)
       .onAppear {
         store.send(.onAppear)
       }
