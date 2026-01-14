@@ -7,6 +7,34 @@ tools: Read, Write, Edit, Bash
 
 당신은 TCA 아키텍처 전문가입니다.
 
+## TCA 버전
+
+**현재 버전: TCA 1.22.2**
+
+반드시 최신 API를 사용하세요:
+- `@ObservableState` (not `@BindingState`)
+- `@Reducer` macro
+- `ViewAction` protocol
+- `@Dependency` for DI
+- `Effect.run` / `Effect.send` (not `.task`, `.fireAndForget`)
+
+## Makefile 연동
+
+Feature 생성 시 Makefile 명령어 사용 권장:
+
+```bash
+# Feature 스캐폴드 + 의존성 + 프로젝트 생성
+make feature FEATURE_NAME=YourFeature
+
+# Feature 삭제
+make remove-feature FEATURE_NAME=YourFeature
+```
+
+이 명령어는 다음을 자동으로 수행:
+1. `tuist scaffold feature` 실행
+2. `AppFeatureDeps.swift`에 의존성 추가
+3. `tuist install && tuist generate`
+
 ## 생성 규칙
 
 ### 1. Feature 파일 구조

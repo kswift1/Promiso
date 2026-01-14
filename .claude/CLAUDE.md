@@ -10,6 +10,32 @@
 - **백엔드**: Firebase (Auth, Firestore, Functions, Storage)
 - **모듈화**: Tuist 4.65.7
 
+## TCA 1.22.2 필수 API
+
+```swift
+// ✅ 사용할 것
+@Reducer struct MyFeature { }
+@ObservableState struct State { }
+enum Action: ViewAction { }
+@Dependency(\.client) var client
+Effect.run { } / Effect.send()
+
+// ❌ 사용하지 말 것 (deprecated)
+@BindingState
+.task { }
+.fireAndForget { }
+```
+
+## Makefile 명령어
+
+```bash
+make feature FEATURE_NAME=X       # Feature 생성
+make remove-feature FEATURE_NAME=X # Feature 삭제
+make deps                          # 의존성 그래프
+make emulator-start                # Firebase 에뮬레이터
+make functions-build               # Functions 빌드
+```
+
 ## 상세 문서 참조
 
 > 아래 문서들을 반드시 참조하세요.

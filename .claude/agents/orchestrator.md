@@ -50,6 +50,22 @@ App → Features → Clients → Shared
     ExternalDependency, ResourceKit
 ```
 
+## Makefile 명령어
+
+Feature 관련 작업 시 활용:
+
+| 명령어 | 설명 |
+|--------|------|
+| `make feature FEATURE_NAME=X` | Feature 생성 + 의존성 + 프로젝트 생성 |
+| `make remove-feature FEATURE_NAME=X` | Feature 삭제 |
+| `make deps` | 의존성 그래프 시각화 |
+| `make emulator-start` | Firebase 에뮬레이터 실행 |
+| `make functions-build` | Firebase Functions 빌드 |
+
+## TCA 버전
+
+**현재: TCA 1.22.2** - 최신 API 사용 필수
+
 ## 컨텍스트 참조
 
 작업 전 반드시 확인:
