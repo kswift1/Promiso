@@ -88,7 +88,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
   }
 
   private func functionsEnvironmentParam() -> String? {
-    switch FirestoreEnvironmentManager.shared.current {
+    switch FirebaseEnvironmentManager.shared.current {
     case .dev:
       return nil
     case .stage:
