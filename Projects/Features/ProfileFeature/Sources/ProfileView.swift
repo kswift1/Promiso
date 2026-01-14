@@ -31,11 +31,8 @@ extension Profile {
           // 프로필 헤더 섹션
           profileHeaderSection
 
-          // 설정 메뉴 섹션 (계정 정보 포함)
+          // 설정 메뉴 섹션
           settingsMenuSection
-
-          // 로그아웃 버튼
-          logoutButton
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 24)
@@ -50,26 +47,6 @@ extension Profile {
         )
       ) {
         Profile.ProfileEditView(store: store)
-      }
-      .alert(
-        "로그아웃",
-        isPresented: Binding(
-          get: { store.showLogoutAlert },
-          set: { newValue in
-            if !newValue {
-              store.send(.view(.logoutCancelled))
-            }
-          }
-        )
-      ) {
-        Button("취소", role: .cancel) {
-          store.send(.view(.logoutCancelled))
-        }
-        Button("로그아웃", role: .destructive) {
-          store.send(.view(.logoutConfirmed))
-        }
-      } message: {
-        Text("정말 로그아웃 하시겠습니까?")
       }
       .overlay {
         if store.isLoading {
@@ -135,16 +112,6 @@ extension Profile {
           icon: "person.text.rectangle.fill",
           title: "계정 정보",
           action: { store.send(.view(.accountInfoTapped)) }
-        )
-
-        Divider()
-          .padding(.leading, 56)
-
-        // 프로필 편집
-        settingsMenuRow(
-          icon: "person.crop.circle.fill",
-          title: "프로필 편집",
-          action: { store.send(.view(.editProfileTapped)) }
         )
 
         Divider()
@@ -232,34 +199,6 @@ extension Profile {
       let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
       let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
       return "\(version) (\(build))"
-    }
-
-    // MARK: - Logout Button
-
-    private var logoutButton: some View {
-      Button {
-        store.send(.view(.logoutTapped))
-      } label: {
-        HStack(spacing: 8) {
-          Image(systemName: "rectangle.portrait.and.arrow.right")
-            .font(.body.weight(.medium))
-
-          Text("로그아웃")
-            .font(.body.weight(.semibold))
-        }
-        .foregroundStyle(.white)
-        .frame(maxWidth: .infinity)
-        .frame(height: 52)
-        .background(
-          Color.pmerror.n500,
-          in: RoundedRectangle(cornerRadius: 14, style: .continuous)
-        )
-        .shadow(color: Color.pmerror.n500.opacity(0.3), radius: 12, y: 6)
-      }
-      .buttonStyle(.plain)
-      .disabled(store.isLoading)
-      .opacity(store.isLoading ? 0.6 : 1)
-      .padding(.top, 8)
     }
   }
 }

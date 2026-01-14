@@ -20,11 +20,15 @@ extension AccountInfo {
 
   @Reducer
   public struct Feature {
+    @Dependency(\.hapticFeedback) var hapticFeedback
+
     public init() {}
 
     @ObservableState
     public struct State {
       public var currentUser: UserPrivateModel
+      public var showLogoutAlert: Bool = false
+      public var showDeleteAccountAlert: Bool = false
 
       public init(currentUser: UserPrivateModel) {
         self.currentUser = currentUser
@@ -32,13 +36,71 @@ extension AccountInfo {
     }
 
     public enum Action: Sendable {
+      case view(View)
+      case delegate(Delegate)
+    }
+
+    public enum View: Sendable {
       case onAppear
+      case editProfileTapped
+      case logoutTapped
+      case logoutConfirmed
+      case logoutCancelled
+      case deleteAccountTapped
+      case deleteAccountConfirmed
+      case deleteAccountCancelled
+    }
+
+    public enum Delegate: Sendable {
+      case editProfileRequested
+      case logoutRequested
+      case deleteAccountRequested
     }
 
     public var body: some ReducerOf<Self> {
-      Reduce { _, action in
+      Reduce { state, action in
         switch action {
-        case .onAppear:
+        case .view(let viewAction):
+          switch viewAction {
+          case .onAppear:
+            return .none
+
+          case .editProfileTapped:
+            return .run { send in
+              await hapticFeedback.selection()
+              await send(.delegate(.editProfileRequested))
+            }
+
+          case .logoutTapped:
+            state.showLogoutAlert = true
+            return .run { _ in
+              await hapticFeedback.medium()
+            }
+
+          case .logoutConfirmed:
+            state.showLogoutAlert = false
+            return .send(.delegate(.logoutRequested))
+
+          case .logoutCancelled:
+            state.showLogoutAlert = false
+            return .none
+
+          case .deleteAccountTapped:
+            state.showDeleteAccountAlert = true
+            return .run { _ in
+              await hapticFeedback.medium()
+            }
+
+          case .deleteAccountConfirmed:
+            state.showDeleteAccountAlert = false
+            return .send(.delegate(.deleteAccountRequested))
+
+          case .deleteAccountCancelled:
+            state.showDeleteAccountAlert = false
+            return .none
+          }
+
+        case .delegate:
           return .none
         }
       }
@@ -101,7 +163,14 @@ extension AccountInfo {
     public var body: some View {
       ScrollView {
         VStack(spacing: 24) {
+          // 계정 정보 카드
           accountInfoCard
+
+          // 프로필 편집
+          profileEditButton
+
+          // 계정 관리 (로그아웃, 탈퇴)
+          accountManagementSection
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 24)
@@ -109,9 +178,98 @@ extension AccountInfo {
       .auroraBackground()
       .navigationTitle("계정 정보")
       .navigationBarTitleDisplayMode(.large)
-      .onAppear {
-        store.send(.onAppear)
+      .alert(
+        "로그아웃",
+        isPresented: Binding(
+          get: { store.showLogoutAlert },
+          set: { if !$0 { store.send(.view(.logoutCancelled)) } }
+        )
+      ) {
+        Button("취소", role: .cancel) {
+          store.send(.view(.logoutCancelled))
+        }
+        Button("로그아웃", role: .destructive) {
+          store.send(.view(.logoutConfirmed))
+        }
+      } message: {
+        Text("정말 로그아웃 하시겠습니까?")
       }
+      .alert(
+        "회원 탈퇴",
+        isPresented: Binding(
+          get: { store.showDeleteAccountAlert },
+          set: { if !$0 { store.send(.view(.deleteAccountCancelled)) } }
+        )
+      ) {
+        Button("취소", role: .cancel) {
+          store.send(.view(.deleteAccountCancelled))
+        }
+        Button("탈퇴하기", role: .destructive) {
+          store.send(.view(.deleteAccountConfirmed))
+        }
+      } message: {
+        Text("탈퇴 시 모든 데이터가 삭제되며 복구할 수 없습니다.")
+      }
+      .onAppear {
+        store.send(.view(.onAppear))
+      }
+    }
+
+    // MARK: - Profile Edit Button
+
+    private var profileEditButton: some View {
+      Button {
+        store.send(.view(.editProfileTapped))
+      } label: {
+        HStack(spacing: 16) {
+          Image(systemName: "person.crop.circle.fill")
+            .font(.body)
+            .foregroundStyle(Color.pmindigo.n500)
+            .frame(width: 24, height: 24)
+
+          Text("프로필 편집")
+            .font(.body)
+            .foregroundStyle(Color.pmtext.primary)
+
+          Spacer()
+
+          Image(systemName: "chevron.right")
+            .font(.caption)
+            .foregroundStyle(Color.pmgray.n400)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .contentShape(Rectangle())
+      }
+      .buttonStyle(.plain)
+      .adaptiveGlassBackground()
+    }
+
+    // MARK: - Account Management Section
+
+    private var accountManagementSection: some View {
+      VStack(spacing: 12) {
+        // 로그아웃
+        Button {
+          store.send(.view(.logoutTapped))
+        } label: {
+          Text("로그아웃")
+            .font(.subheadline)
+            .foregroundStyle(Color.pmtext.secondary)
+        }
+        .buttonStyle(.plain)
+
+        // 탈퇴하기
+        Button {
+          store.send(.view(.deleteAccountTapped))
+        } label: {
+          Text("탈퇴하기")
+            .font(.caption)
+            .foregroundStyle(Color.pmgray.n400)
+        }
+        .buttonStyle(.plain)
+      }
+      .padding(.top, 16)
     }
 
     // MARK: - Account Info Card

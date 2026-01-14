@@ -390,6 +390,33 @@ extension Profile {
           return .none
 
         // MARK: - Path Actions
+        case .path(.element(_, action: .accountInfo(.delegate(let delegate)))):
+          switch delegate {
+          case .editProfileRequested:
+            state.isEditingProfile = true
+            state.editedNickname = state.currentUser.nickname
+            state.editedProfileImageData = nil
+            state.nicknameValidation = .idle
+            return .none
+
+          case .logoutRequested:
+            state.isLoading = true
+            return .run { send in
+              await hapticFeedback.heavy()
+              do {
+                try await authClient.logout()
+                await send(.internal(.logoutCompleted))
+              } catch {
+                let clientError = (error as? AuthClientError) ?? .unknown
+                await send(.internal(.logoutFailed(clientError)))
+              }
+            }
+
+          case .deleteAccountRequested:
+            // TODO: 회원 탈퇴 구현
+            return .none
+          }
+
         case .path:
           return .none
         }
