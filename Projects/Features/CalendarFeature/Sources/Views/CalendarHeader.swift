@@ -1,0 +1,94 @@
+// MARK: - CalendarHeader.swift
+// 캘린더 헤더 컴포넌트
+
+import SwiftUI
+import ResourceKit
+
+// MARK: - Calendar Header
+
+struct CalendarHeader: View {
+  let title: String
+  let displayMode: CalendarDisplayMode
+  let isSelectedDateToday: Bool
+  let onToggleMode: () -> Void
+  let onMoveToToday: () -> Void
+  let onMovePrevious: () -> Void
+  let onMoveNext: () -> Void
+
+  var body: some View {
+    HStack(spacing: 12) {
+      // 이전 버튼
+      Button(action: onMovePrevious) {
+        Image(systemName: "chevron.left")
+          .font(.system(size: 16, weight: .semibold))
+          .foregroundColor(.primary)
+          .frame(width: 36, height: 36)
+      }
+
+      // 타이틀
+      Text(title)
+        .font(.system(size: 18, weight: .bold))
+        .foregroundColor(.primary)
+
+      // 다음 버튼
+      Button(action: onMoveNext) {
+        Image(systemName: "chevron.right")
+          .font(.system(size: 16, weight: .semibold))
+          .foregroundColor(.primary)
+          .frame(width: 36, height: 36)
+      }
+
+      Spacer()
+
+      // 오늘 버튼
+      if !isSelectedDateToday {
+        Button(action: onMoveToToday) {
+          Text("오늘")
+            .font(.system(size: 14, weight: .semibold))
+            .foregroundColor(Color.pmindigo.n500)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(Color.pmindigo.n500.opacity(0.1))
+            .cornerRadius(8)
+        }
+      }
+
+      // 주간/월간 토글
+      Button(action: onToggleMode) {
+        Image(systemName: displayMode == .week ? "rectangle.grid.1x2" : "rectangle.grid.3x2")
+          .font(.system(size: 18))
+          .foregroundColor(.primary)
+          .frame(width: 36, height: 36)
+      }
+    }
+    .padding(.horizontal, 16)
+    .padding(.vertical, 12)
+  }
+}
+
+// MARK: - Weekday Header
+
+struct WeekdayHeader: View {
+  private let weekdaySymbols = ["일", "월", "화", "수", "목", "금", "토"]
+
+  var body: some View {
+    HStack(spacing: 0) {
+      ForEach(weekdaySymbols, id: \.self) { symbol in
+        Text(symbol)
+          .font(.system(size: 13, weight: .medium))
+          .foregroundColor(weekdayColor(for: symbol))
+          .frame(maxWidth: .infinity)
+      }
+    }
+    .padding(.horizontal, 16)
+    .padding(.vertical, 8)
+  }
+
+  private func weekdayColor(for symbol: String) -> Color {
+    switch symbol {
+    case "일": return .red.opacity(0.8)
+    case "토": return .blue.opacity(0.8)
+    default: return .secondary
+    }
+  }
+}

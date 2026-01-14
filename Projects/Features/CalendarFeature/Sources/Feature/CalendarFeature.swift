@@ -1,80 +1,11 @@
 // MARK: - CalendarFeature.swift
-// 캘린더 Feature - TCA Reducer 및 메인 뷰
-// 주간/월간 토글, 실제 데이터 연동
+// 캘린더 Feature - TCA Reducer
 
 import SwiftUI
 import ComposableArchitecture
 import PromisoShared
 import Clients
-import ResourceKit
 import SharedFeature
-import os.log
-
-// MARK: - Debug Logger
-
-private let calendarLogger = Logger(subsystem: "com.promiso", category: "CalendarFeature")
-
-/// 디버그 모드 플래그 (Release에서는 false)
-#if DEBUG
-private let isDebugLoggingEnabled = true
-#else
-private let isDebugLoggingEnabled = false
-#endif
-
-private func debugLog(_ message: String, type: OSLogType = .debug) {
-  guard isDebugLoggingEnabled else { return }
-  calendarLogger.log(level: type, "📅 \(message)")
-}
-
-// MARK: - Debug Formatting Helpers
-
-private let debugDateFormatter: DateFormatter = {
-  let formatter = DateFormatter()
-  formatter.locale = Locale(identifier: "ko_KR")
-  formatter.dateFormat = "yyyy-MM-dd"
-  return formatter
-}()
-
-private let debugMonthFormatter: DateFormatter = {
-  let formatter = DateFormatter()
-  formatter.locale = Locale(identifier: "ko_KR")
-  formatter.dateFormat = "yyyy년 M월"
-  return formatter
-}()
-
-private func formatDate(_ date: Date) -> String {
-  debugDateFormatter.string(from: date)
-}
-
-private func formatMonth(_ date: Date) -> String {
-  debugMonthFormatter.string(from: date)
-}
-
-// MARK: - Calendar List Item (통합 정렬용)
-
-/// 약속과 캘린더 이벤트를 통합하여 시간순 정렬하기 위한 타입
-enum CalendarListItem: Identifiable {
-  case promise(PromiseModel)
-  case calendarEvent(CalendarEvent)
-
-  var id: String {
-    switch self {
-    case .promise(let promise):
-      return "promise_\(promise.id)"
-    case .calendarEvent(let event):
-      return "event_\(event.id)"
-    }
-  }
-
-  var startTime: Date {
-    switch self {
-    case .promise(let promise):
-      return promise.startAt
-    case .calendarEvent(let event):
-      return event.startDate
-    }
-  }
-}
 
 // MARK: - Feature Namespace
 
@@ -252,15 +183,13 @@ extension CalendarFeature {
 
       /// 헤더 타이틀
       var headerTitle: String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ko_KR")
-
         if displayMode == .week {
+          let formatter = DateFormatter()
+          formatter.locale = Locale(identifier: "ko_KR")
           formatter.dateFormat = "M월 W주차"
           return formatter.string(from: currentWeekStart)
         } else {
-          formatter.dateFormat = "yyyy년 M월"
-          return formatter.string(from: currentMonth)
+          return KoreanDateFormatters.yearMonth.string(from: currentMonth)
         }
       }
 
@@ -386,7 +315,7 @@ extension CalendarFeature {
 
       switch action {
       case .onAppear:
-        debugLog("🚀 onAppear - 캘린더 탭 진입")
+        AppLogger.calendar.debugLog("🚀 onAppear - 캘린더 탭 진입")
         return .merge(
           .send(.internal(.checkCalendarPermission)),
           .send(.internal(.loadInitialData))
@@ -405,7 +334,7 @@ extension CalendarFeature {
 
         // 월간 모드로 전환 시 해당 월 데이터 로드
         let monthsToLoad = getMonthsToLoad(state: state).filter { !state.loadedMonths.contains($0) }
-        debugLog("🔄 모드 전환 - 로드 필요 월: \(monthsToLoad.map { formatMonth($0) })")
+        AppLogger.calendar.debugLog("🔄 모드 전환 - 로드 필요 월: \(monthsToLoad.map { KoreanDateFormatters.yearMonth.string(from: $0) })")
 
         var effects: [Effect<Action>] = monthsToLoad.map { month in
           .send(.internal(.fetchPromisesForMonth(month)))
@@ -425,7 +354,7 @@ extension CalendarFeature {
 
         // 월이 바뀌면 데이터 로드
         if previousMonth != newMonth && !state.loadedMonths.contains(newMonth) {
-          debugLog("🔄 날짜 선택으로 월 변경 - 로드 필요: \(formatMonth(newMonth))")
+          AppLogger.calendar.debugLog("🔄 날짜 선택으로 월 변경 - 로드 필요: \(KoreanDateFormatters.yearMonth.string(from: newMonth))")
           return .send(.internal(.fetchPromisesForMonth(newMonth)))
         }
         return .none
@@ -440,7 +369,7 @@ extension CalendarFeature {
 
         // 월이 바뀌면 데이터 로드
         if previousMonth != newMonth && !state.loadedMonths.contains(newMonth) {
-          debugLog("🔄 오늘로 이동 - 로드 필요: \(formatMonth(newMonth))")
+          AppLogger.calendar.debugLog("🔄 오늘로 이동 - 로드 필요: \(KoreanDateFormatters.yearMonth.string(from: newMonth))")
           return .send(.internal(.fetchPromisesForMonth(newMonth)))
         }
         return .none
@@ -507,7 +436,6 @@ extension CalendarFeature {
         state.isTransitioning = true
 
         // 전환 전에 미리 스크롤 위치 설정 (애니메이션 없이 바로 해당 위치에 표시)
-        let calendar = Calendar.current
         let targetDate = calendar.startOfDay(for: date)
         state.scrolledID = targetDate
 
@@ -521,22 +449,21 @@ extension CalendarFeature {
         state.currentWeekStart = newWeekStart
 
         // selectedDate가 이미 해당 주 내에 있으면 유지, 아니면 주의 첫날로 동기화
-        let calendar = Calendar.current
         let selectedWeekStart = state.selectedDate.startOfWeek
         if !calendar.isDate(selectedWeekStart, inSameDayAs: newWeekStart) {
           state.selectedDate = newWeekStart
         }
-        debugLog("📆 weekPageChanged - 주 시작: \(formatDate(newWeekStart)), 선택된 날짜: \(formatDate(state.selectedDate))")
+        AppLogger.calendar.debugLog("📆 weekPageChanged - 주 시작: \(KoreanDateFormatters.date.string(from: newWeekStart)), 선택된 날짜: \(KoreanDateFormatters.date.string(from: state.selectedDate))")
 
         // 해당 월 로드 (캐시되지 않은 경우만)
         let monthStart = newWeekStart.startOfMonth
         var effects: [Effect<Action>] = []
 
         if !state.loadedMonths.contains(monthStart) {
-          debugLog("🔄 캐시 MISS - 로드 필요: \(formatMonth(monthStart))")
+          AppLogger.calendar.debugLog("🔄 캐시 MISS - 로드 필요: \(KoreanDateFormatters.yearMonth.string(from: monthStart))")
           effects.append(.send(.internal(.fetchPromisesForMonth(monthStart))))
         } else {
-          debugLog("✅ 캐시 HIT - 이미 로드됨: \(formatMonth(monthStart))")
+          AppLogger.calendar.debugLog("✅ 캐시 HIT - 이미 로드됨: \(KoreanDateFormatters.yearMonth.string(from: monthStart))")
         }
 
         // 캘린더 이벤트 로드
@@ -559,16 +486,16 @@ extension CalendarFeature {
         if !Calendar.current.isDate(selectedMonthStart, inSameDayAs: monthStart) {
           state.selectedDate = monthStart
         }
-        debugLog("📆 monthPageChanged - 월: \(formatMonth(newMonth)), 선택된 날짜: \(formatDate(state.selectedDate))")
+        AppLogger.calendar.debugLog("📆 monthPageChanged - 월: \(KoreanDateFormatters.yearMonth.string(from: newMonth)), 선택된 날짜: \(KoreanDateFormatters.date.string(from: state.selectedDate))")
 
         // 해당 월 로드 (캐시되지 않은 경우만)
         var effects: [Effect<Action>] = []
 
         if !state.loadedMonths.contains(monthStart) {
-          debugLog("🔄 캐시 MISS - 로드 필요: \(formatMonth(monthStart))")
+          AppLogger.calendar.debugLog("🔄 캐시 MISS - 로드 필요: \(KoreanDateFormatters.yearMonth.string(from: monthStart))")
           effects.append(.send(.internal(.fetchPromisesForMonth(monthStart))))
         } else {
-          debugLog("✅ 캐시 HIT - 이미 로드됨: \(formatMonth(monthStart))")
+          AppLogger.calendar.debugLog("✅ 캐시 HIT - 이미 로드됨: \(KoreanDateFormatters.yearMonth.string(from: monthStart))")
         }
 
         // 캘린더 이벤트 로드
@@ -587,7 +514,6 @@ extension CalendarFeature {
           state.scrolledID = nil
           return .none
         }
-        let calendar = Calendar.current
         if let targetDate = state.sectionDates.first(where: { calendar.isDate($0, inSameDayAs: date) }) {
           state.scrolledID = targetDate
         }
@@ -634,7 +560,7 @@ extension CalendarFeature {
         // 1. 캐시 초기화
         state.loadedMonths.removeAll()
         state.cachedPromisesByMonth.removeAll()
-        debugLog("📦 초기 데이터 로드 (캐시 초기화 완료, 그룹: \(state.userGroupIds.count)개)")
+        AppLogger.calendar.debugLog("📦 초기 데이터 로드 (캐시 초기화 완료, 그룹: \(state.userGroupIds.count)개)")
 
         // 2. 그룹이 있으면 약속 로드
         guard !state.userGroupIds.isEmpty else {
@@ -651,18 +577,18 @@ extension CalendarFeature {
 
         // 이미 로드된 월이면 스킵
         guard !state.loadedMonths.contains(monthStart) else {
-          debugLog("⏭️ fetchPromisesForMonth 스킵 - 이미 로드됨: \(formatMonth(monthStart))")
+          AppLogger.calendar.debugLog("⏭️ fetchPromisesForMonth 스킵 - 이미 로드됨: \(KoreanDateFormatters.yearMonth.string(from: monthStart))")
           return .none
         }
 
         // 그룹이 없으면 스킵
         guard !state.userGroupIds.isEmpty else {
-          debugLog("⏭️ fetchPromisesForMonth 스킵 - 그룹 없음")
+          AppLogger.calendar.debugLog("⏭️ fetchPromisesForMonth 스킵 - 그룹 없음")
           return .none
         }
 
         state.isLoadingPromises = true
-        debugLog("🌐 API 요청 시작 - \(formatMonth(monthStart))")
+        AppLogger.calendar.debugLog("🌐 API 요청 시작 - \(KoreanDateFormatters.yearMonth.string(from: monthStart))")
 
         // 월의 시작과 끝 계산
         let calendar = Calendar.current
@@ -674,11 +600,11 @@ extension CalendarFeature {
           do {
             let promises = try await promiseClient.getPromisesByDateRange(groupIds, monthStart, endDate)
             let elapsed = Date().timeIntervalSince(startTime)
-            debugLog("✅ API 응답 성공 - \(formatMonth(monthStart)): \(promises.count)개 약속, \(String(format: "%.2f", elapsed))초")
+            AppLogger.calendar.debugLog("✅ API 응답 성공 - \(KoreanDateFormatters.yearMonth.string(from: monthStart)): \(promises.count)개 약속, \(String(format: "%.2f", elapsed))초")
             await send(.internal(.promisesResponseForMonth(month: monthStart, .success(promises))))
           } catch {
             let elapsed = Date().timeIntervalSince(startTime)
-            debugLog("❌ API 응답 실패 - \(formatMonth(monthStart)): \(error.localizedDescription), \(String(format: "%.2f", elapsed))초", type: .error)
+            AppLogger.calendar.debugLog("❌ API 응답 실패 - \(KoreanDateFormatters.yearMonth.string(from: monthStart)): \(error.localizedDescription), \(String(format: "%.2f", elapsed))초", type: .error)
             await send(.internal(.promisesResponseForMonth(month: monthStart, .failure(error))))
           }
         }
@@ -702,11 +628,11 @@ extension CalendarFeature {
         }
 
         if monthsToFetch.isEmpty {
-          debugLog("⏭️ 프리페치 스킵 - 인접 월 모두 캐시됨")
+          AppLogger.calendar.debugLog("⏭️ 프리페치 스킵 - 인접 월 모두 캐시됨")
           return .none
         }
 
-        debugLog("🔮 프리페치 시작 - \(monthsToFetch.map { formatMonth($0) })")
+        AppLogger.calendar.debugLog("🔮 프리페치 시작 - \(monthsToFetch.map { KoreanDateFormatters.yearMonth.string(from: $0) })")
 
         // 프리페치는 백그라운드에서 조용히 실행 (로딩 표시 없음)
         return .merge(monthsToFetch.map { month in
@@ -720,11 +646,11 @@ extension CalendarFeature {
         case .success(let promises):
           state.cachedPromisesByMonth[month] = promises
           state.loadedMonths.insert(month)
-          debugLog("💾 캐시 저장 완료 - \(formatMonth(month)): \(promises.count)개 약속")
+          AppLogger.calendar.debugLog("💾 캐시 저장 완료 - \(KoreanDateFormatters.yearMonth.string(from: month)): \(promises.count)개 약속")
 
         case .failure(let error):
           // 실패해도 재시도 가능하도록 loadedMonths에 추가하지 않음
-          debugLog("⚠️ 캐시 저장 실패 - \(formatMonth(month)): \(error.localizedDescription)", type: .error)
+          AppLogger.calendar.debugLog("⚠️ 캐시 저장 실패 - \(KoreanDateFormatters.yearMonth.string(from: month)): \(error.localizedDescription)", type: .error)
         }
         return .none
 
@@ -778,615 +704,4 @@ extension CalendarFeature {
       return [state.selectedDate.startOfMonth]
     }
   }
-}
-
-// MARK: - Root View
-
-extension CalendarFeature {
-
-  public struct RootView: View {
-    @Bindable private var store: StoreOf<Feature>
-    @Namespace private var calendarAnimation
-
-    public init(store: StoreOf<Feature>) {
-      self.store = store
-    }
-
-    public var body: some View {
-      NavigationStack(path: $store.scope(state: \.path, action: \.path)) {
-        VStack(spacing: 0) {
-          // 헤더
-          CalendarHeader(
-            title: store.headerTitle,
-            displayMode: store.displayMode,
-            isSelectedDateToday: store.isSelectedDateToday,
-            onToggleMode: { store.send(.view(.toggleDisplayMode), animation: .easeInOut(duration: 0.3)) },
-            onMoveToToday: { store.send(.view(.moveToToday), animation: .easeInOut(duration: 0.25)) },
-            onMovePrevious: { store.send(.view(.moveToPreviousPeriod), animation: .easeInOut(duration: 0.25)) },
-            onMoveNext: { store.send(.view(.moveToNextPeriod), animation: .easeInOut(duration: 0.25)) }
-          )
-
-          Divider()
-
-          // 공통 요일 헤더
-          WeekdayHeader()
-
-          // 캘린더 그리드 (주간/월간)
-          calendarGridSection
-            .animation(.easeInOut(duration: 0.3), value: store.displayMode)
-
-          // 약속 리스트 (시트 스타일)
-          promiseListSection
-        }
-        .auroraBackground()
-        .onAppear {
-          store.send(.view(.onAppear))
-        }
-      } destination: { store in
-        switch store.case {
-        case .promiseDetail(let promiseDetailStore):
-          PromiseDetail.RootView(store: promiseDetailStore)
-        }
-      }
-    }
-
-    // MARK: - Calendar Grid Section
-
-    @ViewBuilder
-    private var calendarGridSection: some View {
-      if store.displayMode == .week {
-        // TabView 기반 주간 뷰 (네이티브 페이징)
-        PagingWeekStripView(
-          currentWeekStart: Binding(
-            get: { store.currentWeekStart },
-            set: { store.send(.view(.weekPageChanged($0))) }
-          ),
-          selectedDate: store.selectedDate,
-          promisesByDate: store.promisesByDate,
-          calendarEventsByDate: store.calendarEventsByDate,
-          currentUserId: store.currentUserId,
-          namespace: calendarAnimation,
-          onDateSelected: { date in
-            store.send(.view(.selectDate(date)), animation: .easeInOut(duration: 0.2))
-          }
-        )
-        .padding(.vertical, 14)
-        .transition(.asymmetric(
-          insertion: .scale(scale: 0.95).combined(with: .opacity),
-          removal: .scale(scale: 1.05).combined(with: .opacity)
-        ))
-      } else {
-        // TabView 기반 월간 뷰 (네이티브 페이징)
-        PagingMonthGridView(
-          currentMonth: Binding(
-            get: { store.currentMonth },
-            set: { store.send(.view(.monthPageChanged($0))) }
-          ),
-          selectedDate: store.selectedDate,
-          promisesByDate: store.promisesByDate,
-          calendarEventsByDate: store.calendarEventsByDate,
-          currentUserId: store.currentUserId,
-          namespace: calendarAnimation,
-          onDateSelected: { date in
-            store.send(.view(.selectDate(date)), animation: .easeInOut(duration: 0.2))
-          },
-          onCollapseToWeek: { date in
-            store.send(.view(.collapseToWeek(date)), animation: .easeInOut(duration: 0.3))
-          }
-        )
-        .padding(.vertical, 12)
-        .transition(.asymmetric(
-          insertion: .scale(scale: 1.05).combined(with: .opacity),
-          removal: .scale(scale: 0.95).combined(with: .opacity)
-        ))
-      }
-    }
-
-    // MARK: - Promise List Section
-
-    private var promiseListSection: some View {
-      VStack(spacing: 0) {
-        if store.displayMode == .week {
-          weekScrollView
-        } else {
-          monthScrollView
-        }
-      }
-      .frame(maxWidth: .infinity, maxHeight: .infinity)
-      .background(Color(.systemBackground))
-      .clipShape(RoundedCorner(radius: 24, corners: [.topLeft, .topRight]))
-      .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: -4)
-      .ignoresSafeArea(edges: .bottom)
-    }
-
-    // MARK: - Week Scroll View
-
-    private var weekScrollView: some View {
-      ScrollViewReader { proxy in
-        ScrollView {
-          weekPromiseListContent
-        }
-        .onAppear {
-          // 전환 시 scrolledID가 설정되어 있으면 즉시 해당 위치로 이동 (애니메이션 없음)
-          if let targetDate = store.scrolledID {
-            proxy.scrollTo(targetDate, anchor: .top)
-          }
-        }
-        .onChange(of: store.selectedDate) { _, newDate in
-          guard !store.isTransitioning else { return }
-          let calendar = Calendar.current
-          if let targetDate = store.sectionDates.first(where: { calendar.isDate($0, inSameDayAs: newDate) }) {
-            withAnimation(.easeInOut(duration: 0.3)) {
-              proxy.scrollTo(targetDate, anchor: .top)
-            }
-          }
-        }
-      }
-    }
-
-    // MARK: - Month Scroll View
-
-    private var monthScrollView: some View {
-      ScrollViewReader { proxy in
-        ScrollView {
-          monthPromiseListContent
-        }
-        .onChange(of: store.selectedDate) { _, newDate in
-          guard !store.isTransitioning else { return }
-          let calendar = Calendar.current
-          if let targetDate = store.sectionDates.first(where: { calendar.isDate($0, inSameDayAs: newDate) }) {
-            withAnimation(.easeInOut(duration: 0.3)) {
-              proxy.scrollTo(targetDate, anchor: .center)
-            }
-          }
-        }
-      }
-    }
-
-    // MARK: - Week Promise List Content
-
-    private var weekPromiseListContent: some View {
-      LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
-        // 캘린더 권한 배너
-        if !store.calendarPermissionStatus.canReadEvents {
-          CalendarPermissionBanner(
-            permissionStatus: store.calendarPermissionStatus,
-            onRequestPermission: { store.send(.view(.requestCalendarPermission)) },
-            onOpenSettings: { store.send(.view(.openSettings)) }
-          )
-          .padding(.vertical, 8)
-        }
-
-        if store.isInitialLoading {
-          loadingView
-        } else if store.sectionDates.isEmpty {
-          emptyStateView
-        } else {
-          ForEach(store.sectionDates, id: \.self) { date in
-            weekModeSection(for: date)
-          }
-        }
-      }
-      .padding(.bottom, 500)
-    }
-
-    // MARK: - Month Promise List Content
-
-    private var monthPromiseListContent: some View {
-      LazyVStack(spacing: 0) {
-        if store.isInitialLoading {
-          loadingView
-        } else if store.sectionDates.isEmpty {
-          emptyStateView
-        } else {
-          monthModeHeader
-          ForEach(store.sectionDates, id: \.self) { date in
-            monthModeRow(for: date)
-          }
-        }
-      }
-      .padding(.bottom, 200)
-    }
-
-    // MARK: - Week Mode Section (상세 카드)
-
-    @ViewBuilder
-    private func weekModeSection(for date: Date) -> some View {
-      Section {
-        let calendar = Calendar.current
-        let dateKey = calendar.startOfDay(for: date)
-        let dayPromises = store.promisesByDate[dateKey] ?? []
-        let dayEvents = store.calendarEventsByDate[dateKey] ?? []
-
-        if dayPromises.isEmpty && dayEvents.isEmpty {
-          EmptyDayPlaceholder(date: date)
-        } else {
-          // 약속과 캘린더 이벤트를 시간순으로 통합 정렬
-          let sortedItems = mergeAndSortItems(promises: dayPromises, events: dayEvents)
-
-          ForEach(sortedItems) { item in
-            switch item {
-            case .promise(let promise):
-              PromiseCardView(
-                promise: promise,
-                currentUserId: store.currentUserId,
-                onTap: { store.send(.view(.promiseTapped(promise))) },
-                onRespond: promise.responseStatus(currentUserId: store.currentUserId) == .needResponse
-                  ? { store.send(.view(.promiseRespondTapped(promise))) }
-                  : nil
-              )
-              .padding(.horizontal, 16)
-              .padding(.vertical, 6)
-
-            case .calendarEvent(let event):
-              CalendarEventCardView(
-                event: event,
-                onTap: {
-                  // 시스템 캘린더 앱으로 이동 (선택적)
-                }
-              )
-              .padding(.horizontal, 16)
-              .padding(.vertical, 4)
-            }
-          }
-        }
-      } header: {
-        DiaryStyleSectionHeader(date: date)
-        .id(date)
-      }
-    }
-
-    /// 약속과 캘린더 이벤트를 시간순으로 통합 정렬
-    private func mergeAndSortItems(
-      promises: [PromiseModel],
-      events: [CalendarEvent]
-    ) -> [CalendarListItem] {
-      var items: [CalendarListItem] = []
-
-      items.append(contentsOf: promises.map { CalendarListItem.promise($0) })
-      items.append(contentsOf: events.map { CalendarListItem.calendarEvent($0) })
-
-      return items.sorted { $0.startTime < $1.startTime }
-    }
-
-    // MARK: - Month Mode Header
-
-    private var monthModeHeader: some View {
-      HStack {
-        Text("이번 달 일정")
-          .font(.system(size: 20, weight: .bold))
-          .foregroundColor(.primary)
-
-        Spacer()
-
-        Text("\(store.sectionDates.count)일")
-          .font(.system(size: 14, weight: .medium))
-          .foregroundColor(.secondary)
-      }
-      .padding(.horizontal, 16)
-      .padding(.top, 16)
-      .padding(.bottom, 8)
-    }
-
-    // MARK: - Month Mode Row (간소화된 행)
-
-    @ViewBuilder
-    private func monthModeRow(for date: Date) -> some View {
-      let calendar = Calendar.current
-      let dateKey = calendar.startOfDay(for: date)
-      let dayPromises = store.promisesByDate[dateKey] ?? []
-      let dayEvents = store.calendarEventsByDate[dateKey] ?? []
-      let isSelected = calendar.isDate(date, inSameDayAs: store.selectedDate)
-
-      if !dayPromises.isEmpty || !dayEvents.isEmpty {
-        CompactDayRow(
-          date: date,
-          promises: dayPromises,
-          calendarEvents: dayEvents,
-          isSelected: isSelected,
-          currentUserId: store.currentUserId,
-          onTap: {
-            // 탭하면 주간 뷰로 전환
-            store.send(.view(.collapseToWeek(date)), animation: .easeInOut(duration: 0.3))
-          }
-        )
-        .id(date)
-      }
-    }
-
-    // MARK: - Loading View
-
-    private var loadingView: some View {
-      VStack(spacing: 16) {
-        Spacer()
-          .frame(height: 60)
-
-        ProgressView()
-          .scaleEffect(1.2)
-          .tint(Color.pmindigo.n500)
-
-        Text("약속을 불러오는 중...")
-          .font(.system(size: 15))
-          .foregroundColor(.secondary)
-
-        Spacer()
-          .frame(height: 60)
-      }
-      .frame(maxWidth: .infinity)
-      .padding(.horizontal, 20)
-    }
-
-    // MARK: - Empty State
-
-    private var emptyStateView: some View {
-      VStack(spacing: 16) {
-        Spacer()
-          .frame(height: 60)
-
-        Image(systemName: "calendar.badge.checkmark")
-          .font(.system(size: 52, weight: .light))
-          .foregroundColor(.secondary.opacity(0.6))
-
-        Text("약속이 없습니다")
-          .font(.system(size: 18, weight: .semibold))
-          .foregroundColor(.primary)
-
-        Text("새로운 약속을 만들어보세요")
-          .font(.system(size: 15))
-          .foregroundColor(.secondary)
-
-        Spacer()
-          .frame(height: 60)
-      }
-      .frame(maxWidth: .infinity)
-      .padding(.horizontal, 20)
-    }
-  }
-}
-
-// MARK: - Weekday Header (공통)
-
-private struct WeekdayHeader: View {
-  private let weekdaySymbols = ["일", "월", "화", "수", "목", "금", "토"]
-
-  var body: some View {
-    HStack(spacing: 0) {
-      ForEach(weekdaySymbols, id: \.self) { symbol in
-        Text(symbol)
-          .font(.system(size: 13, weight: .medium))
-          .foregroundColor(weekdayColor(for: symbol))
-          .frame(maxWidth: .infinity)
-      }
-    }
-    .padding(.horizontal, 16)
-    .padding(.vertical, 8)
-  }
-
-  private func weekdayColor(for symbol: String) -> Color {
-    switch symbol {
-    case "일": return .red.opacity(0.8)
-    case "토": return .blue.opacity(0.8)
-    default: return .secondary
-    }
-  }
-}
-
-// MARK: - Calendar Header
-
-private struct CalendarHeader: View {
-  let title: String
-  let displayMode: CalendarDisplayMode
-  let isSelectedDateToday: Bool
-  let onToggleMode: () -> Void
-  let onMoveToToday: () -> Void
-  let onMovePrevious: () -> Void
-  let onMoveNext: () -> Void
-
-  var body: some View {
-    HStack(spacing: 12) {
-      // 이전 버튼
-      Button(action: onMovePrevious) {
-        Image(systemName: "chevron.left")
-          .font(.system(size: 16, weight: .semibold))
-          .foregroundColor(.primary)
-          .frame(width: 36, height: 36)
-      }
-
-      // 타이틀
-      Text(title)
-        .font(.system(size: 18, weight: .bold))
-        .foregroundColor(.primary)
-
-      // 다음 버튼
-      Button(action: onMoveNext) {
-        Image(systemName: "chevron.right")
-          .font(.system(size: 16, weight: .semibold))
-          .foregroundColor(.primary)
-          .frame(width: 36, height: 36)
-      }
-
-      Spacer()
-
-      // 오늘 버튼
-      if !isSelectedDateToday {
-        Button(action: onMoveToToday) {
-          Text("오늘")
-            .font(.system(size: 14, weight: .semibold))
-            .foregroundColor(Color.pmindigo.n500)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(Color.pmindigo.n500.opacity(0.1))
-            .cornerRadius(8)
-        }
-      }
-
-      // 주간/월간 토글
-      Button(action: onToggleMode) {
-        Image(systemName: displayMode == .week ? "rectangle.grid.1x2" : "rectangle.grid.3x2")
-          .font(.system(size: 18))
-          .foregroundColor(.primary)
-          .frame(width: 36, height: 36)
-      }
-    }
-    .padding(.horizontal, 16)
-    .padding(.vertical, 12)
-  }
-}
-
-// MARK: - Cached DateFormatters
-
-private enum DateFormatterCache {
-  static let sectionHeader: DateFormatter = {
-    let formatter = DateFormatter()
-    formatter.locale = Locale(identifier: "ko_KR")
-    formatter.dateFormat = "M월 d일 (E)"
-    return formatter
-  }()
-
-  static let weekday: DateFormatter = {
-    let formatter = DateFormatter()
-    formatter.locale = Locale(identifier: "ko_KR")
-    formatter.dateFormat = "E"
-    return formatter
-  }()
-
-  static let monthDay: DateFormatter = {
-    let formatter = DateFormatter()
-    formatter.locale = Locale(identifier: "ko_KR")
-    formatter.dateFormat = "M월 d일"
-    return formatter
-  }()
-}
-
-private let sharedCalendar = Calendar.current
-
-// MARK: - Diary Style Section Header
-
-private struct DiaryStyleSectionHeader: View {
-  let date: Date
-
-  var body: some View {
-    HStack {
-      Text(formattedDate)
-        .font(.system(size: 20, weight: .bold))
-        .foregroundColor(.primary)
-        .textCase(nil)
-
-      Spacer()
-    }
-    .padding(.horizontal, 16)
-    .padding(.vertical, 8)
-    .adaptiveGlassSectionBackground()
-  }
-
-  private var formattedDate: String {
-    DateFormatterCache.sectionHeader.string(from: date)
-  }
-}
-
-// MARK: - Adaptive Glass Section Background
-
-private extension View {
-  @ViewBuilder
-  func adaptiveGlassSectionBackground() -> some View {
-    if #available(iOS 26.0, *) {
-      self
-        .glassEffect(.regular, in: .rect)
-    } else {
-      self
-        .background(.ultraThinMaterial)
-    }
-  }
-}
-
-// MARK: - Rounded Corner Shape
-
-private struct RoundedCorner: Shape {
-  var radius: CGFloat = .infinity
-  var corners: UIRectCorner = .allCorners
-
-  func path(in rect: CGRect) -> Path {
-    let path = UIBezierPath(
-      roundedRect: rect,
-      byRoundingCorners: corners,
-      cornerRadii: CGSize(width: radius, height: radius)
-    )
-    return Path(path.cgPath)
-  }
-}
-
-// MARK: - Visible Date Preference Key
-
-private struct VisibleDatePreferenceKey: PreferenceKey {
-  static var defaultValue: Date?
-  static func reduce(value: inout Date?, nextValue: () -> Date?) {
-    value = nextValue() ?? value
-  }
-}
-
-// MARK: - Floating Date Header
-
-private struct FloatingDateHeader: View {
-  let date: Date
-
-  var body: some View {
-    HStack(spacing: 8) {
-      Text(DateFormatterCache.weekday.string(from: date))
-        .font(.system(size: 13, weight: .medium))
-        .foregroundColor(.secondary)
-
-      Text(DateFormatterCache.monthDay.string(from: date))
-        .font(.system(size: 15, weight: .semibold))
-        .foregroundColor(.primary)
-
-      if sharedCalendar.isDateInToday(date) {
-        Text("오늘")
-          .font(.system(size: 11, weight: .semibold))
-          .foregroundColor(.white)
-          .padding(.horizontal, 6)
-          .padding(.vertical, 2)
-          .background(Color.pmindigo.n500)
-          .cornerRadius(6)
-      }
-    }
-    .padding(.horizontal, 16)
-    .padding(.vertical, 10)
-    .frame(maxWidth: .infinity, alignment: .leading)
-    .background(.ultraThinMaterial)
-    .clipShape(RoundedCorner(radius: 24, corners: [.topLeft, .topRight]))
-  }
-}
-
-// MARK: - Preview
-
-#Preview("Calendar Feature - Week Mode") {
-  let previewUser = UserPrivateModel(
-    userId: "preview_user",
-    name: "Preview User",
-    nickname: "프리뷰",
-    email: "preview@example.com",
-    provider: "google",
-    metadata: Metadata()
-  )
-  let store = Store(initialState: CalendarFeature.Feature.State(currentUser: previewUser, displayMode: .week)) {
-    CalendarFeature.Feature()
-  }
-
-  CalendarFeature.RootView(store: store)
-}
-
-#Preview("Calendar Feature - Month Mode") {
-  let previewUser = UserPrivateModel(
-    userId: "preview_user",
-    name: "Preview User",
-    nickname: "프리뷰",
-    email: "preview@example.com",
-    provider: "google",
-    metadata: Metadata()
-  )
-  let store = Store(initialState: CalendarFeature.Feature.State(currentUser: previewUser, displayMode: .month)) {
-    CalendarFeature.Feature()
-  }
-
-  CalendarFeature.RootView(store: store)
 }
