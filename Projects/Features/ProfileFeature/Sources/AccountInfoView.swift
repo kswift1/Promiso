@@ -284,7 +284,7 @@ extension AccountInfo {
               .foregroundStyle(Color.pmerror.n500)
               .frame(width: 24, height: 24)
 
-            Text("탈퇴하기")
+            Text("탈퇴하기 (TODO)")
               .font(.body)
               .foregroundStyle(Color.pmerror.n500)
 

@@ -120,7 +120,7 @@ extension Profile {
         // 알림 설정
         settingsMenuRow(
           icon: "bell.fill",
-          title: "알림 설정",
+          title: "알림 설정 (TODO)",
           action: { store.send(.view(.notificationSettingsTapped)) }
         )
 
@@ -130,7 +130,7 @@ extension Profile {
         // 개인정보처리방침
         settingsMenuRow(
           icon: "hand.raised.fill",
-          title: "개인정보처리방침",
+          title: "개인정보처리방침 (TODO)",
           action: { store.send(.view(.privacyPolicyTapped)) }
         )
 
@@ -140,7 +140,7 @@ extension Profile {
         // 이용약관
         settingsMenuRow(
           icon: "doc.text.fill",
-          title: "이용약관",
+          title: "이용약관 (TODO)",
           action: { store.send(.view(.termsOfServiceTapped)) }
         )
 
@@ -150,7 +150,7 @@ extension Profile {
         // 앱 정보
         settingsMenuRow(
           icon: "info.circle.fill",
-          title: "앱 정보",
+          title: "앱 정보 (TODO)",
           showVersion: true,
           action: { store.send(.view(.appInfoTapped)) }
         )
