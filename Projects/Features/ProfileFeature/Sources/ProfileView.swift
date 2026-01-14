@@ -80,17 +80,6 @@ extension Profile {
       .auroraBackground()
       .navigationTitle("프로필")
       .navigationBarTitleDisplayMode(.large)
-      .toolbar {
-        ToolbarItem(placement: .navigationBarTrailing) {
-          Button {
-            store.send(.view(.editProfileTapped))
-          } label: {
-            Image(systemName: "pencil.circle.fill")
-              .font(.title3)
-              .foregroundStyle(Color.pmindigo.n500)
-          }
-        }
-      }
       .sheet(
         isPresented: Binding(
           get: { store.isEditingProfile },

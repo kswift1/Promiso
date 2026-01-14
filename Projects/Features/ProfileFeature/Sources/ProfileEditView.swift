@@ -36,9 +36,6 @@ extension Profile {
 
             // 닉네임 입력 섹션
             nicknameSection
-
-            // 안내 문구
-            infoSection
           }
           .padding(.horizontal, 16)
           .padding(.vertical, 24)
@@ -104,7 +101,7 @@ extension Profile {
     // MARK: - Profile Image Section
 
     private var profileImageSection: some View {
-      VStack(spacing: 16) {
+      PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
         ZStack(alignment: .bottomTrailing) {
           // 프로필 이미지
           Group {
@@ -126,34 +123,28 @@ extension Profile {
           .frame(width: 120, height: 120)
           .clipShape(Circle())
 
-          // 편집 버튼
-          PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
-            ZStack {
-              Circle()
-                .fill(Color.pmindigo.n500)
-                .frame(width: 36, height: 36)
+          // 카메라 아이콘 뱃지
+          ZStack {
+            Circle()
+              .fill(Color.pmindigo.n500)
+              .frame(width: 36, height: 36)
 
-              Image(systemName: "camera.fill")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(.white)
-            }
-          }
-          .onChange(of: selectedPhotoItem) { _, newValue in
-            Task {
-              if let data = try? await newValue?.loadTransferable(type: Data.self) {
-                store.send(.view(.profileImageSelected(data)))
-              }
-            }
+            Image(systemName: "camera.fill")
+              .font(.system(size: 16, weight: .semibold))
+              .foregroundStyle(.white)
           }
         }
-
-        Text("프로필 사진을 탭하여 변경")
-          .font(.caption)
-          .foregroundStyle(Color.pmgray.n400)
+      }
+      .onChange(of: selectedPhotoItem) { _, newValue in
+        Task {
+          guard let newValue else { return }
+          if let image = try? await newValue.loadTransferable(type: TransferableImage.self) {
+            store.send(.view(.profileImageSelected(image.data)))
+          }
+        }
       }
       .frame(maxWidth: .infinity)
       .padding(.vertical, 24)
-      .adaptiveGlassBackground()
     }
 
     // MARK: - Nickname Section
@@ -184,7 +175,6 @@ extension Profile {
           // 유효성 검사 메시지
           validationMessage
         }
-        .adaptiveGlassBackground()
       }
     }
 
@@ -205,6 +195,9 @@ extension Profile {
       case .invalid:
         Image(systemName: "exclamationmark.circle.fill")
           .foregroundStyle(Color.pmwarning.n500)
+      case .error:
+        Image(systemName: "wifi.slash")
+          .foregroundStyle(Color.pmgray.n400)
       }
     }
 
@@ -227,32 +220,11 @@ extension Profile {
         Text(message)
           .font(.caption)
           .foregroundStyle(Color.pmwarning.n500)
+      case .error(let message):
+        Text("확인 실패: \(message)")
+          .font(.caption)
+          .foregroundStyle(Color.pmgray.n400)
       }
-    }
-
-    // MARK: - Info Section
-
-    private var infoSection: some View {
-      VStack(alignment: .leading, spacing: 8) {
-        Label {
-          Text("닉네임은 다른 사용자에게 표시됩니다")
-        } icon: {
-          Image(systemName: "info.circle")
-        }
-        .font(.caption)
-        .foregroundStyle(Color.pmgray.n400)
-
-        Label {
-          Text("프로필 사진은 약속 및 그룹에서 사용됩니다")
-        } icon: {
-          Image(systemName: "info.circle")
-        }
-        .font(.caption)
-        .foregroundStyle(Color.pmgray.n400)
-      }
-      .frame(maxWidth: .infinity, alignment: .leading)
-      .padding(16)
-      .adaptiveGlassBackground()
     }
 
     // MARK: - Saving Overlay
@@ -289,6 +261,18 @@ private extension View {
     } else {
       self
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+    }
+  }
+}
+
+// MARK: - Transferable Image
+
+private struct TransferableImage: Transferable {
+  let data: Data
+
+  static var transferRepresentation: some TransferRepresentation {
+    DataRepresentation(importedContentType: .image) { data in
+      TransferableImage(data: data)
     }
   }
 }

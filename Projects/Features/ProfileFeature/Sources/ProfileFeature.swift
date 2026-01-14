@@ -90,6 +90,7 @@ extension Profile {
       case available
       case unavailable
       case invalid(String)
+      case error(String)
     }
 
     // MARK: - Action
@@ -146,6 +147,8 @@ extension Profile {
       // MARK: - Profile Edit Internal
       /// 닉네임 중복 확인 결과
       case nicknameCheckResult(Bool)
+      /// 닉네임 중복 확인 실패
+      case nicknameCheckFailed(String)
       /// 프로필 저장 완료
       case profileSaveCompleted(UserPrivateModel)
       /// 프로필 저장 실패
@@ -264,7 +267,7 @@ extension Profile {
                 let isAvailable = try await userProfileClient.isNicknameAvailable(nickname)
                 await send(.internal(.nicknameCheckResult(isAvailable)))
               } catch {
-                await send(.internal(.nicknameCheckResult(false)))
+                await send(.internal(.nicknameCheckFailed(error.localizedDescription)))
               }
             }
 
@@ -337,6 +340,10 @@ extension Profile {
 
           case .nicknameCheckResult(let isAvailable):
             state.nicknameValidation = isAvailable ? .available : .unavailable
+            return .none
+
+          case .nicknameCheckFailed(let errorMessage):
+            state.nicknameValidation = .error(errorMessage)
             return .none
 
           case .profileSaveCompleted(let updatedUser):
