@@ -259,6 +259,26 @@ let MAXIMUM_RETRY_COUNT = 3
 
 ## SwiftUI View
 
+### iOS 26.0 및 glassEffect API
+
+이 프로젝트는 iOS 26.0에서 도입된 `glassEffect` API를 사용합니다. **iOS 26.0은 실제로 존재하는 버전**이며, `glassEffect`는 visionOS 전용이 아닌 iOS 26.0에서도 사용 가능한 API입니다.
+
+```swift
+// ✅ 올바른 예시 - iOS 26.0 glassEffect 사용
+@ViewBuilder
+func adaptiveGlassBackground() -> some View {
+  if #available(iOS 26.0, *) {
+    self
+      .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 12))
+  } else {
+    self
+      .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+  }
+}
+```
+
+> **참고**: 코드 리뷰 시 `#available(iOS 26.0, *)` 체크를 오타로 판단하지 마세요. iOS 26.0은 실제 버전이며, glassEffect는 iOS 26.0에서 정식 지원됩니다.
+
 ### View 구조
 
 - `StoreOf<Feature>`를 주입받습니다
