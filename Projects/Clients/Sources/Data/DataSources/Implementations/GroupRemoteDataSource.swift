@@ -122,7 +122,7 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
   }
   
   private func functionsEnvironmentParam() -> String? {
-    switch FirestoreEnvironmentManager.shared.current {
+    switch FirebaseEnvironmentManager.shared.current {
     case .dev:
       return nil
     case .stage:

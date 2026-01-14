@@ -72,7 +72,6 @@ extension GroupMain {
       case view(ViewAction)
       case binding(BindingAction<State>)
       case `internal`(Internal)
-      case delegate(Delegate)
 
       case createPromise(PresentationAction<CreatePromise.Feature.Action>)
       case createGroup(PresentationAction<CreateGroup.Feature.Action>)
@@ -95,7 +94,6 @@ extension GroupMain {
         case promiseTapped(PromiseModel)
         case promiseShared(String)
         case sharePromiseDismissed
-        case openSideDrawer
         case groupManageTapped
         case createNewPromise
         case createGroup
@@ -121,10 +119,6 @@ extension GroupMain {
         case deletePromiseDone(promiseId: String)
         case deletePromiseFailed(promiseId: String, error: AppError)
         case toggleGroupNotifications
-      }
-
-      public enum Delegate: Sendable {
-        case requestOpenSideDrawer
       }
     }
 
@@ -231,9 +225,6 @@ extension GroupMain {
             state.sharePromise = nil
             return .none
 
-          case .openSideDrawer:
-            return .send(.delegate(.requestOpenSideDrawer))
-
           case .groupManageTapped:
             guard let currentGroup = state.currentGroup else { return .none }
             let summary = state.allGroupSummaries?.first { $0.id == currentGroup.id }
@@ -271,6 +262,7 @@ extension GroupMain {
             joinState.inviteCode = inviteCode
             state.joinGroup = joinState
             return .send(.joinGroup(.presented(.view(.nextTapped))))
+
           }
 
         // MARK: - Internal Actions
@@ -512,7 +504,7 @@ extension GroupMain {
         case .path:
           return .none
 
-        case .binding, .delegate:
+        case .binding:
           return .none
         }
       }

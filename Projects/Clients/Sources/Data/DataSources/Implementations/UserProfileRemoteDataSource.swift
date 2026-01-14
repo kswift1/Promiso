@@ -59,18 +59,20 @@ public final class UserProfileRemoteDataSource: UserProfileRemoteDataSourceProto
   private let functions: Functions
   private let storage: Storage
   private let db: Firestore
-  private let environment: Environment
+
+  /// 현재 Firestore 환경
+  private var currentEnvironment: FirebaseEnvironment {
+    FirebaseEnvironmentManager.shared.current
+  }
 
   public init(
     functions: Functions = Functions.functions(region: "asia-northeast3"),
     storage: Storage = Storage.storage(),
-    db: Firestore = Firestore.firestore(),
-    environment: Environment = .current
+    db: Firestore = Firestore.firestore()
   ) {
     self.functions = functions
     self.storage = storage
     self.db = db
-    self.environment = environment
   }
 
   // MARK: - User CRUD Operations
@@ -94,7 +96,7 @@ public final class UserProfileRemoteDataSource: UserProfileRemoteDataSourceProto
         uid: provider.uid,
         email: provider.email
       ),
-      env: environment.firebaseEnv
+      env: currentEnvironment.firebaseEnv
     )
 
     let result = try await functions.httpsCallable("createUser").call(request.asDictionary())
@@ -115,7 +117,7 @@ public final class UserProfileRemoteDataSource: UserProfileRemoteDataSourceProto
     let request = GetUserRequest(
       userId: uid,
       isPublic: isPublic,
-      env: environment.firebaseEnv
+      env: currentEnvironment.firebaseEnv
     )
 
     let result = try await functions.httpsCallable("getUser").call(request.asDictionary())
@@ -171,7 +173,7 @@ public final class UserProfileRemoteDataSource: UserProfileRemoteDataSourceProto
   public func updateProfile(uid: String, nickname: String) async throws {
     let request = UpdateUserRequest(
       nickname: nickname,
-      env: environment.firebaseEnv
+      env: currentEnvironment.firebaseEnv
     )
 
     _ = try await functions.httpsCallable("updateUser").call(request.asDictionary())
@@ -186,7 +188,7 @@ public final class UserProfileRemoteDataSource: UserProfileRemoteDataSourceProto
   /// - Returns: 업로드된 이미지 URL
   public func uploadProfileImage(uid: String, imageData: Data) async throws -> URL {
     // 1. 환경별 Storage 경로 생성 (타임스탬프 추가로 충돌 방지)
-    let envPrefix = environment.storagePrefix
+    let envPrefix = currentEnvironment.storagePrefix
     let timestamp = Int(Date().timeIntervalSince1970)
     let imagePath = "\(envPrefix)/profile_images/\(uid)/\(timestamp).jpg"
     let profileImageRef = storage.reference().child(imagePath)
@@ -206,7 +208,7 @@ public final class UserProfileRemoteDataSource: UserProfileRemoteDataSourceProto
     // 2. Storage 경로와 env를 Functions에 전달
     let request = UploadProfileImageRequest(
       imagePath: imagePath,
-      env: environment.firebaseEnv
+      env: currentEnvironment.firebaseEnv
     )
 
     let result = try await functions.httpsCallable("uploadProfileImage").call(request.asDictionary())
@@ -223,7 +225,7 @@ public final class UserProfileRemoteDataSource: UserProfileRemoteDataSourceProto
   /// 프로필 이미지 삭제
   /// - Parameter uid: 사용자 ID
   public func deleteProfileImage(uid: String) async throws {
-    let envPrefix = environment.storagePrefix
+    let envPrefix = currentEnvironment.storagePrefix
     let imagePath = "\(envPrefix)/profile_images/\(uid)/main.jpg"
     let profileImageRef = storage.reference().child(imagePath)
     try await profileImageRef.delete()
@@ -234,7 +236,7 @@ public final class UserProfileRemoteDataSource: UserProfileRemoteDataSourceProto
   /// 사용자 설정 조회
   /// - Returns: 알림 설정 활성화 여부
   public func getUserSettings() async throws -> Bool {
-    let request = GetUserSettingsRequest(env: environment.firebaseEnv)
+    let request = GetUserSettingsRequest(env: currentEnvironment.firebaseEnv)
 
     let result = try await functions.httpsCallable("getUserSettings").call(request.asDictionary())
     guard let response = result.data as? [String: Any],
@@ -250,7 +252,7 @@ public final class UserProfileRemoteDataSource: UserProfileRemoteDataSourceProto
   public func updateUserSettings(notificationEnabled: Bool) async throws {
     let request = UpdateUserSettingsRequest(
       notificationEnabled: notificationEnabled,
-      env: environment.firebaseEnv
+      env: currentEnvironment.firebaseEnv
     )
 
     _ = try await functions.httpsCallable("updateUserSettings").call(request.asDictionary())

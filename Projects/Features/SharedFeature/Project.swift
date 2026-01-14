@@ -1,7 +1,7 @@
 import ProjectDescription
 import ProjectDescriptionHelpers
 
-private let feature: Feature = .group
+private let feature: Feature = .shared
 
 let project = Project(
   name: feature.fullName,
@@ -9,7 +9,7 @@ let project = Project(
 
     // Main Feature (TCA)
     .target(
-      name: "GroupFeature",
+      name: "SharedFeature",
       destinations: .iOS,
       product: .framework,
       bundleId: "\(feature.defaultBundleIdPrefix)",
@@ -18,7 +18,6 @@ let project = Project(
       dependencies: [
         .project(target: "Clients", path: "../../Clients"),
         .project(target: "PromisoShared", path: "../../Shared"),
-        .project(target: "SharedFeature", path: "../SharedFeature"),
         .project(target: "ExternalDependency", path: "../../ExternalDependency")
       ],
       settings: .standard()
@@ -26,21 +25,21 @@ let project = Project(
 
     // Unit Tests
     .target(
-      name: "GroupFeatureTests",
+      name: "SharedFeatureTests",
       destinations: .iOS,
       product: .unitTests,
       bundleId: "\(feature.defaultBundleIdPrefix).tests",
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Tests/Sources/**"],
       dependencies: [
-        .target(name: "GroupFeature")
+        .target(name: "SharedFeature")
       ],
       settings: .standard()
     ),
 
     // Example App (Demo)
     .target(
-      name: "GroupFeatureExample",
+      name: "SharedFeatureExample",
       destinations: .iOS,
       product: .app,
       bundleId: "\(feature.defaultBundleIdPrefix).example",
@@ -51,7 +50,7 @@ let project = Project(
       sources: ["Example/Sources/**"],
       resources: ["Example/Resources/**"],
       dependencies: [
-        .target(name: "GroupFeature")
+        .target(name: "SharedFeature")
       ],
       settings: .standard()
     )

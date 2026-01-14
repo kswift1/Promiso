@@ -55,14 +55,4 @@ final class HomeFeatureTests: XCTestCase {
     await store.send(.view(.onAppear))
     // No effect expected
   }
-
-  /// 사이드 드로어 열기 테스트
-  func test_openSideDrawer_sendsDelegateAction() async {
-    let store = TestStore(initialState: Home.Feature.State(currentUser: mockUser)) {
-      Home.Feature()
-    }
-
-    await store.send(.view(.openSideDrawer))
-    await store.receive(.delegate(.openSideDrawer))
-  }
 }

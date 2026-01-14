@@ -70,12 +70,6 @@ public enum AppConstants {
     // Safe Margins
     public static let safeMargin: CGFloat = 16
     public static let minimumTouchSize: CGFloat = 44
-    
-    public enum SideDrawer {
-      public static let width: CGFloat = 256
-      public static let maxDragOffset: CGFloat = 256
-      public static let minDragOffset: CGFloat = -256
-    }
   }
   
   // MARK: - User Defaults Keys
@@ -215,74 +209,6 @@ public enum AppConstants {
     public static let groupJoined = "그룹에 가입했습니다"
     public static let profileUpdated = "프로필이 업데이트되었습니다"
     public static let settingsSaved = "설정이 저장되었습니다"
-  }
-}
-
-// MARK: - Environment Configuration
-
-/// 환경별 설정
-public enum Environment {
-  case development
-  case staging
-  case production
-  
-  public static var current: Environment {
-    #if DEBUG
-    return .development
-    #elseif STAGING
-    return .staging
-    #else
-    return .production
-    #endif
-  }
-  
-  public var baseURL: URL {
-    switch self {
-    case .development:
-      return URL(string: "https://dev-api.promiso.com")!
-    case .staging:
-      return URL(string: "https://staging-api.promiso.com")!
-    case .production:
-      return URL(string: "https://api.promiso.com")!
-    }
-  }
-  
-  public var isDebug: Bool {
-    switch self {
-    case .development, .staging:
-      return true
-    case .production:
-      return false
-    }
-  }
-  
-  public var analyticsEnabled: Bool {
-    switch self {
-    case .development:
-      return false
-    case .staging, .production:
-      return true
-    }
-  }
-
-  /// Firebase Functions env 파라미터
-  public var firebaseEnv: String {
-    switch self {
-    case .development, .staging:
-      return "stage"
-    case .production:
-      return "prod"
-    }
-  }
-
-  /// Firebase Storage 경로 prefix
-  public var storagePrefix: String {
-    switch self {
-    case .development, .staging:
-      return "stage"
-    case .production:
-      return "prod"
-    }
   }
 }
 

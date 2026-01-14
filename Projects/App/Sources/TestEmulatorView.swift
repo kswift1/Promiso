@@ -6,7 +6,7 @@ import FirebaseStorage
 import Clients
 
 struct TestEmulatorView: View {
-  @StateObject private var environmentManager = FirestoreEnvironmentManager.shared
+  @StateObject private var environmentManager = FirebaseEnvironmentManager.shared
   @State private var result: String = "Ready to test"
   @State private var isLoading: Bool = false
   
@@ -25,7 +25,7 @@ struct TestEmulatorView: View {
           get: { environmentManager.current },
           set: { environmentManager.setEnvironment($0) }
         )) {
-          ForEach(FirestoreEnvironment.allCases, id: \.self) { env in
+          ForEach(FirebaseEnvironment.allCases, id: \.self) { env in
             Text(env.rawValue).tag(env)
           }
         }
