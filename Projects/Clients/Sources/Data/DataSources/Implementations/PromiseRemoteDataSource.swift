@@ -173,10 +173,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
             .whereField("isDeleted", isEqualTo: false)
 
           let snapshot = try await query.getDocuments()
-          return try snapshot.documents.compactMap { doc -> PromiseModel? in
-            let dto = try doc.data(as: PromiseDTO.self)
-            return PromiseModel(dto: dto, id: doc.documentID)
-          }
+          return try snapshot.documents.compactMap { try convertDocumentToPromise($0) }
         }
       }
 
@@ -206,10 +203,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
             .whereField("isDeleted", isEqualTo: false)
 
           let snapshot = try await query.getDocuments()
-          return try snapshot.documents.compactMap { doc -> PromiseModel? in
-            let dto = try doc.data(as: PromiseDTO.self)
-            return PromiseModel(dto: dto, id: doc.documentID)
-          }
+          return try snapshot.documents.compactMap { try convertDocumentToPromise($0) }
         }
       }
 
@@ -233,7 +227,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
       .limit(to: limit)
 
     let snapshot = try await query.getDocuments()
-    return try snapshot.documents.compactMap { try documentToPromise($0) }
+    return try snapshot.documents.compactMap { try convertDocumentToPromise($0) }
   }
 
   /// 과거 약속 조회 (startAt < 현재시간, 최신순 정렬, 커서 기반 페이징)
@@ -252,7 +246,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
     query = query.limit(to: limit)
 
     let snapshot = try await query.getDocuments()
-    return try snapshot.documents.compactMap { try documentToPastPromise($0) }
+    return try snapshot.documents.compactMap { try convertDocumentToPromise($0) }
   }
 
   /// 날짜 범위로 약속 조회 (캘린더용, 사용자가 속한 그룹들의 약속)
@@ -271,10 +265,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
             .whereField("isDeleted", isEqualTo: false)
 
           let snapshot = try await query.getDocuments()
-          return try snapshot.documents.compactMap { doc -> PromiseModel? in
-            let dto = try doc.data(as: PromiseDTO.self)
-            return PromiseModel(dto: dto, id: doc.documentID)
-          }
+          return try snapshot.documents.compactMap { try convertDocumentToPromise($0) }
         }
       }
 
@@ -335,7 +326,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
         let now = Date()
         let promises = snapshot.documents.compactMap { doc -> PromiseModel? in
           do {
-            let promise = try self.documentToPromise(doc)
+            let promise = try convertDocumentToPromise(doc)
             return promise
           } catch {
             print("[PromiseDataSource] ❌ 파싱 에러: \(error)")
@@ -360,22 +351,20 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
 
   // MARK: - Helper Methods
 
-  private func documentToPromise(_ document: QueryDocumentSnapshot) throws -> PromiseModel? {
-    let dto = try document.data(as: PromiseDTO.self)
-    return PromiseModel(dto: dto, id: document.documentID)
-  }
-
   private func documentSnapshotToPromise(_ document: DocumentSnapshot) throws -> PromiseModel? {
     guard document.exists else { return nil }
     let dto = try document.data(as: PromiseDTO.self)
     return PromiseModel(dto: dto, id: document.documentID)
   }
+}
 
-  /// 과거 약속용 파싱
-  private func documentToPastPromise(_ document: QueryDocumentSnapshot) throws -> PromiseModel? {
-    let dto = try document.data(as: PromiseDTO.self)
-    return PromiseModel(dto: dto, id: document.documentID)
-  }
+// MARK: - Document Conversion Helper
+
+/// QueryDocumentSnapshot을 PromiseModel로 변환하는 헬퍼 함수
+/// TaskGroup 내에서도 사용 가능하도록 file-private으로 정의
+private func convertDocumentToPromise(_ document: QueryDocumentSnapshot) throws -> PromiseModel? {
+  let dto = try document.data(as: PromiseDTO.self)
+  return PromiseModel(dto: dto, id: document.documentID)
 }
 
 private class FirestoreQuerySubscription<S: Subscriber>: Subscription where S.Input == QuerySnapshot, S.Failure == Error {
