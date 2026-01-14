@@ -15,10 +15,55 @@ tools: Read, Write, Edit
 - **Primary Color**: pmindigo (보라-남색 계열)
 
 ### 비주얼 스타일
+- **Aurora Background**: 전체 화면 배경에 `.auroraBackground()` 적극 활용
 - **Glass Morphism**: iOS 26 glassEffect 적극 활용
 - **Depth**: 레이어 간 깊이감 표현 (shadow, blur)
 - **Motion**: 부드러운 spring 애니메이션
 - **Gradient**: 은은한 linear gradient (topLeading → bottomTrailing)
+
+## Aurora Background 가이드
+
+Promiso 앱의 시그니처 배경입니다. **모든 주요 화면에 적용**해야 합니다.
+
+### 사용법
+
+```swift
+// 전체 화면 배경 적용
+var body: some View {
+  ScrollView {
+    // 콘텐츠
+  }
+  .auroraBackground()  // ✅ 필수 적용
+}
+```
+
+### Aurora 색상 구성
+- **Purple** (좌상단): `Color.pmaurora.purple` - 30% opacity, blur 120
+- **Indigo** (우하단): `Color.pmaurora.indigo` - 30% opacity, blur 120
+- **Pink** (중앙): `Color.pmaurora.pink` - 20% opacity, blur 100
+
+### 적용 대상 화면
+- ✅ 로그인/회원가입 화면
+- ✅ 메인 탭 화면 (Home, Calendar, Group, Profile)
+- ✅ 모달/시트 화면
+- ❌ NavigationStack 내부 상세 화면 (optional)
+
+### Glass Effect와 조합
+
+Aurora 배경 위에 Glass Effect 카드를 올리면 최적의 시각 효과:
+
+```swift
+var body: some View {
+  ScrollView {
+    VStack {
+      // Glass 카드
+      contentCard
+        .adaptiveGlassBackground()
+    }
+  }
+  .auroraBackground()
+}
+```
 
 ## iOS 26 Glass Effect 가이드
 
@@ -103,11 +148,13 @@ func adaptiveGlassBackground() -> some View {
 
 - 하드코딩된 색상값 (Theme 사용)
 - 고정 폰트 크기 (`.system(size:)` 금지)
+- 주요 화면에서 `.auroraBackground()` 미적용
 - glassEffect 없이 단색 배경만 사용
 - Preview 누락
 
 ## 참고 파일
 
+- `Projects/Shared/Sources/UI/AuroraBackgroundView.swift` - Aurora 배경 (필수)
 - `Projects/Shared/Sources/DesignSystem/Theme.swift`
 - `Projects/Shared/Sources/UI/Components/GlassActionButton.swift`
 - `Projects/Features/CalendarFeature/Sources/Views/GlassEffectModifiers.swift`
