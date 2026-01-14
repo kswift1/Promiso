@@ -140,8 +140,10 @@ extension CalendarFeature {
 
       // MARK: - Group 관련
 
-      /// 그룹 정보 캐시 (키: groupId)
-      var cachedGroups: [String: GroupModel] = [:]
+      /// 사용자 그룹 정보 조회용 (키: groupId)
+      var userGroupsMap: [String: UserGroupInfo] {
+        Dictionary(uniqueKeysWithValues: currentUser.groups.map { ($0.id, $0) })
+      }
 
       // MARK: - Navigation
 
@@ -166,11 +168,6 @@ extension CalendarFeature {
         self.selectedDate = selectedDate
         self.currentWeekStart = selectedDate.startOfWeek
         self.currentMonth = selectedDate.startOfMonth
-
-        // 사용자 그룹 정보를 캐시로 초기화 (추가 API 호출 불필요)
-        for groupInfo in currentUser.groups {
-          self.cachedGroups[groupInfo.id] = GroupModel(from: groupInfo)
-        }
       }
 
       // MARK: - Computed Properties
@@ -713,15 +710,7 @@ extension CalendarFeature {
 
         switch result {
         case .success(let promises):
-          // 약속에 캐시된 그룹 정보 연결 후 저장
-          let updatedPromises = promises.map { promise -> PromiseModel in
-            var updated = promise
-            if let group = state.cachedGroups[promise.groupId] {
-              updated.group = group
-            }
-            return updated
-          }
-          state.cachedPromisesByMonth[month] = updatedPromises
+          state.cachedPromisesByMonth[month] = promises
           state.loadedMonths.insert(month)
           debugLog("💾 캐시 저장 완료 - \(formatMonth(month)): \(promises.count)개 약속")
 
