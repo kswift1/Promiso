@@ -184,10 +184,7 @@ extension CalendarFeature {
       /// 헤더 타이틀
       var headerTitle: String {
         if displayMode == .week {
-          let formatter = DateFormatter()
-          formatter.locale = Locale(identifier: "ko_KR")
-          formatter.dateFormat = "M월 W주차"
-          return formatter.string(from: currentWeekStart)
+          return KoreanDateFormatters.monthWeek.string(from: currentWeekStart)
         } else {
           return KoreanDateFormatters.yearMonth.string(from: currentMonth)
         }

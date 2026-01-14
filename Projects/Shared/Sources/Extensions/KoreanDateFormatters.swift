@@ -41,6 +41,14 @@ public enum KoreanDateFormatters {
     return formatter
   }()
 
+  /// 월 주차 (예: "1월 3주차")
+  public static let monthWeek: DateFormatter = {
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "ko_KR")
+    formatter.dateFormat = "M월 W주차"
+    return formatter
+  }()
+
   /// 날짜 (예: "2025-01-15")
   public static let date: DateFormatter = {
     let formatter = DateFormatter()
