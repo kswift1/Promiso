@@ -25,18 +25,6 @@ extension Profile {
 
     // MARK: - Computed Properties
 
-    /// 로그인 방식에 따른 아이콘
-    private var providerIcon: String {
-      switch store.currentUser.provider.lowercased() {
-      case "apple":
-        return "apple.logo"
-      case "google":
-        return "g.circle.fill"
-      default:
-        return "person.circle.fill"
-      }
-    }
-
     /// 로그인 방식 표시 텍스트
     private var providerDisplayName: String {
       switch store.currentUser.provider.lowercased() {
@@ -46,6 +34,26 @@ extension Profile {
         return "Google"
       default:
         return store.currentUser.provider
+      }
+    }
+
+    /// 로그인 방식 아이콘 뷰
+    @ViewBuilder
+    private var providerIconView: some View {
+      switch store.currentUser.provider.lowercased() {
+      case "apple":
+        Image(systemName: "apple.logo")
+          .font(.caption)
+          .foregroundStyle(Color.pmtext.primary)
+      case "google":
+        Image("googleLogo")
+          .resizable()
+          .scaledToFit()
+          .frame(width: 14, height: 14)
+      default:
+        Image(systemName: "person.circle.fill")
+          .font(.caption)
+          .foregroundStyle(Color.pmtext.primary)
       }
     }
 
@@ -157,11 +165,6 @@ extension Profile {
           .font(.title2)
           .fontWeight(.bold)
           .foregroundStyle(Color.pmtext.primary)
-
-        // 이름
-        Text(store.currentUser.name)
-          .font(.body)
-          .foregroundStyle(Color.pmtext.secondary)
       }
       .frame(maxWidth: .infinity)
       .padding(.vertical, 24)
@@ -191,11 +194,11 @@ extension Profile {
             .padding(.leading, 56)
 
           // 로그인 방식
-          accountInfoRow(
+          accountInfoRowWithCustomIcon(
             icon: "key.fill",
             title: "로그인 방식",
             value: providerDisplayName,
-            valueIcon: providerIcon
+            valueIconView: providerIconView
           )
 
           Divider()
@@ -215,8 +218,33 @@ extension Profile {
     private func accountInfoRow(
       icon: String,
       title: String,
+      value: String
+    ) -> some View {
+      HStack(spacing: 16) {
+        Image(systemName: icon)
+          .font(.body)
+          .foregroundStyle(Color.pmindigo.n500)
+          .frame(width: 24, height: 24)
+
+        Text(title)
+          .font(.body)
+          .foregroundStyle(Color.pmtext.secondary)
+
+        Spacer()
+
+        Text(value)
+          .font(.body)
+          .foregroundStyle(Color.pmtext.primary)
+      }
+      .padding(.horizontal, 16)
+      .padding(.vertical, 14)
+    }
+
+    private func accountInfoRowWithCustomIcon(
+      icon: String,
+      title: String,
       value: String,
-      valueIcon: String? = nil
+      valueIconView: some View
     ) -> some View {
       HStack(spacing: 16) {
         Image(systemName: icon)
@@ -231,11 +259,7 @@ extension Profile {
         Spacer()
 
         HStack(spacing: 6) {
-          if let valueIcon = valueIcon {
-            Image(systemName: valueIcon)
-              .font(.caption)
-              .foregroundStyle(Color.pmtext.primary)
-          }
+          valueIconView
           Text(value)
             .font(.body)
             .foregroundStyle(Color.pmtext.primary)

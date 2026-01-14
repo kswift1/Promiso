@@ -40,6 +40,10 @@ extension Profile {
           .padding(.horizontal, 16)
           .padding(.vertical, 24)
         }
+        .scrollDismissesKeyboard(.interactively)
+        .onTapGesture {
+          UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        }
         .auroraBackground()
         .navigationTitle("프로필 편집")
         .navigationBarTitleDisplayMode(.inline)
@@ -52,17 +56,17 @@ extension Profile {
           }
 
           ToolbarItem(placement: .navigationBarTrailing) {
-            Button("저장") {
-              store.send(.view(.saveProfileTapped))
+            if store.isSavingProfile {
+              ProgressView()
+                .tint(Color.pmtext.secondary)
+            } else {
+              Button("저장") {
+                store.send(.view(.saveProfileTapped))
+              }
+              .fontWeight(.semibold)
+              .foregroundStyle(saveButtonColor)
+              .disabled(!canSave)
             }
-            .fontWeight(.semibold)
-            .foregroundStyle(saveButtonColor)
-            .disabled(!canSave)
-          }
-        }
-        .overlay {
-          if store.isSavingProfile {
-            savingOverlay
           }
         }
         .alert(
@@ -224,27 +228,6 @@ extension Profile {
         Text("확인 실패: \(message)")
           .font(.caption)
           .foregroundStyle(Color.pmgray.n400)
-      }
-    }
-
-    // MARK: - Saving Overlay
-
-    private var savingOverlay: some View {
-      ZStack {
-        Color.black.opacity(0.3)
-          .ignoresSafeArea()
-
-        VStack(spacing: 16) {
-          ProgressView()
-            .scaleEffect(1.2)
-            .tint(.white)
-
-          Text("저장 중...")
-            .font(.body)
-            .foregroundStyle(.white)
-        }
-        .padding(32)
-        .adaptiveGlassBackground()
       }
     }
   }

@@ -25,6 +25,12 @@ extension Profile {
   @Reducer
   public struct Feature {
 
+    // MARK: - Cancel IDs
+
+    private enum CancelID: Hashable {
+      case nicknameCheck
+    }
+
     // MARK: - Dependencies
 
     @Dependency(\.authClient) private var authClient
@@ -206,25 +212,25 @@ extension Profile {
             }
 
           case .notificationSettingsTapped:
-            // 알림 설정 화면으로 이동 (향후 구현)
+            // TODO: 알림 설정 화면으로 이동
             return .run { _ in
               await hapticFeedback.selection()
             }
 
           case .privacyPolicyTapped:
-            // 개인정보처리방침 표시 (향후 구현)
+            // TODO: 개인정보처리방침 웹뷰 또는 시트 표시
             return .run { _ in
               await hapticFeedback.selection()
             }
 
           case .termsOfServiceTapped:
-            // 이용약관 표시 (향후 구현)
+            // TODO: 이용약관 웹뷰 또는 시트 표시
             return .run { _ in
               await hapticFeedback.selection()
             }
 
           case .appInfoTapped:
-            // 앱 정보 표시 (향후 구현)
+            // TODO: 앱 정보 화면 표시 (버전, 라이선스 등)
             return .run { _ in
               await hapticFeedback.selection()
             }
@@ -257,10 +263,10 @@ extension Profile {
             }
             // 현재 닉네임과 동일하면 검사 생략
             if nickname == state.currentUser.nickname {
-              state.nicknameValidation = .available
+              state.nicknameValidation = .idle
               return .none
             }
-            // 중복 확인
+            // 중복 확인 (debounce 적용)
             state.nicknameValidation = .checking
             return .run { send in
               do {
@@ -270,6 +276,8 @@ extension Profile {
                 await send(.internal(.nicknameCheckFailed(error.localizedDescription)))
               }
             }
+            .debounce(id: CancelID.nicknameCheck, for: .milliseconds(500), scheduler: DispatchQueue.main)
+            .cancellable(id: CancelID.nicknameCheck, cancelInFlight: true)
 
           case .profileImageSelected(let imageData):
             state.editedProfileImageData = imageData
@@ -309,9 +317,7 @@ extension Profile {
             state.editedNickname = state.currentUser.nickname
             state.editedProfileImageData = nil
             state.nicknameValidation = .idle
-            return .run { _ in
-              await hapticFeedback.light()
-            }
+            return .none
 
           case .dismissError:
             state.errorMessage = nil
@@ -352,9 +358,7 @@ extension Profile {
             state.isEditingProfile = false
             state.editedProfileImageData = nil
             state.nicknameValidation = .idle
-            return .run { _ in
-              await hapticFeedback.success()
-            }
+            return .none
 
           case .profileSaveFailed(let errorMessage):
             state.isSavingProfile = false
