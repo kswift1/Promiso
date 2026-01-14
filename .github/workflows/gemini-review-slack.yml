@@ -1,0 +1,28 @@
+name: Gemini Review Slack Notification
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+jobs:
+  notify:
+    if: github.event.review.user.login == 'gemini-code-assist[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Slack Notification
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          curl -X POST "$SLACK_WEBHOOK_URL" \
+            -H 'Content-Type: application/json' \
+            -d '{
+              "text": "🤖 Gemini Code Assist 리뷰가 등록되었습니다",
+              "attachments": [{
+                "color": "#4285F4",
+                "fields": [
+                  {"title": "PR", "value": "#${{ github.event.pull_request.number }} ${{ github.event.pull_request.title }}", "short": true},
+                  {"title": "Author", "value": "${{ github.event.pull_request.user.login }}", "short": true},
+                  {"title": "Link", "value": "${{ github.event.review.html_url }}"}
+                ]
+              }]
+            }'
