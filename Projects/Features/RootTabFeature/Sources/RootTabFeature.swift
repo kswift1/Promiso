@@ -54,11 +54,15 @@ extension RootTab {
       /// Profile State
       var profile: Profile.Feature.State
 
+      /// 현재 사용자 정보 (Profile에 전달)
+      var currentUser: UserPrivateModel
+
       public init(currentUser: UserPrivateModel) {
+        self.currentUser = currentUser
         self.groupMain = GroupMain.Feature.State(currentUser: currentUser)
         self.home = Home.Feature.State(currentUser: currentUser)
         self.calendar = CalendarFeature.Feature.State(currentUser: currentUser)
-        self.profile = Profile.Feature.State()
+        self.profile = Profile.Feature.State(currentUser: currentUser)
       }
     }
 
@@ -129,6 +133,9 @@ extension RootTab {
 
         case .groupMain:
           return .none
+
+        case .profile(.delegate(.logoutRequested)):
+          return .send(.delegate(.logoutRequested))
 
         case .profile:
           return .none
