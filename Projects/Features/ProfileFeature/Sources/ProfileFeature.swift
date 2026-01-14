@@ -207,9 +207,7 @@ extension Profile {
           case .logoutCancelled:
             // 로그아웃 취소
             state.showLogoutAlert = false
-            return .run { _ in
-              await hapticFeedback.light()
-            }
+            return .none
 
           case .notificationSettingsTapped:
             // TODO: 알림 설정 화면으로 이동
