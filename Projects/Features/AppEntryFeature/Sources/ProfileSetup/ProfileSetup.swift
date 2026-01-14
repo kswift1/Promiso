@@ -320,24 +320,19 @@ extension AppEntry {
                   imageData
                 )
                 await send(.internal(.profileSaved(userModel)))
-              } catch let error as UserProfileError {
-                // uploadFailed 에러는 무시하고 프로필 조회만 시도
-                if error == .uploadFailed {
+              } catch {
+                if let userProfileError = error as? UserProfileError, userProfileError == .uploadFailed {
+                  // uploadFailed 에러는 무시하고 프로필 조회만 시도
                   print("⚠️ Profile image upload failed, continuing without image...")
                   do {
-                    // 이미지 없이 프로필 조회 (프로필은 이미 생성됨)
                     let userModel = try await userProfileClient.getPrivateProfile(.me)
                     await send(.internal(.profileSaved(userModel)))
-                  } catch {
-                    await send(.internal(.profileSaveFailed(error)))
+                  } catch let fetchError {
+                    await send(.internal(.profileSaveFailed(fetchError)))
                   }
                 } else {
-                  // 그 외 에러는 실패 처리
                   await send(.internal(.profileSaveFailed(error)))
                 }
-              } catch {
-                // 알 수 없는 에러도 실패 처리
-                await send(.internal(.profileSaveFailed(error)))
               }
             }
 
