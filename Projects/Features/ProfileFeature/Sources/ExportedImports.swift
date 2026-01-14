@@ -3,6 +3,7 @@
 @_exported import ComposableArchitecture
 @_exported import SwiftUI
 @_exported import PromisoShared
+@_exported import ResourceKit
 
 // MARK: - Feature Exports (필요시 추가)
 // 다른 Feature를 의존하는 경우 여기에 추가하세요

@@ -134,7 +134,7 @@ extension RootTab {
         case .groupMain:
           return .none
 
-        case .profile(.delegate(.logoutRequested)):
+        case .profile(.delegate(.didLogout)):
           return .send(.delegate(.logoutRequested))
 
         case .profile:

@@ -1,15 +1,15 @@
 // MARK: - ProfileFeature.swift
 // TCA 1.22.2를 사용한 Profile Feature의 완전한 구현
+// State, Action, Reducer, View를 모두 포함한 단일 모듈
 
+import Clients
 import ComposableArchitecture
 import SwiftUI
-import PromisoShared
-import Clients
-import ResourceKit
 
 // MARK: - Feature Namespace
 
 /// Profile Feature 컴포넌트를 위한 Namespace
+/// 조직적 구조를 제공하고 다른 Feature들과의 naming conflict를 방지
 public enum Profile {}
 
 // MARK: - Feature Implementation
@@ -18,107 +18,183 @@ extension Profile {
 
   // MARK: - Reducer
 
+  /// Profile Feature state management를 위한 Main reducer
+  /// Feature의 모든 business logic과 side effect를 처리
+  ///
+  /// SwiftUI integration을 위해 @ObservableState와 함께 TCA 1.22.2 Reducer protocol을 준수
   @Reducer
   public struct Feature {
-    @Dependency(\.authClient) var authClient
-    @Dependency(\.hapticFeedback) var hapticFeedback
 
+    // MARK: - Dependencies
+
+    @Dependency(\.authClient) private var authClient
+    @Dependency(\.hapticFeedback) private var hapticFeedback
+
+    /// Reducer를 위한 기본 initializer
     public init() {}
 
     // MARK: - State
 
+    /// Profile Feature의 완전한 state를 나타냄
+    /// 예측 가능성을 유지하기 위해 모든 state 변경은 Action을 통해 처리되어야 함
+    ///
+    /// @ObservableState는 추가 wrapper 없이 직접적인 SwiftUI integration을 가능하게 함
     @ObservableState
     public struct State: Equatable {
-      /// 현재 사용자 정보
-      var currentUser: UserPrivateModel?
-      /// 로그아웃 확인 알림 표시 여부
-      var showLogoutAlert: Bool = false
-      /// 로딩 상태
-      var isLoading: Bool = false
+      /// 현재 로그인한 사용자 정보
+      public var currentUser: UserPrivateModel
+      /// 로그아웃 확인 Alert 표시 여부
+      public var showLogoutAlert: Bool
+      /// 로딩 상태 (로그아웃 진행 중 등)
+      public var isLoading: Bool
 
-      public init(currentUser: UserPrivateModel? = nil) {
+      /// State를 위한 기본 initializer
+      public init(
+        currentUser: UserPrivateModel = .exampleUser,
+        showLogoutAlert: Bool = false,
+        isLoading: Bool = false
+      ) {
         self.currentUser = currentUser
+        self.showLogoutAlert = showLogoutAlert
+        self.isLoading = isLoading
       }
     }
 
     // MARK: - Action
 
-    public enum Action: Equatable, Sendable {
-      // MARK: View Actions
-      case view(ViewAction)
-      // MARK: Internal Actions
-      case _internal(InternalAction)
-      // MARK: Delegate Actions
-      case delegate(DelegateAction)
+    /// Profile Feature 내에서 발생할 수 있는 모든 가능한 action
+    /// ViewAction / InternalAction / DelegateAction으로 분리하여 관심사 분리
+    public enum Action {
+      case view(View)
+      case `internal`(Internal)
+      case delegate(Delegate)
+    }
 
-      public enum ViewAction: Equatable, Sendable {
-        case onAppear
-        case logoutButtonTapped
-        case logoutConfirmed
-        case logoutCancelled
-        case editProfileTapped
-        case settingsTapped
-      }
+    /// View에서 발생하는 사용자 인터랙션 액션
+    public enum View: Sendable {
+      /// View가 처음 나타날 때 트리거
+      case onAppear
+      /// 로그아웃 버튼 탭
+      case logoutTapped
+      /// 로그아웃 확인 (Alert에서 확인 버튼)
+      case logoutConfirmed
+      /// 로그아웃 취소 (Alert에서 취소 버튼)
+      case logoutCancelled
+      /// 알림 설정 탭
+      case notificationSettingsTapped
+      /// 개인정보처리방침 탭
+      case privacyPolicyTapped
+      /// 이용약관 탭
+      case termsOfServiceTapped
+      /// 앱 정보 탭
+      case appInfoTapped
+    }
 
-      public enum InternalAction: Equatable, Sendable {
-        case logoutCompleted
-        case logoutFailed
-      }
+    /// 내부 비즈니스 로직 처리 결과 액션
+    public enum Internal: Sendable {
+      /// 로그아웃 완료
+      case logoutCompleted
+      /// 로그아웃 실패
+      case logoutFailed(AuthClientError)
+    }
 
-      public enum DelegateAction: Equatable, Sendable {
-        case logoutRequested
-      }
+    /// 부모 Feature에게 전달할 delegate 액션
+    public enum Delegate: Equatable {
+      /// 로그아웃 완료됨 (부모에서 화면 전환 처리)
+      case didLogout
     }
 
     // MARK: - Reducer Body
 
+    /// business logic을 구현하는 Main reducer body
+    /// 모든 action에 대한 state transition과 side effect를 처리
     public var body: some ReducerOf<Self> {
       Reduce { state, action in
         switch action {
-        case .view(.onAppear):
-          return .none
 
-        case .view(.logoutButtonTapped):
-          state.showLogoutAlert = true
-          return .run { _ in
-            await hapticFeedback.buttonTap()
-          }
+        // MARK: - View Actions
+        case .view(let viewAction):
+          switch viewAction {
+          case .onAppear:
+            // View가 나타날 때 필요한 초기화 로직
+            return .none
 
-        case .view(.logoutConfirmed):
-          state.showLogoutAlert = false
-          state.isLoading = true
-          return .run { send in
-            do {
-              try await authClient.logout()
-              await send(._internal(.logoutCompleted))
-            } catch {
-              await send(._internal(.logoutFailed))
+          case .logoutTapped:
+            // 로그아웃 확인 Alert 표시
+            state.showLogoutAlert = true
+            return .run { _ in
+              await hapticFeedback.medium()
+            }
+
+          case .logoutConfirmed:
+            // 로그아웃 확인 - 실제 로그아웃 수행
+            state.showLogoutAlert = false
+            state.isLoading = true
+            return .run { send in
+              await hapticFeedback.heavy()
+              do {
+                try await authClient.logout()
+                await send(.internal(.logoutCompleted))
+              } catch {
+                let clientError = (error as? AuthClientError) ?? .unknown
+                await send(.internal(.logoutFailed(clientError)))
+              }
+            }
+
+          case .logoutCancelled:
+            // 로그아웃 취소
+            state.showLogoutAlert = false
+            return .run { _ in
+              await hapticFeedback.light()
+            }
+
+          case .notificationSettingsTapped:
+            // 알림 설정 화면으로 이동 (향후 구현)
+            return .run { _ in
+              await hapticFeedback.selection()
+            }
+
+          case .privacyPolicyTapped:
+            // 개인정보처리방침 표시 (향후 구현)
+            return .run { _ in
+              await hapticFeedback.selection()
+            }
+
+          case .termsOfServiceTapped:
+            // 이용약관 표시 (향후 구현)
+            return .run { _ in
+              await hapticFeedback.selection()
+            }
+
+          case .appInfoTapped:
+            // 앱 정보 표시 (향후 구현)
+            return .run { _ in
+              await hapticFeedback.selection()
             }
           }
 
-        case .view(.logoutCancelled):
-          state.showLogoutAlert = false
-          return .none
+        // MARK: - Internal Actions
+        case .internal(let internalAction):
+          switch internalAction {
+          case .logoutCompleted:
+            state.isLoading = false
+            return .run { send in
+              await hapticFeedback.success()
+              await send(.delegate(.didLogout))
+            }
 
-        case .view(.editProfileTapped):
-          return .run { _ in
-            await hapticFeedback.buttonTap()
+          case .logoutFailed(let error):
+            state.isLoading = false
+            // TODO: 에러 메시지 표시 로직 추가 가능
+            _ = error
+            return .run { _ in
+              await hapticFeedback.error()
+            }
           }
 
-        case .view(.settingsTapped):
-          return .run { _ in
-            await hapticFeedback.buttonTap()
-          }
-
-        case ._internal(.logoutCompleted):
-          state.isLoading = false
-          return .send(.delegate(.logoutRequested))
-
-        case ._internal(.logoutFailed):
-          state.isLoading = false
-          return .none
-
+        // MARK: - Delegate Actions
         case .delegate:
+          // Delegate 액션은 부모에서 처리하므로 여기서는 pass-through
           return .none
         }
       }
@@ -127,9 +203,15 @@ extension Profile {
 
   // MARK: - Root View
 
+  /// Profile Feature를 위한 Main view implementation
+  /// 적절한 accessibility와 state handling을 통해 SwiftUI best practice를 따름
+  /// Note: 실제 UI 구현은 별도의 View 에이전트가 담당
   public struct RootView: View {
-    let store: StoreOf<Feature>
+    /// Feature의 state와 action dispatch 기능을 포함하는 Store
+    @Bindable private var store: StoreOf<Feature>
 
+    /// Designated initializer
+    /// - Parameter store: state management와 action dispatch를 위한 TCA store
     public init(store: StoreOf<Feature>) {
       self.store = store
     }
@@ -137,345 +219,31 @@ extension Profile {
     // MARK: - Body
 
     public var body: some View {
-      ScrollView {
-        VStack(spacing: 24) {
-          // Profile Header
-          profileHeaderSection
-
-          // Account Info Section
-          accountInfoSection
-
-          // Settings Section
-          settingsSection
-
-          // Logout Button
-          logoutSection
+      // Placeholder - UI 구현은 별도 에이전트가 담당
+      Text("Profile View Placeholder")
+        .onAppear {
+          store.send(.view(.onAppear))
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 24)
-      }
-      .background(Color(UIColor.systemGroupedBackground))
-      .navigationTitle("프로필")
-      .navigationBarTitleDisplayMode(.large)
-      .alert(
-        "로그아웃",
-        isPresented: Binding(
-          get: { store.showLogoutAlert },
-          set: { newValue in
-            if !newValue {
-              store.send(.view(.logoutCancelled))
-            }
-          }
-        )
-      ) {
-        Button("취소", role: .cancel) {
-          store.send(.view(.logoutCancelled))
-        }
-        Button("로그아웃", role: .destructive) {
-          store.send(.view(.logoutConfirmed))
-        }
-      } message: {
-        Text("정말 로그아웃 하시겠어요?")
-      }
-      .onAppear {
-        store.send(.view(.onAppear))
-      }
-    }
-
-    // MARK: - Profile Header Section
-
-    @ViewBuilder
-    private var profileHeaderSection: some View {
-      VStack(spacing: 16) {
-        // Avatar
-        ProfileAvatarView(
-          profileImageUrl: store.currentUser?.profileImageUrl,
-          displayName: store.currentUser?.displayName ?? "사용자",
-          isCurrentUser: true,
-          size: 100,
-          borderWidth: 3
-        )
-
-        // Name & Nickname
-        VStack(spacing: 4) {
-          Text(store.currentUser?.nickname ?? "닉네임 없음")
-            .font(.title2)
-            .fontWeight(.bold)
-            .foregroundColor(Color(UIColor.label))
-
-          Text(store.currentUser?.name ?? "이름 없음")
-            .font(.subheadline)
-            .foregroundColor(Color(UIColor.secondaryLabel))
-        }
-
-        // Edit Profile Button
-        Button {
-          store.send(.view(.editProfileTapped))
-        } label: {
-          HStack(spacing: 6) {
-            Image(systemName: "pencil")
-              .font(.subheadline)
-            Text("프로필 수정")
-              .font(.subheadline)
-              .fontWeight(.medium)
-          }
-          .foregroundColor(Color.pmindigo.n500)
-          .padding(.horizontal, 16)
-          .padding(.vertical, 8)
-        }
-        .adaptiveGlassSecondaryButton()
-      }
-      .frame(maxWidth: .infinity)
-      .padding(.vertical, 24)
-      .adaptiveGlassCard()
-    }
-
-    // MARK: - Account Info Section
-
-    @ViewBuilder
-    private var accountInfoSection: some View {
-      VStack(alignment: .leading, spacing: 12) {
-        Text("계정 정보")
-          .font(.headline)
-          .fontWeight(.semibold)
-          .foregroundColor(Color(UIColor.label))
-          .padding(.horizontal, 4)
-
-        VStack(spacing: 0) {
-          // Email
-          ProfileInfoRow(
-            icon: "envelope.fill",
-            title: "이메일",
-            value: store.currentUser?.email ?? "-"
-          )
-
-          Divider()
-            .padding(.leading, 44)
-
-          // Provider
-          ProfileInfoRow(
-            icon: providerIcon,
-            title: "로그인 방식",
-            value: providerDisplayName
-          )
-
-          Divider()
-            .padding(.leading, 44)
-
-          // Join Date
-          ProfileInfoRow(
-            icon: "calendar",
-            title: "가입일",
-            value: formattedJoinDate
-          )
-        }
-        .adaptiveGlassCard()
-      }
-    }
-
-    private var providerIcon: String {
-      switch store.currentUser?.provider {
-      case "google": return "g.circle.fill"
-      case "apple": return "apple.logo"
-      default: return "person.circle.fill"
-      }
-    }
-
-    private var providerDisplayName: String {
-      switch store.currentUser?.provider {
-      case "google": return "Google"
-      case "apple": return "Apple"
-      default: return "알 수 없음"
-      }
-    }
-
-    private var formattedJoinDate: String {
-      guard let date = store.currentUser?.metadata.createdAt else { return "-" }
-      let formatter = DateFormatter()
-      formatter.dateFormat = "yyyy년 M월 d일"
-      formatter.locale = Locale(identifier: "ko_KR")
-      return formatter.string(from: date)
-    }
-
-    // MARK: - Settings Section
-
-    @ViewBuilder
-    private var settingsSection: some View {
-      VStack(alignment: .leading, spacing: 12) {
-        Text("설정")
-          .font(.headline)
-          .fontWeight(.semibold)
-          .foregroundColor(Color(UIColor.label))
-          .padding(.horizontal, 4)
-
-        VStack(spacing: 0) {
-          SettingsRow(
-            icon: "bell.fill",
-            title: "알림 설정",
-            action: { store.send(.view(.settingsTapped)) }
-          )
-
-          Divider()
-            .padding(.leading, 44)
-
-          SettingsRow(
-            icon: "lock.fill",
-            title: "개인정보 처리방침",
-            action: { store.send(.view(.settingsTapped)) }
-          )
-
-          Divider()
-            .padding(.leading, 44)
-
-          SettingsRow(
-            icon: "doc.text.fill",
-            title: "서비스 이용약관",
-            action: { store.send(.view(.settingsTapped)) }
-          )
-
-          Divider()
-            .padding(.leading, 44)
-
-          SettingsRow(
-            icon: "info.circle.fill",
-            title: "앱 정보",
-            subtitle: "버전 1.0.0",
-            action: { store.send(.view(.settingsTapped)) }
-          )
-        }
-        .adaptiveGlassCard()
-      }
-    }
-
-    // MARK: - Logout Section
-
-    @ViewBuilder
-    private var logoutSection: some View {
-      Button {
-        store.send(.view(.logoutButtonTapped))
-      } label: {
-        HStack {
-          Image(systemName: "rectangle.portrait.and.arrow.right")
-            .font(.body)
-          Text("로그아웃")
-            .font(.body)
-            .fontWeight(.medium)
-        }
-        .foregroundColor(.red)
-        .frame(maxWidth: .infinity)
-        .frame(height: 52)
-      }
-      .adaptiveGlassDestructiveButton()
-      .disabled(store.isLoading)
-      .opacity(store.isLoading ? 0.6 : 1)
     }
   }
 }
 
-// MARK: - Supporting Views
+// MARK: - Error Types
 
-private struct ProfileInfoRow: View {
-  let icon: String
-  let title: String
-  let value: String
+/// Profile Feature 관련 에러 타입
+public enum ProfileError: Error, Equatable, LocalizedError {
+  case logoutFailed
+  case userNotFound
+  case unknown
 
-  var body: some View {
-    HStack(spacing: 12) {
-      Image(systemName: icon)
-        .font(.body)
-        .foregroundColor(Color.pmindigo.n500)
-        .frame(width: 24, height: 24)
-
-      Text(title)
-        .font(.body)
-        .foregroundColor(Color(UIColor.label))
-
-      Spacer()
-
-      Text(value)
-        .font(.body)
-        .foregroundColor(Color(UIColor.secondaryLabel))
-    }
-    .padding(.horizontal, 16)
-    .padding(.vertical, 14)
-  }
-}
-
-private struct SettingsRow: View {
-  let icon: String
-  let title: String
-  var subtitle: String? = nil
-  let action: () -> Void
-
-  var body: some View {
-    Button(action: action) {
-      HStack(spacing: 12) {
-        Image(systemName: icon)
-          .font(.body)
-          .foregroundColor(Color.pmindigo.n500)
-          .frame(width: 24, height: 24)
-
-        Text(title)
-          .font(.body)
-          .foregroundColor(Color(UIColor.label))
-
-        Spacer()
-
-        if let subtitle {
-          Text(subtitle)
-            .font(.subheadline)
-            .foregroundColor(Color(UIColor.tertiaryLabel))
-        }
-
-        Image(systemName: "chevron.right")
-          .font(.caption)
-          .foregroundColor(Color(UIColor.tertiaryLabel))
-      }
-      .padding(.horizontal, 16)
-      .padding(.vertical, 14)
-    }
-  }
-}
-
-// MARK: - Glass Effect Modifiers
-
-extension View {
-  @ViewBuilder
-  func adaptiveGlassCard() -> some View {
-    if #available(iOS 26.0, *) {
-      self
-        .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 16))
-    } else {
-      self
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
-    }
-  }
-
-  @ViewBuilder
-  func adaptiveGlassSecondaryButton() -> some View {
-    if #available(iOS 26.0, *) {
-      self
-        .glassEffect(
-          .regular.tint(Color.pmindigo.n500.opacity(0.14)).interactive(),
-          in: .rect(cornerRadius: 10)
-        )
-    } else {
-      self
-        .background(Color.pmindigo.n500.opacity(0.1), in: RoundedRectangle(cornerRadius: 10))
-    }
-  }
-
-  @ViewBuilder
-  func adaptiveGlassDestructiveButton() -> some View {
-    if #available(iOS 26.0, *) {
-      self
-        .glassEffect(
-          .regular.tint(Color.red.opacity(0.12)).interactive(),
-          in: .rect(cornerRadius: 14)
-        )
-    } else {
-      self
-        .background(Color.red.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
+  public var errorDescription: String? {
+    switch self {
+    case .logoutFailed:
+      return "로그아웃에 실패했습니다. 다시 시도해주세요."
+    case .userNotFound:
+      return "사용자 정보를 찾을 수 없습니다."
+    case .unknown:
+      return "알 수 없는 오류가 발생했습니다."
     }
   }
 }
