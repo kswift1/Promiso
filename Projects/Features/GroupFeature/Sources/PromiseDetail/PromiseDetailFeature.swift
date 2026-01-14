@@ -124,23 +124,161 @@ extension PromiseDetail {
       Reduce { state, action in
         switch action {
         case .view(let viewAction):
-          return handleViewAction(&state, viewAction)
+          switch viewAction {
+          case .onAppear:
+            return .none
+
+          case .dismissTapped:
+            return .send(.delegate(.dismiss))
+
+          case .acceptTapped:
+            guard state.respondingState == .idle else { return .none }
+            state.respondingState = .accepting
+            return .send(.internal(.respondPromise(status: .accepted)))
+
+          case .rejectTapped:
+            guard state.respondingState == .idle else { return .none }
+            state.respondingState = .rejecting
+            return .send(.internal(.respondPromise(status: .declined)))
+
+          case .resetTapped:
+            guard state.respondingState == .idle else { return .none }
+            state.respondingState = .resetting
+            return .send(.internal(.respondPromise(status: .pending)))
+
+          case .deleteTapped:
+            guard !state.isDeleting else { return .none }
+            let promiseTitle = state.promise.title
+            state.alert = AlertState {
+              TextState("약속 삭제")
+            } actions: {
+              ButtonState(role: .cancel) {
+                TextState("취소")
+              }
+              ButtonState(role: .destructive, action: .confirmDelete) {
+                TextState("삭제")
+              }
+            } message: {
+              TextState("'\(promiseTitle)' 약속을 삭제하시겠습니까?\n삭제된 약속은 복구할 수 없습니다.")
+            }
+            return .none
+
+          case .editTapped:
+            guard state.canEdit else { return .none }
+            let maxMembers = state.groupMembers?.count ?? state.promise.minimumParticipants
+            state.editPromise = EditPromise.Feature.State(
+              promise: state.promise,
+              maxMembers: maxMembers
+            )
+            return .none
+
+          case .shareTapped:
+            state.showShareSheet = true
+            return .none
+
+          case .shareSheetDismissed:
+            state.showShareSheet = false
+            return .none
+
+          case let .participantGroupTapped(title, userIds, colorType):
+            guard let members = state.groupMembers else { return .none }
+            let resolvedMembers = userIds.compactMap { userId in
+              members.first { $0.userId == userId }
+            }
+            state.memberSheet = MemberSheetState(
+              title: title,
+              members: resolvedMembers,
+              colorType: colorType
+            )
+            return .none
+
+          case .memberSheetDismissed:
+            state.memberSheet = nil
+            return .none
+          }
+
         case .internal(let internalAction):
-          return handleInternalAction(&state, internalAction)
+          switch internalAction {
+          case .respondPromise(let status):
+            let promiseId = state.promise.id
+            return .run { [promiseClient] send in
+              do {
+                try await promiseClient.respondPromise(promiseId, status)
+                await send(.internal(.respondDone(status: status)))
+              } catch {
+                await send(.internal(.respondFailed(error: AppError(error))))
+              }
+            }
+
+          case .respondDone(let status):
+            state.respondingState = .idle
+            // 로컬 상태 업데이트 (immutable이므로 새로 생성)
+            var newAccepted = state.promise.votes.accepted.filter { $0 != state.currentUserId }
+            var newDeclined = state.promise.votes.declined.filter { $0 != state.currentUserId }
+
+            switch status {
+            case .accepted:
+              newAccepted.append(state.currentUserId)
+            case .declined:
+              newDeclined.append(state.currentUserId)
+            case .pending:
+              break // 둘 다 제거된 상태 유지
+            }
+
+            state.promise.votes = PromiseVotesModel(
+              accepted: newAccepted,
+              declined: newDeclined,
+              until: state.promise.votes.until
+            )
+            return .send(.delegate(.promiseUpdated(state.promise)))
+
+          case .respondFailed:
+            state.respondingState = .idle
+            return .none
+
+          case .deletePromise:
+            let promiseId = state.promise.id
+            return .run { [promiseClient] send in
+              do {
+                try await promiseClient.deletePromise(promiseId)
+                await send(.internal(.deleteDone))
+              } catch {
+                await send(.internal(.deleteFailed(error: AppError(error))))
+              }
+            }
+
+          case .deleteDone:
+            state.isDeleting = false
+            return .send(.delegate(.promiseDeleted(id: state.promise.id)))
+
+          case .deleteFailed:
+            state.isDeleting = false
+            return .none
+
+          case .promiseUpdated(let promise):
+            state.promise = promise
+            return .none
+          }
+
         case .delegate:
           return .none
+
         case .editPromise(.presented(.delegate(.cancelled))):
           state.editPromise = nil
           return .none
+
         case .editPromise(.presented(.delegate(.promiseUpdated(let promise)))):
           state.editPromise = nil
           state.promise = promise
           return .send(.delegate(.promiseUpdated(promise)))
+
         case .editPromise:
           return .none
+
         case .alert(.presented(.confirmDelete)):
           state.isDeleting = true
           return .send(.internal(.deletePromise))
+
         case .alert:
           return .none
         }
@@ -149,151 +287,6 @@ extension PromiseDetail {
         EditPromise.Feature()
       }
       .ifLet(\.$alert, action: \.alert)
-    }
-
-    private func handleViewAction(
-      _ state: inout State,
-      _ action: Action.ViewAction
-    ) -> Effect<Action> {
-      switch action {
-      case .onAppear:
-        return .none
-
-      case .dismissTapped:
-        return .send(.delegate(.dismiss))
-
-      case .acceptTapped:
-        guard state.respondingState == .idle else { return .none }
-        state.respondingState = .accepting
-        return .send(.internal(.respondPromise(status: .accepted)))
-
-      case .rejectTapped:
-        guard state.respondingState == .idle else { return .none }
-        state.respondingState = .rejecting
-        return .send(.internal(.respondPromise(status: .declined)))
-
-      case .resetTapped:
-        guard state.respondingState == .idle else { return .none }
-        state.respondingState = .resetting
-        return .send(.internal(.respondPromise(status: .pending)))
-
-      case .deleteTapped:
-        guard !state.isDeleting else { return .none }
-        let promiseTitle = state.promise.title
-        state.alert = AlertState {
-          TextState("약속 삭제")
-        } actions: {
-          ButtonState(role: .cancel) {
-            TextState("취소")
-          }
-          ButtonState(role: .destructive, action: .confirmDelete) {
-            TextState("삭제")
-          }
-        } message: {
-          TextState("'\(promiseTitle)' 약속을 삭제하시겠습니까?\n삭제된 약속은 복구할 수 없습니다.")
-        }
-        return .none
-
-      case .editTapped:
-        guard state.canEdit else { return .none }
-        let maxMembers = state.groupMembers?.count ?? state.promise.minimumParticipants
-        state.editPromise = EditPromise.Feature.State(
-          promise: state.promise,
-          maxMembers: maxMembers
-        )
-        return .none
-
-      case .shareTapped:
-        state.showShareSheet = true
-        return .none
-
-      case .shareSheetDismissed:
-        state.showShareSheet = false
-        return .none
-
-      case let .participantGroupTapped(title, userIds, colorType):
-        guard let members = state.groupMembers else { return .none }
-        let resolvedMembers = userIds.compactMap { userId in
-          members.first { $0.userId == userId }
-        }
-        state.memberSheet = MemberSheetState(
-          title: title,
-          members: resolvedMembers,
-          colorType: colorType
-        )
-        return .none
-
-      case .memberSheetDismissed:
-        state.memberSheet = nil
-        return .none
-      }
-    }
-
-    private func handleInternalAction(
-      _ state: inout State,
-      _ action: Action.Internal
-    ) -> Effect<Action> {
-      switch action {
-      case .respondPromise(let status):
-        let promiseId = state.promise.id
-        return .run { [promiseClient] send in
-          do {
-            try await promiseClient.respondPromise(promiseId, status)
-            await send(.internal(.respondDone(status: status)))
-          } catch {
-            await send(.internal(.respondFailed(error: AppError(error))))
-          }
-        }
-
-      case .respondDone(let status):
-        state.respondingState = .idle
-        // 로컬 상태 업데이트 (immutable이므로 새로 생성)
-        var newAccepted = state.promise.votes.accepted.filter { $0 != state.currentUserId }
-        var newDeclined = state.promise.votes.declined.filter { $0 != state.currentUserId }
-
-        switch status {
-        case .accepted:
-          newAccepted.append(state.currentUserId)
-        case .declined:
-          newDeclined.append(state.currentUserId)
-        case .pending:
-          break // 둘 다 제거된 상태 유지
-        }
-
-        state.promise.votes = PromiseVotesModel(
-          accepted: newAccepted,
-          declined: newDeclined,
-          until: state.promise.votes.until
-        )
-        return .send(.delegate(.promiseUpdated(state.promise)))
-
-      case .respondFailed:
-        state.respondingState = .idle
-        return .none
-
-      case .deletePromise:
-        let promiseId = state.promise.id
-        return .run { [promiseClient] send in
-          do {
-            try await promiseClient.deletePromise(promiseId)
-            await send(.internal(.deleteDone))
-          } catch {
-            await send(.internal(.deleteFailed(error: AppError(error))))
-          }
-        }
-
-      case .deleteDone:
-        state.isDeleting = false
-        return .send(.delegate(.promiseDeleted(id: state.promise.id)))
-
-      case .deleteFailed:
-        state.isDeleting = false
-        return .none
-
-      case .promiseUpdated(let promise):
-        state.promise = promise
-        return .none
-      }
     }
   }
 }
