@@ -10,6 +10,7 @@ public enum UserProfileError: Error, LocalizedError, Equatable {
   case networkError
   case authenticationRequired
   case permissionDenied
+  case notImplemented
 
   public var errorDescription: String? {
     switch self {
@@ -25,6 +26,8 @@ public enum UserProfileError: Error, LocalizedError, Equatable {
       return "로그인이 필요합니다."
     case .permissionDenied:
       return "권한이 없습니다."
+    case .notImplemented:
+      return "아직 지원하지 않는 기능입니다."
     }
   }
 }

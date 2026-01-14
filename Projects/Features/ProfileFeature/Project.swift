@@ -1,7 +1,7 @@
 import ProjectDescription
 import ProjectDescriptionHelpers
 
-private let feature: Feature = .rootTab
+private let feature: Feature = .profile
 
 let project = Project(
   name: feature.fullName,
@@ -9,7 +9,7 @@ let project = Project(
 
     // Main Feature (TCA)
     .target(
-      name: "RootTabFeature",
+      name: "ProfileFeature",
       destinations: .iOS,
       product: .framework,
       bundleId: "\(feature.defaultBundleIdPrefix)",
@@ -18,9 +18,6 @@ let project = Project(
       dependencies: [
         .project(target: "Clients", path: "../../Clients"),
         .project(target: "PromisoShared", path: "../../Shared"),
-        .project(target: "HomeFeature", path: "../HomeFeature"),
-        .project(target: "GroupFeature", path: "../GroupFeature"),
-        .project(target: "ProfileFeature", path: "../ProfileFeature"),
         .project(target: "ExternalDependency", path: "../../ExternalDependency")
       ],
       settings: .standard()
@@ -28,21 +25,21 @@ let project = Project(
 
     // Unit Tests
     .target(
-      name: "RootTabFeatureTests",
+      name: "ProfileFeatureTests",
       destinations: .iOS,
       product: .unitTests,
       bundleId: "\(feature.defaultBundleIdPrefix).tests",
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Tests/Sources/**"],
       dependencies: [
-        .target(name: "RootTabFeature")
+        .target(name: "ProfileFeature")
       ],
       settings: .standard()
     ),
 
     // Example App (Demo)
     .target(
-      name: "RootTabFeatureExample",
+      name: "ProfileFeatureExample",
       destinations: .iOS,
       product: .app,
       bundleId: "\(feature.defaultBundleIdPrefix).example",
@@ -53,7 +50,7 @@ let project = Project(
       sources: ["Example/Sources/**"],
       resources: ["Example/Resources/**"],
       dependencies: [
-        .target(name: "RootTabFeature")
+        .target(name: "ProfileFeature")
       ],
       settings: .standard()
     )

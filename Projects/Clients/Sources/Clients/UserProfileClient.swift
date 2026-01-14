@@ -93,6 +93,13 @@ public struct UserProfileClient: Sendable {
   /// 사용자 설정 조회
   /// - Returns: 사용자 설정
   public var getUserSettings: @Sendable () async throws -> UserSettings
+
+  /// 사용자 설정 업데이트
+  /// - Parameter notificationEnabled: 알림 활성화 여부
+  public var updateUserSettings: @Sendable (_ notificationEnabled: Bool) async throws -> Void
+
+  /// 계정 삭제 (회원탈퇴)
+  public var deleteAccount: @Sendable () async throws -> Void
 }
 
 // MARK: - Test / Preview
@@ -196,7 +203,9 @@ extension UserProfileClient: TestDependencyKey {
     },
     getUserSettings: {
       UserSettings(notificationEnabled: true)
-    }
+    },
+    updateUserSettings: { _ in },
+    deleteAccount: { }
   )
 
   public static let testValue = Self(
@@ -207,7 +216,9 @@ extension UserProfileClient: TestDependencyKey {
     isNicknameAvailable: unimplemented("\(Self.self).isNicknameAvailable", placeholder: true),
     updateProfile: unimplemented("\(Self.self).updateProfile"),
     updateProfileImage: unimplemented("\(Self.self).updateProfileImage"),
-    getUserSettings: unimplemented("\(Self.self).getUserSettings")
+    getUserSettings: unimplemented("\(Self.self).getUserSettings"),
+    updateUserSettings: unimplemented("\(Self.self).updateUserSettings"),
+    deleteAccount: unimplemented("\(Self.self).deleteAccount")
   )
 }
 
@@ -295,6 +306,16 @@ extension UserProfileClient: DependencyKey {
       getUserSettings: {
         let notificationEnabled = try await dataSource.getUserSettings()
         return UserSettings(notificationEnabled: notificationEnabled)
+      },
+
+      updateUserSettings: { notificationEnabled in
+        try await dataSource.updateUserSettings(notificationEnabled: notificationEnabled)
+      },
+
+      deleteAccount: {
+        // TODO: 백엔드 API 구현 후 연동 필요
+        // try await dataSource.deleteAccount()
+        throw UserProfileError.notImplemented
       }
     )
   }()

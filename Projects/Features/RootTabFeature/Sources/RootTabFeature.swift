@@ -9,11 +9,13 @@ import PromisoShared
 public enum Tab: String, CaseIterable {
   case home = "홈"
   case group = "그룹"
-  
+  case profile = "프로필"
+
   var iconName: String {
     switch self {
     case .home: return "house.fill"
     case .group: return "person.3.fill"
+    case .profile: return "person.circle.fill"
     }
   }
 }
@@ -49,9 +51,13 @@ extension RootTab {
       /// Group Main State
       var groupMain: GroupMain.Feature.State
 
+      /// Profile State
+      var profile: Profile.Feature.State
+
       public init(currentUser: UserPrivateModel) {
         self.groupMain = GroupMain.Feature.State(currentUser: currentUser)
         self.home = Home.Feature.State(currentUser: currentUser)
+        self.profile = Profile.Feature.State(currentUser: currentUser)
       }
     }
     
@@ -66,6 +72,8 @@ extension RootTab {
       case home(Home.Feature.Action)
       /// Group Main 액션
       case groupMain(GroupMain.Feature.Action)
+      /// Profile 액션
+      case profile(Profile.Feature.Action)
       /// 상위로 전달되는 델리게이트 액션
       case delegate(Delegate)
       /// 딥링크로 그룹 참여 열기
@@ -81,11 +89,15 @@ extension RootTab {
       Scope(state: \.groupMain, action: \.groupMain) {
         GroupMain.Feature()
       }
-      
+
       Scope(state: \.home, action: \.home) {
         Home.Feature()
       }
-      
+
+      Scope(state: \.profile, action: \.profile) {
+        Profile.Feature()
+      }
+
       Reduce { state, action in
         switch action {
         case .onAppear:
@@ -122,6 +134,15 @@ extension RootTab {
           return .send(.sideDrawer(.toggle))
 
         case .groupMain:
+          return .none
+
+        case .profile(.delegate(.logoutRequested)):
+          return .send(.delegate(.logoutRequested))
+
+        case .profile(.delegate(.accountDeleted)):
+          return .send(.delegate(.logoutRequested))
+
+        case .profile:
           return .none
 
         case .openJoinGroupWithCode(let inviteCode):
@@ -246,6 +267,16 @@ extension RootTab {
             store: store.scope(
               state: \.groupMain,
               action: \.groupMain
+            )
+          )
+        }
+
+      case .profile:
+        NavigationStack {
+          Profile.RootView(
+            store: store.scope(
+              state: \.profile,
+              action: \.profile
             )
           )
         }
