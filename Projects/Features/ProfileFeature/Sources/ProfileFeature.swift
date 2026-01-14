@@ -28,6 +28,7 @@ extension Profile {
     // MARK: - Dependencies
 
     @Dependency(\.authClient) private var authClient
+    @Dependency(\.userProfileClient) private var userProfileClient
     @Dependency(\.hapticFeedback) private var hapticFeedback
 
     /// Reducer를 위한 기본 initializer
@@ -48,16 +49,47 @@ extension Profile {
       /// 로딩 상태 (로그아웃 진행 중 등)
       public var isLoading: Bool
 
+      // MARK: - Profile Edit State
+
+      /// 프로필 편집 화면 표시 여부
+      public var isEditingProfile: Bool
+      /// 편집 중인 닉네임
+      public var editedNickname: String
+      /// 편집 중인 프로필 이미지 데이터
+      public var editedProfileImageData: Data?
+      /// 닉네임 유효성 검사 상태
+      public var nicknameValidation: NicknameValidation
+      /// 프로필 저장 중 여부
+      public var isSavingProfile: Bool
+      /// 에러 메시지
+      public var errorMessage: String?
+
       /// State를 위한 기본 initializer
       public init(
         currentUser: UserPrivateModel = .exampleUser,
         showLogoutAlert: Bool = false,
-        isLoading: Bool = false
+        isLoading: Bool = false,
+        isEditingProfile: Bool = false
       ) {
         self.currentUser = currentUser
         self.showLogoutAlert = showLogoutAlert
         self.isLoading = isLoading
+        self.isEditingProfile = isEditingProfile
+        self.editedNickname = currentUser.nickname
+        self.editedProfileImageData = nil
+        self.nicknameValidation = .idle
+        self.isSavingProfile = false
+        self.errorMessage = nil
       }
+    }
+
+    /// 닉네임 유효성 검사 상태
+    public enum NicknameValidation: Equatable {
+      case idle
+      case checking
+      case available
+      case unavailable
+      case invalid(String)
     }
 
     // MARK: - Action
@@ -88,6 +120,20 @@ extension Profile {
       case termsOfServiceTapped
       /// 앱 정보 탭
       case appInfoTapped
+
+      // MARK: - Profile Edit Actions
+      /// 프로필 편집 버튼 탭
+      case editProfileTapped
+      /// 닉네임 변경
+      case nicknameChanged(String)
+      /// 프로필 이미지 선택
+      case profileImageSelected(Data?)
+      /// 프로필 저장 버튼 탭
+      case saveProfileTapped
+      /// 프로필 편집 취소
+      case cancelEditTapped
+      /// 에러 메시지 닫기
+      case dismissError
     }
 
     /// 내부 비즈니스 로직 처리 결과 액션
@@ -96,6 +142,14 @@ extension Profile {
       case logoutCompleted
       /// 로그아웃 실패
       case logoutFailed(AuthClientError)
+
+      // MARK: - Profile Edit Internal
+      /// 닉네임 중복 확인 결과
+      case nicknameCheckResult(Bool)
+      /// 프로필 저장 완료
+      case profileSaveCompleted(UserPrivateModel)
+      /// 프로필 저장 실패
+      case profileSaveFailed(String)
     }
 
     /// 부모 Feature에게 전달할 delegate 액션
@@ -171,6 +225,94 @@ extension Profile {
             return .run { _ in
               await hapticFeedback.selection()
             }
+
+          // MARK: - Profile Edit View Actions
+
+          case .editProfileTapped:
+            state.isEditingProfile = true
+            state.editedNickname = state.currentUser.nickname
+            state.editedProfileImageData = nil
+            state.nicknameValidation = .idle
+            return .run { _ in
+              await hapticFeedback.selection()
+            }
+
+          case .nicknameChanged(let nickname):
+            state.editedNickname = nickname
+            // 닉네임 유효성 검사
+            if nickname.isEmpty {
+              state.nicknameValidation = .invalid("닉네임을 입력해주세요")
+              return .none
+            }
+            if nickname.count < 2 {
+              state.nicknameValidation = .invalid("닉네임은 2자 이상이어야 합니다")
+              return .none
+            }
+            if nickname.count > 20 {
+              state.nicknameValidation = .invalid("닉네임은 20자 이하여야 합니다")
+              return .none
+            }
+            // 현재 닉네임과 동일하면 검사 생략
+            if nickname == state.currentUser.nickname {
+              state.nicknameValidation = .available
+              return .none
+            }
+            // 중복 확인
+            state.nicknameValidation = .checking
+            return .run { send in
+              do {
+                let isAvailable = try await userProfileClient.isNicknameAvailable(nickname)
+                await send(.internal(.nicknameCheckResult(isAvailable)))
+              } catch {
+                await send(.internal(.nicknameCheckResult(false)))
+              }
+            }
+
+          case .profileImageSelected(let imageData):
+            state.editedProfileImageData = imageData
+            return .run { _ in
+              await hapticFeedback.selection()
+            }
+
+          case .saveProfileTapped:
+            guard state.nicknameValidation == .available || state.editedNickname == state.currentUser.nickname else {
+              return .none
+            }
+            state.isSavingProfile = true
+            let nickname = state.editedNickname
+            let imageData = state.editedProfileImageData
+            let currentNickname = state.currentUser.nickname
+            return .run { send in
+              await hapticFeedback.medium()
+              do {
+                // 닉네임이 변경된 경우
+                if nickname != currentNickname {
+                  try await userProfileClient.updateProfile(nickname)
+                }
+                // 이미지가 선택된 경우
+                if let imageData = imageData {
+                  _ = try await userProfileClient.updateProfileImage(imageData)
+                }
+                // 업데이트된 프로필 조회
+                let updatedUser = try await userProfileClient.getPrivateProfile(.me)
+                await send(.internal(.profileSaveCompleted(updatedUser)))
+              } catch {
+                await send(.internal(.profileSaveFailed(error.localizedDescription)))
+              }
+            }
+
+          case .cancelEditTapped:
+            state.isEditingProfile = false
+            state.editedNickname = state.currentUser.nickname
+            state.editedProfileImageData = nil
+            state.nicknameValidation = .idle
+            return .run { _ in
+              await hapticFeedback.light()
+            }
+
+          case .dismissError:
+            state.errorMessage = nil
+            return .none
           }
 
         // MARK: - Internal Actions
@@ -190,6 +332,29 @@ extension Profile {
             return .run { _ in
               await hapticFeedback.error()
             }
+
+          // MARK: - Profile Edit Internal Actions
+
+          case .nicknameCheckResult(let isAvailable):
+            state.nicknameValidation = isAvailable ? .available : .unavailable
+            return .none
+
+          case .profileSaveCompleted(let updatedUser):
+            state.currentUser = updatedUser
+            state.isSavingProfile = false
+            state.isEditingProfile = false
+            state.editedProfileImageData = nil
+            state.nicknameValidation = .idle
+            return .run { _ in
+              await hapticFeedback.success()
+            }
+
+          case .profileSaveFailed(let errorMessage):
+            state.isSavingProfile = false
+            state.errorMessage = errorMessage
+            return .run { _ in
+              await hapticFeedback.error()
+            }
           }
 
         // MARK: - Delegate Actions
@@ -204,26 +369,16 @@ extension Profile {
   // MARK: - Root View
 
   /// Profile Feature를 위한 Main view implementation
-  /// 적절한 accessibility와 state handling을 통해 SwiftUI best practice를 따름
-  /// Note: 실제 UI 구현은 별도의 View 에이전트가 담당
+  /// 실제 UI는 ProfileView에서 구현
   public struct RootView: View {
-    /// Feature의 state와 action dispatch 기능을 포함하는 Store
-    @Bindable private var store: StoreOf<Feature>
+    private var store: StoreOf<Feature>
 
-    /// Designated initializer
-    /// - Parameter store: state management와 action dispatch를 위한 TCA store
     public init(store: StoreOf<Feature>) {
       self.store = store
     }
 
-    // MARK: - Body
-
     public var body: some View {
-      // Placeholder - UI 구현은 별도 에이전트가 담당
-      Text("Profile View Placeholder")
-        .onAppear {
-          store.send(.view(.onAppear))
-        }
+      ProfileView(store: store)
     }
   }
 }

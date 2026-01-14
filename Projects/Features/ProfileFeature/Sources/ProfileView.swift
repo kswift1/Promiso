@@ -80,6 +80,25 @@ extension Profile {
       .auroraBackground()
       .navigationTitle("프로필")
       .navigationBarTitleDisplayMode(.large)
+      .toolbar {
+        ToolbarItem(placement: .navigationBarTrailing) {
+          Button {
+            store.send(.view(.editProfileTapped))
+          } label: {
+            Image(systemName: "pencil.circle.fill")
+              .font(.title3)
+              .foregroundStyle(Color.pmindigo.n500)
+          }
+        }
+      }
+      .sheet(
+        isPresented: Binding(
+          get: { store.isEditingProfile },
+          set: { if !$0 { store.send(.view(.cancelEditTapped)) } }
+        )
+      ) {
+        Profile.ProfileEditView(store: store)
+      }
       .alert(
         "로그아웃",
         isPresented: Binding(
@@ -249,6 +268,16 @@ extension Profile {
           .padding(.bottom, 12)
 
         VStack(spacing: 0) {
+          // 프로필 편집
+          settingsMenuRow(
+            icon: "person.crop.circle.fill",
+            title: "프로필 편집",
+            action: { store.send(.view(.editProfileTapped)) }
+          )
+
+          Divider()
+            .padding(.leading, 56)
+
           // 알림 설정
           settingsMenuRow(
             icon: "bell.fill",
