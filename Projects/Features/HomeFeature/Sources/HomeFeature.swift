@@ -88,8 +88,6 @@ extension Home {
       public enum View: Sendable {
         /// 화면 나타남
         case onAppear
-        /// 사이드 드로어 열기
-        case openSideDrawer
         /// 약속 카드 탭
         case promiseTapped(PromiseModel)
         /// 응답하기 버튼 탭
@@ -106,7 +104,6 @@ extension Home {
       }
 
       public enum Delegate: Sendable {
-        case openSideDrawer
         case navigateToGroup(groupId: String)
       }
     }
@@ -137,9 +134,6 @@ extension Home {
         guard !state.hasLoadedOnce else { return .none }
         state.hasLoadedOnce = true
         return .send(.internal(.fetchAllData))
-
-      case .openSideDrawer:
-        return .send(.delegate(.openSideDrawer))
 
       case .promiseTapped(let promise):
         return .send(.delegate(.navigateToGroup(groupId: promise.groupId)))
@@ -257,13 +251,6 @@ extension Home {
       .auroraBackground()
       .navigationTitle("오늘의 일정")
       .toolbar {
-        ToolbarItem(placement: .topBarLeading) {
-          ToolbarButton(
-            imageName: "line.3.horizontal",
-            action: { store.send(.view(.openSideDrawer)) }
-          )
-        }
-
         ToolbarItem(placement: .topBarTrailing) {
           NotificationButton(
             badgeCount: store.pendingResponseCount,
