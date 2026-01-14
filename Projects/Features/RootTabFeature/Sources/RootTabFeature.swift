@@ -209,14 +209,12 @@ extension RootTab {
         }
 
       case .profile:
-        NavigationStack {
-          Profile.RootView(
-            store: store.scope(
-              state: \.profile,
-              action: \.profile
-            )
+        Profile.RootView(
+          store: store.scope(
+            state: \.profile,
+            action: \.profile
           )
-        }
+        )
       }
     }
   }

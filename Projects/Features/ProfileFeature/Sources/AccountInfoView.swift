@@ -10,12 +10,44 @@ import ComposableArchitecture
 import ResourceKit
 import PromisoShared
 
-// MARK: - Account Info View
+// MARK: - AccountInfo Namespace
 
-extension Profile {
+public enum AccountInfo {}
 
-  /// 계정 정보 상세 화면
-  public struct AccountInfoView: View {
+// MARK: - Feature
+
+extension AccountInfo {
+
+  @Reducer
+  public struct Feature {
+    public init() {}
+
+    @ObservableState
+    public struct State {
+      public var currentUser: UserPrivateModel
+
+      public init(currentUser: UserPrivateModel) {
+        self.currentUser = currentUser
+      }
+    }
+
+    public enum Action: Sendable {
+      case onAppear
+    }
+
+    public var body: some ReducerOf<Self> {
+      Reduce { _, action in
+        switch action {
+        case .onAppear:
+          return .none
+        }
+      }
+    }
+  }
+
+  // MARK: - Root View
+
+  public struct RootView: View {
     @Bindable private var store: StoreOf<Feature>
 
     public init(store: StoreOf<Feature>) {
@@ -67,27 +99,18 @@ extension Profile {
     // MARK: - Body
 
     public var body: some View {
-      NavigationStack {
-        ScrollView {
-          VStack(spacing: 24) {
-            // 계정 정보 카드
-            accountInfoCard
-          }
-          .padding(.horizontal, 16)
-          .padding(.vertical, 24)
+      ScrollView {
+        VStack(spacing: 24) {
+          accountInfoCard
         }
-        .auroraBackground()
-        .navigationTitle("계정 정보")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-          ToolbarItem(placement: .navigationBarTrailing) {
-            Button("완료") {
-              store.send(.view(.accountInfoDismissed))
-            }
-            .fontWeight(.semibold)
-            .foregroundStyle(Color.pmindigo.n500)
-          }
-        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 24)
+      }
+      .auroraBackground()
+      .navigationTitle("계정 정보")
+      .navigationBarTitleDisplayMode(.large)
+      .onAppear {
+        store.send(.onAppear)
       }
     }
 
@@ -202,9 +225,11 @@ private extension View {
 // MARK: - Preview
 
 #Preview("Account Info") {
-  Profile.AccountInfoView(
-    store: Store(initialState: Profile.Feature.State(isShowingAccountInfo: true)) {
-      Profile.Feature()
-    }
-  )
+  NavigationStack {
+    AccountInfo.RootView(
+      store: Store(initialState: AccountInfo.Feature.State(currentUser: .exampleUser)) {
+        AccountInfo.Feature()
+      }
+    )
+  }
 }

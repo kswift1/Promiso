@@ -47,7 +47,7 @@ extension Profile {
     ///
     /// @ObservableState는 추가 wrapper 없이 직접적인 SwiftUI integration을 가능하게 함
     @ObservableState
-    public struct State: Equatable {
+    public struct State {
       /// 현재 로그인한 사용자 정보
       public var currentUser: UserPrivateModel
       /// 로그아웃 확인 Alert 표시 여부
@@ -69,16 +69,15 @@ extension Profile {
       public var isSavingProfile: Bool
       /// 에러 메시지
       public var errorMessage: String?
-      /// 계정 정보 화면 표시 여부
-      public var isShowingAccountInfo: Bool
+      /// 네비게이션 경로
+      public var path = StackState<Path.State>()
 
       /// State를 위한 기본 initializer
       public init(
         currentUser: UserPrivateModel = .exampleUser,
         showLogoutAlert: Bool = false,
         isLoading: Bool = false,
-        isEditingProfile: Bool = false,
-        isShowingAccountInfo: Bool = false
+        isEditingProfile: Bool = false
       ) {
         self.currentUser = currentUser
         self.showLogoutAlert = showLogoutAlert
@@ -89,8 +88,14 @@ extension Profile {
         self.nicknameValidation = .idle
         self.isSavingProfile = false
         self.errorMessage = nil
-        self.isShowingAccountInfo = isShowingAccountInfo
       }
+    }
+
+    // MARK: - Path
+
+    @Reducer
+    public enum Path {
+      case accountInfo(AccountInfo.Feature)
     }
 
     /// 닉네임 유효성 검사 상태
@@ -111,6 +116,7 @@ extension Profile {
       case view(View)
       case `internal`(Internal)
       case delegate(Delegate)
+      case path(StackActionOf<Path>)
     }
 
     /// View에서 발생하는 사용자 인터랙션 액션
@@ -133,8 +139,6 @@ extension Profile {
       case appInfoTapped
       /// 계정 정보 탭
       case accountInfoTapped
-      /// 계정 정보 화면 닫기
-      case accountInfoDismissed
 
       // MARK: - Profile Edit Actions
       /// 프로필 편집 버튼 탭
@@ -242,14 +246,10 @@ extension Profile {
             }
 
           case .accountInfoTapped:
-            state.isShowingAccountInfo = true
+            state.path.append(.accountInfo(AccountInfo.Feature.State(currentUser: state.currentUser)))
             return .run { _ in
               await hapticFeedback.selection()
             }
-
-          case .accountInfoDismissed:
-            state.isShowingAccountInfo = false
-            return .none
 
           // MARK: - Profile Edit View Actions
 
@@ -388,24 +388,36 @@ extension Profile {
         case .delegate:
           // Delegate 액션은 부모에서 처리하므로 여기서는 pass-through
           return .none
+
+        // MARK: - Path Actions
+        case .path:
+          return .none
         }
       }
+      .forEach(\.path, action: \.path)
     }
   }
 
   // MARK: - Root View
 
   /// Profile Feature를 위한 Main view implementation
-  /// 실제 UI는 ProfileView에서 구현
+  /// NavigationStackStore를 사용한 Path 기반 네비게이션
   public struct RootView: View {
-    private var store: StoreOf<Feature>
+    @Bindable private var store: StoreOf<Feature>
 
     public init(store: StoreOf<Feature>) {
       self.store = store
     }
 
     public var body: some View {
-      ProfileView(store: store)
+      NavigationStackStore(store.scope(state: \.path, action: \.path)) {
+        ProfileView(store: store)
+      } destination: { store in
+        switch store.case {
+        case .accountInfo(let accountInfoStore):
+          AccountInfo.RootView(store: accountInfoStore)
+        }
+      }
     }
   }
 }

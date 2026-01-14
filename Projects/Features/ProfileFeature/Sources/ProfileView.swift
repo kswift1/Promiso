@@ -51,14 +51,6 @@ extension Profile {
       ) {
         Profile.ProfileEditView(store: store)
       }
-      .sheet(
-        isPresented: Binding(
-          get: { store.isShowingAccountInfo },
-          set: { if !$0 { store.send(.view(.accountInfoDismissed)) } }
-        )
-      ) {
-        Profile.AccountInfoView(store: store)
-      }
       .alert(
         "로그아웃",
         isPresented: Binding(
