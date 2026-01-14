@@ -84,11 +84,11 @@ public struct PromiseClient: Sendable {
   /// 약속 조회
   public var getPromise: @Sendable (_ promiseId: String) async throws -> PromiseModel?
 
-  /// 오늘의 약속 조회
-  public var getTodayPromises: @Sendable (_ userId: String, _ groupId: String?) async throws -> [PromiseModel]
+  /// 오늘의 약속 조회 (사용자가 속한 그룹들의 약속)
+  public var getTodayPromises: @Sendable (_ groupIds: [String]) async throws -> [PromiseModel]
 
-  /// 다가오는 약속 조회
-  public var getUpcomingPromises: @Sendable (_ userId: String, _ limit: Int) async throws -> [PromiseModel]
+  /// 다가오는 약속 조회 (사용자가 속한 그룹들의 약속)
+  public var getUpcomingPromises: @Sendable (_ groupIds: [String], _ limit: Int) async throws -> [PromiseModel]
 
   /// 그룹의 활성 약속 조회
   public var getActivePromises: @Sendable (_ groupId: String, _ limit: Int) async throws -> [PromiseModel]
@@ -98,6 +98,13 @@ public struct PromiseClient: Sendable {
 
   /// 그룹의 활성 약속 개수 조회
   public var getActivePromiseCount: @Sendable (_ groupId: String) async throws -> Int
+
+  /// 날짜 범위로 약속 조회 (캘린더용, 사용자가 속한 그룹들의 약속)
+  public var getPromisesByDateRange: @Sendable (
+    _ groupIds: [String],
+    _ startDate: Date,
+    _ endDate: Date
+  ) async throws -> [PromiseModel]
 
   /// 그룹의 활성 약속 실시간 구독
   public var subscribeToPromises: @Sendable (_ groupId: String, _ limit: Int) -> AsyncStream<[PromiseModel]> = { _, _ in AsyncStream { _ in } }
@@ -126,7 +133,7 @@ extension PromiseClient: TestDependencyKey {
       try await Task.sleep(for: .seconds(0.5))
       return nil
     },
-    getTodayPromises: { _, _ in
+    getTodayPromises: { _ in
       try await Task.sleep(for: .seconds(1))
       return []
     },
@@ -145,6 +152,10 @@ extension PromiseClient: TestDependencyKey {
     getActivePromiseCount: { _ in
       try await Task.sleep(for: .seconds(0.3))
       return 3
+    },
+    getPromisesByDateRange: { _, _, _ in
+      try await Task.sleep(for: .seconds(0.5))
+      return PromiseModel.examples
     },
     subscribeToPromises: { _, _ in
       AsyncStream { continuation in
@@ -196,11 +207,11 @@ extension PromiseClient: DependencyKey {
       getPromise: { promiseId in
         try await dataSource.getPromise(id: promiseId)
       },
-      getTodayPromises: { userId, groupId in
-        try await dataSource.getTodayPromises(userId: userId, groupId: groupId)
+      getTodayPromises: { groupIds in
+        try await dataSource.getTodayPromises(groupIds: groupIds)
       },
-      getUpcomingPromises: { userId, limit in
-        try await dataSource.getUpcomingPromises(userId: userId, limit: limit)
+      getUpcomingPromises: { groupIds, limit in
+        try await dataSource.getUpcomingPromises(groupIds: groupIds, limit: limit)
       },
       getActivePromises: { groupId, limit in
         try await dataSource.getActivePromises(groupId: groupId, limit: limit)
@@ -210,6 +221,9 @@ extension PromiseClient: DependencyKey {
       },
       getActivePromiseCount: { groupId in
         try await dataSource.getActivePromiseCount(groupId: groupId)
+      },
+      getPromisesByDateRange: { groupIds, startDate, endDate in
+        try await dataSource.getPromisesByDateRange(groupIds: groupIds, startDate: startDate, endDate: endDate)
       },
       subscribeToPromises: { groupId, limit in
         dataSource.subscribeToActivePromises(groupId: groupId, limit: limit)

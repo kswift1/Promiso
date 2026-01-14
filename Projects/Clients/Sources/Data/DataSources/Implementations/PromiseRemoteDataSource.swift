@@ -88,7 +88,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
   }
 
   private func functionsEnvironmentParam() -> String? {
-    switch FirestoreEnvironmentManager.shared.current {
+    switch FirebaseEnvironmentManager.shared.current {
     case .dev:
       return nil
     case .stage:
@@ -151,44 +151,71 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
     return try documentSnapshotToPromise(document)
   }
   
-  /// 오늘 약속 조회
-  public func getTodayPromises(userId: String, groupId: String?) async throws -> [PromiseModel] {
+  /// 오늘 약속 조회 (사용자가 속한 그룹들의 약속)
+  public func getTodayPromises(groupIds: [String]) async throws -> [PromiseModel] {
+    guard !groupIds.isEmpty else { return [] }
+
     let today = Date()
     let calendar = Calendar.current
     let startOfDay = calendar.startOfDay(for: today)
     let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
-    
-    var query = db.environmentCollection(collectionName)
-      .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: startOfDay))
-      .whereField("startAt", isLessThan: Timestamp(date: endOfDay))
-      .whereField("isDeleted", isEqualTo: false)
-      .order(by: "startAt")
-    
-    if let groupId = groupId {
-      query = query.whereField("groupId", isEqualTo: groupId)
-    }
-    
-    let snapshot = try await query.getDocuments()
-    return try snapshot.documents.compactMap { try documentToPromise($0) }
-  }
-  
-  /// 다가오는 약속 조회 (모든 약속 - 클라이언트에서 필터링)
-  public func getUpcomingPromises(userId: String, limit: Int) async throws -> [PromiseModel] {
-    let now = Date()
-    let query = db.environmentCollection(collectionName)
-      .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: now))
-      .whereField("isDeleted", isEqualTo: false)
-      .order(by: "startAt")
-      .limit(to: limit)
 
-    let snapshot = try await query.getDocuments()
-    return try snapshot.documents.compactMap { try documentToPromise($0) }
+    // Firestore 'in' 쿼리는 최대 10개까지 지원 - 병렬 처리
+    let chunks = groupIds.chunked(into: 10)
+
+    let allPromises = try await withThrowingTaskGroup(of: [PromiseModel].self) { group in
+      for chunk in chunks {
+        group.addTask { [db, collectionName] in
+          let query = db.environmentCollection(collectionName)
+            .whereField("groupId", in: chunk)
+            .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: startOfDay))
+            .whereField("startAt", isLessThan: Timestamp(date: endOfDay))
+            .whereField("isDeleted", isEqualTo: false)
+
+          let snapshot = try await query.getDocuments()
+          return try snapshot.documents.compactMap { try convertDocumentToPromise($0) }
+        }
+      }
+
+      var results: [PromiseModel] = []
+      for try await promises in group {
+        results.append(contentsOf: promises)
+      }
+      return results
+    }
+
+    return allPromises.sorted { $0.startAt < $1.startAt }
   }
-  
-  /// 답변 필요한 제안 조회 (현재는 임시 구현)
-  public func getPendingProposals(userId: String, limit: Int) async throws -> [PromiseModel] {
-    // TODO: 실제 구현 필요. 현재는 임시 데이터 반환
-    return []
+
+  /// 다가오는 약속 조회 (사용자가 속한 그룹들의 약속)
+  public func getUpcomingPromises(groupIds: [String], limit: Int) async throws -> [PromiseModel] {
+    guard !groupIds.isEmpty else { return [] }
+
+    let now = Date()
+    let chunks = groupIds.chunked(into: 10)
+
+    let allPromises = try await withThrowingTaskGroup(of: [PromiseModel].self) { group in
+      for chunk in chunks {
+        group.addTask { [db, collectionName] in
+          let query = db.environmentCollection(collectionName)
+            .whereField("groupId", in: chunk)
+            .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: now))
+            .whereField("isDeleted", isEqualTo: false)
+
+          let snapshot = try await query.getDocuments()
+          return try snapshot.documents.compactMap { try convertDocumentToPromise($0) }
+        }
+      }
+
+      var results: [PromiseModel] = []
+      for try await promises in group {
+        results.append(contentsOf: promises)
+      }
+      return results
+    }
+
+    // 정렬 후 limit 적용
+    return Array(allPromises.sorted { $0.startAt < $1.startAt }.prefix(limit))
   }
   
   /// 활성 약속 조회
@@ -200,7 +227,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
       .limit(to: limit)
 
     let snapshot = try await query.getDocuments()
-    return try snapshot.documents.compactMap { try documentToPromise($0) }
+    return try snapshot.documents.compactMap { try convertDocumentToPromise($0) }
   }
 
   /// 과거 약속 조회 (startAt < 현재시간, 최신순 정렬, 커서 기반 페이징)
@@ -219,7 +246,37 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
     query = query.limit(to: limit)
 
     let snapshot = try await query.getDocuments()
-    return try snapshot.documents.compactMap { try documentToPastPromise($0) }
+    return try snapshot.documents.compactMap { try convertDocumentToPromise($0) }
+  }
+
+  /// 날짜 범위로 약속 조회 (캘린더용, 사용자가 속한 그룹들의 약속)
+  public func getPromisesByDateRange(groupIds: [String], startDate: Date, endDate: Date) async throws -> [PromiseModel] {
+    guard !groupIds.isEmpty else { return [] }
+
+    let chunks = groupIds.chunked(into: 10)
+
+    let allPromises = try await withThrowingTaskGroup(of: [PromiseModel].self) { group in
+      for chunk in chunks {
+        group.addTask { [db, collectionName] in
+          let query = db.environmentCollection(collectionName)
+            .whereField("groupId", in: chunk)
+            .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: startDate))
+            .whereField("startAt", isLessThan: Timestamp(date: endDate))
+            .whereField("isDeleted", isEqualTo: false)
+
+          let snapshot = try await query.getDocuments()
+          return try snapshot.documents.compactMap { try convertDocumentToPromise($0) }
+        }
+      }
+
+      var results: [PromiseModel] = []
+      for try await promises in group {
+        results.append(contentsOf: promises)
+      }
+      return results
+    }
+
+    return allPromises.sorted { $0.startAt < $1.startAt }
   }
 
   /// 그룹의 활성 약속 개수 조회 (Firestore count aggregation 사용)
@@ -269,7 +326,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
         let now = Date()
         let promises = snapshot.documents.compactMap { doc -> PromiseModel? in
           do {
-            let promise = try self.documentToPromise(doc)
+            let promise = try convertDocumentToPromise(doc)
             return promise
           } catch {
             print("[PromiseDataSource] ❌ 파싱 에러: \(error)")
@@ -294,22 +351,20 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
 
   // MARK: - Helper Methods
 
-  private func documentToPromise(_ document: QueryDocumentSnapshot) throws -> PromiseModel? {
-    let dto = try document.data(as: PromiseDTO.self)
-    return PromiseModel(dto: dto, id: document.documentID)
-  }
-
   private func documentSnapshotToPromise(_ document: DocumentSnapshot) throws -> PromiseModel? {
     guard document.exists else { return nil }
     let dto = try document.data(as: PromiseDTO.self)
     return PromiseModel(dto: dto, id: document.documentID)
   }
+}
 
-  /// 과거 약속용 파싱
-  private func documentToPastPromise(_ document: QueryDocumentSnapshot) throws -> PromiseModel? {
-    let dto = try document.data(as: PromiseDTO.self)
-    return PromiseModel(dto: dto, id: document.documentID)
-  }
+// MARK: - Document Conversion Helper
+
+/// QueryDocumentSnapshot을 PromiseModel로 변환하는 헬퍼 함수
+/// TaskGroup 내에서도 사용 가능하도록 file-private으로 정의
+private func convertDocumentToPromise(_ document: QueryDocumentSnapshot) throws -> PromiseModel? {
+  let dto = try document.data(as: PromiseDTO.self)
+  return PromiseModel(dto: dto, id: document.documentID)
 }
 
 private class FirestoreQuerySubscription<S: Subscriber>: Subscription where S.Input == QuerySnapshot, S.Failure == Error {

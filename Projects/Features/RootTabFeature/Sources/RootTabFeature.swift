@@ -1,20 +1,22 @@
 // MARK: - RootTabFeature.swift
 // TCA 1.22.2를 사용한 RootTab Feature의 Implementation layer
-// 이 파일은 핵심 business logic, state management, view implementation을 포함
 
 import ComposableArchitecture
 
 import PromisoShared
+import CalendarFeature
 
 public enum Tab: String, CaseIterable {
   case home = "홈"
   case group = "그룹"
   case profile = "프로필"
+  case calendar = "캘린더"
 
   var iconName: String {
     switch self {
     case .home: return "house.fill"
     case .group: return "person.3.fill"
+    case .calendar: return "calendar"
     case .profile: return "person.circle.fill"
     }
   }
@@ -23,14 +25,11 @@ public enum Tab: String, CaseIterable {
 // MARK: - Feature Namespace
 
 /// RootTab Feature 컴포넌트를 위한 Namespace
-/// 조직적 구조를 제공하고 다른 Feature들과의 naming conflict를 방지
 public enum RootTab {}
-
 
 // MARK: - Reducer
 
 extension RootTab {
-  /// RootTab Feature의 Reducer
   @Reducer
   public struct Feature {
     @Dependency(\.hapticFeedback) var hapticFeedback
@@ -45,6 +44,9 @@ extension RootTab {
       /// Home Main State
       var home: Home.Feature.State
 
+      /// Calendar State
+      var calendar: CalendarFeature.Feature.State
+
       /// Group Main State
       var groupMain: GroupMain.Feature.State
 
@@ -54,6 +56,7 @@ extension RootTab {
       public init(currentUser: UserPrivateModel) {
         self.groupMain = GroupMain.Feature.State(currentUser: currentUser)
         self.home = Home.Feature.State(currentUser: currentUser)
+        self.calendar = CalendarFeature.Feature.State(currentUser: currentUser)
         self.profile = Profile.Feature.State(currentUser: currentUser)
       }
     }
@@ -65,6 +68,8 @@ extension RootTab {
       case tabSelected(Tab)
       /// Home Main 액션
       case home(Home.Feature.Action)
+      /// Calendar 액션
+      case calendar(CalendarFeature.Feature.Action)
       /// Group Main 액션
       case groupMain(GroupMain.Feature.Action)
       /// Profile 액션
@@ -91,6 +96,8 @@ extension RootTab {
 
       Scope(state: \.profile, action: \.profile) {
         Profile.Feature()
+      Scope(state: \.calendar, action: \.calendar) {
+        CalendarFeature.Feature()
       }
 
       Reduce { state, action in
@@ -116,6 +123,9 @@ extension RootTab {
         case .home:
           return .none
 
+        case .calendar:
+          return .none
+
         case .groupMain:
           return .none
 
@@ -129,13 +139,11 @@ extension RootTab {
           return .none
 
         case .openJoinGroupWithCode(let inviteCode):
-          // 그룹 탭으로 전환하고 초대 코드와 함께 그룹 참여 열기
           state.selectedTab = .group
           return .send(.groupMain(.view(.joinGroupWithCode(inviteCode))))
 
         case .delegate:
           return .none
-
         }
       }
     }
@@ -145,7 +153,6 @@ extension RootTab {
 // MARK: - View
 
 extension RootTab {
-  /// RootTab Feature의 Root View
   public struct RootView: View {
     @Bindable private var store: StoreOf<RootTab.Feature>
 
@@ -180,6 +187,14 @@ extension RootTab {
             )
           )
         }
+
+      case .calendar:
+        CalendarFeature.RootView(
+          store: store.scope(
+            state: \.calendar,
+            action: \.calendar
+          )
+        )
 
       case .group:
         NavigationStack {

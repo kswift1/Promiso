@@ -263,4 +263,14 @@ extension UserPrivateModel {
   public var sortedGroups: [UserGroupInfo] {
     groups.sorted { ($0.joinedAt ?? .distantPast) > ($1.joinedAt ?? .distantPast) }
   }
+
+  /// 예시/테스트용 사용자
+  public static let exampleUser = UserPrivateModel(
+    userId: "example_user",
+    name: "Example User",
+    nickname: "예시유저",
+    email: "example@example.com",
+    provider: "google",
+    metadata: Metadata()
+  )
 }

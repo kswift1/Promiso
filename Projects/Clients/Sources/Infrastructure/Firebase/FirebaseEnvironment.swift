@@ -1,12 +1,12 @@
 import Foundation
 import FirebaseFirestore
 
-public enum FirestoreEnvironment: String, CaseIterable, Sendable {
+public enum FirebaseEnvironment: String, CaseIterable, Sendable {
   case dev = "Dev"
   case stage = "Stage"
   case release = "Release"
 
-  static var `default`: FirestoreEnvironment {
+  static var `default`: FirebaseEnvironment {
     #if DEBUG
     return .stage
     #else
@@ -25,18 +25,37 @@ public enum FirestoreEnvironment: String, CaseIterable, Sendable {
 
   /// Root 문서가 위치하는 최상위 컬렉션 이름
   var rootCollectionName: String { pathPrefix ?? "prod" }
+
+  /// Firebase Functions env 파라미터
+  public var firebaseEnv: String {
+    switch self {
+    case .dev, .stage: return "stage"
+    case .release: return "prod"
+    }
+  }
+
+  /// Firebase Storage 경로 prefix
+  public var storagePrefix: String { pathPrefix ?? "prod" }
+
+  /// 디버그 환경인지 여부
+  public var isDebug: Bool {
+    switch self {
+    case .dev, .stage: return true
+    case .release: return false
+    }
+  }
 }
 
-public final class FirestoreEnvironmentManager: ObservableObject {
-  public static let shared = FirestoreEnvironmentManager()
+public final class FirebaseEnvironmentManager: ObservableObject {
+  public static let shared = FirebaseEnvironmentManager()
   
   private let userDefaults: UserDefaults
   private let storageKey = "firestore.environment.selection"
   
-  @Published public private(set) var current: FirestoreEnvironment
+  @Published public private(set) var current: FirebaseEnvironment
   
-  public var availableEnvironments: [FirestoreEnvironment] {
-    FirestoreEnvironment.allCases
+  public var availableEnvironments: [FirebaseEnvironment] {
+    FirebaseEnvironment.allCases
   }
   
   private init(
@@ -44,14 +63,14 @@ public final class FirestoreEnvironmentManager: ObservableObject {
   ) {
     self.userDefaults = userDefaults
     if let rawValue = userDefaults.string(forKey: storageKey),
-       let stored = FirestoreEnvironment(rawValue: rawValue) {
+       let stored = FirebaseEnvironment(rawValue: rawValue) {
       current = stored
     } else {
       current = .default
     }
   }
   
-  public func setEnvironment(_ environment: FirestoreEnvironment) {
+  public func setEnvironment(_ environment: FirebaseEnvironment) {
     guard current != environment else { return }
     current = environment
     userDefaults.set(environment.rawValue, forKey: storageKey)
@@ -80,10 +99,10 @@ public final class FirestoreEnvironmentManager: ObservableObject {
 
 public extension Firestore {
   func environmentCollection(_ name: String) -> CollectionReference {
-    FirestoreEnvironmentManager.shared.collection(name, in: self)
+    FirebaseEnvironmentManager.shared.collection(name, in: self)
   }
   
   func environmentRootDocument() -> DocumentReference {
-    FirestoreEnvironmentManager.shared.rootDocument(in: self)
+    FirebaseEnvironmentManager.shared.rootDocument(in: self)
   }
 }

@@ -21,6 +21,7 @@ let project = Project(
         .project(target: "HomeFeature", path: "../HomeFeature"),
         .project(target: "GroupFeature", path: "../GroupFeature"),
         .project(target: "ProfileFeature", path: "../ProfileFeature"),
+        .project(target: "CalendarFeature", path: "../CalendarFeature"),
         .project(target: "ExternalDependency", path: "../../ExternalDependency")
       ],
       settings: .standard()
