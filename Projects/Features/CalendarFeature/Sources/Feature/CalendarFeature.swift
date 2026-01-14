@@ -40,9 +40,6 @@ extension CalendarFeature {
       /// 선택된 날짜
       var selectedDate: Date
 
-      /// 약속 데이터 (실제 서버 데이터) - 현재 표시 범위용
-      var promises: [PromiseModel] = []
-
       /// 월별 약속 캐시 (키: 월 시작일)
       var cachedPromisesByMonth: [Date: [PromiseModel]] = [:]
 
