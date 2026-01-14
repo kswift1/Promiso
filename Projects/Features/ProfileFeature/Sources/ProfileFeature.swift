@@ -69,13 +69,16 @@ extension Profile {
       public var isSavingProfile: Bool
       /// 에러 메시지
       public var errorMessage: String?
+      /// 계정 정보 화면 표시 여부
+      public var isShowingAccountInfo: Bool
 
       /// State를 위한 기본 initializer
       public init(
         currentUser: UserPrivateModel = .exampleUser,
         showLogoutAlert: Bool = false,
         isLoading: Bool = false,
-        isEditingProfile: Bool = false
+        isEditingProfile: Bool = false,
+        isShowingAccountInfo: Bool = false
       ) {
         self.currentUser = currentUser
         self.showLogoutAlert = showLogoutAlert
@@ -86,6 +89,7 @@ extension Profile {
         self.nicknameValidation = .idle
         self.isSavingProfile = false
         self.errorMessage = nil
+        self.isShowingAccountInfo = isShowingAccountInfo
       }
     }
 
@@ -127,6 +131,10 @@ extension Profile {
       case termsOfServiceTapped
       /// 앱 정보 탭
       case appInfoTapped
+      /// 계정 정보 탭
+      case accountInfoTapped
+      /// 계정 정보 화면 닫기
+      case accountInfoDismissed
 
       // MARK: - Profile Edit Actions
       /// 프로필 편집 버튼 탭
@@ -232,6 +240,16 @@ extension Profile {
             return .run { _ in
               await hapticFeedback.selection()
             }
+
+          case .accountInfoTapped:
+            state.isShowingAccountInfo = true
+            return .run { _ in
+              await hapticFeedback.selection()
+            }
+
+          case .accountInfoDismissed:
+            state.isShowingAccountInfo = false
+            return .none
 
           // MARK: - Profile Edit View Actions
 

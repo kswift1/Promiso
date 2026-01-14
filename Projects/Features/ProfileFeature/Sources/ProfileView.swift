@@ -23,48 +23,6 @@ extension Profile {
       self.store = store
     }
 
-    // MARK: - Computed Properties
-
-    /// 로그인 방식 표시 텍스트
-    private var providerDisplayName: String {
-      switch store.currentUser.provider.lowercased() {
-      case "apple":
-        return "Apple"
-      case "google":
-        return "Google"
-      default:
-        return store.currentUser.provider
-      }
-    }
-
-    /// 로그인 방식 아이콘 뷰
-    @ViewBuilder
-    private var providerIconView: some View {
-      switch store.currentUser.provider.lowercased() {
-      case "apple":
-        Image(systemName: "apple.logo")
-          .font(.caption)
-          .foregroundStyle(Color.pmtext.primary)
-      case "google":
-        Image("googleLogo")
-          .resizable()
-          .scaledToFit()
-          .frame(width: 14, height: 14)
-      default:
-        Image(systemName: "person.circle.fill")
-          .font(.caption)
-          .foregroundStyle(Color.pmtext.primary)
-      }
-    }
-
-    /// 가입일 포맷팅
-    private var formattedCreatedAt: String {
-      let formatter = DateFormatter()
-      formatter.locale = Locale(identifier: "ko_KR")
-      formatter.dateFormat = "yyyy년 M월 d일"
-      return formatter.string(from: store.currentUser.metadata.createdAt)
-    }
-
     // MARK: - Body
 
     public var body: some View {
@@ -73,10 +31,7 @@ extension Profile {
           // 프로필 헤더 섹션
           profileHeaderSection
 
-          // 계정 정보 섹션
-          accountInfoSection
-
-          // 설정 메뉴 섹션
+          // 설정 메뉴 섹션 (계정 정보 포함)
           settingsMenuSection
 
           // 로그아웃 버튼
@@ -95,6 +50,14 @@ extension Profile {
         )
       ) {
         Profile.ProfileEditView(store: store)
+      }
+      .sheet(
+        isPresented: Binding(
+          get: { store.isShowingAccountInfo },
+          set: { if !$0 { store.send(.view(.accountInfoDismissed)) } }
+        )
+      ) {
+        Profile.AccountInfoView(store: store)
       }
       .alert(
         "로그아웃",
@@ -171,166 +134,69 @@ extension Profile {
       .adaptiveGlassBackground()
     }
 
-    // MARK: - Account Info Section
-
-    private var accountInfoSection: some View {
-      VStack(alignment: .leading, spacing: 0) {
-        // 섹션 헤더
-        Text("계정 정보")
-          .font(.headline)
-          .foregroundStyle(Color.pmtext.primary)
-          .padding(.horizontal, 16)
-          .padding(.bottom, 12)
-
-        VStack(spacing: 0) {
-          // 이메일
-          accountInfoRow(
-            icon: "envelope.fill",
-            title: "이메일",
-            value: store.currentUser.email
-          )
-
-          Divider()
-            .padding(.leading, 56)
-
-          // 로그인 방식
-          accountInfoRowWithCustomIcon(
-            icon: "key.fill",
-            title: "로그인 방식",
-            value: providerDisplayName,
-            valueIconView: providerIconView
-          )
-
-          Divider()
-            .padding(.leading, 56)
-
-          // 가입일
-          accountInfoRow(
-            icon: "calendar",
-            title: "가입일",
-            value: formattedCreatedAt
-          )
-        }
-        .adaptiveGlassBackground()
-      }
-    }
-
-    private func accountInfoRow(
-      icon: String,
-      title: String,
-      value: String
-    ) -> some View {
-      HStack(spacing: 16) {
-        Image(systemName: icon)
-          .font(.body)
-          .foregroundStyle(Color.pmindigo.n500)
-          .frame(width: 24, height: 24)
-
-        Text(title)
-          .font(.body)
-          .foregroundStyle(Color.pmtext.secondary)
-
-        Spacer()
-
-        Text(value)
-          .font(.body)
-          .foregroundStyle(Color.pmtext.primary)
-      }
-      .padding(.horizontal, 16)
-      .padding(.vertical, 14)
-    }
-
-    private func accountInfoRowWithCustomIcon(
-      icon: String,
-      title: String,
-      value: String,
-      valueIconView: some View
-    ) -> some View {
-      HStack(spacing: 16) {
-        Image(systemName: icon)
-          .font(.body)
-          .foregroundStyle(Color.pmindigo.n500)
-          .frame(width: 24, height: 24)
-
-        Text(title)
-          .font(.body)
-          .foregroundStyle(Color.pmtext.secondary)
-
-        Spacer()
-
-        HStack(spacing: 6) {
-          valueIconView
-          Text(value)
-            .font(.body)
-            .foregroundStyle(Color.pmtext.primary)
-        }
-      }
-      .padding(.horizontal, 16)
-      .padding(.vertical, 14)
-    }
-
     // MARK: - Settings Menu Section
 
     private var settingsMenuSection: some View {
-      VStack(alignment: .leading, spacing: 0) {
-        // 섹션 헤더
-        Text("설정")
-          .font(.headline)
-          .foregroundStyle(Color.pmtext.primary)
-          .padding(.horizontal, 16)
-          .padding(.bottom, 12)
+      VStack(spacing: 0) {
+        // 계정 정보
+        settingsMenuRow(
+          icon: "person.text.rectangle.fill",
+          title: "계정 정보",
+          action: { store.send(.view(.accountInfoTapped)) }
+        )
 
-        VStack(spacing: 0) {
-          // 프로필 편집
-          settingsMenuRow(
-            icon: "person.crop.circle.fill",
-            title: "프로필 편집",
-            action: { store.send(.view(.editProfileTapped)) }
-          )
+        Divider()
+          .padding(.leading, 56)
 
-          Divider()
-            .padding(.leading, 56)
+        // 프로필 편집
+        settingsMenuRow(
+          icon: "person.crop.circle.fill",
+          title: "프로필 편집",
+          action: { store.send(.view(.editProfileTapped)) }
+        )
 
-          // 알림 설정
-          settingsMenuRow(
-            icon: "bell.fill",
-            title: "알림 설정",
-            action: { store.send(.view(.notificationSettingsTapped)) }
-          )
+        Divider()
+          .padding(.leading, 56)
 
-          Divider()
-            .padding(.leading, 56)
+        // 알림 설정
+        settingsMenuRow(
+          icon: "bell.fill",
+          title: "알림 설정",
+          action: { store.send(.view(.notificationSettingsTapped)) }
+        )
 
-          // 개인정보처리방침
-          settingsMenuRow(
-            icon: "hand.raised.fill",
-            title: "개인정보처리방침",
-            action: { store.send(.view(.privacyPolicyTapped)) }
-          )
+        Divider()
+          .padding(.leading, 56)
 
-          Divider()
-            .padding(.leading, 56)
+        // 개인정보처리방침
+        settingsMenuRow(
+          icon: "hand.raised.fill",
+          title: "개인정보처리방침",
+          action: { store.send(.view(.privacyPolicyTapped)) }
+        )
 
-          // 이용약관
-          settingsMenuRow(
-            icon: "doc.text.fill",
-            title: "이용약관",
-            action: { store.send(.view(.termsOfServiceTapped)) }
-          )
+        Divider()
+          .padding(.leading, 56)
 
-          Divider()
-            .padding(.leading, 56)
+        // 이용약관
+        settingsMenuRow(
+          icon: "doc.text.fill",
+          title: "이용약관",
+          action: { store.send(.view(.termsOfServiceTapped)) }
+        )
 
-          // 앱 정보
-          settingsMenuRow(
-            icon: "info.circle.fill",
-            title: "앱 정보",
-            showVersion: true,
-            action: { store.send(.view(.appInfoTapped)) }
-          )
-        }
-        .adaptiveGlassBackground()
+        Divider()
+          .padding(.leading, 56)
+
+        // 앱 정보
+        settingsMenuRow(
+          icon: "info.circle.fill",
+          title: "앱 정보",
+          showVersion: true,
+          action: { store.send(.view(.appInfoTapped)) }
+        )
       }
+      .adaptiveGlassBackground()
     }
 
     private func settingsMenuRow(
