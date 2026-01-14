@@ -104,13 +104,10 @@ public struct MockPromise: Identifiable, Equatable, Sendable {
   // MARK: - Computed Properties
 
   public var timeText: String {
-    let formatter = DateFormatter()
-    formatter.dateFormat = "a h:mm"
-    formatter.locale = Locale(identifier: "ko_KR")
-    let start = formatter.string(from: startTime)
+    let start = KoreanDateFormatters.time.string(from: startTime)
 
     if let endTime = endTime {
-      let end = formatter.string(from: endTime)
+      let end = KoreanDateFormatters.time.string(from: endTime)
       return "\(start) - \(end)"
     }
     return start
