@@ -2,6 +2,7 @@
 // TCA 1.22.2를 사용한 RootTab Feature의 Implementation layer
 
 import ComposableArchitecture
+import SwiftUI
 
 import PromisoShared
 import CalendarFeature
@@ -96,6 +97,8 @@ extension RootTab {
 
       Scope(state: \.profile, action: \.profile) {
         Profile.Feature()
+      }
+
       Scope(state: \.calendar, action: \.calendar) {
         CalendarFeature.Feature()
       }
