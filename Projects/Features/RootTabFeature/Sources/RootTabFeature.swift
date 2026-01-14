@@ -115,9 +115,6 @@ extension RootTab {
             .reduce(into: &state.sideDrawer, action: sideDrawerAction)
             .map(Action.sideDrawer)
           
-      case .home(.delegate(.openSideDrawer)):
-        return .send(.sideDrawer(.toggle))
-
       case .home(.delegate(.navigateToGroup(let groupId))):
         // 1. 그룹 탭으로 전환
         state.selectedTab = .group
