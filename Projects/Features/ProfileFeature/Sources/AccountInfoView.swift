@@ -248,28 +248,55 @@ extension AccountInfo {
     // MARK: - Account Management Section
 
     private var accountManagementSection: some View {
-      VStack(spacing: 12) {
+      VStack(spacing: 0) {
         // 로그아웃
         Button {
           store.send(.view(.logoutTapped))
         } label: {
-          Text("로그아웃")
-            .font(.subheadline)
-            .foregroundStyle(Color.pmtext.secondary)
+          HStack(spacing: 16) {
+            Image(systemName: "rectangle.portrait.and.arrow.right")
+              .font(.body)
+              .foregroundStyle(Color.pmindigo.n500)
+              .frame(width: 24, height: 24)
+
+            Text("로그아웃")
+              .font(.body)
+              .foregroundStyle(Color.pmtext.primary)
+
+            Spacer()
+          }
+          .padding(.horizontal, 16)
+          .padding(.vertical, 14)
+          .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+
+        Divider()
+          .padding(.leading, 56)
 
         // 탈퇴하기
         Button {
           store.send(.view(.deleteAccountTapped))
         } label: {
-          Text("탈퇴하기")
-            .font(.caption)
-            .foregroundStyle(Color.pmgray.n400)
+          HStack(spacing: 16) {
+            Image(systemName: "person.crop.circle.badge.minus")
+              .font(.body)
+              .foregroundStyle(Color.pmerror.n500)
+              .frame(width: 24, height: 24)
+
+            Text("탈퇴하기")
+              .font(.body)
+              .foregroundStyle(Color.pmerror.n500)
+
+            Spacer()
+          }
+          .padding(.horizontal, 16)
+          .padding(.vertical, 14)
+          .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
       }
-      .padding(.top, 16)
+      .adaptiveGlassBackground()
     }
 
     // MARK: - Account Info Card
