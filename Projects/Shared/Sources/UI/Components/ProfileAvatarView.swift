@@ -8,6 +8,7 @@ public struct ProfileAvatarView: View {
   let isCurrentUser: Bool
   let size: CGFloat
   let borderWidth: CGFloat
+  let onTap: (() -> Void)?
 
   @State private var loadedImage: UIImage?
 
@@ -16,13 +17,15 @@ public struct ProfileAvatarView: View {
     displayName: String,
     isCurrentUser: Bool = false,
     size: CGFloat = 32,
-    borderWidth: CGFloat = 2
+    borderWidth: CGFloat = 2,
+    onTap: (() -> Void)? = nil
   ) {
     self.profileImageUrl = profileImageUrl
     self.displayName = displayName
     self.isCurrentUser = isCurrentUser
     self.size = size
     self.borderWidth = borderWidth
+    self.onTap = onTap
   }
 
   private var initials: String {
@@ -51,6 +54,10 @@ public struct ProfileAvatarView: View {
       Circle()
         .stroke(Color.white, lineWidth: borderWidth)
     )
+    .contentShape(Circle())
+    .onTapGesture {
+      onTap?()
+    }
     .task(id: profileImageUrl) {
       await loadImage()
     }

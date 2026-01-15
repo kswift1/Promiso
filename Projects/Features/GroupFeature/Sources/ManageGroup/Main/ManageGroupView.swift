@@ -10,6 +10,7 @@ extension ManageGroup {
     @State private var isCopied = false
     @State private var showLeaveConfirmation = false
     @State private var showDeleteConfirmation = false
+    @State private var selectedMemberForImage: UserPublicModel?
 
     public init(store: StoreOf<ManageGroup.Feature>) {
       self.store = store
@@ -186,6 +187,13 @@ extension ManageGroup {
           }
         }
       )
+      .fullScreenCover(item: $selectedMemberForImage) { member in
+        ImageDetailView(
+          imageUrl: member.profileImageUrl,
+          displayName: member.nickname,
+          onDismiss: { selectedMemberForImage = nil }
+        )
+      }
     }
 
     // MARK: - Header Section
@@ -290,7 +298,8 @@ extension ManageGroup {
         ForEach(members) { member in
           MemberGridItem(
             member: member,
-            isHost: member.userId == store.group.createdBy
+            isHost: member.userId == store.group.createdBy,
+            onImageTap: { selectedMemberForImage = member }
           )
         }
       }
@@ -486,6 +495,7 @@ extension ManageGroup {
 private struct MemberGridItem: View {
   let member: UserPublicModel
   let isHost: Bool
+  var onImageTap: (() -> Void)?
 
   var body: some View {
     VStack(spacing: 8) {
@@ -494,7 +504,8 @@ private struct MemberGridItem: View {
           profileImageUrl: member.profileImageUrl,
           displayName: member.displayName,
           size: 64,
-          borderWidth: 0
+          borderWidth: 0,
+          onTap: onImageTap
         )
         .overlay(
           Circle()

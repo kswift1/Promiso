@@ -18,6 +18,7 @@ extension Profile {
   /// .auroraBackground()와 Glass Effect 카드를 사용한 디자인
   public struct ProfileView: View {
     @Bindable private var store: StoreOf<Feature>
+    @State private var showImageDetail = false
 
     public init(store: StoreOf<Feature>) {
       self.store = store
@@ -56,6 +57,13 @@ extension Profile {
       .onAppear {
         store.send(.view(.onAppear))
       }
+      .fullScreenCover(isPresented: $showImageDetail) {
+        ImageDetailView(
+          imageUrl: store.currentUser.profileImageUrl,
+          displayName: store.currentUser.nickname,
+          onDismiss: { showImageDetail = false }
+        )
+      }
     }
 
     // MARK: - Loading Overlay
@@ -89,7 +97,8 @@ extension Profile {
           displayName: store.currentUser.nickname,
           isCurrentUser: true,
           size: 100,
-          borderWidth: 3
+          borderWidth: 3,
+          onTap: { showImageDetail = true }
         )
 
         // 닉네임

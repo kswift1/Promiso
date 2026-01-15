@@ -319,6 +319,7 @@ private struct PreviewView: View {
   @Bindable var store: StoreOf<JoinGroup.Feature>
   let group: GroupModel
   let members: [UserPublicModel]
+  @State private var selectedMemberForImage: UserPublicModel?
 
   var body: some View {
     VStack(spacing: 0) {
@@ -413,6 +414,13 @@ private struct PreviewView: View {
         }
       }
     }
+    .fullScreenCover(item: $selectedMemberForImage) { member in
+      ImageDetailView(
+        imageUrl: member.profileImageUrl,
+        displayName: member.nickname,
+        onDismiss: { selectedMemberForImage = nil }
+      )
+    }
   }
 
   // MARK: - Header Section
@@ -471,7 +479,10 @@ private struct PreviewView: View {
 
     LazyVGrid(columns: columns, spacing: 16) {
       ForEach(displayMembers) { member in
-        MemberGridItem(member: member)
+        MemberGridItem(
+          member: member,
+          onImageTap: { selectedMemberForImage = member }
+        )
       }
 
       if overflowCount > 0 {
@@ -527,43 +538,17 @@ private struct PreviewView: View {
 
 private struct MemberGridItem: View {
   let member: UserPublicModel
-  @State private var loadedImage: UIImage?
-  @State private var isLoading = false
+  var onImageTap: (() -> Void)?
 
   var body: some View {
     VStack(spacing: 8) {
-      ZStack {
-        Circle()
-          .fill(
-            LinearGradient(
-              colors: [Color.blue.opacity(0.1), Color.purple.opacity(0.05)],
-              startPoint: .topLeading,
-              endPoint: .bottomTrailing
-            )
-          )
-          .frame(width: 64, height: 64)
-
-        if let loadedImage {
-          Image(uiImage: loadedImage)
-            .resizable()
-            .scaledToFill()
-            .frame(width: 64, height: 64)
-            .clipShape(Circle())
-        } else if isLoading {
-          ProgressView()
-            .tint(.secondary)
-        } else {
-          Text(initials)
-            .font(.system(size: 24, weight: .semibold))
-            .foregroundStyle(
-              LinearGradient(
-                colors: [.blue, .purple],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-              )
-            )
-        }
-      }
+      ProfileAvatarView(
+        profileImageUrl: member.profileImageUrl,
+        displayName: member.displayName,
+        size: 64,
+        borderWidth: 0,
+        onTap: onImageTap
+      )
       .overlay(
         Circle()
           .strokeBorder(
@@ -580,27 +565,6 @@ private struct MemberGridItem: View {
         .font(.caption)
         .foregroundStyle(.primary)
         .lineLimit(1)
-    }
-    .task {
-      await loadImage()
-    }
-  }
-
-  private var initials: String {
-    String(member.name.prefix(1))
-  }
-
-  private func loadImage() async {
-    guard let profile = member.profile else { return }
-    isLoading = true
-    defer { isLoading = false }
-
-    do {
-      guard let url = URL(string: profile.url) else { return }
-      let request = ImageRequest(url: url)
-      loadedImage = try await ImagePipeline.shared.image(for: request)
-    } catch {
-      loadedImage = nil
     }
   }
 }
