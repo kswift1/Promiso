@@ -599,6 +599,50 @@ export interface UpdateUserSettingsResponse {
 }
 
 // ============================================================================
+// checkNicknameAvailable
+// ============================================================================
+
+/**
+ * 닉네임 중복 검사 요청
+ *
+ * @remarks
+ * - 인증 필수 (Firebase Auth)
+ * - 다른 사용자 문서에 직접 접근하지 않고 Cloud Function을 통해 안전하게 검사
+ */
+export interface CheckNicknameAvailableRequest {
+  /** 검사할 닉네임 (2~12자) */
+  nickname: string;
+
+  /** 환경 구분 (선택적: stage 또는 prod) */
+  env?: "stage" | "prod" | null;
+}
+
+/**
+ * 닉네임 중복 검사 응답
+ */
+export interface CheckNicknameAvailableResponse {
+  /** 사용 가능 여부 */
+  available: boolean;
+
+  /** 검사한 닉네임 */
+  nickname: string;
+}
+
+/**
+ * 닉네임 중복 검사 에러
+ */
+export enum CheckNicknameAvailableError {
+  /** 인증 필요 */
+  UNAUTHENTICATED = "unauthenticated",
+
+  /** 잘못된 요청 (닉네임 형식 오류) */
+  INVALID_ARGUMENT = "invalid-argument",
+
+  /** 서버 오류 */
+  INTERNAL = "internal",
+}
+
+// ============================================================================
 // Shared
 // ============================================================================
 
