@@ -320,6 +320,7 @@ private struct PreviewView: View {
   let group: GroupModel
   let members: [UserPublicModel]
   @State private var selectedMemberForImage: UserPublicModel?
+  @State private var showGroupImageDetail = false
 
   var body: some View {
     VStack(spacing: 0) {
@@ -418,8 +419,21 @@ private struct PreviewView: View {
       ImageDetailView(
         imageUrl: member.profileImageUrl,
         displayName: member.nickname,
-        onDismiss: { selectedMemberForImage = nil }
+        onDismiss: {
+          selectedMemberForImage = nil
+        }
       )
+      .presentationBackground(.clear)
+    }
+    .fullScreenCover(isPresented: $showGroupImageDetail) {
+      ImageDetailView(
+        imageUrl: group.imageUrl,
+        displayName: group.name,
+        onDismiss: {
+          showGroupImageDetail = false
+        }
+      )
+      .presentationBackground(.clear)
     }
   }
 
@@ -429,7 +443,12 @@ private struct PreviewView: View {
   private var headerSection: some View {
     VStack(spacing: 20) {
       // Group Image
-      GroupImageView(imageUrl: group.imageUrl)
+      GroupImageView(
+        imageUrl: group.imageUrl,
+        onTap: {
+          showGroupImageDetail = true
+        }
+      )
 
       // Group Name
       Text(group.name)
@@ -481,7 +500,9 @@ private struct PreviewView: View {
       ForEach(displayMembers) { member in
         MemberGridItem(
           member: member,
-          onImageTap: { selectedMemberForImage = member }
+          onImageTap: {
+            selectedMemberForImage = member
+          }
         )
       }
 
@@ -601,6 +622,7 @@ private struct OverflowGridItem: View {
 
 private struct GroupImageView: View {
   let imageUrl: String?
+  var onTap: (() -> Void)?
   @State private var loadedImage: UIImage?
   @State private var isLoading = false
 
@@ -652,6 +674,10 @@ private struct GroupImageView: View {
         )
     )
     .shadow(color: .blue.opacity(0.2), radius: 16, x: 0, y: 8)
+    .contentShape(Circle())
+    .onTapGesture {
+      onTap?()
+    }
     .task {
       await loadImage()
     }

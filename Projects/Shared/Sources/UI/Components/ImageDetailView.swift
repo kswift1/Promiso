@@ -1,18 +1,27 @@
-import Nuke
 import SwiftUI
+import Nuke
 
-/// 이미지 상세 보기 뷰 - 프로필 이미지 등을 전체화면으로 확대해서 볼 수 있는 뷰
 public struct ImageDetailView: View {
   let imageUrl: String?
   let displayName: String
   let onDismiss: () -> Void
-
+  
   @State private var loadedImage: UIImage?
+  
+  // 줌 상태
   @State private var scale: CGFloat = 1.0
   @State private var lastScale: CGFloat = 1.0
+  
+  // 패닝 (줌인 상태에서)
   @State private var offset: CGSize = .zero
   @State private var lastOffset: CGSize = .zero
-
+  
+  // Dismiss 드래그 (줌아웃 상태에서)
+  @State private var dragOffset: CGSize = .zero
+  
+  private let minScale: CGFloat = 1.0
+  private let maxScale: CGFloat = 5.0
+  
   public init(
     imageUrl: String?,
     displayName: String,
@@ -22,128 +31,178 @@ public struct ImageDetailView: View {
     self.displayName = displayName
     self.onDismiss = onDismiss
   }
-
+  
   public var body: some View {
-    GeometryReader { geometry in
-      ZStack {
-        // 배경
-        Color.black
-          .ignoresSafeArea()
-          .onTapGesture {
-            onDismiss()
-          }
-
-        // 이미지 콘텐츠
-        VStack(spacing: 0) {
-          // 상단 헤더
-          headerView
+    ZStack {
+      // ✅ 배경 - 항상 검정 유지
+      Color.black
+        .ignoresSafeArea()
+        .onTapGesture {
+          onDismiss()
+        }
+      
+      // 콘텐츠 영역
+      GeometryReader { geometry in
+        ZStack {
+          // 이미지 콘텐츠
+          imageContent(geometry: geometry)
+            .scaleEffect(scale)
+            .offset(zoomedOffset)
+          
+          // 닫기 버튼
+          VStack {
+            HStack {
+              Spacer()
+              closeButton
+                .opacity(isZoomedOut ? 1.0 : 0.0)
+            }
             .padding(.horizontal, 16)
             .padding(.top, 8)
-
-          Spacer()
-
-          // 이미지
-          imageContent(geometry: geometry)
-
-          Spacer()
-
-          // 하단 이름
-          if !displayName.isEmpty {
-            Text(displayName)
-              .font(.headline)
-              .foregroundStyle(.white)
-              .padding(.bottom, 32)
+            Spacer()
           }
         }
+        // 콘텐츠만 수직 이동
+        .offset(y: isZoomedOut ? dragOffset.height : 0)
+        .gesture(combinedGesture)
+        .onTapGesture(count: 2, perform: handleDoubleTap)
       }
     }
+    .background(ClearBackground())
     .task(id: imageUrl) {
       await loadImage()
     }
   }
-
-  // MARK: - Header View
-
-  private var headerView: some View {
-    HStack {
-      Spacer()
-
-      Button {
-        onDismiss()
-      } label: {
-        Image(systemName: "xmark")
-          .font(.title3)
-          .fontWeight(.medium)
-          .foregroundStyle(.white)
-          .frame(width: 44, height: 44)
-          .contentShape(Rectangle())
+  
+  // MARK: - Computed Properties
+  
+  private var isZoomedOut: Bool {
+    scale <= minScale
+  }
+  
+  private var zoomedOffset: CGSize {
+    guard !isZoomedOut else { return .zero }
+    return CGSize(
+      width: offset.width + lastOffset.width,
+      height: offset.height + lastOffset.height
+    )
+  }
+  
+  // MARK: - Gestures
+  
+  private var combinedGesture: some Gesture {
+    SimultaneousGesture(
+      magnificationGesture,
+      dragGesture
+    )
+  }
+  
+  private var magnificationGesture: some Gesture {
+    MagnificationGesture()
+      .onChanged { value in
+        let delta = value / lastScale
+        lastScale = value
+        let newScale = scale * delta
+        scale = min(max(newScale, 0.5), maxScale)
+      }
+      .onEnded { _ in
+        lastScale = 1.0
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+          if scale < minScale {
+            scale = minScale
+            resetOffset()
+          }
+        }
+      }
+  }
+  
+  private var dragGesture: some Gesture {
+    DragGesture()
+      .onChanged { value in
+        if isZoomedOut {
+          // ✅ 아래로 드래그만 허용 (height > 0)
+          let height = max(0, value.translation.height)
+          dragOffset = CGSize(width: 0, height: height)
+        } else {
+          offset = value.translation
+        }
+      }
+      .onEnded { value in
+        if isZoomedOut {
+          let verticalDrag = value.translation.height
+          let velocity = value.predictedEndTranslation.height
+          
+          // ✅ 아래로 드래그했을 때만 dismiss 판정
+          if verticalDrag > 150 || velocity > 500 {
+            onDismiss()
+          } else {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+              dragOffset = .zero
+            }
+          }
+        } else {
+          lastOffset = CGSize(
+            width: lastOffset.width + offset.width,
+            height: lastOffset.height + offset.height
+          )
+          offset = .zero
+        }
+      }
+  }
+  
+  // MARK: - Actions
+  
+  private func handleDoubleTap() {
+    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+      if scale > minScale {
+        scale = minScale
+        resetOffset()
+      } else {
+        scale = 2.5
       }
     }
   }
-
+  
+  private func resetOffset() {
+    offset = .zero
+    lastOffset = .zero
+    dragOffset = .zero
+  }
+  
+  // MARK: - Close Button
+  
+  private var closeButton: some View {
+    Button {
+      onDismiss()
+    } label: {
+      Image(systemName: "xmark")
+        .font(.title3)
+        .fontWeight(.medium)
+        .foregroundStyle(.white)
+        .frame(width: 44, height: 44)
+        .background(.ultraThinMaterial.opacity(0.5))
+        .clipShape(Circle())
+    }
+  }
+  
   // MARK: - Image Content
-
+  
   @ViewBuilder
   private func imageContent(geometry: GeometryProxy) -> some View {
     if let loadedImage {
       Image(uiImage: loadedImage)
         .resizable()
         .aspectRatio(contentMode: .fit)
-        .scaleEffect(scale)
-        .offset(offset)
-        .gesture(
-          MagnificationGesture()
-            .onChanged { value in
-              let delta = value / lastScale
-              lastScale = value
-              scale = min(max(scale * delta, 1.0), 4.0)
-            }
-            .onEnded { _ in
-              lastScale = 1.0
-              if scale <= 1.0 {
-                withAnimation(.spring(response: 0.3)) {
-                  offset = .zero
-                }
-              }
-            }
-        )
-        .simultaneousGesture(
-          DragGesture()
-            .onChanged { value in
-              if scale > 1.0 {
-                offset = CGSize(
-                  width: lastOffset.width + value.translation.width,
-                  height: lastOffset.height + value.translation.height
-                )
-              }
-            }
-            .onEnded { _ in
-              lastOffset = offset
-            }
-        )
-        .onTapGesture(count: 2) {
-          withAnimation(.spring(response: 0.3)) {
-            if scale > 1.0 {
-              scale = 1.0
-              offset = .zero
-              lastOffset = .zero
-            } else {
-              scale = 2.0
-            }
-          }
-        }
-        .frame(maxWidth: geometry.size.width, maxHeight: geometry.size.height * 0.7)
+        .frame(maxWidth: geometry.size.width, maxHeight: geometry.size.height * 0.8)
     } else {
-      // 로딩 또는 fallback
       fallbackView(geometry: geometry)
     }
   }
-
+  
   // MARK: - Fallback View
-
+  
   private func fallbackView(geometry: GeometryProxy) -> some View {
     let size = min(geometry.size.width, geometry.size.height) * 0.5
-
+    
     return Circle()
       .fill(
         LinearGradient(
@@ -159,14 +218,14 @@ public struct ImageDetailView: View {
           .foregroundColor(.white)
       )
   }
-
+  
   private var initials: String {
     guard !displayName.isEmpty else { return "?" }
     return String(displayName.prefix(1))
   }
-
+  
   // MARK: - Load Image
-
+  
   private func loadImage() async {
     guard let urlString = imageUrl,
           let url = URL(string: urlString) else { return }
@@ -179,20 +238,16 @@ public struct ImageDetailView: View {
   }
 }
 
-// MARK: - Preview
+// MARK: - Clear Background Helper
 
-#Preview("Image Detail View") {
-  ImageDetailView(
-    imageUrl: "https://picsum.photos/400",
-    displayName: "홍길동",
-    onDismiss: {}
-  )
-}
-
-#Preview("Image Detail View - No Image") {
-  ImageDetailView(
-    imageUrl: nil,
-    displayName: "김철수",
-    onDismiss: {}
-  )
+struct ClearBackground: UIViewRepresentable {
+  func makeUIView(context: Context) -> UIView {
+    let view = UIView()
+    DispatchQueue.main.async {
+      view.superview?.superview?.backgroundColor = .clear
+    }
+    return view
+  }
+  
+  func updateUIView(_ uiView: UIView, context: Context) {}
 }

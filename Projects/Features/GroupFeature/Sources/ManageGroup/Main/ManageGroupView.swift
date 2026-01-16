@@ -11,6 +11,7 @@ extension ManageGroup {
     @State private var showLeaveConfirmation = false
     @State private var showDeleteConfirmation = false
     @State private var selectedMemberForImage: UserPublicModel?
+    @State private var showGroupImageDetail = false
 
     public init(store: StoreOf<ManageGroup.Feature>) {
       self.store = store
@@ -191,8 +192,21 @@ extension ManageGroup {
         ImageDetailView(
           imageUrl: member.profileImageUrl,
           displayName: member.nickname,
-          onDismiss: { selectedMemberForImage = nil }
+          onDismiss: {
+            selectedMemberForImage = nil
+          }
         )
+        .presentationBackground(.clear)
+      }
+      .fullScreenCover(isPresented: $showGroupImageDetail) {
+        ImageDetailView(
+          imageUrl: store.group.imageUrl,
+          displayName: store.group.name,
+          onDismiss: {
+            showGroupImageDetail = false
+          }
+        )
+        .presentationBackground(.clear)
       }
     }
 
@@ -202,7 +216,12 @@ extension ManageGroup {
     private var headerSection: some View {
       VStack(spacing: 20) {
         // Group Image
-        GroupImageView(imageUrl: store.group.imageUrl)
+        GroupImageView(
+          imageUrl: store.group.imageUrl,
+          onTap: {
+            showGroupImageDetail = true
+          }
+        )
 
         // Group Name
         Text(store.group.name)
@@ -299,7 +318,9 @@ extension ManageGroup {
           MemberGridItem(
             member: member,
             isHost: member.userId == store.group.createdBy,
-            onImageTap: { selectedMemberForImage = member }
+            onImageTap: {
+              selectedMemberForImage = member
+            }
           )
         }
       }
@@ -545,6 +566,7 @@ private struct MemberGridItem: View {
 
 private struct GroupImageView: View {
   let imageUrl: String?
+  var onTap: (() -> Void)?
   @State private var loadedImage: UIImage?
   @State private var isLoading = false
 
@@ -593,6 +615,10 @@ private struct GroupImageView: View {
         )
     )
     .shadow(color: .blue.opacity(0.2), radius: 16, x: 0, y: 8)
+    .contentShape(Circle())
+    .onTapGesture {
+      onTap?()
+    }
     .task {
       await loadImage()
     }

@@ -61,8 +61,11 @@ extension Profile {
         ImageDetailView(
           imageUrl: store.currentUser.profileImageUrl,
           displayName: store.currentUser.nickname,
-          onDismiss: { showImageDetail = false }
+          onDismiss: {
+            showImageDetail = false
+          }
         )
+        .presentationBackground(.clear)
       }
     }
 
@@ -98,7 +101,9 @@ extension Profile {
           isCurrentUser: true,
           size: 100,
           borderWidth: 3,
-          onTap: { showImageDetail = true }
+          onTap: {
+            showImageDetail = true
+          }
         )
 
         // 닉네임
