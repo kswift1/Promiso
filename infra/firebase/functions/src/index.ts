@@ -552,7 +552,7 @@ export const checkNicknameAvailable = onCall<CheckNicknameAvailableRequest>(
 
     // 2. 유효성 검사
     const nickname = data.nickname?.trim();
-    if (!nickname || nickname.length < 2 || nickname.length > 12) {
+    if (!nickname || nickname.length < 2 || nickname.length > 20) {
       throw new HttpsError(
         "invalid-argument",
         "닉네임은 2~12자여야 합니다",
