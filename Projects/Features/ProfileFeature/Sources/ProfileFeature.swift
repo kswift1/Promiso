@@ -450,9 +450,10 @@ extension Profile {
   }
 }
 
-// MARK: - Path.State Equatable
+// MARK: - Path Conformances
 
-extension Profile.Feature.Path.State: Equatable {}
+extension Profile.Feature.Path.State: Equatable, Sendable {}
+extension Profile.Feature.Path.Action: Sendable {}
 
 // MARK: - Error Types
 

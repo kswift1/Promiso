@@ -699,3 +699,8 @@ extension CalendarFeature {
     }
   }
 }
+
+// MARK: - Path Conformances
+
+extension CalendarFeature.Feature.Path.State: Equatable, Sendable {}
+extension CalendarFeature.Feature.Path.Action: Sendable {}

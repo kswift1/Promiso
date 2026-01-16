@@ -517,3 +517,8 @@ extension GroupMain {
     }
   }
 }
+
+// MARK: - Path Conformances
+
+extension GroupMain.Feature.Path.State: Equatable, Sendable {}
+extension GroupMain.Feature.Path.Action: Sendable {}
