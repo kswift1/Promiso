@@ -3,6 +3,8 @@ import {FieldValue} from "firebase-admin/firestore";
 import {setGlobalOptions} from "firebase-functions/v2";
 import {HttpsError, onCall} from "firebase-functions/v2/https";
 import {
+  CheckNicknameAvailableRequest,
+  CheckNicknameAvailableResponse,
   CreateGroupRequest,
   CreateGroupResponse,
   CreatePromiseRequest,
@@ -83,10 +85,10 @@ export const createUser = onCall<CreateUserRequest>(
 
     // 2. 유효성 검사
     const nickname = data.nickname.trim();
-    if (nickname.length < 2 || nickname.length > 12) {
+    if (nickname.length < 2 || nickname.length > 20) {
       throw new HttpsError(
         "invalid-argument",
-        "닉네임은 2~12자여야 합니다",
+        "닉네임은 2~20자여야 합니다",
       );
     }
 
@@ -288,10 +290,10 @@ export const updateUser = onCall<UpdateUserRequest>(
     // 2. 유효성 검사
     if (data.nickname) {
       const nickname = data.nickname.trim();
-      if (nickname.length < 2 || nickname.length > 12) {
+      if (nickname.length < 2 || nickname.length > 20) {
         throw new HttpsError(
           "invalid-argument",
-          "닉네임은 2~12자여야 합니다",
+          "닉네임은 2~20자여야 합니다",
         );
       }
     }
@@ -516,6 +518,76 @@ export const updateUserSettings = onCall<UpdateUserSettingsRequest>(
     return {
       success: true,
     };
+  },
+);
+
+/**
+ * 닉네임 중복 검사
+ *
+ * @remarks
+ * **인증 필수**
+ *
+ * 닉네임이 이미 사용 중인지 확인합니다.
+ * Firestore 보안 규칙에서 다른 사용자 문서에 직접 접근할 수 없으므로,
+ * 이 Cloud Function을 통해 안전하게 닉네임 중복을 검사합니다.
+ *
+ * @param request.data - CheckNicknameAvailableRequest
+ * @returns CheckNicknameAvailableResponse
+ *
+ * @throws HttpsError
+ * - unauthenticated: 로그인이 필요합니다
+ * - invalid-argument: 잘못된 닉네임 형식
+ * - internal: 서버 오류
+ */
+export const checkNicknameAvailable = onCall<CheckNicknameAvailableRequest>(
+  {region: REGION},
+  async (request): Promise<CheckNicknameAvailableResponse> => {
+    // 1. 인증 확인
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "로그인이 필요합니다");
+    }
+
+    const userId = request.auth.uid;
+    const data = request.data;
+
+    // 2. 유효성 검사
+    const nickname = data.nickname?.trim();
+    if (!nickname || nickname.length < 2 || nickname.length > 20) {
+      throw new HttpsError(
+        "invalid-argument",
+        "닉네임은 2~20자여야 합니다",
+      );
+    }
+
+    try {
+      const db = admin.firestore();
+      const usersCollection = getEnvironmentCollection("users", db, data.env);
+
+      // 3. 닉네임으로 사용자 검색 (본인 제외)
+      const snapshot = await usersCollection
+        .where("nickname", "==", nickname)
+        .limit(1)
+        .get();
+
+      // 4. 결과 확인
+      let available = true;
+      if (!snapshot.empty) {
+        // 검색된 사용자가 본인인 경우는 사용 가능
+        const foundUserId = snapshot.docs[0].id;
+        available = foundUserId === userId;
+      }
+
+      return {
+        available: available,
+        nickname: nickname,
+      };
+    } catch (error) {
+      console.error("❌ checkNicknameAvailable error:", error);
+      throw new HttpsError(
+        "internal",
+        "닉네임 중복 검사 중 오류가 발생했습니다",
+      );
+    }
   },
 );
 

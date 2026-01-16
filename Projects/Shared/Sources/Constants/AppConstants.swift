@@ -231,18 +231,4 @@ public enum BuildConfiguration {
     return false
     #endif
   }()
-  
-  public static let isTestFlight: Bool = {
-    guard let appStoreReceiptURL = Bundle.main.appStoreReceiptURL else {
-      return false
-    }
-    return appStoreReceiptURL.lastPathComponent == "sandboxReceipt"
-  }()
-  
-  public static let isAppStore: Bool = {
-    guard let appStoreReceiptURL = Bundle.main.appStoreReceiptURL else {
-      return false
-    }
-    return appStoreReceiptURL.lastPathComponent == "receipt"
-  }()
 }

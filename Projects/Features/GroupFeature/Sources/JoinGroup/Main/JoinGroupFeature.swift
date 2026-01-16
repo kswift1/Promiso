@@ -50,6 +50,10 @@ extension JoinGroup {
       var joinError: String?
       var joinResult: GroupModel?
 
+      // Image Detail
+      var selectedMemberForImage: UserPublicModel?
+      var showGroupImageDetail: Bool = false
+
       public init(currentUser: UserPrivateModel) {
         self.currentUser = currentUser
       }
@@ -91,6 +95,10 @@ extension JoinGroup {
         case previewErrorAlertDismissed
         case joinErrorAlertDismissed
         case successAcknowledged
+        // Image Detail
+        case memberImageTapped(UserPublicModel)
+        case groupImageTapped
+        case imageDetailDismissed
       }
 
       @CasePathable
@@ -178,6 +186,19 @@ extension JoinGroup {
             guard let result = state.joinResult else { return .none }
             state.joinResult = nil
             return .send(.delegate(.groupJoined(result)))
+
+          case .memberImageTapped(let member):
+            state.selectedMemberForImage = member
+            return .none
+
+          case .groupImageTapped:
+            state.showGroupImageDetail = true
+            return .none
+
+          case .imageDetailDismissed:
+            state.selectedMemberForImage = nil
+            state.showGroupImageDetail = false
+            return .none
           }
 
         case .internal(let internalAction):

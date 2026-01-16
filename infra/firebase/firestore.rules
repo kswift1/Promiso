@@ -6,6 +6,8 @@ service cloud.firestore {
 
       // Users - 하위 컬렉션 있음 (auth, settings)
       match /users/{userId} {
+        // 본인 문서만 읽기/쓰기 허용
+        // 닉네임 중복 검사 등은 Cloud Function을 통해 구현 권장
         allow read, write: if request.auth != null
                           && request.auth.uid == userId;
 

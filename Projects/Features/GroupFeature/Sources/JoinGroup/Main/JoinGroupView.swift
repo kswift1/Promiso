@@ -413,6 +413,36 @@ private struct PreviewView: View {
         }
       }
     }
+    .fullScreenCover(
+      item: Binding(
+        get: { store.selectedMemberForImage },
+        set: { _ in store.send(.view(.imageDetailDismissed)) }
+      )
+    ) { member in
+      ImageDetailView(
+        imageUrl: member.profileImageUrl,
+        displayName: member.nickname,
+        onDismiss: {
+          store.send(.view(.imageDetailDismissed))
+        }
+      )
+      .presentationBackground(.clear)
+    }
+    .fullScreenCover(
+      isPresented: Binding(
+        get: { store.showGroupImageDetail },
+        set: { if !$0 { store.send(.view(.imageDetailDismissed)) } }
+      )
+    ) {
+      ImageDetailView(
+        imageUrl: group.imageUrl,
+        displayName: group.name,
+        onDismiss: {
+          store.send(.view(.imageDetailDismissed))
+        }
+      )
+      .presentationBackground(.clear)
+    }
   }
 
   // MARK: - Header Section
@@ -421,7 +451,12 @@ private struct PreviewView: View {
   private var headerSection: some View {
     VStack(spacing: 20) {
       // Group Image
-      GroupImageView(imageUrl: group.imageUrl)
+      GroupImageView(
+        imageUrl: group.imageUrl,
+        onTap: {
+          store.send(.view(.groupImageTapped))
+        }
+      )
 
       // Group Name
       Text(group.name)
@@ -471,7 +506,12 @@ private struct PreviewView: View {
 
     LazyVGrid(columns: columns, spacing: 16) {
       ForEach(displayMembers) { member in
-        MemberGridItem(member: member)
+        MemberGridItem(
+          member: member,
+          onImageTap: {
+            store.send(.view(.memberImageTapped(member)))
+          }
+        )
       }
 
       if overflowCount > 0 {
@@ -527,43 +567,17 @@ private struct PreviewView: View {
 
 private struct MemberGridItem: View {
   let member: UserPublicModel
-  @State private var loadedImage: UIImage?
-  @State private var isLoading = false
+  var onImageTap: (() -> Void)?
 
   var body: some View {
     VStack(spacing: 8) {
-      ZStack {
-        Circle()
-          .fill(
-            LinearGradient(
-              colors: [Color.blue.opacity(0.1), Color.purple.opacity(0.05)],
-              startPoint: .topLeading,
-              endPoint: .bottomTrailing
-            )
-          )
-          .frame(width: 64, height: 64)
-
-        if let loadedImage {
-          Image(uiImage: loadedImage)
-            .resizable()
-            .scaledToFill()
-            .frame(width: 64, height: 64)
-            .clipShape(Circle())
-        } else if isLoading {
-          ProgressView()
-            .tint(.secondary)
-        } else {
-          Text(initials)
-            .font(.system(size: 24, weight: .semibold))
-            .foregroundStyle(
-              LinearGradient(
-                colors: [.blue, .purple],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-              )
-            )
-        }
-      }
+      ProfileAvatarView(
+        profileImageUrl: member.profileImageUrl,
+        displayName: member.displayName,
+        size: 64,
+        borderWidth: 0,
+        onTap: onImageTap
+      )
       .overlay(
         Circle()
           .strokeBorder(
@@ -580,27 +594,6 @@ private struct MemberGridItem: View {
         .font(.caption)
         .foregroundStyle(.primary)
         .lineLimit(1)
-    }
-    .task {
-      await loadImage()
-    }
-  }
-
-  private var initials: String {
-    String(member.name.prefix(1))
-  }
-
-  private func loadImage() async {
-    guard let profile = member.profile else { return }
-    isLoading = true
-    defer { isLoading = false }
-
-    do {
-      guard let url = URL(string: profile.url) else { return }
-      let request = ImageRequest(url: url)
-      loadedImage = try await ImagePipeline.shared.image(for: request)
-    } catch {
-      loadedImage = nil
     }
   }
 }
@@ -637,6 +630,7 @@ private struct OverflowGridItem: View {
 
 private struct GroupImageView: View {
   let imageUrl: String?
+  var onTap: (() -> Void)?
   @State private var loadedImage: UIImage?
   @State private var isLoading = false
 
@@ -688,6 +682,10 @@ private struct GroupImageView: View {
         )
     )
     .shadow(color: .blue.opacity(0.2), radius: 16, x: 0, y: 8)
+    .contentShape(Circle())
+    .onTapGesture {
+      onTap?()
+    }
     .task {
       await loadImage()
     }

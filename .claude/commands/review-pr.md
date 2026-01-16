@@ -1,0 +1,66 @@
+---
+name: review-pr
+description: PR 또는 현재 변경사항 코드 리뷰
+---
+
+# /review-pr $ARGUMENTS
+
+현재 브랜치의 변경사항 또는 특정 PR을 리뷰합니다.
+
+## 실행 순서
+
+1. 변경된 파일 목록 확인
+2. **code-reviewer** 에이전트로 각 파일 검토
+3. 리뷰 결과 종합 보고
+
+## 사용 예시
+
+```bash
+# 현재 브랜치 변경사항 리뷰
+/review-pr
+
+# 특정 PR 리뷰
+/review-pr 123
+
+# 특정 파일만 리뷰
+/review-pr --file Projects/Features/HomeFeature/Sources/HomeView.swift
+```
+
+## 리뷰 기준
+
+### TCA 패턴
+- State/Action 구조
+- Effect 처리
+- Dependency 주입
+
+### Swift 컨벤션
+- 강제 언래핑 금지
+- async/await 사용
+- 메모리 관리
+
+### UI/UX
+- iOS 26 Glass Effect
+- Fallback 구현
+- 접근성
+
+### 보안
+- 민감 정보 노출
+- 적절한 권한 검사
+
+## 출력 형식
+
+```markdown
+## PR 리뷰 결과
+
+### 변경 파일 수: N개
+
+### 파일별 리뷰
+#### 1. {파일명}
+- 🔴 Critical: N건
+- 🟡 Warning: N건
+- 🟢 Suggestion: N건
+
+### 전체 요약
+- 승인 가능 여부: ✅ / ❌
+- 필수 수정 사항: {내용}
+```

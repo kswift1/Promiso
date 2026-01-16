@@ -186,6 +186,36 @@ extension ManageGroup {
           }
         }
       )
+      .fullScreenCover(
+        item: Binding(
+          get: { store.selectedMemberForImage },
+          set: { _ in store.send(.view(.imageDetailDismissed)) }
+        )
+      ) { member in
+        ImageDetailView(
+          imageUrl: member.profileImageUrl,
+          displayName: member.nickname,
+          onDismiss: {
+            store.send(.view(.imageDetailDismissed))
+          }
+        )
+        .presentationBackground(.clear)
+      }
+      .fullScreenCover(
+        isPresented: Binding(
+          get: { store.showGroupImageDetail },
+          set: { if !$0 { store.send(.view(.imageDetailDismissed)) } }
+        )
+      ) {
+        ImageDetailView(
+          imageUrl: store.group.imageUrl,
+          displayName: store.group.name,
+          onDismiss: {
+            store.send(.view(.imageDetailDismissed))
+          }
+        )
+        .presentationBackground(.clear)
+      }
     }
 
     // MARK: - Header Section
@@ -194,7 +224,12 @@ extension ManageGroup {
     private var headerSection: some View {
       VStack(spacing: 20) {
         // Group Image
-        GroupImageView(imageUrl: store.group.imageUrl)
+        GroupImageView(
+          imageUrl: store.group.imageUrl,
+          onTap: {
+            store.send(.view(.groupImageTapped))
+          }
+        )
 
         // Group Name
         Text(store.group.name)
@@ -290,7 +325,10 @@ extension ManageGroup {
         ForEach(members) { member in
           MemberGridItem(
             member: member,
-            isHost: member.userId == store.group.createdBy
+            isHost: member.userId == store.group.createdBy,
+            onImageTap: {
+              store.send(.view(.memberImageTapped(member)))
+            }
           )
         }
       }
@@ -486,6 +524,7 @@ extension ManageGroup {
 private struct MemberGridItem: View {
   let member: UserPublicModel
   let isHost: Bool
+  var onImageTap: (() -> Void)?
 
   var body: some View {
     VStack(spacing: 8) {
@@ -494,7 +533,8 @@ private struct MemberGridItem: View {
           profileImageUrl: member.profileImageUrl,
           displayName: member.displayName,
           size: 64,
-          borderWidth: 0
+          borderWidth: 0,
+          onTap: onImageTap
         )
         .overlay(
           Circle()
@@ -534,6 +574,7 @@ private struct MemberGridItem: View {
 
 private struct GroupImageView: View {
   let imageUrl: String?
+  var onTap: (() -> Void)?
   @State private var loadedImage: UIImage?
   @State private var isLoading = false
 
@@ -582,6 +623,10 @@ private struct GroupImageView: View {
         )
     )
     .shadow(color: .blue.opacity(0.2), radius: 16, x: 0, y: 8)
+    .contentShape(Circle())
+    .onTapGesture {
+      onTap?()
+    }
     .task {
       await loadImage()
     }
