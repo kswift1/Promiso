@@ -35,12 +35,12 @@ extension AccountInfo {
       }
     }
 
-    public enum Action: Sendable {
+    public enum Action: Equatable, Sendable {
       case view(View)
       case delegate(Delegate)
     }
 
-    public enum View: Sendable {
+    public enum View: Equatable, Sendable {
       case onAppear
       case editProfileTapped
       case logoutTapped
@@ -51,7 +51,7 @@ extension AccountInfo {
       case deleteAccountCancelled
     }
 
-    public enum Delegate: Sendable {
+    public enum Delegate: Equatable, Sendable {
       case editProfileRequested
       case logoutRequested
       case deleteAccountRequested

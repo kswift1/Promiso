@@ -147,7 +147,7 @@ extension Profile {
               store.send(.view(.profileImageSelected(image.data)))
             }
           } catch {
-            store.send(.internal(.profileSaveFailed("이미지를 불러오는데 실패했습니다")))
+            store.send(.internal(.profileSaveFailed(ProfileError.imageLoadFailed.localizedDescription)))
           }
         }
       }

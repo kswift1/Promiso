@@ -440,7 +440,7 @@ export interface CreateUserRequest {
   /** provider에서 받은 이름 (선택적, null이면 nickname 사용) */
   name?: string | null;
 
-  /** 사용자가 설정한 닉네임 (2~12자) */
+  /** 사용자가 설정한 닉네임 (2~20자) */
   nickname: string;
 
   /** 인증 제공자 정보 */
@@ -530,7 +530,7 @@ export interface UserPrivateResponse extends UserPublicResponse {
  * - name, email은 수정 불가 (provider 정보이므로)
  */
 export interface UpdateUserRequest {
-  /** 닉네임 (2~12자) */
+  /** 닉네임 (2~20자) */
   nickname?: string | null;
 
   /** 환경 구분 (선택적: stage 또는 prod) */
@@ -610,7 +610,7 @@ export interface UpdateUserSettingsResponse {
  * - 다른 사용자 문서에 직접 접근하지 않고 Cloud Function을 통해 안전하게 검사
  */
 export interface CheckNicknameAvailableRequest {
-  /** 검사할 닉네임 (2~12자) */
+  /** 검사할 닉네임 (2~20자) */
   nickname: string;
 
   /** 환경 구분 (선택적: stage 또는 prod) */

@@ -114,7 +114,7 @@ extension Profile {
 
     /// Profile Feature 내에서 발생할 수 있는 모든 가능한 action
     /// ViewAction / InternalAction / DelegateAction으로 분리하여 관심사 분리
-    public enum Action {
+    public enum Action: Sendable {
       case view(View)
       case `internal`(Internal)
       case delegate(Delegate)
@@ -123,7 +123,7 @@ extension Profile {
 
     /// View에서 발생하는 사용자 인터랙션 액션
     @CasePathable
-    public enum View: Sendable {
+    public enum View: Equatable, Sendable {
       /// View가 처음 나타날 때 트리거
       case onAppear
       /// 로그아웃 버튼 탭
@@ -163,7 +163,7 @@ extension Profile {
     }
 
     /// 내부 비즈니스 로직 처리 결과 액션
-    public enum Internal: Sendable {
+    public enum Internal: Equatable, Sendable {
       /// 로그아웃 완료
       case logoutCompleted
       /// 로그아웃 실패
@@ -181,7 +181,7 @@ extension Profile {
     }
 
     /// 부모 Feature에게 전달할 delegate 액션
-    public enum Delegate: Equatable {
+    public enum Delegate: Equatable, Sendable {
       /// 로그아웃 완료됨 (부모에서 화면 전환 처리)
       case didLogout
     }
@@ -456,6 +456,7 @@ extension Profile {
 public enum ProfileError: Error, Equatable, LocalizedError {
   case logoutFailed
   case userNotFound
+  case imageLoadFailed
   case unknown
 
   public var errorDescription: String? {
@@ -464,6 +465,8 @@ public enum ProfileError: Error, Equatable, LocalizedError {
       return "로그아웃에 실패했습니다. 다시 시도해주세요."
     case .userNotFound:
       return "사용자 정보를 찾을 수 없습니다."
+    case .imageLoadFailed:
+      return "이미지를 불러오는데 실패했습니다."
     case .unknown:
       return "알 수 없는 오류가 발생했습니다."
     }

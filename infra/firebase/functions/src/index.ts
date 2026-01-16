@@ -85,10 +85,10 @@ export const createUser = onCall<CreateUserRequest>(
 
     // 2. 유효성 검사
     const nickname = data.nickname.trim();
-    if (nickname.length < 2 || nickname.length > 12) {
+    if (nickname.length < 2 || nickname.length > 20) {
       throw new HttpsError(
         "invalid-argument",
-        "닉네임은 2~12자여야 합니다",
+        "닉네임은 2~20자여야 합니다",
       );
     }
 
@@ -290,10 +290,10 @@ export const updateUser = onCall<UpdateUserRequest>(
     // 2. 유효성 검사
     if (data.nickname) {
       const nickname = data.nickname.trim();
-      if (nickname.length < 2 || nickname.length > 12) {
+      if (nickname.length < 2 || nickname.length > 20) {
         throw new HttpsError(
           "invalid-argument",
-          "닉네임은 2~12자여야 합니다",
+          "닉네임은 2~20자여야 합니다",
         );
       }
     }
@@ -555,7 +555,7 @@ export const checkNicknameAvailable = onCall<CheckNicknameAvailableRequest>(
     if (!nickname || nickname.length < 2 || nickname.length > 20) {
       throw new HttpsError(
         "invalid-argument",
-        "닉네임은 2~12자여야 합니다",
+        "닉네임은 2~20자여야 합니다",
       );
     }
 

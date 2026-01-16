@@ -21,6 +21,8 @@ public struct ImageDetailView: View {
   
   private let minScale: CGFloat = 1.0
   private let maxScale: CGFloat = 5.0
+  private let dismissDragThreshold: CGFloat = 150
+  private let dismissVelocityThreshold: CGFloat = 500
   
   public init(
     imageUrl: String?,
@@ -132,7 +134,7 @@ public struct ImageDetailView: View {
           let velocity = value.predictedEndTranslation.height
           
           // ✅ 아래로 드래그했을 때만 dismiss 판정
-          if verticalDrag > 150 || velocity > 500 {
+          if verticalDrag > dismissDragThreshold || velocity > dismissVelocityThreshold {
             onDismiss()
           } else {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
