@@ -367,8 +367,7 @@ extension Profile {
 
           case .logoutFailed(let error):
             state.isLoading = false
-            // TODO: 에러 메시지 표시 로직 추가 가능
-            _ = error
+            state.errorMessage = error.localizedDescription
             return .run { _ in
               await hapticFeedback.error()
             }

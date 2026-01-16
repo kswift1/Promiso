@@ -776,21 +776,24 @@ export const previewGroup = onCall<PreviewGroupRequest>(
       data.env,
     );
 
-    const members: GroupMemberPreview[] = [];
     const memberIdsToFetch = memberIds.slice(0, 10);
 
-    for (const userId of memberIdsToFetch) {
-      const userDoc = await usersCollection.doc(userId).get();
-      if (userDoc.exists) {
-        const userProfile = userDoc.data();
+    // 병렬 조회로 응답 시간 개선
+    const userDocs = await Promise.all(
+      memberIdsToFetch.map((userId) => usersCollection.doc(userId).get())
+    );
+
+    const members: GroupMemberPreview[] = userDocs
+      .filter((doc) => doc.exists)
+      .map((doc) => {
+        const userProfile = doc.data();
         const nickname = (userProfile?.nickname as string | undefined)?.trim();
-        members.push({
-          userId: userId,
+        return {
+          userId: doc.id,
           name: nickname && nickname.length > 0 ? nickname : "Unknown",
           profileImage: userProfile?.profile || null,
-        });
-      }
-    }
+        };
+      });
 
     // 4. 그룹 ID와 멤버 리스트 반환
     return {
