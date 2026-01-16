@@ -25,7 +25,7 @@ extension AccountInfo {
     public init() {}
 
     @ObservableState
-    public struct State {
+    public struct State: Equatable {
       public var currentUser: UserPrivateModel
       public var showLogoutAlert: Bool = false
       public var showDeleteAccountAlert: Bool = false
@@ -112,6 +112,15 @@ extension AccountInfo {
   public struct RootView: View {
     @Bindable private var store: StoreOf<Feature>
 
+    // MARK: - Static Properties
+
+    private static let createdAtFormatter: DateFormatter = {
+      let formatter = DateFormatter()
+      formatter.locale = Locale(identifier: "ko_KR")
+      formatter.dateFormat = "yyyy년 M월 d일"
+      return formatter
+    }()
+
     public init(store: StoreOf<Feature>) {
       self.store = store
     }
@@ -152,10 +161,7 @@ extension AccountInfo {
 
     /// 가입일 포맷팅
     private var formattedCreatedAt: String {
-      let formatter = DateFormatter()
-      formatter.locale = Locale(identifier: "ko_KR")
-      formatter.dateFormat = "yyyy년 M월 d일"
-      return formatter.string(from: store.currentUser.metadata.createdAt)
+      Self.createdAtFormatter.string(from: store.currentUser.metadata.createdAt)
     }
 
     // MARK: - Body
