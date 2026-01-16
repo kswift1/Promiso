@@ -87,6 +87,7 @@ Firestore Root
 | `nickname` | String | ✅ | 사용자가 설정한 표시명 |
 | `profile` | Profile | ❌ | 프로필 이미지 정보 (하단 참조) |
 | `groups` | Map<String, UserGroupInfo> | ❌ | 사용자가 속한 그룹 목록 (Map 필드, 하단 참조) |
+| `devices` | Map<String, DeviceInfo> | ❌ | FCM 토큰 및 디바이스 정보 (하단 참조) |
 | `metaData` | MetaData | ✅ | 메타데이터 (하단 참조) |
 
 > ⚠️ **이메일은 보안을 위해 `users/{userId}/auth/main` 서브컬렉션에만 저장됩니다.**
@@ -105,6 +106,17 @@ Firestore Root
 |--------|------|------|------|
 | `createdAt` | Timestamp | ✅ | 계정 생성 시각 |
 | `updatedAt` | Timestamp | ✅ | 마지막 수정 시각 |
+
+#### 📦 DeviceInfo (devices Map의 Value)
+
+| 필드명 | 타입 | 필수 | 설명 |
+|--------|------|------|------|
+| `fcmToken` | String | ✅ | Firebase Cloud Messaging 토큰 |
+| `platform` | String | ✅ | 플랫폼 (`ios` \| `android`) |
+| `lastActiveAt` | Timestamp | ✅ | 마지막 활성 시각 |
+| `createdAt` | Timestamp | ✅ | 토큰 등록 시각 |
+
+> 💡 **Key**: 디바이스 고유 ID (UUID, 앱 설치 시 생성)
 
 #### 📝 Functions 사용 필드
 
