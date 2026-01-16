@@ -142,8 +142,12 @@ extension Profile {
       .onChange(of: selectedPhotoItem) { _, newValue in
         Task {
           guard let newValue else { return }
-          if let image = try? await newValue.loadTransferable(type: TransferableImage.self) {
-            store.send(.view(.profileImageSelected(image.data)))
+          do {
+            if let image = try await newValue.loadTransferable(type: TransferableImage.self) {
+              store.send(.view(.profileImageSelected(image.data)))
+            }
+          } catch {
+            store.send(.internal(.profileSaveFailed("이미지를 불러오는데 실패했습니다")))
           }
         }
       }
