@@ -47,7 +47,7 @@ extension Profile {
     ///
     /// @ObservableState는 추가 wrapper 없이 직접적인 SwiftUI integration을 가능하게 함
     @ObservableState
-    public struct State {
+    public struct State: Equatable {
       /// 현재 로그인한 사용자 정보
       public var currentUser: UserPrivateModel
       /// 로그아웃 확인 Alert 표시 여부
@@ -449,6 +449,10 @@ extension Profile {
     }
   }
 }
+
+// MARK: - Path.State Equatable
+
+extension Profile.Feature.Path.State: Equatable {}
 
 // MARK: - Error Types
 
