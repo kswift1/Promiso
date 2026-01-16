@@ -11,7 +11,8 @@ description: PR 또는 현재 변경사항 코드 리뷰
 
 1. 변경된 파일 목록 확인
 2. **code-reviewer** 에이전트로 각 파일 검토
-3. 리뷰 결과 종합 보고
+3. Firebase 관련 파일 변경 시 **firebase-cost-advisor** 에이전트로 비용 분석
+4. 리뷰 결과 종합 보고
 
 ## 사용 예시
 
@@ -47,6 +48,19 @@ description: PR 또는 현재 변경사항 코드 리뷰
 - 민감 정보 노출
 - 적절한 권한 검사
 
+### Firebase 비용 (해당 시)
+- N+1 쿼리 패턴
+- 불필요한 실시간 리스너
+- 캐시 미활용
+- Storage 썸네일 미사용
+
+## Firebase 비용 분석 트리거
+
+다음 경로의 파일이 변경되면 **firebase-cost-advisor** 실행:
+- `Projects/Clients/Sources/Data/DataSources/*`
+- `Projects/Features/*/Sources/*` (Firestore/Storage 사용 시)
+- `infra/firebase/functions/src/*`
+
 ## 출력 형식
 
 ```markdown
@@ -59,6 +73,11 @@ description: PR 또는 현재 변경사항 코드 리뷰
 - 🔴 Critical: N건
 - 🟡 Warning: N건
 - 🟢 Suggestion: N건
+
+### Firebase 비용 분석 (해당 시)
+- 🔴 비용 Critical: N건
+- 🟡 비용 Warning: N건
+- 예상 절감 효과: {내용}
 
 ### 전체 요약
 - 승인 가능 여부: ✅ / ❌
