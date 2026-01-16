@@ -219,22 +219,6 @@ extension Profile {
   }
 }
 
-// MARK: - Glass Effect Modifier Extension (Local)
-
-private extension View {
-  /// 카드 배경용 Glass Effect
-  @ViewBuilder
-  func adaptiveGlassBackground() -> some View {
-    if #available(iOS 26.0, *) {
-      self
-        .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 12))
-    } else {
-      self
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
-    }
-  }
-}
-
 // MARK: - Preview
 
 #Preview("Profile View") {
