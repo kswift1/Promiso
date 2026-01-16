@@ -319,8 +319,6 @@ private struct PreviewView: View {
   @Bindable var store: StoreOf<JoinGroup.Feature>
   let group: GroupModel
   let members: [UserPublicModel]
-  @State private var selectedMemberForImage: UserPublicModel?
-  @State private var showGroupImageDetail = false
 
   var body: some View {
     VStack(spacing: 0) {
@@ -415,22 +413,32 @@ private struct PreviewView: View {
         }
       }
     }
-    .fullScreenCover(item: $selectedMemberForImage) { member in
+    .fullScreenCover(
+      item: Binding(
+        get: { store.selectedMemberForImage },
+        set: { _ in store.send(.view(.imageDetailDismissed)) }
+      )
+    ) { member in
       ImageDetailView(
         imageUrl: member.profileImageUrl,
         displayName: member.nickname,
         onDismiss: {
-          selectedMemberForImage = nil
+          store.send(.view(.imageDetailDismissed))
         }
       )
       .presentationBackground(.clear)
     }
-    .fullScreenCover(isPresented: $showGroupImageDetail) {
+    .fullScreenCover(
+      isPresented: Binding(
+        get: { store.showGroupImageDetail },
+        set: { if !$0 { store.send(.view(.imageDetailDismissed)) } }
+      )
+    ) {
       ImageDetailView(
         imageUrl: group.imageUrl,
         displayName: group.name,
         onDismiss: {
-          showGroupImageDetail = false
+          store.send(.view(.imageDetailDismissed))
         }
       )
       .presentationBackground(.clear)
@@ -446,7 +454,7 @@ private struct PreviewView: View {
       GroupImageView(
         imageUrl: group.imageUrl,
         onTap: {
-          showGroupImageDetail = true
+          store.send(.view(.groupImageTapped))
         }
       )
 
@@ -501,7 +509,7 @@ private struct PreviewView: View {
         MemberGridItem(
           member: member,
           onImageTap: {
-            selectedMemberForImage = member
+            store.send(.view(.memberImageTapped(member)))
           }
         )
       }

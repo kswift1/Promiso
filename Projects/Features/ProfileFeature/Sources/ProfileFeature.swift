@@ -71,6 +71,8 @@ extension Profile {
       public var errorMessage: String?
       /// 네비게이션 경로
       public var path = StackState<Path.State>()
+      /// 프로필 이미지 상세 보기 표시 여부
+      public var showImageDetail: Bool = false
 
       /// State를 위한 기본 initializer
       public init(
@@ -120,6 +122,7 @@ extension Profile {
     }
 
     /// View에서 발생하는 사용자 인터랙션 액션
+    @CasePathable
     public enum View: Sendable {
       /// View가 처음 나타날 때 트리거
       case onAppear
@@ -153,6 +156,10 @@ extension Profile {
       case cancelEditTapped
       /// 에러 메시지 닫기
       case dismissError
+      /// 프로필 이미지 탭
+      case profileImageTapped
+      /// 프로필 이미지 상세 닫기
+      case imageDetailDismissed
     }
 
     /// 내부 비즈니스 로직 처리 결과 액션
@@ -337,6 +344,14 @@ extension Profile {
 
           case .dismissError:
             state.errorMessage = nil
+            return .none
+
+          case .profileImageTapped:
+            state.showImageDetail = true
+            return .none
+
+          case .imageDetailDismissed:
+            state.showImageDetail = false
             return .none
           }
 

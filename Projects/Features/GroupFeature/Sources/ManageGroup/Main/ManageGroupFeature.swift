@@ -27,6 +27,10 @@ extension ManageGroup {
       var leaveError: String?
       var deleteError: String?
 
+      // Image Detail
+      var selectedMemberForImage: UserPublicModel?
+      var showGroupImageDetail: Bool = false
+
       public init(
         group: GroupModel,
         summary: UserGroupInfo?,
@@ -71,6 +75,10 @@ extension ManageGroup {
         case cancelLeave
         case cancelDelete
         case dismissError
+        // Image Detail
+        case memberImageTapped(UserPublicModel)
+        case groupImageTapped
+        case imageDetailDismissed
       }
 
       public enum Internal: Sendable {
@@ -140,6 +148,19 @@ extension ManageGroup {
           case .dismissError:
             state.leaveError = nil
             state.deleteError = nil
+            return .none
+
+          case .memberImageTapped(let member):
+            state.selectedMemberForImage = member
+            return .none
+
+          case .groupImageTapped:
+            state.showGroupImageDetail = true
+            return .none
+
+          case .imageDetailDismissed:
+            state.selectedMemberForImage = nil
+            state.showGroupImageDetail = false
             return .none
           }
 
