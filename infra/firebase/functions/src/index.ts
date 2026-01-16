@@ -3,6 +3,10 @@ import {FieldValue} from "firebase-admin/firestore";
 import {setGlobalOptions} from "firebase-functions/v2";
 import {HttpsError, onCall} from "firebase-functions/v2/https";
 import {
+  onDocumentCreated,
+  onDocumentUpdated,
+} from "firebase-functions/v2/firestore";
+import {
   CheckNicknameAvailableRequest,
   CheckNicknameAvailableResponse,
   CreateGroupRequest,
@@ -13,6 +17,7 @@ import {
   CreateUserResponse,
   DeleteGroupRequest,
   DeleteGroupResponse,
+  DeviceInfo,
   GetUserRequest,
   GetUserSettingsResponse,
   GroupMemberPreview,
@@ -20,10 +25,14 @@ import {
   JoinGroupResponse,
   LeaveGroupRequest,
   LeaveGroupResponse,
+  NotificationDocument,
+  NotificationType,
   RespondPromiseRequest,
   RespondPromiseResponse,
   PreviewGroupRequest,
   PreviewGroupResponse,
+  SendPushNotificationRequest,
+  SendPushNotificationResponse,
   UpdatePromiseRequest,
   UpdatePromiseResponse,
   UpdateUserRequest,
@@ -1753,5 +1762,472 @@ export const updatePromise = onCall<UpdatePromiseRequest>(
     return {
       success: true,
     };
+  },
+);
+
+// ============================================================================
+// Push Notification Functions
+// ============================================================================
+
+/**
+ * 푸시 알림 전송 (Callable Function)
+ *
+ * @remarks
+ * **인증 필수**
+ *
+ * 지정된 사용자들에게 푸시 알림을 전송합니다.
+ * - 각 사용자의 devices Map에서 FCM 토큰을 조회
+ * - FCM을 통해 멀티캐스트 전송
+ * - notifications 컬렉션에 알림 기록 저장
+ *
+ * @param request.data - SendPushNotificationRequest
+ * @returns SendPushNotificationResponse
+ *
+ * @throws HttpsError
+ * - unauthenticated: 로그인이 필요합니다
+ * - invalid-argument: 잘못된 요청 데이터
+ * - internal: 서버 오류
+ */
+export const sendPushNotification = onCall<SendPushNotificationRequest>(
+  {region: REGION},
+  async (request): Promise<SendPushNotificationResponse> => {
+    // 1. 인증 확인
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "로그인이 필요합니다");
+    }
+
+    const data = request.data;
+
+    // 2. 유효성 검사
+    if (!data.userIds || data.userIds.length === 0) {
+      throw new HttpsError(
+        "invalid-argument",
+        "수신자 ID 배열은 필수입니다",
+      );
+    }
+
+    if (!data.type || !data.title || !data.body) {
+      throw new HttpsError(
+        "invalid-argument",
+        "알림 타입, 제목, 본문은 필수입니다",
+      );
+    }
+
+    try {
+      const result = await sendPushNotificationInternal({
+        userIds: data.userIds,
+        type: data.type,
+        title: data.title,
+        body: data.body,
+        promiseId: data.promiseId ?? null,
+        groupId: data.groupId ?? null,
+        relatedUserId: data.relatedUserId ?? null,
+        data: data.data ?? null,
+        env: data.env ?? null,
+      });
+
+      return result;
+    } catch (error) {
+      console.error("❌ sendPushNotification error:", error);
+      throw new HttpsError(
+        "internal",
+        "푸시 알림 전송 중 오류가 발생했습니다",
+      );
+    }
+  },
+);
+
+/**
+ * 푸시 알림 전송 내부 헬퍼 함수
+ *
+ * Firestore 트리거나 Callable Function에서 공통으로 사용됩니다.
+ *
+ * @param {Object} params - 알림 전송 파라미터
+ * @param {string[]} params.userIds - 수신자 ID 배열
+ * @param {NotificationType} params.type - 알림 타입
+ * @param {string} params.title - 알림 제목
+ * @param {string} params.body - 알림 본문
+ * @param {string|null} params.promiseId - 관련 약속 ID
+ * @param {string|null} params.groupId - 관련 그룹 ID
+ * @param {string|null} params.relatedUserId - 관련 사용자 ID
+ * @param {Object|null} params.data - 추가 데이터
+ * @param {string|null} params.env - 환경 (stage/prod)
+ * @return {Promise<SendPushNotificationResponse>} 전송 결과
+ */
+async function sendPushNotificationInternal(params: {
+  userIds: string[];
+  type: NotificationType;
+  title: string;
+  body: string;
+  promiseId: string | null;
+  groupId: string | null;
+  relatedUserId: string | null;
+  data: { [key: string]: string } | null;
+  env: "stage" | "prod" | null;
+}): Promise<SendPushNotificationResponse> {
+  const {userIds, type, title, body, promiseId, groupId,
+    relatedUserId, data, env} = params;
+
+  const db = admin.firestore();
+  const usersCollection = getEnvironmentCollection("users", db, env);
+  const notificationsCollection = getEnvironmentCollection(
+    "notifications",
+    db,
+    env,
+  );
+
+  // 1. 각 사용자의 FCM 토큰 수집
+  const allTokens: string[] = [];
+  const userTokenMap: Map<string, string[]> = new Map();
+
+  for (const userId of userIds) {
+    try {
+      const userDoc = await usersCollection.doc(userId).get();
+      if (!userDoc.exists) continue;
+
+      const userData = userDoc.data();
+      const devices = userData?.devices as { [key: string]: DeviceInfo } | null;
+
+      if (!devices) continue;
+
+      const tokens: string[] = [];
+      for (const deviceId of Object.keys(devices)) {
+        const device = devices[deviceId];
+        if (device.fcmToken) {
+          tokens.push(device.fcmToken);
+          allTokens.push(device.fcmToken);
+        }
+      }
+
+      if (tokens.length > 0) {
+        userTokenMap.set(userId, tokens);
+      }
+    } catch (error) {
+      console.error(`Failed to get tokens for user ${userId}:`, error);
+    }
+  }
+
+  // 2. 토큰이 없으면 조기 반환
+  if (allTokens.length === 0) {
+    console.log("📭 No FCM tokens found for users:", userIds);
+    return {
+      success: true,
+      successCount: 0,
+      failureCount: userIds.length,
+    };
+  }
+
+  // 3. FCM 멀티캐스트 전송
+  const message: admin.messaging.MulticastMessage = {
+    tokens: allTokens,
+    notification: {
+      title: title,
+      body: body,
+    },
+    data: {
+      type: type,
+      ...(promiseId && {promiseId}),
+      ...(groupId && {groupId}),
+      ...(relatedUserId && {relatedUserId}),
+      ...(data || {}),
+    },
+    apns: {
+      payload: {
+        aps: {
+          sound: "default",
+          badge: 1,
+        },
+      },
+    },
+  };
+
+  let successCount = 0;
+  let failureCount = 0;
+
+  try {
+    const response = await admin.messaging().sendEachForMulticast(message);
+    successCount = response.successCount;
+    failureCount = response.failureCount;
+
+    console.log(`📤 FCM sent: ${successCount} success, ${failureCount} failed`);
+
+    // 실패한 토큰 로깅
+    response.responses.forEach((resp, idx) => {
+      if (!resp.success) {
+        console.error(`Token ${allTokens[idx]} failed:`, resp.error);
+      }
+    });
+  } catch (error) {
+    console.error("❌ FCM multicast error:", error);
+    failureCount = allTokens.length;
+  }
+
+  // 4. notifications 컬렉션에 알림 기록 저장
+  const now = FieldValue.serverTimestamp();
+  const batch = db.batch();
+
+  for (const userId of userIds) {
+    const notificationDoc: Omit<NotificationDocument, "createdAt" |
+      "readAt" | "deliveredAt"> & {
+      createdAt: FirebaseFirestore.FieldValue;
+      readAt: null;
+      deliveredAt: FirebaseFirestore.FieldValue | null;
+    } = {
+      userId,
+      type,
+      title,
+      body,
+      promiseId,
+      groupId,
+      relatedUserId,
+      isRead: false,
+      isDelivered: userTokenMap.has(userId),
+      createdAt: now,
+      readAt: null,
+      deliveredAt: userTokenMap.has(userId) ? now : null,
+      data: data,
+    };
+
+    const notificationRef = notificationsCollection.doc();
+    batch.set(notificationRef, notificationDoc);
+  }
+
+  await batch.commit();
+
+  return {
+    success: true,
+    successCount,
+    failureCount,
+  };
+}
+
+// ============================================================================
+// Firestore Triggers for Push Notifications
+// ============================================================================
+
+/**
+ * 약속 생성 시 그룹 멤버들에게 알림
+ *
+ * @remarks
+ * promises/{promiseId} 문서가 생성되면 트리거됩니다.
+ * - 호스트를 제외한 그룹 멤버들에게 알림 전송
+ */
+export const onPromiseCreated = onDocumentCreated(
+  {
+    document: "{env}/root/promises/{promiseId}",
+    region: REGION,
+  },
+  async (event) => {
+    const snapshot = event.data;
+    if (!snapshot) {
+      console.log("No data associated with the event");
+      return;
+    }
+
+    const promiseData = snapshot.data();
+    const promiseId = event.params.promiseId;
+    const env = event.params.env as "stage" | "prod";
+
+    const groupId = promiseData.groupId as string;
+    const hostId = promiseData.hostId as string;
+    const title = promiseData.title as string;
+
+    console.log(`📅 Promise created: ${promiseId} in group ${groupId}`);
+
+    // 그룹 멤버 조회
+    const db = admin.firestore();
+    const groupsCollection = getEnvironmentCollection("groups", db, env);
+    const groupDoc = await groupsCollection.doc(groupId).get();
+
+    if (!groupDoc.exists) {
+      console.error(`Group ${groupId} not found`);
+      return;
+    }
+
+    const groupData = groupDoc.data();
+    const memberIds = (groupData?.memberIds as string[]) ?? [];
+    const groupName = groupData?.name as string || "그룹";
+
+    // 호스트 제외
+    const recipientIds = memberIds.filter((id) => id !== hostId);
+
+    if (recipientIds.length === 0) {
+      console.log("No recipients to notify");
+      return;
+    }
+
+    // 호스트 이름 조회
+    const usersCollection = getEnvironmentCollection("users", db, env);
+    const hostDoc = await usersCollection.doc(hostId).get();
+    const hostName = hostDoc.data()?.nickname as string || "누군가";
+
+    // 푸시 알림 전송
+    await sendPushNotificationInternal({
+      userIds: recipientIds,
+      type: NotificationType.PromiseInvitation,
+      title: `${groupName}에 새 약속`,
+      body: `${hostName}님이 "${title}" 약속을 만들었어요`,
+      promiseId,
+      groupId,
+      relatedUserId: hostId,
+      data: null,
+      env,
+    });
+  },
+);
+
+/**
+ * 약속 응답 변경 시 호스트에게 알림
+ *
+ * @remarks
+ * promises/{promiseId} 문서의 votes가 변경되면 트리거됩니다.
+ * - 새로 accepted/declined한 사용자가 있으면 호스트에게 알림
+ */
+export const onPromiseVotesUpdated = onDocumentUpdated(
+  {
+    document: "{env}/root/promises/{promiseId}",
+    region: REGION,
+  },
+  async (event) => {
+    const beforeData = event.data?.before.data();
+    const afterData = event.data?.after.data();
+
+    if (!beforeData || !afterData) {
+      console.log("No data associated with the event");
+      return;
+    }
+
+    const promiseId = event.params.promiseId;
+    const env = event.params.env as "stage" | "prod";
+
+    // votes 변경 확인
+    const beforeVotes = beforeData.votes || {accepted: [], declined: []};
+    const afterVotes = afterData.votes || {accepted: [], declined: []};
+
+    const beforeAccepted = new Set(beforeVotes.accepted as string[] || []);
+    const afterAccepted = new Set(afterVotes.accepted as string[] || []);
+    const beforeDeclined = new Set(beforeVotes.declined as string[] || []);
+    const afterDeclined = new Set(afterVotes.declined as string[] || []);
+
+    // 새로 accepted한 사용자 찾기
+    const newAccepted = [...afterAccepted]
+      .filter((id) => !beforeAccepted.has(id));
+    // 새로 declined한 사용자 찾기
+    const newDeclined = [...afterDeclined]
+      .filter((id) => !beforeDeclined.has(id));
+
+    if (newAccepted.length === 0 && newDeclined.length === 0) {
+      return; // 투표 변경 없음
+    }
+
+    const hostId = afterData.hostId as string;
+    const title = afterData.title as string;
+
+    // 호스트는 자신의 응답에 대해 알림 받지 않음
+    const filteredAccepted = newAccepted.filter((id) => id !== hostId);
+    const filteredDeclined = newDeclined.filter((id) => id !== hostId);
+
+    if (filteredAccepted.length === 0 && filteredDeclined.length === 0) {
+      return;
+    }
+
+    const db = admin.firestore();
+    const usersCollection = getEnvironmentCollection("users", db, env);
+
+    // 알림 전송
+    for (const userId of filteredAccepted) {
+      const userDoc = await usersCollection.doc(userId).get();
+      const userName = userDoc.data()?.nickname as string || "누군가";
+
+      await sendPushNotificationInternal({
+        userIds: [hostId],
+        type: NotificationType.AttendanceResponse,
+        title: "참여 확정",
+        body: `${userName}님이 "${title}" 약속에 참여해요`,
+        promiseId,
+        groupId: afterData.groupId as string,
+        relatedUserId: userId,
+        data: {status: "accepted"},
+        env,
+      });
+    }
+
+    for (const userId of filteredDeclined) {
+      const userDoc = await usersCollection.doc(userId).get();
+      const userName = userDoc.data()?.nickname as string || "누군가";
+
+      await sendPushNotificationInternal({
+        userIds: [hostId],
+        type: NotificationType.AttendanceResponse,
+        title: "참여 불가",
+        body: `${userName}님이 "${title}" 약속에 참여하지 못해요`,
+        promiseId,
+        groupId: afterData.groupId as string,
+        relatedUserId: userId,
+        data: {status: "declined"},
+        env,
+      });
+    }
+  },
+);
+
+/**
+ * 그룹에 새 멤버 참여 시 기존 멤버들에게 알림
+ *
+ * @remarks
+ * groups/{groupId} 문서의 memberIds가 변경되면 트리거됩니다.
+ * - 새로 참여한 멤버가 있으면 기존 멤버들에게 알림
+ */
+export const onGroupMemberJoined = onDocumentUpdated(
+  {
+    document: "{env}/root/groups/{groupId}",
+    region: REGION,
+  },
+  async (event) => {
+    const beforeData = event.data?.before.data();
+    const afterData = event.data?.after.data();
+
+    if (!beforeData || !afterData) {
+      return;
+    }
+
+    const groupId = event.params.groupId;
+    const env = event.params.env as "stage" | "prod";
+
+    const beforeMembers = new Set(beforeData.memberIds as string[] || []);
+    const afterMembers = afterData.memberIds as string[] || [];
+
+    // 새로 참여한 멤버 찾기
+    const newMembers = afterMembers.filter((id) => !beforeMembers.has(id));
+
+    if (newMembers.length === 0) {
+      return; // 새 멤버 없음
+    }
+
+    const groupName = afterData.name as string || "그룹";
+    const db = admin.firestore();
+    const usersCollection = getEnvironmentCollection("users", db, env);
+
+    for (const newMemberId of newMembers) {
+      // 기존 멤버들에게 알림 (새 멤버 제외)
+      const recipientIds = afterMembers.filter((id) => id !== newMemberId);
+
+      if (recipientIds.length === 0) continue;
+
+      const newMemberDoc = await usersCollection.doc(newMemberId).get();
+      const newMemberName = newMemberDoc.data()?.nickname as string || "누군가";
+
+      await sendPushNotificationInternal({
+        userIds: recipientIds,
+        type: NotificationType.GroupUpdate,
+        title: `${groupName}`,
+        body: `${newMemberName}님이 그룹에 참여했어요`,
+        promiseId: null,
+        groupId,
+        relatedUserId: newMemberId,
+        data: null,
+        env,
+      });
+    }
   },
 );

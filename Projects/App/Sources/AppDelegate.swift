@@ -10,6 +10,7 @@ import UserNotifications
 
 import ExternalDependency
 import Clarity
+import PromisoShared
 
 class AppDelegate: NSObject, UIApplicationDelegate {
   func application(_ application: UIApplication,
@@ -124,11 +125,13 @@ extension AppDelegate: MessagingDelegate {
     guard let token = fcmToken else { return }
     print("✅ FCM Token: \(token)")
 
-    // Firestore에 토큰 저장
-    // TODO: NotificationClient 연동 후 활성화
-    // Task {
-    //   try? await notificationClient.saveFCMToken(token)
-    // }
+    // NotificationCenter를 통해 토큰 브로드캐스트
+    // AppFeature에서 수신하여 Firestore에 저장
+    NotificationCenter.default.post(
+      name: AppConstants.Notifications.fcmTokenDidReceive,
+      object: nil,
+      userInfo: ["token": token]
+    )
   }
 }
 

@@ -639,7 +639,7 @@ promises/{promiseId}.location
 
 ### 4. notifications (컬렉션)
 
-사용자별 알림 정보를 저장합니다.
+사용자별 알림 정보를 저장합니다. Firebase Functions에서 푸시 알림 전송 시 자동 생성됩니다.
 
 #### 📍 문서 경로
 
@@ -657,49 +657,49 @@ notifications/{notificationId}
 | 필드명 | 타입 | 필수 | 기본값 | 설명 |
 |--------|------|------|--------|------|
 | `userId` | String | ✅ | - | 수신자 ID |
-| `type` | String | ✅ | - | 알림 타입 |
-| `promiseId` | String | ❌ | null | 관련 약속 ID |
-| `groupId` | String | ❌ | null | 관련 그룹 ID |
+| `type` | String | ✅ | - | 알림 타입 (하단 참조) |
 | `title` | String | ✅ | - | 알림 제목 |
 | `body` | String | ✅ | - | 알림 내용 |
-| `imageUrl` | String | ❌ | null | 이미지 URL |
-| `actionUrl` | String | ❌ | null | 딥링크 URL |
-| `actionType` | String | ❌ | null | 액션 타입 |
+| `promiseId` | String | ❌ | null | 관련 약속 ID |
+| `groupId` | String | ❌ | null | 관련 그룹 ID |
+| `relatedUserId` | String | ❌ | null | 관련 사용자 ID (예: 약속 생성자) |
 | `isRead` | Boolean | ✅ | false | 읽음 여부 |
-| `readAt` | Timestamp | ❌ | null | 읽은 시각 |
+| `isDelivered` | Boolean | ✅ | false | FCM 전송 성공 여부 |
 | `createdAt` | Timestamp | ✅ | - | 생성 시각 |
-| `expiresAt` | Timestamp | ❌ | null | 만료 시각 (30일 후) |
+| `readAt` | Timestamp | ❌ | null | 읽은 시각 |
+| `deliveredAt` | Timestamp | ❌ | null | FCM 전송 시각 |
+| `data` | Map<String, String> | ❌ | null | 추가 데이터 |
 
-#### 📊 type 값 정의
+#### 📊 type 값 정의 (NotificationType)
 
 | 값 | 의미 | 설명 |
 |----|------|------|
+| `promise_invitation` | 약속 초대 | 새 약속에 초대됨 |
+| `promise_reminder` | 리마인더 | 약속 시작 전 알림 |
 | `promise_confirmed` | 약속 확정 | 약속이 확정됨 |
 | `promise_cancelled` | 약속 취소 | 약속이 취소됨 |
-| `promise_invited` | 약속 초대 | 새 약속에 초대됨 |
-| `promise_updated` | 약속 수정 | 약속 정보가 수정됨 |
-| `reminder` | 리마인더 | 약속 시작 전 알림 |
-| `response_changed` | 응답 변경 | 다른 멤버의 응답 변경 |
-| `group_invited` | 그룹 초대 | 새 그룹에 초대됨 |
-| `member_joined` | 멤버 가입 | 새 멤버가 그룹에 가입 |
+| `group_invitation` | 그룹 초대 | 새 그룹에 초대됨 |
+| `group_update` | 그룹 업데이트 | 그룹 정보 변경 (새 멤버 참여 등) |
+| `attendance_response` | 응답 변경 | 다른 멤버의 참석 응답 |
+| `system` | 시스템 | 시스템 알림 |
 
 #### 📝 예시 데이터
 
 ```json
 {
   "userId": "user_kim123",
-  "type": "promise_confirmed",
+  "type": "promise_invitation",
+  "title": "대학 친구들에 새 약속",
+  "body": "성원님이 \"영화 관람\" 약속을 만들었어요",
   "promiseId": "promise_movie_abc123",
   "groupId": "group_friends",
-  "title": "약속이 확정되었습니다",
-  "body": "영화 관람 약속이 3명 참석으로 확정되었습니다.",
-  "imageUrl": null,
-  "actionUrl": "/promises/promise_movie_abc123",
-  "actionType": "open_promise",
-  "isRead": true,
-  "readAt": "2024-01-14T18:05:00+09:00",
+  "relatedUserId": "user_sungwon",
+  "isRead": false,
+  "isDelivered": true,
   "createdAt": "2024-01-14T18:00:00+09:00",
-  "expiresAt": "2024-02-14T18:00:00+09:00"
+  "readAt": null,
+  "deliveredAt": "2024-01-14T18:00:01+09:00",
+  "data": null
 }
 ```
 

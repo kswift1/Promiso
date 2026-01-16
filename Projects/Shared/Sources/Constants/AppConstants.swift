@@ -108,6 +108,8 @@ public enum AppConstants {
     public static let groupDidLeave = NSNotification.Name("GroupDidLeave")
     public static let networkStatusDidChange = NSNotification.Name("NetworkStatusDidChange")
     public static let themeDidChange = NSNotification.Name("ThemeDidChange")
+    /// FCM 토큰 수신 시 발송 (userInfo: ["token": String])
+    public static let fcmTokenDidReceive = NSNotification.Name("FCMTokenDidReceive")
   }
   
   // MARK: - Analytics Events

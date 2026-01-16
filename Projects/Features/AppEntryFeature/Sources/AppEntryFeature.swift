@@ -23,6 +23,7 @@ extension AppEntry {
   public struct Feature {
     @Dependency(\.authClient) var authClient
     @Dependency(\.userProfileClient) var userProfileClient
+    @Dependency(\.notificationClient) var notificationClient
 
     public init() {}
     
@@ -67,6 +68,9 @@ extension AppEntry {
       case sessionCheckResponse(isAuthenticated: Bool)
       case startProfileCheck
       case profileCheckResponse(user: FirebaseUserSnapshot, profile: UserPrivateModel?)
+      case subscribeFCMToken
+      case fcmTokenReceived(String)
+      case fcmTokenSaved
     }
 
     // MARK: - Destination Reducer
@@ -86,7 +90,10 @@ extension AppEntry {
         case .view(let viewAction):
           switch viewAction {
           case .onAppear:
-            return .send(.internal(.startSessionCheck))
+            return .merge(
+              .send(.internal(.startSessionCheck)),
+              .send(.internal(.subscribeFCMToken))
+            )
 
           case .splashAnimationCompleted:
             state.splash = .hidden
@@ -156,8 +163,32 @@ extension AppEntry {
               }
             }
             return .none
+
+          case .subscribeFCMToken:
+            return .publisher {
+              NotificationCenter.default
+                .publisher(for: AppConstants.Notifications.fcmTokenDidReceive)
+                .compactMap { notification -> String? in
+                  notification.userInfo?["token"] as? String
+                }
+                .map { Action.internal(.fcmTokenReceived($0)) }
+            }
+
+          case .fcmTokenReceived(let token):
+            return .run { send in
+              // 로그인된 사용자만 토큰 저장
+              let isAuthenticated = await authClient.isAuthenticated()
+              guard isAuthenticated else { return }
+
+              try? await notificationClient.saveFCMToken(token)
+              await send(.internal(.fcmTokenSaved))
+            }
+
+          case .fcmTokenSaved:
+            print("✅ FCM Token saved to Firestore")
+            return .none
           }
-          
+
         case .destination(.presented(.auth(.delegate(.loggedIn)))):
           return .send(.internal(.startProfileCheck))
 
