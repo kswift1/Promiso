@@ -111,16 +111,7 @@ extension AppEntry {
               return .none
             }
             AppLogger.deeplink.debug("Parsed destination: \(String(describing: destination))")
-
-            // 메인 화면이 준비되어 있으면 바로 전달, 아니면 pending으로 저장
-            if case .main = state.destination {
-              AppLogger.deeplink.debug("Main screen ready, forwarding deeplink")
-              return routeDeeplink(destination)
-            } else {
-              AppLogger.deeplink.debug("Main not ready, saving as pending")
-              state.pendingDeeplink = destination
-              return .none
-            }
+            return routeOrPendDeeplink(destination, state: &state)
           }
 
         case .internal(let internalAction):
@@ -207,13 +198,7 @@ extension AppEntry {
             }
 
           case .pushNotificationTapped(let destination):
-            // 메인 화면이 준비되어 있으면 바로 전달, 아니면 pending으로 저장
-            if case .main = state.destination {
-              return routeDeeplink(destination)
-            } else {
-              state.pendingDeeplink = destination
-              return .none
-            }
+            return routeOrPendDeeplink(destination, state: &state)
           }
 
         case .destination(.presented(.auth(.delegate(.loggedIn)))):
@@ -352,6 +337,18 @@ extension AppEntry.Feature {
 
     case .joinGroup(let inviteCode):
       return .send(.destination(.presented(.main(.openJoinGroupWithCode(inviteCode)))))
+    }
+  }
+
+  /// 메인 화면이 준비되어 있으면 라우팅, 아니면 pending으로 저장
+  func routeOrPendDeeplink(_ destination: DeeplinkDestination, state: inout State) -> Effect<Action> {
+    if case .main = state.destination {
+      AppLogger.deeplink.debug("Main screen ready, routing deeplink")
+      return routeDeeplink(destination)
+    } else {
+      AppLogger.deeplink.debug("Main not ready, saving as pending")
+      state.pendingDeeplink = destination
+      return .none
     }
   }
 }
