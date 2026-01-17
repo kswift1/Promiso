@@ -57,10 +57,6 @@ public struct NotificationClient: Sendable {
   /// - Returns: 권한 부여 여부
   public var requestAuthorization: @Sendable () async throws -> Bool
 
-  /// 현재 FCM 토큰 조회
-  /// - Returns: FCM 토큰 (없으면 nil)
-  public var getCurrentFCMToken: @Sendable () async -> String? = { nil }
-
   /// 알림 설정 열기 (시스템 설정으로 이동)
   public var openNotificationSettings: @Sendable () async -> Void = { }
 }
@@ -73,7 +69,6 @@ extension NotificationClient: TestDependencyKey {
     deleteFCMToken: { },
     getAuthorizationStatus: { .authorized },
     requestAuthorization: { true },
-    getCurrentFCMToken: { "preview-fcm-token" },
     openNotificationSettings: { }
   )
 
@@ -82,7 +77,6 @@ extension NotificationClient: TestDependencyKey {
     deleteFCMToken: unimplemented("\(Self.self).deleteFCMToken"),
     getAuthorizationStatus: unimplemented("\(Self.self).getAuthorizationStatus", placeholder: .notDetermined),
     requestAuthorization: unimplemented("\(Self.self).requestAuthorization", placeholder: false),
-    getCurrentFCMToken: unimplemented("\(Self.self).getCurrentFCMToken", placeholder: nil),
     openNotificationSettings: unimplemented("\(Self.self).openNotificationSettings")
   )
 }
@@ -117,12 +111,6 @@ extension NotificationClient: DependencyKey {
       requestAuthorization: {
         let options: UNAuthorizationOptions = [.alert, .badge, .sound]
         return try await UNUserNotificationCenter.current().requestAuthorization(options: options)
-      },
-
-      getCurrentFCMToken: {
-        // Firebase Messaging의 현재 토큰 반환
-        // ExternalDependency에서 Messaging 접근 필요
-        return nil // TODO: Messaging.messaging().fcmToken
       },
 
       openNotificationSettings: {
