@@ -280,7 +280,7 @@ extension GroupMain {
             return .send(.joinGroup(.presented(.view(.nextTapped))))
 
           case .handleDeeplink(let deeplink):
-            print("🔗 [GroupMain] handleDeeplink: \(deeplink)")
+            AppLogger.deeplink.debug("[GroupMain] handleDeeplink: \(String(describing: deeplink))")
             // path 초기화 (기존 네비게이션 스택 제거)
             state.path.removeAll()
             state.pendingDeeplink = deeplink
@@ -293,12 +293,13 @@ extension GroupMain {
             }
 
             // 해당 그룹으로 이동
-            print("🔗 [GroupMain] allGroupSummaries: \(state.allGroupSummaries?.map { $0.id } ?? [])")
+            let summaryIds = state.allGroupSummaries?.map { $0.id } ?? []
+            AppLogger.deeplink.debug("[GroupMain] allGroupSummaries: \(summaryIds)")
             if let groupInfo = state.allGroupSummaries?.first(where: { $0.id == groupId }) {
-              print("🔗 [GroupMain] Group found, switching to: \(groupInfo.name)")
+              AppLogger.deeplink.debug("[GroupMain] Group found, switching to: \(groupInfo.name)")
               return .send(.view(.groupChanged(groupInfo)))
             } else {
-              print("🔗 [GroupMain] Group not found, fetching list...")
+              AppLogger.deeplink.warning("[GroupMain] Group not found, fetching list...")
               return .send(.internal(.fetchGroupList))
             }
           }
@@ -327,7 +328,7 @@ extension GroupMain {
               case .group(let gid): groupId = gid
               }
               if let groupInfo = groupSummaries.first(where: { $0.id == groupId }) {
-                print("🔗 [GroupMain] Deeplink group found after fetch: \(groupInfo.name)")
+                AppLogger.deeplink.debug("[GroupMain] Deeplink group found after fetch: \(groupInfo.name)")
                 return .send(.view(.groupChanged(groupInfo)))
               }
             }
@@ -391,29 +392,29 @@ extension GroupMain {
             if !state.promisesState.isLoaded {
               state.promisesState = .loading
             }
-            print("[GroupMain] 🔔 subscribeToPromises 시작: groupId=\(groupId)")
+            AppLogger.group.debug("[GroupMain] subscribeToPromises 시작: groupId=\(groupId)")
             return .run { [promiseClient] send in
-              print("[GroupMain] 🔔 리스너 연결 시작...")
+              AppLogger.group.debug("[GroupMain] 리스너 연결 시작...")
               for await promises in promiseClient.subscribeToPromises(groupId, 20) {
-                print("[GroupMain] 📥 promises 수신: \(promises.count)개")
+                AppLogger.group.debug("[GroupMain] promises 수신: \(promises.count)개")
                 await send(.internal(.promisesUpdated(promises)))
               }
-              print("[GroupMain] ⚠️ 리스너 스트림 종료됨")
+              AppLogger.group.warning("[GroupMain] 리스너 스트림 종료됨")
             }
             .cancellable(id: CancelID.promiseSubscription, cancelInFlight: true)
 
           case .cancelSubscription:
-            print("[GroupMain] ⏸️ 백그라운드 진입 - 구독 취소")
+            AppLogger.group.debug("[GroupMain] 백그라운드 진입 - 구독 취소")
             return .cancel(id: CancelID.promiseSubscription)
 
           case .promisesUpdated(let promises):
-            print("[GroupMain] ✅ promisesUpdated: \(promises.count)개 로드됨")
+            AppLogger.group.debug("[GroupMain] promisesUpdated: \(promises.count)개 로드됨")
             state.promisesState = .loaded(promises)
 
             // 딥링크로 열려는 약속이 있으면 상세 화면으로 이동
             if case .promise(let promiseId, _) = state.pendingDeeplink,
                let promise = promises.first(where: { $0.id == promiseId }) {
-              print("🔗 [GroupMain] Promise found, navigating to detail: \(promise.title)")
+              AppLogger.deeplink.debug("[GroupMain] Promise found, navigating to detail: \(promise.title)")
               state.pendingDeeplink = nil
               state.path.append(.promiseDetail(.init(
                 promise: promise,
