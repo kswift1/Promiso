@@ -23,24 +23,3 @@ public enum NotificationAuthorizationStatus: Equatable, Sendable {
   }
 }
 
-// MARK: - Device Info
-
-/// 디바이스 정보
-public struct DeviceInfo: Equatable, Sendable, Codable {
-  public let fcmToken: String
-  public let platform: String
-  public let lastActiveAt: Date
-  public let createdAt: Date
-
-  public init(
-    fcmToken: String,
-    platform: String = "ios",
-    lastActiveAt: Date = Date(),
-    createdAt: Date = Date()
-  ) {
-    self.fcmToken = fcmToken
-    self.platform = platform
-    self.lastActiveAt = lastActiveAt
-    self.createdAt = createdAt
-  }
-}

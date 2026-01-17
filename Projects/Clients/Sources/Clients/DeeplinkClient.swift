@@ -102,6 +102,7 @@ extension DeeplinkClient: DependencyKey {
   }()
 
   /// 푸시 알림 데이터에서 목적지 파싱 (내부 헬퍼)
+  /// - Note: joinGroup은 URL 딥링크 전용 (푸시 알림에서는 inviteCode 미전송)
   private static func parseNotificationData(_ data: PushNotificationData) -> DeeplinkDestination? {
     if let promiseId = data.promiseId, let groupId = data.groupId {
       return .promise(promiseId: promiseId, groupId: groupId)
