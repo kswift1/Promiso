@@ -84,6 +84,7 @@ public enum AppConstants {
     public static let themeMode = "settings.themeMode"
     public static let language = "settings.language"
     public static let lastSyncDate = "sync.lastDate"
+    public static let deviceId = "promiso.device.id"
   }
   
   // MARK: - Keychain Keys
