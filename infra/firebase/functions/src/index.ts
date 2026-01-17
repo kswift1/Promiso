@@ -2108,10 +2108,10 @@ export const onPromiseVotesUpdated = onDocumentUpdated(
     const beforeVotes = beforeData.votes || {accepted: [], declined: []};
     const afterVotes = afterData.votes || {accepted: [], declined: []};
 
-    const beforeAccepted = beforeVotes.accepted as string[] || [];
-    const afterAccepted = afterVotes.accepted as string[] || [];
-    const beforeDeclined = beforeVotes.declined as string[] || [];
-    const afterDeclined = afterVotes.declined as string[] || [];
+    const beforeAccepted = (beforeVotes.accepted as string[]) ?? [];
+    const afterAccepted = (afterVotes.accepted as string[]) ?? [];
+    const beforeDeclined = (beforeVotes.declined as string[]) ?? [];
+    const afterDeclined = (afterVotes.declined as string[]) ?? [];
 
     // 새로 declined한 사용자 찾기 (미성사 알림용)
     const newDeclined = afterDeclined
