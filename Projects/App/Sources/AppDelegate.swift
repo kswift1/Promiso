@@ -28,6 +28,11 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     return true
   }
 
+  func applicationDidBecomeActive(_ application: UIApplication) {
+    // 앱 활성화 시 뱃지 카운트 초기화
+    UNUserNotificationCenter.current().setBadgeCount(0)
+  }
+
   // MARK: - Remote Notifications Configuration
 
   private func configureRemoteNotifications(_ application: UIApplication) {
