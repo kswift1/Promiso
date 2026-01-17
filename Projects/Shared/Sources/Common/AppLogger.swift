@@ -24,6 +24,12 @@ public enum AppLogger {
   /// 네트워크 관련 로그
   public static let network = Logger(subsystem: subsystem, category: "Network")
 
+  /// 딥링크 관련 로그
+  public static let deeplink = Logger(subsystem: subsystem, category: "Deeplink")
+
+  /// 푸시 알림 관련 로그
+  public static let notification = Logger(subsystem: subsystem, category: "Notification")
+
   /// 일반 로그
   public static let general = Logger(subsystem: subsystem, category: "General")
 

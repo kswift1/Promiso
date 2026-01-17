@@ -60,6 +60,8 @@ tags:
     description: 그룹 관련 API
   - name: Promise
     description: 약속 관련 API
+  - name: Notification
+    description: 푸시 알림 관련 API
   - name: Test
     description: 테스트용 API
 
@@ -1092,6 +1094,118 @@ paths:
                       authenticated: false
                       uid: null
 
+  /sendPushNotification:
+    post:
+      tags:
+        - Notification
+      summary: 푸시 알림 전송
+      description: |
+        지정된 사용자들에게 푸시 알림을 전송합니다.
+
+        **인증 필수**: Firebase Authentication 토큰 필요
+
+        **내부 동작**:
+        - 각 사용자의 devices Map에서 FCM 토큰 조회
+        - FCM 멀티캐스트로 푸시 알림 전송
+        - notifications 컬렉션에 알림 기록 저장
+
+        > 💡 **참고**: 일반적으로 Firestore 트리거(onPromiseCreated 등)가 자동으로 푸시를 전송합니다.
+        > 이 API는 수동 알림 전송이 필요한 경우에 사용합니다.
+      operationId: sendPushNotification
+      security:
+        - firebaseAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - data
+              properties:
+                data:
+                  $ref: '#/components/schemas/SendPushNotificationRequest'
+            examples:
+              promiseInvitation:
+                summary: 약속 초대 알림
+                value:
+                  data:
+                    userIds: ["user123", "user456"]
+                    type: promise_invitation
+                    title: "대학 친구들에 새 약속"
+                    body: "성원님이 \"영화 관람\" 약속을 만들었어요"
+                    promiseId: "promise_abc123"
+                    groupId: "group_xyz"
+                    relatedUserId: "user_sungwon"
+                    env: stage
+              systemNotification:
+                summary: 시스템 알림
+                value:
+                  data:
+                    userIds: ["user123"]
+                    type: system
+                    title: "공지사항"
+                    body: "새로운 기능이 추가되었습니다!"
+                    env: stage
+
+      responses:
+        '200':
+          description: 푸시 알림 전송 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    $ref: '#/components/schemas/SendPushNotificationResponse'
+              examples:
+                success:
+                  value:
+                    result:
+                      success: true
+                      successCount: 2
+                      failureCount: 0
+                partialSuccess:
+                  value:
+                    result:
+                      success: true
+                      successCount: 1
+                      failureCount: 1
+
+        '400':
+          description: 잘못된 파라미터
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FunctionsError'
+              examples:
+                missingUserIds:
+                  value:
+                    error:
+                      code: invalid-argument
+                      message: 수신자 ID 배열은 필수입니다
+                missingFields:
+                  value:
+                    error:
+                      code: invalid-argument
+                      message: 알림 타입, 제목, 본문은 필수입니다
+
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+
+        '500':
+          description: 서버 오류
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FunctionsError'
+              examples:
+                internal:
+                  value:
+                    error:
+                      code: internal
+                      message: 푸시 알림 전송 중 오류가 발생했습니다
+
 components:
   securitySchemes:
     firebaseAuth:
@@ -2056,6 +2170,194 @@ components:
           nullable: true
           description: 사용자 UID (인증된 경우)
           example: abc123xyz
+
+    # ========================================
+    # Notification
+    # ========================================
+
+    NotificationType:
+      type: string
+      description: 알림 타입
+      enum:
+        - promise_invitation
+        - promise_reminder
+        - promise_confirmed
+        - promise_cancelled
+        - group_invitation
+        - group_update
+        - attendance_response
+        - system
+      example: promise_invitation
+
+    SendPushNotificationRequest:
+      type: object
+      required:
+        - userIds
+        - type
+        - title
+        - body
+      properties:
+        userIds:
+          type: array
+          items:
+            type: string
+          description: 수신자 ID 배열
+          example: ["user123", "user456"]
+
+        type:
+          $ref: '#/components/schemas/NotificationType'
+
+        title:
+          type: string
+          description: 알림 제목
+          example: "대학 친구들에 새 약속"
+
+        body:
+          type: string
+          description: 알림 본문
+          example: "성원님이 \"영화 관람\" 약속을 만들었어요"
+
+        promiseId:
+          type: string
+          nullable: true
+          description: 관련 약속 ID (선택적)
+          example: "promise_abc123"
+
+        groupId:
+          type: string
+          nullable: true
+          description: 관련 그룹 ID (선택적)
+          example: "group_xyz"
+
+        relatedUserId:
+          type: string
+          nullable: true
+          description: 관련 사용자 ID (선택적)
+          example: "user_sungwon"
+
+        data:
+          type: object
+          nullable: true
+          additionalProperties:
+            type: string
+          description: 추가 데이터 (선택적)
+          example: { "key": "value" }
+
+        env:
+          type: string
+          enum:
+            - stage
+            - prod
+          nullable: true
+          description: 환경 구분 (선택적)
+          example: stage
+
+    SendPushNotificationResponse:
+      type: object
+      required:
+        - success
+        - successCount
+        - failureCount
+      properties:
+        success:
+          type: boolean
+          description: 전송 성공 여부
+          example: true
+
+        successCount:
+          type: integer
+          description: 성공한 전송 수
+          example: 2
+
+        failureCount:
+          type: integer
+          description: 실패한 전송 수
+          example: 0
+
+    NotificationDocument:
+      type: object
+      description: |
+        Firestore notifications/{notificationId} 문서 구조
+
+        푸시 알림 전송 시 자동 생성됩니다.
+      required:
+        - userId
+        - type
+        - title
+        - body
+        - isRead
+        - isDelivered
+        - createdAt
+      properties:
+        userId:
+          type: string
+          description: 수신자 ID
+          example: user_kim123
+
+        type:
+          $ref: '#/components/schemas/NotificationType'
+
+        title:
+          type: string
+          description: 알림 제목
+          example: "대학 친구들에 새 약속"
+
+        body:
+          type: string
+          description: 알림 본문
+          example: "성원님이 \"영화 관람\" 약속을 만들었어요"
+
+        promiseId:
+          type: string
+          nullable: true
+          description: 관련 약속 ID
+          example: promise_abc123
+
+        groupId:
+          type: string
+          nullable: true
+          description: 관련 그룹 ID
+          example: group_xyz
+
+        relatedUserId:
+          type: string
+          nullable: true
+          description: 관련 사용자 ID
+          example: user_sungwon
+
+        isRead:
+          type: boolean
+          description: 읽음 여부
+          example: false
+
+        isDelivered:
+          type: boolean
+          description: FCM 전송 성공 여부
+          example: true
+
+        createdAt:
+          type: string
+          format: date-time
+          description: 생성 시각
+
+        readAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 읽은 시각
+
+        deliveredAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: FCM 전송 시각
+
+        data:
+          type: object
+          nullable: true
+          additionalProperties:
+            type: string
+          description: 추가 데이터
 
     # ========================================
     # Error

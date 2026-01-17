@@ -801,3 +801,142 @@ export interface DeleteGroupResponse {
   /** 성공 여부 */
   success: boolean;
 }
+
+// ============================================================================
+// Push Notification
+// ============================================================================
+
+/**
+ * 알림 타입
+ *
+ * @remarks
+ * iOS NotificationType과 동일하게 유지해야 함
+ */
+export enum NotificationType {
+  /** 약속 초대 */
+  PromiseInvitation = "promise_invitation",
+  /** 약속 리마인더 */
+  PromiseReminder = "promise_reminder",
+  /** 약속 확정 */
+  PromiseConfirmed = "promise_confirmed",
+  /** 약속 취소 */
+  PromiseCancelled = "promise_cancelled",
+  /** 그룹 초대 */
+  GroupInvitation = "group_invitation",
+  /** 그룹 업데이트 */
+  GroupUpdate = "group_update",
+  /** 참석 응답 */
+  AttendanceResponse = "attendance_response",
+  /** 시스템 알림 */
+  System = "system",
+}
+
+/**
+ * 푸시 알림 전송 요청
+ *
+ * @remarks
+ * - 내부 함수용 (클라이언트에서 직접 호출하지 않음)
+ */
+export interface SendPushNotificationRequest {
+  /** 수신자 userId 목록 */
+  userIds: string[];
+
+  /** 알림 타입 */
+  type: NotificationType;
+
+  /** 알림 제목 */
+  title: string;
+
+  /** 알림 본문 */
+  body: string;
+
+  /** 관련 약속 ID */
+  promiseId?: string | null;
+
+  /** 관련 그룹 ID */
+  groupId?: string | null;
+
+  /** 관련 사용자 ID (발신자 등) */
+  relatedUserId?: string | null;
+
+  /** 추가 데이터 */
+  data?: { [key: string]: string } | null;
+
+  /** 환경 구분 */
+  env?: "stage" | "prod" | null;
+}
+
+/**
+ * 푸시 알림 전송 응답
+ */
+export interface SendPushNotificationResponse {
+  /** 성공 여부 */
+  success: boolean;
+
+  /** 전송 성공 수 */
+  successCount: number;
+
+  /** 전송 실패 수 */
+  failureCount: number;
+}
+
+/**
+ * Firestore에 저장되는 알림 문서
+ */
+export interface NotificationDocument {
+  /** 수신자 userId */
+  userId: string;
+
+  /** 알림 타입 */
+  type: NotificationType;
+
+  /** 알림 제목 */
+  title: string;
+
+  /** 알림 본문 */
+  body: string;
+
+  /** 관련 약속 ID */
+  promiseId: string | null;
+
+  /** 관련 그룹 ID */
+  groupId: string | null;
+
+  /** 관련 사용자 ID */
+  relatedUserId: string | null;
+
+  /** 읽음 여부 */
+  isRead: boolean;
+
+  /** 전달 여부 */
+  isDelivered: boolean;
+
+  /** 생성 시각 */
+  createdAt: FirebaseFirestore.Timestamp;
+
+  /** 읽음 시각 */
+  readAt: FirebaseFirestore.Timestamp | null;
+
+  /** 전달 시각 */
+  deliveredAt: FirebaseFirestore.Timestamp | null;
+
+  /** 추가 데이터 */
+  data: { [key: string]: string } | null;
+}
+
+/**
+ * 디바이스 정보 (users/{userId} 문서의 devices Map 값)
+ */
+export interface DeviceInfo {
+  /** FCM 토큰 */
+  fcmToken: string;
+
+  /** 플랫폼 (ios | android) */
+  platform: string;
+
+  /** 마지막 활성 시각 */
+  lastActiveAt: FirebaseFirestore.Timestamp;
+
+  /** 토큰 등록 시각 */
+  createdAt: FirebaseFirestore.Timestamp;
+}

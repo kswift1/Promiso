@@ -11,6 +11,7 @@
 @_exported import FirebaseCrashlytics
 @_exported import FirebaseStorage
 @_exported import FirebaseFunctions
+@_exported import FirebaseMessaging
 @_exported import RenderMeThis
 @_exported import GoogleSignIn
 @_exported import GoogleSignInSwift

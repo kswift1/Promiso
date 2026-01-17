@@ -84,6 +84,7 @@ public enum AppConstants {
     public static let themeMode = "settings.themeMode"
     public static let language = "settings.language"
     public static let lastSyncDate = "sync.lastDate"
+    public static let deviceId = "promiso.device.id"
   }
   
   // MARK: - Keychain Keys
@@ -108,6 +109,10 @@ public enum AppConstants {
     public static let groupDidLeave = NSNotification.Name("GroupDidLeave")
     public static let networkStatusDidChange = NSNotification.Name("NetworkStatusDidChange")
     public static let themeDidChange = NSNotification.Name("ThemeDidChange")
+    /// FCM 토큰 수신 시 발송 (userInfo: ["token": String])
+    public static let fcmTokenDidReceive = NSNotification.Name("FCMTokenDidReceive")
+    /// 푸시 알림 탭 시 발송 (userInfo: ["type": String, "promiseId": String?, "groupId": String?])
+    public static let pushNotificationTapped = NSNotification.Name("PushNotificationTapped")
   }
   
   // MARK: - Analytics Events

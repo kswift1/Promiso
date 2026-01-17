@@ -3,11 +3,10 @@ import AuthFeature
 import Clients
 import ComposableArchitecture
 import Dependencies
+import PromisoShared
 import RootTabFeature
 import ResourceKit
 import SwiftUI
-
-import PromisoShared
 
 // MARK: - Feature Namespace
 
@@ -23,6 +22,8 @@ extension AppEntry {
   public struct Feature {
     @Dependency(\.authClient) var authClient
     @Dependency(\.userProfileClient) var userProfileClient
+    @Dependency(\.notificationClient) var notificationClient
+    @Dependency(\.deeplinkClient) var deeplinkClient
 
     public init() {}
     
@@ -40,13 +41,14 @@ extension AppEntry {
 
       @Presents public var destination: Destination.State?
 
-      /// 딥링크로 전달된 초대 코드 (앱이 준비된 후 처리)
-      var pendingInviteCode: String?
+      /// 앱이 준비되기 전 수신된 딥링크 (메인 화면 전환 후 처리)
+      var pendingDeeplink: DeeplinkDestination?
 
       public init() {
         self.destination = .auth(AuthFeature.Auth.Feature.State())
       }
     }
+
 
     // MARK: - Action
 
@@ -67,6 +69,11 @@ extension AppEntry {
       case sessionCheckResponse(isAuthenticated: Bool)
       case startProfileCheck
       case profileCheckResponse(user: FirebaseUserSnapshot, profile: UserPrivateModel?)
+      case subscribeFCMToken
+      case fcmTokenReceived(String)
+      case fcmTokenSaved
+      case subscribePushNotificationTap
+      case pushNotificationTapped(DeeplinkDestination)
     }
 
     // MARK: - Destination Reducer
@@ -86,29 +93,27 @@ extension AppEntry {
         case .view(let viewAction):
           switch viewAction {
           case .onAppear:
-            return .send(.internal(.startSessionCheck))
+            return .merge(
+              .send(.internal(.startSessionCheck)),
+              .send(.internal(.subscribeFCMToken)),
+              .send(.internal(.subscribePushNotificationTap))
+            )
 
           case .splashAnimationCompleted:
             state.splash = .hidden
             return .none
 
           case .handleDeeplink(let url):
-            // promiso://join/{inviteCode} 형식 파싱
-            guard url.scheme == "promiso",
-                  url.host == "join",
-                  let inviteCode = url.pathComponents.dropFirst().first else {
+            // DeeplinkClient를 사용하여 URL 파싱
+            AppLogger.deeplink.debug("URL received: \(url.absoluteString)")
+            guard let destination = deeplinkClient.parseURL(url) else {
+              AppLogger.deeplink.warning("Failed to parse URL: \(url.absoluteString)")
               return .none
             }
-
-            // 메인 화면이 준비되어 있으면 바로 전달, 아니면 pending으로 저장
-            if case .main = state.destination {
-              return .send(.destination(.presented(.main(.openJoinGroupWithCode(inviteCode)))))
-            } else {
-              state.pendingInviteCode = inviteCode
-              return .none
-            }
+            AppLogger.deeplink.debug("Parsed destination: \(String(describing: destination))")
+            return routeOrPendDeeplink(destination, state: &state)
           }
-          
+
         case .internal(let internalAction):
           switch internalAction {
             
@@ -142,10 +147,10 @@ extension AppEntry {
               if state.splash == .visible {
                 state.splash = .animatingOut
               }
-              // pending invite code가 있으면 메인 화면에 전달
-              if let inviteCode = state.pendingInviteCode {
-                state.pendingInviteCode = nil
-                return .send(.destination(.presented(.main(.openJoinGroupWithCode(inviteCode)))))
+              // pending deeplink가 있으면 메인 화면에 전달
+              if let deeplink = state.pendingDeeplink {
+                state.pendingDeeplink = nil
+                return routeDeeplink(deeplink)
               }
             } else {
               var profileState = ProfileSetup.State()
@@ -156,8 +161,46 @@ extension AppEntry {
               }
             }
             return .none
+
+          case .subscribeFCMToken:
+            return .publisher {
+              NotificationCenter.default
+                .publisher(for: AppConstants.Notifications.fcmTokenDidReceive)
+                .compactMap { notification -> String? in
+                  notification.userInfo?["token"] as? String
+                }
+                .map { Action.internal(.fcmTokenReceived($0)) }
+            }
+
+          case .fcmTokenReceived(let token):
+            return .run { [notificationClient] send in
+              // 로그인된 사용자만 토큰 저장
+              let isAuthenticated = await authClient.isAuthenticated()
+              guard isAuthenticated else { return }
+
+              do {
+                try await notificationClient.saveFCMToken(token)
+                await send(.internal(.fcmTokenSaved))
+              } catch {
+                AppLogger.notification.error("FCM 토큰 저장 실패: \(error.localizedDescription)")
+              }
+            }
+
+          case .fcmTokenSaved:
+            AppLogger.notification.debug("FCM Token saved to Firestore")
+            return .none
+
+          case .subscribePushNotificationTap:
+            return .run { send in
+              for await destination in deeplinkClient.pushNotificationTapStream() {
+                await send(.internal(.pushNotificationTapped(destination)))
+              }
+            }
+
+          case .pushNotificationTapped(let destination):
+            return routeOrPendDeeplink(destination, state: &state)
           }
-          
+
         case .destination(.presented(.auth(.delegate(.loggedIn)))):
           return .send(.internal(.startProfileCheck))
 
@@ -277,3 +320,36 @@ extension AppEntry.ProfileSetup.State {
     self.providerType = user.providerId?.providerTypeIdentifier
   }
 }
+
+// MARK: - Deeplink Routing
+
+extension AppEntry.Feature {
+  /// DeeplinkDestination을 RootTab으로 라우팅하는 Effect 생성
+  private func routeDeeplink(_ destination: DeeplinkDestination) -> Effect<Action> {
+    switch destination {
+    case .promise(let promiseId, let groupId):
+      let groupDeeplink = GroupMain.Deeplink.promise(promiseId: promiseId, groupId: groupId)
+      return .send(.destination(.presented(.main(.handleGroupDeeplink(groupDeeplink)))))
+
+    case .group(let groupId):
+      let groupDeeplink = GroupMain.Deeplink.group(groupId: groupId)
+      return .send(.destination(.presented(.main(.handleGroupDeeplink(groupDeeplink)))))
+
+    case .joinGroup(let inviteCode):
+      return .send(.destination(.presented(.main(.openJoinGroupWithCode(inviteCode)))))
+    }
+  }
+
+  /// 메인 화면이 준비되어 있으면 라우팅, 아니면 pending으로 저장
+  private func routeOrPendDeeplink(_ destination: DeeplinkDestination, state: inout State) -> Effect<Action> {
+    if case .main = state.destination {
+      AppLogger.deeplink.debug("Main screen ready, routing deeplink")
+      return routeDeeplink(destination)
+    } else {
+      AppLogger.deeplink.debug("Main not ready, saving as pending")
+      state.pendingDeeplink = destination
+      return .none
+    }
+  }
+}
+ 

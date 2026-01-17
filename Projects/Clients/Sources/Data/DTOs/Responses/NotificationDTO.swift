@@ -67,6 +67,28 @@ public enum NotificationType: String, Codable, CaseIterable {
   case groupUpdate = "group_update"
   case attendanceResponse = "attendance_response"
   case system = "system"
+
+  /// 딥링크 처리에 필요한 필드 가이드
+  public enum DeeplinkGuide {
+    /// promiseId + groupId 필요 → 약속 상세로 이동
+    case promiseAndGroup
+    /// groupId만 필요 → 그룹 상세로 이동
+    case groupOnly
+    /// 딥링크 불필요 (앱만 열림)
+    case none
+  }
+
+  /// 이 알림 타입의 딥링크 처리 가이드
+  public var deeplinkGuide: DeeplinkGuide {
+    switch self {
+    case .promiseInvitation, .promiseReminder, .promiseConfirmed, .promiseCancelled, .attendanceResponse:
+      return .promiseAndGroup
+    case .groupInvitation, .groupUpdate:
+      return .groupOnly
+    case .system:
+      return .none
+    }
+  }
 }
 
 // MARK: - CodingKeys
