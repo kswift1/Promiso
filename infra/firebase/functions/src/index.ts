@@ -1943,6 +1943,7 @@ async function sendPushNotificationInternal(params: {
 
   let successCount = 0;
   let failureCount = 0;
+  const deliveredTokens = new Set<string>();
 
   try {
     const response = await admin.messaging().sendEachForMulticast(message);
@@ -1951,9 +1952,11 @@ async function sendPushNotificationInternal(params: {
 
     console.log(`📤 FCM sent: ${successCount} success, ${failureCount} failed`);
 
-    // 실패한 토큰 로깅
+    // 성공/실패 토큰 추적
     response.responses.forEach((resp, idx) => {
-      if (!resp.success) {
+      if (resp.success) {
+        deliveredTokens.add(allTokens[idx]);
+      } else {
         console.error(`Token ${allTokens[idx]} failed:`, resp.error);
       }
     });
@@ -1962,11 +1965,19 @@ async function sendPushNotificationInternal(params: {
     failureCount = allTokens.length;
   }
 
+  // 유저별 전송 성공 여부 계산
+  const userDeliveryStatus = new Map<string, boolean>();
+  for (const [userId, tokens] of userTokenMap) {
+    const delivered = tokens.some((token) => deliveredTokens.has(token));
+    userDeliveryStatus.set(userId, delivered);
+  }
+
   // 4. notifications 컬렉션에 알림 기록 저장
   const now = FieldValue.serverTimestamp();
   const batch = db.batch();
 
   for (const userId of userIds) {
+    const isDelivered = userDeliveryStatus.get(userId) ?? false;
     const notificationDoc: Omit<NotificationDocument, "createdAt" |
       "readAt" | "deliveredAt"> & {
       createdAt: FirebaseFirestore.FieldValue;
@@ -1981,10 +1992,10 @@ async function sendPushNotificationInternal(params: {
       groupId,
       relatedUserId,
       isRead: false,
-      isDelivered: userTokenMap.has(userId),
+      isDelivered,
       createdAt: now,
       readAt: null,
-      deliveredAt: userTokenMap.has(userId) ? now : null,
+      deliveredAt: isDelivered ? now : null,
       data: data,
     };
 
