@@ -8,6 +8,7 @@
 import UIKit
 import UserNotifications
 
+import Clients
 import ExternalDependency
 import Clarity
 import PromisoShared
@@ -39,14 +40,15 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     // 알림 권한 요청
     let authOptions: UNAuthorizationOptions = [.alert, .badge, .sound]
     UNUserNotificationCenter.current().requestAuthorization(options: authOptions) { granted, error in
-      print("📱 Notification authorization granted: \(granted)")
+      if let error {
+        AppLogger.notification.error("Notification authorization error: \(error.localizedDescription)")
+        return
+      }
+      AppLogger.notification.debug("Notification authorization granted: \(granted)")
       if granted {
         DispatchQueue.main.async {
           application.registerForRemoteNotifications()
         }
-      }
-      if let error = error {
-        print("❌ Notification authorization error: \(error)")
       }
     }
   }
@@ -58,12 +60,12 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     // FCM에 APNs 토큰 설정
     Messaging.messaging().apnsToken = deviceToken
     let tokenString = deviceToken.map { String(format: "%02.2hhx", $0) }.joined()
-    print("✅ APNs Token registered: \(tokenString)")
+    AppLogger.notification.debug("APNs Token registered: \(tokenString)")
   }
 
   func application(_ application: UIApplication,
                    didFailToRegisterForRemoteNotificationsWithError error: Error) {
-    print("❌ Failed to register for remote notifications: \(error)")
+    AppLogger.notification.error("Failed to register for remote notifications: \(error.localizedDescription)")
   }
 
   // MARK: - Microsoft Clarity SDK
@@ -145,7 +147,7 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
     withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
   ) {
     let userInfo = notification.request.content.userInfo
-    print("📩 Received notification in foreground: \(userInfo)")
+    AppLogger.notification.debug("Received notification in foreground: \(userInfo)")
 
     // Foreground에서도 배너, 사운드, 뱃지 표시
     completionHandler([.banner, .sound, .badge])
@@ -158,39 +160,27 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
     withCompletionHandler completionHandler: @escaping () -> Void
   ) {
     let userInfo = response.notification.request.content.userInfo
-    print("👆 Notification tapped: \(userInfo)")
-
     handleNotificationTap(userInfo)
     completionHandler()
   }
 
   private func handleNotificationTap(_ userInfo: [AnyHashable: Any]) {
-    // 알림 데이터 추출
-    let notificationType = userInfo["type"] as? String
-    let promiseId = userInfo["promiseId"] as? String
-    let groupId = userInfo["groupId"] as? String
-
-    print("📍 Notification tap - type: \(notificationType ?? "nil"), promiseId: \(promiseId ?? "nil"), groupId: \(groupId ?? "nil")")
-
-    // NotificationCenter를 통해 AppEntryFeature로 전달
-    var notificationInfo: [String: Any] = [:]
-    if let type = notificationType {
-      notificationInfo["type"] = type
-    }
-    if let promiseId = promiseId {
-      notificationInfo["promiseId"] = promiseId
-    }
-    if let groupId = groupId {
-      notificationInfo["groupId"] = groupId
-    }
+    let data = PushNotificationData(userInfo: userInfo)
+    AppLogger.notification.debug("Notification tap - type: \(data.type ?? "nil"), promiseId: \(data.promiseId ?? "nil"), groupId: \(data.groupId ?? "nil")")
 
     // promiseId 또는 groupId가 있을 때만 전달
-    guard promiseId != nil || groupId != nil else { return }
+    guard data.promiseId != nil || data.groupId != nil else { return }
+
+    let notificationInfo: [String: Any?] = [
+      "type": data.type,
+      "promiseId": data.promiseId,
+      "groupId": data.groupId
+    ]
 
     NotificationCenter.default.post(
       name: AppConstants.Notifications.pushNotificationTapped,
       object: nil,
-      userInfo: notificationInfo
+      userInfo: notificationInfo.compactMapValues { $0 }
     )
   }
 }
