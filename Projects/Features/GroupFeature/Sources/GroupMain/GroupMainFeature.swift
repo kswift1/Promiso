@@ -417,6 +417,7 @@ extension GroupMain {
                let promise = promises.first(where: { $0.id == promiseId }) {
               AppLogger.deeplink.debug("[GroupMain] Promise found, navigating to detail: \(promise.title)")
               state.pendingDeeplink = nil
+              // TODO: currentGroupMembers가 nil일 수 있음 - PromiseDetail에서 nil 처리 필요
               state.path.append(.promiseDetail(.init(
                 promise: promise,
                 currentUserId: state.currentUser.userId,
