@@ -7,6 +7,8 @@ import UIKit
 
 /// Firebase Firestore를 통한 알림 관련 데이터 관리
 public final class NotificationRemoteDataSource: @unchecked Sendable {
+  private static let deviceIdKey = "promiso.device.id"
+
   private let db: Firestore
 
   /// 현재 Firestore 환경
@@ -16,11 +18,11 @@ public final class NotificationRemoteDataSource: @unchecked Sendable {
 
   /// 현재 디바이스 ID (앱 설치 시 생성되는 고유 ID)
   private var deviceId: String {
-    if let existingId = UserDefaults.standard.string(forKey: "promiso.device.id") {
+    if let existingId = UserDefaults.standard.string(forKey: Self.deviceIdKey) {
       return existingId
     }
     let newId = UUID().uuidString
-    UserDefaults.standard.set(newId, forKey: "promiso.device.id")
+    UserDefaults.standard.set(newId, forKey: Self.deviceIdKey)
     return newId
   }
 
