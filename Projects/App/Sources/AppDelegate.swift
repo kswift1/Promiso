@@ -165,15 +165,32 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
   }
 
   private func handleNotificationTap(_ userInfo: [AnyHashable: Any]) {
-    // Deep link 처리 로직
-    // promiseId, groupId 등 추출하여 네비게이션
-    if let promiseId = userInfo["promiseId"] as? String {
-      print("📍 Navigate to promise: \(promiseId)")
-      // TODO: Deep link 처리
+    // 알림 데이터 추출
+    let notificationType = userInfo["type"] as? String
+    let promiseId = userInfo["promiseId"] as? String
+    let groupId = userInfo["groupId"] as? String
+
+    print("📍 Notification tap - type: \(notificationType ?? "nil"), promiseId: \(promiseId ?? "nil"), groupId: \(groupId ?? "nil")")
+
+    // NotificationCenter를 통해 AppEntryFeature로 전달
+    var notificationInfo: [String: Any] = [:]
+    if let type = notificationType {
+      notificationInfo["type"] = type
     }
-    if let groupId = userInfo["groupId"] as? String {
-      print("📍 Navigate to group: \(groupId)")
-      // TODO: Deep link 처리
+    if let promiseId = promiseId {
+      notificationInfo["promiseId"] = promiseId
     }
+    if let groupId = groupId {
+      notificationInfo["groupId"] = groupId
+    }
+
+    // promiseId 또는 groupId가 있을 때만 전달
+    guard promiseId != nil || groupId != nil else { return }
+
+    NotificationCenter.default.post(
+      name: AppConstants.Notifications.pushNotificationTapped,
+      object: nil,
+      userInfo: notificationInfo
+    )
   }
 }

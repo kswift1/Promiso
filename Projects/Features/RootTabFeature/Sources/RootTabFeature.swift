@@ -85,6 +85,8 @@ extension RootTab {
       case delegate(Delegate)
       /// 딥링크로 그룹 참여 열기
       case openJoinGroupWithCode(String)
+      /// 그룹 탭 딥링크 처리
+      case handleGroupDeeplink(GroupMain.Deeplink)
     }
 
     public enum Delegate: Equatable {
@@ -145,6 +147,10 @@ extension RootTab {
         case .openJoinGroupWithCode(let inviteCode):
           state.selectedTab = .group
           return .send(.groupMain(.view(.joinGroupWithCode(inviteCode))))
+
+        case .handleGroupDeeplink(let deeplink):
+          state.selectedTab = .group
+          return .send(.groupMain(.view(.handleDeeplink(deeplink))))
 
         case .delegate:
           return .none

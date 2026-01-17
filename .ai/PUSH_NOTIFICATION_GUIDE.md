@@ -192,13 +192,13 @@ Promiso 앱의 푸시 알림 메시지 규격을 정의합니다.
 
 | 타입 | Functions | iOS 딥링크 |
 |------|-----------|-----------|
-| `promise_invitation` | ✅ | ❌ |
-| `promise_reminder` | ❌ | ❌ |
-| `promise_confirmed` | ✅ | ❌ |
-| `promise_cancelled` | ✅ | ❌ |
-| `group_invitation` | ❌ | ❌ |
-| `group_update` | ✅ | ❌ |
-| `attendance_response` | ❌ (추후) | ❌ |
+| `promise_invitation` | ✅ | ✅ |
+| `promise_reminder` | ❌ | ✅ |
+| `promise_confirmed` | ✅ | ✅ |
+| `promise_cancelled` | ✅ | ✅ |
+| `group_invitation` | ❌ | ✅ |
+| `group_update` | ✅ | ✅ |
+| `attendance_response` | ❌ (추후) | ✅ |
 | `system` | ❌ | ❌ |
 
 ---

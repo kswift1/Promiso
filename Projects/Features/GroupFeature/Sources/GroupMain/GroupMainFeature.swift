@@ -4,6 +4,18 @@ import SwiftUI
 
 public enum GroupMain {}
 
+// MARK: - Deeplink
+
+extension GroupMain {
+  /// 그룹 탭에서 처리할 딥링크 목적지
+  public enum Deeplink: Equatable, Sendable {
+    /// 그룹 상세 화면
+    case group(groupId: String)
+    /// 약속 상세 화면
+    case promise(promiseId: String, groupId: String)
+  }
+}
+
 extension GroupMain {
   private enum CancelID: Hashable {
     case respond(String)
@@ -49,6 +61,9 @@ extension GroupMain {
 
       /// 삭제 대상 약속 ID (알럿 확인 시 사용)
       var promiseToDelete: String?
+
+      /// 딥링크로 열려는 목적지 (그룹/약속 로드 후 처리)
+      var pendingDeeplink: GroupMain.Deeplink?
 
       public init(currentUser: UserPrivateModel) {
         self.currentUser = currentUser
@@ -99,6 +114,7 @@ extension GroupMain {
         case createGroup
         case joinGroup
         case joinGroupWithCode(String) // 딥링크로 초대 코드와 함께 열기
+        case handleDeeplink(GroupMain.Deeplink) // 딥링크 처리
       }
 
       public enum Internal: Sendable {
@@ -263,6 +279,28 @@ extension GroupMain {
             state.joinGroup = joinState
             return .send(.joinGroup(.presented(.view(.nextTapped))))
 
+          case .handleDeeplink(let deeplink):
+            print("🔗 [GroupMain] handleDeeplink: \(deeplink)")
+            // path 초기화 (기존 네비게이션 스택 제거)
+            state.path.removeAll()
+            state.pendingDeeplink = deeplink
+
+            // groupId 추출
+            let groupId: String
+            switch deeplink {
+            case .group(let gid): groupId = gid
+            case .promise(_, let gid): groupId = gid
+            }
+
+            // 해당 그룹으로 이동
+            print("🔗 [GroupMain] allGroupSummaries: \(state.allGroupSummaries?.map { $0.id } ?? [])")
+            if let groupInfo = state.allGroupSummaries?.first(where: { $0.id == groupId }) {
+              print("🔗 [GroupMain] Group found, switching to: \(groupInfo.name)")
+              return .send(.view(.groupChanged(groupInfo)))
+            } else {
+              print("🔗 [GroupMain] Group not found, fetching list...")
+              return .send(.internal(.fetchGroupList))
+            }
           }
 
         // MARK: - Internal Actions
@@ -280,6 +318,20 @@ extension GroupMain {
 
           case .groupListResponse(.success(let groupSummaries)):
             state.allGroupSummaries = groupSummaries
+
+            // 딥링크로 열려는 그룹이 있으면 해당 그룹으로 이동
+            if let deeplink = state.pendingDeeplink {
+              let groupId: String
+              switch deeplink {
+              case .promise(_, let gid): groupId = gid
+              case .group(let gid): groupId = gid
+              }
+              if let groupInfo = groupSummaries.first(where: { $0.id == groupId }) {
+                print("🔗 [GroupMain] Deeplink group found after fetch: \(groupInfo.name)")
+                return .send(.view(.groupChanged(groupInfo)))
+              }
+            }
+
             if let currentGroupId = state.currentGroup?.id,
                groupSummaries.contains(where: { $0.id == currentGroupId }) {
               return .send(.internal(.fetchCurrentGroup(id: currentGroupId)))
@@ -357,6 +409,21 @@ extension GroupMain {
           case .promisesUpdated(let promises):
             print("[GroupMain] ✅ promisesUpdated: \(promises.count)개 로드됨")
             state.promisesState = .loaded(promises)
+
+            // 딥링크로 열려는 약속이 있으면 상세 화면으로 이동
+            if case .promise(let promiseId, _) = state.pendingDeeplink,
+               let promise = promises.first(where: { $0.id == promiseId }) {
+              print("🔗 [GroupMain] Promise found, navigating to detail: \(promise.title)")
+              state.pendingDeeplink = nil
+              state.path.append(.promiseDetail(.init(
+                promise: promise,
+                currentUserId: state.currentUser.userId,
+                groupMembers: state.currentGroupMembers
+              )))
+            } else if state.pendingDeeplink != nil {
+              // 그룹만 열려는 경우 (promise 없음) - pending 클리어
+              state.pendingDeeplink = nil
+            }
             return .none
 
           case .proposalRespondDone(let id, _):

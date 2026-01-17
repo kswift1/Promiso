@@ -110,6 +110,8 @@ public enum AppConstants {
     public static let themeDidChange = NSNotification.Name("ThemeDidChange")
     /// FCM 토큰 수신 시 발송 (userInfo: ["token": String])
     public static let fcmTokenDidReceive = NSNotification.Name("FCMTokenDidReceive")
+    /// 푸시 알림 탭 시 발송 (userInfo: ["type": String, "promiseId": String?, "groupId": String?])
+    public static let pushNotificationTapped = NSNotification.Name("PushNotificationTapped")
   }
   
   // MARK: - Analytics Events
