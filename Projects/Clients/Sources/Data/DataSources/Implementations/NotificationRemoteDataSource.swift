@@ -47,11 +47,9 @@ public final class NotificationRemoteDataSource: @unchecked Sendable {
       "createdAt": FieldValue.serverTimestamp()
     ]
 
-    // devices 필드에 deviceId를 키로 저장 (Map 방식)
+    // devices 필드에 deviceId를 키로 저장 (특정 경로만 업데이트하여 다른 디바이스 보존)
     try await userRef.setData([
-      "devices": [
-        deviceId: deviceData
-      ]
+      "devices.\(deviceId)": deviceData
     ], merge: true)
 
     AppLogger.notification.debug("FCM Token saved for user: \(userId), device: \(self.deviceId)")
