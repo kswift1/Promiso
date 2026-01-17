@@ -41,7 +41,7 @@ public final class NotificationRemoteDataSource: @unchecked Sendable {
 
     let deviceData: [String: Any] = [
       "fcmToken": token,
-      "platform": "ios",
+      "platform": UIDevice.current.systemName.lowercased(),
       "lastActiveAt": FieldValue.serverTimestamp(),
       "createdAt": FieldValue.serverTimestamp()
     ]
