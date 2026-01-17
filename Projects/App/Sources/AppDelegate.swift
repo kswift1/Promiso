@@ -11,6 +11,7 @@ import UserNotifications
 import ExternalDependency
 import Clarity
 import PromisoShared
+import SharedFeature
 
 class AppDelegate: NSObject, UIApplicationDelegate {
   func application(_ application: UIApplication,
@@ -123,7 +124,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 extension AppDelegate: MessagingDelegate {
   func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
     guard let token = fcmToken else { return }
-    print("✅ FCM Token: \(token)")
+    AppLogger.notification.debug("FCM Token received: \(token)")
 
     // NotificationCenter를 통해 토큰 브로드캐스트
     // AppFeature에서 수신하여 Firestore에 저장

@@ -5,6 +5,7 @@ import ComposableArchitecture
 import Dependencies
 import RootTabFeature
 import ResourceKit
+import SharedFeature
 import SwiftUI
 
 import PromisoShared
@@ -106,19 +107,19 @@ extension AppEntry {
 
           case .handleDeeplink(let url):
             // DeeplinkClient를 사용하여 URL 파싱
-            print("🔗 [Deeplink] URL received: \(url)")
+            AppLogger.deeplink.debug("URL received: \(url.absoluteString)")
             guard let destination = deeplinkClient.parseURL(url) else {
-              print("🔗 [Deeplink] Failed to parse URL")
+              AppLogger.deeplink.warning("Failed to parse URL: \(url.absoluteString)")
               return .none
             }
-            print("🔗 [Deeplink] Parsed destination: \(destination)")
+            AppLogger.deeplink.debug("Parsed destination: \(String(describing: destination))")
 
             // 메인 화면이 준비되어 있으면 바로 전달, 아니면 pending으로 저장
             if case .main = state.destination {
-              print("🔗 [Deeplink] Main screen ready, forwarding...")
+              AppLogger.deeplink.debug("Main screen ready, forwarding deeplink")
               return routeDeeplink(destination)
             } else {
-              print("🔗 [Deeplink] Main not ready, saving as pending")
+              AppLogger.deeplink.debug("Main not ready, saving as pending")
               state.pendingDeeplink = destination
               return .none
             }
@@ -193,7 +194,7 @@ extension AppEntry {
             }
 
           case .fcmTokenSaved:
-            print("✅ FCM Token saved to Firestore")
+            AppLogger.notification.debug("FCM Token saved to Firestore")
             return .none
 
           case .subscribePushNotificationTap:
