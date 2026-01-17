@@ -116,20 +116,7 @@ extension AppEntry {
             // 메인 화면이 준비되어 있으면 바로 전달, 아니면 pending으로 저장
             if case .main = state.destination {
               print("🔗 [Deeplink] Main screen ready, forwarding...")
-              switch destination {
-              case .promise(let promiseId, let groupId):
-                print("🔗 [Deeplink] Sending to RootTab: promise=\(promiseId), group=\(groupId)")
-                let groupDeeplink = GroupMain.Deeplink.promise(
-                  promiseId: promiseId,
-                  groupId: groupId
-                )
-                return .send(.destination(.presented(.main(.handleGroupDeeplink(groupDeeplink)))))
-              case .group(let groupId):
-                let groupDeeplink = GroupMain.Deeplink.group(groupId: groupId)
-                return .send(.destination(.presented(.main(.handleGroupDeeplink(groupDeeplink)))))
-              case .joinGroup(let inviteCode):
-                return .send(.destination(.presented(.main(.openJoinGroupWithCode(inviteCode)))))
-              }
+              return routeDeeplink(destination)
             } else {
               print("🔗 [Deeplink] Main not ready, saving as pending")
               state.pendingDeeplink = destination
@@ -173,19 +160,7 @@ extension AppEntry {
               // pending deeplink가 있으면 메인 화면에 전달
               if let deeplink = state.pendingDeeplink {
                 state.pendingDeeplink = nil
-                switch deeplink {
-                case .promise(let promiseId, let groupId):
-                  let groupDeeplink = GroupMain.Deeplink.promise(
-                    promiseId: promiseId,
-                    groupId: groupId
-                  )
-                  return .send(.destination(.presented(.main(.handleGroupDeeplink(groupDeeplink)))))
-                case .group(let groupId):
-                  let groupDeeplink = GroupMain.Deeplink.group(groupId: groupId)
-                  return .send(.destination(.presented(.main(.handleGroupDeeplink(groupDeeplink)))))
-                case .joinGroup(let inviteCode):
-                  return .send(.destination(.presented(.main(.openJoinGroupWithCode(inviteCode)))))
-                }
+                return routeDeeplink(deeplink)
               }
             } else {
               var profileState = ProfileSetup.State()
@@ -231,19 +206,7 @@ extension AppEntry {
           case .pushNotificationTapped(let destination):
             // 메인 화면이 준비되어 있으면 바로 전달, 아니면 pending으로 저장
             if case .main = state.destination {
-              switch destination {
-              case .promise(let promiseId, let groupId):
-                let groupDeeplink = GroupMain.Deeplink.promise(
-                  promiseId: promiseId,
-                  groupId: groupId
-                )
-                return .send(.destination(.presented(.main(.handleGroupDeeplink(groupDeeplink)))))
-              case .group(let groupId):
-                let groupDeeplink = GroupMain.Deeplink.group(groupId: groupId)
-                return .send(.destination(.presented(.main(.handleGroupDeeplink(groupDeeplink)))))
-              case .joinGroup(let inviteCode):
-                return .send(.destination(.presented(.main(.openJoinGroupWithCode(inviteCode)))))
-              }
+              return routeDeeplink(destination)
             } else {
               state.pendingDeeplink = destination
               return .none
@@ -369,3 +332,24 @@ extension AppEntry.ProfileSetup.State {
     self.providerType = user.providerId?.providerTypeIdentifier
   }
 }
+
+// MARK: - Deeplink Routing
+
+extension AppEntry.Feature {
+  /// DeeplinkDestination을 RootTab으로 라우팅하는 Effect 생성
+  func routeDeeplink(_ destination: DeeplinkDestination) -> Effect<Action> {
+    switch destination {
+    case .promise(let promiseId, let groupId):
+      let groupDeeplink = GroupMain.Deeplink.promise(promiseId: promiseId, groupId: groupId)
+      return .send(.destination(.presented(.main(.handleGroupDeeplink(groupDeeplink)))))
+
+    case .group(let groupId):
+      let groupDeeplink = GroupMain.Deeplink.group(groupId: groupId)
+      return .send(.destination(.presented(.main(.handleGroupDeeplink(groupDeeplink)))))
+
+    case .joinGroup(let inviteCode):
+      return .send(.destination(.presented(.main(.openJoinGroupWithCode(inviteCode)))))
+    }
+  }
+}
+ 

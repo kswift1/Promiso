@@ -92,28 +92,7 @@ extension DeeplinkClient: DependencyKey {
       },
 
       parseURL: { url in
-        // promiso://join/{inviteCode}
-        guard url.scheme == "promiso" else { return nil }
-
-        switch url.host {
-        case "join":
-          guard let inviteCode = url.pathComponents.dropFirst().first else { return nil }
-          return .joinGroup(inviteCode: inviteCode)
-
-        case "group":
-          guard let groupId = url.pathComponents.dropFirst().first else { return nil }
-          return .group(groupId: groupId)
-
-        case "promise":
-          let components = Array(url.pathComponents.dropFirst())
-          guard components.count >= 2 else { return nil }
-          let promiseId = components[0]
-          let groupId = components[1]
-          return .promise(promiseId: promiseId, groupId: groupId)
-
-        default:
-          return nil
-        }
+        DeeplinkURLParser.parse(url)
       },
 
       parseNotification: { data in
