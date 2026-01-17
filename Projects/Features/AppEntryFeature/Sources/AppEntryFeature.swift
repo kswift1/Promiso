@@ -341,7 +341,7 @@ extension AppEntry.Feature {
   }
 
   /// 메인 화면이 준비되어 있으면 라우팅, 아니면 pending으로 저장
-  func routeOrPendDeeplink(_ destination: DeeplinkDestination, state: inout State) -> Effect<Action> {
+  private func routeOrPendDeeplink(_ destination: DeeplinkDestination, state: inout State) -> Effect<Action> {
     if case .main = state.destination {
       AppLogger.deeplink.debug("Main screen ready, routing deeplink")
       return routeDeeplink(destination)
