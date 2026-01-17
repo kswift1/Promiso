@@ -281,8 +281,6 @@ extension GroupMain {
 
           case .handleDeeplink(let deeplink):
             AppLogger.deeplink.debug("[GroupMain] handleDeeplink: \(String(describing: deeplink))")
-            // path 초기화 (기존 네비게이션 스택 제거)
-            state.path.removeAll()
             state.pendingDeeplink = deeplink
 
             // groupId 추출
@@ -291,6 +289,9 @@ extension GroupMain {
             case .group(let gid): groupId = gid
             case .promise(_, let gid): groupId = gid
             }
+
+            // 다른 그룹으로 이동하는 경우에만 path 초기화
+            state.clearPathIfGroupChanged(targetGroupId: groupId)
 
             // 해당 그룹으로 이동
             let summaryIds = state.allGroupSummaries?.map { $0.id } ?? []
@@ -590,3 +591,14 @@ extension GroupMain {
 
 extension GroupMain.Feature.Path.State: Equatable, Sendable {}
 extension GroupMain.Feature.Path.Action: Sendable {}
+
+// MARK: - Deeplink Helpers
+
+extension GroupMain.Feature.State {
+  /// 딥링크 처리 시 다른 그룹으로 이동하는 경우에만 path 초기화
+  mutating func clearPathIfGroupChanged(targetGroupId: String) {
+    if currentGroup?.id != targetGroupId {
+      path.removeAll()
+    }
+  }
+}
