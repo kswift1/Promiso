@@ -182,13 +182,17 @@ extension AppEntry {
             }
 
           case .fcmTokenReceived(let token):
-            return .run { send in
+            return .run { [notificationClient] send in
               // 로그인된 사용자만 토큰 저장
               let isAuthenticated = await authClient.isAuthenticated()
               guard isAuthenticated else { return }
 
-              try? await notificationClient.saveFCMToken(token)
-              await send(.internal(.fcmTokenSaved))
+              do {
+                try await notificationClient.saveFCMToken(token)
+                await send(.internal(.fcmTokenSaved))
+              } catch {
+                AppLogger.notification.error("FCM 토큰 저장 실패: \(error.localizedDescription)")
+              }
             }
 
           case .fcmTokenSaved:
