@@ -1935,6 +1935,7 @@ async function sendPushNotificationInternal(params: {
       payload: {
         aps: {
           sound: "default",
+          // TODO: 읽지 않은 알림 수로 동적 계산 필요 (현재 하드코딩)
           badge: 1,
         },
       },
