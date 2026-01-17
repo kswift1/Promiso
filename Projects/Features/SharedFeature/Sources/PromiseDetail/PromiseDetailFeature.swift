@@ -1,5 +1,6 @@
 import ComposableArchitecture
 import Clients
+import PromisoShared
 
 public enum PromiseDetail {}
 
@@ -7,6 +8,7 @@ extension PromiseDetail {
   @Reducer
   public struct Feature {
     @Dependency(\.promiseClient) var promiseClient
+    @Dependency(\.liveActivityClient) var liveActivityClient
 
     public init() {}
 
@@ -29,6 +31,11 @@ extension PromiseDetail {
 
       // 삭제 확인 알럿
       @Presents var alert: AlertState<Action.Alert>?
+
+      // MARK: - Live Activity State
+      var isLiveActivityActive: Bool = false
+      var liveActivityId: String?
+      var isStartingLiveActivity: Bool = false
 
       public init(
         promise: PromiseModel,
@@ -55,6 +62,16 @@ extension PromiseDetail {
       /// 수정 가능 여부 (호스트 && 시작 전)
       var canEdit: Bool {
         isHost && promise.startAt > Date()
+      }
+
+      /// 라이브액티비티 시작 가능 여부
+      var canStartLiveActivity: Bool {
+        promise.isRealtimeShareable && promise.isConfirmed && !isLiveActivityActive
+      }
+
+      /// 내가 약속에 참여 중인지 (accepted)
+      var isParticipating: Bool {
+        promise.votes.accepted.contains(currentUserId)
       }
     }
 
@@ -96,6 +113,10 @@ extension PromiseDetail {
         case shareSheetDismissed
         case participantGroupTapped(title: String, userIds: [String], colorType: ParticipantColorType)
         case memberSheetDismissed
+        // Live Activity
+        case liveActivityStartTapped
+        case liveActivityStopTapped
+        case markArrivedTapped
       }
 
       @CasePathable
@@ -111,6 +132,13 @@ extension PromiseDetail {
         case deleteDone
         case deleteFailed(error: AppError)
         case promiseUpdated(PromiseModel)
+        // Live Activity
+        case startLiveActivity(channelId: String)
+        case liveActivityStarted(id: String)
+        case liveActivityFailed(error: AppError)
+        case liveActivityEnded
+        case markArrivalDone
+        case markArrivalFailed(error: AppError)
       }
 
       public enum Delegate: Sendable {
@@ -195,6 +223,31 @@ extension PromiseDetail {
           case .memberSheetDismissed:
             state.memberSheet = nil
             return .none
+
+          // MARK: - Live Activity View Actions
+          case .liveActivityStartTapped:
+            guard state.canStartLiveActivity,
+                  state.isParticipating,
+                  !state.isStartingLiveActivity else { return .none }
+
+            state.isStartingLiveActivity = true
+
+            // TODO: Firestore에서 channelId 조회 후 startLiveActivity 호출
+            // 현재는 임시로 promiseId 기반 channelId 사용
+            let channelId = "promise_\(state.promise.id)"
+            return .send(.internal(.startLiveActivity(channelId: channelId)))
+
+          case .liveActivityStopTapped:
+            guard let activityId = state.liveActivityId else { return .none }
+            return .run { [liveActivityClient] send in
+              try await liveActivityClient.end(activityId)
+              await send(.internal(.liveActivityEnded))
+            }
+
+          case .markArrivedTapped:
+            // TODO: Firebase Functions 호출하여 도착 상태 업데이트
+            // 현재는 로컬에서만 처리
+            return .send(.internal(.markArrivalDone))
           }
 
         case .internal(let internalAction):
@@ -257,6 +310,58 @@ extension PromiseDetail {
 
           case .promiseUpdated(let promise):
             state.promise = promise
+            return .none
+
+          // MARK: - Live Activity Internal Actions
+          case .startLiveActivity(let channelId):
+            let promise = state.promise
+            let members = state.groupMembers ?? []
+            let acceptedMembers = members.filter { promise.votes.accepted.contains($0.userId) }
+
+            let attributes = PromiseActivityAttributes(
+              promiseId: promise.id,
+              title: promise.title,
+              emoji: promise.displayEmoji,
+              startAt: promise.startAt,
+              locationName: promise.location?.name,
+              groupId: promise.groupId,
+              totalParticipants: promise.votes.acceptedCount
+            )
+
+            let initialState = PromiseActivityAttributes.ContentState.initial(
+              memberIds: acceptedMembers.map(\.userId),
+              memberNames: acceptedMembers.map(\.displayName)
+            )
+
+            return .run { [liveActivityClient] send in
+              do {
+                let id = try await liveActivityClient.start(attributes, initialState, channelId)
+                await send(.internal(.liveActivityStarted(id: id)))
+              } catch {
+                await send(.internal(.liveActivityFailed(error: AppError(error))))
+              }
+            }
+
+          case .liveActivityStarted(let id):
+            state.isStartingLiveActivity = false
+            state.isLiveActivityActive = true
+            state.liveActivityId = id
+            return .none
+
+          case .liveActivityFailed:
+            state.isStartingLiveActivity = false
+            return .none
+
+          case .liveActivityEnded:
+            state.isLiveActivityActive = false
+            state.liveActivityId = nil
+            return .none
+
+          case .markArrivalDone:
+            // TODO: 서버 연동 후 상태 업데이트
+            return .none
+
+          case .markArrivalFailed:
             return .none
           }
 
