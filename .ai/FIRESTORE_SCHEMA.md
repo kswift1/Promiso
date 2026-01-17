@@ -676,8 +676,8 @@ notifications/{notificationId}
 |----|------|------|
 | `promise_invitation` | 약속 초대 | 새 약속에 초대됨 |
 | `promise_reminder` | 리마인더 | 약속 시작 전 알림 |
-| `promise_confirmed` | 약속 확정 | 약속이 확정됨 |
-| `promise_cancelled` | 약속 취소 | 약속이 취소됨 |
+| `promise_confirmed` | 약속 확정 | 최소 인원 충족으로 약속 확정 |
+| `promise_cancelled` | 약속 무산 | 참여 인원 부족으로 약속 미확정 |
 | `group_invitation` | 그룹 초대 | 새 그룹에 초대됨 |
 | `group_update` | 그룹 업데이트 | 그룹 정보 변경 (새 멤버 참여 등) |
 | `attendance_response` | 응답 변경 | 다른 멤버의 참석 응답 |

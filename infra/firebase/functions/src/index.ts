@@ -2046,7 +2046,6 @@ export const onPromiseCreated = onDocumentCreated(
 
     const groupData = groupDoc.data();
     const memberIds = (groupData?.memberIds as string[]) ?? [];
-    const groupName = groupData?.name as string || "그룹";
 
     // 호스트 제외
     const recipientIds = memberIds.filter((id) => id !== hostId);
@@ -2065,8 +2064,8 @@ export const onPromiseCreated = onDocumentCreated(
     await sendPushNotificationInternal({
       userIds: recipientIds,
       type: NotificationType.PromiseInvitation,
-      title: `${groupName}에 새 약속`,
-      body: `${hostName}님이 "${title}" 약속을 만들었어요`,
+      title: "새 약속 도착 📩",
+      body: `${hostName}님이 ${title}을 제안했어요. 확인해주세요!`,
       promiseId,
       groupId,
       relatedUserId: hostId,
@@ -2077,11 +2076,12 @@ export const onPromiseCreated = onDocumentCreated(
 );
 
 /**
- * 약속 응답 변경 시 호스트에게 알림
+ * 약속 투표 변경 시 확정/미성사 알림
  *
  * @remarks
  * promises/{promiseId} 문서의 votes가 변경되면 트리거됩니다.
- * - 새로 accepted/declined한 사용자가 있으면 호스트에게 알림
+ * - 최소 인원 충족 시 → 약속 확정 알림 (그룹 전체)
+ * - 최소 인원 충족 불가 시 → 약속 미성사 알림 (그룹 전체)
  */
 export const onPromiseVotesUpdated = onDocumentUpdated(
   {
@@ -2099,74 +2099,80 @@ export const onPromiseVotesUpdated = onDocumentUpdated(
 
     const promiseId = event.params.promiseId;
     const env = event.params.env as "stage" | "prod";
+    const groupId = afterData.groupId as string;
+    const title = afterData.title as string;
+    const minimumParticipants = afterData.minimumParticipants as number || 2;
+    const startAt = afterData.startAt as admin.firestore.Timestamp;
 
     // votes 변경 확인
     const beforeVotes = beforeData.votes || {accepted: [], declined: []};
     const afterVotes = afterData.votes || {accepted: [], declined: []};
 
-    const beforeAccepted = new Set(beforeVotes.accepted as string[] || []);
-    const afterAccepted = new Set(afterVotes.accepted as string[] || []);
-    const beforeDeclined = new Set(beforeVotes.declined as string[] || []);
-    const afterDeclined = new Set(afterVotes.declined as string[] || []);
+    const beforeAccepted = beforeVotes.accepted as string[] || [];
+    const afterAccepted = afterVotes.accepted as string[] || [];
+    const beforeDeclined = beforeVotes.declined as string[] || [];
+    const afterDeclined = afterVotes.declined as string[] || [];
 
-    // 새로 accepted한 사용자 찾기
-    const newAccepted = [...afterAccepted]
-      .filter((id) => !beforeAccepted.has(id));
-    // 새로 declined한 사용자 찾기
-    const newDeclined = [...afterDeclined]
-      .filter((id) => !beforeDeclined.has(id));
+    // 새로 declined한 사용자 찾기 (미성사 알림용)
+    const newDeclined = afterDeclined
+      .filter((id: string) => !beforeDeclined.includes(id));
 
-    if (newAccepted.length === 0 && newDeclined.length === 0) {
-      return; // 투표 변경 없음
+    const db = admin.firestore();
+    const groupsCollection = getEnvironmentCollection("groups", db, env);
+
+    // 그룹 멤버 조회
+    const groupDoc = await groupsCollection.doc(groupId).get();
+    if (!groupDoc.exists) {
+      console.log("Group not found:", groupId);
+      return;
     }
+    const memberIds = groupDoc.data()?.memberIds as string[] || [];
+    const totalMembers = memberIds.length;
 
-    const hostId = afterData.hostId as string;
-    const title = afterData.title as string;
+    // 확정 체크: 이전에는 미충족 → 이제 충족
+    const wasConfirmed = beforeAccepted.length >= minimumParticipants;
+    const isConfirmed = afterAccepted.length >= minimumParticipants;
 
-    // 호스트는 자신의 응답에 대해 알림 받지 않음
-    const filteredAccepted = newAccepted.filter((id) => id !== hostId);
-    const filteredDeclined = newDeclined.filter((id) => id !== hostId);
+    if (!wasConfirmed && isConfirmed) {
+      // 약속 확정 알림 (수락한 사람들에게만)
+      const startDate = startAt.toDate();
+      const dateString = `${startDate.getMonth() + 1}월 ${startDate.getDate()}일`;
 
-    if (filteredAccepted.length === 0 && filteredDeclined.length === 0) {
+      await sendPushNotificationInternal({
+        userIds: afterAccepted,
+        type: NotificationType.PromiseConfirmed,
+        title: "약속 확정! 🎉",
+        body: `${title} 약속 확정! ${dateString}에 만나요`,
+        promiseId,
+        groupId,
+        relatedUserId: null,
+        data: null,
+        env,
+      });
       return;
     }
 
-    const db = admin.firestore();
-    const usersCollection = getEnvironmentCollection("users", db, env);
+    // 미성사 체크: 남은 가능 인원 < 최소 인원
+    const remainingPossible = totalMembers - afterDeclined.length;
+    const prevRemaining = totalMembers - beforeDeclined.length;
+    const wasCancellable = prevRemaining >= minimumParticipants;
+    const isCancelled = remainingPossible < minimumParticipants;
 
-    // 알림 전송
-    for (const userId of filteredAccepted) {
-      const userDoc = await usersCollection.doc(userId).get();
-      const userName = userDoc.data()?.nickname as string || "누군가";
-
-      await sendPushNotificationInternal({
-        userIds: [hostId],
-        type: NotificationType.AttendanceResponse,
-        title: "참여 확정",
-        body: `${userName}님이 "${title}" 약속에 참여해요`,
-        promiseId,
-        groupId: afterData.groupId as string,
-        relatedUserId: userId,
-        data: {status: "accepted"},
-        env,
-      });
-    }
-
-    for (const userId of filteredDeclined) {
-      const userDoc = await usersCollection.doc(userId).get();
-      const userName = userDoc.data()?.nickname as string || "누군가";
-
-      await sendPushNotificationInternal({
-        userIds: [hostId],
-        type: NotificationType.AttendanceResponse,
-        title: "참여 불가",
-        body: `${userName}님이 "${title}" 약속에 참여하지 못해요`,
-        promiseId,
-        groupId: afterData.groupId as string,
-        relatedUserId: userId,
-        data: {status: "declined"},
-        env,
-      });
+    if (wasCancellable && isCancelled && newDeclined.length > 0) {
+      // 약속 미성사 알림 (수락한 사람들에게만)
+      if (afterAccepted.length > 0) {
+        await sendPushNotificationInternal({
+          userIds: afterAccepted,
+          type: NotificationType.PromiseCancelled,
+          title: "약속 무산 😢",
+          body: `${title}의 참여 인원이 부족해서 확정되지 않았어요`,
+          promiseId,
+          groupId,
+          relatedUserId: null,
+          data: null,
+          env,
+        });
+      }
     }
   },
 );
@@ -2220,8 +2226,8 @@ export const onGroupMemberJoined = onDocumentUpdated(
       await sendPushNotificationInternal({
         userIds: recipientIds,
         type: NotificationType.GroupUpdate,
-        title: `${groupName}`,
-        body: `${newMemberName}님이 그룹에 참여했어요`,
+        title: "새 멤버 합류 👋",
+        body: `${newMemberName}님이 ${groupName}에 들어왔어요`,
         promiseId: null,
         groupId,
         relatedUserId: newMemberId,
