@@ -11,7 +11,6 @@ import UserNotifications
 import ExternalDependency
 import Clarity
 import PromisoShared
-import SharedFeature
 
 class AppDelegate: NSObject, UIApplicationDelegate {
   func application(_ application: UIApplication,

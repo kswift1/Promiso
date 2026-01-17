@@ -1,10 +1,7 @@
 import Foundation
 import FirebaseFirestore
-import os.log
 import PromisoShared
 import UIKit
-
-private let logger = Logger(subsystem: "com.promiso", category: "Notification")
 
 // MARK: - Data Source
 
@@ -55,7 +52,7 @@ public final class NotificationRemoteDataSource: @unchecked Sendable {
       ]
     ], merge: true)
 
-    logger.debug("FCM Token saved for user: \(userId), device: \(self.deviceId)")
+    AppLogger.notification.debug("FCM Token saved for user: \(userId), device: \(self.deviceId)")
   }
 
   /// FCM 토큰 삭제 (현재 디바이스)
@@ -69,7 +66,7 @@ public final class NotificationRemoteDataSource: @unchecked Sendable {
       "devices.\(deviceId)": FieldValue.delete()
     ])
 
-    logger.debug("FCM Token deleted for user: \(userId), device: \(self.deviceId)")
+    AppLogger.notification.debug("FCM Token deleted for user: \(userId), device: \(self.deviceId)")
   }
 
   /// FCM 토큰 갱신 (마지막 활성 시간 업데이트)
@@ -85,7 +82,7 @@ public final class NotificationRemoteDataSource: @unchecked Sendable {
       "devices.\(deviceId).lastActiveAt": FieldValue.serverTimestamp()
     ])
 
-    logger.debug("FCM Token updated for user: \(userId), device: \(self.deviceId)")
+    AppLogger.notification.debug("FCM Token updated for user: \(userId), device: \(self.deviceId)")
   }
 
   /// 현재 디바이스의 FCM 토큰 조회

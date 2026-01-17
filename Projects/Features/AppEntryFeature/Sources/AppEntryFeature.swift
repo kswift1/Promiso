@@ -3,12 +3,10 @@ import AuthFeature
 import Clients
 import ComposableArchitecture
 import Dependencies
+import PromisoShared
 import RootTabFeature
 import ResourceKit
-import SharedFeature
 import SwiftUI
-
-import PromisoShared
 
 // MARK: - Feature Namespace
 
