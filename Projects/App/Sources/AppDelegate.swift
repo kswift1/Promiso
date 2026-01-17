@@ -170,22 +170,13 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
   }
 
   private func handleNotificationTap(_ userInfo: [AnyHashable: Any]) {
-    let data = PushNotificationData(userInfo: userInfo)
-    AppLogger.notification.debug("Notification tap - type: \(data.type ?? "nil"), promiseId: \(data.promiseId ?? "nil"), groupId: \(data.groupId ?? "nil")")
+    AppLogger.notification.debug("Notification tap - userInfo: \(userInfo)")
 
-    // promiseId 또는 groupId가 있을 때만 전달
-    guard data.promiseId != nil || data.groupId != nil else { return }
-
-    let notificationInfo: [String: Any?] = [
-      "type": data.type,
-      "promiseId": data.promiseId,
-      "groupId": data.groupId
-    ]
-
+    // DeeplinkClient에서 파싱 및 검증 처리
     NotificationCenter.default.post(
       name: AppConstants.Notifications.pushNotificationTapped,
       object: nil,
-      userInfo: notificationInfo.compactMapValues { $0 }
+      userInfo: userInfo
     )
   }
 }

@@ -15,25 +15,6 @@ public enum DeeplinkDestination: Equatable, Sendable {
   case joinGroup(inviteCode: String)
 }
 
-/// 푸시 알림 데이터 (FCM payload)
-public struct PushNotificationData: Equatable, Sendable {
-  public let type: String?
-  public let promiseId: String?
-  public let groupId: String?
-
-  public init(type: String?, promiseId: String?, groupId: String?) {
-    self.type = type
-    self.promiseId = promiseId
-    self.groupId = groupId
-  }
-
-  public init(userInfo: [AnyHashable: Any]) {
-    self.type = userInfo["type"] as? String
-    self.promiseId = userInfo["promiseId"] as? String
-    self.groupId = userInfo["groupId"] as? String
-  }
-}
-
 // MARK: - Client
 
 public struct DeeplinkClient: Sendable {
@@ -45,10 +26,10 @@ public struct DeeplinkClient: Sendable {
   /// - Returns: 파싱된 목적지 (파싱 실패 시 nil)
   public var parseURL: @Sendable (_ url: URL) -> DeeplinkDestination?
 
-  /// 푸시 알림 데이터에서 딥링크 목적지 파싱
-  /// - Parameter data: 푸시 알림 데이터
+  /// 푸시 알림 userInfo에서 딥링크 목적지 파싱
+  /// - Parameter userInfo: FCM payload ([type, promiseId?, groupId?, relatedUserId?])
   /// - Returns: 파싱된 목적지 (파싱 실패 시 nil)
-  public var parseNotification: @Sendable (_ data: PushNotificationData) -> DeeplinkDestination?
+  public var parseNotification: @Sendable (_ userInfo: [AnyHashable: Any]) -> DeeplinkDestination?
 }
 
 // MARK: - Test / Preview
@@ -79,8 +60,7 @@ extension DeeplinkClient: DependencyKey {
             object: nil,
             queue: .main
           ) { notification in
-            let data = PushNotificationData(userInfo: notification.userInfo ?? [:])
-            if let destination = Self.parseNotificationData(data) {
+            if let destination = Self.parseUserInfo(notification.userInfo ?? [:]) {
               continuation.yield(destination)
             }
           }
@@ -95,21 +75,45 @@ extension DeeplinkClient: DependencyKey {
         DeeplinkURLParser.parse(url)
       },
 
-      parseNotification: { data in
-        Self.parseNotificationData(data)
+      parseNotification: { userInfo in
+        Self.parseUserInfo(userInfo)
       }
     )
   }()
 
-  /// 푸시 알림 데이터에서 목적지 파싱 (내부 헬퍼)
+  /// FCM userInfo 파싱 (내부 헬퍼)
+  ///
+  /// NotificationType별 필수 필드:
+  /// - promiseAndGroup: promiseId + groupId 필요 → .promise
+  /// - groupOnly: groupId만 필요 → .group
+  /// - none: 딥링크 불필요 (system 등) → nil
+  ///
   /// - Note: joinGroup은 URL 딥링크 전용 (푸시 알림에서는 inviteCode 미전송)
-  private static func parseNotificationData(_ data: PushNotificationData) -> DeeplinkDestination? {
-    if let promiseId = data.promiseId, let groupId = data.groupId {
-      return .promise(promiseId: promiseId, groupId: groupId)
-    } else if let groupId = data.groupId {
-      return .group(groupId: groupId)
+  private static func parseUserInfo(_ userInfo: [AnyHashable: Any]) -> DeeplinkDestination? {
+    // 1. type 추출 및 NotificationType 변환
+    guard let typeString = userInfo["type"] as? String,
+          let type = NotificationType(rawValue: typeString) else {
+      return nil
     }
-    return nil
+
+    // 2. 필드 추출
+    let promiseId = userInfo["promiseId"] as? String
+    let groupId = userInfo["groupId"] as? String
+
+    // 3. deeplinkGuide에 따라 검증 및 변환
+    switch type.deeplinkGuide {
+    case .promiseAndGroup:
+      guard let promiseId, let groupId else { return nil }
+      return .promise(promiseId: promiseId, groupId: groupId)
+
+    case .groupOnly:
+      guard let groupId else { return nil }
+      return .group(groupId: groupId)
+
+    case .none:
+      // system 등 딥링크 불필요한 타입
+      return nil
+    }
   }
 }
 

@@ -325,7 +325,7 @@ extension AppEntry.ProfileSetup.State {
 
 extension AppEntry.Feature {
   /// DeeplinkDestination을 RootTab으로 라우팅하는 Effect 생성
-  func routeDeeplink(_ destination: DeeplinkDestination) -> Effect<Action> {
+  private func routeDeeplink(_ destination: DeeplinkDestination) -> Effect<Action> {
     switch destination {
     case .promise(let promiseId, let groupId):
       let groupDeeplink = GroupMain.Deeplink.promise(promiseId: promiseId, groupId: groupId)
