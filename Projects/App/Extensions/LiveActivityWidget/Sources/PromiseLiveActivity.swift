@@ -8,70 +8,92 @@ struct PromiseLiveActivity: Widget {
     ActivityConfiguration(for: PromiseActivityAttributes.self) { context in
       // MARK: - Lock Screen UI
       LockScreenBannerView(context: context)
-        .background {
-          GeometryReader { geo in
-            Color.clear.onAppear { print("높이: \(geo.size.height)") }
-          }
-        }
 
     } dynamicIsland: { context in
       DynamicIsland {
         // MARK: - Expanded Leading
         DynamicIslandExpandedRegion(.leading) {
-          VStack(alignment: .leading, spacing: 2) {
+          VStack(alignment: .leading, spacing: 4) {
             Text(context.attributes.title)
               .font(.subheadline.weight(.bold))
               .foregroundStyle(.white)
               .lineLimit(1)
 
             if let location = context.attributes.location {
-              HStack(spacing: 2) {
+              HStack(spacing: 4) {
                 Text("📍")
                   .font(.caption2)
                 Text(location)
-                  .font(.caption2)
+                  .font(.caption)
               }
               .foregroundStyle(.white.opacity(0.6))
+              .lineLimit(1)
             }
           }
+          .padding(.leading, 5)
         }
 
         // MARK: - Expanded Trailing
         DynamicIslandExpandedRegion(.trailing) {
-          VStack(alignment: .trailing, spacing: 0) {
-            Text(timerInterval: Date.now...context.attributes.scheduledTime, countsDown: true)
-              .font(.title2.weight(.bold))
-              .monospacedDigit()
-              .foregroundStyle(context.attributes.scheduledTime.timeIntervalSinceNow < 600 ? .orange : .green)
-
-            Text("남은 시간")
+          VStack(alignment: .trailing, spacing: 2) {
+            Text("약속")
               .font(.caption2)
               .foregroundStyle(.white.opacity(0.6))
+
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+              Text(context.attributes.scheduledTime.amPmText)
+                .font(.system(size: 10, weight: .medium, design: .monospaced))
+                .foregroundStyle(.white.opacity(0.6))
+
+              Text(context.attributes.scheduledTime.timeOnlyText)
+                .font(.system(size: 16, weight: .bold, design: .monospaced))
+                .foregroundStyle(.white)
+            }
           }
+          .padding(.trailing, 5)
         }
 
         // MARK: - Expanded Bottom
         DynamicIslandExpandedRegion(.bottom) {
-          ExpandedRacingTrackView(context: context)
+          RacingTrackView(
+            participants: context.state.participants,
+            trackingDurationMinutes: context.state.trackingDurationMinutes,
+            currentUserId: context.attributes.currentUserId
+          )
+          .frame(height: 44)
+          .padding(.horizontal, 5)
+          .padding(.top, 12)
         }
 
       } compactLeading: {
         // MARK: - Compact Leading
-        Image(systemName: "mappin.circle.fill")
-          .foregroundStyle(.purple)
+        Text(context.attributes.title.prefix(2))
+          .font(.system(size: 14, weight: .bold))
 
       } compactTrailing: {
         // MARK: - Compact Trailing
         Text(timerInterval: Date.now...context.attributes.scheduledTime, countsDown: true)
-          .font(.caption2.weight(.semibold))
+          .font(.system(size: 12, weight: .semibold, design: .monospaced))
           .monospacedDigit()
-          .foregroundStyle(context.attributes.scheduledTime.timeIntervalSinceNow < 600 ? .orange : .green)
+          .foregroundStyle(context.attributes.scheduledTime.timeIntervalSinceNow < 600 ? .orange : .white)
 
       } minimal: {
         // MARK: - Minimal
-        Image(systemName: "mappin.circle.fill")
-          .foregroundStyle(.purple)
+        Text(context.attributes.title.prefix(1))
+          .font(.system(size: 12, weight: .bold))
       }
     }
+  }
+}
+
+// MARK: - Date Extension
+
+private extension Date {
+  var amPmText: String {
+    Calendar.current.component(.hour, from: self) >= 12 ? "PM" : "AM"
+  }
+
+  var timeOnlyText: String {
+    self.formatted(.dateTime.hour(.defaultDigits(amPM: .omitted)).minute())
   }
 }
