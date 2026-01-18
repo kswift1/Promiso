@@ -538,6 +538,62 @@ Debug 빌드에서 사용 가능한 테스트 패널:
 - [ ] APNs 인증 설정 (P8 키)
 - [ ] Firestore 스키마 업데이트
 
+### Future Features (TODO)
+
+#### 1. Update with Alert (강조 효과와 함께 업데이트)
+
+APNs 업데이트 시 **Dynamic Island 확장 애니메이션** + 알림으로 변경 사항 강조
+
+**APNs Payload:**
+```json
+{
+  "aps": {
+    "timestamp": 1704068000,
+    "event": "update",
+    "content-state": { ... },
+    "alert": {
+      "title": "민수님이 출발했어요",
+      "body": "도착 예정: 10분 후",
+      "sound": "default"
+    }
+  }
+}
+```
+
+**효과:**
+- Dynamic Island가 잠깐 확장되어 변경 사항 표시
+- 잠금화면에 알림 배너 표시
+- 소리/진동 (sound 필드)
+
+**트리거 케이스:**
+
+| 케이스 | 기본 | 메시지 예시 |
+|--------|------|-------------|
+| LiveActivity 시작 | ON | "약속 추적이 시작되었어요" |
+| 첫 번째 도착자 | ON | "민수님이 1등으로 도착!" |
+| 모두 도착 | ON | "모든 참가자가 도착했어요" |
+| 지각 예상 발생 | OFF | "민수님이 5분 늦을 것 같아요" |
+| 약속 시간 5분 전 | OFF | "약속 시간 5분 전이에요" |
+
+**구현 계획:**
+- [ ] Firebase Functions에서 alert 필드 조건부 추가
+- [ ] Firestore에 트리거 케이스별 on/off 설정 저장
+- [ ] iOS 설정 화면에서 on/off UI
+
+#### 2. 지각 관련 UI
+
+약속 시간 초과 시 지각자 표시 UI
+
+**표시 케이스:**
+- ETA > 약속시간: 지각 예상
+- 약속시간 지남 + 미도착: 지각 중
+
+**UI 변경 사항:**
+- [ ] 마커 테두리 색상 변경 (Red/Warning)
+- [ ] ETA 뱃지에 "지각" 표시 or 색상 변경
+- [ ] 잠금화면 배너에 지각자 수 표시
+- [ ] Dynamic Island Compact에 지각 아이콘
+
 ---
 
 ## 의존성
@@ -573,3 +629,5 @@ LiveActivityWidget
 
 - [Human Interface Guidelines - Live Activities](https://developer.apple.com/design/human-interface-guidelines/live-activities)
 - [ActivityKit Documentation](https://developer.apple.com/documentation/activitykit)
+- [Starting and updating Live Activities with ActivityKit push notifications](https://developer.apple.com/documentation/activitykit/starting-and-updating-live-activities-with-activitykit-push-notifications)
+- [AlertConfiguration](https://developer.apple.com/documentation/activitykit/alertconfiguration)
