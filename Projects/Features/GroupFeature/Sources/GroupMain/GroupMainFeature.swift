@@ -1,6 +1,7 @@
 import PromisoShared
 import Clients
 import SwiftUI
+import Nuke
 
 public enum GroupMain {}
 
@@ -379,9 +380,16 @@ extension GroupMain {
 
           case .groupMembersResponse(.success(let members)):
             state.currentGroupMembers = members
-            // 멤버 로드 완료 후 promises subscribe
             guard let groupId = state.currentGroup?.id else { return .none }
-            return .send(.internal(.subscribeToPromises(groupId: groupId)))
+
+            // LiveActivity 프로필 이미지 사전 캐싱 (APNs 원격 시작 대응)
+            // 상세: cacheProfileImagesForLiveActivity 함수 주석 참고
+            return .merge(
+              .send(.internal(.subscribeToPromises(groupId: groupId))),
+              .run { _ in
+                await cacheProfileImagesForLiveActivity(members: members)
+              }
+            )
 
           case .groupMembersResponse(.failure):
             state.currentGroupMembers = nil
@@ -600,6 +608,43 @@ extension GroupMain.Feature.State {
   mutating func clearPathIfGroupChanged(targetGroupId: String) {
     if currentGroup?.id != targetGroupId {
       path.removeAll()
+    }
+  }
+}
+
+// MARK: - LiveActivity Profile Image Caching
+
+/// LiveActivity용 프로필 이미지 사전 캐싱
+///
+/// APNs 원격 LiveActivity 시작 시 앱 코드가 실행되지 않으므로,
+/// 멤버 로드 시점에 미리 App Group에 캐싱합니다.
+/// - 이미 캐시된 이미지는 스킵
+/// - 다운로드 실패 시 Widget에서 이모지로 fallback
+private func cacheProfileImagesForLiveActivity(members: [UserPublicModel]) async {
+  AppLogger.liveActivity.debug("프로필 이미지 캐싱 시작: \(members.count)명")
+
+  await withTaskGroup(of: Void.self) { group in
+    for member in members {
+      group.addTask {
+        guard let urlString = member.profileImageUrl,
+              let url = URL(string: urlString) else {
+          AppLogger.liveActivity.debug("프로필 URL 없음: \(member.userId)")
+          return
+        }
+
+        // 이미 캐시되어 있으면 스킵 (중복 다운로드 방지)
+        if LiveActivityImageStore.exists(userId: member.userId) {
+          AppLogger.liveActivity.debug("이미 캐시됨: \(member.userId)")
+          return
+        }
+
+        do {
+          let image = try await ImagePipeline.shared.image(for: url)
+          LiveActivityImageStore.saveImage(image, userId: member.userId)
+        } catch {
+          AppLogger.liveActivity.error("다운로드 실패: \(member.userId), \(error)")
+        }
+      }
     }
   }
 }
