@@ -386,7 +386,7 @@ extension GroupMain {
             // 상세: cacheProfileImagesForLiveActivity 함수 주석 참고
             return .merge(
               .send(.internal(.subscribeToPromises(groupId: groupId))),
-              .run { _ in
+              .run(priority: .utility) { _ in
                 await cacheProfileImagesForLiveActivity(members: members)
               }
             )
@@ -632,12 +632,8 @@ private func cacheProfileImagesForLiveActivity(members: [UserPublicModel]) async
           return
         }
 
-        // 이미 캐시되어 있으면 스킵 (중복 다운로드 방지)
-        if LiveActivityImageStore.exists(userId: member.userId) {
-          AppLogger.liveActivity.debug("이미 캐시됨: \(member.userId)")
-          return
-        }
-
+        // 매번 저장 (덮어쓰기) - 프로필 변경 즉시 반영
+        // Nuke 캐시로 네트워크 비용 없음, TaskGroup이 병렬 처리
         do {
           let image = try await ImagePipeline.shared.image(for: url)
           LiveActivityImageStore.saveImage(image, userId: member.userId)
