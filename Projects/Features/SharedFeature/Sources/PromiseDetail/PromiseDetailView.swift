@@ -959,13 +959,7 @@ private struct LiveActivityMockSection: View {
   private func startActivity() {
     // 디버그: 캐시된 프로필 이미지 파일 목록 출력
     let cachedFiles = LiveActivityImageStore.listCachedFiles()
-    AppLogger.liveActivity.debug("🟣WIDGET🟣 캐시된 파일: \(cachedFiles)")
-
-    // 디버그: 앱에서 직접 이미지 로드 테스트
-    for file in cachedFiles {
-      let image = LiveActivityImageStore.loadImage(fileName: file)
-      AppLogger.liveActivity.debug("🟣WIDGET🟣 \(file) → \(image != nil ? "✅ 성공" : "❌ 실패")")
-    }
+    AppLogger.liveActivity.debug("캐시된 파일: \(cachedFiles)")
 
     guard ActivityAuthorizationInfo().areActivitiesEnabled else {
       statusMessage = "라이브액티비티가 비활성화됨"

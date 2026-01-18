@@ -30,6 +30,9 @@ public enum AppLogger {
   /// 푸시 알림 관련 로그
   public static let notification = Logger(subsystem: subsystem, category: "Notification")
 
+  /// LiveActivity 관련 로그
+  public static let liveActivity = Logger(subsystem: subsystem, category: "LiveActivity")
+
   /// 일반 로그
   public static let general = Logger(subsystem: subsystem, category: "General")
 

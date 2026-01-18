@@ -81,17 +81,6 @@ public enum LiveActivityImageStore {
     }
   }
 
-  /// 특정 사용자의 캐시된 이미지가 존재하는지 확인
-  ///
-  /// - Parameter userId: 사용자 ID
-  /// - Returns: 캐시 존재 여부
-  public static func exists(userId: String) -> Bool {
-    guard let directoryURL = imageDirectoryURL else { return false }
-    let fileName = makeFileName(userId: userId)
-    let fileURL = directoryURL.appendingPathComponent(fileName)
-    return FileManager.default.fileExists(atPath: fileURL.path)
-  }
-
   /// 캐시된 모든 이미지 삭제 (로그아웃 시 호출)
   public static func clearCache() {
     guard let directoryURL = imageDirectoryURL else { return }
@@ -106,51 +95,30 @@ public enum LiveActivityImageStore {
     }
   }
 
-  /// 특정 사용자의 캐시 이미지 삭제
-  public static func removeImage(userId: String) {
-    guard let directoryURL = imageDirectoryURL else { return }
-    let fileName = makeFileName(userId: userId)
-    let fileURL = directoryURL.appendingPathComponent(fileName)
-
-    do {
-      if FileManager.default.fileExists(atPath: fileURL.path) {
-        try FileManager.default.removeItem(at: fileURL)
-      }
-    } catch {
-      AppLogger.liveActivity.error("이미지 삭제 실패: \(userId), \(error)")
-    }
-  }
-
   // MARK: - Public API (Widget에서 사용)
 
-  /// App Group 컨테이너에서 프로필 이미지 로드
-  public static func loadImage(fileName: String) -> UIImage? {
-    guard let directoryURL = imageDirectoryURL else {
-      AppLogger.liveActivity.error("🟣WIDGET🟣 containerURL nil - App Group 접근 실패")
-      return nil
-    }
-
-    let fileURL = directoryURL.appendingPathComponent(fileName)
-    let exists = FileManager.default.fileExists(atPath: fileURL.path)
-    AppLogger.liveActivity.debug("🟣WIDGET🟣 loadImage fileName=\(fileName), exists=\(exists)")
-
-    guard exists,
-          let data = try? Data(contentsOf: fileURL),
-          let image = UIImage(data: data) else {
-      AppLogger.liveActivity.error("🟣WIDGET🟣 loadImage 실패: \(fileName)")
-      return nil
-    }
-    AppLogger.liveActivity.debug("🟣WIDGET🟣 loadImage 성공: \(fileName), size=\(image.size.width)x\((image.size.height))")
-    return image
-  }
-
-  /// 사용자 ID로 직접 이미지 로드
+  /// 사용자 ID로 프로필 이미지 로드
   ///
   /// - Parameter userId: 사용자 ID
   /// - Returns: 로드된 UIImage, 실패 시 nil
   public static func loadImage(userId: String) -> UIImage? {
+    guard let directoryURL = imageDirectoryURL else {
+      AppLogger.liveActivity.error("🟣WIDGET🟣 App Group 접근 실패")
+      return nil
+    }
+
     let fileName = makeFileName(userId: userId)
-    return loadImage(fileName: fileName)
+    let fileURL = directoryURL.appendingPathComponent(fileName)
+
+    // 파일 존재 체크 없이 바로 로드 시도 (I/O 1회)
+    guard let data = try? Data(contentsOf: fileURL),
+          let image = UIImage(data: data) else {
+      AppLogger.liveActivity.debug("🟣WIDGET🟣 loadImage 실패: \(userId)")
+      return nil
+    }
+
+    AppLogger.liveActivity.debug("🟣WIDGET🟣 loadImage 성공: \(userId)")
+    return image
   }
 
   // MARK: - Helpers
