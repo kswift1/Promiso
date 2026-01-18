@@ -6,11 +6,11 @@
 **레이싱 트랙 UI**로 참가자들의 ETA(도착 예상 시간)를 시각화.
 
 ```
-┌─출발──────────────────────────────────────도착─┐
-│  😀         🙂            😎                🏁  │
-│  서연       지현           나+민수               │
-│  (대기)    (15분)        (10분)         (도착)  │
-└───────────────────────────────────────────────┘
+┌─Start───────────────────────────────────Finish─┐
+│  😀         🙂           😎                 🏁  │
+│  Seo       Jihyun      Me+Minsu                │
+│ (wait)     (15m)        (10m)        (arrived) │
+└────────────────────────────────────────────────┘
 ```
 
 ---
@@ -20,8 +20,9 @@
 | 항목 | 값 |
 |------|-----|
 | iOS Target | 18.0+ |
-| 아키텍처 | TCA (The Composable Architecture) 1.22.2 |
-| 백엔드 | Firebase Functions + APNs |
+| ActivityKit | iOS 16.1+ |
+| Dynamic Island | iPhone 14 Pro+ |
+| Backend | Firebase Functions + APNs |
 | Widget Bundle | `LiveActivityWidgetBundle` |
 | App Group | `group.com.promiso.shared` |
 
@@ -30,40 +31,40 @@
 ## 아키텍처
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                     Firebase Functions                       │
-│  ┌─────────────────┐  ┌─────────────────┐                   │
-│  │ startLiveActivity│  │ updateETA       │                   │
-│  │ (APNs start)     │  │ (APNs update)   │                   │
-│  └────────┬─────────┘  └────────┬────────┘                   │
-└───────────┼─────────────────────┼────────────────────────────┘
-            │                     │
-            ▼                     ▼
-┌─────────────────────────────────────────────────────────────┐
-│                       APNs Push                              │
-│              ContentState 업데이트 전송                       │
-└─────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────┐
+│                  Firebase Functions                   │
+│  ┌───────────────────┐  ┌──────────────────┐          │
+│  │ startLiveActivity │  │ updateETA        │          │
+│  │ (APNs start)      │  │ (APNs update)    │          │
+│  └────────┬──────────┘  └────────┬─────────┘          │
+└───────────┼──────────────────────┼────────────────────┘
+            │                      │
+            ▼                      ▼
+┌───────────────────────────────────────────────────────┐
+│                      APNs Push                        │
+│              ContentState update payload              │
+└───────────────────────────────────────────────────────┘
             │
             ▼
-┌─────────────────────────────────────────────────────────────┐
-│                        iOS App                               │
-│                                                              │
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │              LiveActivityWidget (Extension)           │   │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌──────────────┐  │   │
-│  │  │LockScreen   │  │DynamicIsland│  │RacingTrack   │  │   │
-│  │  │BannerView   │  │(Expanded)   │  │View          │  │   │
-│  │  └─────────────┘  └─────────────┘  └──────────────┘  │   │
-│  └──────────────────────────────────────────────────────┘   │
-│                                                              │
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │                  Main App                             │   │
-│  │  ┌─────────────┐  ┌─────────────────────────────────┐│   │
-│  │  │LiveActivity │  │LiveActivityImageStore            ││   │
-│  │  │Client       │  │(App Group 프로필 이미지 캐싱)    ││   │
-│  │  └─────────────┘  └─────────────────────────────────┘│   │
-│  └──────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────┐
+│                       iOS App                         │
+│                                                       │
+│  ┌─────────────────────────────────────────────────┐  │
+│  │          LiveActivityWidget (Extension)         │  │
+│  │  ┌─────────────┐ ┌─────────────┐ ┌───────────┐  │  │
+│  │  │ LockScreen  │ │DynamicIsland│ │ Racing    │  │  │
+│  │  │ BannerView  │ │ (Expanded)  │ │ TrackView │  │  │
+│  │  └─────────────┘ └─────────────┘ └───────────┘  │  │
+│  └─────────────────────────────────────────────────┘  │
+│                                                       │
+│  ┌─────────────────────────────────────────────────┐  │
+│  │                    Main App                     │  │
+│  │  ┌──────────────┐  ┌─────────────────────────┐  │  │
+│  │  │ LiveActivity │  │ LiveActivityImageStore  │  │  │
+│  │  │ Client       │  │ (App Group caching)     │  │  │
+│  │  └──────────────┘  └─────────────────────────┘  │  │
+│  └─────────────────────────────────────────────────┘  │
+└───────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -76,26 +77,27 @@ Projects/
 │   └── Extensions/
 │       └── LiveActivityWidget/
 │           ├── Sources/
-│           │   ├── LiveActivityWidgetBundle.swift
-│           │   ├── PromiseLiveActivity.swift      # Widget 정의 + Previews
-│           │   ├── UpdateETAIntent.swift          # ETA 버튼 Intent
+│           │   ├── LiveActivityWidgetBundle.swift   # Widget 진입점
+│           │   ├── PromiseLiveActivity.swift        # Widget 정의 + Previews
+│           │   ├── UpdateETAIntent.swift            # ETA 버튼 Intent
 │           │   └── Views/
-│           │       ├── LockScreenView.swift       # 잠금화면 배너
-│           │       └── RacingTrackView.swift      # 레이싱 트랙 UI
-│           └── LiveActivityWidget.entitlements
+│           │       ├── LockScreenView.swift         # 잠금화면 배너
+│           │       └── RacingTrackView.swift        # 레이싱 트랙 UI
+│           ├── LiveActivityWidget.entitlements
+│           └── LIVE_ACTIVITY_SPEC.md
 │
 ├── Shared/
 │   └── Sources/
 │       ├── LiveActivity/
-│       │   ├── PromiseActivityAttributes.swift   # 공유 모델
-│       │   └── LiveActivityImageStore.swift      # 프로필 이미지 캐싱
+│       │   ├── PromiseActivityAttributes.swift     # 공유 모델
+│       │   └── LiveActivityImageStore.swift        # 프로필 이미지 캐싱
 │       └── Common/
 │           └── AppLogger.swift
 │
 └── Clients/
     └── Sources/
         └── Clients/
-            └── LiveActivityClient.swift          # TCA Dependency
+            └── LiveActivityClient.swift            # TCA Dependency
 ```
 
 ---
@@ -158,39 +160,61 @@ public struct ParticipantState: Codable, Hashable, Identifiable, Sendable {
 
 ### 1. LockScreen Banner
 
+잠금화면에 표시되는 메인 배너 뷰
+
 ```
-┌────────────────────────────────────────────────────────┐
-│  🍜 점심 모임                            약속 시간    │
-│  📍 강남역 11번 출구                      PM 12:30    │
-│                                                        │
-│  ┌──출발────────────────────────────────────도착──┐   │
-│  │  😀서연     🙂지현      😎나+민수         🏁    │   │
-│  └────────────────────────────────────────────────┘   │
-│                                                        │
-│  도착까지  [ 완료 ] [ 5분 ] [ 10분 ] [ 직접 입력 ]    │
-└────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────┐
+│  🍜 Lunch                            Scheduled    │
+│  📍 Gangnam Station Exit 11           PM 12:30    │
+│                                                   │
+│  ┌─Start─────────────────────────────Finish─┐     │
+│  │  😀Seo   🙂Jihyun   😎Me+Minsu       🏁  │     │
+│  └──────────────────────────────────────────┘     │
+│                                                   │
+│  ETA  [ Done ] [ 5m ] [ 10m ] [ Custom ]          │
+└───────────────────────────────────────────────────┘
 ```
+
+**헤더 섹션:**
+- 왼쪽: 이모지 + 제목, 장소 (📍)
+- 오른쪽: "약속 시간" 라벨 + AM/PM 시간
+
+**레이싱 트랙:**
+- 줄무늬 배경 (세로 스트라이프)
+- 진행률 바 (그라데이션)
+- 참가자 마커 (프로필/이모지 + 이름)
+
+**ETA 버튼 섹션:**
+- 라벨: "도착" (eta=0) / "도착까지" (eta>0)
+- Segmented Control: 완료(✓), 5분, 10분, 직접
 
 ### 2. Dynamic Island (Expanded)
 
 ```
-┌──────────────────────────────────────────────┐
-│  🍜 점심 모임                  약속 시간     │
-│  📍 강남역 11번 출구           PM 12:30     │
-├──────────────────────────────────────────────┤
-│  ┌────────────────────────────────────────┐  │
-│  │  😀서연  🙂지현   😎나+민수        🏁  │  │
-│  └────────────────────────────────────────┘  │
-└──────────────────────────────────────────────┘
+┌────────────────────────────────────────────┐
+│  🍜 Lunch                      Scheduled   │
+│  📍 Gangnam Exit 11             PM 12:30   │
+├────────────────────────────────────────────┤
+│  ┌──────────────────────────────────────┐  │
+│  │  😀Seo  🙂Jihyun  😎Me+Minsu     🏁  │  │
+│  └──────────────────────────────────────┘  │
+└────────────────────────────────────────────┘
 ```
+
+- **Center**: HStack으로 좌(제목+장소) / 우(시간) 배치
+- **Bottom**: RacingTrackView (height: 44)
+- 긴 제목: `minimumScaleFactor(0.7)` 적용
 
 ### 3. Dynamic Island (Compact)
 
 ```
-┌────────────────────────────────────────┐
-│ 🍜 점심 모임          │    PM 12:30   │
-└────────────────────────────────────────┘
+┌──────────────────────────────────┐
+│ 🍜 Lunch         │    PM 12:30   │
+└──────────────────────────────────┘
 ```
+
+- **Leading**: 뱃지 스타일 (Capsule + 반투명 배경)
+- **Trailing**: AM/PM + 시간 (monospaced)
 
 ### 4. Dynamic Island (Minimal)
 
@@ -200,6 +224,8 @@ public struct ParticipantState: Codable, Hashable, Identifiable, Sendable {
 └─────┘
 ```
 
+- 약속 이모지만 표시
+
 ---
 
 ## 마커 디자인 (V5)
@@ -208,19 +234,19 @@ public struct ParticipantState: Codable, Hashable, Identifiable, Sendable {
 
 ```
         ┌─────────┐
-        │ 이름    │  ← 상단 이름 라벨 (4글자 + "외N명")
-        └─────────┘
-           │
-    ┌──────┴──────┐
-    │             │
-    │   프로필    │  ← 32x32 원형 (이미지 또는 이모지)
-    │   /이모지   │
-    │             │
-    └──────┬──────┘
-           │
-        ┌──┴──┐
-        │ETA  │  ← 우측 하단 ETA 뱃지
-        └─────┘
+        │  Name   │  <- Top label (4 chars + "+N")
+        └────┬────┘
+             │
+      ┌──────┴──────┐
+      │             │
+      │   Profile   │  <- 32x32 circle (image or emoji)
+      │   /Emoji    │
+      │             │
+      └──────┬──────┘
+             │
+          ┌──┴──┐
+          │ ETA │  <- Bottom-right badge
+          └─────┘
 ```
 
 ### 상태별 표시
@@ -247,6 +273,39 @@ let index = abs(userId.hashValue) % defaultEmojis.count
 
 ---
 
+## 색상 시스템
+
+### 브랜드 색상 (ResourceKit)
+
+```swift
+Color.pmindigo.n500  // 메인 인디고
+Color.pmpurple.n500  // 메인 퍼플
+Color.pmpurple.n400  // 서브 퍼플
+Color.pmsuccess.n500 // 그린 (도착)
+Color.pmgray.n500    // 그레이 (대기)
+```
+
+### 진행률 색상 (ProgressColor)
+
+| 진행률 | 단색 | 그라데이션 |
+|--------|------|-----------|
+| 75%+ | pmindigo.n500 | pmindigo.n500 → pmpurple.n500 |
+| 50-75% | pmpurple.n500 | pmpurple.n500 → pmpurple.n400 |
+| 25-50% | orange | orange → pmpurple.n400 |
+| 0-25% | gray | gray → orange |
+
+### 참가자 마커 뱃지 색상
+
+```swift
+switch eta {
+case nil:    .pmgray.n500    // 대기
+case 0:      .pmsuccess.n500 // 도착
+default:     .pmindigo.n500  // 이동 중
+}
+```
+
+---
+
 ## 프로필 이미지 캐싱
 
 ### 문제
@@ -258,40 +317,40 @@ Widget Extension은 네트워크 요청 불가 → 프로필 이미지 로드 �
 App Group 공유 컨테이너에 미리 캐싱
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                     Main App                             │
-│                                                          │
-│  GroupMainFeature.groupMembersResponse                   │
-│           │                                              │
-│           ▼                                              │
-│  cacheProfileImagesForLiveActivity()                     │
-│           │                                              │
-│           ▼                                              │
-│  ┌─────────────────────────────────────────────────┐    │
-│  │  LiveActivityImageStore.saveImage()              │    │
-│  │  - Nuke로 다운로드 (캐시 활용)                   │    │
-│  │  - 64x64 JPEG 변환                               │    │
-│  │  - App Group 저장: profile-{userId}.jpg         │    │
-│  └─────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────┘
-                         │
-                         ▼
-┌─────────────────────────────────────────────────────────┐
-│               App Group Container                        │
-│  group.com.promiso.shared/LiveActivityImages/            │
-│  ├── profile-user1.jpg                                   │
-│  ├── profile-user2.jpg                                   │
-│  └── profile-user3.jpg                                   │
-└─────────────────────────────────────────────────────────┘
-                         │
-                         ▼
-┌─────────────────────────────────────────────────────────┐
-│                  Widget Extension                        │
-│                                                          │
-│  LiveActivityImageStore.loadImage(userId:)               │
-│  - FileManager로 App Group에서 로드                      │
-│  - 없으면 nil → 이모지 fallback                          │
-└─────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────┐
+│                   Main App                      │
+│                                                 │
+│  GroupMainFeature.groupMembersResponse          │
+│           │                                     │
+│           ▼                                     │
+│  cacheProfileImagesForLiveActivity()            │
+│           │                                     │
+│           ▼                                     │
+│  ┌───────────────────────────────────────────┐  │
+│  │  LiveActivityImageStore.saveImage()       │  │
+│  │  - Download via Nuke (use cache)          │  │
+│  │  - Resize to 64x64 JPEG                   │  │
+│  │  - Save to App Group: profile-{id}.jpg    │  │
+│  └───────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────┐
+│             App Group Container                 │
+│  group.com.promiso.shared/LiveActivityImages/   │
+│  ├── profile-user1.jpg                          │
+│  ├── profile-user2.jpg                          │
+│  └── profile-user3.jpg                          │
+└─────────────────────────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────┐
+│               Widget Extension                  │
+│                                                 │
+│  LiveActivityImageStore.loadImage(userId:)      │
+│  - Load from App Group via FileManager          │
+│  - Return nil if not found -> emoji fallback    │
+└─────────────────────────────────────────────────┘
 ```
 
 ### API
@@ -343,6 +402,12 @@ struct UpdateETAIntent: LiveActivityIntent {
 | 5분 | 5 | 5분 후 도착 |
 | 10분 | 10 | 10분 후 도착 |
 | 직접 입력 | - | 앱으로 딥링크 |
+
+### 딥링크
+
+```
+promiso://promise/{promiseId}/eta
+```
 
 ---
 
@@ -428,6 +493,26 @@ Debug 빌드에서 사용 가능한 테스트 패널:
 - **순차 도착**: 1.5초 간격 순차 상태 변경
 - **혼합 상태**: 도착/5분/15분/대기 각각
 
+### Preview 상태
+
+`PromiseLiveActivity.swift`에 정의된 프리뷰:
+
+| 프리뷰 | 설명 |
+|--------|------|
+| 0. 긴 제목 | 제목/장소 truncation 테스트 |
+| 1. 초기 상태 | 모두 대기 (eta=nil) |
+| 2. 진행 중 | 일부 출발 |
+| 3. 긴급 | 거의 도착 |
+| 4. 거의 완료 | 대부분 도착 |
+| 5. 완료 | 모두 도착 |
+| 6. 다양한 진행률 | 혼합 상태 |
+
+**Dynamic Island 프리뷰:**
+- DI - Compact
+- DI - Compact (Urgent)
+- DI - Expanded
+- DI - Minimal
+
 ---
 
 ## 구현 체크리스트
@@ -455,6 +540,20 @@ Debug 빌드에서 사용 가능한 테스트 패널:
 
 ---
 
+## 의존성
+
+```
+LiveActivityWidget
+├── ActivityKit (시스템)
+├── WidgetKit (시스템)
+├── SwiftUI (시스템)
+├── AppIntents (시스템)
+├── PromisoShared (공유 모델)
+└── ResourceKit (브랜드 색상)
+```
+
+---
+
 ## 참고 파일
 
 | 파일 | 설명 |
@@ -467,3 +566,10 @@ Debug 빌드에서 사용 가능한 테스트 패널:
 | `UpdateETAIntent.swift` | ETA 버튼 Intent |
 | `LiveActivityClient.swift` | TCA Dependency |
 | `PromiseDetailView.swift` | 테스트 UI (DEBUG) |
+
+---
+
+## 참고 링크
+
+- [Human Interface Guidelines - Live Activities](https://developer.apple.com/design/human-interface-guidelines/live-activities)
+- [ActivityKit Documentation](https://developer.apple.com/documentation/activitykit)
