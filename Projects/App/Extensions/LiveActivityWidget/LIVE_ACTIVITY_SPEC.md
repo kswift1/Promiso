@@ -517,7 +517,7 @@ Debug 빌드에서 사용 가능한 테스트 패널:
 
 ## 구현 체크리스트
 
-### iOS (완료)
+### iOS
 
 - [x] Widget Extension 설정
 - [x] PromiseActivityAttributes 모델
@@ -529,6 +529,7 @@ Debug 빌드에서 사용 가능한 테스트 패널:
 - [x] 프로필 이미지 캐싱 (LiveActivityImageStore)
 - [x] UpdateETAIntent
 - [x] 테스트 UI
+- [ ] 지각 표시 UI (마커 색상, 뱃지 변경)
 
 ### Backend (TODO)
 
