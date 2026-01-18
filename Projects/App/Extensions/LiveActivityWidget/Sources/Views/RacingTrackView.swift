@@ -137,7 +137,8 @@ struct RacingTrackView: View {
   private func participantMarkers(usableWidth: CGFloat, padding: CGFloat, centerY: CGFloat) -> some View {
     let groups = groupParticipantsByPosition()
 
-    return ForEach(Array(groups.enumerated()), id: \.offset) { index, group in
+    // ETA 값을 안정적인 ID로 사용 (nil은 -1로 처리)
+    return ForEach(groups, id: \.etaKey) { group in
       let position = group.position
       let xPos = padding + (usableWidth * position)
 
@@ -153,13 +154,12 @@ struct RacingTrackView: View {
         groupCount: extraCount
       )
       .position(x: xPos, y: centerY)
-      .zIndex(isCurrentUser ? 100 : Double(index))
-      .animation(.spring(response: 0.6, dampingFraction: 0.8), value: position)
+      .zIndex(isCurrentUser ? 100 : Double(group.etaKey + 100))
     }
   }
 
   /// ETA 기준으로 참가자들을 그룹화
-  private func groupParticipantsByPosition() -> [(position: Double, participants: [ParticipantState])] {
+  private func groupParticipantsByPosition() -> [(etaKey: Int, position: Double, participants: [ParticipantState])] {
     // ETA별로 그룹화 (nil, 0, 5, 10... 각각 별도 그룹)
     var etaGroups: [Int?: [ParticipantState]] = [:]
 
@@ -168,10 +168,11 @@ struct RacingTrackView: View {
       etaGroups[eta, default: []].append(participant)
     }
 
-    // 그룹별 position 계산 후 반환
+    // 그룹별 position 계산 후 반환 (etaKey: nil은 -1로 처리)
     return etaGroups.map { (eta, participants) in
       let position = participants[0].trackPosition(trackingDurationMinutes: trackingDurationMinutes)
-      return (position: position, participants: participants)
+      let etaKey = eta ?? -1
+      return (etaKey: etaKey, position: position, participants: participants)
     }.sorted { $0.position < $1.position }
   }
 }

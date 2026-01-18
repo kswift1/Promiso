@@ -846,8 +846,8 @@ private struct LiveActivityMockSection: View {
   private static let mockUserId4 = "user-4"
 
   private let mockParticipants = [
-    ParticipantState(id: mockUserId1, name: "나", estimatedArrivalMinutes: nil),
-    ParticipantState(id: mockUserId2, name: "민수", estimatedArrivalMinutes: nil),
+    ParticipantState(id: mockUserId1, name: "일이삼사오육칠", estimatedArrivalMinutes: nil),
+    ParticipantState(id: mockUserId2, name: "가나다라마바사", estimatedArrivalMinutes: nil),
     ParticipantState(id: mockUserId3, name: "지현", estimatedArrivalMinutes: nil),
     ParticipantState(id: mockUserId4, name: "서연", estimatedArrivalMinutes: nil)
   ]
@@ -869,33 +869,55 @@ private struct LiveActivityMockSection: View {
 
       if isActive {
         // 활성 상태: 업데이트 버튼들
-        VStack(spacing: 8) {
-          Text("참가자 상태 변경")
+        VStack(spacing: 12) {
+          // MARK: - 개별 참가자 ETA 설정
+          Text("개별 ETA 설정")
             .font(.system(size: 14, weight: .semibold))
             .foregroundStyle(.secondary)
 
-          // 상태 변경 버튼 그리드
+          VStack(spacing: 6) {
+            participantETARow(name: "나", id: Self.mockUserId1)
+            participantETARow(name: "민수", id: Self.mockUserId2)
+            participantETARow(name: "지현", id: Self.mockUserId3)
+            participantETARow(name: "서연", id: Self.mockUserId4)
+          }
+
+          Divider().padding(.vertical, 4)
+
+          // MARK: - 시나리오 테스트
+          Text("시나리오 테스트")
+            .font(.system(size: 14, weight: .semibold))
+            .foregroundStyle(.secondary)
+
           LazyVGrid(columns: [
             GridItem(.flexible()),
             GridItem(.flexible())
           ], spacing: 8) {
-            MockStatusButton(title: "나 → 15분", color: .green) {
-              updateParticipant(id: Self.mockUserId1, estimatedArrivalMinutes: 15)
+            MockStatusButton(title: "모두 대기", color: .gray) {
+              updateAllParticipants(estimatedArrivalMinutes: nil)
             }
-            MockStatusButton(title: "민수 → 10분", color: .green) {
-              updateParticipant(id: Self.mockUserId2, estimatedArrivalMinutes: 10)
-            }
-            MockStatusButton(title: "지현 → 30분", color: .orange) {
-              updateParticipant(id: Self.mockUserId3, estimatedArrivalMinutes: 30)
-            }
-            MockStatusButton(title: "서연 → 도착", color: .blue) {
-              updateParticipant(id: Self.mockUserId4, estimatedArrivalMinutes: 0)
-            }
-            MockStatusButton(title: "모두 출발", color: .green) {
+            MockStatusButton(title: "모두 출발(15분)", color: .indigo) {
               updateAllParticipants(estimatedArrivalMinutes: 15)
             }
-            MockStatusButton(title: "모두 도착", color: .blue) {
+            MockStatusButton(title: "모두 도착", color: .green) {
               updateAllParticipants(estimatedArrivalMinutes: 0)
+            }
+            MockStatusButton(title: "그룹화 테스트", color: .orange) {
+              // 같은 ETA로 그룹화 테스트
+              updateParticipant(id: Self.mockUserId1, estimatedArrivalMinutes: 10)
+              updateParticipant(id: Self.mockUserId2, estimatedArrivalMinutes: 10)
+              updateParticipant(id: Self.mockUserId3, estimatedArrivalMinutes: 5)
+              updateParticipant(id: Self.mockUserId4, estimatedArrivalMinutes: nil)
+            }
+            MockStatusButton(title: "순차 도착", color: .blue) {
+              // 1초 간격 순차 도착 시뮬레이션
+              sequentialArrival()
+            }
+            MockStatusButton(title: "혼합 상태", color: .purple) {
+              updateParticipant(id: Self.mockUserId1, estimatedArrivalMinutes: 0)
+              updateParticipant(id: Self.mockUserId2, estimatedArrivalMinutes: 5)
+              updateParticipant(id: Self.mockUserId3, estimatedArrivalMinutes: 15)
+              updateParticipant(id: Self.mockUserId4, estimatedArrivalMinutes: nil)
             }
           }
 
@@ -1022,10 +1044,84 @@ private struct LiveActivityMockSection: View {
     statusMessage = "모두 → \(etaText)"
   }
 
+  /// 개별 참가자 ETA 설정 행
+  @ViewBuilder
+  private func participantETARow(name: String, id: String) -> some View {
+    HStack(spacing: 6) {
+      Text(name)
+        .font(.system(size: 12, weight: .medium))
+        .frame(width: 36, alignment: .leading)
+
+      ForEach(etaOptions, id: \.value) { option in
+        Button {
+          updateParticipant(id: id, estimatedArrivalMinutes: option.value)
+        } label: {
+          Text(option.label)
+            .font(.system(size: 10, weight: .medium))
+            .padding(.horizontal, 6)
+            .padding(.vertical, 4)
+            .background(option.color.opacity(0.15))
+            .foregroundStyle(option.color)
+            .clipShape(RoundedRectangle(cornerRadius: 4))
+        }
+      }
+    }
+  }
+
+  /// ETA 옵션 목록
+  private var etaOptions: [(label: String, value: Int?, color: Color)] {
+    [
+      ("대기", nil, .gray),
+      ("30분", 30, .orange),
+      ("15분", 15, .yellow),
+      ("10분", 10, .blue),
+      ("5분", 5, .indigo),
+      ("도착", 0, .green)
+    ]
+  }
+
+  /// 순차 도착 시뮬레이션 (1초 간격)
+  private func sequentialArrival() {
+    let userIds = [Self.mockUserId1, Self.mockUserId2, Self.mockUserId3, Self.mockUserId4]
+    let etaSequence: [Int?] = [15, 10, 5, 0]  // 출발 → 도착 순서
+
+    Task {
+      for (index, userId) in userIds.enumerated() {
+        try? await Task.sleep(for: .seconds(1.5))
+        await MainActor.run {
+          updateParticipantImmediate(id: userId, estimatedArrivalMinutes: etaSequence[index])
+        }
+      }
+    }
+  }
+
+  /// 즉시 업데이트 (딜레이 없이)
+  private func updateParticipantImmediate(id: String, estimatedArrivalMinutes: Int?) {
+    guard let activityId = activityId,
+          let state = currentState else { return }
+
+    let updatedState = state.updating(participantId: id, estimatedArrivalMinutes: estimatedArrivalMinutes)
+
+    Task {
+      if let activity = Activity<PromiseActivityAttributes>.activities
+        .first(where: { $0.id == activityId }) {
+        await activity.update(ActivityContent(state: updatedState, staleDate: nil))
+        await MainActor.run {
+          currentState = updatedState
+          let etaText = estimatedArrivalMinutes.map { $0 == 0 ? "도착" : "\($0)분" } ?? "대기"
+          statusMessage = "\(id.prefix(8)) → \(etaText)"
+        }
+      }
+    }
+  }
+
   private func updateActivity(with state: PromiseActivityAttributes.ContentState) {
     guard let activityId = activityId else { return }
 
     Task {
+      // 1초 딜레이 후 업데이트 (애니메이션 테스트용)
+      try? await Task.sleep(for: .seconds(1))
+
       if let activity = Activity<PromiseActivityAttributes>.activities
         .first(where: { $0.id == activityId }) {
         await activity.update(ActivityContent(state: state, staleDate: nil))
