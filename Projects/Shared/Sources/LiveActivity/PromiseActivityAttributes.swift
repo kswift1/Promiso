@@ -17,7 +17,10 @@ public struct PromiseActivityAttributes: ActivityAttributes {
   /// 현재 사용자 ID
   public let currentUserId: String
 
-  /// 약속 제목 (이모지 포함)
+  /// 약속 이모지
+  public let emoji: String
+
+  /// 약속 제목
   public let title: String
 
   /// 약속 장소명 (예: "강남역 11번 출구")
@@ -31,6 +34,7 @@ public struct PromiseActivityAttributes: ActivityAttributes {
   public init(
     promiseId: String,
     currentUserId: String,
+    emoji: String,
     title: String,
     location: String?,
     scheduledTime: Date,
@@ -38,6 +42,7 @@ public struct PromiseActivityAttributes: ActivityAttributes {
   ) {
     self.promiseId = promiseId
     self.currentUserId = currentUserId
+    self.emoji = emoji
     self.title = title
     self.location = location
     self.scheduledTime = scheduledTime
@@ -157,45 +162,28 @@ public enum LiveActivityIntentKey {
   /// App Group Suite 이름
   public static let suiteName = "group.com.promiso.app"
 
-  /// 출발 상태 저장 키
-  public static let departureKey = "liveActivity.departure"
-
-  /// 도착 상태 저장 키
-  public static let arrivalKey = "liveActivity.arrival"
+  /// ETA 업데이트 저장 키
+  public static let etaUpdateKey = "liveActivity.etaUpdate"
 }
 
-/// 출발 버튼 탭 시 저장되는 정보
-public struct DepartureStatus: Codable, Sendable {
+/// 도착 예상 시간 업데이트 정보
+public struct ETAUpdate: Codable, Sendable {
   /// 약속 ID
   public let promiseId: String
 
   /// 사용자 ID
-  public let oderId: String
+  public let userId: String
 
-  /// 출발 시간
+  /// 도착 예상 시간 (분) - 0이면 도착
+  public let estimatedMinutes: Int
+
+  /// 업데이트 시간
   public let timestamp: Date
 
-  public init(promiseId: String, oderId: String, timestamp: Date) {
+  public init(promiseId: String, userId: String, estimatedMinutes: Int, timestamp: Date) {
     self.promiseId = promiseId
-    self.oderId = oderId
-    self.timestamp = timestamp
-  }
-}
-
-/// 도착 버튼 탭 시 저장되는 정보
-public struct ArrivalStatus: Codable, Sendable {
-  /// 약속 ID
-  public let promiseId: String
-
-  /// 사용자 ID
-  public let oderId: String
-
-  /// 도착 시간
-  public let timestamp: Date
-
-  public init(promiseId: String, oderId: String, timestamp: Date) {
-    self.promiseId = promiseId
-    self.oderId = oderId
+    self.userId = userId
+    self.estimatedMinutes = estimatedMinutes
     self.timestamp = timestamp
   }
 }

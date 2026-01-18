@@ -85,7 +85,7 @@ struct LockScreenBannerView: View {
     HStack {
       // 왼쪽: 약속 정보
       VStack(alignment: .leading, spacing: 6) {
-        Text(attrs.title)
+        Text("\(attrs.emoji) \(attrs.title)")
           .font(.subheadline.weight(.bold))
           .lineLimit(1)
 
@@ -105,7 +105,7 @@ struct LockScreenBannerView: View {
 
       // 오른쪽: 약속 시간
       VStack(alignment: .trailing, spacing: 2) {
-        Text("약속")
+        Text("약속 시간")
           .font(.caption2)
           .foregroundStyle(.white.opacity(0.6))
 
@@ -246,147 +246,4 @@ struct ETASegmentedControl: View {
         .stroke(Color.white.opacity(0.1), lineWidth: 0.5)
     )
   }
-}
-
-// MARK: - Preview Attributes
-
-private let previewAttributes = PromiseActivityAttributes(
-  promiseId: "preview-123",
-  currentUserId: "user-1",
-  title: "🍜 점심 모임",
-  location: "강남역 11번 출구",
-  scheduledTime: Date().addingTimeInterval(1080),
-  trackingDurationMinutes: 30
-)
-
-// MARK: - Preview States
-
-/// 1. 초기 상태 - 모두 대기
-private let stateInitial = PromiseActivityAttributes.ContentState(
-  trackingDurationMinutes: 30,
-  participants: [
-    ParticipantState(id: "user-1", name: "나", estimatedArrivalMinutes: nil),
-    ParticipantState(id: "user-2", name: "민수", estimatedArrivalMinutes: nil),
-    ParticipantState(id: "user-3", name: "지현", estimatedArrivalMinutes: nil),
-    ParticipantState(id: "user-4", name: "서연", estimatedArrivalMinutes: nil)
-  ]
-)
-
-/// 2. 진행 중 - 일부 출발
-private let stateInProgress = PromiseActivityAttributes.ContentState(
-  trackingDurationMinutes: 30,
-  participants: [
-    ParticipantState(id: "user-1", name: "나", estimatedArrivalMinutes: 10),
-    ParticipantState(id: "user-2", name: "민수", estimatedArrivalMinutes: 15),
-    ParticipantState(id: "user-3", name: "지현", estimatedArrivalMinutes: 30),
-    ParticipantState(id: "user-4", name: "서연", estimatedArrivalMinutes: nil)
-  ]
-)
-
-/// 3. 긴급 상태 - 거의 도착
-private let stateUrgent = PromiseActivityAttributes.ContentState(
-  trackingDurationMinutes: 30,
-  participants: [
-    ParticipantState(id: "user-1", name: "나", estimatedArrivalMinutes: 5),
-    ParticipantState(id: "user-2", name: "민수", estimatedArrivalMinutes: 0),
-    ParticipantState(id: "user-3", name: "지현", estimatedArrivalMinutes: 15),
-    ParticipantState(id: "user-4", name: "서연", estimatedArrivalMinutes: 10)
-  ]
-)
-
-/// 4. 거의 완료 - 대부분 도착
-private let stateAlmostDone = PromiseActivityAttributes.ContentState(
-  trackingDurationMinutes: 30,
-  participants: [
-    ParticipantState(id: "user-1", name: "나", estimatedArrivalMinutes: 0),
-    ParticipantState(id: "user-2", name: "민수", estimatedArrivalMinutes: 0),
-    ParticipantState(id: "user-3", name: "지현", estimatedArrivalMinutes: 5),
-    ParticipantState(id: "user-4", name: "서연", estimatedArrivalMinutes: 0)
-  ]
-)
-
-/// 5. 완료 - 모두 도착
-private let stateCompleted = PromiseActivityAttributes.ContentState(
-  trackingDurationMinutes: 30,
-  participants: [
-    ParticipantState(id: "user-1", name: "나", estimatedArrivalMinutes: 0),
-    ParticipantState(id: "user-2", name: "민수", estimatedArrivalMinutes: 0),
-    ParticipantState(id: "user-3", name: "지현", estimatedArrivalMinutes: 0),
-    ParticipantState(id: "user-4", name: "서연", estimatedArrivalMinutes: 0)
-  ]
-)
-
-/// 6. 다양한 진행률
-private let stateMixed = PromiseActivityAttributes.ContentState(
-  trackingDurationMinutes: 30,
-  participants: [
-    ParticipantState(id: "user-1", name: "나", estimatedArrivalMinutes: 0),
-    ParticipantState(id: "user-2", name: "민수", estimatedArrivalMinutes: 10),
-    ParticipantState(id: "user-3", name: "지현", estimatedArrivalMinutes: 20),
-    ParticipantState(id: "user-4", name: "서연", estimatedArrivalMinutes: nil)
-  ]
-)
-
-// MARK: - Previews
-
-#Preview("1. 초기 상태 (30분)", as: .content, using: previewAttributes) {
-  PromiseLiveActivity()
-} contentStates: {
-  stateInitial
-}
-
-#Preview("2. 진행 중 (18분)", as: .content, using: previewAttributes) {
-  PromiseLiveActivity()
-} contentStates: {
-  stateInProgress
-}
-
-#Preview("3. 긴급 (8분)", as: .content, using: previewAttributes) {
-  PromiseLiveActivity()
-} contentStates: {
-  stateUrgent
-}
-
-#Preview("4. 거의 완료 (3분)", as: .content, using: previewAttributes) {
-  PromiseLiveActivity()
-} contentStates: {
-  stateAlmostDone
-}
-
-#Preview("5. 완료", as: .content, using: previewAttributes) {
-  PromiseLiveActivity()
-} contentStates: {
-  stateCompleted
-}
-
-#Preview("6. 다양한 진행률", as: .content, using: previewAttributes) {
-  PromiseLiveActivity()
-} contentStates: {
-  stateMixed
-}
-
-// MARK: - Dynamic Island Previews
-
-#Preview("DI - Compact", as: .dynamicIsland(.compact), using: previewAttributes) {
-  PromiseLiveActivity()
-} contentStates: {
-  stateInProgress
-}
-
-#Preview("DI - Compact (Urgent)", as: .dynamicIsland(.compact), using: previewAttributes) {
-  PromiseLiveActivity()
-} contentStates: {
-  stateUrgent
-}
-
-#Preview("DI - Expanded", as: .dynamicIsland(.expanded), using: previewAttributes) {
-  PromiseLiveActivity()
-} contentStates: {
-  stateInProgress
-}
-
-#Preview("DI - Minimal", as: .dynamicIsland(.minimal), using: previewAttributes) {
-  PromiseLiveActivity()
-} contentStates: {
-  stateInProgress
 }

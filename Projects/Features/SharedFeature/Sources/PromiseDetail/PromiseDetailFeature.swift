@@ -117,6 +117,7 @@ extension PromiseDetail {
         case liveActivityStartTapped
         case liveActivityStopTapped
         case markArrivedTapped
+        case checkPendingIntents
       }
 
       @CasePathable
@@ -133,12 +134,14 @@ extension PromiseDetail {
         case deleteFailed(error: AppError)
         case promiseUpdated(PromiseModel)
         // Live Activity
-        case startLiveActivity(channelId: String)
+        case startLiveActivity
         case liveActivityStarted(id: String)
         case liveActivityFailed(error: AppError)
         case liveActivityEnded
         case markArrivalDone
         case markArrivalFailed(error: AppError)
+        case processPendingETAUpdate(ETAUpdate)
+        case liveActivityUpdated
       }
 
       public enum Delegate: Sendable {
@@ -154,7 +157,8 @@ extension PromiseDetail {
         case .view(let viewAction):
           switch viewAction {
           case .onAppear:
-            return .none
+            // Pending Intent 확인 (Widget에서 저장한 출발/도착 상태)
+            return .send(.view(.checkPendingIntents))
 
           case .dismissTapped:
             return .send(.delegate(.dismiss))
@@ -231,11 +235,7 @@ extension PromiseDetail {
                   !state.isStartingLiveActivity else { return .none }
 
             state.isStartingLiveActivity = true
-
-            // TODO: Firestore에서 channelId 조회 후 startLiveActivity 호출
-            // 현재는 임시로 promiseId 기반 channelId 사용
-            let channelId = "promise_\(state.promise.id)"
-            return .send(.internal(.startLiveActivity(channelId: channelId)))
+            return .send(.internal(.startLiveActivity))
 
           case .liveActivityStopTapped:
             guard let activityId = state.liveActivityId else { return .none }
@@ -248,6 +248,18 @@ extension PromiseDetail {
             // TODO: Firebase Functions 호출하여 도착 상태 업데이트
             // 현재는 로컬에서만 처리
             return .send(.internal(.markArrivalDone))
+
+          case .checkPendingIntents:
+            // Widget에서 저장한 Intent 확인 후 처리
+            guard state.isLiveActivityActive else { return .none }
+
+            return .run { [liveActivityClient] send in
+              // ETA 업데이트 Intent 확인
+              if let etaUpdate = liveActivityClient.pendingETAUpdate() {
+                liveActivityClient.clearETAUpdate()
+                await send(.internal(.processPendingETAUpdate(etaUpdate)))
+              }
+            }
           }
 
         case .internal(let internalAction):
@@ -313,29 +325,36 @@ extension PromiseDetail {
             return .none
 
           // MARK: - Live Activity Internal Actions
-          case .startLiveActivity(let channelId):
+          case .startLiveActivity:
             let promise = state.promise
+            let currentUserId = state.currentUserId
             let members = state.groupMembers ?? []
             let acceptedMembers = members.filter { promise.votes.accepted.contains($0.userId) }
 
             let attributes = PromiseActivityAttributes(
               promiseId: promise.id,
-              title: promise.title,
+              currentUserId: currentUserId,
               emoji: promise.displayEmoji,
-              startAt: promise.startAt,
-              locationName: promise.location?.name,
-              groupId: promise.groupId,
-              totalParticipants: promise.votes.acceptedCount
+              title: promise.title,
+              location: promise.location?.name ?? "장소 미정",
+              scheduledTime: promise.startAt
             )
 
-            let initialState = PromiseActivityAttributes.ContentState.initial(
-              memberIds: acceptedMembers.map(\.userId),
-              memberNames: acceptedMembers.map(\.displayName)
+            let participants = acceptedMembers.map { member in
+              ParticipantState(
+                id: member.userId,
+                name: member.displayName,
+                estimatedArrivalMinutes: nil
+              )
+            }
+            let initialState = PromiseActivityAttributes.ContentState(
+              trackingDurationMinutes: 30,
+              participants: participants
             )
 
             return .run { [liveActivityClient] send in
               do {
-                let id = try await liveActivityClient.start(attributes, initialState, channelId)
+                let id = try await liveActivityClient.start(attributes, initialState)
                 await send(.internal(.liveActivityStarted(id: id)))
               } catch {
                 await send(.internal(.liveActivityFailed(error: AppError(error))))
@@ -362,6 +381,29 @@ extension PromiseDetail {
             return .none
 
           case .markArrivalFailed:
+            return .none
+
+          case .processPendingETAUpdate(let etaUpdate):
+            // Widget에서 저장한 ETA 업데이트 처리
+            guard let activityId = state.liveActivityId,
+                  etaUpdate.promiseId == state.promise.id else {
+              return .none
+            }
+
+            return .run { [liveActivityClient] send in
+              guard let currentState = liveActivityClient.currentState() else { return }
+              let updatedState = currentState.updating(
+                participantId: etaUpdate.userId,
+                estimatedArrivalMinutes: etaUpdate.estimatedMinutes
+              )
+              try await liveActivityClient.update(activityId, updatedState)
+              await send(.internal(.liveActivityUpdated))
+            } catch: { _, _ in
+              // 업데이트 실패 시 무시
+            }
+
+          case .liveActivityUpdated:
+            // UI 업데이트 완료
             return .none
           }
 

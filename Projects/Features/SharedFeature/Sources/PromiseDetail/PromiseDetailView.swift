@@ -8,6 +8,7 @@ extension PromiseDetail {
   public struct RootView: View {
     @Bindable private var store: StoreOf<Feature>
     @State private var isDescriptionExpanded = false
+    @Environment(\.scenePhase) private var scenePhase
 
     public init(store: StoreOf<Feature>) {
       self.store = store
@@ -30,6 +31,11 @@ extension PromiseDetail {
       .toolbar { toolbarContent }
       .onAppear {
         store.send(.view(.onAppear))
+      }
+      .onChange(of: scenePhase) { _, newPhase in
+        if newPhase == .active {
+          store.send(.view(.checkPendingIntents))
+        }
       }
       .sheet(
         item: Binding(
@@ -255,6 +261,10 @@ extension PromiseDetail {
 
     @ViewBuilder
     private var liveActivitySection: some View {
+      #if DEBUG
+      // DEBUG: 목 테스트 섹션 (항상 표시)
+      LiveActivityMockSection()
+      #else
       // 조건: 확정됨 + 30분 이내 + 내가 참여 중
       if store.promise.isConfirmed && store.promise.isRealtimeShareable && store.isParticipating {
         VStack(spacing: 12) {
@@ -327,6 +337,7 @@ extension PromiseDetail {
           }
         }
       }
+      #endif
     }
 
     // MARK: - Toolbar
@@ -722,5 +733,344 @@ private extension View {
       )
   }
 }
+
+// MARK: - Live Activity Debug View
+
+#if DEBUG
+private struct LiveActivityDebugView: View {
+  @State private var debugInfo: [String: String] = [:]
+  private let defaults = UserDefaults(suiteName: "group.com.promiso.shared")
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 8) {
+      HStack {
+        Text("🔍 Debug Info")
+          .font(.system(size: 14, weight: .bold))
+        Spacer()
+        Button("새로고침") {
+          loadDebugInfo()
+        }
+        .font(.system(size: 12))
+      }
+
+      ForEach(Array(debugInfo.keys.sorted()), id: \.self) { key in
+        HStack(alignment: .top) {
+          Text(key)
+            .font(.system(size: 11, weight: .medium, design: .monospaced))
+            .foregroundStyle(.secondary)
+          Spacer()
+          Text(debugInfo[key] ?? "-")
+            .font(.system(size: 11, design: .monospaced))
+            .multilineTextAlignment(.trailing)
+        }
+      }
+
+      if debugInfo.isEmpty {
+        Text("버튼을 누른 후 새로고침하세요")
+          .font(.system(size: 12))
+          .foregroundStyle(.secondary)
+      }
+    }
+    .padding(12)
+    .background(Color.yellow.opacity(0.1))
+    .clipShape(RoundedRectangle(cornerRadius: 8))
+    .overlay(
+      RoundedRectangle(cornerRadius: 8)
+        .stroke(Color.yellow.opacity(0.3), lineWidth: 1)
+    )
+    .onAppear {
+      loadDebugInfo()
+    }
+  }
+
+  private func loadDebugInfo() {
+    var info: [String: String] = [:]
+
+    // Last Intent
+    if let intentData = defaults?.dictionary(forKey: "liveActivity.debug.lastIntent") {
+      if let count = intentData["activitiesCount"] as? Int {
+        info["activitiesCount"] = "\(count)"
+      }
+      if let promiseId = intentData["promiseId"] as? String {
+        info["promiseId"] = String(promiseId.prefix(8)) + "..."
+      }
+      if let oderId = intentData["participantId"] as? String {
+        info["participantId"] = String(oderId.prefix(8)) + "..."
+      }
+      if let eta = intentData["estimatedArrivalMinutes"] as? Int {
+        let etaText = eta == -1 ? "대기" : (eta == 0 ? "도착" : "\(eta)분")
+        info["ETA"] = etaText
+      }
+      if let timestamp = intentData["timestamp"] as? Double {
+        let date = Date(timeIntervalSince1970: timestamp)
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm:ss"
+        info["timestamp"] = formatter.string(from: date)
+      }
+    }
+
+    // Error
+    if let error = defaults?.string(forKey: "liveActivity.debug.error") {
+      info["❌ error"] = error
+    }
+
+    // Participant IDs
+    if let ids = defaults?.array(forKey: "liveActivity.debug.participantIds") as? [String] {
+      info["participantIds"] = ids.map { String($0.prefix(6)) }.joined(separator: ", ")
+    }
+
+    // Result
+    if let result = defaults?.string(forKey: "liveActivity.debug.result") {
+      info["✅ result"] = result
+    }
+
+    debugInfo = info
+  }
+}
+
+// MARK: - Live Activity Mock Section
+
+import ActivityKit
+
+/// 라이브액티비티 테스트용 목 섹션
+private struct LiveActivityMockSection: View {
+  @State private var activityId: String?
+  @State private var currentState: PromiseActivityAttributes.ContentState?
+  @State private var isActive = false
+  @State private var statusMessage = ""
+
+  private let mockParticipants = [
+    ParticipantState(id: "user-1", name: "나", estimatedArrivalMinutes: nil),
+    ParticipantState(id: "user-2", name: "민수", estimatedArrivalMinutes: nil),
+    ParticipantState(id: "user-3", name: "지현", estimatedArrivalMinutes: nil),
+    ParticipantState(id: "user-4", name: "서연", estimatedArrivalMinutes: nil)
+  ]
+
+  var body: some View {
+    VStack(spacing: 12) {
+      SectionHeader(title: "🧪 라이브액티비티 테스트")
+
+      // 상태 표시
+      if !statusMessage.isEmpty {
+        Text(statusMessage)
+          .font(.system(size: 12))
+          .foregroundStyle(.secondary)
+          .padding(.horizontal, 12)
+          .padding(.vertical, 6)
+          .background(Color.gray.opacity(0.1))
+          .clipShape(Capsule())
+      }
+
+      if isActive {
+        // 활성 상태: 업데이트 버튼들
+        VStack(spacing: 8) {
+          Text("참가자 상태 변경")
+            .font(.system(size: 14, weight: .semibold))
+            .foregroundStyle(.secondary)
+
+          // 상태 변경 버튼 그리드
+          LazyVGrid(columns: [
+            GridItem(.flexible()),
+            GridItem(.flexible())
+          ], spacing: 8) {
+            MockStatusButton(title: "나 → 15분", color: .green) {
+              updateParticipant(id: "user-1", estimatedArrivalMinutes: 15)
+            }
+            MockStatusButton(title: "민수 → 10분", color: .green) {
+              updateParticipant(id: "user-2", estimatedArrivalMinutes: 10)
+            }
+            MockStatusButton(title: "지현 → 30분", color: .orange) {
+              updateParticipant(id: "user-3", estimatedArrivalMinutes: 30)
+            }
+            MockStatusButton(title: "서연 → 도착", color: .blue) {
+              updateParticipant(id: "user-4", estimatedArrivalMinutes: 0)
+            }
+            MockStatusButton(title: "모두 출발", color: .green) {
+              updateAllParticipants(estimatedArrivalMinutes: 15)
+            }
+            MockStatusButton(title: "모두 도착", color: .blue) {
+              updateAllParticipants(estimatedArrivalMinutes: 0)
+            }
+          }
+
+          Divider().padding(.vertical, 4)
+
+          // 종료 버튼
+          Button {
+            endActivity()
+          } label: {
+            HStack(spacing: 8) {
+              Image(systemName: "stop.circle.fill")
+              Text("라이브액티비티 종료")
+            }
+            .font(.system(size: 14, weight: .semibold))
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .background(Color.red.opacity(0.1))
+            .foregroundStyle(.red)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+          }
+        }
+      } else {
+        // 비활성 상태: 시작 버튼
+        Button {
+          startActivity()
+        } label: {
+          HStack(spacing: 8) {
+            Image(systemName: "play.circle.fill")
+            Text("목 라이브액티비티 시작")
+          }
+          .font(.system(size: 16, weight: .semibold))
+          .frame(maxWidth: .infinity)
+          .padding(.vertical, 14)
+          .background(Color.purple)
+          .foregroundStyle(.white)
+          .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+
+        Text("30분 후 약속, 4명 참가자 목 데이터로 시작")
+          .font(.system(size: 12))
+          .foregroundStyle(.secondary)
+      }
+
+      // 디버그 정보
+      LiveActivityDebugView()
+    }
+    .padding(16)
+    .background(Color.purple.opacity(0.05))
+    .clipShape(RoundedRectangle(cornerRadius: 16))
+    .overlay(
+      RoundedRectangle(cornerRadius: 16)
+        .stroke(Color.purple.opacity(0.2), lineWidth: 1)
+    )
+    .onAppear {
+      checkExistingActivity()
+    }
+  }
+
+  // MARK: - Actions
+
+  private func startActivity() {
+    guard ActivityAuthorizationInfo().areActivitiesEnabled else {
+      statusMessage = "라이브액티비티가 비활성화됨"
+      return
+    }
+
+    let attributes = PromiseActivityAttributes(
+      promiseId: "mock-\(UUID().uuidString.prefix(8))",
+      currentUserId: "user-1",
+      emoji: "🍜",
+      title: "점심 모임",
+      location: "강남역 11번 출구",
+      scheduledTime: Date().addingTimeInterval(1800) // 30분 후
+    )
+
+    let initialState = PromiseActivityAttributes.ContentState(
+      trackingDurationMinutes: 30,
+      participants: mockParticipants
+    )
+
+    do {
+      let activity = try Activity.request(
+        attributes: attributes,
+        content: ActivityContent(state: initialState, staleDate: nil),
+        pushType: nil
+      )
+      activityId = activity.id
+      currentState = initialState
+      isActive = true
+      statusMessage = "시작됨: \(activity.id.prefix(8))..."
+    } catch {
+      statusMessage = "시작 실패: \(error.localizedDescription)"
+    }
+  }
+
+  private func updateParticipant(id: String, estimatedArrivalMinutes: Int?) {
+    guard let activityId = activityId,
+          let state = currentState else { return }
+
+    let updatedState = state.updating(participantId: id, estimatedArrivalMinutes: estimatedArrivalMinutes)
+    updateActivity(with: updatedState)
+    let etaText = estimatedArrivalMinutes.map { $0 == 0 ? "도착" : "\($0)분" } ?? "대기"
+    statusMessage = "\(id) → \(etaText)"
+  }
+
+  private func updateAllParticipants(estimatedArrivalMinutes: Int?) {
+    guard let activityId = activityId,
+          let state = currentState else { return }
+
+    var participants = state.participants
+    for i in participants.indices {
+      participants[i] = participants[i].with(estimatedArrivalMinutes: estimatedArrivalMinutes)
+    }
+    let updatedState = PromiseActivityAttributes.ContentState(
+      trackingDurationMinutes: state.trackingDurationMinutes,
+      participants: participants
+    )
+    updateActivity(with: updatedState)
+    let etaText = estimatedArrivalMinutes.map { $0 == 0 ? "도착" : "\($0)분" } ?? "대기"
+    statusMessage = "모두 → \(etaText)"
+  }
+
+  private func updateActivity(with state: PromiseActivityAttributes.ContentState) {
+    guard let activityId = activityId else { return }
+
+    Task {
+      if let activity = Activity<PromiseActivityAttributes>.activities
+        .first(where: { $0.id == activityId }) {
+        await activity.update(ActivityContent(state: state, staleDate: nil))
+        await MainActor.run {
+          currentState = state
+        }
+      }
+    }
+  }
+
+  private func endActivity() {
+    guard let activityId = activityId else { return }
+
+    Task {
+      if let activity = Activity<PromiseActivityAttributes>.activities
+        .first(where: { $0.id == activityId }) {
+        await activity.end(nil, dismissalPolicy: .immediate)
+      }
+      await MainActor.run {
+        self.activityId = nil
+        self.currentState = nil
+        self.isActive = false
+        self.statusMessage = "종료됨"
+      }
+    }
+  }
+
+  private func checkExistingActivity() {
+    if let activity = Activity<PromiseActivityAttributes>.activities.first {
+      activityId = activity.id
+      currentState = activity.content.state
+      isActive = true
+      statusMessage = "기존 활동: \(activity.id.prefix(8))..."
+    }
+  }
+}
+
+/// 목 상태 변경 버튼
+private struct MockStatusButton: View {
+  let title: String
+  let color: Color
+  let action: () -> Void
+
+  var body: some View {
+    Button(action: action) {
+      Text(title)
+        .font(.system(size: 12, weight: .medium))
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 10)
+        .background(color.opacity(0.1))
+        .foregroundStyle(color)
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+  }
+}
+#endif
 
 

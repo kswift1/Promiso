@@ -17,7 +17,7 @@ struct PromiseLiveActivity: Widget {
           HStack(alignment: .top) {
             // 왼쪽: 약속 정보
             VStack(alignment: .leading, spacing: 4) {
-              Text(context.attributes.title)
+              Text("\(context.attributes.emoji) \(context.attributes.title)")
                 .font(.subheadline.weight(.bold))
                 .foregroundStyle(.white)
                 .lineLimit(1)
@@ -71,7 +71,7 @@ struct PromiseLiveActivity: Widget {
 
       } compactLeading: {
         // MARK: - Compact Leading (뱃지 스타일)
-        Text(context.attributes.title)
+        Text("\(context.attributes.emoji) \(context.attributes.title)")
           .font(.system(size: 12, weight: .semibold))
           .lineLimit(1)
           .padding(.horizontal, 8)
@@ -92,7 +92,7 @@ struct PromiseLiveActivity: Widget {
 
       } minimal: {
         // MARK: - Minimal (약속 이모지)
-        Text(context.attributes.title.prefix(1))
+        Text(context.attributes.emoji)
           .font(.system(size: 16))
       }
     }
@@ -116,7 +116,8 @@ private extension Date {
 private let previewAttributes = PromiseActivityAttributes(
   promiseId: "preview-123",
   currentUserId: "user-1",
-  title: "🍜 점심 모임",
+  emoji: "🍜",
+  title: "점심 모임",
   location: "강남역 11번 출구",
   scheduledTime: Date().addingTimeInterval(1080),
   trackingDurationMinutes: 30
@@ -126,7 +127,8 @@ private let previewAttributes = PromiseActivityAttributes(
 private let previewAttributesLong = PromiseActivityAttributes(
   promiseId: "preview-long",
   currentUserId: "user-1",
-  title: "🎂 성원이 생일파티 with 친구들",
+  emoji: "🎂",
+  title: "성원이 생일파티 with 친구들",
   location: "서울특별시 강남구 테헤란로 123번길",
   scheduledTime: Date().addingTimeInterval(1080),
   trackingDurationMinutes: 30
