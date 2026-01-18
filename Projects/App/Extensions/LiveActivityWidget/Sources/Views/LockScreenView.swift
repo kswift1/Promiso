@@ -3,33 +3,38 @@ import PromisoShared
 import SwiftUI
 import WidgetKit
 
-// MARK: - Time Color
+import ResourceKit
 
-/// 남은 시간에 따른 색상 시스템
-enum TimeColor {
-  static func forRemainingMinutes(_ minutes: Int) -> Color {
-    switch minutes {
-    case 30...:
-      return .green
-    case 10..<30:
-      return .yellow
-    case 1..<10:
+
+// MARK: - Progress Color
+
+/// 진행률 기반 색상 시스템 (앱 브랜드 톤 적용)
+enum ProgressColor {
+  /// 진행률에 따른 단일 색상
+  static func forProgress(_ progress: Double) -> Color {
+    switch progress {
+    case 0.75...:
+      return Color.pmindigo.n500
+    case 0.50..<0.75:
+      return Color.pmpurple.n500
+    case 0.25..<0.50:
       return .orange
     default:
-      return .red
+      return .gray
     }
   }
 
-  static func gradientColors(for minutes: Int) -> [Color] {
-    switch minutes {
-    case 30...:
-      return [.green, .mint]
-    case 10..<30:
-      return [.yellow, .orange]
-    case 1..<10:
-      return [.orange, .red]
+  /// 진행률에 따른 그라데이션 색상
+  static func gradientColors(for progress: Double) -> [Color] {
+    switch progress {
+    case 0.75...:
+      return [Color.pmindigo.n500, Color.pmpurple.n500]
+    case 0.50..<0.75:
+      return [Color.pmpurple.n500, Color.pmpurple.n400]
+    case 0.25..<0.50:
+      return [.orange, Color.pmpurple.n400]
     default:
-      return [.red, .pink]
+      return [.gray, .orange]
     }
   }
 }
@@ -43,8 +48,7 @@ struct LockScreenBannerView: View {
   private var state: PromiseActivityAttributes.ContentState { context.state }
   private var attrs: PromiseActivityAttributes { context.attributes }
 
-  private var remainingMinutes: Int { state.remainingSeconds / 60 }
-  private var timeColor: Color { TimeColor.forRemainingMinutes(remainingMinutes) }
+  private var trackingDuration: Int { state.trackingDurationMinutes }
   private var amPm: String { Calendar.current.component(.hour, from: attrs.scheduledTime) >= 12 ? "PM" : "AM" }
   private var timeText: String { attrs.scheduledTime.formatted(.dateTime.hour(.defaultDigits(amPM: .omitted)).minute()) }
 
@@ -56,8 +60,8 @@ struct LockScreenBannerView: View {
       // MARK: - 레이싱 트랙
       RacingTrackView(
         participants: state.participants,
-        baseProgress: state.baseProgress,
-        remainingMinutes: remainingMinutes
+        trackingDurationMinutes: trackingDuration,
+        currentUserId: attrs.currentUserId
       )
       .frame(height: 50)
     }
@@ -118,74 +122,75 @@ private let previewAttributes = PromiseActivityAttributes(
   currentUserId: "user-1",
   title: "🍜 점심 모임",
   location: "강남역 11번 출구",
-  scheduledTime: Date().addingTimeInterval(1080)
+  scheduledTime: Date().addingTimeInterval(1080),
+  trackingDurationMinutes: 30
 )
 
 // MARK: - Preview States
 
-/// 1. 초기 상태 - 모두 대기 (30분 남음)
+/// 1. 초기 상태 - 모두 대기
 private let stateInitial = PromiseActivityAttributes.ContentState(
-  remainingSeconds: 1800,
+  trackingDurationMinutes: 30,
   participants: [
-    ParticipantState(id: "user-1", name: "나", status: .pending),
-    ParticipantState(id: "user-2", name: "민수", status: .pending),
-    ParticipantState(id: "user-3", name: "지현", status: .pending),
-    ParticipantState(id: "user-4", name: "서연", status: .pending)
+    ParticipantState(id: "user-1", name: "나", estimatedArrivalMinutes: nil),
+    ParticipantState(id: "user-2", name: "민수", estimatedArrivalMinutes: nil),
+    ParticipantState(id: "user-3", name: "지현", estimatedArrivalMinutes: nil),
+    ParticipantState(id: "user-4", name: "서연", estimatedArrivalMinutes: nil)
   ]
 )
 
-/// 2. 진행 중 - 일부 출발 (18분 남음)
+/// 2. 진행 중 - 일부 출발
 private let stateInProgress = PromiseActivityAttributes.ContentState(
-  remainingSeconds: 1080,
+  trackingDurationMinutes: 30,
   participants: [
-    ParticipantState(id: "user-1", name: "나", status: .departed),
-    ParticipantState(id: "user-2", name: "민수", status: .departed),
-    ParticipantState(id: "user-3", name: "지현", status: .late),
-    ParticipantState(id: "user-4", name: "서연", status: .pending)
+    ParticipantState(id: "user-1", name: "나", estimatedArrivalMinutes: 10),
+    ParticipantState(id: "user-2", name: "민수", estimatedArrivalMinutes: 15),
+    ParticipantState(id: "user-3", name: "지현", estimatedArrivalMinutes: 30),
+    ParticipantState(id: "user-4", name: "서연", estimatedArrivalMinutes: nil)
   ]
 )
 
-/// 3. 긴급 상태 - 10분 미만 (8분 남음)
+/// 3. 긴급 상태 - 거의 도착
 private let stateUrgent = PromiseActivityAttributes.ContentState(
-  remainingSeconds: 480,
+  trackingDurationMinutes: 30,
   participants: [
-    ParticipantState(id: "user-1", name: "나", status: .departed),
-    ParticipantState(id: "user-2", name: "민수", status: .arrived),
-    ParticipantState(id: "user-3", name: "지현", status: .late),
-    ParticipantState(id: "user-4", name: "서연", status: .departed)
+    ParticipantState(id: "user-1", name: "나", estimatedArrivalMinutes: 5),
+    ParticipantState(id: "user-2", name: "민수", estimatedArrivalMinutes: 0),
+    ParticipantState(id: "user-3", name: "지현", estimatedArrivalMinutes: 15),
+    ParticipantState(id: "user-4", name: "서연", estimatedArrivalMinutes: 10)
   ]
 )
 
-/// 4. 거의 완료 - 대부분 도착 (3분 남음)
+/// 4. 거의 완료 - 대부분 도착
 private let stateAlmostDone = PromiseActivityAttributes.ContentState(
-  remainingSeconds: 180,
+  trackingDurationMinutes: 30,
   participants: [
-    ParticipantState(id: "user-1", name: "나", status: .arrived),
-    ParticipantState(id: "user-2", name: "민수", status: .arrived),
-    ParticipantState(id: "user-3", name: "지현", status: .departed),
-    ParticipantState(id: "user-4", name: "서연", status: .arrived)
+    ParticipantState(id: "user-1", name: "나", estimatedArrivalMinutes: 0),
+    ParticipantState(id: "user-2", name: "민수", estimatedArrivalMinutes: 0),
+    ParticipantState(id: "user-3", name: "지현", estimatedArrivalMinutes: 5),
+    ParticipantState(id: "user-4", name: "서연", estimatedArrivalMinutes: 0)
   ]
 )
 
 /// 5. 완료 - 모두 도착
 private let stateCompleted = PromiseActivityAttributes.ContentState(
-  remainingSeconds: 0,
+  trackingDurationMinutes: 30,
   participants: [
-    ParticipantState(id: "user-1", name: "나", status: .arrived),
-    ParticipantState(id: "user-2", name: "민수", status: .arrived),
-    ParticipantState(id: "user-3", name: "지현", status: .arrived),
-    ParticipantState(id: "user-4", name: "서연", status: .arrived)
+    ParticipantState(id: "user-1", name: "나", estimatedArrivalMinutes: 0),
+    ParticipantState(id: "user-2", name: "민수", estimatedArrivalMinutes: 0),
+    ParticipantState(id: "user-3", name: "지현", estimatedArrivalMinutes: 0),
+    ParticipantState(id: "user-4", name: "서연", estimatedArrivalMinutes: 0)
   ]
 )
 
-/// 6. 지각자 많음
-private let stateManyLate = PromiseActivityAttributes.ContentState(
-  remainingSeconds: 300,
+/// 6. 다양한 진행률
+private let stateMixed = PromiseActivityAttributes.ContentState(
+  trackingDurationMinutes: 30,
   participants: [
-    ParticipantState(id: "user-1", name: "나", status: .arrived),
-    ParticipantState(id: "user-2", name: "민수", status: .late),
-    ParticipantState(id: "user-3", name: "지현", status: .late),
-    ParticipantState(id: "user-4", name: "서연", status: .pending)
+    ParticipantState(id: "user-1", name: "나", estimatedArrivalMinutes: 0),
+    ParticipantState(id: "user-2", name: "민수", estimatedArrivalMinutes: 10),
+    ParticipantState(id: "user-3", name: "지현", estimatedArrivalMinutes: 20),
+    ParticipantState(id: "user-4", name: "서연", estimatedArrivalMinutes: nil)
   ]
 )
 
@@ -221,10 +226,10 @@ private let stateManyLate = PromiseActivityAttributes.ContentState(
   stateCompleted
 }
 
-#Preview("6. 지각자 많음", as: .content, using: previewAttributes) {
+#Preview("6. 다양한 진행률", as: .content, using: previewAttributes) {
   PromiseLiveActivity()
 } contentStates: {
-  stateManyLate
+  stateMixed
 }
 
 // MARK: - Dynamic Island Previews

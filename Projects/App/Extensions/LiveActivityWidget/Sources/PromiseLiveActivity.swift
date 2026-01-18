@@ -42,7 +42,7 @@ struct PromiseLiveActivity: Widget {
             Text(timerInterval: Date.now...context.attributes.scheduledTime, countsDown: true)
               .font(.title2.weight(.bold))
               .monospacedDigit()
-              .foregroundStyle(context.state.isUrgent ? .orange : .green)
+              .foregroundStyle(context.attributes.scheduledTime.timeIntervalSinceNow < 600 ? .orange : .green)
 
             Text("남은 시간")
               .font(.caption2)
@@ -65,7 +65,7 @@ struct PromiseLiveActivity: Widget {
         Text(timerInterval: Date.now...context.attributes.scheduledTime, countsDown: true)
           .font(.caption2.weight(.semibold))
           .monospacedDigit()
-          .foregroundStyle(context.state.isUrgent ? .orange : .green)
+          .foregroundStyle(context.attributes.scheduledTime.timeIntervalSinceNow < 600 ? .orange : .green)
 
       } minimal: {
         // MARK: - Minimal

@@ -31,20 +31,26 @@ struct VerticalStripes: View {
 /// 레이싱 트랙 UI - 참가자들이 출발점에서 도착점으로 이동하는 시각화
 struct RacingTrackView: View {
   let participants: [ParticipantState]
-  let baseProgress: Double
-  let remainingMinutes: Int
-
-  private var isUrgent: Bool { remainingMinutes < 10 }
+  let trackingDurationMinutes: Int
+  let currentUserId: String
 
   // 위치 기준 정렬 (뒤에 있는 사람이 먼저 그려지도록)
   private var sortedParticipants: [ParticipantState] {
     participants.sorted {
-      $0.trackPosition(baseProgress: baseProgress) < $1.trackPosition(baseProgress: baseProgress)
+      $0.trackPosition(trackingDurationMinutes: trackingDurationMinutes) <
+      $1.trackPosition(trackingDurationMinutes: trackingDurationMinutes)
     }
   }
 
+  /// 현재 사용자의 진행률
+  private var myProgress: Double {
+    guard let me = participants.first(where: { $0.id == currentUserId }) else { return 0 }
+    return me.progress(trackingDurationMinutes: trackingDurationMinutes)
+  }
+
+  /// 현재 사용자 진행률 기반 그라데이션
   private var progressColors: [Color] {
-    TimeColor.gradientColors(for: remainingMinutes)
+    ProgressColor.gradientColors(for: myProgress)
   }
 
   var body: some View {
@@ -104,7 +110,7 @@ struct RacingTrackView: View {
             endPoint: .trailing
           )
         )
-        .frame(width: max(usableWidth * baseProgress, 4), height: 4)
+        .frame(width: max(usableWidth * myProgress, 4), height: 4)
         .shadow(color: progressColors.first?.opacity(0.4) ?? .clear, radius: 6)
 
       // 남은 부분 (점선)
@@ -116,7 +122,7 @@ struct RacingTrackView: View {
         .stroke(style: StrokeStyle(lineWidth: 2, dash: [8, 4]))
         .foregroundStyle(.white.opacity(0.15))
       }
-      .frame(width: usableWidth * (1 - baseProgress))
+      .frame(width: usableWidth * (1 - myProgress))
     }
     .padding(.horizontal, padding)
   }
@@ -136,12 +142,12 @@ struct RacingTrackView: View {
 
   private func participantMarkers(usableWidth: CGFloat, padding: CGFloat, centerY: CGFloat) -> some View {
     ForEach(sortedParticipants) { participant in
-      let position = participant.trackPosition(baseProgress: baseProgress)
+      let position = participant.trackPosition(trackingDurationMinutes: trackingDurationMinutes)
       let xPos = padding + (usableWidth * position)
 
       CompactParticipantMarker(
         participant: participant,
-        isUrgent: isUrgent
+        trackingDurationMinutes: trackingDurationMinutes
       )
       .position(x: xPos, y: centerY)
       .animation(.spring(response: 0.6, dampingFraction: 0.8), value: position)
@@ -154,20 +160,21 @@ struct RacingTrackView: View {
 /// 컴팩트한 참가자 마커
 struct CompactParticipantMarker: View {
   let participant: ParticipantState
-  let isUrgent: Bool
+  let trackingDurationMinutes: Int
 
   private var markerSize: CGFloat { 32 }
+  private var markerColor: Color { participant.color(trackingDurationMinutes: trackingDurationMinutes) }
 
   var body: some View {
     ZStack {
       // 배경 원 + 그림자
       Circle()
-        .fill(participant.status.color.gradient)
+        .fill(markerColor.gradient)
         .frame(width: markerSize, height: markerSize)
-        .shadow(color: participant.status.color.opacity(0.5), radius: 4, y: 2)
+        .shadow(color: markerColor.opacity(0.5), radius: 4, y: 2)
 
       // 이모지
-      Text(participant.status.emoji)
+      Text(participant.emoji)
         .font(.system(size: 14))
     }
     // 이름 라벨
@@ -183,20 +190,6 @@ struct CompactParticipantMarker: View {
         )
         .offset(y: -18)
     }
-    // 지각 표시 (상태가 late일 때)
-    .overlay(alignment: .bottomTrailing) {
-      if participant.status == .late {
-        Circle()
-          .fill(.orange)
-          .frame(width: 10, height: 10)
-          .overlay {
-            Text("!")
-              .font(.system(size: 7, weight: .black))
-              .foregroundStyle(.white)
-          }
-          .offset(x: 2, y: 2)
-      }
-    }
   }
 }
 
@@ -207,11 +200,12 @@ struct ExpandedRacingTrackView: View {
   let context: ActivityViewContext<PromiseActivityAttributes>
 
   private var state: PromiseActivityAttributes.ContentState { context.state }
-  private var remainingMinutes: Int { state.remainingSeconds / 60 }
+  private var trackingDuration: Int { state.trackingDurationMinutes }
 
   private var sortedParticipants: [ParticipantState] {
     state.participants.sorted {
-      $0.trackPosition(baseProgress: state.baseProgress) < $1.trackPosition(baseProgress: state.baseProgress)
+      $0.trackPosition(trackingDurationMinutes: trackingDuration) <
+      $1.trackPosition(trackingDurationMinutes: trackingDuration)
     }
   }
 
@@ -231,14 +225,15 @@ struct ExpandedRacingTrackView: View {
 
           // 참가자들
           ForEach(sortedParticipants) { participant in
-            let position = participant.trackPosition(baseProgress: state.baseProgress)
+            let position = participant.trackPosition(trackingDurationMinutes: trackingDuration)
             let xPos = padding + (usableWidth * position)
+            let color = participant.color(trackingDurationMinutes: trackingDuration)
 
             Circle()
-              .fill(participant.status.color.gradient)
+              .fill(color.gradient)
               .frame(width: 22, height: 22)
               .overlay {
-                Text(participant.status.emoji)
+                Text(participant.emoji)
                   .font(.system(size: 10))
               }
               .position(x: xPos, y: 14)
@@ -252,11 +247,11 @@ struct ExpandedRacingTrackView: View {
       }
       .frame(height: 28)
 
-      // 참가자 범례 (2명까지만 표시)
+      // 참가자 범례
       HStack(spacing: 10) {
         ForEach(sortedParticipants.prefix(4)) { p in
           HStack(spacing: 3) {
-            Text(p.status.emoji)
+            Text(p.emoji)
               .font(.system(size: 10))
             Text(p.name.prefix(2))
               .font(.system(size: 10))
