@@ -839,11 +839,17 @@ private struct LiveActivityMockSection: View {
   @State private var isActive = false
   @State private var statusMessage = ""
 
+  // 목 참가자 ID (updateParticipant와 일치해야 함)
+  private static let mockUserId1 = "KrALQyaaUScWRFCUTpWN2XDHnpm1"
+  private static let mockUserId2 = "kWJYVOGRMWX65UyQOcznRti3lMR2"
+  private static let mockUserId3 = "user-3"
+  private static let mockUserId4 = "user-4"
+
   private let mockParticipants = [
-    ParticipantState(id: "user-1", name: "나", estimatedArrivalMinutes: nil),
-    ParticipantState(id: "user-2", name: "민수", estimatedArrivalMinutes: nil),
-    ParticipantState(id: "user-3", name: "지현", estimatedArrivalMinutes: nil),
-    ParticipantState(id: "user-4", name: "서연", estimatedArrivalMinutes: nil)
+    ParticipantState(id: mockUserId1, name: "나", estimatedArrivalMinutes: nil),
+    ParticipantState(id: mockUserId2, name: "민수", estimatedArrivalMinutes: nil),
+    ParticipantState(id: mockUserId3, name: "지현", estimatedArrivalMinutes: nil),
+    ParticipantState(id: mockUserId4, name: "서연", estimatedArrivalMinutes: nil)
   ]
 
   var body: some View {
@@ -874,16 +880,16 @@ private struct LiveActivityMockSection: View {
             GridItem(.flexible())
           ], spacing: 8) {
             MockStatusButton(title: "나 → 15분", color: .green) {
-              updateParticipant(id: "user-1", estimatedArrivalMinutes: 15)
+              updateParticipant(id: Self.mockUserId1, estimatedArrivalMinutes: 15)
             }
             MockStatusButton(title: "민수 → 10분", color: .green) {
-              updateParticipant(id: "user-2", estimatedArrivalMinutes: 10)
+              updateParticipant(id: Self.mockUserId2, estimatedArrivalMinutes: 10)
             }
             MockStatusButton(title: "지현 → 30분", color: .orange) {
-              updateParticipant(id: "user-3", estimatedArrivalMinutes: 30)
+              updateParticipant(id: Self.mockUserId3, estimatedArrivalMinutes: 30)
             }
             MockStatusButton(title: "서연 → 도착", color: .blue) {
-              updateParticipant(id: "user-4", estimatedArrivalMinutes: 0)
+              updateParticipant(id: Self.mockUserId4, estimatedArrivalMinutes: 0)
             }
             MockStatusButton(title: "모두 출발", color: .green) {
               updateAllParticipants(estimatedArrivalMinutes: 15)
@@ -951,6 +957,16 @@ private struct LiveActivityMockSection: View {
   // MARK: - Actions
 
   private func startActivity() {
+    // 디버그: 캐시된 프로필 이미지 파일 목록 출력
+    let cachedFiles = LiveActivityImageStore.listCachedFiles()
+    AppLogger.liveActivity.debug("🟣WIDGET🟣 캐시된 파일: \(cachedFiles)")
+
+    // 디버그: 앱에서 직접 이미지 로드 테스트
+    for file in cachedFiles {
+      let image = LiveActivityImageStore.loadImage(fileName: file)
+      AppLogger.liveActivity.debug("🟣WIDGET🟣 \(file) → \(image != nil ? "✅ 성공" : "❌ 실패")")
+    }
+
     guard ActivityAuthorizationInfo().areActivitiesEnabled else {
       statusMessage = "라이브액티비티가 비활성화됨"
       return
@@ -958,7 +974,7 @@ private struct LiveActivityMockSection: View {
 
     let attributes = PromiseActivityAttributes(
       promiseId: "mock-\(UUID().uuidString.prefix(8))",
-      currentUserId: "user-1",
+      currentUserId: "KrALQyaaUScWRFCUTpWN2XDHnpm1",  // 캐시된 유저 ID
       emoji: "🍜",
       title: "점심 모임",
       location: "강남역 11번 출구",

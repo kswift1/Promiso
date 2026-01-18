@@ -144,10 +144,12 @@ struct RacingTrackView: View {
     ForEach(sortedParticipants) { participant in
       let position = participant.trackPosition(trackingDurationMinutes: trackingDurationMinutes)
       let xPos = padding + (usableWidth * position)
+      let isCurrentUser = participant.id == currentUserId
 
       CompactParticipantMarker(
         participant: participant,
-        trackingDurationMinutes: trackingDurationMinutes
+        trackingDurationMinutes: trackingDurationMinutes,
+        isCurrentUser: isCurrentUser
       )
       .position(x: xPos, y: centerY)
       .animation(.spring(response: 0.6, dampingFraction: 0.8), value: position)
@@ -158,24 +160,33 @@ struct RacingTrackView: View {
 // MARK: - Compact Participant Marker
 
 /// 컴팩트한 참가자 마커
+/// - 현재 사용자 + 캐시된 이미지 있음: 프로필 사진 표시
+/// - 그 외: 이모지 마커 (fallback)
 struct CompactParticipantMarker: View {
   let participant: ParticipantState
   let trackingDurationMinutes: Int
+  let isCurrentUser: Bool
 
   private var markerSize: CGFloat { 32 }
   private var markerColor: Color { participant.color(trackingDurationMinutes: trackingDurationMinutes) }
 
+  /// 캐시된 프로필 이미지 로드 (id 기반)
+  private var cachedProfileImage: UIImage? {
+    AppLogger.liveActivity.debug("🟣WIDGET🟣 id=\(participant.id.prefix(8))")
+    let image = LiveActivityImageStore.loadImage(userId: participant.id)
+    AppLogger.liveActivity.debug("🟣WIDGET🟣 로드결과=\(image != nil ? "✅성공" : "❌실패")")
+    return image
+  }
+
   var body: some View {
     ZStack {
-      // 배경 원 + 그림자
-      Circle()
-        .fill(markerColor.gradient)
-        .frame(width: markerSize, height: markerSize)
-        .shadow(color: markerColor.opacity(0.5), radius: 4, y: 2)
-
-      // 이모지
-      Text(participant.emoji)
-        .font(.system(size: 14))
+      if let profileImage = cachedProfileImage {
+        // 프로필 이미지 표시 (현재 사용자 + 캐시 있음)
+        profileImageMarker(image: profileImage)
+      } else {
+        // 기존 이모지 마커 (fallback)
+        emojiMarker
+      }
     }
     // 이름 라벨
     .overlay(alignment: .top) {
@@ -189,6 +200,37 @@ struct CompactParticipantMarker: View {
             .fill(.black.opacity(0.7))
         )
         .offset(y: -18)
+    }
+  }
+
+  // MARK: - Marker Variants
+
+  /// 프로필 이미지 마커
+  private func profileImageMarker(image: UIImage) -> some View {
+    Image(uiImage: image)
+      .resizable()
+      .aspectRatio(contentMode: .fill)
+      .frame(width: markerSize, height: markerSize)
+      .clipShape(Circle())
+      .overlay(
+        Circle()
+          .stroke(markerColor, lineWidth: 2)
+      )
+      .shadow(color: markerColor.opacity(0.5), radius: 4, y: 2)
+  }
+
+  /// 기존 이모지 마커
+  private var emojiMarker: some View {
+    ZStack {
+      // 배경 원 + 그림자
+      Circle()
+        .fill(markerColor.gradient)
+        .frame(width: markerSize, height: markerSize)
+        .shadow(color: markerColor.opacity(0.5), radius: 4, y: 2)
+
+      // 이모지
+      Text(participant.emoji)
+        .font(.system(size: 14))
     }
   }
 }

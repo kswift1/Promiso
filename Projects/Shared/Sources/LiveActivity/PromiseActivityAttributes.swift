@@ -107,7 +107,11 @@ public struct ParticipantState: Codable, Hashable, Identifiable, Sendable {
   /// - 5, 10, 15, 30: N분 뒤 도착 예상
   public var estimatedArrivalMinutes: Int?
 
-  public init(id: String, name: String, estimatedArrivalMinutes: Int? = nil) {
+  public init(
+    id: String,
+    name: String,
+    estimatedArrivalMinutes: Int? = nil
+  ) {
     self.id = id
     self.name = name
     self.estimatedArrivalMinutes = estimatedArrivalMinutes
@@ -150,7 +154,11 @@ public struct ParticipantState: Codable, Hashable, Identifiable, Sendable {
 
   /// 도착 예상 시간을 변경한 새 ParticipantState 반환
   public func with(estimatedArrivalMinutes: Int?) -> ParticipantState {
-    ParticipantState(id: id, name: name, estimatedArrivalMinutes: estimatedArrivalMinutes)
+    ParticipantState(
+      id: id,
+      name: name,
+      estimatedArrivalMinutes: estimatedArrivalMinutes
+    )
   }
 }
 

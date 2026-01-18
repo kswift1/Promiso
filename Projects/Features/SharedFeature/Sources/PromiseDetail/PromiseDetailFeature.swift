@@ -326,10 +326,13 @@ extension PromiseDetail {
 
           // MARK: - Live Activity Internal Actions
           case .startLiveActivity:
+            AppLogger.liveActivity.debug("startLiveActivity 액션 실행")
             let promise = state.promise
             let currentUserId = state.currentUserId
             let members = state.groupMembers ?? []
+            AppLogger.liveActivity.debug("groupMembers 수: \(members.count)")
             let acceptedMembers = members.filter { promise.votes.accepted.contains($0.userId) }
+            AppLogger.liveActivity.debug("acceptedMembers 수: \(acceptedMembers.count)")
 
             let attributes = PromiseActivityAttributes(
               promiseId: promise.id,
@@ -340,13 +343,16 @@ extension PromiseDetail {
               scheduledTime: promise.startAt
             )
 
+            // 프로필 이미지는 GroupMainFeature에서 사전 캐싱됨 (Widget에서 id로 파일명 유추)
             let participants = acceptedMembers.map { member in
-              ParticipantState(
+              AppLogger.liveActivity.debug("ParticipantState 생성: \(member.userId)")
+              return ParticipantState(
                 id: member.userId,
                 name: member.displayName,
                 estimatedArrivalMinutes: nil
               )
             }
+            AppLogger.liveActivity.debug("currentUserId: \(currentUserId)")
             let initialState = PromiseActivityAttributes.ContentState(
               trackingDurationMinutes: 30,
               participants: participants
