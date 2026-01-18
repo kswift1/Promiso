@@ -3,6 +3,8 @@ import PromisoShared
 import SwiftUI
 import WidgetKit
 
+import ResourceKit
+
 // MARK: - Vertical Stripes Pattern
 
 /// 세로 줄무늬 패턴 (회색/검정 교대)
@@ -141,19 +143,44 @@ struct RacingTrackView: View {
   }
 
   private func participantMarkers(usableWidth: CGFloat, padding: CGFloat, centerY: CGFloat) -> some View {
-    ForEach(sortedParticipants) { participant in
-      let position = participant.trackPosition(trackingDurationMinutes: trackingDurationMinutes)
+    let groups = groupParticipantsByPosition()
+
+    return ForEach(Array(groups.enumerated()), id: \.offset) { index, group in
+      let position = group.position
       let xPos = padding + (usableWidth * position)
-      let isCurrentUser = participant.id == currentUserId
+
+      // 그룹 대표 참가자 (나 > 첫 번째)
+      let representative = group.participants.first { $0.id == currentUserId } ?? group.participants[0]
+      let isCurrentUser = representative.id == currentUserId
+      let extraCount = group.participants.count - 1
 
       CompactParticipantMarker(
-        participant: participant,
+        participant: representative,
         trackingDurationMinutes: trackingDurationMinutes,
-        isCurrentUser: isCurrentUser
+        isCurrentUser: isCurrentUser,
+        groupCount: extraCount
       )
       .position(x: xPos, y: centerY)
+      .zIndex(isCurrentUser ? 100 : Double(index))
       .animation(.spring(response: 0.6, dampingFraction: 0.8), value: position)
     }
+  }
+
+  /// ETA 기준으로 참가자들을 그룹화
+  private func groupParticipantsByPosition() -> [(position: Double, participants: [ParticipantState])] {
+    // ETA별로 그룹화 (nil, 0, 5, 10... 각각 별도 그룹)
+    var etaGroups: [Int?: [ParticipantState]] = [:]
+
+    for participant in participants {
+      let eta = participant.estimatedArrivalMinutes
+      etaGroups[eta, default: []].append(participant)
+    }
+
+    // 그룹별 position 계산 후 반환
+    return etaGroups.map { (eta, participants) in
+      let position = participants[0].trackPosition(trackingDurationMinutes: trackingDurationMinutes)
+      return (position: position, participants: participants)
+    }.sorted { $0.position < $1.position }
   }
 }
 
@@ -162,10 +189,12 @@ struct RacingTrackView: View {
 /// 컴팩트한 참가자 마커
 /// - 프로필 사진 또는 이모지 마커
 /// - V5 디자인: 우측 하단 ETA 뱃지
+/// - 그룹화: 좌측 상단 "+N" 뱃지
 struct CompactParticipantMarker: View {
   let participant: ParticipantState
   let trackingDurationMinutes: Int
   let isCurrentUser: Bool
+  var groupCount: Int = 0  // 추가 인원 수 (0이면 뱃지 없음)
 
   private var markerSize: CGFloat { 32 }
 
@@ -177,12 +206,12 @@ struct CompactParticipantMarker: View {
   /// ETA 상태에 따른 뱃지 색상
   private var badgeColor: Color {
     guard let eta = participant.estimatedArrivalMinutes else {
-      return .gray  // 대기
+      return Color.pmgray.n500  // 대기
     }
     if eta == 0 {
-      return .green  // 도착
+      return Color.pmsuccess.n500  // 도착
     }
-    return Color(red: 0.35, green: 0.34, blue: 0.84)  // pmindigo 계열 - 이동 중
+    return Color.pmindigo.n500  // 이동 중
   }
 
   /// ETA 상태에 따른 테두리 색상
@@ -201,24 +230,65 @@ struct CompactParticipantMarker: View {
     return "\(eta)분"  // 이동 중
   }
 
+  /// 도착 여부
+  private var hasArrived: Bool {
+    participant.estimatedArrivalMinutes == 0
+  }
+
   var body: some View {
+    ZStack {
+      if hasArrived {
+        // 도착: 이름 라벨만 (마커 숨김)
+        arrivedLabel
+      } else {
+        // 이동 중/대기: 마커 + 라벨 + ETA 뱃지
+        markerWithLabels
+      }
+    }
+  }
+
+  /// 도착 시 이름 라벨만 (마커 상단 위치 유지)
+  private var arrivedLabel: some View {
+    // 마커 크기만큼 투명 공간 확보 후 상단에 라벨 배치
+    Color.clear
+      .frame(width: markerSize, height: markerSize)
+      .overlay(alignment: .top) {
+        Text(nameLabel)
+          .font(.system(size: 8, weight: .bold))
+          .foregroundStyle(.white)
+          .lineLimit(1)
+          .fixedSize()
+          .padding(.horizontal, 5)
+          .padding(.vertical, 2)
+          .background(
+            Capsule()
+              .fill(Color.pmsuccess.n500)
+          )
+          .offset(y: -18)
+      }
+  }
+
+  /// 마커 + 이름 라벨 + ETA 뱃지
+  private var markerWithLabels: some View {
     ZStack {
       if let profileImage = cachedProfileImage {
         profileImageMarker(image: profileImage)
       } else {
-        emojiMarker
+        defaultProfileMarker
       }
     }
-    // 상단: 이름 라벨 (4글자)
+    // 상단: 이름 라벨 (4글자 + 외N명)
     .overlay(alignment: .top) {
-      Text(participant.name.prefix(4))
+      Text(nameLabel)
         .font(.system(size: 8, weight: .bold))
-        .foregroundStyle(.white)
+        .foregroundStyle(.white.opacity(0.9))
+        .lineLimit(1)
+        .fixedSize()
         .padding(.horizontal, 5)
         .padding(.vertical, 2)
         .background(
           Capsule()
-            .fill(.black.opacity(0.7))
+            .fill(.black.opacity(0.4))
         )
         .offset(y: -18)
     }
@@ -239,6 +309,15 @@ struct CompactParticipantMarker: View {
     }
   }
 
+  /// 이름 라벨 (그룹화 시 "외N명" 포함)
+  private var nameLabel: String {
+    let name = String(participant.name.prefix(4))
+    if groupCount > 0 {
+      return "\(name) 외\(groupCount)명"
+    }
+    return name
+  }
+
   // MARK: - Marker Variants
 
   /// 프로필 이미지 마커
@@ -255,17 +334,30 @@ struct CompactParticipantMarker: View {
       .shadow(color: borderColor.opacity(0.5), radius: 4, y: 2)
   }
 
-  /// 기존 이모지 마커
-  private var emojiMarker: some View {
+  /// 디폴트 이모지 목록 (프로필 없을 때 할당)
+  private static let defaultEmojis = ["😀", "😊", "🙂", "😎", "🤗", "😇", "🥳", "🤩", "😺", "🐻"]
+
+  /// userId 기반 고정 이모지
+  private var assignedEmoji: String {
+    let index = abs(participant.id.hashValue) % Self.defaultEmojis.count
+    return Self.defaultEmojis[index]
+  }
+
+  /// 디폴트 프로필 마커 (이미지 없을 때 - 이모지 아바타)
+  private var defaultProfileMarker: some View {
     ZStack {
       Circle()
         .fill(borderColor.gradient)
         .frame(width: markerSize, height: markerSize)
-        .shadow(color: borderColor.opacity(0.5), radius: 4, y: 2)
 
-      Text(participant.emoji)
-        .font(.system(size: 14))
+      Text(assignedEmoji)
+        .font(.system(size: 16))
     }
+    .overlay(
+      Circle()
+        .stroke(borderColor, lineWidth: 2)
+    )
+    .shadow(color: borderColor.opacity(0.5), radius: 4, y: 2)
   }
 }
 
