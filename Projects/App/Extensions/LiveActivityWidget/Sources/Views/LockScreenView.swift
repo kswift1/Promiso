@@ -1,157 +1,254 @@
+import ActivityKit
 import PromisoShared
 import SwiftUI
 import WidgetKit
 
-// MARK: - Lock Screen View
+// MARK: - Time Color
 
-struct LockScreenView: View {
-  let attributes: PromiseActivityAttributes
-  let state: PromiseActivityAttributes.ContentState
+/// 남은 시간에 따른 색상 시스템
+enum TimeColor {
+  static func forRemainingMinutes(_ minutes: Int) -> Color {
+    switch minutes {
+    case 30...:
+      return .green
+    case 10..<30:
+      return .yellow
+    case 1..<10:
+      return .orange
+    default:
+      return .red
+    }
+  }
+
+  static func gradientColors(for minutes: Int) -> [Color] {
+    switch minutes {
+    case 30...:
+      return [.green, .mint]
+    case 10..<30:
+      return [.yellow, .orange]
+    case 1..<10:
+      return [.orange, .red]
+    default:
+      return [.red, .pink]
+    }
+  }
+}
+
+// MARK: - Lock Screen Banner View
+
+/// 잠금화면 라이브액티비티 배너 뷰
+struct LockScreenBannerView: View {
+  let context: ActivityViewContext<PromiseActivityAttributes>
+
+  private var state: PromiseActivityAttributes.ContentState { context.state }
+  private var attrs: PromiseActivityAttributes { context.attributes }
+
+  private var remainingMinutes: Int { state.remainingSeconds / 60 }
+  private var timeColor: Color { TimeColor.forRemainingMinutes(remainingMinutes) }
+  private var amPm: String { Calendar.current.component(.hour, from: attrs.scheduledTime) >= 12 ? "PM" : "AM" }
+  private var timeText: String { attrs.scheduledTime.formatted(.dateTime.hour(.defaultDigits(amPM: .omitted)).minute()) }
 
   var body: some View {
-    HStack(spacing: 16) {
-      // MARK: - Left: Promise Info
-      VStack(alignment: .leading, spacing: 4) {
-        HStack(spacing: 6) {
-          Text(attributes.emoji)
-            .font(.title2)
-          Text(attributes.title)
-            .font(.headline)
-            .lineLimit(1)
-        }
+    VStack(spacing: 14) {
+      // MARK: - 헤더
+      headerSection
 
-        if let location = attributes.locationName {
-          Label(location, systemImage: "mappin")
-            .font(.caption)
-            .foregroundStyle(.secondary)
-        }
+      // MARK: - 레이싱 트랙
+      RacingTrackView(
+        participants: state.participants,
+        baseProgress: state.baseProgress,
+        remainingMinutes: remainingMinutes
+      )
+      .frame(height: 50)
+    }
+    .padding(.horizontal, 16)
+    .padding(.vertical, 16)
+    .foregroundStyle(.white)
+    .activityBackgroundTint(.black)
+  }
 
-        Text(attributes.startAt, style: .time)
-          .font(.caption)
-          .foregroundStyle(.secondary)
+  // MARK: - Header Section
+
+  private var headerSection: some View {
+    HStack {
+      // 왼쪽: 약속 정보
+      VStack(alignment: .leading, spacing: 6) {
+        Text(attrs.title)
+          .font(.subheadline.weight(.bold))
+          .lineLimit(1)
+
+        if let location = attrs.location {
+          HStack(spacing: 4) {
+            Text("📍")
+              .font(.caption2)
+            Text(location)
+              .font(.caption)
+          }
+          .foregroundStyle(.white.opacity(0.6))
+          .lineLimit(1)
+        }
       }
 
       Spacer()
 
-      // MARK: - Right: Arrival Status
-      VStack(alignment: .trailing, spacing: 4) {
-        ArrivalCountBadge(
-          arrived: state.arrivedCount,
-          total: attributes.totalParticipants
-        )
-
-        Text("도착")
+      // 오른쪽: 약속 시간
+      VStack(alignment: .trailing, spacing: 2) {
+        Text("약속")
           .font(.caption2)
-          .foregroundStyle(.secondary)
-      }
-    }
-    .padding()
-    .activityBackgroundTint(.black.opacity(0.7))
-  }
-}
+          .foregroundStyle(.white.opacity(0.6))
 
-// MARK: - Arrival Count Badge
+        HStack(alignment: .firstTextBaseline, spacing: 4) {
+          Text(amPm)
+            .font(.system(size: 12, weight: .medium, design: .monospaced))
+            .foregroundStyle(.white.opacity(0.6))
 
-struct ArrivalCountBadge: View {
-  let arrived: Int
-  let total: Int
-
-  private var isComplete: Bool {
-    arrived == total
-  }
-
-  var body: some View {
-    Text("\(arrived)/\(total)")
-      .font(.title2.bold().monospacedDigit())
-      .foregroundStyle(isComplete ? .green : .primary)
-  }
-}
-
-// MARK: - Member Status Row
-
-struct MemberStatusRow: View {
-  let members: [MemberArrivalStatus]
-
-  private let maxDisplayCount = 5
-
-  var body: some View {
-    HStack(spacing: 8) {
-      ForEach(members.prefix(maxDisplayCount)) { member in
-        MemberAvatar(member: member)
-      }
-
-      if members.count > maxDisplayCount {
-        Text("+\(members.count - maxDisplayCount)")
-          .font(.caption2)
-          .foregroundStyle(.secondary)
-      }
-    }
-  }
-}
-
-// MARK: - Member Avatar
-
-struct MemberAvatar: View {
-  let member: MemberArrivalStatus
-
-  private var initial: String {
-    String(member.memberName.prefix(1))
-  }
-
-  var body: some View {
-    VStack(spacing: 2) {
-      ZStack {
-        Circle()
-          .fill(member.hasArrived ? .green : .gray.opacity(0.3))
-          .frame(width: 32, height: 32)
-
-        Text(initial)
-          .font(.caption.bold())
-          .foregroundStyle(.white)
-
-        if member.hasArrived {
-          Circle()
-            .fill(.green)
-            .frame(width: 12, height: 12)
-            .overlay {
-              Image(systemName: "checkmark")
-                .font(.system(size: 8, weight: .bold))
-                .foregroundStyle(.white)
-            }
-            .offset(x: 10, y: 10)
+          Text(timeText)
+            .font(.system(size: 18, weight: .bold, design: .monospaced))
+            .foregroundStyle(.white)
         }
       }
-
-      Text(member.memberName)
-        .font(.caption2)
-        .lineLimit(1)
-        .frame(maxWidth: 40)
     }
   }
 }
 
-// MARK: - Preview
+// MARK: - Preview Attributes
 
-#Preview {
-  LockScreenView(
-    attributes: PromiseActivityAttributes(
-      promiseId: "preview-123",
-      title: "점심 약속",
-      emoji: "🍽️",
-      startAt: Date().addingTimeInterval(1800),
-      locationName: "강남역 2번 출구",
-      groupId: "group-123",
-      totalParticipants: 4
-    ),
-    state: PromiseActivityAttributes.ContentState(
-      memberStatuses: [
-        MemberArrivalStatus(memberId: "1", memberName: "김철수", hasArrived: true, arrivedAt: Date()),
-        MemberArrivalStatus(memberId: "2", memberName: "이영희", hasArrived: true, arrivedAt: Date()),
-        MemberArrivalStatus(memberId: "3", memberName: "박민수", hasArrived: false),
-        MemberArrivalStatus(memberId: "4", memberName: "최지원", hasArrived: false)
-      ],
-      lastUpdatedAt: Date(),
-      isEnded: false
-    )
-  )
+private let previewAttributes = PromiseActivityAttributes(
+  promiseId: "preview-123",
+  currentUserId: "user-1",
+  title: "🍜 점심 모임",
+  location: "강남역 11번 출구",
+  scheduledTime: Date().addingTimeInterval(1080)
+)
+
+// MARK: - Preview States
+
+/// 1. 초기 상태 - 모두 대기 (30분 남음)
+private let stateInitial = PromiseActivityAttributes.ContentState(
+  remainingSeconds: 1800,
+  participants: [
+    ParticipantState(id: "user-1", name: "나", status: .pending),
+    ParticipantState(id: "user-2", name: "민수", status: .pending),
+    ParticipantState(id: "user-3", name: "지현", status: .pending),
+    ParticipantState(id: "user-4", name: "서연", status: .pending)
+  ]
+)
+
+/// 2. 진행 중 - 일부 출발 (18분 남음)
+private let stateInProgress = PromiseActivityAttributes.ContentState(
+  remainingSeconds: 1080,
+  participants: [
+    ParticipantState(id: "user-1", name: "나", status: .departed),
+    ParticipantState(id: "user-2", name: "민수", status: .departed),
+    ParticipantState(id: "user-3", name: "지현", status: .late),
+    ParticipantState(id: "user-4", name: "서연", status: .pending)
+  ]
+)
+
+/// 3. 긴급 상태 - 10분 미만 (8분 남음)
+private let stateUrgent = PromiseActivityAttributes.ContentState(
+  remainingSeconds: 480,
+  participants: [
+    ParticipantState(id: "user-1", name: "나", status: .departed),
+    ParticipantState(id: "user-2", name: "민수", status: .arrived),
+    ParticipantState(id: "user-3", name: "지현", status: .late),
+    ParticipantState(id: "user-4", name: "서연", status: .departed)
+  ]
+)
+
+/// 4. 거의 완료 - 대부분 도착 (3분 남음)
+private let stateAlmostDone = PromiseActivityAttributes.ContentState(
+  remainingSeconds: 180,
+  participants: [
+    ParticipantState(id: "user-1", name: "나", status: .arrived),
+    ParticipantState(id: "user-2", name: "민수", status: .arrived),
+    ParticipantState(id: "user-3", name: "지현", status: .departed),
+    ParticipantState(id: "user-4", name: "서연", status: .arrived)
+  ]
+)
+
+/// 5. 완료 - 모두 도착
+private let stateCompleted = PromiseActivityAttributes.ContentState(
+  remainingSeconds: 0,
+  participants: [
+    ParticipantState(id: "user-1", name: "나", status: .arrived),
+    ParticipantState(id: "user-2", name: "민수", status: .arrived),
+    ParticipantState(id: "user-3", name: "지현", status: .arrived),
+    ParticipantState(id: "user-4", name: "서연", status: .arrived)
+  ]
+)
+
+/// 6. 지각자 많음
+private let stateManyLate = PromiseActivityAttributes.ContentState(
+  remainingSeconds: 300,
+  participants: [
+    ParticipantState(id: "user-1", name: "나", status: .arrived),
+    ParticipantState(id: "user-2", name: "민수", status: .late),
+    ParticipantState(id: "user-3", name: "지현", status: .late),
+    ParticipantState(id: "user-4", name: "서연", status: .pending)
+  ]
+)
+
+// MARK: - Previews
+
+#Preview("1. 초기 상태 (30분)", as: .content, using: previewAttributes) {
+  PromiseLiveActivity()
+} contentStates: {
+  stateInitial
+}
+
+#Preview("2. 진행 중 (18분)", as: .content, using: previewAttributes) {
+  PromiseLiveActivity()
+} contentStates: {
+  stateInProgress
+}
+
+#Preview("3. 긴급 (8분)", as: .content, using: previewAttributes) {
+  PromiseLiveActivity()
+} contentStates: {
+  stateUrgent
+}
+
+#Preview("4. 거의 완료 (3분)", as: .content, using: previewAttributes) {
+  PromiseLiveActivity()
+} contentStates: {
+  stateAlmostDone
+}
+
+#Preview("5. 완료", as: .content, using: previewAttributes) {
+  PromiseLiveActivity()
+} contentStates: {
+  stateCompleted
+}
+
+#Preview("6. 지각자 많음", as: .content, using: previewAttributes) {
+  PromiseLiveActivity()
+} contentStates: {
+  stateManyLate
+}
+
+// MARK: - Dynamic Island Previews
+
+#Preview("DI - Compact", as: .dynamicIsland(.compact), using: previewAttributes) {
+  PromiseLiveActivity()
+} contentStates: {
+  stateInProgress
+}
+
+#Preview("DI - Compact (Urgent)", as: .dynamicIsland(.compact), using: previewAttributes) {
+  PromiseLiveActivity()
+} contentStates: {
+  stateUrgent
+}
+
+#Preview("DI - Expanded", as: .dynamicIsland(.expanded), using: previewAttributes) {
+  PromiseLiveActivity()
+} contentStates: {
+  stateInProgress
+}
+
+#Preview("DI - Minimal", as: .dynamicIsland(.minimal), using: previewAttributes) {
+  PromiseLiveActivity()
+} contentStates: {
+  stateInProgress
 }

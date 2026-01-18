@@ -7,88 +7,71 @@ struct PromiseLiveActivity: Widget {
   var body: some WidgetConfiguration {
     ActivityConfiguration(for: PromiseActivityAttributes.self) { context in
       // MARK: - Lock Screen UI
-      LockScreenView(
-        attributes: context.attributes,
-        state: context.state
-      )
+      LockScreenBannerView(context: context)
+        .background {
+          GeometryReader { geo in
+            Color.clear.onAppear { print("높이: \(geo.size.height)") }
+          }
+        }
+
     } dynamicIsland: { context in
       DynamicIsland {
         // MARK: - Expanded Leading
         DynamicIslandExpandedRegion(.leading) {
-          HStack(spacing: 4) {
-            Text(context.attributes.emoji)
-              .font(.title2)
+          VStack(alignment: .leading, spacing: 2) {
             Text(context.attributes.title)
-              .font(.headline)
+              .font(.subheadline.weight(.bold))
+              .foregroundStyle(.white)
               .lineLimit(1)
+
+            if let location = context.attributes.location {
+              HStack(spacing: 2) {
+                Text("📍")
+                  .font(.caption2)
+                Text(location)
+                  .font(.caption2)
+              }
+              .foregroundStyle(.white.opacity(0.6))
+            }
           }
         }
 
         // MARK: - Expanded Trailing
         DynamicIslandExpandedRegion(.trailing) {
-          ArrivalCountBadge(
-            arrived: context.state.arrivedCount,
-            total: context.attributes.totalParticipants
-          )
+          VStack(alignment: .trailing, spacing: 0) {
+            Text(timerInterval: Date.now...context.attributes.scheduledTime, countsDown: true)
+              .font(.title2.weight(.bold))
+              .monospacedDigit()
+              .foregroundStyle(context.state.isUrgent ? .orange : .green)
+
+            Text("남은 시간")
+              .font(.caption2)
+              .foregroundStyle(.white.opacity(0.6))
+          }
         }
 
         // MARK: - Expanded Bottom
         DynamicIslandExpandedRegion(.bottom) {
-          MemberStatusRow(members: context.state.memberStatuses)
-        }
-
-        // MARK: - Expanded Center (optional)
-        DynamicIslandExpandedRegion(.center) {
-          if let location = context.attributes.locationName {
-            Label(location, systemImage: "mappin")
-              .font(.caption)
-              .foregroundStyle(.secondary)
-          }
+          ExpandedRacingTrackView(context: context)
         }
 
       } compactLeading: {
         // MARK: - Compact Leading
-        Text(context.attributes.emoji)
-          .font(.body)
+        Image(systemName: "mappin.circle.fill")
+          .foregroundStyle(.purple)
+
       } compactTrailing: {
         // MARK: - Compact Trailing
-        Text("\(context.state.arrivedCount)/\(context.attributes.totalParticipants)")
-          .font(.caption.monospacedDigit().bold())
-          .foregroundStyle(
-            context.state.arrivedCount == context.attributes.totalParticipants
-              ? .green
-              : .primary
-          )
+        Text(timerInterval: Date.now...context.attributes.scheduledTime, countsDown: true)
+          .font(.caption2.weight(.semibold))
+          .monospacedDigit()
+          .foregroundStyle(context.state.isUrgent ? .orange : .green)
+
       } minimal: {
-        // MARK: - Minimal (when sharing space with other activities)
-        Text(context.attributes.emoji)
-          .font(.caption)
+        // MARK: - Minimal
+        Image(systemName: "mappin.circle.fill")
+          .foregroundStyle(.purple)
       }
     }
   }
-}
-
-// MARK: - Preview
-
-#Preview("Live Activity", as: .content, using: PromiseActivityAttributes(
-  promiseId: "preview-123",
-  title: "점심 약속",
-  emoji: "🍽️",
-  startAt: Date().addingTimeInterval(1800),
-  locationName: "강남역 2번 출구",
-  groupId: "group-123",
-  totalParticipants: 4
-)) {
-  PromiseLiveActivity()
-} contentStates: {
-  PromiseActivityAttributes.ContentState(
-    memberStatuses: [
-      MemberArrivalStatus(memberId: "1", memberName: "김철수", hasArrived: true, arrivedAt: Date()),
-      MemberArrivalStatus(memberId: "2", memberName: "이영희", hasArrived: true, arrivedAt: Date()),
-      MemberArrivalStatus(memberId: "3", memberName: "박민수", hasArrived: false),
-      MemberArrivalStatus(memberId: "4", memberName: "최지원", hasArrived: false)
-    ],
-    lastUpdatedAt: Date(),
-    isEnded: false
-  )
 }
