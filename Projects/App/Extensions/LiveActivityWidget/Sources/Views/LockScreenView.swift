@@ -164,10 +164,10 @@ struct ETASegmentedControl: View {
 
   private var attrs: PromiseActivityAttributes { context.attributes }
 
-  private let etaOptions: [(title: String, icon: String?, minutes: Int)] = [
-    ("완료", "checkmark", 0),
-    ("5분", nil, 5),
-    ("10분", nil, 10)
+  private let etaOptions: [(title: String, minutes: Int)] = [
+    ("완료", 0),
+    ("5분", 5),
+    ("10분", 10)
   ]
 
   var body: some View {
@@ -181,14 +181,8 @@ struct ETASegmentedControl: View {
           userId: attrs.currentUserId,
           estimatedMinutes: option.minutes
         )) {
-          HStack(spacing: 4) {
-            if let icon = option.icon {
-              Image(systemName: icon)
-                .font(.system(size: 10, weight: .bold))
-            }
-            Text(option.title)
-              .font(.system(size: 11, weight: isSelected ? .bold : .medium))
-          }
+          Text(option.title)
+            .font(.system(size: 11, weight: isSelected ? .bold : .medium))
           .frame(maxWidth: .infinity)
           .padding(.vertical, 8)
           .background(
@@ -219,14 +213,10 @@ struct ETASegmentedControl: View {
         .buttonStyle(.plain)
       }
 
-      // "직접" 버튼 - 앱으로 이동 (항상 비선택 상태)
+      // "직접 입력" 버튼 - 앱으로 이동 (항상 비선택 상태)
       Link(destination: URL(string: "promiso://promise/\(attrs.promiseId)/eta")!) {
-        HStack(spacing: 4) {
-          Image(systemName: "pencil")
-            .font(.system(size: 10, weight: .medium))
-          Text("직접")
-            .font(.system(size: 11, weight: .medium))
-        }
+        Text("직접 입력")
+          .font(.system(size: 11, weight: .medium))
         .frame(maxWidth: .infinity)
         .padding(.vertical, 8)
         .background(Color.white.opacity(0.08))

@@ -225,6 +225,12 @@ extension Home {
     public var body: some View {
       ScrollView {
         LazyVStack(spacing: 24) {
+          // 🧪 라이브액티비티 테스트
+          #if DEBUG
+          LiveActivityTestSection()
+            .padding(.horizontal, 16)
+          #endif
+
           // 오늘 확정된 약속
           TodayPromiseSection(store: store)
 

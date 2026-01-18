@@ -3,83 +3,53 @@ import AppIntents
 import Foundation
 import PromisoShared
 
-// MARK: - Depart Intent
+// MARK: - Update ETA Intent
 
-struct DepartIntent: LiveActivityIntent {
-  static var title: LocalizedStringResource = "출발"
-  static var description = IntentDescription("출발 상태로 변경합니다")
-
-  @Parameter(title: "약속 ID")
-  var promiseId: String
-
-  @Parameter(title: "사용자 ID")
-  var oderId: String
-
-  init() {
-    self.promiseId = ""
-    self.oderId = ""
-  }
-
-  init(promiseId: String, oderId: String) {
-    self.promiseId = promiseId
-    self.oderId = oderId
-  }
-
-  func perform() async throws -> some IntentResult {
-    // UserDefaults에 저장 (앱에서 나중에 처리용)
-    let status = DepartureStatus(
-      promiseId: promiseId,
-      oderId: oderId,
-      timestamp: Date()
-    )
-    if let data = try? JSONEncoder().encode(status) {
-      UserDefaults(suiteName: LiveActivityIntentKey.suiteName)?
-        .set(data, forKey: LiveActivityIntentKey.departureKey)
-    }
-
-    // Live Activity UI 즉시 업데이트 시도
-    await updateActivityStatus(promiseId: promiseId, participantId: oderId, newStatus: .departed)
-
-    return .result()
-  }
-}
-
-// MARK: - Arrive Intent
-
-struct ArriveIntent: LiveActivityIntent {
-  static var title: LocalizedStringResource = "도착"
-  static var description = IntentDescription("도착 상태로 변경합니다")
+/// 도착 예상 시간 업데이트 Intent
+struct UpdateETAIntent: LiveActivityIntent {
+  static var title: LocalizedStringResource = "도착 예상 시간 변경"
+  static var description = IntentDescription("도착 예상 시간을 변경합니다")
 
   @Parameter(title: "약속 ID")
   var promiseId: String
 
   @Parameter(title: "사용자 ID")
-  var oderId: String
+  var userId: String
+
+  @Parameter(title: "도착 예상 시간 (분)")
+  var estimatedMinutes: Int
 
   init() {
     self.promiseId = ""
-    self.oderId = ""
+    self.userId = ""
+    self.estimatedMinutes = 0
   }
 
-  init(promiseId: String, oderId: String) {
+  init(promiseId: String, userId: String, estimatedMinutes: Int) {
     self.promiseId = promiseId
-    self.oderId = oderId
+    self.userId = userId
+    self.estimatedMinutes = estimatedMinutes
   }
 
   func perform() async throws -> some IntentResult {
-    // UserDefaults에 저장 (앱에서 나중에 처리용)
-    let status = ArrivalStatus(
+    // UserDefaults에 저장 (앱에서 서버 동기화용)
+    let update = ETAUpdate(
       promiseId: promiseId,
-      oderId: oderId,
+      userId: userId,
+      estimatedMinutes: estimatedMinutes,
       timestamp: Date()
     )
-    if let data = try? JSONEncoder().encode(status) {
+    if let data = try? JSONEncoder().encode(update) {
       UserDefaults(suiteName: LiveActivityIntentKey.suiteName)?
-        .set(data, forKey: LiveActivityIntentKey.arrivalKey)
+        .set(data, forKey: LiveActivityIntentKey.etaUpdateKey)
     }
 
-    // Live Activity UI 즉시 업데이트 시도
-    await updateActivityStatus(promiseId: promiseId, participantId: oderId, newStatus: .arrived)
+    // Live Activity UI 즉시 업데이트
+    await updateActivityETA(
+      promiseId: promiseId,
+      participantId: userId,
+      estimatedArrivalMinutes: estimatedMinutes
+    )
 
     return .result()
   }
@@ -87,13 +57,13 @@ struct ArriveIntent: LiveActivityIntent {
 
 // MARK: - Helper
 
-private func updateActivityStatus(promiseId: String, participantId: String, newStatus: ParticipantStatus) async {
-  // 디버그: Intent 호출 확인
+private func updateActivityETA(promiseId: String, participantId: String, estimatedArrivalMinutes: Int) async {
+  // 디버그 로깅
   let debugInfo: [String: Any] = [
     "timestamp": Date().timeIntervalSince1970,
     "promiseId": promiseId,
     "participantId": participantId,
-    "newStatus": newStatus.rawValue,
+    "estimatedArrivalMinutes": estimatedArrivalMinutes,
     "activitiesCount": Activity<PromiseActivityAttributes>.activities.count
   ]
   UserDefaults(suiteName: LiveActivityIntentKey.suiteName)?
@@ -108,13 +78,10 @@ private func updateActivityStatus(promiseId: String, participantId: String, newS
   }
 
   let currentState = activity.content.state
-
-  // 디버그: 현재 participants 확인
-  let participantIds = currentState.participants.map { $0.id }
-  UserDefaults(suiteName: LiveActivityIntentKey.suiteName)?
-    .set(participantIds, forKey: "liveActivity.debug.participantIds")
-
-  let updatedState = currentState.updating(participantId: participantId, status: newStatus)
+  let updatedState = currentState.updating(
+    participantId: participantId,
+    estimatedArrivalMinutes: estimatedArrivalMinutes
+  )
   let content = ActivityContent(state: updatedState, staleDate: nil)
 
   await activity.update(content)

@@ -15,20 +15,21 @@ public struct LiveActivityClient: Sendable {
   /// 현재 활성화된 약속 ID
   public var activePromiseId: @Sendable () -> String?
 
-  /// 라이브액티비티 시작 (Broadcast 채널 구독)
-  /// - Parameters:
-  ///   - attributes: 약속 속성
-  ///   - initialState: 초기 상태
-  ///   - channelId: APNs Broadcast 채널 ID
+  /// 현재 활성화된 Activity ID
+  public var activeActivityId: @Sendable () -> String?
+
+  /// 현재 활성화된 Activity의 ContentState
+  public var currentState: @Sendable () -> PromiseActivityAttributes.ContentState?
+
+  /// 라이브액티비티 시작
   /// - Returns: Activity ID
   public var start: @Sendable (
     _ attributes: PromiseActivityAttributes,
-    _ initialState: PromiseActivityAttributes.ContentState,
-    _ channelId: String
+    _ initialState: PromiseActivityAttributes.ContentState
   ) async throws -> String
 
-  /// 로컬 업데이트 (앱에서 직접 업데이트)
-  public var updateLocal: @Sendable (
+  /// 상태 업데이트
+  public var update: @Sendable (
     _ activityId: String,
     _ state: PromiseActivityAttributes.ContentState
   ) async throws -> Void
@@ -38,6 +39,12 @@ public struct LiveActivityClient: Sendable {
 
   /// 모든 라이브액티비티 종료
   public var endAll: @Sendable () async -> Void
+
+  /// 대기 중인 ETA 업데이트 확인
+  public var pendingETAUpdate: @Sendable () -> ETAUpdate?
+
+  /// ETA 업데이트 클리어
+  public var clearETAUpdate: @Sendable () -> Void
 }
 
 // MARK: - Test / Preview
@@ -47,20 +54,28 @@ extension LiveActivityClient: TestDependencyKey {
     isSupported: { true },
     hasActiveActivity: { false },
     activePromiseId: { nil },
-    start: { _, _, _ in "preview-activity-id" },
-    updateLocal: { _, _ in },
+    activeActivityId: { nil },
+    currentState: { nil },
+    start: { _, _ in "preview-activity-id" },
+    update: { _, _ in },
     end: { _ in },
-    endAll: { }
+    endAll: { },
+    pendingETAUpdate: { nil },
+    clearETAUpdate: { }
   )
 
   public static let testValue = Self(
     isSupported: unimplemented("\(Self.self).isSupported", placeholder: false),
     hasActiveActivity: unimplemented("\(Self.self).hasActiveActivity", placeholder: false),
     activePromiseId: unimplemented("\(Self.self).activePromiseId", placeholder: nil),
+    activeActivityId: unimplemented("\(Self.self).activeActivityId", placeholder: nil),
+    currentState: unimplemented("\(Self.self).currentState", placeholder: nil),
     start: unimplemented("\(Self.self).start", placeholder: ""),
-    updateLocal: unimplemented("\(Self.self).updateLocal"),
+    update: unimplemented("\(Self.self).update"),
     end: unimplemented("\(Self.self).end"),
-    endAll: unimplemented("\(Self.self).endAll")
+    endAll: unimplemented("\(Self.self).endAll"),
+    pendingETAUpdate: unimplemented("\(Self.self).pendingETAUpdate", placeholder: nil),
+    clearETAUpdate: unimplemented("\(Self.self).clearETAUpdate")
   )
 }
 
@@ -80,22 +95,32 @@ extension LiveActivityClient: DependencyKey {
       Activity<PromiseActivityAttributes>.activities.first?.attributes.promiseId
     },
 
-    start: { attributes, initialState, channelId in
+    activeActivityId: {
+      Activity<PromiseActivityAttributes>.activities.first?.id
+    },
+
+    currentState: {
+      Activity<PromiseActivityAttributes>.activities.first?.content.state
+    },
+
+    start: { attributes, initialState in
       let content = ActivityContent(
         state: initialState,
         staleDate: nil
       )
 
+      // TODO: APNs 설정 완료 후 pushType 변경
+      // 현재는 로컬 전용으로 시작 (원격 푸시 업데이트 없음)
       let activity = try Activity.request(
         attributes: attributes,
         content: content,
-        pushType: .channel(channelId)
+        pushType: nil
       )
 
       return activity.id
     },
 
-    updateLocal: { activityId, state in
+    update: { activityId, state in
       guard let activity = Activity<PromiseActivityAttributes>.activities
         .first(where: { $0.id == activityId }) else {
         throw LiveActivityClientError.activityNotFound
@@ -118,6 +143,19 @@ extension LiveActivityClient: DependencyKey {
       for activity in Activity<PromiseActivityAttributes>.activities {
         await activity.end(nil, dismissalPolicy: .immediate)
       }
+    },
+
+    pendingETAUpdate: {
+      guard let data = UserDefaults(suiteName: LiveActivityIntentKey.suiteName)?
+        .data(forKey: LiveActivityIntentKey.etaUpdateKey) else {
+        return nil
+      }
+      return try? JSONDecoder().decode(ETAUpdate.self, from: data)
+    },
+
+    clearETAUpdate: {
+      UserDefaults(suiteName: LiveActivityIntentKey.suiteName)?
+        .removeObject(forKey: LiveActivityIntentKey.etaUpdateKey)
     }
   )
 }

@@ -1,4 +1,5 @@
 // MARK: - Default Exports (자동 생성)
+@_exported import ActivityKit
 @_exported import Clients
 @_exported import ComposableArchitecture
 @_exported import SwiftUI

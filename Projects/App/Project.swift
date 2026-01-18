@@ -36,7 +36,8 @@ let project = Project(
       sources: ["Extensions/LiveActivityWidget/Sources/**"],
       entitlements: .file(path: "Extensions/LiveActivityWidget/LiveActivityWidget.entitlements"),
       dependencies: [
-        .project(target: "PromisoShared", path: "../Shared")
+        .project(target: "PromisoShared", path: "../Shared"),
+        .project(target: "ResourceKit", path: "../ResourceKit")
       ],
       settings: .standard()
     )
