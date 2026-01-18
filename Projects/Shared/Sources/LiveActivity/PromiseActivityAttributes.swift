@@ -1,5 +1,5 @@
 import ActivityKit
-import SwiftUI
+import Foundation
 
 // MARK: - Promise Activity Attributes
 
@@ -131,25 +131,6 @@ public struct ParticipantState: Codable, Hashable, Identifiable, Sendable {
   /// - Parameter trackingDurationMinutes: LiveActivity 추적 시간 (분)
   public func progress(trackingDurationMinutes: Int) -> Double {
     trackPosition(trackingDurationMinutes: trackingDurationMinutes)
-  }
-
-  /// 상태 이모지
-  public var emoji: String {
-    guard let eta = estimatedArrivalMinutes else { return "😴" }  // 대기
-    if eta == 0 { return "✅" }  // 도착
-    if eta <= 5 { return "🏃" }  // 거의 도착
-    return "🚶"  // 이동 중
-  }
-
-  /// 상태 색상 (진행률 기반)
-  public func color(trackingDurationMinutes: Int) -> Color {
-    let prog = progress(trackingDurationMinutes: trackingDurationMinutes)
-    switch prog {
-    case 0.75...: return .green
-    case 0.50..<0.75: return .blue
-    case 0.25..<0.50: return .orange
-    default: return .gray
-    }
   }
 
   /// 도착 예상 시간을 변경한 새 ParticipantState 반환
