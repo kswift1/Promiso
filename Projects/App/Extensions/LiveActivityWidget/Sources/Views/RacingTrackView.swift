@@ -36,14 +36,6 @@ struct RacingTrackView: View {
   let trackingDurationMinutes: Int
   let currentUserId: String
 
-  // 위치 기준 정렬 (뒤에 있는 사람이 먼저 그려지도록)
-  private var sortedParticipants: [ParticipantState] {
-    participants.sorted {
-      $0.trackPosition(trackingDurationMinutes: trackingDurationMinutes) <
-      $1.trackPosition(trackingDurationMinutes: trackingDurationMinutes)
-    }
-  }
-
   /// 현재 사용자의 진행률
   private var myProgress: Double {
     guard let me = participants.first(where: { $0.id == currentUserId }) else { return 0 }

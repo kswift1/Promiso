@@ -10,20 +10,6 @@ import ResourceKit
 
 /// 진행률 기반 색상 시스템 (앱 브랜드 톤 적용)
 enum ProgressColor {
-  /// 진행률에 따른 단일 색상
-  static func forProgress(_ progress: Double) -> Color {
-    switch progress {
-    case 0.75...:
-      return Color.pmindigo.n500
-    case 0.50..<0.75:
-      return Color.pmpurple.n500
-    case 0.25..<0.50:
-      return .orange
-    default:
-      return .gray
-    }
-  }
-
   /// 진행률에 따른 그라데이션 색상
   static func gradientColors(for progress: Double) -> [Color] {
     switch progress {
