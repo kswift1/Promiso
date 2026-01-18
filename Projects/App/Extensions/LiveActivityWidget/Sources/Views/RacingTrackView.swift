@@ -160,37 +160,58 @@ struct RacingTrackView: View {
 // MARK: - Compact Participant Marker
 
 /// 컴팩트한 참가자 마커
-/// - 현재 사용자 + 캐시된 이미지 있음: 프로필 사진 표시
-/// - 그 외: 이모지 마커 (fallback)
+/// - 프로필 사진 또는 이모지 마커
+/// - V5 디자인: 우측 하단 ETA 뱃지
 struct CompactParticipantMarker: View {
   let participant: ParticipantState
   let trackingDurationMinutes: Int
   let isCurrentUser: Bool
 
   private var markerSize: CGFloat { 32 }
-  private var markerColor: Color { participant.color(trackingDurationMinutes: trackingDurationMinutes) }
 
   /// 캐시된 프로필 이미지 로드 (id 기반)
   private var cachedProfileImage: UIImage? {
-    AppLogger.liveActivity.debug("🟣WIDGET🟣 id=\(participant.id.prefix(8))")
-    let image = LiveActivityImageStore.loadImage(userId: participant.id)
-    AppLogger.liveActivity.debug("🟣WIDGET🟣 로드결과=\(image != nil ? "✅성공" : "❌실패")")
-    return image
+    LiveActivityImageStore.loadImage(userId: participant.id)
+  }
+
+  /// ETA 상태에 따른 뱃지 색상
+  private var badgeColor: Color {
+    guard let eta = participant.estimatedArrivalMinutes else {
+      return .gray  // 대기
+    }
+    if eta == 0 {
+      return .green  // 도착
+    }
+    return Color(red: 0.35, green: 0.34, blue: 0.84)  // pmindigo 계열 - 이동 중
+  }
+
+  /// ETA 상태에 따른 테두리 색상
+  private var borderColor: Color {
+    badgeColor
+  }
+
+  /// ETA 뱃지 텍스트
+  private var badgeText: String? {
+    guard let eta = participant.estimatedArrivalMinutes else {
+      return nil  // 대기: 뱃지 없음
+    }
+    if eta == 0 {
+      return "✓"  // 도착
+    }
+    return "\(eta)분"  // 이동 중
   }
 
   var body: some View {
     ZStack {
       if let profileImage = cachedProfileImage {
-        // 프로필 이미지 표시 (현재 사용자 + 캐시 있음)
         profileImageMarker(image: profileImage)
       } else {
-        // 기존 이모지 마커 (fallback)
         emojiMarker
       }
     }
-    // 이름 라벨
+    // 상단: 이름 라벨 (4글자)
     .overlay(alignment: .top) {
-      Text(participant.name.prefix(2))
+      Text(participant.name.prefix(4))
         .font(.system(size: 8, weight: .bold))
         .foregroundStyle(.white)
         .padding(.horizontal, 5)
@@ -200,6 +221,21 @@ struct CompactParticipantMarker: View {
             .fill(.black.opacity(0.7))
         )
         .offset(y: -18)
+    }
+    // 우측 하단: ETA 뱃지 (V5)
+    .overlay(alignment: .bottomTrailing) {
+      if let text = badgeText {
+        Text(text)
+          .font(.system(size: 8, weight: .bold))
+          .foregroundStyle(.white)
+          .padding(.horizontal, 4)
+          .padding(.vertical, 2)
+          .background(
+            Capsule()
+              .fill(badgeColor)
+          )
+          .offset(x: 6, y: 6)
+      }
     }
   }
 
@@ -214,21 +250,19 @@ struct CompactParticipantMarker: View {
       .clipShape(Circle())
       .overlay(
         Circle()
-          .stroke(markerColor, lineWidth: 2)
+          .stroke(borderColor, lineWidth: 2)
       )
-      .shadow(color: markerColor.opacity(0.5), radius: 4, y: 2)
+      .shadow(color: borderColor.opacity(0.5), radius: 4, y: 2)
   }
 
   /// 기존 이모지 마커
   private var emojiMarker: some View {
     ZStack {
-      // 배경 원 + 그림자
       Circle()
-        .fill(markerColor.gradient)
+        .fill(borderColor.gradient)
         .frame(width: markerSize, height: markerSize)
-        .shadow(color: markerColor.opacity(0.5), radius: 4, y: 2)
+        .shadow(color: borderColor.opacity(0.5), radius: 4, y: 2)
 
-      // 이모지
       Text(participant.emoji)
         .font(.system(size: 14))
     }
