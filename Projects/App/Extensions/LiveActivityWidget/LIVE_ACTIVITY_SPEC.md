@@ -425,6 +425,111 @@ promiso://promise/{promiseId}/eta
 
 ## 백엔드 연동 (Firebase Functions)
 
+### Firebase Functions API
+
+#### registerPushToStartToken
+
+Push to Start 토큰 등록 (iOS 17.2+)
+
+```typescript
+// Request
+{
+  token: string;      // Push to Start 토큰
+  deviceId: string;   // 디바이스 고유 ID
+  env?: "stage" | "prod";
+}
+
+// Response
+{
+  success: boolean;
+}
+```
+
+#### startLiveActivity
+
+약속 참가자 전원에게 Push to Start APNs 전송
+
+```typescript
+// Request
+{
+  promiseId: string;
+  env?: "stage" | "prod";
+}
+
+// Response
+{
+  success: boolean;
+  successCount: number;
+  failureCount: number;
+}
+```
+
+**권한**: 호스트만 호출 가능
+
+#### updateETA
+
+ETA 업데이트 후 모든 참가자에게 브로드캐스트
+
+```typescript
+// Request
+{
+  promiseId: string;
+  estimatedMinutes: number;  // 0=도착, N=N분 후
+  env?: "stage" | "prod";
+}
+
+// Response
+{
+  success: boolean;
+  successCount: number;
+  failureCount: number;
+}
+```
+
+**권한**: 모든 참가자 호출 가능
+
+#### endLiveActivity
+
+LiveActivity 종료
+
+```typescript
+// Request
+{
+  promiseId: string;
+  env?: "stage" | "prod";
+}
+
+// Response
+{
+  success: boolean;
+  successCount: number;
+  failureCount: number;
+}
+```
+
+**권한**: 호스트만 호출 가능
+
+---
+
+### APNs 인증 설정
+
+Firebase Secret Manager에 다음 시크릿 등록 필요:
+
+| Secret Name | 설명 |
+|-------------|------|
+| `APNS_KEY_ID` | APNs Auth Key ID (10자리) |
+| `APNS_TEAM_ID` | Apple Developer Team ID (10자리) |
+| `APNS_AUTH_KEY` | APNs Auth Key (.p8 파일 내용) |
+
+```bash
+# 시크릿 등록 예시
+firebase functions:secrets:set APNS_KEY_ID
+firebase functions:secrets:set APNS_TEAM_ID
+firebase functions:secrets:set APNS_AUTH_KEY
+```
+
+---
+
 ### APNs Payload 구조
 
 #### Start Event
@@ -545,13 +650,14 @@ Debug 빌드에서 사용 가능한 테스트 패널:
 - [x] 테스트 UI
 - [ ] 지각 표시 UI (마커 색상, 뱃지 변경)
 
-### Backend (TODO)
+### Backend
 
-- [ ] Firebase Functions: startLiveActivity
-- [ ] Firebase Functions: updateETA
-- [ ] Firebase Functions: endLiveActivity
-- [ ] APNs 인증 설정 (P8 키)
-- [ ] Firestore 스키마 업데이트
+- [x] Firebase Functions: registerPushToStartToken
+- [x] Firebase Functions: startLiveActivity
+- [x] Firebase Functions: updateETA
+- [x] Firebase Functions: endLiveActivity
+- [ ] APNs 인증 설정 (P8 키 + Firebase Secret Manager)
+- [x] Firestore 스키마 업데이트 (liveActivities 컬렉션)
 
 ### Future Features (TODO)
 
