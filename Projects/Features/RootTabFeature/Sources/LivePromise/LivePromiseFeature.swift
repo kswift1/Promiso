@@ -19,6 +19,7 @@ public enum LivePromise {}
 extension LivePromise {
   /// Feature와 Detail이 공유하는 약속 데이터
   public struct Data: Equatable, Sendable {
+    // FIXME: 추후 모델로 묶자
     public var emoji: String
     public var title: String
     public var location: String?
@@ -82,9 +83,13 @@ extension LivePromise {
     case chat = "채팅"
   }
 
+  /// 약속 추적 상세 화면 Reducer
+  /// ExpandedView에서 사용되며, 탭 전환 및 액션 버튼 처리
   @Reducer
   public struct Detail {
     public init() {}
+
+    // MARK: - State
 
     @ObservableState
     public struct State: Equatable {
@@ -92,47 +97,68 @@ extension LivePromise {
       @Shared public var data: LivePromise.Data
 
       /// 현재 선택된 탭
-      var selectedTab: DetailTab = .status
+      public var selectedTab: DetailTab = .status
 
       public init(data: Shared<LivePromise.Data>) {
         self._data = data
       }
     }
 
+    // MARK: - Action
+
     @CasePathable
     public enum Action: Sendable {
-      case dismiss
-      case tabSelected(DetailTab)
-      case etaButtonTapped(Int)
-      case copyButtonTapped
-      case notificationButtonTapped
-      case moreButtonTapped
+      case view(View)
+      case delegate(Delegate)
+
+      @CasePathable
+      public enum View: Equatable, Sendable {
+        /// 탭 선택
+        case tabSelected(DetailTab)
+        /// ETA 버튼 탭
+        case etaButtonTapped(Int)
+        /// 복사 버튼 탭
+        case copyButtonTapped
+        /// 알림 버튼 탭
+        case notificationButtonTapped
+        /// 더보기 버튼 탭
+        case moreButtonTapped
+      }
+
+      public enum Delegate: Equatable, Sendable {
+        /// ETA 업데이트 요청 (부모에서 처리)
+        case updateETA(Int)
+      }
     }
+
+    // MARK: - Reducer Body
 
     public var body: some ReducerOf<Self> {
       Reduce { state, action in
         switch action {
-        case .dismiss:
-          return .none
+        case .view(let viewAction):
+          switch viewAction {
+          case .tabSelected(let tab):
+            state.selectedTab = tab
+            return .none
 
-        case .tabSelected(let tab):
-          state.selectedTab = tab
-          return .none
+          case .etaButtonTapped(let minutes):
+            return .send(.delegate(.updateETA(minutes)))
 
-        case .etaButtonTapped:
-          // 부모에서 처리
-          return .none
+          case .copyButtonTapped:
+            // TODO: 복사 기능 구현
+            return .none
 
-        case .copyButtonTapped:
-          // TODO: 복사 기능 구현
-          return .none
+          case .notificationButtonTapped:
+            // TODO: 알림 기능 구현
+            return .none
 
-        case .notificationButtonTapped:
-          // TODO: 알림 기능 구현
-          return .none
+          case .moreButtonTapped:
+            // TODO: 더보기 기능 구현
+            return .none
+          }
 
-        case .moreButtonTapped:
-          // TODO: 더보기 기능 구현
+        case .delegate:
           return .none
         }
       }

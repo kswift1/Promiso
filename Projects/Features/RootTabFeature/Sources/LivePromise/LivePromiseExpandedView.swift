@@ -14,27 +14,23 @@ import PromisoShared
 
 extension LivePromise {
   /// 약속 추적 확장 뷰 (전체 화면)
+  /// - `store`: LivePromise.Detail 스토어 (탭, 액션, @Shared data 포함)
   /// - `animation`: matchedTransitionSource와 연결을 위한 Namespace.ID
   /// - `transitionID`: 트랜지션 식별자
-  /// - `onDismiss`: 닫기 버튼 클릭 시 호출
+  /// - dismiss는 스와이프 제스처로만 처리 (부모 View에서 onChange로 감지)
   public struct ExpandedView: View {
-    @Bindable var store: StoreOf<RootTab.Feature>
+    @Bindable var store: StoreOf<Detail>
     var animation: Namespace.ID
     var transitionID: String
-    var onDismiss: () -> Void
-
-    @Environment(\.colorScheme) private var colorScheme
 
     public init(
-      store: StoreOf<RootTab.Feature>,
+      store: StoreOf<Detail>,
       animation: Namespace.ID,
-      transitionID: String,
-      onDismiss: @escaping () -> Void
+      transitionID: String
     ) {
       self.store = store
       self.animation = animation
       self.transitionID = transitionID
-      self.onDismiss = onDismiss
     }
 
     // MARK: - Colors
@@ -61,34 +57,20 @@ extension LivePromise {
               .frame(width: 35, height: 3)
               .padding(.vertical, 10)
 
-            // Close Button Row
-            HStack {
-              Spacer()
-              Button(action: onDismiss) {
-                Image(systemName: "xmark.circle.fill")
-                  .font(.title2)
-                  .foregroundStyle(.secondary)
-                  .symbolRenderingMode(.hierarchical)
-              }
-            }
-            .padding(.horizontal, 16)
-
             // Header Content
-            if let data = store.livePromise?.data {
-              livePromiseHeader(data: data)
-                .padding(.top, 8)
-                .padding(.horizontal, 16)
+            livePromiseHeader(data: store.data)
+              .padding(.top, 8)
+              .padding(.horizontal, 16)
 
-              // Action Buttons
-              actionButtons
-                .padding(.top, 16)
-                .padding(.horizontal, 16)
+            // Action Buttons
+            actionButtons
+              .padding(.top, 16)
+              .padding(.horizontal, 16)
 
-              // Tab Bar
-              detailTabBar
-                .padding(.top, 20)
-                .padding(.bottom, 8)
-            }
+            // Tab Bar
+            detailTabBar
+              .padding(.top, 20)
+              .padding(.bottom, 8)
           }
           .background(backgroundColor)
           .navigationTransition(.zoom(sourceID: transitionID, in: animation))
@@ -147,13 +129,13 @@ extension LivePromise {
     private var actionButtons: some View {
       HStack(spacing: 12) {
         actionButton(icon: "doc.on.doc", title: "복사") {
-          store.send(.livePromiseDetail(.presented(.copyButtonTapped)))
+          store.send(.view(.copyButtonTapped))
         }
         actionButton(icon: "bell", title: "알림") {
-          store.send(.livePromiseDetail(.presented(.notificationButtonTapped)))
+          store.send(.view(.notificationButtonTapped))
         }
         actionButton(icon: "ellipsis", title: "더보기") {
-          store.send(.livePromiseDetail(.presented(.moreButtonTapped)))
+          store.send(.view(.moreButtonTapped))
         }
       }
     }
@@ -187,11 +169,11 @@ extension LivePromise {
     }
 
     private func detailTabButton(_ tab: LivePromise.DetailTab) -> some View {
-      let isSelected = store.livePromiseDetail?.selectedTab == tab
+      let isSelected = store.selectedTab == tab
 
       return Button {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        store.send(.livePromiseDetail(.presented(.tabSelected(tab))))
+        store.send(.view(.tabSelected(tab)))
       } label: {
         Text(tab.rawValue)
           .font(.subheadline.weight(isSelected ? .semibold : .regular))
@@ -210,7 +192,7 @@ extension LivePromise {
 
     @ViewBuilder
     private var detailTabContent: some View {
-      switch store.livePromiseDetail?.selectedTab ?? .status {
+      switch store.selectedTab {
       case .status:
         statusTabContent
       case .map:
@@ -224,20 +206,18 @@ extension LivePromise {
 
     private var statusTabContent: some View {
       ScrollView {
-        if let data = store.livePromise?.data {
-          VStack(spacing: 20) {
-            // Racing Track (Horizontal Scroll)
-            racingTrackSection(data: data)
+        VStack(spacing: 20) {
+          // Racing Track (Horizontal Scroll)
+          racingTrackSection(data: store.data)
 
-            // Participants List
-            participantsListSection(data: data)
+          // Participants List
+          participantsListSection(data: store.data)
 
-            // ETA Buttons
-            etaButtonsSection
-          }
-          .padding(.top, 16)
-          .padding(.bottom, 32)
+          // ETA Buttons
+          etaButtonsSection
         }
+        .padding(.top, 16)
+        .padding(.bottom, 32)
       }
     }
 
@@ -406,12 +386,12 @@ extension LivePromise {
     }
 
     private func etaButton(icon: String, title: String, minutes: Int, color: Color) -> some View {
-      let currentETA = store.livePromise?.data.currentUserETA
+      let currentETA = store.data.currentUserETA
       let isSelected = currentETA == minutes
 
       return Button {
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        store.send(.livePromiseDetail(.presented(.etaButtonTapped(minutes))))
+        store.send(.view(.etaButtonTapped(minutes)))
       } label: {
         VStack(spacing: 8) {
           Image(systemName: icon)

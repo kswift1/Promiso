@@ -210,7 +210,6 @@ extension RootTab {
   public struct RootView: View {
     @Bindable var store: StoreOf<RootTab.Feature>
     @Namespace private var animation
-    @Environment(\.colorScheme) private var colorScheme
 
     // MARK: - Presentation State
     // ⚠️ @State + TCA 병행 사용 이유:
@@ -238,15 +237,18 @@ extension RootTab {
         .tint(Color.pmbrand.primary)
         .onAppear { store.send(.onAppear) }
         .fullScreenCover(isPresented: $expandLivePromise) {
-          LivePromise.ExpandedView(
-            store: store,
-            animation: animation,
-            transitionID: livePromiseTransitionID,
-            onDismiss: {
-              expandLivePromise = false
-              store.send(.livePromiseDetail(.dismiss))
-            }
-          )
+          if let detailStore = store.scope(state: \.livePromiseDetail, action: \.livePromiseDetail.presented) {
+            LivePromise.ExpandedView(
+              store: detailStore,
+              animation: animation,
+              transitionID: livePromiseTransitionID
+            )
+          }
+        }
+        .onChange(of: expandLivePromise) { _, isExpanded in
+          if !isExpanded {
+            store.send(.livePromiseDetail(.dismiss))
+          }
         }
     }
 
