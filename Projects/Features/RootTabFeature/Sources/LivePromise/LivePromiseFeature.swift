@@ -98,11 +98,34 @@ extension LivePromise {
       /// 공유 데이터 (Feature와 동기화)
       @Shared public var data: LivePromise.Data
 
+      /// 약속 모델 (PromiseCard와 동일한 헤더 표시용)
+      public var promise: PromiseModel?
+
+      /// 현재 사용자 ID
+      public var currentUserId: String
+
+      /// 그룹 멤버 정보 (호스트 표시용)
+      public var groupMembers: [UserPublicModel]?
+
       /// 현재 선택된 탭
       public var selectedTab: DetailTab = .status
 
-      public init(data: Shared<LivePromise.Data>) {
+      /// 직접 입력 분 값
+      public var customMinuteInput: String = ""
+
+      /// 상태 변경 시트 표시 여부
+      public var isETASheetPresented: Bool = false
+
+      public init(
+        data: Shared<LivePromise.Data>,
+        promise: PromiseModel? = nil,
+        currentUserId: String = "",
+        groupMembers: [UserPublicModel]? = nil
+      ) {
         self._data = data
+        self.promise = promise
+        self.currentUserId = currentUserId
+        self.groupMembers = groupMembers
       }
     }
 
@@ -119,12 +142,20 @@ extension LivePromise {
         case tabSelected(DetailTab)
         /// ETA 버튼 탭
         case etaButtonTapped(Int)
+        /// 직접 입력 값 변경
+        case customMinuteInputChanged(String)
+        /// 직접 입력 제출
+        case submitCustomMinute
         /// 복사 버튼 탭
         case copyButtonTapped
         /// 알림 버튼 탭
         case notificationButtonTapped
         /// 더보기 버튼 탭
         case moreButtonTapped
+        /// 상태 변경 시트 표시
+        case showETASheet
+        /// 상태 변경 시트 닫기
+        case hideETASheet
       }
 
       public enum Delegate: Equatable, Sendable {
@@ -147,6 +178,26 @@ extension LivePromise {
             }
 
           case .etaButtonTapped(let minutes):
+            state.customMinuteInput = ""
+            state.isETASheetPresented = false
+            return .run { send in
+              await hapticFeedback.medium()
+              await send(.delegate(.updateETA(minutes)))
+            }
+
+          case .customMinuteInputChanged(let value):
+            // 숫자만 허용
+            state.customMinuteInput = value.filter { $0.isNumber }
+            return .none
+
+          case .submitCustomMinute:
+            guard let minutes = Int(state.customMinuteInput), minutes > 0 else {
+              return .run { _ in
+                await hapticFeedback.error()
+              }
+            }
+            state.customMinuteInput = ""
+            state.isETASheetPresented = false
             return .run { send in
               await hapticFeedback.medium()
               await send(.delegate(.updateETA(minutes)))
@@ -169,6 +220,16 @@ extension LivePromise {
             return .run { _ in
               await hapticFeedback.light()
             }
+
+          case .showETASheet:
+            state.isETASheetPresented = true
+            return .run { _ in
+              await hapticFeedback.light()
+            }
+
+          case .hideETASheet:
+            state.isETASheetPresented = false
+            return .none
           }
 
         case .delegate:
