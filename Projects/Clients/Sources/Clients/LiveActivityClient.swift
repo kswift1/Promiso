@@ -21,6 +21,9 @@ public struct LiveActivityClient: Sendable {
   /// 현재 활성화된 Activity의 ContentState
   public var currentState: @Sendable () -> PromiseActivityAttributes.ContentState?
 
+  /// 현재 활성화된 Activity의 Attributes
+  public var currentAttributes: @Sendable () -> PromiseActivityAttributes?
+
   /// 라이브액티비티 시작
   /// - Returns: Activity ID
   public var start: @Sendable (
@@ -56,6 +59,7 @@ extension LiveActivityClient: TestDependencyKey {
     activePromiseId: { nil },
     activeActivityId: { nil },
     currentState: { nil },
+    currentAttributes: { nil },
     start: { _, _ in "preview-activity-id" },
     update: { _, _ in },
     end: { _ in },
@@ -70,6 +74,7 @@ extension LiveActivityClient: TestDependencyKey {
     activePromiseId: unimplemented("\(Self.self).activePromiseId", placeholder: nil),
     activeActivityId: unimplemented("\(Self.self).activeActivityId", placeholder: nil),
     currentState: unimplemented("\(Self.self).currentState", placeholder: nil),
+    currentAttributes: unimplemented("\(Self.self).currentAttributes", placeholder: nil),
     start: unimplemented("\(Self.self).start", placeholder: ""),
     update: unimplemented("\(Self.self).update"),
     end: unimplemented("\(Self.self).end"),
@@ -101,6 +106,10 @@ extension LiveActivityClient: DependencyKey {
 
     currentState: {
       Activity<PromiseActivityAttributes>.activities.first?.content.state
+    },
+
+    currentAttributes: {
+      Activity<PromiseActivityAttributes>.activities.first?.attributes
     },
 
     start: { attributes, initialState in

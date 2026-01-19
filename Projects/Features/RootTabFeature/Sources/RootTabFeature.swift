@@ -8,6 +8,7 @@ import PromisoShared
 import CalendarFeature
 import ProfileFeature
 import ResourceKit
+import SharedFeature
 
 public enum Tab: String, CaseIterable {
   case home = "홈"
@@ -59,12 +60,32 @@ extension RootTab {
       /// 현재 사용자 정보 (Profile에 전달)
       var currentUser: UserPrivateModel
 
+      /// LivePromise State (약속 추적 바) - nil이면 숨김
+      var livePromise: LivePromise.Feature.State?
+
+      /// LivePromise 상세 뷰 Presentation
+      @Presents var livePromiseDetail: LivePromise.Detail.State?
+
       public init(currentUser: UserPrivateModel) {
         self.currentUser = currentUser
         self.groupMain = GroupMain.Feature.State(currentUser: currentUser)
         self.home = Home.Feature.State(currentUser: currentUser)
         self.calendar = CalendarFeature.Feature.State(currentUser: currentUser)
         self.profile = Profile.Feature.State(currentUser: currentUser)
+        
+        // TODO: 테스트 완료 후 mock 데이터 제거
+        self.livePromise = LivePromise.Feature.State(
+          emoji: "🎂",
+          title: "테스트 약속",
+          location: "강남역 11번 출구",
+          scheduledTime: Date().addingTimeInterval(3600),
+          participants: [
+            ParticipantState(id: currentUser.id, name: "나", estimatedArrivalMinutes: 5),
+            ParticipantState(id: "user2", name: "친구1", estimatedArrivalMinutes: 0),
+            ParticipantState(id: "user3", name: "친구2", estimatedArrivalMinutes: 10)
+          ],
+          currentUserId: currentUser.id
+        )
       }
     }
 
@@ -81,6 +102,10 @@ extension RootTab {
       case groupMain(GroupMain.Feature.Action)
       /// Profile 액션
       case profile(Profile.Feature.Action)
+      /// LivePromise 액션
+      case livePromise(LivePromise.Feature.Action)
+      /// LivePromise 상세 뷰 액션
+      case livePromiseDetail(PresentationAction<LivePromise.Detail.Action>)
       /// 상위로 전달되는 델리게이트 액션
       case delegate(Delegate)
       /// 딥링크로 그룹 참여 열기
@@ -144,6 +169,27 @@ extension RootTab {
         case .profile:
           return .none
 
+        case .livePromise(.delegate(.showDetail)):
+          // CompactView 탭 → 상세 뷰 표시
+          guard let livePromise = state.livePromise else { return .none }
+          state.livePromiseDetail = LivePromise.Detail.State(
+            emoji: livePromise.emoji,
+            title: livePromise.title,
+            location: livePromise.location,
+            scheduledTime: livePromise.scheduledTime,
+            participants: livePromise.participants,
+            currentUserId: livePromise.currentUserId,
+            trackingDurationMinutes: livePromise.trackingDurationMinutes,
+            isProcessingETAUpdate: livePromise.isProcessingETAUpdate
+          )
+          return .none
+
+        case .livePromise:
+          return .none
+
+        case .livePromiseDetail:
+          return .none
+
         case .openJoinGroupWithCode(let inviteCode):
           state.selectedTab = .group
           return .send(.groupMain(.view(.joinGroupWithCode(inviteCode))))
@@ -156,6 +202,12 @@ extension RootTab {
           return .none
         }
       }
+      .ifLet(\.livePromise, action: \.livePromise) {
+        LivePromise.Feature()
+      }
+      .ifLet(\.$livePromiseDetail, action: \.livePromiseDetail) {
+        LivePromise.Detail()
+      }
     }
   }
 }
@@ -165,26 +217,89 @@ extension RootTab {
 extension RootTab {
   public struct RootView: View {
     @Bindable var store: StoreOf<RootTab.Feature>
+    @Namespace private var animation
+
+    // MARK: - Constants
+
+    private let livePromiseTransitionID = "LIVE_PROMISE_TRANSITION"
+    private let tabBarHeight: CGFloat = 49
+    private let compactViewBottomSpacing: CGFloat = 8
+    private let compactViewCornerRadius: CGFloat = 15
+    private let compactViewPadding: CGFloat = 15
+    private let compactViewVerticalPadding: CGFloat = 8
 
     public init(store: StoreOf<RootTab.Feature>) {
       self.store = store
     }
 
     public var body: some View {
+      tabViewWithLivePromise
+        .tint(Color.pmbrand.primary)
+        .onAppear { store.send(.onAppear) }
+        .fullScreenCover(
+          item: $store.scope(state: \.livePromiseDetail, action: \.livePromiseDetail)
+        ) { detailStore in
+          LivePromise.ExpandedView(store: detailStore)
+            .navigationTransition(.zoom(sourceID: livePromiseTransitionID, in: animation))
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(.background)
+        }
+    }
+
+    // MARK: - TabView
+
+    private var tabView: some View {
       TabView(selection: $store.selectedTab.sending(\.tabSelected)) {
         ForEach(Tab.allCases, id: \.self) { tab in
           tabContentView(for: tab)
-            .tabItem {
-              Label(tab.rawValue, systemImage: tab.iconName)
-            }
+            .tabItem { Label(tab.rawValue, systemImage: tab.iconName) }
             .tag(tab)
         }
       }
-      .tint(Color.pmbrand.primary)
-      .onAppear {
-        store.send(.onAppear)
+    }
+
+    // MARK: - TabView with LivePromise
+
+    @ViewBuilder
+    private var tabViewWithLivePromise: some View {
+      if #available(iOS 26.0, *) {
+        tabViewWithBottomAccessory
+      } else {
+        tabViewWithOverlay
       }
     }
+
+    @available(iOS 26.0, *)
+    @ViewBuilder
+    private var tabViewWithBottomAccessory: some View {
+      if let livePromiseStore = store.scope(state: \.livePromise, action: \.livePromise) {
+        tabView
+          .tabBarMinimizeBehavior(.onScrollDown)
+          .tabViewBottomAccessory {
+            LivePromise.CompactView(store: livePromiseStore)
+              .matchedTransitionSource(id: livePromiseTransitionID, in: animation)
+          }
+      } else {
+        tabView
+      }
+    }
+
+    private var tabViewWithOverlay: some View {
+      tabView
+        .overlay(alignment: .bottom) {
+          if let livePromiseStore = store.scope(state: \.livePromise, action: \.livePromise) {
+            LivePromise.CompactView(store: livePromiseStore)
+              .padding(.vertical, compactViewVerticalPadding)
+              .background(.ultraThinMaterial, in: .rect(cornerRadius: compactViewCornerRadius))
+              .matchedTransitionSource(id: livePromiseTransitionID, in: animation)
+              .offset(y: -(tabBarHeight + compactViewBottomSpacing))
+              .padding(.horizontal, compactViewPadding)
+          }
+        }
+        .ignoresSafeArea(.keyboard, edges: .all)
+    }
+
+    // MARK: - Tab Content
 
     @ViewBuilder
     private func tabContentView(for tab: Tab) -> some View {

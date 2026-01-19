@@ -5,26 +5,6 @@ import WidgetKit
 
 import ResourceKit
 
-
-// MARK: - Progress Color
-
-/// 진행률 기반 색상 시스템 (앱 브랜드 톤 적용)
-enum ProgressColor {
-  /// 진행률에 따른 그라데이션 색상
-  static func gradientColors(for progress: Double) -> [Color] {
-    switch progress {
-    case 0.75...:
-      return [Color.pmindigo.n500, Color.pmpurple.n500]
-    case 0.50..<0.75:
-      return [Color.pmpurple.n500, Color.pmpurple.n400]
-    case 0.25..<0.50:
-      return [.orange, Color.pmpurple.n400]
-    default:
-      return [.gray, .orange]
-    }
-  }
-}
-
 // MARK: - Lock Screen Banner View
 
 /// 잠금화면 라이브액티비티 배너 뷰
@@ -49,7 +29,7 @@ struct LockScreenBannerView: View {
       headerSection
 
       // MARK: - 레이싱 트랙
-      RacingTrackView(
+      SharedRacingTrackView(
         participants: state.participants,
         trackingDurationMinutes: trackingDuration,
         currentUserId: attrs.currentUserId

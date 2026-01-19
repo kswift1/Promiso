@@ -59,7 +59,7 @@ struct PromiseLiveActivity: Widget {
 
         // MARK: - Expanded Bottom
         DynamicIslandExpandedRegion(.bottom) {
-          RacingTrackView(
+          SharedRacingTrackView(
             participants: context.state.participants,
             trackingDurationMinutes: context.state.trackingDurationMinutes,
             currentUserId: context.attributes.currentUserId

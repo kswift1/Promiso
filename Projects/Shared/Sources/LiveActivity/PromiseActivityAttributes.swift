@@ -4,7 +4,7 @@ import Foundation
 // MARK: - Promise Activity Attributes
 
 /// 라이브액티비티의 고정 속성 (Activity 생성 시 설정, 이후 변경 불가)
-public struct PromiseActivityAttributes: ActivityAttributes {
+public struct PromiseActivityAttributes: ActivityAttributes, Equatable {
 
   // MARK: - Attributes (고정 정보)
 
@@ -156,7 +156,7 @@ public enum LiveActivityIntentKey {
 }
 
 /// 도착 예상 시간 업데이트 정보
-public struct ETAUpdate: Codable, Sendable {
+public struct ETAUpdate: Codable, Equatable, Sendable {
   /// 약속 ID
   public let promiseId: String
 
