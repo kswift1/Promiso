@@ -116,6 +116,8 @@ public struct PromiseActivityAttributes: ActivityAttributes {
   public let title: String                 // 약속 제목
   public let location: String?             // 장소명
   public let scheduledTime: Date           // 약속 시간
+  public let hostId: String                // 호스트 사용자 ID
+  public let hostName: String?             // 호스트 표시 이름
 
   /// 동적 상태 (APNs로 업데이트)
   public struct ContentState: Codable, Hashable, Sendable {
@@ -440,7 +442,9 @@ promiso://promise/{promiseId}/eta
       "emoji": "🍜",
       "title": "점심 모임",
       "location": "강남역 11번 출구",
-      "scheduledTime": 1704070800
+      "scheduledTime": 1704070800,
+      "hostId": "user1",
+      "hostName": "김민수"
     },
     "content-state": {
       "trackingDurationMinutes": 30,
