@@ -96,16 +96,16 @@ private extension LivePromise.ExpandedView {
     VStack(spacing: 8) {
       // Emoji + Title
       HStack(spacing: 8) {
-        Text(store.emoji)
+        Text(store.data.emoji)
           .font(.largeTitle)
 
-        Text(store.title)
+        Text(store.data.title)
           .font(.title2.weight(.bold))
           .foregroundStyle(.primary)
       }
 
       // Location
-      if let location = store.location {
+      if let location = store.data.location {
         HStack(spacing: 6) {
           Image(systemName: "mappin.circle.fill")
             .font(.callout)
@@ -118,7 +118,7 @@ private extension LivePromise.ExpandedView {
       }
 
       // Time
-      if let scheduledTime = store.scheduledTime {
+      if let scheduledTime = store.data.scheduledTime {
         HStack(spacing: 6) {
           Image(systemName: "clock.fill")
             .font(.callout)
@@ -174,7 +174,7 @@ private extension LivePromise.ExpandedView {
         .frame(height: 40)
 
         // Participants markers
-        ForEach(store.participants) { participant in
+        ForEach(store.data.participants) { participant in
           participantMarker(participant, trackWidth: geometry.size.width - 32)
         }
       }
@@ -183,7 +183,7 @@ private extension LivePromise.ExpandedView {
   }
 
   func participantMarker(_ participant: ParticipantState, trackWidth: CGFloat) -> some View {
-    let position = participant.trackPosition(trackingDurationMinutes: store.trackingDurationMinutes)
+    let position = participant.trackPosition(trackingDurationMinutes: store.data.trackingDurationMinutes)
     let xOffset = position * trackWidth
 
     return VStack(spacing: 4) {
@@ -222,7 +222,7 @@ private extension LivePromise.ExpandedView {
         .padding(.horizontal, 8)
 
       VStack(spacing: 8) {
-        ForEach(store.participants) { participant in
+        ForEach(store.data.participants) { participant in
           participantRow(participant)
         }
       }
@@ -301,7 +301,7 @@ private extension LivePromise.ExpandedView {
   }
 
   func etaButton(title: String, minutes: Int) -> some View {
-    let isSelected = store.currentUserETA == minutes
+    let isSelected = store.data.currentUserETA == minutes
 
     return Button {
       store.send(.etaButtonTapped(minutes))
@@ -316,7 +316,7 @@ private extension LivePromise.ExpandedView {
             .fill(isSelected ? Color.blue : Color(UIColor.secondarySystemBackground))
         )
     }
-    .disabled(store.isProcessingETAUpdate)
+    .disabled(store.data.isProcessingETAUpdate)
   }
 }
 
@@ -364,17 +364,19 @@ private extension LivePromise.ExpandedView {
   LivePromise.ExpandedView(
     store: Store(
       initialState: LivePromise.Detail.State(
-        emoji: "🎂",
-        title: "생일 파티",
-        location: "강남역 11번 출구",
-        scheduledTime: Date().addingTimeInterval(3600),
-        participants: [
-          ParticipantState(id: "1", name: "홍길동", estimatedArrivalMinutes: 0),
-          ParticipantState(id: "2", name: "김철수", estimatedArrivalMinutes: 5),
-          ParticipantState(id: "3", name: "이영희", estimatedArrivalMinutes: nil)
-        ],
-        currentUserId: "2",
-        trackingDurationMinutes: 30
+        data: Shared(value: LivePromise.Data(
+          emoji: "🎂",
+          title: "생일 파티",
+          location: "강남역 11번 출구",
+          scheduledTime: Date().addingTimeInterval(3600),
+          participants: [
+            ParticipantState(id: "1", name: "홍길동", estimatedArrivalMinutes: 0),
+            ParticipantState(id: "2", name: "김철수", estimatedArrivalMinutes: 5),
+            ParticipantState(id: "3", name: "이영희", estimatedArrivalMinutes: nil)
+          ],
+          currentUserId: "2",
+          trackingDurationMinutes: 30
+        ))
       )
     ) {
       LivePromise.Detail()

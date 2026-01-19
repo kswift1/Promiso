@@ -170,18 +170,9 @@ extension RootTab {
           return .none
 
         case .livePromise(.delegate(.showDetail)):
-          // CompactView 탭 → 상세 뷰 표시
+          // CompactView 탭 → 상세 뷰 표시 (같은 @Shared 전달)
           guard let livePromise = state.livePromise else { return .none }
-          state.livePromiseDetail = LivePromise.Detail.State(
-            emoji: livePromise.emoji,
-            title: livePromise.title,
-            location: livePromise.location,
-            scheduledTime: livePromise.scheduledTime,
-            participants: livePromise.participants,
-            currentUserId: livePromise.currentUserId,
-            trackingDurationMinutes: livePromise.trackingDurationMinutes,
-            isProcessingETAUpdate: livePromise.isProcessingETAUpdate
-          )
+          state.livePromiseDetail = LivePromise.Detail.State(data: livePromise.$data)
           return .none
 
         case .livePromise:

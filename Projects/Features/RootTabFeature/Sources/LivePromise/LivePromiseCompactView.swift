@@ -48,12 +48,12 @@ extension LivePromise {
           .fill(Color.blue.gradient)
           .frame(width: 40, height: 40)
           .overlay {
-            Text(store.emoji)
+            Text(store.data.emoji)
               .font(.title3)
           }
 
         VStack(alignment: .leading, spacing: 4) {
-          Text(store.title)
+          Text(store.data.title)
             .font(.callout.weight(.semibold))
             .lineLimit(1)
 
@@ -80,10 +80,10 @@ extension LivePromise {
             .background(etaButtonColor, in: Capsule())
         }
         .buttonStyle(.plain)
-        .disabled(store.isProcessingETAUpdate)
+        .disabled(store.data.isProcessingETAUpdate)
 
         // 시간
-        if let time = store.scheduledTime {
+        if let time = store.data.scheduledTime {
           Text(formatTime(time))
             .font(.caption)
             .foregroundStyle(.secondary)
@@ -94,8 +94,8 @@ extension LivePromise {
     // MARK: - Computed Properties
 
     private var statusText: String {
-      let arrived = store.arrivedCount
-      let total = store.participants.count
+      let arrived = store.data.arrivedCount
+      let total = store.data.participants.count
       if arrived == total && total > 0 {
         return "모두 도착!"
       }
@@ -103,14 +103,14 @@ extension LivePromise {
     }
 
     private var etaButtonText: String {
-      if let eta = store.currentUserETA {
+      if let eta = store.data.currentUserETA {
         return eta == 0 ? "도착 완료" : "\(eta)분"
       }
       return "도착"
     }
 
     private var etaButtonColor: Color {
-      if let eta = store.currentUserETA, eta == 0 {
+      if let eta = store.data.currentUserETA, eta == 0 {
         return .green
       }
       return .blue

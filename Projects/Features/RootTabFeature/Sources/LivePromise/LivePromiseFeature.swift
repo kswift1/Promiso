@@ -14,6 +14,64 @@ import PromisoShared
 /// - ExpandedView: 전체 화면
 public enum LivePromise {}
 
+// MARK: - Shared Data
+
+extension LivePromise {
+  /// Feature와 Detail이 공유하는 약속 데이터
+  public struct Data: Equatable, Sendable {
+    public var emoji: String
+    public var title: String
+    public var location: String?
+    public var scheduledTime: Date?
+    public var participants: [ParticipantState]
+    public var currentUserId: String
+    public var trackingDurationMinutes: Int
+    public var isProcessingETAUpdate: Bool
+
+    public init(
+      emoji: String = "📍",
+      title: String = "",
+      location: String? = nil,
+      scheduledTime: Date? = nil,
+      participants: [ParticipantState] = [],
+      currentUserId: String = "",
+      trackingDurationMinutes: Int = 30,
+      isProcessingETAUpdate: Bool = false
+    ) {
+      self.emoji = emoji
+      self.title = title
+      self.location = location
+      self.scheduledTime = scheduledTime
+      self.participants = participants
+      self.currentUserId = currentUserId
+      self.trackingDurationMinutes = trackingDurationMinutes
+      self.isProcessingETAUpdate = isProcessingETAUpdate
+    }
+
+    // MARK: - Computed Properties
+
+    /// 도착한 참가자 수
+    public var arrivedCount: Int {
+      participants.filter { $0.estimatedArrivalMinutes == 0 }.count
+    }
+
+    /// 이동 중인 참가자 수
+    public var inTransitCount: Int {
+      participants.filter { ($0.estimatedArrivalMinutes ?? -1) > 0 }.count
+    }
+
+    /// 현재 사용자의 참가자 상태
+    public var currentUserParticipant: ParticipantState? {
+      participants.first { $0.id == currentUserId }
+    }
+
+    /// 현재 사용자의 ETA
+    public var currentUserETA: Int? {
+      currentUserParticipant?.estimatedArrivalMinutes
+    }
+  }
+}
+
 // MARK: - Detail Feature
 
 extension LivePromise {
@@ -23,46 +81,11 @@ extension LivePromise {
 
     @ObservableState
     public struct State: Equatable {
-      /// 약속 이모지
-      public var emoji: String
-      /// 약속 제목
-      public var title: String
-      /// 약속 장소명
-      public var location: String?
-      /// 약속 시간
-      public var scheduledTime: Date?
-      /// 참가자 목록
-      public var participants: [ParticipantState]
-      /// 현재 사용자 ID
-      public var currentUserId: String
-      /// LiveActivity 추적 시간 (분)
-      public var trackingDurationMinutes: Int
-      /// ETA 업데이트 처리 중
-      public var isProcessingETAUpdate: Bool
+      /// 공유 데이터 (Feature와 동기화)
+      @Shared public var data: LivePromise.Data
 
-      public init(
-        emoji: String,
-        title: String,
-        location: String?,
-        scheduledTime: Date?,
-        participants: [ParticipantState],
-        currentUserId: String,
-        trackingDurationMinutes: Int,
-        isProcessingETAUpdate: Bool = false
-      ) {
-        self.emoji = emoji
-        self.title = title
-        self.location = location
-        self.scheduledTime = scheduledTime
-        self.participants = participants
-        self.currentUserId = currentUserId
-        self.trackingDurationMinutes = trackingDurationMinutes
-        self.isProcessingETAUpdate = isProcessingETAUpdate
-      }
-
-      /// 현재 사용자의 ETA
-      public var currentUserETA: Int? {
-        participants.first { $0.id == currentUserId }?.estimatedArrivalMinutes
+      public init(data: Shared<LivePromise.Data>) {
+        self._data = data
       }
     }
 
@@ -96,36 +119,17 @@ extension LivePromise {
 
     @ObservableState
     public struct State: Equatable {
-      // MARK: - LiveActivity Data
+      /// 공유 데이터 (Detail과 동기화)
+      @Shared public var data: LivePromise.Data
 
-      /// 약속 이모지
-      public var emoji: String = "📍"
-
-      /// 약속 제목
-      public var title: String = ""
-
-      /// 약속 장소명
-      public var location: String?
-
-      /// 약속 시간
-      public var scheduledTime: Date?
-
-      /// 참가자 목록
-      public var participants: [ParticipantState] = []
-
-      /// 현재 사용자 ID
-      public var currentUserId: String = ""
-
-      /// LiveActivity 추적 시간 (분)
-      public var trackingDurationMinutes: Int = 30
-
-      /// 대기 중인 ETA 업데이트
+      /// 대기 중인 ETA 업데이트 (Feature 전용)
       var pendingETAUpdate: ETAUpdate?
 
-      /// ETA 업데이트 처리 중
-      var isProcessingETAUpdate: Bool = false
-
       // MARK: - Initializer
+
+      public init(data: Shared<LivePromise.Data>) {
+        self._data = data
+      }
 
       public init(
         emoji: String = "📍",
@@ -135,34 +139,14 @@ extension LivePromise {
         participants: [ParticipantState] = [],
         currentUserId: String = ""
       ) {
-        self.emoji = emoji
-        self.title = title
-        self.location = location
-        self.scheduledTime = scheduledTime
-        self.participants = participants
-        self.currentUserId = currentUserId
-      }
-
-      // MARK: - Computed Properties
-
-      /// 도착한 참가자 수
-      public var arrivedCount: Int {
-        participants.filter { $0.estimatedArrivalMinutes == 0 }.count
-      }
-
-      /// 이동 중인 참가자 수
-      public var inTransitCount: Int {
-        participants.filter { ($0.estimatedArrivalMinutes ?? -1) > 0 }.count
-      }
-
-      /// 현재 사용자의 참가자 상태
-      public var currentUserParticipant: ParticipantState? {
-        participants.first { $0.id == currentUserId }
-      }
-
-      /// 현재 사용자의 ETA
-      public var currentUserETA: Int? {
-        currentUserParticipant?.estimatedArrivalMinutes
+        self._data = Shared(value: LivePromise.Data(
+          emoji: emoji,
+          title: title,
+          location: location,
+          scheduledTime: scheduledTime,
+          participants: participants,
+          currentUserId: currentUserId
+        ))
       }
     }
 
@@ -232,17 +216,19 @@ extension LivePromise {
           switch internalAction {
           case .liveActivityStateUpdated(let attributes, let contentState):
             // LiveActivity 상태 동기화
-            if let attributes = attributes {
-              state.emoji = attributes.emoji
-              state.title = attributes.title
-              state.location = attributes.location
-              state.scheduledTime = attributes.scheduledTime
-              state.trackingDurationMinutes = attributes.trackingDurationMinutes
-            }
+            state.$data.withLock { data in
+              if let attributes = attributes {
+                data.emoji = attributes.emoji
+                data.title = attributes.title
+                data.location = attributes.location
+                data.scheduledTime = attributes.scheduledTime
+                data.trackingDurationMinutes = attributes.trackingDurationMinutes
+              }
 
-            if let contentState = contentState {
-              state.participants = contentState.participants
-              state.trackingDurationMinutes = contentState.trackingDurationMinutes
+              if let contentState = contentState {
+                data.participants = contentState.participants
+                data.trackingDurationMinutes = contentState.trackingDurationMinutes
+              }
             }
 
             return .none
@@ -250,7 +236,7 @@ extension LivePromise {
           case .processPendingETAUpdate(let etaUpdate):
             // ETA 업데이트 처리
             guard let activityId = liveActivityClient.activeActivityId() else {
-              state.isProcessingETAUpdate = false
+              state.$data.withLock { $0.isProcessingETAUpdate = false }
               return .none
             }
 
@@ -275,7 +261,7 @@ extension LivePromise {
 
           case .etaUpdateSent:
             // ETA 업데이트 성공
-            state.isProcessingETAUpdate = false
+            state.$data.withLock { $0.isProcessingETAUpdate = false }
             state.pendingETAUpdate = nil
 
             // 상태 새로고침
@@ -283,7 +269,7 @@ extension LivePromise {
 
           case .etaUpdateFailed:
             // ETA 업데이트 실패
-            state.isProcessingETAUpdate = false
+            state.$data.withLock { $0.isProcessingETAUpdate = false }
             state.pendingETAUpdate = nil
             return .none
           }
@@ -297,19 +283,19 @@ extension LivePromise {
     // MARK: - Private Helpers
 
     private func handleETAUpdate(state: inout State, minutes: Int) -> Effect<Action> {
-      guard !state.isProcessingETAUpdate else {
+      guard !state.data.isProcessingETAUpdate else {
         return .none
       }
 
       let etaUpdate = ETAUpdate(
         promiseId: "", // LiveActivity에서 관리
-        userId: state.currentUserId,
+        userId: state.data.currentUserId,
         estimatedMinutes: minutes,
         timestamp: Date()
       )
 
       state.pendingETAUpdate = etaUpdate
-      state.isProcessingETAUpdate = true
+      state.$data.withLock { $0.isProcessingETAUpdate = true }
 
       return .send(.internal(.processPendingETAUpdate(etaUpdate)))
     }
