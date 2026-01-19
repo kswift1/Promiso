@@ -116,6 +116,12 @@ public struct PromiseClient: Sendable {
 
   /// LiveActivity 시작 요청 (백엔드에서 Push to Start APNs 전송)
   public var startLiveActivity: @Sendable (_ promiseId: String) async throws -> Void
+
+  /// ETA 업데이트 요청 (백엔드에서 APNs 브로드캐스트)
+  public var updateETA: @Sendable (_ promiseId: String, _ estimatedMinutes: Int) async throws -> Void
+
+  /// LiveActivity 종료 요청
+  public var endLiveActivity: @Sendable (_ promiseId: String) async throws -> Void
 }
 
 // MARK: - Test & Preview Values
@@ -175,6 +181,12 @@ extension PromiseClient: TestDependencyKey {
     },
     startLiveActivity: { _ in
       try await Task.sleep(for: .seconds(0.5))
+    },
+    updateETA: { _, _ in
+      try await Task.sleep(for: .seconds(0.3))
+    },
+    endLiveActivity: { _ in
+      try await Task.sleep(for: .seconds(0.3))
     }
   )
 }
@@ -244,6 +256,12 @@ extension PromiseClient: DependencyKey {
       },
       startLiveActivity: { promiseId in
         try await dataSource.startLiveActivity(promiseId: promiseId)
+      },
+      updateETA: { promiseId, estimatedMinutes in
+        try await dataSource.updateETA(promiseId: promiseId, visibleMinutes: estimatedMinutes)
+      },
+      endLiveActivity: { promiseId in
+        try await dataSource.endLiveActivity(promiseId: promiseId)
       }
     )
   }()

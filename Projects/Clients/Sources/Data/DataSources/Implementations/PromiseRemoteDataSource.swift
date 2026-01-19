@@ -365,6 +365,35 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
     _ = try await functions.httpsCallable("startLiveActivity").call(callableData)
   }
 
+  /// ETA 업데이트 요청
+  /// Firebase Functions의 updateETA를 호출하여 모든 참가자에게 APNs 브로드캐스트
+  public func updateETA(promiseId: String, visibleMinutes: Int) async throws {
+    var callableData: [String: Any] = [
+      "promiseId": promiseId,
+      "estimatedMinutes": visibleMinutes
+    ]
+
+    if let env = functionsEnvironmentParam() {
+      callableData["env"] = env
+    }
+
+    _ = try await functions.httpsCallable("updateETA").call(callableData)
+  }
+
+  /// LiveActivity 종료 요청
+  /// Firebase Functions의 endLiveActivity를 호출하여 종료 APNs 전송
+  public func endLiveActivity(promiseId: String) async throws {
+    var callableData: [String: Any] = [
+      "promiseId": promiseId
+    ]
+
+    if let env = functionsEnvironmentParam() {
+      callableData["env"] = env
+    }
+
+    _ = try await functions.httpsCallable("endLiveActivity").call(callableData)
+  }
+
   // MARK: - Helper Methods
 
   private func documentSnapshotToPromise(_ document: DocumentSnapshot) throws -> PromiseModel? {

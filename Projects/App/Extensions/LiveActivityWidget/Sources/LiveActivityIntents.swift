@@ -32,24 +32,13 @@ struct UpdateETAIntent: LiveActivityIntent {
   }
 
   func perform() async throws -> some IntentResult {
-    // UserDefaults에 저장 (앱에서 서버 동기화용)
-    let update = ETAUpdate(
+    // 1. 백엔드 API 직접 호출 (APNs 브로드캐스트)
+    await callUpdateETAFunction(
       promiseId: promiseId,
-      userId: userId,
-      estimatedMinutes: estimatedMinutes,
-      timestamp: Date()
+      estimatedMinutes: estimatedMinutes
     )
-    do {
-      let data = try JSONEncoder().encode(update)
-      UserDefaults(suiteName: LiveActivityIntentKey.suiteName)?
-        .set(data, forKey: LiveActivityIntentKey.etaUpdateKey)
-    } catch {
-      #if DEBUG
-      print("[LiveActivityIntent] JSON encode failed: \(error)")
-      #endif
-    }
 
-    // Live Activity UI 즉시 업데이트
+    // 2. Live Activity UI 즉시 업데이트 (로컬 - 백엔드 응답 전 UX 개선용)
     await updateActivityETA(
       promiseId: promiseId,
       participantId: userId,
@@ -57,6 +46,78 @@ struct UpdateETAIntent: LiveActivityIntent {
     )
 
     return .result()
+  }
+}
+
+// MARK: - Firebase Functions HTTP Client
+
+private func callUpdateETAFunction(promiseId: String, estimatedMinutes: Int) async {
+  // Firebase Functions 설정
+  let region = "asia-northeast3"
+  let functionName = "updateETA"
+
+  // 환경에 따른 URL 결정
+  let baseURL: String
+  let projectId = LiveActivityIntentKey.firebaseProjectId
+
+  #if DEBUG
+  // 에뮬레이터 사용 시
+  if let emulatorHost = UserDefaults(suiteName: LiveActivityIntentKey.suiteName)?
+    .string(forKey: LiveActivityIntentKey.emulatorHostKey) {
+    baseURL = "http://\(emulatorHost):5001/\(projectId)/\(region)/\(functionName)"
+  } else {
+    baseURL = "https://\(region)-\(projectId).cloudfunctions.net/\(functionName)"
+  }
+  #else
+  baseURL = "https://\(region)-\(projectId).cloudfunctions.net/\(functionName)"
+  #endif
+
+  guard let url = URL(string: baseURL) else {
+    #if DEBUG
+    print("[UpdateETAIntent] Invalid URL: \(baseURL)")
+    #endif
+    return
+  }
+
+  // 요청 데이터
+  let requestBody: [String: Any] = [
+    "data": [
+      "promiseId": promiseId,
+      "estimatedMinutes": estimatedMinutes
+    ]
+  ]
+
+  guard let httpBody = try? JSONSerialization.data(withJSONObject: requestBody) else {
+    #if DEBUG
+    print("[UpdateETAIntent] JSON serialization failed")
+    #endif
+    return
+  }
+
+  // HTTP 요청 생성
+  var request = URLRequest(url: url)
+  request.httpMethod = "POST"
+  request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+  request.httpBody = httpBody
+
+  // Auth 토큰이 있으면 추가 (App Group에서 읽기)
+  if let authToken = UserDefaults(suiteName: LiveActivityIntentKey.suiteName)?
+    .string(forKey: LiveActivityIntentKey.authTokenKey) {
+    request.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
+  }
+
+  // 요청 실행
+  do {
+    let (_, response) = try await URLSession.shared.data(for: request)
+    #if DEBUG
+    if let httpResponse = response as? HTTPURLResponse {
+      print("[UpdateETAIntent] Response status: \(httpResponse.statusCode)")
+    }
+    #endif
+  } catch {
+    #if DEBUG
+    print("[UpdateETAIntent] Request failed: \(error)")
+    #endif
   }
 }
 
