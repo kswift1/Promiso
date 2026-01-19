@@ -207,19 +207,18 @@ extension RootTab {
 // MARK: - View
 
 extension RootTab {
-  /// 상세 화면 탭
-  enum DetailTab: String, CaseIterable {
-    case status = "현황"
-    case map = "지도"
-    case chat = "채팅"
-  }
-
   public struct RootView: View {
     @Bindable var store: StoreOf<RootTab.Feature>
-    @State private var expandLivePromise: Bool = false
-    @State private var selectedDetailTab: DetailTab = .status
     @Namespace private var animation
     @Environment(\.colorScheme) private var colorScheme
+
+    // MARK: - Presentation State
+    // ⚠️ @State + TCA 병행 사용 이유:
+    // matchedTransitionSource + navigationTransition(.zoom) 조합이 동작하려면
+    // @State를 직접 토글해야 합니다. TCA의 Binding(get:set:)이나 onChange 동기화로는
+    // SwiftUI transition 타이밍이 맞지 않아 zoom 애니메이션이 동작하지 않습니다.
+    // 따라서 @State는 presentation 제어용, TCA는 상태/로직 관리용으로 분리합니다.
+    @State private var expandLivePromise: Bool = false
 
     // MARK: - Constants
 
@@ -246,7 +245,11 @@ extension RootTab {
     // MARK: - Colors
 
     private var cardBackgroundColor: Color {
-      colorScheme == .dark ? Color(hex: "2C2C2E") : Color(UIColor.secondarySystemBackground)
+      Color(UIColor.secondarySystemBackground)
+    }
+
+    private var backgroundColor: Color {
+      Color(UIColor.systemBackground)
     }
 
     // MARK: - Expanded LivePromise View
@@ -255,7 +258,7 @@ extension RootTab {
     private var expandedLivePromiseView: some View {
       detailTabContent
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(colorScheme == .dark ? Color(hex: "1C1C1E") : Color(UIColor.systemBackground))
+        .background(backgroundColor)
         .safeAreaInset(edge: .top, spacing: 0) {
           VStack(spacing: 0) {
             // Drag Indicator
@@ -268,7 +271,8 @@ extension RootTab {
             HStack {
               Spacer()
               Button {
-                expandLivePromise = false
+                expandLivePromise = false  // transition용 직접 토글
+                store.send(.livePromiseDetail(.dismiss))  // TCA 상태 정리
               } label: {
                 Image(systemName: "xmark.circle.fill")
                   .font(.title2)
@@ -295,7 +299,7 @@ extension RootTab {
                 .padding(.bottom, 8)
             }
           }
-          .background(colorScheme == .dark ? Color(hex: "1C1C1E") : Color(UIColor.systemBackground))
+          .background(backgroundColor)
           .navigationTransition(.zoom(sourceID: livePromiseTransitionID, in: animation))
         }
         .presentationBackground(.ultraThinMaterial)
@@ -351,9 +355,15 @@ extension RootTab {
 
     private var actionButtons: some View {
       HStack(spacing: 12) {
-        actionButton(icon: "doc.on.doc", title: "복사") { }
-        actionButton(icon: "bell", title: "알림") { }
-        actionButton(icon: "ellipsis", title: "더보기") { }
+        actionButton(icon: "doc.on.doc", title: "복사") {
+          store.send(.livePromiseDetail(.presented(.copyButtonTapped)))
+        }
+        actionButton(icon: "bell", title: "알림") {
+          store.send(.livePromiseDetail(.presented(.notificationButtonTapped)))
+        }
+        actionButton(icon: "ellipsis", title: "더보기") {
+          store.send(.livePromiseDetail(.presented(.moreButtonTapped)))
+        }
       }
     }
 
@@ -376,7 +386,7 @@ extension RootTab {
 
     private var detailTabBar: some View {
       HStack(spacing: 0) {
-        ForEach(DetailTab.allCases, id: \.self) { tab in
+        ForEach(LivePromise.DetailTab.allCases, id: \.self) { tab in
           detailTabButton(tab)
         }
       }
@@ -385,12 +395,12 @@ extension RootTab {
       .padding(.horizontal, 16)
     }
 
-    private func detailTabButton(_ tab: DetailTab) -> some View {
-      let isSelected = selectedDetailTab == tab
+    private func detailTabButton(_ tab: LivePromise.DetailTab) -> some View {
+      let isSelected = store.livePromiseDetail?.selectedTab == tab
 
       return Button {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        selectedDetailTab = tab
+        store.send(.livePromiseDetail(.presented(.tabSelected(tab))))
       } label: {
         Text(tab.rawValue)
           .font(.subheadline.weight(isSelected ? .semibold : .regular))
@@ -409,7 +419,7 @@ extension RootTab {
 
     @ViewBuilder
     private var detailTabContent: some View {
-      switch selectedDetailTab {
+      switch store.livePromiseDetail?.selectedTab ?? .status {
       case .status:
         statusTabContent
       case .map:
@@ -610,7 +620,7 @@ extension RootTab {
 
       return Button {
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        // TODO: ETA 업데이트 액션
+        store.send(.livePromiseDetail(.presented(.etaButtonTapped(minutes))))
       } label: {
         VStack(spacing: 8) {
           Image(systemName: icon)
@@ -730,7 +740,8 @@ extension RootTab {
               .matchedTransitionSource(id: livePromiseTransitionID, in: animation)
               .onTapGesture {
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                expandLivePromise.toggle()
+                store.send(.livePromise(.view(.tapped)))  // TCA 상태 생성
+                expandLivePromise = true  // transition용 직접 토글
               }
           }
         }
@@ -747,7 +758,8 @@ extension RootTab {
               .matchedTransitionSource(id: livePromiseTransitionID, in: animation)
               .onTapGesture {
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                expandLivePromise.toggle()
+                store.send(.livePromise(.view(.tapped)))
+                expandLivePromise = true
               }
           }
       } else {
@@ -765,7 +777,8 @@ extension RootTab {
               .matchedTransitionSource(id: livePromiseTransitionID, in: animation)
               .onTapGesture {
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                expandLivePromise.toggle()
+                store.send(.livePromise(.view(.tapped)))
+                expandLivePromise = true
               }
               .offset(y: -(tabBarHeight + compactViewBottomSpacing))
               .padding(.horizontal, compactViewPadding)
@@ -819,31 +832,4 @@ extension RootTab {
   }
 }
 
-// MARK: - Color Hex Extension
-
-private extension Color {
-  init(hex: String) {
-    let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
-    var int: UInt64 = 0
-    Scanner(string: hex).scanHexInt64(&int)
-    let a, r, g, b: UInt64
-    switch hex.count {
-    case 3:
-      (a, r, g, b) = (255, (int >> 8) * 17, (int >> 4 & 0xF) * 17, (int & 0xF) * 17)
-    case 6:
-      (a, r, g, b) = (255, int >> 16, int >> 8 & 0xFF, int & 0xFF)
-    case 8:
-      (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
-    default:
-      (a, r, g, b) = (255, 0, 0, 0)
-    }
-    self.init(
-      .sRGB,
-      red: Double(r) / 255,
-      green: Double(g) / 255,
-      blue: Double(b) / 255,
-      opacity: Double(a) / 255
-    )
-  }
-}
 
