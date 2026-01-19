@@ -100,9 +100,20 @@ private func callUpdateETAFunction(promiseId: String, estimatedMinutes: Int) asy
   request.setValue("application/json", forHTTPHeaderField: "Content-Type")
   request.httpBody = httpBody
 
-  // Auth 토큰이 있으면 추가 (App Group에서 읽기)
-  if let authToken = UserDefaults(suiteName: LiveActivityIntentKey.suiteName)?
-    .string(forKey: LiveActivityIntentKey.authTokenKey) {
+  // Auth 토큰 확인 (App Group에서 읽기)
+  let defaults = UserDefaults(suiteName: LiveActivityIntentKey.suiteName)
+
+  // 토큰 만료 체크
+  if let expiry = defaults?.object(forKey: LiveActivityIntentKey.authTokenExpiryKey) as? Date,
+     expiry < Date() {
+    #if DEBUG
+    print("[UpdateETAIntent] 토큰 만료됨 - 백엔드 요청 스킵")
+    #endif
+    return  // 토큰 만료 시 백엔드 요청 스킵 (로컬 UI만 업데이트됨)
+  }
+
+  // Auth 토큰이 있으면 추가
+  if let authToken = defaults?.string(forKey: LiveActivityIntentKey.authTokenKey) {
     request.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
   }
 

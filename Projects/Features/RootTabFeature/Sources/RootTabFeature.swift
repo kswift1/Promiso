@@ -39,6 +39,7 @@ extension RootTab {
   public struct Feature {
     @Dependency(\.hapticFeedback) var hapticFeedback
     @Dependency(\.liveActivityClient) var liveActivityClient
+    @Dependency(\.authClient) var authClient
 
     public init() {}
 
@@ -123,6 +124,8 @@ extension RootTab {
       case observePushToStartToken
       /// Push to Start 토큰 수신
       case pushToStartTokenReceived(String)
+      /// Widget용 Auth 토큰 갱신
+      case refreshWidgetAuthToken
     }
 
     public enum Delegate: Equatable {
@@ -150,8 +153,11 @@ extension RootTab {
       Reduce { state, action in
         switch action {
         case .onAppear:
-          // Push to Start 토큰 구독 시작 (iOS 17.2+)
-          return .send(.internal(.observePushToStartToken))
+          // Widget용 Auth 토큰 갱신 + Push to Start 토큰 구독 시작
+          return .merge(
+            .send(.internal(.refreshWidgetAuthToken)),
+            .send(.internal(.observePushToStartToken))
+          )
 
         case .tabSelected(let tab):
           state.selectedTab = tab
@@ -203,6 +209,12 @@ extension RootTab {
 
         case .internal(let internalAction):
           switch internalAction {
+          case .refreshWidgetAuthToken:
+            // Widget/LiveActivity Extension용 Auth 토큰 갱신
+            return .run { [authClient] _ in
+              await authClient.refreshWidgetAuthToken()
+            }
+
           case .observePushToStartToken:
             // Push to Start 토큰 스트림 구독
             let stream = liveActivityClient.observePushToStartTokenUpdates()

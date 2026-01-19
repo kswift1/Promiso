@@ -170,6 +170,9 @@ public enum LiveActivityIntentKey {
   /// Firebase Auth ID Token 저장 키 (Widget에서 인증용)
   public static let authTokenKey = "firebase.auth.idToken"
 
+  /// Firebase Auth Token 만료 시간 저장 키
+  public static let authTokenExpiryKey = "firebase.auth.tokenExpiry"
+
   /// Firebase Emulator Host 저장 키 (개발 환경용)
   public static let emulatorHostKey = "firebase.emulator.host"
 }
