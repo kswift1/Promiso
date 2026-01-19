@@ -111,6 +111,11 @@ public struct PromiseClient: Sendable {
 
   /// 약속 응답
   public var respondPromise: @Sendable (_ promiseId: String, _ status: PromiseAttendanceStatus) async throws -> Void
+
+  // MARK: - Live Activity
+
+  /// LiveActivity 시작 요청 (백엔드에서 Push to Start APNs 전송)
+  public var startLiveActivity: @Sendable (_ promiseId: String) async throws -> Void
 }
 
 // MARK: - Test & Preview Values
@@ -167,6 +172,9 @@ extension PromiseClient: TestDependencyKey {
     },
     respondPromise: { _, _ in
       try await Task.sleep(for: .seconds(0.3))
+    },
+    startLiveActivity: { _ in
+      try await Task.sleep(for: .seconds(0.5))
     }
   )
 }
@@ -233,6 +241,9 @@ extension PromiseClient: DependencyKey {
           promiseId: promiseId,
           status: status.rawValue
         )
+      },
+      startLiveActivity: { promiseId in
+        try await dataSource.startLiveActivity(promiseId: promiseId)
       }
     )
   }()

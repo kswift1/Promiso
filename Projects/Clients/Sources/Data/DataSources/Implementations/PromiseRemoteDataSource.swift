@@ -349,6 +349,22 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
     }
   }
 
+  // MARK: - Live Activity
+
+  /// LiveActivity 시작 요청
+  /// Firebase Functions의 startLiveActivity를 호출하여 Push to Start APNs 전송
+  public func startLiveActivity(promiseId: String) async throws {
+    var callableData: [String: Any] = [
+      "promiseId": promiseId
+    ]
+
+    if let env = functionsEnvironmentParam() {
+      callableData["env"] = env
+    }
+
+    _ = try await functions.httpsCallable("startLiveActivity").call(callableData)
+  }
+
   // MARK: - Helper Methods
 
   private func documentSnapshotToPromise(_ document: DocumentSnapshot) throws -> PromiseModel? {

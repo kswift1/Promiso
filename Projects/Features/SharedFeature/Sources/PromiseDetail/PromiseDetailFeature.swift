@@ -135,7 +135,7 @@ extension PromiseDetail {
         case promiseUpdated(PromiseModel)
         // Live Activity
         case startLiveActivity
-        case liveActivityStarted(id: String)
+        case liveActivityStarted
         case liveActivityFailed(error: AppError)
         case liveActivityEnded
         case markArrivalDone
@@ -326,56 +326,24 @@ extension PromiseDetail {
 
           // MARK: - Live Activity Internal Actions
           case .startLiveActivity:
-            AppLogger.liveActivity.debug("startLiveActivity 액션 실행")
-            let promise = state.promise
-            let currentUserId = state.currentUserId
-            let members = state.groupMembers ?? []
-            AppLogger.liveActivity.debug("groupMembers 수: \(members.count)")
-            let acceptedMembers = members.filter { promise.votes.accepted.contains($0.userId) }
-            AppLogger.liveActivity.debug("acceptedMembers 수: \(acceptedMembers.count)")
+            // 백엔드에 LiveActivity 시작 요청 (Push to Start APNs 전송)
+            let promiseId = state.promise.id
+            AppLogger.liveActivity.debug("startLiveActivity 백엔드 요청: promiseId=\(promiseId)")
 
-            // 호스트 이름 조회
-            let hostName = members.first { $0.userId == promise.hostId }?.displayName
-
-            let attributes = PromiseActivityAttributes(
-              promiseId: promise.id,
-              currentUserId: currentUserId,
-              emoji: promise.displayEmoji,
-              title: promise.title,
-              location: promise.location?.name ?? "장소 미정",
-              scheduledTime: promise.startAt,
-              hostId: promise.hostId,
-              hostName: hostName
-            )
-
-            // 프로필 이미지는 GroupMainFeature에서 사전 캐싱됨 (Widget에서 id로 파일명 유추)
-            let participants = acceptedMembers.map { member in
-              AppLogger.liveActivity.debug("ParticipantState 생성: \(member.userId)")
-              return ParticipantState(
-                id: member.userId,
-                name: member.displayName,
-                estimatedArrivalMinutes: nil
-              )
-            }
-            AppLogger.liveActivity.debug("currentUserId: \(currentUserId)")
-            let initialState = PromiseActivityAttributes.ContentState(
-              trackingDurationMinutes: 30,
-              participants: participants
-            )
-
-            return .run { [liveActivityClient] send in
+            return .run { [promiseClient] send in
               do {
-                let id = try await liveActivityClient.start(attributes, initialState)
-                await send(.internal(.liveActivityStarted(id: id)))
+                try await promiseClient.startLiveActivity(promiseId)
+                await send(.internal(.liveActivityStarted))
               } catch {
                 await send(.internal(.liveActivityFailed(error: AppError(error))))
               }
             }
 
-          case .liveActivityStarted(let id):
+          case .liveActivityStarted:
+            // 백엔드 요청 성공 - Push to Start로 LiveActivity가 시작됨
+            // 실제 Activity ID는 RootTabFeature에서 observeStateUpdates로 관리
             state.isStartingLiveActivity = false
             state.isLiveActivityActive = true
-            state.liveActivityId = id
             return .none
 
           case .liveActivityFailed:
