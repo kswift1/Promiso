@@ -253,16 +253,31 @@ extension RootTab {
 
     @ViewBuilder
     private var tabViewWithLivePromise: some View {
-      if #available(iOS 26.0, *) {
-        tabViewWithBottomAccessory
+      if #available(iOS 26.1, *) {
+        tabViewWithBottomAccessoryNew
+      } else if #available(iOS 26.0, *) {
+        tabViewWithBottomAccessoryLegacy
       } else {
         tabViewWithOverlay
       }
     }
 
+    @available(iOS 26.1, *)
+    @ViewBuilder
+    private var tabViewWithBottomAccessoryNew: some View {
+      tabView
+        .tabBarMinimizeBehavior(.onScrollDown)
+        .tabViewBottomAccessory(isEnabled: store.livePromise != nil) {
+          if let livePromiseStore = store.scope(state: \.livePromise, action: \.livePromise) {
+            LivePromise.CompactView(store: livePromiseStore)
+              .matchedTransitionSource(id: livePromiseTransitionID, in: animation)
+          }
+        }
+    }
+
     @available(iOS 26.0, *)
     @ViewBuilder
-    private var tabViewWithBottomAccessory: some View {
+    private var tabViewWithBottomAccessoryLegacy: some View {
       if let livePromiseStore = store.scope(state: \.livePromise, action: \.livePromise) {
         tabView
           .tabBarMinimizeBehavior(.onScrollDown)

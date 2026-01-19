@@ -6,6 +6,8 @@
 //
 
 import ComposableArchitecture
+import Lottie
+import ResourceKit
 import SwiftUI
 import PromisoShared
 
@@ -13,24 +15,26 @@ extension LivePromise {
   /// 하단 컴팩트 뷰 (약속 추적 바) - tabViewBottomAccessory / overlay에서 사용
   public struct CompactView: View {
     @Bindable var store: StoreOf<Feature>
+    @Environment(\.colorScheme) private var colorScheme
 
     public init(store: StoreOf<Feature>) {
       self.store = store
     }
 
     public var body: some View {
-      HStack(spacing: 12) {
-        // 왼쪽: 이모지 + 제목 + 참가자
-        playerInfo
+      HStack(spacing: 10) {
+        // 왼쪽: 이모지 + 약속 정보
+        leftContent
 
         Spacer(minLength: 0)
 
-        // 오른쪽: 액션 버튼들
-        actionButtons
+        // 오른쪽: 공유중 뱃지 + 시간
+        rightContent
       }
-      .foregroundStyle(Color.primary)
-      .padding(.horizontal, 15)
-      .contentShape(.rect) // 전체 영역 탭 가능
+      .padding(.horizontal, 12)
+      .padding(.vertical, 10)
+      .frame(maxWidth: .infinity)
+      .contentShape(.rect)
       .onTapGesture {
         store.send(.view(.tapped))
       }
@@ -39,87 +43,122 @@ extension LivePromise {
       }
     }
 
-    // MARK: - Player Info (음악 앱 스타일)
+    // MARK: - Left Content (이모지 + 제목 + 메타)
 
-    private var playerInfo: some View {
-      HStack(spacing: 12) {
-        // 이모지 아이콘 (앨범 아트 대체)
-        RoundedRectangle(cornerRadius: 8)
-          .fill(Color.blue.gradient)
-          .frame(width: 40, height: 40)
-          .overlay {
-            Text(store.data.emoji)
-              .font(.title3)
-          }
+    private var leftContent: some View {
+      HStack(spacing: 10) {
+        // 이모지 아이콘
+        emojiIcon
 
-        VStack(alignment: .leading, spacing: 4) {
+        // 제목 + 메타 정보
+        VStack(alignment: .leading, spacing: 2) {
           Text(store.data.title)
-            .font(.callout.weight(.semibold))
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(primaryTextColor)
             .lineLimit(1)
 
-          Text(statusText)
-            .font(.caption2)
-            .foregroundStyle(.secondary)
+          // 📍강남역 • 4명
+          HStack(spacing: 3) {
+            if let location = store.data.location {
+              Text("📍")
+                .font(.system(size: 9))
+              Text(location)
+                .font(.caption2)
+              Text("•")
+                .font(.system(size: 8))
+            }
+            Text("\(store.data.participants.count)명")
+              .font(.caption2)
+          }
+          .foregroundStyle(secondaryTextColor)
         }
       }
     }
 
-    // MARK: - Action Buttons
+    // MARK: - Emoji Icon
 
-    private var actionButtons: some View {
-      HStack(spacing: 12) {
-        // ETA 버튼
-        Button {
-          store.send(.view(.etaButtonTapped(0)))
-        } label: {
-          Text(etaButtonText)
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(.white)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(etaButtonColor, in: Capsule())
-        }
-        .buttonStyle(.plain)
-        .disabled(store.data.isProcessingETAUpdate)
+    private var emojiIcon: some View {
+      Text(store.data.emoji)
+        .font(.system(size: 24))
+    }
 
-        // 시간
+    // MARK: - Right Content (시간 + 공유중 뱃지)
+
+    private var rightContent: some View {
+      HStack(spacing: 10) {
+        // 시간 표기
+        timeDisplay
+
+        // 공유중 뱃지
+        liveBadge
+      }
+    }
+
+    // MARK: - Live Badge (이퀄라이저 + 공유중)
+
+    private var liveBadge: some View {
+      HStack(spacing: 3) {
+        LottieView(animation: LottieAsset.live.animation)
+          .playing(loopMode: .loop)
+          .frame(width: 14, height: 10)
+
+        Text("실시간")
+          .font(.system(size: 10, weight: .medium))
+          .foregroundStyle(badgeTextColor)
+      }
+      .padding(.horizontal, 6)
+      .padding(.vertical, 3)
+      .background(badgeBackgroundColor, in: Capsule())
+    }
+
+    // MARK: - Time Display (V5 스타일 - 가로 배치)
+
+    private var timeDisplay: some View {
+      HStack(alignment: .firstTextBaseline, spacing: 2) {
         if let time = store.data.scheduledTime {
+          Text(formatPeriod(time))
+            .font(.caption2.weight(.medium))
+            .foregroundStyle(secondaryTextColor)
+
           Text(formatTime(time))
-            .font(.caption)
-            .foregroundStyle(.secondary)
+            .font(.title3.weight(.bold).monospacedDigit())
+            .foregroundStyle(primaryTextColor)
         }
       }
     }
 
-    // MARK: - Computed Properties
+    // MARK: - Colors (다크/라이트 모드 대응)
 
-    private var statusText: String {
-      let arrived = store.data.arrivedCount
-      let total = store.data.participants.count
-      if arrived == total && total > 0 {
-        return "모두 도착!"
-      }
-      return "\(arrived)/\(total)명 도착"
+    private var primaryTextColor: Color {
+      colorScheme == .dark ? .white : Color.pmgray.n900
     }
 
-    private var etaButtonText: String {
-      if let eta = store.data.currentUserETA {
-        return eta == 0 ? "도착 완료" : "\(eta)분"
-      }
-      return "도착"
+    private var secondaryTextColor: Color {
+      colorScheme == .dark ? Color.pmgray.n400 : Color.pmgray.n500
     }
 
-    private var etaButtonColor: Color {
-      if let eta = store.data.currentUserETA, eta == 0 {
-        return .green
-      }
-      return .blue
+    private var badgeTextColor: Color {
+      colorScheme == .dark ? Color.pmindigo.n200 : Color.pmindigo.n600
     }
+
+    private var badgeBackgroundColor: Color {
+      colorScheme == .dark
+        ? Color.pmindigo.n800.opacity(0.6)
+        : Color.pmindigo.n100.opacity(0.8)
+    }
+
+    // MARK: - Formatters
 
     private func formatTime(_ date: Date) -> String {
       let formatter = DateFormatter()
-      formatter.dateFormat = "a h:mm"
-      formatter.locale = Locale(identifier: "ko_KR")
+      formatter.dateFormat = "h:mm"
+      return formatter.string(from: date)
+    }
+
+    private func formatPeriod(_ date: Date) -> String {
+      let formatter = DateFormatter()
+      formatter.dateFormat = "a"
+      formatter.locale = Locale(identifier: "en_US")
       return formatter.string(from: date)
     }
   }
@@ -127,28 +166,74 @@ extension LivePromise {
 
 // MARK: - Preview
 
-#Preview("LivePromise Compact") {
-  LivePromise.CompactView(
-    store: Store(
-      initialState: LivePromise.Feature.State(
-        emoji: "🎂",
-        title: "생일 파티",
-        location: "강남역 11번 출구",
-        scheduledTime: Date().addingTimeInterval(3600),
-        participants: [
-          ParticipantState(id: "user1", name: "김철수", estimatedArrivalMinutes: 0),
-          ParticipantState(id: "user2", name: "이영희", estimatedArrivalMinutes: 5),
-          ParticipantState(id: "user3", name: "박민수", estimatedArrivalMinutes: nil)
-        ],
-        currentUserId: "user2"
-      )
-    ) {
-      LivePromise.Feature()
-    } withDependencies: {
-      $0.liveActivityClient = .previewValue
-    }
-  )
-  .padding()
-  .background(.ultraThinMaterial, in: .rect(cornerRadius: 15))
-  .padding()
+#Preview("LivePromise Compact - Light") {
+  VStack {
+    LivePromise.CompactView(
+      store: Store(
+        initialState: LivePromise.Feature.State(
+          emoji: "🍜",
+          title: "점심 모임",
+          location: "강남역 11번 출구",
+          scheduledTime: Calendar.current.date(
+            bySettingHour: 12,
+            minute: 30,
+            second: 0,
+            of: Date()
+          ),
+          participants: [
+            ParticipantState(id: "user1", name: "김철수", estimatedArrivalMinutes: 0),
+            ParticipantState(id: "user2", name: "이영희", estimatedArrivalMinutes: 5),
+            ParticipantState(id: "user3", name: "박민수", estimatedArrivalMinutes: nil),
+            ParticipantState(id: "user4", name: "최지은", estimatedArrivalMinutes: 10)
+          ],
+          currentUserId: "user2"
+        )
+      ) {
+        LivePromise.Feature()
+      } withDependencies: {
+        $0.liveActivityClient = .previewValue
+      }
+    )
+    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+    .padding(.horizontal)
+  }
+  .frame(maxWidth: .infinity, maxHeight: .infinity)
+  .background(Color.pmgray.n100)
+  .preferredColorScheme(.light)
+}
+
+#Preview("LivePromise Compact - Dark") {
+  VStack {
+    LivePromise.CompactView(
+      store: Store(
+        initialState: LivePromise.Feature.State(
+          emoji: "🎂",
+          title: "생일 파티",
+          location: "강남역",
+          scheduledTime: Calendar.current.date(
+            bySettingHour: 18,
+            minute: 0,
+            second: 0,
+            of: Date()
+          ),
+          participants: [
+            ParticipantState(id: "user1", name: "김철수", estimatedArrivalMinutes: 0),
+            ParticipantState(id: "user2", name: "이영희", estimatedArrivalMinutes: 5),
+            ParticipantState(id: "user3", name: "박민수", estimatedArrivalMinutes: nil),
+            ParticipantState(id: "user4", name: "최지은", estimatedArrivalMinutes: 10)
+          ],
+          currentUserId: "user2"
+        )
+      ) {
+        LivePromise.Feature()
+      } withDependencies: {
+        $0.liveActivityClient = .previewValue
+      }
+    )
+    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+    .padding(.horizontal)
+  }
+  .frame(maxWidth: .infinity, maxHeight: .infinity)
+  .background(Color.pmgray.n900)
+  .preferredColorScheme(.dark)
 }
