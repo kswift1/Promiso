@@ -15,9 +15,4 @@ public extension Color {
     self.init(red: r, green: g, blue: b)
   }
 
-  // MARK: - Status Colors (for LiveActivity)
-  static let statusGreen = Color(hex: "#34C759")
-  static let statusOrange = Color(hex: "#FF9500")
-  static let statusBlue = Color(hex: "#007AFF")
-  static let statusGray = Color(hex: "#8E8E93")
 }
