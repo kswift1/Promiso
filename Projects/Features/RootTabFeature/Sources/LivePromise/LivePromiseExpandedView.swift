@@ -5,6 +5,58 @@
 //  Created by Promiso on 2026-01-19.
 //
 
+// MARK: - LiveActivity ↔ ExpandedView 동기화 아키텍처
+//
+// ┌─────────────────────────────────────────────────────────────────────────────┐
+// │                        데이터 동기화 흐름도                                       │
+// └─────────────────────────────────────────────────────────────────────────────┘
+//
+// 1. 로컬 업데이트 (앱 내에서 ETA 변경)
+// ────────────────────────────────────────
+//    User → etaButtonTapped → LivePromiseFeature.handleETAUpdate
+//         → liveActivityClient.update() → LiveActivity 업데이트
+//         → .etaUpdateSent → .refreshFromLiveActivity (수동 갱신)
+//         → LivePromise.Data (@Shared) 업데이트
+//         → ExpandedView 자동 갱신
+//
+// 2. 원격 업데이트 (APNs 푸시)
+// ────────────────────────────────────────
+//    Backend → APNs Push → iOS LiveActivity 자동 업데이트 (Dynamic Island, Lock Screen)
+//            → Activity.contentStateUpdates 스트림 이벤트 발생
+//            → LiveActivityClient.observeStateUpdates 구독
+//            → LivePromiseFeature.contentStateUpdated 액션
+//            → LivePromise.Data (@Shared) 업데이트
+//            → ExpandedView 자동 갱신
+//
+// ┌─────────────────────────────────────────────────────────────────────────────┐
+// │                        주요 데이터 소스                                         │
+// └─────────────────────────────────────────────────────────────────────────────┘
+//
+// • PromiseActivityAttributes (고정 정보)
+//   - promiseId, currentUserId, emoji, title, location, scheduledTime
+//   - hostId, hostName ← LiveActivity 시작 시 설정, 이후 변경 불가
+//
+// • ContentState (동적 정보)
+//   - participants: [ParticipantState] ← ETA 업데이트마다 변경
+//   - trackingDurationMinutes
+//
+// • LivePromise.Data (@Shared)
+//   - Attributes + ContentState를 합친 앱 내 View용 데이터
+//   - Feature와 Detail(ExpandedView) 간 공유
+//
+// ┌─────────────────────────────────────────────────────────────────────────────┐
+// │                        중요: 스트림 구독 특성                                    │
+// └─────────────────────────────────────────────────────────────────────────────┘
+//
+// ⚠️ Activity.contentStateUpdates는 APNs 원격 업데이트 전용
+//    - 로컬에서 activity.update() 호출 시 스트림에 이벤트가 발생하지 않음
+//    - 로컬 업데이트는 .refreshFromLiveActivity로 수동 갱신 필요
+//
+// ⚠️ 현재 pushType: nil로 시작하므로 APNs 업데이트 불가
+//    - APNs 연동 시 pushType: .token으로 변경 필요
+//    - Push token을 백엔드에 전송하여 원격 업데이트 활성화
+//
+
 import Clients
 import ComposableArchitecture
 import Lottie
@@ -117,16 +169,36 @@ extension LivePromise {
       store.promise
     }
 
-    /// 호스트 정보
+    /// 호스트 정보 (PromiseModel 기반 - fallback)
     private var host: UserPublicModel? {
       guard let promise = promise else { return nil }
       return store.groupMembers?.first { $0.userId == promise.hostId }
     }
 
-    /// 현재 사용자가 호스트인지
+    /// 현재 사용자가 호스트인지 (Attributes 기반)
     private var isHost: Bool {
+      // Data에 hostId가 있으면 Attributes 기반으로 판단
+      if !store.data.hostId.isEmpty {
+        return store.data.hostId == store.data.currentUserId
+      }
+      // Fallback: PromiseModel 기반
       guard let promise = promise else { return false }
       return promise.isHost(userId: store.currentUserId)
+    }
+
+    /// 호스트 이름 (Attributes 기반)
+    private var hostName: String? {
+      // Data에 hostName이 있으면 Attributes 기반
+      if let name = store.data.hostName {
+        return name
+      }
+      // Fallback: groupMembers에서 조회
+      return host?.displayName
+    }
+
+    /// 호스트 프로필 이미지 URL
+    private var hostProfileImageUrl: String? {
+      host?.profileImageUrl
     }
 
     /// 장소가 미정인지
@@ -141,8 +213,8 @@ extension LivePromise {
         // 1. Host Section (PromiseCard와 동일)
         HStack(spacing: 10) {
           ProfileAvatarView(
-            profileImageUrl: host?.profileImageUrl,
-            displayName: host?.displayName ?? "",
+            profileImageUrl: hostProfileImageUrl,
+            displayName: hostName ?? "",
             isCurrentUser: isHost,
             size: 32
           )
@@ -152,8 +224,8 @@ extension LivePromise {
               Text("내 약속 제안")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(.primary)
-            } else if let hostName = host?.displayName {
-              Text("\(hostName)님의 약속 제안")
+            } else if let name = hostName {
+              Text("\(name)님의 약속 제안")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(.primary)
             } else {

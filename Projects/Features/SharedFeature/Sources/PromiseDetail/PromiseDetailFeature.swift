@@ -334,13 +334,18 @@ extension PromiseDetail {
             let acceptedMembers = members.filter { promise.votes.accepted.contains($0.userId) }
             AppLogger.liveActivity.debug("acceptedMembers 수: \(acceptedMembers.count)")
 
+            // 호스트 이름 조회
+            let hostName = members.first { $0.userId == promise.hostId }?.displayName
+
             let attributes = PromiseActivityAttributes(
               promiseId: promise.id,
               currentUserId: currentUserId,
               emoji: promise.displayEmoji,
               title: promise.title,
               location: promise.location?.name ?? "장소 미정",
-              scheduledTime: promise.startAt
+              scheduledTime: promise.startAt,
+              hostId: promise.hostId,
+              hostName: hostName
             )
 
             // 프로필 이미지는 GroupMainFeature에서 사전 캐싱됨 (Widget에서 id로 파일명 유추)

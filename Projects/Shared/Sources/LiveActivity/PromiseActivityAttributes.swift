@@ -29,6 +29,12 @@ public struct PromiseActivityAttributes: ActivityAttributes, Equatable {
   /// 약속 시간
   public let scheduledTime: Date
 
+  /// 호스트 ID
+  public let hostId: String
+
+  /// 호스트 이름
+  public let hostName: String?
+
   // MARK: - Initializer
 
   public init(
@@ -38,7 +44,9 @@ public struct PromiseActivityAttributes: ActivityAttributes, Equatable {
     title: String,
     location: String?,
     scheduledTime: Date,
-    trackingDurationMinutes: Int = 30
+    trackingDurationMinutes: Int = 30,
+    hostId: String = "",
+    hostName: String? = nil
   ) {
     self.promiseId = promiseId
     self.currentUserId = currentUserId
@@ -47,6 +55,8 @@ public struct PromiseActivityAttributes: ActivityAttributes, Equatable {
     self.location = location
     self.scheduledTime = scheduledTime
     self.trackingDurationMinutes = trackingDurationMinutes
+    self.hostId = hostId
+    self.hostName = hostName
   }
 
   // MARK: - Content State (동적 정보)

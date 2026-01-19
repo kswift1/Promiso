@@ -77,6 +77,7 @@ extension LivePromise {
               .font(.caption2)
           }
           .foregroundStyle(secondaryTextColor)
+          .lineLimit(1)
         }
       }
     }

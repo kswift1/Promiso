@@ -113,10 +113,9 @@ struct PromiseCard: View {
 
             // Location (only if not "장소 미정")
             if !isLocationUndecided {
-              HStack(spacing: 6) {
-                Image(systemName: "mappin.circle.fill")
-                  .font(.system(size: 13))
-                  .foregroundColor(.red)
+              HStack(spacing: 4) {
+                Text("📍")
+                  .font(.system(size: 14))
                 Text(promise.locationText)
                   .font(.system(size: 14, weight: .medium))
               }

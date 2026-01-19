@@ -48,6 +48,12 @@ public struct LiveActivityClient: Sendable {
 
   /// ETA 업데이트 클리어
   public var clearETAUpdate: @Sendable () -> Void
+
+  /// ContentState 업데이트 스트림 구독
+  /// APNs 업데이트 시 앱 내 View 자동 동기화를 위해 사용
+  public var observeStateUpdates: @Sendable (
+    _ promiseId: String
+  ) -> AsyncStream<PromiseActivityAttributes.ContentState>?
 }
 
 // MARK: - Test / Preview
@@ -65,7 +71,8 @@ extension LiveActivityClient: TestDependencyKey {
     end: { _ in },
     endAll: { },
     pendingETAUpdate: { nil },
-    clearETAUpdate: { }
+    clearETAUpdate: { },
+    observeStateUpdates: { _ in nil }
   )
 
   public static let testValue = Self(
@@ -80,7 +87,8 @@ extension LiveActivityClient: TestDependencyKey {
     end: unimplemented("\(Self.self).end"),
     endAll: unimplemented("\(Self.self).endAll"),
     pendingETAUpdate: unimplemented("\(Self.self).pendingETAUpdate", placeholder: nil),
-    clearETAUpdate: unimplemented("\(Self.self).clearETAUpdate")
+    clearETAUpdate: unimplemented("\(Self.self).clearETAUpdate"),
+    observeStateUpdates: unimplemented("\(Self.self).observeStateUpdates", placeholder: nil)
   )
 }
 
@@ -165,6 +173,26 @@ extension LiveActivityClient: DependencyKey {
     clearETAUpdate: {
       UserDefaults(suiteName: LiveActivityIntentKey.suiteName)?
         .removeObject(forKey: LiveActivityIntentKey.etaUpdateKey)
+    },
+
+    observeStateUpdates: { promiseId in
+      guard let activity = Activity<PromiseActivityAttributes>.activities
+        .first(where: { $0.attributes.promiseId == promiseId }) else {
+        return nil
+      }
+
+      return AsyncStream { continuation in
+        let task = Task {
+          for await state in activity.contentStateUpdates {
+            continuation.yield(state)
+          }
+          continuation.finish()
+        }
+
+        continuation.onTermination = { _ in
+          task.cancel()
+        }
+      }
     }
   )
 }

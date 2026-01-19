@@ -28,6 +28,8 @@ extension LivePromise {
     public var currentUserId: String
     public var trackingDurationMinutes: Int
     public var isProcessingETAUpdate: Bool
+    public var hostId: String
+    public var hostName: String?
 
     public init(
       emoji: String = "📍",
@@ -37,7 +39,9 @@ extension LivePromise {
       participants: [ParticipantState] = [],
       currentUserId: String = "",
       trackingDurationMinutes: Int = 30,
-      isProcessingETAUpdate: Bool = false
+      isProcessingETAUpdate: Bool = false,
+      hostId: String = "",
+      hostName: String? = nil
     ) {
       self.emoji = emoji
       self.title = title
@@ -47,6 +51,8 @@ extension LivePromise {
       self.currentUserId = currentUserId
       self.trackingDurationMinutes = trackingDurationMinutes
       self.isProcessingETAUpdate = isProcessingETAUpdate
+      self.hostId = hostId
+      self.hostName = hostName
     }
 
     // MARK: - Computed Properties
@@ -299,6 +305,10 @@ extension LivePromise {
         case processPendingETAUpdate(ETAUpdate)
         case etaUpdateSent
         case etaUpdateFailed
+        /// ContentState 스트림 구독 시작
+        case observeContentStateUpdates
+        /// ContentState 스트림에서 새 상태 수신
+        case contentStateUpdated(PromiseActivityAttributes.ContentState)
       }
 
       public enum Delegate: Equatable, Sendable {
@@ -314,8 +324,11 @@ extension LivePromise {
         case .view(let viewAction):
           switch viewAction {
           case .onAppear:
-            // 현재 활성화된 LiveActivity 상태 동기화
-            return .send(.view(.refreshFromLiveActivity))
+            // 현재 활성화된 LiveActivity 상태 동기화 및 스트림 구독 시작
+            return .merge(
+              .send(.view(.refreshFromLiveActivity)),
+              .send(.internal(.observeContentStateUpdates))
+            )
 
           case .tapped:
             // 컴팩트 뷰 탭 → 부모에게 상세 뷰 표시 요청
@@ -353,6 +366,9 @@ extension LivePromise {
                 data.location = attributes.location
                 data.scheduledTime = attributes.scheduledTime
                 data.trackingDurationMinutes = attributes.trackingDurationMinutes
+                data.hostId = attributes.hostId
+                data.hostName = attributes.hostName
+                data.currentUserId = attributes.currentUserId
               }
 
               if let contentState = contentState {
@@ -401,6 +417,27 @@ extension LivePromise {
             // ETA 업데이트 실패
             state.$data.withLock { $0.isProcessingETAUpdate = false }
             state.pendingETAUpdate = nil
+            return .none
+
+          case .observeContentStateUpdates:
+            // APNs 업데이트 시 ContentState 스트림 구독
+            guard let promiseId = liveActivityClient.activePromiseId(),
+                  let stream = liveActivityClient.observeStateUpdates(promiseId) else {
+              return .none
+            }
+
+            return .run { send in
+              for await contentState in stream {
+                await send(.internal(.contentStateUpdated(contentState)))
+              }
+            }
+
+          case .contentStateUpdated(let contentState):
+            // APNs로 업데이트된 ContentState 동기화
+            state.$data.withLock { data in
+              data.participants = contentState.participants
+              data.trackingDurationMinutes = contentState.trackingDurationMinutes
+            }
             return .none
           }
 
