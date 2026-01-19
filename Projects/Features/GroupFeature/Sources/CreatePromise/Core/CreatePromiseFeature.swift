@@ -5,6 +5,7 @@
 //  Created by 김성원 on 9/30/25.
 //
 
+// TODO: Livectivity 활성화 선택 화면 추가, 지도 추가, 이미지 추가
 public enum CreatePromise {
   
   
