@@ -15,5 +15,9 @@ let project = Project(
       dependencies: [],
       settings: .standard()
     )
+  ],
+  resourceSynthesizers: [
+    .assets(),
+    .custom(name: "Lottie", parser: .json, extensions: ["json"])
   ]
 )
