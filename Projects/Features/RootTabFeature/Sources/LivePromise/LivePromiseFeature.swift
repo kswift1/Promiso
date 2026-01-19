@@ -309,6 +309,10 @@ extension LivePromise {
         case observeContentStateUpdates
         /// ContentState 스트림에서 새 상태 수신
         case contentStateUpdated(PromiseActivityAttributes.ContentState)
+        /// Push Token 스트림 구독 시작
+        case observePushTokenUpdates
+        /// Push Token 수신 (백엔드에 전송 필요)
+        case pushTokenReceived(String)
       }
 
       public enum Delegate: Equatable, Sendable {
@@ -327,7 +331,8 @@ extension LivePromise {
             // 현재 활성화된 LiveActivity 상태 동기화 및 스트림 구독 시작
             return .merge(
               .send(.view(.refreshFromLiveActivity)),
-              .send(.internal(.observeContentStateUpdates))
+              .send(.internal(.observeContentStateUpdates)),
+              .send(.internal(.observePushTokenUpdates))
             )
 
           case .tapped:
@@ -438,6 +443,26 @@ extension LivePromise {
               data.participants = contentState.participants
               data.trackingDurationMinutes = contentState.trackingDurationMinutes
             }
+            return .none
+
+          case .observePushTokenUpdates:
+            // APNs 원격 업데이트를 위한 Push Token 스트림 구독
+            guard let promiseId = liveActivityClient.activePromiseId(),
+                  let stream = liveActivityClient.observePushTokenUpdates(promiseId) else {
+              return .none
+            }
+
+            return .run { send in
+              for await pushToken in stream {
+                await send(.internal(.pushTokenReceived(pushToken)))
+              }
+            }
+
+          case .pushTokenReceived(let pushToken):
+            // Push Token을 백엔드에 전송
+            // TODO: promiseClient.registerLiveActivityPushToken(promiseId, pushToken) 구현 필요
+            let promiseId = liveActivityClient.activePromiseId() ?? ""
+            AppLogger.liveActivity.info("Push Token 수신: \(pushToken.prefix(20))... (promiseId: \(promiseId))")
             return .none
           }
 

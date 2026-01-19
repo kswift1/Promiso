@@ -4,6 +4,7 @@
 import ComposableArchitecture
 import SwiftUI
 
+import Clients
 import PromisoShared
 import CalendarFeature
 import ProfileFeature
@@ -37,6 +38,7 @@ extension RootTab {
   @Reducer
   public struct Feature {
     @Dependency(\.hapticFeedback) var hapticFeedback
+    @Dependency(\.liveActivityClient) var liveActivityClient
 
     public init() {}
 
@@ -112,6 +114,15 @@ extension RootTab {
       case openJoinGroupWithCode(String)
       /// 그룹 탭 딥링크 처리
       case handleGroupDeeplink(GroupMain.Deeplink)
+      /// 내부 액션
+      case `internal`(Internal)
+    }
+
+    public enum Internal: Equatable, Sendable {
+      /// Push to Start 토큰 구독 시작
+      case observePushToStartToken
+      /// Push to Start 토큰 수신
+      case pushToStartTokenReceived(String)
     }
 
     public enum Delegate: Equatable {
@@ -139,7 +150,8 @@ extension RootTab {
       Reduce { state, action in
         switch action {
         case .onAppear:
-          return .none
+          // Push to Start 토큰 구독 시작 (iOS 17.2+)
+          return .send(.internal(.observePushToStartToken))
 
         case .tabSelected(let tab):
           state.selectedTab = tab
@@ -188,6 +200,25 @@ extension RootTab {
         case .handleGroupDeeplink(let deeplink):
           state.selectedTab = .group
           return .send(.groupMain(.view(.handleDeeplink(deeplink))))
+
+        case .internal(let internalAction):
+          switch internalAction {
+          case .observePushToStartToken:
+            // Push to Start 토큰 스트림 구독
+            let stream = liveActivityClient.observePushToStartTokenUpdates()
+            return .run { send in
+              for await token in stream {
+                await send(.internal(.pushToStartTokenReceived(token)))
+              }
+            }
+
+          case .pushToStartTokenReceived(let token):
+            // Push to Start 토큰을 백엔드에 등록
+            // TODO: promiseClient.registerPushToStartToken(userId, token) 구현 필요
+            let userId = state.currentUser.id
+            AppLogger.liveActivity.info("Push to Start 토큰 수신: \(token.prefix(20))... (userId: \(userId))")
+            return .none
+          }
 
         case .delegate:
           return .none

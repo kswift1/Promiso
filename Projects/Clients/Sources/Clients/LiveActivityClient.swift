@@ -54,6 +54,21 @@ public struct LiveActivityClient: Sendable {
   public var observeStateUpdates: @Sendable (
     _ promiseId: String
   ) -> AsyncStream<PromiseActivityAttributes.ContentState>?
+
+  /// Push Token 업데이트 스트림 구독
+  /// APNs 원격 업데이트를 위해 백엔드에 토큰 전송 필요
+  public var observePushTokenUpdates: @Sendable (
+    _ promiseId: String
+  ) -> AsyncStream<String>?
+
+  // MARK: - Push to Start
+
+  /// 현재 Push to Start 토큰 (앱 시작 시 백엔드에 등록 필요)
+  public var pushToStartToken: @Sendable () async -> String?
+
+  /// Push to Start 토큰 업데이트 스트림 구독
+  /// 토큰이 변경될 때마다 백엔드에 재등록 필요
+  public var observePushToStartTokenUpdates: @Sendable () -> AsyncStream<String>
 }
 
 // MARK: - Test / Preview
@@ -72,7 +87,10 @@ extension LiveActivityClient: TestDependencyKey {
     endAll: { },
     pendingETAUpdate: { nil },
     clearETAUpdate: { },
-    observeStateUpdates: { _ in nil }
+    observeStateUpdates: { _ in nil },
+    observePushTokenUpdates: { _ in nil },
+    pushToStartToken: { nil },
+    observePushToStartTokenUpdates: { AsyncStream { $0.finish() } }
   )
 
   public static let testValue = Self(
@@ -88,7 +106,10 @@ extension LiveActivityClient: TestDependencyKey {
     endAll: unimplemented("\(Self.self).endAll"),
     pendingETAUpdate: unimplemented("\(Self.self).pendingETAUpdate", placeholder: nil),
     clearETAUpdate: unimplemented("\(Self.self).clearETAUpdate"),
-    observeStateUpdates: unimplemented("\(Self.self).observeStateUpdates", placeholder: nil)
+    observeStateUpdates: unimplemented("\(Self.self).observeStateUpdates", placeholder: nil),
+    observePushTokenUpdates: unimplemented("\(Self.self).observePushTokenUpdates", placeholder: nil),
+    pushToStartToken: unimplemented("\(Self.self).pushToStartToken", placeholder: nil),
+    observePushToStartTokenUpdates: unimplemented("\(Self.self).observePushToStartTokenUpdates", placeholder: AsyncStream { $0.finish() })
   )
 }
 
@@ -126,12 +147,12 @@ extension LiveActivityClient: DependencyKey {
         staleDate: nil
       )
 
-      // TODO: APNs 설정 완료 후 pushType 변경
-      // 현재는 로컬 전용으로 시작 (원격 푸시 업데이트 없음)
+      // APNs 원격 업데이트를 위해 pushType: .token 사용
+      // Push token은 observePushTokenUpdates 스트림으로 전달됨
       let activity = try Activity.request(
         attributes: attributes,
         content: content,
-        pushType: nil
+        pushType: .token
       )
 
       return activity.id
@@ -185,6 +206,53 @@ extension LiveActivityClient: DependencyKey {
         let task = Task {
           for await state in activity.contentStateUpdates {
             continuation.yield(state)
+          }
+          continuation.finish()
+        }
+
+        continuation.onTermination = { _ in
+          task.cancel()
+        }
+      }
+    },
+
+    observePushTokenUpdates: { promiseId in
+      guard let activity = Activity<PromiseActivityAttributes>.activities
+        .first(where: { $0.attributes.promiseId == promiseId }) else {
+        return nil
+      }
+
+      return AsyncStream { continuation in
+        let task = Task {
+          for await tokenData in activity.pushTokenUpdates {
+            let tokenString = tokenData.map { String(format: "%02x", $0) }.joined()
+            continuation.yield(tokenString)
+          }
+          continuation.finish()
+        }
+
+        continuation.onTermination = { _ in
+          task.cancel()
+        }
+      }
+    },
+
+    // MARK: - Push to Start
+
+    pushToStartToken: {
+      for await tokenData in Activity<PromiseActivityAttributes>.pushToStartTokenUpdates {
+        let tokenString = tokenData.map { String(format: "%02x", $0) }.joined()
+        return tokenString
+      }
+      return nil
+    },
+
+    observePushToStartTokenUpdates: {
+      AsyncStream { continuation in
+        let task = Task {
+          for await tokenData in Activity<PromiseActivityAttributes>.pushToStartTokenUpdates {
+            let tokenString = tokenData.map { String(format: "%02x", $0) }.joined()
+            continuation.yield(tokenString)
           }
           continuation.finish()
         }
