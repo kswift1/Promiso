@@ -149,7 +149,7 @@ public struct ParticipantState: Codable, Hashable, Identifiable, Sendable {
 /// App Group UserDefaults 키
 public enum LiveActivityIntentKey {
   /// App Group Suite 이름
-  public static let suiteName = "group.com.promiso.app"
+  public static let suiteName = "group.com.promiso.shared"
 
   /// ETA 업데이트 저장 키
   public static let etaUpdateKey = "liveActivity.etaUpdate"
