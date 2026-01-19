@@ -76,8 +76,8 @@ extension RootTab {
         // TODO: 테스트 완료 후 mock 데이터 제거
         self.livePromise = LivePromise.Feature.State(
           emoji: "🎂",
-          title: "테스트 약속",
-          location: "강남역 11번 출구",
+          title: "일이삼사오육칠팔구십십일십이",
+          location: "강남역 11번 출구 강남역 11번 출구 강남역 11번 출구 강남역 11번 출구",
           scheduledTime: Date().addingTimeInterval(3600),
           participants: [
             ParticipantState(id: currentUser.id, name: "나", estimatedArrivalMinutes: 5),

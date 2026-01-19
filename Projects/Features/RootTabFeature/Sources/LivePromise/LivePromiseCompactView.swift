@@ -22,18 +22,13 @@ extension LivePromise {
     }
 
     public var body: some View {
-      HStack(spacing: 10) {
-        // 왼쪽: 이모지 + 약속 정보
-        leftContent
-
-        Spacer(minLength: 0)
-
-        // 오른쪽: 공유중 뱃지 + 시간
-        rightContent
+      Group {
+        if #available(iOS 26.0, *) {
+          AdaptiveContent(store: store)
+        } else {
+          expandedContent
+        }
       }
-      .padding(.horizontal, 12)
-      .padding(.vertical, 10)
-      .frame(maxWidth: .infinity)
       .contentShape(.rect)
       .onTapGesture {
         store.send(.view(.tapped))
@@ -41,6 +36,19 @@ extension LivePromise {
       .onAppear {
         store.send(.view(.onAppear))
       }
+    }
+
+    // MARK: - Expanded Content (iOS 26 미만 또는 확장 상태)
+
+    private var expandedContent: some View {
+      HStack(spacing: 10) {
+        leftContent
+        Spacer(minLength: 0)
+        rightContent
+      }
+      .padding(.horizontal, 12)
+      .padding(.vertical, 10)
+      .frame(maxWidth: .infinity)
     }
 
     // MARK: - Left Content (이모지 + 제목 + 메타)
@@ -145,6 +153,175 @@ extension LivePromise {
       colorScheme == .dark
         ? Color.pmindigo.n800.opacity(0.6)
         : Color.pmindigo.n100.opacity(0.8)
+    }
+
+    // MARK: - Formatters
+
+    private func formatTime(_ date: Date) -> String {
+      let formatter = DateFormatter()
+      formatter.dateFormat = "h:mm"
+      return formatter.string(from: date)
+    }
+
+    private func formatPeriod(_ date: Date) -> String {
+      let formatter = DateFormatter()
+      formatter.dateFormat = "a"
+      formatter.locale = Locale(identifier: "en_US")
+      return formatter.string(from: date)
+    }
+  }
+
+  // MARK: - Adaptive Content (iOS 26+)
+
+  @available(iOS 26.0, *)
+  private struct AdaptiveContent: View {
+    @Bindable var store: StoreOf<Feature>
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.tabViewBottomAccessoryPlacement) private var placement
+
+    var body: some View {
+      switch placement {
+      case .inline:
+        inlineContent
+
+      case .expanded:
+        expandedContent
+
+      default:
+        // 기본 (nil 등)
+        expandedContent
+      }
+    }
+
+    // MARK: - Inline Content (축소 상태)
+
+    private var inlineContent: some View {
+      HStack(spacing: 10) {
+        // 이모지
+        Text(store.data.emoji)
+          .font(.system(size: 24))
+
+        // 제목 + 메타 정보
+        VStack(alignment: .leading, spacing: 2) {
+          Text(store.data.title)
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(colorScheme == .dark ? .white : Color.pmgray.n900)
+            .lineLimit(1)
+
+          HStack(spacing: 3) {
+            if let location = store.data.location {
+              Text("📍")
+                .font(.system(size: 9))
+              Text(location)
+                .font(.caption2)
+              Text("•")
+                .font(.system(size: 8))
+            }
+            Text("\(store.data.participants.count)명")
+              .font(.caption2)
+          }
+          .foregroundStyle(colorScheme == .dark ? Color.pmgray.n400 : Color.pmgray.n500)
+        }
+
+        Spacer(minLength: 0)
+
+        // 시간 표기
+        if let time = store.data.scheduledTime {
+          HStack(alignment: .firstTextBaseline, spacing: 2) {
+            Text(formatPeriod(time))
+              .font(.caption2.weight(.medium))
+              .foregroundStyle(colorScheme == .dark ? Color.pmgray.n400 : Color.pmgray.n500)
+            Text(formatTime(time))
+              .font(.title3.weight(.bold).monospacedDigit())
+              .foregroundStyle(colorScheme == .dark ? .white : Color.pmgray.n900)
+          }
+        }
+
+        // 실시간 뱃지
+        HStack(spacing: 3) {
+          LottieView(animation: LottieAsset.live.animation)
+            .playing(loopMode: .loop)
+            .frame(width: 14, height: 10)
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 3)
+        .background(
+          colorScheme == .dark
+            ? Color.pmindigo.n800.opacity(0.6)
+            : Color.pmindigo.n100.opacity(0.8),
+          in: Capsule()
+        )
+      }
+      .padding(.horizontal, 12)
+      .padding(.vertical, 10)
+      .frame(maxWidth: .infinity)
+    }
+
+    // MARK: - Expanded Content (확장 상태)
+
+    private var expandedContent: some View {
+      HStack(spacing: 10) {
+        // 이모지
+        Text(store.data.emoji)
+          .font(.system(size: 24))
+
+        // 제목 + 메타 정보
+        VStack(alignment: .leading, spacing: 2) {
+          Text(store.data.title)
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(colorScheme == .dark ? .white : Color.pmgray.n900)
+            .lineLimit(1)
+
+          HStack(spacing: 3) {
+            if let location = store.data.location {
+              Text("📍")
+                .font(.system(size: 9))
+              Text(location)
+                .font(.caption2)
+              Text("•")
+                .font(.system(size: 8))
+            }
+            Text("\(store.data.participants.count)명")
+              .font(.caption2)
+          }
+          .foregroundStyle(colorScheme == .dark ? Color.pmgray.n400 : Color.pmgray.n500)
+        }
+
+        Spacer(minLength: 0)
+
+        // 시간 표기
+        if let time = store.data.scheduledTime {
+          HStack(alignment: .firstTextBaseline, spacing: 2) {
+            Text(formatPeriod(time))
+              .font(.caption2.weight(.medium))
+              .foregroundStyle(colorScheme == .dark ? Color.pmgray.n400 : Color.pmgray.n500)
+            Text(formatTime(time))
+              .font(.title3.weight(.bold).monospacedDigit())
+              .foregroundStyle(colorScheme == .dark ? .white : Color.pmgray.n900)
+          }
+        }
+
+        // 실시간 뱃지
+        HStack(spacing: 3) {
+          LottieView(animation: LottieAsset.live.animation)
+            .playing(loopMode: .loop)
+            .frame(width: 14, height: 10)
+          Text("실시간")
+            .font(.system(size: 10, weight: .medium))
+            .foregroundStyle(colorScheme == .dark ? Color.pmindigo.n200 : Color.pmindigo.n600)
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 3)
+        .background(
+          colorScheme == .dark
+            ? Color.pmindigo.n800.opacity(0.6)
+            : Color.pmindigo.n100.opacity(0.8),
+          in: Capsule()
+        )
+      }
+      .padding(.horizontal, 12)
+      .padding(.vertical, 10)
+      .frame(maxWidth: .infinity)
     }
 
     // MARK: - Formatters
