@@ -138,23 +138,26 @@ struct RacingTrackView: View {
     let groups = groupParticipantsByPosition()
 
     // ETA 값을 안정적인 ID로 사용 (nil은 -1로 처리)
+    // 빈 그룹은 groupParticipantsByPosition()에서 compactMap으로 필터링됨
     return ForEach(groups, id: \.etaKey) { group in
       let position = group.position
       let xPos = padding + (usableWidth * position)
 
-      // 그룹 대표 참가자 (나 > 첫 번째)
-      let representative = group.participants.first { $0.id == currentUserId } ?? group.participants[0]
-      let isCurrentUser = representative.id == currentUserId
-      let extraCount = group.participants.count - 1
+      // 그룹 대표 참가자 (나 > 첫 번째) - 빈 그룹은 위에서 필터링되어 first가 항상 존재
+      if let representative = group.participants.first(where: { $0.id == currentUserId })
+           ?? group.participants.first {
+        let isCurrentUser = representative.id == currentUserId
+        let extraCount = group.participants.count - 1
 
-      CompactParticipantMarker(
-        participant: representative,
-        trackingDurationMinutes: trackingDurationMinutes,
-        isCurrentUser: isCurrentUser,
-        groupCount: extraCount
-      )
-      .position(x: xPos, y: centerY)
-      .zIndex(isCurrentUser ? 100 : Double(group.etaKey + 100))
+        CompactParticipantMarker(
+          participant: representative,
+          trackingDurationMinutes: trackingDurationMinutes,
+          isCurrentUser: isCurrentUser,
+          groupCount: extraCount
+        )
+        .position(x: xPos, y: centerY)
+        .zIndex(isCurrentUser ? 100 : Double(group.etaKey + 100))
+      }
     }
   }
 
@@ -169,8 +172,9 @@ struct RacingTrackView: View {
     }
 
     // 그룹별 position 계산 후 반환 (etaKey: nil은 -1로 처리)
-    return etaGroups.map { (eta, participants) in
-      let position = participants[0].trackPosition(trackingDurationMinutes: trackingDurationMinutes)
+    return etaGroups.compactMap { (eta, participants) -> (etaKey: Int, position: Double, participants: [ParticipantState])? in
+      guard let first = participants.first else { return nil }
+      let position = first.trackPosition(trackingDurationMinutes: trackingDurationMinutes)
       let etaKey = eta ?? -1
       return (etaKey: etaKey, position: position, participants: participants)
     }.sorted { $0.position < $1.position }
