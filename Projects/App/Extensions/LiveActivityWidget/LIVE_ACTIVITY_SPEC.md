@@ -381,14 +381,24 @@ struct UpdateETAIntent: LiveActivityIntent {
   @Parameter(title: "ETA Minutes") var estimatedMinutes: Int
 
   func perform() async throws -> some IntentResult {
-    // App Group UserDefaults에 저장
+    // 1. App Group UserDefaults에 저장 (앱 동기화용)
     let update = ETAUpdate(
       promiseId: promiseId,
       userId: userId,
       estimatedMinutes: estimatedMinutes,
       timestamp: Date()
     )
-    // → 앱에서 checkPendingIntents로 처리
+    let data = try JSONEncoder().encode(update)
+    UserDefaults(suiteName: LiveActivityIntentKey.suiteName)?
+      .set(data, forKey: LiveActivityIntentKey.etaUpdateKey)
+
+    // 2. Live Activity UI 즉시 업데이트
+    await updateActivityETA(
+      promiseId: promiseId,
+      participantId: userId,
+      estimatedArrivalMinutes: estimatedMinutes
+    )
+
     return .result()
   }
 }
