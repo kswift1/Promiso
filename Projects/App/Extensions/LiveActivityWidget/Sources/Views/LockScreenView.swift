@@ -200,18 +200,20 @@ struct ETASegmentedControl: View {
       }
 
       // "직접 입력" 버튼 - 앱으로 이동 (항상 비선택 상태)
-      Link(destination: URL(string: "promiso://promise/\(attrs.promiseId)/eta")!) {
-        Text("직접 입력")
-          .font(.system(size: 11, weight: .medium))
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 8)
-        .background(Color.white.opacity(0.08))
-        .foregroundStyle(.white.opacity(0.5))
-        .clipShape(RoundedRectangle(cornerRadius: 6))
-        .overlay(
-          RoundedRectangle(cornerRadius: 6)
-            .stroke(Color.white.opacity(0.1), lineWidth: 0.5)
-        )
+      if let url = URL(string: "promiso://promise/\(attrs.promiseId)/eta") {
+        Link(destination: url) {
+          Text("직접 입력")
+            .font(.system(size: 11, weight: .medium))
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
+            .background(Color.white.opacity(0.08))
+            .foregroundStyle(.white.opacity(0.5))
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .overlay(
+              RoundedRectangle(cornerRadius: 6)
+                .stroke(Color.white.opacity(0.1), lineWidth: 0.5)
+            )
+        }
       }
     }
     .padding(4)
