@@ -1080,3 +1080,21 @@ export interface RegisterPushToStartTokenResponse {
   /** 성공 여부 */
   success: boolean;
 }
+
+// ============================================================================
+// Cloud Tasks - LiveActivity 예약 시작
+// ============================================================================
+
+/**
+ * LiveActivity 예약 시작 태스크 페이로드
+ *
+ * @remarks
+ * Cloud Tasks에서 사용되는 내부 타입
+ */
+export interface ScheduledLiveActivityTaskPayload {
+  /** 약속 ID */
+  promiseId: string;
+
+  /** 환경 구분 */
+  env: "stage" | "prod";
+}

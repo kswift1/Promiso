@@ -2,15 +2,80 @@ import SwiftUI
 import Clients
 import ComposableArchitecture
 
-// NOTE: Phase 2 기능 - 현재 비활성화
-// arrivalSharingTime 필드가 PromiseModel에서 제거됨
-// Phase 2에서 다시 활성화할 때 구현 필요
 struct ArrivalSharingSection: View {
   let store: StoreOf<CreatePromise.Feature>
 
+  private var selectedOption: ArrivalSharingOption? {
+    guard let minutes = store.promise.trackingStartMinutesBefore else {
+      return nil
+    }
+    return ArrivalSharingOption.allCases.first { $0.minutes == minutes }
+  }
+
   var body: some View {
-    // Phase 2에서 활성화 예정
-    EmptyView()
+    VStack(alignment: .leading, spacing: 16) {
+      // 헤더
+      HStack(spacing: 8) {
+        Image(systemName: "location.fill.viewfinder")
+          .font(.system(size: 20))
+          .foregroundColor(.blue)
+
+        Text("실시간 위치 공유")
+          .font(.system(size: 18, weight: .semibold))
+      }
+
+      Text("약속 시간 전부터 참가자들의 위치를 실시간으로 공유합니다")
+        .font(.system(size: 14))
+        .foregroundColor(.secondary)
+
+      // 옵션 버튼들
+      VStack(spacing: 12) {
+        ForEach(ArrivalSharingOption.allCases, id: \.self) { option in
+          ArrivalSharingButton(
+            option: option,
+            isSelected: selectedOption == option
+          ) {
+            if selectedOption == option {
+              // 이미 선택된 것을 다시 누르면 해제
+              store.send(.view(.setTrackingStartMinutes(nil)))
+            } else {
+              store.send(.view(.setTrackingStartMinutes(option.minutes)))
+            }
+          }
+        }
+      }
+
+      // 비활성화 옵션
+      Button {
+        store.send(.view(.setTrackingStartMinutes(nil)))
+      } label: {
+        HStack {
+          Image(systemName: "xmark.circle")
+            .font(.system(size: 18))
+          Text("위치 공유 안 함")
+            .font(.system(size: 15))
+          Spacer()
+          if selectedOption == nil {
+            Image(systemName: "checkmark")
+              .foregroundColor(.blue)
+          }
+        }
+        .foregroundColor(selectedOption == nil ? .blue : .secondary)
+        .padding(.vertical, 12)
+        .padding(.horizontal, 16)
+        .background(
+          selectedOption == nil
+            ? Color.blue.opacity(0.08)
+            : Color(.systemGray6)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+      }
+      .buttonStyle(PlainButtonStyle())
+    }
+    .padding(16)
+    .background(Color(.systemBackground))
+    .clipShape(RoundedRectangle(cornerRadius: 20))
+    .shadow(color: .black.opacity(0.05), radius: 10, x: 0, y: 4)
   }
 }
 

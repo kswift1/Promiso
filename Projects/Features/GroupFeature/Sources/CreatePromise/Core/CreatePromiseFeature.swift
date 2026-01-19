@@ -113,6 +113,7 @@ public enum CreatePromise {
         case incrementParticipants
         case decrementParticipants
         case setDescription(String)
+        case setTrackingStartMinutes(Int?)
         case retryLoadGroups
         case clearCreationError
         case createGroupTapped
@@ -229,6 +230,10 @@ public enum CreatePromise {
           case .setDescription(let description):
             let trimmed = String(description.prefix(500))
             state.promise.description = trimmed.isEmpty ? nil : trimmed
+            return .none
+
+          case .setTrackingStartMinutes(let minutes):
+            state.promise.trackingStartMinutesBefore = minutes
             return .none
 
           case .setStartDate(let date):

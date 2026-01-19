@@ -28,6 +28,10 @@ public struct PromiseModel: Identifiable, Equatable, Hashable, Sendable {
   // MARK: - 위치
   public var location: LocationInfoModel?
 
+  // MARK: - LiveActivity 설정
+  /// LiveActivity 시작 시간 (약속 시간 N분 전)
+  public var trackingStartMinutesBefore: Int?
+
   // MARK: - 메타데이터
   public var createdAt: Date
   public var updatedAt: Date
@@ -46,6 +50,7 @@ public struct PromiseModel: Identifiable, Equatable, Hashable, Sendable {
     startAt: Date = Date().addingTimeInterval(3600),
     endAt: Date? = nil,
     location: LocationInfoModel? = nil,
+    trackingStartMinutesBefore: Int? = nil,
     createdAt: Date = Date(),
     updatedAt: Date = Date(),
     isDeleted: Bool = false
@@ -62,6 +67,7 @@ public struct PromiseModel: Identifiable, Equatable, Hashable, Sendable {
     self.startAt = startAt
     self.endAt = endAt
     self.location = location
+    self.trackingStartMinutesBefore = trackingStartMinutesBefore
     self.createdAt = createdAt
     self.updatedAt = updatedAt
     self.isDeleted = isDeleted
@@ -91,6 +97,7 @@ extension PromiseModel {
       startAt: dto.startAt.dateValue(),
       endAt: dto.endAt?.dateValue(),
       location: dto.location.map { LocationInfoModel(dto: $0) },
+      trackingStartMinutesBefore: dto.trackingStartMinutesBefore,
       createdAt: dto.createdAt.dateValue(),
       updatedAt: dto.updatedAt.dateValue(),
       isDeleted: dto.isDeleted

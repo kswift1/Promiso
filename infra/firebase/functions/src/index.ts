@@ -1,7 +1,9 @@
 import * as admin from "firebase-admin";
 import {FieldValue} from "firebase-admin/firestore";
+import {getFunctions} from "firebase-admin/functions";
 import {setGlobalOptions} from "firebase-functions/v2";
 import {HttpsError, onCall} from "firebase-functions/v2/https";
+import {onTaskDispatched} from "firebase-functions/v2/tasks";
 import {defineSecret} from "firebase-functions/params";
 import * as http2 from "http2";
 import * as jwt from "jsonwebtoken";
@@ -41,6 +43,7 @@ import {
   RegisterPushToStartTokenRequest,
   RegisterPushToStartTokenResponse,
   RespondPromiseRequest,
+  ScheduledLiveActivityTaskPayload,
   RespondPromiseResponse,
   PreviewGroupRequest,
   PreviewGroupResponse,
@@ -2876,4 +2879,256 @@ export const endLiveActivity = onCall<EndLiveActivityRequest>(
     console.log(`📤 LiveActivity ended: ${successCount}/${failureCount}`);
     return {success: true, successCount, failureCount};
   },
+);
+
+// ============================================================================
+// Cloud Tasks - LiveActivity 예약 실행
+// ============================================================================
+
+/**
+ * LiveActivity 예약 시작 태스크 핸들러
+ *
+ * @remarks
+ * Cloud Tasks에 의해 예약된 시간에 자동 실행됩니다.
+ * 약속 시간 N분 전에 모든 참가자에게 LiveActivity를 시작합니다.
+ */
+export const executeLiveActivityStart = onTaskDispatched<
+  ScheduledLiveActivityTaskPayload
+>(
+  {
+    region: REGION,
+    retryConfig: {
+      maxAttempts: 3,
+      minBackoffSeconds: 10,
+    },
+    rateLimits: {
+      maxConcurrentDispatches: 10,
+    },
+    secrets: [APNS_KEY_ID, APNS_TEAM_ID, APNS_AUTH_KEY],
+  },
+  async (req) => {
+    const {promiseId, env} = req.data;
+    console.log(`⏰ Scheduled LiveActivity start: ${promiseId}`);
+
+    const db = admin.firestore();
+    const promisesCollection = getEnvironmentCollection("promises", db, env);
+    const usersCollection = getEnvironmentCollection("users", db, env);
+    const liveActivitiesCollection = getEnvironmentCollection(
+      "liveActivities", db, env
+    );
+
+    // 1. 약속 정보 조회
+    const promiseDoc = await promisesCollection.doc(promiseId).get();
+    if (!promiseDoc.exists) {
+      console.warn(`Promise not found: ${promiseId}`);
+      return;
+    }
+
+    const promiseData = promiseDoc.data()!;
+    const hostId = promiseData.hostId as string;
+    const emoji = promiseData.emoji as string || "📌";
+    const title = promiseData.title as string;
+    const location = promiseData.location?.name as string || null;
+    const startAt = promiseData.startAt as admin.firestore.Timestamp;
+    const accepted = promiseData.votes?.accepted as string[] || [];
+    const minParticipants = promiseData.minimumParticipants as number || 2;
+
+    // 2. 약속이 확정 상태인지 확인
+    if (accepted.length < minParticipants) {
+      console.log(`Promise not confirmed: ${promiseId}`);
+      return;
+    }
+
+    // 3. 호스트 이름 조회
+    const hostDoc = await usersCollection.doc(hostId).get();
+    const hostName = hostDoc.data()?.nickname as string || null;
+
+    // 4. 참가자 정보 생성
+    const participantPromises = accepted.map(async (uid) => {
+      const userDoc = await usersCollection.doc(uid).get();
+      const userData = userDoc.data();
+      return {
+        id: uid,
+        name: userData?.nickname as string || "참가자",
+        estimatedArrivalMinutes: null,
+      } as LiveActivityParticipant;
+    });
+    const participants = await Promise.all(participantPromises);
+
+    // 5. LiveActivity 상태 저장
+    const trackingDurationMinutes = 30;
+    await liveActivitiesCollection.doc(promiseId).set({
+      promiseId,
+      participants,
+      trackingDurationMinutes,
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+
+    // 6. 참가자들의 Push to Start 토큰 수집
+    const tokenPromises = accepted.map(async (memberId) => {
+      const userDoc = await usersCollection.doc(memberId).get();
+      const userData = userDoc.data();
+      const devices = userData?.devices as {[key: string]: DeviceInfo} | null;
+      if (!devices) return [];
+
+      const tokens: {userId: string; token: string}[] = [];
+      for (const deviceId of Object.keys(devices)) {
+        const device = devices[deviceId];
+        if (device.liveActivityPushToStartToken) {
+          tokens.push({
+            userId: memberId,
+            token: device.liveActivityPushToStartToken,
+          });
+        }
+      }
+      return tokens;
+    });
+
+    const allTokenArrays = await Promise.all(tokenPromises);
+    const allTokens = allTokenArrays.flat();
+
+    if (allTokens.length === 0) {
+      console.log(`📭 No Push to Start tokens for: ${promiseId}`);
+      return;
+    }
+
+    // 7. APNs Push to Start 전송
+    const isProduction = env === "prod";
+    let successCount = 0;
+    let failureCount = 0;
+
+    for (const {userId: tokenUserId, token} of allTokens) {
+      const payload = {
+        aps: {
+          "timestamp": Math.floor(Date.now() / 1000),
+          "event": "start",
+          "attributes-type": "PromiseActivityAttributes",
+          "attributes": {
+            trackingDurationMinutes,
+            promiseId,
+            currentUserId: tokenUserId,
+            emoji,
+            title,
+            location,
+            scheduledTime: startAt.toDate().toISOString(),
+            hostId,
+            hostName,
+          },
+          "content-state": {
+            trackingDurationMinutes,
+            participants,
+          },
+        },
+      };
+
+      const result = await sendAPNsPush({
+        deviceToken: token,
+        payload,
+        pushType: "liveactivity",
+        topic: `${APNS_BUNDLE_ID}.push-type.liveactivity`,
+        priority: 10,
+        isProduction,
+      });
+
+      if (result.success) {
+        successCount++;
+      } else {
+        failureCount++;
+      }
+    }
+
+    console.log(
+      `⏰ Scheduled LiveActivity started: ${successCount}/${failureCount}`
+    );
+  }
+);
+
+/**
+ * 약속 확정 시 LiveActivity 예약
+ *
+ * @remarks
+ * 약속이 확정되면 (accepted >= minimumParticipants)
+ * trackingStartMinutesBefore 설정에 따라 Cloud Task를 예약합니다.
+ */
+export const onPromiseConfirmedScheduleLiveActivity = onDocumentUpdated(
+  {
+    document: "{env}/root/promises/{promiseId}",
+    region: REGION,
+  },
+  async (event) => {
+    const before = event.data?.before.data();
+    const after = event.data?.after.data();
+    const promiseId = event.params.promiseId;
+    const env = event.params.env as "stage" | "prod";
+
+    if (!before || !after) return;
+
+    const minParticipants = after.minimumParticipants as number || 2;
+    const beforeAccepted = before.votes?.accepted as string[] || [];
+    const afterAccepted = after.votes?.accepted as string[] || [];
+    const trackingMinutes = after.trackingStartMinutesBefore as number | null;
+    const startAt = after.startAt as admin.firestore.Timestamp;
+
+    // 확정 조건: 이전에 미확정 → 이후 확정
+    const wasConfirmed = beforeAccepted.length >= minParticipants;
+    const isNowConfirmed = afterAccepted.length >= minParticipants;
+
+    if (wasConfirmed || !isNowConfirmed) {
+      // 이미 확정되어 있었거나 아직 확정되지 않음
+      return;
+    }
+
+    // trackingStartMinutesBefore가 설정되지 않으면 예약 안함
+    if (!trackingMinutes) {
+      console.log(`No tracking schedule for: ${promiseId}`);
+      return;
+    }
+
+    // 이미 예약되었는지 확인
+    if (after.liveActivityScheduled) {
+      console.log(`Already scheduled: ${promiseId}`);
+      return;
+    }
+
+    // 예약 시간 계산
+    const startTime = startAt.toDate();
+    const scheduleTime = new Date(
+      startTime.getTime() - trackingMinutes * 60 * 1000
+    );
+
+    // 이미 지난 시간이면 즉시 실행
+    const now = new Date();
+    if (scheduleTime <= now) {
+      console.log(`Schedule time passed, executing now: ${promiseId}`);
+      // 즉시 실행을 위해 바로 태스크 큐에 넣음 (지연 없이)
+    }
+
+    // Cloud Task 예약
+    const queue = getFunctions().taskQueue<ScheduledLiveActivityTaskPayload>(
+      "executeLiveActivityStart"
+    );
+
+    await queue.enqueue(
+      {promiseId, env},
+      {
+        scheduleDelaySeconds: Math.max(
+          0,
+          Math.floor((scheduleTime.getTime() - now.getTime()) / 1000)
+        ),
+      }
+    );
+
+    // 예약 완료 표시
+    const db = admin.firestore();
+    const promisesCollection = getEnvironmentCollection("promises", db, env);
+    await promisesCollection.doc(promiseId).update({
+      liveActivityScheduled: true,
+      liveActivityScheduledAt: scheduleTime,
+    });
+
+    console.log(
+      `📅 LiveActivity scheduled: ${promiseId} at ${scheduleTime.toISOString()}`
+    );
+  }
 );

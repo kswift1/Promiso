@@ -77,18 +77,18 @@ extension RootTab {
         self.profile = Profile.Feature.State(currentUser: currentUser)
         
         // TODO: 테스트 완료 후 mock 데이터 제거
-        self.livePromise = LivePromise.Feature.State(
-          emoji: "🎂",
-          title: "일이삼사오육칠팔구십십일십이",
-          location: "강남역 11번 출구 강남역 11번 출구 강남역 11번 출구 강남역 11번 출구",
-          scheduledTime: Date().addingTimeInterval(3600),
-          participants: [
-            ParticipantState(id: currentUser.id, name: "나", estimatedArrivalMinutes: 5),
-            ParticipantState(id: "user2", name: "친구1", estimatedArrivalMinutes: 0),
-            ParticipantState(id: "user3", name: "친구2", estimatedArrivalMinutes: 10)
-          ],
-          currentUserId: currentUser.id
-        )
+//        self.livePromise = LivePromise.Feature.State(
+//          emoji: "🎂",
+//          title: "일이삼사오육칠팔구십십일십이",
+//          location: "강남역 11번 출구 강남역 11번 출구 강남역 11번 출구 강남역 11번 출구",
+//          scheduledTime: Date().addingTimeInterval(3600),
+//          participants: [
+//            ParticipantState(id: currentUser.id, name: "나", estimatedArrivalMinutes: 5),
+//            ParticipantState(id: "user2", name: "친구1", estimatedArrivalMinutes: 0),
+//            ParticipantState(id: "user3", name: "친구2", estimatedArrivalMinutes: 10)
+//          ],
+//          currentUserId: currentUser.id
+//        )
       }
     }
 

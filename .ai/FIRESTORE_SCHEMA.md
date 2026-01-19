@@ -481,6 +481,9 @@ promises/{promiseId}
 | `startAt` | Timestamp | ✅ | - | 시작 시각 |
 | `endAt` | Timestamp | ❌ | null | 종료 시각 |
 | `location` | Location | ❌ | null | 장소 정보 (하단 참조) |
+| `trackingStartMinutesBefore` | Number | ❌ | null | LiveActivity 시작 시간 (약속 N분 전) |
+| `liveActivityScheduled` | Boolean | ❌ | false | LiveActivity 예약 완료 여부 |
+| `liveActivityScheduledAt` | Timestamp | ❌ | null | LiveActivity 예약 시각 |
 | `createdAt` | Timestamp | ✅ | - | 생성 시각 |
 | `updatedAt` | Timestamp | ✅ | - | 수정 시각 |
 | `isDeleted` | Boolean | ✅ | false | 삭제 여부 (소프트 삭제) |

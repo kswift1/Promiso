@@ -511,6 +511,46 @@ LiveActivity 종료
 
 ---
 
+### 자동 예약 시작 (Cloud Tasks)
+
+약속 생성 시 `trackingStartMinutesBefore`를 설정하면, 약속이 확정될 때 자동으로 LiveActivity 시작이 예약됩니다.
+
+#### 플로우
+
+```
+1. 사용자가 약속 생성 시 "1시간 전부터" 선택
+   → trackingStartMinutesBefore: 60
+
+2. 참가자들이 투표하여 약속 확정
+   → votes.accepted.length >= minimumParticipants
+
+3. Firestore Trigger 실행 (onPromiseConfirmedScheduleLiveActivity)
+   → Cloud Task 예약: startAt - 60분
+
+4. 예약 시간 도달
+   → executeLiveActivityStart 실행
+   → 모든 참가자에게 Push to Start 전송
+```
+
+#### 지원 옵션
+
+| 옵션 | minutes |
+|------|---------|
+| 30분 전 | 30 |
+| 1시간 전 | 60 |
+| 2시간 전 | 120 |
+| 3시간 전 | 180 |
+
+#### Firestore 필드
+
+| 필드 | 타입 | 설명 |
+|------|------|------|
+| `trackingStartMinutesBefore` | Number? | LiveActivity 시작 시간 (약속 N분 전) |
+| `liveActivityScheduled` | Boolean | 예약 완료 여부 |
+| `liveActivityScheduledAt` | Timestamp? | 예약된 실행 시각 |
+
+---
+
 ### APNs 인증 설정
 
 Firebase Secret Manager에 다음 시크릿 등록 필요:
