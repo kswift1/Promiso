@@ -149,7 +149,7 @@ public struct ParticipantState: Codable, Hashable, Identifiable, Sendable {
 | ETA 값 | 상태 | 트랙 위치 | 뱃지 색상 |
 |--------|------|----------|----------|
 | `nil` | 대기 | 0.0 (출발점) | Gray |
-| `30` | 이동 중 | 0.0 | Indigo |
+| `30` | 이동 중 | 0.05 | Indigo |
 | `15` | 이동 중 | 0.5 | Indigo |
 | `5` | 거의 도착 | 0.83 | Indigo |
 | `0` | 도착 | 1.0 (도착점) | Green |
