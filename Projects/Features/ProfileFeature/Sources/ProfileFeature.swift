@@ -98,6 +98,7 @@ extension Profile {
     @Reducer
     public enum Path {
       case accountInfo(AccountInfo.Feature)
+      case developerSettings(DeveloperSettings.Feature)
     }
 
     /// 닉네임 유효성 검사 상태
@@ -142,6 +143,8 @@ extension Profile {
       case appInfoTapped
       /// 계정 정보 탭
       case accountInfoTapped
+      /// 개발자 설정 탭 (#if DEBUG)
+      case developerSettingsTapped
 
       // MARK: - Profile Edit Actions
       /// 프로필 편집 버튼 탭
@@ -254,6 +257,12 @@ extension Profile {
 
           case .accountInfoTapped:
             state.path.append(.accountInfo(AccountInfo.Feature.State(currentUser: state.currentUser)))
+            return .run { _ in
+              await hapticFeedback.selection()
+            }
+
+          case .developerSettingsTapped:
+            state.path.append(.developerSettings(DeveloperSettings.Feature.State()))
             return .run { _ in
               await hapticFeedback.selection()
             }
@@ -443,6 +452,8 @@ extension Profile {
         switch store.case {
         case .accountInfo(let accountInfoStore):
           AccountInfo.RootView(store: accountInfoStore)
+        case .developerSettings(let developerSettingsStore):
+          DeveloperSettings.RootView(store: developerSettingsStore)
         }
       }
     }
