@@ -235,7 +235,10 @@ extension RootTab {
       tabViewWithLivePromise
         .tint(Color.pmbrand.primary)
         .onAppear { store.send(.onAppear) }
-        .fullScreenCover(isPresented: $expandLivePromise) {
+        .fullScreenCover(isPresented: $expandLivePromise, onDismiss: {
+          // 스와이프로 dismiss 시 TCA 상태 정리
+          store.send(.livePromiseDetail(.dismiss))
+        }) {
           if let detailStore = store.scope(state: \.livePromiseDetail, action: \.livePromiseDetail.presented) {
             LivePromise.ExpandedView(
               store: detailStore,
