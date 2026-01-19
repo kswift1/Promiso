@@ -3,6 +3,7 @@
 
 import ComposableArchitecture
 import SwiftUI
+import UIKit
 
 import PromisoShared
 import CalendarFeature
@@ -206,9 +207,19 @@ extension RootTab {
 // MARK: - View
 
 extension RootTab {
+  /// 상세 화면 탭
+  enum DetailTab: String, CaseIterable {
+    case status = "현황"
+    case map = "지도"
+    case chat = "채팅"
+  }
+
   public struct RootView: View {
     @Bindable var store: StoreOf<RootTab.Feature>
+    @State private var expandLivePromise: Bool = false
+    @State private var selectedDetailTab: DetailTab = .status
     @Namespace private var animation
+    @Environment(\.colorScheme) private var colorScheme
 
     // MARK: - Constants
 
@@ -227,14 +238,460 @@ extension RootTab {
       tabViewWithLivePromise
         .tint(Color.pmbrand.primary)
         .onAppear { store.send(.onAppear) }
-        .fullScreenCover(
-          item: $store.scope(state: \.livePromiseDetail, action: \.livePromiseDetail)
-        ) { detailStore in
-          LivePromise.ExpandedView(store: detailStore)
-            .navigationTransition(.zoom(sourceID: livePromiseTransitionID, in: animation))
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(.background)
+        .fullScreenCover(isPresented: $expandLivePromise) {
+          expandedLivePromiseView
         }
+    }
+
+    // MARK: - Colors
+
+    private var cardBackgroundColor: Color {
+      colorScheme == .dark ? Color(hex: "2C2C2E") : Color(UIColor.secondarySystemBackground)
+    }
+
+    // MARK: - Expanded LivePromise View
+
+    @ViewBuilder
+    private var expandedLivePromiseView: some View {
+      detailTabContent
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(colorScheme == .dark ? Color(hex: "1C1C1E") : Color(UIColor.systemBackground))
+        .safeAreaInset(edge: .top, spacing: 0) {
+          VStack(spacing: 0) {
+            // Drag Indicator
+            Capsule()
+              .fill(.primary.secondary)
+              .frame(width: 35, height: 3)
+              .padding(.vertical, 10)
+
+            // Close Button Row
+            HStack {
+              Spacer()
+              Button {
+                expandLivePromise = false
+              } label: {
+                Image(systemName: "xmark.circle.fill")
+                  .font(.title2)
+                  .foregroundStyle(.secondary)
+                  .symbolRenderingMode(.hierarchical)
+              }
+            }
+            .padding(.horizontal, 16)
+
+            // Header Content
+            if let data = store.livePromise?.data {
+              livePromiseHeader(data: data)
+                .padding(.top, 8)
+                .padding(.horizontal, 16)
+
+              // Action Buttons
+              actionButtons
+                .padding(.top, 16)
+                .padding(.horizontal, 16)
+
+              // Tab Bar
+              detailTabBar
+                .padding(.top, 20)
+                .padding(.bottom, 8)
+            }
+          }
+          .background(colorScheme == .dark ? Color(hex: "1C1C1E") : Color(UIColor.systemBackground))
+          .navigationTransition(.zoom(sourceID: livePromiseTransitionID, in: animation))
+        }
+        .presentationBackground(.ultraThinMaterial)
+    }
+
+    // MARK: - Header
+
+    @ViewBuilder
+    private func livePromiseHeader(data: LivePromise.Data) -> some View {
+      HStack(spacing: 12) {
+        // Emoji
+        Text(data.emoji)
+          .font(.system(size: 44))
+
+        // Info
+        VStack(alignment: .leading, spacing: 4) {
+          Text(data.title)
+            .font(.title3.weight(.bold))
+
+          HStack(spacing: 6) {
+            if let location = data.location {
+              Text("📍")
+                .font(.caption)
+              Text(location)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            }
+            Text("•")
+              .font(.caption)
+              .foregroundStyle(.tertiary)
+            Text("\(data.participants.count)명 참여")
+              .font(.subheadline)
+              .foregroundStyle(.secondary)
+          }
+        }
+
+        Spacer(minLength: 0)
+
+        // Time
+        if let time = data.scheduledTime {
+          VStack(alignment: .trailing, spacing: 0) {
+            Text(formatTime(time))
+              .font(.title2.weight(.bold).monospacedDigit())
+            Text(formatPeriod(time))
+              .font(.caption.weight(.medium))
+              .foregroundStyle(.secondary)
+          }
+        }
+      }
+    }
+
+    // MARK: - Action Buttons
+
+    private var actionButtons: some View {
+      HStack(spacing: 12) {
+        actionButton(icon: "doc.on.doc", title: "복사") { }
+        actionButton(icon: "bell", title: "알림") { }
+        actionButton(icon: "ellipsis", title: "더보기") { }
+      }
+    }
+
+    private func actionButton(icon: String, title: String, action: @escaping () -> Void) -> some View {
+      Button(action: action) {
+        HStack(spacing: 6) {
+          Image(systemName: icon)
+            .font(.subheadline)
+          Text(title)
+            .font(.subheadline)
+        }
+        .foregroundStyle(.primary)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(cardBackgroundColor, in: RoundedRectangle(cornerRadius: 10))
+      }
+    }
+
+    // MARK: - Detail Tab Bar
+
+    private var detailTabBar: some View {
+      HStack(spacing: 0) {
+        ForEach(DetailTab.allCases, id: \.self) { tab in
+          detailTabButton(tab)
+        }
+      }
+      .padding(4)
+      .background(cardBackgroundColor, in: RoundedRectangle(cornerRadius: 12))
+      .padding(.horizontal, 16)
+    }
+
+    private func detailTabButton(_ tab: DetailTab) -> some View {
+      let isSelected = selectedDetailTab == tab
+
+      return Button {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        selectedDetailTab = tab
+      } label: {
+        Text(tab.rawValue)
+          .font(.subheadline.weight(isSelected ? .semibold : .regular))
+          .foregroundStyle(isSelected ? .white : .secondary)
+          .frame(maxWidth: .infinity)
+          .padding(.vertical, 10)
+          .background(
+            isSelected ? Color.pmindigo.n500 : Color.clear,
+            in: RoundedRectangle(cornerRadius: 8)
+          )
+      }
+      .buttonStyle(.plain)
+    }
+
+    // MARK: - Detail Tab Content
+
+    @ViewBuilder
+    private var detailTabContent: some View {
+      switch selectedDetailTab {
+      case .status:
+        statusTabContent
+      case .map:
+        mapTabContent
+      case .chat:
+        chatTabContent
+      }
+    }
+
+    // MARK: - Status Tab
+
+    private var statusTabContent: some View {
+      ScrollView {
+        if let data = store.livePromise?.data {
+          VStack(spacing: 20) {
+            // Racing Track (Horizontal Scroll)
+            racingTrackSection(data: data)
+
+            // Participants List
+            participantsListSection(data: data)
+
+            // ETA Buttons
+            etaButtonsSection
+          }
+          .padding(.top, 16)
+          .padding(.bottom, 32)
+        }
+      }
+    }
+
+    private func racingTrackSection(data: LivePromise.Data) -> some View {
+      VStack(alignment: .leading, spacing: 12) {
+        Text("이동 현황")
+          .font(.headline)
+          .foregroundStyle(.primary)
+          .padding(.horizontal, 16)
+
+        ScrollView(.horizontal, showsIndicators: false) {
+          HStack(spacing: 16) {
+            ForEach(data.participants) { participant in
+              participantTrackItem(participant, data: data)
+            }
+          }
+          .padding(.horizontal, 16)
+        }
+      }
+    }
+
+    private func participantTrackItem(_ participant: ParticipantState, data: LivePromise.Data) -> some View {
+      let isArrived = participant.estimatedArrivalMinutes == 0
+      let isCurrentUser = participant.id == data.currentUserId
+
+      return VStack(spacing: 8) {
+        // Avatar with status ring
+        ZStack {
+          Circle()
+            .stroke(statusColor(for: participant), lineWidth: 3)
+            .frame(width: 56, height: 56)
+
+          Circle()
+            .fill(
+              LinearGradient(
+                colors: isCurrentUser
+                  ? [Color.pmindigo.n400, Color.pmindigo.n600]
+                  : [Color.pmgray.n400, Color.pmgray.n500],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+              )
+            )
+            .frame(width: 48, height: 48)
+            .overlay {
+              Text(String(participant.name.prefix(1)))
+                .font(.title3.weight(.bold))
+                .foregroundStyle(.white)
+            }
+
+          // Checkmark for arrived
+          if isArrived {
+            Circle()
+              .fill(Color.green)
+              .frame(width: 20, height: 20)
+              .overlay {
+                Image(systemName: "checkmark")
+                  .font(.caption2.weight(.bold))
+                  .foregroundStyle(.white)
+              }
+              .offset(x: 18, y: 18)
+          }
+        }
+
+        // Name
+        Text(isCurrentUser ? "나" : participant.name)
+          .font(.caption)
+          .foregroundStyle(.primary)
+          .lineLimit(1)
+      }
+    }
+
+    private func participantsListSection(data: LivePromise.Data) -> some View {
+      VStack(spacing: 0) {
+        ForEach(data.participants) { participant in
+          participantRow(participant, data: data)
+
+          if participant.id != data.participants.last?.id {
+            Divider()
+              .padding(.horizontal, 16)
+          }
+        }
+      }
+      .background(cardBackgroundColor, in: RoundedRectangle(cornerRadius: 16))
+      .padding(.horizontal, 16)
+    }
+
+    private func participantRow(_ participant: ParticipantState, data: LivePromise.Data) -> some View {
+      let isCurrentUser = participant.id == data.currentUserId
+
+      return HStack(spacing: 12) {
+        // Avatar
+        Circle()
+          .fill(
+            LinearGradient(
+              colors: isCurrentUser
+                ? [Color.pmindigo.n400, Color.pmindigo.n600]
+                : [Color.pmgray.n400, Color.pmgray.n500],
+              startPoint: .topLeading,
+              endPoint: .bottomTrailing
+            )
+          )
+          .frame(width: 40, height: 40)
+          .overlay {
+            Text(String(participant.name.prefix(1)))
+              .font(.body.weight(.semibold))
+              .foregroundStyle(.white)
+          }
+
+        // Name + Status
+        VStack(alignment: .leading, spacing: 2) {
+          Text(isCurrentUser ? "나" : participant.name)
+            .font(.body.weight(.medium))
+            .foregroundStyle(.primary)
+
+          Text(statusDescription(for: participant))
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+
+        Spacer()
+
+        // ETA Badge
+        etaBadge(for: participant)
+      }
+      .padding(.horizontal, 16)
+      .padding(.vertical, 12)
+    }
+
+    private func etaBadge(for participant: ParticipantState) -> some View {
+      Group {
+        if let eta = participant.estimatedArrivalMinutes {
+          if eta == 0 {
+            HStack(spacing: 4) {
+              Image(systemName: "checkmark")
+                .font(.caption.weight(.bold))
+              Text("도착")
+                .font(.subheadline.weight(.semibold))
+            }
+            .foregroundStyle(.green)
+          } else {
+            Text("\(eta)분")
+              .font(.title3.weight(.bold))
+              .foregroundStyle(etaColor(for: eta))
+          }
+        } else {
+          Text("대기")
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+        }
+      }
+    }
+
+    private var etaButtonsSection: some View {
+      VStack(spacing: 12) {
+        Text("내 상태 변경")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+
+        HStack(spacing: 12) {
+          etaButton(icon: "checkmark.circle.fill", title: "도착", minutes: 0, color: .green)
+          etaButton(icon: "clock", title: "+5분", minutes: 5, color: .orange)
+          etaButton(icon: "clock", title: "+10분", minutes: 10, color: .red)
+        }
+        .padding(.horizontal, 16)
+      }
+    }
+
+    private func etaButton(icon: String, title: String, minutes: Int, color: Color) -> some View {
+      let currentETA = store.livePromise?.data.currentUserETA
+      let isSelected = currentETA == minutes
+
+      return Button {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        // TODO: ETA 업데이트 액션
+      } label: {
+        VStack(spacing: 8) {
+          Image(systemName: icon)
+            .font(.title2)
+            .foregroundStyle(isSelected ? .white : color)
+
+          Text(title)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(isSelected ? .white : .primary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 16)
+        .background(
+          isSelected ? color : cardBackgroundColor,
+          in: RoundedRectangle(cornerRadius: 16)
+        )
+      }
+    }
+
+    // MARK: - Map Tab
+
+    private var mapTabContent: some View {
+      VStack {
+        Spacer()
+        Text("지도 기능 준비 중")
+          .font(.headline)
+          .foregroundStyle(.secondary)
+        Spacer()
+      }
+    }
+
+    // MARK: - Chat Tab
+
+    private var chatTabContent: some View {
+      VStack {
+        Spacer()
+        Text("채팅 기능 준비 중")
+          .font(.headline)
+          .foregroundStyle(.secondary)
+        Spacer()
+      }
+    }
+
+    // MARK: - Helper Functions
+
+    private func formatTime(_ date: Date) -> String {
+      let formatter = DateFormatter()
+      formatter.dateFormat = "h:mm"
+      return formatter.string(from: date)
+    }
+
+    private func formatPeriod(_ date: Date) -> String {
+      let formatter = DateFormatter()
+      formatter.dateFormat = "a"
+      formatter.locale = Locale(identifier: "en_US")
+      return formatter.string(from: date)
+    }
+
+    private func statusColor(for participant: ParticipantState) -> Color {
+      if let eta = participant.estimatedArrivalMinutes {
+        if eta == 0 { return .green }
+        if eta <= 5 { return .yellow }
+        return .orange
+      }
+      return .gray
+    }
+
+    private func statusDescription(for participant: ParticipantState) -> String {
+      if let eta = participant.estimatedArrivalMinutes {
+        if eta == 0 { return "도착 완료" }
+        if eta <= 3 { return "거의 도착" }
+        return "이동 중"
+      }
+      return "아직 출발 전"
+    }
+
+    private func etaColor(for eta: Int) -> Color {
+      if eta <= 3 { return .green }
+      if eta <= 5 { return .yellow }
+      if eta <= 10 { return .orange }
+      return .red
     }
 
     // MARK: - TabView
@@ -271,6 +728,10 @@ extension RootTab {
           if let livePromiseStore = store.scope(state: \.livePromise, action: \.livePromise) {
             LivePromise.CompactView(store: livePromiseStore)
               .matchedTransitionSource(id: livePromiseTransitionID, in: animation)
+              .onTapGesture {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                expandLivePromise.toggle()
+              }
           }
         }
     }
@@ -284,6 +745,10 @@ extension RootTab {
           .tabViewBottomAccessory {
             LivePromise.CompactView(store: livePromiseStore)
               .matchedTransitionSource(id: livePromiseTransitionID, in: animation)
+              .onTapGesture {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                expandLivePromise.toggle()
+              }
           }
       } else {
         tabView
@@ -298,6 +763,10 @@ extension RootTab {
               .padding(.vertical, compactViewVerticalPadding)
               .background(.ultraThinMaterial, in: .rect(cornerRadius: compactViewCornerRadius))
               .matchedTransitionSource(id: livePromiseTransitionID, in: animation)
+              .onTapGesture {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                expandLivePromise.toggle()
+              }
               .offset(y: -(tabBarHeight + compactViewBottomSpacing))
               .padding(.horizontal, compactViewPadding)
           }
@@ -349,3 +818,32 @@ extension RootTab {
     }
   }
 }
+
+// MARK: - Color Hex Extension
+
+private extension Color {
+  init(hex: String) {
+    let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+    var int: UInt64 = 0
+    Scanner(string: hex).scanHexInt64(&int)
+    let a, r, g, b: UInt64
+    switch hex.count {
+    case 3:
+      (a, r, g, b) = (255, (int >> 8) * 17, (int >> 4 & 0xF) * 17, (int & 0xF) * 17)
+    case 6:
+      (a, r, g, b) = (255, int >> 16, int >> 8 & 0xFF, int & 0xFF)
+    case 8:
+      (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
+    default:
+      (a, r, g, b) = (255, 0, 0, 0)
+    }
+    self.init(
+      .sRGB,
+      red: Double(r) / 255,
+      green: Double(g) / 255,
+      blue: Double(b) / 255,
+      opacity: Double(a) / 255
+    )
+  }
+}
+

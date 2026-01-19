@@ -238,6 +238,7 @@ extension Home {
           UpcomingPromiseSection(store: store)
         }
         .padding(.top, 8)
+        .padding(.bottom, 80)
       }
       .refreshable {
         store.send(.view(.refreshTriggered))

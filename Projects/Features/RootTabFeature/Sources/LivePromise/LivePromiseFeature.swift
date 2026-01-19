@@ -75,6 +75,13 @@ extension LivePromise {
 // MARK: - Detail Feature
 
 extension LivePromise {
+  /// 상세 화면 탭 종류
+  public enum DetailTab: String, CaseIterable, Equatable, Sendable {
+    case status = "현황"
+    case map = "지도"
+    case chat = "채팅"
+  }
+
   @Reducer
   public struct Detail {
     public init() {}
@@ -84,6 +91,9 @@ extension LivePromise {
       /// 공유 데이터 (Feature와 동기화)
       @Shared public var data: LivePromise.Data
 
+      /// 현재 선택된 탭
+      var selectedTab: DetailTab = .status
+
       public init(data: Shared<LivePromise.Data>) {
         self._data = data
       }
@@ -92,17 +102,37 @@ extension LivePromise {
     @CasePathable
     public enum Action: Sendable {
       case dismiss
+      case tabSelected(DetailTab)
       case etaButtonTapped(Int)
+      case copyButtonTapped
+      case notificationButtonTapped
+      case moreButtonTapped
     }
 
     public var body: some ReducerOf<Self> {
-      Reduce { _, action in
+      Reduce { state, action in
         switch action {
         case .dismiss:
           return .none
 
+        case .tabSelected(let tab):
+          state.selectedTab = tab
+          return .none
+
         case .etaButtonTapped:
           // 부모에서 처리
+          return .none
+
+        case .copyButtonTapped:
+          // TODO: 복사 기능 구현
+          return .none
+
+        case .notificationButtonTapped:
+          // TODO: 알림 기능 구현
+          return .none
+
+        case .moreButtonTapped:
+          // TODO: 더보기 기능 구현
           return .none
         }
       }

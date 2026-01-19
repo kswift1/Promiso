@@ -9,6 +9,7 @@ import ComposableArchitecture
 import Lottie
 import ResourceKit
 import SwiftUI
+import UIKit
 import PromisoShared
 
 extension LivePromise {
@@ -30,9 +31,6 @@ extension LivePromise {
         }
       }
       .contentShape(.rect)
-      .onTapGesture {
-        store.send(.view(.tapped))
-      }
       .onAppear {
         store.send(.view(.onAppear))
       }
