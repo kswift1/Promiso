@@ -15,3 +15,4 @@
 @_exported import RenderMeThis
 @_exported import GoogleSignIn
 @_exported import GoogleSignInSwift
+@_exported import Lottie
