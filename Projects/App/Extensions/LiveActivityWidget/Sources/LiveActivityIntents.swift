@@ -39,9 +39,14 @@ struct UpdateETAIntent: LiveActivityIntent {
       estimatedMinutes: estimatedMinutes,
       timestamp: Date()
     )
-    if let data = try? JSONEncoder().encode(update) {
+    do {
+      let data = try JSONEncoder().encode(update)
       UserDefaults(suiteName: LiveActivityIntentKey.suiteName)?
         .set(data, forKey: LiveActivityIntentKey.etaUpdateKey)
+    } catch {
+      #if DEBUG
+      print("[LiveActivityIntent] JSON encode failed: \(error)")
+      #endif
     }
 
     // Live Activity UI 즉시 업데이트
@@ -58,6 +63,7 @@ struct UpdateETAIntent: LiveActivityIntent {
 // MARK: - Helper
 
 private func updateActivityETA(promiseId: String, participantId: String, estimatedArrivalMinutes: Int) async {
+  #if DEBUG
   // 디버그 로깅
   let debugInfo: [String: Any] = [
     "timestamp": Date().timeIntervalSince1970,
@@ -68,12 +74,15 @@ private func updateActivityETA(promiseId: String, participantId: String, estimat
   ]
   UserDefaults(suiteName: LiveActivityIntentKey.suiteName)?
     .set(debugInfo, forKey: "liveActivity.debug.lastIntent")
+  #endif
 
   // promiseId로 Activity 찾기
   guard let activity = Activity<PromiseActivityAttributes>.activities
     .first(where: { $0.attributes.promiseId == promiseId }) else {
+    #if DEBUG
     UserDefaults(suiteName: LiveActivityIntentKey.suiteName)?
       .set("activity_not_found", forKey: "liveActivity.debug.error")
+    #endif
     return
   }
 
@@ -86,6 +95,8 @@ private func updateActivityETA(promiseId: String, participantId: String, estimat
 
   await activity.update(content)
 
+  #if DEBUG
   UserDefaults(suiteName: LiveActivityIntentKey.suiteName)?
     .set("update_called", forKey: "liveActivity.debug.result")
+  #endif
 }
