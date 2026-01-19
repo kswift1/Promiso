@@ -3,7 +3,6 @@
 
 import ComposableArchitecture
 import SwiftUI
-import UIKit
 
 import PromisoShared
 import CalendarFeature
@@ -243,11 +242,6 @@ extension RootTab {
               animation: animation,
               transitionID: livePromiseTransitionID
             )
-          }
-        }
-        .onChange(of: expandLivePromise) { _, isExpanded in
-          if !isExpanded {
-            store.send(.livePromiseDetail(.dismiss))
           }
         }
     }

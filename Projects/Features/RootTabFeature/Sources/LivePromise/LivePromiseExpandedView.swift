@@ -7,7 +7,6 @@
 
 import ComposableArchitecture
 import SwiftUI
-import UIKit
 import PromisoShared
 
 // MARK: - LivePromise.ExpandedView
@@ -36,11 +35,11 @@ extension LivePromise {
     // MARK: - Colors
 
     private var backgroundColor: Color {
-      Color(UIColor.systemBackground)
+      Color(.systemBackground)
     }
 
     private var cardBackgroundColor: Color {
-      Color(UIColor.secondarySystemBackground)
+      Color(.secondarySystemBackground)
     }
 
     // MARK: - Body
@@ -172,7 +171,6 @@ extension LivePromise {
       let isSelected = store.selectedTab == tab
 
       return Button {
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
         store.send(.view(.tabSelected(tab)))
       } label: {
         Text(tab.rawValue)
@@ -390,7 +388,6 @@ extension LivePromise {
       let isSelected = currentETA == minutes
 
       return Button {
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         store.send(.view(.etaButtonTapped(minutes)))
       } label: {
         VStack(spacing: 8) {

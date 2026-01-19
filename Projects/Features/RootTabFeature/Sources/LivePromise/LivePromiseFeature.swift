@@ -87,6 +87,8 @@ extension LivePromise {
   /// ExpandedView에서 사용되며, 탭 전환 및 액션 버튼 처리
   @Reducer
   public struct Detail {
+    @Dependency(\.hapticFeedback) private var hapticFeedback
+
     public init() {}
 
     // MARK: - State
@@ -140,22 +142,33 @@ extension LivePromise {
           switch viewAction {
           case .tabSelected(let tab):
             state.selectedTab = tab
-            return .none
+            return .run { _ in
+              await hapticFeedback.light()
+            }
 
           case .etaButtonTapped(let minutes):
-            return .send(.delegate(.updateETA(minutes)))
+            return .run { send in
+              await hapticFeedback.medium()
+              await send(.delegate(.updateETA(minutes)))
+            }
 
           case .copyButtonTapped:
             // TODO: 복사 기능 구현
-            return .none
+            return .run { _ in
+              await hapticFeedback.light()
+            }
 
           case .notificationButtonTapped:
             // TODO: 알림 기능 구현
-            return .none
+            return .run { _ in
+              await hapticFeedback.light()
+            }
 
           case .moreButtonTapped:
             // TODO: 더보기 기능 구현
-            return .none
+            return .run { _ in
+              await hapticFeedback.light()
+            }
           }
 
         case .delegate:
