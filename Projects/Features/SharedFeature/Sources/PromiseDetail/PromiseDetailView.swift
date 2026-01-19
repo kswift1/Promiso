@@ -8,6 +8,7 @@ extension PromiseDetail {
   public struct RootView: View {
     @Bindable private var store: StoreOf<Feature>
     @State private var isDescriptionExpanded = false
+    @Environment(\.scenePhase) private var scenePhase
 
     public init(store: StoreOf<Feature>) {
       self.store = store
@@ -20,6 +21,7 @@ extension PromiseDetail {
           scheduleSection
           participantsSection
           responseSection
+          liveActivitySection
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 24)
@@ -29,6 +31,11 @@ extension PromiseDetail {
       .toolbar { toolbarContent }
       .onAppear {
         store.send(.view(.onAppear))
+      }
+      .onChange(of: scenePhase) { _, newPhase in
+        if newPhase == .active {
+          store.send(.view(.checkPendingIntents))
+        }
       }
       .sheet(
         item: Binding(
@@ -246,6 +253,84 @@ extension PromiseDetail {
           }
           .disabled(store.respondingState != .idle)
           .padding(.top, 4)
+        }
+      }
+    }
+
+    // MARK: - Live Activity Section
+
+    @ViewBuilder
+    private var liveActivitySection: some View {
+      // 조건: 확정됨 + 30분 이내 + 내가 참여 중
+      if store.promise.isConfirmed && store.promise.isRealtimeShareable && store.isParticipating {
+        VStack(spacing: 12) {
+          SectionHeader(title: "실시간 공유")
+
+          if store.isLiveActivityActive {
+            // 활성화 상태: 도착 버튼 + 종료 버튼
+            VStack(spacing: 12) {
+              Button {
+                store.send(.view(.markArrivedTapped))
+              } label: {
+                HStack(spacing: 8) {
+                  Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 18))
+                  Text("도착 완료")
+                    .font(.system(size: 16, weight: .semibold))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(Color.green)
+                .foregroundStyle(.white)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+              }
+
+              Button {
+                store.send(.view(.liveActivityStopTapped))
+              } label: {
+                HStack(spacing: 8) {
+                  Image(systemName: "stop.circle")
+                    .font(.system(size: 18))
+                  Text("실시간 공유 종료")
+                    .font(.system(size: 16, weight: .semibold))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(Color.red.opacity(0.1))
+                .foregroundStyle(.red)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+              }
+            }
+          } else {
+            // 비활성화 상태: 시작 버튼
+            Button {
+              store.send(.view(.liveActivityStartTapped))
+            } label: {
+              HStack(spacing: 8) {
+                if store.isStartingLiveActivity {
+                  ProgressView()
+                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                    .scaleEffect(0.8)
+                } else {
+                  Image(systemName: "dot.radiowaves.left.and.right")
+                    .font(.system(size: 18))
+                }
+                Text("실시간 공유 시작")
+                  .font(.system(size: 16, weight: .semibold))
+              }
+              .frame(maxWidth: .infinity)
+              .padding(.vertical, 14)
+              .background(Color.pmindigo.n500)
+              .foregroundStyle(.white)
+              .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+            .disabled(store.isStartingLiveActivity)
+
+            Text("Dynamic Island에서 도착 현황을 확인할 수 있어요")
+              .font(.system(size: 13))
+              .foregroundStyle(.secondary)
+              .multilineTextAlignment(.center)
+          }
         }
       }
     }
@@ -643,5 +728,3 @@ private extension View {
       )
   }
 }
-
-

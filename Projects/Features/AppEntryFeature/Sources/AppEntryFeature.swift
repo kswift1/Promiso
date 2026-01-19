@@ -211,6 +211,7 @@ extension AppEntry {
         case .destination(.presented(.main(.delegate(.logoutRequested)))):
           state.destination = .auth(Auth.Feature.State())
           return .run { _ in
+            LiveActivityImageStore.clearCache()
             try? await authClient.logout()
           }
 

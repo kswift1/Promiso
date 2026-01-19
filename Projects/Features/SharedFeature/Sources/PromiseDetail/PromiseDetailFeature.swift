@@ -1,5 +1,6 @@
 import ComposableArchitecture
 import Clients
+import PromisoShared
 
 public enum PromiseDetail {}
 
@@ -7,6 +8,7 @@ extension PromiseDetail {
   @Reducer
   public struct Feature {
     @Dependency(\.promiseClient) var promiseClient
+    @Dependency(\.liveActivityClient) var liveActivityClient
 
     public init() {}
 
@@ -29,6 +31,11 @@ extension PromiseDetail {
 
       // 삭제 확인 알럿
       @Presents var alert: AlertState<Action.Alert>?
+
+      // MARK: - Live Activity State
+      var isLiveActivityActive: Bool = false
+      var liveActivityId: String?
+      var isStartingLiveActivity: Bool = false
 
       public init(
         promise: PromiseModel,
@@ -55,6 +62,16 @@ extension PromiseDetail {
       /// 수정 가능 여부 (호스트 && 시작 전)
       var canEdit: Bool {
         isHost && promise.startAt > Date()
+      }
+
+      /// 라이브액티비티 시작 가능 여부
+      var canStartLiveActivity: Bool {
+        promise.isRealtimeShareable && promise.isConfirmed && !isLiveActivityActive
+      }
+
+      /// 내가 약속에 참여 중인지 (accepted)
+      var isParticipating: Bool {
+        promise.votes.accepted.contains(currentUserId)
       }
     }
 
@@ -96,6 +113,11 @@ extension PromiseDetail {
         case shareSheetDismissed
         case participantGroupTapped(title: String, userIds: [String], colorType: ParticipantColorType)
         case memberSheetDismissed
+        // Live Activity
+        case liveActivityStartTapped
+        case liveActivityStopTapped
+        case markArrivedTapped
+        case checkPendingIntents
       }
 
       @CasePathable
@@ -111,6 +133,15 @@ extension PromiseDetail {
         case deleteDone
         case deleteFailed(error: AppError)
         case promiseUpdated(PromiseModel)
+        // Live Activity
+        case startLiveActivity
+        case liveActivityStarted(id: String)
+        case liveActivityFailed(error: AppError)
+        case liveActivityEnded
+        case markArrivalDone
+        case markArrivalFailed(error: AppError)
+        case processPendingETAUpdate(ETAUpdate)
+        case liveActivityUpdated
       }
 
       public enum Delegate: Sendable {
@@ -126,7 +157,8 @@ extension PromiseDetail {
         case .view(let viewAction):
           switch viewAction {
           case .onAppear:
-            return .none
+            // Pending Intent 확인 (Widget에서 저장한 출발/도착 상태)
+            return .send(.view(.checkPendingIntents))
 
           case .dismissTapped:
             return .send(.delegate(.dismiss))
@@ -195,6 +227,39 @@ extension PromiseDetail {
           case .memberSheetDismissed:
             state.memberSheet = nil
             return .none
+
+          // MARK: - Live Activity View Actions
+          case .liveActivityStartTapped:
+            guard state.canStartLiveActivity,
+                  state.isParticipating,
+                  !state.isStartingLiveActivity else { return .none }
+
+            state.isStartingLiveActivity = true
+            return .send(.internal(.startLiveActivity))
+
+          case .liveActivityStopTapped:
+            guard let activityId = state.liveActivityId else { return .none }
+            return .run { [liveActivityClient] send in
+              try await liveActivityClient.end(activityId)
+              await send(.internal(.liveActivityEnded))
+            }
+
+          case .markArrivedTapped:
+            // TODO: Firebase Functions 호출하여 도착 상태 업데이트
+            // 현재는 로컬에서만 처리
+            return .send(.internal(.markArrivalDone))
+
+          case .checkPendingIntents:
+            // Widget에서 저장한 Intent 확인 후 처리
+            guard state.isLiveActivityActive else { return .none }
+
+            return .run { [liveActivityClient] send in
+              // ETA 업데이트 Intent 확인
+              if let etaUpdate = liveActivityClient.pendingETAUpdate() {
+                liveActivityClient.clearETAUpdate()
+                await send(.internal(.processPendingETAUpdate(etaUpdate)))
+              }
+            }
           }
 
         case .internal(let internalAction):
@@ -257,6 +322,94 @@ extension PromiseDetail {
 
           case .promiseUpdated(let promise):
             state.promise = promise
+            return .none
+
+          // MARK: - Live Activity Internal Actions
+          case .startLiveActivity:
+            AppLogger.liveActivity.debug("startLiveActivity 액션 실행")
+            let promise = state.promise
+            let currentUserId = state.currentUserId
+            let members = state.groupMembers ?? []
+            AppLogger.liveActivity.debug("groupMembers 수: \(members.count)")
+            let acceptedMembers = members.filter { promise.votes.accepted.contains($0.userId) }
+            AppLogger.liveActivity.debug("acceptedMembers 수: \(acceptedMembers.count)")
+
+            let attributes = PromiseActivityAttributes(
+              promiseId: promise.id,
+              currentUserId: currentUserId,
+              emoji: promise.displayEmoji,
+              title: promise.title,
+              location: promise.location?.name ?? "장소 미정",
+              scheduledTime: promise.startAt
+            )
+
+            // 프로필 이미지는 GroupMainFeature에서 사전 캐싱됨 (Widget에서 id로 파일명 유추)
+            let participants = acceptedMembers.map { member in
+              AppLogger.liveActivity.debug("ParticipantState 생성: \(member.userId)")
+              return ParticipantState(
+                id: member.userId,
+                name: member.displayName,
+                estimatedArrivalMinutes: nil
+              )
+            }
+            AppLogger.liveActivity.debug("currentUserId: \(currentUserId)")
+            let initialState = PromiseActivityAttributes.ContentState(
+              trackingDurationMinutes: 30,
+              participants: participants
+            )
+
+            return .run { [liveActivityClient] send in
+              do {
+                let id = try await liveActivityClient.start(attributes, initialState)
+                await send(.internal(.liveActivityStarted(id: id)))
+              } catch {
+                await send(.internal(.liveActivityFailed(error: AppError(error))))
+              }
+            }
+
+          case .liveActivityStarted(let id):
+            state.isStartingLiveActivity = false
+            state.isLiveActivityActive = true
+            state.liveActivityId = id
+            return .none
+
+          case .liveActivityFailed:
+            state.isStartingLiveActivity = false
+            return .none
+
+          case .liveActivityEnded:
+            state.isLiveActivityActive = false
+            state.liveActivityId = nil
+            return .none
+
+          case .markArrivalDone:
+            // TODO: 서버 연동 후 상태 업데이트
+            return .none
+
+          case .markArrivalFailed:
+            return .none
+
+          case .processPendingETAUpdate(let etaUpdate):
+            // Widget에서 저장한 ETA 업데이트 처리
+            guard let activityId = state.liveActivityId,
+                  etaUpdate.promiseId == state.promise.id else {
+              return .none
+            }
+
+            return .run { [liveActivityClient] send in
+              guard let currentState = liveActivityClient.currentState() else { return }
+              let updatedState = currentState.updating(
+                participantId: etaUpdate.userId,
+                estimatedArrivalMinutes: etaUpdate.estimatedMinutes
+              )
+              try await liveActivityClient.update(activityId, updatedState)
+              await send(.internal(.liveActivityUpdated))
+            } catch: { _, _ in
+              // 업데이트 실패 시 무시
+            }
+
+          case .liveActivityUpdated:
+            // UI 업데이트 완료
             return .none
           }
 

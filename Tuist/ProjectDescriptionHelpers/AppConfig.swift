@@ -58,7 +58,10 @@ public enum AppConfig {
       "UIBackgroundModes": .array([
         .string("fetch"),
         .string("remote-notification")
-      ])
+      ]),
+      // Live Activity Support
+      "NSSupportsLiveActivities": .boolean(true),
+      "NSSupportsLiveActivitiesFrequentUpdates": .boolean(true)
     ]
   }
 }

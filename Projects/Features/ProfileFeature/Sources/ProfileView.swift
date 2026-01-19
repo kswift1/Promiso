@@ -172,6 +172,18 @@ extension Profile {
           showVersion: true,
           action: { store.send(.view(.appInfoTapped)) }
         )
+
+        // 개발자 설정 (DEBUG only)
+        #if DEBUG
+        Divider()
+          .padding(.leading, 56)
+
+        settingsMenuRow(
+          icon: "hammer.fill",
+          title: "개발자 설정",
+          action: { store.send(.view(.developerSettingsTapped)) }
+        )
+        #endif
       }
       .adaptiveGlassBackground()
     }
