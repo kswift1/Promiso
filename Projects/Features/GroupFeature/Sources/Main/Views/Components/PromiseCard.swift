@@ -173,7 +173,7 @@ struct PromiseCard: View {
       }
     }
     .padding(16)
-    .adaptiveGlassCardBackground()
+    .adaptiveGlassCard()
     .contextMenu {
       // 응답 변경 옵션
       if let onChangeResponse = onChangeResponse {
@@ -227,33 +227,6 @@ struct PromiseCard: View {
   }
 }
 
-// MARK: - Glass Effect Modifier
-
-private extension View {
-  func adaptiveGlassCardBackground() -> some View {
-    if #available(iOS 26.0, *) {
-      return AnyView(
-        self
-          .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
-          .overlay(
-            RoundedRectangle(cornerRadius: 16)
-              .strokeBorder(.white.opacity(0.2), lineWidth: 1)
-          )
-          .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 4)
-      )
-    } else {
-      return AnyView(
-        self
-          .background(Color(.systemBackground))
-          .clipShape(RoundedRectangle(cornerRadius: 16))
-          .overlay(
-            RoundedRectangle(cornerRadius: 16)
-              .stroke(Color(.systemGray5), lineWidth: 1)
-          )
-      )
-    }
-  }
-}
 
 // MARK: - Participants Avatar View
 

@@ -85,7 +85,9 @@ extension PromiseDetail {
         StatusBadgeView(status: store.responseStatus)
       }
       .frame(maxWidth: .infinity)
-      .padding(.vertical, 20)
+      .padding(.vertical, 24)
+      .padding(.horizontal, 20)
+      .adaptiveGlassCard()
     }
 
     // MARK: - Schedule Section
@@ -150,7 +152,7 @@ extension PromiseDetail {
             value: formatRealtimeShareTime(store.promise.startAt)
           )
         }
-        .glassCard()
+        .adaptiveGlassCard()
       }
     }
 
@@ -234,52 +236,55 @@ extension PromiseDetail {
     // MARK: - Response Section
 
     private var responseSection: some View {
-      VStack(spacing: 12) {
+      VStack(spacing: 0) {
         SectionHeader(title: "내 응답")
 
-        HStack(spacing: 12) {
-          // 수락 버튼
-          ResponseButton(
-            title: "참여",
-            icon: "checkmark.circle.fill",
-            color: .green,
-            isSelected: store.myVoteStatus == .accepted,
-            isLoading: store.respondingState == .accepting
-          ) {
-            store.send(.view(.acceptTapped))
-          }
-
-          // 거절 버튼
-          ResponseButton(
-            title: "불참",
-            icon: "xmark.circle.fill",
-            color: .red,
-            isSelected: store.myVoteStatus == .declined,
-            isLoading: store.respondingState == .rejecting
-          ) {
-            store.send(.view(.rejectTapped))
-          }
-        }
-
-        // 되돌리기 버튼
-        if store.myVoteStatus != .pending {
-          Button {
-            store.send(.view(.resetTapped))
-          } label: {
-            HStack(spacing: 6) {
-              if store.respondingState == .resetting {
-                ProgressView()
-                  .progressViewStyle(CircularProgressViewStyle(tint: .secondary))
-                  .scaleEffect(0.8)
-              }
-              Text("미정으로 되돌리기")
-                .font(.system(size: 14, weight: .medium))
+        VStack(spacing: 12) {
+          HStack(spacing: 12) {
+            // 수락 버튼
+            ResponseButton(
+              title: "참여",
+              icon: "checkmark.circle.fill",
+              color: .green,
+              isSelected: store.myVoteStatus == .accepted,
+              isLoading: store.respondingState == .accepting
+            ) {
+              store.send(.view(.acceptTapped))
             }
-            .foregroundStyle(.secondary)
+
+            // 거절 버튼
+            ResponseButton(
+              title: "불참",
+              icon: "xmark.circle.fill",
+              color: .red,
+              isSelected: store.myVoteStatus == .declined,
+              isLoading: store.respondingState == .rejecting
+            ) {
+              store.send(.view(.rejectTapped))
+            }
           }
-          .disabled(store.respondingState != .idle)
-          .padding(.top, 4)
+
+          // 되돌리기 버튼
+          if store.myVoteStatus != .pending {
+            Button {
+              store.send(.view(.resetTapped))
+            } label: {
+              HStack(spacing: 6) {
+                if store.respondingState == .resetting {
+                  ProgressView()
+                    .progressViewStyle(CircularProgressViewStyle(tint: .secondary))
+                    .scaleEffect(0.8)
+                }
+                Text("미정으로 되돌리기")
+                  .font(.system(size: 14, weight: .medium))
+              }
+              .foregroundStyle(.secondary)
+            }
+            .disabled(store.respondingState != .idle)
+          }
         }
+        .padding(16)
+        .adaptiveGlassCard()
       }
     }
 
@@ -289,12 +294,12 @@ extension PromiseDetail {
     private var liveActivitySection: some View {
       // 조건: 확정됨 + 30분 이내 + 내가 참여 중
       if store.promise.isConfirmed && store.promise.isRealtimeShareable && store.isParticipating {
-        VStack(spacing: 12) {
+        VStack(spacing: 0) {
           SectionHeader(title: "실시간 공유")
 
-          if store.isLiveActivityActive {
-            // 활성화 상태: 도착 버튼 + 종료 버튼
-            VStack(spacing: 12) {
+          VStack(spacing: 12) {
+            if store.isLiveActivityActive {
+              // 활성화 상태: 도착 버튼 + 종료 버튼
               Button {
                 store.send(.view(.markArrivedTapped))
               } label: {
@@ -326,37 +331,39 @@ extension PromiseDetail {
                 .foregroundStyle(.red)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
               }
-            }
-          } else {
-            // 비활성화 상태: 시작 버튼
-            Button {
-              store.send(.view(.liveActivityStartTapped))
-            } label: {
-              HStack(spacing: 8) {
-                if store.isStartingLiveActivity {
-                  ProgressView()
-                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                    .scaleEffect(0.8)
-                } else {
-                  Image(systemName: "dot.radiowaves.left.and.right")
-                    .font(.system(size: 18))
+            } else {
+              // 비활성화 상태: 시작 버튼
+              Button {
+                store.send(.view(.liveActivityStartTapped))
+              } label: {
+                HStack(spacing: 8) {
+                  if store.isStartingLiveActivity {
+                    ProgressView()
+                      .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                      .scaleEffect(0.8)
+                  } else {
+                    Image(systemName: "dot.radiowaves.left.and.right")
+                      .font(.system(size: 18))
+                  }
+                  Text("실시간 공유 시작")
+                    .font(.system(size: 16, weight: .semibold))
                 }
-                Text("실시간 공유 시작")
-                  .font(.system(size: 16, weight: .semibold))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(Color.pmindigo.n500)
+                .foregroundStyle(.white)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
               }
-              .frame(maxWidth: .infinity)
-              .padding(.vertical, 14)
-              .background(Color.pmindigo.n500)
-              .foregroundStyle(.white)
-              .clipShape(RoundedRectangle(cornerRadius: 12))
-            }
-            .disabled(store.isStartingLiveActivity)
+              .disabled(store.isStartingLiveActivity)
 
-            Text("Dynamic Island에서 도착 현황을 확인할 수 있어요")
-              .font(.system(size: 13))
-              .foregroundStyle(.secondary)
-              .multilineTextAlignment(.center)
+              Text("Dynamic Island에서 도착 현황을 확인할 수 있어요")
+                .font(.system(size: 13))
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+            }
           }
+          .padding(16)
+          .adaptiveGlassCard()
         }
       }
     }
@@ -584,7 +591,7 @@ private struct ParticipantGroupRow: View {
       }
       .padding(.horizontal, 16)
       .padding(.vertical, 12)
-      .glassCard()
+      .adaptiveGlassCard()
     }
     .buttonStyle(.plain)
   }
@@ -755,16 +762,3 @@ private struct StatusBadgeView: View {
   }
 }
 
-// MARK: - Glass Card Modifier
-
-private extension View {
-  func glassCard() -> some View {
-    self
-      .background(Color(.systemBackground).opacity(0.8))
-      .clipShape(RoundedRectangle(cornerRadius: 12))
-      .overlay(
-        RoundedRectangle(cornerRadius: 12)
-          .stroke(Color(.systemGray5), lineWidth: 1)
-      )
-  }
-}
