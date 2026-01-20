@@ -3052,11 +3052,12 @@ export const executeLiveActivityStart = onTaskDispatched<
 );
 
 /**
- * 약속 확정 시 LiveActivity 예약
+ * 약속 확정 또는 실시간 공유 설정 변경 시 LiveActivity 예약
  *
  * @remarks
- * 약속이 확정되면 (accepted >= minimumParticipants)
- * trackingStartMinutesBefore 설정에 따라 Cloud Task를 예약합니다.
+ * 다음 경우에 Cloud Task를 예약합니다:
+ * 1. 약속이 확정됨 (accepted >= minimumParticipants) + trackingMinutes 설정됨
+ * 2. 이미 확정된 약속에서 trackingStartMinutesBefore가 변경됨
  */
 export const onPromiseConfirmedScheduleLiveActivity = onDocumentUpdated(
   {
@@ -3074,41 +3075,66 @@ export const onPromiseConfirmedScheduleLiveActivity = onDocumentUpdated(
     const minParticipants = after.minimumParticipants as number || 2;
     const beforeAccepted = before.votes?.accepted as string[] || [];
     const afterAccepted = after.votes?.accepted as string[] || [];
-    const trackingMinutes = after.trackingStartMinutesBefore as number | null;
+    const beforeTrackingMinutes =
+      before.trackingStartMinutesBefore as number | null;
+    const afterTrackingMinutes =
+      after.trackingStartMinutesBefore as number | null;
     const startAt = after.startAt as admin.firestore.Timestamp;
 
-    // 확정 조건: 이전에 미확정 → 이후 확정
+    // 확정 상태 확인
     const wasConfirmed = beforeAccepted.length >= minParticipants;
     const isNowConfirmed = afterAccepted.length >= minParticipants;
 
-    if (wasConfirmed || !isNowConfirmed) {
-      // 이미 확정되어 있었거나 아직 확정되지 않음
+    // trackingMinutes 변경 확인
+    const trackingMinutesChanged =
+      beforeTrackingMinutes !== afterTrackingMinutes;
+
+    // 스케줄링이 필요한 조건:
+    // 1. 새로 확정됨 (미확정 → 확정) + trackingMinutes 설정됨
+    // 2. 이미 확정 + trackingMinutes가 null → 값으로 변경됨
+    // 3. 이미 확정 + trackingMinutes 값이 변경됨
+    const justConfirmed = !wasConfirmed && isNowConfirmed;
+    const trackingEnabledOnConfirmed =
+      isNowConfirmed && trackingMinutesChanged && afterTrackingMinutes !== null;
+
+    const shouldSchedule = justConfirmed || trackingEnabledOnConfirmed;
+
+    if (!shouldSchedule) {
       return;
     }
 
     // trackingStartMinutesBefore가 설정되지 않으면 예약 안함
-    if (!trackingMinutes) {
-      console.log(`No tracking schedule for: ${promiseId}`);
-      return;
-    }
-
-    // 이미 예약되었는지 확인
-    if (after.liveActivityScheduled) {
-      console.log(`Already scheduled: ${promiseId}`);
+    if (!afterTrackingMinutes) {
+      console.log(`📭 No tracking schedule for: ${promiseId}`);
       return;
     }
 
     // 예약 시간 계산
     const startTime = startAt.toDate();
     const scheduleTime = new Date(
-      startTime.getTime() - trackingMinutes * 60 * 1000
+      startTime.getTime() - afterTrackingMinutes * 60 * 1000
     );
-
-    // 이미 지난 시간이면 즉시 실행
     const now = new Date();
-    if (scheduleTime <= now) {
-      console.log(`Schedule time passed, executing now: ${promiseId}`);
-      // 즉시 실행을 위해 바로 태스크 큐에 넣음 (지연 없이)
+
+    // 약속 시작 시간이 이미 지났으면 스킵
+    if (startTime <= now) {
+      console.log(`⏰ Promise already started, skipping: ${promiseId}`);
+      return;
+    }
+
+    // 이미 예약되었고 trackingMinutes가 변경되지 않았으면 스킵
+    const wasAlreadyScheduled = after.liveActivityScheduled === true;
+    if (wasAlreadyScheduled && !trackingMinutesChanged) {
+      console.log(`📅 Already scheduled (no change): ${promiseId}`);
+      return;
+    }
+
+    // 재스케줄링인 경우 로그
+    if (wasAlreadyScheduled && trackingMinutesChanged) {
+      console.log(
+        `🔄 Rescheduling LiveActivity: ${promiseId} ` +
+        `(${beforeTrackingMinutes}분 → ${afterTrackingMinutes}분)`
+      );
     }
 
     // Cloud Task 예약
@@ -3116,14 +3142,14 @@ export const onPromiseConfirmedScheduleLiveActivity = onDocumentUpdated(
       "executeLiveActivityStart"
     );
 
+    const delaySeconds = Math.max(
+      0,
+      Math.floor((scheduleTime.getTime() - now.getTime()) / 1000)
+    );
+
     await queue.enqueue(
       {promiseId, env},
-      {
-        scheduleDelaySeconds: Math.max(
-          0,
-          Math.floor((scheduleTime.getTime() - now.getTime()) / 1000)
-        ),
-      }
+      {scheduleDelaySeconds: delaySeconds}
     );
 
     // 예약 완료 표시
@@ -3134,8 +3160,10 @@ export const onPromiseConfirmedScheduleLiveActivity = onDocumentUpdated(
       liveActivityScheduledAt: scheduleTime,
     });
 
+    const isImmediate = delaySeconds === 0;
     console.log(
-      `📅 LiveActivity scheduled: ${promiseId} at ${scheduleTime.toISOString()}`
+      `📅 LiveActivity scheduled: ${promiseId} at ` +
+      `${scheduleTime.toISOString()}${isImmediate ? " (즉시 실행)" : ""}`
     );
   }
 );
