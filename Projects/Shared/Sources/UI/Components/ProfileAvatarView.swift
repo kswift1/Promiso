@@ -55,6 +55,7 @@ public struct ProfileAvatarView: View {
         .stroke(Color.white, lineWidth: borderWidth)
     )
     .contentShape(Circle())
+    .allowsHitTesting(onTap != nil)
     .onTapGesture {
       onTap?()
     }

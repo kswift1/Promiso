@@ -597,6 +597,8 @@ private struct MemberListSheet: View {
   let members: [UserPublicModel]
   let colorType: PromiseDetail.Feature.ParticipantColorType
 
+  @State private var selectedMember: UserPublicModel?
+
   private var color: Color {
     switch colorType {
     case .accepted: return .green
@@ -610,7 +612,9 @@ private struct MemberListSheet: View {
       ScrollView {
         LazyVStack(spacing: 0) {
           ForEach(members) { member in
-            MemberRow(member: member, color: color)
+            MemberRow(member: member, color: color) {
+              selectedMember = member
+            }
 
             if member.id != members.last?.id {
               Divider()
@@ -625,12 +629,20 @@ private struct MemberListSheet: View {
     }
     .presentationDetents([.medium, .large])
     .presentationDragIndicator(.visible)
+    .fullScreenCover(item: $selectedMember) { member in
+      ImageDetailView(
+        imageUrl: member.profileImageUrl,
+        displayName: member.displayName,
+        onDismiss: { selectedMember = nil }
+      )
+    }
   }
 }
 
 private struct MemberRow: View {
   let member: UserPublicModel
   let color: Color
+  let onProfileTap: () -> Void
 
   var body: some View {
     HStack(spacing: 16) {
@@ -638,7 +650,8 @@ private struct MemberRow: View {
         profileImageUrl: member.profileImageUrl,
         displayName: member.displayName,
         size: 48,
-        borderWidth: 0
+        borderWidth: 0,
+        onTap: onProfileTap
       )
 
       VStack(alignment: .leading, spacing: 4) {
@@ -663,6 +676,7 @@ private struct MemberRow: View {
     .padding(.vertical, 12)
   }
 }
+
 
 private struct ResponseButton: View {
   let title: String
