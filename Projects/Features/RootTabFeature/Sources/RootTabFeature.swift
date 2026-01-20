@@ -40,6 +40,7 @@ extension RootTab {
     @Dependency(\.hapticFeedback) var hapticFeedback
     @Dependency(\.liveActivityClient) var liveActivityClient
     @Dependency(\.authClient) var authClient
+    @Dependency(\.notificationClient) var notificationClient
 
     public init() {}
 
@@ -226,10 +227,15 @@ extension RootTab {
 
           case .pushToStartTokenReceived(let token):
             // Push to Start 토큰을 백엔드에 등록
-            // TODO: promiseClient.registerPushToStartToken(userId, token) 구현 필요
             let userId = state.currentUser.id
             AppLogger.liveActivity.info("Push to Start 토큰 수신: \(token.prefix(20))... (userId: \(userId))")
-            return .none
+            return .run { _ in
+              do {
+                try await notificationClient.saveLiveActivityPushToStartToken(token)
+              } catch {
+                AppLogger.liveActivity.error("Push to Start 토큰 백엔드 등록 실패: \(error.localizedDescription)")
+              }
+            }
           }
 
         case .delegate:
