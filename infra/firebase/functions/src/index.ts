@@ -1434,6 +1434,7 @@ export const createPromise = onCall<CreatePromiseRequest>(
       startAt: startAtTimestamp,
       endAt: endAtDate ? admin.firestore.Timestamp.fromDate(endAtDate) : null,
       location: data.place ? {name: data.place} : null,
+      trackingStartMinutesBefore: data.arrivalSharingTime || null,
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
       isDeleted: false,

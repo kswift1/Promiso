@@ -55,6 +55,11 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
       callableData["place"] = location.name
     }
 
+    // LiveActivity 예약 시작 시간 추가
+    if let trackingMinutes = promise.trackingStartMinutesBefore {
+      callableData["arrivalSharingTime"] = trackingMinutes
+    }
+
     // env 파라미터 추가
     if let env = functionsEnvironmentParam() {
       callableData["env"] = env
