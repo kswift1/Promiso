@@ -6,6 +6,7 @@ import PromisoShared
 struct PromisePreviewSection: View {
   let store: StoreOf<CreatePromise.Feature>
   @State private var showPreviewFullScreen = false
+  @State private var isPressed = false
 
   var body: some View {
     SectionPlaceHolder(
@@ -61,6 +62,14 @@ struct PromisePreviewSection: View {
         .shadow(color: .black.opacity(0.05), radius: 8, y: 4)
       }
       .buttonStyle(PlainButtonStyle())
+      .scaleEffect(isPressed ? 0.97 : 1.0)
+      .animation(.spring(response: 0.2, dampingFraction: 0.6), value: isPressed)
+      .sensoryFeedback(.impact(flexibility: .soft), trigger: showPreviewFullScreen)
+      .simultaneousGesture(
+        DragGesture(minimumDistance: 0)
+          .onChanged { _ in isPressed = true }
+          .onEnded { _ in isPressed = false }
+      )
     }
     .fullScreenCover(isPresented: $showPreviewFullScreen) {
       PromisePreviewFullScreen(store: store, isPresented: $showPreviewFullScreen)
@@ -105,6 +114,7 @@ private struct EmojiPreviewRow: View {
 struct PromisePreviewFullScreen: View {
   let store: StoreOf<CreatePromise.Feature>
   @Binding var isPresented: Bool
+  @State private var isClosePressed = false
 
   var body: some View {
     NavigationView {
@@ -133,6 +143,14 @@ struct PromisePreviewFullScreen: View {
           Button("닫기") {
             isPresented = false
           }
+          .scaleEffect(isClosePressed ? 0.9 : 1.0)
+          .animation(.spring(response: 0.2, dampingFraction: 0.6), value: isClosePressed)
+          .sensoryFeedback(.impact(flexibility: .soft), trigger: isClosePressed)
+          .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+              .onChanged { _ in isClosePressed = true }
+              .onEnded { _ in isClosePressed = false }
+          )
         }
       }
     }

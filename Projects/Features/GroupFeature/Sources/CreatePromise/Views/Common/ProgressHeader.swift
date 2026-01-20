@@ -1,3 +1,4 @@
+import ResourceKit
 import SwiftUI
 
 // MARK: - Progress Header Component
@@ -7,12 +8,16 @@ struct ProgressHeader: View {
     let title: String
     var onDismiss: () -> Void
 
+    @State private var isDismissPressed = false
+
     var body: some View {
         VStack(spacing: 0) {
             // 상단 헤더 영역
             HStack {
                 // 닫기 버튼
-                Button(action: onDismiss) {
+                Button {
+                    onDismiss()
+                } label: {
                     ZStack {
                         Circle()
                             .fill(Color(.systemGray6))
@@ -23,6 +28,14 @@ struct ProgressHeader: View {
                             .foregroundColor(.primary)
                     }
                 }
+                .scaleEffect(isDismissPressed ? 0.9 : 1.0)
+                .animation(.spring(response: 0.2, dampingFraction: 0.6), value: isDismissPressed)
+                .sensoryFeedback(.impact(flexibility: .soft), trigger: isDismissPressed)
+                .simultaneousGesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { _ in isDismissPressed = true }
+                        .onEnded { _ in isDismissPressed = false }
+                )
 
                 Spacer()
 
@@ -74,15 +87,9 @@ struct ProgressSegment: View {
                 Rectangle()
                     .fill(Color(.systemGray5))
 
-                // 활성화된 프로그레스 (Gradient)
+                // 활성화된 프로그레스
                 Rectangle()
-                    .fill(
-                        LinearGradient(
-                            colors: [.blue, .purple],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
+                    .fill(Color.pmpurple.n500)
                     .frame(width: (isActive && hasAppeared) ? geometry.size.width : 0)
             }
         }

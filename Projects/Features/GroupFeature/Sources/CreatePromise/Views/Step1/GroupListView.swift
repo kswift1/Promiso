@@ -1,3 +1,7 @@
+import Clients
+import PromisoShared
+import SwiftUI
+
 /// 그룹 리스트 뷰
 struct GroupListView: View {
   let groupListState: LoadingState<[GroupModel]>
@@ -95,38 +99,12 @@ struct GroupListView: View {
         .foregroundColor(.secondary)
         .multilineTextAlignment(.center)
 
-      Button {
-        onCreateGroup()
-      } label: {
-        HStack(spacing: 8) {
-          Image(systemName: "plus.circle.fill")
-            .font(.system(size: 18))
-          Text("새 그룹 만들기")
-            .font(.headline)
-        }
-        .foregroundStyle(.white)
-        .frame(maxWidth: .infinity)
-        .frame(height: 50)
-        .background(
-          LinearGradient(
-            colors: [.blue, .purple],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-          )
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 14))
-        .shadow(
-          color: .blue.opacity(0.3),
-          radius: 10,
-          x: 0,
-          y: 5
-        )
-      }
+      CreateGroupButton(action: onCreateGroup)
     }
     .padding(.vertical, 32)
     .frame(maxWidth: .infinity)
   }
-  
+
   // MARK: - Error View
   
   private func errorView(error: Error) -> some View {
@@ -162,36 +140,96 @@ struct GroupListView: View {
         .foregroundColor(.secondary)
         .multilineTextAlignment(.center)
 
-      Button {
-        onRetry()
-      } label: {
-        HStack(spacing: 8) {
-          Image(systemName: "arrow.clockwise")
-            .font(.system(size: 18))
-          Text("다시 시도")
-            .font(.headline)
-        }
-        .foregroundStyle(.white)
-        .frame(maxWidth: .infinity)
-        .frame(height: 50)
-        .background(
-          LinearGradient(
-            colors: [.blue, .purple],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-          )
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 14))
-        .shadow(
-          color: .blue.opacity(0.3),
-          radius: 10,
-          x: 0,
-          y: 5
-        )
-      }
+      RetryButton(action: onRetry)
     }
     .padding(.vertical, 32)
     .frame(maxWidth: .infinity)
+  }
+}
+
+// MARK: - Interactive Buttons
+
+private struct CreateGroupButton: View {
+  let action: () -> Void
+  @State private var isPressed = false
+
+  var body: some View {
+    Button {
+      action()
+    } label: {
+      HStack(spacing: 8) {
+        Image(systemName: "plus.circle.fill")
+          .font(.system(size: 18))
+        Text("새 그룹 만들기")
+          .font(.headline)
+      }
+      .foregroundStyle(.white)
+      .frame(maxWidth: .infinity)
+      .frame(height: 50)
+      .background(
+        LinearGradient(
+          colors: [.blue, .purple],
+          startPoint: .topLeading,
+          endPoint: .bottomTrailing
+        )
+      )
+      .clipShape(RoundedRectangle(cornerRadius: 14))
+      .shadow(
+        color: .blue.opacity(0.3),
+        radius: 10,
+        x: 0,
+        y: 5
+      )
+    }
+    .buttonStyle(ScaleButtonStyle())
+    .sensoryFeedback(.impact(flexibility: .soft), trigger: isPressed)
+    .simultaneousGesture(
+      DragGesture(minimumDistance: 0)
+        .onChanged { _ in isPressed = true }
+        .onEnded { _ in isPressed = false }
+    )
+  }
+}
+
+private struct RetryButton: View {
+  let action: () -> Void
+  @State private var isPressed = false
+
+  var body: some View {
+    Button {
+      action()
+    } label: {
+      HStack(spacing: 8) {
+        Image(systemName: "arrow.clockwise")
+          .font(.system(size: 18))
+        Text("다시 시도")
+          .font(.headline)
+      }
+      .foregroundStyle(.white)
+      .frame(maxWidth: .infinity)
+      .frame(height: 50)
+      .background(
+        LinearGradient(
+          colors: [.blue, .purple],
+          startPoint: .topLeading,
+          endPoint: .bottomTrailing
+        )
+      )
+      .clipShape(RoundedRectangle(cornerRadius: 14))
+      .shadow(
+        color: .blue.opacity(0.3),
+        radius: 10,
+        x: 0,
+        y: 5
+      )
+    }
+    .buttonStyle(ScaleButtonStyle())
+    .sensoryFeedback(.impact(flexibility: .soft), trigger: isPressed)
+    .simultaneousGesture(
+      DragGesture(minimumDistance: 0)
+        .onChanged { _ in isPressed = true }
+        .onEnded { _ in isPressed = false }
+    )
   }
 }
 
@@ -202,6 +240,7 @@ struct GroupCard: View {
   let activePromiseCount: Int?
   let maxActivePromises: Int
   let action: () -> Void
+  @State private var isPressed = false
 
   init(
     model: GroupModel,
@@ -317,6 +356,14 @@ struct GroupCard: View {
       )
     }
     .buttonStyle(PlainButtonStyle())
+    .scaleEffect(isPressed ? 0.97 : 1.0)
+    .animation(.spring(response: 0.2, dampingFraction: 0.6), value: isPressed)
+    .sensoryFeedback(.selection, trigger: isSelected)
+    .simultaneousGesture(
+      DragGesture(minimumDistance: 0)
+        .onChanged { _ in if !isDisabled { isPressed = true } }
+        .onEnded { _ in isPressed = false }
+    )
     .disabled(isDisabled)
   }
 }
@@ -352,6 +399,16 @@ private struct GroupSkeletonCard: View {
       RoundedRectangle(cornerRadius: 12)
         .stroke(Color(.systemGray5), lineWidth: 1)
     )
+  }
+}
+
+// MARK: - Scale Button Style
+
+private struct ScaleButtonStyle: ButtonStyle {
+  func makeBody(configuration: Configuration) -> some View {
+    configuration.label
+      .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
+      .animation(.spring(response: 0.2, dampingFraction: 0.6), value: configuration.isPressed)
   }
 }
 

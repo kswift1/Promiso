@@ -5,6 +5,8 @@ import ComposableArchitecture
 struct MinimumParticipantsSection: View {
   let store: StoreOf<CreatePromise.Feature>
   var scrollProxy: ScrollViewProxy? = nil
+  @State private var isMinusPressed = false
+  @State private var isPlusPressed = false
 
   // 현재 최소 참가 인원
   private var currentMinimum: Int {
@@ -86,41 +88,57 @@ struct MinimumParticipantsSection: View {
             .view(.decrementParticipants),
             animation: .spring(response: 0.3, dampingFraction: 0.7)
           )
-        scrollToMinimumParticipants()
-      }) {
-        Image(systemName: "minus.circle.fill")
-          .font(.system(size: 32))
-          .foregroundColor(currentMinimum <= 2 ? Color(.systemGray4) : .blue)
-      }
-      .buttonRepeatBehavior(.enabled)
-      .disabled(currentMinimum <= 2)
-      
+          scrollToMinimumParticipants()
+        }) {
+          Image(systemName: "minus.circle.fill")
+            .font(.system(size: 32))
+            .foregroundColor(currentMinimum <= 2 ? Color(.systemGray4) : .blue)
+            .scaleEffect(isMinusPressed ? 0.85 : 1.0)
+        }
+        .buttonRepeatBehavior(.enabled)
+        .animation(.spring(response: 0.15, dampingFraction: 0.5), value: isMinusPressed)
+        .sensoryFeedback(.impact(flexibility: .soft), trigger: currentMinimum)
+        .simultaneousGesture(
+          DragGesture(minimumDistance: 0)
+            .onChanged { _ in if currentMinimum > 2 { isMinusPressed = true } }
+            .onEnded { _ in isMinusPressed = false }
+        )
+        .disabled(currentMinimum <= 2)
+
       VStack(spacing: 4) {
         Text("\(currentMinimum)명")
           .font(.system(size: 36, weight: .bold))
           .foregroundColor(.primary)
           .contentTransition(.numericText())
-        
+
         Text("최대 \(maxParticipants)명")
           .font(.system(size: 13))
           .foregroundColor(.secondary)
       }
       .frame(maxWidth: .infinity)
-      
+
       Button(
         action: {
           store.send(
             .view(.incrementParticipants),
             animation: .spring(response: 0.3, dampingFraction: 0.7)
           )
-        scrollToMinimumParticipants()
-      }) {
-        Image(systemName: "plus.circle.fill")
-          .font(.system(size: 32))
-          .foregroundColor(currentMinimum >= maxParticipants ? Color(.systemGray4) : .blue)
-      }
-      .buttonRepeatBehavior(.enabled)
-      .disabled(currentMinimum >= maxParticipants)
+          scrollToMinimumParticipants()
+        }) {
+          Image(systemName: "plus.circle.fill")
+            .font(.system(size: 32))
+            .foregroundColor(currentMinimum >= maxParticipants ? Color(.systemGray4) : .blue)
+            .scaleEffect(isPlusPressed ? 0.85 : 1.0)
+        }
+        .buttonRepeatBehavior(.enabled)
+        .animation(.spring(response: 0.15, dampingFraction: 0.5), value: isPlusPressed)
+        .sensoryFeedback(.impact(flexibility: .soft), trigger: currentMinimum)
+        .simultaneousGesture(
+          DragGesture(minimumDistance: 0)
+            .onChanged { _ in if currentMinimum < maxParticipants { isPlusPressed = true } }
+            .onEnded { _ in isPlusPressed = false }
+        )
+        .disabled(currentMinimum >= maxParticipants)
     }
     .padding(.vertical, 8)
   }
