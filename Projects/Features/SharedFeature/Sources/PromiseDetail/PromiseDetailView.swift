@@ -66,27 +66,28 @@ extension PromiseDetail {
     // MARK: - Header Section
 
     private var headerSection: some View {
-      VStack(spacing: 16) {
+      HStack(alignment: .top, spacing: 12) {
         // 이모지
         Text(store.promise.displayEmoji)
-          .font(.system(size: 64))
+          .font(.system(size: 44))
 
-        // 제목
-        Text(store.promise.title)
-          .font(.system(size: 24, weight: .bold))
-          .multilineTextAlignment(.center)
+        // 제목 + 설명
+        VStack(alignment: .leading, spacing: 6) {
+          Text(store.promise.title)
+            .font(.system(size: 20, weight: .bold))
+            .foregroundStyle(.primary)
 
-        // 설명
-        if let description = store.promise.description, !description.isEmpty {
-          ExpandableText(text: description, isExpanded: $isDescriptionExpanded)
+          if let description = store.promise.description, !description.isEmpty {
+            ExpandableText(text: description, isExpanded: $isDescriptionExpanded)
+          }
         }
 
-        // 상태 배지
+        Spacer()
+
+        // 상태 배지 (우측 상단)
         StatusBadgeView(status: store.responseStatus)
       }
-      .frame(maxWidth: .infinity)
-      .padding(.vertical, 24)
-      .padding(.horizontal, 20)
+      .padding(16)
       .adaptiveGlassCard()
     }
 
@@ -239,50 +240,13 @@ extension PromiseDetail {
       VStack(spacing: 0) {
         SectionHeader(title: "내 응답")
 
-        VStack(spacing: 12) {
-          HStack(spacing: 12) {
-            // 수락 버튼
-            ResponseButton(
-              title: "참여",
-              icon: "checkmark.circle.fill",
-              color: .green,
-              isSelected: store.myVoteStatus == .accepted,
-              isLoading: store.respondingState == .accepting
-            ) {
-              store.send(.view(.acceptTapped))
-            }
-
-            // 거절 버튼
-            ResponseButton(
-              title: "불참",
-              icon: "xmark.circle.fill",
-              color: .red,
-              isSelected: store.myVoteStatus == .declined,
-              isLoading: store.respondingState == .rejecting
-            ) {
-              store.send(.view(.rejectTapped))
-            }
-          }
-
-          // 되돌리기 버튼
-          if store.myVoteStatus != .pending {
-            Button {
-              store.send(.view(.resetTapped))
-            } label: {
-              HStack(spacing: 6) {
-                if store.respondingState == .resetting {
-                  ProgressView()
-                    .progressViewStyle(CircularProgressViewStyle(tint: .secondary))
-                    .scaleEffect(0.8)
-                }
-                Text("미정으로 되돌리기")
-                  .font(.system(size: 14, weight: .medium))
-              }
-              .foregroundStyle(.secondary)
-            }
-            .disabled(store.respondingState != .idle)
-          }
-        }
+        ResponseToggleGroup(
+          currentStatus: store.myVoteStatus,
+          respondingState: store.respondingState,
+          onAccept: { store.send(.view(.acceptTapped)) },
+          onPending: { store.send(.view(.resetTapped)) },
+          onDecline: { store.send(.view(.rejectTapped)) }
+        )
         .padding(16)
         .adaptiveGlassCard()
       }
@@ -445,11 +409,11 @@ private struct ExpandableText: View {
   private let lineLimit = 3
 
   var body: some View {
-    VStack(spacing: 4) {
+    VStack(alignment: .leading, spacing: 4) {
       Text(text)
-        .font(.system(size: 15))
+        .font(.system(size: 14))
         .foregroundStyle(.secondary)
-        .multilineTextAlignment(.center)
+        .multilineTextAlignment(.leading)
         .lineLimit(isExpanded ? nil : lineLimit)
         .background(
           GeometryReader { geometry in
@@ -589,6 +553,7 @@ private struct ParticipantGroupRow: View {
           .font(.system(size: 12, weight: .semibold))
           .foregroundStyle(.tertiary)
       }
+      .contentShape(Rectangle())
       .padding(.horizontal, 16)
       .padding(.vertical, 12)
       .adaptiveGlassCard()
@@ -685,36 +650,122 @@ private struct MemberRow: View {
 }
 
 
-private struct ResponseButton: View {
+// MARK: - Response Toggle Group
+
+private struct ResponseToggleGroup: View {
+  let currentStatus: VoteStatus
+  let respondingState: PromiseDetail.Feature.RespondingState
+  let onAccept: () -> Void
+  let onPending: () -> Void
+  let onDecline: () -> Void
+
+  private let feedbackGenerator = UIImpactFeedbackGenerator(style: .medium)
+
+  private var isLoading: Bool {
+    respondingState != .idle
+  }
+
+  var body: some View {
+    HStack(spacing: 8) {
+      // 참여 버튼
+      ResponseToggleButton(
+        title: "참여",
+        icon: "checkmark",
+        status: .accepted,
+        currentStatus: currentStatus,
+        isLoading: respondingState == .accepting
+      ) {
+        triggerHaptic()
+        onAccept()
+      }
+
+      // 미정 버튼
+      ResponseToggleButton(
+        title: "미정",
+        icon: "minus",
+        status: .pending,
+        currentStatus: currentStatus,
+        isLoading: respondingState == .resetting
+      ) {
+        triggerHaptic()
+        onPending()
+      }
+
+      // 불참 버튼
+      ResponseToggleButton(
+        title: "불참",
+        icon: "xmark",
+        status: .declined,
+        currentStatus: currentStatus,
+        isLoading: respondingState == .rejecting
+      ) {
+        triggerHaptic()
+        onDecline()
+      }
+    }
+  }
+
+  private func triggerHaptic() {
+    feedbackGenerator.impactOccurred()
+  }
+}
+
+private struct ResponseToggleButton: View {
   let title: String
   let icon: String
-  let color: Color
-  let isSelected: Bool
+  let status: VoteStatus
+  let currentStatus: VoteStatus
   let isLoading: Bool
   let action: () -> Void
 
+  private var isSelected: Bool {
+    currentStatus == status
+  }
+
+  private var buttonColor: Color {
+    switch status {
+    case .accepted: return .green
+    case .pending: return Color(.systemGray)
+    case .declined: return .red
+    }
+  }
+
   var body: some View {
     Button(action: action) {
-      HStack(spacing: 8) {
-        if isLoading {
-          ProgressView()
-            .progressViewStyle(CircularProgressViewStyle(tint: isSelected ? .white : color))
-            .scaleEffect(0.8)
-        } else {
-          Image(systemName: icon)
-            .font(.system(size: 18))
+      VStack(spacing: 6) {
+        ZStack {
+          Circle()
+            .fill(isSelected ? buttonColor : buttonColor.opacity(0.1))
+            .frame(width: 48, height: 48)
+
+          if isLoading {
+            ProgressView()
+              .progressViewStyle(CircularProgressViewStyle(tint: isSelected ? .white : buttonColor))
+              .scaleEffect(0.8)
+          } else {
+            Image(systemName: icon)
+              .font(.system(size: 18, weight: .semibold))
+              .foregroundStyle(isSelected ? .white : buttonColor)
+          }
         }
 
         Text(title)
-          .font(.system(size: 16, weight: .semibold))
+          .font(.system(size: 13, weight: isSelected ? .semibold : .medium))
+          .foregroundStyle(isSelected ? buttonColor : .secondary)
       }
       .frame(maxWidth: .infinity)
-      .padding(.vertical, 14)
-      .background(isSelected ? color : color.opacity(0.1))
-      .foregroundStyle(isSelected ? .white : color)
-      .clipShape(RoundedRectangle(cornerRadius: 12))
+      .padding(.vertical, 8)
+      .background(
+        RoundedRectangle(cornerRadius: 12)
+          .fill(isSelected ? buttonColor.opacity(0.1) : Color.clear)
+      )
+      .overlay(
+        RoundedRectangle(cornerRadius: 12)
+          .stroke(isSelected ? buttonColor.opacity(0.3) : Color.clear, lineWidth: 1.5)
+      )
     }
     .disabled(isLoading || isSelected)
+    .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
   }
 }
 

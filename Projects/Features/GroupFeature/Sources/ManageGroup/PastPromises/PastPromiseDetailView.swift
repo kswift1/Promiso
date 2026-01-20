@@ -340,6 +340,7 @@ private struct ParticipantGroupRow: View {
           .font(.system(size: 12, weight: .semibold))
           .foregroundStyle(.tertiary)
       }
+      .contentShape(Rectangle())
       .padding(.horizontal, 16)
       .padding(.vertical, 12)
       .adaptiveGlassCard(cornerRadius: 12)
