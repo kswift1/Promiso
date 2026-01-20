@@ -19,8 +19,8 @@ extension PromiseDetail {
         VStack(spacing: 24) {
           headerSection
           scheduleSection
-          participantsSection
           responseSection
+          participantsSection
           liveActivitySection
         }
         .padding(.horizontal, 20)
@@ -240,7 +240,7 @@ extension PromiseDetail {
       VStack(spacing: 0) {
         SectionHeader(title: "내 응답")
 
-        ResponseToggleGroup(
+        ResponseBubblePicker(
           currentStatus: store.myVoteStatus,
           respondingState: store.respondingState,
           onAccept: { store.send(.view(.acceptTapped)) },
@@ -650,121 +650,208 @@ private struct MemberRow: View {
 }
 
 
-// MARK: - Response Toggle Group
+// MARK: - Response Bubble Picker
 
-private struct ResponseToggleGroup: View {
+private struct ResponseBubblePicker: View {
   let currentStatus: VoteStatus
   let respondingState: PromiseDetail.Feature.RespondingState
   let onAccept: () -> Void
   let onPending: () -> Void
   let onDecline: () -> Void
 
+  @State private var isExpanded = false
   private let feedbackGenerator = UIImpactFeedbackGenerator(style: .medium)
+  private let selectionFeedback = UIImpactFeedbackGenerator(style: .heavy)
 
   private var isLoading: Bool {
     respondingState != .idle
   }
 
-  var body: some View {
-    HStack(spacing: 8) {
-      // 참여 버튼
-      ResponseToggleButton(
-        title: "참여",
-        icon: "checkmark",
-        status: .accepted,
-        currentStatus: currentStatus,
-        isLoading: respondingState == .accepting
-      ) {
-        triggerHaptic()
-        onAccept()
-      }
-
-      // 미정 버튼
-      ResponseToggleButton(
-        title: "미정",
-        icon: "minus",
-        status: .pending,
-        currentStatus: currentStatus,
-        isLoading: respondingState == .resetting
-      ) {
-        triggerHaptic()
-        onPending()
-      }
-
-      // 불참 버튼
-      ResponseToggleButton(
-        title: "불참",
-        icon: "xmark",
-        status: .declined,
-        currentStatus: currentStatus,
-        isLoading: respondingState == .rejecting
-      ) {
-        triggerHaptic()
-        onDecline()
-      }
-    }
-  }
-
-  private func triggerHaptic() {
-    feedbackGenerator.impactOccurred()
-  }
-}
-
-private struct ResponseToggleButton: View {
-  let title: String
-  let icon: String
-  let status: VoteStatus
-  let currentStatus: VoteStatus
-  let isLoading: Bool
-  let action: () -> Void
-
-  private var isSelected: Bool {
-    currentStatus == status
-  }
-
-  private var buttonColor: Color {
-    switch status {
+  private var statusColor: Color {
+    switch currentStatus {
     case .accepted: return .green
     case .pending: return Color(.systemGray)
     case .declined: return .red
     }
   }
 
+  private var statusIcon: String {
+    switch currentStatus {
+    case .accepted: return "checkmark"
+    case .pending: return "minus"
+    case .declined: return "xmark"
+    }
+  }
+
+  private var statusText: String {
+    switch currentStatus {
+    case .accepted: return "참여"
+    case .pending: return "미정"
+    case .declined: return "불참"
+    }
+  }
+
   var body: some View {
-    Button(action: action) {
-      VStack(spacing: 6) {
+    // 현재 상태 버튼
+    Button {
+      guard !isLoading else { return }
+      feedbackGenerator.impactOccurred()
+      isExpanded = true
+    } label: {
+      HStack(spacing: 10) {
         ZStack {
           Circle()
-            .fill(isSelected ? buttonColor : buttonColor.opacity(0.1))
-            .frame(width: 48, height: 48)
+            .fill(statusColor)
+            .frame(width: 32, height: 32)
 
           if isLoading {
             ProgressView()
-              .progressViewStyle(CircularProgressViewStyle(tint: isSelected ? .white : buttonColor))
-              .scaleEffect(0.8)
+              .progressViewStyle(CircularProgressViewStyle(tint: .white))
+              .scaleEffect(0.7)
           } else {
-            Image(systemName: icon)
-              .font(.system(size: 18, weight: .semibold))
-              .foregroundStyle(isSelected ? .white : buttonColor)
+            Image(systemName: statusIcon)
+              .font(.system(size: 14, weight: .bold))
+              .foregroundStyle(.white)
           }
         }
 
-        Text(title)
-          .font(.system(size: 13, weight: isSelected ? .semibold : .medium))
-          .foregroundStyle(isSelected ? buttonColor : .secondary)
+        Text(statusText)
+          .font(.system(size: 16, weight: .semibold))
+
+        Spacer()
+
+        Text("변경")
+          .font(.system(size: 14, weight: .medium))
+          .foregroundStyle(.secondary)
       }
-      .frame(maxWidth: .infinity)
-      .padding(.vertical, 8)
+      .padding(.horizontal, 16)
+      .padding(.vertical, 12)
       .background(
-        RoundedRectangle(cornerRadius: 12)
-          .fill(isSelected ? buttonColor.opacity(0.1) : Color.clear)
+        RoundedRectangle(cornerRadius: 16)
+          .fill(Color(.secondarySystemBackground))
       )
       .overlay(
-        RoundedRectangle(cornerRadius: 12)
-          .stroke(isSelected ? buttonColor.opacity(0.3) : Color.clear, lineWidth: 1.5)
+        RoundedRectangle(cornerRadius: 16)
+          .stroke(Color(.separator).opacity(0.3), lineWidth: 1)
       )
     }
-    .disabled(isLoading || isSelected)
+    .buttonStyle(.plain)
+    .disabled(isLoading)
+    .popover(isPresented: $isExpanded, arrowEdge: .bottom) {
+      ResponsePopoverContent(
+        currentStatus: currentStatus,
+        respondingState: respondingState,
+        onSelect: { status in
+          selectOption(status)
+        }
+      )
+      .presentationCompactAdaptation(.popover)
+    }
+  }
+
+  private func selectOption(_ status: VoteStatus) {
+    guard currentStatus != status else {
+      isExpanded = false
+      return
+    }
+
+    selectionFeedback.impactOccurred()
+
+    switch status {
+    case .accepted:
+      onAccept()
+    case .pending:
+      onPending()
+    case .declined:
+      onDecline()
+    }
+
+    isExpanded = false
+  }
+}
+
+private struct ResponsePopoverContent: View {
+  let currentStatus: VoteStatus
+  let respondingState: PromiseDetail.Feature.RespondingState
+  let onSelect: (VoteStatus) -> Void
+
+  var body: some View {
+    HStack(spacing: 20) {
+      PopoverBubble(
+        icon: "checkmark",
+        title: "참여",
+        color: .green,
+        isSelected: currentStatus == .accepted,
+        isLoading: respondingState == .accepting
+      ) {
+        onSelect(.accepted)
+      }
+
+      PopoverBubble(
+        icon: "minus",
+        title: "미정",
+        color: Color(.systemGray),
+        isSelected: currentStatus == .pending,
+        isLoading: respondingState == .resetting
+      ) {
+        onSelect(.pending)
+      }
+
+      PopoverBubble(
+        icon: "xmark",
+        title: "불참",
+        color: .red,
+        isSelected: currentStatus == .declined,
+        isLoading: respondingState == .rejecting
+      ) {
+        onSelect(.declined)
+      }
+    }
+    .padding(.horizontal, 24)
+    .padding(.vertical, 16)
+  }
+}
+
+private struct PopoverBubble: View {
+  let icon: String
+  let title: String
+  let color: Color
+  let isSelected: Bool
+  let isLoading: Bool
+  let action: () -> Void
+
+  private let feedbackGenerator = UIImpactFeedbackGenerator(style: .light)
+
+  var body: some View {
+    Button {
+      feedbackGenerator.impactOccurred()
+      action()
+    } label: {
+      VStack(spacing: 8) {
+        ZStack {
+          Circle()
+            .fill(isSelected ? color : color.opacity(0.15))
+            .frame(width: 56, height: 56)
+
+          if isLoading {
+            ProgressView()
+              .progressViewStyle(CircularProgressViewStyle(tint: isSelected ? .white : color))
+              .scaleEffect(0.9)
+          } else {
+            Image(systemName: icon)
+              .font(.system(size: 22, weight: .bold))
+              .foregroundStyle(isSelected ? .white : color)
+          }
+        }
+        .shadow(color: isSelected ? color.opacity(0.3) : .clear, radius: 6, y: 3)
+
+        Text(title)
+          .font(.system(size: 13, weight: isSelected ? .semibold : .medium))
+          .foregroundStyle(isSelected ? color : .secondary)
+      }
+    }
+    .disabled(isLoading)
+    .scaleEffect(isSelected ? 1.05 : 1.0)
     .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
   }
 }
