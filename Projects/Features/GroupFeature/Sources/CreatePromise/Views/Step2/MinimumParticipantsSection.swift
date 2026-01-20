@@ -1,6 +1,7 @@
 import SwiftUI
 import Clients
 import ComposableArchitecture
+import ResourceKit
 
 struct MinimumParticipantsSection: View {
   let store: StoreOf<CreatePromise.Feature>
@@ -92,7 +93,7 @@ struct MinimumParticipantsSection: View {
         }) {
           Image(systemName: "minus.circle.fill")
             .font(.system(size: 32))
-            .foregroundColor(currentMinimum <= 2 ? Color(.systemGray4) : .blue)
+            .foregroundColor(currentMinimum <= 2 ? Color(.systemGray4) : Color.pmindigo.n500)
             .scaleEffect(isMinusPressed ? 0.85 : 1.0)
         }
         .buttonRepeatBehavior(.enabled)
@@ -127,7 +128,7 @@ struct MinimumParticipantsSection: View {
         }) {
           Image(systemName: "plus.circle.fill")
             .font(.system(size: 32))
-            .foregroundColor(currentMinimum >= maxParticipants ? Color(.systemGray4) : .blue)
+            .foregroundColor(currentMinimum >= maxParticipants ? Color(.systemGray4) : Color.pmindigo.n500)
             .scaleEffect(isPlusPressed ? 0.85 : 1.0)
         }
         .buttonRepeatBehavior(.enabled)
@@ -159,18 +160,18 @@ struct MinimumParticipantsSection: View {
     HStack(alignment: .top, spacing: 12) {
       Image(systemName: "checkmark.circle.fill")
         .font(.system(size: 20))
-        .foregroundColor(.blue)
-      
+        .foregroundColor(Color.pmindigo.n500)
+
       Text("최소 \(currentMinimum)명이 참석하면 약속이 자동으로 확정됩니다")
         .font(.system(size: 14))
         .foregroundColor(.primary)
         .fixedSize(horizontal: false, vertical: true)
-      
+
       Spacer(minLength: 0)
     }
     .padding(16)
     .frame(maxWidth: .infinity, alignment: .leading)
-    .background(Color.blue.opacity(0.1))
+    .background(Color.pmindigo.n50)
     .clipShape(RoundedRectangle(cornerRadius: 12))
   }
   
@@ -179,21 +180,18 @@ struct MinimumParticipantsSection: View {
     HStack(alignment: .top, spacing: 8) {
       Image(systemName: "exclamationmark.triangle.fill")
         .font(.system(size: 14))
-        .foregroundColor(.orange)
-      
+        .foregroundColor(Color.pmwarning.n600)
+
       Text("최소 참가 인원이 그룹 멤버 수와 같습니다. 한 명이라도 불참하면 약속이 취소됩니다.")
         .font(.system(size: 13))
-        .foregroundColor(.orange)
+        .foregroundColor(.secondary)
         .fixedSize(horizontal: false, vertical: true)
-      
+
       Spacer(minLength: 0)
     }
     .padding(12)
     .frame(maxWidth: .infinity, alignment: .leading)
-    .background(Color.orange.opacity(0.1))
+    .background(Color.pmwarning.n50)
     .clipShape(RoundedRectangle(cornerRadius: 10))
   }
 }
-
-// MARK: - Previews
-// Preview 코드는 PromiseModel로 마이그레이션 후 다시 추가

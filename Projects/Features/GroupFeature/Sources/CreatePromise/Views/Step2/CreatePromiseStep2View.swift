@@ -1,6 +1,7 @@
 import SwiftUI
 import Clients
 import ComposableArchitecture
+import ResourceKit
 
 // MARK: - Step 2 Content View
 struct CreatePromiseStep2View: View {
@@ -43,7 +44,7 @@ struct LocationSection: View {
     VStack(alignment: .leading, spacing: 12) {
       HStack {
         Image(systemName: "mappin.and.ellipse")
-          .foregroundColor(.blue)
+          .foregroundColor(Color.pmindigo.n500)
         Text("장소")
           .font(.system(size: 16, weight: .semibold))
         Text("(선택)")
@@ -77,7 +78,7 @@ struct LocationSection: View {
           Spacer()
 
           Image(systemName: store.promise.location != nil ? "pencil" : "magnifyingglass")
-            .foregroundColor(.blue)
+            .foregroundColor(Color.pmindigo.n500)
         }
         .padding(16)
         .background(Color(.systemGray6))
@@ -91,7 +92,7 @@ struct LocationSection: View {
         Text("장소를 입력하면 참석자들이 길찾기를 쉽게 할 수 있습니다")
           .font(.system(size: 13))
       }
-      .foregroundColor(.blue)
+      .foregroundColor(Color.pmindigo.n500)
       .padding(.horizontal, 4)
     }
     .sheet(isPresented: $showLocationPicker) {
@@ -183,7 +184,7 @@ struct LocationSection: View {
 //                HStack(spacing: 12) {
 //                  Image(systemName: "mappin.circle.fill")
 //                    .font(.system(size: 24))
-//                    .foregroundColor(.blue)
+//                    .foregroundColor(Color.pmindigo.n500)
 //
 //                  VStack(alignment: .leading, spacing: 4) {
 //                    Text(location.name)

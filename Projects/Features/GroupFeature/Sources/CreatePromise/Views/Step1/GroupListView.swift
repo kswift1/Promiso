@@ -1,5 +1,7 @@
 import Clients
+import Nuke
 import PromisoShared
+import ResourceKit
 import SwiftUI
 
 /// 그룹 리스트 뷰
@@ -72,7 +74,7 @@ struct GroupListView: View {
         Circle()
           .fill(
             LinearGradient(
-              colors: [Color.blue.opacity(0.15), Color.purple.opacity(0.1)],
+              colors: [Color.pmindigo.n100, Color.pmpurple.n100],
               startPoint: .topLeading,
               endPoint: .bottomTrailing
             )
@@ -83,7 +85,7 @@ struct GroupListView: View {
           .font(.system(size: 40))
           .foregroundStyle(
             LinearGradient(
-              colors: [.blue, .purple],
+              colors: [Color.pmindigo.n500, Color.pmpurple.n500],
               startPoint: .topLeading,
               endPoint: .bottomTrailing
             )
@@ -106,14 +108,14 @@ struct GroupListView: View {
   }
 
   // MARK: - Error View
-  
+
   private func errorView(error: Error) -> some View {
     VStack(spacing: 16) {
       ZStack {
         Circle()
           .fill(
             LinearGradient(
-              colors: [Color.orange.opacity(0.15), Color.red.opacity(0.1)],
+              colors: [Color.pmwarning.n100, Color.pmerror.n100],
               startPoint: .topLeading,
               endPoint: .bottomTrailing
             )
@@ -124,7 +126,7 @@ struct GroupListView: View {
           .font(.system(size: 40))
           .foregroundStyle(
             LinearGradient(
-              colors: [.orange, .red],
+              colors: [Color.pmwarning.n500, Color.pmerror.n500],
               startPoint: .topLeading,
               endPoint: .bottomTrailing
             )
@@ -168,14 +170,14 @@ private struct CreateGroupButton: View {
       .frame(height: 50)
       .background(
         LinearGradient(
-          colors: [.blue, .purple],
+          colors: [Color.pmindigo.n500, Color.pmpurple.n500],
           startPoint: .topLeading,
           endPoint: .bottomTrailing
         )
       )
       .clipShape(RoundedRectangle(cornerRadius: 14))
       .shadow(
-        color: .blue.opacity(0.3),
+        color: Color.pmindigo.n500.opacity(0.3),
         radius: 10,
         x: 0,
         y: 5
@@ -210,14 +212,14 @@ private struct RetryButton: View {
       .frame(height: 50)
       .background(
         LinearGradient(
-          colors: [.blue, .purple],
+          colors: [Color.pmindigo.n500, Color.pmpurple.n500],
           startPoint: .topLeading,
           endPoint: .bottomTrailing
         )
       )
       .clipShape(RoundedRectangle(cornerRadius: 14))
       .shadow(
-        color: .blue.opacity(0.3),
+        color: Color.pmindigo.n500.opacity(0.3),
         radius: 10,
         x: 0,
         y: 5
@@ -241,6 +243,7 @@ struct GroupCard: View {
   let maxActivePromises: Int
   let action: () -> Void
   @State private var isPressed = false
+  @State private var loadedImage: UIImage?
 
   init(
     model: GroupModel,
@@ -280,38 +283,45 @@ struct GroupCard: View {
 
   @ViewBuilder
   private var groupImageView: some View {
-    if let imageUrl = model.imageUrl, let url = URL(string: imageUrl) {
-      AsyncImage(url: url) { phase in
-        switch phase {
-        case .success(let image):
-          image
-            .resizable()
-            .scaledToFill()
-        case .failure:
-          defaultGroupIcon
-        case .empty:
-          ProgressView()
-            .frame(width: 48, height: 48)
-        @unknown default:
-          defaultGroupIcon
-        }
+    Group {
+      if let loadedImage {
+        Image(uiImage: loadedImage)
+          .resizable()
+          .scaledToFill()
+      } else {
+        defaultGroupIcon
       }
-      .frame(width: 48, height: 48)
-      .clipShape(RoundedRectangle(cornerRadius: 12))
-    } else {
-      defaultGroupIcon
+    }
+    .frame(width: 48, height: 48)
+    .clipShape(RoundedRectangle(cornerRadius: 12))
+    .task(id: model.imageUrl) {
+      await loadImage()
     }
   }
 
   private var defaultGroupIcon: some View {
     ZStack {
       RoundedRectangle(cornerRadius: 12)
-        .fill(Color.blue.opacity(0.1))
+        .fill(Color.pmindigo.n100)
       Image(systemName: "person.2.fill")
         .font(.system(size: 20))
-        .foregroundStyle(.blue.opacity(0.6))
+        .foregroundStyle(Color.pmindigo.n400)
     }
     .frame(width: 48, height: 48)
+  }
+
+  private func loadImage() async {
+    guard let urlString = model.imageUrl,
+          let url = URL(string: urlString) else {
+      loadedImage = nil
+      return
+    }
+    do {
+      let request = ImageRequest(url: url)
+      loadedImage = try await ImagePipeline.shared.image(for: request)
+    } catch {
+      loadedImage = nil
+    }
   }
 
   var body: some View {
@@ -343,11 +353,11 @@ struct GroupCard: View {
           if isDisabled {
             Image(systemName: "exclamationmark.triangle.fill")
               .font(.system(size: 16))
-              .foregroundColor(.orange)
+              .foregroundColor(Color.pmwarning.n500)
           } else {
             Image(systemName: "chevron.right")
               .font(.system(size: 13))
-              .foregroundColor(isSelected ? .blue : Color(.systemGray4))
+              .foregroundColor(isSelected ? Color.pmindigo.n500 : Color(.systemGray4))
           }
         }
         .padding(16)
@@ -357,7 +367,7 @@ struct GroupCard: View {
           HStack(spacing: 8) {
             Image(systemName: "info.circle.fill")
               .font(.system(size: 12))
-              .foregroundColor(.orange)
+              .foregroundColor(Color.pmwarning.n600)
 
             Text(reason)
               .font(.system(size: 12))
@@ -367,7 +377,7 @@ struct GroupCard: View {
           }
           .padding(.horizontal, 16)
           .padding(.bottom, 12)
-          .background(Color.orange.opacity(0.05))
+          .background(Color.pmwarning.n50)
         }
       }
       .background(
@@ -375,7 +385,7 @@ struct GroupCard: View {
           .fill(
             isDisabled
             ? Color(.systemGray6).opacity(0.5)
-            : (isSelected ? Color.blue.opacity(0.05) : Color(.systemGray6))
+            : (isSelected ? Color.pmindigo.n50 : Color(.systemGray6))
           )
       )
       .overlay(
@@ -383,7 +393,7 @@ struct GroupCard: View {
           .stroke(
             isDisabled
             ? Color(.systemGray4)
-            : (isSelected ? Color.blue : Color.clear),
+            : (isSelected ? Color.pmindigo.n500 : Color.clear),
             lineWidth: isDisabled ? 1 : 2
           )
       )

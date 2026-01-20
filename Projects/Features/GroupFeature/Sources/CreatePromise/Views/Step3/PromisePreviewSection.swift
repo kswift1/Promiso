@@ -2,6 +2,7 @@ import SwiftUI
 import Clients
 import ComposableArchitecture
 import PromisoShared
+import ResourceKit
 
 struct PromisePreviewSection: View {
   let store: StoreOf<CreatePromise.Feature>
@@ -39,7 +40,7 @@ struct PromisePreviewSection: View {
 
             Image(systemName: "chevron.right.circle.fill")
               .font(.system(size: 24))
-              .foregroundColor(.blue.opacity(0.8))
+              .foregroundColor(Color.pmindigo.n500)
           }
 
           // 일정 정보

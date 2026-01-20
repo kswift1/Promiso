@@ -1,6 +1,7 @@
 import SwiftUI
 import Clients
 import ComposableArchitecture
+import ResourceKit
 
 // MARK: - Inline DateTimePicker with Separate Touch Areas
 struct InlineDateTimePicker: View {
@@ -54,7 +55,7 @@ struct InlineDateTimePicker: View {
           HStack(spacing: 8) {
             Image(systemName: "calendar")
               .font(.system(size: 16))
-              .foregroundColor(.blue)
+              .foregroundColor(Color.pmindigo.n500)
 
             VStack(alignment: .leading, spacing: 2) {
               Text("날짜")
@@ -101,7 +102,7 @@ struct InlineDateTimePicker: View {
           HStack(spacing: 8) {
             Image(systemName: "clock")
               .font(.system(size: 16))
-              .foregroundColor(.blue)
+              .foregroundColor(Color.pmindigo.n500)
 
             VStack(alignment: .leading, spacing: 2) {
               Text("시간")
@@ -198,17 +199,17 @@ struct StartDateTimeSection: View {
           HStack(spacing: 8) {
             Image(systemName: "exclamationmark.triangle.fill")
               .font(.system(size: 14))
-              .foregroundColor(.orange)
-            
+              .foregroundColor(Color.pmwarning.n600)
+
             Text("시작 시간이 1시간 이내입니다. 멤버들이 응답할 시간이 부족할 수 있습니다.")
               .font(.system(size: 13))
-              .foregroundColor(.orange)
+              .foregroundColor(.secondary)
               .fixedSize(horizontal: false, vertical: true)
-            
+
             Spacer(minLength: 0)
           }
           .padding(12)
-          .background(Color.orange.opacity(0.1))
+          .background(Color.pmwarning.n50)
           .clipShape(RoundedRectangle(cornerRadius: 8))
           .padding(.top, 8)
         }

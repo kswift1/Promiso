@@ -1,6 +1,7 @@
 import SwiftUI
 import Clients
 import ComposableArchitecture
+import ResourceKit
 
 struct EndDateTimeSection: View {
   let store: StoreOf<CreatePromise.Feature>
@@ -125,7 +126,7 @@ struct EndTimePicker: View {
           HStack(spacing: 8) {
             Image(systemName: "calendar")
               .font(.system(size: 16))
-              .foregroundColor(.blue)
+              .foregroundColor(Color.pmindigo.n500)
 
             VStack(alignment: .leading, spacing: 2) {
               Text("날짜")
@@ -172,7 +173,7 @@ struct EndTimePicker: View {
           HStack(spacing: 8) {
             Image(systemName: "clock")
               .font(.system(size: 16))
-              .foregroundColor(.blue)
+              .foregroundColor(Color.pmindigo.n500)
 
             VStack(alignment: .leading, spacing: 2) {
               Text("시간")
@@ -236,10 +237,10 @@ struct EndTimePicker: View {
       HStack(spacing: 6) {
         Image(systemName: "arrow.right")
           .font(.system(size: 11))
-          .foregroundColor(.blue)
+          .foregroundColor(Color.pmindigo.n500)
         Text(durationText)
           .font(.system(size: 13))
-          .foregroundColor(.blue)
+          .foregroundColor(Color.pmindigo.n500)
       }
       .padding(.top, 8)
       .frame(maxWidth: .infinity, alignment: .leading)
