@@ -334,6 +334,9 @@ export interface UpdatePromiseRequest {
   /** 최소 참가 인원 (선택적) */
   minimumParticipants?: number | null;
 
+  /** 실시간 공유 시작 시간 (분 전, 선택적) */
+  trackingStartMinutesBefore?: number | null;
+
   /** 환경 구분 (선택적: stage 또는 prod) */
   env?: "stage" | "prod" | null;
 }
@@ -939,4 +942,193 @@ export interface DeviceInfo {
 
   /** 토큰 등록 시각 */
   createdAt: FirebaseFirestore.Timestamp;
+
+  /** LiveActivity Push to Start 토큰 (iOS 17.2+) */
+  liveActivityPushToStartToken?: string | null;
+
+  /** LiveActivity Push 토큰 (개별 Activity용) */
+  liveActivityPushToken?: string | null;
+}
+
+// ============================================================================
+// LiveActivity APIs
+// ============================================================================
+
+/**
+ * LiveActivity 참가자 상태
+ */
+export interface LiveActivityParticipant {
+  /** 참가자 ID */
+  id: string;
+
+  /** 참가자 이름 */
+  name: string;
+
+  /** 도착 예상 시간 (분) - null=대기, 0=도착, N=N분 후 */
+  estimatedArrivalMinutes: number | null;
+}
+
+/**
+ * LiveActivity 시작 요청
+ *
+ * @remarks
+ * - 인증 필수 (Firebase Auth)
+ * - 약속 참가자(accepted) 전원에게 Push to Start 전송
+ */
+export interface StartLiveActivityRequest {
+  /** 약속 ID */
+  promiseId: string;
+
+  /** 환경 구분 (선택적: stage 또는 prod) */
+  env?: "stage" | "prod" | null;
+}
+
+/**
+ * LiveActivity 시작 응답
+ */
+export interface StartLiveActivityResponse {
+  /** 성공 여부 */
+  success: boolean;
+
+  /** 전송 성공 수 */
+  successCount: number;
+
+  /** 전송 실패 수 */
+  failureCount: number;
+}
+
+/**
+ * ETA 업데이트 요청
+ *
+ * @remarks
+ * - 인증 필수 (Firebase Auth)
+ * - 호출자의 ETA를 업데이트하고 모든 참가자에게 브로드캐스트
+ */
+export interface UpdateETARequest {
+  /** 약속 ID */
+  promiseId: string;
+
+  /** 도착 예상 시간 (분) - 0=도착, N=N분 후 */
+  estimatedMinutes: number;
+
+  /** 환경 구분 (선택적: stage 또는 prod) */
+  env?: "stage" | "prod" | null;
+}
+
+/**
+ * ETA 업데이트 응답
+ */
+export interface UpdateETAResponse {
+  /** 성공 여부 */
+  success: boolean;
+
+  /** 전송 성공 수 */
+  successCount: number;
+
+  /** 전송 실패 수 */
+  failureCount: number;
+}
+
+/**
+ * LiveActivity 종료 요청
+ *
+ * @remarks
+ * - 인증 필수 (Firebase Auth)
+ * - 호스트만 종료 가능
+ */
+export interface EndLiveActivityRequest {
+  /** 약속 ID */
+  promiseId: string;
+
+  /** 환경 구분 (선택적: stage 또는 prod) */
+  env?: "stage" | "prod" | null;
+}
+
+/**
+ * LiveActivity 종료 응답
+ */
+export interface EndLiveActivityResponse {
+  /** 성공 여부 */
+  success: boolean;
+
+  /** 전송 성공 수 */
+  successCount: number;
+
+  /** 전송 실패 수 */
+  failureCount: number;
+}
+
+/**
+ * LiveActivity Push to Start 토큰 등록 요청
+ *
+ * @remarks
+ * - 인증 필수 (Firebase Auth)
+ * - iOS 17.2+ 디바이스에서 앱 시작 시 호출
+ */
+export interface RegisterPushToStartTokenRequest {
+  /** Push to Start 토큰 */
+  token: string;
+
+  /** 디바이스 ID */
+  deviceId: string;
+
+  /** 환경 구분 (선택적: stage 또는 prod) */
+  env?: "stage" | "prod" | null;
+}
+
+/**
+ * LiveActivity Push to Start 토큰 등록 응답
+ */
+export interface RegisterPushToStartTokenResponse {
+  /** 성공 여부 */
+  success: boolean;
+}
+
+// ============================================================================
+// LiveActivity Update 토큰 등록
+// ============================================================================
+
+/**
+ * LiveActivity Update 토큰 등록 요청
+ *
+ * @remarks
+ * - 인증 필수 (Firebase Auth)
+ * - 앱에서 LiveActivity 시작 후 발급받은 Push Token을 서버에 등록
+ * - 이 토큰으로 서버에서 APNs Update/End 이벤트 전송 가능
+ */
+export interface RegisterLiveActivityTokenRequest {
+  /** 약속 ID */
+  promiseId: string;
+
+  /** LiveActivity Push Token (Update/End 이벤트용) */
+  token: string;
+
+  /** 환경 구분 */
+  env?: "dev" | "stage" | "prod";
+}
+
+/**
+ * LiveActivity Update 토큰 등록 응답
+ */
+export interface RegisterLiveActivityTokenResponse {
+  /** 성공 여부 */
+  success: boolean;
+}
+
+// ============================================================================
+// Cloud Tasks - LiveActivity 예약 시작
+// ============================================================================
+
+/**
+ * LiveActivity 예약 시작 태스크 페이로드
+ *
+ * @remarks
+ * Cloud Tasks에서 사용되는 내부 타입
+ */
+export interface ScheduledLiveActivityTaskPayload {
+  /** 약속 ID */
+  promiseId: string;
+
+  /** 환경 구분 */
+  env: "stage" | "prod";
 }

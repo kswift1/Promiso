@@ -1,6 +1,7 @@
 import SwiftUI
 import Clients
 import ComposableArchitecture
+import ResourceKit
 
 struct EndDateTimeSection: View {
   let store: StoreOf<CreatePromise.Feature>
@@ -50,6 +51,8 @@ struct EndTimePicker: View {
   let startDate: Date
   @Binding var endDate: Date
   @State private var expandedSection: ExpandedSection? = nil
+  @State private var isDatePressed = false
+  @State private var isTimePressed = false
   var scrollProxy: ScrollViewProxy? = nil
   var scrollToId: String? = nil
 
@@ -123,8 +126,8 @@ struct EndTimePicker: View {
           HStack(spacing: 8) {
             Image(systemName: "calendar")
               .font(.system(size: 16))
-              .foregroundColor(.blue)
-            
+              .foregroundColor(Color.pmindigo.n500)
+
             VStack(alignment: .leading, spacing: 2) {
               Text("날짜")
                 .font(.system(size: 11))
@@ -135,12 +138,20 @@ struct EndTimePicker: View {
             }
           }
           .frame(maxWidth: .infinity, alignment: .leading)
+          .scaleEffect(isDatePressed ? 0.95 : 1.0)
         }
         .buttonStyle(PlainButtonStyle())
-        
+        .animation(.spring(response: 0.2, dampingFraction: 0.6), value: isDatePressed)
+        .sensoryFeedback(.selection, trigger: expandedSection == .date)
+        .simultaneousGesture(
+          DragGesture(minimumDistance: 0)
+            .onChanged { _ in isDatePressed = true }
+            .onEnded { _ in isDatePressed = false }
+        )
+
         Divider()
           .frame(height: 32)
-        
+
         // 시간 영역
         Button(action: {
           withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
@@ -162,8 +173,8 @@ struct EndTimePicker: View {
           HStack(spacing: 8) {
             Image(systemName: "clock")
               .font(.system(size: 16))
-              .foregroundColor(.blue)
-            
+              .foregroundColor(Color.pmindigo.n500)
+
             VStack(alignment: .leading, spacing: 2) {
               Text("시간")
                 .font(.system(size: 11))
@@ -174,8 +185,16 @@ struct EndTimePicker: View {
             }
           }
           .frame(maxWidth: .infinity, alignment: .leading)
+          .scaleEffect(isTimePressed ? 0.95 : 1.0)
         }
         .buttonStyle(PlainButtonStyle())
+        .animation(.spring(response: 0.2, dampingFraction: 0.6), value: isTimePressed)
+        .sensoryFeedback(.selection, trigger: expandedSection == .time)
+        .simultaneousGesture(
+          DragGesture(minimumDistance: 0)
+            .onChanged { _ in isTimePressed = true }
+            .onEnded { _ in isTimePressed = false }
+        )
       }
       .padding(16)
       .background(Color(.systemGray6))
@@ -218,10 +237,10 @@ struct EndTimePicker: View {
       HStack(spacing: 6) {
         Image(systemName: "arrow.right")
           .font(.system(size: 11))
-          .foregroundColor(.blue)
+          .foregroundColor(Color.pmindigo.n500)
         Text(durationText)
           .font(.system(size: 13))
-          .foregroundColor(.blue)
+          .foregroundColor(Color.pmindigo.n500)
       }
       .padding(.top, 8)
       .frame(maxWidth: .infinity, alignment: .leading)

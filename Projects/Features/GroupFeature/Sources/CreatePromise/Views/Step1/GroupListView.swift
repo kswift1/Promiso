@@ -1,3 +1,9 @@
+import Clients
+import Nuke
+import PromisoShared
+import ResourceKit
+import SwiftUI
+
 /// 그룹 리스트 뷰
 struct GroupListView: View {
   let groupListState: LoadingState<[GroupModel]>
@@ -68,7 +74,7 @@ struct GroupListView: View {
         Circle()
           .fill(
             LinearGradient(
-              colors: [Color.blue.opacity(0.15), Color.purple.opacity(0.1)],
+              colors: [Color.pmindigo.n100, Color.pmpurple.n100],
               startPoint: .topLeading,
               endPoint: .bottomTrailing
             )
@@ -79,7 +85,7 @@ struct GroupListView: View {
           .font(.system(size: 40))
           .foregroundStyle(
             LinearGradient(
-              colors: [.blue, .purple],
+              colors: [Color.pmindigo.n500, Color.pmpurple.n500],
               startPoint: .topLeading,
               endPoint: .bottomTrailing
             )
@@ -95,47 +101,21 @@ struct GroupListView: View {
         .foregroundColor(.secondary)
         .multilineTextAlignment(.center)
 
-      Button {
-        onCreateGroup()
-      } label: {
-        HStack(spacing: 8) {
-          Image(systemName: "plus.circle.fill")
-            .font(.system(size: 18))
-          Text("새 그룹 만들기")
-            .font(.headline)
-        }
-        .foregroundStyle(.white)
-        .frame(maxWidth: .infinity)
-        .frame(height: 50)
-        .background(
-          LinearGradient(
-            colors: [.blue, .purple],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-          )
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 14))
-        .shadow(
-          color: .blue.opacity(0.3),
-          radius: 10,
-          x: 0,
-          y: 5
-        )
-      }
+      CreateGroupButton(action: onCreateGroup)
     }
     .padding(.vertical, 32)
     .frame(maxWidth: .infinity)
   }
-  
+
   // MARK: - Error View
-  
+
   private func errorView(error: Error) -> some View {
     VStack(spacing: 16) {
       ZStack {
         Circle()
           .fill(
             LinearGradient(
-              colors: [Color.orange.opacity(0.15), Color.red.opacity(0.1)],
+              colors: [Color.pmwarning.n100, Color.pmerror.n100],
               startPoint: .topLeading,
               endPoint: .bottomTrailing
             )
@@ -146,7 +126,7 @@ struct GroupListView: View {
           .font(.system(size: 40))
           .foregroundStyle(
             LinearGradient(
-              colors: [.orange, .red],
+              colors: [Color.pmwarning.n500, Color.pmerror.n500],
               startPoint: .topLeading,
               endPoint: .bottomTrailing
             )
@@ -162,36 +142,96 @@ struct GroupListView: View {
         .foregroundColor(.secondary)
         .multilineTextAlignment(.center)
 
-      Button {
-        onRetry()
-      } label: {
-        HStack(spacing: 8) {
-          Image(systemName: "arrow.clockwise")
-            .font(.system(size: 18))
-          Text("다시 시도")
-            .font(.headline)
-        }
-        .foregroundStyle(.white)
-        .frame(maxWidth: .infinity)
-        .frame(height: 50)
-        .background(
-          LinearGradient(
-            colors: [.blue, .purple],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-          )
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 14))
-        .shadow(
-          color: .blue.opacity(0.3),
-          radius: 10,
-          x: 0,
-          y: 5
-        )
-      }
+      RetryButton(action: onRetry)
     }
     .padding(.vertical, 32)
     .frame(maxWidth: .infinity)
+  }
+}
+
+// MARK: - Interactive Buttons
+
+private struct CreateGroupButton: View {
+  let action: () -> Void
+  @State private var isPressed = false
+
+  var body: some View {
+    Button {
+      action()
+    } label: {
+      HStack(spacing: 8) {
+        Image(systemName: "plus.circle.fill")
+          .font(.system(size: 18))
+        Text("새 그룹 만들기")
+          .font(.headline)
+      }
+      .foregroundStyle(.white)
+      .frame(maxWidth: .infinity)
+      .frame(height: 50)
+      .background(
+        LinearGradient(
+          colors: [Color.pmindigo.n500, Color.pmpurple.n500],
+          startPoint: .topLeading,
+          endPoint: .bottomTrailing
+        )
+      )
+      .clipShape(RoundedRectangle(cornerRadius: 14))
+      .shadow(
+        color: Color.pmindigo.n500.opacity(0.3),
+        radius: 10,
+        x: 0,
+        y: 5
+      )
+    }
+    .buttonStyle(ScaleButtonStyle())
+    .sensoryFeedback(.impact(flexibility: .soft), trigger: isPressed)
+    .simultaneousGesture(
+      DragGesture(minimumDistance: 0)
+        .onChanged { _ in isPressed = true }
+        .onEnded { _ in isPressed = false }
+    )
+  }
+}
+
+private struct RetryButton: View {
+  let action: () -> Void
+  @State private var isPressed = false
+
+  var body: some View {
+    Button {
+      action()
+    } label: {
+      HStack(spacing: 8) {
+        Image(systemName: "arrow.clockwise")
+          .font(.system(size: 18))
+        Text("다시 시도")
+          .font(.headline)
+      }
+      .foregroundStyle(.white)
+      .frame(maxWidth: .infinity)
+      .frame(height: 50)
+      .background(
+        LinearGradient(
+          colors: [Color.pmindigo.n500, Color.pmpurple.n500],
+          startPoint: .topLeading,
+          endPoint: .bottomTrailing
+        )
+      )
+      .clipShape(RoundedRectangle(cornerRadius: 14))
+      .shadow(
+        color: Color.pmindigo.n500.opacity(0.3),
+        radius: 10,
+        x: 0,
+        y: 5
+      )
+    }
+    .buttonStyle(ScaleButtonStyle())
+    .sensoryFeedback(.impact(flexibility: .soft), trigger: isPressed)
+    .simultaneousGesture(
+      DragGesture(minimumDistance: 0)
+        .onChanged { _ in isPressed = true }
+        .onEnded { _ in isPressed = false }
+    )
   }
 }
 
@@ -202,6 +242,8 @@ struct GroupCard: View {
   let activePromiseCount: Int?
   let maxActivePromises: Int
   let action: () -> Void
+  @State private var isPressed = false
+  @State private var loadedImage: UIImage?
 
   init(
     model: GroupModel,
@@ -239,6 +281,49 @@ struct GroupCard: View {
     return nil
   }
 
+  @ViewBuilder
+  private var groupImageView: some View {
+    Group {
+      if let loadedImage {
+        Image(uiImage: loadedImage)
+          .resizable()
+          .scaledToFill()
+      } else {
+        defaultGroupIcon
+      }
+    }
+    .frame(width: 48, height: 48)
+    .clipShape(RoundedRectangle(cornerRadius: 12))
+    .task(id: model.imageUrl) {
+      await loadImage()
+    }
+  }
+
+  private var defaultGroupIcon: some View {
+    ZStack {
+      RoundedRectangle(cornerRadius: 12)
+        .fill(Color.pmindigo.n100)
+      Image(systemName: "person.2.fill")
+        .font(.system(size: 20))
+        .foregroundStyle(Color.pmindigo.n400)
+    }
+    .frame(width: 48, height: 48)
+  }
+
+  private func loadImage() async {
+    guard let urlString = model.imageUrl,
+          let url = URL(string: urlString) else {
+      loadedImage = nil
+      return
+    }
+    do {
+      let request = ImageRequest(url: url)
+      loadedImage = try await ImagePipeline.shared.image(for: request)
+    } catch {
+      loadedImage = nil
+    }
+  }
+
   var body: some View {
     Button(action: {
       if !isDisabled {
@@ -247,11 +332,8 @@ struct GroupCard: View {
     }) {
       VStack(spacing: 0) {
         HStack(spacing: 12) {
-          // 그룹 아이콘
-          Image(systemName: "person.2.circle.fill")
-            .font(.system(size: 28))
-            .foregroundStyle(.blue.opacity(0.6))
-            .frame(width: 48, height: 48)
+          // 그룹 이미지
+          groupImageView
             .opacity(isDisabled ? 0.5 : 1.0)
 
           // 그룹 정보
@@ -271,11 +353,11 @@ struct GroupCard: View {
           if isDisabled {
             Image(systemName: "exclamationmark.triangle.fill")
               .font(.system(size: 16))
-              .foregroundColor(.orange)
+              .foregroundColor(Color.pmwarning.n500)
           } else {
             Image(systemName: "chevron.right")
               .font(.system(size: 13))
-              .foregroundColor(isSelected ? .blue : Color(.systemGray4))
+              .foregroundColor(isSelected ? Color.pmindigo.n500 : Color(.systemGray4))
           }
         }
         .padding(16)
@@ -285,7 +367,7 @@ struct GroupCard: View {
           HStack(spacing: 8) {
             Image(systemName: "info.circle.fill")
               .font(.system(size: 12))
-              .foregroundColor(.orange)
+              .foregroundColor(Color.pmwarning.n600)
 
             Text(reason)
               .font(.system(size: 12))
@@ -295,7 +377,7 @@ struct GroupCard: View {
           }
           .padding(.horizontal, 16)
           .padding(.bottom, 12)
-          .background(Color.orange.opacity(0.05))
+          .background(Color.pmwarning.n50)
         }
       }
       .background(
@@ -303,7 +385,7 @@ struct GroupCard: View {
           .fill(
             isDisabled
             ? Color(.systemGray6).opacity(0.5)
-            : (isSelected ? Color.blue.opacity(0.05) : Color(.systemGray6))
+            : (isSelected ? Color.pmindigo.n50 : Color(.systemGray6))
           )
       )
       .overlay(
@@ -311,12 +393,20 @@ struct GroupCard: View {
           .stroke(
             isDisabled
             ? Color(.systemGray4)
-            : (isSelected ? Color.blue : Color.clear),
+            : (isSelected ? Color.pmindigo.n500 : Color.clear),
             lineWidth: isDisabled ? 1 : 2
           )
       )
     }
     .buttonStyle(PlainButtonStyle())
+    .scaleEffect(isPressed ? 0.97 : 1.0)
+    .animation(.spring(response: 0.2, dampingFraction: 0.6), value: isPressed)
+    .sensoryFeedback(.selection, trigger: isSelected)
+    .simultaneousGesture(
+      DragGesture(minimumDistance: 0)
+        .onChanged { _ in if !isDisabled { isPressed = true } }
+        .onEnded { _ in isPressed = false }
+    )
     .disabled(isDisabled)
   }
 }
@@ -352,6 +442,16 @@ private struct GroupSkeletonCard: View {
       RoundedRectangle(cornerRadius: 12)
         .stroke(Color(.systemGray5), lineWidth: 1)
     )
+  }
+}
+
+// MARK: - Scale Button Style
+
+private struct ScaleButtonStyle: ButtonStyle {
+  func makeBody(configuration: Configuration) -> some View {
+    configuration.label
+      .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
+      .animation(.spring(response: 0.2, dampingFraction: 0.6), value: configuration.isPressed)
   }
 }
 

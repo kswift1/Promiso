@@ -1,10 +1,13 @@
 import SwiftUI
 import Clients
 import ComposableArchitecture
+import ResourceKit
 
 struct MinimumParticipantsSection: View {
   let store: StoreOf<CreatePromise.Feature>
   var scrollProxy: ScrollViewProxy? = nil
+  @State private var isMinusPressed = false
+  @State private var isPlusPressed = false
 
   // 현재 최소 참가 인원
   private var currentMinimum: Int {
@@ -86,41 +89,57 @@ struct MinimumParticipantsSection: View {
             .view(.decrementParticipants),
             animation: .spring(response: 0.3, dampingFraction: 0.7)
           )
-        scrollToMinimumParticipants()
-      }) {
-        Image(systemName: "minus.circle.fill")
-          .font(.system(size: 32))
-          .foregroundColor(currentMinimum <= 2 ? Color(.systemGray4) : .blue)
-      }
-      .buttonRepeatBehavior(.enabled)
-      .disabled(currentMinimum <= 2)
-      
+          scrollToMinimumParticipants()
+        }) {
+          Image(systemName: "minus.circle.fill")
+            .font(.system(size: 32))
+            .foregroundColor(currentMinimum <= 2 ? Color(.systemGray4) : Color.pmindigo.n500)
+            .scaleEffect(isMinusPressed ? 0.85 : 1.0)
+        }
+        .buttonRepeatBehavior(.enabled)
+        .animation(.spring(response: 0.15, dampingFraction: 0.5), value: isMinusPressed)
+        .sensoryFeedback(.impact(flexibility: .soft), trigger: currentMinimum)
+        .simultaneousGesture(
+          DragGesture(minimumDistance: 0)
+            .onChanged { _ in if currentMinimum > 2 { isMinusPressed = true } }
+            .onEnded { _ in isMinusPressed = false }
+        )
+        .disabled(currentMinimum <= 2)
+
       VStack(spacing: 4) {
         Text("\(currentMinimum)명")
           .font(.system(size: 36, weight: .bold))
           .foregroundColor(.primary)
           .contentTransition(.numericText())
-        
+
         Text("최대 \(maxParticipants)명")
           .font(.system(size: 13))
           .foregroundColor(.secondary)
       }
       .frame(maxWidth: .infinity)
-      
+
       Button(
         action: {
           store.send(
             .view(.incrementParticipants),
             animation: .spring(response: 0.3, dampingFraction: 0.7)
           )
-        scrollToMinimumParticipants()
-      }) {
-        Image(systemName: "plus.circle.fill")
-          .font(.system(size: 32))
-          .foregroundColor(currentMinimum >= maxParticipants ? Color(.systemGray4) : .blue)
-      }
-      .buttonRepeatBehavior(.enabled)
-      .disabled(currentMinimum >= maxParticipants)
+          scrollToMinimumParticipants()
+        }) {
+          Image(systemName: "plus.circle.fill")
+            .font(.system(size: 32))
+            .foregroundColor(currentMinimum >= maxParticipants ? Color(.systemGray4) : Color.pmindigo.n500)
+            .scaleEffect(isPlusPressed ? 0.85 : 1.0)
+        }
+        .buttonRepeatBehavior(.enabled)
+        .animation(.spring(response: 0.15, dampingFraction: 0.5), value: isPlusPressed)
+        .sensoryFeedback(.impact(flexibility: .soft), trigger: currentMinimum)
+        .simultaneousGesture(
+          DragGesture(minimumDistance: 0)
+            .onChanged { _ in if currentMinimum < maxParticipants { isPlusPressed = true } }
+            .onEnded { _ in isPlusPressed = false }
+        )
+        .disabled(currentMinimum >= maxParticipants)
     }
     .padding(.vertical, 8)
   }
@@ -141,18 +160,18 @@ struct MinimumParticipantsSection: View {
     HStack(alignment: .top, spacing: 12) {
       Image(systemName: "checkmark.circle.fill")
         .font(.system(size: 20))
-        .foregroundColor(.blue)
-      
+        .foregroundColor(Color.pmindigo.n500)
+
       Text("최소 \(currentMinimum)명이 참석하면 약속이 자동으로 확정됩니다")
         .font(.system(size: 14))
         .foregroundColor(.primary)
         .fixedSize(horizontal: false, vertical: true)
-      
+
       Spacer(minLength: 0)
     }
     .padding(16)
     .frame(maxWidth: .infinity, alignment: .leading)
-    .background(Color.blue.opacity(0.1))
+    .background(Color.pmindigo.n50)
     .clipShape(RoundedRectangle(cornerRadius: 12))
   }
   
@@ -161,21 +180,18 @@ struct MinimumParticipantsSection: View {
     HStack(alignment: .top, spacing: 8) {
       Image(systemName: "exclamationmark.triangle.fill")
         .font(.system(size: 14))
-        .foregroundColor(.orange)
-      
+        .foregroundColor(Color.pmwarning.n600)
+
       Text("최소 참가 인원이 그룹 멤버 수와 같습니다. 한 명이라도 불참하면 약속이 취소됩니다.")
         .font(.system(size: 13))
-        .foregroundColor(.orange)
+        .foregroundColor(.secondary)
         .fixedSize(horizontal: false, vertical: true)
-      
+
       Spacer(minLength: 0)
     }
     .padding(12)
     .frame(maxWidth: .infinity, alignment: .leading)
-    .background(Color.orange.opacity(0.1))
+    .background(Color.pmwarning.n50)
     .clipShape(RoundedRectangle(cornerRadius: 10))
   }
 }
-
-// MARK: - Previews
-// Preview 코드는 PromiseModel로 마이그레이션 후 다시 추가

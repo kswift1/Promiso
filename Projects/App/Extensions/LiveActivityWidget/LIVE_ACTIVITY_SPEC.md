@@ -116,6 +116,8 @@ public struct PromiseActivityAttributes: ActivityAttributes {
   public let title: String                 // 약속 제목
   public let location: String?             // 장소명
   public let scheduledTime: Date           // 약속 시간
+  public let hostId: String                // 호스트 사용자 ID
+  public let hostName: String?             // 호스트 표시 이름
 
   /// 동적 상태 (APNs로 업데이트)
   public struct ContentState: Codable, Hashable, Sendable {
@@ -423,6 +425,151 @@ promiso://promise/{promiseId}/eta
 
 ## 백엔드 연동 (Firebase Functions)
 
+### Firebase Functions API
+
+#### registerPushToStartToken
+
+Push to Start 토큰 등록 (iOS 17.2+)
+
+```typescript
+// Request
+{
+  token: string;      // Push to Start 토큰
+  deviceId: string;   // 디바이스 고유 ID
+  env?: "stage" | "prod";
+}
+
+// Response
+{
+  success: boolean;
+}
+```
+
+#### startLiveActivity
+
+약속 참가자 전원에게 Push to Start APNs 전송
+
+```typescript
+// Request
+{
+  promiseId: string;
+  env?: "stage" | "prod";
+}
+
+// Response
+{
+  success: boolean;
+  successCount: number;
+  failureCount: number;
+}
+```
+
+**권한**: 호스트만 호출 가능
+
+#### updateETA
+
+ETA 업데이트 후 모든 참가자에게 브로드캐스트
+
+```typescript
+// Request
+{
+  promiseId: string;
+  estimatedMinutes: number;  // 0=도착, N=N분 후
+  env?: "stage" | "prod";
+}
+
+// Response
+{
+  success: boolean;
+  successCount: number;
+  failureCount: number;
+}
+```
+
+**권한**: 모든 참가자 호출 가능
+
+#### endLiveActivity
+
+LiveActivity 종료
+
+```typescript
+// Request
+{
+  promiseId: string;
+  env?: "stage" | "prod";
+}
+
+// Response
+{
+  success: boolean;
+  successCount: number;
+  failureCount: number;
+}
+```
+
+**권한**: 호스트만 호출 가능
+
+---
+
+### 자동 예약 시작 (Cloud Tasks)
+
+약속 생성 시 `trackingStartMinutesBefore`를 설정하면, 약속이 확정될 때 자동으로 LiveActivity 시작이 예약됩니다.
+
+#### 플로우
+
+```
+1. 사용자가 약속 생성 시 "1시간 전부터" 선택
+   → trackingStartMinutesBefore: 60
+
+2. 참가자들이 투표하여 약속 확정
+   → votes.accepted.length >= minimumParticipants
+
+3. Firestore Trigger 실행 (onPromiseConfirmedScheduleLiveActivity)
+   → Cloud Task 예약: startAt - 60분
+
+4. 예약 시간 도달
+   → executeLiveActivityStart 실행
+   → 모든 참가자에게 Push to Start 전송
+```
+
+#### 지원 옵션
+
+| 옵션 | minutes |
+|------|---------|
+| 30분 전 | 30 |
+| 1시간 전 | 60 |
+| 2시간 전 | 120 |
+| 3시간 전 | 180 |
+
+#### Firestore 필드
+
+| 필드 | 타입 | 설명 |
+|------|------|------|
+| `trackingStartMinutesBefore` | Number? | LiveActivity 시작 시간 (약속 N분 전) |
+| `liveActivityScheduled` | Boolean | 예약 완료 여부 |
+| `liveActivityScheduledAt` | Timestamp? | 예약된 실행 시각 |
+
+---
+
+### APNs 인증 설정
+
+Firebase Secret Manager에 다음 시크릿 등록 필요:
+
+| Secret Name | 설명 |
+|-------------|------|
+| `APNS_KEY_ID` | APNs Auth Key ID (10자리) |
+| `APNS_TEAM_ID` | Apple Developer Team ID (10자리) |
+| `APNS_AUTH_KEY` | APNs Auth Key (.p8 파일 내용) |
+
+```bash
+# 시크릿 등록 예시
+firebase functions:secrets:set APNS_KEY_ID
+firebase functions:secrets:set APNS_TEAM_ID
+firebase functions:secrets:set APNS_AUTH_KEY
+```
+
+---
+
 ### APNs Payload 구조
 
 #### Start Event
@@ -440,7 +587,9 @@ promiso://promise/{promiseId}/eta
       "emoji": "🍜",
       "title": "점심 모임",
       "location": "강남역 11번 출구",
-      "scheduledTime": 1704070800
+      "scheduledTime": 1704070800,
+      "hostId": "user1",
+      "hostName": "김민수"
     },
     "content-state": {
       "trackingDurationMinutes": 30,
@@ -541,13 +690,14 @@ Debug 빌드에서 사용 가능한 테스트 패널:
 - [x] 테스트 UI
 - [ ] 지각 표시 UI (마커 색상, 뱃지 변경)
 
-### Backend (TODO)
+### Backend
 
-- [ ] Firebase Functions: startLiveActivity
-- [ ] Firebase Functions: updateETA
-- [ ] Firebase Functions: endLiveActivity
-- [ ] APNs 인증 설정 (P8 키)
-- [ ] Firestore 스키마 업데이트
+- [x] Firebase Functions: registerPushToStartToken
+- [x] Firebase Functions: startLiveActivity
+- [x] Firebase Functions: updateETA
+- [x] Firebase Functions: endLiveActivity
+- [ ] APNs 인증 설정 (P8 키 + Firebase Secret Manager)
+- [x] Firestore 스키마 업데이트 (liveActivities 컬렉션)
 
 ### Future Features (TODO)
 

@@ -1,5 +1,6 @@
 import Foundation
 import FirebaseFirestore
+import FirebaseFunctions
 import PromisoShared
 import UIKit
 
@@ -100,6 +101,46 @@ public final class NotificationRemoteDataSource: @unchecked Sendable {
     }
 
     return token
+  }
+
+  // MARK: - LiveActivity Push to Start Token
+
+  /// LiveActivity Push to Start 토큰 저장
+  /// - Parameters:
+  ///   - userId: 사용자 ID
+  ///   - token: Push to Start 토큰
+  public func saveLiveActivityPushToStartToken(userId: String, token: String) async throws {
+    let functions = Functions.functions(region: "asia-northeast3")
+    let callable = functions.httpsCallable("registerPushToStartToken")
+
+    var callableData: [String: Any] = [
+      "token": token,
+      "deviceId": deviceId
+    ]
+
+    // env 파라미터 추가
+    if let env = functionsEnvironmentParam() {
+      callableData["env"] = env
+    }
+
+    do {
+      _ = try await callable.call(callableData)
+      AppLogger.liveActivity.info("✅ Push to Start 토큰 등록 성공 (userId: \(userId), deviceId: \(self.deviceId))")
+    } catch {
+      AppLogger.liveActivity.error("❌ Push to Start 토큰 등록 실패: \(error.localizedDescription)")
+      throw error
+    }
+  }
+
+  // MARK: - Helper
+
+  private func functionsEnvironmentParam() -> String? {
+    switch currentEnvironment {
+    case .dev, .stage:
+      return "stage"
+    case .release:
+      return nil
+    }
   }
 }
 

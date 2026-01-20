@@ -4,6 +4,7 @@
 import ComposableArchitecture
 import SwiftUI
 
+import Clients
 import PromisoShared
 import CalendarFeature
 import ProfileFeature
@@ -37,6 +38,9 @@ extension RootTab {
   @Reducer
   public struct Feature {
     @Dependency(\.hapticFeedback) var hapticFeedback
+    @Dependency(\.liveActivityClient) var liveActivityClient
+    @Dependency(\.authClient) var authClient
+    @Dependency(\.notificationClient) var notificationClient
 
     public init() {}
 
@@ -74,18 +78,18 @@ extension RootTab {
         self.profile = Profile.Feature.State(currentUser: currentUser)
         
         // TODO: 테스트 완료 후 mock 데이터 제거
-        self.livePromise = LivePromise.Feature.State(
-          emoji: "🎂",
-          title: "일이삼사오육칠팔구십십일십이",
-          location: "강남역 11번 출구 강남역 11번 출구 강남역 11번 출구 강남역 11번 출구",
-          scheduledTime: Date().addingTimeInterval(3600),
-          participants: [
-            ParticipantState(id: currentUser.id, name: "나", estimatedArrivalMinutes: 5),
-            ParticipantState(id: "user2", name: "친구1", estimatedArrivalMinutes: 0),
-            ParticipantState(id: "user3", name: "친구2", estimatedArrivalMinutes: 10)
-          ],
-          currentUserId: currentUser.id
-        )
+//        self.livePromise = LivePromise.Feature.State(
+//          emoji: "🎂",
+//          title: "일이삼사오육칠팔구십십일십이",
+//          location: "강남역 11번 출구 강남역 11번 출구 강남역 11번 출구 강남역 11번 출구",
+//          scheduledTime: Date().addingTimeInterval(3600),
+//          participants: [
+//            ParticipantState(id: currentUser.id, name: "나", estimatedArrivalMinutes: 5),
+//            ParticipantState(id: "user2", name: "친구1", estimatedArrivalMinutes: 0),
+//            ParticipantState(id: "user3", name: "친구2", estimatedArrivalMinutes: 10)
+//          ],
+//          currentUserId: currentUser.id
+//        )
       }
     }
 
@@ -112,6 +116,24 @@ extension RootTab {
       case openJoinGroupWithCode(String)
       /// 그룹 탭 딥링크 처리
       case handleGroupDeeplink(GroupMain.Deeplink)
+      /// 내부 액션
+      case `internal`(Internal)
+    }
+
+    public enum Internal: Equatable, Sendable {
+      /// Push to Start 토큰 구독 시작
+      case observePushToStartToken
+      /// Push to Start 토큰 수신
+      case pushToStartTokenReceived(String)
+      /// Widget용 Auth 토큰 갱신
+      case refreshWidgetAuthToken
+      /// LiveActivity 상태 동기화 (활성 Activity 확인)
+      case syncLiveActivityState
+      /// LiveActivity 상태 업데이트 결과
+      case liveActivityStateUpdated(
+        attributes: PromiseActivityAttributes?,
+        contentState: PromiseActivityAttributes.ContentState?
+      )
     }
 
     public enum Delegate: Equatable {
@@ -139,7 +161,13 @@ extension RootTab {
       Reduce { state, action in
         switch action {
         case .onAppear:
-          return .none
+          // Widget용 Auth 토큰 갱신 + Push to Start 토큰 구독 시작 + LiveActivity 상태 동기화
+          AppLogger.liveActivity.debug("🏠 RootTab onAppear")
+          return .merge(
+            .send(.internal(.refreshWidgetAuthToken)),
+            .send(.internal(.observePushToStartToken)),
+            .send(.internal(.syncLiveActivityState))
+          )
 
         case .tabSelected(let tab):
           state.selectedTab = tab
@@ -188,6 +216,87 @@ extension RootTab {
         case .handleGroupDeeplink(let deeplink):
           state.selectedTab = .group
           return .send(.groupMain(.view(.handleDeeplink(deeplink))))
+
+        case .internal(let internalAction):
+          switch internalAction {
+          case .refreshWidgetAuthToken:
+            // Widget/LiveActivity Extension용 Auth 토큰 갱신
+            return .run { [authClient] _ in
+              await authClient.refreshWidgetAuthToken()
+            }
+
+          case .observePushToStartToken:
+            // Push to Start 토큰 스트림 구독
+            let stream = liveActivityClient.observePushToStartTokenUpdates()
+            return .run { send in
+              for await token in stream {
+                await send(.internal(.pushToStartTokenReceived(token)))
+              }
+            }
+
+          case .pushToStartTokenReceived(let token):
+            // Push to Start 토큰을 백엔드에 등록
+            let userId = state.currentUser.id
+            AppLogger.liveActivity.info("Push to Start 토큰 수신: \(token.prefix(20))... (userId: \(userId))")
+            return .run { _ in
+              do {
+                try await notificationClient.saveLiveActivityPushToStartToken(token)
+              } catch {
+                AppLogger.liveActivity.error("Push to Start 토큰 백엔드 등록 실패: \(error.localizedDescription)")
+              }
+            }
+
+          case .syncLiveActivityState:
+            // 활성 LiveActivity 확인
+            AppLogger.liveActivity.debug("🔍 syncLiveActivityState 시작")
+            return .run { [liveActivityClient] send in
+              let hasActive = liveActivityClient.hasActiveActivity()
+              AppLogger.liveActivity.debug("🔍 hasActiveActivity: \(hasActive)")
+
+              guard hasActive else {
+                AppLogger.liveActivity.debug("🔍 활성 LiveActivity 없음")
+                await send(.internal(.liveActivityStateUpdated(attributes: nil, contentState: nil)))
+                return
+              }
+
+              let attributes = liveActivityClient.currentAttributes()
+              let contentState = liveActivityClient.currentState()
+              AppLogger.liveActivity.debug("🔍 attributes: \(attributes != nil ? "있음" : "nil")")
+              AppLogger.liveActivity.debug("🔍 contentState: \(contentState != nil ? "있음" : "nil")")
+
+              if let attr = attributes {
+                AppLogger.liveActivity.debug("🔍 promiseId: \(attr.promiseId), title: \(attr.title)")
+              }
+
+              await send(.internal(.liveActivityStateUpdated(attributes: attributes, contentState: contentState)))
+            }
+
+          case .liveActivityStateUpdated(let attributes, let contentState):
+            // LiveActivity 상태에 따라 livePromise 생성/제거
+            if let attributes = attributes {
+              // 활성 LiveActivity가 있으면 livePromise 생성
+              let data = LivePromise.Data(
+                emoji: attributes.emoji,
+                title: attributes.title,
+                location: attributes.location,
+                scheduledTime: attributes.scheduledTime,
+                participants: contentState?.participants ?? [],
+                currentUserId: attributes.currentUserId,
+                trackingDurationMinutes: attributes.trackingDurationMinutes,
+                hostId: attributes.hostId,
+                hostName: attributes.hostName
+              )
+              state.livePromise = LivePromise.Feature.State(data: Shared(value: data))
+              AppLogger.liveActivity.info("LiveActivity 감지됨 - livePromise 생성: \(attributes.title)")
+            } else {
+              // 활성 LiveActivity가 없으면 livePromise 제거
+              if state.livePromise != nil {
+                state.livePromise = nil
+                AppLogger.liveActivity.info("LiveActivity 없음 - livePromise 제거")
+              }
+            }
+            return .none
+          }
 
         case .delegate:
           return .none

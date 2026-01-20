@@ -23,4 +23,17 @@ public protocol PromiseRemoteDataSourceProtocol {
 
   // MARK: - Real-time Listener
   func subscribeToActivePromises(groupId: String, limit: Int) -> AsyncStream<[PromiseModel]>
+
+  // MARK: - Live Activity
+  /// LiveActivity 시작 요청 (백엔드에서 Push to Start APNs 전송)
+  func startLiveActivity(promiseId: String) async throws
+
+  /// ETA 업데이트 요청 (백엔드에서 APNs 브로드캐스트)
+  func updateETA(promiseId: String, visibleMinutes: Int) async throws
+
+  /// LiveActivity 종료 요청
+  func endLiveActivity(promiseId: String) async throws
+
+  /// LiveActivity Push Token 등록 (앱에서 직접 시작한 경우)
+  func registerLiveActivityToken(promiseId: String, token: String) async throws
 }

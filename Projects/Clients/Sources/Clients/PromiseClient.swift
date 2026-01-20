@@ -111,6 +111,20 @@ public struct PromiseClient: Sendable {
 
   /// 약속 응답
   public var respondPromise: @Sendable (_ promiseId: String, _ status: PromiseAttendanceStatus) async throws -> Void
+
+  // MARK: - Live Activity
+
+  /// LiveActivity 시작 요청 (백엔드에서 Push to Start APNs 전송)
+  public var startLiveActivity: @Sendable (_ promiseId: String) async throws -> Void
+
+  /// ETA 업데이트 요청 (백엔드에서 APNs 브로드캐스트)
+  public var updateETA: @Sendable (_ promiseId: String, _ estimatedMinutes: Int) async throws -> Void
+
+  /// LiveActivity 종료 요청
+  public var endLiveActivity: @Sendable (_ promiseId: String) async throws -> Void
+
+  /// LiveActivity Push Token 등록 (앱에서 직접 시작한 경우 서버에 토큰 전송)
+  public var registerLiveActivityToken: @Sendable (_ promiseId: String, _ token: String) async throws -> Void
 }
 
 // MARK: - Test & Preview Values
@@ -166,6 +180,18 @@ extension PromiseClient: TestDependencyKey {
       }
     },
     respondPromise: { _, _ in
+      try await Task.sleep(for: .seconds(0.3))
+    },
+    startLiveActivity: { _ in
+      try await Task.sleep(for: .seconds(0.5))
+    },
+    updateETA: { _, _ in
+      try await Task.sleep(for: .seconds(0.3))
+    },
+    endLiveActivity: { _ in
+      try await Task.sleep(for: .seconds(0.3))
+    },
+    registerLiveActivityToken: { _, _ in
       try await Task.sleep(for: .seconds(0.3))
     }
   )
@@ -233,6 +259,18 @@ extension PromiseClient: DependencyKey {
           promiseId: promiseId,
           status: status.rawValue
         )
+      },
+      startLiveActivity: { promiseId in
+        try await dataSource.startLiveActivity(promiseId: promiseId)
+      },
+      updateETA: { promiseId, estimatedMinutes in
+        try await dataSource.updateETA(promiseId: promiseId, visibleMinutes: estimatedMinutes)
+      },
+      endLiveActivity: { promiseId in
+        try await dataSource.endLiveActivity(promiseId: promiseId)
+      },
+      registerLiveActivityToken: { promiseId, token in
+        try await dataSource.registerLiveActivityToken(promiseId: promiseId, token: token)
       }
     )
   }()

@@ -55,6 +55,11 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
       callableData["place"] = location.name
     }
 
+    // LiveActivity 예약 시작 시간 추가
+    if let trackingMinutes = promise.trackingStartMinutesBefore {
+      callableData["arrivalSharingTime"] = trackingMinutes
+    }
+
     // env 파라미터 추가
     if let env = functionsEnvironmentParam() {
       callableData["env"] = env
@@ -128,6 +133,13 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
       callableData["endAt"] = dateFormatter.string(from: endAt)
     } else {
       callableData["endAt"] = NSNull()
+    }
+
+    // trackingStartMinutesBefore (실시간 공유 시작 시간)
+    if let trackingMinutes = promise.trackingStartMinutesBefore {
+      callableData["trackingStartMinutesBefore"] = trackingMinutes
+    } else {
+      callableData["trackingStartMinutesBefore"] = NSNull()
     }
 
     // env 파라미터 추가
@@ -347,6 +359,66 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
         listener.remove()
       }
     }
+  }
+
+  // MARK: - Live Activity
+
+  /// LiveActivity 시작 요청
+  /// Firebase Functions의 startLiveActivity를 호출하여 Push to Start APNs 전송
+  public func startLiveActivity(promiseId: String) async throws {
+    var callableData: [String: Any] = [
+      "promiseId": promiseId
+    ]
+
+    if let env = functionsEnvironmentParam() {
+      callableData["env"] = env
+    }
+
+    _ = try await functions.httpsCallable("startLiveActivity").call(callableData)
+  }
+
+  /// ETA 업데이트 요청
+  /// Firebase Functions의 updateETA를 호출하여 모든 참가자에게 APNs 브로드캐스트
+  public func updateETA(promiseId: String, visibleMinutes: Int) async throws {
+    var callableData: [String: Any] = [
+      "promiseId": promiseId,
+      "estimatedMinutes": visibleMinutes
+    ]
+
+    if let env = functionsEnvironmentParam() {
+      callableData["env"] = env
+    }
+
+    _ = try await functions.httpsCallable("updateETA").call(callableData)
+  }
+
+  /// LiveActivity 종료 요청
+  /// Firebase Functions의 endLiveActivity를 호출하여 종료 APNs 전송
+  public func endLiveActivity(promiseId: String) async throws {
+    var callableData: [String: Any] = [
+      "promiseId": promiseId
+    ]
+
+    if let env = functionsEnvironmentParam() {
+      callableData["env"] = env
+    }
+
+    _ = try await functions.httpsCallable("endLiveActivity").call(callableData)
+  }
+
+  /// LiveActivity Push Token 등록
+  /// 앱에서 직접 LiveActivity를 시작한 경우 서버에 토큰 등록
+  public func registerLiveActivityToken(promiseId: String, token: String) async throws {
+    var callableData: [String: Any] = [
+      "promiseId": promiseId,
+      "token": token
+    ]
+
+    if let env = functionsEnvironmentParam() {
+      callableData["env"] = env
+    }
+
+    _ = try await functions.httpsCallable("registerLiveActivityToken").call(callableData)
   }
 
   // MARK: - Helper Methods

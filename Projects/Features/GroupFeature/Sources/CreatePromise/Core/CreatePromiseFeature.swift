@@ -5,6 +5,7 @@
 //  Created by 김성원 on 9/30/25.
 //
 
+// TODO: LiveActivity 활성화 선택 화면 추가, 지도 추가, 이미지 추가
 public enum CreatePromise {
   
   
@@ -112,6 +113,7 @@ public enum CreatePromise {
         case incrementParticipants
         case decrementParticipants
         case setDescription(String)
+        case setTrackingStartMinutes(Int?)
         case retryLoadGroups
         case clearCreationError
         case createGroupTapped
@@ -228,6 +230,10 @@ public enum CreatePromise {
           case .setDescription(let description):
             let trimmed = String(description.prefix(500))
             state.promise.description = trimmed.isEmpty ? nil : trimmed
+            return .none
+
+          case .setTrackingStartMinutes(let minutes):
+            state.promise.trackingStartMinutesBefore = minutes
             return .none
 
           case .setStartDate(let date):
@@ -402,20 +408,8 @@ extension CreatePromiseStep {
       EmptyView()
 
     case .second, .third:
-      Button(action: {
+      PreviousStepButton {
         store.send(.view(.previousStep), animation: .default)
-      }) {
-        HStack(spacing: 8) {
-          Image(systemName: "chevron.left")
-            .font(.system(size: 14, weight: .semibold))
-          Text("이전")
-            .font(.system(size: 16, weight: .semibold))
-        }
-        .foregroundColor(.primary)
-        .frame(maxWidth: .infinity)
-        .frame(height: 56)
-        .background(Color(.systemGray5))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
       }
     }
   }
@@ -458,11 +452,41 @@ extension CreatePromiseStep {
   }
 }
 
+fileprivate struct PreviousStepButton: View {
+  let action: () -> Void
+  @State private var isPressed = false
+
+  var body: some View {
+    Button(action: action) {
+      HStack(spacing: 8) {
+        Image(systemName: "chevron.left")
+          .font(.system(size: 14, weight: .semibold))
+        Text("이전")
+          .font(.system(size: 16, weight: .semibold))
+      }
+      .foregroundColor(.primary)
+      .frame(maxWidth: .infinity)
+      .frame(height: 56)
+      .background(Color(.systemGray5))
+      .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+    .scaleEffect(isPressed ? 0.95 : 1.0)
+    .animation(.spring(response: 0.2, dampingFraction: 0.6), value: isPressed)
+    .sensoryFeedback(.impact(flexibility: .soft), trigger: isPressed)
+    .simultaneousGesture(
+      DragGesture(minimumDistance: 0)
+        .onChanged { _ in isPressed = true }
+        .onEnded { _ in isPressed = false }
+    )
+  }
+}
+
 fileprivate struct StepButton: View {
   let title: String
   var disabled: Bool
   var isLoading: Bool = false
   var action: () -> Void
+  @State private var isPressed = false
 
   var body: some View {
     Button(action: action) {
@@ -497,6 +521,14 @@ fileprivate struct StepButton: View {
         y: 6
       )
     }
+    .scaleEffect(isPressed && !disabled ? 0.95 : 1.0)
+    .animation(.spring(response: 0.2, dampingFraction: 0.6), value: isPressed)
+    .sensoryFeedback(.impact(flexibility: .soft), trigger: isPressed && !disabled)
+    .simultaneousGesture(
+      DragGesture(minimumDistance: 0)
+        .onChanged { _ in if !disabled { isPressed = true } }
+        .onEnded { _ in isPressed = false }
+    )
     .disabled(disabled)
     .animation(.easeInOut(duration: 0.2), value: disabled)
     .animation(.easeInOut(duration: 0.2), value: isLoading)

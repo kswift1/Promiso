@@ -250,6 +250,7 @@ extension LivePromise {
   @Reducer
   public struct Feature {
     @Dependency(\.liveActivityClient) var liveActivityClient
+    @Dependency(\.promiseClient) var promiseClient
 
     public init() {}
 
@@ -309,6 +310,10 @@ extension LivePromise {
         case observeContentStateUpdates
         /// ContentState 스트림에서 새 상태 수신
         case contentStateUpdated(PromiseActivityAttributes.ContentState)
+        /// Push Token 스트림 구독 시작
+        case observePushTokenUpdates
+        /// Push Token 수신 (백엔드에 전송 필요)
+        case pushTokenReceived(String)
       }
 
       public enum Delegate: Equatable, Sendable {
@@ -327,7 +332,8 @@ extension LivePromise {
             // 현재 활성화된 LiveActivity 상태 동기화 및 스트림 구독 시작
             return .merge(
               .send(.view(.refreshFromLiveActivity)),
-              .send(.internal(.observeContentStateUpdates))
+              .send(.internal(.observeContentStateUpdates)),
+              .send(.internal(.observePushTokenUpdates))
             )
 
           case .tapped:
@@ -439,6 +445,37 @@ extension LivePromise {
               data.trackingDurationMinutes = contentState.trackingDurationMinutes
             }
             return .none
+
+          case .observePushTokenUpdates:
+            // APNs 원격 업데이트를 위한 Push Token 스트림 구독
+            guard let promiseId = liveActivityClient.activePromiseId(),
+                  let stream = liveActivityClient.observePushTokenUpdates(promiseId) else {
+              return .none
+            }
+
+            return .run { send in
+              for await pushToken in stream {
+                await send(.internal(.pushTokenReceived(pushToken)))
+              }
+            }
+
+          case .pushTokenReceived(let pushToken):
+            // Push Token을 백엔드에 전송
+            guard let promiseId = liveActivityClient.activePromiseId(), !promiseId.isEmpty else {
+              AppLogger.liveActivity.warning("Push Token 수신했으나 활성 promiseId 없음")
+              return .none
+            }
+
+            AppLogger.liveActivity.info("Push Token 수신: \(pushToken.prefix(20))... (promiseId: \(promiseId))")
+
+            return .run { [promiseClient] _ in
+              do {
+                try await promiseClient.registerLiveActivityToken(promiseId, pushToken)
+                AppLogger.liveActivity.info("Push Token 백엔드 등록 성공")
+              } catch {
+                AppLogger.liveActivity.error("Push Token 백엔드 등록 실패: \(error)")
+              }
+            }
           }
 
         case .delegate:

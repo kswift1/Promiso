@@ -2,10 +2,12 @@ import SwiftUI
 import Clients
 import ComposableArchitecture
 import PromisoShared
+import ResourceKit
 
 struct PromisePreviewSection: View {
   let store: StoreOf<CreatePromise.Feature>
   @State private var showPreviewFullScreen = false
+  @State private var isPressed = false
 
   var body: some View {
     SectionPlaceHolder(
@@ -38,7 +40,7 @@ struct PromisePreviewSection: View {
 
             Image(systemName: "chevron.right.circle.fill")
               .font(.system(size: 24))
-              .foregroundColor(.blue.opacity(0.8))
+              .foregroundColor(Color.pmindigo.n500)
           }
 
           // 일정 정보
@@ -49,6 +51,9 @@ struct PromisePreviewSection: View {
               EmojiPreviewRow(emoji: "📍", text: store.promise.locationText)
             }
             EmojiPreviewRow(emoji: "👥", text: "최소 \(store.promise.minimumParticipants)명")
+            if let minutes = store.promise.trackingStartMinutesBefore {
+              EmojiPreviewRow(emoji: "📡", text: "\(minutes)분 전 실시간 공유 시작")
+            }
           }
         }
         .padding(16)
@@ -61,6 +66,14 @@ struct PromisePreviewSection: View {
         .shadow(color: .black.opacity(0.05), radius: 8, y: 4)
       }
       .buttonStyle(PlainButtonStyle())
+      .scaleEffect(isPressed ? 0.97 : 1.0)
+      .animation(.spring(response: 0.2, dampingFraction: 0.6), value: isPressed)
+      .sensoryFeedback(.impact(flexibility: .soft), trigger: showPreviewFullScreen)
+      .simultaneousGesture(
+        DragGesture(minimumDistance: 0)
+          .onChanged { _ in isPressed = true }
+          .onEnded { _ in isPressed = false }
+      )
     }
     .fullScreenCover(isPresented: $showPreviewFullScreen) {
       PromisePreviewFullScreen(store: store, isPresented: $showPreviewFullScreen)
@@ -105,6 +118,7 @@ private struct EmojiPreviewRow: View {
 struct PromisePreviewFullScreen: View {
   let store: StoreOf<CreatePromise.Feature>
   @Binding var isPresented: Bool
+  @State private var isClosePressed = false
 
   var body: some View {
     NavigationView {
@@ -118,6 +132,10 @@ struct PromisePreviewFullScreen: View {
           }
 
           conditionSection
+
+          if store.promise.trackingStartMinutesBefore != nil {
+            arrivalSharingSection
+          }
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 24)
@@ -133,6 +151,14 @@ struct PromisePreviewFullScreen: View {
           Button("닫기") {
             isPresented = false
           }
+          .scaleEffect(isClosePressed ? 0.9 : 1.0)
+          .animation(.spring(response: 0.2, dampingFraction: 0.6), value: isClosePressed)
+          .sensoryFeedback(.impact(flexibility: .soft), trigger: isClosePressed)
+          .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+              .onChanged { _ in isClosePressed = true }
+              .onEnded { _ in isClosePressed = false }
+          )
         }
       }
     }
@@ -224,6 +250,29 @@ struct PromisePreviewFullScreen: View {
         Text("최소 \(store.promise.minimumParticipants)명 참석 시 약속이 확정됩니다")
           .font(.system(size: 15))
           .foregroundStyle(.primary)
+
+        Spacer()
+      }
+      .padding(16)
+      .previewGlassCard()
+    }
+  }
+
+  // MARK: - Arrival Sharing Section
+
+  private var arrivalSharingSection: some View {
+    VStack(spacing: 0) {
+      PreviewSectionHeader(title: "실시간 공유")
+
+      HStack(spacing: 12) {
+        Text("📡")
+          .font(.system(size: 18))
+
+        if let minutes = store.promise.trackingStartMinutesBefore {
+          Text("약속 \(minutes)분 전부터 실시간 공유가 시작됩니다")
+            .font(.system(size: 15))
+            .foregroundStyle(.primary)
+        }
 
         Spacer()
       }
