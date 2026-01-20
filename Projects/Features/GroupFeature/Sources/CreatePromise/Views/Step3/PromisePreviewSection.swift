@@ -192,7 +192,7 @@ struct PromisePreviewFullScreen: View {
           PreviewEmojiInfoRow(emoji: "📍", title: "장소", value: store.promise.locationText)
         }
       }
-      .previewGlassCard()
+      .adaptiveGlassCard(cornerRadius: 12)
     }
   }
 
@@ -207,7 +207,7 @@ struct PromisePreviewFullScreen: View {
         .foregroundStyle(.primary)
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .previewGlassCard()
+        .adaptiveGlassCard(cornerRadius: 12)
     }
   }
 
@@ -228,7 +228,7 @@ struct PromisePreviewFullScreen: View {
         Spacer()
       }
       .padding(16)
-      .previewGlassCard()
+      .adaptiveGlassCard(cornerRadius: 12)
     }
   }
 
@@ -299,14 +299,3 @@ private struct PreviewEmojiInfoRow: View {
   }
 }
 
-private extension View {
-  func previewGlassCard() -> some View {
-    self
-      .background(Color(.systemBackground).opacity(0.8))
-      .clipShape(RoundedRectangle(cornerRadius: 12))
-      .overlay(
-        RoundedRectangle(cornerRadius: 12)
-          .stroke(Color(.systemGray5), lineWidth: 1)
-      )
-  }
-}

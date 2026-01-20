@@ -62,7 +62,7 @@ struct PromiseCardSkeleton: View {
       }
     }
     .padding(16)
-    .adaptiveGlassCardBackground()
+    .adaptiveGlassCard()
     .opacity(isAnimating ? 0.5 : 1.0)
     .animation(
       Animation.easeInOut(duration: 0.8)
@@ -75,34 +75,6 @@ struct PromiseCardSkeleton: View {
   }
 }
 
-// MARK: - Glass Effect Modifier
-
-private extension View {
-  /// iOS 26: ultraThinMaterial glass effect, 이전: systemBackground with border
-  func adaptiveGlassCardBackground() -> some View {
-    if #available(iOS 26.0, *) {
-      return AnyView(
-        self
-          .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
-          .overlay(
-            RoundedRectangle(cornerRadius: 16)
-              .strokeBorder(.white.opacity(0.2), lineWidth: 1)
-          )
-          .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 4)
-      )
-    } else {
-      return AnyView(
-        self
-          .background(Color(.systemBackground))
-          .clipShape(RoundedRectangle(cornerRadius: 16))
-          .overlay(
-            RoundedRectangle(cornerRadius: 16)
-              .stroke(Color(.systemGray5), lineWidth: 1)
-          )
-      )
-    }
-  }
-}
 
 // MARK: - Preview
 

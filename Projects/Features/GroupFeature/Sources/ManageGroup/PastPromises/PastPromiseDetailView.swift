@@ -92,7 +92,7 @@ extension PastPromiseDetail {
             )
           }
         }
-        .glassCard()
+        .adaptiveGlassCard(cornerRadius: 12)
       }
     }
 
@@ -342,7 +342,7 @@ private struct ParticipantGroupRow: View {
       }
       .padding(.horizontal, 16)
       .padding(.vertical, 12)
-      .glassCard()
+      .adaptiveGlassCard(cornerRadius: 12)
     }
     .buttonStyle(.plain)
   }
@@ -447,16 +447,3 @@ private struct MemberRow: View {
   }
 }
 
-// MARK: - Glass Card Modifier
-
-private extension View {
-  func glassCard() -> some View {
-    self
-      .background(Color(.systemBackground).opacity(0.8))
-      .clipShape(RoundedRectangle(cornerRadius: 12))
-      .overlay(
-        RoundedRectangle(cornerRadius: 12)
-          .stroke(Color(.systemGray5), lineWidth: 1)
-      )
-  }
-}
