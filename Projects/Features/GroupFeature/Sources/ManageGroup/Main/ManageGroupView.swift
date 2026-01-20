@@ -4,6 +4,8 @@ import SwiftUI
 import ComposableArchitecture
 import PromisoShared
 
+// TODO: 한번 UI 변경 필요
+
 extension ManageGroup {
   public struct RootView: View {
     @Bindable private var store: StoreOf<ManageGroup.Feature>
@@ -152,8 +154,7 @@ extension ManageGroup {
               Label("초대 링크 공유", systemImage: "square.and.arrow.up")
             }
           } label: {
-            Image(systemName: "person.badge.plus")
-              .font(.system(size: 16, weight: .medium))
+            Text("초대")
           }
         }
       }
@@ -351,11 +352,6 @@ extension ManageGroup {
     @ViewBuilder
     private var dangerZoneSection: some View {
       VStack(alignment: .leading, spacing: 12) {
-        Text("위험 구역")
-          .font(.system(size: 13, weight: .semibold))
-          .foregroundStyle(.secondary)
-          .textCase(.uppercase)
-          .padding(.horizontal, 4)
 
         VStack(spacing: 0) {
           if store.isHost {
