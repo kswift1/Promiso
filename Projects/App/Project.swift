@@ -18,12 +18,7 @@ let project = Project(
       dependencies: AppFeatureDeps.allDeps + [
         .target(name: "LiveActivityWidgetExtension")
       ],
-      settings: .standard(
-        configurations: [
-          .debug(name: "Debug", xcconfig: "../../Secrets.xcconfig"),
-          .release(name: "Release")
-        ]
-      )
+      settings: .standard()
     ),
     // MARK: - Live Activity Widget Extension
     .target(

@@ -60,6 +60,8 @@ tags:
     description: 그룹 관련 API
   - name: Promise
     description: 약속 관련 API
+  - name: Emoji
+    description: 이모지 생성 API
   - name: Notification
     description: 푸시 알림 관련 API
   - name: Test
@@ -1206,6 +1208,100 @@ paths:
                       code: internal
                       message: 푸시 알림 전송 중 오류가 발생했습니다
 
+  # ========================================
+  # Emoji
+  # ========================================
+
+  /generateEmoji:
+    post:
+      tags:
+        - Emoji
+      summary: 이모지 생성
+      description: |
+        약속 제목에 어울리는 이모지를 Gemini API를 통해 생성합니다.
+
+        **인증 필수**: Firebase Authentication 토큰 필요
+      operationId: generateEmoji
+      security:
+        - firebaseAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - data
+              properties:
+                data:
+                  $ref: '#/components/schemas/GenerateEmojiRequest'
+            examples:
+              lunch:
+                summary: 점심 약속
+                value:
+                  data:
+                    title: 점심 같이 먹자
+              movie:
+                summary: 영화 관람
+                value:
+                  data:
+                    title: 영화 보러 갈 사람
+
+      responses:
+        '200':
+          description: 이모지 생성 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - result
+                properties:
+                  result:
+                    $ref: '#/components/schemas/GenerateEmojiResponse'
+              examples:
+                lunch:
+                  summary: 점심 이모지
+                  value:
+                    result:
+                      emoji: "🍽️"
+                movie:
+                  summary: 영화 이모지
+                  value:
+                    result:
+                      emoji: "🎬"
+
+        '400':
+          description: 잘못된 요청
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FunctionsError'
+              examples:
+                emptyTitle:
+                  value:
+                    error:
+                      code: invalid-argument
+                      message: 제목이 비어있습니다
+
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+
+        '500':
+          description: 서버 오류 (기본 이모지 📅 반환)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    $ref: '#/components/schemas/GenerateEmojiResponse'
+              examples:
+                fallback:
+                  value:
+                    result:
+                      emoji: "📅"
+
 components:
   securitySchemes:
     firebaseAuth:
@@ -1242,6 +1338,31 @@ components:
                   message: 잘못된 파라미터입니다
 
   schemas:
+    # ========================================
+    # Emoji
+    # ========================================
+
+    GenerateEmojiRequest:
+      type: object
+      required:
+        - title
+      properties:
+        title:
+          type: string
+          minLength: 1
+          description: 약속 제목
+          example: 점심 같이 먹자
+
+    GenerateEmojiResponse:
+      type: object
+      required:
+        - emoji
+      properties:
+        emoji:
+          type: string
+          description: 생성된 이모지
+          example: "🍽️"
+
     # ========================================
     # User
     # ========================================
