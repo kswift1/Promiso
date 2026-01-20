@@ -9,9 +9,11 @@ extension EditPromise {
     @FocusState private var focusedField: FocusedField?
     @State private var isMinusPressed = false
     @State private var isPlusPressed = false
+    @State private var customTrackingMinutesText = ""
+    @State private var isCustomTrackingMinutes = false
 
     enum FocusedField {
-      case title, description
+      case title, description, trackingMinutes
     }
 
     public init(store: StoreOf<Feature>) {
@@ -373,6 +375,49 @@ extension EditPromise {
               ForEach([15, 30, 60], id: \.self) { minutes in
                 trackingMinuteButton(minutes: minutes)
               }
+              // 직접 입력 버튼
+              customInputButton
+            }
+
+            // 직접 입력 필드
+            if isCustomTrackingMinutes {
+              HStack(spacing: 12) {
+                TextField("", text: $customTrackingMinutesText)
+                  .focused($focusedField, equals: .trackingMinutes)
+                  .keyboardType(.numberPad)
+                  .font(.system(size: 17, weight: .medium))
+                  .multilineTextAlignment(.center)
+                  .frame(width: 80)
+                  .padding(.vertical, 12)
+                  .padding(.horizontal, 16)
+                  .background(Color(.systemGray6))
+                  .clipShape(RoundedRectangle(cornerRadius: 10))
+                  .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                      .stroke(Color.pmindigo.n500, lineWidth: 2)
+                  )
+                  .onChange(of: customTrackingMinutesText) { _, newValue in
+                    // 숫자만 허용, 최대 3자리
+                    let filtered = String(newValue.filter { $0.isNumber }.prefix(3))
+                    if filtered != newValue {
+                      customTrackingMinutesText = filtered
+                    }
+                    // 값 업데이트
+                    if let minutes = Int(filtered), minutes > 0 {
+                      store.send(.view(.setTrackingMinutes(minutes)))
+                    }
+                  }
+
+                Text("분 전 시작")
+                  .font(.system(size: 15))
+                  .foregroundStyle(.secondary)
+
+                Spacer()
+              }
+              .transition(.asymmetric(
+                insertion: .scale(scale: 0.95).combined(with: .opacity),
+                removal: .scale(scale: 0.95).combined(with: .opacity)
+              ))
             }
 
             // 안내 박스
@@ -392,12 +437,53 @@ extension EditPromise {
           }
         }
       }
+      .onAppear {
+        // 기존 값이 프리셋이 아니면 직접 입력 모드로 설정
+        if let minutes = store.editedPromise.trackingStartMinutesBefore,
+           ![15, 30, 60].contains(minutes) {
+          isCustomTrackingMinutes = true
+          customTrackingMinutesText = "\(minutes)"
+        }
+      }
+    }
+
+    private var customInputButton: some View {
+      Button {
+        withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) {
+          isCustomTrackingMinutes = true
+          // 현재 값이 프리셋이면 텍스트 필드 비우기, 아니면 현재 값 유지
+          if let minutes = store.editedPromise.trackingStartMinutesBefore,
+             ![15, 30, 60].contains(minutes) {
+            customTrackingMinutesText = "\(minutes)"
+          } else {
+            customTrackingMinutesText = ""
+          }
+        }
+        // 포커스 주기
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+          focusedField = .trackingMinutes
+        }
+      } label: {
+        Text("직접")
+          .font(.system(size: 14, weight: .medium))
+          .frame(maxWidth: .infinity)
+          .padding(.vertical, 12)
+          .background(isCustomTrackingMinutes ? Color.pmindigo.n500 : Color(.systemGray6))
+          .foregroundStyle(isCustomTrackingMinutes ? .white : .primary)
+          .clipShape(RoundedRectangle(cornerRadius: 10))
+      }
+      .buttonStyle(ScaleButtonStyle())
+      .sensoryFeedback(.selection, trigger: isCustomTrackingMinutes)
     }
 
     private func trackingMinuteButton(minutes: Int) -> some View {
-      let isSelected = store.editedPromise.trackingStartMinutesBefore == minutes
+      let isSelected = store.editedPromise.trackingStartMinutesBefore == minutes && !isCustomTrackingMinutes
 
       return Button {
+        withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) {
+          isCustomTrackingMinutes = false
+          customTrackingMinutesText = ""
+        }
         store.send(.view(.setTrackingMinutes(minutes)), animation: .spring(response: 0.2, dampingFraction: 0.7))
       } label: {
         Text("\(minutes)분 전")
