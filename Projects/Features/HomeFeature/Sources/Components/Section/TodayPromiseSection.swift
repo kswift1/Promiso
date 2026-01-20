@@ -151,7 +151,7 @@ struct TodayPromiseSection: View {
               Text("📡")
                 .font(.system(size: 10))
 
-              Text("\(minutes)분 전")
+              Text("\(minutes)분 전 실시간 공유 시작")
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
             }

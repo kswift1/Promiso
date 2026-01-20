@@ -148,7 +148,7 @@ struct PromiseCardView: View {
             HStack(spacing: 4) {
               Text("📡")
                 .font(.system(size: 10))
-              Text("\(minutes)분 전 실시간 공유")
+              Text("\(minutes)분 전 실시간 공유 시작")
                 .font(.system(size: 13))
                 .lineLimit(1)
             }

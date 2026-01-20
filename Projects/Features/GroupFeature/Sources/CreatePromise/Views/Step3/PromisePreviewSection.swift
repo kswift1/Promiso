@@ -52,7 +52,7 @@ struct PromisePreviewSection: View {
             }
             EmojiPreviewRow(emoji: "👥", text: "최소 \(store.promise.minimumParticipants)명")
             if let minutes = store.promise.trackingStartMinutesBefore {
-              EmojiPreviewRow(emoji: "📡", text: "\(minutes)분 전부터 실시간 공유")
+              EmojiPreviewRow(emoji: "📡", text: "\(minutes)분 전 실시간 공유 시작")
             }
           }
         }
