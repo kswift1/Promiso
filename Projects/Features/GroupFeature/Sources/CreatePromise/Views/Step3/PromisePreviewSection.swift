@@ -51,6 +51,9 @@ struct PromisePreviewSection: View {
               EmojiPreviewRow(emoji: "📍", text: store.promise.locationText)
             }
             EmojiPreviewRow(emoji: "👥", text: "최소 \(store.promise.minimumParticipants)명")
+            if let minutes = store.promise.trackingStartMinutesBefore {
+              EmojiPreviewRow(emoji: "📡", text: "\(minutes)분 전부터 실시간 공유")
+            }
           }
         }
         .padding(16)
@@ -129,6 +132,10 @@ struct PromisePreviewFullScreen: View {
           }
 
           conditionSection
+
+          if store.promise.trackingStartMinutesBefore != nil {
+            arrivalSharingSection
+          }
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 24)
@@ -243,6 +250,29 @@ struct PromisePreviewFullScreen: View {
         Text("최소 \(store.promise.minimumParticipants)명 참석 시 약속이 확정됩니다")
           .font(.system(size: 15))
           .foregroundStyle(.primary)
+
+        Spacer()
+      }
+      .padding(16)
+      .previewGlassCard()
+    }
+  }
+
+  // MARK: - Arrival Sharing Section
+
+  private var arrivalSharingSection: some View {
+    VStack(spacing: 0) {
+      PreviewSectionHeader(title: "실시간 공유")
+
+      HStack(spacing: 12) {
+        Text("📡")
+          .font(.system(size: 18))
+
+        if let minutes = store.promise.trackingStartMinutesBefore {
+          Text("약속 \(minutes)분 전부터 실시간 공유가 시작됩니다")
+            .font(.system(size: 15))
+            .foregroundStyle(.primary)
+        }
 
         Spacer()
       }

@@ -145,6 +145,18 @@ struct TodayPromiseSection: View {
             }
           }
 
+          // 실시간 공유
+          if let minutes = promise.trackingStartMinutesBefore {
+            HStack(spacing: 4) {
+              Text("📡")
+                .font(.system(size: 10))
+
+              Text("\(minutes)분 전")
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+            }
+          }
+
           // 그룹 태그
           if let groupName = promise.group?.name {
             Text(groupName)

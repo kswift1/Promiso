@@ -143,6 +143,18 @@ struct PromiseCardView: View {
             .foregroundColor(.secondary.opacity(0.8))
           }
 
+          // 실시간 공유 (있는 경우)
+          if let minutes = promise.trackingStartMinutesBefore {
+            HStack(spacing: 4) {
+              Text("📡")
+                .font(.system(size: 10))
+              Text("\(minutes)분 전 실시간 공유")
+                .font(.system(size: 13))
+                .lineLimit(1)
+            }
+            .foregroundColor(.secondary.opacity(0.8))
+          }
+
           // 응답하기 버튼 (필요한 경우)
           if needsMyResponse, let onRespond = onRespond {
             respondButton(action: onRespond)
