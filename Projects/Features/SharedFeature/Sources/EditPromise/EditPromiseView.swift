@@ -1,11 +1,14 @@
 import SwiftUI
 import ComposableArchitecture
 import Clients
+import ResourceKit
 
 extension EditPromise {
   public struct RootView: View {
     @Bindable private var store: StoreOf<Feature>
     @FocusState private var focusedField: FocusedField?
+    @State private var isMinusPressed = false
+    @State private var isPlusPressed = false
 
     enum FocusedField {
       case title, description
@@ -37,6 +40,9 @@ extension EditPromise {
               // 최소 참가 인원 섹션
               minimumParticipantsSection
                 .id("minimumParticipants")
+
+              // 실시간 공유 섹션
+              realtimeShareSection
             }
             .padding(16)
           }
@@ -200,16 +206,16 @@ extension EditPromise {
           HStack(spacing: 8) {
             Image(systemName: "exclamationmark.triangle.fill")
               .font(.system(size: 14))
-              .foregroundColor(.orange)
+              .foregroundColor(Color.pmwarning.n600)
 
             Text("시작 시간이 1시간 이내입니다.")
               .font(.system(size: 13))
-              .foregroundColor(.orange)
+              .foregroundColor(Color.pmwarning.n600)
 
             Spacer()
           }
           .padding(12)
-          .background(Color.orange.opacity(0.1))
+          .background(Color.pmwarning.n50)
           .clipShape(RoundedRectangle(cornerRadius: 8))
         }
       }
@@ -273,9 +279,17 @@ extension EditPromise {
           } label: {
             Image(systemName: "minus.circle.fill")
               .font(.system(size: 32))
-              .foregroundColor(store.editedPromise.minimumParticipants <= 2 ? Color(.systemGray4) : .blue)
+              .foregroundColor(store.editedPromise.minimumParticipants <= 2 ? Color(.systemGray4) : Color.pmindigo.n500)
+              .scaleEffect(isMinusPressed ? 0.85 : 1.0)
           }
           .buttonRepeatBehavior(.enabled)
+          .animation(.spring(response: 0.15, dampingFraction: 0.5), value: isMinusPressed)
+          .sensoryFeedback(.impact(flexibility: .soft), trigger: store.editedPromise.minimumParticipants)
+          .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+              .onChanged { _ in if store.editedPromise.minimumParticipants > 2 { isMinusPressed = true } }
+              .onEnded { _ in isMinusPressed = false }
+          )
           .disabled(store.editedPromise.minimumParticipants <= 2)
 
           VStack(spacing: 4) {
@@ -295,9 +309,17 @@ extension EditPromise {
           } label: {
             Image(systemName: "plus.circle.fill")
               .font(.system(size: 32))
-              .foregroundColor(store.editedPromise.minimumParticipants >= store.maxMembers ? Color(.systemGray4) : .blue)
+              .foregroundColor(store.editedPromise.minimumParticipants >= store.maxMembers ? Color(.systemGray4) : Color.pmindigo.n500)
+              .scaleEffect(isPlusPressed ? 0.85 : 1.0)
           }
           .buttonRepeatBehavior(.enabled)
+          .animation(.spring(response: 0.15, dampingFraction: 0.5), value: isPlusPressed)
+          .sensoryFeedback(.impact(flexibility: .soft), trigger: store.editedPromise.minimumParticipants)
+          .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+              .onChanged { _ in if store.editedPromise.minimumParticipants < store.maxMembers { isPlusPressed = true } }
+              .onEnded { _ in isPlusPressed = false }
+          )
           .disabled(store.editedPromise.minimumParticipants >= store.maxMembers)
         }
         .padding(.vertical, 8)
@@ -306,7 +328,7 @@ extension EditPromise {
         HStack(alignment: .top, spacing: 12) {
           Image(systemName: "checkmark.circle.fill")
             .font(.system(size: 20))
-            .foregroundColor(.blue)
+            .foregroundColor(Color.pmindigo.n500)
 
           Text("최소 \(store.editedPromise.minimumParticipants)명이 참석하면 약속이 자동으로 확정됩니다")
             .font(.system(size: 14))
@@ -315,9 +337,79 @@ extension EditPromise {
           Spacer()
         }
         .padding(16)
-        .background(Color.blue.opacity(0.1))
+        .background(Color.pmindigo.n50)
         .clipShape(RoundedRectangle(cornerRadius: 12))
       }
+    }
+
+    // MARK: - Realtime Share Section
+
+    private var realtimeShareSection: some View {
+      VStack(alignment: .leading, spacing: 12) {
+        HStack {
+          HStack(spacing: 4) {
+            Text("실시간 공유")
+              .font(.system(size: 15, weight: .semibold))
+              .foregroundStyle(.primary)
+
+            Text("(선택)")
+              .font(.system(size: 13))
+              .foregroundStyle(.secondary)
+          }
+
+          Spacer()
+
+          Toggle("", isOn: Binding(
+            get: { store.useRealtimeShare },
+            set: { _ in store.send(.view(.toggleUseRealtimeShare), animation: .spring(response: 0.3, dampingFraction: 0.8)) }
+          ))
+          .labelsHidden()
+        }
+
+        if store.useRealtimeShare {
+          VStack(spacing: 12) {
+            // 시간 선택 버튼들
+            HStack(spacing: 8) {
+              ForEach([15, 30, 60], id: \.self) { minutes in
+                trackingMinuteButton(minutes: minutes)
+              }
+            }
+
+            // 안내 박스
+            HStack(alignment: .top, spacing: 12) {
+              Text("📡")
+                .font(.system(size: 18))
+
+              Text("약속 \(store.editedPromise.trackingStartMinutesBefore ?? 30)분 전부터 실시간 공유가 시작됩니다")
+                .font(.system(size: 14))
+                .foregroundColor(.primary)
+
+              Spacer()
+            }
+            .padding(16)
+            .background(Color.pmindigo.n50)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+          }
+        }
+      }
+    }
+
+    private func trackingMinuteButton(minutes: Int) -> some View {
+      let isSelected = store.editedPromise.trackingStartMinutesBefore == minutes
+
+      return Button {
+        store.send(.view(.setTrackingMinutes(minutes)), animation: .spring(response: 0.2, dampingFraction: 0.7))
+      } label: {
+        Text("\(minutes)분 전")
+          .font(.system(size: 14, weight: .medium))
+          .frame(maxWidth: .infinity)
+          .padding(.vertical, 12)
+          .background(isSelected ? Color.pmindigo.n500 : Color(.systemGray6))
+          .foregroundStyle(isSelected ? .white : .primary)
+          .clipShape(RoundedRectangle(cornerRadius: 10))
+      }
+      .buttonStyle(ScaleButtonStyle())
+      .sensoryFeedback(.selection, trigger: isSelected)
     }
   }
 }
@@ -365,7 +457,7 @@ private struct EditInlineDateTimePicker: View {
           HStack(spacing: 8) {
             Image(systemName: "calendar")
               .font(.system(size: 16))
-              .foregroundColor(.blue)
+              .foregroundColor(Color.pmindigo.n500)
 
             VStack(alignment: .leading, spacing: 2) {
               Text("날짜")
@@ -397,7 +489,7 @@ private struct EditInlineDateTimePicker: View {
           HStack(spacing: 8) {
             Image(systemName: "clock")
               .font(.system(size: 16))
-              .foregroundColor(.blue)
+              .foregroundColor(Color.pmindigo.n500)
 
             VStack(alignment: .leading, spacing: 2) {
               Text("시간")
@@ -459,5 +551,15 @@ private struct EditInlineDateTimePicker: View {
         }
       }
     }
+  }
+}
+
+// MARK: - Scale Button Style
+
+private struct ScaleButtonStyle: ButtonStyle {
+  func makeBody(configuration: Configuration) -> some View {
+    configuration.label
+      .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
+      .animation(.spring(response: 0.2, dampingFraction: 0.6), value: configuration.isPressed)
   }
 }

@@ -3,6 +3,7 @@ import UIKit
 import ComposableArchitecture
 import Clients
 import PromisoShared
+import ResourceKit
 
 extension PromiseDetail {
   public struct RootView: View {
@@ -434,7 +435,7 @@ private struct ExpandableText: View {
         } label: {
           Text(isExpanded ? "접기" : "더보기")
             .font(.system(size: 13, weight: .medium))
-            .foregroundStyle(.blue)
+            .foregroundStyle(Color.pmindigo.n500)
         }
       }
     }
@@ -690,9 +691,9 @@ private struct StatusBadgeView: View {
   private var color: Color {
     switch status {
     case .needResponse:
-      return .orange
+      return Color.pmwarning.n500
     case .responded:
-      return .blue
+      return Color.pmindigo.n500
     case .confirmed:
       return .green
     case .failed:

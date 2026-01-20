@@ -1776,6 +1776,12 @@ export const updatePromise = onCall<UpdatePromiseRequest>(
       updateData.minimumParticipants = data.minimumParticipants;
     }
 
+    // trackingStartMinutesBefore (실시간 공유 시작 시간)
+    if (data.trackingStartMinutesBefore !== undefined) {
+      updateData.trackingStartMinutesBefore =
+        data.trackingStartMinutesBefore || null;
+    }
+
     // 7. Firestore 업데이트
     await promiseRef.update(updateData);
 

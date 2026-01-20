@@ -135,6 +135,13 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
       callableData["endAt"] = NSNull()
     }
 
+    // trackingStartMinutesBefore (실시간 공유 시작 시간)
+    if let trackingMinutes = promise.trackingStartMinutesBefore {
+      callableData["trackingStartMinutesBefore"] = trackingMinutes
+    } else {
+      callableData["trackingStartMinutesBefore"] = NSNull()
+    }
+
     // env 파라미터 추가
     if let env = functionsEnvironmentParam() {
       callableData["env"] = env

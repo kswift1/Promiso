@@ -41,7 +41,8 @@ extension EditPromise {
         originalPromise.description != editedPromise.description ||
         originalPromise.startAt != editedPromise.startAt ||
         originalPromise.endAt != editedPromise.endAt ||
-        originalPromise.minimumParticipants != editedPromise.minimumParticipants
+        originalPromise.minimumParticipants != editedPromise.minimumParticipants ||
+        originalPromise.trackingStartMinutesBefore != editedPromise.trackingStartMinutesBefore
       }
 
       /// 저장 가능 여부
@@ -56,6 +57,11 @@ extension EditPromise {
       /// 종료 시간 사용 여부
       var useEndTime: Bool {
         editedPromise.endAt != nil
+      }
+
+      /// 실시간 공유 사용 여부
+      var useRealtimeShare: Bool {
+        editedPromise.trackingStartMinutesBefore != nil
       }
     }
 
@@ -75,6 +81,8 @@ extension EditPromise {
         case toggleUseEndTime
         case incrementParticipants
         case decrementParticipants
+        case toggleUseRealtimeShare
+        case setTrackingMinutes(Int)
         case saveTapped
         case cancelTapped
         case clearError
@@ -148,6 +156,18 @@ extension EditPromise {
             if current > 2 {
               state.editedPromise.minimumParticipants = current - 1
             }
+            return .none
+
+          case .toggleUseRealtimeShare:
+            if state.editedPromise.trackingStartMinutesBefore == nil {
+              state.editedPromise.trackingStartMinutesBefore = 30  // 기본값 30분
+            } else {
+              state.editedPromise.trackingStartMinutesBefore = nil
+            }
+            return .none
+
+          case .setTrackingMinutes(let minutes):
+            state.editedPromise.trackingStartMinutesBefore = minutes
             return .none
 
           case .saveTapped:

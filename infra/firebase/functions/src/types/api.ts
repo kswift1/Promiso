@@ -334,6 +334,9 @@ export interface UpdatePromiseRequest {
   /** 최소 참가 인원 (선택적) */
   minimumParticipants?: number | null;
 
+  /** 실시간 공유 시작 시간 (분 전, 선택적) */
+  trackingStartMinutesBefore?: number | null;
+
   /** 환경 구분 (선택적: stage 또는 prod) */
   env?: "stage" | "prod" | null;
 }
