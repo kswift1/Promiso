@@ -61,7 +61,9 @@ public enum AppConfig {
       ]),
       // Live Activity Support
       "NSSupportsLiveActivities": .boolean(true),
-      "NSSupportsLiveActivitiesFrequentUpdates": .boolean(true)
+      "NSSupportsLiveActivitiesFrequentUpdates": .boolean(true),
+      // Gemini API Key (환경변수에서 로드)
+      "GEMINI_API_KEY": .string("$(GEMINI_API_KEY)")
     ]
   }
 }
