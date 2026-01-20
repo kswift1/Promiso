@@ -405,21 +405,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
     _ = try await functions.httpsCallable("endLiveActivity").call(callableData)
   }
 
-  /// LiveActivity Push Token 등록
-  /// 앱에서 직접 LiveActivity를 시작한 경우 서버에 토큰 등록
-  public func registerLiveActivityToken(promiseId: String, token: String, apnsEnvironment: String) async throws {
-    var callableData: [String: Any] = [
-      "promiseId": promiseId,
-      "token": token,
-      "apnsEnvironment": apnsEnvironment
-    ]
-
-    if let env = functionsEnvironmentParam() {
-      callableData["env"] = env
-    }
-
-    _ = try await functions.httpsCallable("registerLiveActivityToken").call(callableData)
-  }
+  // registerLiveActivityToken 제거됨 - iOS 18 Broadcast 방식으로 전환
 
   // MARK: - Helper Methods
 

@@ -35,6 +35,9 @@ public struct PromiseActivityAttributes: ActivityAttributes, Equatable {
   /// 호스트 이름
   public let hostName: String?
 
+  /// iOS 18 Broadcast 채널 ID (Apple이 생성)
+  public let channelId: String
+
   // MARK: - Initializer
 
   public init(
@@ -46,7 +49,8 @@ public struct PromiseActivityAttributes: ActivityAttributes, Equatable {
     scheduledTime: Date,
     trackingDurationMinutes: Int = 30,
     hostId: String = "",
-    hostName: String? = nil
+    hostName: String? = nil,
+    channelId: String = ""
   ) {
     self.promiseId = promiseId
     self.currentUserId = currentUserId
@@ -57,6 +61,7 @@ public struct PromiseActivityAttributes: ActivityAttributes, Equatable {
     self.trackingDurationMinutes = trackingDurationMinutes
     self.hostId = hostId
     self.hostName = hostName
+    self.channelId = channelId
   }
 
   // MARK: - Content State (동적 정보)
@@ -165,7 +170,7 @@ public enum LiveActivityIntentKey {
   public static let etaUpdateKey = "liveActivity.etaUpdate"
 
   /// Firebase Project ID (Widget에서 HTTP 호출용)
-  public static let firebaseProjectId = "promiso-7a534"
+  public static let firebaseProjectId = "promiso-20274"
 
   /// Firebase Auth ID Token 저장 키 (Widget에서 인증용)
   public static let authTokenKey = "firebase.auth.idToken"

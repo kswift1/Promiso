@@ -55,11 +55,8 @@ public struct LiveActivityClient: Sendable {
     _ promiseId: String
   ) -> AsyncStream<PromiseActivityAttributes.ContentState>?
 
-  /// Push Token 업데이트 스트림 구독
-  /// APNs 원격 업데이트를 위해 백엔드에 토큰 전송 필요
-  public var observePushTokenUpdates: @Sendable (
-    _ promiseId: String
-  ) -> AsyncStream<String>?
+  // Push Token 관련 기능 제거됨 - iOS 18 Broadcast 방식 사용
+  // Broadcast는 채널 기반이므로 개별 토큰 관리 불필요
 
   // MARK: - Push to Start
 
@@ -88,7 +85,6 @@ extension LiveActivityClient: TestDependencyKey {
     pendingETAUpdate: { nil },
     clearETAUpdate: { },
     observeStateUpdates: { _ in nil },
-    observePushTokenUpdates: { _ in nil },
     pushToStartToken: { nil },
     observePushToStartTokenUpdates: { AsyncStream { $0.finish() } }
   )
@@ -107,7 +103,6 @@ extension LiveActivityClient: TestDependencyKey {
     pendingETAUpdate: unimplemented("\(Self.self).pendingETAUpdate", placeholder: nil),
     clearETAUpdate: unimplemented("\(Self.self).clearETAUpdate"),
     observeStateUpdates: unimplemented("\(Self.self).observeStateUpdates", placeholder: nil),
-    observePushTokenUpdates: unimplemented("\(Self.self).observePushTokenUpdates", placeholder: nil),
     pushToStartToken: unimplemented("\(Self.self).pushToStartToken", placeholder: nil),
     observePushToStartTokenUpdates: unimplemented("\(Self.self).observePushToStartTokenUpdates", placeholder: AsyncStream { $0.finish() })
   )
@@ -147,12 +142,12 @@ extension LiveActivityClient: DependencyKey {
         staleDate: nil
       )
 
-      // APNs 원격 업데이트를 위해 pushType: .token 사용
-      // Push token은 observePushTokenUpdates 스트림으로 전달됨
+      // iOS 18 Broadcast 방식: Apple이 생성한 channelId 사용
+      // 모든 참가자가 동일한 채널을 구독하여 업데이트 수신
       let activity = try Activity.request(
         attributes: attributes,
         content: content,
-        pushType: .token
+        pushType: .channel(attributes.channelId)
       )
 
       return activity.id
@@ -206,27 +201,6 @@ extension LiveActivityClient: DependencyKey {
         let task = Task {
           for await state in activity.contentStateUpdates {
             continuation.yield(state)
-          }
-          continuation.finish()
-        }
-
-        continuation.onTermination = { _ in
-          task.cancel()
-        }
-      }
-    },
-
-    observePushTokenUpdates: { promiseId in
-      guard let activity = Activity<PromiseActivityAttributes>.activities
-        .first(where: { $0.attributes.promiseId == promiseId }) else {
-        return nil
-      }
-
-      return AsyncStream { continuation in
-        let task = Task {
-          for await tokenData in activity.pushTokenUpdates {
-            let tokenString = tokenData.map { String(format: "%02x", $0) }.joined()
-            continuation.yield(tokenString)
           }
           continuation.finish()
         }

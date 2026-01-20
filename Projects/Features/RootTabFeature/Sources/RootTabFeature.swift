@@ -41,6 +41,7 @@ extension RootTab {
     @Dependency(\.liveActivityClient) var liveActivityClient
     @Dependency(\.authClient) var authClient
     @Dependency(\.notificationClient) var notificationClient
+    @Dependency(\.promiseClient) var promiseClient
 
     public init() {}
 
@@ -205,6 +206,34 @@ extension RootTab {
 
         case .livePromise:
           return .none
+
+        case .livePromiseDetail(.presented(.delegate(.updateETA(let minutes)))):
+          // ExpandedView 시트에서 ETA 변경 → 백엔드 API 호출
+          guard let promiseId = liveActivityClient.activePromiseId() else {
+            AppLogger.liveActivity.error("ETA 업데이트 실패: 활성 LiveActivity 없음")
+            return .none
+          }
+          AppLogger.liveActivity.info("ETA 업데이트 요청: promiseId=\(promiseId), minutes=\(minutes)")
+          return .run { [promiseClient, liveActivityClient] _ in
+            do {
+              // 1. 백엔드 API 호출 (APNs Broadcast)
+              try await promiseClient.updateETA(promiseId, minutes)
+              AppLogger.liveActivity.info("ETA 업데이트 성공: \(minutes)분")
+
+              // 2. 로컬 LiveActivity 즉시 업데이트 (UX 개선용 - 백엔드 응답 전)
+              if let activityId = liveActivityClient.activeActivityId(),
+                 let currentState = liveActivityClient.currentState() {
+                let userId = liveActivityClient.currentAttributes()?.currentUserId ?? ""
+                let updatedState = currentState.updating(
+                  participantId: userId,
+                  estimatedArrivalMinutes: minutes
+                )
+                try? await liveActivityClient.update(activityId, updatedState)
+              }
+            } catch {
+              AppLogger.liveActivity.error("ETA 업데이트 실패: \(error.localizedDescription)")
+            }
+          }
 
         case .livePromiseDetail:
           return .none

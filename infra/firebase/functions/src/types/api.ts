@@ -1088,38 +1088,12 @@ export interface RegisterPushToStartTokenResponse {
 }
 
 // ============================================================================
-// LiveActivity Update 토큰 등록
+// LiveActivity Update 토큰 등록 - 제거됨
 // ============================================================================
-
-/**
- * LiveActivity Update 토큰 등록 요청
- *
- * @remarks
- * - 인증 필수 (Firebase Auth)
- * - 앱에서 LiveActivity 시작 후 발급받은 Push Token을 서버에 등록
- * - 이 토큰으로 서버에서 APNs Update/End 이벤트 전송 가능
- */
-export interface RegisterLiveActivityTokenRequest {
-  /** 약속 ID */
-  promiseId: string;
-
-  /** LiveActivity Push Token (Update/End 이벤트용) */
-  token: string;
-
-  /** 환경 구분 */
-  env?: "dev" | "stage" | "prod";
-
-  /** APNs 환경 (sandbox 또는 production) - Firebase 환경과 별개 */
-  apnsEnvironment?: "sandbox" | "production";
-}
-
-/**
- * LiveActivity Update 토큰 등록 응답
- */
-export interface RegisterLiveActivityTokenResponse {
-  /** 성공 여부 */
-  success: boolean;
-}
+//
+// RegisterLiveActivityTokenRequest, RegisterLiveActivityTokenResponse 제거됨
+// iOS 18 Broadcast 방식으로 전환되어 개별 토큰 관리가 불필요해짐
+// 모든 업데이트/종료는 채널 기반 Broadcast로 전송됨
 
 // ============================================================================
 // Cloud Tasks - LiveActivity 예약 시작

@@ -310,10 +310,7 @@ extension LivePromise {
         case observeContentStateUpdates
         /// ContentState 스트림에서 새 상태 수신
         case contentStateUpdated(PromiseActivityAttributes.ContentState)
-        /// Push Token 스트림 구독 시작
-        case observePushTokenUpdates
-        /// Push Token 수신 (백엔드에 전송 필요)
-        case pushTokenReceived(String)
+        // Push Token 관련 액션 제거됨 - iOS 18 Broadcast 방식 사용
       }
 
       public enum Delegate: Equatable, Sendable {
@@ -330,10 +327,10 @@ extension LivePromise {
           switch viewAction {
           case .onAppear:
             // 현재 활성화된 LiveActivity 상태 동기화 및 스트림 구독 시작
+            // iOS 18 Broadcast 방식으로 전환되어 Push Token 구독 제거됨
             return .merge(
               .send(.view(.refreshFromLiveActivity)),
-              .send(.internal(.observeContentStateUpdates)),
-              .send(.internal(.observePushTokenUpdates))
+              .send(.internal(.observeContentStateUpdates))
             )
 
           case .tapped:
@@ -445,48 +442,6 @@ extension LivePromise {
               data.trackingDurationMinutes = contentState.trackingDurationMinutes
             }
             return .none
-
-          case .observePushTokenUpdates:
-            // APNs 원격 업데이트를 위한 Push Token 스트림 구독
-            guard let promiseId = liveActivityClient.activePromiseId(),
-                  let stream = liveActivityClient.observePushTokenUpdates(promiseId) else {
-              return .none
-            }
-
-            return .run { send in
-              for await pushToken in stream {
-                await send(.internal(.pushTokenReceived(pushToken)))
-              }
-            }
-
-          case .pushTokenReceived(let pushToken):
-            // Push Token을 백엔드에 전송 (캐싱으로 중복 호출 방지)
-            guard let promiseId = liveActivityClient.activePromiseId(), !promiseId.isEmpty else {
-              AppLogger.liveActivity.warning("Push Token 수신했으나 활성 promiseId 없음")
-              return .none
-            }
-
-            // promiseId별로 토큰 캐싱 (동일 토큰이면 스킵)
-            let cacheKey = "lastLiveActivityToken_\(promiseId)"
-            let lastToken = UserDefaults.standard.string(forKey: cacheKey)
-
-            guard pushToken != lastToken else {
-              AppLogger.liveActivity.debug("LiveActivity 토큰 변경 없음 - 백엔드 호출 스킵 (promiseId: \(promiseId))")
-              return .none
-            }
-
-            let apnsEnvironment = APNsEnvironment.current.apiValue
-            AppLogger.liveActivity.info("Push Token 수신: \(pushToken.prefix(20))... (promiseId: \(promiseId), apns: \(apnsEnvironment))")
-
-            return .run { [promiseClient] _ in
-              do {
-                try await promiseClient.registerLiveActivityToken(promiseId, pushToken, apnsEnvironment)
-                UserDefaults.standard.set(pushToken, forKey: cacheKey)
-                AppLogger.liveActivity.info("Push Token 백엔드 등록 성공 (캐시 저장)")
-              } catch {
-                AppLogger.liveActivity.error("Push Token 백엔드 등록 실패: \(error)")
-              }
-            }
           }
 
         case .delegate:

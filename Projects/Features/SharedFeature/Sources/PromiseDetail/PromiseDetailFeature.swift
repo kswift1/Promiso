@@ -33,9 +33,9 @@ extension PromiseDetail {
       @Presents var alert: AlertState<Action.Alert>?
 
       // MARK: - Live Activity State
+      // iOS 18 Broadcast 방식으로 전환: 수동 시작 제거, 자동 시작만 사용
       var isLiveActivityActive: Bool = false
       var liveActivityId: String?
-      var isStartingLiveActivity: Bool = false
 
       public init(
         promise: PromiseModel,
@@ -64,10 +64,7 @@ extension PromiseDetail {
         isHost && promise.startAt > Date()
       }
 
-      /// 라이브액티비티 시작 가능 여부
-      var canStartLiveActivity: Bool {
-        promise.isRealtimeShareable && promise.isConfirmed && !isLiveActivityActive
-      }
+      // canStartLiveActivity 제거됨 - iOS 18 Broadcast 방식으로 자동 시작만 사용
 
       /// 내가 약속에 참여 중인지 (accepted)
       var isParticipating: Bool {
@@ -113,8 +110,7 @@ extension PromiseDetail {
         case shareSheetDismissed
         case participantGroupTapped(title: String, userIds: [String], colorType: ParticipantColorType)
         case memberSheetDismissed
-        // Live Activity
-        case liveActivityStartTapped
+        // Live Activity - 수동 시작 제거됨, 종료/도착만 유지
         case liveActivityStopTapped
         case markArrivedTapped
         case checkPendingIntents
@@ -133,10 +129,7 @@ extension PromiseDetail {
         case deleteDone
         case deleteFailed(error: AppError)
         case promiseUpdated(PromiseModel)
-        // Live Activity
-        case startLiveActivity
-        case liveActivityStarted
-        case liveActivityFailed(error: AppError)
+        // Live Activity - startLiveActivity, liveActivityStarted 제거됨 (자동 시작으로 전환)
         case liveActivityEnded
         case markArrivalDone
         case markArrivalFailed(error: AppError)
@@ -229,13 +222,7 @@ extension PromiseDetail {
             return .none
 
           // MARK: - Live Activity View Actions
-          case .liveActivityStartTapped:
-            guard state.canStartLiveActivity,
-                  state.isParticipating,
-                  !state.isStartingLiveActivity else { return .none }
-
-            state.isStartingLiveActivity = true
-            return .send(.internal(.startLiveActivity))
+          // liveActivityStartTapped 제거됨 - iOS 18 Broadcast 방식으로 자동 시작만 사용
 
           case .liveActivityStopTapped:
             guard let activityId = state.liveActivityId else { return .none }
@@ -325,30 +312,8 @@ extension PromiseDetail {
             return .none
 
           // MARK: - Live Activity Internal Actions
-          case .startLiveActivity:
-            // 백엔드에 LiveActivity 시작 요청 (Push to Start APNs 전송)
-            let promiseId = state.promise.id
-            AppLogger.liveActivity.debug("startLiveActivity 백엔드 요청: promiseId=\(promiseId)")
-
-            return .run { [promiseClient] send in
-              do {
-                try await promiseClient.startLiveActivity(promiseId)
-                await send(.internal(.liveActivityStarted))
-              } catch {
-                await send(.internal(.liveActivityFailed(error: AppError(error))))
-              }
-            }
-
-          case .liveActivityStarted:
-            // 백엔드 요청 성공 - Push to Start로 LiveActivity가 시작됨
-            // 실제 Activity ID는 RootTabFeature에서 observeStateUpdates로 관리
-            state.isStartingLiveActivity = false
-            state.isLiveActivityActive = true
-            return .none
-
-          case .liveActivityFailed:
-            state.isStartingLiveActivity = false
-            return .none
+          // startLiveActivity, liveActivityStarted, liveActivityFailed 제거됨
+          // iOS 18 Broadcast 방식: 예약 시간에 자동 시작됨
 
           case .liveActivityEnded:
             state.isLiveActivityActive = false

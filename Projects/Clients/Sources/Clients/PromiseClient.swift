@@ -123,12 +123,8 @@ public struct PromiseClient: Sendable {
   /// LiveActivity 종료 요청
   public var endLiveActivity: @Sendable (_ promiseId: String) async throws -> Void
 
-  /// LiveActivity Push Token 등록 (앱에서 직접 시작한 경우 서버에 토큰 전송)
-  /// - Parameters:
-  ///   - promiseId: 약속 ID
-  ///   - token: LiveActivity Push Token
-  ///   - apnsEnvironment: APNs 환경 ("sandbox" 또는 "production")
-  public var registerLiveActivityToken: @Sendable (_ promiseId: String, _ token: String, _ apnsEnvironment: String) async throws -> Void
+  // registerLiveActivityToken 제거됨 - iOS 18 Broadcast 방식으로 전환
+  // Broadcast는 채널 기반이므로 개별 토큰 관리 불필요
 }
 
 // MARK: - Test & Preview Values
@@ -193,9 +189,6 @@ extension PromiseClient: TestDependencyKey {
       try await Task.sleep(for: .seconds(0.3))
     },
     endLiveActivity: { _ in
-      try await Task.sleep(for: .seconds(0.3))
-    },
-    registerLiveActivityToken: { _, _, _ in
       try await Task.sleep(for: .seconds(0.3))
     }
   )
@@ -272,9 +265,6 @@ extension PromiseClient: DependencyKey {
       },
       endLiveActivity: { promiseId in
         try await dataSource.endLiveActivity(promiseId: promiseId)
-      },
-      registerLiveActivityToken: { promiseId, token, apnsEnvironment in
-        try await dataSource.registerLiveActivityToken(promiseId: promiseId, token: token, apnsEnvironment: apnsEnvironment)
       }
     )
   }()

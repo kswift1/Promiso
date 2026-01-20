@@ -303,34 +303,25 @@ extension PromiseDetail {
               }
             }
           } else {
-            // 비활성화 상태: 시작 버튼
-            Button {
-              store.send(.view(.liveActivityStartTapped))
-            } label: {
+            // iOS 18 Broadcast 방식: 예약 시간에 자동 시작됨
+            VStack(spacing: 8) {
               HStack(spacing: 8) {
-                if store.isStartingLiveActivity {
-                  ProgressView()
-                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                    .scaleEffect(0.8)
-                } else {
-                  Image(systemName: "dot.radiowaves.left.and.right")
-                    .font(.system(size: 18))
-                }
-                Text("실시간 공유 시작")
-                  .font(.system(size: 16, weight: .semibold))
+                Image(systemName: "dot.radiowaves.left.and.right")
+                  .font(.system(size: 18))
+                  .foregroundStyle(Color.pmindigo.n500)
+                Text("약속 시간에 자동으로 시작됩니다")
+                  .font(.system(size: 15, weight: .medium))
               }
               .frame(maxWidth: .infinity)
               .padding(.vertical, 14)
-              .background(Color.pmindigo.n500)
-              .foregroundStyle(.white)
+              .background(Color.pmindigo.n500.opacity(0.1))
               .clipShape(RoundedRectangle(cornerRadius: 12))
-            }
-            .disabled(store.isStartingLiveActivity)
 
-            Text("Dynamic Island에서 도착 현황을 확인할 수 있어요")
-              .font(.system(size: 13))
-              .foregroundStyle(.secondary)
-              .multilineTextAlignment(.center)
+              Text("Dynamic Island에서 도착 현황을 확인할 수 있어요")
+                .font(.system(size: 13))
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+            }
           }
         }
       }
