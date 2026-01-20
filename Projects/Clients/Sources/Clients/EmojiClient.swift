@@ -1,5 +1,6 @@
 import ComposableArchitecture
 import Foundation
+import PromisoShared
 
 // MARK: - Error
 
@@ -90,23 +91,34 @@ extension EmojiClient: DependencyKey {
   public static let liveValue: EmojiClient = {
     return Self(
       generate: { title in
+        let startTime = CFAbsoluteTimeGetCurrent()
+        AppLogger.emoji.debug("🎯 [EmojiClient] 이모지 생성 시작 - 제목: \(title)")
+
         // API Key 확인
         guard GeminiConfiguration.isConfigured,
               let apiKey = GeminiConfiguration.apiKey
         else {
+          AppLogger.emoji.error("❌ [EmojiClient] API Key 미설정")
           throw EmojiClientError.apiKeyNotConfigured
         }
+        AppLogger.emoji.debug("✅ [EmojiClient] API Key 확인 완료")
 
         // URL 생성
         let urlString =
+          "\(GeminiConfiguration.baseURL)/models/\(GeminiConfiguration.model):generateContent?key=***"
+        AppLogger.emoji.debug("🌐 [EmojiClient] API URL: \(urlString)")
+
+        let fullUrlString =
           "\(GeminiConfiguration.baseURL)/models/\(GeminiConfiguration.model):generateContent?key=\(apiKey)"
-        guard let url = URL(string: urlString) else {
+        guard let url = URL(string: fullUrlString) else {
+          AppLogger.emoji.error("❌ [EmojiClient] URL 생성 실패")
           throw EmojiClientError.networkError
         }
 
         // 프롬프트 생성
         let prompt =
           "다음 약속 제목에 가장 어울리는 이모지 1개만 응답해. 이모지만 출력하고 다른 텍스트는 절대 포함하지 마.\n제목: \(title)"
+        AppLogger.emoji.debug("📝 [EmojiClient] 프롬프트 생성 완료")
 
         // Request 생성
         let request = GeminiRequest(prompt: prompt)
@@ -116,41 +128,60 @@ extension EmojiClient: DependencyKey {
         urlRequest.httpBody = try JSONEncoder().encode(request)
         urlRequest.timeoutInterval = 10
 
+        AppLogger.emoji.debug("📤 [EmojiClient] API 요청 시작...")
+
         // API 호출
         let (data, response) = try await URLSession.shared.data(for: urlRequest)
 
+        let requestTime = CFAbsoluteTimeGetCurrent() - startTime
+        AppLogger.emoji.debug("📥 [EmojiClient] API 응답 수신 - 소요시간: \(String(format: "%.2f", requestTime))초")
+
         // HTTP 상태 코드 확인
         guard let httpResponse = response as? HTTPURLResponse else {
+          AppLogger.emoji.error("❌ [EmojiClient] HTTP 응답 파싱 실패")
           throw EmojiClientError.networkError
         }
 
+        AppLogger.emoji.debug("📊 [EmojiClient] HTTP 상태 코드: \(httpResponse.statusCode)")
+
         switch httpResponse.statusCode {
         case 200:
-          break
+          AppLogger.emoji.debug("✅ [EmojiClient] HTTP 200 OK")
         case 429:
+          AppLogger.emoji.warning("⚠️ [EmojiClient] Rate Limit 초과 (429)")
           throw EmojiClientError.rateLimitExceeded
         case 400...499:
+          AppLogger.emoji.error("❌ [EmojiClient] 클라이언트 에러: \(httpResponse.statusCode)")
           throw EmojiClientError.invalidResponse
         default:
+          AppLogger.emoji.error("❌ [EmojiClient] 서버 에러: \(httpResponse.statusCode)")
           throw EmojiClientError.serverError("HTTP \(httpResponse.statusCode)")
         }
 
         // 응답 파싱
         let geminiResponse = try JSONDecoder().decode(GeminiResponse.self, from: data)
+        AppLogger.emoji.debug("📦 [EmojiClient] JSON 파싱 완료")
 
         // 에러 체크
         if let error = geminiResponse.error {
+          AppLogger.emoji.error("❌ [EmojiClient] Gemini API 에러: \(error.message ?? "Unknown")")
           throw EmojiClientError.serverError(error.message ?? "Unknown error")
         }
 
         // 텍스트에서 이모지 추출
         guard let text = geminiResponse.text else {
+          AppLogger.emoji.error("❌ [EmojiClient] 응답 텍스트 없음")
+          throw EmojiClientError.invalidResponse
+        }
+        AppLogger.emoji.debug("📄 [EmojiClient] 응답 텍스트: \(text)")
+
+        guard let emoji = EmojiExtractor.extractFirst(from: text) else {
+          AppLogger.emoji.error("❌ [EmojiClient] 이모지 추출 실패 - 텍스트: \(text)")
           throw EmojiClientError.invalidResponse
         }
 
-        guard let emoji = EmojiExtractor.extractFirst(from: text) else {
-          throw EmojiClientError.invalidResponse
-        }
+        let totalTime = CFAbsoluteTimeGetCurrent() - startTime
+        AppLogger.emoji.info("🎉 [EmojiClient] 이모지 생성 완료 - 결과: \(emoji), 총 소요시간: \(String(format: "%.2f", totalTime))초")
 
         return emoji
       }
