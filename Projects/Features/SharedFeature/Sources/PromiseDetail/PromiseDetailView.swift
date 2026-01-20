@@ -159,9 +159,8 @@ extension PromiseDetail {
 
     private func formatRealtimeShareTime(_ startAt: Date) -> String {
       let shareStartTime = startAt.addingTimeInterval(-1800) // 30분 전
-      let formatter = DateFormatter()
-      formatter.locale = Locale(identifier: "ko_KR")
-      formatter.dateFormat = "a h:mm"
+      let shareStartTime = startAt.addingTimeInterval(-1800) // 30분 전
+      return "\(KoreanDateFormatters.time.string(from: shareStartTime))부터"
       return "\(formatter.string(from: shareStartTime))부터"
     }
 
