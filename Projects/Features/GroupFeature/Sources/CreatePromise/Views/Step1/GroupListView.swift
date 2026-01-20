@@ -278,6 +278,42 @@ struct GroupCard: View {
     return nil
   }
 
+  @ViewBuilder
+  private var groupImageView: some View {
+    if let imageUrl = model.imageUrl, let url = URL(string: imageUrl) {
+      AsyncImage(url: url) { phase in
+        switch phase {
+        case .success(let image):
+          image
+            .resizable()
+            .scaledToFill()
+        case .failure:
+          defaultGroupIcon
+        case .empty:
+          ProgressView()
+            .frame(width: 48, height: 48)
+        @unknown default:
+          defaultGroupIcon
+        }
+      }
+      .frame(width: 48, height: 48)
+      .clipShape(RoundedRectangle(cornerRadius: 12))
+    } else {
+      defaultGroupIcon
+    }
+  }
+
+  private var defaultGroupIcon: some View {
+    ZStack {
+      RoundedRectangle(cornerRadius: 12)
+        .fill(Color.blue.opacity(0.1))
+      Image(systemName: "person.2.fill")
+        .font(.system(size: 20))
+        .foregroundStyle(.blue.opacity(0.6))
+    }
+    .frame(width: 48, height: 48)
+  }
+
   var body: some View {
     Button(action: {
       if !isDisabled {
@@ -286,11 +322,8 @@ struct GroupCard: View {
     }) {
       VStack(spacing: 0) {
         HStack(spacing: 12) {
-          // 그룹 아이콘
-          Image(systemName: "person.2.circle.fill")
-            .font(.system(size: 28))
-            .foregroundStyle(.blue.opacity(0.6))
-            .frame(width: 48, height: 48)
+          // 그룹 이미지
+          groupImageView
             .opacity(isDisabled ? 0.5 : 1.0)
 
           // 그룹 정보
