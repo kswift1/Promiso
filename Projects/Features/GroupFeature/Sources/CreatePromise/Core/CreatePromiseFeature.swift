@@ -15,6 +15,7 @@ public enum CreatePromise {
     @Dependency(\.continuousClock) var clock
     @Dependency(\.groupClient) var groupClient
     @Dependency(\.promiseClient) var promiseClient
+    @Dependency(\.userDefaultsClient) var userDefaultsClient
 
     
     private enum CancelID: Hashable {
@@ -33,6 +34,10 @@ public enum CreatePromise {
       var isCreatingPromise: Bool = false
       var creationError: Clients.PromiseClientError?
 
+      // LiveActivity 정보 팝오버 상태
+      var showLiveActivityInfo: Bool = false
+      var hasSeenLiveActivityInfo: Bool = true  // 기본 true (로드 전까지 팝업 안 띄움)
+
       public init(
         currentStep: CreatePromiseStep = .first,
         promise: PromiseModel = .empty,
@@ -40,7 +45,9 @@ public enum CreatePromise {
         groupSummaries: [UserGroupInfo]? = nil,
         groupPromiseCounts: [String: Int] = [:],
         isCreatingPromise: Bool = false,
-        creationError: Clients.PromiseClientError? = nil
+        creationError: Clients.PromiseClientError? = nil,
+        showLiveActivityInfo: Bool = false,
+        hasSeenLiveActivityInfo: Bool = true
       ) {
         self.currentStep = currentStep
         self.promise = promise
@@ -49,6 +56,8 @@ public enum CreatePromise {
         self.groupPromiseCounts = groupPromiseCounts
         self.isCreatingPromise = isCreatingPromise
         self.creationError = creationError
+        self.showLiveActivityInfo = showLiveActivityInfo
+        self.hasSeenLiveActivityInfo = hasSeenLiveActivityInfo
       }
 
       /// 그룹이 활성 약속 제한에 도달했는지 확인
@@ -117,6 +126,10 @@ public enum CreatePromise {
         case retryLoadGroups
         case clearCreationError
         case createGroupTapped
+        // LiveActivity 정보 팝오버
+        case liveActivityInfoButtonTapped
+        case liveActivityInfoDismissed
+        case arrivalSharingSectionAppeared
       }
       
       // 내부에서만 발생하는 이벤트 (이펙트 응답/디바운스 등)
@@ -128,6 +141,7 @@ public enum CreatePromise {
         case fetchPromiseCounts([String])
         case promiseCountsResponse([String: Int])
         case createPromiseResponse(Result<String, Clients.PromiseClientError>)
+        case liveActivityInfoSeenLoaded(Bool)
       }
       
       // 상위 전달 이벤트 (네비/라우팅/완료 알림 등)
@@ -245,6 +259,28 @@ public enum CreatePromise {
 
           case .createGroupTapped:
             return .send(.delegate(.createGroupRequested))
+
+          case .liveActivityInfoButtonTapped:
+            state.showLiveActivityInfo = true
+            return .none
+
+          case .liveActivityInfoDismissed:
+            state.showLiveActivityInfo = false
+            // 팝오버를 봤으므로 저장
+            if !state.hasSeenLiveActivityInfo {
+              state.hasSeenLiveActivityInfo = true
+              return .run { [userDefaultsClient] _ in
+                userDefaultsClient.markLiveActivityInfoSeen()
+              }
+            }
+            return .none
+
+          case .arrivalSharingSectionAppeared:
+            // 본 적 있는지 확인
+            return .run { [userDefaultsClient] send in
+              let hasSeen = userDefaultsClient.hasSeenLiveActivityInfo
+              await send(.internal(.liveActivityInfoSeenLoaded(hasSeen)))
+            }
           }
           
           // MARK: - Internal
@@ -318,6 +354,14 @@ public enum CreatePromise {
           case .createPromiseResponse(.failure(let e)):
             state.isCreatingPromise = false
             state.creationError = e
+            return .none
+
+          case .liveActivityInfoSeenLoaded(let hasSeen):
+            state.hasSeenLiveActivityInfo = hasSeen
+            // 처음 보는 사용자에게 자동으로 팝오버 표시
+            if !hasSeen {
+              state.showLiveActivityInfo = true
+            }
             return .none
           }
           

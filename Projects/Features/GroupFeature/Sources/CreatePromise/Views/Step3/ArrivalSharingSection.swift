@@ -4,8 +4,7 @@ import ComposableArchitecture
 import ResourceKit
 
 struct ArrivalSharingSection: View {
-  let store: StoreOf<CreatePromise.Feature>
-  @State private var showInfoPopover = false
+  @Bindable var store: StoreOf<CreatePromise.Feature>
   @State private var customMinutesText = ""
   @FocusState private var isCustomInputFocused: Bool
 
@@ -32,13 +31,23 @@ struct ArrivalSharingSection: View {
           .foregroundColor(.primary)
 
         Button {
-          showInfoPopover = true
+          store.send(.view(.liveActivityInfoButtonTapped))
         } label: {
           Image(systemName: "info.circle")
             .font(.system(size: 14))
             .foregroundColor(.secondary)
         }
-        .popover(isPresented: $showInfoPopover, arrowEdge: .top) {
+        .popover(
+          isPresented: Binding(
+            get: { store.showLiveActivityInfo },
+            set: { newValue in
+              if !newValue {
+                store.send(.view(.liveActivityInfoDismissed))
+              }
+            }
+          ),
+          arrowEdge: .top
+        ) {
           LiveActivityInfoPopover()
         }
 
@@ -136,8 +145,13 @@ struct ArrivalSharingSection: View {
     .onAppear {
       // 초기 상태: 켜진 상태로 시작 (30분 기본값)
       if selectedMinutes == nil {
-        _ = store.send(.view(.setTrackingStartMinutes(30)))
+        store.send(.view(.setTrackingStartMinutes(30)))
       }
+    }
+    .task {
+      try? await Task.sleep(for: .seconds(1))
+      // UserDefaults에서 본 적 있는지 확인 후 처음이면 팝오버 표시
+      store.send(.view(.arrivalSharingSectionAppeared))
     }
     .onChange(of: isCustomInputFocused) { _, isFocused in
       // 키보드 내려갈 때 빈 값이면 30분으로 복귀
@@ -319,7 +333,7 @@ private struct LiveActivityInfoPopover: View {
     VStack(alignment: .leading, spacing: 6) {
       Text("다이나믹 아일랜드")
         .font(.system(size: 11, weight: .medium))
-        .foregroundColor(.secondary)
+        .foregroundColor(.pmtext.secondary)
 
       // Dynamic Island Compact 모양 (실제 구현과 동일)
       HStack(spacing: 0) {
@@ -348,6 +362,14 @@ private struct LiveActivityInfoPopover: View {
       .padding(.horizontal, 14)
       .padding(.vertical, 10)
       .background(Color.black, in: Capsule())
+      
+      HStack {
+        Spacer()
+        
+        Text("* iPhone 14 Pro 이상부터 가능해요")
+          .font(.system(size: 9, weight: .regular))
+          .foregroundColor(.pmtext.secondary)
+      }
     }
   }
 
