@@ -1002,20 +1002,20 @@ export interface StartLiveActivityResponse {
  *
  * @remarks
  * - 인증 필수 (Firebase Auth)
- * - 호출자의 ETA를 업데이트하고 모든 참가자에게 브로드캐스트
+ * - Firestore 없이 클라이언트에서 전달받은 데이터로 Broadcast만 전송
  */
 export interface UpdateETARequest {
-  /** 약속 ID */
-  promiseId: string;
+  /** APNs Broadcast 채널 ID */
+  channelId: string;
 
-  /** 도착 예상 시간 (분) - 0=도착, N=N분 후 */
-  estimatedMinutes: number;
+  /** 전체 참가자 상태 (업데이트된 ETA 포함) */
+  participants: LiveActivityParticipant[];
+
+  /** LiveActivity 추적 시간 (분) */
+  trackingDurationMinutes?: number;
 
   /** 환경 구분 (선택적: stage 또는 prod) */
   env?: "stage" | "prod" | null;
-
-  /** APNs 환경 (sandbox 또는 production) - Widget에서 호출 시 사용 */
-  apnsEnvironment?: "sandbox" | "production" | null;
 }
 
 /**

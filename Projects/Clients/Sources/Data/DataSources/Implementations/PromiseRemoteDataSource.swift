@@ -378,10 +378,30 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
 
   /// ETA 업데이트 요청
   /// Firebase Functions의 updateETA를 호출하여 모든 참가자에게 APNs 브로드캐스트
-  public func updateETA(promiseId: String, visibleMinutes: Int) async throws {
+  /// Firestore 없이 클라이언트에서 전달한 데이터로 Broadcast만 전송
+  public func updateETA(
+    channelId: String,
+    participants: [ParticipantState],
+    trackingDurationMinutes: Int
+  ) async throws {
+    // participants를 서버 형식으로 변환
+    let participantsData: [[String: Any]] = participants.map { p in
+      var dict: [String: Any] = [
+        "id": p.id,
+        "name": p.name
+      ]
+      if let eta = p.estimatedArrivalMinutes {
+        dict["estimatedArrivalMinutes"] = eta
+      } else {
+        dict["estimatedArrivalMinutes"] = NSNull()
+      }
+      return dict
+    }
+
     var callableData: [String: Any] = [
-      "promiseId": promiseId,
-      "estimatedMinutes": visibleMinutes
+      "channelId": channelId,
+      "participants": participantsData,
+      "trackingDurationMinutes": trackingDurationMinutes
     ]
 
     if let env = functionsEnvironmentParam() {

@@ -209,27 +209,44 @@ extension RootTab {
 
         case .livePromiseDetail(.presented(.delegate(.updateETA(let minutes)))):
           // ExpandedView 시트에서 ETA 변경 → 백엔드 API 호출
-          guard let promiseId = liveActivityClient.activePromiseId() else {
+          // LiveActivity에서 channelId, participants 가져와서 전달 (Firestore 없이)
+          guard let attributes = liveActivityClient.currentAttributes(),
+                let currentState = liveActivityClient.currentState(),
+                let activityId = liveActivityClient.activeActivityId() else {
             AppLogger.liveActivity.error("ETA 업데이트 실패: 활성 LiveActivity 없음")
             return .none
           }
-          AppLogger.liveActivity.info("ETA 업데이트 요청: promiseId=\(promiseId), minutes=\(minutes)")
+
+          let channelId = attributes.channelId
+          let trackingDurationMinutes = attributes.trackingDurationMinutes
+          let userId = attributes.currentUserId
+
+          // 현재 사용자의 ETA를 업데이트한 participants 생성
+          let updatedParticipants = currentState.participants.map { participant in
+            if participant.id == userId {
+              return ParticipantState(
+                id: participant.id,
+                name: participant.name,
+                estimatedArrivalMinutes: minutes
+              )
+            }
+            return participant
+          }
+
+          AppLogger.liveActivity.info("ETA 업데이트 요청: channelId=\(channelId), minutes=\(minutes)")
+
           return .run { [promiseClient, liveActivityClient] _ in
             do {
-              // 1. 백엔드 API 호출 (APNs Broadcast)
-              try await promiseClient.updateETA(promiseId, minutes)
-              AppLogger.liveActivity.info("ETA 업데이트 성공: \(minutes)분")
+              // 1. 로컬 LiveActivity 즉시 업데이트 (UX 개선)
+              let updatedState = PromiseActivityAttributes.ContentState(
+                trackingDurationMinutes: trackingDurationMinutes,
+                participants: updatedParticipants
+              )
+              try? await liveActivityClient.update(activityId, updatedState)
 
-              // 2. 로컬 LiveActivity 즉시 업데이트 (UX 개선용 - 백엔드 응답 전)
-              if let activityId = liveActivityClient.activeActivityId(),
-                 let currentState = liveActivityClient.currentState() {
-                let userId = liveActivityClient.currentAttributes()?.currentUserId ?? ""
-                let updatedState = currentState.updating(
-                  participantId: userId,
-                  estimatedArrivalMinutes: minutes
-                )
-                try? await liveActivityClient.update(activityId, updatedState)
-              }
+              // 2. 백엔드 API 호출 (APNs Broadcast - Firestore 없이)
+              try await promiseClient.updateETA(channelId, updatedParticipants, trackingDurationMinutes)
+              AppLogger.liveActivity.info("ETA 업데이트 성공: \(minutes)분")
             } catch {
               AppLogger.liveActivity.error("ETA 업데이트 실패: \(error.localizedDescription)")
             }

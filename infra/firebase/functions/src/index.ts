@@ -2,7 +2,7 @@ import * as admin from "firebase-admin";
 import {FieldValue} from "firebase-admin/firestore";
 import {getFunctions} from "firebase-admin/functions";
 import {setGlobalOptions} from "firebase-functions/v2";
-import {HttpsError, onCall} from "firebase-functions/v2/https";
+import {HttpsError, onCall, onRequest} from "firebase-functions/v2/https";
 import {onTaskDispatched} from "firebase-functions/v2/tasks";
 import {defineSecret} from "firebase-functions/params";
 import * as http2 from "http2";
@@ -2925,8 +2925,8 @@ export const startLiveActivity = onCall<StartLiveActivityRequest>(
  * @remarks
  * **인증 필수**
  *
- * 호출자의 ETA를 업데이트하고 Broadcast APNs로 모든 구독자에게 한 번에 전송합니다.
- * liveActivities 컬렉션 제거 - 약속 문서에 상태 저장
+ * Firestore 사용 없이 클라이언트에서 전달받은 channelId + participants로 Broadcast만 전송.
+ * 클라이언트가 현재 LiveActivity 상태를 직접 전달합니다.
  *
  * @param request.data - UpdateETARequest
  * @returns UpdateETAResponse
@@ -2938,75 +2938,28 @@ export const updateETA = onCall<UpdateETARequest>(
       throw new HttpsError("unauthenticated", "로그인이 필요합니다");
     }
 
-    const userId = request.auth.uid;
-    const {promiseId, estimatedMinutes, env} = request.data;
+    const {
+      channelId, participants, trackingDurationMinutes, env,
+    } = request.data;
 
-    if (!promiseId || estimatedMinutes === undefined) {
+    if (!channelId || !participants) {
       throw new HttpsError(
         "invalid-argument",
-        "promiseId와 estimatedMinutes는 필수입니다"
+        "channelId와 participants는 필수입니다"
       );
     }
 
-    const db = admin.firestore();
-    const promisesCollection = getEnvironmentCollection("promises", db, env);
-    const usersCollection = getEnvironmentCollection("users", db, env);
+    console.log(`📱 ETA update: ch=${channelId}, cnt=${participants.length}`);
 
-    // 1. 약속 정보 조회
-    const promiseDoc = await promisesCollection.doc(promiseId).get();
-    if (!promiseDoc.exists) {
-      throw new HttpsError("not-found", "약속을 찾을 수 없습니다");
-    }
-
-    const promiseData = promiseDoc.data()!;
-    const accepted = promiseData.votes?.accepted as string[] || [];
-
-    // 2. 참가자 상태 생성/업데이트 (약속 문서에 저장)
-    let participants: LiveActivityParticipant[] =
-      promiseData.liveActivityParticipants as LiveActivityParticipant[] || [];
-    const trackingDurationMinutes = 30;
-
-    if (participants.length === 0) {
-      // 처음 ETA 업데이트 시 참가자 목록 생성
-      const participantPromises = accepted.map(async (uid) => {
-        const userDoc = await usersCollection.doc(uid).get();
-        const userData = userDoc.data();
-        return {
-          id: uid,
-          name: userData?.nickname as string || "참가자",
-          estimatedArrivalMinutes: uid === userId ? estimatedMinutes : null,
-        } as LiveActivityParticipant;
-      });
-      participants = await Promise.all(participantPromises);
-    } else {
-      // 기존 참가자 목록에서 해당 사용자 ETA 업데이트
-      const idx = participants.findIndex((p) => p.id === userId);
-      if (idx >= 0) {
-        participants[idx].estimatedArrivalMinutes = estimatedMinutes;
-      }
-    }
-
-    // 약속 문서에 참가자 상태 저장
-    await promisesCollection.doc(promiseId).update({
-      liveActivityParticipants: participants,
-      liveActivityUpdatedAt: FieldValue.serverTimestamp(),
-    });
-
-    // 3. iOS 18 Broadcast APNs 전송 (Firestore에서 channelId 조회)
+    // Firestore 없이 바로 APNs Broadcast 전송
     const isProduction = env === "prod";
-    const channelId = promiseData.liveActivityChannelId as string | undefined;
-
-    if (!channelId) {
-      console.warn(`⚠️ No channelId for promise: ${promiseId}`);
-      return {success: false, successCount: 0, failureCount: 1};
-    }
 
     const payload = {
       aps: {
         "timestamp": Math.floor(Date.now() / 1000),
         "event": "update",
         "content-state": {
-          trackingDurationMinutes,
+          trackingDurationMinutes: trackingDurationMinutes || 30,
           participants,
         },
       },
@@ -3026,6 +2979,110 @@ export const updateETA = onCall<UpdateETARequest>(
       return {success: false, successCount: 0, failureCount: 1};
     }
   },
+);
+
+/**
+ * Widget 전용 ETA 업데이트 (onRequest)
+ *
+ * @remarks
+ * Widget Extension은 Firebase SDK를 사용할 수 없어서 별도의 HTTP 엔드포인트 필요.
+ * Firestore 사용 없이 클라이언트에서 전달받은 데이터로 Broadcast만 전송.
+ *
+ * Headers:
+ * - X-User-Id: Firebase Auth UID
+ * - X-Auth-Token: Firebase ID Token (검증용, 선택)
+ *
+ * Body:
+ * - channelId: string (APNs Broadcast 채널)
+ * - participants: array (전체 참가자 상태)
+ * - trackingDurationMinutes: number
+ * - env?: string ("stage" | "prod")
+ */
+export const widgetUpdateETA = onRequest(
+  {region: REGION, secrets: [APNS_KEY_ID, APNS_TEAM_ID, APNS_AUTH_KEY]},
+  async (req, res) => {
+    // CORS 헤더
+    res.set("Access-Control-Allow-Origin", "*");
+    res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+    res.set(
+      "Access-Control-Allow-Headers",
+      "Content-Type, X-User-Id, X-Auth-Token"
+    );
+
+    if (req.method === "OPTIONS") {
+      res.status(204).send("");
+      return;
+    }
+
+    if (req.method !== "POST") {
+      res.status(405).json({error: "Method not allowed"});
+      return;
+    }
+
+    // 헤더에서 인증 정보 추출
+    const userId = req.headers["x-user-id"] as string;
+    const authToken = req.headers["x-auth-token"] as string;
+
+    if (!userId) {
+      res.status(401).json({error: "X-User-Id header is required"});
+      return;
+    }
+
+    // authToken 검증 (선택적 - 토큰이 있으면 검증)
+    if (authToken) {
+      try {
+        const decodedToken = await admin.auth().verifyIdToken(authToken);
+        if (decodedToken.uid !== userId) {
+          res.status(401).json({error: "Token uid mismatch"});
+          return;
+        }
+      } catch (error) {
+        console.warn(`⚠️ Widget auth token verification failed: ${error}`);
+        // 토큰 만료 등의 경우 userId만으로 진행 (Widget 특성상 허용)
+      }
+    }
+
+    const {
+      channelId, participants, trackingDurationMinutes, env,
+    } = req.body;
+
+    if (!channelId || !participants) {
+      res.status(400).json({
+        error: "channelId and participants are required",
+      });
+      return;
+    }
+
+    console.log(`📱 Widget ETA: u=${userId}, ch=${channelId}`);
+
+    // Firestore 없이 바로 APNs Broadcast 전송
+    const isProduction = env === "prod";
+
+    const payload = {
+      aps: {
+        "timestamp": Math.floor(Date.now() / 1000),
+        "event": "update",
+        "content-state": {
+          trackingDurationMinutes: trackingDurationMinutes || 30,
+          participants,
+        },
+      },
+    };
+
+    const result = await sendAPNsBroadcast({
+      channelId,
+      payload,
+      isProduction,
+    });
+
+    if (result.success) {
+      console.log(`📤 Widget ETA Broadcast sent: channelId=${channelId}`);
+      res.status(200).json({success: true});
+    } else {
+      console.log(`❌ Widget ETA Broadcast failed: ${result.error}`);
+      res.status(200).json({success: false, error: result.error});
+    }
+  }
 );
 
 /**

@@ -32,17 +32,45 @@ struct UpdateETAIntent: LiveActivityIntent {
   }
 
   func perform() async throws -> some IntentResult {
-    // 1. 백엔드 API 직접 호출 (APNs 브로드캐스트)
-    await callUpdateETAFunction(
-      promiseId: promiseId,
-      estimatedMinutes: estimatedMinutes
-    )
+    // 1. 현재 Activity에서 channelId와 participants 가져오기
+    guard let activity = Activity<PromiseActivityAttributes>.activities
+      .first(where: { $0.attributes.promiseId == promiseId }) else {
+      #if DEBUG
+      print("[UpdateETAIntent] Activity not found for promiseId: \(promiseId)")
+      #endif
+      return .result()
+    }
 
-    // 2. Live Activity UI 즉시 업데이트 (로컬 - 백엔드 응답 전 UX 개선용)
-    await updateActivityETA(
-      promiseId: promiseId,
-      participantId: userId,
-      estimatedArrivalMinutes: estimatedMinutes
+    let channelId = activity.attributes.channelId
+    let trackingDurationMinutes = activity.attributes.trackingDurationMinutes
+    let currentState = activity.content.state
+
+    // 2. 현재 사용자의 ETA를 업데이트한 participants 생성
+    let updatedParticipants = currentState.participants.map { participant in
+      if participant.id == userId {
+        return ParticipantState(
+          id: participant.id,
+          name: participant.name,
+          estimatedArrivalMinutes: estimatedMinutes
+        )
+      }
+      return participant
+    }
+
+    // 3. 로컬 UI 즉시 업데이트
+    let updatedState = PromiseActivityAttributes.ContentState(
+      trackingDurationMinutes: trackingDurationMinutes,
+      participants: updatedParticipants
+    )
+    let content = ActivityContent(state: updatedState, staleDate: nil)
+    await activity.update(content)
+
+    // 4. 백엔드 API 호출 (APNs Broadcast - Firestore 없이)
+    await callUpdateETAFunction(
+      channelId: channelId,
+      participants: updatedParticipants,
+      trackingDurationMinutes: trackingDurationMinutes,
+      userId: userId
     )
 
     return .result()
@@ -51,17 +79,20 @@ struct UpdateETAIntent: LiveActivityIntent {
 
 // MARK: - Firebase Functions HTTP Client
 
-private func callUpdateETAFunction(promiseId: String, estimatedMinutes: Int) async {
+private func callUpdateETAFunction(
+  channelId: String,
+  participants: [ParticipantState],
+  trackingDurationMinutes: Int,
+  userId: String
+) async {
   // Firebase Functions 설정
   let region = "asia-northeast3"
-  let functionName = "updateETA"
+  let functionName = "widgetUpdateETA"
+  let projectId = LiveActivityIntentKey.firebaseProjectId
 
   // 환경에 따른 URL 결정
   let baseURL: String
-  let projectId = LiveActivityIntentKey.firebaseProjectId
-
   #if DEBUG
-  // 에뮬레이터 사용 시
   if let emulatorHost = UserDefaults(suiteName: LiveActivityIntentKey.suiteName)?
     .string(forKey: LiveActivityIntentKey.emulatorHostKey) {
     baseURL = "http://\(emulatorHost):5001/\(projectId)/\(region)/\(functionName)"
@@ -79,17 +110,29 @@ private func callUpdateETAFunction(promiseId: String, estimatedMinutes: Int) asy
     return
   }
 
-  // App Group에서 APNs 환경 읽기
+  // App Group에서 인증 정보 읽기
   let defaults = UserDefaults(suiteName: LiveActivityIntentKey.suiteName)
-  let apnsEnvironment = defaults?.string(forKey: LiveActivityIntentKey.apnsEnvironmentKey) ?? "production"
+  let authToken = defaults?.string(forKey: LiveActivityIntentKey.authTokenKey)
 
-  // 요청 데이터 (APNs 환경 포함)
-  let requestBody: [String: Any] = [
-    "data": [
-      "promiseId": promiseId,
-      "estimatedMinutes": estimatedMinutes,
-      "apnsEnvironment": apnsEnvironment
+  // participants를 서버 형식으로 변환
+  let participantsData: [[String: Any]] = participants.map { p in
+    var dict: [String: Any] = [
+      "id": p.id,
+      "name": p.name
     ]
+    if let eta = p.estimatedArrivalMinutes {
+      dict["estimatedArrivalMinutes"] = eta
+    } else {
+      dict["estimatedArrivalMinutes"] = NSNull()
+    }
+    return dict
+  }
+
+  // 요청 데이터 (channelId + participants - Firestore 없이 Broadcast만)
+  let requestBody: [String: Any] = [
+    "channelId": channelId,
+    "participants": participantsData,
+    "trackingDurationMinutes": trackingDurationMinutes
   ]
 
   guard let httpBody = try? JSONSerialization.data(withJSONObject: requestBody) else {
@@ -103,28 +146,23 @@ private func callUpdateETAFunction(promiseId: String, estimatedMinutes: Int) asy
   var request = URLRequest(url: url)
   request.httpMethod = "POST"
   request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+  request.setValue(userId, forHTTPHeaderField: "X-User-Id")
   request.httpBody = httpBody
 
-  // 토큰 만료 체크 (defaults는 위에서 이미 정의됨)
-  if let expiry = defaults?.object(forKey: LiveActivityIntentKey.authTokenExpiryKey) as? Date,
-     expiry < Date() {
-    #if DEBUG
-    print("[UpdateETAIntent] 토큰 만료됨 - 백엔드 요청 스킵")
-    #endif
-    return  // 토큰 만료 시 백엔드 요청 스킵 (로컬 UI만 업데이트됨)
-  }
-
-  // Auth 토큰이 있으면 추가
-  if let authToken = defaults?.string(forKey: LiveActivityIntentKey.authTokenKey) {
-    request.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
+  // Auth 토큰이 있으면 헤더에 추가
+  if let authToken = authToken {
+    request.setValue(authToken, forHTTPHeaderField: "X-Auth-Token")
   }
 
   // 요청 실행
   do {
-    let (_, response) = try await URLSession.shared.data(for: request)
+    let (data, response) = try await URLSession.shared.data(for: request)
     #if DEBUG
     if let httpResponse = response as? HTTPURLResponse {
       print("[UpdateETAIntent] Response status: \(httpResponse.statusCode)")
+      if let responseString = String(data: data, encoding: .utf8) {
+        print("[UpdateETAIntent] Response body: \(responseString)")
+      }
     }
     #endif
   } catch {
@@ -134,43 +172,3 @@ private func callUpdateETAFunction(promiseId: String, estimatedMinutes: Int) asy
   }
 }
 
-// MARK: - Helper
-
-private func updateActivityETA(promiseId: String, participantId: String, estimatedArrivalMinutes: Int) async {
-  #if DEBUG
-  // 디버그 로깅
-  let debugInfo: [String: Any] = [
-    "timestamp": Date().timeIntervalSince1970,
-    "promiseId": promiseId,
-    "participantId": participantId,
-    "estimatedArrivalMinutes": estimatedArrivalMinutes,
-    "activitiesCount": Activity<PromiseActivityAttributes>.activities.count
-  ]
-  UserDefaults(suiteName: LiveActivityIntentKey.suiteName)?
-    .set(debugInfo, forKey: "liveActivity.debug.lastIntent")
-  #endif
-
-  // promiseId로 Activity 찾기
-  guard let activity = Activity<PromiseActivityAttributes>.activities
-    .first(where: { $0.attributes.promiseId == promiseId }) else {
-    #if DEBUG
-    UserDefaults(suiteName: LiveActivityIntentKey.suiteName)?
-      .set("activity_not_found", forKey: "liveActivity.debug.error")
-    #endif
-    return
-  }
-
-  let currentState = activity.content.state
-  let updatedState = currentState.updating(
-    participantId: participantId,
-    estimatedArrivalMinutes: estimatedArrivalMinutes
-  )
-  let content = ActivityContent(state: updatedState, staleDate: nil)
-
-  await activity.update(content)
-
-  #if DEBUG
-  UserDefaults(suiteName: LiveActivityIntentKey.suiteName)?
-    .set("update_called", forKey: "liveActivity.debug.result")
-  #endif
-}

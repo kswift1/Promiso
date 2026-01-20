@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import PromisoShared
 
 // MARK: - Promise Remote Data Source Protocol
 
@@ -29,7 +30,12 @@ public protocol PromiseRemoteDataSourceProtocol {
   func startLiveActivity(promiseId: String) async throws
 
   /// ETA 업데이트 요청 (백엔드에서 APNs 브로드캐스트)
-  func updateETA(promiseId: String, visibleMinutes: Int) async throws
+  /// Firestore 없이 클라이언트에서 전달한 데이터로 Broadcast만 전송
+  func updateETA(
+    channelId: String,
+    participants: [ParticipantState],
+    trackingDurationMinutes: Int
+  ) async throws
 
   /// LiveActivity 종료 요청
   func endLiveActivity(promiseId: String) async throws
