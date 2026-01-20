@@ -82,9 +82,7 @@ extension ManageGroup {
             .frame(maxWidth: .infinity)
           }
           .padding(20)
-          .background(Color(.systemBackground))
-          .clipShape(RoundedRectangle(cornerRadius: 20))
-          .shadow(color: .black.opacity(0.06), radius: 16, x: 0, y: 8)
+          .adaptiveGlassCard(cornerRadius: 20)
 
           // Members Section
           VStack(alignment: .leading, spacing: 16) {
@@ -105,9 +103,7 @@ extension ManageGroup {
             membersContent
           }
           .padding(20)
-          .background(Color(.systemBackground))
-          .clipShape(RoundedRectangle(cornerRadius: 20))
-          .shadow(color: .black.opacity(0.06), radius: 16, x: 0, y: 8)
+          .adaptiveGlassCard(cornerRadius: 20)
 
           // Past Promises Section
           Button {
@@ -125,17 +121,12 @@ extension ManageGroup {
                 .foregroundStyle(.tertiary)
             }
             .padding(20)
-            .background(Color(.systemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 20))
-            .shadow(color: .black.opacity(0.06), radius: 16, x: 0, y: 8)
+            .adaptiveGlassCard(cornerRadius: 20)
           }
           .buttonStyle(.plain)
 
-          // Invite Section
-          inviteSection
-
-          // Leave/Delete Button
-          actionButtons
+          // Danger Zone
+          dangerZoneSection
 
           Spacer()
             .frame(height: 8)
@@ -145,6 +136,27 @@ extension ManageGroup {
       .auroraBackground()
       .navigationTitle("그룹 상세")
       .navigationBarTitleDisplayMode(.inline)
+      .toolbar {
+        ToolbarItem(placement: .topBarTrailing) {
+          Menu {
+            Button {
+              copyCode()
+            } label: {
+              Label(
+                isCopied ? "복사됨!" : "초대 코드 복사",
+                systemImage: isCopied ? "checkmark" : "doc.on.doc"
+              )
+            }
+
+            ShareLink(item: shareMessage) {
+              Label("초대 링크 공유", systemImage: "square.and.arrow.up")
+            }
+          } label: {
+            Image(systemName: "person.badge.plus")
+              .font(.system(size: 16, weight: .medium))
+          }
+        }
+      }
       .onAppear { store.send(.view(.onAppear)) }
       .confirmationDialog(
         "그룹 나가기",
@@ -334,174 +346,88 @@ extension ManageGroup {
       }
     }
 
-    // MARK: - Invite Section
+    // MARK: - Danger Zone Section
 
     @ViewBuilder
-    private var inviteSection: some View {
-      VStack(spacing: 16) {
-        HStack {
-          Label("초대 코드", systemImage: "link.circle.fill")
-            .font(.headline)
-            .foregroundStyle(.primary)
+    private var dangerZoneSection: some View {
+      VStack(alignment: .leading, spacing: 12) {
+        Text("위험 구역")
+          .font(.system(size: 13, weight: .semibold))
+          .foregroundStyle(.secondary)
+          .textCase(.uppercase)
+          .padding(.horizontal, 4)
 
-          Spacer()
-        }
+        VStack(spacing: 0) {
+          if store.isHost {
+            // 호스트: 그룹 삭제
+            Button {
+              showDeleteConfirmation = true
+            } label: {
+              HStack(spacing: 12) {
+                Image(systemName: "trash")
+                  .font(.system(size: 16))
+                  .foregroundStyle(.red)
+                  .frame(width: 24)
 
-        // Code Display with Copy Button
-        HStack(spacing: 12) {
-          Text(store.group.inviteCode)
-            .font(.system(size: 28, weight: .bold, design: .rounded))
-            .tracking(3)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
-            .background(
-              RoundedRectangle(cornerRadius: 16)
-                .fill(Color(.systemGray6))
-                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 4)
-            )
+                Text("그룹 삭제")
+                  .font(.system(size: 16))
+                  .foregroundStyle(.red)
 
-          Button(action: copyCode) {
-            ZStack {
-              RoundedRectangle(cornerRadius: 16)
-                .fill(
-                  isCopied
-                  ? LinearGradient(
-                    colors: [.green, .green],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                  )
-                  : LinearGradient(
-                    colors: [.blue, .purple],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                  )
-                )
-                .frame(width: 56, height: 56)
-                .shadow(
-                  color: isCopied ? .green.opacity(0.3) : .blue.opacity(0.3),
-                  radius: 8,
-                  x: 0,
-                  y: 4
-                )
+                Spacer()
 
-              Image(systemName: isCopied ? "checkmark" : "doc.on.doc")
-                .font(.system(size: 20, weight: .semibold))
-                .foregroundStyle(.white)
+                if store.isDeletingGroup {
+                  ProgressView()
+                    .scaleEffect(0.8)
+                } else {
+                  Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(.tertiary)
+                }
+              }
+              .padding(.horizontal, 16)
+              .padding(.vertical, 14)
             }
-          }
-          .animation(.spring(response: 0.3), value: isCopied)
-        }
+            .disabled(store.isDeletingGroup)
+          } else {
+            // 멤버: 그룹 나가기
+            Button {
+              showLeaveConfirmation = true
+            } label: {
+              HStack(spacing: 12) {
+                Image(systemName: "rectangle.portrait.and.arrow.right")
+                  .font(.system(size: 16))
+                  .foregroundStyle(.primary)
+                  .frame(width: 24)
 
-        if isCopied {
-          HStack(spacing: 8) {
-            Image(systemName: "checkmark.circle.fill")
-              .font(.system(size: 14))
-            Text("복사되었습니다!")
-              .font(.subheadline.weight(.medium))
-          }
-          .foregroundStyle(.green)
-          .transition(.scale.combined(with: .opacity))
-        }
+                Text("그룹 나가기")
+                  .font(.system(size: 16))
+                  .foregroundStyle(.primary)
 
-        // Share Button
-        ShareLink(item: shareMessage) {
-          HStack(spacing: 8) {
-            Image(systemName: "square.and.arrow.up")
-              .font(.system(size: 18))
-            Text("초대 링크 공유하기")
-              .font(.headline)
-          }
-          .frame(maxWidth: .infinity)
-          .frame(height: 50)
-          .background(
-            LinearGradient(
-              colors: [.blue, .purple],
-              startPoint: .topLeading,
-              endPoint: .bottomTrailing
-            )
-          )
-          .foregroundStyle(.white)
-          .clipShape(RoundedRectangle(cornerRadius: 14))
-          .shadow(
-            color: .blue.opacity(0.3),
-            radius: 10,
-            x: 0,
-            y: 5
-          )
-        }
-      }
-      .padding(20)
-      .background(
-        RoundedRectangle(cornerRadius: 20)
-          .fill(Color(.systemBackground))
-          .shadow(color: .black.opacity(0.08), radius: 16, x: 0, y: 8)
-      )
-    }
+                Spacer()
 
-    // MARK: - Action Buttons
-
-    @ViewBuilder
-    private var actionButtons: some View {
-      if store.isHost {
-        // Delete Button (Host only)
-        Button {
-          showDeleteConfirmation = true
-        } label: {
-          HStack(spacing: 8) {
-            if store.isDeletingGroup {
-              ProgressView()
-                .tint(.white)
-            } else {
-              Image(systemName: "trash.fill")
-                .font(.system(size: 18))
+                if store.isLeavingGroup {
+                  ProgressView()
+                    .scaleEffect(0.8)
+                } else {
+                  Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(.tertiary)
+                }
+              }
+              .padding(.horizontal, 16)
+              .padding(.vertical, 14)
             }
-
-            Text(store.isDeletingGroup ? "삭제 중..." : "그룹 삭제")
-              .font(.system(size: 16, weight: .semibold))
+            .disabled(store.isLeavingGroup)
           }
-          .frame(maxWidth: .infinity)
-          .frame(height: 54)
-          .background(
-            LinearGradient(
-              colors: [.red, .orange],
-              startPoint: .topLeading,
-              endPoint: .bottomTrailing
-            )
-          )
-          .foregroundStyle(.white)
-          .clipShape(RoundedRectangle(cornerRadius: 16))
-          .shadow(
-            color: .red.opacity(0.3),
-            radius: 12,
-            x: 0,
-            y: 6
-          )
         }
-        .disabled(store.isDeletingGroup)
-      } else {
-        // Leave Button (Member only)
-        Button {
-          showLeaveConfirmation = true
-        } label: {
-          HStack(spacing: 8) {
-            if store.isLeavingGroup {
-              ProgressView()
-                .tint(.white)
-            } else {
-              Image(systemName: "rectangle.portrait.and.arrow.right")
-                .font(.system(size: 18))
-            }
-
-            Text(store.isLeavingGroup ? "나가는 중..." : "그룹 나가기")
-              .font(.system(size: 16, weight: .semibold))
-          }
-          .frame(maxWidth: .infinity)
-          .frame(height: 54)
-          .background(Color(.systemGray5))
-          .foregroundStyle(.primary)
-          .clipShape(RoundedRectangle(cornerRadius: 16))
-        }
-        .disabled(store.isLeavingGroup)
+        .background(
+          RoundedRectangle(cornerRadius: 12)
+            .fill(Color(.secondarySystemBackground))
+        )
+        .overlay(
+          RoundedRectangle(cornerRadius: 12)
+            .stroke(store.isHost ? Color.red.opacity(0.2) : Color(.separator).opacity(0.3), lineWidth: 1)
+        )
       }
     }
 
