@@ -2284,7 +2284,7 @@ export const onGroupMemberJoined = onDocumentUpdated(
 // APNs Production/Development 호스트
 const APNS_HOST_PRODUCTION = "api.push.apple.com";
 const APNS_HOST_DEVELOPMENT = "api.sandbox.push.apple.com";
-const APNS_BUNDLE_ID = "com.promiso.app";
+const APNS_BUNDLE_ID = "com.promiso";
 
 /**
  * APNs JWT 토큰 생성
