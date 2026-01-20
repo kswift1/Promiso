@@ -5,77 +5,68 @@ import ComposableArchitecture
 struct ArrivalSharingSection: View {
   let store: StoreOf<CreatePromise.Feature>
 
-  private var selectedOption: ArrivalSharingOption? {
-    guard let minutes = store.promise.trackingStartMinutesBefore else {
-      return nil
-    }
-    return ArrivalSharingOption.allCases.first { $0.minutes == minutes }
+  private var selectedMinutes: Int? {
+    store.promise.trackingStartMinutesBefore
   }
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 16) {
-      // 헤더
-      HStack(spacing: 8) {
-        Image(systemName: "location.fill.viewfinder")
-          .font(.system(size: 20))
-          .foregroundColor(.blue)
+    SectionPlaceHolder(
+      placeHolderTitle: "실시간 위치 공유",
+      isRequired: false
+    ) {
+      VStack(spacing: 8) {
+        // 설명
+        Text("약속 시간 전부터 참가자들의 도착 현황을 공유합니다")
+          .font(.system(size: 13))
+          .foregroundColor(.secondary)
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(.bottom, 4)
 
-        Text("실시간 위치 공유")
-          .font(.system(size: 18, weight: .semibold))
-      }
-
-      Text("약속 시간 전부터 참가자들의 위치를 실시간으로 공유합니다")
-        .font(.system(size: 14))
-        .foregroundColor(.secondary)
-
-      // 옵션 버튼들
-      VStack(spacing: 12) {
-        ForEach(ArrivalSharingOption.allCases, id: \.self) { option in
-          ArrivalSharingButton(
-            option: option,
-            isSelected: selectedOption == option
-          ) {
-            if selectedOption == option {
-              // 이미 선택된 것을 다시 누르면 해제
-              store.send(.view(.setTrackingStartMinutes(nil)))
-            } else {
-              store.send(.view(.setTrackingStartMinutes(option.minutes)))
+        // 옵션 그리드 (2x2)
+        LazyVGrid(columns: [
+          GridItem(.flexible(), spacing: 8),
+          GridItem(.flexible(), spacing: 8)
+        ], spacing: 8) {
+          ForEach(ArrivalSharingOption.allCases, id: \.self) { option in
+            ArrivalSharingChip(
+              option: option,
+              isSelected: selectedMinutes == option.minutes
+            ) {
+              withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                if selectedMinutes == option.minutes {
+                  store.send(.view(.setTrackingStartMinutes(nil)))
+                } else {
+                  store.send(.view(.setTrackingStartMinutes(option.minutes)))
+                }
+              }
             }
           }
         }
-      }
 
-      // 비활성화 옵션
-      Button {
-        store.send(.view(.setTrackingStartMinutes(nil)))
-      } label: {
-        HStack {
-          Image(systemName: "xmark.circle")
-            .font(.system(size: 18))
-          Text("위치 공유 안 함")
-            .font(.system(size: 15))
-          Spacer()
-          if selectedOption == nil {
-            Image(systemName: "checkmark")
-              .foregroundColor(.blue)
+        // 사용 안 함 버튼
+        Button {
+          withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            store.send(.view(.setTrackingStartMinutes(nil)))
           }
+        } label: {
+          HStack(spacing: 8) {
+            Image(systemName: selectedMinutes == nil ? "checkmark.circle.fill" : "circle")
+              .font(.system(size: 18))
+              .foregroundColor(selectedMinutes == nil ? .blue : .secondary)
+
+            Text("사용 안 함")
+              .font(.system(size: 14))
+              .foregroundColor(selectedMinutes == nil ? .primary : .secondary)
+
+            Spacer()
+          }
+          .padding(12)
+          .background(selectedMinutes == nil ? Color.blue.opacity(0.08) : Color(.systemGray6))
+          .clipShape(RoundedRectangle(cornerRadius: 10))
         }
-        .foregroundColor(selectedOption == nil ? .blue : .secondary)
-        .padding(.vertical, 12)
-        .padding(.horizontal, 16)
-        .background(
-          selectedOption == nil
-            ? Color.blue.opacity(0.08)
-            : Color(.systemGray6)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .buttonStyle(.plain)
       }
-      .buttonStyle(PlainButtonStyle())
     }
-    .padding(16)
-    .background(Color(.systemBackground))
-    .clipShape(RoundedRectangle(cornerRadius: 20))
-    .shadow(color: .black.opacity(0.05), radius: 10, x: 0, y: 4)
   }
 }
 
@@ -102,6 +93,15 @@ enum ArrivalSharingOption: CaseIterable, Hashable {
     }
   }
 
+  var shortDescription: String {
+    switch self {
+    case .thirtyMin: return "짧은 약속"
+    case .oneHour: return "추천"
+    case .twoHours: return "여유있게"
+    case .threeHours: return "먼 거리"
+    }
+  }
+
   var minutes: Int {
     switch self {
     case .thirtyMin: return 30
@@ -121,54 +121,32 @@ enum ArrivalSharingOption: CaseIterable, Hashable {
   }
 }
 
-struct ArrivalSharingButton: View {
+struct ArrivalSharingChip: View {
   let option: ArrivalSharingOption
   let isSelected: Bool
   let action: () -> Void
 
   var body: some View {
     Button(action: action) {
-      HStack(spacing: 12) {
-        ZStack {
-          Circle()
-            .fill(isSelected ? Color.blue : Color(.systemGray5))
-            .frame(width: 40, height: 40)
+      VStack(spacing: 6) {
+        Text(option.title)
+          .font(.system(size: 14, weight: isSelected ? .semibold : .medium))
+          .foregroundColor(isSelected ? .blue : .primary)
 
-          Image(systemName: option.icon)
-            .font(.system(size: 18))
-            .foregroundColor(isSelected ? .white : .secondary)
-        }
-
-        VStack(alignment: .leading, spacing: 2) {
-          Text(option.title)
-            .font(.system(size: 16, weight: isSelected ? .semibold : .regular))
-            .foregroundColor(.primary)
-
-          Text(option.description)
-            .font(.system(size: 13))
-            .foregroundColor(.secondary)
-        }
-
-        Spacer()
-
-        if isSelected {
-          Image(systemName: "checkmark.circle.fill")
-            .font(.system(size: 24))
-            .foregroundColor(.blue)
-        } else {
-          Image(systemName: "circle")
-            .font(.system(size: 24))
-            .foregroundColor(.secondary)
-        }
+        Text(option.shortDescription)
+          .font(.system(size: 11))
+          .foregroundColor(.secondary)
+          .lineLimit(1)
       }
-      .padding(16)
+      .frame(maxWidth: .infinity)
+      .padding(.vertical, 14)
       .background(isSelected ? Color.blue.opacity(0.08) : Color(.systemGray6))
-      .clipShape(RoundedRectangle(cornerRadius: 16))
+      .clipShape(RoundedRectangle(cornerRadius: 10))
       .overlay(
-        RoundedRectangle(cornerRadius: 16)
-          .stroke(isSelected ? Color.blue : Color.clear, lineWidth: 2)
+        RoundedRectangle(cornerRadius: 10)
+          .stroke(isSelected ? Color.blue : Color.clear, lineWidth: 1.5)
       )
     }
-    .buttonStyle(PlainButtonStyle())
+    .buttonStyle(.plain)
   }
 }
