@@ -149,10 +149,12 @@ extension PromiseModel {
 // MARK: - Time-based Properties
 
 extension PromiseModel {
-  /// 실시간 공유 가능 여부 (30분 전부터)
+  /// 실시간 공유 가능 여부 (trackingStartMinutesBefore 전부터)
   public var isRealtimeShareable: Bool {
+    guard let trackingMinutes = trackingStartMinutesBefore else { return false }
     let timeDifference = startAt.timeIntervalSince(Date())
-    return timeDifference >= 0 && timeDifference <= 1800 // 30분
+    let trackingSeconds = Double(trackingMinutes * 60)
+    return timeDifference >= 0 && timeDifference <= trackingSeconds
   }
 
   /// 약속이 진행 중인지 확인
