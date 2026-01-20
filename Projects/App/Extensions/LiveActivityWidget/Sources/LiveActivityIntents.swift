@@ -79,11 +79,16 @@ private func callUpdateETAFunction(promiseId: String, estimatedMinutes: Int) asy
     return
   }
 
-  // 요청 데이터
+  // App Group에서 APNs 환경 읽기
+  let defaults = UserDefaults(suiteName: LiveActivityIntentKey.suiteName)
+  let apnsEnvironment = defaults?.string(forKey: LiveActivityIntentKey.apnsEnvironmentKey) ?? "production"
+
+  // 요청 데이터 (APNs 환경 포함)
   let requestBody: [String: Any] = [
     "data": [
       "promiseId": promiseId,
-      "estimatedMinutes": estimatedMinutes
+      "estimatedMinutes": estimatedMinutes,
+      "apnsEnvironment": apnsEnvironment
     ]
   ]
 
@@ -100,10 +105,7 @@ private func callUpdateETAFunction(promiseId: String, estimatedMinutes: Int) asy
   request.setValue("application/json", forHTTPHeaderField: "Content-Type")
   request.httpBody = httpBody
 
-  // Auth 토큰 확인 (App Group에서 읽기)
-  let defaults = UserDefaults(suiteName: LiveActivityIntentKey.suiteName)
-
-  // 토큰 만료 체크
+  // 토큰 만료 체크 (defaults는 위에서 이미 정의됨)
   if let expiry = defaults?.object(forKey: LiveActivityIntentKey.authTokenExpiryKey) as? Date,
      expiry < Date() {
     #if DEBUG

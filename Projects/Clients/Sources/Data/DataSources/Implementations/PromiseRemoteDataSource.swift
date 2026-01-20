@@ -1,5 +1,4 @@
 import Foundation
-import Combine
 import FirebaseFirestore
 import FirebaseFunctions
 import PromisoShared
@@ -408,10 +407,11 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
 
   /// LiveActivity Push Token 등록
   /// 앱에서 직접 LiveActivity를 시작한 경우 서버에 토큰 등록
-  public func registerLiveActivityToken(promiseId: String, token: String) async throws {
+  public func registerLiveActivityToken(promiseId: String, token: String, apnsEnvironment: String) async throws {
     var callableData: [String: Any] = [
       "promiseId": promiseId,
-      "token": token
+      "token": token,
+      "apnsEnvironment": apnsEnvironment
     ]
 
     if let env = functionsEnvironmentParam() {
@@ -437,56 +437,4 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
 private func convertDocumentToPromise(_ document: QueryDocumentSnapshot) throws -> PromiseModel? {
   let dto = try document.data(as: PromiseDTO.self)
   return PromiseModel(dto: dto, id: document.documentID)
-}
-
-private class FirestoreQuerySubscription<S: Subscriber>: Subscription where S.Input == QuerySnapshot, S.Failure == Error {
-  private var listener: ListenerRegistration?
-  private let query: Query
-  private let subscriber: S
-
-  init(query: Query, subscriber: S) {
-    self.query = query
-    self.subscriber = subscriber
-  }
-
-  func request(_ demand: Subscribers.Demand) {
-    listener = query.addSnapshotListener { [weak self] snapshot, error in
-      if let error = error {
-        self?.subscriber.receive(completion: .failure(error))
-      } else if let snapshot = snapshot {
-        _ = self?.subscriber.receive(snapshot)
-      }
-    }
-  }
-
-  func cancel() {
-    listener?.remove()
-    listener = nil
-  }
-}
-
-private class FirestoreDocumentSubscription<S: Subscriber>: Subscription where S.Input == DocumentSnapshot?, S.Failure == Error {
-  private var listener: ListenerRegistration?
-  private let document: DocumentReference
-  private let subscriber: S
-
-  init(document: DocumentReference, subscriber: S) {
-    self.document = document
-    self.subscriber = subscriber
-  }
-
-  func request(_ demand: Subscribers.Demand) {
-    listener = document.addSnapshotListener { [weak self] snapshot, error in
-      if let error = error {
-        self?.subscriber.receive(completion: .failure(error))
-      } else {
-        _ = self?.subscriber.receive(snapshot)
-      }
-    }
-  }
-
-  func cancel() {
-    listener?.remove()
-    listener = nil
-  }
 }

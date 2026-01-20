@@ -2482,11 +2482,14 @@ export const registerLiveActivityToken = onCall<
     }
 
     const userId = request.auth.uid;
-    const {promiseId, token, env} = request.data;
+    const {promiseId, token, env, apnsEnvironment} = request.data;
 
     if (!promiseId || !token) {
       throw new HttpsError("invalid-argument", "promiseId와 token은 필수입니다");
     }
+
+    // APNs 환경 기본값: production (App Store/TestFlight)
+    const resolvedApnsEnv = apnsEnvironment || "production";
 
     const db = admin.firestore();
     const liveActivitiesCollection = getEnvironmentCollection(
@@ -2495,20 +2498,26 @@ export const registerLiveActivityToken = onCall<
 
     try {
       // liveActivities/{promiseId} 문서에 토큰 추가
+      // 토큰 데이터 구조: { token: string, apnsEnvironment: "sandbox" | "production" }
+      const tokenInfo = {
+        token,
+        apnsEnvironment: resolvedApnsEnv,
+      };
+
       const docRef = liveActivitiesCollection.doc(promiseId);
       const doc = await docRef.get();
 
       if (doc.exists) {
-        // 기존 문서가 있으면 tokens 배열에 추가 (중복 방지)
+        // 기존 문서가 있으면 tokens Map에 추가 (중복 방지)
         await docRef.update({
-          [`tokens.${userId}`]: token,
+          [`tokens.${userId}`]: tokenInfo,
           updatedAt: FieldValue.serverTimestamp(),
         });
       } else {
         // 문서가 없으면 새로 생성
         await docRef.set({
           promiseId,
-          tokens: {[userId]: token},
+          tokens: {[userId]: tokenInfo},
           participants: [],
           trackingDurationMinutes: 30,
           createdAt: FieldValue.serverTimestamp(),
@@ -2517,7 +2526,7 @@ export const registerLiveActivityToken = onCall<
       }
 
       console.log(
-        `✅ LiveActivity Token 등록: promiseId=${promiseId}, userId=${userId}`
+        `✅ LiveActivity Token 등록: promiseId=${promiseId}, userId=${userId}, apns=${resolvedApnsEnv}`
       );
       return {success: true};
     } catch (error) {
@@ -2819,44 +2828,77 @@ export const updateETA = onCall<UpdateETARequest>(
     }
 
     // 3. 참가자들의 LiveActivity 토큰 수집
-    // 3-1. liveActivities 문서에 등록된 토큰 (앱에서 직접 시작한 경우)
-    const registeredTokens: string[] = [];
-    const liveActivityData = liveActivityDoc.data();
-    if (liveActivityData?.tokens) {
-      const tokensMap = liveActivityData.tokens as {[userId: string]: string};
-      registeredTokens.push(...Object.values(tokensMap));
+    // 토큰 정보 구조: { token: string, isProduction: boolean }
+    interface TokenInfo {
+      token: string;
+      isProduction: boolean;
     }
 
-    // 3-2. 사용자 디바이스의 Push to Start 토큰
+    // 3-1. liveActivities 문서에 등록된 토큰 (앱에서 직접 시작한 경우)
+    const registeredTokenInfos: TokenInfo[] = [];
+    const liveActivityData = liveActivityDoc.data();
+    if (liveActivityData?.tokens) {
+      const tokensMap = liveActivityData.tokens as {
+        [userId: string]: string | {token: string; apnsEnvironment: string}
+      };
+
+      for (const tokenData of Object.values(tokensMap)) {
+        // 마이그레이션 호환성: 기존 문자열 토큰 vs 새 객체 토큰
+        if (typeof tokenData === "string") {
+          // 기존 데이터: 문자열 토큰 (production으로 가정)
+          registeredTokenInfos.push({
+            token: tokenData,
+            isProduction: env === "prod",
+          });
+        } else {
+          // 새 데이터: { token, apnsEnvironment }
+          registeredTokenInfos.push({
+            token: tokenData.token,
+            isProduction: tokenData.apnsEnvironment === "production",
+          });
+        }
+      }
+    }
+
+    // 3-2. 사용자 디바이스의 Push to Start 토큰 (Firebase 환경 기준)
+    const defaultIsProduction = env === "prod";
     const tokenPromises = accepted.map(async (memberId) => {
       const userDoc = await usersCollection.doc(memberId).get();
       const userData = userDoc.data();
       const devices = userData?.devices as {[key: string]: DeviceInfo} | null;
       if (!devices) return [];
 
-      const tokens: string[] = [];
+      const tokenInfos: TokenInfo[] = [];
       for (const deviceId of Object.keys(devices)) {
         const device = devices[deviceId];
         // Push to Start 토큰 사용
         if (device.liveActivityPushToStartToken) {
-          tokens.push(device.liveActivityPushToStartToken);
+          tokenInfos.push({
+            token: device.liveActivityPushToStartToken,
+            isProduction: defaultIsProduction,
+          });
         }
       }
-      return tokens;
+      return tokenInfos;
     });
 
     const allTokenArrays = await Promise.all(tokenPromises);
-    const combinedTokens = [...registeredTokens, ...allTokenArrays.flat()];
-    const allTokens = [...new Set(combinedTokens)];
+    const combinedTokenInfos = [...registeredTokenInfos, ...allTokenArrays.flat()];
 
-    if (allTokens.length === 0) {
+    // 중복 제거 (토큰 기준)
+    const seenTokens = new Set<string>();
+    const uniqueTokenInfos = combinedTokenInfos.filter((info) => {
+      if (seenTokens.has(info.token)) return false;
+      seenTokens.add(info.token);
+      return true;
+    });
+
+    if (uniqueTokenInfos.length === 0) {
       console.log("📭 No LiveActivity tokens found for ETA update");
       return {success: true, successCount: 0, failureCount: accepted.length};
     }
 
-    // 4. APNs update 이벤트 전송
-    const isProduction = env === "prod";
-
+    // 4. APNs update 이벤트 전송 (토큰별 환경에 맞게)
     const payload = {
       aps: {
         "timestamp": Math.floor(Date.now() / 1000),
@@ -2871,20 +2913,22 @@ export const updateETA = onCall<UpdateETARequest>(
     let successCount = 0;
     let failureCount = 0;
 
-    for (const token of allTokens) {
+    for (const tokenInfo of uniqueTokenInfos) {
       const result = await sendAPNsPush({
-        deviceToken: token,
+        deviceToken: tokenInfo.token,
         payload,
         pushType: "liveactivity",
         topic: `${APNS_BUNDLE_ID}.push-type.liveactivity`,
         priority: 10,
-        isProduction,
+        isProduction: tokenInfo.isProduction,
       });
 
       if (result.success) {
         successCount++;
+        console.log(`✅ APNs sent: ${tokenInfo.isProduction ? "PROD" : "SANDBOX"}`);
       } else {
         failureCount++;
+        console.log(`❌ APNs failed: ${tokenInfo.isProduction ? "PROD" : "SANDBOX"}`);
       }
     }
 
@@ -2945,45 +2989,77 @@ export const endLiveActivity = onCall<EndLiveActivityRequest>(
     }
 
     // 3. 참가자들의 LiveActivity 토큰 수집
+    // 토큰 정보 구조: { token: string, isProduction: boolean }
+    interface EndTokenInfo {
+      token: string;
+      isProduction: boolean;
+    }
+
     // 3-1. liveActivities 문서에 등록된 토큰 (앱에서 직접 시작한 경우)
-    const registeredTokens: string[] = [];
+    const registeredTokenInfos: EndTokenInfo[] = [];
     const liveActivityDoc = await liveActivitiesCollection.doc(promiseId).get();
     if (liveActivityDoc.exists) {
       const liveActivityData = liveActivityDoc.data();
       if (liveActivityData?.tokens) {
-        const tokensMap = liveActivityData.tokens as {[userId: string]: string};
-        registeredTokens.push(...Object.values(tokensMap));
+        const tokensMap = liveActivityData.tokens as {
+          [userId: string]: string | {token: string; apnsEnvironment: string}
+        };
+
+        for (const tokenData of Object.values(tokensMap)) {
+          // 마이그레이션 호환성: 기존 문자열 토큰 vs 새 객체 토큰
+          if (typeof tokenData === "string") {
+            registeredTokenInfos.push({
+              token: tokenData,
+              isProduction: env === "prod",
+            });
+          } else {
+            registeredTokenInfos.push({
+              token: tokenData.token,
+              isProduction: tokenData.apnsEnvironment === "production",
+            });
+          }
+        }
       }
     }
 
-    // 3-2. 사용자 디바이스의 Push to Start 토큰
+    // 3-2. 사용자 디바이스의 Push to Start 토큰 (Firebase 환경 기준)
+    const defaultIsProduction = env === "prod";
     const tokenPromises = accepted.map(async (memberId) => {
       const userDoc = await usersCollection.doc(memberId).get();
       const userData = userDoc.data();
       const devices = userData?.devices as {[key: string]: DeviceInfo} | null;
       if (!devices) return [];
 
-      const tokens: string[] = [];
+      const tokenInfos: EndTokenInfo[] = [];
       for (const deviceId of Object.keys(devices)) {
         const device = devices[deviceId];
         if (device.liveActivityPushToStartToken) {
-          tokens.push(device.liveActivityPushToStartToken);
+          tokenInfos.push({
+            token: device.liveActivityPushToStartToken,
+            isProduction: defaultIsProduction,
+          });
         }
       }
-      return tokens;
+      return tokenInfos;
     });
 
     const allTokenArrays = await Promise.all(tokenPromises);
-    const combinedEndTokens = [...registeredTokens, ...allTokenArrays.flat()];
-    const allTokens = [...new Set(combinedEndTokens)];
+    const combinedTokenInfos = [...registeredTokenInfos, ...allTokenArrays.flat()];
 
-    if (allTokens.length === 0) {
+    // 중복 제거 (토큰 기준)
+    const seenTokens = new Set<string>();
+    const uniqueTokenInfos = combinedTokenInfos.filter((info) => {
+      if (seenTokens.has(info.token)) return false;
+      seenTokens.add(info.token);
+      return true;
+    });
+
+    if (uniqueTokenInfos.length === 0) {
       console.log("📭 No LiveActivity tokens found for end event");
       return {success: true, successCount: 0, failureCount: accepted.length};
     }
 
-    // 4. APNs end 이벤트 전송
-    const isProduction = env === "prod";
+    // 4. APNs end 이벤트 전송 (토큰별 환경에 맞게)
     const dismissalDate = Math.floor(Date.now() / 1000) + 60; // 1분 후 자동 dismiss
 
     const payload = {
@@ -2997,20 +3073,22 @@ export const endLiveActivity = onCall<EndLiveActivityRequest>(
     let successCount = 0;
     let failureCount = 0;
 
-    for (const token of allTokens) {
+    for (const tokenInfo of uniqueTokenInfos) {
       const result = await sendAPNsPush({
-        deviceToken: token,
+        deviceToken: tokenInfo.token,
         payload,
         pushType: "liveactivity",
         topic: `${APNS_BUNDLE_ID}.push-type.liveactivity`,
         priority: 10,
-        isProduction,
+        isProduction: tokenInfo.isProduction,
       });
 
       if (result.success) {
         successCount++;
+        console.log(`✅ End APNs sent: ${tokenInfo.isProduction ? "PROD" : "SANDBOX"}`);
       } else {
         failureCount++;
+        console.log(`❌ End APNs failed: ${tokenInfo.isProduction ? "PROD" : "SANDBOX"}`);
       }
     }
 

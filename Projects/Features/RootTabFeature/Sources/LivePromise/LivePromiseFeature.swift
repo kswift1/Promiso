@@ -460,17 +460,18 @@ extension LivePromise {
             }
 
           case .pushTokenReceived(let pushToken):
-            // Push Token을 백엔드에 전송
+            // Push Token을 백엔드에 전송 (APNs 환경 정보 포함)
             guard let promiseId = liveActivityClient.activePromiseId(), !promiseId.isEmpty else {
               AppLogger.liveActivity.warning("Push Token 수신했으나 활성 promiseId 없음")
               return .none
             }
 
-            AppLogger.liveActivity.info("Push Token 수신: \(pushToken.prefix(20))... (promiseId: \(promiseId))")
+            let apnsEnvironment = APNsEnvironment.current.apiValue
+            AppLogger.liveActivity.info("Push Token 수신: \(pushToken.prefix(20))... (promiseId: \(promiseId), apns: \(apnsEnvironment))")
 
             return .run { [promiseClient] _ in
               do {
-                try await promiseClient.registerLiveActivityToken(promiseId, pushToken)
+                try await promiseClient.registerLiveActivityToken(promiseId, pushToken, apnsEnvironment)
                 AppLogger.liveActivity.info("Push Token 백엔드 등록 성공")
               } catch {
                 AppLogger.liveActivity.error("Push Token 백엔드 등록 실패: \(error)")

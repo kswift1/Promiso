@@ -1013,6 +1013,9 @@ export interface UpdateETARequest {
 
   /** 환경 구분 (선택적: stage 또는 prod) */
   env?: "stage" | "prod" | null;
+
+  /** APNs 환경 (sandbox 또는 production) - Widget에서 호출 시 사용 */
+  apnsEnvironment?: "sandbox" | "production" | null;
 }
 
 /**
@@ -1105,6 +1108,9 @@ export interface RegisterLiveActivityTokenRequest {
 
   /** 환경 구분 */
   env?: "dev" | "stage" | "prod";
+
+  /** APNs 환경 (sandbox 또는 production) - Firebase 환경과 별개 */
+  apnsEnvironment?: "sandbox" | "production";
 }
 
 /**

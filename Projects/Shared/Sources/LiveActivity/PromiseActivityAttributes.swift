@@ -175,6 +175,9 @@ public enum LiveActivityIntentKey {
 
   /// Firebase Emulator Host 저장 키 (개발 환경용)
   public static let emulatorHostKey = "firebase.emulator.host"
+
+  /// APNs 환경 저장 키 (Widget에서 백엔드 호출 시 사용)
+  public static let apnsEnvironmentKey = "apns.environment"
 }
 
 /// 도착 예상 시간 업데이트 정보

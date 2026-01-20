@@ -447,8 +447,12 @@ private enum WidgetAuthTokenStore {
     defaults.set(token, forKey: LiveActivityIntentKey.authTokenKey)
     defaults.set(expiry, forKey: LiveActivityIntentKey.authTokenExpiryKey)
 
+    // APNs 환경도 함께 저장 (Widget에서 백엔드 호출 시 사용)
+    let apnsEnvironment = APNsEnvironment.current.apiValue
+    defaults.set(apnsEnvironment, forKey: LiveActivityIntentKey.apnsEnvironmentKey)
+
     #if DEBUG
-    print("[WidgetAuthTokenStore] 토큰 저장 완료 (만료: \(expiry))")
+    print("[WidgetAuthTokenStore] 토큰 저장 완료 (만료: \(expiry), APNs: \(apnsEnvironment))")
     #endif
   }
 
@@ -457,6 +461,7 @@ private enum WidgetAuthTokenStore {
 
     defaults.removeObject(forKey: LiveActivityIntentKey.authTokenKey)
     defaults.removeObject(forKey: LiveActivityIntentKey.authTokenExpiryKey)
+    defaults.removeObject(forKey: LiveActivityIntentKey.apnsEnvironmentKey)
 
     #if DEBUG
     print("[WidgetAuthTokenStore] 토큰 삭제 완료")

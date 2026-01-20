@@ -35,5 +35,9 @@ public protocol PromiseRemoteDataSourceProtocol {
   func endLiveActivity(promiseId: String) async throws
 
   /// LiveActivity Push Token 등록 (앱에서 직접 시작한 경우)
-  func registerLiveActivityToken(promiseId: String, token: String) async throws
+  /// - Parameters:
+  ///   - promiseId: 약속 ID
+  ///   - token: LiveActivity Push Token
+  ///   - apnsEnvironment: APNs 환경 ("sandbox" 또는 "production")
+  func registerLiveActivityToken(promiseId: String, token: String, apnsEnvironment: String) async throws
 }
