@@ -122,6 +122,9 @@ public struct PromiseClient: Sendable {
 
   /// LiveActivity 종료 요청
   public var endLiveActivity: @Sendable (_ promiseId: String) async throws -> Void
+
+  /// LiveActivity Push Token 등록 (앱에서 직접 시작한 경우 서버에 토큰 전송)
+  public var registerLiveActivityToken: @Sendable (_ promiseId: String, _ token: String) async throws -> Void
 }
 
 // MARK: - Test & Preview Values
@@ -186,6 +189,9 @@ extension PromiseClient: TestDependencyKey {
       try await Task.sleep(for: .seconds(0.3))
     },
     endLiveActivity: { _ in
+      try await Task.sleep(for: .seconds(0.3))
+    },
+    registerLiveActivityToken: { _, _ in
       try await Task.sleep(for: .seconds(0.3))
     }
   )
@@ -262,6 +268,9 @@ extension PromiseClient: DependencyKey {
       },
       endLiveActivity: { promiseId in
         try await dataSource.endLiveActivity(promiseId: promiseId)
+      },
+      registerLiveActivityToken: { promiseId, token in
+        try await dataSource.registerLiveActivityToken(promiseId: promiseId, token: token)
       }
     )
   }()

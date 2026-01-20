@@ -33,4 +33,7 @@ public protocol PromiseRemoteDataSourceProtocol {
 
   /// LiveActivity 종료 요청
   func endLiveActivity(promiseId: String) async throws
+
+  /// LiveActivity Push Token 등록 (앱에서 직접 시작한 경우)
+  func registerLiveActivityToken(promiseId: String, token: String) async throws
 }

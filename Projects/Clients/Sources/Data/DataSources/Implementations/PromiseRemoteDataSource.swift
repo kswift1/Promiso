@@ -406,6 +406,21 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
     _ = try await functions.httpsCallable("endLiveActivity").call(callableData)
   }
 
+  /// LiveActivity Push Token 등록
+  /// 앱에서 직접 LiveActivity를 시작한 경우 서버에 토큰 등록
+  public func registerLiveActivityToken(promiseId: String, token: String) async throws {
+    var callableData: [String: Any] = [
+      "promiseId": promiseId,
+      "token": token
+    ]
+
+    if let env = functionsEnvironmentParam() {
+      callableData["env"] = env
+    }
+
+    _ = try await functions.httpsCallable("registerLiveActivityToken").call(callableData)
+  }
+
   // MARK: - Helper Methods
 
   private func documentSnapshotToPromise(_ document: DocumentSnapshot) throws -> PromiseModel? {
