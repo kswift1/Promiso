@@ -131,9 +131,35 @@ extension PromiseDetail {
               value: deadline
             )
           }
+
+          Divider().padding(.leading, 44)
+
+          // 최소 확정 인원
+          EmojiInfoRow(
+            emoji: "👥",
+            title: "최소 확정 인원",
+            value: "\(store.promise.minimumParticipants)명"
+          )
+
+          Divider().padding(.leading, 44)
+
+          // 실시간 공유 시작
+          EmojiInfoRow(
+            emoji: "📡",
+            title: "실시간 공유",
+            value: formatRealtimeShareTime(store.promise.startAt)
+          )
         }
         .glassCard()
       }
+    }
+
+    private func formatRealtimeShareTime(_ startAt: Date) -> String {
+      let shareStartTime = startAt.addingTimeInterval(-1800) // 30분 전
+      let formatter = DateFormatter()
+      formatter.locale = Locale(identifier: "ko_KR")
+      formatter.dateFormat = "a h:mm"
+      return "\(formatter.string(from: shareStartTime))부터"
     }
 
     // MARK: - Participants Section
@@ -142,7 +168,7 @@ extension PromiseDetail {
       VStack(spacing: 0) {
         SectionHeader(
           title: "참여자",
-          trailing: "\(store.promise.votes.acceptedCount)/\(store.promise.minimumParticipants)명"
+          trailing: "\(store.promise.votes.acceptedCount)/\(store.groupMembers?.count ?? 0)명 참여"
         )
 
         VStack(spacing: 12) {
