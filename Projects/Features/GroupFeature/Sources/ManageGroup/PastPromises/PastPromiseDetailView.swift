@@ -42,23 +42,29 @@ extension PastPromiseDetail {
     // MARK: - Header Section
 
     private var headerSection: some View {
-      VStack(spacing: 16) {
+      HStack(alignment: .top, spacing: 12) {
+        // 이모지
         Text(store.promise.displayEmoji)
-          .font(.system(size: 64))
+          .font(.system(size: 44))
 
-        Text(store.promise.title)
-          .font(.system(size: 24, weight: .bold))
-          .multilineTextAlignment(.center)
+        // 제목 + 설명
+        VStack(alignment: .leading, spacing: 6) {
+          Text(store.promise.title)
+            .font(.system(size: 20, weight: .bold))
+            .foregroundStyle(.primary)
 
-        if let description = store.promise.description, !description.isEmpty {
-          ExpandableText(text: description, isExpanded: $isDescriptionExpanded)
+          if let description = store.promise.description, !description.isEmpty {
+            ExpandableText(text: description, isExpanded: $isDescriptionExpanded)
+          }
         }
 
-        // 상태 배지 (완료/불발)
+        Spacer()
+
+        // 상태 배지 (우측 상단)
         PastStatusBadge(promise: store.promise)
       }
-      .frame(maxWidth: .infinity)
-      .padding(.vertical, 20)
+      .padding(16)
+      .adaptiveGlassCard(cornerRadius: 16)
     }
 
     // MARK: - Schedule Section
@@ -92,7 +98,7 @@ extension PastPromiseDetail {
             )
           }
         }
-        .glassCard()
+        .adaptiveGlassCard(cornerRadius: 12)
       }
     }
 
@@ -102,7 +108,7 @@ extension PastPromiseDetail {
       VStack(spacing: 0) {
         SectionHeader(
           title: "참여자",
-          trailing: "\(store.promise.votes.acceptedCount)/\(store.promise.minimumParticipants)명"
+          trailing: "\(store.promise.votes.acceptedCount)/\(store.groupMembers?.count ?? 0)명 참여"
         )
 
         VStack(spacing: 12) {
@@ -206,11 +212,11 @@ private struct ExpandableText: View {
   private let lineLimit = 3
 
   var body: some View {
-    VStack(spacing: 4) {
+    VStack(alignment: .leading, spacing: 4) {
       Text(text)
-        .font(.system(size: 15))
+        .font(.system(size: 14))
         .foregroundStyle(.secondary)
-        .multilineTextAlignment(.center)
+        .multilineTextAlignment(.leading)
         .lineLimit(isExpanded ? nil : lineLimit)
         .background(
           GeometryReader { geometry in
@@ -340,9 +346,10 @@ private struct ParticipantGroupRow: View {
           .font(.system(size: 12, weight: .semibold))
           .foregroundStyle(.tertiary)
       }
+      .contentShape(Rectangle())
       .padding(.horizontal, 16)
       .padding(.vertical, 12)
-      .glassCard()
+      .adaptiveGlassCard(cornerRadius: 12)
     }
     .buttonStyle(.plain)
   }
@@ -381,6 +388,8 @@ private struct MemberListSheet: View {
   let members: [UserPublicModel]
   let colorType: PastPromiseDetail.Feature.ParticipantColorType
 
+  @State private var selectedMember: UserPublicModel?
+
   private var color: Color {
     switch colorType {
     case .accepted: return .green
@@ -394,7 +403,9 @@ private struct MemberListSheet: View {
       ScrollView {
         LazyVStack(spacing: 0) {
           ForEach(members) { member in
-            MemberRow(member: member, color: color)
+            MemberRow(member: member, color: color) {
+              selectedMember = member
+            }
 
             if member.id != members.last?.id {
               Divider().padding(.leading, 72)
@@ -408,12 +419,20 @@ private struct MemberListSheet: View {
     }
     .presentationDetents([.medium, .large])
     .presentationDragIndicator(.visible)
+    .fullScreenCover(item: $selectedMember) { member in
+      ImageDetailView(
+        imageUrl: member.profileImageUrl,
+        displayName: member.displayName,
+        onDismiss: { selectedMember = nil }
+      )
+    }
   }
 }
 
 private struct MemberRow: View {
   let member: UserPublicModel
   let color: Color
+  let onProfileTap: () -> Void
 
   var body: some View {
     HStack(spacing: 16) {
@@ -421,7 +440,8 @@ private struct MemberRow: View {
         profileImageUrl: member.profileImageUrl,
         displayName: member.displayName,
         size: 48,
-        borderWidth: 0
+        borderWidth: 0,
+        onTap: onProfileTap
       )
 
       VStack(alignment: .leading, spacing: 4) {
@@ -447,16 +467,3 @@ private struct MemberRow: View {
   }
 }
 
-// MARK: - Glass Card Modifier
-
-private extension View {
-  func glassCard() -> some View {
-    self
-      .background(Color(.systemBackground).opacity(0.8))
-      .clipShape(RoundedRectangle(cornerRadius: 12))
-      .overlay(
-        RoundedRectangle(cornerRadius: 12)
-          .stroke(Color(.systemGray5), lineWidth: 1)
-      )
-  }
-}

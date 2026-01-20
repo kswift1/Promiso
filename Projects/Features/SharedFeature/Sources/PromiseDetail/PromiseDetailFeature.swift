@@ -24,7 +24,7 @@ extension PromiseDetail {
       var groupMembers: [UserPublicModel]?
 
       // 멤버 시트 상태
-      @Presents var memberSheet: MemberSheetState?
+      var memberSheet: MemberSheetState?
 
       // 수정 시트 상태
       @Presents var editPromise: EditPromise.Feature.State?
