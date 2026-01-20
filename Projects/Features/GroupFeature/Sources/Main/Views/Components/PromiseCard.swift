@@ -24,10 +24,11 @@ struct PromiseCard: View {
     groupMembers?.first { $0.userId == promise.hostId }
   }
 
-  private var acceptedMembers: [UserPublicModel] {
+  private var votedMembers: [UserPublicModel] {
     guard let members = groupMembers else { return [] }
-    return promise.votes.accepted.compactMap { acceptedId in
-      members.first { $0.userId == acceptedId }
+    let votedIds = promise.votes.accepted + promise.votes.declined
+    return votedIds.compactMap { votedId in
+      members.first { $0.userId == votedId }
     }
   }
 
@@ -45,6 +46,18 @@ struct PromiseCard: View {
 
   private var responseStatus: PromiseResponseStatus {
     promise.responseStatus(currentUserId: currentUserId, totalGroupMembers: groupMembers?.count)
+  }
+
+  /// 확정까지 남은 인원 수
+  private var remainingForConfirmation: Int {
+    max(0, promise.minimumParticipants - promise.votes.acceptedCount)
+  }
+
+  @ViewBuilder
+  private var confirmationProgressText: some View {
+    Text("약속 확정까지 \(remainingForConfirmation)명 남았어요!")
+      .font(.system(size: 13, weight: .medium))
+      .foregroundColor(.orange)
   }
 
   var body: some View {
@@ -130,21 +143,28 @@ struct PromiseCard: View {
 
       // Bottom Section - Participant count & Avatars
       HStack {
-        // Participant count
-        Text("\(promise.votes.acceptedCount)/\(promise.minimumParticipants)명 참여")
+        // Participant count (투표한 인원 / 전체 인원)
+        Text("\(promise.votes.votedCount)/\(groupMembers?.count ?? 0)명 투표")
           .font(.system(size: 13, weight: .medium))
           .foregroundColor(.secondary)
 
         Spacer()
 
-        // Participant Avatars
-        if !acceptedMembers.isEmpty {
+        // Participant Avatars (투표한 멤버들)
+        if !votedMembers.isEmpty {
           ParticipantsAvatarView(
-            members: acceptedMembers,
+            members: votedMembers,
             currentUserId: currentUserId,
             maxDisplay: 4
           )
         }
+      }
+
+      // 확정까지 남은 인원 (미확정 상태에서만 표시)
+      if case .needResponse = responseStatus, remainingForConfirmation > 0 {
+        confirmationProgressText
+      } else if case .responded = responseStatus, remainingForConfirmation > 0 {
+        confirmationProgressText
       }
 
       // My response badge
