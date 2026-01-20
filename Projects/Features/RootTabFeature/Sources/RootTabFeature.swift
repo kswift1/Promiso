@@ -235,12 +235,22 @@ extension RootTab {
             }
 
           case .pushToStartTokenReceived(let token):
-            // Push to Start 토큰을 백엔드에 등록
+            // Push to Start 토큰을 백엔드에 등록 (캐싱으로 중복 호출 방지)
+            let cacheKey = "lastPushToStartToken"
+            let lastToken = UserDefaults.standard.string(forKey: cacheKey)
+
+            guard token != lastToken else {
+              AppLogger.liveActivity.debug("Push to Start 토큰 변경 없음 - 백엔드 호출 스킵")
+              return .none
+            }
+
             let userId = state.currentUser.id
             AppLogger.liveActivity.info("Push to Start 토큰 수신: \(token.prefix(20))... (userId: \(userId))")
             return .run { _ in
               do {
                 try await notificationClient.saveLiveActivityPushToStartToken(token)
+                UserDefaults.standard.set(token, forKey: cacheKey)
+                AppLogger.liveActivity.debug("Push to Start 토큰 캐시 저장 완료")
               } catch {
                 AppLogger.liveActivity.error("Push to Start 토큰 백엔드 등록 실패: \(error.localizedDescription)")
               }

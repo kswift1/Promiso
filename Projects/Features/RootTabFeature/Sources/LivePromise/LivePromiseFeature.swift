@@ -460,9 +460,18 @@ extension LivePromise {
             }
 
           case .pushTokenReceived(let pushToken):
-            // Push Token을 백엔드에 전송 (APNs 환경 정보 포함)
+            // Push Token을 백엔드에 전송 (캐싱으로 중복 호출 방지)
             guard let promiseId = liveActivityClient.activePromiseId(), !promiseId.isEmpty else {
               AppLogger.liveActivity.warning("Push Token 수신했으나 활성 promiseId 없음")
+              return .none
+            }
+
+            // promiseId별로 토큰 캐싱 (동일 토큰이면 스킵)
+            let cacheKey = "lastLiveActivityToken_\(promiseId)"
+            let lastToken = UserDefaults.standard.string(forKey: cacheKey)
+
+            guard pushToken != lastToken else {
+              AppLogger.liveActivity.debug("LiveActivity 토큰 변경 없음 - 백엔드 호출 스킵 (promiseId: \(promiseId))")
               return .none
             }
 
@@ -472,7 +481,8 @@ extension LivePromise {
             return .run { [promiseClient] _ in
               do {
                 try await promiseClient.registerLiveActivityToken(promiseId, pushToken, apnsEnvironment)
-                AppLogger.liveActivity.info("Push Token 백엔드 등록 성공")
+                UserDefaults.standard.set(pushToken, forKey: cacheKey)
+                AppLogger.liveActivity.info("Push Token 백엔드 등록 성공 (캐시 저장)")
               } catch {
                 AppLogger.liveActivity.error("Push Token 백엔드 등록 실패: \(error)")
               }
