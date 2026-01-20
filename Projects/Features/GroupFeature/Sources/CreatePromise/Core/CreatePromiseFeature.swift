@@ -14,6 +14,7 @@ public enum CreatePromise {
     @Dependency(\.continuousClock) var clock
     @Dependency(\.groupClient) var groupClient
     @Dependency(\.promiseClient) var promiseClient
+    @Dependency(\.emojiClient) var emojiClient
 
     
     private enum CancelID: Hashable {
@@ -120,6 +121,7 @@ public enum CreatePromise {
       // 내부에서만 발생하는 이벤트 (이펙트 응답/디바운스 등)
       public enum Internal: Sendable {
         case titleDebounced(String)
+        case emojiGenerationResponse(Result<String, Error>)
         case emojiSuggestionsResponse([EmojiSuggestion])
         case fetchGroupList
         case groupListResponse(Result<[GroupModel], Error>)
@@ -247,13 +249,28 @@ public enum CreatePromise {
             
           case .titleDebounced(let title):
             guard !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return .none }
-            return .run { [title] send in
+            return .run { [emojiClient] send in
+              do {
+                let emoji = try await emojiClient.generate(title)
+                await send(.internal(.emojiGenerationResponse(.success(emoji))))
+              } catch {
+                await send(.internal(.emojiGenerationResponse(.failure(error))))
+              }
+            }
+
+          case .emojiGenerationResponse(.success(let emoji)):
+            state.promise.emoji = emoji
+            return .none
+
+          case .emojiGenerationResponse(.failure):
+            // Fallback: 기존 로컬 EmojiSuggester 사용
+            return .run { [title = state.promise.title] send in
               let picks = await EmojiSuggestorProvider.shared.suggest(for: title, topK: 10)
               await send(.internal(.emojiSuggestionsResponse(picks)))
             }
-            
+
           case .emojiSuggestionsResponse(let picks):
-            state.promise.emoji = picks.first?.emoji
+            state.promise.emoji = picks.first?.emoji ?? "📅"
             return .none
             
           case .fetchGroupList:
