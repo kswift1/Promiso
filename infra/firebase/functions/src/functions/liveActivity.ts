@@ -392,7 +392,9 @@ export const widgetUpdateETA = onRequest(
     }
 
     if (req.method !== "POST") {
-      res.status(405).json({error: "Method not allowed"});
+      res.status(405).json({
+        error: {code: "method-not-allowed", message: "Method not allowed"},
+      });
       return;
     }
 
@@ -401,7 +403,12 @@ export const widgetUpdateETA = onRequest(
     const authToken = req.headers["x-auth-token"] as string;
 
     if (!userId) {
-      res.status(401).json({error: "X-User-Id header is required"});
+      res.status(401).json({
+        error: {
+          code: "unauthenticated",
+          message: "X-User-Id header is required",
+        },
+      });
       return;
     }
 
@@ -410,7 +417,9 @@ export const widgetUpdateETA = onRequest(
       try {
         const decodedToken = await admin.auth().verifyIdToken(authToken);
         if (decodedToken.uid !== userId) {
-          res.status(401).json({error: "Token uid mismatch"});
+          res.status(401).json({
+            error: {code: "unauthenticated", message: "Token uid mismatch"},
+          });
           return;
         }
       } catch (error) {
@@ -425,7 +434,10 @@ export const widgetUpdateETA = onRequest(
 
     if (!channelId || !participants) {
       res.status(400).json({
-        error: "channelId and participants are required",
+        error: {
+          code: "invalid-argument",
+          message: "channelId and participants are required",
+        },
       });
       return;
     }

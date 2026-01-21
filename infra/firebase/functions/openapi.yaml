@@ -1815,42 +1815,39 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  error:
-                    type: string
+                $ref: '#/components/schemas/ErrorResponse'
               examples:
                 missingFields:
                   value:
-                    error: channelId and participants are required
+                    error:
+                      code: invalid-argument
+                      message: channelId and participants are required
 
         '401':
           description: 인증 실패
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  error:
-                    type: string
+                $ref: '#/components/schemas/ErrorResponse'
               examples:
                 missingUserId:
                   value:
-                    error: X-User-Id header is required
+                    error:
+                      code: unauthenticated
+                      message: X-User-Id header is required
 
         '405':
           description: 메서드 허용되지 않음
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  error:
-                    type: string
+                $ref: '#/components/schemas/ErrorResponse'
               examples:
                 methodNotAllowed:
                   value:
-                    error: Method not allowed
+                    error:
+                      code: method-not-allowed
+                      message: Method not allowed
 
   # ========================================
   # Emoji

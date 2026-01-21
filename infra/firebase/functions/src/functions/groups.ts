@@ -387,7 +387,7 @@ export const leaveGroup = onCall<LeaveGroupRequest>(
     if (createdBy === userId) {
       throw new HttpsError(
         "permission-denied",
-        "그룹 호스트는 나갈 수 없습니다. 그룹을 삭제하거나 다른 멤버에게 호스트를 이전하세요.",
+        "그룹 호스트는 나갈 수 없습니다. 그룹을 삭제해주세요.",
       );
     }
 

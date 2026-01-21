@@ -22,6 +22,14 @@ export function validateCreateGroupRequest(data: CreateGroupRequest): void {
     );
   }
 
+  // Firestore 문서 ID에 '/'는 허용되지 않음
+  if (groupId.includes("/")) {
+    throw new HttpsError(
+      "invalid-argument",
+      "groupId에 '/' 문자는 허용되지 않습니다",
+    );
+  }
+
   // name 검증
   const name = data.name.trim();
   if (name.length < 2) {
