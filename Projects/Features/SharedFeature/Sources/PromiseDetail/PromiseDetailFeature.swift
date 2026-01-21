@@ -223,10 +223,8 @@ extension PromiseDetail {
           case .memberSheetDismissed:
             state.memberSheet = nil
             return .none
-
+            
           // MARK: - Live Activity View Actions
-          // liveActivityStartTapped 제거됨 - iOS 18 Broadcast 방식으로 자동 시작만 사용
-
           case .liveActivityStopTapped:
             guard let activityId = state.liveActivityId else { return .none }
             return .run { [liveActivityClient] send in
