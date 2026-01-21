@@ -68,7 +68,7 @@ import PromisoShared
 
 extension LivePromise {
   /// 약속 추적 확장 뷰 (전체 화면) - DetailSpec v5 기준
-  /// 4단 구조: 헤더 / Racing View / 참가자 현황 / 상태 변경
+  /// 5단 구조: 헤더 / 참가자 현황 타이틀 / Racing View / 참가자 리스트 / 안내 문구
   public struct ExpandedView: View {
     @Bindable var store: StoreOf<Detail>
     @Environment(\.colorScheme) private var colorScheme
@@ -116,17 +116,17 @@ extension LivePromise {
           headerSection
             .padding(.top, 8)
 
-          // 2. Racing View
-          racingViewSection
+          // 2. 참가자 현황 타이틀
+          participantStatusHeader
             .padding(.top, 24)
 
-          // 3. 참가자 현황
-          participantStatusSection
-            .padding(.top, 24)
+          // 3. Racing View + 참가자 리스트 (통합)
+          racingWithParticipantsSection
+            .padding(.top, 12)
 
-          // 4. 상태 변경 버튼 (시트 트리거)
-          statusChangeButton
-            .padding(.top, 24)
+          // 4. 안내 문구
+          participantNotice
+            .padding(.top, 12)
             .padding(.bottom, 40)
         }
         .padding(.horizontal, 16)
@@ -310,7 +310,7 @@ extension LivePromise {
         }
       }
       .padding(16)
-      .adaptiveGlassCardBackground()
+      .adaptiveGlassCard()
     }
 
     // MARK: - Participant Avatars
@@ -441,82 +441,114 @@ extension LivePromise {
       )
     }
 
-    // MARK: - 2. Racing View Section
+    // MARK: - 2. Racing View + Participants Section
 
-    private var racingViewSection: some View {
-      SharedRacingTrackView(
-        participants: store.data.participants,
-        trackingDurationMinutes: store.data.trackingDurationMinutes,
-        currentUserId: store.data.currentUserId
-      )
-      .frame(height: 50)
-      .padding(.vertical, 16)
-      .padding(.horizontal, 14)
+    private var racingWithParticipantsSection: some View {
+      VStack(spacing: 0) {
+        // Racing View
+        SharedRacingTrackView(
+          participants: store.data.participants,
+          trackingDurationMinutes: store.data.trackingDurationMinutes,
+          currentUserId: store.data.currentUserId
+        )
+        .frame(height: 50)
+        .padding(.vertical, 20)
+        .padding(.horizontal, 24)
+
+        // 구분선
+        Divider()
+          .background(Color.white.opacity(0.15))
+          .padding(.horizontal, 12)
+
+        // 참가자 리스트 (유리 재질 카드)
+        VStack(spacing: 0) {
+          ForEach(sortedParticipants) { participant in
+            participantRowDark(participant)
+
+            if participant.id != sortedParticipants.last?.id {
+              Divider()
+                .background(Color.white.opacity(0.15))
+                .padding(.leading, 72)
+            }
+          }
+        }
+        .padding(.vertical, 4)
+        .background(
+          RoundedRectangle(cornerRadius: 12)
+            .fill(.ultraThinMaterial)
+            .opacity(0.6)
+        )
+        .overlay(
+          RoundedRectangle(cornerRadius: 12)
+            .stroke(Color.white.opacity(0.1), lineWidth: 1)
+        )
+        .padding(.horizontal, 12)
+        .padding(.vertical, 24)
+      }
       .background(Color.black.opacity(0.9), in: RoundedRectangle(cornerRadius: 16))
       .environment(\.colorScheme, .dark)
     }
 
-    // MARK: - 3. Participant Status Section
+    // MARK: - 3. Participant Status Components
 
-    private var participantStatusSection: some View {
-      VStack(spacing: 12) {
-        // 헤더
-        HStack {
-          HStack(spacing: 6) {
-            Circle()
-              .fill(Color.pmindigo.n500)
-              .frame(width: 8, height: 8)
-            Text("참가자 현황")
-              .font(.subheadline.weight(.semibold))
-              .foregroundStyle(primaryTextColor)
-          }
-
-          Spacer()
-
-          Text("\(store.data.arrivedCount)/\(store.data.participants.count) 도착")
-            .font(.caption.weight(.medium))
-            .foregroundStyle(secondaryTextColor)
+    private var participantStatusHeader: some View {
+      HStack {
+        HStack(spacing: 6) {
+          Circle()
+            .fill(Color.pmindigo.n500)
+            .frame(width: 8, height: 8)
+          Text("참가자 현황")
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(primaryTextColor)
         }
-        .padding(.horizontal, 4)
 
-        // 참가자 리스트
-        VStack(spacing: 0) {
-          ForEach(sortedParticipants) { participant in
-            participantRow(participant)
+        Spacer()
 
-            if participant.id != sortedParticipants.last?.id {
-              Divider()
-                .background(colorScheme == .dark ? .white.opacity(0.1) : .gray.opacity(0.2))
-                .padding(.horizontal, 12)
-            }
-          }
-        }
-        .background(cardBackgroundColor, in: RoundedRectangle(cornerRadius: 16))
+        Text("\(store.data.arrivedCount)/\(store.data.participants.count) 도착")
+          .font(.caption.weight(.medium))
+          .foregroundStyle(secondaryTextColor)
       }
+      .padding(.horizontal, 4)
     }
 
-    /// 참가자 정렬: 도착 → 이동중 (ETA 오름차순) → 대기
+    private var participantNotice: some View {
+      VStack(alignment: .leading, spacing: 2) {
+        Text("도착 예정 시간은 참가자가 직접 입력한 예상 시간이에요.")
+        Text("실제 도착과 다를 수 있어요.")
+      }
+      .font(.caption2)
+      .foregroundStyle(.tertiary)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .padding(.horizontal, 4)
+    }
+
+    /// 참가자 정렬: 본인 맨 위 → 도착 → 이동중 (ETA 오름차순) → 대기
     private var sortedParticipants: [ParticipantState] {
-      store.data.participants.sorted { p1, p2 in
+      let currentUserId = store.data.currentUserId
+      return store.data.participants.sorted { p1, p2 in
+        // 본인 항상 맨 위
+        if p1.id == currentUserId { return true }
+        if p2.id == currentUserId { return false }
+        // 나머지는 ETA 오름차순
         let eta1 = p1.estimatedArrivalMinutes ?? Int.max
         let eta2 = p2.estimatedArrivalMinutes ?? Int.max
         return eta1 < eta2
       }
     }
 
+    @ViewBuilder
     private func participantRow(_ participant: ParticipantState) -> some View {
       let isCurrentUser = participant.id == store.data.currentUserId
-      let isArrived = participant.estimatedArrivalMinutes == 0
       let isLate = (participant.estimatedArrivalMinutes ?? 0) > 10
 
-      return HStack(spacing: 12) {
+      let rowContent = HStack(spacing: 12) {
         // 아바타
         avatarView(for: participant, isCurrentUser: isCurrentUser)
 
         // 이름 + 상태
         VStack(alignment: .leading, spacing: 2) {
           HStack(spacing: 6) {
-            Text(isCurrentUser ? "나" : participant.name)
+            Text(participant.name)
               .font(.body.weight(.medium))
               .foregroundStyle(primaryTextColor)
 
@@ -542,11 +574,88 @@ extension LivePromise {
 
         Spacer()
 
-        // ETA 뱃지
-        etaBadge(for: participant, isLate: isLate)
+        // ETA 뱃지 + 변경 텍스트 (본인만)
+        VStack(alignment: .trailing, spacing: 4) {
+          etaBadge(for: participant, isLate: isLate)
+
+          if isCurrentUser {
+            Text("변경")
+              .font(.caption.weight(.medium))
+              .foregroundStyle(secondaryTextColor)
+          }
+        }
       }
       .padding(.horizontal, 16)
       .padding(.vertical, 14)
+      .contentShape(Rectangle())
+
+      if isCurrentUser {
+        Button {
+          store.send(.view(.showETASheet))
+        } label: {
+          rowContent
+        }
+        .buttonStyle(.plain)
+      } else {
+        rowContent
+      }
+    }
+
+    @ViewBuilder
+    private func participantRowDark(_ participant: ParticipantState) -> some View {
+      let isCurrentUser = participant.id == store.data.currentUserId
+      let isLate = (participant.estimatedArrivalMinutes ?? 0) > 10
+
+      let rowContent = HStack(spacing: 12) {
+        avatarView(for: participant, isCurrentUser: isCurrentUser)
+
+        VStack(alignment: .leading, spacing: 3) {
+          HStack(spacing: 6) {
+            Text(participant.name)
+              .font(.body.weight(.semibold))
+              .foregroundStyle(.white)
+
+            if isCurrentUser {
+              Text("나")
+                .font(.caption2.weight(.bold))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(Color.pmindigo.n500, in: Capsule())
+            }
+          }
+
+          Text(statusText(for: participant))
+            .font(.caption.weight(.medium))
+            .foregroundStyle(Color.white.opacity(0.7))
+        }
+
+        Spacer()
+
+        VStack(alignment: .trailing, spacing: 4) {
+          etaBadge(for: participant, isLate: isLate)
+
+          if isCurrentUser {
+            Text("변경")
+              .font(.caption.weight(.medium))
+              .foregroundStyle(Color.white.opacity(0.6))
+          }
+        }
+      }
+      .padding(.horizontal, 14)
+      .padding(.vertical, 12)
+      .contentShape(Rectangle())
+
+      if isCurrentUser {
+        Button {
+          store.send(.view(.showETASheet))
+        } label: {
+          rowContent
+        }
+        .buttonStyle(.plain)
+      } else {
+        rowContent
+      }
     }
 
     private func avatarView(for participant: ParticipantState, isCurrentUser: Bool) -> some View {
@@ -642,57 +751,10 @@ extension LivePromise {
       }
     }
 
-    // MARK: - 4. Status Change Button (시트 트리거)
-
-    private var statusChangeButton: some View {
-      Button {
-        store.send(.view(.showETASheet))
-      } label: {
-        HStack {
-          VStack(alignment: .leading, spacing: 4) {
-            Text("내 상태")
-              .font(.caption)
-              .foregroundStyle(secondaryTextColor)
-
-            if let currentETA = store.data.currentUserETA {
-              HStack(spacing: 6) {
-                Text(currentETA == 0 ? "🏁" : "🚗")
-                  .font(.system(size: 16))
-                Text(currentETA == 0 ? "도착 완료" : "\(currentETA)분 후 도착")
-                  .font(.system(size: 15, weight: .semibold))
-                  .foregroundStyle(currentETA == 0 ? Color.pmsuccess.n500 : primaryTextColor)
-              }
-            } else {
-              Text("상태를 설정해주세요")
-                .font(.system(size: 15, weight: .medium))
-                .foregroundStyle(secondaryTextColor)
-            }
-          }
-
-          Spacer()
-
-          Text("변경")
-            .font(.system(size: 14, weight: .semibold))
-            .foregroundStyle(.white)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .background(Color.pmindigo.n500, in: Capsule())
-        }
-        .padding(16)
-        .background(cardBackgroundColor, in: RoundedRectangle(cornerRadius: 16))
-      }
-      .buttonStyle(.plain)
-    }
-
     // MARK: - ETA Change Sheet
 
     private var etaChangeSheet: some View {
       VStack(spacing: 24) {
-        // 헤더
-        Text("도착 예정 시간 변경")
-          .font(.headline.weight(.bold))
-          .foregroundStyle(primaryTextColor)
-
         // ETA 버튼들
         VStack(spacing: 12) {
           HStack(spacing: 12) {
@@ -725,6 +787,11 @@ extension LivePromise {
               .frame(width: 80, height: 50)
               .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
               .focused($isMinuteInputFocused)
+              .onChange(of: store.customMinuteInput) { _, newValue in
+                if newValue.count > 3 {
+                  store.send(.view(.customMinuteInputChanged(String(newValue.prefix(3)))))
+                }
+              }
 
             Text("분 후 도착")
               .font(.body)
@@ -795,17 +862,37 @@ extension LivePromise {
 
     private func statusText(for participant: ParticipantState) -> String {
       guard let eta = participant.estimatedArrivalMinutes else {
+        AppLogger.liveActivity.debug("[\(participant.name)] ETA nil → 아직 출발 전")
         return "아직 출발 전"
       }
+
       if eta == 0 {
+        AppLogger.liveActivity.debug("[\(participant.name)] ETA=0 → 도착 완료")
         return "도착 완료"
       }
-      if eta <= 3 {
-        return "거의 도착"
+
+      guard let scheduledTime = store.data.scheduledTime else {
+        AppLogger.liveActivity.warning("[\(participant.name)] scheduledTime nil → 이동 중 (fallback)")
+        return "이동 중"
       }
-      if eta > 10 {
+
+      let remainingMinutes = scheduledTime.timeIntervalSinceNow / 60
+      AppLogger.liveActivity.debug("[\(participant.name)] ETA=\(eta)분, 남은시간=\(Int(remainingMinutes))분, 약속시간=\(scheduledTime)")
+
+      if remainingMinutes <= 0 {
+        AppLogger.liveActivity.debug("[\(participant.name)] 남은시간 <= 0 → 지각")
+        return "지각"
+      }
+      if Double(eta) > remainingMinutes {
+        AppLogger.liveActivity.debug("[\(participant.name)] ETA(\(eta)) > 남은시간(\(Int(remainingMinutes))) → 지각 예상")
         return "지각 예상"
       }
+      if eta <= 3 {
+        AppLogger.liveActivity.debug("[\(participant.name)] ETA <= 3 → 거의 도착")
+        return "거의 도착"
+      }
+
+      AppLogger.liveActivity.debug("[\(participant.name)] 정상 이동 중")
       return "이동 중"
     }
 
@@ -818,31 +905,4 @@ extension LivePromise {
   }
 }
 
-// MARK: - Glass Effect Modifier (PromiseCard와 동일)
-
-private extension View {
-  func adaptiveGlassCardBackground() -> some View {
-    if #available(iOS 26.0, *) {
-      return AnyView(
-        self
-          .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
-          .overlay(
-            RoundedRectangle(cornerRadius: 16)
-              .strokeBorder(.white.opacity(0.2), lineWidth: 1)
-          )
-          .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 4)
-      )
-    } else {
-      return AnyView(
-        self
-          .background(Color(.systemBackground))
-          .clipShape(RoundedRectangle(cornerRadius: 16))
-          .overlay(
-            RoundedRectangle(cornerRadius: 16)
-              .stroke(Color(.systemGray5), lineWidth: 1)
-          )
-      )
-    }
-  }
-}
 
