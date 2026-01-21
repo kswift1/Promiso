@@ -6,6 +6,7 @@ import PromisoShared
 // MARK: - Firebase Functions 상수
 
 private enum FirebaseFunctionNames {
+  static let deletePromise = "deletePromise"
   static let startLiveActivity = "startLiveActivity"
   static let updateETA = "updateETA"
 }
@@ -157,10 +158,18 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
     _ = try await functions.httpsCallable("updatePromise").call(callableData)
   }
   
-  /// 약속 삭제 (soft delete)
+  /// 약속 삭제 (hard delete)
+  /// Firebase Functions의 deletePromise를 호출합니다.
   public func deletePromise(id: String) async throws {
-    let ref = db.environmentCollection(collectionName).document(id)
-    try await ref.updateData(["isDeleted": true, "updatedAt": Timestamp(date: Date())])
+    var callableData: [String: Any] = [
+      "promiseId": id
+    ]
+
+    if let env = functionsEnvironmentParam() {
+      callableData["env"] = env
+    }
+
+    _ = try await functions.httpsCallable(FirebaseFunctionNames.deletePromise).call(callableData)
   }
   
   /// 약속 조회
@@ -188,7 +197,6 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
             .whereField("groupId", in: chunk)
             .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: startOfDay))
             .whereField("startAt", isLessThan: Timestamp(date: endOfDay))
-            .whereField("isDeleted", isEqualTo: false)
 
           let snapshot = try await query.getDocuments()
           return try snapshot.documents.compactMap { try convertDocumentToPromise($0) }
@@ -218,7 +226,6 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
           let query = db.environmentCollection(collectionName)
             .whereField("groupId", in: chunk)
             .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: now))
-            .whereField("isDeleted", isEqualTo: false)
 
           let snapshot = try await query.getDocuments()
           return try snapshot.documents.compactMap { try convertDocumentToPromise($0) }
@@ -240,7 +247,6 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
   public func getActivePromises(groupId: String, limit: Int) async throws -> [PromiseModel] {
     let query = db.environmentCollection(collectionName)
       .whereField("groupId", isEqualTo: groupId)
-      .whereField("isDeleted", isEqualTo: false)
       .order(by: "startAt")
       .limit(to: limit)
 
@@ -252,7 +258,6 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
   public func getPastPromises(groupId: String, limit: Int, lastStartAt: Date?) async throws -> [PromiseModel] {
     var query = db.environmentCollection(collectionName)
       .whereField("groupId", isEqualTo: groupId)
-      .whereField("isDeleted", isEqualTo: false)
       .whereField("startAt", isLessThan: Timestamp(date: Date()))
       .order(by: "startAt", descending: true)
 
@@ -280,7 +285,6 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
             .whereField("groupId", in: chunk)
             .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: startDate))
             .whereField("startAt", isLessThan: Timestamp(date: endDate))
-            .whereField("isDeleted", isEqualTo: false)
 
           let snapshot = try await query.getDocuments()
           return try snapshot.documents.compactMap { try convertDocumentToPromise($0) }
@@ -298,12 +302,11 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
   }
 
   /// 그룹의 활성 약속 개수 조회 (Firestore count aggregation 사용)
-  /// subscribeToActivePromises와 동일한 조건 (startAt >= now, isDeleted == false)
+  /// subscribeToActivePromises와 동일한 조건 (startAt >= now)
   /// 과거 여부는 클라이언트에서 isPast로 계산
   public func getActivePromiseCount(groupId: String) async throws -> Int {
     let query = db.environmentCollection(collectionName)
       .whereField("groupId", isEqualTo: groupId)
-      .whereField("isDeleted", isEqualTo: false)
       .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: Date()))
 
     let snapshot = try await query.count.getAggregation(source: .server)
@@ -318,7 +321,6 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
 
       let query = db.environmentCollection(collectionName)
         .whereField("groupId", isEqualTo: groupId)
-        .whereField("isDeleted", isEqualTo: false)
         .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: Date()))
         .order(by: "startAt")
         .limit(to: limit)
