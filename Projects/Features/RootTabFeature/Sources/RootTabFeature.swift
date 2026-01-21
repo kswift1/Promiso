@@ -27,6 +27,12 @@ public enum Tab: String, CaseIterable {
   }
 }
 
+// MARK: - Cache Keys
+
+private enum CacheKeys {
+  static let CacheKeys.lastPushToStartToken = "CacheKeys.lastPushToStartToken"
+}
+
 // MARK: - Feature Namespace
 
 /// RootTab Feature 컴포넌트를 위한 Namespace
@@ -273,7 +279,7 @@ extension RootTab {
 
           case .pushToStartTokenReceived(let token):
             // Push to Start 토큰을 백엔드에 등록 (캐싱으로 중복 호출 방지)
-            let cacheKey = "lastPushToStartToken"
+            let cacheKey = "CacheKeys.lastPushToStartToken"
             let lastToken = UserDefaults.standard.string(forKey: cacheKey)
 
             guard token != lastToken else {
