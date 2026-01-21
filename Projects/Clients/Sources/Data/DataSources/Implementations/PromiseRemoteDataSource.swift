@@ -411,20 +411,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
     _ = try await functions.httpsCallable("updateETA").call(callableData)
   }
 
-  /// LiveActivity 종료 요청
-  /// Firebase Functions의 endLiveActivity를 호출하여 종료 APNs 전송
-  public func endLiveActivity(promiseId: String) async throws {
-    var callableData: [String: Any] = [
-      "promiseId": promiseId
-    ]
-
-    if let env = functionsEnvironmentParam() {
-      callableData["env"] = env
-    }
-
-    _ = try await functions.httpsCallable("endLiveActivity").call(callableData)
-  }
-
+  // endLiveActivity 제거됨 - APNs dismissal-date로 auto-dismiss 처리
   // registerLiveActivityToken 제거됨 - iOS 18 Broadcast 방식으로 전환
 
   // MARK: - Helper Methods

@@ -208,11 +208,9 @@ extension RootTab {
           return .none
 
         case .livePromiseDetail(.presented(.delegate(.updateETA(let minutes)))):
-          // ExpandedView 시트에서 ETA 변경 → 백엔드 API 호출
-          // LiveActivity에서 channelId, participants 가져와서 전달 (Firestore 없이)
+          // ExpandedView 시트에서 ETA 변경 → 서버 API 호출 → APNs Broadcast
           guard let attributes = liveActivityClient.currentAttributes(),
-                let currentState = liveActivityClient.currentState(),
-                let activityId = liveActivityClient.activeActivityId() else {
+                let currentState = liveActivityClient.currentState() else {
             AppLogger.liveActivity.error("ETA 업데이트 실패: 활성 LiveActivity 없음")
             return .none
           }
@@ -235,16 +233,9 @@ extension RootTab {
 
           AppLogger.liveActivity.info("ETA 업데이트 요청: channelId=\(channelId), minutes=\(minutes)")
 
-          return .run { [promiseClient, liveActivityClient] _ in
+          // 서버 API 호출 → APNs Broadcast로 모든 참가자(나 포함) 업데이트
+          return .run { [promiseClient] _ in
             do {
-              // 1. 로컬 LiveActivity 즉시 업데이트 (UX 개선)
-              let updatedState = PromiseActivityAttributes.ContentState(
-                trackingDurationMinutes: trackingDurationMinutes,
-                participants: updatedParticipants
-              )
-              try? await liveActivityClient.update(activityId, updatedState)
-
-              // 2. 백엔드 API 호출 (APNs Broadcast - Firestore 없이)
               try await promiseClient.updateETA(channelId, updatedParticipants, trackingDurationMinutes)
               AppLogger.liveActivity.info("ETA 업데이트 성공: \(minutes)분")
             } catch {

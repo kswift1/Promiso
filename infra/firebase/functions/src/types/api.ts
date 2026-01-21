@@ -1032,34 +1032,8 @@ export interface UpdateETAResponse {
   failureCount: number;
 }
 
-/**
- * LiveActivity 종료 요청
- *
- * @remarks
- * - 인증 필수 (Firebase Auth)
- * - 호스트만 종료 가능
- */
-export interface EndLiveActivityRequest {
-  /** 약속 ID */
-  promiseId: string;
-
-  /** 환경 구분 (선택적: stage 또는 prod) */
-  env?: "stage" | "prod" | null;
-}
-
-/**
- * LiveActivity 종료 응답
- */
-export interface EndLiveActivityResponse {
-  /** 성공 여부 */
-  success: boolean;
-
-  /** 전송 성공 수 */
-  successCount: number;
-
-  /** 전송 실패 수 */
-  failureCount: number;
-}
+// EndLiveActivityRequest 제거됨 - APNs dismissal-date로 auto-dismiss 처리
+// EndLiveActivityResponse 제거됨
 
 /**
  * LiveActivity Push to Start 토큰 등록 요청

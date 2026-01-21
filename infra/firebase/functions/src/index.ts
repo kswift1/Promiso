@@ -28,8 +28,8 @@ import {
   DeleteGroupRequest,
   DeleteGroupResponse,
   DeviceInfo,
-  EndLiveActivityRequest,
-  EndLiveActivityResponse,
+  // EndLiveActivityRequest 제거됨 - auto-dismiss로 대체
+  // EndLiveActivityResponse 제거됨
   GetUserRequest,
   GetUserSettingsResponse,
   GroupMemberPreview,
@@ -2441,6 +2441,8 @@ async function createAPNsChannel(
   const path = `/1/apps/${APNS_BUNDLE_ID}/channels`;
   const jwtToken = generateAPNsJWT(keyId, teamId, authKey);
 
+  console.log(`📡 Creating APNs channel: ${host}:${port}${path}`);
+
   return new Promise((resolve) => {
     const client = http2.connect(`https://${host}:${port}`);
 
@@ -2506,79 +2508,7 @@ async function createAPNsChannel(
   });
 }
 
-/**
- * iOS 18 Broadcast APNs 채널 삭제
- * Channel Management API 사용 (별도 호스트/포트)
- *
- * @param {string} channelId - 채널 ID (Apple이 생성한 ID)
- * @param {boolean} isProduction - Production 환경 여부
- * @return {Promise<object>} 결과 객체
- */
-async function deleteAPNsChannel(
-  channelId: string,
-  isProduction: boolean
-): Promise<{success: boolean; error?: string}> {
-  const host = isProduction ?
-    CHANNEL_MGMT_HOST_PRODUCTION : CHANNEL_MGMT_HOST_DEVELOPMENT;
-  const port = isProduction ?
-    CHANNEL_MGMT_PORT_PRODUCTION : CHANNEL_MGMT_PORT_DEVELOPMENT;
-
-  const keyId = APNS_KEY_ID.value();
-  const teamId = APNS_TEAM_ID.value();
-  const authKey = APNS_AUTH_KEY.value().replace(/\\n/g, "\n");
-  const jwtToken = generateAPNsJWT(keyId, teamId, authKey);
-
-  const path = `/1/apps/${APNS_BUNDLE_ID}/channels/${channelId}`;
-
-  return new Promise((resolve) => {
-    const client = http2.connect(`https://${host}:${port}`);
-
-    client.on("error", (err) => {
-      console.error("❌ APNs Channel deletion connection error:", err);
-      resolve({success: false, error: err.message});
-    });
-
-    const headers: http2.OutgoingHttpHeaders = {
-      ":method": "DELETE",
-      ":path": path,
-      "authorization": `bearer ${jwtToken}`,
-    };
-
-    const req = client.request(headers);
-    let responseData = "";
-
-    req.on("response", (headers) => {
-      const statusCode = headers[":status"] as number;
-
-      req.on("data", (chunk) => {
-        responseData += chunk;
-      });
-
-      req.on("end", () => {
-        client.close();
-
-        if (statusCode === 204 || statusCode === 200) {
-          console.log(`✅ APNs Channel deleted: ${channelId}`);
-          resolve({success: true});
-        } else {
-          console.warn(
-            `⚠️ APNs Channel deletion: ${statusCode} - ${responseData}`
-          );
-          // 채널이 없어도 에러로 처리하지 않음
-          resolve({success: true});
-        }
-      });
-    });
-
-    req.on("error", (err) => {
-      console.error("❌ APNs Channel deletion request error:", err);
-      client.close();
-      resolve({success: false, error: err.message});
-    });
-
-    req.end();
-  });
-}
+// deleteAPNsChannel 제거됨 - 채널은 Apple에서 자동 만료 처리
 
 /**
  * iOS 18 Broadcast APNs 푸시 전송
@@ -3085,95 +3015,8 @@ export const widgetUpdateETA = onRequest(
   }
 );
 
-/**
- * LiveActivity 종료 (iOS 18 Broadcast 방식)
- *
- * @remarks
- * **인증 필수**
- *
- * 호스트만 LiveActivity를 종료할 수 있습니다.
- * Broadcast APNs로 모든 구독자에게 end 이벤트를 전송합니다.
- *
- * @param request.data - EndLiveActivityRequest
- * @returns EndLiveActivityResponse
- */
-export const endLiveActivity = onCall<EndLiveActivityRequest>(
-  {region: REGION, secrets: [APNS_KEY_ID, APNS_TEAM_ID, APNS_AUTH_KEY]},
-  async (request): Promise<EndLiveActivityResponse> => {
-    if (!request.auth) {
-      throw new HttpsError("unauthenticated", "로그인이 필요합니다");
-    }
-
-    const userId = request.auth.uid;
-    const {promiseId, env} = request.data;
-
-    if (!promiseId) {
-      throw new HttpsError("invalid-argument", "promiseId는 필수입니다");
-    }
-
-    const db = admin.firestore();
-    const promisesCollection = getEnvironmentCollection("promises", db, env);
-
-    // 1. 약속 정보 조회
-    const promiseDoc = await promisesCollection.doc(promiseId).get();
-    if (!promiseDoc.exists) {
-      throw new HttpsError("not-found", "약속을 찾을 수 없습니다");
-    }
-
-    const promiseData = promiseDoc.data()!;
-    const hostId = promiseData.hostId as string;
-
-    // 2. 권한 확인 (호스트만 종료 가능)
-    if (userId !== hostId) {
-      throw new HttpsError(
-        "permission-denied",
-        "호스트만 LiveActivity를 종료할 수 있습니다"
-      );
-    }
-
-    // 3. iOS 18 Broadcast APNs end 이벤트 전송 (Firestore에서 channelId 조회)
-    const isProduction = env === "prod";
-    const channelId = promiseData.liveActivityChannelId as string | undefined;
-    const dismissalDate = Math.floor(Date.now() / 1000) + 60; // 1분 후 자동 dismiss
-
-    if (!channelId) {
-      console.warn(`⚠️ No channelId for promise: ${promiseId}`);
-      return {success: false, successCount: 0, failureCount: 1};
-    }
-
-    const payload = {
-      aps: {
-        "timestamp": Math.floor(Date.now() / 1000),
-        "event": "end",
-        "dismissal-date": dismissalDate,
-      },
-    };
-
-    const result = await sendAPNsBroadcast({
-      channelId,
-      payload,
-      isProduction,
-    });
-
-    // 4. 채널 삭제 (Broadcast 종료 후)
-    await deleteAPNsChannel(channelId, isProduction);
-
-    // 5. 약속 문서에서 LiveActivity 상태 정리
-    await promisesCollection.doc(promiseId).update({
-      liveActivityParticipants: FieldValue.delete(),
-      liveActivityUpdatedAt: FieldValue.delete(),
-      liveActivityChannelId: FieldValue.delete(),
-    });
-
-    if (result.success) {
-      console.log(`📤 LiveActivity Broadcast ended: channelId=${channelId}`);
-      return {success: true, successCount: 1, failureCount: 0};
-    } else {
-      console.log(`❌ LiveActivity Broadcast end failed: ${result.error}`);
-      return {success: false, successCount: 0, failureCount: 1};
-    }
-  },
-);
+// endLiveActivity 제거됨 - APNs dismissal-date로 auto-dismiss 처리
+// 채널은 일정 시간 후 자동 만료 (Apple 관리)
 
 // ============================================================================
 // Cloud Tasks - LiveActivity 예약 실행
@@ -3260,21 +3103,13 @@ export const executeLiveActivityStart = onTaskDispatched<
       channelId = channelResult.channelId;
       console.log(`✅ APNs channel created: ${channelId}`);
     } else {
-      console.error(`❌ Failed to create APNs channel: ${channelResult.error}`);
-      // 채널 생성 실패해도 Push to Start 시도 (fallback)
+      console.error(`❌ Channel creation failed: ${channelResult.error}`);
+      // 채널 없이는 Broadcast 불가 → Push to Start 중단
+      console.error(`⚠️ Aborting Push to Start: ${promiseId}`);
+      return;
     }
 
-    // 6. 참가자 상태와 channelId를 약속 문서에 저장
     const trackingDurationMinutes = 30;
-    const updateData: Record<string, unknown> = {
-      liveActivityParticipants: participants,
-      liveActivityStartedAt: FieldValue.serverTimestamp(),
-      liveActivityUpdatedAt: FieldValue.serverTimestamp(),
-    };
-    if (channelId) {
-      updateData.liveActivityChannelId = channelId;
-    }
-    await promisesCollection.doc(promiseId).update(updateData);
 
     // 7. 참가자들의 Push to Start 토큰 수집
     const tokenPromises = accepted.map(async (memberId) => {
@@ -3309,11 +3144,17 @@ export const executeLiveActivityStart = onTaskDispatched<
     let successCount = 0;
     let failureCount = 0;
 
+    // 자동 종료 시간: 약속 시작시간 + 3분 (테스트용, 프로덕션은 30분)
+    const startTimeSec = Math.floor(startAt.toDate().getTime() / 1000);
+    const dismissalTime = startTimeSec + (3 * 60);
+
     for (const {userId: tokenUserId, token} of allTokens) {
       const payload = {
         aps: {
           "timestamp": Math.floor(Date.now() / 1000),
           "event": "start",
+          "stale-date": dismissalTime,
+          "dismissal-date": dismissalTime,
           "input-push-channel": channelId || "", // iOS 18 채널 구독
           "attributes-type": "PromiseActivityAttributes",
           "attributes": {

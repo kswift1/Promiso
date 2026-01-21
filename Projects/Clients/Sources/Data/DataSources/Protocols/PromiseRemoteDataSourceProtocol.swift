@@ -37,8 +37,6 @@ public protocol PromiseRemoteDataSourceProtocol {
     trackingDurationMinutes: Int
   ) async throws
 
-  /// LiveActivity 종료 요청
-  func endLiveActivity(promiseId: String) async throws
-
+  // endLiveActivity 제거됨 - APNs dismissal-date로 auto-dismiss 처리
   // registerLiveActivityToken 제거됨 - iOS 18 Broadcast 방식으로 전환
 }

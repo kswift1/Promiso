@@ -125,8 +125,7 @@ public struct PromiseClient: Sendable {
     _ trackingDurationMinutes: Int
   ) async throws -> Void
 
-  /// LiveActivity 종료 요청
-  public var endLiveActivity: @Sendable (_ promiseId: String) async throws -> Void
+  // endLiveActivity 제거됨 - APNs dismissal-date로 auto-dismiss 처리
 
   // registerLiveActivityToken 제거됨 - iOS 18 Broadcast 방식으로 전환
   // Broadcast는 채널 기반이므로 개별 토큰 관리 불필요
@@ -192,10 +191,8 @@ extension PromiseClient: TestDependencyKey {
     },
     updateETA: { _, _, _  in
       try await Task.sleep(for: .seconds(0.3))
-    },
-    endLiveActivity: { _ in
-      try await Task.sleep(for: .seconds(0.3))
     }
+    // endLiveActivity 제거됨 - APNs dismissal-date로 auto-dismiss 처리
   )
 }
 
@@ -271,10 +268,8 @@ extension PromiseClient: DependencyKey {
           participants: participants,
           trackingDurationMinutes: trackingDurationMinutes
         )
-      },
-      endLiveActivity: { promiseId in
-        try await dataSource.endLiveActivity(promiseId: promiseId)
       }
+      // endLiveActivity 제거됨 - APNs dismissal-date로 auto-dismiss 처리
     )
   }()
 }

@@ -129,6 +129,16 @@ struct ETASegmentedControl: View {
   let context: ActivityViewContext<PromiseActivityAttributes>
 
   private var attrs: PromiseActivityAttributes { context.attributes }
+  private var state: PromiseActivityAttributes.ContentState { context.state }
+
+  /// participants를 JSON 문자열로 인코딩
+  private var participantsJSON: String {
+    guard let data = try? JSONEncoder().encode(state.participants),
+          let json = String(data: data, encoding: .utf8) else {
+      return "[]"
+    }
+    return json
+  }
 
   private let etaOptions: [(title: String, minutes: Int)] = [
     ("완료", 0),
@@ -143,9 +153,11 @@ struct ETASegmentedControl: View {
         let isSelected = selectedMinutes == option.minutes
 
         Button(intent: UpdateETAIntent(
-          promiseId: attrs.promiseId,
+          channelId: attrs.channelId,
           userId: attrs.currentUserId,
-          estimatedMinutes: option.minutes
+          estimatedMinutes: option.minutes,
+          trackingDurationMinutes: state.trackingDurationMinutes,
+          participantsJSON: participantsJSON
         )) {
           Text(option.title)
             .font(.system(size: 11, weight: isSelected ? .bold : .medium))
