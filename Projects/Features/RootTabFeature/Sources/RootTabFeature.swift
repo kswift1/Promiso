@@ -77,26 +77,17 @@ extension RootTab {
       /// LivePromise 상세 뷰 Presentation
       @Presents var livePromiseDetail: LivePromise.Detail.State?
 
+      /// Widget "직접 입력" 딥링크 pending 플래그
+      /// Cold start 시 Activity 구독보다 딥링크가 먼저 도착하면 true로 설정,
+      /// activityUpdateReceived에서 livePromise 생성 후 ETA 시트를 열기 위해 사용
+      var pendingETASheetRequest: Bool = false
+
       public init(currentUser: UserPrivateModel) {
         self.currentUser = currentUser
         self.groupMain = GroupMain.Feature.State(currentUser: currentUser)
         self.home = Home.Feature.State(currentUser: currentUser)
         self.calendar = CalendarFeature.Feature.State(currentUser: currentUser)
         self.profile = Profile.Feature.State(currentUser: currentUser)
-        
-        // TODO: 테스트 완료 후 mock 데이터 제거
-//        self.livePromise = LivePromise.Feature.State(
-//          emoji: "🎂",
-//          title: "일이삼사오육칠팔구십십일십이",
-//          location: "강남역 11번 출구 강남역 11번 출구 강남역 11번 출구 강남역 11번 출구",
-//          scheduledTime: Date().addingTimeInterval(3600),
-//          participants: [
-//            ParticipantState(id: currentUser.id, name: "나", estimatedArrivalMinutes: 5),
-//            ParticipantState(id: "user2", name: "친구1", estimatedArrivalMinutes: 0),
-//            ParticipantState(id: "user3", name: "친구2", estimatedArrivalMinutes: 10)
-//          ],
-//          currentUserId: currentUser.id
-//        )
       }
     }
 
@@ -144,6 +135,8 @@ extension RootTab {
       case observeActivityState(activityId: String)
       /// Activity 상태 변화 감지됨 (dismissed/ended)
       case activityStateChanged(ActivityStateValue)
+      /// ETA 시트 열기 (딜레이 후)
+      case openETASheetAfterDelay
     }
 
     public enum Delegate: Equatable {
@@ -171,8 +164,6 @@ extension RootTab {
       Reduce { state, action in
         switch action {
         case .onAppear:
-          // Widget용 Auth 토큰 갱신 + Push to Start 토큰 구독 시작 + Activity 변화 구독
-          AppLogger.liveActivity.debug("RootTab onAppear")
           return .merge(
             .send(.internal(.refreshWidgetAuthToken)),
             .send(.internal(.observePushToStartToken)),
@@ -264,17 +255,17 @@ extension RootTab {
           return .send(.groupMain(.view(.handleDeeplink(deeplink))))
 
         case .openLiveActivityETASheet:
-          // Widget "직접 입력" 버튼 → LivePromiseExpandedView + ETA 시트 열기
           guard let livePromise = state.livePromise else {
-            AppLogger.liveActivity.warning("openLiveActivityETASheet: livePromise 없음")
+            // Cold start: Activity 구독보다 딥링크가 먼저 도착 → pending 처리
+            state.pendingETASheetRequest = true
             return .none
           }
-          // 상세 뷰 + ETA 시트 함께 열기
-          var detailState = LivePromise.Detail.State(data: livePromise.$data)
-          detailState.isETASheetPresented = true
-          state.livePromiseDetail = detailState
-          AppLogger.liveActivity.info("Widget 직접 입력 → ETA 시트 열기")
-          return .none
+          state.livePromiseDetail = LivePromise.Detail.State(data: livePromise.$data)
+          // 딜레이 후 ETA 시트 열기 (fullScreenCover 애니메이션 완료 대기)
+          return .run { send in
+            try? await Task.sleep(for: .milliseconds(400))
+            await send(.internal(.openETASheetAfterDelay))
+          }
 
         case .internal(let internalAction):
           switch internalAction {
@@ -297,28 +288,19 @@ extension RootTab {
             // Push to Start 토큰을 백엔드에 등록 (캐싱으로 중복 호출 방지)
             let cacheKey = CacheKeys.lastPushToStartToken
             let lastToken = UserDefaults.standard.string(forKey: cacheKey)
+            guard token != lastToken else { return .none }
 
-            guard token != lastToken else {
-              AppLogger.liveActivity.debug("Push to Start 토큰 변경 없음 - 백엔드 호출 스킵")
-              return .none
-            }
-
-            let userId = state.currentUser.id
-            AppLogger.liveActivity.info("Push to Start 토큰 수신: \(token.prefix(20))... (userId: \(userId))")
             return .run { _ in
               do {
                 try await notificationClient.saveLiveActivityPushToStartToken(token)
                 UserDefaults.standard.set(token, forKey: cacheKey)
-                AppLogger.liveActivity.debug("Push to Start 토큰 캐시 저장 완료")
               } catch {
-                AppLogger.liveActivity.error("Push to Start 토큰 백엔드 등록 실패: \(error.localizedDescription)")
+                AppLogger.liveActivity.error("Push to Start 토큰 등록 실패: \(error.localizedDescription)")
               }
             }
 
           case .observeActivityUpdates:
-            // LiveActivity 시작/종료 스트림 구독
             let stream = liveActivityClient.observeActivityUpdates()
-            AppLogger.liveActivity.debug("observeActivityUpdates 구독 시작")
             return .run { send in
               for await update in stream {
                 await send(.internal(.activityUpdateReceived(update)))
@@ -326,8 +308,6 @@ extension RootTab {
             }
 
           case .activityUpdateReceived(let update):
-            // Push-to-Start로 시작된 Activity 등 실시간 변화 감지
-            AppLogger.liveActivity.debug("activityUpdateReceived: \(update.activityState.rawValue)")
             if update.isActive, let attributes = update.attributes {
               let data = LivePromise.Data(
                 emoji: attributes.emoji,
@@ -341,27 +321,31 @@ extension RootTab {
                 hostName: attributes.hostName
               )
               state.livePromise = LivePromise.Feature.State(data: Shared(value: data))
-              AppLogger.liveActivity.info("Activity 시작 - livePromise 생성")
+
+              // pending ETA 시트 요청 처리 (Cold start 시 딥링크가 먼저 도착한 경우)
+              var effects: [Effect<Action>] = []
+              if state.pendingETASheetRequest {
+                state.pendingETASheetRequest = false
+                effects.append(.send(.openLiveActivityETASheet))
+              }
 
               // Activity 상태 변화 구독 시작 (dismissed/ended 감지용)
               if let activityId = liveActivityClient.activeActivityId() {
-                return .send(.internal(.observeActivityState(activityId: activityId)))
+                effects.append(.send(.internal(.observeActivityState(activityId: activityId))))
               }
+
+              return effects.isEmpty ? .none : .merge(effects)
             } else if !update.isActive {
               if state.livePromise != nil {
                 state.livePromise = nil
-                AppLogger.liveActivity.info("Activity 종료 - livePromise 제거")
               }
             }
             return .none
 
           case .observeActivityState(let activityId):
-            // 특정 Activity의 상태 변화 스트림 구독
             guard let stream = liveActivityClient.observeActivityStateUpdates(activityId) else {
-              AppLogger.liveActivity.warning("observeActivityState: Activity not found")
               return .none
             }
-
             return .run { send in
               for await stateValue in stream {
                 await send(.internal(.activityStateChanged(stateValue)))
@@ -369,14 +353,13 @@ extension RootTab {
             }
 
           case .activityStateChanged(let stateValue):
-            // Activity 상태 변화 감지 (dismissed/ended)
-            AppLogger.liveActivity.debug("activityStateChanged: \(stateValue.rawValue)")
             if stateValue == .dismissed || stateValue == .ended {
-              if state.livePromise != nil {
-                state.livePromise = nil
-                AppLogger.liveActivity.info("Activity dismissed/ended - livePromise 제거")
-              }
+              state.livePromise = nil
             }
+            return .none
+
+          case .openETASheetAfterDelay:
+            state.livePromiseDetail?.isETASheetPresented = true
             return .none
           }
 

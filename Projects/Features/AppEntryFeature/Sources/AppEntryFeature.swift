@@ -104,13 +104,7 @@ extension AppEntry {
             return .none
 
           case .handleDeeplink(let url):
-            // DeeplinkClient를 사용하여 URL 파싱
-            AppLogger.deeplink.debug("URL received: \(url.absoluteString)")
-            guard let destination = deeplinkClient.parseURL(url) else {
-              AppLogger.deeplink.warning("Failed to parse URL: \(url.absoluteString)")
-              return .none
-            }
-            AppLogger.deeplink.debug("Parsed destination: \(String(describing: destination))")
+            guard let destination = deeplinkClient.parseURL(url) else { return .none }
             return routeOrPendDeeplink(destination, state: &state)
           }
 
@@ -358,10 +352,8 @@ extension AppEntry.Feature {
   /// 메인 화면이 준비되어 있으면 라우팅, 아니면 pending으로 저장
   private func routeOrPendDeeplink(_ destination: DeeplinkDestination, state: inout State) -> Effect<Action> {
     if case .main = state.destination {
-      AppLogger.deeplink.debug("Main screen ready, routing deeplink")
       return routeDeeplink(destination)
     } else {
-      AppLogger.deeplink.debug("Main not ready, saving as pending")
       state.pendingDeeplink = destination
       return .none
     }
