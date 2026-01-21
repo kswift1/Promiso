@@ -212,8 +212,17 @@ extension AppEntry {
           state.destination = .auth(Auth.Feature.State())
           return .run { [notificationClient, authClient] _ in
             LiveActivityImageStore.clearCache()
-            try? await notificationClient.deleteFCMToken()
-            try? await authClient.logout()
+            do {
+              try await notificationClient.deleteFCMToken()
+            } catch {
+              AppLogger.notification.error("FCM 토큰 삭제 실패: \(error.localizedDescription)")
+            }
+
+            do {
+              try await authClient.logout()
+            } catch {
+              AppLogger.auth.error("로그아웃 실패: \(error.localizedDescription)")
+            }
           }
 
         case .destination:
