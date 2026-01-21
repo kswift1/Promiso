@@ -79,17 +79,30 @@ public struct LiveActivityClient: Sendable {
 public struct ActivityUpdate: Sendable, Equatable {
   public let attributes: PromiseActivityAttributes?
   public let contentState: PromiseActivityAttributes.ContentState?
-  public let isActive: Bool
+  public let activityState: ActivityStateValue
+
+  public var isActive: Bool {
+    activityState == .active
+  }
 
   public init(
     attributes: PromiseActivityAttributes?,
     contentState: PromiseActivityAttributes.ContentState?,
-    isActive: Bool
+    activityState: ActivityStateValue
   ) {
     self.attributes = attributes
     self.contentState = contentState
-    self.isActive = isActive
+    self.activityState = activityState
   }
+}
+
+/// ActivityKit.ActivityState를 Sendable/Equatable로 래핑
+public enum ActivityStateValue: String, Sendable, Equatable {
+  case active
+  case dismissed
+  case ended
+  case stale
+  case unknown
 }
 
 // MARK: - Test / Preview
@@ -269,10 +282,20 @@ extension LiveActivityClient: DependencyKey {
       AsyncStream { continuation in
         let task = Task {
           for await activity in Activity<PromiseActivityAttributes>.activityUpdates {
+            let stateValue: ActivityStateValue = switch activity.activityState {
+              case .active: .active
+              case .dismissed: .dismissed
+              case .ended: .ended
+              case .stale: .stale
+              @unknown default: .unknown
+            }
+
+            AppLogger.liveActivity.debug("📡 activityUpdates emit: id=\(activity.id.prefix(8)), state=\(stateValue.rawValue), title=\(activity.attributes.title)")
+
             let update = ActivityUpdate(
               attributes: activity.attributes,
               contentState: activity.content.state,
-              isActive: activity.activityState == .active
+              activityState: stateValue
             )
             continuation.yield(update)
           }

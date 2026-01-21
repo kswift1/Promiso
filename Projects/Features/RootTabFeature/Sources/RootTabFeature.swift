@@ -308,7 +308,7 @@ extension RootTab {
 
           case .activityUpdateReceived(let update):
             // Push-to-Start로 시작된 Activity 등 실시간 변화 감지
-            AppLogger.liveActivity.info("🔔 Activity 변화 감지: isActive=\(update.isActive)")
+            AppLogger.liveActivity.info("🔔 Activity 변화 감지: state=\(update.activityState.rawValue), isActive=\(update.isActive)")
             if update.isActive, let attributes = update.attributes {
               let data = LivePromise.Data(
                 emoji: attributes.emoji,
