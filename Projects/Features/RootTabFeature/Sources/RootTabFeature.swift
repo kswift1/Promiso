@@ -170,7 +170,7 @@ extension RootTab {
         switch action {
         case .onAppear:
           // Widget용 Auth 토큰 갱신 + Push to Start 토큰 구독 시작 + Activity 변화 구독
-          AppLogger.liveActivity.debug("🏠 RootTab onAppear")
+          AppLogger.liveActivity.debug("RootTab onAppear")
           return .merge(
             .send(.internal(.refreshWidgetAuthToken)),
             .send(.internal(.observePushToStartToken)),
@@ -303,7 +303,7 @@ extension RootTab {
           case .observeActivityUpdates:
             // LiveActivity 시작/종료 스트림 구독
             let stream = liveActivityClient.observeActivityUpdates()
-            AppLogger.liveActivity.debug("🔔 Activity 변화 구독 시작")
+            AppLogger.liveActivity.debug("observeActivityUpdates 구독 시작")
             return .run { send in
               for await update in stream {
                 await send(.internal(.activityUpdateReceived(update)))
@@ -312,7 +312,7 @@ extension RootTab {
 
           case .activityUpdateReceived(let update):
             // Push-to-Start로 시작된 Activity 등 실시간 변화 감지
-            AppLogger.liveActivity.info("🔔 Activity 변화 감지: state=\(update.activityState.rawValue), isActive=\(update.isActive)")
+            AppLogger.liveActivity.debug("activityUpdateReceived: \(update.activityState.rawValue)")
             if update.isActive, let attributes = update.attributes {
               let data = LivePromise.Data(
                 emoji: attributes.emoji,
@@ -326,7 +326,7 @@ extension RootTab {
                 hostName: attributes.hostName
               )
               state.livePromise = LivePromise.Feature.State(data: Shared(value: data))
-              AppLogger.liveActivity.info("🔔 Activity 시작됨 - livePromise 생성: \(attributes.title)")
+              AppLogger.liveActivity.info("Activity 시작 - livePromise 생성")
 
               // Activity 상태 변화 구독 시작 (dismissed/ended 감지용)
               if let activityId = liveActivityClient.activeActivityId() {
@@ -335,7 +335,7 @@ extension RootTab {
             } else if !update.isActive {
               if state.livePromise != nil {
                 state.livePromise = nil
-                AppLogger.liveActivity.info("🔔 Activity 종료됨 - livePromise 제거")
+                AppLogger.liveActivity.info("Activity 종료 - livePromise 제거")
               }
             }
             return .none
@@ -343,7 +343,7 @@ extension RootTab {
           case .observeActivityState(let activityId):
             // 특정 Activity의 상태 변화 스트림 구독
             guard let stream = liveActivityClient.observeActivityStateUpdates(activityId) else {
-              AppLogger.liveActivity.warning("👀 Activity 상태 구독 실패: Activity not found")
+              AppLogger.liveActivity.warning("observeActivityState: Activity not found")
               return .none
             }
 
@@ -355,11 +355,11 @@ extension RootTab {
 
           case .activityStateChanged(let stateValue):
             // Activity 상태 변화 감지 (dismissed/ended)
-            AppLogger.liveActivity.info("👀 Activity 상태 변화 수신: \(stateValue.rawValue)")
+            AppLogger.liveActivity.debug("activityStateChanged: \(stateValue.rawValue)")
             if stateValue == .dismissed || stateValue == .ended {
               if state.livePromise != nil {
                 state.livePromise = nil
-                AppLogger.liveActivity.info("👀 Activity 종료됨 - livePromise 제거")
+                AppLogger.liveActivity.info("Activity dismissed/ended - livePromise 제거")
               }
             }
             return .none

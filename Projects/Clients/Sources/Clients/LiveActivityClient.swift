@@ -296,7 +296,7 @@ extension LiveActivityClient: DependencyKey {
               @unknown default: .unknown
             }
 
-            AppLogger.liveActivity.debug("📡 activityUpdates emit: id=\(activity.id.prefix(8)), state=\(stateValue.rawValue), title=\(activity.attributes.title)")
+            AppLogger.liveActivity.debug("activityUpdates: \(stateValue.rawValue)")
 
             let update = ActivityUpdate(
               attributes: activity.attributes,
@@ -319,11 +319,11 @@ extension LiveActivityClient: DependencyKey {
     observeActivityStateUpdates: { activityId in
       guard let activity = Activity<PromiseActivityAttributes>.activities
         .first(where: { $0.id == activityId }) else {
-        AppLogger.liveActivity.warning("⚠️ observeActivityStateUpdates: Activity not found: \(activityId.prefix(8))")
+        AppLogger.liveActivity.warning("observeActivityStateUpdates: Activity not found")
         return nil
       }
 
-      AppLogger.liveActivity.debug("👀 Activity 상태 구독 시작: id=\(activityId.prefix(8))")
+      AppLogger.liveActivity.debug("observeActivityStateUpdates: 구독 시작")
 
       return AsyncStream { continuation in
         let task = Task {
@@ -336,7 +336,7 @@ extension LiveActivityClient: DependencyKey {
               @unknown default: .unknown
             }
 
-            AppLogger.liveActivity.debug("👀 Activity 상태 변화: id=\(activityId.prefix(8)), state=\(stateValue.rawValue)")
+            AppLogger.liveActivity.debug("activityStateUpdates: \(stateValue.rawValue)")
             continuation.yield(stateValue)
 
             // dismissed나 ended면 스트림 종료
