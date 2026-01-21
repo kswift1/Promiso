@@ -169,8 +169,14 @@ public enum LiveActivityIntentKey {
   /// ETA 업데이트 저장 키
   public static let etaUpdateKey = "liveActivity.etaUpdate"
 
+  /// Firebase Project ID 저장 키
+  public static let firebaseProjectIdKey = "firebase.projectId"
+
   /// Firebase Project ID (Widget에서 HTTP 호출용)
-  public static let firebaseProjectId = "promiso-20274"
+  /// App Group UserDefaults에서 읽거나, 없으면 기본값 사용
+  public static var firebaseProjectId: String {
+    UserDefaults(suiteName: suiteName)?.string(forKey: firebaseProjectIdKey) ?? "promiso-20274"
+  }
 
   /// Firebase Auth ID Token 저장 키 (Widget에서 인증용)
   public static let authTokenKey = "firebase.auth.idToken"

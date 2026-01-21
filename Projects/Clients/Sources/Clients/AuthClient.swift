@@ -451,6 +451,11 @@ private enum WidgetAuthTokenStore {
     let apnsEnvironment = APNsEnvironment.current.apiValue
     defaults.set(apnsEnvironment, forKey: LiveActivityIntentKey.apnsEnvironmentKey)
 
+    // Firebase Project ID 저장 (Widget에서 HTTP 호출용)
+    if let projectId = FirebaseApp.app()?.options.projectID {
+      defaults.set(projectId, forKey: LiveActivityIntentKey.firebaseProjectIdKey)
+    }
+
     #if DEBUG
     print("[WidgetAuthTokenStore] 토큰 저장 완료 (만료: \(expiry), APNs: \(apnsEnvironment))")
     #endif
@@ -512,28 +517,4 @@ private extension ProviderTokenBundle {
       )
     }
   }
-}
-
-private func printUser(_ user: User) {
-  print("=== Firebase User Info ===")
-  print("UID: \(user.uid)")
-  print("Email: \(user.email ?? "nil")")
-  print("Display Name: \(user.displayName ?? "nil")")
-  print("Photo URL: \(user.photoURL?.absoluteString ?? "nil")")
-  print("Phone Number: \(user.phoneNumber ?? "nil")")
-  print("Provider ID: \(user.providerID)")
-  print("Is Anonymous: \(user.isAnonymous)")
-  print("Is Email Verified: \(user.isEmailVerified)")
-  print("Metadata:")
-  print("  - Creation Date: \(user.metadata.creationDate ?? Date())")
-  print("  - Last Sign In: \(user.metadata.lastSignInDate ?? Date())")
-  print("Provider Data:")
-  user.providerData.forEach { info in
-    print("  - Provider: \(info.providerID)")
-    print("    UID: \(info.uid)")
-    print("    Email: \(info.email ?? "nil")")
-    print("    Display Name: \(info.displayName ?? "nil")")
-    print("    Photo URL: \(info.photoURL?.absoluteString ?? "nil")")
-  }
-  print("========================")
 }
