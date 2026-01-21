@@ -141,6 +141,10 @@ extension RootTab {
         attributes: PromiseActivityAttributes?,
         contentState: PromiseActivityAttributes.ContentState?
       )
+      /// LiveActivity 변화 구독 시작
+      case observeActivityUpdates
+      /// LiveActivity 변화 감지됨
+      case activityUpdateReceived(ActivityUpdate)
     }
 
     public enum Delegate: Equatable {
@@ -168,12 +172,13 @@ extension RootTab {
       Reduce { state, action in
         switch action {
         case .onAppear:
-          // Widget용 Auth 토큰 갱신 + Push to Start 토큰 구독 시작 + LiveActivity 상태 동기화
+          // Widget용 Auth 토큰 갱신 + Push to Start 토큰 구독 시작 + LiveActivity 상태 동기화 + Activity 변화 구독
           AppLogger.liveActivity.debug("🏠 RootTab onAppear")
           return .merge(
             .send(.internal(.refreshWidgetAuthToken)),
             .send(.internal(.observePushToStartToken)),
-            .send(.internal(.syncLiveActivityState))
+            .send(.internal(.syncLiveActivityState)),
+            .send(.internal(.observeActivityUpdates))
           )
 
         case .tabSelected(let tab):
@@ -346,6 +351,41 @@ extension RootTab {
               if state.livePromise != nil {
                 state.livePromise = nil
                 AppLogger.liveActivity.info("LiveActivity 없음 - livePromise 제거")
+              }
+            }
+            return .none
+
+          case .observeActivityUpdates:
+            // LiveActivity 시작/종료 스트림 구독
+            let stream = liveActivityClient.observeActivityUpdates()
+            AppLogger.liveActivity.debug("🔔 Activity 변화 구독 시작")
+            return .run { send in
+              for await update in stream {
+                await send(.internal(.activityUpdateReceived(update)))
+              }
+            }
+
+          case .activityUpdateReceived(let update):
+            // Push-to-Start로 시작된 Activity 등 실시간 변화 감지
+            AppLogger.liveActivity.info("🔔 Activity 변화 감지: isActive=\(update.isActive)")
+            if update.isActive, let attributes = update.attributes {
+              let data = LivePromise.Data(
+                emoji: attributes.emoji,
+                title: attributes.title,
+                location: attributes.location,
+                scheduledTime: attributes.scheduledTime,
+                participants: update.contentState?.participants ?? [],
+                currentUserId: attributes.currentUserId,
+                trackingDurationMinutes: attributes.trackingDurationMinutes,
+                hostId: attributes.hostId,
+                hostName: attributes.hostName
+              )
+              state.livePromise = LivePromise.Feature.State(data: Shared(value: data))
+              AppLogger.liveActivity.info("🔔 Activity 시작됨 - livePromise 생성: \(attributes.title)")
+            } else if !update.isActive {
+              if state.livePromise != nil {
+                state.livePromise = nil
+                AppLogger.liveActivity.info("🔔 Activity 종료됨 - livePromise 제거")
               }
             }
             return .none

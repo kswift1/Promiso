@@ -66,6 +66,30 @@ public struct LiveActivityClient: Sendable {
   /// Push to Start 토큰 업데이트 스트림 구독
   /// 토큰이 변경될 때마다 백엔드에 재등록 필요
   public var observePushToStartTokenUpdates: @Sendable () -> AsyncStream<String>
+
+  // MARK: - Activity Updates
+
+  /// 라이브액티비티 시작/종료 감지 스트림
+  /// Push-to-Start로 시작된 Activity도 감지 가능
+  public var observeActivityUpdates: @Sendable () -> AsyncStream<ActivityUpdate>
+}
+
+// MARK: - Activity Update
+
+public struct ActivityUpdate: Sendable, Equatable {
+  public let attributes: PromiseActivityAttributes?
+  public let contentState: PromiseActivityAttributes.ContentState?
+  public let isActive: Bool
+
+  public init(
+    attributes: PromiseActivityAttributes?,
+    contentState: PromiseActivityAttributes.ContentState?,
+    isActive: Bool
+  ) {
+    self.attributes = attributes
+    self.contentState = contentState
+    self.isActive = isActive
+  }
 }
 
 // MARK: - Test / Preview
@@ -86,7 +110,8 @@ extension LiveActivityClient: TestDependencyKey {
     clearETAUpdate: { },
     observeStateUpdates: { _ in nil },
     pushToStartToken: { nil },
-    observePushToStartTokenUpdates: { AsyncStream { $0.finish() } }
+    observePushToStartTokenUpdates: { AsyncStream { $0.finish() } },
+    observeActivityUpdates: { AsyncStream { $0.finish() } }
   )
 
   public static let testValue = Self(
@@ -104,7 +129,8 @@ extension LiveActivityClient: TestDependencyKey {
     clearETAUpdate: unimplemented("\(Self.self).clearETAUpdate"),
     observeStateUpdates: unimplemented("\(Self.self).observeStateUpdates", placeholder: nil),
     pushToStartToken: unimplemented("\(Self.self).pushToStartToken", placeholder: nil),
-    observePushToStartTokenUpdates: unimplemented("\(Self.self).observePushToStartTokenUpdates", placeholder: AsyncStream { $0.finish() })
+    observePushToStartTokenUpdates: unimplemented("\(Self.self).observePushToStartTokenUpdates", placeholder: AsyncStream { $0.finish() }),
+    observeActivityUpdates: unimplemented("\(Self.self).observeActivityUpdates", placeholder: AsyncStream { $0.finish() })
   )
 }
 
@@ -227,6 +253,28 @@ extension LiveActivityClient: DependencyKey {
           for await tokenData in Activity<PromiseActivityAttributes>.pushToStartTokenUpdates {
             let tokenString = tokenData.map { String(format: "%02x", $0) }.joined()
             continuation.yield(tokenString)
+          }
+          continuation.finish()
+        }
+
+        continuation.onTermination = { _ in
+          task.cancel()
+        }
+      }
+    },
+
+    // MARK: - Activity Updates
+
+    observeActivityUpdates: {
+      AsyncStream { continuation in
+        let task = Task {
+          for await activity in Activity<PromiseActivityAttributes>.activityUpdates {
+            let update = ActivityUpdate(
+              attributes: activity.attributes,
+              contentState: activity.content.state,
+              isActive: activity.activityState == .active
+            )
+            continuation.yield(update)
           }
           continuation.finish()
         }
