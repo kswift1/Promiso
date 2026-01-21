@@ -72,6 +72,10 @@ public struct LiveActivityClient: Sendable {
   /// 라이브액티비티 시작/종료 감지 스트림
   /// Push-to-Start로 시작된 Activity도 감지 가능
   public var observeActivityUpdates: @Sendable () -> AsyncStream<ActivityUpdate>
+
+  /// 특정 Activity의 상태 변화 감지 스트림
+  /// Activity가 dismissed/ended 될 때 감지 가능
+  public var observeActivityStateUpdates: @Sendable (_ activityId: String) -> AsyncStream<ActivityStateValue>?
 }
 
 // MARK: - Activity Update
@@ -124,7 +128,8 @@ extension LiveActivityClient: TestDependencyKey {
     observeStateUpdates: { _ in nil },
     pushToStartToken: { nil },
     observePushToStartTokenUpdates: { AsyncStream { $0.finish() } },
-    observeActivityUpdates: { AsyncStream { $0.finish() } }
+    observeActivityUpdates: { AsyncStream { $0.finish() } },
+    observeActivityStateUpdates: { _ in nil }
   )
 
   public static let testValue = Self(
@@ -143,7 +148,8 @@ extension LiveActivityClient: TestDependencyKey {
     observeStateUpdates: unimplemented("\(Self.self).observeStateUpdates", placeholder: nil),
     pushToStartToken: unimplemented("\(Self.self).pushToStartToken", placeholder: nil),
     observePushToStartTokenUpdates: unimplemented("\(Self.self).observePushToStartTokenUpdates", placeholder: AsyncStream { $0.finish() }),
-    observeActivityUpdates: unimplemented("\(Self.self).observeActivityUpdates", placeholder: AsyncStream { $0.finish() })
+    observeActivityUpdates: unimplemented("\(Self.self).observeActivityUpdates", placeholder: AsyncStream { $0.finish() }),
+    observeActivityStateUpdates: unimplemented("\(Self.self).observeActivityStateUpdates", placeholder: nil)
   )
 }
 
@@ -298,6 +304,46 @@ extension LiveActivityClient: DependencyKey {
               activityState: stateValue
             )
             continuation.yield(update)
+          }
+          continuation.finish()
+        }
+
+        continuation.onTermination = { _ in
+          task.cancel()
+        }
+      }
+    },
+
+    // MARK: - Activity State Updates
+
+    observeActivityStateUpdates: { activityId in
+      guard let activity = Activity<PromiseActivityAttributes>.activities
+        .first(where: { $0.id == activityId }) else {
+        AppLogger.liveActivity.warning("⚠️ observeActivityStateUpdates: Activity not found: \(activityId.prefix(8))")
+        return nil
+      }
+
+      AppLogger.liveActivity.debug("👀 Activity 상태 구독 시작: id=\(activityId.prefix(8))")
+
+      return AsyncStream { continuation in
+        let task = Task {
+          for await state in activity.activityStateUpdates {
+            let stateValue: ActivityStateValue = switch state {
+              case .active: .active
+              case .dismissed: .dismissed
+              case .ended: .ended
+              case .stale: .stale
+              @unknown default: .unknown
+            }
+
+            AppLogger.liveActivity.debug("👀 Activity 상태 변화: id=\(activityId.prefix(8)), state=\(stateValue.rawValue)")
+            continuation.yield(stateValue)
+
+            // dismissed나 ended면 스트림 종료
+            if stateValue == .dismissed || stateValue == .ended {
+              continuation.finish()
+              break
+            }
           }
           continuation.finish()
         }

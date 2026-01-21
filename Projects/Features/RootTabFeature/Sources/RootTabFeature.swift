@@ -138,6 +138,10 @@ extension RootTab {
       case observeActivityUpdates
       /// LiveActivity 변화 감지됨
       case activityUpdateReceived(ActivityUpdate)
+      /// 특정 Activity 상태 변화 구독 시작
+      case observeActivityState(activityId: String)
+      /// Activity 상태 변화 감지됨 (dismissed/ended)
+      case activityStateChanged(ActivityStateValue)
     }
 
     public enum Delegate: Equatable {
@@ -323,10 +327,39 @@ extension RootTab {
               )
               state.livePromise = LivePromise.Feature.State(data: Shared(value: data))
               AppLogger.liveActivity.info("🔔 Activity 시작됨 - livePromise 생성: \(attributes.title)")
+
+              // Activity 상태 변화 구독 시작 (dismissed/ended 감지용)
+              if let activityId = liveActivityClient.activeActivityId() {
+                return .send(.internal(.observeActivityState(activityId: activityId)))
+              }
             } else if !update.isActive {
               if state.livePromise != nil {
                 state.livePromise = nil
                 AppLogger.liveActivity.info("🔔 Activity 종료됨 - livePromise 제거")
+              }
+            }
+            return .none
+
+          case .observeActivityState(let activityId):
+            // 특정 Activity의 상태 변화 스트림 구독
+            guard let stream = liveActivityClient.observeActivityStateUpdates(activityId) else {
+              AppLogger.liveActivity.warning("👀 Activity 상태 구독 실패: Activity not found")
+              return .none
+            }
+
+            return .run { send in
+              for await stateValue in stream {
+                await send(.internal(.activityStateChanged(stateValue)))
+              }
+            }
+
+          case .activityStateChanged(let stateValue):
+            // Activity 상태 변화 감지 (dismissed/ended)
+            AppLogger.liveActivity.info("👀 Activity 상태 변화 수신: \(stateValue.rawValue)")
+            if stateValue == .dismissed || stateValue == .ended {
+              if state.livePromise != nil {
+                state.livePromise = nil
+                AppLogger.liveActivity.info("👀 Activity 종료됨 - livePromise 제거")
               }
             }
             return .none
