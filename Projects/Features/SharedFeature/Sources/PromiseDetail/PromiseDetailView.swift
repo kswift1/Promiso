@@ -293,30 +293,6 @@ extension PromiseDetail {
                 .clipShape(RoundedRectangle(cornerRadius: 12))
               }
             } else {
-              // 비활성화 상태: 시작 버튼
-              Button {
-                store.send(.view(.liveActivityStartTapped))
-              } label: {
-                HStack(spacing: 8) {
-                  if store.isStartingLiveActivity {
-                    ProgressView()
-                      .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                      .scaleEffect(0.8)
-                  } else {
-                    Image(systemName: "dot.radiowaves.left.and.right")
-                      .font(.system(size: 18))
-                  }
-                  Text("실시간 공유 시작")
-                    .font(.system(size: 16, weight: .semibold))
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(Color.pmindigo.n500)
-                .foregroundStyle(.white)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-              }
-              .disabled(store.isStartingLiveActivity)
-
               Text("Dynamic Island에서 도착 현황을 확인할 수 있어요")
                 .font(.system(size: 13))
                 .foregroundStyle(.secondary)
