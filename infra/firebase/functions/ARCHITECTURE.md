@@ -163,6 +163,99 @@ Body:
 
 ---
 
+## 개발 가이드 (AI 작업 시 참고)
+
+### 새 함수 추가 시
+
+```
+1️⃣ 해당 도메인 파일에 함수 작성
+   src/functions/users.ts      (사용자 관련)
+   src/functions/groups.ts     (그룹 관련)
+   src/functions/promises.ts   (약속 관련)
+   src/functions/notifications.ts (알림 관련)
+   src/functions/liveActivity.ts  (LiveActivity 관련)
+   src/functions/emoji.ts      (이모지 관련)
+
+2️⃣ src/index.ts에 export 추가
+   export { 기존함수, 새함수 } from "./functions/도메인";
+
+3️⃣ src/types/api.ts에 Request/Response 타입 추가
+
+4️⃣ openapi.yaml에 API 명세 추가
+
+5️⃣ CHANGELOG.md에 변경 내역 기록
+```
+
+### 기존 함수 수정 시
+
+```
+1️⃣ 해당 도메인 파일에서 수정
+
+2️⃣ 타입 변경 시 src/types/api.ts 수정
+
+3️⃣ API 스펙 변경 시 openapi.yaml 수정
+
+4️⃣ CHANGELOG.md에 변경 내역 기록
+```
+
+### 새 도메인 추가 시 (예: 결제 기능)
+
+```
+1️⃣ src/functions/payments.ts 생성
+
+2️⃣ src/index.ts에 export 블록 추가
+   // Payment Functions
+   export { ... } from "./functions/payments";
+
+3️⃣ ARCHITECTURE.md의 iOS ↔ Functions 매핑 업데이트
+
+4️⃣ CHANGELOG.md에 기록
+```
+
+### 작업 체크리스트
+
+| 작업 | 파일 | 필수 |
+|------|------|------|
+| 함수 코드 | `src/functions/{도메인}.ts` | ✅ |
+| Export | `src/index.ts` | ✅ |
+| 타입 정의 | `src/types/api.ts` | ✅ |
+| API 문서 | `openapi.yaml` | ✅ |
+| 변경 기록 | `CHANGELOG.md` | ✅ |
+| 구조 설명 | `ARCHITECTURE.md` | 구조 변경 시 |
+
+### AI에게 요청 시 템플릿
+
+```markdown
+## 요청
+새 함수 추가해줘 (또는 수정해줘)
+
+## 함수 정보
+- 함수명: deletePromise
+- 기능: 약속 삭제 (호스트만 가능, soft delete)
+- iOS 연동: PromiseDetailView에서 호출
+
+## 완료 후 작업
+- [ ] CHANGELOG.md 업데이트
+- [ ] openapi.yaml 업데이트
+- [ ] 배포
+```
+
+### 주석 컨벤션
+
+```typescript
+/**
+ * 함수 설명
+ *
+ * @why 왜 이 함수가 필요한지
+ * @ios 연동되는 iOS 코드 위치
+ * @added 추가된 날짜 (YYYY-MM-DD)
+ * @modified 수정된 날짜 (수정 시)
+ * @deprecated 폐기 예정 시 대체 함수 안내
+ */
+```
+
+---
+
 ## 트러블슈팅
 
 ### Q: Functions 배포 후 iOS에서 호출 안됨
