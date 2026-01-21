@@ -64,8 +64,8 @@ tags:
     description: LiveActivity (실시간 위치 공유) 관련 API
   - name: Notification
     description: 푸시 알림 관련 API
-  - name: Test
-    description: 테스트용 API
+  - name: Emoji
+    description: 이모지 생성 API
 
 paths:
   /createUser:
@@ -408,6 +408,79 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthenticated'
 
+  /checkNicknameAvailable:
+    post:
+      tags:
+        - User
+      summary: 닉네임 중복 검사
+      description: |
+        닉네임이 이미 사용 중인지 확인합니다.
+
+        **인증 필수**: Firebase Authentication 토큰 필요
+
+        다른 사용자의 문서에 직접 접근하지 않고 Cloud Function을 통해 안전하게 검사합니다.
+      operationId: checkNicknameAvailable
+      security:
+        - firebaseAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - data
+              properties:
+                data:
+                  $ref: '#/components/schemas/CheckNicknameAvailableRequest'
+            examples:
+              basic:
+                summary: 닉네임 중복 검사
+                value:
+                  data:
+                    nickname: 새닉네임
+                    env: stage
+
+      responses:
+        '200':
+          description: 닉네임 검사 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    $ref: '#/components/schemas/CheckNicknameAvailableResponse'
+              examples:
+                available:
+                  summary: 사용 가능한 닉네임
+                  value:
+                    result:
+                      available: true
+                      nickname: 새닉네임
+                taken:
+                  summary: 이미 사용 중인 닉네임
+                  value:
+                    result:
+                      available: false
+                      nickname: 새닉네임
+
+        '400':
+          description: 잘못된 파라미터
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FunctionsError'
+              examples:
+                invalidNickname:
+                  value:
+                    error:
+                      code: invalid-argument
+                      message: 닉네임은 2~20자여야 합니다
+
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+
   /createGroup:
     post:
       tags:
@@ -531,6 +604,87 @@ paths:
                       code: internal
                       message: 초대 코드를 생성하지 못했어요. 잠시 후 다시 시도해주세요.
 
+  /previewGroup:
+    post:
+      tags:
+        - Group
+      summary: 그룹 미리보기
+      description: |
+        초대 코드로 그룹 정보를 미리 확인합니다.
+
+        **인증 불필요**: 초대 코드만으로 조회 가능
+        **실제 참여하지 않음**: 그룹 정보만 조회하고 memberIds에 추가되지 않음
+      operationId: previewGroup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - data
+              properties:
+                data:
+                  $ref: '#/components/schemas/PreviewGroupRequest'
+            examples:
+              basic:
+                summary: 그룹 미리보기
+                value:
+                  data:
+                    inviteCode: ABC123
+                    env: stage
+
+      responses:
+        '200':
+          description: 그룹 미리보기 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    $ref: '#/components/schemas/PreviewGroupResponse'
+              examples:
+                success:
+                  value:
+                    result:
+                      groupId: 0ec6e63d-8d80-4a76-9e1b-7f226c1c6b55
+                      members:
+                        - userId: user123
+                          name: 홍길동
+                          profileImage:
+                            type: storagePath
+                            url: users/user123/profile.jpg
+                        - userId: user456
+                          name: 김철수
+                          profileImage: null
+
+        '400':
+          description: 잘못된 파라미터
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FunctionsError'
+              examples:
+                invalidCode:
+                  value:
+                    error:
+                      code: invalid-argument
+                      message: 초대 코드는 6자리여야 합니다
+
+        '404':
+          description: 그룹을 찾을 수 없음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FunctionsError'
+              examples:
+                groupNotFound:
+                  value:
+                    error:
+                      code: not-found
+                      message: 초대 코드에 해당하는 그룹을 찾을 수 없습니다
+
   /joinGroup:
     post:
       tags:
@@ -648,6 +802,194 @@ paths:
                     error:
                       code: resource-exhausted
                       message: 그룹 정원이 초과되었습니다
+
+  /leaveGroup:
+    post:
+      tags:
+        - Group
+      summary: 그룹 나가기
+      description: |
+        참여 중인 그룹에서 나갑니다.
+
+        **인증 필수**: Firebase Authentication 토큰 필요
+        **호스트 제외**: 그룹 생성자(admin)는 나갈 수 없음 (먼저 deleteGroup 필요)
+
+        **내부 동작**:
+        - groups/{groupId}/memberIds에서 userId 제거 (FieldValue.arrayRemove)
+        - users/{userId}/groups Map에서 groupId 제거
+      operationId: leaveGroup
+      security:
+        - firebaseAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - data
+              properties:
+                data:
+                  $ref: '#/components/schemas/LeaveGroupRequest'
+            examples:
+              basic:
+                summary: 그룹 나가기
+                value:
+                  data:
+                    groupId: 0ec6e63d-8d80-4a76-9e1b-7f226c1c6b55
+                    env: stage
+
+      responses:
+        '200':
+          description: 그룹 나가기 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    $ref: '#/components/schemas/LeaveGroupResponse'
+              examples:
+                success:
+                  value:
+                    result:
+                      success: true
+
+        '400':
+          description: 잘못된 파라미터
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FunctionsError'
+              examples:
+                missingGroupId:
+                  value:
+                    error:
+                      code: invalid-argument
+                      message: groupId는 필수입니다
+
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+
+        '403':
+          description: 권한 없음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FunctionsError'
+              examples:
+                isAdmin:
+                  value:
+                    error:
+                      code: permission-denied
+                      message: 그룹 생성자는 나갈 수 없습니다. 그룹을 삭제하세요.
+
+        '404':
+          description: 그룹을 찾을 수 없음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FunctionsError'
+              examples:
+                groupNotFound:
+                  value:
+                    error:
+                      code: not-found
+                      message: 그룹을 찾을 수 없습니다
+
+  /deleteGroup:
+    post:
+      tags:
+        - Group
+      summary: 그룹 삭제
+      description: |
+        그룹을 삭제합니다 (Soft Delete).
+
+        **인증 필수**: Firebase Authentication 토큰 필요
+        **호스트만 가능**: 그룹 생성자(admin)만 삭제 가능
+
+        **내부 동작**:
+        - groups/{groupId} 문서의 isDeleted 플래그를 true로 설정
+        - 멤버들의 users/{userId}/groups Map에서 groupId 제거
+      operationId: deleteGroup
+      security:
+        - firebaseAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - data
+              properties:
+                data:
+                  $ref: '#/components/schemas/DeleteGroupRequest'
+            examples:
+              basic:
+                summary: 그룹 삭제
+                value:
+                  data:
+                    groupId: 0ec6e63d-8d80-4a76-9e1b-7f226c1c6b55
+                    env: stage
+
+      responses:
+        '200':
+          description: 그룹 삭제 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    $ref: '#/components/schemas/DeleteGroupResponse'
+              examples:
+                success:
+                  value:
+                    result:
+                      success: true
+
+        '400':
+          description: 잘못된 파라미터
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FunctionsError'
+              examples:
+                missingGroupId:
+                  value:
+                    error:
+                      code: invalid-argument
+                      message: groupId는 필수입니다
+
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+
+        '403':
+          description: 권한 없음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FunctionsError'
+              examples:
+                notAdmin:
+                  value:
+                    error:
+                      code: permission-denied
+                      message: 그룹 생성자만 삭제할 수 있습니다
+
+        '404':
+          description: 그룹을 찾을 수 없음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FunctionsError'
+              examples:
+                groupNotFound:
+                  value:
+                    error:
+                      code: not-found
+                      message: 그룹을 찾을 수 없습니다
 
   /createPromise:
     post:
@@ -1045,57 +1387,6 @@ paths:
                       code: failed-precondition
                       message: 이미 시작된 약속은 수정할 수 없습니다
 
-  /testCallable:
-    post:
-      tags:
-        - Test
-      summary: 테스트용 Callable Function
-      description: Firebase Functions 연결을 테스트합니다.
-      operationId: testCallable
-      security:
-        - firebaseAuth: []
-        - {} # 인증 선택적
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                data:
-                  $ref: '#/components/schemas/TestCallableRequest'
-            examples:
-              withName:
-                value:
-                  data:
-                    name: 홍길동
-              noName:
-                value:
-                  data: {}
-
-      responses:
-        '200':
-          description: 테스트 성공
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  result:
-                    $ref: '#/components/schemas/TestCallableResponse'
-              examples:
-                authenticated:
-                  value:
-                    result:
-                      message: Hello 홍길동!
-                      authenticated: true
-                      uid: abc123xyz
-                guest:
-                  value:
-                    result:
-                      message: Hello Guest!
-                      authenticated: false
-                      uid: null
-
   /sendPushNotification:
     post:
       tags:
@@ -1463,97 +1754,103 @@ paths:
                       code: not-found
                       message: 약속을 찾을 수 없습니다
 
-  /endLiveActivity:
+  /widgetUpdateETA:
     post:
       tags:
         - LiveActivity
-      summary: LiveActivity 종료
+      summary: Widget 전용 ETA 업데이트
       description: |
-        LiveActivity를 종료하고 모든 참가자에게 APNs end 이벤트를 전송합니다.
+        Widget Extension에서 ETA를 업데이트합니다.
 
-        **인증 필수**: Firebase Authentication 토큰 필요
-        **호스트만 가능**: 약속을 생성한 호스트만 종료 가능
-      operationId: endLiveActivity
-      security:
-        - firebaseAuth: []
+        Widget Extension은 Firebase SDK를 사용할 수 없어서 별도의 HTTP 엔드포인트가 필요합니다.
+        Firestore 사용 없이 클라이언트에서 전달받은 데이터로 Broadcast만 전송합니다.
+
+        **인증**: X-User-Id 헤더 필수 (X-Auth-Token은 선택적)
+      operationId: widgetUpdateETA
+      parameters:
+        - name: X-User-Id
+          in: header
+          required: true
+          schema:
+            type: string
+          description: 사용자 ID
+        - name: X-Auth-Token
+          in: header
+          required: false
+          schema:
+            type: string
+          description: Firebase ID Token (선택적)
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              required:
-                - data
-              properties:
-                data:
-                  $ref: '#/components/schemas/EndLiveActivityRequest'
+              $ref: '#/components/schemas/WidgetUpdateETARequest'
             examples:
               basic:
-                summary: LiveActivity 종료
+                summary: Widget ETA 업데이트
                 value:
-                  data:
-                    promiseId: promise_abc123
-                    env: stage
+                  channelId: "ch_abc123"
+                  participants:
+                    - id: user_kim123
+                      name: 김민수
+                      estimatedArrivalMinutes: 5
+                  trackingDurationMinutes: 30
+                  env: stage
 
       responses:
         '200':
-          description: LiveActivity 종료 성공
+          description: ETA 업데이트 성공
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  result:
-                    $ref: '#/components/schemas/EndLiveActivityResponse'
+                $ref: '#/components/schemas/WidgetUpdateETAResponse'
               examples:
                 success:
                   value:
-                    result:
-                      success: true
-                      successCount: 3
-                      failureCount: 0
+                    success: true
 
         '400':
           description: 잘못된 파라미터
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/FunctionsError'
+                type: object
+                properties:
+                  error:
+                    type: string
               examples:
-                missingPromiseId:
+                missingFields:
                   value:
-                    error:
-                      code: invalid-argument
-                      message: promiseId는 필수입니다
+                    error: channelId and participants are required
 
         '401':
-          $ref: '#/components/responses/Unauthenticated'
-
-        '403':
-          description: 권한 없음
+          description: 인증 실패
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/FunctionsError'
+                type: object
+                properties:
+                  error:
+                    type: string
               examples:
-                notHost:
+                missingUserId:
                   value:
-                    error:
-                      code: permission-denied
-                      message: 호스트만 LiveActivity를 종료할 수 있습니다
+                    error: X-User-Id header is required
 
-        '404':
-          description: 약속을 찾을 수 없음
+        '405':
+          description: 메서드 허용되지 않음
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/FunctionsError'
+                type: object
+                properties:
+                  error:
+                    type: string
               examples:
-                promiseNotFound:
+                methodNotAllowed:
                   value:
-                    error:
-                      code: not-found
-                      message: 약속을 찾을 수 없습니다
+                    error: Method not allowed
 
   # ========================================
   # Emoji
@@ -2016,6 +2313,42 @@ components:
           description: 성공 여부
           example: true
 
+    CheckNicknameAvailableRequest:
+      type: object
+      required:
+        - nickname
+      properties:
+        nickname:
+          type: string
+          minLength: 2
+          maxLength: 20
+          description: 검사할 닉네임
+          example: 새닉네임
+
+        env:
+          type: string
+          enum:
+            - stage
+            - prod
+          nullable: true
+          description: 환경 구분 (선택적)
+
+    CheckNicknameAvailableResponse:
+      type: object
+      required:
+        - available
+        - nickname
+      properties:
+        available:
+          type: boolean
+          description: 사용 가능 여부
+          example: true
+
+        nickname:
+          type: string
+          description: 검사한 닉네임
+          example: 새닉네임
+
     # ========================================
     # Group
     # ========================================
@@ -2130,6 +2463,139 @@ components:
           type: string
           description: 그룹 이름
           example: 주말 등산 모임
+
+    PreviewGroupRequest:
+      type: object
+      required:
+        - inviteCode
+      properties:
+        inviteCode:
+          type: string
+          minLength: 6
+          maxLength: 6
+          description: 6자리 초대 코드
+          example: ABC123
+
+        env:
+          type: string
+          enum:
+            - stage
+            - prod
+          nullable: true
+          description: 환경 구분 (선택적)
+
+    GroupMemberPreview:
+      type: object
+      required:
+        - userId
+        - name
+      properties:
+        userId:
+          type: string
+          description: 사용자 ID
+          example: user123
+
+        name:
+          type: string
+          description: 사용자 이름
+          example: 홍길동
+
+        profileImage:
+          $ref: '#/components/schemas/RemoteImage'
+          nullable: true
+          description: 프로필 이미지 정보
+
+    PreviewGroupResponse:
+      type: object
+      required:
+        - groupId
+        - members
+      properties:
+        groupId:
+          type: string
+          description: 그룹 ID
+          example: 0ec6e63d-8d80-4a76-9e1b-7f226c1c6b55
+
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/GroupMemberPreview'
+          description: 멤버 미리보기 리스트 (최대 10명)
+
+    RemoteImage:
+      type: object
+      required:
+        - type
+        - url
+      properties:
+        type:
+          type: string
+          enum:
+            - storagePath
+            - externalURL
+          description: 이미지 타입
+          example: storagePath
+
+        url:
+          type: string
+          description: 이미지 URL 또는 Storage 경로
+          example: users/user123/profile.jpg
+
+    LeaveGroupRequest:
+      type: object
+      required:
+        - groupId
+      properties:
+        groupId:
+          type: string
+          description: 나가려는 그룹 ID
+          example: 0ec6e63d-8d80-4a76-9e1b-7f226c1c6b55
+
+        env:
+          type: string
+          enum:
+            - stage
+            - prod
+          nullable: true
+          description: 환경 구분 (선택적)
+
+    LeaveGroupResponse:
+      type: object
+      required:
+        - success
+      properties:
+        success:
+          type: boolean
+          description: 성공 여부
+          example: true
+
+    DeleteGroupRequest:
+      type: object
+      required:
+        - groupId
+      properties:
+        groupId:
+          type: string
+          description: 삭제할 그룹 ID
+          example: 0ec6e63d-8d80-4a76-9e1b-7f226c1c6b55
+
+        env:
+          type: string
+          enum:
+            - stage
+            - prod
+          nullable: true
+          description: 환경 구분 (선택적)
+
+    DeleteGroupResponse:
+      type: object
+      required:
+        - success
+      properties:
+        success:
+          type: boolean
+          description: 성공 여부
+          example: true
 
     # ========================================
     # Firestore Document Schemas
@@ -2605,41 +3071,6 @@ components:
           example: true
 
     # ========================================
-    # testCallable
-    # ========================================
-
-    TestCallableRequest:
-      type: object
-      properties:
-        name:
-          type: string
-          description: 사용자 이름
-          example: 홍길동
-
-    TestCallableResponse:
-      type: object
-      required:
-        - message
-        - authenticated
-        - uid
-      properties:
-        message:
-          type: string
-          description: 인사 메시지
-          example: Hello 홍길동!
-
-        authenticated:
-          type: boolean
-          description: 인증 여부
-          example: true
-
-        uid:
-          type: string
-          nullable: true
-          description: 사용자 UID (인증된 경우)
-          example: abc123xyz
-
-    # ========================================
     # Notification
     # ========================================
 
@@ -2955,15 +3386,28 @@ components:
           description: 전송 실패 수
           example: 0
 
-    EndLiveActivityRequest:
+    WidgetUpdateETARequest:
       type: object
       required:
-        - promiseId
+        - channelId
+        - participants
       properties:
-        promiseId:
+        channelId:
           type: string
-          description: 약속 ID
-          example: "promise_abc123"
+          description: APNs Broadcast 채널 ID
+          example: "ch_abc123"
+
+        participants:
+          type: array
+          items:
+            $ref: '#/components/schemas/LiveActivityParticipant'
+          description: 전체 참가자 상태
+
+        trackingDurationMinutes:
+          type: integer
+          nullable: true
+          description: LiveActivity 추적 시간 (분)
+          example: 30
 
         env:
           type: string
@@ -2973,27 +3417,21 @@ components:
           nullable: true
           description: 환경 구분
 
-    EndLiveActivityResponse:
+    WidgetUpdateETAResponse:
       type: object
       required:
         - success
-        - successCount
-        - failureCount
       properties:
         success:
           type: boolean
           description: 전송 성공 여부
           example: true
 
-        successCount:
-          type: integer
-          description: 전송 성공 수
-          example: 3
-
-        failureCount:
-          type: integer
-          description: 전송 실패 수
-          example: 0
+        error:
+          type: string
+          nullable: true
+          description: 오류 메시지 (실패 시)
+          example: null
 
     LiveActivityParticipant:
       type: object
