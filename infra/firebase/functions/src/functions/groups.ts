@@ -88,7 +88,6 @@ export const createGroup = onCall<CreateGroupRequest>(
       createdBy: creatorId,
       createdAt: now,
       updatedAt: now,
-      isDeleted: false,
     });
 
     // 5-2. 사용자의 그룹 목록에 추가 (Map 방식)
@@ -150,7 +149,6 @@ export const previewGroup = onCall<PreviewGroupRequest>(
     const groupsCollection = getEnvironmentCollection("groups", db, data.env);
     const groupSnapshot = await groupsCollection
       .where("inviteCode", "==", inviteCode)
-      .where("isDeleted", "==", false)
       .limit(1)
       .get();
 
@@ -243,7 +241,6 @@ export const joinGroup = onCall<JoinGroupRequest>(
     const groupsCollection = getEnvironmentCollection("groups", db, data.env);
     const groupSnapshot = await groupsCollection
       .where("inviteCode", "==", inviteCode)
-      .where("isDeleted", "==", false)
       .limit(1)
       .get();
 
@@ -424,8 +421,9 @@ export const leaveGroup = onCall<LeaveGroupRequest>(
  *
  * 호스트(admin)가 그룹을 삭제합니다:
  * 1. 호스트 권한 확인
- * 2. groups/{groupId}를 soft delete (isDeleted: true)
- * 3. 모든 멤버의 users/{userId}/groups Map에서 해당 그룹 삭제
+ * 2. Storage에서 그룹 이미지 삭제 (있는 경우)
+ * 3. groups/{groupId} 문서 hard delete
+ * 4. 모든 멤버의 users/{userId}/groups Map에서 해당 그룹 삭제
  */
 export const deleteGroup = onCall<DeleteGroupRequest>(
   {region: REGION},
@@ -480,6 +478,7 @@ export const deleteGroup = onCall<DeleteGroupRequest>(
 
     const createdBy = groupData.createdBy as string;
     const memberIds = (groupData.memberIds as string[]) ?? [];
+    const imageUrl = groupData.imageUrl as string | null;
 
     // 3-2. 호스트인지 확인
     if (createdBy !== userId) {
@@ -489,18 +488,31 @@ export const deleteGroup = onCall<DeleteGroupRequest>(
       );
     }
 
+    // 4. Storage에서 그룹 이미지 삭제
+    if (imageUrl) {
+      try {
+        const bucket = admin.storage().bucket();
+        // imageUrl에서 Storage 경로 추출
+        const match = imageUrl.match(/\/o\/(.+?)\?/);
+        if (match) {
+          const storagePath = decodeURIComponent(match[1]);
+          await bucket.file(storagePath).delete();
+          console.log(`🗑️ Group image deleted: ${storagePath}`);
+        }
+      } catch (error) {
+        // 이미지 삭제 실패해도 그룹 삭제는 계속 진행
+        console.warn(`⚠️ Failed to delete group image: ${error}`);
+      }
+    }
+
     const now = FieldValue.serverTimestamp();
 
-    // 4. Firestore에서 삭제 (트랜잭션 사용)
+    // 5. Firestore에서 삭제 (트랜잭션 사용)
     await db.runTransaction(async (transaction) => {
-      // 4-1. 그룹 soft delete
-      transaction.update(groupRef, {
-        isDeleted: true,
-        deletedAt: now,
-        updatedAt: now,
-      });
+      // 5-1. 그룹 문서 hard delete
+      transaction.delete(groupRef);
 
-      // 4-2. 모든 멤버의 그룹 목록에서 삭제
+      // 5-2. 모든 멤버의 그룹 목록에서 삭제
       for (const memberId of memberIds) {
         const userRef = usersCollection.doc(memberId);
         transaction.update(userRef, {
@@ -510,7 +522,9 @@ export const deleteGroup = onCall<DeleteGroupRequest>(
       }
     });
 
-    // 5. 응답 반환
+    console.log(`🗑️ Group deleted: ${groupId}`);
+
+    // 6. 응답 반환
     return {
       success: true,
     };

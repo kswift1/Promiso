@@ -35,6 +35,7 @@ export {
   createPromise,
   respondPromise,
   updatePromise,
+  deletePromise,
 } from "./functions/promises";
 
 // ============================================================================

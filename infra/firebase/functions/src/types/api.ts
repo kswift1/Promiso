@@ -215,9 +215,6 @@ export interface GroupDocument {
 
   /** 수정 시각 */
   updatedAt: FirebaseFirestore.Timestamp;
-
-  /** 삭제 여부 */
-  isDeleted: boolean;
 }
 
 // ============================================================================
@@ -370,6 +367,35 @@ export enum UpdatePromiseError {
 
   /** 서버 오류 */
   INTERNAL = "internal",
+}
+
+// ============================================================================
+// deletePromise
+// ============================================================================
+
+/**
+ * 약속 삭제 요청
+ *
+ * @remarks
+ * - 인증 필수 (Firebase Auth)
+ * - 호스트만 삭제 가능
+ * - 시작 전 약속만 삭제 가능
+ * - Hard delete: 문서 완전 삭제
+ */
+export interface DeletePromiseRequest {
+  /** 약속 ID */
+  promiseId: string;
+
+  /** 환경 구분 (선택적: stage 또는 prod) */
+  env?: "stage" | "prod" | null;
+}
+
+/**
+ * 약속 삭제 응답
+ */
+export interface DeletePromiseResponse {
+  /** 성공 여부 */
+  success: boolean;
 }
 
 // ============================================================================
@@ -787,7 +813,7 @@ export interface UpdateGroupResponse {
  * @remarks
  * - 인증 필수 (Firebase Auth)
  * - 호스트(admin)만 삭제 가능
- * - Soft delete: isDeleted 플래그를 true로 설정
+ * - Hard delete: 문서 완전 삭제 + Storage 이미지 삭제
  */
 export interface DeleteGroupRequest {
   /** 그룹 ID */
