@@ -177,7 +177,7 @@ private struct CreateGroupButton: View {
       )
       .clipShape(RoundedRectangle(cornerRadius: 14))
       .shadow(
-        color: Color.pmindigo.n500.opacity(0.3),
+        color: Color.pmindigo.n500.opacity(AppConstants.UI.selectionOpacity),
         radius: 10,
         x: 0,
         y: 5
@@ -219,7 +219,7 @@ private struct RetryButton: View {
       )
       .clipShape(RoundedRectangle(cornerRadius: 14))
       .shadow(
-        color: Color.pmindigo.n500.opacity(0.3),
+        color: Color.pmindigo.n500.opacity(AppConstants.UI.selectionOpacity),
         radius: 10,
         x: 0,
         y: 5

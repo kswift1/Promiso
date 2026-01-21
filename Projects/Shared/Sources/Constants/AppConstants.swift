@@ -26,6 +26,23 @@ public enum AppConstants {
 
   public enum UI {
     public static let safeMargin: CGFloat = 16
+
+    // Tab Bar
+    public static let tabBarHeight: CGFloat = 49
+    public static let compactViewBottomSpacing: CGFloat = 8
+    public static let compactViewCornerRadius: CGFloat = 15
+    public static let compactViewPadding: CGFloat = 15
+    public static let compactViewVerticalPadding: CGFloat = 8
+
+    // Opacity
+    public static let selectionOpacity: CGFloat = 0.3
+  }
+
+  // MARK: - LiveActivity
+
+  public enum LiveActivity {
+    /// 커스텀 분 입력 최대 자릿수
+    public static let maxCustomMinutesDigits = 3
   }
 
   // MARK: - User Defaults Keys

@@ -383,11 +383,11 @@ extension RootTab {
     // MARK: - Constants
 
     private let livePromiseTransitionID = "LIVE_PROMISE_TRANSITION"
-    private let tabBarHeight: CGFloat = 49
-    private let compactViewBottomSpacing: CGFloat = 8
-    private let compactViewCornerRadius: CGFloat = 15
-    private let compactViewPadding: CGFloat = 15
-    private let compactViewVerticalPadding: CGFloat = 8
+    private let tabBarHeight = AppConstants.UI.tabBarHeight
+    private let compactViewBottomSpacing = AppConstants.UI.compactViewBottomSpacing
+    private let compactViewCornerRadius = AppConstants.UI.compactViewCornerRadius
+    private let compactViewPadding = AppConstants.UI.compactViewPadding
+    private let compactViewVerticalPadding = AppConstants.UI.compactViewVerticalPadding
 
     public init(store: StoreOf<RootTab.Feature>) {
       self.store = store

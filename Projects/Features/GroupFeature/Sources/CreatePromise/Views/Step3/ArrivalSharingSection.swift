@@ -1,6 +1,7 @@
 import SwiftUI
 import Clients
 import ComposableArchitecture
+import PromisoShared
 import ResourceKit
 
 struct ArrivalSharingSection: View {
@@ -229,8 +230,8 @@ private struct CustomMinuteInput: View {
         .focused(isFocused)
         .frame(width: 32)
         .onChange(of: text) { _, newValue in
-          // 숫자만 허용, 3자리까지
-          let filtered = String(newValue.filter { $0.isNumber }.prefix(3))
+          // 숫자만 허용
+          let filtered = String(newValue.filter { $0.isNumber }.prefix(AppConstants.LiveActivity.maxCustomMinutesDigits))
           if filtered != newValue {
             text = filtered
           }
