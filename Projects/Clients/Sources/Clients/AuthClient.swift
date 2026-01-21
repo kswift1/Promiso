@@ -440,7 +440,12 @@ private enum WidgetAuthTokenStore {
   private static let tokenValiditySeconds: TimeInterval = 3600
 
   static func save(token: String, userId: String) {
-    guard let defaults = UserDefaults(suiteName: LiveActivityIntentKey.suiteName) else { return }
+    guard let defaults = UserDefaults(suiteName: LiveActivityIntentKey.suiteName) else {
+      #if DEBUG
+      print("[WidgetAuthTokenStore] App Group UserDefaults 접근 실패: \(LiveActivityIntentKey.suiteName)")
+      #endif
+      return
+    }
 
     let expiry = Date().addingTimeInterval(tokenValiditySeconds)
 
@@ -462,7 +467,12 @@ private enum WidgetAuthTokenStore {
   }
 
   static func clear() {
-    guard let defaults = UserDefaults(suiteName: LiveActivityIntentKey.suiteName) else { return }
+    guard let defaults = UserDefaults(suiteName: LiveActivityIntentKey.suiteName) else {
+      #if DEBUG
+      print("[WidgetAuthTokenStore] App Group UserDefaults 접근 실패: \(LiveActivityIntentKey.suiteName)")
+      #endif
+      return
+    }
 
     defaults.removeObject(forKey: LiveActivityIntentKey.authTokenKey)
     defaults.removeObject(forKey: LiveActivityIntentKey.authTokenExpiryKey)
