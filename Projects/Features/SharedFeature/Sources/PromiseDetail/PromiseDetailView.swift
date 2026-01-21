@@ -159,9 +159,7 @@ extension PromiseDetail {
 
     private func formatRealtimeShareTime(_ startAt: Date) -> String {
       let shareStartTime = startAt.addingTimeInterval(-1800) // 30분 전
-      let shareStartTime = startAt.addingTimeInterval(-1800) // 30분 전
       return "\(KoreanDateFormatters.time.string(from: shareStartTime))부터"
-      return "\(formatter.string(from: shareStartTime))부터"
     }
 
     // MARK: - Participants Section
