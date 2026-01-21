@@ -201,6 +201,35 @@ extension LivePromise {
       host?.profileImageUrl
     }
 
+    /// 호스트 프로필 이미지 (LiveActivityImageStore 캐시)
+    private var hostProfileImage: UIImage? {
+      let hostId = store.data.hostId
+      guard !hostId.isEmpty else { return nil }
+      return LiveActivityImageStore.loadImage(userId: hostId)
+    }
+
+    /// 호스트 아바타 뷰 (캐시된 이미지 우선, URL fallback)
+    @ViewBuilder
+    private var hostAvatarView: some View {
+      if let cachedImage = hostProfileImage {
+        // 캐시된 이미지 사용
+        Image(uiImage: cachedImage)
+          .resizable()
+          .aspectRatio(contentMode: .fill)
+          .frame(width: 32, height: 32)
+          .clipShape(Circle())
+          .overlay(Circle().stroke(Color.white, lineWidth: 2))
+      } else {
+        // Fallback: URL 기반 또는 이니셜
+        ProfileAvatarView(
+          profileImageUrl: hostProfileImageUrl,
+          displayName: hostName ?? "",
+          isCurrentUser: isHost,
+          size: 32
+        )
+      }
+    }
+
     /// 장소가 미정인지
     private var isLocationUndecided: Bool {
       promise?.locationText == "장소 미정"
@@ -212,12 +241,7 @@ extension LivePromise {
       VStack(alignment: .leading, spacing: 14) {
         // 1. Host Section (PromiseCard와 동일)
         HStack(spacing: 10) {
-          ProfileAvatarView(
-            profileImageUrl: hostProfileImageUrl,
-            displayName: hostName ?? "",
-            isCurrentUser: isHost,
-            size: 32
-          )
+          hostAvatarView
 
           VStack(alignment: .leading, spacing: 2) {
             if isHost {
@@ -772,6 +796,7 @@ extension LivePromise {
             etaSheetButton(title: "30분", emoji: nil, minutes: 30, color: Color.pmerror.n500)
           }
         }
+        .padding(.top, 12)
 
         // 직접 입력
         VStack(spacing: 8) {
