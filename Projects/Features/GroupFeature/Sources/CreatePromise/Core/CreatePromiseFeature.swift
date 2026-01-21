@@ -5,6 +5,7 @@
 //  Created by 김성원 on 9/30/25.
 //
 
+// TODO: LiveActivity 활성화 선택 화면 추가, 지도 추가, 이미지 추가
 public enum CreatePromise {
   
   
@@ -14,6 +15,7 @@ public enum CreatePromise {
     @Dependency(\.continuousClock) var clock
     @Dependency(\.groupClient) var groupClient
     @Dependency(\.promiseClient) var promiseClient
+    @Dependency(\.userDefaultsClient) var userDefaultsClient
     @Dependency(\.emojiClient) var emojiClient
 
     
@@ -33,6 +35,10 @@ public enum CreatePromise {
       var isCreatingPromise: Bool = false
       var creationError: Clients.PromiseClientError?
 
+      // LiveActivity 정보 팝오버 상태
+      var showLiveActivityInfo: Bool = false
+      var hasSeenLiveActivityInfo: Bool = true  // 기본 true (로드 전까지 팝업 안 띄움)
+
       public init(
         currentStep: CreatePromiseStep = .first,
         promise: PromiseModel = .empty,
@@ -40,7 +46,9 @@ public enum CreatePromise {
         groupSummaries: [UserGroupInfo]? = nil,
         groupPromiseCounts: [String: Int] = [:],
         isCreatingPromise: Bool = false,
-        creationError: Clients.PromiseClientError? = nil
+        creationError: Clients.PromiseClientError? = nil,
+        showLiveActivityInfo: Bool = false,
+        hasSeenLiveActivityInfo: Bool = true
       ) {
         self.currentStep = currentStep
         self.promise = promise
@@ -49,6 +57,8 @@ public enum CreatePromise {
         self.groupPromiseCounts = groupPromiseCounts
         self.isCreatingPromise = isCreatingPromise
         self.creationError = creationError
+        self.showLiveActivityInfo = showLiveActivityInfo
+        self.hasSeenLiveActivityInfo = hasSeenLiveActivityInfo
       }
 
       /// 그룹이 활성 약속 제한에 도달했는지 확인
@@ -113,9 +123,14 @@ public enum CreatePromise {
         case incrementParticipants
         case decrementParticipants
         case setDescription(String)
+        case setTrackingStartMinutes(Int?)
         case retryLoadGroups
         case clearCreationError
         case createGroupTapped
+        // LiveActivity 정보 팝오버
+        case liveActivityInfoButtonTapped
+        case liveActivityInfoDismissed
+        case arrivalSharingSectionAppeared
       }
       
       // 내부에서만 발생하는 이벤트 (이펙트 응답/디바운스 등)
@@ -128,6 +143,7 @@ public enum CreatePromise {
         case fetchPromiseCounts([String])
         case promiseCountsResponse([String: Int])
         case createPromiseResponse(Result<String, Clients.PromiseClientError>)
+        case liveActivityInfoSeenLoaded(Bool)
       }
       
       // 상위 전달 이벤트 (네비/라우팅/완료 알림 등)
@@ -232,6 +248,10 @@ public enum CreatePromise {
             state.promise.description = trimmed.isEmpty ? nil : trimmed
             return .none
 
+          case .setTrackingStartMinutes(let minutes):
+            state.promise.trackingStartMinutesBefore = minutes
+            return .none
+
           case .setStartDate(let date):
             state.promise.startAt = date
             if let end = state.promise.endAt, end <= date {
@@ -241,6 +261,28 @@ public enum CreatePromise {
 
           case .createGroupTapped:
             return .send(.delegate(.createGroupRequested))
+
+          case .liveActivityInfoButtonTapped:
+            state.showLiveActivityInfo = true
+            return .none
+
+          case .liveActivityInfoDismissed:
+            state.showLiveActivityInfo = false
+            // 팝오버를 봤으므로 저장
+            if !state.hasSeenLiveActivityInfo {
+              state.hasSeenLiveActivityInfo = true
+              return .run { [userDefaultsClient] _ in
+                userDefaultsClient.markLiveActivityInfoSeen()
+              }
+            }
+            return .none
+
+          case .arrivalSharingSectionAppeared:
+            // 본 적 있는지 확인
+            return .run { [userDefaultsClient] send in
+              let hasSeen = userDefaultsClient.hasSeenLiveActivityInfo
+              await send(.internal(.liveActivityInfoSeenLoaded(hasSeen)))
+            }
           }
           
           // MARK: - Internal
@@ -329,6 +371,14 @@ public enum CreatePromise {
           case .createPromiseResponse(.failure(let e)):
             state.isCreatingPromise = false
             state.creationError = e
+            return .none
+
+          case .liveActivityInfoSeenLoaded(let hasSeen):
+            state.hasSeenLiveActivityInfo = hasSeen
+            // 처음 보는 사용자에게 자동으로 팝오버 표시
+            if !hasSeen {
+              state.showLiveActivityInfo = true
+            }
             return .none
           }
           
@@ -419,20 +469,8 @@ extension CreatePromiseStep {
       EmptyView()
 
     case .second, .third:
-      Button(action: {
+      PreviousStepButton {
         store.send(.view(.previousStep), animation: .default)
-      }) {
-        HStack(spacing: 8) {
-          Image(systemName: "chevron.left")
-            .font(.system(size: 14, weight: .semibold))
-          Text("이전")
-            .font(.system(size: 16, weight: .semibold))
-        }
-        .foregroundColor(.primary)
-        .frame(maxWidth: .infinity)
-        .frame(height: 56)
-        .background(Color(.systemGray5))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
       }
     }
   }
@@ -475,11 +513,41 @@ extension CreatePromiseStep {
   }
 }
 
+fileprivate struct PreviousStepButton: View {
+  let action: () -> Void
+  @State private var isPressed = false
+
+  var body: some View {
+    Button(action: action) {
+      HStack(spacing: 8) {
+        Image(systemName: "chevron.left")
+          .font(.system(size: 14, weight: .semibold))
+        Text("이전")
+          .font(.system(size: 16, weight: .semibold))
+      }
+      .foregroundColor(.primary)
+      .frame(maxWidth: .infinity)
+      .frame(height: 56)
+      .background(Color(.systemGray5))
+      .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+    .scaleEffect(isPressed ? 0.95 : 1.0)
+    .animation(.spring(response: 0.2, dampingFraction: 0.6), value: isPressed)
+    .sensoryFeedback(.impact(flexibility: .soft), trigger: isPressed)
+    .simultaneousGesture(
+      DragGesture(minimumDistance: 0)
+        .onChanged { _ in isPressed = true }
+        .onEnded { _ in isPressed = false }
+    )
+  }
+}
+
 fileprivate struct StepButton: View {
   let title: String
   var disabled: Bool
   var isLoading: Bool = false
   var action: () -> Void
+  @State private var isPressed = false
 
   var body: some View {
     Button(action: action) {
@@ -514,6 +582,14 @@ fileprivate struct StepButton: View {
         y: 6
       )
     }
+    .scaleEffect(isPressed && !disabled ? 0.95 : 1.0)
+    .animation(.spring(response: 0.2, dampingFraction: 0.6), value: isPressed)
+    .sensoryFeedback(.impact(flexibility: .soft), trigger: isPressed && !disabled)
+    .simultaneousGesture(
+      DragGesture(minimumDistance: 0)
+        .onChanged { _ in if !disabled { isPressed = true } }
+        .onEnded { _ in isPressed = false }
+    )
     .disabled(disabled)
     .animation(.easeInOut(duration: 0.2), value: disabled)
     .animation(.easeInOut(duration: 0.2), value: isLoading)

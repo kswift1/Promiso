@@ -18,7 +18,8 @@ let project = Project(
       dependencies: [
         .project(target: "Clients", path: "../../Clients"),
         .project(target: "PromisoShared", path: "../../Shared"),
-        .project(target: "ExternalDependency", path: "../../ExternalDependency")
+        .project(target: "ExternalDependency", path: "../../ExternalDependency"),
+        .project(target: "ResourceKit", path: "../../ResourceKit")
       ],
       settings: .standard()
     ),

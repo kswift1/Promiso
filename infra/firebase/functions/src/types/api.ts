@@ -334,6 +334,9 @@ export interface UpdatePromiseRequest {
   /** 최소 참가 인원 (선택적) */
   minimumParticipants?: number | null;
 
+  /** 실시간 공유 시작 시간 (분 전, 선택적) */
+  trackingStartMinutesBefore?: number | null;
+
   /** 환경 구분 (선택적: stage 또는 prod) */
   env?: "stage" | "prod" | null;
 }
@@ -939,6 +942,149 @@ export interface DeviceInfo {
 
   /** 토큰 등록 시각 */
   createdAt: FirebaseFirestore.Timestamp;
+
+  /** LiveActivity Push to Start 토큰 (iOS 17.2+) */
+  liveActivityPushToStartToken?: string | null;
+
+  /** LiveActivity Push 토큰 (개별 Activity용) */
+  liveActivityPushToken?: string | null;
+}
+
+// ============================================================================
+// LiveActivity APIs
+// ============================================================================
+
+/**
+ * LiveActivity 참가자 상태
+ */
+export interface LiveActivityParticipant {
+  /** 참가자 ID */
+  id: string;
+
+  /** 참가자 이름 */
+  name: string;
+
+  /** 도착 예상 시간 (분) - null=대기, 0=도착, N=N분 후 */
+  estimatedArrivalMinutes: number | null;
+}
+
+/**
+ * LiveActivity 시작 요청
+ *
+ * @remarks
+ * - 인증 필수 (Firebase Auth)
+ * - 약속 참가자(accepted) 전원에게 Push to Start 전송
+ */
+export interface StartLiveActivityRequest {
+  /** 약속 ID */
+  promiseId: string;
+
+  /** 환경 구분 (선택적: stage 또는 prod) */
+  env?: "stage" | "prod" | null;
+}
+
+/**
+ * LiveActivity 시작 응답
+ */
+export interface StartLiveActivityResponse {
+  /** 성공 여부 */
+  success: boolean;
+
+  /** 전송 성공 수 */
+  successCount: number;
+
+  /** 전송 실패 수 */
+  failureCount: number;
+}
+
+/**
+ * ETA 업데이트 요청
+ *
+ * @remarks
+ * - 인증 필수 (Firebase Auth)
+ * - Firestore 없이 클라이언트에서 전달받은 데이터로 Broadcast만 전송
+ */
+export interface UpdateETARequest {
+  /** APNs Broadcast 채널 ID */
+  channelId: string;
+
+  /** 전체 참가자 상태 (업데이트된 ETA 포함) */
+  participants: LiveActivityParticipant[];
+
+  /** LiveActivity 추적 시간 (분) */
+  trackingDurationMinutes?: number;
+
+  /** 환경 구분 (선택적: stage 또는 prod) */
+  env?: "stage" | "prod" | null;
+}
+
+/**
+ * ETA 업데이트 응답
+ */
+export interface UpdateETAResponse {
+  /** 성공 여부 */
+  success: boolean;
+
+  /** 전송 성공 수 */
+  successCount: number;
+
+  /** 전송 실패 수 */
+  failureCount: number;
+}
+
+// EndLiveActivityRequest 제거됨 - APNs dismissal-date로 auto-dismiss 처리
+// EndLiveActivityResponse 제거됨
+
+/**
+ * LiveActivity Push to Start 토큰 등록 요청
+ *
+ * @remarks
+ * - 인증 필수 (Firebase Auth)
+ * - iOS 17.2+ 디바이스에서 앱 시작 시 호출
+ */
+export interface RegisterPushToStartTokenRequest {
+  /** Push to Start 토큰 */
+  token: string;
+
+  /** 디바이스 ID */
+  deviceId: string;
+
+  /** 환경 구분 (선택적: stage 또는 prod) */
+  env?: "stage" | "prod" | null;
+}
+
+/**
+ * LiveActivity Push to Start 토큰 등록 응답
+ */
+export interface RegisterPushToStartTokenResponse {
+  /** 성공 여부 */
+  success: boolean;
+}
+
+// ============================================================================
+// LiveActivity Update 토큰 등록 - 제거됨
+// ============================================================================
+//
+// RegisterLiveActivityTokenRequest, RegisterLiveActivityTokenResponse 제거됨
+// iOS 18 Broadcast 방식으로 전환되어 개별 토큰 관리가 불필요해짐
+// 모든 업데이트/종료는 채널 기반 Broadcast로 전송됨
+
+// ============================================================================
+// Cloud Tasks - LiveActivity 예약 시작
+// ============================================================================
+
+/**
+ * LiveActivity 예약 시작 태스크 페이로드
+ *
+ * @remarks
+ * Cloud Tasks에서 사용되는 내부 타입
+ */
+export interface ScheduledLiveActivityTaskPayload {
+  /** 약속 ID */
+  promiseId: string;
+
+  /** 환경 구분 */
+  env: "stage" | "prod";
 }
 
 // ============================================================================

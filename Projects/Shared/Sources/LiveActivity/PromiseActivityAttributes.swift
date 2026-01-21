@@ -4,7 +4,7 @@ import Foundation
 // MARK: - Promise Activity Attributes
 
 /// 라이브액티비티의 고정 속성 (Activity 생성 시 설정, 이후 변경 불가)
-public struct PromiseActivityAttributes: ActivityAttributes {
+public struct PromiseActivityAttributes: ActivityAttributes, Equatable {
 
   // MARK: - Attributes (고정 정보)
 
@@ -29,6 +29,15 @@ public struct PromiseActivityAttributes: ActivityAttributes {
   /// 약속 시간
   public let scheduledTime: Date
 
+  /// 호스트 ID
+  public let hostId: String
+
+  /// 호스트 이름
+  public let hostName: String?
+
+  /// iOS 18 Broadcast 채널 ID (Apple이 생성)
+  public let channelId: String
+
   // MARK: - Initializer
 
   public init(
@@ -38,7 +47,10 @@ public struct PromiseActivityAttributes: ActivityAttributes {
     title: String,
     location: String?,
     scheduledTime: Date,
-    trackingDurationMinutes: Int = 30
+    trackingDurationMinutes: Int = 30,
+    hostId: String = "",
+    hostName: String? = nil,
+    channelId: String = ""
   ) {
     self.promiseId = promiseId
     self.currentUserId = currentUserId
@@ -47,6 +59,9 @@ public struct PromiseActivityAttributes: ActivityAttributes {
     self.location = location
     self.scheduledTime = scheduledTime
     self.trackingDurationMinutes = trackingDurationMinutes
+    self.hostId = hostId
+    self.hostName = hostName
+    self.channelId = channelId
   }
 
   // MARK: - Content State (동적 정보)
@@ -153,10 +168,31 @@ public enum LiveActivityIntentKey {
 
   /// ETA 업데이트 저장 키
   public static let etaUpdateKey = "liveActivity.etaUpdate"
+
+  /// Firebase Project ID 저장 키
+  public static let firebaseProjectIdKey = "firebase.projectId"
+
+  /// Firebase Project ID (Widget에서 HTTP 호출용)
+  /// App Group UserDefaults에서 읽거나, 없으면 기본값 사용
+  public static var firebaseProjectId: String {
+    UserDefaults(suiteName: suiteName)?.string(forKey: firebaseProjectIdKey) ?? "promiso-20274"
+  }
+
+  /// Firebase Auth ID Token 저장 키 (Widget에서 인증용)
+  public static let authTokenKey = "firebase.auth.idToken"
+
+  /// Firebase Auth Token 만료 시간 저장 키
+  public static let authTokenExpiryKey = "firebase.auth.tokenExpiry"
+
+  /// Firebase Emulator Host 저장 키 (개발 환경용)
+  public static let emulatorHostKey = "firebase.emulator.host"
+
+  /// APNs 환경 저장 키 (Widget에서 백엔드 호출 시 사용)
+  public static let apnsEnvironmentKey = "apns.environment"
 }
 
 /// 도착 예상 시간 업데이트 정보
-public struct ETAUpdate: Codable, Sendable {
+public struct ETAUpdate: Codable, Equatable, Sendable {
   /// 약속 ID
   public let promiseId: String
 

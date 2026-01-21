@@ -1,21 +1,35 @@
-import ActivityKit
-import PromisoShared
 import SwiftUI
-import WidgetKit
 
-import ResourceKit
+// MARK: - Progress Color
+
+/// 진행률 기반 색상 시스템 (앱 브랜드 톤 적용)
+public enum ProgressColor {
+  /// 진행률에 따른 그라데이션 색상
+  public static func gradientColors(for progress: Double) -> [Color] {
+    switch progress {
+    case 0.75...:
+      return [Color.pmindigo.n500, Color.pmpurple.n500]
+    case 0.50..<0.75:
+      return [Color.pmpurple.n500, Color.pmpurple.n400]
+    case 0.25..<0.50:
+      return [.orange, Color.pmpurple.n400]
+    default:
+      return [.gray, .orange]
+    }
+  }
+}
 
 // MARK: - Vertical Stripes Pattern
 
 /// 세로 줄무늬 패턴 (회색/검정 교대)
-struct VerticalStripes: View {
+public struct VerticalStripes: View {
   let stripeWidth: CGFloat
 
-  init(stripeWidth: CGFloat = 4) {
+  public init(stripeWidth: CGFloat = 4) {
     self.stripeWidth = stripeWidth
   }
 
-  var body: some View {
+  public var body: some View {
     GeometryReader { geo in
       HStack(spacing: 0) {
         ForEach(0..<Int(geo.size.width / stripeWidth) + 1, id: \.self) { i in
@@ -31,10 +45,20 @@ struct VerticalStripes: View {
 // MARK: - Racing Track View
 
 /// 레이싱 트랙 UI - 참가자들이 출발점에서 도착점으로 이동하는 시각화
-struct RacingTrackView: View {
+public struct SharedRacingTrackView: View {
   let participants: [ParticipantState]
   let trackingDurationMinutes: Int
   let currentUserId: String
+
+  public init(
+    participants: [ParticipantState],
+    trackingDurationMinutes: Int,
+    currentUserId: String
+  ) {
+    self.participants = participants
+    self.trackingDurationMinutes = trackingDurationMinutes
+    self.currentUserId = currentUserId
+  }
 
   /// 현재 사용자의 진행률
   private var myProgress: Double {
@@ -47,7 +71,7 @@ struct RacingTrackView: View {
     ProgressColor.gradientColors(for: myProgress)
   }
 
-  var body: some View {
+  public var body: some View {
     GeometryReader { geo in
       let trackWidth = geo.size.width
       let trackHeight = geo.size.height
@@ -187,11 +211,23 @@ struct RacingTrackView: View {
 /// - 프로필 사진 또는 이모지 마커
 /// - V5 디자인: 우측 하단 ETA 뱃지
 /// - 그룹화: 좌측 상단 "+N" 뱃지
-struct CompactParticipantMarker: View {
+public struct CompactParticipantMarker: View {
   let participant: ParticipantState
   let trackingDurationMinutes: Int
   let isCurrentUser: Bool
   var groupCount: Int = 0  // 추가 인원 수 (0이면 뱃지 없음)
+
+  public init(
+    participant: ParticipantState,
+    trackingDurationMinutes: Int,
+    isCurrentUser: Bool,
+    groupCount: Int = 0
+  ) {
+    self.participant = participant
+    self.trackingDurationMinutes = trackingDurationMinutes
+    self.isCurrentUser = isCurrentUser
+    self.groupCount = groupCount
+  }
 
   private var markerSize: CGFloat { 32 }
 
@@ -232,7 +268,7 @@ struct CompactParticipantMarker: View {
     participant.estimatedArrivalMinutes == 0
   }
 
-  var body: some View {
+  public var body: some View {
     ZStack {
       if hasArrived {
         // 도착: 이름 라벨만 (마커 숨김)
@@ -357,4 +393,3 @@ struct CompactParticipantMarker: View {
     .shadow(color: borderColor.opacity(0.5), radius: 4, y: 2)
   }
 }
-

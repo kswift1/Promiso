@@ -12,6 +12,10 @@ public struct NotificationClient: Sendable {
   /// FCM 토큰 삭제 (로그아웃 시)
   public var deleteFCMToken: @Sendable () async throws -> Void
 
+  /// LiveActivity Push to Start 토큰 저장
+  /// - Parameter token: Push to Start 토큰
+  public var saveLiveActivityPushToStartToken: @Sendable (_ token: String) async throws -> Void
+
   /// 알림 권한 상태 확인
   /// - Returns: 권한 상태
   public var getAuthorizationStatus: @Sendable () async -> NotificationAuthorizationStatus = { .notDetermined }
@@ -30,6 +34,7 @@ extension NotificationClient: TestDependencyKey {
   public static let previewValue = Self(
     saveFCMToken: { _ in },
     deleteFCMToken: { },
+    saveLiveActivityPushToStartToken: { _ in },
     getAuthorizationStatus: { .authorized },
     requestAuthorization: { true },
     openNotificationSettings: { }
@@ -38,6 +43,7 @@ extension NotificationClient: TestDependencyKey {
   public static let testValue = Self(
     saveFCMToken: unimplemented("\(Self.self).saveFCMToken"),
     deleteFCMToken: unimplemented("\(Self.self).deleteFCMToken"),
+    saveLiveActivityPushToStartToken: unimplemented("\(Self.self).saveLiveActivityPushToStartToken"),
     getAuthorizationStatus: unimplemented("\(Self.self).getAuthorizationStatus", placeholder: .notDetermined),
     requestAuthorization: unimplemented("\(Self.self).requestAuthorization", placeholder: false),
     openNotificationSettings: unimplemented("\(Self.self).openNotificationSettings")
@@ -64,6 +70,13 @@ extension NotificationClient: DependencyKey {
           throw NotificationClientError.authenticationRequired
         }
         try await dataSource.deleteFCMToken(userId: currentUser.uid)
+      },
+
+      saveLiveActivityPushToStartToken: { token in
+        guard let currentUser = await authClient.currentUser() else {
+          throw NotificationClientError.authenticationRequired
+        }
+        try await dataSource.saveLiveActivityPushToStartToken(userId: currentUser.uid, token: token)
       },
 
       getAuthorizationStatus: {

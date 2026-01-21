@@ -5,26 +5,6 @@ import WidgetKit
 
 import ResourceKit
 
-
-// MARK: - Progress Color
-
-/// 진행률 기반 색상 시스템 (앱 브랜드 톤 적용)
-enum ProgressColor {
-  /// 진행률에 따른 그라데이션 색상
-  static func gradientColors(for progress: Double) -> [Color] {
-    switch progress {
-    case 0.75...:
-      return [Color.pmindigo.n500, Color.pmpurple.n500]
-    case 0.50..<0.75:
-      return [Color.pmpurple.n500, Color.pmpurple.n400]
-    case 0.25..<0.50:
-      return [.orange, Color.pmpurple.n400]
-    default:
-      return [.gray, .orange]
-    }
-  }
-}
-
 // MARK: - Lock Screen Banner View
 
 /// 잠금화면 라이브액티비티 배너 뷰
@@ -49,7 +29,7 @@ struct LockScreenBannerView: View {
       headerSection
 
       // MARK: - 레이싱 트랙
-      RacingTrackView(
+      SharedRacingTrackView(
         participants: state.participants,
         trackingDurationMinutes: trackingDuration,
         currentUserId: attrs.currentUserId
@@ -149,6 +129,16 @@ struct ETASegmentedControl: View {
   let context: ActivityViewContext<PromiseActivityAttributes>
 
   private var attrs: PromiseActivityAttributes { context.attributes }
+  private var state: PromiseActivityAttributes.ContentState { context.state }
+
+  /// participants를 JSON 문자열로 인코딩
+  private var participantsJSON: String {
+    guard let data = try? JSONEncoder().encode(state.participants),
+          let json = String(data: data, encoding: .utf8) else {
+      return "[]"
+    }
+    return json
+  }
 
   private let etaOptions: [(title: String, minutes: Int)] = [
     ("완료", 0),
@@ -163,9 +153,11 @@ struct ETASegmentedControl: View {
         let isSelected = selectedMinutes == option.minutes
 
         Button(intent: UpdateETAIntent(
-          promiseId: attrs.promiseId,
+          channelId: attrs.channelId,
           userId: attrs.currentUserId,
-          estimatedMinutes: option.minutes
+          estimatedMinutes: option.minutes,
+          trackingDurationMinutes: state.trackingDurationMinutes,
+          participantsJSON: participantsJSON
         )) {
           Text(option.title)
             .font(.system(size: 11, weight: isSelected ? .bold : .medium))

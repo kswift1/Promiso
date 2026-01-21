@@ -21,6 +21,9 @@ public struct LiveActivityClient: Sendable {
   /// 현재 활성화된 Activity의 ContentState
   public var currentState: @Sendable () -> PromiseActivityAttributes.ContentState?
 
+  /// 현재 활성화된 Activity의 Attributes
+  public var currentAttributes: @Sendable () -> PromiseActivityAttributes?
+
   /// 라이브액티비티 시작
   /// - Returns: Activity ID
   public var start: @Sendable (
@@ -45,6 +48,24 @@ public struct LiveActivityClient: Sendable {
 
   /// ETA 업데이트 클리어
   public var clearETAUpdate: @Sendable () -> Void
+
+  /// ContentState 업데이트 스트림 구독
+  /// APNs 업데이트 시 앱 내 View 자동 동기화를 위해 사용
+  public var observeStateUpdates: @Sendable (
+    _ promiseId: String
+  ) -> AsyncStream<PromiseActivityAttributes.ContentState>?
+
+  // Push Token 관련 기능 제거됨 - iOS 18 Broadcast 방식 사용
+  // Broadcast는 채널 기반이므로 개별 토큰 관리 불필요
+
+  // MARK: - Push to Start
+
+  /// 현재 Push to Start 토큰 (앱 시작 시 백엔드에 등록 필요)
+  public var pushToStartToken: @Sendable () async -> String?
+
+  /// Push to Start 토큰 업데이트 스트림 구독
+  /// 토큰이 변경될 때마다 백엔드에 재등록 필요
+  public var observePushToStartTokenUpdates: @Sendable () -> AsyncStream<String>
 }
 
 // MARK: - Test / Preview
@@ -56,12 +77,16 @@ extension LiveActivityClient: TestDependencyKey {
     activePromiseId: { nil },
     activeActivityId: { nil },
     currentState: { nil },
+    currentAttributes: { nil },
     start: { _, _ in "preview-activity-id" },
     update: { _, _ in },
     end: { _ in },
     endAll: { },
     pendingETAUpdate: { nil },
-    clearETAUpdate: { }
+    clearETAUpdate: { },
+    observeStateUpdates: { _ in nil },
+    pushToStartToken: { nil },
+    observePushToStartTokenUpdates: { AsyncStream { $0.finish() } }
   )
 
   public static let testValue = Self(
@@ -70,12 +95,16 @@ extension LiveActivityClient: TestDependencyKey {
     activePromiseId: unimplemented("\(Self.self).activePromiseId", placeholder: nil),
     activeActivityId: unimplemented("\(Self.self).activeActivityId", placeholder: nil),
     currentState: unimplemented("\(Self.self).currentState", placeholder: nil),
+    currentAttributes: unimplemented("\(Self.self).currentAttributes", placeholder: nil),
     start: unimplemented("\(Self.self).start", placeholder: ""),
     update: unimplemented("\(Self.self).update"),
     end: unimplemented("\(Self.self).end"),
     endAll: unimplemented("\(Self.self).endAll"),
     pendingETAUpdate: unimplemented("\(Self.self).pendingETAUpdate", placeholder: nil),
-    clearETAUpdate: unimplemented("\(Self.self).clearETAUpdate")
+    clearETAUpdate: unimplemented("\(Self.self).clearETAUpdate"),
+    observeStateUpdates: unimplemented("\(Self.self).observeStateUpdates", placeholder: nil),
+    pushToStartToken: unimplemented("\(Self.self).pushToStartToken", placeholder: nil),
+    observePushToStartTokenUpdates: unimplemented("\(Self.self).observePushToStartTokenUpdates", placeholder: AsyncStream { $0.finish() })
   )
 }
 
@@ -103,18 +132,22 @@ extension LiveActivityClient: DependencyKey {
       Activity<PromiseActivityAttributes>.activities.first?.content.state
     },
 
+    currentAttributes: {
+      Activity<PromiseActivityAttributes>.activities.first?.attributes
+    },
+
     start: { attributes, initialState in
       let content = ActivityContent(
         state: initialState,
         staleDate: nil
       )
 
-      // TODO: APNs 설정 완료 후 pushType 변경
-      // 현재는 로컬 전용으로 시작 (원격 푸시 업데이트 없음)
+      // iOS 18 Broadcast 방식: Apple이 생성한 channelId 사용
+      // 모든 참가자가 동일한 채널을 구독하여 업데이트 수신
       let activity = try Activity.request(
         attributes: attributes,
         content: content,
-        pushType: nil
+        pushType: .channel(attributes.channelId)
       )
 
       return activity.id
@@ -156,6 +189,52 @@ extension LiveActivityClient: DependencyKey {
     clearETAUpdate: {
       UserDefaults(suiteName: LiveActivityIntentKey.suiteName)?
         .removeObject(forKey: LiveActivityIntentKey.etaUpdateKey)
+    },
+
+    observeStateUpdates: { promiseId in
+      guard let activity = Activity<PromiseActivityAttributes>.activities
+        .first(where: { $0.attributes.promiseId == promiseId }) else {
+        return nil
+      }
+
+      return AsyncStream { continuation in
+        let task = Task {
+          for await state in activity.contentStateUpdates {
+            continuation.yield(state)
+          }
+          continuation.finish()
+        }
+
+        continuation.onTermination = { _ in
+          task.cancel()
+        }
+      }
+    },
+
+    // MARK: - Push to Start
+
+    pushToStartToken: {
+      for await tokenData in Activity<PromiseActivityAttributes>.pushToStartTokenUpdates {
+        let tokenString = tokenData.map { String(format: "%02x", $0) }.joined()
+        return tokenString
+      }
+      return nil
+    },
+
+    observePushToStartTokenUpdates: {
+      AsyncStream { continuation in
+        let task = Task {
+          for await tokenData in Activity<PromiseActivityAttributes>.pushToStartTokenUpdates {
+            let tokenString = tokenData.map { String(format: "%02x", $0) }.joined()
+            continuation.yield(tokenString)
+          }
+          continuation.finish()
+        }
+
+        continuation.onTermination = { _ in
+          task.cancel()
+        }
+      }
     }
   )
 }

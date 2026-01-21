@@ -5,6 +5,7 @@ import FirebaseAuth
 import Foundation
 import GoogleSignIn
 import GoogleSignInSwift
+import PromisoShared
 import UIKit
 
 // MARK: - Error
@@ -216,17 +217,26 @@ public struct PlatformAuthProvider: PlatformAuthProviding, Sendable {
   }
 }
 
-// MARK: - Client₩
+// MARK: - Client
 public struct AuthClient: Sendable {
   private let session = InMemoryAuthSession()
   private let provider = PlatformAuthProvider()
-  
+
   public var logout: @Sendable () async throws -> Void
   public var currentUser: @Sendable () async -> FirebaseUserSnapshot? = { nil }
   public var isAuthenticated: @Sendable () async -> Bool = { false }
   public var signInWithApple: @Sendable (_ authorization: ASAuthorization, _ nonce: String) async throws -> ServiceTokenBundle
   public var signInWithGoogle: @Sendable () async throws -> ServiceTokenBundle
   public var clearSession: @Sendable () async -> Void
+
+  // MARK: - Widget Token Management
+
+  /// Widget/LiveActivity Extension용 Firebase ID Token을 App Group에 저장
+  /// - 로그인 후, 앱 활성화 시 호출 필요
+  public var refreshWidgetAuthToken: @Sendable () async -> Void
+
+  /// App Group에 저장된 Widget 토큰 삭제 (로그아웃 시)
+  public var clearWidgetAuthToken: @Sendable () -> Void
 }
 
 // MARK: - Test / Preview
@@ -264,16 +274,20 @@ extension AuthClient: TestDependencyKey {
         isNewUser: false
       )
     },
-    clearSession: {}
+    clearSession: {},
+    refreshWidgetAuthToken: {},
+    clearWidgetAuthToken: {}
   )
-  
+
   public static let testValue = Self(
     logout: unimplemented("\(Self.self).logout"),
     currentUser: unimplemented("\(Self.self).currentUser", placeholder: nil),
     isAuthenticated: unimplemented("\(Self.self).isAuthenticated", placeholder: false),
     signInWithApple: unimplemented("\(Self.self).signInWithApple"),
     signInWithGoogle: unimplemented("\(Self.self).signInWithGoogle"),
-    clearSession: unimplemented("\(Self.self).clearSession")
+    clearSession: unimplemented("\(Self.self).clearSession"),
+    refreshWidgetAuthToken: unimplemented("\(Self.self).refreshWidgetAuthToken"),
+    clearWidgetAuthToken: unimplemented("\(Self.self).clearWidgetAuthToken")
   )
 }
 
@@ -393,9 +407,71 @@ extension AuthClient: DependencyKey {
       },
       clearSession: {
         await session.logout()
+      },
+      refreshWidgetAuthToken: {
+        // Widget/LiveActivity Extension용 Firebase ID Token 갱신 및 저장
+        guard let user = Auth.auth().currentUser else {
+          // 로그인 안 됨 - 토큰 삭제
+          WidgetAuthTokenStore.clear()
+          return
+        }
+
+        do {
+          let token = try await user.getIDToken()
+          WidgetAuthTokenStore.save(token: token, userId: user.uid)
+        } catch {
+          #if DEBUG
+          print("[AuthClient] Widget 토큰 갱신 실패: \(error)")
+          #endif
+        }
+      },
+      clearWidgetAuthToken: {
+        WidgetAuthTokenStore.clear()
       }
     )
   }()
+}
+
+// MARK: - Widget Auth Token Store
+
+/// Widget/LiveActivity Extension과 공유하는 Auth Token 저장소
+private enum WidgetAuthTokenStore {
+  /// Token 유효 시간 (Firebase ID Token은 1시간)
+  private static let tokenValiditySeconds: TimeInterval = 3600
+
+  static func save(token: String, userId: String) {
+    guard let defaults = UserDefaults(suiteName: LiveActivityIntentKey.suiteName) else { return }
+
+    let expiry = Date().addingTimeInterval(tokenValiditySeconds)
+
+    defaults.set(token, forKey: LiveActivityIntentKey.authTokenKey)
+    defaults.set(expiry, forKey: LiveActivityIntentKey.authTokenExpiryKey)
+
+    // APNs 환경도 함께 저장 (Widget에서 백엔드 호출 시 사용)
+    let apnsEnvironment = APNsEnvironment.current.apiValue
+    defaults.set(apnsEnvironment, forKey: LiveActivityIntentKey.apnsEnvironmentKey)
+
+    // Firebase Project ID 저장 (Widget에서 HTTP 호출용)
+    if let projectId = FirebaseApp.app()?.options.projectID {
+      defaults.set(projectId, forKey: LiveActivityIntentKey.firebaseProjectIdKey)
+    }
+
+    #if DEBUG
+    print("[WidgetAuthTokenStore] 토큰 저장 완료 (만료: \(expiry), APNs: \(apnsEnvironment))")
+    #endif
+  }
+
+  static func clear() {
+    guard let defaults = UserDefaults(suiteName: LiveActivityIntentKey.suiteName) else { return }
+
+    defaults.removeObject(forKey: LiveActivityIntentKey.authTokenKey)
+    defaults.removeObject(forKey: LiveActivityIntentKey.authTokenExpiryKey)
+    defaults.removeObject(forKey: LiveActivityIntentKey.apnsEnvironmentKey)
+
+    #if DEBUG
+    print("[WidgetAuthTokenStore] 토큰 삭제 완료")
+    #endif
+  }
 }
 
 // MARK: - Dependency Registration
@@ -441,28 +517,4 @@ private extension ProviderTokenBundle {
       )
     }
   }
-}
-
-private func printUser(_ user: User) {
-  print("=== Firebase User Info ===")
-  print("UID: \(user.uid)")
-  print("Email: \(user.email ?? "nil")")
-  print("Display Name: \(user.displayName ?? "nil")")
-  print("Photo URL: \(user.photoURL?.absoluteString ?? "nil")")
-  print("Phone Number: \(user.phoneNumber ?? "nil")")
-  print("Provider ID: \(user.providerID)")
-  print("Is Anonymous: \(user.isAnonymous)")
-  print("Is Email Verified: \(user.isEmailVerified)")
-  print("Metadata:")
-  print("  - Creation Date: \(user.metadata.creationDate ?? Date())")
-  print("  - Last Sign In: \(user.metadata.lastSignInDate ?? Date())")
-  print("Provider Data:")
-  user.providerData.forEach { info in
-    print("  - Provider: \(info.providerID)")
-    print("    UID: \(info.uid)")
-    print("    Email: \(info.email ?? "nil")")
-    print("    Display Name: \(info.displayName ?? "nil")")
-    print("    Photo URL: \(info.photoURL?.absoluteString ?? "nil")")
-  }
-  print("========================")
 }

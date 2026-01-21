@@ -53,6 +53,13 @@ enum Dependencies {
     )
   }
 
+  static func lottie() -> Package.Dependency {
+    .package(
+      url: "https://github.com/airbnb/lottie-spm",
+      .upToNextMajor(from: "4.5.1")
+    )
+  }
+
   // MARK: - All Dependencies
   static var all: [Package.Dependency] { [
     tca(),
@@ -61,6 +68,7 @@ enum Dependencies {
     google(),
     nuke(),
     clarity(),
+    lottie(),
   ]}
 }
 

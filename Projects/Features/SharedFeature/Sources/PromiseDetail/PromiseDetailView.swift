@@ -3,6 +3,7 @@ import UIKit
 import ComposableArchitecture
 import Clients
 import PromisoShared
+import ResourceKit
 
 extension PromiseDetail {
   public struct RootView: View {
@@ -19,8 +20,8 @@ extension PromiseDetail {
         VStack(spacing: 24) {
           headerSection
           scheduleSection
-          responseSection
           participantsSection
+          responseSection
           liveActivitySection
         }
         .padding(.horizontal, 20)
@@ -66,29 +67,26 @@ extension PromiseDetail {
     // MARK: - Header Section
 
     private var headerSection: some View {
-      HStack(alignment: .top, spacing: 12) {
+      VStack(spacing: 16) {
         // 이모지
         Text(store.promise.displayEmoji)
-          .font(.system(size: 44))
+          .font(.system(size: 64))
 
-        // 제목 + 설명
-        VStack(alignment: .leading, spacing: 6) {
-          Text(store.promise.title)
-            .font(.system(size: 20, weight: .bold))
-            .foregroundStyle(.primary)
+        // 제목
+        Text(store.promise.title)
+          .font(.system(size: 24, weight: .bold))
+          .multilineTextAlignment(.center)
 
-          if let description = store.promise.description, !description.isEmpty {
-            ExpandableText(text: description, isExpanded: $isDescriptionExpanded)
-          }
+        // 설명
+        if let description = store.promise.description, !description.isEmpty {
+          ExpandableText(text: description, isExpanded: $isDescriptionExpanded)
         }
 
-        Spacer()
-
-        // 상태 배지 (우측 상단)
+        // 상태 배지
         StatusBadgeView(status: store.responseStatus)
       }
-      .padding(16)
-      .adaptiveGlassCard()
+      .frame(maxWidth: .infinity)
+      .padding(.vertical, 20)
     }
 
     // MARK: - Schedule Section
@@ -134,32 +132,9 @@ extension PromiseDetail {
               value: deadline
             )
           }
-
-          Divider().padding(.leading, 44)
-
-          // 최소 확정 인원
-          EmojiInfoRow(
-            emoji: "👥",
-            title: "최소 확정 인원",
-            value: "\(store.promise.minimumParticipants)명"
-          )
-
-          Divider().padding(.leading, 44)
-
-          // 실시간 공유 시작
-          EmojiInfoRow(
-            emoji: "📡",
-            title: "실시간 공유",
-            value: formatRealtimeShareTime(store.promise.startAt)
-          )
         }
-        .adaptiveGlassCard()
+        .glassCard()
       }
-    }
-
-    private func formatRealtimeShareTime(_ startAt: Date) -> String {
-      let shareStartTime = startAt.addingTimeInterval(-1800) // 30분 전
-      return "\(KoreanDateFormatters.time.string(from: shareStartTime))부터"
     }
 
     // MARK: - Participants Section
@@ -168,7 +143,7 @@ extension PromiseDetail {
       VStack(spacing: 0) {
         SectionHeader(
           title: "참여자",
-          trailing: "\(store.promise.votes.acceptedCount)/\(store.groupMembers?.count ?? 0)명 참여"
+          trailing: "\(store.promise.votes.acceptedCount)/\(store.promise.minimumParticipants)명"
         )
 
         VStack(spacing: 12) {
@@ -234,18 +209,52 @@ extension PromiseDetail {
     // MARK: - Response Section
 
     private var responseSection: some View {
-      VStack(spacing: 0) {
+      VStack(spacing: 12) {
         SectionHeader(title: "내 응답")
 
-        ResponseBubblePicker(
-          currentStatus: store.myVoteStatus,
-          respondingState: store.respondingState,
-          onAccept: { store.send(.view(.acceptTapped)) },
-          onPending: { store.send(.view(.resetTapped)) },
-          onDecline: { store.send(.view(.rejectTapped)) }
-        )
-        .padding(16)
-        .adaptiveGlassCard()
+        HStack(spacing: 12) {
+          // 수락 버튼
+          ResponseButton(
+            title: "참여",
+            icon: "checkmark.circle.fill",
+            color: .green,
+            isSelected: store.myVoteStatus == .accepted,
+            isLoading: store.respondingState == .accepting
+          ) {
+            store.send(.view(.acceptTapped))
+          }
+
+          // 거절 버튼
+          ResponseButton(
+            title: "불참",
+            icon: "xmark.circle.fill",
+            color: .red,
+            isSelected: store.myVoteStatus == .declined,
+            isLoading: store.respondingState == .rejecting
+          ) {
+            store.send(.view(.rejectTapped))
+          }
+        }
+
+        // 되돌리기 버튼
+        if store.myVoteStatus != .pending {
+          Button {
+            store.send(.view(.resetTapped))
+          } label: {
+            HStack(spacing: 6) {
+              if store.respondingState == .resetting {
+                ProgressView()
+                  .progressViewStyle(CircularProgressViewStyle(tint: .secondary))
+                  .scaleEffect(0.8)
+              }
+              Text("미정으로 되돌리기")
+                .font(.system(size: 14, weight: .medium))
+            }
+            .foregroundStyle(.secondary)
+          }
+          .disabled(store.respondingState != .idle)
+          .padding(.top, 4)
+        }
       }
     }
 
@@ -255,12 +264,12 @@ extension PromiseDetail {
     private var liveActivitySection: some View {
       // 조건: 확정됨 + 30분 이내 + 내가 참여 중
       if store.promise.isConfirmed && store.promise.isRealtimeShareable && store.isParticipating {
-        VStack(spacing: 0) {
+        VStack(spacing: 12) {
           SectionHeader(title: "실시간 공유")
 
-          VStack(spacing: 12) {
-            if store.isLiveActivityActive {
-              // 활성화 상태: 도착 버튼 + 종료 버튼
+          if store.isLiveActivityActive {
+            // 활성화 상태: 도착 버튼 + 종료 버튼
+            VStack(spacing: 12) {
               Button {
                 store.send(.view(.markArrivedTapped))
               } label: {
@@ -292,30 +301,21 @@ extension PromiseDetail {
                 .foregroundStyle(.red)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
               }
-            } else {
-              // 비활성화 상태: 시작 버튼
-              Button {
-                store.send(.view(.liveActivityStartTapped))
-              } label: {
-                HStack(spacing: 8) {
-                  if store.isStartingLiveActivity {
-                    ProgressView()
-                      .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                      .scaleEffect(0.8)
-                  } else {
-                    Image(systemName: "dot.radiowaves.left.and.right")
-                      .font(.system(size: 18))
-                  }
-                  Text("실시간 공유 시작")
-                    .font(.system(size: 16, weight: .semibold))
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(Color.pmindigo.n500)
-                .foregroundStyle(.white)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+          } else {
+            // iOS 18 Broadcast 방식: 예약 시간에 자동 시작됨
+            VStack(spacing: 8) {
+              HStack(spacing: 8) {
+                Image(systemName: "dot.radiowaves.left.and.right")
+                  .font(.system(size: 18))
+                  .foregroundStyle(Color.pmindigo.n500)
+                Text("약속 시간에 자동으로 시작됩니다")
+                  .font(.system(size: 15, weight: .medium))
               }
-              .disabled(store.isStartingLiveActivity)
+              .frame(maxWidth: .infinity)
+              .padding(.vertical, 14)
+              .background(Color.pmindigo.n500.opacity(0.1))
+              .clipShape(RoundedRectangle(cornerRadius: 12))
 
               Text("Dynamic Island에서 도착 현황을 확인할 수 있어요")
                 .font(.system(size: 13))
@@ -323,8 +323,6 @@ extension PromiseDetail {
                 .multilineTextAlignment(.center)
             }
           }
-          .padding(16)
-          .adaptiveGlassCard()
         }
       }
     }
@@ -406,11 +404,11 @@ private struct ExpandableText: View {
   private let lineLimit = 3
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 4) {
+    VStack(spacing: 4) {
       Text(text)
-        .font(.system(size: 14))
+        .font(.system(size: 15))
         .foregroundStyle(.secondary)
-        .multilineTextAlignment(.leading)
+        .multilineTextAlignment(.center)
         .lineLimit(isExpanded ? nil : lineLimit)
         .background(
           GeometryReader { geometry in
@@ -428,7 +426,7 @@ private struct ExpandableText: View {
         } label: {
           Text(isExpanded ? "접기" : "더보기")
             .font(.system(size: 13, weight: .medium))
-            .foregroundStyle(.blue)
+            .foregroundStyle(Color.pmindigo.n500)
         }
       }
     }
@@ -550,10 +548,9 @@ private struct ParticipantGroupRow: View {
           .font(.system(size: 12, weight: .semibold))
           .foregroundStyle(.tertiary)
       }
-      .contentShape(Rectangle())
       .padding(.horizontal, 16)
       .padding(.vertical, 12)
-      .adaptiveGlassCard()
+      .glassCard()
     }
     .buttonStyle(.plain)
   }
@@ -565,8 +562,6 @@ private struct MemberListSheet: View {
   let title: String
   let members: [UserPublicModel]
   let colorType: PromiseDetail.Feature.ParticipantColorType
-
-  @State private var selectedMember: UserPublicModel?
 
   private var color: Color {
     switch colorType {
@@ -581,9 +576,7 @@ private struct MemberListSheet: View {
       ScrollView {
         LazyVStack(spacing: 0) {
           ForEach(members) { member in
-            MemberRow(member: member, color: color) {
-              selectedMember = member
-            }
+            MemberRow(member: member, color: color)
 
             if member.id != members.last?.id {
               Divider()
@@ -598,20 +591,12 @@ private struct MemberListSheet: View {
     }
     .presentationDetents([.medium, .large])
     .presentationDragIndicator(.visible)
-    .fullScreenCover(item: $selectedMember) { member in
-      ImageDetailView(
-        imageUrl: member.profileImageUrl,
-        displayName: member.displayName,
-        onDismiss: { selectedMember = nil }
-      )
-    }
   }
 }
 
 private struct MemberRow: View {
   let member: UserPublicModel
   let color: Color
-  let onProfileTap: () -> Void
 
   var body: some View {
     HStack(spacing: 16) {
@@ -619,8 +604,7 @@ private struct MemberRow: View {
         profileImageUrl: member.profileImageUrl,
         displayName: member.displayName,
         size: 48,
-        borderWidth: 0,
-        onTap: onProfileTap
+        borderWidth: 0
       )
 
       VStack(alignment: .leading, spacing: 4) {
@@ -646,210 +630,36 @@ private struct MemberRow: View {
   }
 }
 
-
-// MARK: - Response Bubble Picker
-
-private struct ResponseBubblePicker: View {
-  let currentStatus: VoteStatus
-  let respondingState: PromiseDetail.Feature.RespondingState
-  let onAccept: () -> Void
-  let onPending: () -> Void
-  let onDecline: () -> Void
-
-  @State private var isExpanded = false
-  private let feedbackGenerator = UIImpactFeedbackGenerator(style: .medium)
-  private let selectionFeedback = UIImpactFeedbackGenerator(style: .heavy)
-
-  private var isLoading: Bool {
-    respondingState != .idle
-  }
-
-  private var statusColor: Color {
-    switch currentStatus {
-    case .accepted: return .green
-    case .pending: return Color(.systemGray)
-    case .declined: return .red
-    }
-  }
-
-  private var statusIcon: String {
-    switch currentStatus {
-    case .accepted: return "checkmark"
-    case .pending: return "minus"
-    case .declined: return "xmark"
-    }
-  }
-
-  private var statusText: String {
-    switch currentStatus {
-    case .accepted: return "참여"
-    case .pending: return "미정"
-    case .declined: return "불참"
-    }
-  }
-
-  var body: some View {
-    // 현재 상태 버튼
-    Button {
-      guard !isLoading else { return }
-      feedbackGenerator.impactOccurred()
-      isExpanded = true
-    } label: {
-      HStack(spacing: 10) {
-        ZStack {
-          Circle()
-            .fill(statusColor)
-            .frame(width: 32, height: 32)
-
-          if isLoading {
-            ProgressView()
-              .progressViewStyle(CircularProgressViewStyle(tint: .white))
-              .scaleEffect(0.7)
-          } else {
-            Image(systemName: statusIcon)
-              .font(.system(size: 14, weight: .bold))
-              .foregroundStyle(.white)
-          }
-        }
-
-        Text(statusText)
-          .font(.system(size: 16, weight: .semibold))
-
-        Spacer()
-
-        Text("변경")
-          .font(.system(size: 14, weight: .medium))
-          .foregroundStyle(.secondary)
-      }
-      .padding(.horizontal, 16)
-      .padding(.vertical, 12)
-      .background(
-        RoundedRectangle(cornerRadius: 16)
-          .fill(Color(.secondarySystemBackground))
-      )
-      .overlay(
-        RoundedRectangle(cornerRadius: 16)
-          .stroke(Color(.separator).opacity(0.3), lineWidth: 1)
-      )
-    }
-    .buttonStyle(.plain)
-    .disabled(isLoading)
-    .popover(isPresented: $isExpanded, arrowEdge: .bottom) {
-      ResponsePopoverContent(
-        currentStatus: currentStatus,
-        respondingState: respondingState,
-        onSelect: { status in
-          selectOption(status)
-        }
-      )
-      .presentationCompactAdaptation(.popover)
-    }
-  }
-
-  private func selectOption(_ status: VoteStatus) {
-    guard currentStatus != status else {
-      isExpanded = false
-      return
-    }
-
-    selectionFeedback.impactOccurred()
-
-    switch status {
-    case .accepted:
-      onAccept()
-    case .pending:
-      onPending()
-    case .declined:
-      onDecline()
-    }
-
-    isExpanded = false
-  }
-}
-
-private struct ResponsePopoverContent: View {
-  let currentStatus: VoteStatus
-  let respondingState: PromiseDetail.Feature.RespondingState
-  let onSelect: (VoteStatus) -> Void
-
-  var body: some View {
-    HStack(spacing: 20) {
-      PopoverBubble(
-        icon: "checkmark",
-        title: "참여",
-        color: .green,
-        isSelected: currentStatus == .accepted,
-        isLoading: respondingState == .accepting
-      ) {
-        onSelect(.accepted)
-      }
-
-      PopoverBubble(
-        icon: "minus",
-        title: "미정",
-        color: Color(.systemGray),
-        isSelected: currentStatus == .pending,
-        isLoading: respondingState == .resetting
-      ) {
-        onSelect(.pending)
-      }
-
-      PopoverBubble(
-        icon: "xmark",
-        title: "불참",
-        color: .red,
-        isSelected: currentStatus == .declined,
-        isLoading: respondingState == .rejecting
-      ) {
-        onSelect(.declined)
-      }
-    }
-    .padding(.horizontal, 24)
-    .padding(.vertical, 16)
-  }
-}
-
-private struct PopoverBubble: View {
-  let icon: String
+private struct ResponseButton: View {
   let title: String
+  let icon: String
   let color: Color
   let isSelected: Bool
   let isLoading: Bool
   let action: () -> Void
 
-  private let feedbackGenerator = UIImpactFeedbackGenerator(style: .light)
-
   var body: some View {
-    Button {
-      feedbackGenerator.impactOccurred()
-      action()
-    } label: {
-      VStack(spacing: 8) {
-        ZStack {
-          Circle()
-            .fill(isSelected ? color : color.opacity(0.15))
-            .frame(width: 56, height: 56)
-
-          if isLoading {
-            ProgressView()
-              .progressViewStyle(CircularProgressViewStyle(tint: isSelected ? .white : color))
-              .scaleEffect(0.9)
-          } else {
-            Image(systemName: icon)
-              .font(.system(size: 22, weight: .bold))
-              .foregroundStyle(isSelected ? .white : color)
-          }
+    Button(action: action) {
+      HStack(spacing: 8) {
+        if isLoading {
+          ProgressView()
+            .progressViewStyle(CircularProgressViewStyle(tint: isSelected ? .white : color))
+            .scaleEffect(0.8)
+        } else {
+          Image(systemName: icon)
+            .font(.system(size: 18))
         }
-        .shadow(color: isSelected ? color.opacity(0.3) : .clear, radius: 6, y: 3)
 
         Text(title)
-          .font(.system(size: 13, weight: isSelected ? .semibold : .medium))
-          .foregroundStyle(isSelected ? color : .secondary)
+          .font(.system(size: 16, weight: .semibold))
       }
+      .frame(maxWidth: .infinity)
+      .padding(.vertical, 14)
+      .background(isSelected ? color : color.opacity(0.1))
+      .foregroundStyle(isSelected ? .white : color)
+      .clipShape(RoundedRectangle(cornerRadius: 12))
     }
-    .disabled(isLoading)
-    .scaleEffect(isSelected ? 1.05 : 1.0)
-    .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
+    .disabled(isLoading || isSelected)
   }
 }
 
@@ -872,9 +682,9 @@ private struct StatusBadgeView: View {
   private var color: Color {
     switch status {
     case .needResponse:
-      return .orange
+      return Color.pmwarning.n500
     case .responded:
-      return .blue
+      return Color.pmindigo.n500
     case .confirmed:
       return .green
     case .failed:
@@ -897,3 +707,16 @@ private struct StatusBadgeView: View {
   }
 }
 
+// MARK: - Glass Card Modifier
+
+private extension View {
+  func glassCard() -> some View {
+    self
+      .background(Color(.systemBackground).opacity(0.8))
+      .clipShape(RoundedRectangle(cornerRadius: 12))
+      .overlay(
+        RoundedRectangle(cornerRadius: 12)
+          .stroke(Color(.systemGray5), lineWidth: 1)
+      )
+  }
+}

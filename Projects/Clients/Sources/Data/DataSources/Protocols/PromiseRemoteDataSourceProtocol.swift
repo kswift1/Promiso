@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import PromisoShared
 
 // MARK: - Promise Remote Data Source Protocol
 
@@ -23,4 +24,19 @@ public protocol PromiseRemoteDataSourceProtocol {
 
   // MARK: - Real-time Listener
   func subscribeToActivePromises(groupId: String, limit: Int) -> AsyncStream<[PromiseModel]>
+
+  // MARK: - Live Activity
+  /// LiveActivity 시작 요청 (백엔드에서 Push to Start APNs 전송)
+  func startLiveActivity(promiseId: String) async throws
+
+  /// ETA 업데이트 요청 (백엔드에서 APNs 브로드캐스트)
+  /// Firestore 없이 클라이언트에서 전달한 데이터로 Broadcast만 전송
+  func updateETA(
+    channelId: String,
+    participants: [ParticipantState],
+    trackingDurationMinutes: Int
+  ) async throws
+
+  // endLiveActivity 제거됨 - APNs dismissal-date로 auto-dismiss 처리
+  // registerLiveActivityToken 제거됨 - iOS 18 Broadcast 방식으로 전환
 }

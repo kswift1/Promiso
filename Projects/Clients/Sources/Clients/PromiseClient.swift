@@ -111,6 +111,24 @@ public struct PromiseClient: Sendable {
 
   /// 약속 응답
   public var respondPromise: @Sendable (_ promiseId: String, _ status: PromiseAttendanceStatus) async throws -> Void
+
+  // MARK: - Live Activity
+
+  /// LiveActivity 시작 요청 (백엔드에서 Push to Start APNs 전송)
+  public var startLiveActivity: @Sendable (_ promiseId: String) async throws -> Void
+
+  /// ETA 업데이트 요청 (백엔드에서 APNs 브로드캐스트)
+  /// Firestore 없이 클라이언트에서 전달한 데이터로 Broadcast만 전송
+  public var updateETA: @Sendable (
+    _ channelId: String,
+    _ participants: [ParticipantState],
+    _ trackingDurationMinutes: Int
+  ) async throws -> Void
+
+  // endLiveActivity 제거됨 - APNs dismissal-date로 auto-dismiss 처리
+
+  // registerLiveActivityToken 제거됨 - iOS 18 Broadcast 방식으로 전환
+  // Broadcast는 채널 기반이므로 개별 토큰 관리 불필요
 }
 
 // MARK: - Test & Preview Values
@@ -167,7 +185,14 @@ extension PromiseClient: TestDependencyKey {
     },
     respondPromise: { _, _ in
       try await Task.sleep(for: .seconds(0.3))
+    },
+    startLiveActivity: { _ in
+      try await Task.sleep(for: .seconds(0.5))
+    },
+    updateETA: { _, _, _  in
+      try await Task.sleep(for: .seconds(0.3))
     }
+    // endLiveActivity 제거됨 - APNs dismissal-date로 auto-dismiss 처리
   )
 }
 
@@ -233,7 +258,18 @@ extension PromiseClient: DependencyKey {
           promiseId: promiseId,
           status: status.rawValue
         )
+      },
+      startLiveActivity: { promiseId in
+        try await dataSource.startLiveActivity(promiseId: promiseId)
+      },
+      updateETA: { channelId, participants, trackingDurationMinutes in
+        try await dataSource.updateETA(
+          channelId: channelId,
+          participants: participants,
+          trackingDurationMinutes: trackingDurationMinutes
+        )
       }
+      // endLiveActivity 제거됨 - APNs dismissal-date로 auto-dismiss 처리
     )
   }()
 }

@@ -14,6 +14,7 @@
      - [3-1. votes (Map)](#3-1-promisespromiseidvotes-map)
      - [3-2. location (Map)](#3-2-promisespromiseidlocation-map)
    - [4. notifications](#4-notifications-컬렉션)
+   - [5. liveActivities](#5-liveactivities-컬렉션)
 4. [쿼리 패턴](#쿼리-패턴)
 5. [보안 규칙](#보안-규칙)
 6. [인덱스 설정](#인덱스-설정)
@@ -59,8 +60,12 @@ Firestore Root
 │     └─ location (Map)             # 장소 정보 (선택)
 │                                   # { name: "..." }
 │
-└─ notifications/                   # 알림 정보
-   └─ {notificationId}/             # 알림 문서
+├─ notifications/                   # 알림 정보
+│  └─ {notificationId}/             # 알림 문서
+│
+└─ liveActivities/                  # LiveActivity 상태 정보
+   └─ {promiseId}/                  # 약속별 LiveActivity 상태
+      └─ participants (Array)       # 참가자별 ETA 상태
 ```
 
 ---
@@ -115,6 +120,8 @@ Firestore Root
 | `platform` | String | ✅ | 플랫폼 (`ios` \| `android`) |
 | `lastActiveAt` | Timestamp | ✅ | 마지막 활성 시각 |
 | `createdAt` | Timestamp | ✅ | 토큰 등록 시각 |
+| `liveActivityPushToStartToken` | String | ❌ | LiveActivity Push to Start 토큰 (iOS 17.2+) |
+| `liveActivityPushToken` | String | ❌ | LiveActivity Push 토큰 (개별 Activity용) |
 
 > 💡 **Key**: 디바이스 고유 ID (UUID, 앱 설치 시 생성)
 
@@ -474,6 +481,9 @@ promises/{promiseId}
 | `startAt` | Timestamp | ✅ | - | 시작 시각 |
 | `endAt` | Timestamp | ❌ | null | 종료 시각 |
 | `location` | Location | ❌ | null | 장소 정보 (하단 참조) |
+| `trackingStartMinutesBefore` | Number | ❌ | null | LiveActivity 시작 시간 (약속 N분 전) |
+| `liveActivityScheduled` | Boolean | ❌ | false | LiveActivity 예약 완료 여부 |
+| `liveActivityScheduledAt` | Timestamp | ❌ | null | LiveActivity 예약 시각 |
 | `createdAt` | Timestamp | ✅ | - | 생성 시각 |
 | `updatedAt` | Timestamp | ✅ | - | 수정 시각 |
 | `isDeleted` | Boolean | ✅ | false | 삭제 여부 (소프트 삭제) |
@@ -702,6 +712,63 @@ notifications/{notificationId}
   "data": null
 }
 ```
+
+---
+
+### 5. liveActivities (컬렉션)
+
+LiveActivity 실시간 상태 정보를 저장합니다. Firebase Functions에서 ETA 업데이트 시 생성/수정됩니다.
+
+#### 📍 문서 경로
+
+```
+liveActivities/{promiseId}
+```
+
+#### 🔑 문서 ID
+
+- 약속 ID 사용 (promises 컬렉션과 1:1 매핑)
+- 예시: `xYz9Abc123Def456`
+
+#### 📊 필드 구조
+
+| 필드명 | 타입 | 필수 | 설명 |
+|--------|------|------|------|
+| `promiseId` | String | ✅ | 약속 ID |
+| `participants` | Array<ParticipantState> | ✅ | 참가자별 ETA 상태 |
+| `trackingDurationMinutes` | Number | ✅ | 추적 시간 (기본 30분) |
+| `createdAt` | Timestamp | ✅ | 생성 시각 |
+| `updatedAt` | Timestamp | ✅ | 마지막 업데이트 시각 |
+
+#### 📦 ParticipantState
+
+| 필드명 | 타입 | 필수 | 설명 |
+|--------|------|------|------|
+| `id` | String | ✅ | 참가자 userId |
+| `name` | String | ✅ | 참가자 표시 이름 |
+| `estimatedArrivalMinutes` | Number \| null | ✅ | ETA (null=대기, 0=도착, N=N분 후) |
+
+#### 📝 예시 데이터
+
+```json
+{
+  "promiseId": "xYz9Abc123Def456",
+  "participants": [
+    {"id": "user_kim123", "name": "김민수", "estimatedArrivalMinutes": 0},
+    {"id": "user_lee456", "name": "이지현", "estimatedArrivalMinutes": 5},
+    {"id": "user_park789", "name": "박서연", "estimatedArrivalMinutes": null}
+  ],
+  "trackingDurationMinutes": 30,
+  "createdAt": "2024-01-15T18:00:00+09:00",
+  "updatedAt": "2024-01-15T18:30:00+09:00"
+}
+```
+
+#### 💡 설계 의도
+
+- **임시 데이터**: LiveActivity가 종료되면 문서 삭제
+- **APNs 동기화**: updateETA 호출 시 이 문서를 업데이트하고 APNs로 브로드캐스트
+- **단일 문서**: 약속당 하나의 문서로 모든 참가자 상태 관리
 
 ---
 

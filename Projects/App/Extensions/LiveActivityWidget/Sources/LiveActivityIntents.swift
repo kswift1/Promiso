@@ -1,7 +1,12 @@
 import ActivityKit
 import AppIntents
 import Foundation
+import os.log
 import PromisoShared
+
+// MARK: - Widget Logger
+
+private let logger = Logger(subsystem: "com.promiso.widget", category: "LiveActivity")
 
 // MARK: - Update ETA Intent
 
@@ -10,8 +15,8 @@ struct UpdateETAIntent: LiveActivityIntent {
   static var title: LocalizedStringResource = "도착 예상 시간 변경"
   static var description = IntentDescription("도착 예상 시간을 변경합니다")
 
-  @Parameter(title: "약속 ID")
-  var promiseId: String
+  @Parameter(title: "채널 ID")
+  var channelId: String
 
   @Parameter(title: "사용자 ID")
   var userId: String
@@ -19,84 +24,119 @@ struct UpdateETAIntent: LiveActivityIntent {
   @Parameter(title: "도착 예상 시간 (분)")
   var estimatedMinutes: Int
 
+  @Parameter(title: "추적 시간 (분)")
+  var trackingDurationMinutes: Int
+
+  @Parameter(title: "참가자 JSON")
+  var participantsJSON: String
+
   init() {
-    self.promiseId = ""
+    self.channelId = ""
     self.userId = ""
     self.estimatedMinutes = 0
+    self.trackingDurationMinutes = 30
+    self.participantsJSON = "[]"
   }
 
-  init(promiseId: String, userId: String, estimatedMinutes: Int) {
-    self.promiseId = promiseId
+  init(
+    channelId: String,
+    userId: String,
+    estimatedMinutes: Int,
+    trackingDurationMinutes: Int,
+    participantsJSON: String
+  ) {
+    self.channelId = channelId
     self.userId = userId
     self.estimatedMinutes = estimatedMinutes
+    self.trackingDurationMinutes = trackingDurationMinutes
+    self.participantsJSON = participantsJSON
   }
 
   func perform() async throws -> some IntentResult {
-    // UserDefaults에 저장 (앱에서 서버 동기화용)
-    let update = ETAUpdate(
-      promiseId: promiseId,
-      userId: userId,
-      estimatedMinutes: estimatedMinutes,
-      timestamp: Date()
-    )
-    do {
-      let data = try JSONEncoder().encode(update)
-      UserDefaults(suiteName: LiveActivityIntentKey.suiteName)?
-        .set(data, forKey: LiveActivityIntentKey.etaUpdateKey)
-    } catch {
-      #if DEBUG
-      print("[LiveActivityIntent] JSON encode failed: \(error)")
-      #endif
+    // 1. channelId 확인
+    guard !channelId.isEmpty else {
+      logger.error("UpdateETA: channelId empty")
+      return .result()
     }
 
-    // Live Activity UI 즉시 업데이트
-    await updateActivityETA(
-      promiseId: promiseId,
-      participantId: userId,
-      estimatedArrivalMinutes: estimatedMinutes
+    // 2. JSON에서 participants 파싱
+    guard let data = participantsJSON.data(using: .utf8),
+          let participants = try? JSONDecoder().decode([ParticipantState].self, from: data) else {
+      logger.error("UpdateETA: JSON decode failed")
+      return .result()
+    }
+
+    // 3. 현재 사용자의 ETA를 업데이트
+    let updatedParticipants = participants.map { p in
+      if p.id == userId {
+        return ParticipantState(id: p.id, name: p.name, estimatedArrivalMinutes: estimatedMinutes)
+      }
+      return p
+    }
+
+    // 4. 서버 API 호출 → APNs Broadcast
+    await callUpdateETAFunction(
+      channelId: channelId,
+      participants: updatedParticipants,
+      trackingDurationMinutes: trackingDurationMinutes,
+      userId: userId
     )
 
     return .result()
   }
 }
 
-// MARK: - Helper
+// MARK: - Firebase Functions HTTP Client
 
-private func updateActivityETA(promiseId: String, participantId: String, estimatedArrivalMinutes: Int) async {
-  #if DEBUG
-  // 디버그 로깅
-  let debugInfo: [String: Any] = [
-    "timestamp": Date().timeIntervalSince1970,
-    "promiseId": promiseId,
-    "participantId": participantId,
-    "estimatedArrivalMinutes": estimatedArrivalMinutes,
-    "activitiesCount": Activity<PromiseActivityAttributes>.activities.count
-  ]
-  UserDefaults(suiteName: LiveActivityIntentKey.suiteName)?
-    .set(debugInfo, forKey: "liveActivity.debug.lastIntent")
-  #endif
+private func callUpdateETAFunction(
+  channelId: String,
+  participants: [ParticipantState],
+  trackingDurationMinutes: Int,
+  userId: String
+) async {
+  let region = "asia-northeast3"
+  let functionName = "widgetUpdateETA"
+  let projectId = LiveActivityIntentKey.firebaseProjectId
+  let baseURL = "https://\(region)-\(projectId).cloudfunctions.net/\(functionName)"
 
-  // promiseId로 Activity 찾기
-  guard let activity = Activity<PromiseActivityAttributes>.activities
-    .first(where: { $0.attributes.promiseId == promiseId }) else {
-    #if DEBUG
-    UserDefaults(suiteName: LiveActivityIntentKey.suiteName)?
-      .set("activity_not_found", forKey: "liveActivity.debug.error")
-    #endif
-    return
+  guard let url = URL(string: baseURL) else { return }
+
+  // App Group에서 인증 정보 읽기
+  let defaults = UserDefaults(suiteName: LiveActivityIntentKey.suiteName)
+  let authToken = defaults?.string(forKey: LiveActivityIntentKey.authTokenKey)
+
+  // participants를 서버 형식으로 변환
+  let participantsData: [[String: Any]] = participants.map { p in
+    var dict: [String: Any] = ["id": p.id, "name": p.name]
+    dict["estimatedArrivalMinutes"] = p.estimatedArrivalMinutes ?? NSNull()
+    return dict
   }
 
-  let currentState = activity.content.state
-  let updatedState = currentState.updating(
-    participantId: participantId,
-    estimatedArrivalMinutes: estimatedArrivalMinutes
-  )
-  let content = ActivityContent(state: updatedState, staleDate: nil)
+  let requestBody: [String: Any] = [
+    "channelId": channelId,
+    "participants": participantsData,
+    "trackingDurationMinutes": trackingDurationMinutes
+  ]
 
-  await activity.update(content)
+  guard let httpBody = try? JSONSerialization.data(withJSONObject: requestBody) else { return }
 
-  #if DEBUG
-  UserDefaults(suiteName: LiveActivityIntentKey.suiteName)?
-    .set("update_called", forKey: "liveActivity.debug.result")
-  #endif
+  var request = URLRequest(url: url)
+  request.httpMethod = "POST"
+  request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+  request.setValue(userId, forHTTPHeaderField: "X-User-Id")
+  request.httpBody = httpBody
+
+  if let authToken = authToken {
+    request.setValue(authToken, forHTTPHeaderField: "X-Auth-Token")
+  }
+
+  do {
+    let (data, response) = try await URLSession.shared.data(for: request)
+    if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode != 200 {
+      let body = String(data: data, encoding: .utf8) ?? ""
+      logger.error("WidgetETA failed(\(httpResponse.statusCode)): \(body)")
+    }
+  } catch {
+    logger.error("WidgetETA error: \(error.localizedDescription)")
+  }
 }

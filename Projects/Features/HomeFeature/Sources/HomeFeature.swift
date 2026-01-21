@@ -1,6 +1,9 @@
 // MARK: - HomeFeature.swift
 // TCA 1.22.2를 사용한 Home Feature의 Implementation layer
 
+import Lottie
+import ResourceKit
+
 // MARK: - Feature Namespace
 
 /// Home Feature 컴포넌트를 위한 Namespace
@@ -235,6 +238,7 @@ extension Home {
           UpcomingPromiseSection(store: store)
         }
         .padding(.top, 8)
+        .padding(.bottom, 80)
       }
       .refreshable {
         store.send(.view(.refreshTriggered))

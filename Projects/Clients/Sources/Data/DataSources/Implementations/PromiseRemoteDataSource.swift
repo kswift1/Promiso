@@ -1,8 +1,14 @@
 import Foundation
-import Combine
 import FirebaseFirestore
 import FirebaseFunctions
 import PromisoShared
+
+// MARK: - Firebase Functions 상수
+
+private enum FirebaseFunctionNames {
+  static let startLiveActivity = "startLiveActivity"
+  static let updateETA = "updateETA"
+}
 
 /// Promise 관련 Firestore CRUD 및 쿼리 작업을 담당하는 DataSource
 public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
@@ -53,6 +59,11 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
 
     if let location = promise.location, !location.name.isEmpty {
       callableData["place"] = location.name
+    }
+
+    // LiveActivity 예약 시작 시간 추가
+    if let trackingMinutes = promise.trackingStartMinutesBefore {
+      callableData["arrivalSharingTime"] = trackingMinutes
     }
 
     // env 파라미터 추가
@@ -128,6 +139,13 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
       callableData["endAt"] = dateFormatter.string(from: endAt)
     } else {
       callableData["endAt"] = NSNull()
+    }
+
+    // trackingStartMinutesBefore (실시간 공유 시작 시간)
+    if let trackingMinutes = promise.trackingStartMinutesBefore {
+      callableData["trackingStartMinutesBefore"] = trackingMinutes
+    } else {
+      callableData["trackingStartMinutesBefore"] = NSNull()
     }
 
     // env 파라미터 추가
@@ -349,6 +367,60 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
     }
   }
 
+  // MARK: - Live Activity
+
+  /// LiveActivity 시작 요청
+  /// Firebase Functions의 startLiveActivity를 호출하여 Push to Start APNs 전송
+  public func startLiveActivity(promiseId: String) async throws {
+    var callableData: [String: Any] = [
+      "promiseId": promiseId
+    ]
+
+    if let env = functionsEnvironmentParam() {
+      callableData["env"] = env
+    }
+
+    _ = try await functions.httpsCallable(FirebaseFunctionNames.startLiveActivity).call(callableData)
+  }
+
+  /// ETA 업데이트 요청
+  /// Firebase Functions의 updateETA를 호출하여 모든 참가자에게 APNs 브로드캐스트
+  /// Firestore 없이 클라이언트에서 전달한 데이터로 Broadcast만 전송
+  public func updateETA(
+    channelId: String,
+    participants: [ParticipantState],
+    trackingDurationMinutes: Int
+  ) async throws {
+    // participants를 서버 형식으로 변환
+    let participantsData: [[String: Any]] = participants.map { p in
+      var dict: [String: Any] = [
+        "id": p.id,
+        "name": p.name
+      ]
+      if let eta = p.estimatedArrivalMinutes {
+        dict["estimatedArrivalMinutes"] = eta
+      } else {
+        dict["estimatedArrivalMinutes"] = NSNull()
+      }
+      return dict
+    }
+
+    var callableData: [String: Any] = [
+      "channelId": channelId,
+      "participants": participantsData,
+      "trackingDurationMinutes": trackingDurationMinutes
+    ]
+
+    if let env = functionsEnvironmentParam() {
+      callableData["env"] = env
+    }
+
+    _ = try await functions.httpsCallable(FirebaseFunctionNames.updateETA).call(callableData)
+  }
+
+  // endLiveActivity 제거됨 - APNs dismissal-date로 auto-dismiss 처리
+  // registerLiveActivityToken 제거됨 - iOS 18 Broadcast 방식으로 전환
+
   // MARK: - Helper Methods
 
   private func documentSnapshotToPromise(_ document: DocumentSnapshot) throws -> PromiseModel? {
@@ -365,56 +437,4 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
 private func convertDocumentToPromise(_ document: QueryDocumentSnapshot) throws -> PromiseModel? {
   let dto = try document.data(as: PromiseDTO.self)
   return PromiseModel(dto: dto, id: document.documentID)
-}
-
-private class FirestoreQuerySubscription<S: Subscriber>: Subscription where S.Input == QuerySnapshot, S.Failure == Error {
-  private var listener: ListenerRegistration?
-  private let query: Query
-  private let subscriber: S
-
-  init(query: Query, subscriber: S) {
-    self.query = query
-    self.subscriber = subscriber
-  }
-
-  func request(_ demand: Subscribers.Demand) {
-    listener = query.addSnapshotListener { [weak self] snapshot, error in
-      if let error = error {
-        self?.subscriber.receive(completion: .failure(error))
-      } else if let snapshot = snapshot {
-        _ = self?.subscriber.receive(snapshot)
-      }
-    }
-  }
-
-  func cancel() {
-    listener?.remove()
-    listener = nil
-  }
-}
-
-private class FirestoreDocumentSubscription<S: Subscriber>: Subscription where S.Input == DocumentSnapshot?, S.Failure == Error {
-  private var listener: ListenerRegistration?
-  private let document: DocumentReference
-  private let subscriber: S
-
-  init(document: DocumentReference, subscriber: S) {
-    self.document = document
-    self.subscriber = subscriber
-  }
-
-  func request(_ demand: Subscribers.Demand) {
-    listener = document.addSnapshotListener { [weak self] snapshot, error in
-      if let error = error {
-        self?.subscriber.receive(completion: .failure(error))
-      } else {
-        _ = self?.subscriber.receive(snapshot)
-      }
-    }
-  }
-
-  func cancel() {
-    listener?.remove()
-    listener = nil
-  }
 }

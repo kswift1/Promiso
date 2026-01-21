@@ -1,12 +1,22 @@
 import * as admin from "firebase-admin";
 import {FieldValue} from "firebase-admin/firestore";
+import {getFunctions} from "firebase-admin/functions";
 import {setGlobalOptions} from "firebase-functions/v2";
-import {HttpsError, onCall} from "firebase-functions/v2/https";
+import {HttpsError, onCall, onRequest} from "firebase-functions/v2/https";
+import {onTaskDispatched} from "firebase-functions/v2/tasks";
+import {defineSecret} from "firebase-functions/params";
+import * as http2 from "http2";
+import * as jwt from "jsonwebtoken";
+import {GoogleGenerativeAI} from "@google/generative-ai";
+
+// APNs 인증 시크릿 (Firebase Secret Manager)
+const APNS_KEY_ID = defineSecret("APNS_KEY_ID");
+const APNS_TEAM_ID = defineSecret("APNS_TEAM_ID");
+const APNS_AUTH_KEY = defineSecret("APNS_AUTH_KEY");
 import {
   onDocumentCreated,
   onDocumentUpdated,
 } from "firebase-functions/v2/firestore";
-import {GoogleGenerativeAI} from "@google/generative-ai";
 import {
   CheckNicknameAvailableRequest,
   CheckNicknameAvailableResponse,
@@ -19,6 +29,8 @@ import {
   DeleteGroupRequest,
   DeleteGroupResponse,
   DeviceInfo,
+  // EndLiveActivityRequest 제거됨 - auto-dismiss로 대체
+  // EndLiveActivityResponse 제거됨
   GenerateEmojiRequest,
   GenerateEmojiResponse,
   GetUserRequest,
@@ -28,14 +40,24 @@ import {
   JoinGroupResponse,
   LeaveGroupRequest,
   LeaveGroupResponse,
+  LiveActivityParticipant,
   NotificationDocument,
   NotificationType,
+  // RegisterLiveActivityTokenRequest 제거됨 - iOS 18 Broadcast 방식 사용
+  // RegisterLiveActivityTokenResponse 제거됨
+  RegisterPushToStartTokenRequest,
+  RegisterPushToStartTokenResponse,
   RespondPromiseRequest,
+  ScheduledLiveActivityTaskPayload,
   RespondPromiseResponse,
   PreviewGroupRequest,
   PreviewGroupResponse,
   SendPushNotificationRequest,
   SendPushNotificationResponse,
+  StartLiveActivityRequest,
+  StartLiveActivityResponse,
+  UpdateETARequest,
+  UpdateETAResponse,
   UpdatePromiseRequest,
   UpdatePromiseResponse,
   UpdateUserRequest,
@@ -1417,6 +1439,7 @@ export const createPromise = onCall<CreatePromiseRequest>(
       startAt: startAtTimestamp,
       endAt: endAtDate ? admin.firestore.Timestamp.fromDate(endAtDate) : null,
       location: data.place ? {name: data.place} : null,
+      trackingStartMinutesBefore: data.arrivalSharingTime || null,
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
       isDeleted: false,
@@ -1756,6 +1779,12 @@ export const updatePromise = onCall<UpdatePromiseRequest>(
       data.minimumParticipants !== null;
     if (hasMinParticipants) {
       updateData.minimumParticipants = data.minimumParticipants;
+    }
+
+    // trackingStartMinutesBefore (실시간 공유 시작 시간)
+    if (data.trackingStartMinutesBefore !== undefined) {
+      updateData.trackingStartMinutesBefore =
+        data.trackingStartMinutesBefore || null;
     }
 
     // 7. Firestore 업데이트
@@ -2251,6 +2280,1047 @@ export const onGroupMemberJoined = onDocumentUpdated(
       });
     }
   },
+);
+
+// ============================================================================
+// LiveActivity Functions
+// ============================================================================
+
+// APNs Production/Development 호스트 (Push 전송용)
+const APNS_HOST_PRODUCTION = "api.push.apple.com";
+const APNS_HOST_DEVELOPMENT = "api.sandbox.push.apple.com";
+
+// APNs Channel Management 호스트 (채널 생성/삭제용)
+const CHANNEL_MGMT_HOST_PRODUCTION = "api-manage-broadcast.push.apple.com";
+const CHANNEL_MGMT_HOST_DEVELOPMENT =
+  "api-manage-broadcast.sandbox.push.apple.com";
+const CHANNEL_MGMT_PORT_PRODUCTION = 2196;
+const CHANNEL_MGMT_PORT_DEVELOPMENT = 2195;
+
+const APNS_BUNDLE_ID = "com.promiso";
+
+/**
+ * APNs JWT 토큰 생성
+ *
+ * @param {string} keyId - APNs Auth Key ID
+ * @param {string} teamId - Apple Developer Team ID
+ * @param {string} authKey - APNs Auth Key (P8 내용)
+ * @return {string} JWT 토큰
+ */
+function generateAPNsJWT(
+  keyId: string,
+  teamId: string,
+  authKey: string,
+): string {
+  const token = jwt.sign(
+    {},
+    authKey,
+    {
+      algorithm: "ES256",
+      keyid: keyId,
+      issuer: teamId,
+      expiresIn: "1h",
+      header: {
+        alg: "ES256",
+        kid: keyId,
+      },
+    },
+  );
+  return token;
+}
+
+/**
+ * APNs HTTP/2 푸시 전송
+ *
+ * @param {object} params - 파라미터
+ * @return {Promise<object>} 결과 객체
+ */
+async function sendAPNsPush(params: {
+  deviceToken: string;
+  payload: object;
+  pushType: "liveactivity";
+  topic: string;
+  apnsId?: string;
+  expiration?: number;
+  priority?: number;
+  isProduction: boolean;
+}): Promise<{success: boolean; statusCode?: number; error?: string}> {
+  const {
+    deviceToken,
+    payload,
+    pushType,
+    topic,
+    apnsId,
+    expiration,
+    priority,
+    isProduction,
+  } = params;
+
+  const host = isProduction ? APNS_HOST_PRODUCTION : APNS_HOST_DEVELOPMENT;
+  const path = `/3/device/${deviceToken}`;
+
+  // JWT 토큰 생성
+  const keyId = APNS_KEY_ID.value();
+  const teamId = APNS_TEAM_ID.value();
+  const authKey = APNS_AUTH_KEY.value().replace(/\\n/g, "\n");
+  const jwtToken = generateAPNsJWT(keyId, teamId, authKey);
+
+  return new Promise((resolve) => {
+    const client = http2.connect(`https://${host}`);
+
+    client.on("error", (err) => {
+      console.error("❌ APNs HTTP/2 connection error:", err);
+      resolve({success: false, error: err.message});
+    });
+
+    const headers: http2.OutgoingHttpHeaders = {
+      ":method": "POST",
+      ":path": path,
+      "authorization": `bearer ${jwtToken}`,
+      "apns-push-type": pushType,
+      "apns-topic": topic,
+      ...(apnsId && {"apns-id": apnsId}),
+      ...(expiration !== undefined && {
+        "apns-expiration": expiration.toString(),
+      }),
+      ...(priority !== undefined && {
+        "apns-priority": priority.toString(),
+      }),
+    };
+
+    const req = client.request(headers);
+
+    let responseData = "";
+
+    req.on("response", (headers) => {
+      const statusCode = headers[":status"] as number;
+
+      req.on("data", (chunk) => {
+        responseData += chunk;
+      });
+
+      req.on("end", () => {
+        client.close();
+
+        if (statusCode === 200) {
+          resolve({success: true, statusCode});
+        } else {
+          console.error(`❌ APNs error: ${statusCode} - ${responseData}`);
+          resolve({success: false, statusCode, error: responseData});
+        }
+      });
+    });
+
+    req.on("error", (err) => {
+      console.error("❌ APNs request error:", err);
+      client.close();
+      resolve({success: false, error: err.message});
+    });
+
+    req.write(JSON.stringify(payload));
+    req.end();
+  });
+}
+
+/**
+ * iOS 18 Broadcast APNs 채널 생성
+ * Channel Management API 사용 (별도 호스트/포트)
+ *
+ * @param {boolean} isProduction - Production 환경 여부
+ * @return {Promise<object>} 결과 객체 (channelId는 Apple이 생성해서 반환)
+ */
+async function createAPNsChannel(
+  isProduction: boolean
+): Promise<{success: boolean; channelId?: string; error?: string}> {
+  const host = isProduction ?
+    CHANNEL_MGMT_HOST_PRODUCTION : CHANNEL_MGMT_HOST_DEVELOPMENT;
+  const port = isProduction ?
+    CHANNEL_MGMT_PORT_PRODUCTION : CHANNEL_MGMT_PORT_DEVELOPMENT;
+
+  const keyId = APNS_KEY_ID.value();
+  const teamId = APNS_TEAM_ID.value();
+  const authKey = APNS_AUTH_KEY.value().replace(/\\n/g, "\n");
+
+  const path = `/1/apps/${APNS_BUNDLE_ID}/channels`;
+  const jwtToken = generateAPNsJWT(keyId, teamId, authKey);
+
+  console.log(`📡 Creating APNs channel: ${host}:${port}${path}`);
+
+  return new Promise((resolve) => {
+    const client = http2.connect(`https://${host}:${port}`);
+
+    client.on("error", (err) => {
+      console.error("❌ APNs Channel creation connection error:", err);
+      resolve({success: false, error: err.message});
+    });
+
+    const headers: http2.OutgoingHttpHeaders = {
+      ":method": "POST",
+      ":path": path,
+      "authorization": `bearer ${jwtToken}`,
+      "content-type": "application/json",
+    };
+
+    const req = client.request(headers);
+    let responseData = "";
+    let responseHeaders: http2.IncomingHttpHeaders = {};
+
+    req.on("response", (hdrs) => {
+      responseHeaders = hdrs;
+      const statusCode = hdrs[":status"] as number;
+
+      req.on("data", (chunk) => {
+        responseData += chunk;
+      });
+
+      req.on("end", () => {
+        client.close();
+
+        if (statusCode === 201 || statusCode === 200) {
+          // 채널 ID는 응답 헤더에서 추출
+          const channelId = responseHeaders["apns-channel-id"] as string;
+          if (channelId) {
+            console.log(`✅ APNs Channel created: ${channelId}`);
+            resolve({success: true, channelId});
+          } else {
+            console.warn("⚠️ Channel created but no channelId in response");
+            resolve({success: true});
+          }
+        } else {
+          console.error(
+            `❌ APNs Channel creation error: ${statusCode} - ${responseData}`
+          );
+          resolve({success: false, error: responseData});
+        }
+      });
+    });
+
+    req.on("error", (err) => {
+      console.error("❌ APNs Channel creation request error:", err);
+      client.close();
+      resolve({success: false, error: err.message});
+    });
+
+    // Apple Channel Management payload 형식
+    const payload = {
+      "push-type": "LiveActivity",
+      "message-storage-policy": 1, // 0: NoStored, 1: MostRecentStored
+    };
+    req.write(JSON.stringify(payload));
+    req.end();
+  });
+}
+
+// deleteAPNsChannel 제거됨 - 채널은 Apple에서 자동 만료 처리
+
+/**
+ * iOS 18 Broadcast APNs 푸시 전송
+ *
+ * Broadcast는 채널 기반으로 모든 구독자에게 한 번의 요청으로 전송
+ * 개별 토큰 관리 불필요
+ *
+ * @param {object} params - 파라미터
+ * @return {Promise<object>} 결과 객체
+ */
+async function sendAPNsBroadcast(params: {
+  channelId: string;
+  payload: object;
+  isProduction: boolean;
+}): Promise<{success: boolean; statusCode?: number; error?: string}> {
+  const {channelId, payload, isProduction} = params;
+
+  const host = isProduction ?
+    APNS_HOST_PRODUCTION : APNS_HOST_DEVELOPMENT;
+
+  const keyId = APNS_KEY_ID.value();
+  const teamId = APNS_TEAM_ID.value();
+  const authKey = APNS_AUTH_KEY.value().replace(/\\n/g, "\n");
+  const jwtToken = generateAPNsJWT(keyId, teamId, authKey);
+
+  // Apple Broadcast API: /4/broadcasts/apps/{bundleId}
+  const path = `/4/broadcasts/apps/${APNS_BUNDLE_ID}`;
+
+  return new Promise((resolve) => {
+    const client = http2.connect(`https://${host}`);
+
+    client.on("error", (err) => {
+      console.error("❌ APNs Broadcast connection error:", err);
+      resolve({success: false, error: err.message});
+    });
+
+    const headers: http2.OutgoingHttpHeaders = {
+      ":method": "POST",
+      ":path": path,
+      "authorization": `bearer ${jwtToken}`,
+      "content-type": "application/json",
+      "apns-push-type": "liveactivity",
+      "apns-topic": `${APNS_BUNDLE_ID}.push-type.liveactivity`,
+      "apns-channel-id": channelId,
+      "apns-priority": "10",
+      "apns-expiration": "0",
+    };
+
+    const req = client.request(headers);
+    let responseData = "";
+
+    req.on("response", (headers) => {
+      const statusCode = headers[":status"] as number;
+
+      req.on("data", (chunk) => {
+        responseData += chunk;
+      });
+
+      req.on("end", () => {
+        client.close();
+
+        if (statusCode === 200) {
+          console.log(`✅ APNs Broadcast sent: channelId=${channelId}`);
+          resolve({success: true, statusCode});
+        } else {
+          console.error(
+            `❌ APNs Broadcast error: ${statusCode} - ${responseData}`
+          );
+          resolve({success: false, statusCode, error: responseData});
+        }
+      });
+    });
+
+    req.on("error", (err) => {
+      console.error("❌ APNs Broadcast request error:", err);
+      client.close();
+      resolve({success: false, error: err.message});
+    });
+
+    req.write(JSON.stringify(payload));
+    req.end();
+  });
+}
+
+/**
+ * Push to Start 토큰 등록
+ *
+ * @remarks
+ * **인증 필수**
+ *
+ * iOS 17.2+ 디바이스에서 앱 시작 시 Push to Start 토큰을 등록합니다.
+ */
+export const registerPushToStartToken = onCall<
+  RegisterPushToStartTokenRequest
+>(
+  {
+    region: REGION,
+    secrets: [APNS_KEY_ID, APNS_TEAM_ID, APNS_AUTH_KEY],
+  },
+  async (request): Promise<RegisterPushToStartTokenResponse> => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "로그인이 필요합니다");
+    }
+
+    const userId = request.auth.uid;
+    const {token, deviceId, env} = request.data;
+
+    if (!token || !deviceId) {
+      throw new HttpsError("invalid-argument", "token과 deviceId는 필수입니다");
+    }
+
+    const db = admin.firestore();
+    const usersCollection = getEnvironmentCollection("users", db, env);
+
+    try {
+      await usersCollection.doc(userId).update({
+        [`devices.${deviceId}.liveActivityPushToStartToken`]: token,
+      });
+
+      console.log(
+        `✅ Push to Start 토큰 등록: userId=${userId}, deviceId=${deviceId}`,
+      );
+      return {success: true};
+    } catch (error) {
+      console.error("❌ Push to Start 토큰 등록 실패:", error);
+      throw new HttpsError("internal", "토큰 등록에 실패했습니다");
+    }
+  },
+);
+
+// registerLiveActivityToken 함수 제거됨 - iOS 18 Broadcast 방식 사용
+// Broadcast는 채널 기반이므로 개별 토큰 관리 불필요
+
+/**
+ * LiveActivity 시작 (Push to Start)
+ *
+ * @remarks
+ * **인증 필수**
+ *
+ * 약속 참가자(accepted) 전원에게 Push to Start APNs를 전송하여
+ * LiveActivity를 원격으로 시작합니다.
+ *
+ * @param request.data - StartLiveActivityRequest
+ * @returns StartLiveActivityResponse
+ */
+export const startLiveActivity = onCall<StartLiveActivityRequest>(
+  {
+    region: REGION,
+    secrets: [APNS_KEY_ID, APNS_TEAM_ID, APNS_AUTH_KEY],
+  },
+  async (request): Promise<StartLiveActivityResponse> => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "로그인이 필요합니다");
+    }
+
+    const userId = request.auth.uid;
+    const {promiseId, env} = request.data;
+
+    console.log(`📥 startLiveActivity called: env="${env}", type=${typeof env}`);
+
+    if (!promiseId) {
+      throw new HttpsError("invalid-argument", "promiseId는 필수입니다");
+    }
+
+    // env가 없으면 기본값 prod 사용
+    const effectiveEnv = env || "prod";
+    console.log(`📥 effectiveEnv="${effectiveEnv}"`);
+
+    const db = admin.firestore();
+    const eEnv = effectiveEnv;
+    const promisesCollection = getEnvironmentCollection("promises", db, eEnv);
+    const usersCollection = getEnvironmentCollection("users", db, eEnv);
+    const groupsCollection = getEnvironmentCollection("groups", db, eEnv);
+
+    // 1. 약속 정보 조회
+    const promiseDoc = await promisesCollection.doc(promiseId).get();
+    if (!promiseDoc.exists) {
+      throw new HttpsError("not-found", "약속을 찾을 수 없습니다");
+    }
+
+    const promiseData = promiseDoc.data()!;
+    const groupId = promiseData.groupId as string;
+    const hostId = promiseData.hostId as string;
+    const title = promiseData.title as string;
+    const emoji = promiseData.emoji as string || "📅";
+    const location = promiseData.location?.name as string || null;
+    const startAt = promiseData.startAt as FirebaseFirestore.Timestamp;
+    const acceptedUserIds = promiseData.votes?.accepted as string[] || [];
+
+    // 2. 권한 확인 (호스트만 시작 가능)
+    if (userId !== hostId) {
+      throw new HttpsError(
+        "permission-denied",
+        "호스트만 LiveActivity를 시작할 수 있습니다",
+      );
+    }
+
+    // 3. 참가자 정보 조회
+    const participantPromises = acceptedUserIds.map(async (uid) => {
+      const userDoc = await usersCollection.doc(uid).get();
+      const userData = userDoc.data();
+      return {
+        id: uid,
+        name: userData?.nickname as string || "참가자",
+        estimatedArrivalMinutes: null,
+      } as LiveActivityParticipant;
+    });
+    const participants = await Promise.all(participantPromises);
+
+    // 4. 호스트 이름 조회
+    const hostDoc = await usersCollection.doc(hostId).get();
+    const hostName = hostDoc.data()?.nickname as string || null;
+
+    // 5. 그룹 멤버들의 Push to Start 토큰 수집
+    const groupDoc = await groupsCollection.doc(groupId).get();
+    const memberIds = groupDoc.data()?.memberIds as string[] || [];
+
+    const tokenPromises = memberIds.map(async (memberId) => {
+      const userDoc = await usersCollection.doc(memberId).get();
+      const devices = userDoc.data()?.devices as {
+        [key: string]: DeviceInfo;
+      } | null;
+      if (!devices) return [];
+
+      const tokens: {userId: string; token: string}[] = [];
+      for (const deviceId of Object.keys(devices)) {
+        const device = devices[deviceId];
+        if (device.liveActivityPushToStartToken) {
+          tokens.push({
+            userId: memberId,
+            token: device.liveActivityPushToStartToken,
+          });
+        }
+      }
+      return tokens;
+    });
+
+    const allTokenArrays = await Promise.all(tokenPromises);
+    const allTokens = allTokenArrays.flat();
+
+    if (allTokens.length === 0) {
+      console.log("📭 No Push to Start tokens found");
+      return {
+        success: true,
+        successCount: 0,
+        failureCount: acceptedUserIds.length,
+      };
+    }
+
+    // 6. APNs Push to Start 전송
+    const isProduction = effectiveEnv === "prod";
+    const trackingDurationMinutes = 30;
+
+    let successCount = 0;
+    let failureCount = 0;
+
+    // 첫 번째 payload만 로그 (디버깅용)
+    const firstToken = allTokens[0];
+    const samplePayload = {
+      aps: {
+        "timestamp": Math.floor(Date.now() / 1000),
+        "event": "start",
+        "attributes-type": "PromiseActivityAttributes",
+        "attributes": {
+          trackingDurationMinutes,
+          promiseId,
+          currentUserId: firstToken.userId,
+          emoji,
+          title,
+          location,
+          scheduledTime: startAt.toDate().getTime() / 1000,
+          hostId,
+          hostName,
+        },
+        "content-state": {
+          trackingDurationMinutes,
+          participants,
+        },
+      },
+    };
+    console.log("📦 APNs Payload Sample:");
+    console.log(JSON.stringify(samplePayload, null, 2));
+    console.log(`🔑 Token sample: ${firstToken.token.substring(0, 20)}...`);
+    console.log(`🌐 Environment: ${isProduction ? "PRODUCTION" : "SANDBOX"}`);
+    console.log(`📱 Topic: ${APNS_BUNDLE_ID}.push-type.liveactivity`);
+
+    for (const {userId: tokenUserId, token} of allTokens) {
+      // 각 사용자별로 currentUserId를 다르게 설정
+      const payload = {
+        aps: {
+          "timestamp": Math.floor(Date.now() / 1000),
+          "event": "start",
+          "attributes-type": "PromiseActivityAttributes",
+          "attributes": {
+            trackingDurationMinutes,
+            promiseId,
+            currentUserId: tokenUserId,
+            emoji,
+            title,
+            location,
+            scheduledTime: startAt.toDate().getTime() / 1000,
+            hostId,
+            hostName,
+          },
+          "content-state": {
+            trackingDurationMinutes,
+            participants,
+          },
+          "alert": {
+            "title": `${emoji} ${title}`,
+            "body": "실시간 공유가 시작되었습니다",
+          },
+        },
+      };
+
+      const result = await sendAPNsPush({
+        deviceToken: token,
+        payload,
+        pushType: "liveactivity",
+        topic: `${APNS_BUNDLE_ID}.push-type.liveactivity`,
+        priority: 10,
+        isProduction,
+      });
+
+      if (result.success) {
+        successCount++;
+        console.log(`✅ APNs success for ${tokenUserId}`);
+      } else {
+        failureCount++;
+        console.log(`❌ APNs failed for ${tokenUserId}: ${result.error}`);
+      }
+    }
+
+    console.log(
+      `📤 LiveActivity started: ${successCount}/${failureCount}`
+    );
+    return {success: true, successCount, failureCount};
+  },
+);
+
+/**
+ * ETA 업데이트 (iOS 18 Broadcast 방식)
+ *
+ * @remarks
+ * **인증 필수**
+ *
+ * Firestore 사용 없이 클라이언트에서 전달받은 channelId + participants로 Broadcast만 전송.
+ * 클라이언트가 현재 LiveActivity 상태를 직접 전달합니다.
+ *
+ * @param request.data - UpdateETARequest
+ * @returns UpdateETAResponse
+ */
+export const updateETA = onCall<UpdateETARequest>(
+  {region: REGION, secrets: [APNS_KEY_ID, APNS_TEAM_ID, APNS_AUTH_KEY]},
+  async (request): Promise<UpdateETAResponse> => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "로그인이 필요합니다");
+    }
+
+    const {
+      channelId, participants, trackingDurationMinutes, env,
+    } = request.data;
+
+    if (!channelId || !participants) {
+      throw new HttpsError(
+        "invalid-argument",
+        "channelId와 participants는 필수입니다"
+      );
+    }
+
+    console.log(`📱 ETA update: ch=${channelId}, cnt=${participants.length}`);
+
+    // Firestore 없이 바로 APNs Broadcast 전송
+    const isProduction = env === "prod";
+
+    const payload = {
+      aps: {
+        "timestamp": Math.floor(Date.now() / 1000),
+        "event": "update",
+        "content-state": {
+          trackingDurationMinutes: trackingDurationMinutes || 30,
+          participants,
+        },
+      },
+    };
+
+    const result = await sendAPNsBroadcast({
+      channelId,
+      payload,
+      isProduction,
+    });
+
+    if (result.success) {
+      console.log(`📤 ETA Broadcast sent: channelId=${channelId}`);
+      return {success: true, successCount: 1, failureCount: 0};
+    } else {
+      console.log(`❌ ETA Broadcast failed: ${result.error}`);
+      return {success: false, successCount: 0, failureCount: 1};
+    }
+  },
+);
+
+/**
+ * Widget 전용 ETA 업데이트 (onRequest)
+ *
+ * @remarks
+ * Widget Extension은 Firebase SDK를 사용할 수 없어서 별도의 HTTP 엔드포인트 필요.
+ * Firestore 사용 없이 클라이언트에서 전달받은 데이터로 Broadcast만 전송.
+ *
+ * Headers:
+ * - X-User-Id: Firebase Auth UID
+ * - X-Auth-Token: Firebase ID Token (검증용, 선택)
+ *
+ * Body:
+ * - channelId: string (APNs Broadcast 채널)
+ * - participants: array (전체 참가자 상태)
+ * - trackingDurationMinutes: number
+ * - env?: string ("stage" | "prod")
+ */
+export const widgetUpdateETA = onRequest(
+  {region: REGION, secrets: [APNS_KEY_ID, APNS_TEAM_ID, APNS_AUTH_KEY]},
+  async (req, res) => {
+    // CORS 헤더
+    res.set("Access-Control-Allow-Origin", "*");
+    res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+    res.set(
+      "Access-Control-Allow-Headers",
+      "Content-Type, X-User-Id, X-Auth-Token"
+    );
+
+    if (req.method === "OPTIONS") {
+      res.status(204).send("");
+      return;
+    }
+
+    if (req.method !== "POST") {
+      res.status(405).json({error: "Method not allowed"});
+      return;
+    }
+
+    // 헤더에서 인증 정보 추출
+    const userId = req.headers["x-user-id"] as string;
+    const authToken = req.headers["x-auth-token"] as string;
+
+    if (!userId) {
+      res.status(401).json({error: "X-User-Id header is required"});
+      return;
+    }
+
+    // authToken 검증 (선택적 - 토큰이 있으면 검증)
+    if (authToken) {
+      try {
+        const decodedToken = await admin.auth().verifyIdToken(authToken);
+        if (decodedToken.uid !== userId) {
+          res.status(401).json({error: "Token uid mismatch"});
+          return;
+        }
+      } catch (error) {
+        console.warn(`⚠️ Widget auth token verification failed: ${error}`);
+        // 토큰 만료 등의 경우 userId만으로 진행 (Widget 특성상 허용)
+      }
+    }
+
+    const {
+      channelId, participants, trackingDurationMinutes, env,
+    } = req.body;
+
+    if (!channelId || !participants) {
+      res.status(400).json({
+        error: "channelId and participants are required",
+      });
+      return;
+    }
+
+    console.log(`📱 Widget ETA: u=${userId}, ch=${channelId}`);
+
+    // Firestore 없이 바로 APNs Broadcast 전송
+    const isProduction = env === "prod";
+
+    const payload = {
+      aps: {
+        "timestamp": Math.floor(Date.now() / 1000),
+        "event": "update",
+        "content-state": {
+          trackingDurationMinutes: trackingDurationMinutes || 30,
+          participants,
+        },
+      },
+    };
+
+    const result = await sendAPNsBroadcast({
+      channelId,
+      payload,
+      isProduction,
+    });
+
+    if (result.success) {
+      console.log(`📤 Widget ETA Broadcast sent: channelId=${channelId}`);
+      res.status(200).json({success: true});
+    } else {
+      console.log(`❌ Widget ETA Broadcast failed: ${result.error}`);
+      res.status(200).json({success: false, error: result.error});
+    }
+  }
+);
+
+// endLiveActivity 제거됨 - APNs dismissal-date로 auto-dismiss 처리
+// 채널은 일정 시간 후 자동 만료 (Apple 관리)
+
+// ============================================================================
+// Cloud Tasks - LiveActivity 예약 실행
+// ============================================================================
+
+/**
+ * LiveActivity 예약 시작 태스크 핸들러 (iOS 18 Broadcast 방식)
+ *
+ * @remarks
+ * Cloud Tasks에 의해 예약된 시간에 자동 실행됩니다.
+ * 약속 시간 N분 전에 모든 참가자에게 LiveActivity를 시작합니다.
+ *
+ * iOS 18 Broadcast 방식:
+ * 1. APNs 채널 생성 (promiseId를 channelId로 사용)
+ * 2. Push to Start로 개별 Activity 시작 (각 사용자가 채널 구독)
+ * 3. 이후 업데이트/종료는 Broadcast로 전송
+ */
+export const executeLiveActivityStart = onTaskDispatched<
+  ScheduledLiveActivityTaskPayload
+>(
+  {
+    region: REGION,
+    retryConfig: {
+      maxAttempts: 3,
+      minBackoffSeconds: 10,
+    },
+    rateLimits: {
+      maxConcurrentDispatches: 10,
+    },
+    secrets: [APNS_KEY_ID, APNS_TEAM_ID, APNS_AUTH_KEY],
+  },
+  async (req) => {
+    const {promiseId, env} = req.data;
+    console.log(`⏰ Scheduled LiveActivity start: ${promiseId}`);
+
+    const db = admin.firestore();
+    const promisesCollection = getEnvironmentCollection("promises", db, env);
+    const usersCollection = getEnvironmentCollection("users", db, env);
+
+    // 1. 약속 정보 조회
+    const promiseDoc = await promisesCollection.doc(promiseId).get();
+    if (!promiseDoc.exists) {
+      console.warn(`Promise not found: ${promiseId}`);
+      return;
+    }
+
+    const promiseData = promiseDoc.data()!;
+    const hostId = promiseData.hostId as string;
+    const emoji = promiseData.emoji as string || "📌";
+    const title = promiseData.title as string;
+    const location = promiseData.location?.name as string || null;
+    const startAt = promiseData.startAt as admin.firestore.Timestamp;
+    const accepted = promiseData.votes?.accepted as string[] || [];
+    const minParticipants = promiseData.minimumParticipants as number || 2;
+
+    // 2. 약속이 확정 상태인지 확인
+    if (accepted.length < minParticipants) {
+      console.log(`Promise not confirmed: ${promiseId}`);
+      return;
+    }
+
+    // 3. 호스트 이름 조회
+    const hostDoc = await usersCollection.doc(hostId).get();
+    const hostName = hostDoc.data()?.nickname as string || null;
+
+    // 4. 참가자 정보 생성
+    const participantPromises = accepted.map(async (uid) => {
+      const userDoc = await usersCollection.doc(uid).get();
+      const userData = userDoc.data();
+      return {
+        id: uid,
+        name: userData?.nickname as string || "참가자",
+        estimatedArrivalMinutes: null,
+      } as LiveActivityParticipant;
+    });
+    const participants = await Promise.all(participantPromises);
+
+    // 5. iOS 18 Broadcast 채널 생성 (Apple이 channelId 생성)
+    const isProduction = env === "prod";
+    const channelResult = await createAPNsChannel(isProduction);
+    let channelId: string | undefined;
+
+    if (channelResult.success && channelResult.channelId) {
+      channelId = channelResult.channelId;
+      console.log(`✅ APNs channel created: ${channelId}`);
+    } else {
+      console.error(`❌ Channel creation failed: ${channelResult.error}`);
+      // 채널 없이는 Broadcast 불가 → Push to Start 중단
+      console.error(`⚠️ Aborting Push to Start: ${promiseId}`);
+      return;
+    }
+
+    const trackingDurationMinutes = 30;
+
+    // 7. 참가자들의 Push to Start 토큰 수집
+    const tokenPromises = accepted.map(async (memberId) => {
+      const userDoc = await usersCollection.doc(memberId).get();
+      const userData = userDoc.data();
+      const devices = userData?.devices as {[key: string]: DeviceInfo} | null;
+      if (!devices) return [];
+
+      const tokens: {userId: string; token: string}[] = [];
+      for (const deviceId of Object.keys(devices)) {
+        const device = devices[deviceId];
+        if (device.liveActivityPushToStartToken) {
+          tokens.push({
+            userId: memberId,
+            token: device.liveActivityPushToStartToken,
+          });
+        }
+      }
+      return tokens;
+    });
+
+    const allTokenArrays = await Promise.all(tokenPromises);
+    const allTokens = allTokenArrays.flat();
+
+    if (allTokens.length === 0) {
+      console.log(`📭 No Push to Start tokens for: ${promiseId}`);
+      return;
+    }
+
+    // 8. APNs Push to Start 전송
+    // 각 사용자에게 개별 Push to Start 전송 (Activity 시작 시 채널 구독됨)
+    let successCount = 0;
+    let failureCount = 0;
+
+    // 자동 종료 시간: 약속 시작시간 + 3분 (테스트용, 프로덕션은 30분)
+    const startTimeSec = Math.floor(startAt.toDate().getTime() / 1000);
+    const dismissalTime = startTimeSec + (3 * 60);
+
+    for (const {userId: tokenUserId, token} of allTokens) {
+      const payload = {
+        aps: {
+          "timestamp": Math.floor(Date.now() / 1000),
+          "event": "start",
+          "stale-date": dismissalTime,
+          "dismissal-date": dismissalTime,
+          "input-push-channel": channelId || "", // iOS 18 채널 구독
+          "attributes-type": "PromiseActivityAttributes",
+          "attributes": {
+            trackingDurationMinutes,
+            promiseId,
+            currentUserId: tokenUserId,
+            emoji,
+            title,
+            location,
+            scheduledTime: startAt.toDate().getTime() / 1000,
+            hostId,
+            hostName,
+            channelId: channelId || "",
+          },
+          "content-state": {
+            trackingDurationMinutes,
+            participants,
+          },
+          "alert": {
+            "title": `${emoji} ${title}`,
+            "body": "실시간 공유가 시작되었습니다",
+          },
+        },
+      };
+
+      const result = await sendAPNsPush({
+        deviceToken: token,
+        payload,
+        pushType: "liveactivity",
+        topic: `${APNS_BUNDLE_ID}.push-type.liveactivity`,
+        priority: 10,
+        isProduction,
+      });
+
+      if (result.success) {
+        successCount++;
+      } else {
+        failureCount++;
+      }
+    }
+
+    console.log(
+      `⏰ Scheduled LiveActivity started (Broadcast channel: ${channelId}): ` +
+      `${successCount}/${failureCount}`
+    );
+  }
+);
+
+/**
+ * 약속 확정 또는 실시간 공유 설정 변경 시 LiveActivity 예약
+ *
+ * @remarks
+ * 다음 경우에 Cloud Task를 예약합니다:
+ * 1. 약속이 확정됨 (accepted >= minimumParticipants) + trackingMinutes 설정됨
+ * 2. 이미 확정된 약속에서 trackingStartMinutesBefore가 변경됨
+ */
+export const onPromiseConfirmedScheduleLiveActivity = onDocumentUpdated(
+  {
+    document: "{env}/root/promises/{promiseId}",
+    region: REGION,
+  },
+  async (event) => {
+    const before = event.data?.before.data();
+    const after = event.data?.after.data();
+    const promiseId = event.params.promiseId;
+    const env = event.params.env as "stage" | "prod";
+
+    if (!before || !after) return;
+
+    const minParticipants = after.minimumParticipants as number || 2;
+    const beforeAccepted = before.votes?.accepted as string[] || [];
+    const afterAccepted = after.votes?.accepted as string[] || [];
+    const beforeTrackingMinutes =
+      before.trackingStartMinutesBefore as number | null;
+    const afterTrackingMinutes =
+      after.trackingStartMinutesBefore as number | null;
+    const startAt = after.startAt as admin.firestore.Timestamp;
+
+    // 확정 상태 확인
+    const wasConfirmed = beforeAccepted.length >= minParticipants;
+    const isNowConfirmed = afterAccepted.length >= minParticipants;
+
+    // trackingMinutes 변경 확인
+    const trackingMinutesChanged =
+      beforeTrackingMinutes !== afterTrackingMinutes;
+
+    // 스케줄링이 필요한 조건:
+    // 1. 새로 확정됨 (미확정 → 확정) + trackingMinutes 설정됨
+    // 2. 이미 확정 + trackingMinutes가 null → 값으로 변경됨
+    // 3. 이미 확정 + trackingMinutes 값이 변경됨
+    const justConfirmed = !wasConfirmed && isNowConfirmed;
+    const trackingEnabledOnConfirmed =
+      isNowConfirmed && trackingMinutesChanged && afterTrackingMinutes !== null;
+
+    const shouldSchedule = justConfirmed || trackingEnabledOnConfirmed;
+
+    if (!shouldSchedule) {
+      return;
+    }
+
+    // trackingStartMinutesBefore가 설정되지 않으면 예약 안함
+    if (!afterTrackingMinutes) {
+      console.log(`📭 No tracking schedule for: ${promiseId}`);
+      return;
+    }
+
+    // 예약 시간 계산
+    const startTime = startAt.toDate();
+    const scheduleTime = new Date(
+      startTime.getTime() - afterTrackingMinutes * 60 * 1000
+    );
+    const now = new Date();
+
+    // 약속 시작 시간이 이미 지났으면 스킵
+    if (startTime <= now) {
+      console.log(`⏰ Promise already started, skipping: ${promiseId}`);
+      return;
+    }
+
+    // 이미 예약되었고 trackingMinutes가 변경되지 않았으면 스킵
+    const wasAlreadyScheduled = after.liveActivityScheduled === true;
+    if (wasAlreadyScheduled && !trackingMinutesChanged) {
+      console.log(`📅 Already scheduled (no change): ${promiseId}`);
+      return;
+    }
+
+    // 재스케줄링인 경우 로그
+    if (wasAlreadyScheduled && trackingMinutesChanged) {
+      console.log(
+        `🔄 Rescheduling LiveActivity: ${promiseId} ` +
+        `(${beforeTrackingMinutes}분 → ${afterTrackingMinutes}분)`
+      );
+    }
+
+    // Cloud Task 예약
+    const queue = getFunctions().taskQueue<ScheduledLiveActivityTaskPayload>(
+      `locations/${REGION}/functions/executeLiveActivityStart`
+    );
+
+    const delaySeconds = Math.max(
+      0,
+      Math.floor((scheduleTime.getTime() - now.getTime()) / 1000)
+    );
+
+    await queue.enqueue(
+      {promiseId, env},
+      {scheduleDelaySeconds: delaySeconds}
+    );
+
+    // 예약 완료 표시
+    const db = admin.firestore();
+    const promisesCollection = getEnvironmentCollection("promises", db, env);
+    await promisesCollection.doc(promiseId).update({
+      liveActivityScheduled: true,
+      liveActivityScheduledAt: scheduleTime,
+    });
+
+    const isImmediate = delaySeconds === 0;
+    console.log(
+      `📅 LiveActivity scheduled: ${promiseId} at ` +
+      `${scheduleTime.toISOString()}${isImmediate ? " (즉시 실행)" : ""}`
+    );
+  }
 );
 
 // ============================================================================

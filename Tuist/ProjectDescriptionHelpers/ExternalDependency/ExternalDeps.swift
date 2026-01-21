@@ -18,6 +18,9 @@ public enum ExternalDeps: CaseIterable {
   /// Analytics - Microsoft Clarity
   case clarity
 
+  /// Animation - Lottie
+  case lottie
+
   public static func allExternalDeps() -> [TargetDependency] {
     ExternalDeps.allCases.flatMap { $0.targetDependency }
   }
@@ -51,6 +54,9 @@ public enum ExternalDeps: CaseIterable {
 
     case .clarity:
       return [.external(name: "Clarity")]
+
+    case .lottie:
+      return [.external(name: "Lottie")]
     }
   }
 }
