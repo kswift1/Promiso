@@ -123,6 +123,8 @@ extension RootTab {
       case openJoinGroupWithCode(String)
       /// 그룹 탭 딥링크 처리
       case handleGroupDeeplink(GroupMain.Deeplink)
+      /// Widget "직접 입력" 버튼 → LivePromiseExpandedView + ETA 시트 열기
+      case openLiveActivityETASheet
       /// 내부 액션
       case `internal`(Internal)
     }
@@ -260,6 +262,19 @@ extension RootTab {
         case .handleGroupDeeplink(let deeplink):
           state.selectedTab = .group
           return .send(.groupMain(.view(.handleDeeplink(deeplink))))
+
+        case .openLiveActivityETASheet:
+          // Widget "직접 입력" 버튼 → LivePromiseExpandedView + ETA 시트 열기
+          guard let livePromise = state.livePromise else {
+            AppLogger.liveActivity.warning("openLiveActivityETASheet: livePromise 없음")
+            return .none
+          }
+          // 상세 뷰 + ETA 시트 함께 열기
+          var detailState = LivePromise.Detail.State(data: livePromise.$data)
+          detailState.isETASheetPresented = true
+          state.livePromiseDetail = detailState
+          AppLogger.liveActivity.info("Widget 직접 입력 → ETA 시트 열기")
+          return .none
 
         case .internal(let internalAction):
           switch internalAction {
@@ -421,6 +436,12 @@ extension RootTab {
               animation: animation,
               transitionID: livePromiseTransitionID
             )
+          }
+        }
+        // 딥링크로 livePromiseDetail이 설정되면 expandLivePromise도 동기화
+        .onChange(of: store.livePromiseDetail != nil) { _, hasDetail in
+          if hasDetail && !expandLivePromise {
+            expandLivePromise = true
           }
         }
     }

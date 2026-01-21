@@ -13,6 +13,8 @@ public enum DeeplinkDestination: Equatable, Sendable {
   case group(groupId: String)
   /// 그룹 참여 (초대 코드)
   case joinGroup(inviteCode: String)
+  /// LiveActivity ETA 변경 시트 (Widget에서 "직접 입력" 버튼)
+  case liveActivityETA(promiseId: String)
 }
 
 // MARK: - Client

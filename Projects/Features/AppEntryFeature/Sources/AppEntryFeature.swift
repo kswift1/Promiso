@@ -348,6 +348,10 @@ extension AppEntry.Feature {
 
     case .joinGroup(let inviteCode):
       return .send(.destination(.presented(.main(.openJoinGroupWithCode(inviteCode)))))
+
+    case .liveActivityETA:
+      // Widget "직접 입력" 버튼 → LivePromiseExpandedView + ETA 시트 열기
+      return .send(.destination(.presented(.main(.openLiveActivityETASheet))))
     }
   }
 
