@@ -1086,3 +1086,41 @@ export interface ScheduledLiveActivityTaskPayload {
   /** 환경 구분 */
   env: "stage" | "prod";
 }
+
+// ============================================================================
+// generateEmoji
+// ============================================================================
+
+/**
+ * 이모지 생성 요청
+ *
+ * @remarks
+ * - 인증 필수 (Firebase Auth)
+ * - Gemini API를 사용하여 제목에 어울리는 이모지 생성
+ */
+export interface GenerateEmojiRequest {
+  /** 약속 제목 */
+  title: string;
+}
+
+/**
+ * 이모지 생성 응답
+ */
+export interface GenerateEmojiResponse {
+  /** 생성된 이모지 */
+  emoji: string;
+}
+
+/**
+ * 이모지 생성 에러
+ */
+export enum GenerateEmojiError {
+  /** 인증 필요 */
+  UNAUTHENTICATED = "unauthenticated",
+
+  /** 잘못된 요청 */
+  INVALID_ARGUMENT = "invalid-argument",
+
+  /** API 오류 */
+  INTERNAL = "internal",
+}

@@ -33,6 +33,9 @@ public enum AppLogger {
   /// LiveActivity 관련 로그
   public static let liveActivity = Logger(subsystem: subsystem, category: "LiveActivity")
 
+  /// 이모지 생성 관련 로그
+  public static let emoji = Logger(subsystem: subsystem, category: "Emoji")
+
   /// 일반 로그
   public static let general = Logger(subsystem: subsystem, category: "General")
 
