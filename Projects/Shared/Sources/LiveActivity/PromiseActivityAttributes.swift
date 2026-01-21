@@ -38,6 +38,21 @@ public struct PromiseActivityAttributes: ActivityAttributes, Equatable {
   /// iOS 18 Broadcast 채널 ID (Apple이 생성)
   public let channelId: String
 
+  // MARK: - CodingKeys
+
+  private enum CodingKeys: String, CodingKey {
+    case trackingDurationMinutes
+    case promiseId
+    case currentUserId
+    case emoji
+    case title
+    case location
+    case scheduledTime
+    case hostId
+    case hostName
+    case channelId
+  }
+
   // MARK: - Initializer
 
   public init(
@@ -62,6 +77,45 @@ public struct PromiseActivityAttributes: ActivityAttributes, Equatable {
     self.hostId = hostId
     self.hostName = hostName
     self.channelId = channelId
+  }
+
+  // MARK: - Decodable (Unix timestamp → Date 변환)
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+
+    self.trackingDurationMinutes = try container.decode(Int.self, forKey: .trackingDurationMinutes)
+    self.promiseId = try container.decode(String.self, forKey: .promiseId)
+    self.currentUserId = try container.decode(String.self, forKey: .currentUserId)
+    self.emoji = try container.decode(String.self, forKey: .emoji)
+    self.title = try container.decode(String.self, forKey: .title)
+    self.location = try container.decodeIfPresent(String.self, forKey: .location)
+    self.hostId = try container.decodeIfPresent(String.self, forKey: .hostId) ?? ""
+    self.hostName = try container.decodeIfPresent(String.self, forKey: .hostName)
+    self.channelId = try container.decodeIfPresent(String.self, forKey: .channelId) ?? ""
+
+    // scheduledTime: Unix timestamp (1970년 기준 초) → Date 변환
+    let timestamp = try container.decode(Double.self, forKey: .scheduledTime)
+    self.scheduledTime = Date(timeIntervalSince1970: timestamp)
+  }
+
+  // MARK: - Encodable (Date → Unix timestamp 변환)
+
+  public func encode(to encoder: Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+
+    try container.encode(trackingDurationMinutes, forKey: .trackingDurationMinutes)
+    try container.encode(promiseId, forKey: .promiseId)
+    try container.encode(currentUserId, forKey: .currentUserId)
+    try container.encode(emoji, forKey: .emoji)
+    try container.encode(title, forKey: .title)
+    try container.encodeIfPresent(location, forKey: .location)
+    try container.encode(hostId, forKey: .hostId)
+    try container.encodeIfPresent(hostName, forKey: .hostName)
+    try container.encode(channelId, forKey: .channelId)
+
+    // Date → Unix timestamp (1970년 기준 초) 변환
+    try container.encode(scheduledTime.timeIntervalSince1970, forKey: .scheduledTime)
   }
 
   // MARK: - Content State (동적 정보)

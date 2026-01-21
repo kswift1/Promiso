@@ -853,46 +853,21 @@ extension LivePromise {
       return formatter.string(from: date)
     }
 
-    private func formatPeriod(_ date: Date) -> String {
-      let formatter = DateFormatter()
-      formatter.dateFormat = "a"
-      formatter.locale = Locale(identifier: "en_US")
-      return formatter.string(from: date).uppercased()
-    }
-
     private func statusText(for participant: ParticipantState) -> String {
       guard let eta = participant.estimatedArrivalMinutes else {
-        AppLogger.liveActivity.debug("[\(participant.name)] ETA nil → 아직 출발 전")
         return "아직 출발 전"
       }
-
-      if eta == 0 {
-        AppLogger.liveActivity.debug("[\(participant.name)] ETA=0 → 도착 완료")
-        return "도착 완료"
-      }
+      if eta == 0 { return "도착 완료" }
 
       guard let scheduledTime = store.data.scheduledTime else {
-        AppLogger.liveActivity.warning("[\(participant.name)] scheduledTime nil → 이동 중 (fallback)")
         return "이동 중"
       }
 
       let remainingMinutes = scheduledTime.timeIntervalSinceNow / 60
-      AppLogger.liveActivity.debug("[\(participant.name)] ETA=\(eta)분, 남은시간=\(Int(remainingMinutes))분, 약속시간=\(scheduledTime)")
 
-      if remainingMinutes <= 0 {
-        AppLogger.liveActivity.debug("[\(participant.name)] 남은시간 <= 0 → 지각")
-        return "지각"
-      }
-      if Double(eta) > remainingMinutes {
-        AppLogger.liveActivity.debug("[\(participant.name)] ETA(\(eta)) > 남은시간(\(Int(remainingMinutes))) → 지각 예상")
-        return "지각 예상"
-      }
-      if eta <= 3 {
-        AppLogger.liveActivity.debug("[\(participant.name)] ETA <= 3 → 거의 도착")
-        return "거의 도착"
-      }
-
-      AppLogger.liveActivity.debug("[\(participant.name)] 정상 이동 중")
+      if remainingMinutes <= 0 { return "지각" }
+      if Double(eta) > remainingMinutes { return "지각 예상" }
+      if eta <= 3 { return "거의 도착" }
       return "이동 중"
     }
 
