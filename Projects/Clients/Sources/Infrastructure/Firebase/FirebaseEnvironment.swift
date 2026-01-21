@@ -10,7 +10,7 @@ public enum FirebaseEnvironment: String, CaseIterable, Sendable {
     #if DEBUG
     return .stage
     #else
-    return .stage
+    return .release
     #endif
   }
 
