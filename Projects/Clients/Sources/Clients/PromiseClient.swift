@@ -189,7 +189,7 @@ extension PromiseClient: TestDependencyKey {
     startLiveActivity: { _ in
       try await Task.sleep(for: .seconds(0.5))
     },
-    updateETA: { _, _, _  in
+    updateETA: { channelId, participants, trackingDurationMinutes in
       try await Task.sleep(for: .seconds(0.3))
     }
     // endLiveActivity 제거됨 - APNs dismissal-date로 auto-dismiss 처리
