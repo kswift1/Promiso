@@ -4,6 +4,13 @@ import FirebaseFunctions
 import PromisoShared
 import UIKit
 
+// MARK: - Firebase 상수
+
+private enum FirebaseConstants {
+  static let region = "asia-northeast3"
+  static let registerPushToStartToken = "registerPushToStartToken"
+}
+
 // MARK: - Data Source
 
 /// Firebase Firestore를 통한 알림 관련 데이터 관리
@@ -110,8 +117,8 @@ public final class NotificationRemoteDataSource: @unchecked Sendable {
   ///   - userId: 사용자 ID
   ///   - token: Push to Start 토큰
   public func saveLiveActivityPushToStartToken(userId: String, token: String) async throws {
-    let functions = Functions.functions(region: "asia-northeast3")
-    let callable = functions.httpsCallable("registerPushToStartToken")
+    let functions = Functions.functions(region: FirebaseConstants.region)
+    let callable = functions.httpsCallable(FirebaseConstants.registerPushToStartToken)
 
     var callableData: [String: Any] = [
       "token": token,

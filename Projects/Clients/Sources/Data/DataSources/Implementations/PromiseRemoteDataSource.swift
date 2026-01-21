@@ -3,6 +3,13 @@ import FirebaseFirestore
 import FirebaseFunctions
 import PromisoShared
 
+// MARK: - Firebase Functions 상수
+
+private enum FirebaseFunctionNames {
+  static let startLiveActivity = "startLiveActivity"
+  static let updateETA = "updateETA"
+}
+
 /// Promise 관련 Firestore CRUD 및 쿼리 작업을 담당하는 DataSource
 public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
   private let firestore: FirestoreProviding
@@ -373,7 +380,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
       callableData["env"] = env
     }
 
-    _ = try await functions.httpsCallable("startLiveActivity").call(callableData)
+    _ = try await functions.httpsCallable(FirebaseFunctionNames.startLiveActivity).call(callableData)
   }
 
   /// ETA 업데이트 요청
@@ -408,7 +415,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
       callableData["env"] = env
     }
 
-    _ = try await functions.httpsCallable("updateETA").call(callableData)
+    _ = try await functions.httpsCallable(FirebaseFunctionNames.updateETA).call(callableData)
   }
 
   // endLiveActivity 제거됨 - APNs dismissal-date로 auto-dismiss 처리
