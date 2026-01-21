@@ -23,6 +23,9 @@ export const APNS_KEY_ID = defineSecret("APNS_KEY_ID");
 export const APNS_TEAM_ID = defineSecret("APNS_TEAM_ID");
 export const APNS_AUTH_KEY = defineSecret("APNS_AUTH_KEY");
 
+// Gemini API 시크릿
+export const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
+
 // APNs 호스트 설정
 export const APNS_HOST_PRODUCTION = "api.push.apple.com";
 export const APNS_HOST_DEVELOPMENT = "api.sandbox.push.apple.com";

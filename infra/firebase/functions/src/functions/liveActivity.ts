@@ -1,7 +1,17 @@
 /**
  * LiveActivity Functions
  *
- * iOS LiveActivity 관련 Cloud Functions
+ * iOS LiveActivity (Dynamic Island, Lock Screen) 관련 Cloud Functions
+ *
+ * @why 약속 시간 전 실시간 위치/ETA 공유로 지각 방지
+ * @ios LiveActivityManager, PromiseWidgetExtension
+ * @see ARCHITECTURE.md - ADR-001: iOS 18 Broadcast 방식 채택
+ *
+ * @architecture iOS 18 Broadcast Push 방식
+ * 1. startLiveActivity → channelId 생성 + Push to Start
+ * 2. iOS가 Activity 시작 시 채널 자동 구독
+ * 3. updateETA → channelId로 Broadcast (모든 구독자 수신)
+ * 4. dismissal-date로 자동 종료
  */
 import {getFunctions} from "firebase-admin/functions";
 import {HttpsError, onCall, onRequest} from "firebase-functions/v2/https";
@@ -359,7 +369,7 @@ export const updateETA = onCall<UpdateETARequest>(
  * ```json
  * {
  *   "channelId": "ch_abc123",
- *   "participants": [{"id": "...", "name": "...", "estimatedArrivalMinutes": 5}],
+ *   "participants": [{"id": "...", "name": "...", "eta": 5}],
  *   "trackingDurationMinutes": 30,
  *   "env": "prod"
  * }

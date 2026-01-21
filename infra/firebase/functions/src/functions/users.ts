@@ -2,6 +2,9 @@
  * User Functions
  *
  * 사용자 관련 Cloud Functions
+ *
+ * @ios SignUpView, ProfileEditView, SettingsView
+ * @see ARCHITECTURE.md - iOS Feature ↔ Functions 매핑
  */
 import {FieldValue} from "firebase-admin/firestore";
 import {HttpsError, onCall} from "firebase-functions/v2/https";

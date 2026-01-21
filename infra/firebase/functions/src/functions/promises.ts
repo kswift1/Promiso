@@ -2,6 +2,9 @@
  * Promise Functions
  *
  * 약속 관련 Cloud Functions
+ *
+ * @ios CreatePromiseView, PromiseDetailView, GroupMainView
+ * @see ARCHITECTURE.md - iOS Feature ↔ Functions 매핑
  */
 import {FieldValue} from "firebase-admin/firestore";
 import {HttpsError, onCall} from "firebase-functions/v2/https";

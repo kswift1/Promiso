@@ -2,6 +2,14 @@
  * Notification Functions
  *
  * 푸시 알림 관련 Cloud Functions 및 Firestore Triggers
+ *
+ * @why FCM을 통한 푸시 알림으로 사용자 참여 유도
+ * @ios AppDelegate - FCM 토큰 등록, 알림 수신 처리
+ *
+ * @triggers
+ * - onPromiseCreated: 약속 생성 시 그룹 멤버에게 알림
+ * - onPromiseVotesUpdated: 약속 확정/미성사 시 알림
+ * - onGroupMemberJoined: 새 멤버 참여 시 기존 멤버에게 알림
  */
 import {FieldValue} from "firebase-admin/firestore";
 import {HttpsError, onCall} from "firebase-functions/v2/https";
