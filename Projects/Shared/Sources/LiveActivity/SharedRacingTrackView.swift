@@ -159,50 +159,50 @@ public struct SharedRacingTrackView: View {
   }
 
   private func participantMarkers(usableWidth: CGFloat, padding: CGFloat, centerY: CGFloat) -> some View {
-    let groups = groupParticipantsByPosition()
-
-    // ETA 값을 안정적인 ID로 사용 (nil은 -1로 처리)
-    // 빈 그룹은 groupParticipantsByPosition()에서 compactMap으로 필터링됨
-    return ForEach(groups, id: \.etaKey) { group in
-      let position = group.position
+    // 참가자별로 개별 마커 생성 (ID 기반으로 애니메이션 가능)
+    ForEach(participants) { participant in
+      let position = participant.trackPosition(trackingDurationMinutes: trackingDurationMinutes)
       let xPos = padding + (usableWidth * position)
+      let isCurrentUser = participant.id == currentUserId
 
-      // 그룹 대표 참가자 (나 > 첫 번째) - 빈 그룹은 위에서 필터링되어 first가 항상 존재
-      if let representative = group.participants.first(where: { $0.id == currentUserId })
-           ?? group.participants.first {
-        let isCurrentUser = representative.id == currentUserId
-        let extraCount = group.participants.count - 1
+      // 같은 위치에 있는 다른 참가자 수 계산
+      let samePositionCount = participants.filter {
+        $0.id != participant.id &&
+        $0.trackPosition(trackingDurationMinutes: trackingDurationMinutes) == position
+      }.count
 
+      // 대표 참가자만 표시 (같은 위치에서 나 > 첫 번째)
+      let isRepresentative = isRepresentativeParticipant(participant, at: position)
+
+      if isRepresentative {
         CompactParticipantMarker(
-          participant: representative,
+          participant: participant,
           trackingDurationMinutes: trackingDurationMinutes,
           isCurrentUser: isCurrentUser,
-          groupCount: extraCount
+          groupCount: samePositionCount
         )
         .position(x: xPos, y: centerY)
-        .zIndex(isCurrentUser ? 100 : Double(group.etaKey + 100))
+        .animation(.spring(response: 0.5, dampingFraction: 0.7), value: position)
+        .zIndex(isCurrentUser ? 100 : 50)
       }
     }
   }
 
-  /// ETA 기준으로 참가자들을 그룹화
-  private func groupParticipantsByPosition() -> [(etaKey: Int, position: Double, participants: [ParticipantState])] {
-    // ETA별로 그룹화 (nil, 0, 5, 10... 각각 별도 그룹)
-    var etaGroups: [Int?: [ParticipantState]] = [:]
-
-    for participant in participants {
-      let eta = participant.estimatedArrivalMinutes
-      etaGroups[eta, default: []].append(participant)
+  /// 해당 위치에서 대표 참가자인지 확인 (나 > 첫 번째)
+  private func isRepresentativeParticipant(_ participant: ParticipantState, at position: Double) -> Bool {
+    let samePositionParticipants = participants.filter {
+      $0.trackPosition(trackingDurationMinutes: trackingDurationMinutes) == position
     }
 
-    // 그룹별 position 계산 후 반환 (etaKey: nil은 -1로 처리)
-    return etaGroups.compactMap { (eta, participants) -> (etaKey: Int, position: Double, participants: [ParticipantState])? in
-      guard let first = participants.first else { return nil }
-      let position = first.trackPosition(trackingDurationMinutes: trackingDurationMinutes)
-      let etaKey = eta ?? -1
-      return (etaKey: etaKey, position: position, participants: participants)
-    }.sorted { $0.position < $1.position }
+    // 현재 사용자가 있으면 현재 사용자가 대표
+    if let currentUserInGroup = samePositionParticipants.first(where: { $0.id == currentUserId }) {
+      return participant.id == currentUserInGroup.id
+    }
+
+    // 없으면 첫 번째가 대표
+    return participant.id == samePositionParticipants.first?.id
   }
+
 }
 
 // MARK: - Compact Participant Marker

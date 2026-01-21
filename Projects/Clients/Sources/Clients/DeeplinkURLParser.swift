@@ -8,6 +8,7 @@ import Foundation
 /// - `promiso://join/{inviteCode}` → 초대 코드로 그룹 참여
 /// - `promiso://group/{groupId}` → 그룹 상세 화면
 /// - `promiso://promise/{promiseId}/{groupId}` → 약속 상세 화면
+/// - `promiso://promise/{promiseId}/eta` → LiveActivity ETA 변경 시트
 ///
 /// - SeeAlso: `.ai/DEEPLINK_GUIDE.md`
 public enum DeeplinkURLParser {
@@ -54,14 +55,21 @@ private extension DeeplinkURLParser {
     return .group(groupId: groupId)
   }
 
-  /// promiso://promise/{promiseId}/{groupId}
+  /// promiso://promise/{promiseId}/{groupId} 또는 promiso://promise/{promiseId}/eta
   static func parsePromise(from url: URL) -> DeeplinkDestination? {
     let components = Array(url.pathComponents.dropFirst())
     guard components.count >= 2 else {
       return nil
     }
     let promiseId = components[0]
-    let groupId = components[1]
-    return .promise(promiseId: promiseId, groupId: groupId)
+    let secondComponent = components[1]
+
+    // /eta suffix인 경우 LiveActivity ETA 변경 시트
+    if secondComponent == "eta" {
+      return .liveActivityETA(promiseId: promiseId)
+    }
+
+    // 그 외는 groupId로 처리
+    return .promise(promiseId: promiseId, groupId: secondComponent)
   }
 }

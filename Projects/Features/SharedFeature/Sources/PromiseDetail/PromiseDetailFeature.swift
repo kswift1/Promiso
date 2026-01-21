@@ -34,6 +34,9 @@ extension PromiseDetail {
 
       // MARK: - Live Activity State
       // iOS 18 Broadcast 방식으로 전환: 수동 시작 제거, 자동 시작만 사용
+      // TODO: RootTabFeature에서 관리하는 @Shared 라이브액티비티 상태를 구독하여 사용
+      // - 현재는 로컬 상태로 관리되어 Push-to-Start로 시작된 Activity 감지 불가
+      // - @Shared(.liveActivityState)로 전환 필요
       var isLiveActivityActive: Bool = false
       var liveActivityId: String?
 

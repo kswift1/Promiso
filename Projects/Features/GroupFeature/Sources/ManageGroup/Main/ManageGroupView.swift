@@ -123,6 +123,7 @@ extension ManageGroup {
                 .foregroundStyle(.tertiary)
             }
             .padding(20)
+            .contentShape(Rectangle())
             .adaptiveGlassCard(cornerRadius: 20)
           }
           .buttonStyle(.plain)
