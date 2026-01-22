@@ -116,7 +116,7 @@ export const clearGroupBadge = onCall(
       throw new HttpsError("invalid-argument", "groupId가 필요합니다.");
     }
 
-    const env = request.data?.env || "dev";
+    const env = request.data?.env;
     const db = admin.firestore();
     const usersCollection = getEnvironmentCollection("users", db, env);
 
