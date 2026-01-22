@@ -38,7 +38,7 @@ struct GroupHorizontalBar: View {
   var body: some View {
     ScrollViewReader { proxy in
       ScrollView(.horizontal, showsIndicators: false) {
-        HStack(spacing: 16) {
+        HStack(alignment: .top, spacing: 16) {
           ForEach(groups) { group in
             GroupBarItemView(
               group: group,
@@ -72,7 +72,7 @@ private struct GroupBarItemView: View {
 
   var body: some View {
     Button(action: onTap) {
-      VStack(spacing: 6) {
+      VStack(alignment: .center, spacing: 6) {
         ZStack(alignment: .topTrailing) {
           // 그룹 아바타 (PromisoShared 컴포넌트 사용)
           GroupThumbnailView(imageUrl: group.imageUrl, name: group.name, size: 56)
@@ -98,7 +98,7 @@ private struct GroupBarItemView: View {
           .foregroundStyle(group.isSelected ? .primary : .secondary)
           .lineLimit(2)
           .multilineTextAlignment(.center)
-          .frame(width: 72)
+          .frame(width: 72, height: 28, alignment: .top)
       }
     }
     .buttonStyle(.plain)
@@ -128,7 +128,7 @@ private struct AddGroupButton: View {
 
   var body: some View {
     Button(action: onTap) {
-      VStack(spacing: 6) {
+      VStack(alignment: .center, spacing: 6) {
         Circle()
           .strokeBorder(
             Color.pmgray.n300,
@@ -144,7 +144,7 @@ private struct AddGroupButton: View {
         Text("추가")
           .font(.system(size: 11))
           .foregroundStyle(.secondary)
-          .frame(width: 72)
+          .frame(width: 72, height: 28, alignment: .top)
       }
     }
     .buttonStyle(.plain)
