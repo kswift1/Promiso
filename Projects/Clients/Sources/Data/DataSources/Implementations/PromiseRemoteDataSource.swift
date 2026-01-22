@@ -68,9 +68,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
     }
 
     // env 파라미터 추가
-    if let env = functionsEnvironmentParam() {
-      callableData["env"] = env
-    }
+    callableData["env"] = functionsEnvironmentParam()
 
     // Firebase Functions 호출
     let result = try await functions.httpsCallable("createPromise").call(callableData)
@@ -92,22 +90,13 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
       "status": status,
     ]
 
-    if let env = functionsEnvironmentParam() {
-      callableData["env"] = env
-    }
+    callableData["env"] = functionsEnvironmentParam()
 
     _ = try await functions.httpsCallable("respondPromise").call(callableData)
   }
 
-  private func functionsEnvironmentParam() -> String? {
-    switch FirebaseEnvironmentManager.shared.current {
-    case .dev:
-      return nil
-    case .stage:
-      return "stage"
-    case .release:
-      return "prod"
-    }
+  private func functionsEnvironmentParam() -> String {
+    FirebaseEnvironmentManager.shared.current.firebaseEnv
   }
   
   /// 약속 업데이트
@@ -150,9 +139,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
     }
 
     // env 파라미터 추가
-    if let env = functionsEnvironmentParam() {
-      callableData["env"] = env
-    }
+    callableData["env"] = functionsEnvironmentParam()
 
     // Firebase Functions 호출
     _ = try await functions.httpsCallable("updatePromise").call(callableData)
@@ -165,9 +152,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
       "promiseId": id
     ]
 
-    if let env = functionsEnvironmentParam() {
-      callableData["env"] = env
-    }
+    callableData["env"] = functionsEnvironmentParam()
 
     _ = try await functions.httpsCallable(FirebaseFunctionNames.deletePromise).call(callableData)
   }
@@ -378,9 +363,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
       "promiseId": promiseId
     ]
 
-    if let env = functionsEnvironmentParam() {
-      callableData["env"] = env
-    }
+    callableData["env"] = functionsEnvironmentParam()
 
     _ = try await functions.httpsCallable(FirebaseFunctionNames.startLiveActivity).call(callableData)
   }
@@ -413,9 +396,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
       "trackingDurationMinutes": trackingDurationMinutes
     ]
 
-    if let env = functionsEnvironmentParam() {
-      callableData["env"] = env
-    }
+    callableData["env"] = functionsEnvironmentParam()
 
     _ = try await functions.httpsCallable(FirebaseFunctionNames.updateETA).call(callableData)
   }

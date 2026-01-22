@@ -67,7 +67,8 @@ export const onPromiseCreatedBadges = onDocumentCreated(
     }
 
     const rawMemberIds = groupDoc.data()?.memberIds;
-    const memberIds = Array.isArray(rawMemberIds) ? rawMemberIds as string[] : [];
+    const memberIds: string[] = Array.isArray(rawMemberIds) ?
+      rawMemberIds as string[] : [];
 
     // 생성자 제외한 멤버들에게 배지 표시
     const targetUsers = memberIds.filter((id) => id !== creatorId);
@@ -120,16 +121,40 @@ export const clearGroupBadge = onCall(
     const db = admin.firestore();
     const usersCollection = getEnvironmentCollection("users", db, env);
 
+    console.log(
+      `[clearGroupBadge] uid: ${uid}, groupId: ${groupId}, env: ${env}`
+    );
+    console.log(`[clearGroupBadge] Collection path: ${usersCollection.path}`);
+
     try {
+      // 먼저 문서 존재 여부 확인
+      const userDoc = await usersCollection.doc(uid).get();
+      if (!userDoc.exists) {
+        console.error(`[clearGroupBadge] User document not found: ${uid}`);
+        throw new HttpsError("not-found", "사용자 문서를 찾을 수 없습니다.");
+      }
+
+      const userData = userDoc.data();
+      const groupData = userData?.groups?.[groupId];
+      console.log("[clearGroupBadge] groupData:", JSON.stringify(groupData));
+
+      if (!groupData) {
+        console.error(`[clearGroupBadge] Group not found: ${groupId}`);
+        throw new HttpsError("not-found", "그룹 정보를 찾을 수 없습니다.");
+      }
+
       await usersCollection.doc(uid).update({
         [`groups.${groupId}.hasNewActivity`]: false,
       });
 
-      console.log(`[clearGroupBadge] User ${uid} cleared badge for ${groupId}`);
+      console.log(`[clearGroupBadge] Success: ${uid} / ${groupId}`);
 
       return {success: true};
     } catch (error) {
       console.error("[clearGroupBadge] Error:", error);
+      if (error instanceof HttpsError) {
+        throw error;
+      }
       throw new HttpsError("internal", "배지 해제에 실패했습니다.");
     }
   }

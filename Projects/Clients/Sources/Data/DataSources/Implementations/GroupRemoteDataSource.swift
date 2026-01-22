@@ -87,9 +87,7 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
         callableData["description"] = description
       }
 
-      if let env = functionsEnvironmentParam() {
-        callableData["env"] = env
-      }
+      callableData["env"] = functionsEnvironmentParam()
 
       if let imageUrl {
         callableData["imageUrl"] = imageUrl
@@ -122,15 +120,8 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
     }
   }
   
-  private func functionsEnvironmentParam() -> String? {
-    switch FirebaseEnvironmentManager.shared.current {
-    case .dev:
-      return nil
-    case .stage:
-      return "stage"
-    case .release:
-      return "prod"
-    }
+  private func functionsEnvironmentParam() -> String {
+    FirebaseEnvironmentManager.shared.current.firebaseEnv
   }
   
   /// 사용자가 속한 그룹 목록 조회
@@ -225,9 +216,7 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
       "inviteCode": inviteCode.uppercased()
     ]
 
-    if let env = functionsEnvironmentParam() {
-      callableData["env"] = env
-    }
+    callableData["env"] = functionsEnvironmentParam()
 
     let result = try await functions.httpsCallable("previewGroup").call(callableData)
 
@@ -266,9 +255,7 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
       "userId": userId
     ]
 
-    if let env = functionsEnvironmentParam() {
-      callableData["env"] = env
-    }
+    callableData["env"] = functionsEnvironmentParam()
 
     let result = try await functions.httpsCallable("joinGroup").call(callableData)
 
@@ -300,9 +287,7 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
       "groupId": groupId
     ]
 
-    if let env = functionsEnvironmentParam() {
-      callableData["env"] = env
-    }
+    callableData["env"] = functionsEnvironmentParam()
 
     _ = try await functions.httpsCallable("leaveGroup").call(callableData)
   }
@@ -324,9 +309,7 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
       "groupId": groupId
     ]
 
-    if let env = functionsEnvironmentParam() {
-      callableData["env"] = env
-    }
+    callableData["env"] = functionsEnvironmentParam()
 
     _ = try await functions.httpsCallable("deleteGroup").call(callableData)
   }
@@ -343,11 +326,17 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
       "groupId": groupId
     ]
 
-    if let env = functionsEnvironmentParam() {
-      callableData["env"] = env
-    }
+    let env = functionsEnvironmentParam()
+    callableData["env"] = env
 
-    _ = try? await functions.httpsCallable("clearGroupBadge").call(callableData)
+    AppLogger.group.debug("[clearGroupBadge] Calling with groupId: \(groupId), env: \(env)")
+
+    do {
+      _ = try await functions.httpsCallable("clearGroupBadge").call(callableData)
+      AppLogger.group.debug("[clearGroupBadge] Success for groupId: \(groupId)")
+    } catch {
+      AppLogger.group.error("[clearGroupBadge] Failed for groupId: \(groupId), error: \(error.localizedDescription)")
+    }
   }
 
   // MARK: - Image Upload
