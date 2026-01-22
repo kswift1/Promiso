@@ -13,6 +13,27 @@ extension NotificationPermission {
       self.store = store
     }
 
+    /// 현재 시간 + 1시간 00분 기준으로 동적 알림 내용 생성
+    private var dynamicNotificationContent: String {
+      let calendar = Calendar.current
+      let now = Date()
+      // 현재 시간 + 1시간, 분은 00으로 설정
+      var components = calendar.dateComponents([.year, .month, .day, .hour], from: now)
+      components.hour = (components.hour ?? 0) + 1
+      components.minute = 0
+
+      guard let targetDate = calendar.date(from: components) else {
+        return store.config.notificationContent
+      }
+
+      let formatter = DateFormatter()
+      formatter.locale = Locale(identifier: "ko_KR")
+      formatter.dateFormat = "M월 d일 a h시"
+      let dateString = formatter.string(from: targetDate)
+
+      return "점심 약속 확정! \(dateString)에 만나요"
+    }
+
     public var body: some SwiftUI.View {
       VStack(spacing: 0) {
           iPhonePreview()
@@ -170,7 +191,7 @@ extension NotificationPermission {
               .foregroundStyle(.gray)
           }
 
-          Text(store.config.notificationContent)
+          Text(dynamicNotificationContent)
             .font(.caption2)
             .fontWeight(.medium)
             .foregroundStyle(.gray)

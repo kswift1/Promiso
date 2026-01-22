@@ -62,8 +62,8 @@ extension NotificationPermission {
       public static let `default` = Config(
         title: "알림을 켜고\n약속을 놓치지 마세요",
         content: "새로운 약속 초대, 응답 현황, 약속 확정 알림을\n실시간으로 받아보세요.",
-        notificationTitle: "약속이 확정됐어요",
-        notificationContent: "3명이 참여를 확정했어요. 약속 장소를 확인해보세요!",
+        notificationTitle: "약속 확정! 🎉",
+        notificationContent: "점심 약속 확정! 1월 25일 오후 1시에 만나요",
         primaryButtonTitle: "알림 허용",
         secondaryButtonTitle: "나중에 하기"
       )
