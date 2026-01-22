@@ -208,6 +208,7 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
     return groupsMap.compactMap { (groupId, groupData) in
       UserGroupInfo(id: groupId, data: groupData)
     }
+    .sorted { ($0.joinedAt ?? .distantPast) > ($1.joinedAt ?? .distantPast) }
   }
 
   /// 초대 코드로 그룹 미리보기
