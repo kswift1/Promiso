@@ -99,8 +99,8 @@ public struct UserGroupInfo: Codable, Equatable, Hashable, Identifiable, Sendabl
   /// 알림 활성화 여부
   public let notifications: Bool?
 
-  /// 미응답 약속 개수 (배지용)
-  public let needResponseCount: Int
+  /// 새로운 활동 여부 (배지용)
+  public let hasNewActivity: Bool
 
   /// 그룹 이미지 URL
   public let imageUrl: String?
@@ -111,7 +111,7 @@ public struct UserGroupInfo: Codable, Equatable, Hashable, Identifiable, Sendabl
     role: GroupRole? = nil,
     joinedAt: Date? = nil,
     notifications: Bool? = nil,
-    needResponseCount: Int = 0,
+    hasNewActivity: Bool = false,
     imageUrl: String? = nil
   ) {
     self.id = id
@@ -119,7 +119,7 @@ public struct UserGroupInfo: Codable, Equatable, Hashable, Identifiable, Sendabl
     self.role = role
     self.joinedAt = joinedAt
     self.notifications = notifications
-    self.needResponseCount = needResponseCount
+    self.hasNewActivity = hasNewActivity
     self.imageUrl = imageUrl
   }
 }

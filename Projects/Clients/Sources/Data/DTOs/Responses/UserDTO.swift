@@ -31,7 +31,7 @@ struct UserDTO: Codable {
     let role: GroupRole
     let joinedAt: FirebaseTimestampDTO
     let notifications: Bool
-    let needResponseCount: Int?
+    let hasNewActivity: Bool?
     let imageUrl: String?
   }
 
@@ -66,7 +66,7 @@ extension UserDTO {
         role: dto.role,
         joinedAt: dto.joinedAt.date,
         notifications: dto.notifications,
-        needResponseCount: dto.needResponseCount ?? 0,
+        hasNewActivity: dto.hasNewActivity ?? false,
         imageUrl: dto.imageUrl
       )
     } ?? []

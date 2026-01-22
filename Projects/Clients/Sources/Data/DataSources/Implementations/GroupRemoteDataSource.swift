@@ -419,7 +419,7 @@ private extension UserGroupInfo {
     let role = roleString.flatMap { GroupRole(rawValue: $0) }
     let notifications = data["notifications"] as? Bool
     let joinedAt = (data["joinedAt"] as? Timestamp)?.dateValue()
-    let needResponseCount = data["needResponseCount"] as? Int ?? 0
+    let hasNewActivity = data["hasNewActivity"] as? Bool ?? false
     let imageUrl = data["imageUrl"] as? String
 
     self.init(
@@ -428,7 +428,7 @@ private extension UserGroupInfo {
       role: role,
       joinedAt: joinedAt,
       notifications: notifications,
-      needResponseCount: needResponseCount,
+      hasNewActivity: hasNewActivity,
       imageUrl: imageUrl
     )
   }

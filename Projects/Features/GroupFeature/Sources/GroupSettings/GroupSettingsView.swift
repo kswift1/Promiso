@@ -406,7 +406,7 @@ struct InviteSheet: View {
             id: "g1",
             name: "지민과 나",
             role: .admin,
-            needResponseCount: 2
+            hasNewActivity: true
           ),
           currentUserId: "preview-user",
           preloadedMembers: [

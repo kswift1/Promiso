@@ -9,20 +9,20 @@ public struct GroupBarItem: Identifiable, Equatable, Sendable {
   public let id: String
   public let name: String
   public let imageUrl: String?
-  public let needResponseCount: Int
+  public let hasNewActivity: Bool
   public let isSelected: Bool
 
   public init(
     id: String,
     name: String,
     imageUrl: String? = nil,
-    needResponseCount: Int = 0,
+    hasNewActivity: Bool = false,
     isSelected: Bool = false
   ) {
     self.id = id
     self.name = name
     self.imageUrl = imageUrl
-    self.needResponseCount = needResponseCount
+    self.hasNewActivity = hasNewActivity
     self.isSelected = isSelected
   }
 }
@@ -85,9 +85,9 @@ private struct GroupBarItemView: View {
           .scaleEffect(group.isSelected ? 1.05 : 1.0)
           .animation(.easeInOut(duration: 0.2), value: group.isSelected)
 
-        // 미응답 배지
-        if group.needResponseCount > 0 {
-          BadgeView(count: group.needResponseCount)
+        // 새 활동 표시 (border와 같은 톤)
+        if group.hasNewActivity {
+          ActivityIndicatorDot()
             .offset(x: 3, y: -3)
         }
       }
@@ -103,19 +103,17 @@ private struct GroupBarItemView: View {
   }
 }
 
-// MARK: - BadgeView
+// MARK: - ActivityIndicatorDot
 
-private struct BadgeView: View {
-  let count: Int
-
+private struct ActivityIndicatorDot: View {
   var body: some View {
-    Text("\(min(count, 99))\(count > 99 ? "+" : "")")
-      .font(.system(size: 11, weight: .bold))
-      .foregroundStyle(.white)
-      .padding(.horizontal, 6)
-      .padding(.vertical, 2)
-      .background(Color.red)
-      .clipShape(Capsule())
+    Circle()
+      .fill(Color.pmindigo.n500)
+      .frame(width: 12, height: 12)
+      .overlay(
+        Circle()
+          .stroke(Color.white, lineWidth: 2)
+      )
   }
 }
 
@@ -155,11 +153,11 @@ private struct AddGroupButton: View {
   VStack {
     GroupHorizontalBar(
       groups: [
-        GroupBarItem(id: "g1", name: "지민과 나", needResponseCount: 2, isSelected: true),
-        GroupBarItem(id: "g2", name: "일이삼사오육칠팔구십일이삼사오육칠팔구십일", needResponseCount: 1, isSelected: false),
-        GroupBarItem(id: "g3", name: "대학 친구들", needResponseCount: 0, isSelected: false),
-        GroupBarItem(id: "g4", name: "우리 가족 단톡방", needResponseCount: 3, isSelected: false),
-        GroupBarItem(id: "g5", name: "주말 등산 동호회 멤버들", needResponseCount: 0, isSelected: false)
+        GroupBarItem(id: "g1", name: "지민과 나", hasNewActivity: true, isSelected: true),
+        GroupBarItem(id: "g2", name: "일이삼사오육칠팔구십일이삼사오육칠팔구십일", hasNewActivity: true, isSelected: false),
+        GroupBarItem(id: "g3", name: "대학 친구들", hasNewActivity: false, isSelected: false),
+        GroupBarItem(id: "g4", name: "우리 가족 단톡방", hasNewActivity: true, isSelected: false),
+        GroupBarItem(id: "g5", name: "주말 등산 동호회 멤버들", hasNewActivity: false, isSelected: false)
       ],
       onGroupTap: { id in print("Group tapped: \(id)") },
       onAddTap: { print("Add tapped") }

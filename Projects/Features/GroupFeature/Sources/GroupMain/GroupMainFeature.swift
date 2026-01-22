@@ -80,7 +80,7 @@ extension GroupMain {
             id: group.id,
             name: group.name,
             imageUrl: group.imageUrl,
-            needResponseCount: group.needResponseCount,
+            hasNewActivity: group.hasNewActivity,
             isSelected: group.id == currentGroup?.id
           )
         }
@@ -513,7 +513,7 @@ extension GroupMain {
 
           case .proposalRespondDone(let id, _):
             state.proposalResponding[id] = nil
-            // 응답 후 그룹 배지(needResponseCount) 갱신
+            // 응답 후 그룹 배지(hasNewActivity) 갱신
             return .send(.internal(.fetchGroupList))
 
           case .proposalRespondFailed(let id, let error):

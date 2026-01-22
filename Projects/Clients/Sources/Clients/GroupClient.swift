@@ -92,10 +92,10 @@ extension GroupClient: TestDependencyKey {
     fetchGroupSummaries: {
       try await Task.sleep(for: .seconds(0.2))
       return [
-        UserGroupInfo(id: "g1", name: "지민과 나", role: .admin, notifications: true, needResponseCount: 2, imageUrl: "https://picsum.photos/seed/g1/200"),
-        UserGroupInfo(id: "g2", name: "회사 동료들", role: .member, notifications: true, needResponseCount: 1, imageUrl: "https://picsum.photos/seed/g2/200"),
-        UserGroupInfo(id: "g3", name: "대학 친구들", role: .member, notifications: false, needResponseCount: 0, imageUrl: nil),
-        UserGroupInfo(id: "g4", name: "가족", role: .member, notifications: true, needResponseCount: 3, imageUrl: "https://picsum.photos/seed/g4/200")
+        UserGroupInfo(id: "g1", name: "지민과 나", role: .admin, notifications: true, hasNewActivity: true, imageUrl: "https://picsum.photos/seed/g1/200"),
+        UserGroupInfo(id: "g2", name: "회사 동료들", role: .member, notifications: true, hasNewActivity: true, imageUrl: "https://picsum.photos/seed/g2/200"),
+        UserGroupInfo(id: "g3", name: "대학 친구들", role: .member, notifications: false, hasNewActivity: false, imageUrl: nil),
+        UserGroupInfo(id: "g4", name: "가족", role: .member, notifications: true, hasNewActivity: true, imageUrl: "https://picsum.photos/seed/g4/200")
       ]
     },
     fetchGroupsByIds: { ids in
