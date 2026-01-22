@@ -144,6 +144,13 @@ extension GroupMain {
             tintColor: .pmindigo.n500
           ) {
             store.send(.view(.joinGroup))
+          },
+          FABMenuItem(
+            title: "그룹 설정",
+            icon: "gearshape",
+            tintColor: .pmindigo.n500
+          ) {
+            store.send(.view(.groupSettingsTapped))
           }
         ],
         bottomPadding: fabBottomPadding
@@ -317,16 +324,6 @@ extension GroupMain {
           title: "모든 약속 보기",
           icon: "list.bullet",
           action: { store.send(.view(.allPromisesTapped)) }
-        )
-
-        Divider()
-          .padding(.leading, 52)
-
-        // 그룹 설정
-        MenuRowButton(
-          title: "그룹 설정",
-          icon: "gearshape",
-          action: { store.send(.view(.groupSettingsTapped)) }
         )
       }
       .padding(.horizontal, 16)
