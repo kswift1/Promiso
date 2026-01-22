@@ -92,10 +92,10 @@ extension GroupClient: TestDependencyKey {
     fetchGroupSummaries: {
       try await Task.sleep(for: .seconds(0.2))
       return [
-        UserGroupInfo(id: "g1", name: "지민과 나", role: .admin, notifications: true),
-        UserGroupInfo(id: "g2", name: "회사 동료들", role: .member, notifications: true),
-        UserGroupInfo(id: "g3", name: "대학 친구들", role: .member, notifications: false),
-        UserGroupInfo(id: "g4", name: "가족", role: .member, notifications: true)
+        UserGroupInfo(id: "g1", name: "지민과 나", role: .admin, notifications: true, needResponseCount: 2),
+        UserGroupInfo(id: "g2", name: "회사 동료들", role: .member, notifications: true, needResponseCount: 1),
+        UserGroupInfo(id: "g3", name: "대학 친구들", role: .member, notifications: false, needResponseCount: 0),
+        UserGroupInfo(id: "g4", name: "가족", role: .member, notifications: true, needResponseCount: 3)
       ]
     },
     fetchGroupsByIds: { ids in

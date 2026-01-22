@@ -1,3 +1,4 @@
+import ComposableArchitecture
 import PromisoShared
 import Clients
 import SwiftUI
@@ -41,8 +42,6 @@ extension GroupMain {
       var isInitialized: Bool = false
       let currentUser: UserPrivateModel
 
-      var selectedFilter: StatusFilter = .needResponse
-
       var promisesState: LoadingState<[PromiseModel]> = .idle
       var proposalResponding: [String: RespondingState] = [:]
       var path = StackState<Path.State>()
@@ -59,6 +58,7 @@ extension GroupMain {
       @Presents var joinGroup: JoinGroup.Feature.State?
       @Presents var editPromise: EditPromise.Feature.State?
       @Presents var deleteAlert: AlertState<DeleteAlertAction>?
+      @Presents var groupActionSheet: ConfirmationDialogState<GroupActionSheetAction>?
 
       /// 삭제 대상 약속 ID (알럿 확인 시 사용)
       var promiseToDelete: String?
@@ -69,11 +69,51 @@ extension GroupMain {
       public init(currentUser: UserPrivateModel) {
         self.currentUser = currentUser
       }
+
+      // MARK: - Computed Properties for New UI
+
+      /// 그룹 가로 바용 아이템 목록
+      var groupBarItems: [GroupBarItem] {
+        guard let groups = allGroupSummaries else { return [] }
+        return groups.map { group in
+          GroupBarItem(
+            id: group.id,
+            name: group.name,
+            imageUrl: nil,  // TODO: 그룹 이미지 URL 추가
+            needResponseCount: group.needResponseCount,
+            isSelected: group.id == currentGroup?.id
+          )
+        }
+      }
+
+      /// 응답 필요 약속 목록 (마감 임박순)
+      var needResponsePromises: [PromiseModel] {
+        guard case .loaded(let promises) = promisesState else { return [] }
+        return promises
+          .filter { $0.responseStatus(currentUserId: currentUser.userId, totalGroupMembers: currentGroupMembers?.count) == .needResponse }
+          .sorted { $0.votes.until < $1.votes.until }  // 마감 임박순
+      }
+
+      /// 확정된 약속 목록 (시작 시간순)
+      var confirmedPromises: [PromiseModel] {
+        guard case .loaded(let promises) = promisesState else { return [] }
+        return promises
+          .filter { $0.isConfirmed && $0.startAt > Date() }  // 확정 + 미래 약속만
+          .sorted { $0.startAt < $1.startAt }
+      }
+
+      /// 모든 약속 (시간순)
+      var allPromises: [PromiseModel] {
+        guard case .loaded(let promises) = promisesState else { return [] }
+        return promises.sorted { $0.startAt < $1.startAt }
+      }
     }
 
     @Reducer
     public enum Path {
       case manageGroupFeature(ManageGroup.Feature)
+      case groupSettings(GroupSettings.Feature)
+      case groupPromiseList(GroupPromiseList.Feature)
       case promiseDetail(PromiseDetail.Feature)
       case pastPromises(PastPromises.Feature)
       case pastPromiseDetail(PastPromiseDetail.Feature)
@@ -82,6 +122,12 @@ extension GroupMain {
     @CasePathable
     public enum DeleteAlertAction: Sendable {
       case confirmDelete
+    }
+
+    @CasePathable
+    public enum GroupActionSheetAction: Sendable {
+      case createGroup
+      case joinGroup
     }
 
     public enum Action: Sendable {
@@ -94,6 +140,7 @@ extension GroupMain {
       case joinGroup(PresentationAction<JoinGroup.Feature.Action>)
       case editPromise(PresentationAction<EditPromise.Feature.Action>)
       case deleteAlert(PresentationAction<DeleteAlertAction>)
+      case groupActionSheet(PresentationAction<GroupActionSheetAction>)
 
       case path(StackActionOf<Path>)
 
@@ -101,7 +148,6 @@ extension GroupMain {
         case onAppear
         case refreshTriggered
         case groupChanged(UserGroupInfo)
-        case filterChanged(StatusFilter)
         case proposalAccepted(String)
         case proposalRejected(String)
         case promiseDeleteRequested(String)
@@ -116,6 +162,14 @@ extension GroupMain {
         case joinGroup
         case joinGroupWithCode(String) // 딥링크로 초대 코드와 함께 열기
         case handleDeeplink(GroupMain.Deeplink) // 딥링크 처리
+
+        // MARK: - New UI Actions
+        case groupTapped(String)  // 가로 바에서 그룹 선택
+        case addGroupTapped  // + 버튼 탭 (액션 시트 표시)
+        case moreNeedResponseTapped  // "N개 더 보기" - 응답 필요
+        case moreConfirmedTapped  // "N개 더 보기" - 확정
+        case allPromisesTapped  // "모든 약속 보기"
+        case groupSettingsTapped  // "그룹 설정"
       }
 
       public enum Internal: Sendable {
@@ -141,7 +195,7 @@ extension GroupMain {
 
     // MARK: - Reducer Body
     public var body: some ReducerOf<Self> {
-      Reduce { state, action in
+      Reduce<State, Action> { state, action in
         switch action {
         // MARK: - View Actions
         case .view(let viewAction):
@@ -164,12 +218,7 @@ extension GroupMain {
             state.currentGroup = nil
             state.currentGroupMembers = nil
             state.promisesState = .loading
-            state.selectedFilter = .needResponse
             return .send(.internal(.fetchCurrentGroup(id: group.id)))
-
-          case .filterChanged(let filter):
-            state.selectedFilter = filter
-            return .none
 
           case .proposalAccepted(let id):
             guard state.proposalResponding[id] ?? .idle == .idle else { return .none }
@@ -304,6 +353,26 @@ extension GroupMain {
               AppLogger.deeplink.warning("[GroupMain] Group not found, fetching list...")
               return .send(.internal(.fetchGroupList))
             }
+
+          // MARK: - New UI Actions
+
+          case .groupTapped(let groupId):
+            return handleGroupTapped(&state, groupId: groupId)
+
+          case .addGroupTapped:
+            return handleAddGroupTapped(&state)
+
+          case .moreNeedResponseTapped:
+            return handleMoreNeedResponseTapped(&state)
+
+          case .moreConfirmedTapped:
+            return handleMoreConfirmedTapped(&state)
+
+          case .allPromisesTapped:
+            return handleAllPromisesTapped(&state)
+
+          case .groupSettingsTapped:
+            return handleGroupSettingsTapped(&state)
           }
 
         // MARK: - Internal Actions
@@ -538,7 +607,56 @@ extension GroupMain {
           state.promiseToDelete = nil
           return .none
 
+        // MARK: - Group Action Sheet
+        case .groupActionSheet(.presented(.createGroup)):
+          state.createGroup = CreateGroup.Feature.State(
+            currentUser: state.currentUser
+          )
+          return .none
+
+        case .groupActionSheet(.presented(.joinGroup)):
+          state.joinGroup = JoinGroup.Feature.State(
+            currentUser: state.currentUser
+          )
+          return .none
+
+        case .groupActionSheet:
+          return .none
+
         // MARK: - Path Actions
+
+        // GroupSettings delegate actions
+        case .path(.element(id: _, action: .groupSettings(.delegate(.groupLeft)))):
+          state.path.removeAll()
+          state.currentGroup = nil
+          state.currentGroupMembers = nil
+          return .send(.internal(.fetchGroupList))
+
+        case .path(.element(id: _, action: .groupSettings(.delegate(.groupDeleted)))):
+          state.path.removeAll()
+          state.currentGroup = nil
+          state.currentGroupMembers = nil
+          return .send(.internal(.fetchGroupList))
+
+        case .path(.element(id: _, action: .groupSettings(.delegate(.pastPromisesTapped)))):
+          guard let groupId = state.currentGroup?.id else { return .none }
+          state.path.append(.pastPromises(.init(
+            groupId: groupId,
+            currentUserId: state.currentUser.userId,
+            groupMembers: state.currentGroupMembers
+          )))
+          return .none
+
+        // GroupPromiseList delegate actions
+        case .path(.element(id: _, action: .groupPromiseList(.delegate(.promiseSelected(let promise))))):
+          state.path.append(.promiseDetail(.init(
+            promise: promise,
+            currentUserId: state.currentUser.userId,
+            groupMembers: state.currentGroupMembers
+          )))
+          return .none
+
+        // ManageGroup delegate actions (legacy)
         case .path(.element(id: _, action: .manageGroupFeature(.delegate(.groupLeft)))):
           state.path.removeAll()
           state.currentGroup = nil
@@ -591,6 +709,7 @@ extension GroupMain {
       .ifLet(\.$joinGroup, action: \.joinGroup) { JoinGroup.Feature() }
       .ifLet(\.$editPromise, action: \.editPromise) { EditPromise.Feature() }
       .ifLet(\.$deleteAlert, action: \.deleteAlert)
+      .ifLet(\.$groupActionSheet, action: \.groupActionSheet)
       .forEach(\.path, action: \.path)
     }
   }
@@ -600,6 +719,93 @@ extension GroupMain {
 
 extension GroupMain.Feature.Path.State: Equatable, Sendable {}
 extension GroupMain.Feature.Path.Action: Sendable {}
+
+// MARK: - New UI Action Helpers
+
+private func handleGroupTapped(
+  _ state: inout GroupMain.Feature.State,
+  groupId: String
+) -> Effect<GroupMain.Feature.Action> {
+  guard let groupInfo = state.allGroupSummaries?.first(where: { $0.id == groupId }) else {
+    return .none
+  }
+  return .send(.view(.groupChanged(groupInfo)))
+}
+
+private func handleAddGroupTapped(
+  _ state: inout GroupMain.Feature.State
+) -> Effect<GroupMain.Feature.Action> {
+  state.groupActionSheet = ConfirmationDialogState {
+    TextState("그룹 추가")
+  } actions: {
+    ButtonState(action: .createGroup) {
+      TextState("새 그룹 만들기")
+    }
+    ButtonState(action: .joinGroup) {
+      TextState("초대 코드로 참여")
+    }
+    ButtonState(role: .cancel) {
+      TextState("취소")
+    }
+  }
+  return .none
+}
+
+private func handleMoreNeedResponseTapped(
+  _ state: inout GroupMain.Feature.State
+) -> Effect<GroupMain.Feature.Action> {
+  guard let currentGroup = state.currentGroup else { return .none }
+  state.path.append(.groupPromiseList(.init(
+    group: currentGroup,
+    promises: state.allPromises,
+    currentUserId: state.currentUser.userId,
+    groupMembers: state.currentGroupMembers,
+    initialFilter: .needResponse
+  )))
+  return .none
+}
+
+private func handleMoreConfirmedTapped(
+  _ state: inout GroupMain.Feature.State
+) -> Effect<GroupMain.Feature.Action> {
+  guard let currentGroup = state.currentGroup else { return .none }
+  state.path.append(.groupPromiseList(.init(
+    group: currentGroup,
+    promises: state.allPromises,
+    currentUserId: state.currentUser.userId,
+    groupMembers: state.currentGroupMembers,
+    initialFilter: .confirmed
+  )))
+  return .none
+}
+
+private func handleAllPromisesTapped(
+  _ state: inout GroupMain.Feature.State
+) -> Effect<GroupMain.Feature.Action> {
+  guard let currentGroup = state.currentGroup else { return .none }
+  state.path.append(.groupPromiseList(.init(
+    group: currentGroup,
+    promises: state.allPromises,
+    currentUserId: state.currentUser.userId,
+    groupMembers: state.currentGroupMembers,
+    initialFilter: .all
+  )))
+  return .none
+}
+
+private func handleGroupSettingsTapped(
+  _ state: inout GroupMain.Feature.State
+) -> Effect<GroupMain.Feature.Action> {
+  guard let currentGroup = state.currentGroup else { return .none }
+  let summary = state.allGroupSummaries?.first { $0.id == currentGroup.id }
+  state.path.append(.groupSettings(.init(
+    group: currentGroup,
+    summary: summary,
+    currentUserId: state.currentUser.userId,
+    preloadedMembers: state.currentGroupMembers
+  )))
+  return .none
+}
 
 // MARK: - Deeplink Helpers
 

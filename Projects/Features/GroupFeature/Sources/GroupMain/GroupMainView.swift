@@ -8,7 +8,7 @@ extension GroupMain {
     public init(store: StoreOf<GroupMain.Feature>) {
       self.store = store
     }
-    
+
     public var body: some View {
       NavigationStackStore(
         store.scope(state: \.path, action: \.path)) {
@@ -17,6 +17,10 @@ extension GroupMain {
           switch store.case {
           case .manageGroupFeature(let manageGroupStore):
             ManageGroup.RootView(store: manageGroupStore)
+          case .groupSettings(let groupSettingsStore):
+            GroupSettings.View(store: groupSettingsStore)
+          case .groupPromiseList(let groupPromiseListStore):
+            GroupPromiseList.View(store: groupPromiseListStore)
           case .promiseDetail(let promiseDetailStore):
             PromiseDetail.RootView(store: promiseDetailStore)
           case .pastPromises(let pastPromisesStore):
@@ -26,7 +30,7 @@ extension GroupMain {
           }
         }
     }
-    
+
     @ViewBuilder
     private var rootContent: some View {
       Group {
@@ -72,53 +76,226 @@ extension GroupMain {
         EditPromise.RootView(store: editStore)
       }
       .alert(store: store.scope(state: \.$deleteAlert, action: \.deleteAlert))
+      .confirmationDialog(
+        store: store.scope(state: \.$groupActionSheet, action: \.groupActionSheet)
+      )
     }
-    
-    
+
+
+    // MARK: - New Group Detail View (섹션 기반)
+
     @ViewBuilder
     private var groupDetailView: some View {
-      VStack(spacing: 0) {
-        // Status Filter (고정)
-        StatusFilterView(
-          selectedFilter: Binding(
-            get: { store.selectedFilter },
-            set: { store.send(.view(.filterChanged($0))) }
+      ScrollView {
+        VStack(spacing: 0) {
+          // 그룹 가로 바
+          GroupHorizontalBar(
+            groups: store.groupBarItems,
+            onGroupTap: { groupId in
+              store.send(.view(.groupTapped(groupId)))
+            },
+            onAddTap: {
+              store.send(.view(.addGroupTapped))
+            }
           )
-        )
-        .padding(.horizontal, 16)
-        .padding(.top, 12)
-        .padding(.bottom, 8)
 
-        // Promise Timeline (스크롤 가능)
-        PromiseTimelineView(
-          promisesState: store.promisesState,
-          selectedFilter: store.selectedFilter,
-          currentUserId: store.currentUser.userId,
-          groupMembers: store.currentGroupMembers,
-          respondingStates: store.proposalResponding,
-          onTap: { promise in store.send(.view(.promiseTapped(promise))) },
-          onAccept: { promiseId in store.send(.view(.proposalAccepted(promiseId))) },
-          onReject: { promiseId in store.send(.view(.proposalRejected(promiseId))) },
-          onEdit: { promise in store.send(.view(.promiseEditTapped(promise))) },
-          onDelete: { promiseId in store.send(.view(.promiseDeleteRequested(promiseId))) },
-          onChangeResponse: { promiseId, status in
-            store.send(.view(.responseChanged(promiseId, status)))
-          },
-          onShare: { promiseId in store.send(.view(.promiseShared(promiseId))) }
-        )
-        .refreshable {
-          store.send(.view(.refreshTriggered))
+          // 로딩 상태
+          if store.promisesState.isLoading {
+            loadingView
+          } else if let error = store.promisesState.error {
+            errorView(error: error)
+          } else {
+            // 컨텐츠
+            contentSections
+          }
         }
       }
+      .refreshable {
+        store.send(.view(.refreshTriggered))
+      }
     }
-    
+
+    @ViewBuilder
+    private var loadingView: some View {
+      VStack(spacing: 16) {
+        ProgressView()
+        Text("약속을 불러오는 중...")
+          .font(.subheadline)
+          .foregroundStyle(.secondary)
+      }
+      .frame(maxWidth: .infinity)
+      .padding(.vertical, 60)
+    }
+
+    @ViewBuilder
+    private func errorView(error: Error) -> some View {
+      VStack(spacing: 16) {
+        Image(systemName: "exclamationmark.triangle")
+          .font(.system(size: 40))
+          .foregroundStyle(.secondary)
+
+        Text(error.localizedDescription)
+          .font(.subheadline)
+          .foregroundStyle(.secondary)
+          .multilineTextAlignment(.center)
+
+        Button("다시 시도") {
+          store.send(.view(.refreshTriggered))
+        }
+        .buttonStyle(.bordered)
+      }
+      .frame(maxWidth: .infinity)
+      .padding(.vertical, 60)
+      .padding(.horizontal, 24)
+    }
+
+    @ViewBuilder
+    private var contentSections: some View {
+      VStack(spacing: 0) {
+        // 응답 필요 섹션
+        if !store.needResponsePromises.isEmpty {
+          PromiseSectionView(
+            title: "응답 필요",
+            icon: "envelope.badge",
+            promises: store.needResponsePromises,
+            maxDisplay: 3,
+            currentUserId: store.currentUser.userId,
+            groupMembers: store.currentGroupMembers,
+            respondingStates: store.proposalResponding,
+            onPromiseTap: { promise in
+              store.send(.view(.promiseTapped(promise)))
+            },
+            onMoreTap: store.needResponsePromises.count > 3 ? {
+              store.send(.view(.moreNeedResponseTapped))
+            } : nil,
+            onAccept: { promise in
+              store.send(.view(.proposalAccepted(promise.id)))
+            },
+            onReject: { promise in
+              store.send(.view(.proposalRejected(promise.id)))
+            },
+            onChangeResponse: { promise, status in
+              store.send(.view(.responseChanged(promise.id, status)))
+            },
+            onEdit: { promise in
+              store.send(.view(.promiseEditTapped(promise)))
+            },
+            onDelete: { promise in
+              store.send(.view(.promiseDeleteRequested(promise.id)))
+            },
+            onShare: { promise in
+              store.send(.view(.promiseShared(promise.id)))
+            }
+          )
+        }
+
+        // 확정 약속 섹션
+        if !store.confirmedPromises.isEmpty {
+          PromiseSectionView(
+            title: "다가오는 확정 약속",
+            icon: "checkmark.circle",
+            promises: store.confirmedPromises,
+            maxDisplay: 2,
+            currentUserId: store.currentUser.userId,
+            groupMembers: store.currentGroupMembers,
+            respondingStates: store.proposalResponding,
+            onPromiseTap: { promise in
+              store.send(.view(.promiseTapped(promise)))
+            },
+            onMoreTap: store.confirmedPromises.count > 2 ? {
+              store.send(.view(.moreConfirmedTapped))
+            } : nil,
+            onAccept: nil,
+            onReject: nil,
+            onChangeResponse: nil,
+            onEdit: { promise in
+              store.send(.view(.promiseEditTapped(promise)))
+            },
+            onDelete: { promise in
+              store.send(.view(.promiseDeleteRequested(promise.id)))
+            },
+            onShare: { promise in
+              store.send(.view(.promiseShared(promise.id)))
+            }
+          )
+        }
+
+        // 빈 상태
+        if store.needResponsePromises.isEmpty && store.confirmedPromises.isEmpty {
+          emptyPromiseView
+        }
+
+        Divider()
+          .padding(.vertical, 16)
+
+        // 하단 메뉴
+        bottomMenuSection
+      }
+    }
+
+    @ViewBuilder
+    private var emptyPromiseView: some View {
+      VStack(spacing: 16) {
+        Image(systemName: "calendar.badge.plus")
+          .font(.system(size: 48))
+          .foregroundStyle(.secondary)
+
+        Text("아직 약속이 없어요")
+          .font(.system(size: 17, weight: .medium))
+          .foregroundStyle(.secondary)
+
+        Button {
+          store.send(.view(.createNewPromise))
+        } label: {
+          HStack {
+            Image(systemName: "plus")
+            Text("약속 만들기")
+          }
+          .font(.system(size: 15, weight: .semibold))
+          .padding(.horizontal, 20)
+          .padding(.vertical, 10)
+          .background(Color.pmindigo.n500)
+          .foregroundStyle(.white)
+          .clipShape(Capsule())
+        }
+      }
+      .frame(maxWidth: .infinity)
+      .padding(.vertical, 40)
+    }
+
+    @ViewBuilder
+    private var bottomMenuSection: some View {
+      VStack(spacing: 0) {
+        // 모든 약속 보기
+        MenuRowButton(
+          title: "모든 약속 보기",
+          icon: "list.bullet",
+          action: { store.send(.view(.allPromisesTapped)) }
+        )
+
+        Divider()
+          .padding(.leading, 52)
+
+        // 그룹 설정
+        MenuRowButton(
+          title: "그룹 설정",
+          icon: "gearshape",
+          action: { store.send(.view(.groupSettingsTapped)) }
+        )
+      }
+      .padding(.horizontal, 16)
+      .padding(.bottom, 24)
+    }
+
+    // MARK: - Empty Group View
+
     @ViewBuilder
     private var groupDetailEmptyView: some View {
       ScrollView {
         VStack(spacing: 0) {
           Spacer()
             .frame(height: 80)
-          
+
           VStack(spacing: 32) {
             // Illustration
             ZStack {
@@ -131,7 +308,7 @@ extension GroupMain {
                   )
                 )
                 .frame(width: 120, height: 120)
-              
+
               Image(systemName: "person.3.fill")
                 .font(.system(size: 56))
                 .foregroundStyle(
@@ -142,19 +319,19 @@ extension GroupMain {
                   )
                 )
             }
-            
+
             // Text
             VStack(spacing: 12) {
               Text("그룹이 선택되지 않았어요")
                 .font(.title3.bold())
-              
+
               Text("그룹을 만들거나 참여해서\n친구들과 약속을 시작해보세요")
                 .font(.body)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .lineSpacing(4)
             }
-            
+
             // Action Buttons
             VStack(spacing: 12) {
               GlassActionButton(
@@ -164,7 +341,7 @@ extension GroupMain {
                 action: { store.send(.view(.createGroup))
                 }
               )
-              
+
               GlassActionButton(
                 title: "초대 코드로 참여하기",
                 leadingSystemImage: "link.circle.fill",
@@ -174,83 +351,79 @@ extension GroupMain {
             }
             .padding(.horizontal, 40)
           }
-          
+
           Spacer()
             .frame(height: 80)
         }
       }
     }
-    
+
+    // MARK: - Toolbar
+
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-      if let currentGroup = store.currentGroup {
-        ToolbarItem(placement: .principal) {
-          Text(currentGroup.name)
-        }
-        
-        ToolbarTitleMenu {
-          if let allGroups = store.allGroupSummaries, allGroups.isEmpty == false {
-            ForEach(allGroups, id: \.id) { group in
-              Button {
-                store.send(.view(.groupChanged(group)))
-              } label: {
-                if group.id == currentGroup.id {
-                  Label(group.name, systemImage: "checkmark")
-                } else {
-                  Text(group.name)
-                }
-              }
-              .disabled(group.id == currentGroup.id)
-            }
-            
-            Divider()
-          }
-          
-          Menu("그룹 추가") {
-            Button("그룹 만들기", systemImage: "plus") {
-              store.send(.view(.createGroup))
-            }
-            
-            Button("초대 코드로 참여하기", systemImage: "link") {
-              store.send(.view(.joinGroup))
-            }
-          }
-        }
-        
+      ToolbarItem(placement: .principal) {
+        Text("그룹")
+          .font(.headline)
+      }
+
+      if store.currentGroup != nil {
         ToolbarItem(placement: .topBarTrailing) {
           ToolbarButton(
             imageName: "plus",
             action: { store.send(.view(.createNewPromise)) }
           )
         }
-        
-        ToolbarItem(placement: .topBarTrailing) {
-          ToolbarButton(
-            imageName: "gearshape",
-            action: { store.send(.view(.groupManageTapped)) }
-          )
-        }
-      } else {
-        ToolbarItem(placement: .principal) {
-          EmptyView()
-        }
       }
     }
   }
 }
 
+// MARK: - MenuRowButton
+
+private struct MenuRowButton: View {
+  let title: String
+  let icon: String
+  let action: () -> Void
+
+  var body: some View {
+    Button(action: action) {
+      HStack(spacing: 12) {
+        Image(systemName: icon)
+          .font(.system(size: 18))
+          .foregroundStyle(Color.pmindigo.n500)
+          .frame(width: 24)
+
+        Text(title)
+          .font(.system(size: 16))
+          .foregroundStyle(.primary)
+
+        Spacer()
+
+        Image(systemName: "chevron.right")
+          .font(.system(size: 13, weight: .semibold))
+          .foregroundStyle(.tertiary)
+      }
+      .padding(.vertical, 14)
+    }
+    .buttonStyle(.plain)
+  }
+}
+
+// MARK: - State Extensions
+
 private extension GroupMain.Feature.State {
-  
+
   /// 속한 그룹이 없는 경우
   private var hasNoGroups: Bool {
     allGroupSummaries?.isEmpty == true && currentGroup == nil
   }
-  
+
   /// 활성화된 그룹이 없는 경우
   var shouldShowEmptyGroupView: Bool {
     !promisesState.isLoading && hasNoGroups
   }
-  
+
   /// 특정 약속의 응답 상태 조회
   func respondingState(for promiseId: String) -> GroupMain.RespondingState {
     proposalResponding[promiseId] ?? .idle

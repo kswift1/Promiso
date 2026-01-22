@@ -99,18 +99,23 @@ public struct UserGroupInfo: Codable, Equatable, Hashable, Identifiable, Sendabl
   /// 알림 활성화 여부
   public let notifications: Bool?
 
+  /// 미응답 약속 개수 (배지용)
+  public let needResponseCount: Int
+
   public init(
     id: String,
     name: String,
     role: GroupRole? = nil,
     joinedAt: Date? = nil,
-    notifications: Bool? = nil
+    notifications: Bool? = nil,
+    needResponseCount: Int = 0
   ) {
     self.id = id
     self.name = name
     self.role = role
     self.joinedAt = joinedAt
     self.notifications = notifications
+    self.needResponseCount = needResponseCount
   }
 }
 

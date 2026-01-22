@@ -42,8 +42,11 @@ struct PromiseTimelineView: View {
       }
     case .responded:
       return activePromises.filter {
-        $0.responseStatus(currentUserId: currentUserId, totalGroupMembers: totalMembers) != .needResponse
+        let status = $0.responseStatus(currentUserId: currentUserId, totalGroupMembers: totalMembers)
+        return status == .responded || status == .confirmed
       }
+    case .confirmed:
+      return activePromises.filter { $0.isConfirmed }
     }
   }
 
@@ -387,6 +390,8 @@ private struct EmptyPromisesView: View {
       return "exclamationmark.bubble"
     case .responded:
       return "checkmark.circle"
+    case .confirmed:
+      return "checkmark.seal"
     }
   }
 
@@ -398,6 +403,8 @@ private struct EmptyPromisesView: View {
       return "답변이 필요한 약속이 없어요"
     case .responded:
       return "응답한 약속이 없어요"
+    case .confirmed:
+      return "확정된 약속이 없어요"
     }
   }
 }
