@@ -40,7 +40,6 @@ public struct PromiseDTO: Codable {
   // MARK: - 메타데이터
   public let createdAt: Timestamp
   public let updatedAt: Timestamp
-  public let isDeleted: Bool
 
   public init(
     title: String,
@@ -55,8 +54,7 @@ public struct PromiseDTO: Codable {
     location: LocationDTO? = nil,
     trackingStartMinutesBefore: Int? = nil,
     createdAt: Timestamp = Timestamp(),
-    updatedAt: Timestamp = Timestamp(),
-    isDeleted: Bool = false
+    updatedAt: Timestamp = Timestamp()
   ) {
     self.title = title
     self.emoji = emoji
@@ -71,7 +69,6 @@ public struct PromiseDTO: Codable {
     self.trackingStartMinutesBefore = trackingStartMinutesBefore
     self.createdAt = createdAt
     self.updatedAt = updatedAt
-    self.isDeleted = isDeleted
   }
 }
 
@@ -123,8 +120,7 @@ extension PromiseDTO {
       location: model.location.map { LocationDTO(model: $0) },
       trackingStartMinutesBefore: model.trackingStartMinutesBefore,
       createdAt: Timestamp(date: model.createdAt),
-      updatedAt: Timestamp(date: model.updatedAt),
-      isDeleted: model.isDeleted
+      updatedAt: Timestamp(date: model.updatedAt)
     )
   }
 }

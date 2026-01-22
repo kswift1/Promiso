@@ -166,10 +166,6 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
     }
 
     let dto = try groupSnapshot.data(as: GroupDTO.self)
-    guard !dto.isDeleted else {
-      throw GroupRemoteDataSourceError.invalidFunctionResponse
-    }
-
     return GroupModel(dto: dto, id: groupId)
   }
 
@@ -182,8 +178,6 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
           guard groupSnapshot.exists else { return nil }
 
           let dto = try groupSnapshot.data(as: GroupDTO.self)
-          guard !dto.isDeleted else { return nil }
-
           return GroupModel(dto: dto, id: groupId)
         }
       }
@@ -321,8 +315,9 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
   /// Firebase Functions의 deleteGroup을 호출합니다.
   /// Functions에서 다음 작업을 수행합니다:
   /// 1. 호스트인지 확인
-  /// 2. groups/{groupId}를 soft delete (isDeleted: true)
-  /// 3. 모든 멤버의 users/{userId}/groups Map에서 해당 그룹 삭제
+  /// 2. groups/{groupId} 문서 삭제 (hard delete)
+  /// 3. Storage의 그룹 이미지 삭제
+  /// 4. 모든 멤버의 users/{userId}/groups Map에서 해당 그룹 삭제
   public func deleteGroup(groupId: String) async throws {
     var callableData: [String: Any] = [
       "groupId": groupId

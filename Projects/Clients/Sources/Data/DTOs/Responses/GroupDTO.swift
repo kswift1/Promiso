@@ -19,5 +19,4 @@ struct GroupDTO: Codable {
   let createdBy: String
   let createdAt: Timestamp
   let updatedAt: Timestamp
-  let isDeleted: Bool
 }

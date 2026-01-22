@@ -17,6 +17,8 @@ import {
   RespondPromiseResponse,
   UpdatePromiseRequest,
   UpdatePromiseResponse,
+  DeletePromiseRequest,
+  DeletePromiseResponse,
 } from "../types/api";
 
 /**
@@ -133,7 +135,6 @@ export const createPromise = onCall<CreatePromiseRequest>(
       trackingStartMinutesBefore: data.arrivalSharingTime || null,
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
-      isDeleted: false,
     };
 
     await promiseRef.set(promiseData);
@@ -461,6 +462,111 @@ export const updatePromise = onCall<UpdatePromiseRequest>(
     await promiseRef.update(updateData);
 
     // 8. 응답 반환
+    return {
+      success: true,
+    };
+  },
+);
+
+/**
+ * 약속 삭제
+ *
+ * @remarks
+ * **인증 필수**
+ *
+ * 약속을 삭제합니다 (Hard Delete):
+ * - 호스트만 삭제 가능
+ * - 시작 전 약속만 삭제 가능
+ *
+ * @ios PromiseDetailView
+ * @added 2026-01-21
+ */
+export const deletePromise = onCall<DeletePromiseRequest>(
+  {region: REGION},
+  async (request): Promise<DeletePromiseResponse> => {
+    // 1. 인증 확인
+    if (!request.auth) {
+      throw new HttpsError(
+        "unauthenticated",
+        "로그인이 필요합니다",
+      );
+    }
+
+    const userId = request.auth.uid;
+    const data = request.data;
+
+    // 2. 데이터 검증
+    if (!data.promiseId) {
+      throw new HttpsError(
+        "invalid-argument",
+        "약속 ID는 필수입니다",
+      );
+    }
+
+    if (data.env && data.env !== "stage" && data.env !== "prod") {
+      throw new HttpsError(
+        "invalid-argument",
+        "env는 stage 또는 prod만 허용됩니다",
+      );
+    }
+
+    const db = admin.firestore();
+    const promisesCollection = getEnvironmentCollection(
+      "promises",
+      db,
+      data.env,
+    );
+
+    const promiseRef = promisesCollection.doc(data.promiseId);
+
+    // 3. 약속 조회
+    const promiseDoc = await promiseRef.get();
+    if (!promiseDoc.exists) {
+      throw new HttpsError(
+        "not-found",
+        "약속을 찾을 수 없습니다",
+      );
+    }
+
+    const promiseData = promiseDoc.data();
+    if (!promiseData) {
+      throw new HttpsError(
+        "internal",
+        "약속 데이터를 가져올 수 없습니다",
+      );
+    }
+
+    // 4. 호스트 권한 확인
+    const hostId = promiseData.hostId;
+    if (typeof hostId !== "string") {
+      throw new HttpsError("internal", "잘못된 hostId 형식입니다");
+    }
+    if (hostId !== userId) {
+      throw new HttpsError(
+        "permission-denied",
+        "호스트만 약속을 삭제할 수 있습니다",
+      );
+    }
+
+    // 5. 시작 시간 확인 (시작 전 약속만 삭제 가능)
+    const startAt = promiseData.startAt;
+    if (!(startAt instanceof admin.firestore.Timestamp)) {
+      throw new HttpsError("internal", "잘못된 startAt 형식입니다");
+    }
+    const now = admin.firestore.Timestamp.now();
+    if (startAt.toMillis() <= now.toMillis()) {
+      throw new HttpsError(
+        "failed-precondition",
+        "이미 시작된 약속은 삭제할 수 없습니다",
+      );
+    }
+
+    // 6. Firestore에서 삭제 (Hard Delete)
+    await promiseRef.delete();
+
+    console.log(`🗑️ Promise deleted: ${data.promiseId}`);
+
+    // 7. 응답 반환
     return {
       success: true,
     };
