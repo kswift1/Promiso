@@ -410,8 +410,8 @@ export const cleanupExpiredPromiseBadges = onSchedule(
  * - 불일치 시 교정
  * - 음수인 경우 0으로 교정
  *
- * @note 한 번 실행 시 최대 500명의 유저만 처리합니다.
- * 6시간마다 실행되므로 점진적으로 전체 유저를 커버합니다.
+ * @note 메모리/타임아웃 제한으로 최대 500명 유저만 처리합니다.
+ * 대규모 서비스 시 페이지네이션 구현 필요.
  */
 export const reconcileBadgeCounts = onSchedule(
   {
