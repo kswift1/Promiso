@@ -6,6 +6,7 @@ import Dependencies
 import PromisoShared
 import RootTabFeature
 import ResourceKit
+import SharedFeature
 import SwiftUI
 
 // MARK: - Feature Namespace
@@ -41,8 +42,17 @@ extension AppEntry {
 
       @Presents public var destination: Destination.State?
 
+      /// 알림 권한 온보딩 (프로필 설정 완료 후 표시)
+      @Presents var notificationPermission: NotificationPermission.Feature.State?
+
+      /// 프로필 설정 완료 후 메인으로 이동할 사용자 정보
+      var pendingUserForMain: UserPrivateModel?
+
       /// 앱이 준비되기 전 수신된 딥링크 (메인 화면 전환 후 처리)
       var pendingDeeplink: DeeplinkDestination?
+
+      /// Provider에서 제공한 프로필 이미지 URL (Google 로그인 시)
+      var providerProfileImageURL: URL?
 
       public init() {
         self.destination = .auth(AuthFeature.Auth.Feature.State())
@@ -56,6 +66,7 @@ extension AppEntry {
       case view(ViewAction)
       case `internal`(InternalAction)
       case destination(PresentationAction<Destination.Action>)
+      case notificationPermission(PresentationAction<NotificationPermission.Feature.Action>)
     }
     
     public enum ViewAction {
@@ -148,7 +159,7 @@ extension AppEntry {
               }
             } else {
               var profileState = ProfileSetup.State()
-              profileState.inject(user: user)
+              profileState.inject(user: user, providerProfileImageURL: state.providerProfileImageURL)
               state.destination = .profile(profileState)
               if state.splash == .visible {
                 state.splash = .animatingOut
@@ -195,11 +206,27 @@ extension AppEntry {
             return routeOrPendDeeplink(destination, state: &state)
           }
 
-        case .destination(.presented(.auth(.delegate(.loggedIn)))):
+        case .destination(.presented(.auth(.delegate(.loggedIn(let providerProfileImageURL))))):
+          state.providerProfileImageURL = providerProfileImageURL
           return .send(.internal(.startProfileCheck))
 
         case .destination(.presented(.profile(.delegate(.completed(let userModel))))):
-          state.destination = .main(RootTab.Feature.State(currentUser: userModel))
+          // 프로필 설정 완료 → 알림 권한 온보딩 표시
+          state.pendingUserForMain = userModel
+          state.notificationPermission = NotificationPermission.Feature.State()
+          return .none
+
+        case .notificationPermission(.presented(.delegate(.dismissed))),
+             .notificationPermission(.presented(.delegate(.permissionChanged))):
+          // 알림 권한 온보딩 완료 → 메인 화면으로 이동
+          state.notificationPermission = nil
+          if let userModel = state.pendingUserForMain {
+            state.pendingUserForMain = nil
+            state.destination = .main(RootTab.Feature.State(currentUser: userModel))
+          }
+          return .none
+
+        case .notificationPermission:
           return .none
 
         case .destination(.presented(.main(.delegate(.logoutRequested)))):
@@ -224,6 +251,9 @@ extension AppEntry {
         }
       }
       .ifLet(\.$destination, action: \.destination)
+      .ifLet(\.$notificationPermission, action: \.notificationPermission) {
+        NotificationPermission.Feature()
+      }
     }
   }
   
@@ -245,6 +275,14 @@ extension AppEntry {
       .animation(.easeInOut, value: store.splash)
       .onAppear {
         store.send(.view(.onAppear))
+      }
+      .fullScreenCover(
+        item: $store.scope(
+          state: \.notificationPermission,
+          action: \.notificationPermission
+        )
+      ) { store in
+        NotificationPermission.View(store: store)
       }
     }
 
@@ -310,8 +348,9 @@ extension AppEntry.Feature.State {
 // MARK: - ProfileSetup State Extension
 
 extension AppEntry.ProfileSetup.State {
-  mutating func inject(user: FirebaseUserSnapshot) {
-    if let profileImageURL = user.photoURL {
+  mutating func inject(user: FirebaseUserSnapshot, providerProfileImageURL: URL? = nil) {
+    // Firebase User의 photoURL 우선, 없으면 Provider의 profileImageURL 사용
+    if let profileImageURL = user.photoURL ?? providerProfileImageURL {
       self.profileImage = .url(profileImageURL)
     } else {
       self.profileImage = .none
