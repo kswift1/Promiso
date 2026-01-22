@@ -324,7 +324,7 @@ export const joinGroup = onCall<JoinGroupRequest>(
             role: "member",
             joinedAt: now,
             notifications: true,
-            needResponseCount: needResponseCount,
+            needResponseCount,
             imageUrl: groupImageUrl,
           },
         },
@@ -617,8 +617,10 @@ export const onGroupImageUpdated = onDocumentUpdated(
       return;
     }
 
-    const beforeImageUrl = beforeData.imageUrl as string | null ?? null;
-    const afterImageUrl = afterData.imageUrl as string | null ?? null;
+    const beforeImageUrl =
+      typeof beforeData.imageUrl === "string" ? beforeData.imageUrl : null;
+    const afterImageUrl =
+      typeof afterData.imageUrl === "string" ? afterData.imageUrl : null;
 
     // imageUrl이 변경되지 않았으면 종료
     if (beforeImageUrl === afterImageUrl) {
@@ -627,7 +629,8 @@ export const onGroupImageUpdated = onDocumentUpdated(
 
     const groupId = event.params.groupId;
     const env = event.params.env;
-    const memberIds = (afterData.memberIds as string[]) ?? [];
+    const memberIds =
+      Array.isArray(afterData.memberIds) ? afterData.memberIds as string[] : [];
 
     if (memberIds.length === 0) {
       console.log(`[onGroupImageUpdated] No members in group ${groupId}`);

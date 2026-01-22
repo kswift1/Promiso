@@ -66,7 +66,8 @@ export const onPromiseCreatedBadges = onDocumentCreated(
       return;
     }
 
-    const memberIds = (groupDoc.data()?.memberIds as string[]) ?? [];
+    const rawMemberIds = groupDoc.data()?.memberIds;
+    const memberIds = Array.isArray(rawMemberIds) ? rawMemberIds as string[] : [];
 
     // 생성자 제외한 멤버들에게 배지 표시
     const targetUsers = memberIds.filter((id) => id !== creatorId);
@@ -110,12 +111,12 @@ export const clearGroupBadge = onCall(
       throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
     }
 
-    const {groupId} = request.data as {groupId?: string};
+    const groupId = request.data?.groupId;
     if (!groupId || typeof groupId !== "string") {
       throw new HttpsError("invalid-argument", "groupId가 필요합니다.");
     }
 
-    const env = process.env.ENVIRONMENT || "dev";
+    const env = request.data?.env || "dev";
     const db = admin.firestore();
     const usersCollection = getEnvironmentCollection("users", db, env);
 
