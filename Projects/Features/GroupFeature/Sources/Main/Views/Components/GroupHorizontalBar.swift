@@ -1,6 +1,7 @@
 import Clients
 import PromisoShared
 import SwiftUI
+import UIKit
 
 // MARK: - Data Model
 
@@ -70,38 +71,53 @@ private struct GroupBarItemView: View {
   let group: GroupBarItem
   let onTap: () -> Void
 
-  var body: some View {
-    Button(action: onTap) {
-      VStack(alignment: .center, spacing: 6) {
-        ZStack(alignment: .topTrailing) {
-          // 그룹 아바타 (PromisoShared 컴포넌트 사용)
-          GroupThumbnailView(imageUrl: group.imageUrl, name: group.name, size: 56)
-            .overlay(
-              Circle()
-                .stroke(
-                  group.isSelected ? Color.pmindigo.n500 : Color.clear,
-                  lineWidth: 3
-                )
-            )
-            .scaleEffect(group.isSelected ? 1.05 : 1.0)
-            .animation(.easeInOut(duration: 0.2), value: group.isSelected)
+  @State private var isPressed = false
 
-          // 미응답 배지
-          if group.needResponseCount > 0 {
-            BadgeView(count: group.needResponseCount)
-              .offset(x: 3, y: -3)
+  var body: some View {
+    VStack(alignment: .center, spacing: 6) {
+      ZStack(alignment: .topTrailing) {
+        // 그룹 아바타 (PromisoShared 컴포넌트 사용)
+        GroupThumbnailView(imageUrl: group.imageUrl, name: group.name, size: 56)
+          .overlay(
+            Circle()
+              .stroke(
+                group.isSelected ? Color.pmindigo.n500 : Color.clear,
+                lineWidth: 3
+              )
+          )
+          .scaleEffect(isPressed ? 0.9 : (group.isSelected ? 1.05 : 1.0))
+          .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isPressed)
+          .animation(.easeInOut(duration: 0.2), value: group.isSelected)
+
+        // 미응답 배지
+        if group.needResponseCount > 0 {
+          BadgeView(count: group.needResponseCount)
+            .offset(x: 3, y: -3)
+        }
+      }
+
+      Text(group.name)
+        .font(.system(size: 11, weight: group.isSelected ? .semibold : .regular))
+        .foregroundStyle(group.isSelected ? .primary : .secondary)
+        .lineLimit(3)
+        .multilineTextAlignment(.center)
+        .frame(width: 72, height: 28, alignment: .top)
+    }
+    .opacity(isPressed ? 0.7 : 1.0)
+    .gesture(
+      DragGesture(minimumDistance: 0)
+        .onChanged { _ in
+          if !isPressed {
+            isPressed = true
           }
         }
-
-        Text(group.name)
-          .font(.system(size: 11, weight: group.isSelected ? .semibold : .regular))
-          .foregroundStyle(group.isSelected ? .primary : .secondary)
-          .lineLimit(3)
-          .multilineTextAlignment(.center)
-          .frame(width: 72, height: 28, alignment: .top)
-      }
-    }
-    .buttonStyle(.plain)
+        .onEnded { _ in
+          isPressed = false
+          let generator = UIImpactFeedbackGenerator(style: .light)
+          generator.impactOccurred()
+          onTap()
+        }
+    )
   }
 }
 
