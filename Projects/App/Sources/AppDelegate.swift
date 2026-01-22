@@ -42,15 +42,9 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     // Firebase Messaging delegate 설정
     Messaging.messaging().delegate = self
 
-    // 알림 권한 요청
-    let authOptions: UNAuthorizationOptions = [.alert, .badge, .sound]
-    UNUserNotificationCenter.current().requestAuthorization(options: authOptions) { granted, error in
-      if let error {
-        AppLogger.notification.error("Notification authorization error: \(error.localizedDescription)")
-        return
-      }
-      AppLogger.notification.debug("Notification authorization granted: \(granted)")
-      if granted {
+    // 이미 권한이 있는 경우에만 등록 (권한 요청은 온보딩에서 처리)
+    UNUserNotificationCenter.current().getNotificationSettings { settings in
+      if settings.authorizationStatus == .authorized {
         DispatchQueue.main.async {
           application.registerForRemoteNotifications()
         }
