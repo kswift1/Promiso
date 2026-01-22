@@ -102,13 +102,17 @@ public struct UserGroupInfo: Codable, Equatable, Hashable, Identifiable, Sendabl
   /// 미응답 약속 개수 (배지용)
   public let needResponseCount: Int
 
+  /// 그룹 이미지 URL
+  public let imageUrl: String?
+
   public init(
     id: String,
     name: String,
     role: GroupRole? = nil,
     joinedAt: Date? = nil,
     notifications: Bool? = nil,
-    needResponseCount: Int = 0
+    needResponseCount: Int = 0,
+    imageUrl: String? = nil
   ) {
     self.id = id
     self.name = name
@@ -116,6 +120,7 @@ public struct UserGroupInfo: Codable, Equatable, Hashable, Identifiable, Sendabl
     self.joinedAt = joinedAt
     self.notifications = notifications
     self.needResponseCount = needResponseCount
+    self.imageUrl = imageUrl
   }
 }
 

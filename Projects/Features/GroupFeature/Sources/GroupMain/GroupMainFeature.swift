@@ -79,7 +79,7 @@ extension GroupMain {
           GroupBarItem(
             id: group.id,
             name: group.name,
-            imageUrl: nil,  // TODO: 그룹 이미지 URL 추가
+            imageUrl: group.imageUrl,
             needResponseCount: group.needResponseCount,
             isSelected: group.id == currentGroup?.id
           )
