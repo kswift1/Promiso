@@ -85,8 +85,7 @@ extension GroupMain {
 
     @ViewBuilder
     private var groupDetailView: some View {
-      // 약속 컨텐츠 (스크롤 + 리프레시)
-      ScrollView {
+      VStack(spacing: 0) {
         // 그룹 가로 바 (상단 고정)
         GroupHorizontalBar(
           groups: store.groupBarItems,
@@ -100,19 +99,32 @@ extension GroupMain {
             store.send(.view(.joinGroup))
           }
         )
-        
+
         Divider()
-        
-        VStack(spacing: 0) {
-          // 로딩 상태
-          if store.promisesState.isLoading {
+
+        // 필터 세그먼트
+        filterSegment
+          .padding(.vertical, 8)
+
+        // 약속 리스트 (스와이프 지원)
+        if store.promisesState.isLoading {
+          ScrollView {
             loadingView
-          } else if let error = store.promisesState.error {
-            errorView(error: error)
-          } else {
-            // 컨텐츠
-            contentSections
           }
+        } else if let error = store.promisesState.error {
+          ScrollView {
+            errorView(error: error)
+          }
+        } else if store.isOnboardingMode {
+          ScrollView {
+            onboardingCardsView
+          }
+        } else if store.filteredPromises.isEmpty {
+          ScrollView {
+            emptyFilteredView
+          }
+        } else {
+          promiseListView
         }
       }
       .refreshable {
@@ -191,23 +203,6 @@ extension GroupMain {
       .padding(.horizontal, 24)
     }
 
-    @ViewBuilder
-    private var contentSections: some View {
-      VStack(spacing: 0) {
-        // 필터 세그먼트
-        filterSegment
-          .padding(.vertical, 8)
-
-        // 온보딩 모드 또는 일반 모드
-        if store.isOnboardingMode {
-          onboardingCardsView
-        } else if store.filteredPromises.isEmpty {
-          emptyFilteredView
-        } else {
-          promiseListView
-        }
-      }
-    }
 
     // MARK: - Onboarding Cards
 
@@ -249,18 +244,49 @@ extension GroupMain {
 
     @ViewBuilder
     private var promiseListView: some View {
-      LazyVStack(spacing: 12) {
-        ForEach(store.filteredPromises, id: \.id) { promise in
-          promiseCardView(for: promise)
+      List {
+        ForEach(store.groupedFilteredPromises, id: \.date) { section in
+          Section {
+            ForEach(section.promises, id: \.id) { promise in
+              promiseRowView(for: promise)
+            }
+          } header: {
+            dateSectionHeader(section.date)
+          }
+          .listSectionSeparator(.hidden)
         }
+
+        // FAB 공간 확보
+        Color.clear
+          .frame(height: 80)
+          .listRowBackground(Color.clear)
+          .listRowSeparator(.hidden)
       }
-      .padding(.horizontal, 16)
-      .padding(.bottom, 100) // FAB 공간 확보
+      .listStyle(.plain)
+      .scrollContentBackground(.hidden)
     }
 
     @ViewBuilder
-    private func promiseCardView(for promise: PromiseModel) -> some View {
+    private func dateSectionHeader(_ date: String) -> some View {
+      HStack(spacing: 12) {
+        Text(date)
+          .font(.system(size: 18, weight: .bold))
+          .foregroundStyle(.primary)
+          .textCase(nil)
+
+        Rectangle()
+          .fill(Color(UIColor.systemGray4))
+          .frame(height: 1)
+      }
+      .padding(.top, 8)
+      .padding(.bottom, 8)
+    }
+
+    @ViewBuilder
+    private func promiseRowView(for promise: PromiseModel) -> some View {
       let promiseId = promise.id
+      let myVoteStatus = promise.myVoteStatus(userId: store.currentUser.userId)
+
       PromiseCard(
         promise: promise,
         currentUserId: store.currentUser.userId,
@@ -288,6 +314,49 @@ extension GroupMain {
           store.send(.view(.promiseShared(promiseId)))
         }
       )
+      .contentShape(Rectangle())
+      .onTapGesture {
+        store.send(.view(.promiseTapped(promise)))
+      }
+      .listRowBackground(Color.clear)
+      .listRowSeparator(.hidden)
+      .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+      .swipeActions(edge: .leading, allowsFullSwipe: true) {
+        // 수락 / 되돌리기
+        if myVoteStatus == .accepted {
+          Button {
+            store.send(.view(.responseChanged(promiseId, .pending)))
+          } label: {
+            Label("되돌리기", systemImage: "arrow.uturn.backward.circle.fill")
+          }
+          .tint(.blue)
+        } else {
+          Button {
+            store.send(.view(.proposalAccepted(promiseId)))
+          } label: {
+            Label("수락", systemImage: "checkmark.circle.fill")
+          }
+          .tint(.green)
+        }
+      }
+      .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+        // 거절 / 되돌리기
+        if myVoteStatus == .declined {
+          Button {
+            store.send(.view(.responseChanged(promiseId, .pending)))
+          } label: {
+            Label("되돌리기", systemImage: "arrow.uturn.backward.circle.fill")
+          }
+          .tint(.blue)
+        } else {
+          Button {
+            store.send(.view(.proposalRejected(promiseId)))
+          } label: {
+            Label("거절", systemImage: "xmark.circle.fill")
+          }
+          .tint(.red)
+        }
+      }
     }
 
     @ViewBuilder

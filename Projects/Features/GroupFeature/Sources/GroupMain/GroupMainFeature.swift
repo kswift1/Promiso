@@ -260,6 +260,23 @@ extension GroupMain {
           return pastPromises
         }
       }
+
+      /// 날짜별로 그룹화된 필터된 약속 목록
+      var groupedFilteredPromises: [(date: String, promises: [PromiseModel])] {
+        let grouped = Dictionary(grouping: filteredPromises, by: { $0.dateText })
+
+        return grouped.sorted { lhs, rhs in
+          // 오늘 > 내일 > 나머지 (날짜순)
+          let priorityOrder = ["오늘": 0, "내일": 1]
+          let lhsPriority = priorityOrder[lhs.key] ?? 2
+          let rhsPriority = priorityOrder[rhs.key] ?? 2
+
+          if lhsPriority != rhsPriority {
+            return lhsPriority < rhsPriority
+          }
+          return lhs.key < rhs.key
+        }.map { (date: $0.key, promises: $0.value) }
+      }
     }
 
     @Reducer
