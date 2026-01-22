@@ -31,6 +31,8 @@ struct UserDTO: Codable {
     let role: GroupRole
     let joinedAt: FirebaseTimestampDTO
     let notifications: Bool
+    let needResponseCount: Int?
+    let imageUrl: String?
   }
 
   struct FirebaseTimestampDTO: Codable {
@@ -63,7 +65,9 @@ extension UserDTO {
         name: dto.groupName,
         role: dto.role,
         joinedAt: dto.joinedAt.date,
-        notifications: dto.notifications
+        notifications: dto.notifications,
+        needResponseCount: dto.needResponseCount ?? 0,
+        imageUrl: dto.imageUrl
       )
     } ?? []
 
