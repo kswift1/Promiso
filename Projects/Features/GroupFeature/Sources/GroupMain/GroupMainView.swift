@@ -115,20 +115,26 @@ extension GroupMain {
           ScrollView {
             errorView(error: error)
           }
+          .refreshable {
+            store.send(.view(.refreshTriggered))
+          }
         } else if store.isOnboardingMode {
           ScrollView {
             onboardingCardsView
+          }
+          .refreshable {
+            store.send(.view(.refreshTriggered))
           }
         } else if store.filteredPromises.isEmpty {
           ScrollView {
             emptyFilteredView
           }
+          .refreshable {
+            store.send(.view(.refreshTriggered))
+          }
         } else {
           promiseListView
         }
-      }
-      .refreshable {
-        store.send(.view(.refreshTriggered))
       }
       .overlay {
         morphingFABMenu
@@ -264,6 +270,9 @@ extension GroupMain {
       }
       .listStyle(.plain)
       .scrollContentBackground(.hidden)
+      .refreshable {
+        store.send(.view(.refreshTriggered))
+      }
     }
 
     @ViewBuilder
