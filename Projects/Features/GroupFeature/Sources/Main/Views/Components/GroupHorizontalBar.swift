@@ -74,9 +74,8 @@ private struct GroupBarItemView: View {
     Button(action: onTap) {
       VStack(spacing: 6) {
         ZStack(alignment: .topTrailing) {
-          // 그룹 아바타
-          GroupAvatarView(imageUrl: group.imageUrl, name: group.name)
-            .frame(width: 56, height: 56)
+          // 그룹 아바타 (PromisoShared 컴포넌트 사용)
+          GroupThumbnailView(imageUrl: group.imageUrl, name: group.name, size: 56)
             .overlay(
               Circle()
                 .stroke(
@@ -97,8 +96,9 @@ private struct GroupBarItemView: View {
         Text(group.name)
           .font(.system(size: 11, weight: group.isSelected ? .semibold : .regular))
           .foregroundStyle(group.isSelected ? .primary : .secondary)
-          .lineLimit(1)
-          .frame(width: 60)
+          .lineLimit(2)
+          .multilineTextAlignment(.center)
+          .frame(width: 72)
       }
     }
     .buttonStyle(.plain)
@@ -144,56 +144,10 @@ private struct AddGroupButton: View {
         Text("추가")
           .font(.system(size: 11))
           .foregroundStyle(.secondary)
-          .frame(width: 60)
+          .frame(width: 72)
       }
     }
     .buttonStyle(.plain)
-  }
-}
-
-// MARK: - GroupAvatarView
-
-private struct GroupAvatarView: View {
-  let imageUrl: String?
-  let name: String
-
-  var body: some View {
-    if let url = imageUrl, let imageURL = URL(string: url) {
-      AsyncImage(url: imageURL) { phase in
-        switch phase {
-        case .success(let image):
-          image
-            .resizable()
-            .aspectRatio(contentMode: .fill)
-        case .failure:
-          defaultAvatar
-        case .empty:
-          ProgressView()
-            .frame(width: 56, height: 56)
-        @unknown default:
-          defaultAvatar
-        }
-      }
-      .clipShape(Circle())
-    } else {
-      defaultAvatar
-    }
-  }
-
-  private var defaultAvatar: some View {
-    Circle()
-      .fill(
-        LinearGradient(
-          colors: [Color.pmindigo.n100, Color.pmindigo.n200],
-          startPoint: .topLeading,
-          endPoint: .bottomTrailing
-        )
-      )
-      .overlay(
-        Text(String(name.prefix(1)))
-          .font(.system(size: 22, weight: .bold))
-          .foregroundStyle(Color.pmindigo.n500)
-      )
   }
 }
 
@@ -204,10 +158,10 @@ private struct GroupAvatarView: View {
     GroupHorizontalBar(
       groups: [
         GroupBarItem(id: "g1", name: "지민과 나", needResponseCount: 2, isSelected: true),
-        GroupBarItem(id: "g2", name: "회사 동료들", needResponseCount: 1, isSelected: false),
+        GroupBarItem(id: "g2", name: "회사 동료들과 함께하는 모임", needResponseCount: 1, isSelected: false),
         GroupBarItem(id: "g3", name: "대학 친구들", needResponseCount: 0, isSelected: false),
-        GroupBarItem(id: "g4", name: "가족", needResponseCount: 3, isSelected: false),
-        GroupBarItem(id: "g5", name: "동호회", needResponseCount: 0, isSelected: false)
+        GroupBarItem(id: "g4", name: "우리 가족 단톡방", needResponseCount: 3, isSelected: false),
+        GroupBarItem(id: "g5", name: "주말 등산 동호회 멤버들", needResponseCount: 0, isSelected: false)
       ],
       onGroupTap: { id in print("Group tapped: \(id)") },
       onAddTap: { print("Add tapped") }

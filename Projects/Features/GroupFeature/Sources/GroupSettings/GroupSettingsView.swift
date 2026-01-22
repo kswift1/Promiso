@@ -33,12 +33,12 @@ extension GroupSettings {
     private var groupHeaderSection: some SwiftUI.View {
       Section {
         HStack(spacing: 16) {
-          // 그룹 아바타
-          GroupSettingsAvatarView(
+          // 그룹 아바타 (PromisoShared 컴포넌트 사용)
+          GroupThumbnailView(
             imageUrl: store.group.imageUrl,
-            name: store.group.name
+            name: store.group.name,
+            size: 60
           )
-          .frame(width: 60, height: 60)
 
           VStack(alignment: .leading, spacing: 4) {
             Text(store.group.name)
@@ -236,47 +236,6 @@ private struct AlertsModifier: ViewModifier {
           onDismiss: { store.send(.view(.imageDetailDismissed)) }
         )
       }
-  }
-}
-
-// MARK: - GroupSettingsAvatarView
-
-private struct GroupSettingsAvatarView: View {
-  let imageUrl: String?
-  let name: String
-
-  var body: some View {
-    if let url = imageUrl, let imageURL = URL(string: url) {
-      AsyncImage(url: imageURL) { phase in
-        switch phase {
-        case .success(let image):
-          image
-            .resizable()
-            .aspectRatio(contentMode: .fill)
-        default:
-          defaultAvatar
-        }
-      }
-      .clipShape(Circle())
-    } else {
-      defaultAvatar
-    }
-  }
-
-  private var defaultAvatar: some View {
-    Circle()
-      .fill(
-        LinearGradient(
-          colors: [Color.pmindigo.n100, Color.pmindigo.n200],
-          startPoint: .topLeading,
-          endPoint: .bottomTrailing
-        )
-      )
-      .overlay(
-        Text(String(name.prefix(1)))
-          .font(.system(size: 24, weight: .bold))
-          .foregroundStyle(Color.pmindigo.n500)
-      )
   }
 }
 
