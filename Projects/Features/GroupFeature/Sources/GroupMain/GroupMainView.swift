@@ -177,14 +177,13 @@ extension GroupMain {
 
     @ViewBuilder
     private var loadingView: some View {
-      VStack(spacing: 16) {
-        ProgressView()
-        Text("약속을 불러오는 중...")
-          .font(.subheadline)
-          .foregroundStyle(.secondary)
+      LazyVStack(spacing: 12) {
+        ForEach(0..<3, id: \.self) { _ in
+          PromiseCardSkeleton()
+        }
       }
-      .frame(maxWidth: .infinity)
-      .padding(.vertical, 60)
+      .padding(.horizontal, 16)
+      .padding(.top, 8)
     }
 
     @ViewBuilder
