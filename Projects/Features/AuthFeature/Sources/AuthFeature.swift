@@ -58,7 +58,8 @@ extension Auth {
     }
     
     public enum Delegate: Equatable {
-      case loggedIn
+      /// 로그인 성공 (providerProfileImageURL: Provider에서 제공한 프로필 이미지 URL)
+      case loggedIn(providerProfileImageURL: URL?)
     }
     
     // MARK: - Reducer Body
@@ -83,7 +84,7 @@ extension Auth {
               do {
                 let bundle = try await authClient.signInWithGoogle()
                 await send(.internal(.authResponse(.success(bundle))))
-                await send(.delegate(.loggedIn))
+                await send(.delegate(.loggedIn(providerProfileImageURL: bundle.profileImageURL)))
               } catch {
                 let clientError = (error as? AuthClientError) ?? .unknown
                 await send(.internal(.authResponse(.failure(clientError))))
@@ -102,7 +103,8 @@ extension Auth {
             return .run { send in
               do {
                 let bundle = try await authClient.signInWithApple(authorization, nonce)
-                await send(.delegate(.loggedIn))
+                // Apple은 프로필 이미지를 제공하지 않음
+                await send(.delegate(.loggedIn(providerProfileImageURL: nil)))
                 await send(.internal(.authResponse(.success(bundle))))
               } catch {
                 let clientError = (error as? AuthClientError) ?? .unknown

@@ -1,5 +1,6 @@
 import ComposableArchitecture
 import Foundation
+import UIKit
 import UserNotifications
 
 // MARK: - Client
@@ -86,7 +87,14 @@ extension NotificationClient: DependencyKey {
 
       requestAuthorization: {
         let options: UNAuthorizationOptions = [.alert, .badge, .sound]
-        return try await UNUserNotificationCenter.current().requestAuthorization(options: options)
+        let granted = try await UNUserNotificationCenter.current().requestAuthorization(options: options)
+        // 권한 허용 시 원격 알림 등록
+        if granted {
+          await MainActor.run {
+            UIApplication.shared.registerForRemoteNotifications()
+          }
+        }
+        return granted
       },
 
       openNotificationSettings: {

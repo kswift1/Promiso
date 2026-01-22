@@ -99,6 +99,11 @@ public struct ServiceTokenBundle: Equatable, Sendable {
   public let providerTokenBundle: ProviderTokenBundle
   /// 신규 사용자 여부 (회원가입 시 true)
   public let isNewUser: Bool
+  /// 프로필 이미지 URL (Provider에서 제공, Firebase에 없을 경우 사용)
+  public var profileImageURL: URL? {
+    // Firebase User의 photoURL 우선, 없으면 Provider의 profileImageURL 사용
+    firebaseUser?.photoURL ?? providerTokenBundle.profileImageURL
+  }
 
   public init(
     firebaseUser: FirebaseUserSnapshot?,
@@ -124,14 +129,17 @@ public struct ProviderTokenBundle: Equatable, Sendable {
   public let email: String?
   /// 사용자 이름 (동의/제공되는 경우)
   public let fullName: String?
-  
+  /// 프로필 이미지 URL (Google 로그인 시 제공)
+  public let profileImageURL: URL?
+
   public init(
     provider: AuthProvider,
     identityToken: String?,
     accessToken: String?,
     userIdentifier: String,
     email: String? = nil,
-    fullName: String? = nil
+    fullName: String? = nil,
+    profileImageURL: URL? = nil
   ) {
     self.provider = provider
     self.identityToken = identityToken
@@ -139,6 +147,7 @@ public struct ProviderTokenBundle: Equatable, Sendable {
     self.userIdentifier = userIdentifier
     self.email = email
     self.fullName = fullName
+    self.profileImageURL = profileImageURL
   }
 }
 
@@ -203,16 +212,20 @@ public struct PlatformAuthProvider: PlatformAuthProviding, Sendable {
           let rootViewController = windowScene.windows.first(where: { $0.isKeyWindow })?.rootViewController else {
       throw AuthClientError.providerUnavailable
     }
-    
+
     let signInResult = try await GIDSignIn.sharedInstance.signIn(withPresenting: rootViewController)
     let user = signInResult.user
+    // Google 프로필 이미지 URL (200px 크기)
+    let profileImageURL = user.profile?.imageURL(withDimension: 200)
+
     return ProviderTokenBundle(
       provider: .google,
       identityToken: user.idToken?.tokenString,
       accessToken: user.accessToken.tokenString,
       userIdentifier: user.userID ?? "",
       email: user.profile?.email,
-      fullName: user.profile?.name
+      fullName: user.profile?.name,
+      profileImageURL: profileImageURL
     )
   }
 }
