@@ -168,7 +168,6 @@ extension GroupMain {
 
         // MARK: - New UI Actions
         case groupTapped(String)  // 가로 바에서 그룹 선택
-        case addGroupTapped  // + 버튼 탭 (액션 시트 표시)
         case moreNeedResponseTapped  // "N개 더 보기" - 응답 필요
         case moreConfirmedTapped  // "N개 더 보기" - 확정
         case allPromisesTapped  // "모든 약속 보기"
@@ -378,9 +377,6 @@ extension GroupMain {
               .send(.internal(.clearBadge(groupId: groupId))),
               .send(.view(.groupChanged(groupInfo)))
             )
-
-          case .addGroupTapped:
-            return handleAddGroupTapped(&state)
 
           case .moreNeedResponseTapped:
             return handleMoreNeedResponseTapped(&state)
@@ -764,25 +760,6 @@ extension GroupMain.Feature.Path.State: Equatable, Sendable {}
 extension GroupMain.Feature.Path.Action: Sendable {}
 
 // MARK: - New UI Action Helpers
-
-private func handleAddGroupTapped(
-  _ state: inout GroupMain.Feature.State
-) -> Effect<GroupMain.Feature.Action> {
-  state.groupActionSheet = ConfirmationDialogState {
-    TextState("그룹 추가")
-  } actions: {
-    ButtonState(action: .createGroup) {
-      TextState("새 그룹 만들기")
-    }
-    ButtonState(action: .joinGroup) {
-      TextState("초대 코드로 참여")
-    }
-    ButtonState(role: .cancel) {
-      TextState("취소")
-    }
-  }
-  return .none
-}
 
 private func handleMoreNeedResponseTapped(
   _ state: inout GroupMain.Feature.State

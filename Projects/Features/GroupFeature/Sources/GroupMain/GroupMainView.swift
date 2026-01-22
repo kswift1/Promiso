@@ -92,8 +92,11 @@ extension GroupMain {
           onGroupTap: { groupId in
             store.send(.view(.groupTapped(groupId)))
           },
-          onAddTap: {
-            store.send(.view(.addGroupTapped))
+          onCreateGroup: {
+            store.send(.view(.createGroup))
+          },
+          onJoinGroup: {
+            store.send(.view(.joinGroup))
           }
         )
         
@@ -125,25 +128,11 @@ extension GroupMain {
       MorphingFABMenu(
         items: [
           FABMenuItem(
-            title: "새 약속",
+            title: "약속 생성",
             icon: "calendar.badge.plus",
             tintColor: .pmindigo.n500
           ) {
             store.send(.view(.createNewPromise))
-          },
-          FABMenuItem(
-            title: "그룹 만들기",
-            icon: "person.3.fill",
-            tintColor: .pmindigo.n500
-          ) {
-            store.send(.view(.createGroup))
-          },
-          FABMenuItem(
-            title: "그룹 참여",
-            icon: "link",
-            tintColor: .pmindigo.n500
-          ) {
-            store.send(.view(.joinGroup))
           },
           FABMenuItem(
             title: "그룹 설정",

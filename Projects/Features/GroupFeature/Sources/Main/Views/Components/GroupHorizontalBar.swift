@@ -33,7 +33,8 @@ public struct GroupBarItem: Identifiable, Equatable, Sendable {
 struct GroupHorizontalBar: View {
   let groups: [GroupBarItem]
   let onGroupTap: (String) -> Void
-  let onAddTap: () -> Void
+  let onCreateGroup: () -> Void
+  let onJoinGroup: () -> Void
 
   var body: some View {
     ScrollViewReader { proxy in
@@ -47,8 +48,11 @@ struct GroupHorizontalBar: View {
             .id(group.id)
           }
 
-          // + 추가 버튼
-          AddGroupButton(onTap: onAddTap)
+          // + 추가 버튼 메뉴
+          AddGroupMenuButton(
+            onCreateGroup: onCreateGroup,
+            onJoinGroup: onJoinGroup
+          )
         }
         .padding(.horizontal, 16)
         .padding(.top, 12)
@@ -123,28 +127,38 @@ private struct ActivityIndicatorDot: View {
   }
 }
 
-// MARK: - AddGroupButton
+// MARK: - AddGroupMenuButton
 
-private struct AddGroupButton: View {
-  let onTap: () -> Void
+private struct AddGroupMenuButton: View {
+  let onCreateGroup: () -> Void
+  let onJoinGroup: () -> Void
 
   var body: some View {
-    Button(action: onTap) {
-      VStack(alignment: .center, spacing: 6) {
-        Circle()
-          .strokeBorder(
-            Color.pmgray.n300,
-            style: StrokeStyle(lineWidth: 2, dash: [5, 3])
-          )
-          .frame(width: 56, height: 56)
-          .overlay(
-            Image(systemName: "plus")
-              .font(.system(size: 20, weight: .medium))
-              .foregroundStyle(Color.pmgray.n400)
-          )
+    Menu {
+      Button {
+        onCreateGroup()
+      } label: {
+        Label("그룹 생성", systemImage: "person.3.fill")
       }
+
+      Button {
+        onJoinGroup()
+      } label: {
+        Label("초대 코드로 참여", systemImage: "link")
+      }
+    } label: {
+      Circle()
+        .strokeBorder(
+          Color.pmgray.n300,
+          style: StrokeStyle(lineWidth: 2, dash: [5, 3])
+        )
+        .frame(width: 56, height: 56)
+        .overlay(
+          Image(systemName: "plus")
+            .font(.system(size: 20, weight: .medium))
+            .foregroundStyle(Color.pmgray.n400)
+        )
     }
-    .buttonStyle(.plain)
   }
 }
 
@@ -161,7 +175,8 @@ private struct AddGroupButton: View {
         GroupBarItem(id: "g5", name: "주말 등산 동호회 멤버들", hasNewActivity: false, isSelected: false)
       ],
       onGroupTap: { id in print("Group tapped: \(id)") },
-      onAddTap: { print("Add tapped") }
+      onCreateGroup: { print("Create group") },
+      onJoinGroup: { print("Join group") }
     )
     .background(Color(.systemGroupedBackground))
 
@@ -173,7 +188,8 @@ private struct AddGroupButton: View {
   GroupHorizontalBar(
     groups: [],
     onGroupTap: { _ in },
-    onAddTap: { }
+    onCreateGroup: { },
+    onJoinGroup: { }
   )
   .background(Color(.systemGroupedBackground))
 }
