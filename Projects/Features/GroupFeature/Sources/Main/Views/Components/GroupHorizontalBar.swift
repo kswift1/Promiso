@@ -88,7 +88,7 @@ private struct GroupBarItemView: View {
         // 새 활동 표시 (border와 같은 톤)
         if group.hasNewActivity {
           ActivityIndicatorDot()
-            .offset(x: 3, y: -3)
+            .offset(x: 1, y: -1)
         }
       }
 
@@ -108,7 +108,7 @@ private struct GroupBarItemView: View {
 private struct ActivityIndicatorDot: View {
   var body: some View {
     Circle()
-      .fill(Color.pmindigo.n500)
+      .fill(Color.pmerror.n500)
       .frame(width: 12, height: 12)
       .overlay(
         Circle()

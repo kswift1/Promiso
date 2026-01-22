@@ -41,4 +41,9 @@ public protocol GroupRemoteDataSourceProtocol {
 
   /// 초대 코드로 그룹 참여
   func joinGroup(inviteCode: String, userId: String) async throws -> GroupModel
+
+  // MARK: - Badge Operations
+
+  /// 그룹 배지 클리어 (Fire & Forget)
+  func clearGroupBadge(groupId: String) async
 }

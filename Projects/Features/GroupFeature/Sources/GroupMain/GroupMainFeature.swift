@@ -190,6 +190,7 @@ extension GroupMain {
         case deletePromiseDone(promiseId: String)
         case deletePromiseFailed(promiseId: String, error: AppError)
         case toggleGroupNotifications
+        case clearBadge(groupId: String)
       }
     }
 
@@ -362,7 +363,17 @@ extension GroupMain {
           // MARK: - New UI Actions
 
           case .groupTapped(let groupId):
-            return handleGroupTapped(&state, groupId: groupId)
+            // 이미 선택된 그룹이면 무시
+            guard groupId != state.currentGroup?.id else { return .none }
+
+            guard let groupInfo = state.allGroupSummaries?.first(where: { $0.id == groupId }) else {
+              return .none
+            }
+
+            return .merge(
+              .send(.internal(.clearBadge(groupId: groupId))),
+              .send(.view(.groupChanged(groupInfo)))
+            )
 
           case .addGroupTapped:
             return handleAddGroupTapped(&state)
@@ -421,7 +432,10 @@ extension GroupMain {
 
           case .setDefaultGroup(let groups):
             guard let firstGroup = groups.first else { return .none }
-            return .send(.internal(.fetchCurrentGroup(id: firstGroup.id)))
+            return .merge(
+              .send(.internal(.clearBadge(groupId: firstGroup.id))),
+              .send(.internal(.fetchCurrentGroup(id: firstGroup.id)))
+            )
 
           case .fetchCurrentGroup(let id):
             return .run { [groupClient] send in
@@ -550,6 +564,21 @@ extension GroupMain {
 
           case .toggleGroupNotifications:
             return .none
+
+          case .clearBadge(let groupId):
+            // hasNewActivity가 true인 경우에만 클리어
+            guard let index = state.allGroupSummaries?.firstIndex(where: { $0.id == groupId }),
+                  state.allGroupSummaries?[index].hasNewActivity == true else {
+              return .none
+            }
+
+            // 로컬 상태 즉시 업데이트
+            state.allGroupSummaries?[index].hasNewActivity = false
+
+            // 서버에 배지 클리어 요청 (Fire & Forget)
+            return .run { [groupClient] _ in
+              await groupClient.clearGroupBadge(groupId)
+            }
           }
 
         // MARK: - Child Feature Actions
@@ -727,16 +756,6 @@ extension GroupMain.Feature.Path.State: Equatable, Sendable {}
 extension GroupMain.Feature.Path.Action: Sendable {}
 
 // MARK: - New UI Action Helpers
-
-private func handleGroupTapped(
-  _ state: inout GroupMain.Feature.State,
-  groupId: String
-) -> Effect<GroupMain.Feature.Action> {
-  guard let groupInfo = state.allGroupSummaries?.first(where: { $0.id == groupId }) else {
-    return .none
-  }
-  return .send(.view(.groupChanged(groupInfo)))
-}
 
 private func handleAddGroupTapped(
   _ state: inout GroupMain.Feature.State

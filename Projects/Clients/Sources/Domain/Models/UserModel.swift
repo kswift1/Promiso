@@ -100,7 +100,7 @@ public struct UserGroupInfo: Codable, Equatable, Hashable, Identifiable, Sendabl
   public let notifications: Bool?
 
   /// 새로운 활동 여부 (배지용)
-  public let hasNewActivity: Bool
+  public var hasNewActivity: Bool
 
   /// 그룹 이미지 URL
   public let imageUrl: String?

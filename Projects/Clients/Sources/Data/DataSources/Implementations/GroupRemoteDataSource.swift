@@ -331,6 +331,24 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
     _ = try await functions.httpsCallable("deleteGroup").call(callableData)
   }
 
+  /// 그룹 배지 클리어 (Fire & Forget)
+  ///
+  /// - Parameters:
+  ///   - groupId: 배지를 클리어할 그룹 ID
+  ///
+  /// Firebase Functions의 clearGroupBadge를 호출합니다.
+  /// 실패해도 무시합니다 (다음 fetch 시 동기화).
+  public func clearGroupBadge(groupId: String) async {
+    var callableData: [String: Any] = [
+      "groupId": groupId
+    ]
+
+    if let env = functionsEnvironmentParam() {
+      callableData["env"] = env
+    }
+
+    _ = try? await functions.httpsCallable("clearGroupBadge").call(callableData)
+  }
 
   // MARK: - Image Upload
   
