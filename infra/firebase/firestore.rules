@@ -8,6 +8,14 @@ service cloud.firestore {
       match /users/{userId} {
         // 본인 문서만 읽기/쓰기 허용
         // 닉네임 중복 검사 등은 Cloud Function을 통해 구현 권장
+        //
+        // ⚠️ 보안 정책:
+        // - groups[groupId].hasNewActivity: Cloud Functions 전용 필드
+        // - 클라이언트는 clearGroupBadge API를 통해서만 변경 가능
+        // - 관련 함수: promiseBadges.ts (onPromiseCreatedBadges, clearGroupBadge)
+        //
+        // 참고: Firestore rules에서 동적 키의 중첩 필드 검증은 제한적이므로
+        // 클라이언트 측에서 해당 필드 직접 수정을 금지하고 API 사용을 강제함
         allow read, write: if request.auth != null
                           && request.auth.uid == userId;
 

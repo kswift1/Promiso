@@ -8,6 +8,7 @@
  */
 import {FieldValue} from "firebase-admin/firestore";
 import {HttpsError, onCall} from "firebase-functions/v2/https";
+import {onDocumentUpdated} from "firebase-functions/v2/firestore";
 import {admin, REGION} from "../config";
 import {getEnvironmentCollection} from "../utils/firestore";
 import {
@@ -103,6 +104,8 @@ export const createGroup = onCall<CreateGroupRequest>(
             role: "admin",
             joinedAt: now,
             notifications: true,
+            needResponseCount: 0,
+            imageUrl: data.imageUrl ?? null,
           },
         },
       }, {merge: true});
@@ -258,6 +261,8 @@ export const joinGroup = onCall<JoinGroupRequest>(
     const groupId = groupDoc.id;
     const groupData = groupDoc.data();
     const groupName = groupData.name as string;
+    const groupImageUrl =
+      typeof groupData.imageUrl === "string" ? groupData.imageUrl : null;
     const maxMembers = groupData.maxMembers as number | undefined;
     const memberIds = (groupData.memberIds as string[]) ?? [];
 
@@ -278,17 +283,39 @@ export const joinGroup = onCall<JoinGroupRequest>(
     }
 
     const now = FieldValue.serverTimestamp();
+    const nowTimestamp = admin.firestore.Timestamp.now();
     const usersCollection = getEnvironmentCollection("users", db, data.env);
+    const promisesCollection = getEnvironmentCollection(
+      "promises", db, data.env
+    );
 
-    // 4. Firestore에 저장 (트랜잭션 사용)
+    // 4. 해당 그룹의 활성 약속 수 계산 (needResponseCount 초기값)
+    // 마감 전(votes.until > now) + 배지 미정리(badgesCleared == false)
+    const activePromises = await promisesCollection
+      .where("groupId", "==", groupId)
+      .where("badgesCleared", "==", false)
+      .get();
+
+    // 실제로 마감 전인 약속만 필터링 (쿼리 후 추가 검증)
+    let needResponseCount = 0;
+    for (const doc of activePromises.docs) {
+      const promise = doc.data();
+      const votes = promise.votes || {};
+      const deadline = votes.until ?? promise.startAt;
+      if (deadline && deadline.toMillis() > nowTimestamp.toMillis()) {
+        needResponseCount++;
+      }
+    }
+
+    // 5. Firestore에 저장 (트랜잭션 사용)
     await db.runTransaction(async (transaction) => {
-      // 4-1. 그룹의 memberIds에 추가
+      // 5-1. 그룹의 memberIds에 추가
       transaction.update(groupDoc.ref, {
         memberIds: FieldValue.arrayUnion(userId),
         updatedAt: now,
       });
 
-      // 4-2. 사용자의 그룹 목록에 추가 (Map 방식)
+      // 5-2. 사용자의 그룹 목록에 추가 (Map 방식) + needResponseCount 초기값
       const userRef = usersCollection.doc(userId);
       transaction.set(userRef, {
         groups: {
@@ -297,12 +324,19 @@ export const joinGroup = onCall<JoinGroupRequest>(
             role: "member",
             joinedAt: now,
             notifications: true,
+            needResponseCount,
+            imageUrl: groupImageUrl,
           },
         },
       }, {merge: true});
     });
 
-    // 5. 응답 반환
+    console.log(
+      `[joinGroup] ${userId} joined ${groupId}, ` +
+      `needResponseCount: ${needResponseCount}`
+    );
+
+    // 6. 응답 반환
     return {
       groupId: groupId,
       groupName: groupName,
@@ -516,6 +550,42 @@ export const deleteGroup = onCall<DeleteGroupRequest>(
       }
     }
 
+    // 4-1. 그룹의 모든 약속 삭제 (트리거가 배지 감소 처리)
+    const promisesCollection = getEnvironmentCollection(
+      "promises", db, data.env
+    );
+    const groupPromises = await promisesCollection
+      .where("groupId", "==", groupId)
+      .get();
+
+    if (!groupPromises.empty) {
+      // 약속 삭제: 트랜잭션 밖에서 수행 (트리거 활성화)
+      // Firestore batch는 최대 500개 작업 제한 - 500개 단위로 분할
+      const BATCH_LIMIT = 500;
+      const batches: FirebaseFirestore.WriteBatch[] = [];
+      let batch = db.batch();
+      let count = 0;
+
+      for (const doc of groupPromises.docs) {
+        batch.delete(doc.ref);
+        count++;
+        if (count === BATCH_LIMIT) {
+          batches.push(batch);
+          batch = db.batch();
+          count = 0;
+        }
+      }
+
+      if (count > 0) {
+        batches.push(batch);
+      }
+
+      await Promise.all(batches.map((b) => b.commit()));
+      console.log(
+        `🗑️ ${groupPromises.size} promises deleted for group ${groupId}`
+      );
+    }
+
     const now = FieldValue.serverTimestamp();
 
     // 5. Firestore에서 삭제 (트랜잭션 사용)
@@ -540,4 +610,69 @@ export const deleteGroup = onCall<DeleteGroupRequest>(
       success: true,
     };
   },
+);
+
+/**
+ * 그룹 이미지 업데이트 트리거
+ *
+ * @remarks
+ * 그룹의 imageUrl이 변경되면 모든 멤버의
+ * users/{userId}.groups[groupId].imageUrl을 업데이트합니다.
+ */
+export const onGroupImageUpdated = onDocumentUpdated(
+  {
+    document: "{env}/root/groups/{groupId}",
+    region: REGION,
+  },
+  async (event) => {
+    const beforeData = event.data?.before?.data();
+    const afterData = event.data?.after?.data();
+
+    if (!beforeData || !afterData) {
+      console.log("[onGroupImageUpdated] No data found");
+      return;
+    }
+
+    const beforeImageUrl =
+      typeof beforeData.imageUrl === "string" ? beforeData.imageUrl : null;
+    const afterImageUrl =
+      typeof afterData.imageUrl === "string" ? afterData.imageUrl : null;
+
+    // imageUrl이 변경되지 않았으면 종료
+    if (beforeImageUrl === afterImageUrl) {
+      return;
+    }
+
+    const groupId = event.params.groupId;
+    const env = event.params.env;
+    const memberIds =
+      Array.isArray(afterData.memberIds) ? afterData.memberIds as string[] : [];
+
+    if (memberIds.length === 0) {
+      console.log(`[onGroupImageUpdated] No members in group ${groupId}`);
+      return;
+    }
+
+    console.log(
+      `[onGroupImageUpdated] Group ${groupId} imageUrl changed: ` +
+      `${beforeImageUrl} → ${afterImageUrl}`
+    );
+
+    // 모든 멤버의 groups[groupId].imageUrl 업데이트
+    const db = admin.firestore();
+    const usersCollection = getEnvironmentCollection("users", db, env);
+    const batch = db.batch();
+
+    for (const memberId of memberIds) {
+      const userRef = usersCollection.doc(memberId);
+      batch.update(userRef, {
+        [`groups.${groupId}.imageUrl`]: afterImageUrl,
+      });
+    }
+
+    await batch.commit();
+    console.log(
+      `[onGroupImageUpdated] Updated imageUrl for ${memberIds.length} members`
+    );
+  }
 );
