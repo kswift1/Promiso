@@ -261,7 +261,8 @@ export const joinGroup = onCall<JoinGroupRequest>(
     const groupId = groupDoc.id;
     const groupData = groupDoc.data();
     const groupName = groupData.name as string;
-    const groupImageUrl = groupData.imageUrl as string | null ?? null;
+    const groupImageUrl =
+      typeof groupData.imageUrl === "string" ? groupData.imageUrl : null;
     const maxMembers = groupData.maxMembers as number | undefined;
     const memberIds = (groupData.memberIds as string[]) ?? [];
 
@@ -640,7 +641,7 @@ export const onGroupImageUpdated = onDocumentUpdated(
 
     // 모든 멤버의 groups[groupId].imageUrl 업데이트
     const db = admin.firestore();
-    const usersCollection = db.collection(`${env}/root/users`);
+    const usersCollection = getEnvironmentCollection("users", db, env);
     const batch = db.batch();
 
     for (const memberId of memberIds) {
