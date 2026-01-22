@@ -89,7 +89,7 @@ private struct GroupBarItemView: View {
           // 미응답 배지
           if group.needResponseCount > 0 {
             BadgeView(count: group.needResponseCount)
-              .offset(x: 5, y: -6)
+              .offset(x: 3, y: -3)
           }
         }
 
