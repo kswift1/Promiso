@@ -203,9 +203,14 @@ extension GroupMain {
           case .onAppear:
             guard !state.isInitialized else { return .none }
             state.isInitialized = true
+            // 캐시된 데이터로 먼저 UI 표시 (빠른 로딩)
             let summaries = state.currentUser.sortedGroups
-            state.allGroupSummaries = state.currentUser.sortedGroups
-            return .send(.internal(.setDefaultGroup(groups: summaries)))
+            state.allGroupSummaries = summaries
+            // 최신 데이터 fetch (imageUrl 등 갱신)
+            return .merge(
+              .send(.internal(.setDefaultGroup(groups: summaries))),
+              .send(.internal(.fetchGroupList))
+            )
 
           case .refreshTriggered:
             if !state.promisesState.isLoaded {
