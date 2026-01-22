@@ -26,6 +26,7 @@ export {
   joinGroup,
   leaveGroup,
   deleteGroup,
+  onGroupImageUpdated,
 } from "./functions/groups";
 
 // ============================================================================
@@ -64,3 +65,11 @@ export {
 // Emoji Functions
 // ============================================================================
 export {generateEmoji} from "./functions/emoji";
+
+// ============================================================================
+// Promise Badge Functions (신규 소식 배지 관리)
+// ============================================================================
+export {
+  onPromiseCreatedBadges,
+  clearGroupBadge,
+} from "./functions/promiseBadges";
