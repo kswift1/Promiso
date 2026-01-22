@@ -560,11 +560,27 @@ export const deleteGroup = onCall<DeleteGroupRequest>(
 
     if (!groupPromises.empty) {
       // 약속 삭제: 트랜잭션 밖에서 수행 (트리거 활성화)
-      const promiseDeleteBatch = db.batch();
+      // Firestore batch는 최대 500개 작업 제한 - 500개 단위로 분할
+      const BATCH_LIMIT = 500;
+      const batches: FirebaseFirestore.WriteBatch[] = [];
+      let batch = db.batch();
+      let count = 0;
+
       for (const doc of groupPromises.docs) {
-        promiseDeleteBatch.delete(doc.ref);
+        batch.delete(doc.ref);
+        count++;
+        if (count === BATCH_LIMIT) {
+          batches.push(batch);
+          batch = db.batch();
+          count = 0;
+        }
       }
-      await promiseDeleteBatch.commit();
+
+      if (count > 0) {
+        batches.push(batch);
+      }
+
+      await Promise.all(batches.map((b) => b.commit()));
       console.log(
         `🗑️ ${groupPromises.size} promises deleted for group ${groupId}`
       );
