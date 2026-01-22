@@ -136,11 +136,6 @@ private struct AddGroupButton: View {
               .font(.system(size: 20, weight: .medium))
               .foregroundStyle(Color.pmgray.n400)
           )
-
-        Text("추가")
-          .font(.system(size: 11))
-          .foregroundStyle(.secondary)
-          .frame(width: 72, height: 28, alignment: .top)
       }
     }
     .buttonStyle(.plain)
