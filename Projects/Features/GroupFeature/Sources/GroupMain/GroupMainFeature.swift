@@ -66,6 +66,9 @@ extension GroupMain {
       /// 딥링크로 열려는 목적지 (그룹/약속 로드 후 처리)
       var pendingDeeplink: GroupMain.Deeplink?
 
+      /// BottomAccessory(LiveActivity) 활성화 여부 - FAB 위치 조정용
+      public var hasLiveActivity: Bool = false
+
       public init(currentUser: UserPrivateModel) {
         self.currentUser = currentUser
       }
@@ -191,6 +194,7 @@ extension GroupMain {
         case deletePromiseFailed(promiseId: String, error: AppError)
         case toggleGroupNotifications
         case clearBadge(groupId: String)
+        case liveActivityChanged(isActive: Bool)
       }
     }
 
@@ -579,6 +583,10 @@ extension GroupMain {
             return .run { [groupClient] _ in
               await groupClient.clearGroupBadge(groupId)
             }
+
+          case .liveActivityChanged(let isActive):
+            state.hasLiveActivity = isActive
+            return .none
           }
 
         // MARK: - Child Feature Actions

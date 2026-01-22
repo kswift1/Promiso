@@ -41,9 +41,7 @@ extension GroupMain {
         }
       }
       .auroraBackground()
-      .toolbarVisibility(.visible, for: .navigationBar)
-      .navigationBarTitleDisplayMode(.inline)
-      .toolbar { toolbarContent }
+      .toolbarVisibility(.hidden, for: .navigationBar)
       .onAppear { store.send(.view(.onAppear)) }
       .fullScreenCover(
         store: store.scope(state: \.$createPromise, action: \.createPromise)
@@ -86,19 +84,22 @@ extension GroupMain {
 
     @ViewBuilder
     private var groupDetailView: some View {
+      // 약속 컨텐츠 (스크롤 + 리프레시)
       ScrollView {
+        // 그룹 가로 바 (상단 고정)
+        GroupHorizontalBar(
+          groups: store.groupBarItems,
+          onGroupTap: { groupId in
+            store.send(.view(.groupTapped(groupId)))
+          },
+          onAddTap: {
+            store.send(.view(.addGroupTapped))
+          }
+        )
+        
+        Divider()
+        
         VStack(spacing: 0) {
-          // 그룹 가로 바
-          GroupHorizontalBar(
-            groups: store.groupBarItems,
-            onGroupTap: { groupId in
-              store.send(.view(.groupTapped(groupId)))
-            },
-            onAddTap: {
-              store.send(.view(.addGroupTapped))
-            }
-          )
-
           // 로딩 상태
           if store.promisesState.isLoading {
             loadingView
@@ -112,6 +113,38 @@ extension GroupMain {
       }
       .refreshable {
         store.send(.view(.refreshTriggered))
+      }
+      .overlay(alignment: .bottomTrailing) {
+        createPromiseFAB
+      }
+    }
+
+    // MARK: - FAB (Floating Action Button)
+
+    private var createPromiseFAB: some View {
+      Button {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        store.send(.view(.createNewPromise))
+      } label: {
+        Image(systemName: "plus")
+          .font(.system(size: 24, weight: .semibold))
+          .foregroundStyle(.white)
+          .frame(width: 56, height: 56)
+          .background(Color.pmindigo.n500, in: Circle())
+          .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
+      }
+      .buttonStyle(.plain)
+      .padding(.trailing, 20)
+      .padding(.bottom, fabBottomPadding)
+    }
+
+    private var fabBottomPadding: CGFloat {
+      guard store.hasLiveActivity else { return 16 }
+      // iOS 26+: BottomAccessory가 얇음
+      if #available(iOS 26, *) {
+        return 56
+      } else {
+        return 80
       }
     }
 
@@ -359,24 +392,6 @@ extension GroupMain {
       }
     }
 
-    // MARK: - Toolbar
-
-    @ToolbarContentBuilder
-    private var toolbarContent: some ToolbarContent {
-      ToolbarItem(placement: .principal) {
-        Text("그룹")
-          .font(.headline)
-      }
-
-      if store.currentGroup != nil {
-        ToolbarItem(placement: .topBarTrailing) {
-          ToolbarButton(
-            imageName: "plus",
-            action: { store.send(.view(.createNewPromise)) }
-          )
-        }
-      }
-    }
   }
 }
 

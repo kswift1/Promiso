@@ -51,7 +51,8 @@ struct GroupHorizontalBar: View {
           AddGroupButton(onTap: onAddTap)
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.top, 12)
+        .padding(.bottom, 4)
       }
       .onChange(of: groups.first(where: { $0.isSelected })?.id) { _, selectedId in
         if let selectedId {
@@ -71,35 +72,40 @@ private struct GroupBarItemView: View {
   let onTap: () -> Void
 
   var body: some View {
-    VStack(alignment: .center, spacing: 6) {
-      ZStack(alignment: .topTrailing) {
-        // 그룹 아바타 (PromisoShared 컴포넌트 사용)
-        GroupThumbnailView(imageUrl: group.imageUrl, name: group.name, size: 56)
-          .overlay(
-            Circle()
-              .stroke(
-                group.isSelected ? Color.pmindigo.n500 : Color.clear,
-                lineWidth: 3
-              )
-          )
-          .scaleEffect(group.isSelected ? 1.05 : 1.0)
-          .animation(.easeInOut(duration: 0.2), value: group.isSelected)
+    Button {
+      UIImpactFeedbackGenerator(style: .light).impactOccurred()
+      onTap()
+    } label: {
+      VStack(alignment: .center, spacing: 6) {
+        ZStack(alignment: .topTrailing) {
+          // 그룹 아바타 (PromisoShared 컴포넌트 사용)
+          GroupThumbnailView(imageUrl: group.imageUrl, name: group.name, size: 56)
+            .overlay(
+              Circle()
+                .stroke(
+                  group.isSelected ? Color.pmindigo.n500 : Color.clear,
+                  lineWidth: 3
+                )
+            )
+            .scaleEffect(group.isSelected ? 1.05 : 1.0)
+            .animation(.easeInOut(duration: 0.2), value: group.isSelected)
 
-        // 새 활동 표시 (border와 같은 톤)
-        if group.hasNewActivity {
-          ActivityIndicatorDot()
-            .offset(x: 1, y: -1)
+          // 새 활동 표시 (border와 같은 톤)
+          if group.hasNewActivity {
+            ActivityIndicatorDot()
+              .offset(x: 1, y: -1)
+          }
         }
-      }
 
-      Text(group.name)
-        .font(.system(size: 11, weight: group.isSelected ? .semibold : .regular))
-        .foregroundStyle(group.isSelected ? .primary : .secondary)
-        .lineLimit(3)
-        .multilineTextAlignment(.center)
-        .frame(width: 72, height: 28, alignment: .top)
+        Text(group.name)
+          .font(.system(size: 11, weight: group.isSelected ? .semibold : .regular))
+          .foregroundStyle(group.isSelected ? .primary : .secondary)
+          .lineLimit(2)
+          .multilineTextAlignment(.center)
+          .frame(width: 72)
+      }
     }
-    .pressable(feedback: .light, onPress: onTap)
+    .buttonStyle(.scale)
   }
 }
 
