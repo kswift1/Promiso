@@ -1,7 +1,6 @@
 import Clients
 import PromisoShared
 import SwiftUI
-import UIKit
 
 // MARK: - Data Model
 
@@ -71,8 +70,6 @@ private struct GroupBarItemView: View {
   let group: GroupBarItem
   let onTap: () -> Void
 
-  @State private var isPressed = false
-
   var body: some View {
     VStack(alignment: .center, spacing: 6) {
       ZStack(alignment: .topTrailing) {
@@ -85,8 +82,7 @@ private struct GroupBarItemView: View {
                 lineWidth: 3
               )
           )
-          .scaleEffect(isPressed ? 0.9 : (group.isSelected ? 1.05 : 1.0))
-          .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isPressed)
+          .scaleEffect(group.isSelected ? 1.05 : 1.0)
           .animation(.easeInOut(duration: 0.2), value: group.isSelected)
 
         // 미응답 배지
@@ -103,21 +99,7 @@ private struct GroupBarItemView: View {
         .multilineTextAlignment(.center)
         .frame(width: 72, height: 28, alignment: .top)
     }
-    .opacity(isPressed ? 0.7 : 1.0)
-    .gesture(
-      DragGesture(minimumDistance: 0)
-        .onChanged { _ in
-          if !isPressed {
-            isPressed = true
-          }
-        }
-        .onEnded { _ in
-          isPressed = false
-          let generator = UIImpactFeedbackGenerator(style: .light)
-          generator.impactOccurred()
-          onTap()
-        }
-    )
+    .pressable(feedback: .light, onPress: onTap)
   }
 }
 
