@@ -20,7 +20,6 @@ public struct GroupModel: Equatable, Hashable, Identifiable, Sendable {
   public let createdBy: String
   public let createdAt: Date
   public let updatedAt: Date
-  public let isDeleted: Bool
 
   public init(
     id: String,
@@ -32,8 +31,7 @@ public struct GroupModel: Equatable, Hashable, Identifiable, Sendable {
     inviteCode: String,
     createdBy: String,
     createdAt: Date = Date(),
-    updatedAt: Date = Date(),
-    isDeleted: Bool = false
+    updatedAt: Date = Date()
   ) {
     self.id = id
     self.name = name
@@ -45,7 +43,6 @@ public struct GroupModel: Equatable, Hashable, Identifiable, Sendable {
     self.createdBy = createdBy
     self.createdAt = createdAt
     self.updatedAt = updatedAt
-    self.isDeleted = isDeleted
   }
 
   /// DTO에서 Model 생성
@@ -60,6 +57,5 @@ public struct GroupModel: Equatable, Hashable, Identifiable, Sendable {
     self.createdBy = dto.createdBy
     self.createdAt = dto.createdAt.dateValue()
     self.updatedAt = dto.updatedAt.dateValue()
-    self.isDeleted = dto.isDeleted
   }
 }

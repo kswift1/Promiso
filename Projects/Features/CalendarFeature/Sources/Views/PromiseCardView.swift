@@ -370,8 +370,7 @@ struct EmptyDayPlaceholder: View {
     inviteCode: "ABC123",
     createdBy: "user1",
     createdAt: Date(),
-    updatedAt: Date(),
-    isDeleted: false
+    updatedAt: Date()
   )
 
   let promise = PromiseModel(
@@ -408,8 +407,7 @@ struct EmptyDayPlaceholder: View {
     inviteCode: "XYZ789",
     createdBy: "user2",
     createdAt: Date(),
-    updatedAt: Date(),
-    isDeleted: false
+    updatedAt: Date()
   )
 
   let promise = PromiseModel(

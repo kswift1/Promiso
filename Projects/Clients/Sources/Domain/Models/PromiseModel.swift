@@ -35,7 +35,6 @@ public struct PromiseModel: Identifiable, Equatable, Hashable, Sendable {
   // MARK: - 메타데이터
   public var createdAt: Date
   public var updatedAt: Date
-  public var isDeleted: Bool
 
   public init(
     id: String = UUID().uuidString,
@@ -52,8 +51,7 @@ public struct PromiseModel: Identifiable, Equatable, Hashable, Sendable {
     location: LocationInfoModel? = nil,
     trackingStartMinutesBefore: Int? = nil,
     createdAt: Date = Date(),
-    updatedAt: Date = Date(),
-    isDeleted: Bool = false
+    updatedAt: Date = Date()
   ) {
     self.id = id
     self.title = title
@@ -70,7 +68,6 @@ public struct PromiseModel: Identifiable, Equatable, Hashable, Sendable {
     self.trackingStartMinutesBefore = trackingStartMinutesBefore
     self.createdAt = createdAt
     self.updatedAt = updatedAt
-    self.isDeleted = isDeleted
   }
 
   /// 빈 약속 (생성용)
@@ -99,8 +96,7 @@ extension PromiseModel {
       location: dto.location.map { LocationInfoModel(dto: $0) },
       trackingStartMinutesBefore: dto.trackingStartMinutesBefore,
       createdAt: dto.createdAt.dateValue(),
-      updatedAt: dto.updatedAt.dateValue(),
-      isDeleted: dto.isDeleted
+      updatedAt: dto.updatedAt.dateValue()
     )
   }
 }
