@@ -140,6 +140,9 @@ extension GroupMain {
       var currentGroup: GroupModel?
       var currentGroupMembers: [UserPublicModel]?
 
+      /// 현재 fetch 중인 그룹 ID (중복 fetch 방지)
+      var pendingGroupId: String?
+
       /// 현재 선택된 필터
       var selectedFilter: GroupMain.PromiseFilter = .needResponse
 
@@ -277,6 +280,13 @@ extension GroupMain {
           return lhs.key < rhs.key
         }.map { (date: $0.key, promises: $0.value) }
       }
+
+      /// 리스트 애니메이션 키 (DiffableDataSource 스타일)
+      var promiseListAnimationKey: [String] {
+        groupedFilteredPromises.flatMap { section in
+          [section.date] + section.promises.map(\.id)
+        }
+      }
     }
 
     @Reducer
@@ -391,9 +401,12 @@ extension GroupMain {
             return .send(.internal(.fetchGroupList))
 
           case .groupChanged(let group):
-            guard group.id != state.currentGroup?.id else { return .none }
+            // 이미 선택된 그룹이거나 fetch 중인 그룹이면 무시
+            guard group.id != state.currentGroup?.id,
+                  group.id != state.pendingGroupId else { return .none }
             state.currentGroup = nil
             state.currentGroupMembers = nil
+            state.pendingGroupId = group.id
             state.promisesState = .loading
             return .send(.internal(.fetchCurrentGroup(id: group.id)))
 
@@ -534,8 +547,9 @@ extension GroupMain {
           // MARK: - New UI Actions
 
           case .groupTapped(let groupId):
-            // 이미 선택된 그룹이면 무시
-            guard groupId != state.currentGroup?.id else { return .none }
+            // 이미 선택된 그룹이거나 fetch 중인 그룹이면 무시
+            guard groupId != state.currentGroup?.id,
+                  groupId != state.pendingGroupId else { return .none }
 
             guard let groupInfo = state.allGroupSummaries?.first(where: { $0.id == groupId }) else {
               return .none
@@ -604,6 +618,7 @@ extension GroupMain {
 
           case .setDefaultGroup(let groups):
             guard let firstGroup = groups.first else { return .none }
+            state.pendingGroupId = firstGroup.id
             return .merge(
               .send(.internal(.clearBadge(groupId: firstGroup.id))),
               .send(.internal(.fetchCurrentGroup(id: firstGroup.id)))
@@ -621,10 +636,12 @@ extension GroupMain {
 
           case .currentGroupResponse(.success(let group)):
             state.currentGroup = group
+            state.pendingGroupId = nil
             // 멤버 정보 먼저 fetch 후 promises subscribe
             return .send(.internal(.fetchGroupMembers(groupId: group.id)))
 
           case .currentGroupResponse(.failure(let error)):
+            state.pendingGroupId = nil
             state.promisesState = .failed(error)
             return .none
 

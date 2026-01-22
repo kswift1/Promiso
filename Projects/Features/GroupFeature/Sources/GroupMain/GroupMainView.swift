@@ -104,23 +104,24 @@ extension GroupMain {
 
         // 필터 세그먼트
         filterSegment
-          .padding(.vertical, 8)
+          .padding(.top, 8)
 
         // 약속 리스트 (스와이프 지원)
-        if store.promisesState.isLoading {
+        if store.isOnboardingMode {
+          ScrollView {
+            onboardingCardsView
+          }
+          .refreshable {
+            store.send(.view(.refreshTriggered))
+          }
+        } else if !store.promisesState.isLoaded && store.promisesState.error == nil {
+          // .idle 또는 .loading 상태
           ScrollView {
             loadingView
           }
         } else if let error = store.promisesState.error {
           ScrollView {
             errorView(error: error)
-          }
-          .refreshable {
-            store.send(.view(.refreshTriggered))
-          }
-        } else if store.isOnboardingMode {
-          ScrollView {
-            onboardingCardsView
           }
           .refreshable {
             store.send(.view(.refreshTriggered))
@@ -183,7 +184,7 @@ extension GroupMain {
         }
       }
       .padding(.horizontal, 16)
-      .padding(.top, 8)
+      .padding(.top, 48) // 섹션 헤더 높이만큼
     }
 
     @ViewBuilder
@@ -272,6 +273,7 @@ extension GroupMain {
       .refreshable {
         store.send(.view(.refreshTriggered))
       }
+      .animation(.snappy, value: store.promiseListAnimationKey)
     }
 
     @ViewBuilder
