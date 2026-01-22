@@ -8,6 +8,10 @@ service cloud.firestore {
       match /users/{userId} {
         // 본인 문서만 읽기/쓰기 허용
         // 닉네임 중복 검사 등은 Cloud Function을 통해 구현 권장
+        //
+        // ⚠️ 주의: groups[groupId].needResponseCount는 Cloud Functions에서만 관리
+        // 클라이언트에서 직접 수정하면 안 됨 (배지 정합성 유지)
+        // 관련 함수: promiseBadges.ts의 트리거들
         allow read, write: if request.auth != null
                           && request.auth.uid == userId;
 

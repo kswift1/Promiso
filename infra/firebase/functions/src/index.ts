@@ -64,3 +64,14 @@ export {
 // Emoji Functions
 // ============================================================================
 export {generateEmoji} from "./functions/emoji";
+
+// ============================================================================
+// Promise Badge Functions (미응답 배지 관리)
+// ============================================================================
+export {
+  onPromiseCreatedBadges,
+  onPromiseDeletedBadges,
+  onPromiseVotesUpdatedBadges,
+  cleanupExpiredPromiseBadges,
+  reconcileBadgeCounts,
+} from "./functions/promiseBadges";

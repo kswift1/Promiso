@@ -103,6 +103,7 @@ export const createGroup = onCall<CreateGroupRequest>(
             role: "admin",
             joinedAt: now,
             notifications: true,
+            needResponseCount: 0,
           },
         },
       }, {merge: true});
@@ -278,17 +279,37 @@ export const joinGroup = onCall<JoinGroupRequest>(
     }
 
     const now = FieldValue.serverTimestamp();
+    const nowTimestamp = admin.firestore.Timestamp.now();
     const usersCollection = getEnvironmentCollection("users", db, data.env);
+    const promisesCollection = getEnvironmentCollection("promises", db, data.env);
 
-    // 4. Firestore에 저장 (트랜잭션 사용)
+    // 4. 해당 그룹의 활성 약속 수 계산 (needResponseCount 초기값)
+    // 마감 전(votes.until > now) + 배지 미정리(badgesCleared == false)
+    const activePromises = await promisesCollection
+      .where("groupId", "==", groupId)
+      .where("badgesCleared", "==", false)
+      .get();
+
+    // 실제로 마감 전인 약속만 필터링 (쿼리 후 추가 검증)
+    let needResponseCount = 0;
+    for (const doc of activePromises.docs) {
+      const promise = doc.data();
+      const votes = promise.votes || {};
+      const deadline = votes.until ?? promise.startAt;
+      if (deadline && deadline.toMillis() > nowTimestamp.toMillis()) {
+        needResponseCount++;
+      }
+    }
+
+    // 5. Firestore에 저장 (트랜잭션 사용)
     await db.runTransaction(async (transaction) => {
-      // 4-1. 그룹의 memberIds에 추가
+      // 5-1. 그룹의 memberIds에 추가
       transaction.update(groupDoc.ref, {
         memberIds: FieldValue.arrayUnion(userId),
         updatedAt: now,
       });
 
-      // 4-2. 사용자의 그룹 목록에 추가 (Map 방식)
+      // 5-2. 사용자의 그룹 목록에 추가 (Map 방식) + needResponseCount 초기값
       const userRef = usersCollection.doc(userId);
       transaction.set(userRef, {
         groups: {
@@ -297,12 +318,15 @@ export const joinGroup = onCall<JoinGroupRequest>(
             role: "member",
             joinedAt: now,
             notifications: true,
+            needResponseCount: needResponseCount,
           },
         },
       }, {merge: true});
     });
 
-    // 5. 응답 반환
+    console.log(`[joinGroup] ${userId} joined ${groupId}, needResponseCount: ${needResponseCount}`);
+
+    // 6. 응답 반환
     return {
       groupId: groupId,
       groupName: groupName,
@@ -514,6 +538,22 @@ export const deleteGroup = onCall<DeleteGroupRequest>(
         // 이미지 삭제 실패해도 그룹 삭제는 계속 진행
         console.warn(`⚠️ Failed to delete group image: ${error}`);
       }
+    }
+
+    // 4-1. 그룹의 모든 약속 삭제 (트리거가 배지 감소 처리)
+    const promisesCollection = getEnvironmentCollection("promises", db, data.env);
+    const groupPromises = await promisesCollection
+      .where("groupId", "==", groupId)
+      .get();
+
+    if (!groupPromises.empty) {
+      // 약속 삭제는 트랜잭션 밖에서 수행 (onPromiseDeletedBadges 트리거 활성화)
+      const promiseDeleteBatch = db.batch();
+      for (const doc of groupPromises.docs) {
+        promiseDeleteBatch.delete(doc.ref);
+      }
+      await promiseDeleteBatch.commit();
+      console.log(`🗑️ ${groupPromises.size} promises deleted for group ${groupId}`);
     }
 
     const now = FieldValue.serverTimestamp();
