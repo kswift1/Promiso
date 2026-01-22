@@ -142,9 +142,9 @@ extension GroupMain {
       guard store.hasLiveActivity else { return 16 }
       // iOS 26+: BottomAccessory가 얇음
       if #available(iOS 26, *) {
-        return 56
+        return 20
       } else {
-        return 80
+        return 85
       }
     }
 
