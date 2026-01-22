@@ -9,6 +9,7 @@ public struct GroupBarItem: Identifiable, Equatable, Sendable {
   public let id: String
   public let name: String
   public let imageUrl: String?
+  public let localImageName: String?
   public let hasNewActivity: Bool
   public let isSelected: Bool
 
@@ -16,12 +17,14 @@ public struct GroupBarItem: Identifiable, Equatable, Sendable {
     id: String,
     name: String,
     imageUrl: String? = nil,
+    localImageName: String? = nil,
     hasNewActivity: Bool = false,
     isSelected: Bool = false
   ) {
     self.id = id
     self.name = name
     self.imageUrl = imageUrl
+    self.localImageName = localImageName
     self.hasNewActivity = hasNewActivity
     self.isSelected = isSelected
   }
@@ -82,8 +85,8 @@ private struct GroupBarItemView: View {
     } label: {
       VStack(alignment: .center, spacing: 6) {
         ZStack(alignment: .topTrailing) {
-          // 그룹 아바타 (PromisoShared 컴포넌트 사용)
-          GroupThumbnailView(imageUrl: group.imageUrl, name: group.name, size: 56)
+          // 그룹 아바타
+          groupThumbnail
             .overlay(
               Circle()
                 .stroke(
@@ -110,6 +113,19 @@ private struct GroupBarItemView: View {
       }
     }
     .buttonStyle(.scale)
+  }
+
+  @ViewBuilder
+  private var groupThumbnail: some View {
+    if let localImageName = group.localImageName {
+      Image(localImageName, bundle: .main)
+        .resizable()
+        .scaledToFill()
+        .frame(width: 56, height: 56)
+        .clipShape(Circle())
+    } else {
+      GroupThumbnailView(imageUrl: group.imageUrl, name: group.name, size: 56)
+    }
   }
 }
 

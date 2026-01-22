@@ -198,12 +198,42 @@ extension GroupMain {
         filterSegment
           .padding(.vertical, 8)
 
-        // 필터된 약속 리스트
-        if store.filteredPromises.isEmpty {
+        // 온보딩 모드 또는 일반 모드
+        if store.isOnboardingMode {
+          onboardingCardsView
+        } else if store.filteredPromises.isEmpty {
           emptyFilteredView
         } else {
           promiseListView
         }
+      }
+    }
+
+    // MARK: - Onboarding Cards
+
+    @ViewBuilder
+    private var onboardingCardsView: some View {
+      LazyVStack(spacing: 12) {
+        ForEach(GroupMain.OnboardingCard.allCases) { card in
+          OnboardingCardView(card: card) {
+            handleOnboardingCardTap(card)
+          }
+        }
+      }
+      .padding(.horizontal, 16)
+      .padding(.top, 8)
+      .padding(.bottom, 100)
+    }
+
+    private func handleOnboardingCardTap(_ card: GroupMain.OnboardingCard) {
+      switch card {
+      case .createGroup:
+        store.send(.view(.createGroup))
+      case .joinGroup:
+        store.send(.view(.joinGroup))
+      case .howToUse:
+        // TODO: 튜토리얼 화면 연결
+        break
       }
     }
 
@@ -302,68 +332,53 @@ extension GroupMain {
     @ViewBuilder
     private var groupDetailEmptyView: some View {
       ScrollView {
+        // 그룹 가로 바 (빈 상태에서도 생성/참여 버튼 제공)
+        GroupHorizontalBar(
+          groups: store.groupBarItems,
+          onGroupTap: { groupId in
+            store.send(.view(.groupTapped(groupId)))
+          },
+          onCreateGroup: {
+            store.send(.view(.createGroup))
+          },
+          onJoinGroup: {
+            store.send(.view(.joinGroup))
+          }
+        )
+
+        Divider()
+
         VStack(spacing: 0) {
-          Spacer()
-            .frame(height: 80)
+          // 필터 (비활성 상태로 유지)
+          filterSegment
+            .padding(.vertical, 8)
+            .disabled(true)
+            .opacity(0.5)
 
-          VStack(spacing: 32) {
-            // Illustration
-            ZStack {
-              Circle()
-                .fill(
-                  LinearGradient(
-                    colors: [Color.blue.opacity(0.15), Color.purple.opacity(0.1)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                  )
-                )
-                .frame(width: 120, height: 120)
+          // 빈 상태 컨텐츠
+          VStack(spacing: 24) {
+            Spacer()
+              .frame(height: 40)
 
-              Image(systemName: "person.3.fill")
-                .font(.system(size: 56))
-                .foregroundStyle(
-                  LinearGradient(
-                    colors: [.blue, .purple],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                  )
-                )
-            }
+            Image(systemName: "person.3.fill")
+              .font(.system(size: 56))
+              .foregroundStyle(.tertiary)
 
-            // Text
-            VStack(spacing: 12) {
-              Text("그룹이 선택되지 않았어요")
-                .font(.title3.bold())
+            VStack(spacing: 8) {
+              Text("그룹이 없어요")
+                .font(.system(size: 20, weight: .semibold))
 
-              Text("그룹을 만들거나 참여해서\n친구들과 약속을 시작해보세요")
-                .font(.body)
+              Text("상단의 + 버튼을 눌러\n그룹을 만들거나 참여해보세요")
+                .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .lineSpacing(4)
             }
 
-            // Action Buttons
-            VStack(spacing: 12) {
-              GlassActionButton(
-                title: "그룹 만들기",
-                leadingSystemImage: "plus.circle.fill",
-                isPrimary: true,
-                action: { store.send(.view(.createGroup))
-                }
-              )
-
-              GlassActionButton(
-                title: "초대 코드로 참여하기",
-                leadingSystemImage: "link.circle.fill",
-                isPrimary: false,
-                action: { store.send(.view(.joinGroup)) }
-              )
-            }
-            .padding(.horizontal, 40)
+            Spacer()
+              .frame(height: 40)
           }
-
-          Spacer()
-            .frame(height: 80)
+          .frame(maxWidth: .infinity)
         }
       }
     }
@@ -380,14 +395,75 @@ private extension GroupMain.Feature.State {
     allGroupSummaries?.isEmpty == true && currentGroup == nil
   }
 
-  /// 활성화된 그룹이 없는 경우
+  /// 빈 그룹 화면 표시 여부 (온보딩 모드로 대체되어 항상 false)
   var shouldShowEmptyGroupView: Bool {
-    !promisesState.isLoading && hasNoGroups
+    false  // 온보딩 모드에서 groupDetailView 재사용
   }
 
   /// 특정 약속의 응답 상태 조회
   func respondingState(for promiseId: String) -> GroupMain.RespondingState {
     proposalResponding[promiseId] ?? .idle
+  }
+}
+
+// MARK: - Onboarding Card View
+
+private struct OnboardingCardView: View {
+  let card: GroupMain.OnboardingCard
+  let onTap: () -> Void
+
+  var body: some View {
+    Button(action: onTap) {
+      VStack(alignment: .leading, spacing: 14) {
+        // 헤더
+        HStack(spacing: 10) {
+          // 아이콘
+          iconView
+            .frame(width: 32, height: 32)
+
+          Text(card.title)
+            .font(.system(size: 15, weight: .semibold))
+            .foregroundStyle(.primary)
+
+          Spacer()
+
+          // 화살표
+          Image(systemName: "chevron.right")
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundStyle(.tertiary)
+        }
+
+        Divider()
+
+        // 설명
+        Text(card.subtitle)
+          .font(.system(size: 14))
+          .foregroundStyle(.secondary)
+          .lineLimit(2)
+      }
+      .padding(16)
+      .contentShape(Rectangle())
+      .adaptiveGlassCard()
+    }
+    .buttonStyle(.plain)
+  }
+
+  @ViewBuilder
+  private var iconView: some View {
+    if card == .createGroup {
+      Image("fingerPromise", bundle: .main)
+        .resizable()
+        .scaledToFit()
+    } else {
+      ZStack {
+        Circle()
+          .fill(card.color.opacity(0.15))
+
+        Image(systemName: card.icon)
+          .font(.system(size: 16))
+          .foregroundStyle(card.color)
+      }
+    }
   }
 }
 

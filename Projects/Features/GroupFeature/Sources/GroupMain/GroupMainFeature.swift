@@ -59,6 +59,55 @@ extension GroupMain {
   }
 }
 
+// MARK: - Onboarding
+// TODO: onboarding - 추후 고도화 필요 (튜토리얼, 샘플 데이터 등)
+
+extension GroupMain {
+  /// 온보딩용 Mock 그룹 ID
+  static let onboardingGroupId = "__onboarding__"
+
+  /// 온보딩 카드 타입
+  public enum OnboardingCard: CaseIterable, Identifiable {
+    case createGroup
+    case joinGroup
+    case howToUse
+
+    public var id: Self { self }
+
+    var title: String {
+      switch self {
+      case .createGroup: return "그룹 만들기"
+      case .joinGroup: return "친구 초대 코드로 참여"
+      case .howToUse: return "Promiso 사용법"
+      }
+    }
+
+    var subtitle: String {
+      switch self {
+      case .createGroup: return "친구들과 함께할 그룹을 만들어보세요"
+      case .joinGroup: return "초대 코드를 입력해서 그룹에 참여하세요"
+      case .howToUse: return "약속 생성부터 확정까지 알아보기"
+      }
+    }
+
+    var icon: String {
+      switch self {
+      case .createGroup: return "person.3.fill"
+      case .joinGroup: return "link.circle.fill"
+      case .howToUse: return "questionmark.circle.fill"
+      }
+    }
+
+    var color: Color {
+      switch self {
+      case .createGroup: return .blue
+      case .joinGroup: return .green
+      case .howToUse: return .orange
+      }
+    }
+  }
+}
+
 extension GroupMain {
   private enum CancelID: Hashable {
     case respond(String)
@@ -119,9 +168,28 @@ extension GroupMain {
 
       // MARK: - Computed Properties for New UI
 
+      /// 온보딩 모드 여부 (그룹이 없을 때)
+      var isOnboardingMode: Bool {
+        allGroupSummaries?.isEmpty == true
+      }
+
       /// 그룹 가로 바용 아이템 목록
       var groupBarItems: [GroupBarItem] {
         guard let groups = allGroupSummaries else { return [] }
+
+        // 그룹이 없으면 온보딩 Mock 그룹 표시
+        if groups.isEmpty {
+          return [
+            GroupBarItem(
+              id: GroupMain.onboardingGroupId,
+              name: "Promiso 시작하기",
+              localImageName: "notificationLogo",
+              hasNewActivity: false,
+              isSelected: true
+            )
+          ]
+        }
+
         return groups.map { group in
           GroupBarItem(
             id: group.id,
