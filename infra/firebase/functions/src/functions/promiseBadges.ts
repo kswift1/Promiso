@@ -38,7 +38,7 @@ export const onPromiseCreatedBadges = onDocumentCreated(
   async (event) => {
     const snapshot = event.data;
     if (!snapshot) {
-      console.log("[onPromiseCreatedBadges] No data associated with the event");
+      console.log("[onPromiseCreatedBadges] No data");
       return;
     }
 
@@ -46,7 +46,14 @@ export const onPromiseCreatedBadges = onDocumentCreated(
     const promiseId = event.params.promiseId;
     const env = event.params.env;
 
-    const groupId = promiseData.groupId as string;
+    const groupId = promiseData.groupId;
+    if (typeof groupId !== "string" || !groupId) {
+      console.error(
+        `[onPromiseCreatedBadges] Invalid groupId for ${promiseId}`
+      );
+      return;
+    }
+
     const votes = promiseData.votes || {accepted: [], declined: []};
     const accepted = (votes.accepted as string[]) ?? [];
     const declined = (votes.declined as string[]) ?? [];
@@ -313,7 +320,20 @@ export const cleanupExpiredPromiseBadges = onSchedule(
           continue;
         }
 
+        // 단일 배치로 모든 업데이트 처리 (최대 500개 작업)
+        const batch = db.batch();
         let processedCount = 0;
+        const groupsCollection = db
+          .collection(env)
+          .doc("root")
+          .collection("groups");
+        const usersCollection = db
+          .collection(env)
+          .doc("root")
+          .collection("users");
+
+        // 그룹 캐시 (동일 그룹 중복 조회 방지)
+        const groupCache = new Map<string, string[] | null>();
 
         for (const doc of expiredPromises.docs) {
           const promise = doc.data();
@@ -325,38 +345,36 @@ export const cleanupExpiredPromiseBadges = onSchedule(
             continue; // 아직 마감 안 됨
           }
 
-          const groupId = promise.groupId as string;
+          const groupId = promise.groupId;
+          if (typeof groupId !== "string") continue;
+
           const accepted = (votes.accepted as string[]) ?? [];
           const declined = (votes.declined as string[]) ?? [];
 
-          // 그룹 멤버 조회
-          const groupsCollection = db
-            .collection(env)
-            .doc("root")
-            .collection("groups");
-          const groupDoc = await groupsCollection.doc(groupId).get();
+          // 그룹 멤버 조회 (캐시 사용)
+          let memberIds = groupCache.get(groupId);
+          if (memberIds === undefined) {
+            const groupDoc = await groupsCollection.doc(groupId).get();
+            if (groupDoc.exists) {
+              memberIds = (groupDoc.data()?.memberIds as string[]) ?? [];
+            } else {
+              memberIds = null;
+            }
+            groupCache.set(groupId, memberIds);
+          }
 
-          if (!groupDoc.exists) {
+          if (memberIds === null) {
             // 그룹이 삭제된 경우 badgesCleared만 설정
-            await doc.ref.update({badgesCleared: true});
+            batch.update(doc.ref, {badgesCleared: true});
             processedCount++;
             continue;
           }
 
-          const groupData = groupDoc.data();
-          const memberIds = (groupData?.memberIds as string[]) ?? [];
           const needResponseUsers = memberIds.filter(
             (id) => !accepted.includes(id) && !declined.includes(id)
           );
 
-          const batch = db.batch();
-
           // 미응답자 카운트 감소
-          const usersCollection = db
-            .collection(env)
-            .doc("root")
-            .collection("users");
-
           for (const userId of needResponseUsers) {
             batch.update(usersCollection.doc(userId), {
               [`groups.${groupId}.needResponseCount`]: FieldValue.increment(-1),
@@ -365,9 +383,12 @@ export const cleanupExpiredPromiseBadges = onSchedule(
 
           // 처리 완료 플래그
           batch.update(doc.ref, {badgesCleared: true});
-
-          await batch.commit();
           processedCount++;
+        }
+
+        // 모든 업데이트를 한 번에 커밋
+        if (processedCount > 0) {
+          await batch.commit();
         }
 
         console.log(
@@ -388,6 +409,9 @@ export const cleanupExpiredPromiseBadges = onSchedule(
  * - 실제 미응답 약속 수와 needResponseCount 비교
  * - 불일치 시 교정
  * - 음수인 경우 0으로 교정
+ *
+ * @note 한 번 실행 시 최대 500명의 유저만 처리합니다.
+ * 6시간마다 실행되므로 점진적으로 전체 유저를 커버합니다.
  */
 export const reconcileBadgeCounts = onSchedule(
   {
@@ -415,6 +439,13 @@ export const reconcileBadgeCounts = onSchedule(
           .where("badgesCleared", "==", false)
           .get();
 
+        // 그룹 캐시 (동일 그룹 중복 조회 방지)
+        const groupCache = new Map<string, string[] | null>();
+        const groupsCollection = db
+          .collection(env)
+          .doc("root")
+          .collection("groups");
+
         // 그룹별 약속 카운트 계산
         const groupPromiseCounts = new Map<string, Map<string, number>>();
 
@@ -425,19 +456,25 @@ export const reconcileBadgeCounts = onSchedule(
 
           // 아직 마감 안 된 약속만
           if (deadline && deadline.toMillis() > now.toMillis()) {
-            const groupId = promise.groupId as string;
+            const groupId = promise.groupId;
+            if (typeof groupId !== "string") continue;
+
             const accepted = (votes.accepted as string[]) ?? [];
             const declined = (votes.declined as string[]) ?? [];
 
-            // 그룹 멤버 조회
-            const groupsCollection = db
-              .collection(env)
-              .doc("root")
-              .collection("groups");
-            const groupDoc = await groupsCollection.doc(groupId).get();
+            // 그룹 멤버 조회 (캐시 사용)
+            let memberIds = groupCache.get(groupId);
+            if (memberIds === undefined) {
+              const groupDoc = await groupsCollection.doc(groupId).get();
+              if (groupDoc.exists) {
+                memberIds = (groupDoc.data()?.memberIds as string[]) ?? [];
+              } else {
+                memberIds = null;
+              }
+              groupCache.set(groupId, memberIds);
+            }
 
-            if (groupDoc.exists) {
-              const memberIds = (groupDoc.data()?.memberIds as string[]) ?? [];
+            if (memberIds) {
               const needResponseUsers = memberIds.filter(
                 (id) => !accepted.includes(id) && !declined.includes(id)
               );
