@@ -537,7 +537,10 @@ export const deletePromise = onCall<DeletePromiseRequest>(
     }
 
     // 4. 호스트 권한 확인
-    const hostId = promiseData.hostId as string;
+    const hostId = promiseData.hostId;
+    if (typeof hostId !== "string") {
+      throw new HttpsError("internal", "잘못된 hostId 형식입니다");
+    }
     if (hostId !== userId) {
       throw new HttpsError(
         "permission-denied",
@@ -546,7 +549,10 @@ export const deletePromise = onCall<DeletePromiseRequest>(
     }
 
     // 5. 시작 시간 확인 (시작 전 약속만 삭제 가능)
-    const startAt = promiseData.startAt as admin.firestore.Timestamp;
+    const startAt = promiseData.startAt;
+    if (!(startAt instanceof admin.firestore.Timestamp)) {
+      throw new HttpsError("internal", "잘못된 startAt 형식입니다");
+    }
     const now = admin.firestore.Timestamp.now();
     if (startAt.toMillis() <= now.toMillis()) {
       throw new HttpsError(

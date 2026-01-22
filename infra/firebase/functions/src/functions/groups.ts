@@ -28,6 +28,9 @@ import {
   GroupMemberPreview,
 } from "../types/api";
 
+// Firebase Storage URL에서 경로 추출용 정규식
+const FIREBASE_STORAGE_PATH_REGEX = /\/o\/(.+?)\?/;
+
 /**
  * 그룹 생성
  *
@@ -476,9 +479,18 @@ export const deleteGroup = onCall<DeleteGroupRequest>(
       );
     }
 
-    const createdBy = groupData.createdBy as string;
-    const memberIds = (groupData.memberIds as string[]) ?? [];
-    const imageUrl = groupData.imageUrl as string | null;
+    const createdBy = groupData.createdBy;
+    if (typeof createdBy !== "string") {
+      throw new HttpsError("internal", "잘못된 createdBy 형식입니다");
+    }
+
+    const memberIds = groupData.memberIds;
+    if (!Array.isArray(memberIds)) {
+      throw new HttpsError("internal", "잘못된 memberIds 형식입니다");
+    }
+
+    const imageUrl = groupData.imageUrl;
+    const validImageUrl = typeof imageUrl === "string" ? imageUrl : null;
 
     // 3-2. 호스트인지 확인
     if (createdBy !== userId) {
@@ -489,11 +501,10 @@ export const deleteGroup = onCall<DeleteGroupRequest>(
     }
 
     // 4. Storage에서 그룹 이미지 삭제
-    if (imageUrl) {
+    if (validImageUrl) {
       try {
         const bucket = admin.storage().bucket();
-        // imageUrl에서 Storage 경로 추출
-        const match = imageUrl.match(/\/o\/(.+?)\?/);
+        const match = validImageUrl.match(FIREBASE_STORAGE_PATH_REGEX);
         if (match) {
           const storagePath = decodeURIComponent(match[1]);
           await bucket.file(storagePath).delete();
