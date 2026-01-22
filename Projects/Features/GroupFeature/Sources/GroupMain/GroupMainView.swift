@@ -114,28 +114,40 @@ extension GroupMain {
       .refreshable {
         store.send(.view(.refreshTriggered))
       }
-      .overlay(alignment: .bottomTrailing) {
-        createPromiseFAB
+      .overlay {
+        morphingFABMenu
       }
     }
 
-    // MARK: - FAB (Floating Action Button)
+    // MARK: - Morphing FAB Menu
 
-    private var createPromiseFAB: some View {
-      Button {
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        store.send(.view(.createNewPromise))
-      } label: {
-        Image(systemName: "plus")
-          .font(.system(size: 24, weight: .semibold))
-          .foregroundStyle(.white)
-          .frame(width: 56, height: 56)
-          .background(Color.pmindigo.n500, in: Circle())
-          .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
-      }
-      .buttonStyle(.plain)
-      .padding(.trailing, 20)
-      .padding(.bottom, fabBottomPadding)
+    private var morphingFABMenu: some View {
+      MorphingFABMenu(
+        items: [
+          FABMenuItem(
+            title: "새 약속",
+            icon: "calendar.badge.plus",
+            tintColor: .pmindigo.n500
+          ) {
+            store.send(.view(.createNewPromise))
+          },
+          FABMenuItem(
+            title: "그룹 만들기",
+            icon: "person.3.fill",
+            tintColor: .pmindigo.n500
+          ) {
+            store.send(.view(.createGroup))
+          },
+          FABMenuItem(
+            title: "그룹 참여",
+            icon: "link",
+            tintColor: .pmindigo.n500
+          ) {
+            store.send(.view(.joinGroup))
+          }
+        ],
+        bottomPadding: fabBottomPadding
+      )
     }
 
     private var fabBottomPadding: CGFloat {
