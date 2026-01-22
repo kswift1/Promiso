@@ -89,14 +89,14 @@ private struct GroupBarItemView: View {
           // 미응답 배지
           if group.needResponseCount > 0 {
             BadgeView(count: group.needResponseCount)
-              .offset(x: 6, y: -6)
+              .offset(x: 5, y: -6)
           }
         }
 
         Text(group.name)
           .font(.system(size: 11, weight: group.isSelected ? .semibold : .regular))
           .foregroundStyle(group.isSelected ? .primary : .secondary)
-          .lineLimit(2)
+          .lineLimit(3)
           .multilineTextAlignment(.center)
           .frame(width: 72, height: 28, alignment: .top)
       }
@@ -158,7 +158,7 @@ private struct AddGroupButton: View {
     GroupHorizontalBar(
       groups: [
         GroupBarItem(id: "g1", name: "지민과 나", needResponseCount: 2, isSelected: true),
-        GroupBarItem(id: "g2", name: "회사 동료들과 함께하는 모임", needResponseCount: 1, isSelected: false),
+        GroupBarItem(id: "g2", name: "일이삼사오육칠팔구십일이삼사오육칠팔구십일", needResponseCount: 1, isSelected: false),
         GroupBarItem(id: "g3", name: "대학 친구들", needResponseCount: 0, isSelected: false),
         GroupBarItem(id: "g4", name: "우리 가족 단톡방", needResponseCount: 3, isSelected: false),
         GroupBarItem(id: "g5", name: "주말 등산 동호회 멤버들", needResponseCount: 0, isSelected: false)

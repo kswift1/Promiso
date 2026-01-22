@@ -508,7 +508,8 @@ extension GroupMain {
 
           case .proposalRespondDone(let id, _):
             state.proposalResponding[id] = nil
-            return .none
+            // 응답 후 그룹 배지(needResponseCount) 갱신
+            return .send(.internal(.fetchGroupList))
 
           case .proposalRespondFailed(let id, let error):
             state.proposalResponding[id] = nil
