@@ -26,6 +26,7 @@ export {
   joinGroup,
   leaveGroup,
   deleteGroup,
+  onGroupImageUpdated,
 } from "./functions/groups";
 
 // ============================================================================

@@ -51,7 +51,9 @@ export const onPromiseCreatedBadges = onDocumentCreated(
     const accepted = (votes.accepted as string[]) ?? [];
     const declined = (votes.declined as string[]) ?? [];
 
-    console.log(`[onPromiseCreatedBadges] Promise ${promiseId} created in group ${groupId}`);
+    console.log(
+      `[onPromiseCreatedBadges] Promise ${promiseId} created in ${groupId}`
+    );
 
     // 그룹 멤버 조회
     const db = admin.firestore();
@@ -87,7 +89,9 @@ export const onPromiseCreatedBadges = onDocumentCreated(
     }
 
     await batch.commit();
-    console.log(`[onPromiseCreatedBadges] ${needResponseUsers.length} users badge +1`);
+    console.log(
+      `[onPromiseCreatedBadges] ${needResponseUsers.length} users badge +1`
+    );
   }
 );
 
@@ -121,11 +125,15 @@ export const onPromiseDeletedBadges = onDocumentDeleted(
 
     // 이미 마감 처리된 약속은 스킵
     if (promiseData.badgesCleared === true) {
-      console.log(`[onPromiseDeletedBadges] Promise ${promiseId} already cleared, skipping`);
+      console.log(
+        `[onPromiseDeletedBadges] Promise ${promiseId} already cleared`
+      );
       return;
     }
 
-    console.log(`[onPromiseDeletedBadges] Promise ${promiseId} deleted from group ${groupId}`);
+    console.log(
+      `[onPromiseDeletedBadges] Promise ${promiseId} deleted from ${groupId}`
+    );
 
     // 그룹 멤버 조회
     const db = admin.firestore();
@@ -133,7 +141,9 @@ export const onPromiseDeletedBadges = onDocumentDeleted(
     const groupDoc = await groupsCollection.doc(groupId).get();
 
     if (!groupDoc.exists) {
-      console.log(`[onPromiseDeletedBadges] Group ${groupId} not found (already deleted?)`);
+      console.log(
+        `[onPromiseDeletedBadges] Group ${groupId} not found (deleted?)`
+      );
       return;
     }
 
@@ -161,7 +171,9 @@ export const onPromiseDeletedBadges = onDocumentDeleted(
     }
 
     await batch.commit();
-    console.log(`[onPromiseDeletedBadges] ${needResponseUsers.length} users badge -1`);
+    console.log(
+      `[onPromiseDeletedBadges] ${needResponseUsers.length} users badge -1`
+    );
   }
 );
 
@@ -183,7 +195,7 @@ export const onPromiseVotesUpdatedBadges = onDocumentUpdated(
     const afterData = event.data?.after.data();
 
     if (!beforeData || !afterData) {
-      console.log("[onPromiseVotesUpdatedBadges] No data associated with the event");
+      console.log("[onPromiseVotesUpdatedBadges] No data");
       return;
     }
 
@@ -195,10 +207,18 @@ export const onPromiseVotesUpdatedBadges = onDocumentUpdated(
     const beforeVotes = beforeData.votes || {accepted: [], declined: []};
     const afterVotes = afterData.votes || {accepted: [], declined: []};
 
-    const beforeAccepted = new Set<string>((beforeVotes.accepted as string[]) ?? []);
-    const beforeDeclined = new Set<string>((beforeVotes.declined as string[]) ?? []);
-    const afterAccepted = new Set<string>((afterVotes.accepted as string[]) ?? []);
-    const afterDeclined = new Set<string>((afterVotes.declined as string[]) ?? []);
+    const beforeAccepted = new Set<string>(
+      (beforeVotes.accepted as string[]) ?? []
+    );
+    const beforeDeclined = new Set<string>(
+      (beforeVotes.declined as string[]) ?? []
+    );
+    const afterAccepted = new Set<string>(
+      (afterVotes.accepted as string[]) ?? []
+    );
+    const afterDeclined = new Set<string>(
+      (afterVotes.declined as string[]) ?? []
+    );
 
     // Set 비교 함수
     const setsEqual = (a: Set<string>, b: Set<string>) =>
@@ -210,7 +230,9 @@ export const onPromiseVotesUpdatedBadges = onDocumentUpdated(
       return;
     }
 
-    console.log(`[onPromiseVotesUpdatedBadges] Promise ${promiseId} votes changed`);
+    console.log(
+      `[onPromiseVotesUpdatedBadges] Promise ${promiseId} votes changed`
+    );
 
     const db = admin.firestore();
     const usersCollection = getEnvironmentCollection("users", db, env);
@@ -224,8 +246,10 @@ export const onPromiseVotesUpdatedBadges = onDocumentUpdated(
     ]);
 
     for (const userId of allUsers) {
-      const wasPending = !beforeAccepted.has(userId) && !beforeDeclined.has(userId);
-      const nowPending = !afterAccepted.has(userId) && !afterDeclined.has(userId);
+      const wasPending =
+        !beforeAccepted.has(userId) && !beforeDeclined.has(userId);
+      const nowPending =
+        !afterAccepted.has(userId) && !afterDeclined.has(userId);
 
       if (wasPending && !nowPending) {
         // pending → responded: 카운트 감소
@@ -246,7 +270,9 @@ export const onPromiseVotesUpdatedBadges = onDocumentUpdated(
 
     if (updateCount > 0) {
       await batch.commit();
-      console.log(`[onPromiseVotesUpdatedBadges] ${updateCount} users badge updated`);
+      console.log(
+        `[onPromiseVotesUpdatedBadges] ${updateCount} users updated`
+      );
     }
   }
 );
@@ -317,7 +343,8 @@ export const cleanupExpiredPromiseBadges = onSchedule(
             continue;
           }
 
-          const memberIds = (groupDoc.data()?.memberIds as string[]) ?? [];
+          const groupData = groupDoc.data();
+          const memberIds = (groupData?.memberIds as string[]) ?? [];
           const needResponseUsers = memberIds.filter(
             (id) => !accepted.includes(id) && !declined.includes(id)
           );
@@ -343,7 +370,9 @@ export const cleanupExpiredPromiseBadges = onSchedule(
           processedCount++;
         }
 
-        console.log(`[cleanupExpiredBadges] ${env}: ${processedCount} promises processed`);
+        console.log(
+          `[cleanupExpiredBadges] ${env}: ${processedCount} processed`
+        );
       } catch (error) {
         console.error(`[cleanupExpiredBadges] ${env} error:`, error);
       }
@@ -460,7 +489,9 @@ export const reconcileBadgeCounts = onSchedule(
           }
         }
 
-        console.log(`[reconcileBadges] ${env}: ${correctionCount} corrections made`);
+        console.log(
+          `[reconcileBadges] ${env}: ${correctionCount} corrections`
+        );
       } catch (error) {
         console.error(`[reconcileBadges] ${env} error:`, error);
       }

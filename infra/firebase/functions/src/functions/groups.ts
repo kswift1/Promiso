@@ -8,6 +8,7 @@
  */
 import {FieldValue} from "firebase-admin/firestore";
 import {HttpsError, onCall} from "firebase-functions/v2/https";
+import {onDocumentUpdated} from "firebase-functions/v2/firestore";
 import {admin, REGION} from "../config";
 import {getEnvironmentCollection} from "../utils/firestore";
 import {
@@ -104,6 +105,7 @@ export const createGroup = onCall<CreateGroupRequest>(
             joinedAt: now,
             notifications: true,
             needResponseCount: 0,
+            imageUrl: data.imageUrl ?? null,
           },
         },
       }, {merge: true});
@@ -259,6 +261,7 @@ export const joinGroup = onCall<JoinGroupRequest>(
     const groupId = groupDoc.id;
     const groupData = groupDoc.data();
     const groupName = groupData.name as string;
+    const groupImageUrl = groupData.imageUrl as string | null ?? null;
     const maxMembers = groupData.maxMembers as number | undefined;
     const memberIds = (groupData.memberIds as string[]) ?? [];
 
@@ -281,7 +284,9 @@ export const joinGroup = onCall<JoinGroupRequest>(
     const now = FieldValue.serverTimestamp();
     const nowTimestamp = admin.firestore.Timestamp.now();
     const usersCollection = getEnvironmentCollection("users", db, data.env);
-    const promisesCollection = getEnvironmentCollection("promises", db, data.env);
+    const promisesCollection = getEnvironmentCollection(
+      "promises", db, data.env
+    );
 
     // 4. 해당 그룹의 활성 약속 수 계산 (needResponseCount 초기값)
     // 마감 전(votes.until > now) + 배지 미정리(badgesCleared == false)
@@ -319,12 +324,16 @@ export const joinGroup = onCall<JoinGroupRequest>(
             joinedAt: now,
             notifications: true,
             needResponseCount: needResponseCount,
+            imageUrl: groupImageUrl,
           },
         },
       }, {merge: true});
     });
 
-    console.log(`[joinGroup] ${userId} joined ${groupId}, needResponseCount: ${needResponseCount}`);
+    console.log(
+      `[joinGroup] ${userId} joined ${groupId}, ` +
+      `needResponseCount: ${needResponseCount}`
+    );
 
     // 6. 응답 반환
     return {
@@ -541,19 +550,23 @@ export const deleteGroup = onCall<DeleteGroupRequest>(
     }
 
     // 4-1. 그룹의 모든 약속 삭제 (트리거가 배지 감소 처리)
-    const promisesCollection = getEnvironmentCollection("promises", db, data.env);
+    const promisesCollection = getEnvironmentCollection(
+      "promises", db, data.env
+    );
     const groupPromises = await promisesCollection
       .where("groupId", "==", groupId)
       .get();
 
     if (!groupPromises.empty) {
-      // 약속 삭제는 트랜잭션 밖에서 수행 (onPromiseDeletedBadges 트리거 활성화)
+      // 약속 삭제: 트랜잭션 밖에서 수행 (트리거 활성화)
       const promiseDeleteBatch = db.batch();
       for (const doc of groupPromises.docs) {
         promiseDeleteBatch.delete(doc.ref);
       }
       await promiseDeleteBatch.commit();
-      console.log(`🗑️ ${groupPromises.size} promises deleted for group ${groupId}`);
+      console.log(
+        `🗑️ ${groupPromises.size} promises deleted for group ${groupId}`
+      );
     }
 
     const now = FieldValue.serverTimestamp();
@@ -580,4 +593,66 @@ export const deleteGroup = onCall<DeleteGroupRequest>(
       success: true,
     };
   },
+);
+
+/**
+ * 그룹 이미지 업데이트 트리거
+ *
+ * @remarks
+ * 그룹의 imageUrl이 변경되면 모든 멤버의
+ * users/{userId}.groups[groupId].imageUrl을 업데이트합니다.
+ */
+export const onGroupImageUpdated = onDocumentUpdated(
+  {
+    document: "{env}/root/groups/{groupId}",
+    region: REGION,
+  },
+  async (event) => {
+    const beforeData = event.data?.before?.data();
+    const afterData = event.data?.after?.data();
+
+    if (!beforeData || !afterData) {
+      console.log("[onGroupImageUpdated] No data found");
+      return;
+    }
+
+    const beforeImageUrl = beforeData.imageUrl as string | null ?? null;
+    const afterImageUrl = afterData.imageUrl as string | null ?? null;
+
+    // imageUrl이 변경되지 않았으면 종료
+    if (beforeImageUrl === afterImageUrl) {
+      return;
+    }
+
+    const groupId = event.params.groupId;
+    const env = event.params.env;
+    const memberIds = (afterData.memberIds as string[]) ?? [];
+
+    if (memberIds.length === 0) {
+      console.log(`[onGroupImageUpdated] No members in group ${groupId}`);
+      return;
+    }
+
+    console.log(
+      `[onGroupImageUpdated] Group ${groupId} imageUrl changed: ` +
+      `${beforeImageUrl} → ${afterImageUrl}`
+    );
+
+    // 모든 멤버의 groups[groupId].imageUrl 업데이트
+    const db = admin.firestore();
+    const usersCollection = db.collection(`${env}/root/users`);
+    const batch = db.batch();
+
+    for (const memberId of memberIds) {
+      const userRef = usersCollection.doc(memberId);
+      batch.update(userRef, {
+        [`groups.${groupId}.imageUrl`]: afterImageUrl,
+      });
+    }
+
+    await batch.commit();
+    console.log(
+      `[onGroupImageUpdated] Updated imageUrl for ${memberIds.length} members`
+    );
+  }
 );
