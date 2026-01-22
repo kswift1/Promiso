@@ -188,38 +188,46 @@ private struct PhotosPickerButton: View {
 private struct GroupNameSection: View {
   @Binding var groupName: String
   let characterCount: Int
-  
+
+  private let maxLength = 12
+
   var body: some View {
     VStack(spacing: 12) {
       HStack {
         Text("그룹 이름")
           .font(.system(size: 16, weight: .semibold))
           .foregroundColor(.primary)
-        
+
         Spacer()
-        
-        Text("\(characterCount)/30")
+
+        Text("\(characterCount)/\(maxLength)")
           .font(.system(size: 13))
           .foregroundColor(characterCount >= 2 ? .secondary : .red)
       }
-      
+
       TextField("그룹 이름을 입력하세요", text: $groupName)
         .textFieldStyle(.plain)
         .padding(12)
         .background(Color(.systemBackground))
         .cornerRadius(8)
         .onChange(of: groupName) { _, newValue in
-          if newValue.count > 30 {
-            groupName = String(newValue.prefix(30))
+          if newValue.count > maxLength {
+            groupName = String(newValue.prefix(maxLength))
           }
         }
-      
-      if characterCount > 0 && characterCount < 2 {
-        Text("최소 2자 이상 입력해주세요")
+
+      VStack(alignment: .leading, spacing: 4) {
+        if characterCount > 0 && characterCount < 2 {
+          Text("최소 2자 이상 입력해주세요")
+            .font(.system(size: 12))
+            .foregroundColor(.red)
+        }
+
+        Label("그룹 이름은 생성 후 변경할 수 없습니다", systemImage: "info.circle")
           .font(.system(size: 12))
-          .foregroundColor(.red)
-          .frame(maxWidth: .infinity, alignment: .leading)
+          .foregroundColor(.secondary)
       }
+      .frame(maxWidth: .infinity, alignment: .leading)
     }
   }
 }
@@ -230,6 +238,8 @@ private struct GroupDescriptionSection: View {
   @Binding var groupDescription: String
   let characterCount: Int
 
+  private let maxLength = 50
+
   var body: some View {
     VStack(spacing: 12) {
       HStack {
@@ -239,20 +249,20 @@ private struct GroupDescriptionSection: View {
 
         Spacer()
 
-        Text("\(characterCount)/200")
+        Text("\(characterCount)/\(maxLength)")
           .font(.system(size: 13))
           .foregroundColor(.secondary)
       }
 
       TextField("그룹 설명을 입력하세요 (선택)", text: $groupDescription, axis: .vertical)
-        .lineLimit(3, reservesSpace: true)
+        .lineLimit(2, reservesSpace: true)
         .textFieldStyle(.plain)
         .padding(12)
         .background(Color(.systemBackground))
         .cornerRadius(8)
         .onChange(of: groupDescription) { _, newValue in
-          if newValue.count > 200 {
-            groupDescription = String(newValue.prefix(200))
+          if newValue.count > maxLength {
+            groupDescription = String(newValue.prefix(maxLength))
           }
         }
     }
