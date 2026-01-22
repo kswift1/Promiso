@@ -1,5 +1,6 @@
 import SwiftUI
 import ComposableArchitecture
+import PromisoShared
 
 extension GroupMain {
   public struct RootView: View {
@@ -193,131 +194,108 @@ extension GroupMain {
     @ViewBuilder
     private var contentSections: some View {
       VStack(spacing: 0) {
-        // 응답 필요 섹션
-        if !store.needResponsePromises.isEmpty {
-          PromiseSectionView(
-            title: "응답 필요",
-            icon: "envelope.badge",
-            promises: store.needResponsePromises,
-            maxDisplay: 3,
-            currentUserId: store.currentUser.userId,
-            groupMembers: store.currentGroupMembers,
-            respondingStates: store.proposalResponding,
-            onPromiseTap: { promise in
-              store.send(.view(.promiseTapped(promise)))
-            },
-            onMoreTap: store.needResponsePromises.count > 3 ? {
-              store.send(.view(.moreNeedResponseTapped))
-            } : nil,
-            onAccept: { promise in
-              store.send(.view(.proposalAccepted(promise.id)))
-            },
-            onReject: { promise in
-              store.send(.view(.proposalRejected(promise.id)))
-            },
-            onChangeResponse: { promise, status in
-              store.send(.view(.responseChanged(promise.id, status)))
-            },
-            onEdit: { promise in
-              store.send(.view(.promiseEditTapped(promise)))
-            },
-            onDelete: { promise in
-              store.send(.view(.promiseDeleteRequested(promise.id)))
-            },
-            onShare: { promise in
-              store.send(.view(.promiseShared(promise.id)))
-            }
-          )
+        // 필터 세그먼트
+        filterSegment
+          .padding(.vertical, 8)
+
+        // 필터된 약속 리스트
+        if store.filteredPromises.isEmpty {
+          emptyFilteredView
+        } else {
+          promiseListView
         }
-
-        // 확정 약속 섹션
-        if !store.confirmedPromises.isEmpty {
-          PromiseSectionView(
-            title: "다가오는 확정 약속",
-            icon: "checkmark.circle",
-            promises: store.confirmedPromises,
-            maxDisplay: 2,
-            currentUserId: store.currentUser.userId,
-            groupMembers: store.currentGroupMembers,
-            respondingStates: store.proposalResponding,
-            onPromiseTap: { promise in
-              store.send(.view(.promiseTapped(promise)))
-            },
-            onMoreTap: store.confirmedPromises.count > 2 ? {
-              store.send(.view(.moreConfirmedTapped))
-            } : nil,
-            onAccept: nil,
-            onReject: nil,
-            onChangeResponse: nil,
-            onEdit: { promise in
-              store.send(.view(.promiseEditTapped(promise)))
-            },
-            onDelete: { promise in
-              store.send(.view(.promiseDeleteRequested(promise.id)))
-            },
-            onShare: { promise in
-              store.send(.view(.promiseShared(promise.id)))
-            }
-          )
-        }
-
-        // 빈 상태
-        if store.needResponsePromises.isEmpty && store.confirmedPromises.isEmpty {
-          emptyPromiseView
-        }
-
-        Divider()
-          .padding(.vertical, 16)
-
-        // 하단 메뉴
-        bottomMenuSection
       }
     }
 
     @ViewBuilder
-    private var emptyPromiseView: some View {
+    private var filterSegment: some View {
+      CategoryFilterBar(
+        selection: Binding(
+          get: { store.selectedFilter },
+          set: { store.send(.view(.filterChanged($0))) }
+        )
+      )
+    }
+
+    @ViewBuilder
+    private var promiseListView: some View {
+      LazyVStack(spacing: 12) {
+        ForEach(store.filteredPromises, id: \.id) { promise in
+          promiseCardView(for: promise)
+        }
+      }
+      .padding(.horizontal, 16)
+      .padding(.bottom, 100) // FAB 공간 확보
+    }
+
+    @ViewBuilder
+    private func promiseCardView(for promise: PromiseModel) -> some View {
+      let promiseId = promise.id
+      PromiseCard(
+        promise: promise,
+        currentUserId: store.currentUser.userId,
+        groupMembers: store.currentGroupMembers,
+        respondingState: store.proposalResponding[promiseId] ?? .idle,
+        onTap: {
+          store.send(.view(.promiseTapped(promise)))
+        },
+        onAccept: {
+          store.send(.view(.proposalAccepted(promiseId)))
+        },
+        onReject: {
+          store.send(.view(.proposalRejected(promiseId)))
+        },
+        onEdit: {
+          store.send(.view(.promiseEditTapped(promise)))
+        },
+        onDelete: {
+          store.send(.view(.promiseDeleteRequested(promiseId)))
+        },
+        onChangeResponse: { status in
+          store.send(.view(.responseChanged(promiseId, status)))
+        },
+        onShare: {
+          store.send(.view(.promiseShared(promiseId)))
+        }
+      )
+    }
+
+    @ViewBuilder
+    private var emptyFilteredView: some View {
       VStack(spacing: 16) {
-        Image(systemName: "calendar.badge.plus")
+        Image(systemName: emptyFilterIcon)
           .font(.system(size: 48))
           .foregroundStyle(.secondary)
 
-        Text("아직 약속이 없어요")
+        Text(emptyFilterMessage)
           .font(.system(size: 17, weight: .medium))
           .foregroundStyle(.secondary)
-
-        Button {
-          store.send(.view(.createNewPromise))
-        } label: {
-          HStack {
-            Image(systemName: "plus")
-            Text("약속 만들기")
-          }
-          .font(.system(size: 15, weight: .semibold))
-          .padding(.horizontal, 20)
-          .padding(.vertical, 10)
-          .background(Color.pmindigo.n500)
-          .foregroundStyle(.white)
-          .clipShape(Capsule())
-        }
-        .buttonStyle(.hapticBounce)
+          .multilineTextAlignment(.center)
       }
       .frame(maxWidth: .infinity)
-      .padding(.vertical, 40)
+      .padding(.vertical, 60)
     }
 
-    @ViewBuilder
-    private var bottomMenuSection: some View {
-      VStack(spacing: 0) {
-        // 모든 약속 보기
-        MenuRowButton(
-          title: "모든 약속 보기",
-          icon: "list.bullet",
-          action: { store.send(.view(.allPromisesTapped)) }
-        )
+    private var emptyFilterIcon: String {
+      switch store.selectedFilter {
+      case .needResponse: return "envelope.badge"
+      case .responded: return "clock.badge.checkmark"
+      case .confirmed: return "checkmark.circle"
+      case .all: return "calendar.badge.plus"
+      case .past: return "clock.arrow.circlepath"
       }
-      .padding(.horizontal, 16)
-      .padding(.bottom, 24)
     }
+
+    private var emptyFilterMessage: String {
+      switch store.selectedFilter {
+      case .needResponse: return "응답이 필요한 약속이 없어요"
+      case .responded: return "응답 완료된 약속이 없어요"
+      case .confirmed: return "확정된 약속이 없어요"
+      case .all: return "아직 약속이 없어요"
+      case .past: return "지난 약속이 없어요"
+      }
+    }
+
 
     // MARK: - Empty Group View
 
@@ -390,37 +368,6 @@ extension GroupMain {
       }
     }
 
-  }
-}
-
-// MARK: - MenuRowButton
-
-private struct MenuRowButton: View {
-  let title: String
-  let icon: String
-  let action: () -> Void
-
-  var body: some View {
-    Button(action: action) {
-      HStack(spacing: 12) {
-        Image(systemName: icon)
-          .font(.system(size: 18))
-          .foregroundStyle(Color.pmindigo.n500)
-          .frame(width: 24)
-
-        Text(title)
-          .font(.system(size: 16))
-          .foregroundStyle(.primary)
-
-        Spacer()
-
-        Image(systemName: "chevron.right")
-          .font(.system(size: 13, weight: .semibold))
-          .foregroundStyle(.tertiary)
-      }
-      .padding(.vertical, 14)
-    }
-    .buttonStyle(.scale)
   }
 }
 

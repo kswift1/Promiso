@@ -2,9 +2,50 @@ import ComposableArchitecture
 import PromisoShared
 import Clients
 import SwiftUI
+import UIKit
 import Nuke
+import ResourceKit
 
 public enum GroupMain {}
+
+// MARK: - Promise Filter
+
+extension GroupMain {
+  /// 약속 목록 필터 (Apple Mail 스타일)
+  public enum PromiseFilter: String, CaseIterable, Sendable, CategoryFilterItem {
+    case needResponse = "응답 필요"
+    case responded = "응답 완료"
+    case confirmed = "확정"
+    case all = "전체"
+    case past = "과거"
+
+    public var title: String { rawValue }
+
+    public var icon: String {
+      switch self {
+      case .needResponse: return "envelope.badge"
+      case .responded: return "clock.badge.checkmark"
+      case .confirmed: return "checkmark.circle.fill"
+      case .all: return "tray.fill"
+      case .past: return "clock.arrow.circlepath"
+      }
+    }
+
+    public var selectedColor: Color {
+      switch self {
+      case .needResponse: return .orange
+      case .responded: return .blue
+      case .confirmed: return .green
+      case .all: return .pmindigo.n500
+      case .past: return Color(UIColor.systemGray)
+      }
+    }
+
+    public var hasSeparatorBefore: Bool {
+      self == .past
+    }
+  }
+}
 
 // MARK: - Deeplink
 
@@ -49,6 +90,9 @@ extension GroupMain {
       public var allGroupSummaries: [UserGroupInfo]?
       var currentGroup: GroupModel?
       var currentGroupMembers: [UserPublicModel]?
+
+      /// 현재 선택된 필터
+      var selectedFilter: GroupMain.PromiseFilter = .needResponse
 
       // 공유 시트용
       var sharePromise: PromiseModel?
@@ -110,6 +154,44 @@ extension GroupMain {
         guard case .loaded(let promises) = promisesState else { return [] }
         return promises.sorted { $0.startAt < $1.startAt }
       }
+
+      /// 응답 완료 약속 목록 (시작 시간순)
+      var respondedPromises: [PromiseModel] {
+        guard case .loaded(let promises) = promisesState else { return [] }
+        return promises
+          .filter {
+            let status = $0.responseStatus(
+              currentUserId: currentUser.userId,
+              totalGroupMembers: currentGroupMembers?.count
+            )
+            return status == .responded && !$0.isConfirmed
+          }
+          .sorted { $0.startAt < $1.startAt }
+      }
+
+      /// 과거 약속 목록 (최신순)
+      var pastPromises: [PromiseModel] {
+        guard case .loaded(let promises) = promisesState else { return [] }
+        return promises
+          .filter { $0.startAt < Date() }  // 이미 시작된 약속
+          .sorted { $0.startAt > $1.startAt }  // 최신순
+      }
+
+      /// 현재 필터에 따른 약속 목록
+      var filteredPromises: [PromiseModel] {
+        switch selectedFilter {
+        case .needResponse:
+          return needResponsePromises
+        case .responded:
+          return respondedPromises
+        case .confirmed:
+          return confirmedPromises
+        case .all:
+          return allPromises
+        case .past:
+          return pastPromises
+        }
+      }
     }
 
     @Reducer
@@ -168,6 +250,7 @@ extension GroupMain {
 
         // MARK: - New UI Actions
         case groupTapped(String)  // 가로 바에서 그룹 선택
+        case filterChanged(GroupMain.PromiseFilter)  // 필터 변경
         case moreNeedResponseTapped  // "N개 더 보기" - 응답 필요
         case moreConfirmedTapped  // "N개 더 보기" - 확정
         case allPromisesTapped  // "모든 약속 보기"
@@ -377,6 +460,10 @@ extension GroupMain {
               .send(.internal(.clearBadge(groupId: groupId))),
               .send(.view(.groupChanged(groupInfo)))
             )
+
+          case .filterChanged(let filter):
+            state.selectedFilter = filter
+            return .none
 
           case .moreNeedResponseTapped:
             return handleMoreNeedResponseTapped(&state)
