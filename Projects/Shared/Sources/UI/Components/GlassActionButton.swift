@@ -94,7 +94,7 @@ public struct GlassActionButton: View {
             } else {
               Color.clear
             }
-            
+
             LinearGradient(
               colors: [
                 Color.white.opacity(isPrimary ? 0.2 : 0.1),
@@ -128,6 +128,7 @@ public struct GlassActionButton: View {
           y: 6
         )
     }
+    .buttonStyle(.hapticBounce)
     .disabled(!isEnabled)
     .opacity(isEnabled ? 1 : 0.5)
     .opacity(isVisible ? 1 : 0)

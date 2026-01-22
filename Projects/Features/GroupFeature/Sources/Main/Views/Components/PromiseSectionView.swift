@@ -135,6 +135,7 @@ struct PromiseSectionView: View {
       }
       .foregroundStyle(Color.pmindigo.n500)
     }
+    .buttonStyle(.scale)
     .padding(.horizontal, 16)
     .padding(.top, 4)
   }

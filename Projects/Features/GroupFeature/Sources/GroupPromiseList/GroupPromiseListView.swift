@@ -127,7 +127,7 @@ private struct FilterButton: View {
             .stroke(isSelected ? Color.clear : Color.pmgray.n200, lineWidth: 1)
         )
     }
-    .buttonStyle(.plain)
+    .buttonStyle(.scale)
   }
 }
 

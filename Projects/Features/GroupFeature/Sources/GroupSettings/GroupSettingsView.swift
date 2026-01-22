@@ -285,7 +285,7 @@ private struct MemberRow: View {
           size: 44
         )
       }
-      .buttonStyle(.plain)
+      .buttonStyle(.hapticBounce(.light))
 
       Text(member.displayName)
         .font(.body)
@@ -336,6 +336,7 @@ struct InviteSheet: View {
 
             Button {
               UIPasteboard.general.string = inviteCode
+              Haptic.success()
               withAnimation {
                 isCopied = true
               }
@@ -349,6 +350,7 @@ struct InviteSheet: View {
                 .font(.system(size: 18))
                 .foregroundStyle(isCopied ? .green : Color.pmindigo.n500)
             }
+            .buttonStyle(.bounce)
           }
           .padding(.horizontal, 24)
           .padding(.vertical, 16)
@@ -369,6 +371,7 @@ struct InviteSheet: View {
           .foregroundStyle(.white)
           .clipShape(RoundedRectangle(cornerRadius: 12))
         }
+        .buttonStyle(.scale)
         .padding(.horizontal, 24)
 
         Spacer()

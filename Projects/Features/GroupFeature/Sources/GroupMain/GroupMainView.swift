@@ -258,6 +258,7 @@ extension GroupMain {
           .foregroundStyle(.white)
           .clipShape(Capsule())
         }
+        .buttonStyle(.hapticBounce)
       }
       .frame(maxWidth: .infinity)
       .padding(.vertical, 40)
@@ -406,7 +407,7 @@ private struct MenuRowButton: View {
       }
       .padding(.vertical, 14)
     }
-    .buttonStyle(.plain)
+    .buttonStyle(.scale)
   }
 }
 
