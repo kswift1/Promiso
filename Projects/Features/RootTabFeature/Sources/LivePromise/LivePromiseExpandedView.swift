@@ -235,33 +235,32 @@ extension LivePromise {
       promise?.locationText == "장소 미정"
     }
 
-    // MARK: - 1. Header Section (PromiseCard와 동일 구조)
+    // MARK: - Group Info Computed Properties
+
+    /// 그룹 모델 (PromiseModel에서 가져오기)
+    private var group: GroupModel? {
+      promise?.group
+    }
+
+    // MARK: - 1. Header Section (그룹 정보 표시)
 
     private var headerSection: some View {
       VStack(alignment: .leading, spacing: 14) {
-        // 1. Host Section (PromiseCard와 동일)
+        // 1. Group Section (그룹 정보 표시)
         HStack(spacing: 10) {
-          hostAvatarView
+          GroupThumbnailView(
+            imageUrl: group?.imageUrl,
+            name: group?.name ?? "그룹",
+            size: 32
+          )
 
-          VStack(alignment: .leading, spacing: 2) {
-            if isHost {
-              Text("내 약속 제안")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(.primary)
-            } else if let name = hostName {
-              Text("\(name)님의 약속 제안")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(.primary)
-            } else {
-              Text("약속 제안")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(.primary)
-            }
-          }
+          Text(group?.name ?? "그룹")
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundColor(.primary)
 
           Spacer()
 
-          liveBadge  // StatusBadge 대신 liveBadge 유지
+          liveBadge
         }
 
         Divider()

@@ -850,6 +850,8 @@ export enum NotificationType {
   PromiseConfirmed = "promise_confirmed",
   /** 약속 취소 */
   PromiseCancelled = "promise_cancelled",
+  /** 약속 수정 */
+  PromiseUpdated = "promise_updated",
   /** 그룹 초대 */
   GroupInvitation = "group_invitation",
   /** 그룹 업데이트 */
@@ -1031,6 +1033,9 @@ export interface StartLiveActivityResponse {
  * - Firestore 없이 클라이언트에서 전달받은 데이터로 Broadcast만 전송
  */
 export interface UpdateETARequest {
+  /** 약속 ID (종료 예약용) */
+  promiseId?: string;
+
   /** APNs Broadcast 채널 ID */
   channelId: string;
 
@@ -1108,6 +1113,20 @@ export interface RegisterPushToStartTokenResponse {
 export interface ScheduledLiveActivityTaskPayload {
   /** 약속 ID */
   promiseId: string;
+
+  /** 환경 구분 */
+  env: "stage" | "prod";
+}
+
+/**
+ * LiveActivity 종료 예약 Task Payload
+ */
+export interface ScheduledLiveActivityEndTaskPayload {
+  /** 약속 ID */
+  promiseId: string;
+
+  /** Broadcast 채널 ID */
+  channelId: string;
 
   /** 환경 구분 */
   env: "stage" | "prod";

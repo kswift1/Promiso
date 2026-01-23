@@ -46,6 +46,7 @@ export {
   sendPushNotification,
   onPromiseCreated,
   onPromiseVotesUpdated,
+  onPromiseInfoUpdated,
   onGroupMemberJoined,
 } from "./functions/notifications";
 
@@ -58,6 +59,7 @@ export {
   updateETA,
   widgetUpdateETA,
   executeLiveActivityStart,
+  executeLiveActivityEnd,
   onPromiseConfirmedScheduleLiveActivity,
 } from "./functions/liveActivity";
 

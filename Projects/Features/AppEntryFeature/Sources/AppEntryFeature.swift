@@ -403,6 +403,10 @@ extension AppEntry.Feature {
     case .liveActivityETA:
       // Widget "직접 입력" 버튼 → LivePromiseExpandedView + ETA 시트 열기
       return .send(.destination(.presented(.main(.openLiveActivityETASheet))))
+
+    case .livePromise:
+      // LiveActivity 탭 → LivePromiseExpandedView 열기 (ETA 시트 없이)
+      return .send(.destination(.presented(.main(.openLivePromiseDetail))))
     }
   }
 

@@ -41,6 +41,7 @@ import {
   UpdateETARequest,
   UpdateETAResponse,
   ScheduledLiveActivityTaskPayload,
+  ScheduledLiveActivityEndTaskPayload,
 } from "../types/api";
 
 /**
@@ -141,6 +142,8 @@ export const startLiveActivity = onCall<StartLiveActivityRequest>(
     const location = promiseData.location?.name as string || null;
     const startAt = promiseData.startAt as FirebaseFirestore.Timestamp;
     const acceptedUserIds = promiseData.votes?.accepted as string[] || [];
+    const trackingMinutes =
+      (promiseData.trackingStartMinutesBefore as number) || 30;
 
     // 2. 권한 확인 (호스트만 시작 가능)
     if (userId !== hostId) {
@@ -150,48 +153,63 @@ export const startLiveActivity = onCall<StartLiveActivityRequest>(
       );
     }
 
-    // 3. 참가자 정보 조회
-    const participantPromises = acceptedUserIds.map(async (uid) => {
-      const userDoc = await usersCollection.doc(uid).get();
-      const userData = userDoc.data();
-      return {
-        id: uid,
-        name: userData?.nickname as string || "참가자",
-        estimatedArrivalMinutes: null,
-      } as LiveActivityParticipant;
-    });
-    const participants = await Promise.all(participantPromises);
-
-    // 4. 호스트 이름 조회
-    const hostDoc = await usersCollection.doc(hostId).get();
-    const hostName = hostDoc.data()?.nickname as string || null;
-
-    // 5. 그룹 멤버들의 Push to Start 토큰 수집
+    // 3. 그룹 조회 후 멤버 ID 확인
     const groupDoc = await groupsCollection.doc(groupId).get();
     const memberIds = groupDoc.data()?.memberIds as string[] || [];
 
-    const tokenPromises = memberIds.map(async (memberId) => {
-      const userDoc = await usersCollection.doc(memberId).get();
-      const devices = userDoc.data()?.devices as {
-        [key: string]: DeviceInfo;
-      } | null;
-      if (!devices) return [];
+    // 4. 참가자 정보 및 토큰 배치 조회 (최적화: 1회로 통합)
+    const batchSize = 10;
+    const participants: LiveActivityParticipant[] = [];
+    const allTokens: {userId: string; token: string}[] = [];
+    let hostName: string | null = null;
 
-      const tokens: {userId: string; token: string}[] = [];
-      for (const deviceId of Object.keys(devices)) {
-        const device = devices[deviceId];
-        if (device.liveActivityPushToStartToken) {
-          tokens.push({
-            userId: memberId,
-            token: device.liveActivityPushToStartToken,
+    // 호스트 + 참가자 한번에 조회 (배치)
+    const userIdSet = new Set([hostId, ...acceptedUserIds, ...memberIds]);
+    const allUserIds = Array.from(userIdSet);
+    for (let i = 0; i < allUserIds.length; i += batchSize) {
+      const batch = allUserIds.slice(i, i + batchSize);
+      const userRefs = batch.map((uid) => usersCollection.doc(uid));
+      const userDocs = await db.getAll(...userRefs);
+
+      for (const userDoc of userDocs) {
+        if (!userDoc.exists) continue;
+
+        const uid = userDoc.id;
+        const userData = userDoc.data()!;
+        const nickname = userData.nickname as string || "참가자";
+
+        // 호스트 이름 추출
+        if (uid === hostId) {
+          hostName = nickname;
+        }
+
+        // 참가자 정보 생성
+        if (acceptedUserIds.includes(uid)) {
+          participants.push({
+            id: uid,
+            name: nickname,
+            estimatedArrivalMinutes: null,
           });
         }
-      }
-      return tokens;
-    });
 
-    const allTokenArrays = await Promise.all(tokenPromises);
-    const allTokens = allTokenArrays.flat();
+        // 그룹 멤버의 토큰 수집
+        if (memberIds.includes(uid)) {
+          type DevicesMap = {[key: string]: DeviceInfo} | null;
+          const devices = userData.devices as DevicesMap;
+          if (devices) {
+            for (const deviceId of Object.keys(devices)) {
+              const device = devices[deviceId];
+              if (device.liveActivityPushToStartToken) {
+                allTokens.push({
+                  userId: uid,
+                  token: device.liveActivityPushToStartToken,
+                });
+              }
+            }
+          }
+        }
+      }
+    }
 
     if (allTokens.length === 0) {
       console.log("📭 No Push to Start tokens found");
@@ -202,9 +220,14 @@ export const startLiveActivity = onCall<StartLiveActivityRequest>(
       };
     }
 
-    // 6. APNs Push to Start 전송
+    console.log(
+      `📊 Batch query: ${participants.length} participants, ` +
+      `${allTokens.length} tokens`
+    );
+
+    // 5. APNs Push to Start 전송
     const isProduction = effectiveEnv === "prod";
-    const trackingDurationMinutes = 30;
+    const trackingDurationMinutes = trackingMinutes;
 
     let successCount = 0;
     let failureCount = 0;
@@ -310,7 +333,7 @@ export const updateETA = onCall<UpdateETARequest>(
     }
 
     const {
-      channelId, participants, trackingDurationMinutes, env,
+      promiseId, channelId, participants, trackingDurationMinutes, env,
     } = request.data;
 
     if (!channelId || !participants) {
@@ -320,12 +343,51 @@ export const updateETA = onCall<UpdateETARequest>(
       );
     }
 
-    console.log(`📱 ETA update: ch=${channelId}, cnt=${participants.length}`);
+    console.log(
+      `📱 ETA update: ch=${channelId}, cnt=${participants.length}, ` +
+      `duration=${trackingDurationMinutes}`
+    );
+
+    // 도착 상태 분석 (0 = 도착, null = 대기, >0 = 이동중)
+    const currentUserId = request.auth.uid;
+    type Participant = {id: string; estimatedArrivalMinutes: number | null};
+    const arrivedParticipants = participants.filter(
+      (p: Participant) => p.estimatedArrivalMinutes === 0
+    );
+    const arrivedCount = arrivedParticipants.length;
+    const totalCount = participants.length;
+
+    // 현재 사용자가 방금 도착했는지 확인
+    const currentUserJustArrived = arrivedParticipants.some(
+      (p: Participant) => p.id === currentUserId
+    );
+
+    // alert 조건 판단
+    let alert: {title: string; body: string} | undefined;
+    let shouldScheduleEnd = false;
+
+    if (arrivedCount === 1 && totalCount > 1 && currentUserJustArrived) {
+      // 첫 번째 도착 (본인이 도착을 찍은 경우만)
+      alert = {
+        title: "🎉 첫 도착!",
+        body: "가장 먼저 도착했어요!",
+      };
+      console.log("🎉 First arrival detected");
+    } else if (arrivedCount === totalCount && totalCount > 1) {
+      // 모두 도착 - 5분 후 종료 예약
+      alert = {
+        title: "✅ 모두 도착!",
+        body: "모든 멤버들이 도착했어요! 잠시 후 종료됩니다",
+      };
+      shouldScheduleEnd = true;
+      console.log(`🎊 All arrived (${totalCount} members), scheduling end`);
+    }
 
     // Firestore 없이 바로 APNs Broadcast 전송
     const isProduction = env === "prod";
+    const effectiveEnv = env || "prod";
 
-    const payload = {
+    const payload: any = {
       aps: {
         "timestamp": Math.floor(Date.now() / 1000),
         "event": "update",
@@ -336,11 +398,37 @@ export const updateETA = onCall<UpdateETARequest>(
       },
     };
 
+    // alert가 있으면 추가
+    if (alert) {
+      payload.aps.alert = alert;
+    }
+
     const result = await sendAPNsBroadcast({
       channelId,
       payload,
       isProduction,
     });
+
+    // 모두 도착 시 종료 Task 예약 (stage: 1분, prod: 5분)
+    if (shouldScheduleEnd) {
+      type EndPayload = ScheduledLiveActivityEndTaskPayload;
+      const endQueue = getFunctions().taskQueue<EndPayload>(
+        `locations/${REGION}/functions/executeLiveActivityEnd`
+      );
+
+      const endDelayMinutes = effectiveEnv === "stage" ? 1 : 5;
+      await endQueue.enqueue(
+        {
+          promiseId: promiseId || "unknown",
+          channelId,
+          env: effectiveEnv as "stage" | "prod",
+        },
+        {scheduleDelaySeconds: endDelayMinutes * 60}
+      );
+
+      const id = promiseId || channelId;
+      console.log(`📅 LiveActivity end scheduled (all arrived): ${id}`);
+    }
 
     if (result.success) {
       console.log(`📤 ETA Broadcast sent: channelId=${channelId}`);
@@ -368,6 +456,7 @@ export const updateETA = onCall<UpdateETARequest>(
  * **Request Body**:
  * ```json
  * {
+ *   "promiseId": "promise_abc123",
  *   "channelId": "ch_abc123",
  *   "participants": [{"id": "...", "name": "...", "eta": 5}],
  *   "trackingDurationMinutes": 30,
@@ -429,7 +518,7 @@ export const widgetUpdateETA = onRequest(
     }
 
     const {
-      channelId, participants, trackingDurationMinutes, env,
+      promiseId, channelId, participants, trackingDurationMinutes, env,
     } = req.body;
 
     if (!channelId || !participants) {
@@ -442,12 +531,49 @@ export const widgetUpdateETA = onRequest(
       return;
     }
 
-    console.log(`📱 Widget ETA: u=${userId}, ch=${channelId}`);
+    console.log(
+      `📱 Widget ETA: u=${userId}, ch=${channelId}, cnt=${participants.length}`
+    );
+
+    // 도착 상태 분석 (0 = 도착, null = 대기, >0 = 이동중)
+    type Participant = {id: string; estimatedArrivalMinutes: number | null};
+    const arrivedParticipants = participants.filter(
+      (p: Participant) => p.estimatedArrivalMinutes === 0
+    );
+    const arrivedCount = arrivedParticipants.length;
+    const totalCount = participants.length;
+
+    // 현재 사용자(위젯 호출자)가 방금 도착했는지 확인
+    const currentUserJustArrived = arrivedParticipants.some(
+      (p: Participant) => p.id === userId
+    );
+
+    // alert 조건 판단
+    let alert: {title: string; body: string} | undefined;
+    let shouldScheduleEnd = false;
+
+    if (arrivedCount === 1 && totalCount > 1 && currentUserJustArrived) {
+      // 첫 번째 도착 (본인이 도착을 찍은 경우만)
+      alert = {
+        title: "🎉 첫 도착!",
+        body: "가장 먼저 도착했어요!",
+      };
+      console.log("🎉 Widget: First arrival detected");
+    } else if (arrivedCount === totalCount && totalCount > 1) {
+      // 모두 도착 - 종료 예약
+      alert = {
+        title: "✅ 모두 도착!",
+        body: "모든 멤버들이 도착했어요! 잠시 후 종료됩니다",
+      };
+      shouldScheduleEnd = true;
+      console.log(`🎊 Widget: All arrived (${totalCount} members)`);
+    }
 
     // Firestore 없이 바로 APNs Broadcast 전송
     const isProduction = env === "prod";
+    const effectiveEnv = env || "prod";
 
-    const payload = {
+    const payload: any = {
       aps: {
         "timestamp": Math.floor(Date.now() / 1000),
         "event": "update",
@@ -458,11 +584,37 @@ export const widgetUpdateETA = onRequest(
       },
     };
 
+    // alert가 있으면 추가
+    if (alert) {
+      payload.aps.alert = alert;
+    }
+
     const result = await sendAPNsBroadcast({
       channelId,
       payload,
       isProduction,
     });
+
+    // 모두 도착 시 종료 Task 예약 (stage: 1분, prod: 5분)
+    if (shouldScheduleEnd) {
+      type EndPayload = ScheduledLiveActivityEndTaskPayload;
+      const endQueue = getFunctions().taskQueue<EndPayload>(
+        `locations/${REGION}/functions/executeLiveActivityEnd`
+      );
+
+      const endDelayMinutes = effectiveEnv === "stage" ? 1 : 5;
+      await endQueue.enqueue(
+        {
+          promiseId: promiseId || "unknown",
+          channelId,
+          env: effectiveEnv as "stage" | "prod",
+        },
+        {scheduleDelaySeconds: endDelayMinutes * 60}
+      );
+
+      const id = promiseId || channelId;
+      console.log(`📅 Widget: LiveActivity end scheduled: ${id}`);
+    }
 
     if (result.success) {
       console.log(`📤 Widget ETA Broadcast sent: channelId=${channelId}`);
@@ -522,6 +674,8 @@ export const executeLiveActivityStart = onTaskDispatched<
     const startAt = promiseData.startAt as admin.firestore.Timestamp;
     const accepted = promiseData.votes?.accepted as string[] || [];
     const minParticipants = promiseData.minimumParticipants as number || 2;
+    const trackingMinutes =
+      (promiseData.trackingStartMinutesBefore as number) || 30;
 
     // 2. 약속이 확정 상태인지 확인
     if (accepted.length < minParticipants) {
@@ -529,23 +683,59 @@ export const executeLiveActivityStart = onTaskDispatched<
       return;
     }
 
-    // 3. 호스트 이름 조회
-    const hostDoc = await usersCollection.doc(hostId).get();
-    const hostName = hostDoc.data()?.nickname as string || null;
+    // 3. 참가자 정보 및 토큰 배치 조회 (최적화: 1회로 통합)
+    // Firestore getAll()로 최대 10개씩 배치 조회 가능
+    const batchSize = 10;
+    const participants: LiveActivityParticipant[] = [];
+    const allTokens: {userId: string; token: string}[] = [];
+    let hostName: string | null = null;
 
-    // 4. 참가자 정보 생성
-    const participantPromises = accepted.map(async (uid) => {
-      const userDoc = await usersCollection.doc(uid).get();
-      const userData = userDoc.data();
-      return {
-        id: uid,
-        name: userData?.nickname as string || "참가자",
-        estimatedArrivalMinutes: null,
-      } as LiveActivityParticipant;
-    });
-    const participants = await Promise.all(participantPromises);
+    // 호스트 + 참가자 한번에 조회 (배치, 중복 제거)
+    const allUserIds = Array.from(new Set([hostId, ...accepted]));
+    for (let i = 0; i < allUserIds.length; i += batchSize) {
+      const batch = allUserIds.slice(i, i + batchSize);
+      const userRefs = batch.map((uid) => usersCollection.doc(uid));
+      const userDocs = await db.getAll(...userRefs);
 
-    // 5. iOS 18 Broadcast 채널 생성 (Apple이 channelId 생성)
+      for (const userDoc of userDocs) {
+        if (!userDoc.exists) continue;
+
+        const uid = userDoc.id;
+        const userData = userDoc.data()!;
+        const nickname = userData.nickname as string || "참가자";
+
+        // 호스트 이름 추출
+        if (uid === hostId) {
+          hostName = nickname;
+        }
+
+        // 참가자 정보 생성
+        if (accepted.includes(uid)) {
+          participants.push({
+            id: uid,
+            name: nickname,
+            estimatedArrivalMinutes: null,
+          });
+
+          // 토큰 수집
+          type DevicesMap = {[key: string]: DeviceInfo} | null;
+          const devices = userData.devices as DevicesMap;
+          if (devices) {
+            for (const deviceId of Object.keys(devices)) {
+              const device = devices[deviceId];
+              if (device.liveActivityPushToStartToken) {
+                allTokens.push({
+                  userId: uid,
+                  token: device.liveActivityPushToStartToken,
+                });
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // 4. iOS 18 Broadcast 채널 생성 (Apple이 channelId 생성)
     const isProduction = env === "prod";
     const channelResult = await createAPNsChannel(isProduction);
     let channelId: string | undefined;
@@ -560,52 +750,29 @@ export const executeLiveActivityStart = onTaskDispatched<
       return;
     }
 
-    const trackingDurationMinutes = 30;
+    const trackingDurationMinutes = trackingMinutes;
 
-    // 7. 참가자들의 Push to Start 토큰 수집
-    const tokenPromises = accepted.map(async (memberId) => {
-      const userDoc = await usersCollection.doc(memberId).get();
-      const userData = userDoc.data();
-      const devices = userData?.devices as {[key: string]: DeviceInfo} | null;
-      if (!devices) return [];
-
-      const tokens: {userId: string; token: string}[] = [];
-      for (const deviceId of Object.keys(devices)) {
-        const device = devices[deviceId];
-        if (device.liveActivityPushToStartToken) {
-          tokens.push({
-            userId: memberId,
-            token: device.liveActivityPushToStartToken,
-          });
-        }
-      }
-      return tokens;
-    });
-
-    const allTokenArrays = await Promise.all(tokenPromises);
-    const allTokens = allTokenArrays.flat();
-
+    // 5. 토큰 검증
     if (allTokens.length === 0) {
       console.log(`📭 No Push to Start tokens for: ${promiseId}`);
       return;
     }
 
-    // 8. APNs Push to Start 전송
+    console.log(
+      `📊 Batch query: ${participants.length} participants, ` +
+      `${allTokens.length} tokens`
+    );
+
+    // 6. APNs Push to Start 전송
     // 각 사용자에게 개별 Push to Start 전송 (Activity 시작 시 채널 구독됨)
     let successCount = 0;
     let failureCount = 0;
-
-    // 자동 종료 시간: 약속 시작시간 + 3분 (테스트용, 프로덕션은 30분)
-    const startTimeSec = Math.floor(startAt.toDate().getTime() / 1000);
-    const dismissalTime = startTimeSec + (3 * 60);
 
     for (const {userId: tokenUserId, token} of allTokens) {
       const payload = {
         aps: {
           "timestamp": Math.floor(Date.now() / 1000),
           "event": "start",
-          "stale-date": dismissalTime,
-          "dismissal-date": dismissalTime,
           "input-push-channel": channelId || "", // iOS 18 채널 구독
           "attributes-type": "PromiseActivityAttributes",
           "attributes": {
@@ -651,6 +818,87 @@ export const executeLiveActivityStart = onTaskDispatched<
       `⏰ Scheduled LiveActivity started (Broadcast channel: ${channelId}): ` +
       `${successCount}/${failureCount}`
     );
+
+    // 7. 종료 Task 예약 (stage: 3분, prod: 30분)
+    const endMinutes = env === "stage" ? 3 : 30;
+    const endTime = startAt.toDate().getTime() + endMinutes * 60 * 1000;
+    const endDelaySeconds = Math.max(
+      0,
+      Math.floor((endTime - Date.now()) / 1000)
+    );
+
+    type EndPayload = ScheduledLiveActivityEndTaskPayload;
+    const endQueue = getFunctions().taskQueue<EndPayload>(
+      `locations/${REGION}/functions/executeLiveActivityEnd`
+    );
+
+    await endQueue.enqueue(
+      {promiseId, channelId: channelId || "", env},
+      {scheduleDelaySeconds: endDelaySeconds}
+    );
+
+    console.log(
+      `📅 LiveActivity end scheduled: ${promiseId} in ${endDelaySeconds}s`
+    );
+  }
+);
+
+/**
+ * LiveActivity 종료 태스크 핸들러
+ *
+ * @remarks
+ * Cloud Tasks에 의해 예약된 시간에 자동 실행됩니다.
+ * 약속 시간 + 30분 또는 모두 도착 + 5분에 LiveActivity를 종료합니다.
+ */
+export const executeLiveActivityEnd = onTaskDispatched<
+  ScheduledLiveActivityEndTaskPayload
+>(
+  {
+    region: REGION,
+    retryConfig: {
+      maxAttempts: 3,
+      minBackoffSeconds: 10,
+    },
+    rateLimits: {
+      maxConcurrentDispatches: 10,
+    },
+    secrets: [APNS_KEY_ID, APNS_TEAM_ID, APNS_AUTH_KEY],
+  },
+  async (req) => {
+    const {promiseId, channelId, env} = req.data;
+    console.log(`⏰ Scheduled LiveActivity end: ${promiseId}`);
+
+    if (!channelId) {
+      console.error(`❌ channelId missing for end task: ${promiseId}`);
+      return;
+    }
+
+    const isProduction = env === "prod";
+
+    // end 이벤트 전송 (dismissal-date는 과거로 설정하여 즉시 제거)
+    const payload = {
+      aps: {
+        "timestamp": Math.floor(Date.now() / 1000),
+        "event": "end",
+        "dismissal-date": Math.floor(Date.now() / 1000) - 60, // 과거 시간 (즉시 제거)
+        "content-state": {
+          trackingDurationMinutes: 30,
+          participants: [],
+        },
+      },
+    };
+
+    const result = await sendAPNsBroadcast({
+      channelId,
+      payload,
+      isProduction,
+    });
+
+    if (result.success) {
+      console.log(`✅ LiveActivity ended: ${promiseId}`);
+    } else {
+      console.error(`❌ LiveActivity end failed: ${promiseId}, ${result.error}`);
+    }
   }
 );
 

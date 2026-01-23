@@ -9,6 +9,7 @@ import Foundation
 /// - `promiso://group/{groupId}` → 그룹 상세 화면
 /// - `promiso://promise/{promiseId}/{groupId}` → 약속 상세 화면
 /// - `promiso://promise/{promiseId}/eta` → LiveActivity ETA 변경 시트
+/// - `promiso://live/{promiseId}` → LivePromise 상세 화면 (ETA 시트 없이)
 ///
 /// - SeeAlso: `.ai/DEEPLINK_GUIDE.md`
 public enum DeeplinkURLParser {
@@ -28,6 +29,9 @@ public enum DeeplinkURLParser {
 
     case "promise":
       return parsePromise(from: url)
+
+    case "live":
+      return parseLivePromise(from: url)
 
     default:
       return nil
@@ -71,5 +75,13 @@ private extension DeeplinkURLParser {
 
     // 그 외는 groupId로 처리
     return .promise(promiseId: promiseId, groupId: secondComponent)
+  }
+
+  /// promiso://live/{promiseId}
+  static func parseLivePromise(from url: URL) -> DeeplinkDestination? {
+    guard let promiseId = url.pathComponents.dropFirst().first else {
+      return nil
+    }
+    return .livePromise(promiseId: promiseId)
   }
 }

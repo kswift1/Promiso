@@ -116,6 +116,8 @@ extension RootTab {
       case handleGroupDeeplink(GroupMain.Deeplink)
       /// Widget "직접 입력" 버튼 → LivePromiseExpandedView + ETA 시트 열기
       case openLiveActivityETASheet
+      /// LiveActivity 탭 → LivePromiseExpandedView 열기 (ETA 시트 없이)
+      case openLivePromiseDetail
       /// 내부 액션
       case `internal`(Internal)
     }
@@ -266,6 +268,15 @@ extension RootTab {
             try? await Task.sleep(for: .milliseconds(400))
             await send(.internal(.openETASheetAfterDelay))
           }
+
+        case .openLivePromiseDetail:
+          guard let livePromise = state.livePromise else {
+            // Cold start: Activity 구독보다 딥링크가 먼저 도착 → pending 처리
+            // ETA 시트 없이 열리므로 pendingETASheetRequest는 false 유지
+            return .none
+          }
+          state.livePromiseDetail = LivePromise.Detail.State(data: livePromise.$data)
+          return .none
 
         case .internal(let internalAction):
           switch internalAction {
