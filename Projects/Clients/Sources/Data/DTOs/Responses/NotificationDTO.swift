@@ -63,6 +63,7 @@ public enum NotificationType: String, Codable, CaseIterable {
   case promiseReminder = "promise_reminder"
   case promiseConfirmed = "promise_confirmed"
   case promiseCancelled = "promise_cancelled"
+  case promiseUpdated = "promise_updated"
   case groupInvitation = "group_invitation"
   case groupUpdate = "group_update"
   case attendanceResponse = "attendance_response"
@@ -81,7 +82,8 @@ public enum NotificationType: String, Codable, CaseIterable {
   /// 이 알림 타입의 딥링크 처리 가이드
   public var deeplinkGuide: DeeplinkGuide {
     switch self {
-    case .promiseInvitation, .promiseReminder, .promiseConfirmed, .promiseCancelled, .attendanceResponse:
+    case .promiseInvitation, .promiseReminder, .promiseConfirmed, .promiseCancelled,
+         .promiseUpdated, .attendanceResponse:
       return .promiseAndGroup
     case .groupInvitation, .groupUpdate:
       return .groupOnly

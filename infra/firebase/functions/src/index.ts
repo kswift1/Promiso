@@ -46,6 +46,7 @@ export {
   sendPushNotification,
   onPromiseCreated,
   onPromiseVotesUpdated,
+  onPromiseInfoUpdated,
   onGroupMemberJoined,
 } from "./functions/notifications";
 

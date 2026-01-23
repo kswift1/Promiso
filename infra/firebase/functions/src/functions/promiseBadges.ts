@@ -68,7 +68,6 @@ export const onPromiseCreatedBadges = onDocumentCreated(
 
     const rawMemberIds = groupDoc.data()?.memberIds;
     const memberIds: string[] = Array.isArray(rawMemberIds) ?
-    
       rawMemberIds as string[] : [];
 
     // 생성자 제외한 멤버들에게 배지 표시

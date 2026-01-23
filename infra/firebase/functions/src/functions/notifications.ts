@@ -28,6 +28,42 @@ import {
 } from "../types/api";
 
 /**
+ * 날짜/시간을 "오늘/내일/M월 D일 H시 M분" 형식으로 포맷
+ * - 오늘이면 "오늘"
+ * - 내일이면 "내일"
+ * - 그 외 "M월 D일"
+ * - 시간은 "H시" (0분일 때) 또는 "H시 M분"
+ *
+ * @param {Date} date - 포맷할 날짜
+ * @return {string} 포맷된 날짜/시간 문자열
+ */
+function formatDateTime(date: Date): string {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+  const targetDay = new Date(
+    date.getFullYear(), date.getMonth(), date.getDate()
+  );
+
+  // 날짜 부분
+  let dateStr: string;
+  if (targetDay.getTime() === today.getTime()) {
+    dateStr = "오늘";
+  } else if (targetDay.getTime() === tomorrow.getTime()) {
+    dateStr = "내일";
+  } else {
+    dateStr = `${date.getMonth() + 1}월 ${date.getDate()}일`;
+  }
+
+  // 시간 부분
+  const hours = date.getHours();
+  const minutes = date.getMinutes();
+  const timeStr = minutes === 0 ? `${hours}시` : `${hours}시 ${minutes}분`;
+
+  return `${dateStr} ${timeStr}`;
+}
+
+/**
  * 푸시 알림 전송 (Callable Function)
  *
  * @remarks
@@ -388,13 +424,13 @@ export const onPromiseVotesUpdated = onDocumentUpdated(
     if (!wasConfirmed && isConfirmed) {
       // 약속 확정 알림 (수락한 사람들에게만)
       const startDate = startAt.toDate();
-      const dateString = `${startDate.getMonth() + 1}월 ${startDate.getDate()}일`;
+      const dateTimeString = formatDateTime(startDate);
 
       await sendPushNotificationInternal({
         userIds: afterAccepted,
         type: NotificationType.PromiseConfirmed,
-        title: "약속 확정! 🎉",
-        body: `${title} 약속 확정! ${dateString}에 만나요`,
+        title: `${title} 약속 확정! 🎉`,
+        body: `${dateTimeString}에 만나요!`,
         promiseId,
         groupId,
         relatedUserId: null,
@@ -416,8 +452,8 @@ export const onPromiseVotesUpdated = onDocumentUpdated(
         await sendPushNotificationInternal({
           userIds: afterAccepted,
           type: NotificationType.PromiseCancelled,
-          title: "약속 무산 😢",
-          body: `${title}의 참여 인원이 부족해서 확정되지 않았어요`,
+          title: `${title} 약속 무산 😢`,
+          body: "참여 인원이 부족해서 확정되지 않았어요",
           promiseId,
           groupId,
           relatedUserId: null,
@@ -487,5 +523,74 @@ export const onGroupMemberJoined = onDocumentUpdated(
         env,
       });
     }
+  },
+);
+
+/**
+ * 약속 정보 수정 시 참가자에게 알림
+ *
+ * @remarks
+ * promises/{promiseId} 문서의 주요 정보가 변경되면 트리거됩니다.
+ * - 제목, 시간, 장소, 설명, 최소인원 변경 감지
+ * - 수락한 참가자들에게 알림 전송
+ */
+export const onPromiseInfoUpdated = onDocumentUpdated(
+  {
+    document: "{env}/root/promises/{promiseId}",
+    region: REGION,
+  },
+  async (event) => {
+    const beforeData = event.data?.before.data();
+    const afterData = event.data?.after.data();
+
+    if (!beforeData || !afterData) {
+      return;
+    }
+
+    const promiseId = event.params.promiseId;
+    const env = event.params.env as "stage" | "prod";
+
+    // 주요 필드 변경 감지
+    const fieldsToCheck = [
+      "title",
+      "startAt",
+      "location",
+      "description",
+      "minimumParticipants",
+    ];
+
+    const hasChanges = fieldsToCheck.some((field) => {
+      const before = JSON.stringify(beforeData[field]);
+      const after = JSON.stringify(afterData[field]);
+      return before !== after;
+    });
+
+    if (!hasChanges) {
+      return; // 주요 정보 변경 없음
+    }
+
+    // 수락한 참가자들에게 알림
+    const afterVotes = afterData.votes || {accepted: []};
+    const acceptedUsers = (afterVotes.accepted as string[]) || [];
+    const title = afterData.title as string;
+    const groupId = afterData.groupId as string;
+
+    if (acceptedUsers.length === 0) {
+      return; // 수락자 없음
+    }
+
+    console.log(`📝 Promise info updated: ${promiseId}`);
+
+    await sendPushNotificationInternal({
+      userIds: acceptedUsers,
+      type: NotificationType.PromiseUpdated,
+      title: `${title} 변경 📝`,
+      body: "약속 정보가 수정됐어요. 확인해주세요!",
+      promiseId,
+      groupId,
+      relatedUserId: null,
+      data: null,
+      env,
+    });
   },
 );

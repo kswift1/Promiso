@@ -850,6 +850,8 @@ export enum NotificationType {
   PromiseConfirmed = "promise_confirmed",
   /** 약속 취소 */
   PromiseCancelled = "promise_cancelled",
+  /** 약속 수정 */
+  PromiseUpdated = "promise_updated",
   /** 그룹 초대 */
   GroupInvitation = "group_invitation",
   /** 그룹 업데이트 */

@@ -348,18 +348,26 @@ export const updateETA = onCall<UpdateETARequest>(
       `duration=${trackingDurationMinutes}`
     );
 
-    // 도착 상태 분석
-    const arrivedCount = participants.filter(
-      (p: any) => p.estimatedArrivalMinutes === null
-    ).length;
+    // 도착 상태 분석 (0 = 도착, null = 대기, >0 = 이동중)
+    const currentUserId = request.auth.uid;
+    type Participant = {id: string; estimatedArrivalMinutes: number | null};
+    const arrivedParticipants = participants.filter(
+      (p: Participant) => p.estimatedArrivalMinutes === 0
+    );
+    const arrivedCount = arrivedParticipants.length;
     const totalCount = participants.length;
+
+    // 현재 사용자가 방금 도착했는지 확인
+    const currentUserJustArrived = arrivedParticipants.some(
+      (p: Participant) => p.id === currentUserId
+    );
 
     // alert 조건 판단
     let alert: {title: string; body: string} | undefined;
     let shouldScheduleEnd = false;
 
-    if (arrivedCount === 1 && totalCount > 1) {
-      // 첫 번째 도착
+    if (arrivedCount === 1 && totalCount > 1 && currentUserJustArrived) {
+      // 첫 번째 도착 (본인이 도착을 찍은 경우만)
       alert = {
         title: "🎉 첫 도착!",
         body: "가장 먼저 도착했어요!",
@@ -372,7 +380,7 @@ export const updateETA = onCall<UpdateETARequest>(
         body: "모든 멤버들이 도착했어요! 잠시 후 종료됩니다",
       };
       shouldScheduleEnd = true;
-      console.log(`✅ All arrived (${totalCount} members), scheduling end`);
+      console.log(`🎊 All arrived (${totalCount} members), scheduling end`);
     }
 
     // Firestore 없이 바로 APNs Broadcast 전송
@@ -401,20 +409,21 @@ export const updateETA = onCall<UpdateETARequest>(
       isProduction,
     });
 
-    // 모두 도착 시 5분 후 종료 Task 예약
+    // 모두 도착 시 종료 Task 예약 (stage: 1분, prod: 5분)
     if (shouldScheduleEnd) {
       type EndPayload = ScheduledLiveActivityEndTaskPayload;
       const endQueue = getFunctions().taskQueue<EndPayload>(
         `locations/${REGION}/functions/executeLiveActivityEnd`
       );
 
+      const endDelayMinutes = effectiveEnv === "stage" ? 1 : 5;
       await endQueue.enqueue(
         {
           promiseId: promiseId || "unknown",
           channelId,
           env: effectiveEnv as "stage" | "prod",
         },
-        {scheduleDelaySeconds: 5 * 60} // 5분 후
+        {scheduleDelaySeconds: endDelayMinutes * 60}
       );
 
       const id = promiseId || channelId;
