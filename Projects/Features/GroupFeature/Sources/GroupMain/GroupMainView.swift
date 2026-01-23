@@ -388,7 +388,7 @@ extension GroupMain {
 
           // Description (2줄)
           Text(emptyFilterDescription)
-            .font(.system(size: 18))
+            .font(.system(size: 16))
             .foregroundStyle(.secondary)
             .multilineTextAlignment(.center)
             .lineSpacing(6)
@@ -481,7 +481,7 @@ extension GroupMain {
 
               // Description (2줄)
               Text("아직 속한 그룹이 없어요\n상단의 + 버튼으로 그룹을 만들거나 참여해보세요")
-                .font(.system(size: 18))
+                .font(.system(size: 16))
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .lineSpacing(6)
