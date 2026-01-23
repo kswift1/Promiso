@@ -308,6 +308,7 @@ export const respondPromise = onCall<RespondPromiseRequest>(
  * 약속 정보를 수정합니다.
  * - 호스트만 수정 가능
  * - 시작 전 약속만 수정 가능
+ * - LiveActivity 실행 중인 약속은 수정 불가
  */
 export const updatePromise = onCall<UpdatePromiseRequest>(
   {region: REGION},
@@ -395,7 +396,21 @@ export const updatePromise = onCall<UpdatePromiseRequest>(
       );
     }
 
-    // 6. 업데이트할 필드 구성
+    // 6. LiveActivity 실행 중 확인 (실시간 공유 중 수정 불가)
+    const liveActivityScheduled = promiseData.liveActivityScheduled === true;
+    const liveActivityScheduledAt =
+      promiseData.liveActivityScheduledAt as admin.firestore.Timestamp | null;
+
+    if (liveActivityScheduled && liveActivityScheduledAt) {
+      if (liveActivityScheduledAt.toMillis() <= now.toMillis()) {
+        throw new HttpsError(
+          "failed-precondition",
+          "실시간 공유 중인 약속은 수정할 수 없습니다",
+        );
+      }
+    }
+
+    // 7. 업데이트할 필드 구성
     const updateData: Record<string, unknown> = {
       updatedAt: FieldValue.serverTimestamp(),
     };
@@ -459,10 +474,10 @@ export const updatePromise = onCall<UpdatePromiseRequest>(
         data.trackingStartMinutesBefore || null;
     }
 
-    // 7. Firestore 업데이트
+    // 8. Firestore 업데이트
     await promiseRef.update(updateData);
 
-    // 8. 응답 반환
+    // 9. 응답 반환
     return {
       success: true,
     };
