@@ -458,7 +458,7 @@ export const updateETA = onCall<UpdateETARequest>(
  * {
  *   "promiseId": "promise_abc123",
  *   "channelId": "ch_abc123",
- *   "participants": [{"id": "...", "name": "...", "estimatedArrivalMinutes": 5}],
+ *   "participants": [{"id": "...", "name": "...", "eta": 5}],
  *   "trackingDurationMinutes": 30,
  *   "env": "prod"
  * }
