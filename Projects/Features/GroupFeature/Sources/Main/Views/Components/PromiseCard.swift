@@ -1,5 +1,6 @@
 import Clients
 import PromisoShared
+import ResourceKit
 import SwiftUI
 
 struct PromiseCard: View {
@@ -7,6 +8,7 @@ struct PromiseCard: View {
   let currentUserId: String
   let groupMembers: [UserPublicModel]?
   let respondingState: GroupMain.RespondingState
+  let isLive: Bool
   let onTap: () -> Void
   let onAccept: () -> Void
   let onReject: () -> Void
@@ -14,6 +16,34 @@ struct PromiseCard: View {
   let onDelete: (() -> Void)?
   let onChangeResponse: ((PromiseAttendanceStatus) -> Void)?
   let onShare: (() -> Void)?
+
+  init(
+    promise: PromiseModel,
+    currentUserId: String,
+    groupMembers: [UserPublicModel]?,
+    respondingState: GroupMain.RespondingState,
+    isLive: Bool = false,
+    onTap: @escaping () -> Void,
+    onAccept: @escaping () -> Void,
+    onReject: @escaping () -> Void,
+    onEdit: (() -> Void)? = nil,
+    onDelete: (() -> Void)? = nil,
+    onChangeResponse: ((PromiseAttendanceStatus) -> Void)? = nil,
+    onShare: (() -> Void)? = nil
+  ) {
+    self.promise = promise
+    self.currentUserId = currentUserId
+    self.groupMembers = groupMembers
+    self.respondingState = respondingState
+    self.isLive = isLive
+    self.onTap = onTap
+    self.onAccept = onAccept
+    self.onReject = onReject
+    self.onEdit = onEdit
+    self.onDelete = onDelete
+    self.onChangeResponse = onChangeResponse
+    self.onShare = onShare
+  }
 
   /// 수정 가능 여부 (호스트 && 시작 전)
   private var canEdit: Bool {
@@ -90,8 +120,12 @@ struct PromiseCard: View {
 
         Spacer()
 
-        // Status Badge
-        StatusBadge(status: responseStatus, respondingState: respondingState)
+        // Live Badge (실시간 공유 중) 또는 Status Badge
+        if isLive {
+          LiveBadge()
+        } else {
+          StatusBadge(status: responseStatus, respondingState: respondingState)
+        }
       }
 
       Divider()

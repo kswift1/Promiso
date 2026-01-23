@@ -165,8 +165,11 @@ extension GroupMain {
       /// 딥링크로 열려는 목적지 (그룹/약속 로드 후 처리)
       var pendingDeeplink: GroupMain.Deeplink?
 
-      /// BottomAccessory(LiveActivity) 활성화 여부 - FAB 위치 조정용
-      public var hasLiveActivity: Bool = false
+      /// 현재 실시간 공유 중인 약속 ID (nil이면 비활성)
+      public var liveActivityPromiseId: String?
+
+      /// LiveActivity 활성화 여부 (FAB 위치 조정용)
+      public var hasLiveActivity: Bool { liveActivityPromiseId != nil }
 
       public init(currentUser: UserPrivateModel) {
         self.currentUser = currentUser
@@ -388,7 +391,7 @@ extension GroupMain {
         case deletePromiseFailed(promiseId: String, error: AppError)
         case toggleGroupNotifications
         case clearBadge(groupId: String)
-        case liveActivityChanged(isActive: Bool)
+        case liveActivityChanged(promiseId: String?)
         case fetchPastPromises(groupId: String)
         case pastPromisesResponse(Result<[PromiseModel], AppError>)
       }
@@ -803,8 +806,8 @@ extension GroupMain {
               await groupClient.clearGroupBadge(groupId)
             }
 
-          case .liveActivityChanged(let isActive):
-            state.hasLiveActivity = isActive
+          case .liveActivityChanged(let promiseId):
+            state.liveActivityPromiseId = promiseId
             return .none
 
           case .fetchPastPromises(let groupId):

@@ -303,6 +303,7 @@ extension GroupMain {
         currentUserId: store.currentUser.userId,
         groupMembers: store.currentGroupMembers,
         respondingState: store.proposalResponding[promiseId] ?? .idle,
+        isLive: store.liveActivityPromiseId == promiseId,
         onTap: {
           store.send(.view(.promiseTapped(promise)))
         },
