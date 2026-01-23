@@ -373,37 +373,68 @@ extension GroupMain {
 
     @ViewBuilder
     private var emptyFilteredView: some View {
-      VStack(spacing: 16) {
-        Image(systemName: emptyFilterIcon)
-          .font(.system(size: 48))
-          .foregroundStyle(.secondary)
+      VStack(spacing: 0) {
+        Spacer()
+          .frame(height: 120)
 
-        Text(emptyFilterMessage)
-          .font(.system(size: 17, weight: .medium))
-          .foregroundStyle(.secondary)
-          .multilineTextAlignment(.center)
+        VStack(spacing: 16) {
+          // 이모지 아이콘
+          ZStack {
+            Circle()
+              .fill(Color(.systemGray6))
+              .frame(width: 80, height: 80)
+
+            Text(emptyFilterEmoji)
+              .font(.system(size: 40))
+          }
+
+          VStack(spacing: 8) {
+            // 메인 메시지
+            Text(emptyFilterMessage)
+              .font(.system(size: 16, weight: .medium))
+              .foregroundStyle(.primary)
+
+            // 서브 메시지
+            Text(emptyFilterSubMessage)
+              .font(.system(size: 14))
+              .foregroundStyle(.tertiary)
+              .multilineTextAlignment(.center)
+              .lineSpacing(4)
+          }
+        }
+
+        Spacer()
       }
       .frame(maxWidth: .infinity)
-      .padding(.vertical, 60)
     }
 
-    private var emptyFilterIcon: String {
+    private var emptyFilterEmoji: String {
       switch store.selectedFilter {
-      case .needResponse: return "envelope.badge"
-      case .responded: return "clock.badge.checkmark"
-      case .confirmed: return "checkmark.circle"
-      case .all: return "calendar.badge.plus"
-      case .past: return "clock.arrow.circlepath"
+      case .needResponse: return "📨"
+      case .responded: return "⏰"
+      case .confirmed: return "✅"
+      case .all: return "📬"
+      case .past: return "🕐"
       }
     }
 
     private var emptyFilterMessage: String {
       switch store.selectedFilter {
-      case .needResponse: return "응답이 필요한 약속이 없어요"
-      case .responded: return "응답 완료된 약속이 없어요"
+      case .needResponse: return "응답할 약속이 없어요"
+      case .responded: return "응답한 약속이 없어요"
       case .confirmed: return "확정된 약속이 없어요"
-      case .all: return "아직 약속이 없어요"
+      case .all: return "약속이 없어요"
       case .past: return "지난 약속이 없어요"
+      }
+    }
+
+    private var emptyFilterSubMessage: String {
+      switch store.selectedFilter {
+      case .needResponse: return "모든 약속에 응답한 상태예요 👍"
+      case .responded: return "응답한 약속이 확정되면 여기로 이동해요"
+      case .confirmed: return "약속을 만들고 친구들과 확정해보세요"
+      case .all: return "그룹 친구들과 첫 약속을 잡아보세요"
+      case .past: return "완료된 약속 기록이 여기 쌓여요"
       }
     }
 
@@ -453,27 +484,35 @@ extension GroupMain {
             .opacity(0.5)
 
           // 빈 상태 컨텐츠
-          VStack(spacing: 24) {
+          VStack(spacing: 0) {
             Spacer()
-              .frame(height: 40)
+              .frame(height: 120)
 
-            Image(systemName: "person.3.fill")
-              .font(.system(size: 56))
-              .foregroundStyle(.tertiary)
+            VStack(spacing: 16) {
+              // 이모지 아이콘
+              ZStack {
+                Circle()
+                  .fill(Color(.systemGray6))
+                  .frame(width: 80, height: 80)
 
-            VStack(spacing: 8) {
-              Text("그룹이 없어요")
-                .font(.system(size: 20, weight: .semibold))
+                Text("👥")
+                  .font(.system(size: 40))
+              }
 
-              Text("상단의 + 버튼을 눌러\n그룹을 만들거나 참여해보세요")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .lineSpacing(4)
+              VStack(spacing: 8) {
+                Text("그룹이 없어요")
+                  .font(.system(size: 16, weight: .medium))
+                  .foregroundStyle(.primary)
+
+                Text("상단의 + 버튼을 눌러\n그룹을 만들거나 참여해보세요")
+                  .font(.system(size: 14))
+                  .foregroundStyle(.tertiary)
+                  .multilineTextAlignment(.center)
+                  .lineSpacing(4)
+              }
             }
 
             Spacer()
-              .frame(height: 40)
           }
           .frame(maxWidth: .infinity)
         }
