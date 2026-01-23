@@ -142,6 +142,8 @@ export const startLiveActivity = onCall<StartLiveActivityRequest>(
     const location = promiseData.location?.name as string || null;
     const startAt = promiseData.startAt as FirebaseFirestore.Timestamp;
     const acceptedUserIds = promiseData.votes?.accepted as string[] || [];
+    const trackingMinutes =
+      (promiseData.trackingStartMinutesBefore as number) || 30;
 
     // 2. 권한 확인 (호스트만 시작 가능)
     if (userId !== hostId) {
@@ -225,7 +227,7 @@ export const startLiveActivity = onCall<StartLiveActivityRequest>(
 
     // 5. APNs Push to Start 전송
     const isProduction = effectiveEnv === "prod";
-    const trackingDurationMinutes = 30;
+    const trackingDurationMinutes = trackingMinutes;
 
     let successCount = 0;
     let failureCount = 0;
@@ -596,6 +598,8 @@ export const executeLiveActivityStart = onTaskDispatched<
     const startAt = promiseData.startAt as admin.firestore.Timestamp;
     const accepted = promiseData.votes?.accepted as string[] || [];
     const minParticipants = promiseData.minimumParticipants as number || 2;
+    const trackingMinutes =
+      (promiseData.trackingStartMinutesBefore as number) || 30;
 
     // 2. 약속이 확정 상태인지 확인
     if (accepted.length < minParticipants) {
@@ -670,7 +674,7 @@ export const executeLiveActivityStart = onTaskDispatched<
       return;
     }
 
-    const trackingDurationMinutes = 30;
+    const trackingDurationMinutes = trackingMinutes;
 
     // 5. 토큰 검증
     if (allTokens.length === 0) {
