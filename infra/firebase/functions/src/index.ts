@@ -58,6 +58,7 @@ export {
   updateETA,
   widgetUpdateETA,
   executeLiveActivityStart,
+  executeLiveActivityEnd,
   onPromiseConfirmedScheduleLiveActivity,
 } from "./functions/liveActivity";
 

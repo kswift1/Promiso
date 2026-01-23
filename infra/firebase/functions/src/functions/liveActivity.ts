@@ -162,7 +162,8 @@ export const startLiveActivity = onCall<StartLiveActivityRequest>(
     let hostName: string | null = null;
 
     // 호스트 + 참가자 한번에 조회 (배치)
-    const allUserIds = Array.from(new Set([hostId, ...acceptedUserIds, ...memberIds]));
+    const userIdSet = new Set([hostId, ...acceptedUserIds, ...memberIds]);
+    const allUserIds = Array.from(userIdSet);
     for (let i = 0; i < allUserIds.length; i += batchSize) {
       const batch = allUserIds.slice(i, i + batchSize);
       const userRefs = batch.map((uid) => usersCollection.doc(uid));
@@ -191,7 +192,8 @@ export const startLiveActivity = onCall<StartLiveActivityRequest>(
 
         // 그룹 멤버의 토큰 수집
         if (memberIds.includes(uid)) {
-          const devices = userData.devices as {[key: string]: DeviceInfo} | null;
+          type DevicesMap = {[key: string]: DeviceInfo} | null;
+          const devices = userData.devices as DevicesMap;
           if (devices) {
             for (const deviceId of Object.keys(devices)) {
               const device = devices[deviceId];
@@ -216,7 +218,10 @@ export const startLiveActivity = onCall<StartLiveActivityRequest>(
       };
     }
 
-    console.log(`📊 Batch query completed: ${participants.length} participants, ${allTokens.length} tokens`);
+    console.log(
+      `📊 Batch query: ${participants.length} participants, ` +
+      `${allTokens.length} tokens`
+    );
 
     // 5. APNs Push to Start 전송
     const isProduction = effectiveEnv === "prod";
@@ -354,7 +359,7 @@ export const updateETA = onCall<UpdateETARequest>(
         title: "🎉 첫 도착!",
         body: "가장 먼저 도착했어요!",
       };
-      console.log(`🎉 First arrival detected`);
+      console.log("🎉 First arrival detected");
     } else if (arrivedCount === totalCount && totalCount > 1) {
       // 모두 도착 - 5분 후 종료 예약
       alert = {
@@ -393,7 +398,8 @@ export const updateETA = onCall<UpdateETARequest>(
 
     // 모두 도착 시 5분 후 종료 Task 예약
     if (shouldScheduleEnd) {
-      const endQueue = getFunctions().taskQueue<ScheduledLiveActivityEndTaskPayload>(
+      type EndPayload = ScheduledLiveActivityEndTaskPayload;
+      const endQueue = getFunctions().taskQueue<EndPayload>(
         `locations/${REGION}/functions/executeLiveActivityEnd`
       );
 
@@ -406,7 +412,8 @@ export const updateETA = onCall<UpdateETARequest>(
         {scheduleDelaySeconds: 5 * 60} // 5분 후
       );
 
-      console.log(`📅 LiveActivity end scheduled (all arrived): ${promiseId || channelId}`);
+      const id = promiseId || channelId;
+      console.log(`📅 LiveActivity end scheduled (all arrived): ${id}`);
     }
 
     if (result.success) {
@@ -631,7 +638,8 @@ export const executeLiveActivityStart = onTaskDispatched<
           });
 
           // 토큰 수집
-          const devices = userData.devices as {[key: string]: DeviceInfo} | null;
+          type DevicesMap = {[key: string]: DeviceInfo} | null;
+          const devices = userData.devices as DevicesMap;
           if (devices) {
             for (const deviceId of Object.keys(devices)) {
               const device = devices[deviceId];
@@ -670,7 +678,10 @@ export const executeLiveActivityStart = onTaskDispatched<
       return;
     }
 
-    console.log(`📊 Batch query completed: ${participants.length} participants, ${allTokens.length} tokens`);
+    console.log(
+      `📊 Batch query: ${participants.length} participants, ` +
+      `${allTokens.length} tokens`
+    );
 
     // 6. APNs Push to Start 전송
     // 각 사용자에게 개별 Push to Start 전송 (Activity 시작 시 채널 구독됨)
@@ -728,13 +739,16 @@ export const executeLiveActivityStart = onTaskDispatched<
       `${successCount}/${failureCount}`
     );
 
-    // 7. 종료 Task 예약 (약속 시작시간 + 30분)
+    // 7. 종료 Task 예약 (stage: 3분, prod: 30분)
+    const endMinutes = env === "stage" ? 3 : 30;
+    const endTime = startAt.toDate().getTime() + endMinutes * 60 * 1000;
     const endDelaySeconds = Math.max(
       0,
-      Math.floor((startAt.toDate().getTime() + 30 * 60 * 1000 - Date.now()) / 1000)
+      Math.floor((endTime - Date.now()) / 1000)
     );
 
-    const endQueue = getFunctions().taskQueue<ScheduledLiveActivityEndTaskPayload>(
+    type EndPayload = ScheduledLiveActivityEndTaskPayload;
+    const endQueue = getFunctions().taskQueue<EndPayload>(
       `locations/${REGION}/functions/executeLiveActivityEnd`
     );
 
@@ -743,7 +757,9 @@ export const executeLiveActivityStart = onTaskDispatched<
       {scheduleDelaySeconds: endDelaySeconds}
     );
 
-    console.log(`📅 LiveActivity end scheduled: ${promiseId} in ${endDelaySeconds}s`);
+    console.log(
+      `📅 LiveActivity end scheduled: ${promiseId} in ${endDelaySeconds}s`
+    );
   }
 );
 
