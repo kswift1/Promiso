@@ -143,8 +143,8 @@ struct PromiseCardView: View {
             .foregroundColor(.secondary.opacity(0.8))
           }
 
-          // 실시간 공유 (있는 경우)
-          if let minutes = promise.trackingStartMinutesBefore {
+          // 실시간 공유 (과거 약속은 표시 안 함)
+          if let minutes = promise.trackingStartMinutesBefore, !promise.isPast {
             HStack(spacing: 4) {
               Text("📡")
                 .font(.system(size: 10))

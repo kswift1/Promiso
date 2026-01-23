@@ -277,38 +277,110 @@ extension PromiseClient: DependencyKey {
 // MARK: - Example Data
 
 extension PromiseModel {
+  /// Preview용 현재 유저 ID
+  public static let previewCurrentUserId = "preview-user"
+
+  /// 다양한 상태의 약속 예시 (그룹 탭 UI 테스트용)
   public static let examples: [PromiseModel] = [
+    // 1. 응답 필요 (needResponse) - 미응답 상태
     PromiseModel(
-      id: "1",
-      title: "카페 데이트",
-      emoji: "☕",
-      description: "오랜만에 만나서 수다 떨어요!",
+      id: "promise-need-response-1",
+      title: "주말 러닝",
+      emoji: "🏃",
+      description: "한강에서 5km 뛰어요!",
       hostId: "user123",
-      groupId: "group1",
+      groupId: "g1",
       minimumParticipants: 2,
       votes: PromiseVotesModel(
-        accepted: [],
+        accepted: ["user123"],  // 호스트만 수락
         declined: [],
-        until: Date().addingTimeInterval(10800)
+        until: Date().addingTimeInterval(86400)  // 내일까지
       ),
-      startAt: Date().addingTimeInterval(7200),
-      location: LocationInfoModel(name: "스타벅스 강남점")
+      startAt: Date().addingTimeInterval(172800),  // 2일 후
+      location: LocationInfoModel(name: "여의도 한강공원")
     ),
+    // 2. 응답 필요 (needResponse) - 급한 마감
     PromiseModel(
-      id: "2",
-      title: "저녁 식사",
-      emoji: "🍽️",
-      description: "맛있는 파스타 먹으러 가요",
+      id: "promise-need-response-2",
+      title: "긴급 회식",
+      emoji: "🍻",
+      description: "오늘 저녁 회식입니다",
       hostId: "user456",
-      groupId: "group1",
+      groupId: "g1",
+      minimumParticipants: 3,
+      votes: PromiseVotesModel(
+        accepted: ["user456", "user789"],
+        declined: [],
+        until: Date().addingTimeInterval(3600)  // 1시간 후 마감
+      ),
+      startAt: Date().addingTimeInterval(21600),  // 6시간 후
+      location: LocationInfoModel(name: "강남역 고기집")
+    ),
+    // 3. 확정됨 (confirmed) - 오늘 약속
+    PromiseModel(
+      id: "promise-confirmed-1",
+      title: "점심 약속",
+      emoji: "🍜",
+      description: "맛있는 라멘 먹으러 가요",
+      hostId: "preview-user",
+      groupId: "g1",
       minimumParticipants: 2,
       votes: PromiseVotesModel(
-        accepted: ["user123", "user456"],
+        accepted: ["preview-user", "user123", "user456"],
         declined: [],
-        until: Date()
+        until: Date().addingTimeInterval(-3600)  // 이미 마감
       ),
-      startAt: Date().addingTimeInterval(18000),
-      location: LocationInfoModel(name: "이탈리안 레스토랑")
+      startAt: Date().addingTimeInterval(7200),  // 2시간 후
+      location: LocationInfoModel(name: "이치란 라멘")
+    ),
+    // 4. 확정됨 (confirmed) - 내일 약속
+    PromiseModel(
+      id: "promise-confirmed-2",
+      title: "영화 보기",
+      emoji: "🎬",
+      description: "신작 영화 같이 봐요",
+      hostId: "user789",
+      groupId: "g2",
+      minimumParticipants: 2,
+      votes: PromiseVotesModel(
+        accepted: ["preview-user", "user789"],
+        declined: ["user123"],
+        until: Date().addingTimeInterval(-7200)
+      ),
+      startAt: Date().addingTimeInterval(108000),  // 30시간 후
+      location: LocationInfoModel(name: "CGV 용산")
+    ),
+    // 5. 응답 완료 (responded) - 대기 중
+    PromiseModel(
+      id: "promise-responded-1",
+      title: "독서 모임",
+      emoji: "📚",
+      description: "이번 달 책 토론해요",
+      hostId: "user123",
+      groupId: "g3",
+      minimumParticipants: 4,
+      votes: PromiseVotesModel(
+        accepted: ["preview-user", "user123"],  // 2명만 수락, 4명 필요
+        declined: [],
+        until: Date().addingTimeInterval(172800)
+      ),
+      startAt: Date().addingTimeInterval(259200),  // 3일 후
+      location: LocationInfoModel(name: "교보문고 카페")
     )
   ]
+
+  /// 그룹별 약속 필터링 (Preview용)
+  public static func examples(for groupId: String) -> [PromiseModel] {
+    examples.filter { $0.groupId == groupId }
+  }
+
+  /// 응답 필요 약속만 필터링 (Preview용)
+  public static func needResponseExamples(currentUserId: String = previewCurrentUserId) -> [PromiseModel] {
+    examples.filter { $0.responseStatus(currentUserId: currentUserId) == .needResponse }
+  }
+
+  /// 확정된 약속만 필터링 (Preview용)
+  public static var confirmedExamples: [PromiseModel] {
+    examples.filter { $0.isConfirmed }
+  }
 }

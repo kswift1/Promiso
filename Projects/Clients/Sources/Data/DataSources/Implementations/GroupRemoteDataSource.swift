@@ -87,9 +87,7 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
         callableData["description"] = description
       }
 
-      if let env = functionsEnvironmentParam() {
-        callableData["env"] = env
-      }
+      callableData["env"] = functionsEnvironmentParam()
 
       if let imageUrl {
         callableData["imageUrl"] = imageUrl
@@ -122,15 +120,8 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
     }
   }
   
-  private func functionsEnvironmentParam() -> String? {
-    switch FirebaseEnvironmentManager.shared.current {
-    case .dev:
-      return nil
-    case .stage:
-      return "stage"
-    case .release:
-      return "prod"
-    }
+  private func functionsEnvironmentParam() -> String {
+    FirebaseEnvironmentManager.shared.current.firebaseEnv
   }
   
   /// 사용자가 속한 그룹 목록 조회
@@ -208,6 +199,7 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
     return groupsMap.compactMap { (groupId, groupData) in
       UserGroupInfo(id: groupId, data: groupData)
     }
+    .sorted { ($0.joinedAt ?? .distantPast) > ($1.joinedAt ?? .distantPast) }
   }
 
   /// 초대 코드로 그룹 미리보기
@@ -224,9 +216,7 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
       "inviteCode": inviteCode.uppercased()
     ]
 
-    if let env = functionsEnvironmentParam() {
-      callableData["env"] = env
-    }
+    callableData["env"] = functionsEnvironmentParam()
 
     let result = try await functions.httpsCallable("previewGroup").call(callableData)
 
@@ -265,9 +255,7 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
       "userId": userId
     ]
 
-    if let env = functionsEnvironmentParam() {
-      callableData["env"] = env
-    }
+    callableData["env"] = functionsEnvironmentParam()
 
     let result = try await functions.httpsCallable("joinGroup").call(callableData)
 
@@ -299,9 +287,7 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
       "groupId": groupId
     ]
 
-    if let env = functionsEnvironmentParam() {
-      callableData["env"] = env
-    }
+    callableData["env"] = functionsEnvironmentParam()
 
     _ = try await functions.httpsCallable("leaveGroup").call(callableData)
   }
@@ -323,13 +309,35 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
       "groupId": groupId
     ]
 
-    if let env = functionsEnvironmentParam() {
-      callableData["env"] = env
-    }
+    callableData["env"] = functionsEnvironmentParam()
 
     _ = try await functions.httpsCallable("deleteGroup").call(callableData)
   }
 
+  /// 그룹 배지 클리어 (Fire & Forget)
+  ///
+  /// - Parameters:
+  ///   - groupId: 배지를 클리어할 그룹 ID
+  ///
+  /// Firebase Functions의 clearGroupBadge를 호출합니다.
+  /// 실패해도 무시합니다 (다음 fetch 시 동기화).
+  public func clearGroupBadge(groupId: String) async {
+    var callableData: [String: Any] = [
+      "groupId": groupId
+    ]
+
+    let env = functionsEnvironmentParam()
+    callableData["env"] = env
+
+    AppLogger.group.debug("[clearGroupBadge] Calling with groupId: \(groupId), env: \(env)")
+
+    do {
+      _ = try await functions.httpsCallable("clearGroupBadge").call(callableData)
+      AppLogger.group.debug("[clearGroupBadge] Success for groupId: \(groupId)")
+    } catch {
+      AppLogger.group.error("[clearGroupBadge] Failed for groupId: \(groupId), error: \(error.localizedDescription)")
+    }
+  }
 
   // MARK: - Image Upload
   
@@ -418,13 +426,17 @@ private extension UserGroupInfo {
     let role = roleString.flatMap { GroupRole(rawValue: $0) }
     let notifications = data["notifications"] as? Bool
     let joinedAt = (data["joinedAt"] as? Timestamp)?.dateValue()
+    let hasNewActivity = data["hasNewActivity"] as? Bool ?? false
+    let imageUrl = data["imageUrl"] as? String
 
     self.init(
       id: id,
       name: trimmedName,
       role: role,
       joinedAt: joinedAt,
-      notifications: notifications
+      notifications: notifications,
+      hasNewActivity: hasNewActivity,
+      imageUrl: imageUrl
     )
   }
 }

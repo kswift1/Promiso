@@ -8,7 +8,6 @@ extension PromiseDetail {
   @Reducer
   public struct Feature {
     @Dependency(\.promiseClient) var promiseClient
-    @Dependency(\.liveActivityClient) var liveActivityClient
 
     public init() {}
 
@@ -31,14 +30,6 @@ extension PromiseDetail {
 
       // 삭제 확인 알럿
       @Presents var alert: AlertState<Action.Alert>?
-
-      // MARK: - Live Activity State
-      // iOS 18 Broadcast 방식으로 전환: 수동 시작 제거, 자동 시작만 사용
-      // TODO: RootTabFeature에서 관리하는 @Shared 라이브액티비티 상태를 구독하여 사용
-      // - 현재는 로컬 상태로 관리되어 Push-to-Start로 시작된 Activity 감지 불가
-      // - @Shared(.liveActivityState)로 전환 필요
-      var isLiveActivityActive: Bool = false
-      var liveActivityId: String?
 
       public init(
         promise: PromiseModel,
@@ -67,12 +58,6 @@ extension PromiseDetail {
         isHost && promise.startAt > Date()
       }
 
-      // canStartLiveActivity 제거됨 - iOS 18 Broadcast 방식으로 자동 시작만 사용
-
-      /// 내가 약속에 참여 중인지 (accepted)
-      var isParticipating: Bool {
-        promise.votes.accepted.contains(currentUserId)
-      }
     }
 
     enum RespondingState: Equatable {
@@ -113,10 +98,6 @@ extension PromiseDetail {
         case shareSheetDismissed
         case participantGroupTapped(title: String, userIds: [String], colorType: ParticipantColorType)
         case memberSheetDismissed
-        // Live Activity - 수동 시작 제거됨, 종료/도착만 유지
-        case liveActivityStopTapped
-        case markArrivedTapped
-        case checkPendingIntents
       }
 
       @CasePathable
@@ -132,12 +113,6 @@ extension PromiseDetail {
         case deleteDone
         case deleteFailed(error: AppError)
         case promiseUpdated(PromiseModel)
-        // Live Activity - startLiveActivity, liveActivityStarted 제거됨 (자동 시작으로 전환)
-        case liveActivityEnded
-        case markArrivalDone
-        case markArrivalFailed(error: AppError)
-        case processPendingETAUpdate(ETAUpdate)
-        case liveActivityUpdated
       }
 
       public enum Delegate: Sendable {
@@ -153,8 +128,7 @@ extension PromiseDetail {
         case .view(let viewAction):
           switch viewAction {
           case .onAppear:
-            // Pending Intent 확인 (Widget에서 저장한 출발/도착 상태)
-            return .send(.view(.checkPendingIntents))
+            return .none
 
           case .dismissTapped:
             return .send(.delegate(.dismiss))
@@ -223,31 +197,6 @@ extension PromiseDetail {
           case .memberSheetDismissed:
             state.memberSheet = nil
             return .none
-            
-          // MARK: - Live Activity View Actions
-          case .liveActivityStopTapped:
-            guard let activityId = state.liveActivityId else { return .none }
-            return .run { [liveActivityClient] send in
-              try await liveActivityClient.end(activityId)
-              await send(.internal(.liveActivityEnded))
-            }
-
-          case .markArrivedTapped:
-            // TODO: Firebase Functions 호출하여 도착 상태 업데이트
-            // 현재는 로컬에서만 처리
-            return .send(.internal(.markArrivalDone))
-
-          case .checkPendingIntents:
-            // Widget에서 저장한 Intent 확인 후 처리
-            guard state.isLiveActivityActive else { return .none }
-
-            return .run { [liveActivityClient] send in
-              // ETA 업데이트 Intent 확인
-              if let etaUpdate = liveActivityClient.pendingETAUpdate() {
-                liveActivityClient.clearETAUpdate()
-                await send(.internal(.processPendingETAUpdate(etaUpdate)))
-              }
-            }
           }
 
         case .internal(let internalAction):
@@ -310,45 +259,6 @@ extension PromiseDetail {
 
           case .promiseUpdated(let promise):
             state.promise = promise
-            return .none
-
-          // MARK: - Live Activity Internal Actions
-          // startLiveActivity, liveActivityStarted, liveActivityFailed 제거됨
-          // iOS 18 Broadcast 방식: 예약 시간에 자동 시작됨
-
-          case .liveActivityEnded:
-            state.isLiveActivityActive = false
-            state.liveActivityId = nil
-            return .none
-
-          case .markArrivalDone:
-            // TODO: 서버 연동 후 상태 업데이트
-            return .none
-
-          case .markArrivalFailed:
-            return .none
-
-          case .processPendingETAUpdate(let etaUpdate):
-            // Widget에서 저장한 ETA 업데이트 처리
-            guard let activityId = state.liveActivityId,
-                  etaUpdate.promiseId == state.promise.id else {
-              return .none
-            }
-
-            return .run { [liveActivityClient] send in
-              guard let currentState = liveActivityClient.currentState() else { return }
-              let updatedState = currentState.updating(
-                participantId: etaUpdate.userId,
-                estimatedArrivalMinutes: etaUpdate.estimatedMinutes
-              )
-              try await liveActivityClient.update(activityId, updatedState)
-              await send(.internal(.liveActivityUpdated))
-            } catch: { _, _ in
-              // 업데이트 실패 시 무시
-            }
-
-          case .liveActivityUpdated:
-            // UI 업데이트 완료
             return .none
           }
 

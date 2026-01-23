@@ -78,5 +78,6 @@ public struct GroupMember: Identifiable, Equatable, Sendable {
 public enum StatusFilter: String, CaseIterable, Equatable, Sendable {
   case needResponse = "응답 필요"
   case responded = "응답 완료"
+  case confirmed = "확정"
   case all = "전체"
 }

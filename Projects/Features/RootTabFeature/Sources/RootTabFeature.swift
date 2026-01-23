@@ -334,7 +334,9 @@ extension RootTab {
               state.livePromise = LivePromise.Feature.State(data: Shared(value: data))
 
               // pending ETA 시트 요청 처리 (Cold start 시 딥링크가 먼저 도착한 경우)
-              var effects: [Effect<Action>] = []
+              var effects: [Effect<Action>] = [
+                .send(.groupMain(.internal(.liveActivityChanged(promiseId: attributes.promiseId))))
+              ]
               if state.pendingETASheetRequest {
                 state.pendingETASheetRequest = false
                 effects.append(.send(.openLiveActivityETASheet))
@@ -345,10 +347,11 @@ extension RootTab {
                 effects.append(.send(.internal(.observeActivityState(activityId: activityId))))
               }
 
-              return effects.isEmpty ? .none : .merge(effects)
+              return .merge(effects)
             } else if !update.isActive {
               if state.livePromise != nil {
                 state.livePromise = nil
+                return .send(.groupMain(.internal(.liveActivityChanged(promiseId: nil))))
               }
             }
             return .none
@@ -366,6 +369,7 @@ extension RootTab {
           case .activityStateChanged(let stateValue):
             if stateValue == .dismissed || stateValue == .ended {
               state.livePromise = nil
+              return .send(.groupMain(.internal(.liveActivityChanged(promiseId: nil))))
             }
             return .none
 
