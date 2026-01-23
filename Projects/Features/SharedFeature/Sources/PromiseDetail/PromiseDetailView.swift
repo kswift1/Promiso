@@ -144,14 +144,16 @@ extension PromiseDetail {
             value: "\(store.promise.minimumParticipants)명"
           )
 
-          Divider().padding(.leading, 44)
+          // 실시간 공유 시작 (과거 약속은 표시 안 함)
+          if !store.promise.isPast {
+            Divider().padding(.leading, 44)
 
-          // 실시간 공유 시작
-          EmojiInfoRow(
-            emoji: "📡",
-            title: "실시간 공유",
-            value: formatRealtimeShareTime(store.promise.startAt)
-          )
+            EmojiInfoRow(
+              emoji: "📡",
+              title: "실시간 공유",
+              value: formatRealtimeShareTime(store.promise.startAt)
+            )
+          }
         }
         .adaptiveGlassCard()
       }

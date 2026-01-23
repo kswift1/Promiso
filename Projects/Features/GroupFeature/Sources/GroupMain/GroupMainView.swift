@@ -114,12 +114,12 @@ extension GroupMain {
           .refreshable {
             store.send(.view(.refreshTriggered))
           }
-        } else if !store.promisesState.isLoaded && store.promisesState.error == nil {
+        } else if isLoadingState {
           // .idle 또는 .loading 상태
           ScrollView {
             loadingView
           }
-        } else if let error = store.promisesState.error {
+        } else if let error = currentError {
           ScrollView {
             errorView(error: error)
           }
@@ -403,6 +403,22 @@ extension GroupMain {
       case .all: return "아직 약속이 없어요"
       case .past: return "지난 약속이 없어요"
       }
+    }
+
+    /// 로딩 상태 (과거 필터는 별도 상태 사용)
+    private var isLoadingState: Bool {
+      if store.selectedFilter == .past {
+        return !store.pastPromisesState.isLoaded && store.pastPromisesState.error == nil
+      }
+      return !store.promisesState.isLoaded && store.promisesState.error == nil
+    }
+
+    /// 현재 에러 (과거 필터는 별도 상태 사용)
+    private var currentError: Error? {
+      if store.selectedFilter == .past {
+        return store.pastPromisesState.error
+      }
+      return store.promisesState.error
     }
 
 

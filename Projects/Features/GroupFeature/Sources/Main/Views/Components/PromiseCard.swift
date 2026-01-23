@@ -135,8 +135,8 @@ struct PromiseCard: View {
               .foregroundColor(.primary)
             }
 
-            // Arrival Sharing
-            if let minutes = promise.trackingStartMinutesBefore {
+            // Arrival Sharing (과거 약속은 표시 안 함)
+            if let minutes = promise.trackingStartMinutesBefore, !promise.isPast {
               HStack(spacing: 4) {
                 Text("📡")
                   .font(.system(size: 14))

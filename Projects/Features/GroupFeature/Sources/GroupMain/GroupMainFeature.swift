@@ -146,6 +146,9 @@ extension GroupMain {
       /// 현재 선택된 필터
       var selectedFilter: GroupMain.PromiseFilter = .needResponse
 
+      /// 과거 약속 상태 (별도 fetch)
+      var pastPromisesState: LoadingState<[PromiseModel]> = .idle
+
       // 공유 시트용
       var sharePromise: PromiseModel?
 
@@ -240,12 +243,10 @@ extension GroupMain {
           .sorted { $0.startAt < $1.startAt }
       }
 
-      /// 과거 약속 목록 (최신순)
+      /// 과거 약속 목록 (최신순, 별도 fetch된 데이터)
       var pastPromises: [PromiseModel] {
-        guard case .loaded(let promises) = promisesState else { return [] }
-        return promises
-          .filter { $0.startAt < Date() }  // 이미 시작된 약속
-          .sorted { $0.startAt > $1.startAt }  // 최신순
+        guard case .loaded(let promises) = pastPromisesState else { return [] }
+        return promises.sorted { $0.startAt > $1.startAt }  // 최신순
       }
 
       /// 현재 필터에 따른 약속 목록
@@ -262,6 +263,11 @@ extension GroupMain {
         case .past:
           return pastPromises
         }
+      }
+
+      /// 과거 필터 로딩 중 여부
+      var isPastFilterLoading: Bool {
+        selectedFilter == .past && pastPromisesState == .loading
       }
 
       /// 날짜별로 그룹화된 필터된 약속 목록
@@ -372,6 +378,8 @@ extension GroupMain {
         case toggleGroupNotifications
         case clearBadge(groupId: String)
         case liveActivityChanged(isActive: Bool)
+        case fetchPastPromises(groupId: String)
+        case pastPromisesResponse(Result<[PromiseModel], AppError>)
       }
     }
 
@@ -408,6 +416,7 @@ extension GroupMain {
             state.currentGroupMembers = nil
             state.pendingGroupId = group.id
             state.promisesState = .loading
+            state.pastPromisesState = .idle  // 그룹 변경 시 과거 약속 초기화
             return .send(.internal(.fetchCurrentGroup(id: group.id)))
 
           case .proposalAccepted(let id):
@@ -562,6 +571,13 @@ extension GroupMain {
 
           case .filterChanged(let filter):
             state.selectedFilter = filter
+
+            // 과거 필터 선택 시 별도 fetch
+            if filter == .past, let groupId = state.currentGroup?.id {
+              // 이미 로드된 경우 재요청 안 함
+              guard !state.pastPromisesState.isLoaded else { return .none }
+              return .send(.internal(.fetchPastPromises(groupId: groupId)))
+            }
             return .none
 
           case .moreNeedResponseTapped:
@@ -771,6 +787,25 @@ extension GroupMain {
 
           case .liveActivityChanged(let isActive):
             state.hasLiveActivity = isActive
+            return .none
+
+          case .fetchPastPromises(let groupId):
+            state.pastPromisesState = .loading
+            return .run { [promiseClient] send in
+              do {
+                let promises = try await promiseClient.getPastPromises(groupId, 20, nil)
+                await send(.internal(.pastPromisesResponse(.success(promises))))
+              } catch {
+                await send(.internal(.pastPromisesResponse(.failure(AppError(error)))))
+              }
+            }
+
+          case .pastPromisesResponse(.success(let promises)):
+            state.pastPromisesState = .loaded(promises)
+            return .none
+
+          case .pastPromisesResponse(.failure(let error)):
+            state.pastPromisesState = .failed(error)
             return .none
           }
 
