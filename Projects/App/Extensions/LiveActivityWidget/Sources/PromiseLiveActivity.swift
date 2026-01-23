@@ -9,6 +9,7 @@ struct PromiseLiveActivity: Widget {
     ActivityConfiguration(for: PromiseActivityAttributes.self) { context in
       // MARK: - Lock Screen UI
       LockScreenBannerView(context: context)
+        .widgetURL(URL(string: "promiso://live/\(context.attributes.promiseId)"))
 
     } dynamicIsland: { context in
       DynamicIsland {
@@ -95,6 +96,7 @@ struct PromiseLiveActivity: Widget {
         Text(context.attributes.emoji)
           .font(.system(size: 16))
       }
+      .widgetURL(URL(string: "promiso://live/\(context.attributes.promiseId)"))
     }
   }
 }

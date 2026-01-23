@@ -15,6 +15,8 @@ public enum DeeplinkDestination: Equatable, Sendable {
   case joinGroup(inviteCode: String)
   /// LiveActivity ETA 변경 시트 (Widget에서 "직접 입력" 버튼)
   case liveActivityETA(promiseId: String)
+  /// LivePromise 상세 화면 (LiveActivity 탭 시 ETA 시트 없이 열기)
+  case livePromise(promiseId: String)
 }
 
 // MARK: - Client
