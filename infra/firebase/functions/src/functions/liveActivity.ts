@@ -337,10 +337,35 @@ export const updateETA = onCall<UpdateETARequest>(
 
     console.log(`📱 ETA update: ch=${channelId}, cnt=${participants.length}`);
 
+    // 도착 상태 분석
+    const arrivedCount = participants.filter(
+      (p: any) => p.estimatedArrivalMinutes === null
+    ).length;
+    const totalCount = participants.length;
+
+    // alert 조건 판단
+    let alert: {title: string; body: string} | undefined;
+
+    if (arrivedCount === 1 && totalCount > 1) {
+      // 첫 번째 도착
+      alert = {
+        title: "🎉 첫 도착!",
+        body: "가장 먼저 도착했어요!",
+      };
+      console.log(`🎉 First arrival detected`);
+    } else if (arrivedCount === totalCount && totalCount > 1) {
+      // 모두 도착
+      alert = {
+        title: "✅ 모두 도착!",
+        body: "모든 멤버들이 도착했어요!",
+      };
+      console.log(`✅ All arrived (${totalCount} members)`);
+    }
+
     // Firestore 없이 바로 APNs Broadcast 전송
     const isProduction = env === "prod";
 
-    const payload = {
+    const payload: any = {
       aps: {
         "timestamp": Math.floor(Date.now() / 1000),
         "event": "update",
@@ -350,6 +375,11 @@ export const updateETA = onCall<UpdateETARequest>(
         },
       },
     };
+
+    // alert가 있으면 추가
+    if (alert) {
+      payload.aps.alert = alert;
+    }
 
     const result = await sendAPNsBroadcast({
       channelId,
