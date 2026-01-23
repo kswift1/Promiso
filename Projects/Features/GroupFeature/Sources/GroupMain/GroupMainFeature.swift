@@ -503,7 +503,14 @@ extension GroupMain {
             return .none
 
           case .createNewPromise:
+            var promise = PromiseModel.empty
+            // 현재 보고 있는 그룹을 기본 선택
+            if let currentGroup = state.currentGroup {
+              promise.group = currentGroup
+              promise.groupId = currentGroup.id
+            }
             state.createPromise = CreatePromise.Feature.State(
+              promise: promise,
               groupSummaries: state.allGroupSummaries
             )
             return .none
