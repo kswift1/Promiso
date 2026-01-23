@@ -384,7 +384,7 @@ extension GroupMain {
         VStack(spacing: 20) {
           // 이모지 아이콘
           Text(emptyFilterEmoji)
-            .font(.system(size: 56))
+            .font(.system(size: 40))
 
           VStack(spacing: 8) {
             // 메인 메시지
@@ -400,9 +400,6 @@ extension GroupMain {
               .lineSpacing(4)
           }
         }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 32)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
 
         Spacer()
       }
@@ -492,7 +489,7 @@ extension GroupMain {
             VStack(spacing: 20) {
               // 이모지 아이콘
               Text("👥")
-                .font(.system(size: 56))
+                .font(.system(size: 40))
 
               VStack(spacing: 8) {
                 Text("그룹이 없어요")
@@ -506,9 +503,6 @@ extension GroupMain {
                   .lineSpacing(4)
               }
             }
-            .padding(.horizontal, 24)
-            .padding(.vertical, 32)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
 
             Spacer()
           }
