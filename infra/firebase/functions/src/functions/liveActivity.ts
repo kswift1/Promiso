@@ -41,6 +41,7 @@ import {
   UpdateETARequest,
   UpdateETAResponse,
   ScheduledLiveActivityTaskPayload,
+  ScheduledLiveActivityEndTaskPayload,
 } from "../types/api";
 
 /**
@@ -325,7 +326,7 @@ export const updateETA = onCall<UpdateETARequest>(
     }
 
     const {
-      channelId, participants, trackingDurationMinutes, env,
+      promiseId, channelId, participants, trackingDurationMinutes, env,
     } = request.data;
 
     if (!channelId || !participants) {
@@ -343,9 +344,9 @@ export const updateETA = onCall<UpdateETARequest>(
     ).length;
     const totalCount = participants.length;
 
-    // alert 조건 판단 및 dismissal-date 설정
+    // alert 조건 판단
     let alert: {title: string; body: string} | undefined;
-    let dismissalDate: number | undefined;
+    let shouldScheduleEnd = false;
 
     if (arrivedCount === 1 && totalCount > 1) {
       // 첫 번째 도착
@@ -355,18 +356,18 @@ export const updateETA = onCall<UpdateETARequest>(
       };
       console.log(`🎉 First arrival detected`);
     } else if (arrivedCount === totalCount && totalCount > 1) {
-      // 모두 도착 - 5분 후 종료
+      // 모두 도착 - 5분 후 종료 예약
       alert = {
         title: "✅ 모두 도착!",
         body: "모든 멤버들이 도착했어요! 잠시 후 종료됩니다",
       };
-      // 현재 시간 + 5분
-      dismissalDate = Math.floor(Date.now() / 1000) + (5 * 60);
-      console.log(`✅ All arrived (${totalCount} members), dismissal in 5 min`);
+      shouldScheduleEnd = true;
+      console.log(`✅ All arrived (${totalCount} members), scheduling end`);
     }
 
     // Firestore 없이 바로 APNs Broadcast 전송
     const isProduction = env === "prod";
+    const effectiveEnv = env || "prod";
 
     const payload: any = {
       aps: {
@@ -384,16 +385,29 @@ export const updateETA = onCall<UpdateETARequest>(
       payload.aps.alert = alert;
     }
 
-    // 모두 도착 시 dismissal-date 추가
-    if (dismissalDate) {
-      payload.aps["dismissal-date"] = dismissalDate;
-    }
-
     const result = await sendAPNsBroadcast({
       channelId,
       payload,
       isProduction,
     });
+
+    // 모두 도착 시 5분 후 종료 Task 예약
+    if (shouldScheduleEnd) {
+      const endQueue = getFunctions().taskQueue<ScheduledLiveActivityEndTaskPayload>(
+        `locations/${REGION}/functions/executeLiveActivityEnd`
+      );
+
+      await endQueue.enqueue(
+        {
+          promiseId: promiseId || "unknown",
+          channelId,
+          env: effectiveEnv as "stage" | "prod",
+        },
+        {scheduleDelaySeconds: 5 * 60} // 5분 후
+      );
+
+      console.log(`📅 LiveActivity end scheduled (all arrived): ${promiseId || channelId}`);
+    }
 
     if (result.success) {
       console.log(`📤 ETA Broadcast sent: channelId=${channelId}`);
@@ -663,17 +677,11 @@ export const executeLiveActivityStart = onTaskDispatched<
     let successCount = 0;
     let failureCount = 0;
 
-    // 자동 종료 시간: 약속 시작시간 + 3분 (테스트용, 프로덕션은 30분)
-    const startTimeSec = Math.floor(startAt.toDate().getTime() / 1000);
-    const dismissalTime = startTimeSec + (3 * 60);
-
     for (const {userId: tokenUserId, token} of allTokens) {
       const payload = {
         aps: {
           "timestamp": Math.floor(Date.now() / 1000),
           "event": "start",
-          "stale-date": dismissalTime,
-          "dismissal-date": dismissalTime,
           "input-push-channel": channelId || "", // iOS 18 채널 구독
           "attributes-type": "PromiseActivityAttributes",
           "attributes": {
@@ -719,6 +727,82 @@ export const executeLiveActivityStart = onTaskDispatched<
       `⏰ Scheduled LiveActivity started (Broadcast channel: ${channelId}): ` +
       `${successCount}/${failureCount}`
     );
+
+    // 7. 종료 Task 예약 (약속 시작시간 + 30분)
+    const endDelaySeconds = Math.max(
+      0,
+      Math.floor((startAt.toDate().getTime() + 30 * 60 * 1000 - Date.now()) / 1000)
+    );
+
+    const endQueue = getFunctions().taskQueue<ScheduledLiveActivityEndTaskPayload>(
+      `locations/${REGION}/functions/executeLiveActivityEnd`
+    );
+
+    await endQueue.enqueue(
+      {promiseId, channelId: channelId || "", env},
+      {scheduleDelaySeconds: endDelaySeconds}
+    );
+
+    console.log(`📅 LiveActivity end scheduled: ${promiseId} in ${endDelaySeconds}s`);
+  }
+);
+
+/**
+ * LiveActivity 종료 태스크 핸들러
+ *
+ * @remarks
+ * Cloud Tasks에 의해 예약된 시간에 자동 실행됩니다.
+ * 약속 시간 + 30분 또는 모두 도착 + 5분에 LiveActivity를 종료합니다.
+ */
+export const executeLiveActivityEnd = onTaskDispatched<
+  ScheduledLiveActivityEndTaskPayload
+>(
+  {
+    region: REGION,
+    retryConfig: {
+      maxAttempts: 3,
+      minBackoffSeconds: 10,
+    },
+    rateLimits: {
+      maxConcurrentDispatches: 10,
+    },
+    secrets: [APNS_KEY_ID, APNS_TEAM_ID, APNS_AUTH_KEY],
+  },
+  async (req) => {
+    const {promiseId, channelId, env} = req.data;
+    console.log(`⏰ Scheduled LiveActivity end: ${promiseId}`);
+
+    if (!channelId) {
+      console.error(`❌ channelId missing for end task: ${promiseId}`);
+      return;
+    }
+
+    const isProduction = env === "prod";
+
+    // end 이벤트 전송 (dismissal-date는 과거로 설정하여 즉시 제거)
+    const payload = {
+      aps: {
+        "timestamp": Math.floor(Date.now() / 1000),
+        "event": "end",
+        "dismissal-date": Math.floor(Date.now() / 1000) - 60, // 과거 시간 (즉시 제거)
+        "content-state": {
+          trackingDurationMinutes: 30,
+          participants: [],
+        },
+      },
+    };
+
+    const result = await sendAPNsBroadcast({
+      channelId,
+      payload,
+      isProduction,
+    });
+
+    if (result.success) {
+      console.log(`✅ LiveActivity ended: ${promiseId}`);
+    } else {
+      console.error(`❌ LiveActivity end failed: ${promiseId}, ${result.error}`);
+    }
   }
 );
 
