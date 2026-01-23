@@ -343,8 +343,9 @@ export const updateETA = onCall<UpdateETARequest>(
     ).length;
     const totalCount = participants.length;
 
-    // alert 조건 판단
+    // alert 조건 판단 및 dismissal-date 설정
     let alert: {title: string; body: string} | undefined;
+    let dismissalDate: number | undefined;
 
     if (arrivedCount === 1 && totalCount > 1) {
       // 첫 번째 도착
@@ -354,12 +355,14 @@ export const updateETA = onCall<UpdateETARequest>(
       };
       console.log(`🎉 First arrival detected`);
     } else if (arrivedCount === totalCount && totalCount > 1) {
-      // 모두 도착
+      // 모두 도착 - 5분 후 종료
       alert = {
         title: "✅ 모두 도착!",
-        body: "모든 멤버들이 도착했어요!",
+        body: "모든 멤버들이 도착했어요! 잠시 후 종료됩니다",
       };
-      console.log(`✅ All arrived (${totalCount} members)`);
+      // 현재 시간 + 5분
+      dismissalDate = Math.floor(Date.now() / 1000) + (5 * 60);
+      console.log(`✅ All arrived (${totalCount} members), dismissal in 5 min`);
     }
 
     // Firestore 없이 바로 APNs Broadcast 전송
@@ -379,6 +382,11 @@ export const updateETA = onCall<UpdateETARequest>(
     // alert가 있으면 추가
     if (alert) {
       payload.aps.alert = alert;
+    }
+
+    // 모두 도착 시 dismissal-date 추가
+    if (dismissalDate) {
+      payload.aps["dismissal-date"] = dismissalDate;
     }
 
     const result = await sendAPNsBroadcast({
