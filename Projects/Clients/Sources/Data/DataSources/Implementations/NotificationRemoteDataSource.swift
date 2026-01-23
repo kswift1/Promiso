@@ -129,9 +129,7 @@ public final class NotificationRemoteDataSource: @unchecked Sendable {
     ]
 
     // env 파라미터 추가
-    if let env = functionsEnvironmentParam() {
-      callableData["env"] = env
-    }
+    callableData["env"] = functionsEnvironmentParam()
 
     do {
       _ = try await callable.call(callableData)
@@ -144,13 +142,8 @@ public final class NotificationRemoteDataSource: @unchecked Sendable {
 
   // MARK: - Helper
 
-  private func functionsEnvironmentParam() -> String? {
-    switch currentEnvironment {
-    case .dev, .stage:
-      return "stage"
-    case .release:
-      return nil
-    }
+  private func functionsEnvironmentParam() -> String {
+    currentEnvironment.firebaseEnv
   }
 }
 

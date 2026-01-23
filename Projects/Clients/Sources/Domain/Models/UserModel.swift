@@ -99,18 +99,28 @@ public struct UserGroupInfo: Codable, Equatable, Hashable, Identifiable, Sendabl
   /// 알림 활성화 여부
   public let notifications: Bool?
 
+  /// 새로운 활동 여부 (배지용)
+  public var hasNewActivity: Bool
+
+  /// 그룹 이미지 URL
+  public let imageUrl: String?
+
   public init(
     id: String,
     name: String,
     role: GroupRole? = nil,
     joinedAt: Date? = nil,
-    notifications: Bool? = nil
+    notifications: Bool? = nil,
+    hasNewActivity: Bool = false,
+    imageUrl: String? = nil
   ) {
     self.id = id
     self.name = name
     self.role = role
     self.joinedAt = joinedAt
     self.notifications = notifications
+    self.hasNewActivity = hasNewActivity
+    self.imageUrl = imageUrl
   }
 }
 

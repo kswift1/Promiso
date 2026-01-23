@@ -30,12 +30,26 @@ export function validateCreateGroupRequest(data: CreateGroupRequest): void {
     );
   }
 
-  // name 검증
+  // name 검증 (2~12자)
   const name = data.name.trim();
   if (name.length < 2) {
     throw new HttpsError(
       "invalid-argument",
       "그룹 이름은 최소 2글자 이상이어야 합니다",
+    );
+  }
+  if (name.length > 12) {
+    throw new HttpsError(
+      "invalid-argument",
+      "그룹 이름은 최대 12글자까지 가능합니다",
+    );
+  }
+
+  // description 검증 (최대 50자)
+  if (data.description && data.description.length > 50) {
+    throw new HttpsError(
+      "invalid-argument",
+      "그룹 설명은 최대 50글자까지 가능합니다",
     );
   }
 

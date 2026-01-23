@@ -104,18 +104,7 @@ extension LivePromise {
     // MARK: - Live Badge (이퀄라이저 + 공유중)
 
     private var liveBadge: some View {
-      HStack(spacing: 3) {
-        LottieView(animation: LottieAsset.live.animation)
-          .playing(loopMode: .loop)
-          .frame(width: 14, height: 10)
-
-        Text("실시간")
-          .font(.system(size: 10, weight: .medium))
-          .foregroundStyle(badgeTextColor)
-      }
-      .padding(.horizontal, 6)
-      .padding(.vertical, 3)
-      .background(badgeBackgroundColor, in: Capsule())
+      LiveBadge()
     }
 
     // MARK: - Time Display (V5 스타일 - 가로 배치)
@@ -144,15 +133,6 @@ extension LivePromise {
       colorScheme == .dark ? Color.pmgray.n400 : Color.pmgray.n500
     }
 
-    private var badgeTextColor: Color {
-      colorScheme == .dark ? Color.pmindigo.n200 : Color.pmindigo.n600
-    }
-
-    private var badgeBackgroundColor: Color {
-      colorScheme == .dark
-        ? Color.pmindigo.n800.opacity(0.6)
-        : Color.pmindigo.n100.opacity(0.8)
-    }
 
     // MARK: - Formatters
 
@@ -237,19 +217,7 @@ extension LivePromise {
         }
 
         // 실시간 뱃지
-        HStack(spacing: 3) {
-          LottieView(animation: LottieAsset.live.animation)
-            .playing(loopMode: .loop)
-            .frame(width: 14, height: 10)
-        }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 3)
-        .background(
-          colorScheme == .dark
-            ? Color.pmindigo.n800.opacity(0.6)
-            : Color.pmindigo.n100.opacity(0.8),
-          in: Capsule()
-        )
+        LiveBadge(showText: false)
       }
       .padding(.horizontal, 12)
       .padding(.vertical, 10)
@@ -301,22 +269,7 @@ extension LivePromise {
         }
 
         // 실시간 뱃지
-        HStack(spacing: 3) {
-          LottieView(animation: LottieAsset.live.animation)
-            .playing(loopMode: .loop)
-            .frame(width: 14, height: 10)
-          Text("실시간")
-            .font(.system(size: 10, weight: .medium))
-            .foregroundStyle(colorScheme == .dark ? Color.pmindigo.n200 : Color.pmindigo.n600)
-        }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 3)
-        .background(
-          colorScheme == .dark
-            ? Color.pmindigo.n800.opacity(0.6)
-            : Color.pmindigo.n100.opacity(0.8),
-          in: Capsule()
-        )
+        LiveBadge()
       }
       .padding(.horizontal, 12)
       .padding(.vertical, 10)

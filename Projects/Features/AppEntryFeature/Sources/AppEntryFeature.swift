@@ -80,6 +80,8 @@ extension AppEntry {
       case sessionCheckResponse(isAuthenticated: Bool)
       case startProfileCheck
       case profileCheckResponse(user: FirebaseUserSnapshot, profile: UserPrivateModel?)
+      case checkNotificationPermission(UserPrivateModel)
+      case notificationPermissionChecked(isAuthorized: Bool, user: UserPrivateModel)
       case subscribeFCMToken
       case fcmTokenReceived(String)
       case fcmTokenSaved
@@ -204,6 +206,24 @@ extension AppEntry {
 
           case .pushNotificationTapped(let destination):
             return routeOrPendDeeplink(destination, state: &state)
+
+          case .checkNotificationPermission(let userModel):
+            return .run { send in
+              let status = await notificationClient.getAuthorizationStatus()
+              let isAuthorized = status == .authorized
+              await send(.internal(.notificationPermissionChecked(isAuthorized: isAuthorized, user: userModel)))
+            }
+
+          case .notificationPermissionChecked(let isAuthorized, let userModel):
+            if isAuthorized {
+              // 이미 권한 허용됨 → 바로 메인으로
+              state.destination = .main(RootTab.Feature.State(currentUser: userModel))
+            } else {
+              // 권한 미허용 → 온보딩 표시
+              state.pendingUserForMain = userModel
+              state.notificationPermission = NotificationPermission.Feature.State()
+            }
+            return .none
           }
 
         case .destination(.presented(.auth(.delegate(.loggedIn(let providerProfileImageURL))))):
@@ -211,10 +231,8 @@ extension AppEntry {
           return .send(.internal(.startProfileCheck))
 
         case .destination(.presented(.profile(.delegate(.completed(let userModel))))):
-          // 프로필 설정 완료 → 알림 권한 온보딩 표시
-          state.pendingUserForMain = userModel
-          state.notificationPermission = NotificationPermission.Feature.State()
-          return .none
+          // 프로필 설정 완료 → 알림 권한 상태 확인
+          return .send(.internal(.checkNotificationPermission(userModel)))
 
         case .notificationPermission(.presented(.delegate(.dismissed))),
              .notificationPermission(.presented(.delegate(.permissionChanged))):
