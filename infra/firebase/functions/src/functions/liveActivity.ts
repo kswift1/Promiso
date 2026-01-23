@@ -456,8 +456,9 @@ export const updateETA = onCall<UpdateETARequest>(
  * **Request Body**:
  * ```json
  * {
+ *   "promiseId": "promise_abc123",
  *   "channelId": "ch_abc123",
- *   "participants": [{"id": "...", "name": "...", "eta": 5}],
+ *   "participants": [{"id": "...", "name": "...", "estimatedArrivalMinutes": 5}],
  *   "trackingDurationMinutes": 30,
  *   "env": "prod"
  * }
@@ -517,7 +518,7 @@ export const widgetUpdateETA = onRequest(
     }
 
     const {
-      channelId, participants, trackingDurationMinutes, env,
+      promiseId, channelId, participants, trackingDurationMinutes, env,
     } = req.body;
 
     if (!channelId || !participants) {
@@ -530,12 +531,49 @@ export const widgetUpdateETA = onRequest(
       return;
     }
 
-    console.log(`📱 Widget ETA: u=${userId}, ch=${channelId}`);
+    console.log(
+      `📱 Widget ETA: u=${userId}, ch=${channelId}, cnt=${participants.length}`
+    );
+
+    // 도착 상태 분석 (0 = 도착, null = 대기, >0 = 이동중)
+    type Participant = {id: string; estimatedArrivalMinutes: number | null};
+    const arrivedParticipants = participants.filter(
+      (p: Participant) => p.estimatedArrivalMinutes === 0
+    );
+    const arrivedCount = arrivedParticipants.length;
+    const totalCount = participants.length;
+
+    // 현재 사용자(위젯 호출자)가 방금 도착했는지 확인
+    const currentUserJustArrived = arrivedParticipants.some(
+      (p: Participant) => p.id === userId
+    );
+
+    // alert 조건 판단
+    let alert: {title: string; body: string} | undefined;
+    let shouldScheduleEnd = false;
+
+    if (arrivedCount === 1 && totalCount > 1 && currentUserJustArrived) {
+      // 첫 번째 도착 (본인이 도착을 찍은 경우만)
+      alert = {
+        title: "🎉 첫 도착!",
+        body: "가장 먼저 도착했어요!",
+      };
+      console.log("🎉 Widget: First arrival detected");
+    } else if (arrivedCount === totalCount && totalCount > 1) {
+      // 모두 도착 - 종료 예약
+      alert = {
+        title: "✅ 모두 도착!",
+        body: "모든 멤버들이 도착했어요! 잠시 후 종료됩니다",
+      };
+      shouldScheduleEnd = true;
+      console.log(`🎊 Widget: All arrived (${totalCount} members)`);
+    }
 
     // Firestore 없이 바로 APNs Broadcast 전송
     const isProduction = env === "prod";
+    const effectiveEnv = env || "prod";
 
-    const payload = {
+    const payload: any = {
       aps: {
         "timestamp": Math.floor(Date.now() / 1000),
         "event": "update",
@@ -546,11 +584,37 @@ export const widgetUpdateETA = onRequest(
       },
     };
 
+    // alert가 있으면 추가
+    if (alert) {
+      payload.aps.alert = alert;
+    }
+
     const result = await sendAPNsBroadcast({
       channelId,
       payload,
       isProduction,
     });
+
+    // 모두 도착 시 종료 Task 예약 (stage: 1분, prod: 5분)
+    if (shouldScheduleEnd) {
+      type EndPayload = ScheduledLiveActivityEndTaskPayload;
+      const endQueue = getFunctions().taskQueue<EndPayload>(
+        `locations/${REGION}/functions/executeLiveActivityEnd`
+      );
+
+      const endDelayMinutes = effectiveEnv === "stage" ? 1 : 5;
+      await endQueue.enqueue(
+        {
+          promiseId: promiseId || "unknown",
+          channelId,
+          env: effectiveEnv as "stage" | "prod",
+        },
+        {scheduleDelaySeconds: endDelayMinutes * 60}
+      );
+
+      const id = promiseId || channelId;
+      console.log(`📅 Widget: LiveActivity end scheduled: ${id}`);
+    }
 
     if (result.success) {
       console.log(`📤 Widget ETA Broadcast sent: channelId=${channelId}`);
