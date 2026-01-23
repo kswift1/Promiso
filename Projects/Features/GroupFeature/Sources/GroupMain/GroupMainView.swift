@@ -381,31 +381,28 @@ extension GroupMain {
         Spacer()
           .frame(height: 120)
 
-        VStack(spacing: 16) {
+        VStack(spacing: 20) {
           // 이모지 아이콘
-          ZStack {
-            Circle()
-              .fill(Color(.systemGray6))
-              .frame(width: 80, height: 80)
-
-            Text(emptyFilterEmoji)
-              .font(.system(size: 40))
-          }
+          Text(emptyFilterEmoji)
+            .font(.system(size: 56))
 
           VStack(spacing: 8) {
             // 메인 메시지
             Text(emptyFilterMessage)
-              .font(.system(size: 16, weight: .medium))
+              .font(.system(size: 18, weight: .medium))
               .foregroundStyle(.primary)
 
             // 서브 메시지
             Text(emptyFilterSubMessage)
-              .font(.system(size: 14))
+              .font(.system(size: 16))
               .foregroundStyle(.tertiary)
               .multilineTextAlignment(.center)
               .lineSpacing(4)
           }
         }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 32)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
 
         Spacer()
       }
@@ -492,29 +489,26 @@ extension GroupMain {
             Spacer()
               .frame(height: 120)
 
-            VStack(spacing: 16) {
+            VStack(spacing: 20) {
               // 이모지 아이콘
-              ZStack {
-                Circle()
-                  .fill(Color(.systemGray6))
-                  .frame(width: 80, height: 80)
-
-                Text("👥")
-                  .font(.system(size: 40))
-              }
+              Text("👥")
+                .font(.system(size: 56))
 
               VStack(spacing: 8) {
                 Text("그룹이 없어요")
-                  .font(.system(size: 16, weight: .medium))
+                  .font(.system(size: 18, weight: .medium))
                   .foregroundStyle(.primary)
 
                 Text("상단의 + 버튼을 눌러\n그룹을 만들거나 참여해보세요")
-                  .font(.system(size: 14))
+                  .font(.system(size: 16))
                   .foregroundStyle(.tertiary)
                   .multilineTextAlignment(.center)
                   .lineSpacing(4)
               }
             }
+            .padding(.horizontal, 24)
+            .padding(.vertical, 32)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
 
             Spacer()
           }
