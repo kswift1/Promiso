@@ -334,39 +334,43 @@ extension GroupMain {
       .listRowSeparator(.hidden)
       .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
       .swipeActions(edge: .leading, allowsFullSwipe: true) {
-        // 수락 / 되돌리기
-        if myVoteStatus == .accepted {
-          Button {
-            store.send(.view(.responseChanged(promiseId, .pending)))
-          } label: {
-            Label("되돌리기", systemImage: "arrow.uturn.backward.circle.fill")
+        // 수락 / 되돌리기 (과거 약속은 제외)
+        if !promise.isPast {
+          if myVoteStatus == .accepted {
+            Button {
+              store.send(.view(.responseChanged(promiseId, .pending)))
+            } label: {
+              Label("되돌리기", systemImage: "arrow.uturn.backward.circle.fill")
+            }
+            .tint(.blue)
+          } else {
+            Button {
+              store.send(.view(.proposalAccepted(promiseId)))
+            } label: {
+              Label("수락", systemImage: "checkmark.circle.fill")
+            }
+            .tint(.green)
           }
-          .tint(.blue)
-        } else {
-          Button {
-            store.send(.view(.proposalAccepted(promiseId)))
-          } label: {
-            Label("수락", systemImage: "checkmark.circle.fill")
-          }
-          .tint(.green)
         }
       }
       .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-        // 거절 / 되돌리기
-        if myVoteStatus == .declined {
-          Button {
-            store.send(.view(.responseChanged(promiseId, .pending)))
-          } label: {
-            Label("되돌리기", systemImage: "arrow.uturn.backward.circle.fill")
+        // 거절 / 되돌리기 (과거 약속은 제외)
+        if !promise.isPast {
+          if myVoteStatus == .declined {
+            Button {
+              store.send(.view(.responseChanged(promiseId, .pending)))
+            } label: {
+              Label("되돌리기", systemImage: "arrow.uturn.backward.circle.fill")
+            }
+            .tint(.blue)
+          } else {
+            Button {
+              store.send(.view(.proposalRejected(promiseId)))
+            } label: {
+              Label("거절", systemImage: "xmark.circle.fill")
+            }
+            .tint(.red)
           }
-          .tint(.blue)
-        } else {
-          Button {
-            store.send(.view(.proposalRejected(promiseId)))
-          } label: {
-            Label("거절", systemImage: "xmark.circle.fill")
-          }
-          .tint(.red)
         }
       }
     }

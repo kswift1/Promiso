@@ -18,7 +18,9 @@ extension PromiseDetail {
         VStack(spacing: 24) {
           headerSection
           scheduleSection
-          responseSection
+          if !store.promise.isPast {
+            responseSection
+          }
           participantsSection
         }
         .padding(.horizontal, 20)
