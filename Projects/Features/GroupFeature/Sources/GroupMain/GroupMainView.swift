@@ -244,7 +244,8 @@ extension GroupMain {
         selection: Binding(
           get: { store.selectedFilter },
           set: { store.send(.view(.filterChanged($0))) }
-        )
+        ),
+        counts: store.filterCounts
       )
     }
 

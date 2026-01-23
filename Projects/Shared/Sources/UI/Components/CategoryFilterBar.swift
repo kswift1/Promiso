@@ -41,9 +41,11 @@ public extension CategoryFilterItem {
 /// ```
 public struct CategoryFilterBar<Item: CategoryFilterItem>: View {
   @Binding private var selection: Item
+  private let counts: [Item: Int]?
 
-  public init(selection: Binding<Item>) {
+  public init(selection: Binding<Item>, counts: [Item: Int]? = nil) {
     self._selection = selection
+    self.counts = counts
   }
 
   public var body: some View {
@@ -71,6 +73,7 @@ public struct CategoryFilterBar<Item: CategoryFilterItem>: View {
   @ViewBuilder
   private func filterPill(for item: Item) -> some View {
     let isSelected = selection == item
+    let count = counts?[item]
 
     Button {
       withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
@@ -93,9 +96,29 @@ public struct CategoryFilterBar<Item: CategoryFilterItem>: View {
         Capsule()
           .fill(isSelected ? item.selectedColor : Color(UIColor.systemGray5))
       )
+      .overlay(alignment: .topTrailing) {
+        // Count badge (0보다 클 때만 표시)
+        if let count, count > 0 {
+          countBadge(count: count)
+        }
+      }
     }
     .buttonStyle(.plain)
     .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isSelected)
+  }
+
+  @ViewBuilder
+  private func countBadge(count: Int) -> some View {
+    Text(count > 99 ? "99+" : "\(count)")
+      .font(.system(size: 10, weight: .bold))
+      .foregroundStyle(.white)
+      .padding(.horizontal, 5)
+      .padding(.vertical, 2)
+      .background(
+        Capsule()
+          .fill(.red)
+      )
+      .offset(x: 4, y: -4)
   }
 }
 

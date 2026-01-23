@@ -293,6 +293,17 @@ extension GroupMain {
           [section.date] + section.promises.map(\.id)
         }
       }
+
+      /// 필터별 약속 개수 (과거 필터 제외)
+      var filterCounts: [GroupMain.PromiseFilter: Int] {
+        [
+          .needResponse: needResponsePromises.count,
+          .responded: respondedPromises.count,
+          .confirmed: confirmedPromises.count,
+          .all: allPromises.count
+          // .past는 제외 (별도 fetch이므로)
+        ]
+      }
     }
 
     @Reducer
