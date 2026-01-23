@@ -150,48 +150,61 @@ export const startLiveActivity = onCall<StartLiveActivityRequest>(
       );
     }
 
-    // 3. 참가자 정보 조회
-    const participantPromises = acceptedUserIds.map(async (uid) => {
-      const userDoc = await usersCollection.doc(uid).get();
-      const userData = userDoc.data();
-      return {
-        id: uid,
-        name: userData?.nickname as string || "참가자",
-        estimatedArrivalMinutes: null,
-      } as LiveActivityParticipant;
-    });
-    const participants = await Promise.all(participantPromises);
-
-    // 4. 호스트 이름 조회
-    const hostDoc = await usersCollection.doc(hostId).get();
-    const hostName = hostDoc.data()?.nickname as string || null;
-
-    // 5. 그룹 멤버들의 Push to Start 토큰 수집
+    // 3. 그룹 조회 후 멤버 ID 확인
     const groupDoc = await groupsCollection.doc(groupId).get();
     const memberIds = groupDoc.data()?.memberIds as string[] || [];
 
-    const tokenPromises = memberIds.map(async (memberId) => {
-      const userDoc = await usersCollection.doc(memberId).get();
-      const devices = userDoc.data()?.devices as {
-        [key: string]: DeviceInfo;
-      } | null;
-      if (!devices) return [];
+    // 4. 참가자 정보 및 토큰 배치 조회 (최적화: 1회로 통합)
+    const batchSize = 10;
+    const participants: LiveActivityParticipant[] = [];
+    const allTokens: {userId: string; token: string}[] = [];
+    let hostName: string | null = null;
 
-      const tokens: {userId: string; token: string}[] = [];
-      for (const deviceId of Object.keys(devices)) {
-        const device = devices[deviceId];
-        if (device.liveActivityPushToStartToken) {
-          tokens.push({
-            userId: memberId,
-            token: device.liveActivityPushToStartToken,
+    // 호스트 + 참가자 한번에 조회 (배치)
+    const allUserIds = Array.from(new Set([hostId, ...acceptedUserIds, ...memberIds]));
+    for (let i = 0; i < allUserIds.length; i += batchSize) {
+      const batch = allUserIds.slice(i, i + batchSize);
+      const userRefs = batch.map((uid) => usersCollection.doc(uid));
+      const userDocs = await db.getAll(...userRefs);
+
+      for (const userDoc of userDocs) {
+        if (!userDoc.exists) continue;
+
+        const uid = userDoc.id;
+        const userData = userDoc.data()!;
+        const nickname = userData.nickname as string || "참가자";
+
+        // 호스트 이름 추출
+        if (uid === hostId) {
+          hostName = nickname;
+        }
+
+        // 참가자 정보 생성
+        if (acceptedUserIds.includes(uid)) {
+          participants.push({
+            id: uid,
+            name: nickname,
+            estimatedArrivalMinutes: null,
           });
         }
-      }
-      return tokens;
-    });
 
-    const allTokenArrays = await Promise.all(tokenPromises);
-    const allTokens = allTokenArrays.flat();
+        // 그룹 멤버의 토큰 수집
+        if (memberIds.includes(uid)) {
+          const devices = userData.devices as {[key: string]: DeviceInfo} | null;
+          if (devices) {
+            for (const deviceId of Object.keys(devices)) {
+              const device = devices[deviceId];
+              if (device.liveActivityPushToStartToken) {
+                allTokens.push({
+                  userId: uid,
+                  token: device.liveActivityPushToStartToken,
+                });
+              }
+            }
+          }
+        }
+      }
+    }
 
     if (allTokens.length === 0) {
       console.log("📭 No Push to Start tokens found");
@@ -202,7 +215,9 @@ export const startLiveActivity = onCall<StartLiveActivityRequest>(
       };
     }
 
-    // 6. APNs Push to Start 전송
+    console.log(`📊 Batch query completed: ${participants.length} participants, ${allTokens.length} tokens`);
+
+    // 5. APNs Push to Start 전송
     const isProduction = effectiveEnv === "prod";
     const trackingDurationMinutes = 30;
 
@@ -529,23 +544,58 @@ export const executeLiveActivityStart = onTaskDispatched<
       return;
     }
 
-    // 3. 호스트 이름 조회
-    const hostDoc = await usersCollection.doc(hostId).get();
-    const hostName = hostDoc.data()?.nickname as string || null;
+    // 3. 참가자 정보 및 토큰 배치 조회 (최적화: 1회로 통합)
+    // Firestore getAll()로 최대 10개씩 배치 조회 가능
+    const batchSize = 10;
+    const participants: LiveActivityParticipant[] = [];
+    const allTokens: {userId: string; token: string}[] = [];
+    let hostName: string | null = null;
 
-    // 4. 참가자 정보 생성
-    const participantPromises = accepted.map(async (uid) => {
-      const userDoc = await usersCollection.doc(uid).get();
-      const userData = userDoc.data();
-      return {
-        id: uid,
-        name: userData?.nickname as string || "참가자",
-        estimatedArrivalMinutes: null,
-      } as LiveActivityParticipant;
-    });
-    const participants = await Promise.all(participantPromises);
+    // 호스트 + 참가자 한번에 조회 (배치)
+    const allUserIds = [hostId, ...accepted];
+    for (let i = 0; i < allUserIds.length; i += batchSize) {
+      const batch = allUserIds.slice(i, i + batchSize);
+      const userRefs = batch.map((uid) => usersCollection.doc(uid));
+      const userDocs = await db.getAll(...userRefs);
 
-    // 5. iOS 18 Broadcast 채널 생성 (Apple이 channelId 생성)
+      for (const userDoc of userDocs) {
+        if (!userDoc.exists) continue;
+
+        const uid = userDoc.id;
+        const userData = userDoc.data()!;
+        const nickname = userData.nickname as string || "참가자";
+
+        // 호스트 이름 추출
+        if (uid === hostId) {
+          hostName = nickname;
+        }
+
+        // 참가자 정보 생성
+        if (accepted.includes(uid)) {
+          participants.push({
+            id: uid,
+            name: nickname,
+            estimatedArrivalMinutes: null,
+          });
+
+          // 토큰 수집
+          const devices = userData.devices as {[key: string]: DeviceInfo} | null;
+          if (devices) {
+            for (const deviceId of Object.keys(devices)) {
+              const device = devices[deviceId];
+              if (device.liveActivityPushToStartToken) {
+                allTokens.push({
+                  userId: uid,
+                  token: device.liveActivityPushToStartToken,
+                });
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // 4. iOS 18 Broadcast 채널 생성 (Apple이 channelId 생성)
     const isProduction = env === "prod";
     const channelResult = await createAPNsChannel(isProduction);
     let channelId: string | undefined;
@@ -562,35 +612,15 @@ export const executeLiveActivityStart = onTaskDispatched<
 
     const trackingDurationMinutes = 30;
 
-    // 7. 참가자들의 Push to Start 토큰 수집
-    const tokenPromises = accepted.map(async (memberId) => {
-      const userDoc = await usersCollection.doc(memberId).get();
-      const userData = userDoc.data();
-      const devices = userData?.devices as {[key: string]: DeviceInfo} | null;
-      if (!devices) return [];
-
-      const tokens: {userId: string; token: string}[] = [];
-      for (const deviceId of Object.keys(devices)) {
-        const device = devices[deviceId];
-        if (device.liveActivityPushToStartToken) {
-          tokens.push({
-            userId: memberId,
-            token: device.liveActivityPushToStartToken,
-          });
-        }
-      }
-      return tokens;
-    });
-
-    const allTokenArrays = await Promise.all(tokenPromises);
-    const allTokens = allTokenArrays.flat();
-
+    // 5. 토큰 검증
     if (allTokens.length === 0) {
       console.log(`📭 No Push to Start tokens for: ${promiseId}`);
       return;
     }
 
-    // 8. APNs Push to Start 전송
+    console.log(`📊 Batch query completed: ${participants.length} participants, ${allTokens.length} tokens`);
+
+    // 6. APNs Push to Start 전송
     // 각 사용자에게 개별 Push to Start 전송 (Activity 시작 시 채널 구독됨)
     let successCount = 0;
     let failureCount = 0;
