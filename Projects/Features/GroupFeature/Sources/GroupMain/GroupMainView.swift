@@ -381,25 +381,30 @@ extension GroupMain {
         Spacer()
           .frame(height: 120)
 
-        VStack(spacing: 20) {
+        VStack(spacing: 16) {
           // 이모지 아이콘
           Text(emptyFilterEmoji)
-            .font(.system(size: 40))
+            .font(.system(size: 52))
 
-          VStack(spacing: 8) {
-            // 메인 메시지
-            Text(emptyFilterMessage)
-              .font(.system(size: 18, weight: .medium))
-              .foregroundStyle(.primary)
+          // Title
+          Text(emptyFilterTitle)
+            .font(.headline)
+            .foregroundStyle(.primary)
 
-            // 서브 메시지
-            Text(emptyFilterSubMessage)
-              .font(.system(size: 16))
-              .foregroundStyle(.tertiary)
-              .multilineTextAlignment(.center)
-              .lineSpacing(4)
-          }
+          // Description (2줄)
+          Text(emptyFilterDescription)
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+            .multilineTextAlignment(.center)
+            .lineSpacing(6)
         }
+        .padding(.horizontal, 32)
+        .padding(.vertical, 40)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .overlay(
+          RoundedRectangle(cornerRadius: 16)
+            .stroke(Color(.separator).opacity(0.3), lineWidth: 1)
+        )
 
         Spacer()
       }
@@ -416,23 +421,28 @@ extension GroupMain {
       }
     }
 
-    private var emptyFilterMessage: String {
+    private var emptyFilterTitle: String {
       switch store.selectedFilter {
-      case .needResponse: return "응답할 약속이 없어요"
-      case .responded: return "응답한 약속이 없어요"
-      case .confirmed: return "확정된 약속이 없어요"
-      case .all: return "약속이 없어요"
-      case .past: return "지난 약속이 없어요"
+      case .needResponse: return "응답 필요"
+      case .responded: return "응답 완료"
+      case .confirmed: return "확정된 약속"
+      case .all: return "전체 약속"
+      case .past: return "지난 약속"
       }
     }
 
-    private var emptyFilterSubMessage: String {
+    private var emptyFilterDescription: String {
       switch store.selectedFilter {
-      case .needResponse: return "모든 약속에 응답한 상태예요 👍"
-      case .responded: return "응답한 약속이 확정되면 여기로 이동해요"
-      case .confirmed: return "약속을 만들고 친구들과 확정해보세요"
-      case .all: return "그룹 친구들과 첫 약속을 잡아보세요"
-      case .past: return "완료된 약속 기록이 여기 쌓여요"
+      case .needResponse:
+        return "지금은 응답이 필요한 약속이 없어요\n모든 약속에 응답한 상태예요 👍"
+      case .responded:
+        return "아직 응답한 약속이 없어요\n확정되면 자동으로 확정 탭으로 옮겨져요"
+      case .confirmed:
+        return "아직 확정된 약속이 없어요\n+ 버튼으로 새 약속을 만들어보세요"
+      case .all:
+        return "지금은 진행 중이거나 예정된 약속이 없어요\n새 약속이나 초대가 생기면 여기에 보여요"
+      case .past:
+        return "아직 지난 약속이 없어요\n완료된 약속 기록이 여기에 쌓여요"
       }
     }
 
@@ -486,23 +496,30 @@ extension GroupMain {
             Spacer()
               .frame(height: 120)
 
-            VStack(spacing: 20) {
+            VStack(spacing: 16) {
               // 이모지 아이콘
               Text("👥")
-                .font(.system(size: 40))
+                .font(.system(size: 52))
 
-              VStack(spacing: 8) {
-                Text("그룹이 없어요")
-                  .font(.system(size: 18, weight: .medium))
-                  .foregroundStyle(.primary)
+              // Title
+              Text("그룹")
+                .font(.headline)
+                .foregroundStyle(.primary)
 
-                Text("상단의 + 버튼을 눌러\n그룹을 만들거나 참여해보세요")
-                  .font(.system(size: 16))
-                  .foregroundStyle(.tertiary)
-                  .multilineTextAlignment(.center)
-                  .lineSpacing(4)
-              }
+              // Description (2줄)
+              Text("아직 속한 그룹이 없어요\n상단의 + 버튼으로 그룹을 만들거나 참여해보세요")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .lineSpacing(6)
             }
+            .padding(.horizontal, 32)
+            .padding(.vertical, 40)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+            .overlay(
+              RoundedRectangle(cornerRadius: 16)
+                .stroke(Color(.separator).opacity(0.3), lineWidth: 1)
+            )
 
             Spacer()
           }
