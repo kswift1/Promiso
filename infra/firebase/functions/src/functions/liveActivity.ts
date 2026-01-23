@@ -343,7 +343,10 @@ export const updateETA = onCall<UpdateETARequest>(
       );
     }
 
-    console.log(`📱 ETA update: ch=${channelId}, cnt=${participants.length}`);
+    console.log(
+      `📱 ETA update: ch=${channelId}, cnt=${participants.length}, ` +
+      `duration=${trackingDurationMinutes}`
+    );
 
     // 도착 상태 분석
     const arrivedCount = participants.filter(
@@ -614,8 +617,8 @@ export const executeLiveActivityStart = onTaskDispatched<
     const allTokens: {userId: string; token: string}[] = [];
     let hostName: string | null = null;
 
-    // 호스트 + 참가자 한번에 조회 (배치)
-    const allUserIds = [hostId, ...accepted];
+    // 호스트 + 참가자 한번에 조회 (배치, 중복 제거)
+    const allUserIds = Array.from(new Set([hostId, ...accepted]));
     for (let i = 0; i < allUserIds.length; i += batchSize) {
       const batch = allUserIds.slice(i, i + batchSize);
       const userRefs = batch.map((uid) => usersCollection.doc(uid));
