@@ -384,27 +384,15 @@ extension GroupMain {
         VStack(spacing: 16) {
           // 이모지 아이콘
           Text(emptyFilterEmoji)
-            .font(.system(size: 52))
-
-          // Title
-          Text(emptyFilterTitle)
-            .font(.headline)
-            .foregroundStyle(.primary)
+            .font(.system(size: 47))
 
           // Description (2줄)
           Text(emptyFilterDescription)
-            .font(.subheadline)
+            .font(.system(size: 18))
             .foregroundStyle(.secondary)
             .multilineTextAlignment(.center)
             .lineSpacing(6)
         }
-        .padding(.horizontal, 32)
-        .padding(.vertical, 40)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
-        .overlay(
-          RoundedRectangle(cornerRadius: 16)
-            .stroke(Color(.separator).opacity(0.3), lineWidth: 1)
-        )
 
         Spacer()
       }
@@ -418,16 +406,6 @@ extension GroupMain {
       case .confirmed: return "✅"
       case .all: return "📬"
       case .past: return "🕐"
-      }
-    }
-
-    private var emptyFilterTitle: String {
-      switch store.selectedFilter {
-      case .needResponse: return "응답 필요"
-      case .responded: return "응답 완료"
-      case .confirmed: return "확정된 약속"
-      case .all: return "전체 약속"
-      case .past: return "지난 약속"
       }
     }
 
@@ -499,27 +477,15 @@ extension GroupMain {
             VStack(spacing: 16) {
               // 이모지 아이콘
               Text("👥")
-                .font(.system(size: 52))
-
-              // Title
-              Text("그룹")
-                .font(.headline)
-                .foregroundStyle(.primary)
+                .font(.system(size: 47))
 
               // Description (2줄)
               Text("아직 속한 그룹이 없어요\n상단의 + 버튼으로 그룹을 만들거나 참여해보세요")
-                .font(.subheadline)
+                .font(.system(size: 18))
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .lineSpacing(6)
             }
-            .padding(.horizontal, 32)
-            .padding(.vertical, 40)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
-            .overlay(
-              RoundedRectangle(cornerRadius: 16)
-                .stroke(Color(.separator).opacity(0.3), lineWidth: 1)
-            )
 
             Spacer()
           }
