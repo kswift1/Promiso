@@ -195,7 +195,7 @@ extension UserProfileClient: TestDependencyKey {
       URL(string: "https://storage.googleapis.com/example.jpg")!
     },
     getUserSettings: {
-      UserSettings(notificationEnabled: true)
+      UserSettings(notificationEnabled: true, groupSortOption: .joinedRecent)
     }
   )
 
@@ -294,7 +294,7 @@ extension UserProfileClient: DependencyKey {
 
       getUserSettings: {
         let notificationEnabled = try await dataSource.getUserSettings()
-        return UserSettings(notificationEnabled: notificationEnabled)
+        return UserSettings(notificationEnabled: notificationEnabled, groupSortOption: .joinedRecent)
       }
     )
   }()
