@@ -220,50 +220,12 @@ extension {{ name }} {
     .string(
       path: "Projects/Features/{{ name }}Feature/Tests/Sources/{{ name }}FeatureTests.swift",
       contents: #"""
-//
-//  {{ name }}FeatureTests.swift
-//  {{ name }}Feature
-//
-//  Swift Testing 프레임워크를 사용한 {{ name }} Feature 테스트
-//
-//  ## 테스트 대상
-//  - `{{ name }}Feature/Sources/{{ name }}Feature.swift`
-//
-//  ## 테스트 목적
-//  - Reducer 액션 처리 검증
-//  - State computed properties 검증
-//
-
 import Testing
-import ComposableArchitecture
 @testable import {{ name }}Feature
-
-// MARK: - {{ name }} Feature Tests
 
 @Suite("{{ name }}.Feature 테스트")
 struct {{ name }}FeatureTests {
-
-  // MARK: - Reducer 테스트
-
-  @Test("onAppear 액션 처리")
-  @MainActor
-  func onAppear_handlesCorrectly() async {
-    let store = TestStore(initialState: {{ name }}.Feature.State()) {
-      {{ name }}.Feature()
-    }
-
-    await store.send(.onAppear)
-  }
-
-  // MARK: - State 테스트
-
-  @Test("State 초기화 시 기본값 설정")
-  func state_initializesWithDefaults() {
-    let state = {{ name }}.Feature.State()
-    #expect(state == {{ name }}.Feature.State())
-  }
-
-  // 추가 테스트를 여기에 작성
+  // 테스트를 여기에 작성
 }
 """#
     ),
