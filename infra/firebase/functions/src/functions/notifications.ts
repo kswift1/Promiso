@@ -67,9 +67,9 @@ function formatDateTime(date: Date): string {
   const minutes = kstDate.getUTCMinutes();
   const ampm = hours24 < 12 ? "오전" : "오후";
   const hours12 = hours24 === 0 ? 12 : hours24 > 12 ? hours24 - 12 : hours24;
-  const timeStr = minutes === 0
-    ? `${ampm} ${hours12}시`
-    : `${ampm} ${hours12}시 ${minutes}분`;
+  const timeStr = minutes === 0 ?
+    `${ampm} ${hours12}시` :
+    `${ampm} ${hours12}시 ${minutes}분`;
 
   return `${dateStr} ${timeStr}`;
 }
