@@ -95,9 +95,9 @@ public enum LocationPicker {
 
             state.isSearching = true
 
-            // 300ms 디바운스
+            // 500ms 디바운스
             return .run { [clock, text] send in
-              try await clock.sleep(for: .milliseconds(300))
+              try await clock.sleep(for: .milliseconds(500))
               await send(.internal(.searchDebounced(text)))
             }
             .cancellable(id: CancelID.searchDebounce, cancelInFlight: true)

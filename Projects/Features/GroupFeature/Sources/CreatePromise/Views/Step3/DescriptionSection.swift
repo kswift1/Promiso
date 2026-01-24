@@ -9,7 +9,6 @@ struct DescriptionSection: View {
   var body: some View {
     SectionPlaceHolder(
       placeHolderTitle: "상세 설명",
-      isRequired: false
     ) {
       VStack(alignment: .trailing, spacing: 8) {
         ZStack(alignment: .topLeading) {

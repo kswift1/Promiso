@@ -19,51 +19,47 @@ extension LocationPicker {
 
     public var body: some View {
       NavigationStack {
-        ZStack(alignment: .bottom) {
-          VStack(spacing: 0) {
-            // 검색바
-            SearchBar(
-              text: Binding(
-                get: { store.searchText },
-                set: { store.send(.view(.searchTextChanged($0))) }
-              ),
-              onClear: { store.send(.view(.clearSearchTapped)) }
+        VStack(spacing: 0) {
+          // 검색바
+          SearchBar(
+            text: Binding(
+              get: { store.searchText },
+              set: { store.send(.view(.searchTextChanged($0))) }
+            ),
+            onClear: { store.send(.view(.clearSearchTapped)) }
+          )
+          .padding(16)
+
+          Divider()
+
+          // 콘텐츠
+          if store.isSearching {
+            LoadingView()
+          } else if let error = store.searchError {
+            ErrorView(message: error)
+          } else if store.searchResults.isEmpty && !store.searchText.isEmpty {
+            EmptyResultView()
+          } else if store.searchResults.isEmpty {
+            PlaceholderView()
+          } else {
+            SearchResultsList(
+              places: store.searchResults,
+              highlightedId: store.previewPlace?.id,
+              onSelect: { store.send(.view(.placeTapped($0))) }
             )
-            .padding(16)
-
-            Divider()
-
-            // 콘텐츠
-            if store.isSearching {
-              LoadingView()
-            } else if let error = store.searchError {
-              ErrorView(message: error)
-            } else if store.searchResults.isEmpty && !store.searchText.isEmpty {
-              EmptyResultView()
-            } else if store.searchResults.isEmpty {
-              PlaceholderView()
-            } else {
-              SearchResultsList(
-                places: store.searchResults,
-                highlightedId: store.previewPlace?.id,
-                onSelect: { store.send(.view(.placeTapped($0))) }
-              )
-              // 지도 미리보기가 있으면 하단 여백 추가
-              .padding(.bottom, store.previewPlace != nil ? 320 : 0)
-            }
           }
 
-          // 지도 미리보기
-          if let previewPlace = store.previewPlace {
-            MapPreviewContainer(
-              place: previewPlace,
+          // 하단 미니맵 미리보기
+          if let place = store.previewPlace {
+            MiniMapPreview(
+              place: place,
               onConfirm: { store.send(.view(.confirmSelectionTapped)) },
               onClose: { store.send(.view(.closePreviewTapped)) }
             )
             .transition(.move(edge: .bottom).combined(with: .opacity))
           }
         }
-        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: store.previewPlace)
+        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: store.previewPlace != nil)
         .navigationTitle("장소 검색")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -112,7 +108,7 @@ private struct SearchBar: View {
 
 private struct SearchResultsList: View {
   let places: [Place]
-  var highlightedId: String?
+  var highlightedId: String? = nil
   let onSelect: (Place) -> Void
 
   var body: some View {
@@ -178,21 +174,15 @@ private struct PlaceRow: View {
 
       Spacer()
 
-      // 선택 표시
       if isHighlighted {
         Image(systemName: "checkmark.circle.fill")
           .font(.system(size: 20))
           .foregroundColor(Color.pmindigo.n500)
-      } else {
-        Image(systemName: "chevron.right")
-          .font(.system(size: 14, weight: .medium))
-          .foregroundColor(.secondary)
       }
     }
     .padding(.horizontal, 16)
     .padding(.vertical, 12)
     .background(isHighlighted ? Color.pmindigo.n50 : Color.clear)
-    .animation(.easeInOut(duration: 0.2), value: isHighlighted)
   }
 }
 
@@ -264,6 +254,74 @@ private struct ErrorView: View {
 
       Spacer()
     }
+  }
+}
+
+// MARK: - Mini Map Preview (하단 고정)
+
+private struct MiniMapPreview: View {
+  let place: Place
+  let onConfirm: () -> Void
+  let onClose: () -> Void
+
+  var body: some View {
+    VStack(spacing: 0) {
+      Divider()
+
+      HStack(spacing: 12) {
+        // 미니 지도
+        MapPreviewView(
+          coordinate: place.coordinate,
+        )
+        .frame(width: 80, height: 80)
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+
+        // 장소 정보
+        VStack(alignment: .leading, spacing: 4) {
+          Text(place.name)
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundColor(.primary)
+            .lineLimit(1)
+
+          if let address = place.displayAddress {
+            Text(address)
+              .font(.system(size: 13))
+              .foregroundColor(.secondary)
+              .lineLimit(1)
+          }
+
+          if let category = place.category {
+            Text(category)
+              .font(.system(size: 12))
+              .foregroundColor(Color.pmindigo.n500)
+          }
+        }
+
+        Spacer()
+
+        // 닫기 버튼
+        Button(action: onClose) {
+          Image(systemName: "xmark.circle.fill")
+            .font(.system(size: 22))
+            .foregroundColor(Color(.systemGray3))
+        }
+      }
+      .padding(12)
+
+      // 선택 버튼
+      Button(action: onConfirm) {
+        Text("이 장소 선택")
+          .font(.system(size: 16, weight: .semibold))
+          .foregroundColor(.white)
+          .frame(maxWidth: .infinity)
+          .frame(height: 48)
+          .background(Color.pmindigo.n500)
+          .clipShape(RoundedRectangle(cornerRadius: 12))
+      }
+      .padding(.horizontal, 12)
+      .padding(.bottom, 12)
+    }
+    .background(Color(.systemBackground))
   }
 }
 

@@ -10,7 +10,6 @@ struct PromisePreviewSection: View {
   var body: some View {
     SectionPlaceHolder(
       placeHolderTitle: "약속 미리보기",
-      isRequired: false
     ) {
       Button(action: {
         showPreviewFullScreen = true
@@ -18,7 +17,7 @@ struct PromisePreviewSection: View {
         VStack(spacing: 16) {
           // 이모지 + 제목
           HStack(spacing: 12) {
-            Text(store.promise.emoji ?? "📌")
+            Text(store.promise.emoji ?? "🗓️")
               .font(.system(size: 36))
 
             VStack(alignment: .leading, spacing: 4) {

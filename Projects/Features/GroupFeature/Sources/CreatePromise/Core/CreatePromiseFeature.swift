@@ -40,6 +40,9 @@ public enum CreatePromise {
       var showLiveActivityInfo: Bool = false
       var hasSeenLiveActivityInfo: Bool = true  // 기본 true (로드 전까지 팝업 안 띄움)
 
+      // 장소 사용 여부 (토글 상태)
+      var useLocation: Bool = true
+
       // 장소 선택 sheet
       @Presents var locationPicker: LocationPicker.Feature.State?
 
@@ -53,6 +56,7 @@ public enum CreatePromise {
         creationError: Clients.PromiseClientError? = nil,
         showLiveActivityInfo: Bool = false,
         hasSeenLiveActivityInfo: Bool = true,
+        useLocation: Bool = true,
         locationPicker: LocationPicker.Feature.State? = nil
       ) {
         self.currentStep = currentStep
@@ -64,6 +68,7 @@ public enum CreatePromise {
         self.creationError = creationError
         self.showLiveActivityInfo = showLiveActivityInfo
         self.hasSeenLiveActivityInfo = hasSeenLiveActivityInfo
+        self.useLocation = useLocation
         self.locationPicker = locationPicker
       }
 
@@ -141,6 +146,7 @@ public enum CreatePromise {
         // 장소 선택
         case locationPickerTapped
         case setLocation(LocationInfoModel?)
+        case toggleUseLocation
       }
       
       // 내부에서만 발생하는 이벤트 (이펙트 응답/디바운스 등)
@@ -300,6 +306,10 @@ public enum CreatePromise {
 
           case .setLocation(let location):
             state.promise.location = location
+            return .none
+
+          case .toggleUseLocation:
+            state.useLocation.toggle()
             return .none
           }
           
@@ -600,21 +610,9 @@ fileprivate struct StepButton: View {
       }
       .frame(maxWidth: .infinity)
       .frame(height: 56)
-      .background(
-        LinearGradient(
-          colors: disabled ? [Color(.systemGray4)] : [.blue, .purple],
-          startPoint: .topLeading,
-          endPoint: .bottomTrailing
-        )
-      )
+      .background(disabled ? Color(.systemGray4) : Color.pmindigo.n500)
       .foregroundStyle(.white)
       .clipShape(RoundedRectangle(cornerRadius: 16))
-      .shadow(
-        color: disabled ? .clear : .blue.opacity(0.3),
-        radius: 12,
-        x: 0,
-        y: 6
-      )
     }
     .scaleEffect(isPressed && !disabled ? 0.95 : 1.0)
     .animation(.spring(response: 0.2, dampingFraction: 0.6), value: isPressed)
