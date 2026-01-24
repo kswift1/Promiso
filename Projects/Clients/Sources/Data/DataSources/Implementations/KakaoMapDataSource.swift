@@ -48,15 +48,15 @@ struct KakaoPlaceDTO: Codable {
     case distance
   }
 
-  /// Domain Place로 변환
-  func toPlace() -> Place {
-    Place(
+  /// Domain Place로 변환 (좌표 파싱 실패 시 nil 반환)
+  func toPlace() -> Place? {
+    guard let latitude = Double(y), let longitude = Double(x) else {
+      return nil
+    }
+    return Place(
       id: id,
       name: placeName,
-      coordinate: Coordinate(
-        latitude: Double(y) ?? 0,
-        longitude: Double(x) ?? 0
-      ),
+      coordinate: Coordinate(latitude: latitude, longitude: longitude),
       address: addressName,
       roadAddress: roadAddressName.isEmpty ? nil : roadAddressName,
       category: categoryName.isEmpty ? nil : categoryName,
@@ -86,13 +86,19 @@ final class KakaoMapDataSource: Sendable {
       throw MapDataSourceError.missingApiKey
     }
 
-    var components = URLComponents(string: baseURL)!
+    guard var components = URLComponents(string: baseURL) else {
+      throw MapDataSourceError.invalidResponse
+    }
     components.queryItems = [
       URLQueryItem(name: "query", value: query),
       URLQueryItem(name: "size", value: "15")
     ]
 
-    var request = URLRequest(url: components.url!)
+    guard let url = components.url else {
+      throw MapDataSourceError.invalidResponse
+    }
+
+    var request = URLRequest(url: url)
     request.setValue("KakaoAK \(apiKey)", forHTTPHeaderField: "Authorization")
 
     let (data, response) = try await URLSession.shared.data(for: request)
@@ -108,7 +114,7 @@ final class KakaoMapDataSource: Sendable {
     let decoder = JSONDecoder()
     let searchResponse = try decoder.decode(KakaoLocalSearchResponse.self, from: data)
 
-    return searchResponse.documents.map { $0.toPlace() }
+    return searchResponse.documents.compactMap { $0.toPlace() }
   }
 }
 

@@ -37,8 +37,10 @@ extension MapClient: DependencyKey {
       openDirections: { coordinate, name in
         // 카카오맵 앱 또는 웹으로 길찾기
         let encodedName = name?.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-        let kakaoMapURL = URL(string: "kakaomap://route?ep=\(coordinate.latitude),\(coordinate.longitude)&by=CAR")!
-        let webURL = URL(string: "https://map.kakao.com/link/to/\(encodedName),\(coordinate.latitude),\(coordinate.longitude)")!
+        guard let kakaoMapURL = URL(string: "kakaomap://route?ep=\(coordinate.latitude),\(coordinate.longitude)&by=CAR"),
+              let webURL = URL(string: "https://map.kakao.com/link/to/\(encodedName),\(coordinate.latitude),\(coordinate.longitude)") else {
+          return
+        }
 
         if UIApplication.shared.canOpenURL(kakaoMapURL) {
           UIApplication.shared.open(kakaoMapURL)
