@@ -28,37 +28,48 @@ import {
 } from "../types/api";
 
 /**
- * 날짜/시간을 "오늘/내일/M월 D일 H시 M분" 형식으로 포맷
+ * 날짜/시간을 "오늘/내일/M월 D일 H시 M분" 형식으로 포맷 (KST 기준)
  * - 오늘이면 "오늘"
  * - 내일이면 "내일"
  * - 그 외 "M월 D일"
  * - 시간은 "H시" (0분일 때) 또는 "H시 M분"
  *
- * @param {Date} date - 포맷할 날짜
- * @return {string} 포맷된 날짜/시간 문자열
+ * @param {Date} date - 포맷할 날짜 (UTC)
+ * @return {string} 포맷된 날짜/시간 문자열 (KST)
  */
 function formatDateTime(date: Date): string {
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
-  const targetDay = new Date(
-    date.getFullYear(), date.getMonth(), date.getDate()
-  );
+  // KST (UTC+9)로 변환
+  const KST_OFFSET = 9 * 60 * 60 * 1000; // 9시간 in milliseconds
+  const kstDate = new Date(date.getTime() + KST_OFFSET);
+  const kstNow = new Date(Date.now() + KST_OFFSET);
+
+  // KST 기준 오늘/내일 계산 (UTC 시간에서 KST 날짜 추출)
+  const kstToday = new Date(Date.UTC(
+    kstNow.getUTCFullYear(), kstNow.getUTCMonth(), kstNow.getUTCDate()
+  ));
+  const kstTomorrow = new Date(kstToday.getTime() + 24 * 60 * 60 * 1000);
+  const kstTargetDay = new Date(Date.UTC(
+    kstDate.getUTCFullYear(), kstDate.getUTCMonth(), kstDate.getUTCDate()
+  ));
 
   // 날짜 부분
   let dateStr: string;
-  if (targetDay.getTime() === today.getTime()) {
+  if (kstTargetDay.getTime() === kstToday.getTime()) {
     dateStr = "오늘";
-  } else if (targetDay.getTime() === tomorrow.getTime()) {
+  } else if (kstTargetDay.getTime() === kstTomorrow.getTime()) {
     dateStr = "내일";
   } else {
-    dateStr = `${date.getMonth() + 1}월 ${date.getDate()}일`;
+    dateStr = `${kstDate.getUTCMonth() + 1}월 ${kstDate.getUTCDate()}일`;
   }
 
-  // 시간 부분
-  const hours = date.getHours();
-  const minutes = date.getMinutes();
-  const timeStr = minutes === 0 ? `${hours}시` : `${hours}시 ${minutes}분`;
+  // 시간 부분 (KST 기준, 오전/오후 형식)
+  const hours24 = kstDate.getUTCHours();
+  const minutes = kstDate.getUTCMinutes();
+  const ampm = hours24 < 12 ? "오전" : "오후";
+  const hours12 = hours24 === 0 ? 12 : hours24 > 12 ? hours24 - 12 : hours24;
+  const timeStr = minutes === 0
+    ? `${ampm} ${hours12}시`
+    : `${ampm} ${hours12}시 ${minutes}분`;
 
   return `${dateStr} ${timeStr}`;
 }
