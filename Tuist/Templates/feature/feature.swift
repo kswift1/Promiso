@@ -220,6 +220,24 @@ extension {{ name }} {
     .string(
       path: "Projects/Features/{{ name }}Feature/Tests/Sources/{{ name }}FeatureTests.swift",
       contents: #"""
+//
+//  {{ name }}FeatureTests.swift
+//  {{ name }}Feature
+//
+//  {{ name }}.Feature 테스트
+//
+//  ## 테스트 대상
+//  - `{{ name }}Feature/Sources/{{ name }}Feature.swift`
+//
+//  ## 사용처
+//  - **{{ name }}View**: UI 표시 로직
+//  - **{{ name }}Feature**: State 관리, Action 처리
+//
+//  ## 테스트 목적
+//  - Reducer 액션 처리 검증
+//  - State computed properties 검증
+//
+
 import Testing
 @testable import {{ name }}Feature
 
