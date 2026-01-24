@@ -25,7 +25,10 @@ public final class UserSettingsRemoteDataSource: @unchecked Sendable {
 
     guard doc.exists else {
       // 문서가 없으면 기본값 반환
-      return UserSettings()
+      return UserSettings(
+        notificationEnabled: true,
+        groupSortOption: .joinedRecent
+      )
     }
 
     let data = doc.data() ?? [:]

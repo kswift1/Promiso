@@ -10,8 +10,8 @@ public struct UserSettings: Equatable, Sendable {
   public var groupSortOption: GroupSortOption
 
   public init(
-    notificationEnabled: Bool = true,
-    groupSortOption: GroupSortOption = .joinedRecent
+    notificationEnabled: Bool,
+    groupSortOption: GroupSortOption
   ) {
     self.notificationEnabled = notificationEnabled
     self.groupSortOption = groupSortOption
@@ -37,7 +37,10 @@ public struct UserSettingsClient: Sendable {
 
 extension UserSettingsClient: TestDependencyKey {
   public static let testValue = Self(
-    fetchSettings: unimplemented("\\(Self.self).fetchSettings", placeholder: UserSettings()),
+    fetchSettings: unimplemented(
+      "\\(Self.self).fetchSettings",
+      placeholder: UserSettings(notificationEnabled: true, groupSortOption: .joinedRecent)
+    ),
     updateGroupSortOption: unimplemented("\\(Self.self).updateGroupSortOption"),
     updateNotificationEnabled: unimplemented("\\(Self.self).updateNotificationEnabled")
   )
