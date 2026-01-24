@@ -336,7 +336,7 @@ extension AppEntry {
       if store.splash != .hidden {
         SplashView(
           config: .init(forceHideLogo: false),
-          logo: { Image("fingerPromise") },
+          logo: { ResourceKitAsset.fingerPromise.swiftUIImage },
           animateOut: store.splash == .animatingOut,
           isCompleted: {
             store.send(.view(.splashAnimationCompleted))

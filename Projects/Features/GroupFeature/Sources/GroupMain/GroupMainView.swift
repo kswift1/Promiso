@@ -590,7 +590,7 @@ private struct OnboardingCardView: View {
   @ViewBuilder
   private var iconView: some View {
     if card == .createGroup {
-      Image("fingerPromise", bundle: .main)
+      ResourceKitAsset.fingerPromise.swiftUIImage
         .resizable()
         .scaledToFit()
     } else {
