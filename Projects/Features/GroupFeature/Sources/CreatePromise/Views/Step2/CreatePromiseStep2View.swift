@@ -21,11 +21,10 @@ struct CreatePromiseStep2View: View {
           // 종료 날짜/시간 (선택)
           EndDateTimeSection(store: store, scrollProxy: proxy)
             .id("endDateTime")
-          
-          // TODO: Phase2 장소 추가
+
           // 장소 (선택)
-//          LocationSection(store: store)
-          
+          LocationSection(store: store)
+
           // 최소 참가 인원
           MinimumParticipantsSection(store: store, scrollProxy: proxy)
         }
@@ -37,9 +36,8 @@ struct CreatePromiseStep2View: View {
 
 // MARK: - Location Section
 struct LocationSection: View {
-  let store: StoreOf<CreatePromise.Feature>
-  @State private var showLocationPicker = false
-  
+  @Bindable var store: StoreOf<CreatePromise.Feature>
+
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
       HStack {
@@ -51,10 +49,10 @@ struct LocationSection: View {
           .font(.system(size: 14))
           .foregroundColor(.secondary)
       }
-      
-      Button(action: {
-        showLocationPicker = true
-      }) {
+
+      Button {
+        store.send(.view(.locationPickerTapped))
+      } label: {
         HStack(spacing: 12) {
           if let location = store.promise.location {
             VStack(alignment: .leading, spacing: 4) {
@@ -69,22 +67,33 @@ struct LocationSection: View {
                   .lineLimit(1)
               }
             }
+
+            Spacer()
+
+            // 삭제 버튼
+            Button {
+              store.send(.view(.setLocation(nil)))
+            } label: {
+              Image(systemName: "xmark.circle.fill")
+                .foregroundColor(.secondary)
+            }
           } else {
-            Text("장소를 검색하거나 입력하세요")
+            Text("장소를 검색하세요")
               .font(.system(size: 16))
               .foregroundColor(.secondary)
+
+            Spacer()
+
+            Image(systemName: "magnifyingglass")
+              .foregroundColor(Color.pmindigo.n500)
           }
-
-          Spacer()
-
-          Image(systemName: store.promise.location != nil ? "pencil" : "magnifyingglass")
-            .foregroundColor(Color.pmindigo.n500)
         }
         .padding(16)
         .background(Color(.systemGray6))
         .clipShape(RoundedRectangle(cornerRadius: 16))
       }
-      
+      .buttonStyle(.plain)
+
       // 안내 메시지
       HStack(spacing: 6) {
         Image(systemName: "lightbulb.fill")
@@ -95,13 +104,8 @@ struct LocationSection: View {
       .foregroundColor(Color.pmindigo.n500)
       .padding(.horizontal, 4)
     }
-    .sheet(isPresented: $showLocationPicker) {
-      //      LocationPickerView(
-      //        selectedLocation: Binding(
-      //          get: { store.promiseProposal.place },
-      //          set: { /*store.send(.setLocation($0))*/ }
-      //        )
-      //      )
+    .sheet(item: $store.scope(state: \.locationPicker, action: \.locationPicker)) { pickerStore in
+      LocationPicker.RootView(store: pickerStore)
     }
   }
 }
