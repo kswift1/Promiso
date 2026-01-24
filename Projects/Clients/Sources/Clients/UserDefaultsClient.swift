@@ -26,20 +26,6 @@ public extension UserDefaultsClient {
   func markLiveActivityInfoSeen() {
     setBool(true, AppConstants.UserDefaults.hasSeenLiveActivityInfo)
   }
-
-  /// 저장된 그룹 정렬 옵션 가져오기
-  var groupSortOption: GroupSortOption {
-    guard let rawValue = stringForKey(AppConstants.UserDefaults.groupSortOption),
-          let option = GroupSortOption(rawValue: rawValue) else {
-      return .joinedRecent  // 기본값
-    }
-    return option
-  }
-
-  /// 그룹 정렬 옵션 저장
-  func setGroupSortOption(_ option: GroupSortOption) {
-    setString(option.rawValue, AppConstants.UserDefaults.groupSortOption)
-  }
 }
 
 // MARK: - Test / Preview

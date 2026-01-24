@@ -4,7 +4,7 @@ import PromisoShared
 
 extension GroupSortSettings {
   public struct RootView: View {
-    @Perception.Bindable public var store: StoreOf<Feature>
+    @Bindable public var store: StoreOf<Feature>
 
     public init(store: StoreOf<Feature>) {
       self.store = store

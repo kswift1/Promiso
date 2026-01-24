@@ -124,7 +124,7 @@ extension GroupMain {
 
     @Dependency(\.groupClient) var groupClient
     @Dependency(\.promiseClient) var promiseClient
-    @Dependency(\.userDefaultsClient) var userDefaultsClient
+    @Dependency(\.userSettingsClient) var userSettingsClient
 
     public init() {}
 
@@ -413,6 +413,8 @@ extension GroupMain {
         case liveActivityChanged(promiseId: String?)
         case fetchPastPromises(groupId: String)
         case pastPromisesResponse(Result<[PromiseModel], AppError>)
+        case fetchSettings
+        case settingsResponse(Result<UserSettings, AppError>)
       }
     }
 
@@ -426,15 +428,14 @@ extension GroupMain {
           case .onAppear:
             guard !state.isInitialized else { return .none }
             state.isInitialized = true
-            // 저장된 정렬 옵션 불러오기
-            state.groupSortOption = userDefaultsClient.groupSortOption
             // 캐시된 데이터로 먼저 UI 표시 (빠른 로딩)
             let summaries = state.currentUser.sortedGroups
             state.allGroupSummaries = summaries
-            // 최신 데이터 fetch (imageUrl 등 갱신)
+            // 최신 데이터 fetch (imageUrl 등 갱신) + 설정 로드
             return .merge(
               .send(.internal(.setDefaultGroup(groups: summaries))),
-              .send(.internal(.fetchGroupList))
+              .send(.internal(.fetchGroupList)),
+              .send(.internal(.fetchSettings))
             )
 
           case .refreshTriggered:
@@ -855,6 +856,24 @@ extension GroupMain {
           case .pastPromisesResponse(.failure(let error)):
             state.pastPromisesState = .failed(error)
             return .none
+
+          case .fetchSettings:
+            return .run { [userSettingsClient, currentUser = state.currentUser] send in
+              do {
+                let settings = try await userSettingsClient.fetchSettings(currentUser.userId)
+                await send(.internal(.settingsResponse(.success(settings))))
+              } catch {
+                await send(.internal(.settingsResponse(.failure(AppError(error)))))
+              }
+            }
+
+          case .settingsResponse(.success(let settings)):
+            state.groupSortOption = settings.groupSortOption
+            return .none
+
+          case .settingsResponse(.failure):
+            // 설정 로드 실패 시 기본값 유지
+            return .none
           }
 
         // MARK: - Child Feature Actions
@@ -912,9 +931,9 @@ extension GroupMain {
         case .sortSettings(.presented(.delegate(.sortOptionChanged(let option)))):
           state.groupSortOption = option
           state.sortSettings = nil
-          // 정렬 옵션 저장
-          return .run { [userDefaultsClient] _ in
-            userDefaultsClient.setGroupSortOption(option)
+          // 정렬 옵션 Firestore에 저장
+          return .run { [userSettingsClient, currentUser = state.currentUser] _ in
+            try await userSettingsClient.updateGroupSortOption(currentUser.userId, option)
           }
 
         case .sortSettings:
