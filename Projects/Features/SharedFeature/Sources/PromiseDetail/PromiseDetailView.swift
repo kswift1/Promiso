@@ -109,14 +109,27 @@ extension PromiseDetail {
           )
 
           // 장소
-          if store.promise.location != nil {
+          if let location = store.promise.location {
             Divider().padding(.leading, 44)
 
-            EmojiInfoRow(
-              emoji: "📍",
-              title: "장소",
-              value: store.promise.locationText
+            LocationInfoRow(
+              location: location,
+              onDirectionsTapped: {
+                store.send(.view(.directionsTapped))
+              }
             )
+
+            // 지도 미리보기 (좌표가 있는 경우)
+            if let latitude = location.latitude,
+               let longitude = location.longitude {
+              Divider().padding(.leading, 44)
+
+              LocationMapPreview(
+                latitude: latitude,
+                longitude: longitude,
+                placeName: location.name
+              )
+            }
           }
 
           // 투표 마감
@@ -227,6 +240,26 @@ extension PromiseDetail {
         )
         .padding(16)
         .adaptiveGlassCard()
+      }
+    }
+
+    // MARK: - Directions Section (Live 상태일 때)
+
+    private var directionsSection: some View {
+      Button {
+        store.send(.view(.directionsTapped))
+      } label: {
+        HStack(spacing: 8) {
+          Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
+            .font(.system(size: 16))
+          Text("길찾기")
+            .font(.system(size: 16, weight: .semibold))
+        }
+        .foregroundStyle(.white)
+        .frame(maxWidth: .infinity)
+        .frame(height: 50)
+        .background(Color.pmindigo.n500)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
       }
     }
 
@@ -370,6 +403,55 @@ private struct EmojiInfoRow: View {
 
       Text(value)
         .font(.system(size: 15, weight: .medium))
+    }
+    .padding(.horizontal, 16)
+    .padding(.vertical, 14)
+  }
+}
+
+private struct LocationInfoRow: View {
+  let location: LocationInfoModel
+  let onDirectionsTapped: () -> Void
+
+  private var hasCoordinates: Bool {
+    location.latitude != nil && location.longitude != nil
+  }
+
+  var body: some View {
+    HStack(spacing: 10) {
+      Text("📍")
+        .font(.system(size: 18))
+        .frame(width: 28)
+
+      VStack(alignment: .leading, spacing: 2) {
+        Text(location.name)
+          .font(.system(size: 15, weight: .medium))
+
+        if let address = location.address {
+          Text(address)
+            .font(.system(size: 13))
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+        }
+      }
+
+      Spacer()
+
+      if hasCoordinates {
+        Button(action: onDirectionsTapped) {
+          HStack(spacing: 4) {
+            Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
+              .font(.system(size: 14))
+            Text("길찾기")
+              .font(.system(size: 14, weight: .medium))
+          }
+          .foregroundStyle(.white)
+          .padding(.horizontal, 12)
+          .padding(.vertical, 6)
+          .background(Color.pmindigo.n500)
+          .clipShape(Capsule())
+        }
+      }
     }
     .padding(.horizontal, 16)
     .padding(.vertical, 14)
@@ -795,6 +877,28 @@ private struct StatusBadgeView: View {
     .background(color.opacity(0.15))
     .foregroundStyle(color)
     .clipShape(Capsule())
+  }
+}
+
+// MARK: - Location Map Preview
+
+private struct LocationMapPreview: View {
+  let latitude: Double
+  let longitude: Double
+  let placeName: String
+
+  var body: some View {
+    VStack(spacing: 0) {
+      KakaoMiniMapView(
+        latitude: latitude,
+        longitude: longitude,
+        zoomLevel: 16
+      )
+      .frame(height: 160)
+      .clipShape(RoundedRectangle(cornerRadius: 12))
+      .padding(.horizontal, 16)
+      .padding(.vertical, 12)
+    }
   }
 }
 

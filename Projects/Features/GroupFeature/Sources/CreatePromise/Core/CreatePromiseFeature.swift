@@ -17,6 +17,7 @@ public enum CreatePromise {
     @Dependency(\.promiseClient) var promiseClient
     @Dependency(\.userDefaultsClient) var userDefaultsClient
     @Dependency(\.emojiClient) var emojiClient
+    @Dependency(\.mapClient) var mapClient
 
     
     private enum CancelID: Hashable {
@@ -39,6 +40,12 @@ public enum CreatePromise {
       var showLiveActivityInfo: Bool = false
       var hasSeenLiveActivityInfo: Bool = true  // 기본 true (로드 전까지 팝업 안 띄움)
 
+      // 장소 사용 여부 (토글 상태)
+      var useLocation: Bool = true
+
+      // 장소 선택 sheet
+      @Presents var locationPicker: LocationPicker.Feature.State?
+
       public init(
         currentStep: CreatePromiseStep = .first,
         promise: PromiseModel = .empty,
@@ -48,7 +55,9 @@ public enum CreatePromise {
         isCreatingPromise: Bool = false,
         creationError: Clients.PromiseClientError? = nil,
         showLiveActivityInfo: Bool = false,
-        hasSeenLiveActivityInfo: Bool = true
+        hasSeenLiveActivityInfo: Bool = true,
+        useLocation: Bool = true,
+        locationPicker: LocationPicker.Feature.State? = nil
       ) {
         self.currentStep = currentStep
         self.promise = promise
@@ -59,6 +68,8 @@ public enum CreatePromise {
         self.creationError = creationError
         self.showLiveActivityInfo = showLiveActivityInfo
         self.hasSeenLiveActivityInfo = hasSeenLiveActivityInfo
+        self.useLocation = useLocation
+        self.locationPicker = locationPicker
       }
 
       /// 그룹이 활성 약속 제한에 도달했는지 확인
@@ -108,6 +119,7 @@ public enum CreatePromise {
       case binding(BindingAction<State>)
       case `internal`(Internal)
       case delegate(Delegate)
+      case locationPicker(PresentationAction<LocationPicker.Feature.Action>)
       
       // 사용자가 트리거하는 UI 이벤트
       public enum View: Sendable {
@@ -131,6 +143,10 @@ public enum CreatePromise {
         case liveActivityInfoButtonTapped
         case liveActivityInfoDismissed
         case arrivalSharingSectionAppeared
+        // 장소 선택
+        case locationPickerTapped
+        case setLocation(LocationInfoModel?)
+        case toggleUseLocation
       }
       
       // 내부에서만 발생하는 이벤트 (이펙트 응답/디바운스 등)
@@ -283,6 +299,18 @@ public enum CreatePromise {
               let hasSeen = userDefaultsClient.hasSeenLiveActivityInfo
               await send(.internal(.liveActivityInfoSeenLoaded(hasSeen)))
             }
+
+          case .locationPickerTapped:
+            state.locationPicker = LocationPicker.Feature.State()
+            return .none
+
+          case .setLocation(let location):
+            state.promise.location = location
+            return .none
+
+          case .toggleUseLocation:
+            state.useLocation.toggle()
+            return .none
           }
           
           // MARK: - Internal
@@ -389,7 +417,23 @@ public enum CreatePromise {
           // MARK: - Delegate (여기선 부모가 처리하므로 기본은 .none)
         case .delegate:
           return .none
+
+          // MARK: - LocationPicker
+        case .locationPicker(.presented(.delegate(.locationSelected(let location)))):
+          state.locationPicker = nil
+          state.promise.location = location
+          return .none
+
+        case .locationPicker(.presented(.delegate(.dismissed))):
+          state.locationPicker = nil
+          return .none
+
+        case .locationPicker:
+          return .none
         }
+      }
+      .ifLet(\.$locationPicker, action: \.locationPicker) {
+        LocationPicker.Feature()
       }
     }
   }
@@ -566,21 +610,9 @@ fileprivate struct StepButton: View {
       }
       .frame(maxWidth: .infinity)
       .frame(height: 56)
-      .background(
-        LinearGradient(
-          colors: disabled ? [Color(.systemGray4)] : [.blue, .purple],
-          startPoint: .topLeading,
-          endPoint: .bottomTrailing
-        )
-      )
+      .background(disabled ? Color(.systemGray4) : Color.pmindigo.n500)
       .foregroundStyle(.white)
       .clipShape(RoundedRectangle(cornerRadius: 16))
-      .shadow(
-        color: disabled ? .clear : .blue.opacity(0.3),
-        radius: 12,
-        x: 0,
-        y: 6
-      )
     }
     .scaleEffect(isPressed && !disabled ? 0.95 : 1.0)
     .animation(.spring(response: 0.2, dampingFraction: 0.6), value: isPressed)

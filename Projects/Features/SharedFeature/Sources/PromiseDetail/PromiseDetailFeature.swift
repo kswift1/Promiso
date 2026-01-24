@@ -8,6 +8,7 @@ extension PromiseDetail {
   @Reducer
   public struct Feature {
     @Dependency(\.promiseClient) var promiseClient
+    @Dependency(\.mapClient) var mapClient
 
     public init() {}
 
@@ -98,6 +99,7 @@ extension PromiseDetail {
         case shareSheetDismissed
         case participantGroupTapped(title: String, userIds: [String], colorType: ParticipantColorType)
         case memberSheetDismissed
+        case directionsTapped
       }
 
       @CasePathable
@@ -196,6 +198,16 @@ extension PromiseDetail {
 
           case .memberSheetDismissed:
             state.memberSheet = nil
+            return .none
+
+          case .directionsTapped:
+            guard let location = state.promise.location,
+                  let lat = location.latitude,
+                  let lng = location.longitude else {
+              return .none
+            }
+            let coordinate = Coordinate(latitude: lat, longitude: lng)
+            mapClient.openDirections(coordinate, location.name)
             return .none
           }
 

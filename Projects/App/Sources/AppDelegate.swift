@@ -18,6 +18,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
                    didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
     FirebaseApp.configure()
     configureClaritySDK()
+    configureKakaoMapsSDK()
     configureRemoteNotifications(application)
 
 // MARK: - Emulator 사용 시 주석 해제
@@ -65,6 +66,16 @@ class AppDelegate: NSObject, UIApplicationDelegate {
   func application(_ application: UIApplication,
                    didFailToRegisterForRemoteNotificationsWithError error: Error) {
     AppLogger.notification.error("Failed to register for remote notifications: \(error.localizedDescription)")
+  }
+
+  // MARK: - Kakao Maps SDK
+  private func configureKakaoMapsSDK() {
+    guard let kakaoAppKey = Bundle.main.object(forInfoDictionaryKey: "KAKAO_NATIVE_APP_KEY") as? String else {
+      AppLogger.general.error("Kakao Native App Key not found in Info.plist")
+      return
+    }
+    SDKInitializer.InitSDK(appKey: kakaoAppKey)
+    AppLogger.general.debug("Kakao Maps SDK initialized")
   }
 
   // MARK: - Microsoft Clarity SDK

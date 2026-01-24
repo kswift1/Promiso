@@ -25,10 +25,7 @@ struct MinimumParticipantsSection: View {
   }
   
   var body: some View {
-    SectionPlaceHolder(
-      placeHolderTitle: "최소 참가 인원",
-      isRequired: true
-    ) {
+    SectionPlaceHolder(placeHolderTitle: "최소 참가 인원") {
       VStack(alignment: .leading, spacing: 12) {
         if isFixedAtTwo {
           // 2명 고정 케이스

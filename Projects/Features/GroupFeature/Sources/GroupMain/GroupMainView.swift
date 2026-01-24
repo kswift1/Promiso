@@ -1,6 +1,7 @@
 import SwiftUI
 import ComposableArchitecture
 import PromisoShared
+import ResourceKit
 
 extension GroupMain {
   public struct RootView: View {
@@ -348,6 +349,9 @@ extension GroupMain {
         },
         onShare: {
           store.send(.view(.promiseShared(promiseId)))
+        },
+        onDirections: {
+          store.send(.view(.directionsTapped(promiseId)))
         }
       )
       .contentShape(Rectangle())
@@ -590,7 +594,7 @@ private struct OnboardingCardView: View {
   @ViewBuilder
   private var iconView: some View {
     if card == .createGroup {
-      Image("fingerPromise", bundle: .main)
+      ResourceKitAsset.fingerPromise.swiftUIImage
         .resizable()
         .scaledToFit()
     } else {

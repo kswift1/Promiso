@@ -21,6 +21,9 @@ public enum ExternalDeps: CaseIterable {
   /// Animation - Lottie
   case lottie
 
+  /// Maps - Kakao Maps SDK
+  case kakaoMaps
+
   public static func allExternalDeps() -> [TargetDependency] {
     ExternalDeps.allCases.flatMap { $0.targetDependency }
   }
@@ -57,6 +60,9 @@ public enum ExternalDeps: CaseIterable {
 
     case .lottie:
       return [.external(name: "Lottie")]
+
+    case .kakaoMaps:
+      return [.external(name: "KakaoMapsSDK-SPM")]
     }
   }
 }

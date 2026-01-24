@@ -27,9 +27,7 @@ struct CreatePromiseStep1View: View {
         }
 
         // 제목 입력
-        SectionPlaceHolder(
-          placeHolderTitle: "제목",
-          isRequired: true) {
+        SectionPlaceHolder(placeHolderTitle: "제목") {
             TitleInputTextField(
               title: store.promise.title,
               emoji: store.promise.emoji,
@@ -38,9 +36,7 @@ struct CreatePromiseStep1View: View {
             )
           }
 
-        SectionPlaceHolder(
-          placeHolderTitle: "그룹 선택",
-          isRequired: true) {
+        SectionPlaceHolder(placeHolderTitle: "그룹 선택") {
             GroupListView(
               groupListState: store.groupListState,
               selectedGroupId: store.promise.group?.id,

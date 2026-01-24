@@ -1036,7 +1036,11 @@ paths:
                     startAt: "2024-12-25T10:00:00+09:00"
                     endAt: "2024-12-25T16:00:00+09:00"
                     minimumParticipants: 3
-                    place: 북한산 백운대 입구
+                    location:
+                      name: 북한산 백운대 입구
+                      address: 경기도 고양시 덕양구 북한동
+                      latitude: 37.6594
+                      longitude: 126.9778
                     arrivalSharingTime: 30
                     env: stage
 
@@ -2891,11 +2895,32 @@ components:
           description: 최소 참가 인원
           example: 3
 
-        place:
-          type: string
+        location:
+          type: object
           nullable: true
-          description: 장소 이름 (선택적)
-          example: 북한산 백운대 입구
+          description: 장소 정보 (선택적)
+          properties:
+            name:
+              type: string
+              description: 장소 이름
+              example: 북한산 백운대 입구
+            address:
+              type: string
+              nullable: true
+              description: 주소
+              example: 경기도 고양시 덕양구 북한동
+            latitude:
+              type: number
+              format: double
+              nullable: true
+              description: 위도
+              example: 37.6594
+            longitude:
+              type: number
+              format: double
+              nullable: true
+              description: 경도
+              example: 126.9778
 
         arrivalSharingTime:
           type: integer

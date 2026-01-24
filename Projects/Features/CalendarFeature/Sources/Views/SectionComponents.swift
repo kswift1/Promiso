@@ -30,7 +30,7 @@ struct DiaryStyleSectionHeader: View {
 
 // MARK: - Rounded Corner Shape
 
-struct RoundedCorner: Shape {
+struct RoundedCorner: SwiftUI.Shape {
   var radius: CGFloat = .infinity
   var corners: UIRectCorner = .allCorners
 

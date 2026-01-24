@@ -16,3 +16,4 @@
 @_exported import GoogleSignIn
 @_exported import GoogleSignInSwift
 @_exported import Lottie
+@_exported import KakaoMapsSDK

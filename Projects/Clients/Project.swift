@@ -12,6 +12,7 @@ let project = Project(
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       infoPlist: .default,
       sources: ["Sources/**"],
+      resources: ["Resources/**"],
       dependencies: [
         .project(target: "PromisoShared", path: "../Shared"),
         .project(target: "ExternalDependency", path: "../ExternalDependency")

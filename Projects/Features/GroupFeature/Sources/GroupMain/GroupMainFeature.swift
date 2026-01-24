@@ -125,6 +125,7 @@ extension GroupMain {
     @Dependency(\.groupClient) var groupClient
     @Dependency(\.promiseClient) var promiseClient
     @Dependency(\.userSettingsClient) var userSettingsClient
+    @Dependency(\.mapClient) var mapClient
 
     public init() {}
 
@@ -407,6 +408,7 @@ extension GroupMain {
         case allPromisesTapped  // "모든 약속 보기"
         case groupSettingsTapped  // "그룹 설정"
         case sortSettingsTapped  // "그룹 정렬"
+        case directionsTapped(String)  // 길찾기 (promiseId)
       }
 
       public enum Internal: Sendable {
@@ -535,6 +537,17 @@ extension GroupMain {
 
           case .sharePromiseDismissed:
             state.sharePromise = nil
+            return .none
+
+          case .directionsTapped(let promiseId):
+            guard let promise = state.promisesState.value?.first(where: { $0.id == promiseId }),
+                  let location = promise.location,
+                  let latitude = location.latitude,
+                  let longitude = location.longitude else {
+              return .none
+            }
+            let coordinate = Coordinate(latitude: latitude, longitude: longitude)
+            mapClient.openDirections(coordinate, location.name)
             return .none
 
           case .groupManageTapped:
