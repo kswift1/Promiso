@@ -220,47 +220,50 @@ extension {{ name }} {
     .string(
       path: "Projects/Features/{{ name }}Feature/Tests/Sources/{{ name }}FeatureTests.swift",
       contents: #"""
-// MARK: - {{ name }}FeatureTests.swift
-// TCA TestStore를 사용한 {{ name }} Feature의 포괄적인 test suite
-// 이 파일은 business logic의 정확성과 state management의 무결성을 보장
+//
+//  {{ name }}FeatureTests.swift
+//  {{ name }}Feature
+//
+//  Swift Testing 프레임워크를 사용한 {{ name }} Feature 테스트
+//
+//  ## 테스트 대상
+//  - `{{ name }}Feature/Sources/{{ name }}Feature.swift`
+//
+//  ## 테스트 목적
+//  - Reducer 액션 처리 검증
+//  - State computed properties 검증
+//
 
-import XCTest
+import Testing
 import ComposableArchitecture
 @testable import {{ name }}Feature
 
-// MARK: - Feature Tests
+// MARK: - {{ name }} Feature Tests
 
-/// {{ name }} Feature reducer와 business logic을 위한 Test suite
-/// 예측 가능한 state testing과 side effect 검증을 위해 TCA의 TestStore를 사용
-@MainActor
-final class {{ name }}FeatureTests: XCTestCase {
-  
-  /// 기본 onAppear 동작을 테스트
-  func test_onAppear() async {
+@Suite("{{ name }}.Feature 테스트")
+struct {{ name }}FeatureTests {
+
+  // MARK: - Reducer 테스트
+
+  @Test("onAppear 액션 처리")
+  @MainActor
+  func onAppear_handlesCorrectly() async {
     let store = TestStore(initialState: {{ name }}.Feature.State()) {
       {{ name }}.Feature()
     }
-    
+
     await store.send(.onAppear)
   }
-  
-  // 추가 테스트를 여기에 작성
-}
 
-// MARK: - Integration Tests
+  // MARK: - State 테스트
 
-/// Integration tests for feature integration
-@MainActor
-final class {{ name }}FeatureIntegrationTests: XCTestCase {
-  
-  /// Tests feature creation and basic functionality
-  func test_feature_createsValidInstance() {
-    let store = Store(initialState: {{ name }}.Feature.State()) {
-      {{ name }}.Feature()
-    }
-    
-    XCTAssertNotNil(store)
+  @Test("State 초기화 시 기본값 설정")
+  func state_initializesWithDefaults() {
+    let state = {{ name }}.Feature.State()
+    #expect(state == {{ name }}.Feature.State())
   }
+
+  // 추가 테스트를 여기에 작성
 }
 """#
     ),
