@@ -54,9 +54,15 @@ public struct UserSettings: Equatable, Sendable {
 
   public init(
     notificationEnabled: Bool,
-    groupSortOption: GroupSortOption
+    groupSortOption: GroupSortOption = .joinedRecent
   ) {
     self.notificationEnabled = notificationEnabled
     self.groupSortOption = groupSortOption
   }
+
+  /// 기본 설정값
+  public static let `default` = UserSettings(
+    notificationEnabled: true,
+    groupSortOption: .joinedRecent
+  )
 }

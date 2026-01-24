@@ -33,6 +33,12 @@ extension GroupSortSettings {
         .navigationTitle("그룹 정렬")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+          ToolbarItem(placement: .cancellationAction) {
+            Button("취소") {
+              store.send(.view(.cancelTapped))
+            }
+          }
+
           ToolbarItem(placement: .confirmationAction) {
             Button("완료") {
               store.send(.view(.confirmTapped))
@@ -73,7 +79,7 @@ extension GroupSortSettings {
     private var previewSection: some View {
       VStack(alignment: .leading, spacing: 12) {
         HStack {
-          Text(store.selectedOption == .custom ? "길게 눌러서 순서를 변경하세요" : "미리보기")
+          Text(store.selectedOption.sortType == .custom ? "길게 눌러서 순서를 변경하세요" : "미리보기")
             .font(.system(size: 13, weight: .medium))
             .foregroundStyle(.secondary)
 
@@ -128,7 +134,7 @@ extension GroupSortSettings {
       .zIndex(isDragging ? 1 : 0)
       .animation(.spring(response: 0.3, dampingFraction: 0.7), value: proposedIndex)
       .gesture(
-        store.selectedOption == .custom
+        store.selectedOption.sortType == .custom
           ? LongPressGesture(minimumDuration: 0.2)
               .onEnded { _ in
                 impactMedium.impactOccurred()
@@ -239,26 +245,4 @@ extension GroupSortSettings {
       }
     }
   }
-}
-
-// MARK: - Preview
-
-#Preview {
-  let groups = [
-    "지민과 나", "대학 친구들", "회사 동료", "가족", "고등학교",
-    "동네 친구", "헬스장", "독서 모임"
-  ].enumerated().map { index, name in
-    GroupBarItem(id: "g\(index)", name: name, hasNewActivity: index % 3 == 0, isSelected: false)
-  }
-
-  return GroupSortSettings.RootView(
-    store: Store(
-      initialState: GroupSortSettings.Feature.State(
-        selectedOption: .custom,
-        previewGroups: groups
-      )
-    ) {
-      GroupSortSettings.Feature()
-    }
-  )
 }

@@ -12,63 +12,46 @@ public final class UserSettingsRemoteDataSource: @unchecked Sendable {
     self.db = db
   }
 
-  // MARK: - Settings Operations
-
-  /// 사용자 설정 조회
-  public func fetchSettings(userId: String) async throws -> UserSettings {
-    let doc = try await db
-      .collection("users")
+  /// 설정 문서 참조
+  private func settingsRef(userId: String) -> DocumentReference {
+    db.environmentCollection("users")
       .document(userId)
       .collection("settings")
       .document("main")
-      .getDocument()
+  }
 
-    guard doc.exists else {
-      // 문서가 없으면 기본값 반환
-      return UserSettings(
-        notificationEnabled: true,
-        groupSortOption: .joinedRecent
-      )
+  // MARK: - Settings Operations
+
+  /// 사용자 설정 조회 (문서 없으면 기본값 반환)
+  public func fetchSettings(userId: String) async throws -> UserSettings {
+    let document = try await settingsRef(userId: userId).getDocument()
+
+    guard document.exists, let data = document.data() else {
+      return .default
     }
 
-    let data = doc.data() ?? [:]
+    let notificationEnabled = data["notificationEnabled"] as? Bool ?? true
+    let groupSortOption = GroupSortOption.read(from: data["groupSortOption"] as? [String: Any])
+
     return UserSettings(
-      notificationEnabled: data["notificationEnabled"] as? Bool ?? true,
-      groupSortOption: parseGroupSortOption(data["groupSortOption"] as? String)
+      notificationEnabled: notificationEnabled,
+      groupSortOption: groupSortOption
     )
   }
 
   /// 그룹 정렬 옵션 업데이트
   public func updateGroupSortOption(userId: String, option: GroupSortOption) async throws {
-    try await db
-      .collection("users")
-      .document(userId)
-      .collection("settings")
-      .document("main")
-      .setData([
-        "groupSortOption": option.rawValue
-      ], merge: true)
+    try await settingsRef(userId: userId).setData(
+      ["groupSortOption": option.write()],
+      merge: true
+    )
   }
 
   /// 알림 활성화 토글
   public func updateNotificationEnabled(userId: String, enabled: Bool) async throws {
-    try await db
-      .collection("users")
-      .document(userId)
-      .collection("settings")
-      .document("main")
-      .setData([
-        "notificationEnabled": enabled
-      ], merge: true)
-  }
-
-  // MARK: - Helpers
-
-  private func parseGroupSortOption(_ rawValue: String?) -> GroupSortOption {
-    guard let rawValue = rawValue,
-          let option = GroupSortOption(rawValue: rawValue) else {
-      return .joinedRecent  // 기본값
-    }
-    return option
+    try await settingsRef(userId: userId).setData(
+      ["notificationEnabled": enabled],
+      merge: true
+    )
   }
 }

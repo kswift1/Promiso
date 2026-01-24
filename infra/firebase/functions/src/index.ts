@@ -12,10 +12,16 @@ export {
   getUser,
   updateUser,
   uploadProfileImage,
-  getUserSettings,
-  updateUserSettings,
   checkNicknameAvailable,
 } from "./functions/users";
+
+// ============================================================================
+// User Settings Functions
+// ============================================================================
+export {
+  getUserSettings,
+  updateUserSettings,
+} from "./functions/userSettings";
 
 // ============================================================================
 // Group Functions

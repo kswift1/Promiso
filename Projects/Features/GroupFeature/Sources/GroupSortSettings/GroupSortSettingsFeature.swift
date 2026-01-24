@@ -18,8 +18,6 @@ extension GroupSortSettings {
       let initialOption: GroupSortOption
       /// 커스텀 정렬 순서
       var customOrderedGroups: [GroupBarItem]
-      /// 초기 커스텀 순서 (취소 시 복원용)
-      let initialCustomOrder: [GroupBarItem]
 
       public init(
         selectedOption: GroupSortOption,
@@ -30,7 +28,6 @@ extension GroupSortSettings {
         self.previewGroups = previewGroups
         self.initialOption = selectedOption
         self.customOrderedGroups = customOrderedGroups.isEmpty ? previewGroups : customOrderedGroups
-        self.initialCustomOrder = customOrderedGroups.isEmpty ? previewGroups : customOrderedGroups
       }
 
       /// 현재 옵션에 따라 정렬된 프리뷰 그룹
@@ -47,7 +44,7 @@ extension GroupSortSettings {
           return previewGroups.sorted { $0.name < $1.name }
         case .nameDescending:
           return previewGroups.sorted { $0.name > $1.name }
-        case .custom:
+        case .custom(_):
           return customOrderedGroups
         }
       }
@@ -94,10 +91,10 @@ extension GroupSortSettings {
             case .name:
               state.selectedOption = .nameAscending
             case .custom:
-              guard state.selectedOption != .custom else { return .none }
+              guard state.selectedOption.sortType != .custom else { return .none }
               // 현재 정렬 상태를 커스텀 순서의 시작점으로 설정
               state.customOrderedGroups = state.sortedPreviewGroups
-              state.selectedOption = .custom
+              state.selectedOption = .custom(order: state.customOrderedGroups.map(\.id))
             }
           }
           return .none
@@ -107,7 +104,14 @@ extension GroupSortSettings {
           return .none
 
         case .view(.confirmTapped):
-          return .send(.delegate(.sortOptionChanged(state.selectedOption)))
+          let finalOption: GroupSortOption
+          if state.selectedOption.sortType == .custom {
+            // 커스텀인 경우 현재 순서로 옵션 생성
+            finalOption = .custom(order: state.customOrderedGroups.map(\.id))
+          } else {
+            finalOption = state.selectedOption
+          }
+          return .send(.delegate(.sortOptionChanged(finalOption)))
 
         case .view(.cancelTapped):
           return .send(.delegate(.cancelled))

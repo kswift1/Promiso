@@ -18,6 +18,7 @@ import {
   CreateUserResponse,
   GetUserRequest,
   GetUserSettingsResponse,
+  GroupSortOption,
   UpdateUserRequest,
   UpdateUserResponse,
   UpdateUserSettingsRequest,
@@ -401,6 +402,7 @@ export const getUserSettings = onCall(
     // 3. 응답 반환
     return {
       notificationEnabled: settingsData.notificationEnabled ?? true,
+      groupSortOption: GroupSortOption.read(settingsData.groupSortOption),
     };
   },
 );
@@ -439,6 +441,13 @@ export const updateUserSettings = onCall<UpdateUserSettingsRequest>(
       data.notificationEnabled !== null
     ) {
       updateData.notificationEnabled = data.notificationEnabled;
+    }
+
+    if (
+      data.groupSortOption !== undefined &&
+      data.groupSortOption !== null
+    ) {
+      updateData.groupSortOption = GroupSortOption.write(data.groupSortOption);
     }
 
     // 3. Firestore 업데이트
