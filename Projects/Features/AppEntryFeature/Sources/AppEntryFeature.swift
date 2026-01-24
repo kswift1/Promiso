@@ -12,6 +12,8 @@ import SwiftUI
 // MARK: - Feature Namespace
 
 public enum AppEntry {}
+extension AppEntry.Feature.State: Sendable {}
+extension AppEntry.Feature.Destination.State: Equatable {}
 
 // MARK: - Feature Implementation
 
@@ -31,7 +33,7 @@ extension AppEntry {
     // MARK: - State
 
     @ObservableState
-    public struct State {
+    public struct State: Equatable {
       public enum SplashState: Equatable {
         case visible
         case animatingOut

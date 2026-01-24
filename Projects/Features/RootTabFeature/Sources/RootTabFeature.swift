@@ -52,7 +52,7 @@ extension RootTab {
     public init() {}
 
     @ObservableState
-    public struct State {
+    public struct State: Equatable {
       /// 현재 선택된 탭
       var selectedTab: Tab = .home
 

@@ -24,7 +24,7 @@ extension CalendarFeature {
     // MARK: - State
 
     @ObservableState
-    public struct State {
+    public struct State: Equatable {
       /// 현재 사용자 정보
       var currentUser: UserPrivateModel
 
