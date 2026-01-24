@@ -250,8 +250,17 @@ export interface CreatePromiseRequest {
   /** 최소 참가 인원 */
   minimumParticipants: number;
 
-  /** 장소 이름 (선택적) */
-  place?: string | null;
+  /** 장소 정보 (선택적) */
+  location?: {
+    /** 장소 이름 */
+    name: string;
+    /** 주소 */
+    address?: string | null;
+    /** 위도 */
+    latitude?: number | null;
+    /** 경도 */
+    longitude?: number | null;
+  } | null;
 
   /** 도착 상황 공유 시작 시간 (분 단위, 선택적) */
   arrivalSharingTime?: number | null;

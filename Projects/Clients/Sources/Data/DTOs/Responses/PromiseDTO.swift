@@ -96,9 +96,20 @@ public struct VotesDTO: Codable {
 /// location Map DTO
 public struct LocationDTO: Codable {
   public let name: String
+  public let address: String?
+  public let latitude: Double?
+  public let longitude: Double?
 
-  public init(name: String) {
+  public init(
+    name: String,
+    address: String? = nil,
+    latitude: Double? = nil,
+    longitude: Double? = nil
+  ) {
     self.name = name
+    self.address = address
+    self.latitude = latitude
+    self.longitude = longitude
   }
 }
 
@@ -139,6 +150,11 @@ extension VotesDTO {
 extension LocationDTO {
   /// Model에서 DTO 생성
   public init(model: LocationInfoModel) {
-    self.init(name: model.name)
+    self.init(
+      name: model.name,
+      address: model.address,
+      latitude: model.latitude,
+      longitude: model.longitude
+    )
   }
 }

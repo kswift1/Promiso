@@ -118,6 +118,18 @@ extension PromiseDetail {
                 store.send(.view(.directionsTapped))
               }
             )
+
+            // 지도 미리보기 (좌표가 있는 경우)
+            if let latitude = location.latitude,
+               let longitude = location.longitude {
+              Divider().padding(.leading, 44)
+
+              LocationMapPreview(
+                latitude: latitude,
+                longitude: longitude,
+                placeName: location.name
+              )
+            }
           }
 
           // 투표 마감
@@ -845,6 +857,28 @@ private struct StatusBadgeView: View {
     .background(color.opacity(0.15))
     .foregroundStyle(color)
     .clipShape(Capsule())
+  }
+}
+
+// MARK: - Location Map Preview
+
+private struct LocationMapPreview: View {
+  let latitude: Double
+  let longitude: Double
+  let placeName: String
+
+  var body: some View {
+    VStack(spacing: 0) {
+      KakaoMiniMapView(
+        latitude: latitude,
+        longitude: longitude,
+        zoomLevel: 16
+      )
+      .frame(height: 160)
+      .clipShape(RoundedRectangle(cornerRadius: 12))
+      .padding(.horizontal, 16)
+      .padding(.vertical, 12)
+    }
   }
 }
 

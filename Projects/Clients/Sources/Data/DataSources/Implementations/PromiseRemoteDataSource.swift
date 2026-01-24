@@ -59,7 +59,17 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
     }
 
     if let location = promise.location, !location.name.isEmpty {
-      callableData["place"] = location.name
+      var locationData: [String: Any] = ["name": location.name]
+      if let address = location.address {
+        locationData["address"] = address
+      }
+      if let latitude = location.latitude {
+        locationData["latitude"] = latitude
+      }
+      if let longitude = location.longitude {
+        locationData["longitude"] = longitude
+      }
+      callableData["location"] = locationData
     }
 
     // LiveActivity 예약 시작 시간 추가

@@ -140,6 +140,11 @@ extension PromiseVotesModel {
 extension LocationInfoModel {
   /// DTO에서 Model 생성
   public init(dto: LocationDTO) {
-    self.init(name: dto.name)
+    self.init(
+      name: dto.name,
+      address: dto.address,
+      latitude: dto.latitude,
+      longitude: dto.longitude
+    )
   }
 }
