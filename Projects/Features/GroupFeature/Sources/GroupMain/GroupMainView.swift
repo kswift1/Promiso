@@ -78,7 +78,8 @@ extension GroupMain {
         store: store.scope(state: \.$sortSettings, action: \.sortSettings)
       ) { sortStore in
         GroupSortSettings.RootView(store: sortStore)
-          .presentationDetents([.height(280)])
+          .presentationDetents([.height(420)])
+          .presentationDragIndicator(.visible)
       }
       .alert(store: store.scope(state: \.$deleteAlert, action: \.deleteAlert))
       .confirmationDialog(

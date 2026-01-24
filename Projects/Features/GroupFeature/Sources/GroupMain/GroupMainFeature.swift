@@ -149,6 +149,8 @@ extension GroupMain {
 
       /// 그룹 정렬 옵션
       var groupSortOption: GroupSortOption = .joinedRecent
+      /// 커스텀 정렬 순서 (그룹 ID 배열)
+      var customGroupOrder: [String] = []
 
       /// 과거 약속 상태 (별도 fetch)
       var pastPromisesState: LoadingState<[PromiseModel]> = .idle
@@ -215,6 +217,15 @@ extension GroupMain {
             return groups.sorted { $0.name < $1.name }
           case .nameDescending:
             return groups.sorted { $0.name > $1.name }
+          case .custom:
+            // 커스텀 정렬 순서 적용
+            if customGroupOrder.isEmpty {
+              return groups
+            }
+            let groupDict = Dictionary(uniqueKeysWithValues: groups.map { ($0.id, $0) })
+            let ordered = customGroupOrder.compactMap { groupDict[$0] }
+            let remaining = groups.filter { group in !customGroupOrder.contains(group.id) }
+            return ordered + remaining
           }
         }()
 
@@ -638,9 +649,19 @@ extension GroupMain {
             return handleGroupSettingsTapped(&state)
 
           case .sortSettingsTapped:
+            // 커스텀 정렬 순서에 따라 그룹 정렬
+            let customOrdered: [GroupBarItem] = {
+              if state.customGroupOrder.isEmpty {
+                return state.groupBarItems
+              }
+              let groupDict = Dictionary(uniqueKeysWithValues: state.groupBarItems.map { ($0.id, $0) })
+              return state.customGroupOrder.compactMap { groupDict[$0] }
+            }()
+
             state.sortSettings = GroupSortSettings.Feature.State(
               selectedOption: state.groupSortOption,
-              previewGroups: state.groupBarItems
+              previewGroups: state.groupBarItems,
+              customOrderedGroups: customOrdered
             )
             return .none
           }
@@ -933,6 +954,10 @@ extension GroupMain {
 
         case .sortSettings(.presented(.delegate(.sortOptionChanged(let option)))):
           state.groupSortOption = option
+          // 커스텀 정렬 순서 저장
+          if let sortSettingsState = state.sortSettings {
+            state.customGroupOrder = sortSettingsState.customOrderedGroups.map { $0.id }
+          }
           state.sortSettings = nil
           // 정렬 옵션 Firestore에 저장
           return .run { [userSettingsClient, currentUser = state.currentUser] _ in
