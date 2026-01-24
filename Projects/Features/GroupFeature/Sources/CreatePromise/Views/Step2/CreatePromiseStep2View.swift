@@ -79,7 +79,7 @@ struct LocationSection: View {
                 .background(Color(.systemGray6))
                 .clipShape(RoundedRectangle(cornerRadius: 12))
               }
-              .buttonStyle(.plain)
+              .buttonStyle(.hapticBounce(.light))
             }
           }
         }
@@ -102,55 +102,56 @@ private struct LocationWithMapCard: View {
   }
 
   var body: some View {
-    VStack(spacing: 0) {
-      // 미니맵 (좌표가 있는 경우만)
-      if hasCoordinates,
-         let lat = location.latitude,
-         let lng = location.longitude {
-        KakaoMiniMapView(
-          latitude: lat,
-          longitude: lng,
-          zoomLevel: 15,
-          markerImage: ResourceKitAsset.mapPinMedium.image
-        )
-        .frame(height: 240)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(
-          RoundedRectangle(cornerRadius: 16, style: .continuous)
-            .stroke(Color(.systemGray4), lineWidth: 0.5)
-        )
-      }
-
-      // 장소 정보
-      HStack(spacing: 12) {
-        ResourceKitAsset.mapPinMedium.swiftUIImage
-          .fixedSize()
-          .frame(width: 24, height: 24)
-
-        VStack(alignment: .leading, spacing: 2) {
-          Text(location.name)
-            .font(.system(size: 16, weight: .medium))
-            .foregroundColor(.primary)
-
-          if let address = location.address {
-            Text(address)
-              .font(.system(size: 13))
-              .foregroundColor(.secondary)
-              .lineLimit(1)
-          }
+    Button(action: onChangeTapped) {
+      VStack(spacing: 0) {
+        // 미니맵 (좌표가 있는 경우만)
+        if hasCoordinates,
+           let lat = location.latitude,
+           let lng = location.longitude {
+          KakaoMiniMapView(
+            latitude: lat,
+            longitude: lng,
+            zoomLevel: 15,
+            markerImage: ResourceKitAsset.mapPinMedium.image
+          )
+          .frame(height: 240)
+          .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+          .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+              .stroke(Color(.systemGray4), lineWidth: 0.5)
+          )
         }
 
-        Spacer()
+        // 장소 정보
+        HStack(spacing: 12) {
+          ResourceKitAsset.mapPinMedium.swiftUIImage
+            .fixedSize()
+            .frame(width: 24, height: 24)
 
-        Button(action: onChangeTapped) {
+          VStack(alignment: .leading, spacing: 2) {
+            Text(location.name)
+              .font(.system(size: 16, weight: .medium))
+              .foregroundColor(.primary)
+
+            if let address = location.address {
+              Text(address)
+                .font(.system(size: 13))
+                .foregroundColor(.secondary)
+                .lineLimit(1)
+            }
+          }
+
+          Spacer()
+
           Text("변경")
             .font(.system(size: 14, weight: .medium))
             .foregroundColor(Color.pmindigo.n500)
         }
+        .padding(.horizontal, 4)
+        .padding(.top, hasCoordinates ? 12 : 0)
       }
-      .padding(.horizontal, 4)
-      .padding(.top, hasCoordinates ? 12 : 0)
     }
+    .buttonStyle(.hapticBounce(.light))
   }
 }
 

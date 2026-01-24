@@ -7,11 +7,13 @@ import SwiftUI
 import ComposableArchitecture
 import Clients
 import ResourceKit
+import PromisoShared
 
 extension LocationPicker {
 
   public struct RootView: View {
     @Bindable var store: StoreOf<LocationPicker.Feature>
+    @FocusState private var isSearchFocused: Bool
 
     public init(store: StoreOf<LocationPicker.Feature>) {
       self.store = store
@@ -26,7 +28,8 @@ extension LocationPicker {
               get: { store.searchText },
               set: { store.send(.view(.searchTextChanged($0))) }
             ),
-            onClear: { store.send(.view(.clearSearchTapped)) }
+            onClear: { store.send(.view(.clearSearchTapped)) },
+            isFocused: $isSearchFocused
           )
           .padding(16)
 
@@ -57,6 +60,10 @@ extension LocationPicker {
         }
         .onAppear {
           store.send(.view(.onAppear))
+          // 자동으로 검색창에 포커스
+          DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            isSearchFocused = true
+          }
         }
       }
     }
@@ -104,6 +111,7 @@ extension LocationPicker {
 private struct SearchBar: View {
   @Binding var text: String
   let onClear: () -> Void
+  var isFocused: FocusState<Bool>.Binding
 
   var body: some View {
     HStack(spacing: 12) {
@@ -114,6 +122,7 @@ private struct SearchBar: View {
       TextField("장소를 검색하세요", text: $text)
         .textFieldStyle(.plain)
         .autocorrectionDisabled()
+        .focused(isFocused)
 
       if !text.isEmpty {
         Button(action: onClear) {
@@ -188,32 +197,38 @@ private struct HistoryListView: View {
   let onDelete: (String) -> Void
 
   var body: some View {
-    ScrollView {
-      LazyVStack(spacing: 0) {
-        // 헤더
-        HStack {
-          Text("최근 검색")
-            .font(.system(size: 13, weight: .medium))
-            .foregroundColor(.secondary)
-          Spacer()
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-
-        ForEach(items) { item in
-          HistoryRow(
-            item: item,
-            isHighlighted: item.id == highlightedId,
-            onDelete: { onDelete(item.id) }
-          )
-          .contentShape(Rectangle())
-          .onTapGesture {
-            onSelect(item)
+    ScrollViewReader { proxy in
+      ScrollView {
+        LazyVStack(spacing: 0) {
+          // 헤더
+          HStack {
+            Text("최근 검색")
+              .font(.system(size: 13, weight: .medium))
+              .foregroundColor(.secondary)
+            Spacer()
           }
+          .padding(.horizontal, 16)
+          .padding(.vertical, 8)
 
-          if item.id != items.last?.id {
-            Divider()
-              .padding(.leading, 56)
+          ForEach(items) { item in
+            HistoryRow(
+              item: item,
+              isHighlighted: item.id == highlightedId,
+              onDelete: { onDelete(item.id) }
+            )
+            .id(item.id)
+            .contentShape(Rectangle())
+            .pressable(feedback: .light) {
+              onSelect(item)
+              withAnimation {
+                proxy.scrollTo(item.id, anchor: .top)
+              }
+            }
+
+            if item.id != items.last?.id {
+              Divider()
+                .padding(.leading, 56)
+            }
           }
         }
       }
@@ -280,18 +295,24 @@ private struct SearchResultsList: View {
   let onSelect: (Place) -> Void
 
   var body: some View {
-    ScrollView {
-      LazyVStack(spacing: 0) {
-        ForEach(places) { place in
-          PlaceRow(place: place, isHighlighted: place.id == highlightedId)
-            .contentShape(Rectangle())
-            .onTapGesture {
-              onSelect(place)
-            }
+    ScrollViewReader { proxy in
+      ScrollView {
+        LazyVStack(spacing: 0) {
+          ForEach(places) { place in
+            PlaceRow(place: place, isHighlighted: place.id == highlightedId)
+              .id(place.id)
+              .contentShape(Rectangle())
+              .pressable(feedback: .light) {
+                onSelect(place)
+                withAnimation {
+                  proxy.scrollTo(place.id, anchor: .top)
+                }
+              }
 
-          if place.id != places.last?.id {
-            Divider()
-              .padding(.leading, 56)
+            if place.id != places.last?.id {
+              Divider()
+                .padding(.leading, 56)
+            }
           }
         }
       }
@@ -408,8 +429,6 @@ private struct MiniMapPreview: View {
 
   var body: some View {
     VStack(spacing: 0) {
-      Divider()
-
       HStack(spacing: 12) {
         // 미니 지도
         MapPreviewView(coordinate: place.coordinate)
@@ -452,10 +471,28 @@ private struct MiniMapPreview: View {
           .background(Color.pmindigo.n500)
           .clipShape(RoundedRectangle(cornerRadius: 12))
       }
+      .buttonStyle(.hapticBounce(.medium))
       .padding(.horizontal, 12)
+      .padding(.top, 12)
       .padding(.bottom, 12)
     }
-    .background(Color(.systemBackground))
+    .background(
+      ZStack {
+        // 키보드 여백 커버 (아래쪽)
+        Color(.systemBackground)
+          .padding(.top, 16) // cornerRadius 영역 제외
+
+        // 상단 cornerRadius 배경
+        UnevenRoundedRectangle(
+          topLeadingRadius: 16,
+          bottomLeadingRadius: 0,
+          bottomTrailingRadius: 0,
+          topTrailingRadius: 16
+        )
+        .fill(Color(.systemBackground))
+      }
+      .ignoresSafeArea(edges: .bottom)
+    )
   }
 }
 

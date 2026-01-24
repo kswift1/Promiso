@@ -16,6 +16,7 @@ struct PromiseCard: View {
   let onDelete: (() -> Void)?
   let onChangeResponse: ((PromiseAttendanceStatus) -> Void)?
   let onShare: (() -> Void)?
+  let onDirections: (() -> Void)?
 
   init(
     promise: PromiseModel,
@@ -29,7 +30,8 @@ struct PromiseCard: View {
     onEdit: (() -> Void)? = nil,
     onDelete: (() -> Void)? = nil,
     onChangeResponse: ((PromiseAttendanceStatus) -> Void)? = nil,
-    onShare: (() -> Void)? = nil
+    onShare: (() -> Void)? = nil,
+    onDirections: (() -> Void)? = nil
   ) {
     self.promise = promise
     self.currentUserId = currentUserId
@@ -43,6 +45,7 @@ struct PromiseCard: View {
     self.onDelete = onDelete
     self.onChangeResponse = onChangeResponse
     self.onShare = onShare
+    self.onDirections = onDirections
   }
 
   /// 수정 가능 여부 (호스트 && 시작 전)
@@ -64,6 +67,10 @@ struct PromiseCard: View {
 
   private var isLocationUndecided: Bool {
     promise.locationText == "장소 미정"
+  }
+
+  private var hasCoordinates: Bool {
+    promise.location?.latitude != nil && promise.location?.longitude != nil
   }
 
   private var isHost: Bool {
@@ -211,9 +218,33 @@ struct PromiseCard: View {
         confirmationProgressText
       }
 
-      // My response badge
-      if myVoteStatus != .pending {
-        ResponseBadge(status: myVoteStatus == .accepted ? .accepted : .declined)
+      // My response badge & Directions button
+      if myVoteStatus != .pending || (isLive && hasCoordinates) {
+        HStack {
+          if myVoteStatus != .pending {
+            ResponseBadge(status: myVoteStatus == .accepted ? .accepted : .declined)
+          }
+
+          Spacer()
+
+          // 길찾기 버튼 (Live 상태 + 좌표가 있을 때)
+          if isLive && hasCoordinates, let onDirections {
+            Button(action: onDirections) {
+              HStack(spacing: 4) {
+                Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
+                  .font(.system(size: 12, weight: .semibold))
+                Text("길찾기")
+                  .font(.system(size: 12, weight: .semibold))
+              }
+              .foregroundColor(Color.pmindigo.n500)
+              .padding(.horizontal, 10)
+              .padding(.vertical, 6)
+              .background(Color.pmindigo.n500.opacity(0.12))
+              .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+          }
+        }
       }
     }
     .padding(16)

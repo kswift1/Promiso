@@ -349,6 +349,9 @@ extension GroupMain {
         },
         onShare: {
           store.send(.view(.promiseShared(promiseId)))
+        },
+        onDirections: {
+          store.send(.view(.directionsTapped(promiseId)))
         }
       )
       .contentShape(Rectangle())

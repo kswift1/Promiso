@@ -243,6 +243,26 @@ extension PromiseDetail {
       }
     }
 
+    // MARK: - Directions Section (Live 상태일 때)
+
+    private var directionsSection: some View {
+      Button {
+        store.send(.view(.directionsTapped))
+      } label: {
+        HStack(spacing: 8) {
+          Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
+            .font(.system(size: 16))
+          Text("길찾기")
+            .font(.system(size: 16, weight: .semibold))
+        }
+        .foregroundStyle(.white)
+        .frame(maxWidth: .infinity)
+        .frame(height: 50)
+        .background(Color.pmindigo.n500)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+      }
+    }
+
     // MARK: - Toolbar
 
     @ToolbarContentBuilder
@@ -428,7 +448,7 @@ private struct LocationInfoRow: View {
           .foregroundStyle(.white)
           .padding(.horizontal, 12)
           .padding(.vertical, 6)
-          .background(Color.blue)
+          .background(Color.pmindigo.n500)
           .clipShape(Capsule())
         }
       }
