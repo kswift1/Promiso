@@ -122,9 +122,7 @@ private struct GroupBarSkeletonItem: View {
       // 텍스트 영역 (실제 아이템과 동일한 width)
       RoundedRectangle(cornerRadius: 3)
         .fill(Color.pmindigo.n100)
-        .frame(width: 48, height: 11)
-    }
-    .frame(width: 72) // 실제 아이템 전체 width와 동일
+        .frame(width: 72, height: 11)
     }
     .opacity(isAnimating ? 0.6 : 1.0)
     .animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true), value: isAnimating)
