@@ -124,6 +124,7 @@ extension GroupMain {
 
     @Dependency(\.groupClient) var groupClient
     @Dependency(\.promiseClient) var promiseClient
+    @Dependency(\.userDefaultsClient) var userDefaultsClient
 
     public init() {}
 
@@ -146,6 +147,9 @@ extension GroupMain {
       /// 현재 선택된 필터
       var selectedFilter: GroupMain.PromiseFilter = .needResponse
 
+      /// 그룹 정렬 옵션
+      var groupSortOption: GroupSortOption = .joinedRecent
+
       /// 과거 약속 상태 (별도 fetch)
       var pastPromisesState: LoadingState<[PromiseModel]> = .idle
 
@@ -158,6 +162,7 @@ extension GroupMain {
       @Presents var editPromise: EditPromise.Feature.State?
       @Presents var deleteAlert: AlertState<DeleteAlertAction>?
       @Presents var groupActionSheet: ConfirmationDialogState<GroupActionSheetAction>?
+      @Presents var sortSettings: GroupSortSettings.Feature.State?
 
       /// 삭제 대상 약속 ID (알럿 확인 시 사용)
       var promiseToDelete: String?
@@ -199,7 +204,19 @@ extension GroupMain {
           ]
         }
 
-        return groups.map { group in
+        // 정렬 적용
+        let sortedGroups: [UserGroupInfo] = {
+          switch groupSortOption {
+          case .joinedRecent:
+            return groups.sorted { ($0.joinedAt ?? .distantPast) > ($1.joinedAt ?? .distantPast) }
+          case .joinedOldest:
+            return groups.sorted { ($0.joinedAt ?? .distantPast) < ($1.joinedAt ?? .distantPast) }
+          case .nameAscending:
+            return groups.sorted { $0.name < $1.name }
+          }
+        }()
+
+        return sortedGroups.map { group in
           GroupBarItem(
             id: group.id,
             name: group.name,
@@ -341,6 +358,7 @@ extension GroupMain {
       case editPromise(PresentationAction<EditPromise.Feature.Action>)
       case deleteAlert(PresentationAction<DeleteAlertAction>)
       case groupActionSheet(PresentationAction<GroupActionSheetAction>)
+      case sortSettings(PresentationAction<GroupSortSettings.Feature.Action>)
 
       case path(StackActionOf<Path>)
 
@@ -370,6 +388,7 @@ extension GroupMain {
         case moreConfirmedTapped  // "N개 더 보기" - 확정
         case allPromisesTapped  // "모든 약속 보기"
         case groupSettingsTapped  // "그룹 설정"
+        case sortSettingsTapped  // "그룹 정렬"
       }
 
       public enum Internal: Sendable {
@@ -407,6 +426,8 @@ extension GroupMain {
           case .onAppear:
             guard !state.isInitialized else { return .none }
             state.isInitialized = true
+            // 저장된 정렬 옵션 불러오기
+            state.groupSortOption = userDefaultsClient.groupSortOption
             // 캐시된 데이터로 먼저 UI 표시 (빠른 로딩)
             let summaries = state.currentUser.sortedGroups
             state.allGroupSummaries = summaries
@@ -612,6 +633,12 @@ extension GroupMain {
 
           case .groupSettingsTapped:
             return handleGroupSettingsTapped(&state)
+
+          case .sortSettingsTapped:
+            state.sortSettings = GroupSortSettings.Feature.State(
+              selectedOption: state.groupSortOption
+            )
+            return .none
           }
 
         // MARK: - Internal Actions
@@ -882,6 +909,17 @@ extension GroupMain {
         case .editPromise:
           return .none
 
+        case .sortSettings(.presented(.delegate(.sortOptionChanged(let option)))):
+          state.groupSortOption = option
+          state.sortSettings = nil
+          // 정렬 옵션 저장
+          return .run { [userDefaultsClient] _ in
+            userDefaultsClient.setGroupSortOption(option)
+          }
+
+        case .sortSettings:
+          return .none
+
         case .deleteAlert(.presented(.confirmDelete)):
           guard let promiseId = state.promiseToDelete else { return .none }
           state.promiseToDelete = nil
@@ -994,6 +1032,7 @@ extension GroupMain {
       .ifLet(\.$editPromise, action: \.editPromise) { EditPromise.Feature() }
       .ifLet(\.$deleteAlert, action: \.deleteAlert)
       .ifLet(\.$groupActionSheet, action: \.groupActionSheet)
+      .ifLet(\.$sortSettings, action: \.sortSettings) { GroupSortSettings.Feature() }
       .forEach(\.path, action: \.path)
     }
   }

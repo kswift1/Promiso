@@ -38,6 +38,7 @@ struct GroupHorizontalBar: View {
   let onGroupTap: (String) -> Void
   let onCreateGroup: () -> Void
   let onJoinGroup: () -> Void
+  let onSortSettings: () -> Void
 
   var body: some View {
     ScrollViewReader { proxy in
@@ -54,7 +55,8 @@ struct GroupHorizontalBar: View {
           // + 추가 버튼 메뉴
           AddGroupMenuButton(
             onCreateGroup: onCreateGroup,
-            onJoinGroup: onJoinGroup
+            onJoinGroup: onJoinGroup,
+            onSortSettings: onSortSettings
           )
         }
         .padding(.horizontal, 16)
@@ -148,6 +150,7 @@ private struct ActivityIndicatorDot: View {
 private struct AddGroupMenuButton: View {
   let onCreateGroup: () -> Void
   let onJoinGroup: () -> Void
+  let onSortSettings: () -> Void
 
   var body: some View {
     Menu {
@@ -161,6 +164,14 @@ private struct AddGroupMenuButton: View {
         onJoinGroup()
       } label: {
         Label("초대 코드로 참여", systemImage: "link")
+      }
+
+      Divider()
+
+      Button {
+        onSortSettings()
+      } label: {
+        Label("그룹 정렬", systemImage: "arrow.up.arrow.down")
       }
     } label: {
       Circle()
@@ -192,7 +203,8 @@ private struct AddGroupMenuButton: View {
       ],
       onGroupTap: { id in print("Group tapped: \(id)") },
       onCreateGroup: { print("Create group") },
-      onJoinGroup: { print("Join group") }
+      onJoinGroup: { print("Join group") },
+      onSortSettings: { print("Sort settings") }
     )
     .background(Color(.systemGroupedBackground))
 
@@ -205,7 +217,8 @@ private struct AddGroupMenuButton: View {
     groups: [],
     onGroupTap: { _ in },
     onCreateGroup: { },
-    onJoinGroup: { }
+    onJoinGroup: { },
+    onSortSettings: { }
   )
   .background(Color(.systemGroupedBackground))
 }

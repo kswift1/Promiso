@@ -74,6 +74,12 @@ extension GroupMain {
       ) { editStore in
         EditPromise.RootView(store: editStore)
       }
+      .sheet(
+        store: store.scope(state: \.$sortSettings, action: \.sortSettings)
+      ) { sortStore in
+        GroupSortSettings.RootView(store: sortStore)
+          .presentationDetents([.height(280)])
+      }
       .alert(store: store.scope(state: \.$deleteAlert, action: \.deleteAlert))
       .confirmationDialog(
         store: store.scope(state: \.$groupActionSheet, action: \.groupActionSheet)
@@ -97,6 +103,9 @@ extension GroupMain {
           },
           onJoinGroup: {
             store.send(.view(.joinGroup))
+          },
+          onSortSettings: {
+            store.send(.view(.sortSettingsTapped))
           }
         )
 
@@ -457,6 +466,9 @@ extension GroupMain {
           },
           onJoinGroup: {
             store.send(.view(.joinGroup))
+          },
+          onSortSettings: {
+            store.send(.view(.sortSettingsTapped))
           }
         )
 

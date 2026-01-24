@@ -52,6 +52,8 @@ public enum AppConstants {
     public static let deviceId = "promiso.device.id"
     /// 실시간 공유 정보 팝오버 본 적 있는지
     public static let hasSeenLiveActivityInfo = "promiso.hasSeenLiveActivityInfo"
+    /// 그룹 정렬 옵션
+    public static let groupSortOption = "promiso.groupSortOption"
   }
 
   // MARK: - Notification Names
