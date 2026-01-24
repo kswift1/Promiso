@@ -4,26 +4,24 @@ import PromisoShared
 
 extension GroupSortSettings {
   public struct RootView: View {
-    @Bindable public var store: StoreOf<Feature>
+    @Bindable var store: StoreOf<Feature>
 
     public init(store: StoreOf<Feature>) {
       self.store = store
     }
 
     public var body: some View {
-      WithPerceptionTracking {
-        NavigationStack {
-          contentView
-            .navigationTitle("그룹 정렬")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-              ToolbarItem(placement: .confirmationAction) {
-                Button("완료") {
-                  store.send(.view(.closeTapped))
-                }
+      NavigationStack {
+        contentView
+          .navigationTitle("그룹 정렬")
+          .navigationBarTitleDisplayMode(.inline)
+          .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+              Button("완료") {
+                store.send(.view(.closeTapped))
               }
             }
-        }
+          }
       }
     }
 
