@@ -25,19 +25,23 @@ public enum LocationPicker {
       var isSearching: Bool = false
       var searchError: String?
       var selectedPlace: Place?
+      /// 지도 미리보기에 표시할 장소
+      var previewPlace: Place?
 
       public init(
         searchText: String = "",
         searchResults: [Place] = [],
         isSearching: Bool = false,
         searchError: String? = nil,
-        selectedPlace: Place? = nil
+        selectedPlace: Place? = nil,
+        previewPlace: Place? = nil
       ) {
         self.searchText = searchText
         self.searchResults = searchResults
         self.isSearching = isSearching
         self.searchError = searchError
         self.selectedPlace = selectedPlace
+        self.previewPlace = previewPlace
       }
     }
 
@@ -50,6 +54,9 @@ public enum LocationPicker {
         case searchTextChanged(String)
         case clearSearchTapped
         case placeSelected(Place)
+        case placeTapped(Place)
+        case confirmSelectionTapped
+        case closePreviewTapped
         case dismissTapped
       }
 
@@ -106,6 +113,20 @@ public enum LocationPicker {
             state.selectedPlace = place
             let locationInfo = place.toLocationInfo()
             return .send(.delegate(.locationSelected(locationInfo)))
+
+          case .placeTapped(let place):
+            state.previewPlace = place
+            return .none
+
+          case .confirmSelectionTapped:
+            guard let place = state.previewPlace else { return .none }
+            state.selectedPlace = place
+            let locationInfo = place.toLocationInfo()
+            return .send(.delegate(.locationSelected(locationInfo)))
+
+          case .closePreviewTapped:
+            state.previewPlace = nil
+            return .none
 
           case .dismissTapped:
             return .send(.delegate(.dismissed))

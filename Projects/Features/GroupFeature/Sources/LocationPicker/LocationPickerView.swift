@@ -19,35 +19,51 @@ extension LocationPicker {
 
     public var body: some View {
       NavigationStack {
-        VStack(spacing: 0) {
-          // 검색바
-          SearchBar(
-            text: Binding(
-              get: { store.searchText },
-              set: { store.send(.view(.searchTextChanged($0))) }
-            ),
-            onClear: { store.send(.view(.clearSearchTapped)) }
-          )
-          .padding(16)
-
-          Divider()
-
-          // 콘텐츠
-          if store.isSearching {
-            LoadingView()
-          } else if let error = store.searchError {
-            ErrorView(message: error)
-          } else if store.searchResults.isEmpty && !store.searchText.isEmpty {
-            EmptyResultView()
-          } else if store.searchResults.isEmpty {
-            PlaceholderView()
-          } else {
-            SearchResultsList(
-              places: store.searchResults,
-              onSelect: { store.send(.view(.placeSelected($0))) }
+        ZStack(alignment: .bottom) {
+          VStack(spacing: 0) {
+            // 검색바
+            SearchBar(
+              text: Binding(
+                get: { store.searchText },
+                set: { store.send(.view(.searchTextChanged($0))) }
+              ),
+              onClear: { store.send(.view(.clearSearchTapped)) }
             )
+            .padding(16)
+
+            Divider()
+
+            // 콘텐츠
+            if store.isSearching {
+              LoadingView()
+            } else if let error = store.searchError {
+              ErrorView(message: error)
+            } else if store.searchResults.isEmpty && !store.searchText.isEmpty {
+              EmptyResultView()
+            } else if store.searchResults.isEmpty {
+              PlaceholderView()
+            } else {
+              SearchResultsList(
+                places: store.searchResults,
+                highlightedId: store.previewPlace?.id,
+                onSelect: { store.send(.view(.placeTapped($0))) }
+              )
+              // 지도 미리보기가 있으면 하단 여백 추가
+              .padding(.bottom, store.previewPlace != nil ? 320 : 0)
+            }
+          }
+
+          // 지도 미리보기
+          if let previewPlace = store.previewPlace {
+            MapPreviewContainer(
+              place: previewPlace,
+              onConfirm: { store.send(.view(.confirmSelectionTapped)) },
+              onClose: { store.send(.view(.closePreviewTapped)) }
+            )
+            .transition(.move(edge: .bottom).combined(with: .opacity))
           }
         }
+        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: store.previewPlace)
         .navigationTitle("장소 검색")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -96,13 +112,14 @@ private struct SearchBar: View {
 
 private struct SearchResultsList: View {
   let places: [Place]
+  var highlightedId: String?
   let onSelect: (Place) -> Void
 
   var body: some View {
     ScrollView {
       LazyVStack(spacing: 0) {
         ForEach(places) { place in
-          PlaceRow(place: place)
+          PlaceRow(place: place, isHighlighted: place.id == highlightedId)
             .contentShape(Rectangle())
             .onTapGesture {
               onSelect(place)
@@ -122,18 +139,19 @@ private struct SearchResultsList: View {
 
 private struct PlaceRow: View {
   let place: Place
+  var isHighlighted: Bool = false
 
   var body: some View {
     HStack(spacing: 12) {
       // 아이콘
       ZStack {
         Circle()
-          .fill(Color.pmindigo.n100)
+          .fill(isHighlighted ? Color.pmindigo.n500 : Color.pmindigo.n100)
           .frame(width: 40, height: 40)
 
         Image(systemName: "mappin.circle.fill")
           .font(.system(size: 20))
-          .foregroundColor(Color.pmindigo.n500)
+          .foregroundColor(isHighlighted ? .white : Color.pmindigo.n500)
       }
 
       // 정보
@@ -160,13 +178,21 @@ private struct PlaceRow: View {
 
       Spacer()
 
-      // 선택 화살표
-      Image(systemName: "chevron.right")
-        .font(.system(size: 14, weight: .medium))
-        .foregroundColor(.secondary)
+      // 선택 표시
+      if isHighlighted {
+        Image(systemName: "checkmark.circle.fill")
+          .font(.system(size: 20))
+          .foregroundColor(Color.pmindigo.n500)
+      } else {
+        Image(systemName: "chevron.right")
+          .font(.system(size: 14, weight: .medium))
+          .foregroundColor(.secondary)
+      }
     }
     .padding(.horizontal, 16)
     .padding(.vertical, 12)
+    .background(isHighlighted ? Color.pmindigo.n50 : Color.clear)
+    .animation(.easeInOut(duration: 0.2), value: isHighlighted)
   }
 }
 
