@@ -52,7 +52,7 @@ extension RootTab {
     public init() {}
 
     @ObservableState
-    public struct State {
+    public struct State: Equatable {
       /// 현재 선택된 탭
       var selectedTab: Tab = .home
 
@@ -329,7 +329,9 @@ extension RootTab {
                 currentUserId: attributes.currentUserId,
                 trackingDurationMinutes: attributes.trackingDurationMinutes,
                 hostId: attributes.hostId,
-                hostName: attributes.hostName
+                hostName: attributes.hostName,
+                groupName: attributes.groupName,
+                groupImageUrl: attributes.groupImageUrl
               )
               state.livePromise = LivePromise.Feature.State(data: Shared(value: data))
 

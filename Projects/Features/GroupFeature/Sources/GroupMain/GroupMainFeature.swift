@@ -128,7 +128,7 @@ extension GroupMain {
     public init() {}
 
     @ObservableState
-    public struct State {
+    public struct State: Equatable {
       var isInitialized: Bool = false
       let currentUser: UserPrivateModel
 

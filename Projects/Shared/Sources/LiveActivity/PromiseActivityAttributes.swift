@@ -38,6 +38,12 @@ public struct PromiseActivityAttributes: ActivityAttributes, Equatable {
   /// iOS 18 Broadcast 채널 ID (Apple이 생성)
   public let channelId: String
 
+  /// 그룹 이름
+  public let groupName: String?
+
+  /// 그룹 이미지 URL
+  public let groupImageUrl: String?
+
   // MARK: - CodingKeys
 
   private enum CodingKeys: String, CodingKey {
@@ -51,6 +57,8 @@ public struct PromiseActivityAttributes: ActivityAttributes, Equatable {
     case hostId
     case hostName
     case channelId
+    case groupName
+    case groupImageUrl
   }
 
   // MARK: - Initializer
@@ -65,7 +73,9 @@ public struct PromiseActivityAttributes: ActivityAttributes, Equatable {
     trackingDurationMinutes: Int = 30,
     hostId: String = "",
     hostName: String? = nil,
-    channelId: String = ""
+    channelId: String = "",
+    groupName: String? = nil,
+    groupImageUrl: String? = nil
   ) {
     self.promiseId = promiseId
     self.currentUserId = currentUserId
@@ -77,6 +87,8 @@ public struct PromiseActivityAttributes: ActivityAttributes, Equatable {
     self.hostId = hostId
     self.hostName = hostName
     self.channelId = channelId
+    self.groupName = groupName
+    self.groupImageUrl = groupImageUrl
   }
 
   // MARK: - Decodable (Unix timestamp → Date 변환)
@@ -93,6 +105,8 @@ public struct PromiseActivityAttributes: ActivityAttributes, Equatable {
     self.hostId = try container.decodeIfPresent(String.self, forKey: .hostId) ?? ""
     self.hostName = try container.decodeIfPresent(String.self, forKey: .hostName)
     self.channelId = try container.decodeIfPresent(String.self, forKey: .channelId) ?? ""
+    self.groupName = try container.decodeIfPresent(String.self, forKey: .groupName)
+    self.groupImageUrl = try container.decodeIfPresent(String.self, forKey: .groupImageUrl)
 
     // scheduledTime: Unix timestamp (1970년 기준 초) → Date 변환
     let timestamp = try container.decode(Double.self, forKey: .scheduledTime)
@@ -113,6 +127,8 @@ public struct PromiseActivityAttributes: ActivityAttributes, Equatable {
     try container.encode(hostId, forKey: .hostId)
     try container.encodeIfPresent(hostName, forKey: .hostName)
     try container.encode(channelId, forKey: .channelId)
+    try container.encodeIfPresent(groupName, forKey: .groupName)
+    try container.encodeIfPresent(groupImageUrl, forKey: .groupImageUrl)
 
     // Date → Unix timestamp (1970년 기준 초) 변환
     try container.encode(scheduledTime.timeIntervalSince1970, forKey: .scheduledTime)

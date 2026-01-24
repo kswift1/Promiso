@@ -30,6 +30,8 @@ extension LivePromise {
     public var isProcessingETAUpdate: Bool
     public var hostId: String
     public var hostName: String?
+    public var groupName: String?
+    public var groupImageUrl: String?
 
     public init(
       emoji: String = "📍",
@@ -41,7 +43,9 @@ extension LivePromise {
       trackingDurationMinutes: Int = 30,
       isProcessingETAUpdate: Bool = false,
       hostId: String = "",
-      hostName: String? = nil
+      hostName: String? = nil,
+      groupName: String? = nil,
+      groupImageUrl: String? = nil
     ) {
       self.emoji = emoji
       self.title = title
@@ -53,6 +57,8 @@ extension LivePromise {
       self.isProcessingETAUpdate = isProcessingETAUpdate
       self.hostId = hostId
       self.hostName = hostName
+      self.groupName = groupName
+      self.groupImageUrl = groupImageUrl
     }
 
     // MARK: - Computed Properties
