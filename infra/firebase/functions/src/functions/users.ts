@@ -17,12 +17,8 @@ import {
   CreateUserRequest,
   CreateUserResponse,
   GetUserRequest,
-  GetUserSettingsResponse,
-  GroupSortOption,
   UpdateUserRequest,
   UpdateUserResponse,
-  UpdateUserSettingsRequest,
-  UpdateUserSettingsResponse,
   UploadProfileImageRequest,
   UploadProfileImageResponse,
   UserPrivateResponse,
@@ -353,112 +349,6 @@ export const uploadProfileImage = onCall<UploadProfileImageRequest>(
         "프로필 이미지 업로드 중 오류가 발생했습니다",
       );
     }
-  },
-);
-
-/**
- * 사용자 설정 조회
- *
- * @remarks
- * **인증 필수**
- *
- * 사용자의 설정 정보를 조회합니다.
- */
-export const getUserSettings = onCall(
-  {region: REGION},
-  async (request): Promise<GetUserSettingsResponse> => {
-    // 1. 인증 확인
-    if (!request.auth) {
-      throw new HttpsError("unauthenticated", "로그인이 필요합니다");
-    }
-
-    const userId = request.auth.uid;
-    const data = request.data || {};
-
-    const db = admin.firestore();
-    const usersCollection = getEnvironmentCollection("users", db, data.env);
-    const settingsRef = usersCollection
-      .doc(userId)
-      .collection("settings")
-      .doc("main");
-
-    // 2. 설정 조회
-    const settingsDoc = await settingsRef.get();
-    if (!settingsDoc.exists) {
-      throw new HttpsError(
-        "not-found",
-        "설정을 찾을 수 없습니다",
-      );
-    }
-
-    const settingsData = settingsDoc.data();
-    if (!settingsData) {
-      throw new HttpsError(
-        "internal",
-        "설정 데이터를 읽을 수 없습니다",
-      );
-    }
-
-    // 3. 응답 반환
-    return {
-      notificationEnabled: settingsData.notificationEnabled ?? true,
-      groupSortOption: GroupSortOption.read(settingsData.groupSortOption),
-    };
-  },
-);
-
-/**
- * 사용자 설정 수정
- *
- * @remarks
- * **인증 필수**
- *
- * 사용자의 설정을 수정합니다.
- */
-export const updateUserSettings = onCall<UpdateUserSettingsRequest>(
-  {region: REGION},
-  async (request): Promise<UpdateUserSettingsResponse> => {
-    // 1. 인증 확인
-    if (!request.auth) {
-      throw new HttpsError("unauthenticated", "로그인이 필요합니다");
-    }
-
-    const userId = request.auth.uid;
-    const data = request.data;
-
-    const db = admin.firestore();
-    const usersCollection = getEnvironmentCollection("users", db, data.env);
-    const settingsRef = usersCollection
-      .doc(userId)
-      .collection("settings")
-      .doc("main");
-
-    const updateData: Record<string, unknown> = {};
-
-    // 2. 업데이트할 필드 추가
-    if (
-      data.notificationEnabled !== undefined &&
-      data.notificationEnabled !== null
-    ) {
-      updateData.notificationEnabled = data.notificationEnabled;
-    }
-
-    if (
-      data.groupSortOption !== undefined &&
-      data.groupSortOption !== null
-    ) {
-      updateData.groupSortOption = GroupSortOption.write(data.groupSortOption);
-    }
-
-    // 3. Firestore 업데이트
-    if (Object.keys(updateData).length > 0) {
-      await settingsRef.update(updateData);
-    }
-
-    // 4. 응답 반환
-    return {
-      success: true,
-    };
   },
 );
 
