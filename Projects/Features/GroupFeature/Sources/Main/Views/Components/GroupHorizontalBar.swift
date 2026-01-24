@@ -119,11 +119,10 @@ private struct GroupBarSkeletonItem: View {
         )
         .frame(width: 56, height: 56)
 
-      // 텍스트 영역 (실제 아이템과 동일: font 11, lineLimit 2, width 72)
+      // 텍스트 영역
       RoundedRectangle(cornerRadius: 3)
         .fill(Color.pmindigo.n100)
         .frame(width: 48, height: 11)
-        .frame(width: 72, height: 28, alignment: .top) // 2줄 텍스트 높이 확보
     }
     .opacity(isAnimating ? 0.6 : 1.0)
     .animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true), value: isAnimating)
