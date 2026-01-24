@@ -60,6 +60,14 @@ enum Dependencies {
     )
   }
 
+  // MARK: - Maps
+  static func kakaoMaps() -> Package.Dependency {
+    .package(
+      url: "https://github.com/kakao-mapsSDK/KakaoMapsSDK-SPM",
+      .upToNextMajor(from: "2.12.0")
+    )
+  }
+
   // MARK: - All Dependencies
   static var all: [Package.Dependency] { [
     tca(),
@@ -69,6 +77,7 @@ enum Dependencies {
     nuke(),
     clarity(),
     lottie(),
+    kakaoMaps(),
   ]}
 }
 
