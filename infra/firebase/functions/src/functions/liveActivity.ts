@@ -229,7 +229,8 @@ export const startLiveActivity = onCall<StartLiveActivityRequest>(
     );
 
     // 5. APNs Push to Start 전송
-    const isProduction = effectiveEnv === "prod";
+    // Stage 환경에서도 APNs Production 사용 (TestFlight/App Store 빌드)
+    const isProduction = true;
     const trackingDurationMinutes = trackingMinutes;
 
     let successCount = 0;
@@ -389,7 +390,8 @@ export const updateETA = onCall<UpdateETARequest>(
     }
 
     // Firestore 없이 바로 APNs Broadcast 전송
-    const isProduction = env === "prod";
+    // Stage 환경에서도 APNs Production 사용 (TestFlight/App Store 빌드)
+    const isProduction = true;
     const effectiveEnv = env || "prod";
 
     const payload: any = {
@@ -575,7 +577,8 @@ export const widgetUpdateETA = onRequest(
     }
 
     // Firestore 없이 바로 APNs Broadcast 전송
-    const isProduction = env === "prod";
+    // Stage 환경에서도 APNs Production 사용 (TestFlight/App Store 빌드)
+    const isProduction = true;
     const effectiveEnv = env || "prod";
 
     const payload: any = {
@@ -749,7 +752,8 @@ export const executeLiveActivityStart = onTaskDispatched<
     }
 
     // 5. iOS 18 Broadcast 채널 생성 (Apple이 channelId 생성)
-    const isProduction = env === "prod";
+    // Stage 환경에서도 APNs Production 사용 (TestFlight/App Store 빌드)
+    const isProduction = true;
     const channelResult = await createAPNsChannel(isProduction);
     let channelId: string | undefined;
 
@@ -880,7 +884,7 @@ export const executeLiveActivityEnd = onTaskDispatched<
     secrets: [APNS_KEY_ID, APNS_TEAM_ID, APNS_AUTH_KEY],
   },
   async (req) => {
-    const {promiseId, channelId, env} = req.data;
+    const {promiseId, channelId} = req.data;
     console.log(`⏰ Scheduled LiveActivity end: ${promiseId}`);
 
     if (!channelId) {
@@ -888,7 +892,8 @@ export const executeLiveActivityEnd = onTaskDispatched<
       return;
     }
 
-    const isProduction = env === "prod";
+    // Stage 환경에서도 APNs Production 사용 (TestFlight/App Store 빌드)
+    const isProduction = true;
 
     // end 이벤트 전송 (dismissal-date는 과거로 설정하여 즉시 제거)
     const payload = {
