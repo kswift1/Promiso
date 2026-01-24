@@ -252,17 +252,21 @@ private struct PromiseRow: View {
     .listRowBackground(Color.clear)
     .listRowSeparator(.hidden)
     .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
-    .swipeActions(edge: .leading, allowsFullSwipe: true) {
-      Button(action: leadingAction.action) {
-        Label(leadingAction.title, systemImage: leadingAction.systemImage)
+    .swipeActions(edge: .leading, allowsFullSwipe: !promise.isRealtimeShareable) {
+      if !promise.isRealtimeShareable {
+        Button(action: leadingAction.action) {
+          Label(leadingAction.title, systemImage: leadingAction.systemImage)
+        }
+        .tint(leadingAction.color)
       }
-      .tint(leadingAction.color)
     }
-    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-      Button(action: trailingAction.action) {
-        Label(trailingAction.title, systemImage: trailingAction.systemImage)
+    .swipeActions(edge: .trailing, allowsFullSwipe: !promise.isRealtimeShareable) {
+      if !promise.isRealtimeShareable {
+        Button(action: trailingAction.action) {
+          Label(trailingAction.title, systemImage: trailingAction.systemImage)
+        }
+        .tint(trailingAction.color)
       }
-      .tint(trailingAction.color)
     }
     .transition(
       .asymmetric(

@@ -219,8 +219,8 @@ struct PromiseCard: View {
     .padding(16)
     .adaptiveGlassCard()
     .contextMenu {
-      // 응답 변경 옵션 (과거 약속은 제외)
-      if let onChangeResponse = onChangeResponse, !promise.isPast {
+      // 응답 변경 옵션 (과거 약속, 실시간 공유 중인 약속은 제외)
+      if let onChangeResponse = onChangeResponse, !promise.isPast, !promise.isRealtimeShareable {
         Section("응답 변경") {
           if myVoteStatus != .accepted {
             Button(action: { onChangeResponse(.accepted) }) {
