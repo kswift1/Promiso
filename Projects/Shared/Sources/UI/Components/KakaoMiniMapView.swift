@@ -91,6 +91,7 @@ public struct KakaoMiniMapView: UIViewRepresentable {
       pendingMarkerImage = markerImage
 
       mapController = KMController(viewContainer: container)
+      mapController?.proMotionSupport = true  // 120Hz ProMotion Display 지원
       mapController?.delegate = self
       mapController?.prepareEngine()
     }

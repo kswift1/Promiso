@@ -66,7 +66,9 @@ public enum AppConfig {
       "NSSupportsLiveActivitiesFrequentUpdates": .boolean(true),
       // Kakao Maps SDK
       "KAKAO_NATIVE_APP_KEY": .string(kakaoNativeAppKey),
-      "KAKAO_REST_API_KEY": .string(kakaoRestApiKey)
+      "KAKAO_REST_API_KEY": .string(kakaoRestApiKey),
+      // ProMotion Display Support (120Hz)
+      "CADisableMinimumFrameDurationOnPhone": .boolean(true)
     ]
   }
 }
