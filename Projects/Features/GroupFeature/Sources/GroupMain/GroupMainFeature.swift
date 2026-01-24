@@ -213,6 +213,8 @@ extension GroupMain {
             return groups.sorted { ($0.joinedAt ?? .distantPast) < ($1.joinedAt ?? .distantPast) }
           case .nameAscending:
             return groups.sorted { $0.name < $1.name }
+          case .nameDescending:
+            return groups.sorted { $0.name > $1.name }
           }
         }()
 

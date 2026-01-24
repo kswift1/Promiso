@@ -2,22 +2,6 @@ import ComposableArchitecture
 import Foundation
 import PromisoShared
 
-// MARK: - Models
-
-/// 사용자 설정 정보
-public struct UserSettings: Equatable, Sendable {
-  public var notificationEnabled: Bool
-  public var groupSortOption: GroupSortOption
-
-  public init(
-    notificationEnabled: Bool,
-    groupSortOption: GroupSortOption
-  ) {
-    self.notificationEnabled = notificationEnabled
-    self.groupSortOption = groupSortOption
-  }
-}
-
 // MARK: - Client
 
 /// TCA용 사용자 설정 클라이언트
