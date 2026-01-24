@@ -109,13 +109,14 @@ extension PromiseDetail {
           )
 
           // 장소
-          if store.promise.location != nil {
+          if let location = store.promise.location {
             Divider().padding(.leading, 44)
 
-            EmojiInfoRow(
-              emoji: "📍",
-              title: "장소",
-              value: store.promise.locationText
+            LocationInfoRow(
+              location: location,
+              onDirectionsTapped: {
+                store.send(.view(.directionsTapped))
+              }
             )
           }
 
@@ -370,6 +371,55 @@ private struct EmojiInfoRow: View {
 
       Text(value)
         .font(.system(size: 15, weight: .medium))
+    }
+    .padding(.horizontal, 16)
+    .padding(.vertical, 14)
+  }
+}
+
+private struct LocationInfoRow: View {
+  let location: LocationInfoModel
+  let onDirectionsTapped: () -> Void
+
+  private var hasCoordinates: Bool {
+    location.latitude != nil && location.longitude != nil
+  }
+
+  var body: some View {
+    HStack(spacing: 10) {
+      Text("📍")
+        .font(.system(size: 18))
+        .frame(width: 28)
+
+      VStack(alignment: .leading, spacing: 2) {
+        Text(location.name)
+          .font(.system(size: 15, weight: .medium))
+
+        if let address = location.address {
+          Text(address)
+            .font(.system(size: 13))
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+        }
+      }
+
+      Spacer()
+
+      if hasCoordinates {
+        Button(action: onDirectionsTapped) {
+          HStack(spacing: 4) {
+            Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
+              .font(.system(size: 14))
+            Text("길찾기")
+              .font(.system(size: 14, weight: .medium))
+          }
+          .foregroundStyle(.white)
+          .padding(.horizontal, 12)
+          .padding(.vertical, 6)
+          .background(Color.blue)
+          .clipShape(Capsule())
+        }
+      }
     }
     .padding(.horizontal, 16)
     .padding(.vertical, 14)
