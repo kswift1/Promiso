@@ -31,15 +31,18 @@ extension GroupSortSettings {
       self.onCancel = onCancel
     }
 
+    /// 최종 정렬 옵션 (custom의 경우 현재 순서 포함)
+    private var finalOption: GroupSortOption {
+      if store.selectedOption.sortType == .custom {
+        return .custom(order: store.customOrderedGroups.map(\.id))
+      } else {
+        return store.selectedOption
+      }
+    }
+
     /// 변경사항 있는지 확인
     private var hasChanges: Bool {
-      let finalOption: GroupSortOption
-      if store.selectedOption.sortType == .custom {
-        finalOption = .custom(order: store.customOrderedGroups.map(\.id))
-      } else {
-        finalOption = store.selectedOption
-      }
-      return finalOption != store.initialOption
+      finalOption != store.initialOption
     }
 
     public var body: some View {
@@ -62,12 +65,6 @@ extension GroupSortSettings {
 
           ToolbarItem(placement: .confirmationAction) {
             Button("완료") {
-              let finalOption: GroupSortOption
-              if store.selectedOption.sortType == .custom {
-                finalOption = .custom(order: store.customOrderedGroups.map(\.id))
-              } else {
-                finalOption = store.selectedOption
-              }
               onConfirm?(finalOption)
             }
             .fontWeight(.semibold)

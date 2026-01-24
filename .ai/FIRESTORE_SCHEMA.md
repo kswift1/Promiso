@@ -249,14 +249,18 @@ users/{userId}/settings/main
 | 필드명 | 타입 | 필수 | 기본값 | 설명 |
 |--------|------|------|--------|------|
 | `notificationEnabled` | Boolean | ✅ | true | 푸시 알림 활성화 여부 |
-| `groupSortOption` | String | ❌ | "joinedRecent" | 그룹 정렬 방식 (`joinedRecent` \| `joinedOldest` \| `nameAscending`) |
+| `groupSortOption` | Map | ❌ | `{type: "joinedRecent"}` | 그룹 정렬 설정 |
+| `groupSortOption.type` | String | ✅ | "joinedRecent" | 정렬 타입 (`joinedRecent` \| `joinedOldest` \| `nameAscending` \| `nameDescending` \| `custom`) |
+| `groupSortOption.order` | Array<String> | ❌ | - | 커스텀 정렬 시 그룹 ID 순서 (type이 `custom`일 때만) |
 
 #### 📝 예시 데이터
 
 ```json
 {
   "notificationEnabled": true,
-  "groupSortOption": "joinedRecent"
+  "groupSortOption": {
+    "type": "joinedRecent"
+  }
 }
 ```
 

@@ -971,7 +971,12 @@ extension GroupMain {
           state.sortSettings = nil
           state.groupSortOption = option
           return .run { [userSettingsClient, currentUser = state.currentUser] _ in
-            try await userSettingsClient.updateGroupSortOption(currentUser.userId, option)
+            do {
+              try await userSettingsClient.updateGroupSortOption(currentUser.userId, option)
+            } catch {
+              // 저장 실패해도 로컬 상태는 유지 (다음 앱 실행 시 서버에서 다시 로드)
+              AppLogger.general.error("Failed to save sort option: \(error.localizedDescription)")
+            }
           }
 
         case .deleteAlert(.presented(.confirmDelete)):

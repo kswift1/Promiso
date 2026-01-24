@@ -293,8 +293,10 @@ extension UserProfileClient: DependencyKey {
       },
 
       getUserSettings: {
-        let notificationEnabled = try await dataSource.getUserSettings()
-        return UserSettings(notificationEnabled: notificationEnabled, groupSortOption: .joinedRecent)
+        guard let currentUser = await authClient.currentUser() else {
+          throw UserProfileError.authenticationRequired
+        }
+        return try await UserSettingsRemoteDataSource().fetchSettings(userId: currentUser.uid)
       }
     )
   }()

@@ -107,9 +107,9 @@ export const updateUserSettings = onCall<UpdateUserSettingsRequest>(
       updateData.groupSortOption = GroupSortOption.write(data.groupSortOption);
     }
 
-    // 3. Firestore 업데이트
+    // 3. Firestore 업데이트 (문서가 없어도 생성됨)
     if (Object.keys(updateData).length > 0) {
-      await settingsRef.update(updateData);
+      await settingsRef.set(updateData, {merge: true});
     }
 
     // 4. 응답 반환
