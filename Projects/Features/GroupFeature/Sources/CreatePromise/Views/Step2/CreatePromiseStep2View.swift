@@ -111,7 +111,7 @@ private struct LocationWithMapCard: View {
           latitude: lat,
           longitude: lng,
           zoomLevel: 15,
-          markerImage: ResourceKitAsset.mapPinMideum.image
+          markerImage: ResourceKitAsset.mapPinMedium.image
         )
         .frame(height: 240)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -123,8 +123,9 @@ private struct LocationWithMapCard: View {
 
       // 장소 정보
       HStack(spacing: 12) {
-        ResourceKitAsset.mapPinMideum.swiftUIImage
-          .font(.system(size: 24))
+        ResourceKitAsset.mapPinMedium.swiftUIImage
+          .fixedSize()
+          .frame(width: 24, height: 24)
 
         VStack(alignment: .leading, spacing: 2) {
           Text(location.name)

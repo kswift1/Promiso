@@ -33,21 +33,7 @@ extension LocationPicker {
           Divider()
 
           // 콘텐츠
-          if store.isSearching {
-            LoadingView()
-          } else if let error = store.searchError {
-            ErrorView(message: error)
-          } else if store.searchResults.isEmpty && !store.searchText.isEmpty {
-            EmptyResultView()
-          } else if store.searchResults.isEmpty {
-            PlaceholderView()
-          } else {
-            SearchResultsList(
-              places: store.searchResults,
-              highlightedId: store.previewPlace?.id,
-              onSelect: { store.send(.view(.placeTapped($0))) }
-            )
-          }
+          contentView
 
           // 하단 미니맵 미리보기
           if let place = store.previewPlace {
@@ -68,6 +54,45 @@ extension LocationPicker {
               store.send(.view(.dismissTapped))
             }
           }
+        }
+        .onAppear {
+          store.send(.view(.onAppear))
+        }
+      }
+    }
+
+    @ViewBuilder
+    private var contentView: some View {
+      if store.isSearching {
+        // 검색 중 - 스켈레톤
+        SkeletonListView()
+      } else if let error = store.searchError {
+        // 에러
+        ErrorView(message: error)
+      } else if !store.isSearchEmpty {
+        // 검색어 있음
+        if store.searchResults.isEmpty {
+          EmptyResultView()
+        } else {
+          SearchResultsList(
+            places: store.searchResults,
+            highlightedId: store.previewPlace?.id,
+            onSelect: { store.send(.view(.placeTapped($0))) }
+          )
+        }
+      } else {
+        // 검색어 없음 - 히스토리 또는 빈 화면
+        if store.isLoadingHistory {
+          SkeletonListView()
+        } else if store.searchHistory.isEmpty {
+          PlaceholderView()
+        } else {
+          HistoryListView(
+            items: store.searchHistory,
+            highlightedId: store.previewPlace?.id,
+            onSelect: { store.send(.view(.historyItemTapped($0))) },
+            onDelete: { store.send(.view(.deleteHistoryItem($0))) }
+          )
         }
       }
     }
@@ -101,6 +126,149 @@ private struct SearchBar: View {
     .padding(12)
     .background(Color(.systemGray6))
     .clipShape(RoundedRectangle(cornerRadius: 12))
+  }
+}
+
+// MARK: - Skeleton List View
+
+private struct SkeletonListView: View {
+  var body: some View {
+    ScrollView {
+      LazyVStack(spacing: 0) {
+        ForEach(0..<5, id: \.self) { _ in
+          SkeletonRow()
+          Divider()
+            .padding(.leading, 56)
+        }
+      }
+    }
+  }
+}
+
+private struct SkeletonRow: View {
+  @State private var isAnimating = false
+
+  var body: some View {
+    HStack(spacing: 12) {
+      // 아이콘 스켈레톤
+      Circle()
+        .fill(Color(.systemGray5))
+        .frame(width: 40, height: 40)
+
+      VStack(alignment: .leading, spacing: 8) {
+        // 이름 스켈레톤
+        RoundedRectangle(cornerRadius: 4)
+          .fill(Color(.systemGray5))
+          .frame(width: 120, height: 16)
+
+        // 주소 스켈레톤
+        RoundedRectangle(cornerRadius: 4)
+          .fill(Color(.systemGray5))
+          .frame(width: 180, height: 14)
+      }
+
+      Spacer()
+    }
+    .padding(.horizontal, 16)
+    .padding(.vertical, 12)
+    .opacity(isAnimating ? 0.5 : 1.0)
+    .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: isAnimating)
+    .onAppear {
+      isAnimating = true
+    }
+  }
+}
+
+// MARK: - History List View
+
+private struct HistoryListView: View {
+  let items: [SearchHistoryItem]
+  var highlightedId: String? = nil
+  let onSelect: (SearchHistoryItem) -> Void
+  let onDelete: (String) -> Void
+
+  var body: some View {
+    ScrollView {
+      LazyVStack(spacing: 0) {
+        // 헤더
+        HStack {
+          Text("최근 검색")
+            .font(.system(size: 13, weight: .medium))
+            .foregroundColor(.secondary)
+          Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+
+        ForEach(items) { item in
+          HistoryRow(
+            item: item,
+            isHighlighted: item.id == highlightedId,
+            onDelete: { onDelete(item.id) }
+          )
+          .contentShape(Rectangle())
+          .onTapGesture {
+            onSelect(item)
+          }
+
+          if item.id != items.last?.id {
+            Divider()
+              .padding(.leading, 56)
+          }
+        }
+      }
+    }
+  }
+}
+
+private struct HistoryRow: View {
+  let item: SearchHistoryItem
+  var isHighlighted: Bool = false
+  let onDelete: () -> Void
+
+  var body: some View {
+    HStack(spacing: 12) {
+      // 히스토리 아이콘 (시계)
+      ZStack {
+        Circle()
+          .fill(isHighlighted ? Color.pmindigo.n500 : Color(.systemGray5))
+          .frame(width: 40, height: 40)
+
+        Image(systemName: "clock.arrow.circlepath")
+          .font(.system(size: 18))
+          .foregroundColor(isHighlighted ? .white : .secondary)
+      }
+
+      // 정보
+      VStack(alignment: .leading, spacing: 4) {
+        Text(item.name)
+          .font(.system(size: 16, weight: .medium))
+          .foregroundColor(.primary)
+          .lineLimit(1)
+
+        if let address = item.address {
+          Text(address)
+            .font(.system(size: 14))
+            .foregroundColor(.secondary)
+            .lineLimit(1)
+        }
+      }
+
+      Spacer()
+
+      // 삭제 버튼
+      Button(action: onDelete) {
+        Image(systemName: "xmark.circle.fill")
+          .font(.system(size: 20))
+          .foregroundColor(Color(.systemGray3))
+          .frame(width: 44, height: 44)
+          .contentShape(Rectangle())
+      }
+      .buttonStyle(.plain)
+    }
+    .padding(.horizontal, 16)
+    .padding(.vertical, 12)
+    .background(isHighlighted ? Color.pmindigo.n50 : Color.clear)
   }
 }
 
@@ -139,7 +307,7 @@ private struct PlaceRow: View {
 
   var body: some View {
     HStack(spacing: 12) {
-      // 아이콘
+      // 검색 결과 아이콘 (핀)
       ZStack {
         Circle()
           .fill(isHighlighted ? Color.pmindigo.n500 : Color.pmindigo.n100)
@@ -150,7 +318,7 @@ private struct PlaceRow: View {
           .foregroundColor(isHighlighted ? .white : Color.pmindigo.n500)
       }
 
-      // 정보
+      // 정보 (이름 + 주소만)
       VStack(alignment: .leading, spacing: 4) {
         Text(place.name)
           .font(.system(size: 16, weight: .medium))
@@ -161,13 +329,6 @@ private struct PlaceRow: View {
           Text(address)
             .font(.system(size: 14))
             .foregroundColor(.secondary)
-            .lineLimit(1)
-        }
-
-        if let category = place.category {
-          Text(category)
-            .font(.system(size: 12))
-            .foregroundColor(Color.pmindigo.n500)
             .lineLimit(1)
         }
       }
@@ -183,25 +344,6 @@ private struct PlaceRow: View {
     .padding(.horizontal, 16)
     .padding(.vertical, 12)
     .background(isHighlighted ? Color.pmindigo.n50 : Color.clear)
-  }
-}
-
-// MARK: - Loading View
-
-private struct LoadingView: View {
-  var body: some View {
-    VStack(spacing: 16) {
-      Spacer()
-
-      ProgressView()
-        .scaleEffect(1.2)
-
-      Text("검색 중...")
-        .font(.system(size: 14))
-        .foregroundColor(.secondary)
-
-      Spacer()
-    }
   }
 }
 
@@ -257,7 +399,7 @@ private struct ErrorView: View {
   }
 }
 
-// MARK: - Mini Map Preview (하단 고정)
+// MARK: - Mini Map Preview
 
 private struct MiniMapPreview: View {
   let place: Place
@@ -270,11 +412,9 @@ private struct MiniMapPreview: View {
 
       HStack(spacing: 12) {
         // 미니 지도
-        MapPreviewView(
-          coordinate: place.coordinate,
-        )
-        .frame(width: 80, height: 80)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        MapPreviewView(coordinate: place.coordinate)
+          .frame(width: 80, height: 80)
+          .clipShape(RoundedRectangle(cornerRadius: 8))
 
         // 장소 정보
         VStack(alignment: .leading, spacing: 4) {
@@ -288,12 +428,6 @@ private struct MiniMapPreview: View {
               .font(.system(size: 13))
               .foregroundColor(.secondary)
               .lineLimit(1)
-          }
-
-          if let category = place.category {
-            Text(category)
-              .font(.system(size: 12))
-              .foregroundColor(Color.pmindigo.n500)
           }
         }
 
@@ -353,7 +487,7 @@ private struct PlaceholderView: View {
 
 #Preview("기본 상태") {
   LocationPicker.RootView(
-    store: Store(initialState: LocationPicker.Feature.State()) {
+    store: Store(initialState: LocationPicker.Feature.State(isLoadingHistory: false)) {
       LocationPicker.Feature()
     }
   )
@@ -383,7 +517,52 @@ private struct PlaceholderView: View {
             category: "영화관",
             phone: nil
           ),
-        ]
+        ],
+        isLoadingHistory: false
+      )
+    ) {
+      LocationPicker.Feature()
+    }
+  )
+}
+
+#Preview("검색 기록") {
+  LocationPicker.RootView(
+    store: Store(
+      initialState: LocationPicker.Feature.State(
+        searchHistory: [
+          SearchHistoryItem(
+            id: "1",
+            name: "스타벅스 강남역점",
+            address: "서울 강남구 강남대로 390",
+            latitude: 37.498095,
+            longitude: 127.027610,
+            createdAt: Date()
+          ),
+          SearchHistoryItem(
+            id: "2",
+            name: "CGV 강남",
+            address: "서울 강남구 강남대로 438",
+            latitude: 37.501087,
+            longitude: 127.026632,
+            createdAt: Date()
+          ),
+        ],
+        isLoadingHistory: false
+      )
+    ) {
+      LocationPicker.Feature()
+    }
+  )
+}
+
+#Preview("스켈레톤") {
+  LocationPicker.RootView(
+    store: Store(
+      initialState: LocationPicker.Feature.State(
+        searchText: "강남",
+        isSearching: true,
+        isLoadingHistory: false
       )
     ) {
       LocationPicker.Feature()

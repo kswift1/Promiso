@@ -19,7 +19,7 @@ struct MapPreviewView: View {
       latitude: coordinate.latitude,
       longitude: coordinate.longitude,
       zoomLevel: 15,
-      markerImage: ResourceKitAsset.mapPinMini.image
+      markerImage: ResourceKitAsset.mapPinSmall.image
     )
   }
 }

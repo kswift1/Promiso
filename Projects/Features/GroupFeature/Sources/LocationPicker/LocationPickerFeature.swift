@@ -12,6 +12,7 @@ public enum LocationPicker {
   public struct Feature {
 
     @Dependency(\.mapClient) var mapClient
+    @Dependency(\.searchHistoryClient) var searchHistoryClient
     @Dependency(\.continuousClock) var clock
 
     private enum CancelID: Hashable {
@@ -22,7 +23,9 @@ public enum LocationPicker {
     public struct State: Equatable {
       var searchText: String = ""
       var searchResults: [Place] = []
+      var searchHistory: [SearchHistoryItem] = []
       var isSearching: Bool = false
+      var isLoadingHistory: Bool = true
       var searchError: String?
       var selectedPlace: Place?
       /// 지도 미리보기에 표시할 장소
@@ -31,17 +34,26 @@ public enum LocationPicker {
       public init(
         searchText: String = "",
         searchResults: [Place] = [],
+        searchHistory: [SearchHistoryItem] = [],
         isSearching: Bool = false,
+        isLoadingHistory: Bool = true,
         searchError: String? = nil,
         selectedPlace: Place? = nil,
         previewPlace: Place? = nil
       ) {
         self.searchText = searchText
         self.searchResults = searchResults
+        self.searchHistory = searchHistory
         self.isSearching = isSearching
+        self.isLoadingHistory = isLoadingHistory
         self.searchError = searchError
         self.selectedPlace = selectedPlace
         self.previewPlace = previewPlace
+      }
+
+      /// 검색어가 비어있는지 여부
+      var isSearchEmpty: Bool {
+        searchText.trimmingCharacters(in: .whitespaces).isEmpty
       }
     }
 
@@ -51,10 +63,13 @@ public enum LocationPicker {
       case delegate(Delegate)
 
       public enum View: Sendable {
+        case onAppear
         case searchTextChanged(String)
         case clearSearchTapped
         case placeSelected(Place)
         case placeTapped(Place)
+        case historyItemTapped(SearchHistoryItem)
+        case deleteHistoryItem(String)
         case confirmSelectionTapped
         case closePreviewTapped
         case dismissTapped
@@ -63,6 +78,9 @@ public enum LocationPicker {
       public enum Internal: Sendable {
         case searchDebounced(String)
         case searchResponse(Result<[Place], Error>)
+        case historyLoaded([SearchHistoryItem])
+        case historySaved
+        case historyDeleted(String)
       }
 
       public enum Delegate: Sendable {
@@ -81,6 +99,12 @@ public enum LocationPicker {
 
         case .view(let viewAction):
           switch viewAction {
+
+          case .onAppear:
+            return .run { [searchHistoryClient] send in
+              let history = (try? await searchHistoryClient.fetchHistory()) ?? []
+              await send(.internal(.historyLoaded(history)))
+            }
 
           case .searchTextChanged(let text):
             state.searchText = text
@@ -107,22 +131,44 @@ public enum LocationPicker {
             state.searchResults = []
             state.isSearching = false
             state.searchError = nil
+            state.previewPlace = nil
             return .cancel(id: CancelID.searchDebounce)
 
           case .placeSelected(let place):
             state.selectedPlace = place
             let locationInfo = place.toLocationInfo()
-            return .send(.delegate(.locationSelected(locationInfo)))
+            return .merge(
+              .send(.delegate(.locationSelected(locationInfo))),
+              .run { [searchHistoryClient, place] _ in
+                try? await searchHistoryClient.savePlace(place)
+              }
+            )
 
           case .placeTapped(let place):
             state.previewPlace = place
             return .none
 
+          case .historyItemTapped(let item):
+            let place = item.toPlace()
+            state.previewPlace = place
+            return .none
+
+          case .deleteHistoryItem(let id):
+            return .run { [searchHistoryClient] send in
+              try? await searchHistoryClient.deleteItem(id)
+              await send(.internal(.historyDeleted(id)))
+            }
+
           case .confirmSelectionTapped:
             guard let place = state.previewPlace else { return .none }
             state.selectedPlace = place
             let locationInfo = place.toLocationInfo()
-            return .send(.delegate(.locationSelected(locationInfo)))
+            return .merge(
+              .send(.delegate(.locationSelected(locationInfo))),
+              .run { [searchHistoryClient, place] _ in
+                try? await searchHistoryClient.savePlace(place)
+              }
+            )
 
           case .closePreviewTapped:
             state.previewPlace = nil
@@ -155,6 +201,18 @@ public enum LocationPicker {
           case .searchResponse(.failure(let error)):
             state.isSearching = false
             state.searchError = error.localizedDescription
+            return .none
+
+          case .historyLoaded(let history):
+            state.isLoadingHistory = false
+            state.searchHistory = history
+            return .none
+
+          case .historySaved:
+            return .none
+
+          case .historyDeleted(let id):
+            state.searchHistory.removeAll { $0.id == id }
             return .none
           }
 

@@ -1,6 +1,7 @@
 import SwiftUI
 import ComposableArchitecture
 import PromisoShared
+import ResourceKit
 
 extension GroupMain {
   public struct RootView: View {

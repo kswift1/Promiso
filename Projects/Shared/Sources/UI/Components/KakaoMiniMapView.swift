@@ -125,7 +125,7 @@ public struct KakaoMiniMapView: UIViewRepresentable {
       }
 
       // POI 스타일 생성
-      let markerIcon = pendingMarkerImage ?? ResourceKitAsset.mapPinMideum.image
+      let markerIcon = pendingMarkerImage ?? ResourceKitAsset.mapPinMedium.image
       let iconStyle = PoiIconStyle(
         symbol: markerIcon,
         anchorPoint: CGPoint(x: 0.5, y: 1.0)
