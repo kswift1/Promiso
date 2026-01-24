@@ -153,9 +153,12 @@ export const startLiveActivity = onCall<StartLiveActivityRequest>(
       );
     }
 
-    // 3. 그룹 조회 후 멤버 ID 확인
+    // 3. 그룹 조회 후 멤버 ID 및 그룹 정보 확인
     const groupDoc = await groupsCollection.doc(groupId).get();
-    const memberIds = groupDoc.data()?.memberIds as string[] || [];
+    const groupData = groupDoc.data();
+    const memberIds = groupData?.memberIds as string[] || [];
+    const groupName = groupData?.name as string || null;
+    const groupImageUrl = groupData?.imageUrl as string || null;
 
     // 4. 참가자 정보 및 토큰 배치 조회 (최적화: 1회로 통합)
     const batchSize = 10;
@@ -279,6 +282,8 @@ export const startLiveActivity = onCall<StartLiveActivityRequest>(
             scheduledTime: startAt.toDate().getTime() / 1000,
             hostId,
             hostName,
+            groupName,
+            groupImageUrl,
           },
           "content-state": {
             trackingDurationMinutes,
@@ -668,6 +673,7 @@ export const executeLiveActivityStart = onTaskDispatched<
 
     const promiseData = promiseDoc.data()!;
     const hostId = promiseData.hostId as string;
+    const groupId = promiseData.groupId as string;
     const emoji = promiseData.emoji as string || "📌";
     const title = promiseData.title as string;
     const location = promiseData.location?.name as string || null;
@@ -677,13 +683,20 @@ export const executeLiveActivityStart = onTaskDispatched<
     const trackingMinutes =
       (promiseData.trackingStartMinutesBefore as number) || 30;
 
-    // 2. 약속이 확정 상태인지 확인
+    // 2. 그룹 정보 조회
+    const groupsCollection = getEnvironmentCollection("groups", db, env);
+    const groupDoc = await groupsCollection.doc(groupId).get();
+    const groupData = groupDoc.data();
+    const groupName = groupData?.name as string || null;
+    const groupImageUrl = groupData?.imageUrl as string || null;
+
+    // 3. 약속이 확정 상태인지 확인
     if (accepted.length < minParticipants) {
       console.log(`Promise not confirmed: ${promiseId}`);
       return;
     }
 
-    // 3. 참가자 정보 및 토큰 배치 조회 (최적화: 1회로 통합)
+    // 4. 참가자 정보 및 토큰 배치 조회 (최적화: 1회로 통합)
     // Firestore getAll()로 최대 10개씩 배치 조회 가능
     const batchSize = 10;
     const participants: LiveActivityParticipant[] = [];
@@ -735,7 +748,7 @@ export const executeLiveActivityStart = onTaskDispatched<
       }
     }
 
-    // 4. iOS 18 Broadcast 채널 생성 (Apple이 channelId 생성)
+    // 5. iOS 18 Broadcast 채널 생성 (Apple이 channelId 생성)
     const isProduction = env === "prod";
     const channelResult = await createAPNsChannel(isProduction);
     let channelId: string | undefined;
@@ -752,7 +765,7 @@ export const executeLiveActivityStart = onTaskDispatched<
 
     const trackingDurationMinutes = trackingMinutes;
 
-    // 5. 토큰 검증
+    // 6. 토큰 검증
     if (allTokens.length === 0) {
       console.log(`📭 No Push to Start tokens for: ${promiseId}`);
       return;
@@ -763,7 +776,7 @@ export const executeLiveActivityStart = onTaskDispatched<
       `${allTokens.length} tokens`
     );
 
-    // 6. APNs Push to Start 전송
+    // 7. APNs Push to Start 전송
     // 각 사용자에게 개별 Push to Start 전송 (Activity 시작 시 채널 구독됨)
     let successCount = 0;
     let failureCount = 0;
@@ -786,6 +799,8 @@ export const executeLiveActivityStart = onTaskDispatched<
             hostId,
             hostName,
             channelId: channelId || "",
+            groupName,
+            groupImageUrl,
           },
           "content-state": {
             trackingDurationMinutes,
@@ -819,7 +834,7 @@ export const executeLiveActivityStart = onTaskDispatched<
       `${successCount}/${failureCount}`
     );
 
-    // 7. 종료 Task 예약 (stage: 3분, prod: 30분)
+    // 8. 종료 Task 예약 (stage: 3분, prod: 30분)
     const endMinutes = env === "stage" ? 3 : 30;
     const endTime = startAt.toDate().getTime() + endMinutes * 60 * 1000;
     const endDelaySeconds = Math.max(

@@ -237,9 +237,14 @@ extension LivePromise {
 
     // MARK: - Group Info Computed Properties
 
-    /// 그룹 모델 (PromiseModel에서 가져오기)
-    private var group: GroupModel? {
-      promise?.group
+    /// 그룹 이름 (ActivityKit에서 가져오기)
+    private var groupName: String? {
+      store.data.groupName ?? promise?.group?.name
+    }
+
+    /// 그룹 이미지 URL (ActivityKit에서 가져오기)
+    private var groupImageUrl: String? {
+      store.data.groupImageUrl ?? promise?.group?.imageUrl
     }
 
     // MARK: - 1. Header Section (그룹 정보 표시)
@@ -249,12 +254,12 @@ extension LivePromise {
         // 1. Group Section (그룹 정보 표시)
         HStack(spacing: 10) {
           GroupThumbnailView(
-            imageUrl: group?.imageUrl,
-            name: group?.name ?? "그룹",
+            imageUrl: groupImageUrl,
+            name: groupName ?? "그룹",
             size: 32
           )
 
-          Text(group?.name ?? "그룹")
+          Text(groupName ?? "그룹")
             .font(.system(size: 13, weight: .semibold))
             .foregroundColor(.primary)
 
