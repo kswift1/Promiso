@@ -637,7 +637,8 @@ extension GroupMain {
 
           case .sortSettingsTapped:
             state.sortSettings = GroupSortSettings.Feature.State(
-              selectedOption: state.groupSortOption
+              selectedOption: state.groupSortOption,
+              previewGroups: state.groupBarItems
             )
             return .none
           }
