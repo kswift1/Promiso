@@ -12,8 +12,6 @@ export {
   getUser,
   updateUser,
   uploadProfileImage,
-  getUserSettings,
-  updateUserSettings,
   checkNicknameAvailable,
 } from "./functions/users";
 

@@ -74,6 +74,26 @@ extension GroupMain {
       ) { editStore in
         EditPromise.RootView(store: editStore)
       }
+      .sheet(
+        isPresented: Binding(
+          get: { store.sortSettings != nil },
+          set: { if !$0 { store.send(.sortSettingsDismissed) } }
+        )
+      ) {
+        if let sortSettingsState = store.sortSettings {
+          SortSettingsSheetContent(
+            initialState: sortSettingsState,
+            onOptionChanged: { option in
+              store.send(.sortOptionChanged(option))
+            },
+            onDismiss: {
+              store.send(.sortSettingsDismissed)
+            }
+          )
+          .presentationDetents([.height(420)])
+          .presentationDragIndicator(.visible)
+        }
+      }
       .alert(store: store.scope(state: \.$deleteAlert, action: \.deleteAlert))
       .confirmationDialog(
         store: store.scope(state: \.$groupActionSheet, action: \.groupActionSheet)
@@ -89,6 +109,7 @@ extension GroupMain {
         // 그룹 가로 바 (상단 고정)
         GroupHorizontalBar(
           groups: store.groupBarItems,
+          isLoading: store.isGroupsLoading,
           onGroupTap: { groupId in
             store.send(.view(.groupTapped(groupId)))
           },
@@ -97,6 +118,9 @@ extension GroupMain {
           },
           onJoinGroup: {
             store.send(.view(.joinGroup))
+          },
+          onSortSettings: {
+            store.send(.view(.sortSettingsTapped))
           }
         )
 
@@ -449,6 +473,7 @@ extension GroupMain {
         // 그룹 가로 바 (빈 상태에서도 생성/참여 버튼 제공)
         GroupHorizontalBar(
           groups: store.groupBarItems,
+          isLoading: store.isGroupsLoading,
           onGroupTap: { groupId in
             store.send(.view(.groupTapped(groupId)))
           },
@@ -457,6 +482,9 @@ extension GroupMain {
           },
           onJoinGroup: {
             store.send(.view(.joinGroup))
+          },
+          onSortSettings: {
+            store.send(.view(.sortSettingsTapped))
           }
         )
 
@@ -590,4 +618,27 @@ struct ShareSheet: UIViewControllerRepresentable {
   }
 
   func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+}
+
+// MARK: - SortSettingsSheetContent
+
+/// 시트 내부에서 Store를 생성하여 애니메이션 문제 해결
+private struct SortSettingsSheetContent: View {
+  let initialState: GroupSortSettings.Feature.State
+  let onOptionChanged: (GroupSortOption) -> Void
+  let onDismiss: () -> Void
+
+  var body: some View {
+    GroupSortSettings.RootView(
+      store: Store(initialState: initialState) {
+        GroupSortSettings.Feature()
+      },
+      onConfirm: { option in
+        onOptionChanged(option)
+      },
+      onCancel: {
+        onDismiss()
+      }
+    )
+  }
 }

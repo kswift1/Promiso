@@ -601,11 +601,76 @@ export interface UploadProfileImageResponse {
 }
 
 /**
+ * 그룹 정렬 옵션 타입
+ */
+export type GroupSortOptionType =
+  | "joinedRecent"
+  | "joinedOldest"
+  | "nameAscending"
+  | "nameDescending"
+  | "custom";
+
+/**
+ * 그룹 정렬 옵션 (Firestore 저장 형식)
+ */
+export interface GroupSortOptionData {
+  /** 정렬 타입 */
+  type: GroupSortOptionType;
+  /** 커스텀 정렬 순서 (type이 custom일 때만 사용) */
+  order?: string[];
+}
+
+/**
+ * GroupSortOption 유틸리티 함수
+ */
+export const GroupSortOption = {
+  /**
+   * Firestore 데이터에서 읽기
+   * @param {unknown} data - Firestore에서 읽은 데이터
+   * @return {GroupSortOptionData} 파싱된 정렬 옵션
+   */
+  read(data: unknown): GroupSortOptionData {
+    if (!data || typeof data !== "object") {
+      return {type: "joinedRecent"};
+    }
+    const obj = data as Record<string, unknown>;
+    const type = obj.type as GroupSortOptionType;
+
+    if (type === "custom") {
+      const order = Array.isArray(obj.order) ? obj.order as string[] : [];
+      return {type: "custom", order};
+    }
+
+    const validTypes: GroupSortOptionType[] = [
+      "joinedRecent", "joinedOldest", "nameAscending", "nameDescending",
+    ];
+    if (validTypes.includes(type)) {
+      return {type};
+    }
+    return {type: "joinedRecent"};
+  },
+
+  /**
+   * Firestore에 저장할 형식으로 변환
+   * @param {GroupSortOptionData} option - 정렬 옵션
+   * @return {Record<string, unknown>} Firestore 저장용 객체
+   */
+  write(option: GroupSortOptionData): Record<string, unknown> {
+    if (option.type === "custom") {
+      return {type: "custom", order: option.order ?? []};
+    }
+    return {type: option.type};
+  },
+};
+
+/**
  * 사용자 설정 조회 응답
  */
 export interface GetUserSettingsResponse {
   /** 알림 활성화 여부 */
   notificationEnabled: boolean;
+  /** 그룹 정렬 옵션 */
+  groupSortOption?: GroupSortOptionData;
 }
 
 /**
@@ -614,6 +679,9 @@ export interface GetUserSettingsResponse {
 export interface UpdateUserSettingsRequest {
   /** 알림 활성화 여부 */
   notificationEnabled?: boolean | null;
+
+  /** 그룹 정렬 옵션 */
+  groupSortOption?: GroupSortOptionData | null;
 
   /** 환경 구분 (선택적: stage 또는 prod) */
   env?: "stage" | "prod" | null;

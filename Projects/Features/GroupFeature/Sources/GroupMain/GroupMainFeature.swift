@@ -124,6 +124,7 @@ extension GroupMain {
 
     @Dependency(\.groupClient) var groupClient
     @Dependency(\.promiseClient) var promiseClient
+    @Dependency(\.userSettingsClient) var userSettingsClient
 
     public init() {}
 
@@ -146,6 +147,9 @@ extension GroupMain {
       /// 현재 선택된 필터
       var selectedFilter: GroupMain.PromiseFilter = .needResponse
 
+      /// 그룹 정렬 옵션 (커스텀의 경우 순서 포함)
+      var groupSortOption: GroupSortOption = .joinedRecent
+
       /// 과거 약속 상태 (별도 fetch)
       var pastPromisesState: LoadingState<[PromiseModel]> = .idle
 
@@ -158,6 +162,7 @@ extension GroupMain {
       @Presents var editPromise: EditPromise.Feature.State?
       @Presents var deleteAlert: AlertState<DeleteAlertAction>?
       @Presents var groupActionSheet: ConfirmationDialogState<GroupActionSheetAction>?
+      var sortSettings: GroupSortSettings.Feature.State?
 
       /// 삭제 대상 약속 ID (알럿 확인 시 사용)
       var promiseToDelete: String?
@@ -176,6 +181,11 @@ extension GroupMain {
       }
 
       // MARK: - Computed Properties for New UI
+
+      /// 그룹 로딩 중 여부
+      var isGroupsLoading: Bool {
+        allGroupSummaries == nil
+      }
 
       /// 온보딩 모드 여부 (그룹이 없을 때)
       var isOnboardingMode: Bool {
@@ -199,13 +209,37 @@ extension GroupMain {
           ]
         }
 
-        return groups.map { group in
+        // 정렬 적용
+        let sortedGroups: [UserGroupInfo] = {
+          switch groupSortOption {
+          case .joinedRecent:
+            return groups.sorted { ($0.joinedAt ?? .distantPast) > ($1.joinedAt ?? .distantPast) }
+          case .joinedOldest:
+            return groups.sorted { ($0.joinedAt ?? .distantPast) < ($1.joinedAt ?? .distantPast) }
+          case .nameAscending:
+            return groups.sorted { $0.name < $1.name }
+          case .nameDescending:
+            return groups.sorted { $0.name > $1.name }
+          case .custom(let order):
+            // 커스텀 정렬 순서 적용
+            if order.isEmpty {
+              return groups
+            }
+            let groupDict = Dictionary(uniqueKeysWithValues: groups.map { ($0.id, $0) })
+            let ordered = order.compactMap { groupDict[$0] }
+            let remaining = groups.filter { group in !order.contains(group.id) }
+            return ordered + remaining
+          }
+        }()
+
+        return sortedGroups.map { group in
           GroupBarItem(
             id: group.id,
             name: group.name,
             imageUrl: group.imageUrl,
             hasNewActivity: group.hasNewActivity,
-            isSelected: group.id == currentGroup?.id
+            isSelected: group.id == currentGroup?.id,
+            joinedAt: group.joinedAt
           )
         }
       }
@@ -341,6 +375,8 @@ extension GroupMain {
       case editPromise(PresentationAction<EditPromise.Feature.Action>)
       case deleteAlert(PresentationAction<DeleteAlertAction>)
       case groupActionSheet(PresentationAction<GroupActionSheetAction>)
+      case sortSettingsDismissed
+      case sortOptionChanged(GroupSortOption)
 
       case path(StackActionOf<Path>)
 
@@ -370,6 +406,7 @@ extension GroupMain {
         case moreConfirmedTapped  // "N개 더 보기" - 확정
         case allPromisesTapped  // "모든 약속 보기"
         case groupSettingsTapped  // "그룹 설정"
+        case sortSettingsTapped  // "그룹 정렬"
       }
 
       public enum Internal: Sendable {
@@ -394,6 +431,8 @@ extension GroupMain {
         case liveActivityChanged(promiseId: String?)
         case fetchPastPromises(groupId: String)
         case pastPromisesResponse(Result<[PromiseModel], AppError>)
+        case fetchSettings
+        case settingsResponse(Result<UserSettings, AppError>)
       }
     }
 
@@ -407,14 +446,8 @@ extension GroupMain {
           case .onAppear:
             guard !state.isInitialized else { return .none }
             state.isInitialized = true
-            // 캐시된 데이터로 먼저 UI 표시 (빠른 로딩)
-            let summaries = state.currentUser.sortedGroups
-            state.allGroupSummaries = summaries
-            // 최신 데이터 fetch (imageUrl 등 갱신)
-            return .merge(
-              .send(.internal(.setDefaultGroup(groups: summaries))),
-              .send(.internal(.fetchGroupList))
-            )
+            // 정렬 설정을 먼저 로드한 후 그룹 리스트 표시
+            return .send(.internal(.fetchSettings))
 
           case .refreshTriggered:
             if !state.promisesState.isLoaded {
@@ -612,6 +645,24 @@ extension GroupMain {
 
           case .groupSettingsTapped:
             return handleGroupSettingsTapped(&state)
+
+          case .sortSettingsTapped:
+            // 커스텀 정렬 순서에 따라 그룹 정렬
+            let customOrder = state.groupSortOption.customOrder
+            let customOrdered: [GroupBarItem] = {
+              if customOrder.isEmpty {
+                return state.groupBarItems
+              }
+              let groupDict = Dictionary(uniqueKeysWithValues: state.groupBarItems.map { ($0.id, $0) })
+              return customOrder.compactMap { groupDict[$0] }
+            }()
+
+            state.sortSettings = GroupSortSettings.Feature.State(
+              selectedOption: state.groupSortOption,
+              previewGroups: state.groupBarItems,
+              customOrderedGroups: customOrdered
+            )
+            return .none
           }
 
         // MARK: - Internal Actions
@@ -828,6 +879,36 @@ extension GroupMain {
           case .pastPromisesResponse(.failure(let error)):
             state.pastPromisesState = .failed(error)
             return .none
+
+          case .fetchSettings:
+            return .run { [userSettingsClient, currentUser = state.currentUser] send in
+              do {
+                let settings = try await userSettingsClient.fetchSettings(currentUser.userId)
+                await send(.internal(.settingsResponse(.success(settings))))
+              } catch {
+                await send(.internal(.settingsResponse(.failure(AppError(error)))))
+              }
+            }
+
+          case .settingsResponse(.success(let settings)):
+            state.groupSortOption = settings.groupSortOption
+            // 설정 로드 후 그룹 리스트 표시
+            let summaries = state.currentUser.sortedGroups
+            state.allGroupSummaries = summaries
+            return .merge(
+              .send(.internal(.setDefaultGroup(groups: summaries))),
+              .send(.internal(.fetchGroupList))
+            )
+
+          case .settingsResponse(.failure):
+            // 설정 로드 실패해도 기본값으로 그룹 리스트 표시
+            let summaries = state.currentUser.sortedGroups
+            state.allGroupSummaries = summaries
+            return .merge(
+              .send(.internal(.setDefaultGroup(groups: summaries))),
+              .send(.internal(.fetchGroupList))
+            )
+
           }
 
         // MARK: - Child Feature Actions
@@ -881,6 +962,22 @@ extension GroupMain {
 
         case .editPromise:
           return .none
+
+        case .sortSettingsDismissed:
+          state.sortSettings = nil
+          return .none
+
+        case .sortOptionChanged(let option):
+          state.sortSettings = nil
+          state.groupSortOption = option
+          return .run { [userSettingsClient, currentUser = state.currentUser] _ in
+            do {
+              try await userSettingsClient.updateGroupSortOption(currentUser.userId, option)
+            } catch {
+              // 저장 실패해도 로컬 상태는 유지 (다음 앱 실행 시 서버에서 다시 로드)
+              AppLogger.general.error("Failed to save sort option: \(error.localizedDescription)")
+            }
+          }
 
         case .deleteAlert(.presented(.confirmDelete)):
           guard let promiseId = state.promiseToDelete else { return .none }

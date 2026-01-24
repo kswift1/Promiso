@@ -1,4 +1,5 @@
 import Foundation
+import PromisoShared
 
 // MARK: - User Profile Errors
 
@@ -46,12 +47,22 @@ public struct ProviderInfo: Equatable, Sendable {
 
 // MARK: - User Settings
 
-/// 사용자 설정
-public struct UserSettings: Codable, Equatable, Sendable {
-  /// 알림 활성화 여부
-  public let notificationEnabled: Bool
+/// 사용자 설정 정보
+public struct UserSettings: Equatable, Sendable {
+  public var notificationEnabled: Bool
+  public var groupSortOption: GroupSortOption
 
-  public init(notificationEnabled: Bool) {
+  public init(
+    notificationEnabled: Bool,
+    groupSortOption: GroupSortOption = .joinedRecent
+  ) {
     self.notificationEnabled = notificationEnabled
+    self.groupSortOption = groupSortOption
   }
+
+  /// 기본 설정값
+  public static let `default` = UserSettings(
+    notificationEnabled: true,
+    groupSortOption: .joinedRecent
+  )
 }
