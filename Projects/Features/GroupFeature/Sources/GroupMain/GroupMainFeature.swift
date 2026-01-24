@@ -964,6 +964,10 @@ extension GroupMain {
             try await userSettingsClient.updateGroupSortOption(currentUser.userId, option)
           }
 
+        case .sortSettings(.presented(.delegate(.cancelled))):
+          state.sortSettings = nil
+          return .none
+
         case .sortSettings:
           return .none
 
