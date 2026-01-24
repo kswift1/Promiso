@@ -218,7 +218,8 @@ private struct HistoryListView: View {
             )
             .id(item.id)
             .contentShape(Rectangle())
-            .pressable(feedback: .light) {
+            .onTapGesture {
+              Haptic.impact(.light)
               onSelect(item)
               withAnimation {
                 proxy.scrollTo(item.id, anchor: .top)
@@ -302,7 +303,8 @@ private struct SearchResultsList: View {
             PlaceRow(place: place, isHighlighted: place.id == highlightedId)
               .id(place.id)
               .contentShape(Rectangle())
-              .pressable(feedback: .light) {
+              .onTapGesture {
+                Haptic.impact(.light)
                 onSelect(place)
                 withAnimation {
                   proxy.scrollTo(place.id, anchor: .top)
