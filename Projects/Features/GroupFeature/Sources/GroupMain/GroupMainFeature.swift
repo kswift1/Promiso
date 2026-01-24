@@ -162,7 +162,7 @@ extension GroupMain {
       @Presents var editPromise: EditPromise.Feature.State?
       @Presents var deleteAlert: AlertState<DeleteAlertAction>?
       @Presents var groupActionSheet: ConfirmationDialogState<GroupActionSheetAction>?
-      @Presents var sortSettings: GroupSortSettings.Feature.State?
+      var sortSettings: GroupSortSettings.Feature.State?
 
       /// 삭제 대상 약속 ID (알럿 확인 시 사용)
       var promiseToDelete: String?
@@ -369,7 +369,8 @@ extension GroupMain {
       case editPromise(PresentationAction<EditPromise.Feature.Action>)
       case deleteAlert(PresentationAction<DeleteAlertAction>)
       case groupActionSheet(PresentationAction<GroupActionSheetAction>)
-      case sortSettings(PresentationAction<GroupSortSettings.Feature.Action>)
+      case sortSettingsDismissed
+      case sortOptionChanged(GroupSortOption)
 
       case path(StackActionOf<Path>)
 
@@ -439,15 +440,8 @@ extension GroupMain {
           case .onAppear:
             guard !state.isInitialized else { return .none }
             state.isInitialized = true
-            // 캐시된 데이터로 먼저 UI 표시 (빠른 로딩)
-            let summaries = state.currentUser.sortedGroups
-            state.allGroupSummaries = summaries
-            // 최신 데이터 fetch (imageUrl 등 갱신) + 설정 로드
-            return .merge(
-              .send(.internal(.setDefaultGroup(groups: summaries))),
-              .send(.internal(.fetchGroupList)),
-              .send(.internal(.fetchSettings))
-            )
+            // 정렬 설정을 먼저 로드한 후 그룹 리스트 표시
+            return .send(.internal(.fetchSettings))
 
           case .refreshTriggered:
             if !state.promisesState.isLoaded {
@@ -892,11 +886,23 @@ extension GroupMain {
 
           case .settingsResponse(.success(let settings)):
             state.groupSortOption = settings.groupSortOption
-            return .none
+            // 설정 로드 후 그룹 리스트 표시
+            let summaries = state.currentUser.sortedGroups
+            state.allGroupSummaries = summaries
+            return .merge(
+              .send(.internal(.setDefaultGroup(groups: summaries))),
+              .send(.internal(.fetchGroupList))
+            )
 
           case .settingsResponse(.failure):
-            // 설정 로드 실패 시 기본값 유지
-            return .none
+            // 설정 로드 실패해도 기본값으로 그룹 리스트 표시
+            let summaries = state.currentUser.sortedGroups
+            state.allGroupSummaries = summaries
+            return .merge(
+              .send(.internal(.setDefaultGroup(groups: summaries))),
+              .send(.internal(.fetchGroupList))
+            )
+
           }
 
         // MARK: - Child Feature Actions
@@ -951,20 +957,16 @@ extension GroupMain {
         case .editPromise:
           return .none
 
-        case .sortSettings(.presented(.delegate(.sortOptionChanged(let option)))):
-          state.groupSortOption = option
+        case .sortSettingsDismissed:
           state.sortSettings = nil
-          // 정렬 옵션 Firestore에 저장 (커스텀 순서 포함)
+          return .none
+
+        case .sortOptionChanged(let option):
+          state.sortSettings = nil
+          state.groupSortOption = option
           return .run { [userSettingsClient, currentUser = state.currentUser] _ in
             try await userSettingsClient.updateGroupSortOption(currentUser.userId, option)
           }
-
-        case .sortSettings(.presented(.delegate(.cancelled))):
-          state.sortSettings = nil
-          return .none
-
-        case .sortSettings:
-          return .none
 
         case .deleteAlert(.presented(.confirmDelete)):
           guard let promiseId = state.promiseToDelete else { return .none }
@@ -1078,7 +1080,6 @@ extension GroupMain {
       .ifLet(\.$editPromise, action: \.editPromise) { EditPromise.Feature() }
       .ifLet(\.$deleteAlert, action: \.deleteAlert)
       .ifLet(\.$groupActionSheet, action: \.groupActionSheet)
-      .ifLet(\.$sortSettings, action: \.sortSettings) { GroupSortSettings.Feature() }
       .forEach(\.path, action: \.path)
     }
   }

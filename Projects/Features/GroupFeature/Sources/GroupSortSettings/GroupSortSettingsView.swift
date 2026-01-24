@@ -7,6 +7,10 @@ extension GroupSortSettings {
   public struct RootView: View {
     @Bindable var store: StoreOf<Feature>
 
+    // 콜백 (시트에서 사용)
+    var onConfirm: ((GroupSortOption) -> Void)?
+    var onCancel: (() -> Void)?
+
     // 드래그 상태
     @State private var draggingItem: GroupBarItem?
     @State private var dragOffsetX: CGFloat = 0
@@ -17,8 +21,25 @@ extension GroupSortSettings {
     private let impactLight = UIImpactFeedbackGenerator(style: .light)
     private let impactMedium = UIImpactFeedbackGenerator(style: .medium)
 
-    public init(store: StoreOf<Feature>) {
+    public init(
+      store: StoreOf<Feature>,
+      onConfirm: ((GroupSortOption) -> Void)? = nil,
+      onCancel: (() -> Void)? = nil
+    ) {
       self.store = store
+      self.onConfirm = onConfirm
+      self.onCancel = onCancel
+    }
+
+    /// 변경사항 있는지 확인
+    private var hasChanges: Bool {
+      let finalOption: GroupSortOption
+      if store.selectedOption.sortType == .custom {
+        finalOption = .custom(order: store.customOrderedGroups.map(\.id))
+      } else {
+        finalOption = store.selectedOption
+      }
+      return finalOption != store.initialOption
     }
 
     public var body: some View {
@@ -35,15 +56,22 @@ extension GroupSortSettings {
         .toolbar {
           ToolbarItem(placement: .cancellationAction) {
             Button("취소") {
-              store.send(.view(.cancelTapped))
+              onCancel?()
             }
           }
 
           ToolbarItem(placement: .confirmationAction) {
             Button("완료") {
-              store.send(.view(.confirmTapped))
+              let finalOption: GroupSortOption
+              if store.selectedOption.sortType == .custom {
+                finalOption = .custom(order: store.customOrderedGroups.map(\.id))
+              } else {
+                finalOption = store.selectedOption
+              }
+              onConfirm?(finalOption)
             }
             .fontWeight(.semibold)
+            .disabled(!hasChanges)
           }
         }
       }

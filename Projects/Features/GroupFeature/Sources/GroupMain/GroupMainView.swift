@@ -75,11 +75,24 @@ extension GroupMain {
         EditPromise.RootView(store: editStore)
       }
       .sheet(
-        store: store.scope(state: \.$sortSettings, action: \.sortSettings)
-      ) { sortStore in
-        GroupSortSettings.RootView(store: sortStore)
+        isPresented: Binding(
+          get: { store.sortSettings != nil },
+          set: { if !$0 { store.send(.sortSettingsDismissed) } }
+        )
+      ) {
+        if let sortSettingsState = store.sortSettings {
+          SortSettingsSheetContent(
+            initialState: sortSettingsState,
+            onOptionChanged: { option in
+              store.send(.sortOptionChanged(option))
+            },
+            onDismiss: {
+              store.send(.sortSettingsDismissed)
+            }
+          )
           .presentationDetents([.height(420)])
           .presentationDragIndicator(.visible)
+        }
       }
       .alert(store: store.scope(state: \.$deleteAlert, action: \.deleteAlert))
       .confirmationDialog(
@@ -603,4 +616,27 @@ struct ShareSheet: UIViewControllerRepresentable {
   }
 
   func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+}
+
+// MARK: - SortSettingsSheetContent
+
+/// 시트 내부에서 Store를 생성하여 애니메이션 문제 해결
+private struct SortSettingsSheetContent: View {
+  let initialState: GroupSortSettings.Feature.State
+  let onOptionChanged: (GroupSortOption) -> Void
+  let onDismiss: () -> Void
+
+  var body: some View {
+    GroupSortSettings.RootView(
+      store: Store(initialState: initialState) {
+        GroupSortSettings.Feature()
+      },
+      onConfirm: { option in
+        onOptionChanged(option)
+      },
+      onCancel: {
+        onDismiss()
+      }
+    )
+  }
 }
