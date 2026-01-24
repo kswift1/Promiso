@@ -33,13 +33,10 @@ extension GroupSortSettings {
       /// 현재 옵션에 따라 정렬된 프리뷰 그룹
       public var sortedPreviewGroups: [GroupBarItem] {
         switch selectedOption {
-        case .joinedRecent, .joinedOldest:
-          // 가입순: 초기 옵션과 다르면 역순으로
-          if initialOption.sortType == .joined && selectedOption != initialOption {
-            return Array(previewGroups.reversed())
-          } else {
-            return previewGroups
-          }
+        case .joinedRecent:
+          return previewGroups.sorted { ($0.joinedAt ?? .distantPast) > ($1.joinedAt ?? .distantPast) }
+        case .joinedOldest:
+          return previewGroups.sorted { ($0.joinedAt ?? .distantPast) < ($1.joinedAt ?? .distantPast) }
         case .nameAscending:
           return previewGroups.sorted { $0.name < $1.name }
         case .nameDescending:

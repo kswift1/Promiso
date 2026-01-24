@@ -182,6 +182,11 @@ extension GroupMain {
 
       // MARK: - Computed Properties for New UI
 
+      /// 그룹 로딩 중 여부
+      var isGroupsLoading: Bool {
+        allGroupSummaries == nil
+      }
+
       /// 온보딩 모드 여부 (그룹이 없을 때)
       var isOnboardingMode: Bool {
         allGroupSummaries?.isEmpty == true
@@ -233,7 +238,8 @@ extension GroupMain {
             name: group.name,
             imageUrl: group.imageUrl,
             hasNewActivity: group.hasNewActivity,
-            isSelected: group.id == currentGroup?.id
+            isSelected: group.id == currentGroup?.id,
+            joinedAt: group.joinedAt
           )
         }
       }

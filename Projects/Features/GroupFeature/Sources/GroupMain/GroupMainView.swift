@@ -109,6 +109,7 @@ extension GroupMain {
         // 그룹 가로 바 (상단 고정)
         GroupHorizontalBar(
           groups: store.groupBarItems,
+          isLoading: store.isGroupsLoading,
           onGroupTap: { groupId in
             store.send(.view(.groupTapped(groupId)))
           },
@@ -472,6 +473,7 @@ extension GroupMain {
         // 그룹 가로 바 (빈 상태에서도 생성/참여 버튼 제공)
         GroupHorizontalBar(
           groups: store.groupBarItems,
+          isLoading: store.isGroupsLoading,
           onGroupTap: { groupId in
             store.send(.view(.groupTapped(groupId)))
           },
