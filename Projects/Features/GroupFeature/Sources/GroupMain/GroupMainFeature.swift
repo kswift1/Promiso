@@ -203,7 +203,7 @@ extension GroupMain {
             GroupBarItem(
               id: GroupMain.onboardingGroupId,
               name: "Promiso 시작하기",
-              localImageName: "notificationLogo",
+              localImage: ResourceKitAsset.notificationLogo.swiftUIImage,
               hasNewActivity: false,
               isSelected: true
             )

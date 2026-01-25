@@ -17,16 +17,18 @@ extension PastPromises {
         return [("전체", store.filteredPromises)]
       }
 
-      let grouped = Dictionary(grouping: store.filteredPromises) { promise -> String in
-        formatDateHeader(promise.startAt)
+      var result: [(date: String, promises: [PromiseModel])] = []
+
+      for promise in store.filteredPromises {
+        let dateKey = formatDateHeader(promise.startAt)
+        if let lastIndex = result.indices.last, result[lastIndex].date == dateKey {
+          result[lastIndex].promises.append(promise)
+        } else {
+          result.append((date: dateKey, promises: [promise]))
+        }
       }
 
-      // 최신순 정렬 (내림차순)
-      return grouped.sorted { lhs, rhs in
-        guard let lhsDate = lhs.value.first?.startAt,
-              let rhsDate = rhs.value.first?.startAt else { return false }
-        return lhsDate > rhsDate
-      }.map { (date: $0.key, promises: $0.value) }
+      return result
     }
 
     public var body: some View {
@@ -58,7 +60,8 @@ extension PastPromises {
           get: { store.searchQuery },
           set: { store.send(.view(.searchQueryChanged($0))) }
         ),
-        placement: .navigationBarDrawer(displayMode: .always)
+        placement: .navigationBarDrawer(displayMode: .always),
+        prompt: "제목·설명·장소로 검색"
       )
     }
 
@@ -108,9 +111,10 @@ extension PastPromises {
     private var emptyFilteredView: some View {
       VStack(spacing: 12) {
         filterControlsContent
+          .padding(12)
+          .adaptiveGlassCard(cornerRadius: 14)
           .padding(.horizontal, 16)
           .padding(.top, 12)
-          .adaptiveGlassCard(cornerRadius: 14)
 
         Spacer()
 
@@ -128,7 +132,6 @@ extension PastPromises {
 
         Spacer()
       }
-      .padding()
     }
 
     // MARK: - Error View
@@ -199,6 +202,9 @@ extension PastPromises {
       }
       .listStyle(.plain)
       .scrollContentBackground(.hidden)
+      .animation(.easeInOut(duration: 0.25), value: store.filteredPromises.map(\.id))
+      .animation(.easeInOut(duration: 0.25), value: store.sortOption)
+      .animation(.easeInOut(duration: 0.25), value: store.statusFilter)
     }
 
     private func promiseRow(_ promise: PromiseModel) -> some View {
@@ -217,6 +223,7 @@ extension PastPromises {
       .onTapGesture {
         store.send(.view(.promiseTapped(promise)))
       }
+      .transition(.opacity)
       .listRowBackground(Color.clear)
       .listRowSeparator(.hidden)
       .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))

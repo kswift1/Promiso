@@ -133,8 +133,8 @@ extension GroupSortSettings {
       let isDragging = draggingItem?.id == group.id
 
       VStack(spacing: 6) {
-        if let localImageName = group.localImageName {
-          Image(localImageName, bundle: .main)
+        if let localImage = group.localImage {
+          localImage
             .resizable()
             .scaledToFill()
             .frame(width: 48, height: 48)
