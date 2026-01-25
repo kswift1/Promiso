@@ -210,28 +210,7 @@ extension GroupMain {
           ]
         }
 
-        // 정렬 적용
-        let sortedGroups: [UserGroupInfo] = {
-          switch groupSortOption {
-          case .joinedRecent:
-            return groups.sorted { ($0.joinedAt ?? .distantPast) > ($1.joinedAt ?? .distantPast) }
-          case .joinedOldest:
-            return groups.sorted { ($0.joinedAt ?? .distantPast) < ($1.joinedAt ?? .distantPast) }
-          case .nameAscending:
-            return groups.sorted { $0.name < $1.name }
-          case .nameDescending:
-            return groups.sorted { $0.name > $1.name }
-          case .custom(let order):
-            // 커스텀 정렬 순서 적용
-            if order.isEmpty {
-              return groups
-            }
-            let groupDict = Dictionary(uniqueKeysWithValues: groups.map { ($0.id, $0) })
-            let ordered = order.compactMap { groupDict[$0] }
-            let remaining = groups.filter { group in !order.contains(group.id) }
-            return ordered + remaining
-          }
-        }()
+        let sortedGroups = sortedGroupsForSelection(groups)
 
         return sortedGroups.map { group in
           GroupBarItem(
@@ -341,6 +320,27 @@ extension GroupMain {
           .all: allPromises.count
           // .past는 제외 (별도 fetch이므로)
         ]
+      }
+
+      func sortedGroupsForSelection(_ groups: [UserGroupInfo]) -> [UserGroupInfo] {
+        switch groupSortOption {
+        case .joinedRecent:
+          return groups.sorted { ($0.joinedAt ?? .distantPast) > ($1.joinedAt ?? .distantPast) }
+        case .joinedOldest:
+          return groups.sorted { ($0.joinedAt ?? .distantPast) < ($1.joinedAt ?? .distantPast) }
+        case .nameAscending:
+          return groups.sorted { $0.name < $1.name }
+        case .nameDescending:
+          return groups.sorted { $0.name > $1.name }
+        case .custom(let order):
+          if order.isEmpty {
+            return groups
+          }
+          let groupDict = Dictionary(uniqueKeysWithValues: groups.map { ($0.id, $0) })
+          let ordered = order.compactMap { groupDict[$0] }
+          let remaining = groups.filter { group in !order.contains(group.id) }
+          return ordered + remaining
+        }
       }
     }
 
@@ -718,7 +718,8 @@ extension GroupMain {
             return .none
 
           case .setDefaultGroup(let groups):
-            guard let firstGroup = groups.first else { return .none }
+            let sortedGroups = state.sortedGroupsForSelection(groups)
+            guard let firstGroup = sortedGroups.first else { return .none }
             state.pendingGroupId = firstGroup.id
             return .merge(
               .send(.internal(.clearBadge(groupId: firstGroup.id))),
@@ -906,7 +907,7 @@ extension GroupMain {
           case .settingsResponse(.success(let settings)):
             state.groupSortOption = settings.groupSortOption
             // 설정 로드 후 그룹 리스트 표시
-            let summaries = state.currentUser.sortedGroups
+            let summaries = state.sortedGroupsForSelection(state.currentUser.groups)
             state.allGroupSummaries = summaries
             return .merge(
               .send(.internal(.setDefaultGroup(groups: summaries))),
@@ -915,7 +916,7 @@ extension GroupMain {
 
           case .settingsResponse(.failure):
             // 설정 로드 실패해도 기본값으로 그룹 리스트 표시
-            let summaries = state.currentUser.sortedGroups
+            let summaries = state.sortedGroupsForSelection(state.currentUser.groups)
             state.allGroupSummaries = summaries
             return .merge(
               .send(.internal(.setDefaultGroup(groups: summaries))),
