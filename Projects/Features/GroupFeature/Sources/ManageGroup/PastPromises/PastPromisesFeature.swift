@@ -20,6 +20,9 @@ extension PastPromises {
       var promisesState: LoadingState<[PromiseModel]> = .idle
       var isLoadingMore: Bool = false
       var hasMore: Bool = true
+      var searchQuery: String = ""
+      var statusFilter: StatusFilter = .all
+      var sortOption: SortOption = .newest
 
       public init(
         groupId: String,
@@ -35,6 +38,53 @@ extension PastPromises {
       var lastStartAt: Date? {
         promisesState.value?.last?.startAt
       }
+
+      var filteredPromises: [PromiseModel] {
+        let promises = promisesState.value ?? []
+        let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+
+        let statusFiltered = promises.filter { promise in
+          switch statusFilter {
+          case .all:
+            return true
+          case .confirmed:
+            return promise.isConfirmed
+          case .failed:
+            return !promise.isConfirmed
+          }
+        }
+
+        let searchFiltered = statusFiltered.filter { promise in
+          guard !query.isEmpty else { return true }
+          let title = promise.title.lowercased()
+          let description = promise.description?.lowercased() ?? ""
+          let location = promise.locationText.lowercased()
+          return title.contains(query) || description.contains(query) || location.contains(query)
+        }
+
+        switch sortOption {
+        case .newest:
+          return searchFiltered.sorted { $0.startAt > $1.startAt }
+        case .oldest:
+          return searchFiltered.sorted { $0.startAt < $1.startAt }
+        case .participants:
+          return searchFiltered.sorted { lhs, rhs in
+            lhs.votes.acceptedCount > rhs.votes.acceptedCount
+          }
+        }
+      }
+    }
+
+    public enum StatusFilter: String, CaseIterable, Sendable, Equatable {
+      case all = "전체"
+      case confirmed = "완료"
+      case failed = "미성사"
+    }
+
+    public enum SortOption: String, CaseIterable, Sendable, Equatable {
+      case newest = "최신순"
+      case oldest = "오래된순"
+      case participants = "참여 인원순"
     }
 
     public enum Action: Sendable {
@@ -47,6 +97,9 @@ extension PastPromises {
         case refreshTriggered
         case loadMoreTriggered
         case promiseTapped(PromiseModel)
+        case searchQueryChanged(String)
+        case statusFilterChanged(StatusFilter)
+        case sortOptionChanged(SortOption)
       }
 
       public enum Internal: Sendable {
@@ -82,6 +135,18 @@ extension PastPromises {
 
           case .promiseTapped(let promise):
             return .send(.delegate(.promiseSelected(promise)))
+
+          case .searchQueryChanged(let query):
+            state.searchQuery = query
+            return .none
+
+          case .statusFilterChanged(let filter):
+            state.statusFilter = filter
+            return .none
+
+          case .sortOptionChanged(let option):
+            state.sortOption = option
+            return .none
           }
 
         case .internal(let internalAction):

@@ -2,6 +2,8 @@ import SwiftUI
 import ComposableArchitecture
 import Clients
 import PromisoShared
+import UIKit
+import SharedFeature
 
 extension PastPromiseDetail {
   public struct RootView: View {
@@ -22,6 +24,10 @@ extension PastPromiseDetail {
         .padding(.horizontal, 20)
         .padding(.vertical, 24)
       }
+      .scrollDismissesKeyboard(.interactively)
+      .onTapGesture {
+        dismissKeyboard()
+      }
       .auroraBackground()
       .navigationTitle("지난 약속")
       .navigationBarTitleDisplayMode(.inline)
@@ -31,10 +37,10 @@ extension PastPromiseDetail {
           set: { _ in store.send(.view(.memberSheetDismissed)) }
         )
       ) { sheetState in
-        MemberListSheet(
+        PromiseDetailMemberListSheet(
           title: sheetState.title,
           members: sheetState.members,
-          colorType: sheetState.colorType
+          color: participantColor(sheetState.colorType)
         )
       }
     }
@@ -54,14 +60,14 @@ extension PastPromiseDetail {
             .foregroundStyle(.primary)
 
           if let description = store.promise.description, !description.isEmpty {
-            ExpandableText(text: description, isExpanded: $isDescriptionExpanded)
+            PromiseDetailExpandableText(text: description, isExpanded: $isDescriptionExpanded)
           }
         }
 
         Spacer()
 
         // 상태 배지 (우측 상단)
-        PastStatusBadge(promise: store.promise)
+        PromiseDetailStatusBadgeView(status: pastStatus)
       }
       .padding(16)
       .adaptiveGlassCard(cornerRadius: 16)
@@ -71,32 +77,60 @@ extension PastPromiseDetail {
 
     private var scheduleSection: some View {
       VStack(spacing: 0) {
-        SectionHeader(title: "일정")
+        PromiseDetailSectionHeader(title: "일정")
 
         VStack(spacing: 0) {
-          EmojiInfoRow(
+          PromiseDetailEmojiInfoRow(
             emoji: "📅",
             title: "날짜",
-            value: formatDate(store.promise.startAt)
+            value: formatFullDate(store.promise.startAt)
           )
 
           Divider().padding(.leading, 44)
 
-          EmojiInfoRow(
+          PromiseDetailEmojiInfoRow(
             emoji: "⏰",
             title: "시간",
             value: store.promise.timeText
           )
 
-          if store.promise.location != nil {
+          if let location = store.promise.location {
             Divider().padding(.leading, 44)
 
-            EmojiInfoRow(
-              emoji: "📍",
-              title: "장소",
-              value: store.promise.locationText
+            PromiseDetailLocationInfoRow(
+              location: location,
+              onDirectionsTapped: { }
+            )
+
+            if let latitude = location.latitude,
+               let longitude = location.longitude {
+              Divider().padding(.leading, 44)
+
+              PromiseDetailLocationMapPreview(
+                latitude: latitude,
+                longitude: longitude,
+                placeName: location.name
+              )
+            }
+          }
+
+          if let deadline = store.promise.deadlineText {
+            Divider().padding(.leading, 44)
+
+            PromiseDetailEmojiInfoRow(
+              emoji: "⏳",
+              title: "투표 마감",
+              value: deadline
             )
           }
+
+          Divider().padding(.leading, 44)
+
+          PromiseDetailEmojiInfoRow(
+            emoji: "👥",
+            title: "최소 확정 인원",
+            value: "\(store.promise.minimumParticipants)명"
+          )
         }
         .adaptiveGlassCard(cornerRadius: 12)
       }
@@ -106,19 +140,19 @@ extension PastPromiseDetail {
 
     private var participantsSection: some View {
       VStack(spacing: 0) {
-        SectionHeader(
+        PromiseDetailSectionHeader(
           title: "참여자",
           trailing: "\(store.promise.votes.acceptedCount)/\(store.groupMembers?.count ?? 0)명 참여"
         )
 
         VStack(spacing: 12) {
           if !store.promise.votes.accepted.isEmpty {
-            ParticipantGroupRow(
+            PromiseDetailParticipantGroupRow(
               title: "참여",
               count: store.promise.votes.acceptedCount,
               userIds: store.promise.votes.accepted,
               members: store.groupMembers,
-              colorType: .accepted
+              color: participantColor(.accepted)
             ) {
               store.send(.view(.participantGroupTapped(
                 title: "참여",
@@ -129,12 +163,12 @@ extension PastPromiseDetail {
           }
 
           if !store.promise.votes.declined.isEmpty {
-            ParticipantGroupRow(
+            PromiseDetailParticipantGroupRow(
               title: "불참",
               count: store.promise.votes.declinedCount,
               userIds: store.promise.votes.declined,
               members: store.groupMembers,
-              colorType: .declined
+              color: participantColor(.declined)
             ) {
               store.send(.view(.participantGroupTapped(
                 title: "불참",
@@ -149,12 +183,12 @@ extension PastPromiseDetail {
             let pendingUserIds = members.filter { !respondedIds.contains($0.userId) }.map(\.userId)
 
             if !pendingUserIds.isEmpty {
-              ParticipantGroupRow(
+              PromiseDetailParticipantGroupRow(
                 title: "미응답",
                 count: pendingUserIds.count,
                 userIds: pendingUserIds,
                 members: members,
-                colorType: .pending
+                color: participantColor(.pending)
               ) {
                 store.send(.view(.participantGroupTapped(
                   title: "미응답",
@@ -170,300 +204,37 @@ extension PastPromiseDetail {
 
     // MARK: - Helpers
 
-    private func formatDate(_ date: Date) -> String {
+    private func formatFullDate(_ date: Date) -> String {
       let formatter = DateFormatter()
       formatter.locale = Locale(identifier: "ko_KR")
-      formatter.dateFormat = "M월 d일"
+      formatter.dateFormat = "M월 d일 (E)"
       return formatter.string(from: date)
+    }
+
+    private var pastStatus: PromiseResponseStatus {
+      store.promise.isConfirmed ? .confirmed : .failed
+    }
+
+    private func participantColor(_ type: PastPromiseDetail.Feature.ParticipantColorType) -> Color {
+      switch type {
+      case .accepted:
+        return .green
+      case .declined:
+        return .red
+      case .pending:
+        return .gray
+      }
+    }
+
+    private func dismissKeyboard() {
+      UIApplication.shared.sendAction(
+        #selector(UIResponder.resignFirstResponder),
+        to: nil,
+        from: nil,
+        for: nil
+      )
     }
   }
 }
 
 // MARK: - Supporting Views
-
-private struct SectionHeader: View {
-  let title: String
-  var trailing: String? = nil
-
-  var body: some View {
-    HStack {
-      Text(title)
-        .font(.system(size: 13, weight: .semibold))
-        .foregroundStyle(.secondary)
-        .textCase(.uppercase)
-
-      Spacer()
-
-      if let trailing {
-        Text(trailing)
-          .font(.system(size: 13, weight: .medium))
-          .foregroundStyle(.secondary)
-      }
-    }
-    .padding(.horizontal, 4)
-    .padding(.bottom, 8)
-  }
-}
-
-private struct ExpandableText: View {
-  let text: String
-  @Binding var isExpanded: Bool
-  @State private var isTruncated = false
-  private let lineLimit = 3
-
-  var body: some View {
-    VStack(alignment: .leading, spacing: 4) {
-      Text(text)
-        .font(.system(size: 14))
-        .foregroundStyle(.secondary)
-        .multilineTextAlignment(.leading)
-        .lineLimit(isExpanded ? nil : lineLimit)
-        .background(
-          GeometryReader { geometry in
-            Color.clear.onAppear {
-              checkTruncation(geometry: geometry)
-            }
-          }
-        )
-
-      if isTruncated || isExpanded {
-        Button {
-          withAnimation(.easeInOut(duration: 0.2)) {
-            isExpanded.toggle()
-          }
-        } label: {
-          Text(isExpanded ? "접기" : "더보기")
-            .font(.system(size: 13, weight: .medium))
-            .foregroundStyle(.blue)
-        }
-      }
-    }
-  }
-
-  private func checkTruncation(geometry: GeometryProxy) {
-    let font = UIFont.systemFont(ofSize: 15)
-    let attributes: [NSAttributedString.Key: Any] = [.font: font]
-    let size = CGSize(width: geometry.size.width, height: .greatestFiniteMagnitude)
-    let boundingRect = (text as NSString).boundingRect(
-      with: size,
-      options: [.usesLineFragmentOrigin, .usesFontLeading],
-      attributes: attributes,
-      context: nil
-    )
-    let lineHeight = font.lineHeight
-    let numberOfLines = Int(ceil(boundingRect.height / lineHeight))
-    isTruncated = numberOfLines > lineLimit
-  }
-}
-
-private struct EmojiInfoRow: View {
-  let emoji: String
-  let title: String
-  let value: String
-
-  var body: some View {
-    HStack(spacing: 10) {
-      Text(emoji)
-        .font(.system(size: 18))
-        .frame(width: 28)
-
-      Text(title)
-        .font(.system(size: 15))
-        .foregroundStyle(.secondary)
-
-      Spacer()
-
-      Text(value)
-        .font(.system(size: 15, weight: .medium))
-    }
-    .padding(.horizontal, 16)
-    .padding(.vertical, 14)
-  }
-}
-
-private struct ParticipantGroupRow: View {
-  let title: String
-  let count: Int
-  let userIds: [String]
-  let members: [UserPublicModel]?
-  let colorType: PastPromiseDetail.Feature.ParticipantColorType
-  let onTap: () -> Void
-
-  private var color: Color {
-    switch colorType {
-    case .accepted: return .green
-    case .declined: return .red
-    case .pending: return .gray
-    }
-  }
-
-  var body: some View {
-    Button(action: onTap) {
-      HStack {
-        Circle()
-          .fill(color)
-          .frame(width: 8, height: 8)
-
-        Text(title)
-          .font(.system(size: 14, weight: .medium))
-          .foregroundStyle(.primary)
-
-        Text("\(count)명")
-          .font(.system(size: 14))
-          .foregroundStyle(.secondary)
-
-        Spacer()
-
-        HStack(spacing: -8) {
-          ForEach(userIds.prefix(5), id: \.self) { userId in
-            if let member = members?.first(where: { $0.userId == userId }) {
-              ProfileAvatarView(
-                profileImageUrl: member.profileImageUrl,
-                displayName: member.displayName,
-                size: 28
-              )
-            } else {
-              ProfileAvatarView(
-                profileImageUrl: nil,
-                displayName: "?",
-                size: 28
-              )
-            }
-          }
-
-          if userIds.count > 5 {
-            Text("+\(userIds.count - 5)")
-              .font(.system(size: 10, weight: .bold))
-              .foregroundColor(.white)
-              .frame(width: 28, height: 28)
-              .background(Color.gray)
-              .clipShape(Circle())
-              .overlay(Circle().stroke(Color.white, lineWidth: 2))
-          }
-        }
-
-        Image(systemName: "chevron.right")
-          .font(.system(size: 12, weight: .semibold))
-          .foregroundStyle(.tertiary)
-      }
-      .contentShape(Rectangle())
-      .padding(.horizontal, 16)
-      .padding(.vertical, 12)
-      .adaptiveGlassCard(cornerRadius: 12)
-    }
-    .buttonStyle(.plain)
-  }
-}
-
-private struct PastStatusBadge: View {
-  let promise: PromiseModel
-
-  private var statusText: String {
-    promise.isConfirmed ? "완료" : "미성사"
-  }
-
-  private var color: Color {
-    promise.isConfirmed ? .green : .gray
-  }
-
-  var body: some View {
-    HStack(spacing: 4) {
-      Image(systemName: promise.isConfirmed ? "checkmark.circle.fill" : "xmark.circle.fill")
-        .font(.system(size: 12))
-      Text(statusText)
-        .font(.system(size: 13, weight: .semibold))
-    }
-    .padding(.horizontal, 12)
-    .padding(.vertical, 6)
-    .background(color.opacity(0.15))
-    .foregroundStyle(color)
-    .clipShape(Capsule())
-  }
-}
-
-// MARK: - Member List Sheet
-
-private struct MemberListSheet: View {
-  let title: String
-  let members: [UserPublicModel]
-  let colorType: PastPromiseDetail.Feature.ParticipantColorType
-
-  @State private var selectedMember: UserPublicModel?
-
-  private var color: Color {
-    switch colorType {
-    case .accepted: return .green
-    case .declined: return .red
-    case .pending: return .gray
-    }
-  }
-
-  var body: some View {
-    NavigationView {
-      ScrollView {
-        LazyVStack(spacing: 0) {
-          ForEach(members) { member in
-            MemberRow(member: member, color: color) {
-              selectedMember = member
-            }
-
-            if member.id != members.last?.id {
-              Divider().padding(.leading, 72)
-            }
-          }
-        }
-        .padding(.vertical, 8)
-      }
-      .navigationTitle("\(title) (\(members.count)명)")
-      .navigationBarTitleDisplayMode(.inline)
-    }
-    .presentationDetents([.medium, .large])
-    .presentationDragIndicator(.visible)
-    .fullScreenCover(item: $selectedMember) { member in
-      ImageDetailView(
-        imageUrl: member.profileImageUrl,
-        displayName: member.displayName,
-        onDismiss: { selectedMember = nil }
-      )
-    }
-  }
-}
-
-private struct MemberRow: View {
-  let member: UserPublicModel
-  let color: Color
-  let onProfileTap: () -> Void
-
-  var body: some View {
-    HStack(spacing: 16) {
-      ProfileAvatarView(
-        profileImageUrl: member.profileImageUrl,
-        displayName: member.displayName,
-        size: 48,
-        borderWidth: 0,
-        onTap: onProfileTap
-      )
-
-      VStack(alignment: .leading, spacing: 4) {
-        Text(member.displayName)
-          .font(.system(size: 16, weight: .medium))
-          .foregroundStyle(.primary)
-
-        if !member.nickname.isEmpty && member.nickname != member.displayName {
-          Text("@\(member.nickname)")
-            .font(.system(size: 13))
-            .foregroundStyle(.secondary)
-        }
-      }
-
-      Spacer()
-
-      Circle()
-        .fill(color)
-        .frame(width: 10, height: 10)
-    }
-    .padding(.horizontal, 20)
-    .padding(.vertical, 12)
-  }
-}
-

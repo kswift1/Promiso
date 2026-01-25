@@ -8,6 +8,7 @@ extension GroupSettings {
   @Reducer
   public struct Feature {
     @Dependency(\.groupClient) var groupClient
+    @Dependency(\.hapticFeedback) var hapticFeedback
 
     @ObservableState
     public struct State: Equatable {
@@ -118,28 +119,42 @@ extension GroupSettings {
 
           case .membersTapped:
             state.showMemberSheet = true
-            return .none
+            return .run { [hapticFeedback] _ in
+              await hapticFeedback.buttonTap()
+            }
 
           case .inviteTapped:
             state.showInviteSheet = true
-            return .none
+            return .run { [hapticFeedback] _ in
+              await hapticFeedback.buttonTap()
+            }
 
           case .pastPromisesTapped:
-            return .send(.delegate(.pastPromisesTapped))
+            return .merge(
+              .send(.delegate(.pastPromisesTapped)),
+              .run { [hapticFeedback] _ in
+                await hapticFeedback.buttonTap()
+              }
+            )
 
           case .leaveGroupTapped:
             state.showLeaveAlert = true
-            return .none
+            return .run { [hapticFeedback] _ in
+              await hapticFeedback.warning()
+            }
 
           case .deleteGroupTapped:
             state.showDeleteAlert = true
-            return .none
+            return .run { [hapticFeedback] _ in
+              await hapticFeedback.warning()
+            }
 
           case .confirmLeave:
             state.showLeaveAlert = false
             state.isLeavingGroup = true
             state.leaveError = nil
-            return .run { [groupId = state.group.id] send in
+            return .run { [groupId = state.group.id, hapticFeedback] send in
+              await hapticFeedback.destructive()
               do {
                 try await groupClient.leaveGroup(groupId)
                 await send(.internal(.leaveGroupResponse(.success(()))))
@@ -152,7 +167,8 @@ extension GroupSettings {
             state.showDeleteAlert = false
             state.isDeletingGroup = true
             state.deleteError = nil
-            return .run { [groupId = state.group.id] send in
+            return .run { [groupId = state.group.id, hapticFeedback] send in
+              await hapticFeedback.destructive()
               do {
                 try await groupClient.deleteGroup(groupId)
                 await send(.internal(.deleteGroupResponse(.success(()))))
@@ -215,21 +231,35 @@ extension GroupSettings {
 
           case .leaveGroupResponse(.success):
             state.isLeavingGroup = false
-            return .send(.delegate(.groupLeft))
+            return .merge(
+              .send(.delegate(.groupLeft)),
+              .run { [hapticFeedback] _ in
+                await hapticFeedback.success()
+              }
+            )
 
           case .leaveGroupResponse(.failure(let error)):
             state.isLeavingGroup = false
             state.leaveError = error.localizedDescription
-            return .none
+            return .run { [hapticFeedback] _ in
+              await hapticFeedback.error()
+            }
 
           case .deleteGroupResponse(.success):
             state.isDeletingGroup = false
-            return .send(.delegate(.groupDeleted))
+            return .merge(
+              .send(.delegate(.groupDeleted)),
+              .run { [hapticFeedback] _ in
+                await hapticFeedback.success()
+              }
+            )
 
           case .deleteGroupResponse(.failure(let error)):
             state.isDeletingGroup = false
             state.deleteError = error.localizedDescription
-            return .none
+            return .run { [hapticFeedback] _ in
+              await hapticFeedback.error()
+            }
           }
 
         case .delegate:

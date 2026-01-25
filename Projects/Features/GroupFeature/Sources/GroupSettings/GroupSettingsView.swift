@@ -12,7 +12,7 @@ extension GroupSettings {
     }
 
     public var body: some SwiftUI.View {
-      listContent
+      content
         .navigationTitle("그룹 설정")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { store.send(.view(.onAppear)) }
@@ -20,29 +20,33 @@ extension GroupSettings {
         .modifier(AlertsModifier(store: store))
     }
 
-    private var listContent: some SwiftUI.View {
-      List {
-        groupHeaderSection
-        menuSection
-        dangerSection
+    private var content: some SwiftUI.View {
+      ScrollView {
+        VStack(spacing: 16) {
+          groupHeaderSection
+          menuSection
+          dangerSection
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 12)
+        .padding(.bottom, 24)
       }
     }
 
     // MARK: - Sections
 
     private var groupHeaderSection: some SwiftUI.View {
-      Section {
+      VStack(spacing: 16) {
         HStack(spacing: 16) {
-          // 그룹 아바타 (PromisoShared 컴포넌트 사용)
           GroupThumbnailView(
             imageUrl: store.group.imageUrl,
             name: store.group.name,
             size: 60
           )
 
-          VStack(alignment: .leading, spacing: 4) {
+          VStack(alignment: .leading, spacing: 6) {
             Text(store.group.name)
-              .font(.system(size: 18, weight: .semibold))
+              .font(.system(size: 20, weight: .semibold))
 
             Text("\(store.memberCount)명")
               .font(.system(size: 14))
@@ -51,88 +55,131 @@ extension GroupSettings {
 
           Spacer()
         }
-        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
       }
+      .padding(16)
+      .adaptiveGlassCard()
     }
 
     private var menuSection: some SwiftUI.View {
-      Section {
-        // 멤버
-        Button {
-          store.send(.view(.membersTapped))
-        } label: {
-          HStack {
-            Label("멤버", systemImage: "person.2")
-            Spacer()
-            Text("\(store.memberCount)명")
-              .foregroundStyle(.secondary)
-            Image(systemName: "chevron.right")
-              .font(.system(size: 13, weight: .semibold))
-              .foregroundStyle(.tertiary)
-          }
-        }
-        .foregroundStyle(.primary)
+      VStack(alignment: .leading, spacing: 10) {
+        VStack(spacing: 0) {
+          menuRow(
+            title: "멤버",
+            systemImage: "person.2",
+            trailingText: "\(store.memberCount)명",
+            action: { store.send(.view(.membersTapped)) }
+          )
 
-        // 초대하기
-        Button {
-          store.send(.view(.inviteTapped))
-        } label: {
-          HStack {
-            Label("친구 초대", systemImage: "square.and.arrow.up")
-            Spacer()
-            Image(systemName: "chevron.right")
-              .font(.system(size: 13, weight: .semibold))
-              .foregroundStyle(.tertiary)
-          }
-        }
-        .foregroundStyle(.primary)
+          dividerLine
 
-        // 지난 약속
-        Button {
-          store.send(.view(.pastPromisesTapped))
-        } label: {
-          HStack {
-            Label("지난 약속", systemImage: "clock.arrow.circlepath")
-            Spacer()
-            Image(systemName: "chevron.right")
-              .font(.system(size: 13, weight: .semibold))
-              .foregroundStyle(.tertiary)
-          }
+          menuRow(
+            title: "친구 초대",
+            systemImage: "square.and.arrow.up",
+            trailingText: nil,
+            action: { store.send(.view(.inviteTapped)) }
+          )
+
+          dividerLine
+
+          menuRow(
+            title: "지난 약속",
+            systemImage: "clock.arrow.circlepath",
+            trailingText: nil,
+            action: { store.send(.view(.pastPromisesTapped)) }
+          )
         }
-        .foregroundStyle(.primary)
+        .adaptiveGlassCard()
       }
     }
 
     private var dangerSection: some SwiftUI.View {
-      Section {
-        if store.isHost {
-          Button(role: .destructive) {
-            store.send(.view(.deleteGroupTapped))
-          } label: {
-            HStack {
-              Label("그룹 삭제", systemImage: "trash")
-              Spacer()
-              if store.isDeletingGroup {
-                ProgressView()
-              }
-            }
+      VStack(alignment: .leading, spacing: 10) {
+        VStack(spacing: 0) {
+          if store.isHost {
+            dangerRow(
+              title: "그룹 삭제",
+              systemImage: "trash",
+              isLoading: store.isDeletingGroup,
+              action: { store.send(.view(.deleteGroupTapped)) }
+            )
+            .disabled(store.isDeletingGroup)
+          } else {
+            dangerRow(
+              title: "그룹 나가기",
+              systemImage: "rectangle.portrait.and.arrow.right",
+              isLoading: store.isLeavingGroup,
+              action: { store.send(.view(.leaveGroupTapped)) }
+            )
+            .disabled(store.isLeavingGroup)
           }
-          .disabled(store.isDeletingGroup)
-        } else {
-          Button(role: .destructive) {
-            store.send(.view(.leaveGroupTapped))
-          } label: {
-            HStack {
-              Label("그룹 나가기", systemImage: "rectangle.portrait.and.arrow.right")
-              Spacer()
-              if store.isLeavingGroup {
-                ProgressView()
-              }
-            }
-          }
-          .disabled(store.isLeavingGroup)
         }
+        .adaptiveGlassCard()
       }
+    }
+
+    private var dividerLine: some SwiftUI.View {
+      Divider()
+        .background(Color.white.opacity(0.12))
+    }
+
+    private func menuRow(
+      title: String,
+      systemImage: String,
+      trailingText: String?,
+      action: @escaping () -> Void
+    ) -> some SwiftUI.View {
+      Button(action: action) {
+        HStack(spacing: 12) {
+          Image(systemName: systemImage)
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundStyle(Color.pmindigo.n500)
+
+          Text(title)
+            .foregroundStyle(.primary)
+          Spacer()
+          if let trailingText {
+            Text(trailingText)
+              .foregroundStyle(.secondary)
+          }
+          Image(systemName: "chevron.right")
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundStyle(.tertiary)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+      }
+      .buttonStyle(.plain)
+      .foregroundStyle(.primary)
+    }
+
+    private func dangerRow(
+      title: String,
+      systemImage: String,
+      isLoading: Bool,
+      action: @escaping () -> Void
+    ) -> some SwiftUI.View {
+      Button(role: .destructive, action: action) {
+        HStack(spacing: 12) {
+          Image(systemName: systemImage)
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundStyle(Color.pmerror.n500)
+
+          Text(title)
+            .foregroundStyle(.primary)
+          Spacer()
+          if isLoading {
+            ProgressView()
+          }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+      }
+      .buttonStyle(.plain)
     }
   }
 }
