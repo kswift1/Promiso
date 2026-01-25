@@ -38,38 +38,46 @@ import {
  * @return {string} 포맷된 날짜/시간 문자열 (KST)
  */
 function formatDateTime(date: Date): string {
-  // KST (UTC+9)로 변환
-  const KST_OFFSET = 9 * 60 * 60 * 1000; // 9시간 in milliseconds
-  const kstDate = new Date(date.getTime() + KST_OFFSET);
-  const kstNow = new Date(Date.now() + KST_OFFSET);
+  // Intl.DateTimeFormat으로 KST 시간대 직접 사용
+  const kstFormatter = new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+  });
+  const nowFormatter = new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+  });
 
-  // KST 기준 오늘/내일 계산 (UTC 시간에서 KST 날짜 추출)
-  const kstToday = new Date(Date.UTC(
-    kstNow.getUTCFullYear(), kstNow.getUTCMonth(), kstNow.getUTCDate()
-  ));
-  const kstTomorrow = new Date(kstToday.getTime() + 24 * 60 * 60 * 1000);
-  const kstTargetDay = new Date(Date.UTC(
-    kstDate.getUTCFullYear(), kstDate.getUTCMonth(), kstDate.getUTCDate()
-  ));
+  const kstDateStr = kstFormatter.format(date);
+  const kstNowStr = nowFormatter.format(new Date());
 
-  // 날짜 부분
+  // 오늘/내일 판단
+  const kstTomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  const kstTomorrowStr = nowFormatter.format(kstTomorrow);
+
   let dateStr: string;
-  if (kstTargetDay.getTime() === kstToday.getTime()) {
+  if (kstDateStr === kstNowStr) {
     dateStr = "오늘";
-  } else if (kstTargetDay.getTime() === kstTomorrow.getTime()) {
+  } else if (kstDateStr === kstTomorrowStr) {
     dateStr = "내일";
   } else {
-    dateStr = `${kstDate.getUTCMonth() + 1}월 ${kstDate.getUTCDate()}일`;
+    // "2024. 1. 25." → "1월 25일"
+    const parts = kstDateStr.split(". ");
+    dateStr = `${parseInt(parts[1])}월 ${parseInt(parts[2])}일`;
   }
 
-  // 시간 부분 (KST 기준, 오전/오후 형식)
-  const hours24 = kstDate.getUTCHours();
-  const minutes = kstDate.getUTCMinutes();
-  const ampm = hours24 < 12 ? "오전" : "오후";
-  const hours12 = hours24 === 0 ? 12 : hours24 > 12 ? hours24 - 12 : hours24;
-  const timeStr = minutes === 0 ?
-    `${ampm} ${hours12}시` :
-    `${ampm} ${hours12}시 ${minutes}분`;
+  // 시간 부분 (KST 기준)
+  const timeFormatter = new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    hour: "numeric",
+    minute: "numeric",
+    hour12: true,
+  });
+  const timeStr = timeFormatter.format(date);
 
   return `${dateStr} ${timeStr}`;
 }
