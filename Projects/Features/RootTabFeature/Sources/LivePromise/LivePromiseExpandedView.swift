@@ -127,12 +127,20 @@ extension LivePromise {
           // 4. 안내 문구
           participantNotice
             .padding(.top, 12)
-            .padding(.bottom, 40)
+            .padding(.bottom, 100) // 길찾기 버튼 공간 확보
         }
         .padding(.horizontal, 16)
       }
       .frame(maxWidth: .infinity, maxHeight: .infinity)
       .background(.ultraThinMaterial)
+      .overlay(alignment: .bottomTrailing) {
+        // 길찾기 버튼 (좌표가 있을 때만 표시)
+        if store.data.hasCoordinates {
+          directionsButton
+            .padding(.trailing, 20)
+            .padding(.bottom, 24)
+        }
+      }
       .safeAreaInset(edge: .top, spacing: 0) {
         // Drag Indicator
         VStack(spacing: 0) {
@@ -144,8 +152,8 @@ extension LivePromise {
         }
         .frame(maxWidth: .infinity)
         .background(.ultraThinMaterial)
-        .navigationTransition(.zoom(sourceID: transitionID, in: animation))
       }
+      .navigationTransition(.zoom(sourceID: transitionID, in: animation))
       .sheet(
         isPresented: Binding(
           get: { store.isETASheetPresented },
@@ -467,6 +475,34 @@ extension LivePromise {
           : Color.pmindigo.n100.opacity(0.8),
         in: Capsule()
       )
+    }
+
+    // MARK: - Directions Button
+
+    private var directionsButton: some View {
+      Button {
+        store.send(.view(.directionsTapped))
+      } label: {
+        HStack(spacing: 8) {
+          Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
+            .font(.system(size: 16, weight: .semibold))
+          Text("길찾기")
+            .font(.system(size: 15, weight: .semibold))
+        }
+        .foregroundStyle(.white)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 14)
+        .background(
+          LinearGradient(
+            colors: [Color.pmindigo.n500, Color.pmindigo.n600],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+          ),
+          in: Capsule()
+        )
+        .shadow(color: Color.pmindigo.n500.opacity(0.4), radius: 8, y: 4)
+      }
+      .buttonStyle(.hapticBounce(.medium))
     }
 
     // MARK: - 2. Racing View + Participants Section
