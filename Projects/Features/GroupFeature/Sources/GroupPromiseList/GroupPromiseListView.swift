@@ -62,7 +62,8 @@ extension GroupPromiseList {
             onEdit: nil,
             onDelete: nil,
             onChangeResponse: nil,
-            onShare: nil
+            onShare: nil,
+            onDirections: nil
           )
           .onTapGesture {
             store.send(.view(.promiseTapped(promise)))

@@ -180,10 +180,7 @@ struct StartDateTimeSection: View {
   }
 
   var body: some View {
-    SectionPlaceHolder(
-      placeHolderTitle: "시작 시간",
-      isRequired: true
-    ) {
+    SectionPlaceHolder(placeHolderTitle: "시작 시간") {
       VStack(spacing: 0) {
         InlineDateTimePicker(
           date: Binding(

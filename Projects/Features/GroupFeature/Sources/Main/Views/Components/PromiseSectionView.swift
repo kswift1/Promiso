@@ -87,7 +87,8 @@ struct PromiseSectionView: View {
             onChangeResponse: onChangeResponse != nil ? { status in
               onChangeResponse?(promise, status)
             } : nil,
-            onShare: onShare != nil ? { onShare?(promise) } : nil
+            onShare: onShare != nil ? { onShare?(promise) } : nil,
+            onDirections: nil
           )
           .onTapGesture {
             onPromiseTap(promise)

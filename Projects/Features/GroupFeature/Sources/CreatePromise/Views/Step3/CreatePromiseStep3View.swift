@@ -22,6 +22,10 @@ struct CreatePromiseStep3View: View {
           DescriptionSection(store: store, isFocused: $isDescriptionFocused)
             .id("description")
 
+          // 최소 참가 인원
+          MinimumParticipantsSection(store: store, scrollProxy: proxy)
+            .id("minimumParticipants")
+
           // 약속 미리보기
           PromisePreviewSection(store: store)
             .id("preview")

@@ -249,12 +249,18 @@ users/{userId}/settings/main
 | 필드명 | 타입 | 필수 | 기본값 | 설명 |
 |--------|------|------|--------|------|
 | `notificationEnabled` | Boolean | ✅ | true | 푸시 알림 활성화 여부 |
+| `groupSortOption` | Map | ❌ | `{type: "joinedRecent"}` | 그룹 정렬 설정 |
+| `groupSortOption.type` | String | ✅ | "joinedRecent" | 정렬 타입 (`joinedRecent` \| `joinedOldest` \| `nameAscending` \| `nameDescending` \| `custom`) |
+| `groupSortOption.order` | Array<String> | ❌ | - | 커스텀 정렬 시 그룹 ID 순서 (type이 `custom`일 때만) |
 
 #### 📝 예시 데이터
 
 ```json
 {
-  "notificationEnabled": true
+  "notificationEnabled": true,
+  "groupSortOption": {
+    "type": "joinedRecent"
+  }
 }
 ```
 
@@ -506,7 +512,10 @@ promises/{promiseId}
   "startAt": "2024-01-15T19:00:00+09:00",
   "endAt": "2024-01-15T21:30:00+09:00",
   "location": {
-    "name": "CGV 강남"
+    "name": "CGV 강남",
+    "address": "서울 강남구 강남대로 438",
+    "latitude": 37.501087,
+    "longitude": 127.026632
   },
   "createdAt": "2024-01-14T10:00:00+09:00",
   "updatedAt": "2024-01-14T18:00:00+09:00",
@@ -627,23 +636,27 @@ promises/{promiseId}.location
 | 필드명 | 타입 | 필수 | 설명 |
 |--------|------|------|------|
 | `name` | String | ✅ | 장소명 |
-
-> 💡 향후 확장 시 `address`, `latitude`, `longitude`, `placeId` 등 추가 가능
+| `address` | String | ❌ | 주소 |
+| `latitude` | Number | ❌ | 위도 |
+| `longitude` | Number | ❌ | 경도 |
 
 #### 📝 예시 데이터
 
 ```json
 {
   "location": {
-    "name": "CGV 강남"
+    "name": "스타벅스 강남역점",
+    "address": "서울 강남구 강남대로 390",
+    "latitude": 37.498095,
+    "longitude": 127.027610
   }
 }
 ```
 
 #### 💡 설계 의도
 
-- **단순성**: MVP에서는 장소명만 저장
-- **확장성**: 위치 정보 필요시 필드 추가
+- **지도 연동**: Kakao Maps SDK 연동으로 좌표 및 주소 저장
+- **역지오코딩 가능**: 저장된 좌표로 지도 표시 및 길찾기 기능 연동 가능
 
 ---
 
@@ -1049,13 +1062,19 @@ service cloud.firestore {
 |  |  | - votesUntil 필드 추가 (투표 마감 시각) |  |
 |  |  | - votes Map: Set-like 동작 (arrayUnion/arrayRemove) 문서화 |  |
 |  |  | - location Map 별도 섹션으로 분리 |  |
+| 1.5 | 2025-01-24 | Settings 스키마 확장 | Claude |
+|  |  | - users/{userId}/settings/main에 groupSortOption 필드 추가 |  |
+|  |  | - groupSortOption: 그룹 정렬 방식 (joinedRecent \| joinedOldest \| nameAscending) |  |
+| 1.6 | 2025-01-25 | Location 스키마 확장 | Claude |
+|  |  | - promises/{promiseId}.location에 address, latitude, longitude 필드 추가 |  |
+|  |  | - Kakao Maps SDK 연동으로 좌표 및 주소 저장 지원 |  |
 
 ---
 
 ## 백로그
 
-### v1.5
+### v1.6
 
-- `location` Map 확장: address, latitude, longitude, placeId 추가
 - `reminders` 기능 도입 시 스키마 확정
 - 실시간 위치 공유 (arrivalSharing) 스키마 설계
+- `location.placeId` 필드 추가 (Kakao Place ID)

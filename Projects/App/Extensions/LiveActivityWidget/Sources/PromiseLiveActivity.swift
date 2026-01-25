@@ -121,6 +121,8 @@ private let previewAttributes = PromiseActivityAttributes(
   emoji: "🍜",
   title: "점심 모임",
   location: "강남역 11번 출구",
+  latitude: 37.498095,
+  longitude: 127.027610,
   scheduledTime: Date().addingTimeInterval(1080),
   trackingDurationMinutes: 30
 )
@@ -132,6 +134,8 @@ private let previewAttributesLong = PromiseActivityAttributes(
   emoji: "🎂",
   title: "성원이 생일파티 with 친구들",
   location: "서울특별시 강남구 테헤란로 123번길",
+  latitude: 37.501087,
+  longitude: 127.026632,
   scheduledTime: Date().addingTimeInterval(1080),
   trackingDurationMinutes: 30
 )

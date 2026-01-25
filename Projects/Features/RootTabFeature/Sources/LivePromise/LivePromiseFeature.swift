@@ -23,6 +23,8 @@ extension LivePromise {
     public var emoji: String
     public var title: String
     public var location: String?
+    public var latitude: Double?
+    public var longitude: Double?
     public var scheduledTime: Date?
     public var participants: [ParticipantState]
     public var currentUserId: String
@@ -37,6 +39,8 @@ extension LivePromise {
       emoji: String = "📍",
       title: String = "",
       location: String? = nil,
+      latitude: Double? = nil,
+      longitude: Double? = nil,
       scheduledTime: Date? = nil,
       participants: [ParticipantState] = [],
       currentUserId: String = "",
@@ -50,6 +54,8 @@ extension LivePromise {
       self.emoji = emoji
       self.title = title
       self.location = location
+      self.latitude = latitude
+      self.longitude = longitude
       self.scheduledTime = scheduledTime
       self.participants = participants
       self.currentUserId = currentUserId
@@ -82,6 +88,11 @@ extension LivePromise {
     public var currentUserETA: Int? {
       currentUserParticipant?.estimatedArrivalMinutes
     }
+
+    /// 좌표 정보가 있는지 확인
+    public var hasCoordinates: Bool {
+      latitude != nil && longitude != nil
+    }
   }
 }
 
@@ -100,6 +111,7 @@ extension LivePromise {
   @Reducer
   public struct Detail {
     @Dependency(\.hapticFeedback) private var hapticFeedback
+    @Dependency(\.mapClient) private var mapClient
 
     public init() {}
 
@@ -168,6 +180,8 @@ extension LivePromise {
         case showETASheet
         /// 상태 변경 시트 닫기
         case hideETASheet
+        /// 길찾기 버튼 탭
+        case directionsTapped
       }
 
       public enum Delegate: Equatable, Sendable {
@@ -242,6 +256,17 @@ extension LivePromise {
           case .hideETASheet:
             state.isETASheetPresented = false
             return .none
+
+          case .directionsTapped:
+            guard let latitude = state.data.latitude,
+                  let longitude = state.data.longitude else {
+              return .none
+            }
+            let coordinate = Coordinate(latitude: latitude, longitude: longitude)
+            mapClient.openDirections(coordinate, state.data.location)
+            return .run { _ in
+              await hapticFeedback.light()
+            }
           }
 
         case .delegate:
@@ -373,6 +398,8 @@ extension LivePromise {
                 data.emoji = attributes.emoji
                 data.title = attributes.title
                 data.location = attributes.location
+                data.latitude = attributes.latitude
+                data.longitude = attributes.longitude
                 data.scheduledTime = attributes.scheduledTime
                 data.trackingDurationMinutes = attributes.trackingDurationMinutes
                 data.hostId = attributes.hostId

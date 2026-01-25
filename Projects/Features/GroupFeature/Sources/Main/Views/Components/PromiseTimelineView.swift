@@ -243,7 +243,8 @@ private struct PromiseRow: View {
         onEdit: onEdit,
         onDelete: onDelete.map { delete in { delete(promise.id) } },
         onChangeResponse: onChangeResponse.map { change in { status in change(promise.id, status) } },
-        onShare: onShare.map { share in { share(promise.id) } }
+        onShare: onShare.map { share in { share(promise.id) } },
+        onDirections: nil
       )
       .contentShape(Rectangle())
       .onTapGesture(perform: onTap)

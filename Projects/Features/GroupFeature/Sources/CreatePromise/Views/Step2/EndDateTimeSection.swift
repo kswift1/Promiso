@@ -14,7 +14,6 @@ struct EndDateTimeSection: View {
   var body: some View {
     SectionPlaceHolder(
       placeHolderTitle: "종료 시간",
-      isRequired: false,
       placeHolderAccessory: {
         Toggle("", isOn: Binding(
           get: { useEndTime },

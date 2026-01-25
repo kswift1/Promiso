@@ -131,7 +131,12 @@ export const createPromise = onCall<CreatePromiseRequest>(
       },
       startAt: startAtTimestamp,
       endAt: endAtDate ? admin.firestore.Timestamp.fromDate(endAtDate) : null,
-      location: data.place ? {name: data.place} : null,
+      location: data.location ? {
+        name: data.location.name,
+        address: data.location.address || null,
+        latitude: data.location.latitude || null,
+        longitude: data.location.longitude || null,
+      } : null,
       trackingStartMinutesBefore: data.arrivalSharingTime || null,
       badgesCleared: false, // 배지 정리 여부 (마감 시 true로 변경)
       createdAt: FieldValue.serverTimestamp(),

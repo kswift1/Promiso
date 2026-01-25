@@ -12,6 +12,7 @@ public struct GroupBarItem: Identifiable, Equatable, Sendable {
   public let localImageName: String?
   public let hasNewActivity: Bool
   public let isSelected: Bool
+  public let joinedAt: Date?
 
   public init(
     id: String,
@@ -19,7 +20,8 @@ public struct GroupBarItem: Identifiable, Equatable, Sendable {
     imageUrl: String? = nil,
     localImageName: String? = nil,
     hasNewActivity: Bool = false,
-    isSelected: Bool = false
+    isSelected: Bool = false,
+    joinedAt: Date? = nil
   ) {
     self.id = id
     self.name = name
@@ -27,6 +29,7 @@ public struct GroupBarItem: Identifiable, Equatable, Sendable {
     self.localImageName = localImageName
     self.hasNewActivity = hasNewActivity
     self.isSelected = isSelected
+    self.joinedAt = joinedAt
   }
 }
 
@@ -35,27 +38,53 @@ public struct GroupBarItem: Identifiable, Equatable, Sendable {
 /// 유튜브 구독 탭 스타일의 가로 스크롤 그룹 바
 struct GroupHorizontalBar: View {
   let groups: [GroupBarItem]
+  let isLoading: Bool
   let onGroupTap: (String) -> Void
   let onCreateGroup: () -> Void
   let onJoinGroup: () -> Void
+  let onSortSettings: () -> Void
+
+  init(
+    groups: [GroupBarItem],
+    isLoading: Bool = false,
+    onGroupTap: @escaping (String) -> Void,
+    onCreateGroup: @escaping () -> Void,
+    onJoinGroup: @escaping () -> Void,
+    onSortSettings: @escaping () -> Void
+  ) {
+    self.groups = groups
+    self.isLoading = isLoading
+    self.onGroupTap = onGroupTap
+    self.onCreateGroup = onCreateGroup
+    self.onJoinGroup = onJoinGroup
+    self.onSortSettings = onSortSettings
+  }
 
   var body: some View {
     ScrollViewReader { proxy in
       ScrollView(.horizontal, showsIndicators: false) {
         HStack(alignment: .top, spacing: 16) {
-          ForEach(groups) { group in
-            GroupBarItemView(
-              group: group,
-              onTap: { onGroupTap(group.id) }
-            )
-            .id(group.id)
-          }
+          if isLoading {
+            // 스켈레톤 뷰
+            ForEach(0..<4, id: \.self) { _ in
+              GroupBarSkeletonItem()
+            }
+          } else {
+            ForEach(groups) { group in
+              GroupBarItemView(
+                group: group,
+                onTap: { onGroupTap(group.id) }
+              )
+              .id(group.id)
+            }
 
-          // + 추가 버튼 메뉴
-          AddGroupMenuButton(
-            onCreateGroup: onCreateGroup,
-            onJoinGroup: onJoinGroup
-          )
+            // + 추가 버튼 메뉴
+            AddGroupMenuButton(
+              onCreateGroup: onCreateGroup,
+              onJoinGroup: onJoinGroup,
+              onSortSettings: onSortSettings
+            )
+          }
         }
         .padding(.horizontal, 16)
         .padding(.top, 12)
@@ -69,6 +98,35 @@ struct GroupHorizontalBar: View {
         }
       }
     }
+  }
+}
+
+// MARK: - GroupBarSkeletonItem
+
+private struct GroupBarSkeletonItem: View {
+  @State private var isAnimating = false
+
+  var body: some View {
+    VStack(alignment: .center, spacing: 6) {
+      // 실제 GroupThumbnailView와 동일한 배경 그라데이션
+      Circle()
+        .fill(
+          LinearGradient(
+            colors: [Color.pmindigo.n100, Color.pmindigo.n200],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+          )
+        )
+        .frame(width: 56, height: 56)
+
+      // 텍스트 영역 (실제 아이템과 동일한 width)
+      RoundedRectangle(cornerRadius: 3)
+        .fill(Color.pmindigo.n100)
+        .frame(width: 72, height: 11)
+    }
+    .opacity(isAnimating ? 0.6 : 1.0)
+    .animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true), value: isAnimating)
+    .onAppear { isAnimating = true }
   }
 }
 
@@ -148,6 +206,7 @@ private struct ActivityIndicatorDot: View {
 private struct AddGroupMenuButton: View {
   let onCreateGroup: () -> Void
   let onJoinGroup: () -> Void
+  let onSortSettings: () -> Void
 
   var body: some View {
     Menu {
@@ -161,6 +220,14 @@ private struct AddGroupMenuButton: View {
         onJoinGroup()
       } label: {
         Label("초대 코드로 참여", systemImage: "link")
+      }
+
+      Divider()
+
+      Button {
+        onSortSettings()
+      } label: {
+        Label("그룹 정렬", systemImage: "arrow.up.arrow.down")
       }
     } label: {
       Circle()
@@ -192,7 +259,8 @@ private struct AddGroupMenuButton: View {
       ],
       onGroupTap: { id in print("Group tapped: \(id)") },
       onCreateGroup: { print("Create group") },
-      onJoinGroup: { print("Join group") }
+      onJoinGroup: { print("Join group") },
+      onSortSettings: { print("Sort settings") }
     )
     .background(Color(.systemGroupedBackground))
 
@@ -205,7 +273,20 @@ private struct AddGroupMenuButton: View {
     groups: [],
     onGroupTap: { _ in },
     onCreateGroup: { },
-    onJoinGroup: { }
+    onJoinGroup: { },
+    onSortSettings: { }
+  )
+  .background(Color(.systemGroupedBackground))
+}
+
+#Preview("GroupHorizontalBar - Loading") {
+  GroupHorizontalBar(
+    groups: [],
+    isLoading: true,
+    onGroupTap: { _ in },
+    onCreateGroup: { },
+    onJoinGroup: { },
+    onSortSettings: { }
   )
   .background(Color(.systemGroupedBackground))
 }

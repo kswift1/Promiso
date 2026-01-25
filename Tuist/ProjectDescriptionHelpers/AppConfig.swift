@@ -30,6 +30,8 @@ public enum AppConfig {
     // FIXME: API Key들 안보이게 옮기기
     let googleClientId: String = "306291841913-08gm6rkpklh6k7qqfim1bkc92uji6bcg.apps.googleusercontent.com"
     let googleReversedClientId: String = "com.googleusercontent.apps.306291841913-08gm6rkpklh6k7qqfim1bkc92uji6bcg"
+    let kakaoNativeAppKey: String = "85c9fc88501e426b848242e7c02d20af"
+    let kakaoRestApiKey: String = "eacdef419fafb30e112e6ca22219ee4d"
     return [
       "CFBundleShortVersionString": .string(AppConfig.marketingNumber),
       "CFBundleVersion": .string(AppConfig.buildVersion),
@@ -61,7 +63,12 @@ public enum AppConfig {
       ]),
       // Live Activity Support
       "NSSupportsLiveActivities": .boolean(true),
-      "NSSupportsLiveActivitiesFrequentUpdates": .boolean(true)
+      "NSSupportsLiveActivitiesFrequentUpdates": .boolean(true),
+      // Kakao Maps SDK
+      "KAKAO_NATIVE_APP_KEY": .string(kakaoNativeAppKey),
+      "KAKAO_REST_API_KEY": .string(kakaoRestApiKey),
+      // ProMotion Display Support (120Hz)
+      "CADisableMinimumFrameDurationOnPhone": .boolean(true)
     ]
   }
 }
