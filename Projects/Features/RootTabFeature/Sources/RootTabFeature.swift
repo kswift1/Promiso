@@ -1,6 +1,7 @@
 // MARK: - RootTabFeature.swift
 // TCA 1.22.2를 사용한 RootTab Feature의 Implementation layer
 
+import Combine
 import ComposableArchitecture
 import SwiftUI
 
@@ -10,6 +11,17 @@ import CalendarFeature
 import ProfileFeature
 import ResourceKit
 import SharedFeature
+
+// MARK: - Notifications
+// ⚠️ TCA 상태 관찰(onChange, task)로 @State를 동기화하면 zoom transition이 깨짐
+// NotificationCenter를 사용하여 TCA Reducer → SwiftUI View로 이벤트 전달
+
+extension Notification.Name {
+  /// 딥링크로 LivePromiseDetail 열기 요청 (TCA Reducer → View)
+  /// - 탭으로 열 때: @State 직접 토글 → zoom transition 동작
+  /// - 딥링크로 열 때: Notification 수신 → @State 토글 → zoom transition 보존
+  static let openLivePromiseDetailFromDeeplink = Notification.Name("openLivePromiseDetailFromDeeplink")
+}
 
 public enum Tab: String, CaseIterable {
   case home = "홈"
@@ -265,6 +277,8 @@ extension RootTab {
           state.livePromiseDetail = LivePromise.Detail.State(data: livePromise.$data)
           // 딜레이 후 ETA 시트 열기 (fullScreenCover 애니메이션 완료 대기)
           return .run { send in
+            // View에 presentation 요청
+            NotificationCenter.default.post(name: .openLivePromiseDetailFromDeeplink, object: nil)
             try? await Task.sleep(for: .milliseconds(400))
             await send(.internal(.openETASheetAfterDelay))
           }
@@ -276,7 +290,10 @@ extension RootTab {
             return .none
           }
           state.livePromiseDetail = LivePromise.Detail.State(data: livePromise.$data)
-          return .none
+          // View에 presentation 요청
+          return .run { _ in
+            NotificationCenter.default.post(name: .openLivePromiseDetailFromDeeplink, object: nil)
+          }
 
         case .internal(let internalAction):
           switch internalAction {
@@ -438,9 +455,11 @@ extension RootTab {
             )
           }
         }
-        // 딥링크로 livePromiseDetail이 설정되면 expandLivePromise도 동기화
-        .onChange(of: store.livePromiseDetail != nil) { _, hasDetail in
-          if hasDetail && !expandLivePromise {
+        // 딥링크로 LivePromiseDetail 열기 요청 수신
+        // ⚠️ onChange/task(id:)로 TCA 상태를 관찰하면 zoom transition이 깨짐
+        // NotificationCenter를 사용하여 TCA → View 단방향 이벤트 전달
+        .onReceive(NotificationCenter.default.publisher(for: .openLivePromiseDetailFromDeeplink)) { _ in
+          if !expandLivePromise {
             expandLivePromise = true
           }
         }
