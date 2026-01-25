@@ -23,7 +23,7 @@ public enum GroupInviteShareMessage {
     ShareLink(item: message(groupName: groupName, inviteCode: inviteCode), label: label)
   }
 
-  private static func deeplinkURL(inviteCode: String) -> URL {
-    URL(string: "promiso://join/\(inviteCode)")!
+  private static func deeplinkURL(inviteCode: String) -> URL? {
+    URL(string: "promiso://join/\(inviteCode)")
   }
 }
