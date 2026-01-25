@@ -109,6 +109,11 @@ public enum CreatePromise {
         // 최소 참가 인원이 유효한지 확인
         guard promise.isMinimumParticipantsValid else { return true }
 
+        // 장소 사용 토글이 켜져있으면 장소 선택 필수
+        if useLocation && promise.location == nil {
+          return true
+        }
+
         return false
       }
 
