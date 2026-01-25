@@ -2,6 +2,7 @@ import Clients
 import SwiftUI
 import ComposableArchitecture
 import PromisoShared
+import ResourceKit
 
 extension PastPromises {
   public struct RootView: View {
@@ -12,18 +13,22 @@ extension PastPromises {
     }
 
     private var groupedPromises: [(date: String, promises: [PromiseModel])] {
-      guard let promises = store.promisesState.value else { return [] }
-
-      let grouped = Dictionary(grouping: promises) { promise -> String in
-        formatDateHeader(promise.startAt)
+      guard store.sortOption != .participants else {
+        return [("전체", store.filteredPromises)]
       }
 
-      // 최신순 정렬 (내림차순)
-      return grouped.sorted { lhs, rhs in
-        guard let lhsDate = lhs.value.first?.startAt,
-              let rhsDate = rhs.value.first?.startAt else { return false }
-        return lhsDate > rhsDate
-      }.map { (date: $0.key, promises: $0.value) }
+      var result: [(date: String, promises: [PromiseModel])] = []
+
+      for promise in store.filteredPromises {
+        let dateKey = formatDateHeader(promise.startAt)
+        if let lastIndex = result.indices.last, result[lastIndex].date == dateKey {
+          result[lastIndex].promises.append(promise)
+        } else {
+          result.append((date: dateKey, promises: [promise]))
+        }
+      }
+
+      return result
     }
 
     public var body: some View {
@@ -35,6 +40,8 @@ extension PastPromises {
         case .loaded(let promises):
           if promises.isEmpty {
             emptyView
+          } else if store.filteredPromises.isEmpty {
+            emptyFilteredView
           } else {
             promiseListView
           }
@@ -48,6 +55,14 @@ extension PastPromises {
       .navigationBarTitleDisplayMode(.inline)
       .onAppear { store.send(.view(.onAppear)) }
       .refreshable { store.send(.view(.refreshTriggered)) }
+      .searchable(
+        text: Binding(
+          get: { store.searchQuery },
+          set: { store.send(.view(.searchQueryChanged($0))) }
+        ),
+        placement: .navigationBarDrawer(displayMode: .always),
+        prompt: "제목·설명·장소로 검색"
+      )
     }
 
     // MARK: - Loading View
@@ -92,6 +107,33 @@ extension PastPromises {
       .padding()
     }
 
+    @ViewBuilder
+    private var emptyFilteredView: some View {
+      VStack(spacing: 12) {
+        filterControlsContent
+          .padding(12)
+          .adaptiveGlassCard(cornerRadius: 14)
+          .padding(.horizontal, 16)
+          .padding(.top, 12)
+
+        Spacer()
+
+        Image(systemName: "magnifyingglass")
+          .font(.system(size: 48))
+          .foregroundStyle(.secondary)
+
+        Text("조건에 맞는 지난 약속이 없습니다")
+          .font(.headline)
+          .foregroundStyle(.secondary)
+
+        Text("필터를 변경하거나 검색어를 확인해보세요")
+          .font(.subheadline)
+          .foregroundStyle(.tertiary)
+
+        Spacer()
+      }
+    }
+
     // MARK: - Error View
 
     @ViewBuilder
@@ -127,26 +169,23 @@ extension PastPromises {
     @ViewBuilder
     private var promiseListView: some View {
       List {
-        ForEach(groupedPromises, id: \.date) { section in
-          Section {
-            ForEach(section.promises) { promise in
-              PastPromiseCardRow(
-                promise: promise,
-                currentUserId: store.currentUserId,
-                groupMembers: store.groupMembers,
-                onTap: { store.send(.view(.promiseTapped(promise))) }
-              )
-              .onAppear {
-                // 마지막 아이템이 나타나면 더 불러오기
-                if promise.id == store.promisesState.value?.last?.id {
-                  store.send(.view(.loadMoreTriggered))
-                }
-              }
-            }
-          } header: {
-            sectionHeader(for: section.date)
+        filterControlsRow
+
+        if store.sortOption == .participants {
+          ForEach(store.filteredPromises) { promise in
+            promiseRow(promise)
           }
-          .listSectionSeparator(.hidden)
+        } else {
+          ForEach(groupedPromises, id: \.date) { section in
+            Section {
+              ForEach(section.promises) { promise in
+                promiseRow(promise)
+              }
+            } header: {
+              sectionHeader(for: section.date)
+            }
+            .listSectionSeparator(.hidden)
+          }
         }
 
         // 로딩 인디케이터
@@ -163,6 +202,101 @@ extension PastPromises {
       }
       .listStyle(.plain)
       .scrollContentBackground(.hidden)
+      .animation(.easeInOut(duration: 0.25), value: store.filteredPromises.map(\.id))
+      .animation(.easeInOut(duration: 0.25), value: store.sortOption)
+      .animation(.easeInOut(duration: 0.25), value: store.statusFilter)
+    }
+
+    private func promiseRow(_ promise: PromiseModel) -> some View {
+      PromiseCard(
+        promise: promise,
+        currentUserId: store.currentUserId,
+        groupMembers: store.groupMembers,
+        respondingState: .idle,
+        onTap: { store.send(.view(.promiseTapped(promise))) },
+        onAccept: {},
+        onReject: {},
+        statusOverride: promise.isConfirmed ? .confirmed : .failed,
+        showsResponseDetails: false
+      )
+      .contentShape(Rectangle())
+      .onTapGesture {
+        store.send(.view(.promiseTapped(promise)))
+      }
+      .transition(.opacity)
+      .listRowBackground(Color.clear)
+      .listRowSeparator(.hidden)
+      .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+      .onAppear {
+        // 마지막 아이템이 나타나면 더 불러오기
+        if promise.id == store.filteredPromises.last?.id {
+          store.send(.view(.loadMoreTriggered))
+        }
+      }
+    }
+
+    private var filterControlsRow: some View {
+      filterControlsContent
+        .padding(12)
+        .adaptiveGlassCard(cornerRadius: 14)
+      .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 4, trailing: 16))
+      .listRowBackground(Color.clear)
+      .listRowSeparator(.hidden)
+    }
+
+    private var filterControlsContent: some View {
+      HStack(spacing: 10) {
+        filterChip(.all)
+        filterChip(.confirmed)
+        filterChip(.failed)
+
+        Spacer()
+
+        Menu {
+          ForEach(PastPromises.Feature.SortOption.allCases, id: \.self) { option in
+            Button {
+              store.send(.view(.sortOptionChanged(option)))
+            } label: {
+              if store.sortOption == option {
+                Label(option.rawValue, systemImage: "checkmark")
+              } else {
+                Text(option.rawValue)
+              }
+            }
+          }
+        } label: {
+          HStack(spacing: 6) {
+            Image(systemName: "arrow.up.arrow.down")
+              .font(.system(size: 13, weight: .semibold))
+            Text(store.sortOption.rawValue)
+              .font(.system(size: 13, weight: .semibold))
+          }
+          .foregroundStyle(Color.pmindigo.n500)
+          .padding(.horizontal, 10)
+          .padding(.vertical, 6)
+          .background(Color.pmindigo.n500.opacity(0.12))
+          .clipShape(Capsule())
+        }
+      }
+    }
+
+    private func filterChip(_ filter: PastPromises.Feature.StatusFilter) -> some View {
+      let isSelected = store.statusFilter == filter
+
+      return Button {
+        store.send(.view(.statusFilterChanged(filter)))
+      } label: {
+        Text(filter.rawValue)
+          .font(.system(size: 13, weight: .semibold))
+          .foregroundStyle(isSelected ? Color.pmindigo.n500 : .secondary)
+          .padding(.horizontal, 10)
+          .padding(.vertical, 6)
+          .background(
+            isSelected ? Color.pmindigo.n500.opacity(0.12) : Color.clear
+          )
+          .clipShape(Capsule())
+      }
+      .buttonStyle(.plain)
     }
 
     @ViewBuilder
@@ -199,159 +333,5 @@ extension PastPromises {
 
       return formatter.string(from: date)
     }
-  }
-}
-
-// MARK: - Past Promise Card Row
-
-private struct PastPromiseCardRow: View {
-  let promise: PromiseModel
-  let currentUserId: String
-  let groupMembers: [UserPublicModel]?
-  let onTap: () -> Void
-
-  private var host: UserPublicModel? {
-    groupMembers?.first { $0.userId == promise.hostId }
-  }
-
-  private var acceptedMembers: [UserPublicModel] {
-    guard let members = groupMembers else { return [] }
-    return promise.votes.accepted.compactMap { acceptedId in
-      members.first { $0.userId == acceptedId }
-    }
-  }
-
-  private var statusText: String {
-    promise.isConfirmed ? "완료" : "미성사"
-  }
-
-  private var statusColor: Color {
-    promise.isConfirmed ? .green : .gray
-  }
-
-  var body: some View {
-    Button(action: onTap) {
-      VStack(alignment: .leading, spacing: 14) {
-        // Host Section
-        HStack(spacing: 10) {
-          ProfileAvatarView(
-            profileImageUrl: host?.profileImageUrl,
-            displayName: host?.displayName ?? "",
-            isCurrentUser: promise.isHost(userId: currentUserId),
-            size: 32
-          )
-
-          VStack(alignment: .leading, spacing: 2) {
-            if let hostName = host?.displayName {
-              Text("\(hostName)님의 약속")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(.primary)
-            } else {
-              Text("약속")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(.primary)
-            }
-          }
-
-          Spacer()
-
-          // Status Badge
-          Text(statusText)
-            .font(.system(size: 12, weight: .semibold))
-            .foregroundColor(statusColor)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(statusColor.opacity(0.12))
-            .clipShape(Capsule())
-        }
-
-        Divider()
-
-        // Main Content
-        HStack(alignment: .top, spacing: 12) {
-          Text(promise.displayEmoji)
-            .font(.system(size: 44))
-
-          VStack(alignment: .leading, spacing: 10) {
-            Text(promise.title)
-              .font(.system(size: 19, weight: .bold))
-              .foregroundColor(.primary)
-
-            if let description = promise.description, !description.isEmpty {
-              Text(description)
-                .font(.system(size: 14))
-                .foregroundColor(.secondary)
-                .lineLimit(2)
-            }
-
-            // Time
-            HStack(spacing: 4) {
-              Text("⏰")
-                .font(.system(size: 14))
-              Text(promise.timeText)
-                .font(.system(size: 14, weight: .medium))
-            }
-            .foregroundColor(.primary)
-
-            // Location
-            if promise.locationText != "장소 미정" {
-              HStack(spacing: 6) {
-                Image(systemName: "mappin.circle.fill")
-                  .font(.system(size: 13))
-                  .foregroundColor(.red)
-                Text(promise.locationText)
-                  .font(.system(size: 14, weight: .medium))
-              }
-              .foregroundColor(.primary)
-            }
-          }
-
-          Spacer()
-        }
-
-        // Bottom Section - Participant count & Avatars
-        HStack {
-          Text("\(promise.votes.acceptedCount)/\(promise.minimumParticipants)명 참여")
-            .font(.system(size: 13, weight: .medium))
-            .foregroundColor(.secondary)
-
-          Spacer()
-
-          if !acceptedMembers.isEmpty {
-            HStack(spacing: -8) {
-              ForEach(acceptedMembers.prefix(4)) { member in
-                ProfileAvatarView(
-                  profileImageUrl: member.profileImageUrl,
-                  displayName: member.displayName,
-                  isCurrentUser: member.userId == currentUserId,
-                  size: 24
-                )
-              }
-
-              if acceptedMembers.count > 4 {
-                Text("+\(acceptedMembers.count - 4)")
-                  .font(.system(size: 10, weight: .bold))
-                  .foregroundColor(.white)
-                  .frame(width: 24, height: 24)
-                  .background(Color.gray)
-                  .clipShape(Circle())
-                  .overlay(Circle().stroke(Color.white, lineWidth: 2))
-              }
-            }
-          }
-        }
-      }
-      .padding(16)
-      .background(Color(.systemBackground).opacity(0.8))
-      .clipShape(RoundedRectangle(cornerRadius: 16))
-      .overlay(
-        RoundedRectangle(cornerRadius: 16)
-          .stroke(Color(.systemGray5), lineWidth: 1)
-      )
-    }
-    .buttonStyle(.plain)
-    .listRowBackground(Color.clear)
-    .listRowSeparator(.hidden)
-    .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
   }
 }

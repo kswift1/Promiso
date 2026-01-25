@@ -38,10 +38,10 @@ extension PromiseDetail {
           set: { _ in store.send(.view(.memberSheetDismissed)) }
         )
       ) { sheetState in
-        MemberListSheet(
+        PromiseDetailMemberListSheet(
           title: sheetState.title,
           members: sheetState.members,
-          colorType: sheetState.colorType
+          color: participantColor(sheetState.colorType)
         )
       }
       .sheet(
@@ -73,14 +73,14 @@ extension PromiseDetail {
             .foregroundStyle(.primary)
 
           if let description = store.promise.description, !description.isEmpty {
-            ExpandableText(text: description, isExpanded: $isDescriptionExpanded)
+            PromiseDetailExpandableText(text: description, isExpanded: $isDescriptionExpanded)
           }
         }
 
         Spacer()
 
         // 상태 배지 (우측 상단)
-        StatusBadgeView(status: store.responseStatus)
+        PromiseDetailStatusBadgeView(status: store.responseStatus)
       }
       .padding(16)
       .adaptiveGlassCard()
@@ -90,11 +90,11 @@ extension PromiseDetail {
 
     private var scheduleSection: some View {
       VStack(spacing: 0) {
-        SectionHeader(title: "일정")
+        PromiseDetailSectionHeader(title: "일정")
 
         VStack(spacing: 0) {
           // 날짜 & 시간
-          EmojiInfoRow(
+          PromiseDetailEmojiInfoRow(
             emoji: "📅",
             title: "날짜",
             value: formatFullDate(store.promise.startAt)
@@ -102,7 +102,7 @@ extension PromiseDetail {
 
           Divider().padding(.leading, 44)
 
-          EmojiInfoRow(
+          PromiseDetailEmojiInfoRow(
             emoji: "⏰",
             title: "시간",
             value: store.promise.timeText
@@ -112,7 +112,7 @@ extension PromiseDetail {
           if let location = store.promise.location {
             Divider().padding(.leading, 44)
 
-            LocationInfoRow(
+            PromiseDetailLocationInfoRow(
               location: location,
               onDirectionsTapped: {
                 store.send(.view(.directionsTapped))
@@ -124,7 +124,7 @@ extension PromiseDetail {
                let longitude = location.longitude {
               Divider().padding(.leading, 44)
 
-              LocationMapPreview(
+              PromiseDetailLocationMapPreview(
                 latitude: latitude,
                 longitude: longitude,
                 placeName: location.name
@@ -136,7 +136,7 @@ extension PromiseDetail {
           if let deadline = store.promise.deadlineText {
             Divider().padding(.leading, 44)
 
-            EmojiInfoRow(
+            PromiseDetailEmojiInfoRow(
               emoji: "⏳",
               title: "투표 마감",
               value: deadline
@@ -146,7 +146,7 @@ extension PromiseDetail {
           Divider().padding(.leading, 44)
 
           // 최소 확정 인원
-          EmojiInfoRow(
+          PromiseDetailEmojiInfoRow(
             emoji: "👥",
             title: "최소 확정 인원",
             value: "\(store.promise.minimumParticipants)명"
@@ -160,7 +160,7 @@ extension PromiseDetail {
 
     private var participantsSection: some View {
       VStack(spacing: 0) {
-        SectionHeader(
+        PromiseDetailSectionHeader(
           title: "참여자",
           trailing: "\(store.promise.votes.acceptedCount)/\(store.groupMembers?.count ?? 0)명 참여"
         )
@@ -168,12 +168,12 @@ extension PromiseDetail {
         VStack(spacing: 12) {
           // 수락
           if !store.promise.votes.accepted.isEmpty {
-            ParticipantGroupRow(
+            PromiseDetailParticipantGroupRow(
               title: "참여",
               count: store.promise.votes.acceptedCount,
               userIds: store.promise.votes.accepted,
               members: store.groupMembers,
-              colorType: .accepted
+              color: participantColor(.accepted)
             ) {
               store.send(.view(.participantGroupTapped(
                 title: "참여",
@@ -185,12 +185,12 @@ extension PromiseDetail {
 
           // 거절
           if !store.promise.votes.declined.isEmpty {
-            ParticipantGroupRow(
+            PromiseDetailParticipantGroupRow(
               title: "불참",
               count: store.promise.votes.declinedCount,
               userIds: store.promise.votes.declined,
               members: store.groupMembers,
-              colorType: .declined
+              color: participantColor(.declined)
             ) {
               store.send(.view(.participantGroupTapped(
                 title: "불참",
@@ -206,12 +206,12 @@ extension PromiseDetail {
             let pendingUserIds = members.filter { !respondedIds.contains($0.userId) }.map(\.userId)
 
             if !pendingUserIds.isEmpty {
-              ParticipantGroupRow(
+              PromiseDetailParticipantGroupRow(
                 title: "미응답",
                 count: pendingUserIds.count,
                 userIds: pendingUserIds,
                 members: members,
-                colorType: .pending
+                color: participantColor(.pending)
               ) {
                 store.send(.view(.participantGroupTapped(
                   title: "미응답",
@@ -229,7 +229,7 @@ extension PromiseDetail {
 
     private var responseSection: some View {
       VStack(spacing: 0) {
-        SectionHeader(title: "내 응답")
+        PromiseDetailSectionHeader(title: "내 응답")
 
         ResponseBubblePicker(
           currentStatus: store.myVoteStatus,
@@ -304,330 +304,21 @@ extension PromiseDetail {
       formatter.dateFormat = "M월 d일 (E)"
       return formatter.string(from: date)
     }
+
+    private func participantColor(_ type: PromiseDetail.Feature.ParticipantColorType) -> Color {
+      switch type {
+      case .accepted:
+        return .green
+      case .declined:
+        return .red
+      case .pending:
+        return .gray
+      }
+    }
   }
 }
 
 // MARK: - Supporting Views
-
-private struct SectionHeader: View {
-  let title: String
-  var trailing: String? = nil
-
-  var body: some View {
-    HStack {
-      Text(title)
-        .font(.system(size: 13, weight: .semibold))
-        .foregroundStyle(.secondary)
-        .textCase(.uppercase)
-
-      Spacer()
-
-      if let trailing {
-        Text(trailing)
-          .font(.system(size: 13, weight: .medium))
-          .foregroundStyle(.secondary)
-      }
-    }
-    .padding(.horizontal, 4)
-    .padding(.bottom, 8)
-  }
-}
-
-private struct ExpandableText: View {
-  let text: String
-  @Binding var isExpanded: Bool
-  @State private var isTruncated = false
-  private let lineLimit = 3
-
-  var body: some View {
-    VStack(alignment: .leading, spacing: 4) {
-      Text(text)
-        .font(.system(size: 14))
-        .foregroundStyle(.secondary)
-        .multilineTextAlignment(.leading)
-        .lineLimit(isExpanded ? nil : lineLimit)
-        .background(
-          GeometryReader { geometry in
-            Color.clear.onAppear {
-              checkTruncation(geometry: geometry)
-            }
-          }
-        )
-
-      if isTruncated || isExpanded {
-        Button {
-          withAnimation(.easeInOut(duration: 0.2)) {
-            isExpanded.toggle()
-          }
-        } label: {
-          Text(isExpanded ? "접기" : "더보기")
-            .font(.system(size: 13, weight: .medium))
-            .foregroundStyle(.blue)
-        }
-      }
-    }
-  }
-
-  private func checkTruncation(geometry: GeometryProxy) {
-    let font = UIFont.systemFont(ofSize: 15)
-    let attributes: [NSAttributedString.Key: Any] = [.font: font]
-    let size = CGSize(width: geometry.size.width, height: .greatestFiniteMagnitude)
-    let boundingRect = (text as NSString).boundingRect(
-      with: size,
-      options: [.usesLineFragmentOrigin, .usesFontLeading],
-      attributes: attributes,
-      context: nil
-    )
-    let lineHeight = font.lineHeight
-    let numberOfLines = Int(ceil(boundingRect.height / lineHeight))
-    isTruncated = numberOfLines > lineLimit
-  }
-}
-
-private struct EmojiInfoRow: View {
-  let emoji: String
-  let title: String
-  let value: String
-
-  var body: some View {
-    HStack(spacing: 10) {
-      Text(emoji)
-        .font(.system(size: 18))
-        .frame(width: 28)
-
-      Text(title)
-        .font(.system(size: 15))
-        .foregroundStyle(.secondary)
-
-      Spacer()
-
-      Text(value)
-        .font(.system(size: 15, weight: .medium))
-    }
-    .padding(.horizontal, 16)
-    .padding(.vertical, 14)
-  }
-}
-
-private struct LocationInfoRow: View {
-  let location: LocationInfoModel
-  let onDirectionsTapped: () -> Void
-
-  private var hasCoordinates: Bool {
-    location.latitude != nil && location.longitude != nil
-  }
-
-  var body: some View {
-    HStack(spacing: 10) {
-      Text("📍")
-        .font(.system(size: 18))
-        .frame(width: 28)
-
-      VStack(alignment: .leading, spacing: 2) {
-        Text(location.name)
-          .font(.system(size: 15, weight: .medium))
-
-        if let address = location.address {
-          Text(address)
-            .font(.system(size: 13))
-            .foregroundStyle(.secondary)
-            .lineLimit(1)
-        }
-      }
-
-      Spacer()
-
-      if hasCoordinates {
-        Button(action: onDirectionsTapped) {
-          HStack(spacing: 4) {
-            Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
-              .font(.system(size: 14))
-            Text("길찾기")
-              .font(.system(size: 14, weight: .medium))
-          }
-          .foregroundStyle(.white)
-          .padding(.horizontal, 12)
-          .padding(.vertical, 6)
-          .background(Color.pmindigo.n500)
-          .clipShape(Capsule())
-        }
-      }
-    }
-    .padding(.horizontal, 16)
-    .padding(.vertical, 14)
-  }
-}
-
-private struct ParticipantGroupRow: View {
-  let title: String
-  let count: Int
-  let userIds: [String]
-  let members: [UserPublicModel]?
-  let colorType: PromiseDetail.Feature.ParticipantColorType
-  let onTap: () -> Void
-
-  private var color: Color {
-    switch colorType {
-    case .accepted: return .green
-    case .declined: return .red
-    case .pending: return .gray
-    }
-  }
-
-  var body: some View {
-    Button(action: onTap) {
-      HStack {
-        Circle()
-          .fill(color)
-          .frame(width: 8, height: 8)
-
-        Text(title)
-          .font(.system(size: 14, weight: .medium))
-          .foregroundStyle(.primary)
-
-        Text("\(count)명")
-          .font(.system(size: 14))
-          .foregroundStyle(.secondary)
-
-        Spacer()
-
-        // 참여자 아바타 (최대 5명)
-        HStack(spacing: -8) {
-          ForEach(userIds.prefix(5), id: \.self) { userId in
-            if let member = members?.first(where: { $0.userId == userId }) {
-              ProfileAvatarView(
-                profileImageUrl: member.profileImageUrl,
-                displayName: member.displayName,
-                size: 28
-              )
-            } else {
-              ProfileAvatarView(
-                profileImageUrl: nil,
-                displayName: "?",
-                size: 28
-              )
-            }
-          }
-
-          if userIds.count > 5 {
-            Text("+\(userIds.count - 5)")
-              .font(.system(size: 10, weight: .bold))
-              .foregroundColor(.white)
-              .frame(width: 28, height: 28)
-              .background(
-                LinearGradient(
-                  colors: [Color(red: 0.6, green: 0.6, blue: 0.65), Color(red: 0.45, green: 0.45, blue: 0.5)],
-                  startPoint: .topLeading,
-                  endPoint: .bottomTrailing
-                )
-              )
-              .clipShape(Circle())
-              .overlay(
-                Circle()
-                  .stroke(Color.white, lineWidth: 2)
-              )
-          }
-        }
-
-        Image(systemName: "chevron.right")
-          .font(.system(size: 12, weight: .semibold))
-          .foregroundStyle(.tertiary)
-      }
-      .contentShape(Rectangle())
-      .padding(.horizontal, 16)
-      .padding(.vertical, 12)
-      .adaptiveGlassCard()
-    }
-    .buttonStyle(.plain)
-  }
-}
-
-// MARK: - Member List Sheet
-
-private struct MemberListSheet: View {
-  let title: String
-  let members: [UserPublicModel]
-  let colorType: PromiseDetail.Feature.ParticipantColorType
-
-  @State private var selectedMember: UserPublicModel?
-
-  private var color: Color {
-    switch colorType {
-    case .accepted: return .green
-    case .declined: return .red
-    case .pending: return .gray
-    }
-  }
-
-  var body: some View {
-    NavigationView {
-      ScrollView {
-        LazyVStack(spacing: 0) {
-          ForEach(members) { member in
-            MemberRow(member: member, color: color) {
-              selectedMember = member
-            }
-
-            if member.id != members.last?.id {
-              Divider()
-                .padding(.leading, 72)
-            }
-          }
-        }
-        .padding(.vertical, 8)
-      }
-      .navigationTitle("\(title) (\(members.count)명)")
-      .navigationBarTitleDisplayMode(.inline)
-    }
-    .presentationDetents([.medium, .large])
-    .presentationDragIndicator(.visible)
-    .fullScreenCover(item: $selectedMember) { member in
-      ImageDetailView(
-        imageUrl: member.profileImageUrl,
-        displayName: member.displayName,
-        onDismiss: { selectedMember = nil }
-      )
-    }
-  }
-}
-
-private struct MemberRow: View {
-  let member: UserPublicModel
-  let color: Color
-  let onProfileTap: () -> Void
-
-  var body: some View {
-    HStack(spacing: 16) {
-      ProfileAvatarView(
-        profileImageUrl: member.profileImageUrl,
-        displayName: member.displayName,
-        size: 48,
-        borderWidth: 0,
-        onTap: onProfileTap
-      )
-
-      VStack(alignment: .leading, spacing: 4) {
-        Text(member.displayName)
-          .font(.system(size: 16, weight: .medium))
-          .foregroundStyle(.primary)
-
-        if !member.nickname.isEmpty && member.nickname != member.displayName {
-          Text("@\(member.nickname)")
-            .font(.system(size: 13))
-            .foregroundStyle(.secondary)
-        }
-      }
-
-      Spacer()
-
-      Circle()
-        .fill(color)
-        .frame(width: 10, height: 10)
-    }
-    .padding(.horizontal, 20)
-    .padding(.vertical, 12)
-  }
-}
 
 
 // MARK: - Response Bubble Picker
@@ -835,70 +526,3 @@ private struct PopoverBubble: View {
     .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
   }
 }
-
-private struct StatusBadgeView: View {
-  let status: PromiseResponseStatus
-
-  private var displayText: String {
-    switch status {
-    case .needResponse:
-      return "응답 필요"
-    case .responded:
-      return "확정 대기"
-    case .confirmed:
-      return "확정됨"
-    case .failed:
-      return "미성사"
-    }
-  }
-
-  private var color: Color {
-    switch status {
-    case .needResponse:
-      return .orange
-    case .responded:
-      return .blue
-    case .confirmed:
-      return .green
-    case .failed:
-      return .gray
-    }
-  }
-
-  var body: some View {
-    HStack(spacing: 4) {
-      Image(systemName: status.iconName)
-        .font(.system(size: 12))
-      Text(displayText)
-        .font(.system(size: 13, weight: .semibold))
-    }
-    .padding(.horizontal, 12)
-    .padding(.vertical, 6)
-    .background(color.opacity(0.15))
-    .foregroundStyle(color)
-    .clipShape(Capsule())
-  }
-}
-
-// MARK: - Location Map Preview
-
-private struct LocationMapPreview: View {
-  let latitude: Double
-  let longitude: Double
-  let placeName: String
-
-  var body: some View {
-    VStack(spacing: 0) {
-      KakaoMiniMapView(
-        latitude: latitude,
-        longitude: longitude,
-        zoomLevel: 16
-      )
-      .frame(height: 160)
-      .clipShape(RoundedRectangle(cornerRadius: 12))
-      .padding(.horizontal, 16)
-      .padding(.vertical, 12)
-    }
-  }
-}
-

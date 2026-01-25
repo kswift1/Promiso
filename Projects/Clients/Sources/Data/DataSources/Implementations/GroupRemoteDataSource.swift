@@ -314,6 +314,45 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
     _ = try await functions.httpsCallable("deleteGroup").call(callableData)
   }
 
+  /// 그룹 정보 수정 (설명/이미지/최대 인원)
+  public func updateGroup(
+    groupId: String,
+    description: String?,
+    maxMembers: Int?,
+    photoData: Data?
+  ) async throws -> GroupModel {
+    var imageUrl: String?
+
+    if let photoData {
+      imageUrl = try await uploadGroupImage(
+        groupId: groupId,
+        imageData: photoData
+      )
+    }
+
+    var callableData: [String: Any] = [
+      "groupId": groupId
+    ]
+
+    let trimmedDescription = description?.trimmingCharacters(in: .whitespacesAndNewlines)
+    if let trimmedDescription {
+      callableData["description"] = trimmedDescription.isEmpty ? NSNull() : trimmedDescription
+    }
+
+    if let imageUrl {
+      callableData["imageUrl"] = imageUrl
+    }
+
+    if let maxMembers {
+      callableData["maxMembers"] = maxMembers
+    }
+
+    callableData["env"] = functionsEnvironmentParam()
+
+    _ = try await functions.httpsCallable("updateGroup").call(callableData)
+    return try await fetchGroup(groupId: groupId)
+  }
+
   /// 그룹 배지 클리어 (Fire & Forget)
   ///
   /// - Parameters:

@@ -5,11 +5,11 @@ import SwiftUI
 // MARK: - Data Model
 
 /// 그룹 가로 바 아이템 데이터
-public struct GroupBarItem: Identifiable, Equatable, Sendable {
+public struct GroupBarItem: Identifiable, Equatable {
   public let id: String
   public let name: String
   public let imageUrl: String?
-  public let localImageName: String?
+  public let localImage: Image?
   public let hasNewActivity: Bool
   public let isSelected: Bool
   public let joinedAt: Date?
@@ -18,7 +18,7 @@ public struct GroupBarItem: Identifiable, Equatable, Sendable {
     id: String,
     name: String,
     imageUrl: String? = nil,
-    localImageName: String? = nil,
+    localImage: Image? = nil,
     hasNewActivity: Bool = false,
     isSelected: Bool = false,
     joinedAt: Date? = nil
@@ -26,10 +26,19 @@ public struct GroupBarItem: Identifiable, Equatable, Sendable {
     self.id = id
     self.name = name
     self.imageUrl = imageUrl
-    self.localImageName = localImageName
+    self.localImage = localImage
     self.hasNewActivity = hasNewActivity
     self.isSelected = isSelected
     self.joinedAt = joinedAt
+  }
+
+  public static func == (lhs: GroupBarItem, rhs: GroupBarItem) -> Bool {
+    lhs.id == rhs.id &&
+    lhs.name == rhs.name &&
+    lhs.imageUrl == rhs.imageUrl &&
+    lhs.hasNewActivity == rhs.hasNewActivity &&
+    lhs.isSelected == rhs.isSelected &&
+    lhs.joinedAt == rhs.joinedAt
   }
 }
 
@@ -175,8 +184,8 @@ private struct GroupBarItemView: View {
 
   @ViewBuilder
   private var groupThumbnail: some View {
-    if let localImageName = group.localImageName {
-      Image(localImageName, bundle: .main)
+    if let localImage = group.localImage {
+      localImage
         .resizable()
         .scaledToFill()
         .frame(width: 56, height: 56)

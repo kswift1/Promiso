@@ -170,7 +170,7 @@ extension NotificationPermission {
     private func notificationView() -> some SwiftUI.View {
       HStack(alignment: .center, spacing: 8) {
         // App Logo
-        Image("notificationLogo")
+        ResourceKitAsset.notificationLogo.swiftUIImage
           .resizable()
           .scaledToFit()
           .frame(width: 40, height: 40)

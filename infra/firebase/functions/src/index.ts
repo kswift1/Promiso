@@ -23,6 +23,7 @@ export {
   previewGroup,
   joinGroup,
   leaveGroup,
+  updateGroup,
   deleteGroup,
   onGroupImageUpdated,
 } from "./functions/groups";

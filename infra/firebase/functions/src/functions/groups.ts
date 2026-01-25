@@ -24,6 +24,8 @@ import {
   JoinGroupResponse,
   LeaveGroupRequest,
   LeaveGroupResponse,
+  UpdateGroupRequest,
+  UpdateGroupResponse,
   DeleteGroupRequest,
   DeleteGroupResponse,
   GroupMemberPreview,
@@ -444,6 +446,101 @@ export const leaveGroup = onCall<LeaveGroupRequest>(
     });
 
     // 5. 응답 반환
+    return {
+      success: true,
+    };
+  },
+);
+
+/**
+ * 그룹 정보 수정
+ *
+ * @remarks
+ * **인증 필수**
+ *
+ * 호스트(admin)가 그룹 설명/이미지/최대 인원을 수정합니다.
+ */
+export const updateGroup = onCall<UpdateGroupRequest>(
+  {region: REGION},
+  async (request): Promise<UpdateGroupResponse> => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "로그인이 필요합니다");
+    }
+
+    const data = request.data;
+    const groupId = data.groupId?.trim();
+    const userId = request.auth.uid;
+
+    if (!groupId) {
+      throw new HttpsError(
+        "invalid-argument",
+        "그룹 ID는 필수입니다",
+      );
+    }
+
+    if (data.env && data.env !== "stage" && data.env !== "prod") {
+      throw new HttpsError(
+        "invalid-argument",
+        "env는 stage 또는 prod만 허용됩니다",
+      );
+    }
+
+    const db = admin.firestore();
+    const groupsCollection = getEnvironmentCollection("groups", db, data.env);
+    const groupRef = groupsCollection.doc(groupId);
+    const groupDoc = await groupRef.get();
+
+    if (!groupDoc.exists) {
+      throw new HttpsError(
+        "not-found",
+        "그룹을 찾을 수 없습니다",
+      );
+    }
+
+    const groupData = groupDoc.data();
+    if (!groupData) {
+      throw new HttpsError(
+        "not-found",
+        "그룹 데이터를 찾을 수 없습니다",
+      );
+    }
+
+    const createdBy = groupData.createdBy as string | undefined;
+    if (!createdBy || createdBy !== userId) {
+      throw new HttpsError(
+        "permission-denied",
+        "그룹 수정 권한이 없습니다",
+      );
+    }
+
+    const memberIds = (groupData.memberIds as string[]) ?? [];
+    if (typeof data.maxMembers === "number") {
+      if (data.maxMembers < memberIds.length) {
+        throw new HttpsError(
+          "invalid-argument",
+          "현재 인원보다 작게 설정할 수 없습니다",
+        );
+      }
+    }
+
+    const updateData: Record<string, unknown> = {
+      updatedAt: FieldValue.serverTimestamp(),
+    };
+
+    if (data.description !== undefined) {
+      updateData.description = data.description ?? null;
+    }
+
+    if (data.imageUrl !== undefined) {
+      updateData.imageUrl = data.imageUrl ?? null;
+    }
+
+    if (typeof data.maxMembers === "number") {
+      updateData.maxMembers = data.maxMembers;
+    }
+
+    await groupRef.update(updateData);
+
     return {
       success: true,
     };

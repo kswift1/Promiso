@@ -17,21 +17,6 @@ extension ManageGroup {
       self.store = store
     }
 
-    private var deeplinkURL: URL {
-      URL(string: "promiso://join/\(store.group.inviteCode)")!
-    }
-
-    private var shareMessage: String {
-      """
-      \(store.group.name) 그룹에 초대합니다! 🎉
-
-      아래 링크를 클릭하여 참여하세요:
-      \(deeplinkURL.absoluteString)
-
-      또는 초대 코드를 직접 입력하세요: \(store.group.inviteCode)
-      """
-    }
-
     public var body: some View {
       ScrollView {
         VStack(spacing: 24) {
@@ -139,26 +124,32 @@ extension ManageGroup {
       .auroraBackground()
       .navigationTitle("그룹 상세")
       .navigationBarTitleDisplayMode(.inline)
-      .toolbar {
-        ToolbarItem(placement: .topBarTrailing) {
-          Menu {
-            Button {
-              copyCode()
-            } label: {
-              Label(
-                isCopied ? "복사됨!" : "초대 코드 복사",
-                systemImage: isCopied ? "checkmark" : "doc.on.doc"
-              )
-            }
-
-            ShareLink(item: shareMessage) {
-              Label("초대 링크 공유", systemImage: "square.and.arrow.up")
-            }
-          } label: {
-            Text("초대")
-          }
-        }
-      }
+//      .toolbar {
+//        ToolbarItem(placement: .topBarTrailing) {
+//          Menu {
+//            Button {
+//              copyCode()
+//            } label: {
+//              Label(
+//                isCopied ? "복사됨!" : "초대 코드 복사",
+//                systemImage: isCopied ? "checkmark" : "doc.on.doc"
+//              )
+//            }
+//
+//            ShareLink(
+//              item: GroupInviteShareMessage.message(groupName: store.group.name, inviteCode: store.group.inviteCode),
+//              preview: SharePreview(
+//                "\(store.group.name) 그룹에 초대합니다! 🎉",
+//                image: ResourceKitAsset.notificationLogo.swiftUIImage
+//              )
+//            ) {
+//              Label("초대 링크 공유", systemImage: "square.and.arrow.up")
+//            }
+//          } label: {
+//            Text("초대")
+//          }
+//        }
+//      }
       .onAppear { store.send(.view(.onAppear)) }
       .confirmationDialog(
         "그룹 나가기",

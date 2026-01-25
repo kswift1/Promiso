@@ -203,7 +203,7 @@ extension GroupMain {
             GroupBarItem(
               id: GroupMain.onboardingGroupId,
               name: "Promiso 시작하기",
-              localImageName: "notificationLogo",
+              localImage: ResourceKitAsset.notificationLogo.swiftUIImage,
               hasNewActivity: false,
               isSelected: true
             )
@@ -1041,6 +1041,7 @@ extension GroupMain {
             groupMembers: state.currentGroupMembers
           )))
           return .none
+
 
         // GroupPromiseList delegate actions
         case .path(.element(id: _, action: .groupPromiseList(.delegate(.promiseSelected(let promise))))):

@@ -1,4 +1,6 @@
 import Clients
+import PhotosUI
+import _PhotosUI_SwiftUI
 import ComposableArchitecture
 import PromisoShared
 
@@ -8,10 +10,11 @@ extension GroupSettings {
   @Reducer
   public struct Feature {
     @Dependency(\.groupClient) var groupClient
+    @Dependency(\.hapticFeedback) var hapticFeedback
 
     @ObservableState
     public struct State: Equatable {
-      public let group: GroupModel
+      public var group: GroupModel
       public let summary: UserGroupInfo?
       public let currentUserId: String
 
@@ -20,7 +23,6 @@ extension GroupSettings {
       var members: [UserPublicModel] = []
 
       // Sheets
-      var showMemberSheet: Bool = false
       var showInviteSheet: Bool = false
 
       // Leave/Delete
@@ -33,6 +35,7 @@ extension GroupSettings {
 
       // Image Detail
       var selectedMemberForImage: UserPublicModel?
+      var editGroup: EditGroupState?
 
       public init(
         group: GroupModel,
@@ -65,6 +68,35 @@ extension GroupSettings {
       var inviteLink: String {
         "https://promiso.app/invite/\(group.inviteCode)"
       }
+
+      var minMaxMembers: Int {
+        max(2, group.memberIds.count)
+      }
+
+      var maxMembersUpperLimit: Int {
+        10
+      }
+    }
+
+    public struct EditGroupState: Equatable {
+      var description: String
+      var maxMembers: Int
+      var selectedPhoto: PhotosPickerItem?
+      var photoData: Data?
+      var isSaving: Bool = false
+      var error: String?
+
+      var canSave: Bool {
+        !isSaving
+      }
+
+      public static func == (lhs: EditGroupState, rhs: EditGroupState) -> Bool {
+        lhs.description == rhs.description &&
+        lhs.maxMembers == rhs.maxMembers &&
+        lhs.photoData == rhs.photoData &&
+        lhs.isSaving == rhs.isSaving &&
+        lhs.error == rhs.error
+      }
     }
 
     public enum Action: Sendable {
@@ -75,6 +107,13 @@ extension GroupSettings {
       @CasePathable
       public enum ViewAction: Sendable {
         case onAppear
+        case editGroupTapped
+        case editGroupDismissed
+        case editGroupDescriptionChanged(String)
+        case editGroupMaxMembersChanged(Int)
+        case editGroupPhotoSelected(PhotosPickerItem?)
+        case editGroupSaveTapped
+        case editGroupErrorDismissed
         case membersTapped
         case inviteTapped
         case pastPromisesTapped
@@ -82,7 +121,6 @@ extension GroupSettings {
         case deleteGroupTapped
         case confirmLeave
         case confirmDelete
-        case dismissMemberSheet
         case dismissInviteSheet
         case dismissLeaveAlert
         case dismissDeleteAlert
@@ -96,6 +134,8 @@ extension GroupSettings {
         case membersResponse(Result<[UserPublicModel], Error>)
         case leaveGroupResponse(Result<Void, Error>)
         case deleteGroupResponse(Result<Void, Error>)
+        case editGroupPhotoLoaded(Data?)
+        case editGroupSaveResponse(Result<GroupModel, Error>)
       }
 
       public enum Delegate: Sendable {
@@ -117,29 +157,115 @@ extension GroupSettings {
             return .send(.internal(.fetchMembers))
 
           case .membersTapped:
-            state.showMemberSheet = true
+            return .run { [hapticFeedback] _ in
+              await hapticFeedback.buttonTap()
+            }
+
+          case .editGroupTapped:
+            state.editGroup = EditGroupState(
+              description: state.group.description ?? "",
+              maxMembers: state.group.maxMembers,
+              selectedPhoto: nil,
+              photoData: nil,
+              isSaving: false,
+              error: nil
+            )
+            return .run { [hapticFeedback] _ in
+              await hapticFeedback.buttonTap()
+            }
+
+          case .editGroupDismissed:
+            state.editGroup = nil
+            return .none
+
+          case .editGroupDescriptionChanged(let text):
+            state.editGroup?.description = String(text.prefix(50))
+            return .none
+
+          case .editGroupMaxMembersChanged(let value):
+            guard var editGroup = state.editGroup else { return .none }
+            let clamped = min(
+              max(state.minMaxMembers, value),
+              state.maxMembersUpperLimit
+            )
+            editGroup.maxMembers = clamped
+            state.editGroup = editGroup
+            return .none
+
+          case .editGroupPhotoSelected(let item):
+            guard var editGroup = state.editGroup else { return .none }
+            editGroup.selectedPhoto = item
+            state.editGroup = editGroup
+            guard let item else {
+              state.editGroup?.photoData = nil
+              return .none
+            }
+            return .run { send in
+              let data = try? await item.loadTransferable(type: Data.self)
+              await send(.internal(.editGroupPhotoLoaded(data)))
+            }
+
+          case .editGroupSaveTapped:
+            guard var editGroup = state.editGroup else { return .none }
+            guard editGroup.canSave else { return .none }
+            editGroup.isSaving = true
+            editGroup.error = nil
+            state.editGroup = editGroup
+
+            let description = editGroup.description.trimmingCharacters(in: .whitespacesAndNewlines)
+            let photoData = editGroup.photoData
+            let maxMembers = editGroup.maxMembers
+            let groupId = state.group.id
+            return .run { [groupClient] send in
+              do {
+                let updated = try await groupClient.updateGroup(
+                  groupId,
+                  description,
+                  maxMembers,
+                  photoData
+                )
+                await send(.internal(.editGroupSaveResponse(.success(updated))))
+              } catch {
+                await send(.internal(.editGroupSaveResponse(.failure(error))))
+              }
+            }
+
+          case .editGroupErrorDismissed:
+            state.editGroup?.error = nil
             return .none
 
           case .inviteTapped:
             state.showInviteSheet = true
-            return .none
+            return .run { [hapticFeedback] _ in
+              await hapticFeedback.buttonTap()
+            }
 
           case .pastPromisesTapped:
-            return .send(.delegate(.pastPromisesTapped))
+            return .merge(
+              .send(.delegate(.pastPromisesTapped)),
+              .run { [hapticFeedback] _ in
+                await hapticFeedback.buttonTap()
+              }
+            )
 
           case .leaveGroupTapped:
             state.showLeaveAlert = true
-            return .none
+            return .run { [hapticFeedback] _ in
+              await hapticFeedback.warning()
+            }
 
           case .deleteGroupTapped:
             state.showDeleteAlert = true
-            return .none
+            return .run { [hapticFeedback] _ in
+              await hapticFeedback.warning()
+            }
 
           case .confirmLeave:
             state.showLeaveAlert = false
             state.isLeavingGroup = true
             state.leaveError = nil
-            return .run { [groupId = state.group.id] send in
+            return .run { [groupId = state.group.id, hapticFeedback] send in
+              await hapticFeedback.destructive()
               do {
                 try await groupClient.leaveGroup(groupId)
                 await send(.internal(.leaveGroupResponse(.success(()))))
@@ -152,7 +278,8 @@ extension GroupSettings {
             state.showDeleteAlert = false
             state.isDeletingGroup = true
             state.deleteError = nil
-            return .run { [groupId = state.group.id] send in
+            return .run { [groupId = state.group.id, hapticFeedback] send in
+              await hapticFeedback.destructive()
               do {
                 try await groupClient.deleteGroup(groupId)
                 await send(.internal(.deleteGroupResponse(.success(()))))
@@ -160,10 +287,6 @@ extension GroupSettings {
                 await send(.internal(.deleteGroupResponse(.failure(error))))
               }
             }
-
-          case .dismissMemberSheet:
-            state.showMemberSheet = false
-            return .none
 
           case .dismissInviteSheet:
             state.showInviteSheet = false
@@ -215,21 +338,53 @@ extension GroupSettings {
 
           case .leaveGroupResponse(.success):
             state.isLeavingGroup = false
-            return .send(.delegate(.groupLeft))
+            return .merge(
+              .send(.delegate(.groupLeft)),
+              .run { [hapticFeedback] _ in
+                await hapticFeedback.success()
+              }
+            )
 
           case .leaveGroupResponse(.failure(let error)):
             state.isLeavingGroup = false
             state.leaveError = error.localizedDescription
-            return .none
+            return .run { [hapticFeedback] _ in
+              await hapticFeedback.error()
+            }
 
           case .deleteGroupResponse(.success):
             state.isDeletingGroup = false
-            return .send(.delegate(.groupDeleted))
+            return .merge(
+              .send(.delegate(.groupDeleted)),
+              .run { [hapticFeedback] _ in
+                await hapticFeedback.success()
+              }
+            )
 
           case .deleteGroupResponse(.failure(let error)):
             state.isDeletingGroup = false
             state.deleteError = error.localizedDescription
+            return .run { [hapticFeedback] _ in
+              await hapticFeedback.error()
+            }
+
+          case .editGroupPhotoLoaded(let data):
+            state.editGroup?.photoData = data
             return .none
+
+          case .editGroupSaveResponse(.success(let updatedGroup)):
+            state.group = updatedGroup
+            state.editGroup = nil
+            return .run { [hapticFeedback] _ in
+              await hapticFeedback.success()
+            }
+
+          case .editGroupSaveResponse(.failure(let error)):
+            state.editGroup?.isSaving = false
+            state.editGroup?.error = error.localizedDescription
+            return .run { [hapticFeedback] _ in
+              await hapticFeedback.error()
+            }
           }
 
         case .delegate:
