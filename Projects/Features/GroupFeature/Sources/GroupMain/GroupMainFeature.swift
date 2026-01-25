@@ -1042,6 +1042,7 @@ extension GroupMain {
           )))
           return .none
 
+
         // GroupPromiseList delegate actions
         case .path(.element(id: _, action: .groupPromiseList(.delegate(.promiseSelected(let promise))))):
           state.path.append(.promiseDetail(.init(

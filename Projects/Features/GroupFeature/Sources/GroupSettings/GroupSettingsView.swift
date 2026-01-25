@@ -2,6 +2,8 @@ import ComposableArchitecture
 import Clients
 import PromisoShared
 import SwiftUI
+import PhotosUI
+import UIKit
 
 extension GroupSettings {
   public struct View: SwiftUI.View {
@@ -18,6 +20,18 @@ extension GroupSettings {
         .onAppear { store.send(.view(.onAppear)) }
         .modifier(SheetsModifier(store: store))
         .modifier(AlertsModifier(store: store))
+        .sheet(
+          isPresented: Binding(
+            get: { store.editGroup != nil },
+            set: { if !$0 { store.send(.view(.editGroupDismissed)) } }
+          )
+        ) {
+          if store.editGroup != nil {
+            EditGroupSheet(store: store)
+              .presentationDetents([.large])
+              .presentationDragIndicator(.visible)
+          }
+        }
     }
 
     private var content: some SwiftUI.View {
@@ -48,9 +62,10 @@ extension GroupSettings {
             Text(store.group.name)
               .font(.system(size: 20, weight: .semibold))
 
-            Text("\(store.memberCount)명")
+            Text(groupDescriptionText)
               .font(.system(size: 14))
               .foregroundStyle(.secondary)
+              .lineLimit(2)
           }
 
           Spacer()
@@ -59,6 +74,27 @@ extension GroupSettings {
       }
       .padding(16)
       .adaptiveGlassCard()
+      .overlay(alignment: .topTrailing) {
+        if store.isHost {
+          Button {
+            store.send(.view(.editGroupTapped))
+          } label: {
+            HStack(spacing: 6) {
+              Image(systemName: "pencil")
+                .font(.system(size: 12, weight: .semibold))
+              Text("수정")
+                .font(.system(size: 12, weight: .semibold))
+            }
+            .foregroundStyle(Color.pmindigo.n500)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(Color.pmindigo.n500.opacity(0.12))
+            .clipShape(Capsule())
+          }
+          .buttonStyle(.plain)
+          .padding(12)
+        }
+      }
     }
 
     private var menuSection: some SwiftUI.View {
@@ -116,6 +152,11 @@ extension GroupSettings {
         }
         .adaptiveGlassCard()
       }
+    }
+
+    private var groupDescriptionText: String {
+      let description = store.group.description?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+      return description.isEmpty ? "설명이 없습니다" : description
     }
 
     private var dividerLine: some SwiftUI.View {
@@ -181,6 +222,326 @@ extension GroupSettings {
       }
       .buttonStyle(.plain)
     }
+  }
+}
+
+private struct EditGroupSheet: View {
+  @Bindable var store: StoreOf<GroupSettings.Feature>
+
+  private var editState: GroupSettings.Feature.EditGroupState? {
+    store.editGroup
+  }
+
+  var body: some View {
+    NavigationStack {
+      ScrollViewReader { proxy in
+        ScrollView {
+          VStack(spacing: 20) {
+            photoSection
+              .glassSection()
+
+            groupNameSection
+              .glassSection()
+
+            descriptionSection
+              .glassSection()
+
+            maxMembersSection
+              .glassSection()
+
+            Spacer(minLength: 12)
+          }
+          .padding(.horizontal, 20)
+          .padding(.vertical, 24)
+        }
+        .scrollIndicators(.hidden)
+        .scrollDismissesKeyboard(.interactively)
+        .onChange(of: focusedField) { _, newValue in
+          guard let newValue else { return }
+          withAnimation(.easeInOut(duration: 0.2)) {
+            proxy.scrollTo(newValue, anchor: .center)
+          }
+        }
+      }
+      .onTapGesture {
+        dismissKeyboard()
+      }
+      .navigationTitle("그룹 수정")
+      .navigationBarTitleDisplayMode(.inline)
+      .toolbar {
+        ToolbarItem(placement: .topBarLeading) {
+          Button {
+            store.send(.view(.editGroupDismissed))
+          } label: {
+            Image(systemName: "xmark")
+          }
+        }
+      }
+      .safeAreaInset(edge: .bottom) {
+        BottomButton(
+          isLoading: editState?.isSaving == true,
+          isEnabled: !saveDisabled,
+          action: { store.send(.view(.editGroupSaveTapped)) }
+        )
+      }
+    }
+    .alert(
+      "그룹 수정 실패",
+      isPresented: Binding(
+        get: { store.editGroup?.error != nil },
+        set: { if !$0 { store.send(.view(.editGroupErrorDismissed)) } }
+      ),
+      actions: {
+        Button("확인", role: .cancel) {
+          store.send(.view(.editGroupErrorDismissed))
+        }
+      },
+      message: {
+        Text(store.editGroup?.error ?? "잠시 후 다시 시도해주세요.")
+      }
+    )
+  }
+
+  private var saveDisabled: Bool {
+    guard let editState else { return true }
+    return editState.isSaving ||
+      editState.maxMembers < store.minMaxMembers ||
+      editState.maxMembers > store.maxMembersUpperLimit
+  }
+
+  @FocusState private var focusedField: Field?
+
+  private enum Field: Hashable {
+    case description
+  }
+
+  private var photoSection: some View {
+    VStack(spacing: 12) {
+      Text("그룹 사진")
+        .font(.system(size: 16, weight: .semibold))
+        .foregroundColor(.primary)
+        .frame(maxWidth: .infinity, alignment: .leading)
+
+      PhotosPicker(
+        selection: Binding(
+          get: { editState?.selectedPhoto },
+          set: { store.send(.view(.editGroupPhotoSelected($0))) }
+        ),
+        matching: .images
+      ) {
+        ZStack {
+          if let photoData = editState?.photoData,
+             let uiImage = UIImage(data: photoData) {
+            Image(uiImage: uiImage)
+              .resizable()
+              .scaledToFill()
+              .frame(width: 120, height: 120)
+              .clipShape(Circle())
+          } else if let imageUrl = store.group.imageUrl {
+            GroupThumbnailView(
+              imageUrl: imageUrl,
+              name: store.group.name,
+              size: 120
+            )
+          } else {
+            photoPlaceholder
+          }
+
+          Image(systemName: "pencil.circle.fill")
+            .font(.system(size: 24))
+            .symbolRenderingMode(.palette)
+            .foregroundStyle(Color.pmindigo.n500, Color(.systemBackground))
+            .frame(width: 28, height: 28)
+            .background(
+              Circle().fill(Color(.systemBackground))
+            )
+            .overlay(
+              Circle().stroke(Color.pmindigo.n500.opacity(0.2), lineWidth: 1)
+            )
+            .offset(x: 38, y: 38)
+        }
+      }
+    }
+  }
+
+  private var groupNameSection: some View {
+    VStack(spacing: 12) {
+      HStack {
+        Text("그룹 이름")
+          .font(.system(size: 16, weight: .semibold))
+          .foregroundColor(.primary)
+
+        Spacer()
+      }
+
+      Text(store.group.name)
+        .font(.system(size: 16, weight: .semibold))
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(Color(.systemBackground))
+        .cornerRadius(8)
+
+      Label("그룹 이름은 변경할 수 없습니다", systemImage: "info.circle")
+        .font(.system(size: 12))
+        .foregroundColor(.secondary)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+  }
+
+  private var descriptionSection: some View {
+    let count = editState?.description.count ?? 0
+    let maxLength = 50
+
+    return VStack(spacing: 12) {
+      HStack {
+        Text("그룹 설명")
+          .font(.system(size: 16, weight: .semibold))
+          .foregroundColor(.primary)
+
+        Spacer()
+
+        Text("\(count)/\(maxLength)")
+          .font(.system(size: 13))
+          .foregroundColor(.secondary)
+      }
+
+      TextField(
+        "그룹 설명을 입력하세요 (선택)",
+        text: Binding(
+          get: { editState?.description ?? "" },
+          set: { store.send(.view(.editGroupDescriptionChanged($0))) }
+        ),
+        axis: .vertical
+      )
+      .lineLimit(2, reservesSpace: true)
+      .textFieldStyle(.plain)
+      .padding(12)
+      .background(Color(.systemBackground))
+      .cornerRadius(8)
+      .focused($focusedField, equals: .description)
+      .id(Field.description)
+    }
+  }
+
+  private var maxMembersSection: some View {
+    VStack(alignment: .leading, spacing: 6) {
+      HStack {
+        Text("최대 인원")
+          .font(.system(size: 16, weight: .semibold))
+          .foregroundColor(.primary)
+
+        Spacer()
+
+        Picker(
+          "",
+          selection: Binding(
+            get: { editState?.maxMembers ?? store.group.maxMembers },
+            set: { store.send(.view(.editGroupMaxMembersChanged($0))) }
+          )
+        ) {
+          ForEach(store.minMaxMembers...10, id: \.self) { value in
+            Text("\(value)명")
+              .tag(value)
+          }
+        }
+        .pickerStyle(.menu)
+        .tint(.blue)
+      }
+
+      Text("현재 인원 \(store.group.memberIds.count)명 이상, 최대 10명까지 설정할 수 있어요.")
+        .font(.system(size: 12))
+        .foregroundColor(.secondary)
+    }
+  }
+
+  private var photoPlaceholder: some View {
+    Circle()
+      .fill(Color(.systemGray5))
+      .frame(width: 120, height: 120)
+      .overlay {
+        VStack(spacing: 8) {
+          Image(systemName: "camera.fill")
+            .font(.system(size: 28))
+            .foregroundColor(.secondary)
+          Text("사진 변경")
+            .font(.system(size: 13))
+            .foregroundColor(.secondary)
+        }
+      }
+  }
+
+  private func dismissKeyboard() {
+    UIApplication.shared.sendAction(
+      #selector(UIResponder.resignFirstResponder),
+      to: nil,
+      from: nil,
+      for: nil
+    )
+  }
+}
+
+private struct BottomButton: View {
+  let isLoading: Bool
+  let isEnabled: Bool
+  let action: () -> Void
+
+  var body: some View {
+    VStack(spacing: 8) {
+      GlassActionButton(
+        title: isLoading ? "저장 중..." : "그룹 수정하기",
+        isPrimary: true,
+        isVisible: true,
+        isEnabled: isEnabled && !isLoading,
+        action: action
+      )
+      .overlay(alignment: .trailing) {
+        if isLoading {
+          ProgressView()
+            .tint(.white)
+            .padding(.trailing, 16)
+        }
+      }
+    }
+    .padding(.horizontal, 20)
+    .padding(.vertical, 16)
+    .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: -2)
+  }
+}
+
+private extension View {
+  func glassSection() -> some View {
+    self
+      .padding(16)
+      .background(
+        Group {
+          if #available(iOS 26.0, *) {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+              .fill(.clear)
+              .glassEffect(
+                .regular
+                  .tint(.pmindigo.n200.opacity(0.1))
+                  .interactive(),
+                in: .rect(cornerRadius: 16)
+              )
+          } else {
+            glassBackground
+          }
+        }
+      )
+      .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+      .overlay(
+        RoundedRectangle(cornerRadius: 16, style: .continuous)
+          .strokeBorder(Color.white.opacity(0.12))
+      )
+  }
+
+  var glassBackground: some View {
+    RoundedRectangle(cornerRadius: 16, style: .continuous)
+      .fill(Color.white.opacity(0.06))
+      .background(
+        RoundedRectangle(cornerRadius: 16, style: .continuous)
+          .fill(.ultraThinMaterial)
+      )
   }
 }
 

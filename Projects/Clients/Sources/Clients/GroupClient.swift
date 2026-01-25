@@ -62,6 +62,14 @@ public struct GroupClient: Sendable {
   /// 그룹 삭제 (호스트만 가능)
   public var deleteGroup: @Sendable (_ groupId: String) async throws -> Void
 
+  /// 그룹 정보 수정 (설명/이미지/최대 인원)
+  public var updateGroup: @Sendable (
+    _ groupId: String,
+    _ description: String?,
+    _ maxMembers: Int,
+    _ photoData: Data?
+  ) async throws -> GroupModel
+
   /// 그룹 배지 클리어 (Fire & Forget)
   public var clearGroupBadge: @Sendable (_ groupId: String) async -> Void = { _ in }
 }
@@ -80,6 +88,7 @@ extension GroupClient: TestDependencyKey {
     joinGroup: unimplemented("\(Self.self).joinGroup"),
     leaveGroup: unimplemented("\(Self.self).leaveGroup"),
     deleteGroup: unimplemented("\(Self.self).deleteGroup"),
+    updateGroup: unimplemented("\(Self.self).updateGroup"),
     clearGroupBadge: { _ in }
   )
 
@@ -181,6 +190,17 @@ extension GroupClient: TestDependencyKey {
     deleteGroup: { _ in
       try await Task.sleep(for: .seconds(0.5))
     },
+    updateGroup: { groupId, description, maxMembers, _ in
+      try await Task.sleep(for: .seconds(0.5))
+      return GroupModel(
+        id: groupId,
+        name: "구두",
+        description: description,
+        maxMembers: maxMembers,
+        inviteCode: "PREVIEW",
+        createdBy: "preview-user"
+      )
+    },
     clearGroupBadge: { _ in }
   )
 }
@@ -251,6 +271,14 @@ extension GroupClient: DependencyKey {
       },
       deleteGroup: { groupId in
         try await dataSource.deleteGroup(groupId: groupId)
+      },
+      updateGroup: { groupId, description, maxMembers, photoData in
+        return try await dataSource.updateGroup(
+          groupId: groupId,
+          description: description,
+          maxMembers: maxMembers,
+          photoData: photoData
+        )
       },
       clearGroupBadge: { groupId in
         await dataSource.clearGroupBadge(groupId: groupId)

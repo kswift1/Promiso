@@ -868,6 +868,9 @@ export interface UpdateGroupRequest {
   /** 그룹 이미지 URL (선택적) */
   imageUrl?: string | null;
 
+  /** 최대 인원 (선택적) */
+  maxMembers?: number | null;
+
   /** 환경 구분 (선택적: stage 또는 prod) */
   env?: "stage" | "prod" | null;
 }

@@ -23,6 +23,14 @@ public protocol GroupRemoteDataSourceProtocol {
   /// 그룹 삭제
   func deleteGroup(groupId: String) async throws
 
+  /// 그룹 정보 수정 (설명/이미지/최대 인원)
+  func updateGroup(
+    groupId: String,
+    description: String?,
+    maxMembers: Int?,
+    photoData: Data?
+  ) async throws -> GroupModel
+
   // MARK: - Query Operations
 
   /// 사용자가 속한 그룹 목록 조회
