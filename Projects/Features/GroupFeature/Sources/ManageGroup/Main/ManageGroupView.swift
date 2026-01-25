@@ -17,19 +17,11 @@ extension ManageGroup {
       self.store = store
     }
 
-    private var deeplinkURL: URL {
-      URL(string: "promiso://join/\(store.group.inviteCode)")!
-    }
-
     private var shareMessage: String {
-      """
-      \(store.group.name) 그룹에 초대합니다! 🎉
-
-      아래 링크를 클릭하여 참여하세요:
-      \(deeplinkURL.absoluteString)
-
-      또는 초대 코드를 직접 입력하세요: \(store.group.inviteCode)
-      """
+      GroupInviteShareMessage.message(
+        groupName: store.group.name,
+        inviteCode: store.group.inviteCode
+      )
     }
 
     public var body: some View {

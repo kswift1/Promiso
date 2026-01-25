@@ -23,7 +23,6 @@ extension GroupSettings {
       var members: [UserPublicModel] = []
 
       // Sheets
-      var showMemberSheet: Bool = false
       var showInviteSheet: Bool = false
 
       // Leave/Delete
@@ -122,7 +121,6 @@ extension GroupSettings {
         case deleteGroupTapped
         case confirmLeave
         case confirmDelete
-        case dismissMemberSheet
         case dismissInviteSheet
         case dismissLeaveAlert
         case dismissDeleteAlert
@@ -159,7 +157,6 @@ extension GroupSettings {
             return .send(.internal(.fetchMembers))
 
           case .membersTapped:
-            state.showMemberSheet = true
             return .run { [hapticFeedback] _ in
               await hapticFeedback.buttonTap()
             }
@@ -290,10 +287,6 @@ extension GroupSettings {
                 await send(.internal(.deleteGroupResponse(.failure(error))))
               }
             }
-
-          case .dismissMemberSheet:
-            state.showMemberSheet = false
-            return .none
 
           case .dismissInviteSheet:
             state.showInviteSheet = false

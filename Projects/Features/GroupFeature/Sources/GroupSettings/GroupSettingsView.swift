@@ -100,20 +100,18 @@ extension GroupSettings {
     private var menuSection: some SwiftUI.View {
       VStack(alignment: .leading, spacing: 10) {
         VStack(spacing: 0) {
-          menuRow(
-            title: "멤버",
-            systemImage: "person.2",
-            trailingText: "\(store.memberCount)명",
-            action: { store.send(.view(.membersTapped)) }
-          )
-
-          dividerLine
-
-          menuRow(
-            title: "친구 초대",
-            systemImage: "square.and.arrow.up",
-            trailingText: nil,
-            action: { store.send(.view(.inviteTapped)) }
+          NavigationLink {
+            GroupMemberListView(store: store)
+          } label: {
+            menuRowContent(
+              title: "멤버",
+              systemImage: "person.2",
+              trailingText: "\(store.memberCount)명"
+            )
+          }
+          .buttonStyle(.plain)
+          .simultaneousGesture(
+            TapGesture().onEnded { store.send(.view(.membersTapped)) }
           )
 
           dividerLine
@@ -171,29 +169,41 @@ extension GroupSettings {
       action: @escaping () -> Void
     ) -> some SwiftUI.View {
       Button(action: action) {
-        HStack(spacing: 12) {
-          Image(systemName: systemImage)
-            .font(.system(size: 16, weight: .semibold))
-            .foregroundStyle(Color.pmindigo.n500)
-
-          Text(title)
-            .foregroundStyle(.primary)
-          Spacer()
-          if let trailingText {
-            Text(trailingText)
-              .foregroundStyle(.secondary)
-          }
-          Image(systemName: "chevron.right")
-            .font(.system(size: 13, weight: .semibold))
-            .foregroundStyle(.tertiary)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .contentShape(Rectangle())
+        menuRowContent(
+          title: title,
+          systemImage: systemImage,
+          trailingText: trailingText
+        )
       }
       .buttonStyle(.plain)
       .foregroundStyle(.primary)
+    }
+
+    private func menuRowContent(
+      title: String,
+      systemImage: String,
+      trailingText: String?
+    ) -> some SwiftUI.View {
+      HStack(spacing: 12) {
+        Image(systemName: systemImage)
+          .font(.system(size: 16, weight: .semibold))
+          .foregroundStyle(Color.pmindigo.n500)
+
+        Text(title)
+          .foregroundStyle(.primary)
+        Spacer()
+        if let trailingText {
+          Text(trailingText)
+            .foregroundStyle(.secondary)
+        }
+        Image(systemName: "chevron.right")
+          .font(.system(size: 13, weight: .semibold))
+          .foregroundStyle(.tertiary)
+      }
+      .padding(.horizontal, 16)
+      .padding(.vertical, 14)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .contentShape(Rectangle())
     }
 
     private func dangerRow(
@@ -550,13 +560,6 @@ private extension View {
 private struct SheetsModifier: ViewModifier {
   let store: StoreOf<GroupSettings.Feature>
 
-  private var memberSheetBinding: Binding<Bool> {
-    Binding(
-      get: { store.showMemberSheet },
-      set: { if !$0 { store.send(.view(.dismissMemberSheet)) } }
-    )
-  }
-
   private var inviteSheetBinding: Binding<Bool> {
     Binding(
       get: { store.showInviteSheet },
@@ -566,21 +569,13 @@ private struct SheetsModifier: ViewModifier {
 
   func body(content: Content) -> some View {
     content
-      .sheet(isPresented: memberSheetBinding) {
-        GroupMemberListSheet(
-          members: store.members,
-          hostId: store.group.createdBy,
-          currentUserId: store.currentUserId,
-          onDismiss: { store.send(.view(.dismissMemberSheet)) },
-          onMemberImageTap: { store.send(.view(.memberImageTapped($0))) }
-        )
-      }
       .sheet(isPresented: inviteSheetBinding) {
         InviteSheet(
-          inviteCode: store.inviteCode,
-          inviteLink: store.inviteLink,
-          onDismiss: { store.send(.view(.dismissInviteSheet)) }
+          groupName: store.group.name,
+          inviteCode: store.inviteCode
         )
+        .presentationDetents([.height(280)])
+        .presentationDragIndicator(.visible)
       }
   }
 }
@@ -647,33 +642,33 @@ private struct AlertsModifier: ViewModifier {
   }
 }
 
-// MARK: - GroupMemberListSheet
+// MARK: - GroupMemberListView
 
-struct GroupMemberListSheet: View {
-  let members: [UserPublicModel]
-  let hostId: String
-  let currentUserId: String
-  let onDismiss: () -> Void
-  let onMemberImageTap: (UserPublicModel) -> Void
+struct GroupMemberListView: View {
+  let store: StoreOf<GroupSettings.Feature>
 
   var body: some View {
-    NavigationStack {
-      List(members) { member in
-        MemberRow(
-          member: member,
-          isHost: member.userId == hostId,
-          isCurrentUser: member.userId == currentUserId,
-          onImageTap: { onMemberImageTap(member) }
-        )
+    List {
+      Section {
+        ForEach(store.members) { member in
+          MemberRow(
+            member: member,
+            isHost: member.userId == store.group.createdBy,
+            isCurrentUser: member.userId == store.currentUserId,
+            onImageTap: { store.send(.view(.memberImageTapped(member))) }
+          )
+        }
       }
-      .navigationTitle("멤버 (\(members.count)명)")
-      .navigationBarTitleDisplayMode(.inline)
-      .toolbar {
-        ToolbarItem(placement: .cancellationAction) {
-          Button("닫기", action: onDismiss)
+
+      Section {
+        InviteTileRow {
+          store.send(.view(.inviteTapped))
         }
       }
     }
+    .listStyle(.insetGrouped)
+    .navigationTitle("멤버 (\(store.members.count)명)")
+    .navigationBarTitleDisplayMode(.inline)
   }
 }
 
@@ -711,86 +706,142 @@ private struct MemberRow: View {
       }
 
       if isCurrentUser {
-        Text("(나)")
-          .font(.caption)
-          .foregroundStyle(.secondary)
+        Text("나")
+          .font(.caption2.weight(.semibold))
+          .foregroundStyle(Color.pmindigo.n600)
+          .padding(.horizontal, 6)
+          .padding(.vertical, 2)
+          .background(Color.pmindigo.n500.opacity(0.12))
+          .clipShape(Capsule())
       }
     }
     .padding(.vertical, 4)
   }
 }
 
+private struct InviteTileRow: View {
+  let action: () -> Void
+
+  var body: some View {
+    Button(action: action) {
+      HStack(spacing: 12) {
+        Image(systemName: "person.badge.plus")
+          .font(.system(size: 16, weight: .semibold))
+          .foregroundStyle(Color.pmindigo.n500)
+
+        VStack(alignment: .leading, spacing: 4) {
+          Text("친구 초대하기")
+            .font(.body)
+            .foregroundStyle(.primary)
+
+          Text("링크를 공유해 멤버를 초대하세요")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+
+        Spacer()
+
+        Image(systemName: "chevron.right")
+          .font(.system(size: 13, weight: .semibold))
+          .foregroundStyle(.tertiary)
+      }
+      .padding(.vertical, 6)
+    }
+    .buttonStyle(.plain)
+  }
+}
+
 // MARK: - InviteSheet
 
 struct InviteSheet: View {
+  let groupName: String
   let inviteCode: String
-  let inviteLink: String
-  let onDismiss: () -> Void
 
   @State private var isCopied = false
 
   var body: some View {
-    NavigationStack {
-      VStack(spacing: 24) {
-        // 초대 코드 표시
-        VStack(spacing: 8) {
-          Text("초대 코드")
-            .font(.subheadline)
+    VStack(spacing: 20) {
+      HStack(alignment: .top) {
+        VStack(alignment: .leading, spacing: 4) {
+          Text("친구 초대")
+            .font(.system(size: 20, weight: .bold))
+
+          Text("초대 코드를 공유해 멤버를 추가하세요")
+            .font(.system(size: 13))
             .foregroundStyle(.secondary)
-
-          HStack(spacing: 12) {
-            Text(inviteCode)
-              .font(.system(size: 28, weight: .bold, design: .monospaced))
-
-            Button {
-              UIPasteboard.general.string = inviteCode
-              Haptic.success()
-              withAnimation {
-                isCopied = true
-              }
-              DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                withAnimation {
-                  isCopied = false
-                }
-              }
-            } label: {
-              Image(systemName: isCopied ? "checkmark" : "doc.on.doc")
-                .font(.system(size: 18))
-                .foregroundStyle(isCopied ? .green : Color.pmindigo.n500)
-            }
-            .buttonStyle(.bounce)
-          }
-          .padding(.horizontal, 24)
-          .padding(.vertical, 16)
-          .background(Color(.systemGray6))
-          .clipShape(RoundedRectangle(cornerRadius: 12))
         }
-
-        // 공유 링크
-        ShareLink(item: URL(string: inviteLink)!) {
-          HStack {
-            Image(systemName: "square.and.arrow.up")
-            Text("링크 공유하기")
-          }
-          .font(.system(size: 16, weight: .semibold))
-          .frame(maxWidth: .infinity)
-          .padding(.vertical, 14)
-          .background(Color.pmindigo.n500)
-          .foregroundStyle(.white)
-          .clipShape(RoundedRectangle(cornerRadius: 12))
-        }
-        .buttonStyle(.scale)
-        .padding(.horizontal, 24)
 
         Spacer()
       }
-      .padding(.top, 32)
-      .navigationTitle("친구 초대")
-      .navigationBarTitleDisplayMode(.inline)
-      .toolbar {
-        ToolbarItem(placement: .cancellationAction) {
-          Button("닫기", action: onDismiss)
+
+      VStack(spacing: 12) {
+        HStack(spacing: 12) {
+          VStack(alignment: .leading, spacing: 4) {
+            Text("초대 코드")
+              .font(.system(size: 12, weight: .semibold))
+              .foregroundStyle(.secondary)
+
+            Text(inviteCode)
+              .font(.system(size: 28, weight: .bold, design: .monospaced))
+              .tracking(2)
+          }
+
+          Spacer()
+
+          Button {
+            copyCode()
+          } label: {
+            Image(systemName: isCopied ? "checkmark" : "doc.on.doc")
+              .font(.system(size: 16, weight: .semibold))
+              .foregroundStyle(isCopied ? .green : Color.pmindigo.n500)
+              .frame(width: 36, height: 36)
+              .background(Color.pmindigo.n500.opacity(0.12))
+              .clipShape(Circle())
+          }
+          .buttonStyle(.bounce)
         }
+
+        if isCopied {
+          Text("복사되었습니다!")
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundStyle(.green)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .transition(.opacity)
+        }
+      }
+      .padding(16)
+      .background(Color(.systemGray6))
+      .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+      ShareLink(item: GroupInviteShareMessage.message(groupName: groupName, inviteCode: inviteCode)) {
+        HStack(spacing: 8) {
+          Image(systemName: "square.and.arrow.up")
+          Text("링크 공유하기")
+        }
+        .font(.system(size: 16, weight: .semibold))
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 14)
+        .background(Color.pmindigo.n500)
+        .foregroundStyle(.white)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+      }
+      .buttonStyle(.scale)
+
+      Spacer(minLength: 0)
+    }
+    .padding(.horizontal, 20)
+    .padding(.vertical, 20)
+  }
+
+  private func copyCode() {
+    UIPasteboard.general.string = inviteCode
+    Haptic.success()
+    withAnimation(.easeInOut(duration: 0.2)) {
+      isCopied = true
+    }
+    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+      withAnimation(.easeInOut(duration: 0.2)) {
+        isCopied = false
       }
     }
   }

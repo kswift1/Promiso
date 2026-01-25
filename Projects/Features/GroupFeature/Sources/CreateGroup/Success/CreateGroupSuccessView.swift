@@ -8,25 +8,18 @@
 import SwiftUI
 
 import Clients
+import PromisoShared
 
 struct CreateGroupSuccessView: View {
   let result: GroupCreationResultModel
   let onConfirm: () -> Void
   @State private var isCopied = false
   
-  private var deeplinkURL: URL {
-    URL(string: "promiso://join/\(result.inviteCode)")!
-  }
-
   private var shareMessage: String {
-    """
-    \(result.name) 그룹에 초대합니다! 🎉
-
-    아래 링크를 클릭하여 참여하세요:
-    \(deeplinkURL.absoluteString)
-
-    또는 초대 코드를 직접 입력하세요: \(result.inviteCode)
-    """
+    GroupInviteShareMessage.message(
+      groupName: result.name,
+      inviteCode: result.inviteCode
+    )
   }
   
   var body: some View {
@@ -165,18 +158,12 @@ struct CreateGroupSuccessView: View {
             }
             .frame(maxWidth: .infinity)
             .frame(height: 56)
-            .background(
-              LinearGradient(
-                colors: [.blue, .purple],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-              )
-            )
+            .background(Color.pmindigo.n500)
             .foregroundStyle(.white)
             .clipShape(RoundedRectangle(cornerRadius: 16))
             .shadow(
-              color: .blue.opacity(0.3),
-              radius: 12,
+              color: Color.pmindigo.n500.opacity(0.2),
+              radius: 10,
               x: 0,
               y: 6
             )
@@ -187,8 +174,8 @@ struct CreateGroupSuccessView: View {
               .font(.headline)
               .frame(maxWidth: .infinity)
               .frame(height: 56)
-              .background(Color(.systemGray5))
-              .foregroundStyle(.white)
+              .background(Color.pmindigo.n100)
+              .foregroundStyle(Color.pmindigo.n700)
               .clipShape(RoundedRectangle(cornerRadius: 16))
           }
         }
