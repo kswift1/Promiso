@@ -26,6 +26,12 @@ public struct PromiseActivityAttributes: ActivityAttributes, Equatable {
   /// 약속 장소명 (예: "강남역 11번 출구")
   public let location: String?
 
+  /// 장소 위도
+  public let latitude: Double?
+
+  /// 장소 경도
+  public let longitude: Double?
+
   /// 약속 시간
   public let scheduledTime: Date
 
@@ -53,6 +59,8 @@ public struct PromiseActivityAttributes: ActivityAttributes, Equatable {
     case emoji
     case title
     case location
+    case latitude
+    case longitude
     case scheduledTime
     case hostId
     case hostName
@@ -69,6 +77,8 @@ public struct PromiseActivityAttributes: ActivityAttributes, Equatable {
     emoji: String,
     title: String,
     location: String?,
+    latitude: Double? = nil,
+    longitude: Double? = nil,
     scheduledTime: Date,
     trackingDurationMinutes: Int = 30,
     hostId: String = "",
@@ -82,6 +92,8 @@ public struct PromiseActivityAttributes: ActivityAttributes, Equatable {
     self.emoji = emoji
     self.title = title
     self.location = location
+    self.latitude = latitude
+    self.longitude = longitude
     self.scheduledTime = scheduledTime
     self.trackingDurationMinutes = trackingDurationMinutes
     self.hostId = hostId
@@ -102,6 +114,8 @@ public struct PromiseActivityAttributes: ActivityAttributes, Equatable {
     self.emoji = try container.decode(String.self, forKey: .emoji)
     self.title = try container.decode(String.self, forKey: .title)
     self.location = try container.decodeIfPresent(String.self, forKey: .location)
+    self.latitude = try container.decodeIfPresent(Double.self, forKey: .latitude)
+    self.longitude = try container.decodeIfPresent(Double.self, forKey: .longitude)
     self.hostId = try container.decodeIfPresent(String.self, forKey: .hostId) ?? ""
     self.hostName = try container.decodeIfPresent(String.self, forKey: .hostName)
     self.channelId = try container.decodeIfPresent(String.self, forKey: .channelId) ?? ""
@@ -124,6 +138,8 @@ public struct PromiseActivityAttributes: ActivityAttributes, Equatable {
     try container.encode(emoji, forKey: .emoji)
     try container.encode(title, forKey: .title)
     try container.encodeIfPresent(location, forKey: .location)
+    try container.encodeIfPresent(latitude, forKey: .latitude)
+    try container.encodeIfPresent(longitude, forKey: .longitude)
     try container.encode(hostId, forKey: .hostId)
     try container.encodeIfPresent(hostName, forKey: .hostName)
     try container.encode(channelId, forKey: .channelId)

@@ -24,6 +24,7 @@ extension LiveActivityTest {
       var activityId: String?
       var statusMessage: String = ""
       var currentContentState: PromiseActivityAttributes.ContentState?
+      var currentAttributes: PromiseActivityAttributes?
 
       public init() {}
     }
@@ -48,7 +49,7 @@ extension LiveActivityTest {
       }
 
       public enum Internal: Sendable, Equatable {
-        case activityStarted(String, PromiseActivityAttributes.ContentState)
+        case activityStarted(String, PromiseActivityAttributes, PromiseActivityAttributes.ContentState)
         case activityEnded
         case activityFailed(String)
         case activityUpdated(PromiseActivityAttributes.ContentState)
@@ -76,6 +77,7 @@ extension LiveActivityTest {
             if let activity = Activity<PromiseActivityAttributes>.activities.first {
               state.isLiveActivityActive = true
               state.activityId = activity.id
+              state.currentAttributes = activity.attributes
               state.currentContentState = activity.content.state
               state.statusMessage = "기존 활동: \(activity.id.prefix(8))..."
             }
@@ -96,6 +98,8 @@ extension LiveActivityTest {
               emoji: "🍜",
               title: "점심 모임",
               location: "강남역 11번 출구",
+              latitude: 37.498095,
+              longitude: 127.027610,
               scheduledTime: Date().addingTimeInterval(1800)
             )
 
@@ -104,14 +108,14 @@ extension LiveActivityTest {
               participants: Self.mockParticipants
             )
 
-            return .run { send in
+            return .run { [attributes] send in
               do {
                 let activity = try Activity.request(
                   attributes: attributes,
                   content: ActivityContent(state: initialState, staleDate: nil),
                   pushType: nil
                 )
-                await send(.internal(.activityStarted(activity.id, initialState)))
+                await send(.internal(.activityStarted(activity.id, attributes, initialState)))
               } catch {
                 await send(.internal(.activityFailed(error.localizedDescription)))
               }
@@ -235,8 +239,9 @@ extension LiveActivityTest {
 
         case .internal(let internalAction):
           switch internalAction {
-          case .activityStarted(let id, let contentState):
+          case .activityStarted(let id, let attributes, let contentState):
             state.activityId = id
+            state.currentAttributes = attributes
             state.currentContentState = contentState
             state.isLiveActivityActive = true
             state.statusMessage = "시작됨: \(id.prefix(8))..."
@@ -245,6 +250,7 @@ extension LiveActivityTest {
           case .activityEnded:
             state.isLiveActivityActive = false
             state.activityId = nil
+            state.currentAttributes = nil
             state.currentContentState = nil
             state.statusMessage = "종료됨"
             return .none
@@ -451,6 +457,15 @@ extension LiveActivityTest {
           debugRow(
             label: "활성 액티비티 수",
             value: "\(Activity<PromiseActivityAttributes>.activities.count)")
+
+          if let attributes = store.currentAttributes {
+            debugRow(label: "장소", value: attributes.location ?? "-")
+            if let lat = attributes.latitude, let lng = attributes.longitude {
+              debugRow(label: "좌표", value: String(format: "%.4f, %.4f", lat, lng))
+            } else {
+              debugRow(label: "좌표", value: "-")
+            }
+          }
 
           if let state = store.currentContentState {
             debugRow(label: "추적 시간", value: "\(state.trackingDurationMinutes)분")
