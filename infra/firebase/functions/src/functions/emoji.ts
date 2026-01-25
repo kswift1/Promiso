@@ -32,7 +32,38 @@ const EMOJI_GENERATION_PROMPT = `당신은 약속 제목을 보고 가장 적절
  * @return {string | null} 추출된 이모지 또는 null
  */
 function extractFirstEmoji(text: string): string | null {
-  // 이모지 정규식 패턴 (대부분의 이모지 매칭)
+  // 1) 국가/지역 플래그 (Regional Indicator Symbols)
+  const flagRegex = /[\u{1F1E6}-\u{1F1FF}]{2}/u;
+  const flagMatch = text.match(flagRegex);
+  if (flagMatch) {
+    return flagMatch[0];
+  }
+
+  // 2) 키캡 이모지 (예: 1️⃣, #️⃣, *️⃣)
+  const keycapRegex = /[0-9#*]\uFE0F?\u20E3/u;
+  const keycapMatch = text.match(keycapRegex);
+  if (keycapMatch) {
+    return keycapMatch[0];
+  }
+
+  // 3) ZWJ/피부톤 포함 이모지 시퀀스
+  const emojiSequenceRegex = new RegExp(
+    [
+      "(?:\\p{Extended_Pictographic}",
+      "(?:\\uFE0F|\\uFE0E)?",
+      "(?:\\p{Emoji_Modifier})?)",
+      "(?:\\u200D\\p{Extended_Pictographic}",
+      "(?:\\uFE0F|\\uFE0E)?",
+      "(?:\\p{Emoji_Modifier})?)*",
+    ].join(""),
+    "u"
+  );
+  const sequenceMatch = text.match(emojiSequenceRegex);
+  if (sequenceMatch) {
+    return sequenceMatch[0];
+  }
+
+  // 4) 기본 이모지 (fallback)
   const emojiRegex = /\p{Emoji_Presentation}|\p{Emoji}\uFE0F/gu;
   const match = text.match(emojiRegex);
   return match ? match[0] : null;
