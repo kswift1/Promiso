@@ -6,6 +6,7 @@ import ComposableArchitecture
 struct CreatePromiseStep1View: View {
   private let store: StoreOf<CreatePromise.Feature>
   @FocusState private var isTitleFocused: Bool
+  @State private var isHourglassFlipped = false
   
   init(store: StoreOf<CreatePromise.Feature>) {
     self.store = store
@@ -23,6 +24,9 @@ struct CreatePromiseStep1View: View {
           if let emoji = store.promise.emoji {
             Text(emoji)
               .font(.system(size: 48))
+          } else if store.isEmojiLoading {
+            Text(isHourglassFlipped ? "⌛️" : "⏳")
+              .font(.system(size: 40))
           }
         }
 
@@ -31,6 +35,7 @@ struct CreatePromiseStep1View: View {
             TitleInputTextField(
               title: store.promise.title,
               emoji: store.promise.emoji,
+              isEmojiLoading: store.isEmojiLoading,
               isFocused: $isTitleFocused,
               onTitleChange: { store.send(.view(.setTitle($0))) }
             )
@@ -60,6 +65,13 @@ struct CreatePromiseStep1View: View {
     .onTapGesture {
       // 빈 공간 탭 시 키보드 내리기
       isTitleFocused = false
+    }
+    .onReceive(
+      Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()
+    ) { _ in
+      if store.isEmojiLoading {
+        isHourglassFlipped.toggle()
+      }
     }
   }
 }

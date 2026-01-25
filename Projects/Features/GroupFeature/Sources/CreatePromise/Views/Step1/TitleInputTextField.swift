@@ -5,6 +5,7 @@ import ComposableArchitecture
 struct TitleInputTextField: View {
   let title: String
   let emoji: String?
+  let isEmojiLoading: Bool
   let titlePrefix: Int
   let onTitleChange: (String) -> Void
   @FocusState.Binding var isFocused: Bool
@@ -12,19 +13,21 @@ struct TitleInputTextField: View {
   init(
     title: String,
     emoji: String?,
+    isEmojiLoading: Bool,
     titlePrefix: Int = 30,
     isFocused: FocusState<Bool>.Binding,
     onTitleChange: @escaping (String) -> Void
   ) {
     self.title = title
     self.emoji = emoji
+    self.isEmojiLoading = isEmojiLoading
     self.titlePrefix = titlePrefix
     self._isFocused = isFocused
     self.onTitleChange = onTitleChange
   }
   
   var body: some View {
-    VStack(alignment: .trailing, spacing: 2) {
+    VStack(alignment: .trailing, spacing: 6) {
       TextField("예: 영화 관람, 카페 미팅", text: Binding(
         get: { title },
         set: { newValue in
@@ -38,7 +41,7 @@ struct TitleInputTextField: View {
       .background(Color(.systemGray6))
       .clipShape(RoundedRectangle(cornerRadius: 16))
       .frame(maxWidth: .infinity, minHeight: 80)
-      
+
       Text("\(title.count)/\(titlePrefix)")
         .font(.system(size: 13))
         .foregroundColor(.secondary)
@@ -54,6 +57,7 @@ struct TitleInputTextField: View {
   TitleInputTextField(
     title: title,
     emoji: nil,
+    isEmojiLoading: false,
     isFocused: $isFocused,
     onTitleChange: { title = $0 }
   )
@@ -66,6 +70,7 @@ struct TitleInputTextField: View {
   TitleInputTextField(
     title: title,
     emoji: "🍿",
+    isEmojiLoading: false,
     isFocused: $isFocused,
     onTitleChange: { title = $0 }
   )
@@ -78,6 +83,7 @@ struct TitleInputTextField: View {
   TitleInputTextField(
     title: title,
     emoji: "🍿",
+    isEmojiLoading: false,
     isFocused: $isFocused,
     onTitleChange: { title = $0 }
   )
@@ -90,6 +96,7 @@ struct TitleInputTextField: View {
   TitleInputTextField(
     title: title,
     emoji: "📅",
+    isEmojiLoading: false,
     isFocused: $isFocused,
     onTitleChange: { title = $0 }
   )
@@ -102,6 +109,7 @@ struct TitleInputTextField: View {
   TitleInputTextField(
     title: title,
     emoji: "🌙",
+    isEmojiLoading: false,
     isFocused: $isFocused,
     onTitleChange: { title = $0 }
   )

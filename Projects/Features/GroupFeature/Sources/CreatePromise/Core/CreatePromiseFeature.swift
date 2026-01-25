@@ -35,6 +35,7 @@ public enum CreatePromise {
       var groupPromiseCounts: [String: Int] = [:]
       var isCreatingPromise: Bool = false
       var creationError: Clients.PromiseClientError?
+      var isEmojiLoading: Bool = false
 
       // LiveActivity 정보 팝오버 상태
       var showLiveActivityInfo: Bool = false
@@ -54,6 +55,7 @@ public enum CreatePromise {
         groupPromiseCounts: [String: Int] = [:],
         isCreatingPromise: Bool = false,
         creationError: Clients.PromiseClientError? = nil,
+        isEmojiLoading: Bool = false,
         showLiveActivityInfo: Bool = false,
         hasSeenLiveActivityInfo: Bool = true,
         useLocation: Bool = true,
@@ -66,6 +68,7 @@ public enum CreatePromise {
         self.groupPromiseCounts = groupPromiseCounts
         self.isCreatingPromise = isCreatingPromise
         self.creationError = creationError
+        self.isEmojiLoading = isEmojiLoading
         self.showLiveActivityInfo = showLiveActivityInfo
         self.hasSeenLiveActivityInfo = hasSeenLiveActivityInfo
         self.useLocation = useLocation
@@ -210,6 +213,11 @@ public enum CreatePromise {
             
           case .setTitle(let title):
             state.promise.title = title
+            let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed.isEmpty {
+              state.isEmojiLoading = false
+              state.promise.emoji = nil
+            }
             return .merge(
               .cancel(id: CancelID.emojiSuggestDebounce),
               .run { [clock, title] send in
@@ -319,6 +327,7 @@ public enum CreatePromise {
             
           case .titleDebounced(let title):
             guard !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return .none }
+            state.isEmojiLoading = true
             return .run { [emojiClient] send in
               do {
                 let emoji = try await emojiClient.generate(title)
@@ -330,6 +339,7 @@ public enum CreatePromise {
 
           case .emojiGenerationResponse(.success(let emoji)):
             state.promise.emoji = emoji
+            state.isEmojiLoading = false
             return .none
 
           case .emojiGenerationResponse(.failure):
@@ -341,6 +351,7 @@ public enum CreatePromise {
 
           case .emojiSuggestionsResponse(let picks):
             state.promise.emoji = picks.first?.emoji ?? "📅"
+            state.isEmojiLoading = false
             return .none
             
           case .fetchGroupList:
