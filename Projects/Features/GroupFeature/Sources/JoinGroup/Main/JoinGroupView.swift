@@ -182,6 +182,7 @@ private struct EnterCodeView: View {
         .focused($isCodeFieldFocused)
         .foregroundColor(.clear) // 텍스트 색상 투명
         .accentColor(.clear) // 커서 색상 투명
+        .tint(.clear)
         .background(Color.clear)
         .onChange(of: store.inviteCode) { oldValue, newValue in
           // 6자리가 완성되면 자동으로 다음 단계로

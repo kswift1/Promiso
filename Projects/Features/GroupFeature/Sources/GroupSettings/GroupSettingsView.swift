@@ -5,6 +5,7 @@ import SwiftUI
 import PhotosUI
 import UIKit
 
+
 extension GroupSettings {
   public struct View: SwiftUI.View {
     @Bindable var store: StoreOf<Feature>
@@ -559,6 +560,7 @@ private extension View {
 
 private struct SheetsModifier: ViewModifier {
   let store: StoreOf<GroupSettings.Feature>
+  @State private var inviteSheetHeight: CGFloat = 360
 
   private var inviteSheetBinding: Binding<Bool> {
     Binding(
@@ -572,9 +574,9 @@ private struct SheetsModifier: ViewModifier {
       .sheet(isPresented: inviteSheetBinding) {
         InviteSheet(
           groupName: store.group.name,
-          inviteCode: store.inviteCode
+          inviteCode: store.inviteCode,
         )
-        .presentationDetents([.height(280)])
+        .presentationDetents([.height(270)])
         .presentationDragIndicator(.visible)
       }
   }
@@ -669,6 +671,19 @@ struct GroupMemberListView: View {
     .listStyle(.insetGrouped)
     .navigationTitle("멤버 (\(store.members.count)명)")
     .navigationBarTitleDisplayMode(.inline)
+    .fullScreenCover(
+      item: Binding(
+        get: { store.selectedMemberForImage },
+        set: { _ in store.send(.view(.imageDetailDismissed)) }
+      )
+    ) { member in
+      PromisoShared.ImageDetailView(
+        imageUrl: member.profileImageUrl,
+        displayName: member.displayName,
+        onDismiss: { store.send(.view(.imageDetailDismissed)) }
+      )
+      .presentationBackground(.clear)
+    }
   }
 }
 
@@ -680,15 +695,15 @@ private struct MemberRow: View {
 
   var body: some View {
     HStack(spacing: 12) {
-      Button(action: onImageTap) {
-        ProfileAvatarView(
-          profileImageUrl: member.profileImageUrl,
-          displayName: member.displayName,
-          isCurrentUser: isCurrentUser,
-          size: 44
-        )
-      }
-      .buttonStyle(.hapticBounce(.light))
+      ProfileAvatarView(
+        profileImageUrl: member.profileImageUrl,
+        displayName: member.displayName,
+        isCurrentUser: isCurrentUser,
+        size: 44
+      )
+      .padding(4)
+      .contentShape(Rectangle())
+      .onTapGesture(perform: onImageTap)
 
       Text(member.displayName)
         .font(.body)
@@ -746,6 +761,8 @@ private struct InviteTileRow: View {
           .foregroundStyle(.tertiary)
       }
       .padding(.vertical, 6)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
   }
@@ -770,6 +787,7 @@ struct InviteSheet: View {
             .font(.system(size: 13))
             .foregroundStyle(.secondary)
         }
+        .padding(.top, 12)
 
         Spacer()
       }
@@ -801,19 +819,19 @@ struct InviteSheet: View {
           .buttonStyle(.bounce)
         }
 
-        if isCopied {
-          Text("복사되었습니다!")
-            .font(.system(size: 12, weight: .semibold))
-            .foregroundStyle(.green)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .transition(.opacity)
-        }
       }
       .padding(16)
       .background(Color(.systemGray6))
       .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
 
-      ShareLink(item: GroupInviteShareMessage.message(groupName: groupName, inviteCode: inviteCode)) {
+      if isCopied {
+        Text("복사되었습니다!")
+          .font(.system(size: 12, weight: .semibold))
+          .foregroundStyle(.green)
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .transition(.opacity)
+      }
+      GroupInviteShareMessage.shareLink(groupName: groupName, inviteCode: inviteCode) {
         HStack(spacing: 8) {
           Image(systemName: "square.and.arrow.up")
           Text("링크 공유하기")

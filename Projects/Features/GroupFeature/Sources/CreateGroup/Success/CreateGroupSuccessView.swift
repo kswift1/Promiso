@@ -15,13 +15,6 @@ struct CreateGroupSuccessView: View {
   let onConfirm: () -> Void
   @State private var isCopied = false
   
-  private var shareMessage: String {
-    GroupInviteShareMessage.message(
-      groupName: result.name,
-      inviteCode: result.inviteCode
-    )
-  }
-  
   var body: some View {
     ScrollView {
       VStack(spacing: 32) {
@@ -149,7 +142,8 @@ struct CreateGroupSuccessView: View {
 
         // Action Buttons
         VStack(spacing: 12) {
-          ShareLink(item: shareMessage) {
+          
+          GroupInviteShareMessage.shareLink(groupName: result.name, inviteCode: result.inviteCode) {
             HStack(spacing: 8) {
               Image(systemName: "square.and.arrow.up")
                 .font(.system(size: 18))
