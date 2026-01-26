@@ -27,6 +27,12 @@ import {
   SendPushNotificationResponse,
 } from "../types/api";
 
+/**
+ * 알림 타입을 그룹 알림 상세 설정 키로 변환합니다.
+ *
+ * @param {NotificationType} type - 알림 타입
+ * @return {string | null} 그룹 알림 상세 설정 키
+ */
 function notificationPreferenceKey(type: NotificationType): string | null {
   switch (type) {
   case NotificationType.PromiseInvitation:
@@ -218,7 +224,11 @@ export async function sendPushNotificationInternal(params: {
         const preferences = groupSettings.notificationPreferences as
           { [key: string]: boolean } | undefined;
         const preferenceKey = notificationPreferenceKey(type);
-        if (preferences && preferenceKey && preferences[preferenceKey] === false) {
+        if (
+          preferences &&
+          preferenceKey &&
+          preferences[preferenceKey] === false
+        ) {
           continue;
         }
       }
