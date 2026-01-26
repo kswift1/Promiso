@@ -60,13 +60,13 @@ Promiso 앱의 푸시 알림 메시지 규격을 정의합니다.
 **예시:**
 ```
 영화 관람 약속 확정! 🎉
-오늘 14시에 만나요!
+오늘 오후 2:00에 만나요!
 
 점심 모임 약속 확정! 🎉
-내일 12시 30분에 만나요!
+내일 오후 12:30에 만나요!
 
 생일파티 약속 확정! 🎉
-1월 25일 18시에 만나요!
+1월 25일 오후 6:00에 만나요!
 ```
 
 ---
@@ -180,7 +180,11 @@ Promiso 앱의 푸시 알림 메시지 규격을 정의합니다.
 | `promise_confirmed` | 약속 상세 |
 | `promise_cancelled` | 약속 상세 |
 | `promise_updated` | 약속 상세 |
+| `promise_reminder` | 약속 상세 |
+| `attendance_response` | 약속 상세 |
+| `group_invitation` | 그룹 상세 |
 | `group_update` | 그룹 상세 |
+| `system` | 이동 없음 |
 
 ---
 

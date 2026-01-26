@@ -106,7 +106,6 @@ export const createGroup = onCall<CreateGroupRequest>(
             role: "admin",
             joinedAt: now,
             notifications: true,
-            needResponseCount: 0,
             imageUrl: data.imageUrl ?? null,
           },
         },
@@ -285,31 +284,9 @@ export const joinGroup = onCall<JoinGroupRequest>(
     }
 
     const now = FieldValue.serverTimestamp();
-    const nowTimestamp = admin.firestore.Timestamp.now();
     const usersCollection = getEnvironmentCollection("users", db, data.env);
-    const promisesCollection = getEnvironmentCollection(
-      "promises", db, data.env
-    );
 
-    // 4. 해당 그룹의 활성 약속 수 계산 (needResponseCount 초기값)
-    // 마감 전(votes.until > now) + 배지 미정리(badgesCleared == false)
-    const activePromises = await promisesCollection
-      .where("groupId", "==", groupId)
-      .where("badgesCleared", "==", false)
-      .get();
-
-    // 실제로 마감 전인 약속만 필터링 (쿼리 후 추가 검증)
-    let needResponseCount = 0;
-    for (const doc of activePromises.docs) {
-      const promise = doc.data();
-      const votes = promise.votes || {};
-      const deadline = votes.until ?? promise.startAt;
-      if (deadline && deadline.toMillis() > nowTimestamp.toMillis()) {
-        needResponseCount++;
-      }
-    }
-
-    // 5. Firestore에 저장 (트랜잭션 사용)
+    // 4. Firestore에 저장 (트랜잭션 사용)
     await db.runTransaction(async (transaction) => {
       // 5-1. 그룹의 memberIds에 추가
       transaction.update(groupDoc.ref, {
@@ -317,7 +294,7 @@ export const joinGroup = onCall<JoinGroupRequest>(
         updatedAt: now,
       });
 
-      // 5-2. 사용자의 그룹 목록에 추가 (Map 방식) + needResponseCount 초기값
+      // 5-2. 사용자의 그룹 목록에 추가 (Map 방식)
       const userRef = usersCollection.doc(userId);
       transaction.set(userRef, {
         groups: {
@@ -326,7 +303,6 @@ export const joinGroup = onCall<JoinGroupRequest>(
             role: "member",
             joinedAt: now,
             notifications: true,
-            needResponseCount,
             imageUrl: groupImageUrl,
           },
         },
@@ -334,8 +310,7 @@ export const joinGroup = onCall<JoinGroupRequest>(
     });
 
     console.log(
-      `[joinGroup] ${userId} joined ${groupId}, ` +
-      `needResponseCount: ${needResponseCount}`
+      `[joinGroup] ${userId} joined ${groupId}`
     );
 
     // 6. 응답 반환

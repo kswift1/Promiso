@@ -294,6 +294,8 @@ users/{userId}.groups
 | `role` | String | ✅ | 역할 (`admin` \| `member`) |
 | `joinedAt` | Timestamp | ✅ | 그룹 가입 시각 |
 | `notifications` | Boolean | ✅ | 그룹 알림 수신 여부 |
+| `hasNewActivity` | Boolean | ❌ | 새 활동 여부 (약속 생성/변경 시 true → 확인 시 false) |
+| `imageUrl` | String | ❌ | 그룹 이미지 URL |
 
 #### 📝 예시 데이터
 
@@ -304,13 +306,17 @@ users/{userId}.groups
       "groupName": "대학 친구들",
       "role": "admin",
       "joinedAt": "2024-01-01T10:00:00+09:00",
-      "notifications": true
+      "notifications": true,
+      "hasNewActivity": false,
+      "imageUrl": null
     },
     "abc123def456": {
       "groupName": "회사 동료",
       "role": "member",
       "joinedAt": "2024-02-15T10:00:00+09:00",
-      "notifications": true
+      "notifications": true,
+      "hasNewActivity": true,
+      "imageUrl": "https://firebasestorage.googleapis.com/..."
     }
   }
 }
@@ -354,7 +360,6 @@ groups/{groupId}
 | `createdBy` | String | ✅ | - | 생성자 ID |
 | `createdAt` | Timestamp | ✅ | - | 생성 시각 |
 | `updatedAt` | Timestamp | ✅ | - | 마지막 수정 시각 |
-| `isDeleted` | Boolean | ✅ | false | 삭제 여부 (소프트 삭제) |
 
 #### 📝 예시 데이터
 
@@ -374,8 +379,7 @@ groups/{groupId}
   "inviteCode": "AB12CD",
   "createdBy": "sFeDJwqJbqScbSUp4Jz54MDlnFv1",
   "createdAt": "<Timestamp>",
-  "updatedAt": "<Timestamp>",
-  "isDeleted": false
+  "updatedAt": "<Timestamp>"
 }
 ```
 
@@ -492,7 +496,6 @@ promises/{promiseId}
 | `liveActivityScheduledAt` | Timestamp | ❌ | null | LiveActivity 예약 시각 |
 | `createdAt` | Timestamp | ✅ | - | 생성 시각 |
 | `updatedAt` | Timestamp | ✅ | - | 수정 시각 |
-| `isDeleted` | Boolean | ✅ | false | 삭제 여부 (소프트 삭제) |
 
 #### 📝 예시 데이터
 
@@ -518,8 +521,7 @@ promises/{promiseId}
     "longitude": 127.026632
   },
   "createdAt": "2024-01-14T10:00:00+09:00",
-  "updatedAt": "2024-01-14T18:00:00+09:00",
-  "isDeleted": false
+  "updatedAt": "2024-01-14T18:00:00+09:00"
 }
 ```
 
@@ -701,6 +703,7 @@ notifications/{notificationId}
 | `promise_reminder` | 리마인더 | 약속 시작 전 알림 |
 | `promise_confirmed` | 약속 확정 | 최소 인원 충족으로 약속 확정 |
 | `promise_cancelled` | 약속 무산 | 참여 인원 부족으로 약속 미확정 |
+| `promise_updated` | 약속 수정 | 약속 정보 변경 |
 | `group_invitation` | 그룹 초대 | 새 그룹에 초대됨 |
 | `group_update` | 그룹 업데이트 | 그룹 정보 변경 (새 멤버 참여 등) |
 | `attendance_response` | 응답 변경 | 다른 멤버의 참석 응답 |
@@ -867,7 +870,6 @@ let members = userDocs.compactMap { doc -> UserPublic? in
 ```swift
 db.collection("groups")
   .whereField("inviteCode", isEqualTo: inviteCode)
-  .whereField("isDeleted", isEqualTo: false)
   .limit(to: 1)
   .getDocuments()
 ```
@@ -881,7 +883,6 @@ db.collection("groups")
 ```swift
 db.collection("promises")
   .whereField("groupId", isEqualTo: groupId)
-  .whereField("isDeleted", isEqualTo: false)
   .order(by: "startAt", descending: false)
   .getDocuments()
 ```
@@ -889,11 +890,12 @@ db.collection("promises")
 #### 오늘의 약속 조회
 
 ```swift
-let today = "20240115" // YYYYMMDD
+let startOfDay = Calendar.current.startOfDay(for: Date())
+let endOfDay = Calendar.current.date(byAdding: .day, value: 1, to: startOfDay)!
 db.collection("promises")
   .whereField("groupId", isEqualTo: groupId)
-  .whereField("localYyyymmdd", isEqualTo: today)
-  .whereField("isDeleted", isEqualTo: false)
+  .whereField("startAt", isGreaterThanOrEqualTo: startOfDay)
+  .whereField("startAt", isLessThan: endOfDay)
   .order(by: "startAt", descending: false)
   .getDocuments()
 ```
@@ -901,11 +903,12 @@ db.collection("promises")
 #### 특정 월의 약속 조회
 
 ```swift
-let month = "202401" // YYYYMM
+let startOfMonth = Calendar.current.date(from: DateComponents(year: 2024, month: 1, day: 1))!
+let endOfMonth = Calendar.current.date(byAdding: .month, value: 1, to: startOfMonth)!
 db.collection("promises")
   .whereField("groupId", isEqualTo: groupId)
-  .whereField("localYyyymm", isEqualTo: month)
-  .whereField("isDeleted", isEqualTo: false)
+  .whereField("startAt", isGreaterThanOrEqualTo: startOfMonth)
+  .whereField("startAt", isLessThan: endOfMonth)
   .order(by: "startAt", descending: false)
   .getDocuments()
 ```
@@ -1003,17 +1006,10 @@ service cloud.firestore {
 
 | 인덱스 이름 | 필드 | 순서 | 용도 |
 |------------|------|------|------|
-| `promises_by_group_date` | groupId | ASC | 그룹별 날짜 조회 |
-|  | isDeleted | ASC |  |
+| `promises_by_group_startAt` | groupId | ASC | 그룹별 약속 조회 |
 |  | startAt | ASC |  |
-| `promises_by_group_month` | groupId | ASC | 월별 조회 |
-|  | localYyyymm | ASC |  |
-|  | isDeleted | ASC |  |
-|  | startAt | ASC |  |
-| `promises_by_group_day` | groupId | ASC | 일별 조회 |
-|  | localYyyymmdd | ASC |  |
-|  | isDeleted | ASC |  |
-|  | startAt | ASC |  |
+| `promises_by_group_startAt_desc` | groupId | ASC | 과거 약속 조회 |
+|  | startAt | DESC |  |
 
 #### 2. notifications 컬렉션
 

@@ -909,7 +909,7 @@ paths:
         **호스트만 가능**: 그룹 생성자(admin)만 삭제 가능
 
         **내부 동작**:
-        - groups/{groupId} 문서의 isDeleted 플래그를 true로 설정
+        - groups/{groupId} 문서 삭제 (하드 삭제)
         - 멤버들의 users/{userId}/groups Map에서 groupId 제거
       operationId: deleteGroup
       security:
@@ -2620,7 +2620,6 @@ components:
         - createdBy
         - createdAt
         - updatedAt
-        - isDeleted
       properties:
         name:
           type: string
@@ -2662,10 +2661,6 @@ components:
           type: string
           format: date-time
           description: 수정 시각
-        isDeleted:
-          type: boolean
-          description: 삭제 여부
-          example: false
 
     # ========================================
     # User Document Schema
@@ -2682,6 +2677,84 @@ components:
         - 사용자가 10개 그룹에 속해도 1회 읽기로 모든 그룹 정보 조회
         - 읽기 비용 90% 절감 (10개 그룹 기준)
       properties:
+        name:
+          type: string
+          description: 사용자 이름 (provider에서 받은 이름)
+          example: 김성원
+        nickname:
+          type: string
+          description: 사용자 닉네임
+          example: 성원
+        profile:
+          type: object
+          nullable: true
+          description: 프로필 이미지 정보
+          required:
+            - url
+            - updatedAt
+          properties:
+            url:
+              type: string
+              format: uri
+              description: 원본 이미지 URL
+              example: https://storage.googleapis.com/.../profile.jpg
+            thumbUrl:
+              type: string
+              format: uri
+              nullable: true
+              description: 썸네일 URL
+              example: https://storage.googleapis.com/.../thumb_profile.jpg
+            updatedAt:
+              type: string
+              format: date-time
+              description: 업데이트 시각
+              example: "2025-01-05T10:00:00Z"
+        metaData:
+          type: object
+          description: 메타데이터
+          required:
+            - createdAt
+            - updatedAt
+          properties:
+            createdAt:
+              type: string
+              format: date-time
+              description: 생성 시각
+              example: "2024-12-19T10:00:00Z"
+            updatedAt:
+              type: string
+              format: date-time
+              description: 수정 시각
+              example: "2025-01-05T10:00:00Z"
+        devices:
+          type: object
+          nullable: true
+          description: 디바이스 정보 Map (deviceId → DeviceInfo)
+          additionalProperties:
+            type: object
+            properties:
+              fcmToken:
+                type: string
+                description: FCM 토큰
+              platform:
+                type: string
+                description: 플랫폼 (ios | android)
+              lastActiveAt:
+                type: string
+                format: date-time
+                description: 마지막 활성 시각
+              createdAt:
+                type: string
+                format: date-time
+                description: 토큰 등록 시각
+              liveActivityPushToStartToken:
+                type: string
+                nullable: true
+                description: LiveActivity Push to Start 토큰
+              liveActivityPushToken:
+                type: string
+                nullable: true
+                description: LiveActivity Push 토큰
         groups:
           type: object
           description: 그룹 목록 (groupId를 키로 하는 Map)
@@ -2693,11 +2766,15 @@ components:
               role: admin
               joinedAt: "2024-01-01T00:00:00Z"
               notifications: true
+              hasNewActivity: false
+              imageUrl: null
             "groupId2":
               groupName: 회사 동료
               role: member
               joinedAt: "2024-01-15T00:00:00Z"
               notifications: true
+              hasNewActivity: true
+              imageUrl: https://firebasestorage.googleapis.com/...
 
     UserGroupInfo:
       type: object
@@ -2727,6 +2804,16 @@ components:
           type: boolean
           description: 알림 활성화 여부
           example: true
+        hasNewActivity:
+          type: boolean
+          nullable: true
+          description: 새 활동 여부 (배지용)
+          example: false
+        imageUrl:
+          type: string
+          nullable: true
+          description: 그룹 이미지 URL
+          example: https://firebasestorage.googleapis.com/...
 
     # ========================================
     # Promise Document Schema
@@ -2756,7 +2843,6 @@ components:
         - startAt
         - createdAt
         - updatedAt
-        - isDeleted
       properties:
         title:
           type: string
@@ -2828,6 +2914,36 @@ components:
               type: string
               description: 장소명
               example: CGV 강남
+            address:
+              type: string
+              nullable: true
+              description: 주소
+              example: 서울 강남구 강남대로 438
+            latitude:
+              type: number
+              nullable: true
+              description: 위도
+              example: 37.501087
+            longitude:
+              type: number
+              nullable: true
+              description: 경도
+              example: 127.026632
+        trackingStartMinutesBefore:
+          type: integer
+          nullable: true
+          description: LiveActivity 시작 시간 (약속 N분 전)
+          example: 30
+        liveActivityScheduled:
+          type: boolean
+          nullable: true
+          description: LiveActivity 예약 완료 여부
+          example: false
+        liveActivityScheduledAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: LiveActivity 예약 시각
         createdAt:
           type: string
           format: date-time
@@ -2836,10 +2952,6 @@ components:
           type: string
           format: date-time
           description: 수정 시각
-        isDeleted:
-          type: boolean
-          description: 삭제 여부
-          example: false
 
     # ========================================
     # createPromise
