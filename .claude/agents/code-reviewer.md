@@ -14,24 +14,51 @@ tools: Read, Grep, Bash
 2. `.ai/PROJECT_CONTEXT.md`의 코딩 컨벤션 읽기
 3. 모든 위반사항을 Critical로 표시
 
-### 자동 거부 사항 (발견 즉시 수정 요구)
+### 🔴 Critical (발견 즉시 수정 요구)
 
 ```swift
-// ❌ TCA Deprecated API
+// TCA Deprecated API
 @BindingState           → @ObservableState 사용
 .task { }               → Effect.run { } 사용
 .fireAndForget { }      → Effect.run { } 사용
 
-// ❌ Swift 컨벤션 위반
+// Swift 컨벤션 위반
 강제 언래핑 (!)         → guard let 또는 if let 사용
-축약 네이밍 (btn, lbl)  → 전체 단어 사용
-하드코딩 색상           → Theme.swift 사용
-고정 폰트 크기          → Dynamic Type 사용
+하드코딩 색상           → Color.pm* 사용 (Color.pmindigo.n500 등)
+Feature에서 Firebase 직접 호출 → Client 레이어 통과 필수
 
-// ❌ UI 컨벤션 위반
-Aurora 미적용           → .auroraBackground() 필수
-Glass Effect 미적용    → iOS 26+ glassEffect 사용
-Fallback 누락           → iOS 26 미만 분기 처리
+// UI 컨벤션 위반
+Glass Effect Fallback 누락 → #available(iOS 26) 분기 필수
+Button/탭 영역에 Spacer 포함 시 .contentShape 누락 → .contentShape(Rectangle()) 필수
+
+// 아키텍처 위반
+Namespace 패턴 미사용   → enum FeatureName {} + extension 필수
+Action 분리 미사용      → ViewAction / InternalAction / DelegateAction 필수
+Sendable 미준수         → enum ViewAction: Sendable 필수
+@Dependency 미사용      → 외부 의존성은 @Dependency 필수
+XCTest 사용             → Swift Testing (@Test, #expect) 사용
+```
+
+### 🟡 Warning (권장 수정)
+
+```swift
+// 코드 스타일
+축약 네이밍 (btn, lbl)  → 전체 단어 사용 권장
+print() 문              → 제거 권장
+SwiftUI Preview 누락    → 추가 권장
+
+// 파일 구조
+500라인 이상 파일       → 파일 분리 권장
+
+// UI
+Aurora Background 누락  → .auroraBackground() 권장 (주요 화면)
+```
+
+### ℹ️ Info (정보 표시만)
+
+```swift
+// 허용
+TODO/FIXME 주석         → 정보만 표시, 수정 불필요
 ```
 
 ---

@@ -2,20 +2,20 @@
 
 > 모든 개발 작업은 이 컨벤션을 따라야 합니다.
 
-## 📋 필수 체크리스트
+---
 
-### ✅ Git 커밋 메시지
+## 🔴 Critical (즉시 수정 필수)
 
+### Git 커밋 메시지
 ```
-<type>: <subject>
+<type>: <subject>    ← 한글, 50자 이내
 
 <body>
 
-Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
+Co-Authored-By: Claude <모델명> <noreply@anthropic.com>
 ```
 
 **Type**: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `style`
-**Subject**: 50자 이내, 한글, 명령형, 마침표 없음
 
 **예시**:
 ```
@@ -23,163 +23,178 @@ feat: 알림 설정 Feature 추가
 
 - NotificationSettingsFeature 생성 (TCA 1.22.2)
 - Aurora Background + Glass Effect UI
-- 알림 타입별 토글 기능
 
-Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 ```
 
 ---
 
-### ✅ Swift 코드
+### Swift 코드
 
-#### 필수 사항
-- ✅ 들여쓰기: 2 spaces
-- ✅ `@ObservableState` (TCA 1.22.2)
-- ✅ `ViewAction` / `InternalAction` / `DelegateAction` 분리
-- ✅ `Sendable` 프로토콜 준수
-- ✅ SwiftUI Preview 포함
-- ✅ `async/await` 사용
-
-#### 금지 사항
-- ❌ `@BindingState` (deprecated)
-- ❌ `.task { }` (deprecated)
-- ❌ `.fireAndForget { }` (deprecated)
-- ❌ 강제 언래핑 (`!`)
-- ❌ 축약 네이밍 (`btn`, `lbl`)
-- ❌ 하드코딩 색상
+| 항목 | 규칙 |
+|-----|-----|
+| 강제 언래핑 (!) | ❌ 금지 → `guard let` 사용 |
+| @BindingState | ❌ 금지 → `@ObservableState` 사용 |
+| .task { } | ❌ 금지 → `Effect.run { }` 사용 |
+| .fireAndForget { } | ❌ 금지 → `Effect.run { }` 사용 |
+| 하드코딩 색상 | ❌ 금지 → `Color.pm*` 사용 |
+| Feature에서 Firebase 직접 호출 | ❌ 금지 → Client 레이어 통과 |
+| Glass Effect Fallback 누락 | ❌ 금지 → `#available(iOS 26)` 분기 |
+| XCTest 사용 | ❌ 금지 → Swift Testing 사용 |
 
 ---
 
-### ✅ UI 스타일
+### 아키텍처
 
-#### 필수 적용
 ```swift
-// Aurora Background (모든 주요 화면)
-.auroraBackground()
+// Namespace 패턴 필수
+public enum FeatureName {}
 
-// Glass Effect (iOS 26+)
-@available(iOS 26.0, *)
-.glassEffect(.regular.interactive(), in: .rect(cornerRadius: 12))
+extension FeatureName {
+    @Reducer
+    public struct Feature { ... }
+}
 
-// Fallback (iOS 26 미만)
+// Action 분리 필수
+enum Action {
+    case view(ViewAction)
+    case `internal`(InternalAction)
+    case delegate(DelegateAction)
+}
+
+// Sendable 필수
+enum ViewAction: Sendable { ... }
+enum InternalAction: Sendable { ... }
+
+// 의존성 주입 필수
+@Dependency(\.firestoreClient) var firestoreClient
+```
+
+---
+
+### 색상 시스템
+
+```swift
+// ✅ 올바른 사용
+Color.pmindigo.n500
+Color.pmaurora.purple
+Color.pmbrand.primary
+
+// ❌ 금지
+Color(red: 0.5, green: 0.3, blue: 0.8)
+Color(UIColor.systemBlue)
+```
+
+**위치**: `Projects/ResourceKit/Sources/Generated/Color+Generated.swift`
+
+---
+
+### UI
+
+```swift
+// Glass Effect Fallback 필수
 if #available(iOS 26.0, *) {
-  glassEffect(...)
+    content.glassEffect(.regular.interactive(), in: .rect(cornerRadius: 12))
 } else {
-  background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+    content.background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+}
+
+// ⚠️ Glass Effect 탭 영역 필수
+// 콘텐츠 없는 부분도 탭 가능하게 .contentShape 추가
+Button {
+    // action
+} label: {
+    HStack {
+        Text("Label")
+        Spacer()  // ← 이 부분도 탭 가능하게
+    }
+    .contentShape(Rectangle())  // ← 필수!
 }
 ```
 
-#### 금지
-- ❌ Aurora 미적용 (주요 화면)
-- ❌ Glass Effect Fallback 누락
-- ❌ 하드코딩 색상 (Theme.swift 사용)
+---
+
+## 🟡 Warning (권장 수정)
+
+| 항목 | 규칙 |
+|-----|-----|
+| 축약 네이밍 (btn, lbl) | 전체 단어 사용 권장 |
+| print() 문 | 제거 권장 |
+| SwiftUI Preview 누락 | 추가 권장 |
+| 500라인 이상 파일 | 파일 분리 권장 |
+| Aurora Background 누락 | 주요 화면에 적용 권장 |
 
 ---
 
-## 🔍 자동 검사 항목
+## ℹ️ Info (허용)
 
-### Critical (발견 시 즉시 수정)
+| 항목 | 규칙 |
+|-----|-----|
+| TODO/FIXME 주석 | 허용 (정보 표시만) |
+
+---
+
+## ✅ 필수 사항
+
+### 코드 스타일
+- 들여쓰기: **2 spaces**
+- 네이밍: camelCase (변수/함수), PascalCase (타입)
+
+### TCA 구조
+- @ObservableState for State
+- ViewAction / InternalAction / DelegateAction 분리
+- @Dependency for 외부 의존성
+- Sendable 프로토콜 준수
+
+### 테스트
+- Swift Testing 사용 (@Test, #expect)
+
+### 워크플로우
+- 계획 단계: **사용자 승인 후 진행**
+- 커밋 단계: **사용자 확인 후 커밋**
+
+---
+
+## 📋 빠른 체크리스트
+
+### 코드 작성 전
+- [ ] 기존 패턴 확인 (탐색 단계)
+- [ ] 계획 수립 및 승인
+
+### 코드 작성 중
+- [ ] Namespace 패턴 사용
+- [ ] Action 분리 (View/Internal/Delegate)
+- [ ] @Dependency로 의존성 주입
+- [ ] Color.pm* 사용
+- [ ] Glass Effect + Fallback
+
+### 코드 작성 후
+- [ ] 빌드 성공
+- [ ] 테스트 통과 (Swift Testing)
+- [ ] 코드 리뷰 통과
+- [ ] 사용자 확인 후 커밋
+
+---
+
+## 🔍 자동 검사 명령어
+
 ```bash
-# TCA Deprecated API
+# Critical 검사
 grep -rn "@BindingState\|\.task\s*{\|\.fireAndForget" --include="*.swift" .
-
-# Glass Effect Fallback 누락
-grep -l "\.glassEffect" --include="*.swift" . | xargs grep -L "#available(iOS 26"
-```
-
-### Warning (수정 권장)
-```bash
-# 강제 언래핑
-grep -rn "!" --include="*.swift" . | grep -v "// swiftlint:disable\|!="
-
-# 하드코딩 색상
 grep -rn "Color(red:\|Color(UIColor" --include="*.swift" .
+grep -l "\.glassEffect" --include="*.swift" . | xargs grep -L "#available(iOS 26"
 
-# 축약 네이밍
+# Warning 검사
+grep -rn "!" --include="*.swift" . | grep -v "!="
 grep -rn "\(btn\|lbl\|txt\|img\)" --include="*.swift" .
-
-# Aurora Background 누락 (View 파일)
-grep -L "\.auroraBackground()" --include="*View.swift" .
-
-# print 문 (디버그 코드)
 grep -rn "print(" --include="*.swift" .
-```
-
----
-
-## 🚀 컨벤션 강제 방법
-
-### 1. 자동 검증 (기본)
-5단계 워크플로우의 Step 4에서 자동 실행:
-```
-탐색 → 계획 → 구현 → 검증 → 커밋
-                        ↑
-                  컨벤션 체크
-                  code-reviewer agent
-```
-
-### 2. Hook 설정 (강력 추천)
-`.claude/settings.local.json`에 추가:
-```json
-{
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "f=\"$(jq -r '.tool_input.file_path' <<< \"$STDIN\")\"; if [[ $f == *.swift ]]; then .claude/hooks/check-conventions.sh \"$f\"; fi"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-### 3. 수동 검사
-```bash
-# 특정 파일 체크
-.claude/hooks/check-conventions.sh Projects/Features/SomeFeature/Sources/SomeView.swift
-
-# 전체 프로젝트 체크
-find Projects -name "*.swift" -exec .claude/hooks/check-conventions.sh {} \;
 ```
 
 ---
 
 ## 📚 참고 문서
 
-- `.claude/CLAUDE.md` - 전체 워크플로우 및 규칙
-- `.ai/PROJECT_CONTEXT.md` - 상세 코딩 컨벤션
+- `.claude/CLAUDE.md` - 전체 워크플로우
+- `.ai/PROJECT_CONTEXT.md` - 상세 아키텍처
 - `.claude/agents/code-reviewer.md` - 리뷰 기준
-- `.claude/hooks/check-conventions.sh` - 자동 검사 스크립트
-
----
-
-## ❓ FAQ
-
-### Q: Critical 에러가 발생하면?
-**A**: 즉시 수정해야 합니다. 커밋이 차단됩니다.
-
-### Q: Warning은 무시해도 되나요?
-**A**: 커밋은 가능하지만, 수정을 강력히 권장합니다.
-
-### Q: Hook이 너무 엄격해요
-**A**: `settings.local.json`의 `hooks` 섹션을 제거하거나 비활성화하세요.
-
-### Q: 기존 코드가 컨벤션을 위반하는데?
-**A**: 새 코드만 컨벤션을 따르면 됩니다. 기존 코드는 점진적으로 개선하세요.
-
----
-
-## 🎯 핵심 요약
-
-**3가지만 기억하세요:**
-
-1. **Git 커밋**: `type: subject` + `Co-Authored-By`
-2. **Swift 코드**: TCA 1.22.2 API + 강제 언래핑 금지
-3. **UI**: Aurora Background + Glass Effect + Fallback
-
-**컨벤션 위반 시 5단계 워크플로우의 검증 단계에서 자동으로 잡힙니다.**
+- `Projects/ResourceKit/Sources/Generated/Color+Generated.swift` - 색상 시스템

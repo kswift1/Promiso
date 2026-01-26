@@ -37,7 +37,7 @@
 
 <body>
 
-Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
+Co-Authored-By: Claude <모델명> <noreply@anthropic.com>
 ```
 
 **Type 규칙** (소문자):
@@ -53,7 +53,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
 - 50자 이내
 - 명령형 (동사원형) "추가한다" ❌ → "추가" ✅
 - 마침표 없음
-- 한글 사용 (코드/기술용어는 영어)
+- **한글 사용** (코드/기술용어는 영어)
 
 **예시**:
 ```
@@ -63,36 +63,50 @@ fix: 그룹 목록 중복 렌더링 버그 수정
 refactor: FirestoreClient 쿼리 로직 개선
 
 ❌ 잘못된 예시:
-Add notification settings feature (영어)
+Add notification settings feature (영어 금지)
 feat: 알림 설정 기능을 추가했습니다 (명령형 아님)
 알림 설정 추가 (type 없음)
 ```
-
-**Body 규칙**:
-- 72자마다 줄바꿈
-- 무엇을, 왜 변경했는지 설명
-- 불릿 포인트 사용 (-)
 
 ---
 
 ### Swift 코드 컨벤션
 
+**🔴 Critical (즉시 수정)**:
 ```swift
-// ✅ 필수 사항
-- 들여쓰기: 2 spaces (탭 아님)
-- 네이밍: camelCase (변수/함수), PascalCase (타입)
-- SwiftUI Preview 필수
-- @ObservableState (TCA 1.22.2)
-- Action: ViewAction / InternalAction / DelegateAction 분리
-- Sendable 프로토콜 준수 (모든 Action enum)
+// ❌ 금지
+강제 언래핑 (!) → guard let 사용
+@BindingState → @ObservableState 사용
+.task { } → Effect.run { } 사용
+.fireAndForget { } → Effect.run { } 사용
+하드코딩 색상 → Color.pm* 사용 (Color.pmindigo.n500 등)
+Feature에서 직접 Firebase 호출 → Client 레이어 통과 필수
+Glass Effect Fallback 누락 → #available(iOS 26) 분기 필수
+```
 
-// ❌ 금지 사항
-- 강제 언래핑 (!) - guard let 사용
-- 옵셔널 체이닝 남발
-- 축약 네이밍 (btn, lbl 등)
-- BindingState (deprecated)
-- .task { } (deprecated)
-- .fireAndForget { } (deprecated)
+**🟡 Warning (권장 수정)**:
+```swift
+// 경고
+축약 네이밍 (btn, lbl) → 전체 단어 사용 권장
+print() 문 → 제거 권장
+SwiftUI Preview 누락 → 추가 권장
+500라인 이상 파일 → 분리 권장
+```
+
+**✅ 필수 사항**:
+```swift
+// 코드 스타일
+- 들여쓰기: 2 spaces
+- 네이밍: camelCase (변수/함수), PascalCase (타입)
+
+// TCA 구조
+- Namespace 패턴: enum FeatureName {} + extension
+- Action 분리: ViewAction / InternalAction / DelegateAction
+- Sendable 준수: enum ViewAction: Sendable
+- 의존성 주입: @Dependency(\.client) var client
+
+// 테스트
+- Swift Testing 사용 (@Test, #expect)
 ```
 
 ---
@@ -107,7 +121,7 @@ enum Action: ViewAction { }
 @Dependency(\.client) var client
 Effect.run { } / Effect.send()
 
-// ❌ 사용하지 말 것 (deprecated)
+// ❌ 사용하지 말 것 (Critical)
 @BindingState
 .task { }
 .fireAndForget { }
@@ -115,27 +129,56 @@ Effect.run { } / Effect.send()
 
 ---
 
-### UI 스타일 (필수)
+### UI 스타일
 
+**🔴 Critical**:
 ```swift
-// ✅ Aurora Background (모든 주요 화면)
-.auroraBackground()
+// 색상 - Color.pm* 필수
+Color.pmindigo.n500       // ✅
+Color.pmaurora.purple     // ✅
+Color(red: 0.5, ...)      // ❌ 금지
 
-// ✅ Glass Effect (iOS 26+)
-@available(iOS 26.0, *)
-.glassEffect(.regular.interactive(), in: .rect(cornerRadius: 12))
-
-// ✅ Fallback (iOS 26 미만)
+// Glass Effect Fallback 필수
 if #available(iOS 26.0, *) {
   glassEffect(...)
 } else {
-  background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+  background(.ultraThinMaterial, ...)
 }
+```
 
-// ❌ 금지
-- 하드코딩된 색상값 (Theme.swift 사용)
-- 고정 폰트 크기 (.system(size:) 금지)
-- Aurora 미적용
+**✅ 필수**:
+```swift
+// Aurora Background (주요 화면)
+.auroraBackground()
+
+// Glass Effect (iOS 26+)
+.glassEffect(.regular.interactive(), in: .rect(cornerRadius: 12))
+
+// ⚠️ 탭 영역 확보 (Spacer 등 빈 영역도 탭 가능하게)
+Button { ... } label: {
+    HStack {
+        Text("Label")
+        Spacer()
+    }
+    .contentShape(Rectangle())  // ← 필수!
+}
+```
+
+---
+
+### 아키텍처 규칙
+
+**🔴 Critical**:
+```
+Feature → Client → Firebase/API (직접 호출 금지)
+         ↑
+    @Dependency 주입
+```
+
+**파일 분리**:
+```
+- 500라인 이상: 파일 분리 권장
+- View/Reducer 분리: FeatureName.swift + FeatureNameView.swift
 ```
 
 ## Makefile 명령어
@@ -396,13 +439,15 @@ $ tuist test NotificationSettingsFeatureTests
 
 **목적**: Git 커밋 및 정리
 
+**⚠️ 중요: 사용자 확인 후 커밋**
+
 **실행 방법**:
 ```
 1. git status 확인
 2. git diff 확인
-3. 커밋 메시지 작성 (컨벤션 준수)
-4. git add + git commit
-5. (선택) PR 생성
+3. 커밋 메시지 초안 작성
+4. 사용자에게 확인 요청 ← 필수!
+5. 승인 후 git add + git commit
 ```
 
 **커밋 메시지 포맷**:
@@ -414,19 +459,30 @@ feat: 알림 설정 Feature 추가
 - 알림 타입별 토글 기능
 - Swift Testing 기반 테스트
 
-Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
+Co-Authored-By: Claude <모델명> <noreply@anthropic.com>
 ```
 
 **예시**:
 ```
 Step 5 - 커밋:
 
-→ git status (변경사항 확인)
-→ git add Projects/Features/NotificationSettingsFeature
-→ git add Projects/App/Sources/AppFeatureDeps.swift
-→ git commit -m "..."
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+변경 사항:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
++ Projects/Features/NotificationSettingsFeature/...
++ Projects/Features/NotificationSettingsFeature/...
+M Projects/App/Sources/AppFeatureDeps.swift
 
-✅ 커밋 완료: abc123d
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+커밋 메시지 초안:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+feat: 알림 설정 Feature 추가
+
+- NotificationSettingsFeature 생성 (TCA 1.22.2)
+- Aurora Background + Glass Effect UI
+- 알림 타입별 토글 기능
+
+이대로 커밋할까요? (또는 수정사항 알려주세요)
 ```
 
 ---
