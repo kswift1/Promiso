@@ -39,21 +39,9 @@ public struct TimelineSection: Equatable, Identifiable {
   }
 }
 
-// MARK: - Group Info
-
-public struct GroupInfo: Equatable, Identifiable {
-  public let id: String
-  public let name: String
-
-  public init(id: String, name: String) {
-    self.id = id
-    self.name = name
-  }
-}
-
 // MARK: - Status Filter
 
-public enum StatusFilter: String, Equatable, CaseIterable {
+public enum StatusFilter: String, Equatable, CaseIterable, Sendable {
   case all = "전체"
   case needResponse = "응답 필요"
   case confirmed = "확정됨"
@@ -67,24 +55,77 @@ public enum ScrollTarget: Equatable {
   case date(Date)            // 특정 날짜로 (향후 "오늘로 스크롤" 등)
 }
 
-// MARK: - Critical Zone Data
+// MARK: - Hero Data (홈 상단 "지금 가장 중요한 약속")
 
-public struct CriticalZoneData: Equatable {
-  public let reason: CriticalReason
+public struct HeroData: Equatable {
+  public let priority: HeroPriority
   public let promise: PromiseModel
 
-  public init(reason: CriticalReason, promise: PromiseModel) {
-    self.reason = reason
+  public init(priority: HeroPriority, promise: PromiseModel) {
+    self.priority = priority
     self.promise = promise
   }
 
-  public enum CriticalReason: Int, Comparable, Equatable {
-    case liveActivity = 1     // 최우선: LiveActivity 공유 중
-    case inProgress = 2       // 진행 중
-    case departureSoon = 3    // 출발 임박 (30분 전)
+  /// Hero 우선순위 (LiveActivity는 BottomAccessoryView에서 처리하므로 제외)
+  public enum HeroPriority: Int, Comparable, Equatable, Sendable {
+    case departureSoon = 1    // T-30분 이내 임박 약속
+    case todayNext = 2        // 오늘 가장 가까운 확정 약속
+    case needResponse = 3     // 응답 필요한 약속 중 가장 빠른 것
 
-    public static func < (lhs: CriticalReason, rhs: CriticalReason) -> Bool {
+    public static func < (lhs: HeroPriority, rhs: HeroPriority) -> Bool {
       lhs.rawValue < rhs.rawValue
+    }
+
+    public var displayTitle: String {
+      switch self {
+      case .departureSoon: "출발 임박"
+      case .todayNext: "다음 약속"
+      case .needResponse: "응답 필요"
+      }
+    }
+
+    public var iconName: String {
+      switch self {
+      case .departureSoon: "clock.badge.exclamationmark"
+      case .todayNext: "calendar.badge.clock"
+      case .needResponse: "hand.raised.fill"
+      }
+    }
+  }
+}
+
+// MARK: - Quick Insights Data
+
+public struct QuickInsightsData: Equatable {
+  public let todayCount: Int
+  public let needResponseCount: Int
+  public let thisWeekCount: Int
+
+  public init(todayCount: Int, needResponseCount: Int, thisWeekCount: Int) {
+    self.todayCount = todayCount
+    self.needResponseCount = needResponseCount
+    self.thisWeekCount = thisWeekCount
+  }
+}
+
+public enum InsightType: String, CaseIterable, Equatable, Sendable {
+  case today = "오늘"
+  case needResponse = "응답 필요"
+  case thisWeek = "이번 주"
+
+  public var iconName: String {
+    switch self {
+    case .today: "calendar"
+    case .needResponse: "exclamationmark.bubble"
+    case .thisWeek: "calendar.badge.plus"
+    }
+  }
+
+  public var accentColor: String {
+    switch self {
+    case .today: "pmindigo"
+    case .needResponse: "pmaurora"
+    case .thisWeek: "green"
     }
   }
 }

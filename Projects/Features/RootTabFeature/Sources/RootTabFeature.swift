@@ -103,6 +103,7 @@ extension RootTab {
       }
     }
 
+    @CasePathable
     public enum Action {
       /// 앱이 나타날 때 호출
       case onAppear
