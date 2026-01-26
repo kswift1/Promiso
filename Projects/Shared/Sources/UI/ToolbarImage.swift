@@ -1,10 +1,5 @@
 import SwiftUI
 
-public enum ToolbarType {
-  case hamburger
-  
-}
-
 public struct ToolbarButton: View {
   
   private let imageName: String

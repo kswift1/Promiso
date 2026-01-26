@@ -356,7 +356,7 @@ Step 3 - 구현:
    - Critical 발견 시 즉시 수정 요구
 
 2. 빌드 확인
-   - tuist build (또는 xcodebuild)
+   - tuist build Promiso-Workspace
    - 컴파일 에러 확인
 
 3. 테스트 실행
@@ -409,7 +409,7 @@ Step 4 - 검증:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 2. 빌드 확인
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-$ tuist build
+$ tuist build Promiso-Workspace
 ✅ 빌드 성공
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -508,7 +508,7 @@ feat: 알림 설정 Feature 추가
 에이전트 호출 없이 직접 처리:
 
 ```
-1. tuist build 실행
+1. tuist build Promiso-Workspace 실행
 2. 에러 메시지 분석
 3. 해당 파일 수정
 4. 다시 빌드 확인
@@ -621,7 +621,7 @@ feature-generator, ui-designer, test-writer를 병렬로 실행합니다.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 1. 빌드 테스트
-   $ tuist build
+   $ tuist build Promiso-Workspace
    ✅ 빌드 성공
 
 2. 테스트 실행

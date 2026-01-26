@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct GroupFilterBar: View {
-  let groups: [GroupInfo]
+  let groups: [HomeModels.GroupInfo]
   @Binding var selectedGroupId: String?  // nil = 전체
 
   var body: some View {
@@ -57,19 +57,19 @@ struct FilterChip: View {
   VStack(spacing: 16) {
     GroupFilterBar(
       groups: [
-        GroupInfo(id: "1", name: "친구들"),
-        GroupInfo(id: "2", name: "회사"),
-        GroupInfo(id: "3", name: "가족"),
-        GroupInfo(id: "4", name: "동아리")
+        HomeModels.GroupInfo(id: "1", name: "친구들"),
+        HomeModels.GroupInfo(id: "2", name: "회사"),
+        HomeModels.GroupInfo(id: "3", name: "가족"),
+        HomeModels.GroupInfo(id: "4", name: "동아리")
       ],
       selectedGroupId: .constant(nil)
     )
 
     GroupFilterBar(
       groups: [
-        GroupInfo(id: "1", name: "친구들"),
-        GroupInfo(id: "2", name: "회사"),
-        GroupInfo(id: "3", name: "가족")
+        HomeModels.GroupInfo(id: "1", name: "친구들"),
+        HomeModels.GroupInfo(id: "2", name: "회사"),
+        HomeModels.GroupInfo(id: "3", name: "가족")
       ],
       selectedGroupId: .constant("2")
     )

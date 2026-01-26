@@ -52,10 +52,11 @@ extension Home {
       }
     }
   }
+}
 
-  // MARK: - State Computed Properties
+// MARK: - State Computed Properties
 
-  extension Feature.State {
+extension Home.Feature.State {
     /// 모든 약속 (필터 적용 전)
     var allPromises: [PromiseModel] {
       promisesState.value ?? []
@@ -172,9 +173,9 @@ extension Home {
     }
   }
 
-  // MARK: - Feature (continued)
+// MARK: - Feature (continued)
 
-  extension Feature {
+extension Home.Feature {
     // MARK: - Action
 
     @CasePathable
@@ -309,8 +310,9 @@ extension Home {
     }
   }
 
-  // MARK: - Root View
+// MARK: - Root View
 
+extension Home {
   public struct RootView: View {
     @Bindable private var store: StoreOf<Feature>
 

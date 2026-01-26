@@ -3,7 +3,7 @@ import PromisoShared
 
 // MARK: - StatusFilter + CategoryFilterItem
 
-extension StatusFilter: CategoryFilterItem {
+extension HomeModels.StatusFilter: CategoryFilterItem {
   public var title: String {
     rawValue
   }
@@ -31,17 +31,17 @@ extension StatusFilter: CategoryFilterItem {
 
 #Preview {
   VStack(spacing: 20) {
-    CategoryFilterBar<StatusFilter>(
+    CategoryFilterBar<HomeModels.StatusFilter>(
       selection: .constant(.all),
       counts: [.all: 10, .needResponse: 5, .confirmed: 3, .inProgress: 2]
     )
 
-    CategoryFilterBar<StatusFilter>(
+    CategoryFilterBar<HomeModels.StatusFilter>(
       selection: .constant(.needResponse),
       counts: [.all: 10, .needResponse: 5, .confirmed: 3, .inProgress: 2]
     )
 
-    CategoryFilterBar<StatusFilter>(
+    CategoryFilterBar<HomeModels.StatusFilter>(
       selection: .constant(.confirmed),
       counts: [.all: 10, .needResponse: 5, .confirmed: 3, .inProgress: 2]
     )

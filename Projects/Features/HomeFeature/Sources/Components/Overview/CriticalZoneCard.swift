@@ -2,7 +2,7 @@ import SwiftUI
 import PromisoShared
 
 struct CriticalZoneCard: View {
-  let data: CriticalZoneData
+  let data: HomeModels.CriticalZoneData
   let onTap: () -> Void
 
   var body: some View {
@@ -119,9 +119,13 @@ struct CriticalZoneCard: View {
       return "지금 공유 중"
 
     case .inProgress:
-      let endInterval = promise.endAt.timeIntervalSince(now)
-      let minutes = Int(endInterval / 60)
-      return "종료까지 \(minutes)분"
+      if let endAt = promise.endAt {
+        let endInterval = endAt.timeIntervalSince(now)
+        let minutes = Int(endInterval / 60)
+        return "종료까지 \(minutes)분"
+      } else {
+        return "진행 중"
+      }
 
     case .departureSoon:
       let startInterval = promise.startAt.timeIntervalSince(now)
@@ -135,7 +139,7 @@ struct CriticalZoneCard: View {
 
 #Preview("LiveActivity") {
   CriticalZoneCard(
-    data: CriticalZoneData(
+    data: HomeModels.CriticalZoneData(
       reason: .liveActivity,
       promise: PromiseModel.mock(
         title: "저녁 약속",
@@ -152,7 +156,7 @@ struct CriticalZoneCard: View {
 
 #Preview("진행 중") {
   CriticalZoneCard(
-    data: CriticalZoneData(
+    data: HomeModels.CriticalZoneData(
       reason: .inProgress,
       promise: PromiseModel.mock(
         title: "점심 약속",
@@ -169,7 +173,7 @@ struct CriticalZoneCard: View {
 
 #Preview("출발 임박") {
   CriticalZoneCard(
-    data: CriticalZoneData(
+    data: HomeModels.CriticalZoneData(
       reason: .departureSoon,
       promise: PromiseModel.mock(
         title: "커피 타임",

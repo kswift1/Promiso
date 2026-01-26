@@ -15,7 +15,7 @@ public enum AppConstants {
     public static let buildNumber = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
 
     // TODO: 앱스토어 출시 후 실제 URL로 교체 (설정 화면 > 앱 정보에서 사용)
-    public static let appStoreURL = URL(string: "https://apps.apple.com/app/promiso/id123456789")!
+    public static let appStoreURL = URL(string: "https://apps.apple.com/app/id1625074042")!
     // TODO: 웹사이트 구축 후 실제 URL로 교체 (설정 화면 > 약관/정책에서 사용)
     public static let privacyPolicyURL = URL(string: "https://promiso.com/privacy")!
     public static let termsOfServiceURL = URL(string: "https://promiso.com/terms")!
