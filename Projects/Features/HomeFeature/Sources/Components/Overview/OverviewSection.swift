@@ -2,8 +2,8 @@ import SwiftUI
 import PromisoShared
 
 struct OverviewSection: View {
-  let overviewData: OverviewData
-  let criticalZoneData: CriticalZoneData?
+  let overviewData: HomeModels.OverviewData
+  let criticalZoneData: HomeModels.CriticalZoneData?
   let onNeedResponseTap: () -> Void
   let onCriticalZoneTap: () -> Void
 
@@ -39,7 +39,7 @@ struct OverviewSection: View {
 
 #Preview("모든 섹션") {
   OverviewSection(
-    overviewData: OverviewData(
+    overviewData: HomeModels.OverviewData(
       todayCount: 3,
       nextPromise: PromiseModel.mock(
         title: "점심 약속",
@@ -48,7 +48,7 @@ struct OverviewSection: View {
       ),
       needResponseCount: 5
     ),
-    criticalZoneData: CriticalZoneData(
+    criticalZoneData: HomeModels.CriticalZoneData(
       reason: .liveActivity,
       promise: PromiseModel.mock(
         title: "저녁 약속",
@@ -65,7 +65,7 @@ struct OverviewSection: View {
 
 #Preview("Critical Zone 없음") {
   OverviewSection(
-    overviewData: OverviewData(
+    overviewData: HomeModels.OverviewData(
       todayCount: 2,
       nextPromise: PromiseModel.mock(
         title: "커피 타임",
@@ -84,7 +84,7 @@ struct OverviewSection: View {
 
 #Preview("응답 필요 없음") {
   OverviewSection(
-    overviewData: OverviewData(
+    overviewData: HomeModels.OverviewData(
       todayCount: 1,
       nextPromise: PromiseModel.mock(
         title: "팀 미팅",

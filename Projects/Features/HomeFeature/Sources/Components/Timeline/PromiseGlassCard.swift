@@ -108,8 +108,12 @@ struct PromiseGlassCard: View {
       promise: PromiseModel.mock(
         title: "점심 약속",
         emoji: "🍕",
-        startAt: Date().addingTimeInterval(7200),
-        isConfirmed: true
+        votes: PromiseVotesModel(
+          accepted: ["user1", "user2"],
+          declined: [],
+          until: Date().addingTimeInterval(86400)
+        ),
+        startAt: Date().addingTimeInterval(7200)
       ),
       currentUserId: "user1",
       onTap: {}
@@ -119,9 +123,13 @@ struct PromiseGlassCard: View {
       promise: PromiseModel.mock(
         title: "커피 타임",
         emoji: "☕",
+        votes: PromiseVotesModel(
+          accepted: ["user1", "user2"],
+          declined: [],
+          until: Date().addingTimeInterval(86400)
+        ),
         startAt: Date().addingTimeInterval(14400),
-        isConfirmed: true,
-        location: LocationInfoModel(name: "스타벅스 강남점", latitude: 0, longitude: 0)
+        location: LocationInfoModel(name: "스타벅스 강남점")
       ),
       currentUserId: "user1",
       onTap: {}
@@ -137,9 +145,12 @@ struct PromiseGlassCard: View {
       promise: PromiseModel.mock(
         title: "저녁 약속",
         emoji: "🍽️",
-        startAt: Date().addingTimeInterval(28800),
-        isConfirmed: false,
-        votesUntil: Date().addingTimeInterval(86400 * 2)
+        votes: PromiseVotesModel(
+          accepted: ["user2"],
+          declined: [],
+          until: Date().addingTimeInterval(86400 * 2)
+        ),
+        startAt: Date().addingTimeInterval(28800)
       ),
       currentUserId: "user1",
       onTap: {}
@@ -149,9 +160,12 @@ struct PromiseGlassCard: View {
       promise: PromiseModel.mock(
         title: "팀 미팅",
         emoji: "💼",
-        startAt: Date().addingTimeInterval(36000),
-        isConfirmed: false,
-        votesUntil: Date().addingTimeInterval(86400)
+        votes: PromiseVotesModel(
+          accepted: [],
+          declined: [],
+          until: Date().addingTimeInterval(86400)
+        ),
+        startAt: Date().addingTimeInterval(36000)
       ),
       currentUserId: "user1",
       onTap: {}

@@ -1,7 +1,7 @@
 import SwiftUI
 import PromisoShared
 
-struct TimelineSection: View {
+struct TimelineSectionView: View {
   let section: HomeModels.TimelineSection
   let currentUserId: String
   let onPromiseTap: (PromiseModel) -> Void
@@ -28,21 +28,19 @@ struct TimelineSection: View {
 #Preview {
   ScrollView {
     VStack(spacing: 20) {
-      TimelineSection(
+      TimelineSectionView(
         section: HomeModels.TimelineSection(
           day: Date(),
           promises: [
             PromiseModel.mock(
               title: "점심 약속",
               emoji: "🍕",
-              startAt: Date().addingTimeInterval(7200),
-              isConfirmed: true
+              startAt: Date().addingTimeInterval(7200)
             ),
             PromiseModel.mock(
               title: "커피 타임",
               emoji: "☕",
-              startAt: Date().addingTimeInterval(14400),
-              isConfirmed: true
+              startAt: Date().addingTimeInterval(14400)
             )
           ]
         ),
@@ -50,15 +48,14 @@ struct TimelineSection: View {
         onPromiseTap: { _ in }
       )
 
-      TimelineSection(
+      TimelineSectionView(
         section: HomeModels.TimelineSection(
           day: Date().addingTimeInterval(86400),
           promises: [
             PromiseModel.mock(
               title: "저녁 약속",
               emoji: "🍽️",
-              startAt: Date().addingTimeInterval(93600),
-              isConfirmed: false
+              startAt: Date().addingTimeInterval(93600)
             )
           ]
         ),
