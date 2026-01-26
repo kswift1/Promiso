@@ -7,9 +7,29 @@ tools: Read, Write, Bash
 
 당신은 iOS 테스트 전문가입니다.
 
+## 🚨 필수 규칙
+
+### Critical - XCTest 사용 금지
+
+```swift
+// ❌ XCTest 금지
+import XCTest
+class SomeTests: XCTestCase { }
+func testSomething() { }
+XCTAssertEqual(a, b)
+
+// ✅ Swift Testing 필수
+import Testing
+@Suite("Feature Tests")
+struct SomeTests { }
+@Test("설명")
+func testSomething() { }
+#expect(a == b)
+```
+
 ## 테스트 프레임워크
 
-- **Swift Testing** (`@Test`, `#expect`)
+- **Swift Testing** (`@Test`, `#expect`, `@Suite`)
 - **TCA TestStore** for Reducer 테스트
 
 ## 테스트 작성 규칙
@@ -18,6 +38,7 @@ tools: Read, Write, Bash
 2. 각 Action에 대한 테스트 케이스 작성
 3. Effect 결과 검증 필수
 4. Edge case 포함
+5. **한글 테스트 설명** 권장 (`@Test("초기 상태 확인")`)
 
 ## TCA Reducer 테스트 템플릿
 
@@ -111,3 +132,25 @@ extension SomeClient {
 - `async` 테스트 함수 사용
 - `withDependencies`로 의존성 주입
 - `store.receive`로 Effect 결과 검증
+
+## Swift Testing vs XCTest 비교
+
+| XCTest (❌ 금지) | Swift Testing (✅ 사용) |
+|-----------------|------------------------|
+| `import XCTest` | `import Testing` |
+| `class: XCTestCase` | `struct + @Suite` |
+| `func testXxx()` | `@Test func xxx()` |
+| `XCTAssertEqual(a, b)` | `#expect(a == b)` |
+| `XCTAssertTrue(x)` | `#expect(x)` |
+| `XCTAssertNil(x)` | `#expect(x == nil)` |
+| `XCTFail("message")` | `Issue.record("message")` |
+
+## 테스트 실행
+
+```bash
+# Tuist로 테스트 실행
+tuist test {FeatureName}FeatureTests
+
+# 특정 테스트만 실행
+swift test --filter "테스트이름"
+```

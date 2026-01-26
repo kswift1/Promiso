@@ -144,8 +144,40 @@ firebase deploy --only storage:rules
 
 ## iOS 클라이언트 연동
 
-Functions 추가 시 iOS 측 업데이트 필요:
+### 🚨 아키텍처 규칙 (Critical)
+
+```
+Feature → Client → Firebase/API
+         ↑
+    @Dependency 주입
+```
+
+**Feature에서 직접 Firebase 호출 금지!**
+
+```swift
+// ❌ 금지 - Feature에서 직접 호출
+@Reducer
+struct SomeFeature {
+  func reduce(...) {
+    let db = Firestore.firestore()  // ❌
+    let doc = try await db.collection("users").document(id).getDocument()  // ❌
+  }
+}
+
+// ✅ 필수 - Client 레이어 통과
+@Reducer
+struct SomeFeature {
+  @Dependency(\.userClient) var userClient  // ✅
+
+  func reduce(...) {
+    let user = try await userClient.fetchUser(id)  // ✅
+  }
+}
+```
+
+### Functions 추가 시 iOS 측 업데이트 필요:
 - `Projects/Clients/Sources/Data/DataSources/` 내 해당 DataSource
+- `Projects/Clients/Sources/Domain/` 내 Client 인터페이스
 
 ## 체크리스트
 
@@ -155,4 +187,5 @@ Functions 추가 시 iOS 측 업데이트 필요:
 - [ ] `openapi.yaml` 업데이트
 - [ ] `.ai/FIRESTORE_SCHEMA.md` 업데이트 (스키마 변경 시)
 - [ ] 보안 규칙 확인
-- [ ] iOS 클라이언트 DataSource 업데이트
+- [ ] iOS Client 인터페이스 추가 (`Projects/Clients/Sources/Domain/`)
+- [ ] iOS DataSource 구현 (`Projects/Clients/Sources/Data/DataSources/`)

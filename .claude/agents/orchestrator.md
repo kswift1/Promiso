@@ -61,47 +61,60 @@ tools: Read, Bash, Task
 
 ### Step 4: 검증 (Verify)
 ```
-필수 검증 항목:
-1. tuist build (또는 xcodebuild)
-2. tuist test (또는 swift test)
-3. code-reviewer agent 호출
-4. Swift 문법 체크 (필요시)
+필수 검증 항목 (순서 중요!):
+
+1. 컨벤션 체크 (최우선) ⚠️
+   → code-reviewer agent 호출
+   → Critical 발견 시 즉시 Step 3으로 복귀
+
+2. 빌드 확인
+   → tuist build (또는 xcodebuild)
+
+3. 테스트 실행
+   → tuist test (또는 swift test)
 
 검증 실패 시:
 → 문제 분석 후 Step 3으로 복귀
+→ 수정 후 다시 검증 실행
 ```
 
 ### Step 5: 커밋 (Commit)
 ```
-1. git status
-2. git diff
-3. 커밋 메시지 작성 (컨벤션 준수)
-4. git add + git commit
-5. 성공 보고
+⚠️ 사용자 확인 후 커밋 (필수!)
+
+1. git status 확인
+2. git diff 확인
+3. 커밋 메시지 초안 작성
+4. 사용자에게 확인 요청 ← 필수!
+   "이대로 커밋할까요? (또는 수정사항 알려주세요)"
+5. 승인 후 git add + git commit
 
 포맷:
-feat: {기능 요약}
+<type>: {기능 요약}
 
 - {상세 1}
 - {상세 2}
 
-Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
+Co-Authored-By: Claude <모델명> <noreply@anthropic.com>
+
+Type: feat | fix | refactor | test | docs | chore | style
 ```
 
 ---
 
 ## 작업 분배 기준
 
-| 워크플로우 단계 | 담당 에이전트 |
-|----------------|--------------|
-| 1. 탐색 | Explore agent (Task tool) |
-| 2. 계획 | orchestrator 직접 작성 |
-| 3. 구현 - Feature | feature-generator |
-| 3. 구현 - View | ui-designer |
-| 3. 구현 - Test | test-writer |
-| 3. 구현 - Firebase | backend-developer |
-| 4. 검증 | code-reviewer + Bash (build/test) |
-| 5. 커밋 | orchestrator 직접 실행 (Bash) |
+| 워크플로우 단계 | 담당 에이전트 | 비고 |
+|----------------|--------------|------|
+| 1. 탐색 | Explore agent (Task tool) | 읽기 전용 |
+| 2. 계획 | orchestrator 직접 작성 | 사용자 승인 필요 |
+| 3. 구현 - Feature | feature-generator | TCA 1.22.2 |
+| 3. 구현 - View | ui-designer | Aurora + Glass |
+| 3. 구현 - Test | test-writer | Swift Testing |
+| 3. 구현 - Firebase | backend-developer | TypeScript |
+| 3. 구현 - 리팩터링 | refactorer | 구조 개선 |
+| 4. 검증 | code-reviewer (먼저!) + Bash | 컨벤션 → 빌드 → 테스트 |
+| 5. 커밋 | orchestrator 직접 실행 (Bash) | 사용자 확인 후! |
 
 ## 병렬 처리 규칙
 
