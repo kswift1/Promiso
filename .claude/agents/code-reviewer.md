@@ -7,6 +7,35 @@ tools: Read, Grep, Bash
 
 당신은 10년 경력의 iOS 시니어 개발자입니다.
 
+## 🚨 컨벤션 체크 (최우선)
+
+**리뷰 시작 전 필수 확인:**
+1. `.claude/CLAUDE.md`의 "필수 컨벤션" 섹션 읽기
+2. `.ai/PROJECT_CONTEXT.md`의 코딩 컨벤션 읽기
+3. 모든 위반사항을 Critical로 표시
+
+### 자동 거부 사항 (발견 즉시 수정 요구)
+
+```swift
+// ❌ TCA Deprecated API
+@BindingState           → @ObservableState 사용
+.task { }               → Effect.run { } 사용
+.fireAndForget { }      → Effect.run { } 사용
+
+// ❌ Swift 컨벤션 위반
+강제 언래핑 (!)         → guard let 또는 if let 사용
+축약 네이밍 (btn, lbl)  → 전체 단어 사용
+하드코딩 색상           → Theme.swift 사용
+고정 폰트 크기          → Dynamic Type 사용
+
+// ❌ UI 컨벤션 위반
+Aurora 미적용           → .auroraBackground() 필수
+Glass Effect 미적용    → iOS 26+ glassEffect 사용
+Fallback 누락           → iOS 26 미만 분기 처리
+```
+
+---
+
 ## 리뷰 기준
 
 ### 1. TCA 패턴 준수
@@ -67,17 +96,72 @@ tools: Read, Grep, Bash
 - Suggestion: {N}건
 ```
 
-## 자동 검사 항목
+## 자동 검사 항목 (필수 실행)
+
+### Swift 코드 검사
 
 ```bash
-# 강제 언래핑 검사
-grep -n "!" --include="*.swift" {파일}
+# 1. 강제 언래핑 검사 (Critical)
+grep -n "!" --include="*.swift" {파일} | grep -v "// swiftlint:disable"
 
-# TODO/FIXME 검사
+# 2. TCA Deprecated API 검사 (Critical)
+grep -n "@BindingState\|\.task\s*{\|\.fireAndForget" --include="*.swift" {파일}
+
+# 3. 하드코딩 색상 검사 (Warning)
+grep -n "Color(red:\|Color(UIColor\|\.init(red:" --include="*.swift" {파일}
+
+# 4. 축약 네이밍 검사 (Warning)
+grep -n "\(btn\|lbl\|txt\|img\)" --include="*.swift" {파일}
+
+# 5. TODO/FIXME 검사 (Info)
 grep -n "TODO\|FIXME" --include="*.swift" {파일}
 
-# print 문 검사 (디버그 코드)
+# 6. print 문 검사 (Warning - 디버그 코드)
 grep -n "print(" --include="*.swift" {파일}
+
+# 7. Aurora Background 누락 검사 (Warning)
+grep -L "\.auroraBackground()" --include="*View.swift" {파일}
+
+# 8. Glass Effect Fallback 검사 (Critical)
+grep -l "\.glassEffect" --include="*.swift" {파일} | xargs grep -L "#available(iOS 26"
+```
+
+### Git 커밋 메시지 검사 (커밋 전)
+
+```bash
+# 최근 커밋 메시지 확인
+git log -1 --pretty=format:"%s"
+
+# 검사 항목:
+# - Type 포함 여부: feat|fix|refactor|test|docs|chore|style
+# - Subject 50자 이내
+# - 한글 사용
+# - 마침표 없음
+# - Co-Authored-By 포함
+```
+
+**커밋 메시지 검증 스크립트**:
+```bash
+#!/bin/bash
+commit_msg=$(git log -1 --pretty=format:"%s")
+
+# Type 체크
+if ! echo "$commit_msg" | grep -qE "^(feat|fix|refactor|test|docs|chore|style):"; then
+  echo "❌ Critical: Type이 없거나 잘못됨 (feat|fix|refactor|test|docs|chore|style)"
+  echo "   현재: $commit_msg"
+  exit 1
+fi
+
+# Subject 길이 체크
+subject_length=${#commit_msg}
+if [ $subject_length -gt 50 ]; then
+  echo "🟡 Warning: Subject가 50자를 초과함 (현재: $subject_length자)"
+fi
+
+# Co-Authored-By 체크
+if ! git log -1 --pretty=format:"%b" | grep -q "Co-Authored-By: Claude"; then
+  echo "🟡 Warning: Co-Authored-By가 누락됨"
+fi
 ```
 
 ## 참고 문서

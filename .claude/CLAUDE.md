@@ -27,7 +27,77 @@
 - **백엔드**: Firebase (Auth, Firestore, Functions, Storage)
 - **모듈화**: Tuist 4.65.7
 
-## TCA 1.22.2 필수 API
+## 🚨 필수 컨벤션 (위반 시 자동 수정)
+
+### Git 커밋 메시지 (절대 규칙)
+
+**포맷**:
+```
+<type>: <subject>
+
+<body>
+
+Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
+```
+
+**Type 규칙** (소문자):
+- `feat`: 새 기능
+- `fix`: 버그 수정
+- `refactor`: 리팩터링 (기능 변경 없음)
+- `test`: 테스트 추가/수정
+- `docs`: 문서 변경
+- `chore`: 빌드/설정 변경
+- `style`: 코드 포맷팅 (로직 변경 없음)
+
+**Subject 규칙**:
+- 50자 이내
+- 명령형 (동사원형) "추가한다" ❌ → "추가" ✅
+- 마침표 없음
+- 한글 사용 (코드/기술용어는 영어)
+
+**예시**:
+```
+✅ 올바른 예시:
+feat: 알림 설정 Feature 추가
+fix: 그룹 목록 중복 렌더링 버그 수정
+refactor: FirestoreClient 쿼리 로직 개선
+
+❌ 잘못된 예시:
+Add notification settings feature (영어)
+feat: 알림 설정 기능을 추가했습니다 (명령형 아님)
+알림 설정 추가 (type 없음)
+```
+
+**Body 규칙**:
+- 72자마다 줄바꿈
+- 무엇을, 왜 변경했는지 설명
+- 불릿 포인트 사용 (-)
+
+---
+
+### Swift 코드 컨벤션
+
+```swift
+// ✅ 필수 사항
+- 들여쓰기: 2 spaces (탭 아님)
+- 네이밍: camelCase (변수/함수), PascalCase (타입)
+- SwiftUI Preview 필수
+- @ObservableState (TCA 1.22.2)
+- Action: ViewAction / InternalAction / DelegateAction 분리
+- Sendable 프로토콜 준수 (모든 Action enum)
+
+// ❌ 금지 사항
+- 강제 언래핑 (!) - guard let 사용
+- 옵셔널 체이닝 남발
+- 축약 네이밍 (btn, lbl 등)
+- BindingState (deprecated)
+- .task { } (deprecated)
+- .fireAndForget { } (deprecated)
+```
+
+---
+
+### TCA 1.22.2 필수 API
 
 ```swift
 // ✅ 사용할 것
@@ -41,6 +111,31 @@ Effect.run { } / Effect.send()
 @BindingState
 .task { }
 .fireAndForget { }
+```
+
+---
+
+### UI 스타일 (필수)
+
+```swift
+// ✅ Aurora Background (모든 주요 화면)
+.auroraBackground()
+
+// ✅ Glass Effect (iOS 26+)
+@available(iOS 26.0, *)
+.glassEffect(.regular.interactive(), in: .rect(cornerRadius: 12))
+
+// ✅ Fallback (iOS 26 미만)
+if #available(iOS 26.0, *) {
+  glassEffect(...)
+} else {
+  background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+}
+
+// ❌ 금지
+- 하드코딩된 색상값 (Theme.swift 사용)
+- 고정 폰트 크기 (.system(size:) 금지)
+- Aurora 미적용
 ```
 
 ## Makefile 명령어
@@ -210,36 +305,89 @@ Step 3 - 구현:
 
 **목적**: 코드 품질 및 동작 확인
 
-**실행 방법**:
+**실행 방법** (순서대로 필수 실행):
 ```
-필수 검증 항목:
-1. 빌드 성공 확인 (tuist build 또는 xcodebuild)
-2. 테스트 실행 (tuist test)
-3. 코드 리뷰 (code-reviewer agent)
-4. TCA 컨벤션 체크
-5. Swift 문법 체크 (swift -typecheck)
+1. 컨벤션 체크 (최우선) ⚠️
+   - code-reviewer agent 호출
+   - 필수 컨벤션 위반 확인 (.claude/CLAUDE.md 참조)
+   - Critical 발견 시 즉시 수정 요구
+
+2. 빌드 확인
+   - tuist build (또는 xcodebuild)
+   - 컴파일 에러 확인
+
+3. 테스트 실행
+   - tuist test (또는 swift test)
+   - 모든 테스트 통과 확인
+
+4. 정적 분석 (선택)
+   - Swift 문법 체크 (swift -typecheck)
+   - SwiftLint (설정된 경우)
+```
+
+**컨벤션 체크 항목**:
+```bash
+# 자동 검사 스크립트 실행
+# 1. TCA Deprecated API
+grep -rn "@BindingState\|\.task\s*{\|\.fireAndForget" --include="*.swift" .
+
+# 2. 강제 언래핑
+grep -rn "!" --include="*.swift" . | grep -v "// swiftlint:disable"
+
+# 3. 하드코딩 색상
+grep -rn "Color(red:\|Color(UIColor" --include="*.swift" .
+
+# 4. Aurora Background 누락
+grep -L "\.auroraBackground()" --include="*View.swift" .
+
+# 5. Glass Effect Fallback 누락
+grep -l "\.glassEffect" --include="*.swift" . | xargs grep -L "#available(iOS 26"
 ```
 
 **예시**:
 ```
 Step 4 - 검증:
 
-1. 빌드 확인
-   → tuist build
-   ✅ 빌드 성공
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. 컨벤션 체크 (code-reviewer)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+→ code-reviewer agent 호출
 
-2. 테스트 실행
-   → tuist test NotificationSettingsFeatureTests
-   ✅ 모든 테스트 통과
+검사 결과:
+✅ TCA 1.22.2 API 사용
+✅ ViewAction / InternalAction 분리
+✅ Aurora + Glass Effect 적용
+✅ Sendable 프로토콜 준수
+❌ Critical 0건
+🟡 Warning 2건:
+   - 줄 45: TODO 주석 제거 권장
+   - 줄 78: print 문 제거 (디버그 코드)
 
-3. 코드 리뷰
-   → code-reviewer agent 호출
-   ✅ 문제 없음 (또는 경고 2건)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2. 빌드 확인
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+$ tuist build
+✅ 빌드 성공
 
-4. 컨벤션 체크
-   ✅ TCA 1.22.2 API 사용
-   ✅ ViewAction 분리됨
-   ✅ Aurora + Glass Effect 적용
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3. 테스트 실행
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+$ tuist test NotificationSettingsFeatureTests
+✅ 5/5 테스트 통과
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+검증 결과: ✅ 통과 (Warning 2건은 커밋 가능)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+**Critical 발견 시 처리**:
+```
+❌ Critical 발견:
+- 줄 23: @BindingState 사용 (deprecated)
+- 줄 45: 강제 언래핑 (!) 사용
+
+→ 즉시 Step 3 (구현)으로 복귀
+→ 문제 수정 후 다시 검증
 ```
 
 ---
@@ -470,6 +618,83 @@ Claude:
 "backend-developer로 새 API 엔드포인트 추가해줘"
 ```
 
+## 🔐 컨벤션 강제 (Hook 설정 - 선택사항)
+
+**더 강력한 컨벤션 강제를 원한다면 Hook을 설정하세요.**
+
+### Hook이란?
+코드 작성 후 자동으로 실행되는 검사 스크립트입니다.
+- Critical 에러 발견 시 작업 중단
+- Warning만 있으면 작업 계속
+
+### Hook 활성화 방법
+
+**.claude/settings.local.json**에 추가:
+
+```json
+{
+  "permissions": {
+    "allow": [
+      // ... 기존 권한들 ...
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=\"$(jq -r '.tool_input.file_path' <<< \"$STDIN\")\"; if [[ $f == *.swift ]]; then .claude/hooks/check-conventions.sh \"$f\"; fi"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+### Hook 동작 방식
+
+```
+코드 작성 (Edit/Write)
+    ↓
+Hook 자동 실행
+    ↓
+┌─────────────────────────┐
+│ 컨벤션 체크             │
+│ - TCA Deprecated API    │
+│ - 강제 언래핑           │
+│ - 하드코딩 색상         │
+│ - Aurora Background     │
+│ - Glass Effect Fallback │
+└─────────────────────────┘
+    ↓
+Critical 발견?
+    ├─ Yes → ❌ 작업 중단 (수정 요구)
+    └─ No  → ✅ 작업 계속 (Warning만 표시)
+```
+
+### Hook 비활성화
+
+Hook이 너무 엄격하다면:
+```json
+// hooks 섹션을 제거하거나 빈 배열로 설정
+"hooks": {
+  "PostToolUse": []
+}
+```
+
+### 테스트
+
+Hook이 제대로 작동하는지 테스트:
+```bash
+# 직접 실행
+.claude/hooks/check-conventions.sh Projects/Features/SomeFeature/Sources/SomeView.swift
+```
+
+---
+
 ## 주요 경로
 
 | 경로 | 설명 |
@@ -479,3 +704,4 @@ Claude:
 | `Projects/Shared/` | 공통 컴포넌트, 디자인 시스템 |
 | `infra/firebase/functions/` | Firebase Functions (TypeScript) |
 | `infra/firebase/firestore.rules` | Firestore 보안 규칙 |
+| `.claude/hooks/check-conventions.sh` | 컨벤션 체크 Hook 스크립트 |
