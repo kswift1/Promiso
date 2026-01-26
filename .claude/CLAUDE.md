@@ -199,8 +199,8 @@ make functions-build               # Functions 빌드
 |------|------|
 | [.ai/PROJECT_CONTEXT.md](../.ai/PROJECT_CONTEXT.md) | 아키텍처, 코딩 컨벤션, 의존성 규칙 |
 | [.ai/FIRESTORE_SCHEMA.md](../.ai/FIRESTORE_SCHEMA.md) | Firestore 데이터 스키마 |
-| [.ai/CHECKLIST.md](../.ai/CHECKLIST.md) | 개발 체크리스트 |
-| [.ai/PROMPTS.md](../.ai/PROMPTS.md) | 프롬프트 템플릿 모음 |
+| [.ai/archive/CHECKLIST.md](../.ai/archive/CHECKLIST.md) | 개발 체크리스트 |
+| [.ai/archive/PROMPTS.md](../.ai/archive/PROMPTS.md) | 프롬프트 템플릿 모음 |
 
 ## 핵심 규칙 요약
 

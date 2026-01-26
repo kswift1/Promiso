@@ -62,21 +62,94 @@ AppEntryFeature (Root Coordinator)
 
 ## 🎯 코딩 컨벤션
 
+### 🔴 Critical (즉시 수정 필수)
+
+| 항목 | 규칙 |
+|-----|-----|
+| 강제 언래핑 (!) | ❌ 금지 → `guard let` 사용 |
+| @BindingState | ❌ 금지 → `@ObservableState` 사용 |
+| .task { } | ❌ 금지 → `Effect.run { }` 사용 |
+| .fireAndForget { } | ❌ 금지 → `Effect.run { }` 사용 |
+| 하드코딩 색상 | ❌ 금지 → `Color.pm*` 사용 (아래 색상 시스템 참조) |
+| Feature에서 Firebase 직접 호출 | ❌ 금지 → Client 레이어 통과 필수 |
+| Glass Effect Fallback 누락 | ❌ 금지 → `#available(iOS 26)` 분기 필수 |
+| XCTest 사용 | ❌ 금지 → Swift Testing 사용 |
+| Button/탭 영역 Spacer 포함 시 | `.contentShape(Rectangle())` 필수 |
+
+### 🟡 Warning (권장 수정)
+
+| 항목 | 규칙 |
+|-----|-----|
+| 축약 네이밍 (btn, lbl) | 전체 단어 사용 권장 |
+| print() 문 | 제거 권장 |
+| SwiftUI Preview 누락 | 추가 권장 |
+| 500라인 이상 파일 | 파일 분리 권장 |
+| Aurora Background 누락 | 주요 화면에 적용 권장 |
+
+### ℹ️ Info (허용)
+
+| 항목 | 규칙 |
+|-----|-----|
+| TODO/FIXME 주석 | 허용 (정보 표시만) |
+
 ### Swift 스타일
 ```swift
-// ✅ 선호하는 스타일
+// ✅ 필수 사항
 - 들여쓰기: 2 spaces
 - 네이밍: camelCase (변수, 함수), PascalCase (타입)
 - async/await 사용 (completion handler 지양)
-- SwiftUI Preview 필수 포함
-- @ObservableState 사용 (TCA 1.7+)
+- SwiftUI Preview 권장
+- @ObservableState 사용 (TCA 1.22.2)
 - Action 하위 enum에 Sendable 프로토콜 준수 (Swift 6 Concurrency 대비)
 
-// ❌ 지양하는 스타일
-- 강제 언래핑 (!)
-- 옵셔널 체이닝 남발
+// ❌ 금지 사항
+- 강제 언래핑 (!) → guard let 사용
+- @BindingState → @ObservableState 사용
+- .task { } → Effect.run { } 사용
 - 과도한 축약 (btn, lbl 등)
+- 하드코딩 색상 → Color.pm* 사용
 ```
+
+## 📝 Git 커밋 메시지 컨벤션
+
+### 포맷
+```
+<type>: <subject>    ← 한글, 50자 이내
+
+<body>
+
+Co-Authored-By: Claude <모델명> <noreply@anthropic.com>
+```
+
+### Type 규칙 (소문자)
+- `feat`: 새 기능
+- `fix`: 버그 수정
+- `refactor`: 리팩터링 (기능 변경 없음)
+- `test`: 테스트 추가/수정
+- `docs`: 문서 변경
+- `chore`: 빌드/설정 변경
+- `style`: 코드 포맷팅 (로직 변경 없음)
+
+### Subject 규칙
+- 50자 이내
+- 명령형 (동사원형): "추가한다" ❌ → "추가" ✅
+- 마침표 없음
+- **한글 사용** (코드/기술용어는 영어)
+
+### 예시
+```
+✅ 올바른 예시:
+feat: 알림 설정 Feature 추가
+fix: 그룹 목록 중복 렌더링 버그 수정
+refactor: FirestoreClient 쿼리 로직 개선
+
+❌ 잘못된 예시:
+Add notification settings feature (영어 금지)
+feat: 알림 설정 기능을 추가했습니다 (명령형 아님)
+알림 설정 추가 (type 없음)
+```
+
+---
 
 ## 🧰 빌드/환경 규칙
 
@@ -480,15 +553,62 @@ public struct CustomButton: View {
 // - .onAppear에서 복잡한 로직 (Reducer로 이동)
 ```
 
-### 디자인 시스템
+### 색상 시스템 (필수)
+
+**위치**: `Projects/ResourceKit/Sources/Generated/Color+Generated.swift`
+
 ```swift
-// Shared/DesignSystem/Styles/에 정의
-extension Color {
-    static let primaryBackground = Color(hex: "1A1A2E")
-    static let secondaryBackground = Color(hex: "16213E")
-    static let accentColor = Color(hex: "0F3460")
+// ✅ 올바른 사용 - Color.pm* 필수
+Color.pmindigo.n500       // Indigo 스케일 (n50 ~ n900)
+Color.pmaurora.purple     // Aurora 색상
+Color.pmaurora.indigo
+Color.pmaurora.pink
+Color.pmbrand.primary     // 브랜드 색상
+Color.pmbrand.secondary
+Color.pmpurple.n500       // Purple 스케일
+
+// ❌ 금지 - 하드코딩 색상
+Color(red: 0.5, green: 0.3, blue: 0.8)
+Color(UIColor.systemBlue)
+Color(hex: "1A1A2E")
+```
+
+### Glass Effect + Fallback (필수)
+
+```swift
+// iOS 26+ Glass Effect 사용 시 반드시 Fallback 포함
+if #available(iOS 26.0, *) {
+    content.glassEffect(.regular.interactive(), in: .rect(cornerRadius: 12))
+} else {
+    content.background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
 }
 
+// ⚠️ Button/탭 영역 - 빈 공간도 탭 가능하게
+Button {
+    // action
+} label: {
+    HStack {
+        Text("Label")
+        Spacer()  // ← 이 부분도 탭 가능하게
+    }
+    .contentShape(Rectangle())  // ← 필수!
+}
+```
+
+### Aurora Background (주요 화면 권장)
+
+```swift
+// 로그인, 메인 탭, 모달 등 주요 화면에 적용
+var body: some View {
+    ScrollView {
+        // 콘텐츠
+    }
+    .auroraBackground()
+}
+```
+
+### 폰트
+```swift
 extension Font {
     static let title = Font.system(size: 28, weight: .bold)
     static let headline = Font.system(size: 20, weight: .semibold)
@@ -739,6 +859,37 @@ enum DelegateAction: Equatable { }
 - [Point-Free Episodes](https://www.pointfree.co)
 - [프로젝트 아키텍처 문서](./docs/architecture.md)
 
+## 🔍 자동 검사 명령어
+
+### Critical 검사
+```bash
+# TCA Deprecated API
+grep -rn "@BindingState\|\.task\s*{\|\.fireAndForget" --include="*.swift" .
+
+# 하드코딩 색상
+grep -rn "Color(red:\|Color(UIColor" --include="*.swift" .
+
+# Glass Effect Fallback 누락
+grep -l "\.glassEffect" --include="*.swift" . | xargs grep -L "#available(iOS 26"
+
+# Button contentShape 누락
+grep -l "Spacer()" --include="*.swift" . | xargs grep -L "contentShape"
+```
+
+### Warning 검사
+```bash
+# 강제 언래핑
+grep -rn "!" --include="*.swift" . | grep -v "!="
+
+# 축약 네이밍
+grep -rn "\(btn\|lbl\|txt\|img\)" --include="*.swift" .
+
+# print 문
+grep -rn "print(" --include="*.swift" .
+```
+
+---
+
 ## 🤖 AI 도구 사용
 
 AI 도구(Claude Code, GitHub Copilot 등)를 사용할 때는 **[PROMPTS.md](.ai/archive/PROMPTS.md)**를 참고하세요.
@@ -747,5 +898,5 @@ AI 도구(Claude Code, GitHub Copilot 등)를 사용할 때는 **[PROMPTS.md](.a
 
 ---
 
-**마지막 업데이트**: 2024-12-29
+**마지막 업데이트**: 2025-01-27
 **프로젝트 버전**: 1.0.0
