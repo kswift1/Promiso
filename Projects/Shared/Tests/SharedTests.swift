@@ -6,3 +6,5 @@
 //
 
 import Foundation
+
+// TODO: Shared 모듈 테스트 케이스 추가 필요
