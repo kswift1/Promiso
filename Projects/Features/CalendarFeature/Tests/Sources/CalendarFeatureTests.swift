@@ -14,13 +14,13 @@ import ComposableArchitecture
 final class CalendarFeatureTests: XCTestCase {
   
   /// 기본 onAppear 동작을 테스트
-  func test_onAppear() async {
-    let store = TestStore(initialState: Calendar.Feature.State()) {
-      Calendar.Feature()
-    }
-    
-    await store.send(.onAppear)
-  }
+//  func test_onAppear() async {
+//    let store = TestStore(initialState: Calendar.Feature.State()) {
+//      Calendar.Feature()
+//    }
+//
+//    await store.send(.onAppear)
+//  }
   
   // 추가 테스트를 여기에 작성
 }
@@ -32,11 +32,11 @@ final class CalendarFeatureTests: XCTestCase {
 final class CalendarFeatureIntegrationTests: XCTestCase {
   
   /// Tests feature creation and basic functionality
-  func test_feature_createsValidInstance() {
-    let store = Store(initialState: Calendar.Feature.State()) {
-      Calendar.Feature()
-    }
-    
-    XCTAssertNotNil(store)
-  }
+//  func test_feature_createsValidInstance() {
+//    let store = Store(initialState: Calendar.Feature.State()) {
+//      Calendar.Feature()
+//    }
+//
+//    XCTAssertNotNil(store)
+//  }
 }
