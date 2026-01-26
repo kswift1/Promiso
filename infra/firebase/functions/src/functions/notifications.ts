@@ -28,6 +28,136 @@ import {
 } from "../types/api";
 
 /**
+ * 그룹 알림 상세 설정 경로 모델.
+ */
+type NotificationPreferencePath = {
+  category: "promise" | "group";
+  key: string;
+};
+
+/**
+ * 알림 타입을 그룹 알림 상세 설정 경로로 변환합니다.
+ *
+ * @param {NotificationType} type - 알림 타입
+ * @return {NotificationPreferencePath | null} 그룹 알림 상세 설정 경로
+ */
+function notificationPreferencePath(
+  type: NotificationType
+): NotificationPreferencePath | null {
+  switch (type) {
+  case NotificationType.PromiseInvitation:
+    return {category: "promise", key: "invitation"};
+  case NotificationType.PromiseReminder:
+    return {category: "promise", key: "reminder"};
+  case NotificationType.PromiseConfirmed:
+    return {category: "promise", key: "confirmed"};
+  case NotificationType.PromiseCancelled:
+    return {category: "promise", key: "cancelled"};
+  case NotificationType.PromiseUpdated:
+    return {category: "promise", key: "updated"};
+  case NotificationType.AttendanceResponse:
+    return {category: "promise", key: "attendanceResponse"};
+  case NotificationType.GroupInvitation:
+    return {category: "group", key: "invitation"};
+  case NotificationType.GroupUpdate:
+    return {category: "group", key: "update"};
+  case NotificationType.System:
+    return null;
+  default:
+    return null;
+  }
+}
+
+/**
+ * 레거시 알림 설정 키로 변환합니다.
+ *
+ * @param {NotificationType} type - 알림 타입
+ * @return {string | null} 레거시 알림 설정 키
+ */
+function legacyPreferenceKey(type: NotificationType): string | null {
+  switch (type) {
+  case NotificationType.PromiseInvitation:
+    return "promiseInvitation";
+  case NotificationType.PromiseReminder:
+    return "promiseReminder";
+  case NotificationType.PromiseConfirmed:
+    return "promiseConfirmed";
+  case NotificationType.PromiseCancelled:
+    return "promiseCancelled";
+  case NotificationType.PromiseUpdated:
+    return "promiseUpdated";
+  case NotificationType.AttendanceResponse:
+    return "attendanceResponse";
+  case NotificationType.GroupInvitation:
+    return "groupInvitation";
+  case NotificationType.GroupUpdate:
+    return "groupUpdate";
+  case NotificationType.System:
+    return null;
+  default:
+    return null;
+  }
+}
+
+/**
+ * 그룹 알림 전체 활성화 여부를 반환합니다.
+ *
+ * @param {unknown} value - notifications 필드 값
+ * @return {boolean} 활성화 여부
+ */
+function notificationSettingsEnabled(value: unknown): boolean {
+  if (typeof value === "boolean") {
+    return value;
+  }
+  if (value && typeof value === "object") {
+    const enabled = (value as {enabled?: boolean}).enabled;
+    return enabled ?? true;
+  }
+  return true;
+}
+
+/**
+ * 알림 타입별 설정이 활성화되었는지 확인합니다.
+ *
+ * @param {Object} params - 설정 체크 파라미터
+ * @param {NotificationType} params.type - 알림 타입
+ * @param {*} params.settings - notifications 필드 값
+ * @param {Object<string, boolean>|null} params.legacyPreferences
+ * @return {boolean} 활성화 여부
+ */
+function notificationPreferenceEnabled(params: {
+  type: NotificationType;
+  settings: unknown;
+  legacyPreferences?: { [key: string]: boolean } | null;
+}): boolean {
+  const {type, settings, legacyPreferences} = params;
+  const path = notificationPreferencePath(type);
+  if (!path) {
+    return true;
+  }
+
+  if (settings && typeof settings === "object") {
+    const settingsMap = settings as {[key: string]: unknown};
+    const categoryMap = settingsMap[path.category] as
+      {[key: string]: boolean} | undefined;
+    if (categoryMap && categoryMap[path.key] === false) {
+      return false;
+    }
+  }
+
+  const legacyKey = legacyPreferenceKey(type);
+  if (
+    legacyPreferences &&
+    legacyKey &&
+    legacyPreferences[legacyKey] === false
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+/**
  * 날짜/시간을 "오늘/내일/M월 D일 H시 M분" 형식으로 포맷 (KST 기준)
  * - 오늘이면 "오늘"
  * - 내일이면 "내일"
@@ -181,6 +311,28 @@ export async function sendPushNotificationInternal(params: {
       if (!userDoc.exists) continue;
 
       const userData = userDoc.data();
+      const groups = userData?.groups as { [key: string]: any } | undefined;
+
+      if (groupId) {
+        const groupSettings = groups?.[groupId];
+        if (!groupSettings) continue;
+
+        const notificationsEnabled = notificationSettingsEnabled(
+          groupSettings.notifications
+        );
+        if (!notificationsEnabled) continue;
+
+        const legacyPreferences = groupSettings.notificationPreferences as
+          { [key: string]: boolean } | undefined;
+        if (!notificationPreferenceEnabled({
+          type,
+          settings: groupSettings.notifications,
+          legacyPreferences,
+        })) {
+          continue;
+        }
+      }
+
       const devices = userData?.devices as { [key: string]: DeviceInfo } | null;
 
       if (!devices) continue;

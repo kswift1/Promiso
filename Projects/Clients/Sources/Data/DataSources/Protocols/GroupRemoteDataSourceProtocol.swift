@@ -1,4 +1,5 @@
 import Foundation
+import PromisoShared
 
 // MARK: - Group Remote Data Source Protocol
 
@@ -30,6 +31,13 @@ public protocol GroupRemoteDataSourceProtocol {
     maxMembers: Int?,
     photoData: Data?
   ) async throws -> GroupModel
+
+  /// 그룹 알림 상세 설정 업데이트
+  func updateGroupNotificationSettings(
+    groupId: String,
+    userId: String,
+    settings: GroupNotificationSettings
+  ) async throws
 
   // MARK: - Query Operations
 
