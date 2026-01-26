@@ -15,6 +15,7 @@
 **설명**: 그룹 기반 약속 관리 iOS 애플리케이션
 **플랫폼**: iOS 18.0+
 **주요 기술**: SwiftUI, TCA (1.22.2), Firebase, Tuist (4.65.7)
+**백엔드**: Firebase Functions (Node.js), Firestore, Storage
 
 ## 🏗️ 아키텍처
 
@@ -76,6 +77,20 @@ AppEntryFeature (Root Coordinator)
 - 옵셔널 체이닝 남발
 - 과도한 축약 (btn, lbl 등)
 ```
+
+## 🧰 빌드/환경 규칙
+
+### iOS 빌드
+- Tuist 기반으로 프로젝트 생성/빌드
+- 기본 커맨드
+  - `tuist install`
+  - `tuist generate`
+  - `tuist build`
+
+### Firebase Functions 배포
+- 기본 커맨드: `firebase deploy --only functions`
+- 경고(lint warnings)는 허용되나 에러는 반드시 해결
+- 배포 전에 `npm --prefix infra/firebase/functions run build` 통과 확인
 
 ### 파일 구조 규칙
 
@@ -249,6 +264,16 @@ var body: some ReducerOf<Self> {
     .ifLet(\.$destination, action: \.destination)
 }
 ```
+
+### 상태/바인딩 규칙
+- `State`는 도메인 상태와 뷰 전용 상태를 구분해 배치
+- 입력 폼은 `BindingReducer` 사용을 우선 고려
+- 뷰에서 직접 변형하지 말고 `ViewAction`을 통해 상태 변경
+
+### 에러/로깅 규칙
+- 사용자 표시용 메시지와 내부 로깅 메시지를 분리
+- 비동기 실패는 `InternalAction`으로 수렴시키고 상태에 저장
+- 로깅은 Client/Reducer 레벨에서 최소화하고, UI에서 직접 로깅하지 않음
 
 ### Reducer 작성 규칙 (전체 예시)
 ```swift
@@ -471,6 +496,11 @@ extension Font {
 }
 ```
 
+### 리소스/이미지 규칙
+- 색상/폰트/아이콘은 `ResourceKit` 사용
+- 공용 UI는 `Shared` 컴포넌트 우선 사용
+- 이미지 로딩은 Shared 공용 이미지 뷰 또는 Nuke 사용
+
 ## 🧪 테스트 작성 규칙
 
 **프레임워크**: Swift Testing (`import Testing`)
@@ -532,29 +562,15 @@ extension Item {
 }
 ```
 
+### 테스트 기본 규칙
+- 의미 없는 기본 테스트는 주석 처리 또는 삭제
+- 문서(.ai 가이드)와 테스트는 중요한 흐름에서 정합 유지
+
 ## 🔥 Firebase 규칙
 
 ### Firestore 구조
-```
-collections/
-├── users/{userId}
-│   ├── name: String
-│   ├── email: String
-│   └── createdAt: Timestamp
-│
-├── groups/{groupId}
-│   ├── name: String
-│   ├── members: [String] (userIds)
-│   └── createdAt: Timestamp
-│
-└── promises/{promiseId}
-    ├── title: String
-    ├── date: Timestamp
-    ├── groupId: String
-    ├── participants: [String] (userIds)
-    ├── acceptedBy: [String] (userIds)
-    └── status: String (pending, confirmed, completed)
-```
+- 실제 스키마는 `.ai/FIRESTORE_SCHEMA.md`를 기준으로 한다.
+- 변경 시 OpenAPI(`infra/firebase/functions/openapi.yaml`)와 함께 갱신.
 
 ### FirebaseClient 패턴
 ```swift
@@ -600,6 +616,18 @@ extension FirebaseClient: DependencyKey {
 }
 ```
 
+## 📚 문서/정합 규칙
+
+### 문서 정합 우선순위
+1. 코드 동작 (최우선)
+2. OpenAPI (`infra/firebase/functions/openapi.yaml`)
+3. `.ai` 가이드 문서 (`.ai/FIRESTORE_SCHEMA.md`, `.ai/PUSH_NOTIFICATION_GUIDE.md`, `.ai/DEEPLINK_GUIDE.md`)
+
+### 정합 체크리스트
+- API 스키마/예시 변경 시 OpenAPI 반영
+- Firestore 문서 변경 시 `.ai/FIRESTORE_SCHEMA.md` 반영
+- 푸시/딥링크 변경 시 해당 가이드 업데이트
+
 ## 📝 문서화 규칙
 
 ### 코드 주석
@@ -630,6 +658,10 @@ case .buttonTapped:
 - 의존성 목록
 - 주요 타입/함수 (간단한 예시)
 - 사용 예시 코드
+
+### 네이밍/폴더 규칙
+- Feature 이름과 폴더명/타겟명 일치
+- `Feature`/`RootView`/`Tests` 파일 네이밍 일관성 유지
 
 ## 🚨 일반적인 실수와 해결법
 
@@ -709,7 +741,7 @@ enum DelegateAction: Equatable { }
 
 ## 🤖 AI 도구 사용
 
-AI 도구(Claude Code, GitHub Copilot 등)를 사용할 때는 **[PROMPTS.md](.ai/PROMPTS.md)**를 참고하세요.
+AI 도구(Claude Code, GitHub Copilot 등)를 사용할 때는 **[PROMPTS.md](.ai/archive/PROMPTS.md)**를 참고하세요.
 
 프롬프트 템플릿, 사용 예시, 베스트 프랙티스가 포함되어 있습니다.
 
