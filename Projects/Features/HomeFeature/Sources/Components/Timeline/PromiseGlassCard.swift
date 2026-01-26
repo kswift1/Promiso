@@ -137,7 +137,3 @@ struct PromiseGlassCard: View {
     }
   }
 }
-
-// MARK: - Preview
-
-// Preview는 PromiseModel.mock이 필요하므로 Example 타겟에서 테스트

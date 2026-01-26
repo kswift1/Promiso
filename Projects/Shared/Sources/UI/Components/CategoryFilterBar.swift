@@ -1,7 +1,7 @@
-//#if canImport(UIKit)
-//import UIKit
-//#endif
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 // MARK: - Category Filter Item Protocol
 

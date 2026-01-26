@@ -31,7 +31,6 @@ struct ProposalModel: Equatable {
   }
 }
 
-// FIXME:
 extension ProposalModel {
   static var example: ProposalModel = .init(
     receivedProposals: [

@@ -74,6 +74,47 @@ public struct PromiseModel: Identifiable, Equatable, Hashable, Sendable {
   public static var empty: PromiseModel {
     PromiseModel()
   }
+
+  /// Preview/테스트용 Mock 데이터
+  public static func mock(
+    id: String = "mock-promise-id",
+    title: String = "Mock 약속",
+    emoji: String? = "📌",
+    description: String? = nil,
+    hostId: String = "mock-host-id",
+    groupId: String = "mock-group-id",
+    group: GroupModel? = nil,
+    minimumParticipants: Int = 2,
+    votes: PromiseVotesModel = PromiseVotesModel(
+      accepted: ["mock-host-id"],
+      declined: [],
+      until: Date().addingTimeInterval(86400)
+    ),
+    startAt: Date = Date().addingTimeInterval(3600),
+    endAt: Date? = nil,
+    location: LocationInfoModel? = nil,
+    trackingStartMinutesBefore: Int? = nil,
+    createdAt: Date = Date(),
+    updatedAt: Date = Date()
+  ) -> PromiseModel {
+    PromiseModel(
+      id: id,
+      title: title,
+      emoji: emoji,
+      description: description,
+      hostId: hostId,
+      groupId: groupId,
+      group: group,
+      minimumParticipants: minimumParticipants,
+      votes: votes,
+      startAt: startAt,
+      endAt: endAt,
+      location: location,
+      trackingStartMinutesBefore: trackingStartMinutesBefore,
+      createdAt: createdAt,
+      updatedAt: updatedAt
+    )
+  }
 }
 
 // MARK: - DTO -> Model 변환

@@ -2,7 +2,8 @@ import SwiftUI
 import PromisoShared
 
 struct TimelineSectionView: View {
-  let section: TimelineSection
+  
+  let section: HomeModels.TimelineSection
   let currentUserId: String
   let onPromiseTap: (PromiseModel) -> Void
 
@@ -22,7 +23,3 @@ struct TimelineSectionView: View {
     }
   }
 }
-
-// MARK: - Preview
-
-// Preview는 PromiseModel.mock이 필요하므로 Example 타겟에서 테스트
