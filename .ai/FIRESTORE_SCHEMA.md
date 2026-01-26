@@ -294,7 +294,7 @@ users/{userId}.groups
 | `role` | String | ✅ | 역할 (`admin` \| `member`) |
 | `joinedAt` | Timestamp | ✅ | 그룹 가입 시각 |
 | `notifications` | Boolean | ✅ | 그룹 알림 수신 여부 |
-| `hasNewActivity` | Boolean | ❌ | 새 활동 여부 (약속 생성/변경 시 true → 확인 시 false) |
+| `hasNewActivity` | Boolean | ✅ | 새 활동 여부 (약속 생성/변경 시 true → 확인 시 false) |
 | `imageUrl` | String | ❌ | 그룹 이미지 URL |
 
 #### 📝 예시 데이터

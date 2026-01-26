@@ -2784,6 +2784,7 @@ components:
         - role
         - joinedAt
         - notifications
+        - hasNewActivity
       properties:
         groupName:
           type: string
@@ -2806,7 +2807,6 @@ components:
           example: true
         hasNewActivity:
           type: boolean
-          nullable: true
           description: 새 활동 여부 (배지용)
           example: false
         imageUrl:
