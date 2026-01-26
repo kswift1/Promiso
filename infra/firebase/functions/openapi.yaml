@@ -3104,6 +3104,7 @@ components:
         - promise_reminder
         - promise_confirmed
         - promise_cancelled
+        - promise_updated
         - group_invitation
         - group_update
         - attendance_response
