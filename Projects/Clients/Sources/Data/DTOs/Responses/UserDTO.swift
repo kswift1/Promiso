@@ -81,6 +81,16 @@ struct UserDTO: Codable {
         notifications = nil
       }
     }
+
+    func encode(to encoder: Encoder) throws {
+      var container = encoder.container(keyedBy: CodingKeys.self)
+      try container.encode(groupName, forKey: .groupName)
+      try container.encode(role, forKey: .role)
+      try container.encode(joinedAt, forKey: .joinedAt)
+      try container.encodeIfPresent(notifications, forKey: .notifications)
+      try container.encodeIfPresent(hasNewActivity, forKey: .hasNewActivity)
+      try container.encodeIfPresent(imageUrl, forKey: .imageUrl)
+    }
   }
 
   struct FirebaseTimestampDTO: Codable {
