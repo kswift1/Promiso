@@ -151,6 +151,9 @@ extension GroupMain {
       /// 그룹 정렬 옵션 (커스텀의 경우 순서 포함)
       var groupSortOption: GroupSortOption = .joinedRecent
 
+      /// 사용자 플랜
+      var userPlan: UserPlan = .free
+
       /// 과거 약속 상태 (별도 fetch)
       var pastPromisesState: LoadingState<[PromiseModel]> = .idle
 
@@ -906,6 +909,7 @@ extension GroupMain {
 
           case .settingsResponse(.success(let settings)):
             state.groupSortOption = settings.groupSortOption
+            state.userPlan = settings.plan
             // 설정 로드 후 그룹 리스트 표시
             let summaries = state.sortedGroupsForSelection(state.currentUser.groups)
             state.allGroupSummaries = summaries
@@ -1169,6 +1173,7 @@ private func handleGroupSettingsTapped(
     group: currentGroup,
     summary: summary,
     currentUserId: state.currentUser.userId,
+    userPlan: state.userPlan,
     preloadedMembers: state.currentGroupMembers
   )))
   return .none

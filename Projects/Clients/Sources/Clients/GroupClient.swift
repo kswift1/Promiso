@@ -1,5 +1,6 @@
 import ComposableArchitecture
 import Foundation
+import PromisoShared
 
 // MARK: - Error
 
@@ -70,6 +71,12 @@ public struct GroupClient: Sendable {
     _ photoData: Data?
   ) async throws -> GroupModel
 
+  /// 그룹 알림 상세 설정 업데이트
+  public var updateGroupNotificationSettings: @Sendable (
+    _ groupId: String,
+    _ settings: GroupNotificationSettings
+  ) async throws -> Void
+
   /// 그룹 배지 클리어 (Fire & Forget)
   public var clearGroupBadge: @Sendable (_ groupId: String) async -> Void = { _ in }
 }
@@ -89,6 +96,7 @@ extension GroupClient: TestDependencyKey {
     leaveGroup: unimplemented("\(Self.self).leaveGroup"),
     deleteGroup: unimplemented("\(Self.self).deleteGroup"),
     updateGroup: unimplemented("\(Self.self).updateGroup"),
+    updateGroupNotificationSettings: unimplemented("\(Self.self).updateGroupNotificationSettings"),
     clearGroupBadge: { _ in }
   )
 
@@ -105,10 +113,10 @@ extension GroupClient: TestDependencyKey {
     fetchGroupSummaries: {
       try await Task.sleep(for: .seconds(0.2))
       return [
-        UserGroupInfo(id: "g1", name: "지민과 나", role: .admin, notifications: true, hasNewActivity: true, imageUrl: "https://picsum.photos/seed/g1/200"),
-        UserGroupInfo(id: "g2", name: "회사 동료들", role: .member, notifications: true, hasNewActivity: true, imageUrl: "https://picsum.photos/seed/g2/200"),
-        UserGroupInfo(id: "g3", name: "대학 친구들", role: .member, notifications: false, hasNewActivity: false, imageUrl: nil),
-        UserGroupInfo(id: "g4", name: "가족", role: .member, notifications: true, hasNewActivity: true, imageUrl: "https://picsum.photos/seed/g4/200")
+        UserGroupInfo(id: "g1", name: "지민과 나", role: .admin, notifications: GroupNotificationSettings(enabled: true), hasNewActivity: true, imageUrl: "https://picsum.photos/seed/g1/200"),
+        UserGroupInfo(id: "g2", name: "회사 동료들", role: .member, notifications: GroupNotificationSettings(enabled: true), hasNewActivity: true, imageUrl: "https://picsum.photos/seed/g2/200"),
+        UserGroupInfo(id: "g3", name: "대학 친구들", role: .member, notifications: GroupNotificationSettings(enabled: false), hasNewActivity: false, imageUrl: nil),
+        UserGroupInfo(id: "g4", name: "가족", role: .member, notifications: GroupNotificationSettings(enabled: true), hasNewActivity: true, imageUrl: "https://picsum.photos/seed/g4/200")
       ]
     },
     fetchGroupsByIds: { ids in
@@ -201,6 +209,9 @@ extension GroupClient: TestDependencyKey {
         createdBy: "preview-user"
       )
     },
+    updateGroupNotificationSettings: { _, _ in
+      try await Task.sleep(for: .seconds(0.2))
+    },
     clearGroupBadge: { _ in }
   )
 }
@@ -278,6 +289,17 @@ extension GroupClient: DependencyKey {
           description: description,
           maxMembers: maxMembers,
           photoData: photoData
+        )
+      },
+      updateGroupNotificationSettings: { groupId, settings in
+        guard let currentUser = await authClient.currentUser() else {
+          throw GroupClientError.unauthorized
+        }
+
+        try await dataSource.updateGroupNotificationSettings(
+          groupId: groupId,
+          userId: currentUser.uid,
+          settings: settings
         )
       },
       clearGroupBadge: { groupId in

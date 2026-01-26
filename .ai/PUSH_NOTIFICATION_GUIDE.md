@@ -15,7 +15,7 @@ Promiso 앱의 푸시 알림 메시지 규격을 정의합니다.
 | `promise_cancelled` | 약속 무산 | `onPromiseVotesUpdated` | ✅ |
 | `promise_updated` | 약속 수정 | `onPromiseInfoUpdated` | ✅ |
 | `promise_reminder` | 약속 리마인더 | Cloud Tasks | ❌ TODO |
-| `group_update` | 그룹 업데이트 | `onGroupMemberJoined` | ✅ |
+| `group_update` | 그룹 업데이트 | `onGroupMemberJoined` / `updateGroup` | ✅ |
 | `group_invitation` | 그룹 초대 | - | ❌ |
 | `attendance_response` | 참석 응답 | - | ❌ |
 | `system` | 시스템 공지 | 수동 전송 | ❌ |
@@ -107,20 +107,26 @@ Promiso 앱의 푸시 알림 메시지 규격을 정의합니다.
 
 ---
 
-### 5. group_update (새 멤버 합류)
+### 5. group_update (그룹 업데이트)
 
 | 항목 | 값 |
 |------|-----|
-| **트리거** | `groups/{groupId}` memberIds 변경 |
-| **조건** | 새로운 멤버 ID 추가됨 |
-| **Title** | `새 멤버 합류 👋` |
-| **Body** | `{새멤버명}님이 {그룹명}에 들어왔어요` |
+| **트리거** | `groups/{groupId}` memberIds 변경 또는 그룹 정보 수정 |
+| **조건** | 새로운 멤버 ID 추가됨 또는 description/imageUrl/maxMembers 변경 |
+| **Title** | `새 멤버 합류 👋` 또는 `그룹 정보 업데이트 ✨` |
+| **Body** | `{새멤버명}님이 {그룹명}에 들어왔어요` 또는 `{그룹명} 설정이 변경됐어요` |
 | **수신자** | 기존 멤버들 (새 멤버 제외) |
 
-**예시:**
+**예시 (멤버 합류):**
 ```
 새 멤버 합류 👋
 민수님이 대학 친구들에 들어왔어요
+```
+
+**예시 (그룹 정보 변경):**
+```
+그룹 정보 업데이트 ✨
+대학 친구들 설정이 변경됐어요
 ```
 
 ---

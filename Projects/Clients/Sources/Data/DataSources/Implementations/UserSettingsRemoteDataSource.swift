@@ -32,10 +32,12 @@ public final class UserSettingsRemoteDataSource: @unchecked Sendable {
 
     let notificationEnabled = data["notificationEnabled"] as? Bool ?? true
     let groupSortOption = GroupSortOption.read(from: data["groupSortOption"] as? [String: Any])
+    let plan = UserPlan(rawValue: data["plan"] as? String ?? "") ?? .free
 
     return UserSettings(
       notificationEnabled: notificationEnabled,
-      groupSortOption: groupSortOption
+      groupSortOption: groupSortOption,
+      plan: plan
     )
   }
 
@@ -43,6 +45,14 @@ public final class UserSettingsRemoteDataSource: @unchecked Sendable {
   public func updateGroupSortOption(userId: String, option: GroupSortOption) async throws {
     try await settingsRef(userId: userId).setData(
       ["groupSortOption": option.write()],
+      merge: true
+    )
+  }
+
+  /// 사용자 플랜 업데이트
+  public func updatePlan(userId: String, plan: UserPlan) async throws {
+    try await settingsRef(userId: userId).setData(
+      ["plan": plan.rawValue],
       merge: true
     )
   }

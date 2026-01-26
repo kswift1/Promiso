@@ -353,6 +353,22 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
     return try await fetchGroup(groupId: groupId)
   }
 
+  /// 그룹 알림 상세 설정 업데이트
+  public func updateGroupNotificationSettings(
+    groupId: String,
+    userId: String,
+    settings: GroupNotificationSettings
+  ) async throws {
+    let userRef = db.environmentCollection("users").document(userId)
+    try await userRef.setData(
+      [
+        "groups.\(groupId).notifications": settings.asDictionary,
+        "groups.\(groupId).notificationPreferences": FieldValue.delete(),
+      ],
+      merge: true
+    )
+  }
+
   /// 그룹 배지 클리어 (Fire & Forget)
   ///
   /// - Parameters:
@@ -463,7 +479,10 @@ private extension UserGroupInfo {
 
     let roleString = data["role"] as? String
     let role = roleString.flatMap { GroupRole(rawValue: $0) }
-    let notifications = data["notifications"] as? Bool
+    let notifications = parseNotificationSettings(
+      value: data["notifications"],
+      legacyPreferences: data["notificationPreferences"]
+    )
     let joinedAt = (data["joinedAt"] as? Timestamp)?.dateValue()
     let hasNewActivity = data["hasNewActivity"] as? Bool ?? false
     let imageUrl = data["imageUrl"] as? String
@@ -478,6 +497,37 @@ private extension UserGroupInfo {
       imageUrl: imageUrl
     )
   }
+}
+
+private func parseNotificationSettings(
+  value: Any?,
+  legacyPreferences: Any?
+) -> GroupNotificationSettings? {
+  if let legacyEnabled = value as? Bool {
+    let legacyMap = legacyPreferences as? [String: Bool]
+    return GroupNotificationPreferences.fromLegacy(
+      enabled: legacyEnabled,
+      preferences: legacyMap
+    )
+  }
+
+  guard let map = value as? [String: Any] else { return nil }
+  let enabled = map["enabled"] as? Bool ?? true
+  let promise = parseNotificationMap(map["promise"])
+  let group = parseNotificationMap(map["group"])
+  return GroupNotificationSettings(
+    enabled: enabled,
+    promise: promise,
+    group: group
+  )
+}
+
+private func parseNotificationMap(_ value: Any?) -> [String: Bool] {
+  if let map = value as? [String: Bool] {
+    return map
+  }
+  guard let map = value as? [String: Any] else { return [:] }
+  return map.compactMapValues { $0 as? Bool }
 }
 
 // MARK: - StorageReference Extension

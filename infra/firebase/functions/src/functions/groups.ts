@@ -11,6 +11,7 @@ import {HttpsError, onCall} from "firebase-functions/v2/https";
 import {onDocumentUpdated} from "firebase-functions/v2/firestore";
 import {admin, REGION} from "../config";
 import {getEnvironmentCollection} from "../utils/firestore";
+import {sendPushNotificationInternal} from "./notifications";
 import {
   validateCreateGroupRequest,
   generateUniqueInviteCode,
@@ -29,10 +30,26 @@ import {
   DeleteGroupRequest,
   DeleteGroupResponse,
   GroupMemberPreview,
+  NotificationType,
 } from "../types/api";
 
 // Firebase Storage URL에서 경로 추출용 정규식
 const FIREBASE_STORAGE_PATH_REGEX = /\/o\/(.+?)\?/;
+
+const defaultGroupNotificationSettings = () => ({
+  enabled: true,
+  promise: {
+    invitation: true,
+    reminder: true,
+    confirmed: true,
+    cancelled: true,
+    updated: true,
+    attendanceResponse: true,
+  },
+  group: {
+    update: true,
+  },
+});
 
 /**
  * 그룹 생성
@@ -105,7 +122,7 @@ export const createGroup = onCall<CreateGroupRequest>(
             groupName: data.name,
             role: "admin",
             joinedAt: now,
-            notifications: true,
+            notifications: defaultGroupNotificationSettings(),
             hasNewActivity: false,
             imageUrl: data.imageUrl ?? null,
           },
@@ -303,7 +320,7 @@ export const joinGroup = onCall<JoinGroupRequest>(
             groupName: groupName,
             role: "member",
             joinedAt: now,
-            notifications: true,
+            notifications: defaultGroupNotificationSettings(),
             hasNewActivity: false,
             imageUrl: groupImageUrl,
           },
@@ -504,6 +521,33 @@ export const updateGroup = onCall<UpdateGroupRequest>(
       updatedAt: FieldValue.serverTimestamp(),
     };
 
+    const groupName = (groupData.name as string | undefined) ?? "그룹";
+    const updatedFields: string[] = [];
+
+    const previousDescription = groupData.description ?? null;
+    if (
+      data.description !== undefined &&
+      data.description !== previousDescription
+    ) {
+      updatedFields.push("description");
+    }
+
+    const previousImageUrl = groupData.imageUrl ?? null;
+    if (
+      data.imageUrl !== undefined &&
+      data.imageUrl !== previousImageUrl
+    ) {
+      updatedFields.push("imageUrl");
+    }
+
+    const previousMaxMembers = groupData.maxMembers as number | undefined;
+    if (
+      typeof data.maxMembers === "number" &&
+      data.maxMembers !== previousMaxMembers
+    ) {
+      updatedFields.push("maxMembers");
+    }
+
     if (data.description !== undefined) {
       updateData.description = data.description ?? null;
     }
@@ -517,6 +561,23 @@ export const updateGroup = onCall<UpdateGroupRequest>(
     }
 
     await groupRef.update(updateData);
+
+    if (updatedFields.length > 0) {
+      const recipientIds = memberIds.filter((id) => id !== userId);
+      if (recipientIds.length > 0) {
+        await sendPushNotificationInternal({
+          userIds: recipientIds,
+          type: NotificationType.GroupUpdate,
+          title: "그룹 정보 업데이트 ✨",
+          body: `${groupName} 설정이 변경됐어요`,
+          promiseId: null,
+          groupId,
+          relatedUserId: userId,
+          data: null,
+          env: data.env ?? null,
+        });
+      }
+    }
 
     return {
       success: true,

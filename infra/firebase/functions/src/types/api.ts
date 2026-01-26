@@ -678,6 +678,8 @@ export const GroupSortOption = {
 export interface GetUserSettingsResponse {
   /** 알림 활성화 여부 */
   notificationEnabled: boolean;
+  /** 사용자 플랜 */
+  plan?: "free" | "pro";
   /** 그룹 정렬 옵션 */
   groupSortOption?: GroupSortOptionData;
 }
@@ -688,6 +690,9 @@ export interface GetUserSettingsResponse {
 export interface UpdateUserSettingsRequest {
   /** 알림 활성화 여부 */
   notificationEnabled?: boolean | null;
+
+  /** 사용자 플랜 */
+  plan?: "free" | "pro" | null;
 
   /** 그룹 정렬 옵션 */
   groupSortOption?: GroupSortOptionData | null;
@@ -800,7 +805,24 @@ export interface UserGroupInfo {
   joinedAt: FirebaseFirestore.Timestamp;
 
   /** 알림 활성화 여부 */
-  notifications: boolean;
+  notifications: GroupNotificationSettings | boolean;
+
+  /** (레거시) 그룹 알림 상세 설정 */
+  notificationPreferences?: { [key: string]: boolean } | null;
+}
+
+/**
+ * 그룹 알림 상세 설정
+ */
+export interface GroupNotificationSettings {
+  /** 그룹 알림 전체 ON/OFF */
+  enabled: boolean;
+
+  /** 약속 관련 알림 설정 */
+  promise?: { [key: string]: boolean } | null;
+
+  /** 그룹 관련 알림 설정 */
+  group?: { [key: string]: boolean } | null;
 }
 
 /**

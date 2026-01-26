@@ -262,7 +262,13 @@ extension Profile {
             }
 
           case .developerSettingsTapped:
-            state.path.append(.developerSettings(DeveloperSettings.Feature.State()))
+            state.path.append(
+              .developerSettings(
+                DeveloperSettings.Feature.State(
+                  currentUserId: state.currentUser.userId
+                )
+              )
+            )
             return .run { _ in
               await hapticFeedback.selection()
             }

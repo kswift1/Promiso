@@ -1,4 +1,5 @@
 import Foundation
+import PromisoShared
 
 // MARK: - User Protocols
 
@@ -97,7 +98,7 @@ public struct UserGroupInfo: Codable, Equatable, Hashable, Identifiable, Sendabl
   public let joinedAt: Date?
 
   /// 알림 활성화 여부
-  public let notifications: Bool?
+  public let notifications: GroupNotificationSettings?
 
   /// 새로운 활동 여부 (배지용)
   public var hasNewActivity: Bool
@@ -110,7 +111,7 @@ public struct UserGroupInfo: Codable, Equatable, Hashable, Identifiable, Sendabl
     name: String,
     role: GroupRole? = nil,
     joinedAt: Date? = nil,
-    notifications: Bool? = nil,
+    notifications: GroupNotificationSettings? = nil,
     hasNewActivity: Bool = false,
     imageUrl: String? = nil
   ) {

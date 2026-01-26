@@ -249,6 +249,7 @@ users/{userId}/settings/main
 | 필드명 | 타입 | 필수 | 기본값 | 설명 |
 |--------|------|------|--------|------|
 | `notificationEnabled` | Boolean | ✅ | true | 푸시 알림 활성화 여부 |
+| `plan` | String | ❌ | "free" | 사용자 플랜 (`free` \| `pro`) |
 | `groupSortOption` | Map | ❌ | `{type: "joinedRecent"}` | 그룹 정렬 설정 |
 | `groupSortOption.type` | String | ✅ | "joinedRecent" | 정렬 타입 (`joinedRecent` \| `joinedOldest` \| `nameAscending` \| `nameDescending` \| `custom`) |
 | `groupSortOption.order` | Array<String> | ❌ | - | 커스텀 정렬 시 그룹 ID 순서 (type이 `custom`일 때만) |
@@ -258,6 +259,7 @@ users/{userId}/settings/main
 ```json
 {
   "notificationEnabled": true,
+  "plan": "free",
   "groupSortOption": {
     "type": "joinedRecent"
   }
@@ -293,7 +295,7 @@ users/{userId}.groups
 | `groupName` | String | ✅ | 그룹 이름 (캐시) |
 | `role` | String | ✅ | 역할 (`admin` \| `member`) |
 | `joinedAt` | Timestamp | ✅ | 그룹 가입 시각 |
-| `notifications` | Boolean | ✅ | 그룹 알림 수신 여부 |
+| `notifications` | Map | ✅ | 그룹 알림 설정 (enabled/promise/group) |
 | `hasNewActivity` | Boolean | ✅ | 새 활동 여부 (약속 생성/변경 시 true → 확인 시 false) |
 | `imageUrl` | String | ❌ | 그룹 이미지 URL |
 
@@ -306,7 +308,20 @@ users/{userId}.groups
       "groupName": "대학 친구들",
       "role": "admin",
       "joinedAt": "2024-01-01T10:00:00+09:00",
-      "notifications": true,
+      "notifications": {
+        "enabled": true,
+        "promise": {
+          "invitation": true,
+          "reminder": true,
+          "confirmed": true,
+          "cancelled": true,
+          "updated": true,
+          "attendanceResponse": true
+        },
+        "group": {
+          "update": true
+        }
+      },
       "hasNewActivity": false,
       "imageUrl": null
     },
@@ -314,7 +329,20 @@ users/{userId}.groups
       "groupName": "회사 동료",
       "role": "member",
       "joinedAt": "2024-02-15T10:00:00+09:00",
-      "notifications": true,
+      "notifications": {
+        "enabled": true,
+        "promise": {
+          "invitation": false,
+          "reminder": true,
+          "confirmed": true,
+          "cancelled": true,
+          "updated": true,
+          "attendanceResponse": true
+        },
+        "group": {
+          "update": true
+        }
+      },
       "hasNewActivity": true,
       "imageUrl": "https://firebasestorage.googleapis.com/..."
     }

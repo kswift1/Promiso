@@ -2294,6 +2294,14 @@ components:
           type: boolean
           description: 알림 활성화 여부
           example: true
+        plan:
+          type: string
+          nullable: true
+          description: 사용자 플랜
+          enum:
+            - free
+            - pro
+          example: free
 
     UpdateUserSettingsRequest:
       type: object
@@ -2303,6 +2311,14 @@ components:
           nullable: true
           description: 알림 활성화 여부
           example: false
+        plan:
+          type: string
+          nullable: true
+          description: 사용자 플랜
+          enum:
+            - free
+            - pro
+          example: pro
 
     UpdateUserSettingsResponse:
       type: object
@@ -2765,14 +2781,34 @@ components:
               groupName: 주말 등산 모임
               role: admin
               joinedAt: "2024-01-01T00:00:00Z"
-              notifications: true
+              notifications:
+                enabled: true
+                promise:
+                  invitation: true
+                  reminder: true
+                  confirmed: true
+                  cancelled: true
+                  updated: true
+                  attendanceResponse: true
+                group:
+                  update: true
               hasNewActivity: false
               imageUrl: null
             "groupId2":
               groupName: 회사 동료
               role: member
               joinedAt: "2024-01-15T00:00:00Z"
-              notifications: true
+              notifications:
+                enabled: true
+                promise:
+                  invitation: false
+                  reminder: true
+                  confirmed: true
+                  cancelled: true
+                  updated: true
+                  attendanceResponse: true
+                group:
+                  update: true
               hasNewActivity: true
               imageUrl: https://firebasestorage.googleapis.com/...
 
@@ -2802,9 +2838,7 @@ components:
           format: date-time
           description: 그룹 가입 시각
         notifications:
-          type: boolean
-          description: 알림 활성화 여부
-          example: true
+          $ref: '#/components/schemas/GroupNotificationSettings'
         hasNewActivity:
           type: boolean
           description: 새 활동 여부 (배지용)
@@ -2813,6 +2847,29 @@ components:
           type: string
           nullable: true
           description: 그룹 이미지 URL
+
+    GroupNotificationSettings:
+      type: object
+      description: 그룹 알림 상세 설정
+      required:
+        - enabled
+      properties:
+        enabled:
+          type: boolean
+          description: 그룹 알림 전체 ON/OFF
+          example: true
+        promise:
+          type: object
+          nullable: true
+          description: 약속 관련 알림 설정
+          additionalProperties:
+            type: boolean
+        group:
+          type: object
+          nullable: true
+          description: 그룹 관련 알림 설정
+          additionalProperties:
+            type: boolean
           example: https://firebasestorage.googleapis.com/...
 
     # ========================================

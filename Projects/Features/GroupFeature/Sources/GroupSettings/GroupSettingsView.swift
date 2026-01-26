@@ -4,6 +4,7 @@ import PromisoShared
 import SwiftUI
 import PhotosUI
 import UIKit
+import ResourceKit
 
 
 extension GroupSettings {
@@ -98,9 +99,26 @@ extension GroupSettings {
       }
     }
 
+
     private var menuSection: some SwiftUI.View {
       VStack(alignment: .leading, spacing: 10) {
         VStack(spacing: 0) {
+          NavigationLink {
+            NotificationSettingsView(store: store)
+          } label: {
+            menuRowContent(
+              title: "알림 설정",
+              systemImage: "bell",
+              trailingText: nil
+            )
+          }
+          .buttonStyle(.plain)
+          .simultaneousGesture(
+            TapGesture().onEnded { store.send(.view(.notificationSettingsTapped)) }
+          )
+
+          dividerLine
+
           NavigationLink {
             GroupMemberListView(store: store)
           } label: {
@@ -207,6 +225,7 @@ extension GroupSettings {
       .contentShape(Rectangle())
     }
 
+
     private func dangerRow(
       title: String,
       systemImage: String,
@@ -232,6 +251,408 @@ extension GroupSettings {
         .contentShape(Rectangle())
       }
       .buttonStyle(.plain)
+    }
+  }
+}
+
+private struct NotificationSettingsView: View {
+  let store: StoreOf<GroupSettings.Feature>
+  @State private var activeTooltip: NotificationTooltip?
+
+  var body: some View {
+    ScrollView {
+      VStack(spacing: 16) {
+        groupNotificationSection
+        promiseNotificationSection
+        groupActivityNotificationSection
+      }
+      .padding(.horizontal, 16)
+      .padding(.top, 12)
+      .padding(.bottom, 24)
+    }
+    .navigationTitle("알림 설정")
+    .navigationBarTitleDisplayMode(.inline)
+  }
+
+  private var groupNotificationSection: some View {
+    VStack(alignment: .leading, spacing: 10) {
+      Text("그룹 전체")
+        .font(.system(size: 16, weight: .semibold))
+        .padding(.horizontal, 4)
+
+      VStack(spacing: 0) {
+        notificationToggleRow(
+          title: "그룹 알림",
+          systemImage: "bell.fill",
+          tooltip: .groupNotifications,
+          activeTooltip: $activeTooltip,
+          isOn: Binding(
+            get: { store.notificationSettings.enabled },
+            set: { store.send(.view(.groupNotificationsChanged($0))) }
+          )
+        )
+      }
+      .adaptiveGlassCard()
+    }
+  }
+
+  private var promiseNotificationSection: some View {
+    VStack(alignment: .leading, spacing: 10) {
+      Text("약속")
+        .font(.system(size: 16, weight: .semibold))
+        .padding(.horizontal, 4)
+
+      VStack(spacing: 0) {
+        if store.isProPlan {
+          let promiseKeys: [GroupNotificationPreferenceKey] = [
+            .promiseInvitation,
+            .promiseConfirmed,
+            .promiseCancelled,
+            .promiseUpdated
+          ]
+          ForEach(Array(promiseKeys.enumerated()), id: \.element.rawValue) { index, key in
+            notificationPreferenceRow(
+                key: key,
+                activeTooltip: $activeTooltip,
+                isOn: Binding(
+                get: { GroupNotificationPreferences.value(for: key, in: store.notificationSettings) },
+                set: { store.send(.view(.notificationPreferenceChanged(key, $0))) }
+              )
+            )
+            if index != promiseKeys.count - 1 {
+              dividerLine
+            }
+          }
+        } else {
+          proLockedRow
+        }
+      }
+      .adaptiveGlassCard()
+    }
+  }
+
+  private var groupActivityNotificationSection: some View {
+    VStack(alignment: .leading, spacing: 10) {
+      Text("그룹")
+        .font(.system(size: 16, weight: .semibold))
+        .padding(.horizontal, 4)
+
+      VStack(spacing: 0) {
+        if store.isProPlan {
+          let groupKeys: [GroupNotificationPreferenceKey] = [
+            .groupUpdate
+          ]
+          ForEach(Array(groupKeys.enumerated()), id: \.element.rawValue) { index, key in
+            notificationPreferenceRow(
+              key: key,
+              activeTooltip: $activeTooltip,
+              isOn: Binding(
+                get: { GroupNotificationPreferences.value(for: key, in: store.notificationSettings) },
+                set: { store.send(.view(.notificationPreferenceChanged(key, $0))) }
+              )
+            )
+            if index != groupKeys.count - 1 {
+              dividerLine
+            }
+          }
+        } else {
+          proLockedRow
+        }
+      }
+      .adaptiveGlassCard()
+    }
+  }
+
+  private var dividerLine: some View {
+    Divider()
+      .background(Color.white.opacity(0.12))
+  }
+
+  private func notificationToggleRow(
+    title: String,
+    systemImage: String,
+    tooltip: NotificationTooltip,
+    activeTooltip: Binding<NotificationTooltip?>,
+    isOn: Binding<Bool>
+  ) -> some View {
+    HStack(spacing: 12) {
+      Image(systemName: systemImage)
+        .font(.system(size: 16, weight: .semibold))
+        .foregroundStyle(Color.pmindigo.n500)
+
+      Text(title)
+        .foregroundStyle(.primary)
+
+      tooltipButton(for: tooltip, activeTooltip: activeTooltip)
+
+      Spacer()
+
+      Toggle("", isOn: isOn)
+        .labelsHidden()
+        .toggleStyle(.switch)
+    }
+    .padding(.horizontal, 16)
+    .padding(.vertical, 12)
+  }
+
+  private func notificationPreferenceRow(
+    key: GroupNotificationPreferenceKey,
+    activeTooltip: Binding<NotificationTooltip?>,
+    isOn: Binding<Bool>
+  ) -> some View {
+    HStack(alignment: .center, spacing: 12) {
+      VStack(alignment: .leading, spacing: 4) {
+        Text(key.title)
+          .foregroundStyle(.primary)
+        if let subtitle = key.subtitle {
+          Text(subtitle)
+            .font(.system(size: 12))
+            .foregroundStyle(.secondary)
+        }
+      }
+
+      tooltipButton(for: .preference(key), activeTooltip: activeTooltip)
+
+      Spacer()
+
+      Toggle("", isOn: isOn)
+        .labelsHidden()
+        .toggleStyle(.switch)
+    }
+    .disabled(!store.notificationSettings.enabled)
+    .padding(.horizontal, 16)
+    .padding(.vertical, 12)
+  }
+
+  private var proLockedRow: some View {
+    HStack(spacing: 12) {
+      Image(systemName: "lock.fill")
+        .font(.system(size: 14, weight: .semibold))
+        .foregroundStyle(Color.pmindigo.n500)
+      Text("프로에서 알림 종류를 선택할 수 있어요")
+        .font(.system(size: 14))
+        .foregroundStyle(.secondary)
+      Spacer()
+      Text("PRO")
+        .font(.system(size: 12, weight: .semibold))
+        .foregroundStyle(Color.pmindigo.n500)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(Color.pmindigo.n500.opacity(0.12))
+        .clipShape(Capsule())
+    }
+    .padding(.horizontal, 16)
+    .padding(.vertical, 12)
+  }
+
+  private func tooltipButton(
+    for tooltip: NotificationTooltip,
+    activeTooltip: Binding<NotificationTooltip?>
+  ) -> some View {
+    Button {
+      activeTooltip.wrappedValue = tooltip
+    } label: {
+      Image(systemName: "info.circle")
+        .font(.system(size: 14, weight: .semibold))
+        .foregroundStyle(.secondary)
+    }
+    .buttonStyle(.plain)
+    .popover(
+      isPresented: Binding(
+        get: { activeTooltip.wrappedValue == tooltip },
+        set: { if !$0 { activeTooltip.wrappedValue = nil } }
+      ),
+      arrowEdge: .top
+    ) {
+      NotificationInfoPopover(tooltip: tooltip)
+    }
+  }
+}
+
+private struct NotificationInfoPopover: View {
+  let tooltip: NotificationTooltip
+  @State private var animateNotification: Bool = false
+  @State private var loopContinues: Bool = true
+
+  var body: some View {
+    VStack(spacing: 16) {
+      VStack(spacing: 4) {
+        Text(tooltip.title)
+          .font(.system(size: 17, weight: .bold))
+          .foregroundColor(.primary)
+
+        Text(tooltip.subtitle)
+          .font(.system(size: 13))
+          .foregroundColor(.secondary)
+          .multilineTextAlignment(.center)
+      }
+
+      notificationPreview(title: tooltip.previewTitle, body: tooltip.previewBody)
+
+      HStack(spacing: 6) {
+        Image(systemName: "bell.badge")
+          .font(.system(size: 12))
+          .foregroundColor(.pmindigo.n500)
+        Text("프로 플랜에서는 알림 종류를 세부 설정할 수 있어요")
+          .font(.system(size: 12))
+          .foregroundColor(.secondary)
+      }
+      .padding(.top, 4)
+    }
+    .padding(20)
+    .background(
+      RoundedRectangle(cornerRadius: 20, style: .continuous)
+        .fill(Color(.secondarySystemBackground).opacity(0.6))
+    )
+    .frame(width: UIScreen.main.bounds.width - 40)
+    .presentationCompactAdaptation(.popover)
+    .onDisappear {
+      loopContinues = false
+    }
+  }
+
+  private func notificationPreview(title: String, body: String) -> some View {
+    HStack(alignment: .center, spacing: 8) {
+      ResourceKitAsset.notificationLogo.swiftUIImage
+        .resizable()
+        .scaledToFit()
+        .frame(width: 40, height: 40)
+        .clipShape(.rect(cornerRadius: 10))
+
+      VStack(alignment: .leading, spacing: 4) {
+        HStack {
+          Text("Promiso")
+            .font(.callout)
+            .fontWeight(.medium)
+            .lineLimit(1)
+
+          Spacer(minLength: 0)
+
+          Text("지금")
+            .font(.caption2)
+            .fontWeight(.medium)
+            .foregroundStyle(.gray)
+        }
+
+        Text(title)
+          .font(.callout)
+          .fontWeight(.medium)
+          .lineLimit(1)
+
+        Text(body)
+          .font(.caption2)
+          .fontWeight(.medium)
+          .foregroundStyle(.gray)
+          .lineLimit(2)
+      }
+    }
+    .padding(12)
+    .background(.background)
+    .clipShape(.rect(cornerRadius: 20))
+    .shadow(color: .gray.opacity(0.3), radius: 2)
+    .padding(.horizontal, 12)
+    .offset(y: animateNotification ? 0 : -80)
+    .clipped()
+    .task {
+      await loopAnimation()
+    }
+  }
+
+  private func loopAnimation() async {
+    try? await Task.sleep(for: .seconds(0.35))
+
+    withAnimation(.smooth(duration: 0.6)) {
+      animateNotification = true
+    }
+
+    try? await Task.sleep(for: .seconds(2.8))
+
+    withAnimation(.smooth(duration: 0.6)) {
+      animateNotification = false
+    }
+
+    guard loopContinues else { return }
+    try? await Task.sleep(for: .seconds(0.9))
+    await loopAnimation()
+  }
+}
+
+private enum NotificationTooltip: Identifiable, Equatable {
+  case groupNotifications
+  case preference(GroupNotificationPreferenceKey)
+
+  var id: String {
+    switch self {
+    case .groupNotifications:
+      return "groupNotifications"
+    case .preference(let key):
+      return "preference.\(key.rawValue)"
+    }
+  }
+
+  var title: String {
+    switch self {
+    case .groupNotifications:
+      return "그룹 알림"
+    case .preference(let key):
+      return key.title
+    }
+  }
+
+  var subtitle: String {
+    switch self {
+    case .groupNotifications:
+      return "그룹 알림이 켜져 있어야 도착해요"
+    case .preference(let key):
+      return key.subtitle ?? "해당 알림을 켜고 끌 수 있어요"
+    }
+  }
+
+  var previewTitle: String {
+    switch self {
+    case .groupNotifications:
+      return "새 약속 도착 📩"
+    case .preference(let key):
+      switch key {
+      case .promiseInvitation:
+        return "새 약속 도착 📩"
+      case .promiseConfirmed:
+        return "영화 관람 약속 확정! 🎉"
+      case .promiseCancelled:
+        return "영화 관람 약속 무산 😢"
+      case .promiseUpdated:
+        return "영화 관람 변경 📝"
+      case .groupUpdate:
+        return "그룹 정보 업데이트 ✨"
+      case .promiseReminder:
+        return "약속 리마인더 ⏰"
+      case .attendanceResponse:
+        return "참석 응답 변경"
+      }
+    }
+  }
+
+  var previewBody: String {
+    switch self {
+    case .groupNotifications:
+      return "성원님이 영화 관람을 제안했어요. 확인해주세요!"
+    case .preference(let key):
+      switch key {
+      case .promiseInvitation:
+        return "성원님이 영화 관람을 제안했어요. 확인해주세요!"
+      case .promiseReminder:
+        return "오늘 오후 2:00에 만나요!"
+      case .promiseConfirmed:
+        return "오늘 오후 2:00에 만나요!"
+      case .promiseCancelled:
+        return "참여 인원이 부족해서 확정되지 않았어요"
+      case .promiseUpdated:
+        return "약속 정보가 수정됐어요. 확인해주세요!"
+      case .attendanceResponse:
+        return "참석 여부가 업데이트됐어요"
+      case .groupUpdate:
+        return "대학 친구들 설정이 변경됐어요"
+      }
     }
   }
 }
@@ -603,7 +1024,7 @@ private struct AlertsModifier: ViewModifier {
 
   private var errorAlertBinding: Binding<Bool> {
     Binding(
-      get: { store.leaveError != nil || store.deleteError != nil },
+      get: { store.leaveError != nil || store.deleteError != nil || store.notificationError != nil },
       set: { if !$0 { store.send(.view(.dismissError)) } }
     )
   }
@@ -632,7 +1053,7 @@ private struct AlertsModifier: ViewModifier {
       .alert("오류", isPresented: errorAlertBinding) {
         Button("확인") { store.send(.view(.dismissError)) }
       } message: {
-        Text(store.leaveError ?? store.deleteError ?? "알 수 없는 오류가 발생했습니다.")
+        Text(store.leaveError ?? store.deleteError ?? store.notificationError ?? "알 수 없는 오류가 발생했습니다.")
       }
       .fullScreenCover(item: imageDetailBinding) { member in
         PromisoShared.ImageDetailView(
@@ -886,6 +1307,7 @@ struct InviteSheet: View {
             hasNewActivity: true
           ),
           currentUserId: "preview-user",
+          userPlan: .free,
           preloadedMembers: [
             UserPublicModel(
               userId: "preview-user",
