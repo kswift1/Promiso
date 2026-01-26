@@ -1,4 +1,5 @@
 import Foundation
+import PromisoShared
 
 /// Firebase Functions User 응답 DTO
 struct UserDTO: Codable {
@@ -30,10 +31,56 @@ struct UserDTO: Codable {
     let groupName: String
     let role: GroupRole
     let joinedAt: FirebaseTimestampDTO
-    let notifications: Bool
+    let notifications: GroupNotificationSettings?
     let hasNewActivity: Bool?
     let imageUrl: String?
-    let notificationPreferences: [String: Bool]?
+
+    private enum CodingKeys: String, CodingKey {
+      case groupName
+      case role
+      case joinedAt
+      case notifications
+      case notificationPreferences
+      case hasNewActivity
+      case imageUrl
+    }
+
+    init(
+      groupName: String,
+      role: GroupRole,
+      joinedAt: FirebaseTimestampDTO,
+      notifications: GroupNotificationSettings?,
+      hasNewActivity: Bool?,
+      imageUrl: String?
+    ) {
+      self.groupName = groupName
+      self.role = role
+      self.joinedAt = joinedAt
+      self.notifications = notifications
+      self.hasNewActivity = hasNewActivity
+      self.imageUrl = imageUrl
+    }
+
+    init(from decoder: Decoder) throws {
+      let container = try decoder.container(keyedBy: CodingKeys.self)
+      groupName = try container.decode(String.self, forKey: .groupName)
+      role = try container.decode(GroupRole.self, forKey: .role)
+      joinedAt = try container.decode(FirebaseTimestampDTO.self, forKey: .joinedAt)
+      hasNewActivity = try container.decodeIfPresent(Bool.self, forKey: .hasNewActivity)
+      imageUrl = try container.decodeIfPresent(String.self, forKey: .imageUrl)
+
+      if let settings = try? container.decode(GroupNotificationSettings.self, forKey: .notifications) {
+        notifications = settings
+      } else if let enabled = try? container.decode(Bool.self, forKey: .notifications) {
+        let legacyPreferences = try? container.decode([String: Bool].self, forKey: .notificationPreferences)
+        notifications = GroupNotificationPreferences.fromLegacy(
+          enabled: enabled,
+          preferences: legacyPreferences
+        )
+      } else {
+        notifications = nil
+      }
+    }
   }
 
   struct FirebaseTimestampDTO: Codable {
@@ -67,7 +114,6 @@ extension UserDTO {
         role: dto.role,
         joinedAt: dto.joinedAt.date,
         notifications: dto.notifications,
-        notificationPreferences: dto.notificationPreferences,
         hasNewActivity: dto.hasNewActivity ?? false,
         imageUrl: dto.imageUrl
       )

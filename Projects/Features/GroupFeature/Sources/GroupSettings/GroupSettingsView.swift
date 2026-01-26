@@ -287,7 +287,7 @@ private struct NotificationSettingsView: View {
           tooltip: .groupNotifications,
           activeTooltip: $activeTooltip,
           isOn: Binding(
-            get: { store.notificationsEnabled },
+            get: { store.notificationSettings.enabled },
             set: { store.send(.view(.groupNotificationsChanged($0))) }
           )
         )
@@ -312,10 +312,10 @@ private struct NotificationSettingsView: View {
           ]
           ForEach(Array(promiseKeys.enumerated()), id: \.element.rawValue) { index, key in
             notificationPreferenceRow(
-              key: key,
-              activeTooltip: $activeTooltip,
-              isOn: Binding(
-                get: { GroupNotificationPreferences.value(for: key, in: store.notificationPreferences) },
+                key: key,
+                activeTooltip: $activeTooltip,
+                isOn: Binding(
+                get: { GroupNotificationPreferences.value(for: key, in: store.notificationSettings) },
                 set: { store.send(.view(.notificationPreferenceChanged(key, $0))) }
               )
             )
@@ -347,7 +347,7 @@ private struct NotificationSettingsView: View {
               key: key,
               activeTooltip: $activeTooltip,
               isOn: Binding(
-                get: { GroupNotificationPreferences.value(for: key, in: store.notificationPreferences) },
+                get: { GroupNotificationPreferences.value(for: key, in: store.notificationSettings) },
                 set: { store.send(.view(.notificationPreferenceChanged(key, $0))) }
               )
             )
@@ -419,7 +419,7 @@ private struct NotificationSettingsView: View {
         .labelsHidden()
         .toggleStyle(.switch)
     }
-    .disabled(!store.notificationsEnabled)
+    .disabled(!store.notificationSettings.enabled)
     .padding(.horizontal, 16)
     .padding(.vertical, 12)
   }
@@ -623,13 +623,11 @@ private enum NotificationTooltip: Identifiable, Equatable {
       case .promiseUpdated:
         return "영화 관람 변경 📝"
       case .groupUpdate:
-        return "새 멤버 합류 👋"
+        return "그룹 정보 업데이트 ✨"
       case .promiseReminder:
         return "약속 리마인더 ⏰"
       case .attendanceResponse:
         return "참석 응답 변경"
-      case .groupInvitation:
-        return "그룹 초대"
       }
     }
   }
@@ -652,10 +650,8 @@ private enum NotificationTooltip: Identifiable, Equatable {
         return "약속 정보가 수정됐어요. 확인해주세요!"
       case .attendanceResponse:
         return "참석 여부가 업데이트됐어요"
-      case .groupInvitation:
-        return "새 그룹에 초대됐어요"
       case .groupUpdate:
-        return "민수님이 대학 친구들에 들어왔어요"
+        return "대학 친구들 설정이 변경됐어요"
       }
     }
   }

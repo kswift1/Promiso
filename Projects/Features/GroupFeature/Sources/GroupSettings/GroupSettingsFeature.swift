@@ -39,8 +39,7 @@ extension GroupSettings {
       var editGroup: EditGroupState?
 
       // Notifications
-      var notificationsEnabled: Bool
-      var notificationPreferences: [String: Bool]
+      var notificationSettings: GroupNotificationSettings
       var notificationError: String?
 
       public init(
@@ -54,9 +53,7 @@ extension GroupSettings {
         self.summary = summary
         self.currentUserId = currentUserId
         self.userPlan = userPlan
-        self.notificationsEnabled = summary?.notifications ?? true
-        self.notificationPreferences = summary?.notificationPreferences
-          ?? GroupNotificationPreferences.allEnabled
+        self.notificationSettings = summary?.notifications ?? GroupNotificationSettings()
 
         if let preloadedMembers = preloadedMembers {
           self.membersState = .loaded(preloadedMembers)
@@ -259,13 +256,17 @@ extension GroupSettings {
             return .none
 
           case .groupNotificationsChanged(let enabled):
-            let previousValue = state.notificationsEnabled
-            state.notificationsEnabled = enabled
+            let previousValue = state.notificationSettings.enabled
+            state.notificationSettings.enabled = enabled
             state.notificationError = nil
+            let updatedSettings = state.notificationSettings
             return .run { [groupClient, groupId = state.group.id, hapticFeedback] send in
               await hapticFeedback.selection()
               do {
-                try await groupClient.updateGroupNotifications(groupId, enabled)
+                try await groupClient.updateGroupNotificationSettings(
+                  groupId,
+                  updatedSettings
+                )
               } catch {
                 await send(.internal(.groupNotificationsUpdateFailed(
                   previousValue: previousValue,
@@ -275,16 +276,16 @@ extension GroupSettings {
             }
 
           case .notificationPreferenceChanged(let key, let enabled):
-            let previousValue = state.notificationPreferences[key.rawValue] ?? true
-            state.notificationPreferences[key.rawValue] = enabled
+            let previousValue = state.notificationSettings.value(for: key)
+            state.notificationSettings.setValue(enabled, for: key)
             state.notificationError = nil
-            let updatedPreferences = state.notificationPreferences
+            let updatedSettings = state.notificationSettings
             return .run { [groupClient, groupId = state.group.id, hapticFeedback] send in
               await hapticFeedback.selection()
               do {
-                try await groupClient.updateGroupNotificationPreferences(
+                try await groupClient.updateGroupNotificationSettings(
                   groupId,
-                  updatedPreferences
+                  updatedSettings
                 )
               } catch {
                 await send(.internal(.notificationPreferenceUpdateFailed(
@@ -454,14 +455,14 @@ extension GroupSettings {
             }
 
           case .groupNotificationsUpdateFailed(let previousValue, let message):
-            state.notificationsEnabled = previousValue
+            state.notificationSettings.enabled = previousValue
             state.notificationError = message
             return .run { [hapticFeedback] _ in
               await hapticFeedback.error()
             }
 
           case .notificationPreferenceUpdateFailed(let key, let previousValue, let message):
-            state.notificationPreferences[key.rawValue] = previousValue
+            state.notificationSettings.setValue(previousValue, for: key)
             state.notificationError = message
             return .run { [hapticFeedback] _ in
               await hapticFeedback.error()
