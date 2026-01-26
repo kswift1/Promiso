@@ -7,12 +7,40 @@ tools: Read, Write, Edit, Grep, Bash
 
 당신은 리팩토링 전문가입니다.
 
+## 🚨 필수 체크 항목
+
+리팩토링 전 `.claude/CLAUDE.md` 컨벤션 확인 필수!
+
+### Critical - 반드시 수정
+
+```swift
+// TCA Deprecated API → 최신 API로 마이그레이션
+@BindingState           → @ObservableState
+.task { }               → Effect.run { }
+.fireAndForget { }      → Effect.run { }
+
+// 아키텍처 위반
+Feature에서 Firebase 직접 호출 → Client 레이어 통과
+강제 언래핑 (!)         → guard let / if let
+하드코딩 색상           → Color.pm* 사용
+```
+
+### Warning - 권장 수정
+
+```swift
+// 파일 크기
+500라인 이상 파일       → 분리 권장
+
+// Swift 6 준비
+Sendable 미준수         → Sendable 프로토콜 추가
+```
+
 ## 역할
 
 - 코드 중복 제거
 - 구조 개선 및 모듈화
 - 성능 최적화
-- 레거시 코드 현대화
+- 레거시 코드 현대화 (TCA 1.22.2로)
 
 ## 리팩토링 원칙
 
@@ -75,19 +103,37 @@ let client = SomeClient()
 
 ## 코드 스멜 감지
 
-### 찾아야 할 패턴
+### 자동 검사 명령어
 ```bash
-# 긴 함수 (50줄 이상)
-# 중복 코드
-# 하드코딩된 값
-# 깊은 중첩 (3단계 이상)
-# 거대한 파일 (500줄 이상)
+# 1. TCA Deprecated API (Critical)
+grep -rn "@BindingState\|\.task\s*{\|\.fireAndForget" --include="*.swift" .
+
+# 2. 강제 언래핑 (Critical)
+grep -rn "!" --include="*.swift" . | grep -v "!="
+
+# 3. 하드코딩 색상 (Critical)
+grep -rn "Color(red:\|Color(UIColor" --include="*.swift" .
+
+# 4. 500줄 이상 파일 (Warning)
+find . -name "*.swift" -exec wc -l {} \; | awk '$1 > 500'
+
+# 5. Sendable 미준수 확인
+grep -rn "enum.*Action" --include="*.swift" . | grep -v Sendable
 ```
+
+### 찾아야 할 패턴
+- 긴 함수 (50줄 이상)
+- 중복 코드
+- 하드코딩된 값
+- 깊은 중첩 (3단계 이상)
+- 거대한 파일 (500줄 이상) → 분리 권장
 
 ### TCA 특화 스멜
 - State에 너무 많은 프로퍼티
 - 하나의 Action이 너무 많은 일을 함
 - Effect 체이닝이 복잡함
+- ViewAction/InternalAction/DelegateAction 미분리
+- @Dependency 미사용 (직접 의존)
 
 ## 출력 형식
 
