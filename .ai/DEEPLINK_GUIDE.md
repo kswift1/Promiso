@@ -17,6 +17,8 @@ URL/푸시 파싱 결과를 담는 타입:
 | `promise` | 약속 상세 화면 | promiseId + groupId 필요 |
 | `group` | 그룹 상세 화면 | groupId 필요 |
 | `joinGroup` | 그룹 참여 (초대 코드) | inviteCode 필요 |
+| `liveActivityETA` | LiveActivity ETA 변경 시트 | promiseId 필요 |
+| `livePromise` | LivePromise 상세 화면 | promiseId 필요 |
 
 ### GroupMain.Deeplink (GroupFeature 모듈)
 
@@ -38,6 +40,8 @@ URL/푸시 파싱 결과를 담는 타입:
 | `promiso://join/{inviteCode}` | `.joinGroup(inviteCode:)` | 초대 코드로 그룹 참여 |
 | `promiso://group/{groupId}` | `.group(groupId:)` | 그룹 상세 화면 |
 | `promiso://promise/{promiseId}/{groupId}` | `.promise(promiseId:groupId:)` | 약속 상세 화면 |
+| `promiso://promise/{promiseId}/eta` | `.liveActivityETA(promiseId:)` | LiveActivity ETA 변경 시트 |
+| `promiso://live/{promiseId}` | `.livePromise(promiseId:)` | LivePromise 상세 화면 |
 
 ### 예시
 
@@ -45,6 +49,8 @@ URL/푸시 파싱 결과를 담는 타입:
 promiso://join/ABC123
 promiso://group/group_123456
 promiso://promise/promise_789/group_123456
+promiso://promise/promise_789/eta
+promiso://live/promise_789
 ```
 
 ---
@@ -159,11 +165,11 @@ public struct Feature {
 
 ### 딥링크 매핑
 
-| type | promiseId | groupId | DeeplinkDestination |
-|------|-----------|---------|---------------------|
-| any | O | O | `.promise(promiseId:groupId:)` |
-| any | X | O | `.group(groupId:)` |
-| any | X | X | nil (무시) |
+| NotificationType.deeplinkGuide | promiseId | groupId | DeeplinkDestination |
+|--------------------------------|-----------|---------|---------------------|
+| `promiseAndGroup` | O | O | `.promise(promiseId:groupId:)` |
+| `groupOnly` | X | O | `.group(groupId:)` |
+| `none` | X | X | nil (무시) |
 
 ### 타입별 동작
 
@@ -171,8 +177,13 @@ public struct Feature {
 |------------------|----------|
 | `promise_invitation` | 약속 상세 |
 | `promise_confirmed` | 약속 상세 |
-| `promise_cancelled` | 그룹 상세 |
+| `promise_cancelled` | 약속 상세 |
+| `promise_updated` | 약속 상세 |
+| `promise_reminder` | 약속 상세 |
+| `attendance_response` | 약속 상세 |
+| `group_invitation` | 그룹 상세 |
 | `group_update` | 그룹 상세 |
+| `system` | 이동 없음 |
 
 ---
 
@@ -258,3 +269,4 @@ xcrun simctl openurl booted "promiso://promise/promise_456/group_123"
 2. **Associated Domains**: Universal Links 사용 시 apple-app-site-association 설정 필요
 3. **백그라운드 처리**: 앱이 백그라운드일 때 수신된 딥링크는 앱 활성화 시 처리됨
 4. **인증 상태**: 미인증 상태에서 딥링크 수신 시 `pendingDeeplink`에 저장 후 로그인 완료 시 처리
+5. **LiveActivity 딥링크**: `liveActivityETA`/`livePromise`는 RootTabFeature에서 처리

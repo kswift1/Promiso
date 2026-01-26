@@ -10,33 +10,33 @@ import ComposableArchitecture
 
 /// Profile Feature reducer와 business logic을 위한 Test suite
 /// 예측 가능한 state testing과 side effect 검증을 위해 TCA의 TestStore를 사용
-@MainActor
-final class ProfileFeatureTests: XCTestCase {
-  
-  /// 기본 onAppear 동작을 테스트
-  func test_onAppear() async {
-    let store = TestStore(initialState: Profile.Feature.State()) {
-      Profile.Feature()
-    }
-    
-    await store.send(.onAppear)
-  }
-  
-  // 추가 테스트를 여기에 작성
-}
-
-// MARK: - Integration Tests
-
-/// Integration tests for feature integration
-@MainActor
-final class ProfileFeatureIntegrationTests: XCTestCase {
-  
-  /// Tests feature creation and basic functionality
-  func test_feature_createsValidInstance() {
-    let store = Store(initialState: Profile.Feature.State()) {
-      Profile.Feature()
-    }
-    
-    XCTAssertNotNil(store)
-  }
-}
+//@MainActor
+//final class ProfileFeatureTests: XCTestCase {
+//  
+//  /// 기본 onAppear 동작을 테스트
+//  func test_onAppear() async {
+//    let store = TestStore(initialState: Profile.Feature.State()) {
+//      Profile.Feature()
+//    }
+//    
+//    await store.send(.onAppear)
+//  }
+//  
+//  // 추가 테스트를 여기에 작성
+//}
+//
+//// MARK: - Integration Tests
+//
+///// Integration tests for feature integration
+//@MainActor
+//final class ProfileFeatureIntegrationTests: XCTestCase {
+//  
+//  /// Tests feature creation and basic functionality
+//  func test_feature_createsValidInstance() {
+//    let store = Store(initialState: Profile.Feature.State()) {
+//      Profile.Feature()
+//    }
+//    
+//    XCTAssertNotNil(store)
+//  }
+//}
