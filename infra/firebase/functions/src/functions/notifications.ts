@@ -27,6 +27,31 @@ import {
   SendPushNotificationResponse,
 } from "../types/api";
 
+function notificationPreferenceKey(type: NotificationType): string | null {
+  switch (type) {
+  case NotificationType.PromiseInvitation:
+    return "promiseInvitation";
+  case NotificationType.PromiseReminder:
+    return "promiseReminder";
+  case NotificationType.PromiseConfirmed:
+    return "promiseConfirmed";
+  case NotificationType.PromiseCancelled:
+    return "promiseCancelled";
+  case NotificationType.PromiseUpdated:
+    return "promiseUpdated";
+  case NotificationType.AttendanceResponse:
+    return "attendanceResponse";
+  case NotificationType.GroupInvitation:
+    return "groupInvitation";
+  case NotificationType.GroupUpdate:
+    return "groupUpdate";
+  case NotificationType.System:
+    return null;
+  default:
+    return null;
+  }
+}
+
 /**
  * 날짜/시간을 "오늘/내일/M월 D일 H시 M분" 형식으로 포맷 (KST 기준)
  * - 오늘이면 "오늘"
@@ -181,6 +206,23 @@ export async function sendPushNotificationInternal(params: {
       if (!userDoc.exists) continue;
 
       const userData = userDoc.data();
+      const groups = userData?.groups as { [key: string]: any } | undefined;
+
+      if (groupId) {
+        const groupSettings = groups?.[groupId];
+        if (!groupSettings) continue;
+
+        const notificationsEnabled = groupSettings.notifications ?? true;
+        if (!notificationsEnabled) continue;
+
+        const preferences = groupSettings.notificationPreferences as
+          { [key: string]: boolean } | undefined;
+        const preferenceKey = notificationPreferenceKey(type);
+        if (preferences && preferenceKey && preferences[preferenceKey] === false) {
+          continue;
+        }
+      }
+
       const devices = userData?.devices as { [key: string]: DeviceInfo } | null;
 
       if (!devices) continue;

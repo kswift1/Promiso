@@ -353,6 +353,32 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
     return try await fetchGroup(groupId: groupId)
   }
 
+  /// 그룹 알림 활성화 설정 업데이트
+  public func updateGroupNotifications(
+    groupId: String,
+    userId: String,
+    enabled: Bool
+  ) async throws {
+    let userRef = db.environmentCollection("users").document(userId)
+    try await userRef.setData(
+      ["groups.\(groupId).notifications": enabled],
+      merge: true
+    )
+  }
+
+  /// 그룹 알림 상세 설정 업데이트
+  public func updateGroupNotificationPreferences(
+    groupId: String,
+    userId: String,
+    preferences: [String: Bool]
+  ) async throws {
+    let userRef = db.environmentCollection("users").document(userId)
+    try await userRef.setData(
+      ["groups.\(groupId).notificationPreferences": preferences],
+      merge: true
+    )
+  }
+
   /// 그룹 배지 클리어 (Fire & Forget)
   ///
   /// - Parameters:
@@ -464,6 +490,7 @@ private extension UserGroupInfo {
     let roleString = data["role"] as? String
     let role = roleString.flatMap { GroupRole(rawValue: $0) }
     let notifications = data["notifications"] as? Bool
+    let notificationPreferences = data["notificationPreferences"] as? [String: Bool]
     let joinedAt = (data["joinedAt"] as? Timestamp)?.dateValue()
     let hasNewActivity = data["hasNewActivity"] as? Bool ?? false
     let imageUrl = data["imageUrl"] as? String
@@ -474,6 +501,7 @@ private extension UserGroupInfo {
       role: role,
       joinedAt: joinedAt,
       notifications: notifications,
+      notificationPreferences: notificationPreferences,
       hasNewActivity: hasNewActivity,
       imageUrl: imageUrl
     )

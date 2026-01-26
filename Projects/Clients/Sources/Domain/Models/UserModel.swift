@@ -99,6 +99,9 @@ public struct UserGroupInfo: Codable, Equatable, Hashable, Identifiable, Sendabl
   /// 알림 활성화 여부
   public let notifications: Bool?
 
+  /// 그룹별 알림 상세 설정 (프로 플랜)
+  public let notificationPreferences: [String: Bool]?
+
   /// 새로운 활동 여부 (배지용)
   public var hasNewActivity: Bool
 
@@ -111,6 +114,7 @@ public struct UserGroupInfo: Codable, Equatable, Hashable, Identifiable, Sendabl
     role: GroupRole? = nil,
     joinedAt: Date? = nil,
     notifications: Bool? = nil,
+    notificationPreferences: [String: Bool]? = nil,
     hasNewActivity: Bool = false,
     imageUrl: String? = nil
   ) {
@@ -119,6 +123,7 @@ public struct UserGroupInfo: Codable, Equatable, Hashable, Identifiable, Sendabl
     self.role = role
     self.joinedAt = joinedAt
     self.notifications = notifications
+    self.notificationPreferences = notificationPreferences
     self.hasNewActivity = hasNewActivity
     self.imageUrl = imageUrl
   }

@@ -2294,6 +2294,14 @@ components:
           type: boolean
           description: 알림 활성화 여부
           example: true
+        plan:
+          type: string
+          nullable: true
+          description: 사용자 플랜
+          enum:
+            - free
+            - pro
+          example: free
 
     UpdateUserSettingsRequest:
       type: object
@@ -2303,6 +2311,14 @@ components:
           nullable: true
           description: 알림 활성화 여부
           example: false
+        plan:
+          type: string
+          nullable: true
+          description: 사용자 플랜
+          enum:
+            - free
+            - pro
+          example: pro
 
     UpdateUserSettingsResponse:
       type: object
@@ -2766,6 +2782,15 @@ components:
               role: admin
               joinedAt: "2024-01-01T00:00:00Z"
               notifications: true
+              notificationPreferences:
+                promiseInvitation: true
+                promiseReminder: true
+                promiseConfirmed: true
+                promiseCancelled: true
+                promiseUpdated: true
+                attendanceResponse: true
+                groupInvitation: true
+                groupUpdate: true
               hasNewActivity: false
               imageUrl: null
             "groupId2":
@@ -2773,6 +2798,15 @@ components:
               role: member
               joinedAt: "2024-01-15T00:00:00Z"
               notifications: true
+              notificationPreferences:
+                promiseInvitation: false
+                promiseReminder: true
+                promiseConfirmed: true
+                promiseCancelled: true
+                promiseUpdated: true
+                attendanceResponse: true
+                groupInvitation: true
+                groupUpdate: true
               hasNewActivity: true
               imageUrl: https://firebasestorage.googleapis.com/...
 
@@ -2805,6 +2839,12 @@ components:
           type: boolean
           description: 알림 활성화 여부
           example: true
+        notificationPreferences:
+          type: object
+          nullable: true
+          description: 그룹 알림 상세 설정 (프로 플랜)
+          additionalProperties:
+            type: boolean
         hasNewActivity:
           type: boolean
           description: 새 활동 여부 (배지용)

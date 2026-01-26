@@ -678,6 +678,8 @@ export const GroupSortOption = {
 export interface GetUserSettingsResponse {
   /** 알림 활성화 여부 */
   notificationEnabled: boolean;
+  /** 사용자 플랜 */
+  plan?: "free" | "pro";
   /** 그룹 정렬 옵션 */
   groupSortOption?: GroupSortOptionData;
 }
@@ -688,6 +690,9 @@ export interface GetUserSettingsResponse {
 export interface UpdateUserSettingsRequest {
   /** 알림 활성화 여부 */
   notificationEnabled?: boolean | null;
+
+  /** 사용자 플랜 */
+  plan?: "free" | "pro" | null;
 
   /** 그룹 정렬 옵션 */
   groupSortOption?: GroupSortOptionData | null;
@@ -801,6 +806,9 @@ export interface UserGroupInfo {
 
   /** 알림 활성화 여부 */
   notifications: boolean;
+
+  /** 그룹 알림 상세 설정 (프로 플랜) */
+  notificationPreferences?: { [key: string]: boolean } | null;
 }
 
 /**

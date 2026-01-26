@@ -31,6 +31,20 @@ public protocol GroupRemoteDataSourceProtocol {
     photoData: Data?
   ) async throws -> GroupModel
 
+  /// 그룹 알림 활성화 설정 업데이트
+  func updateGroupNotifications(
+    groupId: String,
+    userId: String,
+    enabled: Bool
+  ) async throws
+
+  /// 그룹 알림 상세 설정 업데이트
+  func updateGroupNotificationPreferences(
+    groupId: String,
+    userId: String,
+    preferences: [String: Bool]
+  ) async throws
+
   // MARK: - Query Operations
 
   /// 사용자가 속한 그룹 목록 조회

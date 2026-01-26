@@ -70,6 +70,18 @@ public struct GroupClient: Sendable {
     _ photoData: Data?
   ) async throws -> GroupModel
 
+  /// 그룹 알림 활성화 설정 업데이트
+  public var updateGroupNotifications: @Sendable (
+    _ groupId: String,
+    _ enabled: Bool
+  ) async throws -> Void
+
+  /// 그룹 알림 상세 설정 업데이트
+  public var updateGroupNotificationPreferences: @Sendable (
+    _ groupId: String,
+    _ preferences: [String: Bool]
+  ) async throws -> Void
+
   /// 그룹 배지 클리어 (Fire & Forget)
   public var clearGroupBadge: @Sendable (_ groupId: String) async -> Void = { _ in }
 }
@@ -89,6 +101,8 @@ extension GroupClient: TestDependencyKey {
     leaveGroup: unimplemented("\(Self.self).leaveGroup"),
     deleteGroup: unimplemented("\(Self.self).deleteGroup"),
     updateGroup: unimplemented("\(Self.self).updateGroup"),
+    updateGroupNotifications: unimplemented("\(Self.self).updateGroupNotifications"),
+    updateGroupNotificationPreferences: unimplemented("\(Self.self).updateGroupNotificationPreferences"),
     clearGroupBadge: { _ in }
   )
 
@@ -201,6 +215,12 @@ extension GroupClient: TestDependencyKey {
         createdBy: "preview-user"
       )
     },
+    updateGroupNotifications: { _, _ in
+      try await Task.sleep(for: .seconds(0.2))
+    },
+    updateGroupNotificationPreferences: { _, _ in
+      try await Task.sleep(for: .seconds(0.2))
+    },
     clearGroupBadge: { _ in }
   )
 }
@@ -278,6 +298,28 @@ extension GroupClient: DependencyKey {
           description: description,
           maxMembers: maxMembers,
           photoData: photoData
+        )
+      },
+      updateGroupNotifications: { groupId, enabled in
+        guard let currentUser = await authClient.currentUser() else {
+          throw GroupClientError.unauthorized
+        }
+
+        try await dataSource.updateGroupNotifications(
+          groupId: groupId,
+          userId: currentUser.uid,
+          enabled: enabled
+        )
+      },
+      updateGroupNotificationPreferences: { groupId, preferences in
+        guard let currentUser = await authClient.currentUser() else {
+          throw GroupClientError.unauthorized
+        }
+
+        try await dataSource.updateGroupNotificationPreferences(
+          groupId: groupId,
+          userId: currentUser.uid,
+          preferences: preferences
         )
       },
       clearGroupBadge: { groupId in

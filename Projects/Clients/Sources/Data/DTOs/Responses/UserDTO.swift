@@ -33,6 +33,7 @@ struct UserDTO: Codable {
     let notifications: Bool
     let hasNewActivity: Bool?
     let imageUrl: String?
+    let notificationPreferences: [String: Bool]?
   }
 
   struct FirebaseTimestampDTO: Codable {
@@ -66,6 +67,7 @@ extension UserDTO {
         role: dto.role,
         joinedAt: dto.joinedAt.date,
         notifications: dto.notifications,
+        notificationPreferences: dto.notificationPreferences,
         hasNewActivity: dto.hasNewActivity ?? false,
         imageUrl: dto.imageUrl
       )

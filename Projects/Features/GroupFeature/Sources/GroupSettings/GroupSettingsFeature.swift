@@ -17,6 +17,7 @@ extension GroupSettings {
       public var group: GroupModel
       public let summary: UserGroupInfo?
       public let currentUserId: String
+      public let userPlan: UserPlan
 
       // Members
       var membersState: LoadingState<[UserPublicModel]> = .idle
@@ -37,15 +38,25 @@ extension GroupSettings {
       var selectedMemberForImage: UserPublicModel?
       var editGroup: EditGroupState?
 
+      // Notifications
+      var notificationsEnabled: Bool
+      var notificationPreferences: [String: Bool]
+      var notificationError: String?
+
       public init(
         group: GroupModel,
         summary: UserGroupInfo?,
         currentUserId: String,
+        userPlan: UserPlan,
         preloadedMembers: [UserPublicModel]? = nil
       ) {
         self.group = group
         self.summary = summary
         self.currentUserId = currentUserId
+        self.userPlan = userPlan
+        self.notificationsEnabled = summary?.notifications ?? true
+        self.notificationPreferences = summary?.notificationPreferences
+          ?? GroupNotificationPreferences.allEnabled
 
         if let preloadedMembers = preloadedMembers {
           self.membersState = .loaded(preloadedMembers)
@@ -55,6 +66,10 @@ extension GroupSettings {
 
       var isHost: Bool {
         group.createdBy == currentUserId
+      }
+
+      var isProPlan: Bool {
+        userPlan == .pro
       }
 
       var memberCount: Int {
@@ -114,6 +129,9 @@ extension GroupSettings {
         case editGroupPhotoSelected(PhotosPickerItem?)
         case editGroupSaveTapped
         case editGroupErrorDismissed
+        case groupNotificationsChanged(Bool)
+        case notificationPreferenceChanged(GroupNotificationPreferenceKey, Bool)
+        case notificationSettingsTapped
         case membersTapped
         case inviteTapped
         case pastPromisesTapped
@@ -136,6 +154,12 @@ extension GroupSettings {
         case deleteGroupResponse(Result<Void, Error>)
         case editGroupPhotoLoaded(Data?)
         case editGroupSaveResponse(Result<GroupModel, Error>)
+        case groupNotificationsUpdateFailed(previousValue: Bool, message: String)
+        case notificationPreferenceUpdateFailed(
+          key: GroupNotificationPreferenceKey,
+          previousValue: Bool,
+          message: String
+        )
       }
 
       public enum Delegate: Sendable {
@@ -234,6 +258,48 @@ extension GroupSettings {
             state.editGroup?.error = nil
             return .none
 
+          case .groupNotificationsChanged(let enabled):
+            let previousValue = state.notificationsEnabled
+            state.notificationsEnabled = enabled
+            state.notificationError = nil
+            return .run { [groupClient, groupId = state.group.id, hapticFeedback] send in
+              await hapticFeedback.selection()
+              do {
+                try await groupClient.updateGroupNotifications(groupId, enabled)
+              } catch {
+                await send(.internal(.groupNotificationsUpdateFailed(
+                  previousValue: previousValue,
+                  message: error.localizedDescription
+                )))
+              }
+            }
+
+          case .notificationPreferenceChanged(let key, let enabled):
+            let previousValue = state.notificationPreferences[key.rawValue] ?? true
+            state.notificationPreferences[key.rawValue] = enabled
+            state.notificationError = nil
+            let updatedPreferences = state.notificationPreferences
+            return .run { [groupClient, groupId = state.group.id, hapticFeedback] send in
+              await hapticFeedback.selection()
+              do {
+                try await groupClient.updateGroupNotificationPreferences(
+                  groupId,
+                  updatedPreferences
+                )
+              } catch {
+                await send(.internal(.notificationPreferenceUpdateFailed(
+                  key: key,
+                  previousValue: previousValue,
+                  message: error.localizedDescription
+                )))
+              }
+            }
+
+          case .notificationSettingsTapped:
+            return .run { [hapticFeedback] _ in
+              await hapticFeedback.buttonTap()
+            }
+
           case .inviteTapped:
             state.showInviteSheet = true
             return .run { [hapticFeedback] _ in
@@ -303,6 +369,7 @@ extension GroupSettings {
           case .dismissError:
             state.leaveError = nil
             state.deleteError = nil
+            state.notificationError = nil
             return .none
 
           case .memberImageTapped(let member):
@@ -382,6 +449,20 @@ extension GroupSettings {
           case .editGroupSaveResponse(.failure(let error)):
             state.editGroup?.isSaving = false
             state.editGroup?.error = error.localizedDescription
+            return .run { [hapticFeedback] _ in
+              await hapticFeedback.error()
+            }
+
+          case .groupNotificationsUpdateFailed(let previousValue, let message):
+            state.notificationsEnabled = previousValue
+            state.notificationError = message
+            return .run { [hapticFeedback] _ in
+              await hapticFeedback.error()
+            }
+
+          case .notificationPreferenceUpdateFailed(let key, let previousValue, let message):
+            state.notificationPreferences[key.rawValue] = previousValue
+            state.notificationError = message
             return .run { [hapticFeedback] _ in
               await hapticFeedback.error()
             }
