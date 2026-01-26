@@ -427,7 +427,7 @@ private struct PreviewView: View {
           store.send(.view(.imageDetailDismissed))
         }
       )
-      .presentationBackground(.clear)
+      .presentationBackground(.black)
     }
     .fullScreenCover(
       isPresented: Binding(
@@ -442,7 +442,7 @@ private struct PreviewView: View {
           store.send(.view(.imageDetailDismissed))
         }
       )
-      .presentationBackground(.clear)
+      .presentationBackground(.black)
     }
   }
 

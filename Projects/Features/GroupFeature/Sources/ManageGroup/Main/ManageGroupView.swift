@@ -204,7 +204,7 @@ extension ManageGroup {
             store.send(.view(.imageDetailDismissed))
           }
         )
-        .presentationBackground(.clear)
+        .presentationBackground(.black)
       }
       .fullScreenCover(
         isPresented: Binding(
@@ -219,7 +219,7 @@ extension ManageGroup {
             store.send(.view(.imageDetailDismissed))
           }
         )
-        .presentationBackground(.clear)
+        .presentationBackground(.black)
       }
     }
 

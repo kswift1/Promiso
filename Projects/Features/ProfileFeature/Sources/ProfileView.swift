@@ -69,7 +69,7 @@ extension Profile {
             store.send(.view(.imageDetailDismissed))
           }
         )
-        .presentationBackground(.clear)
+        .presentationBackground(.black)
       }
     }
 
