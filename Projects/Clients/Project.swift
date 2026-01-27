@@ -28,7 +28,10 @@ let project = Project(
       sources: ["Tests/**"],
       dependencies: [
         .target(name: "Clients")
-      ]
+      ],
+      settings: .settings(
+        base: ["CODE_SIGNING_ALLOWED": "NO"]
+      )
     )
   ]
 )

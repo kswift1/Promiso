@@ -9,7 +9,7 @@
 //  - State의 computed properties
 //
 //  ## 사용처
-//  - **HomeView**: 오늘 약속, 응답 필요 약속, 다가오는 약속 표시
+//  - **HomeView**: 약속 목록, 필터링, 타임라인 표시
 //  - **RootTabFeature**: 응답 필요 배지 카운트
 //
 //  ## 테스트 목적
@@ -44,12 +44,18 @@ struct HomeFeatureStateTests {
   /// 테스트용 약속 생성
   private func makePromise(
     id: String = "test-promise",
+    groupId: String = "group-id",
     startAt: Date = Date().addingTimeInterval(3600),
     isConfirmed: Bool = false,
-    voteUntil: Date = Date().addingTimeInterval(1800)
+    voteUntil: Date = Date().addingTimeInterval(1800),
+    currentUserVoted: Bool = false
   ) -> PromiseModel {
+    var accepted: [String] = isConfirmed ? ["user1", "user2"] : []
+    if currentUserVoted {
+      accepted.append("current-user")
+    }
     let votes = PromiseVotesModel(
-      accepted: isConfirmed ? ["user1", "user2"] : [],
+      accepted: accepted,
       declined: [],
       until: voteUntil
     )
@@ -57,7 +63,7 @@ struct HomeFeatureStateTests {
       id: id,
       title: "테스트 약속",
       hostId: "host-id",
-      groupId: "group-id",
+      groupId: groupId,
       minimumParticipants: 2,
       votes: votes,
       startAt: startAt
@@ -66,179 +72,175 @@ struct HomeFeatureStateTests {
 
   /// 테스트용 State 생성
   private func makeState(
-    todaysPromises: LoadingState<[PromiseModel]> = .idle,
-    pendingResponses: LoadingState<[PromiseModel]> = .idle,
-    upcomingPromises: LoadingState<[PromiseModel]> = .idle
+    promisesState: LoadingState<[PromiseModel]> = .idle,
+    selectedStatusFilter: HomeModels.StatusFilter = .all
   ) -> Home.Feature.State {
     var state = Home.Feature.State(currentUser: makeCurrentUser())
-    state.todaysPromisesState = todaysPromises
-    state.pendingResponsesState = pendingResponses
-    state.upcomingPromisesState = upcomingPromises
+    state.promisesState = promisesState
+    state.selectedStatusFilter = selectedStatusFilter
     return state
   }
 
-  // MARK: - todaysPromises 테스트
+  // MARK: - allPromises 테스트
 
-  @Test("확정된 오늘 약속만 필터링")
-  func todaysPromises_filtersOnlyConfirmed() {
-    let confirmedPromise = makePromise(id: "confirmed", isConfirmed: true)
-    let pendingPromise = makePromise(id: "pending", isConfirmed: false)
+  @Test("loaded 상태에서 약속 목록 반환")
+  func allPromises_whenLoaded_returnsPromises() {
+    let promise1 = makePromise(id: "1")
+    let promise2 = makePromise(id: "2")
 
-    let state = makeState(
-      todaysPromises: .loaded([confirmedPromise, pendingPromise])
-    )
+    let state = makeState(promisesState: .loaded([promise1, promise2]))
 
-    #expect(state.todaysPromises.count == 1)
-    #expect(state.todaysPromises.first?.id == "confirmed")
+    #expect(state.allPromises.count == 2)
   }
 
-  @Test("오늘 약속 시간순 정렬")
-  func todaysPromises_sortsByStartTime() {
-    let laterPromise = makePromise(id: "later", startAt: Date().addingTimeInterval(7200), isConfirmed: true)
-    let earlierPromise = makePromise(id: "earlier", startAt: Date().addingTimeInterval(3600), isConfirmed: true)
-
-    let state = makeState(
-      todaysPromises: .loaded([laterPromise, earlierPromise])
-    )
-
-    #expect(state.todaysPromises.count == 2)
-    #expect(state.todaysPromises[0].id == "earlier")
-    #expect(state.todaysPromises[1].id == "later")
-  }
-
-  @Test("로딩 상태에서 빈 배열 반환")
-  func todaysPromises_whenLoading_returnsEmpty() {
-    let state = makeState(todaysPromises: .loading)
-    #expect(state.todaysPromises.isEmpty)
+  @Test("loading 상태에서 빈 배열 반환")
+  func allPromises_whenLoading_returnsEmpty() {
+    let state = makeState(promisesState: .loading)
+    #expect(state.allPromises.isEmpty)
   }
 
   @Test("idle 상태에서 빈 배열 반환")
-  func todaysPromises_whenIdle_returnsEmpty() {
-    let state = makeState(todaysPromises: .idle)
-    #expect(state.todaysPromises.isEmpty)
+  func allPromises_whenIdle_returnsEmpty() {
+    let state = makeState(promisesState: .idle)
+    #expect(state.allPromises.isEmpty)
   }
 
-  // MARK: - pendingResponses 테스트
+  // MARK: - filteredPromises 테스트
 
-  @Test("응답 필요 약속 마감순 정렬")
-  func pendingResponses_sortsByVoteUntil() {
-    let laterDeadline = makePromise(id: "later", voteUntil: Date().addingTimeInterval(7200))
-    let earlierDeadline = makePromise(id: "earlier", voteUntil: Date().addingTimeInterval(3600))
+  @Test("전체 필터: 과거 약속 제외")
+  func filteredPromises_allFilter_excludesPast() {
+    let futurePromise = makePromise(id: "future", startAt: Date().addingTimeInterval(3600))
+    let pastPromise = makePromise(id: "past", startAt: Date().addingTimeInterval(-3600))
 
     let state = makeState(
-      pendingResponses: .loaded([laterDeadline, earlierDeadline])
+      promisesState: .loaded([futurePromise, pastPromise]),
+      selectedStatusFilter: .all
     )
 
-    #expect(state.pendingResponses.count == 2)
-    #expect(state.pendingResponses[0].id == "earlier") // 마감 임박순
-    #expect(state.pendingResponses[1].id == "later")
+    #expect(state.filteredPromises.count == 1)
+    #expect(state.filteredPromises.first?.id == "future")
   }
 
-  // MARK: - upcomingPromises 테스트
-
-  @Test("확정된 다가오는 약속만 필터링")
-  func upcomingPromises_filtersOnlyConfirmed() {
-    let confirmedPromise = makePromise(id: "confirmed", isConfirmed: true)
-    let pendingPromise = makePromise(id: "pending", isConfirmed: false)
+  @Test("확정됨 필터: 확정된 약속만")
+  func filteredPromises_confirmedFilter_onlyConfirmed() {
+    let confirmedPromise = makePromise(id: "confirmed", startAt: Date().addingTimeInterval(3600), isConfirmed: true)
+    let pendingPromise = makePromise(id: "pending", startAt: Date().addingTimeInterval(3600), isConfirmed: false)
 
     let state = makeState(
-      upcomingPromises: .loaded([confirmedPromise, pendingPromise])
+      promisesState: .loaded([confirmedPromise, pendingPromise]),
+      selectedStatusFilter: .confirmed
     )
 
-    #expect(state.upcomingPromises.count == 1)
-    #expect(state.upcomingPromises.first?.id == "confirmed")
-  }
-
-  @Test("다가오는 약속 시간순 정렬")
-  func upcomingPromises_sortsByStartTime() {
-    let laterPromise = makePromise(id: "later", startAt: Date().addingTimeInterval(7200), isConfirmed: true)
-    let earlierPromise = makePromise(id: "earlier", startAt: Date().addingTimeInterval(3600), isConfirmed: true)
-
-    let state = makeState(
-      upcomingPromises: .loaded([laterPromise, earlierPromise])
-    )
-
-    #expect(state.upcomingPromises.count == 2)
-    #expect(state.upcomingPromises[0].id == "earlier")
-    #expect(state.upcomingPromises[1].id == "later")
+    #expect(state.filteredPromises.count == 1)
+    #expect(state.filteredPromises.first?.id == "confirmed")
   }
 
   // MARK: - isLoading 테스트
 
-  @Test("아무것도 로딩 중이 아니면 false")
-  func isLoading_whenNothingLoading_returnsFalse() {
-    let state = makeState(
-      todaysPromises: .loaded([]),
-      pendingResponses: .loaded([]),
-      upcomingPromises: .loaded([])
-    )
+  @Test("promisesState가 loading이면 true")
+  func isLoading_whenLoading_returnsTrue() {
+    let state = makeState(promisesState: .loading)
+    #expect(state.isLoading == true)
+  }
+
+  @Test("promisesState가 loaded이면 false")
+  func isLoading_whenLoaded_returnsFalse() {
+    let state = makeState(promisesState: .loaded([]))
     #expect(state.isLoading == false)
   }
 
-  @Test("오늘 약속 로딩 중이면 true")
-  func isLoading_whenTodaysLoading_returnsTrue() {
-    let state = makeState(
-      todaysPromises: .loading,
-      pendingResponses: .loaded([]),
-      upcomingPromises: .loaded([])
-    )
-    #expect(state.isLoading == true)
+  @Test("promisesState가 idle이면 false")
+  func isLoading_whenIdle_returnsFalse() {
+    let state = makeState(promisesState: .idle)
+    #expect(state.isLoading == false)
   }
 
-  @Test("응답 필요 약속 로딩 중이면 true")
-  func isLoading_whenPendingLoading_returnsTrue() {
-    let state = makeState(
-      todaysPromises: .loaded([]),
-      pendingResponses: .loading,
-      upcomingPromises: .loaded([])
-    )
-    #expect(state.isLoading == true)
-  }
+  // MARK: - overviewData 테스트
 
-  @Test("다가오는 약속 로딩 중이면 true")
-  func isLoading_whenUpcomingLoading_returnsTrue() {
-    let state = makeState(
-      todaysPromises: .loaded([]),
-      pendingResponses: .loaded([]),
-      upcomingPromises: .loading
+  @Test("오늘 확정 약속 개수 계산")
+  func overviewData_todayCount() {
+    let todayConfirmed = makePromise(
+      id: "today-confirmed",
+      startAt: Date().addingTimeInterval(3600),
+      isConfirmed: true
     )
-    #expect(state.isLoading == true)
-  }
+    let todayPending = makePromise(
+      id: "today-pending",
+      startAt: Date().addingTimeInterval(7200),
+      isConfirmed: false
+    )
 
-  @Test("모두 로딩 중이면 true")
-  func isLoading_whenAllLoading_returnsTrue() {
-    let state = makeState(
-      todaysPromises: .loading,
-      pendingResponses: .loading,
-      upcomingPromises: .loading
-    )
-    #expect(state.isLoading == true)
+    let state = makeState(promisesState: .loaded([todayConfirmed, todayPending]))
+
+    #expect(state.overviewData.todayCount == 1)
   }
 
   // MARK: - pendingResponseCount 테스트
 
-  @Test("응답 필요 약속 개수 반환")
+  @Test("응답 필요 약속 개수")
   func pendingResponseCount_returnsCorrectCount() {
-    let promise1 = makePromise(id: "1", voteUntil: Date().addingTimeInterval(1800))
-    let promise2 = makePromise(id: "2", voteUntil: Date().addingTimeInterval(3600))
-    let promise3 = makePromise(id: "3", voteUntil: Date().addingTimeInterval(5400))
-
-    let state = makeState(
-      pendingResponses: .loaded([promise1, promise2, promise3])
+    // 응답 안 한 약속 (voteUntil이 미래)
+    let needResponse = makePromise(
+      id: "need-response",
+      startAt: Date().addingTimeInterval(86400),
+      voteUntil: Date().addingTimeInterval(3600),
+      currentUserVoted: false
+    )
+    // 이미 응답한 약속
+    let alreadyVoted = makePromise(
+      id: "already-voted",
+      startAt: Date().addingTimeInterval(86400),
+      voteUntil: Date().addingTimeInterval(3600),
+      currentUserVoted: true
     )
 
-    #expect(state.pendingResponseCount == 3)
+    let state = makeState(promisesState: .loaded([needResponse, alreadyVoted]))
+
+    #expect(state.pendingResponseCount == 1)
   }
 
-  @Test("응답 필요 약속 없으면 0 반환")
-  func pendingResponseCount_whenEmpty_returnsZero() {
-    let state = makeState(pendingResponses: .loaded([]))
+  @Test("응답 필요 약속 없으면 0")
+  func pendingResponseCount_whenAllVoted_returnsZero() {
+    let alreadyVoted = makePromise(
+      id: "voted",
+      voteUntil: Date().addingTimeInterval(3600),
+      currentUserVoted: true
+    )
+
+    let state = makeState(promisesState: .loaded([alreadyVoted]))
+
     #expect(state.pendingResponseCount == 0)
   }
 
-  @Test("로딩 중이면 0 반환")
-  func pendingResponseCount_whenLoading_returnsZero() {
-    let state = makeState(pendingResponses: .loading)
-    #expect(state.pendingResponseCount == 0)
+  // MARK: - timelineData 테스트
+
+  @Test("날짜별 그룹화")
+  func timelineData_groupsByDate() {
+    let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date())!
+    let dayAfter = Calendar.current.date(byAdding: .day, value: 2, to: Date())!
+
+    let promise1 = makePromise(id: "1", startAt: tomorrow)
+    let promise2 = makePromise(id: "2", startAt: tomorrow.addingTimeInterval(3600))
+    let promise3 = makePromise(id: "3", startAt: dayAfter)
+
+    let state = makeState(promisesState: .loaded([promise1, promise2, promise3]))
+
+    #expect(state.timelineData.count == 2)
+    #expect(state.timelineData[0].promises.count == 2)
+    #expect(state.timelineData[1].promises.count == 1)
+  }
+
+  @Test("날짜 오름차순 정렬")
+  func timelineData_sortsByDateAscending() {
+    let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date())!
+    let dayAfter = Calendar.current.date(byAdding: .day, value: 2, to: Date())!
+
+    let laterPromise = makePromise(id: "later", startAt: dayAfter)
+    let earlierPromise = makePromise(id: "earlier", startAt: tomorrow)
+
+    let state = makeState(promisesState: .loaded([laterPromise, earlierPromise]))
+
+    #expect(state.timelineData[0].promises.first?.id == "earlier")
+    #expect(state.timelineData[1].promises.first?.id == "later")
   }
 }

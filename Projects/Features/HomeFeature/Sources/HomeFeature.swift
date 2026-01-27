@@ -37,12 +37,15 @@ extension Home {
       var hasLoadedOnce: Bool = false
 
       // MARK: Filter
+      /// 선택된 그룹 ID (nil = 전체)
+      var selectedGroupId: String? = nil
+
       /// 선택된 상태 필터
-      var selectedStatusFilter: StatusFilter = .all
+      var selectedStatusFilter: HomeModels.StatusFilter = .all
 
       // MARK: UI
       /// 스크롤 타겟
-      var scrollTarget: ScrollTarget? = nil
+      var scrollTarget: HomeModels.ScrollTarget? = nil
 
       public init(currentUser: UserPrivateModel) {
         self.currentUser = currentUser
@@ -64,11 +67,13 @@ extension Home {
         /// Pull to refresh
         case refreshTriggered
         /// 약속 카드 탭
-        case promiseTapped(String)  // promiseId만 전달 (안전성)
+        case promiseTapped(String)
         /// 응답 필요 배너 탭
         case needResponseBannerTapped
+        /// 그룹 필터 변경
+        case groupFilterChanged(String?)
         /// 상태 필터 변경
-        case statusFilterChanged(StatusFilter)
+        case statusFilterChanged(HomeModels.StatusFilter)
         /// 필터 초기화
         case resetFilters
         /// 스크롤 타겟 초기화
@@ -108,7 +113,6 @@ extension Home {
             return .send(.internal(.fetchPromises))
 
           case .promiseTapped(let promiseId):
-            // promiseId로 약속 찾기
             guard let promise = state.allPromises.first(where: { $0.id == promiseId }) else {
               return .none
             }
@@ -118,13 +122,14 @@ extension Home {
             )))
 
           case .needResponseBannerTapped:
-            // 필터를 응답 필요로 변경
             state.selectedStatusFilter = .needResponse
-
-            // 응답 필요한 첫 번째 날짜로 스크롤
             if let firstSection = state.timelineData.first {
               state.scrollTarget = .date(firstSection.day)
             }
+            return .none
+
+          case .groupFilterChanged(let groupId):
+            state.selectedGroupId = groupId
             return .none
 
           case .statusFilterChanged(let filter):
@@ -132,6 +137,7 @@ extension Home {
             return .none
 
           case .resetFilters:
+            state.selectedGroupId = nil
             state.selectedStatusFilter = .all
             return .none
 
@@ -147,7 +153,6 @@ extension Home {
 
             let groupIds = state.currentUser.groups.map { $0.id }
 
-            // 그룹이 없으면 빈 결과 반환
             guard !groupIds.isEmpty else {
               state.promisesState = .loaded([])
               return .none
@@ -155,7 +160,6 @@ extension Home {
 
             return .run { [promiseClient] send in
               do {
-                // 단일 API 호출 (80개 limit)
                 let promises = try await promiseClient.getUpcomingPromises(groupIds, 80)
                 await send(.internal(.promisesResponse(.success(promises))))
               } catch {
@@ -173,7 +177,6 @@ extension Home {
             return .none
 
           case .scrollToNeedResponse:
-            // 스크롤 처리는 View에서 ScrollViewReader로 구현
             return .none
           }
 
@@ -193,9 +196,14 @@ extension Home.Feature.State {
     promisesState.value ?? []
   }
 
-  /// 필터링된 약속 (상태 필터만 적용)
+  /// 필터링된 약속 (id 기반 안전)
   var filteredPromises: [PromiseModel] {
     var promises = allPromises
+
+    // 그룹 필터 적용
+    if let groupId = selectedGroupId {
+      promises = promises.filter { $0.groupId == groupId }
+    }
 
     // 상태 필터 적용
     switch selectedStatusFilter {
@@ -217,7 +225,7 @@ extension Home.Feature.State {
   }
 
   /// Overview 데이터
-  var overviewData: OverviewData {
+  var overviewData: HomeModels.OverviewData {
     let todayPromises = allPromises.filter {
       $0.isConfirmed &&
       Calendar.current.isDate($0.startAt, inSameDayAs: Date())
@@ -233,86 +241,37 @@ extension Home.Feature.State {
       .sorted { $0.startAt < $1.startAt }
       .first
 
-    return OverviewData(
+    return HomeModels.OverviewData(
       todayCount: todayPromises.count,
       nextPromise: nextPromise,
       needResponseCount: needResponsePromises.count
     )
   }
 
-  /// Hero 데이터 (홈 상단 "지금 가장 중요한 약속")
-  /// 우선순위: departureSoon > todayNext > needResponse
-  /// LiveActivity는 BottomAccessoryView에서 처리하므로 제외
-  var heroData: HeroData? {
+  /// Critical Zone 데이터
+  var criticalZoneData: HomeModels.CriticalZoneData? {
     let now = Date()
-    let calendar = Calendar.current
 
-    // 1순위: T-30분 이내 임박 약속
-    let departureSoonPromises = allPromises
-      .filter { $0.isConfirmed && !$0.isPast }
-      .filter {
-        let interval = $0.startAt.timeIntervalSince(now)
-        return interval > 0 && interval <= 1800  // 30분 = 1800초
-      }
-      .sorted { $0.startAt < $1.startAt }
-
-    if let soonPromise = departureSoonPromises.first {
-      return HeroData(priority: .departureSoon, promise: soonPromise)
+    if let livePromise = allPromises.first(where: { $0.isRealtimeShareable }) {
+      return HomeModels.CriticalZoneData(reason: .liveActivity, promise: livePromise)
     }
 
-    // 2순위: 오늘 가장 가까운 확정 약속
-    let todayConfirmedPromises = allPromises
-      .filter { $0.isConfirmed && !$0.isPast }
-      .filter { calendar.isDateInToday($0.startAt) }
-      .filter { $0.startAt > now }
-      .sorted { $0.startAt < $1.startAt }
-
-    if let todayPromise = todayConfirmedPromises.first {
-      return HeroData(priority: .todayNext, promise: todayPromise)
+    if let ongoingPromise = allPromises.first(where: { $0.isOngoing }) {
+      return HomeModels.CriticalZoneData(reason: .inProgress, promise: ongoingPromise)
     }
 
-    // 3순위: 응답 필요한 약속 중 가장 빠른 것
-    let needResponsePromises = allPromises
-      .filter {
-        $0.myVoteStatus(userId: currentUser.userId) == .pending && !$0.isVotingClosed
-      }
-      .sorted { $0.startAt < $1.startAt }
-
-    if let needResponsePromise = needResponsePromises.first {
-      return HeroData(priority: .needResponse, promise: needResponsePromise)
+    if let soonPromise = allPromises.first(where: {
+      let interval = $0.startAt.timeIntervalSince(now)
+      return interval > 0 && interval <= 1800
+    }) {
+      return HomeModels.CriticalZoneData(reason: .departureSoon, promise: soonPromise)
     }
 
     return nil
   }
 
-  /// Quick Insights 데이터
-  var quickInsightsData: QuickInsightsData {
-    let calendar = Calendar.current
-    let now = Date()
-    let weekStart = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now))!
-    let weekEnd = calendar.date(byAdding: .day, value: 7, to: weekStart)!
-
-    let todayCount = allPromises
-      .filter { $0.isConfirmed && calendar.isDateInToday($0.startAt) && !$0.isPast }
-      .count
-
-    let needResponseCount = allPromises
-      .filter { $0.myVoteStatus(userId: currentUser.userId) == .pending && !$0.isVotingClosed }
-      .count
-
-    let thisWeekCount = allPromises
-      .filter { $0.isConfirmed && $0.startAt >= now && $0.startAt < weekEnd }
-      .count
-
-    return QuickInsightsData(
-      todayCount: todayCount,
-      needResponseCount: needResponseCount,
-      thisWeekCount: thisWeekCount
-    )
-  }
-
-  /// Timeline 데이터 (날짜별 그룹화, dayKey로 안전)
-  var timelineData: [TimelineSection] {
+  /// Timeline 데이터 (날짜별 그룹화)
+  var timelineData: [HomeModels.TimelineSection] {
     let grouped = Dictionary(grouping: filteredPromises) { promise in
       Calendar.current.startOfDay(for: promise.startAt)
     }
@@ -320,16 +279,16 @@ extension Home.Feature.State {
     return grouped
       .sorted { $0.key < $1.key }
       .map { day, promises in
-        TimelineSection(
-          day: day,  // startOfDay로 정규화
+        HomeModels.TimelineSection(
+          day: day,
           promises: promises.sorted { $0.startAt < $1.startAt }
         )
       }
   }
 
-  /// 그룹이 있는지 여부
-  var hasGroups: Bool {
-    !currentUser.groups.isEmpty
+  /// 사용 가능한 그룹 목록
+  var availableGroups: [HomeModels.GroupInfo] {
+    currentUser.groups.map { HomeModels.GroupInfo(id: $0.id, name: $0.name) }
   }
 
   /// 로딩 중 여부
@@ -346,10 +305,8 @@ extension Home.Feature.State {
 // MARK: - Root View
 
 extension Home {
-
   public struct RootView: View {
     @Bindable private var store: StoreOf<Feature>
-    @State private var showFAB: Bool = true
 
     public init(store: StoreOf<Feature>) {
       self.store = store
@@ -358,39 +315,17 @@ extension Home {
     public var body: some View {
       ScrollView {
         ScrollViewReader { proxy in
-          LazyVStack(spacing: 16, pinnedViews: []) {
-            // Hero Section (지금 가장 중요한 약속)
-            if let heroData = store.heroData {
-              HeroCard(
-                data: heroData,
-                onTap: {
-                  store.send(.view(.promiseTapped(heroData.promise.id)))
-                },
-                onActionTap: {
-                  store.send(.view(.promiseTapped(heroData.promise.id)))
-                }
-              )
-              .padding(.horizontal, 16)
-              .padding(.top, 8)
-            }
-
-            // Quick Insights (가로 스크롤)
-            QuickInsightsSection(
-              data: store.quickInsightsData,
-              onInsightTap: { insightType in
-                handleInsightTap(insightType)
-              }
-            )
-            .padding(.top, store.heroData == nil ? 8 : 0)
-
-            // 상태 필터 (Smart Pills)
-            SmartPillsFilter(
+          LazyVStack(spacing: 20, pinnedViews: []) {
+            // Status Filter
+            CategoryFilterBar<HomeModels.StatusFilter>(
               selection: Binding(
                 get: { store.selectedStatusFilter },
                 set: { store.send(.view(.statusFilterChanged($0))) }
               ),
               counts: filterCounts
             )
+            .padding(.top, 8)
+            .padding(.horizontal, 16)
 
             // Timeline
             if store.isLoading && !store.hasLoadedOnce {
@@ -398,24 +333,8 @@ extension Home {
             } else if let error = store.promisesState.error {
               errorView(error: error)
             } else if store.filteredPromises.isEmpty {
-              // Warm Empty State
-              if store.allPromises.isEmpty {
-                WarmEmptyState(
-                  style: store.hasGroups ? .noPromises : .noGroups,
-                  onPrimaryAction: {
-                    // TODO: 새 약속 만들기 또는 그룹 찾기
-                  }
-                )
-              } else {
-                WarmEmptyState(
-                  style: .noFilterResults,
-                  onPrimaryAction: {
-                    store.send(.view(.resetFilters))
-                  }
-                )
-              }
+              emptyStateView
             } else {
-              // Timeline 섹션들
               ForEach(store.timelineData) { section in
                 TimelineSectionView(
                   section: section,
@@ -429,9 +348,8 @@ extension Home {
               }
             }
 
-            // 하단 여백 (FAB 공간)
             Color.clear
-              .frame(height: 100)
+              .frame(height: 80)
           }
           .onChange(of: store.scrollTarget) { _, target in
             guard let target = target else { return }
@@ -465,24 +383,8 @@ extension Home {
           )
         }
       }
-      .fabOverlay(isVisible: showFAB) {
-        // TODO: 새 약속 만들기 화면으로 이동
-      }
       .onAppear {
         store.send(.view(.onAppear))
-      }
-    }
-
-    // MARK: - Handlers
-
-    private func handleInsightTap(_ type: InsightType) {
-      switch type {
-      case .today:
-        store.send(.view(.statusFilterChanged(.confirmed)))
-      case .needResponse:
-        store.send(.view(.statusFilterChanged(.needResponse)))
-      case .thisWeek:
-        store.send(.view(.statusFilterChanged(.all)))
       }
     }
 
@@ -525,9 +427,40 @@ extension Home {
       .padding(.horizontal, 24)
     }
 
+    // MARK: - Empty State View
+
+    @ViewBuilder
+    private var emptyStateView: some View {
+      VStack(spacing: 16) {
+        Image(systemName: emptyStateIcon)
+          .font(.system(size: 40))
+          .foregroundStyle(.secondary)
+
+        Text(emptyStateTitle)
+          .font(.headline)
+          .foregroundStyle(.primary)
+
+        Text(emptyStateMessage)
+          .font(.subheadline)
+          .foregroundStyle(.secondary)
+          .multilineTextAlignment(.center)
+          .lineSpacing(4)
+
+        if store.selectedGroupId != nil || store.selectedStatusFilter != .all {
+          Button("필터 초기화") {
+            store.send(.view(.resetFilters))
+          }
+          .buttonStyle(.bordered)
+        }
+      }
+      .frame(maxWidth: .infinity)
+      .padding(.vertical, 60)
+      .padding(.horizontal, 24)
+    }
+
     // MARK: - Computed Properties
 
-    private var filterCounts: [StatusFilter: Int] {
+    private var filterCounts: [HomeModels.StatusFilter: Int] {
       let all = store.allPromises.filter { !$0.isPast }
 
       return [
@@ -538,6 +471,30 @@ extension Home {
         .confirmed: all.filter { $0.isConfirmed }.count,
         .inProgress: all.filter { !$0.isConfirmed && !$0.isVotingClosed }.count
       ]
+    }
+
+    private var emptyStateIcon: String {
+      if store.allPromises.isEmpty {
+        return "calendar"
+      } else {
+        return "line.3.horizontal.decrease.circle"
+      }
+    }
+
+    private var emptyStateTitle: String {
+      if store.allPromises.isEmpty {
+        return "약속이 없어요"
+      } else {
+        return "필터 결과가 없어요"
+      }
+    }
+
+    private var emptyStateMessage: String {
+      if store.allPromises.isEmpty {
+        return "새로운 약속을 만들어보세요\n+ 버튼을 눌러 시작할 수 있어요"
+      } else {
+        return "선택한 필터 조건에 맞는\n약속이 없습니다"
+      }
     }
 
     private func dayKeyString(from date: Date) -> String {
