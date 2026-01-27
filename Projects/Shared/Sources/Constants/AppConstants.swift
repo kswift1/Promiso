@@ -52,6 +52,8 @@ public enum AppConstants {
     public static let deviceId = "promiso.device.id"
     /// 실시간 공유 정보 팝오버 본 적 있는지
     public static let hasSeenLiveActivityInfo = "promiso.hasSeenLiveActivityInfo"
+    /// 24시간 형식 사용 여부
+    public static let use24HourFormat = "promiso.use24HourFormat"
   }
 
   // MARK: - Notification Names

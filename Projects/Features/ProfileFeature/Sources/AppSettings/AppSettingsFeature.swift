@@ -27,7 +27,7 @@ extension AppSettings {
     @ObservableState
     public struct State: Equatable {
       /// 24시간 형식 사용 여부 (@Shared로 앱 전체 공유, 기본값: 12시간)
-      @Shared(.appStorage("use24HourFormat")) public var use24HourFormat: Bool = false
+      @Shared(.appStorage(AppConstants.UserDefaults.use24HourFormat)) public var use24HourFormat: Bool = false
 
       public init() {}
     }
@@ -98,7 +98,7 @@ extension AppSettings {
         } header: {
           Text("시간 표시")
         } footer: {
-          Text("앱 전체에서 사용되는 시간 표시 형식을 설정합니다.")
+          Text("앱 전체에서 사용되는 시간 표시 형식을 설정합니다.\n앱을 재시작하면 적용됩니다.")
         }
       }
       .navigationTitle("앱 설정")
