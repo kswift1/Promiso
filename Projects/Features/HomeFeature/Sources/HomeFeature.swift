@@ -66,10 +66,14 @@ extension Home {
         case onAppear
         /// Pull to refresh
         case refreshTriggered
-        /// 약속 카드 탭
-        case promiseTapped(String)
-        /// 응답 필요 배너 탭
-        case needResponseBannerTapped
+        /// 오늘 일정 약속 카드 탭
+        case todayPromiseTapped(PromiseModel)
+        /// 응답 필요 약속 카드 탭 (그룹 탭으로 이동)
+        case pendingPromiseTapped(PromiseModel)
+        /// 다가오는 약속 카드 탭
+        case upcomingPromiseTapped(PromiseModel)
+        /// "전체 보기" 버튼 탭
+        case seeAllUpcomingTapped
         /// 그룹 필터 변경
         case groupFilterChanged(String?)
         /// 상태 필터 변경
@@ -92,8 +96,10 @@ extension Home {
       public enum Delegate: Sendable {
         /// 약속 상세로 네비게이션
         case navigateToPromise(promiseId: String, groupId: String)
-        /// 그룹 탭으로 네비게이션
-        case navigateToGroup(groupId: String)
+        /// 그룹 탭의 특정 약속으로 네비게이션 (응답 필요 카드에서)
+        case navigateToGroupWithPromise(groupId: String, promiseId: String)
+        /// 모든 약속 보기 화면으로 네비게이션
+        case navigateToAllPromises
       }
     }
 
@@ -112,21 +118,26 @@ extension Home {
           case .refreshTriggered:
             return .send(.internal(.fetchPromises))
 
-          case .promiseTapped(let promiseId):
-            guard let promise = state.allPromises.first(where: { $0.id == promiseId }) else {
-              return .none
-            }
+          case .todayPromiseTapped(let promise):
             return .send(.delegate(.navigateToPromise(
-              promiseId: promiseId,
+              promiseId: promise.id,
               groupId: promise.groupId
             )))
 
-          case .needResponseBannerTapped:
-            state.selectedStatusFilter = .needResponse
-            if let firstSection = state.timelineData.first {
-              state.scrollTarget = .date(firstSection.day)
-            }
-            return .none
+          case .pendingPromiseTapped(let promise):
+            return .send(.delegate(.navigateToGroupWithPromise(
+              groupId: promise.groupId,
+              promiseId: promise.id
+            )))
+
+          case .upcomingPromiseTapped(let promise):
+            return .send(.delegate(.navigateToPromise(
+              promiseId: promise.id,
+              groupId: promise.groupId
+            )))
+
+          case .seeAllUpcomingTapped:
+            return .send(.delegate(.navigateToAllPromises))
 
           case .groupFilterChanged(let groupId):
             state.selectedGroupId = groupId
@@ -196,6 +207,29 @@ extension Home.Feature.State {
     promisesState.value ?? []
   }
 
+  /// 오늘의 확정 약속 (시간순 정렬)
+  var todayPromises: [PromiseModel] {
+    allPromises
+      .filter { $0.isConfirmed && Calendar.current.isDateInToday($0.startAt) }
+      .sorted { $0.startAt < $1.startAt }
+  }
+
+  /// 응답 필요 약속 (투표 마감 임박순)
+  var pendingPromises: [PromiseModel] {
+    allPromises
+      .filter {
+        $0.myVoteStatus(userId: currentUser.userId) == .pending && !$0.isVotingClosed
+      }
+      .sorted { $0.votes.until < $1.votes.until }
+  }
+
+  /// 다가오는 확정 약속 (오늘 제외, 날짜순)
+  var upcomingPromises: [PromiseModel] {
+    allPromises
+      .filter { $0.isConfirmed && !Calendar.current.isDateInToday($0.startAt) && !$0.isPast }
+      .sorted { $0.startAt < $1.startAt }
+  }
+
   /// 필터링된 약속 (id 기반 안전)
   var filteredPromises: [PromiseModel] {
     var promises = allPromises
@@ -226,25 +260,14 @@ extension Home.Feature.State {
 
   /// Overview 데이터
   var overviewData: HomeModels.OverviewData {
-    let todayPromises = allPromises.filter {
-      $0.isConfirmed &&
-      Calendar.current.isDate($0.startAt, inSameDayAs: Date())
-    }
-
-    let needResponsePromises = allPromises.filter {
-      $0.myVoteStatus(userId: currentUser.userId) == .pending &&
-      !$0.isVotingClosed
-    }
-
     let nextPromise = todayPromises
       .filter { $0.startAt > Date() }
-      .sorted { $0.startAt < $1.startAt }
       .first
 
     return HomeModels.OverviewData(
       todayCount: todayPromises.count,
       nextPromise: nextPromise,
-      needResponseCount: needResponsePromises.count
+      needResponseCount: pendingPromises.count
     )
   }
 
@@ -314,67 +337,56 @@ extension Home {
 
     public var body: some View {
       ScrollView {
-        ScrollViewReader { proxy in
-          LazyVStack(spacing: 20, pinnedViews: []) {
-            // Status Filter
-            CategoryFilterBar<HomeModels.StatusFilter>(
-              selection: Binding(
-                get: { store.selectedStatusFilter },
-                set: { store.send(.view(.statusFilterChanged($0))) }
-              ),
-              counts: filterCounts
+        LazyVStack(spacing: 20) {
+          if store.isLoading && !store.hasLoadedOnce {
+            loadingView
+          } else if let error = store.promisesState.error {
+            errorView(error: error)
+          } else if store.allPromises.isEmpty {
+            emptyStateView
+          } else {
+            // 오늘의 일정 카드
+            TodayScheduleCard(
+              promises: store.todayPromises,
+              onPromiseTap: { promise in
+                store.send(.view(.todayPromiseTapped(promise)))
+              }
             )
-            .padding(.top, 8)
             .padding(.horizontal, 16)
 
-            // Timeline
-            if store.isLoading && !store.hasLoadedOnce {
-              loadingView
-            } else if let error = store.promisesState.error {
-              errorView(error: error)
-            } else if store.filteredPromises.isEmpty {
-              emptyStateView
-            } else {
-              ForEach(store.timelineData) { section in
-                TimelineSectionView(
-                  section: section,
-                  currentUserId: store.currentUser.userId,
-                  onPromiseTap: { promise in
-                    store.send(.view(.promiseTapped(promise.id)))
-                  }
-                )
-                .padding(.horizontal, 16)
-                .id(section.id)
+            // 응답 필요 섹션
+            PendingSection(
+              promises: store.pendingPromises,
+              onPromiseTap: { promise in
+                store.send(.view(.pendingPromiseTapped(promise)))
               }
-            }
+            )
+            .padding(.horizontal, 16)
 
-            Color.clear
-              .frame(height: 80)
-          }
-          .onChange(of: store.scrollTarget) { _, target in
-            guard let target = target else { return }
-
-            withAnimation {
-              switch target {
-              case .needResponse:
-                if let firstSection = store.timelineData.first {
-                  proxy.scrollTo(firstSection.id, anchor: .top)
-                }
-              case .date(let date):
-                let dayKey = dayKeyString(from: date)
-                proxy.scrollTo(dayKey, anchor: .top)
+            // 다가오는 약속 섹션
+            UpcomingSection(
+              promises: store.upcomingPromises,
+              onPromiseTap: { promise in
+                store.send(.view(.upcomingPromiseTapped(promise)))
+              },
+              onSeeAllTap: {
+                store.send(.view(.seeAllUpcomingTapped))
               }
-            }
-
-            store.send(.view(.scrollTargetCleared))
+            )
+            .padding(.horizontal, 16)
           }
+
+          // 하단 여백 (FAB 및 탭바 공간)
+          Color.clear
+            .frame(height: 100)
         }
+        .padding(.top, 8)
       }
       .refreshable {
         store.send(.view(.refreshTriggered))
       }
       .auroraBackground()
-      .navigationTitle("오늘의 일정")
+      .navigationTitle("홈")
       .toolbar {
         ToolbarItem(placement: .topBarTrailing) {
           NotificationButton(
@@ -392,15 +404,43 @@ extension Home {
 
     @ViewBuilder
     private var loadingView: some View {
-      LazyVStack(spacing: 12) {
-        ForEach(0..<3, id: \.self) { _ in
-          RoundedRectangle(cornerRadius: 14)
+      VStack(spacing: 16) {
+        // 오늘의 일정 스켈레톤
+        RoundedRectangle(cornerRadius: 20)
+          .fill(Color(.systemGray6))
+          .frame(height: 200)
+          .shimmer()
+
+        // 응답 필요 스켈레톤
+        VStack(alignment: .leading, spacing: 12) {
+          RoundedRectangle(cornerRadius: 8)
             .fill(Color(.systemGray6))
-            .frame(height: 80)
-            .shimmer()
+            .frame(width: 100, height: 24)
+
+          HStack(spacing: 12) {
+            ForEach(0..<2, id: \.self) { _ in
+              RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.systemGray6))
+                .frame(width: 160, height: 140)
+            }
+          }
+        }
+
+        // 다가오는 약속 스켈레톤
+        VStack(alignment: .leading, spacing: 12) {
+          RoundedRectangle(cornerRadius: 8)
+            .fill(Color(.systemGray6))
+            .frame(width: 120, height: 24)
+
+          ForEach(0..<3, id: \.self) { _ in
+            RoundedRectangle(cornerRadius: 14)
+              .fill(Color(.systemGray6))
+              .frame(height: 80)
+          }
         }
       }
       .padding(.horizontal, 16)
+      .shimmer()
     }
 
     // MARK: - Error View
@@ -431,76 +471,11 @@ extension Home {
 
     @ViewBuilder
     private var emptyStateView: some View {
-      VStack(spacing: 16) {
-        Image(systemName: emptyStateIcon)
-          .font(.system(size: 40))
-          .foregroundStyle(.secondary)
-
-        Text(emptyStateTitle)
-          .font(.headline)
-          .foregroundStyle(.primary)
-
-        Text(emptyStateMessage)
-          .font(.subheadline)
-          .foregroundStyle(.secondary)
-          .multilineTextAlignment(.center)
-          .lineSpacing(4)
-
-        if store.selectedGroupId != nil || store.selectedStatusFilter != .all {
-          Button("필터 초기화") {
-            store.send(.view(.resetFilters))
-          }
-          .buttonStyle(.bordered)
-        }
-      }
-      .frame(maxWidth: .infinity)
-      .padding(.vertical, 60)
-      .padding(.horizontal, 24)
-    }
-
-    // MARK: - Computed Properties
-
-    private var filterCounts: [HomeModels.StatusFilter: Int] {
-      let all = store.allPromises.filter { !$0.isPast }
-
-      return [
-        .all: all.count,
-        .needResponse: all.filter {
-          $0.myVoteStatus(userId: store.currentUser.userId) == .pending && !$0.isVotingClosed
-        }.count,
-        .confirmed: all.filter { $0.isConfirmed }.count,
-        .inProgress: all.filter { !$0.isConfirmed && !$0.isVotingClosed }.count
-      ]
-    }
-
-    private var emptyStateIcon: String {
-      if store.allPromises.isEmpty {
-        return "calendar"
-      } else {
-        return "line.3.horizontal.decrease.circle"
-      }
-    }
-
-    private var emptyStateTitle: String {
-      if store.allPromises.isEmpty {
-        return "약속이 없어요"
-      } else {
-        return "필터 결과가 없어요"
-      }
-    }
-
-    private var emptyStateMessage: String {
-      if store.allPromises.isEmpty {
-        return "새로운 약속을 만들어보세요\n+ 버튼을 눌러 시작할 수 있어요"
-      } else {
-        return "선택한 필터 조건에 맞는\n약속이 없습니다"
-      }
-    }
-
-    private func dayKeyString(from date: Date) -> String {
-      let formatter = DateFormatter()
-      formatter.dateFormat = "yyyy-MM-dd"
-      return formatter.string(from: date)
+      WarmEmptyState(
+        style: .noPromises,
+        onPrimaryAction: nil,
+        onSecondaryAction: nil
+      )
     }
   }
 }

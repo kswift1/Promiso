@@ -105,6 +105,141 @@ struct HomeFeatureStateTests {
     #expect(state.allPromises.isEmpty)
   }
 
+  // MARK: - todayPromises 테스트
+
+  @Test("오늘 확정 약속만 반환")
+  func todayPromises_onlyTodayConfirmed() {
+    let todayConfirmed = makePromise(
+      id: "today-confirmed",
+      startAt: Date().addingTimeInterval(3600),
+      isConfirmed: true
+    )
+    let todayPending = makePromise(
+      id: "today-pending",
+      startAt: Date().addingTimeInterval(7200),
+      isConfirmed: false
+    )
+    let tomorrowConfirmed = makePromise(
+      id: "tomorrow-confirmed",
+      startAt: Calendar.current.date(byAdding: .day, value: 1, to: Date())!,
+      isConfirmed: true
+    )
+
+    let state = makeState(promisesState: .loaded([todayConfirmed, todayPending, tomorrowConfirmed]))
+
+    #expect(state.todayPromises.count == 1)
+    #expect(state.todayPromises.first?.id == "today-confirmed")
+  }
+
+  @Test("오늘 약속 시간순 정렬")
+  func todayPromises_sortedByTime() {
+    let later = makePromise(
+      id: "later",
+      startAt: Date().addingTimeInterval(7200),
+      isConfirmed: true
+    )
+    let earlier = makePromise(
+      id: "earlier",
+      startAt: Date().addingTimeInterval(3600),
+      isConfirmed: true
+    )
+
+    let state = makeState(promisesState: .loaded([later, earlier]))
+
+    #expect(state.todayPromises.count == 2)
+    #expect(state.todayPromises[0].id == "earlier")
+    #expect(state.todayPromises[1].id == "later")
+  }
+
+  // MARK: - pendingPromises 테스트
+
+  @Test("응답 필요 약속만 반환")
+  func pendingPromises_onlyNeedResponse() {
+    let needResponse = makePromise(
+      id: "need-response",
+      startAt: Date().addingTimeInterval(86400),
+      voteUntil: Date().addingTimeInterval(3600),
+      currentUserVoted: false
+    )
+    let alreadyVoted = makePromise(
+      id: "voted",
+      startAt: Date().addingTimeInterval(86400),
+      voteUntil: Date().addingTimeInterval(3600),
+      currentUserVoted: true
+    )
+
+    let state = makeState(promisesState: .loaded([needResponse, alreadyVoted]))
+
+    #expect(state.pendingPromises.count == 1)
+    #expect(state.pendingPromises.first?.id == "need-response")
+  }
+
+  @Test("응답 필요 약속 마감일 기준 정렬")
+  func pendingPromises_sortedByVoteDeadline() {
+    let laterDeadline = makePromise(
+      id: "later-deadline",
+      voteUntil: Date().addingTimeInterval(7200),
+      currentUserVoted: false
+    )
+    let earlierDeadline = makePromise(
+      id: "earlier-deadline",
+      voteUntil: Date().addingTimeInterval(3600),
+      currentUserVoted: false
+    )
+
+    let state = makeState(promisesState: .loaded([laterDeadline, earlierDeadline]))
+
+    #expect(state.pendingPromises.count == 2)
+    #expect(state.pendingPromises[0].id == "earlier-deadline")
+    #expect(state.pendingPromises[1].id == "later-deadline")
+  }
+
+  // MARK: - upcomingPromises 테스트
+
+  @Test("다가오는 확정 약속만 반환 (오늘 제외)")
+  func upcomingPromises_excludesToday() {
+    let todayConfirmed = makePromise(
+      id: "today",
+      startAt: Date().addingTimeInterval(3600),
+      isConfirmed: true
+    )
+    let tomorrowConfirmed = makePromise(
+      id: "tomorrow",
+      startAt: Calendar.current.date(byAdding: .day, value: 1, to: Date())!,
+      isConfirmed: true
+    )
+    let tomorrowPending = makePromise(
+      id: "tomorrow-pending",
+      startAt: Calendar.current.date(byAdding: .day, value: 1, to: Date())!,
+      isConfirmed: false
+    )
+
+    let state = makeState(promisesState: .loaded([todayConfirmed, tomorrowConfirmed, tomorrowPending]))
+
+    #expect(state.upcomingPromises.count == 1)
+    #expect(state.upcomingPromises.first?.id == "tomorrow")
+  }
+
+  @Test("다가오는 약속 날짜순 정렬")
+  func upcomingPromises_sortedByDate() {
+    let dayAfter = makePromise(
+      id: "day-after",
+      startAt: Calendar.current.date(byAdding: .day, value: 2, to: Date())!,
+      isConfirmed: true
+    )
+    let tomorrow = makePromise(
+      id: "tomorrow",
+      startAt: Calendar.current.date(byAdding: .day, value: 1, to: Date())!,
+      isConfirmed: true
+    )
+
+    let state = makeState(promisesState: .loaded([dayAfter, tomorrow]))
+
+    #expect(state.upcomingPromises.count == 2)
+    #expect(state.upcomingPromises[0].id == "tomorrow")
+    #expect(state.upcomingPromises[1].id == "day-after")
+  }
+
   // MARK: - filteredPromises 테스트
 
   @Test("전체 필터: 과거 약속 제외")
