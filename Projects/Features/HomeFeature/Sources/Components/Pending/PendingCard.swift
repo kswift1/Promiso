@@ -1,5 +1,6 @@
 import SwiftUI
 import PromisoShared
+import ResourceKit
 
 // MARK: - Pending Card
 
@@ -31,8 +32,10 @@ struct PendingCard: View {
 
         // 날짜 + 시간
         HStack(spacing: 4) {
-          Image(systemName: "calendar")
-            .font(.caption2)
+          ResourceKitAsset.calendarIcon.swiftUIImage
+            .resizable()
+            .renderingMode(.template)
+            .frame(width: 12, height: 12)
 
           Text(dateTimeString)
             .font(.caption)

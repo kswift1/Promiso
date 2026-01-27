@@ -1,5 +1,6 @@
 import SwiftUI
 import PromisoShared
+import ResourceKit
 
 // MARK: - Upcoming Card
 
@@ -71,12 +72,14 @@ struct UpcomingCard: View {
           .lineLimit(1)
       }
 
-      // 시간 + 장소
-      HStack(spacing: 8) {
+      // 시간 + 장소 (줄바꿈)
+      VStack(alignment: .leading, spacing: 4) {
         // 시간
         HStack(spacing: 3) {
-          Image(systemName: "clock")
-            .font(.caption2)
+          ResourceKitAsset.clockIcon.swiftUIImage
+            .resizable()
+            .renderingMode(.template)
+            .frame(width: 12, height: 12)
 
           Text(timeString)
             .font(.caption)
@@ -85,8 +88,10 @@ struct UpcomingCard: View {
         // 장소
         if let location = promise.location {
           HStack(spacing: 3) {
-            Image(systemName: "location.fill")
-              .font(.caption2)
+            ResourceKitAsset.locationIcon.swiftUIImage
+              .resizable()
+              .renderingMode(.template)
+              .frame(width: 12, height: 12)
 
             Text(location.name)
               .font(.caption)
