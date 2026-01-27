@@ -19,7 +19,9 @@ let project = Project(
         .target(name: "LiveActivityWidgetExtension"),
         .target(name: "PromiseWidgetExtension")
       ],
-      settings: .standard()
+      settings: .standard(base: [
+        "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME": "AccentColor"
+      ])
     ),
     // MARK: - Live Activity Widget Extension
     .target(
