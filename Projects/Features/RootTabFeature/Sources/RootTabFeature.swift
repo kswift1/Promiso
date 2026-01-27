@@ -191,11 +191,23 @@ extension RootTab {
             await hapticFeedback.buttonTap()
           }
 
-        case .home(.delegate(.navigateToGroup(let groupId))):
+        case .home(.delegate(.navigateToGroupWithPromise(let groupId, let promiseId))):
+          state.selectedTab = .group
+          if let groupInfo = state.groupMain.allGroupSummaries?.first(where: { $0.id == groupId }) {
+            // 그룹 선택 후 해당 약속으로 이동
+            return .send(.groupMain(.view(.groupChanged(groupInfo))))
+          }
+          return .none
+
+        case .home(.delegate(.navigateToPromise(let promiseId, let groupId))):
           state.selectedTab = .group
           if let groupInfo = state.groupMain.allGroupSummaries?.first(where: { $0.id == groupId }) {
             return .send(.groupMain(.view(.groupChanged(groupInfo))))
           }
+          return .none
+
+        case .home(.delegate(.navigateToAllPromises)):
+          // TODO: 모든 약속 보기 화면으로 이동 (추후 구현)
           return .none
 
         case .home:
