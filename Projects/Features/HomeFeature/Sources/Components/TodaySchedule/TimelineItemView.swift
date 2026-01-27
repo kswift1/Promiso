@@ -20,8 +20,8 @@ struct TimelineItemView: View {
         // 시간 + 콘텐츠 (패딩 적용)
         HStack(alignment: .top, spacing: 0) {
           timeLabel
-            .frame(width: 56, alignment: .leading)
-            .padding(.leading, 12)
+            .frame(width: 72, alignment: .center)
+            .padding(.leading, 8)
 
           promiseContent
             .padding(.leading, 8)
