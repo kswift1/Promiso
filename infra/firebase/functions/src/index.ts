@@ -74,3 +74,12 @@ export {
   onPromiseCreatedBadges,
   clearGroupBadge,
 } from "./functions/promiseBadges";
+
+// ============================================================================
+// Widget Silent Push Functions (홈 화면 위젯 갱신)
+// ============================================================================
+export {
+  onPromiseCreatedWidgetPush,
+  onPromiseUpdatedWidgetPush,
+  onPromiseDeletedWidgetPush,
+} from "./functions/widgetPush";
