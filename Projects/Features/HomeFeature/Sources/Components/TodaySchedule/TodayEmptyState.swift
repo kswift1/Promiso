@@ -6,24 +6,31 @@ import PromisoShared
 /// 오늘 일정이 없을 때 표시하는 뷰
 struct TodayEmptyState: View {
   var body: some View {
-    VStack(spacing: 12) {
-      // 이모지
-      Text("☀️")
-        .font(.system(size: 40))
+    HStack(spacing: 16) {
+      // 아이콘 영역
+      ZStack {
+        Circle()
+          .fill(Color.pmindigo.n500.opacity(0.1))
+          .frame(width: 56, height: 56)
 
-      // 메시지
-      VStack(spacing: 4) {
+        Text("☀️")
+          .font(.system(size: 28))
+      }
+
+      // 텍스트 영역
+      VStack(alignment: .leading, spacing: 4) {
         Text("오늘은 약속이 없어요")
           .font(.subheadline)
-          .fontWeight(.medium)
+          .fontWeight(.semibold)
           .foregroundStyle(.primary)
 
-        Text("여유로운 하루 보내세요")
+        Text("여유로운 하루 되세요!")
           .font(.caption)
           .foregroundStyle(.secondary)
       }
+
+      Spacer()
     }
-    .frame(maxWidth: .infinity)
     .padding(.vertical, 8)
   }
 }
@@ -31,7 +38,9 @@ struct TodayEmptyState: View {
 // MARK: - Preview
 
 #Preview {
-  TodayEmptyState()
-    .padding()
-    .auroraBackground()
+  VStack {
+    TodayEmptyState()
+  }
+  .padding()
+  .auroraBackground()
 }

@@ -63,17 +63,35 @@ struct UpcomingSection: View {
   // MARK: - Empty State
 
   private var emptyState: some View {
-    VStack(spacing: 8) {
-      Image(systemName: "calendar.badge.plus")
-        .font(.title2)
-        .foregroundStyle(.secondary)
+    HStack(spacing: 14) {
+      // 캘린더 아이콘
+      ZStack {
+        Circle()
+          .fill(Color.pmindigo.n500.opacity(0.1))
+          .frame(width: 48, height: 48)
 
-      Text("확정된 약속이 없어요")
-        .font(.subheadline)
-        .foregroundStyle(.secondary)
+        Image(systemName: "calendar.badge.clock")
+          .font(.title3)
+          .foregroundStyle(Color.pmindigo.n500)
+      }
+
+      // 텍스트
+      VStack(alignment: .leading, spacing: 2) {
+        Text("예정된 약속이 없어요")
+          .font(.subheadline)
+          .fontWeight(.semibold)
+          .foregroundStyle(.primary)
+
+        Text("친구들과 새로운 약속을 만들어보세요")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+      }
+
+      Spacer()
     }
-    .frame(maxWidth: .infinity)
-    .padding(.vertical, 24)
+    .padding(14)
+    .background(Color.pmindigo.n500.opacity(0.03))
+    .clipShape(RoundedRectangle(cornerRadius: 14))
   }
 
   // MARK: - Computed Properties

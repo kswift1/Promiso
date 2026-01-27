@@ -60,16 +60,35 @@ struct PendingSection: View {
   // MARK: - Empty State
 
   private var emptyState: some View {
-    HStack(spacing: 8) {
-      Image(systemName: "checkmark.circle.fill")
-        .foregroundStyle(.green)
+    HStack(spacing: 14) {
+      // 체크 아이콘
+      ZStack {
+        Circle()
+          .fill(Color.green.opacity(0.1))
+          .frame(width: 48, height: 48)
 
-      Text("모든 약속에 응답했어요")
-        .font(.subheadline)
-        .foregroundStyle(.secondary)
+        Image(systemName: "checkmark.circle.fill")
+          .font(.title2)
+          .foregroundStyle(.green)
+      }
+
+      // 텍스트
+      VStack(alignment: .leading, spacing: 2) {
+        Text("모두 응답 완료!")
+          .font(.subheadline)
+          .fontWeight(.semibold)
+          .foregroundStyle(.primary)
+
+        Text("새로운 약속이 오면 알려드릴게요")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+      }
+
+      Spacer()
     }
-    .frame(maxWidth: .infinity, alignment: .leading)
-    .padding(.vertical, 12)
+    .padding(14)
+    .background(Color.green.opacity(0.05))
+    .clipShape(RoundedRectangle(cornerRadius: 14))
   }
 }
 
