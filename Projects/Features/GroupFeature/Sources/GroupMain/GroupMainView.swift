@@ -321,11 +321,12 @@ extension GroupMain {
     @ViewBuilder
     private func promiseRowView(for promise: PromiseModel) -> some View {
       let promiseId = promise.id
-      let myVoteStatus = promise.myVoteStatus(userId: store.currentUser.userId)
+      let userId = store.currentUser?.userId ?? ""
+      let myVoteStatus = promise.myVoteStatus(userId: userId)
 
       PromiseCard(
         promise: promise,
-        currentUserId: store.currentUser.userId,
+        currentUserId: userId,
         groupMembers: store.currentGroupMembers,
         respondingState: store.proposalResponding[promiseId] ?? .idle,
         isLive: store.liveActivityPromiseId == promiseId,

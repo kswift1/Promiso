@@ -63,8 +63,8 @@ extension Profile {
         )
       ) {
         ImageDetailView(
-          imageUrl: store.currentUser.profileImageUrl,
-          displayName: store.currentUser.nickname,
+          imageUrl: store.currentUser?.profileImageUrl,
+          displayName: store.currentUser?.nickname ?? "",
           onDismiss: {
             store.send(.view(.imageDetailDismissed))
           }
@@ -100,8 +100,8 @@ extension Profile {
       VStack(spacing: 16) {
         // 프로필 아바타 (100px)
         ProfileAvatarView(
-          profileImageUrl: store.currentUser.profileImageUrl,
-          displayName: store.currentUser.nickname,
+          profileImageUrl: store.currentUser?.profileImageUrl,
+          displayName: store.currentUser?.nickname ?? "",
           isCurrentUser: true,
           size: 100,
           borderWidth: 3,
@@ -111,7 +111,7 @@ extension Profile {
         )
 
         // 닉네임
-        Text(store.currentUser.nickname)
+        Text(store.currentUser?.nickname ?? "")
           .font(.title2)
           .fontWeight(.bold)
           .foregroundStyle(Color.pmtext.primary)

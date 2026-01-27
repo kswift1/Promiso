@@ -90,10 +90,11 @@ extension Profile {
     // MARK: - Computed Properties
 
     private var canSave: Bool {
-      let nicknameChanged = store.editedNickname != store.currentUser.nickname
+      let currentNickname = store.currentUser?.nickname ?? ""
+      let nicknameChanged = store.editedNickname != currentNickname
       let imageChanged = store.editedProfileImageData != nil
       let nicknameValid = store.nicknameValidation == .available ||
-                          store.editedNickname == store.currentUser.nickname
+                          store.editedNickname == currentNickname
 
       return (nicknameChanged || imageChanged) && nicknameValid && !store.isSavingProfile
     }
@@ -116,8 +117,8 @@ extension Profile {
                 .scaledToFill()
             } else {
               ProfileAvatarView(
-                profileImageUrl: store.currentUser.profileImageUrl,
-                displayName: store.currentUser.nickname,
+                profileImageUrl: store.currentUser?.profileImageUrl,
+                displayName: store.currentUser?.nickname ?? "",
                 isCurrentUser: true,
                 size: 120,
                 borderWidth: 3
