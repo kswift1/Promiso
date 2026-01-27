@@ -19,6 +19,7 @@ extension Home {
   @Reducer
   public struct Feature {
     @Dependency(\.promiseClient) var promiseClient
+    @Dependency(\.groupClient) var groupClient
 
     public init() {}
 
@@ -108,6 +109,10 @@ extension Home {
         case promisesResponse(Result<[PromiseModel], Error>)
         /// 응답 필요 섹션으로 스크롤
         case scrollToNeedResponse
+        /// 그룹 멤버 조회 (캐시 miss 시)
+        case fetchGroupMembersAndNavigate(promise: PromiseModel)
+        /// 그룹 멤버 응답 후 네비게이션
+        case groupMembersFetched(promise: PromiseModel, members: [UserPublicModel]?)
       }
 
       public enum Delegate: Sendable {
@@ -136,13 +141,17 @@ extension Home {
             return .send(.internal(.fetchPromises))
 
           case .todayPromiseTapped(let promise):
-            let groupMembers = state.groupMembersCache[promise.groupId]
-            state.path.append(.promiseDetail(.init(
-              promise: promise,
-              currentUserId: state.currentUser.userId,
-              groupMembers: groupMembers
-            )))
-            return .none
+            // 캐시 hit → 바로 이동, miss → 로드 후 이동
+            if let groupMembers = state.groupMembersCache[promise.groupId] {
+              state.path.append(.promiseDetail(.init(
+                promise: promise,
+                currentUserId: state.currentUser.userId,
+                groupMembers: groupMembers
+              )))
+              return .none
+            } else {
+              return .send(.internal(.fetchGroupMembersAndNavigate(promise: promise)))
+            }
 
           case .pendingPromiseTapped(let promise):
             return .send(.delegate(.navigateToGroupWithPromise(
@@ -151,13 +160,17 @@ extension Home {
             )))
 
           case .upcomingPromiseTapped(let promise):
-            let groupMembers = state.groupMembersCache[promise.groupId]
-            state.path.append(.promiseDetail(.init(
-              promise: promise,
-              currentUserId: state.currentUser.userId,
-              groupMembers: groupMembers
-            )))
-            return .none
+            // 캐시 hit → 바로 이동, miss → 로드 후 이동
+            if let groupMembers = state.groupMembersCache[promise.groupId] {
+              state.path.append(.promiseDetail(.init(
+                promise: promise,
+                currentUserId: state.currentUser.userId,
+                groupMembers: groupMembers
+              )))
+              return .none
+            } else {
+              return .send(.internal(.fetchGroupMembersAndNavigate(promise: promise)))
+            }
 
           case .seeAllUpcomingTapped:
             return .send(.delegate(.navigateToAllPromises))
@@ -227,6 +240,30 @@ extension Home {
             return .none
 
           case .scrollToNeedResponse:
+            return .none
+
+          case .fetchGroupMembersAndNavigate(let promise):
+            return .run { [groupClient] send in
+              do {
+                let members = try await groupClient.fetchGroupMembers(promise.groupId)
+                await send(.internal(.groupMembersFetched(promise: promise, members: members)))
+              } catch {
+                // 실패해도 nil로 이동
+                await send(.internal(.groupMembersFetched(promise: promise, members: nil)))
+              }
+            }
+
+          case .groupMembersFetched(let promise, let members):
+            // 캐시에 저장
+            if let members = members {
+              state.$groupMembersCache.withLock { $0[promise.groupId] = members }
+            }
+            // 상세로 이동
+            state.path.append(.promiseDetail(.init(
+              promise: promise,
+              currentUserId: state.currentUser.userId,
+              groupMembers: members
+            )))
             return .none
           }
 

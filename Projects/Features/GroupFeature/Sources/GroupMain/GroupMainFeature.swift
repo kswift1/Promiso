@@ -468,6 +468,14 @@ extension GroupMain {
             if !state.promisesState.isLoaded {
               state.promisesState = .loading
             }
+            // 현재 그룹 멤버 캐시 무효화 후 다시 로드
+            if let groupId = state.currentGroup?.id {
+              state.$groupMembersCache.withLock { $0.removeValue(forKey: groupId) }
+              return .merge(
+                .send(.internal(.fetchGroupList)),
+                .send(.internal(.fetchGroupMembers(groupId: groupId)))
+              )
+            }
             return .send(.internal(.fetchGroupList))
 
           case .groupChanged(let group):

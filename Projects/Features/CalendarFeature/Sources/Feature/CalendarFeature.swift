@@ -28,6 +28,10 @@ extension CalendarFeature {
       /// 현재 사용자 정보 (RootTab과 참조 공유)
       @Shared var currentUser: UserPrivateModel
 
+      /// 그룹 멤버 캐시 (전역 공유, groupId → members)
+      @Shared(.inMemory(AppConstants.SharedState.groupMembersCache))
+      var groupMembersCache: [String: [UserPublicModel]] = [:]
+
       /// 표시 모드 (주간/월간)
       var displayMode: CalendarDisplayMode = .week
 
@@ -248,6 +252,9 @@ extension CalendarFeature {
         case calendarPermissionResponse(CalendarAuthorizationStatus)
         case fetchCalendarEvents
         case calendarEventsResponse(Result<[CalendarEvent], Error>)
+        // 그룹 멤버 관련 (캐시 miss 시)
+        case fetchGroupMembersAndNavigate(promise: PromiseModel)
+        case groupMembersFetched(promise: PromiseModel, members: [UserPublicModel]?)
       }
     }
 
@@ -262,6 +269,7 @@ extension CalendarFeature {
 
     @Dependency(\.promiseClient) var promiseClient
     @Dependency(\.eventKitClient) var eventKitClient
+    @Dependency(\.groupClient) var groupClient
 
     // MARK: - Reducer Body
 
@@ -407,20 +415,30 @@ extension CalendarFeature {
         return .none
 
       case .promiseTapped(let promise):
-        // 약속 상세 화면으로 이동
-        state.path.append(.promiseDetail(.init(
-          promise: promise,
-          currentUserId: state.currentUserId
-        )))
-        return .none
+        // 캐시 hit → 바로 이동, miss → 로드 후 이동
+        if let groupMembers = state.groupMembersCache[promise.groupId] {
+          state.path.append(.promiseDetail(.init(
+            promise: promise,
+            currentUserId: state.currentUserId,
+            groupMembers: groupMembers
+          )))
+          return .none
+        } else {
+          return .send(.internal(.fetchGroupMembersAndNavigate(promise: promise)))
+        }
 
       case .promiseRespondTapped(let promise):
-        // 약속 상세 화면으로 이동 (응답 가능)
-        state.path.append(.promiseDetail(.init(
-          promise: promise,
-          currentUserId: state.currentUserId
-        )))
-        return .none
+        // 캐시 hit → 바로 이동, miss → 로드 후 이동
+        if let groupMembers = state.groupMembersCache[promise.groupId] {
+          state.path.append(.promiseDetail(.init(
+            promise: promise,
+            currentUserId: state.currentUserId,
+            groupMembers: groupMembers
+          )))
+          return .none
+        } else {
+          return .send(.internal(.fetchGroupMembersAndNavigate(promise: promise)))
+        }
 
       case .collapseToWeek(let date):
         guard state.displayMode == .month else { return .none }
@@ -686,6 +704,30 @@ extension CalendarFeature {
         case .failure:
           state.calendarEvents = []
         }
+        return .none
+
+      case .fetchGroupMembersAndNavigate(let promise):
+        return .run { [groupClient] send in
+          do {
+            let members = try await groupClient.fetchGroupMembers(promise.groupId)
+            await send(.internal(.groupMembersFetched(promise: promise, members: members)))
+          } catch {
+            // 실패해도 nil로 이동
+            await send(.internal(.groupMembersFetched(promise: promise, members: nil)))
+          }
+        }
+
+      case .groupMembersFetched(let promise, let members):
+        // 캐시에 저장
+        if let members = members {
+          state.$groupMembersCache.withLock { $0[promise.groupId] = members }
+        }
+        // 상세로 이동
+        state.path.append(.promiseDetail(.init(
+          promise: promise,
+          currentUserId: state.currentUserId,
+          groupMembers: members
+        )))
         return .none
       }
     }
