@@ -11,6 +11,8 @@ struct TimelineItemView: View {
   let isLast: Bool
   let onTap: () -> Void
 
+  @State private var showLiveActivityInfo = false
+
   var body: some View {
     Button(action: onTap) {
       HStack(alignment: .top, spacing: 0) {
@@ -91,6 +93,28 @@ struct TimelineItemView: View {
           .foregroundStyle(.primary)
           .lineLimit(1)
       }
+      
+      // 그룹 + 참여자 수 + 확정
+      HStack(spacing: 4) {
+        if let group = promise.group {
+          GroupThumbnailView(
+            imageUrl: group.imageUrl,
+            name: group.name,
+            size: 18
+          )
+
+          Text(group.name)
+            .font(.caption)
+            .lineLimit(1)
+
+          Text("·")
+            .font(.caption)
+        }
+
+        Text("\(promise.votes.accepted.count)명 참여 확정")
+          .font(.caption)
+      }
+      .foregroundStyle(.secondary)
 
       // 장소
       if let location = promise.location {
@@ -116,31 +140,19 @@ struct TimelineItemView: View {
 
           Text(liveStartTimeString(minutes: minutes))
             .font(.caption)
+
+          Button {
+            showLiveActivityInfo = true
+          } label: {
+            Image(systemName: "info.circle")
+              .font(.system(size: 12))
+          }
+          .popover(isPresented: $showLiveActivityInfo, arrowEdge: .top) {
+            LiveActivityInfoPopover()
+          }
         }
-        .foregroundStyle(Color.pmindigo.n500)
+        .foregroundStyle(.secondary)
       }
-
-      // 그룹 + 참여자 수 + 확정
-      HStack(spacing: 4) {
-        if let group = promise.group {
-          GroupThumbnailView(
-            imageUrl: group.imageUrl,
-            name: group.name,
-            size: 18
-          )
-
-          Text(group.name)
-            .font(.caption)
-            .lineLimit(1)
-
-          Text("·")
-            .font(.caption)
-        }
-
-        Text("\(promise.votes.accepted.count)명 참여 확정")
-          .font(.caption)
-      }
-      .foregroundStyle(.secondary)
     }
   }
 
@@ -184,7 +196,7 @@ struct TimelineItemView: View {
   /// 실시간 공유 시작 시간 문자열
   private func liveStartTimeString(minutes: Int) -> String {
     let liveStartTime = promise.startAt.addingTimeInterval(-Double(minutes * 60))
-    return "\(liveStartTime.formattedTime) 라이브 시작"
+    return "\(liveStartTime.formattedTime) 실시간 공유 시작"
   }
 
   /// 현재 진행 중인 약속인지 (시작 30분 전 ~ 시작 후 2시간)
