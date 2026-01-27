@@ -2,34 +2,38 @@ import SwiftUI
 import PromisoShared
 import ResourceKit
 
-// MARK: - Upcoming Card
+// MARK: - Upcoming Date Card
 
-/// 다가오는 약속 개별 카드
-struct UpcomingCard: View {
-  let promise: PromiseModel
-  let onTap: () -> Void
+/// 같은 날짜의 약속들을 하나의 카드로 묶는 컴포넌트
+struct UpcomingDateCard: View {
+  let date: Date
+  let promises: [PromiseModel]
+  let onPromiseTap: (PromiseModel) -> Void
 
   var body: some View {
-    Button(action: onTap) {
-      HStack(spacing: 12) {
-        // 날짜 배지
-        dateBadge
+    HStack(alignment: .top, spacing: 12) {
+      // 날짜 배지
+      dateBadge
 
-        // 약속 정보
-        promiseInfo
+      // 약속 목록
+      VStack(spacing: 0) {
+        ForEach(Array(promises.enumerated()), id: \.element.id) { index, promise in
+          UpcomingPromiseRow(
+            promise: promise,
+            onTap: { onPromiseTap(promise) }
+          )
 
-        Spacer(minLength: 0)
-
-        // 우측 화살표
-        Image(systemName: "chevron.right")
-          .font(.caption)
-          .foregroundStyle(.tertiary)
+          // 마지막 아이템이 아니면 Divider
+          if index < promises.count - 1 {
+            Divider()
+              .padding(.vertical, 8)
+          }
+        }
       }
-      .padding(12)
-      .background(Color.green.opacity(0.03))
-      .adaptiveGlassCard(cornerRadius: 14)
     }
-    .buttonStyle(.plain)
+    .padding(12)
+    .background(Color.pmindigo.n500.opacity(0.03))
+    .adaptiveGlassCard(cornerRadius: 14)
   }
 
   // MARK: - Date Badge
@@ -48,7 +52,7 @@ struct UpcomingCard: View {
 
       Text(weekdayString)
         .font(.caption2)
-        .foregroundStyle(.secondary)
+        .foregroundStyle(weekdayColor)
     }
     .frame(width: 44)
     .padding(.vertical, 6)
@@ -56,54 +60,97 @@ struct UpcomingCard: View {
     .clipShape(RoundedRectangle(cornerRadius: 8))
   }
 
-  // MARK: - Promise Info
+  // MARK: - Computed Properties
 
-  private var promiseInfo: some View {
-    VStack(alignment: .leading, spacing: 4) {
-      // 이모지 + 제목
-      HStack(spacing: 6) {
-        Text(promise.displayEmoji)
-          .font(.body)
+  private var monthString: String {
+    KoreanDateFormatters.month.string(from: date)
+  }
 
-        Text(promise.title)
-          .font(.subheadline)
-          .fontWeight(.medium)
-          .foregroundStyle(.primary)
-          .lineLimit(1)
-      }
+  private var dayString: String {
+    KoreanDateFormatters.day.string(from: date)
+  }
 
-      // 시간 + 장소 (줄바꿈)
-      VStack(alignment: .leading, spacing: 4) {
-        // 시간
-        HStack(spacing: 3) {
-          ResourceKitAsset.clockIcon.swiftUIImage
-            .resizable()
-            .renderingMode(.template)
-            .frame(width: 12, height: 12)
+  private var weekdayString: String {
+    KoreanDateFormatters.weekday.string(from: date)
+  }
 
-          Text(timeString)
-            .font(.caption)
-        }
+  private var weekdayColor: Color {
+    let weekday = Calendar.current.component(.weekday, from: date)
+    switch weekday {
+    case 1: return .red      // 일요일
+    case 7: return .blue     // 토요일
+    default: return .secondary
+    }
+  }
+}
 
-        // 장소
-        if let location = promise.location {
-          HStack(spacing: 3) {
-            ResourceKitAsset.locationIcon.swiftUIImage
-              .resizable()
-              .renderingMode(.template)
-              .frame(width: 12, height: 12)
+// MARK: - Upcoming Promise Row
 
-            Text(location.name)
-              .font(.caption)
+/// 카드 내부의 개별 약속 행
+private struct UpcomingPromiseRow: View {
+  let promise: PromiseModel
+  let onTap: () -> Void
+
+  var body: some View {
+    Button(action: onTap) {
+      HStack(spacing: 8) {
+        // 약속 정보
+        VStack(alignment: .leading, spacing: 4) {
+          // 이모지 + 제목
+          HStack(spacing: 6) {
+            Text(promise.displayEmoji)
+              .font(.body)
+
+            Text(promise.title)
+              .font(.subheadline)
+              .fontWeight(.medium)
+              .foregroundStyle(.primary)
               .lineLimit(1)
           }
-        }
-      }
-      .foregroundStyle(.secondary)
 
-      // 그룹 · 참여자
-      groupParticipantsView
+          // 시간 + 장소
+          HStack(spacing: 12) {
+            // 시간
+            HStack(spacing: 3) {
+              ResourceKitAsset.clockIcon.swiftUIImage
+                .resizable()
+                .renderingMode(.template)
+                .frame(width: 12, height: 12)
+
+              Text(timeString)
+                .font(.caption)
+            }
+
+            // 장소
+            if let location = promise.location {
+              HStack(spacing: 3) {
+                ResourceKitAsset.locationIcon.swiftUIImage
+                  .resizable()
+                  .renderingMode(.template)
+                  .frame(width: 12, height: 12)
+
+                Text(location.name)
+                  .font(.caption)
+                  .lineLimit(1)
+              }
+            }
+          }
+          .foregroundStyle(.secondary)
+
+          // 그룹 · 참여자
+          groupParticipantsView
+        }
+
+        Spacer(minLength: 0)
+
+        // 우측 화살표
+        Image(systemName: "chevron.right")
+          .font(.caption)
+          .foregroundStyle(.tertiary)
+      }
+      .contentShape(Rectangle())
     }
+    .buttonStyle(.plain)
   }
 
   // MARK: - Group & Participants View
@@ -131,18 +178,6 @@ struct UpcomingCard: View {
 
   // MARK: - Computed Properties
 
-  private var monthString: String {
-    KoreanDateFormatters.month.string(from: promise.startAt)
-  }
-
-  private var dayString: String {
-    KoreanDateFormatters.day.string(from: promise.startAt)
-  }
-
-  private var weekdayString: String {
-    KoreanDateFormatters.weekday.string(from: promise.startAt)
-  }
-
   private var timeString: String {
     promise.startAt.formattedTime
   }
@@ -152,22 +187,24 @@ struct UpcomingCard: View {
 
 #Preview {
   VStack(spacing: 10) {
-    UpcomingCard(
-      promise: PromiseModel.mock(
-        id: "1",
-        title: "팀 미팅",
-        startAt: Date().addingTimeInterval(86400)
-      ),
-      onTap: {}
+    // 같은 날짜에 여러 약속
+    UpcomingDateCard(
+      date: Date().addingTimeInterval(86400),
+      promises: [
+        PromiseModel.mock(id: "1", title: "팀 미팅", startAt: Date().addingTimeInterval(86400)),
+        PromiseModel.mock(id: "2", title: "점심 식사", startAt: Date().addingTimeInterval(86400 + 3600)),
+        PromiseModel.mock(id: "3", title: "저녁 약속", startAt: Date().addingTimeInterval(86400 + 7200))
+      ],
+      onPromiseTap: { _ in }
     )
 
-    UpcomingCard(
-      promise: PromiseModel.mock(
-        id: "2",
-        title: "저녁 식사",
-        startAt: Date().addingTimeInterval(172800)
-      ),
-      onTap: {}
+    // 하루에 하나의 약속
+    UpcomingDateCard(
+      date: Date().addingTimeInterval(172800),
+      promises: [
+        PromiseModel.mock(id: "4", title: "영화 관람", startAt: Date().addingTimeInterval(172800))
+      ],
+      onPromiseTap: { _ in }
     )
   }
   .padding()

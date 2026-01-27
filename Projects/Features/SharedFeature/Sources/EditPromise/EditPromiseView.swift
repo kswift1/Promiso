@@ -1,6 +1,7 @@
 import SwiftUI
 import ComposableArchitecture
 import Clients
+import PromisoShared
 import ResourceKit
 
 extension EditPromise {
@@ -30,6 +31,11 @@ extension EditPromise {
 
               // 설명 섹션
               descriptionSection
+
+              // 위치 섹션
+              if store.editedPromise.location != nil {
+                locationSection
+              }
 
               // 시작 시간 섹션
               startDateSection(proxy: proxy)
@@ -175,6 +181,58 @@ extension EditPromise {
           Text("\((store.editedPromise.description ?? "").count)/500")
             .font(.system(size: 12))
             .foregroundColor(.secondary)
+        }
+      }
+    }
+
+    // MARK: - Location Section
+
+    @ViewBuilder
+    private var locationSection: some View {
+      if let location = store.editedPromise.location {
+        VStack(alignment: .leading, spacing: 12) {
+          Text("위치")
+            .font(.system(size: 15, weight: .semibold))
+            .foregroundStyle(.primary)
+
+          VStack(spacing: 12) {
+            // 위치 정보
+            HStack(spacing: 12) {
+              Image(systemName: "mappin.circle.fill")
+                .font(.system(size: 24))
+                .foregroundColor(Color.pmindigo.n500)
+
+              VStack(alignment: .leading, spacing: 2) {
+                Text(location.name)
+                  .font(.system(size: 15, weight: .medium))
+                  .foregroundStyle(.primary)
+
+                if let address = location.address {
+                  Text(address)
+                    .font(.system(size: 13))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                }
+              }
+
+              Spacer()
+            }
+            .padding(16)
+            .background(Color(.systemGray6))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+
+            // 지도 프리뷰
+            if let latitude = location.latitude,
+               let longitude = location.longitude {
+              KakaoMiniMapView(
+                latitude: latitude,
+                longitude: longitude,
+                zoomLevel: 16
+              )
+              .frame(height: 160)
+              .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+          }
         }
       }
     }

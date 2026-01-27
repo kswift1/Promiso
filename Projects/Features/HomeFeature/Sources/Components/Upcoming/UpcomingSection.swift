@@ -17,15 +17,16 @@ struct UpcomingSection: View {
       // 헤더
       sectionHeader
 
-      // 카드들
+      // 카드들 (날짜별 그룹)
       if promises.isEmpty {
         emptyState
       } else {
         VStack(spacing: 10) {
-          ForEach(displayedPromises) { promise in
-            UpcomingCard(
-              promise: promise,
-              onTap: { onPromiseTap(promise) }
+          ForEach(groupedByDate, id: \.date) { group in
+            UpcomingDateCard(
+              date: group.date,
+              promises: group.promises,
+              onPromiseTap: onPromiseTap
             )
           }
         }
@@ -99,6 +100,28 @@ struct UpcomingSection: View {
   private var displayedPromises: [PromiseModel] {
     Array(promises.prefix(maxDisplayCount))
   }
+
+  /// 날짜별로 그룹화된 약속
+  private var groupedByDate: [DateGroup] {
+    let calendar = Calendar.current
+    var groups: [Date: [PromiseModel]] = [:]
+
+    for promise in displayedPromises {
+      let dayStart = calendar.startOfDay(for: promise.startAt)
+      groups[dayStart, default: []].append(promise)
+    }
+
+    return groups
+      .sorted { $0.key < $1.key }
+      .map { DateGroup(date: $0.key, promises: $0.value) }
+  }
+}
+
+// MARK: - Date Group
+
+private struct DateGroup {
+  let date: Date
+  let promises: [PromiseModel]
 }
 
 // MARK: - Preview

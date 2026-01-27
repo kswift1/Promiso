@@ -128,8 +128,10 @@ extension Home {
         case .view(let viewAction):
           switch viewAction {
           case .onAppear:
-            guard !state.hasLoadedOnce else { return .none }
-            state.hasLoadedOnce = true
+            // 매번 최신 데이터로 갱신 (기존 데이터 유지하며 백그라운드 갱신)
+            if !state.hasLoadedOnce {
+              state.hasLoadedOnce = true
+            }
             return .send(.internal(.fetchPromises))
 
           case .refreshTriggered:
@@ -185,7 +187,10 @@ extension Home {
         case .internal(let internalAction):
           switch internalAction {
           case .fetchPromises:
-            state.promisesState = .loading
+            // 기존 데이터가 없을 때만 로딩 상태 표시 (깜빡임 방지)
+            if state.promisesState.value == nil {
+              state.promisesState = .loading
+            }
 
             let groupIds = state.currentUser.groups.map { $0.id }
 
