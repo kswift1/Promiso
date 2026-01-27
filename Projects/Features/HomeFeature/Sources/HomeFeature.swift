@@ -1,7 +1,9 @@
 // MARK: - HomeFeature.swift
 // TCA 1.22.2를 사용한 Home Feature의 Implementation layer
 
+import Clients
 import Lottie
+import PromisoShared
 import ResourceKit
 import SharedFeature
 
@@ -228,6 +230,9 @@ extension Home {
                 return updated
               }
               state.promisesState = .loaded(promisesWithGroup)
+
+              // 위젯 캐시 업데이트
+              WidgetDataManager.savePromises(promisesWithGroup.toWidgetData())
             case .failure(let error):
               state.promisesState = .failed(error)
             }

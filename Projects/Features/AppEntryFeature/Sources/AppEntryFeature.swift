@@ -152,6 +152,7 @@ extension AppEntry {
             
           case .profileCheckResponse(let user, let profile):
             if let userModel = profile {
+              WidgetDataManager.saveUserId(userModel.id)
               state.destination = .main(RootTab.Feature.State(currentUser: Shared(value: userModel)))
               if state.splash == .visible {
                 state.splash = .animatingOut
@@ -219,6 +220,7 @@ extension AppEntry {
           case .notificationPermissionChecked(let isAuthorized, let userModel):
             if isAuthorized {
               // 이미 권한 허용됨 → 바로 메인으로
+              WidgetDataManager.saveUserId(userModel.id)
               state.destination = .main(RootTab.Feature.State(currentUser: Shared(value: userModel)))
             } else {
               // 권한 미허용 → 온보딩 표시
@@ -242,6 +244,7 @@ extension AppEntry {
           state.notificationPermission = nil
           if let userModel = state.pendingUserForMain {
             state.pendingUserForMain = nil
+            WidgetDataManager.saveUserId(userModel.id)
             state.destination = .main(RootTab.Feature.State(currentUser: Shared(value: userModel)))
           }
           return .none
@@ -253,6 +256,7 @@ extension AppEntry {
           state.destination = .auth(Auth.Feature.State())
           return .run { [notificationClient, authClient] _ in
             LiveActivityImageStore.clearCache()
+            WidgetDataManager.clearAll()
             do {
               try await notificationClient.deleteFCMToken()
             } catch {
