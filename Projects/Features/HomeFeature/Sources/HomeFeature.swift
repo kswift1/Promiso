@@ -402,7 +402,6 @@ extension Home {
         store.send(.view(.refreshTriggered))
       }
       .auroraBackground()
-      .navigationTitle("홈")
       .toolbar {
         ToolbarItem(placement: .topBarTrailing) {
           NotificationButton(

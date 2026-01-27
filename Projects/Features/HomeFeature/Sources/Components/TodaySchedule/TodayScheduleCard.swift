@@ -8,25 +8,39 @@ struct TodayScheduleCard: View {
   let promises: [PromiseModel]
   let onPromiseTap: (PromiseModel) -> Void
 
+  @State private var isExpanded: Bool = true
+
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
-      // 헤더
-      cardHeader
-        .padding(.horizontal, 16)
-        .padding(.top, 16)
-        .padding(.bottom, 12)
-
-      Divider()
-        .padding(.horizontal, 16)
-
-      // 콘텐츠
-      if promises.isEmpty {
-        TodayEmptyState()
-          .padding(.vertical, 24)
-      } else {
-        timelineContent
+      // 헤더 (탭 가능)
+      Button {
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+          isExpanded.toggle()
+        }
+      } label: {
+        cardHeader
           .padding(.horizontal, 16)
-          .padding(.vertical, 12)
+          .padding(.top, 16)
+          .padding(.bottom, 12)
+          .contentShape(Rectangle())
+      }
+      .buttonStyle(.plain)
+
+      // 콘텐츠 (expanded일 때만)
+      if isExpanded {
+        Divider()
+          .padding(.horizontal, 16)
+
+        if promises.isEmpty {
+          TodayEmptyState()
+            .padding(.vertical, 24)
+            .transition(.opacity.combined(with: .move(edge: .top)))
+        } else {
+          timelineContent
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .transition(.opacity.combined(with: .move(edge: .top)))
+        }
       }
     }
     .adaptiveGlassCard(cornerRadius: 20)
@@ -35,7 +49,7 @@ struct TodayScheduleCard: View {
   // MARK: - Header
 
   private var cardHeader: some View {
-    HStack {
+    HStack(spacing: 8) {
       VStack(alignment: .leading, spacing: 2) {
         Text("오늘의 일정")
           .font(.headline)
@@ -48,17 +62,20 @@ struct TodayScheduleCard: View {
 
       Spacer()
 
-      // 약속 개수 배지
+      // 약속 개수 (배경 없음)
       if !promises.isEmpty {
         Text("\(promises.count)개")
-          .font(.caption)
+          .font(.subheadline)
           .fontWeight(.medium)
           .foregroundStyle(Color.pmindigo.n500)
-          .padding(.horizontal, 10)
-          .padding(.vertical, 4)
-          .background(Color.pmindigo.n500.opacity(0.1))
-          .clipShape(Capsule())
       }
+
+      // Chevron (회전 애니메이션)
+      Image(systemName: "chevron.right")
+        .font(.subheadline)
+        .fontWeight(.semibold)
+        .foregroundStyle(Color.pmgray.n400)
+        .rotationEffect(.degrees(isExpanded ? 90 : 0))
     }
   }
 

@@ -13,24 +13,25 @@ struct TimelineItemView: View {
   var body: some View {
     Button(action: onTap) {
       HStack(alignment: .top, spacing: 0) {
-        // 타임라인 인디케이터 (가장 왼쪽)
+        // 타임라인 인디케이터 (가장 왼쪽, 패딩 영향 없음)
         timelineIndicator
 
-        // 시간
-        timeLabel
-          .frame(width: 56, alignment: .leading)
-          .padding(.leading, 12)
+        // 시간 + 콘텐츠 + 뱃지 (패딩 적용)
+        HStack(alignment: .top, spacing: 0) {
+          timeLabel
+            .frame(width: 56, alignment: .leading)
+            .padding(.leading, 12)
 
-        // 콘텐츠
-        promiseContent
-          .padding(.leading, 8)
+          promiseContent
+            .padding(.leading, 8)
 
-        Spacer(minLength: 0)
+          Spacer(minLength: 0)
 
-        // 그룹 뱃지 (우측 상단)
-        if promise.group != nil {
-          groupBadge
+          if promise.group != nil {
+            groupBadge
+          }
         }
+        .padding(.vertical, 5)
       }
       .contentShape(Rectangle())
     }
@@ -40,17 +41,13 @@ struct TimelineItemView: View {
   // MARK: - Timeline Indicator
 
   private var timelineIndicator: some View {
-    ZStack(alignment: isLast ? .bottom : .top) {
-      // 세로 라인 (첫 번째와 마지막이 아닌 경우 전체, 그 외는 절반)
-      if !isFirst || !isLast {
-        Rectangle()
-          .fill(Color.pmindigo.n300.opacity(0.5))
-          .frame(width: 2)
-          .padding(.top, isFirst ? 10 : 0)
-          .padding(.bottom, isLast ? 10 : 0)
-      }
+    VStack(spacing: 0) {
+      // 상단 라인 (첫 번째가 아니면 표시)
+      Rectangle()
+        .fill(isFirst ? Color.clear : Color.pmindigo.n300.opacity(0.5))
+        .frame(width: 2, height: 10)
 
-      // 점
+      // 점 (항상 시간 위치에 맞춤)
       Circle()
         .fill(isNow ? Color.pmindigo.n500 : Color.pmindigo.n300)
         .frame(width: 10, height: 10)
@@ -61,7 +58,12 @@ struct TimelineItemView: View {
               .frame(width: 16, height: 16)
           }
         }
-        .padding(isLast ? .bottom : .top, 10)
+
+      // 하단 라인 (마지막이 아니면 표시, 남은 공간 채움)
+      Rectangle()
+        .fill(isLast ? Color.clear : Color.pmindigo.n300.opacity(0.5))
+        .frame(width: 2)
+        .frame(maxHeight: .infinity)
     }
     .frame(width: 16)
   }
