@@ -56,6 +56,19 @@ extension PromiseDetail {
       )) {
         ShareSheet(items: [store.promise.shareText])
       }
+      .navigationDestination(isPresented: Binding(
+        get: { store.showMapDetail },
+        set: { _ in store.send(.view(.mapDetailDismissed)) }
+      )) {
+        if let location = store.promise.location {
+          LocationDetailMapView(
+            location: location,
+            onDirectionsTapped: {
+              store.send(.view(.directionsTapped))
+            }
+          )
+        }
+      }
     }
 
     // MARK: - Header Section
@@ -127,7 +140,10 @@ extension PromiseDetail {
               PromiseDetailLocationMapPreview(
                 latitude: latitude,
                 longitude: longitude,
-                placeName: location.name
+                placeName: location.name,
+                onTap: {
+                  store.send(.view(.mapTapped))
+                }
               )
             }
           }

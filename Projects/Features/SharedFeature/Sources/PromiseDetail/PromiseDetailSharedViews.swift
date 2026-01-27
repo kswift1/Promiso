@@ -1,6 +1,7 @@
 import SwiftUI
 import Clients
 import PromisoShared
+import ResourceKit
 
 public struct PromiseDetailSectionHeader: View {
   private let title: String
@@ -258,25 +259,46 @@ public struct PromiseDetailLocationMapPreview: View {
   private let latitude: Double
   private let longitude: Double
   private let placeName: String
+  private let onTap: () -> Void
 
-  public init(latitude: Double, longitude: Double, placeName: String) {
+  public init(
+    latitude: Double,
+    longitude: Double,
+    placeName: String,
+    onTap: @escaping () -> Void
+  ) {
     self.latitude = latitude
     self.longitude = longitude
     self.placeName = placeName
+    self.onTap = onTap
   }
 
   public var body: some View {
-    VStack(spacing: 0) {
-      KakaoMiniMapView(
-        latitude: latitude,
-        longitude: longitude,
-        zoomLevel: 16
-      )
-      .frame(height: 160)
-      .clipShape(RoundedRectangle(cornerRadius: 12))
+    Button(action: onTap) {
+      ZStack(alignment: .topTrailing) {
+        KakaoMiniMapView(
+          latitude: latitude,
+          longitude: longitude,
+          zoomLevel: 16
+        )
+        .frame(height: 160)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+
+        // 확대 아이콘 (우상단, 네모 배경)
+        ResourceKitAsset.expandIcon.swiftUIImage
+          .resizable()
+          .renderingMode(.template)
+          .foregroundStyle(.black.opacity(0.6))
+          .frame(width: 16, height: 16)
+          .padding(4)
+          .background(Color.white.opacity(0.6), in: RoundedRectangle(cornerRadius: 8))
+          .padding(8)
+      }
+      .contentShape(Rectangle())
       .padding(.horizontal, 16)
       .padding(.vertical, 12)
     }
+    .buttonStyle(.plain)
   }
 }
 

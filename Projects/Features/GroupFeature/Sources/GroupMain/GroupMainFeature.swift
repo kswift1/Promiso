@@ -364,7 +364,6 @@ extension GroupMain {
       case groupPromiseList(GroupPromiseList.Feature)
       case promiseDetail(PromiseDetail.Feature)
       case pastPromises(PastPromises.Feature)
-      case pastPromiseDetail(PastPromiseDetail.Feature)
     }
 
     @CasePathable
@@ -1103,7 +1102,7 @@ extension GroupMain {
           return .none
 
         case .path(.element(id: _, action: .pastPromises(.delegate(.promiseSelected(let promise))))):
-          state.path.append(.pastPromiseDetail(.init(
+          state.path.append(.promiseDetail(.init(
             promise: promise,
             currentUserId: state.currentUser.userId,
             groupMembers: state.currentGroupMembers

@@ -27,8 +27,6 @@ extension GroupMain {
             PromiseDetail.RootView(store: promiseDetailStore)
           case .pastPromises(let pastPromisesStore):
             PastPromises.RootView(store: pastPromisesStore)
-          case .pastPromiseDetail(let pastPromiseDetailStore):
-            PastPromiseDetail.RootView(store: pastPromiseDetailStore)
           }
         }
     }

@@ -119,7 +119,7 @@ struct TimelineItemView: View {
       // 장소
       if let location = promise.location {
         HStack(spacing: 4) {
-          ResourceKitAsset.locationLogo.swiftUIImage
+          ResourceKitAsset.locationIcon.swiftUIImage
             .renderingMode(.template)
             .resizable()
             .scaledToFit()

@@ -32,6 +32,9 @@ extension PromiseDetail {
       // 멤버 시트 상태
       var memberSheet: MemberSheetState?
 
+      // 지도 상세 시트 상태
+      var showMapDetail: Bool = false
+
       // 수정 시트 상태
       @Presents var editPromise: EditPromise.Feature.State?
 
@@ -106,6 +109,8 @@ extension PromiseDetail {
         case participantGroupTapped(title: String, userIds: [String], colorType: ParticipantColorType)
         case memberSheetDismissed
         case directionsTapped
+        case mapTapped
+        case mapDetailDismissed
       }
 
       @CasePathable
@@ -219,6 +224,18 @@ extension PromiseDetail {
             }
             let coordinate = Coordinate(latitude: lat, longitude: lng)
             mapClient.openDirections(coordinate, location.name)
+            return .none
+
+          case .mapTapped:
+            guard state.promise.location?.latitude != nil,
+                  state.promise.location?.longitude != nil else {
+              return .none
+            }
+            state.showMapDetail = true
+            return .none
+
+          case .mapDetailDismissed:
+            state.showMapDetail = false
             return .none
           }
 
