@@ -152,8 +152,7 @@ extension AppEntry {
             
           case .profileCheckResponse(let user, let profile):
             if let userModel = profile {
-              let sharedUser = Shared(value: userModel)
-              state.destination = .main(RootTab.Feature.State(currentUser: sharedUser))
+              state.destination = .main(RootTab.Feature.State(currentUser: Shared(value: userModel)))
               if state.splash == .visible {
                 state.splash = .animatingOut
               }
@@ -220,8 +219,7 @@ extension AppEntry {
           case .notificationPermissionChecked(let isAuthorized, let userModel):
             if isAuthorized {
               // 이미 권한 허용됨 → 바로 메인으로
-              let sharedUser = Shared(value: userModel)
-              state.destination = .main(RootTab.Feature.State(currentUser: sharedUser))
+              state.destination = .main(RootTab.Feature.State(currentUser: Shared(value: userModel)))
             } else {
               // 권한 미허용 → 온보딩 표시
               state.pendingUserForMain = userModel
@@ -244,8 +242,7 @@ extension AppEntry {
           state.notificationPermission = nil
           if let userModel = state.pendingUserForMain {
             state.pendingUserForMain = nil
-            let sharedUser = Shared(value: userModel)
-            state.destination = .main(RootTab.Feature.State(currentUser: sharedUser))
+            state.destination = .main(RootTab.Feature.State(currentUser: Shared(value: userModel)))
           }
           return .none
 
