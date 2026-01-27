@@ -1,5 +1,3 @@
-// MARK: - AuthFeature.swift
-
 import AuthenticationServices
 import Clients
 import ComposableArchitecture
@@ -10,6 +8,7 @@ import CryptoKit
 import GoogleSignIn
 import GoogleSignInSwift
 import PromisoShared
+import ResourceKit
 
 // MARK: - Feature Namespace
 
@@ -537,7 +536,7 @@ extension Auth {
         // Google 버튼
         Button(action: onGoogleLogin) {
           HStack(spacing: 12) {
-            Image("googleLogo")
+            ResourceKitAsset.googleLogo.swiftUIImage
               .resizable()
               .frame(width: 20, height: 20)
             Text("Google로 계속하기")

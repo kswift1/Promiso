@@ -143,7 +143,7 @@ extension AccountInfo {
           .font(.caption)
           .foregroundStyle(Color.pmtext.primary)
       case "google":
-        Image("googleLogo")
+        ResourceKitAsset.googleLogo.swiftUIImage
           .resizable()
           .scaledToFit()
           .frame(width: 14, height: 14)
