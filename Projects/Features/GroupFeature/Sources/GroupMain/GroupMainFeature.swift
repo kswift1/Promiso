@@ -131,7 +131,6 @@ extension GroupMain {
 
     @ObservableState
     public struct State: Equatable {
-      var isInitialized: Bool = false
       @Shared(.currentUser) var currentUser: UserPrivateModel?
 
       var promisesState: LoadingState<[PromiseModel]> = .idle
@@ -438,6 +437,8 @@ extension GroupMain {
         case pastPromisesResponse(Result<[PromiseModel], AppError>)
         case fetchSettings
         case settingsResponse(Result<UserSettings, AppError>)
+        /// 그룹 변경 시 데이터 리셋 및 리로드
+        case resetForGroupChange
       }
     }
 
@@ -449,9 +450,10 @@ extension GroupMain {
         case .view(let viewAction):
           switch viewAction {
           case .onAppear:
-            guard !state.isInitialized else { return .none }
-            state.isInitialized = true
-            // 정렬 설정을 먼저 로드한 후 그룹 리스트 표시
+            // 이미 로드됨 또는 로드할 그룹 없음 → 스킵
+            guard state.currentGroup == nil, let user = state.currentUser, user.groups.isNotEmpty else {
+              return .none
+            }
             return .send(.internal(.fetchSettings))
 
           case .refreshTriggered:
@@ -904,7 +906,9 @@ extension GroupMain {
             return .none
 
           case .fetchSettings:
-            guard let userId = state.currentUser?.userId else { return .none }
+            guard let userId = state.currentUser?.userId else {
+              return .none
+            }
             return .run { [userSettingsClient] send in
               do {
                 let settings = try await userSettingsClient.fetchSettings(userId)
@@ -935,6 +939,16 @@ extension GroupMain {
               .send(.internal(.setDefaultGroup(groups: summaries))),
               .send(.internal(.fetchGroupList))
             )
+
+          case .resetForGroupChange:
+            // 이미 로드된 경우에만 리셋 (초기 로드 중이면 스킵)
+            guard state.currentGroup != nil else { return .none }
+            state.currentGroup = nil
+            state.allGroupSummaries = nil
+            state.currentGroupMembers = nil
+            state.promisesState = .idle
+            state.pastPromisesState = .idle
+            return .send(.internal(.fetchSettings))
 
           }
 

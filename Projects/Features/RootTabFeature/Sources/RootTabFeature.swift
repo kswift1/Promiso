@@ -75,7 +75,7 @@ extension RootTab {
       var calendar: CalendarFeature.Feature.State = .init()
 
       /// Group Main State
-      var groupMain: GroupMain.Feature.State = .init()
+      public var groupMain: GroupMain.Feature.State = .init()
 
       /// Profile State
       var profile: Profile.Feature.State = .init()
@@ -148,6 +148,30 @@ extension RootTab {
       case activityStateChanged(ActivityStateValue)
       /// ETA 시트 열기 (딜레이 후)
       case openETASheetAfterDelay
+
+      // MARK: - @Shared(.currentUser) 변경 감지
+
+      /// currentUser.groups 변경 시 호출 (RootTabView의 onChange에서 트리거)
+      ///
+      /// ## 처리 로직
+      /// 1. 모든 탭의 로드 플래그 리셋 (lazy reload 준비)
+      ///    - home.hasLoadedOnce = false
+      ///    - groupMain.hasLoadedOnce = false
+      ///    - calendar.loadedMonths.removeAll() + cachedPromisesByMonth.removeAll()
+      ///
+      /// 2. 현재 보이는 탭만 즉시 리로드 (불필요한 API 호출 방지)
+      ///    - .home → .send(.home(.internal(.fetchPromises)))
+      ///    - .group → .send(.groupMain(.internal(.fetchSettings)))
+      ///    - .calendar → .send(.calendar(.internal(.loadInitialData)))
+      ///    - .profile → .none (프로필은 @Shared 자동 반영)
+      ///
+      /// 3. 다른 탭은 해당 탭으로 이동 시 onAppear에서 자동 로드
+      ///    (hasLoadedOnce가 false이므로)
+      case currentUserGroupsChanged
+      /// @Shared(.currentUser) 변경 구독 시작
+      case observeCurrentUser
+      /// @Shared(.currentUser) 변경 감지됨
+      case currentUserUpdated(UserPrivateModel?)
     }
 
     public enum Delegate: Equatable {
@@ -178,7 +202,8 @@ extension RootTab {
           return .merge(
             .send(.internal(.refreshWidgetAuthToken)),
             .send(.internal(.observePushToStartToken)),
-            .send(.internal(.observeActivityUpdates))
+            .send(.internal(.observeActivityUpdates)),
+            .send(.internal(.observeCurrentUser))
           )
 
         case .tabSelected(let tab):
@@ -404,6 +429,54 @@ extension RootTab {
           case .openETASheetAfterDelay:
             state.livePromiseDetail?.isETASheetPresented = true
             return .none
+
+          case .currentUserGroupsChanged:
+            // groups가 비어있으면 아무것도 하지 않음
+            guard let user = state.currentUser, !user.groups.isEmpty else {
+              return .none
+            }
+
+            // 현재 보이는 탭의 데이터 리로드 (각 Feature의 캡슐화된 리셋 액션 호출)
+            // 이미 로드된 경우에만 리셋, 초기 로드 중이면 스킵 (각 Feature 내부에서 처리)
+            switch state.selectedTab {
+            case .home:
+              return .send(.home(.internal(.resetForGroupChange)))
+            case .group:
+              return .send(.groupMain(.internal(.resetForGroupChange)))
+            case .calendar:
+              return .send(.calendar(.internal(.resetForGroupChange)))
+            case .profile:
+              return .none
+            }
+
+          case .observeCurrentUser:
+            // @Shared(.currentUser) 변경을 구독
+            let shared = state.$currentUser
+            return .run { send in
+              var previousGroupIds: [String] = []
+              var isFirstEmission = true
+              for await user in shared.publisher.values {
+                let currentGroupIds = user?.groups.map { $0.id } ?? []
+                // 첫 번째 emission은 스킵 (초기값은 onAppear에서 처리)
+                if isFirstEmission {
+                  isFirstEmission = false
+                  previousGroupIds = currentGroupIds
+                  continue
+                }
+                // 이후 groups 변경 시에만 업데이트 전송
+                if currentGroupIds != previousGroupIds {
+                  previousGroupIds = currentGroupIds
+                  await send(.internal(.currentUserUpdated(user)))
+                }
+              }
+            }
+
+          case .currentUserUpdated(let user):
+            // groups가 있으면 자식 탭 리로드 트리거
+            guard let user, !user.groups.isEmpty else {
+              return .none
+            }
+            return .send(.internal(.currentUserGroupsChanged))
           }
 
         case .delegate:

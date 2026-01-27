@@ -89,6 +89,8 @@ extension Home {
         case promisesResponse(Result<[PromiseModel], Error>)
         /// 응답 필요 섹션으로 스크롤
         case scrollToNeedResponse
+        /// 그룹 변경 시 데이터 리셋 및 리로드
+        case resetForGroupChange
       }
 
       public enum Delegate: Sendable {
@@ -109,8 +111,12 @@ extension Home {
         case .view(let viewAction):
           switch viewAction {
           case .onAppear:
-            guard !state.hasLoadedOnce else { return .none }
-            state.hasLoadedOnce = true
+            // 이미 로드됨 또는 로드할 그룹 없음 → 스킵
+            guard !state.promisesState.isLoaded,
+                  let user = state.currentUser,
+                  !user.groups.isEmpty else {
+              return .none
+            }
             return .send(.internal(.fetchPromises))
 
           case .refreshTriggered:
@@ -161,7 +167,6 @@ extension Home {
             state.promisesState = .loading
 
             let groupIds = state.currentUser?.groups.map { $0.id } ?? []
-
             guard !groupIds.isEmpty else {
               state.promisesState = .loaded([])
               return .none
@@ -204,6 +209,12 @@ extension Home {
 
           case .scrollToNeedResponse:
             return .none
+
+          case .resetForGroupChange:
+            // 이미 로드된 경우에만 리셋 (초기 로드 중이면 스킵)
+            guard state.promisesState.isLoaded else { return .none }
+            state.promisesState = .idle
+            return .send(.internal(.fetchPromises))
           }
 
         case .delegate:
@@ -404,7 +415,6 @@ extension Home {
         store.send(.view(.refreshTriggered))
       }
       .auroraBackground()
-      .navigationTitle("홈")
       .toolbar {
         ToolbarItem(placement: .topBarTrailing) {
           NotificationButton(

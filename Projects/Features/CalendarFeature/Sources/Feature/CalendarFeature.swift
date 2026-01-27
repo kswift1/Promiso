@@ -247,6 +247,8 @@ extension CalendarFeature {
         case calendarPermissionResponse(CalendarAuthorizationStatus)
         case fetchCalendarEvents
         case calendarEventsResponse(Result<[CalendarEvent], Error>)
+        /// 그룹 변경 시 데이터 리셋 및 리로드
+        case resetForGroupChange
       }
     }
 
@@ -308,7 +310,11 @@ extension CalendarFeature {
 
       switch action {
       case .onAppear:
-        AppLogger.calendar.debugLog("🚀 onAppear - 캘린더 탭 진입")
+        // 이미 로드됨 또는 로드할 그룹 없음 → 권한 체크만
+        guard state.loadedMonths.isEmpty,
+              !state.userGroupIds.isEmpty else {
+          return .send(.internal(.checkCalendarPermission))
+        }
         return .merge(
           .send(.internal(.checkCalendarPermission)),
           .send(.internal(.loadInitialData))
@@ -688,6 +694,12 @@ extension CalendarFeature {
           state.calendarEvents = []
         }
         return .none
+
+      case .resetForGroupChange:
+        // 이미 로드된 경우에만 리셋 (초기 로드 중이면 스킵)
+        // loadInitialData에서 캐시 초기화하므로 여기서는 체크만
+        guard !state.loadedMonths.isEmpty else { return .none }
+        return .send(.internal(.loadInitialData))
       }
     }
 

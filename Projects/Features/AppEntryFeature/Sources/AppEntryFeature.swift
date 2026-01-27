@@ -152,6 +152,9 @@ extension AppEntry {
             
           case .profileCheckResponse(let user, let profile):
             if let userModel = profile {
+              // @Shared 전역 스토리지에 먼저 설정 (withLock으로 exclusive access)
+              @Shared(.currentUser) var currentUser: UserPrivateModel?
+              $currentUser.withLock { $0 = userModel }
               state.destination = .main(RootTab.Feature.State(currentUser: userModel))
               if state.splash == .visible {
                 state.splash = .animatingOut
