@@ -13,7 +13,44 @@ public struct LiveActivityInfoPopover: View {
   @Environment(\.colorScheme) private var colorScheme
   @State private var animationProgress: Double = 0
 
-  public init() {}
+  // 약속 정보 (nil이면 기본값 사용)
+  private let emoji: String
+  private let title: String
+  private let location: String?
+  private let promiseTime: Date?
+
+  public init(
+    emoji: String? = nil,
+    title: String? = nil,
+    location: String? = nil,
+    promiseTime: Date? = nil
+  ) {
+    self.emoji = emoji ?? "🍕"
+    self.title = title ?? "피자 약속"
+    self.location = location
+    self.promiseTime = promiseTime
+  }
+
+  // 표시용 문자열
+  private var displayTitle: String {
+    "\(emoji) \(title)"
+  }
+
+  private var displayLocation: String {
+    location ?? "강남역 11번 출구"
+  }
+
+  private var displayTimeComponents: (ampm: String, time: String) {
+    guard let date = promiseTime else {
+      return ("PM", "6:00")
+    }
+    let hour = Calendar.current.component(.hour, from: date)
+    let minute = Calendar.current.component(.minute, from: date)
+    let ampm = hour < 12 ? "AM" : "PM"
+    let displayHour = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour)
+    let timeString = String(format: "%d:%02d", displayHour, minute)
+    return (ampm, timeString)
+  }
 
   public var body: some View {
     VStack(spacing: 16) {
@@ -23,7 +60,7 @@ public struct LiveActivityInfoPopover: View {
           .font(.system(size: 17, weight: .bold))
           .foregroundColor(.primary)
 
-        Text("잠금화면과 다이나믹 아일랜드에서\n친구들의 도착 상황을 확인할 수 있어요")
+        Text("잠금화면과 다이나믹 아일랜드에서\n친구들의 도착 상황을 실시간으로 확인할 수 있어요")
           .font(.system(size: 13))
           .foregroundColor(.secondary)
           .multilineTextAlignment(.center)
@@ -71,7 +108,7 @@ public struct LiveActivityInfoPopover: View {
       // Dynamic Island Compact 모양 (실제 구현과 동일)
       HStack(spacing: 0) {
         // Leading: 뱃지 스타일
-        Text("🍕 피자 약속")
+        Text(displayTitle)
           .font(.system(size: 11, weight: .semibold))
           .foregroundColor(.white)
           .lineLimit(1)
@@ -84,10 +121,10 @@ public struct LiveActivityInfoPopover: View {
 
         // Trailing: PM 시간
         HStack(spacing: 2) {
-          Text("PM")
+          Text(displayTimeComponents.ampm)
             .font(.system(size: 9, weight: .medium, design: .monospaced))
             .foregroundColor(.white.opacity(0.6))
-          Text("6:00")
+          Text(displayTimeComponents.time)
             .font(.system(size: 13, weight: .bold, design: .monospaced))
             .foregroundColor(.white)
         }
@@ -119,7 +156,7 @@ public struct LiveActivityInfoPopover: View {
         HStack {
           // 왼쪽: 약속 정보
           VStack(alignment: .leading, spacing: 4) {
-            Text("🍕 피자 약속")
+            Text(displayTitle)
               .font(.system(size: 13, weight: .bold))
               .foregroundColor(.white)
               .lineLimit(1)
@@ -127,7 +164,7 @@ public struct LiveActivityInfoPopover: View {
             HStack(spacing: 3) {
               Text("📍")
                 .font(.system(size: 9))
-              Text("강남역 11번 출구")
+              Text(displayLocation)
                 .font(.system(size: 10))
             }
             .foregroundColor(.white.opacity(0.6))
@@ -142,11 +179,11 @@ public struct LiveActivityInfoPopover: View {
               .foregroundColor(.white.opacity(0.6))
 
             HStack(alignment: .firstTextBaseline, spacing: 3) {
-              Text("PM")
+              Text(displayTimeComponents.ampm)
                 .font(.system(size: 10, weight: .medium, design: .monospaced))
                 .foregroundColor(.white.opacity(0.6))
 
-              Text("6:00")
+              Text(displayTimeComponents.time)
                 .font(.system(size: 15, weight: .bold, design: .monospaced))
                 .foregroundColor(.white)
             }

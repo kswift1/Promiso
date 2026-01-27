@@ -148,7 +148,12 @@ struct TimelineItemView: View {
               .font(.system(size: 12))
           }
           .popover(isPresented: $showLiveActivityInfo, arrowEdge: .top) {
-            LiveActivityInfoPopover()
+            LiveActivityInfoPopover(
+              emoji: promise.displayEmoji,
+              title: promise.title,
+              location: promise.location?.name,
+              promiseTime: promise.startAt
+            )
           }
         }
         .foregroundStyle(.secondary)
