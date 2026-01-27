@@ -29,7 +29,7 @@ struct PendingCard: View {
             .lineLimit(1)
         }
 
-        // 하단: 날짜 + 시간
+        // 날짜 + 시간
         HStack(spacing: 4) {
           Image(systemName: "calendar")
             .font(.caption2)
@@ -38,6 +38,9 @@ struct PendingCard: View {
             .font(.caption)
         }
         .foregroundStyle(.secondary)
+
+        // 그룹 정보
+        groupInfoView
 
         // 투표 현황
         voteProgressView
@@ -61,6 +64,27 @@ struct PendingCard: View {
       .padding(.vertical, 4)
       .background(dDayColor)
       .clipShape(Capsule())
+  }
+
+  // MARK: - Group Info View
+
+  @ViewBuilder
+  private var groupInfoView: some View {
+    if let group = promise.group {
+      HStack(spacing: 4) {
+        // 그룹 아이콘
+        GroupThumbnailView(
+          imageUrl: group.imageUrl,
+          name: group.name,
+          size: 14
+        )
+
+        Text(group.name)
+          .font(.caption)
+          .lineLimit(1)
+      }
+      .foregroundStyle(.secondary)
+    }
   }
 
   // MARK: - Vote Progress View

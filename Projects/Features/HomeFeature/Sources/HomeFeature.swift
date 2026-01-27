@@ -181,7 +181,23 @@ extension Home {
           case .promisesResponse(let result):
             switch result {
             case .success(let promises):
-              state.promisesState = .loaded(promises)
+              // 그룹 정보 매칭 (UserGroupInfo -> GroupModel 변환)
+              let groupsDict = Dictionary(uniqueKeysWithValues: state.currentUser.groups.map { ($0.id, $0) })
+              let promisesWithGroup = promises.map { promise -> PromiseModel in
+                var updated = promise
+                if let userGroupInfo = groupsDict[promise.groupId] {
+                  updated.group = GroupModel(
+                    id: userGroupInfo.id,
+                    name: userGroupInfo.name,
+                    imageUrl: userGroupInfo.imageUrl,
+                    maxMembers: 0,
+                    inviteCode: "",
+                    createdBy: ""
+                  )
+                }
+                return updated
+              }
+              state.promisesState = .loaded(promisesWithGroup)
             case .failure(let error):
               state.promisesState = .failed(error)
             }

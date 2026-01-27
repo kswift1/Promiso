@@ -100,20 +100,30 @@ struct TimelineItemView: View {
         .foregroundStyle(.secondary)
       }
 
-      // 참여자
-      participantsView
+      // 그룹 · 참여자
+      groupParticipantsView
     }
   }
 
-  // MARK: - Participants View
+  // MARK: - Group & Participants View
 
-  private var participantsView: some View {
+  private var groupParticipantsView: some View {
     HStack(spacing: 4) {
-      Image(systemName: "person.2.fill")
-        .font(.caption2)
+      // 그룹 아이콘
+      GroupThumbnailView(
+        imageUrl: promise.group?.imageUrl,
+        name: promise.group?.name ?? "",
+        size: 14
+      )
 
-      Text("\(promise.votes.accepted.count)명 참여")
-        .font(.caption)
+      // 그룹명 · 참여자
+      if let groupName = promise.group?.name {
+        Text("\(groupName) · \(promise.votes.accepted.count)명 참여")
+          .font(.caption)
+      } else {
+        Text("\(promise.votes.accepted.count)명 참여")
+          .font(.caption)
+      }
     }
     .foregroundStyle(.secondary)
   }

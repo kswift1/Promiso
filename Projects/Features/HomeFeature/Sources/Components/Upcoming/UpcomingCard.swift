@@ -96,16 +96,32 @@ struct UpcomingCard: View {
       }
       .foregroundStyle(.secondary)
 
-      // 참여자
-      HStack(spacing: 3) {
-        Image(systemName: "person.2.fill")
-          .font(.caption2)
+      // 그룹 · 참여자
+      groupParticipantsView
+    }
+  }
 
+  // MARK: - Group & Participants View
+
+  private var groupParticipantsView: some View {
+    HStack(spacing: 4) {
+      // 그룹 아이콘
+      GroupThumbnailView(
+        imageUrl: promise.group?.imageUrl,
+        name: promise.group?.name ?? "",
+        size: 14
+      )
+
+      // 그룹명 · 참여자
+      if let groupName = promise.group?.name {
+        Text("\(groupName) · \(promise.votes.accepted.count)명 참여 확정")
+          .font(.caption)
+      } else {
         Text("\(promise.votes.accepted.count)명 참여 확정")
           .font(.caption)
       }
-      .foregroundStyle(.secondary)
     }
+    .foregroundStyle(.secondary)
   }
 
   // MARK: - Computed Properties
