@@ -87,20 +87,25 @@ struct TimelineItemView: View {
       // 장소
       if let location = promise.location {
         HStack(spacing: 4) {
-          Image(systemName: "location.fill")
-            .font(.caption2)
+          Text("📍")
+            .font(.caption)
 
           Text(location.name)
             .font(.caption)
+            .foregroundStyle(.secondary)
             .lineLimit(1)
         }
-        .foregroundStyle(.secondary)
       }
 
       // 참여자 수
-      Text("\(promise.votes.accepted.count)명 참여")
-        .font(.caption)
-        .foregroundStyle(.secondary)
+      HStack(spacing: 4) {
+        Text("👥")
+          .font(.caption)
+
+        Text("\(promise.votes.accepted.count)명 참여")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+      }
     }
   }
 
