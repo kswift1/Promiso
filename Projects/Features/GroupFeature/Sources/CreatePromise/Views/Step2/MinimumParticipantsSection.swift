@@ -67,7 +67,7 @@ struct MinimumParticipantsSection: View {
           .font(.system(size: 16))
           .foregroundColor(.secondary)
 
-        Text("그룹이 2명이므로최소 참가 인원이 2명으로 고정됩니다")
+        Text("그룹이 2명이므로 최소 참가 인원이 2명으로 고정됩니다")
           .font(.system(size: 14))
           .foregroundColor(.secondary)
       }
