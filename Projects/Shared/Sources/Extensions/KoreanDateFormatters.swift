@@ -209,6 +209,15 @@ public enum KoreanDateFormatters {
       return "\(monthDayString(from: date))\n\(timeString(from: date))"
     }
   }
+
+  /// 종료 시간 텍스트 (시작 시간 기준 같은 날이면 시간만, 다른 날이면 날짜 + 시간)
+  public static func endTimeString(from endDate: Date, relativeTo startDate: Date) -> String {
+    if Calendar.current.isDate(startDate, inSameDayAs: endDate) {
+      return timeString(from: endDate)
+    } else {
+      return "\(monthDayString(from: endDate)) \(timeString(from: endDate))"
+    }
+  }
 }
 
 // MARK: - Date Extension

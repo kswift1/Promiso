@@ -1,4 +1,5 @@
 import Foundation
+import PromisoShared
 
 // MARK: - Promise Model
 
@@ -240,17 +241,7 @@ extension PromiseModel {
   /// 종료 시간 텍스트 (예: "오후 5:00" 또는 다음날이면 "1월 28일 오전 1:00")
   public var endTimeText: String? {
     guard let endAt = endAt else { return nil }
-    let calendar = Calendar.current
-    let formatter = DateFormatter()
-    formatter.locale = Locale(identifier: "ko_KR")
-
-    // 같은 날인지 확인
-    if calendar.isDate(startAt, inSameDayAs: endAt) {
-      formatter.dateFormat = "a h:mm"
-    } else {
-      formatter.dateFormat = "M월 d일 a h:mm"
-    }
-    return formatter.string(from: endAt)
+    return KoreanDateFormatters.endTimeString(from: endAt, relativeTo: startAt)
   }
 
   /// 시간 범위 텍스트 (예: "오후 2:00 ~ 오후 5:00" 또는 "오후 2:00 ~ 1월 28일 오전 1:00")
