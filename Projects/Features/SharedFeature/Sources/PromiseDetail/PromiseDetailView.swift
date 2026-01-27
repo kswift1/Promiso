@@ -162,62 +162,101 @@ extension PromiseDetail {
       VStack(spacing: 0) {
         PromiseDetailSectionHeader(
           title: "참여자",
-          trailing: "\(store.promise.votes.acceptedCount)/\(store.groupMembers?.count ?? 0)명 참여"
+          trailing: store.isLoadingMembers ? nil : "\(store.promise.votes.acceptedCount)/\(store.groupMembers?.count ?? 0)명 참여"
         )
 
-        VStack(spacing: 12) {
-          // 수락
-          if !store.promise.votes.accepted.isEmpty {
-            PromiseDetailParticipantGroupRow(
-              title: "참여",
-              count: store.promise.votes.acceptedCount,
-              userIds: store.promise.votes.accepted,
-              members: store.groupMembers,
-              color: participantColor(.accepted)
-            ) {
-              store.send(.view(.participantGroupTapped(
-                title: "참여",
-                userIds: store.promise.votes.accepted,
-                colorType: .accepted
-              )))
+        if store.isLoadingMembers {
+          // 스켈레톤 UI
+          VStack(spacing: 12) {
+            ForEach(0..<3, id: \.self) { _ in
+              HStack(spacing: 12) {
+                // 아바타 스켈레톤
+                Circle()
+                  .fill(Color(.systemGray5))
+                  .frame(width: 36, height: 36)
+
+                // 텍스트 스켈레톤
+                VStack(alignment: .leading, spacing: 6) {
+                  RoundedRectangle(cornerRadius: 4)
+                    .fill(Color(.systemGray5))
+                    .frame(width: 60, height: 14)
+
+                  RoundedRectangle(cornerRadius: 4)
+                    .fill(Color(.systemGray6))
+                    .frame(width: 40, height: 12)
+                }
+
+                Spacer()
+
+                // 카운트 스켈레톤
+                RoundedRectangle(cornerRadius: 8)
+                  .fill(Color(.systemGray5))
+                  .frame(width: 32, height: 24)
+              }
+              .padding(.horizontal, 16)
+              .padding(.vertical, 12)
+              .background(
+                RoundedRectangle(cornerRadius: 12)
+                  .fill(Color(.secondarySystemBackground).opacity(0.5))
+              )
             }
           }
-
-          // 거절
-          if !store.promise.votes.declined.isEmpty {
-            PromiseDetailParticipantGroupRow(
-              title: "불참",
-              count: store.promise.votes.declinedCount,
-              userIds: store.promise.votes.declined,
-              members: store.groupMembers,
-              color: participantColor(.declined)
-            ) {
-              store.send(.view(.participantGroupTapped(
-                title: "불참",
-                userIds: store.promise.votes.declined,
-                colorType: .declined
-              )))
-            }
-          }
-
-          // 대기 (그룹 멤버 - 수락 - 거절)
-          if let members = store.groupMembers {
-            let respondedIds = Set(store.promise.votes.accepted + store.promise.votes.declined)
-            let pendingUserIds = members.filter { !respondedIds.contains($0.userId) }.map(\.userId)
-
-            if !pendingUserIds.isEmpty {
+          .shimmer()
+        } else {
+          VStack(spacing: 12) {
+            // 수락
+            if !store.promise.votes.accepted.isEmpty {
               PromiseDetailParticipantGroupRow(
-                title: "미응답",
-                count: pendingUserIds.count,
-                userIds: pendingUserIds,
-                members: members,
-                color: participantColor(.pending)
+                title: "참여",
+                count: store.promise.votes.acceptedCount,
+                userIds: store.promise.votes.accepted,
+                members: store.groupMembers,
+                color: participantColor(.accepted)
               ) {
                 store.send(.view(.participantGroupTapped(
-                  title: "미응답",
-                  userIds: pendingUserIds,
-                  colorType: .pending
+                  title: "참여",
+                  userIds: store.promise.votes.accepted,
+                  colorType: .accepted
                 )))
+              }
+            }
+
+            // 거절
+            if !store.promise.votes.declined.isEmpty {
+              PromiseDetailParticipantGroupRow(
+                title: "불참",
+                count: store.promise.votes.declinedCount,
+                userIds: store.promise.votes.declined,
+                members: store.groupMembers,
+                color: participantColor(.declined)
+              ) {
+                store.send(.view(.participantGroupTapped(
+                  title: "불참",
+                  userIds: store.promise.votes.declined,
+                  colorType: .declined
+                )))
+              }
+            }
+
+            // 대기 (그룹 멤버 - 수락 - 거절)
+            if let members = store.groupMembers {
+              let respondedIds = Set(store.promise.votes.accepted + store.promise.votes.declined)
+              let pendingUserIds = members.filter { !respondedIds.contains($0.userId) }.map(\.userId)
+
+              if !pendingUserIds.isEmpty {
+                PromiseDetailParticipantGroupRow(
+                  title: "미응답",
+                  count: pendingUserIds.count,
+                  userIds: pendingUserIds,
+                  members: members,
+                  color: participantColor(.pending)
+                ) {
+                  store.send(.view(.participantGroupTapped(
+                    title: "미응답",
+                    userIds: pendingUserIds,
+                    colorType: .pending
+                  )))
+                }
               }
             }
           }

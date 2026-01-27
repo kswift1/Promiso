@@ -9,6 +9,7 @@ extension PromiseDetail {
   public struct Feature {
     @Dependency(\.promiseClient) var promiseClient
     @Dependency(\.mapClient) var mapClient
+    @Dependency(\.groupClient) var groupClient
 
     public init() {}
 
@@ -22,6 +23,11 @@ extension PromiseDetail {
 
       // 그룹 멤버 정보 (참여자 이름 표시용)
       var groupMembers: [UserPublicModel]?
+      var isLoadingMembers: Bool = false
+
+      /// 그룹 멤버 캐시 (전역 공유)
+      @Shared(.inMemory(AppConstants.SharedState.groupMembersCache))
+      var groupMembersCache: [String: [UserPublicModel]] = [:]
 
       // 멤버 시트 상태
       var memberSheet: MemberSheetState?
@@ -115,6 +121,8 @@ extension PromiseDetail {
         case deleteDone
         case deleteFailed(error: AppError)
         case promiseUpdated(PromiseModel)
+        case fetchGroupMembers
+        case groupMembersFetched(Result<[UserPublicModel], Error>)
       }
 
       public enum Delegate: Sendable {
@@ -130,7 +138,10 @@ extension PromiseDetail {
         case .view(let viewAction):
           switch viewAction {
           case .onAppear:
-            return .none
+            // 그룹 멤버가 없으면 로드
+            guard state.groupMembers == nil else { return .none }
+            state.isLoadingMembers = true
+            return .send(.internal(.fetchGroupMembers))
 
           case .dismissTapped:
             return .send(.delegate(.dismiss))
@@ -271,6 +282,29 @@ extension PromiseDetail {
 
           case .promiseUpdated(let promise):
             state.promise = promise
+            return .none
+
+          case .fetchGroupMembers:
+            let groupId = state.promise.groupId
+            return .run { [groupClient] send in
+              do {
+                let members = try await groupClient.fetchGroupMembers(groupId)
+                await send(.internal(.groupMembersFetched(.success(members))))
+              } catch {
+                await send(.internal(.groupMembersFetched(.failure(error))))
+              }
+            }
+
+          case .groupMembersFetched(let result):
+            state.isLoadingMembers = false
+            switch result {
+            case .success(let members):
+              state.groupMembers = members
+              // 캐시에도 저장
+              state.$groupMembersCache.withLock { $0[state.promise.groupId] = members }
+            case .failure:
+              break // 실패해도 UI는 진행
+            }
             return .none
           }
 
