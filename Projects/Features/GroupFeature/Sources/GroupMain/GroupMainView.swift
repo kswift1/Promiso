@@ -305,10 +305,6 @@ extension GroupMain {
             withAnimation(.easeInOut(duration: 0.3)) {
               proxy.scrollTo(promiseId, anchor: .center)
             }
-            // 스크롤(0.5) + 딜레이(0.5) + 애니메이션(1.5) 후 하이라이트 해제
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-              store.send(.view(.clearHighlightedPromise))
-            }
           }
         }
       }
@@ -371,7 +367,12 @@ extension GroupMain {
       .onTapGesture {
         store.send(.view(.promiseTapped(promise)))
       }
-      .modifier(ShakeEffect(isShaking: store.highlightedPromiseId == promiseId))
+      .modifier(ShakeEffect(
+        isShaking: store.highlightedPromiseId == promiseId,
+        onComplete: {
+          store.send(.view(.clearHighlightedPromise))
+        }
+      ))
       .listRowBackground(Color.clear)
       .listRowSeparator(.hidden)
       .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
@@ -667,13 +668,15 @@ private struct SortSettingsSheetContent: View {
 private struct ShakeEffect: ViewModifier {
   let isShaking: Bool
   let delay: Double
+  let onComplete: (() -> Void)?
   @State private var shakeOffset: CGFloat = 0
   @State private var hasStartedShake: Bool = false
   @State private var showBackground: Bool = false
 
-  init(isShaking: Bool, delay: Double = 0.5) {
+  init(isShaking: Bool, delay: Double = 0.5, onComplete: (() -> Void)? = nil) {
     self.isShaking = isShaking
     self.delay = delay
+    self.onComplete = onComplete
   }
 
   func body(content: Content) -> some View {
@@ -800,6 +803,11 @@ private struct ShakeEffect: ViewModifier {
       withAnimation(.easeInOut(duration: duration)) {
         shakeOffset = 0
       }
+    }
+    // 애니메이션 완료 후 콜백 호출
+    DispatchQueue.main.asyncAfter(deadline: .now() + duration * 3) {
+      showBackground = false
+      onComplete?()
     }
   }
 }
