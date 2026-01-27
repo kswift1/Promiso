@@ -16,7 +16,7 @@ extension GroupMain {
     case needResponse = "응답 필요"
     case responded = "응답 완료"
     case confirmed = "확정"
-    case all = "전체"이
+    case all = "전체"
     case past = "과거"
 
     public var title: String { rawValue }

@@ -714,39 +714,43 @@ private struct ShakeEffect: ViewModifier {
 
   private var swipeHintBackground: some View {
     ZStack {
-      // Leading - 수락 (오른쪽으로 밀었을 때)
-      HStack {
-        let progress = clamp((shakeOffset - 8) / 40)
-        swipeHintBubble(
-          title: "수락",
-          systemImage: "checkmark.circle.fill",
-          fillColor: .green,
-          progress: progress
-        )
-        .opacity(progress)
-        .scaleEffect(0.3 + progress * 0.7)
-        .offset(x: -4)
+      // Leading - 수락 (오른쪽으로 밀었을 때만 표시)
+      if shakeOffset > 0 {
+        HStack {
+          let progress = clamp((shakeOffset - 8) / 40)
+          swipeHintBubble(
+            title: "수락",
+            systemImage: "checkmark.circle.fill",
+            fillColor: .green,
+            progress: progress
+          )
+          .opacity(progress)
+          .scaleEffect(0.3 + progress * 0.7)
+          .offset(x: -4)
 
-        Spacer()
+          Spacer()
+        }
+        .padding(.leading, 0)
       }
-      .padding(.leading, 0)
 
-      // Trailing - 거절 (왼쪽으로 밀었을 때)
-      HStack {
-        Spacer()
+      // Trailing - 거절 (왼쪽으로 밀었을 때만 표시)
+      if shakeOffset < 0 {
+        HStack {
+          Spacer()
 
-        let progress = clamp((abs(shakeOffset) - 8) / 40)
-        swipeHintBubble(
-          title: "거절",
-          systemImage: "xmark.circle.fill",
-          fillColor: .red,
-          progress: progress
-        )
-        .opacity(progress)
-        .scaleEffect(0.3 + progress * 0.7)
-        .offset(x: 4)
+          let progress = clamp((abs(shakeOffset) - 8) / 40)
+          swipeHintBubble(
+            title: "거절",
+            systemImage: "xmark.circle.fill",
+            fillColor: .red,
+            progress: progress
+          )
+          .opacity(progress)
+          .scaleEffect(0.3 + progress * 0.7)
+          .offset(x: 4)
+        }
+        .padding(.trailing, 0)
       }
-      .padding(.trailing, 0)
     }
     .frame(maxWidth: .infinity)
     .frame(height: 100)
