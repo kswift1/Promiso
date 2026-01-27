@@ -321,7 +321,7 @@ extension GroupMain {
     @ViewBuilder
     private func promiseRowView(for promise: PromiseModel) -> some View {
       let promiseId = promise.id
-      let userId = store.currentUser?.userId ?? ""
+      let userId = store.currentUser.userId
       let myVoteStatus = promise.myVoteStatus(userId: userId)
 
       PromiseCard(
