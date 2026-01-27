@@ -23,7 +23,7 @@ struct TimelineItemView: View {
         VStack(spacing: 0) {
           HStack(alignment: .top, spacing: 0) {
             timeLabel
-              .frame(width: 72, alignment: .center)
+              .frame(width: 80, alignment: .center)
               .padding(.leading, 8)
 
             promiseContent
@@ -178,6 +178,8 @@ struct TimelineItemView: View {
           Text(endTimeString(endAt))
             .font(.caption)
             .foregroundStyle(.secondary)
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
         }
       } else if isNow {
         Text("NOW")
