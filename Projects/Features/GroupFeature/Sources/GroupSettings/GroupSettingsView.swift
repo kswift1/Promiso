@@ -1245,13 +1245,6 @@ struct InviteSheet: View {
       .background(Color(.systemGray6))
       .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
 
-      if isCopied {
-        Text("복사되었습니다!")
-          .font(.system(size: 12, weight: .semibold))
-          .foregroundStyle(.green)
-          .frame(maxWidth: .infinity, alignment: .leading)
-          .transition(.opacity)
-      }
       GroupInviteShareMessage.shareLink(groupName: groupName, inviteCode: inviteCode) {
         HStack(spacing: 8) {
           Image(systemName: "square.and.arrow.up")
@@ -1277,11 +1270,6 @@ struct InviteSheet: View {
     Haptic.success()
     withAnimation(.easeInOut(duration: 0.2)) {
       isCopied = true
-    }
-    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-      withAnimation(.easeInOut(duration: 0.2)) {
-        isCopied = false
-      }
     }
   }
 }

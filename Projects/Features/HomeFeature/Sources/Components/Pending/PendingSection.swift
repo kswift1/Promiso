@@ -24,7 +24,7 @@ struct PendingSection: View {
           }
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 8)
+        .padding(.vertical, 16)
       }
       .padding(.horizontal, -16)
     }
