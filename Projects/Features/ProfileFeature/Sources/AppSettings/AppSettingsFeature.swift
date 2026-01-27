@@ -26,50 +26,43 @@ extension AppSettings {
 
     @ObservableState
     public struct State: Equatable {
-      /// 24시간 형식 사용 여부
-      public var use24HourFormat: Bool
+      /// 24시간 형식 사용 여부 (@Shared로 앱 전체 공유, 기본값: 12시간)
+      @Shared(.appStorage("use24HourFormat")) public var use24HourFormat: Bool = false
 
-      public init() {
-        // UserDefaults에서 초기값 로드
-        self.use24HourFormat = UserDefaults.standard.bool(forKey: "use24HourFormat")
-        // 기본값이 false인 경우 true로 설정 (처음 실행 시)
-        if !UserDefaults.standard.bool(forKey: "use24HourFormatInitialized") {
-          self.use24HourFormat = true
-          UserDefaults.standard.set(true, forKey: "use24HourFormat")
-          UserDefaults.standard.set(true, forKey: "use24HourFormatInitialized")
-        }
-      }
+      public init() {}
     }
 
     // MARK: - Action
 
-    public enum Action: Sendable {
+    public enum Action: BindableAction, Sendable {
+      case binding(BindingAction<State>)
       case view(View)
 
       @CasePathable
       public enum View: Equatable, Sendable {
-        case onAppear
-        case use24HourFormatToggled(Bool)
+        case use24HourFormatChanged(Bool)
       }
     }
 
     // MARK: - Reducer Body
 
     public var body: some ReducerOf<Self> {
+      BindingReducer()
+
       Reduce { state, action in
         switch action {
+        case .binding(\.use24HourFormat):
+          // KoreanDateFormatters 동기화
+          KoreanDateFormatters.use24HourFormat = state.use24HourFormat
+          return .none
+
+        case .binding:
+          return .none
+
         case .view(let viewAction):
           switch viewAction {
-          case .onAppear:
-            // KoreanDateFormatters 동기화
-            KoreanDateFormatters.use24HourFormat = state.use24HourFormat
-            return .none
-
-          case .use24HourFormatToggled(let value):
+          case .use24HourFormatChanged(let value):
             state.use24HourFormat = value
-            // UserDefaults에 저장
-            UserDefaults.standard.set(value, forKey: "use24HourFormat")
-            // KoreanDateFormatters 업데이트
             KoreanDateFormatters.use24HourFormat = value
             return .none
           }
@@ -91,10 +84,7 @@ extension AppSettings {
       List {
         // MARK: - 시간 표시 설정
         Section {
-          Toggle(isOn: Binding(
-            get: { store.use24HourFormat },
-            set: { store.send(.view(.use24HourFormatToggled($0))) }
-          )) {
+          Toggle(isOn: $store.use24HourFormat) {
             HStack(spacing: 12) {
               Image(systemName: "clock")
                 .font(.body)
@@ -121,9 +111,6 @@ extension AppSettings {
       }
       .navigationTitle("앱 설정")
       .navigationBarTitleDisplayMode(.inline)
-      .onAppear {
-        store.send(.view(.onAppear))
-      }
     }
   }
 }

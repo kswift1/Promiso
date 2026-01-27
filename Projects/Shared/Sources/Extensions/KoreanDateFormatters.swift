@@ -10,7 +10,8 @@ public enum KoreanDateFormatters {
   // MARK: - Time Format Setting
 
   /// 24시간 형식 사용 여부 (true: 14:30, false: 오후 2:30)
-  public static var use24HourFormat: Bool = true {
+  /// 기본값: false (12시간 형식)
+  public static var use24HourFormat: Bool = false {
     didSet {
       updateTimeFormatters()
     }
