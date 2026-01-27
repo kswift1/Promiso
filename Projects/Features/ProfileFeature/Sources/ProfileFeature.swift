@@ -48,8 +48,8 @@ extension Profile {
     /// @ObservableState는 추가 wrapper 없이 직접적인 SwiftUI integration을 가능하게 함
     @ObservableState
     public struct State: Equatable {
-      /// 현재 로그인한 사용자 정보
-      public var currentUser: UserPrivateModel
+      /// 현재 로그인한 사용자 정보 (RootTab과 참조 공유)
+      @Shared public var currentUser: UserPrivateModel
       /// 로그아웃 확인 Alert 표시 여부
       public var showLogoutAlert: Bool
       /// 로딩 상태 (로그아웃 진행 중 등)
@@ -76,16 +76,16 @@ extension Profile {
 
       /// State를 위한 기본 initializer
       public init(
-        currentUser: UserPrivateModel = .exampleUser,
+        currentUser: Shared<UserPrivateModel>,
         showLogoutAlert: Bool = false,
         isLoading: Bool = false,
         isEditingProfile: Bool = false
       ) {
-        self.currentUser = currentUser
+        self._currentUser = currentUser
         self.showLogoutAlert = showLogoutAlert
         self.isLoading = isLoading
         self.isEditingProfile = isEditingProfile
-        self.editedNickname = currentUser.nickname
+        self.editedNickname = currentUser.wrappedValue.nickname
         self.editedProfileImageData = nil
         self.nicknameValidation = .idle
         self.isSavingProfile = false
@@ -398,7 +398,7 @@ extension Profile {
             return .none
 
           case .profileSaveCompleted(let updatedUser):
-            state.currentUser = updatedUser
+            state.$currentUser.withLock { $0 = updatedUser }
             state.isSavingProfile = false
             state.isEditingProfile = false
             state.editedProfileImageData = nil

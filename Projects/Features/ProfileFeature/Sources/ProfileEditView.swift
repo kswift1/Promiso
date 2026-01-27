@@ -90,10 +90,11 @@ extension Profile {
     // MARK: - Computed Properties
 
     private var canSave: Bool {
-      let nicknameChanged = store.editedNickname != store.currentUser.nickname
+      let currentNickname = store.currentUser.nickname
+      let nicknameChanged = store.editedNickname != currentNickname
       let imageChanged = store.editedProfileImageData != nil
       let nicknameValid = store.nicknameValidation == .available ||
-                          store.editedNickname == store.currentUser.nickname
+                          store.editedNickname == currentNickname
 
       return (nicknameChanged || imageChanged) && nicknameValid && !store.isSavingProfile
     }
@@ -253,17 +254,21 @@ private struct TransferableImage: Transferable {
 
 #Preview("Profile Edit") {
   Profile.ProfileEditView(
-    store: Store(initialState: Profile.Feature.State(isEditingProfile: true)) {
+    store: Store(initialState: Profile.Feature.State(currentUser: Shared(value: .exampleUser), isEditingProfile: true)) {
       Profile.Feature()
     }
   )
 }
 
 #Preview("Profile Edit - Saving") {
-  var state = Profile.Feature.State(isEditingProfile: true)
-  state.isSavingProfile = true
-  return Profile.ProfileEditView(
-    store: Store(initialState: state) {
+  Profile.ProfileEditView(
+    store: Store(
+      initialState: {
+        var state = Profile.Feature.State(currentUser: Shared(value: .exampleUser), isEditingProfile: true)
+        state.isSavingProfile = true
+        return state
+      }()
+    ) {
       Profile.Feature()
     }
   )

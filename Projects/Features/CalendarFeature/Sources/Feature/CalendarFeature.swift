@@ -25,8 +25,8 @@ extension CalendarFeature {
 
     @ObservableState
     public struct State: Equatable {
-      /// 현재 사용자 정보
-      var currentUser: UserPrivateModel
+      /// 현재 사용자 정보 (RootTab과 참조 공유)
+      @Shared var currentUser: UserPrivateModel
 
       /// 표시 모드 (주간/월간)
       var displayMode: CalendarDisplayMode = .week
@@ -87,11 +87,11 @@ extension CalendarFeature {
       var userGroupIds: [String] { currentUser.groups.map { $0.id } }
 
       public init(
-        currentUser: UserPrivateModel,
+        currentUser: Shared<UserPrivateModel>,
         displayMode: CalendarDisplayMode = .week,
         selectedDate: Date = Date()
       ) {
-        self.currentUser = currentUser
+        self._currentUser = currentUser
         self.displayMode = displayMode
         self.selectedDate = selectedDate
         self.currentWeekStart = selectedDate.startOfWeek

@@ -53,7 +53,7 @@ private struct ExampleContentView: View {
 
   @ViewBuilder
   private var defaultExample: some View {
-    let store = Store(initialState: RootTab.Feature.State(currentUser: mockUser)) {
+    let store = Store(initialState: RootTab.Feature.State(currentUser: Shared(value: mockUser))) {
       RootTab.Feature()
         ._printChanges()
     } withDependencies: { dependencies in
@@ -70,7 +70,7 @@ private struct ExampleContentView: View {
 // MARK: - SwiftUI Previews
 
 #Preview {
-  let store = Store(initialState: RootTab.Feature.State(currentUser: mockUser)) {
+  let store = Store(initialState: RootTab.Feature.State(currentUser: Shared(value: mockUser))) {
     RootTab.Feature()
   } withDependencies: { dependencies in
     dependencies.authClient = .previewValue

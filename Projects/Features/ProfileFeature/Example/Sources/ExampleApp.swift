@@ -5,6 +5,7 @@
 import SwiftUI
 import ComposableArchitecture
 import ProfileFeature
+import Clients
 
 // MARK: - Example Application
 
@@ -12,7 +13,7 @@ import ProfileFeature
 /// 다양한 테스트 시나리오와 함께 격리된 개발 환경을 제공
 @main
 struct ProfileFeatureExampleApp: App {
-  
+
   var body: some Scene {
     WindowGroup {
       NavigationStack {
@@ -24,11 +25,24 @@ struct ProfileFeatureExampleApp: App {
   }
 }
 
+// MARK: - Mock User
+
+private let mockUser = UserPrivateModel(
+  userId: "test-user-123",
+  name: "테스트",
+  nickname: "테스트유저",
+  email: "test@example.com",
+  provider: "apple",
+  profile: nil,
+  metadata: Metadata(createdAt: Date(), updatedAt: Date()),
+  groups: []
+)
+
 // MARK: - Content View
 
 /// 다양한 Feature 시나리오를 보여주는 Main content view
 private struct ExampleContentView: View {
-  
+
   var body: some View {
     List {
       Section("기본 상태") {
@@ -38,16 +52,16 @@ private struct ExampleContentView: View {
       }
     }
   }
-  
+
   // MARK: - Example Views
-  
+
   /// Default feature state example
   @ViewBuilder
   private var defaultExample: some View {
-    let store = Store(initialState: Profile.Feature.State()) {
+    let store = Store(initialState: Profile.Feature.State(currentUser: Shared(value: mockUser))) {
       Profile.Feature()
     }
-    
+
     Profile.RootView(store: store)
   }
 }
@@ -55,9 +69,9 @@ private struct ExampleContentView: View {
 // MARK: - SwiftUI Previews
 
 #Preview {
-  let store = Store(initialState: Profile.Feature.State()) {
+  let store = Store(initialState: Profile.Feature.State(currentUser: Shared(value: mockUser))) {
     Profile.Feature()
   }
-  
+
   Profile.RootView(store: store)
 }
