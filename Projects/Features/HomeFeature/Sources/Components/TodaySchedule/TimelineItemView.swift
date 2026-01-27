@@ -17,7 +17,7 @@ struct TimelineItemView: View {
         // 타임라인 인디케이터 (가장 왼쪽, 패딩 영향 없음)
         timelineIndicator
 
-        // 시간 + 콘텐츠 + 뱃지 (패딩 적용)
+        // 시간 + 콘텐츠 (패딩 적용)
         HStack(alignment: .top, spacing: 0) {
           timeLabel
             .frame(width: 56, alignment: .leading)
@@ -27,10 +27,6 @@ struct TimelineItemView: View {
             .padding(.leading, 8)
 
           Spacer(minLength: 0)
-
-          if promise.group != nil {
-            groupBadge
-          }
         }
         .padding(.vertical, 5)
       }
@@ -76,11 +72,11 @@ struct TimelineItemView: View {
       // 이모지 + 제목
       HStack(spacing: 6) {
         Text(promise.displayEmoji)
-          .font(.body)
+          .font(.title3)
 
         Text(promise.title)
-          .font(.subheadline)
-          .fontWeight(.medium)
+          .font(.body)
+          .fontWeight(.semibold)
           .foregroundStyle(.primary)
           .lineLimit(1)
       }
@@ -93,68 +89,57 @@ struct TimelineItemView: View {
             .resizable()
             .scaledToFit()
             .frame(width: 14, height: 14)
-            .foregroundStyle(Color.pmindigo.n500)
 
           Text(location.name)
             .font(.caption)
-            .foregroundStyle(.secondary)
+            
             .lineLimit(1)
         }
+        .foregroundStyle(.secondary)
       }
 
-      // 참여자 수
+      // 그룹 + 참여자 수 + 확정
       HStack(spacing: 4) {
-        ResourceKitAsset.groupsLogo.swiftUIImage
-          .renderingMode(.template)
-          .resizable()
-          .scaledToFit()
-          .frame(width: 14, height: 14)
-          .foregroundStyle(Color.pmindigo.n500)
+        if let group = promise.group {
+          GroupThumbnailView(
+            imageUrl: group.imageUrl,
+            name: group.name,
+            size: 18
+          )
 
-        Text("\(promise.votes.accepted.count)명 참여")
+          Text(group.name)
+            .font(.caption)
+            .lineLimit(1)
+
+          Text("·")
+            .font(.caption)
+        }
+
+        Text("\(promise.votes.accepted.count)명 참여 확정")
           .font(.caption)
-          .foregroundStyle(.secondary)
       }
+      .foregroundStyle(.secondary)
     }
-  }
-
-  // MARK: - Group Badge
-
-  private var groupBadge: some View {
-    HStack(spacing: 6) {
-      GroupThumbnailView(
-        imageUrl: promise.group?.imageUrl,
-        name: promise.group?.name ?? "",
-        size: 20
-      )
-
-      if let groupName = promise.group?.name {
-        Text(groupName)
-          .font(.caption)
-          .fontWeight(.medium)
-          .lineLimit(1)
-      }
-    }
-    .padding(.horizontal, 10)
-    .padding(.vertical, 6)
-    .background(Color.pmindigo.n500.opacity(0.1))
-    .foregroundStyle(Color.pmindigo.n600)
-    .clipShape(Capsule())
   }
 
   // MARK: - Time Label
 
   private var timeLabel: some View {
-    VStack(alignment: .leading, spacing: 2) {
+    VStack(alignment: .center, spacing: 2) {
       Text(startTimeString)
         .font(.subheadline)
         .fontWeight(.semibold)
         .foregroundStyle(isNow ? Color.pmindigo.n500 : .primary)
 
       if let endAt = promise.endAt {
-        Text("~ \(endTimeString(endAt))")
-          .font(.caption)
-          .foregroundStyle(.secondary)
+        VStack(alignment: .center, spacing: 0) {
+          Text("~")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+          Text(endTimeString(endAt))
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
       } else if isNow {
         Text("NOW")
           .font(.caption2)
@@ -174,7 +159,13 @@ struct TimelineItemView: View {
 
   private func endTimeString(_ endAt: Date) -> String {
     let formatter = DateFormatter()
-    formatter.dateFormat = "HH:mm"
+    formatter.locale = Locale(identifier: "ko_KR")
+
+    if Calendar.current.isDateInToday(endAt) {
+      formatter.dateFormat = "HH:mm"
+    } else {
+      formatter.dateFormat = "M월 d일\nHH:mm"
+    }
     return formatter.string(from: endAt)
   }
 
