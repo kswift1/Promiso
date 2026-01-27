@@ -342,8 +342,6 @@ extension Home {
             loadingView
           } else if let error = store.promisesState.error {
             errorView(error: error)
-          } else if store.allPromises.isEmpty {
-            emptyStateView
           } else {
             // 오늘의 일정 카드
             TodayScheduleCard(
@@ -465,17 +463,6 @@ extension Home {
       .frame(maxWidth: .infinity)
       .padding(.vertical, 60)
       .padding(.horizontal, 24)
-    }
-
-    // MARK: - Empty State View
-
-    @ViewBuilder
-    private var emptyStateView: some View {
-      WarmEmptyState(
-        style: .noPromises,
-        onPrimaryAction: nil,
-        onSecondaryAction: nil
-      )
     }
   }
 }
