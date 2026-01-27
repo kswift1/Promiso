@@ -99,6 +99,7 @@ extension Profile {
     public enum Path {
       case accountInfo(AccountInfo.Feature)
       case developerSettings(DeveloperSettings.Feature)
+      case appSettings(AppSettings.Feature)
     }
 
     /// 닉네임 유효성 검사 상태
@@ -145,6 +146,8 @@ extension Profile {
       case accountInfoTapped
       /// 개발자 설정 탭 (#if DEBUG)
       case developerSettingsTapped
+      /// 앱 설정 탭 (toolbar)
+      case appSettingsTapped
 
       // MARK: - Profile Edit Actions
       /// 프로필 편집 버튼 탭
@@ -269,6 +272,12 @@ extension Profile {
                 )
               )
             )
+            return .run { _ in
+              await hapticFeedback.selection()
+            }
+
+          case .appSettingsTapped:
+            state.path.append(.appSettings(AppSettings.Feature.State()))
             return .run { _ in
               await hapticFeedback.selection()
             }
@@ -460,6 +469,8 @@ extension Profile {
           AccountInfo.RootView(store: accountInfoStore)
         case .developerSettings(let developerSettingsStore):
           DeveloperSettings.RootView(store: developerSettingsStore)
+        case .appSettings(let appSettingsStore):
+          AppSettings.RootView(store: appSettingsStore)
         }
       }
     }

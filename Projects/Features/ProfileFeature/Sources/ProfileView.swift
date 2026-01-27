@@ -40,6 +40,17 @@ extension Profile {
       .auroraBackground()
       .navigationTitle("프로필")
       .navigationBarTitleDisplayMode(.large)
+      .toolbar {
+        ToolbarItem(placement: .navigationBarTrailing) {
+          Button {
+            store.send(.view(.appSettingsTapped))
+          } label: {
+            Image(systemName: "gearshape.fill")
+              .font(.body)
+              .foregroundStyle(Color.pmindigo.n500)
+          }
+        }
+      }
       .sheet(
         isPresented: Binding(
           get: { store.isEditingProfile },
