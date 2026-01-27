@@ -26,8 +26,8 @@ extension Home {
     @ObservableState
     public struct State: Equatable {
       // MARK: User
-      /// 현재 유저 정보
-      var currentUser: UserPrivateModel
+      /// 현재 유저 정보 (RootTab과 참조 공유)
+      @Shared var currentUser: UserPrivateModel
 
       // MARK: Data (단일 소스)
       /// 약속 데이터 (단일 API로 모두 로드)
@@ -47,8 +47,8 @@ extension Home {
       /// 스크롤 타겟
       var scrollTarget: HomeModels.ScrollTarget? = nil
 
-      public init(currentUser: UserPrivateModel) {
-        self.currentUser = currentUser
+      public init(currentUser: Shared<UserPrivateModel>) {
+        self._currentUser = currentUser
       }
     }
 

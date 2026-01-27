@@ -253,17 +253,21 @@ private struct TransferableImage: Transferable {
 
 #Preview("Profile Edit") {
   Profile.ProfileEditView(
-    store: Store(initialState: Profile.Feature.State(isEditingProfile: true)) {
+    store: Store(initialState: Profile.Feature.State(currentUser: Shared(value: .exampleUser), isEditingProfile: true)) {
       Profile.Feature()
     }
   )
 }
 
 #Preview("Profile Edit - Saving") {
-  var state = Profile.Feature.State(isEditingProfile: true)
-  state.isSavingProfile = true
-  return Profile.ProfileEditView(
-    store: Store(initialState: state) {
+  Profile.ProfileEditView(
+    store: Store(
+      initialState: {
+        var state = Profile.Feature.State(currentUser: Shared(value: .exampleUser), isEditingProfile: true)
+        state.isSavingProfile = true
+        return state
+      }()
+    ) {
       Profile.Feature()
     }
   )

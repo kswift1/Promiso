@@ -132,7 +132,8 @@ extension GroupMain {
     @ObservableState
     public struct State: Equatable {
       var isInitialized: Bool = false
-      let currentUser: UserPrivateModel
+      /// 현재 사용자 정보 (RootTab과 참조 공유)
+      @Shared var currentUser: UserPrivateModel
 
       var promisesState: LoadingState<[PromiseModel]> = .idle
       var proposalResponding: [String: RespondingState] = [:]
@@ -180,8 +181,8 @@ extension GroupMain {
       /// LiveActivity 활성화 여부 (FAB 위치 조정용)
       public var hasLiveActivity: Bool { liveActivityPromiseId != nil }
 
-      public init(currentUser: UserPrivateModel) {
-        self.currentUser = currentUser
+      public init(currentUser: Shared<UserPrivateModel>) {
+        self._currentUser = currentUser
       }
 
       // MARK: - Computed Properties for New UI

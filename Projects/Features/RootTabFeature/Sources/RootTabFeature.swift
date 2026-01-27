@@ -80,8 +80,8 @@ extension RootTab {
       /// Profile State
       var profile: Profile.Feature.State
 
-      /// 현재 사용자 정보 (Profile에 전달)
-      var currentUser: UserPrivateModel
+      /// 현재 사용자 정보 (모든 탭에서 참조 공유)
+      @Shared var currentUser: UserPrivateModel
 
       /// LivePromise State (약속 추적 바) - nil이면 숨김
       var livePromise: LivePromise.Feature.State?
@@ -94,8 +94,8 @@ extension RootTab {
       /// activityUpdateReceived에서 livePromise 생성 후 ETA 시트를 열기 위해 사용
       var pendingETASheetRequest: Bool = false
 
-      public init(currentUser: UserPrivateModel) {
-        self.currentUser = currentUser
+      public init(currentUser: Shared<UserPrivateModel>) {
+        self._currentUser = currentUser
         self.groupMain = GroupMain.Feature.State(currentUser: currentUser)
         self.home = Home.Feature.State(currentUser: currentUser)
         self.calendar = CalendarFeature.Feature.State(currentUser: currentUser)

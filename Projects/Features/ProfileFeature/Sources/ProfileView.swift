@@ -236,7 +236,7 @@ extension Profile {
 #Preview("Profile View") {
   NavigationStack {
     Profile.ProfileView(
-      store: Store(initialState: Profile.Feature.State()) {
+      store: Store(initialState: Profile.Feature.State(currentUser: Shared(value: .exampleUser))) {
         Profile.Feature()
       }
     )
@@ -246,7 +246,7 @@ extension Profile {
 #Preview("Profile View - Loading") {
   NavigationStack {
     Profile.ProfileView(
-      store: Store(initialState: Profile.Feature.State(isLoading: true)) {
+      store: Store(initialState: Profile.Feature.State(currentUser: Shared(value: .exampleUser), isLoading: true)) {
         Profile.Feature()
       }
     )

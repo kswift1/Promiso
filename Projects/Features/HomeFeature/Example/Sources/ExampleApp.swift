@@ -52,7 +52,7 @@ private struct ExampleContentView: View {
       groups: []
     )
 
-    let store = Store(initialState: Home.Feature.State(currentUser: mockUser)) {
+    let store = Store(initialState: Home.Feature.State(currentUser: Shared(value: mockUser))) {
       Home.Feature()
     } withDependencies: { dependencies in
       dependencies.promiseClient = .previewValue
@@ -76,7 +76,7 @@ private struct ExampleContentView: View {
     groups: []
   )
 
-  let store = Store(initialState: Home.Feature.State(currentUser: mockUser)) {
+  let store = Store(initialState: Home.Feature.State(currentUser: Shared(value: mockUser))) {
     Home.Feature()
   } withDependencies: { dependencies in
     dependencies.promiseClient = .previewValue
