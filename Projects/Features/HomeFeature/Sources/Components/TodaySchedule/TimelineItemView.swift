@@ -1,5 +1,6 @@
 import SwiftUI
 import PromisoShared
+import ResourceKit
 
 // MARK: - Timeline Item View
 
@@ -87,8 +88,12 @@ struct TimelineItemView: View {
       // 장소
       if let location = promise.location {
         HStack(spacing: 4) {
-          Text("📍")
-            .font(.caption)
+          ResourceKitAsset.locationLogo.swiftUIImage
+            .renderingMode(.template)
+            .resizable()
+            .scaledToFit()
+            .frame(width: 14, height: 14)
+            .foregroundStyle(Color.pmindigo.n500)
 
           Text(location.name)
             .font(.caption)
@@ -99,8 +104,12 @@ struct TimelineItemView: View {
 
       // 참여자 수
       HStack(spacing: 4) {
-        Text("👥")
-          .font(.caption)
+        ResourceKitAsset.groupsLogo.swiftUIImage
+          .renderingMode(.template)
+          .resizable()
+          .scaledToFit()
+          .frame(width: 14, height: 14)
+          .foregroundStyle(Color.pmindigo.n500)
 
         Text("\(promise.votes.accepted.count)명 참여")
           .font(.caption)
