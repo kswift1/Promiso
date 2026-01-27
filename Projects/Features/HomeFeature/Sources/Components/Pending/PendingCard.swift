@@ -50,8 +50,8 @@ struct PendingCard: View {
       }
       .padding(14)
       .frame(width: 160)
-      .background(Color.orange.opacity(0.05))
-      .adaptiveGlassCard(cornerRadius: 16)
+      .background(dDayColor.opacity(0.05), in: RoundedRectangle(cornerRadius: 16))
+      .adaptiveGlassBackground(cornerRadius: 16)
     }
     .buttonStyle(.plain)
   }
@@ -117,25 +117,48 @@ struct PendingCard: View {
   // MARK: - Computed Properties
 
   private var dDayText: String {
+    let now = Date()
+    let voteDate = promise.votes.until
+    let hoursRemaining = voteDate.timeIntervalSince(now) / 3600
+
+    // 24시간 이내면 시간/분 단위로 표시
+    if hoursRemaining <= 0 {
+      return "마감"
+    } else if hoursRemaining < 1 {
+      let minutes = max(1, Int(ceil(hoursRemaining * 60)))
+      return "\(minutes)분 남음"
+    } else if hoursRemaining <= 24 {
+      let hours = Int(ceil(hoursRemaining))
+      return "\(hours)시간 남음"
+    }
+
+    // 그 외에는 D-day 표시
     let calendar = Calendar.current
-    let now = calendar.startOfDay(for: Date())
-    let voteDate = calendar.startOfDay(for: promise.votes.until)
-    let days = calendar.dateComponents([.day], from: now, to: voteDate).day ?? 0
+    let nowDay = calendar.startOfDay(for: now)
+    let voteDay = calendar.startOfDay(for: voteDate)
+    let days = calendar.dateComponents([.day], from: nowDay, to: voteDay).day ?? 0
 
     if days == 0 {
       return "D-DAY"
-    } else if days > 0 {
-      return "D-\(days)"
     } else {
-      return "마감"
+      return "D-\(days)"
     }
   }
 
   private var dDayColor: Color {
+    let now = Date()
+    let voteDate = promise.votes.until
+    let hoursRemaining = voteDate.timeIntervalSince(now) / 3600
+
+    // 24시간 이내면 빨강
+    if hoursRemaining <= 24 {
+      return .red
+    }
+
     let calendar = Calendar.current
-    let now = calendar.startOfDay(for: Date())
-    let voteDate = calendar.startOfDay(for: promise.votes.until)
-    let days = calendar.dateComponents([.day], from: now, to: voteDate).day ?? 0
+    let nowDay = calendar.startOfDay(for: now)
+    let voteDay = calendar.startOfDay(for: voteDate)
+    let days = calendar.dateComponents([.day], from: nowDay, to: voteDay).day ?? 0
 
     if days <= 1 {
       return .red
