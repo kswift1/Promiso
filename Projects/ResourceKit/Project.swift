@@ -12,7 +12,9 @@ let project = Project(
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Sources/**"],
       resources: ["Resources/**"],
-      dependencies: [],
+      dependencies: [
+        .project(target: "ExternalDependency", path: "../ExternalDependency")
+      ],
       settings: .standard()
     )
   ],
