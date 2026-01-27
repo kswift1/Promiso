@@ -374,15 +374,7 @@ extension CalendarFeature {
 // MARK: - Preview
 
 #Preview("Calendar Feature - Week Mode") {
-  let previewUser = UserPrivateModel(
-    userId: "preview_user",
-    name: "Preview User",
-    nickname: "프리뷰",
-    email: "preview@example.com",
-    provider: "google",
-    metadata: Metadata()
-  )
-  let store = Store(initialState: CalendarFeature.Feature.State(currentUser: previewUser, displayMode: .week)) {
+  let store = Store(initialState: CalendarFeature.Feature.State(currentUser: Shared(value: .exampleUser), displayMode: .week)) {
     CalendarFeature.Feature()
   }
 
@@ -390,15 +382,7 @@ extension CalendarFeature {
 }
 
 #Preview("Calendar Feature - Month Mode") {
-  let previewUser = UserPrivateModel(
-    userId: "preview_user",
-    name: "Preview User",
-    nickname: "프리뷰",
-    email: "preview@example.com",
-    provider: "google",
-    metadata: Metadata()
-  )
-  let store = Store(initialState: CalendarFeature.Feature.State(currentUser: previewUser, displayMode: .month)) {
+  let store = Store(initialState: CalendarFeature.Feature.State(currentUser: Shared(value: .exampleUser), displayMode: .month)) {
     CalendarFeature.Feature()
   }
 

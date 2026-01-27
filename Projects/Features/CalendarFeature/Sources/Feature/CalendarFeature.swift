@@ -25,8 +25,12 @@ extension CalendarFeature {
 
     @ObservableState
     public struct State: Equatable {
-      /// 현재 사용자 정보
-      var currentUser: UserPrivateModel
+      /// 현재 사용자 정보 (RootTab과 참조 공유)
+      @Shared var currentUser: UserPrivateModel
+
+      /// 그룹 멤버 캐시 (전역 공유, groupId → members)
+      @Shared(.inMemory(AppConstants.SharedState.groupMembersCache))
+      var groupMembersCache: [String: [UserPublicModel]] = [:]
 
       /// 표시 모드 (주간/월간)
       var displayMode: CalendarDisplayMode = .week
@@ -87,11 +91,11 @@ extension CalendarFeature {
       var userGroupIds: [String] { currentUser.groups.map { $0.id } }
 
       public init(
-        currentUser: UserPrivateModel,
+        currentUser: Shared<UserPrivateModel>,
         displayMode: CalendarDisplayMode = .week,
         selectedDate: Date = Date()
       ) {
-        self.currentUser = currentUser
+        self._currentUser = currentUser
         self.displayMode = displayMode
         self.selectedDate = selectedDate
         self.currentWeekStart = selectedDate.startOfWeek
@@ -407,18 +411,22 @@ extension CalendarFeature {
         return .none
 
       case .promiseTapped(let promise):
-        // 약속 상세 화면으로 이동
+        // 즉시 이동 (캐시 hit면 전달, miss면 nil로 전달 → Detail에서 로드)
+        let groupMembers = state.groupMembersCache[promise.groupId]
         state.path.append(.promiseDetail(.init(
           promise: promise,
-          currentUserId: state.currentUserId
+          currentUserId: state.currentUserId,
+          groupMembers: groupMembers
         )))
         return .none
 
       case .promiseRespondTapped(let promise):
-        // 약속 상세 화면으로 이동 (응답 가능)
+        // 즉시 이동 (캐시 hit면 전달, miss면 nil로 전달 → Detail에서 로드)
+        let groupMembers = state.groupMembersCache[promise.groupId]
         state.path.append(.promiseDetail(.init(
           promise: promise,
-          currentUserId: state.currentUserId
+          currentUserId: state.currentUserId,
+          groupMembers: groupMembers
         )))
         return .none
 

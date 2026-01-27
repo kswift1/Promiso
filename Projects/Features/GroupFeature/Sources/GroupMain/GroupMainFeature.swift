@@ -1,4 +1,4 @@
-import ComposableArchitecture
+  import ComposableArchitecture
 import PromisoShared
 import Clients
 import SwiftUI
@@ -56,6 +56,8 @@ extension GroupMain {
     case group(groupId: String)
     /// 약속 상세 화면
     case promise(promiseId: String, groupId: String)
+    /// 약속 목록에서 특정 약속으로 스크롤 (필터 적용)
+    case promiseInList(promiseId: String, groupId: String, filter: PromiseFilter)
   }
 }
 
@@ -132,7 +134,8 @@ extension GroupMain {
     @ObservableState
     public struct State: Equatable {
       var isInitialized: Bool = false
-      let currentUser: UserPrivateModel
+      /// 현재 사용자 정보 (RootTab과 참조 공유)
+      @Shared var currentUser: UserPrivateModel
 
       var promisesState: LoadingState<[PromiseModel]> = .idle
       var proposalResponding: [String: RespondingState] = [:]
@@ -140,7 +143,16 @@ extension GroupMain {
 
       public var allGroupSummaries: [UserGroupInfo]?
       var currentGroup: GroupModel?
-      var currentGroupMembers: [UserPublicModel]?
+
+      /// 그룹 멤버 캐시 (전역 공유, groupId → members)
+      @Shared(.inMemory(AppConstants.SharedState.groupMembersCache))
+      public var groupMembersCache: [String: [UserPublicModel]] = [:]
+
+      /// 현재 그룹 멤버 (캐시에서 조회)
+      var currentGroupMembers: [UserPublicModel]? {
+        guard let groupId = currentGroup?.id else { return nil }
+        return groupMembersCache[groupId]
+      }
 
       /// 현재 fetch 중인 그룹 ID (중복 fetch 방지)
       var pendingGroupId: String?
@@ -174,14 +186,17 @@ extension GroupMain {
       /// 딥링크로 열려는 목적지 (그룹/약속 로드 후 처리)
       var pendingDeeplink: GroupMain.Deeplink?
 
+      /// 하이라이트할 약속 ID (목록에서 스크롤 및 강조 표시)
+      var highlightedPromiseId: String?
+
       /// 현재 실시간 공유 중인 약속 ID (nil이면 비활성)
       public var liveActivityPromiseId: String?
 
       /// LiveActivity 활성화 여부 (FAB 위치 조정용)
       public var hasLiveActivity: Bool { liveActivityPromiseId != nil }
 
-      public init(currentUser: UserPrivateModel) {
-        self.currentUser = currentUser
+      public init(currentUser: Shared<UserPrivateModel>) {
+        self._currentUser = currentUser
       }
 
       // MARK: - Computed Properties for New UI
@@ -354,7 +369,6 @@ extension GroupMain {
       case groupPromiseList(GroupPromiseList.Feature)
       case promiseDetail(PromiseDetail.Feature)
       case pastPromises(PastPromises.Feature)
-      case pastPromiseDetail(PastPromiseDetail.Feature)
     }
 
     @CasePathable
@@ -406,6 +420,7 @@ extension GroupMain {
         // MARK: - New UI Actions
         case groupTapped(String)  // 가로 바에서 그룹 선택
         case filterChanged(GroupMain.PromiseFilter)  // 필터 변경
+        case clearHighlightedPromise  // 하이라이트 클리어
         case moreNeedResponseTapped  // "N개 더 보기" - 응답 필요
         case moreConfirmedTapped  // "N개 더 보기" - 확정
         case allPromisesTapped  // "모든 약속 보기"
@@ -458,6 +473,14 @@ extension GroupMain {
             if !state.promisesState.isLoaded {
               state.promisesState = .loading
             }
+            // 현재 그룹 멤버 캐시 무효화 후 다시 로드
+            if let groupId = state.currentGroup?.id {
+              state.$groupMembersCache.withLock { $0.removeValue(forKey: groupId) }
+              return .merge(
+                .send(.internal(.fetchGroupList)),
+                .send(.internal(.fetchGroupMembers(groupId: groupId)))
+              )
+            }
             return .send(.internal(.fetchGroupList))
 
           case .groupChanged(let group):
@@ -465,7 +488,6 @@ extension GroupMain {
             guard group.id != state.currentGroup?.id,
                   group.id != state.pendingGroupId else { return .none }
             state.currentGroup = nil
-            state.currentGroupMembers = nil
             state.pendingGroupId = group.id
             state.promisesState = .loading
             state.pastPromisesState = .idle  // 그룹 변경 시 과거 약속 초기화
@@ -600,14 +622,28 @@ extension GroupMain {
 
           case .handleDeeplink(let deeplink):
             AppLogger.deeplink.debug("[GroupMain] handleDeeplink: \(String(describing: deeplink))")
-            state.pendingDeeplink = deeplink
 
             // groupId 추출
             let groupId: String
             switch deeplink {
             case .group(let gid): groupId = gid
             case .promise(_, let gid): groupId = gid
+            case .promiseInList(_, let gid, _): groupId = gid
             }
+
+            // 현재 그룹이고 약속이 이미 로드된 경우 바로 적용
+            if case .promiseInList(let promiseId, _, let filter) = deeplink,
+               state.currentGroup?.id == groupId,
+               let promises = state.promisesState.value,
+               promises.contains(where: { $0.id == promiseId }) {
+              AppLogger.deeplink.debug("[GroupMain] Promise already loaded, applying highlight immediately")
+              state.selectedFilter = filter
+              state.highlightedPromiseId = promiseId
+              return .none
+            }
+
+            // 그 외의 경우 pending으로 설정
+            state.pendingDeeplink = deeplink
 
             // 다른 그룹으로 이동하는 경우에만 path 초기화
             state.clearPathIfGroupChanged(targetGroupId: groupId)
@@ -648,6 +684,10 @@ extension GroupMain {
               guard !state.pastPromisesState.isLoaded else { return .none }
               return .send(.internal(.fetchPastPromises(groupId: groupId)))
             }
+            return .none
+
+          case .clearHighlightedPromise:
+            state.highlightedPromiseId = nil
             return .none
 
           case .moreNeedResponseTapped:
@@ -703,6 +743,7 @@ extension GroupMain {
               switch deeplink {
               case .promise(_, let gid): groupId = gid
               case .group(let gid): groupId = gid
+              case .promiseInList(_, let gid, _): groupId = gid
               }
               if let groupInfo = groupSummaries.first(where: { $0.id == groupId }) {
                 AppLogger.deeplink.debug("[GroupMain] Deeplink group found after fetch: \(groupInfo.name)")
@@ -761,8 +802,8 @@ extension GroupMain {
             }
 
           case .groupMembersResponse(.success(let members)):
-            state.currentGroupMembers = members
             guard let groupId = state.currentGroup?.id else { return .none }
+            state.$groupMembersCache.withLock { $0[groupId] = members }
 
             // LiveActivity 프로필 이미지 사전 캐싱 (APNs 원격 시작 대응)
             // 상세: cacheProfileImagesForLiveActivity 함수 주석 참고
@@ -774,8 +815,7 @@ extension GroupMain {
             )
 
           case .groupMembersResponse(.failure):
-            state.currentGroupMembers = nil
-            // 멤버 조회 실패해도 promises는 subscribe
+            // 멤버 조회 실패해도 promises는 subscribe (캐시에 없으면 computed property가 nil 반환)
             guard let groupId = state.currentGroup?.id else { return .none }
             return .send(.internal(.subscribeToPromises(groupId: groupId)))
 
@@ -802,19 +842,30 @@ extension GroupMain {
             AppLogger.group.debug("[GroupMain] promisesUpdated: \(promises.count)개 로드됨")
             state.promisesState = .loaded(promises)
 
-            // 딥링크로 열려는 약속이 있으면 상세 화면으로 이동
-            if case .promise(let promiseId, _) = state.pendingDeeplink,
-               let promise = promises.first(where: { $0.id == promiseId }) {
-              AppLogger.deeplink.debug("[GroupMain] Promise found, navigating to detail: \(promise.title)")
-              state.pendingDeeplink = nil
-              // TODO: currentGroupMembers가 nil일 수 있음 - PromiseDetail에서 nil 처리 필요
-              state.path.append(.promiseDetail(.init(
-                promise: promise,
-                currentUserId: state.currentUser.userId,
-                groupMembers: state.currentGroupMembers
-              )))
-            } else if state.pendingDeeplink != nil {
-              // 그룹만 열려는 경우 (promise 없음) - pending 클리어
+            // 딥링크 처리
+            switch state.pendingDeeplink {
+            case .promise(let promiseId, _):
+              // 약속 상세 화면으로 바로 이동
+              if let promise = promises.first(where: { $0.id == promiseId }) {
+                AppLogger.deeplink.debug("[GroupMain] Promise found, navigating to detail: \(promise.title)")
+                state.pendingDeeplink = nil
+                state.path.append(.promiseDetail(.init(
+                  promise: promise,
+                  currentUserId: state.currentUser.userId,
+                  groupMembers: state.currentGroupMembers
+                )))
+              }
+
+            case .promiseInList(let promiseId, _, let filter):
+              // 필터 적용 후 목록에서 해당 약속으로 스크롤
+              if promises.contains(where: { $0.id == promiseId }) {
+                AppLogger.deeplink.debug("[GroupMain] Promise found in list, setting filter: \(filter.rawValue)")
+                state.selectedFilter = filter
+                state.highlightedPromiseId = promiseId
+                state.pendingDeeplink = nil
+              }
+
+            case .group, .none:
               state.pendingDeeplink = nil
             }
             return .none
@@ -1026,15 +1077,19 @@ extension GroupMain {
 
         // GroupSettings delegate actions
         case .path(.element(id: _, action: .groupSettings(.delegate(.groupLeft)))):
+          if let groupId = state.currentGroup?.id {
+            state.$groupMembersCache.withLock { $0.removeValue(forKey: groupId) }
+          }
           state.path.removeAll()
           state.currentGroup = nil
-          state.currentGroupMembers = nil
           return .send(.internal(.fetchGroupList))
 
         case .path(.element(id: _, action: .groupSettings(.delegate(.groupDeleted)))):
+          if let groupId = state.currentGroup?.id {
+            state.$groupMembersCache.withLock { $0.removeValue(forKey: groupId) }
+          }
           state.path.removeAll()
           state.currentGroup = nil
-          state.currentGroupMembers = nil
           return .send(.internal(.fetchGroupList))
 
         case .path(.element(id: _, action: .groupSettings(.delegate(.pastPromisesTapped)))):
@@ -1058,15 +1113,19 @@ extension GroupMain {
 
         // ManageGroup delegate actions (legacy)
         case .path(.element(id: _, action: .manageGroupFeature(.delegate(.groupLeft)))):
+          if let groupId = state.currentGroup?.id {
+            state.$groupMembersCache.withLock { $0.removeValue(forKey: groupId) }
+          }
           state.path.removeAll()
           state.currentGroup = nil
-          state.currentGroupMembers = nil
           return .send(.internal(.fetchGroupList))
 
         case .path(.element(id: _, action: .manageGroupFeature(.delegate(.groupDeleted)))):
+          if let groupId = state.currentGroup?.id {
+            state.$groupMembersCache.withLock { $0.removeValue(forKey: groupId) }
+          }
           state.path.removeAll()
           state.currentGroup = nil
-          state.currentGroupMembers = nil
           return .send(.internal(.fetchGroupList))
 
         case .path(.element(id: _, action: .manageGroupFeature(.delegate(.pastPromisesTapped)))):
@@ -1079,7 +1138,7 @@ extension GroupMain {
           return .none
 
         case .path(.element(id: _, action: .pastPromises(.delegate(.promiseSelected(let promise))))):
-          state.path.append(.pastPromiseDetail(.init(
+          state.path.append(.promiseDetail(.init(
             promise: promise,
             currentUserId: state.currentUser.userId,
             groupMembers: state.currentGroupMembers

@@ -3,6 +3,7 @@
 
 import Lottie
 import ResourceKit
+import SharedFeature
 
 // MARK: - Feature Namespace
 
@@ -26,8 +27,12 @@ extension Home {
     @ObservableState
     public struct State: Equatable {
       // MARK: User
-      /// 현재 유저 정보
-      var currentUser: UserPrivateModel
+      /// 현재 유저 정보 (RootTab과 참조 공유)
+      @Shared var currentUser: UserPrivateModel
+
+      /// 그룹 멤버 캐시 (전역 공유, groupId → members)
+      @Shared(.inMemory(AppConstants.SharedState.groupMembersCache))
+      var groupMembersCache: [String: [UserPublicModel]] = [:]
 
       // MARK: Data (단일 소스)
       /// 약속 데이터 (단일 API로 모두 로드)
@@ -41,141 +46,28 @@ extension Home {
       var selectedGroupId: String? = nil
 
       /// 선택된 상태 필터
-      var selectedStatusFilter: StatusFilter = .all
+      var selectedStatusFilter: HomeModels.StatusFilter = .all
 
       // MARK: UI
       /// 스크롤 타겟
-      var scrollTarget: ScrollTarget? = nil
+      var scrollTarget: HomeModels.ScrollTarget? = nil
 
-      public init(currentUser: UserPrivateModel) {
-        self.currentUser = currentUser
+      // MARK: Navigation
+      /// 네비게이션 경로 (약속 상세)
+      var path = StackState<Path.State>()
+
+      public init(currentUser: Shared<UserPrivateModel>) {
+        self._currentUser = currentUser
       }
     }
-  }
-}
 
-// MARK: - State Computed Properties
+    // MARK: - Path (Navigation)
 
-extension Home.Feature.State {
-    /// 모든 약속 (필터 적용 전)
-    var allPromises: [PromiseModel] {
-      promisesState.value ?? []
+    @Reducer(state: .equatable)
+    public enum Path {
+      case promiseDetail(PromiseDetail.Feature)
     }
 
-    /// 필터링된 약속 (id 기반 안전)
-    var filteredPromises: [PromiseModel] {
-      var promises = allPromises
-
-      // 그룹 필터 적용 (id 기반)
-      if let groupId = selectedGroupId {
-        promises = promises.filter { $0.groupId == groupId }
-      }
-
-      // 상태 필터 적용
-      switch selectedStatusFilter {
-      case .needResponse:
-        promises = promises.filter {
-          $0.myVoteStatus(userId: currentUser.userId) == .pending && !$0.isVotingClosed
-        }
-      case .confirmed:
-        promises = promises.filter { $0.isConfirmed && !$0.isPast }
-      case .inProgress:
-        promises = promises.filter {
-          !$0.isConfirmed && !$0.isVotingClosed
-        }
-      case .all:
-        promises = promises.filter { !$0.isPast }
-      }
-
-      return promises
-    }
-
-    /// Overview 데이터
-    var overviewData: OverviewData {
-      let today = Calendar.current.startOfDay(for: Date())
-
-      let todayPromises = allPromises.filter {
-        $0.isConfirmed &&
-        Calendar.current.isDate($0.startAt, inSameDayAs: Date())
-      }
-
-      let needResponsePromises = allPromises.filter {
-        $0.myVoteStatus(userId: currentUser.userId) == .pending &&
-        !$0.isVotingClosed
-      }
-
-      let nextPromise = todayPromises
-        .filter { $0.startAt > Date() }
-        .sorted { $0.startAt < $1.startAt }
-        .first
-
-      return OverviewData(
-        todayCount: todayPromises.count,
-        nextPromise: nextPromise,
-        needResponseCount: needResponsePromises.count
-      )
-    }
-
-    /// Critical Zone 데이터 (조건부, 우선순위: liveActivity > inProgress > departureSoon)
-    var criticalZoneData: CriticalZoneData? {
-      let now = Date()
-
-      // LiveActivity 공유 중 (최우선)
-      if let livePromise = allPromises.first(where: { $0.isRealtimeShareable }) {
-        return CriticalZoneData(reason: .liveActivity, promise: livePromise)
-      }
-
-      // 진행 중
-      if let ongoingPromise = allPromises.first(where: { $0.isOngoing }) {
-        return CriticalZoneData(reason: .inProgress, promise: ongoingPromise)
-      }
-
-      // 출발 임박 (30분 전)
-      if let soonPromise = allPromises.first(where: {
-        let interval = $0.startAt.timeIntervalSince(now)
-        return interval > 0 && interval <= 1800  // 30분 = 1800초
-      }) {
-        return CriticalZoneData(reason: .departureSoon, promise: soonPromise)
-      }
-
-      return nil
-    }
-
-    /// Timeline 데이터 (날짜별 그룹화, dayKey로 안전)
-    var timelineData: [TimelineSection] {
-      let grouped = Dictionary(grouping: filteredPromises) { promise in
-        Calendar.current.startOfDay(for: promise.startAt)
-      }
-
-      return grouped
-        .sorted { $0.key < $1.key }
-        .map { day, promises in
-          TimelineSection(
-            day: day,  // startOfDay로 정규화
-            promises: promises.sorted { $0.startAt < $1.startAt }
-          )
-        }
-    }
-
-    /// 사용 가능한 그룹 목록
-    var availableGroups: [GroupInfo] {
-      currentUser.groups.map { GroupInfo(id: $0.id, name: $0.name) }
-    }
-
-    /// 로딩 중 여부
-    var isLoading: Bool {
-      promisesState.isLoading
-    }
-
-    /// 응답 필요 개수 (배지용)
-    var pendingResponseCount: Int {
-      overviewData.needResponseCount
-    }
-  }
-
-// MARK: - Feature (continued)
-
-extension Home.Feature {
     // MARK: - Action
 
     @CasePathable
@@ -183,6 +75,7 @@ extension Home.Feature {
       case view(View)
       case `internal`(Internal)
       case delegate(Delegate)
+      case path(StackActionOf<Path>)
 
       @CasePathable
       public enum View: Sendable {
@@ -190,16 +83,22 @@ extension Home.Feature {
         case onAppear
         /// Pull to refresh
         case refreshTriggered
-        /// 약속 카드 탭
-        case promiseTapped(String)  // promiseId만 전달 (안전성)
-        /// 응답 필요 배너 탭
-        case needResponseBannerTapped
+        /// 오늘 일정 약속 카드 탭
+        case todayPromiseTapped(PromiseModel)
+        /// 응답 필요 약속 카드 탭 (그룹 탭으로 이동)
+        case pendingPromiseTapped(PromiseModel)
+        /// 다가오는 약속 카드 탭
+        case upcomingPromiseTapped(PromiseModel)
+        /// "전체 보기" 버튼 탭
+        case seeAllUpcomingTapped
         /// 그룹 필터 변경
-        case groupFilterChanged(String?)  // groupId (nil = 전체)
+        case groupFilterChanged(String?)
         /// 상태 필터 변경
-        case statusFilterChanged(StatusFilter)
+        case statusFilterChanged(HomeModels.StatusFilter)
         /// 필터 초기화
-        case resetFilters  // group nil + status .all
+        case resetFilters
+        /// 스크롤 타겟 초기화
+        case scrollTargetCleared
       }
 
       public enum Internal: Sendable {
@@ -212,8 +111,12 @@ extension Home.Feature {
       }
 
       public enum Delegate: Sendable {
-        /// 약속 상세로 네비게이션
+        /// 약속 상세로 네비게이션 (legacy - 그룹 탭 이동용)
         case navigateToPromise(promiseId: String, groupId: String)
+        /// 그룹 탭의 특정 약속으로 네비게이션 (응답 필요 카드에서)
+        case navigateToGroupWithPromise(groupId: String, promiseId: String)
+        /// 모든 약속 보기 화면으로 네비게이션
+        case navigateToAllPromises
       }
     }
 
@@ -225,32 +128,43 @@ extension Home.Feature {
         case .view(let viewAction):
           switch viewAction {
           case .onAppear:
-            guard !state.hasLoadedOnce else { return .none }
-            state.hasLoadedOnce = true
+            // 매번 최신 데이터로 갱신 (기존 데이터 유지하며 백그라운드 갱신)
+            if !state.hasLoadedOnce {
+              state.hasLoadedOnce = true
+            }
             return .send(.internal(.fetchPromises))
 
           case .refreshTriggered:
             return .send(.internal(.fetchPromises))
 
-          case .promiseTapped(let promiseId):
-            // promiseId로 약속 찾기
-            guard let promise = state.allPromises.first(where: { $0.id == promiseId }) else {
-              return .none
-            }
-            return .send(.delegate(.navigateToPromise(
-              promiseId: promiseId,
-              groupId: promise.groupId
+          case .todayPromiseTapped(let promise):
+            // 즉시 이동 (캐시 hit면 전달, miss면 nil로 전달 → Detail에서 로드)
+            let groupMembers = state.groupMembersCache[promise.groupId]
+            state.path.append(.promiseDetail(.init(
+              promise: promise,
+              currentUserId: state.currentUser.userId,
+              groupMembers: groupMembers
+            )))
+            return .none
+
+          case .pendingPromiseTapped(let promise):
+            return .send(.delegate(.navigateToGroupWithPromise(
+              groupId: promise.groupId,
+              promiseId: promise.id
             )))
 
-          case .needResponseBannerTapped:
-            // 필터를 응답 필요로 변경
-            state.selectedStatusFilter = .needResponse
-
-            // 응답 필요한 첫 번째 날짜로 스크롤
-            if let firstSection = state.timelineData.first {
-              state.scrollTarget = .date(firstSection.day)
-            }
+          case .upcomingPromiseTapped(let promise):
+            // 즉시 이동 (캐시 hit면 전달, miss면 nil로 전달 → Detail에서 로드)
+            let groupMembers = state.groupMembersCache[promise.groupId]
+            state.path.append(.promiseDetail(.init(
+              promise: promise,
+              currentUserId: state.currentUser.userId,
+              groupMembers: groupMembers
+            )))
             return .none
+
+          case .seeAllUpcomingTapped:
+            return .send(.delegate(.navigateToAllPromises))
 
           case .groupFilterChanged(let groupId):
             state.selectedGroupId = groupId
@@ -264,16 +178,22 @@ extension Home.Feature {
             state.selectedGroupId = nil
             state.selectedStatusFilter = .all
             return .none
+
+          case .scrollTargetCleared:
+            state.scrollTarget = nil
+            return .none
           }
 
         case .internal(let internalAction):
           switch internalAction {
           case .fetchPromises:
-            state.promisesState = .loading
+            // 기존 데이터가 없을 때만 로딩 상태 표시 (깜빡임 방지)
+            if state.promisesState.value == nil {
+              state.promisesState = .loading
+            }
 
             let groupIds = state.currentUser.groups.map { $0.id }
 
-            // 그룹이 없으면 빈 결과 반환
             guard !groupIds.isEmpty else {
               state.promisesState = .loaded([])
               return .none
@@ -281,7 +201,6 @@ extension Home.Feature {
 
             return .run { [promiseClient] send in
               do {
-                // 단일 API 호출 (80개 limit)
                 let promises = try await promiseClient.getUpcomingPromises(groupIds, 80)
                 await send(.internal(.promisesResponse(.success(promises))))
               } catch {
@@ -292,23 +211,189 @@ extension Home.Feature {
           case .promisesResponse(let result):
             switch result {
             case .success(let promises):
-              state.promisesState = .loaded(promises)
+              // 그룹 정보 매칭 (UserGroupInfo -> GroupModel 변환)
+              let groupsDict = Dictionary(uniqueKeysWithValues: state.currentUser.groups.map { ($0.id, $0) })
+              let promisesWithGroup = promises.map { promise -> PromiseModel in
+                var updated = promise
+                if let userGroupInfo = groupsDict[promise.groupId] {
+                  updated.group = GroupModel(
+                    id: userGroupInfo.id,
+                    name: userGroupInfo.name,
+                    imageUrl: userGroupInfo.imageUrl,
+                    maxMembers: 0,
+                    inviteCode: "",
+                    createdBy: ""
+                  )
+                }
+                return updated
+              }
+              state.promisesState = .loaded(promisesWithGroup)
             case .failure(let error):
               state.promisesState = .failed(error)
             }
             return .none
 
           case .scrollToNeedResponse:
-            // 스크롤 처리는 View에서 ScrollViewReader로 구현
             return .none
           }
 
         case .delegate:
           return .none
+
+        // MARK: - Path Actions
+
+        case .path(.element(id: _, action: .promiseDetail(.delegate(.dismiss)))):
+          _ = state.path.popLast()
+          return .none
+
+        case .path(.element(id: _, action: .promiseDetail(.delegate(.promiseDeleted)))):
+          _ = state.path.popLast()
+          // 삭제 후 목록 새로고침
+          return .send(.internal(.fetchPromises))
+
+        case .path(.element(id: _, action: .promiseDetail(.delegate(.promiseUpdated(let promise))))):
+          // 수정된 약속 정보로 목록 업데이트
+          if var promises = state.promisesState.value,
+             let index = promises.firstIndex(where: { $0.id == promise.id }) {
+            promises[index] = promise
+            state.promisesState = .loaded(promises)
+          }
+          return .none
+
+        case .path:
+          return .none
         }
       }
+      .forEach(\.path, action: \.path)
     }
   }
+}
+
+// MARK: - State Computed Properties
+
+extension Home.Feature.State {
+  /// 모든 약속 (필터 적용 전)
+  var allPromises: [PromiseModel] {
+    promisesState.value ?? []
+  }
+
+  /// 오늘의 확정 약속 (시간순 정렬)
+  var todayPromises: [PromiseModel] {
+    allPromises
+      .filter { $0.isConfirmed && Calendar.current.isDateInToday($0.startAt) }
+      .sorted { $0.startAt < $1.startAt }
+  }
+
+  /// 응답 필요 약속 (투표 마감 임박순)
+  var pendingPromises: [PromiseModel] {
+    allPromises
+      .filter {
+        $0.myVoteStatus(userId: currentUser.userId) == .pending && !$0.isVotingClosed
+      }
+      .sorted { $0.votes.until < $1.votes.until }
+  }
+
+  /// 다가오는 확정 약속 (오늘 제외, 날짜순)
+  var upcomingPromises: [PromiseModel] {
+    allPromises
+      .filter { $0.isConfirmed && !Calendar.current.isDateInToday($0.startAt) && !$0.isPast }
+      .sorted { $0.startAt < $1.startAt }
+  }
+
+  /// 필터링된 약속 (id 기반 안전)
+  var filteredPromises: [PromiseModel] {
+    var promises = allPromises
+
+    // 그룹 필터 적용
+    if let groupId = selectedGroupId {
+      promises = promises.filter { $0.groupId == groupId }
+    }
+
+    // 상태 필터 적용
+    switch selectedStatusFilter {
+    case .needResponse:
+      promises = promises.filter {
+        $0.myVoteStatus(userId: currentUser.userId) == .pending && !$0.isVotingClosed
+      }
+    case .confirmed:
+      promises = promises.filter { $0.isConfirmed && !$0.isPast }
+    case .inProgress:
+      promises = promises.filter {
+        !$0.isConfirmed && !$0.isVotingClosed
+      }
+    case .all:
+      promises = promises.filter { !$0.isPast }
+    }
+
+    return promises
+  }
+
+  /// Overview 데이터
+  var overviewData: HomeModels.OverviewData {
+    let nextPromise = todayPromises
+      .filter { $0.startAt > Date() }
+      .first
+
+    return HomeModels.OverviewData(
+      todayCount: todayPromises.count,
+      nextPromise: nextPromise,
+      needResponseCount: pendingPromises.count
+    )
+  }
+
+  /// Critical Zone 데이터
+  var criticalZoneData: HomeModels.CriticalZoneData? {
+    let now = Date()
+
+    if let livePromise = allPromises.first(where: { $0.isRealtimeShareable }) {
+      return HomeModels.CriticalZoneData(reason: .liveActivity, promise: livePromise)
+    }
+
+    if let ongoingPromise = allPromises.first(where: { $0.isOngoing }) {
+      return HomeModels.CriticalZoneData(reason: .inProgress, promise: ongoingPromise)
+    }
+
+    if let soonPromise = allPromises.first(where: {
+      let interval = $0.startAt.timeIntervalSince(now)
+      return interval > 0 && interval <= 1800
+    }) {
+      return HomeModels.CriticalZoneData(reason: .departureSoon, promise: soonPromise)
+    }
+
+    return nil
+  }
+
+  /// Timeline 데이터 (날짜별 그룹화)
+  var timelineData: [HomeModels.TimelineSection] {
+    let grouped = Dictionary(grouping: filteredPromises) { promise in
+      Calendar.current.startOfDay(for: promise.startAt)
+    }
+
+    return grouped
+      .sorted { $0.key < $1.key }
+      .map { day, promises in
+        HomeModels.TimelineSection(
+          day: day,
+          promises: promises.sorted { $0.startAt < $1.startAt }
+        )
+      }
+  }
+
+  /// 사용 가능한 그룹 목록
+  var availableGroups: [HomeModels.GroupInfo] {
+    currentUser.groups.map { HomeModels.GroupInfo(id: $0.id, name: $0.name) }
+  }
+
+  /// 로딩 중 여부
+  var isLoading: Bool {
+    promisesState.isLoading
+  }
+
+  /// 응답 필요 개수 (배지용)
+  var pendingResponseCount: Int {
+    overviewData.needResponseCount
+  }
+}
 
 // MARK: - Root View
 
@@ -321,105 +406,73 @@ extension Home {
     }
 
     public var body: some View {
-      ScrollView {
-        ScrollViewReader { proxy in
-          LazyVStack(spacing: 20, pinnedViews: []) {
-            // Overview Section
-            OverviewSection(
-              overviewData: store.overviewData,
-              criticalZoneData: store.criticalZoneData,
-              onNeedResponseTap: {
-                store.send(.view(.needResponseBannerTapped))
-              },
-              onCriticalZoneTap: {
-                if let criticalData = store.criticalZoneData {
-                  store.send(.view(.promiseTapped(criticalData.promise.id)))
-                }
-              }
-            )
-            .padding(.top, 8)
-
-            // Filters
-            VStack(spacing: 8) {
-              // 그룹 필터
-              GroupFilterBar(
-                groups: store.availableGroups,
-                selectedGroupId: $store.selectedGroupId
-              )
-
-              // 상태 필터
-              CategoryFilterBar<StatusFilter>(
-                selection: $store.selectedStatusFilter,
-                counts: filterCounts
-              )
-            }
-
-            // Timeline
+      NavigationStack(path: $store.scope(state: \.path, action: \.path)) {
+        ScrollView {
+          LazyVStack(spacing: 20) {
             if store.isLoading && !store.hasLoadedOnce {
-              // 첫 로딩 - 스켈레톤
               loadingView
             } else if let error = store.promisesState.error {
-              // 에러 상태
               errorView(error: error)
-            } else if store.filteredPromises.isEmpty {
-              // 빈 상태
-              emptyStateView
             } else {
-              // Timeline 섹션들
-              ForEach(store.timelineData) { section in
-                TimelineSection(
-                  section: section,
-                  currentUserId: store.currentUser.userId,
+              // 오늘의 일정 카드
+              TodayScheduleCard(
+                promises: store.todayPromises,
+                onPromiseTap: { promise in
+                  store.send(.view(.todayPromiseTapped(promise)))
+                }
+              )
+              .padding(.horizontal, 16)
+
+              // 응답 필요 섹션 (있을 때만 표시)
+              if !store.pendingPromises.isEmpty {
+                PendingSection(
+                  promises: store.pendingPromises,
                   onPromiseTap: { promise in
-                    store.send(.view(.promiseTapped(promise.id)))
+                    store.send(.view(.pendingPromiseTapped(promise)))
                   }
                 )
                 .padding(.horizontal, 16)
-                .id(section.id)
               }
-            }
 
-            // 하단 여백
-            Color.clear
-              .frame(height: 80)
-          }
-          .onChange(of: store.scrollTarget) { _, target in
-            guard let target = target else { return }
-
-            withAnimation {
-              switch target {
-              case .needResponse:
-                // 응답 필요한 첫 번째 섹션으로 스크롤
-                if let firstSection = store.timelineData.first {
-                  proxy.scrollTo(firstSection.id, anchor: .top)
+              // 다가오는 약속 섹션
+              UpcomingSection(
+                promises: store.upcomingPromises,
+                onPromiseTap: { promise in
+                  store.send(.view(.upcomingPromiseTapped(promise)))
+                },
+                onSeeAllTap: {
+                  store.send(.view(.seeAllUpcomingTapped))
                 }
-              case .date(let date):
-                // 특정 날짜로 스크롤
-                let dayKey = dayKeyString(from: date)
-                proxy.scrollTo(dayKey, anchor: .top)
-              }
+              )
+              .padding(.horizontal, 16)
             }
 
-            // 스크롤 타겟 초기화
-            store.scrollTarget = nil
+            // 하단 여백 (FAB 및 탭바 공간)
+            Color.clear
+              .frame(height: 100)
+          }
+          .padding(.top, 8)
+        }
+        .refreshable {
+          store.send(.view(.refreshTriggered))
+        }
+        .auroraBackground()
+        .toolbar {
+          ToolbarItem(placement: .topBarTrailing) {
+            NotificationButton(
+              badgeCount: store.pendingResponseCount,
+              action: { }
+            )
           }
         }
-      }
-      .refreshable {
-        store.send(.view(.refreshTriggered))
-      }
-      .auroraBackground()
-      .navigationTitle("오늘의 일정")
-      .toolbar {
-        ToolbarItem(placement: .topBarTrailing) {
-          NotificationButton(
-            badgeCount: store.pendingResponseCount,
-            action: { }
-          )
+        .onAppear {
+          store.send(.view(.onAppear))
         }
-      }
-      .onAppear {
-        store.send(.view(.onAppear))
+      } destination: { store in
+        switch store.case {
+        case .promiseDetail(let detailStore):
+          PromiseDetail.RootView(store: detailStore)
+        }
       }
     }
 
@@ -427,15 +480,43 @@ extension Home {
 
     @ViewBuilder
     private var loadingView: some View {
-      LazyVStack(spacing: 12) {
-        ForEach(0..<3, id: \.self) { _ in
-          RoundedRectangle(cornerRadius: 14)
+      VStack(spacing: 16) {
+        // 오늘의 일정 스켈레톤
+        RoundedRectangle(cornerRadius: 20)
+          .fill(Color(.systemGray6))
+          .frame(height: 200)
+          .shimmer()
+
+        // 응답 필요 스켈레톤
+        VStack(alignment: .leading, spacing: 12) {
+          RoundedRectangle(cornerRadius: 8)
             .fill(Color(.systemGray6))
-            .frame(height: 80)
-            .shimmer()
+            .frame(width: 100, height: 24)
+
+          HStack(spacing: 12) {
+            ForEach(0..<2, id: \.self) { _ in
+              RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.systemGray6))
+                .frame(width: 160, height: 140)
+            }
+          }
+        }
+
+        // 다가오는 약속 스켈레톤
+        VStack(alignment: .leading, spacing: 12) {
+          RoundedRectangle(cornerRadius: 8)
+            .fill(Color(.systemGray6))
+            .frame(width: 120, height: 24)
+
+          ForEach(0..<3, id: \.self) { _ in
+            RoundedRectangle(cornerRadius: 14)
+              .fill(Color(.systemGray6))
+              .frame(height: 80)
+          }
         }
       }
       .padding(.horizontal, 16)
+      .shimmer()
     }
 
     // MARK: - Error View
@@ -460,82 +541,6 @@ extension Home {
       .frame(maxWidth: .infinity)
       .padding(.vertical, 60)
       .padding(.horizontal, 24)
-    }
-
-    // MARK: - Empty State View
-
-    @ViewBuilder
-    private var emptyStateView: some View {
-      VStack(spacing: 16) {
-        Image(systemName: emptyStateIcon)
-          .font(.system(size: 40))
-          .foregroundStyle(.secondary)
-
-        Text(emptyStateTitle)
-          .font(.headline)
-          .foregroundStyle(.primary)
-
-        Text(emptyStateMessage)
-          .font(.subheadline)
-          .foregroundStyle(.secondary)
-          .multilineTextAlignment(.center)
-          .lineSpacing(4)
-
-        if store.selectedGroupId != nil || store.selectedStatusFilter != .all {
-          Button("필터 초기화") {
-            store.send(.view(.resetFilters))
-          }
-          .buttonStyle(.bordered)
-        }
-      }
-      .frame(maxWidth: .infinity)
-      .padding(.vertical, 60)
-      .padding(.horizontal, 24)
-    }
-
-    // MARK: - Computed Properties
-
-    private var filterCounts: [StatusFilter: Int] {
-      let all = store.allPromises.filter { !$0.isPast }
-
-      return [
-        .all: all.count,
-        .needResponse: all.filter {
-          $0.myVoteStatus(userId: store.currentUser.userId) == .pending && !$0.isVotingClosed
-        }.count,
-        .confirmed: all.filter { $0.isConfirmed }.count,
-        .inProgress: all.filter { !$0.isConfirmed && !$0.isVotingClosed }.count
-      ]
-    }
-
-    private var emptyStateIcon: String {
-      if store.allPromises.isEmpty {
-        return "calendar"
-      } else {
-        return "line.3.horizontal.decrease.circle"
-      }
-    }
-
-    private var emptyStateTitle: String {
-      if store.allPromises.isEmpty {
-        return "약속이 없어요"
-      } else {
-        return "필터 결과가 없어요"
-      }
-    }
-
-    private var emptyStateMessage: String {
-      if store.allPromises.isEmpty {
-        return "새로운 약속을 만들어보세요\n+ 버튼을 눌러 시작할 수 있어요"
-      } else {
-        return "선택한 필터 조건에 맞는\n약속이 없습니다"
-      }
-    }
-
-    private func dayKeyString(from date: Date) -> String {
-      let formatter = DateFormatter()
-      formatter.dateFormat = "yyyy-MM-dd"
-      return formatter.string(from: date)
     }
   }
 }

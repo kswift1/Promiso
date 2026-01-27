@@ -74,6 +74,41 @@ public extension View {
   func skeleton(isLoading: Bool, cornerRadius: CGFloat = 8) -> some View {
     modifier(SkeletonModifier(isLoading: isLoading, cornerRadius: cornerRadius))
   }
+
+  /// 시머 (반짝이는) 효과 적용
+  func shimmer() -> some View {
+    modifier(ShimmerModifier())
+  }
+}
+
+/// 시머 효과 수정자
+public struct ShimmerModifier: ViewModifier {
+  @State private var phase: CGFloat = 0
+
+  public func body(content: Content) -> some View {
+    content
+      .overlay(
+        LinearGradient(
+          gradient: Gradient(colors: [
+            .clear,
+            Color.white.opacity(0.3),
+            .clear
+          ]),
+          startPoint: .leading,
+          endPoint: .trailing
+        )
+        .offset(x: phase)
+        .mask(content)
+      )
+      .onAppear {
+        withAnimation(
+          .linear(duration: 1.5)
+          .repeatForever(autoreverses: false)
+        ) {
+          phase = 300
+        }
+      }
+  }
 }
 
 // MARK: - Preview

@@ -62,7 +62,7 @@ private struct ExampleContentView: View {
       metadata: Metadata(createdAt: Date(), updatedAt: Date())
     )
 
-    let store = Store(initialState: GroupMain.Feature.State(currentUser: previewUser)) {
+    let store = Store(initialState: GroupMain.Feature.State(currentUser: Shared(value: previewUser))) {
       GroupMain.Feature()
     } withDependencies: { dependencies in
       dependencies.groupClient = .previewValue
@@ -101,7 +101,7 @@ private struct ExampleContentView: View {
     metadata: Metadata(createdAt: Date(), updatedAt: Date())
   )
 
-  let store = Store(initialState: GroupMain.Feature.State(currentUser: previewUser)) {
+  let store = Store(initialState: GroupMain.Feature.State(currentUser: Shared(value: previewUser))) {
     GroupMain.Feature()
   } withDependencies: { dependencies in
     dependencies.groupClient = .previewValue

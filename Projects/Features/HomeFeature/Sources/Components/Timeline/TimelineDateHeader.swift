@@ -1,4 +1,5 @@
 import SwiftUI
+import PromisoShared
 
 struct TimelineDateHeader: View {
   let date: Date
@@ -28,10 +29,7 @@ struct TimelineDateHeader: View {
     } else if calendar.isDate(date, equalTo: now.addingTimeInterval(86400 * 2), toGranularity: .day) {
       return "모레"
     } else {
-      let formatter = DateFormatter()
-      formatter.dateFormat = "M월 d일 (E)"
-      formatter.locale = Locale(identifier: "ko_KR")
-      return formatter.string(from: date)
+      return KoreanDateFormatters.sectionHeader.string(from: date)
     }
   }
 }

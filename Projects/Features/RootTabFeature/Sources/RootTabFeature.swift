@@ -80,8 +80,8 @@ extension RootTab {
       /// Profile State
       var profile: Profile.Feature.State
 
-      /// 현재 사용자 정보 (Profile에 전달)
-      var currentUser: UserPrivateModel
+      /// 현재 사용자 정보 (모든 탭에서 참조 공유)
+      @Shared var currentUser: UserPrivateModel
 
       /// LivePromise State (약속 추적 바) - nil이면 숨김
       var livePromise: LivePromise.Feature.State?
@@ -94,8 +94,8 @@ extension RootTab {
       /// activityUpdateReceived에서 livePromise 생성 후 ETA 시트를 열기 위해 사용
       var pendingETASheetRequest: Bool = false
 
-      public init(currentUser: UserPrivateModel) {
-        self.currentUser = currentUser
+      public init(currentUser: Shared<UserPrivateModel>) {
+        self._currentUser = currentUser
         self.groupMain = GroupMain.Feature.State(currentUser: currentUser)
         self.home = Home.Feature.State(currentUser: currentUser)
         self.calendar = CalendarFeature.Feature.State(currentUser: currentUser)
@@ -103,6 +103,7 @@ extension RootTab {
       }
     }
 
+    @CasePathable
     public enum Action {
       /// 앱이 나타날 때 호출
       case onAppear
@@ -190,11 +191,22 @@ extension RootTab {
             await hapticFeedback.buttonTap()
           }
 
-        case .home(.delegate(.navigateToGroup(let groupId))):
+        case .home(.delegate(.navigateToGroupWithPromise(let groupId, let promiseId))):
+          state.selectedTab = .group
+          // 그룹 선택 후 응답 필요 필터로 해당 약속 하이라이트
+          return .send(.groupMain(.view(.handleDeeplink(
+            .promiseInList(promiseId: promiseId, groupId: groupId, filter: .needResponse)
+          ))))
+
+        case .home(.delegate(.navigateToPromise(let promiseId, let groupId))):
           state.selectedTab = .group
           if let groupInfo = state.groupMain.allGroupSummaries?.first(where: { $0.id == groupId }) {
             return .send(.groupMain(.view(.groupChanged(groupInfo))))
           }
+          return .none
+
+        case .home(.delegate(.navigateToAllPromises)):
+          // TODO: 모든 약속 보기 화면으로 이동 (추후 구현)
           return .none
 
         case .home:

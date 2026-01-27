@@ -88,16 +88,11 @@ struct EndTimePicker: View {
   }
   
   private var formattedDate: String {
-    let formatter = DateFormatter()
-    formatter.dateFormat = "yyyy.M.d."
-    return formatter.string(from: endDate)
+    KoreanDateFormatters.dateDot.string(from: endDate)
   }
-  
+
   private var formattedTime: String {
-    let formatter = DateFormatter()
-    formatter.dateFormat = "a h:mm"
-    formatter.locale = Locale(identifier: "ko_KR")
-    return formatter.string(from: endDate)
+    endDate.formattedTime
   }
   
   var body: some View {

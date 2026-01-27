@@ -137,16 +137,11 @@ extension LivePromise {
     // MARK: - Formatters
 
     private func formatTime(_ date: Date) -> String {
-      let formatter = DateFormatter()
-      formatter.dateFormat = "h:mm"
-      return formatter.string(from: date)
+      KoreanDateFormatters.time12Hour.string(from: date)
     }
 
     private func formatPeriod(_ date: Date) -> String {
-      let formatter = DateFormatter()
-      formatter.dateFormat = "a"
-      formatter.locale = Locale(identifier: "en_US")
-      return formatter.string(from: date)
+      KoreanDateFormatters.amPm.string(from: date)
     }
   }
 
@@ -279,16 +274,11 @@ extension LivePromise {
     // MARK: - Formatters
 
     private func formatTime(_ date: Date) -> String {
-      let formatter = DateFormatter()
-      formatter.dateFormat = "h:mm"
-      return formatter.string(from: date)
+      KoreanDateFormatters.time12Hour.string(from: date)
     }
 
     private func formatPeriod(_ date: Date) -> String {
-      let formatter = DateFormatter()
-      formatter.dateFormat = "a"
-      formatter.locale = Locale(identifier: "en_US")
-      return formatter.string(from: date)
+      KoreanDateFormatters.amPm.string(from: date)
     }
   }
 }

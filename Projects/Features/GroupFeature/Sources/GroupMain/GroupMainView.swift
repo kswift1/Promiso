@@ -27,8 +27,6 @@ extension GroupMain {
             PromiseDetail.RootView(store: promiseDetailStore)
           case .pastPromises(let pastPromisesStore):
             PastPromises.RootView(store: pastPromisesStore)
-          case .pastPromiseDetail(let pastPromiseDetailStore):
-            PastPromiseDetail.RootView(store: pastPromiseDetailStore)
           }
         }
     }
@@ -276,30 +274,40 @@ extension GroupMain {
 
     @ViewBuilder
     private var promiseListView: some View {
-      List {
-        ForEach(store.groupedFilteredPromises, id: \.date) { section in
-          Section {
-            ForEach(section.promises, id: \.id) { promise in
-              promiseRowView(for: promise)
+      ScrollViewReader { proxy in
+        List {
+          ForEach(store.groupedFilteredPromises, id: \.date) { section in
+            Section {
+              ForEach(section.promises, id: \.id) { promise in
+                promiseRowView(for: promise)
+                  .id(promise.id)
+              }
+            } header: {
+              dateSectionHeader(section.date)
             }
-          } header: {
-            dateSectionHeader(section.date)
+            .listSectionSeparator(.hidden)
           }
-          .listSectionSeparator(.hidden)
-        }
 
-        // FAB 공간 확보
-        Color.clear
-          .frame(height: 80)
-          .listRowBackground(Color.clear)
-          .listRowSeparator(.hidden)
+          // FAB 공간 확보
+          Color.clear
+            .frame(height: 80)
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .refreshable {
+          store.send(.view(.refreshTriggered))
+        }
+        .animation(.snappy, value: store.promiseListAnimationKey)
+        .onChange(of: store.highlightedPromiseId) { _, newValue in
+          if let promiseId = newValue {
+            withAnimation(.easeInOut(duration: 0.3)) {
+              proxy.scrollTo(promiseId, anchor: .center)
+            }
+          }
+        }
       }
-      .listStyle(.plain)
-      .scrollContentBackground(.hidden)
-      .refreshable {
-        store.send(.view(.refreshTriggered))
-      }
-      .animation(.snappy, value: store.promiseListAnimationKey)
     }
 
     @ViewBuilder
@@ -321,11 +329,12 @@ extension GroupMain {
     @ViewBuilder
     private func promiseRowView(for promise: PromiseModel) -> some View {
       let promiseId = promise.id
-      let myVoteStatus = promise.myVoteStatus(userId: store.currentUser.userId)
+      let userId = store.currentUser.userId
+      let myVoteStatus = promise.myVoteStatus(userId: userId)
 
       PromiseCard(
         promise: promise,
-        currentUserId: store.currentUser.userId,
+        currentUserId: userId,
         groupMembers: store.currentGroupMembers,
         respondingState: store.proposalResponding[promiseId] ?? .idle,
         isLive: store.liveActivityPromiseId == promiseId,
@@ -358,6 +367,12 @@ extension GroupMain {
       .onTapGesture {
         store.send(.view(.promiseTapped(promise)))
       }
+      .modifier(ShakeEffect(
+        isShaking: store.highlightedPromiseId == promiseId,
+        onComplete: {
+          store.send(.view(.clearHighlightedPromise))
+        }
+      ))
       .listRowBackground(Color.clear)
       .listRowSeparator(.hidden)
       .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
@@ -644,5 +659,155 @@ private struct SortSettingsSheetContent: View {
         onDismiss()
       }
     )
+  }
+}
+
+// MARK: - Shake Effect
+
+/// 좌우로 흔들리는 애니메이션 효과 (배경 힌트 포함)
+private struct ShakeEffect: ViewModifier {
+  let isShaking: Bool
+  let delay: Double
+  let onComplete: (() -> Void)?
+  @State private var shakeOffset: CGFloat = 0
+  @State private var hasStartedShake: Bool = false
+  @State private var showBackground: Bool = false
+
+  init(isShaking: Bool, delay: Double = 0.5, onComplete: (() -> Void)? = nil) {
+    self.isShaking = isShaking
+    self.delay = delay
+    self.onComplete = onComplete
+  }
+
+  func body(content: Content) -> some View {
+    ZStack {
+      // 배경 힌트 레이어 (흔들기 시작 후에만 표시)
+      if showBackground {
+        swipeHintBackground
+      }
+
+      // 실제 컨텐츠
+      content
+        .offset(x: shakeOffset)
+    }
+    .onChange(of: isShaking) { _, newValue in
+      if newValue && !hasStartedShake {
+        // 스크롤 완료 후 흔들기 시작
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+          hasStartedShake = true
+          showBackground = true
+          performShake()
+        }
+      } else if !newValue {
+        hasStartedShake = false
+        showBackground = false
+        shakeOffset = 0
+      }
+    }
+    .onAppear {
+      if isShaking && !hasStartedShake {
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+          hasStartedShake = true
+          showBackground = true
+          performShake()
+        }
+      }
+    }
+  }
+
+  private var swipeHintBackground: some View {
+    ZStack {
+      // Leading - 수락 (오른쪽으로 밀었을 때만 표시)
+      if shakeOffset > 0 {
+        HStack {
+          let progress = clamp((shakeOffset - 8) / 40)
+          swipeHintBubble(
+            title: "수락",
+            systemImage: "checkmark.circle.fill",
+            fillColor: .green,
+            progress: progress
+          )
+          .opacity(progress)
+          .scaleEffect(0.3 + progress * 0.7)
+          .offset(x: -4)
+
+          Spacer()
+        }
+        .padding(.leading, 0)
+      }
+
+      // Trailing - 거절 (왼쪽으로 밀었을 때만 표시)
+      if shakeOffset < 0 {
+        HStack {
+          Spacer()
+
+          let progress = clamp((abs(shakeOffset) - 8) / 40)
+          swipeHintBubble(
+            title: "거절",
+            systemImage: "xmark.circle.fill",
+            fillColor: .red,
+            progress: progress
+          )
+          .opacity(progress)
+          .scaleEffect(0.3 + progress * 0.7)
+          .offset(x: 4)
+        }
+        .padding(.trailing, 0)
+      }
+    }
+    .frame(maxWidth: .infinity)
+    .frame(height: 100)
+  }
+
+  private func swipeHintBubble(
+    title: String,
+    systemImage: String,
+    fillColor: Color,
+    progress: CGFloat
+  ) -> some View {
+    VStack(spacing: 8) {
+      ZStack {
+        Circle()
+          .fill(fillColor)
+          .frame(width: 48, height: 48)
+
+        Image(systemName: systemImage)
+          .font(.system(size: 15, weight: .bold))
+          .foregroundStyle(.white)
+      }
+
+      Text(title)
+        .font(.system(size: 13, weight: .medium))
+        .foregroundStyle(.secondary)
+    }
+  }
+
+  private func clamp(_ value: CGFloat) -> CGFloat {
+    min(max(value, 0), 1)
+  }
+
+  private func performShake() {
+    let duration = 0.3
+    let shakeDistance: CGFloat = 50
+
+    // 0 → 50 → -50 → 0
+    withAnimation(.easeInOut(duration: duration)) {
+      shakeOffset = shakeDistance
+    }
+    DispatchQueue.main.asyncAfter(deadline: .now() + duration) {
+      withAnimation(.easeInOut(duration: duration)) {
+        shakeOffset = -shakeDistance
+      }
+    }
+    DispatchQueue.main.asyncAfter(deadline: .now() + duration * 2) {
+      withAnimation(.easeInOut(duration: duration)) {
+        shakeOffset = 0
+      }
+    }
+    // 애니메이션 완료 후 콜백 호출
+    DispatchQueue.main.asyncAfter(deadline: .now() + duration * 3) {
+      showBackground = false
+      onComplete?()
+    }
   }
 }

@@ -26,10 +26,7 @@ extension NotificationPermission {
         return store.config.notificationContent
       }
 
-      let formatter = DateFormatter()
-      formatter.locale = Locale(identifier: "ko_KR")
-      formatter.dateFormat = "M월 d일 a h시"
-      let dateString = formatter.string(from: targetDate)
+      let dateString = KoreanDateFormatters.monthDayHour.string(from: targetDate)
 
       return "점심 약속 확정! \(dateString)에 만나요"
     }

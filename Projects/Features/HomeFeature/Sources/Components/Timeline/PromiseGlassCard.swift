@@ -18,25 +18,31 @@ struct PromiseGlassCard: View {
     }
   }
 
+  // 투표 현황
+  private var acceptedCount: Int { promise.votes.accepted.count }
+  private var declinedCount: Int { promise.votes.declined.count }
+  private var totalResponded: Int { acceptedCount + declinedCount }
+
   var body: some View {
     Button(action: onTap) {
       HStack(spacing: 12) {
         // 시간 + 확정 여부
-        VStack(spacing: 2) {
+        VStack(spacing: 4) {
           Text(timeText)
             .font(.system(size: 16, weight: .bold))
             .foregroundStyle(.primary)
 
           if promise.isConfirmed {
             Image(systemName: "checkmark.circle.fill")
-              .font(.caption2)
+              .font(.caption)
               .foregroundStyle(.green)
           }
         }
-        .frame(width: 60)
+        .frame(width: 50)
 
         // 약속 내용
         VStack(alignment: .leading, spacing: 6) {
+          // 제목
           HStack(spacing: 6) {
             Text(promise.displayEmoji)
               .font(.title3)
@@ -59,23 +65,44 @@ struct PromiseGlassCard: View {
             .foregroundStyle(.secondary)
           }
 
-          // 응답 상태 또는 투표 현황
-          if !promise.isConfirmed {
-            HStack(spacing: 4) {
-              Circle()
-                .fill(statusColor)
-                .frame(width: 6, height: 6)
+          // 하단: 투표 상태 점 + 마감 정보
+          HStack(spacing: 8) {
+            // 투표 상태 점
+            VoteDotsView(
+              accepted: acceptedCount,
+              declined: declinedCount,
+              pending: 0  // pending 정보 없음
+            )
 
-              Text(statusText)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
+            // 내 상태 + 마감
+            if !promise.isConfirmed {
+              HStack(spacing: 4) {
+                Circle()
+                  .fill(statusColor)
+                  .frame(width: 6, height: 6)
+
+                Text(statusText)
+                  .font(.caption2)
+                  .foregroundStyle(.secondary)
+              }
             }
           }
         }
 
         Spacer()
+
+        // 우측: 투표 프로그레스 링
+        if !promise.isConfirmed && totalResponded > 0 {
+          CircularProgressView(
+            current: acceptedCount,
+            total: promise.minimumParticipants,
+            size: 36,
+            lineWidth: 3
+          )
+        }
       }
       .padding(14)
+      .background(cardBackground)
       .adaptiveGlassCard(cornerRadius: 14)
     }
     .buttonStyle(.plain)
@@ -84,93 +111,27 @@ struct PromiseGlassCard: View {
   // MARK: - Computed Properties
 
   private var timeText: String {
-    let formatter = DateFormatter()
-    formatter.dateFormat = "HH:mm"
-    return formatter.string(from: promise.startAt)
+    promise.startAt.formattedTime
   }
 
   private var statusText: String {
     if myVoteStatus == .pending {
       let calendar = Calendar.current
       let daysLeft = calendar.dateComponents([.day], from: Date(), to: promise.votes.until).day ?? 0
-      return "D-\(daysLeft) 마감"
+      return "D-\(daysLeft)"
     } else {
-      return "\(promise.votes.accepted.count)/\(promise.minimumParticipants)명 참여"
+      return myVoteStatus == .accepted ? "참여" : "불참"
     }
   }
-}
 
-// MARK: - Preview
-
-#Preview("확정된 약속") {
-  VStack(spacing: 12) {
-    PromiseGlassCard(
-      promise: PromiseModel.mock(
-        title: "점심 약속",
-        emoji: "🍕",
-        votes: PromiseVotesModel(
-          accepted: ["user1", "user2"],
-          declined: [],
-          until: Date().addingTimeInterval(86400)
-        ),
-        startAt: Date().addingTimeInterval(7200)
-      ),
-      currentUserId: "user1",
-      onTap: {}
-    )
-
-    PromiseGlassCard(
-      promise: PromiseModel.mock(
-        title: "커피 타임",
-        emoji: "☕",
-        votes: PromiseVotesModel(
-          accepted: ["user1", "user2"],
-          declined: [],
-          until: Date().addingTimeInterval(86400)
-        ),
-        startAt: Date().addingTimeInterval(14400),
-        location: LocationInfoModel(name: "스타벅스 강남점")
-      ),
-      currentUserId: "user1",
-      onTap: {}
-    )
+  /// 카드 배경 - 확정/진행중 구분
+  private var cardBackground: some ShapeStyle {
+    if promise.isConfirmed {
+      return Color.green.opacity(0.05)
+    } else if myVoteStatus == .pending {
+      return Color.orange.opacity(0.05)
+    } else {
+      return Color.clear
+    }
   }
-  .padding()
-  .auroraBackground()
-}
-
-#Preview("응답 필요") {
-  VStack(spacing: 12) {
-    PromiseGlassCard(
-      promise: PromiseModel.mock(
-        title: "저녁 약속",
-        emoji: "🍽️",
-        votes: PromiseVotesModel(
-          accepted: ["user2"],
-          declined: [],
-          until: Date().addingTimeInterval(86400 * 2)
-        ),
-        startAt: Date().addingTimeInterval(28800)
-      ),
-      currentUserId: "user1",
-      onTap: {}
-    )
-
-    PromiseGlassCard(
-      promise: PromiseModel.mock(
-        title: "팀 미팅",
-        emoji: "💼",
-        votes: PromiseVotesModel(
-          accepted: [],
-          declined: [],
-          until: Date().addingTimeInterval(86400)
-        ),
-        startAt: Date().addingTimeInterval(36000)
-      ),
-      currentUserId: "user1",
-      onTap: {}
-    )
-  }
-  .padding()
-  .auroraBackground()
 }

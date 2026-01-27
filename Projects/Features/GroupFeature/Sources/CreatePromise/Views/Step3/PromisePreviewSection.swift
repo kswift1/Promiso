@@ -67,17 +67,11 @@ struct PromisePreviewSection: View {
   }
 
   private var formattedDate: String {
-    let formatter = DateFormatter()
-    formatter.locale = Locale(identifier: "ko_KR")
-    formatter.dateFormat = "M월 d일 (E)"
-    return formatter.string(from: store.promise.startAt)
+    KoreanDateFormatters.sectionHeader.string(from: store.promise.startAt)
   }
 
   private var formattedTime: String {
-    let formatter = DateFormatter()
-    formatter.locale = Locale(identifier: "ko_KR")
-    formatter.dateFormat = "a h:mm"
-    return formatter.string(from: store.promise.startAt)
+    store.promise.startAt.formattedTime
   }
 }
 
@@ -271,24 +265,15 @@ struct PromisePreviewFullScreen: View {
   // MARK: - Formatters
 
   private var formattedDate: String {
-    let formatter = DateFormatter()
-    formatter.locale = Locale(identifier: "ko_KR")
-    formatter.dateFormat = "M월 d일 (E)"
-    return formatter.string(from: store.promise.startAt)
+    KoreanDateFormatters.sectionHeader.string(from: store.promise.startAt)
   }
 
   private var formattedTime: String {
-    let formatter = DateFormatter()
-    formatter.locale = Locale(identifier: "ko_KR")
-    formatter.dateFormat = "a h:mm"
-    return formatter.string(from: store.promise.startAt)
+    store.promise.startAt.formattedTime
   }
 
   private func formattedEndTime(_ date: Date) -> String {
-    let formatter = DateFormatter()
-    formatter.locale = Locale(identifier: "ko_KR")
-    formatter.dateFormat = "a h:mm"
-    return formatter.string(from: date)
+    date.formattedTime
   }
 }
 
