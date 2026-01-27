@@ -12,19 +12,26 @@ struct TimelineItemView: View {
 
   var body: some View {
     Button(action: onTap) {
-      HStack(alignment: .top, spacing: 12) {
-        // 타임라인 인디케이터
+      HStack(alignment: .top, spacing: 0) {
+        // 타임라인 인디케이터 (가장 왼쪽)
         timelineIndicator
-
-        // 콘텐츠
-        promiseContent
-
-        Spacer(minLength: 0)
 
         // 시간
         timeLabel
+          .frame(width: 56, alignment: .leading)
+          .padding(.leading, 12)
+
+        // 콘텐츠
+        promiseContent
+          .padding(.leading, 8)
+
+        Spacer(minLength: 0)
+
+        // 그룹 뱃지 (우측 상단)
+        if promise.group != nil {
+          groupBadge
+        }
       }
-      .padding(.vertical, 10)
       .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
@@ -33,15 +40,14 @@ struct TimelineItemView: View {
   // MARK: - Timeline Indicator
 
   private var timelineIndicator: some View {
-    VStack(spacing: 0) {
-      // 상단 라인
-      if !isFirst {
+    ZStack(alignment: isLast ? .bottom : .top) {
+      // 세로 라인 (첫 번째와 마지막이 아닌 경우 전체, 그 외는 절반)
+      if !isFirst || !isLast {
         Rectangle()
-          .fill(Color.pmindigo.n300.opacity(0.3))
-          .frame(width: 2, height: 8)
-      } else {
-        Color.clear
-          .frame(width: 2, height: 8)
+          .fill(Color.pmindigo.n300.opacity(0.5))
+          .frame(width: 2)
+          .padding(.top, isFirst ? 10 : 0)
+          .padding(.bottom, isLast ? 10 : 0)
       }
 
       // 점
@@ -55,20 +61,9 @@ struct TimelineItemView: View {
               .frame(width: 16, height: 16)
           }
         }
-
-      // 하단 라인
-      if !isLast {
-        Rectangle()
-          .fill(Color.pmindigo.n300.opacity(0.3))
-          .frame(width: 2)
-          .frame(maxHeight: .infinity)
-      } else {
-        Color.clear
-          .frame(width: 2)
-          .frame(maxHeight: .infinity)
-      }
+        .padding(isLast ? .bottom : .top, 10)
     }
-    .frame(width: 20)
+    .frame(width: 16)
   }
 
   // MARK: - Promise Content
@@ -100,44 +95,51 @@ struct TimelineItemView: View {
         .foregroundStyle(.secondary)
       }
 
-      // 그룹 · 참여자
-      groupParticipantsView
+      // 참여자 수
+      Text("\(promise.votes.accepted.count)명 참여")
+        .font(.caption)
+        .foregroundStyle(.secondary)
     }
   }
 
-  // MARK: - Group & Participants View
+  // MARK: - Group Badge
 
-  private var groupParticipantsView: some View {
-    HStack(spacing: 4) {
-      // 그룹 아이콘
+  private var groupBadge: some View {
+    HStack(spacing: 6) {
       GroupThumbnailView(
         imageUrl: promise.group?.imageUrl,
         name: promise.group?.name ?? "",
-        size: 14
+        size: 20
       )
 
-      // 그룹명 · 참여자
       if let groupName = promise.group?.name {
-        Text("\(groupName) · \(promise.votes.accepted.count)명 참여")
+        Text(groupName)
           .font(.caption)
-      } else {
-        Text("\(promise.votes.accepted.count)명 참여")
-          .font(.caption)
+          .fontWeight(.medium)
+          .lineLimit(1)
       }
     }
-    .foregroundStyle(.secondary)
+    .padding(.horizontal, 10)
+    .padding(.vertical, 6)
+    .background(Color.pmindigo.n500.opacity(0.1))
+    .foregroundStyle(Color.pmindigo.n600)
+    .clipShape(Capsule())
   }
 
   // MARK: - Time Label
 
   private var timeLabel: some View {
-    VStack(alignment: .trailing, spacing: 2) {
-      Text(timeString)
+    VStack(alignment: .leading, spacing: 2) {
+      Text(startTimeString)
         .font(.subheadline)
         .fontWeight(.semibold)
         .foregroundStyle(isNow ? Color.pmindigo.n500 : .primary)
 
-      if isNow {
+      if let endAt = promise.endAt {
+        Text("~ \(endTimeString(endAt))")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+      } else if isNow {
         Text("NOW")
           .font(.caption2)
           .fontWeight(.bold)
@@ -148,10 +150,16 @@ struct TimelineItemView: View {
 
   // MARK: - Computed Properties
 
-  private var timeString: String {
+  private var startTimeString: String {
     let formatter = DateFormatter()
     formatter.dateFormat = "HH:mm"
     return formatter.string(from: promise.startAt)
+  }
+
+  private func endTimeString(_ endAt: Date) -> String {
+    let formatter = DateFormatter()
+    formatter.dateFormat = "HH:mm"
+    return formatter.string(from: endAt)
   }
 
   /// 현재 진행 중인 약속인지 (시작 30분 전 ~ 시작 후 2시간)
