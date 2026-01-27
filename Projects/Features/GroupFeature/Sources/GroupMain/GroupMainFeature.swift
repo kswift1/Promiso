@@ -1,4 +1,4 @@
-import ComposableArchitecture
+  import ComposableArchitecture
 import PromisoShared
 import Clients
 import SwiftUI
@@ -16,7 +16,7 @@ extension GroupMain {
     case needResponse = "응답 필요"
     case responded = "응답 완료"
     case confirmed = "확정"
-    case all = "전체"
+    case all = "전체"이
     case past = "과거"
 
     public var title: String { rawValue }
@@ -56,6 +56,8 @@ extension GroupMain {
     case group(groupId: String)
     /// 약속 상세 화면
     case promise(promiseId: String, groupId: String)
+    /// 약속 목록에서 특정 약속으로 스크롤 (필터 적용)
+    case promiseInList(promiseId: String, groupId: String, filter: PromiseFilter)
   }
 }
 
@@ -183,6 +185,9 @@ extension GroupMain {
 
       /// 딥링크로 열려는 목적지 (그룹/약속 로드 후 처리)
       var pendingDeeplink: GroupMain.Deeplink?
+
+      /// 하이라이트할 약속 ID (목록에서 스크롤 및 강조 표시)
+      var highlightedPromiseId: String?
 
       /// 현재 실시간 공유 중인 약속 ID (nil이면 비활성)
       public var liveActivityPromiseId: String?
@@ -415,6 +420,7 @@ extension GroupMain {
         // MARK: - New UI Actions
         case groupTapped(String)  // 가로 바에서 그룹 선택
         case filterChanged(GroupMain.PromiseFilter)  // 필터 변경
+        case clearHighlightedPromise  // 하이라이트 클리어
         case moreNeedResponseTapped  // "N개 더 보기" - 응답 필요
         case moreConfirmedTapped  // "N개 더 보기" - 확정
         case allPromisesTapped  // "모든 약속 보기"
@@ -616,14 +622,28 @@ extension GroupMain {
 
           case .handleDeeplink(let deeplink):
             AppLogger.deeplink.debug("[GroupMain] handleDeeplink: \(String(describing: deeplink))")
-            state.pendingDeeplink = deeplink
 
             // groupId 추출
             let groupId: String
             switch deeplink {
             case .group(let gid): groupId = gid
             case .promise(_, let gid): groupId = gid
+            case .promiseInList(_, let gid, _): groupId = gid
             }
+
+            // 현재 그룹이고 약속이 이미 로드된 경우 바로 적용
+            if case .promiseInList(let promiseId, _, let filter) = deeplink,
+               state.currentGroup?.id == groupId,
+               let promises = state.promisesState.value,
+               promises.contains(where: { $0.id == promiseId }) {
+              AppLogger.deeplink.debug("[GroupMain] Promise already loaded, applying highlight immediately")
+              state.selectedFilter = filter
+              state.highlightedPromiseId = promiseId
+              return .none
+            }
+
+            // 그 외의 경우 pending으로 설정
+            state.pendingDeeplink = deeplink
 
             // 다른 그룹으로 이동하는 경우에만 path 초기화
             state.clearPathIfGroupChanged(targetGroupId: groupId)
@@ -664,6 +684,10 @@ extension GroupMain {
               guard !state.pastPromisesState.isLoaded else { return .none }
               return .send(.internal(.fetchPastPromises(groupId: groupId)))
             }
+            return .none
+
+          case .clearHighlightedPromise:
+            state.highlightedPromiseId = nil
             return .none
 
           case .moreNeedResponseTapped:
@@ -719,6 +743,7 @@ extension GroupMain {
               switch deeplink {
               case .promise(_, let gid): groupId = gid
               case .group(let gid): groupId = gid
+              case .promiseInList(_, let gid, _): groupId = gid
               }
               if let groupInfo = groupSummaries.first(where: { $0.id == groupId }) {
                 AppLogger.deeplink.debug("[GroupMain] Deeplink group found after fetch: \(groupInfo.name)")
@@ -817,19 +842,30 @@ extension GroupMain {
             AppLogger.group.debug("[GroupMain] promisesUpdated: \(promises.count)개 로드됨")
             state.promisesState = .loaded(promises)
 
-            // 딥링크로 열려는 약속이 있으면 상세 화면으로 이동
-            if case .promise(let promiseId, _) = state.pendingDeeplink,
-               let promise = promises.first(where: { $0.id == promiseId }) {
-              AppLogger.deeplink.debug("[GroupMain] Promise found, navigating to detail: \(promise.title)")
-              state.pendingDeeplink = nil
-              // TODO: currentGroupMembers가 nil일 수 있음 - PromiseDetail에서 nil 처리 필요
-              state.path.append(.promiseDetail(.init(
-                promise: promise,
-                currentUserId: state.currentUser.userId,
-                groupMembers: state.currentGroupMembers
-              )))
-            } else if state.pendingDeeplink != nil {
-              // 그룹만 열려는 경우 (promise 없음) - pending 클리어
+            // 딥링크 처리
+            switch state.pendingDeeplink {
+            case .promise(let promiseId, _):
+              // 약속 상세 화면으로 바로 이동
+              if let promise = promises.first(where: { $0.id == promiseId }) {
+                AppLogger.deeplink.debug("[GroupMain] Promise found, navigating to detail: \(promise.title)")
+                state.pendingDeeplink = nil
+                state.path.append(.promiseDetail(.init(
+                  promise: promise,
+                  currentUserId: state.currentUser.userId,
+                  groupMembers: state.currentGroupMembers
+                )))
+              }
+
+            case .promiseInList(let promiseId, _, let filter):
+              // 필터 적용 후 목록에서 해당 약속으로 스크롤
+              if promises.contains(where: { $0.id == promiseId }) {
+                AppLogger.deeplink.debug("[GroupMain] Promise found in list, setting filter: \(filter.rawValue)")
+                state.selectedFilter = filter
+                state.highlightedPromiseId = promiseId
+                state.pendingDeeplink = nil
+              }
+
+            case .group, .none:
               state.pendingDeeplink = nil
             }
             return .none

@@ -193,11 +193,10 @@ extension RootTab {
 
         case .home(.delegate(.navigateToGroupWithPromise(let groupId, let promiseId))):
           state.selectedTab = .group
-          if let groupInfo = state.groupMain.allGroupSummaries?.first(where: { $0.id == groupId }) {
-            // 그룹 선택 후 해당 약속으로 이동
-            return .send(.groupMain(.view(.groupChanged(groupInfo))))
-          }
-          return .none
+          // 그룹 선택 후 응답 필요 필터로 해당 약속 하이라이트
+          return .send(.groupMain(.view(.handleDeeplink(
+            .promiseInList(promiseId: promiseId, groupId: groupId, filter: .needResponse)
+          ))))
 
         case .home(.delegate(.navigateToPromise(let promiseId, let groupId))):
           state.selectedTab = .group
