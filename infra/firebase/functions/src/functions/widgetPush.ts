@@ -133,7 +133,7 @@ async function getGroupMemberIds(
  */
 export const onPromiseCreatedWidgetPush = onDocumentCreated(
   {
-    document: "promises/{promiseId}",
+    document: "{env}/root/promises/{promiseId}",
     region: REGION,
   },
   async (event) => {
@@ -144,10 +144,11 @@ export const onPromiseCreatedWidgetPush = onDocumentCreated(
     if (!groupId) return;
 
     const promiseId = event.params.promiseId;
+    const env = event.params.env as "stage" | "prod";
     console.log(`🆕 Promise created: ${promiseId}, sending widget push`);
 
-    const memberIds = await getGroupMemberIds(groupId);
-    await sendWidgetSilentPush(memberIds);
+    const memberIds = await getGroupMemberIds(groupId, env);
+    await sendWidgetSilentPush(memberIds, env);
   }
 );
 
@@ -159,7 +160,7 @@ export const onPromiseCreatedWidgetPush = onDocumentCreated(
  */
 export const onPromiseUpdatedWidgetPush = onDocumentUpdated(
   {
-    document: "promises/{promiseId}",
+    document: "{env}/root/promises/{promiseId}",
     region: REGION,
   },
   async (event) => {
@@ -177,8 +178,10 @@ export const onPromiseUpdatedWidgetPush = onDocumentUpdated(
       before.votes?.acceptedCount !== after.votes?.acceptedCount ||
       before.isConfirmed !== after.isConfirmed;
 
+    const promiseId = event.params.promiseId;
+    const env = event.params.env as "stage" | "prod";
+
     if (!significantChange) {
-      const promiseId = event.params.promiseId;
       console.log(`📭 No significant change for promise ${promiseId}`);
       return;
     }
@@ -186,11 +189,10 @@ export const onPromiseUpdatedWidgetPush = onDocumentUpdated(
     const groupId = after.groupId as string | undefined;
     if (!groupId) return;
 
-    const promiseId = event.params.promiseId;
     console.log(`✏️ Promise updated: ${promiseId}, sending widget push`);
 
-    const memberIds = await getGroupMemberIds(groupId);
-    await sendWidgetSilentPush(memberIds);
+    const memberIds = await getGroupMemberIds(groupId, env);
+    await sendWidgetSilentPush(memberIds, env);
   }
 );
 
@@ -199,7 +201,7 @@ export const onPromiseUpdatedWidgetPush = onDocumentUpdated(
  */
 export const onPromiseDeletedWidgetPush = onDocumentDeleted(
   {
-    document: "promises/{promiseId}",
+    document: "{env}/root/promises/{promiseId}",
     region: REGION,
   },
   async (event) => {
@@ -210,9 +212,10 @@ export const onPromiseDeletedWidgetPush = onDocumentDeleted(
     if (!groupId) return;
 
     const promiseId = event.params.promiseId;
+    const env = event.params.env as "stage" | "prod";
     console.log(`🗑️ Promise deleted: ${promiseId}, sending widget push`);
 
-    const memberIds = await getGroupMemberIds(groupId);
-    await sendWidgetSilentPush(memberIds);
+    const memberIds = await getGroupMemberIds(groupId, env);
+    await sendWidgetSilentPush(memberIds, env);
   }
 );
