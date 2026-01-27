@@ -19,7 +19,8 @@ let project = Project(
         .project(target: "Clients", path: "../../Clients"),
         .project(target: "PromisoShared", path: "../../Shared"),
         .project(target: "ExternalDependency", path: "../../ExternalDependency"),
-        .project(target: "ResourceKit", path: "../../ResourceKit")
+        .project(target: "ResourceKit", path: "../../ResourceKit"),
+        .project(target: "SharedFeature", path: "../SharedFeature")
       ],
       settings: .standard()
     ),

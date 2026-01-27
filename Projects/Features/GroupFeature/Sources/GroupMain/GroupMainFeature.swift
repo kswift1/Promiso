@@ -141,7 +141,16 @@ extension GroupMain {
 
       public var allGroupSummaries: [UserGroupInfo]?
       var currentGroup: GroupModel?
-      var currentGroupMembers: [UserPublicModel]?
+
+      /// 그룹 멤버 캐시 (전역 공유, groupId → members)
+      @Shared(.inMemory(AppConstants.SharedState.groupMembersCache))
+      public var groupMembersCache: [String: [UserPublicModel]] = [:]
+
+      /// 현재 그룹 멤버 (캐시에서 조회)
+      var currentGroupMembers: [UserPublicModel]? {
+        guard let groupId = currentGroup?.id else { return nil }
+        return groupMembersCache[groupId]
+      }
 
       /// 현재 fetch 중인 그룹 ID (중복 fetch 방지)
       var pendingGroupId: String?
@@ -466,7 +475,6 @@ extension GroupMain {
             guard group.id != state.currentGroup?.id,
                   group.id != state.pendingGroupId else { return .none }
             state.currentGroup = nil
-            state.currentGroupMembers = nil
             state.pendingGroupId = group.id
             state.promisesState = .loading
             state.pastPromisesState = .idle  // 그룹 변경 시 과거 약속 초기화
@@ -762,8 +770,8 @@ extension GroupMain {
             }
 
           case .groupMembersResponse(.success(let members)):
-            state.currentGroupMembers = members
             guard let groupId = state.currentGroup?.id else { return .none }
+            state.$groupMembersCache.withLock { $0[groupId] = members }
 
             // LiveActivity 프로필 이미지 사전 캐싱 (APNs 원격 시작 대응)
             // 상세: cacheProfileImagesForLiveActivity 함수 주석 참고
@@ -775,8 +783,7 @@ extension GroupMain {
             )
 
           case .groupMembersResponse(.failure):
-            state.currentGroupMembers = nil
-            // 멤버 조회 실패해도 promises는 subscribe
+            // 멤버 조회 실패해도 promises는 subscribe (캐시에 없으면 computed property가 nil 반환)
             guard let groupId = state.currentGroup?.id else { return .none }
             return .send(.internal(.subscribeToPromises(groupId: groupId)))
 
@@ -1027,15 +1034,19 @@ extension GroupMain {
 
         // GroupSettings delegate actions
         case .path(.element(id: _, action: .groupSettings(.delegate(.groupLeft)))):
+          if let groupId = state.currentGroup?.id {
+            state.$groupMembersCache.withLock { $0.removeValue(forKey: groupId) }
+          }
           state.path.removeAll()
           state.currentGroup = nil
-          state.currentGroupMembers = nil
           return .send(.internal(.fetchGroupList))
 
         case .path(.element(id: _, action: .groupSettings(.delegate(.groupDeleted)))):
+          if let groupId = state.currentGroup?.id {
+            state.$groupMembersCache.withLock { $0.removeValue(forKey: groupId) }
+          }
           state.path.removeAll()
           state.currentGroup = nil
-          state.currentGroupMembers = nil
           return .send(.internal(.fetchGroupList))
 
         case .path(.element(id: _, action: .groupSettings(.delegate(.pastPromisesTapped)))):
@@ -1059,15 +1070,19 @@ extension GroupMain {
 
         // ManageGroup delegate actions (legacy)
         case .path(.element(id: _, action: .manageGroupFeature(.delegate(.groupLeft)))):
+          if let groupId = state.currentGroup?.id {
+            state.$groupMembersCache.withLock { $0.removeValue(forKey: groupId) }
+          }
           state.path.removeAll()
           state.currentGroup = nil
-          state.currentGroupMembers = nil
           return .send(.internal(.fetchGroupList))
 
         case .path(.element(id: _, action: .manageGroupFeature(.delegate(.groupDeleted)))):
+          if let groupId = state.currentGroup?.id {
+            state.$groupMembersCache.withLock { $0.removeValue(forKey: groupId) }
+          }
           state.path.removeAll()
           state.currentGroup = nil
-          state.currentGroupMembers = nil
           return .send(.internal(.fetchGroupList))
 
         case .path(.element(id: _, action: .manageGroupFeature(.delegate(.pastPromisesTapped)))):

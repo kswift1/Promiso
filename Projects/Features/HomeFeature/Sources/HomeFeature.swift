@@ -3,6 +3,7 @@
 
 import Lottie
 import ResourceKit
+import SharedFeature
 
 // MARK: - Feature Namespace
 
@@ -29,6 +30,10 @@ extension Home {
       /// 현재 유저 정보 (RootTab과 참조 공유)
       @Shared var currentUser: UserPrivateModel
 
+      /// 그룹 멤버 캐시 (전역 공유, groupId → members)
+      @Shared(.inMemory(AppConstants.SharedState.groupMembersCache))
+      var groupMembersCache: [String: [UserPublicModel]] = [:]
+
       // MARK: Data (단일 소스)
       /// 약속 데이터 (단일 API로 모두 로드)
       var promisesState: LoadingState<[PromiseModel]> = .idle
@@ -47,9 +52,20 @@ extension Home {
       /// 스크롤 타겟
       var scrollTarget: HomeModels.ScrollTarget? = nil
 
+      // MARK: Navigation
+      /// 네비게이션 경로 (약속 상세)
+      var path = StackState<Path.State>()
+
       public init(currentUser: Shared<UserPrivateModel>) {
         self._currentUser = currentUser
       }
+    }
+
+    // MARK: - Path (Navigation)
+
+    @Reducer(state: .equatable)
+    public enum Path {
+      case promiseDetail(PromiseDetail.Feature)
     }
 
     // MARK: - Action
@@ -59,6 +75,7 @@ extension Home {
       case view(View)
       case `internal`(Internal)
       case delegate(Delegate)
+      case path(StackActionOf<Path>)
 
       @CasePathable
       public enum View: Sendable {
@@ -94,7 +111,7 @@ extension Home {
       }
 
       public enum Delegate: Sendable {
-        /// 약속 상세로 네비게이션
+        /// 약속 상세로 네비게이션 (legacy - 그룹 탭 이동용)
         case navigateToPromise(promiseId: String, groupId: String)
         /// 그룹 탭의 특정 약속으로 네비게이션 (응답 필요 카드에서)
         case navigateToGroupWithPromise(groupId: String, promiseId: String)
@@ -119,10 +136,13 @@ extension Home {
             return .send(.internal(.fetchPromises))
 
           case .todayPromiseTapped(let promise):
-            return .send(.delegate(.navigateToPromise(
-              promiseId: promise.id,
-              groupId: promise.groupId
+            let groupMembers = state.groupMembersCache[promise.groupId]
+            state.path.append(.promiseDetail(.init(
+              promise: promise,
+              currentUserId: state.currentUser.userId,
+              groupMembers: groupMembers
             )))
+            return .none
 
           case .pendingPromiseTapped(let promise):
             return .send(.delegate(.navigateToGroupWithPromise(
@@ -131,10 +151,13 @@ extension Home {
             )))
 
           case .upcomingPromiseTapped(let promise):
-            return .send(.delegate(.navigateToPromise(
-              promiseId: promise.id,
-              groupId: promise.groupId
+            let groupMembers = state.groupMembersCache[promise.groupId]
+            state.path.append(.promiseDetail(.init(
+              promise: promise,
+              currentUserId: state.currentUser.userId,
+              groupMembers: groupMembers
             )))
+            return .none
 
           case .seeAllUpcomingTapped:
             return .send(.delegate(.navigateToAllPromises))
@@ -209,8 +232,32 @@ extension Home {
 
         case .delegate:
           return .none
+
+        // MARK: - Path Actions
+
+        case .path(.element(id: _, action: .promiseDetail(.delegate(.dismiss)))):
+          _ = state.path.popLast()
+          return .none
+
+        case .path(.element(id: _, action: .promiseDetail(.delegate(.promiseDeleted)))):
+          _ = state.path.popLast()
+          // 삭제 후 목록 새로고침
+          return .send(.internal(.fetchPromises))
+
+        case .path(.element(id: _, action: .promiseDetail(.delegate(.promiseUpdated(let promise))))):
+          // 수정된 약속 정보로 목록 업데이트
+          if var promises = state.promisesState.value,
+             let index = promises.firstIndex(where: { $0.id == promise.id }) {
+            promises[index] = promise
+            state.promisesState = .loaded(promises)
+          }
+          return .none
+
+        case .path:
+          return .none
         }
       }
+      .forEach(\.path, action: \.path)
     }
   }
 }
@@ -352,66 +399,73 @@ extension Home {
     }
 
     public var body: some View {
-      ScrollView {
-        LazyVStack(spacing: 20) {
-          if store.isLoading && !store.hasLoadedOnce {
-            loadingView
-          } else if let error = store.promisesState.error {
-            errorView(error: error)
-          } else {
-            // 오늘의 일정 카드
-            TodayScheduleCard(
-              promises: store.todayPromises,
-              onPromiseTap: { promise in
-                store.send(.view(.todayPromiseTapped(promise)))
-              }
-            )
-            .padding(.horizontal, 16)
-
-            // 응답 필요 섹션 (있을 때만 표시)
-            if !store.pendingPromises.isEmpty {
-              PendingSection(
-                promises: store.pendingPromises,
+      NavigationStack(path: $store.scope(state: \.path, action: \.path)) {
+        ScrollView {
+          LazyVStack(spacing: 20) {
+            if store.isLoading && !store.hasLoadedOnce {
+              loadingView
+            } else if let error = store.promisesState.error {
+              errorView(error: error)
+            } else {
+              // 오늘의 일정 카드
+              TodayScheduleCard(
+                promises: store.todayPromises,
                 onPromiseTap: { promise in
-                  store.send(.view(.pendingPromiseTapped(promise)))
+                  store.send(.view(.todayPromiseTapped(promise)))
+                }
+              )
+              .padding(.horizontal, 16)
+
+              // 응답 필요 섹션 (있을 때만 표시)
+              if !store.pendingPromises.isEmpty {
+                PendingSection(
+                  promises: store.pendingPromises,
+                  onPromiseTap: { promise in
+                    store.send(.view(.pendingPromiseTapped(promise)))
+                  }
+                )
+                .padding(.horizontal, 16)
+              }
+
+              // 다가오는 약속 섹션
+              UpcomingSection(
+                promises: store.upcomingPromises,
+                onPromiseTap: { promise in
+                  store.send(.view(.upcomingPromiseTapped(promise)))
+                },
+                onSeeAllTap: {
+                  store.send(.view(.seeAllUpcomingTapped))
                 }
               )
               .padding(.horizontal, 16)
             }
 
-            // 다가오는 약속 섹션
-            UpcomingSection(
-              promises: store.upcomingPromises,
-              onPromiseTap: { promise in
-                store.send(.view(.upcomingPromiseTapped(promise)))
-              },
-              onSeeAllTap: {
-                store.send(.view(.seeAllUpcomingTapped))
-              }
-            )
-            .padding(.horizontal, 16)
+            // 하단 여백 (FAB 및 탭바 공간)
+            Color.clear
+              .frame(height: 100)
           }
-
-          // 하단 여백 (FAB 및 탭바 공간)
-          Color.clear
-            .frame(height: 100)
+          .padding(.top, 8)
         }
-        .padding(.top, 8)
-      }
-      .refreshable {
-        store.send(.view(.refreshTriggered))
-      }
-      .auroraBackground()
-      .toolbar {
-        ToolbarItem(placement: .topBarTrailing) {
-          NotificationButton(
-            badgeCount: store.pendingResponseCount,
-            action: { }
-          )
+        .refreshable {
+          store.send(.view(.refreshTriggered))
         }
-      }
-      .onAppear {
-        store.send(.view(.onAppear))
+        .auroraBackground()
+        .toolbar {
+          ToolbarItem(placement: .topBarTrailing) {
+            NotificationButton(
+              badgeCount: store.pendingResponseCount,
+              action: { }
+            )
+          }
+        }
+        .onAppear {
+          store.send(.view(.onAppear))
+        }
+      } destination: { store in
+        switch store.case {
+        case .promiseDetail(let detailStore):
+          PromiseDetail.RootView(store: detailStore)
+        }
       }
     }
 

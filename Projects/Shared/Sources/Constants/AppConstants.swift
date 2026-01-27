@@ -56,6 +56,13 @@ public enum AppConstants {
     public static let use24HourFormat = "promiso.use24HourFormat"
   }
 
+  // MARK: - Shared State Keys (TCA @Shared inMemory)
+
+  public enum SharedState {
+    /// 그룹 멤버 캐시 (groupId → members)
+    public static let groupMembersCache = "groupMembersCache"
+  }
+
   // MARK: - Notification Names
 
   public enum Notifications {
