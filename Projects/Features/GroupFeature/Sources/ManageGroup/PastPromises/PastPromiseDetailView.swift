@@ -205,10 +205,7 @@ extension PastPromiseDetail {
     // MARK: - Helpers
 
     private func formatFullDate(_ date: Date) -> String {
-      let formatter = DateFormatter()
-      formatter.locale = Locale(identifier: "ko_KR")
-      formatter.dateFormat = "M월 d일 (E)"
-      return formatter.string(from: date)
+      KoreanDateFormatters.sectionHeader.string(from: date)
     }
 
     private var pastStatus: PromiseResponseStatus {

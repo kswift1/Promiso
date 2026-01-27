@@ -97,10 +97,7 @@ struct TodayScheduleCard: View {
   // MARK: - Computed Properties
 
   private var todayDateString: String {
-    let formatter = DateFormatter()
-    formatter.locale = Locale(identifier: "ko_KR")
-    formatter.dateFormat = "M월 d일 EEEE"
-    return formatter.string(from: Date())
+    KoreanDateFormatters.monthDayWeekday.string(from: Date())
   }
 }
 

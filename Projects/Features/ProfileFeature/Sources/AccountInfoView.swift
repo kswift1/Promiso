@@ -114,12 +114,7 @@ extension AccountInfo {
 
     // MARK: - Static Properties
 
-    private static let createdAtFormatter: DateFormatter = {
-      let formatter = DateFormatter()
-      formatter.locale = Locale(identifier: "ko_KR")
-      formatter.dateFormat = "yyyy년 M월 d일"
-      return formatter
-    }()
+    private static let createdAtFormatter = KoreanDateFormatters.yearMonthDay
 
     public init(store: StoreOf<Feature>) {
       self.store = store

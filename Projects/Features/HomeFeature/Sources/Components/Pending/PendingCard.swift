@@ -144,10 +144,7 @@ struct PendingCard: View {
   }
 
   private var dateTimeString: String {
-    let formatter = DateFormatter()
-    formatter.locale = Locale(identifier: "ko_KR")
-    formatter.dateFormat = "M/d(E) HH:mm"
-    return formatter.string(from: promise.startAt)
+    KoreanDateFormatters.shortDateTime.string(from: promise.startAt)
   }
 
   private var progressRatio: CGFloat {

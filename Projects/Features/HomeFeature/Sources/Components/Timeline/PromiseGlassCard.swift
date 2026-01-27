@@ -111,9 +111,7 @@ struct PromiseGlassCard: View {
   // MARK: - Computed Properties
 
   private var timeText: String {
-    let formatter = DateFormatter()
-    formatter.dateFormat = "HH:mm"
-    return formatter.string(from: promise.startAt)
+    promise.startAt.formattedTime
   }
 
   private var statusText: String {

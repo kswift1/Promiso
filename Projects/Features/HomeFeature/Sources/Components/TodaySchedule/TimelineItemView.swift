@@ -152,21 +152,11 @@ struct TimelineItemView: View {
   // MARK: - Computed Properties
 
   private var startTimeString: String {
-    let formatter = DateFormatter()
-    formatter.dateFormat = "HH:mm"
-    return formatter.string(from: promise.startAt)
+    promise.startAt.formattedTime
   }
 
   private func endTimeString(_ endAt: Date) -> String {
-    let formatter = DateFormatter()
-    formatter.locale = Locale(identifier: "ko_KR")
-
-    if Calendar.current.isDateInToday(endAt) {
-      formatter.dateFormat = "HH:mm"
-    } else {
-      formatter.dateFormat = "M월 d일\nHH:mm"
-    }
-    return formatter.string(from: endAt)
+    KoreanDateFormatters.endTimeString(from: endAt)
   }
 
   /// 현재 진행 중인 약속인지 (시작 30분 전 ~ 시작 후 2시간)

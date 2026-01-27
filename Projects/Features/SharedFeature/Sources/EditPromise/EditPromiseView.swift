@@ -514,16 +514,11 @@ private struct EditInlineDateTimePicker: View {
   }
 
   private var formattedDate: String {
-    let formatter = DateFormatter()
-    formatter.dateFormat = "yyyy.M.d."
-    return formatter.string(from: date)
+    KoreanDateFormatters.dateDot.string(from: date)
   }
 
   private var formattedTime: String {
-    let formatter = DateFormatter()
-    formatter.dateFormat = "a h:mm"
-    formatter.locale = Locale(identifier: "ko_KR")
-    return formatter.string(from: date)
+    date.formattedTime
   }
 
   var body: some View {

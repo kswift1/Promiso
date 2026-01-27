@@ -127,28 +127,19 @@ struct UpcomingCard: View {
   // MARK: - Computed Properties
 
   private var monthString: String {
-    let formatter = DateFormatter()
-    formatter.dateFormat = "M월"
-    return formatter.string(from: promise.startAt)
+    KoreanDateFormatters.month.string(from: promise.startAt)
   }
 
   private var dayString: String {
-    let formatter = DateFormatter()
-    formatter.dateFormat = "d"
-    return formatter.string(from: promise.startAt)
+    KoreanDateFormatters.day.string(from: promise.startAt)
   }
 
   private var weekdayString: String {
-    let formatter = DateFormatter()
-    formatter.locale = Locale(identifier: "ko_KR")
-    formatter.dateFormat = "E"
-    return formatter.string(from: promise.startAt)
+    KoreanDateFormatters.weekday.string(from: promise.startAt)
   }
 
   private var timeString: String {
-    let formatter = DateFormatter()
-    formatter.dateFormat = "HH:mm"
-    return formatter.string(from: promise.startAt)
+    promise.startAt.formattedTime
   }
 }
 

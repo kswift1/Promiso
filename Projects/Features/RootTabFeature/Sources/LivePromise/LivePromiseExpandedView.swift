@@ -412,17 +412,11 @@ extension LivePromise {
     }
 
     private func formatDateText(_ date: Date) -> String {
-      let formatter = DateFormatter()
-      formatter.locale = Locale(identifier: "ko_KR")
-      formatter.dateFormat = "M월 d일 (E)"
-      return formatter.string(from: date)
+      KoreanDateFormatters.sectionHeader.string(from: date)
     }
 
     private func formatTimeText(_ date: Date) -> String {
-      let formatter = DateFormatter()
-      formatter.locale = Locale(identifier: "ko_KR")
-      formatter.dateFormat = "a h:mm"
-      return formatter.string(from: date)
+      date.formattedTime
     }
 
     /// 남은 시간 계산 및 표시
@@ -913,9 +907,7 @@ extension LivePromise {
     // MARK: - Helper Functions
 
     private func formatTime(_ date: Date) -> String {
-      let formatter = DateFormatter()
-      formatter.dateFormat = "h:mm"
-      return formatter.string(from: date)
+      KoreanDateFormatters.time12Hour.string(from: date)
     }
 
     private func statusText(for participant: ParticipantState) -> String {

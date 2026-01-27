@@ -319,19 +319,14 @@ extension PastPromises {
     // MARK: - Helpers
 
     private func formatDateHeader(_ date: Date) -> String {
-      let formatter = DateFormatter()
-      formatter.locale = Locale(identifier: "ko_KR")
-
       let currentYear = Calendar.current.component(.year, from: Date())
       let dateYear = Calendar.current.component(.year, from: date)
 
       if dateYear == currentYear {
-        formatter.dateFormat = "M월 d일"
+        return KoreanDateFormatters.monthDay.string(from: date)
       } else {
-        formatter.dateFormat = "yyyy년 M월 d일"
+        return KoreanDateFormatters.yearMonthDay.string(from: date)
       }
-
-      return formatter.string(from: date)
     }
   }
 }

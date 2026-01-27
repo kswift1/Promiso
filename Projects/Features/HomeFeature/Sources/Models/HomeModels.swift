@@ -35,9 +35,7 @@ extension HomeModels {
     public var id: String { dayKey }   // "2026-01-26" 형식 (타임존 안전)
 
     private var dayKey: String {
-      let formatter = DateFormatter()
-      formatter.dateFormat = "yyyy-MM-dd"
-      return formatter.string(from: day)
+      KoreanDateFormatters.date.string(from: day)
     }
 
     public init(day: Date, promises: [PromiseModel]) {
