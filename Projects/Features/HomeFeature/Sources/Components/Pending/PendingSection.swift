@@ -15,7 +15,7 @@ struct PendingSection: View {
 
       // 카드들 (가로 스크롤)
       ScrollView(.horizontal, showsIndicators: false) {
-        HStack(spacing: 12) {
+        HStack(spacing: 14) {
           ForEach(promises) { promise in
             PendingCard(
               promise: promise,
@@ -24,6 +24,7 @@ struct PendingSection: View {
           }
         }
         .padding(.horizontal, 16)
+        .padding(.vertical, 8)
       }
       .padding(.horizontal, -16)
     }
