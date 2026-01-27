@@ -3,7 +3,6 @@ import KakaoMapsSDK
 import ResourceKit
 import Clients
 import PromisoShared
-import UIKit
 
 /// 약속 장소 상세 지도 뷰 (Push Navigation)
 public struct LocationDetailMapView: View {
@@ -37,11 +36,6 @@ public struct LocationDetailMapView: View {
       // 하단 정보 카드
       bottomInfoCard
     }
-//    .naviga
-//    .navigationTitle(location.name)
-//    .navigationBarTitleDisplayMode(.inline)
-//    .toolbarBackground(.cl, for: .navigationBar)
-//    .toolbarBackground(.visible, for: .navigationBar)
     .navigationBarBackButtonHidden()
     .toolbar {
       ToolbarItem(placement: .topBarLeading) {
@@ -61,9 +55,11 @@ public struct LocationDetailMapView: View {
     VStack(spacing: 16) {
       // 장소 정보
       HStack(alignment: .top, spacing: 12) {
-        Image(systemName: "mappin.circle.fill")
-          .font(.system(size: 32))
-          .foregroundStyle(Color.pmindigo.n500)
+        ResourceKitAsset.locationIcon.swiftUIImage
+          .renderingMode(.template)
+          .resizable()
+          .frame(width: 24, height: 24)
+          .foregroundStyle(Color.pmindigo.n400)
 
         VStack(alignment: .leading, spacing: 4) {
           Text(location.name)
