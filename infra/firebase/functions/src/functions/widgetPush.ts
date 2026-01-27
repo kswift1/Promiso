@@ -117,11 +117,10 @@ async function getGroupMemberIds(
     if (!groupDoc.exists) return [];
 
     const groupData = groupDoc.data();
-    type MemberMap = { [key: string]: unknown };
-    const members = groupData?.members as MemberMap | undefined;
+    const memberIds = groupData?.memberIds as string[] | undefined;
 
-    if (!members) return [];
-    return Object.keys(members);
+    if (!memberIds || memberIds.length === 0) return [];
+    return memberIds;
   } catch (error) {
     console.error(`Failed to get group members for ${groupId}:`, error);
     return [];
