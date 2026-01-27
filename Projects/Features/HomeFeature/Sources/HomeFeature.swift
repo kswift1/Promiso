@@ -352,14 +352,16 @@ extension Home {
             )
             .padding(.horizontal, 16)
 
-            // 응답 필요 섹션
-            PendingSection(
-              promises: store.pendingPromises,
-              onPromiseTap: { promise in
-                store.send(.view(.pendingPromiseTapped(promise)))
-              }
-            )
-            .padding(.horizontal, 16)
+            // 응답 필요 섹션 (있을 때만 표시)
+            if !store.pendingPromises.isEmpty {
+              PendingSection(
+                promises: store.pendingPromises,
+                onPromiseTap: { promise in
+                  store.send(.view(.pendingPromiseTapped(promise)))
+                }
+              )
+              .padding(.horizontal, 16)
+            }
 
             // 다가오는 약속 섹션
             UpcomingSection(

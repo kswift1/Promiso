@@ -53,25 +53,29 @@ struct MinimumParticipantsSection: View {
         Text("2명")
           .font(.system(size: 36, weight: .bold))
           .foregroundColor(.primary)
-        
+
         Text("최대 2명")
           .font(.system(size: 13))
           .foregroundColor(.secondary)
       }
       .frame(maxWidth: .infinity)
       .padding(.vertical, 8)
-      
+
       // 고정 안내
-      HStack(spacing: 12) {
+      HStack(alignment: .top, spacing: 12) {
         Image(systemName: "lock.fill")
           .font(.system(size: 16))
           .foregroundColor(.secondary)
-        
+
         Text("그룹이 2명이므로 최소 참가 인원이 2명으로 고정됩니다")
           .font(.system(size: 14))
           .foregroundColor(.secondary)
+          .fixedSize(horizontal: false, vertical: true)
+
+        Spacer(minLength: 0)
       }
       .padding(16)
+      .frame(maxWidth: .infinity, alignment: .leading)
       .background(Color(.systemGray6))
       .clipShape(RoundedRectangle(cornerRadius: 12))
     }
