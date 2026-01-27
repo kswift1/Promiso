@@ -17,18 +17,29 @@ struct TimelineItemView: View {
         // 타임라인 인디케이터 (가장 왼쪽, 패딩 영향 없음)
         timelineIndicator
 
-        // 시간 + 콘텐츠 (패딩 적용)
-        HStack(alignment: .top, spacing: 0) {
-          timeLabel
-            .frame(width: 72, alignment: .center)
-            .padding(.leading, 8)
+        // 시간 + 콘텐츠 + Divider (패딩 적용)
+        VStack(spacing: 0) {
+          HStack(alignment: .top, spacing: 0) {
+            timeLabel
+              .frame(width: 72, alignment: .center)
+              .padding(.leading, 8)
 
-          promiseContent
-            .padding(.leading, 8)
+            promiseContent
+              .padding(.leading, 8)
 
-          Spacer(minLength: 0)
+            Spacer(minLength: 0)
+          }
+          .padding(.vertical, 8)
+
+          // Divider (마지막 아이템 제외)
+          if !isLast {
+            Rectangle()
+              .fill(Color.pmgray.n200)
+              .frame(height: 0.5)
+              .padding(.leading, 8)
+              .padding(.trailing, 16)
+          }
         }
-        .padding(.vertical, 5)
       }
       .contentShape(Rectangle())
     }
