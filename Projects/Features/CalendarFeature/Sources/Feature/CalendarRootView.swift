@@ -71,7 +71,7 @@ extension CalendarFeature {
           selectedDate: store.selectedDate,
           promisesByDate: store.promisesByDate,
           calendarEventsByDate: store.calendarEventsByDate,
-          currentUserId: store.currentUserId,
+          currentUserId: store.currentUserId ?? "",
           namespace: calendarAnimation,
           onDateSelected: { date in
             store.send(.view(.selectDate(date)), animation: .easeInOut(duration: 0.2))
@@ -92,7 +92,7 @@ extension CalendarFeature {
           selectedDate: store.selectedDate,
           promisesByDate: store.promisesByDate,
           calendarEventsByDate: store.calendarEventsByDate,
-          currentUserId: store.currentUserId,
+          currentUserId: store.currentUserId ?? "",
           namespace: calendarAnimation,
           onDateSelected: { date in
             store.send(.view(.selectDate(date)), animation: .easeInOut(duration: 0.2))
@@ -236,9 +236,9 @@ extension CalendarFeature {
             case .promise(let promise):
               PromiseCardView(
                 promise: promise,
-                currentUserId: store.currentUserId,
+                currentUserId: store.currentUserId ?? "",
                 onTap: { store.send(.view(.promiseTapped(promise))) },
-                onRespond: promise.responseStatus(currentUserId: store.currentUserId) == .needResponse
+                onRespond: promise.responseStatus(currentUserId: store.currentUserId ?? "") == .needResponse
                   ? { store.send(.view(.promiseRespondTapped(promise))) }
                   : nil
               )
@@ -311,7 +311,7 @@ extension CalendarFeature {
           promises: dayPromises,
           calendarEvents: dayEvents,
           isSelected: isSelected,
-          currentUserId: store.currentUserId,
+          currentUserId: store.currentUserId ?? "",
           onTap: {
             // 탭하면 주간 뷰로 전환
             store.send(.view(.collapseToWeek(date)), animation: .easeInOut(duration: 0.3))
@@ -382,7 +382,7 @@ extension CalendarFeature {
     provider: "google",
     metadata: Metadata()
   )
-  let store = Store(initialState: CalendarFeature.Feature.State(currentUser: previewUser, displayMode: .week)) {
+  let store = Store(initialState: CalendarFeature.Feature.State(displayMode: .week)) {
     CalendarFeature.Feature()
   }
 
@@ -390,15 +390,7 @@ extension CalendarFeature {
 }
 
 #Preview("Calendar Feature - Month Mode") {
-  let previewUser = UserPrivateModel(
-    userId: "preview_user",
-    name: "Preview User",
-    nickname: "프리뷰",
-    email: "preview@example.com",
-    provider: "google",
-    metadata: Metadata()
-  )
-  let store = Store(initialState: CalendarFeature.Feature.State(currentUser: previewUser, displayMode: .month)) {
+  let store = Store(initialState: CalendarFeature.Feature.State(displayMode: .month)) {
     CalendarFeature.Feature()
   }
 

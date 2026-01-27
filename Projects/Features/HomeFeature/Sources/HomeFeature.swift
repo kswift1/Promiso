@@ -26,8 +26,8 @@ extension Home {
     @ObservableState
     public struct State: Equatable {
       // MARK: User
-      /// 현재 유저 정보
-      var currentUser: UserPrivateModel
+      /// 현재 유저 정보 (@Shared로 앱 전역 공유)
+      @Shared(.currentUser) var currentUser: UserPrivateModel?
 
       // MARK: Data (단일 소스)
       /// 약속 데이터 (단일 API로 모두 로드)
@@ -47,9 +47,7 @@ extension Home {
       /// 스크롤 타겟
       var scrollTarget: HomeModels.ScrollTarget? = nil
 
-      public init(currentUser: UserPrivateModel) {
-        self.currentUser = currentUser
-      }
+      public init() {}
     }
 
     // MARK: - Action
@@ -162,7 +160,7 @@ extension Home {
           case .fetchPromises:
             state.promisesState = .loading
 
-            let groupIds = state.currentUser.groups.map { $0.id }
+            let groupIds = state.currentUser?.groups.map { $0.id } ?? []
 
             guard !groupIds.isEmpty else {
               state.promisesState = .loaded([])
@@ -182,7 +180,8 @@ extension Home {
             switch result {
             case .success(let promises):
               // 그룹 정보 매칭 (UserGroupInfo -> GroupModel 변환)
-              let groupsDict = Dictionary(uniqueKeysWithValues: state.currentUser.groups.map { ($0.id, $0) })
+              let groups = state.currentUser?.groups ?? []
+              let groupsDict = Dictionary(uniqueKeysWithValues: groups.map { ($0.id, $0) })
               let promisesWithGroup = promises.map { promise -> PromiseModel in
                 var updated = promise
                 if let userGroupInfo = groupsDict[promise.groupId] {
@@ -232,9 +231,10 @@ extension Home.Feature.State {
 
   /// 응답 필요 약속 (투표 마감 임박순)
   var pendingPromises: [PromiseModel] {
-    allPromises
+    guard let userId = currentUser?.userId else { return [] }
+    return allPromises
       .filter {
-        $0.myVoteStatus(userId: currentUser.userId) == .pending && !$0.isVotingClosed
+        $0.myVoteStatus(userId: userId) == .pending && !$0.isVotingClosed
       }
       .sorted { $0.votes.until < $1.votes.until }
   }
@@ -249,6 +249,7 @@ extension Home.Feature.State {
   /// 필터링된 약속 (id 기반 안전)
   var filteredPromises: [PromiseModel] {
     var promises = allPromises
+    let userId = currentUser?.userId
 
     // 그룹 필터 적용
     if let groupId = selectedGroupId {
@@ -258,8 +259,9 @@ extension Home.Feature.State {
     // 상태 필터 적용
     switch selectedStatusFilter {
     case .needResponse:
+      guard let userId else { return [] }
       promises = promises.filter {
-        $0.myVoteStatus(userId: currentUser.userId) == .pending && !$0.isVotingClosed
+        $0.myVoteStatus(userId: userId) == .pending && !$0.isVotingClosed
       }
     case .confirmed:
       promises = promises.filter { $0.isConfirmed && !$0.isPast }
@@ -327,7 +329,7 @@ extension Home.Feature.State {
 
   /// 사용 가능한 그룹 목록
   var availableGroups: [HomeModels.GroupInfo] {
-    currentUser.groups.map { HomeModels.GroupInfo(id: $0.id, name: $0.name) }
+    currentUser?.groups.map { HomeModels.GroupInfo(id: $0.id, name: $0.name) } ?? []
   }
 
   /// 로딩 중 여부

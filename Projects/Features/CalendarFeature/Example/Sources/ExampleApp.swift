@@ -120,7 +120,7 @@ private struct ExampleContentView: View {
 }
 
 #Preview("Week Mode") {
-  let store = Store(initialState: CalendarFeature.Feature.State(currentUser: .exampleUser, displayMode: .week)) {
+  let store = Store(initialState: CalendarFeature.Feature.State(displayMode: .week)) {
     CalendarFeature.Feature()
   }
 
@@ -128,7 +128,7 @@ private struct ExampleContentView: View {
 }
 
 #Preview("Month Mode") {
-  let store = Store(initialState: CalendarFeature.Feature.State(currentUser: .exampleUser, displayMode: .month)) {
+  let store = Store(initialState: CalendarFeature.Feature.State(displayMode: .month)) {
     CalendarFeature.Feature()
   }
 

@@ -25,8 +25,8 @@ extension CalendarFeature {
 
     @ObservableState
     public struct State: Equatable {
-      /// 현재 사용자 정보
-      var currentUser: UserPrivateModel
+      /// 현재 사용자 정보 (@Shared로 앱 전역 공유)
+      @Shared(.currentUser) var currentUser: UserPrivateModel?
 
       /// 표시 모드 (주간/월간)
       var displayMode: CalendarDisplayMode = .week
@@ -70,7 +70,8 @@ extension CalendarFeature {
 
       /// 사용자 그룹 정보 조회용 (키: groupId)
       var userGroupsMap: [String: UserGroupInfo] {
-        Dictionary(uniqueKeysWithValues: currentUser.groups.map { ($0.id, $0) })
+        let groups = currentUser?.groups ?? []
+        return Dictionary(uniqueKeysWithValues: groups.map { ($0.id, $0) })
       }
 
       // MARK: - Navigation
@@ -81,17 +82,15 @@ extension CalendarFeature {
       // MARK: - Computed Properties
 
       /// 현재 사용자 ID
-      var currentUserId: String { currentUser.userId }
+      var currentUserId: String? { currentUser?.userId }
 
       /// 현재 사용자가 속한 그룹 ID 목록
-      var userGroupIds: [String] { currentUser.groups.map { $0.id } }
+      var userGroupIds: [String] { currentUser?.groups.map { $0.id } ?? [] }
 
       public init(
-        currentUser: UserPrivateModel,
         displayMode: CalendarDisplayMode = .week,
         selectedDate: Date = Date()
       ) {
-        self.currentUser = currentUser
         self.displayMode = displayMode
         self.selectedDate = selectedDate
         self.currentWeekStart = selectedDate.startOfWeek
@@ -408,17 +407,19 @@ extension CalendarFeature {
 
       case .promiseTapped(let promise):
         // 약속 상세 화면으로 이동
+        guard let userId = state.currentUserId else { return .none }
         state.path.append(.promiseDetail(.init(
           promise: promise,
-          currentUserId: state.currentUserId
+          currentUserId: userId
         )))
         return .none
 
       case .promiseRespondTapped(let promise):
         // 약속 상세 화면으로 이동 (응답 가능)
+        guard let userId = state.currentUserId else { return .none }
         state.path.append(.promiseDetail(.init(
           promise: promise,
-          currentUserId: state.currentUserId
+          currentUserId: userId
         )))
         return .none
 

@@ -132,7 +132,7 @@ extension GroupMain {
     @ObservableState
     public struct State: Equatable {
       var isInitialized: Bool = false
-      let currentUser: UserPrivateModel
+      @Shared(.currentUser) var currentUser: UserPrivateModel?
 
       var promisesState: LoadingState<[PromiseModel]> = .idle
       var proposalResponding: [String: RespondingState] = [:]
@@ -180,9 +180,7 @@ extension GroupMain {
       /// LiveActivity 활성화 여부 (FAB 위치 조정용)
       public var hasLiveActivity: Bool { liveActivityPromiseId != nil }
 
-      public init(currentUser: UserPrivateModel) {
-        self.currentUser = currentUser
-      }
+      public init() {}
 
       // MARK: - Computed Properties for New UI
 
@@ -229,9 +227,10 @@ extension GroupMain {
 
       /// 응답 필요 약속 목록 (마감 임박순)
       var needResponsePromises: [PromiseModel] {
-        guard case .loaded(let promises) = promisesState else { return [] }
+        guard case .loaded(let promises) = promisesState,
+              let userId = currentUser?.userId else { return [] }
         return promises
-          .filter { $0.responseStatus(currentUserId: currentUser.userId, totalGroupMembers: currentGroupMembers?.count) == .needResponse }
+          .filter { $0.responseStatus(currentUserId: userId, totalGroupMembers: currentGroupMembers?.count) == .needResponse }
           .sorted { $0.votes.until < $1.votes.until }  // 마감 임박순
       }
 
@@ -251,11 +250,12 @@ extension GroupMain {
 
       /// 응답 완료 약속 목록 (시작 시간순)
       var respondedPromises: [PromiseModel] {
-        guard case .loaded(let promises) = promisesState else { return [] }
+        guard case .loaded(let promises) = promisesState,
+              let userId = currentUser?.userId else { return [] }
         return promises
           .filter {
             let status = $0.responseStatus(
-              currentUserId: currentUser.userId,
+              currentUserId: userId,
               totalGroupMembers: currentGroupMembers?.count
             )
             return status == .responded && !$0.isConfirmed
@@ -524,9 +524,10 @@ extension GroupMain {
               .cancellable(id: CancelID.respond(id), cancelInFlight: true)
 
           case .promiseTapped(let promise):
+            guard let userId = state.currentUser?.userId else { return .none }
             state.path.append(.promiseDetail(.init(
               promise: promise,
-              currentUserId: state.currentUser.userId,
+              currentUserId: userId,
               groupMembers: state.currentGroupMembers
             )))
             return .none
@@ -554,12 +555,13 @@ extension GroupMain {
             return .none
 
           case .groupManageTapped:
-            guard let currentGroup = state.currentGroup else { return .none }
+            guard let currentGroup = state.currentGroup,
+                  let userId = state.currentUser?.userId else { return .none }
             let summary = state.allGroupSummaries?.first { $0.id == currentGroup.id }
             state.path.append(.manageGroupFeature(.init(
               group: currentGroup,
               summary: summary,
-              currentUserId: state.currentUser.userId,
+              currentUserId: userId,
               preloadedMembers: state.currentGroupMembers,
               promises: state.promisesState.value ?? []
             )))
@@ -579,20 +581,23 @@ extension GroupMain {
             return .none
 
           case .createGroup:
+            guard let currentUser = state.currentUser else { return .none }
             state.createGroup = CreateGroup.Feature.State(
-              currentUser: state.currentUser
+              currentUser: currentUser
             )
             return .none
 
           case .joinGroup:
+            guard let currentUser = state.currentUser else { return .none }
             state.joinGroup = JoinGroup.Feature.State(
-              currentUser: state.currentUser
+              currentUser: currentUser
             )
             return .none
 
           case .joinGroupWithCode(let inviteCode):
+            guard let currentUser = state.currentUser else { return .none }
             var joinState = JoinGroup.Feature.State(
-              currentUser: state.currentUser
+              currentUser: currentUser
             )
             joinState.inviteCode = inviteCode
             state.joinGroup = joinState
@@ -804,13 +809,14 @@ extension GroupMain {
 
             // 딥링크로 열려는 약속이 있으면 상세 화면으로 이동
             if case .promise(let promiseId, _) = state.pendingDeeplink,
-               let promise = promises.first(where: { $0.id == promiseId }) {
+               let promise = promises.first(where: { $0.id == promiseId }),
+               let userId = state.currentUser?.userId {
               AppLogger.deeplink.debug("[GroupMain] Promise found, navigating to detail: \(promise.title)")
               state.pendingDeeplink = nil
               // TODO: currentGroupMembers가 nil일 수 있음 - PromiseDetail에서 nil 처리 필요
               state.path.append(.promiseDetail(.init(
                 promise: promise,
-                currentUserId: state.currentUser.userId,
+                currentUserId: userId,
                 groupMembers: state.currentGroupMembers
               )))
             } else if state.pendingDeeplink != nil {
@@ -898,9 +904,10 @@ extension GroupMain {
             return .none
 
           case .fetchSettings:
-            return .run { [userSettingsClient, currentUser = state.currentUser] send in
+            guard let userId = state.currentUser?.userId else { return .none }
+            return .run { [userSettingsClient] send in
               do {
-                let settings = try await userSettingsClient.fetchSettings(currentUser.userId)
+                let settings = try await userSettingsClient.fetchSettings(userId)
                 await send(.internal(.settingsResponse(.success(settings))))
               } catch {
                 await send(.internal(.settingsResponse(.failure(AppError(error)))))
@@ -911,7 +918,8 @@ extension GroupMain {
             state.groupSortOption = settings.groupSortOption
             state.userPlan = settings.plan
             // 설정 로드 후 그룹 리스트 표시
-            let summaries = state.sortedGroupsForSelection(state.currentUser.groups)
+            let groups = state.currentUser?.groups ?? []
+            let summaries = state.sortedGroupsForSelection(groups)
             state.allGroupSummaries = summaries
             return .merge(
               .send(.internal(.setDefaultGroup(groups: summaries))),
@@ -920,7 +928,8 @@ extension GroupMain {
 
           case .settingsResponse(.failure):
             // 설정 로드 실패해도 기본값으로 그룹 리스트 표시
-            let summaries = state.sortedGroupsForSelection(state.currentUser.groups)
+            let groups = state.currentUser?.groups ?? []
+            let summaries = state.sortedGroupsForSelection(groups)
             state.allGroupSummaries = summaries
             return .merge(
               .send(.internal(.setDefaultGroup(groups: summaries))),
@@ -940,8 +949,9 @@ extension GroupMain {
 
         case .createPromise(.presented(.delegate(.createGroupRequested))):
           state.createPromise = nil
+          guard let currentUser = state.currentUser else { return .none }
           state.createGroup = CreateGroup.Feature.State(
-            currentUser: state.currentUser
+            currentUser: currentUser
           )
           return .none
 
@@ -988,9 +998,10 @@ extension GroupMain {
         case .sortOptionChanged(let option):
           state.sortSettings = nil
           state.groupSortOption = option
-          return .run { [userSettingsClient, currentUser = state.currentUser] _ in
+          guard let userId = state.currentUser?.userId else { return .none }
+          return .run { [userSettingsClient] _ in
             do {
-              try await userSettingsClient.updateGroupSortOption(currentUser.userId, option)
+              try await userSettingsClient.updateGroupSortOption(userId, option)
             } catch {
               // 저장 실패해도 로컬 상태는 유지 (다음 앱 실행 시 서버에서 다시 로드)
               AppLogger.general.error("Failed to save sort option: \(error.localizedDescription)")
@@ -1008,14 +1019,16 @@ extension GroupMain {
 
         // MARK: - Group Action Sheet
         case .groupActionSheet(.presented(.createGroup)):
+          guard let currentUser = state.currentUser else { return .none }
           state.createGroup = CreateGroup.Feature.State(
-            currentUser: state.currentUser
+            currentUser: currentUser
           )
           return .none
 
         case .groupActionSheet(.presented(.joinGroup)):
+          guard let currentUser = state.currentUser else { return .none }
           state.joinGroup = JoinGroup.Feature.State(
-            currentUser: state.currentUser
+            currentUser: currentUser
           )
           return .none
 
@@ -1038,10 +1051,11 @@ extension GroupMain {
           return .send(.internal(.fetchGroupList))
 
         case .path(.element(id: _, action: .groupSettings(.delegate(.pastPromisesTapped)))):
-          guard let groupId = state.currentGroup?.id else { return .none }
+          guard let groupId = state.currentGroup?.id,
+                let userId = state.currentUser?.userId else { return .none }
           state.path.append(.pastPromises(.init(
             groupId: groupId,
-            currentUserId: state.currentUser.userId,
+            currentUserId: userId,
             groupMembers: state.currentGroupMembers
           )))
           return .none
@@ -1049,9 +1063,10 @@ extension GroupMain {
 
         // GroupPromiseList delegate actions
         case .path(.element(id: _, action: .groupPromiseList(.delegate(.promiseSelected(let promise))))):
+          guard let userId = state.currentUser?.userId else { return .none }
           state.path.append(.promiseDetail(.init(
             promise: promise,
-            currentUserId: state.currentUser.userId,
+            currentUserId: userId,
             groupMembers: state.currentGroupMembers
           )))
           return .none
@@ -1070,18 +1085,20 @@ extension GroupMain {
           return .send(.internal(.fetchGroupList))
 
         case .path(.element(id: _, action: .manageGroupFeature(.delegate(.pastPromisesTapped)))):
-          guard let groupId = state.currentGroup?.id else { return .none }
+          guard let groupId = state.currentGroup?.id,
+                let userId = state.currentUser?.userId else { return .none }
           state.path.append(.pastPromises(.init(
             groupId: groupId,
-            currentUserId: state.currentUser.userId,
+            currentUserId: userId,
             groupMembers: state.currentGroupMembers
           )))
           return .none
 
         case .path(.element(id: _, action: .pastPromises(.delegate(.promiseSelected(let promise))))):
+          guard let userId = state.currentUser?.userId else { return .none }
           state.path.append(.pastPromiseDetail(.init(
             promise: promise,
-            currentUserId: state.currentUser.userId,
+            currentUserId: userId,
             groupMembers: state.currentGroupMembers
           )))
           return .none
@@ -1125,11 +1142,12 @@ extension GroupMain.Feature.Path.Action: Sendable {}
 private func handleMoreNeedResponseTapped(
   _ state: inout GroupMain.Feature.State
 ) -> Effect<GroupMain.Feature.Action> {
-  guard let currentGroup = state.currentGroup else { return .none }
+  guard let currentGroup = state.currentGroup,
+        let userId = state.currentUser?.userId else { return .none }
   state.path.append(.groupPromiseList(.init(
     group: currentGroup,
     promises: state.allPromises,
-    currentUserId: state.currentUser.userId,
+    currentUserId: userId,
     groupMembers: state.currentGroupMembers,
     initialFilter: .needResponse
   )))
@@ -1139,11 +1157,12 @@ private func handleMoreNeedResponseTapped(
 private func handleMoreConfirmedTapped(
   _ state: inout GroupMain.Feature.State
 ) -> Effect<GroupMain.Feature.Action> {
-  guard let currentGroup = state.currentGroup else { return .none }
+  guard let currentGroup = state.currentGroup,
+        let userId = state.currentUser?.userId else { return .none }
   state.path.append(.groupPromiseList(.init(
     group: currentGroup,
     promises: state.allPromises,
-    currentUserId: state.currentUser.userId,
+    currentUserId: userId,
     groupMembers: state.currentGroupMembers,
     initialFilter: .confirmed
   )))
@@ -1153,11 +1172,12 @@ private func handleMoreConfirmedTapped(
 private func handleAllPromisesTapped(
   _ state: inout GroupMain.Feature.State
 ) -> Effect<GroupMain.Feature.Action> {
-  guard let currentGroup = state.currentGroup else { return .none }
+  guard let currentGroup = state.currentGroup,
+        let userId = state.currentUser?.userId else { return .none }
   state.path.append(.groupPromiseList(.init(
     group: currentGroup,
     promises: state.allPromises,
-    currentUserId: state.currentUser.userId,
+    currentUserId: userId,
     groupMembers: state.currentGroupMembers,
     initialFilter: .all
   )))
@@ -1167,12 +1187,13 @@ private func handleAllPromisesTapped(
 private func handleGroupSettingsTapped(
   _ state: inout GroupMain.Feature.State
 ) -> Effect<GroupMain.Feature.Action> {
-  guard let currentGroup = state.currentGroup else { return .none }
+  guard let currentGroup = state.currentGroup,
+        let userId = state.currentUser?.userId else { return .none }
   let summary = state.allGroupSummaries?.first { $0.id == currentGroup.id }
   state.path.append(.groupSettings(.init(
     group: currentGroup,
     summary: summary,
-    currentUserId: state.currentUser.userId,
+    currentUserId: userId,
     userPlan: state.userPlan,
     preloadedMembers: state.currentGroupMembers
   )))

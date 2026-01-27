@@ -48,8 +48,8 @@ extension Profile {
     /// @ObservableState는 추가 wrapper 없이 직접적인 SwiftUI integration을 가능하게 함
     @ObservableState
     public struct State: Equatable {
-      /// 현재 로그인한 사용자 정보
-      public var currentUser: UserPrivateModel
+      /// 현재 로그인한 사용자 정보 (@Shared로 앱 전역 공유)
+      @Shared(.currentUser) public var currentUser: UserPrivateModel?
       /// 로그아웃 확인 Alert 표시 여부
       public var showLogoutAlert: Bool
       /// 로딩 상태 (로그아웃 진행 중 등)
@@ -76,16 +76,14 @@ extension Profile {
 
       /// State를 위한 기본 initializer
       public init(
-        currentUser: UserPrivateModel = .exampleUser,
         showLogoutAlert: Bool = false,
         isLoading: Bool = false,
         isEditingProfile: Bool = false
       ) {
-        self.currentUser = currentUser
         self.showLogoutAlert = showLogoutAlert
         self.isLoading = isLoading
         self.isEditingProfile = isEditingProfile
-        self.editedNickname = currentUser.nickname
+        self.editedNickname = ""
         self.editedProfileImageData = nil
         self.nicknameValidation = .idle
         self.isSavingProfile = false
@@ -256,16 +254,18 @@ extension Profile {
             }
 
           case .accountInfoTapped:
-            state.path.append(.accountInfo(AccountInfo.Feature.State(currentUser: state.currentUser)))
+            guard let currentUser = state.currentUser else { return .none }
+            state.path.append(.accountInfo(AccountInfo.Feature.State(currentUser: currentUser)))
             return .run { _ in
               await hapticFeedback.selection()
             }
 
           case .developerSettingsTapped:
+            guard let userId = state.currentUser?.userId else { return .none }
             state.path.append(
               .developerSettings(
                 DeveloperSettings.Feature.State(
-                  currentUserId: state.currentUser.userId
+                  currentUserId: userId
                 )
               )
             )
@@ -277,7 +277,7 @@ extension Profile {
 
           case .editProfileTapped:
             state.isEditingProfile = true
-            state.editedNickname = state.currentUser.nickname
+            state.editedNickname = state.currentUser?.nickname ?? ""
             state.editedProfileImageData = nil
             state.nicknameValidation = .idle
             return .run { _ in
@@ -300,7 +300,7 @@ extension Profile {
               return .none
             }
             // 현재 닉네임과 동일하면 검사 생략
-            if nickname == state.currentUser.nickname {
+            if nickname == state.currentUser?.nickname {
               state.nicknameValidation = .idle
               return .none
             }
@@ -324,13 +324,13 @@ extension Profile {
             }
 
           case .saveProfileTapped:
-            guard state.nicknameValidation == .available || state.editedNickname == state.currentUser.nickname else {
+            let currentNickname = state.currentUser?.nickname ?? ""
+            guard state.nicknameValidation == .available || state.editedNickname == currentNickname else {
               return .none
             }
             state.isSavingProfile = true
             let nickname = state.editedNickname
             let imageData = state.editedProfileImageData
-            let currentNickname = state.currentUser.nickname
             return .run { send in
               await hapticFeedback.medium()
               do {
@@ -352,7 +352,7 @@ extension Profile {
 
           case .cancelEditTapped:
             state.isEditingProfile = false
-            state.editedNickname = state.currentUser.nickname
+            state.editedNickname = state.currentUser?.nickname ?? ""
             state.editedProfileImageData = nil
             state.nicknameValidation = .idle
             return .none
@@ -398,7 +398,7 @@ extension Profile {
             return .none
 
           case .profileSaveCompleted(let updatedUser):
-            state.currentUser = updatedUser
+            state.$currentUser.withLock { $0 = updatedUser }
             state.isSavingProfile = false
             state.isEditingProfile = false
             state.editedProfileImageData = nil

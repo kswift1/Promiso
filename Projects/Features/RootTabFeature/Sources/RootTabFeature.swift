@@ -69,19 +69,19 @@ extension RootTab {
       var selectedTab: Tab = .home
 
       /// Home Main State
-      var home: Home.Feature.State
+      var home: Home.Feature.State = .init()
 
       /// Calendar State
-      var calendar: CalendarFeature.Feature.State
+      var calendar: CalendarFeature.Feature.State = .init()
 
       /// Group Main State
-      var groupMain: GroupMain.Feature.State
+      var groupMain: GroupMain.Feature.State = .init()
 
       /// Profile State
-      var profile: Profile.Feature.State
+      var profile: Profile.Feature.State = .init()
 
-      /// 현재 사용자 정보 (Profile에 전달)
-      var currentUser: UserPrivateModel
+      /// 현재 사용자 정보 (@Shared로 앱 전역 공유)
+      @Shared(.currentUser) var currentUser: UserPrivateModel?
 
       /// LivePromise State (약속 추적 바) - nil이면 숨김
       var livePromise: LivePromise.Feature.State?
@@ -95,11 +95,7 @@ extension RootTab {
       var pendingETASheetRequest: Bool = false
 
       public init(currentUser: UserPrivateModel) {
-        self.currentUser = currentUser
-        self.groupMain = GroupMain.Feature.State(currentUser: currentUser)
-        self.home = Home.Feature.State(currentUser: currentUser)
-        self.calendar = CalendarFeature.Feature.State(currentUser: currentUser)
-        self.profile = Profile.Feature.State(currentUser: currentUser)
+        self._currentUser = Shared(wrappedValue: currentUser, .currentUser)
       }
     }
 
