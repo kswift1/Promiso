@@ -170,7 +170,7 @@ struct PromiseCard: View {
             HStack(spacing: 4) {
               Text("⏰")
                 .font(.system(size: 14))
-              Text("\(promise.dateText) \(promise.timeText)")
+              Text("\(promise.dateText) \(promise.timeRangeText)")
                 .font(.system(size: 14, weight: .medium))
             }
             .foregroundColor(.primary)

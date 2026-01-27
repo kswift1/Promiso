@@ -118,7 +118,7 @@ extension PromiseDetail {
           PromiseDetailEmojiInfoRow(
             emoji: "⏰",
             title: "시간",
-            value: store.promise.timeText
+            value: store.promise.timeRangeText
           )
 
           // 장소
