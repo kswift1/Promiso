@@ -34,8 +34,7 @@ extension AppSettings {
 
     // MARK: - Action
 
-    public enum Action: BindableAction, Sendable {
-      case binding(BindingAction<State>)
+    public enum Action: Sendable {
       case view(View)
 
       @CasePathable
@@ -47,22 +46,12 @@ extension AppSettings {
     // MARK: - Reducer Body
 
     public var body: some ReducerOf<Self> {
-      BindingReducer()
-
       Reduce { state, action in
         switch action {
-        case .binding(\.use24HourFormat):
-          // KoreanDateFormatters 동기화
-          KoreanDateFormatters.use24HourFormat = state.use24HourFormat
-          return .none
-
-        case .binding:
-          return .none
-
         case .view(let viewAction):
           switch viewAction {
           case .use24HourFormatChanged(let value):
-            state.use24HourFormat = value
+            state.$use24HourFormat.withLock { $0 = value }
             KoreanDateFormatters.use24HourFormat = value
             return .none
           }
@@ -74,7 +63,7 @@ extension AppSettings {
   // MARK: - Root View
 
   public struct RootView: View {
-    @Bindable private var store: StoreOf<Feature>
+    private let store: StoreOf<Feature>
 
     public init(store: StoreOf<Feature>) {
       self.store = store
@@ -84,7 +73,10 @@ extension AppSettings {
       List {
         // MARK: - 시간 표시 설정
         Section {
-          Toggle(isOn: $store.use24HourFormat) {
+          Toggle(isOn: Binding(
+            get: { store.use24HourFormat },
+            set: { store.send(.view(.use24HourFormatChanged($0))) }
+          )) {
             HStack(spacing: 12) {
               Image(systemName: "clock")
                 .font(.body)
