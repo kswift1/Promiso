@@ -7,20 +7,15 @@
 
 import UIKit
 import UserNotifications
-import os.log
 
 import Clients
 import ExternalDependency
 import Clarity
 import PromisoShared
 
-private let silentPushLog = OSLog(subsystem: "com.promiso", category: "SilentPush")
-
 class AppDelegate: NSObject, UIApplicationDelegate {
   func application(_ application: UIApplication,
                    didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
-    os_log(.error, log: silentPushLog, "[PROMISO_PUSH] App launched")
-
     FirebaseApp.configure()
     configureClaritySDK()
     configureKakaoMapsSDK()
@@ -37,11 +32,6 @@ class AppDelegate: NSObject, UIApplicationDelegate {
   func applicationDidBecomeActive(_ application: UIApplication) {
     // 앱 활성화 시 뱃지 카운트 초기화
     UNUserNotificationCenter.current().setBadgeCount(0)
-
-    // 위젯 디버그 로그 출력
-    if let widgetLog = WidgetDataManager.readDebugLog() {
-      print("[WIDGET_DEBUG] \(widgetLog)")
-    }
   }
 
   // MARK: - Remote Notifications Configuration
@@ -55,15 +45,10 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 
     // 알림 권한 상태 확인 후 등록
     UNUserNotificationCenter.current().getNotificationSettings { settings in
-      os_log(.error, log: silentPushLog, "[PROMISO_PUSH] Auth status: %{public}@", String(describing: settings.authorizationStatus.rawValue))
-
       if settings.authorizationStatus == .authorized {
         DispatchQueue.main.async {
-          os_log(.error, log: silentPushLog, "[PROMISO_PUSH] Calling registerForRemoteNotifications")
           application.registerForRemoteNotifications()
         }
-      } else {
-        os_log(.error, log: silentPushLog, "[PROMISO_PUSH] Not authorized, skipping registration")
       }
     }
   }
@@ -74,13 +59,12 @@ class AppDelegate: NSObject, UIApplicationDelegate {
                    didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
     // FCM에 APNs 토큰 설정
     Messaging.messaging().apnsToken = deviceToken
-    let tokenString = deviceToken.map { String(format: "%02.2hhx", $0) }.joined()
-    os_log(.error, log: silentPushLog, "[PROMISO_PUSH] APNs registered: %{public}@", tokenString)
+    AppLogger.notification.debug("APNs Token registered")
   }
 
   func application(_ application: UIApplication,
                    didFailToRegisterForRemoteNotificationsWithError error: Error) {
-    os_log(.error, log: silentPushLog, "[PROMISO_PUSH] APNs FAILED: %{public}@", error.localizedDescription)
+    AppLogger.notification.error("Failed to register for remote notifications: \(error.localizedDescription)")
   }
 
   // MARK: - Silent Push (Widget Refresh)
@@ -90,23 +74,17 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     didReceiveRemoteNotification userInfo: [AnyHashable: Any],
     fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
   ) {
-    // os.log로 Silent Push 수신 로깅 (prefix: PROMISO_PUSH)
-    os_log(.error, log: silentPushLog, "[PROMISO_PUSH] 📩 Received: %{public}@", String(describing: userInfo))
-
     // Silent Push 타입 확인
     guard let type = userInfo["type"] as? String, type == "widget_refresh" else {
-      let receivedType = userInfo["type"] as? String ?? "nil"
-      os_log(.error, log: silentPushLog, "[PROMISO_PUSH] ❌ Type mismatch - got: %{public}@", receivedType)
       completionHandler(.noData)
       return
     }
 
-    os_log(.error, log: silentPushLog, "[PROMISO_PUSH] ✅ Widget refresh matched")
+    AppLogger.notification.debug("Widget refresh silent push received")
 
     // 서버에서 위젯 스냅샷 조회 → 캐시 저장 → 위젯 갱신
     Task {
       let success = await WidgetDataManager.refreshFromServer()
-      os_log(.error, log: silentPushLog, "[PROMISO_PUSH] 🔄 Result: %{public}@", success ? "success" : "failed")
       completionHandler(success ? .newData : .failed)
     }
   }
@@ -133,7 +111,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 
     ClaritySDK.initialize(config: config)
   }
-  
+
   /// Google Sign-In 리디렉션 URL 처리
   func application(
     _ application: UIApplication,
@@ -142,7 +120,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
   ) -> Bool {
     GIDSignIn.sharedInstance.handle(url)
   }
-  
+
 #if DEBUG
   private func connectToEmulators() {
     let emulatorHost = "192.168.0.2"
@@ -178,7 +156,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 extension AppDelegate: MessagingDelegate {
   func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
     guard let token = fcmToken else { return }
-    os_log(.error, log: silentPushLog, "[PROMISO_PUSH] FCM Token: %{public}@", String(token.prefix(20)) + "...")
+    AppLogger.notification.debug("FCM Token received")
 
     // NotificationCenter를 통해 토큰 브로드캐스트
     // AppFeature에서 수신하여 Firestore에 저장
@@ -188,7 +166,6 @@ extension AppDelegate: MessagingDelegate {
       userInfo: ["token": token]
     )
   }
-
 }
 
 // MARK: - UNUserNotificationCenterDelegate
@@ -201,7 +178,7 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
     withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
   ) {
     let userInfo = notification.request.content.userInfo
-    os_log(.error, log: silentPushLog, "[PROMISO_PUSH] willPresent: %{public}@", String(describing: userInfo))
+    AppLogger.notification.debug("Received notification in foreground: \(userInfo)")
 
     // Foreground에서도 배너, 사운드, 뱃지 표시
     completionHandler([.banner, .sound, .badge])
