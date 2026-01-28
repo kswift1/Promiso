@@ -8,6 +8,7 @@ struct LargePromiseWidget: Widget {
   let kind: String = "LargePromiseWidget"
 
   var body: some WidgetConfiguration {
+    // TODO: iOS 26 SDK에서 .pushHandler(PromiseWidgetPushHandler.self) 추가
     StaticConfiguration(kind: kind, provider: PromiseTimelineProvider()) { entry in
       LargePromiseWidgetView(entry: entry)
         .containerBackground(for: .widget) {

@@ -8,6 +8,7 @@ struct SmallPromiseWidget: Widget {
   let kind: String = "SmallPromiseWidget"
 
   var body: some WidgetConfiguration {
+    // TODO: iOS 26 SDK에서 .pushHandler(PromiseWidgetPushHandler.self) 추가
     StaticConfiguration(kind: kind, provider: PromiseTimelineProvider()) { entry in
       SmallPromiseWidgetView(entry: entry)
         .containerBackground(for: .widget) {

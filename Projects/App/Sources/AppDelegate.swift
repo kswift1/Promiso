@@ -32,6 +32,11 @@ class AppDelegate: NSObject, UIApplicationDelegate {
   func applicationDidBecomeActive(_ application: UIApplication) {
     // 앱 활성화 시 뱃지 카운트 초기화
     UNUserNotificationCenter.current().setBadgeCount(0)
+
+    // 위젯 디버그 로그 출력
+    if let widgetLog = WidgetDataManager.readDebugLog() {
+      print("[WIDGET_DEBUG] \(widgetLog)")
+    }
   }
 
   // MARK: - Remote Notifications Configuration

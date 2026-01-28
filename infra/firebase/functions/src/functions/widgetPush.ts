@@ -17,8 +17,8 @@ import {
 import {admin, REGION} from "../config";
 import {getEnvironmentCollection} from "../utils/firestore";
 
-// Silent Push 타입 상수
-const WIDGET_REFRESH_TYPE = "widget_refresh";
+// Bundle ID (Widget Push Topic용)
+const APP_BUNDLE_ID = "com.promiso";
 
 /**
  * 사용자들에게 Silent Push 발송
@@ -65,21 +65,22 @@ async function sendWidgetSilentPush(
   }
 
   if (allTokens.length === 0) {
-    console.log("📭 No FCM tokens found for widget silent push");
+    console.log("📭 No FCM tokens found for widget push");
     return;
   }
 
-  // 2. Silent Push 전송 (content-available: 1)
+  // 2. Widget Push 전송 (WWDC25 방식)
+  // apns-push-type: widgets, apns-topic: {bundleId}.push-type.widgets
   const message: admin.messaging.MulticastMessage = {
     tokens: allTokens,
-    // notification 필드 없음 = Silent Push
-    data: {
-      type: WIDGET_REFRESH_TYPE,
-    },
     apns: {
+      headers: {
+        "apns-push-type": "background",
+        "apns-priority": "5",
+      },
       payload: {
         aps: {
-          "content-available": 1, // Silent Push 플래그
+          "content-available": 1,
         },
       },
     },
@@ -90,11 +91,11 @@ async function sendWidgetSilentPush(
     const successCount = response.successCount;
     const failureCount = response.failureCount;
     console.log(
-      `🔔 Widget silent push sent: ${successCount} success, ` +
+      `🔔 Widget push sent: ${successCount} success, ` +
       `${failureCount} failures`
     );
   } catch (error) {
-    console.error("❌ Widget silent push error:", error);
+    console.error("❌ Widget push error:", error);
   }
 }
 
