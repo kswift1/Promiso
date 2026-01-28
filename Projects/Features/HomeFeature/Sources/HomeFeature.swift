@@ -231,8 +231,9 @@ extension Home {
               }
               state.promisesState = .loaded(promisesWithGroup)
 
-              // 위젯 캐시 업데이트
+              // 위젯 캐시 업데이트 및 갱신
               WidgetDataManager.savePromises(promisesWithGroup.toWidgetData())
+              WidgetDataManager.reloadWidgets()
             case .failure(let error):
               state.promisesState = .failed(error)
             }

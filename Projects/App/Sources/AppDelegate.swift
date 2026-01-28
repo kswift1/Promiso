@@ -83,16 +83,11 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 
     AppLogger.notification.debug("📱 Widget refresh silent push received")
 
-    // 위젯 캐시 갱신을 위한 NotificationCenter 브로드캐스트
-    NotificationCenter.default.post(
-      name: AppConstants.Notifications.widgetRefreshRequested,
-      object: nil
-    )
-
-    // 위젯 타임라인 즉시 갱신 요청
-    WidgetDataManager.reloadWidgets()
-
-    completionHandler(.newData)
+    // 서버에서 위젯 스냅샷 조회 → 캐시 저장 → 위젯 갱신
+    Task {
+      let success = await WidgetDataManager.refreshFromServer()
+      completionHandler(success ? .newData : .failed)
+    }
   }
 
   // MARK: - Kakao Maps SDK

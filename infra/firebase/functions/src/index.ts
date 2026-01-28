@@ -83,3 +83,8 @@ export {
   onPromiseUpdatedWidgetPush,
   onPromiseDeletedWidgetPush,
 } from "./functions/widgetPush";
+
+// ============================================================================
+// Widget Snapshot Functions (위젯용 약속 스냅샷 API)
+// ============================================================================
+export {getWidgetSnapshot} from "./functions/widget";
