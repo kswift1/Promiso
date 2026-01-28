@@ -68,7 +68,9 @@ public enum AppConfig {
       "KAKAO_NATIVE_APP_KEY": .string(kakaoNativeAppKey),
       "KAKAO_REST_API_KEY": .string(kakaoRestApiKey),
       // ProMotion Display Support (120Hz)
-      "CADisableMinimumFrameDurationOnPhone": .boolean(true)
+      "CADisableMinimumFrameDurationOnPhone": .boolean(true),
+      // App Store 제출: 암호화 사용 여부 (표준 암호화만 사용)
+      "ITSAppUsesNonExemptEncryption": .boolean(false)
     ]
   }
 }
