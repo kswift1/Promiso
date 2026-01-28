@@ -489,7 +489,7 @@ feat: 알림 설정 Feature 추가
 
 ## 🤖 에이전트 목록
 
-### 사용자 정의 에이전트 (9개)
+### 사용자 정의 에이전트 (11개)
 
 | 에이전트 | 역할 | 모델 | 트리거 |
 |----------|------|------|--------|
@@ -501,6 +501,8 @@ feat: 알림 설정 Feature 추가
 | `refactorer` | 코드 구조 개선 | sonnet | "리팩터링", "구조 개선" |
 | `backend-developer` | Firebase/API 개발 | sonnet | "Firebase", "API" |
 | `firebase-cost-advisor` | Firebase 비용 최적화 | sonnet | "비용 최적화" |
+| `security-auditor` | Firebase Rules 검증, 보안 분석 | opus | "보안", "Security Rules" |
+| `knowledge-updater` | 최신 기술 정보 검색 | sonnet | 버전/API 질문, "최신" |
 | `orchestrator` | 복잡한 작업 조율 | opus | 3개 이상 작업 |
 
 ### 커맨드 (Slash Commands, 4개)
