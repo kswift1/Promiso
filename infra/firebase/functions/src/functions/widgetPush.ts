@@ -20,6 +20,10 @@ import {getEnvironmentCollection} from "../utils/firestore";
 // NOTE: iOS 26 Widget Push 전용 topic은 "{bundleId}.push-type.widgets"
 // 현재는 일반 Silent Push로 위젯 갱신 (APNS_BUNDLE_ID 사용)
 
+// Widget Silent Push 상수
+const WIDGET_REFRESH_TYPE = "widget_refresh";
+const WIDGET_REFRESH_COLLAPSE_ID = "widget-refresh";
+
 /**
  * 사용자들에게 Silent Push 발송
  *
@@ -79,13 +83,13 @@ async function sendWidgetSilentPush(
         "apns-push-type": "background",
         "apns-priority": "5",
         "apns-topic": APNS_BUNDLE_ID,
-        "apns-collapse-id": "widget-refresh",
+        "apns-collapse-id": WIDGET_REFRESH_COLLAPSE_ID,
       },
       payload: {
         aps: {
           "content-available": 1,
         },
-        type: "widget_refresh",
+        type: WIDGET_REFRESH_TYPE,
       },
     },
   };

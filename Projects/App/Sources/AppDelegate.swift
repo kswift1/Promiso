@@ -75,7 +75,8 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
   ) {
     // Silent Push 타입 확인
-    guard let type = userInfo["type"] as? String, type == "widget_refresh" else {
+    guard let type = userInfo[AppConstants.PushNotification.typeKey] as? String,
+          type == AppConstants.PushNotification.widgetRefreshType else {
       completionHandler(.noData)
       return
     }

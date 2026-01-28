@@ -70,8 +70,15 @@ public enum AppConstants {
     public static let fcmTokenDidReceive = NSNotification.Name("FCMTokenDidReceive")
     /// 푸시 알림 탭 시 발송 (userInfo: ["type": String, "promiseId": String?, "groupId": String?])
     public static let pushNotificationTapped = NSNotification.Name("PushNotificationTapped")
-    /// 위젯 갱신 Silent Push 수신 시 발송
-    public static let widgetRefreshRequested = NSNotification.Name("WidgetRefreshRequested")
+  }
+
+  // MARK: - Push Notification Keys
+
+  public enum PushNotification {
+    /// Silent Push payload의 type 키
+    public static let typeKey = "type"
+    /// 위젯 갱신 Silent Push type 값
+    public static let widgetRefreshType = "widget_refresh"
   }
 
   // MARK: - Time Intervals

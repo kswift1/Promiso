@@ -572,8 +572,10 @@ struct MediumPromiseWidgetView: View {
         Divider()
 
         ForEach(Array(promises)) { promise in
-          Link(destination: promise.deeplinkURL!) {
-            PromiseRowView(promise: promise)
+          if let url = promise.deeplinkURL {
+            Link(destination: url) {
+              PromiseRowView(promise: promise)
+            }
           }
         }
 
