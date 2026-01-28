@@ -74,6 +74,13 @@ extension Profile {
       /// 프로필 이미지 상세 보기 표시 여부
       public var showImageDetail: Bool = false
 
+      // MARK: - Statistics
+
+      /// 그룹 수
+      public var groupCount: Int = 0
+      /// 약속 수
+      public var promiseCount: Int = 0
+
       /// State를 위한 기본 initializer
       public init(
         currentUser: Shared<UserPrivateModel>,
@@ -98,6 +105,9 @@ extension Profile {
     @Reducer
     public enum Path {
       case accountInfo(AccountInfo.Feature)
+      case notificationSettings(NotificationSettings.Feature)
+      case policyView(PolicyView.Feature)
+      case appInfo(AppInfo.Feature)
       case developerSettings(DeveloperSettings.Feature)
       case appSettings(AppSettings.Feature)
     }
@@ -184,6 +194,11 @@ extension Profile {
       case profileSaveCompleted(UserPrivateModel)
       /// 프로필 저장 실패
       case profileSaveFailed(String)
+
+      // MARK: - Statistics
+
+      /// 통계 로드 완료
+      case statsLoaded(groupCount: Int, promiseCount: Int)
     }
 
     /// 부모 Feature에게 전달할 delegate 액션
@@ -204,8 +219,10 @@ extension Profile {
         case .view(let viewAction):
           switch viewAction {
           case .onAppear:
-            // View가 나타날 때 필요한 초기화 로직
-            return .none
+            // View가 나타날 때 통계 로드
+            let groupCount = state.currentUser.groups.count
+            // promiseCount는 Firestore 쿼리 필요 (향후 구현, 일단 0)
+            return .send(.internal(.statsLoaded(groupCount: groupCount, promiseCount: 0)))
 
           case .logoutTapped:
             // 로그아웃 확인 Alert 표시
@@ -235,25 +252,45 @@ extension Profile {
             return .none
 
           case .notificationSettingsTapped:
-            // TODO: 알림 설정 화면으로 이동
+            // 알림 설정 화면으로 이동
+            let userId = state.currentUser.userId
+            state.path.append(.notificationSettings(
+              NotificationSettings.Feature.State(
+                currentUserId: userId,
+                notificationEnabled: true  // Default, will load actual value in onAppear
+              )
+            ))
             return .run { _ in
               await hapticFeedback.selection()
             }
 
           case .privacyPolicyTapped:
-            // TODO: 개인정보처리방침 웹뷰 또는 시트 표시
+            // 개인정보처리방침 SafariView 표시
+            state.path.append(.policyView(
+              PolicyView.Feature.State(
+                policyType: .privacyPolicy,
+                url: URL(string: "https://promiso.app/privacy")!
+              )
+            ))
             return .run { _ in
               await hapticFeedback.selection()
             }
 
           case .termsOfServiceTapped:
-            // TODO: 이용약관 웹뷰 또는 시트 표시
+            // 이용약관 SafariView 표시
+            state.path.append(.policyView(
+              PolicyView.Feature.State(
+                policyType: .termsOfService,
+                url: URL(string: "https://promiso.app/terms")!
+              )
+            ))
             return .run { _ in
               await hapticFeedback.selection()
             }
 
           case .appInfoTapped:
-            // TODO: 앱 정보 화면 표시 (버전, 라이선스 등)
+            // 앱 정보 화면 표시
+            state.path.append(.appInfo(AppInfo.Feature.State()))
             return .run { _ in
               await hapticFeedback.selection()
             }
@@ -420,6 +457,11 @@ extension Profile {
             return .run { _ in
               await hapticFeedback.error()
             }
+
+          case .statsLoaded(let groupCount, let promiseCount):
+            state.groupCount = groupCount
+            state.promiseCount = promiseCount
+            return .none
           }
 
         // MARK: - Delegate Actions
@@ -467,6 +509,12 @@ extension Profile {
         switch store.case {
         case .accountInfo(let accountInfoStore):
           AccountInfo.RootView(store: accountInfoStore)
+        case .notificationSettings(let notificationSettingsStore):
+          NotificationSettings.RootView(store: notificationSettingsStore)
+        case .policyView(let policyViewStore):
+          PolicyView.RootView(store: policyViewStore)
+        case .appInfo(let appInfoStore):
+          AppInfo.RootView(store: appInfoStore)
         case .developerSettings(let developerSettingsStore):
           DeveloperSettings.RootView(store: developerSettingsStore)
         case .appSettings(let appSettingsStore):
