@@ -70,10 +70,12 @@ async function sendWidgetSilentPush(
     return;
   }
 
-  // 2. Widget Push 전송 (WWDC25 방식)
-  // apns-push-type: widgets, apns-topic: {bundleId}.push-type.widgets
+  // 2. Silent Push 전송 (type: widget_refresh로 앱에서 식별)
   const message: admin.messaging.MulticastMessage = {
     tokens: allTokens,
+    data: {
+      type: "widget_refresh",
+    },
     apns: {
       headers: {
         "apns-push-type": "background",
