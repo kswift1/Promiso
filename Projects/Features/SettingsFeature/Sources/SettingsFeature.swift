@@ -4,23 +4,14 @@
 
 import Clients
 import ComposableArchitecture
+import PromisoShared
 import SwiftUI
 
 // MARK: - Feature Namespace
 
 /// Profile Feature 컴포넌트를 위한 Namespace
 /// 조직적 구조를 제공하고 다른 Feature들과의 naming conflict를 방지
-public enum Settings {
-
-  // MARK: - Constants
-
-  /// 정책 문서 URL 상수
-  /// Compile-time에 유효성이 보장되는 URL
-  enum PolicyURLs {
-    static let privacyPolicy = URL(string: "https://promiso.app/privacy")!
-    static let termsOfService = URL(string: "https://promiso.app/terms")!
-  }
-}
+public enum Settings {}
 
 // MARK: - Feature Implementation
 
@@ -267,7 +258,7 @@ extension Settings {
             state.path.append(.notificationSettings(
               NotificationSettings.Feature.State(
                 currentUserId: userId,
-                notificationEnabled: true
+                notificationEnabled: false  // onAppear에서 실제 설정 로드
               )
             ))
             return .run { _ in await hapticFeedback.selection() }
@@ -276,7 +267,7 @@ extension Settings {
             state.path.append(.policyView(
               PolicyView.Feature.State(
                 policyType: .privacyPolicy,
-                url: PolicyURLs.privacyPolicy
+                url: AppConstants.App.privacyPolicyURL
               )
             ))
             return .run { _ in await hapticFeedback.selection() }
@@ -285,7 +276,7 @@ extension Settings {
             state.path.append(.policyView(
               PolicyView.Feature.State(
                 policyType: .termsOfService,
-                url: PolicyURLs.termsOfService
+                url: AppConstants.App.termsOfServiceURL
               )
             ))
             return .run { _ in await hapticFeedback.selection() }
