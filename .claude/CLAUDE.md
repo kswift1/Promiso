@@ -487,6 +487,47 @@ feat: 알림 설정 Feature 추가
 
 ---
 
+## 🤖 에이전트 목록
+
+### 사용자 정의 에이전트 (9개)
+
+| 에이전트 | 역할 | 모델 | 트리거 |
+|----------|------|------|--------|
+| `feature-generator` | TCA Feature 생성 | sonnet | "Feature 만들어줘" |
+| `ui-designer` | SwiftUI View 디자인 | sonnet | "View 만들어줘", "UI 디자인" |
+| `ui-researcher` | UI/UX 레퍼런스 조사 | sonnet | "UI 개선", "레퍼런스" |
+| `test-writer` | Swift Testing 테스트 작성 | haiku | "테스트 작성" |
+| `code-reviewer` | 코드 품질/컨벤션 검토 | opus | "리뷰해줘", "코드 검토" |
+| `refactorer` | 코드 구조 개선 | sonnet | "리팩터링", "구조 개선" |
+| `backend-developer` | Firebase/API 개발 | sonnet | "Firebase", "API" |
+| `firebase-cost-advisor` | Firebase 비용 최적화 | sonnet | "비용 최적화" |
+| `orchestrator` | 복잡한 작업 조율 | opus | 3개 이상 작업 |
+
+### 커맨드 (Slash Commands, 4개)
+
+| 커맨드 | 역할 | 호출 에이전트 |
+|--------|------|--------------|
+| `/new-feature` | Feature 생성 (Reducer + View + Tests) | feature-generator → test-writer → code-reviewer |
+| `/new-screen` | 화면 생성 (Feature + UI 디자인) | feature-generator → ui-designer → test-writer → code-reviewer |
+| `/review-pr` | PR/변경사항 코드 리뷰 | code-reviewer (+firebase-cost-advisor) |
+| `/fix-reviews` | PR 리뷰 자동 수정 | 리뷰 분석 → 수정 → 커밋 |
+
+### ⚠️ 플러그인 에이전트 사용 규칙
+
+**중복 방지**: 아래 플러그인 에이전트는 **사용하지 않습니다** (사용자 정의로 대체):
+
+```
+❌ pr-review-toolkit:code-reviewer  → ✅ code-reviewer (사용자 정의)
+❌ feature-dev:code-reviewer        → ✅ code-reviewer (사용자 정의)
+❌ feature-dev:code-architect       → ✅ feature-generator (사용자 정의)
+```
+
+**사용 가능한 플러그인 에이전트**:
+- `Explore` - 코드베이스 탐색 (5단계 워크플로우 1단계)
+- `commit-commands:commit` - Git 커밋 (/commit)
+
+---
+
 ## 🤖 자동 에이전트 호출 규칙
 
 ### 필수 호출 규칙
