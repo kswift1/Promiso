@@ -176,7 +176,7 @@ public enum WidgetDataManager {
     let functions = Functions.functions(region: "asia-northeast3")
 
     do {
-      let result = try await functions.httpsCallable("getWidgetSnapshot").call()
+      let result = try await functions.httpsCallable("getWidgetSnapshot").call(["env": loadFirestoreEnv()])
 
       guard let data = result.data as? [String: Any] else {
         AppLogger.notification.error("❌ [WidgetDataManager] Invalid response format")
