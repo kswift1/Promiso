@@ -34,16 +34,8 @@ extension Profile {
           // 계정 섹션
           accountSection
 
-          // 알림 섹션
-          notificationSection
-
-          // 정보 섹션
-          infoSection
-
-          // 개발자 섹션 (DEBUG only)
-          #if DEBUG
-          developerSection
-          #endif
+          // 통계 섹션
+          statsSection
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 24)
@@ -137,16 +129,6 @@ extension Profile {
           .font(.title2)
           .fontWeight(.bold)
           .foregroundStyle(Color.pmtext.primary)
-
-        // 통계
-        HStack(spacing: 24) {
-          statItem(title: "그룹", count: store.groupCount)
-
-          Divider()
-            .frame(height: 40)
-
-          statItem(title: "약속", count: store.promiseCount)
-        }
       }
       .frame(maxWidth: .infinity)
       .padding(.vertical, 24)
@@ -181,59 +163,21 @@ extension Profile {
       .adaptiveGlassBackground()
     }
 
-    /// 알림 섹션
-    private var notificationSection: some View {
-      VStack(spacing: 0) {
-        menuRow(
-          icon: "bell.fill",
-          title: "알림 설정",
-          action: { store.send(.view(.notificationSettingsTapped)) }
-        )
-      }
-      .adaptiveGlassBackground()
-    }
-
-    /// 정보 섹션
-    private var infoSection: some View {
-      VStack(spacing: 0) {
-        menuRow(
-          icon: "hand.raised.fill",
-          title: "개인정보처리방침",
-          action: { store.send(.view(.privacyPolicyTapped)) }
-        )
+    /// 통계 섹션
+    private var statsSection: some View {
+      HStack(spacing: 24) {
+        statItem(title: "그룹", count: store.groupCount)
 
         Divider()
-          .padding(.leading, 56)
+          .frame(height: 40)
 
-        menuRow(
-          icon: "doc.text.fill",
-          title: "이용약관",
-          action: { store.send(.view(.termsOfServiceTapped)) }
-        )
-
-        Divider()
-          .padding(.leading, 56)
-
-        menuRow(
-          icon: "info.circle.fill",
-          title: "앱 정보",
-          action: { store.send(.view(.appInfoTapped)) }
-        )
+        statItem(title: "약속", count: store.promiseCount)
       }
+      .frame(maxWidth: .infinity)
+      .padding(.vertical, 20)
       .adaptiveGlassBackground()
     }
 
-    /// 개발자 섹션 (DEBUG only)
-    private var developerSection: some View {
-      VStack(spacing: 0) {
-        menuRow(
-          icon: "hammer.fill",
-          title: "개발자 설정",
-          action: { store.send(.view(.developerSettingsTapped)) }
-        )
-      }
-      .adaptiveGlassBackground()
-    }
 
     // MARK: - Helpers
 

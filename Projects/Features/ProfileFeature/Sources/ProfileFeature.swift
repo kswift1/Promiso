@@ -105,10 +105,6 @@ extension Profile {
     @Reducer
     public enum Path {
       case accountInfo(AccountInfo.Feature)
-      case notificationSettings(NotificationSettings.Feature)
-      case policyView(PolicyView.Feature)
-      case appInfo(AppInfo.Feature)
-      case developerSettings(DeveloperSettings.Feature)
       case appSettings(AppSettings.Feature)
     }
 
@@ -144,18 +140,8 @@ extension Profile {
       case logoutConfirmed
       /// 로그아웃 취소 (Alert에서 취소 버튼)
       case logoutCancelled
-      /// 알림 설정 탭
-      case notificationSettingsTapped
-      /// 개인정보처리방침 탭
-      case privacyPolicyTapped
-      /// 이용약관 탭
-      case termsOfServiceTapped
-      /// 앱 정보 탭
-      case appInfoTapped
       /// 계정 정보 탭
       case accountInfoTapped
-      /// 개발자 설정 탭 (#if DEBUG)
-      case developerSettingsTapped
       /// 앱 설정 탭 (toolbar)
       case appSettingsTapped
 
@@ -251,70 +237,16 @@ extension Profile {
             state.showLogoutAlert = false
             return .none
 
-          case .notificationSettingsTapped:
-            // 알림 설정 화면으로 이동
-            let userId = state.currentUser.userId
-            state.path.append(.notificationSettings(
-              NotificationSettings.Feature.State(
-                currentUserId: userId,
-                notificationEnabled: true  // Default, will load actual value in onAppear
-              )
-            ))
-            return .run { _ in
-              await hapticFeedback.selection()
-            }
-
-          case .privacyPolicyTapped:
-            // 개인정보처리방침 SafariView 표시
-            state.path.append(.policyView(
-              PolicyView.Feature.State(
-                policyType: .privacyPolicy,
-                url: URL(string: "https://promiso.app/privacy")!
-              )
-            ))
-            return .run { _ in
-              await hapticFeedback.selection()
-            }
-
-          case .termsOfServiceTapped:
-            // 이용약관 SafariView 표시
-            state.path.append(.policyView(
-              PolicyView.Feature.State(
-                policyType: .termsOfService,
-                url: URL(string: "https://promiso.app/terms")!
-              )
-            ))
-            return .run { _ in
-              await hapticFeedback.selection()
-            }
-
-          case .appInfoTapped:
-            // 앱 정보 화면 표시
-            state.path.append(.appInfo(AppInfo.Feature.State()))
-            return .run { _ in
-              await hapticFeedback.selection()
-            }
-
           case .accountInfoTapped:
             state.path.append(.accountInfo(AccountInfo.Feature.State(currentUser: state.currentUser)))
             return .run { _ in
               await hapticFeedback.selection()
             }
 
-          case .developerSettingsTapped:
-            state.path.append(
-              .developerSettings(
-                DeveloperSettings.Feature.State(
-                  currentUserId: state.currentUser.userId
-                )
-              )
-            )
-            return .run { _ in
-              await hapticFeedback.selection()
-            }
-
           case .appSettingsTapped:
-            state.path.append(.appSettings(AppSettings.Feature.State()))
+            state.path.append(.appSettings(
+              AppSettings.Feature.State(currentUserId: state.currentUser.userId)
+            ))
             return .run { _ in
               await hapticFeedback.selection()
             }
@@ -509,14 +441,6 @@ extension Profile {
         switch store.case {
         case .accountInfo(let accountInfoStore):
           AccountInfo.RootView(store: accountInfoStore)
-        case .notificationSettings(let notificationSettingsStore):
-          NotificationSettings.RootView(store: notificationSettingsStore)
-        case .policyView(let policyViewStore):
-          PolicyView.RootView(store: policyViewStore)
-        case .appInfo(let appInfoStore):
-          AppInfo.RootView(store: appInfoStore)
-        case .developerSettings(let developerSettingsStore):
-          DeveloperSettings.RootView(store: developerSettingsStore)
         case .appSettings(let appSettingsStore):
           AppSettings.RootView(store: appSettingsStore)
         }
