@@ -17,8 +17,9 @@ import {
 import {admin, REGION} from "../config";
 import {getEnvironmentCollection} from "../utils/firestore";
 
-// Bundle ID (Widget Push Topic용)
-const APP_BUNDLE_ID = "com.promiso";
+// TODO: iOS 26 Widget Push 구현 시 Bundle ID 사용
+// const APP_BUNDLE_ID = "com.promiso";
+// apns-topic: "{bundleId}.push-type.widgets"
 
 /**
  * 사용자들에게 Silent Push 발송
