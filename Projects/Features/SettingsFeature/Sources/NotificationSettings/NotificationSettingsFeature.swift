@@ -91,11 +91,13 @@ extension NotificationSettings {
             // 시스템 알림 권한 상태 확인 및 사용자 설정 로드
             let userId = state.currentUserId
             return .run { send in
-              async let status = notificationClient.getAuthorizationStatus()
-              async let settings = try? userSettingsClient.fetchSettings(userId)
+              async let statusTask = notificationClient.getAuthorizationStatus()
+              async let settingsTask: UserSettings? = try? userSettingsClient.fetchSettings(userId)
+
+              let (status, settings) = await (statusTask, settingsTask)
 
               await send(.internal(.systemAuthStatusReceived(status)))
-              if let settings = await settings {
+              if let settings = settings {
                 await send(.internal(.settingsFetched(settings.notificationEnabled)))
               }
             }

@@ -249,11 +249,10 @@ extension Settings {
             .font(.caption)
             .foregroundStyle(Color.pmgray.n400)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
         .contentShape(Rectangle())
       }
       .buttonStyle(.plain)
+      .listRowInsets(EdgeInsets(top: 14, leading: 16, bottom: 14, trailing: 16))
     }
 
     /// 앱 버전 정보
