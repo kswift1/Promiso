@@ -148,22 +148,6 @@ public enum WidgetDataManager {
     defaults?.object(forKey: lastUpdatedKey) as? Date
   }
 
-  // MARK: - Debug Log (Widget → App 공유)
-
-  private static let debugLogKey = "widget.debugLog"
-
-  /// 디버그 로그 저장 (Widget에서 호출)
-  public static func saveDebugLog(_ message: String) {
-    let timestamp = ISO8601DateFormatter().string(from: Date())
-    let log = "[\(timestamp)] \(message)"
-    defaults?.set(log, forKey: debugLogKey)
-  }
-
-  /// 디버그 로그 읽기 (App에서 호출)
-  public static func readDebugLog() -> String? {
-    defaults?.string(forKey: debugLogKey)
-  }
-
   // MARK: - 초기화
 
   /// 모든 데이터 삭제 (로그아웃 시)
@@ -240,7 +224,6 @@ public enum WidgetDataManager {
 
       guard let httpResponse = response as? HTTPURLResponse,
             httpResponse.statusCode == 200 else {
-        saveDebugLog("HTTP Error: \((response as? HTTPURLResponse)?.statusCode ?? -1)")
         return loadPromises()
       }
 
@@ -248,15 +231,12 @@ public enum WidgetDataManager {
       let wrapper = try JSONDecoder().decode(FunctionsResponseWrapper.self, from: data)
       let promises = convertSnapshotToPromises(wrapper.result)
 
-      saveDebugLog("Parsed \(promises.count) promises")
-
       // 캐시 업데이트
       savePromises(promises)
 
       return promises
     } catch {
       // 실패 시 캐시 반환
-      saveDebugLog("Parse error: \(error)")
       return loadPromises()
     }
   }
