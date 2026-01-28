@@ -20,6 +20,11 @@ extension AppInfo {
 
   @Reducer
   public struct Feature {
+
+    // MARK: - Dependencies
+
+    @Dependency(\.openURL) private var openURL
+
     public init() {}
 
     // MARK: - State
@@ -59,10 +64,10 @@ extension AppInfo {
           return .none
 
         case .view(.linkTapped(let urlString)):
-          if let url = URL(string: urlString) {
-            UIApplication.shared.open(url)
+          guard let url = URL(string: urlString) else { return .none }
+          return .run { _ in
+            await openURL(url)
           }
-          return .none
         }
       }
     }

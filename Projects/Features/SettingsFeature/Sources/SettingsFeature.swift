@@ -10,7 +10,17 @@ import SwiftUI
 
 /// Profile Feature 컴포넌트를 위한 Namespace
 /// 조직적 구조를 제공하고 다른 Feature들과의 naming conflict를 방지
-public enum Settings {}
+public enum Settings {
+
+  // MARK: - Constants
+
+  /// 정책 문서 URL 상수
+  /// Compile-time에 유효성이 보장되는 URL
+  enum PolicyURLs {
+    static let privacyPolicy = URL(string: "https://promiso.app/privacy")!
+    static let termsOfService = URL(string: "https://promiso.app/terms")!
+  }
+}
 
 // MARK: - Feature Implementation
 
@@ -266,7 +276,7 @@ extension Settings {
             state.path.append(.policyView(
               PolicyView.Feature.State(
                 policyType: .privacyPolicy,
-                url: URL(string: "https://promiso.app/privacy")!
+                url: PolicyURLs.privacyPolicy
               )
             ))
             return .run { _ in await hapticFeedback.selection() }
@@ -275,7 +285,7 @@ extension Settings {
             state.path.append(.policyView(
               PolicyView.Feature.State(
                 policyType: .termsOfService,
-                url: URL(string: "https://promiso.app/terms")!
+                url: PolicyURLs.termsOfService
               )
             ))
             return .run { _ in await hapticFeedback.selection() }

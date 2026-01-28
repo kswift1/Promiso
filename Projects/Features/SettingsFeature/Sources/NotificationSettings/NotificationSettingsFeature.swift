@@ -73,22 +73,8 @@ extension NotificationSettings {
     public enum Internal: Equatable, Sendable {
       case systemAuthStatusReceived(NotificationAuthorizationStatus)
       case settingsFetched(Bool)
-      case updateNotificationResponse(Result<Void, Error>)
-
-      public static func == (lhs: Internal, rhs: Internal) -> Bool {
-        switch (lhs, rhs) {
-        case (.systemAuthStatusReceived(let lhs), .systemAuthStatusReceived(let rhs)):
-          return lhs == rhs
-        case (.settingsFetched(let lhs), .settingsFetched(let rhs)):
-          return lhs == rhs
-        case (.updateNotificationResponse(.success), .updateNotificationResponse(.success)):
-          return true
-        case (.updateNotificationResponse(.failure), .updateNotificationResponse(.failure)):
-          return true
-        default:
-          return false
-        }
-      }
+      case updateNotificationSuccess
+      case updateNotificationFailed(String)
     }
 
     // MARK: - Reducer Body
@@ -122,9 +108,9 @@ extension NotificationSettings {
               await hapticFeedback.selection()
               do {
                 try await userSettingsClient.updateNotificationEnabled(userId, enabled)
-                await send(.internal(.updateNotificationResponse(.success(()))))
+                await send(.internal(.updateNotificationSuccess))
               } catch {
-                await send(.internal(.updateNotificationResponse(.failure(error))))
+                await send(.internal(.updateNotificationFailed(error.localizedDescription)))
               }
             }
 
@@ -151,15 +137,15 @@ extension NotificationSettings {
             state.notificationEnabled = enabled
             return .none
 
-          case .updateNotificationResponse(.success):
+          case .updateNotificationSuccess:
             state.isUpdating = false
             return .run { _ in
               await hapticFeedback.success()
             }
 
-          case .updateNotificationResponse(.failure(let error)):
+          case .updateNotificationFailed(let errorMessage):
             state.isUpdating = false
-            state.errorMessage = error.localizedDescription
+            state.errorMessage = errorMessage
             state.notificationEnabled = !state.notificationEnabled // 롤백
             return .run { _ in
               await hapticFeedback.error()
