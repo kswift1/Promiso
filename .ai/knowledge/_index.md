@@ -5,15 +5,40 @@
 
 ## 캐시 파일 목록
 
-| 파일 | 기술 | TTL | 최종 업데이트 | 상태 |
-|------|------|-----|--------------|------|
-| [tca.md](./tca.md) | TCA (Composable Architecture) | 2주 | - | 초기화 필요 |
-| [swiftui.md](./swiftui.md) | SwiftUI / iOS | 3개월 | 2025-01-29 | ✅ 업데이트됨 |
-| [firebase.md](./firebase.md) | Firebase iOS SDK | 1개월 | - | 초기화 필요 |
-| [tuist.md](./tuist.md) | Tuist | 1개월 | - | 초기화 필요 |
+| 파일 | 기술 | 버전 | TTL | 최종 업데이트 | 만료일 | 상태 |
+|------|------|------|-----|--------------|--------|------|
+| [swiftui.md](./swiftui.md) | SwiftUI / iOS 26 | iOS 26 / Swift 6 | 3개월 | 2025-01-29 | 2025-04-29 | ✅ |
+| [tca.md](./tca.md) | TCA (Composable Architecture) | 1.23.1 | 2주 | 2025-01-29 | 2025-02-12 | ✅ |
+| [firebase.md](./firebase.md) | Firebase iOS SDK | 12.7.0 | 1개월 | 2025-01-29 | 2025-02-28 | ✅ |
+| [tuist.md](./tuist.md) | Tuist | 4.x | 1개월 | 2025-01-29 | 2025-04-29 | ✅ |
 
-### 특이사항
-- **swiftui.md**: iOS 26 Glass Effect, TabView Bottom Accessory 등 Promiso 코드베이스 분석 기반 정리 완료
+## 주요 업데이트 내용 (2025-01-29)
+
+### SwiftUI / iOS 26
+- WWDC 2025 Liquid Glass 디자인 시스템 완전 정리
+- GlassEffectContainer API 상세 문서화
+- Foundation Models Framework (On-Device AI) 추가
+- WebKit for SwiftUI 추가
+- Backward Compatibility 패턴 정리
+
+### TCA 1.23.1
+- 2025년 릴리즈 요약 (1.17 ~ 1.23)
+- @ObservableState Swift 6.2 개선사항
+- Effect.run 성능 최적화 가이드
+- Deprecated API 정리 (@BindingState, .task, .fireAndForget)
+
+### Firebase iOS SDK 12.7.0
+- Firebase AI Logic (구 Vertex AI) 신규 기능
+- Dynamic Links 종료 안내 (2025년 8월)
+- Firestore Swift Codable 상세 가이드
+- 비용 최적화 팁
+
+### Tuist 4.x
+- Dependencies.swift → Package.swift 마이그레이션
+- Back Market 성능 최적화 사례 (2025)
+- 캐시 명령어 변경 (tuist cache warm → tuist cache)
+
+---
 
 ## 사용 방법
 
