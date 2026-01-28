@@ -1,0 +1,72 @@
+[debug] [2026-01-28T14:39:13.344Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-01-28T14:39:13.346Z] > authorizing via signed-in user (kswen0203@gmail.com)
+[debug] [2026-01-28T14:39:13.346Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-01-28T14:39:13.346Z] > authorizing via signed-in user (kswen0203@gmail.com)
+[debug] [2026-01-28T14:39:13.346Z] Checked if tokens are valid: false, expires at: 1769605736779
+[debug] [2026-01-28T14:39:13.346Z] Checked if tokens are valid: false, expires at: 1769605736779
+[debug] [2026-01-28T14:39:13.347Z] > refreshing access token with scopes: []
+[debug] [2026-01-28T14:39:13.347Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-01-28T14:39:13.347Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-01-28T14:39:13.348Z] Checked if tokens are valid: false, expires at: 1769605736779
+[debug] [2026-01-28T14:39:13.348Z] Checked if tokens are valid: false, expires at: 1769605736779
+[debug] [2026-01-28T14:39:13.348Z] > refreshing access token with scopes: []
+[debug] [2026-01-28T14:39:13.348Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-01-28T14:39:13.348Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-01-28T14:39:13.349Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-01-28T14:39:13.349Z] > authorizing via signed-in user (kswen0203@gmail.com)
+[debug] [2026-01-28T14:39:13.349Z] Checked if tokens are valid: false, expires at: 1769605736779
+[debug] [2026-01-28T14:39:13.349Z] Checked if tokens are valid: false, expires at: 1769605736779
+[debug] [2026-01-28T14:39:13.349Z] > refreshing access token with scopes: []
+[debug] [2026-01-28T14:39:13.349Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-01-28T14:39:13.349Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-01-28T14:39:13.535Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-01-28T14:39:13.535Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-01-28T14:39:13.577Z] >>> [apiv2][query] GET https://cloudbilling.googleapis.com/v1/projects/promiso-20274/billingInfo [none]
+[debug] [2026-01-28T14:39:13.579Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-01-28T14:39:13.579Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-01-28T14:39:13.595Z] >>> [apiv2][query] GET https://cloudbilling.googleapis.com/v1/projects/promiso-20274/billingInfo [none]
+[debug] [2026-01-28T14:39:13.597Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-01-28T14:39:13.597Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-01-28T14:39:13.606Z] >>> [apiv2][query] GET https://cloudbilling.googleapis.com/v1/projects/promiso-20274/billingInfo [none]
+[debug] [2026-01-28T14:39:14.846Z] <<< [apiv2][status] GET https://cloudbilling.googleapis.com/v1/projects/promiso-20274/billingInfo 200
+[debug] [2026-01-28T14:39:14.846Z] <<< [apiv2][body] GET https://cloudbilling.googleapis.com/v1/projects/promiso-20274/billingInfo {"name":"projects/promiso-20274/billingInfo","projectId":"promiso-20274","billingAccountName":"billingAccounts/01212E-9D1C13-345D68","billingEnabled":true}
+[debug] [2026-01-28T14:39:14.848Z] Checked if tokens are valid: true, expires at: 1769614752597
+[debug] [2026-01-28T14:39:14.848Z] Checked if tokens are valid: true, expires at: 1769614752597
+[debug] [2026-01-28T14:39:14.853Z] Checked if tokens are valid: true, expires at: 1769614752597
+[debug] [2026-01-28T14:39:14.853Z] Checked if tokens are valid: true, expires at: 1769614752597
+[debug] [2026-01-28T14:39:14.853Z] Checked if tokens are valid: true, expires at: 1769614752597
+[debug] [2026-01-28T14:39:14.853Z] Checked if tokens are valid: true, expires at: 1769614752597
+[debug] [2026-01-28T14:39:14.853Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/promiso-20274/services/firebasedataconnect.googleapis.com [none]
+[debug] [2026-01-28T14:39:14.853Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/promiso-20274/services/firebasedataconnect.googleapis.com x-goog-quota-user=projects/promiso-20274
+[debug] [2026-01-28T14:39:14.853Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/promiso-20274/services/firebaseapphosting.googleapis.com [none]
+[debug] [2026-01-28T14:39:14.853Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/promiso-20274/services/firebaseapphosting.googleapis.com x-goog-quota-user=projects/promiso-20274
+[debug] [2026-01-28T14:39:14.854Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/promiso-20274/services/firebaseio.com [none]
+[debug] [2026-01-28T14:39:14.854Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/promiso-20274/services/firebaseio.com x-goog-quota-user=projects/promiso-20274
+[debug] [2026-01-28T14:39:15.882Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/promiso-20274/services/firebaseio.com 403
+[debug] [2026-01-28T14:39:15.882Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/promiso-20274/services/firebaseio.com [omitted]
+[debug] [2026-01-28T14:39:15.937Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/promiso-20274/services/firebasedataconnect.googleapis.com 200
+[debug] [2026-01-28T14:39:15.937Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/promiso-20274/services/firebasedataconnect.googleapis.com [omitted]
+[debug] [2026-01-28T14:39:15.938Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/promiso-20274/services/firebaseapphosting.googleapis.com 200
+[debug] [2026-01-28T14:39:15.938Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/promiso-20274/services/firebaseapphosting.googleapis.com [omitted]
+[debug] [2026-01-28T14:39:15.973Z] <<< [apiv2][status] GET https://cloudbilling.googleapis.com/v1/projects/promiso-20274/billingInfo 200
+[debug] [2026-01-28T14:39:15.973Z] <<< [apiv2][body] GET https://cloudbilling.googleapis.com/v1/projects/promiso-20274/billingInfo {"name":"projects/promiso-20274/billingInfo","projectId":"promiso-20274","billingAccountName":"billingAccounts/01212E-9D1C13-345D68","billingEnabled":true}
+[debug] [2026-01-28T14:39:16.023Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-01-28T14:39:16.023Z] > authorizing via signed-in user (kswen0203@gmail.com)
+[debug] [2026-01-28T14:39:16.023Z] Checked if tokens are valid: true, expires at: 1769614752597
+[debug] [2026-01-28T14:39:16.023Z] Checked if tokens are valid: true, expires at: 1769614752597
+[debug] [2026-01-28T14:39:16.023Z] >>> [apiv2][query] GET https://cloudbilling.googleapis.com/v1/projects/promiso-20274/billingInfo [none]
+[debug] [2026-01-28T14:39:16.032Z] <<< [apiv2][status] GET https://cloudbilling.googleapis.com/v1/projects/promiso-20274/billingInfo 200
+[debug] [2026-01-28T14:39:16.032Z] <<< [apiv2][body] GET https://cloudbilling.googleapis.com/v1/projects/promiso-20274/billingInfo {"name":"projects/promiso-20274/billingInfo","projectId":"promiso-20274","billingAccountName":"billingAccounts/01212E-9D1C13-345D68","billingEnabled":true}
+[debug] [2026-01-28T14:39:16.187Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-01-28T14:39:16.188Z] > authorizing via signed-in user (kswen0203@gmail.com)
+[debug] [2026-01-28T14:39:16.188Z] Checked if tokens are valid: true, expires at: 1769614752597
+[debug] [2026-01-28T14:39:16.188Z] Checked if tokens are valid: true, expires at: 1769614752597
+[debug] [2026-01-28T14:39:16.188Z] >>> [apiv2][query] GET https://cloudbilling.googleapis.com/v1/projects/promiso-20274/billingInfo [none]
+[debug] [2026-01-28T14:39:17.167Z] <<< [apiv2][status] GET https://cloudbilling.googleapis.com/v1/projects/promiso-20274/billingInfo 200
+[debug] [2026-01-28T14:39:17.167Z] <<< [apiv2][body] GET https://cloudbilling.googleapis.com/v1/projects/promiso-20274/billingInfo {"name":"projects/promiso-20274/billingInfo","projectId":"promiso-20274","billingAccountName":"billingAccounts/01212E-9D1C13-345D68","billingEnabled":true}
+[debug] [2026-01-28T14:39:17.191Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-01-28T14:39:17.191Z] > authorizing via signed-in user (kswen0203@gmail.com)
+[debug] [2026-01-28T14:39:17.331Z] <<< [apiv2][status] GET https://cloudbilling.googleapis.com/v1/projects/promiso-20274/billingInfo 200
+[debug] [2026-01-28T14:39:17.331Z] <<< [apiv2][body] GET https://cloudbilling.googleapis.com/v1/projects/promiso-20274/billingInfo {"name":"projects/promiso-20274/billingInfo","projectId":"promiso-20274","billingAccountName":"billingAccounts/01212E-9D1C13-345D68","billingEnabled":true}
+[debug] [2026-01-28T14:39:17.655Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-01-28T14:39:17.655Z] > authorizing via signed-in user (kswen0203@gmail.com)

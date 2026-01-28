@@ -72,6 +72,15 @@ public enum AppConstants {
     public static let pushNotificationTapped = NSNotification.Name("PushNotificationTapped")
   }
 
+  // MARK: - Push Notification Keys
+
+  public enum PushNotification {
+    /// Silent Push payload의 type 키
+    public static let typeKey = "type"
+    /// 위젯 갱신 Silent Push type 값
+    public static let widgetRefreshType = "widget_refresh"
+  }
+
   // MARK: - Time Intervals
 
   public enum TimeIntervals {
