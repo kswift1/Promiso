@@ -213,7 +213,10 @@ public enum WidgetDataManager {
   /// 위젯에서 직접 API 호출하여 데이터 가져오기
   /// - Returns: 약속 목록 (실패 시 캐시된 데이터 반환)
   public static func fetchFromServer() async -> [WidgetPromiseData] {
-    let token = loadIdToken()
+    guard let token = loadIdToken() else {
+      // 토큰 없으면 네트워크 요청 스킵, 캐시 반환
+      return loadPromises()
+    }
 
     guard let url = URL(string: "\(functionsBaseURL)/getWidgetSnapshot") else {
       return loadPromises()
@@ -222,8 +225,7 @@ public enum WidgetDataManager {
     var request = URLRequest(url: url)
     request.httpMethod = "POST"
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-    // 토큰이 있으면 사용, 없으면 빈 값 (서버에서 401 에러 발생 → 로그 확인용)
-    request.setValue("Bearer \(token ?? "NO_TOKEN")", forHTTPHeaderField: "Authorization")
+    request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
     request.httpBody = try? JSONSerialization.data(withJSONObject: ["data": ["env": loadFirestoreEnv()]])
 
     do {
