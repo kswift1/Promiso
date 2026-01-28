@@ -12,7 +12,7 @@ import PromisoShared
 
 // MARK: - Profile View
 
-extension Profile {
+extension Settings {
 
   /// Profile 화면의 메인 View
   /// .auroraBackground()와 Glass Effect 카드를 사용한 디자인
@@ -130,7 +130,7 @@ extension Profile {
           set: { if !$0 { store.send(.view(.cancelEditTapped)) } }
         )
       ) {
-        Profile.ProfileEditView(store: store)
+        Settings.ProfileEditView(store: store)
       }
       .overlay {
         if store.isLoading {
@@ -267,9 +267,9 @@ extension Profile {
 
 #Preview("Profile View") {
   NavigationStack {
-    Profile.ProfileView(
-      store: Store(initialState: Profile.Feature.State(currentUser: Shared(value: .exampleUser))) {
-        Profile.Feature()
+    Settings.ProfileView(
+      store: Store(initialState: Settings.Feature.State(currentUser: Shared(value: .exampleUser))) {
+        Settings.Feature()
       }
     )
   }
@@ -277,9 +277,9 @@ extension Profile {
 
 #Preview("Profile View - Loading") {
   NavigationStack {
-    Profile.ProfileView(
-      store: Store(initialState: Profile.Feature.State(currentUser: Shared(value: .exampleUser), isLoading: true)) {
-        Profile.Feature()
+    Settings.ProfileView(
+      store: Store(initialState: Settings.Feature.State(currentUser: Shared(value: .exampleUser), isLoading: true)) {
+        Settings.Feature()
       }
     )
   }

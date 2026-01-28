@@ -10,11 +10,11 @@ import SwiftUI
 
 /// Profile Feature 컴포넌트를 위한 Namespace
 /// 조직적 구조를 제공하고 다른 Feature들과의 naming conflict를 방지
-public enum Profile {}
+public enum Settings {}
 
 // MARK: - Feature Implementation
 
-extension Profile {
+extension Settings {
 
   // MARK: - Reducer
 
@@ -495,13 +495,13 @@ extension Profile {
 
 // MARK: - Path Conformances
 
-extension Profile.Feature.Path.State: Equatable, Sendable {}
-extension Profile.Feature.Path.Action: Sendable {}
+extension Settings.Feature.Path.State: Equatable, Sendable {}
+extension Settings.Feature.Path.Action: Sendable {}
 
 // MARK: - Error Types
 
 /// Profile Feature 관련 에러 타입
-public enum ProfileError: Error, Equatable, LocalizedError {
+public enum SettingsError: Error, Equatable, LocalizedError {
   case logoutFailed
   case userNotFound
   case imageLoadFailed

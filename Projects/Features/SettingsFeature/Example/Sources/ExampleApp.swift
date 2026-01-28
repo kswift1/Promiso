@@ -4,7 +4,7 @@
 
 import SwiftUI
 import ComposableArchitecture
-import ProfileFeature
+import SettingsFeature
 import Clients
 
 // MARK: - Example Application
@@ -58,20 +58,20 @@ private struct ExampleContentView: View {
   /// Default feature state example
   @ViewBuilder
   private var defaultExample: some View {
-    let store = Store(initialState: Profile.Feature.State(currentUser: Shared(value: mockUser))) {
-      Profile.Feature()
+    let store = Store(initialState: Settings.Feature.State(currentUser: Shared(value: mockUser))) {
+      Settings.Feature()
     }
 
-    Profile.RootView(store: store)
+    Settings.RootView(store: store)
   }
 }
 
 // MARK: - SwiftUI Previews
 
 #Preview {
-  let store = Store(initialState: Profile.Feature.State(currentUser: Shared(value: mockUser))) {
-    Profile.Feature()
+  let store = Store(initialState: Settings.Feature.State(currentUser: Shared(value: mockUser))) {
+    Settings.Feature()
   }
 
-  Profile.RootView(store: store)
+  Settings.RootView(store: store)
 }

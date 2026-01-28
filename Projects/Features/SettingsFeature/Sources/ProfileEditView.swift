@@ -14,7 +14,7 @@ import PromisoShared
 
 // MARK: - Profile Edit View
 
-extension Profile {
+extension Settings {
 
   /// 프로필 편집 화면
   public struct ProfileEditView: View {
@@ -148,7 +148,7 @@ extension Profile {
               store.send(.view(.profileImageSelected(image.data)))
             }
           } catch {
-            store.send(.internal(.profileSaveFailed(ProfileError.imageLoadFailed.localizedDescription)))
+            store.send(.internal(.profileSaveFailed("이미지를 불러오는데 실패했습니다.")))
           }
         }
       }
@@ -253,23 +253,23 @@ private struct TransferableImage: Transferable {
 // MARK: - Preview
 
 #Preview("Profile Edit") {
-  Profile.ProfileEditView(
-    store: Store(initialState: Profile.Feature.State(currentUser: Shared(value: .exampleUser), isEditingProfile: true)) {
-      Profile.Feature()
+  Settings.ProfileEditView(
+    store: Store(initialState: Settings.Feature.State(currentUser: Shared(value: .exampleUser), isEditingProfile: true)) {
+      Settings.Feature()
     }
   )
 }
 
 #Preview("Profile Edit - Saving") {
-  Profile.ProfileEditView(
+  Settings.ProfileEditView(
     store: Store(
       initialState: {
-        var state = Profile.Feature.State(currentUser: Shared(value: .exampleUser), isEditingProfile: true)
+        var state = Settings.Feature.State(currentUser: Shared(value: .exampleUser), isEditingProfile: true)
         state.isSavingProfile = true
         return state
       }()
     ) {
-      Profile.Feature()
+      Settings.Feature()
     }
   )
 }

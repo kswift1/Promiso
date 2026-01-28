@@ -8,7 +8,7 @@ import SwiftUI
 import Clients
 import PromisoShared
 import CalendarFeature
-import ProfileFeature
+import SettingsFeature
 import ResourceKit
 import SharedFeature
 
@@ -78,7 +78,7 @@ extension RootTab {
       var groupMain: GroupMain.Feature.State
 
       /// Settings State
-      var settings: Profile.Feature.State
+      var settings: Settings.Feature.State
 
       /// 현재 사용자 정보 (모든 탭에서 참조 공유)
       @Shared var currentUser: UserPrivateModel
@@ -99,7 +99,7 @@ extension RootTab {
         self.groupMain = GroupMain.Feature.State(currentUser: currentUser)
         self.home = Home.Feature.State(currentUser: currentUser)
         self.calendar = CalendarFeature.Feature.State(currentUser: currentUser)
-        self.settings = Profile.Feature.State(currentUser: currentUser)
+        self.settings = Settings.Feature.State(currentUser: currentUser)
       }
     }
 
@@ -116,7 +116,7 @@ extension RootTab {
       /// Group Main 액션
       case groupMain(GroupMain.Feature.Action)
       /// Settings 액션
-      case settings(Profile.Feature.Action)
+      case settings(Settings.Feature.Action)
       /// LivePromise 액션
       case livePromise(LivePromise.Feature.Action)
       /// LivePromise 상세 뷰 액션
@@ -173,7 +173,7 @@ extension RootTab {
       }
 
       Scope(state: \.settings, action: \.settings) {
-        Profile.Feature()
+        Settings.Feature()
       }
 
       Reduce { state, action in
@@ -594,7 +594,7 @@ extension RootTab {
         }
 
       case .settings:
-        Profile.RootView(
+        Settings.RootView(
           store: store.scope(
             state: \.settings,
             action: \.settings

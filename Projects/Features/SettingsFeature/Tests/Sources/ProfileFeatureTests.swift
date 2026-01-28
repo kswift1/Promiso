@@ -4,7 +4,7 @@
 
 import XCTest
 import ComposableArchitecture
-@testable import ProfileFeature
+@testable import SettingsFeature
 
 // MARK: - Feature Tests
 
@@ -15,8 +15,8 @@ import ComposableArchitecture
 //  
 //  /// 기본 onAppear 동작을 테스트
 //  func test_onAppear() async {
-//    let store = TestStore(initialState: Profile.Feature.State()) {
-//      Profile.Feature()
+//    let store = TestStore(initialState: Settings.Feature.State()) {
+//      Settings.Feature()
 //    }
 //    
 //    await store.send(.onAppear)
@@ -33,8 +33,8 @@ import ComposableArchitecture
 //  
 //  /// Tests feature creation and basic functionality
 //  func test_feature_createsValidInstance() {
-//    let store = Store(initialState: Profile.Feature.State()) {
-//      Profile.Feature()
+//    let store = Store(initialState: Settings.Feature.State()) {
+//      Settings.Feature()
 //    }
 //    
 //    XCTAssertNotNil(store)
