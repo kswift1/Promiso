@@ -489,7 +489,7 @@ feat: 알림 설정 Feature 추가
 
 ## 🤖 에이전트 목록
 
-### 사용자 정의 에이전트 (15개)
+### 사용자 정의 에이전트 (17개)
 
 | 에이전트 | 역할 | 모델 | 트리거 |
 |----------|------|------|--------|
@@ -507,6 +507,8 @@ feat: 알림 설정 Feature 추가
 | `skill-suggester` | 반복 작업 감지, Skill 자동 제안 | sonnet | "자동화", 반복 패턴 감지 |
 | `app-store-reviewer` | App Store 심사 가이드라인 검사 | sonnet | "심사", "출시", "앱스토어" |
 | `release-manager` | 버전 관리, 체인지로그, 배포 | sonnet | "배포", "버전", "릴리즈" |
+| `accessibility-auditor` | 접근성 검사 (VoiceOver, Dynamic Type) | sonnet | "접근성", "VoiceOver", UI 완료 시 |
+| `performance-analyzer` | 성능 이슈 감지 (메모리, 렌더링, TCA) | sonnet | "성능", "느려", 코드 리뷰 시 |
 | `orchestrator` | 복잡한 작업 조율 | opus | 3개 이상 작업 |
 
 ### 커맨드 (Slash Commands, 4개)
