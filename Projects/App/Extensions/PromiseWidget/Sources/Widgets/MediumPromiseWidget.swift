@@ -82,8 +82,10 @@ struct MediumPromiseWidgetView: View {
       Divider()
 
       ForEach(promises) { promise in
-        Link(destination: promise.deeplinkURL!) {
-          PromiseRowView(promise: promise)
+        if let url = promise.deeplinkURL {
+          Link(destination: url) {
+            PromiseRowView(promise: promise)
+          }
         }
       }
 
@@ -107,22 +109,24 @@ struct MediumPromiseWidgetView: View {
       Divider()
 
       ForEach(promises) { promise in
-        Link(destination: promise.deeplinkURL!) {
-          HStack(spacing: 8) {
-            Text(promise.emoji)
-              .font(.body)
+        if let url = promise.deeplinkURL {
+          Link(destination: url) {
+            HStack(spacing: 8) {
+              Text(promise.emoji)
+                .font(.body)
 
-            Text(promise.title)
-              .font(.subheadline)
-              .lineLimit(1)
+              Text(promise.title)
+                .font(.subheadline)
+                .lineLimit(1)
 
-            Spacer()
+              Spacer()
 
-            Text(formatDate(promise.startAt))
-              .font(.caption)
-              .foregroundStyle(.secondary)
+              Text(formatDate(promise.startAt))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+            .contentShape(Rectangle())
           }
-          .contentShape(Rectangle())
         }
       }
 

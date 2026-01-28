@@ -63,9 +63,14 @@ public struct WidgetPromiseData: Codable, Identifiable, Equatable, Sendable {
     Date().timeIntervalSince(cachedAt) > 7200
   }
 
-  /// 딥링크 URL
+  /// 딥링크 URL (URLComponents로 안전한 URL 인코딩)
   public var deeplinkURL: URL? {
-    URL(string: "promiso://promise?id=\(id)&groupId=\(groupId)")
+    var components = URLComponents(string: "promiso://promise")
+    components?.queryItems = [
+      URLQueryItem(name: "id", value: id),
+      URLQueryItem(name: "groupId", value: groupId)
+    ]
+    return components?.url
   }
 
   // MARK: - Placeholder & Preview Data

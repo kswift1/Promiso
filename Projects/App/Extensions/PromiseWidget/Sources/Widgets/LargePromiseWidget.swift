@@ -59,8 +59,10 @@ struct LargePromiseWidgetView: View {
           sectionHeader("📅 오늘", count: todayPromises.count)
           Divider()
           ForEach(todayPromises) { promise in
-            Link(destination: promise.deeplinkURL!) {
-              todayPromiseRow(promise)
+            if let url = promise.deeplinkURL {
+              Link(destination: url) {
+                todayPromiseRow(promise)
+              }
             }
           }
         }
@@ -73,8 +75,10 @@ struct LargePromiseWidgetView: View {
           sectionHeader("📅 다가오는 약속", count: upcomingPromises.count)
           Divider()
           ForEach(upcomingPromises) { promise in
-            Link(destination: promise.deeplinkURL!) {
-              upcomingPromiseRow(promise)
+            if let url = promise.deeplinkURL {
+              Link(destination: url) {
+                upcomingPromiseRow(promise)
+              }
             }
           }
         }
