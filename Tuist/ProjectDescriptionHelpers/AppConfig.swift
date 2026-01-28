@@ -61,6 +61,8 @@ public enum AppConfig {
         .string("fetch"),
         .string("remote-notification")
       ]),
+      // Firebase Swizzling 비활성화 (Silent Push 직접 처리)
+      "FirebaseAppDelegateProxyEnabled": .boolean(false),
       // Live Activity Support
       "NSSupportsLiveActivities": .boolean(true),
       "NSSupportsLiveActivitiesFrequentUpdates": .boolean(true),
