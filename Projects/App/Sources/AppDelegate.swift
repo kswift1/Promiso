@@ -124,29 +124,22 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 #if DEBUG
   private func connectToEmulators() {
     let emulatorHost = "192.168.0.2"
-    print("🎮 Connecting to Firebase Emulators...")
 
     // Auth Emulator
     Auth.auth().useEmulator(withHost: emulatorHost, port: 9099)
-    print("✅ Auth Emulator: \(emulatorHost):9099")
 
     // Firestore Emulator
     let settings = Firestore.firestore().settings
     settings.host = "\(emulatorHost):8081"
     settings.isSSLEnabled = false
     Firestore.firestore().settings = settings
-    print("✅ Firestore Emulator: \(emulatorHost):8081")
 
     // Functions Emulator
     Functions.functions().useEmulator(withHost: emulatorHost, port: 5001)
     Functions.functions(region: "asia-northeast3").useEmulator(withHost: emulatorHost, port: 5001)
-    print("✅ Functions Emulator: \(emulatorHost):5001")
 
     // Storage Emulator
     Storage.storage().useEmulator(withHost: emulatorHost, port: 9199)
-    print("✅ Storage Emulator: \(emulatorHost):9199")
-
-    print("🎉 All emulators connected!")
   }
 #endif
 }

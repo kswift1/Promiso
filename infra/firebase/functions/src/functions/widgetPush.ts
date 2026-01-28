@@ -14,12 +14,11 @@ import {
   onDocumentUpdated,
   onDocumentDeleted,
 } from "firebase-functions/v2/firestore";
-import {admin, REGION} from "../config";
+import {admin, REGION, APNS_BUNDLE_ID} from "../config";
 import {getEnvironmentCollection} from "../utils/firestore";
 
-// TODO: iOS 26 Widget Push 구현 시 Bundle ID 사용
-// const APP_BUNDLE_ID = "com.promiso";
-// apns-topic: "{bundleId}.push-type.widgets"
+// NOTE: iOS 26 Widget Push 전용 topic은 "{bundleId}.push-type.widgets"
+// 현재는 일반 Silent Push로 위젯 갱신 (APNS_BUNDLE_ID 사용)
 
 /**
  * 사용자들에게 Silent Push 발송
@@ -73,14 +72,13 @@ async function sendWidgetSilentPush(
   // 2. Silent Push 전송 (APNs 필수 헤더 포함)
   // - apns-topic: iOS 13+ 필수
   // - apns-collapse-id: 중복 푸시 방지 (최신 1개만 유지)
-  const bundleId = "com.promiso";
   const message: admin.messaging.MulticastMessage = {
     tokens: allTokens,
     apns: {
       headers: {
         "apns-push-type": "background",
         "apns-priority": "5",
-        "apns-topic": bundleId,
+        "apns-topic": APNS_BUNDLE_ID,
         "apns-collapse-id": "widget-refresh",
       },
       payload: {
