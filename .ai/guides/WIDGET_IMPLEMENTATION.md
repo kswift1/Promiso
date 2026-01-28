@@ -1,5 +1,8 @@
 # Promiso Widget 구현 가이드
 
+> **상태**: ✅ 구현 완료 (2025.01)
+> **마지막 업데이트**: 2025.01.28
+
 ## 개요
 
 이 문서는 Promiso 홈 화면 위젯 구현을 위한 단계별 가이드입니다.
@@ -20,7 +23,8 @@ Projects/
 │           │   ├── PromiseWidgetBundle.swift
 │           │   ├── Provider/
 │           │   │   ├── PromiseTimelineProvider.swift
-│           │   │   └── WidgetPromiseEntry.swift
+│           │   │   ├── WidgetPromiseEntry.swift
+│           │   │   └── WidgetPushHandler.swift     # iOS 26 대비
 │           │   ├── Widgets/
 │           │   │   ├── SmallPromiseWidget.swift
 │           │   │   ├── MediumPromiseWidget.swift
@@ -34,12 +38,22 @@ Projects/
 │   ├── Project.swift                    # 소스 경로 추가
 │   └── Sources/
 │       └── Widget/
-│           ├── WidgetDataManager.swift
+│           ├── WidgetDataManager.swift  # App Group + 서버 fetch
 │           └── WidgetPromiseData.swift
-└── Features/
-    └── HomeFeature/
-        └── Sources/
-            └── HomeFeature.swift        # Widget 캐시 업데이트
+├── Features/
+│   └── AppEntryFeature/
+│       └── Sources/
+│           └── AppEntryFeature.swift    # Widget 캐시 + 로그인 연동
+└── Tuist/
+    └── ProjectDescriptionHelpers/
+        └── AppConfig.swift              # Firebase Swizzling 비활성화
+```
+
+**Cloud Functions**:
+```
+infra/firebase/functions/src/functions/
+├── widget.ts                            # getWidgetSnapshot (데이터 조회)
+└── widgetPush.ts                        # Silent Push 트리거
 ```
 
 ---
@@ -688,97 +702,146 @@ struct PromiseWidgetBundle: WidgetBundle {
 
 ## Phase 4: Silent Push 연동
 
-### 4.1 Cloud Functions
+### 4.1 Firebase Swizzling 비활성화 (필수!)
 
-**파일**: `infra/firebase/functions/src/widget/widgetPushTrigger.ts`
+> ⚠️ **중요**: Firebase Method Swizzling이 활성화되어 있으면 `didReceiveRemoteNotification`이 호출되지 않음
 
-```typescript
-import { onDocumentWritten } from "firebase-functions/v2/firestore";
-import { getMessaging } from "firebase-admin/messaging";
-import { getFirestore } from "firebase-admin/firestore";
-
-export const onPromiseChange = onDocumentWritten(
-  "promises/{promiseId}",
-  async (event) => {
-    const promise = event.data?.after?.data();
-    if (!promise) return;
-
-    const groupId = promise.groupId;
-    const db = getFirestore();
-
-    // 그룹 멤버 조회
-    const groupDoc = await db.collection("groups").doc(groupId).get();
-    const group = groupDoc.data();
-    if (!group) return;
-
-    const memberIds: string[] = group.members || [];
-
-    // 멤버들의 FCM 토큰 조회
-    const tokens: string[] = [];
-    for (const memberId of memberIds) {
-      const userDoc = await db.collection("users").doc(memberId).get();
-      const fcmToken = userDoc.data()?.fcmToken;
-      if (fcmToken) tokens.push(fcmToken);
-    }
-
-    if (tokens.length === 0) return;
-
-    // Silent Push 발송
-    const messaging = getMessaging();
-    await messaging.sendEachForMulticast({
-      tokens,
-      data: {
-        type: "widget_refresh",
-      },
-      apns: {
-        headers: {
-          "apns-priority": "5",
-          "apns-push-type": "background",
-        },
-        payload: {
-          aps: {
-            "content-available": 1,
-          },
-        },
-      },
-    });
-  }
-);
-```
-
-### 4.2 AppDelegate 핸들러
-
-**파일**: `Projects/App/Sources/AppDelegate.swift` (추가)
+**파일**: `Tuist/ProjectDescriptionHelpers/AppConfig.swift`
 
 ```swift
+public static var infoPlist: [String: Plist.Value] {
+  return [
+    // ... 기존 설정들 ...
+
+    // Firebase Swizzling 비활성화 (Silent Push 직접 처리)
+    "FirebaseAppDelegateProxyEnabled": .boolean(false),
+  ]
+}
+```
+
+### 4.2 Cloud Functions - Silent Push 트리거
+
+**파일**: `infra/firebase/functions/src/functions/widgetPush.ts`
+
+```typescript
+import {
+  onDocumentCreated,
+  onDocumentUpdated,
+  onDocumentDeleted,
+} from "firebase-functions/v2/firestore";
+import {admin, REGION} from "../config";
+
+async function sendWidgetSilentPush(
+  userIds: string[],
+  env: "stage" | "prod" | null = null
+): Promise<void> {
+  // FCM 토큰 수집
+  const allTokens: string[] = [];
+  // ... 토큰 조회 로직 ...
+
+  // Silent Push 전송 (APNs 필수 헤더 포함)
+  const bundleId = "com.promiso";
+  const message: admin.messaging.MulticastMessage = {
+    tokens: allTokens,
+    apns: {
+      headers: {
+        "apns-push-type": "background",    // Silent Push 필수
+        "apns-priority": "5",               // 배터리 최적화
+        "apns-topic": bundleId,             // iOS 13+ 필수
+        "apns-collapse-id": "widget-refresh", // 중복 방지
+      },
+      payload: {
+        aps: {
+          "content-available": 1,
+        },
+        type: "widget_refresh",             // ⚠️ payload 내부에 위치!
+      },
+    },
+  };
+
+  await admin.messaging().sendEachForMulticast(message);
+}
+
+// 트리거: 약속 생성/수정/삭제
+export const onPromiseCreatedWidgetPush = onDocumentCreated(
+  { document: "{env}/root/promises/{promiseId}", region: REGION },
+  async (event) => { /* ... */ }
+);
+
+export const onPromiseUpdatedWidgetPush = onDocumentUpdated(
+  { document: "{env}/root/promises/{promiseId}", region: REGION },
+  async (event) => {
+    // 주요 필드 변경 시에만 발송
+    const significantChange =
+      before.title !== after.title ||
+      before.startAt?.toMillis() !== after.startAt?.toMillis() ||
+      JSON.stringify(before.votes) !== JSON.stringify(after.votes) ||
+      before.isConfirmed !== after.isConfirmed;
+    // ...
+  }
+);
+
+export const onPromiseDeletedWidgetPush = onDocumentDeleted(/* ... */);
+```
+
+### 4.3 AppDelegate 핸들러
+
+**파일**: `Projects/App/Sources/AppDelegate.swift`
+
+```swift
+// MARK: - Silent Push (Widget Refresh)
+
 func application(
   _ application: UIApplication,
   didReceiveRemoteNotification userInfo: [AnyHashable: Any],
   fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
 ) {
-  guard userInfo["type"] as? String == "widget_refresh" else {
+  // type 필드는 APNs payload에서 직접 전달됨
+  guard let type = userInfo["type"] as? String, type == "widget_refresh" else {
     completionHandler(.noData)
     return
   }
 
+  AppLogger.notification.debug("Widget refresh silent push received")
+
+  // 서버에서 위젯 스냅샷 조회 → 캐시 저장 → 위젯 갱신
   Task {
-    do {
-      @Dependency(\.promiseClient) var promiseClient
-      @Dependency(\.groupClient) var groupClient
-
-      let groups = try await groupClient.getMyGroups()
-      let groupIds = groups.map { $0.id }
-      let promises = try await promiseClient.getUpcomingPromises(groupIds, 20)
-
-      let widgetData = promises.map { WidgetPromiseData(from: $0) }
-      WidgetDataManager.savePromises(widgetData)
-      WidgetDataManager.reloadWidgets()
-
-      completionHandler(.newData)
-    } catch {
-      completionHandler(.failed)
-    }
+    let success = await WidgetDataManager.refreshFromServer()
+    completionHandler(success ? .newData : .failed)
   }
+}
+```
+
+### 4.4 WidgetDataManager - 서버 연동
+
+```swift
+// MARK: - Server Refresh (Silent Push용)
+
+/// Firebase Functions에서 위젯 스냅샷 조회
+@discardableResult
+public static func refreshFromServer() async -> Bool {
+  let functions = Functions.functions(region: "asia-northeast3")
+
+  do {
+    let result = try await functions.httpsCallable("getWidgetSnapshot")
+      .call(["env": loadFirestoreEnv()])
+
+    // JSON 파싱 → 캐시 저장 → 위젯 갱신
+    let promises = convertSnapshotToPromises(snapshot)
+    savePromises(promises)
+    reloadWidgets()
+
+    return true
+  } catch {
+    return false
+  }
+}
+
+// MARK: - Widget Direct Fetch (iOS 17+ Timeline Provider용)
+
+public static func fetchFromServer() async -> [WidgetPromiseData] {
+  // URLSession으로 직접 API 호출
+  // 실패 시 캐시 반환
 }
 ```
 
@@ -821,40 +884,50 @@ WidgetDataManager.reloadWidgets()
 
 ## 구현 체크리스트
 
-### Phase 1: 기반
-- [ ] Tuist 타겟 추가 (`Project.swift`)
-- [ ] App Group Entitlements
-- [ ] WidgetDataManager 구현
-- [ ] WidgetPromiseData 모델 (+ placeholder)
-- [ ] `tuist generate` 실행
+### Phase 1: 기반 ✅
+- [x] Tuist 타겟 추가 (`Project.swift`)
+- [x] App Group Entitlements
+- [x] WidgetDataManager 구현
+- [x] WidgetPromiseData 모델 (+ placeholder)
+- [x] `tuist generate` 실행
 
-### Phase 2: Provider
-- [ ] WidgetPromiseEntry 모델 (+ WidgetState)
-- [ ] TimelineProvider 구현
-  - [ ] placeholder(in:)
-  - [ ] getSnapshot(in:completion:)
-  - [ ] getTimeline(in:completion:)
-- [ ] 갱신 정책 로직 (+ 1시간 fallback)
+### Phase 2: Provider ✅
+- [x] WidgetPromiseEntry 모델 (+ WidgetState)
+- [x] TimelineProvider 구현
+  - [x] placeholder(in:)
+  - [x] getSnapshot(in:completion:)
+  - [x] getTimeline(in:completion:) + iOS 17 direct fetch
+- [x] 갱신 정책 로직 (15분/30분/1시간)
 
-### Phase 3: UI
-- [ ] SmallPromiseWidget
-- [ ] MediumPromiseWidget
-- [ ] LargePromiseWidget
-- [ ] EmptyWidgetView
-- [ ] NotLoggedInView
-- [ ] PromiseRowView
-- [ ] PromiseWidgetBundle
+### Phase 3: UI ✅
+- [x] SmallPromiseWidget
+- [x] MediumPromiseWidget
+- [x] LargePromiseWidget
+- [x] EmptyWidgetView
+- [x] NotLoggedInView
+- [x] PromiseRowView
+- [x] PromiseWidgetBundle
 
-### Phase 4: Push
-- [ ] Cloud Functions 트리거 (`widgetPushTrigger.ts`)
-- [ ] AppDelegate Silent Push 핸들러
-- [ ] 위젯 갱신 호출
+### Phase 4: Push ✅
+- [x] Firebase Swizzling 비활성화 (`AppConfig.swift`)
+- [x] Cloud Functions 트리거 (`widgetPush.ts`)
+  - [x] APNs 필수 헤더 (apns-topic, apns-collapse-id)
+  - [x] type 필드 위치 수정 (payload 내부)
+- [x] AppDelegate Silent Push 핸들러
+- [x] 위젯 갱신 호출
 
-### Phase 5: 연동
-- [ ] HomeFeature 캐시 업데이트
-- [ ] 로그인 시 userId 저장 + 위젯 갱신
-- [ ] 로그아웃 시 데이터 초기화 + 위젯 갱신
-- [ ] 딥링크 라우팅 확인
+### Phase 5: 연동 ✅
+- [x] AppEntryFeature 캐시 업데이트
+- [x] 로그인 시 userId + firestoreEnv 저장
+- [x] 로그아웃 시 데이터 초기화 + 위젯 갱신
+- [x] 딥링크 라우팅 확인
+- [x] 알림 권한 체크 플로우 수정 (기존 사용자 포함)
+
+### Phase 6: iOS 26 Widget Push 🔜
+- [ ] Widget Push API 연동
+- [ ] apns-topic 변경 (`com.promiso.push-type.widgets`)
+- [ ] onPushNotification 핸들러 구현
+- [ ] 기존 Silent Push와 병행 운영
 
 ---
 
@@ -886,7 +959,69 @@ WidgetDataManager.reloadWidgets()
 
 ---
 
+## 트러블슈팅
+
+### Silent Push가 수신되지 않음
+
+**증상**: 서버 로그에 "Widget push sent" 표시되지만 앱에서 콜백 안 됨
+
+**원인**: Firebase Method Swizzling이 APNs 콜백을 가로챔
+
+**해결**:
+```swift
+// AppConfig.swift
+"FirebaseAppDelegateProxyEnabled": .boolean(false)
+```
+
+### type 필드가 userInfo에 없음
+
+**증상**: `userInfo["type"]`가 nil
+
+**원인**: `type` 필드가 FCM `data`에 있으면 iOS에서 전달 안 됨
+
+**해결**: APNs `payload` 내부에 위치시킴
+```typescript
+apns: {
+  payload: {
+    aps: { "content-available": 1 },
+    type: "widget_refresh",  // ✅ 여기!
+  },
+}
+```
+
+### 알림 권한이 없어서 Silent Push 실패
+
+**증상**: 앱 재설치 후 알림 권한 요청 안 됨
+
+**원인**: 기존 사용자 플로우에서 권한 체크 누락
+
+**해결**: `AppEntryFeature`에서 기존 사용자도 알림 권한 체크
+```swift
+case .profileCheckResponse(let user, let profile):
+  if let userModel = profile {
+    // 기존 사용자도 알림 권한 체크
+    return .send(.internal(.checkNotificationPermission(userModel)))
+  }
+```
+
+### APNs 필수 헤더 누락
+
+**증상**: Silent Push 발송 실패 또는 불안정
+
+**해결**: 모든 필수 헤더 추가
+```typescript
+headers: {
+  "apns-push-type": "background",  // Silent Push 필수
+  "apns-priority": "5",
+  "apns-topic": "com.promiso",      // iOS 13+ 필수
+  "apns-collapse-id": "widget-refresh",
+}
+```
+
+---
+
 ## 관련 문서
 
 - [기술 스펙](../specs/WIDGET_SPEC.md)
 - [프로젝트 컨텍스트](../PROJECT_CONTEXT.md)
+- [Push Notification 가이드](../PUSH_NOTIFICATION_GUIDE.md)

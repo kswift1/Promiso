@@ -1,5 +1,9 @@
 # Promiso Widget 기술 스펙
 
+> **상태**: ✅ 구현 완료 (2025.01)
+> **iOS 지원**: iOS 18.0+
+> **iOS 26 Widget Push**: 🔜 향후 지원 예정
+
 ## 개요
 
 Promiso 홈 화면 위젯은 사용자가 앱을 열지 않아도 약속 정보를 확인할 수 있게 합니다.
@@ -78,10 +82,20 @@ Silent Push 실패 대비 Timeline 기반 갱신
 |------|----------|
 | 1시간 이내 약속 | 15분 |
 | 6시간 이내 약속 | 30분 |
-| 그 외 | 1시간 |
-| 약속 없음 | 2시간 |
+| 그 외 / 약속 없음 | 1시간 |
 
-**최대 갱신 주기**: 1시간 (시스템 제한 고려)
+**참고**: 이는 시스템에 "요청"하는 주기이며, 실제 갱신은 시스템이 결정 (배터리, 사용 패턴 등 고려)
+
+#### 3. iOS 17+ Direct Fetch
+위젯 Timeline Provider에서 직접 서버 API 호출 (iOS 17+)
+
+```
+getTimeline() → WidgetDataManager.fetchFromServer() → Firebase Functions
+                                                            ↓
+                                                   getWidgetSnapshot
+                                                            ↓
+                                               캐시 저장 + Timeline 반환
+```
 
 ---
 
@@ -274,50 +288,56 @@ Link(destination: promise.deeplinkURL!) {
 ## Silent Push 페이로드
 
 ### FCM 메시지 구조
-```json
-{
-  "message": {
-    "token": "<device_token>",
-    "data": {
-      "type": "widget_refresh"
+
+> ⚠️ **중요**: `type` 필드는 APNs `payload`에 위치해야 함 (FCM `data`가 아님)
+
+```typescript
+const message: admin.messaging.MulticastMessage = {
+  tokens: allTokens,
+  apns: {
+    headers: {
+      "apns-push-type": "background",      // Silent Push 필수
+      "apns-priority": "5",                 // 배터리 최적화
+      "apns-topic": "com.promiso",          // Bundle ID (iOS 13+ 필수)
+      "apns-collapse-id": "widget-refresh", // 중복 푸시 방지
     },
-    "apns": {
-      "headers": {
-        "apns-priority": "5",
-        "apns-push-type": "background"
+    payload: {
+      aps: {
+        "content-available": 1,             // Silent Push 필수
       },
-      "payload": {
-        "aps": {
-          "content-available": 1
-        }
-      }
-    }
-  }
-}
+      type: "widget_refresh",               // 커스텀 필드 (payload 내부)
+    },
+  },
+};
+```
+
+### Firebase Swizzling 비활성화
+
+> ⚠️ **필수**: Silent Push를 직접 처리하려면 Firebase Method Swizzling 비활성화 필요
+
+**`Tuist/ProjectDescriptionHelpers/AppConfig.swift`**:
+```swift
+"FirebaseAppDelegateProxyEnabled": .boolean(false)
 ```
 
 ### App에서 처리
+
+**`AppDelegate.swift`**:
 ```swift
 func application(
   _ application: UIApplication,
   didReceiveRemoteNotification userInfo: [AnyHashable: Any],
   fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
 ) {
-  guard userInfo["type"] as? String == "widget_refresh" else {
+  // type 필드는 APNs payload에서 직접 전달됨
+  guard let type = userInfo["type"] as? String, type == "widget_refresh" else {
     completionHandler(.noData)
     return
   }
 
   Task {
-    do {
-      let promises = try await promiseClient.getUpcomingPromises(groupIds, 20)
-      let widgetData = promises.map { WidgetPromiseData(from: $0) }
-      WidgetDataManager.savePromises(widgetData)
-      WidgetCenter.shared.reloadAllTimelines()
-      completionHandler(.newData)
-    } catch {
-      completionHandler(.failed)
-    }
+    let success = await WidgetDataManager.refreshFromServer()
+    completionHandler(success ? .newData : .failed)
   }
 }
 ```
@@ -330,7 +350,7 @@ func application(
 
 | 제한 | 대응 방안 |
 |------|----------|
-| 네트워크 직접 호출 불가 | App Group 캐시 사용 |
+| ~~네트워크 직접 호출 불가~~ | iOS 17+에서 직접 호출 가능 (`fetchFromServer`) |
 | 메모리 제한 (~30MB) | 경량 모델 (WidgetPromiseData) 사용 |
 | 갱신 빈도 제한 | Silent Push + Timeline fallback |
 | 별도 프로세스 | App Group으로 데이터 공유 |
@@ -338,15 +358,59 @@ func application(
 ### iOS 버전 분기
 
 ```swift
-// Glass Effect (iOS 18+)
+// Glass Effect (iOS 26+)
 .containerBackground(for: .widget) {
-  if #available(iOS 18.0, *) {
+  if #available(iOS 26.0, *) {
     Color.clear.glassEffect(.regular)
   } else {
     Color(.systemBackground).opacity(0.9)
   }
 }
 ```
+
+---
+
+## iOS 26 Widget Push (향후 지원)
+
+### 개요
+
+iOS 26에서 도입된 Widget Push는 앱을 깨우지 않고 위젯에 직접 푸시를 보낼 수 있는 기능입니다.
+
+### 현재 vs iOS 26
+
+| 항목 | 현재 (Silent Push) | iOS 26 (Widget Push) |
+|------|-------------------|---------------------|
+| 앱 깨움 | 필요 ✅ | 불필요 ❌ |
+| 배터리 영향 | 앱 프로세스 실행 | 최소화 |
+| APNs topic | `com.promiso` | `com.promiso.push-type.widgets` |
+
+### 구현 방향 (예정)
+
+**Cloud Functions**:
+```typescript
+// Widget Push 전용 topic 사용
+"apns-topic": "com.promiso.push-type.widgets"
+```
+
+**WidgetBundle**:
+```swift
+@main
+struct PromiseWidgetBundle: WidgetBundle {
+  var body: some Widget {
+    SmallPromiseWidget()
+      .onPushNotification { payload in
+        // 직접 데이터 처리
+      }
+  }
+}
+```
+
+### 마이그레이션 전략
+
+1. iOS 26+ 점유율 확인
+2. 기존 Silent Push와 병행 운영
+3. iOS 26 미만 → Silent Push (fallback)
+4. iOS 26 이상 → Widget Push
 
 ---
 
