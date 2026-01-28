@@ -43,7 +43,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     // Firebase Messaging delegate 설정
     Messaging.messaging().delegate = self
 
-    // 이미 권한이 있는 경우에만 등록 (권한 요청은 온보딩에서 처리)
+    // 알림 권한 상태 확인 후 등록
     UNUserNotificationCenter.current().getNotificationSettings { settings in
       if settings.authorizationStatus == .authorized {
         DispatchQueue.main.async {
@@ -59,13 +59,35 @@ class AppDelegate: NSObject, UIApplicationDelegate {
                    didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
     // FCM에 APNs 토큰 설정
     Messaging.messaging().apnsToken = deviceToken
-    let tokenString = deviceToken.map { String(format: "%02.2hhx", $0) }.joined()
-    AppLogger.notification.debug("APNs Token registered: \(tokenString)")
+    AppLogger.notification.debug("APNs Token registered")
   }
 
   func application(_ application: UIApplication,
                    didFailToRegisterForRemoteNotificationsWithError error: Error) {
     AppLogger.notification.error("Failed to register for remote notifications: \(error.localizedDescription)")
+  }
+
+  // MARK: - Silent Push (Widget Refresh)
+
+  func application(
+    _ application: UIApplication,
+    didReceiveRemoteNotification userInfo: [AnyHashable: Any],
+    fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
+  ) {
+    // Silent Push 타입 확인
+    guard let type = userInfo[AppConstants.PushNotification.typeKey] as? String,
+          type == AppConstants.PushNotification.widgetRefreshType else {
+      completionHandler(.noData)
+      return
+    }
+
+    AppLogger.notification.debug("Widget refresh silent push received")
+
+    // 서버에서 위젯 스냅샷 조회 → 캐시 저장 → 위젯 갱신
+    Task {
+      let success = await WidgetDataManager.refreshFromServer()
+      completionHandler(success ? .newData : .failed)
+    }
   }
 
   // MARK: - Kakao Maps SDK
@@ -90,7 +112,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 
     ClaritySDK.initialize(config: config)
   }
-  
+
   /// Google Sign-In 리디렉션 URL 처리
   func application(
     _ application: UIApplication,
@@ -99,33 +121,26 @@ class AppDelegate: NSObject, UIApplicationDelegate {
   ) -> Bool {
     GIDSignIn.sharedInstance.handle(url)
   }
-  
+
 #if DEBUG
   private func connectToEmulators() {
     let emulatorHost = "192.168.0.2"
-    print("🎮 Connecting to Firebase Emulators...")
 
     // Auth Emulator
     Auth.auth().useEmulator(withHost: emulatorHost, port: 9099)
-    print("✅ Auth Emulator: \(emulatorHost):9099")
 
     // Firestore Emulator
     let settings = Firestore.firestore().settings
     settings.host = "\(emulatorHost):8081"
     settings.isSSLEnabled = false
     Firestore.firestore().settings = settings
-    print("✅ Firestore Emulator: \(emulatorHost):8081")
 
     // Functions Emulator
     Functions.functions().useEmulator(withHost: emulatorHost, port: 5001)
     Functions.functions(region: "asia-northeast3").useEmulator(withHost: emulatorHost, port: 5001)
-    print("✅ Functions Emulator: \(emulatorHost):5001")
 
     // Storage Emulator
     Storage.storage().useEmulator(withHost: emulatorHost, port: 9199)
-    print("✅ Storage Emulator: \(emulatorHost):9199")
-
-    print("🎉 All emulators connected!")
   }
 #endif
 }
@@ -135,7 +150,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 extension AppDelegate: MessagingDelegate {
   func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
     guard let token = fcmToken else { return }
-    AppLogger.notification.debug("FCM Token received: \(token)")
+    AppLogger.notification.debug("FCM Token received")
 
     // NotificationCenter를 통해 토큰 브로드캐스트
     // AppFeature에서 수신하여 Firestore에 저장
