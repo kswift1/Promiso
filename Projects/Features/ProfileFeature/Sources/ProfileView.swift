@@ -33,9 +33,6 @@ extension Profile {
 
           // 계정 섹션
           accountSection
-
-          // 통계 섹션
-          statsSection
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 24)
@@ -137,20 +134,6 @@ extension Profile {
 
     // MARK: - Sections
 
-    /// 통계 아이템 (그룹 수, 약속 수)
-    private func statItem(title: String, count: Int) -> some View {
-      VStack(spacing: 4) {
-        Text("\(count)")
-          .font(.title3)
-          .fontWeight(.semibold)
-          .foregroundStyle(Color.pmindigo.n500)
-
-        Text(title)
-          .font(.caption)
-          .foregroundStyle(Color.pmtext.secondary)
-      }
-    }
-
     /// 계정 섹션
     private var accountSection: some View {
       VStack(spacing: 0) {
@@ -162,22 +145,6 @@ extension Profile {
       }
       .adaptiveGlassBackground()
     }
-
-    /// 통계 섹션
-    private var statsSection: some View {
-      HStack(spacing: 24) {
-        statItem(title: "그룹", count: store.groupCount)
-
-        Divider()
-          .frame(height: 40)
-
-        statItem(title: "약속", count: store.promiseCount)
-      }
-      .frame(maxWidth: .infinity)
-      .padding(.vertical, 20)
-      .adaptiveGlassBackground()
-    }
-
 
     // MARK: - Helpers
 

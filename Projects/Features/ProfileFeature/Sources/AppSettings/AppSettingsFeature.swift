@@ -22,10 +22,6 @@ extension AppSettings {
   public struct Feature {
     public init() {}
 
-    // MARK: - Dependencies
-
-    @Dependency(\.hapticFeedback) var hapticFeedback
-
     // MARK: - State
 
     @ObservableState
@@ -34,41 +30,37 @@ extension AppSettings {
       @Shared(.appStorage(AppConstants.UserDefaults.use24HourFormat)) public var use24HourFormat: Bool = false
       /// 현재 사용자 ID
       public let currentUserId: String
-      /// 네비게이션 경로
-      public var path = StackState<Path.State>()
 
       public init(currentUserId: String) {
         self.currentUserId = currentUserId
       }
 
       public static func == (lhs: State, rhs: State) -> Bool {
-        lhs.use24HourFormat == rhs.use24HourFormat &&
-        lhs.currentUserId == rhs.currentUserId &&
-        lhs.path == rhs.path
+        lhs.$use24HourFormat == rhs.$use24HourFormat &&
+        lhs.currentUserId == rhs.currentUserId
       }
-    }
-
-    // MARK: - Path
-
-    @Reducer(state: .equatable)
-    public enum Path {
-      case notificationSettings(NotificationSettings.Feature)
-      case policyView(PolicyView.Feature)
-      case appInfo(AppInfo.Feature)
-      #if DEBUG
-      case developerSettings(DeveloperSettings.Feature)
-      #endif
     }
 
     // MARK: - Action
 
     public enum Action: Sendable {
       case view(View)
-      case path(StackActionOf<Path>)
+      case delegate(Delegate)
 
       @CasePathable
       public enum View: Equatable, Sendable {
         case use24HourFormatChanged(Bool)
+        case notificationSettingsTapped
+        case privacyPolicyTapped
+        case termsOfServiceTapped
+        case appInfoTapped
+        #if DEBUG
+        case developerSettingsTapped
+        #endif
+      }
+
+      @CasePathable
+      public enum Delegate: Equatable, Sendable {
         case notificationSettingsTapped
         case privacyPolicyTapped
         case termsOfServiceTapped
@@ -92,65 +84,41 @@ extension AppSettings {
             return .none
 
           case .notificationSettingsTapped:
-            state.path.append(.notificationSettings(
-              NotificationSettings.Feature.State(
-                currentUserId: state.currentUserId,
-                notificationEnabled: true  // Will load actual value in onAppear
-              )
-            ))
-            return .run { _ in await hapticFeedback.selection() }
+            return .send(.delegate(.notificationSettingsTapped))
 
           case .privacyPolicyTapped:
-            state.path.append(.policyView(
-              PolicyView.Feature.State(
-                policyType: .privacyPolicy,
-                url: URL(string: "https://promiso.app/privacy")!
-              )
-            ))
-            return .run { _ in await hapticFeedback.selection() }
+            return .send(.delegate(.privacyPolicyTapped))
 
           case .termsOfServiceTapped:
-            state.path.append(.policyView(
-              PolicyView.Feature.State(
-                policyType: .termsOfService,
-                url: URL(string: "https://promiso.app/terms")!
-              )
-            ))
-            return .run { _ in await hapticFeedback.selection() }
+            return .send(.delegate(.termsOfServiceTapped))
 
           case .appInfoTapped:
-            state.path.append(.appInfo(AppInfo.Feature.State()))
-            return .run { _ in await hapticFeedback.selection() }
+            return .send(.delegate(.appInfoTapped))
 
           #if DEBUG
           case .developerSettingsTapped:
-            state.path.append(.developerSettings(
-              DeveloperSettings.Feature.State(currentUserId: state.currentUserId)
-            ))
-            return .run { _ in await hapticFeedback.selection() }
+            return .send(.delegate(.developerSettingsTapped))
           #endif
           }
 
-        case .path:
+        case .delegate:
           return .none
         }
       }
-      .forEach(\.path, action: \.path)
     }
   }
 
   // MARK: - Root View
 
   public struct RootView: View {
-    @Bindable private var store: StoreOf<Feature>
+    private let store: StoreOf<Feature>
 
     public init(store: StoreOf<Feature>) {
       self.store = store
     }
 
     public var body: some View {
-      NavigationStackStore(store.scope(state: \.path, action: \.path)) {
-        List {
+      List {
           // MARK: - 표시 설정
           Section {
             Toggle(isOn: Binding(
@@ -230,20 +198,6 @@ extension AppSettings {
         }
         .navigationTitle("앱 설정")
         .navigationBarTitleDisplayMode(.inline)
-      } destination: { store in
-        switch store.case {
-        case .notificationSettings(let store):
-          NotificationSettings.RootView(store: store)
-        case .policyView(let store):
-          PolicyView.RootView(store: store)
-        case .appInfo(let store):
-          AppInfo.RootView(store: store)
-        #if DEBUG
-        case .developerSettings(let store):
-          DeveloperSettings.RootView(store: store)
-        #endif
-        }
-      }
     }
 
     // MARK: - Helper Views
