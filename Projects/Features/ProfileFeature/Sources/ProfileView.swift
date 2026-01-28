@@ -31,8 +31,19 @@ extension Profile {
           // 프로필 헤더 섹션
           profileHeaderSection
 
-          // 설정 메뉴 섹션
-          settingsMenuSection
+          // 계정 섹션
+          accountSection
+
+          // 알림 섹션
+          notificationSection
+
+          // 정보 섹션
+          infoSection
+
+          // 개발자 섹션 (DEBUG only)
+          #if DEBUG
+          developerSection
+          #endif
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 24)
@@ -126,83 +137,109 @@ extension Profile {
           .font(.title2)
           .fontWeight(.bold)
           .foregroundStyle(Color.pmtext.primary)
+
+        // 통계
+        HStack(spacing: 24) {
+          statItem(title: "그룹", count: store.groupCount)
+
+          Divider()
+            .frame(height: 40)
+
+          statItem(title: "약속", count: store.promiseCount)
+        }
       }
       .frame(maxWidth: .infinity)
       .padding(.vertical, 24)
       .adaptiveGlassBackground()
     }
 
-    // MARK: - Settings Menu Section
+    // MARK: - Sections
 
-    private var settingsMenuSection: some View {
+    /// 통계 아이템 (그룹 수, 약속 수)
+    private func statItem(title: String, count: Int) -> some View {
+      VStack(spacing: 4) {
+        Text("\(count)")
+          .font(.title3)
+          .fontWeight(.semibold)
+          .foregroundStyle(Color.pmindigo.n500)
+
+        Text(title)
+          .font(.caption)
+          .foregroundStyle(Color.pmtext.secondary)
+      }
+    }
+
+    /// 계정 섹션
+    private var accountSection: some View {
       VStack(spacing: 0) {
-        // 계정 정보
-        settingsMenuRow(
+        menuRow(
           icon: "person.text.rectangle.fill",
           title: "계정 정보",
           action: { store.send(.view(.accountInfoTapped)) }
         )
+      }
+      .adaptiveGlassBackground()
+    }
 
-        Divider()
-          .padding(.leading, 56)
-
-        // 알림 설정
-        settingsMenuRow(
+    /// 알림 섹션
+    private var notificationSection: some View {
+      VStack(spacing: 0) {
+        menuRow(
           icon: "bell.fill",
-          title: "알림 설정 (TODO)",
+          title: "알림 설정",
           action: { store.send(.view(.notificationSettingsTapped)) }
         )
+      }
+      .adaptiveGlassBackground()
+    }
 
-        Divider()
-          .padding(.leading, 56)
-
-        // 개인정보처리방침
-        settingsMenuRow(
+    /// 정보 섹션
+    private var infoSection: some View {
+      VStack(spacing: 0) {
+        menuRow(
           icon: "hand.raised.fill",
-          title: "개인정보처리방침 (TODO)",
+          title: "개인정보처리방침",
           action: { store.send(.view(.privacyPolicyTapped)) }
         )
 
         Divider()
           .padding(.leading, 56)
 
-        // 이용약관
-        settingsMenuRow(
+        menuRow(
           icon: "doc.text.fill",
-          title: "이용약관 (TODO)",
+          title: "이용약관",
           action: { store.send(.view(.termsOfServiceTapped)) }
         )
 
         Divider()
           .padding(.leading, 56)
 
-        // 앱 정보
-        settingsMenuRow(
+        menuRow(
           icon: "info.circle.fill",
-          title: "앱 정보 (TODO)",
-          showVersion: true,
+          title: "앱 정보",
           action: { store.send(.view(.appInfoTapped)) }
         )
-
-        // 개발자 설정 (DEBUG only)
-        #if DEBUG
-        Divider()
-          .padding(.leading, 56)
-
-        settingsMenuRow(
-          icon: "hammer.fill",
-          title: "개발자 설정",
-          action: { store.send(.view(.developerSettingsTapped)) }
-        )
-        #endif
       }
       .adaptiveGlassBackground()
     }
 
-    private func settingsMenuRow(
+    /// 개발자 섹션 (DEBUG only)
+    private var developerSection: some View {
+      VStack(spacing: 0) {
+        menuRow(
+          icon: "hammer.fill",
+          title: "개발자 설정",
+          action: { store.send(.view(.developerSettingsTapped)) }
+        )
+      }
+      .adaptiveGlassBackground()
+    }
+
+    // MARK: - Helpers
+
+    private func menuRow(
       icon: String,
       title: String,
-      showVersion: Bool = false,
       action: @escaping () -> Void
     ) -> some View {
       Button(action: action) {
@@ -217,12 +254,6 @@ extension Profile {
             .foregroundStyle(Color.pmtext.primary)
 
           Spacer()
-
-          if showVersion {
-            Text(appVersion)
-              .font(.caption)
-              .foregroundStyle(Color.pmtext.secondary)
-          }
 
           Image(systemName: "chevron.right")
             .font(.caption)
