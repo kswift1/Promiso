@@ -170,13 +170,13 @@ export const onPromiseUpdatedWidgetPush = onDocumentUpdated(
 
     if (!before || !after) return;
 
-    // 주요 필드 변경 여부 확인
+    // 주요 필드 변경 여부 확인 (votes 전체 비교로 응답 변경도 감지)
     const significantChange =
       before.title !== after.title ||
       before.startAt?.toMillis() !== after.startAt?.toMillis() ||
       before.endAt?.toMillis() !== after.endAt?.toMillis() ||
       JSON.stringify(before.location) !== JSON.stringify(after.location) ||
-      before.votes?.acceptedCount !== after.votes?.acceptedCount ||
+      JSON.stringify(before.votes) !== JSON.stringify(after.votes) ||
       before.isConfirmed !== after.isConfirmed;
 
     const promiseId = event.params.promiseId;
