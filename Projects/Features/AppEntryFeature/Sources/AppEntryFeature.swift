@@ -152,17 +152,11 @@ extension AppEntry {
             
           case .profileCheckResponse(let user, let profile):
             if let userModel = profile {
-              WidgetDataManager.saveUserId(userModel.id)
-              WidgetDataManager.saveFirestoreEnv(FirebaseEnvironmentManager.shared.current.firebaseEnv)
-              state.destination = .main(RootTab.Feature.State(currentUser: Shared(value: userModel)))
+              // 기존 사용자도 알림 권한 체크 (신규 사용자와 동일한 플로우)
               if state.splash == .visible {
                 state.splash = .animatingOut
               }
-              // pending deeplink가 있으면 메인 화면에 전달
-              if let deeplink = state.pendingDeeplink {
-                state.pendingDeeplink = nil
-                return routeDeeplink(deeplink)
-              }
+              return .send(.internal(.checkNotificationPermission(userModel)))
             } else {
               var profileState = ProfileSetup.State()
               profileState.inject(user: user, providerProfileImageURL: state.providerProfileImageURL)
@@ -224,6 +218,11 @@ extension AppEntry {
               WidgetDataManager.saveUserId(userModel.id)
               WidgetDataManager.saveFirestoreEnv(FirebaseEnvironmentManager.shared.current.firebaseEnv)
               state.destination = .main(RootTab.Feature.State(currentUser: Shared(value: userModel)))
+              // pending deeplink가 있으면 처리
+              if let deeplink = state.pendingDeeplink {
+                state.pendingDeeplink = nil
+                return routeDeeplink(deeplink)
+              }
             } else {
               // 권한 미허용 → 온보딩 표시
               state.pendingUserForMain = userModel

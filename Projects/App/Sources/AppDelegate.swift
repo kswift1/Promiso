@@ -7,11 +7,14 @@
 
 import UIKit
 import UserNotifications
+import os.log
 
 import Clients
 import ExternalDependency
 import Clarity
 import PromisoShared
+
+private let silentPushLog = OSLog(subsystem: "com.promiso", category: "SilentPush")
 
 class AppDelegate: NSObject, UIApplicationDelegate {
   func application(_ application: UIApplication,
@@ -80,17 +83,23 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     didReceiveRemoteNotification userInfo: [AnyHashable: Any],
     fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
   ) {
+    // os.log로 Silent Push 수신 로깅 (prefix: PROMISO_PUSH)
+    os_log(.error, log: silentPushLog, "[PROMISO_PUSH] 📩 Received: %{public}@", String(describing: userInfo))
+
     // Silent Push 타입 확인
     guard let type = userInfo["type"] as? String, type == "widget_refresh" else {
+      let receivedType = userInfo["type"] as? String ?? "nil"
+      os_log(.error, log: silentPushLog, "[PROMISO_PUSH] ❌ Type mismatch - got: %{public}@", receivedType)
       completionHandler(.noData)
       return
     }
 
-    AppLogger.notification.debug("📱 Widget refresh silent push received")
+    os_log(.error, log: silentPushLog, "[PROMISO_PUSH] ✅ Widget refresh matched")
 
     // 서버에서 위젯 스냅샷 조회 → 캐시 저장 → 위젯 갱신
     Task {
       let success = await WidgetDataManager.refreshFromServer()
+      os_log(.error, log: silentPushLog, "[PROMISO_PUSH] 🔄 Result: %{public}@", success ? "success" : "failed")
       completionHandler(success ? .newData : .failed)
     }
   }
