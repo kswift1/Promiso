@@ -8,9 +8,12 @@
 | 파일 | 기술 | TTL | 최종 업데이트 | 상태 |
 |------|------|-----|--------------|------|
 | [tca.md](./tca.md) | TCA (Composable Architecture) | 2주 | - | 초기화 필요 |
-| [swiftui.md](./swiftui.md) | SwiftUI / iOS | 3개월 | - | 초기화 필요 |
+| [swiftui.md](./swiftui.md) | SwiftUI / iOS | 3개월 | 2025-01-29 | ✅ 업데이트됨 |
 | [firebase.md](./firebase.md) | Firebase iOS SDK | 1개월 | - | 초기화 필요 |
 | [tuist.md](./tuist.md) | Tuist | 1개월 | - | 초기화 필요 |
+
+### 특이사항
+- **swiftui.md**: iOS 26 Glass Effect, TabView Bottom Accessory 등 Promiso 코드베이스 분석 기반 정리 완료
 
 ## 사용 방법
 
