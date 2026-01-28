@@ -2,6 +2,11 @@ import Foundation
 
 /// Widget에서 사용하는 경량화된 약속 모델
 public struct WidgetPromiseData: Codable, Identifiable, Equatable, Sendable {
+  // MARK: - Constants
+
+  /// 캐시 유효 시간 (2시간)
+  private static let staleCacheThreshold: TimeInterval = 2 * 60 * 60
+
   // MARK: - 식별자
 
   public let id: String
@@ -60,7 +65,7 @@ public struct WidgetPromiseData: Codable, Identifiable, Equatable, Sendable {
 
   /// 캐시 유효성 (2시간 초과 시 stale)
   public var isStale: Bool {
-    Date().timeIntervalSince(cachedAt) > 7200
+    Date().timeIntervalSince(cachedAt) > Self.staleCacheThreshold
   }
 
   /// 딥링크 URL (URLComponents로 안전한 URL 인코딩)

@@ -68,6 +68,13 @@ private struct WidgetPromiseDTO: Decodable {
 /// Widget과 App 간 데이터 공유를 위한 매니저
 /// App Group UserDefaults를 통해 데이터를 공유합니다.
 public enum WidgetDataManager {
+  // MARK: - Constants
+
+  /// 과거 약속 필터링 기준 (1시간 전까지 표시)
+  private static let pastPromiseThreshold: TimeInterval = -1 * 60 * 60
+
+  // MARK: - Keys
+
   private static let suiteName = LiveActivityIntentKey.suiteName
   private static let promisesKey = "widget.promises"
   private static let userIdKey = "widget.userId"
@@ -134,7 +141,7 @@ public enum WidgetDataManager {
 
     // 과거 약속 필터링 + 시간순 정렬
     return promises
-      .filter { $0.startAt > Date().addingTimeInterval(-3600) }
+      .filter { $0.startAt > Date().addingTimeInterval(pastPromiseThreshold) }
       .sorted { $0.startAt < $1.startAt }
   }
 
@@ -245,25 +252,29 @@ public enum WidgetDataManager {
 
   private static func convertSnapshotToPromises(_ snapshot: WidgetSnapshotResponse) -> [WidgetPromiseData] {
     var allPromises: [WidgetPromiseData] = []
+    var seenIds: Set<String> = []
 
     // next 추가
     if let next = snapshot.next?.toWidgetPromiseData() {
       allPromises.append(next)
+      seenIds.insert(next.id)
     }
 
-    // today 추가 (중복 제거)
+    // today 추가 (중복 제거 - O(1) lookup)
     for dto in snapshot.today {
       if let promise = dto.toWidgetPromiseData(),
-         !allPromises.contains(where: { $0.id == promise.id }) {
+         !seenIds.contains(promise.id) {
         allPromises.append(promise)
+        seenIds.insert(promise.id)
       }
     }
 
-    // upcoming 추가 (중복 제거)
+    // upcoming 추가 (중복 제거 - O(1) lookup)
     for dto in snapshot.upcoming {
       if let promise = dto.toWidgetPromiseData(),
-         !allPromises.contains(where: { $0.id == promise.id }) {
+         !seenIds.contains(promise.id) {
         allPromises.append(promise)
+        seenIds.insert(promise.id)
       }
     }
 
