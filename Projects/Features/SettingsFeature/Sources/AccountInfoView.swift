@@ -37,6 +37,7 @@ extension AccountInfo {
 
     public enum Action: Equatable, Sendable {
       case view(View)
+      case `internal`(Internal)
       case delegate(Delegate)
     }
 
@@ -49,6 +50,10 @@ extension AccountInfo {
       case deleteAccountTapped
       case deleteAccountConfirmed
       case deleteAccountCancelled
+    }
+
+    public enum Internal: Equatable, Sendable {
+      // 현재는 Internal action이 필요 없지만, 일관성을 위해 구조 유지
     }
 
     public enum Delegate: Equatable, Sendable {
@@ -99,6 +104,10 @@ extension AccountInfo {
             state.showDeleteAccountAlert = false
             return .none
           }
+
+        case .internal:
+          // 현재는 Internal action이 없음
+          return .none
 
         case .delegate:
           return .none

@@ -8,7 +8,7 @@ import SwiftUI
 import Clients
 import PromisoShared
 import CalendarFeature
-import ProfileFeature
+import SettingsFeature
 import ResourceKit
 import SharedFeature
 
@@ -27,14 +27,14 @@ public enum Tab: String, CaseIterable {
   case home = "홈"
   case group = "그룹"
   case calendar = "캘린더"
-  case profile = "프로필"
+  case settings = "설정"
 
   var iconName: String {
     switch self {
     case .home: return "house.fill"
     case .group: return "person.3.fill"
     case .calendar: return "calendar"
-    case .profile: return "person.fill"
+    case .settings: return "gearshape.fill"
     }
   }
 }
@@ -77,8 +77,8 @@ extension RootTab {
       /// Group Main State
       var groupMain: GroupMain.Feature.State
 
-      /// Profile State
-      var profile: Profile.Feature.State
+      /// Settings State
+      var settings: Settings.Feature.State
 
       /// 현재 사용자 정보 (모든 탭에서 참조 공유)
       @Shared var currentUser: UserPrivateModel
@@ -99,7 +99,7 @@ extension RootTab {
         self.groupMain = GroupMain.Feature.State(currentUser: currentUser)
         self.home = Home.Feature.State(currentUser: currentUser)
         self.calendar = CalendarFeature.Feature.State(currentUser: currentUser)
-        self.profile = Profile.Feature.State(currentUser: currentUser)
+        self.settings = Settings.Feature.State(currentUser: currentUser)
       }
     }
 
@@ -115,8 +115,8 @@ extension RootTab {
       case calendar(CalendarFeature.Feature.Action)
       /// Group Main 액션
       case groupMain(GroupMain.Feature.Action)
-      /// Profile 액션
-      case profile(Profile.Feature.Action)
+      /// Settings 액션
+      case settings(Settings.Feature.Action)
       /// LivePromise 액션
       case livePromise(LivePromise.Feature.Action)
       /// LivePromise 상세 뷰 액션
@@ -172,8 +172,8 @@ extension RootTab {
         CalendarFeature.Feature()
       }
 
-      Scope(state: \.profile, action: \.profile) {
-        Profile.Feature()
+      Scope(state: \.settings, action: \.settings) {
+        Settings.Feature()
       }
 
       Reduce { state, action in
@@ -218,10 +218,10 @@ extension RootTab {
         case .groupMain:
           return .none
 
-        case .profile(.delegate(.didLogout)):
+        case .settings(.delegate(.didLogout)):
           return .send(.delegate(.logoutRequested))
 
-        case .profile:
+        case .settings:
           return .none
 
         case .livePromise(.delegate(.showDetail)):
@@ -593,11 +593,11 @@ extension RootTab {
           )
         }
 
-      case .profile:
-        Profile.RootView(
+      case .settings:
+        Settings.RootView(
           store: store.scope(
-            state: \.profile,
-            action: \.profile
+            state: \.settings,
+            action: \.settings
           )
         )
       }

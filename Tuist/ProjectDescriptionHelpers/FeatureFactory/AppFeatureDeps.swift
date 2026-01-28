@@ -26,7 +26,7 @@ public enum AppFeatureDeps {
       .appEntry,
       .auth,
       .calendar,
-      .profile,
+      .settings,
     ]
     return allFeatures.map { feature($0) }
   }()
