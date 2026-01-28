@@ -73,6 +73,8 @@ extension Profile {
       public var path = StackState<Path.State>()
       /// 프로필 이미지 상세 보기 표시 여부
       public var showImageDetail: Bool = false
+      /// 24시간 형식 사용 여부 (@Shared로 앱 전체 공유)
+      @Shared(.appStorage(AppConstants.UserDefaults.use24HourFormat)) public var use24HourFormat: Bool = false
 
       /// State를 위한 기본 initializer
       public init(
@@ -98,7 +100,6 @@ extension Profile {
     @Reducer
     public enum Path {
       case accountInfo(AccountInfo.Feature)
-      case appSettings(AppSettings.Feature)
       case notificationSettings(NotificationSettings.Feature)
       case policyView(PolicyView.Feature)
       case appInfo(AppInfo.Feature)
@@ -141,8 +142,20 @@ extension Profile {
       case logoutCancelled
       /// 계정 정보 탭
       case accountInfoTapped
-      /// 앱 설정 탭 (toolbar)
-      case appSettingsTapped
+      /// 24시간 형식 변경
+      case use24HourFormatChanged(Bool)
+      /// 알림 설정 탭
+      case notificationSettingsTapped
+      /// 개인정보처리방침 탭
+      case privacyPolicyTapped
+      /// 이용약관 탭
+      case termsOfServiceTapped
+      /// 앱 정보 탭
+      case appInfoTapped
+      #if DEBUG
+      /// 개발자 설정 탭
+      case developerSettingsTapped
+      #endif
 
       // MARK: - Profile Edit Actions
       /// 프로필 편집 버튼 탭
@@ -234,13 +247,50 @@ extension Profile {
               await hapticFeedback.selection()
             }
 
-          case .appSettingsTapped:
-            state.path.append(.appSettings(
-              AppSettings.Feature.State(currentUserId: state.currentUser.userId)
+          case .use24HourFormatChanged(let value):
+            state.$use24HourFormat.withLock { $0 = value }
+            KoreanDateFormatters.use24HourFormat = value
+            return .none
+
+          case .notificationSettingsTapped:
+            let userId = state.currentUser.userId
+            state.path.append(.notificationSettings(
+              NotificationSettings.Feature.State(
+                currentUserId: userId,
+                notificationEnabled: true
+              )
             ))
-            return .run { _ in
-              await hapticFeedback.selection()
-            }
+            return .run { _ in await hapticFeedback.selection() }
+
+          case .privacyPolicyTapped:
+            state.path.append(.policyView(
+              PolicyView.Feature.State(
+                policyType: .privacyPolicy,
+                url: URL(string: "https://promiso.app/privacy")!
+              )
+            ))
+            return .run { _ in await hapticFeedback.selection() }
+
+          case .termsOfServiceTapped:
+            state.path.append(.policyView(
+              PolicyView.Feature.State(
+                policyType: .termsOfService,
+                url: URL(string: "https://promiso.app/terms")!
+              )
+            ))
+            return .run { _ in await hapticFeedback.selection() }
+
+          case .appInfoTapped:
+            state.path.append(.appInfo(AppInfo.Feature.State()))
+            return .run { _ in await hapticFeedback.selection() }
+
+          #if DEBUG
+          case .developerSettingsTapped:
+            state.path.append(.developerSettings(
+              DeveloperSettings.Feature.State(currentUserId: state.currentUser.userId)
+            ))
+            return .run { _ in await hapticFeedback.selection() }
+          #endif
 
           // MARK: - Profile Edit View Actions
 
@@ -401,49 +451,6 @@ extension Profile {
             return .none
           }
 
-        case .path(.element(_, action: .appSettings(.delegate(let delegate)))):
-          let userId = state.currentUser.userId
-          switch delegate {
-          case .notificationSettingsTapped:
-            state.path.append(.notificationSettings(
-              NotificationSettings.Feature.State(
-                currentUserId: userId,
-                notificationEnabled: true
-              )
-            ))
-            return .run { _ in await hapticFeedback.selection() }
-
-          case .privacyPolicyTapped:
-            state.path.append(.policyView(
-              PolicyView.Feature.State(
-                policyType: .privacyPolicy,
-                url: URL(string: "https://promiso.app/privacy")!
-              )
-            ))
-            return .run { _ in await hapticFeedback.selection() }
-
-          case .termsOfServiceTapped:
-            state.path.append(.policyView(
-              PolicyView.Feature.State(
-                policyType: .termsOfService,
-                url: URL(string: "https://promiso.app/terms")!
-              )
-            ))
-            return .run { _ in await hapticFeedback.selection() }
-
-          case .appInfoTapped:
-            state.path.append(.appInfo(AppInfo.Feature.State()))
-            return .run { _ in await hapticFeedback.selection() }
-
-          #if DEBUG
-          case .developerSettingsTapped:
-            state.path.append(.developerSettings(
-              DeveloperSettings.Feature.State(currentUserId: userId)
-            ))
-            return .run { _ in await hapticFeedback.selection() }
-          #endif
-          }
-
         case .path:
           return .none
         }
@@ -470,8 +477,6 @@ extension Profile {
         switch store.case {
         case .accountInfo(let accountInfoStore):
           AccountInfo.RootView(store: accountInfoStore)
-        case .appSettings(let appSettingsStore):
-          AppSettings.RootView(store: appSettingsStore)
         case .notificationSettings(let store):
           NotificationSettings.RootView(store: store)
         case .policyView(let store):
