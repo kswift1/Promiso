@@ -1,3 +1,4 @@
+import AppIntents
 import PromisoShared
 import ResourceKit
 import SwiftUI
@@ -54,6 +55,22 @@ struct LargePromiseWidgetView: View {
       EmptyWidgetView(message: "예정된 약속이 없어요")
     } else {
       VStack(alignment: .leading, spacing: 12) {
+        // 헤더 (기준 시간 + 새로고침)
+        HStack {
+          Spacer()
+          if let lastUpdated = WidgetDataManager.lastUpdated() {
+            Text(formatUpdatedTime(lastUpdated))
+              .font(.caption2)
+              .foregroundStyle(.tertiary)
+          }
+          Button(intent: RefreshWidgetIntent()) {
+            Image(systemName: "arrow.clockwise")
+              .font(.caption2)
+              .foregroundStyle(.secondary)
+          }
+          .buttonStyle(.plain)
+        }
+
         // 오늘 섹션
         if !todayPromises.isEmpty {
           sectionHeader("📅 오늘", count: todayPromises.count)
@@ -177,6 +194,13 @@ struct LargePromiseWidgetView: View {
     } else {
       formatter.dateFormat = "M/d a h:mm"
     }
+    return formatter.string(from: date)
+  }
+
+  private func formatUpdatedTime(_ date: Date) -> String {
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "ko_KR")
+    formatter.dateFormat = "a h:mm 기준"
     return formatter.string(from: date)
   }
 }
