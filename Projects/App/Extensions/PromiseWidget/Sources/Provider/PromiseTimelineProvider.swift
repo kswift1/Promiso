@@ -29,9 +29,14 @@ struct PromiseTimelineProvider: TimelineProvider {
   // MARK: - 실제 타임라인 (iOS 17+: 직접 네트워크 호출)
 
   func getTimeline(in context: Context, completion: @escaping (Timeline<Entry>) -> Void) {
+    let formatter = DateFormatter()
+    formatter.dateFormat = "HH:mm:ss"
+    print("⏰ [Widget] getTimeline 호출됨 - \(formatter.string(from: Date()))")
+
     Task {
       // 로그인 체크
       guard WidgetDataManager.isLoggedIn() else {
+        print("🔴 [Widget] 로그인 안됨")
         let entry = Entry(date: Date(), promises: [], state: .notLoggedIn)
         let timeline = Timeline(entries: [entry], policy: .after(Date().addingTimeInterval(3600)))
         completion(timeline)
@@ -44,6 +49,7 @@ struct PromiseTimelineProvider: TimelineProvider {
       let entry = Entry(date: Date(), promises: promises, state: state)
 
       let refreshDate = calculateNextRefresh(promises: promises)
+      print("✅ [Widget] Timeline 완료 - 다음 갱신: \(formatter.string(from: refreshDate))")
       let timeline = Timeline(entries: [entry], policy: .after(refreshDate))
       completion(timeline)
     }

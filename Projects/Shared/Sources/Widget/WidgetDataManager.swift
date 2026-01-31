@@ -119,12 +119,27 @@ public enum WidgetDataManager {
 
   /// Firebase ID Token 로드 (AuthClient에서 저장한 토큰 사용)
   public static func loadIdToken() -> String? {
-    guard let token = defaults?.string(forKey: LiveActivityIntentKey.authTokenKey) else { return nil }
+    guard let token = defaults?.string(forKey: LiveActivityIntentKey.authTokenKey) else {
+      print("🔴 [Widget] ID Token 없음 - 저장된 토큰이 없습니다")
+      return nil
+    }
 
     // 만료 체크 (5분 여유)
-    if let expiry = defaults?.object(forKey: LiveActivityIntentKey.authTokenExpiryKey) as? Date,
-       expiry.addingTimeInterval(-300) < Date() {
-      return nil // 만료됨
+    if let expiry = defaults?.object(forKey: LiveActivityIntentKey.authTokenExpiryKey) as? Date {
+      let now = Date()
+      let expiryWithMargin = expiry.addingTimeInterval(-300)
+
+      if expiryWithMargin < now {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm:ss"
+        print("🔴 [Widget] ID Token 만료됨 - 만료시간: \(formatter.string(from: expiry)), 현재: \(formatter.string(from: now))")
+        return nil
+      } else {
+        let remainingMinutes = Int(expiry.timeIntervalSince(now) / 60)
+        print("🟢 [Widget] ID Token 유효 - 남은 시간: \(remainingMinutes)분")
+      }
+    } else {
+      print("🟡 [Widget] ID Token 만료시간 없음 - expiry 미저장")
     }
 
     return token
@@ -213,12 +228,16 @@ public enum WidgetDataManager {
   /// 위젯에서 직접 API 호출하여 데이터 가져오기
   /// - Returns: 약속 목록 (실패 시 캐시된 데이터 반환)
   public static func fetchFromServer() async -> [WidgetPromiseData] {
+    print("🔄 [Widget] fetchFromServer 시작")
+
     guard let token = loadIdToken() else {
       // 토큰 없으면 네트워크 요청 스킵, 캐시 반환
+      print("🔴 [Widget] 토큰 없음 → 캐시 반환")
       return loadPromises()
     }
 
     guard let url = URL(string: "\(functionsBaseURL)/getWidgetSnapshot") else {
+      print("🔴 [Widget] URL 생성 실패")
       return loadPromises()
     }
 
@@ -231,8 +250,13 @@ public enum WidgetDataManager {
     do {
       let (data, response) = try await URLSession.shared.data(for: request)
 
-      guard let httpResponse = response as? HTTPURLResponse,
-            httpResponse.statusCode == 200 else {
+      guard let httpResponse = response as? HTTPURLResponse else {
+        print("🔴 [Widget] HTTP 응답 아님")
+        return loadPromises()
+      }
+
+      guard httpResponse.statusCode == 200 else {
+        print("🔴 [Widget] HTTP 에러: \(httpResponse.statusCode)")
         return loadPromises()
       }
 
@@ -243,9 +267,11 @@ public enum WidgetDataManager {
       // 캐시 업데이트
       savePromises(promises)
 
+      print("🟢 [Widget] 서버에서 \(promises.count)개 약속 가져옴")
       return promises
     } catch {
       // 실패 시 캐시 반환
+      print("🔴 [Widget] 네트워크 에러: \(error.localizedDescription)")
       return loadPromises()
     }
   }
