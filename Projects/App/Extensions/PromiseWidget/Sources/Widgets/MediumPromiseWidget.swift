@@ -73,22 +73,6 @@ struct MediumPromiseWidgetView: View {
           .font(.subheadline)
           .foregroundStyle(.secondary)
         Spacer()
-        if entry.hasStaleData {
-          Image(systemName: "exclamationmark.triangle.fill")
-            .font(.caption2)
-            .foregroundStyle(.orange)
-        }
-        if let lastUpdated = WidgetDataManager.lastUpdated() {
-          Text(formatUpdatedTime(lastUpdated))
-            .font(.caption2)
-            .foregroundStyle(.tertiary)
-        }
-        Button(intent: RefreshWidgetIntent()) {
-          Image(systemName: "arrow.clockwise")
-            .font(.caption2)
-            .foregroundStyle(.secondary)
-        }
-        .buttonStyle(.plain)
       }
 
       Divider()
@@ -104,6 +88,24 @@ struct MediumPromiseWidgetView: View {
       Spacer(minLength: 0)
     }
     .padding()
+    .overlay(alignment: .bottomTrailing) {
+      HStack(spacing: 6) {
+        if let lastUpdated = WidgetDataManager.lastUpdated() {
+          Text(formatUpdatedTime(lastUpdated))
+            .font(.caption2)
+            .foregroundStyle(.tertiary)
+        }
+        Button(intent: RefreshWidgetIntent()) {
+          Image(systemName: "arrow.clockwise")
+            .font(.caption2)
+            .fontWeight(.medium)
+            .foregroundStyle(.secondary)
+            .padding(6)
+            .background(Color.secondary.opacity(0.15), in: Circle())
+        }
+        .buttonStyle(.plain)
+      }
+    }
   }
 
   @ViewBuilder
@@ -116,17 +118,6 @@ struct MediumPromiseWidgetView: View {
           .font(.subheadline)
           .foregroundStyle(.secondary)
         Spacer()
-        if let lastUpdated = WidgetDataManager.lastUpdated() {
-          Text(formatUpdatedTime(lastUpdated))
-            .font(.caption2)
-            .foregroundStyle(.tertiary)
-        }
-        Button(intent: RefreshWidgetIntent()) {
-          Image(systemName: "arrow.clockwise")
-            .font(.caption2)
-            .foregroundStyle(.secondary)
-        }
-        .buttonStyle(.plain)
       }
 
       Divider()
@@ -156,6 +147,25 @@ struct MediumPromiseWidgetView: View {
       Spacer(minLength: 0)
     }
     .padding()
+    .overlay(alignment: .bottomTrailing) {
+      HStack(spacing: 6) {
+        if let lastUpdated = WidgetDataManager.lastUpdated() {
+          Text(formatUpdatedTime(lastUpdated))
+            .font(.caption2)
+            .foregroundStyle(.tertiary)
+        }
+        Button(intent: RefreshWidgetIntent()) {
+          Image(systemName: "arrow.clockwise")
+            .font(.caption2)
+            .fontWeight(.medium)
+            .foregroundStyle(.secondary)
+            .padding(6)
+            .background(Color.secondary.opacity(0.15), in: Circle())
+        }
+        .buttonStyle(.plain)
+      }
+      .padding(8)
+    }
   }
 
   private func formatDate(_ date: Date) -> String {

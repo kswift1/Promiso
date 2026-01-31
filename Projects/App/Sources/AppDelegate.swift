@@ -67,29 +67,6 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     AppLogger.notification.error("Failed to register for remote notifications: \(error.localizedDescription)")
   }
 
-  // MARK: - Silent Push (Widget Refresh)
-
-  func application(
-    _ application: UIApplication,
-    didReceiveRemoteNotification userInfo: [AnyHashable: Any],
-    fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
-  ) {
-    // Silent Push 타입 확인
-    guard let type = userInfo[AppConstants.PushNotification.typeKey] as? String,
-          type == AppConstants.PushNotification.widgetRefreshType else {
-      completionHandler(.noData)
-      return
-    }
-
-    AppLogger.notification.debug("Widget refresh silent push received")
-
-    // 서버에서 위젯 스냅샷 조회 → 캐시 저장 → 위젯 갱신
-    Task {
-      let success = await WidgetDataManager.refreshFromServer()
-      completionHandler(success ? .newData : .failed)
-    }
-  }
-
   // MARK: - Kakao Maps SDK
   private func configureKakaoMapsSDK() {
     guard let kakaoAppKey = Bundle.main.object(forInfoDictionaryKey: "KAKAO_NATIVE_APP_KEY") as? String else {

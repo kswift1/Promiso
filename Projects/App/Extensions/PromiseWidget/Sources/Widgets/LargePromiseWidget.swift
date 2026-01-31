@@ -55,22 +55,6 @@ struct LargePromiseWidgetView: View {
       EmptyWidgetView(message: "예정된 약속이 없어요")
     } else {
       VStack(alignment: .leading, spacing: 12) {
-        // 헤더 (기준 시간 + 새로고침)
-        HStack {
-          Spacer()
-          if let lastUpdated = WidgetDataManager.lastUpdated() {
-            Text(formatUpdatedTime(lastUpdated))
-              .font(.caption2)
-              .foregroundStyle(.tertiary)
-          }
-          Button(intent: RefreshWidgetIntent()) {
-            Image(systemName: "arrow.clockwise")
-              .font(.caption2)
-              .foregroundStyle(.secondary)
-          }
-          .buttonStyle(.plain)
-        }
-
         // 오늘 섹션
         if !todayPromises.isEmpty {
           sectionHeader("📅 오늘", count: todayPromises.count)
@@ -101,18 +85,26 @@ struct LargePromiseWidgetView: View {
         }
 
         Spacer(minLength: 0)
-
-        // Stale indicator
-        if entry.hasStaleData {
-          HStack {
-            Spacer()
-            Label("업데이트 필요", systemImage: "exclamationmark.triangle.fill")
-              .font(.caption2)
-              .foregroundStyle(.orange)
-          }
-        }
       }
       .padding()
+      .overlay(alignment: .bottomTrailing) {
+        HStack(spacing: 6) {
+          if let lastUpdated = WidgetDataManager.lastUpdated() {
+            Text(formatUpdatedTime(lastUpdated))
+              .font(.caption2)
+              .foregroundStyle(.tertiary)
+          }
+          Button(intent: RefreshWidgetIntent()) {
+            Image(systemName: "arrow.clockwise")
+              .font(.caption2)
+              .fontWeight(.medium)
+              .foregroundStyle(.secondary)
+              .padding(6)
+              .background(Color.secondary.opacity(0.15), in: Circle())
+          }
+          .buttonStyle(.plain)
+        }
+      }
     }
   }
 
