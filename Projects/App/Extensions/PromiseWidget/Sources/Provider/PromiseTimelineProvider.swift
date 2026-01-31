@@ -62,23 +62,7 @@ struct PromiseTimelineProvider: TimelineProvider {
   }
 
   private func calculateNextRefresh(promises: [WidgetPromiseData]) -> Date {
-    let now = Date()
-
-    guard let nextPromise = promises.first(where: { $0.startAt > now }) else {
-      return now.addingTimeInterval(3600) // 약속 없으면 1시간 후
-    }
-
-    let timeUntil = nextPromise.startAt.timeIntervalSince(now)
-
-    // 1시간 이내 → 15분
-    if timeUntil <= 3600 {
-      return now.addingTimeInterval(900)
-    }
-    // 6시간 이내 → 30분
-    if timeUntil <= 21600 {
-      return now.addingTimeInterval(1800)
-    }
-    // 그 외 → 1시간
-    return now.addingTimeInterval(3600)
+    // 항상 5분 후 갱신
+    Date().addingTimeInterval(300)
   }
 }
