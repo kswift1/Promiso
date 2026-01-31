@@ -1,3 +1,4 @@
+import AppIntents
 import PromisoShared
 import ResourceKit
 import SwiftUI
@@ -77,6 +78,15 @@ struct MediumPromiseWidgetView: View {
             .font(.caption2)
             .foregroundStyle(.orange)
         }
+        Text(formatUpdatedTime(entry.date))
+          .font(.caption2)
+          .foregroundStyle(.tertiary)
+        Button(intent: RefreshWidgetIntent()) {
+          Image(systemName: "arrow.clockwise")
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+        }
+        .buttonStyle(.plain)
       }
 
       Divider()
@@ -104,6 +114,15 @@ struct MediumPromiseWidgetView: View {
           .font(.subheadline)
           .foregroundStyle(.secondary)
         Spacer()
+        Text(formatUpdatedTime(entry.date))
+          .font(.caption2)
+          .foregroundStyle(.tertiary)
+        Button(intent: RefreshWidgetIntent()) {
+          Image(systemName: "arrow.clockwise")
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+        }
+        .buttonStyle(.plain)
       }
 
       Divider()
@@ -143,6 +162,13 @@ struct MediumPromiseWidgetView: View {
     let formatter = DateFormatter()
     formatter.locale = Locale(identifier: "ko_KR")
     formatter.dateFormat = "M/d"
+    return formatter.string(from: date)
+  }
+
+  private func formatUpdatedTime(_ date: Date) -> String {
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "ko_KR")
+    formatter.dateFormat = "a h:mm 기준"
     return formatter.string(from: date)
   }
 }

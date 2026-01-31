@@ -1,3 +1,4 @@
+import AppIntents
 import PromisoShared
 import ResourceKit
 import SwiftUI
@@ -61,6 +62,12 @@ struct SmallPromiseWidgetView: View {
             .font(.caption2)
             .foregroundStyle(.orange)
         }
+        Button(intent: RefreshWidgetIntent()) {
+          Image(systemName: "arrow.clockwise")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+        .buttonStyle(.plain)
       }
 
       Spacer()
