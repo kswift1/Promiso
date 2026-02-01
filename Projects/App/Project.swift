@@ -57,11 +57,15 @@ let promisoStage = Target.target(
       "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME": .string("AccentColor"),
       "PRODUCT_BUNDLE_IDENTIFIER": .string("com.promiso.stage"),
       "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
-      "CODE_SIGN_STYLE": .string("Automatic")
+      "CODE_SIGN_STYLE": .string("Manual")
     ],
     configurations: [
-      .debug(name: "Debug", xcconfig: .relativeToRoot("Config/Stage.xcconfig")),
-      .release(name: "Release", xcconfig: .relativeToRoot("Config/Stage.xcconfig"))
+      .debug(name: "Debug", settings: [
+        "PROVISIONING_PROFILE_SPECIFIER": .string("match Development com.promiso.stage")
+      ], xcconfig: .relativeToRoot("Config/Stage.xcconfig")),
+      .release(name: "Release", settings: [
+        "PROVISIONING_PROFILE_SPECIFIER": .string("match AppStore com.promiso.stage")
+      ], xcconfig: .relativeToRoot("Config/Stage.xcconfig"))
     ]
   )
 )
@@ -137,10 +141,20 @@ let liveActivityStage = Target.target(
     .project(target: "PromisoShared", path: "../Shared"),
     .project(target: "ResourceKit", path: "../ResourceKit")
   ],
-  settings: .standard(base: [
-    "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
-    "CODE_SIGN_STYLE": .string("Automatic")
-  ])
+  settings: .settings(
+    base: [
+      "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
+      "CODE_SIGN_STYLE": .string("Manual")
+    ],
+    configurations: [
+      .debug(name: "Debug", settings: [
+        "PROVISIONING_PROFILE_SPECIFIER": .string("match Development com.promiso.stage.liveactivity")
+      ]),
+      .release(name: "Release", settings: [
+        "PROVISIONING_PROFILE_SPECIFIER": .string("match AppStore com.promiso.stage.liveactivity")
+      ])
+    ]
+  )
 )
 
 let liveActivityProd = Target.target(
@@ -209,10 +223,20 @@ let promiseWidgetStage = Target.target(
     .project(target: "PromisoShared", path: "../Shared"),
     .project(target: "ResourceKit", path: "../ResourceKit")
   ],
-  settings: .standard(base: [
-    "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
-    "CODE_SIGN_STYLE": .string("Automatic")
-  ])
+  settings: .settings(
+    base: [
+      "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
+      "CODE_SIGN_STYLE": .string("Manual")
+    ],
+    configurations: [
+      .debug(name: "Debug", settings: [
+        "PROVISIONING_PROFILE_SPECIFIER": .string("match Development com.promiso.stage.promisewidget")
+      ]),
+      .release(name: "Release", settings: [
+        "PROVISIONING_PROFILE_SPECIFIER": .string("match AppStore com.promiso.stage.promisewidget")
+      ])
+    ]
+  )
 )
 
 let promiseWidgetProd = Target.target(
