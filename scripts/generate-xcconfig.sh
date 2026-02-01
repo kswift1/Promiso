@@ -113,7 +113,33 @@ main() {
     load_env_file
   fi
 
-  # 각 환경별 xcconfig 생성
+  # TARGET_ENV 환경변수가 있으면 해당 환경만 생성
+  if [ -n "${TARGET_ENV}" ]; then
+    echo "🎯 타겟 환경: ${TARGET_ENV}"
+    case "${TARGET_ENV}" in
+      dev)
+        generate_dev_config || exit 1
+        echo "🎉 Dev.xcconfig 생성 완료!"
+        ;;
+      stage)
+        generate_stage_config || exit 1
+        echo "🎉 Stage.xcconfig 생성 완료!"
+        ;;
+      prod)
+        generate_prod_config || exit 1
+        echo "🎉 Prod.xcconfig 생성 완료!"
+        ;;
+      *)
+        echo "❌ 알 수 없는 환경: ${TARGET_ENV}"
+        echo "   사용 가능한 환경: dev, stage, prod"
+        exit 1
+        ;;
+    esac
+    return 0
+  fi
+
+  # TARGET_ENV가 없으면 모든 환경 생성 (로컬 개발용)
+  echo "🎯 모든 환경의 xcconfig 생성 시도..."
   local has_error=false
 
   if ! generate_dev_config; then
