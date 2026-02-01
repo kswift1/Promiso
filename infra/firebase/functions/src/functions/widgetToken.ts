@@ -28,7 +28,6 @@ interface WidgetTokenPayload {
 
 interface GenerateWidgetTokenRequest {
   deviceId: string;
-  env?: string;
 }
 
 interface GenerateWidgetTokenResponse {
@@ -71,7 +70,7 @@ export const generateWidgetToken = onCall<GenerateWidgetTokenRequest>(
     }
 
     const userId = request.auth.uid;
-    const {deviceId, env} = request.data;
+    const {deviceId} = request.data;
 
     // 2. deviceId 유효성 검사
     if (!deviceId || deviceId.trim().length === 0) {
@@ -80,7 +79,7 @@ export const generateWidgetToken = onCall<GenerateWidgetTokenRequest>(
 
     // 3. 사용자의 토큰 버전 조회 (revocation용)
     const db = admin.firestore();
-    const usersCollection = getEnvironmentCollection("users", db, env);
+    const usersCollection = getEnvironmentCollection("users", db);
     const userDoc = await usersCollection.doc(userId).get();
 
     let tokenVersion = 1;
@@ -161,15 +160,13 @@ export function verifyWidgetToken(
  *
  * @param {string} userId - 사용자 ID
  * @param {FirebaseFirestore.Firestore} db - Firestore 인스턴스
- * @param {string} env - 환경 (stage/prod)
  * @return {Promise<void>}
  */
 export async function revokeWidgetTokens(
   userId: string,
-  db: FirebaseFirestore.Firestore,
-  env?: string
+  db: FirebaseFirestore.Firestore
 ): Promise<void> {
-  const usersCollection = getEnvironmentCollection("users", db, env);
+  const usersCollection = getEnvironmentCollection("users", db);
   const userRef = usersCollection.doc(userId);
 
   await userRef.update({

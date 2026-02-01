@@ -258,7 +258,6 @@ export const sendPushNotification = onCall<SendPushNotificationRequest>(
         groupId: data.groupId ?? null,
         relatedUserId: data.relatedUserId ?? null,
         data: data.data ?? null,
-        env: data.env ?? null,
       });
 
       return result;
@@ -288,18 +287,13 @@ export async function sendPushNotificationInternal(params: {
   groupId: string | null;
   relatedUserId: string | null;
   data: { [key: string]: string } | null;
-  env: "stage" | "prod" | null;
 }): Promise<SendPushNotificationResponse> {
   const {userIds, type, title, body, promiseId, groupId,
-    relatedUserId, data, env} = params;
+    relatedUserId, data} = params;
 
   const db = admin.firestore();
-  const usersCollection = getEnvironmentCollection("users", db, env);
-  const notificationsCollection = getEnvironmentCollection(
-    "notifications",
-    db,
-    env,
-  );
+  const usersCollection = getEnvironmentCollection("users", db);
+  const notificationsCollection = getEnvironmentCollection("notifications", db);
 
   // 1. 각 사용자의 FCM 토큰 수집
   const allTokens: string[] = [];
@@ -473,7 +467,7 @@ export async function sendPushNotificationInternal(params: {
  */
 export const onPromiseCreated = onDocumentCreated(
   {
-    document: "{env}/root/promises/{promiseId}",
+    document: "promises/{promiseId}",
     region: REGION,
   },
   async (event) => {
@@ -485,7 +479,6 @@ export const onPromiseCreated = onDocumentCreated(
 
     const promiseData = snapshot.data();
     const promiseId = event.params.promiseId;
-    const env = event.params.env as "stage" | "prod";
 
     const groupId = promiseData.groupId as string;
     const hostId = promiseData.hostId as string;
@@ -495,7 +488,7 @@ export const onPromiseCreated = onDocumentCreated(
 
     // 그룹 멤버 조회
     const db = admin.firestore();
-    const groupsCollection = getEnvironmentCollection("groups", db, env);
+    const groupsCollection = getEnvironmentCollection("groups", db);
     const groupDoc = await groupsCollection.doc(groupId).get();
 
     if (!groupDoc.exists) {
@@ -515,7 +508,7 @@ export const onPromiseCreated = onDocumentCreated(
     }
 
     // 호스트 이름 조회
-    const usersCollection = getEnvironmentCollection("users", db, env);
+    const usersCollection = getEnvironmentCollection("users", db);
     const hostDoc = await usersCollection.doc(hostId).get();
     const hostName = hostDoc.data()?.nickname as string || "누군가";
 
@@ -529,7 +522,6 @@ export const onPromiseCreated = onDocumentCreated(
       groupId,
       relatedUserId: hostId,
       data: null,
-      env,
     });
   },
 );
@@ -544,7 +536,7 @@ export const onPromiseCreated = onDocumentCreated(
  */
 export const onPromiseVotesUpdated = onDocumentUpdated(
   {
-    document: "{env}/root/promises/{promiseId}",
+    document: "promises/{promiseId}",
     region: REGION,
   },
   async (event) => {
@@ -557,7 +549,6 @@ export const onPromiseVotesUpdated = onDocumentUpdated(
     }
 
     const promiseId = event.params.promiseId;
-    const env = event.params.env as "stage" | "prod";
     const groupId = afterData.groupId as string;
     const title = afterData.title as string;
     const minimumParticipants = afterData.minimumParticipants as number || 2;
@@ -577,7 +568,7 @@ export const onPromiseVotesUpdated = onDocumentUpdated(
       .filter((id: string) => !beforeDeclined.includes(id));
 
     const db = admin.firestore();
-    const groupsCollection = getEnvironmentCollection("groups", db, env);
+    const groupsCollection = getEnvironmentCollection("groups", db);
 
     // 그룹 멤버 조회
     const groupDoc = await groupsCollection.doc(groupId).get();
@@ -606,7 +597,6 @@ export const onPromiseVotesUpdated = onDocumentUpdated(
         groupId,
         relatedUserId: null,
         data: null,
-        env,
       });
       return;
     }
@@ -629,7 +619,6 @@ export const onPromiseVotesUpdated = onDocumentUpdated(
           groupId,
           relatedUserId: null,
           data: null,
-          env,
         });
       }
     }
@@ -645,7 +634,7 @@ export const onPromiseVotesUpdated = onDocumentUpdated(
  */
 export const onGroupMemberJoined = onDocumentUpdated(
   {
-    document: "{env}/root/groups/{groupId}",
+    document: "groups/{groupId}",
     region: REGION,
   },
   async (event) => {
@@ -657,7 +646,6 @@ export const onGroupMemberJoined = onDocumentUpdated(
     }
 
     const groupId = event.params.groupId;
-    const env = event.params.env as "stage" | "prod";
 
     const beforeMembers = new Set(beforeData.memberIds as string[] || []);
     const afterMembers = afterData.memberIds as string[] || [];
@@ -671,7 +659,7 @@ export const onGroupMemberJoined = onDocumentUpdated(
 
     const groupName = afterData.name as string || "그룹";
     const db = admin.firestore();
-    const usersCollection = getEnvironmentCollection("users", db, env);
+    const usersCollection = getEnvironmentCollection("users", db);
 
     for (const newMemberId of newMembers) {
       // 기존 멤버들에게 알림 (새 멤버 제외)
@@ -691,7 +679,6 @@ export const onGroupMemberJoined = onDocumentUpdated(
         groupId,
         relatedUserId: newMemberId,
         data: null,
-        env,
       });
     }
   },
@@ -707,7 +694,7 @@ export const onGroupMemberJoined = onDocumentUpdated(
  */
 export const onPromiseInfoUpdated = onDocumentUpdated(
   {
-    document: "{env}/root/promises/{promiseId}",
+    document: "promises/{promiseId}",
     region: REGION,
   },
   async (event) => {
@@ -719,7 +706,6 @@ export const onPromiseInfoUpdated = onDocumentUpdated(
     }
 
     const promiseId = event.params.promiseId;
-    const env = event.params.env as "stage" | "prod";
 
     // 주요 필드 변경 감지
     const fieldsToCheck = [
@@ -761,7 +747,6 @@ export const onPromiseInfoUpdated = onDocumentUpdated(
       groupId,
       relatedUserId: null,
       data: null,
-      env,
     });
   },
 );

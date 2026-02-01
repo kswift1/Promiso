@@ -26,7 +26,7 @@ import {getEnvironmentCollection} from "../utils/firestore";
  */
 export const onPromiseCreatedBadges = onDocumentCreated(
   {
-    document: "{env}/root/promises/{promiseId}",
+    document: "promises/{promiseId}",
     region: REGION,
   },
   async (event) => {
@@ -38,7 +38,6 @@ export const onPromiseCreatedBadges = onDocumentCreated(
 
     const promiseData = snapshot.data();
     const promiseId = event.params.promiseId;
-    const env = event.params.env;
 
     const groupId = promiseData.groupId;
     if (typeof groupId !== "string" || !groupId) {
@@ -58,7 +57,7 @@ export const onPromiseCreatedBadges = onDocumentCreated(
 
     // 그룹 멤버 조회
     const db = admin.firestore();
-    const groupsCollection = getEnvironmentCollection("groups", db, env);
+    const groupsCollection = getEnvironmentCollection("groups", db);
     const groupDoc = await groupsCollection.doc(groupId).get();
 
     if (!groupDoc.exists) {
@@ -79,7 +78,7 @@ export const onPromiseCreatedBadges = onDocumentCreated(
     }
 
     // 배치로 각 유저의 hasNewActivity 설정
-    const usersCollection = getEnvironmentCollection("users", db, env);
+    const usersCollection = getEnvironmentCollection("users", db);
     const batch = db.batch();
 
     for (const userId of targetUsers) {
@@ -117,13 +116,10 @@ export const clearGroupBadge = onCall(
       throw new HttpsError("invalid-argument", "groupId가 필요합니다.");
     }
 
-    const env = request.data?.env;
     const db = admin.firestore();
-    const usersCollection = getEnvironmentCollection("users", db, env);
+    const usersCollection = getEnvironmentCollection("users", db);
 
-    console.log(
-      `[clearGroupBadge] uid: ${uid}, groupId: ${groupId}, env: ${env}`
-    );
+    console.log(`[clearGroupBadge] uid: ${uid}, groupId: ${groupId}`);
     console.log(`[clearGroupBadge] Collection path: ${usersCollection.path}`);
 
     try {

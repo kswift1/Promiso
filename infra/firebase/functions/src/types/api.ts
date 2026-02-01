@@ -26,9 +26,6 @@ export interface CreateGroupRequest {
   /** 최대 인원 (2 이상) */
   maxMembers: number;
 
-  /** 환경 구분 (선택적: stage 또는 prod) */
-  env?: "stage" | "prod" | null;
-
   /** 그룹 설명 (선택적) */
   description?: string | null;
 
@@ -78,9 +75,6 @@ export enum CreateGroupError {
 export interface PreviewGroupRequest {
   /** 6자리 초대 코드 */
   inviteCode: string;
-
-  /** 환경 구분 (선택적: stage 또는 prod) */
-  env?: "stage" | "prod" | null;
 }
 
 /**
@@ -136,9 +130,6 @@ export enum PreviewGroupError {
 export interface JoinGroupRequest {
   /** 6자리 초대 코드 */
   inviteCode: string;
-
-  /** 환경 구분 (선택적: stage 또는 prod) */
-  env?: "stage" | "prod" | null;
 
   /** 참여하려는 사용자 ID (내부적으로 auth.uid 사용, 명시적 파라미터는 검증용) */
   userId?: string;
@@ -264,9 +255,6 @@ export interface CreatePromiseRequest {
 
   /** 도착 상황 공유 시작 시간 (분 단위, 선택적) */
   arrivalSharingTime?: number | null;
-
-  /** 환경 구분 (선택적: stage 또는 prod) */
-  env?: "stage" | "prod" | null;
 }
 
 /**
@@ -342,9 +330,6 @@ export interface UpdatePromiseRequest {
 
   /** 실시간 공유 시작 시간 (분 전, 선택적) */
   trackingStartMinutesBefore?: number | null;
-
-  /** 환경 구분 (선택적: stage 또는 prod) */
-  env?: "stage" | "prod" | null;
 }
 
 /**
@@ -394,9 +379,6 @@ export enum UpdatePromiseError {
 export interface DeletePromiseRequest {
   /** 약속 ID */
   promiseId: string;
-
-  /** 환경 구분 (선택적: stage 또는 prod) */
-  env?: "stage" | "prod" | null;
 }
 
 /**
@@ -425,9 +407,6 @@ export interface RespondPromiseRequest {
 
   /** 응답 상태 (accepted: 참여 확정, declined: 참여 불가) */
   status: "accepted" | "declined";
-
-  /** 환경 구분 (선택적: stage 또는 prod) */
-  env?: "stage" | "prod" | null;
 }
 
 /**
@@ -490,9 +469,6 @@ export interface CreateUserRequest {
     /** 제공자에서 받은 이메일 */
     email: string;
   };
-
-  /** 환경 구분 (선택적: stage 또는 prod) */
-  env?: "stage" | "prod" | null;
 }
 
 /**
@@ -521,9 +497,6 @@ export interface GetUserRequest {
 
   /** 공개 정보만 조회할지 여부 (true: auth 서브컬렉션 읽기 생략) */
   isPublic?: boolean | null;
-
-  /** 환경 구분 (선택적: stage 또는 prod) */
-  env?: "stage" | "prod" | null;
 }
 
 /**
@@ -570,9 +543,6 @@ export interface UserPrivateResponse extends UserPublicResponse {
 export interface UpdateUserRequest {
   /** 닉네임 (2~20자) */
   nickname?: string | null;
-
-  /** 환경 구분 (선택적: stage 또는 prod) */
-  env?: "stage" | "prod" | null;
 }
 
 /**
@@ -596,9 +566,6 @@ export interface UpdateUserResponse {
 export interface UploadProfileImageRequest {
   /** Firebase Storage에 업로드된 이미지 경로 */
   imagePath: string;
-
-  /** 환경 구분 (선택적: stage 또는 prod) */
-  env?: "stage" | "prod" | null;
 }
 
 /**
@@ -696,9 +663,6 @@ export interface UpdateUserSettingsRequest {
 
   /** 그룹 정렬 옵션 */
   groupSortOption?: GroupSortOptionData | null;
-
-  /** 환경 구분 (선택적: stage 또는 prod) */
-  env?: "stage" | "prod" | null;
 }
 
 /**
@@ -723,9 +687,6 @@ export interface UpdateUserSettingsResponse {
 export interface CheckNicknameAvailableRequest {
   /** 검사할 닉네임 (2~20자) */
   nickname: string;
-
-  /** 환경 구분 (선택적: stage 또는 prod) */
-  env?: "stage" | "prod" | null;
 }
 
 /**
@@ -855,9 +816,6 @@ export interface UserDocument {
 export interface LeaveGroupRequest {
   /** 그룹 ID */
   groupId: string;
-
-  /** 환경 구분 (선택적: stage 또는 prod) */
-  env?: "stage" | "prod" | null;
 }
 
 /**
@@ -892,9 +850,6 @@ export interface UpdateGroupRequest {
 
   /** 최대 인원 (선택적) */
   maxMembers?: number | null;
-
-  /** 환경 구분 (선택적: stage 또는 prod) */
-  env?: "stage" | "prod" | null;
 }
 
 /**
@@ -920,9 +875,6 @@ export interface UpdateGroupResponse {
 export interface DeleteGroupRequest {
   /** 그룹 ID */
   groupId: string;
-
-  /** 환경 구분 (선택적: stage 또는 prod) */
-  env?: "stage" | "prod" | null;
 }
 
 /**
@@ -994,9 +946,6 @@ export interface SendPushNotificationRequest {
 
   /** 추가 데이터 */
   data?: { [key: string]: string } | null;
-
-  /** 환경 구분 */
-  env?: "stage" | "prod" | null;
 }
 
 /**
@@ -1108,9 +1057,6 @@ export interface LiveActivityParticipant {
 export interface StartLiveActivityRequest {
   /** 약속 ID */
   promiseId: string;
-
-  /** 환경 구분 (선택적: stage 또는 prod) */
-  env?: "stage" | "prod" | null;
 }
 
 /**
@@ -1146,9 +1092,6 @@ export interface UpdateETARequest {
 
   /** LiveActivity 추적 시간 (분) */
   trackingDurationMinutes?: number;
-
-  /** 환경 구분 (선택적: stage 또는 prod) */
-  env?: "stage" | "prod" | null;
 }
 
 /**
@@ -1181,9 +1124,6 @@ export interface RegisterPushToStartTokenRequest {
 
   /** 디바이스 ID */
   deviceId: string;
-
-  /** 환경 구분 (선택적: stage 또는 prod) */
-  env?: "stage" | "prod" | null;
 }
 
 /**
@@ -1215,9 +1155,6 @@ export interface RegisterPushToStartTokenResponse {
 export interface ScheduledLiveActivityTaskPayload {
   /** 약속 ID */
   promiseId: string;
-
-  /** 환경 구분 */
-  env: "stage" | "prod";
 }
 
 /**
@@ -1229,9 +1166,6 @@ export interface ScheduledLiveActivityEndTaskPayload {
 
   /** Broadcast 채널 ID */
   channelId: string;
-
-  /** 환경 구분 */
-  env: "stage" | "prod";
 }
 
 // ============================================================================

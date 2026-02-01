@@ -63,8 +63,7 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
     photoData: Data?
   ) async throws -> GroupCreationResultModel {
     let groupId = UUID().uuidString
-    let envPrefix = FirebaseEnvironmentManager.shared.current.storagePrefix
-    let photoPath = "\(envPrefix)/group_images/\(groupId)/main.jpg"
+    let photoPath = "group_images/\(groupId)/main.jpg"
 
     // 1. 이미지 업로드 (선택적) - downloadURL 반환
     var imageUrl: String?
@@ -86,8 +85,6 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
       if let description {
         callableData["description"] = description
       }
-
-      callableData["env"] = functionsEnvironmentParam()
 
       if let imageUrl {
         callableData["imageUrl"] = imageUrl
@@ -120,9 +117,6 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
     }
   }
   
-  private func functionsEnvironmentParam() -> String {
-    FirebaseEnvironmentManager.shared.current.firebaseEnv
-  }
   
   /// 사용자가 속한 그룹 목록 조회
   /// Map 방식: users/{userId}.groups에서 groupId 목록을 가져온 후 상세 조회
@@ -212,11 +206,9 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
   /// Firebase Functions의 previewGroup을 호출합니다.
   /// 실제로 참여하지 않고 그룹 정보만 조회합니다.
   public func previewGroup(inviteCode: String) async throws -> GroupPreviewModel {
-    var callableData: [String: Any] = [
+    let callableData: [String: Any] = [
       "inviteCode": inviteCode.uppercased()
     ]
-
-    callableData["env"] = functionsEnvironmentParam()
 
     let result = try await functions.httpsCallable("previewGroup").call(callableData)
 
@@ -250,12 +242,10 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
   /// 2. memberIds 배열에 userId 추가 (arrayUnion)
   /// 3. users/{userId}.groups Map에 그룹 정보 추가
   public func joinGroup(inviteCode: String, userId: String) async throws -> GroupModel {
-    var callableData: [String: Any] = [
+    let callableData: [String: Any] = [
       "inviteCode": inviteCode.uppercased(),
       "userId": userId
     ]
-
-    callableData["env"] = functionsEnvironmentParam()
 
     let result = try await functions.httpsCallable("joinGroup").call(callableData)
 
@@ -283,11 +273,9 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
   /// 2. groups/{groupId}의 memberIds에서 userId 제거
   /// 3. users/{userId}/groups Map에서 해당 그룹 삭제
   public func leaveGroup(groupId: String) async throws {
-    var callableData: [String: Any] = [
+    let callableData: [String: Any] = [
       "groupId": groupId
     ]
-
-    callableData["env"] = functionsEnvironmentParam()
 
     _ = try await functions.httpsCallable("leaveGroup").call(callableData)
   }
@@ -305,11 +293,9 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
   /// 3. Storage의 그룹 이미지 삭제
   /// 4. 모든 멤버의 users/{userId}/groups Map에서 해당 그룹 삭제
   public func deleteGroup(groupId: String) async throws {
-    var callableData: [String: Any] = [
+    let callableData: [String: Any] = [
       "groupId": groupId
     ]
-
-    callableData["env"] = functionsEnvironmentParam()
 
     _ = try await functions.httpsCallable("deleteGroup").call(callableData)
   }
@@ -347,8 +333,6 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
       callableData["maxMembers"] = maxMembers
     }
 
-    callableData["env"] = functionsEnvironmentParam()
-
     _ = try await functions.httpsCallable("updateGroup").call(callableData)
     return try await fetchGroup(groupId: groupId)
   }
@@ -377,14 +361,11 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
   /// Firebase Functions의 clearGroupBadge를 호출합니다.
   /// 실패해도 무시합니다 (다음 fetch 시 동기화).
   public func clearGroupBadge(groupId: String) async {
-    var callableData: [String: Any] = [
+    let callableData: [String: Any] = [
       "groupId": groupId
     ]
 
-    let env = functionsEnvironmentParam()
-    callableData["env"] = env
-
-    AppLogger.group.debug("[clearGroupBadge] Calling with groupId: \(groupId), env: \(env)")
+    AppLogger.group.debug("[clearGroupBadge] Calling with groupId: \(groupId)")
 
     do {
       _ = try await functions.httpsCallable("clearGroupBadge").call(callableData)
@@ -402,8 +383,7 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
     imageData: Data
   ) async throws -> String {
     let uploadData = compressImageDataForUpload(imageData) ?? imageData
-    let envPrefix = FirebaseEnvironmentManager.shared.current.storagePrefix
-    let photoPath = "\(envPrefix)/group_images/\(groupId)/main.jpg"
+    let photoPath = "group_images/\(groupId)/main.jpg"
     let ref = storage.reference().child(photoPath)
 
     let metadata = StorageMetadata()

@@ -471,7 +471,7 @@ extension AuthClient: DependencyKey {
 
           let result = try await functions
             .httpsCallable("generateWidgetToken")
-            .call(["deviceId": deviceId, "env": FirebaseEnvironmentManager.shared.current.firebaseEnv])
+            .call(["deviceId": deviceId])
 
           guard let data = result.data as? [String: Any],
                 let widgetToken = data["widgetToken"] as? String,

@@ -17,11 +17,6 @@ private enum FirebaseConstants {
 public final class NotificationRemoteDataSource: @unchecked Sendable {
   private let db: Firestore
 
-  /// 현재 Firestore 환경
-  private var currentEnvironment: FirebaseEnvironment {
-    FirebaseEnvironmentManager.shared.current
-  }
-
   /// 현재 디바이스 ID (앱 설치 시 생성되는 고유 ID)
   private var deviceId: String {
     let key = AppConstants.UserDefaults.deviceId
@@ -123,13 +118,10 @@ public final class NotificationRemoteDataSource: @unchecked Sendable {
     let functions = Functions.functions(region: FirebaseConstants.region)
     let callable = functions.httpsCallable(FirebaseConstants.registerPushToStartToken)
 
-    var callableData: [String: Any] = [
+    let callableData: [String: Any] = [
       "token": token,
       "deviceId": deviceId
     ]
-
-    // env 파라미터 추가
-    callableData["env"] = functionsEnvironmentParam()
 
     do {
       _ = try await callable.call(callableData)
@@ -138,12 +130,6 @@ public final class NotificationRemoteDataSource: @unchecked Sendable {
       AppLogger.liveActivity.error("❌ Push to Start 토큰 등록 실패: \(error.localizedDescription)")
       throw error
     }
-  }
-
-  // MARK: - Helper
-
-  private func functionsEnvironmentParam() -> String {
-    currentEnvironment.firebaseEnv
   }
 }
 

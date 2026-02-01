@@ -216,7 +216,6 @@ extension AppEntry {
             if isAuthorized {
               // 이미 권한 허용됨 → 바로 메인으로
               WidgetDataManager.saveUserId(userModel.id)
-              WidgetDataManager.saveFirestoreEnv(FirebaseEnvironmentManager.shared.current.firebaseEnv)
               state.destination = .main(RootTab.Feature.State(currentUser: Shared(value: userModel)))
               // pending deeplink가 있으면 처리
               if let deeplink = state.pendingDeeplink {
@@ -246,7 +245,6 @@ extension AppEntry {
           if let userModel = state.pendingUserForMain {
             state.pendingUserForMain = nil
             WidgetDataManager.saveUserId(userModel.id)
-            WidgetDataManager.saveFirestoreEnv(FirebaseEnvironmentManager.shared.current.firebaseEnv)
             state.destination = .main(RootTab.Feature.State(currentUser: Shared(value: userModel)))
           }
           return .none

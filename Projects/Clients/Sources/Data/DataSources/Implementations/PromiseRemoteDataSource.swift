@@ -78,9 +78,6 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
       callableData["arrivalSharingTime"] = trackingMinutes
     }
 
-    // env 파라미터 추가
-    callableData["env"] = functionsEnvironmentParam()
-
     // Firebase Functions 호출
     let result = try await functions.httpsCallable("createPromise").call(callableData)
 
@@ -96,18 +93,12 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
 
   /// 약속 응답 업데이트
   public func respondToPromise(promiseId: String, status: String) async throws {
-    var callableData: [String: Any] = [
+    let callableData: [String: Any] = [
       "promiseId": promiseId,
       "status": status,
     ]
 
-    callableData["env"] = functionsEnvironmentParam()
-
     _ = try await functions.httpsCallable("respondPromise").call(callableData)
-  }
-
-  private func functionsEnvironmentParam() -> String {
-    FirebaseEnvironmentManager.shared.current.firebaseEnv
   }
   
   /// 약속 업데이트
@@ -149,9 +140,6 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
       callableData["trackingStartMinutesBefore"] = NSNull()
     }
 
-    // env 파라미터 추가
-    callableData["env"] = functionsEnvironmentParam()
-
     // Firebase Functions 호출
     _ = try await functions.httpsCallable("updatePromise").call(callableData)
   }
@@ -159,11 +147,9 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
   /// 약속 삭제 (hard delete)
   /// Firebase Functions의 deletePromise를 호출합니다.
   public func deletePromise(id: String) async throws {
-    var callableData: [String: Any] = [
+    let callableData: [String: Any] = [
       "promiseId": id
     ]
-
-    callableData["env"] = functionsEnvironmentParam()
 
     _ = try await functions.httpsCallable(FirebaseFunctionNames.deletePromise).call(callableData)
   }
@@ -405,11 +391,9 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
   /// LiveActivity 시작 요청
   /// Firebase Functions의 startLiveActivity를 호출하여 Push to Start APNs 전송
   public func startLiveActivity(promiseId: String) async throws {
-    var callableData: [String: Any] = [
+    let callableData: [String: Any] = [
       "promiseId": promiseId
     ]
-
-    callableData["env"] = functionsEnvironmentParam()
 
     _ = try await functions.httpsCallable(FirebaseFunctionNames.startLiveActivity).call(callableData)
   }
@@ -436,13 +420,11 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
       return dict
     }
 
-    var callableData: [String: Any] = [
+    let callableData: [String: Any] = [
       "channelId": channelId,
       "participants": participantsData,
       "trackingDurationMinutes": trackingDurationMinutes
     ]
-
-    callableData["env"] = functionsEnvironmentParam()
 
     _ = try await functions.httpsCallable(FirebaseFunctionNames.updateETA).call(callableData)
   }

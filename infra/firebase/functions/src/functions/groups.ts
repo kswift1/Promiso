@@ -77,7 +77,7 @@ export const createGroup = onCall<CreateGroupRequest>(
     // 4. 비즈니스 로직
     const creatorId = request.auth.uid;
     const db = admin.firestore();
-    const usersCollection = getEnvironmentCollection("users", db, data.env);
+    const usersCollection = getEnvironmentCollection("users", db);
 
     // 4-1. 초대 코드 생성
     const inviteCode = await generateUniqueInviteCode({
@@ -87,7 +87,7 @@ export const createGroup = onCall<CreateGroupRequest>(
     });
 
     // 5. Firestore에 저장 (환경별 경로)
-    const groupsCollection = getEnvironmentCollection("groups", db, data.env);
+    const groupsCollection = getEnvironmentCollection("groups", db);
     const requestedGroupId = data.groupId.trim();
     const groupRef = groupsCollection.doc(requestedGroupId);
 
@@ -162,16 +162,9 @@ export const previewGroup = onCall<PreviewGroupRequest>(
       );
     }
 
-    if (data.env && data.env !== "stage" && data.env !== "prod") {
-      throw new HttpsError(
-        "invalid-argument",
-        "env는 stage 또는 prod만 허용됩니다",
-      );
-    }
-
     // 2. 초대 코드로 그룹 찾기
     const db = admin.firestore();
-    const groupsCollection = getEnvironmentCollection("groups", db, data.env);
+    const groupsCollection = getEnvironmentCollection("groups", db);
     const groupSnapshot = await groupsCollection
       .where("inviteCode", "==", inviteCode)
       .limit(1)
@@ -190,11 +183,7 @@ export const previewGroup = onCall<PreviewGroupRequest>(
     const memberIds = (groupData.memberIds as string[]) ?? [];
 
     // 3. 멤버 프로필 정보 조회 (memberIds에서 최대 10명)
-    const usersCollection = getEnvironmentCollection(
-      "users",
-      db,
-      data.env,
-    );
+    const usersCollection = getEnvironmentCollection("users", db);
 
     const memberIdsToFetch = memberIds.slice(0, 10);
 
@@ -251,19 +240,12 @@ export const joinGroup = onCall<JoinGroupRequest>(
       );
     }
 
-    if (data.env && data.env !== "stage" && data.env !== "prod") {
-      throw new HttpsError(
-        "invalid-argument",
-        "env는 stage 또는 prod만 허용됩니다",
-      );
-    }
-
     // 3. 비즈니스 로직
     const userId = request.auth.uid;
     const db = admin.firestore();
 
     // 3-1. 초대 코드로 그룹 찾기
-    const groupsCollection = getEnvironmentCollection("groups", db, data.env);
+    const groupsCollection = getEnvironmentCollection("groups", db);
     const groupSnapshot = await groupsCollection
       .where("inviteCode", "==", inviteCode)
       .limit(1)
@@ -302,7 +284,7 @@ export const joinGroup = onCall<JoinGroupRequest>(
     }
 
     const now = FieldValue.serverTimestamp();
-    const usersCollection = getEnvironmentCollection("users", db, data.env);
+    const usersCollection = getEnvironmentCollection("users", db);
 
     // 4. Firestore에 저장 (트랜잭션 사용)
     await db.runTransaction(async (transaction) => {
@@ -371,17 +353,10 @@ export const leaveGroup = onCall<LeaveGroupRequest>(
       );
     }
 
-    if (data.env && data.env !== "stage" && data.env !== "prod") {
-      throw new HttpsError(
-        "invalid-argument",
-        "env는 stage 또는 prod만 허용됩니다",
-      );
-    }
-
     // 3. 비즈니스 로직
     const db = admin.firestore();
-    const groupsCollection = getEnvironmentCollection("groups", db, data.env);
-    const usersCollection = getEnvironmentCollection("users", db, data.env);
+    const groupsCollection = getEnvironmentCollection("groups", db);
+    const usersCollection = getEnvironmentCollection("users", db);
 
     // 3-1. 그룹 존재 확인
     const groupRef = groupsCollection.doc(groupId);
@@ -472,15 +447,8 @@ export const updateGroup = onCall<UpdateGroupRequest>(
       );
     }
 
-    if (data.env && data.env !== "stage" && data.env !== "prod") {
-      throw new HttpsError(
-        "invalid-argument",
-        "env는 stage 또는 prod만 허용됩니다",
-      );
-    }
-
     const db = admin.firestore();
-    const groupsCollection = getEnvironmentCollection("groups", db, data.env);
+    const groupsCollection = getEnvironmentCollection("groups", db);
     const groupRef = groupsCollection.doc(groupId);
     const groupDoc = await groupRef.get();
 
@@ -574,7 +542,6 @@ export const updateGroup = onCall<UpdateGroupRequest>(
           groupId,
           relatedUserId: userId,
           data: null,
-          env: data.env ?? null,
         });
       }
     }
@@ -617,17 +584,10 @@ export const deleteGroup = onCall<DeleteGroupRequest>(
       );
     }
 
-    if (data.env && data.env !== "stage" && data.env !== "prod") {
-      throw new HttpsError(
-        "invalid-argument",
-        "env는 stage 또는 prod만 허용됩니다",
-      );
-    }
-
     // 3. 비즈니스 로직
     const db = admin.firestore();
-    const groupsCollection = getEnvironmentCollection("groups", db, data.env);
-    const usersCollection = getEnvironmentCollection("users", db, data.env);
+    const groupsCollection = getEnvironmentCollection("groups", db);
+    const usersCollection = getEnvironmentCollection("users", db);
 
     // 3-1. 그룹 존재 및 권한 확인
     const groupRef = groupsCollection.doc(groupId);
@@ -686,9 +646,7 @@ export const deleteGroup = onCall<DeleteGroupRequest>(
     }
 
     // 4-1. 그룹의 모든 약속 삭제 (트리거가 배지 감소 처리)
-    const promisesCollection = getEnvironmentCollection(
-      "promises", db, data.env
-    );
+    const promisesCollection = getEnvironmentCollection("promises", db);
     const groupPromises = await promisesCollection
       .where("groupId", "==", groupId)
       .get();
@@ -756,7 +714,7 @@ export const deleteGroup = onCall<DeleteGroupRequest>(
  */
 export const onGroupImageUpdated = onDocumentUpdated(
   {
-    document: "{env}/root/groups/{groupId}",
+    document: "groups/{groupId}",
     region: REGION,
   },
   async (event) => {
@@ -779,7 +737,6 @@ export const onGroupImageUpdated = onDocumentUpdated(
     }
 
     const groupId = event.params.groupId;
-    const env = event.params.env;
     const memberIds =
       Array.isArray(afterData.memberIds) ? afterData.memberIds as string[] : [];
 
@@ -795,7 +752,7 @@ export const onGroupImageUpdated = onDocumentUpdated(
 
     // 모든 멤버의 groups[groupId].imageUrl 업데이트
     const db = admin.firestore();
-    const usersCollection = getEnvironmentCollection("users", db, env);
+    const usersCollection = getEnvironmentCollection("users", db);
     const batch = db.batch();
 
     for (const memberId of memberIds) {

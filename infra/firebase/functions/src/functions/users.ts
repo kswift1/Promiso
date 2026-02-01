@@ -72,7 +72,7 @@ export const createUser = onCall<CreateUserRequest>(
     }
 
     const db = admin.firestore();
-    const usersCollection = getEnvironmentCollection("users", db, data.env);
+    const usersCollection = getEnvironmentCollection("users", db);
     const userRef = usersCollection.doc(userId);
 
     // 3. 이미 존재하는 사용자인지 확인
@@ -154,7 +154,7 @@ export const getUser = onCall<GetUserRequest>(
     const isPublic = data.isPublic ?? false;
 
     const db = admin.firestore();
-    const usersCollection = getEnvironmentCollection("users", db, data.env);
+    const usersCollection = getEnvironmentCollection("users", db);
     const userRef = usersCollection.doc(targetUserId);
 
     // 2. 메인 문서 조회
@@ -249,7 +249,7 @@ export const updateUser = onCall<UpdateUserRequest>(
     }
 
     const db = admin.firestore();
-    const usersCollection = getEnvironmentCollection("users", db, data.env);
+    const usersCollection = getEnvironmentCollection("users", db);
     const userRef = usersCollection.doc(userId);
 
     const now = FieldValue.serverTimestamp();
@@ -306,7 +306,6 @@ export const uploadProfileImage = onCall<UploadProfileImageRequest>(
       console.log("📸 uploadProfileImage started", {
         userId,
         imagePath: data.imagePath,
-        env: data.env,
       });
 
       // 3. Storage에서 downloadURL 생성
@@ -322,7 +321,7 @@ export const uploadProfileImage = onCall<UploadProfileImageRequest>(
 
       // 4. Firestore 업데이트
       const db = admin.firestore();
-      const usersCollection = getEnvironmentCollection("users", db, data.env);
+      const usersCollection = getEnvironmentCollection("users", db);
       const userRef = usersCollection.doc(userId);
 
       console.log("📝 Updating Firestore profile field...");
@@ -384,7 +383,7 @@ export const checkNicknameAvailable = onCall<CheckNicknameAvailableRequest>(
 
     try {
       const db = admin.firestore();
-      const usersCollection = getEnvironmentCollection("users", db, data.env);
+      const usersCollection = getEnvironmentCollection("users", db);
 
       // 3. 닉네임으로 사용자 검색 (본인 제외)
       const snapshot = await usersCollection

@@ -112,7 +112,6 @@ public enum WidgetDataManager {
   private static let promisesKey = "widget.promises"
   private static let userIdKey = "widget.userId"
   private static let lastUpdatedKey = "widget.lastUpdated"
-  private static let firestoreEnvKey = "widget.firestoreEnv"
   private static let lastFetchAtKey = "widget.lastFetchAt"
 
   // MARK: - TTL Settings
@@ -144,16 +143,6 @@ public enum WidgetDataManager {
     } else {
       defaults?.removeObject(forKey: userIdKey)
     }
-  }
-
-  /// Firestore 환경 저장 (앱에서 호출 - FirebaseEnvironment.firebaseEnv 값)
-  public static func saveFirestoreEnv(_ env: String) {
-    defaults?.set(env, forKey: firestoreEnvKey)
-  }
-
-  /// Firestore 환경 로드 (Widget에서 호출)
-  public static func loadFirestoreEnv() -> String {
-    defaults?.string(forKey: firestoreEnvKey) ?? "stage"
   }
 
   /// Widget 전용 Long-lived Token 로드 (30일 유효)
@@ -243,7 +232,7 @@ public enum WidgetDataManager {
     let functions = Functions.functions(region: "asia-northeast3")
 
     do {
-      let result = try await functions.httpsCallable("getWidgetSnapshot").call(["env": loadFirestoreEnv()])
+      let result = try await functions.httpsCallable("getWidgetSnapshot").call([:])
 
       guard let data = result.data as? [String: Any] else {
         AppLogger.notification.error("❌ [WidgetDataManager] Invalid response format")
@@ -377,7 +366,7 @@ public enum WidgetDataManager {
     request.httpMethod = "POST"
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
     request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-    request.httpBody = try? JSONSerialization.data(withJSONObject: ["data": ["env": loadFirestoreEnv()]])
+    request.httpBody = try? JSONSerialization.data(withJSONObject: ["data": [:]])
 
     do {
       let (data, response) = try await URLSession.shared.data(for: request)
