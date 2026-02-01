@@ -48,25 +48,42 @@
 
 ### 요구사항
 
-- Xcode 15.0+
+- Xcode 16.0+
 - Swift 6.0+
-- iOS 17.0+
-- Tuist 4.0+
+- iOS 18.0+
+- Tuist 4.65.7+
 
-### 설치
+### 빠른 설정 (새 컴퓨터)
 
 ```bash
 # 1. 저장소 클론
 git clone https://github.com/kswift1/Promiso.git
 cd Promiso
 
-# 2. Tuist 의존성 설치 및 프로젝트 생성
-tuist install
-tuist generate
+# 2. Tuist 설치
+curl -Ls https://install.tuist.io | bash
 
-# 3. Xcode에서 열기
+# 3. Config 폴더 복원 (Google Drive에 백업해둔 경우)
+unzip ~/Downloads/Promiso-Config.zip -d .
+./scripts/copy-firebase-config.sh
+
+# 4. 프로젝트 생성 및 빌드
+tuist generate
+tuist build PromisoDev
+
+# 5. Xcode에서 열기
 open Promiso.xcworkspace
 ```
+
+**Config 파일이 없나요?** → [docs/SETUP_GUIDE.md](docs/SETUP_GUIDE.md) 참고
+
+### 환경별 타겟
+
+| 타겟 | Bundle ID | Firebase | 용도 |
+|------|-----------|----------|------|
+| PromisoDev | `com.promiso.dev` | promiso-dev | 개발 |
+| PromisoStage | `com.promiso.stage` | promiso-stage | 스테이징 |
+| Promiso | `com.promiso` | promiso-prod | 프로덕션 |
 
 ## 📦 프로젝트 구조
 
