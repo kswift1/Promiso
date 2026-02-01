@@ -45,7 +45,8 @@ KAKAO_REST_API_KEY = ${KAKAO_REST_API_KEY_DEV}
 
 // Code Signing (Manual for Release builds)
 CODE_SIGN_STYLE = Manual
-CODE_SIGN_IDENTITY = iPhone Distribution
+CODE_SIGN_IDENTITY[config=Release] = Apple Distribution
+CODE_SIGN_IDENTITY[config=Debug] = Apple Development
 PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*] = match AppStore \$(PRODUCT_BUNDLE_IDENTIFIER)
 EOF
 
@@ -72,7 +73,8 @@ KAKAO_REST_API_KEY = ${KAKAO_REST_API_KEY_STAGE}
 
 // Code Signing (Manual for Release builds)
 CODE_SIGN_STYLE = Manual
-CODE_SIGN_IDENTITY = iPhone Distribution
+CODE_SIGN_IDENTITY[config=Release] = Apple Distribution
+CODE_SIGN_IDENTITY[config=Debug] = Apple Development
 PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*] = match AppStore \$(PRODUCT_BUNDLE_IDENTIFIER)
 EOF
 
@@ -99,7 +101,8 @@ KAKAO_REST_API_KEY = ${KAKAO_REST_API_KEY_PROD}
 
 // Code Signing (Manual for Release builds)
 CODE_SIGN_STYLE = Manual
-CODE_SIGN_IDENTITY = iPhone Distribution
+CODE_SIGN_IDENTITY[config=Release] = Apple Distribution
+CODE_SIGN_IDENTITY[config=Debug] = Apple Development
 PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*] = match AppStore \$(PRODUCT_BUNDLE_IDENTIFIER)
 EOF
 
