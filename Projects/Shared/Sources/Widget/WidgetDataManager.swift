@@ -1,15 +1,35 @@
 import Foundation
+import os.log
 import WidgetKit
 import ExternalDependency
 
+let widgetLogger = Logger(subsystem: "com.promiso.widget", category: "DataManager")
+
 // MARK: - Widget Snapshot Response DTO
+
+/// 스냅샷 메타 정보
+private struct WidgetSnapshotMeta: Decodable {
+  let todayCount: Int
+  let upcomingCount: Int
+  let updatedAt: String
+  let version: Int
+}
 
 /// Firebase Functions getWidgetSnapshot 응답 모델
 private struct WidgetSnapshotResponse: Decodable {
   let next: WidgetPromiseDTO?
   let today: [WidgetPromiseDTO]
   let upcoming: [WidgetPromiseDTO]
-  let updatedAt: String
+  let meta: WidgetSnapshotMeta?
+
+  // Legacy 호환
+  let updatedAt: String?
+}
+
+/// 서버에서 받아오는 투표 정보 DTO
+private struct WidgetVotesDTO: Decodable {
+  let accepted: [String]
+  let declined: [String]
 }
 
 /// 서버에서 받아오는 약속 DTO
@@ -23,7 +43,8 @@ private struct WidgetPromiseDTO: Decodable {
   let groupId: String
   let groupName: String?
   let isConfirmed: Bool
-  let participantCount: Int
+  let votes: WidgetVotesDTO
+  let myVoteStatus: String?  // "pending" | "voted" | "declined"
 
   /// WidgetPromiseData로 변환
   func toWidgetPromiseData() -> WidgetPromiseData? {
@@ -50,6 +71,17 @@ private struct WidgetPromiseDTO: Decodable {
       endDate = nil
     }
 
+    // myVoteStatus 변환
+    let voteStatus: MyVoteStatus
+    switch myVoteStatus {
+    case "voted":
+      voteStatus = .voted
+    case "declined":
+      voteStatus = .declined
+    default:
+      voteStatus = .pending
+    }
+
     return WidgetPromiseData(
       id: id,
       title: title,
@@ -60,7 +92,8 @@ private struct WidgetPromiseDTO: Decodable {
       groupId: groupId,
       groupName: groupName,
       isConfirmed: isConfirmed,
-      participantCount: participantCount
+      participantCount: votes.accepted.count,
+      myVoteStatus: voteStatus
     )
   }
 }
@@ -80,6 +113,12 @@ public enum WidgetDataManager {
   private static let userIdKey = "widget.userId"
   private static let lastUpdatedKey = "widget.lastUpdated"
   private static let firestoreEnvKey = "widget.firestoreEnv"
+  private static let lastFetchAtKey = "widget.lastFetchAt"
+
+  // MARK: - TTL Settings
+
+  /// Manual refresh TTL: 서버 호출 최소 간격 (15초)
+  private static let manualRefreshTTL: TimeInterval = 15.0
 
   /// Firebase Functions 엔드포인트
   private static let functionsBaseURL = "https://asia-northeast3-\(LiveActivityIntentKey.firebaseProjectId).cloudfunctions.net"
@@ -117,29 +156,35 @@ public enum WidgetDataManager {
     defaults?.string(forKey: firestoreEnvKey) ?? "stage"
   }
 
-  /// Firebase ID Token 로드 (AuthClient에서 저장한 토큰 사용)
+  /// Widget 전용 Long-lived Token 로드 (30일 유효)
+  /// - Returns: Widget Token (없거나 만료 시 nil)
+  public static func loadWidgetToken() -> String? {
+    guard let token = defaults?.string(forKey: LiveActivityIntentKey.widgetTokenKey) else {
+      return nil
+    }
+
+    // 만료 체크
+    if let expiry = defaults?.object(forKey: LiveActivityIntentKey.widgetTokenExpiryKey) as? Date {
+      if expiry < Date() {
+        return nil
+      }
+    }
+
+    return token
+  }
+
+  /// Firebase ID Token 로드 (Legacy - Widget Token 없을 때 fallback)
   public static func loadIdToken() -> String? {
     guard let token = defaults?.string(forKey: LiveActivityIntentKey.authTokenKey) else {
-      print("🔴 [Widget] ID Token 없음 - 저장된 토큰이 없습니다")
       return nil
     }
 
     // 만료 체크 (5분 여유)
     if let expiry = defaults?.object(forKey: LiveActivityIntentKey.authTokenExpiryKey) as? Date {
-      let now = Date()
       let expiryWithMargin = expiry.addingTimeInterval(-300)
-
-      if expiryWithMargin < now {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "HH:mm:ss"
-        print("🔴 [Widget] ID Token 만료됨 - 만료시간: \(formatter.string(from: expiry)), 현재: \(formatter.string(from: now))")
+      if expiryWithMargin < Date() {
         return nil
-      } else {
-        let remainingMinutes = Int(expiry.timeIntervalSince(now) / 60)
-        print("🟢 [Widget] ID Token 유효 - 남은 시간: \(remainingMinutes)분")
       }
-    } else {
-      print("🟡 [Widget] ID Token 만료시간 없음 - expiry 미저장")
     }
 
     return token
@@ -224,20 +269,60 @@ public enum WidgetDataManager {
 
   // MARK: - Widget Direct Fetch (iOS 17+)
 
-
   /// 위젯에서 직접 API 호출하여 데이터 가져오기
+  ///
+  /// @architecture Snapshot 기반 (v2)
+  /// - 서버에서 미리 계산된 스냅샷을 읽기만 함
+  /// - Race Condition 문제 없음 (같은 문서를 여러 프로세스가 읽어도 OK)
+  /// - TTL로 불필요한 API 호출만 방지
+  ///
   /// - Returns: 약속 목록 (실패 시 캐시된 데이터 반환)
   public static func fetchFromServer() async -> [WidgetPromiseData] {
-    print("🔄 [Widget] fetchFromServer 시작")
-
-    guard let token = loadIdToken() else {
-      // 토큰 없으면 네트워크 요청 스킵, 캐시 반환
-      print("🔴 [Widget] 토큰 없음 → 캐시 반환")
+    // 0. TTL 체크 (불필요한 API 호출 방지)
+    if let remaining = checkTTL() {
+      widgetLogger.info("⏭️ TTL \(remaining, privacy: .public)초 남음")
       return loadPromises()
     }
 
-    guard let url = URL(string: "\(functionsBaseURL)/getWidgetSnapshot") else {
-      print("🔴 [Widget] URL 생성 실패")
+    // 1. Widget Token 우선 시도 (30일 유효)
+    if let widgetToken = loadWidgetToken() {
+      return await fetchWithWidgetToken(widgetToken)
+    }
+
+    // 2. Fallback: Firebase ID Token (1시간 유효)
+    if let idToken = loadIdToken() {
+      widgetLogger.info("🔑 ID Token fallback")
+      return await fetchWithIdToken(idToken)
+    }
+
+    // 3. 토큰 없음 → 캐시 반환
+    widgetLogger.warning("❌ 토큰 없음 → 캐시 반환")
+    return loadPromises()
+  }
+
+  /// TTL 체크 (15초 이내 재요청 시 남은 시간 반환)
+  private static func checkTTL() -> Int? {
+    guard let defaults = defaults else { return nil }
+
+    let now = Date().timeIntervalSince1970
+    let lastFetch = defaults.double(forKey: lastFetchAtKey)
+
+    if lastFetch > 0 && (now - lastFetch) < manualRefreshTTL {
+      return Int(manualRefreshTTL - (now - lastFetch))
+    }
+
+    return nil
+  }
+
+  /// 서버 호출 시간 기록 (API 성공 시 호출)
+  private static func markFetchedNow() {
+    defaults?.set(Date().timeIntervalSince1970, forKey: lastFetchAtKey)
+  }
+
+  /// Widget Token으로 API 호출 (getWidgetSnapshotWithToken 엔드포인트)
+  private static func fetchWithWidgetToken(_ token: String) async -> [WidgetPromiseData] {
+    guard let url = URL(string: "\(functionsBaseURL)/getWidgetSnapshotWithToken") else {
+      widgetLogger.error("❌ URL 생성 실패")
       return loadPromises()
     }
 
@@ -251,12 +336,17 @@ public enum WidgetDataManager {
       let (data, response) = try await URLSession.shared.data(for: request)
 
       guard let httpResponse = response as? HTTPURLResponse else {
-        print("🔴 [Widget] HTTP 응답 아님")
+        widgetLogger.error("❌ HTTP 응답 아님")
         return loadPromises()
       }
 
       guard httpResponse.statusCode == 200 else {
-        print("🔴 [Widget] HTTP 에러: \(httpResponse.statusCode)")
+        widgetLogger.error("❌ HTTP \(httpResponse.statusCode, privacy: .public)")
+        // 401 에러면 토큰 만료/무효화 → ID Token으로 fallback 시도
+        if httpResponse.statusCode == 401, let idToken = loadIdToken() {
+          widgetLogger.info("🔄 Widget Token 401 → ID Token fallback")
+          return await fetchWithIdToken(idToken)
+        }
         return loadPromises()
       }
 
@@ -264,14 +354,56 @@ public enum WidgetDataManager {
       let wrapper = try JSONDecoder().decode(FunctionsResponseWrapper.self, from: data)
       let promises = convertSnapshotToPromises(wrapper.result)
 
-      // 캐시 업데이트
+      // 캐시 업데이트 + TTL 기록
       savePromises(promises)
+      markFetchedNow()
 
-      print("🟢 [Widget] 서버에서 \(promises.count)개 약속 가져옴")
+      widgetLogger.info("✅ API 성공 → \(promises.count, privacy: .public)개 약속")
       return promises
     } catch {
-      // 실패 시 캐시 반환
-      print("🔴 [Widget] 네트워크 에러: \(error.localizedDescription)")
+      widgetLogger.error("❌ 네트워크: \(error.localizedDescription, privacy: .public)")
+      return loadPromises()
+    }
+  }
+
+  /// Firebase ID Token으로 API 호출 (기존 getWidgetSnapshot 엔드포인트)
+  private static func fetchWithIdToken(_ token: String) async -> [WidgetPromiseData] {
+    guard let url = URL(string: "\(functionsBaseURL)/getWidgetSnapshot") else {
+      widgetLogger.error("❌ URL 생성 실패")
+      return loadPromises()
+    }
+
+    var request = URLRequest(url: url)
+    request.httpMethod = "POST"
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+    request.httpBody = try? JSONSerialization.data(withJSONObject: ["data": ["env": loadFirestoreEnv()]])
+
+    do {
+      let (data, response) = try await URLSession.shared.data(for: request)
+
+      guard let httpResponse = response as? HTTPURLResponse else {
+        widgetLogger.error("❌ HTTP 응답 아님")
+        return loadPromises()
+      }
+
+      guard httpResponse.statusCode == 200 else {
+        widgetLogger.error("❌ HTTP \(httpResponse.statusCode, privacy: .public)")
+        return loadPromises()
+      }
+
+      // Firebase Functions 응답 형식: { "result": { ... } }
+      let wrapper = try JSONDecoder().decode(FunctionsResponseWrapper.self, from: data)
+      let promises = convertSnapshotToPromises(wrapper.result)
+
+      // 캐시 업데이트 + TTL 기록
+      savePromises(promises)
+      markFetchedNow()
+
+      widgetLogger.info("✅ API 성공 (ID Token) → \(promises.count, privacy: .public)개 약속")
+      return promises
+    } catch {
+      widgetLogger.error("❌ 네트워크: \(error.localizedDescription, privacy: .public)")
       return loadPromises()
     }
   }

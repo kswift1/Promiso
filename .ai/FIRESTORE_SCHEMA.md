@@ -8,7 +8,9 @@
    - [1. users](#1-users-컬렉션)
      - [1-1. auth](#1-1-usersuseridauthmain-서브컬렉션)
      - [1-2. settings](#1-2-usersuseridsettingsmain-서브컬렉션)
-     - [1-3. groups (Map)](#1-3-usersuseridgroups-map)
+     - [1-3. cache/widgetSnapshot](#1-3-usersuseridcachewidgetsnapshot-서브컬렉션)
+     - [1-4. cache/homeSnapshot](#1-4-usersuseridcachehomesnapshot-서브컬렉션)
+     - [1-5. groups (Map)](#1-5-usersuseridgroups-map)
    - [2. groups](#2-groups-컬렉션)
    - [3. promises](#3-promises-컬렉션)
      - [3-1. votes (Map)](#3-1-promisespromiseidvotes-map)
@@ -47,8 +49,10 @@ Firestore Root
 │     │                             # { [groupId]: { groupName, role, joinedAt, notifications } }
 │     ├─ auth/                      # 인증 정보 (서브컬렉션)
 │     │  └─ main                    # 고정 문서 ID
-│     └─ settings/                  # 설정 정보 (서브컬렉션)
-│        └─ main                    # 고정 문서 ID
+│     ├─ settings/                  # 설정 정보 (서브컬렉션)
+│     │  └─ main                    # 고정 문서 ID
+│     └─ cache/                     # 캐시 데이터 (서브컬렉션)
+│        └─ widgetSnapshot          # 위젯용 스냅샷 (Trigger 자동 갱신)
 │
 ├─ groups/                          # 그룹 정보
 │  └─ {groupId}/                    # 그룹 문서
@@ -273,7 +277,254 @@ users/{userId}/settings/main
 
 ---
 
-### 1-3. users/{userId}.groups (Map)
+### 1-3. users/{userId}/cache/widgetSnapshot (서브컬렉션)
+
+위젯용 약속 스냅샷을 저장합니다. Firestore Trigger로 자동 갱신됩니다.
+
+#### 📍 문서 경로
+
+```
+users/{userId}/cache/widgetSnapshot
+```
+
+#### 🔑 문서 ID
+
+- 고정값: `widgetSnapshot`
+
+#### 📊 필드 구조
+
+| 필드명 | 타입 | 필수 | 설명 |
+|--------|------|------|------|
+| `next` | WidgetPromise \| null | ✅ | Small 위젯용 다음 약속 (우선순위 1위) |
+| `today` | Array<WidgetPromise> | ✅ | Medium 위젯용 오늘 약속 (최대 5개) |
+| `upcoming` | Array<WidgetPromise> | ✅ | Large 위젯용 다가오는 약속 (최대 7개) |
+| `meta` | SnapshotMeta | ✅ | 메타데이터 |
+
+#### 📦 WidgetPromise 구조 (SnapshotPromise 공용)
+
+| 필드명 | 타입 | 필수 | 설명 |
+|--------|------|------|------|
+| `id` | String | ✅ | 약속 ID |
+| `title` | String | ✅ | 약속 제목 |
+| `emoji` | String | ✅ | 대표 이모지 (기본: "📅") |
+| `startAt` | String | ✅ | 시작 시간 (ISO 8601) |
+| `endAt` | String \| null | ❌ | 종료 시간 (ISO 8601) |
+| `location` | String \| null | ❌ | 장소명 |
+| `groupId` | String | ✅ | 그룹 ID |
+| `groupName` | String \| null | ❌ | 그룹 이름 |
+| `groupImageUrl` | String \| null | ❌ | 그룹 이미지 URL |
+| `isConfirmed` | Boolean | ✅ | 약속 확정 여부 |
+| `minimumParticipants` | Number | ✅ | 최소 확정 인원 |
+| `participantCount` | Number | ✅ | 참여 확정 인원 |
+| `myVoteStatus` | String | ✅ | 내 투표 상태 (`pending` \| `voted` \| `declined`) |
+| `votingDeadline` | String \| null | ❌ | 투표 마감 시간 (ISO 8601) |
+
+> 💡 Widget과 Home에서 동일한 SnapshotPromise 타입을 공유합니다.
+
+#### 📦 SnapshotMeta 구조
+
+| 필드명 | 타입 | 필수 | 설명 |
+|--------|------|------|------|
+| `todayCount` | Number | ✅ | 오늘 약속 개수 |
+| `upcomingCount` | Number | ✅ | 다가오는 약속 개수 |
+| `updatedAt` | String | ✅ | 마지막 갱신 시간 (ISO 8601) |
+| `version` | Number | ✅ | 스키마 버전 (현재 1) |
+
+#### 📊 우선순위 정렬
+
+약속은 다음 우선순위로 정렬됩니다:
+
+| 순서 | 조건 | 설명 |
+|------|------|------|
+| 1순위 | `myVoteStatus === "pending"` | 투표 필요한 약속 |
+| 2순위 | `isConfirmed === false` | 미확정 약속 |
+| 3순위 | `startAt` 오름차순 | 시간순 |
+
+#### 📝 예시 데이터
+
+```json
+{
+  "next": {
+    "id": "promise123",
+    "title": "점심 약속",
+    "emoji": "🍜",
+    "startAt": "2025-02-01T12:00:00+09:00",
+    "endAt": null,
+    "location": "강남역 2번 출구",
+    "groupId": "group456",
+    "groupName": "대학 동기",
+    "isConfirmed": false,
+    "participantCount": 2,
+    "myVoteStatus": "pending"
+  },
+  "today": [
+    { "id": "promise123", ... },
+    { "id": "promise456", ... }
+  ],
+  "upcoming": [
+    { "id": "promise789", ... }
+  ],
+  "meta": {
+    "todayCount": 2,
+    "upcomingCount": 1,
+    "updatedAt": "2025-02-01T10:30:00+09:00",
+    "version": 1
+  }
+}
+```
+
+#### 🔄 자동 갱신 트리거
+
+| 트리거 | 이벤트 | 설명 |
+|--------|--------|------|
+| `onPromiseWriteUpdateSnapshot` | 약속 CRUD | 해당 그룹 멤버의 스냅샷 갱신 |
+| `scheduledSnapshotRefresh` | 매일 00:00 KST | today/upcoming 재분류 |
+
+#### 💡 설계 의도
+
+- **Race Condition 해결**: Widget Extension 다중 프로세스 문제 해결
+- **비용 절감**: API 호출 시 N+1 쿼리 → 1 read로 감소
+- **실시간성**: Trigger 기반 자동 갱신
+
+---
+
+### 1-4. users/{userId}/cache/homeSnapshot (서브컬렉션)
+
+홈화면용 약속 스냅샷을 저장합니다. Firestore Trigger로 자동 갱신됩니다.
+
+#### 📍 문서 경로
+
+```
+users/{userId}/cache/homeSnapshot
+```
+
+#### 🔑 문서 ID
+
+- 고정값: `homeSnapshot`
+
+#### 📊 필드 구조
+
+| 필드명 | 타입 | 필수 | 설명 |
+|--------|------|------|------|
+| `todayPromises` | Array<SnapshotPromise> | ✅ | 오늘 확정된 약속 (최대 5개) |
+| `pendingPromises` | Array<SnapshotPromise> | ✅ | 응답 필요 약속 (최대 5개, 마감 임박순) |
+| `upcomingPromises` | Array<SnapshotPromise> | ✅ | 다가오는 확정 약속 (최대 10개) |
+| `groups` | Array<HomeSnapshotGroup> | ✅ | 그룹별 요약 정보 |
+| `meta` | HomeSnapshotMeta | ✅ | 메타데이터 |
+
+#### 📦 SnapshotPromise 구조 (Widget/Home 공용)
+
+| 필드명 | 타입 | 필수 | 설명 |
+|--------|------|------|------|
+| `id` | String | ✅ | 약속 ID |
+| `title` | String | ✅ | 약속 제목 |
+| `emoji` | String | ✅ | 대표 이모지 (기본: "📅") |
+| `startAt` | String | ✅ | 시작 시간 (ISO 8601) |
+| `endAt` | String \| null | ❌ | 종료 시간 (ISO 8601) |
+| `location` | String \| null | ❌ | 장소명 |
+| `groupId` | String | ✅ | 그룹 ID |
+| `groupName` | String \| null | ❌ | 그룹 이름 |
+| `groupImageUrl` | String \| null | ❌ | 그룹 이미지 URL |
+| `isConfirmed` | Boolean | ✅ | 약속 확정 여부 |
+| `minimumParticipants` | Number | ✅ | 최소 확정 인원 |
+| `participantCount` | Number | ✅ | 참여 확정 인원 |
+| `myVoteStatus` | String | ✅ | 내 투표 상태 (`pending` \| `voted` \| `declined`) |
+| `votingDeadline` | String \| null | ❌ | 투표 마감 시간 (ISO 8601) |
+
+#### 📦 HomeSnapshotGroup 구조
+
+| 필드명 | 타입 | 필수 | 설명 |
+|--------|------|------|------|
+| `id` | String | ✅ | 그룹 ID |
+| `name` | String | ✅ | 그룹 이름 |
+| `emoji` | String \| null | ❌ | 그룹 이모지 |
+| `imageUrl` | String \| null | ❌ | 그룹 이미지 URL |
+| `nextPromise` | SnapshotPromise \| null | ❌ | 다음 약속 |
+
+#### 📦 HomeSnapshotMeta 구조
+
+| 필드명 | 타입 | 필수 | 설명 |
+|--------|------|------|------|
+| `todayCount` | Number | ✅ | 오늘 약속 개수 |
+| `pendingCount` | Number | ✅ | 응답 필요 약속 개수 |
+| `upcomingCount` | Number | ✅ | 다가오는 약속 개수 |
+| `updatedAt` | String | ✅ | 마지막 갱신 시간 (ISO 8601) |
+| `version` | Number | ✅ | 스키마 버전 (현재 1) |
+
+#### 📝 예시 데이터
+
+```json
+{
+  "todayPromises": [
+    {
+      "id": "promise123",
+      "title": "점심 약속",
+      "emoji": "🍜",
+      "startAt": "2026-02-01T12:00:00+09:00",
+      "endAt": null,
+      "location": "강남역 2번 출구",
+      "groupId": "group456",
+      "groupName": "대학 동기",
+      "groupImageUrl": null,
+      "isConfirmed": true,
+      "minimumParticipants": 2,
+      "participantCount": 3,
+      "myVoteStatus": "voted",
+      "votingDeadline": "2026-02-01T10:00:00+09:00"
+    }
+  ],
+  "pendingPromises": [
+    {
+      "id": "promise789",
+      "title": "주말 모임",
+      "emoji": "🎉",
+      "startAt": "2026-02-03T18:00:00+09:00",
+      "groupId": "group456",
+      "groupName": "대학 동기",
+      "isConfirmed": false,
+      "minimumParticipants": 3,
+      "participantCount": 1,
+      "myVoteStatus": "pending",
+      "votingDeadline": "2026-02-02T18:00:00+09:00"
+    }
+  ],
+  "upcomingPromises": [],
+  "groups": [
+    {
+      "id": "group456",
+      "name": "대학 동기",
+      "emoji": null,
+      "imageUrl": null,
+      "nextPromise": { ... }
+    }
+  ],
+  "meta": {
+    "todayCount": 1,
+    "pendingCount": 1,
+    "upcomingCount": 0,
+    "updatedAt": "2026-02-01T10:30:00+09:00",
+    "version": 1
+  }
+}
+```
+
+#### 🔄 자동 갱신 트리거
+
+| 트리거 | 이벤트 | 설명 |
+|--------|--------|------|
+| `onPromiseWriteUpdateHomeSnapshot` | 약속 CRUD (stage) | 해당 그룹 멤버의 스냅샷 갱신 |
+| `onPromiseWriteUpdateHomeSnapshotProd` | 약속 CRUD (prod) | 해당 그룹 멤버의 스냅샷 갱신 |
+| `scheduledHomeSnapshotRefresh` | 매일 00:05 KST | today/pending/upcoming 재분류 |
+
+#### 💡 설계 의도
+
+- **읽기 비용 절감**: N groups × M promises 쿼리 → 1 read로 감소
+- **분류 최적화**: 서버에서 today/pending/upcoming 미리 분류
+- **실시간성**: Trigger 기반 자동 갱신
+
+---
+
+### 1-5. users/{userId}.groups (Map)
 
 사용자가 속한 그룹 목록을 저장합니다. (캐싱 목적)
 
@@ -1092,6 +1343,17 @@ service cloud.firestore {
 | 1.6 | 2025-01-25 | Location 스키마 확장 | Claude |
 |  |  | - promises/{promiseId}.location에 address, latitude, longitude 필드 추가 |  |
 |  |  | - Kakao Maps SDK 연동으로 좌표 및 주소 저장 지원 |  |
+| 1.7 | 2025-02-01 | Widget Snapshot 스키마 추가 | Claude |
+|  |  | - users/{userId}/cache/widgetSnapshot 서브컬렉션 추가 |  |
+|  |  | - Firestore Trigger 기반 자동 갱신 아키텍처 |  |
+|  |  | - myVoteStatus 필드 추가 (pending/voted/declined) |  |
+|  |  | - 우선순위 정렬: pending → unconfirmed → time |  |
+| 1.8 | 2026-02-01 | Home Snapshot 스키마 추가 | Claude |
+|  |  | - users/{userId}/cache/homeSnapshot 서브컬렉션 추가 |  |
+|  |  | - todayPromises, pendingPromises, upcomingPromises 분류 |  |
+|  |  | - SnapshotPromise에 minimumParticipants, groupImageUrl, votingDeadline 추가 |  |
+|  |  | - HomeSnapshotGroup 구조 추가 (그룹별 다음 약속) |  |
+|  |  | - Widget/Home 공용 SnapshotPromise 타입 통합 |  |
 
 ---
 

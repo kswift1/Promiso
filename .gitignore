@@ -82,6 +82,8 @@ Secrets.xcconfig
 # Logs and traces
 *.xcactivitylog
 *.trace
+firebase-debug.log
+**/firebase-debug.log
 
 # Tuist/SwiftPM caches
 Tuist/.build/

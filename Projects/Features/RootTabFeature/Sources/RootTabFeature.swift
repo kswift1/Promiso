@@ -140,8 +140,10 @@ extension RootTab {
       case observePushToStartToken
       /// Push to Start 토큰 수신
       case pushToStartTokenReceived(String)
-      /// Widget용 Auth 토큰 갱신
+      /// Widget용 Auth 토큰 갱신 (Firebase ID Token - 1시간)
       case refreshWidgetAuthToken
+      /// Widget 전용 Long-lived Token 발급 요청 (30일)
+      case requestWidgetToken
       /// LiveActivity 변화 구독 시작
       case observeActivityUpdates
       /// LiveActivity 변화 감지됨
@@ -181,6 +183,7 @@ extension RootTab {
         case .onAppear:
           return .merge(
             .send(.internal(.refreshWidgetAuthToken)),
+            .send(.internal(.requestWidgetToken)),
             .send(.internal(.observePushToStartToken)),
             .send(.internal(.observeActivityUpdates))
           )
@@ -310,9 +313,15 @@ extension RootTab {
         case .internal(let internalAction):
           switch internalAction {
           case .refreshWidgetAuthToken:
-            // Widget/LiveActivity Extension용 Auth 토큰 갱신
+            // Widget/LiveActivity Extension용 Auth 토큰 갱신 (Firebase ID Token - 1시간)
             return .run { [authClient] _ in
               await authClient.refreshWidgetAuthToken()
+            }
+
+          case .requestWidgetToken:
+            // Widget 전용 Long-lived Token 발급 요청 (30일 유효)
+            return .run { [authClient] _ in
+              await authClient.requestWidgetToken()
             }
 
           case .observePushToStartToken:

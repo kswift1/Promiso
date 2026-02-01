@@ -128,6 +128,8 @@ extension PromiseDetail {
         case promiseUpdated(PromiseModel)
         case fetchGroupMembers
         case groupMembersFetched(Result<[UserPublicModel], Error>)
+        case fetchRealPromise
+        case realPromiseFetched(Result<PromiseModel, Error>)
       }
 
       public enum Delegate: Sendable {
@@ -143,10 +145,18 @@ extension PromiseDetail {
         case .view(let viewAction):
           switch viewAction {
           case .onAppear:
-            // 그룹 멤버가 없으면 로드
-            guard state.groupMembers == nil else { return .none }
-            state.isLoadingMembers = true
-            return .send(.internal(.fetchGroupMembers))
+            // 그룹 멤버 캐시 확인 → 없으면 로드
+            if state.groupMembers == nil {
+              // 캐시에서 먼저 확인
+              if let cached = state.groupMembersCache[state.promise.groupId] {
+                state.groupMembers = cached
+                return .none
+              }
+              // 캐시 miss → 서버에서 로드
+              state.isLoadingMembers = true
+              return .send(.internal(.fetchGroupMembers))
+            }
+            return .none
 
           case .dismissTapped:
             return .send(.delegate(.dismiss))
@@ -321,6 +331,28 @@ extension PromiseDetail {
               state.$groupMembersCache.withLock { $0[state.promise.groupId] = members }
             case .failure:
               break // 실패해도 UI는 진행
+            }
+            return .none
+
+          case .fetchRealPromise:
+            let promiseId = state.promise.id
+            return .run { [promiseClient] send in
+              do {
+                if let promise = try await promiseClient.getPromise(promiseId) {
+                  await send(.internal(.realPromiseFetched(.success(promise))))
+                }
+                // nil이면 무시 (기존 데이터 유지)
+              } catch {
+                await send(.internal(.realPromiseFetched(.failure(error))))
+              }
+            }
+
+          case .realPromiseFetched(let result):
+            switch result {
+            case .success(let promise):
+              state.promise = promise
+            case .failure:
+              break // 실패해도 기존 데이터 유지
             }
             return .none
           }

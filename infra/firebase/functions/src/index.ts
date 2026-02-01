@@ -78,4 +78,30 @@ export {
 // ============================================================================
 // Widget Snapshot Functions (위젯용 약속 스냅샷 API)
 // ============================================================================
-export {getWidgetSnapshot} from "./functions/widget";
+export {
+  getWidgetSnapshot,
+  getWidgetSnapshotWithToken,
+} from "./functions/widget";
+
+// ============================================================================
+// Widget Snapshot Triggers (Firestore 트리거 기반 스냅샷 자동 갱신)
+// ============================================================================
+export {
+  onPromiseWriteUpdateSnapshot,
+  onPromiseWriteUpdateSnapshotProd,
+  scheduledSnapshotRefresh,
+} from "./functions/widgetSnapshotTrigger";
+
+// ============================================================================
+// Widget Token Functions (Widget 전용 Long-lived Token)
+// ============================================================================
+export {generateWidgetToken} from "./functions/widgetToken";
+
+// ============================================================================
+// Home Snapshot Triggers (Firestore 트리거 기반 홈화면 스냅샷 자동 갱신)
+// ============================================================================
+export {
+  onPromiseWriteUpdateHomeSnapshot,
+  onPromiseWriteUpdateHomeSnapshotProd,
+  scheduledHomeSnapshotRefresh,
+} from "./functions/homeSnapshotTrigger";
