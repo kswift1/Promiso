@@ -182,7 +182,7 @@ jobs:
           MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
           APP_STORE_CONNECT_API_KEY_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
           APP_STORE_CONNECT_API_KEY_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
-          APP_STORE_CONNECT_API_KEY_KEY_FILEPATH: ${{ format('$HOME/private_keys/AuthKey_{0}.p8', secrets.APP_STORE_CONNECT_API_KEY_ID) }}
+          APP_STORE_CONNECT_API_KEY_KEY_FILEPATH: ${{ format('~/private_keys/AuthKey_{0}.p8', secrets.APP_STORE_CONNECT_API_KEY_ID) }}
         run: |
           bundle install
           bundle exec fastlane sync_certificates
