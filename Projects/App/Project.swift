@@ -18,7 +18,7 @@ let promisoDev = Target.target(
   deploymentTargets: .iOS(AppConfig.deploymentTargets),
   infoPlist: .extendingDefault(with: infoPlistWithDisplayName("Promiso [DEV]")),
   sources: ["Sources/**"],
-  resources: ["Resources/**", "Resources-Dev/**"],
+  resources: ["Resources-Dev/**"],
   entitlements: .file(path: "PromisoDev.entitlements"),
   dependencies: AppFeatureDeps.allDeps + [
     .target(name: "LiveActivityWidgetExtension-Dev"),
@@ -47,7 +47,7 @@ let promisoStage = Target.target(
   deploymentTargets: .iOS(AppConfig.deploymentTargets),
   infoPlist: .extendingDefault(with: infoPlistWithDisplayName("Promiso [STAGE]")),
   sources: ["Sources/**"],
-  resources: ["Resources/**", "Resources-Stage/**"],
+  resources: ["Resources-Stage/**"],
   entitlements: .file(path: "PromisoStage.entitlements"),
   dependencies: AppFeatureDeps.allDeps + [
     .target(name: "LiveActivityWidgetExtension-Stage"),
@@ -76,7 +76,7 @@ let promisoProd = Target.target(
   deploymentTargets: .iOS(AppConfig.deploymentTargets),
   infoPlist: .extendingDefault(with: AppConfig.infoPlist),
   sources: ["Sources/**"],
-  resources: ["Resources/**", "Resources-Prod/**"],
+  resources: ["Resources-Prod/**"],
   entitlements: .file(path: "Promiso.entitlements"),
   dependencies: AppFeatureDeps.allDeps + [
     .target(name: "LiveActivityWidgetExtension"),
