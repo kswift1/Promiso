@@ -678,7 +678,7 @@ fastlane beta_dev
 **A**: App Store Connect API Key 사용 (권장)
 
 ```bash
-# docs/GITHUB_SECRETS.md 참고
+# 아래 "GitHub Secrets 설정" 섹션 참고
 # 또는 2FA 인증
 fastlane spaceauth -u your-apple-id@example.com
 # 출력된 세션 값을 FASTLANE_SESSION 환경변수로 설정
@@ -957,8 +957,6 @@ on:
 - [App Store Connect API](https://developer.apple.com/documentation/appstoreconnectapi)
 - [Firebase CLI 문서](https://firebase.google.com/docs/cli)
 - [GitHub Actions 문서](https://docs.github.com/en/actions)
-- [docs/FASTLANE_SETUP.md](FASTLANE_SETUP.md) - Fastlane 상세 설정
-- [docs/GITHUB_SECRETS.md](GITHUB_SECRETS.md) - GitHub Secrets 상세 설정
 - [docs/BRANCH_STRATEGY.md](BRANCH_STRATEGY.md) - 브랜치 전략
 - [docs/CI_CD.md](CI_CD.md) - GitHub Actions 워크플로우
 
