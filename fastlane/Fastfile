@@ -29,14 +29,24 @@ platform :ios do
   lane :beta_dev do
     setup_ci if ENV["CI"]
 
-    # 1. 인증서/프로비저닝 프로파일 (앱 + Widget Extensions)
+    dev_bundle_ids = [
+      "com.promiso.dev",
+      "com.promiso.dev.liveactivity",
+      "com.promiso.dev.promisewidget"
+    ]
+
+    # 1-1. Development 프로파일 (Debug configuration 검증용)
+    match(
+      type: "development",
+      app_identifier: dev_bundle_ids,
+      readonly: is_ci,
+      api_key: @api_key
+    )
+
+    # 1-2. AppStore 프로파일 (Release 빌드용)
     match(
       type: "appstore",
-      app_identifier: [
-        "com.promiso.dev",
-        "com.promiso.dev.liveactivity",
-        "com.promiso.dev.promisewidget"
-      ],
+      app_identifier: dev_bundle_ids,
       readonly: is_ci,
       api_key: @api_key
     )
@@ -80,14 +90,24 @@ platform :ios do
   lane :beta_stage do
     setup_ci if ENV["CI"]
 
-    # 1. 인증서/프로비저닝 프로파일 (앱 + Widget Extensions)
+    stage_bundle_ids = [
+      "com.promiso.stage",
+      "com.promiso.stage.liveactivity",
+      "com.promiso.stage.promisewidget"
+    ]
+
+    # 1-1. Development 프로파일 (Debug configuration 검증용)
+    match(
+      type: "development",
+      app_identifier: stage_bundle_ids,
+      readonly: is_ci,
+      api_key: @api_key
+    )
+
+    # 1-2. AppStore 프로파일 (Release 빌드용)
     match(
       type: "appstore",
-      app_identifier: [
-        "com.promiso.stage",
-        "com.promiso.stage.liveactivity",
-        "com.promiso.stage.promisewidget"
-      ],
+      app_identifier: stage_bundle_ids,
       readonly: is_ci,
       api_key: @api_key
     )
@@ -132,14 +152,24 @@ platform :ios do
   lane :beta_prod do
     setup_ci if ENV["CI"]
 
-    # 1. 인증서/프로비저닝 프로파일 (앱 + Widget Extensions)
+    prod_bundle_ids = [
+      "com.promiso",
+      "com.promiso.liveactivity",
+      "com.promiso.promisewidget"
+    ]
+
+    # 1-1. Development 프로파일 (Debug configuration 검증용)
+    match(
+      type: "development",
+      app_identifier: prod_bundle_ids,
+      readonly: is_ci,
+      api_key: @api_key
+    )
+
+    # 1-2. AppStore 프로파일 (Release 빌드용)
     match(
       type: "appstore",
-      app_identifier: [
-        "com.promiso",
-        "com.promiso.liveactivity",
-        "com.promiso.promisewidget"
-      ],
+      app_identifier: prod_bundle_ids,
       readonly: is_ci,
       api_key: @api_key
     )
