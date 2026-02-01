@@ -28,8 +28,8 @@ let promisoDev = Target.target(
     base: [
       "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME": .string("AccentColor"),
       "PRODUCT_BUNDLE_IDENTIFIER": .string("com.promiso.dev"),
-      "DEVELOPMENT_TEAM": .string(AppConfig.teamId)
-      // CODE_SIGN_STYLE, CODE_SIGN_IDENTITY는 xcconfig에서 설정
+      "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
+      "CODE_SIGN_STYLE": .string("Automatic")
     ],
     configurations: [
       .debug(name: "Debug", xcconfig: .relativeToRoot("Config/Dev.xcconfig")),
@@ -56,8 +56,8 @@ let promisoStage = Target.target(
     base: [
       "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME": .string("AccentColor"),
       "PRODUCT_BUNDLE_IDENTIFIER": .string("com.promiso.stage"),
-      "DEVELOPMENT_TEAM": .string(AppConfig.teamId)
-      // CODE_SIGN_STYLE, CODE_SIGN_IDENTITY는 xcconfig에서 설정
+      "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
+      "CODE_SIGN_STYLE": .string("Automatic")
     ],
     configurations: [
       .debug(name: "Debug", xcconfig: .relativeToRoot("Config/Stage.xcconfig")),
@@ -83,8 +83,8 @@ let promisoProd = Target.target(
   settings: .settings(
     base: [
       "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME": .string("AccentColor"),
-      "DEVELOPMENT_TEAM": .string(AppConfig.teamId)
-      // CODE_SIGN_STYLE, CODE_SIGN_IDENTITY는 xcconfig에서 설정
+      "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
+      "CODE_SIGN_STYLE": .string("Automatic")
     ],
     configurations: [
       .debug(name: "Debug", xcconfig: .relativeToRoot("Config/Prod.xcconfig")),
