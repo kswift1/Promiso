@@ -25,7 +25,20 @@ import {
   APNS_AUTH_KEY,
   APNS_BUNDLE_ID,
 } from "../config";
-import {getEnvironmentCollection} from "../utils/firestore";
+import {getEnvironmentCollection, getCurrentEnvironment} from "../utils/firestore";
+
+/**
+ * APNs 환경 결정
+ *
+ * @returns true = Production, false = Sandbox
+ * @remarks Dev 환경만 Sandbox, Stage/Prod는 Production
+ */
+function isAPNsProduction(): boolean {
+  const env = getCurrentEnvironment();
+  // Dev 환경만 Sandbox (Xcode 개발 빌드용)
+  // Stage/Prod는 Production (TestFlight/App Store 빌드)
+  return env !== "dev";
+}
 import {
   sendAPNsPush,
   sendAPNsBroadcast,
@@ -65,14 +78,14 @@ export const registerPushToStartToken = onCall<
     }
 
     const userId = request.auth.uid;
-    const {token, deviceId, env} = request.data;
+    const {token, deviceId} = request.data;
 
     if (!token || !deviceId) {
       throw new HttpsError("invalid-argument", "token과 deviceId는 필수입니다");
     }
 
     const db = admin.firestore();
-    const usersCollection = getEnvironmentCollection("users", db, env);
+    const usersCollection = getEnvironmentCollection("users", db);
 
     try {
       await usersCollection.doc(userId).update({
@@ -110,23 +123,18 @@ export const startLiveActivity = onCall<StartLiveActivityRequest>(
     }
 
     const userId = request.auth.uid;
-    const {promiseId, env} = request.data;
+    const {promiseId} = request.data;
 
-    console.log(`📥 startLiveActivity called: env="${env}", type=${typeof env}`);
+    console.log(`📥 startLiveActivity called: promiseId="${promiseId}"`);
 
     if (!promiseId) {
       throw new HttpsError("invalid-argument", "promiseId는 필수입니다");
     }
 
-    // env가 없으면 기본값 prod 사용
-    const effectiveEnv = env || "prod";
-    console.log(`📥 effectiveEnv="${effectiveEnv}"`);
-
     const db = admin.firestore();
-    const eEnv = effectiveEnv;
-    const promisesCollection = getEnvironmentCollection("promises", db, eEnv);
-    const usersCollection = getEnvironmentCollection("users", db, eEnv);
-    const groupsCollection = getEnvironmentCollection("groups", db, eEnv);
+    const promisesCollection = getEnvironmentCollection("promises", db);
+    const usersCollection = getEnvironmentCollection("users", db);
+    const groupsCollection = getEnvironmentCollection("groups", db);
 
     // 1. 약속 정보 조회
     const promiseDoc = await promisesCollection.doc(promiseId).get();
@@ -229,8 +237,7 @@ export const startLiveActivity = onCall<StartLiveActivityRequest>(
     );
 
     // 5. APNs Push to Start 전송
-    // Stage 환경에서도 APNs Production 사용 (TestFlight/App Store 빌드)
-    const isProduction = true;
+    const isProduction = isAPNsProduction();
     const trackingDurationMinutes = trackingMinutes;
 
     let successCount = 0;
@@ -339,7 +346,7 @@ export const updateETA = onCall<UpdateETARequest>(
     }
 
     const {
-      promiseId, channelId, participants, trackingDurationMinutes, env,
+      promiseId, channelId, participants, trackingDurationMinutes,
     } = request.data;
 
     if (!channelId || !participants) {
@@ -390,9 +397,7 @@ export const updateETA = onCall<UpdateETARequest>(
     }
 
     // Firestore 없이 바로 APNs Broadcast 전송
-    // Stage 환경에서도 APNs Production 사용 (TestFlight/App Store 빌드)
-    const isProduction = true;
-    const effectiveEnv = env || "prod";
+    const isProduction = isAPNsProduction();
 
     const payload: any = {
       aps: {
@@ -416,25 +421,29 @@ export const updateETA = onCall<UpdateETARequest>(
       isProduction,
     });
 
-    // 모두 도착 시 종료 Task 예약 (stage: 1분, prod: 5분)
+    // 모두 도착 시 종료 Task 예약 (5분)
     if (shouldScheduleEnd) {
       type EndPayload = ScheduledLiveActivityEndTaskPayload;
       const endQueue = getFunctions().taskQueue<EndPayload>(
         `locations/${REGION}/functions/executeLiveActivityEnd`
       );
 
-      const endDelayMinutes = effectiveEnv === "stage" ? 1 : 5;
+      // 환경별 종료 지연 시간 (dev: 1분, stage: 3분, prod: 5분)
+      const env = getCurrentEnvironment();
+      const endDelayMinutes = env === "dev" ? 1 : env === "stage" ? 3 : 5;
+
       await endQueue.enqueue(
         {
           promiseId: promiseId || "unknown",
           channelId,
-          env: effectiveEnv as "stage" | "prod",
         },
         {scheduleDelaySeconds: endDelayMinutes * 60}
       );
 
       const id = promiseId || channelId;
-      console.log(`📅 LiveActivity end scheduled (all arrived): ${id}`);
+      console.log(
+        `📅 LiveActivity end scheduled (all arrived, ${endDelayMinutes}min): ${id}`
+      );
     }
 
     if (result.success) {
@@ -466,8 +475,7 @@ export const updateETA = onCall<UpdateETARequest>(
  *   "promiseId": "promise_abc123",
  *   "channelId": "ch_abc123",
  *   "participants": [{"id": "...", "name": "...", "eta": 5}],
- *   "trackingDurationMinutes": 30,
- *   "env": "prod"
+ *   "trackingDurationMinutes": 30
  * }
  * ```
  */
@@ -525,7 +533,7 @@ export const widgetUpdateETA = onRequest(
     }
 
     const {
-      promiseId, channelId, participants, trackingDurationMinutes, env,
+      promiseId, channelId, participants, trackingDurationMinutes,
     } = req.body;
 
     if (!channelId || !participants) {
@@ -536,6 +544,81 @@ export const widgetUpdateETA = onRequest(
         },
       });
       return;
+    }
+
+    // Authorization: promiseId가 있는 경우, 사용자가 해당 약속의 그룹 멤버인지 확인
+    if (promiseId) {
+      try {
+        const db = admin.firestore();
+        const promisesCollection = getEnvironmentCollection("promises", db);
+        const promiseDoc = await promisesCollection.doc(promiseId).get();
+
+        if (!promiseDoc.exists) {
+          res.status(404).json({
+            error: {
+              code: "not-found",
+              message: "Promise not found",
+            },
+          });
+          return;
+        }
+
+        const promiseData = promiseDoc.data();
+        if (!promiseData) {
+          res.status(500).json({
+            error: {
+              code: "internal",
+              message: "Failed to read promise data",
+            },
+          });
+          return;
+        }
+
+        // 그룹 멤버 확인
+        const groupsCollection = getEnvironmentCollection("groups", db);
+        const groupDoc = await groupsCollection.doc(promiseData.groupId).get();
+
+        if (!groupDoc.exists) {
+          res.status(404).json({
+            error: {
+              code: "not-found",
+              message: "Group not found",
+            },
+          });
+          return;
+        }
+
+        const groupData = groupDoc.data();
+        if (!groupData || !groupData.memberIds) {
+          res.status(500).json({
+            error: {
+              code: "internal",
+              message: "Failed to read group data",
+            },
+          });
+          return;
+        }
+
+        // 사용자가 그룹 멤버가 아니면 거부
+        if (!groupData.memberIds.includes(userId)) {
+          res.status(403).json({
+            error: {
+              code: "permission-denied",
+              message: "User is not a member of this promise's group",
+            },
+          });
+          return;
+        }
+      } catch (error) {
+        console.error(`❌ Authorization check failed: ${error}`);
+        res.status(500).json({
+          error: {
+            code: "internal",
+            message: "Authorization check failed",
+          },
+        });
+        return;
+      }
     }
 
     console.log(
@@ -577,9 +660,7 @@ export const widgetUpdateETA = onRequest(
     }
 
     // Firestore 없이 바로 APNs Broadcast 전송
-    // Stage 환경에서도 APNs Production 사용 (TestFlight/App Store 빌드)
-    const isProduction = true;
-    const effectiveEnv = env || "prod";
+    const isProduction = isAPNsProduction();
 
     const payload: any = {
       aps: {
@@ -603,19 +684,18 @@ export const widgetUpdateETA = onRequest(
       isProduction,
     });
 
-    // 모두 도착 시 종료 Task 예약 (stage: 1분, prod: 5분)
+    // 모두 도착 시 종료 Task 예약 (5분)
     if (shouldScheduleEnd) {
       type EndPayload = ScheduledLiveActivityEndTaskPayload;
       const endQueue = getFunctions().taskQueue<EndPayload>(
         `locations/${REGION}/functions/executeLiveActivityEnd`
       );
 
-      const endDelayMinutes = effectiveEnv === "stage" ? 1 : 5;
+      const endDelayMinutes = 5;
       await endQueue.enqueue(
         {
           promiseId: promiseId || "unknown",
           channelId,
-          env: effectiveEnv as "stage" | "prod",
         },
         {scheduleDelaySeconds: endDelayMinutes * 60}
       );
@@ -660,12 +740,12 @@ export const executeLiveActivityStart = onTaskDispatched<
     secrets: [APNS_KEY_ID, APNS_TEAM_ID, APNS_AUTH_KEY],
   },
   async (req) => {
-    const {promiseId, env} = req.data;
+    const {promiseId} = req.data;
     console.log(`⏰ Scheduled LiveActivity start: ${promiseId}`);
 
     const db = admin.firestore();
-    const promisesCollection = getEnvironmentCollection("promises", db, env);
-    const usersCollection = getEnvironmentCollection("users", db, env);
+    const promisesCollection = getEnvironmentCollection("promises", db);
+    const usersCollection = getEnvironmentCollection("users", db);
 
     // 1. 약속 정보 조회
     const promiseDoc = await promisesCollection.doc(promiseId).get();
@@ -687,7 +767,7 @@ export const executeLiveActivityStart = onTaskDispatched<
       (promiseData.trackingStartMinutesBefore as number) || 30;
 
     // 2. 그룹 정보 조회
-    const groupsCollection = getEnvironmentCollection("groups", db, env);
+    const groupsCollection = getEnvironmentCollection("groups", db);
     const groupDoc = await groupsCollection.doc(groupId).get();
     const groupData = groupDoc.data();
     const groupName = groupData?.name as string || null;
@@ -752,8 +832,7 @@ export const executeLiveActivityStart = onTaskDispatched<
     }
 
     // 5. iOS 18 Broadcast 채널 생성 (Apple이 channelId 생성)
-    // Stage 환경에서도 APNs Production 사용 (TestFlight/App Store 빌드)
-    const isProduction = true;
+    const isProduction = isAPNsProduction();
     const channelResult = await createAPNsChannel(isProduction);
     let channelId: string | undefined;
 
@@ -838,8 +917,8 @@ export const executeLiveActivityStart = onTaskDispatched<
       `${successCount}/${failureCount}`
     );
 
-    // 8. 종료 Task 예약 (stage: 3분, prod: 30분)
-    const endMinutes = env === "stage" ? 3 : 30;
+    // 8. 종료 Task 예약 (30분)
+    const endMinutes = 30;
     const endTime = startAt.toDate().getTime() + endMinutes * 60 * 1000;
     const endDelaySeconds = Math.max(
       0,
@@ -852,7 +931,7 @@ export const executeLiveActivityStart = onTaskDispatched<
     );
 
     await endQueue.enqueue(
-      {promiseId, channelId: channelId || "", env},
+      {promiseId, channelId: channelId || ""},
       {scheduleDelaySeconds: endDelaySeconds}
     );
 
@@ -892,8 +971,7 @@ export const executeLiveActivityEnd = onTaskDispatched<
       return;
     }
 
-    // Stage 환경에서도 APNs Production 사용 (TestFlight/App Store 빌드)
-    const isProduction = true;
+    const isProduction = isAPNsProduction();
 
     // end 이벤트 전송 (dismissal-date는 과거로 설정하여 즉시 제거)
     const payload = {
@@ -932,14 +1010,13 @@ export const executeLiveActivityEnd = onTaskDispatched<
  */
 export const onPromiseConfirmedScheduleLiveActivity = onDocumentUpdated(
   {
-    document: "{env}/root/promises/{promiseId}",
+    document: "promises/{promiseId}",
     region: REGION,
   },
   async (event) => {
     const before = event.data?.before.data();
     const after = event.data?.after.data();
     const promiseId = event.params.promiseId;
-    const env = event.params.env as "stage" | "prod";
 
     if (!before || !after) return;
 
@@ -1019,13 +1096,13 @@ export const onPromiseConfirmedScheduleLiveActivity = onDocumentUpdated(
     );
 
     await queue.enqueue(
-      {promiseId, env},
+      {promiseId},
       {scheduleDelaySeconds: delaySeconds}
     );
 
     // 예약 완료 표시
     const db = admin.firestore();
-    const promisesCollection = getEnvironmentCollection("promises", db, env);
+    const promisesCollection = getEnvironmentCollection("promises", db);
     await promisesCollection.doc(promiseId).update({
       liveActivityScheduled: true,
       liveActivityScheduledAt: scheduleTime,

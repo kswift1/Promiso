@@ -1,0 +1,38 @@
+# Matchfile
+# 인증서 및 프로비저닝 프로파일 관리
+
+# Git 저장소 (인증서 저장소)
+# Private 레포지토리 생성 권장: promiso-certificates
+git_url("https://github.com/kswift1/promiso-certificates")
+
+# 저장소 브랜치
+git_branch("main")
+
+# 스토리지 모드
+storage_mode("git")
+
+# 앱 식별자
+app_identifier(["com.promiso.dev", "com.promiso.stage", "com.promiso"])
+
+# Apple ID (App Store Connect)
+username("your-apple-id@example.com") # ← 실제 Apple ID로 변경
+
+# Team ID
+team_id("YOUR_TEAM_ID") # ← 실제 Team ID로 변경 (Apple Developer Portal에서 확인)
+
+# 타입
+type("appstore")
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 고급 설정
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# readonly 모드 (CI에서만 사용, 인증서 생성 안 함)
+# CI 환경에서는 Fastfile에서 readonly: true로 호출
+
+# 비밀번호는 환경변수로 관리
+# MATCH_PASSWORD 환경변수 또는 Keychain 사용
+
+# Git 인증 (GitHub Actions)
+# HTTPS: MATCH_GIT_BASIC_AUTHORIZATION 사용
+# SSH: Deploy Key 사용 (권장)

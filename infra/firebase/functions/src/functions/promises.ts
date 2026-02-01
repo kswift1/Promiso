@@ -71,16 +71,8 @@ export const createPromise = onCall<CreatePromiseRequest>(
     }
 
     const db = admin.firestore();
-    const groupsCollection = getEnvironmentCollection(
-      "groups",
-      db,
-      data.env,
-    );
-    const promisesCollection = getEnvironmentCollection(
-      "promises",
-      db,
-      data.env,
-    );
+    const groupsCollection = getEnvironmentCollection("groups", db);
+    const promisesCollection = getEnvironmentCollection("promises", db);
 
     // 3. 그룹 존재 확인
     const groupDoc = await groupsCollection.doc(data.groupId).get();
@@ -196,24 +188,9 @@ export const respondPromise = onCall<RespondPromiseRequest>(
       );
     }
 
-    if (data.env && data.env !== "stage" && data.env !== "prod") {
-      throw new HttpsError(
-        "invalid-argument",
-        "env는 stage 또는 prod만 허용됩니다",
-      );
-    }
-
     const db = admin.firestore();
-    const promisesCollection = getEnvironmentCollection(
-      "promises",
-      db,
-      data.env,
-    );
-    const groupsCollection = getEnvironmentCollection(
-      "groups",
-      db,
-      data.env,
-    );
+    const promisesCollection = getEnvironmentCollection("promises", db);
+    const groupsCollection = getEnvironmentCollection("groups", db);
 
     const promiseRef = promisesCollection.doc(data.promiseId);
 
@@ -337,13 +314,6 @@ export const updatePromise = onCall<UpdatePromiseRequest>(
       );
     }
 
-    if (data.env && data.env !== "stage" && data.env !== "prod") {
-      throw new HttpsError(
-        "invalid-argument",
-        "env는 stage 또는 prod만 허용됩니다",
-      );
-    }
-
     // minimumParticipants 검증
     if (
       data.minimumParticipants !== undefined &&
@@ -357,11 +327,7 @@ export const updatePromise = onCall<UpdatePromiseRequest>(
     }
 
     const db = admin.firestore();
-    const promisesCollection = getEnvironmentCollection(
-      "promises",
-      db,
-      data.env,
-    );
+    const promisesCollection = getEnvironmentCollection("promises", db);
 
     const promiseRef = promisesCollection.doc(data.promiseId);
 
@@ -524,19 +490,8 @@ export const deletePromise = onCall<DeletePromiseRequest>(
       );
     }
 
-    if (data.env && data.env !== "stage" && data.env !== "prod") {
-      throw new HttpsError(
-        "invalid-argument",
-        "env는 stage 또는 prod만 허용됩니다",
-      );
-    }
-
     const db = admin.firestore();
-    const promisesCollection = getEnvironmentCollection(
-      "promises",
-      db,
-      data.env,
-    );
+    const promisesCollection = getEnvironmentCollection("promises", db);
 
     const promiseRef = promisesCollection.doc(data.promiseId);
 

@@ -1,0 +1,35 @@
+# Appfile
+# 앱 기본 정보
+
+# Apple ID (App Store Connect)
+apple_id("your-apple-id@example.com") # ← 실제 Apple ID로 변경
+
+# Team ID (Apple Developer Portal)
+team_id("YOUR_TEAM_ID") # ← 실제 Team ID로 변경
+
+# iTunes Connect Team ID (App Store Connect Team ID)
+itc_team_id("YOUR_ITC_TEAM_ID") # ← App Store Connect Team ID로 변경 (선택)
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 환경별 앱 식별자 (자동 감지)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# Fastfile의 scheme에 따라 자동으로 선택됨:
+# - PromisoDev   → com.promiso.dev
+# - PromisoStage → com.promiso.stage
+# - Promiso      → com.promiso
+
+# 명시적 지정이 필요하면 아래 주석 해제:
+# for_platform :ios do
+#   for_lane :beta_dev do
+#     app_identifier("com.promiso.dev")
+#   end
+#
+#   for_lane :beta_stage do
+#     app_identifier("com.promiso.stage")
+#   end
+#
+#   for_lane :beta_prod do
+#     app_identifier("com.promiso")
+#   end
+# end

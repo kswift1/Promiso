@@ -2,24 +2,30 @@ import * as admin from "firebase-admin";
 
 /**
  * Firebase Functions 실행 환경
+ *
+ * @remarks
+ * 프로젝트 분리 후에는 각 Firebase 프로젝트가 환경을 나타냄:
+ * - promiso-dev: 개발 환경
+ * - promiso-stage: 스테이징 환경
+ * - promiso-prod: 프로덕션 환경
  */
 export enum FirestoreEnvironment {
-  /** 개발 환경 (Emulator) */
+  /** 개발 환경 (Emulator 또는 promiso-dev) */
   Dev = "dev",
-  /** 스테이징 환경 */
+  /** 스테이징 환경 (promiso-stage) */
   Stage = "stage",
-  /** 프로덕션 환경 */
+  /** 프로덕션 환경 (promiso-prod) */
   Release = "release",
 }
 
 /**
  * 현재 Functions 실행 환경 감지
  *
- * @return {FirestoreEnvironment} 현재 환경 (Dev or Release)
+ * @return {FirestoreEnvironment} 현재 환경
  *
  * @remarks
  * - Emulator: FUNCTIONS_EMULATOR 환경 변수가 "true"
- * - Production: 그 외
+ * - Production: 그 외 (실제 환경은 배포된 프로젝트에 따라 결정)
  */
 export function getCurrentEnvironment(): FirestoreEnvironment {
   const isEmulator = process.env.FUNCTIONS_EMULATOR === "true";
@@ -27,49 +33,31 @@ export function getCurrentEnvironment(): FirestoreEnvironment {
 }
 
 /**
- * 환경에 맞는 Firestore 컬렉션 참조 반환
+ * Firestore 컬렉션 참조 반환
  *
  * @param {string} collectionName - 컬렉션 이름 (예: "groups", "users")
  * @param {FirebaseFirestore.Firestore} db - Firestore 인스턴스
- * @param {string | null | undefined} requestedEnv - 요청된 환경 (stage/prod)
- * @return {FirebaseFirestore.CollectionReference} 환경별 컬렉션 참조
+ * @param {string | null | undefined} _requestedEnv - (deprecated) 더 이상 사용되지 않음
+ * @return {FirebaseFirestore.CollectionReference} 컬렉션 참조
  *
  * @remarks
- * **경로 구조**:
- * - Dev (Emulator): `dev/root/{collectionName}`
- * - Stage: `stage/root/{collectionName}`
- * - Release (Production): `prod/root/{collectionName}`
- *
- * **iOS와 동일한 경로 구조**를 사용하여 데이터 일관성 보장
+ * **프로젝트 분리 후 경로 구조**:
+ * - 각 프로젝트(promiso-dev/stage/prod)의 루트에 바로 컬렉션 접근
+ * - 이전의 `dev/root/`, `stage/root/`, `prod/root/` prefix 제거됨
  *
  * @example
  * ```typescript
- * // Dev: dev/root/groups
- * // Stage: stage/root/groups
- * // Release: prod/root/groups
+ * // 모든 환경에서 동일: /users, /groups, /promises
  * const groupsRef = getEnvironmentCollection("groups");
  * ```
  */
 export function getEnvironmentCollection(
   collectionName: string,
   db: FirebaseFirestore.Firestore = admin.firestore(),
-  requestedEnv?: string | null,
+  _requestedEnv?: string | null,
 ): FirebaseFirestore.CollectionReference {
-  const env = resolveEnvironment(requestedEnv);
-
-  switch (env) {
-  case FirestoreEnvironment.Dev:
-    // Dev: dev/root/{collection}
-    return db.collection("dev").doc("root").collection(collectionName);
-
-  case FirestoreEnvironment.Stage:
-    // Stage: stage/root/{collection}
-    return db.collection("stage").doc("root").collection(collectionName);
-
-  case FirestoreEnvironment.Release:
-    // Release: prod/root/{collection}
-    return db.collection("prod").doc("root").collection(collectionName);
-  }
+  // 프로젝트 분리 후: 루트에 바로 컬렉션 접근
+  return db.collection(collectionName);
 }
 
 /**
@@ -82,39 +70,8 @@ export function getEnvironmentCollection(
  */
 export function logEnvironmentInfo(): void {
   const env = getCurrentEnvironment();
-  console.log(`🌍 Firestore Environment: ${env}`);
-  console.log(`📁 Path Pattern: ${getPathPattern(env)}`);
-}
-
-/**
- * 환경별 경로 패턴 반환
- *
- * @param {FirestoreEnvironment} env - 환경
- * @return {string} 경로 패턴
- */
-function getPathPattern(env: FirestoreEnvironment): string {
-  switch (env) {
-  case FirestoreEnvironment.Dev:
-    return "dev/root/{collection}";
-  case FirestoreEnvironment.Stage:
-    return "stage/root/{collection}";
-  case FirestoreEnvironment.Release:
-    return "prod/root/{collection}";
-  }
-}
-
-/**
- * 요청 환경을 실제 실행 환경으로 매핑합니다.
- *
- * @param {string | null | undefined} requestedEnv - 요청된 환경
- * @return {FirestoreEnvironment} 해석된 환경
- */
-function resolveEnvironment(
-  requestedEnv?: string | null,
-): FirestoreEnvironment {
-  const isEmulator = process.env.FUNCTIONS_EMULATOR === "true";
-  if (isEmulator) return FirestoreEnvironment.Dev;
-
-  if (requestedEnv === "stage") return FirestoreEnvironment.Stage;
-  return FirestoreEnvironment.Release;
+  const projectId = process.env.GCLOUD_PROJECT || "unknown";
+  console.log(`🌍 Environment: ${env}`);
+  console.log(`📁 Project: ${projectId}`);
+  console.log(`📁 Path Pattern: /{collection} (root level)`);
 }

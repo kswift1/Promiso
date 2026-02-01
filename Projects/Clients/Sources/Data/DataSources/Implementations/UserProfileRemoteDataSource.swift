@@ -11,7 +11,6 @@ private struct CreateUserRequest: Encodable {
   let name: String?
   let nickname: String
   let provider: ProviderRequest
-  let env: String?
 
   struct ProviderRequest: Encodable {
     let type: String
@@ -24,30 +23,27 @@ private struct CreateUserRequest: Encodable {
 private struct GetUserRequest: Encodable {
   let userId: String?
   let isPublic: Bool?
-  let env: String?
 }
 
 /// 사용자 업데이트 요청
 private struct UpdateUserRequest: Encodable {
   let nickname: String
-  let env: String?
 }
 
 /// 프로필 이미지 업로드 요청
 private struct UploadProfileImageRequest: Encodable {
   let imagePath: String
-  let env: String?
 }
 
 /// 사용자 설정 조회 요청
 private struct GetUserSettingsRequest: Encodable {
-  let env: String?
+  // 프로젝트 분리 후 env 파라미터 불필요
+  // 빈 struct이지만 일관성을 위해 유지
 }
 
 /// 사용자 설정 업데이트 요청
 private struct UpdateUserSettingsRequest: Encodable {
   let notificationEnabled: Bool
-  let env: String?
 }
 
 
@@ -59,11 +55,6 @@ public final class UserProfileRemoteDataSource: UserProfileRemoteDataSourceProto
   private let functions: Functions
   private let storage: Storage
   private let db: Firestore
-
-  /// 현재 Firestore 환경
-  private var currentEnvironment: FirebaseEnvironment {
-    FirebaseEnvironmentManager.shared.current
-  }
 
   public init(
     functions: Functions = Functions.functions(region: "asia-northeast3"),
@@ -95,8 +86,7 @@ public final class UserProfileRemoteDataSource: UserProfileRemoteDataSourceProto
         type: provider.type,
         uid: provider.uid,
         email: provider.email
-      ),
-      env: currentEnvironment.firebaseEnv
+      )
     )
 
     let result = try await functions.httpsCallable("createUser").call(request.asDictionary())
@@ -116,8 +106,7 @@ public final class UserProfileRemoteDataSource: UserProfileRemoteDataSourceProto
   public func getProfileModel(uid: String? = nil, isPublic: Bool = false) async throws -> UserProfile {
     let request = GetUserRequest(
       userId: uid,
-      isPublic: isPublic,
-      env: currentEnvironment.firebaseEnv
+      isPublic: isPublic
     )
 
     let result = try await functions.httpsCallable("getUser").call(request.asDictionary())
@@ -172,8 +161,7 @@ public final class UserProfileRemoteDataSource: UserProfileRemoteDataSourceProto
   ///   - nickname: 변경할 닉네임
   public func updateProfile(uid: String, nickname: String) async throws {
     let request = UpdateUserRequest(
-      nickname: nickname,
-      env: currentEnvironment.firebaseEnv
+      nickname: nickname
     )
 
     _ = try await functions.httpsCallable("updateUser").call(request.asDictionary())
@@ -187,10 +175,9 @@ public final class UserProfileRemoteDataSource: UserProfileRemoteDataSourceProto
   ///   - imageData: 이미지 데이터
   /// - Returns: 업로드된 이미지 URL
   public func uploadProfileImage(uid: String, imageData: Data) async throws -> URL {
-    // 1. 환경별 Storage 경로 생성 (타임스탬프 추가로 충돌 방지)
-    let envPrefix = currentEnvironment.storagePrefix
+    // 1. Storage 경로 생성 (타임스탬프 추가로 충돌 방지)
     let timestamp = Int(Date().timeIntervalSince1970)
-    let imagePath = "\(envPrefix)/profile_images/\(uid)/\(timestamp).jpg"
+    let imagePath = "profile_images/\(uid)/\(timestamp).jpg"
     let profileImageRef = storage.reference().child(imagePath)
 
     let metadata = StorageMetadata()
@@ -205,10 +192,9 @@ public final class UserProfileRemoteDataSource: UserProfileRemoteDataSourceProto
       throw UserProfileError.uploadFailed
     }
 
-    // 2. Storage 경로와 env를 Functions에 전달
+    // 2. Storage 경로를 Functions에 전달
     let request = UploadProfileImageRequest(
-      imagePath: imagePath,
-      env: currentEnvironment.firebaseEnv
+      imagePath: imagePath
     )
 
     let result = try await functions.httpsCallable("uploadProfileImage").call(request.asDictionary())
@@ -225,8 +211,7 @@ public final class UserProfileRemoteDataSource: UserProfileRemoteDataSourceProto
   /// 프로필 이미지 삭제
   /// - Parameter uid: 사용자 ID
   public func deleteProfileImage(uid: String) async throws {
-    let envPrefix = currentEnvironment.storagePrefix
-    let imagePath = "\(envPrefix)/profile_images/\(uid)/main.jpg"
+    let imagePath = "profile_images/\(uid)/main.jpg"
     let profileImageRef = storage.reference().child(imagePath)
     try await profileImageRef.delete()
   }
@@ -236,7 +221,7 @@ public final class UserProfileRemoteDataSource: UserProfileRemoteDataSourceProto
   /// 사용자 설정 조회
   /// - Returns: 알림 설정 활성화 여부
   public func getUserSettings() async throws -> Bool {
-    let request = GetUserSettingsRequest(env: currentEnvironment.firebaseEnv)
+    let request = GetUserSettingsRequest()
 
     let result = try await functions.httpsCallable("getUserSettings").call(request.asDictionary())
     guard let response = result.data as? [String: Any],
@@ -251,8 +236,7 @@ public final class UserProfileRemoteDataSource: UserProfileRemoteDataSourceProto
   /// - Parameter notificationEnabled: 알림 활성화 여부
   public func updateUserSettings(notificationEnabled: Bool) async throws {
     let request = UpdateUserSettingsRequest(
-      notificationEnabled: notificationEnabled,
-      env: currentEnvironment.firebaseEnv
+      notificationEnabled: notificationEnabled
     )
 
     _ = try await functions.httpsCallable("updateUserSettings").call(request.asDictionary())

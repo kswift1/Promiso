@@ -133,13 +133,6 @@ function validateCreateGroupRequest(data: CreateGroupRequest): void {
       "최대 인원(maxMembers)은 2 이상이어야 합니다",
     );
   }
-
-  if (data.env && data.env !== "stage" && data.env !== "prod") {
-    throw new HttpsError(
-      "invalid-argument",
-      "env는 stage 또는 prod만 허용됩니다",
-    );
-  }
 }
 
 /**

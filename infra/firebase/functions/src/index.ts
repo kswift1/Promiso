@@ -88,7 +88,6 @@ export {
 // ============================================================================
 export {
   onPromiseWriteUpdateSnapshot,
-  onPromiseWriteUpdateSnapshotProd,
   scheduledSnapshotRefresh,
 } from "./functions/widgetSnapshotTrigger";
 
@@ -102,6 +101,5 @@ export {generateWidgetToken} from "./functions/widgetToken";
 // ============================================================================
 export {
   onPromiseWriteUpdateHomeSnapshot,
-  onPromiseWriteUpdateHomeSnapshotProd,
   scheduledHomeSnapshotRefresh,
 } from "./functions/homeSnapshotTrigger";

@@ -48,10 +48,7 @@ export const getWidgetSnapshot = onCall(
     }
 
     const userId = request.auth.uid;
-    const requestedEnv = request.data?.env as string | undefined;
-    const env = requestedEnv === "stage" ? "stage" : "prod";
-
-    const snapshot = await fetchCachedSnapshot(userId, env);
+    const snapshot = await fetchCachedSnapshot(userId);
     return snapshot;
   }
 );
@@ -111,10 +108,7 @@ export const getWidgetSnapshotWithToken = onRequest(
 
       // 4. 토큰 버전 확인 (revocation 체크)
       const db = admin.firestore();
-      const requestedEnv = requestBody.env as string | undefined;
-      const env = requestedEnv === "stage" ? "stage" : "prod";
-
-      const usersCollection = getEnvironmentCollection("users", db, env);
+      const usersCollection = getEnvironmentCollection("users", db);
       const userDoc = await usersCollection.doc(decoded.sub).get();
 
       if (userDoc.exists) {
@@ -130,7 +124,7 @@ export const getWidgetSnapshotWithToken = onRequest(
       }
 
       // 4. 캐시된 스냅샷 조회
-      const snapshot = await fetchCachedSnapshot(decoded.sub, env);
+      const snapshot = await fetchCachedSnapshot(decoded.sub);
 
       // 5. 응답
       res.status(200).json({result: snapshot});
@@ -157,15 +151,13 @@ export const getWidgetSnapshotWithToken = onRequest(
  * @fallback 문서가 없으면 빈 스냅샷 반환
  *
  * @param {string} userId 사용자 ID
- * @param {string} env 환경 (stage | prod)
  * @return {Promise<WidgetSnapshotDocument>} 위젯 스냅샷 문서
  */
 async function fetchCachedSnapshot(
-  userId: string,
-  env: string
+  userId: string
 ): Promise<WidgetSnapshotDocument> {
   const db = admin.firestore();
-  const usersCollection = getEnvironmentCollection("users", db, env);
+  const usersCollection = getEnvironmentCollection("users", db);
 
   const snapshotDoc = await usersCollection
     .doc(userId)

@@ -1,0 +1,158 @@
+name: PR Check
+
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: macos-15
+    timeout-minutes: 45
+
+    steps:
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # 1. 체크아웃 및 환경 설정
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Setup Tuist
+        uses: jdx/mise-action@v2
+
+      - name: Cache Tuist
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/tuist
+            .build
+          key: ${{ runner.os }}-tuist-${{ hashFiles('**/Package.resolved', '**/Project.swift', '**/Tuist/**') }}
+          restore-keys: |
+            ${{ runner.os }}-tuist-
+
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # 2. xcconfig 파일 생성 (API 키)
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+      - name: Generate xcconfig files
+        env:
+          # Dev 환경 (PR 체크용)
+          GOOGLE_CLIENT_ID_DEV: ${{ secrets.GOOGLE_CLIENT_ID_DEV }}
+          GOOGLE_REVERSED_CLIENT_ID_DEV: ${{ secrets.GOOGLE_REVERSED_CLIENT_ID_DEV }}
+          KAKAO_NATIVE_APP_KEY_DEV: ${{ secrets.KAKAO_NATIVE_APP_KEY_DEV }}
+          KAKAO_REST_API_KEY_DEV: ${{ secrets.KAKAO_REST_API_KEY_DEV }}
+          # Stage 환경 (선택)
+          GOOGLE_CLIENT_ID_STAGE: ${{ secrets.GOOGLE_CLIENT_ID_STAGE }}
+          GOOGLE_REVERSED_CLIENT_ID_STAGE: ${{ secrets.GOOGLE_REVERSED_CLIENT_ID_STAGE }}
+          KAKAO_NATIVE_APP_KEY_STAGE: ${{ secrets.KAKAO_NATIVE_APP_KEY_STAGE }}
+          KAKAO_REST_API_KEY_STAGE: ${{ secrets.KAKAO_REST_API_KEY_STAGE }}
+          # Prod 환경 (선택)
+          GOOGLE_CLIENT_ID_PROD: ${{ secrets.GOOGLE_CLIENT_ID_PROD }}
+          GOOGLE_REVERSED_CLIENT_ID_PROD: ${{ secrets.GOOGLE_REVERSED_CLIENT_ID_PROD }}
+          KAKAO_NATIVE_APP_KEY_PROD: ${{ secrets.KAKAO_NATIVE_APP_KEY_PROD }}
+          KAKAO_REST_API_KEY_PROD: ${{ secrets.KAKAO_REST_API_KEY_PROD }}
+        run: |
+          chmod +x ./scripts/generate-xcconfig.sh
+          ./scripts/generate-xcconfig.sh
+
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # 3. Firebase plist 파일 복사
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+      - name: Setup Firebase plist (Dev)
+        run: |
+          echo "${{ secrets.GOOGLE_SERVICE_INFO_DEV }}" | base64 --decode > \
+            Projects/App/Resources-Dev/GoogleService-Info.plist
+
+      - name: Setup Firebase plist (Stage)
+        run: |
+          echo "${{ secrets.GOOGLE_SERVICE_INFO_STAGE }}" | base64 --decode > \
+            Projects/App/Resources-Stage/GoogleService-Info.plist
+
+      - name: Setup Firebase plist (Prod)
+        run: |
+          echo "${{ secrets.GOOGLE_SERVICE_INFO_PROD }}" | base64 --decode > \
+            Projects/App/Resources-Prod/GoogleService-Info.plist
+
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # 4. 프로젝트 생성 및 의존성 설치
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+      - name: Install Dependencies
+        run: tuist install
+
+      - name: Generate Project
+        run: tuist generate --no-open
+
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # 5. 빌드 (Dev 타겟)
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+      - name: Build PromisoDev
+        run: |
+          tuist build PromisoDev -- \
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            -skipPackagePluginValidation
+
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # 6. 테스트 실행
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+      - name: Run Tests
+        run: |
+          tuist test -- \
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            -skipPackagePluginValidation
+
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # 7. 테스트 결과 업로드 (실패 시)
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+      - name: Upload Test Results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            **/*.xcresult
+            **/test_output/
+
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # 8. PR 코멘트 (선택)
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+      - name: Comment PR
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const status = '${{ job.status }}' === 'success' ? '✅' : '❌';
+            const message = `${status} PR 체크 ${status === '✅' ? '성공' : '실패'}
+
+            **빌드**: ${status === '✅' ? '성공' : '실패'}
+            **테스트**: ${status === '✅' ? '통과' : '실패'}
+
+            <details>
+            <summary>상세 정보</summary>
+
+            - Workflow: ${{ github.workflow }}
+            - Branch: ${{ github.head_ref }}
+            - Commit: ${{ github.sha }}
+
+            </details>`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: message
+            });

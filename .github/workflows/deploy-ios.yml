@@ -1,0 +1,204 @@
+name: Deploy iOS
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        type: choice
+        options:
+          - stage
+          - prod
+      changelog:
+        description: 'TestFlight 수정사항 (Release notes)'
+        required: true
+        type: string
+
+concurrency:
+  group: ios-${{ github.event.inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.env.outputs.environment }}
+      fastlane_lane: ${{ steps.env.outputs.fastlane_lane }}
+      emoji: ${{ steps.env.outputs.emoji }}
+      env_label: ${{ steps.env.outputs.env_label }}
+      github_environment: ${{ steps.env.outputs.github_environment }}
+
+    steps:
+      - name: Determine Environment
+        id: env
+        run: |
+          ENV="${{ github.event.inputs.environment }}"
+
+          # 환경별 변수 설정
+          case "$ENV" in
+            stage)
+              FASTLANE_LANE="beta_stage"
+              EMOJI="🟡"
+              ENV_LABEL="Stage"
+              GITHUB_ENV="staging"
+              ;;
+            prod)
+              FASTLANE_LANE="beta_prod"
+              EMOJI="🚀"
+              ENV_LABEL="Production"
+              GITHUB_ENV="production"
+              ;;
+            *)
+              echo "::error::Invalid environment: $ENV"
+              exit 1
+              ;;
+          esac
+
+          # Output 설정
+          echo "environment=$ENV" >> $GITHUB_OUTPUT
+          echo "fastlane_lane=$FASTLANE_LANE" >> $GITHUB_OUTPUT
+          echo "emoji=$EMOJI" >> $GITHUB_OUTPUT
+          echo "env_label=$ENV_LABEL" >> $GITHUB_OUTPUT
+          echo "github_environment=$GITHUB_ENV" >> $GITHUB_OUTPUT
+
+          # 로그 출력
+          echo "🎯 Environment: $ENV_LABEL ($ENV)"
+          echo "🚀 Fastlane Lane: $FASTLANE_LANE"
+
+  deploy:
+    needs: setup
+    runs-on: macos-15
+    timeout-minutes: 60
+    environment:
+      name: ${{ needs.setup.outputs.github_environment }}
+      url: ${{ needs.setup.outputs.environment == 'prod' && 'https://apps.apple.com/app/promiso' || '' }}
+
+    steps:
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # 1. 체크아웃 및 환경 설정
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Setup Tuist
+        uses: jdx/mise-action@v2
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+
+      - name: Cache Tuist
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/tuist
+            .build
+          key: ${{ runner.os }}-tuist-${{ hashFiles('**/Package.resolved', '**/Project.swift', '**/Tuist/**') }}
+          restore-keys: |
+            ${{ runner.os }}-tuist-
+
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # 2. xcconfig 파일 생성 (환경별)
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+      - name: Generate xcconfig for Stage
+        if: needs.setup.outputs.environment == 'stage'
+        env:
+          TARGET_ENV: stage
+          GOOGLE_CLIENT_ID_STAGE: ${{ secrets.GOOGLE_CLIENT_ID_STAGE }}
+          GOOGLE_REVERSED_CLIENT_ID_STAGE: ${{ secrets.GOOGLE_REVERSED_CLIENT_ID_STAGE }}
+          KAKAO_NATIVE_APP_KEY_STAGE: ${{ secrets.KAKAO_NATIVE_APP_KEY_STAGE }}
+          KAKAO_REST_API_KEY_STAGE: ${{ secrets.KAKAO_REST_API_KEY_STAGE }}
+        run: |
+          chmod +x ./scripts/generate-xcconfig.sh
+          ./scripts/generate-xcconfig.sh
+
+      - name: Generate xcconfig for Prod
+        if: needs.setup.outputs.environment == 'prod'
+        env:
+          TARGET_ENV: prod
+          GOOGLE_CLIENT_ID_PROD: ${{ secrets.GOOGLE_CLIENT_ID_PROD }}
+          GOOGLE_REVERSED_CLIENT_ID_PROD: ${{ secrets.GOOGLE_REVERSED_CLIENT_ID_PROD }}
+          KAKAO_NATIVE_APP_KEY_PROD: ${{ secrets.KAKAO_NATIVE_APP_KEY_PROD }}
+          KAKAO_REST_API_KEY_PROD: ${{ secrets.KAKAO_REST_API_KEY_PROD }}
+        run: |
+          chmod +x ./scripts/generate-xcconfig.sh
+          ./scripts/generate-xcconfig.sh
+
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # 3. Firebase plist 파일 복사 (환경별)
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+      - name: Setup Firebase plist for Stage
+        if: needs.setup.outputs.environment == 'stage'
+        run: |
+          echo "${{ secrets.GOOGLE_SERVICE_INFO_STAGE }}" | base64 --decode > \
+            Projects/App/Resources-Stage/GoogleService-Info.plist
+
+      - name: Setup Firebase plist for Prod
+        if: needs.setup.outputs.environment == 'prod'
+        run: |
+          echo "${{ secrets.GOOGLE_SERVICE_INFO_PROD }}" | base64 --decode > \
+            Projects/App/Resources-Prod/GoogleService-Info.plist
+
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # 4. App Store Connect API Key 설정
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+      - name: Setup App Store Connect API Key
+        run: |
+          mkdir -p ~/private_keys
+          echo "${{ secrets.APP_STORE_CONNECT_API_KEY }}" | base64 --decode > \
+            ~/private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}.p8
+
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # 5. 프로젝트 생성
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+      - name: Install Dependencies
+        run: tuist install
+
+      - name: Generate Project
+        env:
+          TUIST_ENV: ${{ needs.setup.outputs.environment }}
+        run: tuist generate --no-open
+
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # 6. Fastlane 배포 (환경별 lane 실행)
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+      - name: Deploy to TestFlight (${{ needs.setup.outputs.env_label }})
+        env:
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          FASTLANE_USER: ${{ secrets.FASTLANE_USER }}
+          FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD: ${{ secrets.FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD }}
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          CHANGELOG: ${{ github.event.inputs.changelog }}
+        run: |
+          bundle install
+          bundle exec fastlane ${{ needs.setup.outputs.fastlane_lane }}
+
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # 7. 빌드 아티팩트 업로드 (실패 시)
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+      - name: Upload Build Artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs-${{ needs.setup.outputs.environment }}
+          path: |
+            ~/Library/Logs/gym/
+            fastlane/report.xml
+            fastlane/test_output/

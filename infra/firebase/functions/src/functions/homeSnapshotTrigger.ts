@@ -80,17 +80,15 @@ function getMyVoteStatus(
  * @description 그룹 약속을 조회해서 분류 후 homeSnapshot 문서에 저장
  *
  * @param {string} userId 사용자 ID
- * @param {string} env 환경 (stage | prod)
  * @param {FirebaseFirestore.Firestore} db Firestore 인스턴스
  * @return {Promise<void>} 없음
  */
 export async function updateHomeSnapshot(
   userId: string,
-  env: string,
   db: FirebaseFirestore.Firestore
 ): Promise<void> {
-  const usersCollection = getEnvironmentCollection("users", db, env);
-  const promisesCollection = getEnvironmentCollection("promises", db, env);
+  const usersCollection = getEnvironmentCollection("users", db);
+  const promisesCollection = getEnvironmentCollection("promises", db);
 
   // 1. 사용자 문서 조회
   const userDoc = await usersCollection.doc(userId).get();
@@ -304,11 +302,10 @@ export async function updateHomeSnapshot(
 export const onPromiseWriteUpdateHomeSnapshot = onDocumentWritten(
   {
     region: REGION,
-    document: "stage/root/promises/{promiseId}",
+    document: "promises/{promiseId}",
   },
   async (event) => {
     const db = admin.firestore();
-    const env = "stage";
 
     const before = event.data?.before?.data();
     const after = event.data?.after?.data();
@@ -322,7 +319,7 @@ export const onPromiseWriteUpdateHomeSnapshot = onDocumentWritten(
       return;
     }
 
-    const groupsCollection = getEnvironmentCollection("groups", db, env);
+    const groupsCollection = getEnvironmentCollection("groups", db);
     const affectedUserIds = new Set<string>();
 
     for (const groupId of affectedGroupIds) {
@@ -344,61 +341,7 @@ export const onPromiseWriteUpdateHomeSnapshot = onDocumentWritten(
     for (let i = 0; i < userIds.length; i += batchSize) {
       const batch = userIds.slice(i, i + batchSize);
       await Promise.all(
-        batch.map((uid) => updateHomeSnapshot(uid, env, db))
-      );
-    }
-
-    console.log(`✅ [HomeSnapshot] Updated ${userIds.length} users`);
-  }
-);
-
-/**
- * Production 환경용 트리거
- */
-export const onPromiseWriteUpdateHomeSnapshotProd = onDocumentWritten(
-  {
-    region: REGION,
-    document: "prod/root/promises/{promiseId}",
-  },
-  async (event) => {
-    const db = admin.firestore();
-    const env = "prod";
-
-    const before = event.data?.before?.data();
-    const after = event.data?.after?.data();
-
-    const affectedGroupIds = new Set<string>();
-    if (before?.groupId) affectedGroupIds.add(before.groupId as string);
-    if (after?.groupId) affectedGroupIds.add(after.groupId as string);
-
-    if (affectedGroupIds.size === 0) {
-      console.log("⚠️ [HomeSnapshot] No groupId found, skipping");
-      return;
-    }
-
-    const groupsCollection = getEnvironmentCollection("groups", db, env);
-    const affectedUserIds = new Set<string>();
-
-    for (const groupId of affectedGroupIds) {
-      const groupDoc = await groupsCollection.doc(groupId).get();
-      if (groupDoc.exists) {
-        const memberIds = (groupDoc.data()?.memberIds as string[]) || [];
-        memberIds.forEach((uid) => affectedUserIds.add(uid));
-      }
-    }
-
-    console.log(
-      `🔄 [HomeSnapshot] Updating ${affectedUserIds.size} users ` +
-      `for groups: ${Array.from(affectedGroupIds).join(", ")}`
-    );
-
-    const userIds = Array.from(affectedUserIds);
-    const batchSize = 10;
-
-    for (let i = 0; i < userIds.length; i += batchSize) {
-      const batch = userIds.slice(i, i + batchSize);
-      await Promise.all(
-        batch.map((uid) => updateHomeSnapshot(uid, env, db))
+        batch.map((uid) => updateHomeSnapshot(uid, db))
       );
     }
 
@@ -425,25 +368,22 @@ export const scheduledHomeSnapshotRefresh = onSchedule(
 
     const db = admin.firestore();
 
-    await refreshAllHomeSnapshots(db, "stage");
-    await refreshAllHomeSnapshots(db, "prod");
+    await refreshAllHomeSnapshots(db);
 
     console.log("✅ [HomeSnapshot] Daily refresh completed");
   }
 );
 
 /**
- * 특정 환경의 모든 사용자 홈 스냅샷 갱신
+ * 모든 사용자 홈 스냅샷 갱신
  *
  * @param {FirebaseFirestore.Firestore} db Firestore 인스턴스
- * @param {string} env 환경 (stage | prod)
  * @return {Promise<void>} 없음
  */
 async function refreshAllHomeSnapshots(
-  db: FirebaseFirestore.Firestore,
-  env: string
+  db: FirebaseFirestore.Firestore
 ): Promise<void> {
-  const usersCollection = getEnvironmentCollection("users", db, env);
+  const usersCollection = getEnvironmentCollection("users", db);
 
   const usersSnapshot = await usersCollection
     .where("groups", "!=", null)
@@ -451,15 +391,15 @@ async function refreshAllHomeSnapshots(
     .get();
 
   const userIds = usersSnapshot.docs.map((doc) => doc.id);
-  console.log(`📊 [HomeSnapshot] ${env}: ${userIds.length} users to refresh`);
+  console.log(`📊 [HomeSnapshot] ${userIds.length} users to refresh`);
 
   const batchSize = 10;
   for (let i = 0; i < userIds.length; i += batchSize) {
     const batch = userIds.slice(i, i + batchSize);
     await Promise.all(
-      batch.map((uid) => updateHomeSnapshot(uid, env, db))
+      batch.map((uid) => updateHomeSnapshot(uid, db))
     );
   }
 
-  console.log(`✅ [HomeSnapshot] ${env}: Refreshed ${userIds.length} users`);
+  console.log(`✅ [HomeSnapshot] Refreshed ${userIds.length} users`);
 }

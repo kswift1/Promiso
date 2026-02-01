@@ -38,6 +38,13 @@ fastlane/report.xml
 fastlane/Preview.html
 fastlane/screenshots/**/*.png
 fastlane/test_output
+fastlane/.env
+fastlane/README.md
+fastlane/test_output/
+*.cer
+*.p12
+*.mobileprovision
+*.certSigningRequest
 
 # macOS Finder
 .DS_Store
@@ -63,17 +70,20 @@ Temporary Items
 *.xcodeproj
 *.xcworkspace
 
-# Google/Firebase secrets
+# Google/Firebase secrets (환경별 plist는 Config/에만 보관)
 GoogleService-Info.plist
-Projects/**/Resources/GoogleService-Info.plist
+Config/GoogleService-Info-*.plist
+Projects/App/Resources/GoogleService-Info.plist
+Projects/App/Resources-Dev/GoogleService-Info.plist
+Projects/App/Resources-Stage/GoogleService-Info.plist
+Projects/App/Resources-Prod/GoogleService-Info.plist
 
-# API Keys / Secrets
+# API Keys / Secrets (xcconfig)
+Config/Dev.xcconfig
+Config/Stage.xcconfig
+Config/Prod.xcconfig
 Secrets.xcconfig
 *.xcconfig.local
-
-# TODO: 임시 예외. 로컬 개발 편의를 위해 App 타겟의 plist만 추적 허용.
-#       추후에는 `GoogleService-Info.example.plist`만 커밋하고, 실제 키 파일은 배포/CI에서 주입하도록 정리 필요.
-!Projects/App/Resources/GoogleService-Info.plist
 
 # IDE configs
 .idea/
@@ -85,7 +95,15 @@ Secrets.xcconfig
 firebase-debug.log
 **/firebase-debug.log
 
+# Environment variables
+.env
+.env.local
+**/.env
+**/.env.local
+
 # Tuist/SwiftPM caches
 Tuist/.build/
 .build/
 .swiftpm/
+*.zip
+Promiso-Config*.zip
