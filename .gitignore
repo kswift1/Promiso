@@ -38,6 +38,13 @@ fastlane/report.xml
 fastlane/Preview.html
 fastlane/screenshots/**/*.png
 fastlane/test_output
+fastlane/.env
+fastlane/README.md
+fastlane/test_output/
+*.cer
+*.p12
+*.mobileprovision
+*.certSigningRequest
 
 # macOS Finder
 .DS_Store
@@ -98,3 +105,5 @@ firebase-debug.log
 Tuist/.build/
 .build/
 .swiftpm/
+*.zip
+Promiso-Config*.zip

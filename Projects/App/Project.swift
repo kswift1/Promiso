@@ -242,6 +242,45 @@ let promiseWidgetProd = Target.target(
   ])
 )
 
+// MARK: - Environment-based Target Filtering
+
+/// 환경변수 TUIST_ENV에 따라 생성할 타겟 결정
+/// - dev: PromisoDev + 관련 Widget만 생성
+/// - stage: PromisoStage + 관련 Widget만 생성
+/// - prod: Promiso + 관련 Widget만 생성
+/// - all (기본값): 모든 타겟 생성
+let environment: String = {
+  if case let .string(env) = Environment.env {
+    print("🔧 [Tuist] TUIST_ENV = \(env)")
+    return env
+  }
+  print("🔧 [Tuist] TUIST_ENV = all (default)")
+  return "all"
+}()
+
+let targets: [Target] = {
+  switch environment {
+  case "dev":
+    return [promisoDev, liveActivityDev, promiseWidgetDev]
+  case "stage":
+    return [promisoStage, liveActivityStage, promiseWidgetStage]
+  case "prod":
+    return [promisoProd, liveActivityProd, promiseWidgetProd]
+  default: // "all"
+    return [
+      promisoDev,
+      promisoStage,
+      promisoProd,
+      liveActivityDev,
+      liveActivityStage,
+      liveActivityProd,
+      promiseWidgetDev,
+      promiseWidgetStage,
+      promiseWidgetProd
+    ]
+  }
+}()
+
 // MARK: - Project
 
 let project = Project(
@@ -252,15 +291,5 @@ let project = Project(
       .release(name: "Release")
     ]
   ),
-  targets: [
-    promisoDev,
-    promisoStage,
-    promisoProd,
-    liveActivityDev,
-    liveActivityStage,
-    liveActivityProd,
-    promiseWidgetDev,
-    promiseWidgetStage,
-    promiseWidgetProd
-  ]
+  targets: targets
 )

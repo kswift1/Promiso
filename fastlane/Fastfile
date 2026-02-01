@@ -1,0 +1,253 @@
+# Fastfile
+# Promiso iOS Deployment
+
+default_platform(:ios)
+
+platform :ios do
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # 설정
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  before_all do
+    ensure_git_status_clean unless ENV["CI"]
+  end
+
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # Dev 환경 (PromisoDev)
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  desc "Build and upload PromisoDev to TestFlight"
+  lane :beta_dev do
+    setup_ci if ENV["CI"]
+
+    # 1. 인증서/프로비저닝 프로파일
+    match(
+      type: "appstore",
+      app_identifier: "com.promiso.dev",
+      readonly: is_ci
+    )
+
+    # 2. 빌드 번호 자동 증가
+    increment_build_number(
+      xcodeproj: "Promiso.xcodeproj",
+      build_number: latest_testflight_build_number(
+        app_identifier: "com.promiso.dev"
+      ) + 1
+    )
+
+    # 3. 빌드 및 아카이빙
+    build_app(
+      workspace: "Promiso.xcworkspace",
+      scheme: "PromisoDev",
+      configuration: "Release",
+      export_method: "app-store",
+      export_options: {
+        provisioningProfiles: {
+          "com.promiso.dev" => "match AppStore com.promiso.dev"
+        }
+      }
+    )
+
+    # 4. TestFlight 업로드
+    upload_to_testflight(
+      app_identifier: "com.promiso.dev",
+      skip_waiting_for_build_processing: true,
+      distribute_external: false,
+      notify_external_testers: false,
+      changelog: "Dev build from CI"
+    )
+
+    # 5. Slack 알림 (선택)
+    if ENV["SLACK_WEBHOOK_URL"]
+      slack(
+        message: "✅ PromisoDev 빌드 완료",
+        success: true,
+        slack_url: ENV["SLACK_WEBHOOK_URL"],
+        default_payloads: [:git_branch, :git_author]
+      )
+    end
+  end
+
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # Stage 환경 (PromisoStage)
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  desc "Build and upload PromisoStage to TestFlight"
+  lane :beta_stage do
+    setup_ci if ENV["CI"]
+
+    # 1. 인증서/프로비저닝 프로파일
+    match(
+      type: "appstore",
+      app_identifier: "com.promiso.stage",
+      readonly: is_ci
+    )
+
+    # 2. 빌드 번호 자동 증가
+    increment_build_number(
+      xcodeproj: "Promiso.xcodeproj",
+      build_number: latest_testflight_build_number(
+        app_identifier: "com.promiso.stage"
+      ) + 1
+    )
+
+    # 3. 빌드 및 아카이빙
+    build_app(
+      workspace: "Promiso.xcworkspace",
+      scheme: "PromisoStage",
+      configuration: "Release",
+      export_method: "app-store",
+      export_options: {
+        provisioningProfiles: {
+          "com.promiso.stage" => "match AppStore com.promiso.stage"
+        }
+      }
+    )
+
+    # 4. TestFlight 업로드
+    upload_to_testflight(
+      app_identifier: "com.promiso.stage",
+      skip_waiting_for_build_processing: true,
+      distribute_external: true,
+      groups: ["Stage Testers"],
+      notify_external_testers: true,
+      changelog: "Stage build for QA"
+    )
+
+    # 5. Slack 알림
+    if ENV["SLACK_WEBHOOK_URL"]
+      slack(
+        message: "🟡 PromisoStage 빌드 완료 (QA 시작 가능)",
+        success: true,
+        slack_url: ENV["SLACK_WEBHOOK_URL"],
+        default_payloads: [:git_branch, :git_author]
+      )
+    end
+  end
+
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # Production 환경 (Promiso)
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  desc "Build and upload Promiso to TestFlight (Production)"
+  lane :beta_prod do
+    setup_ci if ENV["CI"]
+
+    # 1. 인증서/프로비저닝 프로파일
+    match(
+      type: "appstore",
+      app_identifier: "com.promiso",
+      readonly: is_ci
+    )
+
+    # 2. 빌드 번호 자동 증가
+    increment_build_number(
+      xcodeproj: "Promiso.xcodeproj",
+      build_number: latest_testflight_build_number(
+        app_identifier: "com.promiso"
+      ) + 1
+    )
+
+    # 3. 빌드 및 아카이빙
+    build_app(
+      workspace: "Promiso.xcworkspace",
+      scheme: "Promiso",
+      configuration: "Release",
+      export_method: "app-store",
+      export_options: {
+        provisioningProfiles: {
+          "com.promiso" => "match AppStore com.promiso"
+        }
+      }
+    )
+
+    # 4. TestFlight 업로드
+    upload_to_testflight(
+      app_identifier: "com.promiso",
+      skip_waiting_for_build_processing: false,
+      distribute_external: true,
+      groups: ["Production Testers"],
+      notify_external_testers: true,
+      changelog: "Production build ready for App Store submission"
+    )
+
+    # 5. Slack 알림
+    if ENV["SLACK_WEBHOOK_URL"]
+      slack(
+        message: "🚀 Promiso (Prod) 빌드 완료 - App Store 제출 준비 완료",
+        success: true,
+        slack_url: ENV["SLACK_WEBHOOK_URL"],
+        default_payloads: [:git_branch, :git_author, :last_git_commit]
+      )
+    end
+  end
+
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # App Store 배포 (수동)
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  desc "Submit Promiso to App Store Review"
+  lane :release do
+    # TestFlight에서 최신 빌드를 App Store로 제출
+    deliver(
+      app_identifier: "com.promiso",
+      skip_screenshots: true,
+      skip_metadata: false,
+      submit_for_review: true,
+      automatic_release: false,
+      submission_information: {
+        add_id_info_uses_idfa: false
+      }
+    )
+
+    if ENV["SLACK_WEBHOOK_URL"]
+      slack(
+        message: "📱 Promiso가 App Store 심사에 제출되었습니다",
+        success: true,
+        slack_url: ENV["SLACK_WEBHOOK_URL"]
+      )
+    end
+  end
+
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # 테스트
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  desc "Run tests"
+  lane :test do
+    run_tests(
+      workspace: "Promiso.xcworkspace",
+      scheme: "PromisoDev",
+      devices: ["iPhone 16"],
+      clean: true
+    )
+  end
+
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # 인증서 동기화
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  desc "Sync code signing certificates and provisioning profiles"
+  lane :sync_certificates do
+    match(
+      type: "appstore",
+      app_identifier: ["com.promiso.dev", "com.promiso.stage", "com.promiso"],
+      readonly: false
+    )
+  end
+
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # 에러 핸들링
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  error do |lane, exception|
+    if ENV["SLACK_WEBHOOK_URL"]
+      slack(
+        message: "❌ #{lane} 실패: #{exception.message}",
+        success: false,
+        slack_url: ENV["SLACK_WEBHOOK_URL"],
+        default_payloads: [:git_branch, :git_author]
+      )
+    end
+  end
+end
