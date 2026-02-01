@@ -323,6 +323,15 @@ platform :ios do
       "com.promiso.promisewidget"
     ]
 
+    # Development profiles (Debug configuration 검증용)
+    match(
+      type: "development",
+      app_identifier: all_bundle_ids,
+      readonly: false,
+      api_key: api_key
+    )
+
+    # AppStore profiles (Release 빌드용)
     match(
       type: "appstore",
       app_identifier: all_bundle_ids,
