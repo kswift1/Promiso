@@ -72,6 +72,7 @@ Config/GoogleService-Info-*.plist
 # API Keys / Secrets
 Secrets.xcconfig
 *.xcconfig.local
+Tuist/ProjectDescriptionHelpers/Secrets.swift
 
 # IDE configs
 .idea/
@@ -82,6 +83,12 @@ Secrets.xcconfig
 *.trace
 firebase-debug.log
 **/firebase-debug.log
+
+# Environment variables
+.env
+.env.local
+**/.env
+**/.env.local
 
 # Tuist/SwiftPM caches
 Tuist/.build/

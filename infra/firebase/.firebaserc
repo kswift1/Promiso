@@ -1,0 +1,7 @@
+{
+  "projects": {
+    "dev": "promiso-dev",
+    "stage": "promiso-stage",
+    "prod": "promiso-prod"
+  }
+}

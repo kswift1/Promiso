@@ -27,11 +27,11 @@ public enum AppConfig {
   }()
   
   public static var infoPlist: [String: Plist.Value] {
-    // FIXME: API Key들 안보이게 옮기기
-    let googleClientId: String = "306291841913-08gm6rkpklh6k7qqfim1bkc92uji6bcg.apps.googleusercontent.com"
-    let googleReversedClientId: String = "com.googleusercontent.apps.306291841913-08gm6rkpklh6k7qqfim1bkc92uji6bcg"
-    let kakaoNativeAppKey: String = "85c9fc88501e426b848242e7c02d20af"
-    let kakaoRestApiKey: String = "eacdef419fafb30e112e6ca22219ee4d"
+    // API Keys는 Secrets.swift에서 관리 (gitignored)
+    let googleClientId: String = Secrets.googleClientId
+    let googleReversedClientId: String = Secrets.googleReversedClientId
+    let kakaoNativeAppKey: String = Secrets.kakaoNativeAppKey
+    let kakaoRestApiKey: String = Secrets.kakaoRestApiKey
     return [
       "CFBundleShortVersionString": .string(AppConfig.marketingNumber),
       "CFBundleVersion": .string(AppConfig.buildVersion),
