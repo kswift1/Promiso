@@ -47,7 +47,6 @@ platform :ios do
       scheme: "PromisoDev",
       configuration: "Release",
       export_method: "app-store",
-      xcargs: "-allowProvisioningUpdates",
       export_options: {
         provisioningProfiles: {
           "com.promiso.dev" => "match AppStore com.promiso.dev",
@@ -106,7 +105,6 @@ platform :ios do
       scheme: "PromisoStage",
       configuration: "Release",
       export_method: "app-store",
-      xcargs: "-allowProvisioningUpdates",
       export_options: {
         provisioningProfiles: {
           "com.promiso.stage" => "match AppStore com.promiso.stage",
@@ -166,7 +164,6 @@ platform :ios do
       scheme: "Promiso",
       configuration: "Release",
       export_method: "app-store",
-      xcargs: "-allowProvisioningUpdates",
       export_options: {
         provisioningProfiles: {
           "com.promiso" => "match AppStore com.promiso",
