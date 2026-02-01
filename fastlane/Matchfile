@@ -15,7 +15,7 @@ storage_mode("git")
 app_identifier(["com.promiso.dev", "com.promiso.stage", "com.promiso"])
 
 # Apple ID (App Store Connect)
-username("kswen0203@icloud.com")
+# 환경변수 FASTLANE_USER로 관리 (GitHub Secrets에 설정됨)
 
 # Team ID
 team_id("BAC795627G")

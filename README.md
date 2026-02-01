@@ -271,11 +271,3 @@ make remove-feature FEATURE_NAME=Login # Feature 삭제
 make deps                              # 의존성 그래프
 make clean                             # 캐시 정리
 ```
-
-## 📄 라이선스
-
-이 프로젝트는 비공개(Private) 저장소입니다.
-
----
-
-**문의**: [GitHub Issues](https://github.com/kswift1/Promiso/issues)
