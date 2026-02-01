@@ -12,7 +12,7 @@ public extension Settings {
   ) -> Settings {
     var baseSettings = base
     baseSettings["DEVELOPMENT_TEAM"] = .string(AppConfig.teamId)
-    baseSettings["CODE_SIGN_STYLE"] = .string("Automatic")
+    // CODE_SIGN_STYLE은 xcconfig에서 설정 (Manual)
     baseSettings["OTHER_LDFLAGS"] = .string("-ObjC")
     baseSettings["MARKETING_VERSION"] = .string(AppConfig.marketingNumber)
     // CURRENT_PROJECT_VERSION은 각 타겟의 Info.plist에서 CFBundleVersion으로 환경별 설정됨
