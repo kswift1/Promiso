@@ -65,13 +65,16 @@ platform :ios do
       changelog: ENV["CHANGELOG"] || "Dev build from CI"
     )
 
-    # 5. Slack 알림 (선택)
-    if ENV["SLACK_WEBHOOK_URL"]
+    # 5. Slack 알림
+    if ENV["SLACK_WEBHOOK_URL_DEPLOY"]
       slack(
-        message: "✅ PromisoDev 빌드 완료",
+        message: "✅ [DEV] PromisoDev 빌드 완료",
         success: true,
-        slack_url: ENV["SLACK_WEBHOOK_URL"],
-        default_payloads: [:git_branch, :git_author]
+        slack_url: ENV["SLACK_WEBHOOK_URL_DEPLOY"],
+        default_payloads: [:git_branch, :git_author],
+        payload: {
+          "Environment" => "Development"
+        }
       )
     end
   end
@@ -122,12 +125,15 @@ platform :ios do
     )
 
     # 5. Slack 알림
-    if ENV["SLACK_WEBHOOK_URL"]
+    if ENV["SLACK_WEBHOOK_URL_DEPLOY"]
       slack(
-        message: "🟡 PromisoStage 빌드 완료 (QA 시작 가능)",
+        message: "🟡 [STAGE] PromisoStage 빌드 완료 (QA 시작 가능)",
         success: true,
-        slack_url: ENV["SLACK_WEBHOOK_URL"],
-        default_payloads: [:git_branch, :git_author]
+        slack_url: ENV["SLACK_WEBHOOK_URL_DEPLOY"],
+        default_payloads: [:git_branch, :git_author],
+        payload: {
+          "Environment" => "Stage"
+        }
       )
     end
   end
@@ -178,12 +184,15 @@ platform :ios do
     )
 
     # 5. Slack 알림
-    if ENV["SLACK_WEBHOOK_URL"]
+    if ENV["SLACK_WEBHOOK_URL_DEPLOY"]
       slack(
-        message: "🚀 Promiso (Prod) 빌드 완료 - App Store 제출 준비 완료",
+        message: "🚀 [PROD] Promiso 빌드 완료 - App Store 제출 준비 완료",
         success: true,
-        slack_url: ENV["SLACK_WEBHOOK_URL"],
-        default_payloads: [:git_branch, :git_author, :last_git_commit]
+        slack_url: ENV["SLACK_WEBHOOK_URL_DEPLOY"],
+        default_payloads: [:git_branch, :git_author, :last_git_commit],
+        payload: {
+          "Environment" => "Production"
+        }
       )
     end
   end
@@ -206,11 +215,14 @@ platform :ios do
       }
     )
 
-    if ENV["SLACK_WEBHOOK_URL"]
+    if ENV["SLACK_WEBHOOK_URL_DEPLOY"]
       slack(
-        message: "📱 Promiso가 App Store 심사에 제출되었습니다",
+        message: "📱 [PROD] Promiso가 App Store 심사에 제출되었습니다",
         success: true,
-        slack_url: ENV["SLACK_WEBHOOK_URL"]
+        slack_url: ENV["SLACK_WEBHOOK_URL_DEPLOY"],
+        payload: {
+          "Environment" => "Production"
+        }
       )
     end
   end
@@ -315,11 +327,11 @@ platform :ios do
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   error do |lane, exception|
-    if ENV["SLACK_WEBHOOK_URL"]
+    if ENV["SLACK_WEBHOOK_URL_DEPLOY"]
       slack(
         message: "❌ #{lane} 실패: #{exception.message}",
         success: false,
-        slack_url: ENV["SLACK_WEBHOOK_URL"],
+        slack_url: ENV["SLACK_WEBHOOK_URL_DEPLOY"],
         default_payloads: [:git_branch, :git_author]
       )
     end
