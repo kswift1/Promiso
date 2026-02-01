@@ -1,11 +1,6 @@
 name: Deploy Firebase
 
 on:
-  push:
-    branches: [develop, staging, main]
-    paths:
-      - 'infra/firebase/**'
-      - '.github/workflows/deploy-firebase.yml'
   workflow_dispatch:
     inputs:
       environment:
@@ -13,12 +8,11 @@ on:
         required: true
         type: choice
         options:
-          - dev
           - stage
           - prod
 
 concurrency:
-  group: firebase-${{ github.event.inputs.environment || (github.ref_name == 'develop' && 'dev') || (github.ref_name == 'staging' && 'stage') || (github.ref_name == 'main' && 'prod') }}
+  group: firebase-${{ github.event.inputs.environment }}
   cancel-in-progress: false
 
 jobs:
@@ -35,30 +29,10 @@ jobs:
       - name: Determine Environment
         id: env
         run: |
-          # workflow_dispatch 수동 실행 시
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            ENV="${{ github.event.inputs.environment }}"
-          # 브랜치 기반 자동 환경 결정
-          else
-            case "${{ github.ref_name }}" in
-              develop) ENV="dev" ;;
-              staging) ENV="stage" ;;
-              main) ENV="prod" ;;
-              *)
-                echo "::error::Unknown branch: ${{ github.ref_name }}"
-                exit 1
-                ;;
-            esac
-          fi
+          ENV="${{ github.event.inputs.environment }}"
 
           # 환경별 변수 설정
           case "$ENV" in
-            dev)
-              PROJECT_ID="promiso-dev"
-              SERVICE_ACCOUNT="FIREBASE_SERVICE_ACCOUNT_DEV"
-              EMOJI="🔥"
-              ENV_LABEL="Dev"
-              ;;
             stage)
               PROJECT_ID="promiso-stage"
               SERVICE_ACCOUNT="FIREBASE_SERVICE_ACCOUNT_STAGE"
@@ -70,6 +44,10 @@ jobs:
               SERVICE_ACCOUNT="FIREBASE_SERVICE_ACCOUNT_PROD"
               EMOJI="🚀"
               ENV_LABEL="Production"
+              ;;
+            *)
+              echo "::error::Invalid environment: $ENV"
+              exit 1
               ;;
           esac
 
