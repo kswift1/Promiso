@@ -1,22 +1,97 @@
-name: Deploy iOS (Dev)
+name: Deploy iOS
 
 on:
   push:
-    branches: [develop]
+    branches: [develop, staging, main]
     paths-ignore:
       - 'infra/firebase/**'
       - 'docs/**'
       - '**.md'
   workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        type: choice
+        options:
+          - dev
+          - stage
+          - prod
 
 concurrency:
-  group: ios-dev
+  group: ios-${{ github.event.inputs.environment || (github.ref_name == 'develop' && 'dev') || (github.ref_name == 'staging' && 'stage') || (github.ref_name == 'main' && 'prod') }}
   cancel-in-progress: false
 
 jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.env.outputs.environment }}
+      fastlane_lane: ${{ steps.env.outputs.fastlane_lane }}
+      emoji: ${{ steps.env.outputs.emoji }}
+      env_label: ${{ steps.env.outputs.env_label }}
+      github_environment: ${{ steps.env.outputs.github_environment }}
+
+    steps:
+      - name: Determine Environment
+        id: env
+        run: |
+          # workflow_dispatch 수동 실행 시
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            ENV="${{ github.event.inputs.environment }}"
+          # 브랜치 기반 자동 환경 결정
+          else
+            case "${{ github.ref_name }}" in
+              develop) ENV="dev" ;;
+              staging) ENV="stage" ;;
+              main) ENV="prod" ;;
+              *)
+                echo "::error::Unknown branch: ${{ github.ref_name }}"
+                exit 1
+                ;;
+            esac
+          fi
+
+          # 환경별 변수 설정
+          case "$ENV" in
+            dev)
+              FASTLANE_LANE="beta_dev"
+              EMOJI="🔥"
+              ENV_LABEL="Dev"
+              GITHUB_ENV="development"
+              ;;
+            stage)
+              FASTLANE_LANE="beta_stage"
+              EMOJI="🟡"
+              ENV_LABEL="Stage"
+              GITHUB_ENV="staging"
+              ;;
+            prod)
+              FASTLANE_LANE="beta_prod"
+              EMOJI="🚀"
+              ENV_LABEL="Production"
+              GITHUB_ENV="production"
+              ;;
+          esac
+
+          # Output 설정
+          echo "environment=$ENV" >> $GITHUB_OUTPUT
+          echo "fastlane_lane=$FASTLANE_LANE" >> $GITHUB_OUTPUT
+          echo "emoji=$EMOJI" >> $GITHUB_OUTPUT
+          echo "env_label=$ENV_LABEL" >> $GITHUB_OUTPUT
+          echo "github_environment=$GITHUB_ENV" >> $GITHUB_OUTPUT
+
+          # 로그 출력
+          echo "🎯 Environment: $ENV_LABEL ($ENV)"
+          echo "🚀 Fastlane Lane: $FASTLANE_LANE"
+
   deploy:
+    needs: setup
     runs-on: macos-15
     timeout-minutes: 60
+    environment:
+      name: ${{ needs.setup.outputs.github_environment }}
+      url: ${{ needs.setup.outputs.environment == 'prod' && 'https://apps.apple.com/app/promiso' || '' }}
 
     steps:
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -103,13 +178,15 @@ jobs:
         run: tuist install
 
       - name: Generate Project
+        env:
+          TUIST_ENV: ${{ needs.setup.outputs.environment }}
         run: tuist generate --no-open
 
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      # 6. Fastlane 배포 (PromisoDev → TestFlight)
+      # 6. Fastlane 배포 (환경별 lane 실행)
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-      - name: Deploy to TestFlight (Dev)
+      - name: Deploy to TestFlight (${{ needs.setup.outputs.env_label }})
         env:
           MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
           FASTLANE_USER: ${{ secrets.FASTLANE_USER }}
@@ -119,7 +196,7 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
           bundle install
-          bundle exec fastlane beta_dev
+          bundle exec fastlane ${{ needs.setup.outputs.fastlane_lane }}
 
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       # 7. 빌드 아티팩트 업로드 (실패 시)
@@ -129,7 +206,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: build-logs
+          name: build-logs-${{ needs.setup.outputs.environment }}
           path: |
             ~/Library/Logs/gym/
             fastlane/report.xml
