@@ -2,13 +2,20 @@
 # 앱 기본 정보
 
 # Apple ID (App Store Connect)
-apple_id("your-apple-id@example.com") # ← 실제 Apple ID로 변경
+apple_id("kswen0203@icloud.com")
 
 # Team ID (Apple Developer Portal)
-team_id("YOUR_TEAM_ID") # ← 실제 Team ID로 변경
+team_id("BAC795627G")
 
-# iTunes Connect Team ID (App Store Connect Team ID)
-itc_team_id("YOUR_ITC_TEAM_ID") # ← App Store Connect Team ID로 변경 (선택)
+# iTunes Connect Team ID (App Store Connect Team ID - Team ID와 동일)
+itc_team_id("BAC795627G")
+
+# App Store Connect API Key (비밀번호 대신 API Key 사용)
+# API Key는 Fastfile에서 match 호출 시 api_key_path 파라미터로 전달
+# 또는 환경변수로 관리:
+# - APP_STORE_CONNECT_API_KEY_KEY_ID: 289GZL84NY
+# - APP_STORE_CONNECT_API_KEY_ISSUER_ID: 52bd2d3d-f105-4c91-8bfb-82a450eca00a
+# - APP_STORE_CONNECT_API_KEY_KEY_FILEPATH: /path/to/AuthKey_289GZL84NY.p8
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 환경별 앱 식별자 (자동 감지)

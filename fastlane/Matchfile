@@ -15,10 +15,10 @@ storage_mode("git")
 app_identifier(["com.promiso.dev", "com.promiso.stage", "com.promiso"])
 
 # Apple ID (App Store Connect)
-username("your-apple-id@example.com") # ← 실제 Apple ID로 변경
+username("kswen0203@icloud.com")
 
 # Team ID
-team_id("YOUR_TEAM_ID") # ← 실제 Team ID로 변경 (Apple Developer Portal에서 확인)
+team_id("BAC795627G")
 
 # 타입
 type("appstore")
