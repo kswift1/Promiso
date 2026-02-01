@@ -3,89 +3,43 @@
  *
  * 위젯용 약속 스냅샷을 제공하는 Cloud Functions
  *
- * @why 위젯은 네트워크 호출 불가 → 앱이 Functions에서 받아서 캐시에 저장
- * @returns 오늘/다가오는/다음 약속 + updatedAt (캐시 무효화용)
+ * @architecture Snapshot 기반 (v2)
+ * - 서버: Firestore Trigger로 스냅샷 미리 계산 → users/{uid}/cache/widgetSnapshot
+ * - 클라이언트: 캐시된 스냅샷만 읽기 (계산 없음, Race Condition 없음)
+ *
+ * @auth Widget Token (30일 유효) 또는 Firebase ID Token
  */
-import {onCall, HttpsError} from "firebase-functions/v2/https";
+import {onCall, onRequest, HttpsError} from "firebase-functions/v2/https";
 import {admin, REGION} from "../config";
 import {getEnvironmentCollection} from "../utils/firestore";
+import {verifyWidgetToken, WIDGET_JWT_SECRET} from "./widgetToken";
+import {WidgetSnapshotDocument} from "../types/api";
 
-// MARK: - Types
+// MARK: - Default Empty Snapshot
 
-interface WidgetPromise {
-  id: string;
-  title: string;
-  emoji: string;
-  startAt: string; // ISO 8601
-  endAt: string | null;
-  location: string | null;
-  groupId: string;
-  groupName: string | null;
-  isConfirmed: boolean;
-  participantCount: number;
-}
+const emptySnapshot: WidgetSnapshotDocument = {
+  next: null,
+  today: [],
+  upcoming: [],
+  meta: {
+    todayCount: 0,
+    upcomingCount: 0,
+    updatedAt: new Date().toISOString(),
+    version: 1,
+  },
+};
 
-interface WidgetSnapshotResponse {
-  next: WidgetPromise | null;
-  today: WidgetPromise[];
-  upcoming: WidgetPromise[];
-  updatedAt: string; // ISO 8601
-}
-
-// MARK: - Helper Functions
+// MARK: - Main Functions
 
 /**
- * Firestore Timestamp를 ISO 8601 문자열로 변환
+ * 위젯용 약속 스냅샷 조회 (Firebase ID Token 인증)
  *
- * @param {FirebaseFirestore.Timestamp | undefined} timestamp Firestore
- * @return {string | null} ISO 8601 문자열
- */
-function toISOString(
-  timestamp: FirebaseFirestore.Timestamp | undefined
-): string | null {
-  if (!timestamp) return null;
-  return timestamp.toDate().toISOString();
-}
-
-/**
- * 오늘 날짜의 시작/끝 시간 계산 (KST 기준)
- *
- * @return {{startOfDay: Date, endOfDay: Date}} 오늘 시작/끝
- */
-function getTodayRange(): { startOfDay: Date; endOfDay: Date } {
-  const now = new Date();
-  // KST 기준으로 오늘 시작 (00:00:00)
-  const kstOffset = 9 * 60 * 60 * 1000;
-  const kstNow = new Date(now.getTime() + kstOffset);
-  const startOfDay = new Date(
-    Date.UTC(
-      kstNow.getUTCFullYear(),
-      kstNow.getUTCMonth(),
-      kstNow.getUTCDate()
-    ) - kstOffset
-  );
-  const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
-  return {startOfDay, endOfDay};
-}
-
-// MARK: - Main Function
-
-/**
- * 위젯용 약속 스냅샷 조회
- *
- * @description 사용자의 그룹에 속한 약속 중 위젯에 표시할 데이터를 반환
+ * @description 캐시된 스냅샷 문서를 반환
  * @requires 인증 필수
- *
- * @returns {WidgetSnapshotResponse}
- * - next: 가장 가까운 다음 약속 (1개)
- * - today: 오늘 약속 (최대 3개)
- * - upcoming: 다가오는 약속 (최대 5개, 오늘 제외)
- * - updatedAt: 스냅샷 생성 시각 (캐시 무효화용)
  */
 export const getWidgetSnapshot = onCall(
   {region: REGION},
-  async (request): Promise<WidgetSnapshotResponse> => {
-    // 인증 확인
+  async (request): Promise<WidgetSnapshotDocument> => {
     if (!request.auth) {
       throw new HttpsError(
         "unauthenticated",
@@ -94,133 +48,134 @@ export const getWidgetSnapshot = onCall(
     }
 
     const userId = request.auth.uid;
-    const db = admin.firestore();
-    // 클라이언트에서 전달받은 환경 사용 (stage 또는 prod)
     const requestedEnv = request.data?.env as string | undefined;
     const env = requestedEnv === "stage" ? "stage" : "prod";
 
-    const usersCollection = getEnvironmentCollection("users", db, env);
-    const promisesCollection = getEnvironmentCollection("promises", db, env);
-
-    // 1. 사용자의 그룹 ID 목록 조회
-    const userDoc = await usersCollection.doc(userId).get();
-    if (!userDoc.exists) {
-      return {
-        next: null,
-        today: [],
-        upcoming: [],
-        updatedAt: new Date().toISOString(),
-      };
-    }
-
-    const userData = userDoc.data();
-    type UserGroupMap = { [key: string]: { name?: string } };
-    const userGroups = userData?.groups as UserGroupMap | undefined;
-
-    if (!userGroups || Object.keys(userGroups).length === 0) {
-      return {
-        next: null,
-        today: [],
-        upcoming: [],
-        updatedAt: new Date().toISOString(),
-      };
-    }
-
-    const groupIds = Object.keys(userGroups);
-
-    // 2. 그룹 이름 맵 생성
-    const groupNameMap: { [key: string]: string } = {};
-    for (const groupId of groupIds) {
-      if (userGroups[groupId]?.name) {
-        groupNameMap[groupId] = userGroups[groupId].name as string;
-      }
-    }
-
-    // 3. 약속 조회 (현재 시간 이후, 확정된 약속만)
-    const now = new Date();
-    const {startOfDay, endOfDay} = getTodayRange();
-
-    // Firestore는 array-contains-any 최대 30개 제한
-    const chunkedGroupIds: string[][] = [];
-    for (let i = 0; i < groupIds.length; i += 10) {
-      chunkedGroupIds.push(groupIds.slice(i, i + 10));
-    }
-
-    const allPromises: WidgetPromise[] = [];
-
-    for (const chunk of chunkedGroupIds) {
-      const snapshot = await promisesCollection
-        .where("groupId", "in", chunk)
-        .where("startAt", ">=", now)
-        .orderBy("startAt", "asc")
-        .limit(20)
-        .get();
-
-      for (const doc of snapshot.docs) {
-        const data = doc.data();
-
-        // 확정된 약속만 포함
-        const votes = data.votes as {
-          accepted?: string[];
-        } | undefined;
-        const minimumParticipants = (data.minimumParticipants as number) || 2;
-        const acceptedCount = votes?.accepted?.length || 0;
-        const isConfirmed = acceptedCount >= minimumParticipants;
-
-        if (!isConfirmed) continue;
-
-        const startAt = data.startAt as FirebaseFirestore.Timestamp;
-        const endAt = data.endAt as FirebaseFirestore.Timestamp | undefined;
-        const location = data.location as { name?: string } | undefined;
-
-        allPromises.push({
-          id: doc.id,
-          title: (data.title as string) || "",
-          emoji: (data.emoji as string) || "📅",
-          startAt: startAt.toDate().toISOString(),
-          endAt: toISOString(endAt),
-          location: location?.name || null,
-          groupId: data.groupId as string,
-          groupName: groupNameMap[data.groupId as string] || null,
-          isConfirmed: true,
-          participantCount: acceptedCount,
-        });
-      }
-    }
-
-    // 4. 정렬 (startAt 기준 오름차순) - 이미 정렬됨
-    // 5. 분류: next, today, upcoming
-    const todayPromises: WidgetPromise[] = [];
-    const upcomingPromises: WidgetPromise[] = [];
-
-    for (const promise of allPromises) {
-      const promiseDate = new Date(promise.startAt);
-
-      if (promiseDate >= startOfDay && promiseDate < endOfDay) {
-        if (todayPromises.length < 3) {
-          todayPromises.push(promise);
-        }
-      } else if (promiseDate >= endOfDay) {
-        if (upcomingPromises.length < 5) {
-          upcomingPromises.push(promise);
-        }
-      }
-    }
-
-    // next: 현재 시간 이후 가장 가까운 약속
-    const nextPromise = allPromises.length > 0 ? allPromises[0] : null;
-
-    console.log(`📊 Widget: user=${userId}, groups=${groupIds.length}`);
-    console.log(
-      `📊 Widget: all=${allPromises.length}, ` +
-      `today=${todayPromises.length}, upcoming=${upcomingPromises.length}`
-    );
-
-    return {
-      next: nextPromise,
-      today: todayPromises,
-      upcoming: upcomingPromises,
-      updatedAt: new Date().toISOString(),
-    };
+    const snapshot = await fetchCachedSnapshot(userId, env);
+    return snapshot;
   }
 );
+
+/**
+ * 위젯용 약속 스냅샷 조회 (Widget Token 인증)
+ *
+ * @description Widget Extension에서 직접 호출하는 HTTP 엔드포인트
+ * @auth Widget Token (30일 유효) - Authorization: Bearer <token>
+ */
+export const getWidgetSnapshotWithToken = onRequest(
+  {
+    region: REGION,
+    secrets: [WIDGET_JWT_SECRET],
+  },
+  async (req, res) => {
+    // CORS 헤더
+    res.set("Access-Control-Allow-Origin", "*");
+    res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+    res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+
+    if (req.method === "OPTIONS") {
+      res.status(204).send("");
+      return;
+    }
+
+    if (req.method !== "POST") {
+      res.status(405).json({error: "Method not allowed"});
+      return;
+    }
+
+    // 1. Authorization 헤더 확인
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) {
+      res.status(401).json({error: "Missing or invalid Authorization header"});
+      return;
+    }
+
+    const token = authHeader.split("Bearer ")[1];
+
+    try {
+      // 2. Widget Token 검증
+      const secret = WIDGET_JWT_SECRET.value();
+      const decoded = verifyWidgetToken(token, secret);
+
+      // 3. 토큰 버전 확인 (revocation 체크)
+      const db = admin.firestore();
+      const requestBody = req.body?.data || {};
+      const requestedEnv = requestBody.env as string | undefined;
+      const env = requestedEnv === "stage" ? "stage" : "prod";
+
+      const usersCollection = getEnvironmentCollection("users", db, env);
+      const userDoc = await usersCollection.doc(decoded.sub).get();
+
+      if (userDoc.exists) {
+        const userData = userDoc.data();
+        const currentVersion = (userData?.widgetTokenVersion as number) || 1;
+        if (decoded.version < currentVersion) {
+          res.status(401).json({error: "Token revoked"});
+          return;
+        }
+      }
+
+      // 4. 캐시된 스냅샷 조회
+      const snapshot = await fetchCachedSnapshot(decoded.sub, env);
+
+      // 5. 응답
+      res.status(200).json({result: snapshot});
+    } catch (error) {
+      if (error instanceof HttpsError) {
+        const statusCode = error.code === "unauthenticated" ? 401 :
+          error.code === "permission-denied" ? 403 : 500;
+        res.status(statusCode).json({error: error.message});
+        return;
+      }
+
+      console.error("❌ getWidgetSnapshotWithToken error:", error);
+      res.status(500).json({error: "Internal server error"});
+    }
+  }
+);
+
+// MARK: - Helper Functions
+
+/**
+ * 캐시된 스냅샷 조회
+ *
+ * @description users/{uid}/cache/widgetSnapshot 문서를 읽어서 반환
+ * @fallback 문서가 없으면 빈 스냅샷 반환
+ *
+ * @param {string} userId 사용자 ID
+ * @param {string} env 환경 (stage | prod)
+ * @return {Promise<WidgetSnapshotDocument>} 위젯 스냅샷 문서
+ */
+async function fetchCachedSnapshot(
+  userId: string,
+  env: string
+): Promise<WidgetSnapshotDocument> {
+  const db = admin.firestore();
+  const usersCollection = getEnvironmentCollection("users", db, env);
+
+  const snapshotDoc = await usersCollection
+    .doc(userId)
+    .collection("cache")
+    .doc("widgetSnapshot")
+    .get();
+
+  if (!snapshotDoc.exists) {
+    console.log(`📦 [Widget] No cache for user: ${userId}, returning empty`);
+    return {
+      ...emptySnapshot,
+      meta: {
+        ...emptySnapshot.meta,
+        updatedAt: new Date().toISOString(),
+      },
+    };
+  }
+
+  const data = snapshotDoc.data() as WidgetSnapshotDocument;
+  console.log(
+    `📦 [Widget] Cache hit: ${userId} ` +
+    `(next=${data.next?.id ?? "null"}, ` +
+    `today=${data.today.length}, upcoming=${data.upcoming.length})`
+  );
+
+  return data;
+}

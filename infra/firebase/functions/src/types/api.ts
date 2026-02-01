@@ -1271,3 +1271,128 @@ export enum GenerateEmojiError {
   /** API 오류 */
   INTERNAL = "internal",
 }
+
+// ============================================================================
+// Widget Snapshot (Firestore Cached Document)
+// ============================================================================
+
+/**
+ * 내 투표 상태
+ *
+ * @remarks
+ * - pending: 아직 응답 안 함 → 액션 필요
+ * - voted: 참여 확정 (accepted)
+ * - declined: 참여 거절
+ */
+export type MyVoteStatus = "pending" | "voted" | "declined";
+
+/**
+ * Widget용 약속 데이터
+ *
+ * @remarks
+ * Firestore `users/{uid}/widgetSnapshot` 문서에 저장되는 약속 정보
+ * 서버에서 우선순위 정렬 완료 후 저장
+ */
+export interface WidgetPromise {
+  /** 약속 ID */
+  id: string;
+
+  /** 약속 제목 */
+  title: string;
+
+  /** 약속 이모지 */
+  emoji: string;
+
+  /** 시작 시간 (ISO 8601) */
+  startAt: string;
+
+  /** 종료 시간 (ISO 8601, nullable) */
+  endAt: string | null;
+
+  /** 장소 이름 */
+  location: string | null;
+
+  /** 그룹 ID */
+  groupId: string;
+
+  /** 그룹 이름 */
+  groupName: string | null;
+
+  /** 약속 확정 여부 (최소 인원 충족) */
+  isConfirmed: boolean;
+
+  /** 참가 확정 인원 수 */
+  participantCount: number;
+
+  /** 내 투표 상태 */
+  myVoteStatus: MyVoteStatus;
+}
+
+/**
+ * Widget Snapshot 메타데이터
+ */
+export interface WidgetSnapshotMeta {
+  /** 오늘 약속 총 개수 (표시되는 것보다 많을 수 있음) */
+  todayCount: number;
+
+  /** 다가오는 약속 총 개수 */
+  upcomingCount: number;
+
+  /** 스냅샷 마지막 업데이트 시간 (ISO 8601) */
+  updatedAt: string;
+
+  /** 변경 감지용 버전 (trigger 실행마다 증가) */
+  version: number;
+}
+
+/**
+ * Widget Snapshot 문서 (Firestore)
+ *
+ * @path users/{uid}/widgetSnapshot
+ *
+ * @remarks
+ * - Cloud Functions Trigger가 약속/투표 변경 시 자동 업데이트
+ * - Widget은 이 문서만 읽으면 됨 (쿼리 불필요)
+ *
+ * @sorting 정렬 우선순위 (서버에서 적용)
+ * 1. 내 투표 상태: pending(미응답) 우선
+ * 2. 약속 확정 여부: 미확정 우선 (액션 필요)
+ * 3. 시작 시간: 오름차순
+ */
+export interface WidgetSnapshotDocument {
+  /**
+   * 가장 가까운 약속 (Small 위젯용)
+   *
+   * @priority 우선순위 정렬 적용됨
+   * - pending + 가까운 시간 → 가장 먼저
+   */
+  next: WidgetPromise | null;
+
+  /**
+   * 오늘 약속 목록 (Medium 위젯용)
+   *
+   * @max 5개
+   * @sorting pending 우선 → 미확정 우선 → 시간순
+   */
+  today: WidgetPromise[];
+
+  /**
+   * 다가오는 약속 목록 (Large 위젯용, 내일부터)
+   *
+   * @max 7개
+   * @sorting 시간순 (확정 여부 무관)
+   */
+  upcoming: WidgetPromise[];
+
+  /** 메타데이터 */
+  meta: WidgetSnapshotMeta;
+}
+
+/**
+ * Widget Snapshot API 응답
+ *
+ * @remarks
+ * getWidgetSnapshotWithToken API가 반환하는 형식
+ * WidgetSnapshotDocument와 동일하지만 API 계약 명시용
+ */
+export type WidgetSnapshotResponse = WidgetSnapshotDocument;
