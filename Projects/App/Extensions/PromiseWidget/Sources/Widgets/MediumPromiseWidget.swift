@@ -73,6 +73,21 @@ struct MediumPromiseWidgetView: View {
           .font(.subheadline)
           .foregroundStyle(.secondary)
         Spacer()
+        
+        if entry.hasStaleData {
+          Image(systemName: "exclamationmark.triangle.fill")
+            .font(.caption2)
+            .foregroundStyle(.orange)
+        }
+        Text(formatUpdatedTime(entry.date))
+          .font(.caption2)
+          .foregroundStyle(.tertiary)
+        Button(intent: RefreshWidgetIntent()) {
+          Image(systemName: "arrow.clockwise")
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+        }
+        .buttonStyle(.plain)
       }
 
       Divider()
@@ -118,6 +133,15 @@ struct MediumPromiseWidgetView: View {
           .font(.subheadline)
           .foregroundStyle(.secondary)
         Spacer()
+        Text(formatUpdatedTime(entry.date))
+          .font(.caption2)
+          .foregroundStyle(.tertiary)
+        Button(intent: RefreshWidgetIntent()) {
+          Image(systemName: "arrow.clockwise")
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+        }
+        .buttonStyle(.plain)
       }
 
       Divider()

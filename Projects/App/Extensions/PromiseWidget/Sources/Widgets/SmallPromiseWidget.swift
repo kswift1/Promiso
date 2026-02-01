@@ -53,8 +53,22 @@ struct SmallPromiseWidgetView: View {
   @ViewBuilder
   private func promiseView(_ promise: WidgetPromiseData) -> some View {
     VStack(alignment: .leading, spacing: 8) {
-      Text(promise.emoji)
-        .font(.title2)
+      HStack {
+        Text(promise.emoji)
+          .font(.title2)
+        Spacer()
+        if promise.isStale {
+          Image(systemName: "exclamationmark.triangle.fill")
+            .font(.caption2)
+            .foregroundStyle(.orange)
+        }
+        Button(intent: RefreshWidgetIntent()) {
+          Image(systemName: "arrow.clockwise")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+        .buttonStyle(.plain)
+      }
 
       Spacer()
 
