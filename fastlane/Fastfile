@@ -29,10 +29,14 @@ platform :ios do
   lane :beta_dev do
     setup_ci if ENV["CI"]
 
-    # 1. 인증서/프로비저닝 프로파일
+    # 1. 인증서/프로비저닝 프로파일 (앱 + Widget Extensions)
     match(
       type: "appstore",
-      app_identifier: "com.promiso.dev",
+      app_identifier: [
+        "com.promiso.dev",
+        "com.promiso.dev.liveactivity",
+        "com.promiso.dev.promisewidget"
+      ],
       readonly: is_ci,
       api_key: @api_key
     )
@@ -45,7 +49,9 @@ platform :ios do
       export_method: "app-store",
       export_options: {
         provisioningProfiles: {
-          "com.promiso.dev" => "match AppStore com.promiso.dev"
+          "com.promiso.dev" => "match AppStore com.promiso.dev",
+          "com.promiso.dev.liveactivity" => "match AppStore com.promiso.dev.liveactivity",
+          "com.promiso.dev.promisewidget" => "match AppStore com.promiso.dev.promisewidget"
         }
       }
     )
@@ -78,10 +84,14 @@ platform :ios do
   lane :beta_stage do
     setup_ci if ENV["CI"]
 
-    # 1. 인증서/프로비저닝 프로파일
+    # 1. 인증서/프로비저닝 프로파일 (앱 + Widget Extensions)
     match(
       type: "appstore",
-      app_identifier: "com.promiso.stage",
+      app_identifier: [
+        "com.promiso.stage",
+        "com.promiso.stage.liveactivity",
+        "com.promiso.stage.promisewidget"
+      ],
       readonly: is_ci,
       api_key: @api_key
     )
@@ -94,7 +104,9 @@ platform :ios do
       export_method: "app-store",
       export_options: {
         provisioningProfiles: {
-          "com.promiso.stage" => "match AppStore com.promiso.stage"
+          "com.promiso.stage" => "match AppStore com.promiso.stage",
+          "com.promiso.stage.liveactivity" => "match AppStore com.promiso.stage.liveactivity",
+          "com.promiso.stage.promisewidget" => "match AppStore com.promiso.stage.promisewidget"
         }
       }
     )
@@ -128,10 +140,14 @@ platform :ios do
   lane :beta_prod do
     setup_ci if ENV["CI"]
 
-    # 1. 인증서/프로비저닝 프로파일
+    # 1. 인증서/프로비저닝 프로파일 (앱 + Widget Extensions)
     match(
       type: "appstore",
-      app_identifier: "com.promiso",
+      app_identifier: [
+        "com.promiso",
+        "com.promiso.liveactivity",
+        "com.promiso.promisewidget"
+      ],
       readonly: is_ci,
       api_key: @api_key
     )
@@ -144,7 +160,9 @@ platform :ios do
       export_method: "app-store",
       export_options: {
         provisioningProfiles: {
-          "com.promiso" => "match AppStore com.promiso"
+          "com.promiso" => "match AppStore com.promiso",
+          "com.promiso.liveactivity" => "match AppStore com.promiso.liveactivity",
+          "com.promiso.promisewidget" => "match AppStore com.promiso.promisewidget"
         }
       }
     )
@@ -227,10 +245,23 @@ platform :ios do
       )
     end
 
+    # 모든 Bundle ID (앱 + Widget Extensions)
+    all_bundle_ids = [
+      "com.promiso.dev",
+      "com.promiso.dev.liveactivity",
+      "com.promiso.dev.promisewidget",
+      "com.promiso.stage",
+      "com.promiso.stage.liveactivity",
+      "com.promiso.stage.promisewidget",
+      "com.promiso",
+      "com.promiso.liveactivity",
+      "com.promiso.promisewidget"
+    ]
+
     # Development certificates
     match(
       type: "development",
-      app_identifier: ["com.promiso.dev", "com.promiso.stage", "com.promiso"],
+      app_identifier: all_bundle_ids,
       readonly: false,
       api_key: api_key
     )
@@ -238,7 +269,7 @@ platform :ios do
     # AppStore certificates
     match(
       type: "appstore",
-      app_identifier: ["com.promiso.dev", "com.promiso.stage", "com.promiso"],
+      app_identifier: all_bundle_ids,
       readonly: false,
       api_key: api_key
     )
@@ -258,9 +289,22 @@ platform :ios do
       )
     end
 
+    # 모든 Bundle ID (앱 + Widget Extensions)
+    all_bundle_ids = [
+      "com.promiso.dev",
+      "com.promiso.dev.liveactivity",
+      "com.promiso.dev.promisewidget",
+      "com.promiso.stage",
+      "com.promiso.stage.liveactivity",
+      "com.promiso.stage.promisewidget",
+      "com.promiso",
+      "com.promiso.liveactivity",
+      "com.promiso.promisewidget"
+    ]
+
     match(
       type: "appstore",
-      app_identifier: ["com.promiso.dev", "com.promiso.stage", "com.promiso"],
+      app_identifier: all_bundle_ids,
       readonly: false,
       api_key: api_key
     )
