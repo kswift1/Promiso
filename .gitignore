@@ -65,15 +65,13 @@ Temporary Items
 
 # Google/Firebase secrets
 GoogleService-Info.plist
+GoogleService-Info-*.plist
 Projects/**/Resources/GoogleService-Info.plist
+Config/GoogleService-Info-*.plist
 
 # API Keys / Secrets
 Secrets.xcconfig
 *.xcconfig.local
-
-# TODO: 임시 예외. 로컬 개발 편의를 위해 App 타겟의 plist만 추적 허용.
-#       추후에는 `GoogleService-Info.example.plist`만 커밋하고, 실제 키 파일은 배포/CI에서 주입하도록 정리 필요.
-!Projects/App/Resources/GoogleService-Info.plist
 
 # IDE configs
 .idea/
