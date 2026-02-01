@@ -1,160 +1,125 @@
 # Promiso
 
-약속 관리 iOS 애플리케이션
+> 그룹 기반 약속 관리 iOS 애플리케이션
 
-## 🏗️ 아키텍처
+<p align="center">
+  <img src="https://img.shields.io/badge/iOS-18.0+-blue.svg" />
+  <img src="https://img.shields.io/badge/Swift-6.0+-orange.svg" />
+  <img src="https://img.shields.io/badge/Xcode-16.0+-blue.svg" />
+  <img src="https://img.shields.io/badge/TCA-1.22.2-purple.svg" />
+</p>
 
-이 프로젝트는 **The Composable Architecture (TCA)** 기반으로 구성되어 있습니다.
+## 📖 개요
 
-### 아키텍처 구조
+Promiso는 **The Composable Architecture (TCA)** 기반의 모던 iOS 앱입니다.
+- 그룹별 약속 관리
+- 실시간 라이브 액티비티
+- 홈 화면 위젯 지원
+- Firebase 기반 백엔드
 
-```
-┌─────────────────────────────────────────┐
-│            App Layer                    │
-│     (앱 조립 및 Feature 통합)               │
-└─────────────────────────────────────────┘
-                    ↓
-┌─────────────────────────────────────────┐
-│        Features Layer                   │
-│  (TCA Reducers & Views - 비즈니스 로직)    │
-└─────────────────────────────────────────┘
-                    ↓
-┌─────────────────────────────────────────┐
-│         Clients Layer                   │
-│   (TCA Dependencies - 외부 의존성)         │
-└─────────────────────────────────────────┘
-                    ↓
-┌─────────────────────────────────────────┐
-│         Shared Layer                    │
-│    (공통 모델, UI 컴포넌트, 유틸리티)          │
-└─────────────────────────────────────────┘
+## 🚀 빠른 시작
 
-┌─────────────────────────────────────────┐
-│   ExternalDependency / ResourceKit      │
-│ (외부 라이브러리 집약 / 리소스 관리)        │
-└─────────────────────────────────────────┘
-```
+### 필수 요구사항
 
-### 핵심 원칙
+- **Xcode**: 16.0+
+- **Swift**: 6.0+
+- **iOS**: 18.0+
+- **Tuist**: 4.65.7+
 
-- **Features**: 각 화면/기능은 독립적인 TCA Feature로 구성
-- **Clients**: Firebase, API 등 외부 의존성은 TCA Dependency로 추상화
-- **Shared**: 여러 Feature가 공유하는 모델과 UI 컴포넌트
-- **ExternalDependency**: 외부 라이브러리를 단일 모듈로 집약해 재노출
-- **ResourceKit**: 디자인 리소스/생성 코드 관리
-- **단방향 의존성**: App → Features → Clients → Shared
-
-## 🚀 시작하기
-
-### 요구사항
-
-- Xcode 16.0+
-- Swift 6.0+
-- iOS 18.0+
-- Tuist 4.65.7+
-
-### 빠른 설정 (새 컴퓨터)
+### 설치 및 실행
 
 ```bash
 # 1. 저장소 클론
 git clone https://github.com/kswift1/Promiso.git
 cd Promiso
 
-# 2. Tuist 설치
+# 2. Tuist 설치 (없는 경우)
 curl -Ls https://install.tuist.io | bash
 
-# 3. Config 폴더 복원 (Google Drive에 백업해둔 경우)
-unzip ~/Downloads/Promiso-Config.zip -d .
-./scripts/copy-firebase-config.sh
-
-# 4. 프로젝트 생성 및 빌드
+# 3. 의존성 설치 및 프로젝트 생성
+tuist install
 tuist generate
-tuist build PromisoDev
 
-# 5. Xcode에서 열기
+# 4. Xcode에서 열기
 open Promiso.xcworkspace
 ```
-
-**Config 파일이 없나요?** → [docs/SETUP_GUIDE.md](docs/SETUP_GUIDE.md) 참고
 
 ### 환경별 타겟
 
 | 타겟 | Bundle ID | Firebase | 용도 |
 |------|-----------|----------|------|
-| PromisoDev | `com.promiso.dev` | promiso-dev | 개발 |
-| PromisoStage | `com.promiso.stage` | promiso-stage | 스테이징 |
-| Promiso | `com.promiso` | promiso-prod | 프로덕션 |
+| **PromisoDev** | `com.promiso.dev` | promiso-dev | 로컬 개발 |
+| **PromisoStage** | `com.promiso.stage` | promiso-stage | QA/스테이징 |
+| **Promiso** | `com.promiso` | promiso-prod | 프로덕션 |
+
+```bash
+# 환경별 빌드
+tuist build PromisoDev    # Dev 환경
+tuist build PromisoStage  # Stage 환경
+tuist build Promiso       # Prod 환경
+```
 
 ## 📦 프로젝트 구조
 
 ```
-Projects/
-├── App/                           # 메인 애플리케이션
-│   └── Sources/
-│       ├── AppMain.swift          # 앱 진입점
-│       └── LiveDependencies.swift # 의존성 주입
+Promiso/
+├── Projects/
+│   ├── App/                    # 메인 애플리케이션
+│   ├── Features/               # TCA Features (기능별 모듈)
+│   ├── Clients/                # TCA Dependencies (외부 의존성)
+│   ├── Shared/                 # 공통 모델, UI, 유틸리티
+│   ├── ResourceKit/            # 리소스 관리
+│   └── ExternalDependency/     # 외부 라이브러리 집약
 │
-├── Features/                      # 기능별 TCA Features
-│   ├── AppEntryFeature/
-│   ├── AuthFeature/
-│   ├── GroupFeature/
-│   ├── HomeFeature/
-│   └── RootTabFeature/
-│
-├── Clients/                       # TCA Dependencies (외부 의존성)
-│   ├── AuthClient/
-│   ├── GroupClient/
-│   ├── PromiseClient/
-│   ├── UserProfileClient/
-│   ├── Infrastructure/
-│   └── Networking/
-│
-├── Shared/                        # 공통 요소
-│   ├── Models/
-│   ├── UseCases/
-│   ├── Protocols/
-│   ├── Errors/
-│   ├── DesignSystem/
-│   ├── UI/
-│   ├── Services/
-│   ├── Extensions/
-│   ├── Constants/
-│   ├── Common/
-│   └── Emoji/
-│
-├── ResourceKit/                   # 리소스/생성 코드
-│   ├── Resources/
-│   └── Sources/Generated/
-│
-└── ExternalDependency/            # 외부 라이브러리 집약
-    └── Sources/ExternalDependency.swift
+├── infra/firebase/             # Firebase Functions, Rules
+├── docs/                       # 프로젝트 문서
+├── Config/                     # 환경별 설정 (xcconfig)
+└── scripts/                    # 빌드/배포 스크립트
 ```
 
-## 🛠️ 개발 워크플로우
+### 아키텍처 계층
 
-### 새 Feature 생성
+```
+┌─────────────────────┐
+│   App (조립/통합)    │
+└──────────┬──────────┘
+           ↓
+┌─────────────────────┐
+│ Features (비즈니스)  │  ← TCA Reducers & Views
+└──────────┬──────────┘
+           ↓
+┌─────────────────────┐
+│ Clients (외부 의존성) │  ← TCA Dependencies
+└──────────┬──────────┘
+           ↓
+┌─────────────────────┐
+│ Shared (공통 요소)   │  ← Models, UI, Utils
+└─────────────────────┘
+```
+
+**핵심 원칙**:
+- 단방향 의존성: `App → Features → Clients → Shared`
+- Features끼리는 서로 의존하지 않음
+- 모든 외부 라이브러리는 `ExternalDependency`로 집약
+
+## 🛠️ 개발
+
+### Feature 생성
 
 ```bash
-make feature FEATURE_NAME=YourFeature
+# 새 Feature 자동 생성
+make feature FEATURE_NAME=Notification
+
+# 생성되는 파일:
+# - Features/NotificationFeature/Sources/NotificationFeature.swift
+# - Features/NotificationFeature/Sources/NotificationView.swift
+# - Features/NotificationFeature/Tests/NotificationFeatureTests.swift
 ```
-
-이 명령어는 자동으로:
-1. Feature 스캐폴드 생성 (Reducer + View)
-2. 의존성 자동 추가
-3. 프로젝트 재생성
-
-### 의존성 그래프 확인
-
-```bash
-make deps
-```
-
-현재 프로젝트의 의존성 구조를 시각화하여 보여줍니다.
 
 ### 빌드 및 테스트
 
 ```bash
-# 전체 프로젝트 빌드
+# 전체 빌드
 tuist build
 
 # 특정 Feature 빌드
@@ -162,46 +127,40 @@ tuist build GroupFeature
 
 # 테스트 실행
 tuist test
+
+# 의존성 그래프 확인
+make deps
 ```
 
-## 🔑 핵심 개념
-
-### TCA Feature 구조
+### TCA Feature 예시
 
 ```swift
-// Features/PromiseListFeature/PromiseListFeature.swift
 import ComposableArchitecture
-import Clients
-import Shared
 
 @Reducer
-public struct PromiseListFeature {
+public struct MyFeature {
     @ObservableState
     public struct State: Equatable {
-        var promises: [PromiseModel] = []
-        var isLoading = false
+        var items: [Item] = []
     }
-    
+
     public enum Action {
         case onAppear
-        case promisesResponse([PromiseModel])
+        case itemsResponse([Item])
     }
-    
-    @Dependency(\.promiseClient) var promiseClient
-    
+
+    @Dependency(\.itemClient) var itemClient
+
     public var body: some ReducerOf<Self> {
         Reduce { state, action in
             switch action {
             case .onAppear:
-                state.isLoading = true
                 return .run { send in
-                    let promises = try await promiseClient.fetchPromises()
-                    await send(.promisesResponse(promises))
+                    let items = try await itemClient.fetch()
+                    await send(.itemsResponse(items))
                 }
-                
-            case let .promisesResponse(promises):
-                state.isLoading = false
-                state.promises = promises
+            case let .itemsResponse(items):
+                state.items = items
                 return .none
             }
         }
@@ -209,136 +168,86 @@ public struct PromiseListFeature {
 }
 ```
 
-### Client 구조 (외부 의존성 추상화)
+## 🚢 CI/CD 및 배포
 
-```swift
-// Clients/PromiseClient/PromiseClient.swift
-import ComposableArchitecture
-import Shared
+이 프로젝트는 GitHub Actions 기반 CI/CD를 사용합니다.
 
-@DependencyClient
-public struct PromiseClient {
-    public var fetchPromises: @Sendable () async throws -> [PromiseModel]
-}
+### 자동 빌드
 
-extension PromiseClient: DependencyKey {
-    public static let liveValue: PromiseClient = {
-        Self(
-            fetchPromises: {
-                // Networking/Repository 등을 통해 데이터 로딩
-                []
-            }
-        )
-    }()
-}
+- **PR → main**: 자동으로 빌드 및 테스트 실행
+- **빌드 타겟**: PromisoDev
+- **테스트**: Swift Testing
 
-extension DependencyValues {
-    public var promiseClient: PromiseClient {
-        get { self[PromiseClient.self] }
-        set { self[PromiseClient.self] = newValue }
-    }
-}
-```
-
-### Feature 간 통신 (부모 Feature에서 조율)
-
-```swift
-// App/Sources/RootFeature.swift
-@Reducer
-public struct RootFeature {
-    @ObservableState
-    public struct State {
-        var featureA: FeatureA.State
-        var featureB: FeatureB.State
-    }
-    
-    public enum Action {
-        case featureA(FeatureA.Action)
-        case featureB(FeatureB.Action)
-    }
-    
-    public var body: some ReducerOf<Self> {
-        Scope(state: \.featureA, action: \.featureA) { FeatureA() }
-        Scope(state: \.featureB, action: \.featureB) { FeatureB() }
-        
-        Reduce { state, action in
-            switch action {
-            case .featureA(.delegate(.didComplete)):
-                return .send(.featureB(.refresh))
-            default:
-                return .none
-            }
-        }
-    }
-}
-```
-
-## 🧪 테스트
-
-### TCA 테스트 예시
-
-```swift
-import ComposableArchitecture
-import Testing
-
-@testable import PromiseListFeature
-
-@Test
-func testCreatePromise() async {
-    let promise = Promise.mock
-    
-    let store = TestStore(initialState: PromiseListFeature.State()) {
-        PromiseListFeature()
-    } withDependencies: {
-        // Mock 의존성 주입
-        $0.promiseClient.fetchPromises = { [promise] }
-    }
-    
-    await store.send(.onAppear) {
-        $0.isLoading = true
-    }
-    
-    await store.receive(\.promisesResponse) {
-        $0.isLoading = false
-        $0.promises.append(promise)
-    }
-}
-```
-
-### 전체 테스트 실행
+### 수동 배포
 
 ```bash
-# 모든 테스트 실행
-tuist test
-
-# 특정 Feature 테스트
-tuist test PromiseListFeatureTests
+# GitHub Actions에서 수동 실행
+# 1. Actions 탭 → Deploy iOS to TestFlight
+# 2. 환경 선택 (Stage/Prod)
+# 3. Changelog 입력
+# 4. Run workflow
 ```
 
-## 📋 Make 명령어
+자세한 내용은 [📘 배포 가이드](docs/DEPLOYMENT.md) 참고
+
+## 📚 문서
+
+### 시작하기
+
+- [🚀 초기 설정 가이드](docs/SETUP_GUIDE.md) - 새 개발 환경 셋업
+- [🔧 환경 설정](docs/ENVIRONMENT.md) - Dev/Stage/Prod 환경 구성
+- [🏗️ 아키텍처](docs/ARCHITECTURE.md) - TCA 기반 아키텍처 상세
+
+### 개발
+
+- [💻 개발 가이드](docs/DEVELOPMENT.md) - Feature 개발, 테스트, 컨벤션
+- [🔥 Firebase 가이드](docs/FIREBASE.md) - Firestore, Functions, Rules
+
+### CI/CD 및 배포
+
+- [⚙️ CI/CD](docs/CI_CD.md) - GitHub Actions 워크플로우
+- [🚀 배포 가이드](docs/DEPLOYMENT.md) - Fastlane, TestFlight, 환경별 배포
+- [🌿 Git 브랜치 전략](docs/BRANCH_STRATEGY.md) - 브랜치 전략 및 워크플로우
+
+### 참고
+
+- [.ai/PROJECT_CONTEXT.md](.ai/PROJECT_CONTEXT.md) - Claude Code용 프로젝트 컨텍스트
+- [.claude/CLAUDE.md](.claude/CLAUDE.md) - Claude Code 설정 및 컨벤션
+
+## 🤖 AI 개발 도구
+
+이 프로젝트는 [Claude Code](https://claude.com/claude-code)를 사용한 AI 기반 개발을 지원합니다.
+
+**커스텀 에이전트**:
+- `feature-generator`: TCA Feature 자동 생성
+- `ui-designer`: SwiftUI View 디자인
+- `code-reviewer`: 코드 리뷰 및 컨벤션 체크
+- `backend-developer`: Firebase Functions 개발
+- 기타 17개 전문 에이전트
+
+**Slash 커맨드**:
+```bash
+/new-feature Notification    # Feature 생성 (Reducer + View + Tests)
+/new-screen Profile          # 화면 생성 (Feature + UI)
+/review-pr                   # PR 코드 리뷰
+```
+
+자세한 내용은 [AGENTS.md](AGENTS.md) 참고
+
+## 🧰 Make 명령어
 
 ```bash
-make help                                    # 도움말 표시
-make feature FEATURE_NAME=Login             # Login Feature 생성
-make remove-feature FEATURE_NAME=Login      # Login Feature 삭제
-make deps                                   # 의존성 그래프 시각화
-make clean                                  # 빌드 캐시 정리
+make help                              # 도움말
+make feature FEATURE_NAME=Login        # Feature 생성
+make remove-feature FEATURE_NAME=Login # Feature 삭제
+make deps                              # 의존성 그래프
+make clean                             # 캐시 정리
 ```
 
-## 📚 추가 문서
+## 📄 라이선스
 
-- [TCA 공식 문서](https://pointfreeco.github.io/swift-composable-architecture/)
-
-### 의존성 규칙
-
-```
-App → Features → Clients → Shared
-  ↓       ↓         ↓
- 통합     로직        구현
-```
-
-- Features끼리는 서로 의존하지 않음
-- 모든 외부 의존성은 ExternalDependency 모듈로 집약
-- Shared는 ExternalDependency/ResourceKit 외 내부 모듈에 의존하지 않음
+이 프로젝트는 비공개(Private) 저장소입니다.
 
 ---
+
+**문의**: [GitHub Issues](https://github.com/kswift1/Promiso/issues)
