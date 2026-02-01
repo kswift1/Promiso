@@ -319,7 +319,7 @@ public enum WidgetDataManager {
     request.httpMethod = "POST"
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
     request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-    request.httpBody = try? JSONSerialization.data(withJSONObject: ["data": ["env": loadFirestoreEnv()]])
+    request.httpBody = try? JSONSerialization.data(withJSONObject: ["data": [:]])
 
     do {
       let (data, response) = try await URLSession.shared.data(for: request)
