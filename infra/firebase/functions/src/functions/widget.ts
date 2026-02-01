@@ -68,13 +68,10 @@ export const getWidgetSnapshotWithToken = onRequest(
     secrets: [WIDGET_JWT_SECRET],
   },
   async (req, res) => {
-    // CORS 헤더
-    res.set("Access-Control-Allow-Origin", "*");
-    res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
-    res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
-
+    // iOS Widget Extension 전용 엔드포인트 - 브라우저 CORS 불필요
+    // 보안: 브라우저에서의 접근 차단
     if (req.method === "OPTIONS") {
-      res.status(204).send("");
+      res.status(403).json({error: "CORS not allowed"});
       return;
     }
 

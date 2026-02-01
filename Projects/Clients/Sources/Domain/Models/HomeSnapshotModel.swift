@@ -158,21 +158,24 @@ public struct SnapshotVotes: Codable, Equatable, Sendable {
 // MARK: - SnapshotPromise Computed Properties
 
 extension SnapshotPromise {
+  /// ISO8601 DateFormatter (재사용으로 성능 최적화)
+  private static let isoFormatter = ISO8601DateFormatter()
+
   /// 시작 시간 (Date)
   public var startAtDate: Date {
-    ISO8601DateFormatter().date(from: startAt) ?? Date()
+    Self.isoFormatter.date(from: startAt) ?? Date()
   }
 
   /// 종료 시간 (Date, 선택)
   public var endAtDate: Date? {
     guard let endAt else { return nil }
-    return ISO8601DateFormatter().date(from: endAt)
+    return Self.isoFormatter.date(from: endAt)
   }
 
   /// 투표 마감 시간 (Date, 선택)
   public var votingDeadlineDate: Date? {
     guard let votingDeadline else { return nil }
-    return ISO8601DateFormatter().date(from: votingDeadline)
+    return Self.isoFormatter.date(from: votingDeadline)
   }
 
   /// 투표 마감 여부

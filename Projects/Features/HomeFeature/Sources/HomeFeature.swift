@@ -214,8 +214,8 @@ extension Home {
             case .success(let snapshot):
               state.snapshotState = .loaded(snapshot)
 
-              // 위젯 캐시 업데이트 (스냅샷에서 변환)
-              let allPromises = snapshot.todayPromises + snapshot.upcomingPromises
+              // 위젯 캐시 업데이트 (스냅샷에서 변환, pending 포함)
+              let allPromises = snapshot.todayPromises + snapshot.pendingPromises + snapshot.upcomingPromises
               let promiseModels = allPromises.toPromiseModels(
                 currentUserId: state.currentUser.userId
               )
