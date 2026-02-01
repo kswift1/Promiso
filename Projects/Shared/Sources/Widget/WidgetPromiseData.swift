@@ -1,5 +1,14 @@
 import Foundation
 
+// MARK: - Vote Status
+
+/// 내 투표 상태
+public enum MyVoteStatus: String, Codable, Sendable {
+  case pending   // 투표 필요
+  case voted     // 참여 의사 표시함
+  case declined  // 불참 의사 표시함
+}
+
 /// Widget에서 사용하는 경량화된 약속 모델
 public struct WidgetPromiseData: Codable, Identifiable, Equatable, Sendable {
   // MARK: - Constants
@@ -28,6 +37,7 @@ public struct WidgetPromiseData: Codable, Identifiable, Equatable, Sendable {
 
   public let isConfirmed: Bool
   public let participantCount: Int
+  public let myVoteStatus: MyVoteStatus
 
   // MARK: - 캐시 메타데이터
 
@@ -46,6 +56,7 @@ public struct WidgetPromiseData: Codable, Identifiable, Equatable, Sendable {
     groupName: String?,
     isConfirmed: Bool,
     participantCount: Int,
+    myVoteStatus: MyVoteStatus = .pending,
     cachedAt: Date = Date()
   ) {
     self.id = id
@@ -58,6 +69,7 @@ public struct WidgetPromiseData: Codable, Identifiable, Equatable, Sendable {
     self.groupName = groupName
     self.isConfirmed = isConfirmed
     self.participantCount = participantCount
+    self.myVoteStatus = myVoteStatus
     self.cachedAt = cachedAt
   }
 
@@ -92,7 +104,8 @@ public struct WidgetPromiseData: Codable, Identifiable, Equatable, Sendable {
       groupId: "",
       groupName: "친구들",
       isConfirmed: true,
-      participantCount: 3
+      participantCount: 3,
+      myVoteStatus: .voted
     )
   }
 
@@ -117,7 +130,8 @@ public struct WidgetPromiseData: Codable, Identifiable, Equatable, Sendable {
         groupId: "g1",
         groupName: "대학 동기",
         isConfirmed: true,
-        participantCount: 4
+        participantCount: 4,
+        myVoteStatus: .voted
       ),
       WidgetPromiseData(
         id: "today2",
@@ -128,8 +142,9 @@ public struct WidgetPromiseData: Codable, Identifiable, Equatable, Sendable {
         location: "CGV 용산",
         groupId: "g2",
         groupName: "영화 동호회",
-        isConfirmed: true,
-        participantCount: 3
+        isConfirmed: false,
+        participantCount: 3,
+        myVoteStatus: .pending
       )
     ]
   }
@@ -152,7 +167,8 @@ public struct WidgetPromiseData: Codable, Identifiable, Equatable, Sendable {
         groupId: "g3",
         groupName: "개발 스터디",
         isConfirmed: true,
-        participantCount: 5
+        participantCount: 5,
+        myVoteStatus: .voted
       ),
       WidgetPromiseData(
         id: "upcoming2",
@@ -164,7 +180,8 @@ public struct WidgetPromiseData: Codable, Identifiable, Equatable, Sendable {
         groupId: "g1",
         groupName: "대학 동기",
         isConfirmed: true,
-        participantCount: 8
+        participantCount: 8,
+        myVoteStatus: .voted
       )
     ]
   }
