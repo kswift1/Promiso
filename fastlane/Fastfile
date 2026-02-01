@@ -56,7 +56,8 @@ platform :ios do
       workspace: "Promiso.xcworkspace",
       scheme: "PromisoDev",
       configuration: "Release",
-      export_method: "app-store"
+      export_method: "app-store",
+      xcargs: "-allowProvisioningUpdates"
     )
 
     # 4. TestFlight 업로드
@@ -117,7 +118,8 @@ platform :ios do
       workspace: "Promiso.xcworkspace",
       scheme: "PromisoStage",
       configuration: "Release",
-      export_method: "app-store"
+      export_method: "app-store",
+      xcargs: "-allowProvisioningUpdates"
     )
 
     # 4. TestFlight 업로드
@@ -179,7 +181,8 @@ platform :ios do
       workspace: "Promiso.xcworkspace",
       scheme: "Promiso",
       configuration: "Release",
-      export_method: "app-store"
+      export_method: "app-store",
+      xcargs: "-allowProvisioningUpdates"
     )
 
     # 4. TestFlight 업로드
