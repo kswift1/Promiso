@@ -18,19 +18,23 @@ public enum AppConfig {
   public static let teamId = "BAC795627G"
   public static let marketingNumber: String = "1.0.0"
   
-  public static let buildVersion: String = {
+  public static func buildVersion(for environment: String = "dev") -> String {
     let now = Date()
     let dataFormatter = DateFormatter()
     dataFormatter.dateFormat = "YYMMddHHmm"
-    
-    return "\(dataFormatter.string(from: now))001"
-  }()
+    let timestamp = dataFormatter.string(from: now)
+
+    // 환경별 끝자리 구분
+    // dev/stage: 001, prod: 009
+    let suffix = environment == "prod" ? "009" : "001"
+    return "\(timestamp)\(suffix)"
+  }
   
-  public static var infoPlist: [String: Plist.Value] {
+  public static func infoPlist(for environment: String = "prod") -> [String: Plist.Value] {
     // API Keys는 xcconfig 파일에서 환경별로 관리 (Config/*.xcconfig, gitignored)
     return [
       "CFBundleShortVersionString": .string(AppConfig.marketingNumber),
-      "CFBundleVersion": .string(AppConfig.buildVersion),
+      "CFBundleVersion": .string(AppConfig.buildVersion(for: environment)),
       "UILaunchScreen": .dictionary([
         "UIImageName": .string("LaunchImage"),
         "UIColorName": .string("LaunchBackgroundColor"),

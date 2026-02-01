@@ -37,23 +37,7 @@ platform :ios do
       api_key: @api_key
     )
 
-    # 2. 빌드 번호 자동 증가
-    begin
-      build_number = latest_testflight_build_number(
-        app_identifier: "com.promiso.dev",
-        api_key: @api_key
-      ) + 1
-    rescue => ex
-      UI.message("No TestFlight builds found (app may not exist yet), starting with build number 1")
-      build_number = 1
-    end
-
-    increment_build_number(
-      xcodeproj: "Promiso.xcodeproj",
-      build_number: build_number
-    )
-
-    # 3. 빌드 및 아카이빙
+    # 2. 빌드 및 아카이빙 (빌드 번호는 Tuist에서 자동 생성)
     build_app(
       workspace: "Promiso.xcworkspace",
       scheme: "PromisoDev",
@@ -102,23 +86,7 @@ platform :ios do
       api_key: @api_key
     )
 
-    # 2. 빌드 번호 자동 증가
-    begin
-      build_number = latest_testflight_build_number(
-        app_identifier: "com.promiso.stage",
-        api_key: @api_key
-      ) + 1
-    rescue => ex
-      UI.message("No TestFlight builds found (app may not exist yet), starting with build number 1")
-      build_number = 1
-    end
-
-    increment_build_number(
-      xcodeproj: "Promiso.xcodeproj",
-      build_number: build_number
-    )
-
-    # 3. 빌드 및 아카이빙
+    # 2. 빌드 및 아카이빙 (빌드 번호는 Tuist에서 자동 생성)
     build_app(
       workspace: "Promiso.xcworkspace",
       scheme: "PromisoStage",
@@ -168,23 +136,7 @@ platform :ios do
       api_key: @api_key
     )
 
-    # 2. 빌드 번호 자동 증가
-    begin
-      build_number = latest_testflight_build_number(
-        app_identifier: "com.promiso",
-        api_key: @api_key
-      ) + 1
-    rescue => ex
-      UI.message("No TestFlight builds found (app may not exist yet), starting with build number 1")
-      build_number = 1
-    end
-
-    increment_build_number(
-      xcodeproj: "Promiso.xcodeproj",
-      build_number: build_number
-    )
-
-    # 3. 빌드 및 아카이빙
+    # 2. 빌드 및 아카이빙 (빌드 번호는 Tuist에서 자동 생성)
     build_app(
       workspace: "Promiso.xcworkspace",
       scheme: "Promiso",

@@ -2,8 +2,8 @@ import ProjectDescription
 import ProjectDescriptionHelpers
 
 // Helper for infoPlist with DisplayName
-func infoPlistWithDisplayName(_ displayName: String) -> [String: Plist.Value] {
-  var plist = AppConfig.infoPlist
+func infoPlistWithDisplayName(_ displayName: String, environment: String = "prod") -> [String: Plist.Value] {
+  var plist = AppConfig.infoPlist(for: environment)
   plist["CFBundleDisplayName"] = .string(displayName)
   return plist
 }
@@ -16,7 +16,7 @@ let promisoDev = Target.target(
   product: .app,
   bundleId: "com.promiso.dev",
   deploymentTargets: .iOS(AppConfig.deploymentTargets),
-  infoPlist: .extendingDefault(with: infoPlistWithDisplayName("Promiso [DEV]")),
+  infoPlist: .extendingDefault(with: infoPlistWithDisplayName("Promiso [DEV]", environment: "dev")),
   sources: ["Sources/**"],
   resources: ["Resources-Dev/**"],
   entitlements: .file(path: "PromisoDev.entitlements"),
@@ -45,7 +45,7 @@ let promisoStage = Target.target(
   product: .app,
   bundleId: "com.promiso.stage",
   deploymentTargets: .iOS(AppConfig.deploymentTargets),
-  infoPlist: .extendingDefault(with: infoPlistWithDisplayName("Promiso [STAGE]")),
+  infoPlist: .extendingDefault(with: infoPlistWithDisplayName("Promiso [STAGE]", environment: "stage")),
   sources: ["Sources/**"],
   resources: ["Resources-Stage/**"],
   entitlements: .file(path: "PromisoStage.entitlements"),
@@ -74,7 +74,7 @@ let promisoProd = Target.target(
   product: .app,
   bundleId: AppConfig.bundleId,
   deploymentTargets: .iOS(AppConfig.deploymentTargets),
-  infoPlist: .extendingDefault(with: AppConfig.infoPlist),
+  infoPlist: .extendingDefault(with: infoPlistWithDisplayName("Promiso", environment: "prod")),
   sources: ["Sources/**"],
   resources: ["Resources-Prod/**"],
   entitlements: .file(path: "Promiso.entitlements"),
