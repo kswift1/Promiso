@@ -301,7 +301,7 @@ export async function updateHomeSnapshot(
 export const onPromiseWriteUpdateHomeSnapshot = onDocumentWritten(
   {
     region: REGION,
-    document: "stage/promises/{promiseId}",
+    document: "stage/root/promises/{promiseId}",
   },
   async (event) => {
     const db = admin.firestore();
@@ -355,7 +355,7 @@ export const onPromiseWriteUpdateHomeSnapshot = onDocumentWritten(
 export const onPromiseWriteUpdateHomeSnapshotProd = onDocumentWritten(
   {
     region: REGION,
-    document: "prod/promises/{promiseId}",
+    document: "prod/root/promises/{promiseId}",
   },
   async (event) => {
     const db = admin.firestore();

@@ -291,7 +291,7 @@ export async function updateWidgetSnapshot(
 export const onPromiseWriteUpdateSnapshot = onDocumentWritten(
   {
     region: REGION,
-    document: "stage/promises/{promiseId}",
+    document: "stage/root/promises/{promiseId}",
   },
   async (event) => {
     const db = admin.firestore();
@@ -349,7 +349,7 @@ export const onPromiseWriteUpdateSnapshot = onDocumentWritten(
 export const onPromiseWriteUpdateSnapshotProd = onDocumentWritten(
   {
     region: REGION,
-    document: "prod/promises/{promiseId}",
+    document: "prod/root/promises/{promiseId}",
   },
   async (event) => {
     const db = admin.firestore();
