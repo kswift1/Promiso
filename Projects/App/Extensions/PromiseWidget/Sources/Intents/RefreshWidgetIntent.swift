@@ -12,7 +12,7 @@ struct RefreshWidgetIntent: AppIntent {
 
   func perform() async throws -> some IntentResult {
     // 1) 더블탭 방지 (2초 throttle)
-    guard RefreshGate.shared.tryAcquire(minInterval: 2.0) else {
+    guard await RefreshGate.shared.tryAcquire(minInterval: 2.0) else {
       Self.logger.info("🚫 버튼 Throttle (2초)")
       return .result()
     }

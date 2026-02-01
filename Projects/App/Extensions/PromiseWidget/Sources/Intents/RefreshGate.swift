@@ -2,10 +2,10 @@ import Foundation
 
 /// App Group 기반 throttle gate
 /// 위젯 새로고침 버튼 "따닥" 방지
-final class RefreshGate: @unchecked Sendable {
+actor RefreshGate {
   static let shared = RefreshGate()
 
-  private nonisolated(unsafe) let defaults = UserDefaults(suiteName: "group.com.promiso.shared")
+  private let defaults = UserDefaults(suiteName: "group.com.promiso.shared")
   private let key = "widget.refresh.lastManualAt"
 
   private init() {}

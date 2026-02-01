@@ -97,9 +97,23 @@ export const getWidgetSnapshotWithToken = onRequest(
       const secret = WIDGET_JWT_SECRET.value();
       const decoded = verifyWidgetToken(token, secret);
 
-      // 3. 토큰 버전 확인 (revocation 체크)
-      const db = admin.firestore();
+      // 3. deviceId 바인딩 검증
       const requestBody = req.body?.data || {};
+      const requestDeviceId = requestBody.deviceId as string | undefined;
+      if (requestDeviceId && decoded.deviceId !== requestDeviceId) {
+        console.warn(
+          `⚠️ deviceId mismatch: token=${decoded.deviceId}, ` +
+          `request=${requestDeviceId}`
+        );
+        res.status(401).json({
+          error: "Device mismatch",
+          error_code: "DEVICE_MISMATCH",
+        });
+        return;
+      }
+
+      // 4. 토큰 버전 확인 (revocation 체크)
+      const db = admin.firestore();
       const requestedEnv = requestBody.env as string | undefined;
       const env = requestedEnv === "stage" ? "stage" : "prod";
 
@@ -110,7 +124,10 @@ export const getWidgetSnapshotWithToken = onRequest(
         const userData = userDoc.data();
         const currentVersion = (userData?.widgetTokenVersion as number) || 1;
         if (decoded.version < currentVersion) {
-          res.status(401).json({error: "Token revoked"});
+          res.status(401).json({
+            error: "Token revoked",
+            error_code: "TOKEN_REVOKED",
+          });
           return;
         }
       }
