@@ -10,6 +10,10 @@ on:
         options:
           - stage
           - prod
+      changelog:
+        description: 'TestFlight 수정사항 (Release notes)'
+        required: true
+        type: string
 
 concurrency:
   group: ios-${{ github.event.inputs.environment }}
@@ -171,6 +175,7 @@ jobs:
           APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
           APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          CHANGELOG: ${{ github.event.inputs.changelog }}
         run: |
           bundle install
           bundle exec fastlane ${{ needs.setup.outputs.fastlane_lane }}

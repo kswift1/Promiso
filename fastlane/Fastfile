@@ -54,7 +54,7 @@ platform :ios do
       skip_waiting_for_build_processing: true,
       distribute_external: false,
       notify_external_testers: false,
-      changelog: "Dev build from CI"
+      changelog: ENV["CHANGELOG"] || "Dev build from CI"
     )
 
     # 5. Slack 알림 (선택)
@@ -111,7 +111,7 @@ platform :ios do
       distribute_external: true,
       groups: ["Stage Testers"],
       notify_external_testers: true,
-      changelog: "Stage build for QA"
+      changelog: ENV["CHANGELOG"] || "Stage build for QA"
     )
 
     # 5. Slack 알림
@@ -168,7 +168,7 @@ platform :ios do
       distribute_external: true,
       groups: ["Production Testers"],
       notify_external_testers: true,
-      changelog: "Production build ready for App Store submission"
+      changelog: ENV["CHANGELOG"] || "Production build ready for App Store submission"
     )
 
     # 5. Slack 알림
