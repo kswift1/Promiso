@@ -43,11 +43,10 @@ GOOGLE_REVERSED_CLIENT_ID = ${GOOGLE_REVERSED_CLIENT_ID_DEV}
 KAKAO_NATIVE_APP_KEY = ${KAKAO_NATIVE_APP_KEY_DEV}
 KAKAO_REST_API_KEY = ${KAKAO_REST_API_KEY_DEV}
 
-// Code Signing (Manual for Release builds)
+// Code Signing (Manual)
 CODE_SIGN_STYLE = Manual
-CODE_SIGN_IDENTITY[config=Release] = Apple Distribution
-CODE_SIGN_IDENTITY[config=Debug] = Apple Development
-PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*] = match AppStore \$(PRODUCT_BUNDLE_IDENTIFIER)
+CODE_SIGN_IDENTITY = Apple Distribution
+PROVISIONING_PROFILE_SPECIFIER = match AppStore \$(PRODUCT_BUNDLE_IDENTIFIER)
 EOF
 
   echo "✅ Dev.xcconfig 생성 완료"
