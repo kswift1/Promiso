@@ -15,7 +15,7 @@ public extension Settings {
     baseSettings["CODE_SIGN_STYLE"] = .string("Automatic")
     baseSettings["OTHER_LDFLAGS"] = .string("-ObjC")
     baseSettings["MARKETING_VERSION"] = .string(AppConfig.marketingNumber)
-    baseSettings["CURRENT_PROJECT_VERSION"] = .string(AppConfig.buildVersion)
+    // CURRENT_PROJECT_VERSION은 각 타겟의 Info.plist에서 CFBundleVersion으로 환경별 설정됨
 
     return .settings(
       base: baseSettings,
