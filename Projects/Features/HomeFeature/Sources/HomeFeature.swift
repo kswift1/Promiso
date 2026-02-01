@@ -36,9 +36,9 @@ extension Home {
       @Shared(.inMemory(AppConstants.SharedState.groupMembersCache))
       var groupMembersCache: [String: [UserPublicModel]] = [:]
 
-      // MARK: Data (단일 소스)
-      /// 약속 데이터 (단일 API로 모두 로드)
-      var promisesState: LoadingState<[PromiseModel]> = .idle
+      // MARK: Data (스냅샷 기반)
+      /// 홈 스냅샷 데이터 (서버에서 미리 계산됨)
+      var snapshotState: LoadingState<HomeSnapshotDocument> = .idle
 
       /// 초기 로드 여부
       var hasLoadedOnce: Bool = false
@@ -104,10 +104,10 @@ extension Home {
       }
 
       public enum Internal: Sendable {
-        /// 데이터 조회
-        case fetchPromises
-        /// 데이터 응답
-        case promisesResponse(Result<[PromiseModel], Error>)
+        /// 홈 스냅샷 조회
+        case fetchHomeSnapshot
+        /// 홈 스냅샷 응답
+        case homeSnapshotResponse(Result<HomeSnapshotDocument, Error>)
         /// 응답 필요 섹션으로 스크롤
         case scrollToNeedResponse
       }
@@ -134,10 +134,10 @@ extension Home {
             if !state.hasLoadedOnce {
               state.hasLoadedOnce = true
             }
-            return .send(.internal(.fetchPromises))
+            return .send(.internal(.fetchHomeSnapshot))
 
           case .refreshTriggered:
-            return .send(.internal(.fetchPromises))
+            return .send(.internal(.fetchHomeSnapshot))
 
           case .todayPromiseTapped(let promise):
             // 즉시 이동 (캐시 hit면 전달, miss면 nil로 전달 → Detail에서 로드)
@@ -188,54 +188,42 @@ extension Home {
 
         case .internal(let internalAction):
           switch internalAction {
-          case .fetchPromises:
+          case .fetchHomeSnapshot:
             // 기존 데이터가 없을 때만 로딩 상태 표시 (깜빡임 방지)
-            if state.promisesState.value == nil {
-              state.promisesState = .loading
+            if state.snapshotState.value == nil {
+              state.snapshotState = .loading
             }
 
-            let groupIds = state.currentUser.groups.map { $0.id }
-
-            guard !groupIds.isEmpty else {
-              state.promisesState = .loaded([])
+            // 그룹이 없으면 빈 스냅샷 반환
+            guard !state.currentUser.groups.isEmpty else {
+              state.snapshotState = .loaded(.empty)
               return .none
             }
 
             return .run { [promiseClient] send in
               do {
-                let promises = try await promiseClient.getUpcomingPromises(groupIds, 80)
-                await send(.internal(.promisesResponse(.success(promises))))
+                let snapshot = try await promiseClient.getHomeSnapshot()
+                await send(.internal(.homeSnapshotResponse(.success(snapshot))))
               } catch {
-                await send(.internal(.promisesResponse(.failure(error))))
+                await send(.internal(.homeSnapshotResponse(.failure(error))))
               }
             }
 
-          case .promisesResponse(let result):
+          case .homeSnapshotResponse(let result):
             switch result {
-            case .success(let promises):
-              // 그룹 정보 매칭 (UserGroupInfo -> GroupModel 변환)
-              let groupsDict = Dictionary(uniqueKeysWithValues: state.currentUser.groups.map { ($0.id, $0) })
-              let promisesWithGroup = promises.map { promise -> PromiseModel in
-                var updated = promise
-                if let userGroupInfo = groupsDict[promise.groupId] {
-                  updated.group = GroupModel(
-                    id: userGroupInfo.id,
-                    name: userGroupInfo.name,
-                    imageUrl: userGroupInfo.imageUrl,
-                    maxMembers: 0,
-                    inviteCode: "",
-                    createdBy: ""
-                  )
-                }
-                return updated
-              }
-              state.promisesState = .loaded(promisesWithGroup)
+            case .success(let snapshot):
+              state.snapshotState = .loaded(snapshot)
 
-              // 위젯 캐시 업데이트 및 갱신
-              WidgetDataManager.savePromises(promisesWithGroup.toWidgetData())
+              // 위젯 캐시 업데이트 (스냅샷에서 변환)
+              let allPromises = snapshot.todayPromises + snapshot.upcomingPromises
+              let promiseModels = allPromises.toPromiseModels(
+                currentUserId: state.currentUser.userId
+              )
+              WidgetDataManager.savePromises(promiseModels.toWidgetData())
               WidgetDataManager.reloadWidgets()
+
             case .failure(let error):
-              state.promisesState = .failed(error)
+              state.snapshotState = .failed(error)
             }
             return .none
 
@@ -254,17 +242,12 @@ extension Home {
 
         case .path(.element(id: _, action: .promiseDetail(.delegate(.promiseDeleted)))):
           _ = state.path.popLast()
-          // 삭제 후 목록 새로고침
-          return .send(.internal(.fetchPromises))
+          // 삭제 후 스냅샷 새로고침 (서버에서 트리거로 갱신됨)
+          return .send(.internal(.fetchHomeSnapshot))
 
-        case .path(.element(id: _, action: .promiseDetail(.delegate(.promiseUpdated(let promise))))):
-          // 수정된 약속 정보로 목록 업데이트
-          if var promises = state.promisesState.value,
-             let index = promises.firstIndex(where: { $0.id == promise.id }) {
-            promises[index] = promise
-            state.promisesState = .loaded(promises)
-          }
-          return .none
+        case .path(.element(id: _, action: .promiseDetail(.delegate(.promiseUpdated)))):
+          // 수정 후 스냅샷 새로고침 (서버에서 트리거로 갱신됨)
+          return .send(.internal(.fetchHomeSnapshot))
 
         case .path:
           return .none
@@ -278,32 +261,29 @@ extension Home {
 // MARK: - State Computed Properties
 
 extension Home.Feature.State {
-  /// 모든 약속 (필터 적용 전)
-  var allPromises: [PromiseModel] {
-    promisesState.value ?? []
+  /// 홈 스냅샷 (nil이면 빈 스냅샷)
+  private var snapshot: HomeSnapshotDocument {
+    snapshotState.value ?? .empty
   }
 
-  /// 오늘의 확정 약속 (시간순 정렬)
+  /// 오늘의 확정 약속 (스냅샷에서 가져옴, PromiseModel로 변환)
   var todayPromises: [PromiseModel] {
-    allPromises
-      .filter { $0.isConfirmed && Calendar.current.isDateInToday($0.startAt) }
-      .sorted { $0.startAt < $1.startAt }
+    snapshot.todayPromises.toPromiseModels(currentUserId: currentUser.userId)
   }
 
-  /// 응답 필요 약속 (투표 마감 임박순)
+  /// 응답 필요 약속 (스냅샷에서 가져옴, PromiseModel로 변환)
   var pendingPromises: [PromiseModel] {
-    allPromises
-      .filter {
-        $0.myVoteStatus(userId: currentUser.userId) == .pending && !$0.isVotingClosed
-      }
-      .sorted { $0.votes.until < $1.votes.until }
+    snapshot.pendingPromises.toPromiseModels(currentUserId: currentUser.userId)
   }
 
-  /// 다가오는 확정 약속 (오늘 제외, 날짜순)
+  /// 다가오는 확정 약속 (스냅샷에서 가져옴, PromiseModel로 변환)
   var upcomingPromises: [PromiseModel] {
-    allPromises
-      .filter { $0.isConfirmed && !Calendar.current.isDateInToday($0.startAt) && !$0.isPast }
-      .sorted { $0.startAt < $1.startAt }
+    snapshot.upcomingPromises.toPromiseModels(currentUserId: currentUser.userId)
+  }
+
+  /// 모든 약속 (필터 적용 전) - CriticalZone 계산용
+  var allPromises: [PromiseModel] {
+    todayPromises + pendingPromises + upcomingPromises
   }
 
   /// 필터링된 약속 (id 기반 안전)
@@ -341,25 +321,26 @@ extension Home.Feature.State {
       .first
 
     return HomeModels.OverviewData(
-      todayCount: todayPromises.count,
+      todayCount: snapshot.meta.todayCount,
       nextPromise: nextPromise,
-      needResponseCount: pendingPromises.count
+      needResponseCount: snapshot.meta.pendingCount
     )
   }
 
-  /// Critical Zone 데이터
+  /// Critical Zone 데이터 (실시간 계산 필요)
   var criticalZoneData: HomeModels.CriticalZoneData? {
     let now = Date()
 
-    if let livePromise = allPromises.first(where: { $0.isRealtimeShareable }) {
+    // todayPromises에서 실시간 상태 계산
+    if let livePromise = todayPromises.first(where: { $0.isRealtimeShareable }) {
       return HomeModels.CriticalZoneData(reason: .liveActivity, promise: livePromise)
     }
 
-    if let ongoingPromise = allPromises.first(where: { $0.isOngoing }) {
+    if let ongoingPromise = todayPromises.first(where: { $0.isOngoing }) {
       return HomeModels.CriticalZoneData(reason: .inProgress, promise: ongoingPromise)
     }
 
-    if let soonPromise = allPromises.first(where: {
+    if let soonPromise = todayPromises.first(where: {
       let interval = $0.startAt.timeIntervalSince(now)
       return interval > 0 && interval <= 1800
     }) {
@@ -392,12 +373,12 @@ extension Home.Feature.State {
 
   /// 로딩 중 여부
   var isLoading: Bool {
-    promisesState.isLoading
+    snapshotState.isLoading
   }
 
   /// 응답 필요 개수 (배지용)
   var pendingResponseCount: Int {
-    overviewData.needResponseCount
+    snapshot.meta.pendingCount
   }
 }
 
@@ -417,7 +398,7 @@ extension Home {
           LazyVStack(spacing: 20) {
             if store.isLoading && !store.hasLoadedOnce {
               loadingView
-            } else if let error = store.promisesState.error {
+            } else if let error = store.snapshotState.error {
               errorView(error: error)
             } else {
               // 오늘의 일정 카드

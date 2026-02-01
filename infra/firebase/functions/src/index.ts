@@ -96,3 +96,12 @@ export {
 // Widget Token Functions (Widget 전용 Long-lived Token)
 // ============================================================================
 export {generateWidgetToken} from "./functions/widgetToken";
+
+// ============================================================================
+// Home Snapshot Triggers (Firestore 트리거 기반 홈화면 스냅샷 자동 갱신)
+// ============================================================================
+export {
+  onPromiseWriteUpdateHomeSnapshot,
+  onPromiseWriteUpdateHomeSnapshotProd,
+  scheduledHomeSnapshotRefresh,
+} from "./functions/homeSnapshotTrigger";

@@ -1,4 +1,5 @@
 import Foundation
+import FirebaseAuth
 import FirebaseFirestore
 import FirebaseFunctions
 import PromisoShared
@@ -367,6 +368,36 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
         listener.remove()
       }
     }
+  }
+
+  // MARK: - Home Snapshot
+
+  /// 홈화면 스냅샷 조회
+  /// Firestore의 users/{uid}/cache/homeSnapshot 문서를 읽어서 반환
+  public func getHomeSnapshot() async throws -> HomeSnapshotDocument {
+    guard let currentUser = Auth.auth().currentUser else {
+      throw NSError(
+        domain: "PromiseRemoteDataSource",
+        code: -1,
+        userInfo: [NSLocalizedDescriptionKey: "로그인이 필요합니다"]
+      )
+    }
+
+    let document = try await db.environmentCollection("users")
+      .document(currentUser.uid)
+      .collection("cache")
+      .document("homeSnapshot")
+      .getDocument()
+
+    guard document.exists, let data = document.data() else {
+      // 캐시 문서가 없으면 빈 스냅샷 반환
+      return .empty
+    }
+
+    // JSON 변환
+    let jsonData = try JSONSerialization.data(withJSONObject: data)
+    let decoder = JSONDecoder()
+    return try decoder.decode(HomeSnapshotDocument.self, from: jsonData)
   }
 
   // MARK: - Live Activity

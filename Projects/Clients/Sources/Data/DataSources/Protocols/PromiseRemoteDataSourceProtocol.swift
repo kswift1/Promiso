@@ -25,6 +25,10 @@ public protocol PromiseRemoteDataSourceProtocol {
   // MARK: - Real-time Listener
   func subscribeToActivePromises(groupId: String, limit: Int) -> AsyncStream<[PromiseModel]>
 
+  // MARK: - Home Snapshot
+  /// 홈화면 스냅샷 조회 (캐시된 데이터)
+  func getHomeSnapshot() async throws -> HomeSnapshotDocument
+
   // MARK: - Live Activity
   /// LiveActivity 시작 요청 (백엔드에서 Push to Start APNs 전송)
   func startLiveActivity(promiseId: String) async throws

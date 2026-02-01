@@ -106,6 +106,9 @@ public struct PromiseClient: Sendable {
     _ endDate: Date
   ) async throws -> [PromiseModel]
 
+  /// 홈화면 스냅샷 조회 (캐시된 데이터)
+  public var getHomeSnapshot: @Sendable () async throws -> HomeSnapshotDocument
+
   /// 그룹의 활성 약속 실시간 구독
   public var subscribeToPromises: @Sendable (_ groupId: String, _ limit: Int) -> AsyncStream<[PromiseModel]> = { _, _ in AsyncStream { _ in } }
 
@@ -174,6 +177,10 @@ extension PromiseClient: TestDependencyKey {
     getPromisesByDateRange: { _, _, _ in
       try await Task.sleep(for: .seconds(0.5))
       return PromiseModel.examples
+    },
+    getHomeSnapshot: {
+      try await Task.sleep(for: .seconds(0.3))
+      return .empty
     },
     subscribeToPromises: { _, _ in
       AsyncStream { continuation in
@@ -249,6 +256,9 @@ extension PromiseClient: DependencyKey {
       },
       getPromisesByDateRange: { groupIds, startDate, endDate in
         try await dataSource.getPromisesByDateRange(groupIds: groupIds, startDate: startDate, endDate: endDate)
+      },
+      getHomeSnapshot: {
+        try await dataSource.getHomeSnapshot()
       },
       subscribeToPromises: { groupId, limit in
         dataSource.subscribeToActivePromises(groupId: groupId, limit: limit)

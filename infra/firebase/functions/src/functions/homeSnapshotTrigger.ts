@@ -1,14 +1,13 @@
 /**
- * Widget Snapshot Trigger Functions
+ * Home Snapshot Trigger Functions
  *
- * Firestore Trigger 기반 위젯 스냅샷 자동 갱신
+ * Firestore Trigger 기반 홈화면 스냅샷 자동 갱신
  *
- * @why 위젯에서 API 호출 시 Race Condition 발생
- *      → 서버에서 미리 스냅샷 저장 → 위젯은 읽기만
+ * @why 홈화면에서 N개 그룹 × M개 약속 읽기 → 1회 읽기로 비용 절감
  *
  * @triggers
- * - onPromiseWrite: 약속 생성/수정/삭제 시
- * - scheduledSnapshotRefresh: 매일 자정 (KST)
+ * - onPromiseWriteUpdateHomeSnapshot: 약속 생성/수정/삭제 시
+ * - scheduledHomeSnapshotRefresh: 매일 자정 (KST)
  */
 import {onDocumentWritten} from "firebase-functions/v2/firestore";
 import {onSchedule} from "firebase-functions/v2/scheduler";
@@ -16,7 +15,8 @@ import {admin, REGION} from "../config";
 import {getEnvironmentCollection} from "../utils/firestore";
 import {
   SnapshotPromise,
-  WidgetSnapshotDocument,
+  HomeSnapshotDocument,
+  HomeSnapshotGroup,
   MyVoteStatus,
 } from "../types/api";
 
@@ -25,7 +25,7 @@ import {
 /**
  * Firestore Timestamp를 ISO 8601 문자열로 변환
  *
- * @param {FirebaseFirestore.Timestamp | undefined} timestamp Firestore 타임스탬프
+ * @param {FirebaseFirestore.Timestamp | undefined} timestamp 타임스탬프
  * @return {string | null} ISO 8601 문자열 또는 null
  */
 function toISOString(
@@ -75,33 +75,27 @@ function getMyVoteStatus(
 // MARK: - Core Function
 
 /**
- * 사용자의 위젯 스냅샷 갱신
+ * 사용자의 홈 스냅샷 갱신
  *
- * @description 그룹 약속을 조회해서 정렬 후 widgetSnapshot 문서에 저장
- *
- * @priority 정렬 우선순위:
- * 1. myVoteStatus === "pending" (투표 필요)
- * 2. isConfirmed === false (미확정)
- * 3. startAt 오름차순 (시간순)
+ * @description 그룹 약속을 조회해서 분류 후 homeSnapshot 문서에 저장
  *
  * @param {string} userId 사용자 ID
  * @param {string} env 환경 (stage | prod)
  * @param {FirebaseFirestore.Firestore} db Firestore 인스턴스
  * @return {Promise<void>} 없음
  */
-export async function updateWidgetSnapshot(
+export async function updateHomeSnapshot(
   userId: string,
   env: string,
   db: FirebaseFirestore.Firestore
 ): Promise<void> {
   const usersCollection = getEnvironmentCollection("users", db, env);
   const promisesCollection = getEnvironmentCollection("promises", db, env);
-  const groupsCollection = getEnvironmentCollection("groups", db, env);
 
   // 1. 사용자 문서 조회
   const userDoc = await usersCollection.doc(userId).get();
   if (!userDoc.exists) {
-    console.log(`⚠️ [WidgetSnapshot] User not found: ${userId}`);
+    console.log(`⚠️ [HomeSnapshot] User not found: ${userId}`);
     return;
   }
 
@@ -112,12 +106,14 @@ export async function updateWidgetSnapshot(
   const userGroups = userData?.groups as UserGroupMap | undefined;
 
   // 빈 스냅샷 저장
-  const emptySnapshot: WidgetSnapshotDocument = {
-    next: null,
-    today: [],
-    upcoming: [],
+  const emptySnapshot: HomeSnapshotDocument = {
+    todayPromises: [],
+    pendingPromises: [],
+    upcomingPromises: [],
+    groups: [],
     meta: {
       todayCount: 0,
+      pendingCount: 0,
       upcomingCount: 0,
       updatedAt: new Date().toISOString(),
       version: 1,
@@ -125,9 +121,9 @@ export async function updateWidgetSnapshot(
   };
 
   if (!userGroups || Object.keys(userGroups).length === 0) {
-    await usersCollection.doc(userId).collection("cache").doc("widgetSnapshot")
+    await usersCollection.doc(userId).collection("cache").doc("homeSnapshot")
       .set(emptySnapshot);
-    console.log(`📦 [WidgetSnapshot] Empty snapshot saved: ${userId}`);
+    console.log(`📦 [HomeSnapshot] Empty snapshot saved: ${userId}`);
     return;
   }
 
@@ -145,18 +141,7 @@ export async function updateWidgetSnapshot(
     };
   }
 
-  // 3. 그룹별 멤버 수 조회 (확정 여부 판단용)
-  const groupMemberCountMap: { [key: string]: number } = {};
-  for (const groupId of groupIds) {
-    const groupDoc = await groupsCollection.doc(groupId).get();
-    if (groupDoc.exists) {
-      const groupData = groupDoc.data();
-      const memberIds = (groupData?.memberIds as string[]) || [];
-      groupMemberCountMap[groupId] = memberIds.length;
-    }
-  }
-
-  // 4. 약속 조회 (현재 시간 이후)
+  // 3. 약속 조회 (현재 시간 이후)
   const now = new Date();
   const {startOfDay, endOfDay} = getTodayRange();
 
@@ -173,7 +158,7 @@ export async function updateWidgetSnapshot(
       .where("groupId", "in", chunk)
       .where("startAt", ">=", now)
       .orderBy("startAt", "asc")
-      .limit(50)
+      .limit(100)
       .get();
 
     for (const doc of snapshot.docs) {
@@ -215,80 +200,105 @@ export async function updateWidgetSnapshot(
     }
   }
 
-  // 5. 우선순위 정렬
-  // 1순위: 투표 필요 (pending)
-  // 2순위: 미확정 (isConfirmed = false)
-  // 3순위: 시간순 (startAt)
-  allPromises.sort((a, b) => {
-    // pending 우선
-    const aPending = a.myVoteStatus === "pending" ? 0 : 1;
-    const bPending = b.myVoteStatus === "pending" ? 0 : 1;
-    if (aPending !== bPending) return aPending - bPending;
-
-    // 미확정 우선
-    const aConfirmed = a.isConfirmed ? 1 : 0;
-    const bConfirmed = b.isConfirmed ? 1 : 0;
-    if (aConfirmed !== bConfirmed) return aConfirmed - bConfirmed;
-
-    // 시간순
-    return new Date(a.startAt).getTime() - new Date(b.startAt).getTime();
-  });
-
-  // 6. 분류: next, today, upcoming
-  const nextPromise = allPromises.length > 0 ? allPromises[0] : null;
-
+  // 4. 분류: today, pending, upcoming
   const todayPromises: SnapshotPromise[] = [];
+  const pendingPromises: SnapshotPromise[] = [];
   const upcomingPromises: SnapshotPromise[] = [];
 
   for (const promise of allPromises) {
     const promiseDate = new Date(promise.startAt);
+    const isToday = promiseDate >= startOfDay && promiseDate < endOfDay;
+    const votingDeadline = promise.votingDeadline ?
+      new Date(promise.votingDeadline) : null;
+    const isVotingOpen = votingDeadline ? votingDeadline > now : true;
 
-    if (promiseDate >= startOfDay && promiseDate < endOfDay) {
-      if (todayPromises.length < 5) {
-        todayPromises.push(promise);
-      }
-    } else if (promiseDate >= endOfDay) {
-      if (upcomingPromises.length < 7) {
-        upcomingPromises.push(promise);
-      }
+    // 오늘 확정 약속
+    if (isToday && promise.isConfirmed && todayPromises.length < 5) {
+      todayPromises.push(promise);
+    }
+
+    // 응답 필요 약속 (pending + 투표 마감 전)
+    if (promise.myVoteStatus === "pending" &&
+        isVotingOpen &&
+        pendingPromises.length < 5) {
+      pendingPromises.push(promise);
+    }
+
+    // 다가오는 약속 (오늘 이후 + 확정)
+    if (promiseDate >= endOfDay &&
+        promise.isConfirmed &&
+        upcomingPromises.length < 10) {
+      upcomingPromises.push(promise);
     }
   }
 
-  // 7. 스냅샷 저장
-  const snapshotDoc: WidgetSnapshotDocument = {
-    next: nextPromise,
-    today: todayPromises,
-    upcoming: upcomingPromises,
+  // pending은 마감 임박순으로 정렬
+  pendingPromises.sort((a, b) => {
+    const aDeadline = a.votingDeadline ?
+      new Date(a.votingDeadline).getTime() : Infinity;
+    const bDeadline = b.votingDeadline ?
+      new Date(b.votingDeadline).getTime() : Infinity;
+    return aDeadline - bDeadline;
+  });
+
+  // 5. 그룹별 요약 생성
+  const groupNextPromiseMap: { [key: string]: SnapshotPromise | null } = {};
+  for (const groupId of groupIds) {
+    groupNextPromiseMap[groupId] = null;
+  }
+
+  // 시간순 정렬된 약속에서 각 그룹의 첫 번째 약속 찾기
+  const sortedByTime = [...allPromises].sort(
+    (a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime()
+  );
+
+  for (const promise of sortedByTime) {
+    if (groupNextPromiseMap[promise.groupId] === null) {
+      groupNextPromiseMap[promise.groupId] = promise;
+    }
+  }
+
+  const groups: HomeSnapshotGroup[] = groupIds.map((groupId) => ({
+    id: groupId,
+    name: groupInfoMap[groupId]?.name || "",
+    emoji: null,
+    imageUrl: groupInfoMap[groupId]?.imageUrl || null,
+    nextPromise: groupNextPromiseMap[groupId],
+  }));
+
+  // 6. 스냅샷 저장
+  const snapshotDoc: HomeSnapshotDocument = {
+    todayPromises,
+    pendingPromises,
+    upcomingPromises,
+    groups,
     meta: {
       todayCount: todayPromises.length,
+      pendingCount: pendingPromises.length,
       upcomingCount: upcomingPromises.length,
       updatedAt: new Date().toISOString(),
       version: 1,
     },
   };
 
-  await usersCollection.doc(userId).collection("cache").doc("widgetSnapshot")
+  await usersCollection.doc(userId).collection("cache").doc("homeSnapshot")
     .set(snapshotDoc);
 
   console.log(
-    `📦 [WidgetSnapshot] Updated: ${userId} ` +
-    `(next=${nextPromise?.id ?? "null"}, ` +
-    `today=${todayPromises.length}, upcoming=${upcomingPromises.length})`
+    `📦 [HomeSnapshot] Updated: ${userId} ` +
+    `(today=${todayPromises.length}, pending=${pendingPromises.length}, ` +
+    `upcoming=${upcomingPromises.length}, groups=${groups.length})`
   );
 }
 
 // MARK: - Firestore Triggers
 
 /**
- * 약속 문서 변경 시 관련 사용자의 스냅샷 갱신
+ * 약속 문서 변경 시 관련 사용자의 홈 스냅샷 갱신
  *
  * @triggers promises/{promiseId} 생성/수정/삭제
- *
- * @logic
- * 1. 약속의 groupId로 그룹 멤버 조회
- * 2. 각 멤버의 widgetSnapshot 갱신
  */
-export const onPromiseWriteUpdateSnapshot = onDocumentWritten(
+export const onPromiseWriteUpdateHomeSnapshot = onDocumentWritten(
   {
     region: REGION,
     document: "stage/promises/{promiseId}",
@@ -297,21 +307,18 @@ export const onPromiseWriteUpdateSnapshot = onDocumentWritten(
     const db = admin.firestore();
     const env = "stage";
 
-    // 변경 전/후 데이터
     const before = event.data?.before?.data();
     const after = event.data?.after?.data();
 
-    // 영향받는 그룹 ID 수집
     const affectedGroupIds = new Set<string>();
     if (before?.groupId) affectedGroupIds.add(before.groupId as string);
     if (after?.groupId) affectedGroupIds.add(after.groupId as string);
 
     if (affectedGroupIds.size === 0) {
-      console.log("⚠️ [WidgetSnapshot] No groupId found, skipping");
+      console.log("⚠️ [HomeSnapshot] No groupId found, skipping");
       return;
     }
 
-    // 각 그룹의 멤버들 스냅샷 갱신
     const groupsCollection = getEnvironmentCollection("groups", db, env);
     const affectedUserIds = new Set<string>();
 
@@ -324,29 +331,28 @@ export const onPromiseWriteUpdateSnapshot = onDocumentWritten(
     }
 
     console.log(
-      `🔄 [WidgetSnapshot] Updating ${affectedUserIds.size} users ` +
+      `🔄 [HomeSnapshot] Updating ${affectedUserIds.size} users ` +
       `for groups: ${Array.from(affectedGroupIds).join(", ")}`
     );
 
-    // 병렬로 스냅샷 갱신 (최대 10개씩)
     const userIds = Array.from(affectedUserIds);
     const batchSize = 10;
 
     for (let i = 0; i < userIds.length; i += batchSize) {
       const batch = userIds.slice(i, i + batchSize);
       await Promise.all(
-        batch.map((uid) => updateWidgetSnapshot(uid, env, db))
+        batch.map((uid) => updateHomeSnapshot(uid, env, db))
       );
     }
 
-    console.log(`✅ [WidgetSnapshot] Updated ${userIds.length} users`);
+    console.log(`✅ [HomeSnapshot] Updated ${userIds.length} users`);
   }
 );
 
 /**
  * Production 환경용 트리거
  */
-export const onPromiseWriteUpdateSnapshotProd = onDocumentWritten(
+export const onPromiseWriteUpdateHomeSnapshotProd = onDocumentWritten(
   {
     region: REGION,
     document: "prod/promises/{promiseId}",
@@ -363,7 +369,7 @@ export const onPromiseWriteUpdateSnapshotProd = onDocumentWritten(
     if (after?.groupId) affectedGroupIds.add(after.groupId as string);
 
     if (affectedGroupIds.size === 0) {
-      console.log("⚠️ [WidgetSnapshot] No groupId found, skipping");
+      console.log("⚠️ [HomeSnapshot] No groupId found, skipping");
       return;
     }
 
@@ -379,7 +385,7 @@ export const onPromiseWriteUpdateSnapshotProd = onDocumentWritten(
     }
 
     console.log(
-      `🔄 [WidgetSnapshot] Updating ${affectedUserIds.size} users ` +
+      `🔄 [HomeSnapshot] Updating ${affectedUserIds.size} users ` +
       `for groups: ${Array.from(affectedGroupIds).join(", ")}`
     );
 
@@ -389,73 +395,68 @@ export const onPromiseWriteUpdateSnapshotProd = onDocumentWritten(
     for (let i = 0; i < userIds.length; i += batchSize) {
       const batch = userIds.slice(i, i + batchSize);
       await Promise.all(
-        batch.map((uid) => updateWidgetSnapshot(uid, env, db))
+        batch.map((uid) => updateHomeSnapshot(uid, env, db))
       );
     }
 
-    console.log(`✅ [WidgetSnapshot] Updated ${userIds.length} users`);
+    console.log(`✅ [HomeSnapshot] Updated ${userIds.length} users`);
   }
 );
 
 // MARK: - Scheduled Tasks
 
 /**
- * 매일 자정 (KST) 전체 사용자 스냅샷 갱신
+ * 매일 자정 (KST) 전체 사용자 홈 스냅샷 갱신
  *
  * @why 날짜 변경 시 today/upcoming 분류가 바뀜
- * @schedule 00:00 KST = 15:00 UTC (전날)
+ * @schedule 00:05 KST = 15:05 UTC (전날) - Widget보다 5분 늦게
  */
-export const scheduledSnapshotRefresh = onSchedule(
+export const scheduledHomeSnapshotRefresh = onSchedule(
   {
     region: REGION,
-    schedule: "0 15 * * *", // 15:00 UTC = 00:00 KST
+    schedule: "5 15 * * *", // 15:05 UTC = 00:05 KST
     timeZone: "UTC",
   },
   async () => {
-    console.log("🕛 [WidgetSnapshot] Starting daily refresh...");
+    console.log("🕛 [HomeSnapshot] Starting daily refresh...");
 
     const db = admin.firestore();
 
-    // Stage 환경
-    await refreshAllUserSnapshots(db, "stage");
+    await refreshAllHomeSnapshots(db, "stage");
+    await refreshAllHomeSnapshots(db, "prod");
 
-    // Prod 환경
-    await refreshAllUserSnapshots(db, "prod");
-
-    console.log("✅ [WidgetSnapshot] Daily refresh completed");
+    console.log("✅ [HomeSnapshot] Daily refresh completed");
   }
 );
 
 /**
- * 특정 환경의 모든 사용자 스냅샷 갱신
+ * 특정 환경의 모든 사용자 홈 스냅샷 갱신
  *
  * @param {FirebaseFirestore.Firestore} db Firestore 인스턴스
  * @param {string} env 환경 (stage | prod)
  * @return {Promise<void>} 없음
  */
-async function refreshAllUserSnapshots(
+async function refreshAllHomeSnapshots(
   db: FirebaseFirestore.Firestore,
   env: string
 ): Promise<void> {
   const usersCollection = getEnvironmentCollection("users", db, env);
 
-  // 그룹이 있는 사용자만 조회 (스냅샷 갱신 대상)
   const usersSnapshot = await usersCollection
     .where("groups", "!=", null)
     .limit(1000)
     .get();
 
   const userIds = usersSnapshot.docs.map((doc) => doc.id);
-  console.log(`📊 [WidgetSnapshot] ${env}: ${userIds.length} users to refresh`);
+  console.log(`📊 [HomeSnapshot] ${env}: ${userIds.length} users to refresh`);
 
-  // 10명씩 병렬 처리
   const batchSize = 10;
   for (let i = 0; i < userIds.length; i += batchSize) {
     const batch = userIds.slice(i, i + batchSize);
     await Promise.all(
-      batch.map((uid) => updateWidgetSnapshot(uid, env, db))
+      batch.map((uid) => updateHomeSnapshot(uid, env, db))
     );
   }
 
-  console.log(`✅ [WidgetSnapshot] ${env}: Refreshed ${userIds.length} users`);
+  console.log(`✅ [HomeSnapshot] ${env}: Refreshed ${userIds.length} users`);
 }
