@@ -233,21 +233,34 @@ public struct MyFeature {
 
 이 프로젝트는 [Claude Code](https://claude.com/claude-code)를 사용한 AI 기반 개발을 지원합니다.
 
-**커스텀 에이전트**:
-- `feature-generator`: TCA Feature 자동 생성
-- `ui-designer`: SwiftUI View 디자인
-- `code-reviewer`: 코드 리뷰 및 컨벤션 체크
-- `backend-developer`: Firebase Functions 개발
-- 기타 17개 전문 에이전트
+### 커스텀 에이전트 (21개)
 
-**Slash 커맨드**:
+- **feature-generator**: TCA Feature 자동 생성
+- **ui-designer**: SwiftUI View 디자인
+- **code-reviewer**: 코드 리뷰 및 컨벤션 체크
+- **backend-developer**: Firebase Functions 개발
+- **orchestrator**: 복잡한 작업 조율
+- 기타 16개 전문 에이전트
+
+### Slash 커맨드
+
+| 커맨드 | 설명 |
+|--------|------|
+| `/new-feature <Name>` | TCA Feature 생성 (Reducer + View + Tests) |
+| `/new-screen <Name>` | 화면 생성 (Feature + UI 디자인 포함) |
+| `/review-pr` | PR 또는 현재 변경사항 코드 리뷰 |
+| `/fix-reviews` | PR 리뷰 자동 수정 |
+
+**예시**:
 ```bash
-/new-feature Notification    # Feature 생성 (Reducer + View + Tests)
-/new-screen Profile          # 화면 생성 (Feature + UI)
-/review-pr                   # PR 코드 리뷰
+/new-feature NotificationSettings
+/new-screen ProfileEdit
+/review-pr
 ```
 
-자세한 내용은 [AGENTS.md](AGENTS.md) 참고
+**자세한 내용**:
+- [.claude/CLAUDE.md](.claude/CLAUDE.md) - AI 개발 가이드 및 워크플로우
+- [.claude/commands/](.claude/commands/) - Slash 커맨드 상세 문서
 
 ## 🧰 Make 명령어
 
