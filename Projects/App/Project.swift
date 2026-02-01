@@ -113,10 +113,17 @@ let liveActivityDev = Target.target(
     .project(target: "PromisoShared", path: "../Shared"),
     .project(target: "ResourceKit", path: "../ResourceKit")
   ],
-  settings: .standard(base: [
-    "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
-    "CODE_SIGN_STYLE": .string("Automatic")
-  ])
+  settings: .settings(
+    base: [
+      "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
+      "PRODUCT_BUNDLE_IDENTIFIER": .string("com.promiso.dev.liveactivity")
+      // CODE_SIGN_STYLE, CODE_SIGN_IDENTITY는 xcconfig에서 설정
+    ],
+    configurations: [
+      .debug(name: "Debug", xcconfig: .relativeToRoot("Config/Dev.xcconfig")),
+      .release(name: "Release", xcconfig: .relativeToRoot("Config/Dev.xcconfig"))
+    ]
+  )
 )
 
 let liveActivityStage = Target.target(
@@ -137,10 +144,17 @@ let liveActivityStage = Target.target(
     .project(target: "PromisoShared", path: "../Shared"),
     .project(target: "ResourceKit", path: "../ResourceKit")
   ],
-  settings: .standard(base: [
-    "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
-    "CODE_SIGN_STYLE": .string("Automatic")
-  ])
+  settings: .settings(
+    base: [
+      "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
+      "PRODUCT_BUNDLE_IDENTIFIER": .string("com.promiso.stage.liveactivity")
+      // CODE_SIGN_STYLE, CODE_SIGN_IDENTITY는 xcconfig에서 설정
+    ],
+    configurations: [
+      .debug(name: "Debug", xcconfig: .relativeToRoot("Config/Stage.xcconfig")),
+      .release(name: "Release", xcconfig: .relativeToRoot("Config/Stage.xcconfig"))
+    ]
+  )
 )
 
 let liveActivityProd = Target.target(
@@ -161,10 +175,17 @@ let liveActivityProd = Target.target(
     .project(target: "PromisoShared", path: "../Shared"),
     .project(target: "ResourceKit", path: "../ResourceKit")
   ],
-  settings: .standard(base: [
-    "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
-    "CODE_SIGN_STYLE": .string("Automatic")
-  ])
+  settings: .settings(
+    base: [
+      "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
+      "PRODUCT_BUNDLE_IDENTIFIER": .string("\(AppConfig.bundleId).liveactivity")
+      // CODE_SIGN_STYLE, CODE_SIGN_IDENTITY는 xcconfig에서 설정
+    ],
+    configurations: [
+      .debug(name: "Debug", xcconfig: .relativeToRoot("Config/Prod.xcconfig")),
+      .release(name: "Release", xcconfig: .relativeToRoot("Config/Prod.xcconfig"))
+    ]
+  )
 )
 
 let promiseWidgetDev = Target.target(
@@ -185,10 +206,17 @@ let promiseWidgetDev = Target.target(
     .project(target: "PromisoShared", path: "../Shared"),
     .project(target: "ResourceKit", path: "../ResourceKit")
   ],
-  settings: .standard(base: [
-    "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
-    "CODE_SIGN_STYLE": .string("Automatic")
-  ])
+  settings: .settings(
+    base: [
+      "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
+      "PRODUCT_BUNDLE_IDENTIFIER": .string("com.promiso.dev.promisewidget")
+      // CODE_SIGN_STYLE, CODE_SIGN_IDENTITY는 xcconfig에서 설정
+    ],
+    configurations: [
+      .debug(name: "Debug", xcconfig: .relativeToRoot("Config/Dev.xcconfig")),
+      .release(name: "Release", xcconfig: .relativeToRoot("Config/Dev.xcconfig"))
+    ]
+  )
 )
 
 let promiseWidgetStage = Target.target(
@@ -209,10 +237,17 @@ let promiseWidgetStage = Target.target(
     .project(target: "PromisoShared", path: "../Shared"),
     .project(target: "ResourceKit", path: "../ResourceKit")
   ],
-  settings: .standard(base: [
-    "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
-    "CODE_SIGN_STYLE": .string("Automatic")
-  ])
+  settings: .settings(
+    base: [
+      "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
+      "PRODUCT_BUNDLE_IDENTIFIER": .string("com.promiso.stage.promisewidget")
+      // CODE_SIGN_STYLE, CODE_SIGN_IDENTITY는 xcconfig에서 설정
+    ],
+    configurations: [
+      .debug(name: "Debug", xcconfig: .relativeToRoot("Config/Stage.xcconfig")),
+      .release(name: "Release", xcconfig: .relativeToRoot("Config/Stage.xcconfig"))
+    ]
+  )
 )
 
 let promiseWidgetProd = Target.target(
@@ -233,10 +268,17 @@ let promiseWidgetProd = Target.target(
     .project(target: "PromisoShared", path: "../Shared"),
     .project(target: "ResourceKit", path: "../ResourceKit")
   ],
-  settings: .standard(base: [
-    "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
-    "CODE_SIGN_STYLE": .string("Automatic")
-  ])
+  settings: .settings(
+    base: [
+      "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
+      "PRODUCT_BUNDLE_IDENTIFIER": .string("\(AppConfig.bundleId).promisewidget")
+      // CODE_SIGN_STYLE, CODE_SIGN_IDENTITY는 xcconfig에서 설정
+    ],
+    configurations: [
+      .debug(name: "Debug", xcconfig: .relativeToRoot("Config/Prod.xcconfig")),
+      .release(name: "Release", xcconfig: .relativeToRoot("Config/Prod.xcconfig"))
+    ]
+  )
 )
 
 // MARK: - Environment-based Target Filtering
