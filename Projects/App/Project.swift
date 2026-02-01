@@ -61,10 +61,12 @@ let promisoStage = Target.target(
     ],
     configurations: [
       .debug(name: "Debug", settings: [
-        "PROVISIONING_PROFILE_SPECIFIER": .string("match Development com.promiso.stage")
+        "PROVISIONING_PROFILE_SPECIFIER": .string("match Development com.promiso.stage"),
+        "CODE_SIGN_IDENTITY": .string("Apple Development")
       ], xcconfig: .relativeToRoot("Config/Stage.xcconfig")),
       .release(name: "Release", settings: [
-        "PROVISIONING_PROFILE_SPECIFIER": .string("match AppStore com.promiso.stage")
+        "PROVISIONING_PROFILE_SPECIFIER": .string("match AppStore com.promiso.stage"),
+        "CODE_SIGN_IDENTITY": .string("Apple Distribution")
       ], xcconfig: .relativeToRoot("Config/Stage.xcconfig"))
     ]
   )
@@ -148,10 +150,12 @@ let liveActivityStage = Target.target(
     ],
     configurations: [
       .debug(name: "Debug", settings: [
-        "PROVISIONING_PROFILE_SPECIFIER": .string("match Development com.promiso.stage.liveactivity")
+        "PROVISIONING_PROFILE_SPECIFIER": .string("match Development com.promiso.stage.liveactivity"),
+        "CODE_SIGN_IDENTITY": .string("Apple Development")
       ]),
       .release(name: "Release", settings: [
-        "PROVISIONING_PROFILE_SPECIFIER": .string("match AppStore com.promiso.stage.liveactivity")
+        "PROVISIONING_PROFILE_SPECIFIER": .string("match AppStore com.promiso.stage.liveactivity"),
+        "CODE_SIGN_IDENTITY": .string("Apple Distribution")
       ])
     ]
   )
@@ -230,10 +234,12 @@ let promiseWidgetStage = Target.target(
     ],
     configurations: [
       .debug(name: "Debug", settings: [
-        "PROVISIONING_PROFILE_SPECIFIER": .string("match Development com.promiso.stage.promisewidget")
+        "PROVISIONING_PROFILE_SPECIFIER": .string("match Development com.promiso.stage.promisewidget"),
+        "CODE_SIGN_IDENTITY": .string("Apple Development")
       ]),
       .release(name: "Release", settings: [
-        "PROVISIONING_PROFILE_SPECIFIER": .string("match AppStore com.promiso.stage.promisewidget")
+        "PROVISIONING_PROFILE_SPECIFIER": .string("match AppStore com.promiso.stage.promisewidget"),
+        "CODE_SIGN_IDENTITY": .string("Apple Distribution")
       ])
     ]
   )
