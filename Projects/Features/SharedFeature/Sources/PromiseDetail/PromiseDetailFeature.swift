@@ -128,6 +128,8 @@ extension PromiseDetail {
         case promiseUpdated(PromiseModel)
         case fetchGroupMembers
         case groupMembersFetched(Result<[UserPublicModel], Error>)
+        case fetchRealPromise
+        case realPromiseFetched(Result<PromiseModel, Error>)
       }
 
       public enum Delegate: Sendable {
@@ -143,10 +145,22 @@ extension PromiseDetail {
         case .view(let viewAction):
           switch viewAction {
           case .onAppear:
+            var effects: [Effect<Action>] = []
+
+            // 스냅샷 기반 더미 데이터인지 확인 (participant- 로 시작하는 ID가 있으면)
+            let hasDummyVotes = state.promise.votes.accepted.contains { $0.hasPrefix("participant-") }
+            if hasDummyVotes {
+              // 실제 약속 데이터 조회
+              effects.append(.send(.internal(.fetchRealPromise)))
+            }
+
             // 그룹 멤버가 없으면 로드
-            guard state.groupMembers == nil else { return .none }
-            state.isLoadingMembers = true
-            return .send(.internal(.fetchGroupMembers))
+            if state.groupMembers == nil {
+              state.isLoadingMembers = true
+              effects.append(.send(.internal(.fetchGroupMembers)))
+            }
+
+            return effects.isEmpty ? .none : .merge(effects)
 
           case .dismissTapped:
             return .send(.delegate(.dismiss))
@@ -321,6 +335,28 @@ extension PromiseDetail {
               state.$groupMembersCache.withLock { $0[state.promise.groupId] = members }
             case .failure:
               break // 실패해도 UI는 진행
+            }
+            return .none
+
+          case .fetchRealPromise:
+            let promiseId = state.promise.id
+            return .run { [promiseClient] send in
+              do {
+                if let promise = try await promiseClient.getPromise(promiseId) {
+                  await send(.internal(.realPromiseFetched(.success(promise))))
+                }
+                // nil이면 무시 (기존 데이터 유지)
+              } catch {
+                await send(.internal(.realPromiseFetched(.failure(error))))
+              }
+            }
+
+          case .realPromiseFetched(let result):
+            switch result {
+            case .success(let promise):
+              state.promise = promise
+            case .failure:
+              break // 실패해도 기존 데이터 유지
             }
             return .none
           }

@@ -1,6 +1,6 @@
 # Promiso Widget 기술 스펙
 
-> **상태**: ✅ 구현 완료 (v2 Snapshot 기반)
+> **상태**: ✅ 구현 완료 (v2.1 Snapshot 기반)
 > **iOS 지원**: iOS 18.0+
 > **마지막 업데이트**: 2025.02.01
 
@@ -28,6 +28,23 @@ Promiso 홈 화면 위젯은 사용자가 앱을 열지 않아도 약속 정보�
 | API 역할 | 매번 계산 | 캐시된 스냅샷 읽기만 |
 | Race Condition | 있음 (복잡한 Lock 필요) | 없음 (같은 문서 읽기) |
 | 비용 | 높음 (N+1 쿼리) | 낮음 (1 read) |
+
+### Widget & Home Snapshot 관계 (v2.1)
+
+Widget과 Home은 동일한 `SnapshotPromise` 타입을 공유합니다:
+
+| 스냅샷 | Firestore 경로 | 용도 |
+|--------|---------------|------|
+| Widget | `users/{uid}/cache/widgetSnapshot` | 홈 화면 위젯 |
+| Home | `users/{uid}/cache/homeSnapshot` | 앱 홈 화면 |
+
+공유 필드 (`SnapshotPromise`):
+- `id`, `title`, `emoji`, `startAt`, `endAt`, `location`
+- `groupId`, `groupName`, `groupImageUrl`
+- `isConfirmed`, `minimumParticipants`, `participantCount`
+- `myVoteStatus`, `votingDeadline`
+
+**참고**: Home Snapshot은 추가로 `groups` 배열 (그룹별 요약) 포함
 
 ### 데이터 흐름 (v2)
 
@@ -211,11 +228,14 @@ public struct WidgetPromiseData: Codable, Identifiable, Equatable, Sendable {
   // MARK: - 그룹 정보
   public let groupId: String
   public let groupName: String?
+  public let groupImageUrl: String?    // 그룹 이미지 URL (v2.1 추가)
 
   // MARK: - 상태
-  public let isConfirmed: Bool      // 약속 확정 여부 (최소 인원 충족)
+  public let isConfirmed: Bool         // 약속 확정 여부 (최소 인원 충족)
+  public let minimumParticipants: Int  // 최소 참가 인원 (v2.1 추가)
   public let participantCount: Int
   public let myVoteStatus: MyVoteStatus  // 내 투표 상태 (v2 추가)
+  public let votingDeadline: Date?     // 투표 마감 시간 (v2.1 추가)
 
   // MARK: - 캐시 메타데이터
   public let cachedAt: Date

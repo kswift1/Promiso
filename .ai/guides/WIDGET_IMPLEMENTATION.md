@@ -1,6 +1,6 @@
 # Promiso Widget 구현 가이드
 
-> **상태**: ✅ 구현 완료 (v2 Snapshot 기반)
+> **상태**: ✅ 구현 완료 (v2.1 Snapshot 기반)
 > **마지막 업데이트**: 2025.02.01
 
 ## 개요
@@ -443,8 +443,12 @@ public enum WidgetDataManager {
         location: item["location"] as? String,
         groupId: (item["groupId"] as? String) ?? "",
         groupName: item["groupName"] as? String,
+        groupImageUrl: item["groupImageUrl"] as? String,
         isConfirmed: (item["isConfirmed"] as? Bool) ?? false,
-        participantCount: (item["participantCount"] as? Int) ?? 0
+        minimumParticipants: (item["minimumParticipants"] as? Int) ?? 2,
+        participantCount: (item["participantCount"] as? Int) ?? 0,
+        myVoteStatus: parseMyVoteStatus(item["myVoteStatus"] as? String),
+        votingDeadline: (item["votingDeadline"] as? String).flatMap { isoFormatter.date(from: $0) }
       )
       promises.append(promise)
     }

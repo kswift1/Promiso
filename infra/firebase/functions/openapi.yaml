@@ -2009,6 +2009,242 @@ components:
           example: "🍽️"
 
     # ========================================
+    # Snapshot (Widget/Home 공용)
+    # ========================================
+
+    SnapshotPromise:
+      type: object
+      description: Widget/Home 공용 약속 스냅샷 타입
+      required:
+        - id
+        - title
+        - emoji
+        - startAt
+        - groupId
+        - isConfirmed
+        - minimumParticipants
+        - participantCount
+        - myVoteStatus
+      properties:
+        id:
+          type: string
+          description: 약속 ID
+          example: promise123
+        title:
+          type: string
+          description: 약속 제목
+          example: 점심 약속
+        emoji:
+          type: string
+          description: 대표 이모지
+          example: "🍜"
+        startAt:
+          type: string
+          format: date-time
+          description: 시작 시간 (ISO 8601)
+          example: "2026-02-01T12:00:00+09:00"
+        endAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 종료 시간 (ISO 8601)
+          example: "2026-02-01T14:00:00+09:00"
+        location:
+          type: string
+          nullable: true
+          description: 장소명
+          example: 강남역 2번 출구
+        groupId:
+          type: string
+          description: 그룹 ID
+          example: group456
+        groupName:
+          type: string
+          nullable: true
+          description: 그룹 이름
+          example: 대학 동기
+        groupImageUrl:
+          type: string
+          format: uri
+          nullable: true
+          description: 그룹 이미지 URL
+          example: https://storage.googleapis.com/.../group.jpg
+        isConfirmed:
+          type: boolean
+          description: 약속 확정 여부
+          example: true
+        minimumParticipants:
+          type: integer
+          description: 최소 확정 인원
+          example: 2
+        participantCount:
+          type: integer
+          description: 참여 확정 인원
+          example: 3
+        myVoteStatus:
+          type: string
+          enum:
+            - pending
+            - voted
+            - declined
+          description: 내 투표 상태
+          example: voted
+        votingDeadline:
+          type: string
+          format: date-time
+          nullable: true
+          description: 투표 마감 시간 (ISO 8601)
+          example: "2026-02-01T10:00:00+09:00"
+
+    WidgetSnapshotDocument:
+      type: object
+      description: Widget용 스냅샷 문서
+      required:
+        - next
+        - today
+        - upcoming
+        - meta
+      properties:
+        next:
+          allOf:
+            - $ref: '#/components/schemas/SnapshotPromise'
+          nullable: true
+          description: Small 위젯용 다음 약속
+        today:
+          type: array
+          items:
+            $ref: '#/components/schemas/SnapshotPromise'
+          description: Medium 위젯용 오늘 약속 (최대 5개)
+        upcoming:
+          type: array
+          items:
+            $ref: '#/components/schemas/SnapshotPromise'
+          description: Large 위젯용 다가오는 약속 (최대 7개)
+        meta:
+          $ref: '#/components/schemas/WidgetSnapshotMeta'
+
+    WidgetSnapshotMeta:
+      type: object
+      required:
+        - todayCount
+        - upcomingCount
+        - updatedAt
+        - version
+      properties:
+        todayCount:
+          type: integer
+          description: 오늘 약속 개수
+          example: 2
+        upcomingCount:
+          type: integer
+          description: 다가오는 약속 개수
+          example: 5
+        updatedAt:
+          type: string
+          format: date-time
+          description: 마지막 갱신 시간
+          example: "2026-02-01T10:30:00+09:00"
+        version:
+          type: integer
+          description: 스키마 버전
+          example: 1
+
+    HomeSnapshotDocument:
+      type: object
+      description: Home용 스냅샷 문서
+      required:
+        - todayPromises
+        - pendingPromises
+        - upcomingPromises
+        - groups
+        - meta
+      properties:
+        todayPromises:
+          type: array
+          items:
+            $ref: '#/components/schemas/SnapshotPromise'
+          description: 오늘 확정 약속 (최대 5개)
+        pendingPromises:
+          type: array
+          items:
+            $ref: '#/components/schemas/SnapshotPromise'
+          description: 응답 필요 약속 (최대 5개, 마감 임박순)
+        upcomingPromises:
+          type: array
+          items:
+            $ref: '#/components/schemas/SnapshotPromise'
+          description: 다가오는 확정 약속 (최대 10개)
+        groups:
+          type: array
+          items:
+            $ref: '#/components/schemas/HomeSnapshotGroup'
+          description: 그룹별 요약 정보
+        meta:
+          $ref: '#/components/schemas/HomeSnapshotMeta'
+
+    HomeSnapshotGroup:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+          description: 그룹 ID
+          example: group456
+        name:
+          type: string
+          description: 그룹 이름
+          example: 대학 동기
+        emoji:
+          type: string
+          nullable: true
+          description: 그룹 이모지
+          example: "🎓"
+        imageUrl:
+          type: string
+          format: uri
+          nullable: true
+          description: 그룹 이미지 URL
+          example: https://storage.googleapis.com/.../group.jpg
+        nextPromise:
+          allOf:
+            - $ref: '#/components/schemas/SnapshotPromise'
+          nullable: true
+          description: 다음 약속
+
+    HomeSnapshotMeta:
+      type: object
+      required:
+        - todayCount
+        - pendingCount
+        - upcomingCount
+        - updatedAt
+        - version
+      properties:
+        todayCount:
+          type: integer
+          description: 오늘 약속 개수
+          example: 1
+        pendingCount:
+          type: integer
+          description: 응답 필요 약속 개수
+          example: 2
+        upcomingCount:
+          type: integer
+          description: 다가오는 약속 개수
+          example: 5
+        updatedAt:
+          type: string
+          format: date-time
+          description: 마지막 갱신 시간
+          example: "2026-02-01T10:30:00+09:00"
+        version:
+          type: integer
+          description: 스키마 버전
+          example: 1
+
+    # ========================================
     # User
     # ========================================
 
