@@ -960,7 +960,7 @@ on:
 - [docs/FASTLANE_SETUP.md](FASTLANE_SETUP.md) - Fastlane 상세 설정
 - [docs/GITHUB_SECRETS.md](GITHUB_SECRETS.md) - GitHub Secrets 상세 설정
 - [docs/BRANCH_STRATEGY.md](BRANCH_STRATEGY.md) - 브랜치 전략
-- [.github/workflows/README.md](../.github/workflows/README.md) - CI/CD 워크플로우
+- [docs/CI_CD.md](CI_CD.md) - GitHub Actions 워크플로우
 
 ---
 

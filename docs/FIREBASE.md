@@ -130,7 +130,7 @@ Firestore Root
    └─ {promiseId}/
 ```
 
-상세한 스키마는 [.ai/FIRESTORE_SCHEMA.md](/Users/sungwon-kim/Developer/PromisoWorkers/worker1/Promiso/.ai/FIRESTORE_SCHEMA.md)를 참조하세요.
+상세한 스키마는 [.ai/FIRESTORE_SCHEMA.md](../.ai/FIRESTORE_SCHEMA.md)를 참조하세요.
 
 ### 2.2 주요 쿼리 패턴
 
@@ -1046,10 +1046,10 @@ Firebase Console에서 예산 알림을 설정하여 비용 초과를 방지할 
 
 ### 프로젝트 문서
 
-- [Firestore 스키마](/Users/sungwon-kim/Developer/PromisoWorkers/worker1/Promiso/.ai/FIRESTORE_SCHEMA.md)
-- [프로젝트 아키텍처](/Users/sungwon-kim/Developer/PromisoWorkers/worker1/Promiso/.ai/PROJECT_CONTEXT.md)
-- [Functions API 명세](/Users/sungwon-kim/Developer/PromisoWorkers/worker1/Promiso/infra/firebase/functions/openapi.yaml)
-- [배포 가이드](/Users/sungwon-kim/Developer/PromisoWorkers/worker1/Promiso/docs/DEPLOYMENT.md)
+- [Firestore 스키마](../.ai/FIRESTORE_SCHEMA.md)
+- [프로젝트 아키텍처](../.ai/PROJECT_CONTEXT.md)
+- [Functions API 명세](../../infra/firebase/functions/openapi.yaml)
+- [배포 가이드](DEPLOYMENT.md)
 
 ### 트러블슈팅
 

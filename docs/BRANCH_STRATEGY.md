@@ -499,7 +499,7 @@ git push origin develop
 - [Git Flow](https://nvie.com/posts/a-successful-git-branching-model/)
 - [Semantic Versioning](https://semver.org/)
 - [GitHub Branch Protection](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches)
-- [.github/workflows/README.md](../.github/workflows/README.md) - CI/CD 워크플로우
+- [docs/CI_CD.md](CI_CD.md) - GitHub Actions 워크플로우
 - [docs/SETUP_GUIDE.md](SETUP_GUIDE.md) - 프로젝트 초기 설정
 
 ---

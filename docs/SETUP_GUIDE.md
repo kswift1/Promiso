@@ -244,7 +244,7 @@ base64 -i Config/GoogleService-Info-Prod.plist | pbcopy
 
 ### 🔄 워크플로우 예시
 
-상세한 워크플로우는 `.github/workflows/README.md` 참고
+상세한 워크플로우는 [docs/CI_CD.md](CI_CD.md) 참고
 
 ---
 
@@ -384,5 +384,5 @@ cat Config/Dev.xcconfig
 ## 📚 관련 문서
 
 - [Config/README.md](../Config/README.md) - 설정 파일 상세 설명
-- [.github/workflows/README.md](../.github/workflows/README.md) - CI/CD 워크플로우 가이드
+- [docs/CI_CD.md](CI_CD.md) - GitHub Actions 워크플로우
 - [.env.template](../.env.template) - 환경변수 템플릿

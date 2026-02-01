@@ -233,7 +233,7 @@ public struct MyFeature {
 
 이 프로젝트는 [Claude Code](https://claude.com/claude-code)를 사용한 AI 기반 개발을 지원합니다.
 
-### 커스텀 에이전트 (21개)
+### 커스텀 에이전트 (17개)
 
 - **feature-generator**: TCA Feature 자동 생성
 - **ui-designer**: SwiftUI View 디자인
