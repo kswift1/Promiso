@@ -63,11 +63,10 @@ Temporary Items
 *.xcodeproj
 *.xcworkspace
 
-# Google/Firebase secrets
+# Google/Firebase secrets (환경별 plist는 Config/에만 보관)
 GoogleService-Info.plist
-GoogleService-Info-*.plist
-Projects/**/Resources/GoogleService-Info.plist
 Config/GoogleService-Info-*.plist
+Projects/App/Resources/GoogleService-Info.plist
 
 # API Keys / Secrets (xcconfig)
 Config/Dev.xcconfig
