@@ -90,11 +90,17 @@ let promisoProd = Target.target(
     base: [
       "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME": .string("AccentColor"),
       "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
-      "CODE_SIGN_STYLE": .string("Automatic")
+      "CODE_SIGN_STYLE": .string("Manual")
     ],
     configurations: [
-      .debug(name: "Debug", xcconfig: .relativeToRoot("Config/Prod.xcconfig")),
-      .release(name: "Release", xcconfig: .relativeToRoot("Config/Prod.xcconfig"))
+      .debug(name: "Debug", settings: [
+        "PROVISIONING_PROFILE_SPECIFIER": .string("match Development com.promiso"),
+        "CODE_SIGN_IDENTITY": .string("Apple Development")
+      ], xcconfig: .relativeToRoot("Config/Prod.xcconfig")),
+      .release(name: "Release", settings: [
+        "PROVISIONING_PROFILE_SPECIFIER": .string("match AppStore com.promiso"),
+        "CODE_SIGN_IDENTITY": .string("Apple Distribution")
+      ], xcconfig: .relativeToRoot("Config/Prod.xcconfig"))
     ]
   )
 )
@@ -179,10 +185,22 @@ let liveActivityProd = Target.target(
     .project(target: "PromisoShared", path: "../Shared"),
     .project(target: "ResourceKit", path: "../ResourceKit")
   ],
-  settings: .standard(base: [
-    "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
-    "CODE_SIGN_STYLE": .string("Automatic")
-  ])
+  settings: .settings(
+    base: [
+      "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
+      "CODE_SIGN_STYLE": .string("Manual")
+    ],
+    configurations: [
+      .debug(name: "Debug", settings: [
+        "PROVISIONING_PROFILE_SPECIFIER": .string("match Development com.promiso.liveactivity"),
+        "CODE_SIGN_IDENTITY": .string("Apple Development")
+      ]),
+      .release(name: "Release", settings: [
+        "PROVISIONING_PROFILE_SPECIFIER": .string("match AppStore com.promiso.liveactivity"),
+        "CODE_SIGN_IDENTITY": .string("Apple Distribution")
+      ])
+    ]
+  )
 )
 
 let promiseWidgetDev = Target.target(
@@ -263,10 +281,22 @@ let promiseWidgetProd = Target.target(
     .project(target: "PromisoShared", path: "../Shared"),
     .project(target: "ResourceKit", path: "../ResourceKit")
   ],
-  settings: .standard(base: [
-    "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
-    "CODE_SIGN_STYLE": .string("Automatic")
-  ])
+  settings: .settings(
+    base: [
+      "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
+      "CODE_SIGN_STYLE": .string("Manual")
+    ],
+    configurations: [
+      .debug(name: "Debug", settings: [
+        "PROVISIONING_PROFILE_SPECIFIER": .string("match Development com.promiso.promisewidget"),
+        "CODE_SIGN_IDENTITY": .string("Apple Development")
+      ]),
+      .release(name: "Release", settings: [
+        "PROVISIONING_PROFILE_SPECIFIER": .string("match AppStore com.promiso.promisewidget"),
+        "CODE_SIGN_IDENTITY": .string("Apple Distribution")
+      ])
+    ]
+  )
 )
 
 // MARK: - Environment-based Target Filtering
