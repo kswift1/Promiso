@@ -231,6 +231,7 @@ export const sendPushNotification = onCall<SendPushNotificationRequest>(
       throw new HttpsError("unauthenticated", "로그인이 필요합니다");
     }
 
+    const senderId = request.auth.uid;
     const data = request.data;
 
     // 2. 유효성 검사
@@ -246,6 +247,64 @@ export const sendPushNotification = onCall<SendPushNotificationRequest>(
         "invalid-argument",
         "알림 타입, 제목, 본문은 필수입니다",
       );
+    }
+
+    // 3. Authorization: 발신자와 같은 그룹에 속한 사용자에게만 알림 전송 가능
+    const db = admin.firestore();
+    const usersCollection = getEnvironmentCollection("users", db);
+    const senderDoc = await usersCollection.doc(senderId).get();
+
+    if (!senderDoc.exists) {
+      throw new HttpsError(
+        "internal",
+        "발신자 정보를 찾을 수 없습니다",
+      );
+    }
+
+    const senderData = senderDoc.data();
+    if (!senderData) {
+      throw new HttpsError(
+        "internal",
+        "발신자 데이터를 읽을 수 없습니다",
+      );
+    }
+
+    const senderGroups = Object.keys(senderData.groups || {});
+
+    // 각 수신자가 발신자와 같은 그룹에 속하는지 확인
+    for (const recipientId of data.userIds) {
+      // 본인에게 보내는 것은 항상 허용
+      if (recipientId === senderId) {
+        continue;
+      }
+
+      const recipientDoc = await usersCollection.doc(recipientId).get();
+      if (!recipientDoc.exists) {
+        throw new HttpsError(
+          "not-found",
+          `수신자를 찾을 수 없습니다: ${recipientId}`,
+        );
+      }
+
+      const recipientData = recipientDoc.data();
+      if (!recipientData) {
+        throw new HttpsError(
+          "internal",
+          "수신자 데이터를 읽을 수 없습니다",
+        );
+      }
+
+      const recipientGroups = Object.keys(recipientData.groups || {});
+      const hasCommonGroup = senderGroups.some(
+        (groupId) => recipientGroups.includes(groupId)
+      );
+
+      if (!hasCommonGroup) {
+        throw new HttpsError(
+          "permission-denied",
+          `같은 그룹에 속하지 않은 사용자에게 알림을 보낼 수 없습니다: ${recipientId}`,
+        );
+      }
     }
 
     try {

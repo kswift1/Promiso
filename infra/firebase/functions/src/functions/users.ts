@@ -157,7 +157,52 @@ export const getUser = onCall<GetUserRequest>(
     const usersCollection = getEnvironmentCollection("users", db);
     const userRef = usersCollection.doc(targetUserId);
 
-    // 2. 메인 문서 조회
+    // 2. Authorization: 본인 정보이거나 같은 그룹에 속한 사용자만 조회 가능
+    if (targetUserId !== requesterId) {
+      // 요청자와 대상 사용자의 그룹 목록 조회
+      const requesterDoc = await usersCollection.doc(requesterId).get();
+      const targetDoc = await usersCollection.doc(targetUserId).get();
+
+      if (!targetDoc.exists) {
+        throw new HttpsError(
+          "not-found",
+          "사용자를 찾을 수 없습니다",
+        );
+      }
+
+      if (!requesterDoc.exists) {
+        throw new HttpsError(
+          "internal",
+          "요청자 정보를 찾을 수 없습니다",
+        );
+      }
+
+      const requesterData = requesterDoc.data();
+      const targetData = targetDoc.data();
+
+      if (!requesterData || !targetData) {
+        throw new HttpsError(
+          "internal",
+          "사용자 데이터를 읽을 수 없습니다",
+        );
+      }
+
+      // 공통 그룹이 있는지 확인
+      const requesterGroups = Object.keys(requesterData.groups || {});
+      const targetGroups = Object.keys(targetData.groups || {});
+      const hasCommonGroup = requesterGroups.some(
+        (groupId) => targetGroups.includes(groupId)
+      );
+
+      if (!hasCommonGroup) {
+        throw new HttpsError(
+          "permission-denied",
+          "같은 그룹에 속한 사용자만 조회할 수 있습니다",
+        );
+      }
+    }
+
+    // 3. 메인 문서 조회
     const userDoc = await userRef.get();
     if (!userDoc.exists) {
       throw new HttpsError(

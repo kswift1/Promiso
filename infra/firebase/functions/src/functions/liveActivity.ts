@@ -428,7 +428,10 @@ export const updateETA = onCall<UpdateETARequest>(
         `locations/${REGION}/functions/executeLiveActivityEnd`
       );
 
-      const endDelayMinutes = 5;
+      // 환경별 종료 지연 시간 (dev: 1분, stage: 3분, prod: 5분)
+      const env = getCurrentEnvironment();
+      const endDelayMinutes = env === "dev" ? 1 : env === "stage" ? 3 : 5;
+
       await endQueue.enqueue(
         {
           promiseId: promiseId || "unknown",
@@ -438,7 +441,9 @@ export const updateETA = onCall<UpdateETARequest>(
       );
 
       const id = promiseId || channelId;
-      console.log(`📅 LiveActivity end scheduled (all arrived): ${id}`);
+      console.log(
+        `📅 LiveActivity end scheduled (all arrived, ${endDelayMinutes}min): ${id}`
+      );
     }
 
     if (result.success) {
@@ -539,6 +544,81 @@ export const widgetUpdateETA = onRequest(
         },
       });
       return;
+    }
+
+    // Authorization: promiseId가 있는 경우, 사용자가 해당 약속의 그룹 멤버인지 확인
+    if (promiseId) {
+      try {
+        const db = admin.firestore();
+        const promisesCollection = getEnvironmentCollection("promises", db);
+        const promiseDoc = await promisesCollection.doc(promiseId).get();
+
+        if (!promiseDoc.exists) {
+          res.status(404).json({
+            error: {
+              code: "not-found",
+              message: "Promise not found",
+            },
+          });
+          return;
+        }
+
+        const promiseData = promiseDoc.data();
+        if (!promiseData) {
+          res.status(500).json({
+            error: {
+              code: "internal",
+              message: "Failed to read promise data",
+            },
+          });
+          return;
+        }
+
+        // 그룹 멤버 확인
+        const groupsCollection = getEnvironmentCollection("groups", db);
+        const groupDoc = await groupsCollection.doc(promiseData.groupId).get();
+
+        if (!groupDoc.exists) {
+          res.status(404).json({
+            error: {
+              code: "not-found",
+              message: "Group not found",
+            },
+          });
+          return;
+        }
+
+        const groupData = groupDoc.data();
+        if (!groupData || !groupData.memberIds) {
+          res.status(500).json({
+            error: {
+              code: "internal",
+              message: "Failed to read group data",
+            },
+          });
+          return;
+        }
+
+        // 사용자가 그룹 멤버가 아니면 거부
+        if (!groupData.memberIds.includes(userId)) {
+          res.status(403).json({
+            error: {
+              code: "permission-denied",
+              message: "User is not a member of this promise's group",
+            },
+          });
+          return;
+        }
+      } catch (error) {
+        console.error(`❌ Authorization check failed: ${error}`);
+        res.status(500).json({
+          error: {
+            code: "internal",
+            message: "Authorization check failed",
+          },
+        });
+        return;
+      }
     }
 
     console.log(
