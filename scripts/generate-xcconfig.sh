@@ -68,11 +68,8 @@ GOOGLE_REVERSED_CLIENT_ID = ${GOOGLE_REVERSED_CLIENT_ID_STAGE}
 KAKAO_NATIVE_APP_KEY = ${KAKAO_NATIVE_APP_KEY_STAGE}
 KAKAO_REST_API_KEY = ${KAKAO_REST_API_KEY_STAGE}
 
-// Code Signing (Manual for Release builds)
-CODE_SIGN_STYLE = Manual
-CODE_SIGN_IDENTITY[config=Release] = Apple Distribution
-CODE_SIGN_IDENTITY[config=Debug] = Apple Development
-PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*] = match AppStore \$(PRODUCT_BUNDLE_IDENTIFIER)
+// Code Signing (Automatic - Fastlane Match 사용)
+CODE_SIGN_STYLE = Automatic
 EOF
 
   echo "✅ Stage.xcconfig 생성 완료"
@@ -96,11 +93,8 @@ GOOGLE_REVERSED_CLIENT_ID = ${GOOGLE_REVERSED_CLIENT_ID_PROD}
 KAKAO_NATIVE_APP_KEY = ${KAKAO_NATIVE_APP_KEY_PROD}
 KAKAO_REST_API_KEY = ${KAKAO_REST_API_KEY_PROD}
 
-// Code Signing (Manual for Release builds)
-CODE_SIGN_STYLE = Manual
-CODE_SIGN_IDENTITY[config=Release] = Apple Distribution
-CODE_SIGN_IDENTITY[config=Debug] = Apple Development
-PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*] = match AppStore \$(PRODUCT_BUNDLE_IDENTIFIER)
+// Code Signing (Automatic - Fastlane Match 사용)
+CODE_SIGN_STYLE = Automatic
 EOF
 
   echo "✅ Prod.xcconfig 생성 완료"
