@@ -67,6 +67,9 @@ Temporary Items
 GoogleService-Info.plist
 Config/GoogleService-Info-*.plist
 Projects/App/Resources/GoogleService-Info.plist
+Projects/App/Resources-Dev/GoogleService-Info.plist
+Projects/App/Resources-Stage/GoogleService-Info.plist
+Projects/App/Resources-Prod/GoogleService-Info.plist
 
 # API Keys / Secrets (xcconfig)
 Config/Dev.xcconfig
