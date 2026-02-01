@@ -1327,8 +1327,13 @@ export interface SnapshotPromise {
   /** 최소 참가 인원 */
   minimumParticipants: number;
 
-  /** 참가 확정 인원 수 */
-  participantCount: number;
+  /** 투표 정보 */
+  votes: {
+    /** 참가 확정 사용자 ID 목록 */
+    accepted: string[];
+    /** 불참 사용자 ID 목록 */
+    declined: string[];
+  };
 
   /** 내 투표 상태 */
   myVoteStatus: MyVoteStatus;

@@ -193,7 +193,10 @@ export async function updateHomeSnapshot(
         groupImageUrl: groupInfoMap[data.groupId as string]?.imageUrl || null,
         isConfirmed,
         minimumParticipants,
-        participantCount: acceptedCount,
+        votes: {
+          accepted: votes?.accepted || [],
+          declined: votes?.declined || [],
+        },
         myVoteStatus,
         votingDeadline,
       });

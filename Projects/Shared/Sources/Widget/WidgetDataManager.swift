@@ -26,6 +26,12 @@ private struct WidgetSnapshotResponse: Decodable {
   let updatedAt: String?
 }
 
+/// 서버에서 받아오는 투표 정보 DTO
+private struct WidgetVotesDTO: Decodable {
+  let accepted: [String]
+  let declined: [String]
+}
+
 /// 서버에서 받아오는 약속 DTO
 private struct WidgetPromiseDTO: Decodable {
   let id: String
@@ -37,7 +43,7 @@ private struct WidgetPromiseDTO: Decodable {
   let groupId: String
   let groupName: String?
   let isConfirmed: Bool
-  let participantCount: Int
+  let votes: WidgetVotesDTO
   let myVoteStatus: String?  // "pending" | "voted" | "declined"
 
   /// WidgetPromiseData로 변환
@@ -86,7 +92,7 @@ private struct WidgetPromiseDTO: Decodable {
       groupId: groupId,
       groupName: groupName,
       isConfirmed: isConfirmed,
-      participantCount: participantCount,
+      participantCount: votes.accepted.count,
       myVoteStatus: voteStatus
     )
   }

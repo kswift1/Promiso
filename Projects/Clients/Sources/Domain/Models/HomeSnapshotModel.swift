@@ -89,8 +89,8 @@ public struct SnapshotPromise: Codable, Equatable, Sendable, Identifiable {
   /// 최소 참가 인원
   public let minimumParticipants: Int
 
-  /// 참가자 수 (accepted.count)
-  public let participantCount: Int
+  /// 투표 정보 (참가/불참 사용자 ID 목록)
+  public let votes: SnapshotVotes
 
   /// 내 투표 상태
   public let myVoteStatus: SnapshotVoteStatus
@@ -110,7 +110,7 @@ public struct SnapshotPromise: Codable, Equatable, Sendable, Identifiable {
     groupImageUrl: String? = nil,
     isConfirmed: Bool,
     minimumParticipants: Int = 2,
-    participantCount: Int,
+    votes: SnapshotVotes,
     myVoteStatus: SnapshotVoteStatus,
     votingDeadline: String? = nil
   ) {
@@ -125,10 +125,34 @@ public struct SnapshotPromise: Codable, Equatable, Sendable, Identifiable {
     self.groupImageUrl = groupImageUrl
     self.isConfirmed = isConfirmed
     self.minimumParticipants = minimumParticipants
-    self.participantCount = participantCount
+    self.votes = votes
     self.myVoteStatus = myVoteStatus
     self.votingDeadline = votingDeadline
   }
+
+  /// 참가자 수 (accepted.count) - computed property
+  public var participantCount: Int {
+    votes.accepted.count
+  }
+}
+
+// MARK: - Snapshot Votes
+
+/// 스냅샷 투표 정보
+public struct SnapshotVotes: Codable, Equatable, Sendable {
+  /// 참가 확정 사용자 ID 목록
+  public let accepted: [String]
+
+  /// 불참 사용자 ID 목록
+  public let declined: [String]
+
+  public init(accepted: [String] = [], declined: [String] = []) {
+    self.accepted = accepted
+    self.declined = declined
+  }
+
+  /// 빈 투표 정보
+  public static let empty = SnapshotVotes()
 }
 
 // MARK: - SnapshotPromise Computed Properties
@@ -277,39 +301,13 @@ extension SnapshotPromise {
   /// SnapshotPromise를 PromiseModel로 변환
   ///
   /// - Note: 스냅샷에 없는 필드들은 기본값 또는 추론된 값으로 설정됨
-  /// - Parameter currentUserId: 현재 사용자 ID (votes 설정용)
+  /// - Parameter currentUserId: 현재 사용자 ID (사용하지 않음, API 호환성 유지)
   /// - Returns: PromiseModel
   public func toPromiseModel(currentUserId: String) -> PromiseModel {
-    // votes 구성
-    var accepted: [String] = []
-    var declined: [String] = []
-
-    // myVoteStatus에 따라 accepted/declined 구성
-    // participantCount는 이미 투표한 사용자 수 (현재 사용자 포함 가능)
-    switch myVoteStatus {
-    case .voted:
-      // 현재 사용자가 이미 participantCount에 포함됨
-      // 더미 ID는 (participantCount - 1)개만 추가
-      for i in 0..<max(0, participantCount - 1) {
-        accepted.append("participant-\(i)")
-      }
-      accepted.append(currentUserId)
-    case .declined:
-      // 현재 사용자는 participantCount에 미포함
-      for i in 0..<participantCount {
-        accepted.append("participant-\(i)")
-      }
-      declined.append(currentUserId)
-    case .pending:
-      // 현재 사용자는 participantCount에 미포함
-      for i in 0..<participantCount {
-        accepted.append("participant-\(i)")
-      }
-    }
-
-    let votes = PromiseVotesModel(
-      accepted: accepted,
-      declined: declined,
+    // 스냅샷의 votes를 그대로 사용
+    let promiseVotes = PromiseVotesModel(
+      accepted: votes.accepted,
+      declined: votes.declined,
       until: votingDeadlineDate ?? Date().addingTimeInterval(86400)
     )
 
@@ -335,7 +333,7 @@ extension SnapshotPromise {
       groupId: groupId,
       group: group,
       minimumParticipants: minimumParticipants,
-      votes: votes,
+      votes: promiseVotes,
       startAt: startAtDate,
       endAt: endAtDate,
       location: location != nil ? LocationInfoModel(name: location!) : nil,
