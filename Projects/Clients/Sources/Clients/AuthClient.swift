@@ -250,6 +250,10 @@ public struct AuthClient: Sendable {
 
   /// App Group에 저장된 Widget 토큰 삭제 (로그아웃 시)
   public var clearWidgetAuthToken: @Sendable () -> Void
+
+  /// Widget 전용 Long-lived Token 발급 요청 (30일 유효)
+  /// - 로그인 후, 앱 활성화 시, 토큰 만료 7일 전에 호출
+  public var requestWidgetToken: @Sendable () async -> Void
 }
 
 // MARK: - Test / Preview
@@ -289,7 +293,8 @@ extension AuthClient: TestDependencyKey {
     },
     clearSession: {},
     refreshWidgetAuthToken: {},
-    clearWidgetAuthToken: {}
+    clearWidgetAuthToken: {},
+    requestWidgetToken: {}
   )
 
   public static let testValue = Self(
@@ -300,7 +305,8 @@ extension AuthClient: TestDependencyKey {
     signInWithGoogle: unimplemented("\(Self.self).signInWithGoogle"),
     clearSession: unimplemented("\(Self.self).clearSession"),
     refreshWidgetAuthToken: unimplemented("\(Self.self).refreshWidgetAuthToken"),
-    clearWidgetAuthToken: unimplemented("\(Self.self).clearWidgetAuthToken")
+    clearWidgetAuthToken: unimplemented("\(Self.self).clearWidgetAuthToken"),
+    requestWidgetToken: unimplemented("\(Self.self).requestWidgetToken")
   )
 }
 
@@ -440,12 +446,59 @@ extension AuthClient: DependencyKey {
       },
       clearWidgetAuthToken: {
         WidgetAuthTokenStore.clear()
+        WidgetTokenStore.clear()
+      },
+      requestWidgetToken: {
+        // Widget 전용 Long-lived Token 발급 요청
+        guard Auth.auth().currentUser != nil else {
+          #if DEBUG
+          print("[AuthClient] Widget Token 발급 실패: 로그인 안 됨")
+          #endif
+          return
+        }
+
+        // 이미 유효한 토큰이 있으면 스킵 (만료 7일 전까지)
+        if WidgetTokenStore.isTokenValid() {
+          #if DEBUG
+          print("[AuthClient] Widget Token 유효함 - 갱신 스킵")
+          #endif
+          return
+        }
+
+        do {
+          let functions = Functions.functions(region: "asia-northeast3")
+          let deviceId = UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
+
+          let result = try await functions
+            .httpsCallable("generateWidgetToken")
+            .call(["deviceId": deviceId, "env": FirebaseEnvironmentManager.shared.current.firebaseEnv])
+
+          guard let data = result.data as? [String: Any],
+                let widgetToken = data["widgetToken"] as? String,
+                let expiresAt = data["expiresAt"] as? Int else {
+            #if DEBUG
+            print("[AuthClient] Widget Token 응답 파싱 실패")
+            #endif
+            return
+          }
+
+          // App Group에 저장
+          WidgetTokenStore.save(token: widgetToken, expiresAt: TimeInterval(expiresAt))
+
+          #if DEBUG
+          print("[AuthClient] Widget Token 발급 완료 (만료: \(Date(timeIntervalSince1970: TimeInterval(expiresAt))))")
+          #endif
+        } catch {
+          #if DEBUG
+          print("[AuthClient] Widget Token 발급 실패: \(error)")
+          #endif
+        }
       }
     )
   }()
 }
 
-// MARK: - Widget Auth Token Store
+// MARK: - Widget Auth Token Store (Firebase ID Token - Legacy)
 
 /// Widget/LiveActivity Extension과 공유하는 Auth Token 저장소
 private enum WidgetAuthTokenStore {
@@ -483,6 +536,53 @@ private enum WidgetAuthTokenStore {
 
     #if DEBUG
     print("[WidgetAuthTokenStore] 토큰 삭제 완료")
+    #endif
+  }
+}
+
+// MARK: - Widget Token Store (Long-lived Token - 30일)
+
+/// Widget 전용 Long-lived Token 저장소
+private enum WidgetTokenStore {
+  /// 토큰 갱신 권장 기간 (만료 7일 전)
+  private static let refreshThresholdDays: TimeInterval = 7 * 24 * 60 * 60
+
+  /// Widget Token 저장
+  static func save(token: String, expiresAt: TimeInterval) {
+    guard let defaults = UserDefaults(suiteName: LiveActivityIntentKey.suiteName) else { return }
+
+    let expiryDate = Date(timeIntervalSince1970: expiresAt)
+
+    defaults.set(token, forKey: LiveActivityIntentKey.widgetTokenKey)
+    defaults.set(expiryDate, forKey: LiveActivityIntentKey.widgetTokenExpiryKey)
+
+    #if DEBUG
+    print("[WidgetTokenStore] Widget Token 저장 완료 (만료: \(expiryDate))")
+    #endif
+  }
+
+  /// Widget Token이 유효한지 확인 (만료 7일 전까지 유효)
+  static func isTokenValid() -> Bool {
+    guard let defaults = UserDefaults(suiteName: LiveActivityIntentKey.suiteName),
+          let _ = defaults.string(forKey: LiveActivityIntentKey.widgetTokenKey),
+          let expiry = defaults.object(forKey: LiveActivityIntentKey.widgetTokenExpiryKey) as? Date else {
+      return false
+    }
+
+    // 만료 7일 전까지는 유효로 간주
+    let refreshThreshold = expiry.addingTimeInterval(-refreshThresholdDays)
+    return Date() < refreshThreshold
+  }
+
+  /// Widget Token 삭제
+  static func clear() {
+    guard let defaults = UserDefaults(suiteName: LiveActivityIntentKey.suiteName) else { return }
+
+    defaults.removeObject(forKey: LiveActivityIntentKey.widgetTokenKey)
+    defaults.removeObject(forKey: LiveActivityIntentKey.widgetTokenExpiryKey)
+
+    #if DEBUG
+    print("[WidgetTokenStore] Widget Token 삭제 완료")
     #endif
   }
 }
