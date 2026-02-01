@@ -145,22 +145,18 @@ extension PromiseDetail {
         case .view(let viewAction):
           switch viewAction {
           case .onAppear:
-            var effects: [Effect<Action>] = []
-
-            // 스냅샷 기반 더미 데이터인지 확인 (participant- 로 시작하는 ID가 있으면)
-            let hasDummyVotes = state.promise.votes.accepted.contains { $0.hasPrefix("participant-") }
-            if hasDummyVotes {
-              // 실제 약속 데이터 조회
-              effects.append(.send(.internal(.fetchRealPromise)))
-            }
-
-            // 그룹 멤버가 없으면 로드
+            // 그룹 멤버 캐시 확인 → 없으면 로드
             if state.groupMembers == nil {
+              // 캐시에서 먼저 확인
+              if let cached = state.groupMembersCache[state.promise.groupId] {
+                state.groupMembers = cached
+                return .none
+              }
+              // 캐시 miss → 서버에서 로드
               state.isLoadingMembers = true
-              effects.append(.send(.internal(.fetchGroupMembers)))
+              return .send(.internal(.fetchGroupMembers))
             }
-
-            return effects.isEmpty ? .none : .merge(effects)
+            return .none
 
           case .dismissTapped:
             return .send(.delegate(.dismiss))
