@@ -8,7 +8,8 @@
    - [1. users](#1-users-컬렉션)
      - [1-1. auth](#1-1-usersuseridauthmain-서브컬렉션)
      - [1-2. settings](#1-2-usersuseridsettingsmain-서브컬렉션)
-     - [1-3. groups (Map)](#1-3-usersuseridgroups-map)
+     - [1-3. cache/widgetSnapshot](#1-3-usersuseridcachewidgetsnapshot-서브컬렉션)
+     - [1-4. groups (Map)](#1-4-usersuseridgroups-map)
    - [2. groups](#2-groups-컬렉션)
    - [3. promises](#3-promises-컬렉션)
      - [3-1. votes (Map)](#3-1-promisespromiseidvotes-map)
@@ -47,8 +48,10 @@ Firestore Root
 │     │                             # { [groupId]: { groupName, role, joinedAt, notifications } }
 │     ├─ auth/                      # 인증 정보 (서브컬렉션)
 │     │  └─ main                    # 고정 문서 ID
-│     └─ settings/                  # 설정 정보 (서브컬렉션)
-│        └─ main                    # 고정 문서 ID
+│     ├─ settings/                  # 설정 정보 (서브컬렉션)
+│     │  └─ main                    # 고정 문서 ID
+│     └─ cache/                     # 캐시 데이터 (서브컬렉션)
+│        └─ widgetSnapshot          # 위젯용 스냅샷 (Trigger 자동 갱신)
 │
 ├─ groups/                          # 그룹 정보
 │  └─ {groupId}/                    # 그룹 문서
@@ -273,7 +276,113 @@ users/{userId}/settings/main
 
 ---
 
-### 1-3. users/{userId}.groups (Map)
+### 1-3. users/{userId}/cache/widgetSnapshot (서브컬렉션)
+
+위젯용 약속 스냅샷을 저장합니다. Firestore Trigger로 자동 갱신됩니다.
+
+#### 📍 문서 경로
+
+```
+users/{userId}/cache/widgetSnapshot
+```
+
+#### 🔑 문서 ID
+
+- 고정값: `widgetSnapshot`
+
+#### 📊 필드 구조
+
+| 필드명 | 타입 | 필수 | 설명 |
+|--------|------|------|------|
+| `next` | WidgetPromise \| null | ✅ | Small 위젯용 다음 약속 (우선순위 1위) |
+| `today` | Array<WidgetPromise> | ✅ | Medium 위젯용 오늘 약속 (최대 5개) |
+| `upcoming` | Array<WidgetPromise> | ✅ | Large 위젯용 다가오는 약속 (최대 7개) |
+| `meta` | SnapshotMeta | ✅ | 메타데이터 |
+
+#### 📦 WidgetPromise 구조
+
+| 필드명 | 타입 | 필수 | 설명 |
+|--------|------|------|------|
+| `id` | String | ✅ | 약속 ID |
+| `title` | String | ✅ | 약속 제목 |
+| `emoji` | String | ✅ | 대표 이모지 (기본: "📅") |
+| `startAt` | String | ✅ | 시작 시간 (ISO 8601) |
+| `endAt` | String \| null | ❌ | 종료 시간 (ISO 8601) |
+| `location` | String \| null | ❌ | 장소명 |
+| `groupId` | String | ✅ | 그룹 ID |
+| `groupName` | String \| null | ❌ | 그룹 이름 |
+| `isConfirmed` | Boolean | ✅ | 약속 확정 여부 |
+| `participantCount` | Number | ✅ | 참여 확정 인원 |
+| `myVoteStatus` | String | ✅ | 내 투표 상태 (`pending` \| `voted` \| `declined`) |
+
+#### 📦 SnapshotMeta 구조
+
+| 필드명 | 타입 | 필수 | 설명 |
+|--------|------|------|------|
+| `todayCount` | Number | ✅ | 오늘 약속 개수 |
+| `upcomingCount` | Number | ✅ | 다가오는 약속 개수 |
+| `updatedAt` | String | ✅ | 마지막 갱신 시간 (ISO 8601) |
+| `version` | Number | ✅ | 스키마 버전 (현재 1) |
+
+#### 📊 우선순위 정렬
+
+약속은 다음 우선순위로 정렬됩니다:
+
+| 순서 | 조건 | 설명 |
+|------|------|------|
+| 1순위 | `myVoteStatus === "pending"` | 투표 필요한 약속 |
+| 2순위 | `isConfirmed === false` | 미확정 약속 |
+| 3순위 | `startAt` 오름차순 | 시간순 |
+
+#### 📝 예시 데이터
+
+```json
+{
+  "next": {
+    "id": "promise123",
+    "title": "점심 약속",
+    "emoji": "🍜",
+    "startAt": "2025-02-01T12:00:00+09:00",
+    "endAt": null,
+    "location": "강남역 2번 출구",
+    "groupId": "group456",
+    "groupName": "대학 동기",
+    "isConfirmed": false,
+    "participantCount": 2,
+    "myVoteStatus": "pending"
+  },
+  "today": [
+    { "id": "promise123", ... },
+    { "id": "promise456", ... }
+  ],
+  "upcoming": [
+    { "id": "promise789", ... }
+  ],
+  "meta": {
+    "todayCount": 2,
+    "upcomingCount": 1,
+    "updatedAt": "2025-02-01T10:30:00+09:00",
+    "version": 1
+  }
+}
+```
+
+#### 🔄 자동 갱신 트리거
+
+| 트리거 | 이벤트 | 설명 |
+|--------|--------|------|
+| `onPromiseWriteUpdateSnapshot` | 약속 CRUD | 해당 그룹 멤버의 스냅샷 갱신 |
+| `scheduledSnapshotRefresh` | 매일 00:00 KST | today/upcoming 재분류 |
+
+#### 💡 설계 의도
+
+- **Race Condition 해결**: Widget Extension 다중 프로세스 문제 해결
+- **비용 절감**: API 호출 시 N+1 쿼리 → 1 read로 감소
+- **실시간성**: Trigger 기반 자동 갱신
+
+---
+
+### 1-4. users/{userId}.groups (Map)
 
 사용자가 속한 그룹 목록을 저장합니다. (캐싱 목적)
 
@@ -1092,6 +1201,11 @@ service cloud.firestore {
 | 1.6 | 2025-01-25 | Location 스키마 확장 | Claude |
 |  |  | - promises/{promiseId}.location에 address, latitude, longitude 필드 추가 |  |
 |  |  | - Kakao Maps SDK 연동으로 좌표 및 주소 저장 지원 |  |
+| 1.7 | 2025-02-01 | Widget Snapshot 스키마 추가 | Claude |
+|  |  | - users/{userId}/cache/widgetSnapshot 서브컬렉션 추가 |  |
+|  |  | - Firestore Trigger 기반 자동 갱신 아키텍처 |  |
+|  |  | - myVoteStatus 필드 추가 (pending/voted/declined) |  |
+|  |  | - 우선순위 정렬: pending → unconfirmed → time |  |
 
 ---
 
