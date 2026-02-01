@@ -38,62 +38,62 @@ Promiso는 **The Composable Architecture (TCA)** 기반의 모듈형 iOS 애플�
 ## 계층 구조
 
 ```
-┌──────────────────────────────────┐
-│        App Layer                 │
-│    (앱 조립 및 통합)              │
-│                                  │
-│  - AppMain.swift                 │
-│  - LiveDependencies.swift        │
-│  - AppDelegate.swift             │
-└────────────┬─────────────────────┘
-             ↓
-┌──────────────────────────────────┐
-│     Features Layer               │
-│  (TCA Reducers & Views)          │
-│                                  │
-│  - AppEntryFeature               │
-│  - RootTabFeature                │
-│  - HomeFeature                   │
-│  - GroupFeature                  │
-│  - PromiseFeature                │
-│  - AuthFeature                   │
-│  - SettingsFeature               │
-└────────────┬─────────────────────┘
-             ↓
-┌──────────────────────────────────┐
-│      Clients Layer               │
-│  (TCA Dependencies)              │
-│                                  │
-│  - AuthClient                    │
-│  - GroupClient                   │
-│  - PromiseClient                 │
-│  - UserProfileClient             │
-│  - NotificationClient            │
-│  - Infrastructure                │
-│    - FirebaseClient              │
-│    - DataSources                 │
-└────────────┬─────────────────────┘
-             ↓
-┌──────────────────────────────────┐
-│       Shared Layer               │
-│   (공통 요소)                     │
-│                                  │
-│  - Models                        │
-│  - DesignSystem                  │
-│  - UI Components                 │
-│  - Extensions                    │
-│  - Constants                     │
-└──────────────────────────────────┘
+┌────────────────────────────────────┐
+│          App Layer                 │
+│      (앱 조립 및 통합)              │
+│                                    │
+│  - AppMain.swift                   │
+│  - LiveDependencies.swift          │
+│  - AppDelegate.swift               │
+└─────────────────┬──────────────────┘
+                  ↓
+┌────────────────────────────────────┐
+│       Features Layer               │
+│    (TCA Reducers & Views)          │
+│                                    │
+│  - AppEntryFeature                 │
+│  - RootTabFeature                  │
+│  - HomeFeature                     │
+│  - GroupFeature                    │
+│  - PromiseFeature                  │
+│  - AuthFeature                     │
+│  - SettingsFeature                 │
+└─────────────────┬──────────────────┘
+                  ↓
+┌────────────────────────────────────┐
+│        Clients Layer               │
+│      (TCA Dependencies)            │
+│                                    │
+│  - AuthClient                      │
+│  - GroupClient                     │
+│  - PromiseClient                   │
+│  - UserProfileClient               │
+│  - NotificationClient              │
+│  - Infrastructure                  │
+│    - FirebaseClient                │
+│    - DataSources                   │
+└─────────────────┬──────────────────┘
+                  ↓
+┌────────────────────────────────────┐
+│         Shared Layer               │
+│       (공통 요소)                   │
+│                                    │
+│  - Models                          │
+│  - DesignSystem                    │
+│  - UI Components                   │
+│  - Extensions                      │
+│  - Constants                       │
+└────────────────────────────────────┘
 
-┌──────────────────────────────────┐
-│  ExternalDependency              │
-│  (외부 라이브러리 집약)           │
-└──────────────────────────────────┘
+┌────────────────────────────────────┐
+│    ExternalDependency              │
+│    (외부 라이브러리 집약)           │
+└────────────────────────────────────┘
 
-┌──────────────────────────────────┐
-│      ResourceKit                 │
-│   (리소스 관리)                   │
-└──────────────────────────────────┘
+┌────────────────────────────────────┐
+│        ResourceKit                 │
+│       (리소스 관리)                 │
+└────────────────────────────────────┘
 ```
 
 ### 의존성 방향
