@@ -9,9 +9,20 @@ Promiso는 3개의 Firebase 프로젝트로 분리되어 있습니다:
 - **Stage**: 스테이징 환경 (`promiso-stage`)
 - **Prod**: 프로덕션 환경 (`promiso-prod`)
 
-## 초기 설정
+## 초기 설정 (로컬 개발)
 
-### 1. xcconfig 파일 생성
+### 방법 1: 자동 생성 스크립트 사용 (권장) ⭐
+
+```bash
+# 1. .env 파일 생성 및 API 키 입력
+cp .env.template .env
+# .env 파일을 열어 실제 API 키 입력
+
+# 2. xcconfig 파일 자동 생성
+./scripts/generate-xcconfig.sh
+```
+
+### 방법 2: 수동 생성
 
 템플릿 파일을 복사하여 실제 설정 파일을 생성하세요:
 
@@ -25,8 +36,6 @@ cp Config/Stage.xcconfig.template Config/Stage.xcconfig
 # Prod 환경
 cp Config/Prod.xcconfig.template Config/Prod.xcconfig
 ```
-
-### 2. API 키 입력
 
 각 xcconfig 파일을 열어 실제 API 키를 입력하세요:
 
@@ -51,6 +60,49 @@ Config/
 └── GoogleService-Info-Prod.plist
 ```
 
+## CI/CD 설정
+
+GitHub Actions에서는 Secrets에 환경변수를 설정하면 `scripts/generate-xcconfig.sh`가 자동으로 xcconfig 파일을 생성합니다.
+
+### 필요한 GitHub Secrets
+
+```
+# Dev Environment
+GOOGLE_CLIENT_ID_DEV
+GOOGLE_REVERSED_CLIENT_ID_DEV
+KAKAO_NATIVE_APP_KEY_DEV
+KAKAO_REST_API_KEY_DEV
+
+# Stage Environment
+GOOGLE_CLIENT_ID_STAGE
+GOOGLE_REVERSED_CLIENT_ID_STAGE
+KAKAO_NATIVE_APP_KEY_STAGE
+KAKAO_REST_API_KEY_STAGE
+
+# Production Environment
+GOOGLE_CLIENT_ID_PROD
+GOOGLE_REVERSED_CLIENT_ID_PROD
+KAKAO_NATIVE_APP_KEY_PROD
+KAKAO_REST_API_KEY_PROD
+```
+
+### GitHub Secrets 설정 방법
+
+1. GitHub 레포지토리 → Settings → Secrets and variables → Actions
+2. "New repository secret" 클릭
+3. 위 목록의 각 변수명과 값을 입력
+
+GitHub Actions 워크플로우에서는 다음과 같이 사용됩니다:
+
+```yaml
+- name: Generate xcconfig files
+  env:
+    GOOGLE_CLIENT_ID_DEV: ${{ secrets.GOOGLE_CLIENT_ID_DEV }}
+    GOOGLE_REVERSED_CLIENT_ID_DEV: ${{ secrets.GOOGLE_REVERSED_CLIENT_ID_DEV }}
+    # ... 나머지 secrets
+  run: ./scripts/generate-xcconfig.sh
+```
+
 ## Build Configuration
 
 Xcode에서 환경별로 빌드할 수 있습니다:
@@ -64,13 +116,30 @@ Xcode에서 환경별로 빌드할 수 있습니다:
 ⚠️ **중요**: 다음 파일들은 절대 커밋하지 마세요!
 
 ```
+# xcconfig 파일들 (자동 생성됨)
 Config/Dev.xcconfig
 Config/Stage.xcconfig
 Config/Prod.xcconfig
+
+# 환경변수 파일 (로컬 개발용)
+.env
+.env.local
+
+# GoogleService-Info.plist (환경별)
 Config/GoogleService-Info-*.plist
+Projects/App/Resources-Dev/GoogleService-Info.plist
+Projects/App/Resources-Stage/GoogleService-Info.plist
+Projects/App/Resources-Prod/GoogleService-Info.plist
 ```
 
 이 파일들은 `.gitignore`에 포함되어 있습니다.
+
+**커밋 가능한 파일**:
+```
+# 템플릿 파일들만 커밋
+Config/*.xcconfig.template
+.env.template
+```
 
 ## API 키 얻는 방법
 
