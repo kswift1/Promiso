@@ -27,11 +27,7 @@ public enum AppConfig {
   }()
   
   public static var infoPlist: [String: Plist.Value] {
-    // API Keys는 Secrets.swift에서 관리 (gitignored)
-    let googleClientId: String = Secrets.googleClientId
-    let googleReversedClientId: String = Secrets.googleReversedClientId
-    let kakaoNativeAppKey: String = Secrets.kakaoNativeAppKey
-    let kakaoRestApiKey: String = Secrets.kakaoRestApiKey
+    // API Keys는 xcconfig 파일에서 환경별로 관리 (Config/*.xcconfig, gitignored)
     return [
       "CFBundleShortVersionString": .string(AppConfig.marketingNumber),
       "CFBundleVersion": .string(AppConfig.buildVersion),
@@ -44,7 +40,7 @@ public enum AppConfig {
       "CFBundleURLTypes": [
         [
           "CFBundleTypeRole": "Editor",
-          "CFBundleURLSchemes": [.string(googleReversedClientId)]
+          "CFBundleURLSchemes": [.string("$(GOOGLE_REVERSED_CLIENT_ID)")]
         ],
         [
           "CFBundleTypeRole": "Editor",
@@ -52,7 +48,7 @@ public enum AppConfig {
           "CFBundleURLSchemes": [.string("promiso")]
         ]
       ],
-      "GIDClientID": .string(googleClientId),
+      "GIDClientID": .string("$(GOOGLE_CLIENT_ID)"),
       // Calendar permissions
       "NSCalendarsUsageDescription": .string("캘린더 일정을 표시하려면 접근 권한이 필요합니다."),
       "NSCalendarsFullAccessUsageDescription": .string("캘린더 일정을 표시하려면 접근 권한이 필요합니다."),
@@ -67,8 +63,8 @@ public enum AppConfig {
       "NSSupportsLiveActivities": .boolean(true),
       "NSSupportsLiveActivitiesFrequentUpdates": .boolean(true),
       // Kakao Maps SDK
-      "KAKAO_NATIVE_APP_KEY": .string(kakaoNativeAppKey),
-      "KAKAO_REST_API_KEY": .string(kakaoRestApiKey),
+      "KAKAO_NATIVE_APP_KEY": .string("$(KAKAO_NATIVE_APP_KEY)"),
+      "KAKAO_REST_API_KEY": .string("$(KAKAO_REST_API_KEY)"),
       // ProMotion Display Support (120Hz)
       "CADisableMinimumFrameDurationOnPhone": .boolean(true),
       // App Store 제출: 암호화 사용 여부 (표준 암호화만 사용)

@@ -69,10 +69,12 @@ GoogleService-Info-*.plist
 Projects/**/Resources/GoogleService-Info.plist
 Config/GoogleService-Info-*.plist
 
-# API Keys / Secrets
+# API Keys / Secrets (xcconfig)
+Config/Dev.xcconfig
+Config/Stage.xcconfig
+Config/Prod.xcconfig
 Secrets.xcconfig
 *.xcconfig.local
-Tuist/ProjectDescriptionHelpers/Secrets.swift
 
 # IDE configs
 .idea/

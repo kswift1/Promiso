@@ -3,6 +3,13 @@ import ProjectDescriptionHelpers
 
 let project = Project(
   name: AppConfig.name,
+  settings: .settings(
+    configurations: [
+      .debug(name: "Debug-Dev", xcconfig: .relativeToRoot("Config/Dev.xcconfig")),
+      .debug(name: "Debug-Stage", xcconfig: .relativeToRoot("Config/Stage.xcconfig")),
+      .release(name: "Release-Prod", xcconfig: .relativeToRoot("Config/Prod.xcconfig"))
+    ]
+  ),
   targets: [
     // MARK: - Main App Target
     .target(
