@@ -36,13 +36,25 @@ cd Promiso
 # 2. Tuist 설치 (없는 경우)
 curl -Ls https://install.tuist.io | bash
 
-# 3. 의존성 설치 및 프로젝트 생성
+# 3. 환경 설정 파일 생성 (필수)
+# 방법 1: 자동 생성 스크립트
+cp .env.template .env
+# .env 파일 편집 후 API 키 입력
+./scripts/generate-xcconfig.sh
+
+# 방법 2: 백업에서 복원 (iCloud Drive/Google Drive)
+# unzip ~/Downloads/Promiso-Config.zip -d .
+# ./scripts/copy-firebase-config.sh
+
+# 4. 의존성 설치 및 프로젝트 생성
 tuist install
 tuist generate
 
-# 4. Xcode에서 열기
+# 5. Xcode에서 열기
 open Promiso.xcworkspace
 ```
+
+> **📘 자세한 설정 방법**: [초기 설정 가이드](docs/SETUP_GUIDE.md) 참고
 
 ### 환경별 타겟
 
@@ -73,9 +85,12 @@ Promiso/
 │
 ├── infra/firebase/             # Firebase Functions, Rules
 ├── docs/                       # 프로젝트 문서
-├── Config/                     # 환경별 설정 (xcconfig)
+├── Config/                     # 환경별 설정 (xcconfig) ⚠️ 로컬 생성 필요
 └── scripts/                    # 빌드/배포 스크립트
 ```
+
+> **⚠️ 중요**: `Config/` 폴더의 실제 설정 파일(*.xcconfig, GoogleService-Info.plist)은 보안상 Git에 포함되지 않습니다.
+> Clone 후 [초기 설정 가이드](docs/SETUP_GUIDE.md) 또는 [환경 설정](docs/ENVIRONMENT.md)을 참고하여 생성하세요.
 
 ### 아키텍처 계층
 
