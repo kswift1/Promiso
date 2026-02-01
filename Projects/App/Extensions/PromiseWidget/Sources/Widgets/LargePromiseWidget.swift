@@ -211,6 +211,7 @@ struct LargePromiseWidgetView: View {
   }
 }
 
+#if DEBUG
 #Preview("전체 약속", as: .systemLarge) {
   LargePromiseWidget()
 } timeline: {
@@ -234,3 +235,4 @@ struct LargePromiseWidgetView: View {
 } timeline: {
   WidgetPromiseEntry(date: Date(), promises: [], state: .empty)
 }
+#endif

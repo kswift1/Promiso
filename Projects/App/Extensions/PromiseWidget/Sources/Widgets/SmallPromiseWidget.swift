@@ -98,6 +98,7 @@ struct SmallPromiseWidgetView: View {
   }
 }
 
+#if DEBUG
 #Preview("다음 약속", as: .systemSmall) {
   SmallPromiseWidget()
 } timeline: {
@@ -115,3 +116,4 @@ struct SmallPromiseWidgetView: View {
 } timeline: {
   WidgetPromiseEntry(date: Date(), promises: [], state: .notLoggedIn)
 }
+#endif

@@ -211,6 +211,7 @@ struct MediumPromiseWidgetView: View {
   }
 }
 
+#if DEBUG
 #Preview("오늘 약속", as: .systemMedium) {
   MediumPromiseWidget()
 } timeline: {
@@ -234,3 +235,4 @@ struct MediumPromiseWidgetView: View {
 } timeline: {
   WidgetPromiseEntry(date: Date(), promises: [], state: .notLoggedIn)
 }
+#endif
