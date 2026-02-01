@@ -4,8 +4,8 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/iOS-18.0+-blue.svg" />
-  <img src="https://img.shields.io/badge/Swift-6.0+-orange.svg" />
-  <img src="https://img.shields.io/badge/Xcode-16.0+-blue.svg" />
+  <img src="https://img.shields.io/badge/Swift-6.2+-orange.svg" />
+  <img src="https://img.shields.io/badge/Xcode-26.0+-blue.svg" />
   <img src="https://img.shields.io/badge/TCA-1.22.2-purple.svg" />
 </p>
 
@@ -21,8 +21,8 @@ Promiso는 **The Composable Architecture (TCA)** 기반의 모던 iOS 앱입니�
 
 ### 필수 요구사항
 
-- **Xcode**: 16.0+
-- **Swift**: 6.0+
+- **Xcode**: 26.0+
+- **Swift**: 6.2+
 - **iOS**: 18.0+
 - **Tuist**: 4.65.7+
 
