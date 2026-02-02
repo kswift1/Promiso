@@ -39,7 +39,7 @@ extension Settings {
           .listRowBackground(Color.clear)
         }
 
-        // MARK: - 표시 섹션
+        // MARK: - 앱 설정 섹션
         Section {
           HStack(spacing: 12) {
             Image(systemName: "clock")
@@ -71,21 +71,14 @@ extension Settings {
           .adaptiveGlassBackground()
           .listRowBackground(Color.clear)
           .listRowInsets(EdgeInsets())
-        } header: {
-          Text("표시")
-        } footer: {
-          Text("앱 전체에서 사용되는 시간 표시 형식을 설정합니다.\n앱을 재시작하면 적용됩니다.")
-        }
 
-        // MARK: - 알림 섹션
-        Section {
           menuRow(
             icon: "bell.fill",
             title: "알림 설정",
             action: { store.send(.view(.notificationSettingsTapped)) }
           )
         } header: {
-          Text("알림")
+          Text("앱 설정")
         }
 
         // MARK: - 정보 섹션
