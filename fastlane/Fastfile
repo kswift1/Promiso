@@ -65,7 +65,11 @@ platform :ios do
       skip_waiting_for_build_processing: true,
       distribute_external: false,
       notify_external_testers: false,
-      changelog: ENV["CHANGELOG"] || "Dev build from CI"
+      localized_build_info: {
+        "ko" => {
+          whats_new: ENV["CHANGELOG"] || "Dev 빌드"
+        }
+      }
     )
 
     # 5. Slack 알림
@@ -127,7 +131,11 @@ platform :ios do
       distribute_external: true,
       groups: ["Stage Testers"],
       notify_external_testers: true,
-      changelog: ENV["CHANGELOG"] || "Stage build for QA"
+      localized_build_info: {
+        "ko" => {
+          whats_new: ENV["CHANGELOG"] || "Stage 테스트 빌드"
+        }
+      }
     )
 
     # 5. Slack 알림
@@ -189,7 +197,11 @@ platform :ios do
       distribute_external: true,
       groups: ["Production Testers"],
       notify_external_testers: true,
-      changelog: ENV["CHANGELOG"] || "Production build ready for App Store submission"
+      localized_build_info: {
+        "ko" => {
+          whats_new: ENV["CHANGELOG"] || "프로덕션 빌드"
+        }
+      }
     )
 
     # 5. Slack 알림
