@@ -364,7 +364,8 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
       [
         "groups": [
           groupId: [
-            "notifications": settings.asDictionary
+            "notifications": settings.asDictionary,
+            "notificationPreferences": FieldValue.delete()
           ]
         ]
       ],
