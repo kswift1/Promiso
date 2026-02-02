@@ -1,16 +1,17 @@
 /**
  * Home Snapshot Trigger Functions
  *
- * Firestore Trigger 기반 홈화면 스냅샷 자동 갱신
+ * On-demand 홈화면 스냅샷 생성 + Trigger 기반 실시간 갱신
  *
  * @why 홈화면에서 N개 그룹 × M개 약속 읽기 → 1회 읽기로 비용 절감
  *
- * @triggers
- * - onPromiseWriteUpdateHomeSnapshot: 약속 생성/수정/삭제 시
- * - scheduledHomeSnapshotRefresh: 매일 자정 (KST)
+ * @flow
+ * 1. 앱 첫 진입 (하루 기준) → refreshHomeSnapshot 호출 → 스냅샷 생성
+ * 2. 약속 변경 → onPromiseWriteUpdateHomeSnapshot → 오늘자 스냅샷만 업데이트
+ * 3. Pull-to-refresh → refreshHomeSnapshot 호출 → 스냅샷 갱신
  */
 import {onDocumentWritten} from "firebase-functions/v2/firestore";
-import {onSchedule} from "firebase-functions/v2/scheduler";
+import {onCall, HttpsError} from "firebase-functions/v2/https";
 import {admin, REGION} from "../config";
 import {getEnvironmentCollection} from "../utils/firestore";
 import {
@@ -53,6 +54,19 @@ function getTodayRange(): { startOfDay: Date; endOfDay: Date } {
   );
   const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
   return {startOfDay, endOfDay};
+}
+
+/**
+ * ISO 문자열이 오늘(KST)인지 확인
+ *
+ * @param {string | undefined} isoString ISO 8601 날짜 문자열
+ * @return {boolean} 오늘이면 true
+ */
+function isToday(isoString: string | undefined): boolean {
+  if (!isoString) return false;
+  const date = new Date(isoString);
+  const {startOfDay, endOfDay} = getTodayRange();
+  return date >= startOfDay && date < endOfDay;
 }
 
 /**
@@ -298,6 +312,7 @@ export async function updateHomeSnapshot(
  * 약속 문서 변경 시 관련 사용자의 홈 스냅샷 갱신
  *
  * @triggers promises/{promiseId} 생성/수정/삭제
+ * @note 오늘자 스냅샷이 있는 사용자만 업데이트 (On-demand 방식)
  */
 export const onPromiseWriteUpdateHomeSnapshot = onDocumentWritten(
   {
@@ -320,6 +335,7 @@ export const onPromiseWriteUpdateHomeSnapshot = onDocumentWritten(
     }
 
     const groupsCollection = getEnvironmentCollection("groups", db);
+    const usersCollection = getEnvironmentCollection("users", db);
     const affectedUserIds = new Set<string>();
 
     for (const groupId of affectedGroupIds) {
@@ -330,76 +346,93 @@ export const onPromiseWriteUpdateHomeSnapshot = onDocumentWritten(
       }
     }
 
-    console.log(
-      `🔄 [HomeSnapshot] Updating ${affectedUserIds.size} users ` +
-      `for groups: ${Array.from(affectedGroupIds).join(", ")}`
+    // 오늘자 스냅샷이 있는 사용자만 필터링 (병렬 처리)
+    const userIds = Array.from(affectedUserIds);
+    const checkPromises = userIds.map(async (uid) => {
+      const snapshotDoc = await usersCollection
+        .doc(uid)
+        .collection("cache")
+        .doc("homeSnapshot")
+        .get();
+
+      if (snapshotDoc.exists) {
+        const meta = snapshotDoc.data()?.meta as { updatedAt?: string };
+        if (isToday(meta?.updatedAt)) {
+          return uid;
+        }
+      }
+      return null;
+    });
+
+    const activeUserIds = (await Promise.all(checkPromises)).filter(
+      (id): id is string => id !== null
     );
 
-    const userIds = Array.from(affectedUserIds);
-    const batchSize = 10;
+    if (activeUserIds.length === 0) {
+      console.log(
+        `⏭️ [HomeSnapshot] No active users with today's snapshot ` +
+        `(${userIds.length} users checked)`
+      );
+      return;
+    }
 
-    for (let i = 0; i < userIds.length; i += batchSize) {
-      const batch = userIds.slice(i, i + batchSize);
+    console.log(
+      `🔄 [HomeSnapshot] Updating ${activeUserIds.length}/${userIds.length} ` +
+      `active users for groups: ${Array.from(affectedGroupIds).join(", ")}`
+    );
+
+    const batchSize = 10;
+    for (let i = 0; i < activeUserIds.length; i += batchSize) {
+      const batch = activeUserIds.slice(i, i + batchSize);
       await Promise.all(
         batch.map((uid) => updateHomeSnapshot(uid, db))
       );
     }
 
-    console.log(`✅ [HomeSnapshot] Updated ${userIds.length} users`);
+    console.log(`✅ [HomeSnapshot] Updated ${activeUserIds.length} users`);
   }
 );
 
-// MARK: - Scheduled Tasks
+// MARK: - Callable Functions
 
 /**
- * 매일 자정 (KST) 전체 사용자 홈 스냅샷 갱신
+ * 클라이언트 요청 시 홈 스냅샷 갱신
  *
- * @why 날짜 변경 시 today/upcoming 분류가 바뀜
- * @schedule 00:05 KST = 15:05 UTC (전날) - Widget보다 5분 늦게
+ * @callable refreshHomeSnapshot
+ * @auth 인증 필수
+ * @use 하루 첫 홈 진입 시 / Pull-to-refresh 시
+ * @return {HomeSnapshotDocument} 갱신된 스냅샷
  */
-export const scheduledHomeSnapshotRefresh = onSchedule(
+export const refreshHomeSnapshot = onCall(
   {
     region: REGION,
-    schedule: "5 15 * * *", // 15:05 UTC = 00:05 KST
-    timeZone: "UTC",
   },
-  async () => {
-    console.log("🕛 [HomeSnapshot] Starting daily refresh...");
+  async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) {
+      throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
+    }
+
+    console.log(`🔄 [HomeSnapshot] Refresh requested by user: ${uid}`);
 
     const db = admin.firestore();
+    await updateHomeSnapshot(uid, db);
 
-    await refreshAllHomeSnapshots(db);
+    // 갱신된 스냅샷 반환
+    const usersCollection = getEnvironmentCollection("users", db);
+    const snapshotDoc = await usersCollection
+      .doc(uid)
+      .collection("cache")
+      .doc("homeSnapshot")
+      .get();
 
-    console.log("✅ [HomeSnapshot] Daily refresh completed");
+    const snapshot = snapshotDoc.data() as HomeSnapshotDocument | undefined;
+
+    if (!snapshot) {
+      throw new HttpsError("not-found", "스냅샷을 찾을 수 없습니다.");
+    }
+
+    console.log(`✅ [HomeSnapshot] Refresh completed for user: ${uid}`);
+    return snapshot;
   }
 );
-
-/**
- * 모든 사용자 홈 스냅샷 갱신
- *
- * @param {FirebaseFirestore.Firestore} db Firestore 인스턴스
- * @return {Promise<void>} 없음
- */
-async function refreshAllHomeSnapshots(
-  db: FirebaseFirestore.Firestore
-): Promise<void> {
-  const usersCollection = getEnvironmentCollection("users", db);
-
-  const usersSnapshot = await usersCollection
-    .where("groups", "!=", null)
-    .limit(1000)
-    .get();
-
-  const userIds = usersSnapshot.docs.map((doc) => doc.id);
-  console.log(`📊 [HomeSnapshot] ${userIds.length} users to refresh`);
-
-  const batchSize = 10;
-  for (let i = 0; i < userIds.length; i += batchSize) {
-    const batch = userIds.slice(i, i + batchSize);
-    await Promise.all(
-      batch.map((uid) => updateHomeSnapshot(uid, db))
-    );
-  }
-
-  console.log(`✅ [HomeSnapshot] Refreshed ${userIds.length} users`);
-}

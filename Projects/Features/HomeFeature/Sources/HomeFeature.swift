@@ -104,8 +104,10 @@ extension Home {
       }
 
       public enum Internal: Sendable {
-        /// 홈 스냅샷 조회
+        /// 홈 스냅샷 조회 (캐시된 데이터)
         case fetchHomeSnapshot
+        /// 홈 스냅샷 갱신 (서버에서 새로 생성)
+        case refreshHomeSnapshot
         /// 홈 스냅샷 응답
         case homeSnapshotResponse(Result<HomeSnapshotDocument, Error>)
         /// 응답 필요 섹션으로 스크롤
@@ -130,14 +132,16 @@ extension Home {
         case .view(let viewAction):
           switch viewAction {
           case .onAppear:
-            // 매번 최신 데이터로 갱신 (기존 데이터 유지하며 백그라운드 갱신)
+            // 첫 로드 표시
             if !state.hasLoadedOnce {
               state.hasLoadedOnce = true
             }
+            // 캐시된 스냅샷 먼저 조회 → 오늘자 아니면 서버에서 갱신
             return .send(.internal(.fetchHomeSnapshot))
 
           case .refreshTriggered:
-            return .send(.internal(.fetchHomeSnapshot))
+            // Pull-to-refresh는 항상 서버에서 새로 조회
+            return .send(.internal(.refreshHomeSnapshot))
 
           case .todayPromiseTapped(let promise):
             // 즉시 이동 (캐시 hit면 전달, miss면 nil로 전달 → Detail에서 로드)
@@ -203,6 +207,36 @@ extension Home {
             return .run { [promiseClient] send in
               do {
                 let snapshot = try await promiseClient.getHomeSnapshot()
+
+                // 스냅샷이 오늘자인지 확인 (KST 기준)
+                if snapshot.meta.isUpdatedToday {
+                  // 오늘자 스냅샷이면 바로 사용
+                  await send(.internal(.homeSnapshotResponse(.success(snapshot))))
+                } else {
+                  // 오늘자가 아니면 서버에서 새로 갱신
+                  await send(.internal(.refreshHomeSnapshot))
+                }
+              } catch {
+                // 캐시 조회 실패 시 서버에서 새로 갱신
+                await send(.internal(.refreshHomeSnapshot))
+              }
+            }
+
+          case .refreshHomeSnapshot:
+            // 기존 데이터가 없을 때만 로딩 상태 표시 (깜빡임 방지)
+            if state.snapshotState.value == nil {
+              state.snapshotState = .loading
+            }
+
+            // 그룹이 없으면 빈 스냅샷 반환
+            guard !state.currentUser.groups.isEmpty else {
+              state.snapshotState = .loaded(.empty)
+              return .none
+            }
+
+            return .run { [promiseClient] send in
+              do {
+                let snapshot = try await promiseClient.refreshHomeSnapshot()
                 await send(.internal(.homeSnapshotResponse(.success(snapshot))))
               } catch {
                 await send(.internal(.homeSnapshotResponse(.failure(error))))
