@@ -109,6 +109,10 @@ public struct PromiseClient: Sendable {
   /// 홈화면 스냅샷 조회 (캐시된 데이터)
   public var getHomeSnapshot: @Sendable () async throws -> HomeSnapshotDocument
 
+  /// 홈화면 스냅샷 갱신 (Firebase Functions 호출)
+  /// 하루 첫 진입 시 또는 Pull-to-refresh 시 호출
+  public var refreshHomeSnapshot: @Sendable () async throws -> HomeSnapshotDocument
+
   /// 그룹의 활성 약속 실시간 구독
   public var subscribeToPromises: @Sendable (_ groupId: String, _ limit: Int) -> AsyncStream<[PromiseModel]> = { _, _ in AsyncStream { _ in } }
 
@@ -180,6 +184,10 @@ extension PromiseClient: TestDependencyKey {
     },
     getHomeSnapshot: {
       try await Task.sleep(for: .seconds(0.3))
+      return .empty
+    },
+    refreshHomeSnapshot: {
+      try await Task.sleep(for: .seconds(0.5))
       return .empty
     },
     subscribeToPromises: { _, _ in
@@ -259,6 +267,9 @@ extension PromiseClient: DependencyKey {
       },
       getHomeSnapshot: {
         try await dataSource.getHomeSnapshot()
+      },
+      refreshHomeSnapshot: {
+        try await dataSource.refreshHomeSnapshot()
       },
       subscribeToPromises: { groupId, limit in
         dataSource.subscribeToActivePromises(groupId: groupId, limit: limit)
