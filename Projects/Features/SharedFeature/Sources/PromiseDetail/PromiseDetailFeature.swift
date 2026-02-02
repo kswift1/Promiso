@@ -51,8 +51,19 @@ extension PromiseDetail {
         self.groupMembers = groupMembers
       }
 
+      /// 약속 호스트 여부
       var isHost: Bool {
         promise.isHost(userId: currentUserId)
+      }
+
+      /// 그룹 호스트 여부
+      var isGroupHost: Bool {
+        promise.group?.createdBy == currentUserId
+      }
+
+      /// 관리 권한 여부 (약속 호스트 또는 그룹 호스트)
+      var canManage: Bool {
+        isHost || isGroupHost
       }
 
       var myVoteStatus: VoteStatus {
@@ -63,9 +74,9 @@ extension PromiseDetail {
         promise.responseStatus(currentUserId: currentUserId, totalGroupMembers: groupMembers?.count)
       }
 
-      /// 수정 가능 여부 (호스트 && 시작 전)
+      /// 수정 가능 여부 (관리 권한 && 시작 전)
       var canEdit: Bool {
-        isHost && promise.startAt > Date()
+        canManage && promise.startAt > Date()
       }
 
     }

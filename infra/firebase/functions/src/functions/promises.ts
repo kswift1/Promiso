@@ -348,12 +348,23 @@ export const updatePromise = onCall<UpdatePromiseRequest>(
       );
     }
 
-    // 4. 호스트 권한 확인
+    // 4. 호스트 권한 확인 (약속 호스트 또는 그룹 호스트)
     const hostId = promiseData.hostId as string;
-    if (hostId !== userId) {
+    const groupId = promiseData.groupId as string;
+
+    // 그룹 정보 조회하여 그룹 호스트 확인
+    const groupRef = db.collection("groups").doc(groupId);
+    const groupDoc = await groupRef.get();
+    const groupData = groupDoc.data();
+    const groupHostId = groupData?.createdBy as string | undefined;
+
+    const isPromiseHost = hostId === userId;
+    const isGroupHost = groupHostId === userId;
+
+    if (!isPromiseHost && !isGroupHost) {
       throw new HttpsError(
         "permission-denied",
-        "호스트만 약속을 수정할 수 있습니다",
+        "약속 호스트 또는 그룹 호스트만 약속을 수정할 수 있습니다",
       );
     }
 
@@ -512,15 +523,27 @@ export const deletePromise = onCall<DeletePromiseRequest>(
       );
     }
 
-    // 4. 호스트 권한 확인
+    // 4. 호스트 권한 확인 (약속 호스트 또는 그룹 호스트)
     const hostId = promiseData.hostId;
     if (typeof hostId !== "string") {
       throw new HttpsError("internal", "잘못된 hostId 형식입니다");
     }
-    if (hostId !== userId) {
+
+    const groupId = promiseData.groupId as string;
+
+    // 그룹 정보 조회하여 그룹 호스트 확인
+    const groupRef = db.collection("groups").doc(groupId);
+    const groupDoc = await groupRef.get();
+    const groupData = groupDoc.data();
+    const groupHostId = groupData?.createdBy as string | undefined;
+
+    const isPromiseHost = hostId === userId;
+    const isGroupHost = groupHostId === userId;
+
+    if (!isPromiseHost && !isGroupHost) {
       throw new HttpsError(
         "permission-denied",
-        "호스트만 약속을 삭제할 수 있습니다",
+        "약속 호스트 또는 그룹 호스트만 약속을 삭제할 수 있습니다",
       );
     }
 

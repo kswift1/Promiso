@@ -328,7 +328,7 @@ extension PromiseDetail {
         }
       }
 
-      if store.isHost {
+      if store.canManage {
         ToolbarItem(placement: .topBarTrailing) {
           Menu {
             if store.canEdit {
@@ -337,12 +337,12 @@ extension PromiseDetail {
               } label: {
                 Label("약속 수정", systemImage: "pencil")
               }
-            }
 
-            Button(role: .destructive) {
-              store.send(.view(.deleteTapped))
-            } label: {
-              Label("약속 삭제", systemImage: "trash")
+              Button(role: .destructive) {
+                store.send(.view(.deleteTapped))
+              } label: {
+                Label("약속 삭제", systemImage: "trash")
+              }
             }
           } label: {
             Image(systemName: "ellipsis.circle")
