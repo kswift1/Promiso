@@ -79,74 +79,43 @@ public struct PromisoCalendarEvent: Equatable, Sendable {
   }
 }
 
-// MARK: - Promiso Tag Utilities
+// MARK: - Promiso Calendar URL Utilities
 
 public enum PromisoCalendarTag {
-  /// 태그 정규식 패턴: [Promiso:promiseId:contentHash]
-  public static let pattern = "\\[Promiso:([^:]+):([^\\]]+)\\]"
+  /// URL 스킴: promiso://promise/{promiseId}?hash={contentHash}
+  public static let scheme = "promiso"
+  public static let host = "promise"
 
-  /// notes에서 Promiso 태그 파싱
-  public static func parse(from notes: String?) -> (promiseId: String, contentHash: String)? {
-    guard let notes else { return nil }
-
-    guard let regex = try? NSRegularExpression(pattern: pattern),
-          let match = regex.firstMatch(
-            in: notes,
-            range: NSRange(notes.startIndex..., in: notes)
-          ) else {
+  /// URL에서 Promiso 정보 파싱
+  public static func parse(from url: URL?) -> (promiseId: String, contentHash: String)? {
+    guard let url,
+          url.scheme == scheme,
+          url.host == host else {
       return nil
     }
 
-    guard let promiseIdRange = Range(match.range(at: 1), in: notes),
-          let hashRange = Range(match.range(at: 2), in: notes) else {
+    // path: /{promiseId}
+    let promiseId = url.lastPathComponent
+    guard !promiseId.isEmpty else { return nil }
+
+    // query: hash={contentHash}
+    guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+          let hashItem = components.queryItems?.first(where: { $0.name == "hash" }),
+          let contentHash = hashItem.value,
+          !contentHash.isEmpty else {
       return nil
     }
 
-    return (String(notes[promiseIdRange]), String(notes[hashRange]))
+    return (promiseId, contentHash)
   }
 
-  /// Promiso 태그 생성
-  public static func createTag(promiseId: String, contentHash: String) -> String {
-    "[Promiso:\(promiseId):\(contentHash)]"
-  }
-
-  /// notes에 Promiso 태그 추가/업데이트 (기존 사용자 메모 보존)
-  public static func updateNotes(existingNotes: String?, promiseId: String, contentHash: String) -> String {
-    let tag = createTag(promiseId: promiseId, contentHash: contentHash)
-
-    guard let existingNotes, !existingNotes.isEmpty else {
-      return tag
-    }
-
-    // 기존 태그가 있으면 교체
-    if let regex = try? NSRegularExpression(pattern: pattern) {
-      let range = NSRange(existingNotes.startIndex..., in: existingNotes)
-      if regex.firstMatch(in: existingNotes, range: range) != nil {
-        let updated = regex.stringByReplacingMatches(
-          in: existingNotes,
-          range: range,
-          withTemplate: tag
-        )
-        return updated
-      }
-    }
-
-    // 기존 태그 없으면 끝에 추가
-    return "\(existingNotes)\n\n\(tag)"
-  }
-
-  /// notes에서 Promiso 태그 제거하고 사용자 메모만 반환
-  public static func extractUserNotes(from notes: String?) -> String? {
-    guard let notes else { return nil }
-
-    guard let regex = try? NSRegularExpression(pattern: pattern) else {
-      return notes
-    }
-
-    let range = NSRange(notes.startIndex..., in: notes)
-    let cleaned = regex.stringByReplacingMatches(in: notes, range: range, withTemplate: "")
-      .trimmingCharacters(in: .whitespacesAndNewlines)
-
-    return cleaned.isEmpty ? nil : cleaned
+  /// Promiso URL 생성
+  public static func createURL(promiseId: String, contentHash: String) -> URL? {
+    var components = URLComponents()
+    components.scheme = scheme
+    components.host = host
+    components.path = "/\(promiseId)"
+    components.queryItems = [URLQueryItem(name: "hash", value: contentHash)]
+    return components.url
   }
 }

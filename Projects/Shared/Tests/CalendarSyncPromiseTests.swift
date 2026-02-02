@@ -197,141 +197,61 @@ struct ContentHashTests {
   }
 }
 
-// MARK: - Tag Parsing Tests
+// MARK: - URL Parsing Tests
 
-@Suite("PromisoCalendarTag 파싱 테스트")
-struct TagParsingTests {
+@Suite("PromisoCalendarTag URL 테스트")
+struct URLTests {
 
-  @Test("태그 생성")
-  func createTag() {
-    let tag = PromisoCalendarTag.createTag(promiseId: "abc123", contentHash: "12345678")
-    #expect(tag == "[Promiso:abc123:12345678]")
+  @Test("URL 생성")
+  func createURL() {
+    let url = PromisoCalendarTag.createURL(promiseId: "abc123", contentHash: "12345678")
+    #expect(url?.absoluteString == "promiso://promise/abc123?hash=12345678")
   }
 
-  @Test("태그 파싱 성공")
-  func parseTagSuccess() {
-    let notes = "[Promiso:abc123:12345678]"
-    let parsed = PromisoCalendarTag.parse(from: notes)
+  @Test("URL 파싱 성공")
+  func parseURLSuccess() {
+    let url = URL(string: "promiso://promise/abc123?hash=12345678")
+    let parsed = PromisoCalendarTag.parse(from: url)
 
     #expect(parsed?.promiseId == "abc123")
     #expect(parsed?.contentHash == "12345678")
   }
 
-  @Test("사용자 메모와 함께 있는 태그 파싱")
-  func parseTagWithUserNotes() {
-    let notes = "사용자 메모입니다.\n준비물: 노트북\n\n[Promiso:abc123:12345678]"
-    let parsed = PromisoCalendarTag.parse(from: notes)
-
-    #expect(parsed?.promiseId == "abc123")
-    #expect(parsed?.contentHash == "12345678")
-  }
-
-  @Test("태그 없는 notes 파싱 실패")
-  func parseTagFailure() {
-    let notes = "일반 메모입니다."
-    let parsed = PromisoCalendarTag.parse(from: notes)
+  @Test("잘못된 스킴 파싱 실패")
+  func parseWrongScheme() {
+    let url = URL(string: "https://promise/abc123?hash=12345678")
+    let parsed = PromisoCalendarTag.parse(from: url)
 
     #expect(parsed == nil)
   }
 
-  @Test("nil notes 파싱 실패")
-  func parseNilNotes() {
+  @Test("잘못된 호스트 파싱 실패")
+  func parseWrongHost() {
+    let url = URL(string: "promiso://other/abc123?hash=12345678")
+    let parsed = PromisoCalendarTag.parse(from: url)
+
+    #expect(parsed == nil)
+  }
+
+  @Test("hash 없는 URL 파싱 실패")
+  func parseURLWithoutHash() {
+    let url = URL(string: "promiso://promise/abc123")
+    let parsed = PromisoCalendarTag.parse(from: url)
+
+    #expect(parsed == nil)
+  }
+
+  @Test("nil URL 파싱 실패")
+  func parseNilURL() {
     let parsed = PromisoCalendarTag.parse(from: nil)
     #expect(parsed == nil)
   }
 
-  @Test("빈 notes 파싱 실패")
-  func parseEmptyNotes() {
-    let parsed = PromisoCalendarTag.parse(from: "")
+  @Test("빈 promiseId 파싱 실패")
+  func parseEmptyPromiseId() {
+    let url = URL(string: "promiso://promise/?hash=12345678")
+    let parsed = PromisoCalendarTag.parse(from: url)
+
     #expect(parsed == nil)
-  }
-}
-
-// MARK: - Tag Update Tests
-
-@Suite("PromisoCalendarTag 업데이트 테스트")
-struct TagUpdateTests {
-
-  @Test("빈 notes에 태그 추가")
-  func updateEmptyNotes() {
-    let result = PromisoCalendarTag.updateNotes(
-      existingNotes: nil,
-      promiseId: "abc123",
-      contentHash: "12345678"
-    )
-
-    #expect(result == "[Promiso:abc123:12345678]")
-  }
-
-  @Test("기존 태그 교체")
-  func replaceExistingTag() {
-    let existingNotes = "[Promiso:abc123:oldHash]"
-    let result = PromisoCalendarTag.updateNotes(
-      existingNotes: existingNotes,
-      promiseId: "abc123",
-      contentHash: "newHash1"
-    )
-
-    #expect(result == "[Promiso:abc123:newHash1]")
-  }
-
-  @Test("사용자 메모 보존하며 태그 교체")
-  func replaceTagPreservingUserNotes() {
-    let existingNotes = "사용자 메모\n\n[Promiso:abc123:oldHash]"
-    let result = PromisoCalendarTag.updateNotes(
-      existingNotes: existingNotes,
-      promiseId: "abc123",
-      contentHash: "newHash1"
-    )
-
-    #expect(result == "사용자 메모\n\n[Promiso:abc123:newHash1]")
-  }
-
-  @Test("태그 없는 notes에 태그 추가")
-  func addTagToExistingNotes() {
-    let existingNotes = "사용자 메모"
-    let result = PromisoCalendarTag.updateNotes(
-      existingNotes: existingNotes,
-      promiseId: "abc123",
-      contentHash: "12345678"
-    )
-
-    #expect(result == "사용자 메모\n\n[Promiso:abc123:12345678]")
-  }
-}
-
-// MARK: - User Notes Extraction Tests
-
-@Suite("사용자 메모 추출 테스트")
-struct UserNotesExtractionTests {
-
-  @Test("태그만 있는 notes에서 사용자 메모 추출")
-  func extractFromTagOnly() {
-    let notes = "[Promiso:abc123:12345678]"
-    let userNotes = PromisoCalendarTag.extractUserNotes(from: notes)
-
-    #expect(userNotes == nil)
-  }
-
-  @Test("사용자 메모와 태그가 있는 notes에서 추출")
-  func extractFromNotesWithTag() {
-    let notes = "준비물: 노트북\n회의 안건 정리\n\n[Promiso:abc123:12345678]"
-    let userNotes = PromisoCalendarTag.extractUserNotes(from: notes)
-
-    #expect(userNotes == "준비물: 노트북\n회의 안건 정리")
-  }
-
-  @Test("태그 없는 notes는 그대로 반환")
-  func extractFromNotesWithoutTag() {
-    let notes = "일반 메모입니다."
-    let userNotes = PromisoCalendarTag.extractUserNotes(from: notes)
-
-    #expect(userNotes == "일반 메모입니다.")
-  }
-
-  @Test("nil notes에서 추출")
-  func extractFromNilNotes() {
-    let userNotes = PromisoCalendarTag.extractUserNotes(from: nil)
-    #expect(userNotes == nil)
   }
 }

@@ -151,7 +151,7 @@ extension CalendarSyncClient: DependencyKey {
 
         // 6. 추가/업데이트 처리
         for promise in filteredPromises {
-          let notes = PromisoCalendarTag.createTag(
+          let url = PromisoCalendarTag.createURL(
             promiseId: promise.id,
             contentHash: promise.contentHash
           )
@@ -162,29 +162,16 @@ extension CalendarSyncClient: DependencyKey {
             startDate: promise.startAt,
             endDate: promise.endAt,
             location: promise.location,
-            notes: notes
+            url: url
           )
 
           if let existing = existingEventMap[promise.id] {
             // 이미 존재 → 해시 비교하여 업데이트 필요 여부 확인
             if existing.contentHash != promise.contentHash {
               do {
-                let updatedNotes = PromisoCalendarTag.updateNotes(
-                  existingNotes: existing.userNotes,
-                  promiseId: promise.id,
-                  contentHash: promise.contentHash
-                )
-                let updatedEvent = NewCalendarEvent(
-                  promiseId: promise.id,
-                  title: promise.calendarTitle,
-                  startDate: promise.startAt,
-                  endDate: promise.endAt,
-                  location: promise.location,
-                  notes: updatedNotes
-                )
                 try await eventKitClient.updateEvent(
                   existing.eventIdentifier,
-                  updatedEvent,
+                  newEvent,
                   existing.userNotes
                 )
                 updatedCount += 1
@@ -256,11 +243,11 @@ extension CalendarSyncClient: DependencyKey {
         }
 
         // 캘린더에 추가
-        let notes = PromisoCalendarTag.createTag(
+        let url = PromisoCalendarTag.createURL(
           promiseId: promise.id,
           contentHash: promise.contentHash
         )
-        AppLogger.calendar.debug("➕ [AddPromise] 태그 생성: \(notes)")
+        AppLogger.calendar.debug("➕ [AddPromise] URL 생성: \(String(describing: url))")
 
         let newEvent = NewCalendarEvent(
           promiseId: promise.id,
@@ -268,7 +255,7 @@ extension CalendarSyncClient: DependencyKey {
           startDate: promise.startAt,
           endDate: promise.endAt,
           location: promise.location,
-          notes: notes
+          url: url
         )
         AppLogger.calendar.debug("➕ [AddPromise] 이벤트 생성: \(newEvent.title), \(newEvent.startDate)")
 

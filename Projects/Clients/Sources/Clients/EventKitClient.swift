@@ -91,7 +91,8 @@ public struct NewCalendarEvent: Equatable, Sendable {
   public let startDate: Date
   public let endDate: Date?
   public let location: String?
-  public let notes: String?
+  /// Promiso 식별 URL (promiso://promise/{id}?hash={hash})
+  public let url: URL?
 
   public init(
     promiseId: String,
@@ -99,14 +100,14 @@ public struct NewCalendarEvent: Equatable, Sendable {
     startDate: Date,
     endDate: Date? = nil,
     location: String? = nil,
-    notes: String? = nil
+    url: URL? = nil
   ) {
     self.promiseId = promiseId
     self.title = title
     self.startDate = startDate
     self.endDate = endDate
     self.location = location
-    self.notes = notes
+    self.url = url
   }
 }
 
@@ -286,7 +287,7 @@ extension EventKitClient: DependencyKey {
         event.startDate = newEvent.startDate
         event.endDate = newEvent.endDate ?? newEvent.startDate.addingTimeInterval(3600)
         event.location = newEvent.location
-        event.notes = newEvent.notes
+        event.url = newEvent.url  // Promiso 식별 URL
         event.calendar = defaultCalendar
 
         // 4. 알림 추가 (30분 전)
@@ -330,13 +331,8 @@ extension EventKitClient: DependencyKey {
         event.startDate = newEvent.startDate
         event.endDate = newEvent.endDate ?? newEvent.startDate.addingTimeInterval(3600)
         event.location = newEvent.location
-
-        // notes 업데이트 (사용자 메모 보존)
-        if let userNotes = preserveUserNotes, !userNotes.isEmpty {
-          event.notes = "\(userNotes)\n\n\(newEvent.notes ?? "")"
-        } else {
-          event.notes = newEvent.notes
-        }
+        event.url = newEvent.url  // Promiso 식별 URL 업데이트
+        // notes는 사용자 메모이므로 건드리지 않음
 
         // 5. 저장
         do {
@@ -391,20 +387,18 @@ extension EventKitClient: DependencyKey {
 
         let events = eventStore.events(matching: predicate)
 
-        // 3. Promiso 태그가 있는 이벤트만 필터링 및 파싱
+        // 3. Promiso URL이 있는 이벤트만 필터링 및 파싱
         return events.compactMap { event -> PromisoCalendarEvent? in
           guard let eventId = event.eventIdentifier,
-                let parsed = PromisoCalendarTag.parse(from: event.notes) else {
+                let parsed = PromisoCalendarTag.parse(from: event.url) else {
             return nil
           }
-
-          let userNotes = PromisoCalendarTag.extractUserNotes(from: event.notes)
 
           return PromisoCalendarEvent(
             eventIdentifier: eventId,
             promiseId: parsed.promiseId,
             contentHash: parsed.contentHash,
-            userNotes: userNotes
+            userNotes: event.notes  // 사용자 메모는 notes 필드에 그대로
           )
         }
       },

@@ -123,7 +123,7 @@ struct CalendarSyncClientTests {
 
       // 5. 추가
       for promiseItem in filteredPromises {
-        let notes = PromisoCalendarTag.createTag(
+        let url = PromisoCalendarTag.createURL(
           promiseId: promiseItem.id,
           contentHash: promiseItem.contentHash
         )
@@ -133,7 +133,7 @@ struct CalendarSyncClientTests {
           startDate: promiseItem.startAt,
           endDate: promiseItem.endAt,
           location: promiseItem.location,
-          notes: notes
+          url: url
         )
         _ = try await eventKitClient.addEvent(newEvent)
       }
@@ -170,7 +170,7 @@ struct CalendarSyncClientTests {
       #expect(filteredPromises.first?.id == "promise1")
 
       for promiseItem in filteredPromises {
-        let notes = PromisoCalendarTag.createTag(
+        let url = PromisoCalendarTag.createURL(
           promiseId: promiseItem.id,
           contentHash: promiseItem.contentHash
         )
@@ -180,7 +180,7 @@ struct CalendarSyncClientTests {
           startDate: promiseItem.startAt,
           endDate: promiseItem.endAt,
           location: promiseItem.location,
-          notes: notes
+          url: url
         )
         _ = try await eventKitClient.addEvent(newEvent)
       }
@@ -262,8 +262,7 @@ struct CalendarSyncClientTests {
         if let existing = existingEventMap[promiseItem.id] {
           // 해시 다르면 업데이트
           if existing.contentHash != promiseItem.contentHash {
-            let updatedNotes = PromisoCalendarTag.updateNotes(
-              existingNotes: existing.userNotes,
+            let updatedURL = PromisoCalendarTag.createURL(
               promiseId: promiseItem.id,
               contentHash: promiseItem.contentHash
             )
@@ -273,7 +272,7 @@ struct CalendarSyncClientTests {
               startDate: promiseItem.startAt,
               endDate: promiseItem.endAt,
               location: promiseItem.location,
-              notes: updatedNotes
+              url: updatedURL
             )
             try await eventKitClient.updateEvent(
               existing.eventIdentifier,
@@ -378,23 +377,31 @@ struct CalendarSyncClientTests {
       for promiseItem in filteredPromises {
         if let existing = existingEventMap[promiseItem.id] {
           if existing.contentHash != promiseItem.contentHash {
+            let updateURL = PromisoCalendarTag.createURL(
+              promiseId: promiseItem.id,
+              contentHash: promiseItem.contentHash
+            )
             try await eventKitClient.updateEvent(existing.eventIdentifier, NewCalendarEvent(
               promiseId: promiseItem.id,
               title: promiseItem.calendarTitle,
               startDate: promiseItem.startAt,
               endDate: promiseItem.endAt,
               location: promiseItem.location,
-              notes: nil
+              url: updateURL
             ), nil)
           }
         } else {
+          let addURL = PromisoCalendarTag.createURL(
+            promiseId: promiseItem.id,
+            contentHash: promiseItem.contentHash
+          )
           _ = try await eventKitClient.addEvent(NewCalendarEvent(
             promiseId: promiseItem.id,
             title: promiseItem.calendarTitle,
             startDate: promiseItem.startAt,
             endDate: promiseItem.endAt,
             location: promiseItem.location,
-            notes: nil
+            url: addURL
           ))
         }
       }
@@ -446,7 +453,7 @@ struct RealTimeSyncTests {
         return
       }
 
-      let notes = PromisoCalendarTag.createTag(
+      let url = PromisoCalendarTag.createURL(
         promiseId: promise.id,
         contentHash: promise.contentHash
       )
@@ -456,7 +463,7 @@ struct RealTimeSyncTests {
         startDate: promise.startAt,
         endDate: promise.endAt,
         location: promise.location,
-        notes: notes
+        url: url
       )
       _ = try await eventKitClient.addEvent(newEvent)
 
@@ -489,13 +496,17 @@ struct RealTimeSyncTests {
       }
 
       // 도달하지 않아야 함
+      let addURL = PromisoCalendarTag.createURL(
+        promiseId: promise.id,
+        contentHash: promise.contentHash
+      )
       _ = try await eventKitClient.addEvent(NewCalendarEvent(
         promiseId: promise.id,
         title: promise.calendarTitle,
         startDate: promise.startAt,
         endDate: promise.endAt,
         location: promise.location,
-        notes: nil
+        url: addURL
       ))
     }
   }
