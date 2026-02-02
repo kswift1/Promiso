@@ -393,11 +393,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
     let result = try await functions.httpsCallable(FirebaseFunctionNames.refreshHomeSnapshot).call()
 
     guard let data = result.data as? [String: Any] else {
-      throw NSError(
-        domain: "PromiseRemoteDataSource",
-        code: -1,
-        userInfo: [NSLocalizedDescriptionKey: "스냅샷 갱신 응답이 올바르지 않습니다"]
-      )
+      throw PromiseClientError.invalidData("스냅샷 갱신 응답이 올바르지 않습니다")
     }
 
     // JSON 변환
