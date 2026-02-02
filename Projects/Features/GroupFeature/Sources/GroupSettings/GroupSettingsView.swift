@@ -256,12 +256,26 @@ extension GroupSettings {
 }
 
 private struct NotificationSettingsView: View {
-  let store: StoreOf<GroupSettings.Feature>
+  @Bindable var store: StoreOf<GroupSettings.Feature>
   @State private var activeTooltip: NotificationTooltip?
+  @Environment(\.scenePhase) private var scenePhase
 
   var body: some View {
     ScrollView {
       VStack(spacing: 16) {
+        // 시스템 권한 미결정 (아직 요청 안 함)
+        if store.systemAuthStatus == .notDetermined {
+          notificationPermissionRequestBanner
+        }
+        // 시스템 권한 거부
+        else if store.systemAuthStatus == .denied {
+          systemNotificationDeniedBanner
+        }
+        // 시스템 권한 허용 (authorized, provisional, ephemeral) + 앱 알림 꺼짐
+        else if isNotificationEnabled(store.systemAuthStatus) && !store.appLevelNotificationEnabled {
+          appNotificationDisabledBanner
+        }
+
         groupNotificationSection
         promiseNotificationSection
         groupActivityNotificationSection
@@ -272,6 +286,110 @@ private struct NotificationSettingsView: View {
     }
     .navigationTitle("알림 설정")
     .navigationBarTitleDisplayMode(.inline)
+    .onAppear {
+      refreshNotificationStatus()
+    }
+    .onChange(of: scenePhase) { oldPhase, newPhase in
+      if newPhase == .active {
+        refreshNotificationStatus()
+      }
+    }
+  }
+
+  private func refreshNotificationStatus() {
+    store.send(.view(.onAppear))
+  }
+
+  private var notificationPermissionRequestBanner: some View {
+    VStack(alignment: .leading, spacing: 12) {
+      HStack(spacing: 8) {
+        Image(systemName: "bell.badge.fill")
+          .font(.system(size: 16))
+          .foregroundStyle(Color.pmindigo.n500)
+
+        Text("알림을 받으려면 권한 허용이 필요해요")
+          .font(.system(size: 14))
+          .foregroundStyle(Color.pmtext.primary)
+
+        Spacer()
+      }
+
+      Button {
+        store.send(.view(.requestNotificationPermission))
+      } label: {
+        HStack {
+          Image(systemName: "bell")
+            .font(.system(size: 12))
+          Text("알림 권한 허용하기")
+            .font(.system(size: 14, weight: .medium))
+        }
+        .foregroundStyle(.white)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(Color.pmindigo.n500)
+        .clipShape(Capsule())
+      }
+    }
+    .padding(16)
+    .adaptiveGlassCard()
+  }
+
+  private var systemNotificationDeniedBanner: some View {
+    VStack(alignment: .leading, spacing: 12) {
+      HStack(spacing: 8) {
+        Image(systemName: "exclamationmark.triangle.fill")
+          .font(.system(size: 16))
+          .foregroundStyle(Color.pmerror.n500)
+
+        Text("iOS 알림 권한이 거부되어 알림을 받을 수 없어요")
+          .font(.system(size: 14))
+          .foregroundStyle(Color.pmtext.primary)
+
+        Spacer()
+      }
+
+      Button {
+        if let url = URL(string: UIApplication.openSettingsURLString) {
+          UIApplication.shared.open(url)
+        }
+      } label: {
+        HStack {
+          Image(systemName: "gear")
+            .font(.system(size: 12))
+          Text("iOS 설정 열기")
+            .font(.system(size: 14, weight: .medium))
+        }
+        .foregroundStyle(.white)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(Color.pmerror.n500)
+        .clipShape(Capsule())
+      }
+    }
+    .padding(16)
+    .adaptiveGlassCard()
+  }
+
+  private var appNotificationDisabledBanner: some View {
+    VStack(alignment: .leading, spacing: 12) {
+      HStack(spacing: 8) {
+        Image(systemName: "exclamationmark.triangle.fill")
+          .font(.system(size: 16))
+          .foregroundStyle(Color.orange)
+
+        Text("앱 전체 알림이 꺼져있어 그룹 알림을 받을 수 없어요")
+          .font(.system(size: 14))
+          .foregroundStyle(Color.pmtext.primary)
+
+        Spacer()
+      }
+
+      Text("그룹 알림을 켜면 앱 전체 알림도 함께 켜집니다")
+        .font(.system(size: 12))
+        .foregroundStyle(Color.pmtext.secondary)
+    }
+    .padding(16)
+    .adaptiveGlassCard()
   }
 
   private var groupNotificationSection: some View {
@@ -289,7 +407,8 @@ private struct NotificationSettingsView: View {
           isOn: Binding(
             get: { store.notificationSettings.enabled },
             set: { store.send(.view(.groupNotificationsChanged($0))) }
-          )
+          ),
+          disabled: !isNotificationEnabled(store.systemAuthStatus) || !store.appLevelNotificationEnabled
         )
       }
       .adaptiveGlassCard()
@@ -365,7 +484,8 @@ private struct NotificationSettingsView: View {
     systemImage: String,
     tooltip: NotificationTooltip,
     activeTooltip: Binding<NotificationTooltip?>,
-    isOn: Binding<Bool>
+    isOn: Binding<Bool>,
+    disabled: Bool = false
   ) -> some View {
     HStack(spacing: 12) {
       Image(systemName: systemImage)
@@ -382,6 +502,7 @@ private struct NotificationSettingsView: View {
       Toggle("", isOn: isOn)
         .labelsHidden()
         .toggleStyle(.switch)
+        .disabled(disabled)
     }
     .padding(.horizontal, 16)
     .padding(.vertical, 12)
@@ -392,10 +513,14 @@ private struct NotificationSettingsView: View {
     activeTooltip: Binding<NotificationTooltip?>,
     isOn: Binding<Bool>
   ) -> some View {
-    HStack(alignment: .center, spacing: 12) {
+    let isDisabled = !isNotificationEnabled(store.systemAuthStatus)
+                  || !store.appLevelNotificationEnabled
+                  || !store.notificationSettings.enabled
+
+    return HStack(alignment: .center, spacing: 12) {
       VStack(alignment: .leading, spacing: 4) {
         Text(key.title)
-          .foregroundStyle(.primary)
+          .foregroundStyle(isDisabled ? .secondary : .primary)
         if let subtitle = key.subtitle {
           Text(subtitle)
             .font(.system(size: 12))
@@ -410,10 +535,19 @@ private struct NotificationSettingsView: View {
       Toggle("", isOn: isOn)
         .labelsHidden()
         .toggleStyle(.switch)
+        .disabled(isDisabled)
     }
-    .disabled(!store.notificationSettings.enabled)
     .padding(.horizontal, 16)
     .padding(.vertical, 12)
+  }
+
+  private func isNotificationEnabled(_ status: NotificationAuthorizationStatus) -> Bool {
+    switch status {
+    case .authorized, .provisional, .ephemeral:
+      return true
+    case .notDetermined, .denied:
+      return false
+    }
   }
 
   private func tooltipButton(

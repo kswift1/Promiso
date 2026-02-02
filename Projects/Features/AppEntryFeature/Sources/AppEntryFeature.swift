@@ -152,18 +152,49 @@ extension AppEntry {
             
           case .profileCheckResponse(let user, let profile):
             if let userModel = profile {
-              // 기존 사용자도 알림 권한 체크 (신규 사용자와 동일한 플로우)
+              // 기존 사용자 → 바로 메인으로 (알림 권한 체크 안 함)
               if state.splash == .visible {
                 state.splash = .animatingOut
               }
-              return .send(.internal(.checkNotificationPermission(userModel)))
+              WidgetDataManager.saveUserId(userModel.id)
+              state.destination = .main(RootTab.Feature.State(currentUser: Shared(value: userModel)))
+              // pending deeplink가 있으면 처리
+              if let deeplink = state.pendingDeeplink {
+                state.pendingDeeplink = nil
+                return routeDeeplink(deeplink)
+              }
             } else {
+              // 신규 사용자 → 프로필 설정으로
               var profileState = ProfileSetup.State()
               profileState.inject(user: user, providerProfileImageURL: state.providerProfileImageURL)
               state.destination = .profile(profileState)
               if state.splash == .visible {
                 state.splash = .animatingOut
               }
+            }
+            return .none
+
+          case .checkNotificationPermission(let userModel):
+            return .run { send in
+              let status = await notificationClient.getAuthorizationStatus()
+              let isAuthorized = status == .authorized
+              await send(.internal(.notificationPermissionChecked(isAuthorized: isAuthorized, user: userModel)))
+            }
+
+          case .notificationPermissionChecked(let isAuthorized, let userModel):
+            if isAuthorized {
+              // 이미 권한 허용됨 → 바로 메인으로
+              WidgetDataManager.saveUserId(userModel.id)
+              state.destination = .main(RootTab.Feature.State(currentUser: Shared(value: userModel)))
+              // pending deeplink가 있으면 처리
+              if let deeplink = state.pendingDeeplink {
+                state.pendingDeeplink = nil
+                return routeDeeplink(deeplink)
+              }
+            } else {
+              // 권한 미허용 → 온보딩 표시
+              state.pendingUserForMain = userModel
+              state.notificationPermission = NotificationPermission.Feature.State()
             }
             return .none
 
