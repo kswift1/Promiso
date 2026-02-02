@@ -181,6 +181,10 @@ export const previewGroup = onCall<PreviewGroupRequest>(
     const groupId = groupDoc.id;
     const groupData = groupDoc.data();
     const memberIds = (groupData.memberIds as string[]) ?? [];
+    const groupName = (groupData.name as string) ?? "";
+    const description = (groupData.description as string | null) ?? null;
+    const imageUrl = (groupData.imageUrl as string | null) ?? null;
+    const maxMembers = (groupData.maxMembers as number) ?? 0;
 
     // 3. 멤버 프로필 정보 조회 (memberIds에서 최대 10명)
     const usersCollection = getEnvironmentCollection("users", db);
@@ -204,9 +208,14 @@ export const previewGroup = onCall<PreviewGroupRequest>(
         };
       });
 
-    // 4. 그룹 ID와 멤버 리스트 반환
+    // 4. 그룹 전체 정보 반환
     return {
       groupId: groupId,
+      groupName: groupName,
+      description: description,
+      imageUrl: imageUrl,
+      maxMembers: maxMembers,
+      memberCount: memberIds.length,
       members: members,
     };
   },

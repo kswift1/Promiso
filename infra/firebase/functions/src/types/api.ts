@@ -98,6 +98,21 @@ export interface PreviewGroupResponse {
   /** 그룹 ID */
   groupId: string;
 
+  /** 그룹 이름 */
+  groupName: string;
+
+  /** 그룹 설명 */
+  description: string | null;
+
+  /** 그룹 이미지 URL */
+  imageUrl: string | null;
+
+  /** 최대 인원 */
+  maxMembers: number;
+
+  /** 현재 인원 */
+  memberCount: number;
+
   /** 멤버 미리보기 리스트 (최대 10명) */
   members: GroupMemberPreview[];
 }

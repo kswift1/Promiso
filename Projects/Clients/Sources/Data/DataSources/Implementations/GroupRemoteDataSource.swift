@@ -216,15 +216,31 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
       throw GroupRemoteDataSourceError.invalidFunctionResponse
     }
 
-    guard let groupId = data["groupId"] as? String else {
+    guard let groupId = data["groupId"] as? String,
+          let groupName = data["groupName"] as? String,
+          let maxMembers = data["maxMembers"] as? Int else {
       throw GroupRemoteDataSourceError.invalidFunctionResponse
     }
 
+    let description = data["description"] as? String
+    let imageUrl = data["imageUrl"] as? String
     let membersData = data["members"] as? [[String: Any]] ?? []
     let members = membersData.compactMap(parseMemberPreview(_:))
 
-    // 그룹 상세 정보 조회
-    let group = try await fetchGroup(groupId: groupId)
+    // Functions 응답으로 GroupModel 생성 (Firestore 읽기 불필요)
+    let group = GroupModel(
+      id: groupId,
+      name: groupName,
+      description: description,
+      imageUrl: imageUrl,
+      memberIds: [], // 미리보기에선 불필요
+      maxMembers: maxMembers,
+      inviteCode: inviteCode.uppercased(),
+      createdBy: "", // 미리보기에선 불필요
+      createdAt: Date(),
+      updatedAt: Date()
+    )
+
     return GroupPreviewModel(group: group, members: members)
   }
 
