@@ -25,6 +25,7 @@ extension CalendarSettings {
     // MARK: - Dependencies
 
     @Dependency(\.eventKitClient) private var eventKitClient
+    @Dependency(\.groupClient) private var groupClient
     @Dependency(\.hapticFeedback) private var hapticFeedback
 
     public init() {}
@@ -35,10 +36,14 @@ extension CalendarSettings {
     public struct State: Equatable {
       public var authorizationStatus: CalendarAuthorizationStatus
       public var isRequestingAccess: Bool
+      public var groups: [UserGroupInfo]
+      public var updatingGroupIds: Set<String>
 
       public init() {
         self.authorizationStatus = .notDetermined
         self.isRequestingAccess = false
+        self.groups = []
+        self.updatingGroupIds = []
       }
     }
 
@@ -54,11 +59,14 @@ extension CalendarSettings {
       case onAppear
       case onSceneActive
       case calendarToggleTapped
+      case groupCalendarSyncToggled(groupId: String, enabled: Bool)
     }
 
     public enum Internal: Equatable, Sendable {
       case authorizationStatusUpdated(CalendarAuthorizationStatus)
       case accessRequestCompleted(Bool)
+      case groupsUpdated([UserGroupInfo])
+      case groupSettingsUpdateCompleted(groupId: String, success: Bool)
     }
 
     // MARK: - Reducer Body
@@ -69,12 +77,26 @@ extension CalendarSettings {
         case .view(.onAppear):
           let status = eventKitClient.authorizationStatus()
           state.authorizationStatus = status
-          return .none
+          return .run { send in
+            do {
+              let groups = try await groupClient.fetchGroupSummaries()
+              await send(.internal(.groupsUpdated(groups)))
+            } catch {
+              // 그룹 로딩 실패 시 빈 배열 유지
+            }
+          }
 
         case .view(.onSceneActive):
           let status = eventKitClient.authorizationStatus()
           state.authorizationStatus = status
-          return .none
+          return .run { send in
+            do {
+              let groups = try await groupClient.fetchGroupSummaries()
+              await send(.internal(.groupsUpdated(groups)))
+            } catch {
+              // 그룹 로딩 실패 시 기존 상태 유지
+            }
+          }
 
         case .view(.calendarToggleTapped):
           let status = state.authorizationStatus
@@ -96,6 +118,26 @@ extension CalendarSettings {
             }
           }
 
+        case .view(.groupCalendarSyncToggled(let groupId, let enabled)):
+          guard let group = state.groups.first(where: { $0.id == groupId }) else {
+            return .none
+          }
+
+          state.updatingGroupIds.insert(groupId)
+
+          var settings = group.notifications ?? GroupNotificationSettings()
+          settings.calendarSync = enabled
+
+          return .run { send in
+            await hapticFeedback.selection()
+            do {
+              try await groupClient.updateGroupNotificationSettings(groupId, settings)
+              await send(.internal(.groupSettingsUpdateCompleted(groupId: groupId, success: true)))
+            } catch {
+              await send(.internal(.groupSettingsUpdateCompleted(groupId: groupId, success: false)))
+            }
+          }
+
         case .internal(.authorizationStatusUpdated(let status)):
           state.authorizationStatus = status
           return .none
@@ -106,6 +148,20 @@ extension CalendarSettings {
           state.authorizationStatus = status
           return .run { _ in
             if granted {
+              await hapticFeedback.success()
+            } else {
+              await hapticFeedback.error()
+            }
+          }
+
+        case .internal(.groupsUpdated(let groups)):
+          state.groups = groups
+          return .none
+
+        case .internal(.groupSettingsUpdateCompleted(let groupId, let success)):
+          state.updatingGroupIds.remove(groupId)
+          return .run { _ in
+            if success {
               await hapticFeedback.success()
             } else {
               await hapticFeedback.error()
@@ -131,6 +187,10 @@ extension CalendarSettings {
         VStack(spacing: 16) {
           calendarAccessSection
           permissionDetailSection
+
+          if store.authorizationStatus.canWriteEvents && !store.groups.isEmpty {
+            groupSyncSection
+          }
         }
         .padding(.horizontal, 16)
         .padding(.top, 12)
@@ -216,7 +276,7 @@ extension CalendarSettings {
           permissionRow(
             icon: "eye",
             title: "읽기",
-            description: "캘린더 일정을 조회하여 약속과 함께 표시합니다.",
+            description: "달력 앱의 일정을 불러와 약속과 함께 표시합니다.",
             isGranted: store.authorizationStatus.canReadEvents
           )
 
@@ -226,7 +286,7 @@ extension CalendarSettings {
           permissionRow(
             icon: "pencil",
             title: "쓰기",
-            description: "약속이 확정되면 달력 앱에도 자동으로 추가합니다.",
+            description: "확정된 약속을 달력 앱에 추가합니다.",
             isGranted: store.authorizationStatus.canWriteEvents
           )
         }
@@ -237,6 +297,92 @@ extension CalendarSettings {
           .foregroundStyle(Color.pmtext.secondary)
           .padding(.horizontal, 4)
       }
+    }
+
+    // MARK: - Group Sync Section
+
+    private var groupSyncSection: some View {
+      VStack(alignment: .leading, spacing: 10) {
+        Text("그룹별 동기화")
+          .font(.system(size: 16, weight: .semibold))
+          .padding(.horizontal, 4)
+
+        VStack(spacing: 0) {
+          ForEach(Array(store.groups.enumerated()), id: \.element.id) { index, group in
+            if index > 0 {
+              Divider()
+                .background(Color.white.opacity(0.12))
+            }
+
+            groupSyncRow(group: group)
+          }
+        }
+        .adaptiveGlassCard()
+
+        Text("그룹별로 확정된 약속을 달력 앱에 추가할지 설정합니다.")
+          .font(.system(size: 12))
+          .foregroundStyle(Color.pmtext.secondary)
+          .padding(.horizontal, 4)
+      }
+    }
+
+    // MARK: - Group Sync Row
+
+    private func groupSyncRow(group: UserGroupInfo) -> some View {
+      let isEnabled = group.notifications?.calendarSync ?? true
+      let isUpdating = store.updatingGroupIds.contains(group.id)
+
+      return HStack(spacing: 12) {
+        // 그룹 이미지
+        if let imageUrl = group.imageUrl, let url = URL(string: imageUrl) {
+          AsyncImage(url: url) { image in
+            image
+              .resizable()
+              .scaledToFill()
+          } placeholder: {
+            groupPlaceholder(name: group.name)
+          }
+          .frame(width: 36, height: 36)
+          .clipShape(Circle())
+        } else {
+          groupPlaceholder(name: group.name)
+        }
+
+        Text(group.name)
+          .font(.subheadline)
+          .fontWeight(.medium)
+          .foregroundStyle(Color.pmtext.primary)
+          .lineLimit(1)
+
+        Spacer()
+
+        if isUpdating {
+          ProgressView()
+            .scaleEffect(0.8)
+        } else {
+          Toggle("", isOn: Binding(
+            get: { isEnabled },
+            set: { newValue in
+              store.send(.view(.groupCalendarSyncToggled(groupId: group.id, enabled: newValue)))
+            }
+          ))
+          .labelsHidden()
+          .tint(Color.pmindigo.n500)
+        }
+      }
+      .padding(.horizontal, 16)
+      .padding(.vertical, 12)
+    }
+
+    private func groupPlaceholder(name: String) -> some View {
+      Circle()
+        .fill(Color.pmindigo.n100)
+        .frame(width: 36, height: 36)
+        .overlay {
+          Text(String(name.prefix(1)))
+            .font(.system(size: 14, weight: .semibold))
+            .foregroundStyle(Color.pmindigo.n600)
+        }
     }
 
     // MARK: - Permission Row
