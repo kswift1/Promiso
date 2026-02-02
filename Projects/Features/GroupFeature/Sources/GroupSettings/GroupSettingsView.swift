@@ -303,28 +303,24 @@ private struct NotificationSettingsView: View {
         .padding(.horizontal, 4)
 
       VStack(spacing: 0) {
-        if store.isProPlan {
-          let promiseKeys: [GroupNotificationPreferenceKey] = [
-            .promiseInvitation,
-            .promiseConfirmed,
-            .promiseCancelled,
-            .promiseUpdated
-          ]
-          ForEach(Array(promiseKeys.enumerated()), id: \.element.rawValue) { index, key in
-            notificationPreferenceRow(
-                key: key,
-                activeTooltip: $activeTooltip,
-                isOn: Binding(
-                get: { GroupNotificationPreferences.value(for: key, in: store.notificationSettings) },
-                set: { store.send(.view(.notificationPreferenceChanged(key, $0))) }
-              )
+        let promiseKeys: [GroupNotificationPreferenceKey] = [
+          .promiseInvitation,
+          .promiseConfirmed,
+          .promiseCancelled,
+          .promiseUpdated
+        ]
+        ForEach(Array(promiseKeys.enumerated()), id: \.element.rawValue) { index, key in
+          notificationPreferenceRow(
+              key: key,
+              activeTooltip: $activeTooltip,
+              isOn: Binding(
+              get: { GroupNotificationPreferences.value(for: key, in: store.notificationSettings) },
+              set: { store.send(.view(.notificationPreferenceChanged(key, $0))) }
             )
-            if index != promiseKeys.count - 1 {
-              dividerLine
-            }
+          )
+          if index != promiseKeys.count - 1 {
+            dividerLine
           }
-        } else {
-          proLockedRow
         }
       }
       .adaptiveGlassCard()
@@ -338,25 +334,21 @@ private struct NotificationSettingsView: View {
         .padding(.horizontal, 4)
 
       VStack(spacing: 0) {
-        if store.isProPlan {
-          let groupKeys: [GroupNotificationPreferenceKey] = [
-            .groupUpdate
-          ]
-          ForEach(Array(groupKeys.enumerated()), id: \.element.rawValue) { index, key in
-            notificationPreferenceRow(
-              key: key,
-              activeTooltip: $activeTooltip,
-              isOn: Binding(
-                get: { GroupNotificationPreferences.value(for: key, in: store.notificationSettings) },
-                set: { store.send(.view(.notificationPreferenceChanged(key, $0))) }
-              )
+        let groupKeys: [GroupNotificationPreferenceKey] = [
+          .groupUpdate
+        ]
+        ForEach(Array(groupKeys.enumerated()), id: \.element.rawValue) { index, key in
+          notificationPreferenceRow(
+            key: key,
+            activeTooltip: $activeTooltip,
+            isOn: Binding(
+              get: { GroupNotificationPreferences.value(for: key, in: store.notificationSettings) },
+              set: { store.send(.view(.notificationPreferenceChanged(key, $0))) }
             )
-            if index != groupKeys.count - 1 {
-              dividerLine
-            }
+          )
+          if index != groupKeys.count - 1 {
+            dividerLine
           }
-        } else {
-          proLockedRow
         }
       }
       .adaptiveGlassCard()
@@ -424,27 +416,6 @@ private struct NotificationSettingsView: View {
     .padding(.vertical, 12)
   }
 
-  private var proLockedRow: some View {
-    HStack(spacing: 12) {
-      Image(systemName: "lock.fill")
-        .font(.system(size: 14, weight: .semibold))
-        .foregroundStyle(Color.pmindigo.n500)
-      Text("프로에서 알림 종류를 선택할 수 있어요")
-        .font(.system(size: 14))
-        .foregroundStyle(.secondary)
-      Spacer()
-      Text("PRO")
-        .font(.system(size: 12, weight: .semibold))
-        .foregroundStyle(Color.pmindigo.n500)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(Color.pmindigo.n500.opacity(0.12))
-        .clipShape(Capsule())
-    }
-    .padding(.horizontal, 16)
-    .padding(.vertical, 12)
-  }
-
   private func tooltipButton(
     for tooltip: NotificationTooltip,
     activeTooltip: Binding<NotificationTooltip?>
@@ -488,16 +459,6 @@ private struct NotificationInfoPopover: View {
       }
 
       notificationPreview(title: tooltip.previewTitle, body: tooltip.previewBody)
-
-      HStack(spacing: 6) {
-        Image(systemName: "bell.badge")
-          .font(.system(size: 12))
-          .foregroundColor(.pmindigo.n500)
-        Text("프로 플랜에서는 알림 종류를 세부 설정할 수 있어요")
-          .font(.system(size: 12))
-          .foregroundColor(.secondary)
-      }
-      .padding(.top, 4)
     }
     .padding(20)
     .background(
