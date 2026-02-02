@@ -718,7 +718,7 @@ private enum NotificationTooltip: Identifiable, Equatable {
       case .promiseUpdated:
         return "영화 관람 변경 📝"
       case .groupUpdate:
-        return "그룹 정보 업데이트 ✨"
+        return "새 멤버 합류 👋"
       case .promiseReminder:
         return "약속 리마인더 ⏰"
       case .attendanceResponse:
@@ -746,7 +746,7 @@ private enum NotificationTooltip: Identifiable, Equatable {
       case .attendanceResponse:
         return "참석 여부가 업데이트됐어요"
       case .groupUpdate:
-        return "대학 친구들 설정이 변경됐어요"
+        return "지민님이 대학 친구들에 들어왔어요"
       }
     }
   }
