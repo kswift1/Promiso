@@ -346,11 +346,9 @@ export const onPromiseWriteUpdateHomeSnapshot = onDocumentWritten(
       }
     }
 
-    // 오늘자 스냅샷이 있는 사용자만 필터링
+    // 오늘자 스냅샷이 있는 사용자만 필터링 (병렬 처리)
     const userIds = Array.from(affectedUserIds);
-    const activeUserIds: string[] = [];
-
-    for (const uid of userIds) {
+    const checkPromises = userIds.map(async (uid) => {
       const snapshotDoc = await usersCollection
         .doc(uid)
         .collection("cache")
@@ -360,10 +358,15 @@ export const onPromiseWriteUpdateHomeSnapshot = onDocumentWritten(
       if (snapshotDoc.exists) {
         const meta = snapshotDoc.data()?.meta as { updatedAt?: string };
         if (isToday(meta?.updatedAt)) {
-          activeUserIds.push(uid);
+          return uid;
         }
       }
-    }
+      return null;
+    });
+
+    const activeUserIds = (await Promise.all(checkPromises)).filter(
+      (id): id is string => id !== null
+    );
 
     if (activeUserIds.length === 0) {
       console.log(
