@@ -104,6 +104,7 @@ extension Settings {
       case dateTimeSettings(DateTimeSettings.Feature)
       case notificationSettings(NotificationSettings.Feature)
       case groupNotificationDetail(GroupNotificationDetail.Feature)
+      case calendarSettings(CalendarSettings.Feature)
       case legalInfo(LegalInfo.Feature)
       case policyView(PolicyView.Feature)
       case appInfo(AppInfo.Feature)
@@ -152,6 +153,8 @@ extension Settings {
       case use24HourFormatChanged(Bool)
       /// 알림 설정 탭
       case notificationSettingsTapped
+      /// 캘린더 설정 탭
+      case calendarSettingsTapped
       /// 약관 및 정책 탭
       case legalInfoTapped
       /// 앱 정보 탭
@@ -264,6 +267,10 @@ extension Settings {
             state.path.append(.notificationSettings(
               NotificationSettings.Feature.State(currentUserId: state.currentUser.userId)
             ))
+            return .run { _ in await hapticFeedback.selection() }
+
+          case .calendarSettingsTapped:
+            state.path.append(.calendarSettings(CalendarSettings.Feature.State()))
             return .run { _ in await hapticFeedback.selection() }
 
           case .legalInfoTapped:
@@ -509,6 +516,8 @@ extension Settings {
           NotificationSettings.RootView(store: store)
         case .groupNotificationDetail(let store):
           GroupNotificationDetail.RootView(store: store)
+        case .calendarSettings(let store):
+          CalendarSettings.RootView(store: store)
         case .legalInfo(let store):
           LegalInfo.RootView(store: store)
         case .policyView(let store):

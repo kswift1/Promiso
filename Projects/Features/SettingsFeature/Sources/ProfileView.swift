@@ -94,6 +94,34 @@ extension Settings {
               .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+
+            Divider()
+              .padding(.leading, 56)
+
+            Button {
+              store.send(.view(.calendarSettingsTapped))
+            } label: {
+              HStack(spacing: 16) {
+                Image(systemName: "calendar")
+                  .font(.body)
+                  .foregroundStyle(Color.pmindigo.n500)
+                  .frame(width: 24, height: 24)
+
+                Text("캘린더 설정")
+                  .font(.body)
+                  .foregroundStyle(Color.pmtext.primary)
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                  .font(.caption)
+                  .foregroundStyle(Color.pmgray.n400)
+              }
+              .padding(.horizontal, 16)
+              .padding(.vertical, 14)
+              .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
           }
           .adaptiveGlassBackground()
           .listRowBackground(Color.clear)
