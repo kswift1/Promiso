@@ -285,13 +285,13 @@ extension EventKitClient: DependencyKey {
         let event = EKEvent(eventStore: eventStore)
         event.title = newEvent.title
         event.startDate = newEvent.startDate
-        event.endDate = newEvent.endDate ?? newEvent.startDate.addingTimeInterval(3600)
+        event.endDate = newEvent.endDate ?? newEvent.startDate.addingTimeInterval(60 * 60)  // 1시간
         event.location = newEvent.location
         event.url = newEvent.url  // Promiso 식별 URL
         event.calendar = defaultCalendar
 
         // 4. 알림 추가 (30분 전)
-        let alarm = EKAlarm(relativeOffset: -1800)
+        let alarm = EKAlarm(relativeOffset: -30 * 60)  // 30분 전
         event.addAlarm(alarm)
 
         // 5. 저장
@@ -329,7 +329,7 @@ extension EventKitClient: DependencyKey {
         // 4. 이벤트 업데이트
         event.title = newEvent.title
         event.startDate = newEvent.startDate
-        event.endDate = newEvent.endDate ?? newEvent.startDate.addingTimeInterval(3600)
+        event.endDate = newEvent.endDate ?? newEvent.startDate.addingTimeInterval(60 * 60)  // 1시간
         event.location = newEvent.location
         event.url = newEvent.url  // Promiso 식별 URL 업데이트
         // notes는 사용자 메모이므로 건드리지 않음
