@@ -180,14 +180,6 @@ struct CreateGroupSuccessView: View {
       .padding(.horizontal, 24)
     }
     .navigationBarBackButtonHidden()
-    .toolbar {
-      ToolbarItem(placement: .topBarTrailing) {
-        Button(action: onConfirm) {
-          Image(systemName: "xmark")
-            .font(.system(size: 16, weight: .semibold))
-        }
-      }
-    }
   }
   
   private func copyCode() {
