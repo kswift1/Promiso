@@ -10,6 +10,8 @@ import PromisoShared
 import Clients
 
 struct CreateGroupSettingsView: View {
+  @Environment(\.scenePhase) private var scenePhase
+
   let groupName: String
   let notificationEnabled: Bool
   let calendarSyncEnabled: Bool
@@ -47,6 +49,12 @@ struct CreateGroupSettingsView: View {
     .navigationBarBackButtonHidden()
     .onAppear {
       onAppear()
+    }
+    .onChange(of: scenePhase) { _, newPhase in
+      // 시스템 설정에서 돌아올 때 권한 상태 새로고침
+      if newPhase == .active {
+        onAppear()
+      }
     }
     .alert(
       "캘린더 권한 안내",
