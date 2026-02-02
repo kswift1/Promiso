@@ -28,48 +28,6 @@ public extension UserDefaultsClient {
   }
 }
 
-// MARK: - Calendar Sync Convenience Methods
-
-public extension UserDefaultsClient {
-  /// 캘린더 이벤트 매핑 조회 (promiseId → eventIdentifier)
-  func getCalendarEventMappings() -> [String: String] {
-    guard let data = UserDefaults.standard.data(forKey: AppConstants.UserDefaults.calendarEventMappings),
-          let mappings = try? JSONDecoder().decode([String: String].self, from: data) else {
-      return [:]
-    }
-    return mappings
-  }
-
-  /// 캘린더 이벤트 매핑 저장
-  func saveCalendarEventMapping(promiseId: String, eventIdentifier: String) {
-    var mappings = getCalendarEventMappings()
-    mappings[promiseId] = eventIdentifier
-    if let data = try? JSONEncoder().encode(mappings) {
-      UserDefaults.standard.set(data, forKey: AppConstants.UserDefaults.calendarEventMappings)
-    }
-  }
-
-  /// 특정 약속이 캘린더에 추가되었는지 확인
-  func isAddedToCalendar(promiseId: String) -> Bool {
-    getCalendarEventMappings()[promiseId] != nil
-  }
-
-  /// 오늘 캘린더 동기화를 했는지 확인
-  func hasCalendarSyncedToday() -> Bool {
-    guard let lastSyncDate = UserDefaults.standard.object(
-      forKey: AppConstants.UserDefaults.lastCalendarSyncDate
-    ) as? Date else {
-      return false
-    }
-    return Calendar.current.isDateInToday(lastSyncDate)
-  }
-
-  /// 캘린더 동기화 완료 표시
-  func setCalendarSyncedToday() {
-    UserDefaults.standard.set(Date(), forKey: AppConstants.UserDefaults.lastCalendarSyncDate)
-  }
-}
-
 // MARK: - Test / Preview
 
 extension UserDefaultsClient: TestDependencyKey {
