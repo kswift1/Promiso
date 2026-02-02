@@ -29,82 +29,166 @@ extension Settings {
       List {
         // MARK: - 프로필 섹션
         Section {
-          profileHeaderRow
-        }
-        .listRowInsets(EdgeInsets())
-        .listRowBackground(Color.clear)
-
-        // MARK: - 계정 섹션
-        Section {
-          menuRow(
-            icon: "person.text.rectangle.fill",
-            title: "계정 정보",
-            action: { store.send(.view(.accountInfoTapped)) }
-          )
-        } header: {
-          Text("계정")
+          Button {
+            store.send(.view(.accountInfoTapped))
+          } label: {
+            profileHeaderRow
+          }
+          .buttonStyle(.plain)
+          .listRowInsets(EdgeInsets())
+          .listRowBackground(Color.clear)
         }
 
-        // MARK: - 표시 섹션
+        // MARK: - 앱 설정 섹션
         Section {
-          Toggle(isOn: Binding(
-            get: { store.use24HourFormat },
-            set: { store.send(.view(.use24HourFormatChanged($0))) }
-          )) {
-            HStack(spacing: 12) {
-              Image(systemName: "clock")
-                .font(.body)
-                .foregroundStyle(Color.pmindigo.n500)
-                .frame(width: 24, height: 24)
+          VStack(spacing: 0) {
+            Button {
+              store.send(.view(.dateTimeSettingsTapped))
+            } label: {
+              HStack(spacing: 16) {
+                Image(systemName: "clock")
+                  .font(.body)
+                  .foregroundStyle(Color.pmindigo.n500)
+                  .frame(width: 24, height: 24)
 
-              VStack(alignment: .leading, spacing: 2) {
-                Text("24시간 형식")
+                Text("날짜 시간 표시")
                   .font(.body)
                   .foregroundStyle(Color.pmtext.primary)
 
-                Text(store.use24HourFormat ? "예: 14:30" : "예: 오후 2:30")
-                  .font(.caption)
-                  .foregroundStyle(Color.pmtext.secondary)
-              }
-            }
-          }
-          .tint(Color.pmindigo.n500)
-        } header: {
-          Text("표시")
-        } footer: {
-          Text("앱 전체에서 사용되는 시간 표시 형식을 설정합니다.\n앱을 재시작하면 적용됩니다.")
-        }
+                Spacer()
 
-        // MARK: - 알림 섹션
-        Section {
-          menuRow(
-            icon: "bell.fill",
-            title: "알림 설정",
-            action: { store.send(.view(.notificationSettingsTapped)) }
-          )
+                Image(systemName: "chevron.right")
+                  .font(.caption)
+                  .foregroundStyle(Color.pmgray.n400)
+              }
+              .padding(.horizontal, 16)
+              .padding(.vertical, 14)
+              .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            Divider()
+              .padding(.leading, 56)
+
+            Button {
+              store.send(.view(.notificationSettingsTapped))
+            } label: {
+              HStack(spacing: 16) {
+                Image(systemName: "bell.fill")
+                  .font(.body)
+                  .foregroundStyle(Color.pmindigo.n500)
+                  .frame(width: 24, height: 24)
+
+                Text("알림 설정")
+                  .font(.body)
+                  .foregroundStyle(Color.pmtext.primary)
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                  .font(.caption)
+                  .foregroundStyle(Color.pmgray.n400)
+              }
+              .padding(.horizontal, 16)
+              .padding(.vertical, 14)
+              .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            Divider()
+              .padding(.leading, 56)
+
+            Button {
+              store.send(.view(.calendarSettingsTapped))
+            } label: {
+              HStack(spacing: 16) {
+                Image(systemName: "calendar")
+                  .font(.body)
+                  .foregroundStyle(Color.pmindigo.n500)
+                  .frame(width: 24, height: 24)
+
+                Text("캘린더 설정")
+                  .font(.body)
+                  .foregroundStyle(Color.pmtext.primary)
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                  .font(.caption)
+                  .foregroundStyle(Color.pmgray.n400)
+              }
+              .padding(.horizontal, 16)
+              .padding(.vertical, 14)
+              .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+          }
+          .adaptiveGlassBackground()
+          .listRowBackground(Color.clear)
+          .listRowInsets(EdgeInsets())
         } header: {
-          Text("알림")
+          Text("앱 설정")
         }
 
         // MARK: - 정보 섹션
         Section {
-          menuRow(
-            icon: "hand.raised.fill",
-            title: "개인정보처리방침",
-            action: { store.send(.view(.privacyPolicyTapped)) }
-          )
+          VStack(spacing: 0) {
+            Button {
+              store.send(.view(.legalInfoTapped))
+            } label: {
+              HStack(spacing: 16) {
+                Image(systemName: "doc.text.fill")
+                  .font(.body)
+                  .foregroundStyle(Color.pmindigo.n500)
+                  .frame(width: 24, height: 24)
 
-          menuRow(
-            icon: "doc.text.fill",
-            title: "이용약관",
-            action: { store.send(.view(.termsOfServiceTapped)) }
-          )
+                Text("약관 및 정책")
+                  .font(.body)
+                  .foregroundStyle(Color.pmtext.primary)
 
-          menuRow(
-            icon: "info.circle.fill",
-            title: "앱 정보",
-            action: { store.send(.view(.appInfoTapped)) }
-          )
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                  .font(.caption)
+                  .foregroundStyle(Color.pmgray.n400)
+              }
+              .padding(.horizontal, 16)
+              .padding(.vertical, 14)
+              .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            Divider()
+              .padding(.leading, 56)
+
+            Button {
+              store.send(.view(.appInfoTapped))
+            } label: {
+              HStack(spacing: 16) {
+                Image(systemName: "info.circle.fill")
+                  .font(.body)
+                  .foregroundStyle(Color.pmindigo.n500)
+                  .frame(width: 24, height: 24)
+
+                Text("앱 정보")
+                  .font(.body)
+                  .foregroundStyle(Color.pmtext.primary)
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                  .font(.caption)
+                  .foregroundStyle(Color.pmgray.n400)
+              }
+              .padding(.horizontal, 16)
+              .padding(.vertical, 14)
+              .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+          }
+          .adaptiveGlassBackground()
+          .listRowBackground(Color.clear)
+          .listRowInsets(EdgeInsets())
         } header: {
           Text("정보")
         }
@@ -112,16 +196,41 @@ extension Settings {
         // MARK: - 개발자 섹션 (DEBUG only)
         #if DEBUG
         Section {
-          menuRow(
-            icon: "hammer.fill",
-            title: "개발자 설정",
-            action: { store.send(.view(.developerSettingsTapped)) }
-          )
+          Button {
+            store.send(.view(.developerSettingsTapped))
+          } label: {
+            HStack(spacing: 16) {
+              Image(systemName: "hammer.fill")
+                .font(.body)
+                .foregroundStyle(Color.pmindigo.n500)
+                .frame(width: 24, height: 24)
+
+              Text("개발자 설정")
+                .font(.body)
+                .foregroundStyle(Color.pmtext.primary)
+
+              Spacer()
+
+              Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundStyle(Color.pmgray.n400)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .contentShape(Rectangle())
+          }
+          .buttonStyle(.plain)
+          .adaptiveGlassBackground()
+          .listRowBackground(Color.clear)
+          .listRowInsets(EdgeInsets())
         } header: {
           Text("개발자")
         }
         #endif
       }
+      .scrollContentBackground(.hidden)
+      .background(Color.clear)
+      .auroraBackground()
       .navigationTitle("설정")
       .navigationBarTitleDisplayMode(.large)
       .sheet(
@@ -194,66 +303,28 @@ extension Settings {
           }
         )
 
-        // 닉네임과 편집 버튼
+        // 닉네임
         VStack(alignment: .leading, spacing: 4) {
           Text(store.currentUser.nickname)
             .font(.title3)
             .fontWeight(.semibold)
             .foregroundStyle(Color.pmtext.primary)
-
-          Text(store.currentUser.email)
-            .font(.subheadline)
-            .foregroundStyle(Color.pmtext.secondary)
         }
 
         Spacer()
 
-        // 편집 버튼
-        Button {
-          store.send(.view(.editProfileTapped))
-        } label: {
-          Text("편집")
-            .font(.subheadline)
-            .fontWeight(.medium)
-            .foregroundStyle(Color.pmindigo.n500)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .background(Color.pmindigo.n50, in: RoundedRectangle(cornerRadius: 8))
-        }
+        // 네비게이션 화살표
+        Image(systemName: "chevron.right")
+          .font(.caption)
+          .foregroundStyle(Color.pmgray.n400)
       }
       .padding(.vertical, 16)
       .padding(.horizontal, 16)
+      .contentShape(Rectangle())
+      .adaptiveGlassBackground()
     }
 
     // MARK: - Helpers
-
-    private func menuRow(
-      icon: String,
-      title: String,
-      action: @escaping () -> Void
-    ) -> some View {
-      Button(action: action) {
-        HStack(spacing: 16) {
-          Image(systemName: icon)
-            .font(.body)
-            .foregroundStyle(Color.pmindigo.n500)
-            .frame(width: 24, height: 24)
-
-          Text(title)
-            .font(.body)
-            .foregroundStyle(Color.pmtext.primary)
-
-          Spacer()
-
-          Image(systemName: "chevron.right")
-            .font(.caption)
-            .foregroundStyle(Color.pmgray.n400)
-        }
-        .contentShape(Rectangle())
-      }
-      .buttonStyle(.plain)
-      .listRowInsets(EdgeInsets(top: 14, leading: 16, bottom: 14, trailing: 16))
-    }
 
     /// 앱 버전 정보
     private var appVersion: String {

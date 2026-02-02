@@ -10,6 +10,7 @@ extension GroupSettings {
   @Reducer
   public struct Feature {
     @Dependency(\.groupClient) var groupClient
+    @Dependency(\.notificationClient) var notificationClient
     @Dependency(\.hapticFeedback) var hapticFeedback
 
     @ObservableState
@@ -41,6 +42,7 @@ extension GroupSettings {
       // Notifications
       var notificationSettings: GroupNotificationSettings
       var notificationError: String?
+      var systemAuthStatus: NotificationAuthorizationStatus = .notDetermined
 
       public init(
         group: GroupModel,
@@ -126,6 +128,7 @@ extension GroupSettings {
         case editGroupPhotoSelected(PhotosPickerItem?)
         case editGroupSaveTapped
         case editGroupErrorDismissed
+        case requestNotificationPermission
         case groupNotificationsChanged(Bool)
         case notificationPreferenceChanged(GroupNotificationPreferenceKey, Bool)
         case notificationSettingsTapped
@@ -142,6 +145,7 @@ extension GroupSettings {
         case dismissError
         case memberImageTapped(UserPublicModel)
         case imageDetailDismissed
+        case openSystemSettingsTapped
       }
 
       public enum Internal: Sendable {
@@ -151,6 +155,8 @@ extension GroupSettings {
         case deleteGroupResponse(Result<Void, Error>)
         case editGroupPhotoLoaded(Data?)
         case editGroupSaveResponse(Result<GroupModel, Error>)
+        case systemAuthStatusFetched(NotificationAuthorizationStatus)
+        case notificationPermissionResponse(Bool)
         case groupNotificationsUpdateFailed(previousValue: Bool, message: String)
         case notificationPreferenceUpdateFailed(
           key: GroupNotificationPreferenceKey,
@@ -174,8 +180,17 @@ extension GroupSettings {
         case .view(let viewAction):
           switch viewAction {
           case .onAppear:
-            guard case .idle = state.membersState else { return .none }
-            return .send(.internal(.fetchMembers))
+            let shouldFetchMembers = state.membersState == .idle
+            return .run { [notificationClient] send in
+              // 시스템 알림 권한 상태 로드
+              let systemStatus = await notificationClient.getAuthorizationStatus()
+              await send(.internal(.systemAuthStatusFetched(systemStatus)))
+
+              // 멤버 로드
+              if shouldFetchMembers {
+                await send(.internal(.fetchMembers))
+              }
+            }
 
           case .membersTapped:
             return .run { [hapticFeedback] _ in
@@ -255,14 +270,27 @@ extension GroupSettings {
             state.editGroup?.error = nil
             return .none
 
+          case .requestNotificationPermission:
+            return .run { [notificationClient, hapticFeedback] send in
+              await hapticFeedback.selection()
+              do {
+                let granted = try await notificationClient.requestAuthorization()
+                await send(.internal(.notificationPermissionResponse(granted)))
+              } catch {
+                await send(.internal(.notificationPermissionResponse(false)))
+              }
+            }
+
           case .groupNotificationsChanged(let enabled):
             let previousValue = state.notificationSettings.enabled
             state.notificationSettings.enabled = enabled
             state.notificationError = nil
             let updatedSettings = state.notificationSettings
+
             return .run { [groupClient, groupId = state.group.id, hapticFeedback] send in
               await hapticFeedback.selection()
               do {
+                // 그룹 알림 설정 업데이트
                 try await groupClient.updateGroupNotificationSettings(
                   groupId,
                   updatedSettings
@@ -380,6 +408,11 @@ extension GroupSettings {
           case .imageDetailDismissed:
             state.selectedMemberForImage = nil
             return .none
+
+          case .openSystemSettingsTapped:
+            return .run { _ in
+              await notificationClient.openNotificationSettings()
+            }
           }
 
         case .internal(let internalAction):
@@ -452,6 +485,20 @@ extension GroupSettings {
             state.editGroup?.error = error.localizedDescription
             return .run { [hapticFeedback] _ in
               await hapticFeedback.error()
+            }
+
+          case .systemAuthStatusFetched(let status):
+            state.systemAuthStatus = status
+            return .none
+
+          case .notificationPermissionResponse(let granted):
+            state.systemAuthStatus = granted ? .authorized : .denied
+            return .run { [hapticFeedback] _ in
+              if granted {
+                await hapticFeedback.success()
+              } else {
+                await hapticFeedback.error()
+              }
             }
 
           case .groupNotificationsUpdateFailed(let previousValue, let message):

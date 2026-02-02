@@ -101,7 +101,11 @@ extension Settings {
     @Reducer
     public enum Path {
       case accountInfo(AccountInfo.Feature)
+      case dateTimeSettings(DateTimeSettings.Feature)
       case notificationSettings(NotificationSettings.Feature)
+      case groupNotificationDetail(GroupNotificationDetail.Feature)
+      case calendarSettings(CalendarSettings.Feature)
+      case legalInfo(LegalInfo.Feature)
       case policyView(PolicyView.Feature)
       case appInfo(AppInfo.Feature)
       #if DEBUG
@@ -143,14 +147,16 @@ extension Settings {
       case logoutCancelled
       /// 계정 정보 탭
       case accountInfoTapped
+      /// 날짜 시간 표시 탭
+      case dateTimeSettingsTapped
       /// 24시간 형식 변경
       case use24HourFormatChanged(Bool)
       /// 알림 설정 탭
       case notificationSettingsTapped
-      /// 개인정보처리방침 탭
-      case privacyPolicyTapped
-      /// 이용약관 탭
-      case termsOfServiceTapped
+      /// 캘린더 설정 탭
+      case calendarSettingsTapped
+      /// 약관 및 정책 탭
+      case legalInfoTapped
       /// 앱 정보 탭
       case appInfoTapped
       #if DEBUG
@@ -248,37 +254,27 @@ extension Settings {
               await hapticFeedback.selection()
             }
 
+          case .dateTimeSettingsTapped:
+            state.path.append(.dateTimeSettings(DateTimeSettings.Feature.State()))
+            return .run { _ in await hapticFeedback.selection() }
+
           case .use24HourFormatChanged(let value):
             state.$use24HourFormat.withLock { $0 = value }
             KoreanDateFormatters.use24HourFormat = value
             return .none
 
           case .notificationSettingsTapped:
-            let userId = state.currentUser.userId
             state.path.append(.notificationSettings(
-              NotificationSettings.Feature.State(
-                currentUserId: userId,
-                notificationEnabled: false  // onAppear에서 실제 설정 로드
-              )
+              NotificationSettings.Feature.State(currentUserId: state.currentUser.userId)
             ))
             return .run { _ in await hapticFeedback.selection() }
 
-          case .privacyPolicyTapped:
-            state.path.append(.policyView(
-              PolicyView.Feature.State(
-                policyType: .privacyPolicy,
-                url: AppConstants.App.privacyPolicyURL
-              )
-            ))
+          case .calendarSettingsTapped:
+            state.path.append(.calendarSettings(CalendarSettings.Feature.State()))
             return .run { _ in await hapticFeedback.selection() }
 
-          case .termsOfServiceTapped:
-            state.path.append(.policyView(
-              PolicyView.Feature.State(
-                policyType: .termsOfService,
-                url: AppConstants.App.termsOfServiceURL
-              )
-            ))
+          case .legalInfoTapped:
+            state.path.append(.legalInfo(LegalInfo.Feature.State()))
             return .run { _ in await hapticFeedback.selection() }
 
           case .appInfoTapped:
@@ -452,6 +448,42 @@ extension Settings {
             return .none
           }
 
+        case .path(.element(_, action: .notificationSettings(.delegate(let delegate)))):
+          switch delegate {
+          case .navigateToGroupDetail(let group, let isSystemNotificationEnabled):
+            state.path.append(.groupNotificationDetail(
+              GroupNotificationDetail.Feature.State(
+                group: group,
+                isSystemNotificationEnabled: isSystemNotificationEnabled
+              )
+            ))
+            return .none
+          }
+
+        case .path(.element(_, action: .legalInfo(.delegate(let delegate)))):
+          switch delegate {
+          case .navigateToPolicy(let policyType, let url):
+            state.path.append(.policyView(
+              PolicyView.Feature.State(policyType: policyType, url: url)
+            ))
+            return .none
+          }
+
+        case .path(.element(_, action: .groupNotificationDetail(.delegate(let delegate)))):
+          switch delegate {
+          case .settingsUpdated(let groupId, let settings):
+            // NotificationSettings의 groups 상태 업데이트
+            for id in state.path.ids {
+              if case .notificationSettings(var notifState) = state.path[id: id] {
+                if let index = notifState.groups.firstIndex(where: { $0.id == groupId }) {
+                  notifState.groups[index] = notifState.groups[index].withNotifications(settings)
+                  state.path[id: id] = .notificationSettings(notifState)
+                }
+              }
+            }
+            return .none
+          }
+
         case .path:
           return .none
         }
@@ -478,8 +510,16 @@ extension Settings {
         switch store.case {
         case .accountInfo(let accountInfoStore):
           AccountInfo.RootView(store: accountInfoStore)
+        case .dateTimeSettings(let store):
+          DateTimeSettings.RootView(store: store)
         case .notificationSettings(let store):
           NotificationSettings.RootView(store: store)
+        case .groupNotificationDetail(let store):
+          GroupNotificationDetail.RootView(store: store)
+        case .calendarSettings(let store):
+          CalendarSettings.RootView(store: store)
+        case .legalInfo(let store):
+          LegalInfo.RootView(store: store)
         case .policyView(let store):
           PolicyView.RootView(store: store)
         case .appInfo(let store):
@@ -518,6 +558,104 @@ public enum SettingsError: Error, Equatable, LocalizedError {
       return "이미지를 불러오는데 실패했습니다."
     case .unknown:
       return "알 수 없는 오류가 발생했습니다."
+    }
+  }
+}
+
+// MARK: - DateTimeSettings Namespace
+
+public enum DateTimeSettings {}
+
+// MARK: - DateTimeSettings Feature
+
+extension DateTimeSettings {
+
+  @Reducer
+  public struct Feature {
+    @Dependency(\.hapticFeedback) var hapticFeedback
+
+    public init() {}
+
+    @ObservableState
+    public struct State: Equatable {
+      @Shared(.appStorage(AppConstants.UserDefaults.use24HourFormat)) public var use24HourFormat: Bool = false
+
+      public init() {}
+    }
+
+    public enum Action: Equatable, Sendable {
+      case view(View)
+    }
+
+    public enum View: Equatable, Sendable {
+      case onAppear
+      case use24HourFormatChanged(Bool)
+    }
+
+    public var body: some ReducerOf<Self> {
+      Reduce { state, action in
+        switch action {
+        case .view(let viewAction):
+          switch viewAction {
+          case .onAppear:
+            return .none
+
+          case .use24HourFormatChanged(let value):
+            state.$use24HourFormat.withLock { $0 = value }
+            KoreanDateFormatters.use24HourFormat = value
+            return .none
+          }
+        }
+      }
+    }
+  }
+
+  // MARK: - Root View
+
+  public struct RootView: View {
+    @Bindable private var store: StoreOf<Feature>
+
+    public init(store: StoreOf<Feature>) {
+      self.store = store
+    }
+
+    public var body: some View {
+      List {
+        Section {
+          Toggle(isOn: Binding(
+            get: { store.use24HourFormat },
+            set: { store.send(.view(.use24HourFormatChanged($0))) }
+          )) {
+            HStack(spacing: 12) {
+              Image(systemName: "clock")
+                .font(.body)
+                .foregroundStyle(Color.pmindigo.n500)
+                .frame(width: 24, height: 24)
+
+              VStack(alignment: .leading, spacing: 2) {
+                Text("24시간 형식")
+                  .font(.body)
+                  .foregroundStyle(Color.pmtext.primary)
+
+                Text(store.use24HourFormat ? "예: 14:30" : "예: 오후 2:30")
+                  .font(.caption)
+                  .foregroundStyle(Color.pmtext.secondary)
+              }
+            }
+          }
+          .tint(Color.pmindigo.n500)
+        } footer: {
+          Text("앱 전체에서 사용되는 시간 표시 형식을 설정합니다.\n앱을 재시작하면 적용됩니다.")
+        }
+      }
+      .scrollContentBackground(.hidden)
+      .background(Color.clear)
+      .auroraBackground()
+      .navigationTitle("날짜 시간 표시")
+      .navigationBarTitleDisplayMode(.inline)
+      .onAppear {
+        store.send(.view(.onAppear))
+      }
     }
   }
 }

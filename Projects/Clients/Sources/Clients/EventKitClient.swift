@@ -102,7 +102,7 @@ public struct EventKitClient: Sendable {
   /// 현재 권한 상태 확인
   public var authorizationStatus: @Sendable () -> CalendarAuthorizationStatus = { .notDetermined }
 
-  /// 캘린더 접근 권한 요청
+  /// 캘린더 접근 권한 요청 (읽기+쓰기)
   public var requestAccess: @Sendable () async throws -> Bool
 
   /// 특정 기간의 이벤트 가져오기
@@ -113,6 +113,9 @@ public struct EventKitClient: Sendable {
 
   /// 캘린더 변경 관찰 (이벤트 추가/수정/삭제 감지)
   public var observeChanges: @Sendable () -> AsyncStream<Void> = { AsyncStream { _ in } }
+
+  /// 캘린더 설정 열기 (시스템 설정으로 이동)
+  public var openSettings: @Sendable () async -> Void = { }
 }
 
 // MARK: - Test / Preview
@@ -146,14 +149,16 @@ extension EventKitClient: TestDependencyKey {
         )
       ]
     },
-    observeChanges: { AsyncStream { _ in } }
+    observeChanges: { AsyncStream { _ in } },
+    openSettings: { }
   )
 
   public static let testValue = Self(
     authorizationStatus: unimplemented("\(Self.self).authorizationStatus", placeholder: .notDetermined),
     requestAccess: unimplemented("\(Self.self).requestAccess", placeholder: false),
     fetchEvents: unimplemented("\(Self.self).fetchEvents", placeholder: []),
-    observeChanges: unimplemented("\(Self.self).observeChanges")
+    observeChanges: unimplemented("\(Self.self).observeChanges"),
+    openSettings: unimplemented("\(Self.self).openSettings")
   )
 }
 
@@ -205,6 +210,14 @@ extension EventKitClient: DependencyKey {
 
           continuation.onTermination = { _ in
             NotificationCenter.default.removeObserver(observer)
+          }
+        }
+      },
+
+      openSettings: {
+        await MainActor.run {
+          if let settingsURL = URL(string: UIApplication.openSettingsURLString) {
+            UIApplication.shared.open(settingsURL)
           }
         }
       }
