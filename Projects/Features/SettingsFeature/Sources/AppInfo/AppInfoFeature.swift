@@ -1,6 +1,6 @@
 //
 //  AppInfoFeature.swift
-//  ProfileFeature
+//  SettingsFeature
 //
 //  Created by Claude on 2026-01-28.
 //
@@ -32,14 +32,12 @@ extension AppInfo {
     @ObservableState
     public struct State: Equatable {
       public let appVersion: String
-      public let buildNumber: String
-      public let bundleIdentifier: String
+      public let environment: AppEnvironment?
 
       public init() {
         let info = Bundle.main.infoDictionary
         self.appVersion = info?["CFBundleShortVersionString"] as? String ?? "1.0.0"
-        self.buildNumber = info?["CFBundleVersion"] as? String ?? "1"
-        self.bundleIdentifier = Bundle.main.bundleIdentifier ?? "com.promiso"
+        self.environment = AppEnvironment.current
       }
     }
 
@@ -86,38 +84,55 @@ extension AppInfo {
       List {
         // 버전 정보 섹션
         Section {
-          infoRow(icon: "tag.fill", label: "앱 버전", value: store.appVersion)
-          infoRow(icon: "hammer.fill", label: "빌드 번호", value: store.buildNumber)
-          infoRow(icon: "app.fill", label: "Bundle ID", value: store.bundleIdentifier)
-        } header: {
-          Text("버전 정보")
+          VStack(spacing: 0) {
+            infoRow(icon: "tag.fill", label: "앱 버전", value: store.appVersion)
+
+            // Dev/Stage 환경에서만 환경 정보 표시
+            if let environment = store.environment {
+              Divider()
+                .padding(.leading, 56)
+
+              infoRow(
+                icon: "flask.fill",
+                label: "환경",
+                value: environment.displayName,
+                valueColor: environment.color
+              )
+            }
+          }
+          .adaptiveGlassBackground()
+          .listRowBackground(Color.clear)
+          .listRowInsets(EdgeInsets())
         }
 
         // 추가 정보 섹션
         Section {
-          linkRow(
-            icon: "book.fill",
-            title: "오픈소스 라이선스",
-            url: "https://github.com/kswift1/Promiso/blob/main/LICENSES.md"
-          )
-          linkRow(
-            icon: "globe",
-            title: "GitHub",
-            url: "https://github.com/kswift1/Promiso"
-          )
+          VStack(spacing: 0) {
+            linkRow(
+              icon: "book.fill",
+              title: "오픈소스 라이선스",
+              url: "https://github.com/kswift1/Promiso/blob/main/LICENSES.md"
+            )
+
+            Divider()
+              .padding(.leading, 56)
+
+            linkRow(
+              icon: "globe",
+              title: "GitHub",
+              url: "https://github.com/kswift1/Promiso"
+            )
+          }
+          .adaptiveGlassBackground()
+          .listRowBackground(Color.clear)
+          .listRowInsets(EdgeInsets())
         } header: {
           Text("추가 정보")
         }
-
-        // 푸터
-        Section {
-          Text("Made with ❤️ by Promiso Team")
-            .font(.caption)
-            .foregroundStyle(Color.pmtext.secondary)
-            .frame(maxWidth: .infinity, alignment: .center)
-            .listRowBackground(Color.clear)
-        }
       }
+      .scrollContentBackground(.hidden)
+      .background(Color.clear)
+      .auroraBackground()
       .navigationTitle("앱 정보")
       .navigationBarTitleDisplayMode(.inline)
       .onAppear {
@@ -127,7 +142,12 @@ extension AppInfo {
 
     // MARK: - Helper Views
 
-    private func infoRow(icon: String, label: String, value: String) -> some View {
+    private func infoRow(
+      icon: String,
+      label: String,
+      value: String,
+      valueColor: Color = Color.pmtext.primary
+    ) -> some View {
       HStack(spacing: 16) {
         Image(systemName: icon)
           .foregroundStyle(Color.pmindigo.n500)
@@ -139,9 +159,12 @@ extension AppInfo {
         Spacer()
 
         Text(value)
-          .foregroundStyle(Color.pmtext.primary)
+          .foregroundStyle(valueColor)
           .font(.subheadline)
+          .fontWeight(valueColor != Color.pmtext.primary ? .medium : .regular)
       }
+      .padding(.horizontal, 16)
+      .padding(.vertical, 14)
     }
 
     private func linkRow(icon: String, title: String, url: String) -> some View {
@@ -162,7 +185,53 @@ extension AppInfo {
             .font(.caption)
             .foregroundStyle(Color.pmgray.n400)
         }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .contentShape(Rectangle())
       }
+      .buttonStyle(.plain)
+    }
+  }
+}
+
+// MARK: - App Environment
+
+/// 앱 환경 (Release는 nil로 처리하여 표시하지 않음)
+public enum AppEnvironment: Equatable, Sendable {
+  case dev
+  case stage
+
+  /// 현재 환경 (Release면 nil 반환)
+  public static var current: AppEnvironment? {
+    // Bundle ID로 환경 감지
+    // com.promiso.dev → Dev
+    // com.promiso.stage → Stage
+    // com.promiso → Release (nil)
+    guard let bundleId = Bundle.main.bundleIdentifier else {
+      return nil
+    }
+
+    if bundleId.hasSuffix(".dev") {
+      return .dev
+    } else if bundleId.hasSuffix(".stage") {
+      return .stage
+    } else {
+      // Release 환경에서는 nil 반환 (표시하지 않음)
+      return nil
+    }
+  }
+
+  public var displayName: String {
+    switch self {
+    case .dev: return "Development"
+    case .stage: return "Staging"
+    }
+  }
+
+  public var color: Color {
+    switch self {
+    case .dev: return .orange
+    case .stage: return .purple
     }
   }
 }

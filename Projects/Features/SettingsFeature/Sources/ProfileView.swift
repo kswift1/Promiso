@@ -106,35 +106,7 @@ extension Settings {
         Section {
           VStack(spacing: 0) {
             Button {
-              store.send(.view(.privacyPolicyTapped))
-            } label: {
-              HStack(spacing: 16) {
-                Image(systemName: "hand.raised.fill")
-                  .font(.body)
-                  .foregroundStyle(Color.pmindigo.n500)
-                  .frame(width: 24, height: 24)
-
-                Text("개인정보처리방침")
-                  .font(.body)
-                  .foregroundStyle(Color.pmtext.primary)
-
-                Spacer()
-
-                Image(systemName: "chevron.right")
-                  .font(.caption)
-                  .foregroundStyle(Color.pmgray.n400)
-              }
-              .padding(.horizontal, 16)
-              .padding(.vertical, 14)
-              .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-
-            Divider()
-              .padding(.leading, 56)
-
-            Button {
-              store.send(.view(.termsOfServiceTapped))
+              store.send(.view(.legalInfoTapped))
             } label: {
               HStack(spacing: 16) {
                 Image(systemName: "doc.text.fill")
@@ -142,7 +114,7 @@ extension Settings {
                   .foregroundStyle(Color.pmindigo.n500)
                   .frame(width: 24, height: 24)
 
-                Text("이용약관")
+                Text("약관 및 정책")
                   .font(.body)
                   .foregroundStyle(Color.pmtext.primary)
 

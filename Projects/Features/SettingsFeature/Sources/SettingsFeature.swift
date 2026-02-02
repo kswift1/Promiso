@@ -104,6 +104,7 @@ extension Settings {
       case dateTimeSettings(DateTimeSettings.Feature)
       case notificationSettings(NotificationSettings.Feature)
       case groupNotificationDetail(GroupNotificationDetail.Feature)
+      case legalInfo(LegalInfo.Feature)
       case policyView(PolicyView.Feature)
       case appInfo(AppInfo.Feature)
       #if DEBUG
@@ -151,10 +152,8 @@ extension Settings {
       case use24HourFormatChanged(Bool)
       /// 알림 설정 탭
       case notificationSettingsTapped
-      /// 개인정보처리방침 탭
-      case privacyPolicyTapped
-      /// 이용약관 탭
-      case termsOfServiceTapped
+      /// 약관 및 정책 탭
+      case legalInfoTapped
       /// 앱 정보 탭
       case appInfoTapped
       #if DEBUG
@@ -267,22 +266,8 @@ extension Settings {
             ))
             return .run { _ in await hapticFeedback.selection() }
 
-          case .privacyPolicyTapped:
-            state.path.append(.policyView(
-              PolicyView.Feature.State(
-                policyType: .privacyPolicy,
-                url: AppConstants.App.privacyPolicyURL
-              )
-            ))
-            return .run { _ in await hapticFeedback.selection() }
-
-          case .termsOfServiceTapped:
-            state.path.append(.policyView(
-              PolicyView.Feature.State(
-                policyType: .termsOfService,
-                url: AppConstants.App.termsOfServiceURL
-              )
-            ))
+          case .legalInfoTapped:
+            state.path.append(.legalInfo(LegalInfo.Feature.State()))
             return .run { _ in await hapticFeedback.selection() }
 
           case .appInfoTapped:
@@ -468,6 +453,15 @@ extension Settings {
             return .none
           }
 
+        case .path(.element(_, action: .legalInfo(.delegate(let delegate)))):
+          switch delegate {
+          case .navigateToPolicy(let policyType, let url):
+            state.path.append(.policyView(
+              PolicyView.Feature.State(policyType: policyType, url: url)
+            ))
+            return .none
+          }
+
         case .path(.element(_, action: .groupNotificationDetail(.delegate(let delegate)))):
           switch delegate {
           case .settingsUpdated(let groupId, let settings):
@@ -515,6 +509,8 @@ extension Settings {
           NotificationSettings.RootView(store: store)
         case .groupNotificationDetail(let store):
           GroupNotificationDetail.RootView(store: store)
+        case .legalInfo(let store):
+          LegalInfo.RootView(store: store)
         case .policyView(let store):
           PolicyView.RootView(store: store)
         case .appInfo(let store):

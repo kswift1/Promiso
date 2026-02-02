@@ -17,8 +17,8 @@ public enum AppConstants {
     // TODO: 앱스토어 출시 후 실제 URL로 교체 (설정 화면 > 앱 정보에서 사용)
     public static let appStoreURL = URL(string: "https://apps.apple.com/app/id1625074042")!
     // TODO: 웹사이트 구축 후 실제 URL로 교체 (설정 화면 > 약관/정책에서 사용)
-    public static let privacyPolicyURL = URL(string: "https://promiso.com/privacy")!
-    public static let termsOfServiceURL = URL(string: "https://promiso.com/terms")!
+    public static let privacyPolicyURL = URL(string: "https://www.notion.so/2fb655a898de813882b5eebcf35ccb3d")!
+    public static let termsOfServiceURL = URL(string: "https://www.notion.so/2fb655a898de817f9f76fdce51f5a09f")!
     public static let supportURL = URL(string: "https://promiso.com/support")!
   }
 
