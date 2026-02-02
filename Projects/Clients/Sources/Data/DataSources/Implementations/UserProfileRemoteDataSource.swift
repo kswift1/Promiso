@@ -248,12 +248,15 @@ public final class UserProfileRemoteDataSource: UserProfileRemoteDataSourceProto
   /// - Parameter nickname: 확인할 닉네임
   /// - Returns: 사용 가능 여부
   public func isNicknameAvailable(_ nickname: String) async throws -> Bool {
-    let snapshot = try await db.environmentCollection("users")
-      .whereField("nickname", isEqualTo: nickname)
-      .limit(to: 1)
-      .getDocuments()
+    let request = ["nickname": nickname]
 
-    return snapshot.documents.isEmpty
+    let result = try await functions.httpsCallable("checkNicknameAvailable").call(request)
+    guard let response = result.data as? [String: Any],
+          let available = response["available"] as? Bool else {
+      throw UserProfileError.invalidData
+    }
+
+    return available
   }
   
 }
