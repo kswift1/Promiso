@@ -25,12 +25,15 @@ import {
   APNS_AUTH_KEY,
   APNS_BUNDLE_ID,
 } from "../config";
-import {getEnvironmentCollection, getCurrentEnvironment} from "../utils/firestore";
+import {
+  getEnvironmentCollection,
+  getCurrentEnvironment,
+} from "../utils/firestore";
 
 /**
  * APNs 환경 결정
  *
- * @returns true = Production, false = Sandbox
+ * @return {boolean} true = Production, false = Sandbox
  * @remarks Dev 환경만 Sandbox, Stage/Prod는 Production
  */
 function isAPNsProduction(): boolean {
@@ -442,7 +445,8 @@ export const updateETA = onCall<UpdateETARequest>(
 
       const id = promiseId || channelId;
       console.log(
-        `📅 LiveActivity end scheduled (all arrived, ${endDelayMinutes}min): ${id}`
+        "📅 LiveActivity end scheduled " +
+        `(all arrived, ${endDelayMinutes}min): ${id}`
       );
     }
 

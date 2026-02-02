@@ -73,5 +73,5 @@ export function logEnvironmentInfo(): void {
   const projectId = process.env.GCLOUD_PROJECT || "unknown";
   console.log(`🌍 Environment: ${env}`);
   console.log(`📁 Project: ${projectId}`);
-  console.log(`📁 Path Pattern: /{collection} (root level)`);
+  console.log("📁 Path Pattern: /{collection} (root level)");
 }

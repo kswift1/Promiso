@@ -107,3 +107,4 @@ Tuist/.build/
 .swiftpm/
 *.zip
 Promiso-Config*.zip
+*.env.backup
