@@ -119,6 +119,11 @@ public struct PromiseClient: Sendable {
   /// 약속 응답
   public var respondPromise: @Sendable (_ promiseId: String, _ status: PromiseAttendanceStatus) async throws -> Void
 
+  // MARK: - Calendar Sync
+
+  /// 캘린더 동기화용 확정 약속 조회 (미래 약속만)
+  public var getConfirmedPromisesForCalendar: @Sendable () async throws -> [CalendarSyncPromise]
+
   // MARK: - Live Activity
 
   /// LiveActivity 시작 요청 (백엔드에서 Push to Start APNs 전송)
@@ -201,6 +206,10 @@ extension PromiseClient: TestDependencyKey {
     respondPromise: { _, _ in
       try await Task.sleep(for: .seconds(0.3))
     },
+    getConfirmedPromisesForCalendar: {
+      try await Task.sleep(for: .seconds(0.3))
+      return []
+    },
     startLiveActivity: { _ in
       try await Task.sleep(for: .seconds(0.5))
     },
@@ -279,6 +288,9 @@ extension PromiseClient: DependencyKey {
           promiseId: promiseId,
           status: status.rawValue
         )
+      },
+      getConfirmedPromisesForCalendar: {
+        try await dataSource.getConfirmedPromisesForCalendar()
       },
       startLiveActivity: { promiseId in
         try await dataSource.startLiveActivity(promiseId: promiseId)

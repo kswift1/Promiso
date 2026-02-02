@@ -456,6 +456,55 @@ export enum RespondPromiseError {
 }
 
 // ============================================================================
+// getConfirmedPromisesForCalendar (캘린더 동기화용)
+// ============================================================================
+
+/**
+ * 캘린더 동기화용 확정 약속 조회 요청
+ *
+ * @remarks
+ * - 인증 필수 (Firebase Auth)
+ * - 파라미터 없음 (사용자 ID는 auth에서 추출)
+ */
+export interface GetConfirmedPromisesForCalendarRequest {
+  // 파라미터 없음
+}
+
+/**
+ * 캘린더용 약속 정보 (최소 데이터)
+ */
+export interface CalendarPromise {
+  /** 약속 ID */
+  id: string;
+
+  /** 약속 제목 */
+  title: string;
+
+  /** 약속 이모지 */
+  emoji: string;
+
+  /** 시작 시간 (ISO 8601) */
+  startAt: string;
+
+  /** 종료 시간 (ISO 8601, nullable) */
+  endAt: string | null;
+
+  /** 장소 이름 */
+  location: string | null;
+
+  /** 그룹 ID */
+  groupId: string;
+}
+
+/**
+ * 캘린더 동기화용 확정 약속 조회 응답
+ */
+export interface GetConfirmedPromisesForCalendarResponse {
+  /** 확정된 약속 목록 */
+  promises: CalendarPromise[];
+}
+
+// ============================================================================
 // User APIs
 // ============================================================================
 

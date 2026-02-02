@@ -22,6 +22,15 @@ public enum CalendarAuthorizationStatus: Equatable, Sendable {
       return false
     }
   }
+
+  public var canWriteEvents: Bool {
+    switch self {
+    case .fullAccess, .writeOnly, .authorized:
+      return true
+    default:
+      return false
+    }
+  }
 }
 
 // MARK: - Calendar Event Model
@@ -73,11 +82,41 @@ public struct CalendarEvent: Identifiable, Equatable, Sendable {
   }
 }
 
+// MARK: - New Calendar Event (for adding)
+
+/// 캘린더에 새로 추가할 이벤트 정보
+public struct NewCalendarEvent: Equatable, Sendable {
+  public let promiseId: String
+  public let title: String
+  public let startDate: Date
+  public let endDate: Date?
+  public let location: String?
+  public let notes: String?
+
+  public init(
+    promiseId: String,
+    title: String,
+    startDate: Date,
+    endDate: Date? = nil,
+    location: String? = nil,
+    notes: String? = nil
+  ) {
+    self.promiseId = promiseId
+    self.title = title
+    self.startDate = startDate
+    self.endDate = endDate
+    self.location = location
+    self.notes = notes
+  }
+}
+
 // MARK: - Client Error
 
 public enum EventKitClientError: Error, Equatable, LocalizedError {
   case accessDenied
   case accessRestricted
+  case writeNotAllowed
+  case saveFailed(String)
   case eventStoreError(String)
   case unknown(String)
 
@@ -87,6 +126,10 @@ public enum EventKitClientError: Error, Equatable, LocalizedError {
       return "캘린더 접근이 거부되었습니다. 설정에서 권한을 허용해주세요."
     case .accessRestricted:
       return "캘린더 접근이 제한되어 있습니다."
+    case .writeNotAllowed:
+      return "캘린더 쓰기 권한이 없습니다."
+    case .saveFailed(let message):
+      return "캘린더 저장 실패: \(message)"
     case .eventStoreError(let message):
       return "캘린더 오류: \(message)"
     case .unknown(let message):
@@ -110,6 +153,10 @@ public struct EventKitClient: Sendable {
     _ startDate: Date,
     _ endDate: Date
   ) async throws -> [CalendarEvent]
+
+  /// 캘린더에 이벤트 추가 (약속 → 캘린더 동기화용)
+  /// - Returns: 생성된 이벤트의 eventIdentifier
+  public var addEvent: @Sendable (NewCalendarEvent) async throws -> String
 
   /// 캘린더 변경 관찰 (이벤트 추가/수정/삭제 감지)
   public var observeChanges: @Sendable () -> AsyncStream<Void> = { AsyncStream { _ in } }
@@ -149,6 +196,10 @@ extension EventKitClient: TestDependencyKey {
         )
       ]
     },
+    addEvent: { event in
+      // Preview에서는 가짜 eventIdentifier 반환
+      return "preview-event-\(event.promiseId)"
+    },
     observeChanges: { AsyncStream { _ in } },
     openSettings: { }
   )
@@ -157,6 +208,7 @@ extension EventKitClient: TestDependencyKey {
     authorizationStatus: unimplemented("\(Self.self).authorizationStatus", placeholder: .notDetermined),
     requestAccess: unimplemented("\(Self.self).requestAccess", placeholder: false),
     fetchEvents: unimplemented("\(Self.self).fetchEvents", placeholder: []),
+    addEvent: unimplemented("\(Self.self).addEvent", placeholder: ""),
     observeChanges: unimplemented("\(Self.self).observeChanges"),
     openSettings: unimplemented("\(Self.self).openSettings")
   )
@@ -196,6 +248,41 @@ extension EventKitClient: DependencyKey {
 
         let events = eventStore.events(matching: predicate)
         return events.map { $0.toCalendarEvent() }
+      },
+
+      addEvent: { newEvent in
+        // 1. 쓰기 권한 확인
+        let status = EKEventStore.authorizationStatus(for: .event)
+        guard status.toCalendarAuthorizationStatus().canWriteEvents else {
+          throw EventKitClientError.writeNotAllowed
+        }
+
+        // 2. EKEvent 생성
+        let event = EKEvent(eventStore: eventStore)
+        event.title = newEvent.title
+        event.startDate = newEvent.startDate
+        event.endDate = newEvent.endDate ?? newEvent.startDate.addingTimeInterval(3600) // 기본 1시간
+        event.location = newEvent.location
+        event.notes = newEvent.notes
+        event.calendar = eventStore.defaultCalendarForNewEvents
+
+        // 3. 알림 추가 (30분 전)
+        let alarm = EKAlarm(relativeOffset: -1800)
+        event.addAlarm(alarm)
+
+        // 4. 저장
+        do {
+          try eventStore.save(event, span: .thisEvent)
+        } catch {
+          throw EventKitClientError.saveFailed(error.localizedDescription)
+        }
+
+        // 5. eventIdentifier 반환
+        guard let eventIdentifier = event.eventIdentifier else {
+          throw EventKitClientError.saveFailed("이벤트 ID를 가져올 수 없습니다")
+        }
+
+        return eventIdentifier
       },
 
       observeChanges: {

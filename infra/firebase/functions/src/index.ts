@@ -36,6 +36,7 @@ export {
   respondPromise,
   updatePromise,
   deletePromise,
+  getConfirmedPromisesForCalendar,
 } from "./functions/promises";
 
 // ============================================================================

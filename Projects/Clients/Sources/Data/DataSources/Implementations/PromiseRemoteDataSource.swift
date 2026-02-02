@@ -11,6 +11,7 @@ private enum FirebaseFunctionNames {
   static let startLiveActivity = "startLiveActivity"
   static let updateETA = "updateETA"
   static let refreshHomeSnapshot = "refreshHomeSnapshot"
+  static let getConfirmedPromisesForCalendar = "getConfirmedPromisesForCalendar"
 }
 
 /// Promise 관련 Firestore CRUD 및 쿼리 작업을 담당하는 DataSource
@@ -447,6 +448,52 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
 
   // endLiveActivity 제거됨 - APNs dismissal-date로 auto-dismiss 처리
   // registerLiveActivityToken 제거됨 - iOS 18 Broadcast 방식으로 전환
+
+  // MARK: - Calendar Sync
+
+  /// 캘린더 동기화용 확정 약속 조회
+  /// Firebase Functions를 통해 미래의 확정된 약속만 조회
+  public func getConfirmedPromisesForCalendar() async throws -> [CalendarSyncPromise] {
+    let result = try await functions
+      .httpsCallable(FirebaseFunctionNames.getConfirmedPromisesForCalendar)
+      .call()
+
+    guard let data = result.data as? [String: Any],
+          let promisesData = data["promises"] as? [[String: Any]] else {
+      return []
+    }
+
+    let dateFormatter = ISO8601DateFormatter()
+    dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+    return promisesData.compactMap { dict -> CalendarSyncPromise? in
+      guard let id = dict["id"] as? String,
+            let title = dict["title"] as? String,
+            let emoji = dict["emoji"] as? String,
+            let startAtString = dict["startAt"] as? String,
+            let startAt = dateFormatter.date(from: startAtString),
+            let groupId = dict["groupId"] as? String else {
+        return nil
+      }
+
+      var endAt: Date?
+      if let endAtString = dict["endAt"] as? String {
+        endAt = dateFormatter.date(from: endAtString)
+      }
+
+      let location = dict["location"] as? String
+
+      return CalendarSyncPromise(
+        id: id,
+        title: title,
+        emoji: emoji,
+        startAt: startAt,
+        endAt: endAt,
+        location: location,
+        groupId: groupId
+      )
+    }
+  }
 
   // MARK: - Helper Methods
 

@@ -33,6 +33,10 @@ public protocol PromiseRemoteDataSourceProtocol {
   /// 하루 첫 진입 시 또는 Pull-to-refresh 시 호출
   func refreshHomeSnapshot() async throws -> HomeSnapshotDocument
 
+  // MARK: - Calendar Sync
+  /// 캘린더 동기화용 확정 약속 조회 (미래 약속만)
+  func getConfirmedPromisesForCalendar() async throws -> [CalendarSyncPromise]
+
   // MARK: - Live Activity
   /// LiveActivity 시작 요청 (백엔드에서 Push to Start APNs 전송)
   func startLiveActivity(promiseId: String) async throws
