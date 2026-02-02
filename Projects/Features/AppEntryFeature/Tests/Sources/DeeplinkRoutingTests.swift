@@ -26,6 +26,7 @@ import Testing
 import ComposableArchitecture
 import Clients
 import PromisoShared
+import Sharing
 @testable import AppEntryFeature
 
 // MARK: - Deeplink Routing Tests
@@ -38,7 +39,7 @@ struct DeeplinkRoutingTests {
 
   /// 메인 화면 상태의 테스트용 State 생성
   private func makeMainState() -> AppEntry.Feature.State {
-    let mockUser = UserPrivateModel(
+    @Shared(.inMemory("test-current-user-deeplink")) var mockUser = UserPrivateModel(
       userId: "test-user",
       name: "테스트",
       nickname: "테스트",
@@ -47,7 +48,7 @@ struct DeeplinkRoutingTests {
       metadata: .init()
     )
     var state = AppEntry.Feature.State()
-    state.destination = .main(RootTab.Feature.State(currentUser: mockUser))
+    state.destination = .main(RootTab.Feature.State(currentUser: $mockUser))
     state.splash = .hidden
     return state
   }
@@ -213,7 +214,7 @@ struct PushNotificationDeeplinkTests {
 
   /// 메인 화면 상태의 테스트용 State 생성
   private func makeMainState() -> AppEntry.Feature.State {
-    let mockUser = UserPrivateModel(
+    @Shared(.inMemory("test-current-user-deeplink")) var mockUser = UserPrivateModel(
       userId: "test-user",
       name: "테스트",
       nickname: "테스트",
@@ -222,7 +223,7 @@ struct PushNotificationDeeplinkTests {
       metadata: .init()
     )
     var state = AppEntry.Feature.State()
-    state.destination = .main(RootTab.Feature.State(currentUser: mockUser))
+    state.destination = .main(RootTab.Feature.State(currentUser: $mockUser))
     state.splash = .hidden
     return state
   }
