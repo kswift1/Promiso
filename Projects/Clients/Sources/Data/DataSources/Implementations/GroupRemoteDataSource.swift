@@ -362,8 +362,11 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
     let userRef = db.environmentCollection("users").document(userId)
     try await userRef.setData(
       [
-        "groups.\(groupId).notifications": settings.asDictionary,
-        "groups.\(groupId).notificationPreferences": FieldValue.delete(),
+        "groups": [
+          groupId: [
+            "notifications": settings.asDictionary
+          ]
+        ]
       ],
       merge: true
     )
