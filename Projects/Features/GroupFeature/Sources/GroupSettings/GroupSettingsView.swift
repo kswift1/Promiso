@@ -345,14 +345,14 @@ private struct NotificationSettingsView: View {
       }
 
       Button {
-        if let url = URL(string: UIApplication.openSettingsURLString) {
+        if let url = URL(string: UIApplication.openNotificationSettingsURLString) {
           UIApplication.shared.open(url)
         }
       } label: {
         HStack {
           Image(systemName: "gear")
             .font(.system(size: 12))
-          Text("iOS 설정 열기")
+          Text("알림 설정 열기")
             .font(.system(size: 14, weight: .medium))
         }
         .foregroundStyle(.white)

@@ -99,7 +99,7 @@ extension NotificationClient: DependencyKey {
 
       openNotificationSettings: {
         await MainActor.run {
-          if let settingsURL = URL(string: UIApplication.openSettingsURLString) {
+          if let settingsURL = URL(string: UIApplication.openNotificationSettingsURLString) {
             UIApplication.shared.open(settingsURL)
           }
         }

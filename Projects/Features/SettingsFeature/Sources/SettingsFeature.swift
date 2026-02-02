@@ -103,6 +103,7 @@ extension Settings {
       case accountInfo(AccountInfo.Feature)
       case dateTimeSettings(DateTimeSettings.Feature)
       case notificationSettings(NotificationSettings.Feature)
+      case groupNotificationDetail(GroupNotificationDetail.Feature)
       case policyView(PolicyView.Feature)
       case appInfo(AppInfo.Feature)
       #if DEBUG
@@ -262,7 +263,7 @@ extension Settings {
 
           case .notificationSettingsTapped:
             state.path.append(.notificationSettings(
-              NotificationSettings.Feature.State()
+              NotificationSettings.Feature.State(currentUserId: state.currentUser.userId)
             ))
             return .run { _ in await hapticFeedback.selection() }
 
@@ -455,6 +456,33 @@ extension Settings {
             return .none
           }
 
+        case .path(.element(_, action: .notificationSettings(.delegate(let delegate)))):
+          switch delegate {
+          case .navigateToGroupDetail(let group, let isSystemNotificationEnabled):
+            state.path.append(.groupNotificationDetail(
+              GroupNotificationDetail.Feature.State(
+                group: group,
+                isSystemNotificationEnabled: isSystemNotificationEnabled
+              )
+            ))
+            return .none
+          }
+
+        case .path(.element(_, action: .groupNotificationDetail(.delegate(let delegate)))):
+          switch delegate {
+          case .settingsUpdated(let groupId, let settings):
+            // NotificationSettings의 groups 상태 업데이트
+            for id in state.path.ids {
+              if case .notificationSettings(var notifState) = state.path[id: id] {
+                if let index = notifState.groups.firstIndex(where: { $0.id == groupId }) {
+                  notifState.groups[index] = notifState.groups[index].withNotifications(settings)
+                  state.path[id: id] = .notificationSettings(notifState)
+                }
+              }
+            }
+            return .none
+          }
+
         case .path:
           return .none
         }
@@ -485,6 +513,8 @@ extension Settings {
           DateTimeSettings.RootView(store: store)
         case .notificationSettings(let store):
           NotificationSettings.RootView(store: store)
+        case .groupNotificationDetail(let store):
+          GroupNotificationDetail.RootView(store: store)
         case .policyView(let store):
           PolicyView.RootView(store: store)
         case .appInfo(let store):
