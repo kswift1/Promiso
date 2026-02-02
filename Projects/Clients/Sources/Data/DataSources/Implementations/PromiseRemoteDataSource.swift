@@ -100,16 +100,23 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
       "status": status,
     ]
 
+    AppLogger.calendar.debug("🌐 [DataSource] respondPromise 호출 - promiseId: \(promiseId), status: \(status)")
+
     let result = try await functions.httpsCallable("respondPromise").call(callableData)
+
+    AppLogger.calendar.debug("🌐 [DataSource] respondPromise 응답 (raw): \(String(describing: result.data))")
 
     guard let data = result.data as? [String: Any],
           let returnedPromiseId = data["promiseId"] as? String,
           let returnedStatus = data["status"] as? String,
           let isConfirmed = data["isConfirmed"] as? Bool else {
+      AppLogger.calendar.error("🌐 [DataSource] respondPromise 파싱 실패 - data: \(String(describing: result.data))")
       throw NSError(domain: "PromiseRemoteDataSource", code: -1, userInfo: [
         NSLocalizedDescriptionKey: "약속 응답 결과가 올바르지 않습니다"
       ])
     }
+
+    AppLogger.calendar.debug("🌐 [DataSource] respondPromise 파싱 - isConfirmed: \(isConfirmed), confirmedPromise 존재: \(data["confirmedPromise"] != nil)")
 
     var confirmedPromise: CalendarSyncPromise?
 

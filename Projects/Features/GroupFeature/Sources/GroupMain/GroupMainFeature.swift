@@ -895,9 +895,12 @@ extension GroupMain {
           case .respondPromise(let promiseId, let status):
             // 캘린더 동기화 설정 캐시에서 조회
             let calendarSyncCache = state.groupCalendarSyncCache
+            AppLogger.calendar.debug("📱 [GroupMain] respondPromise 시작 - promiseId: \(promiseId), status: \(String(describing: status))")
+            AppLogger.calendar.debug("📱 [GroupMain] calendarSyncCache: \(calendarSyncCache)")
             return .run { [promiseClient, calendarSyncClient] send in
               do {
                 let result = try await promiseClient.respondPromise(promiseId, status)
+                AppLogger.calendar.debug("📱 [GroupMain] respondPromise 결과 - isConfirmed: \(result.isConfirmed), confirmedPromise: \(String(describing: result.confirmedPromise))")
                 await send(.internal(.proposalRespondDone(promiseId: promiseId, status: status)))
 
                 // 캘린더 동기화: 수락 + 확정 시 추가
@@ -905,14 +908,19 @@ extension GroupMain {
                    result.isConfirmed,
                    let confirmedPromise = result.confirmedPromise {
                   let groupCalendarSync = calendarSyncCache[confirmedPromise.groupId] ?? true
+                  AppLogger.calendar.debug("📱 [GroupMain] 캘린더 추가 시도 - groupCalendarSync: \(groupCalendarSync)")
                   try? await calendarSyncClient.addPromise(confirmedPromise, groupCalendarSync)
+                } else {
+                  AppLogger.calendar.debug("📱 [GroupMain] 캘린더 추가 조건 불충족 - status: \(String(describing: status)), isConfirmed: \(result.isConfirmed)")
                 }
 
                 // 캘린더 동기화: 거절 시 제거
                 if status == .declined {
+                  AppLogger.calendar.debug("📱 [GroupMain] 캘린더 제거 시도")
                   try? await calendarSyncClient.removePromise(promiseId)
                 }
               } catch {
+                AppLogger.calendar.error("📱 [GroupMain] respondPromise 에러: \(error.localizedDescription)")
                 await send(.internal(.proposalRespondFailed(promiseId: promiseId, error: AppError(error))))
               }
             }
