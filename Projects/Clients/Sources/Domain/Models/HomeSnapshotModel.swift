@@ -296,6 +296,30 @@ public struct HomeSnapshotMeta: Codable, Equatable, Sendable {
 
   /// 빈 메타데이터
   public static let empty = HomeSnapshotMeta()
+
+  // MARK: - Computed Properties
+
+  /// ISO8601 DateFormatter (재사용으로 성능 최적화)
+  private static let isoFormatter = ISO8601DateFormatter()
+
+  /// 마지막 업데이트 시간 (Date)
+  public var updatedAtDate: Date? {
+    guard !updatedAt.isEmpty else { return nil }
+    return Self.isoFormatter.date(from: updatedAt)
+  }
+
+  /// 오늘 업데이트되었는지 확인 (KST 기준)
+  ///
+  /// - Note: On-demand 스냅샷 갱신 로직에서 사용
+  /// - Returns: 오늘 업데이트되었으면 true
+  public var isUpdatedToday: Bool {
+    guard let date = updatedAtDate else { return false }
+
+    // KST 기준으로 오늘인지 확인
+    var calendar = Calendar.current
+    calendar.timeZone = TimeZone(identifier: "Asia/Seoul") ?? .current
+    return calendar.isDateInToday(date)
+  }
 }
 
 // MARK: - SnapshotPromise to PromiseModel Conversion

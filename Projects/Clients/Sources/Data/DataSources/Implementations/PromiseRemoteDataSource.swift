@@ -10,6 +10,7 @@ private enum FirebaseFunctionNames {
   static let deletePromise = "deletePromise"
   static let startLiveActivity = "startLiveActivity"
   static let updateETA = "updateETA"
+  static let refreshHomeSnapshot = "refreshHomeSnapshot"
 }
 
 /// Promise 관련 Firestore CRUD 및 쿼리 작업을 담당하는 DataSource
@@ -378,6 +379,25 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
     guard document.exists, let data = document.data() else {
       // 캐시 문서가 없으면 빈 스냅샷 반환
       return .empty
+    }
+
+    // JSON 변환
+    let jsonData = try JSONSerialization.data(withJSONObject: data)
+    let decoder = JSONDecoder()
+    return try decoder.decode(HomeSnapshotDocument.self, from: jsonData)
+  }
+
+  /// 홈화면 스냅샷 갱신 (Firebase Functions 호출)
+  /// 하루 첫 진입 시 또는 Pull-to-refresh 시 호출
+  public func refreshHomeSnapshot() async throws -> HomeSnapshotDocument {
+    let result = try await functions.httpsCallable(FirebaseFunctionNames.refreshHomeSnapshot).call()
+
+    guard let data = result.data as? [String: Any] else {
+      throw NSError(
+        domain: "PromiseRemoteDataSource",
+        code: -1,
+        userInfo: [NSLocalizedDescriptionKey: "스냅샷 갱신 응답이 올바르지 않습니다"]
+      )
     }
 
     // JSON 변환

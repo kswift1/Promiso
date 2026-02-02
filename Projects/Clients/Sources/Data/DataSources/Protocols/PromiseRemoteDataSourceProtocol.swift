@@ -29,6 +29,10 @@ public protocol PromiseRemoteDataSourceProtocol {
   /// 홈화면 스냅샷 조회 (캐시된 데이터)
   func getHomeSnapshot() async throws -> HomeSnapshotDocument
 
+  /// 홈화면 스냅샷 갱신 (Firebase Functions 호출)
+  /// 하루 첫 진입 시 또는 Pull-to-refresh 시 호출
+  func refreshHomeSnapshot() async throws -> HomeSnapshotDocument
+
   // MARK: - Live Activity
   /// LiveActivity 시작 요청 (백엔드에서 Push to Start APNs 전송)
   func startLiveActivity(promiseId: String) async throws
