@@ -66,7 +66,7 @@ extension CalendarSettings {
       case authorizationStatusUpdated(CalendarAuthorizationStatus)
       case accessRequestCompleted(Bool)
       case groupsUpdated([UserGroupInfo])
-      case groupSettingsUpdateCompleted(groupId: String, success: Bool)
+      case groupSettingsUpdateCompleted(groupId: String, success: Bool, previousValue: Bool?)
     }
 
     // MARK: - Reducer Body
@@ -119,22 +119,36 @@ extension CalendarSettings {
           }
 
         case .view(.groupCalendarSyncToggled(let groupId, let enabled)):
-          guard let group = state.groups.first(where: { $0.id == groupId }) else {
+          guard let groupIndex = state.groups.firstIndex(where: { $0.id == groupId }) else {
             return .none
           }
 
           state.updatingGroupIds.insert(groupId)
 
-          var settings = group.notifications ?? GroupNotificationSettings()
+          // 로컬 상태 즉시 업데이트 (Optimistic Update)
+          let previousValue = state.groups[groupIndex].notifications?.calendarSync ?? true
+          var updatedGroup = state.groups[groupIndex]
+          var settings = updatedGroup.notifications ?? GroupNotificationSettings()
           settings.calendarSync = enabled
+          updatedGroup = UserGroupInfo(
+            id: updatedGroup.id,
+            name: updatedGroup.name,
+            role: updatedGroup.role,
+            joinedAt: updatedGroup.joinedAt,
+            notifications: settings,
+            hasNewActivity: updatedGroup.hasNewActivity,
+            imageUrl: updatedGroup.imageUrl
+          )
+          state.groups[groupIndex] = updatedGroup
 
           return .run { send in
             await hapticFeedback.selection()
             do {
               try await groupClient.updateGroupNotificationSettings(groupId, settings)
-              await send(.internal(.groupSettingsUpdateCompleted(groupId: groupId, success: true)))
+              await send(.internal(.groupSettingsUpdateCompleted(groupId: groupId, success: true, previousValue: nil)))
             } catch {
-              await send(.internal(.groupSettingsUpdateCompleted(groupId: groupId, success: false)))
+              // 실패 시 이전 값으로 롤백
+              await send(.internal(.groupSettingsUpdateCompleted(groupId: groupId, success: false, previousValue: previousValue)))
             }
           }
 
@@ -158,8 +172,27 @@ extension CalendarSettings {
           state.groups = groups
           return .none
 
-        case .internal(.groupSettingsUpdateCompleted(let groupId, let success)):
+        case .internal(.groupSettingsUpdateCompleted(let groupId, let success, let previousValue)):
           state.updatingGroupIds.remove(groupId)
+
+          // 실패 시 이전 값으로 롤백
+          if !success, let previousValue,
+             let groupIndex = state.groups.firstIndex(where: { $0.id == groupId }) {
+            var updatedGroup = state.groups[groupIndex]
+            var settings = updatedGroup.notifications ?? GroupNotificationSettings()
+            settings.calendarSync = previousValue
+            updatedGroup = UserGroupInfo(
+              id: updatedGroup.id,
+              name: updatedGroup.name,
+              role: updatedGroup.role,
+              joinedAt: updatedGroup.joinedAt,
+              notifications: settings,
+              hasNewActivity: updatedGroup.hasNewActivity,
+              imageUrl: updatedGroup.imageUrl
+            )
+            state.groups[groupIndex] = updatedGroup
+          }
+
           return .run { _ in
             if success {
               await hapticFeedback.success()
@@ -303,7 +336,7 @@ extension CalendarSettings {
 
     private var groupSyncSection: some View {
       VStack(alignment: .leading, spacing: 10) {
-        Text("그룹별 동기화")
+        Text("그룹별 쓰기 권한")
           .font(.system(size: 16, weight: .semibold))
           .padding(.horizontal, 4)
 
