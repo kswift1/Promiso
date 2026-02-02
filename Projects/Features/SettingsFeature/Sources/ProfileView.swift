@@ -29,46 +29,48 @@ extension Settings {
       List {
         // MARK: - 프로필 섹션
         Section {
-          profileHeaderRow
-        }
-        .listRowInsets(EdgeInsets())
-        .listRowBackground(Color.clear)
-
-        // MARK: - 계정 섹션
-        Section {
-          menuRow(
-            icon: "person.text.rectangle.fill",
-            title: "계정 정보",
-            action: { store.send(.view(.accountInfoTapped)) }
-          )
-        } header: {
-          Text("계정")
+          Button {
+            store.send(.view(.accountInfoTapped))
+          } label: {
+            profileHeaderRow
+          }
+          .buttonStyle(.plain)
+          .listRowInsets(EdgeInsets())
+          .listRowBackground(Color.clear)
         }
 
         // MARK: - 표시 섹션
         Section {
-          Toggle(isOn: Binding(
-            get: { store.use24HourFormat },
-            set: { store.send(.view(.use24HourFormatChanged($0))) }
-          )) {
-            HStack(spacing: 12) {
-              Image(systemName: "clock")
+          HStack(spacing: 12) {
+            Image(systemName: "clock")
+              .font(.body)
+              .foregroundStyle(Color.pmindigo.n500)
+              .frame(width: 24, height: 24)
+
+            VStack(alignment: .leading, spacing: 2) {
+              Text("24시간 형식")
                 .font(.body)
-                .foregroundStyle(Color.pmindigo.n500)
-                .frame(width: 24, height: 24)
+                .foregroundStyle(Color.pmtext.primary)
 
-              VStack(alignment: .leading, spacing: 2) {
-                Text("24시간 형식")
-                  .font(.body)
-                  .foregroundStyle(Color.pmtext.primary)
-
-                Text(store.use24HourFormat ? "예: 14:30" : "예: 오후 2:30")
-                  .font(.caption)
-                  .foregroundStyle(Color.pmtext.secondary)
-              }
+              Text(store.use24HourFormat ? "예: 14:30" : "예: 오후 2:30")
+                .font(.caption)
+                .foregroundStyle(Color.pmtext.secondary)
             }
+
+            Spacer()
+
+            Toggle("", isOn: Binding(
+              get: { store.use24HourFormat },
+              set: { store.send(.view(.use24HourFormatChanged($0))) }
+            ))
+            .labelsHidden()
+            .tint(Color.pmindigo.n500)
           }
-          .tint(Color.pmindigo.n500)
+          .padding(.horizontal, 16)
+          .padding(.vertical, 14)
+          .adaptiveGlassBackground()
+          .listRowBackground(Color.clear)
+          .listRowInsets(EdgeInsets())
         } header: {
           Text("표시")
         } footer: {
@@ -122,6 +124,9 @@ extension Settings {
         }
         #endif
       }
+      .scrollContentBackground(.hidden)
+      .background(Color.clear)
+      .auroraBackground()
       .navigationTitle("설정")
       .navigationBarTitleDisplayMode(.large)
       .sheet(
@@ -194,35 +199,25 @@ extension Settings {
           }
         )
 
-        // 닉네임과 편집 버튼
+        // 닉네임
         VStack(alignment: .leading, spacing: 4) {
           Text(store.currentUser.nickname)
             .font(.title3)
             .fontWeight(.semibold)
             .foregroundStyle(Color.pmtext.primary)
-
-          Text(store.currentUser.email)
-            .font(.subheadline)
-            .foregroundStyle(Color.pmtext.secondary)
         }
 
         Spacer()
 
-        // 편집 버튼
-        Button {
-          store.send(.view(.editProfileTapped))
-        } label: {
-          Text("편집")
-            .font(.subheadline)
-            .fontWeight(.medium)
-            .foregroundStyle(Color.pmindigo.n500)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .background(Color.pmindigo.n50, in: RoundedRectangle(cornerRadius: 8))
-        }
+        // 네비게이션 화살표
+        Image(systemName: "chevron.right")
+          .font(.caption)
+          .foregroundStyle(Color.pmgray.n400)
       }
       .padding(.vertical, 16)
       .padding(.horizontal, 16)
+      .contentShape(Rectangle())
+      .adaptiveGlassBackground()
     }
 
     // MARK: - Helpers
@@ -249,10 +244,14 @@ extension Settings {
             .font(.caption)
             .foregroundStyle(Color.pmgray.n400)
         }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
         .contentShape(Rectangle())
       }
       .buttonStyle(.plain)
-      .listRowInsets(EdgeInsets(top: 14, leading: 16, bottom: 14, trailing: 16))
+      .adaptiveGlassBackground()
+      .listRowBackground(Color.clear)
+      .listRowInsets(EdgeInsets())
     }
 
     /// 앱 버전 정보
