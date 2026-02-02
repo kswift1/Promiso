@@ -145,6 +145,7 @@ extension GroupSettings {
         case dismissError
         case memberImageTapped(UserPublicModel)
         case imageDetailDismissed
+        case openSystemSettingsTapped
       }
 
       public enum Internal: Sendable {
@@ -407,6 +408,11 @@ extension GroupSettings {
           case .imageDetailDismissed:
             state.selectedMemberForImage = nil
             return .none
+
+          case .openSystemSettingsTapped:
+            return .run { _ in
+              await notificationClient.openNotificationSettings()
+            }
           }
 
         case .internal(let internalAction):

@@ -345,9 +345,7 @@ private struct NotificationSettingsView: View {
       }
 
       Button {
-        if let url = URL(string: UIApplication.openNotificationSettingsURLString) {
-          UIApplication.shared.open(url)
-        }
+        store.send(.view(.openSystemSettingsTapped))
       } label: {
         HStack {
           Image(systemName: "gear")
