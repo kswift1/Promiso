@@ -900,7 +900,7 @@ extension GroupMain {
             return .run { [promiseClient, calendarSyncClient] send in
               do {
                 let result = try await promiseClient.respondPromise(promiseId, status)
-                AppLogger.calendar.debug("📱 [GroupMain] respondPromise 결과 - isConfirmed: \(result.isConfirmed), confirmedPromise: \(String(describing: result.confirmedPromise))")
+                AppLogger.calendar.debug("📱 [GroupMain] respondPromise 결과 - isConfirmed: \(result.isConfirmed)")
                 await send(.internal(.proposalRespondDone(promiseId: promiseId, status: status)))
 
                 // 캘린더 동기화: 수락 + 확정 시 추가

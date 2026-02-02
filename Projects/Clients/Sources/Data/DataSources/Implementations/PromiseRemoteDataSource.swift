@@ -104,7 +104,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
 
     let result = try await functions.httpsCallable("respondPromise").call(callableData)
 
-    AppLogger.calendar.debug("🌐 [DataSource] respondPromise 응답 (raw): \(String(describing: result.data))")
+    AppLogger.calendar.debug("🌐 [DataSource] respondPromise 응답 수신")
 
     guard let data = result.data as? [String: Any],
           let returnedPromiseId = data["promiseId"] as? String,

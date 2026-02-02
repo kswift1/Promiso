@@ -116,9 +116,6 @@ extension CalendarSyncClient: DependencyKey {
         do {
           serverPromises = try await promiseClient.getConfirmedPromisesForCalendar()
           AppLogger.calendar.debug("🔄 [Sync] 서버 약속 조회: \(serverPromises.count)개")
-          for promise in serverPromises {
-            AppLogger.calendar.debug("  - \(promise.id): \(promise.title) (그룹: \(promise.groupId))")
-          }
         } catch {
           AppLogger.calendar.error("🔄 [Sync] 서버 약속 조회 실패: \(error.localizedDescription)")
           throw CalendarSyncError.fetchFailed(error.localizedDescription)
@@ -257,7 +254,7 @@ extension CalendarSyncClient: DependencyKey {
           location: promise.location,
           url: url
         )
-        AppLogger.calendar.debug("➕ [AddPromise] 이벤트 생성: \(newEvent.title), \(newEvent.startDate)")
+        AppLogger.calendar.debug("➕ [AddPromise] 이벤트 생성 - promiseId: \(newEvent.promiseId)")
 
         let eventId = try await eventKitClient.addEvent(newEvent)
         AppLogger.calendar.info("➕ [AddPromise] 완료 - eventId: \(eventId)")
