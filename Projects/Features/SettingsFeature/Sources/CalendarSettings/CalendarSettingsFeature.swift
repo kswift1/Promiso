@@ -52,8 +52,8 @@ extension CalendarSettings {
     @CasePathable
     public enum View: Equatable, Sendable {
       case onAppear
-      case requestAccessTapped
-      case openSettingsTapped
+      case onSceneActive
+      case calendarToggleTapped
     }
 
     public enum Internal: Equatable, Sendable {
@@ -71,22 +71,29 @@ extension CalendarSettings {
           state.authorizationStatus = status
           return .none
 
-        case .view(.requestAccessTapped):
-          state.isRequestingAccess = true
-          return .run { send in
-            await hapticFeedback.medium()
-            do {
-              let granted = try await eventKitClient.requestAccess()
-              await send(.internal(.accessRequestCompleted(granted)))
-            } catch {
-              await send(.internal(.accessRequestCompleted(false)))
-            }
-          }
+        case .view(.onSceneActive):
+          let status = eventKitClient.authorizationStatus()
+          state.authorizationStatus = status
+          return .none
 
-        case .view(.openSettingsTapped):
-          return .run { _ in
-            await hapticFeedback.selection()
-            await eventKitClient.openSettings()
+        case .view(.calendarToggleTapped):
+          let status = state.authorizationStatus
+          if status == .notDetermined {
+            state.isRequestingAccess = true
+            return .run { send in
+              await hapticFeedback.medium()
+              do {
+                let granted = try await eventKitClient.requestAccess()
+                await send(.internal(.accessRequestCompleted(granted)))
+              } catch {
+                await send(.internal(.accessRequestCompleted(false)))
+              }
+            }
+          } else {
+            return .run { _ in
+              await hapticFeedback.selection()
+              await eventKitClient.openSettings()
+            }
           }
 
         case .internal(.authorizationStatusUpdated(let status)):
@@ -113,168 +120,126 @@ extension CalendarSettings {
 
   public struct RootView: View {
     @Bindable private var store: StoreOf<Feature>
+    @Environment(\.scenePhase) private var scenePhase
 
     public init(store: StoreOf<Feature>) {
       self.store = store
     }
 
     public var body: some View {
-      List {
-        // 권한 상태 섹션
-        Section {
-          VStack(spacing: 0) {
-            HStack(spacing: 16) {
-              Image(systemName: "calendar")
-                .font(.body)
-                .foregroundStyle(Color.pmindigo.n500)
-                .frame(width: 24, height: 24)
-
-              VStack(alignment: .leading, spacing: 4) {
-                Text("캘린더 접근")
-                  .font(.body)
-                  .foregroundStyle(Color.pmtext.primary)
-
-                Text(store.authorizationStatus.description)
-                  .font(.caption)
-                  .foregroundStyle(store.authorizationStatus.statusColor)
-              }
-
-              Spacer()
-
-              statusBadge
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-          }
-          .adaptiveGlassBackground()
-          .listRowBackground(Color.clear)
-          .listRowInsets(EdgeInsets())
-        } header: {
-          Text("권한 상태")
-        } footer: {
-          Text("캘린더 권한을 허용하면 약속과 함께 캘린더 일정을 확인할 수 있습니다.")
+      ScrollView {
+        VStack(spacing: 16) {
+          calendarAccessSection
+          permissionDetailSection
         }
-
-        // 권한 요청/설정 섹션
-        if store.authorizationStatus != .fullAccess && store.authorizationStatus != .authorized {
-          Section {
-            VStack(spacing: 0) {
-              if store.authorizationStatus == .notDetermined {
-                // 권한 요청 버튼
-                Button {
-                  store.send(.view(.requestAccessTapped))
-                } label: {
-                  HStack(spacing: 16) {
-                    Image(systemName: "lock.open.fill")
-                      .font(.body)
-                      .foregroundStyle(Color.pmindigo.n500)
-                      .frame(width: 24, height: 24)
-
-                    Text("캘린더 권한 요청")
-                      .font(.body)
-                      .foregroundStyle(Color.pmtext.primary)
-
-                    Spacer()
-
-                    if store.isRequestingAccess {
-                      ProgressView()
-                        .scaleEffect(0.8)
-                    } else {
-                      Image(systemName: "chevron.right")
-                        .font(.caption)
-                        .foregroundStyle(Color.pmgray.n400)
-                    }
-                  }
-                  .padding(.horizontal, 16)
-                  .padding(.vertical, 14)
-                  .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .disabled(store.isRequestingAccess)
-              } else {
-                // 설정으로 이동 버튼
-                Button {
-                  store.send(.view(.openSettingsTapped))
-                } label: {
-                  HStack(spacing: 16) {
-                    Image(systemName: "gear")
-                      .font(.body)
-                      .foregroundStyle(Color.pmindigo.n500)
-                      .frame(width: 24, height: 24)
-
-                    Text("설정에서 권한 변경")
-                      .font(.body)
-                      .foregroundStyle(Color.pmtext.primary)
-
-                    Spacer()
-
-                    Image(systemName: "arrow.up.forward")
-                      .font(.caption)
-                      .foregroundStyle(Color.pmgray.n400)
-                  }
-                  .padding(.horizontal, 16)
-                  .padding(.vertical, 14)
-                  .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-              }
-            }
-            .adaptiveGlassBackground()
-            .listRowBackground(Color.clear)
-            .listRowInsets(EdgeInsets())
-          }
-        }
-
-        // 권한 설명 섹션
-        Section {
-          VStack(alignment: .leading, spacing: 12) {
-            permissionRow(
-              icon: "eye",
-              title: "읽기 권한",
-              description: "캘린더 일정을 조회하여 약속과 함께 표시합니다.",
-              isGranted: store.authorizationStatus.canReadEvents
-            )
-
-            Divider()
-
-            permissionRow(
-              icon: "pencil",
-              title: "쓰기 권한",
-              description: "약속을 캘린더에 추가할 수 있습니다.",
-              isGranted: store.authorizationStatus.canWriteEvents
-            )
-          }
-          .padding(16)
-          .adaptiveGlassBackground()
-          .listRowBackground(Color.clear)
-          .listRowInsets(EdgeInsets())
-        } header: {
-          Text("권한 상세")
-        }
+        .padding(.horizontal, 16)
+        .padding(.top, 12)
+        .padding(.bottom, 24)
       }
-      .scrollContentBackground(.hidden)
-      .background(Color.clear)
       .auroraBackground()
       .navigationTitle("캘린더 설정")
       .navigationBarTitleDisplayMode(.inline)
       .onAppear {
         store.send(.view(.onAppear))
       }
+      .onChange(of: scenePhase) { _, newPhase in
+        if newPhase == .active {
+          store.send(.view(.onSceneActive))
+        }
+      }
     }
 
-    // MARK: - Helper Views
+    // MARK: - Calendar Access Section
 
-    @ViewBuilder
-    private var statusBadge: some View {
-      let status = store.authorizationStatus
-      Text(status.shortDescription)
-        .font(.caption)
-        .fontWeight(.medium)
-        .foregroundStyle(status.badgeTextColor)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(status.badgeBackgroundColor, in: Capsule())
+    private var calendarAccessSection: some View {
+      VStack(alignment: .leading, spacing: 10) {
+        Text("캘린더 접근")
+          .font(.system(size: 16, weight: .semibold))
+          .padding(.horizontal, 4)
+
+        VStack(spacing: 0) {
+          Button {
+            store.send(.view(.calendarToggleTapped))
+          } label: {
+            HStack(spacing: 12) {
+              Image(systemName: "calendar")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(Color.pmindigo.n500)
+
+              Text("캘린더 연동")
+                .foregroundStyle(.primary)
+
+              Spacer()
+
+              if store.isRequestingAccess {
+                ProgressView()
+                  .scaleEffect(0.8)
+              } else {
+                Toggle("", isOn: .constant(store.authorizationStatus.isAuthorized))
+                  .labelsHidden()
+                  .tint(Color.pmindigo.n500)
+                  .allowsHitTesting(false)
+              }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .contentShape(Rectangle())
+          }
+          .buttonStyle(.plain)
+          .disabled(store.isRequestingAccess)
+        }
+        .adaptiveGlassCard()
+
+        if store.authorizationStatus == .denied {
+          Label("시스템 설정에서 캘린더 접근을 허용해주세요", systemImage: "exclamationmark.triangle")
+            .font(.system(size: 12))
+            .foregroundStyle(Color.pmerror.n500)
+            .padding(.horizontal, 4)
+        } else if store.authorizationStatus == .restricted {
+          Label("기기 설정에 의해 캘린더 접근이 제한되어 있습니다", systemImage: "exclamationmark.triangle")
+            .font(.system(size: 12))
+            .foregroundStyle(Color.pmwarning.n500)
+            .padding(.horizontal, 4)
+        }
+      }
     }
+
+    // MARK: - Permission Detail Section
+
+    private var permissionDetailSection: some View {
+      VStack(alignment: .leading, spacing: 10) {
+        Text("권한 상세")
+          .font(.system(size: 16, weight: .semibold))
+          .padding(.horizontal, 4)
+
+        VStack(spacing: 0) {
+          permissionRow(
+            icon: "eye",
+            title: "읽기",
+            description: "캘린더 일정을 조회하여 약속과 함께 표시합니다.",
+            isGranted: store.authorizationStatus.canReadEvents
+          )
+
+          Divider()
+            .background(Color.white.opacity(0.12))
+
+          permissionRow(
+            icon: "pencil",
+            title: "쓰기",
+            description: "약속이 확정되면 달력 앱에도 자동으로 추가합니다.",
+            isGranted: store.authorizationStatus.canWriteEvents
+          )
+        }
+        .adaptiveGlassCard()
+
+        Text("캘린더 권한을 허용하면 약속과 기존 일정을 함께 확인할 수 있습니다.")
+          .font(.system(size: 12))
+          .foregroundStyle(Color.pmtext.secondary)
+          .padding(.horizontal, 4)
+      }
+    }
+
+    // MARK: - Permission Row
 
     private func permissionRow(
       icon: String,
@@ -282,30 +247,31 @@ extension CalendarSettings {
       description: String,
       isGranted: Bool
     ) -> some View {
-      HStack(alignment: .top, spacing: 12) {
+      HStack(alignment: .center, spacing: 12) {
         Image(systemName: icon)
-          .font(.body)
+          .font(.system(size: 16, weight: .semibold))
           .foregroundStyle(isGranted ? Color.pmindigo.n500 : Color.pmgray.n400)
-          .frame(width: 24, height: 24)
+          .frame(width: 24)
 
-        VStack(alignment: .leading, spacing: 4) {
-          HStack {
-            Text(title)
-              .font(.subheadline)
-              .fontWeight(.medium)
-              .foregroundStyle(Color.pmtext.primary)
-
-            Spacer()
-
-            Image(systemName: isGranted ? "checkmark.circle.fill" : "xmark.circle.fill")
-              .foregroundStyle(isGranted ? Color.green : Color.pmgray.n400)
-          }
+        VStack(alignment: .leading, spacing: 2) {
+          Text(title)
+            .font(.subheadline)
+            .fontWeight(.medium)
+            .foregroundStyle(Color.pmtext.primary)
 
           Text(description)
             .font(.caption)
             .foregroundStyle(Color.pmtext.secondary)
         }
+
+        Spacer()
+
+        Image(systemName: isGranted ? "checkmark.circle.fill" : "xmark.circle")
+          .font(.system(size: 18))
+          .foregroundStyle(isGranted ? Color.pmindigo.n500 : Color.pmgray.n400)
       }
+      .padding(.horizontal, 16)
+      .padding(.vertical, 14)
     }
   }
 }
@@ -313,74 +279,12 @@ extension CalendarSettings {
 // MARK: - CalendarAuthorizationStatus Extensions
 
 extension CalendarAuthorizationStatus {
-  var description: String {
+  var isAuthorized: Bool {
     switch self {
-    case .notDetermined:
-      return "아직 권한을 요청하지 않았습니다"
-    case .restricted:
-      return "기기 설정에 의해 제한됨"
-    case .denied:
-      return "권한이 거부됨"
-    case .fullAccess:
-      return "모든 권한 허용됨"
-    case .writeOnly:
-      return "쓰기 권한만 허용됨"
-    case .authorized:
-      return "권한 허용됨"
-    }
-  }
-
-  var shortDescription: String {
-    switch self {
-    case .notDetermined:
-      return "미설정"
-    case .restricted:
-      return "제한됨"
-    case .denied:
-      return "거부됨"
-    case .fullAccess, .authorized:
-      return "허용됨"
-    case .writeOnly:
-      return "쓰기만"
-    }
-  }
-
-  var statusColor: Color {
-    switch self {
-    case .notDetermined:
-      return Color.pmtext.secondary
-    case .restricted, .denied:
-      return .orange
-    case .fullAccess, .authorized:
-      return .green
-    case .writeOnly:
-      return .blue
-    }
-  }
-
-  var badgeTextColor: Color {
-    switch self {
-    case .notDetermined:
-      return Color.pmtext.secondary
-    case .restricted, .denied:
-      return .orange
-    case .fullAccess, .authorized:
-      return .green
-    case .writeOnly:
-      return .blue
-    }
-  }
-
-  var badgeBackgroundColor: Color {
-    switch self {
-    case .notDetermined:
-      return Color.pmgray.n200
-    case .restricted, .denied:
-      return Color.orange.opacity(0.15)
-    case .fullAccess, .authorized:
-      return Color.green.opacity(0.15)
-    case .writeOnly:
-      return Color.blue.opacity(0.15)
+    case .fullAccess, .authorized, .writeOnly:
+      return true
+    default:
+      return false
     }
   }
 
