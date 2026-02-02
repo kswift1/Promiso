@@ -15,9 +15,6 @@ public struct UserSettingsClient: Sendable {
 
   /// 사용자 플랜 업데이트
   public var updatePlan: @Sendable (_ userId: String, _ plan: UserPlan) async throws -> Void
-
-  /// 알림 활성화 토글
-  public var updateNotificationEnabled: @Sendable (_ userId: String, _ enabled: Bool) async throws -> Void
 }
 
 // MARK: - Test & Preview Values
@@ -29,8 +26,7 @@ extension UserSettingsClient: TestDependencyKey {
       placeholder: UserSettings(notificationEnabled: true, groupSortOption: .joinedRecent, plan: .free)
     ),
     updateGroupSortOption: unimplemented("\\(Self.self).updateGroupSortOption"),
-    updatePlan: unimplemented("\\(Self.self).updatePlan"),
-    updateNotificationEnabled: unimplemented("\\(Self.self).updateNotificationEnabled")
+    updatePlan: unimplemented("\\(Self.self).updatePlan")
   )
 
   public static let previewValue = Self(
@@ -46,9 +42,6 @@ extension UserSettingsClient: TestDependencyKey {
       try await Task.sleep(for: .seconds(0.2))
     },
     updatePlan: { _, _ in
-      try await Task.sleep(for: .seconds(0.2))
-    },
-    updateNotificationEnabled: { _, _ in
       try await Task.sleep(for: .seconds(0.2))
     }
   )
@@ -78,9 +71,6 @@ extension UserSettingsClient: DependencyKey {
       },
       updatePlan: { userId, plan in
         try await dataSource.updatePlan(userId: userId, plan: plan)
-      },
-      updateNotificationEnabled: { userId, enabled in
-        try await dataSource.updateNotificationEnabled(userId: userId, enabled: enabled)
       }
     )
   }()

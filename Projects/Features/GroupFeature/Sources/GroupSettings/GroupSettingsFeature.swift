@@ -10,7 +10,6 @@ extension GroupSettings {
   @Reducer
   public struct Feature {
     @Dependency(\.groupClient) var groupClient
-    @Dependency(\.userSettingsClient) var userSettingsClient
     @Dependency(\.notificationClient) var notificationClient
     @Dependency(\.hapticFeedback) var hapticFeedback
 
@@ -43,7 +42,6 @@ extension GroupSettings {
       // Notifications
       var notificationSettings: GroupNotificationSettings
       var notificationError: String?
-      var appLevelNotificationEnabled: Bool = false
       var systemAuthStatus: NotificationAuthorizationStatus = .notDetermined
 
       public init(
@@ -158,9 +156,6 @@ extension GroupSettings {
         case editGroupSaveResponse(Result<GroupModel, Error>)
         case systemAuthStatusFetched(NotificationAuthorizationStatus)
         case notificationPermissionResponse(Bool)
-        case appLevelNotificationFetched(Bool)
-        case appLevelNotificationUpdated
-        case appLevelNotificationUpdateFailed(String)
         case groupNotificationsUpdateFailed(previousValue: Bool, message: String)
         case notificationPreferenceUpdateFailed(
           key: GroupNotificationPreferenceKey,
@@ -185,16 +180,10 @@ extension GroupSettings {
           switch viewAction {
           case .onAppear:
             let shouldFetchMembers = state.membersState == .idle
-            let userId = state.currentUserId
-            return .run { [userSettingsClient, notificationClient] send in
+            return .run { [notificationClient] send in
               // 시스템 알림 권한 상태 로드
               let systemStatus = await notificationClient.getAuthorizationStatus()
               await send(.internal(.systemAuthStatusFetched(systemStatus)))
-
-              // 앱 레벨 알림 상태 로드
-              if let settings = try? await userSettingsClient.fetchSettings(userId) {
-                await send(.internal(.appLevelNotificationFetched(settings.notificationEnabled)))
-              }
 
               // 멤버 로드
               if shouldFetchMembers {
@@ -296,18 +285,10 @@ extension GroupSettings {
             state.notificationSettings.enabled = enabled
             state.notificationError = nil
             let updatedSettings = state.notificationSettings
-            let shouldEnableAppNotification = enabled && !state.appLevelNotificationEnabled
-            let userId = state.currentUserId
 
-            return .run { [groupClient, userSettingsClient, groupId = state.group.id, hapticFeedback] send in
+            return .run { [groupClient, groupId = state.group.id, hapticFeedback] send in
               await hapticFeedback.selection()
               do {
-                // 그룹 알림을 켤 때 앱 알림도 꺼져있으면 함께 켜기
-                if shouldEnableAppNotification {
-                  try await userSettingsClient.updateNotificationEnabled(userId, true)
-                  await send(.internal(.appLevelNotificationUpdated))
-                }
-
                 // 그룹 알림 설정 업데이트
                 try await groupClient.updateGroupNotificationSettings(
                   groupId,
@@ -512,20 +493,6 @@ extension GroupSettings {
               } else {
                 await hapticFeedback.error()
               }
-            }
-
-          case .appLevelNotificationFetched(let enabled):
-            state.appLevelNotificationEnabled = enabled
-            return .none
-
-          case .appLevelNotificationUpdated:
-            state.appLevelNotificationEnabled = true
-            return .none
-
-          case .appLevelNotificationUpdateFailed(let message):
-            state.notificationError = message
-            return .run { [hapticFeedback] _ in
-              await hapticFeedback.error()
             }
 
           case .groupNotificationsUpdateFailed(let previousValue, let message):

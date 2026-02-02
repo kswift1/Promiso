@@ -261,12 +261,8 @@ extension Settings {
             return .none
 
           case .notificationSettingsTapped:
-            let userId = state.currentUser.userId
             state.path.append(.notificationSettings(
-              NotificationSettings.Feature.State(
-                currentUserId: userId,
-                notificationEnabled: false  // onAppear에서 실제 설정 로드
-              )
+              NotificationSettings.Feature.State()
             ))
             return .run { _ in await hapticFeedback.selection() }
 

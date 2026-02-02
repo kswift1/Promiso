@@ -56,12 +56,4 @@ public final class UserSettingsRemoteDataSource: @unchecked Sendable {
       merge: true
     )
   }
-
-  /// 알림 활성화 토글
-  public func updateNotificationEnabled(userId: String, enabled: Bool) async throws {
-    try await settingsRef(userId: userId).setData(
-      ["notificationEnabled": enabled],
-      merge: true
-    )
-  }
 }

@@ -26,31 +26,18 @@ extension NotificationSettings {
     // MARK: - Dependencies
 
     @Dependency(\.notificationClient) var notificationClient
-    @Dependency(\.userSettingsClient) var userSettingsClient
     @Dependency(\.hapticFeedback) var hapticFeedback
 
     // MARK: - State
 
     @ObservableState
     public struct State: Equatable {
-      /// 현재 사용자 ID
-      public let currentUserId: String
-      /// 알림 활성화 여부
-      public var notificationEnabled: Bool
       /// 시스템 알림 권한 상태
       public var systemAuthStatus: NotificationAuthorizationStatus = .notDetermined
-      /// 업데이트 중 여부
-      public var isUpdating: Bool = false
-      /// 에러 메시지
-      public var errorMessage: String?
 
       public init(
-        currentUserId: String,
-        notificationEnabled: Bool,
         systemAuthStatus: NotificationAuthorizationStatus = .notDetermined
       ) {
-        self.currentUserId = currentUserId
-        self.notificationEnabled = notificationEnabled
         self.systemAuthStatus = systemAuthStatus
       }
     }
@@ -65,16 +52,11 @@ extension NotificationSettings {
     @CasePathable
     public enum View: Equatable, Sendable {
       case onAppear
-      case notificationToggled(Bool)
       case openSystemSettings
-      case dismissError
     }
 
     public enum Internal: Equatable, Sendable {
       case systemAuthStatusReceived(NotificationAuthorizationStatus)
-      case settingsFetched(Bool)
-      case updateNotificationSuccess
-      case updateNotificationFailed(String)
     }
 
     // MARK: - Reducer Body
@@ -88,32 +70,10 @@ extension NotificationSettings {
         case .view(let viewAction):
           switch viewAction {
           case .onAppear:
-            // 시스템 알림 권한 상태 확인 및 사용자 설정 로드
-            let userId = state.currentUserId
+            // 시스템 알림 권한 상태 확인
             return .run { send in
-              async let statusTask = notificationClient.getAuthorizationStatus()
-              async let settingsTask: UserSettings? = try? userSettingsClient.fetchSettings(userId)
-
-              let (status, settings) = await (statusTask, settingsTask)
-
+              let status = await notificationClient.getAuthorizationStatus()
               await send(.internal(.systemAuthStatusReceived(status)))
-              if let settings = settings {
-                await send(.internal(.settingsFetched(settings.notificationEnabled)))
-              }
-            }
-
-          case .notificationToggled(let enabled):
-            state.notificationEnabled = enabled
-            state.isUpdating = true
-            let userId = state.currentUserId
-            return .run { send in
-              await hapticFeedback.selection()
-              do {
-                try await userSettingsClient.updateNotificationEnabled(userId, enabled)
-                await send(.internal(.updateNotificationSuccess))
-              } catch {
-                await send(.internal(.updateNotificationFailed(error.localizedDescription)))
-              }
             }
 
           case .openSystemSettings:
@@ -121,10 +81,6 @@ extension NotificationSettings {
               await hapticFeedback.selection()
               await notificationClient.openNotificationSettings()
             }
-
-          case .dismissError:
-            state.errorMessage = nil
-            return .none
           }
 
         // MARK: - Internal Actions
@@ -134,24 +90,6 @@ extension NotificationSettings {
           case .systemAuthStatusReceived(let status):
             state.systemAuthStatus = status
             return .none
-
-          case .settingsFetched(let enabled):
-            state.notificationEnabled = enabled
-            return .none
-
-          case .updateNotificationSuccess:
-            state.isUpdating = false
-            return .run { _ in
-              await hapticFeedback.success()
-            }
-
-          case .updateNotificationFailed(let errorMessage):
-            state.isUpdating = false
-            state.errorMessage = errorMessage
-            state.notificationEnabled = !state.notificationEnabled // 롤백
-            return .run { _ in
-              await hapticFeedback.error()
-            }
           }
         }
       }
@@ -170,71 +108,106 @@ extension NotificationSettings {
     public var body: some View {
       List {
         Section {
-          // 시스템 권한 거부 경고
-          if store.systemAuthStatus == .denied {
-            VStack(alignment: .leading, spacing: 12) {
-              HStack(spacing: 8) {
-                Image(systemName: "exclamationmark.triangle.fill")
-                  .foregroundStyle(Color.pmerror.n500)
+          // 시스템 권한 상태 표시
+          HStack(spacing: 12) {
+            Image(systemName: statusIcon)
+              .font(.title2)
+              .foregroundStyle(statusColor)
+              .frame(width: 32, height: 32)
 
-                Text("시스템 알림 권한이 거부되었습니다")
-                  .font(.caption)
-                  .foregroundStyle(Color.pmtext.secondary)
-              }
-
-              Button {
-                store.send(.view(.openSystemSettings))
-              } label: {
-                Text("시스템 설정 열기")
-                  .font(.subheadline)
-                  .fontWeight(.medium)
-                  .foregroundStyle(Color.pmindigo.n500)
-              }
-            }
-            .padding(.vertical, 8)
-          }
-
-          // 알림 토글
-          Toggle(isOn: Binding(
-            get: { store.notificationEnabled },
-            set: { store.send(.view(.notificationToggled($0))) }
-          )) {
             VStack(alignment: .leading, spacing: 4) {
-              Text("알림 받기")
+              Text("시스템 알림 권한")
                 .font(.body)
                 .foregroundStyle(Color.pmtext.primary)
 
-              Text("Promiso의 모든 알림을 받습니다")
+              Text(statusText)
                 .font(.caption)
                 .foregroundStyle(Color.pmtext.secondary)
             }
+
+            Spacer()
           }
-          .disabled(store.systemAuthStatus != .authorized || store.isUpdating)
-          .tint(Color.pmindigo.n500)
+          .padding(.vertical, 4)
+
+          // 시스템 설정 열기 버튼
+          Button {
+            store.send(.view(.openSystemSettings))
+          } label: {
+            HStack {
+              Text("시스템 설정 열기")
+                .font(.body)
+                .foregroundStyle(Color.pmindigo.n500)
+
+              Spacer()
+
+              Image(systemName: "arrow.up.right")
+                .font(.caption)
+                .foregroundStyle(Color.pmindigo.n500)
+            }
+            .contentShape(Rectangle())
+          }
         } header: {
-          Text("전체 알림 설정")
+          Text("알림 권한")
         } footer: {
           Text("개별 그룹의 알림 설정은 각 그룹 설정에서 변경할 수 있습니다.")
         }
       }
+      .scrollContentBackground(.hidden)
+      .background(Color.clear)
+      .auroraBackground()
       .navigationTitle("알림 설정")
       .navigationBarTitleDisplayMode(.inline)
-      .alert(
-        "알림 설정 오류",
-        isPresented: Binding(
-          get: { store.errorMessage != nil },
-          set: { if !$0 { store.send(.view(.dismissError)) } }
-        ),
-        presenting: store.errorMessage
-      ) { _ in
-        Button("확인") {
-          store.send(.view(.dismissError))
-        }
-      } message: { message in
-        Text(message)
-      }
       .onAppear {
         store.send(.view(.onAppear))
+      }
+    }
+
+    // MARK: - Helpers
+
+    private var statusIcon: String {
+      switch store.systemAuthStatus {
+      case .authorized:
+        return "checkmark.circle.fill"
+      case .denied:
+        return "xmark.circle.fill"
+      case .notDetermined:
+        return "questionmark.circle.fill"
+      case .provisional, .ephemeral:
+        return "bell.badge.fill"
+      @unknown default:
+        return "bell.slash.fill"
+      }
+    }
+
+    private var statusColor: Color {
+      switch store.systemAuthStatus {
+      case .authorized:
+        return Color.pmsuccess.n500
+      case .denied:
+        return Color.pmerror.n500
+      case .notDetermined:
+        return Color.pmtext.secondary
+      case .provisional, .ephemeral:
+        return Color.pmwarning.n500
+      @unknown default:
+        return Color.pmtext.secondary
+      }
+    }
+
+    private var statusText: String {
+      switch store.systemAuthStatus {
+      case .authorized:
+        return "알림이 허용되었습니다"
+      case .denied:
+        return "알림이 거부되었습니다. 시스템 설정에서 변경할 수 있습니다."
+      case .notDetermined:
+        return "알림 권한을 설정해주세요"
+      case .provisional:
+        return "임시 알림 권한이 부여되었습니다"
+      case .ephemeral:
+        return "임시 알림 권한이 부여되었습니다"
+      @unknown default:
+        return "알림 권한 상태를 확인할 수 없습니다"
       }
     }
   }

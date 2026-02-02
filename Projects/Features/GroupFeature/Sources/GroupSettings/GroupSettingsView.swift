@@ -271,10 +271,6 @@ private struct NotificationSettingsView: View {
         else if store.systemAuthStatus == .denied {
           systemNotificationDeniedBanner
         }
-        // 시스템 권한 허용 (authorized, provisional, ephemeral) + 앱 알림 꺼짐
-        else if isNotificationEnabled(store.systemAuthStatus) && !store.appLevelNotificationEnabled {
-          appNotificationDisabledBanner
-        }
 
         groupNotificationSection
         promiseNotificationSection
@@ -370,28 +366,6 @@ private struct NotificationSettingsView: View {
     .adaptiveGlassCard()
   }
 
-  private var appNotificationDisabledBanner: some View {
-    VStack(alignment: .leading, spacing: 12) {
-      HStack(spacing: 8) {
-        Image(systemName: "exclamationmark.triangle.fill")
-          .font(.system(size: 16))
-          .foregroundStyle(Color.orange)
-
-        Text("앱 전체 알림이 꺼져있어 그룹 알림을 받을 수 없어요")
-          .font(.system(size: 14))
-          .foregroundStyle(Color.pmtext.primary)
-
-        Spacer()
-      }
-
-      Text("그룹 알림을 켜면 앱 전체 알림도 함께 켜집니다")
-        .font(.system(size: 12))
-        .foregroundStyle(Color.pmtext.secondary)
-    }
-    .padding(16)
-    .adaptiveGlassCard()
-  }
-
   private var groupNotificationSection: some View {
     VStack(alignment: .leading, spacing: 10) {
       Text("그룹 전체")
@@ -408,7 +382,7 @@ private struct NotificationSettingsView: View {
             get: { store.notificationSettings.enabled },
             set: { store.send(.view(.groupNotificationsChanged($0))) }
           ),
-          disabled: !isNotificationEnabled(store.systemAuthStatus) || !store.appLevelNotificationEnabled
+          disabled: !isNotificationEnabled(store.systemAuthStatus)
         )
       }
       .adaptiveGlassCard()
@@ -514,7 +488,6 @@ private struct NotificationSettingsView: View {
     isOn: Binding<Bool>
   ) -> some View {
     let isDisabled = !isNotificationEnabled(store.systemAuthStatus)
-                  || !store.appLevelNotificationEnabled
                   || !store.notificationSettings.enabled
 
     return HStack(alignment: .center, spacing: 12) {
