@@ -176,9 +176,6 @@ extension AccountInfo {
           // 계정 정보 카드
           accountInfoCard
 
-          // 프로필 편집
-          profileEditButton
-
           // 계정 관리 (로그아웃, 탈퇴)
           accountManagementSection
         }
@@ -188,6 +185,17 @@ extension AccountInfo {
       .auroraBackground()
       .navigationTitle("계정 정보")
       .navigationBarTitleDisplayMode(.large)
+      .toolbar {
+        ToolbarItem(placement: .topBarTrailing) {
+          Button {
+            store.send(.view(.editProfileTapped))
+          } label: {
+            Text("편집")
+              .font(.body)
+              .foregroundStyle(Color.pmindigo.n500)
+          }
+        }
+      }
       .alert(
         "로그아웃",
         isPresented: Binding(
@@ -223,36 +231,6 @@ extension AccountInfo {
       .onAppear {
         store.send(.view(.onAppear))
       }
-    }
-
-    // MARK: - Profile Edit Button
-
-    private var profileEditButton: some View {
-      Button {
-        store.send(.view(.editProfileTapped))
-      } label: {
-        HStack(spacing: 16) {
-          Image(systemName: "person.crop.circle.fill")
-            .font(.body)
-            .foregroundStyle(Color.pmindigo.n500)
-            .frame(width: 24, height: 24)
-
-          Text("프로필 편집")
-            .font(.body)
-            .foregroundStyle(Color.pmtext.primary)
-
-          Spacer()
-
-          Image(systemName: "chevron.right")
-            .font(.caption)
-            .foregroundStyle(Color.pmgray.n400)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-        .contentShape(Rectangle())
-      }
-      .buttonStyle(.plain)
-      .adaptiveGlassBackground()
     }
 
     // MARK: - Account Management Section
