@@ -370,7 +370,7 @@ export const onPromiseWriteUpdateHomeSnapshot = onDocumentWritten(
 
     if (activeUserIds.length === 0) {
       console.log(
-        `⏭️ [HomeSnapshot] No active users with today's snapshot ` +
+        "⏭️ [HomeSnapshot] No active users with today snapshot " +
         `(${userIds.length} users checked)`
       );
       return;

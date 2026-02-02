@@ -116,8 +116,8 @@ public struct PromiseClient: Sendable {
   /// 그룹의 활성 약속 실시간 구독
   public var subscribeToPromises: @Sendable (_ groupId: String, _ limit: Int) -> AsyncStream<[PromiseModel]> = { _, _ in AsyncStream { _ in } }
 
-  /// 약속 응답
-  public var respondPromise: @Sendable (_ promiseId: String, _ status: PromiseAttendanceStatus) async throws -> Void
+  /// 약속 응답 (캘린더 동기화용 결과 반환)
+  public var respondPromise: @Sendable (_ promiseId: String, _ status: PromiseAttendanceStatus) async throws -> RespondPromiseResult
 
   // MARK: - Calendar Sync
 
@@ -203,8 +203,14 @@ extension PromiseClient: TestDependencyKey {
         }
       }
     },
-    respondPromise: { _, _ in
+    respondPromise: { promiseId, status in
       try await Task.sleep(for: .seconds(0.3))
+      return RespondPromiseResult(
+        promiseId: promiseId,
+        status: status.rawValue,
+        isConfirmed: false,
+        confirmedPromise: nil
+      )
     },
     getConfirmedPromisesForCalendar: {
       try await Task.sleep(for: .seconds(0.3))
@@ -284,7 +290,7 @@ extension PromiseClient: DependencyKey {
         dataSource.subscribeToActivePromises(groupId: groupId, limit: limit)
       },
       respondPromise: { promiseId, status in
-        try await dataSource.respondToPromise(
+        return try await dataSource.respondToPromise(
           promiseId: promiseId,
           status: status.rawValue
         )

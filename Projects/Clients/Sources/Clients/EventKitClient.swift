@@ -158,6 +158,19 @@ public struct EventKitClient: Sendable {
   /// - Returns: 생성된 이벤트의 eventIdentifier
   public var addEvent: @Sendable (NewCalendarEvent) async throws -> String
 
+  /// 캘린더 이벤트 업데이트
+  public var updateEvent: @Sendable (
+    _ eventIdentifier: String,
+    _ newEvent: NewCalendarEvent,
+    _ preserveUserNotes: String?
+  ) async throws -> Void
+
+  /// 캘린더 이벤트 삭제
+  public var deleteEvent: @Sendable (_ eventIdentifier: String) async throws -> Void
+
+  /// Promiso 태그가 있는 이벤트 조회 (미래 이벤트만)
+  public var getPromisoEvents: @Sendable () async throws -> [PromisoCalendarEvent]
+
   /// 캘린더 변경 관찰 (이벤트 추가/수정/삭제 감지)
   public var observeChanges: @Sendable () -> AsyncStream<Void> = { AsyncStream { _ in } }
 
@@ -197,9 +210,11 @@ extension EventKitClient: TestDependencyKey {
       ]
     },
     addEvent: { event in
-      // Preview에서는 가짜 eventIdentifier 반환
       return "preview-event-\(event.promiseId)"
     },
+    updateEvent: { _, _, _ in },
+    deleteEvent: { _ in },
+    getPromisoEvents: { [] },
     observeChanges: { AsyncStream { _ in } },
     openSettings: { }
   )
@@ -209,6 +224,9 @@ extension EventKitClient: TestDependencyKey {
     requestAccess: unimplemented("\(Self.self).requestAccess", placeholder: false),
     fetchEvents: unimplemented("\(Self.self).fetchEvents", placeholder: []),
     addEvent: unimplemented("\(Self.self).addEvent", placeholder: ""),
+    updateEvent: unimplemented("\(Self.self).updateEvent"),
+    deleteEvent: unimplemented("\(Self.self).deleteEvent"),
+    getPromisoEvents: unimplemented("\(Self.self).getPromisoEvents", placeholder: []),
     observeChanges: unimplemented("\(Self.self).observeChanges"),
     openSettings: unimplemented("\(Self.self).openSettings")
   )
@@ -257,32 +275,138 @@ extension EventKitClient: DependencyKey {
           throw EventKitClientError.writeNotAllowed
         }
 
-        // 2. EKEvent 생성
+        // 2. 기본 캘린더 확인
+        guard let defaultCalendar = eventStore.defaultCalendarForNewEvents else {
+          throw EventKitClientError.saveFailed("기본 캘린더를 찾을 수 없습니다")
+        }
+
+        // 3. EKEvent 생성
         let event = EKEvent(eventStore: eventStore)
         event.title = newEvent.title
         event.startDate = newEvent.startDate
-        event.endDate = newEvent.endDate ?? newEvent.startDate.addingTimeInterval(3600) // 기본 1시간
+        event.endDate = newEvent.endDate ?? newEvent.startDate.addingTimeInterval(3600)
         event.location = newEvent.location
         event.notes = newEvent.notes
-        event.calendar = eventStore.defaultCalendarForNewEvents
+        event.calendar = defaultCalendar
 
-        // 3. 알림 추가 (30분 전)
+        // 4. 알림 추가 (30분 전)
         let alarm = EKAlarm(relativeOffset: -1800)
         event.addAlarm(alarm)
 
-        // 4. 저장
+        // 5. 저장
         do {
           try eventStore.save(event, span: .thisEvent)
         } catch {
           throw EventKitClientError.saveFailed(error.localizedDescription)
         }
 
-        // 5. eventIdentifier 반환
+        // 6. eventIdentifier 반환
         guard let eventIdentifier = event.eventIdentifier else {
           throw EventKitClientError.saveFailed("이벤트 ID를 가져올 수 없습니다")
         }
 
         return eventIdentifier
+      },
+
+      updateEvent: { eventIdentifier, newEvent, preserveUserNotes in
+        // 1. 쓰기 권한 확인
+        let status = EKEventStore.authorizationStatus(for: .event)
+        guard status.toCalendarAuthorizationStatus().canWriteEvents else {
+          throw EventKitClientError.writeNotAllowed
+        }
+
+        // 2. 기존 이벤트 조회
+        guard let event = eventStore.event(withIdentifier: eventIdentifier) else {
+          throw EventKitClientError.eventStoreError("이벤트를 찾을 수 없습니다")
+        }
+
+        // 3. 쓰기 가능한 캘린더인지 확인
+        guard event.calendar?.allowsContentModifications == true else {
+          throw EventKitClientError.writeNotAllowed
+        }
+
+        // 4. 이벤트 업데이트
+        event.title = newEvent.title
+        event.startDate = newEvent.startDate
+        event.endDate = newEvent.endDate ?? newEvent.startDate.addingTimeInterval(3600)
+        event.location = newEvent.location
+
+        // notes 업데이트 (사용자 메모 보존)
+        if let userNotes = preserveUserNotes, !userNotes.isEmpty {
+          event.notes = "\(userNotes)\n\n\(newEvent.notes ?? "")"
+        } else {
+          event.notes = newEvent.notes
+        }
+
+        // 5. 저장
+        do {
+          try eventStore.save(event, span: .thisEvent)
+        } catch {
+          throw EventKitClientError.saveFailed(error.localizedDescription)
+        }
+      },
+
+      deleteEvent: { eventIdentifier in
+        // 1. 쓰기 권한 확인
+        let status = EKEventStore.authorizationStatus(for: .event)
+        guard status.toCalendarAuthorizationStatus().canWriteEvents else {
+          throw EventKitClientError.writeNotAllowed
+        }
+
+        // 2. 이벤트 조회
+        guard let event = eventStore.event(withIdentifier: eventIdentifier) else {
+          // 이미 삭제된 경우 성공으로 처리
+          return
+        }
+
+        // 3. 쓰기 가능한 캘린더인지 확인
+        guard event.calendar?.allowsContentModifications == true else {
+          throw EventKitClientError.writeNotAllowed
+        }
+
+        // 4. 삭제
+        do {
+          try eventStore.remove(event, span: .thisEvent)
+        } catch {
+          throw EventKitClientError.saveFailed(error.localizedDescription)
+        }
+      },
+
+      getPromisoEvents: {
+        // 1. 읽기 권한 확인
+        let status = EKEventStore.authorizationStatus(for: .event)
+        guard status.toCalendarAuthorizationStatus().canReadEvents else {
+          throw EventKitClientError.accessDenied
+        }
+
+        // 2. 미래 1년간의 이벤트 조회
+        let now = Date()
+        let oneYearLater = Calendar.current.date(byAdding: .year, value: 1, to: now) ?? now
+
+        let predicate = eventStore.predicateForEvents(
+          withStart: now,
+          end: oneYearLater,
+          calendars: nil
+        )
+
+        let events = eventStore.events(matching: predicate)
+
+        // 3. Promiso 태그가 있는 이벤트만 필터링 및 파싱
+        return events.compactMap { event -> PromisoCalendarEvent? in
+          guard let eventId = event.eventIdentifier,
+                let parsed = PromisoCalendarTag.parse(from: event.notes) else {
+            return nil
+          }
+
+          let userNotes = PromisoCalendarTag.extractUserNotes(from: event.notes)
+
+          return PromisoCalendarEvent(
+            eventIdentifier: eventId,
+            promiseId: parsed.promiseId,
+            contentHash: parsed.contentHash,
+            userNotes: userNotes
+          )
+        }
       },
 
       observeChanges: {

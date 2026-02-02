@@ -94,13 +94,61 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
   }
 
   /// 약속 응답 업데이트
-  public func respondToPromise(promiseId: String, status: String) async throws {
+  public func respondToPromise(promiseId: String, status: String) async throws -> RespondPromiseResult {
     let callableData: [String: Any] = [
       "promiseId": promiseId,
       "status": status,
     ]
 
-    _ = try await functions.httpsCallable("respondPromise").call(callableData)
+    let result = try await functions.httpsCallable("respondPromise").call(callableData)
+
+    guard let data = result.data as? [String: Any],
+          let returnedPromiseId = data["promiseId"] as? String,
+          let returnedStatus = data["status"] as? String,
+          let isConfirmed = data["isConfirmed"] as? Bool else {
+      throw NSError(domain: "PromiseRemoteDataSource", code: -1, userInfo: [
+        NSLocalizedDescriptionKey: "약속 응답 결과가 올바르지 않습니다"
+      ])
+    }
+
+    var confirmedPromise: CalendarSyncPromise?
+
+    if let promiseData = data["confirmedPromise"] as? [String: Any],
+       let id = promiseData["id"] as? String,
+       let title = promiseData["title"] as? String,
+       let emoji = promiseData["emoji"] as? String,
+       let startAtString = promiseData["startAt"] as? String,
+       let groupId = promiseData["groupId"] as? String {
+
+      let dateFormatter = ISO8601DateFormatter()
+      dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+      if let startAt = dateFormatter.date(from: startAtString) {
+        var endAt: Date?
+        if let endAtString = promiseData["endAt"] as? String {
+          endAt = dateFormatter.date(from: endAtString)
+        }
+
+        let location = promiseData["location"] as? String
+
+        confirmedPromise = CalendarSyncPromise(
+          id: id,
+          title: title,
+          emoji: emoji,
+          startAt: startAt,
+          endAt: endAt,
+          location: location,
+          groupId: groupId
+        )
+      }
+    }
+
+    return RespondPromiseResult(
+      promiseId: returnedPromiseId,
+      status: returnedStatus,
+      isConfirmed: isConfirmed,
+      confirmedPromise: confirmedPromise
+    )
   }
   
   /// 약속 업데이트

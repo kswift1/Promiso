@@ -433,6 +433,12 @@ export interface RespondPromiseResponse {
 
   /** 응답 상태 */
   status: "accepted" | "declined" | "pending";
+
+  /** 약속 확정 여부 (캘린더 동기화용) */
+  isConfirmed: boolean;
+
+  /** 확정된 약속 정보 (isConfirmed && status === "accepted"일 때만) */
+  confirmedPromise?: CalendarPromise;
 }
 
 /**
@@ -466,6 +472,7 @@ export enum RespondPromiseError {
  * - 인증 필수 (Firebase Auth)
  * - 파라미터 없음 (사용자 ID는 auth에서 추출)
  */
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface GetConfirmedPromisesForCalendarRequest {
   // 파라미터 없음
 }

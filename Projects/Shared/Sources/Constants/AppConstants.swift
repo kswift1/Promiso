@@ -62,6 +62,8 @@ public enum AppConstants {
   public enum SharedState {
     /// 그룹 멤버 캐시 (groupId → members)
     public static let groupMembersCache = "groupMembersCache"
+    /// 그룹 캘린더 동기화 설정 캐시 (groupId → calendarSync)
+    public static let groupCalendarSyncCache = "groupCalendarSyncCache"
   }
 
   // MARK: - Notification Names

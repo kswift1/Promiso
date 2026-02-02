@@ -202,7 +202,7 @@ export const respondPromise = onCall<RespondPromiseRequest>(
 
     const promiseRef = promisesCollection.doc(data.promiseId);
 
-    await db.runTransaction(async (transaction) => {
+    const transactionResult = await db.runTransaction(async (transaction) => {
       // 1. 약속 조회
       const promiseSnapshot = await transaction.get(promiseRef);
       if (!promiseSnapshot.exists) {
@@ -245,18 +245,21 @@ export const respondPromise = onCall<RespondPromiseRequest>(
       const votes = promiseData.votes || {accepted: [], declined: []};
       const acceptedList = (votes.accepted as string[]) ?? [];
       const declinedList = (votes.declined as string[]) ?? [];
-      const minimumParticipants = (promiseData.minimumParticipants as number) ?? 2;
+      const minimumParticipants =
+        (promiseData.minimumParticipants as number) ?? 2;
 
       const isInAccepted = acceptedList.includes(userId);
       const isInDeclined = declinedList.includes(userId);
 
-      // 이미 같은 상태면 스킵
+      // 이미 같은 상태면 스킵 (변경 없음 반환)
       if (
         (status === "accepted" && isInAccepted) ||
         (status === "declined" && isInDeclined) ||
         (status === "pending" && !isInAccepted && !isInDeclined)
       ) {
-        return;
+        // 기존 상태 유지 - isConfirmed 계산
+        const isConfirmed = acceptedList.length >= minimumParticipants;
+        return {isConfirmed, promiseData, noChange: true};
       }
 
       // 4. 새로운 accepted 배열 계산 (isConfirmed 계산용)
@@ -294,12 +297,37 @@ export const respondPromise = onCall<RespondPromiseRequest>(
       // status === "pending"이면 제거만 하고 아무 배열에도 추가하지 않음
 
       transaction.update(promiseRef, updateData);
+
+      // 캘린더 동기화용 데이터 반환
+      return {isConfirmed, promiseData, noChange: false};
     });
 
-    return {
+    // 응답 구성
+    const response: RespondPromiseResponse = {
       promiseId: data.promiseId,
       status: status as "accepted" | "declined" | "pending",
+      isConfirmed: transactionResult.isConfirmed,
     };
+
+    // 확정되고 수락한 경우에만 약속 정보 포함
+    if (transactionResult.isConfirmed && status === "accepted") {
+      const promiseData = transactionResult.promiseData;
+      const startAt = promiseData.startAt as admin.firestore.Timestamp;
+      const endAt = promiseData.endAt as admin.firestore.Timestamp | null;
+      const location = promiseData.location as {name?: string} | null;
+
+      response.confirmedPromise = {
+        id: data.promiseId,
+        title: promiseData.title as string,
+        emoji: (promiseData.emoji as string) || "📅",
+        startAt: startAt.toDate().toISOString(),
+        endAt: endAt ? endAt.toDate().toISOString() : null,
+        location: location?.name || null,
+        groupId: promiseData.groupId as string,
+      };
+    }
+
+    return response;
   },
 );
 
@@ -629,7 +657,8 @@ export const getConfirmedPromisesForCalendar = onCall<
     });
 
     console.log(
-      `📅 getConfirmedPromisesForCalendar: userId=${userId}, count=${promises.length}`
+      "📅 getConfirmedPromisesForCalendar:",
+      `userId=${userId}, count=${promises.length}`
     );
 
     return {promises};

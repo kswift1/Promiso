@@ -7,7 +7,7 @@ import PromisoShared
 public protocol PromiseRemoteDataSourceProtocol {
   // MARK: - CRUD Operations
   func createPromise(_ promise: PromiseModel) async throws -> String
-  func respondToPromise(promiseId: String, status: String) async throws
+  func respondToPromise(promiseId: String, status: String) async throws -> RespondPromiseResult
   func updatePromise(_ promise: PromiseModel) async throws
   func deletePromise(id: String) async throws
   func getPromise(id: String) async throws -> PromiseModel?
