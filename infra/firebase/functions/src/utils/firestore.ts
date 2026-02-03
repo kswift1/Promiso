@@ -17,17 +17,25 @@ export enum FirestoreEnvironment {
 }
 
 /**
- * 현재 Functions 실행 환경 감지
+ * 현재 Functions 실행 환경 감지 (프로젝트 ID 기반)
  *
  * @return {FirestoreEnvironment} 현재 환경
  *
  * @remarks
- * - Emulator: FUNCTIONS_EMULATOR 환경 변수가 "true"
- * - Production: 그 외 (실제 환경은 배포된 프로젝트에 따라 결정)
+ * - promiso-dev 프로젝트 → Dev
+ * - promiso-stage 프로젝트 → Stage
+ * - promiso-prod 또는 기타 → Release
  */
 export function getCurrentEnvironment(): FirestoreEnvironment {
-  const isEmulator = process.env.FUNCTIONS_EMULATOR === "true";
-  return isEmulator ? FirestoreEnvironment.Dev : FirestoreEnvironment.Release;
+  const projectId = process.env.GCLOUD_PROJECT || "";
+
+  if (projectId.includes("-dev")) {
+    return FirestoreEnvironment.Dev;
+  } else if (projectId.includes("-stage")) {
+    return FirestoreEnvironment.Stage;
+  }
+
+  return FirestoreEnvironment.Release;
 }
 
 /**

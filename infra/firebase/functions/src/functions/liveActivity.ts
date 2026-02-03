@@ -55,6 +55,7 @@ import {
   UpdateETAResponse,
   ScheduledLiveActivityTaskPayload,
   ScheduledLiveActivityEndTaskPayload,
+  APNsLiveActivityUpdatePayload,
 } from "../types/api";
 
 /**
@@ -142,7 +143,10 @@ export const startLiveActivity = onCall<StartLiveActivityRequest>(
       throw new HttpsError("not-found", "약속을 찾을 수 없습니다");
     }
 
-    const promiseData = promiseDoc.data()!;
+    const promiseData = promiseDoc.data();
+    if (!promiseData) {
+      throw new HttpsError("internal", "약속 데이터를 읽을 수 없습니다");
+    }
     const groupId = promiseData.groupId as string;
     const hostId = promiseData.hostId as string;
     const title = promiseData.title as string;
@@ -186,7 +190,8 @@ export const startLiveActivity = onCall<StartLiveActivityRequest>(
         if (!userDoc.exists) continue;
 
         const uid = userDoc.id;
-        const userData = userDoc.data()!;
+        const userData = userDoc.data();
+        if (!userData) continue;
         const nickname = userData.nickname as string || "참가자";
 
         // 호스트 이름 추출
@@ -399,7 +404,7 @@ export const updateETA = onCall<UpdateETARequest>(
     // Firestore 없이 바로 APNs Broadcast 전송
     const isProduction = isAPNsProduction();
 
-    const payload: any = {
+    const payload: APNsLiveActivityUpdatePayload = {
       aps: {
         "timestamp": Math.floor(Date.now() / 1000),
         "event": "update",
@@ -407,13 +412,9 @@ export const updateETA = onCall<UpdateETARequest>(
           trackingDurationMinutes: trackingDurationMinutes || 30,
           participants,
         },
+        ...(alert && {alert}),
       },
     };
-
-    // alert가 있으면 추가
-    if (alert) {
-      payload.aps.alert = alert;
-    }
 
     const result = await sendAPNsBroadcast({
       channelId,
@@ -663,7 +664,7 @@ export const widgetUpdateETA = onRequest(
     // Firestore 없이 바로 APNs Broadcast 전송
     const isProduction = isAPNsProduction();
 
-    const payload: any = {
+    const payload: APNsLiveActivityUpdatePayload = {
       aps: {
         "timestamp": Math.floor(Date.now() / 1000),
         "event": "update",
@@ -671,13 +672,9 @@ export const widgetUpdateETA = onRequest(
           trackingDurationMinutes: trackingDurationMinutes || 30,
           participants,
         },
+        ...(alert && {alert}),
       },
     };
-
-    // alert가 있으면 추가
-    if (alert) {
-      payload.aps.alert = alert;
-    }
 
     const result = await sendAPNsBroadcast({
       channelId,
@@ -755,7 +752,11 @@ export const executeLiveActivityStart = onTaskDispatched<
       return;
     }
 
-    const promiseData = promiseDoc.data()!;
+    const promiseData = promiseDoc.data();
+    if (!promiseData) {
+      console.warn(`Promise data is empty: ${promiseId}`);
+      return;
+    }
     const hostId = promiseData.hostId as string;
     const groupId = promiseData.groupId as string;
     const emoji = promiseData.emoji as string || "📌";
@@ -798,7 +799,8 @@ export const executeLiveActivityStart = onTaskDispatched<
         if (!userDoc.exists) continue;
 
         const uid = userDoc.id;
-        const userData = userDoc.data()!;
+        const userData = userDoc.data();
+        if (!userData) continue;
         const nickname = userData.nickname as string || "참가자";
 
         // 호스트 이름 추출

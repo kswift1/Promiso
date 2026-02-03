@@ -16,6 +16,44 @@ import {
   CHANNEL_MGMT_PORT_DEVELOPMENT,
 } from "../config";
 
+// ============================================================================
+// Types
+// ============================================================================
+
+/** APNs 요청 결과 */
+export interface APNsResult {
+  success: boolean;
+  statusCode?: number;
+  error?: string;
+  channelId?: string;
+}
+
+/** APNs 자격 증명 */
+interface APNsCredentials {
+  keyId: string;
+  teamId: string;
+  authKey: string;
+  jwtToken: string;
+}
+
+/** HTTP/2 요청 옵션 */
+interface HTTP2RequestOptions {
+  host: string;
+  port?: number;
+  path: string;
+  headers: http2.OutgoingHttpHeaders;
+  payload?: object;
+  successCodes?: number[];
+  onSuccess?: (
+    headers: http2.IncomingHttpHeaders,
+    data: string
+  ) => APNsResult;
+}
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
 /**
  * APNs JWT 토큰 생성
  *
@@ -29,7 +67,7 @@ export function generateAPNsJWT(
   teamId: string,
   authKey: string,
 ): string {
-  const token = jwt.sign(
+  return jwt.sign(
     {},
     authKey,
     {
@@ -43,142 +81,67 @@ export function generateAPNsJWT(
       },
     },
   );
-  return token;
 }
 
 /**
- * APNs HTTP/2 푸시 전송
+ * APNs 자격 증명 가져오기
  *
- * @param {object} params - 파라미터
- * @return {Promise<object>} 결과 객체
+ * @return {APNsCredentials} 자격 증명
  */
-export async function sendAPNsPush(params: {
-  deviceToken: string;
-  payload: object;
-  pushType: "liveactivity";
-  topic: string;
-  apnsId?: string;
-  expiration?: number;
-  priority?: number;
-  isProduction: boolean;
-}): Promise<{success: boolean; statusCode?: number; error?: string}> {
-  const {
-    deviceToken,
-    payload,
-    pushType,
-    topic,
-    apnsId,
-    expiration,
-    priority,
-    isProduction,
-  } = params;
-
-  const host = isProduction ? APNS_HOST_PRODUCTION : APNS_HOST_DEVELOPMENT;
-  const path = `/3/device/${deviceToken}`;
-
-  // JWT 토큰 생성
+function getAPNsCredentials(): APNsCredentials {
   const keyId = APNS_KEY_ID.value();
   const teamId = APNS_TEAM_ID.value();
   const authKey = APNS_AUTH_KEY.value().replace(/\\n/g, "\n");
   const jwtToken = generateAPNsJWT(keyId, teamId, authKey);
 
-  return new Promise((resolve) => {
-    const client = http2.connect(`https://${host}`);
-
-    client.on("error", (err) => {
-      console.error("❌ APNs HTTP/2 connection error:", err);
-      resolve({success: false, error: err.message});
-    });
-
-    const headers: http2.OutgoingHttpHeaders = {
-      ":method": "POST",
-      ":path": path,
-      "authorization": `bearer ${jwtToken}`,
-      "apns-push-type": pushType,
-      "apns-topic": topic,
-      ...(apnsId && {"apns-id": apnsId}),
-      ...(expiration !== undefined && {
-        "apns-expiration": expiration.toString(),
-      }),
-      ...(priority !== undefined && {
-        "apns-priority": priority.toString(),
-      }),
-    };
-
-    const req = client.request(headers);
-
-    let responseData = "";
-
-    req.on("response", (headers) => {
-      const statusCode = headers[":status"] as number;
-
-      req.on("data", (chunk) => {
-        responseData += chunk;
-      });
-
-      req.on("end", () => {
-        client.close();
-
-        if (statusCode === 200) {
-          resolve({success: true, statusCode});
-        } else {
-          console.error(`❌ APNs error: ${statusCode} - ${responseData}`);
-          resolve({success: false, statusCode, error: responseData});
-        }
-      });
-    });
-
-    req.on("error", (err) => {
-      console.error("❌ APNs request error:", err);
-      client.close();
-      resolve({success: false, error: err.message});
-    });
-
-    req.write(JSON.stringify(payload));
-    req.end();
-  });
+  return {keyId, teamId, authKey, jwtToken};
 }
 
 /**
- * iOS 18 Broadcast APNs 채널 생성
- * Channel Management API 사용 (별도 호스트/포트)
+ * APNs 호스트 가져오기
  *
  * @param {boolean} isProduction - Production 환경 여부
- * @return {Promise<object>} 결과 객체 (channelId는 Apple이 생성해서 반환)
+ * @return {string} APNs 호스트
  */
-export async function createAPNsChannel(
-  isProduction: boolean
-): Promise<{success: boolean; channelId?: string; error?: string}> {
-  const host = isProduction ?
-    CHANNEL_MGMT_HOST_PRODUCTION : CHANNEL_MGMT_HOST_DEVELOPMENT;
-  const port = isProduction ?
-    CHANNEL_MGMT_PORT_PRODUCTION : CHANNEL_MGMT_PORT_DEVELOPMENT;
+function getAPNsHost(isProduction: boolean): string {
+  return isProduction ? APNS_HOST_PRODUCTION : APNS_HOST_DEVELOPMENT;
+}
 
-  const keyId = APNS_KEY_ID.value();
-  const teamId = APNS_TEAM_ID.value();
-  const authKey = APNS_AUTH_KEY.value().replace(/\\n/g, "\n");
+/**
+ * HTTP/2 요청 실행 (공통 로직)
+ *
+ * @param {HTTP2RequestOptions} options - 요청 옵션
+ * @return {Promise<APNsResult>} 결과
+ */
+function executeHTTP2Request(
+  options: HTTP2RequestOptions
+): Promise<APNsResult> {
+  const {
+    host,
+    port,
+    path,
+    headers,
+    payload,
+    successCodes = [200],
+    onSuccess,
+  } = options;
 
-  const path = `/1/apps/${APNS_BUNDLE_ID}/channels`;
-  const jwtToken = generateAPNsJWT(keyId, teamId, authKey);
-
-  console.log(`📡 Creating APNs channel: ${host}:${port}${path}`);
+  const url = port ? `https://${host}:${port}` : `https://${host}`;
 
   return new Promise((resolve) => {
-    const client = http2.connect(`https://${host}:${port}`);
+    const client = http2.connect(url);
 
     client.on("error", (err) => {
-      console.error("❌ APNs Channel creation connection error:", err);
+      console.error(`❌ APNs HTTP/2 connection error (${path}):`, err);
       resolve({success: false, error: err.message});
     });
 
-    const headers: http2.OutgoingHttpHeaders = {
+    const req = client.request({
       ":method": "POST",
       ":path": path,
-      "authorization": `bearer ${jwtToken}`,
-      "content-type": "application/json",
-    };
+      ...headers,
+    });
 
-    const req = client.request(headers);
     let responseData = "";
     let responseHeaders: http2.IncomingHttpHeaders = {};
 
@@ -193,79 +156,151 @@ export async function createAPNsChannel(
       req.on("end", () => {
         client.close();
 
-        if (statusCode === 201 || statusCode === 200) {
-          // 채널 ID는 응답 헤더에서 추출
-          const channelId = responseHeaders["apns-channel-id"] as string;
-          if (channelId) {
-            console.log(`✅ APNs Channel created: ${channelId}`);
-            resolve({success: true, channelId});
+        if (successCodes.includes(statusCode)) {
+          if (onSuccess) {
+            resolve(onSuccess(responseHeaders, responseData));
           } else {
-            console.warn("⚠️ Channel created but no channelId in response");
-            resolve({success: true});
+            resolve({success: true, statusCode});
           }
         } else {
-          console.error(
-            `❌ APNs Channel creation error: ${statusCode} - ${responseData}`
-          );
-          resolve({success: false, error: responseData});
+          const msg = `❌ APNs error (${path}): ${statusCode} - ${responseData}`;
+          console.error(msg);
+          resolve({success: false, statusCode, error: responseData});
         }
       });
     });
 
     req.on("error", (err) => {
-      console.error("❌ APNs Channel creation request error:", err);
+      console.error(`❌ APNs request error (${path}):`, err);
       client.close();
       resolve({success: false, error: err.message});
     });
 
-    // Apple Channel Management payload 형식
-    const payload = {
-      "push-type": "LiveActivity",
-      "message-storage-policy": 1, // 0: NoStored, 1: MostRecentStored
-    };
-    req.write(JSON.stringify(payload));
+    if (payload) {
+      req.write(JSON.stringify(payload));
+    }
     req.end();
+  });
+}
+
+// ============================================================================
+// Public Functions
+// ============================================================================
+
+/**
+ * APNs HTTP/2 푸시 전송
+ *
+ * @param {object} params - 파라미터
+ * @return {Promise<APNsResult>} 결과 객체
+ */
+export async function sendAPNsPush(params: {
+  deviceToken: string;
+  payload: object;
+  pushType: "liveactivity";
+  topic: string;
+  apnsId?: string;
+  expiration?: number;
+  priority?: number;
+  isProduction: boolean;
+}): Promise<APNsResult> {
+  const {
+    deviceToken,
+    payload,
+    pushType,
+    topic,
+    apnsId,
+    expiration,
+    priority,
+    isProduction,
+  } = params;
+
+  const {jwtToken} = getAPNsCredentials();
+  const host = getAPNsHost(isProduction);
+
+  return executeHTTP2Request({
+    host,
+    path: `/3/device/${deviceToken}`,
+    headers: {
+      "authorization": `bearer ${jwtToken}`,
+      "apns-push-type": pushType,
+      "apns-topic": topic,
+      ...(apnsId && {"apns-id": apnsId}),
+      ...(expiration !== undefined && {
+        "apns-expiration": expiration.toString(),
+      }),
+      ...(priority !== undefined && {
+        "apns-priority": priority.toString(),
+      }),
+    },
+    payload,
+  });
+}
+
+/**
+ * iOS 18 Broadcast APNs 채널 생성
+ *
+ * @param {boolean} isProduction - Production 환경 여부
+ * @return {Promise<APNsResult>} 결과 객체 (channelId는 Apple이 생성)
+ */
+export async function createAPNsChannel(
+  isProduction: boolean
+): Promise<APNsResult> {
+  const host = isProduction ?
+    CHANNEL_MGMT_HOST_PRODUCTION : CHANNEL_MGMT_HOST_DEVELOPMENT;
+  const port = isProduction ?
+    CHANNEL_MGMT_PORT_PRODUCTION : CHANNEL_MGMT_PORT_DEVELOPMENT;
+
+  const {jwtToken} = getAPNsCredentials();
+  const path = `/1/apps/${APNS_BUNDLE_ID}/channels`;
+
+  console.log(`📡 Creating APNs channel: ${host}:${port}${path}`);
+
+  return executeHTTP2Request({
+    host,
+    port,
+    path,
+    headers: {
+      "authorization": `bearer ${jwtToken}`,
+      "content-type": "application/json",
+    },
+    payload: {
+      "push-type": "LiveActivity",
+      "message-storage-policy": 1,
+    },
+    successCodes: [200, 201],
+    onSuccess: (headers) => {
+      const channelId = headers["apns-channel-id"] as string | undefined;
+      if (channelId) {
+        console.log(`✅ APNs Channel created: ${channelId}`);
+        return {success: true, channelId};
+      } else {
+        console.warn("⚠️ Channel created but no channelId in response");
+        return {success: true};
+      }
+    },
   });
 }
 
 /**
  * iOS 18 Broadcast APNs 푸시 전송
  *
- * Broadcast는 채널 기반으로 모든 구독자에게 한 번의 요청으로 전송
- * 개별 토큰 관리 불필요
- *
  * @param {object} params - 파라미터
- * @return {Promise<object>} 결과 객체
+ * @return {Promise<APNsResult>} 결과 객체
  */
 export async function sendAPNsBroadcast(params: {
   channelId: string;
   payload: object;
   isProduction: boolean;
-}): Promise<{success: boolean; statusCode?: number; error?: string}> {
+}): Promise<APNsResult> {
   const {channelId, payload, isProduction} = params;
 
-  const host = isProduction ?
-    APNS_HOST_PRODUCTION : APNS_HOST_DEVELOPMENT;
+  const {jwtToken} = getAPNsCredentials();
+  const host = getAPNsHost(isProduction);
 
-  const keyId = APNS_KEY_ID.value();
-  const teamId = APNS_TEAM_ID.value();
-  const authKey = APNS_AUTH_KEY.value().replace(/\\n/g, "\n");
-  const jwtToken = generateAPNsJWT(keyId, teamId, authKey);
-
-  // Apple Broadcast API: /4/broadcasts/apps/{bundleId}
-  const path = `/4/broadcasts/apps/${APNS_BUNDLE_ID}`;
-
-  return new Promise((resolve) => {
-    const client = http2.connect(`https://${host}`);
-
-    client.on("error", (err) => {
-      console.error("❌ APNs Broadcast connection error:", err);
-      resolve({success: false, error: err.message});
-    });
-
-    const headers: http2.OutgoingHttpHeaders = {
-      ":method": "POST",
-      ":path": path,
+  const result = await executeHTTP2Request({
+    host,
+    path: `/4/broadcasts/apps/${APNS_BUNDLE_ID}`,
+    headers: {
       "authorization": `bearer ${jwtToken}`,
       "content-type": "application/json",
       "apns-push-type": "liveactivity",
@@ -273,40 +308,13 @@ export async function sendAPNsBroadcast(params: {
       "apns-channel-id": channelId,
       "apns-priority": "10",
       "apns-expiration": "0",
-    };
-
-    const req = client.request(headers);
-    let responseData = "";
-
-    req.on("response", (headers) => {
-      const statusCode = headers[":status"] as number;
-
-      req.on("data", (chunk) => {
-        responseData += chunk;
-      });
-
-      req.on("end", () => {
-        client.close();
-
-        if (statusCode === 200) {
-          console.log(`✅ APNs Broadcast sent: channelId=${channelId}`);
-          resolve({success: true, statusCode});
-        } else {
-          console.error(
-            `❌ APNs Broadcast error: ${statusCode} - ${responseData}`
-          );
-          resolve({success: false, statusCode, error: responseData});
-        }
-      });
-    });
-
-    req.on("error", (err) => {
-      console.error("❌ APNs Broadcast request error:", err);
-      client.close();
-      resolve({success: false, error: err.message});
-    });
-
-    req.write(JSON.stringify(payload));
-    req.end();
+    },
+    payload,
   });
+
+  if (result.success) {
+    console.log(`✅ APNs Broadcast sent: channelId=${channelId}`);
+  }
+
+  return result;
 }

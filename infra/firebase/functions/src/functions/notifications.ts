@@ -363,7 +363,12 @@ export async function sendPushNotificationInternal(params: {
       if (!userDoc.exists) continue;
 
       const userData = userDoc.data();
-      const groups = userData?.groups as { [key: string]: any } | undefined;
+      const groups = userData?.groups as {
+        [key: string]: {
+          notifications?: { enabled?: boolean };
+          notificationPreferences?: { [key: string]: boolean };
+        };
+      } | undefined;
 
       if (groupId) {
         const groupSettings = groups?.[groupId];
