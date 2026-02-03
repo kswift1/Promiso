@@ -99,8 +99,8 @@ struct PagingMonthGridView: View {
         if !monthPages.contains(where: { monthGridCalendar.isDate($0, inSameDayAs: normalized) }) {
           reloadPages(around: normalized)
         }
-        // 슬라이드 애니메이션 적용
-        withAnimation(.easeInOut(duration: 0.3)) {
+        // 슬라이드 애니메이션 적용 (스프링)
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
           localSelection = normalized
         }
       }
