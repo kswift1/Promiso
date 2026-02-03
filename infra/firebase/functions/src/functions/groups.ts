@@ -6,7 +6,7 @@
  * @ios CreateGroupView, JoinGroupView, GroupSettingsView
  * @see ARCHITECTURE.md - iOS Feature ↔ Functions 매핑
  */
-import {FieldPath, FieldValue} from "firebase-admin/firestore";
+import {FieldValue} from "firebase-admin/firestore";
 import {HttpsError, onCall} from "firebase-functions/v2/https";
 import {onDocumentUpdated} from "firebase-functions/v2/firestore";
 import {admin, REGION} from "../config";

@@ -571,7 +571,9 @@ export const deleteUser = onCall<DeleteUserRequest>(
         });
         voteUpdateCount++;
       });
-      console.log(`🗑️ Queued removal from ${acceptedPromises.size} accepted votes`);
+      console.log(
+        `🗑️ Queued removal from ${acceptedPromises.size} accepted votes`
+      );
 
       // 6-2. declined에서 제거
       const declinedPromises = await promisesCollection
@@ -585,7 +587,9 @@ export const deleteUser = onCall<DeleteUserRequest>(
         });
         voteUpdateCount++;
       });
-      console.log(`🗑️ Queued removal from ${declinedPromises.size} declined votes`);
+      console.log(
+        `🗑️ Queued removal from ${declinedPromises.size} declined votes`
+      );
 
       // 배치 커밋
       if (voteUpdateCount > 0) {
@@ -605,7 +609,8 @@ export const deleteUser = onCall<DeleteUserRequest>(
             const userProfilePrefix = `profile_images/${userId}/`;
             if (!storagePath.startsWith(userProfilePrefix)) {
               console.warn(
-                `⚠️ Skipping deletion: path ${storagePath} is not owned by user ${userId}`
+                `⚠️ Skipping deletion: path ${storagePath} ` +
+                `is not owned by user ${userId}`
               );
             } else {
               await bucket.file(storagePath).delete();
