@@ -12,6 +12,7 @@ struct WidgetFooterView: View {
       Text(formatUpdatedTime(updatedAt))
         .font(.caption2)
         .foregroundStyle(.tertiary)
+        .accessibilityLabel("\(formatUpdatedTime(updatedAt)) 업데이트")
 
       // 새로고침 버튼
       Button(intent: RefreshWidgetIntent()) {
@@ -22,6 +23,7 @@ struct WidgetFooterView: View {
           .background(Color.secondary.opacity(0.12), in: Circle())
       }
       .buttonStyle(.plain)
+      .accessibilityLabel("새로고침")
     }
   }
 

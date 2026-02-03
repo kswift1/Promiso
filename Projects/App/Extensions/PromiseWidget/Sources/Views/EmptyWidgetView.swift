@@ -14,7 +14,7 @@ struct EmptyWidgetView: View {
   }
 
   var body: some View {
-    VStack(spacing: 10) {
+    VStack(spacing: 12) {
       Image(systemName: icon)
         .font(.system(size: 32, weight: .light))
         .foregroundStyle(Color.pmindigo.n300)
@@ -32,9 +32,33 @@ struct EmptyWidgetView: View {
         }
       }
       .multilineTextAlignment(.center)
+
+      // 약속 추가 버튼
+      Link(destination: URL(string: "promiso://create")!) {
+        HStack(spacing: 4) {
+          Image(systemName: "plus")
+            .font(.system(size: 10, weight: .semibold))
+          Text("약속 만들기")
+            .font(.caption.weight(.medium))
+        }
+        .foregroundStyle(.white)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(Color.pmindigo.n500, in: Capsule())
+      }
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
-    .widgetURL(URL(string: "promiso://home"))
+    .accessibilityElement(children: .combine)
+    .accessibilityLabel(accessibilityLabel)
+  }
+
+  private var accessibilityLabel: String {
+    var label = message
+    if let hint {
+      label += ". \(hint)"
+    }
+    label += ". 약속 만들기 버튼"
+    return label
   }
 }
 

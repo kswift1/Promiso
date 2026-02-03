@@ -258,6 +258,17 @@ public enum WidgetDataManager {
 
   // MARK: - Widget Direct Fetch (iOS 17+)
 
+  /// 위젯 데이터 Fetch 결과
+  public struct FetchResult {
+    public let promises: [WidgetPromiseData]
+    public let hadError: Bool
+
+    public init(promises: [WidgetPromiseData], hadError: Bool) {
+      self.promises = promises
+      self.hadError = hadError
+    }
+  }
+
   /// 위젯에서 직접 API 호출하여 데이터 가져오기
   ///
   /// @architecture Snapshot 기반 (v2)
@@ -265,12 +276,12 @@ public enum WidgetDataManager {
   /// - Race Condition 문제 없음 (같은 문서를 여러 프로세스가 읽어도 OK)
   /// - TTL로 불필요한 API 호출만 방지
   ///
-  /// - Returns: 약속 목록 (실패 시 캐시된 데이터 반환)
-  public static func fetchFromServer() async -> [WidgetPromiseData] {
+  /// - Returns: FetchResult (약속 목록 + 에러 발생 여부)
+  public static func fetchFromServer() async -> FetchResult {
     // 0. TTL 체크 (불필요한 API 호출 방지)
     if let remaining = checkTTL() {
       widgetLogger.info("⏭️ TTL \(remaining, privacy: .public)초 남음")
-      return loadPromises()
+      return FetchResult(promises: loadPromises(), hadError: false)
     }
 
     // 1. Widget Token 우선 시도 (30일 유효)
@@ -284,9 +295,9 @@ public enum WidgetDataManager {
       return await fetchWithIdToken(idToken)
     }
 
-    // 3. 토큰 없음 → 캐시 반환
+    // 3. 토큰 없음 → 캐시 반환 (에러 아님, 단순히 토큰 만료)
     widgetLogger.warning("❌ 토큰 없음 → 캐시 반환")
-    return loadPromises()
+    return FetchResult(promises: loadPromises(), hadError: false)
   }
 
   /// TTL 체크 (15초 이내 재요청 시 남은 시간 반환)
@@ -309,10 +320,10 @@ public enum WidgetDataManager {
   }
 
   /// Widget Token으로 API 호출 (getWidgetSnapshotWithToken 엔드포인트)
-  private static func fetchWithWidgetToken(_ token: String) async -> [WidgetPromiseData] {
+  private static func fetchWithWidgetToken(_ token: String) async -> FetchResult {
     guard let url = URL(string: "\(functionsBaseURL)/getWidgetSnapshotWithToken") else {
       widgetLogger.error("❌ URL 생성 실패")
-      return loadPromises()
+      return FetchResult(promises: loadPromises(), hadError: true)
     }
 
     var request = URLRequest(url: url)
@@ -326,7 +337,7 @@ public enum WidgetDataManager {
 
       guard let httpResponse = response as? HTTPURLResponse else {
         widgetLogger.error("❌ HTTP 응답 아님")
-        return loadPromises()
+        return FetchResult(promises: loadPromises(), hadError: true)
       }
 
       guard httpResponse.statusCode == 200 else {
@@ -336,7 +347,7 @@ public enum WidgetDataManager {
           widgetLogger.info("🔄 Widget Token 401 → ID Token fallback")
           return await fetchWithIdToken(idToken)
         }
-        return loadPromises()
+        return FetchResult(promises: loadPromises(), hadError: true)
       }
 
       // Firebase Functions 응답 형식: { "result": { ... } }
@@ -348,18 +359,18 @@ public enum WidgetDataManager {
       markFetchedNow()
 
       widgetLogger.info("✅ API 성공 → \(promises.count, privacy: .public)개 약속")
-      return promises
+      return FetchResult(promises: promises, hadError: false)
     } catch {
       widgetLogger.error("❌ 네트워크: \(error.localizedDescription, privacy: .public)")
-      return loadPromises()
+      return FetchResult(promises: loadPromises(), hadError: true)
     }
   }
 
   /// Firebase ID Token으로 API 호출 (기존 getWidgetSnapshot 엔드포인트)
-  private static func fetchWithIdToken(_ token: String) async -> [WidgetPromiseData] {
+  private static func fetchWithIdToken(_ token: String) async -> FetchResult {
     guard let url = URL(string: "\(functionsBaseURL)/getWidgetSnapshot") else {
       widgetLogger.error("❌ URL 생성 실패")
-      return loadPromises()
+      return FetchResult(promises: loadPromises(), hadError: true)
     }
 
     var request = URLRequest(url: url)
@@ -373,12 +384,12 @@ public enum WidgetDataManager {
 
       guard let httpResponse = response as? HTTPURLResponse else {
         widgetLogger.error("❌ HTTP 응답 아님")
-        return loadPromises()
+        return FetchResult(promises: loadPromises(), hadError: true)
       }
 
       guard httpResponse.statusCode == 200 else {
         widgetLogger.error("❌ HTTP \(httpResponse.statusCode, privacy: .public)")
-        return loadPromises()
+        return FetchResult(promises: loadPromises(), hadError: true)
       }
 
       // Firebase Functions 응답 형식: { "result": { ... } }
@@ -390,10 +401,10 @@ public enum WidgetDataManager {
       markFetchedNow()
 
       widgetLogger.info("✅ API 성공 (ID Token) → \(promises.count, privacy: .public)개 약속")
-      return promises
+      return FetchResult(promises: promises, hadError: false)
     } catch {
       widgetLogger.error("❌ 네트워크: \(error.localizedDescription, privacy: .public)")
-      return loadPromises()
+      return FetchResult(promises: loadPromises(), hadError: true)
     }
   }
 

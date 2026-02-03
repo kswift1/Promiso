@@ -45,6 +45,8 @@ struct SmallPromiseWidgetView: View {
           message: "예정된 약속이 없어요",
           hint: "새 약속을 만들어보세요"
         )
+      case .error:
+        ErrorWidgetView()
       case .loaded:
         if let promise = entry.nextPromise {
           promiseView(promise)
@@ -106,6 +108,42 @@ struct SmallPromiseWidgetView: View {
     .overlay(alignment: .bottomTrailing) {
       WidgetFooterView(updatedAt: entry.date)
     }
+    .accessibilityElement(children: .combine)
+    .accessibilityLabel(accessibilityLabel(for: promise))
+  }
+
+  // MARK: - Accessibility
+
+  private func accessibilityLabel(for promise: WidgetPromiseData) -> String {
+    let calendar = Calendar.current
+    var components: [String] = []
+
+    // D-Day
+    if calendar.isDateInToday(promise.startAt) {
+      components.append("오늘")
+    } else if calendar.isDateInTomorrow(promise.startAt) {
+      components.append("내일")
+    } else {
+      let days = calendar.dateComponents(
+        [.day],
+        from: calendar.startOfDay(for: Date()),
+        to: calendar.startOfDay(for: promise.startAt)
+      ).day ?? 0
+      components.append("\(days)일 후")
+    }
+
+    // 시간
+    components.append(formatTime(promise.startAt))
+
+    // 제목
+    components.append(promise.title)
+
+    // 장소
+    if let location = promise.location {
+      components.append(location)
+    }
+
+    return components.joined(separator: ", ")
   }
 
   // MARK: - D-Day Badge

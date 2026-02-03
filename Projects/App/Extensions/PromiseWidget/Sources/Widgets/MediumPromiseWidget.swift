@@ -45,6 +45,8 @@ struct MediumPromiseWidgetView: View {
           message: "오늘 예정된 약속이 없어요",
           hint: "새 약속을 만들어보세요"
         )
+      case .error:
+        ErrorWidgetView()
       case .loaded:
         contentView
       }
@@ -180,6 +182,8 @@ struct MediumPromiseWidgetView: View {
         .foregroundStyle(Color.pmindigo.n500)
     }
     .contentShape(Rectangle())
+    .accessibilityElement(children: .combine)
+    .accessibilityLabel(accessibilityLabel(for: promise, isToday: true))
   }
 
   @ViewBuilder
@@ -202,6 +206,8 @@ struct MediumPromiseWidgetView: View {
       dateBadge(promise.startAt)
     }
     .contentShape(Rectangle())
+    .accessibilityElement(children: .combine)
+    .accessibilityLabel(accessibilityLabel(for: promise, isToday: false))
   }
 
   // MARK: - Date Badge
@@ -240,6 +246,35 @@ struct MediumPromiseWidgetView: View {
     formatter.locale = Locale(identifier: "ko_KR")
     formatter.dateFormat = "M/d"
     return formatter.string(from: date)
+  }
+
+  // MARK: - Accessibility
+
+  private func accessibilityLabel(for promise: WidgetPromiseData, isToday: Bool) -> String {
+    let calendar = Calendar.current
+    var components: [String] = []
+
+    // 날짜
+    if isToday {
+      components.append("오늘")
+    } else if calendar.isDateInTomorrow(promise.startAt) {
+      components.append("내일")
+    } else {
+      components.append(formatShortDate(promise.startAt))
+    }
+
+    // 시간
+    components.append(formatTime(promise.startAt))
+
+    // 제목
+    components.append(promise.title)
+
+    // 장소
+    if let location = promise.location {
+      components.append(location)
+    }
+
+    return components.joined(separator: ", ")
   }
 }
 
