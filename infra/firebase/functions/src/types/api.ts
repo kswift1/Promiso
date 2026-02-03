@@ -796,6 +796,7 @@ export enum CheckNicknameAvailableError {
  * - 인증 필수 (Firebase Auth)
  * - 그룹 호스트인 경우 탈퇴 불가 (먼저 호스트 양도 필요)
  */
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface DeleteUserRequest {
   // 별도 파라미터 없음, auth.uid 사용
 }

@@ -558,7 +558,7 @@ export const deleteUser = onCall<DeleteUserRequest>(
       for (const doc of acceptedPromises.docs) {
         await doc.ref.update({
           "votes.accepted": FieldValue.arrayRemove(userId),
-          updatedAt: FieldValue.serverTimestamp(),
+          "updatedAt": FieldValue.serverTimestamp(),
         });
       }
       console.log(`🗑️ Removed from ${acceptedPromises.size} accepted votes`);
@@ -571,7 +571,7 @@ export const deleteUser = onCall<DeleteUserRequest>(
       for (const doc of declinedPromises.docs) {
         await doc.ref.update({
           "votes.declined": FieldValue.arrayRemove(userId),
-          updatedAt: FieldValue.serverTimestamp(),
+          "updatedAt": FieldValue.serverTimestamp(),
         });
       }
       console.log(`🗑️ Removed from ${declinedPromises.size} declined votes`);
@@ -614,7 +614,7 @@ export const deleteUser = onCall<DeleteUserRequest>(
           await doc.delete();
         }
       }
-      console.log(`🗑️ Subcollections deleted`);
+      console.log("🗑️ Subcollections deleted");
 
       // 8-2. 메인 문서 삭제
       await userRef.delete();
