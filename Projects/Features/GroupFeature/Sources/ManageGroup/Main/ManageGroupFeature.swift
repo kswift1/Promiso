@@ -49,9 +49,8 @@ extension ManageGroup {
         self.currentUserId = currentUserId
         self.promises = promises
 
-        // preloadedMembers가 있으면 바로 사용
+        // preloadedMembers가 있으면 초기 표시용으로 사용 (onAppear에서 새로 fetch함)
         if let preloadedMembers = preloadedMembers {
-          self.membersState = .loaded(preloadedMembers)
           self.members = preloadedMembers
         }
       }
@@ -127,8 +126,7 @@ extension ManageGroup {
         case .view(let viewAction):
           switch viewAction {
           case .onAppear:
-            // 이미 멤버가 로드되어 있으면 조회하지 않음
-            guard case .idle = state.membersState else { return .none }
+            // 항상 최신 멤버 데이터를 fetch (호스트 양도 등 정확한 멤버 수 필요)
             return .send(.internal(.fetchMembers))
 
           case .pastPromisesTapped:
@@ -224,7 +222,10 @@ extension ManageGroup {
         case .internal(let internalAction):
           switch internalAction {
           case .fetchMembers:
-            state.membersState = .loading
+            // 기존 멤버가 없을 때만 로딩 표시 (있으면 백그라운드에서 갱신)
+            if state.members.isEmpty {
+              state.membersState = .loading
+            }
             return .run { [groupId = state.group.id] send in
               do {
                 let members = try await groupClient.fetchGroupMembers(groupId)

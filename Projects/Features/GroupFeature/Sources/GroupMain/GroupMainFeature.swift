@@ -1152,6 +1152,13 @@ extension GroupMain {
           )))
           return .none
 
+        case .path(.element(id: _, action: .groupSettings(.delegate(.hostTransferred)))):
+          // 호스트 양도 후 설정 화면을 닫고 그룹 데이터 새로고침
+          if let groupId = state.currentGroup?.id {
+            state.$groupMembersCache.withLock { $0.removeValue(forKey: groupId) }
+          }
+          state.path.removeAll()
+          return .send(.internal(.fetchGroupList))
 
         // GroupPromiseList delegate actions
         case .path(.element(id: _, action: .groupPromiseList(.delegate(.promiseSelected(let promise))))):
