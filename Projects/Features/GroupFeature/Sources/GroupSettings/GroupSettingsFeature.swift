@@ -44,6 +44,12 @@ extension GroupSettings {
       var notificationError: String?
       var systemAuthStatus: NotificationAuthorizationStatus = .notDetermined
 
+      // Transfer Host
+      var isShowingTransferSheet: Bool = false
+      var selectedNewHost: UserPublicModel?
+      var isTransferringHost: Bool = false
+      var transferError: String?
+
       public init(
         group: GroupModel,
         summary: UserGroupInfo?,
@@ -65,6 +71,16 @@ extension GroupSettings {
 
       var isHost: Bool {
         group.createdBy == currentUserId
+      }
+
+      /// 호스트 양도 가능 여부 (호스트이고 다른 멤버가 있을 때)
+      var canTransferHost: Bool {
+        isHost && members.count > 1
+      }
+
+      /// 호스트 양도 대상 목록 (본인 제외)
+      var transferCandidates: [UserPublicModel] {
+        members.filter { $0.userId != currentUserId }
       }
 
       var isProPlan: Bool {
@@ -146,6 +162,12 @@ extension GroupSettings {
         case memberImageTapped(UserPublicModel)
         case imageDetailDismissed
         case openSystemSettingsTapped
+        // Transfer Host
+        case transferHostTapped
+        case selectNewHost(UserPublicModel)
+        case confirmTransferHost
+        case dismissTransferSheet
+        case dismissTransferError
       }
 
       public enum Internal: Sendable {
@@ -163,12 +185,14 @@ extension GroupSettings {
           previousValue: Bool,
           message: String
         )
+        case transferHostResponse(Result<Void, Error>)
       }
 
       public enum Delegate: Sendable {
         case groupLeft
         case groupDeleted
         case pastPromisesTapped
+        case hostTransferred
       }
     }
 
@@ -413,6 +437,40 @@ extension GroupSettings {
             return .run { _ in
               await notificationClient.openNotificationSettings()
             }
+
+          case .transferHostTapped:
+            state.isShowingTransferSheet = true
+            state.selectedNewHost = nil
+            return .run { [hapticFeedback] _ in
+              await hapticFeedback.warning()
+            }
+
+          case .selectNewHost(let member):
+            state.selectedNewHost = member
+            return .none
+
+          case .confirmTransferHost:
+            guard let newHost = state.selectedNewHost else { return .none }
+            state.isTransferringHost = true
+            state.transferError = nil
+            return .run { [groupClient, groupId = state.group.id, hapticFeedback] send in
+              await hapticFeedback.destructive()
+              do {
+                try await groupClient.transferHost(groupId, newHost.userId)
+                await send(.internal(.transferHostResponse(.success(()))))
+              } catch {
+                await send(.internal(.transferHostResponse(.failure(error))))
+              }
+            }
+
+          case .dismissTransferSheet:
+            state.isShowingTransferSheet = false
+            state.selectedNewHost = nil
+            return .none
+
+          case .dismissTransferError:
+            state.transferError = nil
+            return .none
           }
 
         case .internal(let internalAction):
@@ -511,6 +569,24 @@ extension GroupSettings {
           case .notificationPreferenceUpdateFailed(let key, let previousValue, let message):
             state.notificationSettings.setValue(previousValue, for: key)
             state.notificationError = message
+            return .run { [hapticFeedback] _ in
+              await hapticFeedback.error()
+            }
+
+          case .transferHostResponse(.success):
+            state.isTransferringHost = false
+            state.isShowingTransferSheet = false
+            state.selectedNewHost = nil
+            return .merge(
+              .send(.delegate(.hostTransferred)),
+              .run { [hapticFeedback] _ in
+                await hapticFeedback.success()
+              }
+            )
+
+          case .transferHostResponse(.failure(let error)):
+            state.isTransferringHost = false
+            state.transferError = error.localizedDescription
             return .run { [hapticFeedback] _ in
               await hapticFeedback.error()
             }

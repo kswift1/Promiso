@@ -31,6 +31,12 @@ extension ManageGroup {
       var selectedMemberForImage: UserPublicModel?
       var showGroupImageDetail: Bool = false
 
+      // Transfer Host
+      var isShowingTransferSheet: Bool = false
+      var selectedNewHost: UserPublicModel?
+      var isTransferringHost: Bool = false
+      var transferError: String?
+
       public init(
         group: GroupModel,
         summary: UserGroupInfo?,
@@ -43,9 +49,8 @@ extension ManageGroup {
         self.currentUserId = currentUserId
         self.promises = promises
 
-        // preloadedMembers가 있으면 바로 사용
+        // preloadedMembers가 있으면 초기 표시용으로 사용 (onAppear에서 새로 fetch함)
         if let preloadedMembers = preloadedMembers {
-          self.membersState = .loaded(preloadedMembers)
           self.members = preloadedMembers
         }
       }
@@ -57,6 +62,16 @@ extension ManageGroup {
       /// 진행중인 약속 수 (과거 제외)
       var activePromiseCount: Int {
         promises.filter { !$0.isPast }.count
+      }
+
+      /// 호스트 양도 가능 여부 (호스트이고 다른 멤버가 있을 때)
+      var canTransferHost: Bool {
+        isHost && members.count > 1
+      }
+
+      /// 호스트 양도 대상 목록 (본인 제외)
+      var transferCandidates: [UserPublicModel] {
+        members.filter { $0.userId != currentUserId }
       }
     }
 
@@ -79,6 +94,12 @@ extension ManageGroup {
         case memberImageTapped(UserPublicModel)
         case groupImageTapped
         case imageDetailDismissed
+        // Transfer Host
+        case transferHostTapped
+        case transferSheetDismissed
+        case newHostSelected(UserPublicModel)
+        case confirmTransferHost
+        case cancelTransferHost
       }
 
       public enum Internal: Sendable {
@@ -86,12 +107,14 @@ extension ManageGroup {
         case membersResponse(Result<[UserPublicModel], Error>)
         case leaveGroupResponse(Result<Void, Error>)
         case deleteGroupResponse(Result<Void, Error>)
+        case transferHostResponse(Result<Void, Error>)
       }
 
       public enum Delegate: Sendable {
         case groupLeft
         case groupDeleted
         case pastPromisesTapped
+        case hostTransferred(newHostId: String)
       }
     }
 
@@ -103,8 +126,7 @@ extension ManageGroup {
         case .view(let viewAction):
           switch viewAction {
           case .onAppear:
-            // 이미 멤버가 로드되어 있으면 조회하지 않음
-            guard case .idle = state.membersState else { return .none }
+            // 항상 최신 멤버 데이터를 fetch (호스트 양도 등 정확한 멤버 수 필요)
             return .send(.internal(.fetchMembers))
 
           case .pastPromisesTapped:
@@ -148,6 +170,7 @@ extension ManageGroup {
           case .dismissError:
             state.leaveError = nil
             state.deleteError = nil
+            state.transferError = nil
             return .none
 
           case .memberImageTapped(let member):
@@ -162,12 +185,47 @@ extension ManageGroup {
             state.selectedMemberForImage = nil
             state.showGroupImageDetail = false
             return .none
+
+          case .transferHostTapped:
+            state.isShowingTransferSheet = true
+            state.selectedNewHost = nil
+            state.transferError = nil
+            return .none
+
+          case .transferSheetDismissed:
+            state.isShowingTransferSheet = false
+            state.selectedNewHost = nil
+            return .none
+
+          case .newHostSelected(let member):
+            state.selectedNewHost = member
+            return .none
+
+          case .confirmTransferHost:
+            guard let newHost = state.selectedNewHost else { return .none }
+            state.isTransferringHost = true
+            state.transferError = nil
+            return .run { [groupId = state.group.id, newHostId = newHost.userId] send in
+              do {
+                try await groupClient.transferHost(groupId, newHostId)
+                await send(.internal(.transferHostResponse(.success(()))))
+              } catch {
+                await send(.internal(.transferHostResponse(.failure(error))))
+              }
+            }
+
+          case .cancelTransferHost:
+            state.selectedNewHost = nil
+            return .none
           }
 
         case .internal(let internalAction):
           switch internalAction {
           case .fetchMembers:
-            state.membersState = .loading
+            // 기존 멤버가 없을 때만 로딩 표시 (있으면 백그라운드에서 갱신)
+            if state.members.isEmpty {
+              state.membersState = .loading
+            }
             return .run { [groupId = state.group.id] send in
               do {
                 let members = try await groupClient.fetchGroupMembers(groupId)
@@ -202,6 +260,23 @@ extension ManageGroup {
           case .deleteGroupResponse(.failure(let error)):
             state.isDeletingGroup = false
             state.deleteError = error.localizedDescription
+            return .none
+
+          case .transferHostResponse(.success):
+            guard let newHostId = state.selectedNewHost?.userId else {
+              state.isTransferringHost = false
+              state.isShowingTransferSheet = false
+              state.selectedNewHost = nil
+              return .none
+            }
+            state.isTransferringHost = false
+            state.isShowingTransferSheet = false
+            state.selectedNewHost = nil
+            return .send(.delegate(.hostTransferred(newHostId: newHostId)))
+
+          case .transferHostResponse(.failure(let error)):
+            state.isTransferringHost = false
+            state.transferError = error.localizedDescription
             return .none
           }
 

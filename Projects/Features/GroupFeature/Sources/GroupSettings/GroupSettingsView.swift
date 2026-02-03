@@ -150,6 +150,20 @@ extension GroupSettings {
       VStack(alignment: .leading, spacing: 10) {
         VStack(spacing: 0) {
           if store.isHost {
+            // 호스트 양도 (다른 멤버가 있을 때만)
+            if store.canTransferHost {
+              dangerRow(
+                title: "호스트 양도",
+                systemImage: "person.badge.key",
+                color: .orange,
+                isLoading: false,
+                action: { store.send(.view(.transferHostTapped)) }
+              )
+
+              Divider()
+                .padding(.leading, 52)
+            }
+
             dangerRow(
               title: "그룹 삭제",
               systemImage: "trash",
@@ -229,14 +243,15 @@ extension GroupSettings {
     private func dangerRow(
       title: String,
       systemImage: String,
+      color: Color = Color.pmerror.n500,
       isLoading: Bool,
       action: @escaping () -> Void
     ) -> some SwiftUI.View {
-      Button(role: .destructive, action: action) {
+      Button(action: action) {
         HStack(spacing: 12) {
           Image(systemName: systemImage)
             .font(.system(size: 16, weight: .semibold))
-            .foregroundStyle(Color.pmerror.n500)
+            .foregroundStyle(color)
 
           Text(title)
             .foregroundStyle(.primary)
@@ -244,6 +259,9 @@ extension GroupSettings {
           if isLoading {
             ProgressView()
           }
+          Image(systemName: "chevron.right")
+            .font(.system(size: 14, weight: .medium))
+            .foregroundStyle(.tertiary)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
@@ -1102,6 +1120,20 @@ private struct AlertsModifier: ViewModifier {
     )
   }
 
+  private var transferSheetBinding: Binding<Bool> {
+    Binding(
+      get: { store.isShowingTransferSheet },
+      set: { if !$0 { store.send(.view(.dismissTransferSheet)) } }
+    )
+  }
+
+  private var transferErrorBinding: Binding<Bool> {
+    Binding(
+      get: { store.transferError != nil },
+      set: { if !$0 { store.send(.view(.dismissTransferError)) } }
+    )
+  }
+
   func body(content: Content) -> some View {
     content
       .alert("그룹 나가기", isPresented: leaveAlertBinding) {
@@ -1128,6 +1160,102 @@ private struct AlertsModifier: ViewModifier {
           onDismiss: { store.send(.view(.imageDetailDismissed)) }
         )
       }
+      .sheet(isPresented: transferSheetBinding) {
+        TransferHostSheet(store: store)
+      }
+      .alert("호스트 양도 실패", isPresented: transferErrorBinding) {
+        Button("확인") { store.send(.view(.dismissTransferError)) }
+      } message: {
+        Text(store.transferError ?? "알 수 없는 오류가 발생했습니다.")
+      }
+  }
+}
+
+// MARK: - TransferHostSheet
+
+private struct TransferHostSheet: View {
+  let store: StoreOf<GroupSettings.Feature>
+
+  var body: some View {
+    NavigationStack {
+      memberList
+        .listStyle(.insetGrouped)
+        .navigationTitle("호스트 양도")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+          ToolbarItem(placement: .cancellationAction) {
+            Button("취소") {
+              store.send(.view(.dismissTransferSheet))
+            }
+          }
+          ToolbarItem(placement: .confirmationAction) {
+            confirmButton
+          }
+        }
+    }
+    .interactiveDismissDisabled(store.isTransferringHost)
+  }
+
+  private var memberList: some View {
+    List {
+      Section {
+        ForEach(store.transferCandidates) { member in
+          transferCandidateRow(member: member)
+        }
+      } header: {
+        Text("새 호스트를 선택하세요")
+      } footer: {
+        Text("호스트를 양도하면 해당 멤버가 그룹을 관리할 수 있습니다.")
+      }
+    }
+  }
+
+  private func transferCandidateRow(member: UserPublicModel) -> some View {
+    Button {
+      store.send(.view(.selectNewHost(member)))
+    } label: {
+      HStack(spacing: 12) {
+        ProfileAvatarView(
+          profileImageUrl: member.profileImageUrl,
+          displayName: member.displayName,
+          isCurrentUser: false,
+          size: 44
+        )
+
+        VStack(alignment: .leading, spacing: 2) {
+          Text(member.displayName)
+            .font(.body)
+            .foregroundStyle(.primary)
+          if member.name != member.nickname {
+            Text(member.name)
+              .font(.caption)
+              .foregroundStyle(.secondary)
+          }
+        }
+
+        Spacer()
+
+        if store.selectedNewHost?.userId == member.userId {
+          Image(systemName: "checkmark.circle.fill")
+            .foregroundStyle(Color.pmindigo.n500)
+            .font(.title3)
+        }
+      }
+      .contentShape(Rectangle())
+    }
+    .buttonStyle(.plain)
+  }
+
+  @ViewBuilder
+  private var confirmButton: some View {
+    if store.isTransferringHost {
+      ProgressView()
+    } else {
+      Button("양도") {
+        store.send(.view(.confirmTransferHost))
+      }
+      .disabled(store.selectedNewHost == nil)
+    }
   }
 }
 

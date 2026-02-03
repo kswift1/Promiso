@@ -12,6 +12,7 @@ extension ManageGroup {
     @State private var isCopied = false
     @State private var showLeaveConfirmation = false
     @State private var showDeleteConfirmation = false
+    @State private var showTransferConfirmation = false
 
     public init(store: StoreOf<ManageGroup.Feature>) {
       self.store = store
@@ -221,6 +222,60 @@ extension ManageGroup {
         )
         .presentationBackground(.black)
       }
+      .sheet(
+        isPresented: Binding(
+          get: { store.isShowingTransferSheet },
+          set: { if !$0 { store.send(.view(.transferSheetDismissed)) } }
+        )
+      ) {
+        TransferHostSheet(
+          candidates: store.transferCandidates,
+          selectedMember: store.selectedNewHost,
+          isTransferring: store.isTransferringHost,
+          error: store.transferError,
+          onSelect: { member in
+            store.send(.view(.newHostSelected(member)))
+          },
+          onConfirm: {
+            showTransferConfirmation = true
+          },
+          onCancel: {
+            store.send(.view(.transferSheetDismissed))
+          }
+        )
+        .presentationDetents([.medium, .large])
+      }
+      .confirmationDialog(
+        "호스트 양도",
+        isPresented: $showTransferConfirmation,
+        actions: {
+          Button("양도", role: .destructive) {
+            store.send(.view(.confirmTransferHost))
+          }
+          Button("취소", role: .cancel) {
+            store.send(.view(.cancelTransferHost))
+          }
+        },
+        message: {
+          if let newHost = store.selectedNewHost {
+            Text("\(newHost.nickname)님에게 호스트를 양도하시겠습니까?\n양도 후에는 되돌릴 수 없습니다.")
+          }
+        }
+      )
+      .alert(
+        "호스트 양도 실패",
+        isPresented: .constant(store.transferError != nil),
+        actions: {
+          Button("확인") {
+            store.send(.view(.dismissError))
+          }
+        },
+        message: {
+          if let error = store.transferError {
+            Text(error)
+          }
+        }
+      )
     }
 
     // MARK: - Header Section
@@ -347,6 +402,35 @@ extension ManageGroup {
 
         VStack(spacing: 0) {
           if store.isHost {
+            // 호스트 양도 (다른 멤버가 있을 때만)
+            if store.canTransferHost {
+              Button {
+                store.send(.view(.transferHostTapped))
+              } label: {
+                HStack(spacing: 12) {
+                  Image(systemName: "person.badge.key")
+                    .font(.system(size: 16))
+                    .foregroundStyle(.orange)
+                    .frame(width: 24)
+
+                  Text("호스트 양도")
+                    .font(.system(size: 16))
+                    .foregroundStyle(.primary)
+
+                  Spacer()
+
+                  Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(.tertiary)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+              }
+
+              Divider()
+                .padding(.leading, 52)
+            }
+
             // 호스트: 그룹 삭제
             Button {
               showDeleteConfirmation = true
@@ -558,6 +642,143 @@ private struct GroupImageView: View {
       loadedImage = try await ImagePipeline.shared.image(for: request)
     } catch {
       print("Failed to load image: \(error)")
+    }
+  }
+}
+
+// MARK: - Transfer Host Sheet
+
+private struct TransferHostSheet: View {
+  let candidates: [UserPublicModel]
+  let selectedMember: UserPublicModel?
+  let isTransferring: Bool
+  let error: String?
+  let onSelect: (UserPublicModel) -> Void
+  let onConfirm: () -> Void
+  let onCancel: () -> Void
+
+  var body: some View {
+    NavigationStack {
+      VStack(spacing: 0) {
+        // Header
+        VStack(spacing: 8) {
+          Image(systemName: "person.badge.key.fill")
+            .font(.system(size: 48))
+            .foregroundStyle(
+              LinearGradient(
+                colors: [.orange, .red],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+              )
+            )
+
+          Text("새로운 호스트 선택")
+            .font(.title2.weight(.bold))
+
+          Text("그룹을 관리할 새로운 호스트를 선택해주세요")
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+            .multilineTextAlignment(.center)
+        }
+        .padding(.top, 24)
+        .padding(.bottom, 20)
+
+        // Member List
+        ScrollView {
+          LazyVStack(spacing: 8) {
+            ForEach(candidates) { member in
+              Button {
+                onSelect(member)
+              } label: {
+                HStack(spacing: 12) {
+                  ProfileAvatarView(
+                    profileImageUrl: member.profileImageUrl,
+                    displayName: member.displayName,
+                    size: 48
+                  )
+
+                  VStack(alignment: .leading, spacing: 2) {
+                    Text(member.nickname)
+                      .font(.body.weight(.medium))
+                      .foregroundStyle(.primary)
+
+                    if member.name != member.nickname {
+                      Text(member.name)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    }
+                  }
+
+                  Spacer()
+
+                  if selectedMember?.userId == member.userId {
+                    Image(systemName: "checkmark.circle.fill")
+                      .font(.system(size: 24))
+                      .foregroundStyle(.orange)
+                  } else {
+                    Image(systemName: "circle")
+                      .font(.system(size: 24))
+                      .foregroundStyle(.secondary.opacity(0.3))
+                  }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(
+                  RoundedRectangle(cornerRadius: 12)
+                    .fill(selectedMember?.userId == member.userId
+                      ? Color.orange.opacity(0.1)
+                      : Color(.secondarySystemBackground))
+                )
+                .overlay(
+                  RoundedRectangle(cornerRadius: 12)
+                    .stroke(
+                      selectedMember?.userId == member.userId
+                        ? Color.orange.opacity(0.3)
+                        : Color.clear,
+                      lineWidth: 1
+                    )
+                )
+              }
+              .buttonStyle(.plain)
+            }
+          }
+          .padding(.horizontal, 20)
+        }
+
+        // Footer
+        VStack(spacing: 12) {
+          Button {
+            onConfirm()
+          } label: {
+            HStack {
+              if isTransferring {
+                ProgressView()
+                  .tint(.white)
+              } else {
+                Text("호스트 양도")
+              }
+            }
+            .font(.headline)
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity)
+            .frame(height: 50)
+            .background(
+              RoundedRectangle(cornerRadius: 12)
+                .fill(selectedMember != nil ? Color.orange : Color.gray)
+            )
+          }
+          .disabled(selectedMember == nil || isTransferring)
+        }
+        .padding(20)
+      }
+      .navigationBarTitleDisplayMode(.inline)
+      .toolbar {
+        ToolbarItem(placement: .topBarLeading) {
+          Button("취소") {
+            onCancel()
+          }
+        }
+      }
     }
   }
 }
