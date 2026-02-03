@@ -1579,3 +1579,25 @@ export interface HomeSnapshotDocument {
   /** 메타데이터 */
   meta: HomeSnapshotMeta;
 }
+
+// ============================================================================
+// APNs LiveActivity Payload Types
+// ============================================================================
+
+/**
+ * APNs LiveActivity 업데이트 Payload
+ */
+export interface APNsLiveActivityUpdatePayload {
+  aps: {
+    timestamp: number;
+    event: "update";
+    "content-state": {
+      trackingDurationMinutes: number;
+      participants: LiveActivityParticipant[];
+    };
+    alert?: {
+      title: string;
+      body: string;
+    };
+  };
+}
