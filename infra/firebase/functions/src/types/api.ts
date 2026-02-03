@@ -786,6 +786,43 @@ export enum CheckNicknameAvailableError {
 }
 
 // ============================================================================
+// deleteUser
+// ============================================================================
+
+/**
+ * 회원 탈퇴 요청
+ *
+ * @remarks
+ * - 인증 필수 (Firebase Auth)
+ * - 그룹 호스트인 경우 탈퇴 불가 (먼저 호스트 양도 필요)
+ */
+export interface DeleteUserRequest {
+  // 별도 파라미터 없음, auth.uid 사용
+}
+
+/**
+ * 회원 탈퇴 응답
+ */
+export interface DeleteUserResponse {
+  /** 성공 여부 */
+  success: boolean;
+}
+
+/**
+ * 회원 탈퇴 에러
+ */
+export enum DeleteUserError {
+  /** 인증 필요 */
+  UNAUTHENTICATED = "unauthenticated",
+
+  /** 그룹 호스트는 탈퇴 불가 */
+  IS_GROUP_HOST = "failed-precondition",
+
+  /** 서버 오류 */
+  INTERNAL = "internal",
+}
+
+// ============================================================================
 // Shared
 // ============================================================================
 
@@ -952,6 +989,33 @@ export interface DeleteGroupRequest {
  * 그룹 삭제 응답
  */
 export interface DeleteGroupResponse {
+  /** 성공 여부 */
+  success: boolean;
+}
+
+// ============================================================================
+// transferGroupHost
+// ============================================================================
+
+/**
+ * 그룹 호스트 양도 요청
+ *
+ * @remarks
+ * - 인증 필수 (Firebase Auth)
+ * - 현재 호스트만 호출 가능
+ */
+export interface TransferGroupHostRequest {
+  /** 그룹 ID */
+  groupId: string;
+
+  /** 새 호스트 사용자 ID */
+  newHostId: string;
+}
+
+/**
+ * 그룹 호스트 양도 응답
+ */
+export interface TransferGroupHostResponse {
   /** 성공 여부 */
   success: boolean;
 }

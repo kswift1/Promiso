@@ -395,6 +395,30 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
     }
   }
 
+  /// 그룹 호스트 양도
+  ///
+  /// - Parameters:
+  ///   - groupId: 그룹 ID
+  ///   - newHostId: 새 호스트 사용자 ID
+  ///
+  /// Firebase Functions의 transferGroupHost를 호출합니다.
+  public func transferHost(groupId: String, newHostId: String) async throws {
+    let callableData: [String: Any] = [
+      "groupId": groupId,
+      "newHostId": newHostId
+    ]
+
+    AppLogger.group.debug("[transferHost] Calling with groupId: \(groupId), newHostId: \(newHostId)")
+
+    do {
+      _ = try await functions.httpsCallable("transferGroupHost").call(callableData)
+      AppLogger.group.debug("[transferHost] Success for groupId: \(groupId)")
+    } catch {
+      AppLogger.group.error("[transferHost] Failed: \(error.localizedDescription)")
+      throw error
+    }
+  }
+
   // MARK: - Image Upload
   
   /// 그룹 이미지 업로드 및 다운로드 URL 반환

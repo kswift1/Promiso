@@ -2,6 +2,7 @@ import AuthenticationServices
 import ComposableArchitecture
 import FirebaseCore
 import FirebaseAuth
+import FirebaseFunctions
 import Foundation
 import GoogleSignIn
 import GoogleSignInSwift
@@ -17,8 +18,9 @@ public enum AuthClientError: Error, Equatable {
   case invalidAppleCredential
   case missingIdentityToken
   case providerUnavailable
+  case isGroupHost
   case unknown
-  
+
   public var localizedDescription: String {
     switch self {
     case .invalidCredentials:
@@ -33,6 +35,8 @@ public enum AuthClientError: Error, Equatable {
       return "애플 인증 토큰을 가져오지 못했습니다."
     case .providerUnavailable:
       return "해당 로그인 제공자를 사용할 수 없습니다."
+    case .isGroupHost:
+      return "그룹 호스트는 탈퇴할 수 없습니다. 먼저 그룹을 삭제하거나 호스트를 양도해주세요."
     case .unknown:
       return "알 수 없는 오류가 발생했습니다."
     }
@@ -254,6 +258,13 @@ public struct AuthClient: Sendable {
   /// Widget 전용 Long-lived Token 발급 요청 (30일 유효)
   /// - 로그인 후, 앱 활성화 시, 토큰 만료 7일 전에 호출
   public var requestWidgetToken: @Sendable () async -> Void
+
+  // MARK: - Account Management
+
+  /// 회원 탈퇴
+  /// - 그룹 호스트인 경우 먼저 호스트 양도 필요
+  /// - 성공 시 Firebase Auth 계정 및 모든 데이터 삭제
+  public var deleteAccount: @Sendable () async throws -> Void
 }
 
 // MARK: - Test / Preview
@@ -294,7 +305,8 @@ extension AuthClient: TestDependencyKey {
     clearSession: {},
     refreshWidgetAuthToken: {},
     clearWidgetAuthToken: {},
-    requestWidgetToken: {}
+    requestWidgetToken: {},
+    deleteAccount: {}
   )
 
   public static let testValue = Self(
@@ -306,7 +318,8 @@ extension AuthClient: TestDependencyKey {
     clearSession: unimplemented("\(Self.self).clearSession"),
     refreshWidgetAuthToken: unimplemented("\(Self.self).refreshWidgetAuthToken"),
     clearWidgetAuthToken: unimplemented("\(Self.self).clearWidgetAuthToken"),
-    requestWidgetToken: unimplemented("\(Self.self).requestWidgetToken")
+    requestWidgetToken: unimplemented("\(Self.self).requestWidgetToken"),
+    deleteAccount: unimplemented("\(Self.self).deleteAccount")
   )
 }
 
@@ -492,6 +505,38 @@ extension AuthClient: DependencyKey {
           #if DEBUG
           print("[AuthClient] Widget Token 발급 실패: \(error)")
           #endif
+        }
+      },
+      deleteAccount: {
+        // 회원 탈퇴 - Firebase Function 호출
+        guard Auth.auth().currentUser != nil else {
+          throw AuthClientError.invalidCredentials
+        }
+
+        let functions = Functions.functions(region: "asia-northeast3")
+
+        do {
+          _ = try await functions
+            .httpsCallable("deleteUser")
+            .call([:])
+
+          // 로컬 세션 정리
+          await session.logout()
+          WidgetAuthTokenStore.clear()
+          WidgetTokenStore.clear()
+        } catch let error as NSError {
+          #if DEBUG
+          print("[AuthClient] 회원 탈퇴 실패: \(error)")
+          #endif
+
+          // Firebase Functions 에러 코드 확인
+          if error.domain == FunctionsErrorDomain {
+            // "failed-precondition" = 그룹 호스트인 경우
+            if error.code == FunctionsErrorCode.failedPrecondition.rawValue {
+              throw AuthClientError.isGroupHost
+            }
+          }
+          throw AuthClientError.unknown
         }
       }
     )

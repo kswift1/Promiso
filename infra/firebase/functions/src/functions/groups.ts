@@ -29,6 +29,8 @@ import {
   UpdateGroupResponse,
   DeleteGroupRequest,
   DeleteGroupResponse,
+  TransferGroupHostRequest,
+  TransferGroupHostResponse,
   GroupMemberPreview,
   NotificationType,
 } from "../types/api";
@@ -712,6 +714,133 @@ export const deleteGroup = onCall<DeleteGroupRequest>(
       success: true,
     };
   },
+);
+
+/**
+ * 그룹 호스트 양도
+ *
+ * @remarks
+ * **인증 필수**
+ *
+ * 현재 호스트가 다른 멤버에게 호스트 권한을 양도합니다:
+ * 1. 현재 호스트 권한 확인
+ * 2. 새 호스트가 그룹 멤버인지 확인
+ * 3. groups/{groupId}.createdBy를 새 호스트로 변경
+ * 4. users/{userId}.groups[groupId].role 업데이트 (admin ↔ member)
+ */
+export const transferGroupHost = onCall<TransferGroupHostRequest>(
+  {region: REGION},
+  async (request): Promise<TransferGroupHostResponse> => {
+    // 1. 인증 확인
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "로그인이 필요합니다");
+    }
+
+    // 2. 데이터 추출 및 검증
+    const data = request.data;
+    const groupId = data.groupId?.trim();
+    const newHostId = data.newHostId?.trim();
+    const currentUserId = request.auth.uid;
+
+    if (!groupId) {
+      throw new HttpsError("invalid-argument", "그룹 ID는 필수입니다");
+    }
+
+    if (!newHostId) {
+      throw new HttpsError("invalid-argument", "새 호스트 ID는 필수입니다");
+    }
+
+    if (currentUserId === newHostId) {
+      throw new HttpsError(
+        "invalid-argument",
+        "자기 자신에게 호스트를 양도할 수 없습니다"
+      );
+    }
+
+    // 3. 비즈니스 로직
+    const db = admin.firestore();
+    const groupsCollection = getEnvironmentCollection("groups", db);
+    const usersCollection = getEnvironmentCollection("users", db);
+
+    // 3-1. 그룹 존재 및 권한 확인
+    const groupRef = groupsCollection.doc(groupId);
+    const groupDoc = await groupRef.get();
+
+    if (!groupDoc.exists) {
+      throw new HttpsError("not-found", "그룹을 찾을 수 없습니다");
+    }
+
+    const groupData = groupDoc.data();
+    if (!groupData) {
+      throw new HttpsError("not-found", "그룹 데이터를 찾을 수 없습니다");
+    }
+
+    const currentHostId = groupData.createdBy as string;
+    const memberIds = (groupData.memberIds as string[]) ?? [];
+    const groupName = (groupData.name as string) ?? "그룹";
+
+    // 3-2. 현재 호스트인지 확인
+    if (currentHostId !== currentUserId) {
+      throw new HttpsError(
+        "permission-denied",
+        "그룹 호스트만 호스트 권한을 양도할 수 있습니다"
+      );
+    }
+
+    // 3-3. 새 호스트가 그룹 멤버인지 확인
+    if (!memberIds.includes(newHostId)) {
+      throw new HttpsError(
+        "invalid-argument",
+        "새 호스트는 그룹 멤버여야 합니다"
+      );
+    }
+
+    const now = FieldValue.serverTimestamp();
+
+    // 4. Firestore 업데이트 (트랜잭션 사용)
+    await db.runTransaction(async (transaction) => {
+      // 4-1. 그룹의 createdBy를 새 호스트로 변경
+      transaction.update(groupRef, {
+        createdBy: newHostId,
+        updatedAt: now,
+      });
+
+      // 4-2. 이전 호스트의 role을 member로 변경
+      const previousHostRef = usersCollection.doc(currentUserId);
+      transaction.update(previousHostRef, {
+        [`groups.${groupId}.role`]: "member",
+        updatedAt: now,
+      });
+
+      // 4-3. 새 호스트의 role을 admin으로 변경
+      const newHostRef = usersCollection.doc(newHostId);
+      transaction.update(newHostRef, {
+        [`groups.${groupId}.role`]: "admin",
+        updatedAt: now,
+      });
+    });
+
+    console.log(
+      `🔄 Group host transferred: ${groupId} (${currentUserId} → ${newHostId})`
+    );
+
+    // 5. 새 호스트에게 알림 발송
+    await sendPushNotificationInternal({
+      userIds: [newHostId],
+      type: NotificationType.GroupUpdate,
+      title: "그룹 호스트 권한 양도 🎉",
+      body: `${groupName}의 새로운 호스트가 되었어요`,
+      promiseId: null,
+      groupId,
+      relatedUserId: currentUserId,
+      data: null,
+    });
+
+    // 6. 응답 반환
+    return {
+      success: true,
+    };
+  }
 );
 
 /**

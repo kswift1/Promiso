@@ -31,6 +31,12 @@ extension ManageGroup {
       var selectedMemberForImage: UserPublicModel?
       var showGroupImageDetail: Bool = false
 
+      // Transfer Host
+      var isShowingTransferSheet: Bool = false
+      var selectedNewHost: UserPublicModel?
+      var isTransferringHost: Bool = false
+      var transferError: String?
+
       public init(
         group: GroupModel,
         summary: UserGroupInfo?,
@@ -58,6 +64,16 @@ extension ManageGroup {
       var activePromiseCount: Int {
         promises.filter { !$0.isPast }.count
       }
+
+      /// 호스트 양도 가능 여부 (호스트이고 다른 멤버가 있을 때)
+      var canTransferHost: Bool {
+        isHost && members.count > 1
+      }
+
+      /// 호스트 양도 대상 목록 (본인 제외)
+      var transferCandidates: [UserPublicModel] {
+        members.filter { $0.userId != currentUserId }
+      }
     }
 
     public enum Action: Sendable {
@@ -79,6 +95,12 @@ extension ManageGroup {
         case memberImageTapped(UserPublicModel)
         case groupImageTapped
         case imageDetailDismissed
+        // Transfer Host
+        case transferHostTapped
+        case transferSheetDismissed
+        case newHostSelected(UserPublicModel)
+        case confirmTransferHost
+        case cancelTransferHost
       }
 
       public enum Internal: Sendable {
@@ -86,12 +108,14 @@ extension ManageGroup {
         case membersResponse(Result<[UserPublicModel], Error>)
         case leaveGroupResponse(Result<Void, Error>)
         case deleteGroupResponse(Result<Void, Error>)
+        case transferHostResponse(Result<Void, Error>)
       }
 
       public enum Delegate: Sendable {
         case groupLeft
         case groupDeleted
         case pastPromisesTapped
+        case hostTransferred(newHostId: String)
       }
     }
 
@@ -148,6 +172,7 @@ extension ManageGroup {
           case .dismissError:
             state.leaveError = nil
             state.deleteError = nil
+            state.transferError = nil
             return .none
 
           case .memberImageTapped(let member):
@@ -161,6 +186,38 @@ extension ManageGroup {
           case .imageDetailDismissed:
             state.selectedMemberForImage = nil
             state.showGroupImageDetail = false
+            return .none
+
+          case .transferHostTapped:
+            state.isShowingTransferSheet = true
+            state.selectedNewHost = nil
+            state.transferError = nil
+            return .none
+
+          case .transferSheetDismissed:
+            state.isShowingTransferSheet = false
+            state.selectedNewHost = nil
+            return .none
+
+          case .newHostSelected(let member):
+            state.selectedNewHost = member
+            return .none
+
+          case .confirmTransferHost:
+            guard let newHost = state.selectedNewHost else { return .none }
+            state.isTransferringHost = true
+            state.transferError = nil
+            return .run { [groupId = state.group.id, newHostId = newHost.userId] send in
+              do {
+                try await groupClient.transferHost(groupId, newHostId)
+                await send(.internal(.transferHostResponse(.success(()))))
+              } catch {
+                await send(.internal(.transferHostResponse(.failure(error))))
+              }
+            }
+
+          case .cancelTransferHost:
+            state.selectedNewHost = nil
             return .none
           }
 
@@ -202,6 +259,18 @@ extension ManageGroup {
           case .deleteGroupResponse(.failure(let error)):
             state.isDeletingGroup = false
             state.deleteError = error.localizedDescription
+            return .none
+
+          case .transferHostResponse(.success):
+            let newHostId = state.selectedNewHost?.userId ?? ""
+            state.isTransferringHost = false
+            state.isShowingTransferSheet = false
+            state.selectedNewHost = nil
+            return .send(.delegate(.hostTransferred(newHostId: newHostId)))
+
+          case .transferHostResponse(.failure(let error)):
+            state.isTransferringHost = false
+            state.transferError = error.localizedDescription
             return .none
           }
 

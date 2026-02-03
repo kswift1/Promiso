@@ -444,8 +444,12 @@ extension Settings {
             return .send(.view(.logoutConfirmed))
 
           case .deleteAccountRequested:
-            // TODO: 회원 탈퇴 구현
+            // AccountInfo에서 직접 처리하므로 여기서는 무시
             return .none
+
+          case .didDeleteAccount:
+            // 회원 탈퇴 완료 - 로그아웃과 동일하게 처리
+            return .send(.delegate(.didLogout))
           }
 
         case .path(.element(_, action: .notificationSettings(.delegate(let delegate)))):

@@ -16,6 +16,8 @@ import {
   CheckNicknameAvailableResponse,
   CreateUserRequest,
   CreateUserResponse,
+  DeleteUserRequest,
+  DeleteUserResponse,
   GetUserRequest,
   UpdateUserRequest,
   UpdateUserResponse,
@@ -456,4 +458,187 @@ export const checkNicknameAvailable = onCall<CheckNicknameAvailableRequest>(
       );
     }
   },
+);
+
+// Firebase Storage URL에서 경로 추출용 정규식
+const FIREBASE_STORAGE_PATH_REGEX = /\/o\/(.+?)\?/;
+
+/**
+ * 회원 탈퇴
+ *
+ * @remarks
+ * **인증 필수**
+ *
+ * 사용자 계정을 완전히 삭제합니다:
+ * 1. 그룹 호스트 여부 확인 (호스트면 탈퇴 불가)
+ * 2. 호스트 약속 삭제
+ * 3. 그룹 멤버십 정리 (memberIds에서 제거)
+ * 4. 약속 투표 정리 (votes에서 제거)
+ * 5. Storage 프로필 이미지 삭제
+ * 6. Firestore users/{userId} 삭제 (서브컬렉션 포함)
+ * 7. Firebase Auth 계정 삭제
+ */
+export const deleteUser = onCall<DeleteUserRequest>(
+  {region: REGION},
+  async (request): Promise<DeleteUserResponse> => {
+    // 1. 인증 확인
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "로그인이 필요합니다");
+    }
+
+    const userId = request.auth.uid;
+    const db = admin.firestore();
+    const usersCollection = getEnvironmentCollection("users", db);
+    const groupsCollection = getEnvironmentCollection("groups", db);
+    const promisesCollection = getEnvironmentCollection("promises", db);
+
+    console.log(`🗑️ deleteUser started: ${userId}`);
+
+    try {
+      // 2. 사용자 문서 조회
+      const userRef = usersCollection.doc(userId);
+      const userDoc = await userRef.get();
+
+      if (!userDoc.exists) {
+        throw new HttpsError("not-found", "사용자를 찾을 수 없습니다");
+      }
+
+      const userData = userDoc.data();
+      if (!userData) {
+        throw new HttpsError("internal", "사용자 데이터를 읽을 수 없습니다");
+      }
+
+      // 3. 그룹 호스트 여부 확인
+      const userGroups = userData.groups as Record<string, unknown> | undefined;
+      const groupIds = userGroups ? Object.keys(userGroups) : [];
+
+      for (const groupId of groupIds) {
+        const groupDoc = await groupsCollection.doc(groupId).get();
+        if (groupDoc.exists) {
+          const groupData = groupDoc.data();
+          if (groupData?.createdBy === userId) {
+            throw new HttpsError(
+              "failed-precondition",
+              "그룹 호스트는 탈퇴할 수 없습니다. 먼저 호스트를 양도하거나 그룹을 삭제해주세요."
+            );
+          }
+        }
+      }
+
+      // 4. 호스트 약속 삭제
+      const hostPromises = await promisesCollection
+        .where("hostId", "==", userId)
+        .get();
+
+      if (!hostPromises.empty) {
+        const batch = db.batch();
+        for (const doc of hostPromises.docs) {
+          batch.delete(doc.ref);
+        }
+        await batch.commit();
+        console.log(`🗑️ ${hostPromises.size} host promises deleted`);
+      }
+
+      // 5. 그룹 멤버십 정리 (memberIds에서 제거)
+      for (const groupId of groupIds) {
+        const groupRef = groupsCollection.doc(groupId);
+        await groupRef.update({
+          memberIds: FieldValue.arrayRemove(userId),
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+      }
+      console.log(`🗑️ Removed from ${groupIds.length} groups`);
+
+      // 6. 약속 투표 정리 (votes에서 제거)
+      // 6-1. accepted에서 제거
+      const acceptedPromises = await promisesCollection
+        .where("votes.accepted", "array-contains", userId)
+        .get();
+
+      for (const doc of acceptedPromises.docs) {
+        await doc.ref.update({
+          "votes.accepted": FieldValue.arrayRemove(userId),
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+      }
+      console.log(`🗑️ Removed from ${acceptedPromises.size} accepted votes`);
+
+      // 6-2. declined에서 제거
+      const declinedPromises = await promisesCollection
+        .where("votes.declined", "array-contains", userId)
+        .get();
+
+      for (const doc of declinedPromises.docs) {
+        await doc.ref.update({
+          "votes.declined": FieldValue.arrayRemove(userId),
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+      }
+      console.log(`🗑️ Removed from ${declinedPromises.size} declined votes`);
+
+      // 7. Storage 프로필 이미지 삭제
+      const profile = userData.profile as {url?: string} | null;
+      if (profile?.url) {
+        try {
+          const bucket = admin.storage().bucket();
+          const match = profile.url.match(FIREBASE_STORAGE_PATH_REGEX);
+          if (match) {
+            const storagePath = decodeURIComponent(match[1]);
+            await bucket.file(storagePath).delete();
+            console.log(`🗑️ Profile image deleted: ${storagePath}`);
+
+            // 썸네일도 삭제 시도
+            const thumbPath = storagePath.replace(
+              "profile_images/",
+              "profile_images/thumb_"
+            );
+            try {
+              await bucket.file(thumbPath).delete();
+              console.log(`🗑️ Thumbnail deleted: ${thumbPath}`);
+            } catch {
+              // 썸네일이 없을 수 있음
+            }
+          }
+        } catch (error) {
+          console.warn(`⚠️ Failed to delete profile image: ${error}`);
+        }
+      }
+
+      // 8. Firestore users/{userId} 삭제 (서브컬렉션 포함)
+      // 8-1. 서브컬렉션 삭제
+      const subcollections = ["auth", "settings", "cache"];
+      for (const subcollection of subcollections) {
+        const subcollectionRef = userRef.collection(subcollection);
+        const docs = await subcollectionRef.listDocuments();
+        for (const doc of docs) {
+          await doc.delete();
+        }
+      }
+      console.log(`🗑️ Subcollections deleted`);
+
+      // 8-2. 메인 문서 삭제
+      await userRef.delete();
+      console.log(`🗑️ User document deleted: ${userId}`);
+
+      // 9. Firebase Auth 계정 삭제
+      await admin.auth().deleteUser(userId);
+      console.log(`🗑️ Firebase Auth account deleted: ${userId}`);
+
+      // 10. 응답 반환
+      return {
+        success: true,
+      };
+    } catch (error) {
+      // HttpsError는 그대로 throw
+      if (error instanceof HttpsError) {
+        throw error;
+      }
+
+      console.error("❌ deleteUser error:", error);
+      throw new HttpsError(
+        "internal",
+        "회원 탈퇴 중 오류가 발생했습니다"
+      );
+    }
+  }
 );
