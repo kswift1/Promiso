@@ -263,7 +263,12 @@ extension ManageGroup {
             return .none
 
           case .transferHostResponse(.success):
-            let newHostId = state.selectedNewHost?.userId ?? ""
+            guard let newHostId = state.selectedNewHost?.userId else {
+              state.isTransferringHost = false
+              state.isShowingTransferSheet = false
+              state.selectedNewHost = nil
+              return .none
+            }
             state.isTransferringHost = false
             state.isShowingTransferSheet = false
             state.selectedNewHost = nil

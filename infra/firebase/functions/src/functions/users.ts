@@ -525,17 +525,22 @@ export const deleteUser = onCall<DeleteUserRequest>(
         }
       }
 
-      // 4. 호스트 약속 삭제
+      // 4. 호스트 약속 삭제 (500개 단위 배치 처리)
       const hostPromises = await promisesCollection
         .where("hostId", "==", userId)
         .get();
 
       if (!hostPromises.empty) {
-        const batch = db.batch();
-        for (const doc of hostPromises.docs) {
-          batch.delete(doc.ref);
+        const BATCH_SIZE = 500;
+        const docs = hostPromises.docs;
+        for (let i = 0; i < docs.length; i += BATCH_SIZE) {
+          const batch = db.batch();
+          const chunk = docs.slice(i, i + BATCH_SIZE);
+          for (const doc of chunk) {
+            batch.delete(doc.ref);
+          }
+          await batch.commit();
         }
-        await batch.commit();
         console.log(`🗑️ ${hostPromises.size} host promises deleted`);
       }
 
@@ -549,32 +554,44 @@ export const deleteUser = onCall<DeleteUserRequest>(
       }
       console.log(`🗑️ Removed from ${groupIds.length} groups`);
 
-      // 6. 약속 투표 정리 (votes에서 제거)
+      // 6. 약속 투표 정리 (votes에서 제거) - 배치 처리
+      const voteBatch = db.batch();
+      const timestamp = FieldValue.serverTimestamp();
+      let voteUpdateCount = 0;
+
       // 6-1. accepted에서 제거
       const acceptedPromises = await promisesCollection
         .where("votes.accepted", "array-contains", userId)
         .get();
 
-      for (const doc of acceptedPromises.docs) {
-        await doc.ref.update({
+      acceptedPromises.forEach((doc) => {
+        voteBatch.update(doc.ref, {
           "votes.accepted": FieldValue.arrayRemove(userId),
-          "updatedAt": FieldValue.serverTimestamp(),
+          "updatedAt": timestamp,
         });
-      }
-      console.log(`🗑️ Removed from ${acceptedPromises.size} accepted votes`);
+        voteUpdateCount++;
+      });
+      console.log(`🗑️ Queued removal from ${acceptedPromises.size} accepted votes`);
 
       // 6-2. declined에서 제거
       const declinedPromises = await promisesCollection
         .where("votes.declined", "array-contains", userId)
         .get();
 
-      for (const doc of declinedPromises.docs) {
-        await doc.ref.update({
+      declinedPromises.forEach((doc) => {
+        voteBatch.update(doc.ref, {
           "votes.declined": FieldValue.arrayRemove(userId),
-          "updatedAt": FieldValue.serverTimestamp(),
+          "updatedAt": timestamp,
         });
+        voteUpdateCount++;
+      });
+      console.log(`🗑️ Queued removal from ${declinedPromises.size} declined votes`);
+
+      // 배치 커밋
+      if (voteUpdateCount > 0) {
+        await voteBatch.commit();
+        console.log(`🗑️ Committed ${voteUpdateCount} vote cleanup updates`);
       }
-      console.log(`🗑️ Removed from ${declinedPromises.size} declined votes`);
 
       // 7. Storage 프로필 이미지 삭제
       const profile = userData.profile as {url?: string} | null;
@@ -584,19 +601,27 @@ export const deleteUser = onCall<DeleteUserRequest>(
           const match = profile.url.match(FIREBASE_STORAGE_PATH_REGEX);
           if (match) {
             const storagePath = decodeURIComponent(match[1]);
-            await bucket.file(storagePath).delete();
-            console.log(`🗑️ Profile image deleted: ${storagePath}`);
+            // 보안: 사용자 소유 파일인지 검증 (임의 파일 삭제 방지)
+            const userProfilePrefix = `profile_images/${userId}/`;
+            if (!storagePath.startsWith(userProfilePrefix)) {
+              console.warn(
+                `⚠️ Skipping deletion: path ${storagePath} is not owned by user ${userId}`
+              );
+            } else {
+              await bucket.file(storagePath).delete();
+              console.log(`🗑️ Profile image deleted: ${storagePath}`);
 
-            // 썸네일도 삭제 시도
-            const thumbPath = storagePath.replace(
-              "profile_images/",
-              "profile_images/thumb_"
-            );
-            try {
-              await bucket.file(thumbPath).delete();
-              console.log(`🗑️ Thumbnail deleted: ${thumbPath}`);
-            } catch {
-              // 썸네일이 없을 수 있음
+              // 썸네일도 삭제 시도
+              const thumbPath = storagePath.replace(
+                "profile_images/",
+                "profile_images/thumb_"
+              );
+              try {
+                await bucket.file(thumbPath).delete();
+                console.log(`🗑️ Thumbnail deleted: ${thumbPath}`);
+              } catch {
+                // 썸네일이 없을 수 있음
+              }
             }
           }
         } catch (error) {

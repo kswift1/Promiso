@@ -341,6 +341,15 @@ actor InMemoryAuthSession {
   }
 }
 
+// MARK: - Firebase 상수
+
+private enum FirebaseConstants {
+  static let region = "asia-northeast3"
+  static let deleteUserFunction = "deleteUser"
+  static let checkAppleCredentialFunction = "checkAppleCredential"
+  static let generateWidgetTokenFunction = "generateWidgetToken"
+}
+
 extension AuthClient: DependencyKey {
 
   public static let liveValue: AuthClient = {
@@ -479,11 +488,11 @@ extension AuthClient: DependencyKey {
         }
 
         do {
-          let functions = Functions.functions(region: "asia-northeast3")
+          let functions = Functions.functions(region: FirebaseConstants.region)
           let deviceId = UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
 
           let result = try await functions
-            .httpsCallable("generateWidgetToken")
+            .httpsCallable(FirebaseConstants.generateWidgetTokenFunction)
             .call(["deviceId": deviceId])
 
           guard let data = result.data as? [String: Any],
@@ -516,11 +525,11 @@ extension AuthClient: DependencyKey {
         // 토큰 갱신 (만료된 토큰으로 인한 UNAUTHENTICATED 방지)
         _ = try await currentUser.getIDToken(forcingRefresh: true)
 
-        let functions = Functions.functions(region: "asia-northeast3")
+        let functions = Functions.functions(region: FirebaseConstants.region)
 
         do {
           _ = try await functions
-            .httpsCallable("deleteUser")
+            .httpsCallable(FirebaseConstants.deleteUserFunction)
             .call([:])
 
           // 로컬 세션 정리

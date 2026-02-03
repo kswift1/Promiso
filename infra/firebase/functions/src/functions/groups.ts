@@ -6,7 +6,7 @@
  * @ios CreateGroupView, JoinGroupView, GroupSettingsView
  * @see ARCHITECTURE.md - iOS Feature ↔ Functions 매핑
  */
-import {FieldValue} from "firebase-admin/firestore";
+import {FieldPath, FieldValue} from "firebase-admin/firestore";
 import {HttpsError, onCall} from "firebase-functions/v2/https";
 import {onDocumentUpdated} from "firebase-functions/v2/firestore";
 import {admin, REGION} from "../config";
@@ -746,6 +746,11 @@ export const transferGroupHost = onCall<TransferGroupHostRequest>(
       throw new HttpsError("invalid-argument", "그룹 ID는 필수입니다");
     }
 
+    // 보안: Field Path Injection 방지 (groupId에 dot이 포함되면 거부)
+    if (groupId.includes(".")) {
+      throw new HttpsError("invalid-argument", "잘못된 그룹 ID입니다");
+    }
+
     if (!newHostId) {
       throw new HttpsError("invalid-argument", "새 호스트 ID는 필수입니다");
     }
@@ -762,43 +767,44 @@ export const transferGroupHost = onCall<TransferGroupHostRequest>(
     const groupsCollection = getEnvironmentCollection("groups", db);
     const usersCollection = getEnvironmentCollection("users", db);
 
-    // 3-1. 그룹 존재 및 권한 확인
+    // 3. Firestore 트랜잭션 내에서 권한 확인 및 업데이트 (race condition 방지)
     const groupRef = groupsCollection.doc(groupId);
-    const groupDoc = await groupRef.get();
-
-    if (!groupDoc.exists) {
-      throw new HttpsError("not-found", "그룹을 찾을 수 없습니다");
-    }
-
-    const groupData = groupDoc.data();
-    if (!groupData) {
-      throw new HttpsError("not-found", "그룹 데이터를 찾을 수 없습니다");
-    }
-
-    const currentHostId = groupData.createdBy as string;
-    const memberIds = (groupData.memberIds as string[]) ?? [];
-    const groupName = (groupData.name as string) ?? "그룹";
-
-    // 3-2. 현재 호스트인지 확인
-    if (currentHostId !== currentUserId) {
-      throw new HttpsError(
-        "permission-denied",
-        "그룹 호스트만 호스트 권한을 양도할 수 있습니다"
-      );
-    }
-
-    // 3-3. 새 호스트가 그룹 멤버인지 확인
-    if (!memberIds.includes(newHostId)) {
-      throw new HttpsError(
-        "invalid-argument",
-        "새 호스트는 그룹 멤버여야 합니다"
-      );
-    }
-
     const now = FieldValue.serverTimestamp();
 
-    // 4. Firestore 업데이트 (트랜잭션 사용)
-    await db.runTransaction(async (transaction) => {
+    const {groupName} = await db.runTransaction(async (transaction) => {
+      // 3-1. 그룹 존재 및 권한 확인 (트랜잭션 내에서 읽기)
+      const groupDoc = await transaction.get(groupRef);
+
+      if (!groupDoc.exists) {
+        throw new HttpsError("not-found", "그룹을 찾을 수 없습니다");
+      }
+
+      const groupData = groupDoc.data();
+      if (!groupData) {
+        throw new HttpsError("not-found", "그룹 데이터를 찾을 수 없습니다");
+      }
+
+      const currentHostId = groupData.createdBy as string;
+      const memberIds = (groupData.memberIds as string[]) ?? [];
+      const name = (groupData.name as string) ?? "그룹";
+
+      // 3-2. 현재 호스트인지 확인
+      if (currentHostId !== currentUserId) {
+        throw new HttpsError(
+          "permission-denied",
+          "그룹 호스트만 호스트 권한을 양도할 수 있습니다"
+        );
+      }
+
+      // 3-3. 새 호스트가 그룹 멤버인지 확인
+      if (!memberIds.includes(newHostId)) {
+        throw new HttpsError(
+          "invalid-argument",
+          "새 호스트는 그룹 멤버여야 합니다"
+        );
+      }
+
+      // 4. Firestore 업데이트
       // 4-1. 그룹의 createdBy를 새 호스트로 변경
       transaction.update(groupRef, {
         createdBy: newHostId,
@@ -818,6 +824,8 @@ export const transferGroupHost = onCall<TransferGroupHostRequest>(
         [`groups.${groupId}.role`]: "admin",
         updatedAt: now,
       });
+
+      return {groupName: name};
     });
 
     console.log(
