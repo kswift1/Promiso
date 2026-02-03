@@ -249,8 +249,18 @@ public struct ParticipantState: Codable, Hashable, Identifiable, Sendable {
 
 /// App Group UserDefaults 키
 public enum LiveActivityIntentKey {
-  /// App Group Suite 이름
-  public static let suiteName = "group.com.promiso.shared"
+  /// App Group Suite 이름 (환경별로 다름)
+  public static var suiteName: String {
+    // Bundle ID에서 환경 구분: com.promiso.dev.* → dev, com.promiso.stage.* → stage
+    let bundleId = Bundle.main.bundleIdentifier ?? ""
+    if bundleId.contains(".dev") {
+      return "group.com.promiso.dev.shared"
+    } else if bundleId.contains(".stage") {
+      return "group.com.promiso.stage.shared"
+    } else {
+      return "group.com.promiso.shared"
+    }
+  }
 
   /// ETA 업데이트 저장 키
   public static let etaUpdateKey = "liveActivity.etaUpdate"

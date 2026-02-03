@@ -9,7 +9,6 @@
 import {FieldValue} from "firebase-admin/firestore";
 import {HttpsError, onCall} from "firebase-functions/v2/https";
 import {admin, REGION} from "../config";
-import {getEnvironmentCollection} from "../utils/firestore";
 import {generateDownloadURL} from "../utils/helpers";
 import {
   CheckNicknameAvailableRequest,
@@ -74,7 +73,7 @@ export const createUser = onCall<CreateUserRequest>(
     }
 
     const db = admin.firestore();
-    const usersCollection = getEnvironmentCollection("users", db);
+    const usersCollection = db.collection("users");
     const userRef = usersCollection.doc(userId);
 
     // 3. 이미 존재하는 사용자인지 확인
@@ -156,7 +155,7 @@ export const getUser = onCall<GetUserRequest>(
     const isPublic = data.isPublic ?? false;
 
     const db = admin.firestore();
-    const usersCollection = getEnvironmentCollection("users", db);
+    const usersCollection = db.collection("users");
     const userRef = usersCollection.doc(targetUserId);
 
     // 2. Authorization: 본인 정보이거나 같은 그룹에 속한 사용자만 조회 가능
@@ -296,7 +295,7 @@ export const updateUser = onCall<UpdateUserRequest>(
     }
 
     const db = admin.firestore();
-    const usersCollection = getEnvironmentCollection("users", db);
+    const usersCollection = db.collection("users");
     const userRef = usersCollection.doc(userId);
 
     const now = FieldValue.serverTimestamp();
@@ -368,7 +367,7 @@ export const uploadProfileImage = onCall<UploadProfileImageRequest>(
 
       // 4. Firestore 업데이트
       const db = admin.firestore();
-      const usersCollection = getEnvironmentCollection("users", db);
+      const usersCollection = db.collection("users");
       const userRef = usersCollection.doc(userId);
 
       console.log("📝 Updating Firestore profile field...");
@@ -430,7 +429,7 @@ export const checkNicknameAvailable = onCall<CheckNicknameAvailableRequest>(
 
     try {
       const db = admin.firestore();
-      const usersCollection = getEnvironmentCollection("users", db);
+      const usersCollection = db.collection("users");
 
       // 3. 닉네임으로 사용자 검색 (본인 제외)
       const snapshot = await usersCollection
@@ -488,9 +487,9 @@ export const deleteUser = onCall<DeleteUserRequest>(
 
     const userId = request.auth.uid;
     const db = admin.firestore();
-    const usersCollection = getEnvironmentCollection("users", db);
-    const groupsCollection = getEnvironmentCollection("groups", db);
-    const promisesCollection = getEnvironmentCollection("promises", db);
+    const usersCollection = db.collection("users");
+    const groupsCollection = db.collection("groups");
+    const promisesCollection = db.collection("promises");
 
     console.log(`🗑️ deleteUser started: ${userId}`);
 

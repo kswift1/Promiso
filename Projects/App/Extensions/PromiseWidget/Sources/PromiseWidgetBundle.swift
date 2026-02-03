@@ -7,5 +7,7 @@ struct PromiseWidgetBundle: WidgetBundle {
     SmallPromiseWidget()
     MediumPromiseWidget()
     LargePromiseWidget()
+    CircularPromiseWidget()
+    RectangularPromiseWidget()
   }
 }

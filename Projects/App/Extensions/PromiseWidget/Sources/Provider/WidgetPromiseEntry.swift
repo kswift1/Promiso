@@ -12,6 +12,7 @@ struct WidgetPromiseEntry: TimelineEntry {
     case loaded
     case empty
     case notLoggedIn
+    case error
   }
 
   // MARK: - Computed Properties

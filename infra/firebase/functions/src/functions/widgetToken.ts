@@ -10,7 +10,6 @@ import {onCall, HttpsError} from "firebase-functions/v2/https";
 import {defineSecret} from "firebase-functions/params";
 import * as jwt from "jsonwebtoken";
 import {admin, REGION} from "../config";
-import {getEnvironmentCollection} from "../utils/firestore";
 
 // Widget JWT 시크릿 (Firebase Secret Manager)
 export const WIDGET_JWT_SECRET = defineSecret("WIDGET_JWT_SECRET");
@@ -79,7 +78,7 @@ export const generateWidgetToken = onCall<GenerateWidgetTokenRequest>(
 
     // 3. 사용자의 토큰 버전 조회 (revocation용)
     const db = admin.firestore();
-    const usersCollection = getEnvironmentCollection("users", db);
+    const usersCollection = db.collection("users");
     const userDoc = await usersCollection.doc(userId).get();
 
     let tokenVersion = 1;
@@ -166,7 +165,7 @@ export async function revokeWidgetTokens(
   userId: string,
   db: FirebaseFirestore.Firestore
 ): Promise<void> {
-  const usersCollection = getEnvironmentCollection("users", db);
+  const usersCollection = db.collection("users");
   const userRef = usersCollection.doc(userId);
 
   await userRef.update({
