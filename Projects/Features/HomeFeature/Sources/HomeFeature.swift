@@ -36,9 +36,9 @@ extension Home {
       @Shared(.inMemory(AppConstants.SharedState.groupMembersCache))
       var groupMembersCache: [String: [UserPublicModel]] = [:]
 
-      // MARK: Data (스냅샷 기반)
-      /// 홈 스냅샷 데이터 (서버에서 미리 계산됨)
-      var snapshotState: LoadingState<HomeSnapshotDocument> = .idle
+      // MARK: Data (직접 쿼리 기반)
+      /// 홈 약속 데이터 (Firestore 직접 쿼리)
+      var promisesState: LoadingState<[PromiseModel]> = .idle
 
       /// 초기 로드 여부
       var hasLoadedOnce: Bool = false
@@ -104,12 +104,10 @@ extension Home {
       }
 
       public enum Internal: Sendable {
-        /// 홈 스냅샷 조회 (캐시된 데이터)
-        case fetchHomeSnapshot
-        /// 홈 스냅샷 갱신 (서버에서 새로 생성)
-        case refreshHomeSnapshot
-        /// 홈 스냅샷 응답
-        case homeSnapshotResponse(Result<HomeSnapshotDocument, Error>)
+        /// 홈 약속 조회 (Firestore 직접 쿼리)
+        case fetchPromises
+        /// 홈 약속 응답
+        case promisesResponse(Result<[PromiseModel], Error>)
         /// 응답 필요 섹션으로 스크롤
         case scrollToNeedResponse
       }
@@ -136,12 +134,12 @@ extension Home {
             if !state.hasLoadedOnce {
               state.hasLoadedOnce = true
             }
-            // 캐시된 스냅샷 먼저 조회 → 오늘자 아니면 서버에서 갱신
-            return .send(.internal(.fetchHomeSnapshot))
+            // Firestore에서 직접 쿼리
+            return .send(.internal(.fetchPromises))
 
           case .refreshTriggered:
-            // Pull-to-refresh는 항상 서버에서 새로 조회
-            return .send(.internal(.refreshHomeSnapshot))
+            // Pull-to-refresh도 동일하게 쿼리
+            return .send(.internal(.fetchPromises))
 
           case .todayPromiseTapped(let promise):
             // 즉시 이동 (캐시 hit면 전달, miss면 nil로 전달 → Detail에서 로드)
@@ -192,72 +190,39 @@ extension Home {
 
         case .internal(let internalAction):
           switch internalAction {
-          case .fetchHomeSnapshot:
+          case .fetchPromises:
             // 기존 데이터가 없을 때만 로딩 상태 표시 (깜빡임 방지)
-            if state.snapshotState.value == nil {
-              state.snapshotState = .loading
+            if state.promisesState.value == nil {
+              state.promisesState = .loading
             }
 
-            // 그룹이 없으면 빈 스냅샷 반환
-            guard !state.currentUser.groups.isEmpty else {
-              state.snapshotState = .loaded(.empty)
+            // 그룹이 없으면 빈 배열 반환
+            let groupIds = state.currentUser.groups.map(\.id)
+            guard !groupIds.isEmpty else {
+              state.promisesState = .loaded([])
               return .none
             }
 
             return .run { [promiseClient] send in
               do {
-                let snapshot = try await promiseClient.getHomeSnapshot()
-
-                // 스냅샷이 오늘자인지 확인 (KST 기준)
-                if snapshot.meta.isUpdatedToday {
-                  // 오늘자 스냅샷이면 바로 사용
-                  await send(.internal(.homeSnapshotResponse(.success(snapshot))))
-                } else {
-                  // 오늘자가 아니면 서버에서 새로 갱신
-                  await send(.internal(.refreshHomeSnapshot))
-                }
+                let promises = try await promiseClient.getHomePromises(groupIds, 10)
+                await send(.internal(.promisesResponse(.success(promises))))
               } catch {
-                // 캐시 조회 실패 시 서버에서 새로 갱신
-                await send(.internal(.refreshHomeSnapshot))
+                await send(.internal(.promisesResponse(.failure(error))))
               }
             }
 
-          case .refreshHomeSnapshot:
-            // 기존 데이터가 없을 때만 로딩 상태 표시 (깜빡임 방지)
-            if state.snapshotState.value == nil {
-              state.snapshotState = .loading
-            }
-
-            // 그룹이 없으면 빈 스냅샷 반환
-            guard !state.currentUser.groups.isEmpty else {
-              state.snapshotState = .loaded(.empty)
-              return .none
-            }
-
-            return .run { [promiseClient] send in
-              do {
-                let snapshot = try await promiseClient.refreshHomeSnapshot()
-                await send(.internal(.homeSnapshotResponse(.success(snapshot))))
-              } catch {
-                await send(.internal(.homeSnapshotResponse(.failure(error))))
-              }
-            }
-
-          case .homeSnapshotResponse(let result):
+          case .promisesResponse(let result):
             switch result {
-            case .success(let snapshot):
-              state.snapshotState = .loaded(snapshot)
+            case .success(let promises):
+              state.promisesState = .loaded(promises)
 
-              // 위젯 캐시 업데이트 (스냅샷에서 변환, pending 포함)
-              let allPromises = snapshot.todayPromises + snapshot.pendingPromises + snapshot.upcomingPromises
-              let promiseModels = allPromises.toPromiseModels(
-                currentUserId: state.currentUser.userId
-              )
-              WidgetDataManager.savePromises(promiseModels.toWidgetData())
+              // 위젯 캐시 업데이트
+              WidgetDataManager.savePromises(promises.toWidgetData())
               WidgetDataManager.reloadWidgets()
 
             case .failure(let error):
-              state.snapshotState = .failed(error)
+              state.promisesState = .failed(error)
             }
             return .none
 
@@ -276,12 +241,12 @@ extension Home {
 
         case .path(.element(id: _, action: .promiseDetail(.delegate(.promiseDeleted)))):
           _ = state.path.popLast()
-          // 삭제 후 스냅샷 새로고침 (서버에서 트리거로 갱신됨)
-          return .send(.internal(.fetchHomeSnapshot))
+          // 삭제 후 다시 조회
+          return .send(.internal(.fetchPromises))
 
         case .path(.element(id: _, action: .promiseDetail(.delegate(.promiseUpdated)))):
-          // 수정 후 스냅샷 새로고침 (서버에서 트리거로 갱신됨)
-          return .send(.internal(.fetchHomeSnapshot))
+          // 수정 후 다시 조회
+          return .send(.internal(.fetchPromises))
 
         case .path:
           return .none
@@ -295,29 +260,50 @@ extension Home {
 // MARK: - State Computed Properties
 
 extension Home.Feature.State {
-  /// 홈 스냅샷 (nil이면 빈 스냅샷)
-  private var snapshot: HomeSnapshotDocument {
-    snapshotState.value ?? .empty
+  /// 전체 약속 (nil이면 빈 배열)
+  private var allPromises: [PromiseModel] {
+    promisesState.value ?? []
   }
 
-  /// 오늘의 확정 약속 (스냅샷에서 가져옴, PromiseModel로 변환)
+  /// 오늘 날짜 범위 (KST 기준)
+  private var todayRange: (start: Date, end: Date) {
+    var calendar = Calendar.current
+    calendar.timeZone = TimeZone(identifier: "Asia/Seoul") ?? .current
+    let startOfDay = calendar.startOfDay(for: Date())
+    let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) ?? startOfDay
+    return (startOfDay, endOfDay)
+  }
+
+  /// 오늘의 확정 약속 (오늘 + 확정, 최대 5개)
   var todayPromises: [PromiseModel] {
-    snapshot.todayPromises.toPromiseModels(currentUserId: currentUser.userId)
+    let (startOfDay, endOfDay) = todayRange
+    return allPromises
+      .filter { $0.startAt >= startOfDay && $0.startAt < endOfDay && $0.isConfirmed }
+      .prefix(5)
+      .map { $0 }
   }
 
-  /// 응답 필요 약속 (스냅샷에서 가져옴, PromiseModel로 변환)
+  /// 응답 필요 약속 (미응답 + 투표 마감 전, 마감 임박순, 최대 5개)
   var pendingPromises: [PromiseModel] {
-    snapshot.pendingPromises.toPromiseModels(currentUserId: currentUser.userId)
+    let userId = currentUser.userId
+    return allPromises
+      .filter { $0.myVoteStatus(userId: userId) == .pending && !$0.isVotingClosed }
+      .sorted { lhs, rhs in
+        let lhsDeadline = lhs.votes.until ?? .distantFuture
+        let rhsDeadline = rhs.votes.until ?? .distantFuture
+        return lhsDeadline < rhsDeadline
+      }
+      .prefix(5)
+      .map { $0 }
   }
 
-  /// 다가오는 확정 약속 (스냅샷에서 가져옴, PromiseModel로 변환)
+  /// 다가오는 확정 약속 (내일 이후 + 확정, 최대 10개)
   var upcomingPromises: [PromiseModel] {
-    snapshot.upcomingPromises.toPromiseModels(currentUserId: currentUser.userId)
-  }
-
-  /// 모든 약속 (필터 적용 전) - CriticalZone 계산용
-  var allPromises: [PromiseModel] {
-    todayPromises + pendingPromises + upcomingPromises
+    let (_, endOfDay) = todayRange
+    return allPromises
+      .filter { $0.startAt >= endOfDay && $0.isConfirmed }
+      .prefix(10)
+      .map { $0 }
   }
 
   /// 필터링된 약속 (id 기반 안전)
@@ -355,9 +341,9 @@ extension Home.Feature.State {
       .first
 
     return HomeModels.OverviewData(
-      todayCount: snapshot.meta.todayCount,
+      todayCount: todayPromises.count,
       nextPromise: nextPromise,
-      needResponseCount: snapshot.meta.pendingCount
+      needResponseCount: pendingPromises.count
     )
   }
 
@@ -407,12 +393,12 @@ extension Home.Feature.State {
 
   /// 로딩 중 여부
   var isLoading: Bool {
-    snapshotState.isLoading
+    promisesState.isLoading
   }
 
   /// 응답 필요 개수 (배지용)
   var pendingResponseCount: Int {
-    snapshot.meta.pendingCount
+    pendingPromises.count
   }
 }
 
@@ -421,6 +407,7 @@ extension Home.Feature.State {
 extension Home {
   public struct RootView: View {
     @Bindable private var store: StoreOf<Feature>
+    @Environment(\.scenePhase) private var scenePhase
 
     public init(store: StoreOf<Feature>) {
       self.store = store
@@ -432,7 +419,7 @@ extension Home {
           LazyVStack(spacing: 20) {
             if store.isLoading && !store.hasLoadedOnce {
               loadingView
-            } else if let error = store.snapshotState.error {
+            } else if let error = store.promisesState.error {
               errorView(error: error)
             } else {
               // 오늘의 일정 카드
@@ -488,6 +475,12 @@ extension Home {
         }
         .onAppear {
           store.send(.view(.onAppear))
+        }
+        .onChange(of: scenePhase) { oldPhase, newPhase in
+          // background → active 시 다시 로드
+          if oldPhase == .background && newPhase == .active {
+            store.send(.view(.onAppear))
+          }
         }
       } destination: { store in
         switch store.case {

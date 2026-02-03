@@ -41,12 +41,21 @@ struct PromiseTimelineProvider: TimelineProvider {
         return
       }
 
-      // 서버에서 직접 데이터 가져오기 (실패 시 캐시 반환)
-      let promises = await WidgetDataManager.fetchFromServer()
-      let state: Entry.WidgetState = promises.isEmpty ? .empty : .loaded
-      let entry = Entry(date: Date(), promises: promises, state: state)
+      // 서버에서 직접 데이터 가져오기
+      let result = await WidgetDataManager.fetchFromServer()
 
-      let refreshDate = calculateNextRefresh(promises: promises)
+      // 에러 발생 + 캐시도 비어있으면 에러 상태 표시
+      let state: Entry.WidgetState
+      if result.hadError && result.promises.isEmpty {
+        state = .error
+      } else if result.promises.isEmpty {
+        state = .empty
+      } else {
+        state = .loaded
+      }
+
+      let entry = Entry(date: Date(), promises: result.promises, state: state)
+      let refreshDate = calculateNextRefresh(promises: result.promises)
       let timeline = Timeline(entries: [entry], policy: .after(refreshDate))
       completion(timeline)
     }

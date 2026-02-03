@@ -1,5 +1,3 @@
-import * as admin from "firebase-admin";
-
 /**
  * Firebase Functions 실행 환경
  *
@@ -30,34 +28,6 @@ export enum FirestoreEnvironment {
 export function getCurrentEnvironment(): FirestoreEnvironment {
   const isEmulator = process.env.FUNCTIONS_EMULATOR === "true";
   return isEmulator ? FirestoreEnvironment.Dev : FirestoreEnvironment.Release;
-}
-
-/**
- * Firestore 컬렉션 참조 반환
- *
- * @param {string} collectionName - 컬렉션 이름 (예: "groups", "users")
- * @param {FirebaseFirestore.Firestore} db - Firestore 인스턴스
- * @param {string | null | undefined} _requestedEnv - (deprecated) 더 이상 사용되지 않음
- * @return {FirebaseFirestore.CollectionReference} 컬렉션 참조
- *
- * @remarks
- * **프로젝트 분리 후 경로 구조**:
- * - 각 프로젝트(promiso-dev/stage/prod)의 루트에 바로 컬렉션 접근
- * - 이전의 `dev/root/`, `stage/root/`, `prod/root/` prefix 제거됨
- *
- * @example
- * ```typescript
- * // 모든 환경에서 동일: /users, /groups, /promises
- * const groupsRef = getEnvironmentCollection("groups");
- * ```
- */
-export function getEnvironmentCollection(
-  collectionName: string,
-  db: FirebaseFirestore.Firestore = admin.firestore(),
-  _requestedEnv?: string | null,
-): FirebaseFirestore.CollectionReference {
-  // 프로젝트 분리 후: 루트에 바로 컬렉션 접근
-  return db.collection(collectionName);
 }
 
 /**

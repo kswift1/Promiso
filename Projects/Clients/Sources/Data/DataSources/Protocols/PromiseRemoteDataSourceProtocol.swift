@@ -25,13 +25,13 @@ public protocol PromiseRemoteDataSourceProtocol {
   // MARK: - Real-time Listener
   func subscribeToActivePromises(groupId: String, limit: Int) -> AsyncStream<[PromiseModel]>
 
-  // MARK: - Home Snapshot
-  /// 홈화면 스냅샷 조회 (캐시된 데이터)
-  func getHomeSnapshot() async throws -> HomeSnapshotDocument
-
-  /// 홈화면 스냅샷 갱신 (Firebase Functions 호출)
-  /// 하루 첫 진입 시 또는 Pull-to-refresh 시 호출
-  func refreshHomeSnapshot() async throws -> HomeSnapshotDocument
+  // MARK: - Home
+  /// 홈화면용 약속 조회 (다중 그룹, 미래 약속)
+  /// - Parameters:
+  ///   - groupIds: 조회할 그룹 ID 목록
+  ///   - limitPerChunk: 그룹 청크당 최대 개수 (기본 10)
+  /// - Returns: 미래 약속 목록 (startAt 오름차순)
+  func getHomePromises(groupIds: [String], limitPerChunk: Int) async throws -> [PromiseModel]
 
   // MARK: - Calendar Sync
   /// 캘린더 동기화용 확정 약속 조회 (미래 약속만)

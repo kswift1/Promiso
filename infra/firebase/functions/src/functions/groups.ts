@@ -10,7 +10,6 @@ import {FieldValue} from "firebase-admin/firestore";
 import {HttpsError, onCall} from "firebase-functions/v2/https";
 import {onDocumentUpdated} from "firebase-functions/v2/firestore";
 import {admin, REGION} from "../config";
-import {getEnvironmentCollection} from "../utils/firestore";
 import {sendPushNotificationInternal} from "./notifications";
 import {
   validateCreateGroupRequest,
@@ -79,7 +78,7 @@ export const createGroup = onCall<CreateGroupRequest>(
     // 4. 비즈니스 로직
     const creatorId = request.auth.uid;
     const db = admin.firestore();
-    const usersCollection = getEnvironmentCollection("users", db);
+    const usersCollection = db.collection("users");
 
     // 4-1. 초대 코드 생성
     const inviteCode = await generateUniqueInviteCode({
@@ -89,7 +88,7 @@ export const createGroup = onCall<CreateGroupRequest>(
     });
 
     // 5. Firestore에 저장 (환경별 경로)
-    const groupsCollection = getEnvironmentCollection("groups", db);
+    const groupsCollection = db.collection("groups");
     const requestedGroupId = data.groupId.trim();
     const groupRef = groupsCollection.doc(requestedGroupId);
 
@@ -166,7 +165,7 @@ export const previewGroup = onCall<PreviewGroupRequest>(
 
     // 2. 초대 코드로 그룹 찾기
     const db = admin.firestore();
-    const groupsCollection = getEnvironmentCollection("groups", db);
+    const groupsCollection = db.collection("groups");
     const groupSnapshot = await groupsCollection
       .where("inviteCode", "==", inviteCode)
       .limit(1)
@@ -189,7 +188,7 @@ export const previewGroup = onCall<PreviewGroupRequest>(
     const maxMembers = (groupData.maxMembers as number) ?? 0;
 
     // 3. 멤버 프로필 정보 조회 (memberIds에서 최대 10명)
-    const usersCollection = getEnvironmentCollection("users", db);
+    const usersCollection = db.collection("users");
 
     const memberIdsToFetch = memberIds.slice(0, 10);
 
@@ -256,7 +255,7 @@ export const joinGroup = onCall<JoinGroupRequest>(
     const db = admin.firestore();
 
     // 3-1. 초대 코드로 그룹 찾기
-    const groupsCollection = getEnvironmentCollection("groups", db);
+    const groupsCollection = db.collection("groups");
     const groupSnapshot = await groupsCollection
       .where("inviteCode", "==", inviteCode)
       .limit(1)
@@ -295,7 +294,7 @@ export const joinGroup = onCall<JoinGroupRequest>(
     }
 
     const now = FieldValue.serverTimestamp();
-    const usersCollection = getEnvironmentCollection("users", db);
+    const usersCollection = db.collection("users");
 
     // 4. Firestore에 저장 (트랜잭션 사용)
     await db.runTransaction(async (transaction) => {
@@ -366,8 +365,8 @@ export const leaveGroup = onCall<LeaveGroupRequest>(
 
     // 3. 비즈니스 로직
     const db = admin.firestore();
-    const groupsCollection = getEnvironmentCollection("groups", db);
-    const usersCollection = getEnvironmentCollection("users", db);
+    const groupsCollection = db.collection("groups");
+    const usersCollection = db.collection("users");
 
     // 3-1. 그룹 존재 확인
     const groupRef = groupsCollection.doc(groupId);
@@ -459,7 +458,7 @@ export const updateGroup = onCall<UpdateGroupRequest>(
     }
 
     const db = admin.firestore();
-    const groupsCollection = getEnvironmentCollection("groups", db);
+    const groupsCollection = db.collection("groups");
     const groupRef = groupsCollection.doc(groupId);
     const groupDoc = await groupRef.get();
 
@@ -597,8 +596,8 @@ export const deleteGroup = onCall<DeleteGroupRequest>(
 
     // 3. 비즈니스 로직
     const db = admin.firestore();
-    const groupsCollection = getEnvironmentCollection("groups", db);
-    const usersCollection = getEnvironmentCollection("users", db);
+    const groupsCollection = db.collection("groups");
+    const usersCollection = db.collection("users");
 
     // 3-1. 그룹 존재 및 권한 확인
     const groupRef = groupsCollection.doc(groupId);
@@ -657,7 +656,7 @@ export const deleteGroup = onCall<DeleteGroupRequest>(
     }
 
     // 4-1. 그룹의 모든 약속 삭제 (트리거가 배지 감소 처리)
-    const promisesCollection = getEnvironmentCollection("promises", db);
+    const promisesCollection = db.collection("promises");
     const groupPromises = await promisesCollection
       .where("groupId", "==", groupId)
       .get();
@@ -764,8 +763,8 @@ export const transferGroupHost = onCall<TransferGroupHostRequest>(
 
     // 3. 비즈니스 로직
     const db = admin.firestore();
-    const groupsCollection = getEnvironmentCollection("groups", db);
-    const usersCollection = getEnvironmentCollection("users", db);
+    const groupsCollection = db.collection("groups");
+    const usersCollection = db.collection("users");
 
     // 3. Firestore 트랜잭션 내에서 권한 확인 및 업데이트 (race condition 방지)
     const groupRef = groupsCollection.doc(groupId);
@@ -898,7 +897,7 @@ export const onGroupImageUpdated = onDocumentUpdated(
 
     // 모든 멤버의 groups[groupId].imageUrl 업데이트
     const db = admin.firestore();
-    const usersCollection = getEnvironmentCollection("users", db);
+    const usersCollection = db.collection("users");
     const batch = db.batch();
 
     for (const memberId of memberIds) {
