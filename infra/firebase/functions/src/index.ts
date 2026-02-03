@@ -13,6 +13,7 @@ export {
   updateUser,
   uploadProfileImage,
   checkNicknameAvailable,
+  deleteUser,
 } from "./functions/users";
 
 // ============================================================================
@@ -25,6 +26,7 @@ export {
   leaveGroup,
   updateGroup,
   deleteGroup,
+  transferGroupHost,
   onGroupImageUpdated,
 } from "./functions/groups";
 

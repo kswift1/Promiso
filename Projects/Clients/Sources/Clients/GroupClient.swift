@@ -79,6 +79,9 @@ public struct GroupClient: Sendable {
 
   /// 그룹 배지 클리어 (Fire & Forget)
   public var clearGroupBadge: @Sendable (_ groupId: String) async -> Void = { _ in }
+
+  /// 그룹 호스트 양도
+  public var transferHost: @Sendable (_ groupId: String, _ newHostId: String) async throws -> Void
 }
 
 // MARK: - Test & Preview Values
@@ -97,7 +100,8 @@ extension GroupClient: TestDependencyKey {
     deleteGroup: unimplemented("\(Self.self).deleteGroup"),
     updateGroup: unimplemented("\(Self.self).updateGroup"),
     updateGroupNotificationSettings: unimplemented("\(Self.self).updateGroupNotificationSettings"),
-    clearGroupBadge: { _ in }
+    clearGroupBadge: { _ in },
+    transferHost: unimplemented("\(Self.self).transferHost")
   )
 
   public static let previewValue = Self(
@@ -212,7 +216,10 @@ extension GroupClient: TestDependencyKey {
     updateGroupNotificationSettings: { _, _ in
       try await Task.sleep(for: .seconds(0.2))
     },
-    clearGroupBadge: { _ in }
+    clearGroupBadge: { _ in },
+    transferHost: { _, _ in
+      try await Task.sleep(for: .seconds(0.5))
+    }
   )
 }
 
@@ -304,6 +311,9 @@ extension GroupClient: DependencyKey {
       },
       clearGroupBadge: { groupId in
         await dataSource.clearGroupBadge(groupId: groupId)
+      },
+      transferHost: { groupId, newHostId in
+        try await dataSource.transferHost(groupId: groupId, newHostId: newHostId)
       }
     )
   }()
