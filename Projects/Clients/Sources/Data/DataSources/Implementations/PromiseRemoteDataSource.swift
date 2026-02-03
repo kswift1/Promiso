@@ -10,7 +10,6 @@ private enum FirebaseFunctionNames {
   static let deletePromise = "deletePromise"
   static let startLiveActivity = "startLiveActivity"
   static let updateETA = "updateETA"
-  static let refreshHomeSnapshot = "refreshHomeSnapshot"
   static let getConfirmedPromisesForCalendar = "getConfirmedPromisesForCalendar"
 }
 
@@ -413,49 +412,38 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
     }
   }
 
-  // MARK: - Home Snapshot
+  // MARK: - Home
 
-  /// 홈화면 스냅샷 조회
-  /// Firestore의 users/{uid}/cache/homeSnapshot 문서를 읽어서 반환
-  public func getHomeSnapshot() async throws -> HomeSnapshotDocument {
-    guard let currentUser = Auth.auth().currentUser else {
-      throw NSError(
-        domain: "PromiseRemoteDataSource",
-        code: -1,
-        userInfo: [NSLocalizedDescriptionKey: "로그인이 필요합니다"]
-      )
+  /// 홈화면용 약속 조회 (다중 그룹, 미래 약속)
+  /// 그룹 10개씩 청킹하여 쿼리 (Firestore in 쿼리 제한)
+  public func getHomePromises(groupIds: [String], limitPerChunk: Int) async throws -> [PromiseModel] {
+    guard !groupIds.isEmpty else { return [] }
+
+    let now = Date()
+    let chunks = groupIds.chunked(into: 10)
+
+    let allPromises = try await withThrowingTaskGroup(of: [PromiseModel].self) { group in
+      for chunk in chunks {
+        group.addTask { [db, collectionName] in
+          let query = db.environmentCollection(collectionName)
+            .whereField("groupId", in: chunk)
+            .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: now))
+            .order(by: "startAt")
+            .limit(to: limitPerChunk)
+
+          let snapshot = try await query.getDocuments()
+          return try snapshot.documents.compactMap { try convertDocumentToPromise($0) }
+        }
+      }
+
+      var results: [PromiseModel] = []
+      for try await promises in group {
+        results.append(contentsOf: promises)
+      }
+      return results
     }
 
-    let document = try await db.environmentCollection("users")
-      .document(currentUser.uid)
-      .collection("cache")
-      .document("homeSnapshot")
-      .getDocument()
-
-    guard document.exists, let data = document.data() else {
-      // 캐시 문서가 없으면 빈 스냅샷 반환
-      return .empty
-    }
-
-    // JSON 변환
-    let jsonData = try JSONSerialization.data(withJSONObject: data)
-    let decoder = JSONDecoder()
-    return try decoder.decode(HomeSnapshotDocument.self, from: jsonData)
-  }
-
-  /// 홈화면 스냅샷 갱신 (Firebase Functions 호출)
-  /// 하루 첫 진입 시 또는 Pull-to-refresh 시 호출
-  public func refreshHomeSnapshot() async throws -> HomeSnapshotDocument {
-    let result = try await functions.httpsCallable(FirebaseFunctionNames.refreshHomeSnapshot).call()
-
-    guard let data = result.data as? [String: Any] else {
-      throw PromiseClientError.invalidData("스냅샷 갱신 응답이 올바르지 않습니다")
-    }
-
-    // JSON 변환
-    let jsonData = try JSONSerialization.data(withJSONObject: data)
-    let decoder = JSONDecoder()
-    return try decoder.decode(HomeSnapshotDocument.self, from: jsonData)
+    return allPromises.sorted { $0.startAt < $1.startAt }
   }
 
   // MARK: - Live Activity

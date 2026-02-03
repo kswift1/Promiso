@@ -1,11 +1,11 @@
 /**
- * Widget Snapshot Functions
+ * Widget Functions
  *
- * 위젯용 약속 스냅샷을 제공하는 Cloud Functions
+ * 위젯용 약속 데이터를 제공하는 Cloud Functions
  *
- * @architecture Snapshot 기반 (v2)
- * - 서버: Firestore Trigger로 스냅샷 미리 계산 → users/{uid}/cache/widgetSnapshot
- * - 클라이언트: 캐시된 스냅샷만 읽기 (계산 없음, Race Condition 없음)
+ * @architecture Direct Query 방식
+ * - 위젯 갱신 시 Firestore 직접 쿼리
+ * - 위젯 사용자만 API 호출 (스냅샷 방식 대비 효율적)
  *
  * @auth Widget Token (30일 유효) 또는 Firebase ID Token
  */
@@ -13,7 +13,11 @@ import {onCall, onRequest, HttpsError} from "firebase-functions/v2/https";
 import {admin, REGION} from "../config";
 import {getEnvironmentCollection} from "../utils/firestore";
 import {verifyWidgetToken, WIDGET_JWT_SECRET} from "./widgetToken";
-import {WidgetSnapshotDocument} from "../types/api";
+import {
+  WidgetSnapshotDocument,
+  SnapshotPromise,
+  MyVoteStatus,
+} from "../types/api";
 
 // MARK: - Default Empty Snapshot
 
@@ -48,7 +52,7 @@ export const getWidgetSnapshot = onCall(
     }
 
     const userId = request.auth.uid;
-    const snapshot = await fetchCachedSnapshot(userId);
+    const snapshot = await fetchPromisesDirectly(userId);
     return snapshot;
   }
 );
@@ -123,8 +127,8 @@ export const getWidgetSnapshotWithToken = onRequest(
         }
       }
 
-      // 4. 캐시된 스냅샷 조회
-      const snapshot = await fetchCachedSnapshot(decoded.sub);
+      // 4. 약속 직접 쿼리
+      const snapshot = await fetchPromisesDirectly(decoded.sub);
 
       // 5. 응답
       res.status(200).json({result: snapshot});
@@ -145,43 +149,193 @@ export const getWidgetSnapshotWithToken = onRequest(
 // MARK: - Helper Functions
 
 /**
- * 캐시된 스냅샷 조회
+ * 오늘 날짜의 시작/끝 시간 계산 (KST 기준)
+ */
+function getTodayRange(): { startOfDay: Date; endOfDay: Date } {
+  const now = new Date();
+  const kstOffset = 9 * 60 * 60 * 1000;
+  const kstNow = new Date(now.getTime() + kstOffset);
+  const startOfDay = new Date(
+    Date.UTC(
+      kstNow.getUTCFullYear(),
+      kstNow.getUTCMonth(),
+      kstNow.getUTCDate()
+    ) - kstOffset
+  );
+  const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
+  return {startOfDay, endOfDay};
+}
+
+/**
+ * 사용자의 투표 상태 계산
+ */
+function getMyVoteStatus(
+  userId: string,
+  votes: { accepted?: string[]; declined?: string[] } | undefined
+): MyVoteStatus {
+  if (!votes) return "pending";
+  if (votes.accepted?.includes(userId)) return "voted";
+  if (votes.declined?.includes(userId)) return "declined";
+  return "pending";
+}
+
+/**
+ * Firestore Timestamp를 ISO 8601 문자열로 변환
+ */
+function toISOString(
+  timestamp: FirebaseFirestore.Timestamp | undefined
+): string | null {
+  if (!timestamp) return null;
+  return timestamp.toDate().toISOString();
+}
+
+/**
+ * 약속 직접 쿼리
  *
- * @description users/{uid}/cache/widgetSnapshot 문서를 읽어서 반환
- * @fallback 문서가 없으면 빈 스냅샷 반환
+ * @description Firestore에서 사용자 그룹의 약속을 직접 조회
+ * @limit 위젯에 필요한 최소 데이터만 조회 (today 3개 + upcoming 4개 = 7개)
  *
  * @param {string} userId 사용자 ID
- * @return {Promise<WidgetSnapshotDocument>} 위젯 스냅샷 문서
+ * @return {Promise<WidgetSnapshotDocument>} 위젯 데이터
  */
-async function fetchCachedSnapshot(
+async function fetchPromisesDirectly(
   userId: string
 ): Promise<WidgetSnapshotDocument> {
   const db = admin.firestore();
   const usersCollection = getEnvironmentCollection("users", db);
+  const promisesCollection = getEnvironmentCollection("promises", db);
 
-  const snapshotDoc = await usersCollection
-    .doc(userId)
-    .collection("cache")
-    .doc("widgetSnapshot")
-    .get();
+  // 1. 사용자 문서 조회 → 그룹 목록
+  const userDoc = await usersCollection.doc(userId).get();
+  if (!userDoc.exists) {
+    console.log(`⚠️ [Widget] User not found: ${userId}`);
+    return emptySnapshot;
+  }
 
-  if (!snapshotDoc.exists) {
-    console.log(`📦 [Widget] No cache for user: ${userId}, returning empty`);
-    return {
-      ...emptySnapshot,
-      meta: {
-        ...emptySnapshot.meta,
-        updatedAt: new Date().toISOString(),
-      },
+  const userData = userDoc.data();
+  type UserGroupMap = {
+    [key: string]: { name?: string; groupName?: string; imageUrl?: string }
+  };
+  const userGroups = userData?.groups as UserGroupMap | undefined;
+
+  if (!userGroups || Object.keys(userGroups).length === 0) {
+    console.log(`📦 [Widget] No groups for user: ${userId}`);
+    return emptySnapshot;
+  }
+
+  const groupIds = Object.keys(userGroups);
+
+  // 2. 그룹 정보 맵 생성
+  const groupInfoMap: {
+    [key: string]: { name: string; imageUrl: string | null }
+  } = {};
+  for (const groupId of groupIds) {
+    const groupData = userGroups[groupId];
+    groupInfoMap[groupId] = {
+      name: groupData?.name || groupData?.groupName || "",
+      imageUrl: groupData?.imageUrl || null,
     };
   }
 
-  const data = snapshotDoc.data() as WidgetSnapshotDocument;
+  // 3. 약속 조회 (10개씩 청크, 최대 10개 결과)
+  const now = new Date();
+  const {startOfDay, endOfDay} = getTodayRange();
+
+  // Firestore "in" 쿼리 최대 10개 제한
+  const chunkedGroupIds: string[][] = [];
+  for (let i = 0; i < groupIds.length; i += 10) {
+    chunkedGroupIds.push(groupIds.slice(i, i + 10));
+  }
+
+  const allPromises: SnapshotPromise[] = [];
+
+  for (const chunk of chunkedGroupIds) {
+    const snapshot = await promisesCollection
+      .where("groupId", "in", chunk)
+      .where("isConfirmed", "==", true)
+      .where("startAt", ">=", now)
+      .orderBy("startAt", "asc")
+      .limit(7) // 위젯 최대 표시 개수 (today 3 + upcoming 4)
+      .get();
+
+    for (const doc of snapshot.docs) {
+      const data = doc.data();
+
+      const votes = data.votes as {
+        accepted?: string[];
+        declined?: string[];
+        until?: FirebaseFirestore.Timestamp;
+      } | undefined;
+
+      const minimumParticipants = (data.minimumParticipants as number) || 2;
+      const acceptedCount = votes?.accepted?.length || 0;
+      const isConfirmed = acceptedCount >= minimumParticipants;
+      const myVoteStatus = getMyVoteStatus(userId, votes);
+
+      const startAt = data.startAt as FirebaseFirestore.Timestamp;
+      const endAt = data.endAt as FirebaseFirestore.Timestamp | undefined;
+      const location = data.location as { name?: string } | undefined;
+      const votingDeadline = votes?.until ?
+        votes.until.toDate().toISOString() : null;
+
+      allPromises.push({
+        id: doc.id,
+        title: (data.title as string) || "",
+        emoji: (data.emoji as string) || "📅",
+        startAt: startAt.toDate().toISOString(),
+        endAt: toISOString(endAt),
+        location: location?.name || null,
+        groupId: data.groupId as string,
+        groupName: groupInfoMap[data.groupId as string]?.name || null,
+        groupImageUrl: groupInfoMap[data.groupId as string]?.imageUrl || null,
+        isConfirmed,
+        minimumParticipants,
+        votes: {
+          accepted: votes?.accepted || [],
+          declined: votes?.declined || [],
+        },
+        myVoteStatus,
+        votingDeadline,
+      });
+    }
+  }
+
+  // 4. 분류: today (3개), upcoming (4개)
+  const todayPromises: SnapshotPromise[] = [];
+  const upcomingPromises: SnapshotPromise[] = [];
+
+  for (const promise of allPromises) {
+    const promiseDate = new Date(promise.startAt);
+
+    if (promiseDate >= startOfDay && promiseDate < endOfDay) {
+      if (todayPromises.length < 3) {
+        todayPromises.push(promise);
+      }
+    } else if (promiseDate >= endOfDay) {
+      if (upcomingPromises.length < 4) {
+        upcomingPromises.push(promise);
+      }
+    }
+  }
+
+  // 5. next = 첫 번째 약속 (today 우선, 없으면 upcoming)
+  const nextPromise = todayPromises[0] || upcomingPromises[0] || null;
+
   console.log(
-    `📦 [Widget] Cache hit: ${userId} ` +
-    `(next=${data.next?.id ?? "null"}, ` +
-    `today=${data.today.length}, upcoming=${data.upcoming.length})`
+    `📦 [Widget] Query: ${userId} ` +
+    `(next=${nextPromise?.id ?? "null"}, ` +
+    `today=${todayPromises.length}, upcoming=${upcomingPromises.length})`
   );
 
-  return data;
+  return {
+    next: nextPromise,
+    today: todayPromises,
+    upcoming: upcomingPromises,
+    meta: {
+      todayCount: todayPromises.length,
+      upcomingCount: upcomingPromises.length,
+      updatedAt: new Date().toISOString(),
+      version: 1,
+    },
+  };
 }

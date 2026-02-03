@@ -106,12 +106,12 @@ public struct PromiseClient: Sendable {
     _ endDate: Date
   ) async throws -> [PromiseModel]
 
-  /// 홈화면 스냅샷 조회 (캐시된 데이터)
-  public var getHomeSnapshot: @Sendable () async throws -> HomeSnapshotDocument
-
-  /// 홈화면 스냅샷 갱신 (Firebase Functions 호출)
-  /// 하루 첫 진입 시 또는 Pull-to-refresh 시 호출
-  public var refreshHomeSnapshot: @Sendable () async throws -> HomeSnapshotDocument
+  /// 홈화면용 약속 조회 (다중 그룹, 미래 약속)
+  /// - Parameters:
+  ///   - groupIds: 조회할 그룹 ID 목록
+  ///   - limitPerChunk: 그룹 청크당 최대 개수 (기본 10)
+  /// - Returns: 미래 약속 목록 (startAt 오름차순)
+  public var getHomePromises: @Sendable (_ groupIds: [String], _ limitPerChunk: Int) async throws -> [PromiseModel]
 
   /// 그룹의 활성 약속 실시간 구독
   public var subscribeToPromises: @Sendable (_ groupId: String, _ limit: Int) -> AsyncStream<[PromiseModel]> = { _, _ in AsyncStream { _ in } }
@@ -187,13 +187,9 @@ extension PromiseClient: TestDependencyKey {
       try await Task.sleep(for: .seconds(0.5))
       return PromiseModel.examples
     },
-    getHomeSnapshot: {
+    getHomePromises: { _, _ in
       try await Task.sleep(for: .seconds(0.3))
-      return .empty
-    },
-    refreshHomeSnapshot: {
-      try await Task.sleep(for: .seconds(0.5))
-      return .empty
+      return PromiseModel.examples
     },
     subscribeToPromises: { _, _ in
       AsyncStream { continuation in
@@ -280,11 +276,8 @@ extension PromiseClient: DependencyKey {
       getPromisesByDateRange: { groupIds, startDate, endDate in
         try await dataSource.getPromisesByDateRange(groupIds: groupIds, startDate: startDate, endDate: endDate)
       },
-      getHomeSnapshot: {
-        try await dataSource.getHomeSnapshot()
-      },
-      refreshHomeSnapshot: {
-        try await dataSource.refreshHomeSnapshot()
+      getHomePromises: { groupIds, limitPerChunk in
+        try await dataSource.getHomePromises(groupIds: groupIds, limitPerChunk: limitPerChunk)
       },
       subscribeToPromises: { groupId, limit in
         dataSource.subscribeToActivePromises(groupId: groupId, limit: limit)
