@@ -77,11 +77,13 @@ public struct GroupNotificationSettings: Codable, Equatable, Hashable, Sendable 
   public var enabled: Bool
   public var promise: [String: Bool]
   public var group: [String: Bool]
+  public var calendarSync: Bool
 
   public init(
     enabled: Bool = true,
     promise: [String: Bool] = GroupNotificationPreferences.defaultPromise,
-    group: [String: Bool] = GroupNotificationPreferences.defaultGroup
+    group: [String: Bool] = GroupNotificationPreferences.defaultGroup,
+    calendarSync: Bool = true
   ) {
     self.enabled = enabled
     self.promise = GroupNotificationPreferences.mergeDefaults(
@@ -92,6 +94,7 @@ public struct GroupNotificationSettings: Codable, Equatable, Hashable, Sendable 
       source: group,
       defaults: GroupNotificationPreferences.defaultGroup
     )
+    self.calendarSync = calendarSync
   }
 
   public func value(for key: GroupNotificationPreferenceKey) -> Bool {
@@ -117,6 +120,7 @@ public struct GroupNotificationSettings: Codable, Equatable, Hashable, Sendable 
       "enabled": enabled,
       "promise": promise,
       "group": group,
+      "calendarSync": calendarSync,
     ]
   }
 }

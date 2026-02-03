@@ -10,86 +10,57 @@ extension CreateGroup {
   public struct RootView: View {
     @Bindable private var store: StoreOf<CreateGroup.Feature>
     @FocusState private var focusedField: Field?
-    
+
     public init(store: StoreOf<CreateGroup.Feature>) {
       self.store = store
     }
-    
+
     private enum Field: Hashable {
       case groupName
       case groupDescription
     }
-    
-  public var body: some View {
-    NavigationStack {
-      ScrollViewReader { proxy in
-        ScrollView {
-          VStack(spacing: 20) {
-            PhotoUploadSection(
-              photoData: store.photoData,
-              selectedPhoto: $store.selectedPhoto.sending(\.view.photoSelected)
+
+    public var body: some View {
+      NavigationStack {
+        Group {
+          switch store.step {
+          case .input:
+            inputView
+
+          case .success(let result):
+            CreateGroupSuccessView(result: result) {
+              store.send(.view(.successAcknowledged))
+            }
+
+          case .settings(let result):
+            CreateGroupSettingsView(
+              groupName: result.name,
+              notificationEnabled: store.notificationEnabled,
+              calendarSyncEnabled: store.calendarSyncEnabled,
+              notificationAuthStatus: store.notificationAuthStatus,
+              calendarAuthStatus: store.calendarAuthStatus,
+              isSaving: store.isSavingSettings,
+              showCalendarPermissionInfoAlert: store.showCalendarPermissionInfoAlert,
+              onNotificationToggle: { store.send(.view(.notificationToggled($0))) },
+              onCalendarSyncToggle: { store.send(.view(.calendarSyncToggled($0))) },
+              onComplete: { store.send(.view(.settingsCompleted)) },
+              onSkip: { store.send(.view(.settingsSkipped)) },
+              onCalendarPermissionInfoAlertDismiss: { store.send(.view(.calendarPermissionInfoAlertDismissed)) },
+              onAppear: { store.send(.view(.settingsAppeared)) }
             )
-            .glassSection()
-            
-            GroupNameSection(
-              groupName: $store.groupName,
-              characterCount: store.characterCount
-            )
-            .focused($focusedField, equals: .groupName)
-            .id(Field.groupName)
-            .glassSection()
-            
-            GroupDescriptionSection(
-              groupDescription: $store.groupDescription,
-              characterCount: store.descriptionCharacterCount
-            )
-            .focused($focusedField, equals: .groupDescription)
-            .id(Field.groupDescription)
-            .glassSection()
-            
-            MaxMembersSection(
-              maxMembers: $store.maxMembers
-            )
-            .glassSection()
-            
-            Spacer(minLength: 12)
-          }
-          .padding(.horizontal, 20)
-          .padding(.vertical, 24)
-        }
-        .scrollIndicators(.hidden)
-        .scrollDismissesKeyboard(.interactively)
-        .onChange(of: focusedField) { _, newValue in
-          guard let newValue else { return }
-          withAnimation(.easeInOut(duration: 0.2)) {
-            proxy.scrollTo(newValue, anchor: .center)
           }
         }
-      }
-      .onTapGesture {
-        dismissKeyboard()
-      }
-      .navigationTitle("그룹 만들기")
+        .navigationTitle(navigationTitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
           ToolbarItem(placement: .topBarLeading) {
-            Button {
-              store.send(.view(.cancelTapped))
-            } label: {
-              Image(systemName: "xmark")
+            if case .input = store.step {
+              Button {
+                store.send(.view(.cancelTapped))
+              } label: {
+                Image(systemName: "xmark")
+              }
             }
-          }
-        }
-        .safeAreaInset(edge: .bottom) {
-          BottomButton(
-            isInputValid: store.isValid,
-            isLoading: store.isCreating,
-            action: { store.send(.view(.createGroupTapped)) }
-          )
-        }
-        .navigationDestination(item: $store.creationResult) { result in
-          CreateGroupSuccessView(result: result) {
-            store.send(.view(.successAcknowledged))
           }
         }
       }
@@ -116,6 +87,74 @@ extension CreateGroup {
         }
       )
       .auroraBackground()
+    }
+
+    private var navigationTitle: String {
+      switch store.step {
+      case .input:
+        return "그룹 만들기"
+      case .success:
+        return ""
+      case .settings:
+        return ""
+      }
+    }
+
+    private var inputView: some View {
+      ScrollViewReader { proxy in
+        ScrollView {
+          VStack(spacing: 20) {
+            PhotoUploadSection(
+              photoData: store.photoData,
+              selectedPhoto: $store.selectedPhoto.sending(\.view.photoSelected)
+            )
+            .glassSection()
+
+            GroupNameSection(
+              groupName: $store.groupName,
+              characterCount: store.characterCount
+            )
+            .focused($focusedField, equals: .groupName)
+            .id(Field.groupName)
+            .glassSection()
+
+            GroupDescriptionSection(
+              groupDescription: $store.groupDescription,
+              characterCount: store.descriptionCharacterCount
+            )
+            .focused($focusedField, equals: .groupDescription)
+            .id(Field.groupDescription)
+            .glassSection()
+
+            MaxMembersSection(
+              maxMembers: $store.maxMembers
+            )
+            .glassSection()
+
+            Spacer(minLength: 12)
+          }
+          .padding(.horizontal, 20)
+          .padding(.vertical, 24)
+        }
+        .scrollIndicators(.hidden)
+        .scrollDismissesKeyboard(.interactively)
+        .onChange(of: focusedField) { _, newValue in
+          guard let newValue else { return }
+          withAnimation(.easeInOut(duration: 0.2)) {
+            proxy.scrollTo(newValue, anchor: .center)
+          }
+        }
+      }
+      .onTapGesture {
+        dismissKeyboard()
+      }
+      .safeAreaInset(edge: .bottom) {
+        BottomButton(
+          isInputValid: store.isValid,
+          isLoading: store.isCreating,
+          action: { store.send(.view(.createGroupTapped)) }
+        )
+      }
     }
   }
 }

@@ -19,6 +19,9 @@ import {
   UpdatePromiseResponse,
   DeletePromiseRequest,
   DeletePromiseResponse,
+  GetConfirmedPromisesForCalendarRequest,
+  GetConfirmedPromisesForCalendarResponse,
+  CalendarPromise,
 } from "../types/api";
 
 /**
@@ -109,6 +112,10 @@ export const createPromise = onCall<CreatePromiseRequest>(
     const promiseRef = promisesCollection.doc();
     const promiseId = promiseRef.id;
 
+    // 호스트 1명만 accepted이므로 minimumParticipants >= 2면 확정 안 됨
+    const initialAccepted = [userId];
+    const isConfirmed = initialAccepted.length >= data.minimumParticipants;
+
     const promiseData = {
       title: data.title,
       emoji: data.emoji || null,
@@ -117,10 +124,11 @@ export const createPromise = onCall<CreatePromiseRequest>(
       groupId: data.groupId,
       minimumParticipants: data.minimumParticipants,
       votes: {
-        accepted: [userId], // 호스트는 자동 accepted
+        accepted: initialAccepted, // 호스트는 자동 accepted
         declined: [],
         until: startAtTimestamp, // 기본값: startAt
       },
+      isConfirmed, // 캘린더 동기화용 비정규화 필드
       startAt: startAtTimestamp,
       endAt: endAtDate ? admin.firestore.Timestamp.fromDate(endAtDate) : null,
       location: data.location ? {
@@ -194,7 +202,7 @@ export const respondPromise = onCall<RespondPromiseRequest>(
 
     const promiseRef = promisesCollection.doc(data.promiseId);
 
-    await db.runTransaction(async (transaction) => {
+    const transactionResult = await db.runTransaction(async (transaction) => {
       // 1. 약속 조회
       const promiseSnapshot = await transaction.get(promiseRef);
       if (!promiseSnapshot.exists) {
@@ -237,23 +245,40 @@ export const respondPromise = onCall<RespondPromiseRequest>(
       const votes = promiseData.votes || {accepted: [], declined: []};
       const acceptedList = (votes.accepted as string[]) ?? [];
       const declinedList = (votes.declined as string[]) ?? [];
+      const minimumParticipants =
+        (promiseData.minimumParticipants as number) ?? 2;
 
       const isInAccepted = acceptedList.includes(userId);
       const isInDeclined = declinedList.includes(userId);
 
-      // 이미 같은 상태면 스킵
+      // 이미 같은 상태면 스킵 (변경 없음 반환)
       if (
         (status === "accepted" && isInAccepted) ||
         (status === "declined" && isInDeclined) ||
         (status === "pending" && !isInAccepted && !isInDeclined)
       ) {
-        return;
+        // 기존 상태 유지 - isConfirmed 계산
+        const isConfirmed = acceptedList.length >= minimumParticipants;
+        return {isConfirmed, promiseData, noChange: true};
       }
 
-      // 4. votes 배열 업데이트 (Set-like 동작)
+      // 4. 새로운 accepted 배열 계산 (isConfirmed 계산용)
+      let newAcceptedList = [...acceptedList];
+      if (isInAccepted) {
+        newAcceptedList = newAcceptedList.filter((id) => id !== userId);
+      }
+      if (status === "accepted") {
+        newAcceptedList.push(userId);
+      }
+
+      // 5. isConfirmed 계산
+      const isConfirmed = newAcceptedList.length >= minimumParticipants;
+
+      // 6. votes 배열 업데이트 (Set-like 동작)
       // 먼저 기존 상태에서 제거
       const updateData: Record<string, unknown> = {
         updatedAt: FieldValue.serverTimestamp(),
+        isConfirmed, // 캘린더 동기화용 비정규화 필드
       };
 
       if (isInAccepted) {
@@ -272,12 +297,37 @@ export const respondPromise = onCall<RespondPromiseRequest>(
       // status === "pending"이면 제거만 하고 아무 배열에도 추가하지 않음
 
       transaction.update(promiseRef, updateData);
+
+      // 캘린더 동기화용 데이터 반환
+      return {isConfirmed, promiseData, noChange: false};
     });
 
-    return {
+    // 응답 구성
+    const response: RespondPromiseResponse = {
       promiseId: data.promiseId,
       status: status as "accepted" | "declined" | "pending",
+      isConfirmed: transactionResult.isConfirmed,
     };
+
+    // 확정되고 수락한 경우에만 약속 정보 포함
+    if (transactionResult.isConfirmed && status === "accepted") {
+      const promiseData = transactionResult.promiseData;
+      const startAt = promiseData.startAt as admin.firestore.Timestamp;
+      const endAt = promiseData.endAt as admin.firestore.Timestamp | null;
+      const location = promiseData.location as {name?: string} | null;
+
+      response.confirmedPromise = {
+        id: data.promiseId,
+        title: promiseData.title as string,
+        emoji: (promiseData.emoji as string) || "📅",
+        startAt: startAt.toDate().toISOString(),
+        endAt: endAt ? endAt.toDate().toISOString() : null,
+        location: location?.name || null,
+        groupId: promiseData.groupId as string,
+      };
+    }
+
+    return response;
   },
 );
 
@@ -569,5 +619,71 @@ export const deletePromise = onCall<DeletePromiseRequest>(
     return {
       success: true,
     };
+  },
+);
+
+/**
+ * 캘린더 동기화용 확정 약속 조회
+ *
+ * @remarks
+ * **인증 필수**
+ *
+ * 사용자가 참여 중인 확정된 미래 약속 목록을 조회합니다.
+ * iOS 캘린더 자동 동기화 기능에서 사용됩니다.
+ *
+ * @returns 확정된 약속 목록 (캘린더에 필요한 최소 정보만)
+ */
+export const getConfirmedPromisesForCalendar = onCall<
+  GetConfirmedPromisesForCalendarRequest
+>(
+  {region: REGION},
+  async (request): Promise<GetConfirmedPromisesForCalendarResponse> => {
+    // 1. 인증 확인
+    if (!request.auth) {
+      throw new HttpsError(
+        "unauthenticated",
+        "로그인이 필요합니다",
+      );
+    }
+
+    const userId = request.auth.uid;
+    const db = admin.firestore();
+    const promisesCollection = getEnvironmentCollection("promises", db);
+
+    // 2. 확정된 + 미래 + 내가 참여한 약속 쿼리
+    const now = admin.firestore.Timestamp.now();
+
+    const snapshot = await promisesCollection
+      .where("isConfirmed", "==", true)
+      .where("votes.accepted", "array-contains", userId)
+      .where("startAt", ">=", now)
+      .orderBy("startAt", "asc")
+      .limit(50) // 최대 50개
+      .get();
+
+    // 3. 캘린더에 필요한 최소 정보만 추출
+    const promises: CalendarPromise[] = snapshot.docs.map((doc) => {
+      const data = doc.data();
+      const startAt = data.startAt as admin.firestore.Timestamp;
+      const endAt = data.endAt as admin.firestore.Timestamp | null;
+      const location = data.location as {name?: string} | null;
+
+      return {
+        id: doc.id,
+        title: data.title as string,
+        emoji: (data.emoji as string) || "📅",
+        startAt: startAt.toDate().toISOString(),
+        endAt: endAt ? endAt.toDate().toISOString() : null,
+        location: location?.name || null,
+        groupId: data.groupId as string,
+      };
+    });
+
+    console.log(
+      "📅 getConfirmedPromisesForCalendar:",
+      `userId=${userId}, count=${promises.length}`
+    );
+
+    return {promises};
   },
 );

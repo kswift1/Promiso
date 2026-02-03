@@ -23,10 +23,26 @@ extension JoinGroup {
             group: preview.group,
             members: preview.members
           )
+        case .settings(let group):
+          CreateGroupSettingsView(
+            groupName: group.name,
+            notificationEnabled: store.notificationEnabled,
+            calendarSyncEnabled: store.calendarSyncEnabled,
+            notificationAuthStatus: store.notificationAuthStatus,
+            calendarAuthStatus: store.calendarAuthStatus,
+            isSaving: store.isSavingSettings,
+            showCalendarPermissionInfoAlert: store.showCalendarPermissionInfoAlert,
+            onNotificationToggle: { store.send(.view(.notificationToggled($0))) },
+            onCalendarSyncToggle: { store.send(.view(.calendarSyncToggled($0))) },
+            onComplete: { store.send(.view(.settingsCompleted)) },
+            onSkip: { store.send(.view(.settingsSkipped)) },
+            onCalendarPermissionInfoAlertDismiss: { store.send(.view(.calendarPermissionInfoAlertDismissed)) },
+            onAppear: { store.send(.view(.settingsAppeared)) }
+          )
         }
       }
       .auroraBackground()
-      .navigationTitle("그룹 참여")
+      .navigationTitle(navigationTitle)
       .navigationBarTitleDisplayMode(.inline)
       .onAppear {
         store.send(.view(.onAppear))
@@ -59,20 +75,15 @@ extension JoinGroup {
           }
         }
       )
-      .alert(
-        "그룹 참여 완료",
-        isPresented: .constant(store.joinResult != nil),
-        actions: {
-          Button("확인") {
-            store.send(.view(.successAcknowledged))
-          }
-        },
-        message: {
-          if let result = store.joinResult {
-            Text("\(result.name) 그룹에 참여했습니다!")
-          }
-        }
-      )
+    }
+
+    private var navigationTitle: String {
+      switch store.step {
+      case .enterCode, .preview:
+        return "그룹 참여"
+      case .settings:
+        return "초기 설정"
+      }
     }
   }
 }

@@ -19,6 +19,10 @@ extension GroupPromiseList {
       var selectedFilter: StatusFilter
       var respondingStates: [String: GroupMain.RespondingState] = [:]
 
+      /// 그룹 캘린더 동기화 설정 캐시 (전역 공유)
+      @Shared(.inMemory(AppConstants.SharedState.groupCalendarSyncCache))
+      var groupCalendarSyncCache: [String: Bool] = [:]
+
       public init(
         group: GroupModel,
         promises: [PromiseModel],
@@ -72,6 +76,7 @@ extension GroupPromiseList {
     }
 
     @Dependency(\.promiseClient) var promiseClient
+    @Dependency(\.calendarSyncClient) var calendarSyncClient
 
     public var body: some ReducerOf<Self> {
       Reduce { state, action in
@@ -86,9 +91,16 @@ extension GroupPromiseList {
         case .view(.acceptTapped(let promise)):
           guard state.respondingStates[promise.id] == nil else { return .none }
           state.respondingStates[promise.id] = .accepting
-          return .run { send in
-            try await promiseClient.respondPromise(promise.id, .accepted)
+          let calendarSyncCache = state.groupCalendarSyncCache
+          return .run { [calendarSyncClient] send in
+            let result = try await promiseClient.respondPromise(promise.id, .accepted)
             await send(.view(.responseChanged(promise, .accepted)))
+
+            // 캘린더 동기화: 수락 + 확정 시 추가
+            if result.isConfirmed, let confirmedPromise = result.confirmedPromise {
+              let groupCalendarSync = calendarSyncCache[confirmedPromise.groupId] ?? true
+              try? await calendarSyncClient.addPromise(confirmedPromise, groupCalendarSync)
+            }
           } catch: { _, send in
             await send(.view(.responseChanged(promise, .pending)))
           }
@@ -96,9 +108,12 @@ extension GroupPromiseList {
         case .view(.rejectTapped(let promise)):
           guard state.respondingStates[promise.id] == nil else { return .none }
           state.respondingStates[promise.id] = .rejecting
-          return .run { send in
-            try await promiseClient.respondPromise(promise.id, .declined)
+          return .run { [calendarSyncClient] send in
+            _ = try await promiseClient.respondPromise(promise.id, .declined)
             await send(.view(.responseChanged(promise, .declined)))
+
+            // 캘린더 동기화: 거절 시 제거
+            try? await calendarSyncClient.removePromise(promise.id)
           } catch: { _, send in
             await send(.view(.responseChanged(promise, .pending)))
           }

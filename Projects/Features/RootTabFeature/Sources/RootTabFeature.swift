@@ -60,6 +60,7 @@ extension RootTab {
     @Dependency(\.authClient) var authClient
     @Dependency(\.notificationClient) var notificationClient
     @Dependency(\.promiseClient) var promiseClient
+    @Dependency(\.calendarSyncClient) var calendarSyncClient
 
     public init() {}
 
@@ -154,6 +155,8 @@ extension RootTab {
       case activityStateChanged(ActivityStateValue)
       /// ETA 시트 열기 (딜레이 후)
       case openETASheetAfterDelay
+      /// 캘린더 동기화 (백그라운드)
+      case syncCalendar
     }
 
     public enum Delegate: Equatable {
@@ -185,7 +188,8 @@ extension RootTab {
             .send(.internal(.refreshWidgetAuthToken)),
             .send(.internal(.requestWidgetToken)),
             .send(.internal(.observePushToStartToken)),
-            .send(.internal(.observeActivityUpdates))
+            .send(.internal(.observeActivityUpdates)),
+            .send(.internal(.syncCalendar))
           )
 
         case .tabSelected(let tab):
@@ -416,6 +420,23 @@ extension RootTab {
           case .openETASheetAfterDelay:
             state.livePromiseDetail?.isETASheetPresented = true
             return .none
+
+          case .syncCalendar:
+            // 앱 시작 시 캘린더 동기화 (백그라운드)
+            let enabledGroupIds = Set(
+              state.currentUser.groups
+                .filter { $0.notifications?.calendarSync ?? false }
+                .map { $0.id }
+            )
+            return .run(priority: .background) { [calendarSyncClient] _ in
+              AppLogger.calendar.debug("📅 [RootTab] syncCalendar 시작 - enabledGroupIds: \(enabledGroupIds)")
+              do {
+                let result = try await calendarSyncClient.sync(enabledGroupIds)
+                AppLogger.calendar.info("📅 [RootTab] syncCalendar 완료 - \(result.description)")
+              } catch {
+                AppLogger.calendar.error("📅 [RootTab] syncCalendar 실패 - \(error.localizedDescription)")
+              }
+            }
           }
 
         case .delegate:

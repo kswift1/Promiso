@@ -51,6 +51,10 @@ public enum AppConstants {
     public static let hasSeenLiveActivityInfo = "promisoHasSeenLiveActivityInfo"
     /// 24시간 형식 사용 여부
     public static let use24HourFormat = "promisoUse24HourFormat"
+    /// 캘린더 이벤트 매핑 (promiseId → eventIdentifier)
+    public static let calendarEventMappings = "promisoCalendarEventMappings"
+    /// 마지막 캘린더 동기화 날짜
+    public static let lastCalendarSyncDate = "promisoLastCalendarSyncDate"
   }
 
   // MARK: - Shared State Keys (TCA @Shared inMemory)
@@ -58,6 +62,8 @@ public enum AppConstants {
   public enum SharedState {
     /// 그룹 멤버 캐시 (groupId → members)
     public static let groupMembersCache = "groupMembersCache"
+    /// 그룹 캘린더 동기화 설정 캐시 (groupId → calendarSync)
+    public static let groupCalendarSyncCache = "groupCalendarSyncCache"
   }
 
   // MARK: - Notification Names

@@ -10,6 +10,7 @@ extension PromiseDetail {
     @Dependency(\.promiseClient) var promiseClient
     @Dependency(\.mapClient) var mapClient
     @Dependency(\.groupClient) var groupClient
+    @Dependency(\.calendarSyncClient) var calendarSyncClient
 
     public init() {}
 
@@ -28,6 +29,10 @@ extension PromiseDetail {
       /// 그룹 멤버 캐시 (전역 공유)
       @Shared(.inMemory(AppConstants.SharedState.groupMembersCache))
       var groupMembersCache: [String: [UserPublicModel]] = [:]
+
+      /// 그룹 캘린더 동기화 설정 캐시 (전역 공유)
+      @Shared(.inMemory(AppConstants.SharedState.groupCalendarSyncCache))
+      var groupCalendarSyncCache: [String: Bool] = [:]
 
       // 멤버 시트 상태
       var memberSheet: MemberSheetState?
@@ -264,10 +269,25 @@ extension PromiseDetail {
           switch internalAction {
           case .respondPromise(let status):
             let promiseId = state.promise.id
-            return .run { [promiseClient] send in
+            let groupId = state.promise.groupId
+            let calendarSyncCache = state.groupCalendarSyncCache
+            return .run { [promiseClient, calendarSyncClient] send in
               do {
-                try await promiseClient.respondPromise(promiseId, status)
+                let result = try await promiseClient.respondPromise(promiseId, status)
                 await send(.internal(.respondDone(status: status)))
+
+                // 캘린더 동기화: 수락 + 확정 시 추가
+                if status == .accepted,
+                   result.isConfirmed,
+                   let confirmedPromise = result.confirmedPromise {
+                  let groupCalendarSync = calendarSyncCache[confirmedPromise.groupId] ?? true
+                  try? await calendarSyncClient.addPromise(confirmedPromise, groupCalendarSync)
+                }
+
+                // 캘린더 동기화: 거절 시 제거
+                if status == .declined {
+                  try? await calendarSyncClient.removePromise(promiseId)
+                }
               } catch {
                 await send(.internal(.respondFailed(error: AppError(error))))
               }
