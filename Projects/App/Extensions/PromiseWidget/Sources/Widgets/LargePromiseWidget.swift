@@ -9,7 +9,6 @@ struct LargePromiseWidget: Widget {
   let kind: String = "LargePromiseWidget"
 
   var body: some WidgetConfiguration {
-    // TODO: iOS 26 SDK에서 .pushHandler(PromiseWidgetPushHandler.self) 추가
     StaticConfiguration(kind: kind, provider: PromiseTimelineProvider()) { entry in
       LargePromiseWidgetView(entry: entry)
         .containerBackground(for: .widget) {
@@ -36,13 +35,19 @@ struct LargePromiseWidgetView: View {
   let entry: WidgetPromiseEntry
 
   var body: some View {
-    switch entry.state {
-    case .notLoggedIn:
-      NotLoggedInView()
-    case .empty:
-      EmptyWidgetView(message: "예정된 약속이 없어요")
-    case .loaded:
-      contentView
+    Group {
+      switch entry.state {
+      case .notLoggedIn:
+        NotLoggedInView()
+      case .empty:
+        EmptyWidgetView(
+          icon: "calendar.badge.clock",
+          message: "예정된 약속이 없어요",
+          hint: "새 약속을 만들어보세요"
+        )
+      case .loaded:
+        contentView
+      }
     }
   }
 
@@ -52,136 +57,217 @@ struct LargePromiseWidgetView: View {
     let upcomingPromises = Array(entry.upcomingPromises.prefix(4))
 
     if todayPromises.isEmpty && upcomingPromises.isEmpty {
-      EmptyWidgetView(message: "예정된 약속이 없어요")
+      EmptyWidgetView(
+        icon: "calendar.badge.clock",
+        message: "예정된 약속이 없어요",
+        hint: "새 약속을 만들어보세요"
+      )
     } else {
-      VStack(alignment: .leading, spacing: 12) {
-        // 헤더 (기준 시간 + 새로고침)
-        HStack {
-          Spacer()
-          Text(formatUpdatedTime(entry.date))
-            .font(.caption2)
-            .foregroundStyle(.tertiary)
-          Button(intent: RefreshWidgetIntent()) {
-            Image(systemName: "arrow.clockwise")
-              .font(.caption2)
-              .foregroundStyle(.secondary)
-          }
-          .buttonStyle(.plain)
-        }
-
+      VStack(alignment: .leading, spacing: 0) {
         // 오늘 섹션
         if !todayPromises.isEmpty {
-          sectionHeader("📅 오늘", count: todayPromises.count)
-          Divider()
-          ForEach(todayPromises) { promise in
-            if let url = promise.deeplinkURL {
-              Link(destination: url) {
-                todayPromiseRow(promise)
-              }
-            }
-          }
+          todaySection(todayPromises)
         }
 
         // 다가오는 약속 섹션
         if !upcomingPromises.isEmpty {
           if !todayPromises.isEmpty {
-            Spacer().frame(height: 8)
+            sectionDivider
           }
-          sectionHeader("📅 다가오는 약속", count: upcomingPromises.count)
-          Divider()
-          ForEach(upcomingPromises) { promise in
-            if let url = promise.deeplinkURL {
-              Link(destination: url) {
-                upcomingPromiseRow(promise)
-              }
-            }
-          }
+          upcomingSection(upcomingPromises)
         }
 
         Spacer(minLength: 0)
       }
       .padding()
-      .overlay(alignment: .bottomTrailing) {
-        HStack(spacing: 6) {
-          if let lastUpdated = WidgetDataManager.lastUpdated() {
-            Text(formatUpdatedTime(lastUpdated))
-              .font(.caption2)
-              .foregroundStyle(.tertiary)
+    }
+  }
+
+  // MARK: - Today Section
+
+  @ViewBuilder
+  private func todaySection(_ promises: [WidgetPromiseData]) -> some View {
+    VStack(alignment: .leading, spacing: 8) {
+      // 섹션 헤더
+      sectionHeader(
+        title: "오늘",
+        icon: "sun.max.fill",
+        count: promises.count,
+        isHighlighted: true
+      )
+
+      // 약속 목록
+      ForEach(promises) { promise in
+        if let url = promise.deeplinkURL {
+          Link(destination: url) {
+            todayRow(promise)
           }
-          Button(intent: RefreshWidgetIntent()) {
-            Image(systemName: "arrow.clockwise")
-              .font(.caption2)
-              .fontWeight(.medium)
-              .foregroundStyle(.secondary)
-              .padding(6)
-              .background(Color.secondary.opacity(0.15), in: Circle())
-          }
-          .buttonStyle(.plain)
         }
       }
     }
   }
 
+  // MARK: - Upcoming Section
+
   @ViewBuilder
-  private func sectionHeader(_ title: String, count: Int) -> some View {
-    HStack {
+  private func upcomingSection(_ promises: [WidgetPromiseData]) -> some View {
+    VStack(alignment: .leading, spacing: 8) {
+      // 섹션 헤더
+      sectionHeader(
+        title: "다가오는 약속",
+        icon: "calendar",
+        count: promises.count,
+        isHighlighted: false
+      )
+
+      // 약속 목록
+      ForEach(promises) { promise in
+        if let url = promise.deeplinkURL {
+          Link(destination: url) {
+            upcomingRow(promise)
+          }
+        }
+      }
+    }
+  }
+
+  // MARK: - Section Header
+
+  @ViewBuilder
+  private func sectionHeader(
+    title: String,
+    icon: String,
+    count: Int,
+    isHighlighted: Bool
+  ) -> some View {
+    HStack(spacing: 6) {
+      Image(systemName: icon)
+        .font(.caption.weight(.semibold))
+        .foregroundStyle(isHighlighted ? Color.pmindigo.n500 : .secondary)
+
       Text(title)
-        .font(.subheadline.bold())
-      
-      Text("(\(count))")
-        .font(.subheadline)
-        .foregroundStyle(.secondary)
+        .font(.subheadline.weight(.bold))
+        .foregroundStyle(.primary)
+
+      Text("\(count)")
+        .font(.caption2.weight(.bold))
+        .foregroundStyle(isHighlighted ? .white : .secondary)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 2)
+        .background(
+          isHighlighted ? Color.pmindigo.n500 : Color.secondary.opacity(0.2),
+          in: Capsule()
+        )
+
       Spacer()
     }
   }
 
   @ViewBuilder
-  private func todayPromiseRow(_ promise: WidgetPromiseData) -> some View {
-    VStack(alignment: .leading, spacing: 4) {
-      HStack(spacing: 8) {
-        Text(promise.emoji)
-          .font(.body)
+  private var sectionDivider: some View {
+    Rectangle()
+      .fill(Color.secondary.opacity(0.15))
+      .frame(height: 1)
+      .padding(.vertical, 10)
+  }
+
+  // MARK: - Row Views
+
+  @ViewBuilder
+  private func todayRow(_ promise: WidgetPromiseData) -> some View {
+    HStack(alignment: .top, spacing: 10) {
+      // 이모지
+      Text(promise.emoji)
+        .font(.system(size: 24))
+        .frame(width: 28)
+
+      // 제목 + 메타 정보
+      VStack(alignment: .leading, spacing: 2) {
         Text(promise.title)
-          .font(.subheadline.bold())
+          .font(.subheadline.weight(.semibold))
           .lineLimit(1)
-        Spacer()
-        Text(formatTime(promise.startAt))
-          .font(.subheadline.bold())
-          .foregroundStyle(Color.pmindigo.n500)
+          .foregroundStyle(.primary)
+
+        // 메타 정보
+        HStack(spacing: 4) {
+          if let location = promise.location {
+            HStack(spacing: 2) {
+              Image(systemName: "location.fill")
+                .font(.system(size: 8))
+              Text(location)
+                .lineLimit(1)
+            }
+          }
+          if promise.participantCount > 0 {
+            if promise.location != nil {
+              Text("·")
+            }
+            HStack(spacing: 2) {
+              Image(systemName: "person.2.fill")
+                .font(.system(size: 8))
+              Text("\(promise.participantCount)명")
+            }
+          }
+        }
+        .font(.caption2)
+        .foregroundStyle(.secondary)
       }
 
-      HStack(spacing: 4) {
-        if let location = promise.location {
-          Text(location)
-            .font(.caption)
-            .foregroundStyle(.secondary)
-        }
-        if promise.participantCount > 0 {
-          Text("· \(promise.participantCount)명")
-            .font(.caption)
-            .foregroundStyle(.secondary)
-        }
-      }
-      .padding(.leading, 28)
+      Spacer(minLength: 4)
+
+      // 시간 (강조)
+      Text(formatTime(promise.startAt))
+        .font(.subheadline.weight(.bold))
+        .foregroundStyle(Color.pmindigo.n500)
     }
     .contentShape(Rectangle())
   }
 
   @ViewBuilder
-  private func upcomingPromiseRow(_ promise: WidgetPromiseData) -> some View {
-    HStack(spacing: 8) {
+  private func upcomingRow(_ promise: WidgetPromiseData) -> some View {
+    HStack(spacing: 10) {
+      // 이모지
       Text(promise.emoji)
-        .font(.body)
+        .font(.system(size: 20))
+        .frame(width: 24)
+
+      // 제목
       Text(promise.title)
         .font(.subheadline)
         .lineLimit(1)
-      Spacer()
-      Text(formatDateWithTime(promise.startAt))
-        .font(.caption)
-        .foregroundStyle(.secondary)
+        .foregroundStyle(.primary)
+
+      Spacer(minLength: 4)
+
+      // 날짜 + 시간
+      dateBadge(promise.startAt)
     }
     .contentShape(Rectangle())
   }
+
+  // MARK: - Date Badge
+
+  @ViewBuilder
+  private func dateBadge(_ date: Date) -> some View {
+    let calendar = Calendar.current
+
+    HStack(spacing: 4) {
+      if calendar.isDateInTomorrow(date) {
+        Text("내일")
+          .font(.caption.weight(.medium))
+          .foregroundStyle(Color.pmindigo.n500)
+      } else {
+        Text(formatShortDate(date))
+          .font(.caption)
+          .foregroundStyle(.secondary)
+      }
+      Text(formatTime(date))
+        .font(.caption)
+        .foregroundStyle(.secondary)
+    }
+  }
+
+  // MARK: - Date Formatting
 
   private func formatTime(_ date: Date) -> String {
     let formatter = DateFormatter()
@@ -190,23 +276,10 @@ struct LargePromiseWidgetView: View {
     return formatter.string(from: date)
   }
 
-  private func formatDateWithTime(_ date: Date) -> String {
-    let calendar = Calendar.current
+  private func formatShortDate(_ date: Date) -> String {
     let formatter = DateFormatter()
     formatter.locale = Locale(identifier: "ko_KR")
-
-    if calendar.isDateInTomorrow(date) {
-      formatter.dateFormat = "내일 a h:mm"
-    } else {
-      formatter.dateFormat = "M/d a h:mm"
-    }
-    return formatter.string(from: date)
-  }
-
-  private func formatUpdatedTime(_ date: Date) -> String {
-    let formatter = DateFormatter()
-    formatter.locale = Locale(identifier: "ko_KR")
-    formatter.dateFormat = "a h:mm 기준"
+    formatter.dateFormat = "M/d"
     return formatter.string(from: date)
   }
 }
