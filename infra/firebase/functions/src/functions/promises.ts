@@ -9,7 +9,6 @@
 import {FieldValue} from "firebase-admin/firestore";
 import {HttpsError, onCall} from "firebase-functions/v2/https";
 import {admin, REGION} from "../config";
-import {getEnvironmentCollection} from "../utils/firestore";
 import {
   CreatePromiseRequest,
   CreatePromiseResponse,
@@ -74,8 +73,8 @@ export const createPromise = onCall<CreatePromiseRequest>(
     }
 
     const db = admin.firestore();
-    const groupsCollection = getEnvironmentCollection("groups", db);
-    const promisesCollection = getEnvironmentCollection("promises", db);
+    const groupsCollection = db.collection("groups");
+    const promisesCollection = db.collection("promises");
 
     // 3. 그룹 존재 확인
     const groupDoc = await groupsCollection.doc(data.groupId).get();
@@ -197,8 +196,8 @@ export const respondPromise = onCall<RespondPromiseRequest>(
     }
 
     const db = admin.firestore();
-    const promisesCollection = getEnvironmentCollection("promises", db);
-    const groupsCollection = getEnvironmentCollection("groups", db);
+    const promisesCollection = db.collection("promises");
+    const groupsCollection = db.collection("groups");
 
     const promiseRef = promisesCollection.doc(data.promiseId);
 
@@ -377,7 +376,7 @@ export const updatePromise = onCall<UpdatePromiseRequest>(
     }
 
     const db = admin.firestore();
-    const promisesCollection = getEnvironmentCollection("promises", db);
+    const promisesCollection = db.collection("promises");
 
     const promiseRef = promisesCollection.doc(data.promiseId);
 
@@ -403,7 +402,8 @@ export const updatePromise = onCall<UpdatePromiseRequest>(
     const groupId = promiseData.groupId as string;
 
     // 그룹 정보 조회하여 그룹 호스트 확인
-    const groupRef = db.collection("groups").doc(groupId);
+    const groupsCollection = db.collection("groups");
+    const groupRef = groupsCollection.doc(groupId);
     const groupDoc = await groupRef.get();
     const groupData = groupDoc.data();
     const groupHostId = groupData?.createdBy as string | undefined;
@@ -552,7 +552,7 @@ export const deletePromise = onCall<DeletePromiseRequest>(
     }
 
     const db = admin.firestore();
-    const promisesCollection = getEnvironmentCollection("promises", db);
+    const promisesCollection = db.collection("promises");
 
     const promiseRef = promisesCollection.doc(data.promiseId);
 
@@ -582,7 +582,8 @@ export const deletePromise = onCall<DeletePromiseRequest>(
     const groupId = promiseData.groupId as string;
 
     // 그룹 정보 조회하여 그룹 호스트 확인
-    const groupRef = db.collection("groups").doc(groupId);
+    const groupsCollection = db.collection("groups");
+    const groupRef = groupsCollection.doc(groupId);
     const groupDoc = await groupRef.get();
     const groupData = groupDoc.data();
     const groupHostId = groupData?.createdBy as string | undefined;
@@ -648,7 +649,7 @@ export const getConfirmedPromisesForCalendar = onCall<
 
     const userId = request.auth.uid;
     const db = admin.firestore();
-    const promisesCollection = getEnvironmentCollection("promises", db);
+    const promisesCollection = db.collection("promises");
 
     // 2. 확정된 + 미래 + 내가 참여한 약속 쿼리
     const now = admin.firestore.Timestamp.now();

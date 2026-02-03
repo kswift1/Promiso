@@ -25,10 +25,7 @@ import {
   APNS_AUTH_KEY,
   APNS_BUNDLE_ID,
 } from "../config";
-import {
-  getEnvironmentCollection,
-  getCurrentEnvironment,
-} from "../utils/firestore";
+import {getCurrentEnvironment} from "../utils/firestore";
 
 /**
  * APNs 환경 결정
@@ -88,7 +85,7 @@ export const registerPushToStartToken = onCall<
     }
 
     const db = admin.firestore();
-    const usersCollection = getEnvironmentCollection("users", db);
+    const usersCollection = db.collection("users");
 
     try {
       await usersCollection.doc(userId).update({
@@ -135,9 +132,9 @@ export const startLiveActivity = onCall<StartLiveActivityRequest>(
     }
 
     const db = admin.firestore();
-    const promisesCollection = getEnvironmentCollection("promises", db);
-    const usersCollection = getEnvironmentCollection("users", db);
-    const groupsCollection = getEnvironmentCollection("groups", db);
+    const promisesCollection = db.collection("promises");
+    const usersCollection = db.collection("users");
+    const groupsCollection = db.collection("groups");
 
     // 1. 약속 정보 조회
     const promiseDoc = await promisesCollection.doc(promiseId).get();
@@ -554,7 +551,7 @@ export const widgetUpdateETA = onRequest(
     if (promiseId) {
       try {
         const db = admin.firestore();
-        const promisesCollection = getEnvironmentCollection("promises", db);
+        const promisesCollection = db.collection("promises");
         const promiseDoc = await promisesCollection.doc(promiseId).get();
 
         if (!promiseDoc.exists) {
@@ -579,7 +576,7 @@ export const widgetUpdateETA = onRequest(
         }
 
         // 그룹 멤버 확인
-        const groupsCollection = getEnvironmentCollection("groups", db);
+        const groupsCollection = db.collection("groups");
         const groupDoc = await groupsCollection.doc(promiseData.groupId).get();
 
         if (!groupDoc.exists) {
@@ -748,8 +745,8 @@ export const executeLiveActivityStart = onTaskDispatched<
     console.log(`⏰ Scheduled LiveActivity start: ${promiseId}`);
 
     const db = admin.firestore();
-    const promisesCollection = getEnvironmentCollection("promises", db);
-    const usersCollection = getEnvironmentCollection("users", db);
+    const promisesCollection = db.collection("promises");
+    const usersCollection = db.collection("users");
 
     // 1. 약속 정보 조회
     const promiseDoc = await promisesCollection.doc(promiseId).get();
@@ -771,7 +768,7 @@ export const executeLiveActivityStart = onTaskDispatched<
       (promiseData.trackingStartMinutesBefore as number) || 30;
 
     // 2. 그룹 정보 조회
-    const groupsCollection = getEnvironmentCollection("groups", db);
+    const groupsCollection = db.collection("groups");
     const groupDoc = await groupsCollection.doc(groupId).get();
     const groupData = groupDoc.data();
     const groupName = groupData?.name as string || null;
@@ -1106,7 +1103,7 @@ export const onPromiseConfirmedScheduleLiveActivity = onDocumentUpdated(
 
     // 예약 완료 표시
     const db = admin.firestore();
-    const promisesCollection = getEnvironmentCollection("promises", db);
+    const promisesCollection = db.collection("promises");
     await promisesCollection.doc(promiseId).update({
       liveActivityScheduled: true,
       liveActivityScheduledAt: scheduleTime,

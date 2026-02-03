@@ -18,7 +18,6 @@ import {
   onDocumentUpdated,
 } from "firebase-functions/v2/firestore";
 import {admin, REGION} from "../config";
-import {getEnvironmentCollection} from "../utils/firestore";
 import {
   DeviceInfo,
   NotificationDocument,
@@ -251,7 +250,7 @@ export const sendPushNotification = onCall<SendPushNotificationRequest>(
 
     // 3. Authorization: 발신자와 같은 그룹에 속한 사용자에게만 알림 전송 가능
     const db = admin.firestore();
-    const usersCollection = getEnvironmentCollection("users", db);
+    const usersCollection = db.collection("users");
     const senderDoc = await usersCollection.doc(senderId).get();
 
     if (!senderDoc.exists) {
@@ -351,8 +350,8 @@ export async function sendPushNotificationInternal(params: {
     relatedUserId, data} = params;
 
   const db = admin.firestore();
-  const usersCollection = getEnvironmentCollection("users", db);
-  const notificationsCollection = getEnvironmentCollection("notifications", db);
+  const usersCollection = db.collection("users");
+  const notificationsCollection = db.collection("notifications");
 
   // 1. 각 사용자의 FCM 토큰 수집
   const allTokens: string[] = [];
@@ -547,7 +546,7 @@ export const onPromiseCreated = onDocumentCreated(
 
     // 그룹 멤버 조회
     const db = admin.firestore();
-    const groupsCollection = getEnvironmentCollection("groups", db);
+    const groupsCollection = db.collection("groups");
     const groupDoc = await groupsCollection.doc(groupId).get();
 
     if (!groupDoc.exists) {
@@ -567,7 +566,7 @@ export const onPromiseCreated = onDocumentCreated(
     }
 
     // 호스트 이름 조회
-    const usersCollection = getEnvironmentCollection("users", db);
+    const usersCollection = db.collection("users");
     const hostDoc = await usersCollection.doc(hostId).get();
     const hostName = hostDoc.data()?.nickname as string || "누군가";
 
@@ -627,7 +626,7 @@ export const onPromiseVotesUpdated = onDocumentUpdated(
       .filter((id: string) => !beforeDeclined.includes(id));
 
     const db = admin.firestore();
-    const groupsCollection = getEnvironmentCollection("groups", db);
+    const groupsCollection = db.collection("groups");
 
     // 그룹 멤버 조회
     const groupDoc = await groupsCollection.doc(groupId).get();
@@ -718,7 +717,7 @@ export const onGroupMemberJoined = onDocumentUpdated(
 
     const groupName = afterData.name as string || "그룹";
     const db = admin.firestore();
-    const usersCollection = getEnvironmentCollection("users", db);
+    const usersCollection = db.collection("users");
 
     for (const newMemberId of newMembers) {
       // 기존 멤버들에게 알림 (새 멤버 제외)

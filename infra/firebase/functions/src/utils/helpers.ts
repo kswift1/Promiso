@@ -3,7 +3,6 @@
  */
 import {HttpsError} from "firebase-functions/v2/https";
 import {admin} from "../config";
-import {getEnvironmentCollection} from "./firestore";
 import {CreateGroupRequest} from "../types/api";
 
 /**
@@ -112,7 +111,7 @@ export async function generateUniqueInviteCode(params: {
   maxAttempts: number;
 }): Promise<string> {
   const {db, length, maxAttempts} = params;
-  const groups = getEnvironmentCollection("groups", db);
+  const groups = db.collection("groups");
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const code = randomInviteCode(length);

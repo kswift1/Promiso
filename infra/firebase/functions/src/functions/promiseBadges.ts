@@ -14,7 +14,6 @@
 import {onDocumentCreated} from "firebase-functions/v2/firestore";
 import {onCall, HttpsError} from "firebase-functions/v2/https";
 import {admin, REGION} from "../config";
-import {getEnvironmentCollection} from "../utils/firestore";
 
 /**
  * 약속 생성 시 그룹 멤버들에게 신규 소식 배지 표시
@@ -57,7 +56,7 @@ export const onPromiseCreatedBadges = onDocumentCreated(
 
     // 그룹 멤버 조회
     const db = admin.firestore();
-    const groupsCollection = getEnvironmentCollection("groups", db);
+    const groupsCollection = db.collection("groups");
     const groupDoc = await groupsCollection.doc(groupId).get();
 
     if (!groupDoc.exists) {
@@ -78,7 +77,7 @@ export const onPromiseCreatedBadges = onDocumentCreated(
     }
 
     // 배치로 각 유저의 hasNewActivity 설정
-    const usersCollection = getEnvironmentCollection("users", db);
+    const usersCollection = db.collection("users");
     const batch = db.batch();
 
     for (const userId of targetUsers) {
@@ -117,7 +116,7 @@ export const clearGroupBadge = onCall(
     }
 
     const db = admin.firestore();
-    const usersCollection = getEnvironmentCollection("users", db);
+    const usersCollection = db.collection("users");
 
     console.log(`[clearGroupBadge] uid: ${uid}, groupId: ${groupId}`);
     console.log(`[clearGroupBadge] Collection path: ${usersCollection.path}`);

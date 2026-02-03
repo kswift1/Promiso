@@ -11,7 +11,6 @@
  */
 import {onCall, onRequest, HttpsError} from "firebase-functions/v2/https";
 import {admin, REGION} from "../config";
-import {getEnvironmentCollection} from "../utils/firestore";
 import {verifyWidgetToken, WIDGET_JWT_SECRET} from "./widgetToken";
 import {
   WidgetSnapshotDocument,
@@ -112,7 +111,7 @@ export const getWidgetSnapshotWithToken = onRequest(
 
       // 4. 토큰 버전 확인 (revocation 체크)
       const db = admin.firestore();
-      const usersCollection = getEnvironmentCollection("users", db);
+      const usersCollection = db.collection("users");
       const userDoc = await usersCollection.doc(decoded.sub).get();
 
       if (userDoc.exists) {
@@ -150,6 +149,7 @@ export const getWidgetSnapshotWithToken = onRequest(
 
 /**
  * 오늘 날짜의 시작/끝 시간 계산 (KST 기준)
+ * @return {{startOfDay: Date, endOfDay: Date}} 오늘의 시작/끝 시간
  */
 function getTodayRange(): { startOfDay: Date; endOfDay: Date } {
   const now = new Date();
@@ -168,6 +168,9 @@ function getTodayRange(): { startOfDay: Date; endOfDay: Date } {
 
 /**
  * 사용자의 투표 상태 계산
+ * @param {string} userId - 사용자 ID
+ * @param {object} votes - 투표 정보
+ * @return {MyVoteStatus} 투표 상태
  */
 function getMyVoteStatus(
   userId: string,
@@ -181,6 +184,8 @@ function getMyVoteStatus(
 
 /**
  * Firestore Timestamp를 ISO 8601 문자열로 변환
+ * @param {FirebaseFirestore.Timestamp} timestamp - Firestore 타임스탬프
+ * @return {string | null} ISO 8601 문자열
  */
 function toISOString(
   timestamp: FirebaseFirestore.Timestamp | undefined
@@ -202,8 +207,8 @@ async function fetchPromisesDirectly(
   userId: string
 ): Promise<WidgetSnapshotDocument> {
   const db = admin.firestore();
-  const usersCollection = getEnvironmentCollection("users", db);
-  const promisesCollection = getEnvironmentCollection("promises", db);
+  const usersCollection = db.collection("users");
+  const promisesCollection = db.collection("promises");
 
   // 1. 사용자 문서 조회 → 그룹 목록
   const userDoc = await usersCollection.doc(userId).get();
