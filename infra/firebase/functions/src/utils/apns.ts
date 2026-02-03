@@ -89,9 +89,11 @@ export function generateAPNsJWT(
  * @return {APNsCredentials} 자격 증명
  */
 function getAPNsCredentials(): APNsCredentials {
-  const keyId = APNS_KEY_ID.value();
-  const teamId = APNS_TEAM_ID.value();
-  const authKey = APNS_AUTH_KEY.value().replace(/\\n/g, "\n");
+  // Secret Manager 값에 trailing newline이 있을 수 있어 trim() 필수
+  const keyId = APNS_KEY_ID.value().trim();
+  const teamId = APNS_TEAM_ID.value().trim();
+  const rawAuthKey = APNS_AUTH_KEY.value().trim();
+  const authKey = rawAuthKey.replace(/\\n/g, "\n");
   const jwtToken = generateAPNsJWT(keyId, teamId, authKey);
 
   return {keyId, teamId, authKey, jwtToken};

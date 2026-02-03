@@ -31,12 +31,12 @@ import {getCurrentEnvironment} from "../utils/firestore";
  * APNs 환경 결정
  *
  * @return {boolean} true = Production, false = Sandbox
- * @remarks Dev 환경만 Sandbox, Stage/Prod는 Production
+ * @remarks Dev만 Sandbox, Stage/Prod는 Production
  */
 function isAPNsProduction(): boolean {
   const env = getCurrentEnvironment();
-  // Dev 환경만 Sandbox (Xcode 개발 빌드용)
-  // Stage/Prod는 Production (TestFlight/App Store 빌드)
+  // Dev: Sandbox (Xcode 개발 빌드)
+  // Stage/Prod: Production (TestFlight/App Store)
   return env !== "dev";
 }
 import {

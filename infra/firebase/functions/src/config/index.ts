@@ -48,9 +48,9 @@ export const CHANNEL_MGMT_PORT_DEVELOPMENT = 2195;
  * @return {string} 환경에 맞는 Bundle ID
  *
  * @remarks
- * - Dev: com.promiso.dev (Sandbox APNs)
- * - Stage: com.promiso.stage (Production APNs)
- * - Release: com.promiso (Production APNs)
+ * - Dev: com.promiso.dev
+ * - Stage: com.promiso.stage
+ * - Release: com.promiso
  */
 function getAPNsBundleId(): string {
   const env = getCurrentEnvironment();
