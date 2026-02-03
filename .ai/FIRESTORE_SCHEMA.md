@@ -279,25 +279,19 @@ users/{userId}/settings/main
 
 ### 1-3. users/{userId}/cache/widgetSnapshot (서브컬렉션)
 
-위젯용 약속 스냅샷을 저장합니다. Firestore Trigger로 자동 갱신됩니다.
+> ⚠️ **Deprecated**: 위젯은 이제 직접 쿼리 방식으로 변경됨 (2026-02)
+> 이 캐시 문서는 더 이상 사용되지 않습니다.
 
-#### 📍 문서 경로
+위젯 데이터는 Cloud Functions API (`getWidgetSnapshot`, `getWidgetSnapshotWithToken`)에서
+Firestore를 직접 쿼리하여 반환합니다.
 
-```
-users/{userId}/cache/widgetSnapshot
-```
-
-#### 🔑 문서 ID
-
-- 고정값: `widgetSnapshot`
-
-#### 📊 필드 구조
+#### 📊 위젯 API 응답 구조
 
 | 필드명 | 타입 | 필수 | 설명 |
 |--------|------|------|------|
-| `next` | WidgetPromise \| null | ✅ | Small 위젯용 다음 약속 (우선순위 1위) |
-| `today` | Array<WidgetPromise> | ✅ | Medium 위젯용 오늘 약속 (최대 5개) |
-| `upcoming` | Array<WidgetPromise> | ✅ | Large 위젯용 다가오는 약속 (최대 7개) |
+| `next` | WidgetPromise \| null | ✅ | Small 위젯용 다음 약속 |
+| `today` | Array<WidgetPromise> | ✅ | Medium 위젯용 오늘 약속 (최대 3개) |
+| `upcoming` | Array<WidgetPromise> | ✅ | Large 위젯용 다가오는 약속 (최대 4개) |
 | `meta` | SnapshotMeta | ✅ | 메타데이터 |
 
 #### 📦 WidgetPromise 구조 (SnapshotPromise 공용)
@@ -373,36 +367,64 @@ users/{userId}/cache/widgetSnapshot
 }
 ```
 
-#### 🔄 자동 갱신 트리거
+#### 🔄 데이터 갱신 방식 (Direct Query)
 
-| 트리거 | 이벤트 | 설명 |
-|--------|--------|------|
-| `onPromiseWriteUpdateSnapshot` | 약속 CRUD | 해당 그룹 멤버의 스냅샷 갱신 |
-| `scheduledSnapshotRefresh` | 매일 00:00 KST | today/upcoming 재분류 |
+| 시점 | 설명 |
+|------|------|
+| 위젯 타임라인 갱신 | WidgetKit이 결정한 시점에 API 호출 |
+| 사용자 수동 갱신 | 위젯 새로고침 버튼 탭 시 |
+
+#### 📊 쿼리 조건
+
+```typescript
+.where("groupId", "in", userGroupIds)
+.where("isConfirmed", "==", true)  // 확정된 약속만
+.where("startAt", ">=", now)
+.orderBy("startAt", "asc")
+.limit(7)
+```
 
 #### 💡 설계 의도
 
-- **Race Condition 해결**: Widget Extension 다중 프로세스 문제 해결
-- **비용 절감**: API 호출 시 N+1 쿼리 → 1 read로 감소
-- **실시간성**: Trigger 기반 자동 갱신
+- **비용 효율**: 위젯 사용자만 API 호출 (스냅샷 방식 대비 효율적)
+- **최신 데이터**: API 호출 시점에 항상 최신 데이터 반환
+- **단순화**: Trigger 없이 단순한 쿼리로 구현
 
 ---
 
 ### 1-4. users/{userId}/cache/homeSnapshot (서브컬렉션)
 
-홈화면용 약속 스냅샷을 저장합니다. Firestore Trigger로 자동 갱신됩니다.
+> ⚠️ **Deprecated**: 홈화면은 이제 직접 쿼리 방식으로 변경됨 (2026-02)
+> 이 캐시 문서는 더 이상 사용되지 않습니다.
 
-#### 📍 문서 경로
+홈화면 데이터는 iOS 앱에서 Firestore를 직접 쿼리하여 가져옵니다.
 
+#### 📊 홈화면 쿼리 방식
+
+| 시점 | 설명 |
+|------|------|
+| `onAppear` | 홈화면 진입 시 |
+| `background → foreground` | 앱이 다시 활성화될 때 |
+
+#### 📊 쿼리 조건
+
+```swift
+// getHomePromises (PromiseClient)
+.whereField("groupId", in: groupIds)  // 10개씩 청크
+.whereField("startAt", isGreaterThanOrEqualTo: now)
+.order(by: "startAt")
+.limit(to: 10)
 ```
-users/{userId}/cache/homeSnapshot
-```
 
-#### 🔑 문서 ID
+#### 📊 클라이언트 분류 (HomeFeature)
 
-- 고정값: `homeSnapshot`
+| 분류 | 조건 |
+|------|------|
+| `todayPromises` | 오늘 날짜 + 확정된 약속 (최대 5개) |
+| `pendingPromises` | 미응답 상태 + 마감 임박순 (최대 5개) |
+| `upcomingPromises` | 내일 이후 + 확정된 약속 (최대 10개) |
 
-#### 📊 필드 구조
+#### ~~기존 필드 구조 (Deprecated)~~
 
 | 필드명 | 타입 | 필수 | 설명 |
 |--------|------|------|------|
@@ -508,19 +530,11 @@ users/{userId}/cache/homeSnapshot
 }
 ```
 
-#### 🔄 자동 갱신 트리거
-
-| 트리거 | 이벤트 | 설명 |
-|--------|--------|------|
-| `onPromiseWriteUpdateHomeSnapshot` | 약속 CRUD (stage) | 해당 그룹 멤버의 스냅샷 갱신 |
-| `onPromiseWriteUpdateHomeSnapshotProd` | 약속 CRUD (prod) | 해당 그룹 멤버의 스냅샷 갱신 |
-| `scheduledHomeSnapshotRefresh` | 매일 00:05 KST | today/pending/upcoming 재분류 |
-
 #### 💡 설계 의도
 
-- **읽기 비용 절감**: N groups × M promises 쿼리 → 1 read로 감소
-- **분류 최적화**: 서버에서 today/pending/upcoming 미리 분류
-- **실시간성**: Trigger 기반 자동 갱신
+- **실시간성**: 화면 진입 시 항상 최신 데이터
+- **단순화**: Trigger 없이 직접 쿼리
+- **클라이언트 분류**: 서버 부하 감소, 유연한 UI 대응
 
 ---
 
@@ -766,6 +780,7 @@ promises/{promiseId}
 | `hostId` | String | ✅ | - | 호스트(생성자) ID |
 | `groupId` | String | ✅ | - | 그룹 ID |
 | `minimumParticipants` | Number | ✅ | 2 | 최소 참가자 수 (확정 기준) |
+| `isConfirmed` | Boolean | ✅ | false | 약속 확정 여부 (비정규화, 투표 시 자동 갱신) |
 | `votes` | Votes | ✅ | - | 투표 정보 (하단 참조) |
 | `startAt` | Timestamp | ✅ | - | 시작 시각 |
 | `endAt` | Timestamp | ❌ | null | 종료 시각 |
@@ -786,6 +801,7 @@ promises/{promiseId}
   "hostId": "user_kim123",
   "groupId": "group_friends",
   "minimumParticipants": 2,
+  "isConfirmed": true,
   "votes": {
     "accepted": ["user_kim123", "user_lee456", "user_park789"],
     "declined": ["user_choi012"],
@@ -810,6 +826,7 @@ promises/{promiseId}
 - **단순화**: 서브컬렉션 관리 불필요, 트랜잭션 단순화
 - **실시간 업데이트**: 단일 문서 리스너로 모든 투표 상태 감지
 - **문서 크기**: userId 28자 × 10명 × 2상태 ≈ 1KB (그룹 최대 10명)
+- **isConfirmed 비정규화**: 쿼리 효율성을 위해 확정 여부를 별도 필드로 저장 (투표 시 자동 갱신)
 
 ---
 
@@ -1307,6 +1324,14 @@ service cloud.firestore {
 | `promises_by_accepted_user` | votes.accepted | array-contains | 내가 참여 확정한 약속 |
 | `promises_by_declined_user` | votes.declined | array-contains | 내가 거절한 약속 |
 
+#### 4. 위젯/홈 쿼리용 인덱스
+
+| 인덱스 이름 | 필드 | 순서 | 용도 |
+|------------|------|------|------|
+| `promises_confirmed_by_group` | groupId | ASC | 확정된 미래 약속 조회 (위젯/홈) |
+|  | isConfirmed | ASC |  |
+|  | startAt | ASC |  |
+
 ---
 
 ## 변경 이력
@@ -1354,6 +1379,12 @@ service cloud.firestore {
 |  |  | - SnapshotPromise에 minimumParticipants, groupImageUrl, votingDeadline 추가 |  |
 |  |  | - HomeSnapshotGroup 구조 추가 (그룹별 다음 약속) |  |
 |  |  | - Widget/Home 공용 SnapshotPromise 타입 통합 |  |
+| 1.9 | 2026-02-03 | 홈/위젯 스냅샷 → 직접 쿼리 전환 | Claude |
+|  |  | - promises 컬렉션에 `isConfirmed` 필드 추가 (비정규화) |  |
+|  |  | - widgetSnapshot 캐시 Deprecated (직접 쿼리로 변경) |  |
+|  |  | - homeSnapshot 캐시 Deprecated (직접 쿼리로 변경) |  |
+|  |  | - Firestore Trigger 제거 (onPromiseWriteUpdateSnapshot 등) |  |
+|  |  | - 복합 인덱스 추가: groupId + isConfirmed + startAt |  |
 
 ---
 
