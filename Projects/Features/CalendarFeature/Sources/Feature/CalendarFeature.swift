@@ -237,6 +237,8 @@ extension CalendarFeature {
         // EventKit 관련
         case requestCalendarPermission
         case openSettings
+        // 탭 전환 시 데이터 새로고침
+        case refresh
       }
 
       public enum InternalAction: Sendable {
@@ -544,6 +546,14 @@ extension CalendarFeature {
           UIApplication.shared.open(url)
         }
         return .none
+
+      case .refresh:
+        // 탭 전환 시 최신 데이터 로드
+        AppLogger.calendar.debugLog("🔄 refresh - 캘린더 탭 진입 (데이터 새로고침)")
+        return .merge(
+          .send(.internal(.checkCalendarPermission)),
+          .send(.internal(.loadInitialData))
+        )
       }
     }
 

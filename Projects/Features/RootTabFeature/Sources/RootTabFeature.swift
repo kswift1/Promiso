@@ -193,10 +193,26 @@ extension RootTab {
           )
 
         case .tabSelected(let tab):
+          let previousTab = state.selectedTab
           state.selectedTab = tab
-          return .run { _ in
-            await hapticFeedback.buttonTap()
+
+          guard tab != previousTab else {
+            return .run { _ in await hapticFeedback.buttonTap() }
           }
+
+          var effects: [Effect<Action>] = [
+            .run { _ in await hapticFeedback.buttonTap() }
+          ]
+
+          // 탭 전환 시 각 Feature에 알림
+          switch tab {
+          case .calendar:
+            effects.append(.send(.calendar(.view(.refresh))))
+          case .home, .group, .settings:
+            break
+          }
+
+          return .merge(effects)
 
         case .home(.delegate(.navigateToGroupWithPromise(let groupId, let promiseId))):
           state.selectedTab = .group
