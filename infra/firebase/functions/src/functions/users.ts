@@ -479,7 +479,7 @@ const FIREBASE_STORAGE_PATH_REGEX = /\/o\/(.+?)\?/;
  * 7. Firebase Auth 계정 삭제
  */
 export const deleteUser = onCall<DeleteUserRequest>(
-  {region: REGION},
+  {region: REGION, invoker: "public"},
   async (request): Promise<DeleteUserResponse> => {
     // 1. 인증 확인
     if (!request.auth) {

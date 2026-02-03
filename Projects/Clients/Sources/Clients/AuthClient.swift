@@ -11,7 +11,7 @@ import UIKit
 
 // MARK: - Error
 
-public enum AuthClientError: Error, Equatable {
+public enum AuthClientError: Error, Equatable, LocalizedError {
   case invalidCredentials
   case alreadyExists
   case network
@@ -21,7 +21,7 @@ public enum AuthClientError: Error, Equatable {
   case isGroupHost
   case unknown
 
-  public var localizedDescription: String {
+  public var errorDescription: String? {
     switch self {
     case .invalidCredentials:
       return "이메일 또는 비밀번호가 올바르지 않습니다."
@@ -509,9 +509,12 @@ extension AuthClient: DependencyKey {
       },
       deleteAccount: {
         // 회원 탈퇴 - Firebase Function 호출
-        guard Auth.auth().currentUser != nil else {
+        guard let currentUser = Auth.auth().currentUser else {
           throw AuthClientError.invalidCredentials
         }
+
+        // 토큰 갱신 (만료된 토큰으로 인한 UNAUTHENTICATED 방지)
+        _ = try await currentUser.getIDToken(forcingRefresh: true)
 
         let functions = Functions.functions(region: "asia-northeast3")
 
@@ -527,6 +530,9 @@ extension AuthClient: DependencyKey {
         } catch let error as NSError {
           #if DEBUG
           print("[AuthClient] 회원 탈퇴 실패: \(error)")
+          print("[AuthClient] Error domain: \(error.domain), code: \(error.code)")
+          print("[AuthClient] FunctionsErrorDomain: \(FunctionsErrorDomain)")
+          print("[AuthClient] failedPrecondition rawValue: \(FunctionsErrorCode.failedPrecondition.rawValue)")
           #endif
 
           // Firebase Functions 에러 코드 확인

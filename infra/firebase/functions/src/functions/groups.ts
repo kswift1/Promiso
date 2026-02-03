@@ -729,7 +729,7 @@ export const deleteGroup = onCall<DeleteGroupRequest>(
  * 4. users/{userId}.groups[groupId].role 업데이트 (admin ↔ member)
  */
 export const transferGroupHost = onCall<TransferGroupHostRequest>(
-  {region: REGION},
+  {region: REGION, invoker: "public"},
   async (request): Promise<TransferGroupHostResponse> => {
     // 1. 인증 확인
     if (!request.auth) {
