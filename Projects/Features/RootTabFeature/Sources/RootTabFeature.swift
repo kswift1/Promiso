@@ -196,13 +196,13 @@ extension RootTab {
           let previousTab = state.selectedTab
           state.selectedTab = tab
 
+          let hapticEffect: Effect<Action> = .run { _ in await hapticFeedback.buttonTap() }
+
           guard tab != previousTab else {
-            return .run { _ in await hapticFeedback.buttonTap() }
+            return hapticEffect
           }
 
-          var effects: [Effect<Action>] = [
-            .run { _ in await hapticFeedback.buttonTap() }
-          ]
+          var effects: [Effect<Action>] = [hapticEffect]
 
           // 탭 전환 시 각 Feature에 알림
           switch tab {
