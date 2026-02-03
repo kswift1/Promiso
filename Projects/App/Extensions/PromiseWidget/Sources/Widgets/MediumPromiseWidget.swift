@@ -90,6 +90,9 @@ struct MediumPromiseWidgetView: View {
       Spacer(minLength: 0)
     }
     .padding()
+    .overlay(alignment: .bottomTrailing) {
+      WidgetFooterView(updatedAt: entry.date)
+    }
   }
 
   @ViewBuilder
@@ -110,6 +113,9 @@ struct MediumPromiseWidgetView: View {
       Spacer(minLength: 0)
     }
     .padding()
+    .overlay(alignment: .bottomTrailing) {
+      WidgetFooterView(updatedAt: entry.date)
+    }
   }
 
   // MARK: - Section Header

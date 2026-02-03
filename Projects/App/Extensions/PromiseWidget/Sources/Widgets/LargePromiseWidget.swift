@@ -80,6 +80,9 @@ struct LargePromiseWidgetView: View {
         Spacer(minLength: 0)
       }
       .padding()
+      .overlay(alignment: .bottomTrailing) {
+        WidgetFooterView(updatedAt: entry.date)
+      }
     }
   }
 

@@ -72,7 +72,7 @@ struct SmallPromiseWidgetView: View {
         dDayBadge(promise.startAt)
       }
 
-      Spacer(minLength: 8)
+      Spacer(minLength: 4)
 
       // 제목
       Text(promise.title)
@@ -80,7 +80,7 @@ struct SmallPromiseWidgetView: View {
         .lineLimit(2)
         .foregroundStyle(.primary)
 
-      Spacer().frame(height: 4)
+      Spacer().frame(height: 2)
 
       // 시간 (강조)
       Text(formatTime(promise.startAt))
@@ -99,8 +99,13 @@ struct SmallPromiseWidgetView: View {
         .foregroundStyle(.secondary)
         .padding(.top, 2)
       }
+
+      Spacer(minLength: 0)
     }
     .padding()
+    .overlay(alignment: .bottomTrailing) {
+      WidgetFooterView(updatedAt: entry.date)
+    }
   }
 
   // MARK: - D-Day Badge
