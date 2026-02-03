@@ -27,10 +27,10 @@ extension CalendarFeature {
             title: store.headerTitle,
             displayMode: store.displayMode,
             isSelectedDateToday: store.isSelectedDateToday,
-            onToggleMode: { store.send(.view(.toggleDisplayMode), animation: .easeInOut(duration: 0.3)) },
-            onMoveToToday: { store.send(.view(.moveToToday), animation: .easeInOut(duration: 0.25)) },
-            onMovePrevious: { store.send(.view(.moveToPreviousPeriod), animation: .easeInOut(duration: 0.25)) },
-            onMoveNext: { store.send(.view(.moveToNextPeriod), animation: .easeInOut(duration: 0.25)) }
+            onToggleMode: { store.send(.view(.toggleDisplayMode), animation: .spring(response: 0.45, dampingFraction: 0.8)) },
+            onMoveToToday: { store.send(.view(.moveToToday), animation: .spring(response: 0.35, dampingFraction: 0.85)) },
+            onMovePrevious: { store.send(.view(.moveToPreviousPeriod), animation: .spring(response: 0.35, dampingFraction: 0.85)) },
+            onMoveNext: { store.send(.view(.moveToNextPeriod), animation: .spring(response: 0.35, dampingFraction: 0.85)) }
           )
 
           Divider()
@@ -40,7 +40,7 @@ extension CalendarFeature {
 
           // 캘린더 그리드 (주간/월간)
           calendarGridSection
-            .animation(.easeInOut(duration: 0.3), value: store.displayMode)
+            .animation(.spring(response: 0.45, dampingFraction: 0.8), value: store.displayMode)
 
           // 약속 리스트 (시트 스타일)
           promiseListSection
@@ -74,14 +74,11 @@ extension CalendarFeature {
           currentUserId: store.currentUserId,
           namespace: calendarAnimation,
           onDateSelected: { date in
-            store.send(.view(.selectDate(date)), animation: .easeInOut(duration: 0.2))
+            store.send(.view(.selectDate(date)), animation: .spring(response: 0.35, dampingFraction: 0.7))
           }
         )
         .padding(.vertical, 14)
-        .transition(.asymmetric(
-          insertion: .scale(scale: 0.95).combined(with: .opacity),
-          removal: .scale(scale: 1.05).combined(with: .opacity)
-        ))
+        .transition(.opacity.combined(with: .scale(scale: 0.98)).combined(with: .offset(y: -8)))
       } else {
         // TabView 기반 월간 뷰 (네이티브 페이징)
         PagingMonthGridView(
@@ -95,17 +92,14 @@ extension CalendarFeature {
           currentUserId: store.currentUserId,
           namespace: calendarAnimation,
           onDateSelected: { date in
-            store.send(.view(.selectDate(date)), animation: .easeInOut(duration: 0.2))
+            store.send(.view(.selectDate(date)), animation: .spring(response: 0.35, dampingFraction: 0.7))
           },
           onCollapseToWeek: { date in
-            store.send(.view(.collapseToWeek(date)), animation: .easeInOut(duration: 0.3))
+            store.send(.view(.collapseToWeek(date)), animation: .spring(response: 0.45, dampingFraction: 0.8))
           }
         )
         .padding(.vertical, 12)
-        .transition(.asymmetric(
-          insertion: .scale(scale: 1.05).combined(with: .opacity),
-          removal: .scale(scale: 0.95).combined(with: .opacity)
-        ))
+        .transition(.opacity.combined(with: .scale(scale: 0.98)).combined(with: .offset(y: 8)))
       }
     }
 
@@ -143,7 +137,7 @@ extension CalendarFeature {
           guard !store.isTransitioning else { return }
           let calendar = Calendar.current
           if let targetDate = store.sectionDates.first(where: { calendar.isDate($0, inSameDayAs: newDate) }) {
-            withAnimation(.easeInOut(duration: 0.3)) {
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
               proxy.scrollTo(targetDate, anchor: .top)
             }
           }
@@ -162,7 +156,7 @@ extension CalendarFeature {
           guard !store.isTransitioning else { return }
           let calendar = Calendar.current
           if let targetDate = store.sectionDates.first(where: { calendar.isDate($0, inSameDayAs: newDate) }) {
-            withAnimation(.easeInOut(duration: 0.3)) {
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
               proxy.scrollTo(targetDate, anchor: .center)
             }
           }
@@ -314,7 +308,7 @@ extension CalendarFeature {
           currentUserId: store.currentUserId,
           onTap: {
             // 탭하면 주간 뷰로 전환
-            store.send(.view(.collapseToWeek(date)), animation: .easeInOut(duration: 0.3))
+            store.send(.view(.collapseToWeek(date)), animation: .spring(response: 0.45, dampingFraction: 0.8))
           }
         )
         .id(date)

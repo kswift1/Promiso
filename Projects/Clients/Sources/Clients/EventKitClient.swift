@@ -266,7 +266,11 @@ extension EventKitClient: DependencyKey {
         )
 
         let events = eventStore.events(matching: predicate)
-        return events.map { $0.toCalendarEvent() }
+
+        // Promiso가 동기화한 이벤트 제외 (promiso:// URL 스킴)
+        return events
+          .filter { PromisoCalendarTag.parse(from: $0.url) == nil }
+          .map { $0.toCalendarEvent() }
       },
 
       addEvent: { newEvent in
