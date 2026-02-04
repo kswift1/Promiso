@@ -1,0 +1,64 @@
+{
+  "conditions": [],
+  "parameters": {
+    "forceUpdateVersion": {
+      "defaultValue": {
+        "value": "1.0.0"
+      },
+      "description": "강제 업데이트가 필요한 최소 버전 (사용자 앱 버전이 이보다 낮으면 강제 업데이트)",
+      "valueType": "STRING"
+    },
+    "recommendedVersion": {
+      "defaultValue": {
+        "value": "1.0.0"
+      },
+      "description": "권장 업데이트 버전 (사용자 앱 버전이 이보다 낮으면 업데이트 권장)",
+      "valueType": "STRING"
+    },
+    "appStoreURL": {
+      "defaultValue": {
+        "value": "https://apps.apple.com/app/id1625074042"
+      },
+      "description": "App Store 앱 링크 (업데이트 버튼 클릭 시 이동)",
+      "valueType": "STRING"
+    },
+    "privacyPolicyURL": {
+      "defaultValue": {
+        "value": "https://www.notion.so/2fb655a898de813882b5eebcf35ccb3d"
+      },
+      "description": "개인정보처리방침 URL (설정 화면에서 사용)",
+      "valueType": "STRING"
+    },
+    "termsOfServiceURL": {
+      "defaultValue": {
+        "value": "https://www.notion.so/2fb655a898de817f9f76fdce51f5a09f"
+      },
+      "description": "이용약관 URL (설정 화면에서 사용)",
+      "valueType": "STRING"
+    },
+    "supportEmail": {
+      "defaultValue": {
+        "value": "kswen0203@icloud.com"
+      },
+      "description": "고객 지원 이메일 주소 (문의하기 기능에서 사용)",
+      "valueType": "STRING"
+    },
+    "notionFAQDatabaseId": {
+      "defaultValue": {
+        "value": "356188caae734b5ebd73203557a34930"
+      },
+      "description": "Notion FAQ 데이터베이스 ID (도움말 화면에서 사용)",
+      "valueType": "STRING"
+    }
+  },
+  "version": {
+    "versionNumber": "1",
+    "updateTime": "2026-02-04T08:00:00Z",
+    "updateUser": {
+      "email": "admin@promiso.app"
+    },
+    "description": "Promiso 앱 초기 Remote Config 설정 - Notion API에서 Firebase Remote Config로 전환",
+    "updateOrigin": "CONSOLE",
+    "updateType": "INCREMENTAL_UPDATE"
+  }
+}
