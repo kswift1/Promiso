@@ -1069,7 +1069,9 @@ export const onPromiseConfirmedScheduleLiveActivity = onDocumentUpdated(
         liveActivityScheduled: false,
         liveActivityScheduledAt: null,
       });
-      console.log(`🔄 LiveActivity schedule reset (tracking disabled): ${promiseId}`);
+      console.log(
+        `🔄 LiveActivity schedule reset (tracking disabled): ${promiseId}`
+      );
       return;
     }
 
