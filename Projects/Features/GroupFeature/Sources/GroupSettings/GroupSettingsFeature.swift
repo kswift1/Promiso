@@ -12,6 +12,7 @@ extension GroupSettings {
     @Dependency(\.groupClient) var groupClient
     @Dependency(\.notificationClient) var notificationClient
     @Dependency(\.hapticFeedback) var hapticFeedback
+    @Dependency(\.analyticsClient) var analyticsClient
 
     @ObservableState
     public struct State: Equatable {
@@ -355,6 +356,13 @@ extension GroupSettings {
 
           case .inviteTapped:
             state.showInviteSheet = true
+            analyticsClient.logEvent(
+              AnalyticsClient.EventName.groupInviteShared,
+              [
+                AnalyticsClient.ParameterKey.groupID: state.group.id,
+                AnalyticsClient.ParameterKey.groupName: state.group.name
+              ]
+            )
             return .run { [hapticFeedback] _ in
               await hapticFeedback.buttonTap()
             }

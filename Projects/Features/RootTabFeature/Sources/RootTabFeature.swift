@@ -61,6 +61,7 @@ extension RootTab {
     @Dependency(\.notificationClient) var notificationClient
     @Dependency(\.promiseClient) var promiseClient
     @Dependency(\.calendarSyncClient) var calendarSyncClient
+    @Dependency(\.analyticsClient) var analyticsClient
 
     public init() {}
 
@@ -212,7 +213,10 @@ extension RootTab {
             effects.append(.send(.home(.view(.refreshNotificationBadge))))
           case .calendar:
             effects.append(.send(.calendar(.view(.refresh))))
-          case .group, .settings:
+          case .settings:
+            // Analytics 이벤트 로깅
+            analyticsClient.logEvent(AnalyticsClient.EventName.settingsOpened, nil)
+          case .group:
             break
           }
 
