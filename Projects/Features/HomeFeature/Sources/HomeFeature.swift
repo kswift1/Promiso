@@ -22,6 +22,7 @@ extension Home {
   @Reducer
   public struct Feature {
     @Dependency(\.promiseClient) var promiseClient
+    @Dependency(\.notificationClient) var notificationClient
 
     public init() {}
 
@@ -54,6 +55,10 @@ extension Home {
       // MARK: UI
       /// 스크롤 타겟
       var scrollTarget: HomeModels.ScrollTarget? = nil
+
+      // MARK: Notification
+      /// 안 읽은 알림 개수
+      var unreadNotificationCount: Int = 0
 
       // MARK: Navigation
       /// 네비게이션 경로 (약속 상세)
@@ -114,6 +119,10 @@ extension Home {
         case promisesResponse(Result<[PromiseModel], Error>)
         /// 응답 필요 섹션으로 스크롤
         case scrollToNeedResponse
+        /// 안 읽은 알림 개수 조회
+        case fetchUnreadNotificationCount
+        /// 안 읽은 알림 개수 응답
+        case unreadNotificationCountResponse(Result<Int, Error>)
       }
 
       public enum Delegate: Sendable {
@@ -138,12 +147,18 @@ extension Home {
             if !state.hasLoadedOnce {
               state.hasLoadedOnce = true
             }
-            // Firestore에서 직접 쿼리
-            return .send(.internal(.fetchPromises))
+            // Firestore에서 직접 쿼리 + 알림 개수 조회
+            return .merge(
+              .send(.internal(.fetchPromises)),
+              .send(.internal(.fetchUnreadNotificationCount))
+            )
 
           case .refreshTriggered:
             // Pull-to-refresh도 동일하게 쿼리
-            return .send(.internal(.fetchPromises))
+            return .merge(
+              .send(.internal(.fetchPromises)),
+              .send(.internal(.fetchUnreadNotificationCount))
+            )
 
           case .todayPromiseTapped(let promise):
             // 즉시 이동 (캐시 hit면 전달, miss면 nil로 전달 → Detail에서 로드)
@@ -235,6 +250,22 @@ extension Home {
             return .none
 
           case .scrollToNeedResponse:
+            return .none
+
+          case .fetchUnreadNotificationCount:
+            return .run { [notificationClient] send in
+              do {
+                let count = try await notificationClient.getUnreadCount()
+                await send(.internal(.unreadNotificationCountResponse(.success(count))))
+              } catch {
+                await send(.internal(.unreadNotificationCountResponse(.failure(error))))
+              }
+            }
+
+          case .unreadNotificationCountResponse(let result):
+            if case .success(let count) = result {
+              state.unreadNotificationCount = count
+            }
             return .none
           }
 
@@ -490,7 +521,7 @@ extension Home {
         .toolbar {
           ToolbarItem(placement: .topBarTrailing) {
             NotificationButton(
-              badgeCount: store.pendingResponseCount,
+              badgeCount: store.unreadNotificationCount,
               action: {
                 store.send(.view(.notificationButtonTapped))
               }
