@@ -1,7 +1,7 @@
 # Promiso Project Makefile
 # Usage: make feature FEATURE_NAME=YourFeature
 
-.PHONY: feature remove-feature deps color emulator-start functions-build functions-api-preview help
+.PHONY: feature remove-feature deps color emulator-start functions-build functions-api-preview secrets-pull secrets-push secrets-list secrets-add help
 
 # 기본값 설정
 FEATURE_NAME ?=
@@ -119,6 +119,24 @@ functions-api-preview:
 
 
 
+# Secrets 동기화 (Notion → xcconfig)
+secrets-pull:
+	@echo "🔐 Notion에서 시크릿 동기화..."
+	@./scripts/sync-secrets.sh pull
+
+# Secrets GitHub 업데이트
+secrets-push:
+	@echo "🔐 GitHub Secrets 업데이트..."
+	@./scripts/sync-secrets.sh push-gh
+
+# Secrets 목록 표시
+secrets-list:
+	@./scripts/sync-secrets.sh list
+
+# Secrets 추가
+secrets-add:
+	@./scripts/sync-secrets.sh add
+
 # 도움말
 help:
 	@echo "Promiso Project Commands:"
@@ -131,6 +149,10 @@ help:
 	@echo "  make emulator-start                          - Functions/Firestore/Auth/Storage 에뮬레이터 실행"
 	@echo "  make functions-build                         - Firebase Functions 빌드"
 	@echo "  make functions-api-preview                   - OpenAPI 미리보기 실행"
+	@echo "  make secrets-pull                            - Notion에서 시크릿 → xcconfig 동기화"
+	@echo "  make secrets-push                            - Notion → GitHub Secrets 업데이트"
+	@echo "  make secrets-list                            - 시크릿 목록 표시"
+	@echo "  make secrets-add                             - 새 시크릿 추가 (Notion)"
 	@echo "  make help                                    - 이 도움말 표시"
 	@echo ""
 	@echo "예시:"
