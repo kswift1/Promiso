@@ -29,32 +29,33 @@ extension NotificationCenter {
       .navigationTitle("알림")
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
-        // 모두 읽음 버튼 (안 읽은 알림이 있고, 편집 모드가 아닐 때)
-        if !store.isEditMode && store.unreadCount > 0 {
-          ToolbarItem(placement: .topBarTrailing) {
-            Button {
-              store.send(.view(.markAllAsReadTapped))
-            } label: {
-              Text("모두 읽음")
-                .font(.subheadline)
-                .foregroundStyle(Color.pmindigo.n500)
-            }
-          }
-        }
-
-        // 편집/취소 버튼 (로딩 완료 후, 알림이 있을 때만)
+        // 로딩 완료 후, 알림이 있을 때만 툴바 표시
         if !store.isLoading && !store.isEmpty {
           ToolbarItem(placement: .topBarTrailing) {
-            Button {
-              if store.isEditMode {
-                store.send(.view(.cancelEditTapped))
-              } else {
-                store.send(.view(.editButtonTapped))
+            HStack(spacing: 16) {
+              // 모두 읽음 버튼 (편집 모드가 아니고, 안 읽은 알림이 있을 때)
+              if !store.isEditMode && store.unreadCount > 0 {
+                Button {
+                  store.send(.view(.markAllAsReadTapped))
+                } label: {
+                  Text("모두 읽음")
+                    .font(.subheadline)
+                    .foregroundStyle(Color.pmindigo.n500)
+                }
               }
-            } label: {
-              Image(systemName: store.isEditMode ? "xmark" : "gearshape")
-                .font(.system(size: 16))
-                .foregroundStyle(Color.pmindigo.n500)
+
+              // 편집/취소 버튼
+              Button {
+                if store.isEditMode {
+                  store.send(.view(.cancelEditTapped))
+                } else {
+                  store.send(.view(.editButtonTapped))
+                }
+              } label: {
+                Image(systemName: store.isEditMode ? "xmark" : "gearshape")
+                  .font(.system(size: 16))
+                  .foregroundStyle(Color.pmindigo.n500)
+              }
             }
           }
         }
