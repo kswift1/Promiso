@@ -156,4 +156,24 @@ struct DeeplinkURLParserTests {
     let url = URL(string: "promiso://live")!
     #expect(DeeplinkURLParser.parse(url) == nil)
   }
+
+  // MARK: - create 딥링크
+  //
+  // Widget의 "약속 만들기" 버튼에서 사용됩니다.
+  // 앱을 열고 약속 생성 화면을 표시합니다 (그룹이 있을 때만).
+  // → CreatePromise Sheet 표시 또는 그룹 탭 유지
+
+  @Test("promiso://create 파싱")
+  func parse_create_returnsCreate() {
+    let url = URL(string: "promiso://create")!
+    let result = DeeplinkURLParser.parse(url)
+    #expect(result == .create)
+  }
+
+  @Test("promiso://create/ (trailing slash) 파싱")
+  func parse_create_withTrailingSlash_returnsCreate() {
+    let url = URL(string: "promiso://create/")!
+    let result = DeeplinkURLParser.parse(url)
+    #expect(result == .create)
+  }
 }
