@@ -90,7 +90,41 @@ Promiso/
 ```
 
 > **⚠️ 중요**: `Config/` 폴더의 실제 설정 파일(*.xcconfig, GoogleService-Info.plist)은 보안상 Git에 포함되지 않습니다.
-> Clone 후 [초기 설정 가이드](docs/SETUP_GUIDE.md) 또는 [환경 설정](docs/ENVIRONMENT.md)을 참고하여 생성하세요.
+> Clone 후 [로컬 환경 설정 가이드](docs/LOCAL_SETUP.md) 또는 [Config 설정](Config/README.md)을 참고하여 생성하세요.
+
+## 🔒 Configuration & Security
+
+### 초기 설정 (필수)
+
+프로젝트를 클론한 후 반드시 Config 파일을 설정해야 합니다:
+
+```bash
+# 방법 1: 자동 생성 (권장)
+cp .env.template .env
+# .env 파일에 API Keys 입력 후
+./scripts/generate-xcconfig.sh
+
+# 방법 2: 백업에서 복원
+unzip ~/Downloads/Promiso-Config-Backup.zip -d Config/
+```
+
+### 필수 파일 목록
+
+| 파일 | 설명 | Git 추적 |
+|------|------|---------|
+| `Config/Dev.xcconfig` | Dev 환경 API Keys | ❌ (.gitignore) |
+| `Config/Stage.xcconfig` | Stage 환경 API Keys | ❌ (.gitignore) |
+| `Config/Prod.xcconfig` | Prod 환경 API Keys | ❌ (.gitignore) |
+| `Config/GoogleService-Info-*.plist` | Firebase 설정 (3개) | ❌ (.gitignore) |
+| `.env` | 로컬 환경 변수 | ❌ (.gitignore) |
+
+### 관련 문서
+
+- **[Config 설정 가이드](Config/README.md)** - xcconfig 및 Firebase 설정
+- **[로컬 환경 설정](docs/LOCAL_SETUP.md)** - 처음 개발 환경 셋업
+- **[보안 정책](SECURITY.md)** - API Keys 관리 및 보안 규칙
+- **[백업 체크리스트](docs/BACKUP_CHECKLIST.md)** - 정기 백업 및 관리
+- **[Notion 백업 템플릿](docs/SECRETS_BACKUP_NOTION.md)** - Notion 백업 가이드
 
 ### 아키텍처 계층
 

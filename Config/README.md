@@ -165,3 +165,27 @@ Config/*.xcconfig.template
 ### 빌드는 되지만 OAuth 로그인 실패
 
 → Google Client ID가 올바른 환경에 맞게 설정되었는지 확인하세요.
+
+---
+
+## 📚 관련 문서
+
+- **[로컬 환경 설정 가이드](../docs/LOCAL_SETUP.md)** - 처음 개발 환경 셋업
+- **[보안 정책](../SECURITY.md)** - API Keys 관리 및 보안 규칙
+- **[Notion 백업 템플릿](../docs/SECRETS_BACKUP_NOTION.md)** - API Keys 백업 가이드
+- **[백업 체크리스트](../docs/BACKUP_CHECKLIST.md)** - 정기 백업 및 관리
+
+---
+
+## 💬 문의
+
+설정 관련 문제가 있으면:
+
+- **Slack**: #promiso-dev 채널
+- **GitHub Issues**: [링크](https://github.com/YOUR_ORG/Promiso/issues)
+- **팀 관리자**: [이름]
+
+---
+
+**마지막 업데이트**: 2026-02-04
+**작성자**: Claude Sonnet 4.5
