@@ -130,6 +130,37 @@ extension Settings {
           Text("앱 설정")
         }
 
+        // MARK: - 지원 섹션
+        Section {
+          Button {
+            store.send(.view(.supportTapped))
+          } label: {
+            HStack(spacing: 16) {
+              Image(systemName: "lifepreserver.fill")
+                .font(.body)
+                .foregroundStyle(Color.pmindigo.n500)
+                .frame(width: 24, height: 24)
+
+              Text("지원")
+                .font(.body)
+                .foregroundStyle(Color.pmtext.primary)
+
+              Spacer()
+
+              Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundStyle(Color.pmgray.n400)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .contentShape(Rectangle())
+          }
+          .buttonStyle(.plain)
+          .adaptiveGlassBackground()
+          .listRowBackground(Color.clear)
+          .listRowInsets(EdgeInsets())
+        }
+
         // MARK: - 정보 섹션
         Section {
           VStack(spacing: 0) {

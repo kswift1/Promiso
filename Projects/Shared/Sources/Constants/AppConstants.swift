@@ -17,6 +17,7 @@ public enum AppConstants {
     public static let privacyPolicyURL = URL(string: "https://www.notion.so/2fb655a898de813882b5eebcf35ccb3d")!
     public static let termsOfServiceURL = URL(string: "https://www.notion.so/2fb655a898de817f9f76fdce51f5a09f")!
     public static let supportURL = URL(string: "https://promiso.com/support")!
+    public static let supportEmail = "support@promiso.app"
   }
 
   // MARK: - UI Constants
