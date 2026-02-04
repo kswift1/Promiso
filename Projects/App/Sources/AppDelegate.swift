@@ -69,7 +69,10 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 
   // MARK: - Microsoft Clarity SDK
   private func configureClaritySDK() {
-    let projectId = "v0o95eccpc"
+    guard let projectId = Bundle.main.object(forInfoDictionaryKey: "CLARITY_PROJECT_ID") as? String else {
+      AppLogger.general.error("Clarity Project ID not found in Info.plist")
+      return
+    }
 
     #if DEBUG
     let config = ClarityConfig(projectId: projectId, logLevel: .error)
@@ -78,6 +81,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     #endif
 
     ClaritySDK.initialize(config: config)
+    AppLogger.general.debug("Clarity SDK initialized with projectId: \(projectId)")
   }
 
   /// Google Sign-In 리디렉션 URL 처리

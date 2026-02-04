@@ -30,6 +30,7 @@ extension AppEntry {
     @Dependency(\.appConfigClient) var appConfigClient
     @Dependency(\.openURL) var openURL
     @Dependency(\.userDefaultsClient) var userDefaultsClient
+    @Dependency(\.clarityClient) var clarityClient
 
     public init() {}
     
@@ -223,6 +224,10 @@ extension AppEntry {
                 state.splash = .animatingOut
               }
               WidgetDataManager.saveUserId(userModel.id)
+
+              // Clarity 유저 정보 등록
+              clarityClient.setUser(userModel.id, userModel.nickname)
+
               state.destination = .main(RootTab.Feature.State(currentUser: Shared(value: userModel)))
               // pending deeplink가 있으면 처리
               if let deeplink = state.pendingDeeplink {
@@ -251,6 +256,10 @@ extension AppEntry {
             if isAuthorized {
               // 이미 권한 허용됨 → 바로 메인으로
               WidgetDataManager.saveUserId(userModel.id)
+
+              // Clarity 유저 정보 등록
+              clarityClient.setUser(userModel.id, userModel.nickname)
+
               state.destination = .main(RootTab.Feature.State(currentUser: Shared(value: userModel)))
               // pending deeplink가 있으면 처리
               if let deeplink = state.pendingDeeplink {
@@ -339,6 +348,10 @@ extension AppEntry {
           if let userModel = state.pendingUserForMain {
             state.pendingUserForMain = nil
             WidgetDataManager.saveUserId(userModel.id)
+
+            // Clarity 유저 정보 등록
+            clarityClient.setUser(userModel.id, userModel.nickname)
+
             state.destination = .main(RootTab.Feature.State(currentUser: Shared(value: userModel)))
           }
           return .none
@@ -348,11 +361,15 @@ extension AppEntry {
 
         case .destination(.presented(.main(.delegate(.logoutRequested)))):
           state.destination = .auth(Auth.Feature.State())
-          return .run { [notificationClient, authClient] _ in
+          return .run { [notificationClient, authClient, clarityClient] _ in
             LiveActivityImageStore.clearCache()
             WidgetDataManager.clearAll()
             authClient.clearWidgetAuthToken()
             WidgetDataManager.reloadWidgets()
+
+            // Clarity 유저 정보 제거
+            clarityClient.clearUser()
+
             do {
               try await notificationClient.deleteFCMToken()
             } catch {
