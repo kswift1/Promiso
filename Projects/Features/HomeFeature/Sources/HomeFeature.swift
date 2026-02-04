@@ -269,6 +269,10 @@ extension Home {
           case .unreadNotificationCountResponse(let result):
             if case .success(let count) = result {
               state.unreadNotificationCount = count
+              // 시스템 배지도 동기화
+              return .run { [notificationClient] _ in
+                await notificationClient.setBadgeCount(count)
+              }
             }
             return .none
           }

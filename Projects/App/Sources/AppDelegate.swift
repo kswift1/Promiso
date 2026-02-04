@@ -30,8 +30,8 @@ class AppDelegate: NSObject, UIApplicationDelegate {
   }
 
   func applicationDidBecomeActive(_ application: UIApplication) {
-    // 앱 활성화 시 뱃지 카운트 초기화
-    UNUserNotificationCenter.current().setBadgeCount(0)
+    // 배지 카운트는 HomeFeature에서 실제 unreadCount로 동기화
+    // (여기서 0으로 초기화하지 않음)
   }
 
   // MARK: - Remote Notifications Configuration

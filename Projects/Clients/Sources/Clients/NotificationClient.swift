@@ -68,6 +68,12 @@ public struct NotificationClient: Sendable {
 
   /// 전체 알림 삭제
   public var deleteAllNotifications: @Sendable () async throws -> Void
+
+  // MARK: - Badge
+
+  /// 앱 아이콘 배지 카운트 설정
+  /// - Parameter count: 배지 카운트 (0이면 배지 제거)
+  public var setBadgeCount: @Sendable (_ count: Int) async -> Void = { _ in }
 }
 
 // MARK: - Test / Preview
@@ -85,7 +91,8 @@ extension NotificationClient: TestDependencyKey {
     markAsRead: { _ in },
     markAllAsRead: { },
     deleteNotifications: { _ in },
-    deleteAllNotifications: { }
+    deleteAllNotifications: { },
+    setBadgeCount: { _ in }
   )
 
   public static let testValue = Self(
@@ -100,7 +107,8 @@ extension NotificationClient: TestDependencyKey {
     markAsRead: unimplemented("\(Self.self).markAsRead"),
     markAllAsRead: unimplemented("\(Self.self).markAllAsRead"),
     deleteNotifications: unimplemented("\(Self.self).deleteNotifications"),
-    deleteAllNotifications: unimplemented("\(Self.self).deleteAllNotifications")
+    deleteAllNotifications: unimplemented("\(Self.self).deleteAllNotifications"),
+    setBadgeCount: unimplemented("\(Self.self).setBadgeCount")
   )
 }
 
@@ -200,6 +208,10 @@ extension NotificationClient: DependencyKey {
           throw NotificationClientError.authenticationRequired
         }
         try await dataSource.deleteAllNotifications(userId: currentUser.uid)
+      },
+
+      setBadgeCount: { count in
+        try? await UNUserNotificationCenter.current().setBadgeCount(count)
       }
     )
   }()
