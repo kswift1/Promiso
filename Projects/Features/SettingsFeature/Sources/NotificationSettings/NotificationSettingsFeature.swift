@@ -631,10 +631,6 @@ private enum NotificationTooltip: Identifiable, Equatable {
         return "영화 관람 변경 📝"
       case .groupUpdate:
         return "새 멤버 합류 👋"
-      case .promiseReminder:
-        return "약속 리마인더 ⏰"
-      case .attendanceResponse:
-        return "참석 응답 변경"
       }
     }
   }
@@ -647,18 +643,14 @@ private enum NotificationTooltip: Identifiable, Equatable {
       switch key {
       case .promiseInvitation:
         return "성원님이 영화 관람을 제안했어요. 확인해주세요!"
-      case .promiseReminder:
-        return "오늘 오후 2:00에 만나요!"
       case .promiseConfirmed:
         return "오늘 오후 2:00에 만나요!"
       case .promiseCancelled:
         return "참여 인원이 부족해서 확정되지 않았어요"
       case .promiseUpdated:
         return "약속 정보가 수정됐어요. 확인해주세요!"
-      case .attendanceResponse:
-        return "참석 여부가 업데이트됐어요"
       case .groupUpdate:
-        return "지민님이 대학 친구들에 들어왔어요"
+        return "재윤님이 대학 친구들에 들어왔어요"
       }
     }
   }

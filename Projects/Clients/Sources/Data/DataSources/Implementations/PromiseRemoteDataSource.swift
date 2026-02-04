@@ -414,12 +414,13 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
 
   // MARK: - Home
 
-  /// 홈화면용 약속 조회 (다중 그룹, 미래 약속)
+  /// 홈화면용 약속 조회 (다중 그룹, 오늘 이후 약속)
   /// 그룹 10개씩 청킹하여 쿼리 (Firestore in 쿼리 제한)
   public func getHomePromises(groupIds: [String], limitPerChunk: Int) async throws -> [PromiseModel] {
     guard !groupIds.isEmpty else { return [] }
 
-    let now = Date()
+    let calendar = Calendar.current
+    let startOfToday = calendar.startOfDay(for: Date())
     let chunks = groupIds.chunked(into: 10)
 
     let allPromises = try await withThrowingTaskGroup(of: [PromiseModel].self) { group in
@@ -427,7 +428,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
         group.addTask { [db, collectionName] in
           let query = db.environmentCollection(collectionName)
             .whereField("groupId", in: chunk)
-            .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: now))
+            .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: startOfToday))
             .order(by: "startAt")
             .limit(to: limitPerChunk)
 

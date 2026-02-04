@@ -335,13 +335,11 @@ extension Home.Feature.State {
     return (startOfDay, endOfDay)
   }
 
-  /// 오늘의 확정 약속 (오늘 + 확정, 최대 5개)
+  /// 오늘의 확정 약속 (오늘 + 확정)
   var todayPromises: [PromiseModel] {
     let (startOfDay, endOfDay) = todayRange
     return allPromises
       .filter { $0.startAt >= startOfDay && $0.startAt < endOfDay && $0.isConfirmed }
-      .prefix(5)
-      .map { $0 }
   }
 
   /// 응답 필요 약속 (미응답 + 투표 마감 전, 마감 임박순, 최대 5개)

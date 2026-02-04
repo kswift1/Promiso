@@ -7,21 +7,17 @@ public enum GroupNotificationCategory: String, CaseIterable, Sendable {
 
 public enum GroupNotificationPreferenceKey: String, CaseIterable, Sendable {
   case promiseInvitation
-  case promiseReminder
   case promiseConfirmed
   case promiseCancelled
   case promiseUpdated
-  case attendanceResponse
   case groupUpdate
 
   public var category: GroupNotificationCategory {
     switch self {
     case .promiseInvitation,
-         .promiseReminder,
          .promiseConfirmed,
          .promiseCancelled,
-         .promiseUpdated,
-         .attendanceResponse:
+         .promiseUpdated:
       return .promise
     case .groupUpdate:
       return .group
@@ -31,11 +27,9 @@ public enum GroupNotificationPreferenceKey: String, CaseIterable, Sendable {
   public var storageKey: String {
     switch self {
     case .promiseInvitation: return "invitation"
-    case .promiseReminder: return "reminder"
     case .promiseConfirmed: return "confirmed"
     case .promiseCancelled: return "cancelled"
     case .promiseUpdated: return "updated"
-    case .attendanceResponse: return "attendanceResponse"
     case .groupUpdate: return "update"
     }
   }
@@ -44,16 +38,12 @@ public enum GroupNotificationPreferenceKey: String, CaseIterable, Sendable {
     switch self {
     case .promiseInvitation:
       return "약속 초대"
-    case .promiseReminder:
-      return "약속 리마인더"
     case .promiseConfirmed:
       return "약속 확정"
     case .promiseCancelled:
       return "약속 취소"
     case .promiseUpdated:
       return "약속 변경"
-    case .attendanceResponse:
-      return "응답 변경"
     case .groupUpdate:
       return "그룹 업데이트"
     }
@@ -61,10 +51,6 @@ public enum GroupNotificationPreferenceKey: String, CaseIterable, Sendable {
 
   public var subtitle: String? {
     switch self {
-    case .promiseReminder:
-      return "약속 전 리마인더 알림"
-    case .attendanceResponse:
-      return "참석/불참 응답 변경 알림"
     case .groupUpdate:
       return "그룹 정보/멤버 변동 알림"
     default:
