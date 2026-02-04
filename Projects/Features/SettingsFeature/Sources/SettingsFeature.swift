@@ -292,7 +292,7 @@ extension Settings {
           #if DEBUG
           case .developerSettingsTapped:
             state.path.append(.developerSettings(
-              DeveloperSettings.Feature.State(currentUserId: state.currentUser.userId)
+              DeveloperSettings.Feature.State()
             ))
             return .run { _ in await hapticFeedback.selection() }
           #endif
