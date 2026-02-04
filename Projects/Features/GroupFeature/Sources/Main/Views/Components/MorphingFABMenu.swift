@@ -27,6 +27,7 @@ struct MorphingFABMenu: View {
   let bottomPadding: CGFloat
   let labelSize: CGSize
   let cornerRadius: CGFloat
+  let isVisible: Bool
 
   @State private var progress: CGFloat = 0
 
@@ -36,12 +37,14 @@ struct MorphingFABMenu: View {
     items: [FABMenuItem],
     bottomPadding: CGFloat = 16,
     labelSize: CGSize = .init(width: 56, height: 56),
-    cornerRadius: CGFloat = 28
+    cornerRadius: CGFloat = 28,
+    isVisible: Bool = true
   ) {
     self.items = items
     self.bottomPadding = bottomPadding
     self.labelSize = labelSize
     self.cornerRadius = cornerRadius
+    self.isVisible = isVisible
   }
 
   private var isExpanded: Bool {
@@ -87,6 +90,10 @@ struct MorphingFABMenu: View {
       .padding(.trailing, 20)
       .padding(.bottom, bottomPadding)
     }
+    .opacity(isVisible ? 1 : 0)
+    .scaleEffect(isVisible ? 1 : 0.5)
+    .allowsHitTesting(isVisible)
+    .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isVisible)
   }
 
   // MARK: - Collapsed Label (FAB Button)

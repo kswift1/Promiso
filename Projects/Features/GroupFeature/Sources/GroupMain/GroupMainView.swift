@@ -185,7 +185,8 @@ extension GroupMain {
             store.send(.view(.groupSettingsTapped))
           }
         ],
-        bottomPadding: fabBottomPadding
+        bottomPadding: fabBottomPadding,
+        isVisible: !store.groupBarItems.isEmpty
       )
     }
 
@@ -319,7 +320,7 @@ extension GroupMain {
           .textCase(nil)
 
         Rectangle()
-          .fill(Color(UIColor.systemGray4))
+          .fill(Color.primary.opacity(0.1))
           .frame(height: 1)
       }
       .padding(.top, 8)
