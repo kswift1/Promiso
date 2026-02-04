@@ -151,8 +151,6 @@ extension Settings {
       case accountInfoTapped
       /// 날짜 시간 표시 탭
       case dateTimeSettingsTapped
-      /// 24시간 형식 변경
-      case use24HourFormatChanged(Bool)
       /// 알림 설정 탭
       case notificationSettingsTapped
       /// 캘린더 설정 탭
@@ -261,11 +259,6 @@ extension Settings {
           case .dateTimeSettingsTapped:
             state.path.append(.dateTimeSettings(DateTimeSettings.Feature.State()))
             return .run { _ in await hapticFeedback.selection() }
-
-          case .use24HourFormatChanged(let value):
-            state.$use24HourFormat.withLock { $0 = value }
-            KoreanDateFormatters.use24HourFormat = value
-            return .none
 
           case .notificationSettingsTapped:
             state.path.append(.notificationSettings(
