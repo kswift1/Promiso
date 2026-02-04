@@ -75,79 +75,105 @@ struct CalendarPermissionBanner: View {
   let permissionStatus: CalendarAuthorizationStatus
   let onRequestPermission: () -> Void
   let onOpenSettings: () -> Void
+  let onDismiss: () -> Void
+
+  @State private var dontShowAgain = false
 
   var body: some View {
     switch permissionStatus {
     case .notDetermined:
-      requestPermissionBanner
+      bannerContent(
+        icon: "calendar.badge.plus",
+        iconColor: Color.pmindigo.n500,
+        title: "시스템 캘린더 연동",
+        message: "시스템 캘린더 일정을 함께 표시하세요",
+        buttonLabel: "연동하기",
+        buttonColor: Color.pmindigo.n500,
+        buttonAction: onRequestPermission
+      )
+    case .writeOnly:
+      bannerContent(
+        icon: "calendar.badge.exclamationmark",
+        iconColor: Color.pmpurple.n400,
+        title: "읽기 권한 필요",
+        message: "시스템 캘린더를 읽으려면 전체 액세스가 필요해요",
+        buttonLabel: "설정",
+        buttonColor: Color.pmpurple.n500,
+        buttonAction: onOpenSettings
+      )
     case .denied, .restricted:
-      deniedPermissionBanner
+      bannerContent(
+        icon: "calendar.badge.exclamationmark",
+        iconColor: Color.pmpurple.n600,
+        title: "캘린더 권한 필요",
+        message: "시스템 캘린더 접근을 위해선 권한이 필요해요",
+        buttonLabel: "설정",
+        buttonColor: Color.pmpurple.n600,
+        buttonAction: onOpenSettings
+      )
     default:
       EmptyView()
     }
   }
 
-  private var requestPermissionBanner: some View {
-    HStack(spacing: 12) {
-      Image(systemName: "calendar.badge.plus")
-        .font(.system(size: 24))
-        .foregroundColor(.blue)
+  private func bannerContent(
+    icon: String,
+    iconColor: Color,
+    title: String,
+    message: String,
+    buttonLabel: String,
+    buttonColor: Color,
+    buttonAction: @escaping () -> Void
+  ) -> some View {
+    VStack(spacing: 8) {
+      // 메인 컨텐츠
+      HStack(spacing: 12) {
+        Image(systemName: icon)
+          .font(.system(size: 24))
+          .foregroundColor(iconColor)
 
-      VStack(alignment: .leading, spacing: 2) {
-        Text("캘린더 연동")
-          .font(.system(size: 15, weight: .semibold))
-        Text("시스템 캘린더 일정을 함께 표시하세요")
-          .font(.system(size: 13))
+        VStack(alignment: .leading, spacing: 2) {
+          Text(title)
+            .font(.system(size: 15, weight: .semibold))
+          Text(message)
+            .font(.system(size: 13))
+            .foregroundColor(.secondary)
+        }
+
+        Spacer()
+
+        Button(buttonLabel) {
+          buttonAction()
+        }
+        .font(.system(size: 14, weight: .semibold))
+        .foregroundColor(.white)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(buttonColor)
+        .cornerRadius(8)
+      }
+
+      // 다시 보지 않기 체크박스 (우측 하단)
+      HStack {
+        Spacer()
+        Button {
+          dontShowAgain.toggle()
+          if dontShowAgain {
+            onDismiss()
+          }
+        } label: {
+          HStack(spacing: 4) {
+            Image(systemName: dontShowAgain ? "checkmark.square.fill" : "square")
+              .font(.system(size: 12))
+            Text("다시 보지 않기")
+              .font(.system(size: 11))
+          }
           .foregroundColor(.secondary)
+        }
       }
-
-      Spacer()
-
-      Button("연동하기") {
-        onRequestPermission()
-      }
-      .font(.system(size: 14, weight: .semibold))
-      .foregroundColor(.white)
-      .padding(.horizontal, 12)
-      .padding(.vertical, 6)
-      .background(Color.blue)
-      .cornerRadius(8)
     }
     .padding(16)
-    .background(Color.blue.opacity(0.08))
-    .cornerRadius(12)
-    .padding(.horizontal, 16)
-  }
-
-  private var deniedPermissionBanner: some View {
-    HStack(spacing: 12) {
-      Image(systemName: "calendar.badge.exclamationmark")
-        .font(.system(size: 24))
-        .foregroundColor(.orange)
-
-      VStack(alignment: .leading, spacing: 2) {
-        Text("캘린더 권한 필요")
-          .font(.system(size: 15, weight: .semibold))
-        Text("설정에서 캘린더 접근을 허용해주세요")
-          .font(.system(size: 13))
-          .foregroundColor(.secondary)
-      }
-
-      Spacer()
-
-      Button("설정") {
-        onOpenSettings()
-      }
-      .font(.system(size: 14, weight: .semibold))
-      .foregroundColor(.orange)
-      .padding(.horizontal, 12)
-      .padding(.vertical, 6)
-      .background(Color.orange.opacity(0.15))
-      .cornerRadius(8)
-    }
-    .padding(16)
-    .background(Color.orange.opacity(0.08))
-    .cornerRadius(12)
+    .adaptiveGlassBackground()
     .padding(.horizontal, 16)
   }
 }
@@ -205,7 +231,17 @@ struct CalendarPermissionBanner: View {
   CalendarPermissionBanner(
     permissionStatus: .notDetermined,
     onRequestPermission: {},
-    onOpenSettings: {}
+    onOpenSettings: {},
+    onDismiss: {}
+  )
+}
+
+#Preview("Permission Banner - Write Only") {
+  CalendarPermissionBanner(
+    permissionStatus: .writeOnly,
+    onRequestPermission: {},
+    onOpenSettings: {},
+    onDismiss: {}
   )
 }
 
@@ -213,6 +249,7 @@ struct CalendarPermissionBanner: View {
   CalendarPermissionBanner(
     permissionStatus: .denied,
     onRequestPermission: {},
-    onOpenSettings: {}
+    onOpenSettings: {},
+    onDismiss: {}
   )
 }

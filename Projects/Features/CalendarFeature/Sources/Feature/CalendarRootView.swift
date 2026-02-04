@@ -169,11 +169,13 @@ extension CalendarFeature {
     private var weekPromiseListContent: some View {
       LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
         // 캘린더 권한 배너
-        if !store.calendarPermissionStatus.canReadEvents {
+        if !store.calendarPermissionStatus.canReadEvents
+            && !store.hiddenCalendarBannerTypes.contains(store.calendarPermissionStatus) {
           CalendarPermissionBanner(
             permissionStatus: store.calendarPermissionStatus,
             onRequestPermission: { store.send(.view(.requestCalendarPermission)) },
-            onOpenSettings: { store.send(.view(.openSettings)) }
+            onOpenSettings: { store.send(.view(.openSettings)) },
+            onDismiss: { store.send(.view(.dismissCalendarBanner(store.calendarPermissionStatus))) }
           )
           .padding(.vertical, 8)
         }
