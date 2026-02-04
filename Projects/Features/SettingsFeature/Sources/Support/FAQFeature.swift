@@ -168,25 +168,24 @@ extension FAQ {
     // MARK: - FAQ List View
 
     private var faqListView: some View {
-      List {
-        // 카테고리 필터
-        Section {
+      ScrollView {
+        VStack(spacing: 16) {
+          // 카테고리 필터
           categoryFilterView
-            .listRowBackground(Color.clear)
-            .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 8, trailing: 16))
-        }
+            .padding(.horizontal, 16)
 
-        // FAQ 목록
-        ForEach(store.filteredFAQs) { faq in
-          Section {
-            faqRow(faq: faq)
-              .adaptiveGlassBackground()
-              .listRowBackground(Color.clear)
-              .listRowInsets(EdgeInsets())
+          // FAQ 목록
+          LazyVStack(spacing: 12) {
+            ForEach(store.filteredFAQs) { faq in
+              faqRow(faq: faq)
+                .adaptiveGlassCard()
+            }
           }
+          .padding(.horizontal, 16)
         }
+        .padding(.top, 12)
+        .padding(.bottom, 24)
       }
-      .listSectionSpacing(12)
     }
 
     // MARK: - Category Filter View

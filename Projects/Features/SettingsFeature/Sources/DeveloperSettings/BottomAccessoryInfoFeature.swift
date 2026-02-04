@@ -58,31 +58,57 @@ extension BottomAccessoryInfo {
     }
 
     public var body: some View {
-      List {
-        Section {
-          Toggle("LivePromise 표시", isOn: $store.isEnabled.sending(\.view.toggleChanged))
-        } footer: {
-          Text("TabBar 하단에 실시간 약속 추적 바를 표시합니다.")
-        }
+      ScrollView {
+        VStack(spacing: 16) {
+          // Toggle 섹션
+          VStack(alignment: .leading, spacing: 10) {
+            Toggle("LivePromise 표시", isOn: $store.isEnabled.sending(\.view.toggleChanged))
+              .padding(.horizontal, 16)
+              .padding(.vertical, 14)
+              .adaptiveGlassCard()
 
-        Section {
-          HStack {
-            Text("현재 API 모드")
-            Spacer()
-            Text(currentModeName)
-              .foregroundStyle(.secondary)
+            Text("TabBar 하단에 실시간 약속 추적 바를 표시합니다.")
+              .font(.system(size: 12))
+              .foregroundStyle(Color.pmtext.secondary)
+              .padding(.horizontal, 4)
           }
 
-          HStack {
-            Text("iOS 버전")
-            Spacer()
-            Text(UIDevice.current.systemVersion)
-              .foregroundStyle(.secondary)
+          // 디바이스 정보 섹션
+          VStack(alignment: .leading, spacing: 10) {
+            Text("디바이스 정보")
+              .font(.system(size: 16, weight: .semibold))
+              .padding(.horizontal, 4)
+
+            VStack(spacing: 0) {
+              HStack {
+                Text("현재 API 모드")
+                Spacer()
+                Text(currentModeName)
+                  .foregroundStyle(.secondary)
+              }
+              .padding(.horizontal, 16)
+              .padding(.vertical, 14)
+
+              Divider()
+                .background(Color.white.opacity(0.12))
+
+              HStack {
+                Text("iOS 버전")
+                Spacer()
+                Text(UIDevice.current.systemVersion)
+                  .foregroundStyle(.secondary)
+              }
+              .padding(.horizontal, 16)
+              .padding(.vertical, 14)
+            }
+            .adaptiveGlassCard()
           }
-        } header: {
-          Text("디바이스 정보")
         }
+        .padding(.horizontal, 16)
+        .padding(.top, 12)
+        .padding(.bottom, 24)
       }
+      .auroraBackground()
       .navigationTitle("LivePromise 설정")
       .navigationBarTitleDisplayMode(.inline)
     }

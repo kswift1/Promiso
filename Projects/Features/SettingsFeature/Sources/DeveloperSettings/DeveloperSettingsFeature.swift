@@ -163,73 +163,122 @@ extension DeveloperSettings {
     }
 
     public var body: some View {
-      List {
-        Section {
-          planRow(title: "무료 플랜", plan: .free)
-          planRow(title: "프로 플랜", plan: .pro)
-        } header: {
-          Text("관리자")
-        } footer: {
-          Text("프로 플랜에서 그룹별 알림 종류를 선택할 수 있어요.")
-        }
+      ScrollView {
+        VStack(spacing: 16) {
+          // 관리자 섹션
+          VStack(alignment: .leading, spacing: 10) {
+            Text("관리자")
+              .font(.system(size: 16, weight: .semibold))
+              .padding(.horizontal, 4)
 
-        Section {
-          Button {
-            store.send(.view(.liveActivityTestTapped))
-          } label: {
-            HStack {
-              Image(systemName: "waveform")
-                .foregroundStyle(.purple)
-                .frame(width: 28)
-              Text("LiveActivity 테스트")
-              Spacer()
-              Image(systemName: "chevron.right")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
+            VStack(spacing: 0) {
+              planRow(title: "무료 플랜", plan: .free)
+
+              Divider()
+                .background(Color.white.opacity(0.12))
+
+              planRow(title: "프로 플랜", plan: .pro)
             }
-          }
-          .foregroundStyle(.primary)
+            .adaptiveGlassCard()
 
-          Button {
-            store.send(.view(.bottomAccessoryInfoTapped))
-          } label: {
-            HStack {
-              Image(systemName: "rectangle.bottomhalf.inset.filled")
-                .foregroundStyle(.blue)
-                .frame(width: 28)
-              Text("LivePromise 설정")
-              Spacer()
-              Text(isLivePromiseEnabled ? "켜짐" : "꺼짐")
-                .font(.caption)
-                .foregroundStyle(isLivePromiseEnabled ? .green : .secondary)
-              Image(systemName: "chevron.right")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
+            Text("프로 플랜에서 그룹별 알림 종류를 선택할 수 있어요.")
+              .font(.system(size: 12))
+              .foregroundStyle(Color.pmtext.secondary)
+              .padding(.horizontal, 4)
+          }
+
+          // UI 테스트 섹션
+          VStack(alignment: .leading, spacing: 10) {
+            Text("UI 테스트")
+              .font(.system(size: 16, weight: .semibold))
+              .padding(.horizontal, 4)
+
+            VStack(spacing: 0) {
+              Button {
+                store.send(.view(.liveActivityTestTapped))
+              } label: {
+                HStack {
+                  Image(systemName: "waveform")
+                    .foregroundStyle(.purple)
+                    .frame(width: 28)
+                  Text("LiveActivity 테스트")
+                  Spacer()
+                  Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .contentShape(Rectangle())
+              }
+              .buttonStyle(.plain)
+              .foregroundStyle(.primary)
+
+              Divider()
+                .background(Color.white.opacity(0.12))
+
+              Button {
+                store.send(.view(.bottomAccessoryInfoTapped))
+              } label: {
+                HStack {
+                  Image(systemName: "rectangle.bottomhalf.inset.filled")
+                    .foregroundStyle(.blue)
+                    .frame(width: 28)
+                  Text("LivePromise 설정")
+                  Spacer()
+                  Text(isLivePromiseEnabled ? "켜짐" : "꺼짐")
+                    .font(.caption)
+                    .foregroundStyle(isLivePromiseEnabled ? .green : .secondary)
+                  Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .contentShape(Rectangle())
+              }
+              .buttonStyle(.plain)
+              .foregroundStyle(.primary)
             }
-          }
-          .foregroundStyle(.primary)
-        } header: {
-          Text("UI 테스트")
-        }
-
-        Section {
-          HStack {
-            Text("iOS 버전")
-            Spacer()
-            Text(UIDevice.current.systemVersion)
-              .foregroundStyle(.secondary)
+            .adaptiveGlassCard()
           }
 
-          HStack {
-            Text("앱 버전")
-            Spacer()
-            Text("\(AppConstants.App.version) (\(AppConstants.App.buildNumber))")
-              .foregroundStyle(.secondary)
+          // 디바이스 정보 섹션
+          VStack(alignment: .leading, spacing: 10) {
+            Text("디바이스 정보")
+              .font(.system(size: 16, weight: .semibold))
+              .padding(.horizontal, 4)
+
+            VStack(spacing: 0) {
+              HStack {
+                Text("iOS 버전")
+                Spacer()
+                Text(UIDevice.current.systemVersion)
+                  .foregroundStyle(.secondary)
+              }
+              .padding(.horizontal, 16)
+              .padding(.vertical, 14)
+
+              Divider()
+                .background(Color.white.opacity(0.12))
+
+              HStack {
+                Text("앱 버전")
+                Spacer()
+                Text("\(AppConstants.App.version) (\(AppConstants.App.buildNumber))")
+                  .foregroundStyle(.secondary)
+              }
+              .padding(.horizontal, 16)
+              .padding(.vertical, 14)
+            }
+            .adaptiveGlassCard()
           }
-        } header: {
-          Text("디바이스 정보")
         }
+        .padding(.horizontal, 16)
+        .padding(.top, 12)
+        .padding(.bottom, 24)
       }
+      .auroraBackground()
       .navigationTitle("개발자 설정")
       .navigationBarTitleDisplayMode(.inline)
       .onAppear { store.send(.view(.onAppear)) }

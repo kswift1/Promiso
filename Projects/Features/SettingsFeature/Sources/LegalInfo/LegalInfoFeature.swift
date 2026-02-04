@@ -95,8 +95,8 @@ extension LegalInfo {
     }
 
     public var body: some View {
-      List {
-        Section {
+      ScrollView {
+        VStack(spacing: 16) {
           VStack(spacing: 0) {
             Button {
               store.send(.view(.privacyPolicyTapped))
@@ -124,7 +124,7 @@ extension LegalInfo {
             .buttonStyle(.plain)
 
             Divider()
-              .padding(.leading, 56)
+              .background(Color.white.opacity(0.12))
 
             Button {
               store.send(.view(.termsOfServiceTapped))
@@ -151,13 +151,12 @@ extension LegalInfo {
             }
             .buttonStyle(.plain)
           }
-          .adaptiveGlassBackground()
-          .listRowBackground(Color.clear)
-          .listRowInsets(EdgeInsets())
+          .adaptiveGlassCard()
         }
+        .padding(.horizontal, 16)
+        .padding(.top, 12)
+        .padding(.bottom, 24)
       }
-      .scrollContentBackground(.hidden)
-      .background(Color.clear)
       .auroraBackground()
       .navigationTitle("약관 및 정책")
       .navigationBarTitleDisplayMode(.inline)

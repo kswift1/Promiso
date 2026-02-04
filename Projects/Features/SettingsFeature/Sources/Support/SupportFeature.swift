@@ -118,8 +118,8 @@ extension Support {
     }
 
     public var body: some View {
-      List {
-        Section {
+      ScrollView {
+        VStack(spacing: 16) {
           VStack(spacing: 0) {
             // FAQ
             Button {
@@ -148,7 +148,7 @@ extension Support {
             .buttonStyle(.plain)
 
             Divider()
-              .padding(.leading, 56)
+              .background(Color.white.opacity(0.12))
 
             // 오류 제보
             Button {
@@ -176,13 +176,12 @@ extension Support {
             }
             .buttonStyle(.plain)
           }
-          .adaptiveGlassBackground()
-          .listRowBackground(Color.clear)
-          .listRowInsets(EdgeInsets())
+          .adaptiveGlassCard()
         }
+        .padding(.horizontal, 16)
+        .padding(.top, 12)
+        .padding(.bottom, 24)
       }
-      .scrollContentBackground(.hidden)
-      .background(Color.clear)
       .auroraBackground()
       .navigationTitle("지원")
       .navigationBarTitleDisplayMode(.inline)

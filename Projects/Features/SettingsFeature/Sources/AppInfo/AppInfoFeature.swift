@@ -81,16 +81,16 @@ extension AppInfo {
     }
 
     public var body: some View {
-      List {
-        // 버전 정보 섹션
-        Section {
+      ScrollView {
+        VStack(spacing: 16) {
+          // 버전 정보 섹션
           VStack(spacing: 0) {
             infoRow(icon: "tag.fill", label: "앱 버전", value: store.appVersion)
 
             // Dev/Stage 환경에서만 환경 정보 표시
             if let environment = store.environment {
               Divider()
-                .padding(.leading, 56)
+                .background(Color.white.opacity(0.12))
 
               infoRow(
                 icon: "flask.fill",
@@ -100,38 +100,37 @@ extension AppInfo {
               )
             }
           }
-          .adaptiveGlassBackground()
-          .listRowBackground(Color.clear)
-          .listRowInsets(EdgeInsets())
-        }
+          .adaptiveGlassCard()
 
-        // 추가 정보 섹션
-        Section {
-          VStack(spacing: 0) {
-            linkRow(
-              icon: "book.fill",
-              title: "오픈소스 라이선스",
-              url: "https://github.com/kswift1/Promiso/blob/main/LICENSES.md"
-            )
+          // 추가 정보 섹션
+          VStack(alignment: .leading, spacing: 10) {
+            Text("추가 정보")
+              .font(.system(size: 16, weight: .semibold))
+              .padding(.horizontal, 4)
 
-            Divider()
-              .padding(.leading, 56)
+            VStack(spacing: 0) {
+              linkRow(
+                icon: "book.fill",
+                title: "오픈소스 라이선스",
+                url: "https://github.com/kswift1/Promiso/blob/main/LICENSES.md"
+              )
 
-            linkRow(
-              icon: "globe",
-              title: "GitHub",
-              url: "https://github.com/kswift1/Promiso"
-            )
+              Divider()
+                .background(Color.white.opacity(0.12))
+
+              linkRow(
+                icon: "globe",
+                title: "GitHub",
+                url: "https://github.com/kswift1/Promiso"
+              )
+            }
+            .adaptiveGlassCard()
           }
-          .adaptiveGlassBackground()
-          .listRowBackground(Color.clear)
-          .listRowInsets(EdgeInsets())
-        } header: {
-          Text("추가 정보")
         }
+        .padding(.horizontal, 16)
+        .padding(.top, 12)
+        .padding(.bottom, 24)
       }
-      .scrollContentBackground(.hidden)
-      .background(Color.clear)
       .auroraBackground()
       .navigationTitle("앱 정보")
       .navigationBarTitleDisplayMode(.inline)
