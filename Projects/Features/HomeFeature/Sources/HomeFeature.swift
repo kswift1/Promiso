@@ -147,18 +147,12 @@ extension Home {
             if !state.hasLoadedOnce {
               state.hasLoadedOnce = true
             }
-            // Firestore에서 직접 쿼리 + 알림 개수 조회
-            return .merge(
-              .send(.internal(.fetchPromises)),
-              .send(.internal(.fetchUnreadNotificationCount))
-            )
+            // Firestore에서 직접 쿼리 (성공 시 알림 개수도 조회됨)
+            return .send(.internal(.fetchPromises))
 
           case .refreshTriggered:
             // Pull-to-refresh도 동일하게 쿼리
-            return .merge(
-              .send(.internal(.fetchPromises)),
-              .send(.internal(.fetchUnreadNotificationCount))
-            )
+            return .send(.internal(.fetchPromises))
 
           case .todayPromiseTapped(let promise):
             // 즉시 이동 (캐시 hit면 전달, miss면 nil로 전달 → Detail에서 로드)
@@ -243,6 +237,9 @@ extension Home {
               // 위젯 캐시 업데이트
               WidgetDataManager.savePromises(promises.toWidgetData())
               WidgetDataManager.reloadWidgets()
+
+              // 약속 로드 성공 시 알림 개수도 조회
+              return .send(.internal(.fetchUnreadNotificationCount))
 
             case .failure(let error):
               state.promisesState = .failed(error)
