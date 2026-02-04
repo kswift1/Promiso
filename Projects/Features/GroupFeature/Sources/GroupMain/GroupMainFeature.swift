@@ -795,8 +795,11 @@ extension GroupMain {
           case .currentGroupResponse(.success(let group)):
             state.currentGroup = group
             state.pendingGroupId = nil
-            // 멤버 정보 먼저 fetch 후 promises subscribe
-            return .send(.internal(.fetchGroupMembers(groupId: group.id)))
+            // 그룹 로드 시 badge 클리어 후 멤버 정보 fetch
+            return .merge(
+              .send(.internal(.clearBadge(groupId: group.id))),
+              .send(.internal(.fetchGroupMembers(groupId: group.id)))
+            )
 
           case .currentGroupResponse(.failure(let error)):
             state.pendingGroupId = nil
