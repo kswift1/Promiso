@@ -68,7 +68,6 @@ public enum AppConfig {
       "NSSupportsLiveActivitiesFrequentUpdates": .boolean(true),
       // Kakao Maps SDK
       "KAKAO_NATIVE_APP_KEY": .string("$(KAKAO_NATIVE_APP_KEY)"),
-      "KAKAO_REST_API_KEY": .string("$(KAKAO_REST_API_KEY)"),
       // ProMotion Display Support (120Hz)
       "CADisableMinimumFrameDurationOnPhone": .boolean(true),
       // App Store 제출: 암호화 사용 여부 (표준 암호화만 사용)
