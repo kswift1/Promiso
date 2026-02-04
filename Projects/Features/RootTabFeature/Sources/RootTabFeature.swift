@@ -506,9 +506,22 @@ extension RootTab {
       self.store = store
     }
 
+    // MARK: - Computed Properties
+
+    /// 현재 설정된 테마 모드를 ColorScheme으로 변환
+    private var preferredColorScheme: ColorScheme? {
+      let themeMode = UserDefaults.standard.string(forKey: AppConstants.UserDefaults.preferredThemeMode) ?? AppConstants.ThemeMode.system.rawValue
+      switch AppConstants.ThemeMode(rawValue: themeMode) ?? .system {
+      case .system: return nil
+      case .light: return .light
+      case .dark: return .dark
+      }
+    }
+
     public var body: some View {
       tabViewWithLivePromise
         .tint(Color.pmbrand.primary)
+        .preferredColorScheme(preferredColorScheme)
         .onAppear { store.send(.onAppear) }
         .fullScreenCover(isPresented: $expandLivePromise, onDismiss: {
           // 스와이프로 dismiss 시 TCA 상태 정리

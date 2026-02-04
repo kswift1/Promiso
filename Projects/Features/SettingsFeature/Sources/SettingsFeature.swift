@@ -102,6 +102,7 @@ extension Settings {
     public enum Path {
       case accountInfo(AccountInfo.Feature)
       case dateTimeSettings(DateTimeSettings.Feature)
+      case themeSettings(ThemeSettings.Feature)
       case notificationSettings(NotificationSettings.Feature)
       case groupNotificationDetail(GroupNotificationDetail.Feature)
       case calendarSettings(CalendarSettings.Feature)
@@ -151,6 +152,8 @@ extension Settings {
       case accountInfoTapped
       /// 날짜 시간 표시 탭
       case dateTimeSettingsTapped
+      /// 화면 모드 탭
+      case themeSettingsTapped
       /// 알림 설정 탭
       case notificationSettingsTapped
       /// 캘린더 설정 탭
@@ -258,6 +261,10 @@ extension Settings {
 
           case .dateTimeSettingsTapped:
             state.path.append(.dateTimeSettings(DateTimeSettings.Feature.State()))
+            return .run { _ in await hapticFeedback.selection() }
+
+          case .themeSettingsTapped:
+            state.path.append(.themeSettings(ThemeSettings.Feature.State()))
             return .run { _ in await hapticFeedback.selection() }
 
           case .notificationSettingsTapped:
@@ -524,6 +531,8 @@ extension Settings {
           AccountInfo.RootView(store: accountInfoStore)
         case .dateTimeSettings(let store):
           DateTimeSettings.RootView(store: store)
+        case .themeSettings(let store):
+          ThemeSettings.RootView(store: store)
         case .notificationSettings(let store):
           NotificationSettings.RootView(store: store)
         case .groupNotificationDetail(let store):
@@ -731,6 +740,201 @@ extension DateTimeSettings {
           .font(.system(size: 12))
           .foregroundStyle(Color.pmtext.secondary)
           .padding(.horizontal, 4)
+      }
+    }
+  }
+}
+
+// MARK: - ThemeSettings Namespace
+
+public enum ThemeSettings {}
+
+// MARK: - ThemeSettings Feature
+
+extension ThemeSettings {
+
+  @Reducer
+  public struct Feature {
+    @Dependency(\.hapticFeedback) var hapticFeedback
+    @Dependency(\.notificationCenter) var notificationCenter
+
+    public init() {}
+
+    @ObservableState
+    public struct State: Equatable {
+      @Shared(.appStorage(AppConstants.UserDefaults.preferredThemeMode)) public var themeMode: String = AppConstants.ThemeMode.system.rawValue
+      /// 재시작 확인 Alert 표시 여부
+      var showRestartAlert: Bool = false
+      /// 변경하려는 값 (Alert 확인 시 적용)
+      var pendingValue: AppConstants.ThemeMode?
+
+      public init() {}
+    }
+
+    public enum Action: Equatable, Sendable {
+      case view(View)
+    }
+
+    public enum View: Equatable, Sendable {
+      case onAppear
+      case themeModeChanged(AppConstants.ThemeMode)
+      case restartConfirmed
+      case restartCancelled
+    }
+
+    public var body: some ReducerOf<Self> {
+      Reduce { state, action in
+        switch action {
+        case .view(let viewAction):
+          switch viewAction {
+          case .onAppear:
+            return .none
+
+          case .themeModeChanged(let mode):
+            // 값이 변경된 경우에만 Alert 표시
+            guard mode.rawValue != state.themeMode else { return .none }
+            state.pendingValue = mode
+            state.showRestartAlert = true
+            return .run { _ in
+              await hapticFeedback.medium()
+            }
+
+          case .restartConfirmed:
+            state.showRestartAlert = false
+            guard let newMode = state.pendingValue else { return .none }
+            state.$themeMode.withLock { $0 = newMode.rawValue }
+            state.pendingValue = nil
+            return .run { [notificationCenter] _ in
+              await hapticFeedback.success()
+              // 앱 재시작 요청 Notification 발송
+              notificationCenter.post(name: AppConstants.Notifications.appRestartRequested, object: nil)
+            }
+
+          case .restartCancelled:
+            state.showRestartAlert = false
+            state.pendingValue = nil
+            return .none
+          }
+        }
+      }
+    }
+  }
+
+  // MARK: - Root View
+
+  public struct RootView: View {
+    @Bindable private var store: StoreOf<Feature>
+
+    public init(store: StoreOf<Feature>) {
+      self.store = store
+    }
+
+    private var currentMode: AppConstants.ThemeMode {
+      AppConstants.ThemeMode(rawValue: store.themeMode) ?? .system
+    }
+
+    public var body: some View {
+      ScrollView {
+        VStack(spacing: 16) {
+          themeModeSection
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 12)
+        .padding(.bottom, 24)
+      }
+      .auroraBackground()
+      .navigationTitle("화면 모드")
+      .navigationBarTitleDisplayMode(.inline)
+      .onAppear {
+        store.send(.view(.onAppear))
+      }
+      .alert("앱 재시작", isPresented: Binding(
+        get: { store.showRestartAlert },
+        set: { if !$0 { store.send(.view(.restartCancelled)) } }
+      )) {
+        Button("취소", role: .cancel) {
+          store.send(.view(.restartCancelled))
+        }
+        Button("재시작") {
+          store.send(.view(.restartConfirmed))
+        }
+      } message: {
+        Text("화면 모드를 변경하려면 앱을 재시작해야 합니다.\n지금 재시작하시겠습니까?")
+      }
+    }
+
+    private var themeModeSection: some View {
+      VStack(alignment: .leading, spacing: 10) {
+        Text("화면 모드 설정")
+          .font(.system(size: 16, weight: .semibold))
+          .padding(.horizontal, 4)
+
+        VStack(spacing: 0) {
+          ForEach(AppConstants.ThemeMode.allCases, id: \.rawValue) { mode in
+            themeModeRow(mode: mode)
+            if mode != AppConstants.ThemeMode.allCases.last {
+              Divider()
+                .padding(.leading, 48)
+            }
+          }
+        }
+        .adaptiveGlassCard()
+
+        Text("앱 전체의 화면 모드를 설정합니다. 시스템 설정을 따르거나 라이트/다크 모드를 직접 선택할 수 있습니다.")
+          .font(.system(size: 12))
+          .foregroundStyle(Color.pmtext.secondary)
+          .padding(.horizontal, 4)
+      }
+    }
+
+    private func themeModeRow(mode: AppConstants.ThemeMode) -> some View {
+      Button {
+        store.send(.view(.themeModeChanged(mode)))
+      } label: {
+        HStack(spacing: 12) {
+          Image(systemName: iconName(for: mode))
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundStyle(Color.pmindigo.n500)
+            .frame(width: 20)
+
+          VStack(alignment: .leading, spacing: 2) {
+            Text(mode.displayName)
+              .font(.body)
+              .foregroundStyle(Color.pmtext.primary)
+
+            Text(description(for: mode))
+              .font(.caption)
+              .foregroundStyle(Color.pmtext.secondary)
+          }
+
+          Spacer()
+
+          if currentMode == mode {
+            Image(systemName: "checkmark")
+              .font(.system(size: 14, weight: .semibold))
+              .foregroundStyle(Color.pmindigo.n500)
+          }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .contentShape(Rectangle())
+      }
+      .buttonStyle(.plain)
+    }
+
+    private func iconName(for mode: AppConstants.ThemeMode) -> String {
+      switch mode {
+      case .system: return "iphone"
+      case .light: return "sun.max.fill"
+      case .dark: return "moon.fill"
+      }
+    }
+
+    private func description(for mode: AppConstants.ThemeMode) -> String {
+      switch mode {
+      case .system: return "기기 설정에 따라 자동 변경"
+      case .light: return "항상 밝은 화면으로 표시"
+      case .dark: return "항상 어두운 화면으로 표시"
       }
     }
   }

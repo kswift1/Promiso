@@ -68,6 +68,31 @@ feat: 알림 설정 기능을 추가했습니다 (명령형 아님)
 알림 설정 추가 (type 없음)
 ```
 
+### PR (Pull Request) 생성 규칙
+
+**Base 브랜치 지정 (필수)**:
+- PR 생성 시 **반드시 최신 release/ 브랜치를 base로 지정**
+- main 브랜치로 직접 PR 금지
+
+**방법**:
+```bash
+# 1. 최신 release 브랜치 확인
+git branch -r | grep 'origin/release/' | sort -V | tail -1
+
+# 2. PR 생성 시 base 지정
+gh pr create --base release/v{version} --title "..." --body "..."
+
+# 예시
+gh pr create --base release/v1.0.0 --title "feat: 새 기능 추가" --body "..."
+```
+
+**자동화**:
+```bash
+# 최신 release 브랜치 자동 감지 및 PR 생성
+latest_release=$(git branch -r | grep 'origin/release/' | sort -V | tail -1 | sed 's/.*origin\///')
+gh pr create --base "$latest_release" --title "..." --body "..."
+```
+
 ---
 
 ### Swift 코드 컨벤션
