@@ -1,5 +1,68 @@
 import Foundation
 
+// MARK: - App Config Manager (Actor)
+
+/// Remote Config 값을 캐싱하는 Thread-safe Actor
+actor AppConfigManager {
+  static let shared = AppConfigManager()
+
+  private var _config: AppConfigModel = .defaultConfig
+
+  // nonisolated(unsafe): Actor 밖에서 동기 접근 가능
+  // 쓰기는 Actor 내부에서만 수행하므로 안전함
+  nonisolated(unsafe) private(set) var cachedConfig: AppConfigModel = .defaultConfig
+
+  func updateConfig(_ config: AppConfigModel) async {
+    _config = config
+    cachedConfig = config
+  }
+
+  func getConfig() -> AppConfigModel {
+    cachedConfig
+  }
+}
+
+// MARK: - AppConfigModel (Public)
+
+/// Remote Config에서 가져오는 앱 설정 (Actor에서 사용)
+public struct AppConfigModel: Equatable, Sendable {
+  public let forceUpdateVersion: String
+  public let recommendedVersion: String
+  public let appStoreURL: String
+  public let privacyPolicyURL: String
+  public let termsOfServiceURL: String
+  public let supportEmail: String
+  public let notionFAQDatabaseId: String
+
+  public init(
+    forceUpdateVersion: String,
+    recommendedVersion: String,
+    appStoreURL: String,
+    privacyPolicyURL: String,
+    termsOfServiceURL: String,
+    supportEmail: String,
+    notionFAQDatabaseId: String
+  ) {
+    self.forceUpdateVersion = forceUpdateVersion
+    self.recommendedVersion = recommendedVersion
+    self.appStoreURL = appStoreURL
+    self.privacyPolicyURL = privacyPolicyURL
+    self.termsOfServiceURL = termsOfServiceURL
+    self.supportEmail = supportEmail
+    self.notionFAQDatabaseId = notionFAQDatabaseId
+  }
+
+  public static let defaultConfig = AppConfigModel(
+    forceUpdateVersion: "0.0.0",
+    recommendedVersion: "0.0.0",
+    appStoreURL: "https://apps.apple.com/app/id1625074042",
+    privacyPolicyURL: "https://www.notion.so/2fb655a898de813882b5eebcf35ccb3d",
+    termsOfServiceURL: "https://www.notion.so/2fb655a898de817f9f76fdce51f5a09f",
+    supportEmail: "kswen0203@icloud.com",
+    notionFAQDatabaseId: "356188caae734b5ebd73203557a34930"
+  )
+}
+
 // MARK: - App Constants
 
 /// 앱 전반에서 사용되는 상수들
@@ -9,20 +72,62 @@ public enum AppConstants {
 
   /// 앱 기본 정보
   public enum App {
+    // MARK: - Static Properties (변하지 않는 값)
+
     public static let name = "Promiso"
     public static let bundleId = "com.promiso.app"
     public static let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
     public static let buildNumber = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
-    public static let appStoreURL = URL(string: "https://apps.apple.com/app/id1625074042")!
-    public static let privacyPolicyURL = URL(string: "https://www.notion.so/2fb655a898de813882b5eebcf35ccb3d")!
-    public static let termsOfServiceURL = URL(string: "https://www.notion.so/2fb655a898de817f9f76fdce51f5a09f")!
-    public static let supportURL = URL(string: "https://promiso.com/support")!
-    public static let supportEmail = "kswen0203@icloud.com"
 
-    // MARK: - Notion FAQ
-    /// Notion FAQ 데이터베이스 ID (공개 설정이므로 하드코딩 가능)
-    /// Notion 페이지 URL에서 추출: https://notion.so/{database_id}?v=...
-    public static let notionFAQDatabaseId = "356188caae734b5ebd73203557a34930"
+    // MARK: - Remote Config 캐시 업데이트
+
+    /// Remote Config 값 업데이트 (앱 시작 시 호출)
+    public static func updateConfig(_ config: AppConfigModel) {
+      Task {
+        await AppConfigManager.shared.updateConfig(config)
+      }
+    }
+
+    // MARK: - Dynamic Properties (Remote Config)
+
+    /// 앱스토어 URL (동적 - Remote Config)
+    public static var appStoreURL: URL {
+      let config = AppConfigManager.shared.cachedConfig
+      return URL(string: config.appStoreURL) ?? URL(string: AppConfigModel.defaultConfig.appStoreURL)!
+    }
+
+    /// 개인정보처리방침 URL (동적 - Remote Config)
+    public static var privacyPolicyURL: URL {
+      let config = AppConfigManager.shared.cachedConfig
+      return URL(string: config.privacyPolicyURL) ?? URL(string: AppConfigModel.defaultConfig.privacyPolicyURL)!
+    }
+
+    /// 이용약관 URL (동적 - Remote Config)
+    public static var termsOfServiceURL: URL {
+      let config = AppConfigManager.shared.cachedConfig
+      return URL(string: config.termsOfServiceURL) ?? URL(string: AppConfigModel.defaultConfig.termsOfServiceURL)!
+    }
+
+    /// 지원 이메일 (동적 - Remote Config)
+    public static var supportEmail: String {
+      AppConfigManager.shared.cachedConfig.supportEmail
+    }
+
+    /// Notion FAQ 데이터베이스 ID (동적 - Remote Config)
+    public static var notionFAQDatabaseId: String {
+      AppConfigManager.shared.cachedConfig.notionFAQDatabaseId
+    }
+
+    // MARK: - Testing
+
+    #if DEBUG
+    /// 테스트용: 캐시 초기화
+    public static func resetConfigForTesting() {
+      Task {
+        await AppConfigManager.shared.updateConfig(.defaultConfig)
+      }
+    }
+    #endif
   }
 
   // MARK: - UI Constants

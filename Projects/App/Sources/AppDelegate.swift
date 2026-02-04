@@ -21,17 +21,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     configureKakaoMapsSDK()
     configureRemoteNotifications(application)
 
-// MARK: - Emulator 사용 시 주석 해제
-#if DEBUG
-//    connectToEmulators()
-#endif
-
     return true
-  }
-
-  func applicationDidBecomeActive(_ application: UIApplication) {
-    // 배지 카운트는 HomeFeature에서 실제 unreadCount로 동기화
-    // (여기서 0으로 초기화하지 않음)
   }
 
   // MARK: - Remote Notifications Configuration
@@ -103,27 +93,6 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     GIDSignIn.sharedInstance.handle(url)
   }
 
-#if DEBUG
-  private func connectToEmulators() {
-    let emulatorHost = "192.168.0.2"
-
-    // Auth Emulator
-    Auth.auth().useEmulator(withHost: emulatorHost, port: 9099)
-
-    // Firestore Emulator
-    let settings = Firestore.firestore().settings
-    settings.host = "\(emulatorHost):8081"
-    settings.isSSLEnabled = false
-    Firestore.firestore().settings = settings
-
-    // Functions Emulator
-    Functions.functions().useEmulator(withHost: emulatorHost, port: 5001)
-    Functions.functions(region: "asia-northeast3").useEmulator(withHost: emulatorHost, port: 5001)
-
-    // Storage Emulator
-    Storage.storage().useEmulator(withHost: emulatorHost, port: 9199)
-  }
-#endif
 }
 
 // MARK: - MessagingDelegate

@@ -87,7 +87,7 @@ extension DependencyValues {
 
 extension EmojiClient: DependencyKey {
   public static let liveValue: EmojiClient = {
-    let functions = Functions.functions(region: "asia-northeast3")
+    let functions = DefaultFunctionsProvider().functions
 
     return Self(
       generate: { title in

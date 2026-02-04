@@ -6,6 +6,7 @@
 //
 
 import ComposableArchitecture
+import FirebaseFunctions
 import Foundation
 import PromisoShared
 
@@ -36,87 +37,20 @@ public enum FAQClientError: Error, LocalizedError {
   }
 }
 
-// MARK: - Notion API Response Models
+// MARK: - Firebase Functions Response Models
 
-private struct NotionQueryResponse: Decodable {
-  let results: [NotionPage]
+private struct GetFAQsResponse: Decodable {
+  let faqs: [FAQItem]
 }
 
-private struct NotionPage: Decodable {
+private struct FAQItem: Decodable {
   let id: String
-  let createdTime: String
-  let properties: NotionProperties
-
-  enum CodingKeys: String, CodingKey {
-    case id
-    case createdTime = "created_time"
-    case properties
-  }
-}
-
-private struct NotionProperties: Decodable {
-  let question: NotionTitle?
-  let answer: NotionRichText?
-  let category: NotionSelect?
-  let order: NotionNumber?
-
-  enum CodingKeys: String, CodingKey {
-    case question = "Question"
-    case answer = "Answer"
-    case category = "Category"
-    case order = "Order"
-  }
-}
-
-private struct NotionTitle: Decodable {
-  let title: [NotionTextContent]
-}
-
-private struct NotionRichText: Decodable {
-  let richText: [NotionTextContent]
-
-  enum CodingKeys: String, CodingKey {
-    case richText = "rich_text"
-  }
-}
-
-private struct NotionTextContent: Decodable {
-  let plainText: String
-
-  enum CodingKeys: String, CodingKey {
-    case plainText = "plain_text"
-  }
-}
-
-private struct NotionSelect: Decodable {
-  let select: NotionSelectOption?
-}
-
-private struct NotionSelectOption: Decodable {
-  let name: String
-}
-
-private struct NotionNumber: Decodable {
-  let number: Int?
-}
-
-private struct NotionQueryRequest: Encodable {
-  let filter: NotionFilter
-  let sorts: [NotionSort]
-}
-
-private struct NotionFilter: Encodable {
-  let property: String
-  let checkbox: NotionCheckbox
-}
-
-private struct NotionCheckbox: Encodable {
-  let equals: Bool
-}
-
-private struct NotionSort: Encodable {
-  let property: String
-  let direction: String
+  let question: String
+  let answer: String
+  let category: String
+  let order: Int
+  let createdAt: String
+  let updatedAt: String
 }
 
 // MARK: - Test / Preview
@@ -135,75 +69,46 @@ extension FAQClient: TestDependencyKey {
 
 extension FAQClient: DependencyKey {
   public static let liveValue: FAQClient = {
+    let functions = DefaultFunctionsProvider().functions
     let decoder = JSONDecoder()
-    let encoder = JSONEncoder()
 
     return Self(
       fetchFAQs: {
         let databaseId = AppConstants.App.notionFAQDatabaseId
 
-        guard let apiKey = Bundle.main.object(forInfoDictionaryKey: "NOTION_API_KEY") as? String,
-              !apiKey.isEmpty,
-              databaseId != "YOUR_DATABASE_ID_HERE",
-              let url = URL(string: "https://api.notion.com/v1/databases/\(databaseId)/query")
-        else {
+        guard databaseId != "YOUR_DATABASE_ID_HERE" else {
           throw FAQClientError.invalidConfiguration
         }
 
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        request.setValue("2022-06-28", forHTTPHeaderField: "Notion-Version")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        // Firebase Functions 호출 (Notion API 프록시)
+        let callable = functions.httpsCallable("getFAQs")
+        let result = try await callable.call(["databaseId": databaseId])
 
-        let requestBody = NotionQueryRequest(
-          filter: NotionFilter(
-            property: "Active",
-            checkbox: NotionCheckbox(equals: true)
-          ),
-          sorts: [NotionSort(property: "Order", direction: "ascending")]
-        )
-
-        request.httpBody = try encoder.encode(requestBody)
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-          throw FAQClientError.fetchFailed(statusCode: 0, message: "Invalid response")
+        guard let data = try? JSONSerialization.data(withJSONObject: result.data) else {
+          throw FAQClientError.decodingFailed("Failed to serialize response data")
         }
 
-        if httpResponse.statusCode != 200 {
-          let errorBody = String(data: data, encoding: .utf8) ?? "Unknown error"
-          throw FAQClientError.fetchFailed(statusCode: httpResponse.statusCode, message: errorBody)
-        }
-
-        let notionResponse: NotionQueryResponse
+        let response: GetFAQsResponse
         do {
-          notionResponse = try decoder.decode(NotionQueryResponse.self, from: data)
+          response = try decoder.decode(GetFAQsResponse.self, from: data)
         } catch {
           throw FAQClientError.decodingFailed(error.localizedDescription)
         }
 
+        // ISO8601 날짜 포맷터 (Notion의 created_time 형식)
         let dateFormatter = ISO8601DateFormatter()
         dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
 
-        return notionResponse.results.compactMap { page -> FAQModel? in
-          guard let question = page.properties.question?.title.first?.plainText else {
-            return nil
-          }
-
-          let answer = page.properties.answer?.richText.map(\.plainText).joined() ?? ""
-          let category = page.properties.category?.select?.name
-          let order = page.properties.order?.number ?? 0
-          let createdAt = dateFormatter.date(from: page.createdTime) ?? Date()
+        return response.faqs.map { item -> FAQModel in
+          let createdAt = dateFormatter.date(from: item.createdAt) ?? Date()
 
           return FAQModel(
-            id: page.id,
-            question: question,
-            answer: answer,
-            category: category,
-            order: order,
-            isActive: true,
+            id: item.id,
+            question: item.question,
+            answer: item.answer,
+            category: item.category,
+            order: item.order,
+            isActive: true, // 서버에서 Active=true만 반환
             createdAt: createdAt
           )
         }

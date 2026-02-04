@@ -115,7 +115,7 @@ public final class NotificationRemoteDataSource: @unchecked Sendable {
   ///   - userId: 사용자 ID
   ///   - token: Push to Start 토큰
   public func saveLiveActivityPushToStartToken(userId: String, token: String) async throws {
-    let functions = Functions.functions(region: FirebaseConstants.region)
+    let functions = DefaultFunctionsProvider().functions
     let callable = functions.httpsCallable(FirebaseConstants.registerPushToStartToken)
 
     let callableData: [String: Any] = [

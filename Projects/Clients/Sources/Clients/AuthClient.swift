@@ -488,7 +488,7 @@ extension AuthClient: DependencyKey {
         }
 
         do {
-          let functions = Functions.functions(region: FirebaseConstants.region)
+          let functions = DefaultFunctionsProvider().functions
           let deviceId = UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
 
           let result = try await functions
@@ -525,7 +525,7 @@ extension AuthClient: DependencyKey {
         // 토큰 갱신 (만료된 토큰으로 인한 UNAUTHENTICATED 방지)
         _ = try await currentUser.getIDToken(forcingRefresh: true)
 
-        let functions = Functions.functions(region: FirebaseConstants.region)
+        let functions = DefaultFunctionsProvider().functions
 
         do {
           _ = try await functions
