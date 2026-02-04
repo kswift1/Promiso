@@ -541,7 +541,9 @@ export async function sendPushNotificationInternal(params: {
 
       await updateBatch.commit();
     }
-    console.log(`✅ Updated isDelivered for ${refsToUpdate.length} notifications`);
+    console.log(
+      `✅ Updated isDelivered for ${refsToUpdate.length} notifications`
+    );
   }
 
   return {
