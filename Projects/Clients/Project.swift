@@ -15,7 +15,11 @@ let project = Project(
       resources: ["Resources/**"],
       dependencies: [
         .project(target: "PromisoShared", path: "../Shared"),
-        .project(target: "ExternalDependency", path: "../ExternalDependency")
+        .project(target: "ExternalDependency", path: "../ExternalDependency"),
+        // Clarity는 ExternalDependency에 포함되어 있지만,
+        // @_exported import 시 다른 타입과 충돌하므로
+        // ClarityClient에서만 직접 import해서 사용
+        .external(name: "Clarity")
       ]
     ),
     .target(
