@@ -59,6 +59,8 @@ extension Home {
       // MARK: Notification
       /// 안 읽은 알림 개수
       var unreadNotificationCount: Int = 0
+      /// 알림 개수 조회 재시도 횟수
+      var unreadCountRetryCount: Int = 0
 
       // MARK: Navigation
       /// 네비게이션 경로 (약속 상세)
@@ -250,9 +252,20 @@ extension Home {
             return .none
 
           case .fetchUnreadNotificationCount:
-            // 로그인 상태일 때만 조회
             let userId = state.currentUser.userId
-            guard !userId.isEmpty else { return .none }
+            // userId가 아직 없으면 0.5초 후 재시도 (최대 3회)
+            if userId.isEmpty {
+              let retryCount = state.unreadCountRetryCount
+              if retryCount < 3 {
+                state.unreadCountRetryCount = retryCount + 1
+                return .run { send in
+                  try? await Task.sleep(for: .milliseconds(500))
+                  await send(.internal(.fetchUnreadNotificationCount))
+                }
+              }
+              return .none
+            }
+            state.unreadCountRetryCount = 0
             return .run { [notificationClient] send in
               do {
                 let count = try await notificationClient.getUnreadCount(userId)
