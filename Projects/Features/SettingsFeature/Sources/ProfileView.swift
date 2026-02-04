@@ -72,6 +72,34 @@ extension Settings {
                 .background(Color.white.opacity(0.12))
 
               Button {
+                store.send(.view(.themeSettingsTapped))
+              } label: {
+                HStack(spacing: 16) {
+                  Image(systemName: "paintbrush.fill")
+                    .font(.body)
+                    .foregroundStyle(Color.pmindigo.n500)
+                    .frame(width: 24, height: 24)
+
+                  Text("화면 모드")
+                    .font(.body)
+                    .foregroundStyle(Color.pmtext.primary)
+
+                  Spacer()
+
+                  Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(Color.pmgray.n400)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .contentShape(Rectangle())
+              }
+              .buttonStyle(.plain)
+
+              Divider()
+                .background(Color.white.opacity(0.12))
+
+              Button {
                 store.send(.view(.notificationSettingsTapped))
               } label: {
                 HStack(spacing: 16) {

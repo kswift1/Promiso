@@ -13,6 +13,11 @@ struct PromisoApp: App {
   init() {
     // 앱 시작 시 시간 형식 설정 로드
     KoreanDateFormatters.use24HourFormat = UserDefaults.standard.bool(forKey: AppConstants.UserDefaults.use24HourFormat)
+
+    // 테마 모드 기본값 설정 (최초 실행 시)
+    if UserDefaults.standard.string(forKey: AppConstants.UserDefaults.preferredThemeMode) == nil {
+      UserDefaults.standard.set(AppConstants.ThemeMode.system.rawValue, forKey: AppConstants.UserDefaults.preferredThemeMode)
+    }
   }
   @Environment(\.scenePhase) private var scenePhase
 
