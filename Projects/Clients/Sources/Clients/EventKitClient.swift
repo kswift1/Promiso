@@ -294,11 +294,7 @@ extension EventKitClient: DependencyKey {
         event.url = newEvent.url  // Promiso 식별 URL
         event.calendar = defaultCalendar
 
-        // 4. 알림 추가 (30분 전)
-        let alarm = EKAlarm(relativeOffset: -30 * 60)  // 30분 전
-        event.addAlarm(alarm)
-
-        // 5. 저장
+        // 4. 저장
         do {
           try eventStore.save(event, span: .thisEvent)
         } catch {
