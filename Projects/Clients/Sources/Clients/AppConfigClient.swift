@@ -6,20 +6,57 @@
 //
 
 import ComposableArchitecture
+import FirebaseRemoteConfig
 import Foundation
 import PromisoShared
 
 // MARK: - Model
 
-/// 앱 설정 정보 (버전 체크 등)
+/// Firebase Remote Config에서 가져오는 앱 설정
 public struct AppConfigModel: Equatable, Sendable {
+  // 버전 관리
   public let forceUpdateVersion: String
   public let recommendedVersion: String
 
-  public init(forceUpdateVersion: String, recommendedVersion: String) {
+  // 외부 링크
+  public let appStoreURL: String
+  public let privacyPolicyURL: String
+  public let termsOfServiceURL: String
+
+  // 지원
+  public let supportEmail: String
+
+  // Notion
+  public let notionFAQDatabaseId: String
+
+  public init(
+    forceUpdateVersion: String,
+    recommendedVersion: String,
+    appStoreURL: String,
+    privacyPolicyURL: String,
+    termsOfServiceURL: String,
+    supportEmail: String,
+    notionFAQDatabaseId: String
+  ) {
     self.forceUpdateVersion = forceUpdateVersion
     self.recommendedVersion = recommendedVersion
+    self.appStoreURL = appStoreURL
+    self.privacyPolicyURL = privacyPolicyURL
+    self.termsOfServiceURL = termsOfServiceURL
+    self.supportEmail = supportEmail
+    self.notionFAQDatabaseId = notionFAQDatabaseId
   }
+
+  /// Fallback 기본값
+  public static let defaultConfig = AppConfigModel(
+    forceUpdateVersion: "0.0.0",
+    recommendedVersion: "0.0.0",
+    appStoreURL: "https://apps.apple.com/app/id1625074042",
+    privacyPolicyURL: "https://www.notion.so/2fb655a898de813882b5eebcf35ccb3d",
+    termsOfServiceURL: "https://www.notion.so/2fb655a898de817f9f76fdce51f5a09f",
+    supportEmail: "kswen0203@icloud.com",
+    notionFAQDatabaseId: "356188caae734b5ebd73203557a34930"
+  )
 }
 
 /// 버전 체크 결과
@@ -31,7 +68,7 @@ public enum VersionCheckResult: Equatable, Sendable {
 
 // MARK: - Client
 
-/// Notion에서 앱 설정 정보를 가져오는 클라이언트
+/// Firebase Remote Config에서 앱 설정 정보를 가져오는 클라이언트
 public struct AppConfigClient: Sendable {
   /// 앱 설정 조회
   public var fetchConfig: @Sendable () async throws -> AppConfigModel
@@ -44,66 +81,42 @@ public struct AppConfigClient: Sendable {
 // MARK: - Error
 
 public enum AppConfigClientError: Error, LocalizedError {
-  case fetchFailed(statusCode: Int, message: String)
-  case decodingFailed(String)
-  case invalidConfiguration
+  case fetchFailed(String)
+  case invalidVersion(String)
 
   public var errorDescription: String? {
     switch self {
-    case .fetchFailed:
-      return "앱 설정을 불러오는데 실패했습니다."
-    case .decodingFailed:
-      return "앱 설정 데이터를 읽는데 실패했습니다."
-    case .invalidConfiguration:
-      return "앱 설정이 올바르지 않습니다."
+    case .fetchFailed(let message):
+      return "앱 설정을 불러오는데 실패했습니다: \(message)"
+    case .invalidVersion(let version):
+      return "유효하지 않은 버전 형식입니다: \(version)"
     }
   }
 }
 
-// MARK: - Notion API Response Models
+// MARK: - Remote Config Keys
 
-private struct NotionQueryResponse: Decodable {
-  let results: [NotionPage]
+private enum RemoteConfigKeys {
+  static let forceUpdateVersion = "forceUpdateVersion"
+  static let recommendedVersion = "recommendedVersion"
+  static let appStoreURL = "appStoreURL"
+  static let privacyPolicyURL = "privacyPolicyURL"
+  static let termsOfServiceURL = "termsOfServiceURL"
+  static let supportEmail = "supportEmail"
+  static let notionFAQDatabaseId = "notionFAQDatabaseId"
 }
 
-private struct NotionPage: Decodable {
-  let id: String
-  let properties: NotionProperties
-}
-
-private struct NotionProperties: Decodable {
-  let key: NotionTitle?
-  let value: NotionRichText?
-
-  enum CodingKeys: String, CodingKey {
-    case key = "Key"
-    case value = "Value"
-  }
-}
-
-private struct NotionTitle: Decodable {
-  let title: [NotionTextContent]
-}
-
-private struct NotionRichText: Decodable {
-  let richText: [NotionTextContent]
-
-  enum CodingKeys: String, CodingKey {
-    case richText = "rich_text"
-  }
-}
-
-private struct NotionTextContent: Decodable {
-  let plainText: String
-
-  enum CodingKeys: String, CodingKey {
-    case plainText = "plain_text"
-  }
-}
-
-// MARK: - Version Comparison
+// MARK: - Version Validation & Comparison
 
 private extension String {
+  /// 버전 문자열 검증 (x.y.z 형식)
+  func isValidVersion() -> Bool {
+    let pattern = #"^\d+\.\d+\.\d+$"#
+    guard let regex = try? NSRegularExpression(pattern: pattern) else { return false }
+    let range = NSRange(self.startIndex..., in: self)
+    return regex.firstMatch(in: self, range: range) != nil
+  }
+
   /// 버전 문자열 비교 (예: "1.0.0" < "1.1.0")
   func isVersionLessThan(_ other: String) -> Bool {
     let lhs = self.split(separator: ".").compactMap { Int($0) }
@@ -125,7 +138,7 @@ private extension String {
 extension AppConfigClient: TestDependencyKey {
   public static let previewValue = Self(
     fetchConfig: {
-      AppConfigModel(forceUpdateVersion: "1.0.0", recommendedVersion: "1.0.0")
+      .defaultConfig
     },
     checkVersion: {
       .upToDate
@@ -136,7 +149,7 @@ extension AppConfigClient: TestDependencyKey {
   )
 
   public static let testValue = Self(
-    fetchConfig: unimplemented("\(Self.self).fetchConfig", placeholder: AppConfigModel(forceUpdateVersion: "0.0.0", recommendedVersion: "0.0.0")),
+    fetchConfig: unimplemented("\(Self.self).fetchConfig", placeholder: .defaultConfig),
     checkVersion: unimplemented("\(Self.self).checkVersion", placeholder: .upToDate),
     checkVersionForced: unimplemented("\(Self.self).checkVersionForced", placeholder: .upToDate)
   )
@@ -146,7 +159,28 @@ extension AppConfigClient: TestDependencyKey {
 
 extension AppConfigClient: DependencyKey {
   public static let liveValue: AppConfigClient = {
-    let decoder = JSONDecoder()
+    let remoteConfig = RemoteConfig.remoteConfig()
+
+    // Remote Config 설정
+    let settings = RemoteConfigSettings()
+    #if DEBUG
+    settings.minimumFetchInterval = 0  // 개발용: 즉시 fetch
+    #else
+    settings.minimumFetchInterval = 3600  // 프로덕션: 1시간
+    #endif
+    remoteConfig.configSettings = settings
+
+    // 기본값 설정
+    let defaults: [String: NSObject] = [
+      RemoteConfigKeys.forceUpdateVersion: "0.0.0" as NSString,
+      RemoteConfigKeys.recommendedVersion: "0.0.0" as NSString,
+      RemoteConfigKeys.appStoreURL: "https://apps.apple.com/app/id1625074042" as NSString,
+      RemoteConfigKeys.privacyPolicyURL: "https://www.notion.so/2fb655a898de813882b5eebcf35ccb3d" as NSString,
+      RemoteConfigKeys.termsOfServiceURL: "https://www.notion.so/2fb655a898de817f9f76fdce51f5a09f" as NSString,
+      RemoteConfigKeys.supportEmail: "kswen0203@icloud.com" as NSString,
+      RemoteConfigKeys.notionFAQDatabaseId: "356188caae734b5ebd73203557a34930" as NSString
+    ]
+    remoteConfig.setDefaults(defaults)
 
     // 캐시된 설정 (한 세션에 한 번만 조회)
     actor ConfigCache {
@@ -159,124 +193,82 @@ extension AppConfigClient: DependencyKey {
     let cache = ConfigCache()
 
     @Sendable
-    func fetchConfigFromNotion() async throws -> AppConfigModel {
+    func fetchConfigFromRemoteConfig() async throws -> AppConfigModel {
       // 캐시 확인
       if let cached = await cache.get() {
         return cached
       }
 
-      let databaseId = AppConstants.App.notionAppConfigDatabaseId
-      let apiKey = Bundle.main.object(forInfoDictionaryKey: "NOTION_API_KEY") as? String
-
-      guard let apiKey = apiKey,
-            !apiKey.isEmpty,
-            !databaseId.isEmpty
-      else {
-        return AppConfigModel(forceUpdateVersion: "0.0.0", recommendedVersion: "0.0.0")
-      }
-
-      guard let url = URL(string: "https://api.notion.com/v1/databases/\(databaseId)/query") else {
-        throw AppConfigClientError.invalidConfiguration
-      }
-
-      var request = URLRequest(url: url)
-      request.httpMethod = "POST"
-      request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-      request.setValue("2022-06-28", forHTTPHeaderField: "Notion-Version")
-      request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-      request.httpBody = "{}".data(using: .utf8)
-
-      let (data, response) = try await URLSession.shared.data(for: request)
-
-      guard let httpResponse = response as? HTTPURLResponse else {
-        throw AppConfigClientError.fetchFailed(statusCode: 0, message: "Invalid response")
-      }
-
-      if httpResponse.statusCode != 200 {
-        let errorBody = String(data: data, encoding: .utf8) ?? "Unknown error"
-        throw AppConfigClientError.fetchFailed(statusCode: httpResponse.statusCode, message: errorBody)
-      }
-
-      let notionResponse: NotionQueryResponse
+      // Remote Config fetch
       do {
-        notionResponse = try decoder.decode(NotionQueryResponse.self, from: data)
+        let status = try await remoteConfig.fetchAndActivate()
+
+        // 값 가져오기 (setDefaults에서 기본값 설정됨)
+        let config = AppConfigModel(
+          forceUpdateVersion: remoteConfig.configValue(forKey: RemoteConfigKeys.forceUpdateVersion).stringValue,
+          recommendedVersion: remoteConfig.configValue(forKey: RemoteConfigKeys.recommendedVersion).stringValue,
+          appStoreURL: remoteConfig.configValue(forKey: RemoteConfigKeys.appStoreURL).stringValue,
+          privacyPolicyURL: remoteConfig.configValue(forKey: RemoteConfigKeys.privacyPolicyURL).stringValue,
+          termsOfServiceURL: remoteConfig.configValue(forKey: RemoteConfigKeys.termsOfServiceURL).stringValue,
+          supportEmail: remoteConfig.configValue(forKey: RemoteConfigKeys.supportEmail).stringValue,
+          notionFAQDatabaseId: remoteConfig.configValue(forKey: RemoteConfigKeys.notionFAQDatabaseId).stringValue
+        )
+
+        await cache.set(config)
+        return config
       } catch {
-        throw AppConfigClientError.decodingFailed(error.localizedDescription)
+        // Fetch 실패 시 기본값 반환
+        return .defaultConfig
+      }
+    }
+
+    @Sendable
+    func performVersionCheck(forcingFetch: Bool) async -> VersionCheckResult {
+      if forcingFetch {
+        await cache.clear()
       }
 
-      // Key-Value 파싱
-      var configDict: [String: String] = [:]
-      for page in notionResponse.results {
-        guard let key = page.properties.key?.title.first?.plainText,
-              let value = page.properties.value?.richText.first?.plainText
-        else { continue }
-        configDict[key] = value
+      do {
+        let config = try await fetchConfigFromRemoteConfig()
+        let currentVersion = AppConstants.App.version
+
+        // 버전 검증
+        guard config.forceUpdateVersion.isValidVersion(),
+              config.recommendedVersion.isValidVersion() else {
+          // 유효하지 않은 버전은 무시하고 업데이트 불필요로 처리
+          return .upToDate
+        }
+
+        // 1. 강제 업데이트 체크
+        if currentVersion.isVersionLessThan(config.forceUpdateVersion) {
+          return .forceUpdate(
+            currentVersion: currentVersion,
+            requiredVersion: config.forceUpdateVersion
+          )
+        }
+
+        // 2. 권장 업데이트 체크
+        if currentVersion.isVersionLessThan(config.recommendedVersion) {
+          return .recommendUpdate(
+            currentVersion: currentVersion,
+            recommendedVersion: config.recommendedVersion
+          )
+        }
+
+        return .upToDate
+      } catch {
+        // 네트워크 오류 시 업데이트 체크 스킵
+        return .upToDate
       }
-
-      let config = AppConfigModel(
-        forceUpdateVersion: configDict["forceUpdateVersion"] ?? "0.0.0",
-        recommendedVersion: configDict["recommendedVersion"] ?? "0.0.0"
-      )
-
-      await cache.set(config)
-      return config
     }
 
     return Self(
-      fetchConfig: fetchConfigFromNotion,
+      fetchConfig: fetchConfigFromRemoteConfig,
       checkVersion: {
-        let currentVersion = AppConstants.App.version
-
-        do {
-          let config = try await fetchConfigFromNotion()
-
-          // 1. 강제 업데이트 체크
-          if currentVersion.isVersionLessThan(config.forceUpdateVersion) {
-            return .forceUpdate(
-              currentVersion: currentVersion,
-              requiredVersion: config.forceUpdateVersion
-            )
-          }
-
-          // 2. 권장 업데이트 체크
-          if currentVersion.isVersionLessThan(config.recommendedVersion) {
-            return .recommendUpdate(
-              currentVersion: currentVersion,
-              recommendedVersion: config.recommendedVersion
-            )
-          }
-
-          return .upToDate
-        } catch {
-          // 네트워크 오류 시 업데이트 체크 스킵
-          return .upToDate
-        }
+        await performVersionCheck(forcingFetch: false)
       },
       checkVersionForced: {
-        await cache.clear()
-        let currentVersion = AppConstants.App.version
-
-        do {
-          let config = try await fetchConfigFromNotion()
-
-          if currentVersion.isVersionLessThan(config.forceUpdateVersion) {
-            return .forceUpdate(
-              currentVersion: currentVersion,
-              requiredVersion: config.forceUpdateVersion
-            )
-          }
-
-          if currentVersion.isVersionLessThan(config.recommendedVersion) {
-            return .recommendUpdate(
-              currentVersion: currentVersion,
-              recommendedVersion: config.recommendedVersion
-            )
-          }
-
-          return .upToDate
-        } catch {
-          return .upToDate
-        }
+        await performVersionCheck(forcingFetch: true)
       }
     )
   }()

@@ -404,6 +404,21 @@ extension AppEntry {
       self.store = store
     }
 
+    // MARK: - Alert Strings
+
+    private enum AlertStrings {
+      static let forceUpdateTitle = "업데이트 필요"
+      static let recommendUpdateTitle = "새 버전 안내"
+
+      static func forceUpdateMessage(current: String, required: String) -> String {
+        "앱을 계속 사용하려면 최신 버전으로 업데이트해주세요.\n\n현재 버전: \(current)\n필요 버전: \(required)"
+      }
+
+      static func recommendUpdateMessage(current: String, recommended: String) -> String {
+        "더 나은 경험을 위해 최신 버전으로 업데이트하세요.\n\n현재 버전: \(current)\n최신 버전: \(recommended)"
+      }
+    }
+
     public var body: some View {
       ZStack {
         contentView
@@ -449,9 +464,9 @@ extension AppEntry {
     private var updateAlertTitle: String {
       switch store.updateAlert {
       case .forceUpdate:
-        return "업데이트 필요"
+        return AlertStrings.forceUpdateTitle
       case .recommendUpdate:
-        return "새 버전 안내"
+        return AlertStrings.recommendUpdateTitle
       case .none:
         return ""
       }
@@ -460,9 +475,9 @@ extension AppEntry {
     private func updateAlertMessage(for state: Feature.UpdateAlertState) -> String {
       switch state {
       case .forceUpdate(let current, let required):
-        return "앱을 계속 사용하려면 최신 버전으로 업데이트해주세요.\n\n현재 버전: \(current)\n필요 버전: \(required)"
+        return AlertStrings.forceUpdateMessage(current: current, required: required)
       case .recommendUpdate(let current, let recommended):
-        return "더 나은 경험을 위해 최신 버전으로 업데이트하세요.\n\n현재 버전: \(current)\n최신 버전: \(recommended)"
+        return AlertStrings.recommendUpdateMessage(current: current, recommended: recommended)
       }
     }
 
