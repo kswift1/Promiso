@@ -96,3 +96,8 @@ export {generateWidgetToken} from "./functions/widgetToken";
 // ============================================================================
 export {getFAQs} from "./functions/faq";
 
+// ============================================================================
+// Kakao Map Functions (Kakao REST API 프록시)
+// ============================================================================
+export {searchPlaces} from "./functions/kakaoMap";
+
