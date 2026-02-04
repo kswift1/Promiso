@@ -186,7 +186,7 @@ extension GroupMain {
           }
         ],
         bottomPadding: fabBottomPadding,
-        isVisible: !store.groupBarItems.isEmpty
+        isVisible: !store.isOnboardingMode
       )
     }
 

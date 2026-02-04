@@ -91,9 +91,7 @@ struct MorphingFABMenu: View {
       .padding(.bottom, bottomPadding)
     }
     .opacity(isVisible ? 1 : 0)
-    .scaleEffect(isVisible ? 1 : 0.5)
     .allowsHitTesting(isVisible)
-    .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isVisible)
   }
 
   // MARK: - Collapsed Label (FAB Button)
