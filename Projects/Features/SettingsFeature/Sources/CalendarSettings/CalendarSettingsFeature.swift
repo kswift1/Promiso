@@ -367,19 +367,11 @@ extension CalendarSettings {
 
       return HStack(spacing: 12) {
         // 그룹 이미지
-        if let imageUrl = group.imageUrl, let url = URL(string: imageUrl) {
-          AsyncImage(url: url) { image in
-            image
-              .resizable()
-              .scaledToFill()
-          } placeholder: {
-            groupPlaceholder(name: group.name)
-          }
-          .frame(width: 36, height: 36)
-          .clipShape(Circle())
-        } else {
-          groupPlaceholder(name: group.name)
-        }
+        GroupThumbnailView(
+          imageUrl: group.imageUrl,
+          name: group.name,
+          size: 36
+        )
 
         Text(group.name)
           .font(.subheadline)
@@ -405,17 +397,6 @@ extension CalendarSettings {
       }
       .padding(.horizontal, 16)
       .padding(.vertical, 12)
-    }
-
-    private func groupPlaceholder(name: String) -> some View {
-      Circle()
-        .fill(Color.pmindigo.n100)
-        .frame(width: 36, height: 36)
-        .overlay {
-          Text(String(name.prefix(1)))
-            .font(.system(size: 14, weight: .semibold))
-            .foregroundStyle(Color.pmindigo.n600)
-        }
     }
 
     // MARK: - Permission Row
