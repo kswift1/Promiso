@@ -190,7 +190,8 @@ extension AppEntry {
             return .merge(
               .send(.internal(.startSessionCheck)),
               .send(.internal(.subscribeFCMToken)),
-              .send(.internal(.subscribePushNotificationTap))
+              .send(.internal(.subscribePushNotificationTap)),
+              .send(.internal(.subscribeAppRestart))
             )
 
           case .startSessionCheck:
@@ -320,12 +321,8 @@ extension AppEntry {
 
           case .appRestartRequested:
             // 앱 상태 리셋 - Splash부터 다시 시작
-            state.splash = .visible
-            state.destination = nil
-            state.pendingDeeplink = nil
-            state.pendingUserForMain = nil
-            state.providerProfileImageURL = nil
-            state.notificationPermission = nil
+            state.reset()
+            
             // 시간 포맷 다시 로드
             KoreanDateFormatters.use24HourFormat = userDefaultsClient.boolForKey(
               AppConstants.UserDefaults.use24HourFormat
@@ -619,3 +616,14 @@ extension AppEntry.Feature {
   }
 }
  
+
+private extension AppEntry.Feature.State {
+  mutating func reset() {
+    self.splash = .visible
+    self.destination = nil
+    self.pendingDeeplink = nil
+    self.pendingUserForMain = nil
+    self.providerProfileImageURL = nil
+    self.notificationPermission = nil
+  }
+}
