@@ -38,6 +38,7 @@ public enum ExternalDeps: CaseIterable {
         "FirebaseCore",
         "FirebaseAuth",
         "FirebaseFirestore",
+        "FirebaseAnalytics",
         "FirebaseCrashlytics",
         "FirebaseStorage",
         "FirebaseFunctions",

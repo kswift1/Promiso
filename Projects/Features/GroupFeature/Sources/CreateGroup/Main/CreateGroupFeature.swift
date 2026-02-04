@@ -27,6 +27,7 @@ extension CreateGroup {
     @Dependency(\.groupClient) var groupClient
     @Dependency(\.eventKitClient) var eventKitClient
     @Dependency(\.notificationClient) var notificationClient
+    @Dependency(\.analyticsClient) var analyticsClient
 
     public init() {}
 
@@ -300,6 +301,13 @@ extension CreateGroup {
 
           case .settingsSkipped:
             guard case .settings(let result) = state.step else { return .none }
+            analyticsClient.logEvent(
+              AnalyticsClient.EventName.groupCreated,
+              [
+                AnalyticsClient.ParameterKey.groupID: result.id,
+                AnalyticsClient.ParameterKey.groupName: result.name
+              ]
+            )
             return .send(.delegate(.groupCreated(id: result.id)))
           }
 
@@ -322,12 +330,26 @@ extension CreateGroup {
           case .saveSettingsResponse(.success):
             state.isSavingSettings = false
             guard case .settings(let result) = state.step else { return .none }
+            analyticsClient.logEvent(
+              AnalyticsClient.EventName.groupCreated,
+              [
+                AnalyticsClient.ParameterKey.groupID: result.id,
+                AnalyticsClient.ParameterKey.groupName: result.name
+              ]
+            )
             return .send(.delegate(.groupCreated(id: result.id)))
 
           case .saveSettingsResponse(.failure):
             // 설정 저장 실패해도 그룹 생성은 완료됨, 기본값으로 진행
             state.isSavingSettings = false
             guard case .settings(let result) = state.step else { return .none }
+            analyticsClient.logEvent(
+              AnalyticsClient.EventName.groupCreated,
+              [
+                AnalyticsClient.ParameterKey.groupID: result.id,
+                AnalyticsClient.ParameterKey.groupName: result.name
+              ]
+            )
             return .send(.delegate(.groupCreated(id: result.id)))
 
           case .notificationAuthStatusChecked(let status):
