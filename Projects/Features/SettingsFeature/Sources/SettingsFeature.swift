@@ -708,7 +708,7 @@ extension DateTimeSettings {
       }
       .alert("앱 재시작", isPresented: Binding(
         get: { store.showRestartAlert },
-        set: { _ in }
+        set: { if !$0 { store.send(.view(.restartCancelled)) } }
       )) {
         Button("취소", role: .cancel) {
           store.send(.view(.restartCancelled))
