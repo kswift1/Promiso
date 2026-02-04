@@ -91,8 +91,7 @@ struct UpcomingSection: View {
       Spacer()
     }
     .padding(14)
-    .background(Color.pmindigo.n500.opacity(0.03))
-    .clipShape(RoundedRectangle(cornerRadius: 14))
+    .adaptiveGlassCard(cornerRadius: 14)
   }
 
   // MARK: - Computed Properties
