@@ -1060,6 +1060,19 @@ export const onPromiseConfirmedScheduleLiveActivity = onDocumentUpdated(
       return;
     }
 
+    // trackingMinutes가 null로 변경됨 (라이브 액티비티 비활성화)
+    const trackingDisabled =
+      isNowConfirmed && trackingMinutesChanged && afterTrackingMinutes === null;
+    if (trackingDisabled) {
+      const db = admin.firestore();
+      await db.collection("promises").doc(promiseId).update({
+        liveActivityScheduled: false,
+        liveActivityScheduledAt: null,
+      });
+      console.log(`🔄 LiveActivity schedule reset (tracking disabled): ${promiseId}`);
+      return;
+    }
+
     const shouldSchedule = justConfirmed || trackingEnabledOnConfirmed;
 
     if (!shouldSchedule) {
