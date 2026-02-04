@@ -27,6 +27,7 @@ extension AppEntry {
     @Dependency(\.userProfileClient) var userProfileClient
     @Dependency(\.notificationClient) var notificationClient
     @Dependency(\.deeplinkClient) var deeplinkClient
+    @Dependency(\.userDefaultsClient) var userDefaultsClient
 
     public init() {}
     
@@ -255,8 +256,8 @@ extension AppEntry {
             state.providerProfileImageURL = nil
             state.notificationPermission = nil
             // 시간 포맷 다시 로드
-            KoreanDateFormatters.use24HourFormat = UserDefaults.standard.bool(
-              forKey: AppConstants.UserDefaults.use24HourFormat
+            KoreanDateFormatters.use24HourFormat = userDefaultsClient.boolForKey(
+              AppConstants.UserDefaults.use24HourFormat
             )
             return .send(.internal(.startSessionCheck))
           }
