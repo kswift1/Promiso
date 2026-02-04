@@ -9,7 +9,7 @@
  */
 import {HttpsError, onCall} from "firebase-functions/v2/https";
 import {REGION} from "../config";
-import {defineSecret} from "firebase-functions/v2/params";
+import {defineSecret} from "firebase-functions/params";
 
 // Notion API 키 (Secret Manager에서 관리)
 const NOTION_FAQ_API_KEY = defineSecret("NOTION_FAQ_API_KEY");
@@ -30,9 +30,7 @@ export interface FAQItem {
 /**
  * FAQ 목록 조회 요청
  */
-export interface GetFAQsRequest {
-  // 필터링이나 페이지네이션이 필요하면 추가
-}
+export type GetFAQsRequest = Record<string, never>;
 
 /**
  * FAQ 목록 조회 응답
@@ -167,7 +165,8 @@ export const getFAQs = onCall<GetFAQsRequest & {databaseId: string}>(
         );
       }
 
-      const data: NotionQueryResponse = await response.json() as NotionQueryResponse;
+      const data: NotionQueryResponse =
+        await response.json() as NotionQueryResponse;
 
       // 4. 데이터 변환
       const faqs: FAQItem[] = data.results

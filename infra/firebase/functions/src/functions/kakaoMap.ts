@@ -9,7 +9,7 @@
  */
 import {HttpsError, onCall} from "firebase-functions/v2/https";
 import {REGION} from "../config";
-import {defineSecret} from "firebase-functions/v2/params";
+import {defineSecret} from "firebase-functions/params";
 
 // Kakao REST API 키 (Secret Manager에서 관리)
 const KAKAO_REST_API_KEY = defineSecret("KAKAO_REST_API_KEY");
@@ -133,7 +133,8 @@ export const searchPlaces = onCall<SearchPlacesRequest>(
         );
       }
 
-      const data: KakaoSearchResponse = await response.json() as KakaoSearchResponse;
+      const data: KakaoSearchResponse =
+        await response.json() as KakaoSearchResponse;
 
       // 4. 데이터 변환
       const places = data.documents.map((doc) => ({
