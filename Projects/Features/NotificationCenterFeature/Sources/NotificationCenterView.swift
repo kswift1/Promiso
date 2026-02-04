@@ -29,8 +29,9 @@ extension NotificationCenter {
       .navigationTitle("알림")
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
-        ToolbarItem(placement: .topBarLeading) {
-          if store.isEditMode {
+        // 편집 모드일 때만 취소 버튼 표시
+        if store.isEditMode {
+          ToolbarItem(placement: .topBarLeading) {
             Button {
               store.send(.view(.cancelEditTapped))
             } label: {
@@ -41,31 +42,32 @@ extension NotificationCenter {
           }
         }
 
-        ToolbarItem(placement: .topBarTrailing) {
-          HStack(spacing: 16) {
-            if !store.isEditMode && store.unreadCount > 0 {
-              Button {
-                store.send(.view(.markAllAsReadTapped))
-              } label: {
-                Text("모두 읽음")
-                  .font(.subheadline)
-                  .foregroundStyle(Color.pmindigo.n500)
-              }
+        // 모두 읽음 버튼 (안 읽은 알림이 있고, 편집 모드가 아닐 때)
+        if !store.isEditMode && store.unreadCount > 0 {
+          ToolbarItem(placement: .topBarTrailing) {
+            Button {
+              store.send(.view(.markAllAsReadTapped))
+            } label: {
+              Text("모두 읽음")
+                .font(.subheadline)
+                .foregroundStyle(Color.pmindigo.n500)
             }
+          }
+        }
 
-            // 편집 버튼 (gear)
-            if !store.isEmpty {
-              Button {
-                if store.isEditMode {
-                  store.send(.view(.cancelEditTapped))
-                } else {
-                  store.send(.view(.editButtonTapped))
-                }
-              } label: {
-                Image(systemName: store.isEditMode ? "xmark" : "gearshape")
-                  .font(.system(size: 16))
-                  .foregroundStyle(Color.pmindigo.n500)
+        // 편집 버튼 (알림이 있을 때만)
+        if !store.isEmpty {
+          ToolbarItem(placement: .topBarTrailing) {
+            Button {
+              if store.isEditMode {
+                store.send(.view(.cancelEditTapped))
+              } else {
+                store.send(.view(.editButtonTapped))
               }
+            } label: {
+              Image(systemName: store.isEditMode ? "xmark" : "gearshape")
+                .font(.system(size: 16))
+                .foregroundStyle(Color.pmindigo.n500)
             }
           }
         }
