@@ -1,11 +1,24 @@
+# ============================================================================
 # Promiso Project Makefile
-# Usage: make feature FEATURE_NAME=YourFeature
+# ============================================================================
+#
+# 사용법: make <command> [OPTIONS]
+# 도움말: make help
+#
+# ============================================================================
 
-.PHONY: feature remove-feature deps color emulator-start functions-build functions-api-preview secrets-pull secrets-push secrets-list secrets-add help
+.PHONY: feature remove-feature deps color \
+        emulator-start functions-build functions-api-preview \
+        secrets-pull secrets-push secrets-list secrets-add \
+        help
 
 # 기본값 설정
 FEATURE_NAME ?=
 FORCE ?=
+
+# ============================================================================
+# 🏗️  Feature 관리
+# ============================================================================
 
 # 피쳐 생성 + 의존성 자동 추가 + 프로젝트 생성
 feature:
@@ -16,16 +29,15 @@ feature:
 	fi
 	@echo "🚀 피쳐 '$(FEATURE_NAME)' 생성 중..."
 	@echo "1/4 피쳐 스캐폴드 생성..."
-	tuist scaffold feature --name $(FEATURE_NAME)
+	@tuist scaffold feature --name $(FEATURE_NAME)
 	@echo "2/4 AppFeatureDeps.swift에 의존성 추가..."
 	@./scripts/add_feature_dependency.sh $(FEATURE_NAME)
 	@echo "3/4 프로젝트 생성..."
-	tuist install && tuist generate
+	@tuist install && tuist generate
 	@echo "4/4 완료! ✅"
 	@echo ""
 	@echo "🎉 피쳐 '$(FEATURE_NAME)'가 성공적으로 생성되었습니다!"
 	@echo "📂 위치: Projects/Features/$(FEATURE_NAME)Feature/"
-	@echo "🔧 다음 단계: Xcode에서 $(FEATURE_NAME)Feature를 열고 개발을 시작하세요."
 
 # 피쳐 삭제 + 프로젝트 재생성
 remove-feature:
@@ -76,7 +88,10 @@ remove-feature:
 	fi
 	@echo ""
 	@echo "🎉 피쳐 '$(FEATURE_NAME)'가 성공적으로 삭제되었습니다!"
-	@echo "🔧 다음 단계: 필요시 관련 코드에서 $(FEATURE_NAME) 참조를 제거하세요."
+
+# ============================================================================
+# 🎨 리소스 관리
+# ============================================================================
 
 # 의존성 그래프 시각화
 deps:
@@ -87,14 +102,16 @@ deps:
 color:
 	@echo "🎨 컬러 에셋 및 Swift Extension 생성 중..."
 	@./scripts/generate_colors.sh
-	@echo "✅ 완료: Projects/ResourceKit/Resources/Assets.xcassets/Colors 및 Projects/ResourceKit/Sources/Generated/Color+Generated.swift 갱신"
+	@echo "✅ 완료!"
 
-# Firebase Emulator 전체 실행 (Functions/Firestore/Auth/Storage)
+# ============================================================================
+# 🔥 Firebase
+# ============================================================================
+
+# Firebase Emulator 전체 실행
 emulator-start:
-	@echo "🧪 Firebase 전체 에뮬레이터 실행 중..."
+	@echo "🧪 Firebase 에뮬레이터 실행 중..."
 	@cd infra/firebase/functions && firebase emulators:start --only functions,firestore,auth,storage
-	@echo "🌐 Emulator UI: http://127.0.0.1:4000"
-	@open http://127.0.0.1:4000 || true
 
 # Firebase Functions 빌드
 functions-build:
@@ -117,53 +134,63 @@ functions-api-preview:
 		wait $$pid; \
 	)
 
+# ============================================================================
+# 🔐 Secrets 관리 (Notion 기반)
+# ============================================================================
 
-
-# Secrets 동기화 (Notion → xcconfig)
+# Notion → 로컬 xcconfig 동기화
 secrets-pull:
-	@echo "🔐 Notion에서 시크릿 동기화..."
 	@./scripts/sync-secrets.sh pull
 
-# Secrets GitHub 업데이트
+# Notion → GitHub Secrets 동기화
 secrets-push:
-	@echo "🔐 GitHub Secrets 업데이트..."
 	@./scripts/sync-secrets.sh push-gh
 
-# Secrets 목록 표시
+# 시크릿 목록 표시
 secrets-list:
 	@./scripts/sync-secrets.sh list
 
-# Secrets 추가
+# 새 시크릿 추가 (대화형)
 secrets-add:
 	@./scripts/sync-secrets.sh add
 
-# 도움말
+# ============================================================================
+# 📖 도움말
+# ============================================================================
+
 help:
-	@echo "Promiso Project Commands:"
 	@echo ""
-	@echo "  make feature FEATURE_NAME=YourFeature              - 새 피쳐 생성 (TCA 중심 구조)"
-	@echo "  make remove-feature FEATURE_NAME=YourFeature      - 기존 피쳐 삭제 (확인 필요)"
-	@echo "  make remove-feature FEATURE_NAME=YourFeature FORCE=1 - 기존 피쳐 삭제 (확인 없이)"
-	@echo "  make deps                                    - 의존성 그래프 시각화"
-	@echo "  make color                                   - 컬러 에셋/Swift Extension 재생성"
-	@echo "  make emulator-start                          - Functions/Firestore/Auth/Storage 에뮬레이터 실행"
-	@echo "  make functions-build                         - Firebase Functions 빌드"
-	@echo "  make functions-api-preview                   - OpenAPI 미리보기 실행"
-	@echo "  make secrets-pull                            - Notion에서 시크릿 → xcconfig 동기화"
-	@echo "  make secrets-push                            - Notion → GitHub Secrets 업데이트"
-	@echo "  make secrets-list                            - 시크릿 목록 표시"
-	@echo "  make secrets-add                             - 새 시크릿 추가 (Notion)"
-	@echo "  make help                                    - 이 도움말 표시"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "  Promiso Makefile Commands"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	@echo ""
-	@echo "예시:"
-	@echo "  make feature FEATURE_NAME=Login              - Login 피쳐 생성"
-	@echo "  make feature FEATURE_NAME=Profile            - Profile 피쳐 생성"
-	@echo "  make remove-feature FEATURE_NAME=Login         - Login 피쳐 삭제"
-	@echo "  make remove-feature FEATURE_NAME=Profile      - Profile 피쳐 삭제"
-	@echo "  make remove-feature FEATURE_NAME=Test FORCE=1 - Test 피쳐 강제 삭제"
+	@echo "  🏗️  Feature 관리"
+	@echo "  ─────────────────────────────────────────────────────────────────"
+	@echo "  make feature FEATURE_NAME=<Name>        새 피쳐 생성"
+	@echo "  make remove-feature FEATURE_NAME=<Name> 피쳐 삭제"
+	@echo "  make remove-feature ... FORCE=1         확인 없이 삭제"
 	@echo ""
-	@echo "⚠️  주의사항:"
-	@echo "  - remove-feature는 피쳐 폴더와 관련 파일을 완전히 삭제합니다"
-	@echo "  - 삭제 전 확인 메시지가 표시됩니다 (FORCE=1로 생략 가능)"
-	@echo "  - 삭제된 피쳐를 참조하는 코드는 수동으로 제거해야 합니다"
+	@echo "  🎨 리소스 관리"
+	@echo "  ─────────────────────────────────────────────────────────────────"
+	@echo "  make deps                               의존성 그래프 시각화"
+	@echo "  make color                              컬러 에셋 재생성"
+	@echo ""
+	@echo "  🔥 Firebase"
+	@echo "  ─────────────────────────────────────────────────────────────────"
+	@echo "  make emulator-start                     에뮬레이터 실행"
+	@echo "  make functions-build                    Functions 빌드"
+	@echo "  make functions-api-preview              OpenAPI 미리보기"
+	@echo ""
+	@echo "  🔐 Secrets 관리"
+	@echo "  ─────────────────────────────────────────────────────────────────"
+	@echo "  make secrets-list                       시크릿 목록 표시"
+	@echo "  make secrets-pull                       Notion → xcconfig 동기화"
+	@echo "  make secrets-push                       Notion → GitHub Secrets"
+	@echo "  make secrets-add                        새 시크릿 추가"
+	@echo ""
+	@echo "  📖 기타"
+	@echo "  ─────────────────────────────────────────────────────────────────"
+	@echo "  make help                               이 도움말 표시"
+	@echo ""
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	@echo ""
