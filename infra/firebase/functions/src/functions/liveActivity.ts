@@ -1045,8 +1045,20 @@ export const onPromiseConfirmedScheduleLiveActivity = onDocumentUpdated(
     // 2. 이미 확정 + trackingMinutes가 null → 값으로 변경됨
     // 3. 이미 확정 + trackingMinutes 값이 변경됨
     const justConfirmed = !wasConfirmed && isNowConfirmed;
+    const justUnconfirmed = wasConfirmed && !isNowConfirmed;
     const trackingEnabledOnConfirmed =
       isNowConfirmed && trackingMinutesChanged && afterTrackingMinutes !== null;
+
+    // 확정 → 미확정: 예약 상태 리셋 (다시 확정 시 새로 예약되도록)
+    if (justUnconfirmed) {
+      const db = admin.firestore();
+      await db.collection("promises").doc(promiseId).update({
+        liveActivityScheduled: false,
+        liveActivityScheduledAt: null,
+      });
+      console.log(`🔄 LiveActivity schedule reset (unconfirmed): ${promiseId}`);
+      return;
+    }
 
     const shouldSchedule = justConfirmed || trackingEnabledOnConfirmed;
 
