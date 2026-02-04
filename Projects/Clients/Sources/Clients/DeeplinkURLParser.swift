@@ -33,6 +33,9 @@ public enum DeeplinkURLParser {
     case "live":
       return parseLivePromise(from: url)
 
+    case "create":
+      return .create
+
     default:
       return nil
     }
