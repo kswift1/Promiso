@@ -259,30 +259,6 @@ extension AppEntry {
               forKey: AppConstants.UserDefaults.use24HourFormat
             )
             return .send(.internal(.startSessionCheck))
-
-          case .checkNotificationPermission(let userModel):
-            return .run { send in
-              let status = await notificationClient.getAuthorizationStatus()
-              let isAuthorized = status == .authorized
-              await send(.internal(.notificationPermissionChecked(isAuthorized: isAuthorized, user: userModel)))
-            }
-
-          case .notificationPermissionChecked(let isAuthorized, let userModel):
-            if isAuthorized {
-              // 이미 권한 허용됨 → 바로 메인으로
-              WidgetDataManager.saveUserId(userModel.id)
-              state.destination = .main(RootTab.Feature.State(currentUser: Shared(value: userModel)))
-              // pending deeplink가 있으면 처리
-              if let deeplink = state.pendingDeeplink {
-                state.pendingDeeplink = nil
-                return routeDeeplink(deeplink)
-              }
-            } else {
-              // 권한 미허용 → 온보딩 표시
-              state.pendingUserForMain = userModel
-              state.notificationPermission = NotificationPermission.Feature.State()
-            }
-            return .none
           }
 
         case .destination(.presented(.auth(.delegate(.loggedIn(let providerProfileImageURL))))):
