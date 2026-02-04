@@ -288,6 +288,8 @@ extension AppEntry {
           return .run { [notificationClient, authClient] _ in
             LiveActivityImageStore.clearCache()
             WidgetDataManager.clearAll()
+            authClient.clearWidgetAuthToken()
+            WidgetDataManager.reloadWidgets()
             do {
               try await notificationClient.deleteFCMToken()
             } catch {
