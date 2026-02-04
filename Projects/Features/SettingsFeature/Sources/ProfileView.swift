@@ -23,6 +23,14 @@ extension Settings {
       self.store = store
     }
 
+    // MARK: - Developer Menu
+
+    /// 개발자 메뉴 활성화 여부 (Dev/Stage 환경에서만 표시)
+    private var isDeveloperMenuEnabled: Bool {
+      guard let bundleId = Bundle.main.bundleIdentifier else { return false }
+      return bundleId.contains(".dev") || bundleId.contains(".stage")
+    }
+
     // MARK: - Body
 
     public var body: some View {
@@ -245,40 +253,40 @@ extension Settings {
             .adaptiveGlassCard()
           }
 
-          // MARK: - 개발자 섹션 (DEBUG only)
-          #if DEBUG
-          VStack(alignment: .leading, spacing: 10) {
-            Text("개발자")
-              .font(.system(size: 16, weight: .semibold))
-              .padding(.horizontal, 4)
+          // MARK: - 개발자 섹션 (Dev/Stage only)
+          if isDeveloperMenuEnabled {
+            VStack(alignment: .leading, spacing: 10) {
+              Text("개발자")
+                .font(.system(size: 16, weight: .semibold))
+                .padding(.horizontal, 4)
 
-            Button {
-              store.send(.view(.developerSettingsTapped))
-            } label: {
-              HStack(spacing: 16) {
-                Image(systemName: "hammer.fill")
-                  .font(.body)
-                  .foregroundStyle(Color.pmindigo.n500)
-                  .frame(width: 24, height: 24)
+              Button {
+                store.send(.view(.developerSettingsTapped))
+              } label: {
+                HStack(spacing: 16) {
+                  Image(systemName: "hammer.fill")
+                    .font(.body)
+                    .foregroundStyle(Color.pmindigo.n500)
+                    .frame(width: 24, height: 24)
 
-                Text("개발자 설정")
-                  .font(.body)
-                  .foregroundStyle(Color.pmtext.primary)
+                  Text("개발자 설정")
+                    .font(.body)
+                    .foregroundStyle(Color.pmtext.primary)
 
-                Spacer()
+                  Spacer()
 
-                Image(systemName: "chevron.right")
-                  .font(.caption)
-                  .foregroundStyle(Color.pmgray.n400)
+                  Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(Color.pmgray.n400)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .contentShape(Rectangle())
               }
-              .padding(.horizontal, 16)
-              .padding(.vertical, 14)
-              .contentShape(Rectangle())
+              .buttonStyle(.plain)
+              .adaptiveGlassCard()
             }
-            .buttonStyle(.plain)
-            .adaptiveGlassCard()
           }
-          #endif
         }
         .padding(.horizontal, 16)
         .padding(.top, 12)

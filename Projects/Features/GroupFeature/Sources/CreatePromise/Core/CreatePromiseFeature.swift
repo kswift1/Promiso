@@ -11,15 +11,16 @@ public enum CreatePromise {
   
   @Reducer
   public struct Feature {
-    
+
     @Dependency(\.continuousClock) var clock
     @Dependency(\.groupClient) var groupClient
     @Dependency(\.promiseClient) var promiseClient
     @Dependency(\.userDefaultsClient) var userDefaultsClient
     @Dependency(\.emojiClient) var emojiClient
     @Dependency(\.mapClient) var mapClient
+    @Dependency(\.analyticsClient) var analyticsClient
 
-    
+
     private enum CancelID: Hashable {
       case emojiSuggestDebounce
     }
@@ -410,6 +411,13 @@ public enum CreatePromise {
 
           case .createPromiseResponse(.success(let id)):
             state.isCreatingPromise = false
+            analyticsClient.logEvent(
+              AnalyticsClient.EventName.promiseCreated,
+              [
+                AnalyticsClient.ParameterKey.promiseID: id,
+                AnalyticsClient.ParameterKey.promiseTitle: state.promise.title
+              ]
+            )
             return .send(.delegate(.promiseCreated(id: id)))
             
           case .createPromiseResponse(.failure(let e)):

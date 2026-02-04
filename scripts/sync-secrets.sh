@@ -98,9 +98,11 @@ cmd_pull() {
     echo "// Generated at: $(date '+%Y-%m-%d %H:%M:%S')" >> "$config_file"
     echo "" >> "$config_file"
 
-    # Notion에서 각 시크릿 추출 (줄바꿈 문자를 공백으로 치환하여 xcconfig 호환성 유지)
+    # iOS 앱에서 실제 사용하는 시크릿만 추출
+    # KAKAO_REST_API_KEY, NOTION_API_KEY는 Firebase Functions에서만 사용
     echo "$response" | jq -r --arg env "$env" '.results[] |
       select(.properties[$env].rich_text[0].plain_text != null) |
+      select(.properties.Key.title[0].plain_text | test("^(GOOGLE_CLIENT_ID|GOOGLE_REVERSED_CLIENT_ID|KAKAO_NATIVE_APP_KEY)$")) |
       "\(.properties.Key.title[0].plain_text | gsub("[\\n\\r]"; "")) = \(.properties[$env].rich_text[0].plain_text | gsub("[\\n\\r]"; " "))"' >> "$config_file"
 
     # Code Signing 설정 추가

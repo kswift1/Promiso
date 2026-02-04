@@ -7,6 +7,7 @@ extension NotificationPermission {
   @Reducer
   public struct Feature {
     @Dependency(\.notificationClient) var notificationClient
+    @Dependency(\.analyticsClient) var analyticsClient
 
     public init() {}
 
@@ -116,6 +117,9 @@ extension NotificationPermission {
               }
 
             default:
+              // Analytics 이벤트 로깅
+              analyticsClient.logEvent(AnalyticsClient.EventName.notificationPermissionRequested, nil)
+
               // 바로 시스템 권한 요청 알럿 표시
               return .run { send in
                 do {
@@ -140,6 +144,12 @@ extension NotificationPermission {
 
           case .permissionRequestCompleted(let granted):
             state.authorizationStatus = granted ? .authorized : .denied
+
+            // Analytics 이벤트 로깅 (허용된 경우만)
+            if granted {
+              analyticsClient.logEvent(AnalyticsClient.EventName.notificationPermissionGranted, nil)
+            }
+
             // 권한 요청 완료 → 결과 전달 후 화면 닫기
             return .merge(
               .send(.delegate(.permissionChanged(isGranted: granted))),

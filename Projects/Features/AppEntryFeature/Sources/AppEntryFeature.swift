@@ -31,6 +31,7 @@ extension AppEntry {
     @Dependency(\.openURL) var openURL
     @Dependency(\.userDefaultsClient) var userDefaultsClient
     @Dependency(\.clarityClient) var clarityClient
+    @Dependency(\.analyticsClient) var analyticsClient
 
     public init() {}
     
@@ -229,6 +230,11 @@ extension AppEntry {
               // Clarity 유저 정보 등록
               clarityClient.setUser(userModel.id, userModel.nickname)
 
+              // Analytics 유저 정보 등록 및 로그인 이벤트
+              analyticsClient.setUserID(userModel.id)
+              analyticsClient.setUserProperty(userModel.nickname, "nickname")
+              analyticsClient.logEvent(AnalyticsClient.EventName.userLogin, nil)
+
               state.destination = .main(RootTab.Feature.State(currentUser: Shared(value: userModel)))
               // pending deeplink가 있으면 처리
               if let deeplink = state.pendingDeeplink {
@@ -340,6 +346,7 @@ extension AppEntry {
 
         case .destination(.presented(.profile(.delegate(.completed(let userModel))))):
           // 프로필 설정 완료 → 알림 권한 상태 확인
+          analyticsClient.logEvent(AnalyticsClient.EventName.profileSetupCompleted, nil)
           return .send(.internal(.checkNotificationPermission(userModel)))
 
         case .notificationPermission(.presented(.delegate(.dismissed))),
@@ -353,6 +360,11 @@ extension AppEntry {
             // Clarity 유저 정보 등록
             clarityClient.setUser(userModel.id, userModel.nickname)
 
+            // Analytics 유저 정보 등록 및 회원가입 완료 이벤트
+            analyticsClient.setUserID(userModel.id)
+            analyticsClient.setUserProperty(userModel.nickname, "nickname")
+            analyticsClient.logEvent(AnalyticsClient.EventName.userSignup, nil)
+
             state.destination = .main(RootTab.Feature.State(currentUser: Shared(value: userModel)))
           }
           return .none
@@ -362,7 +374,7 @@ extension AppEntry {
 
         case .destination(.presented(.main(.delegate(.logoutRequested)))):
           state.destination = .auth(Auth.Feature.State())
-          return .run { [notificationClient, authClient, clarityClient] _ in
+          return .run { [notificationClient, authClient, clarityClient, analyticsClient] _ in
             LiveActivityImageStore.clearCache()
             WidgetDataManager.clearAll()
             authClient.clearWidgetAuthToken()
@@ -370,6 +382,9 @@ extension AppEntry {
 
             // Clarity 유저 정보 제거
             clarityClient.clearUser()
+
+            // Analytics 유저 정보 제거
+            analyticsClient.setUserID(nil)
 
             do {
               try await notificationClient.deleteFCMToken()

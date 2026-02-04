@@ -11,6 +11,7 @@ extension PromiseDetail {
     @Dependency(\.mapClient) var mapClient
     @Dependency(\.groupClient) var groupClient
     @Dependency(\.calendarSyncClient) var calendarSyncClient
+    @Dependency(\.analyticsClient) var analyticsClient
 
     public init() {}
 
@@ -295,6 +296,29 @@ extension PromiseDetail {
 
           case .respondDone(let status):
             state.respondingState = .idle
+
+            // Analytics 이벤트 로깅
+            switch status {
+            case .accepted:
+              analyticsClient.logEvent(
+                AnalyticsClient.EventName.promiseResponseYes,
+                [
+                  AnalyticsClient.ParameterKey.promiseID: state.promise.id,
+                  AnalyticsClient.ParameterKey.promiseTitle: state.promise.title
+                ]
+              )
+            case .declined:
+              analyticsClient.logEvent(
+                AnalyticsClient.EventName.promiseResponseNo,
+                [
+                  AnalyticsClient.ParameterKey.promiseID: state.promise.id,
+                  AnalyticsClient.ParameterKey.promiseTitle: state.promise.title
+                ]
+              )
+            case .pending:
+              break // 응답 취소는 이벤트 없음
+            }
+
             // 로컬 상태 업데이트 (immutable이므로 새로 생성)
             var newAccepted = state.promise.votes.accepted.filter { $0 != state.currentUserId }
             var newDeclined = state.promise.votes.declined.filter { $0 != state.currentUserId }

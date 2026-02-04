@@ -27,6 +27,7 @@ extension JoinGroup {
     @Dependency(\.groupClient) var groupClient
     @Dependency(\.eventKitClient) var eventKitClient
     @Dependency(\.notificationClient) var notificationClient
+    @Dependency(\.analyticsClient) var analyticsClient
 
     public init() {}
 
@@ -306,6 +307,13 @@ extension JoinGroup {
 
           case .settingsSkipped:
             guard case .settings(let group) = state.step else { return .none }
+            analyticsClient.logEvent(
+              AnalyticsClient.EventName.groupJoined,
+              [
+                AnalyticsClient.ParameterKey.groupID: group.id,
+                AnalyticsClient.ParameterKey.groupName: group.name
+              ]
+            )
             return .send(.delegate(.groupJoined(group)))
 
           case .memberImageTapped(let member):
@@ -354,15 +362,17 @@ extension JoinGroup {
             state.joinError = error.localizedDescription
             return .none
 
-          case .saveSettingsResponse(.success):
+          case .saveSettingsResponse(.success), .saveSettingsResponse(.failure):
+            // .failure의 경우에도 그룹 참여는 완료된 것으로 간주하고 진행합니다.
             state.isSavingSettings = false
             guard case .settings(let group) = state.step else { return .none }
-            return .send(.delegate(.groupJoined(group)))
-
-          case .saveSettingsResponse(.failure):
-            // 설정 저장 실패해도 그룹 참여는 완료됨, 기본값으로 진행
-            state.isSavingSettings = false
-            guard case .settings(let group) = state.step else { return .none }
+            analyticsClient.logEvent(
+              AnalyticsClient.EventName.groupJoined,
+              [
+                AnalyticsClient.ParameterKey.groupID: group.id,
+                AnalyticsClient.ParameterKey.groupName: group.name
+              ]
+            )
             return .send(.delegate(.groupJoined(group)))
 
           case .notificationAuthStatusChecked(let status):

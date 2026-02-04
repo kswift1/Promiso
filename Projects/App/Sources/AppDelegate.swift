@@ -17,6 +17,8 @@ class AppDelegate: NSObject, UIApplicationDelegate {
   func application(_ application: UIApplication,
                    didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
     FirebaseApp.configure()
+    configureAnalytics()
+    configureCrashlytics()
     configureClaritySDK()
     configureKakaoMapsSDK()
     configureRemoteNotifications(application)
@@ -65,6 +67,32 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     }
     SDKInitializer.InitSDK(appKey: kakaoAppKey)
     AppLogger.general.debug("Kakao Maps SDK initialized")
+  }
+
+  // MARK: - Firebase Analytics
+  private func configureAnalytics() {
+    #if DEBUG
+    // Debug 빌드에서는 Analytics 비활성화 (선택사항)
+    Analytics.setAnalyticsCollectionEnabled(false)
+    AppLogger.general.debug("Firebase Analytics disabled for DEBUG build")
+    #else
+    // Release 빌드에서는 Analytics 활성화
+    Analytics.setAnalyticsCollectionEnabled(true)
+    AppLogger.general.debug("Firebase Analytics enabled")
+    #endif
+  }
+
+  // MARK: - Firebase Crashlytics
+  private func configureCrashlytics() {
+    #if DEBUG
+    // Debug 빌드에서는 Crashlytics 비활성화
+    Crashlytics.crashlytics().setCrashlyticsCollectionEnabled(false)
+    AppLogger.general.debug("Firebase Crashlytics disabled for DEBUG build")
+    #else
+    // Release 빌드에서는 Crashlytics 활성화
+    Crashlytics.crashlytics().setCrashlyticsCollectionEnabled(true)
+    AppLogger.general.debug("Firebase Crashlytics enabled")
+    #endif
   }
 
   // MARK: - Microsoft Clarity SDK

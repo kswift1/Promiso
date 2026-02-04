@@ -164,10 +164,8 @@ extension Settings {
       case legalInfoTapped
       /// 앱 정보 탭
       case appInfoTapped
-      #if DEBUG
-      /// 개발자 설정 탭
+      /// 개발자 설정 탭 (Dev/Stage 환경에서만 UI 표시)
       case developerSettingsTapped
-      #endif
 
       // MARK: - Profile Edit Actions
       /// 프로필 편집 버튼 탭
@@ -289,13 +287,11 @@ extension Settings {
             state.path.append(.appInfo(AppInfo.Feature.State()))
             return .run { _ in await hapticFeedback.selection() }
 
-          #if DEBUG
           case .developerSettingsTapped:
             state.path.append(.developerSettings(
-              DeveloperSettings.Feature.State(currentUserId: state.currentUser.userId)
+              DeveloperSettings.Feature.State()
             ))
             return .run { _ in await hapticFeedback.selection() }
-          #endif
 
           // MARK: - Profile Edit View Actions
 
