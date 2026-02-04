@@ -47,9 +47,8 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
   private let storage: Storage
   private let db: Firestore
 
-  /// - Note: Default region은 FirebaseConstants.region과 동일해야 합니다
   public init(
-    functions: Functions = Functions.functions(region: "asia-northeast3"),
+    functions: Functions = DefaultFunctionsProvider().functions,
     storage: Storage = Storage.storage(),
     db: Firestore = Firestore.firestore()
   ) {

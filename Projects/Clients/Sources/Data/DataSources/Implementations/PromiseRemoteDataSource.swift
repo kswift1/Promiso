@@ -22,7 +22,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
 
   public init(
     firestore: FirestoreProviding = DefaultFirestoreProvider(),
-    functions: Functions = Functions.functions(region: "asia-northeast3"),
+    functions: Functions = DefaultFunctionsProvider().functions,
     collectionName: String = "promises"
   ) {
     self.firestore = firestore
