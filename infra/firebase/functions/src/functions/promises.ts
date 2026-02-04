@@ -482,6 +482,9 @@ export const updatePromise = onCall<UpdatePromiseRequest>(
       updateData.startAt = newStartAtTimestamp;
       // votes.until도 함께 업데이트
       updateData["votes.until"] = newStartAtTimestamp;
+      // 라이브 액티비티 예약 상태 리셋 (새 시간으로 재예약 트리거)
+      updateData.liveActivityScheduled = false;
+      updateData.liveActivityScheduledAt = null;
     }
 
     if (data.endAt !== undefined) {
