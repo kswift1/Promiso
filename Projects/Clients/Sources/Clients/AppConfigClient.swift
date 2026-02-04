@@ -12,53 +12,6 @@ import PromisoShared
 
 // MARK: - Model
 
-/// Firebase Remote Config에서 가져오는 앱 설정
-public struct AppConfigModel: Equatable, Sendable {
-  // 버전 관리
-  public let forceUpdateVersion: String
-  public let recommendedVersion: String
-
-  // 외부 링크
-  public let appStoreURL: String
-  public let privacyPolicyURL: String
-  public let termsOfServiceURL: String
-
-  // 지원
-  public let supportEmail: String
-
-  // Notion
-  public let notionFAQDatabaseId: String
-
-  public init(
-    forceUpdateVersion: String,
-    recommendedVersion: String,
-    appStoreURL: String,
-    privacyPolicyURL: String,
-    termsOfServiceURL: String,
-    supportEmail: String,
-    notionFAQDatabaseId: String
-  ) {
-    self.forceUpdateVersion = forceUpdateVersion
-    self.recommendedVersion = recommendedVersion
-    self.appStoreURL = appStoreURL
-    self.privacyPolicyURL = privacyPolicyURL
-    self.termsOfServiceURL = termsOfServiceURL
-    self.supportEmail = supportEmail
-    self.notionFAQDatabaseId = notionFAQDatabaseId
-  }
-
-  /// Fallback 기본값
-  public static let defaultConfig = AppConfigModel(
-    forceUpdateVersion: "0.0.0",
-    recommendedVersion: "0.0.0",
-    appStoreURL: "https://apps.apple.com/app/id1625074042",
-    privacyPolicyURL: "https://www.notion.so/2fb655a898de813882b5eebcf35ccb3d",
-    termsOfServiceURL: "https://www.notion.so/2fb655a898de817f9f76fdce51f5a09f",
-    supportEmail: "kswen0203@icloud.com",
-    notionFAQDatabaseId: "356188caae734b5ebd73203557a34930"
-  )
-}
-
 /// 버전 체크 결과
 public enum VersionCheckResult: Equatable, Sendable {
   case upToDate
