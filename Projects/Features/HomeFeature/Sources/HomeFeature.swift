@@ -539,6 +539,7 @@ extension Home {
                 store.send(.view(.notificationButtonTapped))
               }
             )
+            .id(store.unreadNotificationCount)
           }
         }
         .onAppear {
