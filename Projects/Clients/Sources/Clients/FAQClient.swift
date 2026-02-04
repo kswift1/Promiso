@@ -20,8 +20,8 @@ public struct FAQClient: Sendable {
 // MARK: - Error
 
 public enum FAQClientError: Error, LocalizedError {
-  case fetchFailed
-  case decodingFailed
+  case fetchFailed(statusCode: Int, message: String)
+  case decodingFailed(String)
   case invalidConfiguration
 
   public var errorDescription: String? {
@@ -34,6 +34,89 @@ public enum FAQClientError: Error, LocalizedError {
       return "FAQ 설정이 올바르지 않습니다."
     }
   }
+}
+
+// MARK: - Notion API Response Models
+
+private struct NotionQueryResponse: Decodable {
+  let results: [NotionPage]
+}
+
+private struct NotionPage: Decodable {
+  let id: String
+  let createdTime: String
+  let properties: NotionProperties
+
+  enum CodingKeys: String, CodingKey {
+    case id
+    case createdTime = "created_time"
+    case properties
+  }
+}
+
+private struct NotionProperties: Decodable {
+  let question: NotionTitle?
+  let answer: NotionRichText?
+  let category: NotionSelect?
+  let order: NotionNumber?
+
+  enum CodingKeys: String, CodingKey {
+    case question = "Question"
+    case answer = "Answer"
+    case category = "Category"
+    case order = "Order"
+  }
+}
+
+private struct NotionTitle: Decodable {
+  let title: [NotionTextContent]
+}
+
+private struct NotionRichText: Decodable {
+  let richText: [NotionTextContent]
+
+  enum CodingKeys: String, CodingKey {
+    case richText = "rich_text"
+  }
+}
+
+private struct NotionTextContent: Decodable {
+  let plainText: String
+
+  enum CodingKeys: String, CodingKey {
+    case plainText = "plain_text"
+  }
+}
+
+private struct NotionSelect: Decodable {
+  let select: NotionSelectOption?
+}
+
+private struct NotionSelectOption: Decodable {
+  let name: String
+}
+
+private struct NotionNumber: Decodable {
+  let number: Int?
+}
+
+private struct NotionQueryRequest: Encodable {
+  let filter: NotionFilter
+  let sorts: [NotionSort]
+}
+
+private struct NotionFilter: Encodable {
+  let property: String
+  let checkbox: NotionCheckbox
+}
+
+private struct NotionCheckbox: Encodable {
+  let equals: Bool
+}
+
+private struct NotionSort: Encodable {
+  let property: String
+  let direction: String
 }
 
 // MARK: - Test / Preview
@@ -52,11 +135,13 @@ extension FAQClient: TestDependencyKey {
 
 extension FAQClient: DependencyKey {
   public static let liveValue: FAQClient = {
+    let decoder = JSONDecoder()
+    let encoder = JSONEncoder()
+
     return Self(
       fetchFAQs: {
         let databaseId = AppConstants.App.notionFAQDatabaseId
 
-        // API Key는 Info.plist 또는 환경변수에서 가져옴
         guard let apiKey = Bundle.main.object(forInfoDictionaryKey: "NOTION_API_KEY") as? String,
               !apiKey.isEmpty,
               databaseId != "YOUR_DATABASE_ID_HERE"
@@ -72,80 +157,49 @@ extension FAQClient: DependencyKey {
         request.setValue("2022-06-28", forHTTPHeaderField: "Notion-Version")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        // Active가 true인 항목만 조회, Order 순 정렬
-        let body: [String: Any] = [
-          "filter": [
-            "property": "Active",
-            "checkbox": ["equals": true]
-          ],
-          "sorts": [
-            ["property": "Order", "direction": "ascending"]
-          ]
-        ]
+        let requestBody = NotionQueryRequest(
+          filter: NotionFilter(
+            property: "Active",
+            checkbox: NotionCheckbox(equals: true)
+          ),
+          sorts: [NotionSort(property: "Order", direction: "ascending")]
+        )
 
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        request.httpBody = try encoder.encode(requestBody)
 
         let (data, response) = try await URLSession.shared.data(for: request)
 
-        guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200
-        else {
-          throw FAQClientError.fetchFailed
+        guard let httpResponse = response as? HTTPURLResponse else {
+          throw FAQClientError.fetchFailed(statusCode: 0, message: "Invalid response")
         }
 
-        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let results = json["results"] as? [[String: Any]]
-        else {
-          throw FAQClientError.decodingFailed
+        if httpResponse.statusCode != 200 {
+          let errorBody = String(data: data, encoding: .utf8) ?? "Unknown error"
+          throw FAQClientError.fetchFailed(statusCode: httpResponse.statusCode, message: errorBody)
         }
 
-        return results.compactMap { page -> FAQModel? in
-          guard let id = page["id"] as? String,
-                let properties = page["properties"] as? [String: Any]
-          else {
+        let notionResponse: NotionQueryResponse
+        do {
+          notionResponse = try decoder.decode(NotionQueryResponse.self, from: data)
+        } catch {
+          throw FAQClientError.decodingFailed(error.localizedDescription)
+        }
+
+        let dateFormatter = ISO8601DateFormatter()
+        dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+        return notionResponse.results.compactMap { page -> FAQModel? in
+          guard let question = page.properties.question?.title.first?.plainText else {
             return nil
           }
 
-          // Question (Title)
-          guard let questionProp = properties["Question"] as? [String: Any],
-                let titleArray = questionProp["title"] as? [[String: Any]],
-                let firstTitle = titleArray.first,
-                let question = firstTitle["plain_text"] as? String
-          else {
-            return nil
-          }
-
-          // Answer (Rich Text)
-          var answer = ""
-          if let answerProp = properties["Answer"] as? [String: Any],
-             let richTextArray = answerProp["rich_text"] as? [[String: Any]] {
-            answer = richTextArray.compactMap { $0["plain_text"] as? String }.joined()
-          }
-
-          // Category (Select)
-          var category: String?
-          if let categoryProp = properties["Category"] as? [String: Any],
-             let select = categoryProp["select"] as? [String: Any] {
-            category = select["name"] as? String
-          }
-
-          // Order (Number)
-          var order = 0
-          if let orderProp = properties["Order"] as? [String: Any],
-             let number = orderProp["number"] as? Int {
-            order = number
-          }
-
-          // Created Time
-          var createdAt = Date()
-          if let createdTime = page["created_time"] as? String {
-            let formatter = ISO8601DateFormatter()
-            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-            createdAt = formatter.date(from: createdTime) ?? Date()
-          }
+          let answer = page.properties.answer?.richText.map(\.plainText).joined() ?? ""
+          let category = page.properties.category?.select?.name
+          let order = page.properties.order?.number ?? 0
+          let createdAt = dateFormatter.date(from: page.createdTime) ?? Date()
 
           return FAQModel(
-            id: id,
+            id: page.id,
             question: question,
             answer: answer,
             category: category,

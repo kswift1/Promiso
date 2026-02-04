@@ -37,6 +37,21 @@ extension FAQ {
       public var isLoading: Bool = false
       public var errorMessage: String?
       public var expandedFAQIds: Set<String> = []
+      public var selectedCategory: String? = nil  // nil = 전체
+
+      /// 사용 가능한 카테고리 목록
+      public var availableCategories: [String] {
+        let categories = Set(faqs.compactMap(\.category))
+        return categories.sorted()
+      }
+
+      /// 선택된 카테고리로 필터링된 FAQ
+      public var filteredFAQs: [FAQModel] {
+        guard let category = selectedCategory else {
+          return faqs
+        }
+        return faqs.filter { $0.category == category }
+      }
 
       public init() {}
     }
@@ -53,6 +68,7 @@ extension FAQ {
       case onAppear
       case faqTapped(String)
       case retryTapped
+      case categorySelected(String?)  // nil = 전체
     }
 
     public enum Internal: Equatable, Sendable {
@@ -100,9 +116,20 @@ extension FAQ {
             }
           }
 
+        case .view(.categorySelected(let category)):
+          state.selectedCategory = category
+          // 필터 변경해도 모두 펼침 유지 (변경 후 filteredFAQs 사용)
+          let filteredIds = state.filteredFAQs.map(\.id)
+          state.expandedFAQIds.formUnion(filteredIds)
+          return .run { _ in
+            await hapticFeedback.selection()
+          }
+
         case .internal(.faqsLoaded(let faqs)):
           state.isLoading = false
           state.faqs = faqs
+          // 기본으로 모든 FAQ 펼침
+          state.expandedFAQIds = Set(faqs.map(\.id))
           return .none
 
         case .internal(.faqsLoadFailed(let message)):
@@ -151,23 +178,73 @@ extension FAQ {
 
     private var faqListView: some View {
       List {
+        // 카테고리 필터
         Section {
-          VStack(spacing: 0) {
-            ForEach(Array(store.faqs.enumerated()), id: \.element.id) { index, faq in
-              VStack(spacing: 0) {
-                if index > 0 {
-                  Divider()
-                    .padding(.leading, 16)
-                }
-                faqRow(faq: faq)
-              }
-            }
+          categoryFilterView
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 8, trailing: 16))
+        }
+
+        // FAQ 목록
+        ForEach(store.filteredFAQs) { faq in
+          Section {
+            faqRow(faq: faq)
+              .adaptiveGlassBackground()
+              .listRowBackground(Color.clear)
+              .listRowInsets(EdgeInsets())
           }
-          .adaptiveGlassBackground()
-          .listRowBackground(Color.clear)
-          .listRowInsets(EdgeInsets())
         }
       }
+      .listSectionSpacing(12)
+    }
+
+    // MARK: - Category Filter View
+
+    private var categoryFilterView: some View {
+      ScrollView(.horizontal, showsIndicators: false) {
+        HStack(spacing: 8) {
+          // 전체 버튼
+          categoryChip(title: "전체", isSelected: store.selectedCategory == nil) {
+            store.send(.view(.categorySelected(nil)), animation: .easeInOut(duration: 0.3))
+          }
+
+          // 각 카테고리 버튼
+          ForEach(store.availableCategories, id: \.self) { category in
+            categoryChip(
+              title: category,
+              isSelected: store.selectedCategory == category
+            ) {
+              store.send(.view(.categorySelected(category)), animation: .easeInOut(duration: 0.3))
+            }
+          }
+        }
+      }
+    }
+
+    private func categoryChip(
+      title: String,
+      isSelected: Bool,
+      action: @escaping () -> Void
+    ) -> some View {
+      Button(action: action) {
+        Text(title)
+          .font(.subheadline)
+          .fontWeight(isSelected ? .semibold : .regular)
+          .foregroundStyle(isSelected ? Color.white : Color.pmtext.primary)
+          .padding(.horizontal, 14)
+          .padding(.vertical, 8)
+          .background {
+            if isSelected {
+              Capsule()
+                .fill(Color.pmindigo.n500)
+            } else {
+              Capsule()
+                .fill(Color.pmgray.n100.opacity(0.5))
+            }
+          }
+      }
+      .buttonStyle(.plain)
+      .animation(.easeInOut(duration: 0.2), value: isSelected)
     }
 
     private func faqRow(faq: FAQModel) -> some View {
@@ -191,15 +268,19 @@ extension FAQ {
 
             Spacer()
 
-            Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+            Image(systemName: "chevron.down")
               .font(.caption)
               .foregroundStyle(Color.pmgray.n400)
+              .rotationEffect(.degrees(isExpanded ? -180 : 0))
           }
           .padding(.horizontal, 16)
           .padding(.vertical, 14)
 
-          // 답변 (펼쳐진 경우)
+          // 답변
           if isExpanded {
+            Divider()
+              .padding(.leading, 44)
+
             HStack(alignment: .top, spacing: 12) {
               Text("A")
                 .font(.headline)
@@ -213,12 +294,10 @@ extension FAQ {
                 .fixedSize(horizontal: false, vertical: true)
             }
             .padding(.horizontal, 16)
-            .padding(.bottom, 14)
-            .transition(.opacity.combined(with: .move(edge: .top)))
+            .padding(.vertical, 14)
           }
         }
         .contentShape(Rectangle())
-        .animation(.easeInOut(duration: 0.2), value: isExpanded)
       }
       .buttonStyle(.plain)
     }
