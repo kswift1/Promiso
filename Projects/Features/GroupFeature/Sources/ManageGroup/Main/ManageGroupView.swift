@@ -685,64 +685,59 @@ private struct TransferHostSheet: View {
 
         // Member List
         ScrollView {
-          LazyVStack(spacing: 8) {
-            ForEach(candidates) { member in
-              Button {
-                onSelect(member)
-              } label: {
-                HStack(spacing: 12) {
-                  ProfileAvatarView(
-                    profileImageUrl: member.profileImageUrl,
-                    displayName: member.displayName,
-                    size: 48
-                  )
+          VStack(spacing: 16) {
+            VStack(spacing: 0) {
+              ForEach(Array(candidates.enumerated()), id: \.element.userId) { index, member in
+                Button {
+                  onSelect(member)
+                } label: {
+                  HStack(spacing: 12) {
+                    ProfileAvatarView(
+                      profileImageUrl: member.profileImageUrl,
+                      displayName: member.displayName,
+                      size: 48
+                    )
 
-                  VStack(alignment: .leading, spacing: 2) {
-                    Text(member.nickname)
-                      .font(.body.weight(.medium))
-                      .foregroundStyle(.primary)
+                    VStack(alignment: .leading, spacing: 2) {
+                      Text(member.nickname)
+                        .font(.body.weight(.medium))
+                        .foregroundStyle(.primary)
 
-                    if member.name != member.nickname {
-                      Text(member.name)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                      if member.name != member.nickname {
+                        Text(member.name)
+                          .font(.caption)
+                          .foregroundStyle(.secondary)
+                      }
+                    }
+
+                    Spacer()
+
+                    if selectedMember?.userId == member.userId {
+                      Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 24))
+                        .foregroundStyle(.orange)
+                    } else {
+                      Image(systemName: "circle")
+                        .font(.system(size: 24))
+                        .foregroundStyle(.secondary.opacity(0.3))
                     }
                   }
-
-                  Spacer()
-
-                  if selectedMember?.userId == member.userId {
-                    Image(systemName: "checkmark.circle.fill")
-                      .font(.system(size: 24))
-                      .foregroundStyle(.orange)
-                  } else {
-                    Image(systemName: "circle")
-                      .font(.system(size: 24))
-                      .foregroundStyle(.secondary.opacity(0.3))
-                  }
+                  .padding(.horizontal, 16)
+                  .padding(.vertical, 12)
+                  .contentShape(Rectangle())
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .background(
-                  RoundedRectangle(cornerRadius: 12)
-                    .fill(selectedMember?.userId == member.userId
-                      ? Color.orange.opacity(0.1)
-                      : Color(.secondarySystemBackground))
-                )
-                .overlay(
-                  RoundedRectangle(cornerRadius: 12)
-                    .stroke(
-                      selectedMember?.userId == member.userId
-                        ? Color.orange.opacity(0.3)
-                        : Color.clear,
-                      lineWidth: 1
-                    )
-                )
+                .buttonStyle(.plain)
+
+                if index < candidates.count - 1 {
+                  Divider()
+                    .background(Color.white.opacity(0.12))
+                }
               }
-              .buttonStyle(.plain)
             }
+            .adaptiveGlassCard()
           }
-          .padding(.horizontal, 20)
+          .padding(.horizontal, 16)
+          .padding(.top, 12)
         }
 
         // Footer

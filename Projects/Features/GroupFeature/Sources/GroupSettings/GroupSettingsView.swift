@@ -1178,36 +1178,51 @@ private struct TransferHostSheet: View {
 
   var body: some View {
     NavigationStack {
-      memberList
-        .listStyle(.insetGrouped)
-        .navigationTitle("호스트 양도")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-          ToolbarItem(placement: .cancellationAction) {
-            Button("취소") {
-              store.send(.view(.dismissTransferSheet))
-            }
-          }
-          ToolbarItem(placement: .confirmationAction) {
-            confirmButton
-          }
-        }
-    }
-    .interactiveDismissDisabled(store.isTransferringHost)
-  }
+      ScrollView {
+        VStack(spacing: 16) {
+          // 안내 텍스트
+          VStack(alignment: .leading, spacing: 10) {
+            Text("새 호스트를 선택하세요")
+              .font(.system(size: 16, weight: .semibold))
+              .padding(.horizontal, 4)
 
-  private var memberList: some View {
-    List {
-      Section {
-        ForEach(store.transferCandidates) { member in
-          transferCandidateRow(member: member)
+            VStack(spacing: 0) {
+              ForEach(Array(store.transferCandidates.enumerated()), id: \.element.userId) { index, member in
+                transferCandidateRow(member: member)
+
+                if index < store.transferCandidates.count - 1 {
+                  Divider()
+                    .background(Color.white.opacity(0.12))
+                }
+              }
+            }
+            .adaptiveGlassCard()
+
+            Text("호스트를 양도하면 해당 멤버가 그룹을 관리할 수 있습니다.")
+              .font(.system(size: 12))
+              .foregroundStyle(Color.pmtext.secondary)
+              .padding(.horizontal, 4)
+          }
         }
-      } header: {
-        Text("새 호스트를 선택하세요")
-      } footer: {
-        Text("호스트를 양도하면 해당 멤버가 그룹을 관리할 수 있습니다.")
+        .padding(.horizontal, 16)
+        .padding(.top, 12)
+        .padding(.bottom, 24)
+      }
+      .auroraBackground()
+      .navigationTitle("호스트 양도")
+      .navigationBarTitleDisplayMode(.inline)
+      .toolbar {
+        ToolbarItem(placement: .cancellationAction) {
+          Button("취소") {
+            store.send(.view(.dismissTransferSheet))
+          }
+        }
+        ToolbarItem(placement: .confirmationAction) {
+          confirmButton
+        }
       }
     }
+    .interactiveDismissDisabled(store.isTransferringHost)
   }
 
   private func transferCandidateRow(member: UserPublicModel) -> some View {
@@ -1241,6 +1256,8 @@ private struct TransferHostSheet: View {
             .font(.title3)
         }
       }
+      .padding(.horizontal, 16)
+      .padding(.vertical, 12)
       .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
@@ -1265,25 +1282,49 @@ struct GroupMemberListView: View {
   let store: StoreOf<GroupSettings.Feature>
 
   var body: some View {
-    List {
-      Section {
-        ForEach(store.members) { member in
-          MemberRow(
-            member: member,
-            isHost: member.userId == store.group.createdBy,
-            isCurrentUser: member.userId == store.currentUserId,
-            onImageTap: { store.send(.view(.memberImageTapped(member))) }
-          )
-        }
-      }
+    ScrollView {
+      VStack(spacing: 16) {
+        // 멤버 목록
+        VStack(alignment: .leading, spacing: 10) {
+          Text("멤버")
+            .font(.system(size: 16, weight: .semibold))
+            .padding(.horizontal, 4)
 
-      Section {
-        InviteTileRow {
-          store.send(.view(.inviteTapped))
+          VStack(spacing: 0) {
+            ForEach(Array(store.members.enumerated()), id: \.element.userId) { index, member in
+              MemberRow(
+                member: member,
+                isHost: member.userId == store.group.createdBy,
+                isCurrentUser: member.userId == store.currentUserId,
+                onImageTap: { store.send(.view(.memberImageTapped(member))) }
+              )
+
+              if index < store.members.count - 1 {
+                Divider()
+                  .background(Color.white.opacity(0.12))
+              }
+            }
+          }
+          .adaptiveGlassCard()
+        }
+
+        // 초대 섹션
+        VStack(alignment: .leading, spacing: 10) {
+          Text("초대")
+            .font(.system(size: 16, weight: .semibold))
+            .padding(.horizontal, 4)
+
+          InviteTileRow {
+            store.send(.view(.inviteTapped))
+          }
+          .adaptiveGlassCard()
         }
       }
+      .padding(.horizontal, 16)
+      .padding(.top, 12)
+      .padding(.bottom, 24)
     }
-    .listStyle(.insetGrouped)
+    .auroraBackground()
     .navigationTitle("멤버 (\(store.members.count)명)")
     .navigationBarTitleDisplayMode(.inline)
     .fullScreenCover(
@@ -1345,7 +1386,8 @@ private struct MemberRow: View {
           .clipShape(Capsule())
       }
     }
-    .padding(.vertical, 4)
+    .padding(.horizontal, 16)
+    .padding(.vertical, 12)
   }
 }
 
@@ -1375,7 +1417,8 @@ private struct InviteTileRow: View {
           .font(.system(size: 13, weight: .semibold))
           .foregroundStyle(.tertiary)
       }
-      .padding(.vertical, 6)
+      .padding(.horizontal, 16)
+      .padding(.vertical, 12)
       .frame(maxWidth: .infinity, alignment: .leading)
       .contentShape(Rectangle())
     }
