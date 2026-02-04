@@ -683,7 +683,7 @@ extension DateTimeSettings {
                 .frame(width: 24, height: 24)
 
               VStack(alignment: .leading, spacing: 2) {
-                Text("24시간 형식")
+                Text(store.use24HourFormat ? "24시간 형식" : "12시간 형식")
                   .font(.body)
                   .foregroundStyle(Color.pmtext.primary)
 
