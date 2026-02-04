@@ -322,11 +322,15 @@ extension AppEntry {
           case .appRestartRequested:
             // 앱 상태 리셋 - Splash부터 다시 시작
             state.reset()
-            
+
             // 시간 포맷 다시 로드
             KoreanDateFormatters.use24HourFormat = userDefaultsClient.boolForKey(
               AppConstants.UserDefaults.use24HourFormat
             )
+
+            // 테마 모드는 RootTab에서 preferredColorScheme으로 자동 적용됨
+            // (UserDefaults.preferredThemeMode 값을 직접 읽음)
+
             return .send(.internal(.startSessionCheck))
           }
 

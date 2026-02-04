@@ -153,6 +153,23 @@ public enum AppConstants {
     public static let maxCustomMinutesDigits = 3
   }
 
+  // MARK: - Theme Mode
+
+  /// 앱 테마 모드 설정
+  public enum ThemeMode: String, Codable, CaseIterable, Sendable {
+    case system = "system"  // 시스템 설정 따르기 (기본)
+    case light = "light"    // 항상 라이트 모드
+    case dark = "dark"      // 항상 다크 모드
+
+    public var displayName: String {
+      switch self {
+      case .system: return "시스템 설정 따르기"
+      case .light: return "라이트 모드"
+      case .dark: return "다크 모드"
+      }
+    }
+  }
+
   // MARK: - User Defaults Keys
 
   public enum UserDefaults {
@@ -162,6 +179,8 @@ public enum AppConstants {
     public static let hasSeenLiveActivityInfo = "promisoHasSeenLiveActivityInfo"
     /// 24시간 형식 사용 여부
     public static let use24HourFormat = "promisoUse24HourFormat"
+    /// 선호하는 테마 모드 (system/light/dark)
+    public static let preferredThemeMode = "promisoPreferredThemeMode"
     /// 캘린더 이벤트 매핑 (promiseId → eventIdentifier)
     public static let calendarEventMappings = "promisoCalendarEventMappings"
     /// 마지막 캘린더 동기화 날짜
