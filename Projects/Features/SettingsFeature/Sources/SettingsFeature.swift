@@ -596,6 +596,7 @@ extension DateTimeSettings {
   @Reducer
   public struct Feature {
     @Dependency(\.hapticFeedback) var hapticFeedback
+    @Dependency(\.notificationCenter) var notificationCenter
 
     public init() {}
 
@@ -644,10 +645,10 @@ extension DateTimeSettings {
             state.$use24HourFormat.withLock { $0 = newValue }
             KoreanDateFormatters.use24HourFormat = newValue
             state.pendingValue = nil
-            return .run { _ in
+            return .run { [notificationCenter] _ in
               await hapticFeedback.success()
               // 앱 재시작 요청 Notification 발송
-              NotificationCenter.default.post(name: AppConstants.Notifications.appRestartRequested, object: nil)
+              notificationCenter.post(name: AppConstants.Notifications.appRestartRequested, object: nil)
             }
 
           case .restartCancelled:
