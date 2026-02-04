@@ -159,7 +159,7 @@ user_signup → group_joined → promise_created → promise_response_yes/no
 ### 규칙
 1. **소문자 + 언더스코어** 사용 (`snake_case`)
 2. **동사 + 명사** 순서 (`action_object`)
-3. **과거형 사용 안 함** (`created` ✅, `create` ❌, `creating` ❌)
+3. **동사 과거 분사형 사용** (`created` ✅, `create` ❌, `creating` ❌) - 완료된 동작을 나타냅니다.
 4. **명확하고 구체적인 이름** (`button_tapped` ❌ → `login_button_tapped` ✅)
 
 ### 예시
