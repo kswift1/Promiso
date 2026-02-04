@@ -3,6 +3,7 @@
 
 import Clients
 import Lottie
+import NotificationCenterFeature
 import PromisoShared
 import ResourceKit
 import SharedFeature
@@ -68,6 +69,7 @@ extension Home {
     @Reducer(state: .equatable)
     public enum Path {
       case promiseDetail(PromiseDetail.Feature)
+      case notificationCenter(NotificationCenterFeature.NotificationCenter.Feature)
     }
 
     // MARK: - Action
@@ -101,6 +103,8 @@ extension Home {
         case resetFilters
         /// 스크롤 타겟 초기화
         case scrollTargetCleared
+        /// 알림 버튼 탭
+        case notificationButtonTapped
       }
 
       public enum Internal: Sendable {
@@ -186,6 +190,10 @@ extension Home {
           case .scrollTargetCleared:
             state.scrollTarget = nil
             return .none
+
+          case .notificationButtonTapped:
+            state.path.append(.notificationCenter(.init()))
+            return .none
           }
 
         case .internal(let internalAction):
@@ -247,6 +255,20 @@ extension Home {
         case .path(.element(id: _, action: .promiseDetail(.delegate(.promiseUpdated)))):
           // 수정 후 다시 조회
           return .send(.internal(.fetchPromises))
+
+        // MARK: - NotificationCenter Path Actions
+
+        case .path(.element(id: _, action: .notificationCenter(.delegate(.dismiss)))):
+          _ = state.path.popLast()
+          return .none
+
+        case .path(.element(id: _, action: .notificationCenter(.delegate(.navigateToPromise(let promiseId, let groupId))))):
+          _ = state.path.popLast()
+          return .send(.delegate(.navigateToPromise(promiseId: promiseId, groupId: groupId)))
+
+        case .path(.element(id: _, action: .notificationCenter(.delegate(.navigateToGroup(let groupId))))):
+          _ = state.path.popLast()
+          return .send(.delegate(.navigateToGroupWithPromise(groupId: groupId, promiseId: "")))
 
         case .path:
           return .none
@@ -469,7 +491,9 @@ extension Home {
           ToolbarItem(placement: .topBarTrailing) {
             NotificationButton(
               badgeCount: store.pendingResponseCount,
-              action: { }
+              action: {
+                store.send(.view(.notificationButtonTapped))
+              }
             )
           }
         }
@@ -486,6 +510,8 @@ extension Home {
         switch store.case {
         case .promiseDetail(let detailStore):
           PromiseDetail.RootView(store: detailStore)
+        case .notificationCenter(let notificationStore):
+          NotificationCenterFeature.NotificationCenter.RootView(store: notificationStore)
         }
       }
     }

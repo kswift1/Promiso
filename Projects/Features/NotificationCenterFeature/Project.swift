@@ -1,7 +1,7 @@
 import ProjectDescription
 import ProjectDescriptionHelpers
 
-private let feature: Feature = .home
+private let feature: Feature = .notificationCenter
 
 let project = Project(
   name: feature.fullName,
@@ -9,7 +9,7 @@ let project = Project(
 
     // Main Feature (TCA)
     .target(
-      name: "HomeFeature",
+      name: "NotificationCenterFeature",
       destinations: .iOS,
       product: .framework,
       bundleId: "\(feature.defaultBundleIdPrefix)",
@@ -18,31 +18,30 @@ let project = Project(
       dependencies: [
         .project(target: "Clients", path: "../../Clients"),
         .project(target: "PromisoShared", path: "../../Shared"),
-        .project(target: "ExternalDependency", path: "../../ExternalDependency"),
         .project(target: "ResourceKit", path: "../../ResourceKit"),
-        .project(target: "SharedFeature", path: "../SharedFeature"),
-        .project(target: "NotificationCenterFeature", path: "../NotificationCenterFeature")
+        .project(target: "ExternalDependency", path: "../../ExternalDependency"),
+        .project(target: "SharedFeature", path: "../SharedFeature")
       ],
       settings: .standard()
     ),
 
     // Unit Tests
     .target(
-      name: "HomeFeatureTests",
+      name: "NotificationCenterFeatureTests",
       destinations: .iOS,
       product: .unitTests,
       bundleId: "\(feature.defaultBundleIdPrefix).tests",
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Tests/Sources/**"],
       dependencies: [
-        .target(name: "HomeFeature")
+        .target(name: "NotificationCenterFeature")
       ],
       settings: .standard()
     ),
 
     // Example App (Demo)
     .target(
-      name: "HomeFeatureExample",
+      name: "NotificationCenterFeatureExample",
       destinations: .iOS,
       product: .app,
       bundleId: "\(feature.defaultBundleIdPrefix).example",
@@ -53,7 +52,7 @@ let project = Project(
       sources: ["Example/Sources/**"],
       resources: ["Example/Resources/**"],
       dependencies: [
-        .target(name: "HomeFeature")
+        .target(name: "NotificationCenterFeature")
       ],
       settings: .standard()
     )
