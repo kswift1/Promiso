@@ -60,14 +60,21 @@ platform :ios do
     )
 
     # 4. TestFlight 업로드
+    changelog_text = ENV["CHANGELOG"] || "Dev 빌드"
+    UI.message("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    UI.message("📝 CHANGELOG 환경변수:")
+    UI.message(changelog_text)
+    UI.message("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
     upload_to_testflight(
       app_identifier: "com.promiso.dev",
       skip_waiting_for_build_processing: true,
       distribute_external: false,
       notify_external_testers: false,
+      changelog: changelog_text,
       localized_build_info: {
         "ko" => {
-          whats_new: ENV["CHANGELOG"] || "Dev 빌드"
+          whats_new: changelog_text
         }
       }
     )
@@ -125,15 +132,22 @@ platform :ios do
     )
 
     # 4. TestFlight 업로드
+    changelog_text = ENV["CHANGELOG"] || "Stage 테스트 빌드"
+    UI.message("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    UI.message("📝 CHANGELOG 환경변수:")
+    UI.message(changelog_text)
+    UI.message("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
     upload_to_testflight(
       app_identifier: "com.promiso.stage",
       skip_waiting_for_build_processing: true,
       distribute_external: true,
       groups: ["Stage Testers"],
       notify_external_testers: true,
+      changelog: changelog_text,
       localized_build_info: {
         "ko" => {
-          whats_new: ENV["CHANGELOG"] || "Stage 테스트 빌드"
+          whats_new: changelog_text
         }
       }
     )
@@ -191,15 +205,22 @@ platform :ios do
     )
 
     # 4. TestFlight 업로드
+    changelog_text = ENV["CHANGELOG"] || "프로덕션 빌드"
+    UI.message("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    UI.message("📝 CHANGELOG 환경변수:")
+    UI.message(changelog_text)
+    UI.message("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
     upload_to_testflight(
       app_identifier: "com.promiso",
       skip_waiting_for_build_processing: false,
       distribute_external: true,
       groups: ["Production Testers"],
       notify_external_testers: true,
+      changelog: changelog_text,
       localized_build_info: {
         "ko" => {
-          whats_new: ENV["CHANGELOG"] || "프로덕션 빌드"
+          whats_new: changelog_text
         }
       }
     )
