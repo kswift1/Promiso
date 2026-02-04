@@ -19,6 +19,7 @@
 //  - `promiso://promise/{promiseId}/{groupId}` → 약속 상세 화면
 //  - `promiso://promise/{promiseId}/eta` → LiveActivity ETA 변경 시트
 //  - `promiso://live/{promiseId}` → LivePromise 상세 화면 (ETA 시트 없이)
+//  - `promiso://create` → 약속 만들기 화면 (Widget용, 그룹 있을 때만)
 //
 //  ## 테스트 목적
 //  - 각 딥링크 URL 형식이 올바른 DeeplinkDestination으로 파싱되는지 검증
