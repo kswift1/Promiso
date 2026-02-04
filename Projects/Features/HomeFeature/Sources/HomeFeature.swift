@@ -3,6 +3,7 @@
 
 import Clients
 import Lottie
+import NotificationCenterFeature
 import PromisoShared
 import ResourceKit
 import SharedFeature
@@ -21,6 +22,7 @@ extension Home {
   @Reducer
   public struct Feature {
     @Dependency(\.promiseClient) var promiseClient
+    @Dependency(\.notificationClient) var notificationClient
 
     public init() {}
 
@@ -54,6 +56,10 @@ extension Home {
       /// 스크롤 타겟
       var scrollTarget: HomeModels.ScrollTarget? = nil
 
+      // MARK: Notification
+      /// 안 읽은 알림 개수
+      var unreadNotificationCount: Int = 0
+
       // MARK: Navigation
       /// 네비게이션 경로 (약속 상세)
       var path = StackState<Path.State>()
@@ -68,6 +74,7 @@ extension Home {
     @Reducer(state: .equatable)
     public enum Path {
       case promiseDetail(PromiseDetail.Feature)
+      case notificationCenter(NotificationCenterFeature.NotificationCenter.Feature)
     }
 
     // MARK: - Action
@@ -101,6 +108,10 @@ extension Home {
         case resetFilters
         /// 스크롤 타겟 초기화
         case scrollTargetCleared
+        /// 알림 버튼 탭
+        case notificationButtonTapped
+        /// 알림 배지 새로고침 (외부에서 호출)
+        case refreshNotificationBadge
       }
 
       public enum Internal: Sendable {
@@ -110,6 +121,10 @@ extension Home {
         case promisesResponse(Result<[PromiseModel], Error>)
         /// 응답 필요 섹션으로 스크롤
         case scrollToNeedResponse
+        /// 안 읽은 알림 개수 조회
+        case fetchUnreadNotificationCount
+        /// 안 읽은 알림 개수 응답
+        case unreadNotificationCountResponse(Result<Int, Error>)
       }
 
       public enum Delegate: Sendable {
@@ -134,7 +149,7 @@ extension Home {
             if !state.hasLoadedOnce {
               state.hasLoadedOnce = true
             }
-            // Firestore에서 직접 쿼리
+            // Firestore에서 직접 쿼리 (성공 시 알림 개수도 조회됨)
             return .send(.internal(.fetchPromises))
 
           case .refreshTriggered:
@@ -186,6 +201,13 @@ extension Home {
           case .scrollTargetCleared:
             state.scrollTarget = nil
             return .none
+
+          case .notificationButtonTapped:
+            state.path.append(.notificationCenter(.init()))
+            return .none
+
+          case .refreshNotificationBadge:
+            return .send(.internal(.fetchUnreadNotificationCount))
           }
 
         case .internal(let internalAction):
@@ -221,12 +243,37 @@ extension Home {
               WidgetDataManager.savePromises(promises.toWidgetData())
               WidgetDataManager.reloadWidgets()
 
+              // 약속 로드 성공 시 알림 개수도 조회
+              return .send(.internal(.fetchUnreadNotificationCount))
+
             case .failure(let error):
               state.promisesState = .failed(error)
             }
             return .none
 
           case .scrollToNeedResponse:
+            return .none
+
+          case .fetchUnreadNotificationCount:
+            let userId = state.currentUser.userId
+            guard !userId.isEmpty else { return .none }
+            return .run { [notificationClient] send in
+              do {
+                let count = try await notificationClient.getUnreadCount(userId)
+                await send(.internal(.unreadNotificationCountResponse(.success(count))))
+              } catch {
+                await send(.internal(.unreadNotificationCountResponse(.failure(error))))
+              }
+            }
+
+          case .unreadNotificationCountResponse(let result):
+            if case .success(let count) = result {
+              state.unreadNotificationCount = count
+              // 시스템 배지도 동기화
+              return .run { [notificationClient] _ in
+                await notificationClient.setBadgeCount(count)
+              }
+            }
             return .none
           }
 
@@ -247,6 +294,20 @@ extension Home {
         case .path(.element(id: _, action: .promiseDetail(.delegate(.promiseUpdated)))):
           // 수정 후 다시 조회
           return .send(.internal(.fetchPromises))
+
+        // MARK: - NotificationCenter Path Actions
+
+        case .path(.element(id: _, action: .notificationCenter(.delegate(.dismiss)))):
+          _ = state.path.popLast()
+          return .none
+
+        case .path(.element(id: _, action: .notificationCenter(.delegate(.navigateToPromise(let promiseId, let groupId))))):
+          _ = state.path.popLast()
+          return .send(.delegate(.navigateToPromise(promiseId: promiseId, groupId: groupId)))
+
+        case .path(.element(id: _, action: .notificationCenter(.delegate(.navigateToGroup(let groupId))))):
+          _ = state.path.popLast()
+          return .send(.delegate(.navigateToGroupWithPromise(groupId: groupId, promiseId: "")))
 
         case .path:
           return .none
@@ -468,9 +529,12 @@ extension Home {
         .toolbar {
           ToolbarItem(placement: .topBarTrailing) {
             NotificationButton(
-              badgeCount: store.pendingResponseCount,
-              action: { }
+              badgeCount: store.unreadNotificationCount,
+              action: {
+                store.send(.view(.notificationButtonTapped))
+              }
             )
+            .id(store.unreadNotificationCount)
           }
         }
         .onAppear {
@@ -486,6 +550,8 @@ extension Home {
         switch store.case {
         case .promiseDetail(let detailStore):
           PromiseDetail.RootView(store: detailStore)
+        case .notificationCenter(let notificationStore):
+          NotificationCenterFeature.NotificationCenter.RootView(store: notificationStore)
         }
       }
     }

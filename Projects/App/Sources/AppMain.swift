@@ -29,11 +29,6 @@ struct PromisoApp: App {
           store.send(.view(.handleDeeplink(url)))
         }
     }
-    .onChange(of: scenePhase) { _, newPhase in
-      if newPhase == .active {
-        // 앱 진입 시 배지 초기화
-        UNUserNotificationCenter.current().setBadgeCount(0)
-      }
-    }
+    // 배지 카운트는 HomeFeature에서 실제 unreadCount로 동기화
   }
 }

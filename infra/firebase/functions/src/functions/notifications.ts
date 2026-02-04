@@ -353,7 +353,49 @@ export async function sendPushNotificationInternal(params: {
   const usersCollection = db.collection("users");
   const notificationsCollection = db.collection("notifications");
 
-  // 1. 각 사용자의 FCM 토큰 수집
+  // 1. Firestore에 알림 기록 저장 (항상 실행, 설정과 무관)
+  // Firestore 배치는 500개 제한이므로 청크 단위로 처리
+  const now = FieldValue.serverTimestamp();
+  const notificationRefs: Map<string, FirebaseFirestore.DocumentReference> =
+    new Map();
+
+  const chunkSize = 500;
+  for (let i = 0; i < userIds.length; i += chunkSize) {
+    const chunk = userIds.slice(i, i + chunkSize);
+    const batch = db.batch();
+
+    for (const userId of chunk) {
+      const notificationDoc: Omit<NotificationDocument, "createdAt" |
+        "readAt" | "deliveredAt"> & {
+        createdAt: FirebaseFirestore.FieldValue;
+        readAt: null;
+        deliveredAt: null;
+      } = {
+        userId,
+        type,
+        title,
+        body,
+        promiseId,
+        groupId,
+        relatedUserId,
+        isRead: false,
+        isDelivered: false, // 기본값, FCM 전송 성공 시 업데이트
+        createdAt: now,
+        readAt: null,
+        deliveredAt: null,
+        data: data,
+      };
+
+      const notificationRef = notificationsCollection.doc();
+      notificationRefs.set(userId, notificationRef);
+      batch.set(notificationRef, notificationDoc);
+    }
+
+    await batch.commit();
+  }
+  console.log(`📝 Notifications saved for ${userIds.length} users`);
+
+  // 2. 각 사용자의 FCM 토큰 수집 (알림 설정 체크 포함)
   const allTokens: string[] = [];
   const userTokenMap: Map<string, string[]> = new Map();
 
@@ -411,17 +453,17 @@ export async function sendPushNotificationInternal(params: {
     }
   }
 
-  // 2. 토큰이 없으면 조기 반환
+  // 3. 토큰이 없으면 푸시 전송 스킵 (알림은 이미 저장됨)
   if (allTokens.length === 0) {
-    console.log("📭 No FCM tokens found for users:", userIds);
+    console.log("📭 No FCM tokens found, notifications already saved");
     return {
       success: true,
       successCount: 0,
-      failureCount: userIds.length,
+      failureCount: 0,
     };
   }
 
-  // 3. FCM 멀티캐스트 전송
+  // 4. FCM 멀티캐스트 전송
   const message: admin.messaging.MulticastMessage = {
     tokens: allTokens,
     notification: {
@@ -470,45 +512,37 @@ export async function sendPushNotificationInternal(params: {
     failureCount = allTokens.length;
   }
 
-  // 유저별 전송 성공 여부 계산
-  const userDeliveryStatus = new Map<string, boolean>();
+  // 5. FCM 전송 성공한 사용자의 알림 isDelivered 업데이트
+  // 업데이트할 문서 참조 수집
+  const refsToUpdate: FirebaseFirestore.DocumentReference[] = [];
+
   for (const [userId, tokens] of userTokenMap) {
     const delivered = tokens.some((token) => deliveredTokens.has(token));
-    userDeliveryStatus.set(userId, delivered);
+    if (delivered) {
+      const ref = notificationRefs.get(userId);
+      if (ref) {
+        refsToUpdate.push(ref);
+      }
+    }
   }
 
-  // 4. notifications 컬렉션에 알림 기록 저장
-  const now = FieldValue.serverTimestamp();
-  const batch = db.batch();
+  // Firestore 배치는 500개 제한이므로 청크 단위로 처리
+  if (refsToUpdate.length > 0) {
+    for (let i = 0; i < refsToUpdate.length; i += chunkSize) {
+      const chunk = refsToUpdate.slice(i, i + chunkSize);
+      const updateBatch = db.batch();
 
-  for (const userId of userIds) {
-    const isDelivered = userDeliveryStatus.get(userId) ?? false;
-    const notificationDoc: Omit<NotificationDocument, "createdAt" |
-      "readAt" | "deliveredAt"> & {
-      createdAt: FirebaseFirestore.FieldValue;
-      readAt: null;
-      deliveredAt: FirebaseFirestore.FieldValue | null;
-    } = {
-      userId,
-      type,
-      title,
-      body,
-      promiseId,
-      groupId,
-      relatedUserId,
-      isRead: false,
-      isDelivered,
-      createdAt: now,
-      readAt: null,
-      deliveredAt: isDelivered ? now : null,
-      data: data,
-    };
+      for (const ref of chunk) {
+        updateBatch.update(ref, {
+          isDelivered: true,
+          deliveredAt: now,
+        });
+      }
 
-    const notificationRef = notificationsCollection.doc();
-    batch.set(notificationRef, notificationDoc);
+      await updateBatch.commit();
+    }
+    console.log(`✅ Updated isDelivered for ${refsToUpdate.length} notifications`);
   }
-
-  await batch.commit();
 
   return {
     success: true,

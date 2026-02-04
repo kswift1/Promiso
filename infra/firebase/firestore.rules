@@ -38,6 +38,27 @@ service cloud.firestore {
                                get(/databases/$(database)/documents/users/$(request.auth.uid)).data.groups[groupId].role == "admin";
     }
 
+    // Notifications - 하위 컬렉션 없음
+    match /notifications/{notificationId} {
+      // 본인 알림만 읽기 가능
+      allow read: if request.auth != null &&
+                     resource.data.userId == request.auth.uid;
+
+      // 읽음 처리만 가능 (isRead, readAt 필드만)
+      allow update: if request.auth != null &&
+                       resource.data.userId == request.auth.uid &&
+                       request.resource.data.diff(resource.data)
+                         .affectedKeys()
+                         .hasOnly(['isRead', 'readAt']);
+
+      // 본인 알림만 삭제 가능
+      allow delete: if request.auth != null &&
+                       resource.data.userId == request.auth.uid;
+
+      // 생성은 Cloud Functions에서만 가능
+      allow create: if false;
+    }
+
     // Promises - 하위 컬렉션 없음
     match /promises/{promiseId} {
       // 그룹 멤버만 읽기 가능 (groups/{groupId}.memberIds 배열에 포함된 경우)
