@@ -27,6 +27,7 @@ extension AppEntry {
     @Dependency(\.userProfileClient) var userProfileClient
     @Dependency(\.notificationClient) var notificationClient
     @Dependency(\.deeplinkClient) var deeplinkClient
+    @Dependency(\.userDefaultsClient) var userDefaultsClient
 
     public init() {}
     
@@ -89,6 +90,8 @@ extension AppEntry {
       case fcmTokenSaved
       case subscribePushNotificationTap
       case pushNotificationTapped(DeeplinkDestination)
+      case subscribeAppRestart
+      case appRestartRequested
     }
 
     // MARK: - Destination Reducer
@@ -111,7 +114,8 @@ extension AppEntry {
             return .merge(
               .send(.internal(.startSessionCheck)),
               .send(.internal(.subscribeFCMToken)),
-              .send(.internal(.subscribePushNotificationTap))
+              .send(.internal(.subscribePushNotificationTap)),
+              .send(.internal(.subscribeAppRestart))
             )
 
           case .splashAnimationCompleted:
@@ -236,29 +240,26 @@ extension AppEntry {
           case .pushNotificationTapped(let destination):
             return routeOrPendDeeplink(destination, state: &state)
 
-          case .checkNotificationPermission(let userModel):
-            return .run { send in
-              let status = await notificationClient.getAuthorizationStatus()
-              let isAuthorized = status == .authorized
-              await send(.internal(.notificationPermissionChecked(isAuthorized: isAuthorized, user: userModel)))
+          case .subscribeAppRestart:
+            return .publisher {
+              NotificationCenter.default
+                .publisher(for: AppConstants.Notifications.appRestartRequested)
+                .map { _ in Action.internal(.appRestartRequested) }
             }
 
-          case .notificationPermissionChecked(let isAuthorized, let userModel):
-            if isAuthorized {
-              // 이미 권한 허용됨 → 바로 메인으로
-              WidgetDataManager.saveUserId(userModel.id)
-              state.destination = .main(RootTab.Feature.State(currentUser: Shared(value: userModel)))
-              // pending deeplink가 있으면 처리
-              if let deeplink = state.pendingDeeplink {
-                state.pendingDeeplink = nil
-                return routeDeeplink(deeplink)
-              }
-            } else {
-              // 권한 미허용 → 온보딩 표시
-              state.pendingUserForMain = userModel
-              state.notificationPermission = NotificationPermission.Feature.State()
-            }
-            return .none
+          case .appRestartRequested:
+            // 앱 상태 리셋 - Splash부터 다시 시작
+            state.splash = .visible
+            state.destination = nil
+            state.pendingDeeplink = nil
+            state.pendingUserForMain = nil
+            state.providerProfileImageURL = nil
+            state.notificationPermission = nil
+            // 시간 포맷 다시 로드
+            KoreanDateFormatters.use24HourFormat = userDefaultsClient.boolForKey(
+              AppConstants.UserDefaults.use24HourFormat
+            )
+            return .send(.internal(.startSessionCheck))
           }
 
         case .destination(.presented(.auth(.delegate(.loggedIn(let providerProfileImageURL))))):

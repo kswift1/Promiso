@@ -230,12 +230,9 @@ extension PromiseModel {
     return emoji
   }
 
-  /// 시간 텍스트 (예: "오후 2:00")
+  /// 시간 텍스트 (예: "오후 2:00" 또는 "14:00")
   public var timeText: String {
-    let formatter = DateFormatter()
-    formatter.locale = Locale(identifier: "ko_KR")
-    formatter.dateFormat = "a h:mm"
-    return formatter.string(from: startAt)
+    startAt.formattedTime
   }
 
   /// 종료 시간 텍스트 (예: "오후 5:00" 또는 다음날이면 "1월 28일 오전 1:00")

@@ -59,12 +59,9 @@ public extension Date {
     return formatter.string(from: self)
   }
   
-  /// 약속 시간을 표시용으로 포맷팅
+  /// 약속 시간을 표시용으로 포맷팅 (12/24시간 설정 적용)
   var promiseTimeString: String {
-    let formatter = DateFormatter()
-    formatter.dateFormat = "a h:mm"
-    formatter.locale = Locale(identifier: "ko_KR")
-    return formatter.string(from: self)
+    KoreanDateFormatters.timeString(from: self)
   }
   
   /// 약속 날짜와 시간을 함께 표시
