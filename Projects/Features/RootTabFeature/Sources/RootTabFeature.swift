@@ -189,7 +189,8 @@ extension RootTab {
             .send(.internal(.requestWidgetToken)),
             .send(.internal(.observePushToStartToken)),
             .send(.internal(.observeActivityUpdates)),
-            .send(.internal(.syncCalendar))
+            .send(.internal(.syncCalendar)),
+            .send(.home(.view(.refreshNotificationBadge)))
           )
 
         case .tabSelected(let tab):
