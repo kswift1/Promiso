@@ -105,6 +105,8 @@ extension Settings {
       case notificationSettings(NotificationSettings.Feature)
       case groupNotificationDetail(GroupNotificationDetail.Feature)
       case calendarSettings(CalendarSettings.Feature)
+      case support(Support.Feature)
+      case faq(FAQ.Feature)
       case legalInfo(LegalInfo.Feature)
       case policyView(PolicyView.Feature)
       case appInfo(AppInfo.Feature)
@@ -155,6 +157,8 @@ extension Settings {
       case notificationSettingsTapped
       /// 캘린더 설정 탭
       case calendarSettingsTapped
+      /// 지원 탭
+      case supportTapped
       /// 약관 및 정책 탭
       case legalInfoTapped
       /// 앱 정보 탭
@@ -271,6 +275,10 @@ extension Settings {
 
           case .calendarSettingsTapped:
             state.path.append(.calendarSettings(CalendarSettings.Feature.State()))
+            return .run { _ in await hapticFeedback.selection() }
+
+          case .supportTapped:
+            state.path.append(.support(Support.Feature.State()))
             return .run { _ in await hapticFeedback.selection() }
 
           case .legalInfoTapped:
@@ -464,6 +472,13 @@ extension Settings {
             return .none
           }
 
+        case .path(.element(_, action: .support(.delegate(let delegate)))):
+          switch delegate {
+          case .navigateToFAQ:
+            state.path.append(.faq(FAQ.Feature.State()))
+            return .none
+          }
+
         case .path(.element(_, action: .legalInfo(.delegate(let delegate)))):
           switch delegate {
           case .navigateToPolicy(let policyType, let url):
@@ -522,6 +537,10 @@ extension Settings {
           GroupNotificationDetail.RootView(store: store)
         case .calendarSettings(let store):
           CalendarSettings.RootView(store: store)
+        case .support(let store):
+          Support.RootView(store: store)
+        case .faq(let store):
+          FAQ.RootView(store: store)
         case .legalInfo(let store):
           LegalInfo.RootView(store: store)
         case .policyView(let store):
