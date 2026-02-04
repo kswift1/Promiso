@@ -89,6 +89,8 @@ extension AppEntry {
       case fcmTokenSaved
       case subscribePushNotificationTap
       case pushNotificationTapped(DeeplinkDestination)
+      case subscribeAppRestart
+      case appRestartRequested
     }
 
     // MARK: - Destination Reducer
@@ -111,7 +113,8 @@ extension AppEntry {
             return .merge(
               .send(.internal(.startSessionCheck)),
               .send(.internal(.subscribeFCMToken)),
-              .send(.internal(.subscribePushNotificationTap))
+              .send(.internal(.subscribePushNotificationTap)),
+              .send(.internal(.subscribeAppRestart))
             )
 
           case .splashAnimationCompleted:
@@ -235,6 +238,27 @@ extension AppEntry {
 
           case .pushNotificationTapped(let destination):
             return routeOrPendDeeplink(destination, state: &state)
+
+          case .subscribeAppRestart:
+            return .publisher {
+              NotificationCenter.default
+                .publisher(for: AppConstants.Notifications.appRestartRequested)
+                .map { _ in Action.internal(.appRestartRequested) }
+            }
+
+          case .appRestartRequested:
+            // 앱 상태 리셋 - Splash부터 다시 시작
+            state.splash = .visible
+            state.destination = nil
+            state.pendingDeeplink = nil
+            state.pendingUserForMain = nil
+            state.providerProfileImageURL = nil
+            state.notificationPermission = nil
+            // 시간 포맷 다시 로드
+            KoreanDateFormatters.use24HourFormat = UserDefaults.standard.bool(
+              forKey: AppConstants.UserDefaults.use24HourFormat
+            )
+            return .send(.internal(.startSessionCheck))
 
           case .checkNotificationPermission(let userModel):
             return .run { send in

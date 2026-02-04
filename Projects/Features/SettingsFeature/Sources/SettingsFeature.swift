@@ -602,6 +602,10 @@ extension DateTimeSettings {
     @ObservableState
     public struct State: Equatable {
       @Shared(.appStorage(AppConstants.UserDefaults.use24HourFormat)) public var use24HourFormat: Bool = false
+      /// 재시작 확인 Alert 표시 여부
+      var showRestartAlert: Bool = false
+      /// 변경하려는 값 (Alert 확인 시 적용)
+      var pendingValue: Bool?
 
       public init() {}
     }
@@ -613,6 +617,8 @@ extension DateTimeSettings {
     public enum View: Equatable, Sendable {
       case onAppear
       case use24HourFormatChanged(Bool)
+      case restartConfirmed
+      case restartCancelled
     }
 
     public var body: some ReducerOf<Self> {
@@ -624,8 +630,29 @@ extension DateTimeSettings {
             return .none
 
           case .use24HourFormatChanged(let value):
-            state.$use24HourFormat.withLock { $0 = value }
-            KoreanDateFormatters.use24HourFormat = value
+            // 값이 변경된 경우에만 Alert 표시
+            guard value != state.use24HourFormat else { return .none }
+            state.pendingValue = value
+            state.showRestartAlert = true
+            return .run { _ in
+              await hapticFeedback.medium()
+            }
+
+          case .restartConfirmed:
+            state.showRestartAlert = false
+            guard let newValue = state.pendingValue else { return .none }
+            state.$use24HourFormat.withLock { $0 = newValue }
+            KoreanDateFormatters.use24HourFormat = newValue
+            state.pendingValue = nil
+            return .run { _ in
+              await hapticFeedback.success()
+              // 앱 재시작 요청 Notification 발송
+              NotificationCenter.default.post(name: AppConstants.Notifications.appRestartRequested, object: nil)
+            }
+
+          case .restartCancelled:
+            state.showRestartAlert = false
+            state.pendingValue = nil
             return .none
           }
         }
@@ -668,7 +695,7 @@ extension DateTimeSettings {
           }
           .tint(Color.pmindigo.n500)
         } footer: {
-          Text("앱 전체에서 사용되는 시간 표시 형식을 설정합니다.\n앱을 재시작하면 적용됩니다.")
+          Text("앱 전체에서 사용되는 시간 표시 형식을 설정합니다.")
         }
       }
       .scrollContentBackground(.hidden)
@@ -678,6 +705,19 @@ extension DateTimeSettings {
       .navigationBarTitleDisplayMode(.inline)
       .onAppear {
         store.send(.view(.onAppear))
+      }
+      .alert("앱 재시작", isPresented: Binding(
+        get: { store.showRestartAlert },
+        set: { _ in }
+      )) {
+        Button("취소", role: .cancel) {
+          store.send(.view(.restartCancelled))
+        }
+        Button("재시작") {
+          store.send(.view(.restartConfirmed))
+        }
+      } message: {
+        Text("시간 표시 형식을 변경하려면 앱을 재시작해야 합니다.\n지금 재시작하시겠습니까?")
       }
     }
   }
