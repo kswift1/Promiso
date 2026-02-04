@@ -10,6 +10,7 @@ import Foundation
 /// - `promiso://promise/{promiseId}/{groupId}` → 약속 상세 화면
 /// - `promiso://promise/{promiseId}/eta` → LiveActivity ETA 변경 시트
 /// - `promiso://live/{promiseId}` → LivePromise 상세 화면 (ETA 시트 없이)
+/// - `promiso://create` → 약속 만들기 화면 (Widget용, 그룹 있을 때만)
 ///
 /// - SeeAlso: `.ai/DEEPLINK_GUIDE.md`
 public enum DeeplinkURLParser {
@@ -32,6 +33,9 @@ public enum DeeplinkURLParser {
 
     case "live":
       return parseLivePromise(from: url)
+
+    case "create":
+      return .create
 
     default:
       return nil

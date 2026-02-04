@@ -132,6 +132,8 @@ extension RootTab {
       case openLiveActivityETASheet
       /// LiveActivity 탭 → LivePromiseExpandedView 열기 (ETA 시트 없이)
       case openLivePromiseDetail
+      /// Widget "약속 만들기" 버튼 → 그룹 탭 이동 + 약속 생성 (그룹 있을 때만)
+      case openCreatePromiseIfPossible
       /// 내부 액션
       case `internal`(Internal)
     }
@@ -331,6 +333,11 @@ extension RootTab {
           return .run { _ in
             NotificationCenter.default.post(name: .openLivePromiseDetailFromDeeplink, object: nil)
           }
+
+        case .openCreatePromiseIfPossible:
+          // 그룹 탭으로 이동 후 그룹 유무에 따라 CreatePromise 열기
+          state.selectedTab = .group
+          return .send(.groupMain(.view(.openCreatePromiseIfPossible)))
 
         case .internal(let internalAction):
           switch internalAction {

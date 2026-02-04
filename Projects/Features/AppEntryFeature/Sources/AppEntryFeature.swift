@@ -288,6 +288,8 @@ extension AppEntry {
           return .run { [notificationClient, authClient] _ in
             LiveActivityImageStore.clearCache()
             WidgetDataManager.clearAll()
+            authClient.clearWidgetAuthToken()
+            WidgetDataManager.reloadWidgets()
             do {
               try await notificationClient.deleteFCMToken()
             } catch {
@@ -444,6 +446,10 @@ extension AppEntry.Feature {
     case .livePromise:
       // LiveActivity 탭 → LivePromiseExpandedView 열기 (ETA 시트 없이)
       return .send(.destination(.presented(.main(.openLivePromiseDetail))))
+
+    case .create:
+      // Widget "약속 만들기" 버튼 → 그룹 탭 이동 + 약속 생성 (그룹 있을 때만)
+      return .send(.destination(.presented(.main(.openCreatePromiseIfPossible))))
     }
   }
 

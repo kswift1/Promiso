@@ -38,7 +38,7 @@ struct EmptyWidgetView: View {
         HStack(spacing: 4) {
           Image(systemName: "plus")
             .font(.system(size: 10, weight: .semibold))
-          Text("약속 만들기")
+          Text(WidgetStrings.Empty.createPromiseButton)
             .font(.caption.weight(.medium))
         }
         .foregroundStyle(.white)
@@ -57,7 +57,7 @@ struct EmptyWidgetView: View {
     if let hint {
       label += ". \(hint)"
     }
-    label += ". 약속 만들기 버튼"
+    label += ". \(WidgetStrings.Empty.createPromiseButton) 버튼"
     return label
   }
 }

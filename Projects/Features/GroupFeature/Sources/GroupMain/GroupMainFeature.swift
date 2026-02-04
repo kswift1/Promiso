@@ -432,6 +432,7 @@ extension GroupMain {
         case groupSettingsTapped  // "그룹 설정"
         case sortSettingsTapped  // "그룹 정렬"
         case directionsTapped(String)  // 길찾기 (promiseId)
+        case openCreatePromiseIfPossible  // Widget 딥링크: 그룹 있으면 약속 생성
       }
 
       public enum Internal: Sendable {
@@ -724,6 +725,15 @@ extension GroupMain {
               customOrderedGroups: customOrdered
             )
             return .none
+
+          case .openCreatePromiseIfPossible:
+            // Widget 딥링크: 그룹이 있으면 CreatePromise 열기, 없으면 그룹 탭만 표시
+            guard let groups = state.allGroupSummaries, !groups.isEmpty else {
+              // 그룹 없음 → 그룹 탭 화면 유지 (온보딩 모드)
+              return .none
+            }
+            // 그룹 있음 → 약속 생성 화면 열기
+            return .send(.view(.createNewPromise))
           }
 
         // MARK: - Internal Actions

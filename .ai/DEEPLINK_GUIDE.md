@@ -19,6 +19,7 @@ URL/푸시 파싱 결과를 담는 타입:
 | `joinGroup` | 그룹 참여 (초대 코드) | inviteCode 필요 |
 | `liveActivityETA` | LiveActivity ETA 변경 시트 | promiseId 필요 |
 | `livePromise` | LivePromise 상세 화면 | promiseId 필요 |
+| `create` | 약속 만들기 화면 | 파라미터 없음 (그룹 있을 때만 동작) |
 
 ### GroupMain.Deeplink (GroupFeature 모듈)
 
@@ -42,6 +43,7 @@ URL/푸시 파싱 결과를 담는 타입:
 | `promiso://promise/{promiseId}/{groupId}` | `.promise(promiseId:groupId:)` | 약속 상세 화면 |
 | `promiso://promise/{promiseId}/eta` | `.liveActivityETA(promiseId:)` | LiveActivity ETA 변경 시트 |
 | `promiso://live/{promiseId}` | `.livePromise(promiseId:)` | LivePromise 상세 화면 |
+| `promiso://create` | `.create` | 약속 만들기 화면 (Widget용) |
 
 ### 예시
 
@@ -51,6 +53,7 @@ promiso://group/group_123456
 promiso://promise/promise_789/group_123456
 promiso://promise/promise_789/eta
 promiso://live/promise_789
+promiso://create
 ```
 
 ---
@@ -238,6 +241,7 @@ case .profileCheckResponse(let user, let profile):
 xcrun simctl openurl booted "promiso://join/ABC123"
 xcrun simctl openurl booted "promiso://group/group_123"
 xcrun simctl openurl booted "promiso://promise/promise_456/group_123"
+xcrun simctl openurl booted "promiso://create"
 ```
 
 ### 푸시 알림 테스트

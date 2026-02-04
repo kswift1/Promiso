@@ -17,6 +17,8 @@ public enum DeeplinkDestination: Equatable, Sendable {
   case liveActivityETA(promiseId: String)
   /// LivePromise 상세 화면 (LiveActivity 탭 시 ETA 시트 없이 열기)
   case livePromise(promiseId: String)
+  /// 약속 만들기 화면 (Widget에서 "약속 만들기" 버튼)
+  case create
 }
 
 // MARK: - Client
