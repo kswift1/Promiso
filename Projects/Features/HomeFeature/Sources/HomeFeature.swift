@@ -251,10 +251,11 @@ extension Home {
 
           case .fetchUnreadNotificationCount:
             // 로그인 상태일 때만 조회
-            guard !state.currentUser.userId.isEmpty else { return .none }
+            let userId = state.currentUser.userId
+            guard !userId.isEmpty else { return .none }
             return .run { [notificationClient] send in
               do {
-                let count = try await notificationClient.getUnreadCount()
+                let count = try await notificationClient.getUnreadCount(userId)
                 await send(.internal(.unreadNotificationCountResponse(.success(count))))
               } catch {
                 await send(.internal(.unreadNotificationCountResponse(.failure(error))))

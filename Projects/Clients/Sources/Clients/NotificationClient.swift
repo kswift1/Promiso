@@ -47,8 +47,9 @@ public struct NotificationClient: Sendable {
   ) async throws -> [NotificationModel]
 
   /// 안 읽은 알림 개수 조회
+  /// - Parameter userId: 사용자 ID
   /// - Returns: 안 읽은 알림 개수
-  public var getUnreadCount: @Sendable () async throws -> Int
+  public var getUnreadCount: @Sendable (_ userId: String) async throws -> Int
 
   // MARK: - Read Status
 
@@ -80,7 +81,7 @@ extension NotificationClient: TestDependencyKey {
     requestAuthorization: { true },
     openNotificationSettings: { },
     getNotifications: { _, _, _ in [] },
-    getUnreadCount: { 0 },
+    getUnreadCount: { _ in 0 },
     markAsRead: { _ in },
     markAllAsRead: { },
     deleteNotifications: { _ in },
@@ -169,11 +170,8 @@ extension NotificationClient: DependencyKey {
         )
       },
 
-      getUnreadCount: {
-        guard let currentUser = await authClient.currentUser() else {
-          throw NotificationClientError.authenticationRequired
-        }
-        return try await dataSource.getUnreadCount(userId: currentUser.uid)
+      getUnreadCount: { userId in
+        return try await dataSource.getUnreadCount(userId: userId)
       },
 
       markAsRead: { notificationId in
