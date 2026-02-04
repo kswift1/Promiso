@@ -23,6 +23,7 @@ extension Settings {
       self.store = store
     }
 
+    #if DEBUG
     // MARK: - Developer Menu
 
     /// 개발자 메뉴 활성화 여부 (Dev/Stage 환경에서만 표시)
@@ -30,6 +31,7 @@ extension Settings {
       guard let bundleId = Bundle.main.bundleIdentifier else { return false }
       return bundleId.contains(".dev") || bundleId.contains(".stage")
     }
+    #endif
 
     // MARK: - Body
 
@@ -253,6 +255,7 @@ extension Settings {
             .adaptiveGlassCard()
           }
 
+          #if DEBUG
           // MARK: - 개발자 섹션 (Dev/Stage only)
           if isDeveloperMenuEnabled {
             VStack(alignment: .leading, spacing: 10) {
@@ -287,6 +290,7 @@ extension Settings {
               .adaptiveGlassCard()
             }
           }
+          #endif
         }
         .padding(.horizontal, 16)
         .padding(.top, 12)
