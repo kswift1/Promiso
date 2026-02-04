@@ -327,20 +327,8 @@ extension CreateGroup {
             state.creationError = error.localizedDescription
             return .none
 
-          case .saveSettingsResponse(.success):
-            state.isSavingSettings = false
-            guard case .settings(let result) = state.step else { return .none }
-            analyticsClient.logEvent(
-              AnalyticsClient.EventName.groupCreated,
-              [
-                AnalyticsClient.ParameterKey.groupID: result.id,
-                AnalyticsClient.ParameterKey.groupName: result.name
-              ]
-            )
-            return .send(.delegate(.groupCreated(id: result.id)))
-
-          case .saveSettingsResponse(.failure):
-            // 설정 저장 실패해도 그룹 생성은 완료됨, 기본값으로 진행
+          case .saveSettingsResponse(.success), .saveSettingsResponse(.failure):
+            // .failure의 경우에도 그룹 생성은 완료된 것으로 간주하고 진행합니다.
             state.isSavingSettings = false
             guard case .settings(let result) = state.step else { return .none }
             analyticsClient.logEvent(
