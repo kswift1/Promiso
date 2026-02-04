@@ -29,19 +29,6 @@ extension NotificationCenter {
       .navigationTitle("알림")
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
-        // 편집 모드일 때만 취소 버튼 표시
-        if store.isEditMode {
-          ToolbarItem(placement: .topBarLeading) {
-            Button {
-              store.send(.view(.cancelEditTapped))
-            } label: {
-              Text("취소")
-                .font(.subheadline)
-                .foregroundStyle(Color.pmindigo.n500)
-            }
-          }
-        }
-
         // 모두 읽음 버튼 (안 읽은 알림이 있고, 편집 모드가 아닐 때)
         if !store.isEditMode && store.unreadCount > 0 {
           ToolbarItem(placement: .topBarTrailing) {
@@ -55,7 +42,7 @@ extension NotificationCenter {
           }
         }
 
-        // 편집 버튼 (로딩 완료 후, 알림이 있을 때만)
+        // 편집/취소 버튼 (로딩 완료 후, 알림이 있을 때만)
         if !store.isLoading && !store.isEmpty {
           ToolbarItem(placement: .topBarTrailing) {
             Button {
@@ -116,50 +103,43 @@ extension NotificationCenter {
 
     @ViewBuilder
     private var notificationListView: some View {
-      ZStack(alignment: .bottom) {
-        ScrollView {
-          LazyVStack(spacing: 0) {
-            // 편집 모드일 때 전체 선택 행
+      ScrollView {
+        LazyVStack(spacing: 0) {
+          // 편집 모드일 때 전체 선택 행
+          if store.isEditMode {
+            selectAllRow
+            Divider()
+          }
+
+          ForEach(store.notifications) { notification in
             if store.isEditMode {
-              selectAllRow
+              editModeCell(notification: notification)
+            } else {
+              NotificationCell(notification: notification) {
+                store.send(.view(.notificationTapped(notification)))
+              }
+            }
+
+            if notification.id != store.notifications.last?.id {
               Divider()
-            }
-
-            ForEach(store.notifications) { notification in
-              if store.isEditMode {
-                editModeCell(notification: notification)
-              } else {
-                NotificationCell(notification: notification) {
-                  store.send(.view(.notificationTapped(notification)))
-                }
-              }
-
-              if notification.id != store.notifications.last?.id {
-                Divider()
-                  .padding(.leading, store.isEditMode ? 68 : 68)
-              }
-            }
-
-            // 무한 스크롤 트리거
-            if store.hasMoreData && !store.isEditMode {
-              ProgressView()
-                .frame(height: 50)
-                .onAppear {
-                  store.send(.view(.loadMoreTriggered))
-                }
+                .padding(.leading, 68)
             }
           }
-          .padding(.bottom, store.isEditMode ? 120 : 100)
-        }
-        .refreshable {
-          guard !store.isEditMode else { return }
-          store.send(.view(.refreshTriggered))
-        }
 
-        // 편집 모드일 때 하단 삭제 버튼
-        if store.isEditMode {
-          deleteActionBar
+          // 무한 스크롤 트리거
+          if store.hasMoreData && !store.isEditMode {
+            ProgressView()
+              .frame(height: 50)
+              .onAppear {
+                store.send(.view(.loadMoreTriggered))
+              }
+          }
         }
+        .padding(.bottom, 100)
+      }
+      .refreshable {
+        guard !store.isEditMode else { return }
+        store.send(.view(.refreshTriggered))
       }
     }
 
@@ -167,31 +147,54 @@ extension NotificationCenter {
 
     @ViewBuilder
     private var selectAllRow: some View {
-      Button {
-        store.send(.view(.selectAllTapped))
-      } label: {
-        HStack(spacing: 12) {
-          Image(systemName: store.isAllSelected ? "checkmark.circle.fill" : "circle")
-            .font(.system(size: 24))
-            .foregroundStyle(store.isAllSelected ? Color.pmindigo.n500 : Color.pmgray.n300)
+      HStack(spacing: 12) {
+        // 전체 선택 버튼
+        Button {
+          store.send(.view(.selectAllTapped))
+        } label: {
+          HStack(spacing: 8) {
+            Image(systemName: store.isAllSelected ? "checkmark.circle.fill" : "circle")
+              .font(.system(size: 24))
+              .foregroundStyle(store.isAllSelected ? Color.pmindigo.n500 : Color.pmgray.n300)
 
-          Text("전체 선택")
-            .font(.subheadline.weight(.medium))
-            .foregroundStyle(Color.pmgray.n700)
-
-          Spacer()
-
-          if store.selectedCount > 0 {
-            Text("\(store.selectedCount)개 선택됨")
-              .font(.caption)
-              .foregroundStyle(Color.pmgray.n500)
+            Text("전체 선택")
+              .font(.subheadline.weight(.medium))
+              .foregroundStyle(Color.pmgray.n700)
           }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .contentShape(Rectangle())
+        .buttonStyle(.plain)
+
+        // 선택 개수
+        if store.selectedCount > 0 {
+          Text("\(store.selectedCount)개 선택됨")
+            .font(.caption)
+            .foregroundStyle(Color.pmgray.n500)
+        }
+
+        Spacer()
+
+        // 삭제 버튼
+        Button {
+          store.send(.view(.deleteSelectedTapped))
+        } label: {
+          HStack(spacing: 4) {
+            if store.isDeleting {
+              ProgressView()
+                .scaleEffect(0.8)
+            } else {
+              Image(systemName: "trash")
+                .font(.system(size: 14))
+            }
+            Text("삭제")
+              .font(.subheadline.weight(.medium))
+          }
+          .foregroundStyle(store.selectedCount > 0 ? Color.pmerror.n500 : Color.pmgray.n400)
+        }
+        .disabled(store.selectedCount == 0 || store.isDeleting)
+        .buttonStyle(.plain)
       }
-      .buttonStyle(.plain)
+      .padding(.horizontal, 16)
+      .padding(.vertical, 12)
     }
 
     // MARK: - Edit Mode Cell
@@ -217,67 +220,6 @@ extension NotificationCenter {
         .contentShape(Rectangle())
       }
       .buttonStyle(.plain)
-    }
-
-    // MARK: - Delete Action Bar
-
-    @ViewBuilder
-    private var deleteActionBar: some View {
-      VStack(spacing: 0) {
-        Divider()
-
-        HStack(spacing: 16) {
-          // 선택 삭제 버튼
-          Button {
-            store.send(.view(.deleteSelectedTapped))
-          } label: {
-            HStack(spacing: 8) {
-              if store.isDeleting {
-                ProgressView()
-                  .tint(.white)
-              } else {
-                Image(systemName: "trash")
-              }
-              Text(store.selectedCount > 0 ? "\(store.selectedCount)개 삭제" : "삭제")
-            }
-            .font(.subheadline.weight(.medium))
-            .foregroundStyle(.white)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
-            .background {
-              RoundedRectangle(cornerRadius: 12)
-                .fill(store.selectedCount > 0 ? Color.pmerror.n500 : Color.pmgray.n300)
-            }
-          }
-          .disabled(store.selectedCount == 0 || store.isDeleting)
-
-          // 전체 삭제 버튼
-          Button {
-            store.send(.view(.deleteAllTapped))
-          } label: {
-            Text("전체 삭제")
-              .font(.subheadline.weight(.medium))
-              .foregroundStyle(Color.pmerror.n500)
-              .padding(.horizontal, 20)
-              .padding(.vertical, 14)
-              .background {
-                RoundedRectangle(cornerRadius: 12)
-                  .stroke(Color.pmerror.n500, lineWidth: 1)
-              }
-          }
-          .disabled(store.isDeleting)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background {
-          if #available(iOS 26.0, *) {
-            Color.clear.glassEffect(.regular, in: .rect)
-          } else {
-            Rectangle()
-              .fill(.ultraThinMaterial)
-          }
-        }
-      }
     }
 
     // MARK: - Loading View
