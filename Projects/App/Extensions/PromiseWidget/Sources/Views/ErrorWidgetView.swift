@@ -11,11 +11,11 @@ struct ErrorWidgetView: View {
         .symbolRenderingMode(.hierarchical)
 
       VStack(spacing: 4) {
-        Text("데이터를 불러올 수 없어요")
+        Text(WidgetStrings.Error.title)
           .font(.subheadline.weight(.medium))
           .foregroundStyle(.primary)
 
-        Text("탭하여 다시 시도")
+        Text(WidgetStrings.Error.retryHint)
           .font(.caption)
           .foregroundStyle(.secondary)
       }
@@ -24,7 +24,7 @@ struct ErrorWidgetView: View {
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .widgetURL(URL(string: "promiso://home"))
     .accessibilityElement(children: .combine)
-    .accessibilityLabel("데이터를 불러올 수 없어요. 탭하여 다시 시도")
+    .accessibilityLabel("\(WidgetStrings.Error.title). \(WidgetStrings.Error.retryHint)")
   }
 }
 

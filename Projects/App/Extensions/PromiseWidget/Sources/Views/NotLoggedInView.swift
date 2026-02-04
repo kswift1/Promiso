@@ -11,11 +11,11 @@ struct NotLoggedInView: View {
         .symbolRenderingMode(.hierarchical)
 
       VStack(spacing: 4) {
-        Text("로그인이 필요해요")
+        Text(WidgetStrings.Auth.notLoggedInTitle)
           .font(.subheadline.weight(.medium))
           .foregroundStyle(.primary)
 
-        Text("탭하여 앱 열기")
+        Text(WidgetStrings.Auth.openAppHint)
           .font(.caption)
           .foregroundStyle(.secondary)
       }
@@ -23,7 +23,7 @@ struct NotLoggedInView: View {
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .widgetURL(URL(string: "promiso://home"))
     .accessibilityElement(children: .combine)
-    .accessibilityLabel("로그인이 필요해요. 탭하여 앱 열기")
+    .accessibilityLabel("\(WidgetStrings.Auth.notLoggedInTitle). \(WidgetStrings.Auth.openAppHint)")
   }
 }
 
