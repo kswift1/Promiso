@@ -24,7 +24,7 @@ private struct PlaceItem: Decodable {
 
 /// Kakao Map API 데이터소스 (Firebase Functions 프록시)
 final class KakaoMapDataSource: Sendable {
-  private let functions = Functions.functions()
+  private let functions = DefaultFunctionsProvider().functions
 
   /// 장소 검색
   func searchPlaces(query: String) async throws -> [Place] {

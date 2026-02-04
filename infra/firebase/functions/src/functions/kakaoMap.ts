@@ -90,6 +90,7 @@ export const searchPlaces = onCall<SearchPlacesRequest>(
   {
     region: REGION,
     secrets: [KAKAO_REST_API_KEY], // Secret Manager에서 API 키 로드
+    invoker: "public", // 인증 없이 호출 가능
   },
   async (request): Promise<SearchPlacesResponse> => {
     // 1. 검색어 확인

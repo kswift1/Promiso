@@ -69,7 +69,7 @@ extension FAQClient: TestDependencyKey {
 
 extension FAQClient: DependencyKey {
   public static let liveValue: FAQClient = {
-    let functions = Functions.functions()
+    let functions = DefaultFunctionsProvider().functions
     let decoder = JSONDecoder()
 
     return Self(

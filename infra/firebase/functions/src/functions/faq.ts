@@ -109,6 +109,7 @@ export const getFAQs = onCall<GetFAQsRequest & {databaseId: string}>(
   {
     region: REGION,
     secrets: [NOTION_FAQ_API_KEY], // Secret Manager에서 API 키 로드
+    invoker: "public", // 인증 없이 호출 가능
   },
   async (request): Promise<GetFAQsResponse> => {
     // 1. databaseId 확인 (Remote Config에서 전달받음)
