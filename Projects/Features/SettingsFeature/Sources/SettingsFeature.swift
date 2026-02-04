@@ -664,36 +664,14 @@ extension DateTimeSettings {
     }
 
     public var body: some View {
-      List {
-        Section {
-          Toggle(isOn: Binding(
-            get: { store.use24HourFormat },
-            set: { store.send(.view(.use24HourFormatChanged($0))) }
-          )) {
-            HStack(spacing: 12) {
-              Image(systemName: "clock")
-                .font(.body)
-                .foregroundStyle(Color.pmindigo.n500)
-                .frame(width: 24, height: 24)
-
-              VStack(alignment: .leading, spacing: 2) {
-                Text(store.use24HourFormat ? "24시간 형식" : "12시간 형식")
-                  .font(.body)
-                  .foregroundStyle(Color.pmtext.primary)
-
-                Text(store.use24HourFormat ? "예: 14:30" : "예: 오후 2:30")
-                  .font(.caption)
-                  .foregroundStyle(Color.pmtext.secondary)
-              }
-            }
-          }
-          .tint(Color.pmindigo.n500)
-        } footer: {
-          Text("앱 전체에서 사용되는 시간 표시 형식을 설정합니다.")
+      ScrollView {
+        VStack(spacing: 16) {
+          timeFormatSection
         }
+        .padding(.horizontal, 16)
+        .padding(.top, 12)
+        .padding(.bottom, 24)
       }
-      .scrollContentBackground(.hidden)
-      .background(Color.clear)
       .auroraBackground()
       .navigationTitle("날짜 시간 표시")
       .navigationBarTitleDisplayMode(.inline)
@@ -712,6 +690,47 @@ extension DateTimeSettings {
         }
       } message: {
         Text("시간 표시 형식을 변경하려면 앱을 재시작해야 합니다.\n지금 재시작하시겠습니까?")
+      }
+    }
+
+    private var timeFormatSection: some View {
+      VStack(alignment: .leading, spacing: 10) {
+        Text("시간 표시 형식")
+          .font(.system(size: 16, weight: .semibold))
+          .padding(.horizontal, 4)
+
+        HStack(spacing: 12) {
+          Image(systemName: "clock")
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundStyle(Color.pmindigo.n500)
+
+          VStack(alignment: .leading, spacing: 2) {
+            Text(store.use24HourFormat ? "24시간 형식" : "12시간 형식")
+              .font(.body)
+              .foregroundStyle(Color.pmtext.primary)
+
+            Text(store.use24HourFormat ? "예: 14:30" : "예: 오후 2:30")
+              .font(.caption)
+              .foregroundStyle(Color.pmtext.secondary)
+          }
+
+          Spacer()
+
+          Toggle("", isOn: Binding(
+            get: { store.use24HourFormat },
+            set: { store.send(.view(.use24HourFormatChanged($0))) }
+          ))
+          .labelsHidden()
+          .tint(Color.pmindigo.n500)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .adaptiveGlassCard()
+
+        Text("앱 전체에서 사용되는 시간 표시 형식을 설정합니다.")
+          .font(.system(size: 12))
+          .foregroundStyle(Color.pmtext.secondary)
+          .padding(.horizontal, 4)
       }
     }
   }
