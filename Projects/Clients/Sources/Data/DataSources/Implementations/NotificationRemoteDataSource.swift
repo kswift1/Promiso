@@ -240,19 +240,30 @@ public final class NotificationRemoteDataSource: @unchecked Sendable {
       .whereField("isRead", isEqualTo: false)
 
     let snapshot = try await query.getDocuments()
+    let documents = snapshot.documents
 
-    // 배치 업데이트
-    let batch = db.batch()
-    for document in snapshot.documents {
-      batch.updateData([
-        "isRead": true,
-        "readAt": FieldValue.serverTimestamp()
-      ], forDocument: document.reference)
+    guard !documents.isEmpty else {
+      AppLogger.notification.debug("읽음 처리할 알림 없음 (userId: \(userId))")
+      return
     }
 
-    try await batch.commit()
+    // Firestore 배치는 500개 제한이므로 청크 단위로 처리
+    let chunkSize = 500
+    for chunkStart in stride(from: 0, to: documents.count, by: chunkSize) {
+      let chunkEnd = min(chunkStart + chunkSize, documents.count)
+      let chunk = documents[chunkStart..<chunkEnd]
 
-    AppLogger.notification.debug("전체 알림 읽음 처리 (\(snapshot.documents.count)개, userId: \(userId))")
+      let batch = db.batch()
+      for document in chunk {
+        batch.updateData([
+          "isRead": true,
+          "readAt": FieldValue.serverTimestamp()
+        ], forDocument: document.reference)
+      }
+      try await batch.commit()
+    }
+
+    AppLogger.notification.debug("전체 알림 읽음 처리 (\(documents.count)개, userId: \(userId))")
   }
 
   // MARK: - Delete
@@ -285,16 +296,27 @@ public final class NotificationRemoteDataSource: @unchecked Sendable {
       .whereField("userId", isEqualTo: userId)
 
     let snapshot = try await query.getDocuments()
+    let documents = snapshot.documents
 
-    // 배치 삭제
-    let batch = db.batch()
-    for document in snapshot.documents {
-      batch.deleteDocument(document.reference)
+    guard !documents.isEmpty else {
+      AppLogger.notification.debug("삭제할 알림 없음 (userId: \(userId))")
+      return
     }
 
-    try await batch.commit()
+    // Firestore 배치는 500개 제한이므로 청크 단위로 처리
+    let chunkSize = 500
+    for chunkStart in stride(from: 0, to: documents.count, by: chunkSize) {
+      let chunkEnd = min(chunkStart + chunkSize, documents.count)
+      let chunk = documents[chunkStart..<chunkEnd]
 
-    AppLogger.notification.debug("전체 알림 삭제 (\(snapshot.documents.count)개, userId: \(userId))")
+      let batch = db.batch()
+      for document in chunk {
+        batch.deleteDocument(document.reference)
+      }
+      try await batch.commit()
+    }
+
+    AppLogger.notification.debug("전체 알림 삭제 (\(documents.count)개, userId: \(userId))")
   }
 }
 

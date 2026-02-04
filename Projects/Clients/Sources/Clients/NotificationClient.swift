@@ -1,5 +1,6 @@
 import ComposableArchitecture
 import Foundation
+import PromisoShared
 import UIKit
 import UserNotifications
 
@@ -211,7 +212,11 @@ extension NotificationClient: DependencyKey {
       },
 
       setBadgeCount: { count in
-        try? await UNUserNotificationCenter.current().setBadgeCount(count)
+        do {
+          try await UNUserNotificationCenter.current().setBadgeCount(count)
+        } catch {
+          AppLogger.notification.error("Failed to set badge count: \(error.localizedDescription)")
+        }
       }
     )
   }()

@@ -354,39 +354,45 @@ export async function sendPushNotificationInternal(params: {
   const notificationsCollection = db.collection("notifications");
 
   // 1. Firestore에 알림 기록 저장 (항상 실행, 설정과 무관)
+  // Firestore 배치는 500개 제한이므로 청크 단위로 처리
   const now = FieldValue.serverTimestamp();
-  const batch = db.batch();
   const notificationRefs: Map<string, FirebaseFirestore.DocumentReference> =
     new Map();
 
-  for (const userId of userIds) {
-    const notificationDoc: Omit<NotificationDocument, "createdAt" |
-      "readAt" | "deliveredAt"> & {
-      createdAt: FirebaseFirestore.FieldValue;
-      readAt: null;
-      deliveredAt: null;
-    } = {
-      userId,
-      type,
-      title,
-      body,
-      promiseId,
-      groupId,
-      relatedUserId,
-      isRead: false,
-      isDelivered: false, // 기본값, FCM 전송 성공 시 업데이트
-      createdAt: now,
-      readAt: null,
-      deliveredAt: null,
-      data: data,
-    };
+  const chunkSize = 500;
+  for (let i = 0; i < userIds.length; i += chunkSize) {
+    const chunk = userIds.slice(i, i + chunkSize);
+    const batch = db.batch();
 
-    const notificationRef = notificationsCollection.doc();
-    notificationRefs.set(userId, notificationRef);
-    batch.set(notificationRef, notificationDoc);
+    for (const userId of chunk) {
+      const notificationDoc: Omit<NotificationDocument, "createdAt" |
+        "readAt" | "deliveredAt"> & {
+        createdAt: FirebaseFirestore.FieldValue;
+        readAt: null;
+        deliveredAt: null;
+      } = {
+        userId,
+        type,
+        title,
+        body,
+        promiseId,
+        groupId,
+        relatedUserId,
+        isRead: false,
+        isDelivered: false, // 기본값, FCM 전송 성공 시 업데이트
+        createdAt: now,
+        readAt: null,
+        deliveredAt: null,
+        data: data,
+      };
+
+      const notificationRef = notificationsCollection.doc();
+      notificationRefs.set(userId, notificationRef);
+      batch.set(notificationRef, notificationDoc);
+    }
+
+    await batch.commit();
   }
-
-  await batch.commit();
   console.log(`📝 Notifications saved for ${userIds.length} users`);
 
   // 2. 각 사용자의 FCM 토큰 수집 (알림 설정 체크 포함)
@@ -507,26 +513,35 @@ export async function sendPushNotificationInternal(params: {
   }
 
   // 5. FCM 전송 성공한 사용자의 알림 isDelivered 업데이트
-  const updateBatch = db.batch();
-  let updatedCount = 0;
+  // 업데이트할 문서 참조 수집
+  const refsToUpdate: FirebaseFirestore.DocumentReference[] = [];
 
   for (const [userId, tokens] of userTokenMap) {
     const delivered = tokens.some((token) => deliveredTokens.has(token));
     if (delivered) {
       const ref = notificationRefs.get(userId);
       if (ref) {
-        updateBatch.update(ref, {
-          isDelivered: true,
-          deliveredAt: now,
-        });
-        updatedCount++;
+        refsToUpdate.push(ref);
       }
     }
   }
 
-  if (updatedCount > 0) {
-    await updateBatch.commit();
-    console.log(`✅ Updated isDelivered for ${updatedCount} notifications`);
+  // Firestore 배치는 500개 제한이므로 청크 단위로 처리
+  if (refsToUpdate.length > 0) {
+    for (let i = 0; i < refsToUpdate.length; i += chunkSize) {
+      const chunk = refsToUpdate.slice(i, i + chunkSize);
+      const updateBatch = db.batch();
+
+      for (const ref of chunk) {
+        updateBatch.update(ref, {
+          isDelivered: true,
+          deliveredAt: now,
+        });
+      }
+
+      await updateBatch.commit();
+    }
+    console.log(`✅ Updated isDelivered for ${refsToUpdate.length} notifications`);
   }
 
   return {
