@@ -7,7 +7,7 @@
 #
 # ============================================================================
 
-.PHONY: feature remove-feature deps color \
+.PHONY: feature remove-feature color \
         emulator-start functions-build functions-api-preview \
         secrets-pull secrets-push secrets-list secrets-add \
         help
@@ -93,11 +93,6 @@ remove-feature:
 # 🎨 리소스 관리
 # ============================================================================
 
-# 의존성 그래프 시각화
-deps:
-	@echo "📊 의존성 그래프 분석 중..."
-	@./scripts/dependency-graph.sh
-
 # 컬러 에셋 자동 생성
 color:
 	@echo "🎨 컬러 에셋 및 Swift Extension 생성 중..."
@@ -172,7 +167,6 @@ help:
 	@echo ""
 	@echo "  🎨 리소스 관리"
 	@echo "  ─────────────────────────────────────────────────────────────────"
-	@echo "  make deps                               의존성 그래프 시각화"
 	@echo "  make color                              컬러 에셋 재생성"
 	@echo ""
 	@echo "  🔥 Firebase"
