@@ -208,9 +208,11 @@ extension RootTab {
 
           // 탭 전환 시 각 Feature에 알림
           switch tab {
+          case .home:
+            effects.append(.send(.home(.view(.refreshNotificationBadge))))
           case .calendar:
             effects.append(.send(.calendar(.view(.refresh))))
-          case .home, .group, .settings:
+          case .group, .settings:
             break
           }
 
