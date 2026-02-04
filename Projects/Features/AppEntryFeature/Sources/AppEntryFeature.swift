@@ -27,6 +27,8 @@ extension AppEntry {
     @Dependency(\.userProfileClient) var userProfileClient
     @Dependency(\.notificationClient) var notificationClient
     @Dependency(\.deeplinkClient) var deeplinkClient
+    @Dependency(\.appConfigClient) var appConfigClient
+    @Dependency(\.openURL) var openURL
 
     public init() {}
     
@@ -56,9 +58,18 @@ extension AppEntry {
       /// Provider에서 제공한 프로필 이미지 URL (Google 로그인 시)
       var providerProfileImageURL: URL?
 
+      /// 업데이트 알림 타입
+      @Presents var updateAlert: UpdateAlertState?
+
       public init() {
         self.destination = .auth(AuthFeature.Auth.Feature.State())
       }
+    }
+
+    /// 업데이트 알림 상태
+    public enum UpdateAlertState: Equatable {
+      case forceUpdate(currentVersion: String, requiredVersion: String)
+      case recommendUpdate(currentVersion: String, recommendedVersion: String)
     }
 
 
@@ -69,6 +80,12 @@ extension AppEntry {
       case `internal`(InternalAction)
       case destination(PresentationAction<Destination.Action>)
       case notificationPermission(PresentationAction<NotificationPermission.Feature.Action>)
+      case updateAlert(UpdateAlertAction)
+    }
+
+    public enum UpdateAlertAction: Equatable {
+      case updateTapped
+      case laterTapped
     }
     
     public enum ViewAction {
@@ -78,6 +95,9 @@ extension AppEntry {
     }
     
     public enum InternalAction {
+      case checkVersion
+      case versionCheckCompleted(VersionCheckResult)
+      case continueAppFlow
       case startSessionCheck
       case sessionCheckResponse(isAuthenticated: Bool)
       case startProfileCheck
@@ -108,11 +128,7 @@ extension AppEntry {
         case .view(let viewAction):
           switch viewAction {
           case .onAppear:
-            return .merge(
-              .send(.internal(.startSessionCheck)),
-              .send(.internal(.subscribeFCMToken)),
-              .send(.internal(.subscribePushNotificationTap))
-            )
+            return .send(.internal(.checkVersion))
 
           case .splashAnimationCompleted:
             state.splash = .hidden
@@ -125,7 +141,34 @@ extension AppEntry {
 
         case .internal(let internalAction):
           switch internalAction {
-            
+
+          case .checkVersion:
+            return .run { [appConfigClient] send in
+              let result = await appConfigClient.checkVersion()
+              await send(.internal(.versionCheckCompleted(result)))
+            }
+
+          case .versionCheckCompleted(let result):
+            switch result {
+            case .upToDate:
+              return .send(.internal(.continueAppFlow))
+
+            case .forceUpdate(let current, let required):
+              state.updateAlert = .forceUpdate(currentVersion: current, requiredVersion: required)
+              return .none
+
+            case .recommendUpdate(let current, let recommended):
+              state.updateAlert = .recommendUpdate(currentVersion: current, recommendedVersion: recommended)
+              return .none
+            }
+
+          case .continueAppFlow:
+            return .merge(
+              .send(.internal(.startSessionCheck)),
+              .send(.internal(.subscribeFCMToken)),
+              .send(.internal(.subscribePushNotificationTap))
+            )
+
           case .startSessionCheck:
             return .run { send in
               let isAuthenticated = await authClient.isAuthenticated()
@@ -303,6 +346,23 @@ extension AppEntry {
 
         case .destination:
           return .none
+
+        case .updateAlert(let alertAction):
+          switch alertAction {
+          case .updateTapped:
+            // App Store로 이동
+            return .run { [openURL] _ in
+              await openURL(AppConstants.App.appStoreURL)
+            }
+
+          case .laterTapped:
+            // 선택 업데이트만 닫기 가능 (강제 업데이트는 닫기 불가)
+            if case .recommendUpdate = state.updateAlert {
+              state.updateAlert = nil
+              return .send(.internal(.continueAppFlow))
+            }
+            return .none
+          }
         }
       }
       .ifLet(\.$destination, action: \.destination)
@@ -338,6 +398,45 @@ extension AppEntry {
         )
       ) { store in
         NotificationPermission.View(store: store)
+      }
+      .alert(
+        updateAlertTitle,
+        isPresented: .init(
+          get: { store.updateAlert != nil },
+          set: { _ in }
+        ),
+        presenting: store.updateAlert
+      ) { alertState in
+        Button("업데이트") {
+          store.send(.updateAlert(.updateTapped))
+        }
+        if case .recommendUpdate = alertState {
+          Button("나중에", role: .cancel) {
+            store.send(.updateAlert(.laterTapped))
+          }
+        }
+      } message: { alertState in
+        Text(updateAlertMessage(for: alertState))
+      }
+    }
+
+    private var updateAlertTitle: String {
+      switch store.updateAlert {
+      case .forceUpdate:
+        return "업데이트 필요"
+      case .recommendUpdate:
+        return "새 버전 안내"
+      case .none:
+        return ""
+      }
+    }
+
+    private func updateAlertMessage(for state: Feature.UpdateAlertState) -> String {
+      switch state {
+      case .forceUpdate(let current, let required):
+        return "앱을 계속 사용하려면 최신 버전으로 업데이트해주세요.\n\n현재 버전: \(current)\n필요 버전: \(required)"
+      case .recommendUpdate(let current, let recommended):
+        return "더 나은 경험을 위해 최신 버전으로 업데이트하세요.\n\n현재 버전: \(current)\n최신 버전: \(recommended)"
       }
     }
 

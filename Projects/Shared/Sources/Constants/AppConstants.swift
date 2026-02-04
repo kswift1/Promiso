@@ -19,10 +19,14 @@ public enum AppConstants {
     public static let supportURL = URL(string: "https://promiso.com/support")!
     public static let supportEmail = "kswen0203@icloud.com"
 
-    // MARK: - Notion FAQ
+    // MARK: - Notion Databases
     /// Notion FAQ 데이터베이스 ID (공개 설정이므로 하드코딩 가능)
     /// Notion 페이지 URL에서 추출: https://notion.so/{database_id}?v=...
     public static let notionFAQDatabaseId = "356188caae734b5ebd73203557a34930"
+
+    /// Notion AppConfig 데이터베이스 ID (버전 체크용)
+    /// Key-Value 형태: forceUpdateVersion, recommendedVersion
+    public static let notionAppConfigDatabaseId = "f9c920a583554ee4a3a39794be92b4d0"
   }
 
   // MARK: - UI Constants
