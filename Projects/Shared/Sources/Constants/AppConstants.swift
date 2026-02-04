@@ -18,6 +18,11 @@ public enum AppConstants {
     public static let termsOfServiceURL = URL(string: "https://www.notion.so/2fb655a898de817f9f76fdce51f5a09f")!
     public static let supportURL = URL(string: "https://promiso.com/support")!
     public static let supportEmail = "support@promiso.app"
+
+    // MARK: - Notion FAQ
+    /// Notion FAQ 데이터베이스 ID (공개 설정이므로 하드코딩 가능)
+    /// Notion 페이지 URL에서 추출: https://notion.so/{database_id}?v=...
+    public static let notionFAQDatabaseId = "YOUR_DATABASE_ID_HERE"
   }
 
   // MARK: - UI Constants
