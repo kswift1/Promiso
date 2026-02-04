@@ -44,10 +44,11 @@ cp Config/Prod.xcconfig.template Config/Prod.xcconfig
 GOOGLE_CLIENT_ID = [Dev Google Client ID]
 GOOGLE_REVERSED_CLIENT_ID = [Dev Google Reversed Client ID]
 KAKAO_NATIVE_APP_KEY = [Dev Kakao Native App Key]
-KAKAO_REST_API_KEY = [Dev Kakao REST API Key]
 ```
 
 **Stage.xcconfig, Prod.xcconfig도 동일하게 설정**
+
+> **Note:** `KAKAO_REST_API_KEY`, `NOTION_FAQ_API_KEY` 등 Firebase Functions 전용 시크릿은 **Google Cloud Secret Manager**에서 별도로 관리합니다. iOS 앱 빌드에는 영향을 주지 않습니다.
 
 ### 3. GoogleService-Info.plist 배치
 
@@ -64,27 +65,26 @@ Config/
 
 GitHub Actions에서는 Secrets에 환경변수를 설정하면 `scripts/generate-xcconfig.sh`가 자동으로 xcconfig 파일을 생성합니다.
 
-### 필요한 GitHub Secrets
+### 필요한 GitHub Secrets (iOS 앱 빌드용)
 
 ```
 # Dev Environment
 GOOGLE_CLIENT_ID_DEV
 GOOGLE_REVERSED_CLIENT_ID_DEV
 KAKAO_NATIVE_APP_KEY_DEV
-KAKAO_REST_API_KEY_DEV
 
 # Stage Environment
 GOOGLE_CLIENT_ID_STAGE
 GOOGLE_REVERSED_CLIENT_ID_STAGE
 KAKAO_NATIVE_APP_KEY_STAGE
-KAKAO_REST_API_KEY_STAGE
 
 # Production Environment
 GOOGLE_CLIENT_ID_PROD
 GOOGLE_REVERSED_CLIENT_ID_PROD
 KAKAO_NATIVE_APP_KEY_PROD
-KAKAO_REST_API_KEY_PROD
 ```
+
+> **Note:** Firebase Functions 전용 시크릿(KAKAO_REST_API_KEY, NOTION_FAQ_API_KEY 등)은 Google Cloud Secret Manager에서 관리하므로 GitHub Secrets에 추가할 필요가 없습니다.
 
 ### GitHub Secrets 설정 방법
 
@@ -150,11 +150,13 @@ Config/*.xcconfig.template
 3. OAuth 2.0 Client ID 생성 (iOS)
 4. Client ID와 iOS URL scheme 복사
 
-### Kakao API Keys
+### Kakao Native App Key (iOS 앱용)
 
 1. [Kakao Developers](https://developers.kakao.com/)에서 앱 생성
 2. **앱 설정 > 요약 정보**에서 Native App Key 확인
-3. **앱 설정 > 앱 키**에서 REST API Key 확인
+3. iOS 앱에서 Kakao Maps SDK 사용
+
+> **Note:** Kakao REST API Key는 Firebase Functions에서 사용하므로 xcconfig에 포함하지 않습니다.
 
 ## 문제 해결
 
@@ -187,5 +189,5 @@ Config/*.xcconfig.template
 
 ---
 
-**마지막 업데이트**: 2026-02-04
+**마지막 업데이트**: 2026-02-04 (iOS 앱용 3개 키로 단순화)
 **작성자**: Claude Sonnet 4.5

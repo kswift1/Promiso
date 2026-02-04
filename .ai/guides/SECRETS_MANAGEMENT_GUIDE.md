@@ -2,27 +2,37 @@
 
 ## 개요
 
-Promiso 프로젝트의 시크릿(API 키, 인증 정보 등)은 **Notion**을 Single Source of Truth로 사용하여 관리합니다. 이를 통해:
+Promiso 프로젝트의 시크릿은 **용도별로 다르게 관리**합니다:
 
+### iOS 앱 빌드용 시크릿
+**Notion**을 Single Source of Truth로 사용:
 - 한 곳에서 모든 환경(Dev/Stage/Prod)의 시크릿 관리
 - 팀원 누구나 쉽게 접근/수정 가능
 - 로컬 xcconfig 자동 생성
 - GitHub Secrets 자동 동기화
 
-## 아키텍처
+### Firebase Functions 전용 시크릿
+**Google Cloud Secret Manager**로 관리:
+- `KAKAO_REST_API_KEY` (장소 검색 API)
+- `NOTION_FAQ_API_KEY` (FAQ 데이터베이스)
+- `GEMINI_API_KEY`, `APNS_*`, `WIDGET_JWT_SECRET` 등
+
+> 본 문서는 **iOS 앱 빌드용 시크릿 관리**에 대해 다룹니다.
+
+## 아키텍처 (iOS 앱 빌드용)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    Notion Database                          │
-│                  (Single Source of Truth)                   │
+│              Notion Database (iOS 앱 빌드용)                 │
+│            (Single Source of Truth for iOS)                 │
 │                                                             │
-│  ┌─────────────────┬─────────┬─────────┬─────────┐         │
-│  │ Key             │ Dev     │ Stage   │ Prod    │         │
-│  ├─────────────────┼─────────┼─────────┼─────────┤         │
-│  │ GOOGLE_CLIENT_ID│ xxx     │ yyy     │ zzz     │         │
-│  │ KAKAO_APP_KEY   │ xxx     │ yyy     │ zzz     │         │
-│  │ ...             │ ...     │ ...     │ ...     │         │
-│  └─────────────────┴─────────┴─────────┴─────────┘         │
+│  ┌──────────────────────┬─────────┬─────────┬─────────┐    │
+│  │ Key                  │ Dev     │ Stage   │ Prod    │    │
+│  ├──────────────────────┼─────────┼─────────┼─────────┤    │
+│  │ GOOGLE_CLIENT_ID     │ xxx     │ yyy     │ zzz     │    │
+│  │ GOOGLE_REVERSED_...  │ xxx     │ yyy     │ zzz     │    │
+│  │ KAKAO_NATIVE_APP_KEY │ xxx     │ yyy     │ zzz     │    │
+│  └──────────────────────┴─────────┴─────────┴─────────┘    │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -47,6 +57,8 @@ Promiso 프로젝트의 시크릿(API 키, 인증 정보 등)은 **Notion**을 S
        ┌────────────┐                ┌────────────────┐
        │ 로컬 빌드   │                │  CI/CD 빌드    │
        └────────────┘                └────────────────┘
+
+※ Firebase Functions 시크릿은 별도로 Google Cloud Secret Manager에서 관리
 ```
 
 ## Notion Database 구조
@@ -66,19 +78,21 @@ Promiso 프로젝트의 시크릿(API 키, 인증 정보 등)은 **Notion**을 S
 | `Prod` | Text | Production 환경 값 | ✅ |
 | `Description` | Text | 설명 (용도, 발급처 등) | ❌ |
 
-### 현재 관리 중인 시크릿
+### 현재 관리 중인 시크릿 (iOS 앱 빌드용)
 
-| Key | 설명 | 발급처 |
-|-----|------|--------|
-| `GOOGLE_CLIENT_ID` | Google OAuth Client ID | [Google Cloud Console](https://console.cloud.google.com) |
-| `GOOGLE_REVERSED_CLIENT_ID` | Google OAuth URL Scheme | Google Cloud Console |
-| `KAKAO_NATIVE_APP_KEY` | Kakao SDK Native App Key | [Kakao Developers](https://developers.kakao.com) |
-| `KAKAO_REST_API_KEY` | Kakao REST API Key | Kakao Developers |
-| `NOTION_API_KEY` | Notion Integration API Key | [Notion Integrations](https://www.notion.so/my-integrations) |
+| Key | 설명 | 발급처 | 사용처 |
+|-----|------|--------|--------|
+| `GOOGLE_CLIENT_ID` | Google OAuth Client ID | [Google Cloud Console](https://console.cloud.google.com) | iOS 앱 |
+| `GOOGLE_REVERSED_CLIENT_ID` | Google OAuth URL Scheme | Google Cloud Console | iOS 앱 |
+| `KAKAO_NATIVE_APP_KEY` | Kakao SDK Native App Key | [Kakao Developers](https://developers.kakao.com) | iOS 앱 |
+
+> **Note:** `KAKAO_REST_API_KEY`, `NOTION_FAQ_API_KEY` 등 Firebase Functions 전용 시크릿은 **Google Cloud Secret Manager**에서 관리합니다.
 
 ## 초기 설정
 
-### 1. NOTION_API_KEY 환경변수 설정
+### 1. NOTION_API_KEY 환경변수 설정 (로컬 개발용)
+
+> **Note:** 이 키는 로컬에서 `make secrets-pull` 스크립트를 실행할 때만 필요합니다. iOS 앱 빌드나 실행에는 영향을 주지 않습니다.
 
 ```bash
 # ~/.zshrc 또는 ~/.bashrc에 추가
