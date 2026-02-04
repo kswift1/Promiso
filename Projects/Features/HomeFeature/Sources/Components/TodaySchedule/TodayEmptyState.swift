@@ -42,8 +42,8 @@ private struct EmptyMessage {
 
   /// 시간대와 확률에 따라 메시지 생성
   static func generate() -> EmptyMessage {
-    // 20% 확률로 랜덤 응원 메시지
-    if Int.random(in: 1...10) <= 2 {
+    // 40% 확률로 랜덤 응원 메시지
+    if Int.random(in: 1...10) <= 4 {
       return randomMessages.randomElement()!
     }
 
