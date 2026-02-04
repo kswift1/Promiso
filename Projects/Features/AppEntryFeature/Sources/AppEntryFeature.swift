@@ -92,11 +92,13 @@ extension AppEntry {
       case onAppear
       case splashAnimationCompleted
       case handleDeeplink(URL)
+      case scenePhaseChanged(ScenePhase)
     }
     
     public enum InternalAction {
       case checkVersion
       case versionCheckCompleted(VersionCheckResult)
+      case recheckVersionAfterAppStore
       case continueAppFlow
       case startSessionCheck
       case sessionCheckResponse(isAuthenticated: Bool)
@@ -137,6 +139,13 @@ extension AppEntry {
           case .handleDeeplink(let url):
             guard let destination = deeplinkClient.parseURL(url) else { return .none }
             return routeOrPendDeeplink(destination, state: &state)
+
+          case .scenePhaseChanged(let phase):
+            // 앱스토어에서 돌아왔을 때 버전 재체크
+            if phase == .active && state.updateAlert != nil {
+              return .send(.internal(.recheckVersionAfterAppStore))
+            }
+            return .none
           }
 
         case .internal(let internalAction):
@@ -151,6 +160,10 @@ extension AppEntry {
           case .versionCheckCompleted(let result):
             switch result {
             case .upToDate:
+              // 업데이트 알림이 있었다면 닫기 (앱스토어에서 업데이트 후 복귀)
+              if state.updateAlert != nil {
+                state.updateAlert = nil
+              }
               return .send(.internal(.continueAppFlow))
 
             case .forceUpdate(let current, let required):
@@ -160,6 +173,13 @@ extension AppEntry {
             case .recommendUpdate(let current, let recommended):
               state.updateAlert = .recommendUpdate(currentVersion: current, recommendedVersion: recommended)
               return .none
+            }
+
+          case .recheckVersionAfterAppStore:
+            // 앱스토어에서 복귀 시 버전 재체크 (캐시 초기화 후 새로 조회)
+            return .run { [appConfigClient] send in
+              let result = await appConfigClient.checkVersionForced()
+              await send(.internal(.versionCheckCompleted(result)))
             }
 
           case .continueAppFlow:
@@ -376,7 +396,8 @@ extension AppEntry {
   
   public struct RootView: View {
     @Bindable private var store: StoreOf<Feature>
-    
+    @Environment(\.scenePhase) private var scenePhase
+
     public init(store: StoreOf<Feature>) {
       self.store = store
     }
@@ -390,6 +411,9 @@ extension AppEntry {
       .animation(.easeInOut, value: store.splash)
       .onAppear {
         store.send(.view(.onAppear))
+      }
+      .onChange(of: scenePhase) { _, newPhase in
+        store.send(.view(.scenePhaseChanged(newPhase)))
       }
       .fullScreenCover(
         item: $store.scope(

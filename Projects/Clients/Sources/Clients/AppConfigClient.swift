@@ -37,6 +37,8 @@ public struct AppConfigClient: Sendable {
   public var fetchConfig: @Sendable () async throws -> AppConfigModel
   /// 현재 앱 버전과 비교하여 업데이트 필요 여부 확인
   public var checkVersion: @Sendable () async -> VersionCheckResult
+  /// 캐시 초기화 후 버전 체크 (앱스토어 복귀 시 사용)
+  public var checkVersionForced: @Sendable () async -> VersionCheckResult
 }
 
 // MARK: - Error
@@ -127,12 +129,16 @@ extension AppConfigClient: TestDependencyKey {
     },
     checkVersion: {
       .upToDate
+    },
+    checkVersionForced: {
+      .upToDate
     }
   )
 
   public static let testValue = Self(
     fetchConfig: unimplemented("\(Self.self).fetchConfig", placeholder: AppConfigModel(forceUpdateVersion: "0.0.0", recommendedVersion: "0.0.0")),
-    checkVersion: unimplemented("\(Self.self).checkVersion", placeholder: .upToDate)
+    checkVersion: unimplemented("\(Self.self).checkVersion", placeholder: .upToDate),
+    checkVersionForced: unimplemented("\(Self.self).checkVersionForced", placeholder: .upToDate)
   )
 }
 
@@ -148,6 +154,7 @@ extension AppConfigClient: DependencyKey {
 
       func get() -> AppConfigModel? { cachedConfig }
       func set(_ config: AppConfigModel) { cachedConfig = config }
+      func clear() { cachedConfig = nil }
     }
     let cache = ConfigCache()
 
@@ -159,12 +166,12 @@ extension AppConfigClient: DependencyKey {
       }
 
       let databaseId = AppConstants.App.notionAppConfigDatabaseId
+      let apiKey = Bundle.main.object(forInfoDictionaryKey: "NOTION_API_KEY") as? String
 
-      guard let apiKey = Bundle.main.object(forInfoDictionaryKey: "NOTION_API_KEY") as? String,
+      guard let apiKey = apiKey,
             !apiKey.isEmpty,
             !databaseId.isEmpty
       else {
-        // 설정이 없으면 기본값 반환 (업데이트 체크 스킵)
         return AppConfigModel(forceUpdateVersion: "0.0.0", recommendedVersion: "0.0.0")
       }
 
@@ -242,7 +249,32 @@ extension AppConfigClient: DependencyKey {
           return .upToDate
         } catch {
           // 네트워크 오류 시 업데이트 체크 스킵
-          AppLogger.general.error("버전 체크 실패: \(error.localizedDescription)")
+          return .upToDate
+        }
+      },
+      checkVersionForced: {
+        await cache.clear()
+        let currentVersion = AppConstants.App.version
+
+        do {
+          let config = try await fetchConfigFromNotion()
+
+          if currentVersion.isVersionLessThan(config.forceUpdateVersion) {
+            return .forceUpdate(
+              currentVersion: currentVersion,
+              requiredVersion: config.forceUpdateVersion
+            )
+          }
+
+          if currentVersion.isVersionLessThan(config.recommendedVersion) {
+            return .recommendUpdate(
+              currentVersion: currentVersion,
+              recommendedVersion: config.recommendedVersion
+            )
+          }
+
+          return .upToDate
+        } catch {
           return .upToDate
         }
       }
