@@ -98,10 +98,10 @@ cmd_pull() {
     echo "// Generated at: $(date '+%Y-%m-%d %H:%M:%S')" >> "$config_file"
     echo "" >> "$config_file"
 
-    # Notion에서 각 시크릿 추출
+    # Notion에서 각 시크릿 추출 (줄바꿈 문자를 공백으로 치환하여 xcconfig 호환성 유지)
     echo "$response" | jq -r --arg env "$env" '.results[] |
       select(.properties[$env].rich_text[0].plain_text != null) |
-      "\(.properties.Key.title[0].plain_text) = \(.properties[$env].rich_text[0].plain_text)"' >> "$config_file"
+      "\(.properties.Key.title[0].plain_text | gsub("[\\n\\r]"; "")) = \(.properties[$env].rich_text[0].plain_text | gsub("[\\n\\r]"; " "))"' >> "$config_file"
 
     # Code Signing 설정 추가
     echo "" >> "$config_file"

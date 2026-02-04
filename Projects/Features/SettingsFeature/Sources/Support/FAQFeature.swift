@@ -105,16 +105,7 @@ extension FAQ {
           }
 
         case .view(.retryTapped):
-          state.isLoading = true
-          state.errorMessage = nil
-          return .run { send in
-            do {
-              let faqs = try await faqClient.fetchFAQs()
-              await send(.internal(.faqsLoaded(faqs)))
-            } catch {
-              await send(.internal(.faqsLoadFailed(error.localizedDescription)))
-            }
-          }
+          return .send(.view(.onAppear))
 
         case .view(.categorySelected(let category)):
           state.selectedCategory = category

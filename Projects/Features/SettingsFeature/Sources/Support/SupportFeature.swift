@@ -72,14 +72,13 @@ extension Support {
             await hapticFeedback.selection()
             // 이메일 앱 열기
             let email = AppConstants.App.supportEmail
-            let subject = "[\(AppConstants.App.name)] 오류 제보"
-            let body = """
-
-            ---
-            앱 버전: \(AppConstants.App.version) (\(AppConstants.App.buildNumber))
-            기기: \(deviceModel())
-            iOS: \(UIDevice.current.systemVersion)
-            """
+            let subject = Strings.BugReport.subject
+            let body = Strings.BugReport.body(
+              version: AppConstants.App.version,
+              build: AppConstants.App.buildNumber,
+              device: deviceModel(),
+              osVersion: UIDevice.current.systemVersion
+            )
 
             let encodedSubject = subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
             let encodedBody = body.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
@@ -189,6 +188,24 @@ extension Support {
       .navigationBarTitleDisplayMode(.inline)
       .onAppear {
         store.send(.view(.onAppear))
+      }
+    }
+  }
+
+  // MARK: - Strings
+
+  private enum Strings {
+    enum BugReport {
+      static let subject = "[\(AppConstants.App.name)] 오류 제보"
+
+      static func body(version: String, build: String, device: String, osVersion: String) -> String {
+        """
+
+        ---
+        앱 버전: \(version) (\(build))
+        기기: \(device)
+        iOS: \(osVersion)
+        """
       }
     }
   }

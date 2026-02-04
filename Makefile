@@ -29,9 +29,9 @@ feature:
 	fi
 	@echo "🚀 피쳐 '$(FEATURE_NAME)' 생성 중..."
 	@echo "1/4 피쳐 스캐폴드 생성..."
-	@tuist scaffold feature --name $(FEATURE_NAME)
+	@tuist scaffold feature --name "$(FEATURE_NAME)"
 	@echo "2/4 AppFeatureDeps.swift에 의존성 추가..."
-	@./scripts/add_feature_dependency.sh $(FEATURE_NAME)
+	@./scripts/add_feature_dependency.sh "$(FEATURE_NAME)"
 	@echo "3/4 프로젝트 생성..."
 	@tuist install && tuist generate
 	@echo "4/4 완료! ✅"
@@ -79,7 +79,7 @@ remove-feature:
 		echo "  ℹ️  Features+$(FEATURE_NAME).swift 파일이 존재하지 않습니다."; \
 	fi
 	@echo "3/4 AppFeatureDeps.swift에서 의존성 제거..."
-	@./scripts/remove_feature_dependency.sh $(FEATURE_NAME)
+	@./scripts/remove_feature_dependency.sh "$(FEATURE_NAME)"
 	@echo "4/4 프로젝트 재생성..."
 	@if tuist install && tuist generate; then \
 		echo "  ✅ 프로젝트 재생성 완료"; \

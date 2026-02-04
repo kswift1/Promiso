@@ -144,12 +144,11 @@ extension FAQClient: DependencyKey {
 
         guard let apiKey = Bundle.main.object(forInfoDictionaryKey: "NOTION_API_KEY") as? String,
               !apiKey.isEmpty,
-              databaseId != "YOUR_DATABASE_ID_HERE"
+              databaseId != "YOUR_DATABASE_ID_HERE",
+              let url = URL(string: "https://api.notion.com/v1/databases/\(databaseId)/query")
         else {
           throw FAQClientError.invalidConfiguration
         }
-
-        let url = URL(string: "https://api.notion.com/v1/databases/\(databaseId)/query")!
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
