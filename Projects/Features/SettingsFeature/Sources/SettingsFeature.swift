@@ -287,13 +287,11 @@ extension Settings {
             state.path.append(.appInfo(AppInfo.Feature.State()))
             return .run { _ in await hapticFeedback.selection() }
 
-          #if DEBUG
           case .developerSettingsTapped:
             state.path.append(.developerSettings(
               DeveloperSettings.Feature.State()
             ))
             return .run { _ in await hapticFeedback.selection() }
-          #endif
 
           // MARK: - Profile Edit View Actions
 
