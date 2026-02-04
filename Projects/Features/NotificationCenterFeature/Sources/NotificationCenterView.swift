@@ -55,8 +55,8 @@ extension NotificationCenter {
           }
         }
 
-        // 편집 버튼 (알림이 있을 때만)
-        if !store.isEmpty {
+        // 편집 버튼 (로딩 완료 후, 알림이 있을 때만)
+        if !store.isLoading && !store.isEmpty {
           ToolbarItem(placement: .topBarTrailing) {
             Button {
               if store.isEditMode {
