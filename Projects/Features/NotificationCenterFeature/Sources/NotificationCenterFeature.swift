@@ -138,9 +138,8 @@ extension NotificationCenter {
           case .filterChanged(let filter):
             guard state.filter != filter else { return .none }
             state.filter = filter
-            state.notificationsState = .loading
-            state.hasMoreData = true
-            return .send(.internal(.fetchNotifications(isRefresh: true)))
+            // 클라이언트 필터링만 적용, API 호출 없음
+            return .none
 
           case .notificationTapped(let notification):
             // 읽음 처리
@@ -264,10 +263,11 @@ extension NotificationCenter {
               lastCreatedAt = nil
             }
 
-            return .run { [notificationClient, filter = state.filter] send in
+            return .run { [notificationClient] send in
               do {
+                // 항상 전체 알림을 가져오고, 필터는 클라이언트에서 적용
                 let notifications = try await notificationClient.getNotifications(
-                  filter,
+                  .all,
                   State.pageSize,
                   lastCreatedAt
                 )
@@ -367,12 +367,17 @@ extension NotificationCenter {
 // MARK: - Computed Properties
 
 extension NotificationCenter.Feature.State {
-  /// 현재 알림 목록
+  /// 현재 알림 목록 (필터 적용)
   var notifications: [NotificationModel] {
-    guard case .loaded(let notifications) = notificationsState else {
+    guard case .loaded(let allNotifications) = notificationsState else {
       return []
     }
-    return notifications
+    switch filter {
+    case .all:
+      return allNotifications
+    case .unread:
+      return allNotifications.filter { !$0.isRead }
+    }
   }
 
   /// 안 읽은 알림 개수

@@ -189,8 +189,7 @@ extension RootTab {
             .send(.internal(.requestWidgetToken)),
             .send(.internal(.observePushToStartToken)),
             .send(.internal(.observeActivityUpdates)),
-            .send(.internal(.syncCalendar)),
-            .send(.home(.view(.refreshNotificationBadge)))
+            .send(.internal(.syncCalendar))
           )
 
         case .tabSelected(let tab):
@@ -207,9 +206,11 @@ extension RootTab {
 
           // 탭 전환 시 각 Feature에 알림
           switch tab {
+          case .home:
+            effects.append(.send(.home(.view(.refreshNotificationBadge))))
           case .calendar:
             effects.append(.send(.calendar(.view(.refresh))))
-          case .home, .group, .settings:
+          case .group, .settings:
             break
           }
 
