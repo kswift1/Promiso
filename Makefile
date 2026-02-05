@@ -24,7 +24,7 @@ FORCE ?=
 setup:
 	@echo "🚀 Promiso 프로젝트 초기 설정 중..."
 	@echo ""
-	@echo "1/3 mise 설정 신뢰..."
+	@echo "1/4 mise 설정 신뢰..."
 	@if command -v mise >/dev/null 2>&1; then \
 		mise trust 2>/dev/null || true; \
 		mise settings set experimental true 2>/dev/null || true; \
@@ -33,16 +33,18 @@ setup:
 	else \
 		echo "  ⚠️  mise가 설치되어 있지 않습니다."; \
 	fi
-	@echo "2/3 Tuist 의존성 설치..."
+	@echo "2/4 Tuist 의존성 설치..."
 	@tuist install
-	@echo "3/3 Xcode 프로젝트 생성..."
+	@echo "3/4 Xcode 프로젝트 생성..."
 	@tuist generate
+	@echo "4/4 Git Hooks 설치 (보안)..."
+	@./scripts/install-git-hooks.sh
 	@echo ""
 	@echo "✅ 초기 설정 완료!"
 	@echo ""
 	@echo "다음 단계:"
-	@echo "  - Firebase 에뮬레이터: make emulator-start"
 	@echo "  - Secrets 동기화: make secrets-pull"
+	@echo "  - Firebase 에뮬레이터: make emulator-start"
 	@echo "  - 도움말: make help"
 	@echo ""
 
