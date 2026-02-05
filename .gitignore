@@ -108,6 +108,3 @@ Tuist/.build/
 *.zip
 Promiso-Config*.zip
 *.env.backup
-
-# Notion 백업 (실제 API Keys 포함)
-docs/SECRETS_BACKUP_NOTION.md
