@@ -74,7 +74,7 @@ extension AppEntry {
       case forceUpdate(currentVersion: String, requiredVersion: String)
       case recommendUpdate(currentVersion: String, recommendedVersion: String)
     }
-
+    
 
     // MARK: - Action
 

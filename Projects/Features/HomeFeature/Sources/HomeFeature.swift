@@ -374,11 +374,16 @@ extension Home.Feature.State {
       .map { $0 }
   }
 
-  /// 다가오는 확정 약속 (내일 이후 + 확정, 최대 10개)
+  /// 다가오는 확정 약속 (내일 이후 + 확정 + 내가 수락, 최대 10개)
   var upcomingPromises: [PromiseModel] {
     let (_, endOfDay) = todayRange
+    let userId = currentUser.userId
     return allPromises
-      .filter { $0.startAt >= endOfDay && $0.isConfirmed }
+      .filter {
+        $0.startAt >= endOfDay &&
+        $0.isConfirmed &&
+        $0.myVoteStatus(userId: userId) == .accepted
+      }
       .prefix(10)
       .map { $0 }
   }

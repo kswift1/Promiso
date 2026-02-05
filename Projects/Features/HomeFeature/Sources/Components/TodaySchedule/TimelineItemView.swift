@@ -85,11 +85,10 @@ struct TimelineItemView: View {
       // 이모지 + 제목
       HStack(spacing: 6) {
         Text(promise.displayEmoji)
-          .font(.title3)
+          .font(.pmTitle3)
 
         Text(promise.title)
-          .font(.body)
-          .fontWeight(.semibold)
+          .font(.pmBodySemibold)
           .foregroundStyle(.primary)
           .lineLimit(1)
       }
@@ -104,15 +103,15 @@ struct TimelineItemView: View {
           )
 
           Text(group.name)
-            .font(.caption)
+            .font(.pmCaption)
             .lineLimit(1)
 
           Text("·")
-            .font(.caption)
+            .font(.pmCaption)
         }
 
         Text("\(promise.votes.accepted.count)명 참여 확정")
-          .font(.caption)
+          .font(.pmCaption)
       }
       .foregroundStyle(.secondary)
 
@@ -126,7 +125,7 @@ struct TimelineItemView: View {
             .frame(width: 14, height: 14)
 
           Text(location.name)
-            .font(.caption)
+            .font(.pmCaption)
             .lineLimit(1)
         }
         .foregroundStyle(.secondary)
@@ -136,16 +135,16 @@ struct TimelineItemView: View {
       if let minutes = promise.trackingStartMinutesBefore {
         HStack(spacing: 4) {
           Image(systemName: "antenna.radiowaves.left.and.right")
-            .font(.system(size: 12))
+            .font(.pmCaption2)
 
           Text(liveStartTimeString(minutes: minutes))
-            .font(.caption)
+            .font(.pmCaption)
 
           Button {
             showLiveActivityInfo = true
           } label: {
             Image(systemName: "info.circle")
-              .font(.system(size: 12))
+              .font(.pmCaption2)
           }
           .popover(isPresented: $showLiveActivityInfo, arrowEdge: .top) {
             LiveActivityInfoPopover(
@@ -166,25 +165,23 @@ struct TimelineItemView: View {
   private var timeLabel: some View {
     VStack(alignment: .center, spacing: 2) {
       Text(startTimeString)
-        .font(.subheadline)
-        .fontWeight(.semibold)
+        .font(.pmSubheadlineSemibold)
         .foregroundStyle(isNow ? Color.pmindigo.n500 : .primary)
 
       if let endAt = promise.endAt {
         VStack(alignment: .center, spacing: 0) {
           Text("~")
-            .font(.caption)
+            .font(.pmCaption)
             .foregroundStyle(.secondary)
           Text(endTimeString(endAt))
-            .font(.caption)
+            .font(.pmCaption)
             .foregroundStyle(.secondary)
             .multilineTextAlignment(.center)
             .fixedSize(horizontal: false, vertical: true)
         }
       } else if isNow {
         Text("NOW")
-          .font(.caption2)
-          .fontWeight(.bold)
+          .font(.pmCaption2Semibold)
           .foregroundStyle(Color.pmindigo.n500)
       }
     }

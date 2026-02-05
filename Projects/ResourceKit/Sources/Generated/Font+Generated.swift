@@ -2,7 +2,7 @@
 //  Font+Generated.swift
 //  Promiso Typography System
 //
-//  사용법: .font(.pm.body) 또는 .font(.pm.headline)
+//  사용법: .font(.pmBody), .font(.pmHeadline)
 //  크기 조정: TypographySpec.swift에서 size 값 변경
 //
 
@@ -11,189 +11,182 @@ import SwiftUI
 // MARK: - Font Extension
 
 public extension Font {
-  /// Promiso Typography System
-  /// 사용법: .font(.pm.body), .font(.pm.headline)
-  static let pm = PMTypography.self
-}
 
-// MARK: - PMTypography
-
-public enum PMTypography {
   // MARK: - Large Titles (34pt)
 
-  public static var largeTitle: Font {
+  static var pmLargeTitle: Font {
     .system(size: 34, weight: .bold)
   }
 
-  public static var largeTitleSemibold: Font {
+  static var pmLargeTitleSemibold: Font {
     .system(size: 34, weight: .semibold)
   }
 
   // MARK: - Title (26pt)
 
-  public static var title: Font {
+  static var pmTitle: Font {
     .system(size: 26, weight: .bold)
   }
 
-  public static var titleSemibold: Font {
+  static var pmTitleSemibold: Font {
     .system(size: 26, weight: .semibold)
   }
 
-  public static var titleMedium: Font {
+  static var pmTitleMedium: Font {
     .system(size: 26, weight: .medium)
   }
 
   // MARK: - Title2 (22pt)
 
-  public static var title2: Font {
+  static var pmTitle2: Font {
     .system(size: 22, weight: .bold)
   }
 
-  public static var title2Semibold: Font {
+  static var pmTitle2Semibold: Font {
     .system(size: 22, weight: .semibold)
   }
 
-  public static var title2Medium: Font {
+  static var pmTitle2Medium: Font {
     .system(size: 22, weight: .medium)
   }
 
   // MARK: - Title3 (20pt)
 
-  public static var title3: Font {
+  static var pmTitle3: Font {
     .system(size: 20, weight: .bold)
   }
 
-  public static var title3Semibold: Font {
+  static var pmTitle3Semibold: Font {
     .system(size: 20, weight: .semibold)
   }
 
-  public static var title3Medium: Font {
+  static var pmTitle3Medium: Font {
     .system(size: 20, weight: .medium)
   }
 
   // MARK: - Headline (17pt semibold)
 
-  public static var headline: Font {
+  static var pmHeadline: Font {
     .system(size: 17, weight: .semibold)
   }
 
-  public static var headlineBold: Font {
+  static var pmHeadlineBold: Font {
     .system(size: 17, weight: .bold)
   }
 
   // MARK: - Body (17pt)
 
-  public static var body: Font {
+  static var pmBody: Font {
     .system(size: 17, weight: .regular)
   }
 
-  public static var bodyMedium: Font {
+  static var pmBodyMedium: Font {
     .system(size: 17, weight: .medium)
   }
 
-  public static var bodySemibold: Font {
+  static var pmBodySemibold: Font {
     .system(size: 17, weight: .semibold)
   }
 
-  public static var bodyBold: Font {
+  static var pmBodyBold: Font {
     .system(size: 17, weight: .bold)
   }
 
   // MARK: - Callout (16pt)
 
-  public static var callout: Font {
+  static var pmCallout: Font {
     .system(size: 16, weight: .regular)
   }
 
-  public static var calloutMedium: Font {
+  static var pmCalloutMedium: Font {
     .system(size: 16, weight: .medium)
   }
 
-  public static var calloutSemibold: Font {
+  static var pmCalloutSemibold: Font {
     .system(size: 16, weight: .semibold)
   }
 
   // MARK: - Subheadline (15pt)
 
-  public static var subheadline: Font {
+  static var pmSubheadline: Font {
     .system(size: 15, weight: .regular)
   }
 
-  public static var subheadlineMedium: Font {
+  static var pmSubheadlineMedium: Font {
     .system(size: 15, weight: .medium)
   }
 
-  public static var subheadlineSemibold: Font {
+  static var pmSubheadlineSemibold: Font {
     .system(size: 15, weight: .semibold)
   }
 
   // MARK: - Footnote (14pt)
 
-  public static var footnote: Font {
+  static var pmFootnote: Font {
     .system(size: 14, weight: .regular)
   }
 
-  public static var footnoteMedium: Font {
+  static var pmFootnoteMedium: Font {
     .system(size: 14, weight: .medium)
   }
 
-  public static var footnoteSemibold: Font {
+  static var pmFootnoteSemibold: Font {
     .system(size: 14, weight: .semibold)
   }
 
   // MARK: - Caption (13pt)
 
-  public static var caption: Font {
+  static var pmCaption: Font {
     .system(size: 13, weight: .regular)
   }
 
-  public static var captionMedium: Font {
+  static var pmCaptionMedium: Font {
     .system(size: 13, weight: .medium)
   }
 
-  public static var captionSemibold: Font {
+  static var pmCaptionSemibold: Font {
     .system(size: 13, weight: .semibold)
   }
 
   // MARK: - Caption2 (12pt)
 
-  public static var caption2: Font {
+  static var pmCaption2: Font {
     .system(size: 12, weight: .regular)
   }
 
-  public static var caption2Medium: Font {
+  static var pmCaption2Medium: Font {
     .system(size: 12, weight: .medium)
   }
 
-  public static var caption2Semibold: Font {
+  static var pmCaption2Semibold: Font {
     .system(size: 12, weight: .semibold)
   }
 
   // MARK: - Micro (11pt)
 
-  public static var micro: Font {
+  static var pmMicro: Font {
     .system(size: 11, weight: .regular)
   }
 
-  public static var microMedium: Font {
+  static var pmMicroMedium: Font {
     .system(size: 11, weight: .medium)
   }
 
-  public static var microSemibold: Font {
+  static var pmMicroSemibold: Font {
     .system(size: 11, weight: .semibold)
   }
 
   // MARK: - Micro2 (10pt)
 
-  public static var micro2: Font {
+  static var pmMicro2: Font {
     .system(size: 10, weight: .regular)
   }
 
-  public static var micro2Medium: Font {
+  static var pmMicro2Medium: Font {
     .system(size: 10, weight: .medium)
   }
 
-  public static var micro2Semibold: Font {
+  static var pmMicro2Semibold: Font {
     .system(size: 10, weight: .semibold)
   }
 }

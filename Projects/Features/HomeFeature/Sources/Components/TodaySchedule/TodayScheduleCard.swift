@@ -1,5 +1,6 @@
 import SwiftUI
 import PromisoShared
+import ResourceKit
 
 // MARK: - Today Schedule Card
 
@@ -52,11 +53,11 @@ struct TodayScheduleCard: View {
     HStack(spacing: 8) {
       VStack(alignment: .leading, spacing: 2) {
         Text("오늘의 일정")
-          .font(.headline)
+          .font(.pmHeadline)
           .foregroundStyle(.primary)
 
         Text(todayDateString)
-          .font(.caption)
+          .font(.pmCaption)
           .foregroundStyle(.secondary)
       }
 
@@ -65,15 +66,13 @@ struct TodayScheduleCard: View {
       // 약속 개수 (배경 없음)
       if !promises.isEmpty {
         Text("\(promises.count)개")
-          .font(.subheadline)
-          .fontWeight(.medium)
+          .font(.pmSubheadlineMedium)
           .foregroundStyle(Color.pmindigo.n500)
       }
 
       // Chevron (회전 애니메이션)
       Image(systemName: "chevron.right")
-        .font(.subheadline)
-        .fontWeight(.semibold)
+        .font(.pmSubheadlineSemibold)
         .foregroundStyle(Color.pmgray.n400)
         .rotationEffect(.degrees(isExpanded ? 90 : 0))
     }

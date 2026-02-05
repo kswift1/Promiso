@@ -41,17 +41,15 @@ struct UpcomingDateCard: View {
   private var dateBadge: some View {
     VStack(spacing: 2) {
       Text(monthString)
-        .font(.caption2)
-        .fontWeight(.medium)
+        .font(.pmCaption2Medium)
         .foregroundStyle(Color.pmindigo.n500)
 
       Text(dayString)
-        .font(.title3)
-        .fontWeight(.bold)
+        .font(.pmTitle3)
         .foregroundStyle(.primary)
 
       Text(weekdayString)
-        .font(.caption2)
+        .font(.pmCaption2)
         .foregroundStyle(weekdayColor)
     }
     .frame(width: 44)
@@ -99,11 +97,10 @@ private struct UpcomingPromiseRow: View {
           // 이모지 + 제목
           HStack(spacing: 6) {
             Text(promise.displayEmoji)
-              .font(.body)
+              .font(.pmBody)
 
             Text(promise.title)
-              .font(.subheadline)
-              .fontWeight(.medium)
+              .font(.pmSubheadlineMedium)
               .foregroundStyle(.primary)
               .lineLimit(1)
           }
@@ -118,7 +115,7 @@ private struct UpcomingPromiseRow: View {
                 .frame(width: 12, height: 12)
 
               Text(timeString)
-                .font(.caption)
+                .font(.pmCaption)
             }
 
             // 장소
@@ -130,7 +127,7 @@ private struct UpcomingPromiseRow: View {
                   .frame(width: 12, height: 12)
 
                 Text(location.name)
-                  .font(.caption)
+                  .font(.pmCaption)
                   .lineLimit(1)
               }
             }
@@ -145,7 +142,7 @@ private struct UpcomingPromiseRow: View {
 
         // 우측 화살표
         Image(systemName: "chevron.right")
-          .font(.caption)
+          .font(.pmCaption)
           .foregroundStyle(.tertiary)
       }
       .contentShape(Rectangle())
@@ -167,10 +164,10 @@ private struct UpcomingPromiseRow: View {
       // 그룹명 · 참여자
       if let groupName = promise.group?.name {
         Text("\(groupName) · \(promise.votes.accepted.count)명 참여 확정")
-          .font(.caption)
+          .font(.pmCaption)
       } else {
         Text("\(promise.votes.accepted.count)명 참여 확정")
-          .font(.caption)
+          .font(.pmCaption)
       }
     }
     .foregroundStyle(.secondary)

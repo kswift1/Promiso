@@ -1,5 +1,6 @@
 import SwiftUI
 import PromisoShared
+import ResourceKit
 
 // MARK: - Upcoming Section
 
@@ -39,7 +40,7 @@ struct UpcomingSection: View {
   private var sectionHeader: some View {
     HStack {
       Text("다가오는 약속")
-        .font(.headline)
+        .font(.pmHeadline)
         .foregroundStyle(.primary)
 
       Spacer()
@@ -49,10 +50,10 @@ struct UpcomingSection: View {
         Button(action: onSeeAllTap) {
           HStack(spacing: 2) {
             Text("전체")
-              .font(.subheadline)
+              .font(.pmSubheadline)
 
             Image(systemName: "chevron.right")
-              .font(.caption)
+              .font(.pmCaption)
           }
           .foregroundStyle(Color.pmindigo.n500)
         }
@@ -72,19 +73,18 @@ struct UpcomingSection: View {
           .frame(width: 48, height: 48)
 
         Image(systemName: "calendar.badge.clock")
-          .font(.title3)
+          .font(.pmTitle3)
           .foregroundStyle(Color.pmindigo.n500)
       }
 
       // 텍스트
       VStack(alignment: .leading, spacing: 2) {
         Text("예정된 약속이 없어요")
-          .font(.subheadline)
-          .fontWeight(.semibold)
+          .font(.pmSubheadlineSemibold)
           .foregroundStyle(.primary)
 
         Text("친구들과 새로운 약속을 만들어보세요")
-          .font(.caption)
+          .font(.pmCaption)
           .foregroundStyle(.secondary)
       }
 
