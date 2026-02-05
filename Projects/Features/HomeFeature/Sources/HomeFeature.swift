@@ -237,10 +237,28 @@ extension Home {
           case .promisesResponse(let result):
             switch result {
             case .success(let promises):
-              state.promisesState = .loaded(promises)
+              // 그룹 정보 매핑 (UserGroupInfo → GroupModel 변환)
+              let groupsDict = Dictionary(
+                uniqueKeysWithValues: state.currentUser.groups.map { ($0.id, $0) }
+              )
+              let promisesWithGroup = promises.map { promise in
+                var mutablePromise = promise
+                if let groupInfo = groupsDict[promise.groupId] {
+                  mutablePromise.group = GroupModel(
+                    id: groupInfo.id,
+                    name: groupInfo.name,
+                    imageUrl: groupInfo.imageUrl,
+                    maxMembers: 0,
+                    inviteCode: "",
+                    createdBy: ""
+                  )
+                }
+                return mutablePromise
+              }
+              state.promisesState = .loaded(promisesWithGroup)
 
               // 위젯 캐시 업데이트
-              WidgetDataManager.savePromises(promises.toWidgetData())
+              WidgetDataManager.savePromises(promisesWithGroup.toWidgetData())
               WidgetDataManager.reloadWidgets()
 
               // 약속 로드 성공 시 알림 개수도 조회
