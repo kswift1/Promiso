@@ -132,28 +132,40 @@ make help                      # 전체 명령어 보기
 | 카테고리 | 문서 |
 |---------|------|
 | **시작하기** | [초기 설정](docs/SETUP_GUIDE.md) · [환경 구성](docs/ENVIRONMENT.md) · [아키텍처](docs/ARCHITECTURE.md) |
-| **개발** | [개발 가이드](docs/DEVELOPMENT.md) · [Firebase](docs/FIREBASE.md) · [Secret Config](Config/README.md) |
-| **배포** | [CI/CD](docs/CI_CD.md) · [배포 가이드](docs/DEPLOYMENT.md) · [브랜치 전략](docs/BRANCH_STRATEGY.md) |
+| **개발** | [개발 가이드](docs/DEVELOPMENT.md) · [Secret Config](Config/README.md) |
 | **AI 도구** | [Claude Code](.claude/CLAUDE.md) - `/new-feature`, `/review-pr` 등 |
 
-## 🚢 배포
+## 🚢 배포 & 브랜치 전략
 
-```bash
-# GitHub Actions (자동)
-PR → main: 빌드 & 테스트
-Tag push: TestFlight 배포
+### 브랜치 전략
+
+```
+main (프로덕션)
+  ↑
+release/v* (릴리즈)
+  ↑
+feature/* (기능 개발)
 ```
 
-> 📘 **배포 가이드**: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
+**워크플로우**:
+1. `feature/*` 브랜치에서 개발
+2. `release/v*` 브랜치로 PR
+3. 리뷰 & 머지 후 `release/v*` → `main`
+4. `main`에 Tag 추가 시 자동 배포
 
-## 📄 라이선스
+### CI/CD (GitHub Actions)
 
-이 프로젝트는 비공개 프로젝트입니다.
+| 이벤트 | 동작 |
+|--------|------|
+| **PR → release/** | 빌드 & 테스트 실행 |
+| **PR → main** | 빌드 & 테스트 실행 |
+| **Tag push (v\*)** | TestFlight 자동 배포 |
 
-## 👥 기여
+### 배포 환경
 
-현재 비공개 프로젝트로 외부 기여를 받지 않습니다.
+- **Dev**: 로컬 개발 (Firebase Emulator)
+- **Stage**: QA/테스트 (`PromisoStage`)
+- **Prod**: 프로덕션 (`Promiso`)
 
----
+> 📘 **상세 가이드**: [브랜치 전략](docs/BRANCH_STRATEGY.md) · [CI/CD](docs/CI_CD.md) · [배포](docs/DEPLOYMENT.md)
 
-**Made with ❤️ by Promiso Team**

@@ -121,35 +121,19 @@ Projects/Features/NotificationFeature/
 모든 Feature는 Namespace enum을 사용합니다.
 
 ```swift
-import ComposableArchitecture
-
-// MARK: - Feature Namespace
-
+// 1. Namespace 선언
 public enum Notification {}
 
-// MARK: - Feature Implementation
-
+// 2. Reducer 구현
 extension Notification {
-
-  // MARK: - Reducer
-
   @Reducer
   public struct Feature {
-
-    public init() {}
-
-    // MARK: - State
-
     @ObservableState
     public struct State: Equatable {
       public var notifications: [NotificationItem] = []
-      public var isLoading: Bool = false
-      public var errorMessage: String?
-
-      public init() {}
+      public var isLoading = false
+      // ...
     }
-
-    // MARK: - Action
 
     public enum Action {
       case view(View)
@@ -157,72 +141,31 @@ extension Notification {
       case delegate(Delegate)
     }
 
-    public enum View: Sendable {
-      case onAppear
-      case notificationTapped(NotificationItem.ID)
-      case refreshTapped
-    }
-
-    public enum Internal: Sendable {
-      case notificationsResponse(Result<[NotificationItem], Error>)
-    }
-
-    public enum Delegate: Equatable {
-      case notificationSelected(NotificationItem)
-    }
-
-    // MARK: - Dependencies
+    // ViewAction, InternalAction, DelegateAction 정의
+    public enum View: Sendable { /* ... */ }
+    public enum Internal: Sendable { /* ... */ }
+    public enum Delegate: Equatable { /* ... */ }
 
     @Dependency(\.notificationClient) var notificationClient
 
-    // MARK: - Reducer Body
-
     public var body: some ReducerOf<Self> {
       Reduce { state, action in
-        switch action {
-
-        case .view(let viewAction):
-          switch viewAction {
-          case .onAppear:
-            state.isLoading = true
-            state.errorMessage = nil
-            return .run { send in
-              await send(.internal(.notificationsResponse(
-                Result { try await notificationClient.fetchNotifications() }
-              )))
-            }
-
-          case let .notificationTapped(id):
-            guard let notification = state.notifications.first(where: { $0.id == id }) else {
-              return .none
-            }
-            return .send(.delegate(.notificationSelected(notification)))
-
-          case .refreshTapped:
-            return .send(.view(.onAppear))
-          }
-
-        case .internal(let internalAction):
-          switch internalAction {
-          case let .notificationsResponse(.success(notifications)):
-            state.isLoading = false
-            state.notifications = notifications
-            return .none
-
-          case let .notificationsResponse(.failure(error)):
-            state.isLoading = false
-            state.errorMessage = error.localizedDescription
-            return .none
-          }
-
-        case .delegate:
-          return .none
-        }
+        // Action 처리 로직
       }
     }
   }
 }
+
+// 3. View 구현
+extension Notification {
+  public struct RootView: View {
+    let store: StoreOf<Feature>
+    // UI 구현
+  }
+}
 ```
+
+> 📘 **구조 상세**: [ARCHITECTURE.md - Features Layer](ARCHITECTURE.md#features-layer)
 
 #### Action 계층 구조 (필수)
 
@@ -247,70 +190,32 @@ extension Notification {
 ```swift
 extension Notification {
   public struct RootView: View {
-
     let store: StoreOf<Feature>
-
-    public init(store: StoreOf<Feature>) {
-      self.store = store
-    }
 
     public var body: some View {
       ScrollView {
         VStack(spacing: 16) {
           headerSection
-          notificationList
+          contentSection
         }
-        .padding()
       }
-      .auroraBackground()  // 주요 화면에 적용
-      .navigationTitle("알림")
+      .auroraBackground()  // 주요 화면
       .onAppear {
         store.send(.view(.onAppear))
       }
     }
 
-    // MARK: - View Builders
-
     @ViewBuilder
     private var headerSection: some View {
-      HStack {
-        Text("알림 센터")
-          .font(.title)
-          .fontWeight(.bold)
-        Spacer()
-        refreshButton
-      }
+      // 헤더 구현
     }
 
     @ViewBuilder
-    private var notificationList: some View {
-      if store.isLoading {
-        ProgressView()
-      } else if let error = store.errorMessage {
-        ErrorView(message: error)
-      } else {
-        ForEach(store.notifications) { notification in
-          NotificationRow(notification: notification) {
-            store.send(.view(.notificationTapped(notification.id)))
-          }
-        }
-      }
-    }
-
-    @ViewBuilder
-    private var refreshButton: some View {
-      Button {
-        store.send(.view(.refreshTapped))
-      } label: {
-        Image(systemName: "arrow.clockwise")
-          .font(.headline)
-      }
-      .disabled(store.isLoading)
+    private var contentSection: some View {
+      // 로딩/에러/데이터 표시 로직
     }
   }
 }
-
-// MARK: - Preview
 
 #Preview {
   Notification.RootView(
@@ -320,6 +225,12 @@ extension Notification {
   )
 }
 ```
+
+**View 작성 원칙**:
+- `@ViewBuilder`로 섹션 분리 (가독성)
+- Preview 필수 작성
+- Store를 통한 단방향 데이터 흐름
+- `.auroraBackground()` 주요 화면 적용
 
 #### UI 스타일 규칙
 
@@ -386,57 +297,31 @@ Button {
 #### Client 생성
 
 ```swift
-// Projects/Clients/NotificationClient/Sources/NotificationClient.swift
-
-import ComposableArchitecture
-import Foundation
-
+// 1. Client 인터페이스 정의
 @DependencyClient
 public struct NotificationClient {
   public var fetchNotifications: @Sendable () async throws -> [NotificationItem]
   public var markAsRead: @Sendable (NotificationItem.ID) async throws -> Void
-  public var deleteNotification: @Sendable (NotificationItem.ID) async throws -> Void
+  // ... 기타 메서드
 }
 
-// MARK: - Live Implementation
-
+// 2. Live 구현
 extension NotificationClient: DependencyKey {
   public static let liveValue = Self(
     fetchNotifications: {
       // Firebase/API 실제 구현
-      let db = Firestore.firestore()
-      let snapshot = try await db.collection("notifications").getDocuments()
-      return snapshot.documents.compactMap { doc in
-        try? doc.data(as: NotificationItem.self)
-      }
     },
-    markAsRead: { id in
-      let db = Firestore.firestore()
-      try await db.collection("notifications").document(id).updateData([
-        "isRead": true
-      ])
-    },
-    deleteNotification: { id in
-      let db = Firestore.firestore()
-      try await db.collection("notifications").document(id).delete()
-    }
+    // ...
   )
 }
 
-// MARK: - Test & Preview Values
-
+// 3. Test/Preview 구현
 extension NotificationClient: TestDependencyKey {
-  public static let testValue = Self()
-
-  public static let previewValue = Self(
-    fetchNotifications: { NotificationItem.mocks },
-    markAsRead: { _ in },
-    deleteNotification: { _ in }
-  )
+  public static let testValue = Self()  // Mock
+  public static let previewValue = Self(...)  // Preview용 데이터
 }
 
-// MARK: - Dependency Registration
-
+// 4. 의존성 등록
 extension DependencyValues {
   public var notificationClient: NotificationClient {
     get { self[NotificationClient.self] }
@@ -444,6 +329,11 @@ extension DependencyValues {
   }
 }
 ```
+
+**Client 작성 원칙**:
+- `@DependencyClient`로 인터페이스 정의
+- 모든 메서드에 `@Sendable` 표시
+- liveValue, testValue, previewValue 모두 제공
 
 #### Feature에서 사용
 
@@ -478,7 +368,6 @@ public struct Feature {
 ```swift
 @Reducer
 public struct RootTab {
-
   @Reducer
   public enum Destination {
     case notification(Notification.Feature)
@@ -490,28 +379,18 @@ public struct RootTab {
     @Presents var destination: Destination.State?
   }
 
-  public enum Action {
-    case view(View)
-    case destination(PresentationAction<Destination.Action>)
-  }
-
   public var body: some ReducerOf<Self> {
     Reduce { state, action in
       switch action {
-
-      case .view(.notificationButtonTapped):
-        state.destination = .notification(Notification.Feature.State())
+      // Child 화면 표시
+      case .view(.showNotification):
+        state.destination = .notification(...)
         return .none
 
-      // Child Feature의 Delegate 처리
-      case .destination(.presented(.notification(.delegate(.notificationSelected(let item))))):
-        // 알림 선택 시 처리
+      // Child Delegate 처리
+      case .destination(.presented(.notification(.delegate(.selected(let item))))):
         state.destination = nil
-        return .run { send in
-          // 상세 화면으로 이동 등
-        }
-
-      case .destination:
+        // 다른 Child에게 전달 또는 네비게이션
         return .none
       }
     }
@@ -519,6 +398,13 @@ public struct RootTab {
   }
 }
 ```
+
+**Parent Feature 역할**:
+- 자식 Feature들 조합 및 네비게이션
+- Delegate 이벤트 수신 및 중계
+- 자식 간 통신 조율
+
+> 📘 **구조 상세**: [ARCHITECTURE.md - Feature 간 통신](ARCHITECTURE.md#feature-간-통신)
 
 ---
 
@@ -539,71 +425,45 @@ import Testing
 @MainActor
 struct NotificationFeatureTests {
 
-  @Test("사용자가 화면에 진입하면 알림 목록을 로드한다")
+  @Test("화면 진입 시 알림 로드")
   func testOnAppear() async {
     let store = TestStore(initialState: Notification.Feature.State()) {
       Notification.Feature()
     } withDependencies: {
-      // Mock 의존성 주입
-      $0.notificationClient.fetchNotifications = {
-        [.mock1, .mock2]
-      }
+      $0.notificationClient.fetchNotifications = { [.mock1, .mock2] }
     }
 
-    // When
+    // Action 전송
     await store.send(.view(.onAppear)) {
       $0.isLoading = true
-      $0.errorMessage = nil
     }
 
-    // Then
+    // 응답 검증
     await store.receive(\.internal.notificationsResponse.success) {
       $0.isLoading = false
       $0.notifications = [.mock1, .mock2]
     }
   }
 
-  @Test("알림 탭 시 delegate 이벤트가 전달된다")
+  @Test("알림 탭 시 Delegate 전달")
   func testNotificationTapped() async {
     let store = TestStore(
-      initialState: Notification.Feature.State(
-        notifications: [.mock1, .mock2]
-      )
+      initialState: Notification.Feature.State(notifications: [.mock1])
     ) {
       Notification.Feature()
     }
 
-    // When
     await store.send(.view(.notificationTapped(.mock1.id)))
-
-    // Then
-    await store.receive(\.delegate.notificationSelected) {
-      #expect($0 == .mock1)
-    }
-  }
-
-  @Test("네트워크 에러 시 에러 메시지가 표시된다")
-  func testNetworkError() async {
-    let store = TestStore(initialState: Notification.Feature.State()) {
-      Notification.Feature()
-    } withDependencies: {
-      $0.notificationClient.fetchNotifications = {
-        throw URLError(.notConnectedToInternet)
-      }
-    }
-
-    await store.send(.view(.onAppear)) {
-      $0.isLoading = true
-      $0.errorMessage = nil
-    }
-
-    await store.receive(\.internal.notificationsResponse.failure) {
-      $0.isLoading = false
-      $0.errorMessage != nil
-    }
+    await store.receive(\.delegate.notificationSelected)
   }
 }
 ```
+
+**테스트 작성 원칙**:
+- `TestStore` 사용
+- Mock 의존성 주입 (`withDependencies`)
+- Action 전송 → State 변경 검증
+- 비동기 응답 검증 (`await store.receive`)
 
 ### 3.2 Mock 데이터 작성
 
@@ -922,115 +782,74 @@ tuist generate
 #### State는 최소한으로 유지
 
 ```swift
-// ❌ 비효율적 - 불필요한 State
-@ObservableState
-public struct State: Equatable {
-  var notifications: [NotificationItem] = []
-  var notificationCount: Int = 0  // ← 계산 가능한 값
-  var hasNotifications: Bool = false  // ← 계산 가능한 값
-}
+// ❌ 계산 가능한 값을 State에 저장
+var items: [Item] = []
+var itemCount: Int = 0  // ← 불필요
+var hasItems: Bool = false  // ← 불필요
 
-// ✅ 효율적 - 계산 프로퍼티 사용
-@ObservableState
-public struct State: Equatable {
-  var notifications: [NotificationItem] = []
-
-  var notificationCount: Int {
-    notifications.count
-  }
-
-  var hasNotifications: Bool {
-    !notifications.isEmpty
-  }
-}
+// ✅ 계산 프로퍼티 사용
+var items: [Item] = []
+var itemCount: Int { items.count }
+var hasItems: Bool { !items.isEmpty }
 ```
 
-#### Equatable 최적화
-
-```swift
-@ObservableState
-public struct State: Equatable {
-  var largeArray: [Item] = []
-  var metadata: Metadata = Metadata()
-
-  // ⚠️ Equatable이 큰 배열을 비교하면 성능 저하
-  // → IdentifiedArray 사용 권장
-  var items: IdentifiedArrayOf<Item> = []
-}
-```
+**원칙**:
+- 계산 가능한 값은 State에 저장하지 않기
+- 큰 배열은 `IdentifiedArrayOf<T>` 사용 (Equatable 최적화)
+- 불필요한 State는 제거
 
 ### 6.2 Effect 최적화
 
 #### 불필요한 API 호출 방지
 
 ```swift
-public var body: some ReducerOf<Self> {
-  Reduce { state, action in
-    switch action {
-    case .view(.onAppear):
-      // ❌ 매번 API 호출
-      return .run { send in
-        let items = try await client.fetch()
-        await send(.internal(.itemsResponse(items)))
-      }
-
-      // ✅ 캐시 확인 후 필요시에만 호출
-      if !state.items.isEmpty {
-        return .none  // 이미 데이터가 있으면 호출 안 함
-      }
-      return .run { send in
-        let items = try await client.fetch()
-        await send(.internal(.itemsResponse(items)))
-      }
-    }
+case .view(.onAppear):
+  // 캐시 확인
+  if !state.items.isEmpty {
+    return .none
   }
-}
+  // 필요시에만 호출
+  return .run { ... }
 ```
 
 #### Effect 취소 관리
 
 ```swift
-enum CancelID { case fetchData }
+enum CancelID { case search }
 
-public var body: some ReducerOf<Self> {
-  Reduce { state, action in
-    switch action {
-    case .view(.searchTextChanged(let text)):
-      // 이전 검색 취소
-      return .run { send in
-        try await Task.sleep(for: .milliseconds(300))  // Debounce
-        let results = try await client.search(text)
-        await send(.internal(.searchResults(results)))
-      }
-      .cancellable(id: CancelID.fetchData, cancelInFlight: true)
-
-    case .view(.cancelSearch):
-      return .cancel(id: CancelID.fetchData)
-    }
+case .view(.searchTextChanged(let text)):
+  return .run {
+    try await Task.sleep(for: .milliseconds(300))  // Debounce
+    let results = try await client.search(text)
+    await send(.internal(.searchResults(results)))
   }
-}
+  .cancellable(id: CancelID.search, cancelInFlight: true)
+
+case .view(.cancelSearch):
+  return .cancel(id: CancelID.search)
 ```
+
+**원칙**:
+- 캐시 활용으로 중복 호출 방지
+- `.cancellable`로 중복 요청 취소
+- Debounce로 검색 최적화
 
 ### 6.3 SwiftUI 최적화
 
-#### LazyVStack/LazyHStack 사용
+#### LazyVStack 사용
 
 ```swift
-// ❌ 비효율적 - 모든 뷰를 즉시 생성
+// ❌ 모든 뷰를 즉시 생성
 ScrollView {
   VStack {
-    ForEach(items) { item in
-      ItemRow(item: item)
-    }
+    ForEach(items) { ItemRow($0) }
   }
 }
 
-// ✅ 효율적 - 필요할 때만 생성 (Lazy Loading)
+// ✅ Lazy Loading
 ScrollView {
   LazyVStack {
-    ForEach(items) { item in
-      ItemRow(item: item)
-    }
+    ForEach(items) { ItemRow($0) }
   }
 }
 ```
@@ -1038,77 +857,44 @@ ScrollView {
 #### ViewBuilder 분리
 
 ```swift
-// ❌ body가 복잡하면 재계산 비용 증가
 var body: some View {
   VStack {
-    // 200줄의 뷰 코드...
-  }
-}
-
-// ✅ ViewBuilder로 분리
-var body: some View {
-  VStack {
-    headerSection
+    headerSection  // ← 분리
     contentSection
     footerSection
   }
 }
 
 @ViewBuilder
-private var headerSection: some View {
-  // ...
-}
-
-@ViewBuilder
-private var contentSection: some View {
-  // ...
-}
+private var headerSection: some View { /* ... */ }
 ```
 
-#### onAppear/onDisappear 최적화
-
-```swift
-// ❌ 중복 실행 가능
-.onAppear {
-  store.send(.view(.onAppear))
-}
-.onAppear {
-  store.send(.view(.trackScreenView))
-}
-
-// ✅ 한 번만 실행되도록
-.task {
-  await store.send(.view(.onAppear)).finish()
-  await store.send(.view(.trackScreenView)).finish()
-}
-```
+**원칙**:
+- 긴 리스트는 `LazyVStack`/`LazyHStack`
+- 복잡한 View는 `@ViewBuilder`로 분리
+- `.task`로 중복 실행 방지
 
 ### 6.4 Firebase 최적화
 
 #### Firestore 쿼리 최적화
 
 ```swift
-// ❌ 전체 문서 조회 후 필터링
-let allPromises = try await db.collection("promises").getDocuments()
-let userPromises = allPromises.documents.filter { doc in
-  (doc.data()["userId"] as? String) == userId
-}
+// ❌ 클라이언트 측 필터링
+let all = try await db.collection("promises").getDocuments()
+let filtered = all.documents.filter { ... }
 
 // ✅ 서버 측 필터링
 let query = db.collection("promises")
   .whereField("userId", isEqualTo: userId)
   .limit(to: 50)
-let snapshot = try await query.getDocuments()
 ```
 
-#### 인덱스 활용
+**원칙**:
+- 서버 측 필터링 사용 (`.whereField`)
+- `.limit()` 로 결과 제한
+- 복합 인덱스 활용 (Firestore 콘솔에서 생성)
 
-```bash
-# Firestore 콘솔에서 복합 인덱스 생성
-# Collection: promises
-# Fields: userId (Ascending), createdAt (Descending)
-# Query scope: Collection
-```
+> 📘 **Firebase 가이드**: [FIREBASE.md](FIREBASE.md)
 
 ---
 
