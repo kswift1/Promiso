@@ -86,167 +86,79 @@ open Promiso.xcworkspace
 - `PromisoStage` - QA/스테이징
 - `Promiso` - 프로덕션
 
-## 📁 프로젝트 구조
-
-프로젝트는 Tuist 기반 모듈화 구조로 되어 있습니다.
+## 📁 프로젝트 구조 & 아키텍처
 
 ```
-Promiso/
-├── Projects/
-│   ├── App/                    # 메인 앱
-│   ├── Features/               # 기능별 Feature 모듈 (TCA)
-│   ├── Clients/                # 데이터/API 레이어 (TCA Dependencies)
-│   ├── Shared/                 # 공통 컴포넌트, 모델, UI
-│   ├── ResourceKit/            # 리소스 (Colors, Images, Fonts)
-│   └── ExternalDependency/     # 외부 라이브러리 집약
-│
-├── Config/                     # 환경별 설정 (⚠️ Git 제외)
-├── infra/firebase/             # Firebase Functions, Rules
-├── docs/                       # 프로젝트 문서
-└── scripts/                    # 빌드/배포 스크립트
+Projects/
+├── App/              메인 앱 (진입점)
+├── Features/         TCA Feature 모듈 (비즈니스 로직)
+├── Clients/          TCA Dependencies (데이터 레이어)
+└── Shared/           공통 컴포넌트, 모델
 ```
 
-**아키텍처 상세 문서**: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+**의존성 방향**: `App → Features → Clients → Shared`
 
-## 🏗️ 개발
+> 📘 **상세 가이드**: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+> - 계층 구조 및 모듈 설명
+> - TCA 패턴 및 베스트 프랙티스
+> - 데이터 흐름 및 Feature 예시
 
-### Feature 생성
+## 🛠️ 개발 명령어
 
+### 초기 설정
 ```bash
-# 새 Feature 자동 생성
-make feature FEATURE_NAME=Notification
-
-# 생성되는 파일:
-# - Features/NotificationFeature/Sources/NotificationFeature.swift (Reducer)
-# - Features/NotificationFeature/Sources/NotificationView.swift (View)
-# - Features/NotificationFeature/Tests/NotificationFeatureTests.swift (Tests)
+make setup                        # 프로젝트 초기 설정 (mise + Tuist)
 ```
 
-### 빌드 및 테스트
-
+### Feature 개발
 ```bash
-# 전체 빌드
-tuist build
-
-# 특정 타겟 빌드
-tuist build PromisoDev
-
-# 테스트 실행
-tuist test
-
-# 의존성 그래프 확인
-tuist graph
+make feature FEATURE_NAME=Notification    # Feature 생성
+make remove-feature FEATURE_NAME=Notification  # Feature 삭제
+tuist build                       # 빌드
+tuist test                        # 테스트
 ```
 
-### Firebase 개발
-
+### Firebase
 ```bash
-# Firebase 에뮬레이터 실행 (로컬 개발)
-make emulator-start
-
-# Functions 빌드
-make functions-build
-
-# OpenAPI 문서 미리보기
-make functions-api-preview
+make emulator-start               # 에뮬레이터 실행
+make functions-build              # Functions 빌드
+make functions-api-preview        # OpenAPI 문서 미리보기
 ```
 
-## 🧰 Make 명령어
-
+### Secrets 관리
 ```bash
-make help                              # 전체 명령어 보기
-make setup                             # 프로젝트 초기 설정 (git clone 후)
-make feature FEATURE_NAME=<Name>       # Feature 생성
-make remove-feature FEATURE_NAME=<Name> # Feature 삭제
-make emulator-start                    # Firebase 에뮬레이터 실행
-make secrets-pull                      # Notion → xcconfig 동기화
+make secrets-pull                 # Notion → xcconfig 동기화
+make secrets-list                 # 시크릿 목록 보기
+make secrets-add                  # 새 시크릿 추가
 ```
 
-## 🤖 AI 개발 도구 (Claude Code)
-
-이 프로젝트는 [Claude Code](https://claude.com/claude-code)를 사용한 AI 기반 개발을 지원합니다.
-
-### Slash 커맨드
-
+### 기타
 ```bash
-/new-feature NotificationSettings    # TCA Feature 생성 (Reducer + View + Tests)
-/new-screen ProfileEdit              # 화면 생성 (Feature + UI 디자인)
-/review-pr                           # PR/변경사항 코드 리뷰
-/fix-reviews                         # PR 리뷰 자동 수정
+make color                        # 컬러 에셋 재생성
+make help                         # 전체 명령어 보기
 ```
 
-**상세 가이드**: [.claude/CLAUDE.md](.claude/CLAUDE.md)
+> 📘 **개발 가이드**: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)
+> 📘 **Firebase 가이드**: [docs/FIREBASE.md](docs/FIREBASE.md)
 
 ## 📚 문서
 
-### 시작하기
-- [🚀 초기 설정 가이드](docs/SETUP_GUIDE.md) - 새 개발 환경 셋업
-- [🔧 환경 설정](docs/ENVIRONMENT.md) - Dev/Stage/Prod 환경 구성
-- [🏗️ 아키텍처](docs/ARCHITECTURE.md) - TCA 기반 아키텍처 상세
-
-### 개발
-- [💻 개발 가이드](docs/DEVELOPMENT.md) - Feature 개발, 테스트, 컨벤션
-- [🔥 Firebase 가이드](docs/FIREBASE.md) - Firestore, Functions, Rules
-
-### CI/CD 및 배포
-- [⚙️ CI/CD](docs/CI_CD.md) - GitHub Actions 워크플로우
-- [🚀 배포 가이드](docs/DEPLOYMENT.md) - Fastlane, TestFlight
-- [🌿 Git 브랜치 전략](docs/BRANCH_STRATEGY.md) - 브랜치 전략
-
-### 보안
-- [🔒 보안 정책](SECURITY.md) - API Keys 관리
-- [📦 Config 설정](Config/README.md) - 환경별 설정 파일
-- [💾 백업 체크리스트](docs/BACKUP_CHECKLIST.md) - 정기 백업
+| 카테고리 | 문서 |
+|---------|------|
+| **시작하기** | [초기 설정](docs/SETUP_GUIDE.md) · [환경 구성](docs/ENVIRONMENT.md) · [아키텍처](docs/ARCHITECTURE.md) |
+| **개발** | [개발 가이드](docs/DEVELOPMENT.md) · [Firebase](docs/FIREBASE.md) · [Secret Config](Config/README.md) |
+| **배포** | [CI/CD](docs/CI_CD.md) · [배포 가이드](docs/DEPLOYMENT.md) · [브랜치 전략](docs/BRANCH_STRATEGY.md) |
+| **AI 도구** | [Claude Code](.claude/CLAUDE.md) - `/new-feature`, `/review-pr` 등 |
 
 ## 🚢 배포
 
-### 환경별 타겟
-
-| 타겟 | Bundle ID | Firebase | 용도 |
-|------|-----------|----------|------|
-| **PromisoDev** | `com.promiso.dev` | promiso-dev | 로컬 개발 |
-| **PromisoStage** | `com.promiso.stage` | promiso-stage | QA/스테이징 |
-| **Promiso** | `com.promiso` | promiso-prod | 프로덕션 |
-
-### GitHub Actions 자동 배포
-
-```
-PR → main: 자동 빌드 및 테스트
-Tag push: TestFlight 배포 (Stage/Prod)
-```
-
-자세한 내용: [📘 배포 가이드](docs/DEPLOYMENT.md)
-
-## 🐛 Troubleshooting
-
-### mise 경고 (Config files are not trusted)
-
 ```bash
-# 프로젝트별 해결
-mise trust
-
-# 또는 전역 설정 (권장)
-mise settings set yes true
+# GitHub Actions (자동)
+PR → main: 빌드 & 테스트
+Tag push: TestFlight 배포
 ```
 
-### Tuist 프로젝트 생성 실패
-
-```bash
-# 캐시 삭제 후 재시도
-tuist clean
-tuist install
-tuist generate
-```
-
-### Firebase 에뮬레이터 실행 안됨
-
-```bash
-# Functions 의존성 재설치
-cd infra/firebase/functions
-npm install
-cd ../../..
-make emulator-start
-```
+> 📘 **배포 가이드**: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
 
 ## 📄 라이선스
 
