@@ -38,6 +38,7 @@ extension GroupSettings {
 
       // Image Detail
       var selectedMemberForImage: UserPublicModel?
+      var showGroupImageDetail: Bool = false
       var editGroup: EditGroupState?
 
       // Notifications
@@ -161,7 +162,9 @@ extension GroupSettings {
         case dismissDeleteAlert
         case dismissError
         case memberImageTapped(UserPublicModel)
+        case groupImageTapped
         case imageDetailDismissed
+        case groupImageDetailDismissed
         case openSystemSettingsTapped
         // Transfer Host
         case transferHostTapped
@@ -437,8 +440,16 @@ extension GroupSettings {
             state.selectedMemberForImage = member
             return .none
 
+          case .groupImageTapped:
+            state.showGroupImageDetail = true
+            return .none
+
           case .imageDetailDismissed:
             state.selectedMemberForImage = nil
+            return .none
+
+          case .groupImageDetailDismissed:
+            state.showGroupImageDetail = false
             return .none
 
           case .openSystemSettingsTapped:

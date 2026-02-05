@@ -59,6 +59,10 @@ extension GroupSettings {
             name: store.group.name,
             size: 60
           )
+          .contentShape(Circle())
+          .onTapGesture {
+            store.send(.view(.groupImageTapped))
+          }
 
           VStack(alignment: .leading, spacing: 6) {
             Text(store.group.name)
@@ -1112,6 +1116,13 @@ private struct AlertsModifier: ViewModifier {
     )
   }
 
+  private var groupImageDetailBinding: Binding<Bool> {
+    Binding(
+      get: { store.showGroupImageDetail },
+      set: { if !$0 { store.send(.view(.groupImageDetailDismissed)) } }
+    )
+  }
+
   private var transferSheetBinding: Binding<Bool> {
     Binding(
       get: { store.isShowingTransferSheet },
@@ -1151,6 +1162,14 @@ private struct AlertsModifier: ViewModifier {
           displayName: member.displayName,
           onDismiss: { store.send(.view(.imageDetailDismissed)) }
         )
+      }
+      .fullScreenCover(isPresented: groupImageDetailBinding) {
+        PromisoShared.ImageDetailView(
+          imageUrl: store.group.imageUrl,
+          displayName: store.group.name,
+          onDismiss: { store.send(.view(.groupImageDetailDismissed)) }
+        )
+        .presentationBackground(.black)
       }
       .sheet(isPresented: transferSheetBinding) {
         TransferHostSheet(store: store)
