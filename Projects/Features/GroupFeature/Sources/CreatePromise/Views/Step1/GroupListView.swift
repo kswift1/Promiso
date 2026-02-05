@@ -153,7 +153,6 @@ struct GroupListView: View {
 
 private struct CreateGroupButton: View {
   let action: () -> Void
-  @State private var isPressed = false
 
   var body: some View {
     Button {
@@ -183,19 +182,12 @@ private struct CreateGroupButton: View {
         y: 5
       )
     }
-    .buttonStyle(ScaleButtonStyle())
-    .sensoryFeedback(.impact(flexibility: .soft), trigger: isPressed)
-    .simultaneousGesture(
-      DragGesture(minimumDistance: 0)
-        .onChanged { _ in isPressed = true }
-        .onEnded { _ in isPressed = false }
-    )
+    .buttonStyle(PlainButtonStyle())
   }
 }
 
 private struct RetryButton: View {
   let action: () -> Void
-  @State private var isPressed = false
 
   var body: some View {
     Button {
@@ -225,13 +217,7 @@ private struct RetryButton: View {
         y: 5
       )
     }
-    .buttonStyle(ScaleButtonStyle())
-    .sensoryFeedback(.impact(flexibility: .soft), trigger: isPressed)
-    .simultaneousGesture(
-      DragGesture(minimumDistance: 0)
-        .onChanged { _ in isPressed = true }
-        .onEnded { _ in isPressed = false }
-    )
+    .buttonStyle(PlainButtonStyle())
   }
 }
 
@@ -242,7 +228,6 @@ struct GroupCard: View {
   let activePromiseCount: Int?
   let maxActivePromises: Int
   let action: () -> Void
-  @State private var isPressed = false
   @State private var loadedImage: UIImage?
 
   init(
@@ -399,14 +384,7 @@ struct GroupCard: View {
       )
     }
     .buttonStyle(PlainButtonStyle())
-    .scaleEffect(isPressed ? 0.97 : 1.0)
-    .animation(.spring(response: 0.2, dampingFraction: 0.6), value: isPressed)
     .sensoryFeedback(.selection, trigger: isSelected)
-    .simultaneousGesture(
-      DragGesture(minimumDistance: 0)
-        .onChanged { _ in if !isDisabled { isPressed = true } }
-        .onEnded { _ in isPressed = false }
-    )
     .disabled(isDisabled)
   }
 }
