@@ -21,10 +21,6 @@ extension AppInfo {
   @Reducer
   public struct Feature {
 
-    // MARK: - Dependencies
-
-    @Dependency(\.openURL) private var openURL
-
     public init() {}
 
     // MARK: - State
@@ -50,7 +46,6 @@ extension AppInfo {
     @CasePathable
     public enum View: Equatable, Sendable {
       case onAppear
-      case linkTapped(String)
     }
 
     // MARK: - Reducer Body
@@ -60,12 +55,6 @@ extension AppInfo {
         switch action {
         case .view(.onAppear):
           return .none
-
-        case .view(.linkTapped(let urlString)):
-          guard let url = URL(string: urlString) else { return .none }
-          return .run { _ in
-            await openURL(url)
-          }
         }
       }
     }
@@ -101,31 +90,6 @@ extension AppInfo {
             }
           }
           .adaptiveGlassCard()
-
-          // 추가 정보 섹션
-          VStack(alignment: .leading, spacing: 10) {
-            Text("추가 정보")
-              .font(.system(size: 16, weight: .semibold))
-              .padding(.horizontal, 4)
-
-            VStack(spacing: 0) {
-              linkRow(
-                icon: "book.fill",
-                title: "오픈소스 라이선스",
-                url: "https://github.com/kswift1/Promiso/blob/main/LICENSES.md"
-              )
-
-              Divider()
-                .background(Color.white.opacity(0.12))
-
-              linkRow(
-                icon: "globe",
-                title: "GitHub",
-                url: "https://github.com/kswift1/Promiso"
-              )
-            }
-            .adaptiveGlassCard()
-          }
         }
         .padding(.horizontal, 16)
         .padding(.top, 12)
@@ -164,31 +128,6 @@ extension AppInfo {
       }
       .padding(.horizontal, 16)
       .padding(.vertical, 14)
-    }
-
-    private func linkRow(icon: String, title: String, url: String) -> some View {
-      Button {
-        store.send(.view(.linkTapped(url)))
-      } label: {
-        HStack(spacing: 16) {
-          Image(systemName: icon)
-            .foregroundStyle(Color.pmindigo.n500)
-            .frame(width: 24, height: 24)
-
-          Text(title)
-            .foregroundStyle(Color.pmtext.primary)
-
-          Spacer()
-
-          Image(systemName: "arrow.up.forward")
-            .font(.caption)
-            .foregroundStyle(Color.pmgray.n400)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-        .contentShape(Rectangle())
-      }
-      .buttonStyle(.plain)
     }
   }
 }
