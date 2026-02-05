@@ -7,7 +7,7 @@
 #
 # ============================================================================
 
-.PHONY: feature remove-feature color \
+.PHONY: setup feature remove-feature color \
         emulator-start functions-build functions-api-preview \
         secrets-pull secrets-push secrets-list secrets-add \
         help
@@ -15,6 +15,36 @@
 # 기본값 설정
 FEATURE_NAME ?=
 FORCE ?=
+
+# ============================================================================
+# 🚀 초기 설정
+# ============================================================================
+
+# 프로젝트 초기 설정 (git clone 후 실행)
+setup:
+	@echo "🚀 Promiso 프로젝트 초기 설정 중..."
+	@echo ""
+	@echo "1/3 mise 설정 신뢰..."
+	@if command -v mise >/dev/null 2>&1; then \
+		mise trust 2>/dev/null || true; \
+		mise settings set experimental true 2>/dev/null || true; \
+		mise settings set yes true 2>/dev/null || true; \
+		echo "  ✅ mise 설정 완료"; \
+	else \
+		echo "  ⚠️  mise가 설치되어 있지 않습니다."; \
+	fi
+	@echo "2/3 Tuist 의존성 설치..."
+	@tuist install
+	@echo "3/3 Xcode 프로젝트 생성..."
+	@tuist generate
+	@echo ""
+	@echo "✅ 초기 설정 완료!"
+	@echo ""
+	@echo "다음 단계:"
+	@echo "  - Firebase 에뮬레이터: make emulator-start"
+	@echo "  - Secrets 동기화: make secrets-pull"
+	@echo "  - 도움말: make help"
+	@echo ""
 
 # ============================================================================
 # 🏗️  Feature 관리
@@ -158,6 +188,10 @@ help:
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	@echo "  Promiso Makefile Commands"
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo ""
+	@echo "  🚀 초기 설정"
+	@echo "  ─────────────────────────────────────────────────────────────────"
+	@echo "  make setup                              프로젝트 초기 설정 (git clone 후)"
 	@echo ""
 	@echo "  🏗️  Feature 관리"
 	@echo "  ─────────────────────────────────────────────────────────────────"
