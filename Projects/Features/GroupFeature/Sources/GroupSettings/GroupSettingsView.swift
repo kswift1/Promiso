@@ -19,6 +19,13 @@ extension GroupSettings {
       content
         .navigationTitle("그룹 설정")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+          ToolbarItem(placement: .topBarTrailing) {
+            Button("초대") {
+              store.send(.view(.inviteTapped))
+            }
+          }
+        }
         .onAppear { store.send(.view(.onAppear)) }
         .modifier(SheetsModifier(store: store))
         .modifier(AlertsModifier(store: store))
