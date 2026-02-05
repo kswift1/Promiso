@@ -894,8 +894,6 @@ let query = db.collection("promises")
 - `.limit()` 로 결과 제한
 - 복합 인덱스 활용 (Firestore 콘솔에서 생성)
 
-> 📘 **Firebase 가이드**: [FIREBASE.md](FIREBASE.md)
-
 ---
 
 ## 참고 문서

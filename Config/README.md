@@ -414,11 +414,10 @@ export NOTION_API_KEY="ntn_xxxxx"
 
 ## 📚 관련 문서
 
-- [📘 로컬 환경 설정](../docs/LOCAL_SETUP.md)
-- [🔒 보안 정책](../SECURITY.md)
-- [📦 Notion 백업](../docs/SECRETS_BACKUP_NOTION.md)
-- [✅ 백업 체크리스트](../docs/BACKUP_CHECKLIST.md)
+- [📘 초기 설정 가이드](../docs/SETUP_GUIDE.md)
+- [🔧 개발 가이드](../docs/DEVELOPMENT.md)
+- [🏗️ 아키텍처](../docs/ARCHITECTURE.md)
 
 ---
 
-**마지막 업데이트**: 2026-02-06 (Notion 동기화 방식 추가)
+**마지막 업데이트**: 2026-02-06
