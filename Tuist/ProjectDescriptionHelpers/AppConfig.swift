@@ -56,9 +56,8 @@ public enum AppConfig {
       // Calendar permissions
       "NSCalendarsUsageDescription": .string("캘린더 일정을 표시하려면 접근 권한이 필요합니다."),
       "NSCalendarsFullAccessUsageDescription": .string("캘린더 일정을 표시하려면 접근 권한이 필요합니다."),
-      // Background Modes for Push Notifications
+      // Background Modes for Silent Push Notifications
       "UIBackgroundModes": .array([
-        .string("fetch"),
         .string("remote-notification")
       ]),
       // Firebase Swizzling 비활성화 (Silent Push 직접 처리)
