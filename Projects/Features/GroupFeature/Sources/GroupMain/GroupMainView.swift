@@ -256,9 +256,6 @@ extension GroupMain {
         store.send(.view(.createGroup))
       case .joinGroup:
         store.send(.view(.joinGroup))
-      case .howToUse:
-        // TODO: 튜토리얼 화면 연결
-        break
       }
     }
 

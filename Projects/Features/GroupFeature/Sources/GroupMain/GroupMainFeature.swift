@@ -72,7 +72,6 @@ extension GroupMain {
   public enum OnboardingCard: CaseIterable, Identifiable {
     case createGroup
     case joinGroup
-    case howToUse
 
     public var id: Self { self }
 
@@ -80,7 +79,6 @@ extension GroupMain {
       switch self {
       case .createGroup: return "그룹 만들기"
       case .joinGroup: return "친구 초대 코드로 참여"
-      case .howToUse: return "Promiso 사용법"
       }
     }
 
@@ -88,7 +86,6 @@ extension GroupMain {
       switch self {
       case .createGroup: return "친구들과 함께할 그룹을 만들어보세요"
       case .joinGroup: return "초대 코드를 입력해서 그룹에 참여하세요"
-      case .howToUse: return "약속 생성부터 확정까지 알아보기"
       }
     }
 
@@ -96,7 +93,6 @@ extension GroupMain {
       switch self {
       case .createGroup: return "person.3.fill"
       case .joinGroup: return "link.circle.fill"
-      case .howToUse: return "questionmark.circle.fill"
       }
     }
 
@@ -104,7 +100,6 @@ extension GroupMain {
       switch self {
       case .createGroup: return .blue
       case .joinGroup: return .green
-      case .howToUse: return .orange
       }
     }
   }
