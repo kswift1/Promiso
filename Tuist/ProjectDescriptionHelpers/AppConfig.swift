@@ -70,7 +70,11 @@ public enum AppConfig {
       // ProMotion Display Support (120Hz)
       "CADisableMinimumFrameDurationOnPhone": .boolean(true),
       // App Store 제출: 암호화 사용 여부 (표준 암호화만 사용)
-      "ITSAppUsesNonExemptEncryption": .boolean(false)
+      "ITSAppUsesNonExemptEncryption": .boolean(false),
+      // 세로 모드만 지원 (가로 모드 비활성화)
+      "UISupportedInterfaceOrientations": .array([
+        .string("UIInterfaceOrientationPortrait")
+      ])
     ]
   }
 }
