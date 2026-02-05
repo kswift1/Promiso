@@ -13,8 +13,6 @@
   <img src="https://img.shields.io/badge/TCA-1.22.2-purple.svg" />
 </p>
 
-**Promiso**는 그룹 기반 약속 관리 iOS 앱입니다. 투표로 바로 확정된 약속을 만들고, 실시간 라이브 액티비티와 위젯으로 언제 뭐 있는지 달력을 한눈에 확인하세요.
-
 ## 🛠️ Tech Stack
 
 ### Frontend
@@ -103,43 +101,31 @@ Projects/
 > - TCA 패턴 및 베스트 프랙티스
 > - 데이터 흐름 및 Feature 예시
 
-## 🛠️ 개발 명령어
+## 🛠️ 개발
 
-### 초기 설정
 ```bash
-make setup                        # 프로젝트 초기 설정 (mise + Tuist)
-```
+# Feature 관리
+make feature FEATURE_NAME=Notification           # Feature 생성
+make remove-feature FEATURE_NAME=Notification    # Feature 삭제
 
-### Feature 개발
-```bash
-make feature FEATURE_NAME=Notification    # Feature 생성
-make remove-feature FEATURE_NAME=Notification  # Feature 삭제
-tuist build                       # 빌드
-tuist test                        # 테스트
-```
+# 리소스
+make color                     # 컬러 에셋 재생성
 
-### Firebase
-```bash
-make emulator-start               # 에뮬레이터 실행
-make functions-build              # Functions 빌드
-make functions-api-preview        # OpenAPI 문서 미리보기
-```
+# Firebase
+make emulator-start            # Firebase 에뮬레이터 실행
+make functions-build           # Functions 빌드
+make functions-api-preview     # OpenAPI 미리보기
 
-### Secrets 관리
-```bash
-make secrets-pull                 # Notion → xcconfig 동기화
-make secrets-list                 # 시크릿 목록 보기
-make secrets-add                  # 새 시크릿 추가
-```
+# Secrets 관리
+make secrets-pull              # Notion → xcconfig 동기화
+make secrets-list              # 시크릿 목록 보기
+make secrets-add               # 새 시크릿 추가
 
-### 기타
-```bash
-make color                        # 컬러 에셋 재생성
-make help                         # 전체 명령어 보기
+# 도움말
+make help                      # 전체 명령어 보기
 ```
 
 > 📘 **개발 가이드**: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)
-> 📘 **Firebase 가이드**: [docs/FIREBASE.md](docs/FIREBASE.md)
 
 ## 📚 문서
 
