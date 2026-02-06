@@ -1,5 +1,7 @@
 # Firebase Functions 테스트 가이드
 
+> 자동 배포 테스트: Stage 환경에 자동 배포됩니다.
+
 ## 📁 구조
 
 ```
