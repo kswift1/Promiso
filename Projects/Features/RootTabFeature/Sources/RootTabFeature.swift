@@ -96,6 +96,9 @@ extension RootTab {
       /// 현재 선택된 탭
       var selectedTab: Tab = .home
 
+      /// Promise 탭의 현재 모드 (탭 전환 시에도 유지)
+      var promiseMode: Tab.PromiseTabMode = .group
+
       /// Home Main State
       var home: Home.Feature.State
 
@@ -239,8 +242,9 @@ extension RootTab {
 
           guard tab != previousTab else {
             // Promise 탭 재선택 시 모드 토글
-            if case .promise(let mode) = tab {
-              let newMode: Tab.PromiseTabMode = mode == .group ? .own : .group
+            if case .promise = tab {
+              let newMode: Tab.PromiseTabMode = state.promiseMode == .group ? .own : .group
+              state.promiseMode = newMode
               state.selectedTab = .promise(newMode)
               if newMode == .own {
                 return .merge(hapticEffect, .send(.personalMode(.view(.onAppear))))
@@ -604,14 +608,14 @@ extension RootTab {
           .tabItem { Label("홈", systemImage: "house.fill") }
           .tag(Tab.home)
 
-        tabContentView(for: store.selectedTab.isPromise ? store.selectedTab : .promise(.group))
+        tabContentView(for: .promise(store.promiseMode))
           .tabItem {
             Label(
-              store.selectedTab.isPromise ? store.selectedTab.label : "그룹",
-              systemImage: store.selectedTab.isPromise ? store.selectedTab.iconName : "person.3.fill"
+              Tab.promise(store.promiseMode).label,
+              systemImage: Tab.promise(store.promiseMode).iconName
             )
           }
-          .tag(store.selectedTab.isPromise ? store.selectedTab : Tab.promise(.group))
+          .tag(Tab.promise(store.promiseMode))
 
         tabContentView(for: .calendar)
           .tabItem { Label("캘린더", systemImage: "calendar") }
