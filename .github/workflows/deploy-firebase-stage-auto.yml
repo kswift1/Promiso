@@ -1,0 +1,227 @@
+name: Deploy Firebase Stage (Auto)
+
+# release/* 브랜치에 PR 머지 시 자동 배포
+on:
+  push:
+    branches:
+      - 'release/**'
+    paths:
+      - 'infra/firebase/**'
+      - '.github/workflows/deploy-firebase-stage-auto.yml'
+
+concurrency:
+  group: firebase-stage-auto
+  cancel-in-progress: false
+
+jobs:
+  test-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: staging
+      url: https://console.firebase.google.com/project/promiso-stage
+
+    steps:
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # 1. 체크아웃 및 환경 설정
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: infra/firebase/functions/package-lock.json
+
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # 2. Functions 테스트 및 검증
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+      - name: Install Functions Dependencies
+        working-directory: infra/firebase/functions
+        run: npm ci
+
+      - name: Lint Functions
+        working-directory: infra/firebase/functions
+        run: npm run lint
+
+      - name: Run Tests (if exists)
+        working-directory: infra/firebase/functions
+        run: |
+          if grep -q '"test"' package.json; then
+            npm test
+          else
+            echo "⚠️ No tests found. Skipping..."
+          fi
+
+      - name: Build Functions
+        working-directory: infra/firebase/functions
+        run: npm run build
+
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # 3. Firebase 배포 (Stage)
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+      - name: Deploy Functions to Stage
+        id: deploy_functions
+        working-directory: infra/firebase
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: |
+          npm install -g firebase-tools
+          firebase use stage
+          firebase deploy --only functions --token "$FIREBASE_TOKEN" --non-interactive
+
+      - name: Deploy Firestore Rules to Stage
+        id: deploy_firestore
+        working-directory: infra/firebase
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: |
+          firebase use stage
+          firebase deploy --only firestore:rules --token "$FIREBASE_TOKEN" --non-interactive
+
+      - name: Deploy Storage Rules to Stage
+        id: deploy_storage
+        working-directory: infra/firebase
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: |
+          firebase use stage
+          firebase deploy --only storage --token "$FIREBASE_TOKEN" --non-interactive
+
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # 4. 배포 후 헬스체크 (선택)
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+      - name: Health Check Functions (if exists)
+        continue-on-error: true
+        run: |
+          # 헬스체크 엔드포인트가 있다면 호출
+          # curl -f https://us-central1-promiso-stage.cloudfunctions.net/health || exit 0
+          echo "⚠️ Health check endpoint not configured. Skipping..."
+
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # 5. Slack 알림 (성공/실패 모두)
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+      - name: Slack Notification (Success)
+        if: success()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: custom
+          custom_payload: |
+            {
+              "text": "🟡 Firebase Stage 자동 배포 성공",
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "✅ Firebase Stage 배포 완료"
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": `*Environment:*\nStage`
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": `*Branch:*\n${process.env.GITHUB_REF_NAME}`
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": `*Commit:*\n<https://github.com/${process.env.GITHUB_REPOSITORY}/commit/${process.env.GITHUB_SHA}|${process.env.GITHUB_SHA.substring(0, 7)}>`
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": `*Workflow:*\n<https://github.com/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}|View Logs>`
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "✅ Functions\n✅ Firestore Rules\n✅ Storage Rules"
+                  }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "🎯 QA 테스트 준비 완료"
+                    }
+                  ]
+                }
+              ]
+            }
+          username: 'Firebase CI'
+          icon_emoji: ':fire:'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL_DEPLOY }}
+
+      - name: Slack Notification (Failure)
+        if: failure()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: custom
+          custom_payload: |
+            {
+              "text": "🚨 Firebase Stage 자동 배포 실패",
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "❌ Firebase Stage 배포 실패"
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": `*Environment:*\nStage`
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": `*Branch:*\n${process.env.GITHUB_REF_NAME}`
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": `*Commit:*\n<https://github.com/${process.env.GITHUB_REPOSITORY}/commit/${process.env.GITHUB_SHA}|${process.env.GITHUB_SHA.substring(0, 7)}>`
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": `*Workflow:*\n<https://github.com/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}|View Logs>`
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "⚠️ *수동 개입 필요*\n에러 로그를 확인하고 수동으로 롤백하세요."
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*롤백 방법:*\n```\ngit checkout <previous-commit>\nfirebase deploy --only functions --project promiso-stage\n```"
+                  }
+                }
+              ]
+            }
+          username: 'Firebase CI'
+          icon_emoji: ':fire:'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL_DEPLOY }}
