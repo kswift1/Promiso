@@ -1021,6 +1021,29 @@ export interface TransferGroupHostResponse {
   success: boolean;
 }
 
+/**
+ * 그룹 멤버 추방 요청
+ *
+ * @remarks
+ * - 인증 필수 (Firebase Auth)
+ * - 현재 호스트만 호출 가능
+ */
+export interface ExpelMemberRequest {
+  /** 그룹 ID */
+  groupId: string;
+
+  /** 추방할 멤버 ID */
+  memberId: string;
+}
+
+/**
+ * 그룹 멤버 추방 응답
+ */
+export interface ExpelMemberResponse {
+  /** 성공 여부 */
+  success: boolean;
+}
+
 // ============================================================================
 // Push Notification
 // ============================================================================

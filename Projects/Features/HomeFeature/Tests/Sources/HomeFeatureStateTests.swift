@@ -6,10 +6,10 @@
 //
 //  ## 테스트 대상
 //  - `HomeFeature/Sources/HomeFeature.swift`
-//  - State의 computed properties (스냅샷 기반)
+//  - State의 computed properties (promisesState 기반)
 //
 //  ## 테스트 목적
-//  - 스냅샷 데이터 기반 약속 필터링 및 정렬 로직 검증
+//  - 약속 필터링 및 정렬 로직 검증
 //  - 로딩 상태 판단 로직 검증
 //
 
@@ -38,100 +38,113 @@ struct HomeFeatureStateTests {
     )
   }
 
-  /// 테스트용 SnapshotPromise 생성
-  private func makeSnapshotPromise(
-    id: String = "test-promise",
-    title: String = "테스트 약속",
-    groupId: String = "group-id",
-    startAt: Date = Date().addingTimeInterval(3600),
-    isConfirmed: Bool = false,
-    myVoteStatus: SnapshotVoteStatus = .pending,
-    votingDeadline: Date = Date().addingTimeInterval(1800)
-  ) -> SnapshotPromise {
-    let formatter = ISO8601DateFormatter()
-
-    return SnapshotPromise(
-      id: id,
-      title: title,
-      emoji: "📅",
-      startAt: formatter.string(from: startAt),
-      endAt: nil,
-      location: nil,
-      groupId: groupId,
-      groupName: "테스트 그룹",
-      groupImageUrl: nil,
-      isConfirmed: isConfirmed,
-      minimumParticipants: 2,
-      votes: SnapshotVotes(accepted: [], declined: []),
-      myVoteStatus: myVoteStatus,
-      votingDeadline: formatter.string(from: votingDeadline)
-    )
-  }
-
-  /// 테스트용 HomeSnapshotDocument 생성
-  private func makeSnapshot(
-    todayPromises: [SnapshotPromise] = [],
-    pendingPromises: [SnapshotPromise] = [],
-    upcomingPromises: [SnapshotPromise] = [],
-    todayCount: Int = 0,
-    pendingCount: Int = 0
-  ) -> HomeSnapshotDocument {
-    HomeSnapshotDocument(
-      todayPromises: todayPromises,
-      pendingPromises: pendingPromises,
-      upcomingPromises: upcomingPromises,
-      groups: [],
-      meta: HomeSnapshotMeta(
-        todayCount: todayCount,
-        pendingCount: pendingCount,
-        upcomingCount: upcomingPromises.count,
-        updatedAt: ISO8601DateFormatter().string(from: Date())
-      )
-    )
-  }
-
   /// 테스트용 State 생성
   private func makeState(
-    snapshotState: LoadingState<HomeSnapshotDocument> = .idle,
+    promisesState: LoadingState<[PromiseModel]> = .idle,
     selectedStatusFilter: HomeModels.StatusFilter = .all
   ) -> Home.Feature.State {
     @Shared(.inMemory("test-current-user")) var currentUser = makeCurrentUser()
     var state = Home.Feature.State(currentUser: $currentUser)
-    state.snapshotState = snapshotState
+    state.promisesState = promisesState
     state.selectedStatusFilter = selectedStatusFilter
     return state
   }
 
+  /// 오늘 날짜의 약속 생성 (확정됨)
+  private func makeTodayPromise(
+    id: String = "today-promise",
+    title: String = "오늘 약속",
+    acceptedCount: Int = 3
+  ) -> PromiseModel {
+    let calendar = Calendar.current
+    let now = Date()
+    let startAt = calendar.date(bySettingHour: 18, minute: 0, second: 0, of: now) ?? now.addingTimeInterval(3600)
+    let accepted = (0..<acceptedCount).map { "user-\($0)" }
+    return PromiseModel(
+      id: id,
+      title: title,
+      hostId: "host",
+      groupId: "group-id",
+      minimumParticipants: 2,
+      votes: PromiseVotesModel(
+        accepted: accepted,
+        declined: [],
+        until: now.addingTimeInterval(-3600)
+      ),
+      startAt: startAt
+    )
+  }
+
+  /// 미응답 약속 생성 (투표 마감 전)
+  private func makePendingPromise(
+    id: String = "pending-promise",
+    title: String = "미응답 약속",
+    votingDeadline: Date = Date().addingTimeInterval(86400)
+  ) -> PromiseModel {
+    PromiseModel(
+      id: id,
+      title: title,
+      hostId: "host",
+      groupId: "group-id",
+      minimumParticipants: 2,
+      votes: PromiseVotesModel(
+        accepted: [],
+        declined: [],
+        until: votingDeadline
+      ),
+      startAt: Date().addingTimeInterval(172800)
+    )
+  }
+
+  /// 다가오는 약속 생성 (내일 이후 + 확정 + 현재 유저 수락)
+  private func makeUpcomingPromise(
+    id: String = "upcoming-promise",
+    title: String = "다가오는 약속",
+    daysFromNow: Int = 3
+  ) -> PromiseModel {
+    let startAt = Calendar.current.date(byAdding: .day, value: daysFromNow, to: Date()) ?? Date()
+    return PromiseModel(
+      id: id,
+      title: title,
+      hostId: "host",
+      groupId: "group-id",
+      minimumParticipants: 2,
+      votes: PromiseVotesModel(
+        accepted: ["current-user", "user-1", "user-2"],
+        declined: [],
+        until: Date().addingTimeInterval(-3600)
+      ),
+      startAt: startAt
+    )
+  }
+
   // MARK: - isLoading 테스트
 
-  @Test("snapshotState가 loading이면 true")
+  @Test("promisesState가 loading이면 true")
   func isLoading_whenLoading_returnsTrue() {
-    let state = makeState(snapshotState: .loading)
+    let state = makeState(promisesState: .loading)
     #expect(state.isLoading == true)
   }
 
-  @Test("snapshotState가 loaded이면 false")
+  @Test("promisesState가 loaded이면 false")
   func isLoading_whenLoaded_returnsFalse() {
-    let snapshot = makeSnapshot()
-    let state = makeState(snapshotState: .loaded(snapshot))
+    let state = makeState(promisesState: .loaded([]))
     #expect(state.isLoading == false)
   }
 
-  @Test("snapshotState가 idle이면 false")
+  @Test("promisesState가 idle이면 false")
   func isLoading_whenIdle_returnsFalse() {
-    let state = makeState(snapshotState: .idle)
+    let state = makeState(promisesState: .idle)
     #expect(state.isLoading == false)
   }
 
   // MARK: - todayPromises 테스트
 
-  @Test("오늘 약속 목록 반환")
-  func todayPromises_returnsSnapshotTodayPromises() {
-    let promise1 = makeSnapshotPromise(id: "today-1", isConfirmed: true)
-    let promise2 = makeSnapshotPromise(id: "today-2", isConfirmed: true)
-    let snapshot = makeSnapshot(todayPromises: [promise1, promise2], todayCount: 2)
-
-    let state = makeState(snapshotState: .loaded(snapshot))
+  @Test("오늘 확정 약속 목록 반환")
+  func todayPromises_returnsConfirmedTodayPromises() {
+    let promise1 = makeTodayPromise(id: "today-1")
+    let promise2 = makeTodayPromise(id: "today-2")
+    let state = makeState(promisesState: .loaded([promise1, promise2]))
 
     #expect(state.todayPromises.count == 2)
   }
@@ -139,11 +152,9 @@ struct HomeFeatureStateTests {
   // MARK: - pendingPromises 테스트
 
   @Test("응답 필요 약속 목록 반환")
-  func pendingPromises_returnsSnapshotPendingPromises() {
-    let promise = makeSnapshotPromise(id: "pending-1", myVoteStatus: .pending)
-    let snapshot = makeSnapshot(pendingPromises: [promise], pendingCount: 1)
-
-    let state = makeState(snapshotState: .loaded(snapshot))
+  func pendingPromises_returnsPendingPromises() {
+    let promise = makePendingPromise(id: "pending-1")
+    let state = makeState(promisesState: .loaded([promise]))
 
     #expect(state.pendingPromises.count == 1)
   }
@@ -151,52 +162,27 @@ struct HomeFeatureStateTests {
   // MARK: - upcomingPromises 테스트
 
   @Test("다가오는 약속 목록 반환")
-  func upcomingPromises_returnsSnapshotUpcomingPromises() {
-    let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date())!
-    let promise = makeSnapshotPromise(id: "upcoming-1", startAt: tomorrow, isConfirmed: true)
-    let snapshot = makeSnapshot(upcomingPromises: [promise])
-
-    let state = makeState(snapshotState: .loaded(snapshot))
+  func upcomingPromises_returnsUpcomingConfirmedPromises() {
+    let promise = makeUpcomingPromise(id: "upcoming-1")
+    let state = makeState(promisesState: .loaded([promise]))
 
     #expect(state.upcomingPromises.count == 1)
-  }
-
-  // MARK: - allPromises 테스트
-
-  @Test("모든 약속 합산 반환")
-  func allPromises_combinesAllCategories() {
-    let today = makeSnapshotPromise(id: "today", isConfirmed: true)
-    let pending = makeSnapshotPromise(id: "pending", myVoteStatus: .pending)
-    let upcoming = makeSnapshotPromise(
-      id: "upcoming",
-      startAt: Calendar.current.date(byAdding: .day, value: 1, to: Date())!,
-      isConfirmed: true
-    )
-    let snapshot = makeSnapshot(
-      todayPromises: [today],
-      pendingPromises: [pending],
-      upcomingPromises: [upcoming]
-    )
-
-    let state = makeState(snapshotState: .loaded(snapshot))
-
-    #expect(state.allPromises.count == 3)
   }
 
   // MARK: - pendingResponseCount 테스트
 
   @Test("응답 필요 개수 반환")
-  func pendingResponseCount_returnsMetaPendingCount() {
-    let snapshot = makeSnapshot(pendingCount: 5)
-    let state = makeState(snapshotState: .loaded(snapshot))
+  func pendingResponseCount_returnsPendingCount() {
+    let p1 = makePendingPromise(id: "p1")
+    let p2 = makePendingPromise(id: "p2")
+    let state = makeState(promisesState: .loaded([p1, p2]))
 
-    #expect(state.pendingResponseCount == 5)
+    #expect(state.pendingResponseCount == 2)
   }
 
   @Test("응답 필요 없으면 0")
   func pendingResponseCount_whenNoPending_returnsZero() {
-    let snapshot = makeSnapshot(pendingCount: 0)
-    let state = makeState(snapshotState: .loaded(snapshot))
+    let state = makeState(promisesState: .loaded([]))
 
     #expect(state.pendingResponseCount == 0)
   }
@@ -205,40 +191,40 @@ struct HomeFeatureStateTests {
 
   @Test("오늘 약속 개수 계산")
   func overviewData_todayCount() {
-    let snapshot = makeSnapshot(todayCount: 3)
-    let state = makeState(snapshotState: .loaded(snapshot))
+    let p1 = makeTodayPromise(id: "t1")
+    let p2 = makeTodayPromise(id: "t2")
+    let p3 = makeTodayPromise(id: "t3")
+    let state = makeState(promisesState: .loaded([p1, p2, p3]))
 
     #expect(state.overviewData.todayCount == 3)
   }
 
   @Test("응답 필요 개수 계산")
   func overviewData_needResponseCount() {
-    let snapshot = makeSnapshot(pendingCount: 2)
-    let state = makeState(snapshotState: .loaded(snapshot))
+    let p1 = makePendingPromise(id: "pd1")
+    let p2 = makePendingPromise(id: "pd2")
+    let state = makeState(promisesState: .loaded([p1, p2]))
 
     #expect(state.overviewData.needResponseCount == 2)
   }
 
   // MARK: - Empty State 테스트
 
-  @Test("빈 스냅샷에서 빈 배열 반환")
-  func emptySnapshot_returnsEmptyArrays() {
-    let snapshot = makeSnapshot()
-    let state = makeState(snapshotState: .loaded(snapshot))
+  @Test("빈 배열에서 빈 결과 반환")
+  func emptyPromises_returnsEmptyArrays() {
+    let state = makeState(promisesState: .loaded([]))
 
     #expect(state.todayPromises.isEmpty)
     #expect(state.pendingPromises.isEmpty)
     #expect(state.upcomingPromises.isEmpty)
-    #expect(state.allPromises.isEmpty)
   }
 
   @Test("idle 상태에서 빈 배열 반환")
   func idleState_returnsEmptyArrays() {
-    let state = makeState(snapshotState: .idle)
+    let state = makeState(promisesState: .idle)
 
     #expect(state.todayPromises.isEmpty)
     #expect(state.pendingPromises.isEmpty)
     #expect(state.upcomingPromises.isEmpty)
-    #expect(state.allPromises.isEmpty)
   }
 }

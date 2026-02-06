@@ -38,10 +38,10 @@ check_notion_api_key() {
     echo -e "${RED}Error: NOTION_API_KEY 환경변수가 설정되지 않았습니다.${NC}"
     echo ""
     echo "설정 방법:"
-    echo "  export NOTION_API_KEY='ntn_xxxxx'"
+    echo "  export NOTION_API_KEY='YOUR_NOTION_API_KEY'"
     echo ""
     echo "또는 ~/.zshrc에 추가:"
-    echo "  echo 'export NOTION_API_KEY=\"ntn_xxxxx\"' >> ~/.zshrc"
+    echo "  echo 'export NOTION_API_KEY=\"YOUR_NOTION_API_KEY\"' >> ~/.zshrc"
     exit 1
   fi
 }
@@ -128,7 +128,60 @@ cmd_pull() {
   done
 
   echo ""
-  echo -e "${GREEN}🎉 xcconfig 파일 생성 완료!${NC}"
+
+  # Firebase Config 파일 다운로드
+  FIREBASE_CONFIG_DIR="$HOME/Developer/Promiso-Config"
+  mkdir -p "$FIREBASE_CONFIG_DIR"
+
+  echo -e "${YELLOW}🔥 Firebase Config 다운로드 중...${NC}"
+
+  for env in Dev Stage Prod; do
+    env_upper=$(echo "$env" | tr '[:lower:]' '[:upper:]')
+
+    # FIREBASE_CONFIG_{ENV} 키 찾기
+    base64_value=$(echo "$response" | jq -r --arg key "FIREBASE_CONFIG_${env_upper}" --arg env "$env" '
+      .results[] |
+      select(.properties.Key.title[0].plain_text == $key) |
+      .properties[$env].rich_text[0].plain_text // empty
+    ')
+
+    if [ -n "$base64_value" ]; then
+      plist_file="$FIREBASE_CONFIG_DIR/GoogleService-Info-$env.plist"
+      echo "$base64_value" | base64 -d > "$plist_file"
+      echo -e "${GREEN}✅ $env: GoogleService-Info-$env.plist 다운로드됨${NC}"
+    else
+      echo -e "${YELLOW}⚠️  $env: FIREBASE_CONFIG_${env_upper} 없음 (건너뜀)${NC}"
+    fi
+  done
+
+  echo ""
+
+  # 현재 worktree에 심볼릭 링크 생성
+  echo -e "${YELLOW}🔗 Firebase Config 심볼릭 링크 생성 중...${NC}"
+
+  for env in Dev Stage Prod; do
+    LINK_PATH="$PROJECT_ROOT/Projects/App/Resources-$env/GoogleService-Info.plist"
+    TARGET="$FIREBASE_CONFIG_DIR/GoogleService-Info-$env.plist"
+
+    # 타겟 파일이 존재하는 경우만 링크 생성
+    if [ -f "$TARGET" ]; then
+      # 기존 파일 제거
+      rm -f "$LINK_PATH"
+
+      # 심볼릭 링크 생성
+      ln -s "$TARGET" "$LINK_PATH"
+      echo -e "${GREEN}✅ $env: 심볼릭 링크 생성 완료${NC}"
+    else
+      echo -e "${YELLOW}⚠️  $env: 파일 없음 (링크 생성 건너뜀)${NC}"
+    fi
+  done
+
+  echo ""
+  echo -e "${GREEN}🎉 동기화 완료!${NC}"
+  echo ""
+  echo "✅ xcconfig 파일 생성"
+  echo "✅ Firebase Config 다운로드"
+  echo "✅ 심볼릭 링크 생성"
 }
 
 # GitHub Secrets 업데이트
