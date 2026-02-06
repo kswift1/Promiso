@@ -1028,6 +1028,7 @@ export const expelMember = onCall<ExpelMemberRequest>(
 
     // 4. 약속 처리 (트랜잭션 외부에서 처리 - 약속 수가 많을 수 있음)
     const currentTime = new Date();
+    const BATCH_LIMIT = 500; // Firestore batch 최대 작업 수
 
     // 4-1. 추방자가 생성한 미래 약속 삭제
     const createdPromises = await promisesCollection
@@ -1037,11 +1038,29 @@ export const expelMember = onCall<ExpelMemberRequest>(
       .get();
 
     if (!createdPromises.empty) {
-      const deleteBatch = db.batch();
+      // 500개 단위로 분할하여 삭제
+      const deleteBatches: FirebaseFirestore.WriteBatch[] = [];
+      let deleteBatch = db.batch();
+      let deleteCount = 0;
+
       for (const doc of createdPromises.docs) {
         deleteBatch.delete(doc.ref);
+        deleteCount++;
+        if (deleteCount === BATCH_LIMIT) {
+          deleteBatches.push(deleteBatch);
+          deleteBatch = db.batch();
+          deleteCount = 0;
+        }
       }
-      await deleteBatch.commit();
+
+      // 남은 작업이 있으면 마지막 배치 추가
+      if (deleteCount > 0) {
+        deleteBatches.push(deleteBatch);
+      }
+
+      // 모든 배치 커밋
+      await Promise.all(deleteBatches.map((batch) => batch.commit()));
+
       console.log(
         `🗑️ Deleted ${createdPromises.size} future promises created by expelled member`
       );
@@ -1054,7 +1073,10 @@ export const expelMember = onCall<ExpelMemberRequest>(
       .get();
 
     if (!participatedPromises.empty) {
-      const voteBatch = db.batch();
+      // 500개 단위로 분할하여 업데이트
+      const voteBatches: FirebaseFirestore.WriteBatch[] = [];
+      let voteBatch = db.batch();
+      let voteCount = 0;
       let updatedCount = 0;
 
       for (const doc of participatedPromises.docs) {
@@ -1089,11 +1111,24 @@ export const expelMember = onCall<ExpelMemberRequest>(
         }
 
         voteBatch.update(doc.ref, updateData);
+        voteCount++;
         updatedCount++;
+
+        if (voteCount === BATCH_LIMIT) {
+          voteBatches.push(voteBatch);
+          voteBatch = db.batch();
+          voteCount = 0;
+        }
       }
 
-      if (updatedCount > 0) {
-        await voteBatch.commit();
+      // 남은 작업이 있으면 마지막 배치 추가
+      if (voteCount > 0) {
+        voteBatches.push(voteBatch);
+      }
+
+      // 모든 배치 커밋
+      if (voteBatches.length > 0) {
+        await Promise.all(voteBatches.map((batch) => batch.commit()));
         console.log(
           `🗳️ Removed votes from ${updatedCount} future promises for expelled member`
         );
