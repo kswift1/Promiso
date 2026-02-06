@@ -367,15 +367,10 @@ scripts/copy-firebase-config.sh
 
 ### Google Drive 백업 (권장)
 
-민감한 설정 파일은 Google Drive나 iCloud에 백업:
+백업/복원 운영 절차는 온보딩 문서 기준으로 관리합니다.
 
-```bash
-# Config 폴더 압축
-zip -r Promiso-Config.zip Config/
-
-# iCloud Drive로 이동
-mv Promiso-Config.zip ~/Library/Mobile\ Documents/com~apple~CloudDocs/
-```
+- 백업/복원 절차: [SETUP_GUIDE.md](SETUP_GUIDE.md#2-config-폴더-백업복원)
+- 이 문서에서는 환경 파일의 생성/검증 규칙만 다룹니다.
 
 ---
 
