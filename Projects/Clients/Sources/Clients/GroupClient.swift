@@ -82,6 +82,9 @@ public struct GroupClient: Sendable {
 
   /// 그룹 호스트 양도
   public var transferHost: @Sendable (_ groupId: String, _ newHostId: String) async throws -> Void
+
+  /// 그룹 멤버 추방 (호스트만 가능)
+  public var expelMember: @Sendable (_ groupId: String, _ memberId: String) async throws -> Void
 }
 
 // MARK: - Test & Preview Values
@@ -101,7 +104,8 @@ extension GroupClient: TestDependencyKey {
     updateGroup: unimplemented("\(Self.self).updateGroup"),
     updateGroupNotificationSettings: unimplemented("\(Self.self).updateGroupNotificationSettings"),
     clearGroupBadge: { _ in },
-    transferHost: unimplemented("\(Self.self).transferHost")
+    transferHost: unimplemented("\(Self.self).transferHost"),
+    expelMember: unimplemented("\(Self.self).expelMember")
   )
 
   public static let previewValue = Self(
@@ -219,6 +223,9 @@ extension GroupClient: TestDependencyKey {
     clearGroupBadge: { _ in },
     transferHost: { _, _ in
       try await Task.sleep(for: .seconds(0.5))
+    },
+    expelMember: { _, _ in
+      try await Task.sleep(for: .seconds(0.5))
     }
   )
 }
@@ -314,6 +321,9 @@ extension GroupClient: DependencyKey {
       },
       transferHost: { groupId, newHostId in
         try await dataSource.transferHost(groupId: groupId, newHostId: newHostId)
+      },
+      expelMember: { groupId, memberId in
+        try await dataSource.expelMember(groupId: groupId, memberId: memberId)
       }
     )
   }()

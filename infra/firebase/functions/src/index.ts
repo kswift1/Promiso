@@ -27,6 +27,7 @@ export {
   updateGroup,
   deleteGroup,
   transferGroupHost,
+  expelMember,
   onGroupImageUpdated,
 } from "./functions/groups";
 

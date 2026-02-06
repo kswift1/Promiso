@@ -30,6 +30,8 @@ import {
   DeleteGroupResponse,
   TransferGroupHostRequest,
   TransferGroupHostResponse,
+  ExpelMemberRequest,
+  ExpelMemberResponse,
   GroupMemberPreview,
   NotificationType,
 } from "../types/api";
@@ -911,5 +913,195 @@ export const onGroupImageUpdated = onDocumentUpdated(
     console.log(
       `[onGroupImageUpdated] Updated imageUrl for ${memberIds.length} members`
     );
+  }
+);
+
+/**
+ * 그룹 멤버 추방
+ *
+ * @remarks
+ * **인증 필수**
+ *
+ * 호스트가 멤버를 그룹에서 추방합니다:
+ * 1. 호스트 권한 확인
+ * 2. groups/{groupId}.memberIds에서 제거
+ * 3. users/{memberId}.groups[groupId] 삭제
+ * 4. 추방자가 생성한 미래 약속 삭제
+ * 5. 추방자가 참여한 미래 약속에서 투표 제거 + isConfirmed 재계산
+ */
+export const expelMember = onCall<ExpelMemberRequest>(
+  {region: REGION, invoker: "public"},
+  async (request): Promise<ExpelMemberResponse> => {
+    // 1. 인증 확인
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "로그인이 필요합니다");
+    }
+
+    // 2. 데이터 추출 및 검증
+    const data = request.data;
+    const groupId = data.groupId?.trim();
+    const memberId = data.memberId?.trim();
+    const currentUserId = request.auth.uid;
+
+    if (!groupId) {
+      throw new HttpsError("invalid-argument", "그룹 ID는 필수입니다");
+    }
+
+    if (groupId.includes(".")) {
+      throw new HttpsError("invalid-argument", "잘못된 그룹 ID입니다");
+    }
+
+    if (!memberId) {
+      throw new HttpsError("invalid-argument", "추방할 멤버 ID는 필수입니다");
+    }
+
+    // 보안: Field Path Injection 방지
+    if (memberId.includes(".")) {
+      throw new HttpsError("invalid-argument", "잘못된 멤버 ID입니다");
+    }
+
+    if (currentUserId === memberId) {
+      throw new HttpsError(
+        "invalid-argument",
+        "자기 자신을 추방할 수 없습니다"
+      );
+    }
+
+    // 3. Firestore 트랜잭션으로 그룹 데이터 처리
+    const db = admin.firestore();
+    const groupsCollection = db.collection("groups");
+    const usersCollection = db.collection("users");
+    const promisesCollection = db.collection("promises");
+
+    const groupRef = groupsCollection.doc(groupId);
+    const now = FieldValue.serverTimestamp();
+
+    await db.runTransaction(async (transaction) => {
+      // 3-1. 그룹 존재 및 권한 확인
+      const groupDoc = await transaction.get(groupRef);
+
+      if (!groupDoc.exists) {
+        throw new HttpsError("not-found", "그룹을 찾을 수 없습니다");
+      }
+
+      const groupData = groupDoc.data();
+      if (!groupData) {
+        throw new HttpsError("not-found", "그룹 데이터를 찾을 수 없습니다");
+      }
+
+      const hostId = groupData.createdBy as string;
+      const memberIds = (groupData.memberIds as string[]) ?? [];
+
+      // 3-2. 호스트 권한 확인
+      if (hostId !== currentUserId) {
+        throw new HttpsError(
+          "permission-denied",
+          "그룹 호스트만 멤버를 추방할 수 있습니다"
+        );
+      }
+
+      // 3-3. 추방 대상이 멤버인지 확인
+      if (!memberIds.includes(memberId)) {
+        throw new HttpsError(
+          "invalid-argument",
+          "해당 사용자는 그룹 멤버가 아닙니다"
+        );
+      }
+
+      // 3-4. 그룹에서 멤버 제거
+      transaction.update(groupRef, {
+        memberIds: FieldValue.arrayRemove(memberId),
+        updatedAt: now,
+      });
+
+      // 3-5. 사용자의 그룹 정보 삭제
+      const memberRef = usersCollection.doc(memberId);
+      transaction.update(memberRef, {
+        [`groups.${groupId}`]: FieldValue.delete(),
+        updatedAt: now,
+      });
+    });
+
+    console.log(
+      `🚫 Member expelled: ${memberId} from group ${groupId} by ${currentUserId}`
+    );
+
+    // 4. 약속 처리 (트랜잭션 외부에서 처리 - 약속 수가 많을 수 있음)
+    const currentTime = new Date();
+
+    // 4-1. 추방자가 생성한 미래 약속 삭제
+    const createdPromises = await promisesCollection
+      .where("groupId", "==", groupId)
+      .where("hostId", "==", memberId)
+      .where("startAt", ">=", currentTime)
+      .get();
+
+    if (!createdPromises.empty) {
+      const deleteBatch = db.batch();
+      for (const doc of createdPromises.docs) {
+        deleteBatch.delete(doc.ref);
+      }
+      await deleteBatch.commit();
+      console.log(
+        `🗑️ Deleted ${createdPromises.size} future promises created by expelled member`
+      );
+    }
+
+    // 4-2. 추방자가 참여한 미래 약속에서 투표 제거
+    const participatedPromises = await promisesCollection
+      .where("groupId", "==", groupId)
+      .where("startAt", ">=", currentTime)
+      .get();
+
+    if (!participatedPromises.empty) {
+      const voteBatch = db.batch();
+      let updatedCount = 0;
+
+      for (const doc of participatedPromises.docs) {
+        const promiseData = doc.data();
+        const votes = promiseData.votes ?? {};
+        const accepted = (votes.accepted as string[]) ?? [];
+        const declined = (votes.declined as string[]) ?? [];
+
+        const wasAccepted = accepted.includes(memberId);
+        const wasDeclined = declined.includes(memberId);
+
+        if (!wasAccepted && !wasDeclined) continue;
+
+        const updateData: Record<string, unknown> = {
+          updatedAt: FieldValue.serverTimestamp(),
+        };
+
+        if (wasAccepted) {
+          updateData["votes.accepted"] = FieldValue.arrayRemove(memberId);
+        }
+        if (wasDeclined) {
+          updateData["votes.declined"] = FieldValue.arrayRemove(memberId);
+        }
+
+        // isConfirmed 재계산 (accepted에서 제거 시)
+        if (wasAccepted) {
+          const newAcceptedCount = accepted.length - 1;
+          const minimumParticipants =
+            (promiseData.minimumParticipants as number) ?? 2;
+          const newIsConfirmed = newAcceptedCount >= minimumParticipants;
+          updateData["isConfirmed"] = newIsConfirmed;
+        }
+
+        voteBatch.update(doc.ref, updateData);
+        updatedCount++;
+      }
+
+      if (updatedCount > 0) {
+        await voteBatch.commit();
+        console.log(
+          `🗳️ Removed votes from ${updatedCount} future promises for expelled member`
+        );
+      }
+    }
+
+    return {
+      success: true,
+    };
   }
 );
