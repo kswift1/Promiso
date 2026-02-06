@@ -40,8 +40,8 @@ describe('generateWidgetToken', () => {
     jest.restoreAllMocks();
   });
 
-  // NOTE: 정상 케이스는 실제 Firestore 작업과 Secret 접근이 필요하여 에뮬레이터 환경에서 통합 테스트로 수행
-  describe.skip('정상 케이스', () => {
+  // NOTE: Firestore/Secret 모두 mock 처리하므로 정상 플로우를 유닛 테스트로 검증 가능
+  describe('정상 케이스', () => {
     it('유효한 Widget Token을 생성한다', async () => {
       // Given
       const request = {
@@ -54,7 +54,8 @@ describe('generateWidgetToken', () => {
       };
 
       // When
-      const result = await generateWidgetToken(request);
+      const handler = (generateWidgetToken as any).run;
+      const result = await handler(request);
 
       // Then
       expect(result).toBeDefined();
