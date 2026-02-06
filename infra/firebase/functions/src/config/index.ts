@@ -10,8 +10,10 @@ import {
   FirestoreEnvironment,
 } from "../utils/firestore";
 
-// Firebase Admin 초기화
-admin.initializeApp();
+// Firebase Admin 초기화 (이미 초기화되어 있으면 skip)
+if (!admin.apps.length) {
+  admin.initializeApp();
+}
 
 // 환경 정보 로깅
 logEnvironmentInfo();

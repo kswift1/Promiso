@@ -36,7 +36,7 @@
     "eslint-plugin-import": "^2.25.4",
     "firebase-functions-test": "^3.4.1",
     "jest": "^29.7.0",
-    "ts-jest": "^29.2.5",
+    "ts-jest": "^29.4.6",
     "typescript": "^5.7.3"
   },
   "private": true
