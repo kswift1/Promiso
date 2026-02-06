@@ -8,6 +8,7 @@ import SwiftUI
 import Clients
 import PromisoShared
 import CalendarFeature
+import PersonalFeature
 import SettingsFeature
 import ResourceKit
 import SharedFeature
@@ -23,16 +24,41 @@ extension Notification.Name {
   static let openLivePromiseDetailFromDeeplink = Notification.Name("openLivePromiseDetailFromDeeplink")
 }
 
-public enum Tab: String, CaseIterable {
-  case home = "홈"
-  case group = "그룹"
-  case calendar = "캘린더"
-  case settings = "설정"
+public enum Tab: Equatable, Hashable {
+  case home
+  case promise(PromiseTabMode = .group)
+  case calendar
+  case settings
+
+  public enum PromiseTabMode: String, Equatable, Hashable, Sendable {
+    case group = "그룹"
+    case own = "개인"
+  }
+
+  var isPromise: Bool {
+    if case .promise = self { return true }
+    return false
+  }
+
+  var promiseMode: PromiseTabMode? {
+    if case .promise(let mode) = self { return mode }
+    return nil
+  }
+
+  var label: String {
+    switch self {
+    case .home: return "홈"
+    case .promise(let mode): return mode.rawValue
+    case .calendar: return "캘린더"
+    case .settings: return "설정"
+    }
+  }
 
   var iconName: String {
     switch self {
     case .home: return "house.fill"
-    case .group: return "person.3.fill"
+    case .promise(.group): return "person.3.fill"
+    case .promise(.own): return "person.fill"
     case .calendar: return "calendar"
     case .settings: return "gearshape.fill"
     }
@@ -82,6 +108,9 @@ extension RootTab {
       /// Settings State
       var settings: Settings.Feature.State
 
+      /// Personal Mode State
+      var personalMode: PersonalMode.Feature.State
+
       /// 현재 사용자 정보 (모든 탭에서 참조 공유)
       @Shared var currentUser: UserPrivateModel
 
@@ -102,6 +131,7 @@ extension RootTab {
         self.home = Home.Feature.State(currentUser: currentUser)
         self.calendar = CalendarFeature.Feature.State(currentUser: currentUser)
         self.settings = Settings.Feature.State(currentUser: currentUser)
+        self.personalMode = PersonalMode.Feature.State(currentUser: currentUser)
       }
     }
 
@@ -119,6 +149,8 @@ extension RootTab {
       case groupMain(GroupMain.Feature.Action)
       /// Settings 액션
       case settings(Settings.Feature.Action)
+      /// Personal Mode 액션
+      case personalMode(PersonalMode.Feature.Action)
       /// LivePromise 액션
       case livePromise(LivePromise.Feature.Action)
       /// LivePromise 상세 뷰 액션
@@ -172,6 +204,10 @@ extension RootTab {
         GroupMain.Feature()
       }
 
+      Scope(state: \.personalMode, action: \.personalMode) {
+        PersonalMode.Feature()
+      }
+
       Scope(state: \.home, action: \.home) {
         Home.Feature()
       }
@@ -202,6 +238,14 @@ extension RootTab {
           let hapticEffect: Effect<Action> = .run { _ in await hapticFeedback.buttonTap() }
 
           guard tab != previousTab else {
+            // Promise 탭 재선택 시 모드 토글
+            if case .promise(let mode) = tab {
+              let newMode: Tab.PromiseTabMode = mode == .group ? .own : .group
+              state.selectedTab = .promise(newMode)
+              if newMode == .own {
+                return .merge(hapticEffect, .send(.personalMode(.view(.onAppear))))
+              }
+            }
             return hapticEffect
           }
 
@@ -216,21 +260,21 @@ extension RootTab {
           case .settings:
             // Analytics 이벤트 로깅
             analyticsClient.logEvent(AnalyticsClient.EventName.settingsOpened, nil)
-          case .group:
+          case .promise:
             break
           }
 
           return .merge(effects)
 
         case .home(.delegate(.navigateToGroupWithPromise(let groupId, let promiseId))):
-          state.selectedTab = .group
+          state.selectedTab = .promise(.group)
           // 그룹 선택 후 응답 필요 필터로 해당 약속 하이라이트
           return .send(.groupMain(.view(.handleDeeplink(
             .promiseInList(promiseId: promiseId, groupId: groupId, filter: .needResponse)
           ))))
 
         case .home(.delegate(.navigateToPromise(let promiseId, let groupId))):
-          state.selectedTab = .group
+          state.selectedTab = .promise(.group)
           if let groupInfo = state.groupMain.allGroupSummaries?.first(where: { $0.id == groupId }) {
             return .send(.groupMain(.view(.groupChanged(groupInfo))))
           }
@@ -247,6 +291,9 @@ extension RootTab {
           return .none
 
         case .groupMain:
+          return .none
+
+        case .personalMode:
           return .none
 
         case .settings(.delegate(.didLogout)):
@@ -304,11 +351,11 @@ extension RootTab {
           return .none
 
         case .openJoinGroupWithCode(let inviteCode):
-          state.selectedTab = .group
+          state.selectedTab = .promise(.group)
           return .send(.groupMain(.view(.joinGroupWithCode(inviteCode))))
 
         case .handleGroupDeeplink(let deeplink):
-          state.selectedTab = .group
+          state.selectedTab = .promise(.group)
           return .send(.groupMain(.view(.handleDeeplink(deeplink))))
 
         case .openLiveActivityETASheet:
@@ -340,7 +387,7 @@ extension RootTab {
 
         case .openCreatePromiseIfPossible:
           // 그룹 탭으로 이동 후 그룹 유무에 따라 CreatePromise 열기
-          state.selectedTab = .group
+          state.selectedTab = .promise(.group)
           return .send(.groupMain(.view(.openCreatePromiseIfPossible)))
 
         case .internal(let internalAction):
@@ -553,11 +600,26 @@ extension RootTab {
 
     private var tabView: some View {
       TabView(selection: $store.selectedTab.sending(\.tabSelected)) {
-        ForEach(Tab.allCases, id: \.self) { tab in
-          tabContentView(for: tab)
-            .tabItem { Label(tab.rawValue, systemImage: tab.iconName) }
-            .tag(tab)
-        }
+        tabContentView(for: .home)
+          .tabItem { Label("홈", systemImage: "house.fill") }
+          .tag(Tab.home)
+
+        tabContentView(for: store.selectedTab.isPromise ? store.selectedTab : .promise(.group))
+          .tabItem {
+            Label(
+              store.selectedTab.isPromise ? store.selectedTab.label : "그룹",
+              systemImage: store.selectedTab.isPromise ? store.selectedTab.iconName : "person.3.fill"
+            )
+          }
+          .tag(store.selectedTab.isPromise ? store.selectedTab : Tab.promise(.group))
+
+        tabContentView(for: .calendar)
+          .tabItem { Label("캘린더", systemImage: "calendar") }
+          .tag(Tab.calendar)
+
+        tabContentView(for: .settings)
+          .tabItem { Label("설정", systemImage: "gearshape.fill") }
+          .tag(Tab.settings)
       }
     }
 
@@ -655,14 +717,24 @@ extension RootTab {
           )
         )
 
-      case .group:
+      case .promise(let mode):
         NavigationStack {
-          GroupMain.RootView(
-            store: store.scope(
-              state: \.groupMain,
-              action: \.groupMain
+          switch mode {
+          case .group:
+            GroupMain.RootView(
+              store: store.scope(
+                state: \.groupMain,
+                action: \.groupMain
+              )
             )
-          )
+          case .own:
+            PersonalMode.RootView(
+              store: store.scope(
+                state: \.personalMode,
+                action: \.personalMode
+              )
+            )
+          }
         }
 
       case .settings:
