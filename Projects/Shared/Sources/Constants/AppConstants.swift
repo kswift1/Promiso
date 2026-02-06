@@ -185,6 +185,8 @@ public enum AppConstants {
     public static let calendarEventMappings = "promisoCalendarEventMappings"
     /// 마지막 캘린더 동기화 날짜
     public static let lastCalendarSyncDate = "promisoLastCalendarSyncDate"
+    /// 약속 탭 기본 모드 (group/own)
+    public static let defaultPromiseTabMode = "promisoDefaultPromiseTabMode"
   }
 
   // MARK: - Shared State Keys (TCA @Shared inMemory)

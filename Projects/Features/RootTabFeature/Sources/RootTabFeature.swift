@@ -97,7 +97,7 @@ extension RootTab {
       var selectedTab: Tab = .home
 
       /// Promise 탭의 현재 모드 (탭 전환 시에도 유지)
-      var promiseMode: Tab.PromiseTabMode = .group
+      var promiseMode: Tab.PromiseTabMode
 
       /// Home Main State
       var home: Home.Feature.State
@@ -130,6 +130,9 @@ extension RootTab {
 
       public init(currentUser: Shared<UserPrivateModel>) {
         self._currentUser = currentUser
+        // UserDefaults에서 약속 탭 기본 모드 읽기
+        let savedMode = UserDefaults.standard.string(forKey: AppConstants.UserDefaults.defaultPromiseTabMode) ?? "group"
+        self.promiseMode = savedMode == "own" ? .own : .group
         self.groupMain = GroupMain.Feature.State(currentUser: currentUser)
         self.home = Home.Feature.State(currentUser: currentUser)
         self.calendar = CalendarFeature.Feature.State(currentUser: currentUser)

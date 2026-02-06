@@ -76,6 +76,8 @@ extension Settings {
       public var showImageDetail: Bool = false
       /// 24시간 형식 사용 여부 (@Shared로 앱 전체 공유)
       @Shared(.appStorage(AppConstants.UserDefaults.use24HourFormat)) public var use24HourFormat: Bool = false
+      /// 약속 탭 기본 모드 (group/own)
+      @Shared(.appStorage(AppConstants.UserDefaults.defaultPromiseTabMode)) public var defaultPromiseTabMode: String = "group"
 
       /// State를 위한 기본 initializer
       public init(
@@ -186,6 +188,8 @@ extension Settings {
       case profileImageTapped
       /// 프로필 이미지 상세 닫기
       case imageDetailDismissed
+      /// 약속 탭 기본 모드 변경
+      case defaultPromiseTabModeChanged(String)
     }
 
     /// 내부 비즈니스 로직 처리 결과 액션
@@ -392,6 +396,12 @@ extension Settings {
           case .imageDetailDismissed:
             state.showImageDetail = false
             return .none
+
+          case .defaultPromiseTabModeChanged(let mode):
+            state.$defaultPromiseTabMode.withLock { $0 = mode }
+            return .run { _ in
+              await hapticFeedback.selection()
+            }
           }
 
         // MARK: - Internal Actions
