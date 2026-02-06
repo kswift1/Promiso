@@ -38,10 +38,10 @@ check_notion_api_key() {
     echo -e "${RED}Error: NOTION_API_KEY 환경변수가 설정되지 않았습니다.${NC}"
     echo ""
     echo "설정 방법:"
-    echo "  export NOTION_API_KEY='ntn_xxxxx'"
+    echo "  export NOTION_API_KEY='YOUR_NOTION_API_KEY'"
     echo ""
     echo "또는 ~/.zshrc에 추가:"
-    echo "  echo 'export NOTION_API_KEY=\"ntn_xxxxx\"' >> ~/.zshrc"
+    echo "  echo 'export NOTION_API_KEY=\"YOUR_NOTION_API_KEY\"' >> ~/.zshrc"
     exit 1
   fi
 }
