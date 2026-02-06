@@ -144,24 +144,27 @@ make help                      # 전체 명령어 보기
 ```
 main (프로덕션)
   ↑
-release/v* (릴리즈)
+staging (스테이징 검증)
+  ↑
+develop (개발 통합)
   ↑
 feature/* (기능 개발)
 ```
 
 **워크플로우**:
 1. `feature/*` 브랜치에서 개발
-2. `release/v*` 브랜치로 PR
-3. 리뷰 & 머지 후 `release/v*` → `main`
-4. `main`에 Tag 추가 시 자동 배포
+2. `develop`으로 PR 후 통합
+3. `develop` → `staging`으로 QA 검증
+4. `staging` → `main`으로 릴리즈
+5. 배포 실행 기준은 `docs/CI_CD.md`, `docs/DEPLOYMENT.md` 참조
 
 ### CI/CD (GitHub Actions)
 
-| 이벤트 | 동작 |
-|--------|------|
-| **PR → release/** | 빌드 & 테스트 실행 |
-| **PR → main** | 빌드 & 테스트 실행 |
-| **Tag push (v\*)** | TestFlight 자동 배포 |
+| 구분 | 기준 문서 |
+|------|----------|
+| **워크플로우 동작/트리거** | [docs/CI_CD.md](docs/CI_CD.md) |
+| **배포 실행 절차** | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) |
+| **브랜치 병합 정책** | [docs/BRANCH_STRATEGY.md](docs/BRANCH_STRATEGY.md) |
 
 ### 배포 환경
 
