@@ -129,6 +129,8 @@ make help                      # 전체 명령어 보기
 
 ## 📚 문서
 
+> 📘 **문서 인덱스(권장 시작점)**: [docs/README.md](docs/README.md)
+
 | 카테고리 | 문서 |
 |---------|------|
 | **시작하기** | [초기 설정](docs/SETUP_GUIDE.md) · [환경 구성](docs/ENVIRONMENT.md) · [아키텍처](docs/ARCHITECTURE.md) |
@@ -168,4 +170,3 @@ feature/* (기능 개발)
 - **Prod**: 프로덕션 (`Promiso`)
 
 > 📘 **상세 가이드**: [브랜치 전략](docs/BRANCH_STRATEGY.md) · [CI/CD](docs/CI_CD.md) · [배포](docs/DEPLOYMENT.md)
-

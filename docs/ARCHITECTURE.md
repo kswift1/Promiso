@@ -2,6 +2,13 @@
 
 Promiso는 **The Composable Architecture (TCA)** 기반의 모듈형 iOS 애플리케이션입니다.
 
+## 문서 메타
+
+- 목적: 모듈 구조와 의존성 규칙, 데이터 흐름의 기준 제공
+- 대상 독자: iOS 개발자, 아키텍처 변경 작업자
+- 최종 수정일: 2026-02-06
+- 관련 문서: [README.md](README.md) · [DEVELOPMENT.md](DEVELOPMENT.md)
+
 ## 📋 목차
 
 1. [아키텍처 개요](#아키텍처-개요)

@@ -2,6 +2,19 @@
 
 > Promiso 프로젝트의 Feature 개발, 테스트, 컨벤션에 대한 종합 가이드
 
+## 문서 메타
+
+- 목적: 일상 개발 작업의 구현/테스트/컨벤션 기준 제공
+- 대상 독자: iOS 기능 개발자
+- 최종 수정일: 2026-02-06
+- 관련 문서: [README.md](README.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [ENVIRONMENT.md](ENVIRONMENT.md)
+
+## 범위 안내
+
+- 이 문서: 기능 구현, 테스트, 코드 컨벤션
+- 개발 환경 파일/키 구성: [ENVIRONMENT.md](ENVIRONMENT.md)
+- 온보딩 초기 세팅: [SETUP_GUIDE.md](SETUP_GUIDE.md)
+
 ## 목차
 
 - [1. 개발 시작하기](#1-개발-시작하기)

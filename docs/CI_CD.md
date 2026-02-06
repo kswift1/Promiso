@@ -2,6 +2,19 @@
 
 Promiso 프로젝트의 GitHub Actions 기반 CI/CD 파이프라인 설명입니다.
 
+## 문서 메타
+
+- 목적: GitHub Actions 워크플로우 동작과 운영 기준 정의
+- 대상 독자: CI/CD 관리 담당자, 배포 자동화 작업자
+- 최종 수정일: 2026-02-06
+- 관련 문서: [README.md](README.md) · [BRANCH_STRATEGY.md](BRANCH_STRATEGY.md) · [DEPLOYMENT.md](DEPLOYMENT.md)
+
+## 범위 안내
+
+- 이 문서: 워크플로우 트리거/단계/시크릿/문제 해결
+- 브랜치 정책: [BRANCH_STRATEGY.md](BRANCH_STRATEGY.md)
+- 수동 배포 실행 절차: [DEPLOYMENT.md](DEPLOYMENT.md)
+
 ## 개요
 
 Promiso는 다음 3가지 워크플로우로 자동화된 빌드/배포를 수행합니다.

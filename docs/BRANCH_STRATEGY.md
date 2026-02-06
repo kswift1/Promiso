@@ -2,6 +2,19 @@
 
 Promiso 프로젝트의 Git 브랜치 전략 및 배포 워크플로우입니다.
 
+## 문서 메타
+
+- 목적: 브랜치 역할과 병합/릴리즈 흐름 기준 정의
+- 대상 독자: 모든 기여자, 릴리즈 담당자
+- 최종 수정일: 2026-02-06
+- 관련 문서: [README.md](README.md) · [CI_CD.md](CI_CD.md) · [DEPLOYMENT.md](DEPLOYMENT.md)
+
+## 범위 안내
+
+- 이 문서: 브랜치 정책과 병합 흐름
+- 워크플로우 job/secret 상세: [CI_CD.md](CI_CD.md)
+- 실제 배포 실행 절차: [DEPLOYMENT.md](DEPLOYMENT.md)
+
 ## 📋 목차
 
 1. [브랜치 구조](#브랜치-구조)

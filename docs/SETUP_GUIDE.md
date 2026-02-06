@@ -2,6 +2,19 @@
 
 `git clone` 이후 바로 빌드할 수 있도록 만드는 방법입니다.
 
+## 문서 메타
+
+- 목적: 신규/교체 장비에서 개발 시작까지의 온보딩 절차 제공
+- 대상 독자: 신규 팀원, 개발 환경 재설치 사용자
+- 최종 수정일: 2026-02-06
+- 관련 문서: [README.md](README.md) · [ENVIRONMENT.md](ENVIRONMENT.md) · [DEVELOPMENT.md](DEVELOPMENT.md)
+
+## 범위 안내
+
+- 이 문서: 새 컴퓨터 기준 초기 세팅 순서
+- 환경별 파일 구조/빌드 전환: [ENVIRONMENT.md](ENVIRONMENT.md)
+- 세팅 완료 후 개발 규칙: [DEVELOPMENT.md](DEVELOPMENT.md)
+
 ## 📋 목차
 
 1. [새 컴퓨터에서 설정하기](#1-새-컴퓨터에서-설정하기)

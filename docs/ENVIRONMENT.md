@@ -2,6 +2,19 @@
 
 Promiso는 Dev/Stage/Prod 3개 환경으로 분리되어 있으며, 각 환경마다 독립적인 Firebase 프로젝트와 API 키를 사용합니다.
 
+## 문서 메타
+
+- 목적: 환경 파일 구성과 로컬 빌드 환경 설정 기준 제공
+- 대상 독자: 로컬 실행/환경 구성 담당자
+- 최종 수정일: 2026-02-06
+- 관련 문서: [README.md](README.md) · [SETUP_GUIDE.md](SETUP_GUIDE.md) · [DEVELOPMENT.md](DEVELOPMENT.md)
+
+## 범위 안내
+
+- 이 문서: Dev/Stage/Prod 환경 구성과 xcconfig/plist 설정
+- 새 컴퓨터 온보딩 절차: [SETUP_GUIDE.md](SETUP_GUIDE.md)
+- 기능 개발 실무 규칙: [DEVELOPMENT.md](DEVELOPMENT.md)
+
 ## 📋 목차
 
 1. [환경 개요](#환경-개요)

@@ -2,6 +2,19 @@
 
 Promiso iOS 앱 및 Firebase 백엔드의 자동/수동 배포 전체 가이드입니다.
 
+## 문서 메타
+
+- 목적: 환경별 실제 배포 절차와 체크리스트 제공
+- 대상 독자: 릴리즈 담당자, 온콜/운영 담당자
+- 최종 수정일: 2026-02-06
+- 관련 문서: [README.md](README.md) · [BRANCH_STRATEGY.md](BRANCH_STRATEGY.md) · [CI_CD.md](CI_CD.md)
+
+## 범위 안내
+
+- 이 문서: 실제 배포 실행 절차와 롤백
+- 브랜치 병합 정책: [BRANCH_STRATEGY.md](BRANCH_STRATEGY.md)
+- GitHub Actions 워크플로우 정의: [CI_CD.md](CI_CD.md)
+
 ## 📋 목차
 
 1. [개요](#개요)
