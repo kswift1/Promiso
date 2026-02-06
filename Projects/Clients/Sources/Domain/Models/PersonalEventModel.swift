@@ -11,9 +11,6 @@ public struct PersonalEventModel: Identifiable, Equatable, Hashable, Sendable {
   public var emoji: String?
   public var description: String?
 
-  // MARK: - 소유자
-  public var userId: String
-
   // MARK: - 시간
   public var startAt: Date
   public var endAt: Date?
@@ -33,7 +30,6 @@ public struct PersonalEventModel: Identifiable, Equatable, Hashable, Sendable {
     title: String = "",
     emoji: String? = nil,
     description: String? = nil,
-    userId: String = "",
     startAt: Date = Date().addingTimeInterval(3600),
     endAt: Date? = nil,
     location: LocationInfoModel? = nil,
@@ -45,7 +41,6 @@ public struct PersonalEventModel: Identifiable, Equatable, Hashable, Sendable {
     self.title = title
     self.emoji = emoji
     self.description = description
-    self.userId = userId
     self.startAt = startAt
     self.endAt = endAt
     self.location = location
@@ -65,7 +60,6 @@ public struct PersonalEventModel: Identifiable, Equatable, Hashable, Sendable {
     title: String = "Mock 개인 일정",
     emoji: String? = "📅",
     description: String? = nil,
-    userId: String = "mock-user-id",
     startAt: Date = Date().addingTimeInterval(3600),
     endAt: Date? = nil,
     location: LocationInfoModel? = nil,
@@ -78,7 +72,6 @@ public struct PersonalEventModel: Identifiable, Equatable, Hashable, Sendable {
       title: title,
       emoji: emoji,
       description: description,
-      userId: userId,
       startAt: startAt,
       endAt: endAt,
       location: location,
@@ -99,7 +92,6 @@ extension PersonalEventModel {
       title: dto.title,
       emoji: dto.emoji,
       description: dto.description,
-      userId: dto.userId,
       startAt: dto.startAt.dateValue(),
       endAt: dto.endAt?.dateValue(),
       location: dto.location.map { LocationInfoModel(dto: $0) },
@@ -233,9 +225,6 @@ extension PersonalEventModel {
 // MARK: - Example Data
 
 extension PersonalEventModel {
-  /// Preview용 현재 유저 ID
-  public static let previewCurrentUserId = "preview-user"
-
   /// 다양한 상태의 개인 일정 예시
   public static let examples: [PersonalEventModel] = [
     // 1. 오늘 일정 - 진행 예정
@@ -244,9 +233,8 @@ extension PersonalEventModel {
       title: "아침 운동",
       emoji: "🏃",
       description: "한강 러닝 5km",
-      userId: previewCurrentUserId,
-      startAt: Date().addingTimeInterval(7200),  // 2시간 후
-      endAt: Date().addingTimeInterval(10800),  // 3시간 후
+      startAt: Date().addingTimeInterval(7200),
+      endAt: Date().addingTimeInterval(10800),
       location: LocationInfoModel(name: "여의도 한강공원"),
       reminderMinutesBefore: 30
     ),
@@ -256,8 +244,7 @@ extension PersonalEventModel {
       title: "친구 만남",
       emoji: "☕️",
       description: "카페에서 수다",
-      userId: previewCurrentUserId,
-      startAt: Date().addingTimeInterval(14400),  // 4시간 후
+      startAt: Date().addingTimeInterval(14400),
       location: LocationInfoModel(name: "스타벅스 강남점")
     ),
     // 3. 내일 일정
@@ -265,9 +252,8 @@ extension PersonalEventModel {
       id: "event-tomorrow-1",
       title: "치과 예약",
       emoji: "🦷",
-      userId: previewCurrentUserId,
-      startAt: Date().addingTimeInterval(108000),  // 30시간 후
-      endAt: Date().addingTimeInterval(112200),  // 31.17시간 후
+      startAt: Date().addingTimeInterval(108000),
+      endAt: Date().addingTimeInterval(112200),
       location: LocationInfoModel(name: "서울치과"),
       reminderMinutesBefore: 60
     ),
@@ -277,9 +263,8 @@ extension PersonalEventModel {
       title: "프로젝트 발표",
       emoji: "💼",
       description: "Q1 성과 발표 준비",
-      userId: previewCurrentUserId,
-      startAt: Date().addingTimeInterval(604800),  // 7일 후
-      endAt: Date().addingTimeInterval(608400),  // 7일 1시간 후
+      startAt: Date().addingTimeInterval(604800),
+      endAt: Date().addingTimeInterval(608400),
       reminderMinutesBefore: 120
     ),
     // 5. 과거 일정
@@ -287,9 +272,8 @@ extension PersonalEventModel {
       id: "event-past-1",
       title: "점심 약속",
       emoji: "🍜",
-      userId: previewCurrentUserId,
-      startAt: Date().addingTimeInterval(-7200),  // 2시간 전
-      endAt: Date().addingTimeInterval(-3600),  // 1시간 전
+      startAt: Date().addingTimeInterval(-7200),
+      endAt: Date().addingTimeInterval(-3600),
       location: LocationInfoModel(name: "이치란 라멘")
     )
   ]

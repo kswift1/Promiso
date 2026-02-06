@@ -16,17 +16,15 @@ extension PersonalMode {
           .padding(.horizontal, 16)
           .padding(.top, 8)
 
-        Divider()
-          .padding(.top, 8)
-
         // 필터
         filterSegment
-          .padding(.top, 8)
+          .padding(.top, 12)
 
         // 컨텐츠
         contentView
       }
       .auroraBackground()
+      .toolbarVisibility(.hidden, for: .navigationBar)
       .overlay(alignment: .bottomTrailing) {
         fabButton
       }
@@ -232,7 +230,6 @@ extension PersonalMode {
           .frame(height: 1)
       }
       .padding(.vertical, 8)
-      .background(Color(UIColor.systemBackground).opacity(0.95))
     }
 
     // MARK: - FAB

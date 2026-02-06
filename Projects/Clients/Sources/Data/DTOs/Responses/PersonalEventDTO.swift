@@ -3,15 +3,12 @@ import FirebaseFirestore
 
 // MARK: - Personal Event DTO
 
-/// Firestore personalEvents/{eventId} 문서 DTO
+/// Firestore users/{userId}/personalEvents/{eventId} 문서 DTO
 public struct PersonalEventDTO: Codable {
   // MARK: - 기본 정보
   public let title: String
   public let emoji: String?
   public let description: String?
-
-  // MARK: - 소유자
-  public let userId: String
 
   // MARK: - 시간
   public let startAt: Timestamp
@@ -31,7 +28,6 @@ public struct PersonalEventDTO: Codable {
     title: String,
     emoji: String? = nil,
     description: String? = nil,
-    userId: String,
     startAt: Timestamp,
     endAt: Timestamp? = nil,
     location: LocationDTO? = nil,
@@ -42,7 +38,6 @@ public struct PersonalEventDTO: Codable {
     self.title = title
     self.emoji = emoji
     self.description = description
-    self.userId = userId
     self.startAt = startAt
     self.endAt = endAt
     self.location = location
@@ -61,7 +56,6 @@ extension PersonalEventDTO {
       title: model.title,
       emoji: model.emoji,
       description: model.description,
-      userId: model.userId,
       startAt: Timestamp(date: model.startAt),
       endAt: model.endAt.map { Timestamp(date: $0) },
       location: model.location.map { LocationDTO(model: $0) },

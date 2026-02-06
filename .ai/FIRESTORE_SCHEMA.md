@@ -17,7 +17,7 @@
      - [3-2. location (Map)](#3-2-promisespromiseidlocation-map)
    - [4. notifications](#4-notifications-컬렉션)
    - [5. liveActivities](#5-liveactivities-컬렉션)
-   - [6. personalEvents](#6-personalevents-컬렉션)
+   - [6. personalEvents](#6-personalevents-서브컬렉션)
 4. [쿼리 패턴](#쿼리-패턴)
 5. [보안 규칙](#보안-규칙)
 6. [인덱스 설정](#인덱스-설정)
@@ -1088,14 +1088,14 @@ liveActivities/{promiseId}
 
 ---
 
-### 6. personalEvents (컬렉션)
+### 6. personalEvents (서브컬렉션)
 
 개인 일정 정보를 저장합니다. 그룹과 무관한 개인적인 일정을 관리합니다.
 
 #### 📍 문서 경로
 
 ```
-personalEvents/{eventId}
+users/{userId}/personalEvents/{eventId}
 ```
 
 #### 🔑 문서 ID
@@ -1107,7 +1107,6 @@ personalEvents/{eventId}
 
 | 필드명 | 타입 | 필수 | 기본값 | 설명 |
 |--------|------|------|--------|------|
-| `userId` | String | ✅ | - | 사용자 ID (이벤트 소유자) |
 | `title` | String | ✅ | - | 일정 제목 |
 | `emoji` | String | ❌ | null | 일정 대표 이모지 (AI 자동 생성) |
 | `description` | String | ❌ | null | 일정 설명 (메모) |
@@ -1123,12 +1122,13 @@ personalEvents/{eventId}
 | `updatedAt` | Timestamp | ✅ | - | 수정 시각 |
 
 > *`location.name`은 location Map이 존재할 경우 필수
+> userId는 경로(`users/{userId}`)에 내포되므로 문서에 별도 저장하지 않음
 
 #### 📝 예시 데이터
 
 ```json
+// 경로: users/sFeDJwqJbqScbSUp4Jz54MDlnFv1/personalEvents/xYz9Abc123Def456
 {
-  "userId": "sFeDJwqJbqScbSUp4Jz54MDlnFv1",
   "title": "병원 예약",
   "emoji": "🏥",
   "description": "정기 검진",
@@ -1148,18 +1148,19 @@ personalEvents/{eventId}
 
 #### 💡 설계 의도
 
-- **개인 소유**: 각 일정은 단일 사용자에게 귀속
-- **단순성**: 그룹/투표 없이 개인 스케줄만 관리
+- **서브컬렉션 구조**: 항상 단일 사용자 범위 내에서만 접근하므로 users 하위 서브컬렉션으로 구성
+- **단순성**: 그룹/투표 없이 개인 스케줄만 관리, userId 필드/복합 인덱스 불필요
 - **위치 정보 재사용**: promises 컬렉션과 동일한 LocationDTO 구조 사용
-- **쿼리 효율성**: userId + startAt 복합 인덱스로 빠른 조회
+- **보안**: 기존 `users/{userId}/{subcollection}/{docId}` 와일드카드 규칙으로 자동 보호
+- **쿼리 효율성**: startAt 단일 필드 인덱스 (Firestore 자동 생성)로 충분
 
 #### 🔍 쿼리 예시
 
-**특정 사용자의 일정 목록 (날짜순)**
+**활성 일정 조회 (날짜순)**
 ```swift
-db.collection("personalEvents")
-  .whereField("userId", isEqualTo: userId)
-  .order(by: "startAt", descending: false)
+db.collection("users").document(userId).collection("personalEvents")
+  .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: Date()))
+  .order(by: "startAt")
   .getDocuments()
 ```
 
@@ -1167,11 +1168,10 @@ db.collection("personalEvents")
 ```swift
 let startDate = Date()
 let endDate = Calendar.current.date(byAdding: .month, value: 1, to: startDate)!
-db.collection("personalEvents")
-  .whereField("userId", isEqualTo: userId)
+db.collection("users").document(userId).collection("personalEvents")
   .whereField("startAt", isGreaterThanOrEqualTo: startDate)
   .whereField("startAt", isLessThan: endDate)
-  .order(by: "startAt", descending: false)
+  .order(by: "startAt")
   .getDocuments()
 ```
 
@@ -1422,19 +1422,8 @@ service cloud.firestore {
     }
 
     // ===== 개인 일정 =====
-    match /personalEvents/{eventId} {
-      // 본인 일정만 읽기 가능
-      allow read: if request.auth != null &&
-                     resource.data.userId == request.auth.uid;
-
-      // 본인만 생성 가능 (userId가 자신이어야 함)
-      allow create: if request.auth != null &&
-                       request.resource.data.userId == request.auth.uid;
-
-      // 본인 일정만 수정/삭제 가능
-      allow update, delete: if request.auth != null &&
-                               resource.data.userId == request.auth.uid;
-    }
+    // users/{userId}/personalEvents/{eventId} → users 서브컬렉션 와일드카드 규칙으로 자동 보호
+    // match /{subcollection}/{docId} { allow read, write: if auth.uid == userId; }
   }
 }
 ```
@@ -1481,12 +1470,8 @@ service cloud.firestore {
 
 #### 5. personalEvents 컬렉션
 
-| 인덱스 이름 | 필드 | 순서 | 용도 |
-|------------|------|------|------|
-| `personalEvents_by_user_startAt` | userId | ASC | 사용자별 일정 조회 (날짜순) |
-|  | startAt | ASC |  |
-| `personalEvents_by_user_startAt_desc` | userId | ASC | 사용자별 일정 조회 (역순) |
-|  | startAt | DESC |  |
+서브컬렉션(`users/{userId}/personalEvents`)이므로 별도 복합 인덱스 불필요.
+`startAt` 단일 필드 인덱스는 Firestore가 자동 생성.
 
 ---
 
@@ -1542,11 +1527,11 @@ service cloud.firestore {
 |  |  | - Firestore Trigger 제거 (onPromiseWriteUpdateSnapshot 등) |  |
 |  |  | - 복합 인덱스 추가: groupId + isConfirmed + startAt |  |
 | 2.0 | 2026-02-07 | personalEvents 컬렉션 추가 | Claude |
-|  |  | - personalEvents 컬렉션 추가 (개인 일정 관리) |  |
-|  |  | - 필드: userId, title, emoji, description, startAt, endAt, location(Map), reminderMinutesBefore |  |
-|  |  | - location은 promises와 동일한 구조 (name, address, latitude, longitude) |  |
-|  |  | - Firestore Security Rules 추가 (본인만 CRUD 가능) |  |
-|  |  | - 복합 인덱스 추가: userId + startAt (ASC/DESC) |  |
+|  |  | - users/{userId}/personalEvents 서브컬렉션 추가 (개인 일정 관리) |  |
+|  |  | - 필드: title, emoji, description, startAt, endAt, location(Map), reminderMinutesBefore |  |
+|  |  | - userId는 경로에 내포 (문서 필드에서 제거) |  |
+|  |  | - 기존 users 서브컬렉션 와일드카드 Security Rules로 보호 |  |
+|  |  | - 복합 인덱스 불필요 (startAt 단일 필드 자동 인덱스) |  |
 
 ---
 

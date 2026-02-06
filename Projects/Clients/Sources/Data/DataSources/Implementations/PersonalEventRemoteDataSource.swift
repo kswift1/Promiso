@@ -4,33 +4,41 @@ import FirebaseFirestore
 import PromisoShared
 
 /// PersonalEvent 관련 Firestore CRUD 및 쿼리 작업을 담당하는 DataSource
+/// 경로: users/{userId}/personalEvents/{eventId}
 public class PersonalEventRemoteDataSource: PersonalEventRemoteDataSourceProtocol {
   private let firestore: FirestoreProviding
-  private let collectionName: String
+  private let subcollectionName: String
   private var db: Firestore { firestore.db }
 
   public init(
     firestore: FirestoreProviding = DefaultFirestoreProvider(),
-    collectionName: String = "personalEvents"
+    subcollectionName: String = "personalEvents"
   ) {
     self.firestore = firestore
-    self.collectionName = collectionName
+    self.subcollectionName = subcollectionName
+  }
+
+  // MARK: - Helper
+
+  /// 현재 사용자의 personalEvents 서브컬렉션 참조
+  private func eventsCollection() throws -> CollectionReference {
+    guard let currentUserId = Auth.auth().currentUser?.uid else {
+      throw NSError(domain: "PersonalEventRemoteDataSource", code: 401, userInfo: [
+        NSLocalizedDescriptionKey: "로그인이 필요합니다"
+      ])
+    }
+    return db.environmentCollection("users")
+      .document(currentUserId)
+      .collection(subcollectionName)
   }
 
   // MARK: - CRUD Operations
 
   /// 개인 일정 생성
   public func createEvent(_ event: PersonalEventModel) async throws -> String {
-    guard let currentUserId = Auth.auth().currentUser?.uid else {
-      throw NSError(domain: "PersonalEventRemoteDataSource", code: 401, userInfo: [
-        NSLocalizedDescriptionKey: "로그인이 필요합니다"
-      ])
-    }
-
-    var newEvent = event
-    newEvent.userId = currentUserId
-    let dto = PersonalEventDTO(model: newEvent)
-    let docRef = db.environmentCollection(collectionName).document()
+    let collection = try eventsCollection()
+    let dto = PersonalEventDTO(model: event)
+    let docRef = collection.document()
 
     try await docRef.setData(from: dto)
     AppLogger.personal.info("📅 [PersonalEvent] 일정 생성 성공: \(docRef.documentID)")
@@ -40,57 +48,27 @@ public class PersonalEventRemoteDataSource: PersonalEventRemoteDataSourceProtoco
 
   /// 개인 일정 업데이트
   public func updateEvent(_ event: PersonalEventModel) async throws {
-    guard let currentUserId = Auth.auth().currentUser?.uid else {
-      throw NSError(domain: "PersonalEventRemoteDataSource", code: 401, userInfo: [
-        NSLocalizedDescriptionKey: "로그인이 필요합니다"
-      ])
-    }
-
-    guard event.userId == currentUserId else {
-      throw NSError(domain: "PersonalEventRemoteDataSource", code: 403, userInfo: [
-        NSLocalizedDescriptionKey: "본인의 일정만 수정할 수 있습니다"
-      ])
-    }
+    let collection = try eventsCollection()
 
     var updatedEvent = event
     updatedEvent.updatedAt = Date()
     let dto = PersonalEventDTO(model: updatedEvent)
 
-    try await db.environmentCollection(collectionName).document(event.id).setData(from: dto)
+    try await collection.document(event.id).setData(from: dto)
     AppLogger.personal.info("📅 [PersonalEvent] 일정 업데이트 성공: \(event.id)")
   }
 
   /// 개인 일정 삭제
   public func deleteEvent(id: String) async throws {
-    guard let currentUserId = Auth.auth().currentUser?.uid else {
-      throw NSError(domain: "PersonalEventRemoteDataSource", code: 401, userInfo: [
-        NSLocalizedDescriptionKey: "로그인이 필요합니다"
-      ])
-    }
-
-    let docRef = db.environmentCollection(collectionName).document(id)
-    let document = try await docRef.getDocument()
-
-    guard document.exists else {
-      throw NSError(domain: "PersonalEventRemoteDataSource", code: 404, userInfo: [
-        NSLocalizedDescriptionKey: "일정을 찾을 수 없습니다"
-      ])
-    }
-
-    let dto = try document.data(as: PersonalEventDTO.self)
-    guard dto.userId == currentUserId else {
-      throw NSError(domain: "PersonalEventRemoteDataSource", code: 403, userInfo: [
-        NSLocalizedDescriptionKey: "본인의 일정만 삭제할 수 있습니다"
-      ])
-    }
-
-    try await docRef.delete()
+    let collection = try eventsCollection()
+    try await collection.document(id).delete()
     AppLogger.personal.info("📅 [PersonalEvent] 일정 삭제 성공: \(id)")
   }
 
   /// 개인 일정 조회
   public func getEvent(id: String) async throws -> PersonalEventModel? {
-    let document = try await db.environmentCollection(collectionName).document(id).getDocument()
+    let collection = try eventsCollection()
+    let document = try await collection.document(id).getDocument()
     return try documentSnapshotToEvent(document)
   }
 
@@ -98,14 +76,9 @@ public class PersonalEventRemoteDataSource: PersonalEventRemoteDataSourceProtoco
 
   /// 활성 일정 조회 (startAt >= now, 시간순)
   public func getActiveEvents(limit: Int) async throws -> [PersonalEventModel] {
-    guard let currentUserId = Auth.auth().currentUser?.uid else {
-      throw NSError(domain: "PersonalEventRemoteDataSource", code: 401, userInfo: [
-        NSLocalizedDescriptionKey: "로그인이 필요합니다"
-      ])
-    }
+    let collection = try eventsCollection()
 
-    let query = db.environmentCollection(collectionName)
-      .whereField("userId", isEqualTo: currentUserId)
+    let query = collection
       .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: Date()))
       .order(by: "startAt")
       .limit(to: limit)
@@ -116,14 +89,9 @@ public class PersonalEventRemoteDataSource: PersonalEventRemoteDataSourceProtoco
 
   /// 과거 일정 조회 (startAt < now, 최신순 정렬, 커서 기반 페이징)
   public func getPastEvents(limit: Int, lastStartAt: Date?) async throws -> [PersonalEventModel] {
-    guard let currentUserId = Auth.auth().currentUser?.uid else {
-      throw NSError(domain: "PersonalEventRemoteDataSource", code: 401, userInfo: [
-        NSLocalizedDescriptionKey: "로그인이 필요합니다"
-      ])
-    }
+    let collection = try eventsCollection()
 
-    var query = db.environmentCollection(collectionName)
-      .whereField("userId", isEqualTo: currentUserId)
+    var query = collection
       .whereField("startAt", isLessThan: Timestamp(date: Date()))
       .order(by: "startAt", descending: true)
 
@@ -154,20 +122,17 @@ public class PersonalEventRemoteDataSource: PersonalEventRemoteDataSourceProtoco
 
       AppLogger.personal.debug("📅 [PersonalEvent] AsyncStream 생성됨")
 
-      let query = db.environmentCollection(collectionName)
-        .whereField("userId", isEqualTo: currentUserId)
+      let collection = db.environmentCollection("users")
+        .document(currentUserId)
+        .collection(subcollectionName)
+
+      let query = collection
         .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: Date()))
         .order(by: "startAt")
         .limit(to: limit)
 
       AppLogger.personal.debug("📅 [PersonalEvent] Firestore 리스너 등록 중...")
-      let listener = query.addSnapshotListener { [weak self] snapshot, error in
-        guard let self = self else {
-          AppLogger.personal.warning("📅 [PersonalEvent] self가 nil")
-          continuation.yield([])
-          return
-        }
-
+      let listener = query.addSnapshotListener { snapshot, error in
         if let error = error {
           AppLogger.personal.error("📅 [PersonalEvent] Listener error: \(error.localizedDescription)")
           continuation.yield([])
@@ -214,7 +179,6 @@ public class PersonalEventRemoteDataSource: PersonalEventRemoteDataSourceProtoco
 // MARK: - Document Conversion Helper
 
 /// QueryDocumentSnapshot을 PersonalEventModel로 변환하는 헬퍼 함수
-/// TaskGroup 내에서도 사용 가능하도록 file-private으로 정의
 private func convertDocumentToEvent(_ document: QueryDocumentSnapshot) throws -> PersonalEventModel? {
   let dto = try document.data(as: PersonalEventDTO.self)
   return PersonalEventModel(dto: dto, id: document.documentID)
