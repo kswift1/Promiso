@@ -175,8 +175,8 @@ git commit -m "feat: 홈 화면 약속 목록 추가"
 git push origin feature/home-promise-list
 # GitHub에서 PR 생성: feature/home-promise-list → develop
 
-# 4. CI/CD 자동 실행
-# - 필요한 CI 상태 확인
+# 4. 검증 실행
+# - 로컬 테스트 또는 필요한 워크플로우 수동 실행
 # - 리뷰 후 승인
 
 # 5. develop에 병합
@@ -196,8 +196,8 @@ git checkout -b release/v1.2.0  # 선택적
 
 # GitHub에서 PR 생성: develop → staging
 
-# 2. CI/CD 자동 실행
-# - 필요한 CI 상태 확인
+# 2. 검증 실행
+# - 로컬 테스트 또는 필요한 워크플로우 수동 실행
 # - 리뷰 및 QA
 
 # 3. staging에 병합
@@ -213,8 +213,8 @@ git checkout -b release/v1.2.0  # 선택적
 # 1. staging → main PR
 # GitHub에서 PR 생성: staging → main
 
-# 2. CI/CD 자동 실행
-# - 필요한 CI 상태 확인
+# 2. 검증 실행
+# - 로컬 테스트 또는 필요한 워크플로우 수동 실행
 # - 최종 승인
 
 # 3. main에 병합
@@ -279,6 +279,7 @@ git branch -d hotfix/v1.2.1-123-login-crash
 - 브랜치 정책/병합 순서: 이 문서 기준
 - 워크플로우 트리거/잡/시크릿: [CI_CD.md](CI_CD.md)
 - 실제 배포 실행 절차: [DEPLOYMENT.md](DEPLOYMENT.md)
+- 참고: 현재 자동 트리거는 `PR → main`(PR Check)과 `release/** + infra/firebase/**`(Firebase Stage Auto)입니다.
 
 ---
 

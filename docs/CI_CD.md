@@ -17,15 +17,15 @@ Promiso 프로젝트의 GitHub Actions 기반 CI/CD 파이프라인 설명입니
 
 ## 개요
 
-Promiso는 다음 3가지 워크플로우로 자동화된 빌드/배포를 수행합니다.
+현재 저장소의 `.github/workflows/*.yml` 기준으로 다음 워크플로우가 동작합니다.
 
 | 워크플로우 | 트리거 | 목적 | 환경 |
 |-----------|--------|------|------|
-| **PR Check** | PR → main | 빌드 & 테스트 검증 | Dev |
+| **PR Check** | PR → main | iOS 빌드 & 테스트 검증 | Dev |
 | **Deploy iOS** | 수동 (workflow_dispatch) | TestFlight 배포 | Stage / Prod |
-| **Deploy Firebase** | 수동 (workflow_dispatch) | Functions & Rules 배포 | Stage / Prod |
-
-추가로 **Gemini Review Slack** 워크플로우가 Gemini Code Assist 봇의 리뷰를 Slack에 알립니다.
+| **Deploy Firebase** | 수동 (workflow_dispatch) | Firebase 배포 (Functions/Rules) | Stage / Prod |
+| **Deploy Firebase Stage (Auto)** | `push` to `release/**` + Firebase 경로 변경 | Stage 자동 배포 | Stage |
+| **Gemini Review Slack** | `pull_request_review` submitted | Gemini 리뷰 Slack 알림 | N/A |
 
 ---
 
@@ -92,7 +92,6 @@ env:
   GOOGLE_CLIENT_ID_DEV: ${{ secrets.GOOGLE_CLIENT_ID_DEV }}
   GOOGLE_REVERSED_CLIENT_ID_DEV: ${{ secrets.GOOGLE_REVERSED_CLIENT_ID_DEV }}
   KAKAO_NATIVE_APP_KEY_DEV: ${{ secrets.KAKAO_NATIVE_APP_KEY_DEV }}
-  KAKAO_REST_API_KEY_DEV: ${{ secrets.KAKAO_REST_API_KEY_DEV }}
 
   # Stage 환경 (선택)
   GOOGLE_CLIENT_ID_STAGE: ${{ secrets.GOOGLE_CLIENT_ID_STAGE }}
@@ -254,18 +253,16 @@ FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD  # 앱 전용 비밀번호
 GOOGLE_CLIENT_ID_STAGE
 GOOGLE_REVERSED_CLIENT_ID_STAGE
 KAKAO_NATIVE_APP_KEY_STAGE
-KAKAO_REST_API_KEY_STAGE
 GOOGLE_SERVICE_INFO_STAGE          # GoogleService-Info.plist (base64)
 
 # Production 환경 API 키
 GOOGLE_CLIENT_ID_PROD
 GOOGLE_REVERSED_CLIENT_ID_PROD
 KAKAO_NATIVE_APP_KEY_PROD
-KAKAO_REST_API_KEY_PROD
 GOOGLE_SERVICE_INFO_PROD           # GoogleService-Info.plist (base64)
 
 # Slack (선택)
-SLACK_WEBHOOK_URL                  # Slack 알림
+SLACK_WEBHOOK_URL_DEPLOY           # iOS 배포 Slack 알림
 ```
 
 ### 동시성 제어
@@ -288,7 +285,7 @@ concurrency:
 ## 3. Deploy Firebase 워크플로우
 
 ### 목적
-Firebase Functions, Firestore Rules, Storage Rules를 Stage 또는 Production 환경에 배포합니다.
+Firebase Functions, Firestore Rules, Storage Rules를 Stage 또는 Production 환경에 수동 배포합니다.
 
 ### 트리거 (수동)
 
@@ -319,7 +316,6 @@ GitHub Actions 페이지에서 **Actions** → **Deploy Firebase** → **Run wor
    - npm run build
    ↓
 5. Firebase 배포
-   ├─ Hosting 배포 (FirebaseExtended/action-hosting-deploy)
    ├─ Functions 배포 (firebase deploy --only functions)
    ├─ Firestore Rules 배포 (firebase deploy --only firestore:rules)
    └─ Storage Rules 배포 (firebase deploy --only storage)
@@ -337,15 +333,8 @@ GitHub Actions 페이지에서 **Actions** → **Deploy Firebase** → **Run wor
 ### 필수 Secrets
 
 ```bash
-# Firebase 서비스 계정 (JSON, base64 인코딩)
-FIREBASE_SERVICE_ACCOUNT_STAGE
-FIREBASE_SERVICE_ACCOUNT_PROD
-
 # Firebase CLI 토큰
 FIREBASE_TOKEN
-
-# GitHub Token (자동 생성)
-GITHUB_TOKEN
 
 # Slack (선택)
 SLACK_WEBHOOK_URL
@@ -353,30 +342,20 @@ SLACK_WEBHOOK_URL
 
 ### 배포 대상
 
-#### 1. Hosting
-
-```yaml
-- uses: FirebaseExtended/action-hosting-deploy@v0
-  with:
-    firebaseServiceAccount: '${{ secrets[needs.setup.outputs.service_account] }}'
-    projectId: ${{ needs.setup.outputs.project_id }}
-    channelId: live
-```
-
-#### 2. Functions
+#### 1. Functions
 
 ```bash
 firebase use $environment
 firebase deploy --only functions --token "$FIREBASE_TOKEN" --non-interactive
 ```
 
-#### 3. Firestore Rules
+#### 2. Firestore Rules
 
 ```bash
 firebase deploy --only firestore:rules --token "$FIREBASE_TOKEN" --non-interactive
 ```
 
-#### 4. Storage Rules
+#### 3. Storage Rules
 
 ```bash
 firebase deploy --only storage --token "$FIREBASE_TOKEN" --non-interactive
@@ -404,7 +383,51 @@ concurrency:
 
 ---
 
-## 4. Gemini Review Slack 워크플로우
+## 4. Deploy Firebase Stage (Auto) 워크플로우
+
+### 목적
+`release/**` 브랜치에서 Firebase 관련 변경이 푸시되면 Stage 환경에 자동 배포합니다.
+
+### 트리거 (자동)
+
+```yaml
+on:
+  push:
+    branches:
+      - 'release/**'
+    paths:
+      - 'infra/firebase/**'
+      - '.github/workflows/deploy-firebase-stage-auto.yml'
+```
+
+### 실행 단계
+
+```
+1. 체크아웃 및 Node.js 설정
+2. Functions 의존성 설치 (npm ci)
+3. Lint / Test(if exists) / Build
+4. Stage 배포
+   ├─ functions
+   ├─ firestore:rules
+   └─ storage
+5. Slack 알림 (성공/실패)
+```
+
+### 필수 Secrets
+
+```bash
+FIREBASE_TOKEN
+SLACK_WEBHOOK_URL_DEPLOY
+```
+
+### 주의사항
+
+- 이 워크플로우는 Stage 전용입니다.
+- 자동 트리거 조건은 `release/**` + Firebase 경로 변경입니다.
+
+---
+
+## 5. Gemini Review Slack 워크플로우
 
 ### 목적
 Gemini Code Assist 봇이 PR에 리뷰를 남기면 Slack으로 알림을 보냅니다.
@@ -437,7 +460,7 @@ Link: https://github.com/.../pull/42#discussion_r123
 
 ---
 
-## 5. 로컬에서 테스트하기
+## 6. 로컬에서 테스트하기
 
 ### PR Check 워크플로우 재현
 
@@ -538,7 +561,7 @@ firebase deploy --only storage
 
 ---
 
-## 6. 문제 해결
+## 7. 문제 해결
 
 ### PR Check 빌드 실패
 
@@ -660,14 +683,6 @@ firebase login:ci
 # 출력된 토큰을 GitHub Secrets에 저장
 ```
 
-2. Firebase 서비스 계정 확인:
-
-```bash
-# 서비스 계정 JSON을 base64로 인코딩
-base64 -i service-account.json | pbcopy
-# FIREBASE_SERVICE_ACCOUNT_STAGE 또는 _PROD에 저장
-```
-
 #### 문제: Firestore Rules 배포 실패
 
 ```
@@ -703,12 +718,12 @@ Canceling since a higher priority waiting request for 'ios-stage' exists
 ```
 
 **해결:**
-- 정상 동작입니다. 새 배포 요청이 이전 요청을 취소합니다.
-- 만약 취소하지 않으려면 `cancel-in-progress: false` 설정
+- `cancel-in-progress: true`인 워크플로우에서 발생할 수 있는 메시지입니다.
+- 현재 `Deploy iOS`/`Deploy Firebase`는 `cancel-in-progress: false`이므로 동일 환경 요청은 취소되지 않고 대기합니다.
 
 ---
 
-## 7. 워크플로우 커스터마이징
+## 8. 워크플로우 커스터마이징
 
 ### PR Check 워크플로우 수정
 
@@ -850,7 +865,7 @@ on:
 
 ---
 
-## 8. GitHub Actions 사용 팁
+## 9. GitHub Actions 사용 팁
 
 ### Secrets 관리
 
@@ -923,7 +938,7 @@ deploy:
 
 ---
 
-## 9. 참고 자료
+## 10. 참고 자료
 
 - [GitHub Actions 문서](https://docs.github.com/en/actions)
 - [Fastlane 문서](https://docs.fastlane.tools)
@@ -932,12 +947,10 @@ deploy:
 
 ### 관련 문서
 
-- [GITHUB_SECRETS.md](GITHUB_SECRETS.md) - GitHub Secrets 설정 가이드
-- [FASTLANE_SETUP.md](FASTLANE_SETUP.md) - Fastlane 초기 설정
+- [DEPLOYMENT.md](DEPLOYMENT.md) - 배포/시크릿 운영 기준
 - [ENVIRONMENT.md](ENVIRONMENT.md) - 환경별 설정 가이드
 - [BRANCH_STRATEGY.md](BRANCH_STRATEGY.md) - 브랜치 전략
 
 ---
 
-**문서 작성일**: 2026-02-01
-**마지막 업데이트**: 2026-02-01
+**마지막 업데이트**: 2026-02-06
