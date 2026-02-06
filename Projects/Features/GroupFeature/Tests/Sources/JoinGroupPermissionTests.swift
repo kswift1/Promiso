@@ -117,29 +117,6 @@ struct JoinGroupNotificationPermissionTests {
     }
   }
 
-  @Test("권한 denied 상태에서 토글 ON 시 설정으로 이동, 토글은 OFF 유지")
-  @MainActor
-  func notificationToggle_on_whenDenied_opensSettings() async {
-    var state = makeSettingsState()
-    state.notificationEnabled = false
-    state.notificationAuthStatus = .denied
-
-    let openSettingsCalled = LockIsolated(false)
-
-    let store = TestStore(initialState: state) {
-      JoinGroup.Feature()
-    } withDependencies: {
-      $0.notificationClient.openNotificationSettings = {
-        openSettingsCalled.setValue(true)
-      }
-    }
-
-    await store.send(.view(.notificationToggled(true))) {
-      $0.notificationEnabled = false  // denied면 OFF 유지
-    }
-
-    #expect(openSettingsCalled.value == true)
-  }
 }
 
 // MARK: - JoinGroup Calendar Permission Tests

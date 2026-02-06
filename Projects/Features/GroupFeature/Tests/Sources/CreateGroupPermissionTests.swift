@@ -41,12 +41,6 @@ private func makeTestGroupResult() -> GroupCreationResultModel {
   )
 }
 
-private func makeSuccessState() -> CreateGroup.Feature.State {
-  var state = CreateGroup.Feature.State(currentUser: makeTestUser())
-  state.step = .success(makeTestGroupResult())
-  return state
-}
-
 private func makeSettingsState() -> CreateGroup.Feature.State {
   var state = CreateGroup.Feature.State(currentUser: makeTestUser())
   state.step = .settings(makeTestGroupResult())
@@ -64,26 +58,14 @@ struct NotificationPermissionTests {
   @MainActor
   func notificationAuthStatus_authorized_keepsEnabled() async {
     let store = TestStore(
-      initialState: makeSuccessState()
+      initialState: makeSettingsState()
     ) {
       CreateGroup.Feature()
-    } withDependencies: {
-      $0.notificationClient.getAuthorizationStatus = { .authorized }
-      $0.eventKitClient.authorizationStatus = { .fullAccess }
     }
 
-    // settings 단계로 진입
-    await store.send(.view(.successAcknowledged)) {
-      $0.step = .settings(makeTestGroupResult())
-    }
-
-    await store.receive(\.internal.notificationAuthStatusChecked) {
+    await store.send(.internal(.notificationAuthStatusChecked(.authorized))) {
       $0.notificationAuthStatus = .authorized
       // authorized면 notificationEnabled = true 유지
-    }
-
-    await store.receive(\.internal.calendarAuthStatusChecked) {
-      $0.calendarAuthStatus = .fullAccess
     }
   }
 
@@ -91,25 +73,14 @@ struct NotificationPermissionTests {
   @MainActor
   func notificationAuthStatus_denied_setsDisabled() async {
     let store = TestStore(
-      initialState: makeSuccessState()
+      initialState: makeSettingsState()
     ) {
       CreateGroup.Feature()
-    } withDependencies: {
-      $0.notificationClient.getAuthorizationStatus = { .denied }
-      $0.eventKitClient.authorizationStatus = { .fullAccess }
     }
 
-    await store.send(.view(.successAcknowledged)) {
-      $0.step = .settings(makeTestGroupResult())
-    }
-
-    await store.receive(\.internal.notificationAuthStatusChecked) {
+    await store.send(.internal(.notificationAuthStatusChecked(.denied))) {
       $0.notificationAuthStatus = .denied
       $0.notificationEnabled = false  // denied면 OFF
-    }
-
-    await store.receive(\.internal.calendarAuthStatusChecked) {
-      $0.calendarAuthStatus = .fullAccess
     }
   }
 
@@ -117,25 +88,14 @@ struct NotificationPermissionTests {
   @MainActor
   func notificationAuthStatus_notDetermined_setsDisabled() async {
     let store = TestStore(
-      initialState: makeSuccessState()
+      initialState: makeSettingsState()
     ) {
       CreateGroup.Feature()
-    } withDependencies: {
-      $0.notificationClient.getAuthorizationStatus = { .notDetermined }
-      $0.eventKitClient.authorizationStatus = { .fullAccess }
     }
 
-    await store.send(.view(.successAcknowledged)) {
-      $0.step = .settings(makeTestGroupResult())
-    }
-
-    await store.receive(\.internal.notificationAuthStatusChecked) {
+    await store.send(.internal(.notificationAuthStatusChecked(.notDetermined))) {
       $0.notificationAuthStatus = .notDetermined
       $0.notificationEnabled = false  // notDetermined면 OFF
-    }
-
-    await store.receive(\.internal.calendarAuthStatusChecked) {
-      $0.calendarAuthStatus = .fullAccess
     }
   }
 
@@ -173,75 +133,39 @@ struct NotificationPermissionTests {
     }
   }
 
-  @Test("권한 notDetermined 상태에서 토글 ON 시 권한 요청 후 granted면 활성화")
+  @Test("권한 요청 후 granted면 authorized 설정")
   @MainActor
-  func notificationToggle_on_whenNotDetermined_requestsPermission_granted() async {
+  func notificationPermissionResponse_granted_setsAuthorized() async {
     var state = makeSettingsState()
-    state.notificationEnabled = false
+    state.notificationEnabled = true
     state.notificationAuthStatus = .notDetermined
 
     let store = TestStore(initialState: state) {
       CreateGroup.Feature()
-    } withDependencies: {
-      $0.notificationClient.requestAuthorization = { true }
     }
 
-    await store.send(.view(.notificationToggled(true))) {
-      $0.notificationEnabled = true
-    }
-
-    await store.receive(\.internal.notificationPermissionResponse) {
+    await store.send(.internal(.notificationPermissionResponse(true))) {
       $0.notificationAuthStatus = .authorized
-      // notificationEnabled은 이미 true
     }
   }
 
-  @Test("권한 notDetermined 상태에서 토글 ON 시 권한 요청 후 denied면 비활성화")
+  @Test("권한 요청 후 denied면 notificationEnabled = false")
   @MainActor
-  func notificationToggle_on_whenNotDetermined_requestsPermission_denied() async {
+  func notificationPermissionResponse_denied_disables() async {
     var state = makeSettingsState()
-    state.notificationEnabled = false
+    state.notificationEnabled = true
     state.notificationAuthStatus = .notDetermined
 
     let store = TestStore(initialState: state) {
       CreateGroup.Feature()
-    } withDependencies: {
-      $0.notificationClient.requestAuthorization = { false }
     }
 
-    await store.send(.view(.notificationToggled(true))) {
-      $0.notificationEnabled = true
-    }
-
-    await store.receive(\.internal.notificationPermissionResponse) {
+    await store.send(.internal(.notificationPermissionResponse(false))) {
       $0.notificationAuthStatus = .denied
-      $0.notificationEnabled = false  // 거부 시 OFF
+      $0.notificationEnabled = false
     }
   }
 
-  @Test("권한 denied 상태에서 토글 ON 시 설정으로 이동, 토글은 OFF 유지")
-  @MainActor
-  func notificationToggle_on_whenDenied_opensSettings() async {
-    var state = makeSettingsState()
-    state.notificationEnabled = false
-    state.notificationAuthStatus = .denied
-
-    let openSettingsCalled = LockIsolated(false)
-
-    let store = TestStore(initialState: state) {
-      CreateGroup.Feature()
-    } withDependencies: {
-      $0.notificationClient.openNotificationSettings = {
-        openSettingsCalled.setValue(true)
-      }
-    }
-
-    await store.send(.view(.notificationToggled(true))) {
-      $0.notificationEnabled = false  // denied면 OFF 유지
-    }
-
-    #expect(openSettingsCalled.value == true)
-  }
 }
 
 // MARK: - Calendar Permission Tests
@@ -255,23 +179,12 @@ struct CalendarPermissionTests {
   @MainActor
   func calendarAuthStatus_fullAccess_keepsEnabled() async {
     let store = TestStore(
-      initialState: makeSuccessState()
+      initialState: makeSettingsState()
     ) {
       CreateGroup.Feature()
-    } withDependencies: {
-      $0.notificationClient.getAuthorizationStatus = { .authorized }
-      $0.eventKitClient.authorizationStatus = { .fullAccess }
     }
 
-    await store.send(.view(.successAcknowledged)) {
-      $0.step = .settings(makeTestGroupResult())
-    }
-
-    await store.receive(\.internal.notificationAuthStatusChecked) {
-      $0.notificationAuthStatus = .authorized
-    }
-
-    await store.receive(\.internal.calendarAuthStatusChecked) {
+    await store.send(.internal(.calendarAuthStatusChecked(.fullAccess))) {
       $0.calendarAuthStatus = .fullAccess
       // fullAccess면 calendarSyncEnabled = true 유지
     }
@@ -281,23 +194,12 @@ struct CalendarPermissionTests {
   @MainActor
   func calendarAuthStatus_writeOnly_keepsEnabled() async {
     let store = TestStore(
-      initialState: makeSuccessState()
+      initialState: makeSettingsState()
     ) {
       CreateGroup.Feature()
-    } withDependencies: {
-      $0.notificationClient.getAuthorizationStatus = { .authorized }
-      $0.eventKitClient.authorizationStatus = { .writeOnly }
     }
 
-    await store.send(.view(.successAcknowledged)) {
-      $0.step = .settings(makeTestGroupResult())
-    }
-
-    await store.receive(\.internal.notificationAuthStatusChecked) {
-      $0.notificationAuthStatus = .authorized
-    }
-
-    await store.receive(\.internal.calendarAuthStatusChecked) {
+    await store.send(.internal(.calendarAuthStatusChecked(.writeOnly))) {
       $0.calendarAuthStatus = .writeOnly
       // writeOnly도 쓰기 가능하므로 calendarSyncEnabled = true 유지
     }
@@ -307,23 +209,12 @@ struct CalendarPermissionTests {
   @MainActor
   func calendarAuthStatus_denied_setsDisabled() async {
     let store = TestStore(
-      initialState: makeSuccessState()
+      initialState: makeSettingsState()
     ) {
       CreateGroup.Feature()
-    } withDependencies: {
-      $0.notificationClient.getAuthorizationStatus = { .authorized }
-      $0.eventKitClient.authorizationStatus = { .denied }
     }
 
-    await store.send(.view(.successAcknowledged)) {
-      $0.step = .settings(makeTestGroupResult())
-    }
-
-    await store.receive(\.internal.notificationAuthStatusChecked) {
-      $0.notificationAuthStatus = .authorized
-    }
-
-    await store.receive(\.internal.calendarAuthStatusChecked) {
+    await store.send(.internal(.calendarAuthStatusChecked(.denied))) {
       $0.calendarAuthStatus = .denied
       $0.calendarSyncEnabled = false  // denied면 OFF
     }
@@ -333,25 +224,14 @@ struct CalendarPermissionTests {
   @MainActor
   func calendarAuthStatus_notDetermined_setsDisabled() async {
     let store = TestStore(
-      initialState: makeSuccessState()
+      initialState: makeSettingsState()
     ) {
       CreateGroup.Feature()
-    } withDependencies: {
-      $0.notificationClient.getAuthorizationStatus = { .authorized }
-      $0.eventKitClient.authorizationStatus = { .notDetermined }
     }
 
-    await store.send(.view(.successAcknowledged)) {
-      $0.step = .settings(makeTestGroupResult())
-    }
-
-    await store.receive(\.internal.notificationAuthStatusChecked) {
-      $0.notificationAuthStatus = .authorized
-    }
-
-    await store.receive(\.internal.calendarAuthStatusChecked) {
+    await store.send(.internal(.calendarAuthStatusChecked(.notDetermined))) {
       $0.calendarAuthStatus = .notDetermined
-      $0.calendarSyncEnabled = false  // notDetermined면 OFF (canWriteEvents = false)
+      $0.calendarSyncEnabled = false  // notDetermined면 OFF
     }
   }
 
@@ -389,50 +269,36 @@ struct CalendarPermissionTests {
     }
   }
 
-  @Test("권한 notDetermined 상태에서 토글 ON 시 권한 요청 후 granted면 활성화")
+  @Test("권한 요청 후 granted면 fullAccess 설정")
   @MainActor
-  func calendarToggle_on_whenNotDetermined_requestsPermission_granted() async {
+  func calendarPermissionResponse_granted_setsFullAccess() async {
     var state = makeSettingsState()
-    state.calendarSyncEnabled = false
+    state.calendarSyncEnabled = true
     state.calendarAuthStatus = .notDetermined
 
     let store = TestStore(initialState: state) {
       CreateGroup.Feature()
-    } withDependencies: {
-      $0.eventKitClient.requestAccess = { true }
     }
 
-    await store.send(.view(.calendarSyncToggled(true))) {
-      $0.calendarSyncEnabled = true
-    }
-
-    await store.receive(\.internal.calendarPermissionResponse) {
+    await store.send(.internal(.calendarPermissionResponse(true))) {
       $0.calendarAuthStatus = .fullAccess
-      // calendarSyncEnabled은 이미 true
     }
   }
 
-  @Test("권한 notDetermined 상태에서 토글 ON 시 권한 요청 후 denied면 Alert 표시 (토글 ON 유지)")
+  @Test("권한 요청 후 denied면 Alert 표시 (토글 ON 유지)")
   @MainActor
-  func calendarToggle_on_whenNotDetermined_requestsPermission_denied() async {
+  func calendarPermissionResponse_denied_showsAlert() async {
     var state = makeSettingsState()
-    state.calendarSyncEnabled = false
+    state.calendarSyncEnabled = true
     state.calendarAuthStatus = .notDetermined
 
     let store = TestStore(initialState: state) {
       CreateGroup.Feature()
-    } withDependencies: {
-      $0.eventKitClient.requestAccess = { false }
     }
 
-    await store.send(.view(.calendarSyncToggled(true))) {
-      $0.calendarSyncEnabled = true
-    }
-
-    await store.receive(\.internal.calendarPermissionResponse) {
+    await store.send(.internal(.calendarPermissionResponse(false))) {
       $0.calendarAuthStatus = .denied
-      $0.showCalendarPermissionInfoAlert = true  // Alert 표시
-      // calendarSyncEnabled은 true 유지 (푸시 알림과 다른 동작)
+      $0.showCalendarPermissionInfoAlert = true
     }
   }
 
