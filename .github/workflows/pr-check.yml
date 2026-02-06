@@ -2,7 +2,7 @@ name: PR Check
 
 on:
   pull_request:
-    branches: [main]
+    branches: [develop, staging, main]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

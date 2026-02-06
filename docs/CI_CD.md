@@ -21,7 +21,7 @@ Promiso 프로젝트의 GitHub Actions 기반 CI/CD 파이프라인 설명입니
 
 | 워크플로우 | 트리거 | 목적 | 환경 |
 |-----------|--------|------|------|
-| **PR Check** | PR → main | iOS 빌드 & 테스트 검증 | Dev |
+| **PR Check** | PR → develop/staging/main | iOS 빌드 & 테스트 검증 | Dev |
 | **Deploy iOS** | 수동 (workflow_dispatch) | TestFlight 배포 | Stage / Prod |
 | **Deploy Firebase** | 수동 (workflow_dispatch) | Firebase 배포 (Functions/Rules) | Stage / Prod |
 | **Deploy Firebase Stage (Auto)** | `push` to `release/**` + Firebase 경로 변경 | Stage 자동 배포 | Stage |
@@ -32,13 +32,13 @@ Promiso 프로젝트의 GitHub Actions 기반 CI/CD 파이프라인 설명입니
 ## 1. PR Check 워크플로우
 
 ### 목적
-main 브랜치로의 PR 생성 시 자동으로 빌드 & 테스트를 실행하여 코드 품질을 검증합니다.
+`develop`, `staging`, `main` 브랜치 대상 PR에서 빌드 & 테스트를 실행하여 코드 품질을 검증합니다.
 
 ### 트리거
 ```yaml
 on:
   pull_request:
-    branches: [main]
+    branches: [develop, staging, main]
 ```
 
 ### 실행 단계
@@ -465,14 +465,18 @@ Link: https://github.com/.../pull/42#discussion_r123
 ### PR Check 워크플로우 재현
 
 ```bash
-# 1. 환경변수 설정 (.env 파일)
-cat > .env <<EOF
-GOOGLE_CLIENT_ID_DEV=your_dev_client_id
-GOOGLE_REVERSED_CLIENT_ID_DEV=com.googleusercontent.apps.xxx
-KAKAO_NATIVE_APP_KEY_DEV=your_kakao_key
-KAKAO_REST_API_KEY_DEV=your_kakao_rest_key
-# ... (Stage, Prod 환경도 동일)
-EOF
+# 1. 워크플로우와 동일한 최소 환경변수 설정
+export GOOGLE_CLIENT_ID_DEV="your_dev_client_id"
+export GOOGLE_REVERSED_CLIENT_ID_DEV="com.googleusercontent.apps.dev"
+export KAKAO_NATIVE_APP_KEY_DEV="your_dev_kakao_native_key"
+
+export GOOGLE_CLIENT_ID_STAGE="your_stage_client_id"
+export GOOGLE_REVERSED_CLIENT_ID_STAGE="com.googleusercontent.apps.stage"
+export KAKAO_NATIVE_APP_KEY_STAGE="your_stage_kakao_native_key"
+
+export GOOGLE_CLIENT_ID_PROD="your_prod_client_id"
+export GOOGLE_REVERSED_CLIENT_ID_PROD="com.googleusercontent.apps.prod"
+export KAKAO_NATIVE_APP_KEY_PROD="your_prod_kakao_native_key"
 
 # 2. xcconfig 파일 생성
 ./scripts/generate-xcconfig.sh
@@ -510,7 +514,6 @@ export CHANGELOG="로컬에서 테스트 빌드"
 export GOOGLE_CLIENT_ID_STAGE="..."
 export GOOGLE_REVERSED_CLIENT_ID_STAGE="..."
 export KAKAO_NATIVE_APP_KEY_STAGE="..."
-export KAKAO_REST_API_KEY_STAGE="..."
 
 # 2. xcconfig 파일 생성 (Stage만)
 TARGET_ENV=stage ./scripts/generate-xcconfig.sh
@@ -546,17 +549,18 @@ npm run build
 # 4. Firebase 환경 전환 (Stage)
 cd ..
 firebase use stage
+export FIREBASE_TOKEN="your_firebase_token"
 
 # 5. 배포
-firebase deploy --only functions
-firebase deploy --only firestore:rules
-firebase deploy --only storage
+firebase deploy --only functions --token "$FIREBASE_TOKEN" --non-interactive
+firebase deploy --only firestore:rules --token "$FIREBASE_TOKEN" --non-interactive
+firebase deploy --only storage --token "$FIREBASE_TOKEN" --non-interactive
 
 # Production 배포
 firebase use prod
-firebase deploy --only functions
-firebase deploy --only firestore:rules
-firebase deploy --only storage
+firebase deploy --only functions --token "$FIREBASE_TOKEN" --non-interactive
+firebase deploy --only firestore:rules --token "$FIREBASE_TOKEN" --non-interactive
+firebase deploy --only storage --token "$FIREBASE_TOKEN" --non-interactive
 ```
 
 ---

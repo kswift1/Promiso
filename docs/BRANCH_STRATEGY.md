@@ -279,7 +279,7 @@ git branch -d hotfix/v1.2.1-123-login-crash
 - 브랜치 정책/병합 순서: 이 문서 기준
 - 워크플로우 트리거/잡/시크릿: [CI_CD.md](CI_CD.md)
 - 실제 배포 실행 절차: [DEPLOYMENT.md](DEPLOYMENT.md)
-- 참고: 현재 자동 트리거는 `PR → main`(PR Check)과 `release/** + infra/firebase/**`(Firebase Stage Auto)입니다.
+- 참고: 현재 자동 트리거는 `PR → develop/staging/main`(PR Check)과 `release/** + infra/firebase/**`(Firebase Stage Auto)입니다.
 
 ---
 
