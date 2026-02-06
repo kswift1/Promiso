@@ -181,7 +181,7 @@ describe('createGroup', () => {
       expect(mockGroupRef.set).toHaveBeenCalled();
     });
 
-    it.skip('description과 imageUrl 없이도 그룹을 생성한다', async () => {
+    it('description과 imageUrl 없이도 그룹을 생성한다', async () => {
       // Given
       const request = {
         data: {
@@ -195,7 +195,8 @@ describe('createGroup', () => {
       };
 
       // When
-      const result = await createGroup(request);
+      const handler = (createGroup as any).run;
+      const result = await handler(request);
 
       // Then
       expect(result).toBeDefined();
@@ -419,25 +420,27 @@ describe('previewGroup', () => {
       expect(result.members.length).toBe(3);
     });
 
-    it.skip('소문자 초대 코드도 대문자로 변환하여 처리한다', async () => {
+    it('소문자 초대 코드도 대문자로 변환하여 처리한다', async () => {
       const request = {
         data: { inviteCode: 'abc123' },
         auth: undefined,
       };
 
-      const result = await previewGroup(request);
+      const handler = (previewGroup as any).run;
+      const result = await handler(request);
 
       expect(result).toBeDefined();
       expect(result.groupName).toBe('테스트 그룹');
     });
 
-    it.skip('인증 없이도 호출 가능하다', async () => {
+    it('인증 없이도 호출 가능하다', async () => {
       const request = {
         data: { inviteCode: 'ABC123' },
         auth: undefined,
       };
 
-      await expect(previewGroup(request)).resolves.toBeDefined();
+      const handler = (previewGroup as any).run;
+      await expect(handler(request)).resolves.toBeDefined();
     });
   });
 
