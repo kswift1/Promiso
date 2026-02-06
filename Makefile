@@ -24,7 +24,7 @@ FORCE ?=
 setup:
 	@echo "🚀 Promiso 프로젝트 초기 설정 중..."
 	@echo ""
-	@echo "1/4 mise 설정 신뢰..."
+	@echo "1/5 mise 설정 신뢰..."
 	@if command -v mise >/dev/null 2>&1; then \
 		mise trust 2>/dev/null || true; \
 		mise settings set experimental true 2>/dev/null || true; \
@@ -33,11 +33,17 @@ setup:
 	else \
 		echo "  ⚠️  mise가 설치되어 있지 않습니다."; \
 	fi
-	@echo "2/4 Tuist 의존성 설치..."
+	@echo "2/5 Tuist 의존성 설치..."
 	@tuist install
-	@echo "3/4 Xcode 프로젝트 생성..."
+	@echo "3/5 Firebase Functions 의존성 pull..."
+	@if command -v npm >/dev/null 2>&1; then \
+		npm --prefix infra/firebase/functions ci; \
+	else \
+		echo "  ⚠️  npm이 설치되어 있지 않습니다. Functions 의존성 설치를 건너뜁니다."; \
+	fi
+	@echo "4/5 Xcode 프로젝트 생성..."
 	@tuist generate
-	@echo "4/4 Git Hooks 설치 (보안)..."
+	@echo "5/5 Git Hooks 설치 (보안)..."
 	@./scripts/install-git-hooks.sh
 	@echo ""
 	@echo "✅ 초기 설정 완료!"
