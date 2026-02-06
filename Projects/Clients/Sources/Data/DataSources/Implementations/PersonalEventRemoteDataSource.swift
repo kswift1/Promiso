@@ -27,7 +27,9 @@ public class PersonalEventRemoteDataSource: PersonalEventRemoteDataSourceProtoco
       ])
     }
 
-    let dto = PersonalEventDTO(model: event)
+    var newEvent = event
+    newEvent.userId = currentUserId
+    let dto = PersonalEventDTO(model: newEvent)
     let docRef = db.environmentCollection(collectionName).document()
 
     try await docRef.setData(from: dto)

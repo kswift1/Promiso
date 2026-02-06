@@ -1109,16 +1109,20 @@ personalEvents/{eventId}
 |--------|------|------|--------|------|
 | `userId` | String | ✅ | - | 사용자 ID (이벤트 소유자) |
 | `title` | String | ✅ | - | 일정 제목 |
-| `emoji` | String | ❌ | null | 일정 대표 이모지 |
-| `description` | String | ❌ | null | 일정 설명 |
+| `emoji` | String | ❌ | null | 일정 대표 이모지 (AI 자동 생성) |
+| `description` | String | ❌ | null | 일정 설명 (메모) |
 | `startAt` | Timestamp | ✅ | - | 시작 시각 |
 | `endAt` | Timestamp | ❌ | null | 종료 시각 |
-| `location` | String | ❌ | null | 장소명 (단순 텍스트) |
-| `isAllDay` | Boolean | ✅ | false | 종일 일정 여부 |
-| `color` | String | ❌ | null | 일정 색상 (hex 코드) |
-| `reminder` | Number | ❌ | null | 알림 시간 (분 단위, 예: 30 = 30분 전) |
+| `location` | Map | ❌ | null | 장소 정보 (아래 참조) |
+| `location.name` | String | ✅* | - | 장소명 |
+| `location.address` | String | ❌ | null | 주소 |
+| `location.latitude` | Number | ❌ | null | 위도 |
+| `location.longitude` | Number | ❌ | null | 경도 |
+| `reminderMinutesBefore` | Number | ❌ | null | 알림 시간 (분 단위, 예: 30 = 30분 전) |
 | `createdAt` | Timestamp | ✅ | - | 생성 시각 |
 | `updatedAt` | Timestamp | ✅ | - | 수정 시각 |
+
+> *`location.name`은 location Map이 존재할 경우 필수
 
 #### 📝 예시 데이터
 
@@ -1130,10 +1134,13 @@ personalEvents/{eventId}
   "description": "정기 검진",
   "startAt": "2026-02-10T14:00:00+09:00",
   "endAt": "2026-02-10T15:00:00+09:00",
-  "location": "서울대병원",
-  "isAllDay": false,
-  "color": "#FF5733",
-  "reminder": 60,
+  "location": {
+    "name": "서울대병원",
+    "address": "서울특별시 종로구 대학로 101",
+    "latitude": 37.5796,
+    "longitude": 126.9990
+  },
+  "reminderMinutesBefore": 60,
   "createdAt": "2026-02-07T10:00:00+09:00",
   "updatedAt": "2026-02-07T10:00:00+09:00"
 }
@@ -1143,7 +1150,7 @@ personalEvents/{eventId}
 
 - **개인 소유**: 각 일정은 단일 사용자에게 귀속
 - **단순성**: 그룹/투표 없이 개인 스케줄만 관리
-- **유연성**: 색상, 알림 등 개인화 옵션 제공
+- **위치 정보 재사용**: promises 컬렉션과 동일한 LocationDTO 구조 사용
 - **쿼리 효율성**: userId + startAt 복합 인덱스로 빠른 조회
 
 #### 🔍 쿼리 예시
@@ -1536,7 +1543,8 @@ service cloud.firestore {
 |  |  | - 복합 인덱스 추가: groupId + isConfirmed + startAt |  |
 | 2.0 | 2026-02-07 | personalEvents 컬렉션 추가 | Claude |
 |  |  | - personalEvents 컬렉션 추가 (개인 일정 관리) |  |
-|  |  | - 필드: userId, title, emoji, startAt, endAt, location, isAllDay, color, reminder 등 |  |
+|  |  | - 필드: userId, title, emoji, description, startAt, endAt, location(Map), reminderMinutesBefore |  |
+|  |  | - location은 promises와 동일한 구조 (name, address, latitude, longitude) |  |
 |  |  | - Firestore Security Rules 추가 (본인만 CRUD 가능) |  |
 |  |  | - 복합 인덱스 추가: userId + startAt (ASC/DESC) |  |
 
