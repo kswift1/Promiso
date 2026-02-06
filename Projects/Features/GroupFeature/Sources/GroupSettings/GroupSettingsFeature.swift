@@ -96,11 +96,6 @@ extension GroupSettings {
         isHost && members.count > 1
       }
 
-      /// 추방 대상 목록 (본인 제외)
-      var expelCandidates: [UserPublicModel] {
-        members.filter { $0.userId != currentUserId }
-      }
-
       var isProPlan: Bool {
         userPlan == .pro
       }
