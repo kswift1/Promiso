@@ -53,8 +53,7 @@ extension PersonalMode {
       var selectedFilter: EventFilter = .upcoming
       @Shared var currentUser: UserPrivateModel
 
-      // TODO: 나중에 추가 예정
-      // @Presents var createEvent: CreatePersonalEvent.Feature.State?
+      @Presents var createEvent: CreatePersonalEvent.Feature.State?
 
       public init(currentUser: Shared<UserPrivateModel>) {
         self._currentUser = currentUser
@@ -114,6 +113,7 @@ extension PersonalMode {
     public enum Action: Sendable {
       case view(View)
       case `internal`(Internal)
+      case createEvent(PresentationAction<CreatePersonalEvent.Feature.Action>)
 
       public enum View: Sendable {
         case onAppear
@@ -152,11 +152,10 @@ extension PersonalMode {
 
           case .filterChanged(let filter):
             state.selectedFilter = filter
-            // 과거 필터는 별도 fetch 필요 시 구현
             return .none
 
           case .createNewEventTapped:
-            // TODO: CreatePersonalEvent 화면 열기
+            state.createEvent = CreatePersonalEvent.Feature.State()
             return .none
 
           case .eventTapped:
@@ -181,8 +180,14 @@ extension PersonalMode {
               state.eventsState = .loading
             }
             return .run { send in
+              var hasReceived = false
               for await events in personalEventClient.subscribeToActiveEvents(50) {
+                hasReceived = true
                 await send(.internal(.eventsUpdated(events)))
+              }
+              // 스트림이 값 없이 종료된 경우 (Auth 미로그인, Firestore 에러 등)
+              if !hasReceived {
+                await send(.internal(.eventsUpdated([])))
               }
             }
             .cancellable(id: CancelID.eventSubscription, cancelInFlight: true)
@@ -196,14 +201,29 @@ extension PersonalMode {
             return .none
 
           case .eventDeleted:
-            // 구독 중이므로 자동 업데이트
             return .none
 
           case .eventDeleteFailed(let message):
             state.eventsState = .failed(AppError(message: message))
             return .none
           }
+
+        // MARK: - CreateEvent Delegate
+
+        case .createEvent(.presented(.delegate(.eventCreated))):
+          state.createEvent = nil
+          return .none
+
+        case .createEvent(.presented(.delegate(.dismiss))):
+          state.createEvent = nil
+          return .none
+
+        case .createEvent:
+          return .none
         }
+      }
+      .ifLet(\.$createEvent, action: \.createEvent) {
+        CreatePersonalEvent.Feature()
       }
     }
   }

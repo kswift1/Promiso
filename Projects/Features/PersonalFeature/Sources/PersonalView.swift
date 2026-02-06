@@ -33,6 +33,11 @@ extension PersonalMode {
       .onAppear {
         store.send(.view(.onAppear))
       }
+      .sheet(
+        item: $store.scope(state: \.createEvent, action: \.createEvent)
+      ) { createEventStore in
+        CreatePersonalEvent.RootView(store: createEventStore)
+      }
     }
 
     // MARK: - Header

@@ -145,6 +145,7 @@ public class PersonalEventRemoteDataSource: PersonalEventRemoteDataSourceProtoco
     return AsyncStream { continuation in
       guard let currentUserId = Auth.auth().currentUser?.uid else {
         AppLogger.personal.error("📅 [PersonalEvent] 로그인 필요")
+        continuation.yield([])
         continuation.finish()
         return
       }
@@ -161,16 +162,19 @@ public class PersonalEventRemoteDataSource: PersonalEventRemoteDataSourceProtoco
       let listener = query.addSnapshotListener { [weak self] snapshot, error in
         guard let self = self else {
           AppLogger.personal.warning("📅 [PersonalEvent] self가 nil")
+          continuation.yield([])
           return
         }
 
         if let error = error {
           AppLogger.personal.error("📅 [PersonalEvent] Listener error: \(error.localizedDescription)")
+          continuation.yield([])
           return
         }
 
         guard let snapshot = snapshot else {
           AppLogger.personal.warning("📅 [PersonalEvent] snapshot이 nil")
+          continuation.yield([])
           return
         }
 
