@@ -368,75 +368,23 @@ firebase login:ci
 
 ### 자동 배포 (CI/CD)
 
-GitHub Actions를 통해 자동으로 TestFlight에 배포합니다.
+자동 배포의 워크플로우 정의/트리거/시크릿 상세는 `docs/CI_CD.md`를 기준으로 관리합니다.
 
-#### 워크플로우 트리거
+운영자가 실행할 최소 절차:
 
-**`.github/workflows/deploy-ios.yml`** 워크플로우는 **수동 트리거**만 지원합니다:
+1. GitHub Actions에서 `Deploy iOS` 실행
+2. `Environment`(`stage`/`prod`)와 변경 요약 입력
+3. 완료 후 TestFlight 빌드 생성 및 배포 그룹 반영 확인
 
-```bash
-# GitHub Actions 탭에서 "Deploy iOS" 워크플로우 선택
-# → "Run workflow" 클릭
-# → Environment 선택 (stage 또는 prod)
-# → Changelog 입력
-# → "Run workflow" 실행
-```
+브랜치 기준:
 
-#### 배포 과정
+- `stage` 배포: `staging` 기준
+- `prod` 배포: `main` 기준
 
-자동 배포 워크플로우는 다음 단계를 수행합니다:
+참고:
 
-```
-1. 환경 설정 (Xcode, Tuist, Ruby)
-2. xcconfig 파일 생성 (환경별)
-3. Firebase plist 파일 복사 (환경별)
-4. App Store Connect API Key 설정
-5. 프로젝트 생성 (tuist generate)
-6. Fastlane 실행 (beta_stage 또는 beta_prod)
-   ├─ Match로 인증서/프로파일 다운로드
-   ├─ 빌드 번호 자동 증가
-   ├─ Archive 및 Export
-   └─ TestFlight 업로드
-7. 빌드 아티팩트 업로드 (실패 시)
-```
-
-**예상 시간**: 15-25분
-
-#### Stage 배포
-
-**브랜치**: `staging`
-
-```bash
-# GitHub Actions 탭
-# → "Deploy iOS" 워크플로우
-# → "Run workflow"
-# → Environment: stage
-# → Changelog: "Stage 빌드 - QA 테스트용"
-# → "Run workflow" 클릭
-```
-
-**TestFlight 설정**:
-- 배포 대상: `Stage Testers` 그룹
-- 외부 테스터 알림: ✅
-- 자동 심사 제출: ✅
-
-#### Production 배포
-
-**브랜치**: `main`
-
-```bash
-# GitHub Actions 탭
-# → "Deploy iOS" 워크플로우
-# → "Run workflow"
-# → Environment: prod
-# → Changelog: "v1.2.0 - 새 기능 추가"
-# → "Run workflow" 클릭
-```
-
-**TestFlight 설정**:
-- 배포 대상: `Production Testers` 그룹
-- 외부 테스터 알림: ✅
-- App Store 제출 대기
+- 워크플로우 내부 단계/동시성/시크릿: [CI_CD.md](CI_CD.md)
+- 릴리즈 병합 흐름: [BRANCH_STRATEGY.md](BRANCH_STRATEGY.md)
 
 ---
 
@@ -523,63 +471,23 @@ fastlane release
 
 ### 자동 배포 (CI/CD)
 
-GitHub Actions를 통해 자동으로 Firebase에 배포합니다.
+자동 배포 워크플로우 정의/배포 대상/시크릿 상세는 `docs/CI_CD.md`를 기준으로 관리합니다.
 
-#### 워크플로우 트리거
+운영자가 실행할 최소 절차:
 
-**`.github/workflows/deploy-firebase.yml`** 워크플로우는 **수동 트리거**만 지원합니다:
+1. GitHub Actions에서 `Deploy Firebase` 실행
+2. `Environment`(`stage`/`prod`) 선택 후 실행
+3. 완료 후 대상 프로젝트 반영 상태 확인
 
-```bash
-# GitHub Actions 탭에서 "Deploy Firebase" 워크플로우 선택
-# → "Run workflow" 클릭
-# → Environment 선택 (stage 또는 prod)
-# → "Run workflow" 실행
-```
+배포 대상 기준:
 
-#### 배포 과정
+- `stage`: `promiso-stage`
+- `prod`: `promiso-prod`
 
-```
-1. 환경 설정 (Node.js)
-2. Functions 의존성 설치 (npm ci)
-3. Lint 검사 (npm run lint)
-4. Functions 빌드 (npm run build)
-5. Firebase 배포
-   ├─ Hosting 배포
-   ├─ Functions 배포
-   ├─ Firestore Rules 배포
-   └─ Storage Rules 배포
-6. Slack 알림
-```
+참고:
 
-**예상 시간**: 5-10분
-
-#### Stage 배포
-
-```bash
-# GitHub Actions 탭
-# → "Deploy Firebase" 워크플로우
-# → "Run workflow"
-# → Environment: stage
-# → "Run workflow" 클릭
-```
-
-**배포 대상**:
-- Firebase Project: `promiso-stage`
-- Functions, Firestore Rules, Storage Rules
-
-#### Production 배포
-
-```bash
-# GitHub Actions 탭
-# → "Deploy Firebase" 워크플로우
-# → "Run workflow"
-# → Environment: prod
-# → "Run workflow" 클릭
-```
-
-**배포 대상**:
-- Firebase Project: `promiso-prod`
-- Functions, Firestore Rules, Storage Rules
+- 워크플로우 내부 단계/배포 대상 상세: [CI_CD.md](CI_CD.md)
+- 환경별 릴리즈 흐름: [BRANCH_STRATEGY.md](BRANCH_STRATEGY.md)
 
 ---
 
