@@ -98,9 +98,9 @@ struct TodayScheduleCard: View {
           onTap: { onPromiseTap(promise) }
         )
 
-        // 마지막 약속 후 현재 시간 마커 (모든 일정 종료 후)
+        // 모든 일정 종료 후 완료 메시지
         if index == sortedPromises.count - 1 && currentTimePosition == .afterAll {
-          CurrentTimeMarkerView(nextPromiseStartAt: nil)
+          TodayScheduleCompleteView()
         }
       }
     }
