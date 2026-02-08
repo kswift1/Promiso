@@ -862,7 +862,8 @@ fileprivate struct ExtractTabImageViews: UIViewRepresentable {
   private var isiOS26: Bool {
     if #available(iOS 26, *) {
       return true
+    } else {
+      return false
     }
-    return false
   }
 }

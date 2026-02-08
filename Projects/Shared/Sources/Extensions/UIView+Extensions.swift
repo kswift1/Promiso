@@ -1,9 +1,19 @@
 import UIKit
 
 extension UIView {
-  /// 특정 타입의 모든 서브뷰를 재귀적으로 추출
+  /// 특정 타입의 모든 서브뷰를 반복적으로 추출 (큐 기반, 스택 오버플로우 방지)
   public func allSubviews<T: UIView>(ofType type: T.Type) -> [T] {
-    subviews.compactMap { $0 as? T } +
-    subviews.flatMap { $0.allSubviews(ofType: type) }
+    var result: [T] = []
+    var queue = self.subviews
+
+    while !queue.isEmpty {
+      let view = queue.removeFirst()
+      if let typedView = view as? T {
+        result.append(typedView)
+      }
+      queue.append(contentsOf: view.subviews)
+    }
+
+    return result
   }
 }
