@@ -67,13 +67,11 @@ public enum Tab: Equatable, Hashable {
   /// 탭 선택 시 적용할 Symbol Effects
   var symbolEffects: [any DiscreteSymbolEffect & SymbolEffect] {
     switch self {
-    case .home, .calendar:
+    case .home, .settings:
       return [.bounce]
-    case .promise:
+    case .promise, .calendar:
       // Promise 모드 토글 시 회전 + 바운스
       return [.wiggle.up]
-    case .settings:
-      return [.rotate.clockwise]
     }
   }
 }
