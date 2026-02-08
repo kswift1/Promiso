@@ -63,6 +63,24 @@ public enum Tab: Equatable, Hashable {
     case .settings: return "gearshape.fill"
     }
   }
+
+  /// AnimatedTabView에서 사용할 Symbol 이미지 이름
+  var symbolImage: String {
+    return iconName
+  }
+
+  /// 탭 선택 시 적용할 Symbol Effects
+  var symbolEffects: [any DiscreteSymbolEffect & SymbolEffect] {
+    switch self {
+    case .home, .calendar:
+      return [.bounce]
+    case .promise:
+      // Promise 모드 토글 시 회전 + 바운스
+      return [.wiggle.up]
+    case .settings:
+      return [.rotate.clockwise]
+    }
+  }
 }
 
 // MARK: - Cache Keys
@@ -551,6 +569,10 @@ extension RootTab {
     // 따라서 @State는 presentation 제어용, TCA는 상태/로직 관리용으로 분리합니다.
     @State private var expandLivePromise: Bool = false
 
+    // MARK: - Tab Animation State
+    /// 탭 아이콘 애니메이션을 위한 UIImageView 캐시
+    @State private var tabImageViews: [Tab: UIImageView] = [:]
+
     // MARK: - Constants
 
     private let livePromiseTransitionID = "LIVE_PROMISE_TRANSITION"
@@ -627,6 +649,17 @@ extension RootTab {
         tabContentView(for: .settings)
           .tabItem { Label("설정", systemImage: "gearshape.fill") }
           .tag(Tab.settings)
+      }
+      .tabViewStyle(.tabBarOnly)
+      .background(ExtractTabImageViews { tabImageViews = $0 })
+      .compositingGroup()
+      .onChange(of: store.selectedTab) { oldValue, newValue in
+        guard let imageView = tabImageViews[newValue] else { return }
+        let symbolEffects = newValue.symbolEffects
+
+        for effect in symbolEffects {
+          imageView.addSymbolEffect(effect, options: .nonRepeating)
+        }
       }
     }
 
@@ -753,5 +786,90 @@ extension RootTab {
         )
       }
     }
+  }
+}
+
+// MARK: - Tab Image Extractor
+
+/// UITabBarController에서 탭 아이콘 UIImageView를 추출하는 헬퍼
+fileprivate struct ExtractTabImageViews: UIViewRepresentable {
+  var result: ([Tab: UIImageView]) -> Void
+
+  func makeUIView(context: Context) -> UIView {
+    let view = UIView()
+    view.backgroundColor = .clear
+    view.isUserInteractionEnabled = false
+
+    DispatchQueue.main.async {
+      if let compositingGroup = view.superview?.superview {
+        guard let tabHostingController = compositingGroup.subviews.last else { return }
+        guard let tabController = tabHostingController.subviews.first?.next as? UITabBarController else { return }
+
+        extractImageViews(tabController.tabBar)
+      }
+    }
+
+    return view
+  }
+
+  func updateUIView(_ uiView: UIView, context: Context) {}
+
+  private func extractImageViews(_ tabBar: UITabBar) {
+    // 1단계: 모든 UIImageView 추출
+    let allImageViews = tabBar.allSubviews(ofType: UIImageView.self)
+
+    // 2단계: Symbol 이미지만 필터링
+    let symbolImageViews = allImageViews.filter { imageView in
+      imageView.image?.isSymbolImage ?? false
+    }
+
+    // 3단계: iOS 26 필터링 (tintColor 매칭)
+    let imageViews: [UIImageView]
+    if isiOS26 {
+      imageViews = symbolImageViews.filter { imageView in
+        imageView.tintColor == tabBar.tintColor
+      }
+    } else {
+      imageViews = symbolImageViews
+    }
+
+    var dict: [Tab: UIImageView] = [:]
+
+    // 탭 순서에 맞춰 이미지뷰 매핑 (promise 탭은 인덱스 1)
+    let tabs: [Tab] = [.home, .promise(.group), .calendar, .settings]
+
+    for (index, tab) in tabs.enumerated() {
+      if index < imageViews.count {
+        // symbolImage로 매칭
+        let matchedView = imageViews.first { imageView in
+          imageView.description.contains(tab.symbolImage)
+        }
+
+        if let imageView = matchedView {
+          dict[tab] = imageView
+          // promise 탭은 group과 own 모두 같은 이미지뷰 사용
+          if case .promise = tab {
+            dict[.promise(.own)] = imageView
+          }
+        } else if index < imageViews.count {
+          // fallback: 순서로 매칭
+          let imageView = imageViews[index]
+          dict[tab] = imageView
+          // promise 탭은 group과 own 모두 같은 이미지뷰 사용
+          if case .promise = tab {
+            dict[.promise(.own)] = imageView
+          }
+        }
+      }
+    }
+
+    result(dict)
+  }
+
+  private var isiOS26: Bool {
+    if #available(iOS 26, *) {
+      return true
+    }
+    return false
   }
 }
