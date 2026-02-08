@@ -61,8 +61,8 @@ public enum TimeBasedMessageGenerator {
     randomPercent: Int = 40
   ) -> RandomMessage {
     // randomPercent 확률로 랜덤 메시지
-    if !randomMessages.isEmpty, Int.random(in: 1...100) <= randomPercent {
-      return randomMessages.randomElement()!
+    if !randomMessages.isEmpty, Int.random(in: 1...100) <= randomPercent, let message = randomMessages.randomElement() {
+      return message
     }
 
     // 나머지는 시간대별 메시지
