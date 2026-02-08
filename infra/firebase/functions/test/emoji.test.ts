@@ -16,6 +16,13 @@ jest.mock('@google/generative-ai', () => ({
   })),
 }));
 
+// Secret mock
+jest.mock('firebase-functions/params', () => ({
+  defineSecret: jest.fn(() => ({
+    value: () => 'test-gemini-key',
+  })),
+}));
+
 describe('generateEmoji', () => {
   let generateEmoji: any;
 
@@ -25,13 +32,13 @@ describe('generateEmoji', () => {
     generateEmoji = functions.generateEmoji;
   });
 
-  // NOTE: 정상 케이스는 실제 Gemini API 호출이 필요하여 에뮬레이터 환경에서 통합 테스트로 수행
-  describe.skip('정상 케이스', () => {
+  // NOTE: Gemini SDK는 mock 처리하므로 정상 플로우를 유닛 테스트로 검증 가능
+  describe('정상 케이스', () => {
     it('그룹 이름으로 이모지를 생성한다', async () => {
       // Given
       const request = {
         data: {
-          groupName: '친구들',
+          title: '친구들 모임',
         },
         auth: {
           uid: 'test-user-id',
@@ -39,7 +46,8 @@ describe('generateEmoji', () => {
       };
 
       // When
-      const result = await generateEmoji(request);
+      const handler = (generateEmoji as any).run;
+      const result = await handler(request);
 
       // Then
       expect(result).toBeDefined();
