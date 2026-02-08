@@ -64,11 +64,6 @@ public enum Tab: Equatable, Hashable {
     }
   }
 
-  /// AnimatedTabView에서 사용할 Symbol 이미지 이름
-  var symbolImage: String {
-    return iconName
-  }
-
   /// 탭 선택 시 적용할 Symbol Effects
   var symbolEffects: [any DiscreteSymbolEffect & SymbolEffect] {
     switch self {
@@ -218,7 +213,7 @@ extension RootTab {
       case syncCalendar
     }
 
-    public enum Delegate: Equatable {
+    public enum Delegate: Equatable, Sendable {
       case logoutRequested
       case openJoinGroup(inviteCode: String)
     }
@@ -840,9 +835,9 @@ fileprivate struct ExtractTabImageViews: UIViewRepresentable {
 
     for (index, tab) in tabs.enumerated() {
       if index < imageViews.count {
-        // symbolImage로 매칭
+        // iconName으로 매칭
         let matchedView = imageViews.first { imageView in
-          imageView.description.contains(tab.symbolImage)
+          imageView.description.contains(tab.iconName)
         }
 
         if let imageView = matchedView {
