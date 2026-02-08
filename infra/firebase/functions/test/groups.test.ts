@@ -139,7 +139,8 @@ describe('createGroup', () => {
       }),
     };
 
-    jest.spyOn(admin, 'firestore').mockReturnValue(mockFirestore as any);
+    const {admin: configAdmin} = await import('../src/config');
+    jest.spyOn(configAdmin, 'firestore').mockReturnValue(mockFirestore as any);
 
     const functions = await import('../src/functions/groups');
     createGroup = functions.createGroup;
@@ -150,8 +151,8 @@ describe('createGroup', () => {
     jest.resetModules();
   });
 
-  // NOTE: 정상 케이스는 실제 Firestore 작업이 필요하여 에뮬레이터 환경에서 통합 테스트로 수행
-  describe.skip('정상 케이스', () => {
+  // NOTE: Firestore를 mock 처리한 정상 플로우 유닛 테스트
+  describe('정상 케이스', () => {
     it('유효한 요청으로 그룹을 생성한다', async () => {
       // Given
       const request = {
@@ -168,7 +169,8 @@ describe('createGroup', () => {
       };
 
       // When
-      const result = await createGroup(request);
+      const handler = (createGroup as any).run;
+      const result = await handler(request);
 
       // Then
       expect(result).toBeDefined();
@@ -193,7 +195,8 @@ describe('createGroup', () => {
       };
 
       // When
-      const result = await createGroup(request);
+      const handler = (createGroup as any).run;
+      const result = await handler(request);
 
       // Then
       expect(result).toBeDefined();
@@ -386,7 +389,8 @@ describe('previewGroup', () => {
       }),
     };
 
-    jest.spyOn(admin, 'firestore').mockReturnValue(mockFirestore as any);
+    const {admin: configAdmin} = await import('../src/config');
+    jest.spyOn(configAdmin, 'firestore').mockReturnValue(mockFirestore as any);
 
     const functions = await import('../src/functions/groups');
     previewGroup = functions.previewGroup;
@@ -397,15 +401,16 @@ describe('previewGroup', () => {
     jest.resetModules();
   });
 
-  // NOTE: 정상 케이스는 실제 Firestore 작업이 필요하여 에뮬레이터 환경에서 통합 테스트로 수행
-  describe.skip('정상 케이스', () => {
+  // NOTE: Firestore를 mock 처리한 정상 플로우 유닛 테스트
+  describe('정상 케이스', () => {
     it('유효한 초대 코드로 그룹 정보를 반환한다', async () => {
       const request = {
         data: { inviteCode: 'ABC123' },
         auth: undefined, // 인증 불필요
       };
 
-      const result = await previewGroup(request);
+      const handler = (previewGroup as any).run;
+      const result = await handler(request);
 
       expect(result).toBeDefined();
       expect(result.groupId).toBe('group-id');
@@ -421,7 +426,8 @@ describe('previewGroup', () => {
         auth: undefined,
       };
 
-      const result = await previewGroup(request);
+      const handler = (previewGroup as any).run;
+      const result = await handler(request);
 
       expect(result).toBeDefined();
       expect(result.groupName).toBe('테스트 그룹');
@@ -433,7 +439,8 @@ describe('previewGroup', () => {
         auth: undefined,
       };
 
-      await expect(previewGroup(request)).resolves.toBeDefined();
+      const handler = (previewGroup as any).run;
+      await expect(handler(request)).resolves.toBeDefined();
     });
   });
 
@@ -542,7 +549,8 @@ describe('joinGroup', () => {
       }),
     };
 
-    jest.spyOn(admin, 'firestore').mockReturnValue(mockFirestore as any);
+    const {admin: configAdmin} = await import('../src/config');
+    jest.spyOn(configAdmin, 'firestore').mockReturnValue(mockFirestore as any);
 
     const functions = await import('../src/functions/groups');
     joinGroup = functions.joinGroup;
@@ -553,15 +561,16 @@ describe('joinGroup', () => {
     jest.resetModules();
   });
 
-  // NOTE: 정상 케이스는 실제 Firestore 트랜잭션이 필요하여 에뮬레이터 환경에서 통합 테스트로 수행
-  describe.skip('정상 케이스', () => {
+  // NOTE: Firestore 트랜잭션을 mock 처리한 정상 플로우 유닛 테스트
+  describe('정상 케이스', () => {
     it('유효한 초대 코드로 그룹에 참여한다', async () => {
       const request = {
         data: { inviteCode: 'ABC123' },
         auth: { uid: 'new-user-id' },
       };
 
-      const result = await joinGroup(request);
+      const handler = (joinGroup as any).run;
+      const result = await handler(request);
 
       expect(result).toBeDefined();
       expect(result.groupId).toBe('group-id');
