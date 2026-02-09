@@ -1062,7 +1062,8 @@ export const expelMember = onCall<ExpelMemberRequest>(
       await Promise.all(deleteBatches.map((batch) => batch.commit()));
 
       console.log(
-        `🗑️ Deleted ${createdPromises.size} future promises created by expelled member`
+        "🗑️ Deleted " + createdPromises.size +
+        " future promises created by expelled member"
       );
     }
 
@@ -1130,7 +1131,8 @@ export const expelMember = onCall<ExpelMemberRequest>(
       if (voteBatches.length > 0) {
         await Promise.all(voteBatches.map((batch) => batch.commit()));
         console.log(
-          `🗳️ Removed votes from ${updatedCount} future promises for expelled member`
+          "🗳️ Removed votes from " + updatedCount +
+          " future promises for expelled member"
         );
       }
     }
