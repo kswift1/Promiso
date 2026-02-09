@@ -276,14 +276,17 @@ extension JoinGroup {
             return .none
 
           case .settingsAppeared:
-            // 설정에서 돌아왔을 때 권한 상태 새로고침 (순서 보장)
-            return .run { send in
-              let notificationStatus = await notificationClient.getAuthorizationStatus()
-              await send(.internal(.notificationAuthStatusChecked(notificationStatus)))
-
-              let calendarStatus = eventKitClient.authorizationStatus()
-              await send(.internal(.calendarAuthStatusChecked(calendarStatus)))
-            }
+            // 설정에서 돌아왔을 때 권한 상태 새로고침
+            return .merge(
+              .run { send in
+                let status = await notificationClient.getAuthorizationStatus()
+                await send(.internal(.notificationAuthStatusChecked(status)))
+              },
+              .run { send in
+                let status = eventKitClient.authorizationStatus()
+                await send(.internal(.calendarAuthStatusChecked(status)))
+              }
+            )
 
           case .settingsCompleted:
             guard case .settings(let group) = state.step else { return .none }
@@ -342,14 +345,17 @@ extension JoinGroup {
           case .joinGroupResponse(.success(let group)):
             state.isJoining = false
             state.step = .settings(group)
-            // 알림 및 캘린더 권한 상태 확인 (순서 보장)
-            return .run { send in
-              let notificationStatus = await notificationClient.getAuthorizationStatus()
-              await send(.internal(.notificationAuthStatusChecked(notificationStatus)))
-
-              let calendarStatus = eventKitClient.authorizationStatus()
-              await send(.internal(.calendarAuthStatusChecked(calendarStatus)))
-            }
+            // 알림 및 캘린더 권한 상태 확인
+            return .merge(
+              .run { send in
+                let status = await notificationClient.getAuthorizationStatus()
+                await send(.internal(.notificationAuthStatusChecked(status)))
+              },
+              .run { send in
+                let status = eventKitClient.authorizationStatus()
+                await send(.internal(.calendarAuthStatusChecked(status)))
+              }
+            )
 
           case .joinGroupResponse(.failure(let error)):
             state.isJoining = false
