@@ -102,7 +102,9 @@ struct HomeFeatureStateTests {
 
   @Test("오늘 약속 목록 반환")
   func todayPromises_returnsConfirmedTodayPromises() {
-    let calendar = Calendar.current
+    // KST 타임존 사용 (실제 코드와 동일)
+    var calendar = Calendar.current
+    calendar.timeZone = TimeZone(identifier: "Asia/Seoul") ?? .current
     let now = Date()
     let startOfToday = calendar.startOfDay(for: now)
     let todayAfternoon = calendar.date(byAdding: .hour, value: 14, to: startOfToday)!
@@ -269,7 +271,9 @@ struct HomeFeatureStateTests {
 
   @Test("오늘 약속 개수 계산")
   func overviewData_todayCount() {
-    let calendar = Calendar.current
+    // KST 타임존 사용 (실제 코드와 동일)
+    var calendar = Calendar.current
+    calendar.timeZone = TimeZone(identifier: "Asia/Seoul") ?? .current
     let now = Date()
     let startOfToday = calendar.startOfDay(for: now)
     let todayAfternoon = calendar.date(byAdding: .hour, value: 14, to: startOfToday)!
