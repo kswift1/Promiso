@@ -222,6 +222,35 @@ extension PersonalEventModel {
   }
 }
 
+// MARK: - Notification Helpers
+
+extension PersonalEventModel {
+  /// 로컬 알림 식별자
+  public var notificationId: String { "personal_reminder_\(id)" }
+
+  /// 알림 발송 시각 (startAt - reminderMinutesBefore)
+  public var reminderDate: Date? {
+    guard let minutes = reminderMinutesBefore else { return nil }
+    return startAt.addingTimeInterval(-Double(minutes) * 60)
+  }
+
+  /// 알림 스케줄 가능 여부 (미래 시점 + 리마인더 설정됨)
+  public var canScheduleReminder: Bool {
+    guard let date = reminderDate else { return false }
+    return date > Date()
+  }
+
+  /// 알림 제목
+  public var notificationTitle: String { "\(displayEmoji) \(title)" }
+
+  /// 알림 본문
+  public var notificationBody: String {
+    guard let minutes = reminderMinutesBefore else { return "" }
+    if minutes >= 60 { return "\(minutes / 60)시간 후 시작하는 일정입니다" }
+    return "\(minutes)분 후 시작하는 일정입니다"
+  }
+}
+
 // MARK: - Example Data
 
 extension PersonalEventModel {

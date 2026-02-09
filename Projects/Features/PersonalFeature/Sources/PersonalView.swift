@@ -35,6 +35,13 @@ extension PersonalMode {
         item: $store.scope(state: \.createEvent, action: \.createEvent)
       ) { createEventStore in
         CreatePersonalEvent.RootView(store: createEventStore)
+          .presentationDetents([.large, .medium])
+          .presentationDragIndicator(.visible)
+      }
+      .sheet(
+        item: $store.scope(state: \.eventDetail, action: \.eventDetail)
+      ) { detailStore in
+        PersonalEventDetail.RootView(store: detailStore)
       }
     }
 
@@ -263,31 +270,40 @@ private struct PersonalEventCardSkeleton: View {
 
   var body: some View {
     HStack(spacing: 12) {
-      RoundedRectangle(cornerRadius: 8)
-        .fill(Color(UIColor.systemGray5))
-        .frame(width: 50, height: 50)
+      // 시간 컬럼 스켈레톤
+      VStack(spacing: 6) {
+        RoundedRectangle(cornerRadius: 4)
+          .fill(Color(UIColor.systemGray5))
+          .frame(width: 40, height: 16)
 
+        Circle()
+          .fill(Color(UIColor.systemGray5))
+          .frame(width: 7, height: 7)
+      }
+      .frame(width: 50)
+
+      // 콘텐츠 스켈레톤
       VStack(alignment: .leading, spacing: 8) {
         RoundedRectangle(cornerRadius: 4)
           .fill(Color(UIColor.systemGray5))
-          .frame(height: 16)
-          .frame(maxWidth: 200)
+          .frame(height: 18)
+          .frame(maxWidth: 180)
 
         RoundedRectangle(cornerRadius: 4)
           .fill(Color(UIColor.systemGray5))
           .frame(height: 14)
-          .frame(maxWidth: 150)
+          .frame(maxWidth: 140)
 
         RoundedRectangle(cornerRadius: 4)
           .fill(Color(UIColor.systemGray5))
           .frame(height: 14)
-          .frame(maxWidth: 120)
+          .frame(maxWidth: 100)
       }
 
       Spacer()
     }
-    .padding(16)
-    .adaptiveGlassCard()
+    .padding(14)
+    .adaptiveGlassCard(cornerRadius: 14)
     .opacity(isAnimating ? 0.5 : 1.0)
     .onAppear {
       withAnimation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true)) {

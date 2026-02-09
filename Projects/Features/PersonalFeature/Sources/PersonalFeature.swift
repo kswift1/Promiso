@@ -44,6 +44,7 @@ extension PersonalMode {
   @Reducer
   public struct Feature {
     @Dependency(\.personalEventClient) var personalEventClient
+    @Dependency(\.localNotificationClient) var localNotificationClient
 
     public init() {}
 
@@ -54,6 +55,7 @@ extension PersonalMode {
       @Shared var currentUser: UserPrivateModel
 
       @Presents var createEvent: CreatePersonalEvent.Feature.State?
+      @Presents var eventDetail: PersonalEventDetail.Feature.State?
 
       public init(currentUser: Shared<UserPrivateModel>) {
         self._currentUser = currentUser
@@ -114,6 +116,7 @@ extension PersonalMode {
       case view(View)
       case `internal`(Internal)
       case createEvent(PresentationAction<CreatePersonalEvent.Feature.Action>)
+      case eventDetail(PresentationAction<PersonalEventDetail.Feature.Action>)
 
       public enum View: Sendable {
         case onAppear
@@ -158,14 +161,15 @@ extension PersonalMode {
             state.createEvent = CreatePersonalEvent.Feature.State()
             return .none
 
-          case .eventTapped:
-            // TODO: 일정 상세 화면 열기
+          case .eventTapped(let event):
+            state.eventDetail = PersonalEventDetail.Feature.State(event: event)
             return .none
 
           case .deleteEvent(let event):
-            return .run { send in
+            return .run { [localNotificationClient] send in
               do {
                 try await personalEventClient.deleteEvent(event.id)
+                await localNotificationClient.cancel(event.notificationId)
                 await send(.internal(.eventDeleted(event.id)))
               } catch {
                 await send(.internal(.eventDeleteFailed(error.localizedDescription)))
@@ -194,7 +198,31 @@ extension PersonalMode {
 
           case .eventsUpdated(let events):
             state.eventsState = .loaded(events)
-            return .none
+            return .run { [localNotificationClient] _ in
+              let pendingIds = Set(
+                (await localNotificationClient.pendingIds())
+                  .filter { $0.hasPrefix("personal_reminder_") }
+              )
+              let desiredEvents = events.filter { $0.canScheduleReminder }
+              let desiredIds = Set(desiredEvents.map(\.notificationId))
+
+              // 불필요한 알림 취소
+              let toCancel = Array(pendingIds.subtracting(desiredIds))
+              await localNotificationClient.cancelAll(toCancel)
+
+              // 누락된 알림 스케줄링
+              for event in desiredEvents where !pendingIds.contains(event.notificationId) {
+                if let date = event.reminderDate {
+                  try? await localNotificationClient.schedule(
+                    event.notificationId,
+                    event.notificationTitle,
+                    event.notificationBody,
+                    date,
+                    ["type": "personal_event_reminder", "eventId": event.id]
+                  )
+                }
+              }
+            }
 
           case .eventsFailed(let message):
             state.eventsState = .failed(AppError(message: message))
@@ -210,7 +238,8 @@ extension PersonalMode {
 
         // MARK: - CreateEvent Delegate
 
-        case .createEvent(.presented(.delegate(.eventCreated))):
+        case .createEvent(.presented(.delegate(.eventCreated))),
+             .createEvent(.presented(.delegate(.eventUpdated))):
           state.createEvent = nil
           return .none
 
@@ -220,10 +249,26 @@ extension PersonalMode {
 
         case .createEvent:
           return .none
+
+        // MARK: - EventDetail Delegate
+
+        case .eventDetail(.presented(.delegate(.eventDeleted))):
+          state.eventDetail = nil
+          return .none
+
+        case .eventDetail(.presented(.delegate(.eventUpdated))):
+          state.eventDetail = nil
+          return .none
+
+        case .eventDetail:
+          return .none
         }
       }
       .ifLet(\.$createEvent, action: \.createEvent) {
         CreatePersonalEvent.Feature()
+      }
+      .ifLet(\.$eventDetail, action: \.eventDetail) {
+        PersonalEventDetail.Feature()
       }
     }
   }

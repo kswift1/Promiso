@@ -1,6 +1,7 @@
 import ComposableArchitecture
 import Clients
 import PromisoShared
+import SharedFeature
 
 // MARK: - Namespace
 
@@ -12,6 +13,7 @@ extension CreatePersonalEvent {
   @Reducer
   public struct Feature {
     @Dependency(\.personalEventClient) var personalEventClient
+    @Dependency(\.localNotificationClient) var localNotificationClient
     @Dependency(\.emojiClient) var emojiClient
     @Dependency(\.hapticFeedback) var hapticFeedback
     @Dependency(\.continuousClock) var clock
@@ -24,25 +26,40 @@ extension CreatePersonalEvent {
       case emojiDebounce
     }
 
+    // MARK: - Mode
+
+    public enum Mode: Equatable, Sendable {
+      case create
+      case edit
+    }
+
     // MARK: - State
 
     @ObservableState
     public struct State: Equatable, Sendable {
       var event: PersonalEventModel
-      var isCreating: Bool = false
+      var mode: Mode
+      var isSaving: Bool = false
       var isEmojiLoading: Bool = false
       var useEndTime: Bool = false
       var useReminder: Bool = false
       var errorMessage: String?
 
-      public init(event: PersonalEventModel = .empty) {
+      @Presents var locationPicker: LocationPicker.Feature.State?
+
+      public init(event: PersonalEventModel = .empty, mode: Mode = .create) {
         self.event = event
+        self.mode = mode
         self.useEndTime = event.endAt != nil
         self.useReminder = event.reminderMinutesBefore != nil
       }
 
       var canSave: Bool {
-        event.isTitleValid && !isCreating
+        event.isTitleValid && !isSaving
+      }
+
+      var navigationTitle: String {
+        mode == .create ? "새 일정" : "일정 수정"
       }
     }
 
@@ -52,6 +69,7 @@ extension CreatePersonalEvent {
       case view(View)
       case `internal`(Internal)
       case delegate(Delegate)
+      case locationPicker(PresentationAction<LocationPicker.Feature.Action>)
     }
 
     @CasePathable
@@ -63,6 +81,8 @@ extension CreatePersonalEvent {
       case toggleUseReminder
       case reminderChanged(Int)
       case descriptionChanged(String)
+      case locationTapped
+      case removeLocation
       case saveTapped
       case dismissTapped
       case dismissError
@@ -72,12 +92,14 @@ extension CreatePersonalEvent {
       case titleDebounced(String)
       case emojiGenerated(String)
       case emojiGenerationFailed
-      case createEventSuccess(String)
-      case createEventFailed(String)
+      case saveSuccess(PersonalEventModel)
+      case saveFailed(String)
     }
 
+    @CasePathable
     public enum Delegate: Sendable {
-      case eventCreated(id: String)
+      case eventCreated
+      case eventUpdated(PersonalEventModel)
       case dismiss
     }
 
@@ -92,7 +114,9 @@ extension CreatePersonalEvent {
         case let .view(viewAction):
           switch viewAction {
           case .titleChanged(let title):
+            let oldTitle = state.event.title
             state.event.title = title
+            guard title != oldTitle else { return .none }
             guard !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
               state.event.emoji = nil
               return .cancel(id: CancelID.emojiDebounce)
@@ -140,16 +164,44 @@ extension CreatePersonalEvent {
             state.event.description = text.isEmpty ? nil : text
             return .none
 
+          case .locationTapped:
+            state.locationPicker = LocationPicker.Feature.State()
+            return .none
+
+          case .removeLocation:
+            state.event.location = nil
+            return .run { _ in await hapticFeedback.selection() }
+
           case .saveTapped:
             guard state.canSave else { return .none }
-            state.isCreating = true
+            state.isSaving = true
             state.errorMessage = nil
-            return .run { [event = state.event, personalEventClient] send in
+            return .run { [event = state.event, mode = state.mode, personalEventClient, localNotificationClient] send in
               do {
-                let eventId = try await personalEventClient.createEvent(event)
-                await send(.internal(.createEventSuccess(eventId)))
+                var savedEvent = event
+                switch mode {
+                case .create:
+                  let eventId = try await personalEventClient.createEvent(event)
+                  savedEvent.id = eventId
+                case .edit:
+                  try await personalEventClient.updateEvent(event)
+                }
+
+                // 기존 알림 취소 후 재스케줄링
+                await localNotificationClient.cancel(savedEvent.notificationId)
+                if savedEvent.canScheduleReminder, let date = savedEvent.reminderDate {
+                  try? await localNotificationClient.schedule(
+                    savedEvent.notificationId,
+                    savedEvent.notificationTitle,
+                    savedEvent.notificationBody,
+                    date,
+                    ["type": "personal_event_reminder", "eventId": savedEvent.id]
+                  )
+                }
+
+                await send(.internal(.saveSuccess(savedEvent)))
               } catch {
-                await send(.internal(.createEventFailed(error.localizedDescription)))
+                await send(.internal(.saveFailed(error.localizedDescription)))
               }
             }
 
@@ -185,24 +237,44 @@ extension CreatePersonalEvent {
             state.isEmojiLoading = false
             return .none
 
-          case .createEventSuccess(let eventId):
-            state.isCreating = false
+          case .saveSuccess(let event):
+            state.isSaving = false
+            let delegateAction: Action = state.mode == .create
+              ? .delegate(.eventCreated)
+              : .delegate(.eventUpdated(event))
             return .merge(
               .run { _ in await hapticFeedback.success() },
-              .send(.delegate(.eventCreated(id: eventId)))
+              .send(delegateAction)
             )
 
-          case .createEventFailed(let message):
-            state.isCreating = false
+          case .saveFailed(let message):
+            state.isSaving = false
             state.errorMessage = message
             return .run { _ in await hapticFeedback.error() }
           }
+
+        // MARK: - LocationPicker
+
+        case .locationPicker(.presented(.delegate(.locationSelected(let location)))):
+          state.event.location = location
+          state.locationPicker = nil
+          return .none
+
+        case .locationPicker(.presented(.delegate(.dismissed))):
+          state.locationPicker = nil
+          return .none
+
+        case .locationPicker:
+          return .none
 
         // MARK: - Delegate
 
         case .delegate:
           return .none
         }
+      }
+      .ifLet(\.$locationPicker, action: \.locationPicker) {
+        LocationPicker.Feature()
       }
     }
   }
