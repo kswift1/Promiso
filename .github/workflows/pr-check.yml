@@ -57,6 +57,8 @@ jobs:
           GOOGLE_CLIENT_ID_PROD: ${{ secrets.GOOGLE_CLIENT_ID_PROD }}
           GOOGLE_REVERSED_CLIENT_ID_PROD: ${{ secrets.GOOGLE_REVERSED_CLIENT_ID_PROD }}
           KAKAO_NATIVE_APP_KEY_PROD: ${{ secrets.KAKAO_NATIVE_APP_KEY_PROD }}
+          # Microsoft Clarity (환경 공통)
+          CLARITY_PROJECT_ID: ${{ secrets.CLARITY_PROJECT_ID }}
         run: |
           chmod +x ./scripts/generate-xcconfig.sh
           ./scripts/generate-xcconfig.sh
