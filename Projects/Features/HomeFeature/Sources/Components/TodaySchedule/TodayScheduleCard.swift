@@ -1,13 +1,14 @@
 import SwiftUI
+import Clients
 import PromisoShared
 import ResourceKit
 
 // MARK: - Today Schedule Card
 
-/// 오늘의 일정 카드 - 확정된 오늘 약속들을 타임라인으로 표시
+/// 오늘의 일정 카드 - 확정된 오늘 약속과 개인 일정을 타임라인으로 표시
 struct TodayScheduleCard: View {
-  let promises: [PromiseModel]
-  let onPromiseTap: (PromiseModel) -> Void
+  let items: [HomeModels.ScheduleItem]
+  let onItemTap: (HomeModels.ScheduleItem) -> Void
 
   @State private var isExpanded: Bool = true
 
@@ -32,7 +33,7 @@ struct TodayScheduleCard: View {
         Divider()
           .padding(.horizontal, 16)
 
-        if promises.isEmpty {
+        if items.isEmpty {
           TodayEmptyState()
             .padding(.vertical, 24)
             .transition(.opacity.combined(with: .move(edge: .top)))
@@ -63,9 +64,9 @@ struct TodayScheduleCard: View {
 
       Spacer()
 
-      // 약속 개수 (배경 없음)
-      if !promises.isEmpty {
-        Text("\(promises.count)개")
+      // 일정 개수 (배경 없음)
+      if !items.isEmpty {
+        Text("\(items.count)개")
           .font(.pmSubheadlineMedium)
           .foregroundStyle(Color.pmindigo.n500)
       }
@@ -82,24 +83,35 @@ struct TodayScheduleCard: View {
 
   private var timelineContent: some View {
     VStack(spacing: 0) {
-      let sortedPromises = promises.sorted { $0.startAt < $1.startAt }
-      let currentTimePosition = findCurrentTimePosition(in: sortedPromises)
+      let sortedItems = items.sorted { $0.startAt < $1.startAt }
+      let currentTimePosition = findCurrentTimePosition(in: sortedItems)
 
-      ForEach(Array(sortedPromises.enumerated()), id: \.element.id) { index, promise in
-        // 현재 시간 마커 삽입 (이 약속 전에 표시해야 하는 경우)
+      ForEach(Array(sortedItems.enumerated()), id: \.element.id) { index, item in
+        // 현재 시간 마커 삽입 (이 일정 전에 표시해야 하는 경우)
         if currentTimePosition == .beforeIndex(index) {
-          CurrentTimeMarkerView(nextPromiseStartAt: promise.startAt)
+          CurrentTimeMarkerView(nextPromiseStartAt: item.startAt)
         }
 
-        TimelineItemView(
-          promise: promise,
-          isFirst: index == 0 && currentTimePosition != .beforeIndex(0),
-          isLast: index == sortedPromises.count - 1 && currentTimePosition != .afterAll,
-          onTap: { onPromiseTap(promise) }
-        )
+        switch item {
+        case .promise(let promise):
+          TimelineItemView(
+            promise: promise,
+            isFirst: index == 0 && currentTimePosition != .beforeIndex(0),
+            isLast: index == sortedItems.count - 1 && currentTimePosition != .afterAll,
+            onTap: { onItemTap(item) }
+          )
+
+        case .personalEvent(let event):
+          PersonalEventTimelineItemView(
+            event: event,
+            isFirst: index == 0 && currentTimePosition != .beforeIndex(0),
+            isLast: index == sortedItems.count - 1 && currentTimePosition != .afterAll,
+            onTap: { onItemTap(item) }
+          )
+        }
 
         // 모든 일정 종료 후 완료 메시지
-        if index == sortedPromises.count - 1 && currentTimePosition == .afterAll {
+        if index == sortedItems.count - 1 && currentTimePosition == .afterAll {
           TodayScheduleCompleteView()
         }
       }
@@ -110,51 +122,51 @@ struct TodayScheduleCard: View {
 
   /// 현재 시간이 타임라인에서 어디에 위치하는지
   private enum CurrentTimePosition: Equatable {
-    case insidePromise       // 어떤 약속 진행 중
-    case beforeIndex(Int)    // 특정 인덱스 약속 전 (빈 시간)
-    case afterAll            // 모든 약속 종료 후
+    case insideItem          // 어떤 일정 진행 중
+    case beforeIndex(Int)    // 특정 인덱스 일정 전 (빈 시간)
+    case afterAll            // 모든 일정 종료 후
   }
 
-  /// 정렬된 약속 배열에서 현재 시간 위치 찾기
-  private func findCurrentTimePosition(in sortedPromises: [PromiseModel]) -> CurrentTimePosition {
+  /// 정렬된 일정 배열에서 현재 시간 위치 찾기
+  private func findCurrentTimePosition(in sortedItems: [HomeModels.ScheduleItem]) -> CurrentTimePosition {
     let now = Date()
 
-    for (index, promise) in sortedPromises.enumerated() {
-      let start = promise.startAt
-      let end = promise.endAt ?? promise.startAt.addingTimeInterval(7200)
+    for (index, item) in sortedItems.enumerated() {
+      let start = item.startAt
+      let end = item.endAt ?? item.startAt.addingTimeInterval(7200)
 
-      // 현재 진행 중인 약속이 있으면 마커 표시 안함
+      // 현재 진행 중인 일정이 있으면 마커 표시 안함
       if now >= start && now <= end {
-        return .insidePromise
+        return .insideItem
       }
 
-      // 이 약속 시작 전인데, 이전 약속은 끝났거나 없는 경우
+      // 이 일정 시작 전인데, 이전 일정은 끝났거나 없는 경우
       if now < start {
         if index == 0 {
-          // 첫 약속 전이면 마커 표시 안함 (아직 일정 시작 전)
-          return .insidePromise
+          // 첫 일정 전이면 마커 표시 안함 (아직 일정 시작 전)
+          return .insideItem
         }
 
-        // 이전 약속 종료 시간 확인
-        let previousPromise = sortedPromises[index - 1]
-        let previousEnd = previousPromise.endAt ?? previousPromise.startAt.addingTimeInterval(7200)
+        // 이전 일정 종료 시간 확인
+        let previousItem = sortedItems[index - 1]
+        let previousEnd = previousItem.endAt ?? previousItem.startAt.addingTimeInterval(7200)
 
         if now > previousEnd {
-          // 이전 약속 끝났고, 다음 약속 시작 전 = 빈 시간
+          // 이전 일정 끝났고, 다음 일정 시작 전 = 빈 시간
           return .beforeIndex(index)
         }
       }
     }
 
-    // 마지막 약속 종료 후인지 확인
-    if let lastPromise = sortedPromises.last {
-      let lastEnd = lastPromise.endAt ?? lastPromise.startAt.addingTimeInterval(7200)
+    // 마지막 일정 종료 후인지 확인
+    if let lastItem = sortedItems.last {
+      let lastEnd = lastItem.endAt ?? lastItem.startAt.addingTimeInterval(7200)
       if now > lastEnd {
         return .afterAll
       }
     }
 
-    return .insidePromise
+    return .insideItem
   }
 
   // MARK: - Computed Properties
@@ -166,30 +178,37 @@ struct TodayScheduleCard: View {
 
 // MARK: - Preview
 
-#Preview("약속 있음") {
+#Preview("일정 있음") {
   TodayScheduleCard(
-    promises: [
-      PromiseModel.mock(
+    items: [
+      .promise(PromiseModel.mock(
         id: "1",
         title: "점심 모임",
         startAt: Date().addingTimeInterval(3600)
-      ),
-      PromiseModel.mock(
+      )),
+      .personalEvent(PersonalEventModel.mock(
+        id: "pe-1",
+        title: "아침 운동",
+        emoji: "🏃",
+        startAt: Date().addingTimeInterval(1800),
+        endAt: Date().addingTimeInterval(5400)
+      )),
+      .promise(PromiseModel.mock(
         id: "2",
         title: "카페 미팅",
         startAt: Date().addingTimeInterval(7200)
-      )
+      ))
     ],
-    onPromiseTap: { _ in }
+    onItemTap: { _ in }
   )
   .padding()
   .auroraBackground()
 }
 
-#Preview("약속 없음") {
+#Preview("일정 없음") {
   TodayScheduleCard(
-    promises: [],
-    onPromiseTap: { _ in }
+    items: [],
+    onItemTap: { _ in }
   )
   .padding()
   .auroraBackground()

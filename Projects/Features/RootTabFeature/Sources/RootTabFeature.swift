@@ -134,6 +134,9 @@ extension RootTab {
       /// LivePromise 상세 뷰 Presentation
       @Presents var livePromiseDetail: LivePromise.Detail.State?
 
+      /// 개인 일정 상세 (Home에서 탭 → sheet 표시)
+      @Presents var personalEventDetail: PersonalEventDetail.Feature.State?
+
       /// Widget "직접 입력" 딥링크 pending 플래그
       /// Cold start 시 Activity 구독보다 딥링크가 먼저 도착하면 true로 설정,
       /// activityUpdateReceived에서 livePromise 생성 후 ETA 시트를 열기 위해 사용
@@ -172,6 +175,8 @@ extension RootTab {
       case livePromise(LivePromise.Feature.Action)
       /// LivePromise 상세 뷰 액션
       case livePromiseDetail(PresentationAction<LivePromise.Detail.Action>)
+      /// 개인 일정 상세 액션
+      case personalEventDetail(PresentationAction<PersonalEventDetail.Feature.Action>)
       /// 상위로 전달되는 델리게이트 액션
       case delegate(Delegate)
       /// 딥링크로 그룹 참여 열기
@@ -302,6 +307,10 @@ extension RootTab {
           // TODO: 모든 약속 보기 화면으로 이동 (추후 구현)
           return .none
 
+        case .home(.delegate(.navigateToPersonalEvent(let event))):
+          state.personalEventDetail = PersonalEventDetail.Feature.State(event: event)
+          return .none
+
         case .home:
           return .none
 
@@ -312,6 +321,18 @@ extension RootTab {
           return .none
 
         case .personalMode:
+          return .none
+
+        case .personalEventDetail(.presented(.delegate(.eventUpdated))):
+          // 개인 일정 수정 후 홈 새로고침
+          return .send(.home(.view(.refreshTriggered)))
+
+        case .personalEventDetail(.presented(.delegate(.eventDeleted))):
+          state.personalEventDetail = nil
+          // 개인 일정 삭제 후 홈 새로고침
+          return .send(.home(.view(.refreshTriggered)))
+
+        case .personalEventDetail:
           return .none
 
         case .settings(.delegate(.didLogout)):
@@ -543,6 +564,9 @@ extension RootTab {
       .ifLet(\.$livePromiseDetail, action: \.livePromiseDetail) {
         LivePromise.Detail()
       }
+      .ifLet(\.$personalEventDetail, action: \.personalEventDetail) {
+        PersonalEventDetail.Feature()
+      }
     }
   }
 }
@@ -607,6 +631,9 @@ extension RootTab {
               transitionID: livePromiseTransitionID
             )
           }
+        }
+        .sheet(item: $store.scope(state: \.personalEventDetail, action: \.personalEventDetail)) { detailStore in
+          PersonalEventDetail.RootView(store: detailStore)
         }
         // 딥링크로 LivePromiseDetail 열기 요청 수신
         // ⚠️ onChange/task(id:)로 TCA 상태를 관찰하면 zoom transition이 깨짐
