@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import PromisoShared
 
@@ -218,6 +219,25 @@ extension PersonalEventModel {
       text += "\n\(description)"
     }
     return text
+  }
+}
+
+// MARK: - Calendar Sync Properties
+
+extension PersonalEventModel {
+  /// 캘린더 sync용 콘텐츠 해시 (CalendarSyncPromise 패턴과 동일)
+  public var contentHash: String {
+    let startTimestamp = Int(startAt.timeIntervalSince1970)
+    let endTimestamp = endAt.map { Int($0.timeIntervalSince1970) } ?? 0
+    let content = "\(title)|\(location?.name ?? "")|\(startTimestamp)|\(endTimestamp)"
+    let data = Data(content.utf8)
+    let hash = SHA256.hash(data: data)
+    return hash.prefix(4).map { String(format: "%02x", $0) }.joined()
+  }
+
+  /// 캘린더 이벤트 제목 (이모지 + 제목)
+  public var calendarTitle: String {
+    "\(displayEmoji) \(title)"
   }
 }
 

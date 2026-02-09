@@ -558,13 +558,24 @@ extension RootTab {
                 .filter { $0.notifications?.calendarSync ?? false }
                 .map { $0.id }
             )
+            let personalSyncEnabled = UserDefaults.standard.bool(
+              forKey: AppConstants.UserDefaults.personalCalendarSync
+            )
             return .run(priority: .background) { [calendarSyncClient] _ in
+              // 그룹 약속 동기화
               AppLogger.calendar.debug("📅 [RootTab] syncCalendar 시작 - enabledGroupIds: \(enabledGroupIds)")
               do {
                 let result = try await calendarSyncClient.sync(enabledGroupIds)
                 AppLogger.calendar.info("📅 [RootTab] syncCalendar 완료 - \(result.description)")
               } catch {
                 AppLogger.calendar.error("📅 [RootTab] syncCalendar 실패 - \(error.localizedDescription)")
+              }
+              // 개인 일정 동기화
+              do {
+                let personalResult = try await calendarSyncClient.syncPersonalEvents(personalSyncEnabled)
+                AppLogger.calendar.info("📅 [RootTab] personalSync 완료 - \(personalResult.description)")
+              } catch {
+                AppLogger.calendar.error("📅 [RootTab] personalSync 실패 - \(error.localizedDescription)")
               }
             }
 

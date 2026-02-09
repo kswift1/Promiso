@@ -14,6 +14,7 @@ extension PersonalEventDetail {
     @Dependency(\.personalEventClient) var personalEventClient
     @Dependency(\.localNotificationClient) var localNotificationClient
     @Dependency(\.hapticFeedback) var hapticFeedback
+    @Dependency(\.calendarSyncClient) var calendarSyncClient
 
     public init() {}
 
@@ -127,10 +128,11 @@ extension PersonalEventDetail {
 
         case .alert(.presented(.confirmDelete)):
           state.isDeleting = true
-          return .run { [event = state.event] send in
+          return .run { [event = state.event, calendarSyncClient] send in
             do {
               try await personalEventClient.deleteEvent(event.id)
               await localNotificationClient.cancel(event.notificationId)
+              try? await calendarSyncClient.removePersonalEvent(event.id)
               await send(.internal(.deleteSuccess))
             } catch {
               await send(.internal(.deleteFailed(error.localizedDescription)))

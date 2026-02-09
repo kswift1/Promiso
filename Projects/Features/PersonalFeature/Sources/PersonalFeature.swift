@@ -45,6 +45,7 @@ extension PersonalMode {
   public struct Feature {
     @Dependency(\.personalEventClient) var personalEventClient
     @Dependency(\.localNotificationClient) var localNotificationClient
+    @Dependency(\.calendarSyncClient) var calendarSyncClient
 
     public init() {}
 
@@ -155,6 +156,7 @@ extension PersonalMode {
         case eventsFailed(String)
         case eventDeleted(String)
         case eventDeleteFailed(String)
+        case syncPersonalCalendar
       }
     }
 
@@ -169,7 +171,10 @@ extension PersonalMode {
           switch viewAction {
           case .onAppear:
             guard state.eventsState == .idle else { return .none }
-            return .send(.internal(.subscribeToEvents))
+            return .merge(
+              .send(.internal(.subscribeToEvents)),
+              .send(.internal(.syncPersonalCalendar))
+            )
 
           case .refreshEvents:
             state.eventsState = .loading
@@ -201,10 +206,11 @@ extension PersonalMode {
             return .none
 
           case .deleteEvent(let event):
-            return .run { [localNotificationClient] send in
+            return .run { [localNotificationClient, calendarSyncClient] send in
               do {
                 try await personalEventClient.deleteEvent(event.id)
                 await localNotificationClient.cancel(event.notificationId)
+                try? await calendarSyncClient.removePersonalEvent(event.id)
                 await send(.internal(.eventDeleted(event.id)))
               } catch {
                 await send(.internal(.eventDeleteFailed(error.localizedDescription)))
@@ -292,6 +298,17 @@ extension PersonalMode {
           case .eventDeleteFailed(let message):
             state.eventsState = .failed(AppError(message: message))
             return .none
+
+          case .syncPersonalCalendar:
+            return .run(priority: .background) { [calendarSyncClient] _ in
+              let enabled = UserDefaults.standard.bool(
+                forKey: AppConstants.UserDefaults.personalCalendarSync
+              )
+              let result = try? await calendarSyncClient.syncPersonalEvents(enabled)
+              if let result {
+                AppLogger.calendar.info("📅 [Personal] syncCalendar 완료 - \(result.description)")
+              }
+            }
           }
 
         // MARK: - CreateEvent Delegate

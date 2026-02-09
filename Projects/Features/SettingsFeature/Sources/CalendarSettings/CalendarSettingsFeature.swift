@@ -27,6 +27,7 @@ extension CalendarSettings {
     @Dependency(\.eventKitClient) private var eventKitClient
     @Dependency(\.groupClient) private var groupClient
     @Dependency(\.hapticFeedback) private var hapticFeedback
+    @Dependency(\.calendarSyncClient) private var calendarSyncClient
 
     public init() {}
 
@@ -38,12 +39,16 @@ extension CalendarSettings {
       public var isRequestingAccess: Bool
       public var groups: [UserGroupInfo]
       public var updatingGroupIds: Set<String>
+      public var personalCalendarSyncEnabled: Bool
 
       public init() {
         self.authorizationStatus = .notDetermined
         self.isRequestingAccess = false
         self.groups = []
         self.updatingGroupIds = []
+        self.personalCalendarSyncEnabled = UserDefaults.standard.bool(
+          forKey: AppConstants.UserDefaults.personalCalendarSync
+        )
       }
     }
 
@@ -60,6 +65,7 @@ extension CalendarSettings {
       case onSceneActive
       case calendarToggleTapped
       case groupCalendarSyncToggled(groupId: String, enabled: Bool)
+      case personalCalendarSyncToggled(Bool)
     }
 
     public enum Internal: Equatable, Sendable {
@@ -67,6 +73,7 @@ extension CalendarSettings {
       case accessRequestCompleted(Bool)
       case groupsUpdated([UserGroupInfo])
       case groupSettingsUpdateCompleted(groupId: String, success: Bool, previousValue: Bool?)
+      case personalSyncCompleted
     }
 
     // MARK: - Reducer Body
@@ -116,6 +123,17 @@ extension CalendarSettings {
               await hapticFeedback.selection()
               await eventKitClient.openSettings()
             }
+          }
+
+        case .view(.personalCalendarSyncToggled(let enabled)):
+          state.personalCalendarSyncEnabled = enabled
+          UserDefaults.standard.set(enabled, forKey: AppConstants.UserDefaults.personalCalendarSync)
+          return .run { [calendarSyncClient] send in
+            await hapticFeedback.selection()
+            if enabled {
+              _ = try? await calendarSyncClient.syncPersonalEvents(true)
+            }
+            await send(.internal(.personalSyncCompleted))
           }
 
         case .view(.groupCalendarSyncToggled(let groupId, let enabled)):
@@ -200,6 +218,9 @@ extension CalendarSettings {
               await hapticFeedback.error()
             }
           }
+
+        case .internal(.personalSyncCompleted):
+          return .none
         }
       }
     }
@@ -220,6 +241,10 @@ extension CalendarSettings {
         VStack(spacing: 16) {
           calendarAccessSection
           permissionDetailSection
+
+          if store.authorizationStatus.canWriteEvents {
+            personalSyncSection
+          }
 
           if store.authorizationStatus.canWriteEvents && !store.groups.isEmpty {
             groupSyncSection
@@ -326,6 +351,45 @@ extension CalendarSettings {
         .adaptiveGlassCard()
 
         Text("캘린더 권한을 허용하면 약속과 기존 일정을 함께 확인할 수 있습니다.")
+          .font(.system(size: 12))
+          .foregroundStyle(Color.pmtext.secondary)
+          .padding(.horizontal, 4)
+      }
+    }
+
+    // MARK: - Personal Sync Section
+
+    private var personalSyncSection: some View {
+      VStack(alignment: .leading, spacing: 10) {
+        Text("개인 일정")
+          .font(.system(size: 16, weight: .semibold))
+          .padding(.horizontal, 4)
+
+        VStack(spacing: 0) {
+          HStack(spacing: 12) {
+            Image(systemName: "person.fill")
+              .font(.system(size: 16, weight: .semibold))
+              .foregroundStyle(Color.pmindigo.n500)
+              .frame(width: 24)
+
+            Text("개인 일정 동기화")
+              .foregroundStyle(.primary)
+
+            Spacer()
+
+            Toggle("", isOn: Binding(
+              get: { store.personalCalendarSyncEnabled },
+              set: { store.send(.view(.personalCalendarSyncToggled($0))) }
+            ))
+            .labelsHidden()
+            .tint(Color.pmindigo.n500)
+          }
+          .padding(.horizontal, 16)
+          .padding(.vertical, 14)
+        }
+        .adaptiveGlassCard()
+
+        Text("개인 일정을 달력 앱에 자동으로 추가합니다.")
           .font(.system(size: 12))
           .foregroundStyle(Color.pmtext.secondary)
           .padding(.horizontal, 4)
