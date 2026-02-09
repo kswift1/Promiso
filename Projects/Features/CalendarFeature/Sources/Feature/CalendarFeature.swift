@@ -509,6 +509,7 @@ extension CalendarFeature {
         if state.calendarPermissionStatus.canReadEvents {
           effects.append(.send(.internal(.fetchCalendarEvents)))
         }
+        effects.append(.send(.internal(.fetchPersonalEvents)))
 
         // 인접 월 프리페치
         effects.append(.send(.internal(.prefetchAdjacentMonths)))
@@ -541,6 +542,7 @@ extension CalendarFeature {
         if state.calendarPermissionStatus.canReadEvents {
           effects.append(.send(.internal(.fetchCalendarEvents)))
         }
+        effects.append(.send(.internal(.fetchPersonalEvents)))
 
         // 인접 월 프리페치
         effects.append(.send(.internal(.prefetchAdjacentMonths)))
