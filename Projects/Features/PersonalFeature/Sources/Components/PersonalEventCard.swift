@@ -10,15 +10,18 @@ import PromisoShared
 public struct PersonalEventCard: View {
   let event: PersonalEventModel
   let onTap: () -> Void
+  let onEdit: () -> Void
   let onDelete: () -> Void
 
   public init(
     event: PersonalEventModel,
     onTap: @escaping () -> Void,
+    onEdit: @escaping () -> Void,
     onDelete: @escaping () -> Void
   ) {
     self.event = event
     self.onTap = onTap
+    self.onEdit = onEdit
     self.onDelete = onDelete
   }
 
@@ -43,6 +46,10 @@ public struct PersonalEventCard: View {
     .contextMenu {
       Button(action: onTap) {
         Label("상세 보기", systemImage: "info.circle")
+      }
+
+      Button(action: onEdit) {
+        Label("수정", systemImage: "pencil")
       }
 
       Button(role: .destructive, action: onDelete) {
@@ -185,6 +192,7 @@ private struct PersonalEventStatusBadge: View {
         PersonalEventCard(
           event: event,
           onTap: {},
+          onEdit: {},
           onDelete: {}
         )
       }
@@ -201,6 +209,7 @@ private struct PersonalEventStatusBadge: View {
         PersonalEventCard(
           event: event,
           onTap: {},
+          onEdit: {},
           onDelete: {}
         )
       }
@@ -217,6 +226,7 @@ private struct PersonalEventStatusBadge: View {
         PersonalEventCard(
           event: event,
           onTap: {},
+          onEdit: {},
           onDelete: {}
         )
       }
