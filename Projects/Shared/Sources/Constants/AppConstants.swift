@@ -146,6 +146,13 @@ public enum AppConstants {
     public static let selectionOpacity: CGFloat = 0.3
   }
 
+  // MARK: - Sync
+
+  public enum Sync {
+    /// 개인 일정 조회 최대 개수
+    public static let personalEventFetchLimit = 100
+  }
+
   // MARK: - LiveActivity
 
   public enum LiveActivity {

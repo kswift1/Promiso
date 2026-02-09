@@ -755,7 +755,7 @@ extension CalendarFeature {
       case .fetchPersonalEvents:
         return .run { [personalEventClient] send in
           do {
-            let events = try await personalEventClient.getActiveEvents(100)
+            let events = try await personalEventClient.getActiveEvents(AppConstants.Sync.personalEventFetchLimit)
             await send(.internal(.personalEventsResponse(.success(events))))
           } catch {
             await send(.internal(.personalEventsResponse(.failure(error))))

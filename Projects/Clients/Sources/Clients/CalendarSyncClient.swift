@@ -348,7 +348,7 @@ extension CalendarSyncClient: DependencyKey {
         // 4. 서버에서 활성 개인 일정 조회
         let serverEvents: [PersonalEventModel]
         do {
-          serverEvents = try await personalEventClient.getActiveEvents(100)
+          serverEvents = try await personalEventClient.getActiveEvents(AppConstants.Sync.personalEventFetchLimit)
           AppLogger.calendar.debug("🔄 [PersonalSync] 서버 일정 조회: \(serverEvents.count)개")
         } catch {
           AppLogger.calendar.error("🔄 [PersonalSync] 서버 일정 조회 실패: \(error.localizedDescription)")
