@@ -60,7 +60,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
       callableData["endAt"] = dateFormatter.string(from: endAt)
     }
 
-    if let location = promise.location, !location.name.isEmpty {
+    if let location = promise.location, !location.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
       var locationData: [String: Any] = ["name": location.name]
       if let address = location.address {
         locationData["address"] = address
@@ -197,7 +197,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
     }
 
     // location (장소 정보)
-    if let location = promise.location, !location.name.isEmpty {
+    if let location = promise.location, !location.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
       var locationData: [String: Any] = ["name": location.name]
       if let address = location.address {
         locationData["address"] = address
