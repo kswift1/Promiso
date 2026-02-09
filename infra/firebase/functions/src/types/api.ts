@@ -1392,13 +1392,18 @@ export enum GenerateEmojiError {
 export type MyVoteStatus = "pending" | "voted" | "declined";
 
 /**
- * 스냅샷용 약속 데이터 (Widget & Home 공통)
+ * 스냅샷용 통합 일정 데이터 (Widget & Home 공통)
  *
  * @remarks
- * Firestore `users/{uid}/cache/widgetSnapshot`, `homeSnapshot` 문서에 저장
- * 서버에서 우선순위 정렬 완료 후 저장
+ * - 그룹 약속(type: "promise")과 개인 일정(type: "personal")을 통합
+ * - Firestore `users/{uid}/cache/widgetSnapshot`, `homeSnapshot` 문서에 저장
+ * - 서버에서 우선순위 정렬 완료 후 저장
+ * - type이 "personal"이면 groupId/votes/myVoteStatus 등은 기본값
  */
 export interface SnapshotPromise {
+  /** 일정 타입 ("promise" | "personal", 생략 시 "promise") */
+  type?: "promise" | "personal";
+
   /** 약속 ID */
   id: string;
 
@@ -1417,22 +1422,22 @@ export interface SnapshotPromise {
   /** 장소 이름 */
   location: string | null;
 
-  /** 그룹 ID */
+  /** 그룹 ID (개인 일정은 빈 문자열) */
   groupId: string;
 
-  /** 그룹 이름 */
+  /** 그룹 이름 (개인 일정은 null) */
   groupName: string | null;
 
   /** 그룹 이미지 URL */
   groupImageUrl: string | null;
 
-  /** 약속 확정 여부 (최소 인원 충족) */
+  /** 약속 확정 여부 (최소 인원 충족, 개인 일정은 true) */
   isConfirmed: boolean;
 
-  /** 최소 참가 인원 */
+  /** 최소 참가 인원 (개인 일정은 0) */
   minimumParticipants: number;
 
-  /** 투표 정보 */
+  /** 투표 정보 (개인 일정은 빈 배열) */
   votes: {
     /** 참가 확정 사용자 ID 목록 */
     accepted: string[];
@@ -1440,7 +1445,7 @@ export interface SnapshotPromise {
     declined: string[];
   };
 
-  /** 내 투표 상태 */
+  /** 내 투표 상태 (개인 일정은 "voted") */
   myVoteStatus: MyVoteStatus;
 
   /** 투표 마감 시간 (ISO 8601, nullable) - 응답 필요 섹션용 */
@@ -1502,7 +1507,8 @@ export interface WidgetSnapshotDocument {
   today: WidgetPromise[];
 
   /**
-   * 다가오는 약속 목록 (Large 위젯용, 내일부터)
+   * 다가오는 일정 목록 (Large 위젯용, 내일부터)
+   * 그룹 약속 + 개인 일정 통합, type 필드로 구분
    *
    * @max 7개
    * @sorting 시간순 (확정 여부 무관)
