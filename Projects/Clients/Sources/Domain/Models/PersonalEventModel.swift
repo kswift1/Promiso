@@ -105,29 +105,25 @@ extension PersonalEventModel {
 // MARK: - Time-based Properties
 
 extension PersonalEventModel {
+  /// endAt이 없는 경우 기본 종료 시간 (startAt + 1시간)
+  public var effectiveEndAt: Date {
+    endAt ?? startAt.addingTimeInterval(3600)
+  }
+
   /// 일정이 진행 중인지 확인
   public var isOngoing: Bool {
     let now = Date()
-    if let endAt = endAt {
-      return now >= startAt && now <= endAt
-    } else {
-      return now >= startAt
-    }
+    return now >= startAt && now <= effectiveEndAt
   }
 
   /// 일정이 지났는지 확인
   public var isPast: Bool {
-    let now = Date()
-    if let endAt = endAt {
-      return now > endAt
-    } else {
-      return now > startAt
-    }
+    Date() > effectiveEndAt
   }
 
-  /// 일정이 다가오는지 확인
+  /// 일정이 다가오는지 확인 (시작 전)
   public var isUpcoming: Bool {
-    return Date() < startAt
+    Date() < startAt
   }
 }
 
@@ -159,7 +155,7 @@ extension PersonalEventModel {
     return timeText
   }
 
-  /// 날짜 텍스트 (예: "오늘", "내일", "1월 15일")
+  /// 날짜 텍스트 (예: "오늘", "내일", "어제", "1월 15일")
   public var dateText: String {
     let calendar = Calendar.current
     if calendar.isDateInToday(startAt) {
@@ -167,6 +163,9 @@ extension PersonalEventModel {
     }
     if calendar.isDateInTomorrow(startAt) {
       return "내일"
+    }
+    if calendar.isDateInYesterday(startAt) {
+      return "어제"
     }
     let formatter = DateFormatter()
     formatter.locale = Locale(identifier: "ko_KR")

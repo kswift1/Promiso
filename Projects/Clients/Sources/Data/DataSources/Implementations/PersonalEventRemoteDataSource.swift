@@ -87,12 +87,13 @@ public class PersonalEventRemoteDataSource: PersonalEventRemoteDataSourceProtoco
     return try snapshot.documents.compactMap { try convertDocumentToEvent($0) }
   }
 
-  /// 과거 일정 조회 (startAt < now, 최신순 정렬, 커서 기반 페이징)
+  /// 과거 일정 조회 (startAt < 오늘 00:00, 최신순 정렬, 커서 기반 페이징)
   public func getPastEvents(limit: Int, lastStartAt: Date?) async throws -> [PersonalEventModel] {
     let collection = try eventsCollection()
+    let startOfToday = Calendar.current.startOfDay(for: Date())
 
     var query = collection
-      .whereField("startAt", isLessThan: Timestamp(date: Date()))
+      .whereField("startAt", isLessThan: Timestamp(date: startOfToday))
       .order(by: "startAt", descending: true)
 
     // 커서 기반 페이징: lastStartAt 이후 데이터만 조회
@@ -126,8 +127,9 @@ public class PersonalEventRemoteDataSource: PersonalEventRemoteDataSourceProtoco
         .document(currentUserId)
         .collection(subcollectionName)
 
+      let startOfToday = Calendar.current.startOfDay(for: Date())
       let query = collection
-        .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: Date()))
+        .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: startOfToday))
         .order(by: "startAt")
         .limit(to: limit)
 

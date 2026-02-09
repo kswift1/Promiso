@@ -86,22 +86,31 @@ extension PersonalMode {
 
     // MARK: - Content
 
+    private var isLoading: Bool {
+      if store.selectedFilter == .past {
+        return !store.pastEventsState.isLoaded && !store.pastEventsState.isFailed
+      }
+      return !store.eventsState.isLoaded && !store.eventsState.isFailed
+    }
+
+    private var currentError: Error? {
+      if store.selectedFilter == .past {
+        return store.pastEventsState.error
+      }
+      return store.eventsState.error
+    }
+
     @ViewBuilder
     private var contentView: some View {
       Group {
-        switch store.eventsState {
-        case .idle, .loading:
+        if isLoading {
           loadingView
-
-        case .loaded:
-          if store.filteredEvents.isEmpty {
-            emptyView
-          } else {
-            eventListView
-          }
-
-        case .failed(let error):
+        } else if let error = currentError {
           errorView(error: error)
+        } else if store.filteredEvents.isEmpty {
+          emptyView
+        } else {
+          eventListView
         }
       }
       .animation(.snappy, value: store.selectedFilter)
@@ -147,8 +156,8 @@ extension PersonalMode {
 
     private var emptyFilterEmoji: String {
       switch store.selectedFilter {
-      case .upcoming: return "🗓️"
       case .today: return "☀️"
+      case .future: return "🗓️"
       case .all: return "📭"
       case .past: return "🕐"
       }
@@ -156,14 +165,14 @@ extension PersonalMode {
 
     private var emptyFilterDescription: String {
       switch store.selectedFilter {
-      case .upcoming:
-        return "예정된 일정이 없어요\n+ 버튼으로 새 일정을 만들어보세요"
       case .today:
-        return "오늘 일정이 없어요\n여유로운 하루를 보내세요 ☕️"
+        return "오늘 일정이 없어요\n여유로운 하루를 보내세요"
+      case .future:
+        return "예정된 일정이 없어요\n+ 버튼으로 새 일정을 만들어보세요"
       case .all:
         return "아직 일정이 없어요\n+ 버튼으로 새 일정을 만들어보세요"
       case .past:
-        return "아직 지난 일정이 없어요\n완료된 일정 기록이 여기에 쌓여요"
+        return "지난 일정이 없어요"
       }
     }
 
