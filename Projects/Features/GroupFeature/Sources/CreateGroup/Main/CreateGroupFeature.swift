@@ -192,17 +192,14 @@ extension CreateGroup {
           case .successAcknowledged:
             guard case .success(let result) = state.step else { return .none }
             state.step = .settings(result)
-            // 알림 및 캘린더 권한 상태 확인
-            return .merge(
-              .run { send in
-                let status = await notificationClient.getAuthorizationStatus()
-                await send(.internal(.notificationAuthStatusChecked(status)))
-              },
-              .run { send in
-                let status = eventKitClient.authorizationStatus()
-                await send(.internal(.calendarAuthStatusChecked(status)))
-              }
-            )
+            // 알림 및 캘린더 권한 상태 확인 (순서 보장)
+            return .run { send in
+              let notificationStatus = await notificationClient.getAuthorizationStatus()
+              await send(.internal(.notificationAuthStatusChecked(notificationStatus)))
+
+              let calendarStatus = eventKitClient.authorizationStatus()
+              await send(.internal(.calendarAuthStatusChecked(calendarStatus)))
+            }
 
           case .notificationToggled(let enabled):
             // OFF로 전환할 때는 권한 체크 불필요
@@ -270,17 +267,14 @@ extension CreateGroup {
             return .none
 
           case .settingsAppeared:
-            // 설정에서 돌아왔을 때 권한 상태 새로고침
-            return .merge(
-              .run { send in
-                let status = await notificationClient.getAuthorizationStatus()
-                await send(.internal(.notificationAuthStatusChecked(status)))
-              },
-              .run { send in
-                let status = eventKitClient.authorizationStatus()
-                await send(.internal(.calendarAuthStatusChecked(status)))
-              }
-            )
+            // 설정에서 돌아왔을 때 권한 상태 새로고침 (순서 보장)
+            return .run { send in
+              let notificationStatus = await notificationClient.getAuthorizationStatus()
+              await send(.internal(.notificationAuthStatusChecked(notificationStatus)))
+
+              let calendarStatus = eventKitClient.authorizationStatus()
+              await send(.internal(.calendarAuthStatusChecked(calendarStatus)))
+            }
 
           case .settingsCompleted:
             guard case .settings(let result) = state.step else { return .none }
