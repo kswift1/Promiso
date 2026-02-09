@@ -142,6 +142,7 @@ extension PersonalMode {
         case createNewEventTapped
         case eventTapped(PersonalEventModel)
         case deleteEvent(PersonalEventModel)
+        case switchToGroupMode
       }
 
       public enum Internal: Sendable {
@@ -201,6 +202,10 @@ extension PersonalMode {
                 await send(.internal(.eventDeleteFailed(error.localizedDescription)))
               }
             }
+
+          case .switchToGroupMode:
+            // RootTabFeature에서 처리
+            return .none
           }
 
         case let .internal(internalAction):

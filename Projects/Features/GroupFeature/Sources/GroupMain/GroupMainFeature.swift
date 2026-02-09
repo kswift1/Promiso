@@ -428,6 +428,7 @@ extension GroupMain {
         case sortSettingsTapped  // "그룹 정렬"
         case directionsTapped(String)  // 길찾기 (promiseId)
         case openCreatePromiseIfPossible  // Widget 딥링크: 그룹 있으면 약속 생성
+        case switchToPersonalMode  // 개인 모드로 전환 요청
       }
 
       public enum Internal: Sendable {
@@ -729,6 +730,10 @@ extension GroupMain {
             }
             // 그룹 있음 → 약속 생성 화면 열기
             return .send(.view(.createNewPromise))
+
+          case .switchToPersonalMode:
+            // RootTabFeature에서 처리
+            return .none
           }
 
         // MARK: - Internal Actions

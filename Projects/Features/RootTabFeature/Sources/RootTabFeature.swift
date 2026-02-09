@@ -319,7 +319,17 @@ extension RootTab {
         case .calendar:
           return .none
 
+        case .groupMain(.view(.switchToPersonalMode)):
+          state.promiseMode = .own
+          state.selectedTab = .promise(.own)
+          return .send(.personalMode(.view(.onAppear)))
+
         case .groupMain:
+          return .none
+
+        case .personalMode(.view(.switchToGroupMode)):
+          state.promiseMode = .group
+          state.selectedTab = .promise(.group)
           return .none
 
         case .personalMode:
@@ -557,6 +567,7 @@ extension RootTab {
                 AppLogger.calendar.error("📅 [RootTab] syncCalendar 실패 - \(error.localizedDescription)")
               }
             }
+
           }
 
         case .delegate:

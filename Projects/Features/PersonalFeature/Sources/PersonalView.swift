@@ -47,22 +47,19 @@ extension PersonalMode {
 
     // MARK: - Header
 
+    private var defaultMode: PromiseMode {
+      let saved = UserDefaults.standard.string(forKey: AppConstants.UserDefaults.defaultPromiseTabMode) ?? "group"
+      return saved == "own" ? .personal : .group
+    }
+
     @ViewBuilder
     private var headerSection: some View {
-      VStack(spacing: 4) {
-        HStack {
-          Text("개인 일정")
-            .font(.system(size: 28, weight: .bold))
-
-          Spacer()
-        }
-
-        HStack {
-          Text("그룹 모드로 전환하려면 탭을 다시 눌러주세요")
-            .font(.system(size: 13))
-            .foregroundStyle(.secondary)
-
-          Spacer()
+      PromiseTabHeader(
+        selectedMode: .personal,
+        defaultMode: defaultMode
+      ) { mode in
+        if mode == .group {
+          store.send(.view(.switchToGroupMode))
         }
       }
     }
