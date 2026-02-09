@@ -38,7 +38,7 @@ extension PersonalMode {
           .presentationDetents([.large, .medium])
           .presentationDragIndicator(.visible)
       }
-      .sheet(
+      .navigationDestination(
         item: $store.scope(state: \.eventDetail, action: \.eventDetail)
       ) { detailStore in
         PersonalEventDetail.RootView(store: detailStore)
@@ -74,7 +74,11 @@ extension PersonalMode {
       CategoryFilterBar(
         selection: Binding(
           get: { store.selectedFilter },
-          set: { store.send(.view(.filterChanged($0))) }
+          set: { newFilter in
+            withAnimation(.snappy) {
+              _ = store.send(.view(.filterChanged(newFilter)))
+            }
+          }
         ),
         counts: store.filterCounts
       )
@@ -84,20 +88,23 @@ extension PersonalMode {
 
     @ViewBuilder
     private var contentView: some View {
-      switch store.eventsState {
-      case .idle, .loading:
-        loadingView
+      Group {
+        switch store.eventsState {
+        case .idle, .loading:
+          loadingView
 
-      case .loaded:
-        if store.filteredEvents.isEmpty {
-          emptyView
-        } else {
-          eventListView
+        case .loaded:
+          if store.filteredEvents.isEmpty {
+            emptyView
+          } else {
+            eventListView
+          }
+
+        case .failed(let error):
+          errorView(error: error)
         }
-
-      case .failed(let error):
-        errorView(error: error)
       }
+      .animation(.snappy, value: store.selectedFilter)
     }
 
     @ViewBuilder
@@ -193,33 +200,38 @@ extension PersonalMode {
 
     @ViewBuilder
     private var eventListView: some View {
-      ScrollView {
-        LazyVStack(spacing: 16, pinnedViews: [.sectionHeaders]) {
-          ForEach(store.groupedEvents, id: \.date) { section in
-            Section {
-              ForEach(section.events) { event in
-                PersonalEventCard(
-                  event: event,
-                  onTap: {
-                    store.send(.view(.eventTapped(event)))
-                  },
-                  onDelete: {
-                    store.send(.view(.deleteEvent(event)))
-                  }
-                )
-              }
-            } header: {
-              dateSectionHeader(section.date)
+      List {
+        ForEach(store.groupedEvents, id: \.date) { section in
+          Section {
+            ForEach(section.events) { event in
+              PersonalEventCard(
+                event: event,
+                onTap: {
+                  store.send(.view(.eventTapped(event)))
+                },
+                onDelete: {
+                  store.send(.view(.deleteEvent(event)))
+                }
+              )
+              .id(event.id)
+              .listRowSeparator(.hidden)
+              .listRowBackground(Color.clear)
+              .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
             }
+          } header: {
+            dateSectionHeader(section.date)
           }
-
-          // FAB 공간 확보
-          Color.clear
-            .frame(height: 80)
+          .listSectionSeparator(.hidden)
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 16)
+
+        // FAB 공간 확보
+        Color.clear
+          .frame(height: 80)
+          .listRowBackground(Color.clear)
+          .listRowSeparator(.hidden)
       }
+      .listStyle(.plain)
+      .scrollContentBackground(.hidden)
       .refreshable {
         store.send(.view(.refreshEvents))
       }

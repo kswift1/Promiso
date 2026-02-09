@@ -633,7 +633,9 @@ extension RootTab {
           }
         }
         .sheet(item: $store.scope(state: \.personalEventDetail, action: \.personalEventDetail)) { detailStore in
-          PersonalEventDetail.RootView(store: detailStore)
+          NavigationStack {
+            PersonalEventDetail.RootView(store: detailStore)
+          }
         }
         // 딥링크로 LivePromiseDetail 열기 요청 수신
         // ⚠️ onChange/task(id:)로 TCA 상태를 관찰하면 zoom transition이 깨짐
