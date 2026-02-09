@@ -201,6 +201,7 @@ struct CompactDayRow: View {
   let date: Date
   let promises: [PromiseModel]
   let calendarEvents: [CalendarEvent]
+  let personalEvents: [PersonalEventModel]
   let isSelected: Bool
   let currentUserId: String
   let onTap: () -> Void
@@ -209,6 +210,7 @@ struct CompactDayRow: View {
     date: Date,
     promises: [PromiseModel],
     calendarEvents: [CalendarEvent],
+    personalEvents: [PersonalEventModel] = [],
     isSelected: Bool,
     currentUserId: String = "",
     onTap: @escaping () -> Void
@@ -216,6 +218,7 @@ struct CompactDayRow: View {
     self.date = date
     self.promises = promises
     self.calendarEvents = calendarEvents
+    self.personalEvents = personalEvents
     self.isSelected = isSelected
     self.currentUserId = currentUserId
     self.onTap = onTap
@@ -272,6 +275,28 @@ struct CompactDayRow: View {
                 Text(firstPromise.timeText)
                   .font(.system(size: 12))
                   .foregroundColor(.secondary)
+              }
+            }
+          }
+
+          // 개인 일정이 있으면 표시
+          if !personalEvents.isEmpty {
+            HStack(spacing: 6) {
+              Circle()
+                .fill(Color.pmindigo.n500)
+                .frame(width: 6, height: 6)
+
+              if let firstEvent = personalEvents.first {
+                Text("\(firstEvent.displayEmoji) \(firstEvent.title)")
+                  .font(.system(size: 13))
+                  .foregroundColor(.secondary)
+                  .lineLimit(1)
+
+                if personalEvents.count > 1 {
+                  Text("외 \(personalEvents.count - 1)건")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary.opacity(0.7))
+                }
               }
             }
           }

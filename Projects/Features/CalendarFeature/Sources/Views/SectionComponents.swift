@@ -52,6 +52,7 @@ import Clients
 enum CalendarListItem: Identifiable {
   case promise(PromiseModel)
   case calendarEvent(CalendarEvent)
+  case personalEvent(PersonalEventModel)
 
   var id: String {
     switch self {
@@ -59,6 +60,8 @@ enum CalendarListItem: Identifiable {
       return "promise_\(promise.id)"
     case .calendarEvent(let event):
       return "event_\(event.id)"
+    case .personalEvent(let event):
+      return "personal_\(event.id)"
     }
   }
 
@@ -68,6 +71,8 @@ enum CalendarListItem: Identifiable {
       return promise.startAt
     case .calendarEvent(let event):
       return event.startDate
+    case .personalEvent(let event):
+      return event.startAt
     }
   }
 }

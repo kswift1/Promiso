@@ -71,6 +71,7 @@ extension CalendarFeature {
           selectedDate: store.selectedDate,
           promisesByDate: store.promisesByDate,
           calendarEventsByDate: store.calendarEventsByDate,
+          personalEventsByDate: store.personalEventsByDate,
           currentUserId: store.currentUserId,
           namespace: calendarAnimation,
           onDateSelected: { date in
@@ -89,6 +90,7 @@ extension CalendarFeature {
           selectedDate: store.selectedDate,
           promisesByDate: store.promisesByDate,
           calendarEventsByDate: store.calendarEventsByDate,
+          personalEventsByDate: store.personalEventsByDate,
           currentUserId: store.currentUserId,
           namespace: calendarAnimation,
           onDateSelected: { date in
@@ -220,12 +222,13 @@ extension CalendarFeature {
         let dateKey = calendar.startOfDay(for: date)
         let dayPromises = store.promisesByDate[dateKey] ?? []
         let dayEvents = store.calendarEventsByDate[dateKey] ?? []
+        let dayPersonalEvents = store.personalEventsByDate[dateKey] ?? []
 
-        if dayPromises.isEmpty && dayEvents.isEmpty {
+        if dayPromises.isEmpty && dayEvents.isEmpty && dayPersonalEvents.isEmpty {
           EmptyDayPlaceholder(date: date)
         } else {
-          // 약속과 캘린더 이벤트를 시간순으로 통합 정렬
-          let sortedItems = mergeAndSortItems(promises: dayPromises, events: dayEvents)
+          // 약속, 개인 일정, 캘린더 이벤트를 시간순으로 통합 정렬
+          let sortedItems = mergeAndSortItems(promises: dayPromises, events: dayEvents, personalEvents: dayPersonalEvents)
 
           ForEach(sortedItems) { item in
             switch item {
@@ -244,12 +247,15 @@ extension CalendarFeature {
             case .calendarEvent(let event):
               CalendarEventCardView(
                 event: event,
-                onTap: {
-                  // 시스템 캘린더 앱으로 이동 (선택적)
-                }
+                onTap: {}
               )
               .padding(.horizontal, 16)
               .padding(.vertical, 4)
+
+            case .personalEvent(let event):
+              PersonalEventCardView(event: event)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 4)
             }
           }
         }
@@ -259,14 +265,16 @@ extension CalendarFeature {
       }
     }
 
-    /// 약속과 캘린더 이벤트를 시간순으로 통합 정렬
+    /// 약속, 개인 일정, 캘린더 이벤트를 시간순으로 통합 정렬
     private func mergeAndSortItems(
       promises: [PromiseModel],
-      events: [CalendarEvent]
+      events: [CalendarEvent],
+      personalEvents: [PersonalEventModel] = []
     ) -> [CalendarListItem] {
       var items: [CalendarListItem] = []
 
       items.append(contentsOf: promises.map { CalendarListItem.promise($0) })
+      items.append(contentsOf: personalEvents.map { CalendarListItem.personalEvent($0) })
       items.append(contentsOf: events.map { CalendarListItem.calendarEvent($0) })
 
       return items.sorted { $0.startTime < $1.startTime }
@@ -299,17 +307,18 @@ extension CalendarFeature {
       let dateKey = calendar.startOfDay(for: date)
       let dayPromises = store.promisesByDate[dateKey] ?? []
       let dayEvents = store.calendarEventsByDate[dateKey] ?? []
+      let dayPersonalEvents = store.personalEventsByDate[dateKey] ?? []
       let isSelected = calendar.isDate(date, inSameDayAs: store.selectedDate)
 
-      if !dayPromises.isEmpty || !dayEvents.isEmpty {
+      if !dayPromises.isEmpty || !dayEvents.isEmpty || !dayPersonalEvents.isEmpty {
         CompactDayRow(
           date: date,
           promises: dayPromises,
           calendarEvents: dayEvents,
+          personalEvents: dayPersonalEvents,
           isSelected: isSelected,
           currentUserId: store.currentUserId,
           onTap: {
-            // 탭하면 주간 뷰로 전환
             store.send(.view(.collapseToWeek(date)), animation: .spring(response: 0.45, dampingFraction: 0.8))
           }
         )
