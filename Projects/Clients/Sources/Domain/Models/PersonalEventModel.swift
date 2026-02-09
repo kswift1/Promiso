@@ -105,29 +105,25 @@ extension PersonalEventModel {
 // MARK: - Time-based Properties
 
 extension PersonalEventModel {
+  /// endAt이 없는 경우 기본 종료 시간 (startAt + 1시간)
+  public var effectiveEndAt: Date {
+    endAt ?? startAt.addingTimeInterval(3600)
+  }
+
   /// 일정이 진행 중인지 확인
   public var isOngoing: Bool {
     let now = Date()
-    if let endAt = endAt {
-      return now >= startAt && now <= endAt
-    } else {
-      return now >= startAt
-    }
+    return now >= startAt && now <= effectiveEndAt
   }
 
   /// 일정이 지났는지 확인
   public var isPast: Bool {
-    let now = Date()
-    if let endAt = endAt {
-      return now > endAt
-    } else {
-      return now > startAt
-    }
+    Date() > effectiveEndAt
   }
 
-  /// 일정이 다가오는지 확인
+  /// 일정이 다가오는지 확인 (시작 전)
   public var isUpcoming: Bool {
-    return Date() < startAt
+    Date() < startAt
   }
 }
 
@@ -159,7 +155,7 @@ extension PersonalEventModel {
     return timeText
   }
 
-  /// 날짜 텍스트 (예: "오늘", "내일", "1월 15일")
+  /// 날짜 텍스트 (예: "오늘", "내일", "어제", "1월 15일")
   public var dateText: String {
     let calendar = Calendar.current
     if calendar.isDateInToday(startAt) {
@@ -167,6 +163,9 @@ extension PersonalEventModel {
     }
     if calendar.isDateInTomorrow(startAt) {
       return "내일"
+    }
+    if calendar.isDateInYesterday(startAt) {
+      return "어제"
     }
     let formatter = DateFormatter()
     formatter.locale = Locale(identifier: "ko_KR")
@@ -219,6 +218,35 @@ extension PersonalEventModel {
       text += "\n\(description)"
     }
     return text
+  }
+}
+
+// MARK: - Notification Helpers
+
+extension PersonalEventModel {
+  /// 로컬 알림 식별자
+  public var notificationId: String { "personal_reminder_\(id)" }
+
+  /// 알림 발송 시각 (startAt - reminderMinutesBefore)
+  public var reminderDate: Date? {
+    guard let minutes = reminderMinutesBefore else { return nil }
+    return startAt.addingTimeInterval(-Double(minutes) * 60)
+  }
+
+  /// 알림 스케줄 가능 여부 (미래 시점 + 리마인더 설정됨)
+  public var canScheduleReminder: Bool {
+    guard let date = reminderDate else { return false }
+    return date > Date()
+  }
+
+  /// 알림 제목
+  public var notificationTitle: String { "\(displayEmoji) \(title)" }
+
+  /// 알림 본문
+  public var notificationBody: String {
+    guard let minutes = reminderMinutesBefore else { return "" }
+    if minutes >= 60 { return "\(minutes / 60)시간 후 시작하는 일정입니다" }
+    return "\(minutes)분 후 시작하는 일정입니다"
   }
 }
 

@@ -165,31 +165,30 @@ extension Settings {
               Divider()
                 .background(Color.white.opacity(0.12))
 
-              // 약속 탭 기본 모드
-              HStack(spacing: 16) {
-                Image(systemName: "person.2.fill")
-                  .font(.body)
-                  .foregroundStyle(Color.pmindigo.n500)
-                  .frame(width: 24, height: 24)
+              Button {
+                store.send(.view(.promiseTabModeSettingsTapped))
+              } label: {
+                HStack(spacing: 16) {
+                  Image(systemName: "person.2.fill")
+                    .font(.body)
+                    .foregroundStyle(Color.pmindigo.n500)
+                    .frame(width: 24, height: 24)
 
-                Text("약속 탭 기본 모드")
-                  .font(.body)
-                  .foregroundStyle(Color.pmtext.primary)
+                  Text("약속 탭 기본 모드")
+                    .font(.body)
+                    .foregroundStyle(Color.pmtext.primary)
 
-                Spacer()
+                  Spacer()
 
-                Picker("", selection: Binding(
-                  get: { store.defaultPromiseTabMode },
-                  set: { store.send(.view(.defaultPromiseTabModeChanged($0))) }
-                )) {
-                  Text("그룹").tag("group")
-                  Text("개인").tag("own")
+                  Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(Color.pmgray.n400)
                 }
-                .pickerStyle(.segmented)
-                .frame(width: 120)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .contentShape(Rectangle())
               }
-              .padding(.horizontal, 16)
-              .padding(.vertical, 10)
+              .buttonStyle(.plain)
             }
             .adaptiveGlassCard()
           }

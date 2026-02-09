@@ -60,7 +60,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
       callableData["endAt"] = dateFormatter.string(from: endAt)
     }
 
-    if let location = promise.location, !location.name.isEmpty {
+    if let location = promise.location, !location.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
       var locationData: [String: Any] = ["name": location.name]
       if let address = location.address {
         locationData["address"] = address
@@ -194,6 +194,23 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
       callableData["trackingStartMinutesBefore"] = trackingMinutes
     } else {
       callableData["trackingStartMinutesBefore"] = NSNull()
+    }
+
+    // location (장소 정보)
+    if let location = promise.location, !location.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+      var locationData: [String: Any] = ["name": location.name]
+      if let address = location.address {
+        locationData["address"] = address
+      }
+      if let latitude = location.latitude {
+        locationData["latitude"] = latitude
+      }
+      if let longitude = location.longitude {
+        locationData["longitude"] = longitude
+      }
+      callableData["location"] = locationData
+    } else {
+      callableData["location"] = NSNull()
     }
 
     // Firebase Functions 호출

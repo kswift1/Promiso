@@ -35,27 +35,31 @@ extension PersonalMode {
         item: $store.scope(state: \.createEvent, action: \.createEvent)
       ) { createEventStore in
         CreatePersonalEvent.RootView(store: createEventStore)
+          .presentationDetents([.large, .medium])
+          .presentationDragIndicator(.visible)
+      }
+      .navigationDestination(
+        item: $store.scope(state: \.eventDetail, action: \.eventDetail)
+      ) { detailStore in
+        PersonalEventDetail.RootView(store: detailStore)
       }
     }
 
     // MARK: - Header
 
+    private var defaultMode: PromiseMode {
+      let saved = UserDefaults.standard.string(forKey: AppConstants.UserDefaults.defaultPromiseTabMode) ?? "group"
+      return saved == "own" ? .personal : .group
+    }
+
     @ViewBuilder
     private var headerSection: some View {
-      VStack(spacing: 4) {
-        HStack {
-          Text("개인 일정")
-            .font(.system(size: 28, weight: .bold))
-
-          Spacer()
-        }
-
-        HStack {
-          Text("그룹 모드로 전환하려면 탭을 다시 눌러주세요")
-            .font(.system(size: 13))
-            .foregroundStyle(.secondary)
-
-          Spacer()
+      PromiseTabHeader(
+        selectedMode: .personal,
+        defaultMode: defaultMode
+      ) { mode in
+        if mode == .group {
+          store.send(.view(.switchToGroupMode))
         }
       }
     }
@@ -67,7 +71,11 @@ extension PersonalMode {
       CategoryFilterBar(
         selection: Binding(
           get: { store.selectedFilter },
-          set: { store.send(.view(.filterChanged($0))) }
+          set: { newFilter in
+            withAnimation(.snappy) {
+              _ = store.send(.view(.filterChanged(newFilter)))
+            }
+          }
         ),
         counts: store.filterCounts
       )
@@ -75,22 +83,34 @@ extension PersonalMode {
 
     // MARK: - Content
 
+    private var isLoading: Bool {
+      if store.selectedFilter == .past {
+        return !store.pastEventsState.isLoaded && !store.pastEventsState.isFailed
+      }
+      return !store.eventsState.isLoaded && !store.eventsState.isFailed
+    }
+
+    private var currentError: Error? {
+      if store.selectedFilter == .past {
+        return store.pastEventsState.error
+      }
+      return store.eventsState.error
+    }
+
     @ViewBuilder
     private var contentView: some View {
-      switch store.eventsState {
-      case .idle, .loading:
-        loadingView
-
-      case .loaded:
-        if store.filteredEvents.isEmpty {
+      Group {
+        if isLoading {
+          loadingView
+        } else if let error = currentError {
+          errorView(error: error)
+        } else if store.filteredEvents.isEmpty {
           emptyView
         } else {
           eventListView
         }
-
-      case .failed(let error):
-        errorView(error: error)
       }
+      .animation(.snappy, value: store.selectedFilter)
     }
 
     @ViewBuilder
@@ -133,8 +153,8 @@ extension PersonalMode {
 
     private var emptyFilterEmoji: String {
       switch store.selectedFilter {
-      case .upcoming: return "🗓️"
       case .today: return "☀️"
+      case .future: return "🗓️"
       case .all: return "📭"
       case .past: return "🕐"
       }
@@ -142,14 +162,14 @@ extension PersonalMode {
 
     private var emptyFilterDescription: String {
       switch store.selectedFilter {
-      case .upcoming:
-        return "예정된 일정이 없어요\n+ 버튼으로 새 일정을 만들어보세요"
       case .today:
-        return "오늘 일정이 없어요\n여유로운 하루를 보내세요 ☕️"
+        return "오늘 일정이 없어요\n여유로운 하루를 보내세요"
+      case .future:
+        return "예정된 일정이 없어요\n+ 버튼으로 새 일정을 만들어보세요"
       case .all:
         return "아직 일정이 없어요\n+ 버튼으로 새 일정을 만들어보세요"
       case .past:
-        return "아직 지난 일정이 없어요\n완료된 일정 기록이 여기에 쌓여요"
+        return "지난 일정이 없어요"
       }
     }
 
@@ -186,36 +206,59 @@ extension PersonalMode {
 
     @ViewBuilder
     private var eventListView: some View {
-      ScrollView {
-        LazyVStack(spacing: 16, pinnedViews: [.sectionHeaders]) {
-          ForEach(store.groupedEvents, id: \.date) { section in
-            Section {
-              ForEach(section.events) { event in
-                PersonalEventCard(
-                  event: event,
-                  onTap: {
-                    store.send(.view(.eventTapped(event)))
-                  },
-                  onDelete: {
-                    store.send(.view(.deleteEvent(event)))
-                  }
-                )
-              }
-            } header: {
-              dateSectionHeader(section.date)
-            }
-          }
+      List {
+        ForEach(store.groupedEvents, id: \.date) { section in
+          Section {
+            ForEach(section.events) { event in
+              PersonalEventCard(
+                event: event,
+                onTap: {
+                  store.send(.view(.eventTapped(event)))
+                },
+                onEdit: {
+                  store.send(.view(.editEvent(event)))
+                },
+                onDelete: {
+                  store.send(.view(.deleteEvent(event)))
+                }
+              )
+              .id(event.id)
+              .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                Button(role: .destructive) {
+                  store.send(.view(.deleteEvent(event)))
+                } label: {
+                  Label("삭제", systemImage: "trash")
+                }
+                .tint(.red)
 
-          // FAB 공간 확보
-          Color.clear
-            .frame(height: 80)
+                Button {
+                  store.send(.view(.editEvent(event)))
+                } label: {
+                  Label("수정", systemImage: "pencil")
+                }
+              }
+              .listRowSeparator(.hidden)
+              .listRowBackground(Color.clear)
+              .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+            }
+          } header: {
+            dateSectionHeader(section.date)
+          }
+          .listSectionSeparator(.hidden)
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 16)
+
+        // FAB 공간 확보
+        Color.clear
+          .frame(height: 80)
+          .listRowBackground(Color.clear)
+          .listRowSeparator(.hidden)
       }
+      .listStyle(.plain)
+      .scrollContentBackground(.hidden)
       .refreshable {
         store.send(.view(.refreshEvents))
       }
+      .animation(.snappy, value: store.eventListAnimationKey)
     }
 
     @ViewBuilder
@@ -263,31 +306,40 @@ private struct PersonalEventCardSkeleton: View {
 
   var body: some View {
     HStack(spacing: 12) {
-      RoundedRectangle(cornerRadius: 8)
-        .fill(Color(UIColor.systemGray5))
-        .frame(width: 50, height: 50)
+      // 시간 컬럼 스켈레톤
+      VStack(spacing: 6) {
+        RoundedRectangle(cornerRadius: 4)
+          .fill(Color(UIColor.systemGray5))
+          .frame(width: 40, height: 16)
 
+        Circle()
+          .fill(Color(UIColor.systemGray5))
+          .frame(width: 7, height: 7)
+      }
+      .frame(width: 50)
+
+      // 콘텐츠 스켈레톤
       VStack(alignment: .leading, spacing: 8) {
         RoundedRectangle(cornerRadius: 4)
           .fill(Color(UIColor.systemGray5))
-          .frame(height: 16)
-          .frame(maxWidth: 200)
+          .frame(height: 18)
+          .frame(maxWidth: 180)
 
         RoundedRectangle(cornerRadius: 4)
           .fill(Color(UIColor.systemGray5))
           .frame(height: 14)
-          .frame(maxWidth: 150)
+          .frame(maxWidth: 140)
 
         RoundedRectangle(cornerRadius: 4)
           .fill(Color(UIColor.systemGray5))
           .frame(height: 14)
-          .frame(maxWidth: 120)
+          .frame(maxWidth: 100)
       }
 
       Spacer()
     }
-    .padding(16)
-    .adaptiveGlassCard()
+    .padding(14)
+    .adaptiveGlassCard(cornerRadius: 14)
     .opacity(isAnimating ? 0.5 : 1.0)
     .onAppear {
       withAnimation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true)) {

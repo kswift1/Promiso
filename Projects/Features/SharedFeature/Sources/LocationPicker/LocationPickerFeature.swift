@@ -1,6 +1,6 @@
 //
 //  LocationPickerFeature.swift
-//  GroupFeature
+//  SharedFeature
 //
 
 import ComposableArchitecture
@@ -110,7 +110,6 @@ public enum LocationPicker {
             state.searchText = text
             state.searchError = nil
 
-            // 빈 검색어면 결과 초기화
             guard !text.trimmingCharacters(in: .whitespaces).isEmpty else {
               state.searchResults = []
               state.isSearching = false
@@ -119,7 +118,6 @@ public enum LocationPicker {
 
             state.isSearching = true
 
-            // 500ms 디바운스
             return .run { [clock, text] send in
               try await clock.sleep(for: .milliseconds(500))
               await send(.internal(.searchDebounced(text)))

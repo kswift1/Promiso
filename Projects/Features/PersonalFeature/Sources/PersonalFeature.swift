@@ -8,17 +8,17 @@ public enum PersonalMode {}
 extension PersonalMode {
   /// 개인 일정 필터
   public enum EventFilter: String, CaseIterable, Sendable, CategoryFilterItem {
-    case upcoming = "다가오는"
     case today = "오늘"
+    case future = "미래"
     case all = "전체"
-    case past = "지난"
+    case past = "과거"
 
     public var title: String { rawValue }
 
     public var icon: String {
       switch self {
-      case .upcoming: return "clock.fill"
       case .today: return "sun.max.fill"
+      case .future: return "clock.fill"
       case .all: return "calendar"
       case .past: return "clock.arrow.circlepath"
       }
@@ -26,8 +26,8 @@ extension PersonalMode {
 
     public var selectedColor: Color {
       switch self {
-      case .upcoming: return .blue
       case .today: return .orange
+      case .future: return .blue
       case .all: return .pmindigo.n500
       case .past: return Color(UIColor.systemGray)
       }
@@ -44,16 +44,19 @@ extension PersonalMode {
   @Reducer
   public struct Feature {
     @Dependency(\.personalEventClient) var personalEventClient
+    @Dependency(\.localNotificationClient) var localNotificationClient
 
     public init() {}
 
     @ObservableState
     public struct State: Equatable, Sendable {
       var eventsState: LoadingState<[PersonalEventModel]> = .idle
-      var selectedFilter: EventFilter = .upcoming
+      var pastEventsState: LoadingState<[PersonalEventModel]> = .idle
+      var selectedFilter: EventFilter = .today
       @Shared var currentUser: UserPrivateModel
 
       @Presents var createEvent: CreatePersonalEvent.Feature.State?
+      @Presents var eventDetail: PersonalEventDetail.Feature.State?
 
       public init(currentUser: Shared<UserPrivateModel>) {
         self._currentUser = currentUser
@@ -63,18 +66,23 @@ extension PersonalMode {
 
       /// 필터링된 일정 목록
       var filteredEvents: [PersonalEventModel] {
-        guard let events = eventsState.value else { return [] }
-
         switch selectedFilter {
-        case .upcoming:
-          return events.filter { $0.isUpcoming }.sorted { $0.startAt < $1.startAt }
         case .today:
+          guard let events = eventsState.value else { return [] }
           let calendar = Calendar.current
-          return events.filter { calendar.isDateInToday($0.startAt) }.sorted { $0.startAt < $1.startAt }
+          return events.filter { calendar.isDateInToday($0.startAt) }
+            .sorted { $0.startAt < $1.startAt }
+        case .future:
+          guard let events = eventsState.value else { return [] }
+          let calendar = Calendar.current
+          return events.filter { !calendar.isDateInToday($0.startAt) }
+            .sorted { $0.startAt < $1.startAt }
         case .all:
-          return events.filter { !$0.isPast }.sorted { $0.startAt < $1.startAt }
+          guard let events = eventsState.value else { return [] }
+          return events.sorted { $0.startAt < $1.startAt }
         case .past:
-          return events.filter { $0.isPast }.sorted { $0.startAt > $1.startAt }
+          guard let events = pastEventsState.value else { return [] }
+          return events.sorted { $0.startAt > $1.startAt }
         }
       }
 
@@ -82,30 +90,41 @@ extension PersonalMode {
       var groupedEvents: [(date: String, events: [PersonalEventModel])] {
         let grouped = Dictionary(grouping: filteredEvents, by: { $0.dateText })
 
+        // 과거: 최신순 (어제 → 이전 날짜)
+        if selectedFilter == .past {
+          return grouped.sorted { lhs, rhs in
+            if lhs.key == "어제" { return true }
+            if rhs.key == "어제" { return false }
+            return lhs.key > rhs.key
+          }.map { (date: $0.key, events: $0.value) }
+        }
+
+        // 오늘/미래/전체: 시간순 (오늘 → 내일 → 이후)
         return grouped.sorted { lhs, rhs in
           let priorityOrder = ["오늘": 0, "내일": 1]
           let lhsPriority = priorityOrder[lhs.key] ?? 2
           let rhsPriority = priorityOrder[rhs.key] ?? 2
-
-          if lhsPriority != rhsPriority {
-            return lhsPriority < rhsPriority
-          }
+          if lhsPriority != rhsPriority { return lhsPriority < rhsPriority }
           return lhs.key < rhs.key
         }.map { (date: $0.key, events: $0.value) }
       }
 
+      /// 리스트 애니메이션 키 (DiffableDataSource 스타일)
+      var eventListAnimationKey: [String] {
+        groupedEvents.flatMap { section in
+          [section.date] + section.events.map(\.id)
+        }
+      }
+
       /// 필터별 일정 개수
       var filterCounts: [EventFilter: Int] {
-        guard let events = eventsState.value else {
-          return [:]
-        }
-
+        guard let events = eventsState.value else { return [:] }
         let calendar = Calendar.current
+        let todayCount = events.filter { calendar.isDateInToday($0.startAt) }.count
         return [
-          .upcoming: events.filter { $0.isUpcoming }.count,
-          .today: events.filter { calendar.isDateInToday($0.startAt) }.count,
-          .all: events.filter { !$0.isPast }.count
-          // .past는 제외 (별도 fetch)
+          .today: todayCount,
+          .future: events.count - todayCount,
+          .all: events.count
         ]
       }
     }
@@ -114,6 +133,7 @@ extension PersonalMode {
       case view(View)
       case `internal`(Internal)
       case createEvent(PresentationAction<CreatePersonalEvent.Feature.Action>)
+      case eventDetail(PresentationAction<PersonalEventDetail.Feature.Action>)
 
       public enum View: Sendable {
         case onAppear
@@ -121,12 +141,17 @@ extension PersonalMode {
         case filterChanged(EventFilter)
         case createNewEventTapped
         case eventTapped(PersonalEventModel)
+        case editEvent(PersonalEventModel)
         case deleteEvent(PersonalEventModel)
+        case switchToGroupMode
       }
 
       public enum Internal: Sendable {
         case subscribeToEvents
         case eventsUpdated([PersonalEventModel])
+        case fetchPastEvents
+        case pastEventsLoaded([PersonalEventModel])
+        case pastEventsFailed(String)
         case eventsFailed(String)
         case eventDeleted(String)
         case eventDeleteFailed(String)
@@ -148,29 +173,47 @@ extension PersonalMode {
 
           case .refreshEvents:
             state.eventsState = .loading
+            if state.selectedFilter == .past {
+              state.pastEventsState = .idle
+            }
             return .send(.internal(.subscribeToEvents))
 
           case .filterChanged(let filter):
             state.selectedFilter = filter
+            if filter == .past && !state.pastEventsState.isLoaded {
+              return .send(.internal(.fetchPastEvents))
+            }
             return .none
 
           case .createNewEventTapped:
             state.createEvent = CreatePersonalEvent.Feature.State()
             return .none
 
-          case .eventTapped:
-            // TODO: 일정 상세 화면 열기
+          case .eventTapped(let event):
+            state.eventDetail = PersonalEventDetail.Feature.State(event: event)
+            return .none
+
+          case .editEvent(let event):
+            state.createEvent = CreatePersonalEvent.Feature.State(
+              event: event,
+              mode: .edit
+            )
             return .none
 
           case .deleteEvent(let event):
-            return .run { send in
+            return .run { [localNotificationClient] send in
               do {
                 try await personalEventClient.deleteEvent(event.id)
+                await localNotificationClient.cancel(event.notificationId)
                 await send(.internal(.eventDeleted(event.id)))
               } catch {
                 await send(.internal(.eventDeleteFailed(error.localizedDescription)))
               }
             }
+
+          case .switchToGroupMode:
+            // RootTabFeature에서 처리
+            return .none
           }
 
         case let .internal(internalAction):
@@ -192,9 +235,52 @@ extension PersonalMode {
             }
             .cancellable(id: CancelID.eventSubscription, cancelInFlight: true)
 
+          case .fetchPastEvents:
+            state.pastEventsState = .loading
+            return .run { send in
+              do {
+                let pastEvents = try await personalEventClient.getPastEvents(50, nil)
+                await send(.internal(.pastEventsLoaded(pastEvents)))
+              } catch {
+                await send(.internal(.pastEventsFailed(error.localizedDescription)))
+              }
+            }
+
+          case .pastEventsLoaded(let events):
+            state.pastEventsState = .loaded(events)
+            return .none
+
+          case .pastEventsFailed(let message):
+            state.pastEventsState = .failed(AppError(message: message))
+            return .none
+
           case .eventsUpdated(let events):
             state.eventsState = .loaded(events)
-            return .none
+            return .run { [localNotificationClient] _ in
+              let pendingIds = Set(
+                (await localNotificationClient.pendingIds())
+                  .filter { $0.hasPrefix("personal_reminder_") }
+              )
+              let desiredEvents = events.filter { $0.canScheduleReminder }
+              let desiredIds = Set(desiredEvents.map(\.notificationId))
+
+              // 불필요한 알림 취소
+              let toCancel = Array(pendingIds.subtracting(desiredIds))
+              await localNotificationClient.cancelAll(toCancel)
+
+              // 누락된 알림 스케줄링
+              for event in desiredEvents where !pendingIds.contains(event.notificationId) {
+                if let date = event.reminderDate {
+                  try? await localNotificationClient.schedule(
+                    event.notificationId,
+                    event.notificationTitle,
+                    event.notificationBody,
+                    date,
+                    ["type": "personal_event_reminder", "eventId": event.id]
+                  )
+                }
+              }
+            }
 
           case .eventsFailed(let message):
             state.eventsState = .failed(AppError(message: message))
@@ -210,7 +296,8 @@ extension PersonalMode {
 
         // MARK: - CreateEvent Delegate
 
-        case .createEvent(.presented(.delegate(.eventCreated))):
+        case .createEvent(.presented(.delegate(.eventCreated))),
+             .createEvent(.presented(.delegate(.eventUpdated))):
           state.createEvent = nil
           return .none
 
@@ -220,10 +307,25 @@ extension PersonalMode {
 
         case .createEvent:
           return .none
+
+        // MARK: - EventDetail Delegate
+
+        case .eventDetail(.presented(.delegate(.eventDeleted))):
+          state.eventDetail = nil
+          return .none
+
+        case .eventDetail(.presented(.delegate(.eventUpdated))):
+          return .none
+
+        case .eventDetail:
+          return .none
         }
       }
       .ifLet(\.$createEvent, action: \.createEvent) {
         CreatePersonalEvent.Feature()
+      }
+      .ifLet(\.$eventDetail, action: \.eventDetail) {
+        PersonalEventDetail.Feature()
       }
     }
   }
