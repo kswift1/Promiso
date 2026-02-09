@@ -204,19 +204,15 @@ struct PersonalEventTimelineItemView: View {
     return !description.isEmpty
   }
 
-  /// 현재 진행 중인 일정인지 (startAt ~ endAt, endAt 없으면 startAt ~ startAt+2시간)
+  /// 현재 진행 중인 일정인지
   private var isNow: Bool {
     let now = Date()
-    let start = event.startAt
-    let end = event.endAt ?? event.startAt.addingTimeInterval(7200)
-    return now >= start && now <= end
+    return now >= event.startAt && now <= event.effectiveEndAt
   }
 
   /// 이미 종료된 일정인지
   var isPast: Bool {
-    let now = Date()
-    let end = event.endAt ?? event.startAt.addingTimeInterval(7200)
-    return now > end
+    Date() > event.effectiveEndAt
   }
 
   /// dot 색상 (진행 중: 파랑, 종료: 회색, 대기: 연한 파랑)
