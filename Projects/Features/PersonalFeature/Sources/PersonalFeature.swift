@@ -96,6 +96,13 @@ extension PersonalMode {
         }.map { (date: $0.key, events: $0.value) }
       }
 
+      /// 리스트 애니메이션 키 (DiffableDataSource 스타일)
+      var eventListAnimationKey: [String] {
+        groupedEvents.flatMap { section in
+          [section.date] + section.events.map(\.id)
+        }
+      }
+
       /// 필터별 일정 개수
       var filterCounts: [EventFilter: Int] {
         guard let events = eventsState.value else {

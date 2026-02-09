@@ -223,6 +223,7 @@ extension PersonalMode {
       .refreshable {
         store.send(.view(.refreshEvents))
       }
+      .animation(.snappy, value: store.eventListAnimationKey)
     }
 
     @ViewBuilder
