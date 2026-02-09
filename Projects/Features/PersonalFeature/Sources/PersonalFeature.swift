@@ -141,6 +141,7 @@ extension PersonalMode {
         case filterChanged(EventFilter)
         case createNewEventTapped
         case eventTapped(PersonalEventModel)
+        case editEvent(PersonalEventModel)
         case deleteEvent(PersonalEventModel)
         case switchToGroupMode
       }
@@ -190,6 +191,13 @@ extension PersonalMode {
 
           case .eventTapped(let event):
             state.eventDetail = PersonalEventDetail.Feature.State(event: event)
+            return .none
+
+          case .editEvent(let event):
+            state.createEvent = CreatePersonalEvent.Feature.State(
+              event: event,
+              mode: .edit
+            )
             return .none
 
           case .deleteEvent(let event):
@@ -307,7 +315,6 @@ extension PersonalMode {
           return .none
 
         case .eventDetail(.presented(.delegate(.eventUpdated))):
-          state.eventDetail = nil
           return .none
 
         case .eventDetail:

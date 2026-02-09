@@ -89,23 +89,29 @@ extension CreatePersonalEvent {
     private var essentialSection: some View {
       VStack(spacing: 0) {
           // 제목 + 이모지
-          HStack(spacing: 12) {
-            Group {
-              if store.isEmojiLoading {
-                ProgressView()
-              } else {
-                Text(store.event.displayEmoji)
-                  .font(.system(size: 28))
+          VStack(alignment: .trailing, spacing: 4) {
+            HStack(spacing: 12) {
+              Group {
+                if store.isEmojiLoading {
+                  ProgressView()
+                } else {
+                  Text(store.event.displayEmoji)
+                    .font(.system(size: 28))
+                }
               }
-            }
-            .frame(width: 40, height: 40)
+              .frame(width: 40, height: 40)
 
-            TextField("일정 제목을 입력하세요", text: Binding(
-              get: { store.event.title },
-              set: { store.send(.view(.titleChanged($0))) }
-            ))
-            .font(.system(size: 18, weight: .medium))
-            .textFieldStyle(.plain)
+              TextField("일정 제목을 입력하세요", text: Binding(
+                get: { store.event.title },
+                set: { store.send(.view(.titleChanged($0))) }
+              ))
+              .font(.system(size: 18, weight: .medium))
+              .textFieldStyle(.plain)
+            }
+
+            Text("\(store.event.title.count)/30")
+              .font(.system(size: 12))
+              .foregroundStyle(.secondary)
           }
           .padding(12)
 
@@ -344,18 +350,25 @@ extension CreatePersonalEvent {
 
     @ViewBuilder
     private var descriptionSection: some View {
-      TextField(
-        "메모를 입력하세요 (선택)",
-        text: Binding(
-          get: { store.event.description ?? "" },
-          set: { store.send(.view(.descriptionChanged($0))) }
-        ),
-        axis: .vertical
-      )
-      .lineLimit(3...6)
-      .font(.body)
-      .padding(16)
-      .adaptiveGlassCard()
+      VStack(alignment: .trailing, spacing: 4) {
+        TextField(
+          "메모를 입력하세요 (선택)",
+          text: Binding(
+            get: { store.event.description ?? "" },
+            set: { store.send(.view(.descriptionChanged($0))) }
+          ),
+          axis: .vertical
+        )
+        .lineLimit(3...6)
+        .font(.body)
+        .padding(16)
+        .adaptiveGlassCard()
+
+        Text("\((store.event.description ?? "").count)/500")
+          .font(.system(size: 12))
+          .foregroundStyle(.secondary)
+          .padding(.trailing, 4)
+      }
     }
   }
 }

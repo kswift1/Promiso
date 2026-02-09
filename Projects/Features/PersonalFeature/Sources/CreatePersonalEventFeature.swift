@@ -119,7 +119,7 @@ extension CreatePersonalEvent {
           switch viewAction {
           case .titleChanged(let title):
             let oldTitle = state.event.title
-            state.event.title = title
+            state.event.title = String(title.prefix(30))
             guard title != oldTitle else { return .none }
             guard !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
               state.event.emoji = nil
@@ -169,7 +169,8 @@ extension CreatePersonalEvent {
             return .none
 
           case .descriptionChanged(let text):
-            state.event.description = text.isEmpty ? nil : text
+            let trimmed = String(text.prefix(500))
+            state.event.description = trimmed.isEmpty ? nil : trimmed
             return .none
 
           case .locationTapped:
