@@ -10,7 +10,9 @@ extension GroupSettings {
   @Reducer
   public struct Feature {
     @Dependency(\.groupClient) var groupClient
+    @Dependency(\.notificationClient) var notificationClient
     @Dependency(\.hapticFeedback) var hapticFeedback
+    @Dependency(\.analyticsClient) var analyticsClient
 
     @ObservableState
     public struct State: Equatable {
@@ -36,11 +38,19 @@ extension GroupSettings {
 
       // Image Detail
       var selectedMemberForImage: UserPublicModel?
+      var showGroupImageDetail: Bool = false
       var editGroup: EditGroupState?
 
       // Notifications
       var notificationSettings: GroupNotificationSettings
       var notificationError: String?
+      var systemAuthStatus: NotificationAuthorizationStatus = .notDetermined
+
+      // Transfer Host
+      var isShowingTransferSheet: Bool = false
+      var selectedNewHost: UserPublicModel?
+      var isTransferringHost: Bool = false
+      var transferError: String?
 
       public init(
         group: GroupModel,
@@ -63,6 +73,16 @@ extension GroupSettings {
 
       var isHost: Bool {
         group.createdBy == currentUserId
+      }
+
+      /// 호스트 양도 가능 여부 (호스트이고 다른 멤버가 있을 때)
+      var canTransferHost: Bool {
+        isHost && members.count > 1
+      }
+
+      /// 호스트 양도 대상 목록 (본인 제외)
+      var transferCandidates: [UserPublicModel] {
+        members.filter { $0.userId != currentUserId }
       }
 
       var isProPlan: Bool {
@@ -126,6 +146,7 @@ extension GroupSettings {
         case editGroupPhotoSelected(PhotosPickerItem?)
         case editGroupSaveTapped
         case editGroupErrorDismissed
+        case requestNotificationPermission
         case groupNotificationsChanged(Bool)
         case notificationPreferenceChanged(GroupNotificationPreferenceKey, Bool)
         case notificationSettingsTapped
@@ -141,7 +162,16 @@ extension GroupSettings {
         case dismissDeleteAlert
         case dismissError
         case memberImageTapped(UserPublicModel)
+        case groupImageTapped
         case imageDetailDismissed
+        case groupImageDetailDismissed
+        case openSystemSettingsTapped
+        // Transfer Host
+        case transferHostTapped
+        case selectNewHost(UserPublicModel)
+        case confirmTransferHost
+        case dismissTransferSheet
+        case dismissTransferError
       }
 
       public enum Internal: Sendable {
@@ -151,18 +181,22 @@ extension GroupSettings {
         case deleteGroupResponse(Result<Void, Error>)
         case editGroupPhotoLoaded(Data?)
         case editGroupSaveResponse(Result<GroupModel, Error>)
+        case systemAuthStatusFetched(NotificationAuthorizationStatus)
+        case notificationPermissionResponse(Bool)
         case groupNotificationsUpdateFailed(previousValue: Bool, message: String)
         case notificationPreferenceUpdateFailed(
           key: GroupNotificationPreferenceKey,
           previousValue: Bool,
           message: String
         )
+        case transferHostResponse(Result<Void, Error>)
       }
 
       public enum Delegate: Sendable {
         case groupLeft
         case groupDeleted
         case pastPromisesTapped
+        case hostTransferred
       }
     }
 
@@ -174,8 +208,17 @@ extension GroupSettings {
         case .view(let viewAction):
           switch viewAction {
           case .onAppear:
-            guard case .idle = state.membersState else { return .none }
-            return .send(.internal(.fetchMembers))
+            let shouldFetchMembers = state.membersState == .idle
+            return .run { [notificationClient] send in
+              // 시스템 알림 권한 상태 로드
+              let systemStatus = await notificationClient.getAuthorizationStatus()
+              await send(.internal(.systemAuthStatusFetched(systemStatus)))
+
+              // 멤버 로드
+              if shouldFetchMembers {
+                await send(.internal(.fetchMembers))
+              }
+            }
 
           case .membersTapped:
             return .run { [hapticFeedback] _ in
@@ -255,14 +298,27 @@ extension GroupSettings {
             state.editGroup?.error = nil
             return .none
 
+          case .requestNotificationPermission:
+            return .run { [notificationClient, hapticFeedback] send in
+              await hapticFeedback.selection()
+              do {
+                let granted = try await notificationClient.requestAuthorization()
+                await send(.internal(.notificationPermissionResponse(granted)))
+              } catch {
+                await send(.internal(.notificationPermissionResponse(false)))
+              }
+            }
+
           case .groupNotificationsChanged(let enabled):
             let previousValue = state.notificationSettings.enabled
             state.notificationSettings.enabled = enabled
             state.notificationError = nil
             let updatedSettings = state.notificationSettings
+
             return .run { [groupClient, groupId = state.group.id, hapticFeedback] send in
               await hapticFeedback.selection()
               do {
+                // 그룹 알림 설정 업데이트
                 try await groupClient.updateGroupNotificationSettings(
                   groupId,
                   updatedSettings
@@ -303,6 +359,13 @@ extension GroupSettings {
 
           case .inviteTapped:
             state.showInviteSheet = true
+            analyticsClient.logEvent(
+              AnalyticsClient.EventName.groupInviteShared,
+              [
+                AnalyticsClient.ParameterKey.groupID: state.group.id,
+                AnalyticsClient.ParameterKey.groupName: state.group.name
+              ]
+            )
             return .run { [hapticFeedback] _ in
               await hapticFeedback.buttonTap()
             }
@@ -377,8 +440,55 @@ extension GroupSettings {
             state.selectedMemberForImage = member
             return .none
 
+          case .groupImageTapped:
+            state.showGroupImageDetail = true
+            return .none
+
           case .imageDetailDismissed:
             state.selectedMemberForImage = nil
+            return .none
+
+          case .groupImageDetailDismissed:
+            state.showGroupImageDetail = false
+            return .none
+
+          case .openSystemSettingsTapped:
+            return .run { _ in
+              await notificationClient.openNotificationSettings()
+            }
+
+          case .transferHostTapped:
+            state.isShowingTransferSheet = true
+            state.selectedNewHost = nil
+            return .run { [hapticFeedback] _ in
+              await hapticFeedback.warning()
+            }
+
+          case .selectNewHost(let member):
+            state.selectedNewHost = member
+            return .none
+
+          case .confirmTransferHost:
+            guard let newHost = state.selectedNewHost else { return .none }
+            state.isTransferringHost = true
+            state.transferError = nil
+            return .run { [groupClient, groupId = state.group.id, hapticFeedback] send in
+              await hapticFeedback.destructive()
+              do {
+                try await groupClient.transferHost(groupId, newHost.userId)
+                await send(.internal(.transferHostResponse(.success(()))))
+              } catch {
+                await send(.internal(.transferHostResponse(.failure(error))))
+              }
+            }
+
+          case .dismissTransferSheet:
+            state.isShowingTransferSheet = false
+            state.selectedNewHost = nil
+            return .none
+
+          case .dismissTransferError:
+            state.transferError = nil
             return .none
           }
 
@@ -454,6 +564,20 @@ extension GroupSettings {
               await hapticFeedback.error()
             }
 
+          case .systemAuthStatusFetched(let status):
+            state.systemAuthStatus = status
+            return .none
+
+          case .notificationPermissionResponse(let granted):
+            state.systemAuthStatus = granted ? .authorized : .denied
+            return .run { [hapticFeedback] _ in
+              if granted {
+                await hapticFeedback.success()
+              } else {
+                await hapticFeedback.error()
+              }
+            }
+
           case .groupNotificationsUpdateFailed(let previousValue, let message):
             state.notificationSettings.enabled = previousValue
             state.notificationError = message
@@ -464,6 +588,24 @@ extension GroupSettings {
           case .notificationPreferenceUpdateFailed(let key, let previousValue, let message):
             state.notificationSettings.setValue(previousValue, for: key)
             state.notificationError = message
+            return .run { [hapticFeedback] _ in
+              await hapticFeedback.error()
+            }
+
+          case .transferHostResponse(.success):
+            state.isTransferringHost = false
+            state.isShowingTransferSheet = false
+            state.selectedNewHost = nil
+            return .merge(
+              .send(.delegate(.hostTransferred)),
+              .run { [hapticFeedback] _ in
+                await hapticFeedback.success()
+              }
+            )
+
+          case .transferHostResponse(.failure(let error)):
+            state.isTransferringHost = false
+            state.transferError = error.localizedDescription
             return .run { [hapticFeedback] _ in
               await hapticFeedback.error()
             }

@@ -2,7 +2,7 @@ name: PR Check
 
 on:
   pull_request:
-    branches: [main]
+    branches: [develop, staging, main]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -12,6 +12,9 @@ jobs:
   build-and-test:
     runs-on: macos-15
     timeout-minutes: 45
+    permissions:
+      pull-requests: write
+      issues: write
 
     steps:
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -49,17 +52,14 @@ jobs:
           GOOGLE_CLIENT_ID_DEV: ${{ secrets.GOOGLE_CLIENT_ID_DEV }}
           GOOGLE_REVERSED_CLIENT_ID_DEV: ${{ secrets.GOOGLE_REVERSED_CLIENT_ID_DEV }}
           KAKAO_NATIVE_APP_KEY_DEV: ${{ secrets.KAKAO_NATIVE_APP_KEY_DEV }}
-          KAKAO_REST_API_KEY_DEV: ${{ secrets.KAKAO_REST_API_KEY_DEV }}
           # Stage 환경 (선택)
           GOOGLE_CLIENT_ID_STAGE: ${{ secrets.GOOGLE_CLIENT_ID_STAGE }}
           GOOGLE_REVERSED_CLIENT_ID_STAGE: ${{ secrets.GOOGLE_REVERSED_CLIENT_ID_STAGE }}
           KAKAO_NATIVE_APP_KEY_STAGE: ${{ secrets.KAKAO_NATIVE_APP_KEY_STAGE }}
-          KAKAO_REST_API_KEY_STAGE: ${{ secrets.KAKAO_REST_API_KEY_STAGE }}
           # Prod 환경 (선택)
           GOOGLE_CLIENT_ID_PROD: ${{ secrets.GOOGLE_CLIENT_ID_PROD }}
           GOOGLE_REVERSED_CLIENT_ID_PROD: ${{ secrets.GOOGLE_REVERSED_CLIENT_ID_PROD }}
           KAKAO_NATIVE_APP_KEY_PROD: ${{ secrets.KAKAO_NATIVE_APP_KEY_PROD }}
-          KAKAO_REST_API_KEY_PROD: ${{ secrets.KAKAO_REST_API_KEY_PROD }}
         run: |
           chmod +x ./scripts/generate-xcconfig.sh
           ./scripts/generate-xcconfig.sh

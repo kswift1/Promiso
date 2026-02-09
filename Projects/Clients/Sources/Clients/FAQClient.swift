@@ -1,0 +1,127 @@
+//
+//  FAQClient.swift
+//  Clients
+//
+//  Created by Claude on 2026-02-04.
+//
+
+import ComposableArchitecture
+import FirebaseFunctions
+import Foundation
+import PromisoShared
+
+// MARK: - Client
+
+/// FAQ 데이터를 Notion에서 가져오는 클라이언트
+public struct FAQClient: Sendable {
+  /// 활성화된 FAQ 목록 조회 (order 순 정렬)
+  public var fetchFAQs: @Sendable () async throws -> [FAQModel]
+}
+
+// MARK: - Error
+
+public enum FAQClientError: Error, LocalizedError {
+  case fetchFailed(statusCode: Int, message: String)
+  case decodingFailed(String)
+  case invalidConfiguration
+
+  public var errorDescription: String? {
+    switch self {
+    case .fetchFailed:
+      return "FAQ를 불러오는데 실패했습니다."
+    case .decodingFailed:
+      return "FAQ 데이터를 읽는데 실패했습니다."
+    case .invalidConfiguration:
+      return "FAQ 설정이 올바르지 않습니다."
+    }
+  }
+}
+
+// MARK: - Firebase Functions Response Models
+
+private struct GetFAQsResponse: Decodable {
+  let faqs: [FAQItem]
+}
+
+private struct FAQItem: Decodable {
+  let id: String
+  let question: String
+  let answer: String
+  let category: String
+  let order: Int
+  let createdAt: String
+  let updatedAt: String
+}
+
+// MARK: - Test / Preview
+
+extension FAQClient: TestDependencyKey {
+  public static let previewValue = Self(
+    fetchFAQs: { FAQModel.examples }
+  )
+
+  public static let testValue = Self(
+    fetchFAQs: unimplemented("\(Self.self).fetchFAQs", placeholder: [])
+  )
+}
+
+// MARK: - Live
+
+extension FAQClient: DependencyKey {
+  public static let liveValue: FAQClient = {
+    let functions = DefaultFunctionsProvider().functions
+    let decoder = JSONDecoder()
+
+    return Self(
+      fetchFAQs: {
+        let databaseId = AppConstants.App.notionFAQDatabaseId
+
+        guard databaseId != "YOUR_DATABASE_ID_HERE" else {
+          throw FAQClientError.invalidConfiguration
+        }
+
+        // Firebase Functions 호출 (Notion API 프록시)
+        let callable = functions.httpsCallable("getFAQs")
+        let result = try await callable.call(["databaseId": databaseId])
+
+        guard let data = try? JSONSerialization.data(withJSONObject: result.data) else {
+          throw FAQClientError.decodingFailed("Failed to serialize response data")
+        }
+
+        let response: GetFAQsResponse
+        do {
+          response = try decoder.decode(GetFAQsResponse.self, from: data)
+        } catch {
+          throw FAQClientError.decodingFailed(error.localizedDescription)
+        }
+
+        // ISO8601 날짜 포맷터 (Notion의 created_time 형식)
+        let dateFormatter = ISO8601DateFormatter()
+        dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+        return response.faqs.map { item -> FAQModel in
+          let createdAt = dateFormatter.date(from: item.createdAt) ?? Date()
+
+          return FAQModel(
+            id: item.id,
+            question: item.question,
+            answer: item.answer,
+            category: item.category,
+            order: item.order,
+            isActive: true, // 서버에서 Active=true만 반환
+            createdAt: createdAt
+          )
+        }
+      }
+    )
+  }()
+}
+
+// MARK: - Dependency Values
+
+extension DependencyValues {
+  public var faqClient: FAQClient {
+    get { self[FAQClient.self] }
+    set { self[FAQClient.self] = newValue }
+  }
+}

@@ -20,7 +20,8 @@ let project = Project(
         .project(target: "PromisoShared", path: "../../Shared"),
         .project(target: "ExternalDependency", path: "../../ExternalDependency"),
         .project(target: "ResourceKit", path: "../../ResourceKit"),
-        .project(target: "SharedFeature", path: "../SharedFeature")
+        .project(target: "SharedFeature", path: "../SharedFeature"),
+        .project(target: "NotificationCenterFeature", path: "../NotificationCenterFeature")
       ],
       settings: .standard()
     ),

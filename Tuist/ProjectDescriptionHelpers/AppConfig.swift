@@ -56,9 +56,8 @@ public enum AppConfig {
       // Calendar permissions
       "NSCalendarsUsageDescription": .string("캘린더 일정을 표시하려면 접근 권한이 필요합니다."),
       "NSCalendarsFullAccessUsageDescription": .string("캘린더 일정을 표시하려면 접근 권한이 필요합니다."),
-      // Background Modes for Push Notifications
+      // Background Modes for Silent Push Notifications
       "UIBackgroundModes": .array([
-        .string("fetch"),
         .string("remote-notification")
       ]),
       // Firebase Swizzling 비활성화 (Silent Push 직접 처리)
@@ -68,11 +67,14 @@ public enum AppConfig {
       "NSSupportsLiveActivitiesFrequentUpdates": .boolean(true),
       // Kakao Maps SDK
       "KAKAO_NATIVE_APP_KEY": .string("$(KAKAO_NATIVE_APP_KEY)"),
-      "KAKAO_REST_API_KEY": .string("$(KAKAO_REST_API_KEY)"),
       // ProMotion Display Support (120Hz)
       "CADisableMinimumFrameDurationOnPhone": .boolean(true),
       // App Store 제출: 암호화 사용 여부 (표준 암호화만 사용)
-      "ITSAppUsesNonExemptEncryption": .boolean(false)
+      "ITSAppUsesNonExemptEncryption": .boolean(false),
+      // 세로 모드만 지원 (가로 모드 비활성화)
+      "UISupportedInterfaceOrientations": .array([
+        .string("UIInterfaceOrientationPortrait")
+      ])
     ]
   }
 }

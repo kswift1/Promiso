@@ -22,6 +22,23 @@ public enum GroupRemoteDataSourceError: Error, LocalizedError {
   }
 }
 
+// MARK: - Firebase 상수
+
+private enum FirebaseConstants {
+  static let region = "asia-northeast3"
+
+  enum FunctionName {
+    static let createGroup = "createGroup"
+    static let previewGroup = "previewGroup"
+    static let joinGroup = "joinGroup"
+    static let leaveGroup = "leaveGroup"
+    static let deleteGroup = "deleteGroup"
+    static let updateGroup = "updateGroup"
+    static let clearGroupBadge = "clearGroupBadge"
+    static let transferGroupHost = "transferGroupHost"
+  }
+}
+
 /// Firebase Functions를 통한 그룹 데이터 관리
 ///
 /// - GroupRemoteDataSource는 Clients 레이어에 속함
@@ -29,9 +46,9 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
   private let functions: Functions
   private let storage: Storage
   private let db: Firestore
-  
+
   public init(
-    functions: Functions = Functions.functions(region: "asia-northeast3"),
+    functions: Functions = DefaultFunctionsProvider().functions,
     storage: Storage = Storage.storage(),
     db: Firestore = Firestore.firestore()
   ) {
@@ -90,7 +107,7 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
         callableData["imageUrl"] = imageUrl
       }
 
-      let result = try await functions.httpsCallable("createGroup").call(callableData)
+      let result = try await functions.httpsCallable(FirebaseConstants.FunctionName.createGroup).call(callableData)
 
       guard let data = result.data as? [String: Any] else {
         throw GroupRemoteDataSourceError.invalidFunctionResponse
@@ -210,7 +227,7 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
       "inviteCode": inviteCode.uppercased()
     ]
 
-    let result = try await functions.httpsCallable("previewGroup").call(callableData)
+    let result = try await functions.httpsCallable(FirebaseConstants.FunctionName.previewGroup).call(callableData)
 
     guard let data = result.data as? [String: Any] else {
       throw GroupRemoteDataSourceError.invalidFunctionResponse
@@ -263,7 +280,7 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
       "userId": userId
     ]
 
-    let result = try await functions.httpsCallable("joinGroup").call(callableData)
+    let result = try await functions.httpsCallable(FirebaseConstants.FunctionName.joinGroup).call(callableData)
 
     guard let data = result.data as? [String: Any] else {
       throw GroupRemoteDataSourceError.invalidFunctionResponse
@@ -293,7 +310,7 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
       "groupId": groupId
     ]
 
-    _ = try await functions.httpsCallable("leaveGroup").call(callableData)
+    _ = try await functions.httpsCallable(FirebaseConstants.FunctionName.leaveGroup).call(callableData)
   }
 
   /// 그룹 삭제
@@ -313,7 +330,7 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
       "groupId": groupId
     ]
 
-    _ = try await functions.httpsCallable("deleteGroup").call(callableData)
+    _ = try await functions.httpsCallable(FirebaseConstants.FunctionName.deleteGroup).call(callableData)
   }
 
   /// 그룹 정보 수정 (설명/이미지/최대 인원)
@@ -349,7 +366,7 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
       callableData["maxMembers"] = maxMembers
     }
 
-    _ = try await functions.httpsCallable("updateGroup").call(callableData)
+    _ = try await functions.httpsCallable(FirebaseConstants.FunctionName.updateGroup).call(callableData)
     return try await fetchGroup(groupId: groupId)
   }
 
@@ -362,8 +379,12 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
     let userRef = db.environmentCollection("users").document(userId)
     try await userRef.setData(
       [
-        "groups.\(groupId).notifications": settings.asDictionary,
-        "groups.\(groupId).notificationPreferences": FieldValue.delete(),
+        "groups": [
+          groupId: [
+            "notifications": settings.asDictionary,
+            "notificationPreferences": FieldValue.delete()
+          ]
+        ]
       ],
       merge: true
     )
@@ -384,10 +405,34 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
     AppLogger.group.debug("[clearGroupBadge] Calling with groupId: \(groupId)")
 
     do {
-      _ = try await functions.httpsCallable("clearGroupBadge").call(callableData)
+      _ = try await functions.httpsCallable(FirebaseConstants.FunctionName.clearGroupBadge).call(callableData)
       AppLogger.group.debug("[clearGroupBadge] Success for groupId: \(groupId)")
     } catch {
       AppLogger.group.error("[clearGroupBadge] Failed for groupId: \(groupId), error: \(error.localizedDescription)")
+    }
+  }
+
+  /// 그룹 호스트 양도
+  ///
+  /// - Parameters:
+  ///   - groupId: 그룹 ID
+  ///   - newHostId: 새 호스트 사용자 ID
+  ///
+  /// Firebase Functions의 transferGroupHost를 호출합니다.
+  public func transferHost(groupId: String, newHostId: String) async throws {
+    let callableData: [String: Any] = [
+      "groupId": groupId,
+      "newHostId": newHostId
+    ]
+
+    AppLogger.group.debug("[transferHost] Calling with groupId: \(groupId), newHostId: \(newHostId)")
+
+    do {
+      _ = try await functions.httpsCallable(FirebaseConstants.FunctionName.transferGroupHost).call(callableData)
+      AppLogger.group.debug("[transferHost] Success for groupId: \(groupId)")
+    } catch {
+      AppLogger.group.error("[transferHost] Failed: \(error.localizedDescription)")
+      throw error
     }
   }
 
@@ -511,10 +556,12 @@ private func parseNotificationSettings(
   let enabled = map["enabled"] as? Bool ?? true
   let promise = parseNotificationMap(map["promise"])
   let group = parseNotificationMap(map["group"])
+  let calendarSync = map["calendarSync"] as? Bool ?? true
   return GroupNotificationSettings(
     enabled: enabled,
     promise: promise,
-    group: group
+    group: group,
+    calendarSync: calendarSync
   )
 }
 

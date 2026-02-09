@@ -57,9 +57,9 @@ struct TimelineItemView: View {
         .fill(isFirst ? Color.clear : Color.pmindigo.n300.opacity(0.5))
         .frame(width: 2, height: 10)
 
-      // 점 (항상 시간 위치에 맞춤)
+      // 점 (상태에 따라 색상 변경)
       Circle()
-        .fill(isNow ? Color.pmindigo.n500 : Color.pmindigo.n300)
+        .fill(dotColor)
         .frame(width: 10, height: 10)
         .overlay {
           if isNow {
@@ -85,11 +85,10 @@ struct TimelineItemView: View {
       // 이모지 + 제목
       HStack(spacing: 6) {
         Text(promise.displayEmoji)
-          .font(.title3)
+          .font(.pmTitle3)
 
         Text(promise.title)
-          .font(.body)
-          .fontWeight(.semibold)
+          .font(.pmBodySemibold)
           .foregroundStyle(.primary)
           .lineLimit(1)
       }
@@ -104,15 +103,15 @@ struct TimelineItemView: View {
           )
 
           Text(group.name)
-            .font(.caption)
+            .font(.pmCaption)
             .lineLimit(1)
 
           Text("·")
-            .font(.caption)
+            .font(.pmCaption)
         }
 
         Text("\(promise.votes.accepted.count)명 참여 확정")
-          .font(.caption)
+          .font(.pmCaption)
       }
       .foregroundStyle(.secondary)
 
@@ -126,7 +125,7 @@ struct TimelineItemView: View {
             .frame(width: 14, height: 14)
 
           Text(location.name)
-            .font(.caption)
+            .font(.pmCaption)
             .lineLimit(1)
         }
         .foregroundStyle(.secondary)
@@ -136,16 +135,16 @@ struct TimelineItemView: View {
       if let minutes = promise.trackingStartMinutesBefore {
         HStack(spacing: 4) {
           Image(systemName: "antenna.radiowaves.left.and.right")
-            .font(.system(size: 12))
+            .font(.pmCaption2)
 
           Text(liveStartTimeString(minutes: minutes))
-            .font(.caption)
+            .font(.pmCaption)
 
           Button {
             showLiveActivityInfo = true
           } label: {
             Image(systemName: "info.circle")
-              .font(.system(size: 12))
+              .font(.pmCaption2)
           }
           .popover(isPresented: $showLiveActivityInfo, arrowEdge: .top) {
             LiveActivityInfoPopover(
@@ -166,25 +165,23 @@ struct TimelineItemView: View {
   private var timeLabel: some View {
     VStack(alignment: .center, spacing: 2) {
       Text(startTimeString)
-        .font(.subheadline)
-        .fontWeight(.semibold)
+        .font(.pmSubheadlineSemibold)
         .foregroundStyle(isNow ? Color.pmindigo.n500 : .primary)
 
       if let endAt = promise.endAt {
         VStack(alignment: .center, spacing: 0) {
           Text("~")
-            .font(.caption)
+            .font(.pmCaption)
             .foregroundStyle(.secondary)
           Text(endTimeString(endAt))
-            .font(.caption)
+            .font(.pmCaption)
             .foregroundStyle(.secondary)
             .multilineTextAlignment(.center)
             .fixedSize(horizontal: false, vertical: true)
         }
       } else if isNow {
         Text("NOW")
-          .font(.caption2)
-          .fontWeight(.bold)
+          .font(.pmCaption2Semibold)
           .foregroundStyle(Color.pmindigo.n500)
       }
     }
@@ -206,12 +203,36 @@ struct TimelineItemView: View {
     return "\(liveStartTime.formattedTime) 실시간 공유 시작"
   }
 
-  /// 현재 진행 중인 약속인지 (시작 30분 전 ~ 시작 후 2시간)
+  /// 현재 진행 중인 약속인지 (startAt ~ endAt, endAt 없으면 startAt ~ startAt+2시간)
   private var isNow: Bool {
     let now = Date()
-    let thirtyMinutesBefore = promise.startAt.addingTimeInterval(-1800)
-    let twoHoursAfter = promise.startAt.addingTimeInterval(7200)
-    return now >= thirtyMinutesBefore && now <= twoHoursAfter
+    let start = promise.startAt
+    let end = promise.endAt ?? promise.startAt.addingTimeInterval(7200)
+    return now >= start && now <= end
+  }
+
+  /// 이미 종료된 약속인지
+  var isPast: Bool {
+    let now = Date()
+    let end = promise.endAt ?? promise.startAt.addingTimeInterval(7200)
+    return now > end
+  }
+
+  /// 아직 시작 전인 약속인지
+  var isFuture: Bool {
+    let now = Date()
+    return now < promise.startAt
+  }
+
+  /// dot 색상 (진행 중: 파랑, 종료: 회색, 대기: 연한 파랑)
+  private var dotColor: Color {
+    if isNow {
+      return Color.pmindigo.n500
+    } else if isPast {
+      return Color.pmgray.n400
+    } else {
+      return Color.pmindigo.n300
+    }
   }
 }
 

@@ -2,6 +2,7 @@ import AuthenticationServices
 import ComposableArchitecture
 import FirebaseCore
 import FirebaseAuth
+import FirebaseFunctions
 import Foundation
 import GoogleSignIn
 import GoogleSignInSwift
@@ -10,16 +11,17 @@ import UIKit
 
 // MARK: - Error
 
-public enum AuthClientError: Error, Equatable {
+public enum AuthClientError: Error, Equatable, LocalizedError {
   case invalidCredentials
   case alreadyExists
   case network
   case invalidAppleCredential
   case missingIdentityToken
   case providerUnavailable
+  case isGroupHost
   case unknown
-  
-  public var localizedDescription: String {
+
+  public var errorDescription: String? {
     switch self {
     case .invalidCredentials:
       return "이메일 또는 비밀번호가 올바르지 않습니다."
@@ -33,6 +35,8 @@ public enum AuthClientError: Error, Equatable {
       return "애플 인증 토큰을 가져오지 못했습니다."
     case .providerUnavailable:
       return "해당 로그인 제공자를 사용할 수 없습니다."
+    case .isGroupHost:
+      return "그룹 호스트는 탈퇴할 수 없습니다. 먼저 그룹을 삭제하거나 호스트를 양도해주세요."
     case .unknown:
       return "알 수 없는 오류가 발생했습니다."
     }
@@ -254,6 +258,13 @@ public struct AuthClient: Sendable {
   /// Widget 전용 Long-lived Token 발급 요청 (30일 유효)
   /// - 로그인 후, 앱 활성화 시, 토큰 만료 7일 전에 호출
   public var requestWidgetToken: @Sendable () async -> Void
+
+  // MARK: - Account Management
+
+  /// 회원 탈퇴
+  /// - 그룹 호스트인 경우 먼저 호스트 양도 필요
+  /// - 성공 시 Firebase Auth 계정 및 모든 데이터 삭제
+  public var deleteAccount: @Sendable () async throws -> Void
 }
 
 // MARK: - Test / Preview
@@ -294,7 +305,8 @@ extension AuthClient: TestDependencyKey {
     clearSession: {},
     refreshWidgetAuthToken: {},
     clearWidgetAuthToken: {},
-    requestWidgetToken: {}
+    requestWidgetToken: {},
+    deleteAccount: {}
   )
 
   public static let testValue = Self(
@@ -306,7 +318,8 @@ extension AuthClient: TestDependencyKey {
     clearSession: unimplemented("\(Self.self).clearSession"),
     refreshWidgetAuthToken: unimplemented("\(Self.self).refreshWidgetAuthToken"),
     clearWidgetAuthToken: unimplemented("\(Self.self).clearWidgetAuthToken"),
-    requestWidgetToken: unimplemented("\(Self.self).requestWidgetToken")
+    requestWidgetToken: unimplemented("\(Self.self).requestWidgetToken"),
+    deleteAccount: unimplemented("\(Self.self).deleteAccount")
   )
 }
 
@@ -326,6 +339,15 @@ actor InMemoryAuthSession {
     isAuthed = false
     currentUser = nil
   }
+}
+
+// MARK: - Firebase 상수
+
+private enum FirebaseConstants {
+  static let region = "asia-northeast3"
+  static let deleteUserFunction = "deleteUser"
+  static let checkAppleCredentialFunction = "checkAppleCredential"
+  static let generateWidgetTokenFunction = "generateWidgetToken"
 }
 
 extension AuthClient: DependencyKey {
@@ -466,11 +488,11 @@ extension AuthClient: DependencyKey {
         }
 
         do {
-          let functions = Functions.functions(region: "asia-northeast3")
+          let functions = DefaultFunctionsProvider().functions
           let deviceId = UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
 
           let result = try await functions
-            .httpsCallable("generateWidgetToken")
+            .httpsCallable(FirebaseConstants.generateWidgetTokenFunction)
             .call(["deviceId": deviceId])
 
           guard let data = result.data as? [String: Any],
@@ -492,6 +514,44 @@ extension AuthClient: DependencyKey {
           #if DEBUG
           print("[AuthClient] Widget Token 발급 실패: \(error)")
           #endif
+        }
+      },
+      deleteAccount: {
+        // 회원 탈퇴 - Firebase Function 호출
+        guard let currentUser = Auth.auth().currentUser else {
+          throw AuthClientError.invalidCredentials
+        }
+
+        // 토큰 갱신 (만료된 토큰으로 인한 UNAUTHENTICATED 방지)
+        _ = try await currentUser.getIDToken(forcingRefresh: true)
+
+        let functions = DefaultFunctionsProvider().functions
+
+        do {
+          _ = try await functions
+            .httpsCallable(FirebaseConstants.deleteUserFunction)
+            .call([:])
+
+          // 로컬 세션 정리
+          await session.logout()
+          WidgetAuthTokenStore.clear()
+          WidgetTokenStore.clear()
+        } catch let error as NSError {
+          #if DEBUG
+          print("[AuthClient] 회원 탈퇴 실패: \(error)")
+          print("[AuthClient] Error domain: \(error.domain), code: \(error.code)")
+          print("[AuthClient] FunctionsErrorDomain: \(FunctionsErrorDomain)")
+          print("[AuthClient] failedPrecondition rawValue: \(FunctionsErrorCode.failedPrecondition.rawValue)")
+          #endif
+
+          // Firebase Functions 에러 코드 확인
+          if error.domain == FunctionsErrorDomain {
+            // "failed-precondition" = 그룹 호스트인 경우
+            if error.code == FunctionsErrorCode.failedPrecondition.rawValue {
+              throw AuthClientError.isGroupHost
+            }
+          }
+          throw AuthClientError.unknown
         }
       }
     )

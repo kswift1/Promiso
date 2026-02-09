@@ -185,7 +185,8 @@ extension GroupMain {
             store.send(.view(.groupSettingsTapped))
           }
         ],
-        bottomPadding: fabBottomPadding
+        bottomPadding: fabBottomPadding,
+        isVisible: !store.isOnboardingMode
       )
     }
 
@@ -255,9 +256,6 @@ extension GroupMain {
         store.send(.view(.createGroup))
       case .joinGroup:
         store.send(.view(.joinGroup))
-      case .howToUse:
-        // TODO: 튜토리얼 화면 연결
-        break
       }
     }
 
@@ -319,7 +317,7 @@ extension GroupMain {
           .textCase(nil)
 
         Rectangle()
-          .fill(Color(UIColor.systemGray4))
+          .fill(Color.primary.opacity(0.1))
           .frame(height: 1)
       }
       .padding(.top, 8)

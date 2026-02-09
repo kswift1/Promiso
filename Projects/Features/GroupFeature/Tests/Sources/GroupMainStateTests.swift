@@ -21,6 +21,7 @@
 import Foundation
 import Testing
 import Clients
+import Sharing
 @testable import GroupFeature
 
 // MARK: - GroupMain State Tests
@@ -87,14 +88,13 @@ struct GroupMainStateTests {
   private func makeState(
     promises: [PromiseModel] = [],
     selectedFilter: GroupMain.PromiseFilter = .all,
-    currentGroup: GroupModel? = nil,
-    groupMembers: [UserPublicModel]? = nil
+    currentGroup: GroupModel? = nil
   ) -> GroupMain.Feature.State {
-    var state = GroupMain.Feature.State(currentUser: makeCurrentUser())
+    @Shared(.inMemory("test-current-user")) var currentUser = makeCurrentUser()
+    var state = GroupMain.Feature.State(currentUser: $currentUser)
     state.promisesState = promises.isEmpty ? .idle : .loaded(promises)
     state.selectedFilter = selectedFilter
     state.currentGroup = currentGroup ?? makeGroup()
-    state.currentGroupMembers = groupMembers
     return state
   }
 
@@ -108,16 +108,7 @@ struct GroupMainStateTests {
     // 현재 사용자가 이미 응답한 약속
     let alreadyResponded = makePromise(id: "responded", accepted: ["current-user"], declined: [])
 
-    let groupMembers = [
-      UserPublicModel(userId: "current-user", name: "나", nickname: "나", metadata: .init()),
-      UserPublicModel(userId: "user2", name: "유저2", nickname: "유저2", metadata: .init()),
-      UserPublicModel(userId: "user3", name: "유저3", nickname: "유저3", metadata: .init())
-    ]
-
-    let state = makeState(
-      promises: [needResponse, alreadyResponded],
-      groupMembers: groupMembers
-    )
+    let state = makeState(promises: [needResponse, alreadyResponded])
 
     #expect(state.needResponsePromises.count == 1)
     #expect(state.needResponsePromises.first?.id == "need")
@@ -134,15 +125,7 @@ struct GroupMainStateTests {
       voteUntil: Date().addingTimeInterval(3600)
     )
 
-    let groupMembers = [
-      UserPublicModel(userId: "current-user", name: "나", nickname: "나", metadata: .init()),
-      UserPublicModel(userId: "user2", name: "유저2", nickname: "유저2", metadata: .init())
-    ]
-
-    let state = makeState(
-      promises: [laterDeadline, earlierDeadline],
-      groupMembers: groupMembers
-    )
+    let state = makeState(promises: [laterDeadline, earlierDeadline])
 
     #expect(state.needResponsePromises.count == 2)
     #expect(state.needResponsePromises[0].id == "earlier") // 마감 임박순
@@ -262,7 +245,8 @@ struct GroupMainStateTests {
 
   @Test("그룹 없으면 온보딩 모드")
   func isOnboardingMode_whenNoGroups_returnsTrue() {
-    var state = GroupMain.Feature.State(currentUser: makeCurrentUser())
+    @Shared(.inMemory("test-no-groups")) var currentUser = makeCurrentUser()
+    var state = GroupMain.Feature.State(currentUser: $currentUser)
     state.allGroupSummaries = []
 
     #expect(state.isOnboardingMode == true)
@@ -270,7 +254,8 @@ struct GroupMainStateTests {
 
   @Test("그룹 있으면 온보딩 모드 아님")
   func isOnboardingMode_whenHasGroups_returnsFalse() {
-    var state = GroupMain.Feature.State(currentUser: makeCurrentUser())
+    @Shared(.inMemory("test-has-groups")) var currentUser = makeCurrentUser()
+    var state = GroupMain.Feature.State(currentUser: $currentUser)
     state.allGroupSummaries = [
       UserGroupInfo(id: "g1", name: "테스트 그룹")
     ]
@@ -282,7 +267,8 @@ struct GroupMainStateTests {
 
   @Test("그룹 목록을 GroupBarItem으로 변환")
   func groupBarItems_convertsGroupSummaries() {
-    var state = GroupMain.Feature.State(currentUser: makeCurrentUser())
+    @Shared(.inMemory("test-group-bar")) var currentUser = makeCurrentUser()
+    var state = GroupMain.Feature.State(currentUser: $currentUser)
     state.allGroupSummaries = [
       UserGroupInfo(id: "g1", name: "그룹1", hasNewActivity: true),
       UserGroupInfo(id: "g2", name: "그룹2", hasNewActivity: false)
@@ -299,7 +285,8 @@ struct GroupMainStateTests {
 
   @Test("그룹 없으면 온보딩 Mock 그룹 표시")
   func groupBarItems_whenNoGroups_showsOnboardingItem() {
-    var state = GroupMain.Feature.State(currentUser: makeCurrentUser())
+    @Shared(.inMemory("test-onboarding")) var currentUser = makeCurrentUser()
+    var state = GroupMain.Feature.State(currentUser: $currentUser)
     state.allGroupSummaries = []
 
     #expect(state.groupBarItems.count == 1)
@@ -311,7 +298,8 @@ struct GroupMainStateTests {
 
   @Test("과거 필터 + 로딩 중이면 true")
   func isPastFilterLoading_whenPastAndLoading_returnsTrue() {
-    var state = GroupMain.Feature.State(currentUser: makeCurrentUser())
+    @Shared(.inMemory("test-past-loading")) var currentUser = makeCurrentUser()
+    var state = GroupMain.Feature.State(currentUser: $currentUser)
     state.selectedFilter = .past
     state.pastPromisesState = .loading
 
@@ -320,7 +308,8 @@ struct GroupMainStateTests {
 
   @Test("과거 필터 + 로딩 완료면 false")
   func isPastFilterLoading_whenPastAndLoaded_returnsFalse() {
-    var state = GroupMain.Feature.State(currentUser: makeCurrentUser())
+    @Shared(.inMemory("test-past-loaded")) var currentUser = makeCurrentUser()
+    var state = GroupMain.Feature.State(currentUser: $currentUser)
     state.selectedFilter = .past
     state.pastPromisesState = .loaded([])
 
@@ -329,7 +318,8 @@ struct GroupMainStateTests {
 
   @Test("다른 필터면 false")
   func isPastFilterLoading_whenOtherFilter_returnsFalse() {
-    var state = GroupMain.Feature.State(currentUser: makeCurrentUser())
+    @Shared(.inMemory("test-other-filter")) var currentUser = makeCurrentUser()
+    var state = GroupMain.Feature.State(currentUser: $currentUser)
     state.selectedFilter = .all
     state.pastPromisesState = .loading
 

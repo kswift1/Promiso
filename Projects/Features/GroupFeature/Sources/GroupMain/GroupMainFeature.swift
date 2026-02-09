@@ -72,7 +72,6 @@ extension GroupMain {
   public enum OnboardingCard: CaseIterable, Identifiable {
     case createGroup
     case joinGroup
-    case howToUse
 
     public var id: Self { self }
 
@@ -80,7 +79,6 @@ extension GroupMain {
       switch self {
       case .createGroup: return "그룹 만들기"
       case .joinGroup: return "친구 초대 코드로 참여"
-      case .howToUse: return "Promiso 사용법"
       }
     }
 
@@ -88,7 +86,6 @@ extension GroupMain {
       switch self {
       case .createGroup: return "친구들과 함께할 그룹을 만들어보세요"
       case .joinGroup: return "초대 코드를 입력해서 그룹에 참여하세요"
-      case .howToUse: return "약속 생성부터 확정까지 알아보기"
       }
     }
 
@@ -96,7 +93,6 @@ extension GroupMain {
       switch self {
       case .createGroup: return "person.3.fill"
       case .joinGroup: return "link.circle.fill"
-      case .howToUse: return "questionmark.circle.fill"
       }
     }
 
@@ -104,7 +100,6 @@ extension GroupMain {
       switch self {
       case .createGroup: return .blue
       case .joinGroup: return .green
-      case .howToUse: return .orange
       }
     }
   }
@@ -128,6 +123,7 @@ extension GroupMain {
     @Dependency(\.promiseClient) var promiseClient
     @Dependency(\.userSettingsClient) var userSettingsClient
     @Dependency(\.mapClient) var mapClient
+    @Dependency(\.calendarSyncClient) var calendarSyncClient
 
     public init() {}
 
@@ -147,6 +143,10 @@ extension GroupMain {
       /// 그룹 멤버 캐시 (전역 공유, groupId → members)
       @Shared(.inMemory(AppConstants.SharedState.groupMembersCache))
       public var groupMembersCache: [String: [UserPublicModel]] = [:]
+
+      /// 그룹 캘린더 동기화 설정 캐시 (전역 공유, groupId → calendarSync)
+      @Shared(.inMemory(AppConstants.SharedState.groupCalendarSyncCache))
+      public var groupCalendarSyncCache: [String: Bool] = [:]
 
       /// 현재 그룹 멤버 (캐시에서 조회)
       var currentGroupMembers: [UserPublicModel]? {
@@ -427,6 +427,7 @@ extension GroupMain {
         case groupSettingsTapped  // "그룹 설정"
         case sortSettingsTapped  // "그룹 정렬"
         case directionsTapped(String)  // 길찾기 (promiseId)
+        case openCreatePromiseIfPossible  // Widget 딥링크: 그룹 있으면 약속 생성
       }
 
       public enum Internal: Sendable {
@@ -719,6 +720,15 @@ extension GroupMain {
               customOrderedGroups: customOrdered
             )
             return .none
+
+          case .openCreatePromiseIfPossible:
+            // Widget 딥링크: 그룹이 있으면 CreatePromise 열기, 없으면 그룹 탭만 표시
+            guard let groups = state.allGroupSummaries, !groups.isEmpty else {
+              // 그룹 없음 → 그룹 탭 화면 유지 (온보딩 모드)
+              return .none
+            }
+            // 그룹 있음 → 약속 생성 화면 열기
+            return .send(.view(.createNewPromise))
           }
 
         // MARK: - Internal Actions
@@ -736,6 +746,13 @@ extension GroupMain {
 
           case .groupListResponse(.success(let groupSummaries)):
             state.allGroupSummaries = groupSummaries
+
+            // 그룹 캘린더 동기화 설정 캐시 업데이트
+            state.$groupCalendarSyncCache.withLock { cache in
+              for group in groupSummaries {
+                cache[group.id] = group.notifications?.calendarSync ?? true
+              }
+            }
 
             // 딥링크로 열려는 그룹이 있으면 해당 그룹으로 이동
             if let deeplink = state.pendingDeeplink {
@@ -783,8 +800,11 @@ extension GroupMain {
           case .currentGroupResponse(.success(let group)):
             state.currentGroup = group
             state.pendingGroupId = nil
-            // 멤버 정보 먼저 fetch 후 promises subscribe
-            return .send(.internal(.fetchGroupMembers(groupId: group.id)))
+            // 그룹 로드 시 badge 클리어 후 멤버 정보 fetch
+            return .merge(
+              .send(.internal(.clearBadge(groupId: group.id))),
+              .send(.internal(.fetchGroupMembers(groupId: group.id)))
+            )
 
           case .currentGroupResponse(.failure(let error)):
             state.pendingGroupId = nil
@@ -881,11 +901,34 @@ extension GroupMain {
             return .none
 
           case .respondPromise(let promiseId, let status):
-            return .run { [promiseClient] send in
+            // 캘린더 동기화 설정 캐시에서 조회
+            let calendarSyncCache = state.groupCalendarSyncCache
+            AppLogger.calendar.debug("📱 [GroupMain] respondPromise 시작 - promiseId: \(promiseId), status: \(String(describing: status))")
+            AppLogger.calendar.debug("📱 [GroupMain] calendarSyncCache: \(calendarSyncCache)")
+            return .run { [promiseClient, calendarSyncClient] send in
               do {
-                try await promiseClient.respondPromise(promiseId, status)
+                let result = try await promiseClient.respondPromise(promiseId, status)
+                AppLogger.calendar.debug("📱 [GroupMain] respondPromise 결과 - isConfirmed: \(result.isConfirmed)")
                 await send(.internal(.proposalRespondDone(promiseId: promiseId, status: status)))
+
+                // 캘린더 동기화: 수락 + 확정 시 추가
+                if status == .accepted,
+                   result.isConfirmed,
+                   let confirmedPromise = result.confirmedPromise {
+                  let groupCalendarSync = calendarSyncCache[confirmedPromise.groupId] ?? true
+                  AppLogger.calendar.debug("📱 [GroupMain] 캘린더 추가 시도 - groupCalendarSync: \(groupCalendarSync)")
+                  try? await calendarSyncClient.addPromise(confirmedPromise, groupCalendarSync)
+                } else {
+                  AppLogger.calendar.debug("📱 [GroupMain] 캘린더 추가 조건 불충족 - status: \(String(describing: status)), isConfirmed: \(result.isConfirmed)")
+                }
+
+                // 캘린더 동기화: 거절 시 제거
+                if status == .declined {
+                  AppLogger.calendar.debug("📱 [GroupMain] 캘린더 제거 시도")
+                  try? await calendarSyncClient.removePromise(promiseId)
+                }
               } catch {
+                AppLogger.calendar.error("📱 [GroupMain] respondPromise 에러: \(error.localizedDescription)")
                 await send(.internal(.proposalRespondFailed(promiseId: promiseId, error: AppError(error))))
               }
             }
@@ -964,6 +1007,14 @@ extension GroupMain {
             // 설정 로드 후 그룹 리스트 표시
             let summaries = state.sortedGroupsForSelection(state.currentUser.groups)
             state.allGroupSummaries = summaries
+
+            // 그룹 캘린더 동기화 설정 캐시 업데이트
+            state.$groupCalendarSyncCache.withLock { cache in
+              for group in summaries {
+                cache[group.id] = group.notifications?.calendarSync ?? true
+              }
+            }
+
             return .merge(
               .send(.internal(.setDefaultGroup(groups: summaries))),
               .send(.internal(.fetchGroupList))
@@ -973,6 +1024,14 @@ extension GroupMain {
             // 설정 로드 실패해도 기본값으로 그룹 리스트 표시
             let summaries = state.sortedGroupsForSelection(state.currentUser.groups)
             state.allGroupSummaries = summaries
+
+            // 그룹 캘린더 동기화 설정 캐시 업데이트
+            state.$groupCalendarSyncCache.withLock { cache in
+              for group in summaries {
+                cache[group.id] = group.notifications?.calendarSync ?? true
+              }
+            }
+
             return .merge(
               .send(.internal(.setDefaultGroup(groups: summaries))),
               .send(.internal(.fetchGroupList))
@@ -1101,6 +1160,13 @@ extension GroupMain {
           )))
           return .none
 
+        case .path(.element(id: _, action: .groupSettings(.delegate(.hostTransferred)))):
+          // 호스트 양도 후 설정 화면을 닫고 그룹 데이터 새로고침
+          if let groupId = state.currentGroup?.id {
+            state.$groupMembersCache.withLock { $0.removeValue(forKey: groupId) }
+          }
+          state.path.removeAll()
+          return .send(.internal(.fetchGroupList))
 
         // GroupPromiseList delegate actions
         case .path(.element(id: _, action: .groupPromiseList(.delegate(.promiseSelected(let promise))))):

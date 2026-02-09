@@ -60,6 +60,8 @@ extension RootTab {
     @Dependency(\.authClient) var authClient
     @Dependency(\.notificationClient) var notificationClient
     @Dependency(\.promiseClient) var promiseClient
+    @Dependency(\.calendarSyncClient) var calendarSyncClient
+    @Dependency(\.analyticsClient) var analyticsClient
 
     public init() {}
 
@@ -131,6 +133,8 @@ extension RootTab {
       case openLiveActivityETASheet
       /// LiveActivity 탭 → LivePromiseExpandedView 열기 (ETA 시트 없이)
       case openLivePromiseDetail
+      /// Widget "약속 만들기" 버튼 → 그룹 탭 이동 + 약속 생성 (그룹 있을 때만)
+      case openCreatePromiseIfPossible
       /// 내부 액션
       case `internal`(Internal)
     }
@@ -154,6 +158,8 @@ extension RootTab {
       case activityStateChanged(ActivityStateValue)
       /// ETA 시트 열기 (딜레이 후)
       case openETASheetAfterDelay
+      /// 캘린더 동기화 (백그라운드)
+      case syncCalendar
     }
 
     public enum Delegate: Equatable {
@@ -185,14 +191,36 @@ extension RootTab {
             .send(.internal(.refreshWidgetAuthToken)),
             .send(.internal(.requestWidgetToken)),
             .send(.internal(.observePushToStartToken)),
-            .send(.internal(.observeActivityUpdates))
+            .send(.internal(.observeActivityUpdates)),
+            .send(.internal(.syncCalendar))
           )
 
         case .tabSelected(let tab):
+          let previousTab = state.selectedTab
           state.selectedTab = tab
-          return .run { _ in
-            await hapticFeedback.buttonTap()
+
+          let hapticEffect: Effect<Action> = .run { _ in await hapticFeedback.buttonTap() }
+
+          guard tab != previousTab else {
+            return hapticEffect
           }
+
+          var effects: [Effect<Action>] = [hapticEffect]
+
+          // 탭 전환 시 각 Feature에 알림
+          switch tab {
+          case .home:
+            effects.append(.send(.home(.view(.refreshNotificationBadge))))
+          case .calendar:
+            effects.append(.send(.calendar(.view(.refresh))))
+          case .settings:
+            // Analytics 이벤트 로깅
+            analyticsClient.logEvent(AnalyticsClient.EventName.settingsOpened, nil)
+          case .group:
+            break
+          }
+
+          return .merge(effects)
 
         case .home(.delegate(.navigateToGroupWithPromise(let groupId, let promiseId))):
           state.selectedTab = .group
@@ -310,6 +338,11 @@ extension RootTab {
             NotificationCenter.default.post(name: .openLivePromiseDetailFromDeeplink, object: nil)
           }
 
+        case .openCreatePromiseIfPossible:
+          // 그룹 탭으로 이동 후 그룹 유무에 따라 CreatePromise 열기
+          state.selectedTab = .group
+          return .send(.groupMain(.view(.openCreatePromiseIfPossible)))
+
         case .internal(let internalAction):
           switch internalAction {
           case .refreshWidgetAuthToken:
@@ -416,6 +449,23 @@ extension RootTab {
           case .openETASheetAfterDelay:
             state.livePromiseDetail?.isETASheetPresented = true
             return .none
+
+          case .syncCalendar:
+            // 앱 시작 시 캘린더 동기화 (백그라운드)
+            let enabledGroupIds = Set(
+              state.currentUser.groups
+                .filter { $0.notifications?.calendarSync ?? false }
+                .map { $0.id }
+            )
+            return .run(priority: .background) { [calendarSyncClient] _ in
+              AppLogger.calendar.debug("📅 [RootTab] syncCalendar 시작 - enabledGroupIds: \(enabledGroupIds)")
+              do {
+                let result = try await calendarSyncClient.sync(enabledGroupIds)
+                AppLogger.calendar.info("📅 [RootTab] syncCalendar 완료 - \(result.description)")
+              } catch {
+                AppLogger.calendar.error("📅 [RootTab] syncCalendar 실패 - \(error.localizedDescription)")
+              }
+            }
           }
 
         case .delegate:
@@ -460,9 +510,22 @@ extension RootTab {
       self.store = store
     }
 
+    // MARK: - Computed Properties
+
+    /// 현재 설정된 테마 모드를 ColorScheme으로 변환
+    private var preferredColorScheme: ColorScheme? {
+      let themeMode = UserDefaults.standard.string(forKey: AppConstants.UserDefaults.preferredThemeMode) ?? AppConstants.ThemeMode.system.rawValue
+      switch AppConstants.ThemeMode(rawValue: themeMode) ?? .system {
+      case .system: return nil
+      case .light: return .light
+      case .dark: return .dark
+      }
+    }
+
     public var body: some View {
       tabViewWithLivePromise
         .tint(Color.pmbrand.primary)
+        .preferredColorScheme(preferredColorScheme)
         .onAppear { store.send(.onAppear) }
         .fullScreenCover(isPresented: $expandLivePromise, onDismiss: {
           // 스와이프로 dismiss 시 TCA 상태 정리

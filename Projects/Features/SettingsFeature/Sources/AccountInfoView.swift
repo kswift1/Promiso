@@ -5,6 +5,7 @@
 //  Created by Claude on 2026-01-15.
 //
 
+import Clients
 import SwiftUI
 import ComposableArchitecture
 import ResourceKit
@@ -21,6 +22,7 @@ extension AccountInfo {
   @Reducer
   public struct Feature {
     @Dependency(\.hapticFeedback) var hapticFeedback
+    @Dependency(\.authClient) var authClient
 
     public init() {}
 
@@ -29,6 +31,8 @@ extension AccountInfo {
       public var currentUser: UserPrivateModel
       public var showLogoutAlert: Bool = false
       public var showDeleteAccountAlert: Bool = false
+      public var isDeletingAccount: Bool = false
+      public var deleteAccountError: String?
 
       public init(currentUser: UserPrivateModel) {
         self.currentUser = currentUser
@@ -50,16 +54,19 @@ extension AccountInfo {
       case deleteAccountTapped
       case deleteAccountConfirmed
       case deleteAccountCancelled
+      case dismissDeleteAccountError
     }
 
     public enum Internal: Equatable, Sendable {
-      // 현재는 Internal action이 필요 없지만, 일관성을 위해 구조 유지
+      case deleteAccountCompleted
+      case deleteAccountFailed(String)
     }
 
     public enum Delegate: Equatable, Sendable {
       case editProfileRequested
       case logoutRequested
       case deleteAccountRequested
+      case didDeleteAccount
     }
 
     public var body: some ReducerOf<Self> {
@@ -98,16 +105,42 @@ extension AccountInfo {
 
           case .deleteAccountConfirmed:
             state.showDeleteAccountAlert = false
-            return .send(.delegate(.deleteAccountRequested))
+            state.isDeletingAccount = true
+            state.deleteAccountError = nil
+            return .run { send in
+              do {
+                try await authClient.deleteAccount()
+                await send(.internal(.deleteAccountCompleted))
+              } catch {
+                await send(.internal(.deleteAccountFailed(error.localizedDescription)))
+              }
+            }
 
           case .deleteAccountCancelled:
             state.showDeleteAccountAlert = false
             return .none
+
+          case .dismissDeleteAccountError:
+            state.deleteAccountError = nil
+            return .none
           }
 
-        case .internal:
-          // 현재는 Internal action이 없음
-          return .none
+        case .internal(let internalAction):
+          switch internalAction {
+          case .deleteAccountCompleted:
+            state.isDeletingAccount = false
+            return .run { send in
+              await hapticFeedback.success()
+              await send(.delegate(.didDeleteAccount))
+            }
+
+          case .deleteAccountFailed(let error):
+            state.isDeletingAccount = false
+            state.deleteAccountError = error
+            return .run { _ in
+              await hapticFeedback.error()
+            }
+          }
 
         case .delegate:
           return .none
@@ -176,9 +209,6 @@ extension AccountInfo {
           // 계정 정보 카드
           accountInfoCard
 
-          // 프로필 편집
-          profileEditButton
-
           // 계정 관리 (로그아웃, 탈퇴)
           accountManagementSection
         }
@@ -188,6 +218,17 @@ extension AccountInfo {
       .auroraBackground()
       .navigationTitle("계정 정보")
       .navigationBarTitleDisplayMode(.large)
+      .toolbar {
+        ToolbarItem(placement: .topBarTrailing) {
+          Button {
+            store.send(.view(.editProfileTapped))
+          } label: {
+            Text("편집")
+              .font(.body)
+              .foregroundStyle(Color.pmindigo.n500)
+          }
+        }
+      }
       .alert(
         "로그아웃",
         isPresented: Binding(
@@ -220,39 +261,24 @@ extension AccountInfo {
       } message: {
         Text("탈퇴 시 모든 데이터가 삭제되며 복구할 수 없습니다.")
       }
+      .alert(
+        "탈퇴 실패",
+        isPresented: Binding(
+          get: { store.deleteAccountError != nil },
+          set: { if !$0 { store.send(.view(.dismissDeleteAccountError)) } }
+        )
+      ) {
+        Button("확인") {
+          store.send(.view(.dismissDeleteAccountError))
+        }
+      } message: {
+        if let error = store.deleteAccountError {
+          Text(error)
+        }
+      }
       .onAppear {
         store.send(.view(.onAppear))
       }
-    }
-
-    // MARK: - Profile Edit Button
-
-    private var profileEditButton: some View {
-      Button {
-        store.send(.view(.editProfileTapped))
-      } label: {
-        HStack(spacing: 16) {
-          Image(systemName: "person.crop.circle.fill")
-            .font(.body)
-            .foregroundStyle(Color.pmindigo.n500)
-            .frame(width: 24, height: 24)
-
-          Text("프로필 편집")
-            .font(.body)
-            .foregroundStyle(Color.pmtext.primary)
-
-          Spacer()
-
-          Image(systemName: "chevron.right")
-            .font(.caption)
-            .foregroundStyle(Color.pmgray.n400)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-        .contentShape(Rectangle())
-      }
-      .buttonStyle(.plain)
-      .adaptiveGlassBackground()
     }
 
     // MARK: - Account Management Section
@@ -294,17 +320,23 @@ extension AccountInfo {
               .foregroundStyle(Color.pmerror.n500)
               .frame(width: 24, height: 24)
 
-            Text("탈퇴하기 (TODO)")
+            Text("탈퇴하기")
               .font(.body)
               .foregroundStyle(Color.pmerror.n500)
 
             Spacer()
+
+            if store.isDeletingAccount {
+              ProgressView()
+                .scaleEffect(0.8)
+            }
           }
           .padding(.horizontal, 16)
           .padding(.vertical, 14)
           .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .disabled(store.isDeletingAccount)
       }
       .adaptiveGlassBackground()
     }

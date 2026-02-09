@@ -2,6 +2,19 @@
 
 `git clone` 이후 바로 빌드할 수 있도록 만드는 방법입니다.
 
+## 문서 메타
+
+- 목적: 신규/교체 장비에서 개발 시작까지의 온보딩 절차 제공
+- 대상 독자: 신규 팀원, 개발 환경 재설치 사용자
+- 최종 수정일: 2026-02-06
+- 관련 문서: [README.md](README.md) · [ENVIRONMENT.md](ENVIRONMENT.md) · [DEVELOPMENT.md](DEVELOPMENT.md)
+
+## 범위 안내
+
+- 이 문서: 새 컴퓨터 기준 초기 세팅 순서
+- 환경별 파일 구조/빌드 전환: [ENVIRONMENT.md](ENVIRONMENT.md)
+- 세팅 완료 후 개발 규칙: [DEVELOPMENT.md](DEVELOPMENT.md)
+
 ## 📋 목차
 
 1. [새 컴퓨터에서 설정하기](#1-새-컴퓨터에서-설정하기)
@@ -76,55 +89,21 @@ tuist build PromisoDev
 
 #### Step 1-2: 동일 (Clone, 도구 설치)
 
-#### Step 3: Firebase Console에서 plist 다운로드
+#### Step 3: 환경값/설정 파일 준비
 
-각 Firebase 프로젝트에서 GoogleService-Info.plist 다운로드:
+아래 문서를 기준으로 `.env`, `xcconfig`, `GoogleService-Info.plist`를 준비합니다.
 
-1. **Dev 환경**
-   - https://console.firebase.google.com/project/promiso-dev
-   - 프로젝트 설정 → iOS 앱 → GoogleService-Info.plist 다운로드
-   - `Config/GoogleService-Info-Dev.plist`로 저장
+- 환경 파일 구성/명령어: [ENVIRONMENT.md](ENVIRONMENT.md)
+- API 키 발급 절차: [ENVIRONMENT.md](ENVIRONMENT.md#api-키-발급)
 
-2. **Stage 환경**
-   - https://console.firebase.google.com/project/promiso-stage
-   - `Config/GoogleService-Info-Stage.plist`로 저장
-
-3. **Prod 환경**
-   - https://console.firebase.google.com/project/promiso-prod
-   - `Config/GoogleService-Info-Prod.plist`로 저장
-
-#### Step 4: .env 파일 생성
-
-```bash
-cp .env.template .env
-vim .env
-```
-
-`.env` 파일에 API 키 입력:
-```bash
-# Dev
-GOOGLE_CLIENT_ID_DEV=306291841913-...
-GOOGLE_REVERSED_CLIENT_ID_DEV=com.googleusercontent.apps.306291841913-...
-KAKAO_NATIVE_APP_KEY_DEV=85c9fc88501e426b848242e7c02d20af
-KAKAO_REST_API_KEY_DEV=eacdef419fafb30e112e6ca22219ee4d
-
-# Stage (동일 구조)
-# Prod (동일 구조)
-```
-
-#### Step 5: xcconfig 자동 생성
+#### Step 4: 설정 반영 스크립트 실행
 
 ```bash
 ./scripts/generate-xcconfig.sh
-```
-
-#### Step 6: Firebase 설정 파일 복사
-
-```bash
 ./scripts/copy-firebase-config.sh
 ```
 
-#### Step 7: 빌드
+#### Step 5: 빌드
 
 ```bash
 tuist generate
@@ -195,124 +174,10 @@ Config/
 
 ## 3. CI/CD 서버 설정 (GitHub Actions)
 
-GitHub Actions에서 자동 빌드하려면 Secrets 설정이 필요합니다.
+GitHub Actions 시크릿 등록과 배포 워크플로우는 아래 문서를 기준으로 관리합니다.
 
-### 📝 GitHub Secrets 등록
-
-**GitHub 레포지토리 → Settings → Secrets and variables → Actions**
-
-#### 1. API 키 Secrets (12개)
-
-```
-GOOGLE_CLIENT_ID_DEV
-GOOGLE_REVERSED_CLIENT_ID_DEV
-KAKAO_NATIVE_APP_KEY_DEV
-KAKAO_REST_API_KEY_DEV
-
-GOOGLE_CLIENT_ID_STAGE
-GOOGLE_REVERSED_CLIENT_ID_STAGE
-KAKAO_NATIVE_APP_KEY_STAGE
-KAKAO_REST_API_KEY_STAGE
-
-GOOGLE_CLIENT_ID_PROD
-GOOGLE_REVERSED_CLIENT_ID_PROD
-KAKAO_NATIVE_APP_KEY_PROD
-KAKAO_REST_API_KEY_PROD
-```
-
-**값 확인 방법:**
-```bash
-# 로컬 Config 폴더에서 확인
-cat Config/Dev.xcconfig
-cat Config/Stage.xcconfig
-cat Config/Prod.xcconfig
-```
-
-#### 2. GoogleService-Info.plist Secrets (3개)
-
-```bash
-# Base64 인코딩해서 등록
-base64 -i Config/GoogleService-Info-Dev.plist | pbcopy
-# → GOOGLE_SERVICE_INFO_DEV
-
-base64 -i Config/GoogleService-Info-Stage.plist | pbcopy
-# → GOOGLE_SERVICE_INFO_STAGE
-
-base64 -i Config/GoogleService-Info-Prod.plist | pbcopy
-# → GOOGLE_SERVICE_INFO_PROD
-```
-
-### 🔄 워크플로우 예시
-
-상세한 워크플로우는 [docs/CI_CD.md](CI_CD.md) 참고
-
----
-
-## 4. API 키 직접 발급 받기
-
-처음부터 설정해야 하는 경우:
-
-### 🔑 Google OAuth Client ID
-
-#### 새로 생성하는 경우:
-
-1. **Firebase Console** 접속
-   - Dev: https://console.firebase.google.com/project/promiso-dev
-   - Stage: https://console.firebase.google.com/project/promiso-stage
-   - Prod: https://console.firebase.google.com/project/promiso-prod
-
-2. **좌측 메뉴** → 프로젝트 설정 (⚙️)
-
-3. **일반 탭** → iOS 앱 선택
-
-4. **GoogleService-Info.plist 다운로드** 클릭
-
-5. **Google Cloud Console로 이동**
-   - 프로젝트 선택 → APIs & Services → Credentials
-
-6. **OAuth 2.0 Client ID 생성**
-   - Application type: iOS
-   - Bundle ID 입력:
-     - Dev: `com.promiso.dev`
-     - Stage: `com.promiso.stage`
-     - Prod: `com.promiso`
-
-7. **생성된 Client ID 복사**
-   ```
-   GOOGLE_CLIENT_ID = 306291841913-...apps.googleusercontent.com
-   GOOGLE_REVERSED_CLIENT_ID = com.googleusercontent.apps.306291841913-...
-   ```
-
-### 🟡 Kakao API Keys
-
-#### 새로 생성하는 경우:
-
-1. **Kakao Developers** 접속
-   - https://developers.kakao.com/
-
-2. **내 애플리케이션** → 앱 만들기
-
-3. **환경별로 3개 앱 생성**
-   - Promiso Dev
-   - Promiso Stage
-   - Promiso
-
-4. **앱 설정 → 요약 정보**
-   ```
-   KAKAO_NATIVE_APP_KEY = [네이티브 앱 키]
-   ```
-
-5. **앱 설정 → 앱 키**
-   ```
-   KAKAO_REST_API_KEY = [REST API 키]
-   ```
-
-6. **플랫폼 설정**
-   - iOS 플랫폼 추가
-   - Bundle ID 입력:
-     - Dev: `com.promiso.dev`
-     - Stage: `com.promiso.stage`
-     - Prod: `com.promiso`
+- 시크릿 항목/등록 방법: [DEPLOYMENT.md](DEPLOYMENT.md)
+- 워크플로우 동작/트러블슈팅: [CI_CD.md](CI_CD.md)
 
 ---
 
@@ -333,8 +198,7 @@ base64 -i Config/GoogleService-Info-Prod.plist | pbcopy
 
 - [ ] `git clone` 완료
 - [ ] Tuist 설치
-- [ ] Firebase Console에서 plist 3개 다운로드
-- [ ] `.env` 파일 생성 및 API 키 입력
+- [ ] [ENVIRONMENT.md](ENVIRONMENT.md) 기준으로 `.env`/`xcconfig`/plist 준비
 - [ ] `./scripts/generate-xcconfig.sh` 실행
 - [ ] `./scripts/copy-firebase-config.sh` 실행
 - [ ] `tuist generate && tuist build PromisoDev` 성공
@@ -373,10 +237,9 @@ cat Config/Dev.xcconfig
 ### CI/CD에서 빌드 실패
 
 ```bash
-# 해결: GitHub Secrets 확인
-# - 12개 API 키 Secrets가 모두 설정되었는지
-# - 3개 GoogleService-Info Base64 Secrets가 설정되었는지
-# - Secret 이름이 정확한지 (대소문자 구분)
+# 해결: 아래 문서를 기준으로 점검
+# - docs/DEPLOYMENT.md (시크릿 등록)
+# - docs/CI_CD.md (워크플로우 로그 확인)
 ```
 
 ---
@@ -384,5 +247,7 @@ cat Config/Dev.xcconfig
 ## 📚 관련 문서
 
 - [Config/README.md](../Config/README.md) - 설정 파일 상세 설명
+- [docs/ENVIRONMENT.md](ENVIRONMENT.md) - 로컬 환경 구성/키 발급
+- [docs/DEPLOYMENT.md](DEPLOYMENT.md) - CI 배포/시크릿 기준
 - [docs/CI_CD.md](CI_CD.md) - GitHub Actions 워크플로우
 - [.env.template](../.env.template) - 환경변수 템플릿

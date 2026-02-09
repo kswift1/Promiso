@@ -17,21 +17,13 @@ class AppDelegate: NSObject, UIApplicationDelegate {
   func application(_ application: UIApplication,
                    didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
     FirebaseApp.configure()
+    configureAnalytics()
+    configureCrashlytics()
     configureClaritySDK()
     configureKakaoMapsSDK()
     configureRemoteNotifications(application)
 
-// MARK: - Emulator 사용 시 주석 해제
-#if DEBUG
-//    connectToEmulators()
-#endif
-
     return true
-  }
-
-  func applicationDidBecomeActive(_ application: UIApplication) {
-    // 앱 활성화 시 뱃지 카운트 초기화
-    UNUserNotificationCenter.current().setBadgeCount(0)
   }
 
   // MARK: - Remote Notifications Configuration
@@ -77,9 +69,38 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     AppLogger.general.debug("Kakao Maps SDK initialized")
   }
 
+  // MARK: - Firebase Analytics
+  private func configureAnalytics() {
+    #if DEBUG
+    // Debug 빌드에서는 Analytics 비활성화 (선택사항)
+    Analytics.setAnalyticsCollectionEnabled(false)
+    AppLogger.general.debug("Firebase Analytics disabled for DEBUG build")
+    #else
+    // Release 빌드에서는 Analytics 활성화
+    Analytics.setAnalyticsCollectionEnabled(true)
+    AppLogger.general.debug("Firebase Analytics enabled")
+    #endif
+  }
+
+  // MARK: - Firebase Crashlytics
+  private func configureCrashlytics() {
+    #if DEBUG
+    // Debug 빌드에서는 Crashlytics 비활성화
+    Crashlytics.crashlytics().setCrashlyticsCollectionEnabled(false)
+    AppLogger.general.debug("Firebase Crashlytics disabled for DEBUG build")
+    #else
+    // Release 빌드에서는 Crashlytics 활성화
+    Crashlytics.crashlytics().setCrashlyticsCollectionEnabled(true)
+    AppLogger.general.debug("Firebase Crashlytics enabled")
+    #endif
+  }
+
   // MARK: - Microsoft Clarity SDK
   private func configureClaritySDK() {
-    let projectId = "v0o95eccpc"
+    guard let projectId = Bundle.main.object(forInfoDictionaryKey: "CLARITY_PROJECT_ID") as? String else {
+      AppLogger.general.error("Clarity Project ID not found in Info.plist")
+      return
+    }
 
     #if DEBUG
     let config = ClarityConfig(projectId: projectId, logLevel: .error)
@@ -88,6 +109,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     #endif
 
     ClaritySDK.initialize(config: config)
+    AppLogger.general.debug("Clarity SDK initialized with projectId: \(projectId)")
   }
 
   /// Google Sign-In 리디렉션 URL 처리
@@ -99,27 +121,6 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     GIDSignIn.sharedInstance.handle(url)
   }
 
-#if DEBUG
-  private func connectToEmulators() {
-    let emulatorHost = "192.168.0.2"
-
-    // Auth Emulator
-    Auth.auth().useEmulator(withHost: emulatorHost, port: 9099)
-
-    // Firestore Emulator
-    let settings = Firestore.firestore().settings
-    settings.host = "\(emulatorHost):8081"
-    settings.isSSLEnabled = false
-    Firestore.firestore().settings = settings
-
-    // Functions Emulator
-    Functions.functions().useEmulator(withHost: emulatorHost, port: 5001)
-    Functions.functions(region: "asia-northeast3").useEmulator(withHost: emulatorHost, port: 5001)
-
-    // Storage Emulator
-    Storage.storage().useEmulator(withHost: emulatorHost, port: 9199)
-  }
-#endif
 }
 
 // MARK: - MessagingDelegate

@@ -4,10 +4,16 @@
 import * as admin from "firebase-admin";
 import {setGlobalOptions} from "firebase-functions/v2";
 import {defineSecret} from "firebase-functions/params";
-import {logEnvironmentInfo} from "../utils/firestore";
+import {
+  logEnvironmentInfo,
+  getCurrentEnvironment,
+  FirestoreEnvironment,
+} from "../utils/firestore";
 
-// Firebase Admin 초기화
-admin.initializeApp();
+// Firebase Admin 초기화 (이미 초기화되어 있으면 skip)
+if (!admin.apps.length) {
+  admin.initializeApp();
+}
 
 // 환경 정보 로깅
 logEnvironmentInfo();
@@ -38,7 +44,30 @@ export const CHANNEL_MGMT_HOST_DEVELOPMENT =
 export const CHANNEL_MGMT_PORT_PRODUCTION = 2196;
 export const CHANNEL_MGMT_PORT_DEVELOPMENT = 2195;
 
-export const APNS_BUNDLE_ID = "com.promiso";
+/**
+ * APNs Bundle ID (환경별)
+ *
+ * @return {string} 환경에 맞는 Bundle ID
+ *
+ * @remarks
+ * - Dev: com.promiso.dev
+ * - Stage: com.promiso.stage
+ * - Release: com.promiso
+ */
+function getAPNsBundleId(): string {
+  const env = getCurrentEnvironment();
+  switch (env) {
+  case FirestoreEnvironment.Dev:
+    return "com.promiso.dev";
+  case FirestoreEnvironment.Stage:
+    return "com.promiso.stage";
+  case FirestoreEnvironment.Release:
+  default:
+    return "com.promiso";
+  }
+}
+
+export const APNS_BUNDLE_ID = getAPNsBundleId();
 
 // Firebase Admin 인스턴스 export
 export {admin};

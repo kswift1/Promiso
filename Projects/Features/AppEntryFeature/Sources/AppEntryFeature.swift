@@ -27,6 +27,11 @@ extension AppEntry {
     @Dependency(\.userProfileClient) var userProfileClient
     @Dependency(\.notificationClient) var notificationClient
     @Dependency(\.deeplinkClient) var deeplinkClient
+    @Dependency(\.appConfigClient) var appConfigClient
+    @Dependency(\.openURL) var openURL
+    @Dependency(\.userDefaultsClient) var userDefaultsClient
+    @Dependency(\.clarityClient) var clarityClient
+    @Dependency(\.analyticsClient) var analyticsClient
 
     public init() {}
     
@@ -56,11 +61,20 @@ extension AppEntry {
       /// Provider에서 제공한 프로필 이미지 URL (Google 로그인 시)
       var providerProfileImageURL: URL?
 
+      /// 업데이트 알림 타입
+      @Presents var updateAlert: UpdateAlertState?
+
       public init() {
         self.destination = .auth(AuthFeature.Auth.Feature.State())
       }
     }
 
+    /// 업데이트 알림 상태
+    public enum UpdateAlertState: Equatable {
+      case forceUpdate(currentVersion: String, requiredVersion: String)
+      case recommendUpdate(currentVersion: String, recommendedVersion: String)
+    }
+    
 
     // MARK: - Action
 
@@ -69,15 +83,26 @@ extension AppEntry {
       case `internal`(InternalAction)
       case destination(PresentationAction<Destination.Action>)
       case notificationPermission(PresentationAction<NotificationPermission.Feature.Action>)
+      case updateAlert(UpdateAlertAction)
+    }
+
+    public enum UpdateAlertAction: Equatable {
+      case updateTapped
+      case laterTapped
     }
     
     public enum ViewAction {
       case onAppear
       case splashAnimationCompleted
       case handleDeeplink(URL)
+      case scenePhaseChanged(ScenePhase)
     }
     
     public enum InternalAction {
+      case checkVersion
+      case versionCheckCompleted(VersionCheckResult)
+      case recheckVersionAfterAppStore
+      case continueAppFlow
       case startSessionCheck
       case sessionCheckResponse(isAuthenticated: Bool)
       case startProfileCheck
@@ -89,6 +114,8 @@ extension AppEntry {
       case fcmTokenSaved
       case subscribePushNotificationTap
       case pushNotificationTapped(DeeplinkDestination)
+      case subscribeAppRestart
+      case appRestartRequested
     }
 
     // MARK: - Destination Reducer
@@ -108,11 +135,7 @@ extension AppEntry {
         case .view(let viewAction):
           switch viewAction {
           case .onAppear:
-            return .merge(
-              .send(.internal(.startSessionCheck)),
-              .send(.internal(.subscribeFCMToken)),
-              .send(.internal(.subscribePushNotificationTap))
-            )
+            return .send(.internal(.checkVersion))
 
           case .splashAnimationCompleted:
             state.splash = .hidden
@@ -121,11 +144,57 @@ extension AppEntry {
           case .handleDeeplink(let url):
             guard let destination = deeplinkClient.parseURL(url) else { return .none }
             return routeOrPendDeeplink(destination, state: &state)
+
+          case .scenePhaseChanged(let phase):
+            // 앱스토어에서 돌아왔을 때 버전 재체크
+            if phase == .active && state.updateAlert != nil {
+              return .send(.internal(.recheckVersionAfterAppStore))
+            }
+            return .none
           }
 
         case .internal(let internalAction):
           switch internalAction {
-            
+
+          case .checkVersion:
+            return .run { [appConfigClient] send in
+              let result = await appConfigClient.checkVersion()
+              await send(.internal(.versionCheckCompleted(result)))
+            }
+
+          case .versionCheckCompleted(let result):
+            switch result {
+            case .upToDate:
+              // 업데이트 알림이 있었다면 닫기 (앱스토어에서 업데이트 후 복귀)
+              if state.updateAlert != nil {
+                state.updateAlert = nil
+              }
+              return .send(.internal(.continueAppFlow))
+
+            case .forceUpdate(let current, let required):
+              state.updateAlert = .forceUpdate(currentVersion: current, requiredVersion: required)
+              return .none
+
+            case .recommendUpdate(let current, let recommended):
+              state.updateAlert = .recommendUpdate(currentVersion: current, recommendedVersion: recommended)
+              return .none
+            }
+
+          case .recheckVersionAfterAppStore:
+            // 앱스토어에서 복귀 시 버전 재체크 (캐시 초기화 후 새로 조회)
+            return .run { [appConfigClient] send in
+              let result = await appConfigClient.checkVersionForced()
+              await send(.internal(.versionCheckCompleted(result)))
+            }
+
+          case .continueAppFlow:
+            return .merge(
+              .send(.internal(.startSessionCheck)),
+              .send(.internal(.subscribeFCMToken)),
+              .send(.internal(.subscribePushNotificationTap)),
+              .send(.internal(.subscribeAppRestart))
+            )
+
           case .startSessionCheck:
             return .run { send in
               let isAuthenticated = await authClient.isAuthenticated()
@@ -152,18 +221,62 @@ extension AppEntry {
             
           case .profileCheckResponse(let user, let profile):
             if let userModel = profile {
-              // 기존 사용자도 알림 권한 체크 (신규 사용자와 동일한 플로우)
+              // 기존 사용자 → 바로 메인으로 (알림 권한 체크 안 함)
               if state.splash == .visible {
                 state.splash = .animatingOut
               }
-              return .send(.internal(.checkNotificationPermission(userModel)))
+              WidgetDataManager.saveUserId(userModel.id)
+
+              // Clarity 유저 정보 등록
+              clarityClient.setUser(userModel.id, userModel.nickname)
+
+              // Analytics 유저 정보 등록 및 로그인 이벤트
+              analyticsClient.setUserID(userModel.id)
+              analyticsClient.setUserProperty(userModel.nickname, "nickname")
+              analyticsClient.logEvent(AnalyticsClient.EventName.userLogin, nil)
+
+              state.destination = .main(RootTab.Feature.State(currentUser: Shared(value: userModel)))
+              // pending deeplink가 있으면 처리
+              if let deeplink = state.pendingDeeplink {
+                state.pendingDeeplink = nil
+                return routeDeeplink(deeplink)
+              }
             } else {
+              // 신규 사용자 → 프로필 설정으로
               var profileState = ProfileSetup.State()
               profileState.inject(user: user, providerProfileImageURL: state.providerProfileImageURL)
               state.destination = .profile(profileState)
               if state.splash == .visible {
                 state.splash = .animatingOut
               }
+            }
+            return .none
+
+          case .checkNotificationPermission(let userModel):
+            return .run { send in
+              let status = await notificationClient.getAuthorizationStatus()
+              let isAuthorized = status == .authorized
+              await send(.internal(.notificationPermissionChecked(isAuthorized: isAuthorized, user: userModel)))
+            }
+
+          case .notificationPermissionChecked(let isAuthorized, let userModel):
+            if isAuthorized {
+              // 이미 권한 허용됨 → 바로 메인으로
+              WidgetDataManager.saveUserId(userModel.id)
+
+              // Clarity 유저 정보 등록
+              clarityClient.setUser(userModel.id, userModel.nickname)
+
+              state.destination = .main(RootTab.Feature.State(currentUser: Shared(value: userModel)))
+              // pending deeplink가 있으면 처리
+              if let deeplink = state.pendingDeeplink {
+                state.pendingDeeplink = nil
+                return routeDeeplink(deeplink)
+              }
+            } else {
+              // 권한 미허용 → 온보딩 표시
+              state.pendingUserForMain = userModel
+              state.notificationPermission = NotificationPermission.Feature.State()
             }
             return .none
 
@@ -205,29 +318,26 @@ extension AppEntry {
           case .pushNotificationTapped(let destination):
             return routeOrPendDeeplink(destination, state: &state)
 
-          case .checkNotificationPermission(let userModel):
-            return .run { send in
-              let status = await notificationClient.getAuthorizationStatus()
-              let isAuthorized = status == .authorized
-              await send(.internal(.notificationPermissionChecked(isAuthorized: isAuthorized, user: userModel)))
+          case .subscribeAppRestart:
+            return .publisher {
+              NotificationCenter.default
+                .publisher(for: AppConstants.Notifications.appRestartRequested)
+                .map { _ in Action.internal(.appRestartRequested) }
             }
 
-          case .notificationPermissionChecked(let isAuthorized, let userModel):
-            if isAuthorized {
-              // 이미 권한 허용됨 → 바로 메인으로
-              WidgetDataManager.saveUserId(userModel.id)
-              state.destination = .main(RootTab.Feature.State(currentUser: Shared(value: userModel)))
-              // pending deeplink가 있으면 처리
-              if let deeplink = state.pendingDeeplink {
-                state.pendingDeeplink = nil
-                return routeDeeplink(deeplink)
-              }
-            } else {
-              // 권한 미허용 → 온보딩 표시
-              state.pendingUserForMain = userModel
-              state.notificationPermission = NotificationPermission.Feature.State()
-            }
-            return .none
+          case .appRestartRequested:
+            // 앱 상태 리셋 - Splash부터 다시 시작
+            state.reset()
+
+            // 시간 포맷 다시 로드
+            KoreanDateFormatters.use24HourFormat = userDefaultsClient.boolForKey(
+              AppConstants.UserDefaults.use24HourFormat
+            )
+
+            // 테마 모드는 RootTab에서 preferredColorScheme으로 자동 적용됨
+            // (UserDefaults.preferredThemeMode 값을 직접 읽음)
+
+            return .send(.internal(.startSessionCheck))
           }
 
         case .destination(.presented(.auth(.delegate(.loggedIn(let providerProfileImageURL))))):
@@ -236,6 +346,7 @@ extension AppEntry {
 
         case .destination(.presented(.profile(.delegate(.completed(let userModel))))):
           // 프로필 설정 완료 → 알림 권한 상태 확인
+          analyticsClient.logEvent(AnalyticsClient.EventName.profileSetupCompleted, nil)
           return .send(.internal(.checkNotificationPermission(userModel)))
 
         case .notificationPermission(.presented(.delegate(.dismissed))),
@@ -245,6 +356,15 @@ extension AppEntry {
           if let userModel = state.pendingUserForMain {
             state.pendingUserForMain = nil
             WidgetDataManager.saveUserId(userModel.id)
+
+            // Clarity 유저 정보 등록
+            clarityClient.setUser(userModel.id, userModel.nickname)
+
+            // Analytics 유저 정보 등록 및 회원가입 완료 이벤트
+            analyticsClient.setUserID(userModel.id)
+            analyticsClient.setUserProperty(userModel.nickname, "nickname")
+            analyticsClient.logEvent(AnalyticsClient.EventName.userSignup, nil)
+
             state.destination = .main(RootTab.Feature.State(currentUser: Shared(value: userModel)))
           }
           return .none
@@ -254,9 +374,18 @@ extension AppEntry {
 
         case .destination(.presented(.main(.delegate(.logoutRequested)))):
           state.destination = .auth(Auth.Feature.State())
-          return .run { [notificationClient, authClient] _ in
+          return .run { [notificationClient, authClient, clarityClient, analyticsClient] _ in
             LiveActivityImageStore.clearCache()
             WidgetDataManager.clearAll()
+            authClient.clearWidgetAuthToken()
+            WidgetDataManager.reloadWidgets()
+
+            // Clarity 유저 정보 제거
+            clarityClient.clearUser()
+
+            // Analytics 유저 정보 제거
+            analyticsClient.setUserID(nil)
+
             do {
               try await notificationClient.deleteFCMToken()
             } catch {
@@ -272,6 +401,23 @@ extension AppEntry {
 
         case .destination:
           return .none
+
+        case .updateAlert(let alertAction):
+          switch alertAction {
+          case .updateTapped:
+            // App Store로 이동
+            return .run { [openURL] _ in
+              await openURL(AppConstants.App.appStoreURL)
+            }
+
+          case .laterTapped:
+            // 선택 업데이트만 닫기 가능 (강제 업데이트는 닫기 불가)
+            if case .recommendUpdate = state.updateAlert {
+              state.updateAlert = nil
+              return .send(.internal(.continueAppFlow))
+            }
+            return .none
+          }
         }
       }
       .ifLet(\.$destination, action: \.destination)
@@ -285,9 +431,25 @@ extension AppEntry {
   
   public struct RootView: View {
     @Bindable private var store: StoreOf<Feature>
-    
+    @Environment(\.scenePhase) private var scenePhase
+
     public init(store: StoreOf<Feature>) {
       self.store = store
+    }
+
+    // MARK: - Alert Strings
+
+    private enum AlertStrings {
+      static let forceUpdateTitle = "업데이트 필요"
+      static let recommendUpdateTitle = "새 버전 안내"
+
+      static func forceUpdateMessage(current: String, required: String) -> String {
+        "앱을 계속 사용하려면 최신 버전으로 업데이트해주세요.\n\n현재 버전: \(current)\n필요 버전: \(required)"
+      }
+
+      static func recommendUpdateMessage(current: String, recommended: String) -> String {
+        "더 나은 경험을 위해 최신 버전으로 업데이트하세요.\n\n현재 버전: \(current)\n최신 버전: \(recommended)"
+      }
     }
 
     public var body: some View {
@@ -300,6 +462,9 @@ extension AppEntry {
       .onAppear {
         store.send(.view(.onAppear))
       }
+      .onChange(of: scenePhase) { _, newPhase in
+        store.send(.view(.scenePhaseChanged(newPhase)))
+      }
       .fullScreenCover(
         item: $store.scope(
           state: \.notificationPermission,
@@ -307,6 +472,45 @@ extension AppEntry {
         )
       ) { store in
         NotificationPermission.View(store: store)
+      }
+      .alert(
+        updateAlertTitle,
+        isPresented: .init(
+          get: { store.updateAlert != nil },
+          set: { _ in }
+        ),
+        presenting: store.updateAlert
+      ) { alertState in
+        Button("업데이트") {
+          store.send(.updateAlert(.updateTapped))
+        }
+        if case .recommendUpdate = alertState {
+          Button("나중에", role: .cancel) {
+            store.send(.updateAlert(.laterTapped))
+          }
+        }
+      } message: { alertState in
+        Text(updateAlertMessage(for: alertState))
+      }
+    }
+
+    private var updateAlertTitle: String {
+      switch store.updateAlert {
+      case .forceUpdate:
+        return AlertStrings.forceUpdateTitle
+      case .recommendUpdate:
+        return AlertStrings.recommendUpdateTitle
+      case .none:
+        return ""
+      }
+    }
+
+    private func updateAlertMessage(for state: Feature.UpdateAlertState) -> String {
+      switch state {
+      case .forceUpdate(let current, let required):
+        return AlertStrings.forceUpdateMessage(current: current, required: required)
+      case .recommendUpdate(let current, let recommended):
+        return AlertStrings.recommendUpdateMessage(current: current, recommended: recommended)
       }
     }
 
@@ -413,6 +617,10 @@ extension AppEntry.Feature {
     case .livePromise:
       // LiveActivity 탭 → LivePromiseExpandedView 열기 (ETA 시트 없이)
       return .send(.destination(.presented(.main(.openLivePromiseDetail))))
+
+    case .create:
+      // Widget "약속 만들기" 버튼 → 그룹 탭 이동 + 약속 생성 (그룹 있을 때만)
+      return .send(.destination(.presented(.main(.openCreatePromiseIfPossible))))
     }
   }
 
@@ -427,3 +635,14 @@ extension AppEntry.Feature {
   }
 }
  
+
+private extension AppEntry.Feature.State {
+  mutating func reset() {
+    self.splash = .visible
+    self.destination = nil
+    self.pendingDeeplink = nil
+    self.pendingUserForMain = nil
+    self.providerProfileImageURL = nil
+    self.notificationPermission = nil
+  }
+}

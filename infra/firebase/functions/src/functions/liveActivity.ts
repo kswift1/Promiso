@@ -25,21 +25,18 @@ import {
   APNS_AUTH_KEY,
   APNS_BUNDLE_ID,
 } from "../config";
-import {
-  getEnvironmentCollection,
-  getCurrentEnvironment,
-} from "../utils/firestore";
+import {getCurrentEnvironment} from "../utils/firestore";
 
 /**
  * APNs 환경 결정
  *
  * @return {boolean} true = Production, false = Sandbox
- * @remarks Dev 환경만 Sandbox, Stage/Prod는 Production
+ * @remarks Dev만 Sandbox, Stage/Prod는 Production
  */
 function isAPNsProduction(): boolean {
   const env = getCurrentEnvironment();
-  // Dev 환경만 Sandbox (Xcode 개발 빌드용)
-  // Stage/Prod는 Production (TestFlight/App Store 빌드)
+  // Dev: Sandbox (Xcode 개발 빌드)
+  // Stage/Prod: Production (TestFlight/App Store)
   return env !== "dev";
 }
 import {
@@ -58,6 +55,7 @@ import {
   UpdateETAResponse,
   ScheduledLiveActivityTaskPayload,
   ScheduledLiveActivityEndTaskPayload,
+  APNsLiveActivityUpdatePayload,
 } from "../types/api";
 
 /**
@@ -88,7 +86,7 @@ export const registerPushToStartToken = onCall<
     }
 
     const db = admin.firestore();
-    const usersCollection = getEnvironmentCollection("users", db);
+    const usersCollection = db.collection("users");
 
     try {
       await usersCollection.doc(userId).update({
@@ -135,9 +133,9 @@ export const startLiveActivity = onCall<StartLiveActivityRequest>(
     }
 
     const db = admin.firestore();
-    const promisesCollection = getEnvironmentCollection("promises", db);
-    const usersCollection = getEnvironmentCollection("users", db);
-    const groupsCollection = getEnvironmentCollection("groups", db);
+    const promisesCollection = db.collection("promises");
+    const usersCollection = db.collection("users");
+    const groupsCollection = db.collection("groups");
 
     // 1. 약속 정보 조회
     const promiseDoc = await promisesCollection.doc(promiseId).get();
@@ -145,7 +143,10 @@ export const startLiveActivity = onCall<StartLiveActivityRequest>(
       throw new HttpsError("not-found", "약속을 찾을 수 없습니다");
     }
 
-    const promiseData = promiseDoc.data()!;
+    const promiseData = promiseDoc.data();
+    if (!promiseData) {
+      throw new HttpsError("internal", "약속 데이터를 읽을 수 없습니다");
+    }
     const groupId = promiseData.groupId as string;
     const hostId = promiseData.hostId as string;
     const title = promiseData.title as string;
@@ -189,7 +190,8 @@ export const startLiveActivity = onCall<StartLiveActivityRequest>(
         if (!userDoc.exists) continue;
 
         const uid = userDoc.id;
-        const userData = userDoc.data()!;
+        const userData = userDoc.data();
+        if (!userData) continue;
         const nickname = userData.nickname as string || "참가자";
 
         // 호스트 이름 추출
@@ -402,7 +404,7 @@ export const updateETA = onCall<UpdateETARequest>(
     // Firestore 없이 바로 APNs Broadcast 전송
     const isProduction = isAPNsProduction();
 
-    const payload: any = {
+    const payload: APNsLiveActivityUpdatePayload = {
       aps: {
         "timestamp": Math.floor(Date.now() / 1000),
         "event": "update",
@@ -410,13 +412,9 @@ export const updateETA = onCall<UpdateETARequest>(
           trackingDurationMinutes: trackingDurationMinutes || 30,
           participants,
         },
+        ...(alert && {alert}),
       },
     };
-
-    // alert가 있으면 추가
-    if (alert) {
-      payload.aps.alert = alert;
-    }
 
     const result = await sendAPNsBroadcast({
       channelId,
@@ -554,7 +552,7 @@ export const widgetUpdateETA = onRequest(
     if (promiseId) {
       try {
         const db = admin.firestore();
-        const promisesCollection = getEnvironmentCollection("promises", db);
+        const promisesCollection = db.collection("promises");
         const promiseDoc = await promisesCollection.doc(promiseId).get();
 
         if (!promiseDoc.exists) {
@@ -579,7 +577,7 @@ export const widgetUpdateETA = onRequest(
         }
 
         // 그룹 멤버 확인
-        const groupsCollection = getEnvironmentCollection("groups", db);
+        const groupsCollection = db.collection("groups");
         const groupDoc = await groupsCollection.doc(promiseData.groupId).get();
 
         if (!groupDoc.exists) {
@@ -666,7 +664,7 @@ export const widgetUpdateETA = onRequest(
     // Firestore 없이 바로 APNs Broadcast 전송
     const isProduction = isAPNsProduction();
 
-    const payload: any = {
+    const payload: APNsLiveActivityUpdatePayload = {
       aps: {
         "timestamp": Math.floor(Date.now() / 1000),
         "event": "update",
@@ -674,13 +672,9 @@ export const widgetUpdateETA = onRequest(
           trackingDurationMinutes: trackingDurationMinutes || 30,
           participants,
         },
+        ...(alert && {alert}),
       },
     };
-
-    // alert가 있으면 추가
-    if (alert) {
-      payload.aps.alert = alert;
-    }
 
     const result = await sendAPNsBroadcast({
       channelId,
@@ -748,8 +742,8 @@ export const executeLiveActivityStart = onTaskDispatched<
     console.log(`⏰ Scheduled LiveActivity start: ${promiseId}`);
 
     const db = admin.firestore();
-    const promisesCollection = getEnvironmentCollection("promises", db);
-    const usersCollection = getEnvironmentCollection("users", db);
+    const promisesCollection = db.collection("promises");
+    const usersCollection = db.collection("users");
 
     // 1. 약속 정보 조회
     const promiseDoc = await promisesCollection.doc(promiseId).get();
@@ -758,7 +752,11 @@ export const executeLiveActivityStart = onTaskDispatched<
       return;
     }
 
-    const promiseData = promiseDoc.data()!;
+    const promiseData = promiseDoc.data();
+    if (!promiseData) {
+      console.warn(`Promise data is empty: ${promiseId}`);
+      return;
+    }
     const hostId = promiseData.hostId as string;
     const groupId = promiseData.groupId as string;
     const emoji = promiseData.emoji as string || "📌";
@@ -771,7 +769,7 @@ export const executeLiveActivityStart = onTaskDispatched<
       (promiseData.trackingStartMinutesBefore as number) || 30;
 
     // 2. 그룹 정보 조회
-    const groupsCollection = getEnvironmentCollection("groups", db);
+    const groupsCollection = db.collection("groups");
     const groupDoc = await groupsCollection.doc(groupId).get();
     const groupData = groupDoc.data();
     const groupName = groupData?.name as string || null;
@@ -801,7 +799,8 @@ export const executeLiveActivityStart = onTaskDispatched<
         if (!userDoc.exists) continue;
 
         const uid = userDoc.id;
-        const userData = userDoc.data()!;
+        const userData = userDoc.data();
+        if (!userData) continue;
         const nickname = userData.nickname as string || "참가자";
 
         // 호스트 이름 추출
@@ -1046,8 +1045,35 @@ export const onPromiseConfirmedScheduleLiveActivity = onDocumentUpdated(
     // 2. 이미 확정 + trackingMinutes가 null → 값으로 변경됨
     // 3. 이미 확정 + trackingMinutes 값이 변경됨
     const justConfirmed = !wasConfirmed && isNowConfirmed;
+    const justUnconfirmed = wasConfirmed && !isNowConfirmed;
     const trackingEnabledOnConfirmed =
       isNowConfirmed && trackingMinutesChanged && afterTrackingMinutes !== null;
+
+    // 확정 → 미확정: 예약 상태 리셋 (다시 확정 시 새로 예약되도록)
+    if (justUnconfirmed) {
+      const db = admin.firestore();
+      await db.collection("promises").doc(promiseId).update({
+        liveActivityScheduled: false,
+        liveActivityScheduledAt: null,
+      });
+      console.log(`🔄 LiveActivity schedule reset (unconfirmed): ${promiseId}`);
+      return;
+    }
+
+    // trackingMinutes가 null로 변경됨 (라이브 액티비티 비활성화)
+    const trackingDisabled =
+      isNowConfirmed && trackingMinutesChanged && afterTrackingMinutes === null;
+    if (trackingDisabled) {
+      const db = admin.firestore();
+      await db.collection("promises").doc(promiseId).update({
+        liveActivityScheduled: false,
+        liveActivityScheduledAt: null,
+      });
+      console.log(
+        `🔄 LiveActivity schedule reset (tracking disabled): ${promiseId}`
+      );
+      return;
+    }
 
     const shouldSchedule = justConfirmed || trackingEnabledOnConfirmed;
 
@@ -1106,7 +1132,7 @@ export const onPromiseConfirmedScheduleLiveActivity = onDocumentUpdated(
 
     // 예약 완료 표시
     const db = admin.firestore();
-    const promisesCollection = getEnvironmentCollection("promises", db);
+    const promisesCollection = db.collection("promises");
     await promisesCollection.doc(promiseId).update({
       liveActivityScheduled: true,
       liveActivityScheduledAt: scheduleTime,

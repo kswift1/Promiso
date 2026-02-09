@@ -13,6 +13,11 @@ struct PromisoApp: App {
   init() {
     // 앱 시작 시 시간 형식 설정 로드
     KoreanDateFormatters.use24HourFormat = UserDefaults.standard.bool(forKey: AppConstants.UserDefaults.use24HourFormat)
+
+    // 테마 모드 기본값 설정 (최초 실행 시)
+    if UserDefaults.standard.string(forKey: AppConstants.UserDefaults.preferredThemeMode) == nil {
+      UserDefaults.standard.set(AppConstants.ThemeMode.system.rawValue, forKey: AppConstants.UserDefaults.preferredThemeMode)
+    }
   }
   @Environment(\.scenePhase) private var scenePhase
 
@@ -29,11 +34,6 @@ struct PromisoApp: App {
           store.send(.view(.handleDeeplink(url)))
         }
     }
-    .onChange(of: scenePhase) { _, newPhase in
-      if newPhase == .active {
-        // 앱 진입 시 배지 초기화
-        UNUserNotificationCenter.current().setBadgeCount(0)
-      }
-    }
+    // 배지 카운트는 HomeFeature에서 실제 unreadCount로 동기화
   }
 }

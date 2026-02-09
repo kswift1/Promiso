@@ -60,14 +60,21 @@ platform :ios do
     )
 
     # 4. TestFlight 업로드
+    changelog_text = ENV["CHANGELOG"] || "Dev 빌드"
+    UI.message("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    UI.message("📝 CHANGELOG 환경변수:")
+    UI.message(changelog_text)
+    UI.message("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
     upload_to_testflight(
       app_identifier: "com.promiso.dev",
       skip_waiting_for_build_processing: true,
       distribute_external: false,
       notify_external_testers: false,
+      changelog: changelog_text,
       localized_build_info: {
         "ko" => {
-          whats_new: ENV["CHANGELOG"] || "Dev 빌드"
+          whats_new: changelog_text
         }
       }
     )
@@ -125,15 +132,30 @@ platform :ios do
     )
 
     # 4. TestFlight 업로드
+    changelog_text = ENV["CHANGELOG"] || "Stage 테스트 빌드"
+    UI.message("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    UI.message("📝 CHANGELOG 환경변수:")
+    UI.message(changelog_text)
+    UI.message("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
     upload_to_testflight(
       app_identifier: "com.promiso.stage",
       skip_waiting_for_build_processing: true,
       distribute_external: true,
       groups: ["Stage Testers"],
       notify_external_testers: true,
+      changelog: changelog_text,
+      beta_app_description: "Promiso Stage는 그룹 기반 약속 관리 앱입니다. 친구들과 약속 시간과 장소를 쉽게 조율하고, 실시간으로 도착 상황을 공유할 수 있습니다. (Stage 테스트 버전)",
+      beta_app_feedback_email: "kswen0203@gmail.com",
+      localized_app_info: {
+        "ko" => {
+          feedback_email: "kswen0203@gmail.com",
+          description: "Promiso Stage는 그룹 기반 약속 관리 앱입니다. 친구들과 약속 시간과 장소를 쉽게 조율하고, 실시간으로 도착 상황을 공유할 수 있습니다. (Stage 테스트 버전)"
+        }
+      },
       localized_build_info: {
         "ko" => {
-          whats_new: ENV["CHANGELOG"] || "Stage 테스트 빌드"
+          whats_new: changelog_text
         }
       }
     )
@@ -191,15 +213,30 @@ platform :ios do
     )
 
     # 4. TestFlight 업로드
+    changelog_text = ENV["CHANGELOG"] || "프로덕션 빌드"
+    UI.message("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    UI.message("📝 CHANGELOG 환경변수:")
+    UI.message(changelog_text)
+    UI.message("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
     upload_to_testflight(
       app_identifier: "com.promiso",
       skip_waiting_for_build_processing: false,
       distribute_external: true,
       groups: ["Production Testers"],
       notify_external_testers: true,
+      changelog: changelog_text,
+      beta_app_description: "Promiso는 그룹 기반 약속 관리 앱입니다. 친구들과 약속 시간과 장소를 쉽게 조율하고, 실시간으로 도착 상황을 공유할 수 있습니다.",
+      beta_app_feedback_email: "kswen0203@gmail.com",
+      localized_app_info: {
+        "ko" => {
+          feedback_email: "kswen0203@gmail.com",
+          description: "Promiso는 그룹 기반 약속 관리 앱입니다. 친구들과 약속 시간과 장소를 쉽게 조율하고, 실시간으로 도착 상황을 공유할 수 있습니다."
+        }
+      },
       localized_build_info: {
         "ko" => {
-          whats_new: ENV["CHANGELOG"] || "프로덕션 빌드"
+          whats_new: changelog_text
         }
       }
     )

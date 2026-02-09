@@ -26,6 +26,7 @@ import Testing
 import ComposableArchitecture
 import Clients
 import PromisoShared
+import Sharing
 @testable import AppEntryFeature
 
 // MARK: - Deeplink Routing Tests
@@ -38,7 +39,7 @@ struct DeeplinkRoutingTests {
 
   /// 메인 화면 상태의 테스트용 State 생성
   private func makeMainState() -> AppEntry.Feature.State {
-    let mockUser = UserPrivateModel(
+    @Shared(.inMemory("test-current-user-deeplink")) var mockUser = UserPrivateModel(
       userId: "test-user",
       name: "테스트",
       nickname: "테스트",
@@ -47,7 +48,7 @@ struct DeeplinkRoutingTests {
       metadata: .init()
     )
     var state = AppEntry.Feature.State()
-    state.destination = .main(RootTab.Feature.State(currentUser: mockUser))
+    state.destination = .main(RootTab.Feature.State(currentUser: $mockUser))
     state.splash = .hidden
     return state
   }
@@ -168,6 +169,26 @@ struct DeeplinkRoutingTests {
     await store.receive(\.destination.presented.main.openLivePromiseDetail)
   }
 
+  @Test("create 딥링크 → openCreatePromiseIfPossible 액션")
+  func routeCreate_sendsOpenCreatePromiseIfPossible() async {
+    let state = makeMainState()
+    let store = TestStore(initialState: state) {
+      AppEntry.Feature()
+    } withDependencies: {
+      $0.deeplinkClient.parseURL = { _ in
+        .create
+      }
+      $0.groupClient.fetchGroupSummaries = { [] }
+    }
+    store.exhaustivity = .off
+
+    let url = URL(string: "promiso://create")!
+    await store.send(.view(.handleDeeplink(url)))
+
+    // RootTab에 openCreatePromiseIfPossible 액션 전달 확인
+    await store.receive(\.destination.presented.main.openCreatePromiseIfPossible)
+  }
+
   // MARK: - 메인 화면 아닐 때 펜딩 테스트
   //
   // 앱이 로그인/프로필 설정 화면일 때 딥링크는 pendingDeeplink에 저장됩니다.
@@ -213,7 +234,7 @@ struct PushNotificationDeeplinkTests {
 
   /// 메인 화면 상태의 테스트용 State 생성
   private func makeMainState() -> AppEntry.Feature.State {
-    let mockUser = UserPrivateModel(
+    @Shared(.inMemory("test-current-user-deeplink")) var mockUser = UserPrivateModel(
       userId: "test-user",
       name: "테스트",
       nickname: "테스트",
@@ -222,7 +243,7 @@ struct PushNotificationDeeplinkTests {
       metadata: .init()
     )
     var state = AppEntry.Feature.State()
-    state.destination = .main(RootTab.Feature.State(currentUser: mockUser))
+    state.destination = .main(RootTab.Feature.State(currentUser: $mockUser))
     state.splash = .hidden
     return state
   }

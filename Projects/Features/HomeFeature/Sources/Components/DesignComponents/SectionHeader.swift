@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import ResourceKit
 
 struct SectionHeader<Accessory: View>: View {
   private let title: String
@@ -22,8 +23,7 @@ struct SectionHeader<Accessory: View>: View {
   var body: some View {
     HStack {
       Text(title)
-        .font(.title3)
-        .fontWeight(.semibold)
+        .font(.pmTitle3Semibold)
       
       Spacer()
       

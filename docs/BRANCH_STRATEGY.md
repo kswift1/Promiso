@@ -1,6 +1,19 @@
 # Promiso Git 브랜치 전략
 
-Promiso 프로젝트의 Git 브랜치 전략 및 배포 워크플로우입니다.
+Promiso 프로젝트의 Git 브랜치 전략 및 릴리즈 흐름입니다.
+
+## 문서 메타
+
+- 목적: 브랜치 역할과 병합/릴리즈 흐름 기준 정의
+- 대상 독자: 모든 기여자, 릴리즈 담당자
+- 최종 수정일: 2026-02-06
+- 관련 문서: [README.md](README.md) · [CI_CD.md](CI_CD.md) · [DEPLOYMENT.md](DEPLOYMENT.md)
+
+## 범위 안내
+
+- 이 문서: 브랜치 정책과 병합 흐름
+- 워크플로우 job/secret 상세: [CI_CD.md](CI_CD.md)
+- 실제 배포 실행 절차: [DEPLOYMENT.md](DEPLOYMENT.md)
 
 ## 📋 목차
 
@@ -32,11 +45,11 @@ feature/* (기능 개발)
 
 ### 브랜치 종류
 
-| 브랜치 | 보호 | 배포 대상 | 목적 |
-|--------|------|-----------|------|
-| `main` | ✅ | **Promiso (Prod)** → App Store | 프로덕션 릴리스 |
-| `staging` | ✅ | **PromisoStage** → TestFlight (Stage Track) | 출시 전 최종 검증 |
-| `develop` | ✅ | **PromisoDev** → TestFlight (Dev Track) | 개발 통합 |
+| 브랜치 | 보호 | 용도 | 목적 |
+|--------|------|------|------|
+| `main` | ✅ | 프로덕션 릴리즈 기준선 | 프로덕션 릴리스 |
+| `staging` | ✅ | 출시 전 검증 기준선 | 최종 QA/검증 |
+| `develop` | ✅ | 기능 통합 기준선 | 개발 통합 |
 | `feature/*` | ❌ | - | 기능 개발 |
 | `hotfix/*` | ❌ | - | 긴급 수정 |
 
@@ -61,15 +74,6 @@ feature/* (기능 개발)
 - Firebase: `promiso-prod`
 - App Icon: 오리지널 (뱃지 없음)
 
-**배포 트리거**:
-```yaml
-# 자동 배포
-on:
-  push:
-    branches: [main]
-    tags: ['v*']
-```
-
 ---
 
 ### 🟡 `staging` (스테이징)
@@ -80,7 +84,6 @@ on:
 - 프로덕션과 동일한 환경
 - `develop` 브랜치에서만 PR 허용
 - 프로덕션 배포 전 필수 경유
-- TestFlight Stage Track으로 배포
 
 **Firebase 프로젝트**: `promiso-stage`
 
@@ -88,14 +91,6 @@ on:
 - Bundle ID: `com.promiso.stage`
 - Firebase: `promiso-stage`
 - App Icon: 노란색 "STG" 뱃지
-
-**배포 트리거**:
-```yaml
-# 자동 배포
-on:
-  push:
-    branches: [staging]
-```
 
 ---
 
@@ -105,7 +100,6 @@ on:
 
 **특징**:
 - 모든 `feature/*` 브랜치가 병합되는 곳
-- TestFlight Dev Track으로 자동 배포
 - Firebase Dev 프로젝트 사용
 
 **Firebase 프로젝트**: `promiso-dev`
@@ -114,14 +108,6 @@ on:
 - Bundle ID: `com.promiso.dev`
 - Firebase: `promiso-dev`
 - App Icon: 파란색 "DEV" 뱃지
-
-**배포 트리거**:
-```yaml
-# 자동 배포
-on:
-  push:
-    branches: [develop]
-```
 
 ---
 
@@ -189,12 +175,12 @@ git commit -m "feat: 홈 화면 약속 목록 추가"
 git push origin feature/home-promise-list
 # GitHub에서 PR 생성: feature/home-promise-list → develop
 
-# 4. CI/CD 자동 실행
-# - PR 체크: 빌드 + 테스트
+# 4. 검증 실행
+# - 로컬 테스트 또는 필요한 워크플로우 수동 실행
 # - 리뷰 후 승인
 
 # 5. develop에 병합
-# - 자동 배포: PromisoDev → TestFlight (Dev Track)
+# - 배포 동작은 docs/CI_CD.md 기준 확인
 
 # 6. 브랜치 삭제
 git branch -d feature/home-promise-list
@@ -210,12 +196,12 @@ git checkout -b release/v1.2.0  # 선택적
 
 # GitHub에서 PR 생성: develop → staging
 
-# 2. CI/CD 자동 실행
-# - PR 체크: 빌드 + 테스트
+# 2. 검증 실행
+# - 로컬 테스트 또는 필요한 워크플로우 수동 실행
 # - 리뷰 및 QA
 
 # 3. staging에 병합
-# - 자동 배포: PromisoStage → TestFlight (Stage Track)
+# - 배포 동작은 docs/CI_CD.md 기준 확인
 
 # 4. QA 진행
 # - TestFlight Stage Track에서 최종 검증
@@ -227,12 +213,12 @@ git checkout -b release/v1.2.0  # 선택적
 # 1. staging → main PR
 # GitHub에서 PR 생성: staging → main
 
-# 2. CI/CD 자동 실행
-# - PR 체크: 빌드 + 테스트
+# 2. 검증 실행
+# - 로컬 테스트 또는 필요한 워크플로우 수동 실행
 # - 최종 승인
 
 # 3. main에 병합
-# - 자동 배포: Promiso → TestFlight (Prod Track)
+# - 배포 동작은 docs/CI_CD.md 기준 확인
 
 # 4. 버전 태그 생성
 git checkout main
@@ -284,40 +270,16 @@ git branch -d hotfix/v1.2.1-123-login-crash
 
 | 브랜치 | 빌드 타겟 | Firebase | TestFlight Track | 자동/수동 |
 |--------|-----------|----------|------------------|-----------|
-| `develop` | PromisoDev | promiso-dev | Dev Track | 🤖 자동 |
-| `staging` | PromisoStage | promiso-stage | Stage Track | 🤖 자동 |
-| `main` | Promiso | promiso-prod | Prod Track → App Store | 🤖 자동 (TestFlight) / 👤 수동 (App Store) |
+| `develop` | PromisoDev | promiso-dev | Dev Track | CI/CD 설정 기준 |
+| `staging` | PromisoStage | promiso-stage | Stage Track | CI/CD 설정 기준 |
+| `main` | Promiso | promiso-prod | Prod Track → App Store | CI/CD 설정 기준 |
 
-### Firebase 배포
+### 운영 기준
 
-**Functions**:
-```bash
-# develop → promiso-dev
-on:
-  push:
-    branches: [develop]
-    paths: ['infra/firebase/functions/**']
-
-# staging → promiso-stage
-on:
-  push:
-    branches: [staging]
-    paths: ['infra/firebase/functions/**']
-
-# main → promiso-prod
-on:
-  push:
-    branches: [main]
-    paths: ['infra/firebase/functions/**']
-```
-
-**Firestore/Storage Rules**:
-```bash
-on:
-  push:
-    branches: [develop, staging, main]
-    paths: ['infra/firebase/*.rules']
-```
+- 브랜치 정책/병합 순서: 이 문서 기준
+- 워크플로우 트리거/잡/시크릿: [CI_CD.md](CI_CD.md)
+- 실제 배포 실행 절차: [DEPLOYMENT.md](DEPLOYMENT.md)
+- 참고: 현재 자동 트리거는 `PR → develop/staging/main`(PR Check)과 `release/** + infra/firebase/**`(Firebase Stage Auto)입니다.
 
 ---
 
@@ -350,7 +312,7 @@ git push origin staging
 - ✅ Require pull request before merging
 - ✅ Require approvals: 1
 - ✅ Require status checks to pass
-  - ✅ PR Check (Build + Test)
+  - ✅ 저장소에서 지정한 필수 체크
 - ✅ Require conversation resolution
 - ✅ Do not allow bypassing the above settings
 
@@ -358,12 +320,12 @@ git push origin staging
 - ✅ Require pull request before merging
 - ✅ Require approvals: 1
 - ✅ Require status checks to pass
-  - ✅ PR Check (Build + Test)
+  - ✅ 저장소에서 지정한 필수 체크
 
 **develop**:
 - ✅ Require pull request before merging
 - ✅ Require status checks to pass
-  - ✅ PR Check (Build + Test)
+  - ✅ 저장소에서 지정한 필수 체크
 - ⬜ Require approvals (선택)
 
 ---
@@ -403,33 +365,10 @@ git push origin v1.2.0
 
 ## CI/CD 파이프라인 요약
 
-### PR 체크 (모든 PR)
-```
-트리거: PR → develop/staging/main
-실행:
-  1. xcconfig 생성
-  2. Firebase plist 복사
-  3. tuist generate
-  4. tuist build PromisoDev
-  5. tuist test
-결과: ✅/❌ 상태 표시
-```
+이 문서는 브랜치 정책만 다루며, CI/CD 동작 상세는 아래 문서를 기준으로 관리합니다.
 
-### 자동 배포
-
-**iOS (TestFlight)**:
-```
-develop → PromisoDev → TestFlight (Dev Track)
-staging → PromisoStage → TestFlight (Stage Track)
-main    → Promiso → TestFlight (Prod Track)
-```
-
-**Firebase**:
-```
-develop → promiso-dev
-staging → promiso-stage
-main    → promiso-prod
-```
+- 워크플로우 트리거/단계: [CI_CD.md](CI_CD.md)
+- 배포 실행 체크리스트: [DEPLOYMENT.md](DEPLOYMENT.md)
 
 ---
 
@@ -461,7 +400,7 @@ git push origin staging
    - ✅ Require a pull request before merging
    - ✅ Require approvals (1)
    - ✅ Require status checks to pass before merging
-     - 선택: `PR Check`
+     - 저장소에 지정된 필수 체크 선택
 4. "Create" 클릭
 5. `staging`, `develop`도 동일하게 반복
 

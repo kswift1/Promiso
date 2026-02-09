@@ -8,6 +8,7 @@
 @_exported import FirebaseCore
 @_exported import FirebaseAuth
 @_exported import FirebaseFirestore
+@_exported import FirebaseAnalytics
 @_exported import FirebaseCrashlytics
 @_exported import FirebaseStorage
 @_exported import FirebaseFunctions

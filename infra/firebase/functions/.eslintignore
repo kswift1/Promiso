@@ -4,3 +4,8 @@ lib/**
 # Example files
 *.example.ts
 *.example.js
+
+# Test files
+test/**
+jest.config.js
+coverage/**

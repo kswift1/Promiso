@@ -32,16 +32,15 @@ generate_dev_config() {
   check_env_var "GOOGLE_CLIENT_ID_DEV" || return 1
   check_env_var "GOOGLE_REVERSED_CLIENT_ID_DEV" || return 1
   check_env_var "KAKAO_NATIVE_APP_KEY_DEV" || return 1
-  check_env_var "KAKAO_REST_API_KEY_DEV" || return 1
 
   cat > "$CONFIG_DIR/Dev.xcconfig" <<EOF
 // Dev Environment Configuration
 // 자동 생성됨 - 수동 편집 금지
+// iOS 앱에 필요한 키만 포함 (KAKAO_REST_API_KEY, NOTION_API_KEY는 Firebase Functions 전용)
 
 GOOGLE_CLIENT_ID = ${GOOGLE_CLIENT_ID_DEV}
 GOOGLE_REVERSED_CLIENT_ID = ${GOOGLE_REVERSED_CLIENT_ID_DEV}
 KAKAO_NATIVE_APP_KEY = ${KAKAO_NATIVE_APP_KEY_DEV}
-KAKAO_REST_API_KEY = ${KAKAO_REST_API_KEY_DEV}
 
 // Code Signing (Automatic - Fastlane Match 사용)
 CODE_SIGN_STYLE = Automatic
@@ -57,16 +56,15 @@ generate_stage_config() {
   check_env_var "GOOGLE_CLIENT_ID_STAGE" || return 1
   check_env_var "GOOGLE_REVERSED_CLIENT_ID_STAGE" || return 1
   check_env_var "KAKAO_NATIVE_APP_KEY_STAGE" || return 1
-  check_env_var "KAKAO_REST_API_KEY_STAGE" || return 1
 
   cat > "$CONFIG_DIR/Stage.xcconfig" <<EOF
 // Stage Environment Configuration
 // 자동 생성됨 - 수동 편집 금지
+// iOS 앱에 필요한 키만 포함 (KAKAO_REST_API_KEY, NOTION_API_KEY는 Firebase Functions 전용)
 
 GOOGLE_CLIENT_ID = ${GOOGLE_CLIENT_ID_STAGE}
 GOOGLE_REVERSED_CLIENT_ID = ${GOOGLE_REVERSED_CLIENT_ID_STAGE}
 KAKAO_NATIVE_APP_KEY = ${KAKAO_NATIVE_APP_KEY_STAGE}
-KAKAO_REST_API_KEY = ${KAKAO_REST_API_KEY_STAGE}
 
 // Code Signing (Automatic - Fastlane Match 사용)
 CODE_SIGN_STYLE = Automatic
@@ -82,16 +80,15 @@ generate_prod_config() {
   check_env_var "GOOGLE_CLIENT_ID_PROD" || return 1
   check_env_var "GOOGLE_REVERSED_CLIENT_ID_PROD" || return 1
   check_env_var "KAKAO_NATIVE_APP_KEY_PROD" || return 1
-  check_env_var "KAKAO_REST_API_KEY_PROD" || return 1
 
   cat > "$CONFIG_DIR/Prod.xcconfig" <<EOF
 // Production Environment Configuration
 // 자동 생성됨 - 수동 편집 금지
+// iOS 앱에 필요한 키만 포함 (KAKAO_REST_API_KEY, NOTION_API_KEY는 Firebase Functions 전용)
 
 GOOGLE_CLIENT_ID = ${GOOGLE_CLIENT_ID_PROD}
 GOOGLE_REVERSED_CLIENT_ID = ${GOOGLE_REVERSED_CLIENT_ID_PROD}
 KAKAO_NATIVE_APP_KEY = ${KAKAO_NATIVE_APP_KEY_PROD}
-KAKAO_REST_API_KEY = ${KAKAO_REST_API_KEY_PROD}
 
 // Code Signing (Automatic - Fastlane Match 사용)
 CODE_SIGN_STYLE = Automatic

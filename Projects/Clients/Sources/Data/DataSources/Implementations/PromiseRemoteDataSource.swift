@@ -10,7 +10,25 @@ private enum FirebaseFunctionNames {
   static let deletePromise = "deletePromise"
   static let startLiveActivity = "startLiveActivity"
   static let updateETA = "updateETA"
+  static let getConfirmedPromisesForCalendar = "getConfirmedPromisesForCalendar"
 }
+
+// MARK: - Date Formatter 상수
+
+/// ISO8601 DateFormatter (Seoul 타임존, 쓰기용)
+private let iso8601FormatterWithSeoulTimeZone: ISO8601DateFormatter = {
+  let formatter = ISO8601DateFormatter()
+  formatter.timeZone = TimeZone(identifier: "Asia/Seoul")
+  formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+  return formatter
+}()
+
+/// ISO8601 DateFormatter (기본 타임존, 읽기용)
+private let iso8601Formatter: ISO8601DateFormatter = {
+  let formatter = ISO8601DateFormatter()
+  formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+  return formatter
+}()
 
 /// Promise 관련 Firestore CRUD 및 쿼리 작업을 담당하는 DataSource
 public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
@@ -21,7 +39,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
 
   public init(
     firestore: FirestoreProviding = DefaultFirestoreProvider(),
-    functions: Functions = Functions.functions(region: "asia-northeast3"),
+    functions: Functions = DefaultFunctionsProvider().functions,
     collectionName: String = "promises"
   ) {
     self.firestore = firestore
@@ -34,15 +52,10 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
   /// 약속 생성
   /// Firebase Functions의 createPromise를 호출합니다.
   public func createPromise(_ promise: PromiseModel) async throws -> String {
-    // ISO 8601 형식으로 날짜 변환
-    let dateFormatter = ISO8601DateFormatter()
-    dateFormatter.timeZone = TimeZone(identifier: "Asia/Seoul")
-    dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-
     var callableData: [String: Any] = [
       "groupId": promise.groupId,
       "title": promise.title,
-      "startAt": dateFormatter.string(from: promise.startAt),
+      "startAt": iso8601FormatterWithSeoulTimeZone.string(from: promise.startAt),
       "minimumParticipants": promise.minimumParticipants
     ]
 
@@ -56,7 +69,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
     }
 
     if let endAt = promise.endAt {
-      callableData["endAt"] = dateFormatter.string(from: endAt)
+      callableData["endAt"] = iso8601FormatterWithSeoulTimeZone.string(from: endAt)
     }
 
     if let location = promise.location, !location.name.isEmpty {
@@ -92,27 +105,74 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
   }
 
   /// 약속 응답 업데이트
-  public func respondToPromise(promiseId: String, status: String) async throws {
+  public func respondToPromise(promiseId: String, status: String) async throws -> RespondPromiseResult {
     let callableData: [String: Any] = [
       "promiseId": promiseId,
       "status": status,
     ]
 
-    _ = try await functions.httpsCallable("respondPromise").call(callableData)
+    AppLogger.calendar.debug("🌐 [DataSource] respondPromise 호출 - promiseId: \(promiseId), status: \(status)")
+
+    let result = try await functions.httpsCallable("respondPromise").call(callableData)
+
+    AppLogger.calendar.debug("🌐 [DataSource] respondPromise 응답 수신")
+
+    guard let data = result.data as? [String: Any],
+          let returnedPromiseId = data["promiseId"] as? String,
+          let returnedStatus = data["status"] as? String,
+          let isConfirmed = data["isConfirmed"] as? Bool else {
+      AppLogger.calendar.error("🌐 [DataSource] respondPromise 파싱 실패 - data: \(String(describing: result.data))")
+      throw NSError(domain: "PromiseRemoteDataSource", code: -1, userInfo: [
+        NSLocalizedDescriptionKey: "약속 응답 결과가 올바르지 않습니다"
+      ])
+    }
+
+    AppLogger.calendar.debug("🌐 [DataSource] respondPromise 파싱 - isConfirmed: \(isConfirmed), confirmedPromise 존재: \(data["confirmedPromise"] != nil)")
+
+    var confirmedPromise: CalendarSyncPromise?
+
+    if let promiseData = data["confirmedPromise"] as? [String: Any],
+       let id = promiseData["id"] as? String,
+       let title = promiseData["title"] as? String,
+       let emoji = promiseData["emoji"] as? String,
+       let startAtString = promiseData["startAt"] as? String,
+       let groupId = promiseData["groupId"] as? String {
+
+      if let startAt = iso8601Formatter.date(from: startAtString) {
+        var endAt: Date?
+        if let endAtString = promiseData["endAt"] as? String {
+          endAt = iso8601Formatter.date(from: endAtString)
+        }
+
+        let location = promiseData["location"] as? String
+
+        confirmedPromise = CalendarSyncPromise(
+          id: id,
+          title: title,
+          emoji: emoji,
+          startAt: startAt,
+          endAt: endAt,
+          location: location,
+          groupId: groupId
+        )
+      }
+    }
+
+    return RespondPromiseResult(
+      promiseId: returnedPromiseId,
+      status: returnedStatus,
+      isConfirmed: isConfirmed,
+      confirmedPromise: confirmedPromise
+    )
   }
   
   /// 약속 업데이트
   /// Firebase Functions의 updatePromise를 호출합니다.
   public func updatePromise(_ promise: PromiseModel) async throws {
-    // ISO 8601 형식으로 날짜 변환
-    let dateFormatter = ISO8601DateFormatter()
-    dateFormatter.timeZone = TimeZone(identifier: "Asia/Seoul")
-    dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-
     var callableData: [String: Any] = [
       "promiseId": promise.id,
       "title": promise.title,
-      "startAt": dateFormatter.string(from: promise.startAt),
+      "startAt": iso8601FormatterWithSeoulTimeZone.string(from: promise.startAt),
       "minimumParticipants": promise.minimumParticipants
     ]
 
@@ -128,7 +188,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
     }
 
     if let endAt = promise.endAt {
-      callableData["endAt"] = dateFormatter.string(from: endAt)
+      callableData["endAt"] = iso8601FormatterWithSeoulTimeZone.string(from: endAt)
     } else {
       callableData["endAt"] = NSNull()
     }
@@ -356,34 +416,39 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
     }
   }
 
-  // MARK: - Home Snapshot
+  // MARK: - Home
 
-  /// 홈화면 스냅샷 조회
-  /// Firestore의 users/{uid}/cache/homeSnapshot 문서를 읽어서 반환
-  public func getHomeSnapshot() async throws -> HomeSnapshotDocument {
-    guard let currentUser = Auth.auth().currentUser else {
-      throw NSError(
-        domain: "PromiseRemoteDataSource",
-        code: -1,
-        userInfo: [NSLocalizedDescriptionKey: "로그인이 필요합니다"]
-      )
+  /// 홈화면용 약속 조회 (다중 그룹, 오늘 이후 약속)
+  /// 그룹 10개씩 청킹하여 쿼리 (Firestore in 쿼리 제한)
+  public func getHomePromises(groupIds: [String], limitPerChunk: Int) async throws -> [PromiseModel] {
+    guard !groupIds.isEmpty else { return [] }
+
+    let calendar = Calendar.current
+    let startOfToday = calendar.startOfDay(for: Date())
+    let chunks = groupIds.chunked(into: 10)
+
+    let allPromises = try await withThrowingTaskGroup(of: [PromiseModel].self) { group in
+      for chunk in chunks {
+        group.addTask { [db, collectionName] in
+          let query = db.environmentCollection(collectionName)
+            .whereField("groupId", in: chunk)
+            .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: startOfToday))
+            .order(by: "startAt")
+            .limit(to: limitPerChunk)
+
+          let snapshot = try await query.getDocuments()
+          return try snapshot.documents.compactMap { try convertDocumentToPromise($0) }
+        }
+      }
+
+      var results: [PromiseModel] = []
+      for try await promises in group {
+        results.append(contentsOf: promises)
+      }
+      return results
     }
 
-    let document = try await db.environmentCollection("users")
-      .document(currentUser.uid)
-      .collection("cache")
-      .document("homeSnapshot")
-      .getDocument()
-
-    guard document.exists, let data = document.data() else {
-      // 캐시 문서가 없으면 빈 스냅샷 반환
-      return .empty
-    }
-
-    // JSON 변환
-    let jsonData = try JSONSerialization.data(withJSONObject: data)
-    let decoder = JSONDecoder()
-    return try decoder.decode(HomeSnapshotDocument.self, from: jsonData)
+    return allPromises.sorted { $0.startAt < $1.startAt }
   }
 
   // MARK: - Live Activity
@@ -431,6 +496,49 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
 
   // endLiveActivity 제거됨 - APNs dismissal-date로 auto-dismiss 처리
   // registerLiveActivityToken 제거됨 - iOS 18 Broadcast 방식으로 전환
+
+  // MARK: - Calendar Sync
+
+  /// 캘린더 동기화용 확정 약속 조회
+  /// Firebase Functions를 통해 미래의 확정된 약속만 조회
+  public func getConfirmedPromisesForCalendar() async throws -> [CalendarSyncPromise] {
+    let result = try await functions
+      .httpsCallable(FirebaseFunctionNames.getConfirmedPromisesForCalendar)
+      .call()
+
+    guard let data = result.data as? [String: Any],
+          let promisesData = data["promises"] as? [[String: Any]] else {
+      return []
+    }
+
+    return promisesData.compactMap { dict -> CalendarSyncPromise? in
+      guard let id = dict["id"] as? String,
+            let title = dict["title"] as? String,
+            let emoji = dict["emoji"] as? String,
+            let startAtString = dict["startAt"] as? String,
+            let startAt = iso8601Formatter.date(from: startAtString),
+            let groupId = dict["groupId"] as? String else {
+        return nil
+      }
+
+      var endAt: Date?
+      if let endAtString = dict["endAt"] as? String {
+        endAt = iso8601Formatter.date(from: endAtString)
+      }
+
+      let location = dict["location"] as? String
+
+      return CalendarSyncPromise(
+        id: id,
+        title: title,
+        emoji: emoji,
+        startAt: startAt,
+        endAt: endAt,
+        location: location,
+        groupId: groupId
+      )
+    }
+  }
 
   // MARK: - Helper Methods
 

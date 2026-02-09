@@ -10,6 +10,8 @@ extension PromiseDetail {
     @Dependency(\.promiseClient) var promiseClient
     @Dependency(\.mapClient) var mapClient
     @Dependency(\.groupClient) var groupClient
+    @Dependency(\.calendarSyncClient) var calendarSyncClient
+    @Dependency(\.analyticsClient) var analyticsClient
 
     public init() {}
 
@@ -28,6 +30,10 @@ extension PromiseDetail {
       /// 그룹 멤버 캐시 (전역 공유)
       @Shared(.inMemory(AppConstants.SharedState.groupMembersCache))
       var groupMembersCache: [String: [UserPublicModel]] = [:]
+
+      /// 그룹 캘린더 동기화 설정 캐시 (전역 공유)
+      @Shared(.inMemory(AppConstants.SharedState.groupCalendarSyncCache))
+      var groupCalendarSyncCache: [String: Bool] = [:]
 
       // 멤버 시트 상태
       var memberSheet: MemberSheetState?
@@ -51,8 +57,19 @@ extension PromiseDetail {
         self.groupMembers = groupMembers
       }
 
+      /// 약속 호스트 여부
       var isHost: Bool {
         promise.isHost(userId: currentUserId)
+      }
+
+      /// 그룹 호스트 여부
+      var isGroupHost: Bool {
+        promise.group?.createdBy == currentUserId
+      }
+
+      /// 관리 권한 여부 (약속 호스트 또는 그룹 호스트)
+      var canManage: Bool {
+        isHost || isGroupHost
       }
 
       var myVoteStatus: VoteStatus {
@@ -63,9 +80,9 @@ extension PromiseDetail {
         promise.responseStatus(currentUserId: currentUserId, totalGroupMembers: groupMembers?.count)
       }
 
-      /// 수정 가능 여부 (호스트 && 시작 전)
+      /// 수정 가능 여부 (관리 권한 && 시작 전)
       var canEdit: Bool {
-        isHost && promise.startAt > Date()
+        canManage && promise.startAt > Date()
       }
 
     }
@@ -253,10 +270,25 @@ extension PromiseDetail {
           switch internalAction {
           case .respondPromise(let status):
             let promiseId = state.promise.id
-            return .run { [promiseClient] send in
+            let groupId = state.promise.groupId
+            let calendarSyncCache = state.groupCalendarSyncCache
+            return .run { [promiseClient, calendarSyncClient] send in
               do {
-                try await promiseClient.respondPromise(promiseId, status)
+                let result = try await promiseClient.respondPromise(promiseId, status)
                 await send(.internal(.respondDone(status: status)))
+
+                // 캘린더 동기화: 수락 + 확정 시 추가
+                if status == .accepted,
+                   result.isConfirmed,
+                   let confirmedPromise = result.confirmedPromise {
+                  let groupCalendarSync = calendarSyncCache[confirmedPromise.groupId] ?? true
+                  try? await calendarSyncClient.addPromise(confirmedPromise, groupCalendarSync)
+                }
+
+                // 캘린더 동기화: 거절 시 제거
+                if status == .declined {
+                  try? await calendarSyncClient.removePromise(promiseId)
+                }
               } catch {
                 await send(.internal(.respondFailed(error: AppError(error))))
               }
@@ -264,6 +296,29 @@ extension PromiseDetail {
 
           case .respondDone(let status):
             state.respondingState = .idle
+
+            // Analytics 이벤트 로깅
+            switch status {
+            case .accepted:
+              analyticsClient.logEvent(
+                AnalyticsClient.EventName.promiseResponseYes,
+                [
+                  AnalyticsClient.ParameterKey.promiseID: state.promise.id,
+                  AnalyticsClient.ParameterKey.promiseTitle: state.promise.title
+                ]
+              )
+            case .declined:
+              analyticsClient.logEvent(
+                AnalyticsClient.EventName.promiseResponseNo,
+                [
+                  AnalyticsClient.ParameterKey.promiseID: state.promise.id,
+                  AnalyticsClient.ParameterKey.promiseTitle: state.promise.title
+                ]
+              )
+            case .pending:
+              break // 응답 취소는 이벤트 없음
+            }
+
             // 로컬 상태 업데이트 (immutable이므로 새로 생성)
             var newAccepted = state.promise.votes.accepted.filter { $0 != state.currentUserId }
             var newDeclined = state.promise.votes.declined.filter { $0 != state.currentUserId }

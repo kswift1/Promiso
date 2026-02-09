@@ -70,6 +70,9 @@ extension CalendarFeature {
       /// 캘린더 이벤트 로딩 중
       var isLoadingCalendarEvents: Bool = false
 
+      /// 숨김 처리된 캘린더 배너 타입들
+      var hiddenCalendarBannerTypes: Set<CalendarAuthorizationStatus> = []
+
       // MARK: - Group 관련
 
       /// 사용자 그룹 정보 조회용 (키: groupId)
@@ -237,6 +240,9 @@ extension CalendarFeature {
         // EventKit 관련
         case requestCalendarPermission
         case openSettings
+        case dismissCalendarBanner(CalendarAuthorizationStatus)
+        // 탭 전환 시 데이터 새로고침
+        case refresh
       }
 
       public enum InternalAction: Sendable {
@@ -544,6 +550,18 @@ extension CalendarFeature {
           UIApplication.shared.open(url)
         }
         return .none
+
+      case .dismissCalendarBanner(let status):
+        state.hiddenCalendarBannerTypes.insert(status)
+        return .none
+
+      case .refresh:
+        // 탭 전환 시 최신 데이터 로드
+        AppLogger.calendar.debugLog("🔄 refresh - 캘린더 탭 진입 (데이터 새로고침)")
+        return .merge(
+          .send(.internal(.checkCalendarPermission)),
+          .send(.internal(.loadInitialData))
+        )
       }
     }
 

@@ -7,7 +7,7 @@ import PromisoShared
 public protocol PromiseRemoteDataSourceProtocol {
   // MARK: - CRUD Operations
   func createPromise(_ promise: PromiseModel) async throws -> String
-  func respondToPromise(promiseId: String, status: String) async throws
+  func respondToPromise(promiseId: String, status: String) async throws -> RespondPromiseResult
   func updatePromise(_ promise: PromiseModel) async throws
   func deletePromise(id: String) async throws
   func getPromise(id: String) async throws -> PromiseModel?
@@ -25,9 +25,17 @@ public protocol PromiseRemoteDataSourceProtocol {
   // MARK: - Real-time Listener
   func subscribeToActivePromises(groupId: String, limit: Int) -> AsyncStream<[PromiseModel]>
 
-  // MARK: - Home Snapshot
-  /// 홈화면 스냅샷 조회 (캐시된 데이터)
-  func getHomeSnapshot() async throws -> HomeSnapshotDocument
+  // MARK: - Home
+  /// 홈화면용 약속 조회 (다중 그룹, 미래 약속)
+  /// - Parameters:
+  ///   - groupIds: 조회할 그룹 ID 목록
+  ///   - limitPerChunk: 그룹 청크당 최대 개수 (기본 10)
+  /// - Returns: 미래 약속 목록 (startAt 오름차순)
+  func getHomePromises(groupIds: [String], limitPerChunk: Int) async throws -> [PromiseModel]
+
+  // MARK: - Calendar Sync
+  /// 캘린더 동기화용 확정 약속 조회 (미래 약속만)
+  func getConfirmedPromisesForCalendar() async throws -> [CalendarSyncPromise]
 
   // MARK: - Live Activity
   /// LiveActivity 시작 요청 (백엔드에서 Push to Start APNs 전송)

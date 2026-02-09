@@ -433,6 +433,12 @@ export interface RespondPromiseResponse {
 
   /** 응답 상태 */
   status: "accepted" | "declined" | "pending";
+
+  /** 약속 확정 여부 (캘린더 동기화용) */
+  isConfirmed: boolean;
+
+  /** 확정된 약속 정보 (isConfirmed && status === "accepted"일 때만) */
+  confirmedPromise?: CalendarPromise;
 }
 
 /**
@@ -453,6 +459,56 @@ export enum RespondPromiseError {
 
   /** 서버 오류 */
   INTERNAL = "internal",
+}
+
+// ============================================================================
+// getConfirmedPromisesForCalendar (캘린더 동기화용)
+// ============================================================================
+
+/**
+ * 캘린더 동기화용 확정 약속 조회 요청
+ *
+ * @remarks
+ * - 인증 필수 (Firebase Auth)
+ * - 파라미터 없음 (사용자 ID는 auth에서 추출)
+ */
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+export interface GetConfirmedPromisesForCalendarRequest {
+  // 파라미터 없음
+}
+
+/**
+ * 캘린더용 약속 정보 (최소 데이터)
+ */
+export interface CalendarPromise {
+  /** 약속 ID */
+  id: string;
+
+  /** 약속 제목 */
+  title: string;
+
+  /** 약속 이모지 */
+  emoji: string;
+
+  /** 시작 시간 (ISO 8601) */
+  startAt: string;
+
+  /** 종료 시간 (ISO 8601, nullable) */
+  endAt: string | null;
+
+  /** 장소 이름 */
+  location: string | null;
+
+  /** 그룹 ID */
+  groupId: string;
+}
+
+/**
+ * 캘린더 동기화용 확정 약속 조회 응답
+ */
+export interface GetConfirmedPromisesForCalendarResponse {
+  /** 확정된 약속 목록 */
+  promises: CalendarPromise[];
 }
 
 // ============================================================================
@@ -730,6 +786,44 @@ export enum CheckNicknameAvailableError {
 }
 
 // ============================================================================
+// deleteUser
+// ============================================================================
+
+/**
+ * 회원 탈퇴 요청
+ *
+ * @remarks
+ * - 인증 필수 (Firebase Auth)
+ * - 그룹 호스트인 경우 탈퇴 불가 (먼저 호스트 양도 필요)
+ */
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+export interface DeleteUserRequest {
+  // 별도 파라미터 없음, auth.uid 사용
+}
+
+/**
+ * 회원 탈퇴 응답
+ */
+export interface DeleteUserResponse {
+  /** 성공 여부 */
+  success: boolean;
+}
+
+/**
+ * 회원 탈퇴 에러
+ */
+export enum DeleteUserError {
+  /** 인증 필요 */
+  UNAUTHENTICATED = "unauthenticated",
+
+  /** 그룹 호스트는 탈퇴 불가 */
+  IS_GROUP_HOST = "failed-precondition",
+
+  /** 서버 오류 */
+  INTERNAL = "internal",
+}
+
+// ============================================================================
 // Shared
 // ============================================================================
 
@@ -896,6 +990,33 @@ export interface DeleteGroupRequest {
  * 그룹 삭제 응답
  */
 export interface DeleteGroupResponse {
+  /** 성공 여부 */
+  success: boolean;
+}
+
+// ============================================================================
+// transferGroupHost
+// ============================================================================
+
+/**
+ * 그룹 호스트 양도 요청
+ *
+ * @remarks
+ * - 인증 필수 (Firebase Auth)
+ * - 현재 호스트만 호출 가능
+ */
+export interface TransferGroupHostRequest {
+  /** 그룹 ID */
+  groupId: string;
+
+  /** 새 호스트 사용자 ID */
+  newHostId: string;
+}
+
+/**
+ * 그룹 호스트 양도 응답
+ */
+export interface TransferGroupHostResponse {
   /** 성공 여부 */
   success: boolean;
 }
@@ -1457,4 +1578,26 @@ export interface HomeSnapshotDocument {
 
   /** 메타데이터 */
   meta: HomeSnapshotMeta;
+}
+
+// ============================================================================
+// APNs LiveActivity Payload Types
+// ============================================================================
+
+/**
+ * APNs LiveActivity 업데이트 Payload
+ */
+export interface APNsLiveActivityUpdatePayload {
+  aps: {
+    timestamp: number;
+    event: "update";
+    "content-state": {
+      trackingDurationMinutes: number;
+      participants: LiveActivityParticipant[];
+    };
+    alert?: {
+      title: string;
+      body: string;
+    };
+  };
 }

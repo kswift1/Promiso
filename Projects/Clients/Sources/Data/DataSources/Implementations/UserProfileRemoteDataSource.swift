@@ -57,7 +57,7 @@ public final class UserProfileRemoteDataSource: UserProfileRemoteDataSourceProto
   private let db: Firestore
 
   public init(
-    functions: Functions = Functions.functions(region: "asia-northeast3"),
+    functions: Functions = DefaultFunctionsProvider().functions,
     storage: Storage = Storage.storage(),
     db: Firestore = Firestore.firestore()
   ) {
