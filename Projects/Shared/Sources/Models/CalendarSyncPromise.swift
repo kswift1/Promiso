@@ -96,7 +96,7 @@ public enum PromisoCalendarTag {
 
     // path: /{promiseId}
     let promiseId = url.lastPathComponent
-    guard !promiseId.isEmpty else { return nil }
+    guard !promiseId.isEmpty && promiseId != "/" else { return nil }
 
     // query: hash={contentHash}
     guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),

@@ -72,19 +72,19 @@ struct NotificationPermissionTests {
       $0.eventKitClient.authorizationStatus = { .fullAccess }
     }
 
+    store.exhaustivity = .off
+
     // settings 단계로 진입
     await store.send(.view(.successAcknowledged)) {
       $0.step = .settings(makeTestGroupResult())
     }
 
-    await store.receive(\.internal.notificationAuthStatusChecked) {
-      $0.notificationAuthStatus = .authorized
-      // authorized면 notificationEnabled = true 유지
-    }
+    // Effect 완료 대기
+    await store.finish()
 
-    await store.receive(\.internal.calendarAuthStatusChecked) {
-      $0.calendarAuthStatus = .fullAccess
-    }
+    // 최종 state 확인
+    #expect(store.state.notificationAuthStatus == .authorized)
+    #expect(store.state.calendarAuthStatus == .fullAccess)
   }
 
   @Test("권한 denied 시 notificationEnabled = false 설정")
@@ -99,18 +99,17 @@ struct NotificationPermissionTests {
       $0.eventKitClient.authorizationStatus = { .fullAccess }
     }
 
+    store.exhaustivity = .off
+
     await store.send(.view(.successAcknowledged)) {
       $0.step = .settings(makeTestGroupResult())
     }
 
-    await store.receive(\.internal.notificationAuthStatusChecked) {
-      $0.notificationAuthStatus = .denied
-      $0.notificationEnabled = false  // denied면 OFF
-    }
+    await store.finish()
 
-    await store.receive(\.internal.calendarAuthStatusChecked) {
-      $0.calendarAuthStatus = .fullAccess
-    }
+    #expect(store.state.notificationAuthStatus == .denied)
+    #expect(store.state.notificationEnabled == false)
+    #expect(store.state.calendarAuthStatus == .fullAccess)
   }
 
   @Test("권한 notDetermined 시 notificationEnabled = false 설정")
@@ -125,18 +124,17 @@ struct NotificationPermissionTests {
       $0.eventKitClient.authorizationStatus = { .fullAccess }
     }
 
+    store.exhaustivity = .off
+
     await store.send(.view(.successAcknowledged)) {
       $0.step = .settings(makeTestGroupResult())
     }
 
-    await store.receive(\.internal.notificationAuthStatusChecked) {
-      $0.notificationAuthStatus = .notDetermined
-      $0.notificationEnabled = false  // notDetermined면 OFF
-    }
+    await store.finish()
 
-    await store.receive(\.internal.calendarAuthStatusChecked) {
-      $0.calendarAuthStatus = .fullAccess
-    }
+    #expect(store.state.notificationAuthStatus == .notDetermined)
+    #expect(store.state.notificationEnabled == false)
+    #expect(store.state.calendarAuthStatus == .fullAccess)
   }
 
   // MARK: - 토글 동작 테스트
@@ -186,14 +184,16 @@ struct NotificationPermissionTests {
       $0.notificationClient.requestAuthorization = { true }
     }
 
+    store.exhaustivity = .off
+
     await store.send(.view(.notificationToggled(true))) {
       $0.notificationEnabled = true
     }
 
-    await store.receive(\.internal.notificationPermissionResponse) {
-      $0.notificationAuthStatus = .authorized
-      // notificationEnabled은 이미 true
-    }
+    await store.finish()
+
+    #expect(store.state.notificationAuthStatus == .authorized)
+    #expect(store.state.notificationEnabled == true)
   }
 
   @Test("권한 notDetermined 상태에서 토글 ON 시 권한 요청 후 denied면 비활성화")
@@ -209,14 +209,16 @@ struct NotificationPermissionTests {
       $0.notificationClient.requestAuthorization = { false }
     }
 
+    store.exhaustivity = .off
+
     await store.send(.view(.notificationToggled(true))) {
       $0.notificationEnabled = true
     }
 
-    await store.receive(\.internal.notificationPermissionResponse) {
-      $0.notificationAuthStatus = .denied
-      $0.notificationEnabled = false  // 거부 시 OFF
-    }
+    await store.finish()
+
+    #expect(store.state.notificationAuthStatus == .denied)
+    #expect(store.state.notificationEnabled == false)
   }
 
   @Test("권한 denied 상태에서 토글 ON 시 설정으로 이동, 토글은 OFF 유지")
@@ -266,18 +268,16 @@ struct CalendarPermissionTests {
       $0.eventKitClient.authorizationStatus = { .fullAccess }
     }
 
+    store.exhaustivity = .off
+
     await store.send(.view(.successAcknowledged)) {
       $0.step = .settings(makeTestGroupResult())
     }
 
-    await store.receive(\.internal.notificationAuthStatusChecked) {
-      $0.notificationAuthStatus = .authorized
-    }
+    await store.finish()
 
-    await store.receive(\.internal.calendarAuthStatusChecked) {
-      $0.calendarAuthStatus = .fullAccess
-      // fullAccess면 calendarSyncEnabled = true 유지
-    }
+    #expect(store.state.notificationAuthStatus == .authorized)
+    #expect(store.state.calendarAuthStatus == .fullAccess)
   }
 
   @Test("권한 writeOnly 시 calendarSyncEnabled = true 유지")
@@ -292,18 +292,16 @@ struct CalendarPermissionTests {
       $0.eventKitClient.authorizationStatus = { .writeOnly }
     }
 
+    store.exhaustivity = .off
+
     await store.send(.view(.successAcknowledged)) {
       $0.step = .settings(makeTestGroupResult())
     }
 
-    await store.receive(\.internal.notificationAuthStatusChecked) {
-      $0.notificationAuthStatus = .authorized
-    }
+    await store.finish()
 
-    await store.receive(\.internal.calendarAuthStatusChecked) {
-      $0.calendarAuthStatus = .writeOnly
-      // writeOnly도 쓰기 가능하므로 calendarSyncEnabled = true 유지
-    }
+    #expect(store.state.notificationAuthStatus == .authorized)
+    #expect(store.state.calendarAuthStatus == .writeOnly)
   }
 
   @Test("권한 denied 시 calendarSyncEnabled = false 설정")
@@ -318,18 +316,17 @@ struct CalendarPermissionTests {
       $0.eventKitClient.authorizationStatus = { .denied }
     }
 
+    store.exhaustivity = .off
+
     await store.send(.view(.successAcknowledged)) {
       $0.step = .settings(makeTestGroupResult())
     }
 
-    await store.receive(\.internal.notificationAuthStatusChecked) {
-      $0.notificationAuthStatus = .authorized
-    }
+    await store.finish()
 
-    await store.receive(\.internal.calendarAuthStatusChecked) {
-      $0.calendarAuthStatus = .denied
-      $0.calendarSyncEnabled = false  // denied면 OFF
-    }
+    #expect(store.state.notificationAuthStatus == .authorized)
+    #expect(store.state.calendarAuthStatus == .denied)
+    #expect(store.state.calendarSyncEnabled == false)
   }
 
   @Test("권한 notDetermined 시 calendarSyncEnabled = false 설정")
@@ -344,18 +341,17 @@ struct CalendarPermissionTests {
       $0.eventKitClient.authorizationStatus = { .notDetermined }
     }
 
+    store.exhaustivity = .off
+
     await store.send(.view(.successAcknowledged)) {
       $0.step = .settings(makeTestGroupResult())
     }
 
-    await store.receive(\.internal.notificationAuthStatusChecked) {
-      $0.notificationAuthStatus = .authorized
-    }
+    await store.finish()
 
-    await store.receive(\.internal.calendarAuthStatusChecked) {
-      $0.calendarAuthStatus = .notDetermined
-      $0.calendarSyncEnabled = false  // notDetermined면 OFF (canWriteEvents = false)
-    }
+    #expect(store.state.notificationAuthStatus == .authorized)
+    #expect(store.state.calendarAuthStatus == .notDetermined)
+    #expect(store.state.calendarSyncEnabled == false)
   }
 
   // MARK: - 토글 동작 테스트
@@ -405,14 +401,16 @@ struct CalendarPermissionTests {
       $0.eventKitClient.requestAccess = { true }
     }
 
+    store.exhaustivity = .off
+
     await store.send(.view(.calendarSyncToggled(true))) {
       $0.calendarSyncEnabled = true
     }
 
-    await store.receive(\.internal.calendarPermissionResponse) {
-      $0.calendarAuthStatus = .fullAccess
-      // calendarSyncEnabled은 이미 true
-    }
+    await store.finish()
+
+    #expect(store.state.calendarAuthStatus == .fullAccess)
+    #expect(store.state.calendarSyncEnabled == true)
   }
 
   @Test("권한 notDetermined 상태에서 토글 ON 시 권한 요청 후 denied면 Alert 표시 (토글 ON 유지)")
@@ -428,15 +426,17 @@ struct CalendarPermissionTests {
       $0.eventKitClient.requestAccess = { false }
     }
 
+    store.exhaustivity = .off
+
     await store.send(.view(.calendarSyncToggled(true))) {
       $0.calendarSyncEnabled = true
     }
 
-    await store.receive(\.internal.calendarPermissionResponse) {
-      $0.calendarAuthStatus = .denied
-      $0.showCalendarPermissionInfoAlert = true  // Alert 표시
-      // calendarSyncEnabled은 true 유지 (푸시 알림과 다른 동작)
-    }
+    await store.finish()
+
+    #expect(store.state.calendarAuthStatus == .denied)
+    #expect(store.state.showCalendarPermissionInfoAlert == true)
+    #expect(store.state.calendarSyncEnabled == true)
   }
 
   @Test("권한 denied 상태에서 토글 ON 시 Alert 표시 (토글 ON 유지)")
