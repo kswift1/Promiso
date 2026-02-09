@@ -65,17 +65,20 @@ public struct PromisoCalendarEvent: Equatable, Sendable {
   public let promiseId: String
   public let contentHash: String
   public let userNotes: String?
+  public let isPersonal: Bool
 
   public init(
     eventIdentifier: String,
     promiseId: String,
     contentHash: String,
-    userNotes: String?
+    userNotes: String?,
+    isPersonal: Bool = false
   ) {
     self.eventIdentifier = eventIdentifier
     self.promiseId = promiseId
     self.contentHash = contentHash
     self.userNotes = userNotes
+    self.isPersonal = isPersonal
   }
 }
 
@@ -83,22 +86,23 @@ public struct PromisoCalendarEvent: Equatable, Sendable {
 
 public enum PromisoCalendarTag {
   /// URL 스킴: promiso://promise/{promiseId}?hash={contentHash}
+  /// 개인 일정: promiso://personal/{eventId}?hash={contentHash}
   public static let scheme = "promiso"
-  public static let host = "promise"
+  public static let promiseHost = "promise"
+  public static let personalHost = "personal"
 
-  /// URL에서 Promiso 정보 파싱
-  public static func parse(from url: URL?) -> (promiseId: String, contentHash: String)? {
+  /// URL에서 Promiso 정보 파싱 (약속 + 개인 일정 모두 지원)
+  public static func parse(from url: URL?) -> (id: String, contentHash: String, isPersonal: Bool)? {
     guard let url,
           url.scheme == scheme,
-          url.host == host else {
+          let host = url.host,
+          host == promiseHost || host == personalHost else {
       return nil
     }
 
-    // path: /{promiseId}
-    let promiseId = url.lastPathComponent
-    guard !promiseId.isEmpty && promiseId != "/" else { return nil }
+    let id = url.lastPathComponent
+    guard !id.isEmpty && id != "/" else { return nil }
 
-    // query: hash={contentHash}
     guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
           let hashItem = components.queryItems?.first(where: { $0.name == "hash" }),
           let contentHash = hashItem.value,
@@ -106,15 +110,24 @@ public enum PromisoCalendarTag {
       return nil
     }
 
-    return (promiseId, contentHash)
+    return (id, contentHash, host == personalHost)
   }
 
-  /// Promiso URL 생성
+  /// 그룹 약속 URL 생성
   public static func createURL(promiseId: String, contentHash: String) -> URL? {
+    createURL(id: promiseId, host: promiseHost, contentHash: contentHash)
+  }
+
+  /// 개인 일정 URL 생성
+  public static func createPersonalURL(eventId: String, contentHash: String) -> URL? {
+    createURL(id: eventId, host: personalHost, contentHash: contentHash)
+  }
+
+  private static func createURL(id: String, host: String, contentHash: String) -> URL? {
     var components = URLComponents()
     components.scheme = scheme
     components.host = host
-    components.path = "/\(promiseId)"
+    components.path = "/\(id)"
     components.queryItems = [URLQueryItem(name: "hash", value: contentHash)]
     return components.url
   }

@@ -396,9 +396,10 @@ extension EventKitClient: DependencyKey {
 
           return PromisoCalendarEvent(
             eventIdentifier: eventId,
-            promiseId: parsed.promiseId,
+            promiseId: parsed.id,
             contentHash: parsed.contentHash,
-            userNotes: event.notes  // 사용자 메모는 notes 필드에 그대로
+            userNotes: event.notes,
+            isPersonal: parsed.isPersonal
           )
         }
       },

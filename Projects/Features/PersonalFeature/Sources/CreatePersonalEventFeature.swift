@@ -18,6 +18,7 @@ extension CreatePersonalEvent {
     @Dependency(\.emojiClient) var emojiClient
     @Dependency(\.hapticFeedback) var hapticFeedback
     @Dependency(\.continuousClock) var clock
+    @Dependency(\.calendarSyncClient) var calendarSyncClient
 
     public init() {}
 
@@ -185,15 +186,21 @@ extension CreatePersonalEvent {
             guard state.canSave else { return .none }
             state.isSaving = true
             state.errorMessage = nil
-            return .run { [event = state.event, mode = state.mode, personalEventClient, localNotificationClient] send in
+            return .run { [event = state.event, mode = state.mode, personalEventClient, localNotificationClient, calendarSyncClient] send in
               do {
                 var savedEvent = event
+                let syncEnabled = UserDefaults.standard.bool(
+                  forKey: AppConstants.UserDefaults.personalCalendarSync
+                )
+
                 switch mode {
                 case .create:
                   let eventId = try await personalEventClient.createEvent(event)
                   savedEvent.id = eventId
+                  try? await calendarSyncClient.addPersonalEvent(savedEvent, syncEnabled)
                 case .edit:
                   try await personalEventClient.updateEvent(event)
+                  try? await calendarSyncClient.updatePersonalEvent(savedEvent, syncEnabled)
                 }
 
                 // 기존 알림 취소 후 재스케줄링

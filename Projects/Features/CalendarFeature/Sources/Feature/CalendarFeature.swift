@@ -73,6 +73,11 @@ extension CalendarFeature {
       /// 숨김 처리된 캘린더 배너 타입들
       var hiddenCalendarBannerTypes: Set<CalendarAuthorizationStatus> = []
 
+      // MARK: - 개인 일정 관련
+
+      /// 개인 일정 목록
+      var personalEvents: [PersonalEventModel] = []
+
       // MARK: - Group 관련
 
       /// 사용자 그룹 정보 조회용 (키: groupId)
@@ -164,6 +169,27 @@ extension CalendarFeature {
         return grouped
       }
 
+      /// 날짜별로 그룹화된 개인 일정
+      var personalEventsByDate: [Date: [PersonalEventModel]] {
+        let calendar = Calendar.current
+        var grouped: [Date: [PersonalEventModel]] = [:]
+
+        for event in personalEvents {
+          let dateKey = calendar.startOfDay(for: event.startAt)
+          if grouped[dateKey] != nil {
+            grouped[dateKey]?.append(event)
+          } else {
+            grouped[dateKey] = [event]
+          }
+        }
+
+        for (date, events) in grouped {
+          grouped[date] = events.sorted { $0.startAt < $1.startAt }
+        }
+
+        return grouped
+      }
+
       /// 표시할 섹션 날짜들
       var sectionDates: [Date] {
         if displayMode == .week {
@@ -178,6 +204,7 @@ extension CalendarFeature {
 
           var allDates = Set(promisesByDate.keys)
           allDates.formUnion(calendarEventsByDate.keys)
+          allDates.formUnion(personalEventsByDate.keys)
 
           return allDates
             .filter { $0 >= monthStart && $0 < monthEnd }
@@ -258,6 +285,9 @@ extension CalendarFeature {
         case calendarPermissionResponse(CalendarAuthorizationStatus)
         case fetchCalendarEvents
         case calendarEventsResponse(Result<[CalendarEvent], Error>)
+        // 개인 일정
+        case fetchPersonalEvents
+        case personalEventsResponse(Result<[PersonalEventModel], Error>)
       }
     }
 
@@ -272,6 +302,7 @@ extension CalendarFeature {
 
     @Dependency(\.promiseClient) var promiseClient
     @Dependency(\.eventKitClient) var eventKitClient
+    @Dependency(\.personalEventClient) var personalEventClient
 
     // MARK: - Reducer Body
 
@@ -478,6 +509,7 @@ extension CalendarFeature {
         if state.calendarPermissionStatus.canReadEvents {
           effects.append(.send(.internal(.fetchCalendarEvents)))
         }
+        effects.append(.send(.internal(.fetchPersonalEvents)))
 
         // 인접 월 프리페치
         effects.append(.send(.internal(.prefetchAdjacentMonths)))
@@ -510,6 +542,7 @@ extension CalendarFeature {
         if state.calendarPermissionStatus.canReadEvents {
           effects.append(.send(.internal(.fetchCalendarEvents)))
         }
+        effects.append(.send(.internal(.fetchPersonalEvents)))
 
         // 인접 월 프리페치
         effects.append(.send(.internal(.prefetchAdjacentMonths)))
@@ -582,15 +615,20 @@ extension CalendarFeature {
         state.cachedPromisesByMonth.removeAll()
         AppLogger.calendar.debugLog("📦 초기 데이터 로드 (캐시 초기화 완료, 그룹: \(state.userGroupIds.count)개)")
 
-        // 2. 그룹이 있으면 약속 로드
-        guard !state.userGroupIds.isEmpty else {
-          return .none
+        // 2. 개인 일정은 항상 로드
+        var effects: [Effect<Action>] = [
+          .send(.internal(.fetchPersonalEvents))
+        ]
+
+        // 3. 그룹이 있으면 약속 로드
+        if !state.userGroupIds.isEmpty {
+          let monthsToLoad = getMonthsToLoad(state: state)
+          effects.append(contentsOf: monthsToLoad.map { month in
+            Effect<Action>.send(.internal(.fetchPromisesForMonth(month)))
+          })
         }
 
-        let monthsToLoad = getMonthsToLoad(state: state)
-        return .merge(monthsToLoad.map { month in
-          Effect<Action>.send(.internal(.fetchPromisesForMonth(month)))
-        })
+        return .merge(effects)
 
       case .fetchPromisesForMonth(let month):
         let monthStart = month.startOfMonth
@@ -711,6 +749,25 @@ extension CalendarFeature {
           state.calendarEvents = events
         case .failure:
           state.calendarEvents = []
+        }
+        return .none
+
+      case .fetchPersonalEvents:
+        return .run { [personalEventClient] send in
+          do {
+            let events = try await personalEventClient.getActiveEvents(AppConstants.Sync.personalEventFetchLimit)
+            await send(.internal(.personalEventsResponse(.success(events))))
+          } catch {
+            await send(.internal(.personalEventsResponse(.failure(error))))
+          }
+        }
+
+      case .personalEventsResponse(let result):
+        switch result {
+        case .success(let events):
+          state.personalEvents = events
+        case .failure:
+          state.personalEvents = []
         }
         return .none
       }

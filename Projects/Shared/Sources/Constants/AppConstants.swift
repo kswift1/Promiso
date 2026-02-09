@@ -146,6 +146,13 @@ public enum AppConstants {
     public static let selectionOpacity: CGFloat = 0.3
   }
 
+  // MARK: - Sync
+
+  public enum Sync {
+    /// 개인 일정 조회 최대 개수
+    public static let personalEventFetchLimit = 100
+  }
+
   // MARK: - LiveActivity
 
   public enum LiveActivity {
@@ -187,6 +194,8 @@ public enum AppConstants {
     public static let lastCalendarSyncDate = "promisoLastCalendarSyncDate"
     /// 약속 탭 기본 모드 (group/own)
     public static let defaultPromiseTabMode = "promisoDefaultPromiseTabMode"
+    /// 개인 일정 캘린더 동기화 활성화 여부
+    public static let personalCalendarSync = "promisoPersonalCalendarSync"
   }
 
   // MARK: - Shared State Keys (TCA @Shared inMemory)
