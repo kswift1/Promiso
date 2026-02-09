@@ -39,30 +39,30 @@ struct HomeFeatureStateTests {
   }
 
   /// 테스트용 PromiseModel 생성
+  /// isConfirmed를 true로 만들려면 votes.accepted에 minimumParticipants 이상의 사용자 필요
   private func makePromise(
     id: String = "test-promise",
     title: String = "테스트 약속",
     groupId: String = "group-id",
     startAt: Date = Date().addingTimeInterval(3600),
     endAt: Date? = nil,
-    isConfirmed: Bool = false,
-    votes: PromiseVotes = PromiseVotes(
+    minimumParticipants: Int = 2,
+    votes: PromiseVotesModel? = nil
+  ) -> PromiseModel {
+    let defaultVotes = votes ?? PromiseVotesModel(
       accepted: [],
       declined: [],
-      pending: ["current-user"],
       until: Date().addingTimeInterval(1800)
     )
-  ) -> PromiseModel {
-    PromiseModel(
+    
+    return PromiseModel(
       id: id,
-      groupId: groupId,
       title: title,
-      emoji: "📅",
+      groupId: groupId,
+      minimumParticipants: minimumParticipants,
+      votes: defaultVotes,
       startAt: startAt,
-      endAt: endAt,
-      minimumParticipants: 2,
-      isConfirmed: isConfirmed,
-      votes: votes
+      endAt: endAt
     )
   }
 
@@ -107,8 +107,23 @@ struct HomeFeatureStateTests {
     let startOfToday = calendar.startOfDay(for: now)
     let todayAfternoon = calendar.date(byAdding: .hour, value: 14, to: startOfToday)!
 
-    let promise1 = makePromise(id: "today-1", startAt: todayAfternoon, isConfirmed: true)
-    let promise2 = makePromise(id: "today-2", startAt: todayAfternoon.addingTimeInterval(3600), isConfirmed: true)
+    // isConfirmed = true (accepted >= minimumParticipants)
+    let confirmedVotes = PromiseVotesModel(
+      accepted: ["user1", "user2"],  // minimumParticipants(2) 이상
+      declined: [],
+      until: Date()
+    )
+
+    let promise1 = makePromise(
+      id: "today-1",
+      startAt: todayAfternoon,
+      votes: confirmedVotes
+    )
+    let promise2 = makePromise(
+      id: "today-2",
+      startAt: todayAfternoon.addingTimeInterval(3600),
+      votes: confirmedVotes
+    )
 
     let state = makeState(promisesState: .loaded([promise1, promise2]))
 
@@ -120,15 +135,18 @@ struct HomeFeatureStateTests {
   @Test("응답 필요 약속 목록 반환")
   func pendingPromises_returnsPendingVotePromises() {
     let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date())!
+    
+    // current-user가 pending (accepted/declined에 없음)
+    let votes = PromiseVotesModel(
+      accepted: [],
+      declined: [],
+      until: Date().addingTimeInterval(3600)
+    )
+    
     let promise = makePromise(
       id: "pending-1",
       startAt: tomorrow,
-      votes: PromiseVotes(
-        accepted: [],
-        declined: [],
-        pending: ["current-user"],
-        until: Date().addingTimeInterval(3600)
-      )
+      votes: votes
     )
 
     let state = makeState(promisesState: .loaded([promise]))
@@ -145,16 +163,17 @@ struct HomeFeatureStateTests {
     let startOfToday = calendar.startOfDay(for: now)
     let tomorrow = calendar.date(byAdding: .day, value: 1, to: startOfToday)!
 
+    // isConfirmed = true, current-user가 accepted
+    let votes = PromiseVotesModel(
+      accepted: ["current-user", "user2"],  // minimumParticipants(2) 이상
+      declined: [],
+      until: Date()
+    )
+
     let promise = makePromise(
       id: "upcoming-1",
       startAt: tomorrow,
-      isConfirmed: true,
-      votes: PromiseVotes(
-        accepted: ["current-user"],
-        declined: [],
-        pending: [],
-        until: nil
-      )
+      votes: votes
     )
 
     let state = makeState(promisesState: .loaded([promise]))
@@ -172,27 +191,33 @@ struct HomeFeatureStateTests {
     let todayAfternoon = calendar.date(byAdding: .hour, value: 14, to: startOfToday)!
     let tomorrow = calendar.date(byAdding: .day, value: 1, to: startOfToday)!
 
-    let today = makePromise(id: "today", startAt: todayAfternoon, isConfirmed: true)
+    let confirmedVotes = PromiseVotesModel(
+      accepted: ["user1", "user2"],
+      declined: [],
+      until: Date()
+    )
+    let today = makePromise(id: "today", startAt: todayAfternoon, votes: confirmedVotes)
+    
+    let pendingVotes = PromiseVotesModel(
+      accepted: [],
+      declined: [],
+      until: Date().addingTimeInterval(3600)
+    )
     let pending = makePromise(
       id: "pending",
       startAt: tomorrow,
-      votes: PromiseVotes(
-        accepted: [],
-        declined: [],
-        pending: ["current-user"],
-        until: Date().addingTimeInterval(3600)
-      )
+      votes: pendingVotes
+    )
+    
+    let upcomingVotes = PromiseVotesModel(
+      accepted: ["current-user", "user2"],
+      declined: [],
+      until: Date()
     )
     let upcoming = makePromise(
       id: "upcoming",
       startAt: tomorrow.addingTimeInterval(3600),
-      isConfirmed: true,
-      votes: PromiseVotes(
-        accepted: ["current-user"],
-        declined: [],
-        pending: [],
-        until: nil
-      )
+      votes: upcomingVotes
     )
 
     let state = makeState(promisesState: .loaded([today, pending, upcoming]))
@@ -205,25 +230,27 @@ struct HomeFeatureStateTests {
   @Test("응답 필요 개수 반환")
   func pendingResponseCount_returnsPendingCount() {
     let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date())!
+    
+    let votes1 = PromiseVotesModel(
+      accepted: [],
+      declined: [],
+      until: Date().addingTimeInterval(3600)
+    )
     let promise1 = makePromise(
       id: "pending-1",
       startAt: tomorrow,
-      votes: PromiseVotes(
-        accepted: [],
-        declined: [],
-        pending: ["current-user"],
-        until: Date().addingTimeInterval(3600)
-      )
+      votes: votes1
+    )
+    
+    let votes2 = PromiseVotesModel(
+      accepted: [],
+      declined: [],
+      until: Date().addingTimeInterval(7200)
     )
     let promise2 = makePromise(
       id: "pending-2",
       startAt: tomorrow.addingTimeInterval(3600),
-      votes: PromiseVotes(
-        accepted: [],
-        declined: [],
-        pending: ["current-user"],
-        until: Date().addingTimeInterval(7200)
-      )
+      votes: votes2
     )
 
     let state = makeState(promisesState: .loaded([promise1, promise2]))
@@ -247,9 +274,15 @@ struct HomeFeatureStateTests {
     let startOfToday = calendar.startOfDay(for: now)
     let todayAfternoon = calendar.date(byAdding: .hour, value: 14, to: startOfToday)!
 
-    let promise1 = makePromise(id: "today-1", startAt: todayAfternoon, isConfirmed: true)
-    let promise2 = makePromise(id: "today-2", startAt: todayAfternoon.addingTimeInterval(3600), isConfirmed: true)
-    let promise3 = makePromise(id: "today-3", startAt: todayAfternoon.addingTimeInterval(7200), isConfirmed: true)
+    let confirmedVotes = PromiseVotesModel(
+      accepted: ["user1", "user2"],
+      declined: [],
+      until: Date()
+    )
+
+    let promise1 = makePromise(id: "today-1", startAt: todayAfternoon, votes: confirmedVotes)
+    let promise2 = makePromise(id: "today-2", startAt: todayAfternoon.addingTimeInterval(3600), votes: confirmedVotes)
+    let promise3 = makePromise(id: "today-3", startAt: todayAfternoon.addingTimeInterval(7200), votes: confirmedVotes)
 
     let state = makeState(promisesState: .loaded([promise1, promise2, promise3]))
 
@@ -259,25 +292,27 @@ struct HomeFeatureStateTests {
   @Test("응답 필요 개수 계산")
   func overviewData_needResponseCount() {
     let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date())!
+    
+    let votes1 = PromiseVotesModel(
+      accepted: [],
+      declined: [],
+      until: Date().addingTimeInterval(3600)
+    )
     let promise1 = makePromise(
       id: "pending-1",
       startAt: tomorrow,
-      votes: PromiseVotes(
-        accepted: [],
-        declined: [],
-        pending: ["current-user"],
-        until: Date().addingTimeInterval(3600)
-      )
+      votes: votes1
+    )
+    
+    let votes2 = PromiseVotesModel(
+      accepted: [],
+      declined: [],
+      until: Date().addingTimeInterval(7200)
     )
     let promise2 = makePromise(
       id: "pending-2",
       startAt: tomorrow.addingTimeInterval(3600),
-      votes: PromiseVotes(
-        accepted: [],
-        declined: [],
-        pending: ["current-user"],
-        until: Date().addingTimeInterval(7200)
-      )
+      votes: votes2
     )
 
     let state = makeState(promisesState: .loaded([promise1, promise2]))
