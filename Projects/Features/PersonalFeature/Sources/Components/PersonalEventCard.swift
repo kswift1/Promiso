@@ -4,9 +4,9 @@ import PromisoShared
 // MARK: - Personal Event Card
 
 /// 개인 일정 카드 컴포넌트
-/// - PromiseGlassCard 패턴 (시간 컬럼 | 콘텐츠)
+/// - PromiseCard와 동일한 VStack 레이아웃 패턴
 /// - Glass Effect 적용 (iOS 26 fallback 포함)
-/// - 상태별 색상 힌트 (진행 중=green, 다가오는=indigo, 과거=gray)
+/// - 상태별 배지 표시 (진행 중/오늘/다가오는/지난)
 public struct PersonalEventCard: View {
   let event: PersonalEventModel
   let onTap: () -> Void
@@ -22,7 +22,148 @@ public struct PersonalEventCard: View {
     self.onDelete = onDelete
   }
 
-  // MARK: - Status
+  // MARK: - Body
+
+  public var body: some View {
+    Button(action: onTap) {
+      VStack(alignment: .leading, spacing: 14) {
+        // 메인 콘텐츠: 상태 배지 + 이모지 + 제목/설명/시간/장소
+        mainContent
+
+        // 하단: 알림 정보
+        if event.reminderMinutesBefore != nil {
+          bottomSection
+        }
+      }
+      .padding(16)
+      .contentShape(Rectangle())
+    }
+    .buttonStyle(.plain)
+    .adaptiveGlassCard()
+    .contextMenu {
+      Button(action: onTap) {
+        Label("상세 보기", systemImage: "info.circle")
+      }
+
+      Button(role: .destructive, action: onDelete) {
+        Label("삭제", systemImage: "trash")
+      }
+    }
+  }
+
+  // MARK: - Main Content
+
+  private var mainContent: some View {
+    HStack(alignment: .top, spacing: 12) {
+      Text(event.displayEmoji)
+        .font(.system(size: 44))
+
+      VStack(alignment: .leading, spacing: 10) {
+        // 제목 + 상태 배지 (우측 상단)
+        HStack(alignment: .top) {
+          Text(event.title)
+            .font(.system(size: 19, weight: .bold))
+            .foregroundStyle(.primary)
+
+          Spacer()
+
+          PersonalEventStatusBadge(event: event)
+        }
+
+        // 설명
+        if let description = event.description, !description.isEmpty {
+          Text(description)
+            .font(.system(size: 14))
+            .foregroundStyle(.secondary)
+            .lineLimit(2)
+        }
+
+        VStack(alignment: .leading, spacing: 6) {
+          // 날짜 & 시간
+          HStack(spacing: 4) {
+            Text("⏰")
+              .font(.system(size: 14))
+            Text("\(event.dateText) \(event.timeRangeText)")
+              .font(.system(size: 14, weight: .medium))
+          }
+          .foregroundStyle(.primary)
+
+          // 장소
+          if let location = event.location {
+            HStack(spacing: 4) {
+              Text("📍")
+                .font(.system(size: 14))
+              Text(location.name)
+                .font(.system(size: 14, weight: .medium))
+            }
+            .foregroundStyle(.primary)
+          }
+        }
+      }
+    }
+  }
+
+  // MARK: - Bottom Section
+
+  private var bottomSection: some View {
+    HStack {
+      if let minutes = event.reminderMinutesBefore {
+        HStack(spacing: 4) {
+          Image(systemName: "bell.fill")
+            .font(.system(size: 12))
+          Text(reminderText(minutes))
+            .font(.system(size: 13, weight: .medium))
+        }
+        .foregroundStyle(.secondary)
+      }
+
+      Spacer()
+    }
+  }
+
+  // MARK: - Helper
+
+  private func reminderText(_ minutes: Int) -> String {
+    if minutes >= 60 { return "\(minutes / 60)시간 전 알림" }
+    return "\(minutes)분 전 알림"
+  }
+}
+
+// MARK: - Personal Event Status Badge
+
+private struct PersonalEventStatusBadge: View {
+  let event: PersonalEventModel
+
+  var body: some View {
+    HStack(spacing: 4) {
+      Image(systemName: iconName)
+        .font(.system(size: 12, weight: .semibold))
+
+      Text(statusText)
+        .font(.system(size: 12, weight: .semibold))
+    }
+    .padding(.horizontal, 10)
+    .padding(.vertical, 6)
+    .background(statusColor.opacity(0.1))
+    .foregroundStyle(statusColor)
+    .clipShape(Capsule())
+  }
+
+  private var statusText: String {
+    if event.isOngoing { return "진행 중" }
+    if event.isPast { return "종료" }
+    let calendar = Calendar.current
+    if calendar.isDateInToday(event.startAt) { return "오늘" }
+    return "예정"
+  }
+
+  private var iconName: String {
+    if event.isOngoing { return "bolt.fill" }
+    if event.isPast { return "checkmark.circle.fill" }
+    let calendar = Calendar.current
+    if calendar.isDateInToday(event.startAt) { return "sun.max.fill" }
+    return "clock.fill"
+  }
 
   private var statusColor: Color {
     if event.isOngoing { return .green }
@@ -30,156 +171,6 @@ public struct PersonalEventCard: View {
     let calendar = Calendar.current
     if calendar.isDateInToday(event.startAt) { return .orange }
     return Color.pmindigo.n500
-  }
-
-  private var statusBackgroundTint: Color {
-    if event.isOngoing { return .green.opacity(0.05) }
-    return .clear
-  }
-
-  // MARK: - Body
-
-  public var body: some View {
-    Button(action: onTap) {
-      HStack(spacing: 12) {
-        // 좌측: 시간 + 상태
-        timeColumn
-
-        // 중앙: 콘텐츠
-        contentColumn
-
-        Spacer(minLength: 0)
-
-        // 우측: 리마인더 배지 또는 chevron
-        rightAccessory
-      }
-      .padding(14)
-      .background(statusBackgroundTint)
-      .contentShape(Rectangle())
-    }
-    .buttonStyle(.plain)
-    .adaptiveGlassCard(cornerRadius: 14)
-    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-      Button(role: .destructive) {
-        onDelete()
-      } label: {
-        Label("삭제", systemImage: "trash.fill")
-      }
-    }
-  }
-
-  // MARK: - Time Column
-
-  private var timeColumn: some View {
-    VStack(spacing: 6) {
-      Text(event.startAt.formattedTime)
-        .font(.system(size: 15, weight: .bold))
-        .foregroundStyle(.primary)
-
-      // 상태 인디케이터
-      Circle()
-        .fill(statusColor)
-        .frame(width: 7, height: 7)
-        .overlay {
-          if event.isOngoing {
-            Circle()
-              .stroke(statusColor.opacity(0.4), lineWidth: 2)
-              .frame(width: 13, height: 13)
-          }
-        }
-    }
-    .frame(width: 50)
-  }
-
-  // MARK: - Content Column
-
-  private var contentColumn: some View {
-    VStack(alignment: .leading, spacing: 6) {
-      // 이모지 + 제목
-      HStack(spacing: 6) {
-        Text(event.displayEmoji)
-          .font(.title3)
-
-        Text(event.title)
-          .font(.system(size: 16, weight: .semibold))
-          .foregroundStyle(.primary)
-          .lineLimit(1)
-      }
-
-      // 시간 범위 (종료 시간이 있을 때)
-      if event.endAt != nil {
-        HStack(spacing: 4) {
-          Image(systemName: "clock")
-            .font(.system(size: 11))
-
-          Text(event.timeRangeText)
-            .font(.system(size: 13))
-        }
-        .foregroundStyle(.secondary)
-      }
-
-      // 장소
-      if let location = event.location {
-        HStack(spacing: 4) {
-          Image(systemName: "location.fill")
-            .font(.system(size: 11))
-
-          Text(location.name)
-            .font(.system(size: 13))
-            .lineLimit(1)
-        }
-        .foregroundStyle(.secondary)
-      }
-
-      // 하단: 메모 프리뷰 (한 줄)
-      if let description = event.description, !description.isEmpty {
-        Text(description)
-          .font(.system(size: 12))
-          .foregroundStyle(.secondary.opacity(0.8))
-          .lineLimit(1)
-      }
-    }
-  }
-
-  // MARK: - Right Accessory
-
-  private var rightAccessory: some View {
-    VStack(spacing: 8) {
-      if event.reminderMinutesBefore != nil {
-        reminderBadge
-      }
-
-      Spacer(minLength: 0)
-
-      Image(systemName: "chevron.right")
-        .font(.system(size: 12, weight: .semibold))
-        .foregroundStyle(.tertiary)
-    }
-    .frame(maxHeight: .infinity)
-  }
-
-  // MARK: - Reminder Badge
-
-  private var reminderBadge: some View {
-    HStack(spacing: 3) {
-      Image(systemName: "bell.fill")
-        .font(.system(size: 9))
-
-      if let minutes = event.reminderMinutesBefore {
-        Text(reminderText(minutes))
-          .font(.system(size: 10, weight: .medium))
-      }
-    }
-    .foregroundStyle(Color.pmindigo.n500)
-    .padding(.horizontal, 7)
-    .padding(.vertical, 3)
-    .background(Color.pmindigo.n500.opacity(0.1))
-    .clipShape(Capsule())
-  }
-
-  private func reminderText(_ minutes: Int) -> String {
-    if minutes >= 60 { return "\(minutes / 60)시간 전" }
-    return "\(minutes)분 전"
   }
 }
 
