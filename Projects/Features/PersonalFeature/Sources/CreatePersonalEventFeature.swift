@@ -14,6 +14,7 @@ extension CreatePersonalEvent {
   public struct Feature {
     @Dependency(\.personalEventClient) var personalEventClient
     @Dependency(\.localNotificationClient) var localNotificationClient
+    @Dependency(\.notificationClient) var notificationClient
     @Dependency(\.emojiClient) var emojiClient
     @Dependency(\.hapticFeedback) var hapticFeedback
     @Dependency(\.continuousClock) var clock
@@ -46,6 +47,7 @@ extension CreatePersonalEvent {
       var errorMessage: String?
 
       @Presents var locationPicker: LocationPicker.Feature.State?
+      @Presents var notificationPermission: NotificationPermission.Feature.State?
 
       public init(event: PersonalEventModel = .empty, mode: Mode = .create) {
         self.event = event
@@ -70,6 +72,7 @@ extension CreatePersonalEvent {
       case `internal`(Internal)
       case delegate(Delegate)
       case locationPicker(PresentationAction<LocationPicker.Feature.Action>)
+      case notificationPermission(PresentationAction<NotificationPermission.Feature.Action>)
     }
 
     @CasePathable
@@ -94,6 +97,7 @@ extension CreatePersonalEvent {
       case emojiGenerationFailed
       case saveSuccess(PersonalEventModel)
       case saveFailed(String)
+      case notificationStatusChecked(NotificationAuthorizationStatus)
     }
 
     @CasePathable
@@ -148,13 +152,17 @@ extension CreatePersonalEvent {
             return .run { _ in await hapticFeedback.selection() }
 
           case .toggleUseReminder:
-            state.useReminder.toggle()
-            if state.useReminder {
-              state.event.reminderMinutesBefore = 30
+            if !state.useReminder {
+              // 켜려고 할 때 권한 확인
+              return .run { [notificationClient] send in
+                let status = await notificationClient.getAuthorizationStatus()
+                await send(.internal(.notificationStatusChecked(status)))
+              }
             } else {
+              state.useReminder = false
               state.event.reminderMinutesBefore = nil
+              return .run { _ in await hapticFeedback.selection() }
             }
-            return .run { _ in await hapticFeedback.selection() }
 
           case .reminderChanged(let minutes):
             state.event.reminderMinutesBefore = minutes
@@ -251,6 +259,26 @@ extension CreatePersonalEvent {
             state.isSaving = false
             state.errorMessage = message
             return .run { _ in await hapticFeedback.error() }
+
+          case .notificationStatusChecked(let status):
+            switch status {
+            case .authorized, .provisional, .ephemeral:
+              state.useReminder = true
+              state.event.reminderMinutesBefore = 30
+              return .run { _ in await hapticFeedback.selection() }
+            case .notDetermined, .denied:
+              state.notificationPermission = NotificationPermission.Feature.State(
+                config: .init(
+                  title: "알림을 켜고\n일정을 놓치지 마세요",
+                  content: "설정한 시간에 맞춰\n미리 알림을 보내드려요.",
+                  notificationTitle: "일정 알림 ⏰",
+                  notificationContent: "30분 후 시작하는 일정이 있어요",
+                  primaryButtonTitle: status == .notDetermined ? "알림 허용" : "설정으로 이동",
+                  secondaryButtonTitle: "나중에 하기"
+                )
+              )
+              return .none
+            }
           }
 
         // MARK: - LocationPicker
@@ -267,6 +295,22 @@ extension CreatePersonalEvent {
         case .locationPicker:
           return .none
 
+        // MARK: - NotificationPermission
+
+        case .notificationPermission(.presented(.delegate(.permissionChanged(let isGranted)))):
+          if isGranted {
+            state.useReminder = true
+            state.event.reminderMinutesBefore = 30
+          }
+          return .none
+
+        case .notificationPermission(.presented(.delegate(.dismissed))):
+          state.notificationPermission = nil
+          return .none
+
+        case .notificationPermission:
+          return .none
+
         // MARK: - Delegate
 
         case .delegate:
@@ -275,6 +319,9 @@ extension CreatePersonalEvent {
       }
       .ifLet(\.$locationPicker, action: \.locationPicker) {
         LocationPicker.Feature()
+      }
+      .ifLet(\.$notificationPermission, action: \.notificationPermission) {
+        NotificationPermission.Feature()
       }
     }
   }
