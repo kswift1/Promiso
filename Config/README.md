@@ -72,10 +72,10 @@ Xcode 빌드 시 사용
 
 ```bash
 # 1. Notion API Key 환경변수 설정
-export NOTION_API_KEY="YOUR_NOTION_API_KEYxxxxxxxx"
+export NOTION_API_KEY="YOUR_NOTION_API_KEY"
 
 # 또는 ~/.zshrc에 영구 저장
-echo 'export NOTION_API_KEY="YOUR_NOTION_API_KEYxxxxxxxx"' >> ~/.zshrc
+echo 'export NOTION_API_KEY="YOUR_NOTION_API_KEY"' >> ~/.zshrc
 source ~/.zshrc
 
 # 2. Notion → 로컬 동기화

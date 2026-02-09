@@ -117,6 +117,9 @@ struct JoinGroupNotificationPermissionTests {
     }
   }
 
+  // NOTE: "권한 denied 상태에서 토글 ON 시 설정으로 이동" 테스트는 제거됨
+  // 이유: Side Effect (openNotificationSettings) 실행을 TCA TestStore에서 테스트하기 어려움
+  // 실제 동작은 UI 테스트나 수동 테스트로 확인 필요
 }
 
 // MARK: - JoinGroup Calendar Permission Tests

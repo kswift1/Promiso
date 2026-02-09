@@ -13,6 +13,23 @@ private enum FirebaseFunctionNames {
   static let getConfirmedPromisesForCalendar = "getConfirmedPromisesForCalendar"
 }
 
+// MARK: - Date Formatter 상수
+
+/// ISO8601 DateFormatter (Seoul 타임존, 쓰기용)
+private let iso8601FormatterWithSeoulTimeZone: ISO8601DateFormatter = {
+  let formatter = ISO8601DateFormatter()
+  formatter.timeZone = TimeZone(identifier: "Asia/Seoul")
+  formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+  return formatter
+}()
+
+/// ISO8601 DateFormatter (기본 타임존, 읽기용)
+private let iso8601Formatter: ISO8601DateFormatter = {
+  let formatter = ISO8601DateFormatter()
+  formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+  return formatter
+}()
+
 /// Promise 관련 Firestore CRUD 및 쿼리 작업을 담당하는 DataSource
 public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
   private let firestore: FirestoreProviding
@@ -35,15 +52,10 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
   /// 약속 생성
   /// Firebase Functions의 createPromise를 호출합니다.
   public func createPromise(_ promise: PromiseModel) async throws -> String {
-    // ISO 8601 형식으로 날짜 변환
-    let dateFormatter = ISO8601DateFormatter()
-    dateFormatter.timeZone = TimeZone(identifier: "Asia/Seoul")
-    dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-
     var callableData: [String: Any] = [
       "groupId": promise.groupId,
       "title": promise.title,
-      "startAt": dateFormatter.string(from: promise.startAt),
+      "startAt": iso8601FormatterWithSeoulTimeZone.string(from: promise.startAt),
       "minimumParticipants": promise.minimumParticipants
     ]
 
@@ -57,7 +69,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
     }
 
     if let endAt = promise.endAt {
-      callableData["endAt"] = dateFormatter.string(from: endAt)
+      callableData["endAt"] = iso8601FormatterWithSeoulTimeZone.string(from: endAt)
     }
 
     if let location = promise.location, !location.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -126,13 +138,10 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
        let startAtString = promiseData["startAt"] as? String,
        let groupId = promiseData["groupId"] as? String {
 
-      let dateFormatter = ISO8601DateFormatter()
-      dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-
-      if let startAt = dateFormatter.date(from: startAtString) {
+      if let startAt = iso8601Formatter.date(from: startAtString) {
         var endAt: Date?
         if let endAtString = promiseData["endAt"] as? String {
-          endAt = dateFormatter.date(from: endAtString)
+          endAt = iso8601Formatter.date(from: endAtString)
         }
 
         let location = promiseData["location"] as? String
@@ -160,15 +169,10 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
   /// 약속 업데이트
   /// Firebase Functions의 updatePromise를 호출합니다.
   public func updatePromise(_ promise: PromiseModel) async throws {
-    // ISO 8601 형식으로 날짜 변환
-    let dateFormatter = ISO8601DateFormatter()
-    dateFormatter.timeZone = TimeZone(identifier: "Asia/Seoul")
-    dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-
     var callableData: [String: Any] = [
       "promiseId": promise.id,
       "title": promise.title,
-      "startAt": dateFormatter.string(from: promise.startAt),
+      "startAt": iso8601FormatterWithSeoulTimeZone.string(from: promise.startAt),
       "minimumParticipants": promise.minimumParticipants
     ]
 
@@ -184,7 +188,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
     }
 
     if let endAt = promise.endAt {
-      callableData["endAt"] = dateFormatter.string(from: endAt)
+      callableData["endAt"] = iso8601FormatterWithSeoulTimeZone.string(from: endAt)
     } else {
       callableData["endAt"] = NSNull()
     }
@@ -524,22 +528,19 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
       return []
     }
 
-    let dateFormatter = ISO8601DateFormatter()
-    dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-
     return promisesData.compactMap { dict -> CalendarSyncPromise? in
       guard let id = dict["id"] as? String,
             let title = dict["title"] as? String,
             let emoji = dict["emoji"] as? String,
             let startAtString = dict["startAt"] as? String,
-            let startAt = dateFormatter.date(from: startAtString),
+            let startAt = iso8601Formatter.date(from: startAtString),
             let groupId = dict["groupId"] as? String else {
         return nil
       }
 
       var endAt: Date?
       if let endAtString = dict["endAt"] as? String {
-        endAt = dateFormatter.date(from: endAtString)
+        endAt = iso8601Formatter.date(from: endAtString)
       }
 
       let location = dict["location"] as? String
