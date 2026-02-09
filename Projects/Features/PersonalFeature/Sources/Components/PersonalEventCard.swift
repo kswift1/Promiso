@@ -108,13 +108,15 @@ public struct PersonalEventCard: View {
   private var bottomSection: some View {
     HStack {
       if let minutes = event.reminderMinutesBefore {
+        let isReminderSent = event.reminderDate.map { $0 <= Date() } ?? false
+
         HStack(spacing: 4) {
-          Image(systemName: "bell.fill")
+          Image(systemName: isReminderSent ? "checkmark.circle.fill" : "bell.fill")
             .font(.system(size: 12))
-          Text(reminderText(minutes))
+          Text(isReminderSent ? "알림 완료" : reminderText(minutes))
             .font(.system(size: 13, weight: .medium))
         }
-        .foregroundStyle(.secondary)
+        .foregroundStyle(isReminderSent ? .green : .secondary)
       }
 
       Spacer()
