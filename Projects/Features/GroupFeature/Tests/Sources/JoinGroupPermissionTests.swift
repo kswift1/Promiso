@@ -138,6 +138,9 @@ struct JoinGroupNotificationPermissionTests {
       $0.notificationEnabled = false  // denied면 OFF 유지
     }
 
+    // Effect 완료 대기
+    await store.finish()
+
     #expect(openSettingsCalled.value == true)
   }
 }
