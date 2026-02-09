@@ -123,7 +123,9 @@ export const createUser = onCall<CreateUserRequest>(
         name: name,
         providerType: data.provider.type,
         email: data.provider.email,
-      }).catch(() => {});
+      }).catch((err) => {
+        console.warn("⚠️ [Slack] 알림 전송 실패:", err);
+      });
 
       // 6. 응답 반환
       return {

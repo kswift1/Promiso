@@ -19,6 +19,8 @@ interface SignupNotificationParams {
 /**
  * 신규 가입 시 Slack 알림 전송
  *
+ * @param {SignupNotificationParams} params - 가입 정보
+ *
  * @remarks
  * - 프로덕션 환경에서만 실제 전송
  * - 전송 실패 시에도 에러를 throw하지 않음 (가입 플로우 비차단)
