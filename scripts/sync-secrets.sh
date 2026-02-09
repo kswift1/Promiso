@@ -102,7 +102,7 @@ cmd_pull() {
     # KAKAO_REST_API_KEY, NOTION_API_KEY는 Firebase Functions에서만 사용
     echo "$response" | jq -r --arg env "$env" '.results[] |
       select(.properties[$env].rich_text[0].plain_text != null) |
-      select(.properties.Key.title[0].plain_text | test("^(GOOGLE_CLIENT_ID|GOOGLE_REVERSED_CLIENT_ID|KAKAO_NATIVE_APP_KEY)$")) |
+      select(.properties.Key.title[0].plain_text | test("^(GOOGLE_CLIENT_ID|GOOGLE_REVERSED_CLIENT_ID|KAKAO_NATIVE_APP_KEY|CLARITY_PROJECT_ID)$")) |
       "\(.properties.Key.title[0].plain_text | gsub("[\\n\\r]"; "")) = \(.properties[$env].rich_text[0].plain_text | gsub("[\\n\\r]"; " "))"' >> "$config_file"
 
     # Code Signing 설정 추가
