@@ -94,29 +94,35 @@ extension EditPromise {
     private var essentialSection: some View {
       VStack(spacing: 0) {
         // 제목 + 이모지
-        HStack(spacing: 12) {
-          Text(store.editedPromise.displayEmoji)
-            .font(.system(size: 28))
-            .frame(width: 40, height: 40)
+        VStack(alignment: .trailing, spacing: 4) {
+          HStack(spacing: 12) {
+            Text(store.editedPromise.displayEmoji)
+              .font(.system(size: 28))
+              .frame(width: 40, height: 40)
 
-          TextField("약속 제목", text: Binding(
-            get: { store.editedPromise.title },
-            set: { store.send(.view(.setTitle($0))) }
-          ))
-          .focused($focusedField, equals: .title)
-          .font(.system(size: 18, weight: .medium))
-          .textFieldStyle(.plain)
-          .toolbar {
-            ToolbarItemGroup(placement: .keyboard) {
-              Spacer()
-              Button {
-                focusedField = nil
-              } label: {
-                Image(systemName: "keyboard.chevron.compact.down")
-                  .foregroundStyle(Color.pmtext.secondary)
+            TextField("약속 제목", text: Binding(
+              get: { store.editedPromise.title },
+              set: { store.send(.view(.setTitle($0))) }
+            ))
+            .focused($focusedField, equals: .title)
+            .font(.system(size: 18, weight: .medium))
+            .textFieldStyle(.plain)
+            .toolbar {
+              ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button {
+                  focusedField = nil
+                } label: {
+                  Image(systemName: "keyboard.chevron.compact.down")
+                    .foregroundStyle(Color.pmtext.secondary)
+                }
               }
             }
           }
+
+          Text("\(store.editedPromise.title.count)/30")
+            .font(.system(size: 12))
+            .foregroundStyle(.secondary)
         }
         .padding(12)
 

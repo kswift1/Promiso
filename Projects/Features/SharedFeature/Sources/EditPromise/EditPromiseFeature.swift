@@ -112,7 +112,7 @@ extension EditPromise {
         case .view(let viewAction):
           switch viewAction {
           case .setTitle(let title):
-            state.editedPromise.title = title
+            state.editedPromise.title = String(title.prefix(30))
             return .merge(
               .cancel(id: CancelID.emojiSuggestDebounce),
               .run { [clock, title] send in
