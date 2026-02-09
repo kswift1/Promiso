@@ -8,6 +8,7 @@ import SwiftUI
 import Clients
 import PromisoShared
 import CalendarFeature
+import PersonalFeature
 import SettingsFeature
 import ResourceKit
 import SharedFeature
@@ -23,18 +24,54 @@ extension Notification.Name {
   static let openLivePromiseDetailFromDeeplink = Notification.Name("openLivePromiseDetailFromDeeplink")
 }
 
-public enum Tab: String, CaseIterable {
-  case home = "홈"
-  case group = "그룹"
-  case calendar = "캘린더"
-  case settings = "설정"
+public enum Tab: Equatable, Hashable {
+  case home
+  case promise(PromiseTabMode = .group)
+  case calendar
+  case settings
+
+  public enum PromiseTabMode: String, Equatable, Hashable, Sendable {
+    case group = "그룹"
+    case own = "개인"
+  }
+
+  var isPromise: Bool {
+    if case .promise = self { return true }
+    return false
+  }
+
+  var promiseMode: PromiseTabMode? {
+    if case .promise(let mode) = self { return mode }
+    return nil
+  }
+
+  var label: String {
+    switch self {
+    case .home: return "홈"
+    case .promise(let mode): return mode.rawValue
+    case .calendar: return "캘린더"
+    case .settings: return "설정"
+    }
+  }
 
   var iconName: String {
     switch self {
     case .home: return "house.fill"
-    case .group: return "person.3.fill"
+    case .promise(.group): return "person.3.fill"
+    case .promise(.own): return "person.fill"
     case .calendar: return "calendar"
     case .settings: return "gearshape.fill"
+    }
+  }
+
+  /// 탭 선택 시 적용할 Symbol Effects
+  var symbolEffects: [any DiscreteSymbolEffect & SymbolEffect] {
+    switch self {
+    case .home, .settings:
+      return [.bounce]
+    case .promise, .calendar:
+      // Promise 모드 토글 시 회전 + 바운스
+      return [.wiggle.up]
     }
   }
 }
@@ -70,6 +107,9 @@ extension RootTab {
       /// 현재 선택된 탭
       var selectedTab: Tab = .home
 
+      /// Promise 탭의 현재 모드 (탭 전환 시에도 유지)
+      var promiseMode: Tab.PromiseTabMode
+
       /// Home Main State
       var home: Home.Feature.State
 
@@ -82,6 +122,9 @@ extension RootTab {
       /// Settings State
       var settings: Settings.Feature.State
 
+      /// Personal Mode State
+      var personalMode: PersonalMode.Feature.State
+
       /// 현재 사용자 정보 (모든 탭에서 참조 공유)
       @Shared var currentUser: UserPrivateModel
 
@@ -91,6 +134,9 @@ extension RootTab {
       /// LivePromise 상세 뷰 Presentation
       @Presents var livePromiseDetail: LivePromise.Detail.State?
 
+      /// 개인 일정 상세 (Home에서 탭 → sheet 표시)
+      @Presents var personalEventDetail: PersonalEventDetail.Feature.State?
+
       /// Widget "직접 입력" 딥링크 pending 플래그
       /// Cold start 시 Activity 구독보다 딥링크가 먼저 도착하면 true로 설정,
       /// activityUpdateReceived에서 livePromise 생성 후 ETA 시트를 열기 위해 사용
@@ -98,10 +144,14 @@ extension RootTab {
 
       public init(currentUser: Shared<UserPrivateModel>) {
         self._currentUser = currentUser
+        // UserDefaults에서 약속 탭 기본 모드 읽기
+        let savedMode = UserDefaults.standard.string(forKey: AppConstants.UserDefaults.defaultPromiseTabMode) ?? "group"
+        self.promiseMode = savedMode == "own" ? .own : .group
         self.groupMain = GroupMain.Feature.State(currentUser: currentUser)
         self.home = Home.Feature.State(currentUser: currentUser)
         self.calendar = CalendarFeature.Feature.State(currentUser: currentUser)
         self.settings = Settings.Feature.State(currentUser: currentUser)
+        self.personalMode = PersonalMode.Feature.State(currentUser: currentUser)
       }
     }
 
@@ -119,10 +169,14 @@ extension RootTab {
       case groupMain(GroupMain.Feature.Action)
       /// Settings 액션
       case settings(Settings.Feature.Action)
+      /// Personal Mode 액션
+      case personalMode(PersonalMode.Feature.Action)
       /// LivePromise 액션
       case livePromise(LivePromise.Feature.Action)
       /// LivePromise 상세 뷰 액션
       case livePromiseDetail(PresentationAction<LivePromise.Detail.Action>)
+      /// 개인 일정 상세 액션
+      case personalEventDetail(PresentationAction<PersonalEventDetail.Feature.Action>)
       /// 상위로 전달되는 델리게이트 액션
       case delegate(Delegate)
       /// 딥링크로 그룹 참여 열기
@@ -162,7 +216,7 @@ extension RootTab {
       case syncCalendar
     }
 
-    public enum Delegate: Equatable {
+    public enum Delegate: Equatable, Sendable {
       case logoutRequested
       case openJoinGroup(inviteCode: String)
     }
@@ -170,6 +224,10 @@ extension RootTab {
     public var body: some ReducerOf<Self> {
       Scope(state: \.groupMain, action: \.groupMain) {
         GroupMain.Feature()
+      }
+
+      Scope(state: \.personalMode, action: \.personalMode) {
+        PersonalMode.Feature()
       }
 
       Scope(state: \.home, action: \.home) {
@@ -202,6 +260,15 @@ extension RootTab {
           let hapticEffect: Effect<Action> = .run { _ in await hapticFeedback.buttonTap() }
 
           guard tab != previousTab else {
+            // Promise 탭 재선택 시 모드 토글
+            if case .promise = tab {
+              let newMode: Tab.PromiseTabMode = state.promiseMode == .group ? .own : .group
+              state.promiseMode = newMode
+              state.selectedTab = .promise(newMode)
+              if newMode == .own {
+                return .merge(hapticEffect, .send(.personalMode(.view(.onAppear))))
+              }
+            }
             return hapticEffect
           }
 
@@ -216,21 +283,23 @@ extension RootTab {
           case .settings:
             // Analytics 이벤트 로깅
             analyticsClient.logEvent(AnalyticsClient.EventName.settingsOpened, nil)
-          case .group:
+          case .promise:
             break
           }
 
           return .merge(effects)
 
         case .home(.delegate(.navigateToGroupWithPromise(let groupId, let promiseId))):
-          state.selectedTab = .group
+          state.promiseMode = .group
+          state.selectedTab = .promise(.group)
           // 그룹 선택 후 응답 필요 필터로 해당 약속 하이라이트
           return .send(.groupMain(.view(.handleDeeplink(
             .promiseInList(promiseId: promiseId, groupId: groupId, filter: .needResponse)
           ))))
 
         case .home(.delegate(.navigateToPromise(let promiseId, let groupId))):
-          state.selectedTab = .group
+          state.promiseMode = .group
+          state.selectedTab = .promise(.group)
           if let groupInfo = state.groupMain.allGroupSummaries?.first(where: { $0.id == groupId }) {
             return .send(.groupMain(.view(.groupChanged(groupInfo))))
           }
@@ -240,13 +309,42 @@ extension RootTab {
           // TODO: 모든 약속 보기 화면으로 이동 (추후 구현)
           return .none
 
+        case .home(.delegate(.navigateToPersonalEvent(let event))):
+          state.personalEventDetail = PersonalEventDetail.Feature.State(event: event)
+          return .none
+
         case .home:
           return .none
 
         case .calendar:
           return .none
 
+        case .groupMain(.view(.switchToPersonalMode)):
+          state.promiseMode = .own
+          state.selectedTab = .promise(.own)
+          return .send(.personalMode(.view(.onAppear)))
+
         case .groupMain:
+          return .none
+
+        case .personalMode(.view(.switchToGroupMode)):
+          state.promiseMode = .group
+          state.selectedTab = .promise(.group)
+          return .none
+
+        case .personalMode:
+          return .none
+
+        case .personalEventDetail(.presented(.delegate(.eventUpdated))):
+          // 개인 일정 수정 후 홈 새로고침
+          return .send(.home(.view(.refreshTriggered)))
+
+        case .personalEventDetail(.presented(.delegate(.eventDeleted))):
+          state.personalEventDetail = nil
+          // 개인 일정 삭제 후 홈 새로고침
+          return .send(.home(.view(.refreshTriggered)))
+
+        case .personalEventDetail:
           return .none
 
         case .settings(.delegate(.didLogout)):
@@ -304,11 +402,13 @@ extension RootTab {
           return .none
 
         case .openJoinGroupWithCode(let inviteCode):
-          state.selectedTab = .group
+          state.promiseMode = .group
+          state.selectedTab = .promise(.group)
           return .send(.groupMain(.view(.joinGroupWithCode(inviteCode))))
 
         case .handleGroupDeeplink(let deeplink):
-          state.selectedTab = .group
+          state.promiseMode = .group
+          state.selectedTab = .promise(.group)
           return .send(.groupMain(.view(.handleDeeplink(deeplink))))
 
         case .openLiveActivityETASheet:
@@ -340,7 +440,8 @@ extension RootTab {
 
         case .openCreatePromiseIfPossible:
           // 그룹 탭으로 이동 후 그룹 유무에 따라 CreatePromise 열기
-          state.selectedTab = .group
+          state.promiseMode = .group
+          state.selectedTab = .promise(.group)
           return .send(.groupMain(.view(.openCreatePromiseIfPossible)))
 
         case .internal(let internalAction):
@@ -466,6 +567,7 @@ extension RootTab {
                 AppLogger.calendar.error("📅 [RootTab] syncCalendar 실패 - \(error.localizedDescription)")
               }
             }
+
           }
 
         case .delegate:
@@ -477,6 +579,9 @@ extension RootTab {
       }
       .ifLet(\.$livePromiseDetail, action: \.livePromiseDetail) {
         LivePromise.Detail()
+      }
+      .ifLet(\.$personalEventDetail, action: \.personalEventDetail) {
+        PersonalEventDetail.Feature()
       }
     }
   }
@@ -496,6 +601,10 @@ extension RootTab {
     // SwiftUI transition 타이밍이 맞지 않아 zoom 애니메이션이 동작하지 않습니다.
     // 따라서 @State는 presentation 제어용, TCA는 상태/로직 관리용으로 분리합니다.
     @State private var expandLivePromise: Bool = false
+
+    // MARK: - Tab Animation State
+    /// 탭 아이콘 애니메이션을 위한 UIImageView 캐시
+    @State private var tabImageViews: [Tab: UIImageView] = [:]
 
     // MARK: - Constants
 
@@ -539,6 +648,11 @@ extension RootTab {
             )
           }
         }
+        .sheet(item: $store.scope(state: \.personalEventDetail, action: \.personalEventDetail)) { detailStore in
+          NavigationStack {
+            PersonalEventDetail.RootView(store: detailStore)
+          }
+        }
         // 딥링크로 LivePromiseDetail 열기 요청 수신
         // ⚠️ onChange/task(id:)로 TCA 상태를 관찰하면 zoom transition이 깨짐
         // NotificationCenter를 사용하여 TCA → View 단방향 이벤트 전달
@@ -553,10 +667,36 @@ extension RootTab {
 
     private var tabView: some View {
       TabView(selection: $store.selectedTab.sending(\.tabSelected)) {
-        ForEach(Tab.allCases, id: \.self) { tab in
-          tabContentView(for: tab)
-            .tabItem { Label(tab.rawValue, systemImage: tab.iconName) }
-            .tag(tab)
+        tabContentView(for: .home)
+          .tabItem { Label("홈", systemImage: "house.fill") }
+          .tag(Tab.home)
+
+        tabContentView(for: .promise(store.promiseMode))
+          .tabItem {
+            Label(
+              Tab.promise(store.promiseMode).label,
+              systemImage: Tab.promise(store.promiseMode).iconName
+            )
+          }
+          .tag(Tab.promise(store.promiseMode))
+
+        tabContentView(for: .calendar)
+          .tabItem { Label("캘린더", systemImage: "calendar") }
+          .tag(Tab.calendar)
+
+        tabContentView(for: .settings)
+          .tabItem { Label("설정", systemImage: "gearshape.fill") }
+          .tag(Tab.settings)
+      }
+      .tabViewStyle(.tabBarOnly)
+      .background(ExtractTabImageViews { tabImageViews = $0 })
+      .compositingGroup()
+      .onChange(of: store.selectedTab) { oldValue, newValue in
+        guard let imageView = tabImageViews[newValue] else { return }
+        let symbolEffects = newValue.symbolEffects
+
+        for effect in symbolEffects {
+          imageView.addSymbolEffect(effect, options: .nonRepeating)
         }
       }
     }
@@ -655,14 +795,24 @@ extension RootTab {
           )
         )
 
-      case .group:
+      case .promise(let mode):
         NavigationStack {
-          GroupMain.RootView(
-            store: store.scope(
-              state: \.groupMain,
-              action: \.groupMain
+          switch mode {
+          case .group:
+            GroupMain.RootView(
+              store: store.scope(
+                state: \.groupMain,
+                action: \.groupMain
+              )
             )
-          )
+          case .own:
+            PersonalMode.RootView(
+              store: store.scope(
+                state: \.personalMode,
+                action: \.personalMode
+              )
+            )
+          }
         }
 
       case .settings:
@@ -673,6 +823,92 @@ extension RootTab {
           )
         )
       }
+    }
+  }
+}
+
+// MARK: - Tab Image Extractor
+
+/// UITabBarController에서 탭 아이콘 UIImageView를 추출하는 헬퍼
+fileprivate struct ExtractTabImageViews: UIViewRepresentable {
+  var result: ([Tab: UIImageView]) -> Void
+
+  func makeUIView(context: Context) -> UIView {
+    let view = UIView()
+    view.backgroundColor = .clear
+    view.isUserInteractionEnabled = false
+
+    DispatchQueue.main.async {
+      if let compositingGroup = view.superview?.superview {
+        guard let tabHostingController = compositingGroup.subviews.last else { return }
+        guard let tabController = tabHostingController.subviews.first?.next as? UITabBarController else { return }
+
+        extractImageViews(tabController.tabBar)
+      }
+    }
+
+    return view
+  }
+
+  func updateUIView(_ uiView: UIView, context: Context) {}
+
+  private func extractImageViews(_ tabBar: UITabBar) {
+    // 1단계: 모든 UIImageView 추출
+    let allImageViews = tabBar.allSubviews(ofType: UIImageView.self)
+
+    // 2단계: Symbol 이미지만 필터링
+    let symbolImageViews = allImageViews.filter { imageView in
+      imageView.image?.isSymbolImage ?? false
+    }
+
+    // 3단계: iOS 26 필터링 (tintColor 매칭)
+    let imageViews: [UIImageView]
+    if isiOS26 {
+      imageViews = symbolImageViews.filter { imageView in
+        imageView.tintColor == tabBar.tintColor
+      }
+    } else {
+      imageViews = symbolImageViews
+    }
+
+    var dict: [Tab: UIImageView] = [:]
+
+    // 탭 순서에 맞춰 이미지뷰 매핑 (promise 탭은 인덱스 1)
+    let tabs: [Tab] = [.home, .promise(.group), .calendar, .settings]
+
+    for (index, tab) in tabs.enumerated() {
+      if index < imageViews.count {
+        // iconName으로 매칭
+        let matchedView = imageViews.first { imageView in
+          imageView.description.contains(tab.iconName)
+        }
+
+        if let imageView = matchedView {
+          dict[tab] = imageView
+          // promise 탭은 group과 own 모두 같은 이미지뷰 사용
+          if case .promise = tab {
+            dict[.promise(.own)] = imageView
+          }
+        } else if index < imageViews.count {
+          // fallback: 순서로 매칭
+          let imageView = imageViews[index]
+          dict[tab] = imageView
+          // promise 탭은 group과 own 모두 같은 이미지뷰 사용
+          if case .promise = tab {
+            dict[.promise(.own)] = imageView
+          }
+        }
+      }
+    }
+
+    result(dict)
+  }
+
+  private var isiOS26: Bool {
+    if #available(iOS 26, *) {
+      return true
+    } else {
+      return false
     }
   }
 }

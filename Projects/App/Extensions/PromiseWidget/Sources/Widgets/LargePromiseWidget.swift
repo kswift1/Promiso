@@ -107,6 +107,8 @@ struct LargePromiseWidgetView: View {
           Link(destination: url) {
             todayRow(promise)
           }
+        } else {
+          todayRow(promise)
         }
       }
     }
@@ -131,6 +133,8 @@ struct LargePromiseWidgetView: View {
           Link(destination: url) {
             upcomingRow(promise)
           }
+        } else {
+          upcomingRow(promise)
         }
       }
     }

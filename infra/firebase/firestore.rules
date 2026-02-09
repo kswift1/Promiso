@@ -2,7 +2,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Users - 하위 컬렉션 있음 (auth, settings, cache)
+    // Users - 하위 컬렉션 있음 (auth, settings, cache, personalEvents)
     match /users/{userId} {
       // 본인 문서만 읽기/쓰기 허용
       // 닉네임 중복 검사 등은 Cloud Function을 통해 구현 권장

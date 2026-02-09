@@ -86,6 +86,8 @@ struct MediumPromiseWidgetView: View {
           Link(destination: url) {
             todayRow(promise)
           }
+        } else {
+          todayRow(promise)
         }
       }
 
@@ -109,6 +111,8 @@ struct MediumPromiseWidgetView: View {
           Link(destination: url) {
             upcomingRow(promise)
           }
+        } else {
+          upcomingRow(promise)
         }
       }
 

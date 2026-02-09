@@ -345,6 +345,18 @@ export interface UpdatePromiseRequest {
 
   /** 실시간 공유 시작 시간 (분 전, 선택적) */
   trackingStartMinutesBefore?: number | null;
+
+  /** 장소 정보 (선택적, null이면 삭제, undefined면 변경 없음) */
+  location?: {
+    /** 장소 이름 */
+    name: string;
+    /** 주소 */
+    address?: string | null;
+    /** 위도 */
+    latitude?: number | null;
+    /** 경도 */
+    longitude?: number | null;
+  } | null;
 }
 
 /**
@@ -1017,6 +1029,29 @@ export interface TransferGroupHostRequest {
  * 그룹 호스트 양도 응답
  */
 export interface TransferGroupHostResponse {
+  /** 성공 여부 */
+  success: boolean;
+}
+
+/**
+ * 그룹 멤버 추방 요청
+ *
+ * @remarks
+ * - 인증 필수 (Firebase Auth)
+ * - 현재 호스트만 호출 가능
+ */
+export interface ExpelMemberRequest {
+  /** 그룹 ID */
+  groupId: string;
+
+  /** 추방할 멤버 ID */
+  memberId: string;
+}
+
+/**
+ * 그룹 멤버 추방 응답
+ */
+export interface ExpelMemberResponse {
   /** 성공 여부 */
   success: boolean;
 }

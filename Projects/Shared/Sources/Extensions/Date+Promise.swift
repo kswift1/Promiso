@@ -123,6 +123,24 @@ public extension Date {
     return calendar.isDate(self, equalTo: now, toGranularity: .month)
   }
   
+  /// 두 날짜 사이의 소요 시간을 한글 텍스트로 반환 (예: "1시간 30분", "2일 3시간")
+  func durationText(to end: Date, prefix: String = "") -> String {
+    let interval = end.timeIntervalSince(self)
+    guard interval > 0 else { return "" }
+
+    let days = Int(interval / 86400)
+    let hours = Int((interval.truncatingRemainder(dividingBy: 86400)) / 3600)
+    let minutes = Int((interval.truncatingRemainder(dividingBy: 3600)) / 60)
+
+    var parts: [String] = []
+    if days > 0 { parts.append("\(days)일") }
+    if hours > 0 { parts.append("\(hours)시간") }
+    if minutes > 0 { parts.append("\(minutes)분") }
+
+    guard !parts.isEmpty else { return "\(prefix)0분" }
+    return prefix + parts.joined(separator: " ")
+  }
+
   /// 약속 날짜를 그룹핑하기 위한 키 생성 (YYYY-MM-DD)
   var promiseGroupingKey: String {
     let formatter = DateFormatter()

@@ -23,6 +23,7 @@ extension Home {
   public struct Feature {
     @Dependency(\.promiseClient) var promiseClient
     @Dependency(\.notificationClient) var notificationClient
+    @Dependency(\.personalEventClient) var personalEventClient
 
     public init() {}
 
@@ -41,6 +42,9 @@ extension Home {
       // MARK: Data (직접 쿼리 기반)
       /// 홈 약속 데이터 (Firestore 직접 쿼리)
       var promisesState: LoadingState<[PromiseModel]> = .idle
+
+      /// 개인 일정 데이터
+      var personalEventsState: LoadingState<[PersonalEventModel]> = .idle
 
       /// 초기 로드 여부
       var hasLoadedOnce: Bool = false
@@ -112,6 +116,8 @@ extension Home {
         case notificationButtonTapped
         /// 알림 배지 새로고침 (외부에서 호출)
         case refreshNotificationBadge
+        /// 개인 일정 카드 탭
+        case personalEventTapped(PersonalEventModel)
       }
 
       public enum Internal: Sendable {
@@ -119,6 +125,10 @@ extension Home {
         case fetchPromises
         /// 홈 약속 응답
         case promisesResponse(Result<[PromiseModel], Error>)
+        /// 개인 일정 조회
+        case fetchPersonalEvents
+        /// 개인 일정 응답
+        case personalEventsResponse(Result<[PersonalEventModel], Error>)
         /// 응답 필요 섹션으로 스크롤
         case scrollToNeedResponse
         /// 안 읽은 알림 개수 조회
@@ -134,6 +144,8 @@ extension Home {
         case navigateToGroupWithPromise(groupId: String, promiseId: String)
         /// 모든 약속 보기 화면으로 네비게이션
         case navigateToAllPromises
+        /// 개인 일정 상세 (RootTab에서 sheet 표시)
+        case navigateToPersonalEvent(PersonalEventModel)
       }
     }
 
@@ -149,12 +161,18 @@ extension Home {
             if !state.hasLoadedOnce {
               state.hasLoadedOnce = true
             }
-            // Firestore에서 직접 쿼리 (성공 시 알림 개수도 조회됨)
-            return .send(.internal(.fetchPromises))
+            // Firestore에서 직접 쿼리 (약속 + 개인 일정 병렬)
+            return .merge(
+              .send(.internal(.fetchPromises)),
+              .send(.internal(.fetchPersonalEvents))
+            )
 
           case .refreshTriggered:
             // Pull-to-refresh도 동일하게 쿼리
-            return .send(.internal(.fetchPromises))
+            return .merge(
+              .send(.internal(.fetchPromises)),
+              .send(.internal(.fetchPersonalEvents))
+            )
 
           case .todayPromiseTapped(let promise):
             // 즉시 이동 (캐시 hit면 전달, miss면 nil로 전달 → Detail에서 로드)
@@ -208,6 +226,9 @@ extension Home {
 
           case .refreshNotificationBadge:
             return .send(.internal(.fetchUnreadNotificationCount))
+
+          case .personalEventTapped(let event):
+            return .send(.delegate(.navigateToPersonalEvent(event)))
           }
 
         case .internal(let internalAction):
@@ -266,6 +287,26 @@ extension Home {
 
             case .failure(let error):
               state.promisesState = .failed(error)
+            }
+            return .none
+
+          case .fetchPersonalEvents:
+            return .run { [personalEventClient] send in
+              do {
+                let events = try await personalEventClient.getActiveEvents(20)
+                await send(.internal(.personalEventsResponse(.success(events))))
+              } catch {
+                await send(.internal(.personalEventsResponse(.failure(error))))
+              }
+            }
+
+          case .personalEventsResponse(let result):
+            switch result {
+            case .success(let events):
+              state.personalEventsState = .loaded(events)
+            case .failure:
+              // 개인 일정 실패 시 빈 배열로 처리 (그룹 약속은 정상 표시)
+              state.personalEventsState = .loaded([])
             }
             return .none
 
@@ -344,6 +385,11 @@ extension Home.Feature.State {
     promisesState.value ?? []
   }
 
+  /// 전체 개인 일정 (nil이면 빈 배열)
+  private var allPersonalEvents: [PersonalEventModel] {
+    personalEventsState.value ?? []
+  }
+
   /// 오늘 날짜 범위 (KST 기준)
   private var todayRange: (start: Date, end: Date) {
     var calendar = Calendar.current
@@ -353,11 +399,23 @@ extension Home.Feature.State {
     return (startOfDay, endOfDay)
   }
 
-  /// 오늘의 확정 약속 (오늘 + 확정)
+  /// 오늘의 확정 약속 (오늘 + 확정) - criticalZoneData 등에서 사용
   var todayPromises: [PromiseModel] {
     let (startOfDay, endOfDay) = todayRange
     return allPromises
       .filter { $0.startAt >= startOfDay && $0.startAt < endOfDay && $0.isConfirmed }
+  }
+
+  /// 오늘의 통합 일정 (그룹 약속 + 개인 일정, startAt 정렬)
+  var todayScheduleItems: [HomeModels.ScheduleItem] {
+    let (startOfDay, endOfDay) = todayRange
+    let promiseItems = allPromises
+      .filter { $0.startAt >= startOfDay && $0.startAt < endOfDay && $0.isConfirmed }
+      .map { HomeModels.ScheduleItem.promise($0) }
+    let eventItems = allPersonalEvents
+      .filter { $0.startAt >= startOfDay && $0.startAt < endOfDay && !$0.isPast }
+      .map { HomeModels.ScheduleItem.personalEvent($0) }
+    return (promiseItems + eventItems).sorted { $0.startAt < $1.startAt }
   }
 
   /// 응답 필요 약속 (미응답 + 투표 마감 전, 마감 임박순, 최대 5개)
@@ -384,6 +442,26 @@ extension Home.Feature.State {
         $0.isConfirmed &&
         $0.myVoteStatus(userId: userId) == .accepted
       }
+      .prefix(10)
+      .map { $0 }
+  }
+
+  /// 다가오는 통합 일정 (그룹 약속 + 개인 일정, startAt 정렬, 최대 10개)
+  var upcomingScheduleItems: [HomeModels.ScheduleItem] {
+    let (_, endOfDay) = todayRange
+    let userId = currentUser.userId
+    let promiseItems = allPromises
+      .filter {
+        $0.startAt >= endOfDay &&
+        $0.isConfirmed &&
+        $0.myVoteStatus(userId: userId) == .accepted
+      }
+      .map { HomeModels.ScheduleItem.promise($0) }
+    let eventItems = allPersonalEvents
+      .filter { $0.startAt >= endOfDay }
+      .map { HomeModels.ScheduleItem.personalEvent($0) }
+    return (promiseItems + eventItems)
+      .sorted { $0.startAt < $1.startAt }
       .prefix(10)
       .map { $0 }
   }
@@ -423,7 +501,7 @@ extension Home.Feature.State {
       .first
 
     return HomeModels.OverviewData(
-      todayCount: todayPromises.count,
+      todayCount: todayScheduleItems.count,
       nextPromise: nextPromise,
       needResponseCount: pendingPromises.count
     )
@@ -506,9 +584,14 @@ extension Home {
             } else {
               // 오늘의 일정 카드
               TodayScheduleCard(
-                promises: store.todayPromises,
-                onPromiseTap: { promise in
-                  store.send(.view(.todayPromiseTapped(promise)))
+                items: store.todayScheduleItems,
+                onItemTap: { item in
+                  switch item {
+                  case .promise(let p):
+                    store.send(.view(.todayPromiseTapped(p)))
+                  case .personalEvent(let e):
+                    store.send(.view(.personalEventTapped(e)))
+                  }
                 }
               )
               .padding(.horizontal, 16)
@@ -524,11 +607,16 @@ extension Home {
                 .padding(.horizontal, 16)
               }
 
-              // 다가오는 약속 섹션
+              // 다가오는 일정 섹션
               UpcomingSection(
-                promises: store.upcomingPromises,
-                onPromiseTap: { promise in
-                  store.send(.view(.upcomingPromiseTapped(promise)))
+                items: store.upcomingScheduleItems,
+                onItemTap: { item in
+                  switch item {
+                  case .promise(let p):
+                    store.send(.view(.upcomingPromiseTapped(p)))
+                  case .personalEvent(let e):
+                    store.send(.view(.personalEventTapped(e)))
+                  }
                 },
                 onSeeAllTap: {
                   store.send(.view(.seeAllUpcomingTapped))

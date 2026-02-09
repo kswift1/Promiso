@@ -509,6 +509,20 @@ export const updatePromise = onCall<UpdatePromiseRequest>(
         data.trackingStartMinutesBefore || null;
     }
 
+    // location (장소 정보)
+    if (data.location !== undefined) {
+      if (data.location === null) {
+        updateData.location = null;
+      } else {
+        updateData.location = {
+          name: data.location.name,
+          address: data.location.address || null,
+          latitude: data.location.latitude || null,
+          longitude: data.location.longitude || null,
+        };
+      }
+    }
+
     // 8. Firestore 업데이트
     await promiseRef.update(updateData);
 
