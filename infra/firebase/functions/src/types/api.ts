@@ -345,6 +345,18 @@ export interface UpdatePromiseRequest {
 
   /** 실시간 공유 시작 시간 (분 전, 선택적) */
   trackingStartMinutesBefore?: number | null;
+
+  /** 장소 정보 (선택적, null이면 삭제, undefined면 변경 없음) */
+  location?: {
+    /** 장소 이름 */
+    name: string;
+    /** 주소 */
+    address?: string | null;
+    /** 위도 */
+    latitude?: number | null;
+    /** 경도 */
+    longitude?: number | null;
+  } | null;
 }
 
 /**

@@ -23,64 +23,49 @@ extension EditPromise {
 
     public var body: some View {
       NavigationStack {
-        ScrollViewReader { proxy in
-          ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-              // 제목 & 이모지 섹션
-              titleSection
+        ScrollView {
+          VStack(alignment: .leading, spacing: 24) {
+            // 제목 & 이모지 & 시작 시간 섹션
+            essentialSection
 
-              // 설명 섹션
-              descriptionSection
+            // 종료 시간 섹션
+            endDateSection
 
-              // 위치 섹션
-              if store.editedPromise.location != nil {
-                locationSection
-              }
+            // 장소 섹션
+            locationSection
 
-              // 시작 시간 섹션
-              startDateSection(proxy: proxy)
-                .id("startDateTime")
+            // 최소 참가 인원 섹션
+            minimumParticipantsSection
 
-              // 종료 시간 섹션
-              endDateSection(proxy: proxy)
-                .id("endDateTime")
+            // 실시간 공유 섹션
+            realtimeShareSection
 
-              // 최소 참가 인원 섹션
-              minimumParticipantsSection
-                .id("minimumParticipants")
-
-              // 실시간 공유 섹션
-              realtimeShareSection
-            }
-            .padding(16)
+            // 설명 섹션
+            descriptionSection
           }
-          .scrollDismissesKeyboard(.interactively)
+          .padding(16)
         }
+        .scrollDismissesKeyboard(.interactively)
         .navigationTitle("약속 수정")
         .navigationBarTitleDisplayMode(.inline)
+        .auroraBackground()
         .toolbar {
-          ToolbarItem(placement: .topBarLeading) {
-            Button {
+          ToolbarItem(placement: .cancellationAction) {
+            Button("취소") {
               store.send(.view(.cancelTapped))
-            } label: {
-              Image(systemName: "xmark")
-                .font(.system(size: 16, weight: .medium))
             }
           }
 
-          ToolbarItem(placement: .topBarTrailing) {
-            Button {
-              store.send(.view(.saveTapped))
-            } label: {
-              if store.isUpdating {
-                ProgressView()
-                  .progressViewStyle(CircularProgressViewStyle())
-              } else {
-                Image(systemName: "checkmark")
-                  .font(.system(size: 16, weight: .semibold))
+          ToolbarItem(placement: .confirmationAction) {
+            if store.isUpdating {
+              ProgressView()
+            } else {
+              Button("수정") {
+                store.send(.view(.saveTapped))
               }
+              .fontWeight(.semibold)
+              .disabled(!store.canSave)
             }
-            .disabled(!store.canSave || store.isUpdating)
           }
         }
         .alert(
@@ -98,57 +83,76 @@ extension EditPromise {
             Text(error.localizedDescription)
           }
         }
+        .sheet(item: $store.scope(state: \.locationPicker, action: \.locationPicker)) { pickerStore in
+          LocationPicker.RootView(store: pickerStore)
+        }
       }
     }
 
-    // MARK: - Title Section
+    // MARK: - Essential Section
 
-    private var titleSection: some View {
-      VStack(alignment: .leading, spacing: 12) {
-        HStack(spacing: 4) {
-          Text("제목")
-            .font(.system(size: 15, weight: .semibold))
-            .foregroundStyle(.primary)
-
-          Text("*")
-            .font(.system(size: 16, weight: .bold))
-            .foregroundStyle(.red)
-        }
-
+    private var essentialSection: some View {
+      VStack(spacing: 0) {
+        // 제목 + 이모지
         HStack(spacing: 12) {
-          // 이모지 (자동 설정)
           Text(store.editedPromise.displayEmoji)
-            .font(.system(size: 32))
-            .frame(width: 56, height: 56)
+            .font(.system(size: 28))
+            .frame(width: 40, height: 40)
 
-          // 제목 입력
-          VStack(alignment: .trailing, spacing: 2) {
-            TextField("약속 제목", text: Binding(
-              get: { store.editedPromise.title },
-              set: { store.send(.view(.setTitle($0))) }
-            ))
-            .focused($focusedField, equals: .title)
-            .font(.system(size: 17))
-            .padding(16)
-            .background(Color(.systemGray6))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .toolbar {
-              ToolbarItemGroup(placement: .keyboard) {
-                Spacer()
-                Button {
-                  focusedField = nil
-                } label: {
-                  Image(systemName: "keyboard.chevron.compact.down")
-                }
+          TextField("약속 제목", text: Binding(
+            get: { store.editedPromise.title },
+            set: { store.send(.view(.setTitle($0))) }
+          ))
+          .focused($focusedField, equals: .title)
+          .font(.system(size: 18, weight: .medium))
+          .textFieldStyle(.plain)
+          .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+              Spacer()
+              Button {
+                focusedField = nil
+              } label: {
+                Image(systemName: "keyboard.chevron.compact.down")
+                  .foregroundStyle(Color.pmtext.secondary)
               }
             }
-
-            Text("\(store.editedPromise.title.count)/30")
-              .font(.system(size: 12))
-              .foregroundColor(.secondary)
           }
         }
+        .padding(12)
+
+        Divider()
+          .background(Color.white.opacity(0.12))
+
+        // 시작 시간
+        HStack {
+          Image(systemName: "clock")
+            .font(.body)
+            .foregroundStyle(Color.pmindigo.n500)
+            .frame(width: 24)
+
+          Text("시작")
+            .font(.body)
+            .foregroundStyle(Color.pmtext.primary)
+
+          Spacer()
+
+          DatePicker(
+            "",
+            selection: Binding(
+              get: { store.editedPromise.startAt },
+              set: { store.send(.view(.setStartDate($0))) }
+            ),
+            in: Date()...,
+            displayedComponents: [.date, .hourAndMinute]
+          )
+          .labelsHidden()
+          .tint(Color.pmindigo.n500)
+          .environment(\.locale, Locale(identifier: "ko_KR"))
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
       }
+      .adaptiveGlassCard()
     }
 
     // MARK: - Description Section
@@ -189,14 +193,20 @@ extension EditPromise {
 
     @ViewBuilder
     private var locationSection: some View {
-      if let location = store.editedPromise.location {
-        VStack(alignment: .leading, spacing: 12) {
-          Text("위치")
+      VStack(alignment: .leading, spacing: 12) {
+        HStack(spacing: 4) {
+          Text("장소")
             .font(.system(size: 15, weight: .semibold))
             .foregroundStyle(.primary)
 
+          Text("(선택)")
+            .font(.system(size: 13))
+            .foregroundStyle(.secondary)
+        }
+
+        if let location = store.editedPromise.location {
           VStack(spacing: 12) {
-            // 위치 정보
+            // 장소 정보 (탭하여 변경)
             HStack(spacing: 12) {
               Image(systemName: "mappin.circle.fill")
                 .font(.system(size: 24))
@@ -216,10 +226,23 @@ extension EditPromise {
               }
 
               Spacer()
+
+              Button {
+                store.send(.view(.removeLocation))
+              } label: {
+                Image(systemName: "xmark.circle.fill")
+                  .font(.system(size: 20))
+                  .foregroundStyle(Color(UIColor.systemGray3))
+              }
+              .buttonStyle(.plain)
             }
             .padding(16)
             .background(Color(.systemGray6))
             .clipShape(RoundedRectangle(cornerRadius: 12))
+            .contentShape(Rectangle())
+            .onTapGesture {
+              store.send(.view(.locationTapped))
+            }
 
             // 지도 프리뷰
             if let latitude = location.latitude,
@@ -233,90 +256,94 @@ extension EditPromise {
               .clipShape(RoundedRectangle(cornerRadius: 12))
             }
           }
-        }
-      }
-    }
+        } else {
+          Button {
+            store.send(.view(.locationTapped))
+          } label: {
+            HStack {
+              Image(systemName: "mappin")
+                .font(.body)
+                .foregroundColor(Color.pmindigo.n500)
 
-    // MARK: - Start Date Section
+              Text("장소 추가")
+                .font(.system(size: 15))
+                .foregroundStyle(.primary)
 
-    private func startDateSection(proxy: ScrollViewProxy) -> some View {
-      VStack(alignment: .leading, spacing: 12) {
-        HStack(spacing: 4) {
-          Text("시작 시간")
-            .font(.system(size: 15, weight: .semibold))
-            .foregroundStyle(.primary)
+              Spacer()
 
-          Text("*")
-            .font(.system(size: 16, weight: .bold))
-            .foregroundStyle(.red)
-        }
-
-        EditInlineDateTimePicker(
-          date: Binding(
-            get: { store.editedPromise.startAt },
-            set: { store.send(.view(.setStartDate($0))) }
-          ),
-          scrollProxy: proxy,
-          scrollToId: "startDateTime"
-        )
-
-        // 시간 경고 (1시간 이내)
-        if store.editedPromise.startAt.timeIntervalSinceNow < 3600 &&
-           store.editedPromise.startAt.timeIntervalSinceNow > 0 {
-          HStack(spacing: 8) {
-            Image(systemName: "exclamationmark.triangle.fill")
-              .font(.system(size: 14))
-              .foregroundColor(Color.pmwarning.n600)
-
-            Text("시작 시간이 1시간 이내입니다.")
-              .font(.system(size: 13))
-              .foregroundColor(Color.pmwarning.n600)
-
-            Spacer()
+              Image(systemName: "chevron.right")
+                .font(.system(size: 14))
+                .foregroundStyle(.secondary)
+            }
+            .contentShape(Rectangle())
           }
-          .padding(12)
-          .background(Color.pmwarning.n50)
-          .clipShape(RoundedRectangle(cornerRadius: 8))
+          .buttonStyle(.plain)
+          .padding(16)
+          .background(Color(.systemGray6))
+          .clipShape(RoundedRectangle(cornerRadius: 12))
         }
       }
     }
 
     // MARK: - End Date Section
 
-    private func endDateSection(proxy: ScrollViewProxy) -> some View {
-      VStack(alignment: .leading, spacing: 12) {
+    @ViewBuilder
+    private var endDateSection: some View {
+      VStack(spacing: 0) {
         HStack {
-          HStack(spacing: 4) {
-            Text("종료 시간")
-              .font(.system(size: 15, weight: .semibold))
-              .foregroundStyle(.primary)
+          Image(systemName: "clock.badge.checkmark")
+            .font(.body)
+            .foregroundStyle(Color.pmindigo.n500)
+            .frame(width: 24)
 
-            Text("(선택)")
-              .font(.system(size: 13))
-              .foregroundStyle(.secondary)
-          }
+          Text("종료 시간")
+            .font(.body)
+            .foregroundStyle(Color.pmtext.primary)
 
           Spacer()
 
           Toggle("", isOn: Binding(
             get: { store.useEndTime },
-            set: { _ in store.send(.view(.toggleUseEndTime)) }
+            set: { _ in store.send(.view(.toggleUseEndTime), animation: .default) }
           ))
           .labelsHidden()
+          .tint(Color.pmindigo.n500)
         }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
 
         if store.useEndTime {
-          EditInlineDateTimePicker(
-            date: Binding(
-              get: { store.editedPromise.endAt ?? store.editedPromise.startAt.addingTimeInterval(7200) },
-              set: { store.send(.view(.setEndDate($0))) }
-            ),
-            minimumDate: store.editedPromise.startAt,
-            scrollProxy: proxy,
-            scrollToId: "endDateTime"
-          )
+          Divider()
+            .background(Color.white.opacity(0.12))
+
+          HStack {
+            if let endAt = store.editedPromise.endAt {
+              Text(store.editedPromise.startAt.durationText(to: endAt, prefix: "총 "))
+                .font(.system(size: 13))
+                .foregroundStyle(Color.pmtext.secondary)
+            }
+
+            Spacer()
+
+            DatePicker(
+              "",
+              selection: Binding(
+                get: { store.editedPromise.endAt ?? store.editedPromise.startAt.addingTimeInterval(7200) },
+                set: { store.send(.view(.setEndDate($0))) }
+              ),
+              in: store.editedPromise.startAt...,
+              displayedComponents: [.date, .hourAndMinute]
+            )
+            .labelsHidden()
+            .tint(Color.pmindigo.n500)
+            .environment(\.locale, Locale(identifier: "ko_KR"))
+          }
+          .padding(.horizontal, 16)
+          .padding(.vertical, 12)
+          .transition(.opacity.combined(with: .move(edge: .top)))
         }
       }
+      .adaptiveGlassCard()
     }
 
     // MARK: - Minimum Participants Section
@@ -554,141 +581,6 @@ extension EditPromise {
       }
       .buttonStyle(ScaleButtonStyle())
       .sensoryFeedback(.selection, trigger: isSelected)
-    }
-  }
-}
-
-// MARK: - Edit Inline DateTime Picker
-
-private struct EditInlineDateTimePicker: View {
-  @Binding var date: Date
-  @State private var expandedSection: ExpandedSection? = nil
-  var minimumDate: Date = Date()
-  var scrollProxy: ScrollViewProxy? = nil
-  var scrollToId: String? = nil
-
-  enum ExpandedSection {
-    case date, time
-  }
-
-  private var formattedDate: String {
-    KoreanDateFormatters.dateDot.string(from: date)
-  }
-
-  private var formattedTime: String {
-    date.formattedTime
-  }
-
-  var body: some View {
-    VStack(spacing: 0) {
-      HStack(spacing: 16) {
-        // 날짜 영역
-        Button(action: {
-          withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-            if expandedSection == .date {
-              expandedSection = nil
-            } else {
-              expandedSection = .date
-              scrollAfterDelay()
-            }
-          }
-        }) {
-          HStack(spacing: 8) {
-            Image(systemName: "calendar")
-              .font(.system(size: 16))
-              .foregroundColor(Color.pmindigo.n500)
-
-            VStack(alignment: .leading, spacing: 2) {
-              Text("날짜")
-                .font(.system(size: 11))
-                .foregroundColor(.secondary)
-              Text(formattedDate)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundColor(.primary)
-            }
-          }
-          .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .buttonStyle(PlainButtonStyle())
-
-        Divider()
-          .frame(height: 32)
-
-        // 시간 영역
-        Button(action: {
-          withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-            if expandedSection == .time {
-              expandedSection = nil
-            } else {
-              expandedSection = .time
-              scrollAfterDelay()
-            }
-          }
-        }) {
-          HStack(spacing: 8) {
-            Image(systemName: "clock")
-              .font(.system(size: 16))
-              .foregroundColor(Color.pmindigo.n500)
-
-            VStack(alignment: .leading, spacing: 2) {
-              Text("시간")
-                .font(.system(size: 11))
-                .foregroundColor(.secondary)
-              Text(formattedTime)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundColor(.primary)
-            }
-          }
-          .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .buttonStyle(PlainButtonStyle())
-      }
-      .padding(16)
-      .background(Color(.systemGray6))
-      .clipShape(RoundedRectangle(cornerRadius: 12))
-
-      // DatePicker
-      if let section = expandedSection {
-        Group {
-          if section == .date {
-            DatePicker(
-              "",
-              selection: $date,
-              in: minimumDate...,
-              displayedComponents: [.date]
-            )
-            .datePickerStyle(.graphical)
-            .environment(\.locale, Locale(identifier: "ko_KR"))
-            .frame(width: 320)
-            .scaleEffect(1.05)
-          } else {
-            DatePicker(
-              "",
-              selection: $date,
-              in: minimumDate...,
-              displayedComponents: [.hourAndMinute]
-            )
-            .datePickerStyle(.wheel)
-            .environment(\.locale, Locale(identifier: "ko_KR"))
-            .labelsHidden()
-          }
-        }
-        .padding(.top, 12)
-        .transition(.asymmetric(
-          insertion: .scale(scale: 0.95, anchor: .top).combined(with: .opacity),
-          removal: .scale(scale: 0.95, anchor: .top).combined(with: .opacity)
-        ))
-      }
-    }
-  }
-
-  private func scrollAfterDelay() {
-    if let scrollProxy = scrollProxy, let scrollToId = scrollToId {
-      DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-        withAnimation {
-          scrollProxy.scrollTo(scrollToId, anchor: .top)
-        }
-      }
     }
   }
 }

@@ -218,11 +218,28 @@ extension PersonalMode {
                 onTap: {
                   store.send(.view(.eventTapped(event)))
                 },
+                onEdit: {
+                  store.send(.view(.editEvent(event)))
+                },
                 onDelete: {
                   store.send(.view(.deleteEvent(event)))
                 }
               )
               .id(event.id)
+              .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                Button(role: .destructive) {
+                  store.send(.view(.deleteEvent(event)))
+                } label: {
+                  Label("삭제", systemImage: "trash")
+                }
+                .tint(.red)
+
+                Button {
+                  store.send(.view(.editEvent(event)))
+                } label: {
+                  Label("수정", systemImage: "pencil")
+                }
+              }
               .listRowSeparator(.hidden)
               .listRowBackground(Color.clear)
               .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))

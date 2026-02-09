@@ -196,6 +196,23 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
       callableData["trackingStartMinutesBefore"] = NSNull()
     }
 
+    // location (장소 정보)
+    if let location = promise.location, !location.name.isEmpty {
+      var locationData: [String: Any] = ["name": location.name]
+      if let address = location.address {
+        locationData["address"] = address
+      }
+      if let latitude = location.latitude {
+        locationData["latitude"] = latitude
+      }
+      if let longitude = location.longitude {
+        locationData["longitude"] = longitude
+      }
+      callableData["location"] = locationData
+    } else {
+      callableData["location"] = NSNull()
+    }
+
     // Firebase Functions 호출
     _ = try await functions.httpsCallable("updatePromise").call(callableData)
   }

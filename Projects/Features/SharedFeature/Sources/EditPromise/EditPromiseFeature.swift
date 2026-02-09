@@ -25,6 +25,8 @@ extension EditPromise {
       /// 그룹 최대 멤버 수 (minimumParticipants 상한)
       var maxMembers: Int
 
+      @Presents var locationPicker: LocationPicker.Feature.State?
+
       public init(
         promise: PromiseModel,
         maxMembers: Int
@@ -42,7 +44,8 @@ extension EditPromise {
         originalPromise.startAt != editedPromise.startAt ||
         originalPromise.endAt != editedPromise.endAt ||
         originalPromise.minimumParticipants != editedPromise.minimumParticipants ||
-        originalPromise.trackingStartMinutesBefore != editedPromise.trackingStartMinutesBefore
+        originalPromise.trackingStartMinutesBefore != editedPromise.trackingStartMinutesBefore ||
+        originalPromise.location != editedPromise.location
       }
 
       /// 저장 가능 여부
@@ -70,6 +73,7 @@ extension EditPromise {
       case view(ViewAction)
       case `internal`(Internal)
       case delegate(Delegate)
+      case locationPicker(PresentationAction<LocationPicker.Feature.Action>)
 
       @CasePathable
       public enum ViewAction: Sendable {
@@ -83,6 +87,8 @@ extension EditPromise {
         case decrementParticipants
         case toggleUseRealtimeShare
         case setTrackingMinutes(Int)
+        case locationTapped
+        case removeLocation
         case saveTapped
         case cancelTapped
         case clearError
@@ -170,6 +176,14 @@ extension EditPromise {
             state.editedPromise.trackingStartMinutesBefore = minutes
             return .none
 
+          case .locationTapped:
+            state.locationPicker = LocationPicker.Feature.State()
+            return .none
+
+          case .removeLocation:
+            state.editedPromise.location = nil
+            return .none
+
           case .saveTapped:
             guard state.canSave else { return .none }
             state.isUpdating = true
@@ -220,9 +234,24 @@ extension EditPromise {
             return .none
           }
 
+        case .locationPicker(.presented(.delegate(.locationSelected(let location)))):
+          state.editedPromise.location = location
+          state.locationPicker = nil
+          return .none
+
+        case .locationPicker(.presented(.delegate(.dismissed))):
+          state.locationPicker = nil
+          return .none
+
+        case .locationPicker:
+          return .none
+
         case .delegate:
           return .none
         }
+      }
+      .ifLet(\.$locationPicker, action: \.locationPicker) {
+        LocationPicker.Feature()
       }
     }
   }
