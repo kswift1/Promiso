@@ -12,6 +12,9 @@ jobs:
   build-and-test:
     runs-on: macos-15
     timeout-minutes: 45
+    permissions:
+      pull-requests: write
+      issues: write
 
     steps:
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
