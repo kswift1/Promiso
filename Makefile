@@ -24,36 +24,32 @@ FORCE ?=
 setup:
 	@echo "🚀 Promiso 프로젝트 초기 설정 중..."
 	@echo ""
-	@echo "1/6 mise 설정 신뢰..."
-	@if command -v mise >/dev/null 2>&1; then \
-		mise trust 2>/dev/null || true; \
-		mise settings set experimental true 2>/dev/null || true; \
-		mise settings set yes true 2>/dev/null || true; \
-		echo "  ✅ mise 설정 완료"; \
-	else \
-		echo "  ⚠️  mise가 설치되어 있지 않습니다."; \
-	fi
-	@echo "2/6 Tuist 의존성 설치..."
+	@echo "1/5 Tuist 의존성 설치..."
 	@tuist install
-	@echo "3/6 Firebase Functions 의존성 pull..."
+	@echo "2/5 Secrets 동기화 (Notion → xcconfig)..."
+	@if [ -n "$$NOTION_API_KEY" ]; then \
+		./scripts/sync-secrets.sh pull; \
+	else \
+		echo "  ⚠️  NOTION_API_KEY가 설정되지 않았습니다. template에서 xcconfig를 복사합니다."; \
+		cp Config/Dev.xcconfig.template Config/Dev.xcconfig 2>/dev/null || true; \
+		cp Config/Stage.xcconfig.template Config/Stage.xcconfig 2>/dev/null || true; \
+		cp Config/Prod.xcconfig.template Config/Prod.xcconfig 2>/dev/null || true; \
+		echo "  ⚠️  실제 API Key를 사용하려면: export NOTION_API_KEY=... && make secrets-pull"; \
+	fi
+	@echo "3/5 Firebase Functions 의존성 설치..."
 	@if command -v npm >/dev/null 2>&1; then \
 		npm --prefix infra/firebase/functions ci; \
 	else \
 		echo "  ⚠️  npm이 설치되어 있지 않습니다. Functions 의존성 설치를 건너뜁니다."; \
 	fi
-	@echo "4/6 xcconfig 준비..."
-	@$(MAKE) --no-print-directory ensure-config
-	@echo "5/6 Xcode 프로젝트 생성..."
+	@echo "4/5 Xcode 프로젝트 생성..."
 	@tuist generate
-	@echo "6/6 Git Hooks 설치 (보안)..."
+	@echo "5/5 Git Hooks 설치 (보안)..."
 	@./scripts/install-git-hooks.sh
 	@echo ""
 	@echo "✅ 초기 설정 완료!"
 	@echo ""
-	@echo "다음 단계:"
-	@echo "  - Secrets 동기화: make secrets-pull"
-	@echo "  - Firebase 에뮬레이터: make emulator-start"
-	@echo "  - 도움말: make help"
+	@echo "도움말: make help"
 	@echo ""
 
 # xcconfig 파일 준비 (누락 시 자동 보완)
