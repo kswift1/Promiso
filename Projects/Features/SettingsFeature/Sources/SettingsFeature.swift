@@ -624,10 +624,15 @@ extension DateTimeSettings {
     @ObservableState
     public struct State: Equatable {
       @Shared(.appStorage(AppConstants.UserDefaults.use24HourFormat)) public var use24HourFormat: Bool = false
+      /// 선택된 값 (임시)
+      var selectedValue: Bool = false
       /// 재시작 확인 Alert 표시 여부
       var showRestartAlert: Bool = false
-      /// 변경하려는 값 (Alert 확인 시 적용)
-      var pendingValue: Bool?
+
+      /// 변경사항이 있는지
+      var hasChanges: Bool {
+        selectedValue != use24HourFormat
+      }
 
       public init() {}
     }
@@ -638,7 +643,8 @@ extension DateTimeSettings {
 
     public enum View: Equatable, Sendable {
       case onAppear
-      case use24HourFormatChanged(Bool)
+      case formatSelected(Bool)
+      case saveChanges
       case restartConfirmed
       case restartCancelled
     }
@@ -649,12 +655,16 @@ extension DateTimeSettings {
         case .view(let viewAction):
           switch viewAction {
           case .onAppear:
+            state.selectedValue = state.use24HourFormat
             return .none
 
-          case .use24HourFormatChanged(let value):
-            // 값이 변경된 경우에만 Alert 표시
-            guard value != state.use24HourFormat else { return .none }
-            state.pendingValue = value
+          case .formatSelected(let value):
+            state.selectedValue = value
+            return .run { _ in
+              await hapticFeedback.selection()
+            }
+
+          case .saveChanges:
             state.showRestartAlert = true
             return .run { _ in
               await hapticFeedback.medium()
@@ -662,10 +672,8 @@ extension DateTimeSettings {
 
           case .restartConfirmed:
             state.showRestartAlert = false
-            guard let newValue = state.pendingValue else { return .none }
-            state.$use24HourFormat.withLock { $0 = newValue }
-            KoreanDateFormatters.use24HourFormat = newValue
-            state.pendingValue = nil
+            state.$use24HourFormat.withLock { $0 = state.selectedValue }
+            KoreanDateFormatters.use24HourFormat = state.selectedValue
             return .run { [notificationCenter] _ in
               await hapticFeedback.success()
               // 앱 재시작 요청 Notification 발송
@@ -674,7 +682,6 @@ extension DateTimeSettings {
 
           case .restartCancelled:
             state.showRestartAlert = false
-            state.pendingValue = nil
             return .none
           }
         }
@@ -695,6 +702,7 @@ extension DateTimeSettings {
       ScrollView {
         VStack(spacing: 16) {
           timeFormatSection
+          exampleCardSection
         }
         .padding(.horizontal, 16)
         .padding(.top, 12)
@@ -703,6 +711,17 @@ extension DateTimeSettings {
       .auroraBackground()
       .navigationTitle("날짜 시간 표시")
       .navigationBarTitleDisplayMode(.inline)
+      .toolbar {
+        ToolbarItem(placement: .navigationBarTrailing) {
+          if store.hasChanges {
+            Button("변경") {
+              store.send(.view(.saveChanges))
+            }
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundStyle(Color.pmindigo.n500)
+          }
+        }
+      }
       .onAppear {
         store.send(.view(.onAppear))
       }
@@ -727,32 +746,12 @@ extension DateTimeSettings {
           .font(.system(size: 16, weight: .semibold))
           .padding(.horizontal, 4)
 
-        HStack(spacing: 12) {
-          Image(systemName: "clock")
-            .font(.system(size: 16, weight: .semibold))
-            .foregroundStyle(Color.pmindigo.n500)
-
-          VStack(alignment: .leading, spacing: 2) {
-            Text(store.use24HourFormat ? "24시간 형식" : "12시간 형식")
-              .font(.body)
-              .foregroundStyle(Color.pmtext.primary)
-
-            Text(store.use24HourFormat ? "예: 14:30" : "예: 오후 2:30")
-              .font(.caption)
-              .foregroundStyle(Color.pmtext.secondary)
-          }
-
-          Spacer()
-
-          Toggle("", isOn: Binding(
-            get: { store.use24HourFormat },
-            set: { store.send(.view(.use24HourFormatChanged($0))) }
-          ))
-          .labelsHidden()
-          .tint(Color.pmindigo.n500)
+        VStack(spacing: 0) {
+          formatRow(is24Hour: false, title: "12시간 형식", description: "예: 오후 2:30")
+          Divider()
+            .padding(.leading, 48)
+          formatRow(is24Hour: true, title: "24시간 형식", description: "예: 14:30")
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
         .adaptiveGlassCard()
 
         Text("앱 전체에서 사용되는 시간 표시 형식을 설정합니다.")
@@ -760,6 +759,114 @@ extension DateTimeSettings {
           .foregroundStyle(Color.pmtext.secondary)
           .padding(.horizontal, 4)
       }
+    }
+
+    private func formatRow(is24Hour: Bool, title: String, description: String) -> some View {
+      Button {
+        store.send(.view(.formatSelected(is24Hour)))
+      } label: {
+        HStack(spacing: 12) {
+          Image(systemName: "clock")
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundStyle(Color.pmindigo.n500)
+            .frame(width: 20)
+
+          VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+              .font(.body)
+              .foregroundStyle(Color.pmtext.primary)
+
+            Text(description)
+              .font(.caption)
+              .foregroundStyle(Color.pmtext.secondary)
+          }
+
+          Spacer()
+
+          if store.selectedValue == is24Hour {
+            Image(systemName: "checkmark")
+              .font(.system(size: 14, weight: .semibold))
+              .foregroundStyle(Color.pmindigo.n500)
+          }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .contentShape(Rectangle())
+      }
+      .buttonStyle(.plain)
+    }
+
+    private var exampleCardSection: some View {
+      VStack(alignment: .leading, spacing: 10) {
+        Text("미리보기")
+          .font(.system(size: 16, weight: .semibold))
+          .padding(.horizontal, 4)
+
+        ExamplePromiseCard(use24Hour: store.selectedValue)
+
+        Text("실제 약속 카드는 위와 같이 표시됩니다.")
+          .font(.system(size: 12))
+          .foregroundStyle(Color.pmtext.secondary)
+          .padding(.horizontal, 4)
+      }
+    }
+  }
+
+  // MARK: - Example Promise Card
+
+  private struct ExamplePromiseCard: View {
+    let use24Hour: Bool
+
+    private var timeString: String {
+      if use24Hour {
+        return "14:30 - 16:30"
+      } else {
+        return "오후 2:30 - 오후 4:30"
+      }
+    }
+
+    private var dateString: String {
+      "2월 15일 (토)"
+    }
+
+    var body: some View {
+      VStack(alignment: .leading, spacing: 14) {
+        // Main Content
+        HStack(alignment: .top, spacing: 12) {
+          Text("🍽️")
+            .font(.system(size: 44))
+
+          VStack(alignment: .leading, spacing: 10) {
+            Text("팀 회식")
+              .font(.system(size: 19, weight: .bold))
+              .foregroundColor(.primary)
+
+            VStack(alignment: .leading, spacing: 6) {
+              // Date & Time
+              HStack(spacing: 4) {
+                Text("⏰")
+                  .font(.system(size: 14))
+                Text("\(dateString) \(timeString)")
+                  .font(.system(size: 14, weight: .medium))
+              }
+              .foregroundColor(.primary)
+
+              // Location
+              HStack(spacing: 4) {
+                Text("📍")
+                  .font(.system(size: 14))
+                Text("강남역 3번 출구")
+                  .font(.system(size: 14, weight: .medium))
+              }
+              .foregroundColor(.primary)
+            }
+          }
+
+          Spacer()
+        }
+      }
+      .padding(16)
+      .adaptiveGlassCard()
     }
   }
 }
