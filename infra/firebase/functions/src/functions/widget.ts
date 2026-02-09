@@ -275,6 +275,10 @@ async function fetchPromisesDirectly(
       const minimumParticipants = (data.minimumParticipants as number) || 2;
       const acceptedCount = votes?.accepted?.length || 0;
       const isConfirmed = acceptedCount >= minimumParticipants;
+
+      // 재계산 결과 미확정인 약속은 위젯에서 제외
+      if (!isConfirmed) continue;
+
       const myVoteStatus = getMyVoteStatus(userId, votes);
 
       const startAt = data.startAt as FirebaseFirestore.Timestamp;
@@ -305,7 +309,7 @@ async function fetchPromisesDirectly(
     }
   }
 
-  // 4. 분류: today (3개), upcoming (4개)
+  // 4. 분류: today / upcoming (개인 일정 병합 전이므로 제한 없이 분류)
   const todayPromises: SnapshotPromise[] = [];
   const upcomingPromises: SnapshotPromise[] = [];
 
@@ -313,32 +317,96 @@ async function fetchPromisesDirectly(
     const promiseDate = new Date(promise.startAt);
 
     if (promiseDate >= startOfDay && promiseDate < endOfDay) {
-      if (todayPromises.length < 3) {
-        todayPromises.push(promise);
-      }
+      todayPromises.push(promise);
     } else if (promiseDate >= endOfDay) {
-      if (upcomingPromises.length < 4) {
-        upcomingPromises.push(promise);
-      }
+      upcomingPromises.push(promise);
     }
   }
 
-  // 5. next = 첫 번째 약속 (today 우선, 없으면 upcoming)
-  const nextPromise = todayPromises[0] || upcomingPromises[0] || null;
+  // 5. 개인 일정 조회 → SnapshotPromise로 변환하여 통합
+  const personalPromises: SnapshotPromise[] = [];
+  try {
+    const personalEventsRef = db
+      .collection("users").doc(userId)
+      .collection("personalEvents");
+    const personalSnapshot = await personalEventsRef
+      .where("startAt", ">=", now)
+      .orderBy("startAt", "asc")
+      .limit(5)
+      .get();
+
+    for (const doc of personalSnapshot.docs) {
+      const data = doc.data();
+      const peStartAt = data.startAt as FirebaseFirestore.Timestamp | undefined;
+      const peEndAt = data.endAt as FirebaseFirestore.Timestamp | undefined;
+
+      if (peStartAt) {
+        personalPromises.push({
+          type: "personal",
+          id: doc.id,
+          title: (data.title as string) || "",
+          emoji: (data.emoji as string) || "📅",
+          startAt: peStartAt.toDate().toISOString(),
+          endAt: toISOString(peEndAt),
+          location: (data.location as { name?: string })?.name || null,
+          groupId: "",
+          groupName: null,
+          groupImageUrl: null,
+          isConfirmed: true,
+          minimumParticipants: 0,
+          votes: {accepted: [], declined: []},
+          myVoteStatus: "voted",
+          votingDeadline: null,
+        });
+      }
+    }
+  } catch (error) {
+    // 개인 일정 조회 실패 시 무시 (약속 데이터는 정상 반환)
+    console.warn(
+      "⚠️ [Widget] Personal events query failed:",
+      error
+    );
+  }
+
+  // 6. 개인 일정을 today/upcoming에 병합 후 정렬
+  for (const pe of personalPromises) {
+    const peDate = new Date(pe.startAt);
+    if (peDate >= startOfDay && peDate < endOfDay) {
+      todayPromises.push(pe);
+    } else if (peDate >= endOfDay) {
+      upcomingPromises.push(pe);
+    }
+  }
+
+  // 시간순 재정렬 (개인 일정 병합 후)
+  todayPromises.sort((a, b) =>
+    new Date(a.startAt).getTime() - new Date(b.startAt).getTime()
+  );
+  upcomingPromises.sort((a, b) =>
+    new Date(a.startAt).getTime() - new Date(b.startAt).getTime()
+  );
+
+  // today 3개, upcoming 4개로 제한
+  const limitedToday = todayPromises.slice(0, 3);
+  const limitedUpcoming = upcomingPromises.slice(0, 4);
+
+  // 7. next = 첫 번째 일정 (today 우선, 없으면 upcoming)
+  const nextPromise = limitedToday[0] || limitedUpcoming[0] || null;
 
   console.log(
     `📦 [Widget] Query: ${userId} ` +
     `(next=${nextPromise?.id ?? "null"}, ` +
-    `today=${todayPromises.length}, upcoming=${upcomingPromises.length})`
+    `today=${limitedToday.length}, upcoming=${limitedUpcoming.length}, ` +
+    `personal=${personalPromises.length})`
   );
 
   return {
     next: nextPromise,
-    today: todayPromises,
-    upcoming: upcomingPromises,
+    today: limitedToday,
+    upcoming: limitedUpcoming,
     meta: {
-      todayCount: todayPromises.length,
-      upcomingCount: upcomingPromises.length,
+      todayCount: limitedToday.length,
+      upcomingCount: limitedUpcoming.length,
       updatedAt: new Date().toISOString(),
       version: 1,
     },

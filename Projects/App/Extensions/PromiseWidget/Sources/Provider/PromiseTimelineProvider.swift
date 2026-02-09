@@ -50,24 +50,16 @@ struct PromiseTimelineProvider: TimelineProvider {
         return
       }
 
-      // 서버에서 직접 데이터 가져오기
+      // 서버에서 직접 데이터 가져오기 (약속 + 개인 일정 통합)
       let result = await WidgetDataManager.fetchFromServer()
 
-      let state: Entry.WidgetState
-      if result.promises.isEmpty {
-        // 데이터가 없으면 빈 상태 표시 (서버 에러 여부 무관)
-        // 에러로 인한 빈 결과도 사용자에게는 "약속 없음"으로 표시
-        state = .empty
-      } else {
-        state = .loaded
-      }
-
-      let entry = Entry(date: Date(), promises: result.promises, state: state)
+      let state: Entry.WidgetState = result.items.isEmpty ? .empty : .loaded
+      let entry = Entry(date: Date(), promises: result.items, state: state)
 
       // 에러 시 빠른 재시도, 정상 시 일반 간격 갱신
       let refreshDate = result.hadError
         ? Date().addingTimeInterval(Self.errorRefreshInterval)
-        : calculateNextRefresh(promises: result.promises)
+        : calculateNextRefresh(items: result.items)
       let timeline = Timeline(entries: [entry], policy: .after(refreshDate))
       completion(timeline)
     }
@@ -80,12 +72,12 @@ struct PromiseTimelineProvider: TimelineProvider {
       return Entry(date: Date(), promises: [], state: .notLoggedIn)
     }
 
-    let promises = WidgetDataManager.loadPromises()
-    let state: Entry.WidgetState = promises.isEmpty ? .empty : .loaded
-    return Entry(date: Date(), promises: promises, state: state)
+    let allItems = WidgetDataManager.loadAllItems()
+    let state: Entry.WidgetState = allItems.isEmpty ? .empty : .loaded
+    return Entry(date: Date(), promises: allItems, state: state)
   }
 
-  private func calculateNextRefresh(promises: [WidgetPromiseData]) -> Date {
+  private func calculateNextRefresh(items: [WidgetPromiseData]) -> Date {
     Date().addingTimeInterval(Self.normalRefreshInterval)
   }
 }

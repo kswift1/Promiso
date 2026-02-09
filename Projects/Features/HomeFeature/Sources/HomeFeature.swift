@@ -278,8 +278,10 @@ extension Home {
               }
               state.promisesState = .loaded(promisesWithGroup)
 
-              // 위젯 캐시 업데이트
-              WidgetDataManager.savePromises(promisesWithGroup.toWidgetData())
+              // 위젯 캐시 업데이트 (확정된 약속만)
+              WidgetDataManager.savePromises(
+                promisesWithGroup.filter(\.isConfirmed).toWidgetData()
+              )
               WidgetDataManager.reloadWidgets()
 
               // 약속 로드 성공 시 알림 개수도 조회
@@ -304,6 +306,8 @@ extension Home {
             switch result {
             case .success(let events):
               state.personalEventsState = .loaded(events)
+              WidgetDataManager.savePersonalEvents(events.toWidgetData())
+              WidgetDataManager.reloadWidgets()
             case .failure:
               // 개인 일정 실패 시 빈 배열로 처리 (그룹 약속은 정상 표시)
               state.personalEventsState = .loaded([])

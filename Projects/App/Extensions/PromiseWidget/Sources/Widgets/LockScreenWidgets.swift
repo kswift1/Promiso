@@ -32,18 +32,18 @@ struct CircularPromiseWidgetView: View {
       }
       .accessibilityLabel("약속 없음")
     case .loaded:
-      if let promise = entry.nextPromise {
+      if let item = entry.nextItem {
         ZStack {
           AccessoryWidgetBackground()
           VStack(spacing: 0) {
-            Text(promise.emoji)
+            Text(item.emoji)
               .font(.system(size: 16))
-            Text(dDayText(promise.startAt))
+            Text(dDayText(item.startAt))
               .font(.system(size: 12, weight: .bold))
               .minimumScaleFactor(0.8)
           }
         }
-        .accessibilityLabel(accessibilityLabel(for: promise))
+        .accessibilityLabel(circularAccessibilityLabel(for: item))
       } else {
         ZStack {
           AccessoryWidgetBackground()
@@ -71,8 +71,9 @@ struct CircularPromiseWidgetView: View {
     }
   }
 
-  private func accessibilityLabel(for promise: WidgetPromiseData) -> String {
-    "\(dDayText(promise.startAt)), \(promise.title)"
+  private func circularAccessibilityLabel(for item: WidgetPromiseData) -> String {
+    let prefix = item.isPersonalEvent ? "개인 일정, " : ""
+    return "\(prefix)\(dDayText(item.startAt)), \(item.title)"
   }
 }
 
@@ -105,8 +106,8 @@ struct RectangularPromiseWidgetView: View {
     case .error:
       emptyView(message: "데이터 로드 실패")
     case .loaded:
-      if let promise = entry.nextPromise {
-        promiseView(promise)
+      if let item = entry.nextItem {
+        scheduleItemView(item)
       } else {
         emptyView(message: "예정된 약속 없음")
       }
@@ -125,31 +126,36 @@ struct RectangularPromiseWidgetView: View {
   }
 
   @ViewBuilder
-  private func promiseView(_ promise: WidgetPromiseData) -> some View {
+  private func scheduleItemView(_ item: WidgetPromiseData) -> some View {
     HStack(alignment: .center, spacing: 8) {
       // 이모지 + D-Day
       VStack(spacing: 2) {
-        Text(promise.emoji)
+        Text(item.emoji)
           .font(.system(size: 20))
-        Text(dDayText(promise.startAt))
-          .font(.system(size: 10, weight: .bold))
+        if item.isPersonalEvent {
+          Text("개인")
+            .font(.system(size: 9, weight: .bold))
+        } else {
+          Text(dDayText(item.startAt))
+            .font(.system(size: 10, weight: .bold))
+        }
       }
       .frame(width: 36)
 
       // 제목 + 시간
       VStack(alignment: .leading, spacing: 2) {
-        Text(promise.title)
+        Text(item.title)
           .font(.headline)
           .lineLimit(1)
 
-        Text(formatTime(promise.startAt))
+        Text(formatTime(item.startAt))
           .font(.subheadline)
       }
 
       Spacer(minLength: 0)
     }
     .accessibilityElement(children: .combine)
-    .accessibilityLabel(accessibilityLabel(for: promise))
+    .accessibilityLabel(rectangularAccessibilityLabel(for: item))
   }
 
   private func dDayText(_ date: Date) -> String {
@@ -175,9 +181,13 @@ struct RectangularPromiseWidgetView: View {
     return formatter.string(from: date)
   }
 
-  private func accessibilityLabel(for promise: WidgetPromiseData) -> String {
-    var components = [dDayText(promise.startAt), formatTime(promise.startAt), promise.title]
-    if let location = promise.location {
+  private func rectangularAccessibilityLabel(for item: WidgetPromiseData) -> String {
+    var components: [String] = []
+    if item.isPersonalEvent {
+      components.append("개인 일정")
+    }
+    components.append(contentsOf: [dDayText(item.startAt), formatTime(item.startAt), item.title])
+    if let location = item.location {
       components.append(location)
     }
     return components.joined(separator: ", ")
