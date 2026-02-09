@@ -290,6 +290,7 @@ extension RootTab {
           return .merge(effects)
 
         case .home(.delegate(.navigateToGroupWithPromise(let groupId, let promiseId))):
+          state.promiseMode = .group
           state.selectedTab = .promise(.group)
           // 그룹 선택 후 응답 필요 필터로 해당 약속 하이라이트
           return .send(.groupMain(.view(.handleDeeplink(
@@ -297,6 +298,7 @@ extension RootTab {
           ))))
 
         case .home(.delegate(.navigateToPromise(let promiseId, let groupId))):
+          state.promiseMode = .group
           state.selectedTab = .promise(.group)
           if let groupInfo = state.groupMain.allGroupSummaries?.first(where: { $0.id == groupId }) {
             return .send(.groupMain(.view(.groupChanged(groupInfo))))
@@ -390,10 +392,12 @@ extension RootTab {
           return .none
 
         case .openJoinGroupWithCode(let inviteCode):
+          state.promiseMode = .group
           state.selectedTab = .promise(.group)
           return .send(.groupMain(.view(.joinGroupWithCode(inviteCode))))
 
         case .handleGroupDeeplink(let deeplink):
+          state.promiseMode = .group
           state.selectedTab = .promise(.group)
           return .send(.groupMain(.view(.handleDeeplink(deeplink))))
 
@@ -426,6 +430,7 @@ extension RootTab {
 
         case .openCreatePromiseIfPossible:
           // 그룹 탭으로 이동 후 그룹 유무에 따라 CreatePromise 열기
+          state.promiseMode = .group
           state.selectedTab = .promise(.group)
           return .send(.groupMain(.view(.openCreatePromiseIfPossible)))
 
