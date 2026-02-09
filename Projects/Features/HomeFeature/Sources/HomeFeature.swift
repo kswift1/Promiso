@@ -340,7 +340,7 @@ extension Home {
 
 extension Home.Feature.State {
   /// 전체 약속 (nil이면 빈 배열)
-  private var allPromises: [PromiseModel] {
+  var allPromises: [PromiseModel] {
     promisesState.value ?? []
   }
 
