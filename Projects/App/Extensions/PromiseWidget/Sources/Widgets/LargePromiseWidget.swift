@@ -200,26 +200,26 @@ struct LargePromiseWidgetView: View {
               Text("개인")
             }
             .foregroundStyle(Color.pmaurora.purple)
-          } else if let location = item.location {
-            HStack(spacing: 2) {
-              Image(systemName: "location.fill")
-                .font(.system(size: 8))
-              Text(location)
-                .lineLimit(1)
+          } else {
+            if let location = item.location {
+              HStack(spacing: 2) {
+                Image(systemName: "location.fill")
+                  .font(.system(size: 8))
+                Text(location)
+                  .lineLimit(1)
+              }
             }
-            if !item.isPersonalEvent && item.participantCount > 0 {
+
+            if item.location != nil && item.participantCount > 0 {
               Text("·")
+            }
+
+            if item.participantCount > 0 {
               HStack(spacing: 2) {
                 Image(systemName: "person.2.fill")
                   .font(.system(size: 8))
                 Text("\(item.participantCount)명")
               }
-            }
-          } else if !item.isPersonalEvent && item.participantCount > 0 {
-            HStack(spacing: 2) {
-              Image(systemName: "person.2.fill")
-                .font(.system(size: 8))
-              Text("\(item.participantCount)명")
             }
           }
         }
