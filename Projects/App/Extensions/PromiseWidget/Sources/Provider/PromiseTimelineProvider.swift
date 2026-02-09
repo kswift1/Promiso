@@ -44,18 +44,21 @@ struct PromiseTimelineProvider: TimelineProvider {
       // 서버에서 직접 데이터 가져오기
       let result = await WidgetDataManager.fetchFromServer()
 
-      // 에러 발생 + 캐시도 비어있으면 에러 상태 표시
       let state: Entry.WidgetState
-      if result.hadError && result.promises.isEmpty {
-        state = .error
-      } else if result.promises.isEmpty {
+      if result.promises.isEmpty {
+        // 데이터가 없으면 빈 상태 표시 (서버 에러 여부 무관)
+        // 에러로 인한 빈 결과도 사용자에게는 "약속 없음"으로 표시
         state = .empty
       } else {
         state = .loaded
       }
 
       let entry = Entry(date: Date(), promises: result.promises, state: state)
-      let refreshDate = calculateNextRefresh(promises: result.promises)
+
+      // 에러 시 1분 후 빠른 재시도, 정상 시 5분 후 갱신
+      let refreshDate = result.hadError
+        ? Date().addingTimeInterval(60)
+        : calculateNextRefresh(promises: result.promises)
       let timeline = Timeline(entries: [entry], policy: .after(refreshDate))
       completion(timeline)
     }
