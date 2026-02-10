@@ -196,6 +196,8 @@ public enum AppConstants {
     public static let defaultPromiseTabMode = "promisoDefaultPromiseTabMode"
     /// 개인 일정 캘린더 동기화 활성화 여부
     public static let personalCalendarSync = "promisoPersonalCalendarSync"
+    /// 앱 소개 온보딩 완료 여부
+    public static let hasCompletedOnboarding = "promisoHasCompletedOnboarding"
   }
 
   // MARK: - Shared State Keys (TCA @Shared inMemory)
