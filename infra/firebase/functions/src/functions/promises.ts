@@ -24,6 +24,28 @@ import {
 } from "../types/api";
 
 /**
+ * Firebase Storage URL 유효성 검증
+ * @param {string} url - 검증할 URL
+ * @return {boolean} Firebase Storage URL 형식이면 true
+ */
+function isValidFirebaseStorageUrl(url: string): boolean {
+  const bucket = admin.storage().bucket();
+  const bucketName = bucket.name;
+
+  // gs:// 형식
+  if (url.startsWith(`gs://${bucketName}/`)) {
+    return true;
+  }
+
+  // https:// 형식
+  if (url.startsWith(`https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/`)) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
  * 약속 생성
  *
  * @remarks
@@ -138,7 +160,8 @@ export const createPromise = onCall<CreatePromiseRequest>(
       } : null,
       trackingStartMinutesBefore: data.arrivalSharingTime || null,
       imageUrls: data.imageUrls && data.imageUrls.length > 0 ?
-        data.imageUrls.slice(0, 3) : null,
+        data.imageUrls.slice(0, 3).filter(isValidFirebaseStorageUrl) :
+        null,
       badgesCleared: false, // 배지 정리 여부 (마감 시 true로 변경)
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
@@ -530,7 +553,9 @@ export const updatePromise = onCall<UpdatePromiseRequest>(
       if (data.imageUrls === null || data.imageUrls.length === 0) {
         updateData.imageUrls = null;
       } else {
-        updateData.imageUrls = data.imageUrls.slice(0, 3);
+        updateData.imageUrls = data.imageUrls
+          .slice(0, 3)
+          .filter(isValidFirebaseStorageUrl);
       }
     }
 

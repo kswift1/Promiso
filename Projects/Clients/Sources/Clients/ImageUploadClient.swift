@@ -110,6 +110,7 @@ extension ImageUploadClient: DependencyKey {
       deleteImages: { urls in
         await withTaskGroup(of: Void.self) { group in
           for urlString in urls {
+            guard !urlString.isEmpty else { continue }
             group.addTask {
               do {
                 let ref: StorageReference

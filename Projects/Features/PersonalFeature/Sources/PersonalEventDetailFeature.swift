@@ -136,8 +136,10 @@ extension PersonalEventDetail {
               try? await calendarSyncClient.removePersonalEvent(event.id)
 
               // 이미지 Storage에서 제거 (best-effort)
-              if !event.imageUrls.isEmpty {
-                await imageUploadClient.deleteImages(event.imageUrls)
+              // TODO: Functions에서 prefix 기반 삭제로 변경 (promise 삭제와 일관성)
+              let validUrls = event.imageUrls.filter { !$0.isEmpty }
+              if !validUrls.isEmpty {
+                await imageUploadClient.deleteImages(validUrls)
               }
 
               await send(.internal(.deleteSuccess))
