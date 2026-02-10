@@ -211,8 +211,8 @@ extension AppEntry {
             if isAuthenticated {
               return .send(.internal(.startProfileCheck))
             } else {
-              // TODO: 테스트용 - 온보딩 항상 표시 (릴리즈 전 원복 필요)
-              let hasCompletedOnboarding = false // userDefaultsClient.boolForKey(AppConstants.UserDefaults.hasCompletedOnboarding)
+              // 온보딩 인트로 완료 여부에 따라 분기
+              let hasCompletedOnboarding = userDefaultsClient.boolForKey(AppConstants.UserDefaults.hasCompletedOnboarding)
               if !hasCompletedOnboarding {
                 state.isFullOnboarding = true
                 state.destination = .onboardingIntro(OnboardingIntro.State())
@@ -387,10 +387,15 @@ extension AppEntry {
 
         case .destination(.presented(.profile(.delegate(.completed(let userModel))))):
           analyticsClient.logEvent(AnalyticsClient.EventName.profileSetupCompleted, nil)
-          // TODO: 테스트용 - 항상 OnboardingStart 표시 (릴리즈 전 원복 필요)
-          state.pendingUserForMain = userModel
-          state.destination = .onboardingStart(OnboardingStart.State(nickname: userModel.nickname))
-          return .none
+          if state.isFullOnboarding {
+            // 풀 온보딩 플로우 → OnboardingStart (시작 CTA)
+            state.pendingUserForMain = userModel
+            state.destination = .onboardingStart(OnboardingStart.State(nickname: userModel.nickname))
+            return .none
+          } else {
+            // 재로그인 후 프로필 설정 (엣지 케이스) → 알림 권한 확인
+            return .send(.internal(.checkNotificationPermission(userModel)))
+          }
 
         case .notificationPermission(.presented(.delegate(.dismissed))),
              .notificationPermission(.presented(.delegate(.permissionChanged))):
