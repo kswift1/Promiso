@@ -18,69 +18,71 @@ extension NotificationPermission {
       ("대학 동기 모임 변경 📝", "약속 정보가 수정됐어요. 확인해주세요!"),
     ]
 
+    private let benefits: [String] = [
+      "약속 초대",
+      "확정 알림",
+      "멤버 합류",
+      "약속 변경",
+    ]
+
     public init(store: StoreOf<Feature>) {
       self.store = store
     }
-
-    private let benefits: [(icon: String, text: String)] = [
-      ("envelope.badge", "새로운 약속 초대"),
-      ("checkmark.circle", "약속 확정 · 무산 알림"),
-      ("person.badge.plus", "새 멤버 합류"),
-      ("pencil.circle", "약속 정보 변경"),
-    ]
 
     public var body: some SwiftUI.View {
       VStack(spacing: 0) {
         // iPhone 프리뷰 + 푸시 알림 애니메이션
         iPhonePreview
-          .padding(.top, 15)
+          .frame(maxHeight: .infinity)
 
-        // 타이틀
-        Text("약속을 놓치지 않으려면\n알림을 켜주세요")
-          .font(.title2.bold())
-          .multilineTextAlignment(.center)
-          .foregroundStyle(Color.pmtext.primary)
-          .padding(.bottom, 24)
+        // 하단 컨텐츠
+        VStack(spacing: 16) {
+          // 타이틀
+          Text("약속을 놓치지 않으려면\n알림을 켜주세요")
+            .font(.title3.bold())
+            .multilineTextAlignment(.center)
+            .foregroundStyle(Color.pmtext.primary)
 
-        // 체크리스트
-        VStack(alignment: .leading, spacing: 16) {
-          ForEach(benefits, id: \.text) { benefit in
-            HStack(spacing: 12) {
-              Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(Color.green)
-                .font(.system(size: 20))
-              Text(benefit.text)
-                .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(Color.pmtext.primary)
+          // 체크리스트 (한 줄 태그 스타일)
+          HStack(spacing: 8) {
+            ForEach(benefits, id: \.self) { benefit in
+              HStack(spacing: 4) {
+                Image(systemName: "checkmark")
+                  .font(.system(size: 9, weight: .bold))
+                  .foregroundStyle(Color.green)
+                Text(benefit)
+                  .font(.system(size: 13, weight: .medium))
+                  .foregroundStyle(Color.pmtext.secondary)
+              }
+              .padding(.horizontal, 10)
+              .padding(.vertical, 6)
+              .background {
+                Capsule()
+                  .fill(Color.pmtext.primary.opacity(0.06))
+              }
+            }
+          }
+
+          // Primary Button
+          GlassActionButton(
+            title: store.primaryButtonTitle,
+            isPrimary: true,
+            action: { store.send(.view(.primaryButtonTapped)) }
+          )
+          .padding(.horizontal, 24)
+
+          // Secondary Button (나중에 하기)
+          if store.showSecondaryButton {
+            Button {
+              store.send(.view(.secondaryButtonTapped))
+            } label: {
+              Text(store.config.secondaryButtonTitle)
+                .font(.callout.weight(.medium))
+                .foregroundStyle(Color.pmtext.secondary)
             }
           }
         }
-        .padding(.horizontal, 40)
-
-        Spacer()
-
-        // Primary Button
-        GlassActionButton(
-          title: store.primaryButtonTitle,
-          isPrimary: true,
-          action: { store.send(.view(.primaryButtonTapped)) }
-        )
-        .padding(.horizontal, 24)
-
-        // Secondary Button (나중에 하기)
-        if store.showSecondaryButton {
-          Button {
-            store.send(.view(.secondaryButtonTapped))
-          } label: {
-            Text(store.config.secondaryButtonTitle)
-              .font(.callout.weight(.medium))
-              .foregroundStyle(Color.pmtext.secondary)
-          }
-          .padding(.top, 16)
-        }
-
-        Spacer()
-          .frame(height: 40)
+        .padding(.bottom, UIScreen.main.bounds.height < 700 ? 20 : 40)
       }
       .auroraBackground()
       .onAppear {
@@ -120,7 +122,7 @@ extension NotificationPermission {
               columns: Array(repeating: GridItem(spacing: 15), count: 4),
               spacing: 15
             ) {
-              ForEach(1...12, id: \.self) { _ in
+              ForEach(1...4, id: \.self) { _ in
                 RoundedRectangle(cornerRadius: 10)
                   .frame(height: 55)
               }

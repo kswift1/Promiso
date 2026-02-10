@@ -212,9 +212,8 @@ extension AppEntry {
               return .send(.internal(.startProfileCheck))
             } else {
               // 온보딩 인트로 완료 여부에 따라 분기
-              let hasCompletedOnboarding = userDefaultsClient.boolForKey(
-                AppConstants.UserDefaults.hasCompletedOnboarding
-              )
+              // TODO: 테스트용 - 온보딩 항상 표시 (릴리즈 전 원복 필요)
+              let hasCompletedOnboarding = false // userDefaultsClient.boolForKey(AppConstants.UserDefaults.hasCompletedOnboarding)
               if !hasCompletedOnboarding {
                 state.isFullOnboarding = true
                 state.destination = .onboardingIntro(OnboardingIntro.State())
