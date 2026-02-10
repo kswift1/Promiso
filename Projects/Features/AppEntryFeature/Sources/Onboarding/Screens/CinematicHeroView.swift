@@ -10,6 +10,7 @@ struct CinematicHeroView: View {
 
   @State private var phase: AnimationPhase = .initial
   @State private var cardSet: CardSet = .random()
+  @State private var visibleBubbles: Int = 0
 
   private struct CardInfo {
     let emoji: String
@@ -109,28 +110,25 @@ struct CinematicHeroView: View {
         text: "토요일 되는 사람? 🙋",
         alignment: .leading,
         rotation: -3,
-        visible: phase >= .messagesVisible
+        visible: visibleBubbles >= 1
       )
       messageBubble(
         text: "나 7시 이후만 돼",
         alignment: .trailing,
         rotation: 2,
-        visible: phase >= .messagesVisible,
-        delay: 0.15
+        visible: visibleBubbles >= 2
       )
       messageBubble(
         text: "읽씹...",
         alignment: .leading,
         rotation: -1,
-        visible: phase >= .messagesVisible,
-        delay: 0.3
+        visible: visibleBubbles >= 3
       )
       messageBubble(
         text: "결국 어떻게 된거야?",
         alignment: .trailing,
         rotation: 1.5,
-        visible: phase >= .messagesVisible,
-        delay: 0.45
+        visible: visibleBubbles >= 4
       )
     }
   }
@@ -139,8 +137,7 @@ struct CinematicHeroView: View {
     text: String,
     alignment: HorizontalAlignment,
     rotation: Double,
-    visible: Bool,
-    delay: Double = 0
+    visible: Bool
   ) -> some View {
     HStack {
       if alignment == .trailing { Spacer() }
@@ -156,7 +153,7 @@ struct CinematicHeroView: View {
         .opacity(visible ? 1 : 0)
         .offset(y: visible ? 0 : 20)
         .animation(
-          .spring(response: 0.5, dampingFraction: 0.8).delay(delay),
+          .spring(response: 0.5, dampingFraction: 0.8),
           value: visible
         )
       if alignment == .leading { Spacer() }
@@ -394,14 +391,19 @@ struct CinematicHeroView: View {
   // MARK: - Animation Sequence
 
   private func runAnimationSequence() async {
-    // Scene 1: 메시지 버블 등장
+    // Scene 1: 메시지 버블 하나씩 등장
     try? await Task.sleep(for: .seconds(0.3))
-    withAnimation(.easeOut(duration: 0.5)) {
-      phase = .messagesVisible
+    phase = .messagesVisible
+
+    for i in 1...4 {
+      try? await Task.sleep(for: .seconds(0.5))
+      withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+        visibleBubbles = i
+      }
     }
 
     // Scene 2: 정리 시작 (버블을 충분히 보여준 뒤)
-    try? await Task.sleep(for: .seconds(2.0))
+    try? await Task.sleep(for: .seconds(1.0))
     withAnimation(.spring(response: 0.7, dampingFraction: 0.85)) {
       phase = .organizing
     }
