@@ -53,14 +53,6 @@ extension AppEntry.OnboardingIntro {
             onAnimationComplete: { store.send(.view(.screenAnimationCompleted)) },
             onInteractionComplete: { store.send(.view(.screenInteractionCompleted)) }
           )
-        case .premiumTeaser:
-          PremiumTeaserView(
-            interestedFeatures: store.interestedPremiumFeatures,
-            onToggle: { feature in
-              store.send(.view(.premiumInterestToggled(feature)))
-            },
-            onAnimationComplete: { store.send(.view(.screenAnimationCompleted)) }
-          )
         }
       }
       .id(store.currentScreen)

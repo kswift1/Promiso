@@ -1,16 +1,13 @@
 // MARK: - OnboardingIntroFeature.swift
 
 import ComposableArchitecture
-import Clients
 
 extension AppEntry {
 
-  // MARK: - Onboarding Intro (Screens 1-6)
+  // MARK: - Onboarding Intro (Screens 1-5)
 
   @Reducer
   public struct OnboardingIntro {
-    @Dependency(\.analyticsClient) var analyticsClient
-
     public init() {}
 
     // MARK: - State
@@ -18,7 +15,6 @@ extension AppEntry {
     @ObservableState
     public struct State: Equatable {
       var currentScreen: Screen = .cinematicHero
-      var interestedPremiumFeatures: Set<String> = []
       var isAnimationComplete: Bool = false
       var isNextButtonEnabled: Bool = true
 
@@ -30,7 +26,6 @@ extension AppEntry {
         case benefitVote = 2
         case benefitHome = 3
         case benefitLive = 4
-        case premiumTeaser = 5
       }
 
       var isFirstScreen: Bool {
@@ -66,7 +61,6 @@ extension AppEntry {
         case skipTapped
         case screenAnimationCompleted
         case screenInteractionCompleted
-        case premiumInterestToggled(String)
       }
 
       public enum DelegateAction: Sendable {
@@ -86,7 +80,6 @@ extension AppEntry {
             state.isNextButtonEnabled = true
             state.isGoingBack = false
             if state.isLastScreen {
-              logPremiumInterests(state.interestedPremiumFeatures)
               return .send(.delegate(.completed))
             } else {
               let nextIndex = state.currentScreen.rawValue + 1
@@ -108,7 +101,6 @@ extension AppEntry {
             return .none
 
           case .skipTapped:
-            logPremiumInterests(state.interestedPremiumFeatures)
             return .send(.delegate(.completed))
 
           case .screenAnimationCompleted:
@@ -121,31 +113,12 @@ extension AppEntry {
           case .screenInteractionCompleted:
             state.isNextButtonEnabled = true
             return .none
-
-          case .premiumInterestToggled(let feature):
-            if state.interestedPremiumFeatures.contains(feature) {
-              state.interestedPremiumFeatures.remove(feature)
-            } else {
-              state.interestedPremiumFeatures.insert(feature)
-              analyticsClient.logEvent("premium_interest", ["feature": feature])
-            }
-            return .none
           }
 
         case .delegate:
           return .none
         }
       }
-    }
-
-    // MARK: - Helpers
-
-    private func logPremiumInterests(_ features: Set<String>) {
-      guard !features.isEmpty else { return }
-      analyticsClient.logEvent(
-        "onboarding_premium_interests",
-        ["features": features.sorted().joined(separator: ",")]
-      )
     }
   }
 }

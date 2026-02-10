@@ -351,8 +351,7 @@ extension AppEntry {
           }
 
         case .destination(.presented(.onboardingIntro(.delegate(.completed)))):
-          // 인트로 완료 → 온보딩 완료 플래그 저장 → 알림 권한 요청
-          userDefaultsClient.setBool(true, AppConstants.UserDefaults.hasCompletedOnboarding)
+          // 인트로 완료 → 알림 권한 요청 (플래그는 알림 권한 완료 후 저장)
           state.notificationPermission = NotificationPermission.Feature.State()
           return .none
 
@@ -392,6 +391,8 @@ extension AppEntry {
         case .notificationPermission(.presented(.delegate(.dismissed))),
              .notificationPermission(.presented(.delegate(.permissionChanged))):
           state.notificationPermission = nil
+          // 온보딩 완료 플래그 저장 (인트로 + 알림 권한까지 완료)
+          userDefaultsClient.setBool(true, AppConstants.UserDefaults.hasCompletedOnboarding)
           if let userModel = state.pendingUserForMain {
             // 기존 플로우: 프로필 설정 후 알림 권한 → 메인 전환
             state.pendingUserForMain = nil
