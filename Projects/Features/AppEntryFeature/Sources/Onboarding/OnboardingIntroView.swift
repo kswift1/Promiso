@@ -15,9 +15,6 @@ extension AppEntry.OnboardingIntro {
 
     public var body: some SwiftUI.View {
       VStack(spacing: 0) {
-        // 건너뛰기 (우측 상단)
-        skipButton
-
         // 현재 화면 콘텐츠
         screenContent
           .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -27,27 +24,6 @@ extension AppEntry.OnboardingIntro {
       }
       .auroraBackground()
       .animation(.easeInOut(duration: 0.4), value: store.currentScreen)
-    }
-
-    // MARK: - Skip Button
-
-    @ViewBuilder
-    private var skipButton: some SwiftUI.View {
-      HStack {
-        Spacer()
-        if !store.isLastScreen {
-          Button {
-            store.send(.view(.skipTapped))
-          } label: {
-            Text("건너뛰기")
-              .font(.callout.weight(.medium))
-              .foregroundStyle(Color.pmtext.secondary)
-          }
-          .padding(.trailing, 24)
-        }
-      }
-      .frame(height: 44)
-      .padding(.top, 8)
     }
 
     // MARK: - Screen Content
