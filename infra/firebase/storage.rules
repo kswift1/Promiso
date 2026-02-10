@@ -23,12 +23,15 @@ service firebase.storage {
     }
 
     // 그룹 이미지
+    // create: 그룹 생성 시 문서보다 이미지가 먼저 업로드되므로 멤버십 체크 불가
     match /group_images/{groupId}/{fileName} {
       allow read: if request.auth != null
                   && isGroupMember(groupId);
-      allow create, update: if request.auth != null
-                            && isGroupMember(groupId)
-                            && isValidImage();
+      allow create: if request.auth != null
+                    && isValidImage();
+      allow update: if request.auth != null
+                    && isGroupMember(groupId)
+                    && isValidImage();
       allow delete: if request.auth != null
                     && isGroupMember(groupId);
     }
