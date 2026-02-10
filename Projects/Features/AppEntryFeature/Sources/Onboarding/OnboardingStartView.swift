@@ -118,7 +118,7 @@ extension AppEntry.OnboardingStart {
             Button {
               store.send(.view(.personalScheduleTapped))
             } label: {
-              Text("괜찮아요")
+              Text("나중에 할게요")
                 .font(.callout.weight(.medium))
                 .foregroundStyle(Color.pmtext.secondary)
             }
