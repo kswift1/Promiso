@@ -13,7 +13,7 @@ NC='\033[0m' # No Color
 
 # Configuration
 NOTION_API_KEY="${NOTION_API_KEY:-}"
-SECRETS_DB_ID="5e30fc69caf4432da2bc1183c10960dd"
+SECRETS_DB_ID="3029e497067581408524fc758df8e47e"
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CONFIG_DIR="${PROJECT_ROOT}/Config"
 
