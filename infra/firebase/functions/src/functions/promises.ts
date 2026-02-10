@@ -645,7 +645,7 @@ export const deletePromise = onCall<DeletePromiseRequest>(
       try {
         const bucket = admin.storage().bucket();
         const [files] = await bucket.getFiles({
-          prefix: `promise_images/${data.promiseId}/`,
+          prefix: `promise_images/${groupId}/${data.promiseId}/`,
         });
         if (files.length > 0) {
           await Promise.all(files.map((file) => file.delete()));

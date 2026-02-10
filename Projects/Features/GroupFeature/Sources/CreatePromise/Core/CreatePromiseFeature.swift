@@ -227,7 +227,7 @@ public enum CreatePromise {
                 // 이미지가 있으면 업로드 후 약속 업데이트
                 if !localImages.isEmpty {
                   do {
-                    let imageUrls = try await imageUploadClient.uploadImages(localImages, "promise_images/\(promiseId)")
+                    let imageUrls = try await imageUploadClient.uploadImages(localImages, "promise_images/\(promise.groupId)/\(promiseId)")
                     var updatedPromise = promise
                     updatedPromise.id = promiseId
                     updatedPromise.imageUrls = imageUrls

@@ -8,6 +8,7 @@ extension PromiseDetail {
   public struct RootView: View {
     @Bindable private var store: StoreOf<Feature>
     @State private var isDescriptionExpanded = false
+    @State private var selectedImageIndex: Int?
 
     public init(store: StoreOf<Feature>) {
       self.store = store
@@ -187,14 +188,27 @@ extension PromiseDetail {
 
         ScrollView(.horizontal, showsIndicators: false) {
           HStack(spacing: 10) {
-            ForEach(store.promise.imageUrls, id: \.self) { url in
+            ForEach(Array(store.promise.imageUrls.enumerated()), id: \.offset) { index, url in
               GalleryImageThumbnail(url: url)
+                .onTapGesture { selectedImageIndex = index }
             }
           }
           .padding(.horizontal, 16)
           .padding(.vertical, 12)
         }
         .adaptiveGlassCard()
+      }
+      .fullScreenCover(isPresented: Binding(
+        get: { selectedImageIndex != nil },
+        set: { if !$0 { selectedImageIndex = nil } }
+      )) {
+        if let index = selectedImageIndex {
+          PhotoGalleryViewer(
+            imageUrls: store.promise.imageUrls,
+            initialIndex: index,
+            onDismiss: { selectedImageIndex = nil }
+          )
+        }
       }
     }
 

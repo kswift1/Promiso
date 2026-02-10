@@ -215,7 +215,7 @@ extension EditPromise {
 
                   if !localImages.isEmpty {
                     do {
-                      let newUrls = try await imageUploadClient.uploadImages(localImages, "promise_images/\(promise.id)")
+                      let newUrls = try await imageUploadClient.uploadImages(localImages, "promise_images/\(promise.groupId)/\(promise.id)")
                       finalImageUrls.append(contentsOf: newUrls)
                     } catch {
                       // 이미지 업로드 실패 시 기존 이미지만 유지

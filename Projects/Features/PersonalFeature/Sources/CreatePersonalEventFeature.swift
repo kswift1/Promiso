@@ -21,6 +21,7 @@ extension CreatePersonalEvent {
     @Dependency(\.continuousClock) var clock
     @Dependency(\.calendarSyncClient) var calendarSyncClient
     @Dependency(\.imageUploadClient) var imageUploadClient
+    @Dependency(\.authClient) var authClient
 
     public init() {}
 
@@ -199,12 +200,15 @@ extension CreatePersonalEvent {
             state.errorMessage = nil
             let localImages = state.localImageData
             let removedUrls = state.removedImageUrls
-            return .run { [event = state.event, mode = state.mode, personalEventClient, localNotificationClient, calendarSyncClient, imageUploadClient] send in
+            return .run { [event = state.event, mode = state.mode, personalEventClient, localNotificationClient, calendarSyncClient, imageUploadClient, authClient] send in
               do {
                 var savedEvent = event
                 let syncEnabled = UserDefaults.standard.bool(
                   forKey: AppConstants.UserDefaults.personalCalendarSync
                 )
+                guard let userId = await authClient.currentUser()?.uid else {
+                  throw NSError(domain: "CreatePersonalEvent", code: -1, userInfo: [NSLocalizedDescriptionKey: "로그인 정보를 찾을 수 없습니다"])
+                }
 
                 switch mode {
                 case .create:
@@ -214,7 +218,7 @@ extension CreatePersonalEvent {
                   // 이미지 업로드
                   if !localImages.isEmpty {
                     do {
-                      let imageUrls = try await imageUploadClient.uploadImages(localImages, "personal_event_images/\(eventId)")
+                      let imageUrls = try await imageUploadClient.uploadImages(localImages, "personal_event_images/\(userId)/\(eventId)")
                       savedEvent.imageUrls = imageUrls
                       try await personalEventClient.updateEvent(savedEvent)
                     } catch {
@@ -231,7 +235,7 @@ extension CreatePersonalEvent {
 
                     if !localImages.isEmpty {
                       do {
-                        let newUrls = try await imageUploadClient.uploadImages(localImages, "personal_event_images/\(event.id)")
+                        let newUrls = try await imageUploadClient.uploadImages(localImages, "personal_event_images/\(userId)/\(event.id)")
                         finalImageUrls.append(contentsOf: newUrls)
                       } catch {
                         // 이미지 업로드 실패 시 기존 이미지만 유지
