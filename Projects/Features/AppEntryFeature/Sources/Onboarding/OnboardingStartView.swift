@@ -150,34 +150,34 @@ extension AppEntry.OnboardingStart {
 
     private func runAnimationSequence() async {
       // 이모지 + Lottie 배경 동시 등장
-      try? await Task.sleep(for: .seconds(0.3))
-      withAnimation(.spring(response: 0.5, dampingFraction: 0.6)) {
+      try? await Task.sleep(for: .seconds(0.5))
+      withAnimation(.spring(response: 0.7, dampingFraction: 0.6)) {
         showEmoji = true
         emojiScale = 1.0
         showLottie = true
       }
 
       // 타이틀 등장
-      try? await Task.sleep(for: .seconds(0.35))
-      withAnimation(.easeOut(duration: 0.45)) {
+      try? await Task.sleep(for: .seconds(0.55))
+      withAnimation(.easeOut(duration: 0.65)) {
         showTitle = true
       }
 
       // Primary 버튼
-      try? await Task.sleep(for: .seconds(0.4))
-      withAnimation(.easeOut(duration: 0.35)) {
+      try? await Task.sleep(for: .seconds(0.6))
+      withAnimation(.easeOut(duration: 0.55)) {
         showPrimary = true
       }
 
       // Secondary 버튼
-      try? await Task.sleep(for: .seconds(0.15))
-      withAnimation(.easeOut(duration: 0.3)) {
+      try? await Task.sleep(for: .seconds(0.35))
+      withAnimation(.easeOut(duration: 0.5)) {
         showSecondary = true
       }
 
       // Tertiary + Footer
-      try? await Task.sleep(for: .seconds(0.15))
-      withAnimation(.easeOut(duration: 0.3)) {
+      try? await Task.sleep(for: .seconds(0.35))
+      withAnimation(.easeOut(duration: 0.5)) {
         showTertiary = true
         showFooter = true
       }

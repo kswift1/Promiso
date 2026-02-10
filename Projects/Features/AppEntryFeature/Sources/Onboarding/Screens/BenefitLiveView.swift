@@ -477,19 +477,19 @@ struct BenefitLiveView: View {
 
   private func runAnimationSequence() async {
     // 카드 등장
-    try? await Task.sleep(for: .seconds(0.3))
-    withAnimation(.spring(response: 0.6, dampingFraction: 0.85)) {
+    try? await Task.sleep(for: .seconds(0.5))
+    withAnimation(.spring(response: 0.8, dampingFraction: 0.85)) {
       showCard = true
     }
 
     // ETA 버튼 등장
-    try? await Task.sleep(for: .seconds(0.8))
-    withAnimation(.easeOut(duration: 0.4)) {
+    try? await Task.sleep(for: .seconds(1.0))
+    withAnimation(.easeOut(duration: 0.6)) {
       showETAButtons = true
     }
 
     // 다음 버튼 표시 (disabled 상태)
-    try? await Task.sleep(for: .seconds(0.3))
+    try? await Task.sleep(for: .seconds(0.5))
     onAnimationComplete()
     // 도착 버튼 탭 시 onInteractionComplete → 다음 버튼 활성화
   }

@@ -228,47 +228,47 @@ struct BenefitVoteView: View {
 
   private func runAnimationSequence() async {
     // 카드 등장
-    try? await Task.sleep(for: .seconds(0.3))
-    withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+    try? await Task.sleep(for: .seconds(0.5))
+    withAnimation(.spring(response: 0.7, dampingFraction: 0.85)) {
       showCard = true
     }
 
     // 민수, 지훈 순차 수락
-    try? await Task.sleep(for: .seconds(0.5))
+    try? await Task.sleep(for: .seconds(0.7))
     for i in 0..<2 {
-      try? await Task.sleep(for: .seconds(0.4))
-      withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
+      try? await Task.sleep(for: .seconds(0.6))
+      withAnimation(.spring(response: 0.55, dampingFraction: 0.7)) {
         confirmedMembers.insert(i)
       }
     }
 
     // 재윤 수락 (3번째 = 최소 인원 충족!)
-    try? await Task.sleep(for: .seconds(0.7))
-    withAnimation(.spring(response: 0.35, dampingFraction: 0.6)) {
+    try? await Task.sleep(for: .seconds(0.9))
+    withAnimation(.spring(response: 0.55, dampingFraction: 0.6)) {
       confirmedMembers.insert(2)
     }
 
     // 자동 확정 배너
-    try? await Task.sleep(for: .seconds(0.4))
-    withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+    try? await Task.sleep(for: .seconds(0.6))
+    withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) {
       showConfirmed = true
     }
 
     // 푸시 알림 슬라이드 다운
-    try? await Task.sleep(for: .seconds(0.6))
-    withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+    try? await Task.sleep(for: .seconds(0.8))
+    withAnimation(.spring(response: 0.7, dampingFraction: 0.8)) {
       showNotification = true
     }
 
     // 하단 카피
-    try? await Task.sleep(for: .seconds(0.8))
-    withAnimation(.easeOut(duration: 0.4)) {
+    try? await Task.sleep(for: .seconds(1.0))
+    withAnimation(.easeOut(duration: 0.6)) {
       showCopy = true
     }
 
     // 예은은 대기중 상태로 남아있음 (전원 아니어도 확정됨을 보여줌)
 
-    try? await Task.sleep(for: .seconds(0.3))
+    try? await Task.sleep(for: .seconds(0.5))
     onAnimationComplete()
   }
 }

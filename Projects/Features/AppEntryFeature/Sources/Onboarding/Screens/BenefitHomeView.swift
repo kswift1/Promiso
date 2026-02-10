@@ -261,30 +261,30 @@ struct BenefitHomeView: View {
 
   private func runAnimationSequence() async {
     // 오늘의 일정 등장
-    try? await Task.sleep(for: .seconds(0.3))
-    withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+    try? await Task.sleep(for: .seconds(0.5))
+    withAnimation(.spring(response: 0.7, dampingFraction: 0.85)) {
       showTodaySection = true
     }
 
     // 응답 필요 슬라이드 인
-    try? await Task.sleep(for: .seconds(0.7))
-    withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+    try? await Task.sleep(for: .seconds(0.9))
+    withAnimation(.spring(response: 0.7, dampingFraction: 0.85)) {
       showNeedResponseSection = true
     }
 
     // 다가오는 약속 슬라이드 인
-    try? await Task.sleep(for: .seconds(0.7))
-    withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+    try? await Task.sleep(for: .seconds(0.9))
+    withAnimation(.spring(response: 0.7, dampingFraction: 0.85)) {
       showUpcomingSection = true
     }
 
     // 하단 카피
-    try? await Task.sleep(for: .seconds(0.7))
-    withAnimation(.easeOut(duration: 0.4)) {
+    try? await Task.sleep(for: .seconds(0.9))
+    withAnimation(.easeOut(duration: 0.6)) {
       showCopy = true
     }
 
-    try? await Task.sleep(for: .seconds(0.3))
+    try? await Task.sleep(for: .seconds(0.5))
     onAnimationComplete()
   }
 }

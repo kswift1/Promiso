@@ -83,10 +83,10 @@ struct ProblemEmpathyView: View {
   // MARK: - Animation Sequence
 
   private func runAnimationSequence() async {
-    // 카운트업 (0 → 47, 약 0.8초)
-    try? await Task.sleep(for: .seconds(0.3))
+    // 카운트업 (0 → 47, 약 1.0초)
+    try? await Task.sleep(for: .seconds(0.5))
     let steps = 20
-    let interval = 0.8 / Double(steps)
+    let interval = 1.0 / Double(steps)
     for i in 1...steps {
       try? await Task.sleep(for: .seconds(interval))
       let progress = Double(i) / Double(steps)
@@ -95,26 +95,26 @@ struct ProblemEmpathyView: View {
         count = Int(Double(targetCount) * eased)
       }
     }
-    withAnimation(.spring(response: 0.3)) {
+    withAnimation(.spring(response: 0.5)) {
       count = targetCount
     }
 
     // 고충 순차 등장
-    try? await Task.sleep(for: .seconds(0.4))
+    try? await Task.sleep(for: .seconds(0.6))
     for i in 0..<painPoints.count {
-      try? await Task.sleep(for: .seconds(0.4))
-      withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+      try? await Task.sleep(for: .seconds(0.6))
+      withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
         showPainPoints[i] = true
       }
     }
 
     // 하단 카피
-    try? await Task.sleep(for: .seconds(0.5))
-    withAnimation(.easeOut(duration: 0.4)) {
+    try? await Task.sleep(for: .seconds(0.7))
+    withAnimation(.easeOut(duration: 0.6)) {
       showBottomCopy = true
     }
 
-    try? await Task.sleep(for: .seconds(0.3))
+    try? await Task.sleep(for: .seconds(0.5))
     onAnimationComplete()
   }
 }
