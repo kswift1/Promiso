@@ -2,7 +2,9 @@
 // 온보딩 완료 → 그룹 만들기 / 초대코드 / 개인 약속
 
 import ComposableArchitecture
+import Lottie
 import PromisoShared
+import ResourceKit
 import SwiftUI
 
 extension AppEntry.OnboardingStart {
@@ -14,44 +16,59 @@ extension AppEntry.OnboardingStart {
     }
 
     @SwiftUI.State private var showEmoji: Bool = false
+    @SwiftUI.State private var emojiScale: CGFloat = 0.3
+    @SwiftUI.State private var showLottie: Bool = false
     @SwiftUI.State private var showTitle: Bool = false
     @SwiftUI.State private var showPrimary: Bool = false
     @SwiftUI.State private var showSecondary: Bool = false
     @SwiftUI.State private var showTertiary: Bool = false
     @SwiftUI.State private var showFooter: Bool = false
-    @SwiftUI.State private var emojiScale: CGFloat = 0.3
 
     public var body: some SwiftUI.View {
       VStack(spacing: 0) {
         Spacer()
 
-        // 이모지 + 타이틀
-        VStack(spacing: 20) {
-          if showEmoji {
-            Text("🎉")
-              .font(.system(size: 72))
-              .scaleEffect(emojiScale)
+        // 이모지 + Lottie 배경 + 타이틀
+        ZStack {
+          // Lottie 배경 (전체 너비)
+          if showLottie {
+            LottieView(animation: LottieAsset.fanfare.animation)
+              .playing(loopMode: .playOnce)
+              .frame(maxWidth: .infinity)
+              .frame(height: 300)
+              .opacity(0.6)
               .transition(.opacity)
+              .allowsHitTesting(false)
           }
 
-          if showTitle {
-            VStack(spacing: 10) {
-              Text("준비 완료!")
-                .font(.largeTitle.bold())
-                .foregroundStyle(Color.pmtext.primary)
-
-              Text("이번 주에 만날 친구,\n누가 떠올라요?")
-                .font(.title3)
-                .foregroundStyle(Color.pmtext.secondary)
-                .multilineTextAlignment(.center)
-                .lineSpacing(4)
-
-              Text("그 약속, 카톡 대신 한 번에 잡아보세요")
-                .font(.subheadline)
-                .foregroundStyle(Color.pmtext.secondary.opacity(0.8))
-                .padding(.top, 4)
+          VStack(spacing: 20) {
+            // 이모지 (전면)
+            if showEmoji {
+              Text("🎉")
+                .font(.system(size: 72))
+                .scaleEffect(emojiScale)
+                .transition(.scale.combined(with: .opacity))
             }
-            .transition(.opacity.combined(with: .offset(y: 12)))
+
+            if showTitle {
+              VStack(spacing: 10) {
+                Text("준비 완료!")
+                  .font(.largeTitle.bold())
+                  .foregroundStyle(Color.pmtext.primary)
+
+                Text("이번 주에 만날 친구,\n누가 떠올라요?")
+                  .font(.title3)
+                  .foregroundStyle(Color.pmtext.secondary)
+                  .multilineTextAlignment(.center)
+                  .lineSpacing(4)
+
+                Text("그 약속, 그룹을 생성하고 한 번에 잡아보세요")
+                  .font(.subheadline)
+                  .foregroundStyle(Color.pmtext.secondary.opacity(0.8))
+                  .padding(.top, 4)
+              }
+              .transition(.opacity.combined(with: .offset(y: 12)))
+            }
           }
         }
 
@@ -132,11 +149,12 @@ extension AppEntry.OnboardingStart {
     // MARK: - Animation Sequence
 
     private func runAnimationSequence() async {
-      // 이모지 등장 + 바운스
+      // 이모지 + Lottie 배경 동시 등장
       try? await Task.sleep(for: .seconds(0.3))
-      withAnimation(.spring(response: 0.4, dampingFraction: 0.5)) {
+      withAnimation(.spring(response: 0.5, dampingFraction: 0.6)) {
         showEmoji = true
         emojiScale = 1.0
+        showLottie = true
       }
 
       // 타이틀 등장
