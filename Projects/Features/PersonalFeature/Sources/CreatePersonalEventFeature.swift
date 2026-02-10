@@ -305,7 +305,14 @@ extension CreatePersonalEvent {
 
         case .notificationPermission(.presented(.delegate(.dismissed))):
           state.notificationPermission = nil
-          return .none
+          // 스와이프로 닫았을 때도 권한 상태 재확인 후 useReminder 업데이트
+          guard !state.useReminder else { return .none }
+          return .run { [notificationClient] send in
+            let status = await notificationClient.getAuthorizationStatus()
+            if status == .authorized || status == .provisional || status == .ephemeral {
+              await send(.internal(.notificationStatusChecked(status)))
+            }
+          }
 
         case .notificationPermission:
           return .none

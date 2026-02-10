@@ -92,8 +92,9 @@ extension NotificationPermission {
       .onDisappear {
         loopContinues = false
       }
-      .onChange(of: scenePhase) { _, newPhase in
-        if newPhase == .active {
+      .onChange(of: scenePhase) { oldPhase, newPhase in
+        // 백그라운드에서 복귀할 때만 권한 상태 재확인
+        if oldPhase != .active && newPhase == .active {
           store.send(.view(.onAppear))
         }
       }
