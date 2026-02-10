@@ -15,9 +15,6 @@ extension AppEntry.OnboardingIntro {
 
     public var body: some SwiftUI.View {
       VStack(spacing: 0) {
-        // 건너뛰기 (우측 상단)
-        skipButton
-
         // 현재 화면 콘텐츠
         screenContent
           .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -27,27 +24,6 @@ extension AppEntry.OnboardingIntro {
       }
       .auroraBackground()
       .animation(.easeInOut(duration: 0.4), value: store.currentScreen)
-    }
-
-    // MARK: - Skip Button
-
-    @ViewBuilder
-    private var skipButton: some SwiftUI.View {
-      HStack {
-        Spacer()
-        if !store.isLastScreen {
-          Button {
-            store.send(.view(.skipTapped))
-          } label: {
-            Text("건너뛰기")
-              .font(.callout.weight(.medium))
-              .foregroundStyle(Color.pmtext.secondary)
-          }
-          .padding(.trailing, 24)
-        }
-      }
-      .frame(height: 44)
-      .padding(.top, 8)
     }
 
     // MARK: - Screen Content
@@ -74,22 +50,15 @@ extension AppEntry.OnboardingIntro {
           )
         case .benefitLive:
           BenefitLiveView(
-            onAnimationComplete: { store.send(.view(.screenAnimationCompleted)) }
-          )
-        case .premiumTeaser:
-          PremiumTeaserView(
-            interestedFeatures: store.interestedPremiumFeatures,
-            onToggle: { feature in
-              store.send(.view(.premiumInterestToggled(feature)))
-            },
-            onAnimationComplete: { store.send(.view(.screenAnimationCompleted)) }
+            onAnimationComplete: { store.send(.view(.screenAnimationCompleted)) },
+            onInteractionComplete: { store.send(.view(.screenInteractionCompleted)) }
           )
         }
       }
       .id(store.currentScreen)
       .transition(.asymmetric(
-        insertion: .move(edge: .trailing).combined(with: .opacity),
-        removal: .move(edge: .leading).combined(with: .opacity)
+        insertion: .move(edge: store.isGoingBack ? .leading : .trailing).combined(with: .opacity),
+        removal: .move(edge: store.isGoingBack ? .trailing : .leading).combined(with: .opacity)
       ))
     }
 
@@ -103,16 +72,37 @@ extension AppEntry.OnboardingIntro {
           activeColor: Color.pmindigo.n500
         )
 
-        GlassActionButton(
-          title: store.isLastScreen ? "시작하기" : "다음",
-          leadingSystemImage: store.isLastScreen ? "arrow.right" : nil,
-          isPrimary: true,
-          isVisible: store.isAnimationComplete,
-          action: { store.send(.view(.nextTapped)) }
-        )
+        HStack(spacing: 12) {
+          // 뒤로가기 버튼 (첫 화면이 아닐 때, 다음 버튼과 함께 표시)
+          if !store.isFirstScreen && store.isAnimationComplete {
+            Button {
+              store.send(.view(.backTapped))
+            } label: {
+              Image(systemName: "chevron.left")
+                .font(.pmSubheadlineSemibold)
+                .foregroundStyle(Color.pmtext.secondary)
+                .frame(width: 48, height: 48)
+                .background {
+                  Circle()
+                    .fill(.ultraThinMaterial)
+                }
+            }
+            .transition(.scale.combined(with: .opacity))
+          }
+
+          GlassActionButton(
+            title: store.isLastScreen ? "시작하기" : "다음",
+            leadingSystemImage: store.isLastScreen ? "arrow.right" : nil,
+            isPrimary: true,
+            isVisible: store.isAnimationComplete,
+            action: { store.send(.view(.nextTapped)) }
+          )
+        }
+        .animation(.easeInOut(duration: 0.25), value: store.isFirstScreen)
       }
       .padding(.horizontal, 24)
-      .padding(.bottom, 40)
+      .padding(.bottom, UIScreen.main.bounds.height < 700 ? 24 : 40)
     }
+
   }
 }
