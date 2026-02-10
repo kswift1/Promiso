@@ -211,8 +211,8 @@ extension AppEntry {
             if isAuthenticated {
               return .send(.internal(.startProfileCheck))
             } else {
-              // 온보딩 인트로 완료 여부에 따라 분기
-              let hasCompletedOnboarding = userDefaultsClient.boolForKey(AppConstants.UserDefaults.hasCompletedOnboarding)
+              // TODO: 테스트용 - 온보딩 항상 표시 (릴리즈 전 원복 필요)
+              let hasCompletedOnboarding = false // userDefaultsClient.boolForKey(AppConstants.UserDefaults.hasCompletedOnboarding)
               if !hasCompletedOnboarding {
                 state.isFullOnboarding = true
                 state.destination = .onboardingIntro(OnboardingIntro.State())
@@ -361,12 +361,23 @@ extension AppEntry {
           }
           return .none
 
-        case .destination(.presented(.onboardingStart(.delegate(.createFirstPromise)))):
-          // "첫 약속 만들기" → 메인 + 약속 생성 열기
+        case .destination(.presented(.onboardingStart(.delegate(.enterInviteCode)))):
+          // "입력하러가기" → 메인 + 그룹 참여 열기
           if let userModel = state.pendingUserForMain {
             state.pendingUserForMain = nil
-            state.pendingDeeplink = .create
+            state.pendingDeeplink = .joinGroup(inviteCode: "")
             return .send(.internal(.transitionToMain(userModel, isSignup: true)))
+          }
+          return .none
+
+        case .destination(.presented(.onboardingStart(.delegate(.createGroup)))):
+          // "그룹 생성하기" → 메인 + 그룹 생성 열기
+          if let userModel = state.pendingUserForMain {
+            state.pendingUserForMain = nil
+            return .concatenate(
+              .send(.internal(.transitionToMain(userModel, isSignup: true))),
+              .send(.destination(.presented(.main(.openCreateGroup))))
+            )
           }
           return .none
 
@@ -376,15 +387,10 @@ extension AppEntry {
 
         case .destination(.presented(.profile(.delegate(.completed(let userModel))))):
           analyticsClient.logEvent(AnalyticsClient.EventName.profileSetupCompleted, nil)
-          if state.isFullOnboarding {
-            // 풀 온보딩 플로우 → Screen 10 (시작 CTA)
-            state.pendingUserForMain = userModel
-            state.destination = .onboardingStart(OnboardingStart.State(nickname: userModel.nickname))
-            return .none
-          } else {
-            // 재로그인 후 프로필 설정 (엣지 케이스) → 알림 권한 확인
-            return .send(.internal(.checkNotificationPermission(userModel)))
-          }
+          // TODO: 테스트용 - 항상 OnboardingStart 표시 (릴리즈 전 원복 필요)
+          state.pendingUserForMain = userModel
+          state.destination = .onboardingStart(OnboardingStart.State(nickname: userModel.nickname))
+          return .none
 
         case .notificationPermission(.presented(.delegate(.dismissed))),
              .notificationPermission(.presented(.delegate(.permissionChanged))):

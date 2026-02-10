@@ -189,6 +189,8 @@ extension RootTab {
       case openLivePromiseDetail
       /// Widget "약속 만들기" 버튼 → 그룹 탭 이동 + 약속 생성 (그룹 있을 때만)
       case openCreatePromiseIfPossible
+      /// 온보딩에서 그룹 생성 열기
+      case openCreateGroup
       /// 내부 액션
       case `internal`(Internal)
     }
@@ -443,6 +445,12 @@ extension RootTab {
           state.promiseMode = .group
           state.selectedTab = .promise(.group)
           return .send(.groupMain(.view(.openCreatePromiseIfPossible)))
+
+        case .openCreateGroup:
+          // 그룹 탭으로 이동 후 그룹 생성 열기
+          state.promiseMode = .group
+          state.selectedTab = .promise(.group)
+          return .send(.groupMain(.view(.createGroup)))
 
         case .internal(let internalAction):
           switch internalAction {
