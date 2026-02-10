@@ -639,23 +639,20 @@ export const deletePromise = onCall<DeletePromiseRequest>(
       );
     }
 
-    // 6. Storage 이미지 정리 (best-effort)
-    const imageUrls = promiseData.imageUrls as string[] | null;
-    if (imageUrls && imageUrls.length > 0) {
-      try {
-        const bucket = admin.storage().bucket();
-        const [files] = await bucket.getFiles({
-          prefix: `promise_images/${groupId}/${data.promiseId}/`,
-        });
-        if (files.length > 0) {
-          await Promise.all(files.map((file) => file.delete()));
-        }
-      } catch (err) {
-        console.warn(
-          `Failed to clean up images for promise ${data.promiseId}:`,
-          err,
-        );
+    // 6. Storage 이미지 정리 (best-effort, imageUrls 존재 여부 무관하게 경로 전체 삭제)
+    try {
+      const bucket = admin.storage().bucket();
+      const [files] = await bucket.getFiles({
+        prefix: `promise_images/${groupId}/${data.promiseId}/`,
+      });
+      if (files.length > 0) {
+        await Promise.all(files.map((file) => file.delete()));
       }
+    } catch (err) {
+      console.warn(
+        `Failed to clean up images for promise ${data.promiseId}:`,
+        err,
+      );
     }
 
     // 7. Firestore에서 삭제 (Hard Delete)

@@ -222,6 +222,7 @@ extension CreatePersonalEvent {
                       savedEvent.imageUrls = imageUrls
                       try await personalEventClient.updateEvent(savedEvent)
                     } catch {
+                      AppLogger.features.error("이미지 업로드 실패: \(error.localizedDescription)")
                       // 이미지 업로드 실패해도 이벤트 생성은 성공
                     }
                   }
@@ -238,6 +239,7 @@ extension CreatePersonalEvent {
                         let newUrls = try await imageUploadClient.uploadImages(localImages, "personal_event_images/\(userId)/\(event.id)")
                         finalImageUrls.append(contentsOf: newUrls)
                       } catch {
+                        AppLogger.features.error("이미지 업로드 실패: \(error.localizedDescription)")
                         // 이미지 업로드 실패 시 기존 이미지만 유지
                       }
                     }

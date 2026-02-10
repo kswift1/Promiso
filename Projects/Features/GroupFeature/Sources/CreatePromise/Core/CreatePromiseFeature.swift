@@ -220,6 +220,7 @@ public enum CreatePromise {
             var promiseToCreate = state.promise
             promiseToCreate.groupId = state.promise.group?.id ?? ""
             let localImages = state.localImageData
+            state.isUploadingImages = !localImages.isEmpty
             return .run { [promise = promiseToCreate, promiseClient, imageUploadClient] send in
               do {
                 let promiseId = try await promiseClient.createPromise(promise)
@@ -233,6 +234,7 @@ public enum CreatePromise {
                     updatedPromise.imageUrls = imageUrls
                     try await promiseClient.updatePromise(updatedPromise)
                   } catch {
+                    AppLogger.features.error("이미지 업로드 실패: \(error.localizedDescription)")
                     // 이미지 업로드 실패해도 약속 생성은 성공 처리
                   }
                 }
@@ -455,6 +457,7 @@ public enum CreatePromise {
 
           case .createPromiseResponse(.success(let id)):
             state.isCreatingPromise = false
+            state.isUploadingImages = false
             analyticsClient.logEvent(
               AnalyticsClient.EventName.promiseCreated,
               [
@@ -463,9 +466,10 @@ public enum CreatePromise {
               ]
             )
             return .send(.delegate(.promiseCreated(id: id)))
-            
+
           case .createPromiseResponse(.failure(let e)):
             state.isCreatingPromise = false
+            state.isUploadingImages = false
             state.creationError = e
             return .none
 
