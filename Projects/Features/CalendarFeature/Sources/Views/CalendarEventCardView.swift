@@ -73,62 +73,67 @@ struct CalendarEventCardView: View {
 /// 개인 일정 카드 (약속/시스템 캘린더와 시각적으로 구분)
 struct PersonalEventCardView: View {
   let event: PersonalEventModel
+  let onTap: () -> Void
 
   var body: some View {
-    HStack(spacing: 12) {
-      // 인디고 인디케이터
-      RoundedRectangle(cornerRadius: 2)
-        .fill(Color.pmindigo.n500)
-        .frame(width: 4, height: 44)
+    Button(action: onTap) {
+      HStack(spacing: 12) {
+        // 인디고 인디케이터
+        RoundedRectangle(cornerRadius: 2)
+          .fill(Color.pmindigo.n500)
+          .frame(width: 4, height: 44)
 
-      VStack(alignment: .leading, spacing: 4) {
-        // 개인 일정 라벨
-        HStack(spacing: 4) {
-          Image(systemName: "person.fill")
-            .font(.system(size: 10))
-            .foregroundColor(Color.pmindigo.n500)
+        VStack(alignment: .leading, spacing: 4) {
+          // 개인 일정 라벨
+          HStack(spacing: 4) {
+            Image(systemName: "person.fill")
+              .font(.system(size: 10))
+              .foregroundColor(Color.pmindigo.n500)
 
-          Text("개인 일정")
-            .font(.system(size: 11, weight: .medium))
-            .foregroundColor(Color.pmindigo.n500)
-        }
+            Text("개인 일정")
+              .font(.system(size: 11, weight: .medium))
+              .foregroundColor(Color.pmindigo.n500)
+          }
 
-        // 이모지 + 제목
-        HStack(spacing: 6) {
-          Text(event.displayEmoji)
-            .font(.system(size: 16))
+          // 이모지 + 제목
+          HStack(spacing: 6) {
+            Text(event.displayEmoji)
+              .font(.system(size: 16))
 
-          Text(event.title)
-            .font(.system(size: 15, weight: .medium))
-            .foregroundColor(.primary)
-            .lineLimit(1)
-        }
+            Text(event.title)
+              .font(.system(size: 15, weight: .medium))
+              .foregroundColor(.primary)
+              .lineLimit(1)
+          }
 
-        // 시간 + 위치
-        HStack(spacing: 8) {
-          Text(event.timeText)
-            .font(.system(size: 13))
-            .foregroundColor(.secondary)
+          // 시간 + 위치
+          HStack(spacing: 8) {
+            Text(event.timeText)
+              .font(.system(size: 13))
+              .foregroundColor(.secondary)
 
-          if let location = event.location {
-            HStack(spacing: 2) {
-              Image(systemName: "location.fill")
-                .font(.system(size: 10))
-              Text(location.name)
-                .font(.system(size: 12))
-                .lineLimit(1)
+            if let location = event.location {
+              HStack(spacing: 2) {
+                Image(systemName: "location.fill")
+                  .font(.system(size: 10))
+                Text(location.name)
+                  .font(.system(size: 12))
+                  .lineLimit(1)
+              }
+              .foregroundColor(.secondary.opacity(0.8))
             }
-            .foregroundColor(.secondary.opacity(0.8))
           }
         }
-      }
 
-      Spacer()
+        Spacer()
+      }
+      .padding(.horizontal, 12)
+      .padding(.vertical, 10)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .contentShape(Rectangle())
+      .adaptiveGlassBackground()
     }
-    .padding(.horizontal, 12)
-    .padding(.vertical, 10)
-    .frame(maxWidth: .infinity, alignment: .leading)
-    .adaptiveGlassBackground()
+    .buttonStyle(.plain)
   }
 }
 

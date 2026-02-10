@@ -1,4 +1,5 @@
 import ComposableArchitecture
+import SharedFeature
 import SwiftUI
 
 // MARK: - Namespace

@@ -1,7 +1,6 @@
 import SwiftUI
 import ComposableArchitecture
 import PromisoShared
-import SharedFeature
 
 extension PersonalEventDetail {
   public struct RootView: View {

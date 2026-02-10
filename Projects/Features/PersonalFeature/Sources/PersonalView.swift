@@ -1,5 +1,6 @@
 import SwiftUI
 import ComposableArchitecture
+import SharedFeature
 
 extension PersonalMode {
   public struct RootView: View {

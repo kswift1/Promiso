@@ -78,6 +78,7 @@ extension Home {
     @Reducer(state: .equatable)
     public enum Path {
       case promiseDetail(PromiseDetail.Feature)
+      case personalEventDetail(PersonalEventDetail.Feature)
       case notificationCenter(NotificationCenterFeature.NotificationCenter.Feature)
     }
 
@@ -144,8 +145,6 @@ extension Home {
         case navigateToGroupWithPromise(groupId: String, promiseId: String)
         /// 모든 약속 보기 화면으로 네비게이션
         case navigateToAllPromises
-        /// 개인 일정 상세 (RootTab에서 sheet 표시)
-        case navigateToPersonalEvent(PersonalEventModel)
       }
     }
 
@@ -228,7 +227,8 @@ extension Home {
             return .send(.internal(.fetchUnreadNotificationCount))
 
           case .personalEventTapped(let event):
-            return .send(.delegate(.navigateToPersonalEvent(event)))
+            state.path.append(.personalEventDetail(.init(event: event)))
+            return .none
           }
 
         case .internal(let internalAction):
@@ -357,6 +357,15 @@ extension Home {
         case .path(.element(id: _, action: .promiseDetail(.delegate(.promiseUpdated)))):
           // 수정 후 다시 조회
           return .send(.internal(.fetchPromises))
+
+        // MARK: - PersonalEventDetail Path Actions
+
+        case .path(.element(id: _, action: .personalEventDetail(.delegate(.eventDeleted)))):
+          _ = state.path.popLast()
+          return .send(.internal(.fetchPersonalEvents))
+
+        case .path(.element(id: _, action: .personalEventDetail(.delegate(.eventUpdated)))):
+          return .send(.internal(.fetchPersonalEvents))
 
         // MARK: - NotificationCenter Path Actions
 
@@ -663,6 +672,8 @@ extension Home {
         switch store.case {
         case .promiseDetail(let detailStore):
           PromiseDetail.RootView(store: detailStore)
+        case .personalEventDetail(let personalEventDetailStore):
+          PersonalEventDetail.RootView(store: personalEventDetailStore)
         case .notificationCenter(let notificationStore):
           NotificationCenterFeature.NotificationCenter.RootView(store: notificationStore)
         }

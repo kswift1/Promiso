@@ -53,6 +53,8 @@ extension CalendarFeature {
         switch store.case {
         case .promiseDetail(let promiseDetailStore):
           PromiseDetail.RootView(store: promiseDetailStore)
+        case .personalEventDetail(let personalEventDetailStore):
+          PersonalEventDetail.RootView(store: personalEventDetailStore)
         }
       }
     }
@@ -253,9 +255,12 @@ extension CalendarFeature {
               .padding(.vertical, 4)
 
             case .personalEvent(let event):
-              PersonalEventCardView(event: event)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 4)
+              PersonalEventCardView(
+                event: event,
+                onTap: { store.send(.view(.personalEventTapped(event))) }
+              )
+              .padding(.horizontal, 16)
+              .padding(.vertical, 4)
             }
           }
         }

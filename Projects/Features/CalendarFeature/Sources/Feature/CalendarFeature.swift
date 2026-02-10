@@ -237,6 +237,7 @@ extension CalendarFeature {
     @Reducer
     public enum Path {
       case promiseDetail(PromiseDetail.Feature)
+      case personalEventDetail(PersonalEventDetail.Feature)
     }
 
     // MARK: - Action
@@ -268,6 +269,8 @@ extension CalendarFeature {
         case requestCalendarPermission
         case openSettings
         case dismissCalendarBanner(CalendarAuthorizationStatus)
+        // 개인 일정 탭
+        case personalEventTapped(PersonalEventModel)
         // 탭 전환 시 데이터 새로고침
         case refresh
       }
@@ -333,6 +336,11 @@ extension CalendarFeature {
             }
           }
           return .none
+        case .path(.element(id: _, action: .personalEventDetail(.delegate(.eventDeleted)))):
+          _ = state.path.popLast()
+          return .send(.internal(.fetchPersonalEvents))
+        case .path(.element(id: _, action: .personalEventDetail(.delegate(.eventUpdated)))):
+          return .send(.internal(.fetchPersonalEvents))
         case .path:
           return .none
         }
@@ -586,6 +594,10 @@ extension CalendarFeature {
 
       case .dismissCalendarBanner(let status):
         state.hiddenCalendarBannerTypes.insert(status)
+        return .none
+
+      case .personalEventTapped(let event):
+        state.path.append(.personalEventDetail(.init(event: event)))
         return .none
 
       case .refresh:

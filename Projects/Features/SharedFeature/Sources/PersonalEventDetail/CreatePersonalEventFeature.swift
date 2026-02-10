@@ -1,7 +1,7 @@
+import SwiftUI
 import ComposableArchitecture
 import Clients
 import PromisoShared
-import SharedFeature
 import PhotosUI
 
 // MARK: - Namespace
