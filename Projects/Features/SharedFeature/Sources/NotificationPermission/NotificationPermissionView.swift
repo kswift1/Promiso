@@ -92,6 +92,7 @@ extension NotificationPermission {
         loopContinues = false
       }
       .interactiveDismissDisabled()
+      .alert($store.scope(state: \.alert, action: \.alert))
     }
 
     // MARK: - iPhone Preview

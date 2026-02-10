@@ -169,103 +169,146 @@ extension Auth {
   }
   
   // MARK: - Root View
-
+  
   public struct RootView: View {
     @Bindable private var store: StoreOf<Feature>
-
+    let animated: Bool
+    
     @State private var appleCoordinator: AppleSignInCoordinator?
-    @State private var showContent: Bool = false
-
-    public init(store: StoreOf<Feature>) {
+    
+    @State private var indicatorProgress: CGFloat = 0
+    @State private var showTyping: Bool = false
+    @State private var showLoginSheet: Bool = false
+    
+    public init(
+      store: StoreOf<Feature>,
+      animated: Bool = true
+    ) {
       self.store = store
+      self.animated = animated
     }
-
+    
     public var body: some View {
-      VStack(spacing: 0) {
-        Spacer()
-
-        if showContent {
-          // 로고
-          ResourceKitAsset.fingerPromise.swiftUIImage
-            .resizable()
-            .scaledToFit()
-            .frame(width: 80, height: 80)
-            .padding(.bottom, 24)
-            .transition(.scale.combined(with: .opacity))
-
-          // 카피
-          VStack(spacing: 4) {
-            Text("약속의 시작,")
-              .font(.title2.bold())
-              .foregroundStyle(Color.pmtext.primary)
-            Text("Promiso와 함께")
-              .font(.title2.bold())
-              .foregroundStyle(
+      ZStack(alignment: .bottom) {
+        VStack(alignment: .leading, spacing: 0) {
+          
+          VStack(alignment: .leading, spacing: 16) {
+            // 인디케이터 바
+            RoundedRectangle(cornerRadius: 2)
+              .fill(
                 LinearGradient(
-                  colors: [Color.pmindigo.n600, Color.pmpurple.n600],
+                  colors: [
+                    Color.pmbrand.primary,
+                    Color.pmbrand.secondary
+                  ],
                   startPoint: .leading,
                   endPoint: .trailing
                 )
               )
-          }
-          .transition(.opacity.combined(with: .move(edge: .bottom)))
-        }
-
-        Spacer()
-
-        if showContent {
-          // 로그인 버튼
-          VStack(spacing: 14) {
-            // Apple 버튼
-            Button {
-              store.send(.view(.appleLoginTapped))
-            } label: {
-              HStack(spacing: 12) {
-                Image(systemName: "apple.logo")
-                  .font(.system(size: 20, weight: .medium))
-                Text("Apple로 계속하기")
-                  .font(.system(size: 16, weight: .semibold))
-              }
-              .foregroundColor(.white)
-              .frame(maxWidth: .infinity)
-              .frame(height: 56)
-              .background(Color.black, in: .rect(cornerRadius: 16))
-            }
-
-            // Google 버튼
-            Button {
-              store.send(.view(.googleLoginTapped))
-            } label: {
-              HStack(spacing: 12) {
-                ResourceKitAsset.googleLogo.swiftUIImage
-                  .resizable()
-                  .frame(width: 20, height: 20)
-                Text("Google로 계속하기")
-                  .font(.system(size: 16, weight: .semibold))
-              }
-              .foregroundColor(.primary)
-              .frame(maxWidth: .infinity)
-              .frame(height: 56)
-              .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                  .fill(Color(.systemBackground).opacity(0.9))
+              .frame(width: 40, height: 4)
+              .scaleEffect(x: indicatorProgress, y: 1, anchor: .leading)
+              .opacity(indicatorProgress == 0 ? 0 : 1)
+            
+            if showTyping {
+              TypewriterLinesView(
+                animated: animated,
+                lines: [
+                  .init(
+                    text: "약속을",
+                    font: .system(size: 48, weight: .black),
+                    style: AnyShapeStyle(Color.pmtext.primary)
+                  ),
+                  .init(
+                    text: "더 특별하게.",
+                    font: .system(size: 48, weight: .black),
+                    style: AnyShapeStyle(
+                      LinearGradient(
+                        colors: [
+                          Color.pmindigo.n600,
+                          Color.pmpurple.n600
+                        ],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                      )
+                    )
+                  ),
+                  .init(
+                    text: "소중한 순간들을",
+                    font: .system(size: 18, weight: .medium),
+                    style: AnyShapeStyle(Color.pmtext.secondary)
+                  ),
+                  .init(
+                    text: "Promiso와 함께하세요.",
+                    font: .system(size: 18, weight: .medium),
+                    style: AnyShapeStyle(Color.pmtext.secondary)
+                  )
+                ],
+                typingAnimationCompleted: {
+                  if animated {
+                    Task {
+                      try? await Task.sleep(for: .seconds(1))
+                      withAnimation(.spring(response: 0.5, dampingFraction: 0.9)) {
+                        showLoginSheet = true
+                      }
+                    }
+                  } else {
+                    showLoginSheet = true
+                  }
+                },
+                lineSpacingProvider: { index in
+                  switch index {
+                  case 0: return 4
+                  case 1: return 24
+                  case 2: return 4
+                  default: return 0
+                  }
+                },
+                typingSpeed: 0.05,
+                lineDelayProvider: { line in
+                  return line == 1 ? 1.0 : 0.3
+                }
               )
-              .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                  .stroke(Color.pmgray.n200, lineWidth: 1)
-              )
             }
           }
+          .frame(maxWidth: .infinity, alignment: .leading)
           .padding(.horizontal, 24)
-          .padding(.bottom, 40)
-          .transition(.opacity.combined(with: .move(edge: .bottom)))
+          .padding(.top, 80)
+          
+          Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .overlay(alignment: .bottom) {
+          if showLoginSheet {
+            LoginSheetView(
+              onAppleLogin: {
+                store.send(.view(.appleLoginTapped))
+              },
+              onGoogleLogin: {
+                store.send(.view(.googleLoginTapped))
+              }
+            )
+            .transition(.move(edge: .bottom).combined(with: .opacity))
+            .animation(
+              animated ? .spring(response: 0.55, dampingFraction: 0.85) : nil,
+              value: showLoginSheet
+            )
+          }
         }
       }
       .auroraBackground()
       .task {
-        try? await Task.sleep(for: .seconds(0.3))
-        withAnimation(.easeOut(duration: 0.5)) {
-          showContent = true
+        if animated {
+          try? await Task.sleep(for: .seconds(1.5))
+          
+          withAnimation(.easeOut(duration: 0.6)) {
+            indicatorProgress = 1
+          }
+          
+          try? await Task.sleep(for: .seconds(1))
+          showTyping = true
+        } else {
+          indicatorProgress = 1
+          showTyping = true
         }
       }
       .onChange(of: store.pendingAppleLoginNonce) { _, newNonce in
@@ -274,19 +317,19 @@ extension Auth {
         }
       }
     }
-
+    
     // MARK: - Apple Login Presentation
-
+    
     private func presentAppleLogin(nonce: String) {
       let hashedNonce = Feature.sha256(nonce)
-
+      
       let appleIDProvider = ASAuthorizationAppleIDProvider()
       let request = appleIDProvider.createRequest()
       request.requestedScopes = [.fullName, .email]
       request.nonce = hashedNonce
-
+      
       let authorizationController = ASAuthorizationController(authorizationRequests: [request])
-
+      
       if appleCoordinator == nil {
         appleCoordinator = AppleSignInCoordinator()
       }
@@ -294,7 +337,7 @@ extension Auth {
       coordinator.onComplete = { result in
         store.send(.internal(.appleAuthorizationResult(result)))
       }
-
+      
       authorizationController.delegate = coordinator
       authorizationController.presentationContextProvider = coordinator
       authorizationController.performRequests()
@@ -590,21 +633,42 @@ extension Auth {
   }
   
   // MARK: - Previews
-
-  #Preview("Auth") {
+  
+  #Preview("With Animation") {
     Auth.RootView(
       store: Store(initialState: Feature.State()) {
         Feature()
-      }
+      },
+      animated: true
     )
   }
-
+  
+  #Preview("Without Animation") {
+    Auth.RootView(
+      store: Store(initialState: Feature.State()) {
+        Feature()
+      },
+      animated: false
+    )
+  }
+  
   #Preview("Dark Mode") {
     Auth.RootView(
       store: Store(initialState: Feature.State()) {
         Feature()
-      }
+      },
+      animated: true
     )
     .preferredColorScheme(.dark)
+  }
+  
+  #Preview("Light Mode") {
+    Auth.RootView(
+      store: Store(initialState: Feature.State()) {
+        Feature()
+      },
+      animated: true
+    )
+    .preferredColorScheme(.light)
   }
 }
