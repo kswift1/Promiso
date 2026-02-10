@@ -64,8 +64,8 @@ extension AppEntry.OnboardingIntro {
       }
       .id(store.currentScreen)
       .transition(.asymmetric(
-        insertion: .move(edge: .trailing).combined(with: .opacity),
-        removal: .move(edge: .leading).combined(with: .opacity)
+        insertion: .move(edge: store.isGoingBack ? .leading : .trailing).combined(with: .opacity),
+        removal: .move(edge: store.isGoingBack ? .trailing : .leading).combined(with: .opacity)
       ))
     }
 
@@ -79,13 +79,33 @@ extension AppEntry.OnboardingIntro {
           activeColor: Color.pmindigo.n500
         )
 
-        GlassActionButton(
-          title: store.isLastScreen ? "시작하기" : "다음",
-          leadingSystemImage: store.isLastScreen ? "arrow.right" : nil,
-          isPrimary: true,
-          isVisible: store.isAnimationComplete,
-          action: { store.send(.view(.nextTapped)) }
-        )
+        HStack(spacing: 12) {
+          // 뒤로가기 버튼 (첫 화면이 아닐 때, 다음 버튼과 함께 표시)
+          if !store.isFirstScreen && store.isAnimationComplete {
+            Button {
+              store.send(.view(.backTapped))
+            } label: {
+              Image(systemName: "chevron.left")
+                .font(.pmSubheadlineSemibold)
+                .foregroundStyle(Color.pmtext.secondary)
+                .frame(width: 48, height: 48)
+                .background {
+                  Circle()
+                    .fill(.ultraThinMaterial)
+                }
+            }
+            .transition(.scale.combined(with: .opacity))
+          }
+
+          GlassActionButton(
+            title: store.isLastScreen ? "시작하기" : "다음",
+            leadingSystemImage: store.isLastScreen ? "arrow.right" : nil,
+            isPrimary: true,
+            isVisible: store.isAnimationComplete,
+            action: { store.send(.view(.nextTapped)) }
+          )
+        }
+        .animation(.easeInOut(duration: 0.25), value: store.isFirstScreen)
       }
       .padding(.horizontal, 24)
       .padding(.bottom, 40)

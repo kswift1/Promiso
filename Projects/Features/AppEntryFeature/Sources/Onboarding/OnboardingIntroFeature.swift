@@ -32,9 +32,15 @@ extension AppEntry {
         case premiumTeaser = 5
       }
 
+      var isFirstScreen: Bool {
+        currentScreen == Screen.allCases.first
+      }
+
       var isLastScreen: Bool {
         currentScreen == Screen.allCases.last
       }
+
+      var isGoingBack: Bool = false
 
       var screenProgress: Double {
         Double(currentScreen.rawValue)
@@ -55,6 +61,7 @@ extension AppEntry {
       @CasePathable
       public enum ViewAction: Sendable {
         case nextTapped
+        case backTapped
         case skipTapped
         case screenAnimationCompleted
         case premiumInterestToggled(String)
@@ -74,18 +81,27 @@ extension AppEntry {
           switch viewAction {
           case .nextTapped:
             state.isAnimationComplete = false
+            state.isGoingBack = false
             if state.isLastScreen {
-              // 마지막 화면에서 "다음" → 온보딩 완료
               logPremiumInterests(state.interestedPremiumFeatures)
               return .send(.delegate(.completed))
             } else {
-              // 다음 화면으로 이동
               let nextIndex = state.currentScreen.rawValue + 1
               if let nextScreen = State.Screen(rawValue: nextIndex) {
                 state.currentScreen = nextScreen
               }
               return .none
             }
+
+          case .backTapped:
+            guard !state.isFirstScreen else { return .none }
+            state.isAnimationComplete = false
+            state.isGoingBack = true
+            let prevIndex = state.currentScreen.rawValue - 1
+            if let prevScreen = State.Screen(rawValue: prevIndex) {
+              state.currentScreen = prevScreen
+            }
+            return .none
 
           case .skipTapped:
             logPremiumInterests(state.interestedPremiumFeatures)

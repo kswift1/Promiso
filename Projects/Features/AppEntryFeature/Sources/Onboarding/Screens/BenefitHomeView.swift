@@ -267,19 +267,19 @@ struct BenefitHomeView: View {
     }
 
     // 응답 필요 슬라이드 인
-    try? await Task.sleep(for: .seconds(0.5))
+    try? await Task.sleep(for: .seconds(0.7))
     withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
       showNeedResponseSection = true
     }
 
     // 다가오는 약속 슬라이드 인
-    try? await Task.sleep(for: .seconds(0.5))
+    try? await Task.sleep(for: .seconds(0.7))
     withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
       showUpcomingSection = true
     }
 
     // 하단 카피
-    try? await Task.sleep(for: .seconds(0.5))
+    try? await Task.sleep(for: .seconds(0.7))
     withAnimation(.easeOut(duration: 0.4)) {
       showCopy = true
     }
