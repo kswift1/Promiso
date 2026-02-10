@@ -85,6 +85,7 @@ export function isValidFirebaseStorageUrl(url: string): boolean {
   // iOS SDK downloadURL()은 :443 포트를 포함할 수 있음
   const httpsPrefix = "https://firebasestorage.googleapis.com";
   const pathPrefix = `/v0/b/${bucketName}/o/`;
+
   if (
     url.startsWith(`${httpsPrefix}${pathPrefix}`) ||
     url.startsWith(`${httpsPrefix}:443${pathPrefix}`)
