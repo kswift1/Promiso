@@ -200,12 +200,12 @@ struct PromiseCard: View {
             // 사진 첨부 표시
             if !promise.imageUrls.isEmpty {
               HStack(spacing: 4) {
-                Image(systemName: "photo")
-                  .font(.system(size: 12))
+                Text("📷")
+                  .font(.system(size: 14))
                 Text("사진 \(promise.imageUrls.count)장")
-                  .font(.system(size: 13, weight: .medium))
+                  .font(.system(size: 14, weight: .medium))
               }
-              .foregroundColor(Color.pmindigo.n500)
+              .foregroundColor(.secondary)
             }
           }
         }
