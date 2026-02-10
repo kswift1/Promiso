@@ -81,47 +81,47 @@ struct PersonalEventCardView: View {
         // 인디고 인디케이터
         RoundedRectangle(cornerRadius: 2)
           .fill(Color.pmindigo.n500)
-          .frame(width: 4, height: 44)
+          .frame(width: 4)
 
-        VStack(alignment: .leading, spacing: 4) {
-          // 개인 일정 라벨
-          HStack(spacing: 4) {
-            Image(systemName: "person.fill")
-              .font(.system(size: 10))
-              .foregroundColor(Color.pmindigo.n500)
+        // 메인 콘텐츠
+        VStack(alignment: .leading, spacing: 8) {
+          // 상단: 시간 + 개인 일정 라벨
+          HStack(spacing: 6) {
+            Text(event.timeText)
+              .font(.system(size: 13, weight: .medium))
+              .foregroundColor(.secondary)
+
+            Text("·")
+              .foregroundColor(.secondary.opacity(0.5))
 
             Text("개인 일정")
-              .font(.system(size: 11, weight: .medium))
+              .font(.system(size: 12, weight: .medium))
               .foregroundColor(Color.pmindigo.n500)
+
+            Spacer()
           }
 
           // 이모지 + 제목
-          HStack(spacing: 6) {
+          HStack(spacing: 8) {
             Text(event.displayEmoji)
-              .font(.system(size: 16))
+              .font(.system(size: 18))
 
             Text(event.title)
-              .font(.system(size: 15, weight: .medium))
+              .font(.system(size: 16, weight: .semibold))
               .foregroundColor(.primary)
               .lineLimit(1)
           }
 
-          // 시간 + 위치
-          HStack(spacing: 8) {
-            Text(event.timeText)
-              .font(.system(size: 13))
-              .foregroundColor(.secondary)
-
-            if let location = event.location {
-              HStack(spacing: 2) {
-                Image(systemName: "location.fill")
-                  .font(.system(size: 10))
-                Text(location.name)
-                  .font(.system(size: 12))
-                  .lineLimit(1)
-              }
-              .foregroundColor(.secondary.opacity(0.8))
+          // 위치 (있는 경우)
+          if let location = event.location {
+            HStack(spacing: 4) {
+              Image(systemName: "location.fill")
+                .font(.system(size: 10))
+              Text(location.name)
+                .font(.system(size: 13))
+                .lineLimit(1)
             }
+            .foregroundColor(.secondary.opacity(0.8))
           }
         }
 

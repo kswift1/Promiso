@@ -101,7 +101,7 @@ struct PromiseCardView: View {
                 )
 
                 Text(group.name)
-                  .font(.system(size: 12, weight: .medium))
+                  .font(.system(size: 14, weight: .medium))
                   .foregroundColor(.secondary)
                   .lineLimit(1)
               }
@@ -109,9 +109,9 @@ struct PromiseCardView: View {
 
             HStack(spacing: 3) {
               Image(systemName: "person.fill")
-                .font(.system(size: 10))
-              Text("\(promise.votes.acceptedCount)/\(promise.group?.memberIds.count ?? promise.minimumParticipants)")
                 .font(.system(size: 12))
+              Text("\(promise.votes.acceptedCount)/\(promise.group?.memberIds.count ?? promise.minimumParticipants)")
+                .font(.system(size: 14))
             }
             .foregroundColor(.secondary)
           }
