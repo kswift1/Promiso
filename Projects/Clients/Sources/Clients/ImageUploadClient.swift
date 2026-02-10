@@ -36,7 +36,8 @@ public struct ImageUploadClient: Sendable {
   ) async throws -> [String]
 
   /// 이미지 삭제 (best-effort, 실패해도 throw 안 함)
-  public var deleteImages: @Sendable (_ storagePaths: [String]) async -> Void
+  /// download URL 또는 storage path 모두 지원
+  public var deleteImages: @Sendable (_ urls: [String]) async -> Void
 }
 
 // MARK: - Test & Preview Values
@@ -105,12 +106,21 @@ extension ImageUploadClient: DependencyKey {
         // 인덱스 순으로 정렬하여 순서 보장
         return results.sorted { $0.0 < $1.0 }.map(\.1)
       },
-      deleteImages: { storagePaths in
+      deleteImages: { urls in
         await withTaskGroup(of: Void.self) { group in
-          for path in storagePaths {
+          for urlString in urls {
             group.addTask {
-              let ref = storage.reference().child(path)
-              try? await ref.delete()
+              do {
+                let ref: StorageReference
+                if urlString.hasPrefix("https://") || urlString.hasPrefix("gs://") {
+                  ref = storage.reference(forURL: urlString)
+                } else {
+                  ref = storage.reference().child(urlString)
+                }
+                try await ref.delete()
+              } catch {
+                // best-effort: 삭제 실패 무시
+              }
             }
           }
         }

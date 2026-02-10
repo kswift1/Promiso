@@ -15,6 +15,7 @@ extension PersonalEventDetail {
     @Dependency(\.localNotificationClient) var localNotificationClient
     @Dependency(\.hapticFeedback) var hapticFeedback
     @Dependency(\.calendarSyncClient) var calendarSyncClient
+    @Dependency(\.imageUploadClient) var imageUploadClient
 
     public init() {}
 
@@ -128,11 +129,17 @@ extension PersonalEventDetail {
 
         case .alert(.presented(.confirmDelete)):
           state.isDeleting = true
-          return .run { [event = state.event, calendarSyncClient] send in
+          return .run { [event = state.event, calendarSyncClient, imageUploadClient] send in
             do {
               try await personalEventClient.deleteEvent(event.id)
               await localNotificationClient.cancel(event.notificationId)
               try? await calendarSyncClient.removePersonalEvent(event.id)
+
+              // 이미지 Storage에서 제거 (best-effort)
+              if !event.imageUrls.isEmpty {
+                await imageUploadClient.deleteImages(event.imageUrls)
+              }
+
               await send(.internal(.deleteSuccess))
             } catch {
               await send(.internal(.deleteFailed(error.localizedDescription)))

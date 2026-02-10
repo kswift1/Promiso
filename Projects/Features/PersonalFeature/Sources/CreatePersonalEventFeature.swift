@@ -243,6 +243,11 @@ extension CreatePersonalEvent {
 
                   try await personalEventClient.updateEvent(savedEvent)
                   try? await calendarSyncClient.updatePersonalEvent(savedEvent, syncEnabled)
+
+                  // 삭제된 이미지 Storage에서 제거 (best-effort)
+                  if !removedUrls.isEmpty {
+                    await imageUploadClient.deleteImages(removedUrls)
+                  }
                 }
 
                 // 기존 알림 취소 후 재스케줄링

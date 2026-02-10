@@ -639,12 +639,31 @@ export const deletePromise = onCall<DeletePromiseRequest>(
       );
     }
 
-    // 6. Firestore에서 삭제 (Hard Delete)
+    // 6. Storage 이미지 정리 (best-effort)
+    const imageUrls = promiseData.imageUrls as string[] | null;
+    if (imageUrls && imageUrls.length > 0) {
+      try {
+        const bucket = admin.storage().bucket();
+        const [files] = await bucket.getFiles({
+          prefix: `promise_images/${data.promiseId}/`,
+        });
+        if (files.length > 0) {
+          await Promise.all(files.map((file) => file.delete()));
+        }
+      } catch (err) {
+        console.warn(
+          `Failed to clean up images for promise ${data.promiseId}:`,
+          err,
+        );
+      }
+    }
+
+    // 7. Firestore에서 삭제 (Hard Delete)
     await promiseRef.delete();
 
     console.log(`🗑️ Promise deleted: ${data.promiseId}`);
 
-    // 7. 응답 반환
+    // 8. 응답 반환
     return {
       success: true,
     };

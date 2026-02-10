@@ -226,6 +226,12 @@ extension EditPromise {
                 }
 
                 try await promiseClient.updatePromise(finalPromise)
+
+                // 삭제된 이미지 Storage에서 제거 (best-effort)
+                if !removedUrls.isEmpty {
+                  await imageUploadClient.deleteImages(removedUrls)
+                }
+
                 await send(.internal(.updatePromiseResponse(.success(finalPromise))))
               } catch let e as Clients.PromiseClientError {
                 await send(.internal(.updatePromiseResponse(.failure(e))))
