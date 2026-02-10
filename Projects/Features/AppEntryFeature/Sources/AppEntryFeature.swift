@@ -371,10 +371,13 @@ extension AppEntry {
           return .none
 
         case .destination(.presented(.onboardingStart(.delegate(.createGroup)))):
-          // "그룹 생성하기" → 메인으로 전환
+          // "그룹 생성하기" → 메인 + 그룹 생성 열기
           if let userModel = state.pendingUserForMain {
             state.pendingUserForMain = nil
-            return .send(.internal(.transitionToMain(userModel, isSignup: true)))
+            return .concatenate(
+              .send(.internal(.transitionToMain(userModel, isSignup: true))),
+              .send(.destination(.presented(.main(.openCreateGroup))))
+            )
           }
           return .none
 

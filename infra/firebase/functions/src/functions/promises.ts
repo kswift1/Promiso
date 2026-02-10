@@ -9,6 +9,7 @@
 import {FieldValue} from "firebase-admin/firestore";
 import {HttpsError, onCall} from "firebase-functions/v2/https";
 import {admin, REGION} from "../config";
+import {isValidFirebaseStorageUrl} from "../utils/helpers";
 import {
   CreatePromiseRequest,
   CreatePromiseResponse,
@@ -22,28 +23,6 @@ import {
   GetConfirmedPromisesForCalendarResponse,
   CalendarPromise,
 } from "../types/api";
-
-/**
- * Firebase Storage URL 유효성 검증
- * @param {string} url - 검증할 URL
- * @return {boolean} Firebase Storage URL 형식이면 true
- */
-function isValidFirebaseStorageUrl(url: string): boolean {
-  const bucket = admin.storage().bucket();
-  const bucketName = bucket.name;
-
-  // gs:// 형식
-  if (url.startsWith(`gs://${bucketName}/`)) {
-    return true;
-  }
-
-  // https:// 형식
-  if (url.startsWith(`https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/`)) {
-    return true;
-  }
-
-  return false;
-}
 
 /**
  * 약속 생성

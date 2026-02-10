@@ -14,6 +14,7 @@ import {sendPushNotificationInternal} from "./notifications";
 import {
   validateCreateGroupRequest,
   generateUniqueInviteCode,
+  isValidFirebaseStorageUrl,
 } from "../utils/helpers";
 import {
   CreateGroupRequest,
@@ -102,12 +103,14 @@ export const createGroup = onCall<CreateGroupRequest>(
       );
     }
     const now = FieldValue.serverTimestamp();
+    const validImageUrl = data.imageUrl &&
+      isValidFirebaseStorageUrl(data.imageUrl) ? data.imageUrl : null;
 
     // 5-1. 그룹 기본 정보 생성 (memberIds 포함)
     await groupRef.set({
       name: data.name,
       description: data.description ?? null,
-      imageUrl: data.imageUrl ?? null,
+      imageUrl: validImageUrl,
       memberIds: [creatorId],
       maxMembers: data.maxMembers,
       inviteCode,
@@ -127,7 +130,7 @@ export const createGroup = onCall<CreateGroupRequest>(
             joinedAt: now,
             notifications: defaultGroupNotificationSettings(),
             hasNewActivity: false,
-            imageUrl: data.imageUrl ?? null,
+            imageUrl: validImageUrl,
           },
         },
       }, {merge: true});
@@ -533,7 +536,8 @@ export const updateGroup = onCall<UpdateGroupRequest>(
     }
 
     if (data.imageUrl !== undefined) {
-      updateData.imageUrl = data.imageUrl ?? null;
+      updateData.imageUrl = data.imageUrl &&
+        isValidFirebaseStorageUrl(data.imageUrl) ? data.imageUrl : null;
     }
 
     if (typeof data.maxMembers === "number") {

@@ -69,6 +69,27 @@ export function validateCreateGroupRequest(data: CreateGroupRequest): void {
 }
 
 /**
+ * Firebase Storage URL 유효성 검증
+ *
+ * @param {string} url - 검증할 URL
+ * @return {boolean} Firebase Storage URL 형식이면 true
+ */
+export function isValidFirebaseStorageUrl(url: string): boolean {
+  const bucket = admin.storage().bucket();
+  const bucketName = bucket.name;
+
+  if (url.startsWith(`gs://${bucketName}/`)) {
+    return true;
+  }
+
+  if (url.startsWith(`https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/`)) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
  * Storage 경로에서 downloadURL 생성
  *
  * @param {string} storagePath - Storage 파일 경로
