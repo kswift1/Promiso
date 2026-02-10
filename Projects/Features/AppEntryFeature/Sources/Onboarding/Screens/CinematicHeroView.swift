@@ -404,46 +404,46 @@ struct CinematicHeroView: View {
 
   private func runAnimationSequence() async {
     // Scene 1: 메시지 버블 하나씩 등장
-    try? await Task.sleep(for: .seconds(0.3))
+    try? await Task.sleep(for: .seconds(0.5))
     phase = .messagesVisible
 
     for i in 1...4 {
-      try? await Task.sleep(for: .seconds(0.5))
+      try? await Task.sleep(for: .seconds(0.7))
       withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
         visibleBubbles = i
       }
     }
 
     // Scene 2: 버블 중앙으로 축소
-    try? await Task.sleep(for: .seconds(1.2))
-    withAnimation(.easeIn(duration: 0.5)) {
+    try? await Task.sleep(for: .seconds(1.4))
+    withAnimation(.easeIn(duration: 0.7)) {
       bubblesCollapsing = true
     }
 
     // 축소 완료 후 카드 뷰로 전환
-    try? await Task.sleep(for: .seconds(0.5))
+    try? await Task.sleep(for: .seconds(0.7))
     phase = .organizing
 
     // Scene 3: 카드 하나씩 캐스케이드 등장
     for i in 1...4 {
-      try? await Task.sleep(for: .seconds(0.25))
+      try? await Task.sleep(for: .seconds(0.45))
       visibleCards = i
     }
 
     // 정리 완료
-    try? await Task.sleep(for: .seconds(0.3))
-    withAnimation(.easeInOut(duration: 0.3)) {
+    try? await Task.sleep(for: .seconds(0.5))
+    withAnimation(.easeInOut(duration: 0.5)) {
       phase = .organized
     }
 
     // Scene 4: 태그라인
-    try? await Task.sleep(for: .seconds(0.8))
-    withAnimation(.easeOut(duration: 0.5)) {
+    try? await Task.sleep(for: .seconds(1.0))
+    withAnimation(.easeOut(duration: 0.7)) {
       phase = .tagline
     }
 
     // 애니메이션 완료
-    try? await Task.sleep(for: .seconds(0.4))
+    try? await Task.sleep(for: .seconds(0.6))
     onAnimationComplete()
   }
 }
