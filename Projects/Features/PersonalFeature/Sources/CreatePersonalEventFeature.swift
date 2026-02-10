@@ -2,6 +2,7 @@ import ComposableArchitecture
 import Clients
 import PromisoShared
 import SharedFeature
+import PhotosUI
 
 // MARK: - Namespace
 
@@ -19,6 +20,7 @@ extension CreatePersonalEvent {
     @Dependency(\.hapticFeedback) var hapticFeedback
     @Dependency(\.continuousClock) var clock
     @Dependency(\.calendarSyncClient) var calendarSyncClient
+    @Dependency(\.imageUploadClient) var imageUploadClient
 
     public init() {}
 
@@ -49,6 +51,10 @@ extension CreatePersonalEvent {
 
       @Presents var locationPicker: LocationPicker.Feature.State?
       @Presents var notificationPermission: NotificationPermission.Feature.State?
+
+      // 이미지 첨부
+      var localImageData: [Data] = []
+      var removedImageUrls: [String] = []
 
       public init(event: PersonalEventModel = .empty, mode: Mode = .create) {
         self.event = event
@@ -90,12 +96,17 @@ extension CreatePersonalEvent {
       case saveTapped
       case dismissTapped
       case dismissError
+      // 이미지 첨부
+      case photosSelected([PhotosPickerItem])
+      case removeLocalImage(Int)
+      case removeExistingImage(Int)
     }
 
     public enum Internal: Sendable {
       case titleDebounced(String)
       case emojiGenerated(String)
       case emojiGenerationFailed
+      case photosLoaded([Data])
       case saveSuccess(PersonalEventModel)
       case saveFailed(String)
       case notificationStatusChecked(NotificationAuthorizationStatus)
@@ -186,7 +197,9 @@ extension CreatePersonalEvent {
             guard state.canSave else { return .none }
             state.isSaving = true
             state.errorMessage = nil
-            return .run { [event = state.event, mode = state.mode, personalEventClient, localNotificationClient, calendarSyncClient] send in
+            let localImages = state.localImageData
+            let removedUrls = state.removedImageUrls
+            return .run { [event = state.event, mode = state.mode, personalEventClient, localNotificationClient, calendarSyncClient, imageUploadClient] send in
               do {
                 var savedEvent = event
                 let syncEnabled = UserDefaults.standard.bool(
@@ -197,9 +210,38 @@ extension CreatePersonalEvent {
                 case .create:
                   let eventId = try await personalEventClient.createEvent(event)
                   savedEvent.id = eventId
+
+                  // 이미지 업로드
+                  if !localImages.isEmpty {
+                    do {
+                      let imageUrls = try await imageUploadClient.uploadImages(localImages, "personal_event_images/\(eventId)")
+                      savedEvent.imageUrls = imageUrls
+                      try await personalEventClient.updateEvent(savedEvent)
+                    } catch {
+                      // 이미지 업로드 실패해도 이벤트 생성은 성공
+                    }
+                  }
+
                   try? await calendarSyncClient.addPersonalEvent(savedEvent, syncEnabled)
+
                 case .edit:
-                  try await personalEventClient.updateEvent(event)
+                  // 이미지 처리
+                  if !localImages.isEmpty || !removedUrls.isEmpty {
+                    var finalImageUrls = event.imageUrls.filter { !removedUrls.contains($0) }
+
+                    if !localImages.isEmpty {
+                      do {
+                        let newUrls = try await imageUploadClient.uploadImages(localImages, "personal_event_images/\(event.id)")
+                        finalImageUrls.append(contentsOf: newUrls)
+                      } catch {
+                        // 이미지 업로드 실패 시 기존 이미지만 유지
+                      }
+                    }
+
+                    savedEvent.imageUrls = Array(finalImageUrls.prefix(3))
+                  }
+
+                  try await personalEventClient.updateEvent(savedEvent)
                   try? await calendarSyncClient.updatePersonalEvent(savedEvent, syncEnabled)
                 }
 
@@ -227,6 +269,28 @@ extension CreatePersonalEvent {
           case .dismissError:
             state.errorMessage = nil
             return .none
+
+          case .photosSelected(let items):
+            return .run { send in
+              var loadedData: [Data] = []
+              for item in items {
+                if let data = try? await item.loadTransferable(type: Data.self) {
+                  loadedData.append(data)
+                }
+              }
+              await send(.internal(.photosLoaded(loadedData)))
+            }
+
+          case .removeLocalImage(let index):
+            guard index < state.localImageData.count else { return .none }
+            state.localImageData.remove(at: index)
+            return .none
+
+          case .removeExistingImage(let index):
+            let visibleUrls = state.event.imageUrls.filter { !state.removedImageUrls.contains($0) }
+            guard index < visibleUrls.count else { return .none }
+            state.removedImageUrls.append(visibleUrls[index])
+            return .none
           }
 
         // MARK: - Internal Actions
@@ -251,6 +315,13 @@ extension CreatePersonalEvent {
 
           case .emojiGenerationFailed:
             state.isEmojiLoading = false
+            return .none
+
+          case .photosLoaded(let data):
+            let totalExisting = state.event.imageUrls.count - state.removedImageUrls.count
+            let remaining = 3 - totalExisting - state.localImageData.count
+            let toAdd = Array(data.prefix(max(0, remaining)))
+            state.localImageData.append(contentsOf: toAdd)
             return .none
 
           case .saveSuccess(let event):

@@ -18,6 +18,12 @@ extension PromiseDetail {
         VStack(spacing: 24) {
           headerSection
           scheduleSection
+
+          // 이미지 갤러리
+          if !store.promise.imageUrls.isEmpty {
+            imageGallerySection
+          }
+
           if !store.promise.isPast {
             responseSection
           }
@@ -167,6 +173,26 @@ extension PromiseDetail {
             title: "최소 확정 인원",
             value: "\(store.promise.minimumParticipants)명"
           )
+        }
+        .adaptiveGlassCard()
+      }
+    }
+
+    // MARK: - Image Gallery Section
+
+    @ViewBuilder
+    private var imageGallerySection: some View {
+      VStack(spacing: 0) {
+        PromiseDetailSectionHeader(title: "사진")
+
+        ScrollView(.horizontal, showsIndicators: false) {
+          HStack(spacing: 10) {
+            ForEach(store.promise.imageUrls, id: \.self) { url in
+              GalleryImageThumbnail(url: url)
+            }
+          }
+          .padding(.horizontal, 16)
+          .padding(.vertical, 12)
         }
         .adaptiveGlassCard()
       }

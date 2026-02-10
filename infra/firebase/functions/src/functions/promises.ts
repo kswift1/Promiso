@@ -137,6 +137,8 @@ export const createPromise = onCall<CreatePromiseRequest>(
         longitude: data.location.longitude || null,
       } : null,
       trackingStartMinutesBefore: data.arrivalSharingTime || null,
+      imageUrls: data.imageUrls && data.imageUrls.length > 0
+        ? data.imageUrls.slice(0, 3) : null,
       badgesCleared: false, // 배지 정리 여부 (마감 시 true로 변경)
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
@@ -520,6 +522,15 @@ export const updatePromise = onCall<UpdatePromiseRequest>(
           latitude: data.location.latitude || null,
           longitude: data.location.longitude || null,
         };
+      }
+    }
+
+    // imageUrls (첨부 이미지)
+    if (data.imageUrls !== undefined) {
+      if (data.imageUrls === null || data.imageUrls.length === 0) {
+        updateData.imageUrls = null;
+      } else {
+        updateData.imageUrls = data.imageUrls.slice(0, 3);
       }
     }
 

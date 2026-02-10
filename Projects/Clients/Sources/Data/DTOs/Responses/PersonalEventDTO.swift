@@ -17,6 +17,9 @@ public struct PersonalEventDTO: Codable {
   // MARK: - 위치
   public let location: LocationDTO?
 
+  // MARK: - 이미지
+  public let imageUrls: [String]?
+
   // MARK: - 알림
   public let reminderMinutesBefore: Int?
 
@@ -31,6 +34,7 @@ public struct PersonalEventDTO: Codable {
     startAt: Timestamp,
     endAt: Timestamp? = nil,
     location: LocationDTO? = nil,
+    imageUrls: [String]? = nil,
     reminderMinutesBefore: Int? = nil,
     createdAt: Timestamp = Timestamp(),
     updatedAt: Timestamp = Timestamp()
@@ -41,6 +45,7 @@ public struct PersonalEventDTO: Codable {
     self.startAt = startAt
     self.endAt = endAt
     self.location = location
+    self.imageUrls = imageUrls
     self.reminderMinutesBefore = reminderMinutesBefore
     self.createdAt = createdAt
     self.updatedAt = updatedAt
@@ -59,6 +64,7 @@ extension PersonalEventDTO {
       startAt: Timestamp(date: model.startAt),
       endAt: model.endAt.map { Timestamp(date: $0) },
       location: model.location.map { LocationDTO(model: $0) },
+      imageUrls: model.imageUrls.isEmpty ? nil : model.imageUrls,
       reminderMinutesBefore: model.reminderMinutesBefore,
       createdAt: Timestamp(date: model.createdAt),
       updatedAt: Timestamp(date: model.updatedAt)

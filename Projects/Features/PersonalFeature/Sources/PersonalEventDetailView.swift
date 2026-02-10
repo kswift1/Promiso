@@ -17,6 +17,11 @@ extension PersonalEventDetail {
         VStack(spacing: 24) {
           headerSection
           scheduleSection
+
+          // 이미지 갤러리
+          if !store.event.imageUrls.isEmpty {
+            imageGallerySection
+          }
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 24)
@@ -156,6 +161,25 @@ extension PersonalEventDetail {
               value: reminderText(minutes)
             )
           }
+        }
+        .adaptiveGlassCard()
+      }
+    }
+
+    // MARK: - Image Gallery Section
+
+    private var imageGallerySection: some View {
+      VStack(spacing: 0) {
+        PromiseDetailSectionHeader(title: "사진")
+
+        ScrollView(.horizontal, showsIndicators: false) {
+          HStack(spacing: 10) {
+            ForEach(store.event.imageUrls, id: \.self) { url in
+              GalleryImageThumbnail(url: url)
+            }
+          }
+          .padding(.horizontal, 16)
+          .padding(.vertical, 12)
         }
         .adaptiveGlassCard()
       }
