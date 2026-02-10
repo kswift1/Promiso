@@ -1,12 +1,14 @@
 // MARK: - BenefitLiveView.swift
 // Screen 5: Benefit 3 - "지금 어디야?" 안 물어도 되는 약속
 
+import Lottie
 import PromisoShared
 import ResourceKit
 import SwiftUI
 
 struct BenefitLiveView: View {
   let onAnimationComplete: () -> Void
+  let onInteractionComplete: () -> Void
 
   // MARK: - Mock Data
 
@@ -21,12 +23,13 @@ struct BenefitLiveView: View {
 
   @State private var showCard: Bool = false
   @State private var participants: [MockParticipant] = [
-    .init(id: 0, emoji: "🎓", name: "민수", progress: 1.0, eta: 0),
-    .init(id: 1, emoji: "🎓", name: "지훈", progress: 0.85, eta: 3),
-    .init(id: 2, emoji: "🎓", name: "수진", progress: 0.15, eta: 20),
-    .init(id: 3, emoji: "🎓", name: "나", progress: 0.45, eta: 10, isCurrentUser: true),
+    .init(id: 0, emoji: "🧑‍💻", name: "민수", progress: 0.45, eta: 10, isCurrentUser: true),
+    .init(id: 1, emoji: "😎", name: "지훈", progress: 1.0, eta: 0),
+    .init(id: 2, emoji: "🐰", name: "재윤", progress: 0.9, eta: 3),
+    .init(id: 3, emoji: "🎧", name: "예은", progress: 0.1, eta: 25),
   ]
-  @State private var showButtons: Bool = false
+  @State private var showETAButtons: Bool = false
+  @State private var hasArrived: Bool = false
 
   var body: some View {
     VStack(spacing: 0) {
@@ -37,17 +40,11 @@ struct BenefitLiveView: View {
           .transition(.move(edge: .bottom).combined(with: .opacity))
       }
 
-      Spacer()
-        .frame(height: 28)
-
-      // 하단 ETA 버튼
-      if showButtons {
-        HStack(spacing: 12) {
-          etaButton("20분", color: .orange)
-          etaButton("5분", color: Color.pmindigo.n500)
-          etaButton("완료", color: .green, icon: "checkmark")
-        }
-        .transition(.opacity.combined(with: .move(edge: .bottom)))
+      // ETA 버튼
+      if showETAButtons {
+        etaButtonRow
+          .padding(.top, 16)
+          .transition(.opacity.combined(with: .move(edge: .bottom)))
       }
 
       Spacer()
@@ -58,6 +55,103 @@ struct BenefitLiveView: View {
         await runAnimationSequence()
       }
     }
+  }
+
+  // MARK: - ETA Buttons
+
+  private var etaButtonRow: some View {
+    VStack(spacing: 16) {
+      // Glass 컨테이너: ETA 버튼 + 유도 문구
+      VStack(spacing: 10) {
+        HStack(spacing: 8) {
+          etaSelectButton(title: "20분", eta: 20, progress: 0.2)
+          etaSelectButton(title: "10분", eta: 10, progress: 0.55)
+          etaSelectButton(title: "5분", eta: 5, progress: 0.8)
+          etaSelectButton(title: "도착", emoji: "🏁", eta: 0, progress: 1.0)
+        }
+
+        HStack(spacing: 4) {
+          Image(systemName: "hand.tap.fill")
+            .font(.system(size: 11))
+            .foregroundStyle(Color.pmindigo.n500)
+          Text("도착 예정 시간을 눌러보세요")
+            .font(.system(size: 12))
+            .foregroundStyle(Color.pmtext.secondary.opacity(0.8))
+        }
+      }
+      .padding(14)
+      .adaptiveGlassCard(cornerRadius: 16)
+
+      // 카피
+      VStack(spacing: 6) {
+        Text("오고 있는지, 물어보지 않아도 돼요")
+          .font(.title3.bold())
+          .foregroundStyle(Color.pmtext.primary)
+        Text("각자 상태만 공유하면,\n잠금화면에서도 모두의 상황이 보여요.")
+          .font(.subheadline)
+          .foregroundStyle(Color.pmtext.secondary)
+      }
+      .multilineTextAlignment(.center)
+    }
+  }
+
+  private func etaSelectButton(
+    title: String,
+    emoji: String? = nil,
+    eta: Int,
+    progress: Double
+  ) -> some View {
+    let isSelected = participants[0].eta == eta
+    let buttonColor: Color = eta == 0 ? .green : Color.pmindigo.n500
+
+    return Button {
+      withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+        participants[0].progress = progress
+        participants[0].eta = eta
+      }
+
+      if eta == 0, !hasArrived {
+        hasArrived = true
+        Task {
+          try? await Task.sleep(for: .seconds(0.5))
+          onInteractionComplete()
+        }
+      }
+    } label: {
+      VStack(spacing: 2) {
+        if let emoji {
+          Text(emoji).font(.system(size: 18))
+          Text(title)
+            .font(.system(size: 11, weight: .medium))
+            .foregroundStyle(isSelected ? .white.opacity(0.9) : Color.pmtext.secondary)
+        } else {
+          Text("\(eta)")
+            .font(.system(size: 18, weight: .bold))
+            .foregroundStyle(isSelected ? .white : buttonColor)
+          + Text("분")
+            .font(.system(size: 11, weight: .medium))
+            .foregroundStyle(isSelected ? .white.opacity(0.8) : Color.pmtext.secondary)
+        }
+      }
+      .frame(maxWidth: .infinity, minHeight: 44)
+      .background {
+        if isSelected {
+          RoundedRectangle(cornerRadius: 14, style: .continuous)
+            .fill(buttonColor)
+            .shadow(color: buttonColor.opacity(0.4), radius: 8, y: 2)
+        } else {
+          RoundedRectangle(cornerRadius: 14, style: .continuous)
+            .fill(.ultraThinMaterial)
+            .overlay(
+              RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color.pmgray.n300.opacity(0.4), lineWidth: 1)
+            )
+        }
+      }
+      .scaleEffect(isSelected ? 1.05 : 1.0)
+      .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
+    }
+    .buttonStyle(.plain)
   }
 
   // MARK: - Racing Card
@@ -108,7 +202,7 @@ struct BenefitLiveView: View {
         Text("대학 동기 모임")
           .font(.system(size: 15, weight: .bold))
           .foregroundStyle(.white)
-        Text("약속 시작까지 15분")
+        Text("약속 시간까지 15분 남았어요")
           .font(.system(size: 12))
           .foregroundStyle(.white.opacity(0.6))
       }
@@ -116,16 +210,16 @@ struct BenefitLiveView: View {
       Spacer()
 
       // 실시간 뱃지
-      HStack(spacing: 3) {
-        Circle()
-          .fill(Color.red)
-          .frame(width: 6, height: 6)
+      HStack(spacing: 4) {
+        LottieView(animation: LottieAsset.live.animation)
+          .playing(loopMode: .loop)
+          .frame(width: 14, height: 10)
         Text("실시간")
           .font(.system(size: 10, weight: .medium))
           .foregroundStyle(Color.pmindigo.n200)
       }
-      .padding(.horizontal, 6)
-      .padding(.vertical, 3)
+      .padding(.horizontal, 8)
+      .padding(.vertical, 4)
       .background(Color.pmindigo.n800.opacity(0.6), in: Capsule())
     }
   }
@@ -327,6 +421,7 @@ struct BenefitLiveView: View {
     guard let eta = participant.eta else { return "아직 출발 전" }
     if eta == 0 { return "도착 완료" }
     if eta <= 3 { return "거의 도착" }
+    if eta > 15 { return "지각 예상" }
     return "이동 중"
   }
 
@@ -370,23 +465,6 @@ struct BenefitLiveView: View {
     }
   }
 
-  // MARK: - ETA Button
-
-  private func etaButton(_ title: String, color: Color, icon: String? = nil) -> some View {
-    HStack(spacing: 4) {
-      if let icon {
-        Image(systemName: icon)
-          .font(.system(size: 12, weight: .bold))
-      }
-      Text(title)
-        .font(.system(size: 15, weight: .bold))
-    }
-    .foregroundStyle(color)
-    .frame(maxWidth: .infinity)
-    .padding(.vertical, 14)
-    .background(color.opacity(0.15), in: RoundedRectangle(cornerRadius: 12))
-  }
-
   // MARK: - Animation Sequence
 
   private func runAnimationSequence() async {
@@ -396,13 +474,15 @@ struct BenefitLiveView: View {
       showCard = true
     }
 
-    // 하단 버튼
-    try? await Task.sleep(for: .seconds(0.8))
+    // ETA 버튼 등장
+    try? await Task.sleep(for: .seconds(0.6))
     withAnimation(.easeOut(duration: 0.4)) {
-      showButtons = true
+      showETAButtons = true
     }
 
+    // 다음 버튼 표시 (disabled 상태)
     try? await Task.sleep(for: .seconds(0.3))
     onAnimationComplete()
+    // 도착 버튼 탭 시 onInteractionComplete → 다음 버튼 활성화
   }
 }

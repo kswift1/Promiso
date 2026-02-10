@@ -15,7 +15,7 @@ struct BenefitVoteView: View {
   @State private var showCopy: Bool = false
 
   private let members: [(emoji: String, name: String, index: Int)] = [
-    ("🧑‍💻", "민수", 0), ("😎", "지훈", 1), ("🙋‍♀️", "수진", 2), ("🎧", "예은", 3)
+    ("🧑‍💻", "민수", 0), ("😎", "지훈", 1), ("🙋‍♀️", "재윤", 2), ("🎧", "예은", 3)
   ]
 
   private let minimumRequired = 3

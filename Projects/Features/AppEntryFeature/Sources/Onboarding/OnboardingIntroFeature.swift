@@ -20,6 +20,7 @@ extension AppEntry {
       var currentScreen: Screen = .cinematicHero
       var interestedPremiumFeatures: Set<String> = []
       var isAnimationComplete: Bool = false
+      var isNextButtonEnabled: Bool = true
 
       public init() {}
 
@@ -64,6 +65,7 @@ extension AppEntry {
         case backTapped
         case skipTapped
         case screenAnimationCompleted
+        case screenInteractionCompleted
         case premiumInterestToggled(String)
       }
 
@@ -81,6 +83,7 @@ extension AppEntry {
           switch viewAction {
           case .nextTapped:
             state.isAnimationComplete = false
+            state.isNextButtonEnabled = true
             state.isGoingBack = false
             if state.isLastScreen {
               logPremiumInterests(state.interestedPremiumFeatures)
@@ -96,6 +99,7 @@ extension AppEntry {
           case .backTapped:
             guard !state.isFirstScreen else { return .none }
             state.isAnimationComplete = false
+            state.isNextButtonEnabled = true
             state.isGoingBack = true
             let prevIndex = state.currentScreen.rawValue - 1
             if let prevScreen = State.Screen(rawValue: prevIndex) {
@@ -109,6 +113,13 @@ extension AppEntry {
 
           case .screenAnimationCompleted:
             state.isAnimationComplete = true
+            if state.currentScreen == .benefitLive {
+              state.isNextButtonEnabled = false
+            }
+            return .none
+
+          case .screenInteractionCompleted:
+            state.isNextButtonEnabled = true
             return .none
 
           case .premiumInterestToggled(let feature):

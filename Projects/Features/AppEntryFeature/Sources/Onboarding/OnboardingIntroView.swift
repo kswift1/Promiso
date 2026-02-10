@@ -50,7 +50,8 @@ extension AppEntry.OnboardingIntro {
           )
         case .benefitLive:
           BenefitLiveView(
-            onAnimationComplete: { store.send(.view(.screenAnimationCompleted)) }
+            onAnimationComplete: { store.send(.view(.screenAnimationCompleted)) },
+            onInteractionComplete: { store.send(.view(.screenInteractionCompleted)) }
           )
         case .premiumTeaser:
           PremiumTeaserView(
@@ -110,5 +111,6 @@ extension AppEntry.OnboardingIntro {
       .padding(.horizontal, 24)
       .padding(.bottom, 40)
     }
+
   }
 }
