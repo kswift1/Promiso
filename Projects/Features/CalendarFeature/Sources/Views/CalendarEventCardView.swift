@@ -88,14 +88,14 @@ struct PersonalEventCardView: View {
           // 상단: 시간 + 개인 일정 라벨
           HStack(spacing: 6) {
             Text(event.timeText)
-              .font(.system(size: 13, weight: .medium))
+              .font(.system(size: 14, weight: .medium))
               .foregroundColor(.secondary)
 
             Text("·")
               .foregroundColor(.secondary.opacity(0.5))
 
             Text("개인 일정")
-              .font(.system(size: 12, weight: .medium))
+              .font(.system(size: 13, weight: .medium))
               .foregroundColor(Color.pmindigo.n500)
 
             Spacer()

@@ -79,14 +79,14 @@ struct PromiseCardView: View {
           // 상단: 시간 + 상태 + 그룹 + 참여자
           HStack(spacing: 6) {
             Text(promise.timeText)
-              .font(.system(size: 13, weight: .medium))
+              .font(.system(size: 14, weight: .medium))
               .foregroundColor(.secondary)
 
             Text("·")
               .foregroundColor(.secondary.opacity(0.5))
 
             Text(responseStatus.statusText)
-              .font(.system(size: 12, weight: .medium))
+              .font(.system(size: 13, weight: .medium))
               .foregroundColor(responseStatus.color)
 
             Spacer()
@@ -101,7 +101,7 @@ struct PromiseCardView: View {
                 )
 
                 Text(group.name)
-                  .font(.system(size: 14, weight: .medium))
+                  .font(.system(size: 13, weight: .medium))
                   .foregroundColor(.secondary)
                   .lineLimit(1)
               }
@@ -109,9 +109,9 @@ struct PromiseCardView: View {
 
             HStack(spacing: 3) {
               Image(systemName: "person.fill")
-                .font(.system(size: 12))
+                .font(.system(size: 11))
               Text("\(promise.votes.acceptedCount)/\(promise.group?.memberIds.count ?? promise.minimumParticipants)")
-                .font(.system(size: 14))
+                .font(.system(size: 13))
             }
             .foregroundColor(.secondary)
           }
