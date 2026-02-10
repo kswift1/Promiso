@@ -219,7 +219,7 @@ extension EditPromise {
                       let newUrls = try await imageUploadClient.uploadImages(localImages, "promise_images/\(promise.groupId)/\(promise.id)")
                       finalImageUrls.append(contentsOf: newUrls)
                     } catch {
-                      AppLogger.features.error("이미지 업로드 실패: \(error.localizedDescription)")
+                      AppLogger.general.error("이미지 업로드 실패: \(error.localizedDescription)")
                       // 이미지 업로드 실패 시 기존 이미지만 유지
                     }
                   }

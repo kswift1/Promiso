@@ -234,7 +234,7 @@ public enum CreatePromise {
                     updatedPromise.imageUrls = imageUrls
                     try await promiseClient.updatePromise(updatedPromise)
                   } catch {
-                    AppLogger.features.error("이미지 업로드 실패: \(error.localizedDescription)")
+                    AppLogger.general.error("이미지 업로드 실패: \(error.localizedDescription)")
                     // 이미지 업로드 실패해도 약속 생성은 성공 처리
                   }
                 }
