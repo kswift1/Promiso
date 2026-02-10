@@ -109,7 +109,7 @@ extension AppEntry.OnboardingIntro {
         .animation(.easeInOut(duration: 0.25), value: store.isFirstScreen)
       }
       .padding(.horizontal, 24)
-      .padding(.bottom, 40)
+      .padding(.bottom, UIScreen.main.bounds.height < 700 ? 24 : 40)
     }
 
   }

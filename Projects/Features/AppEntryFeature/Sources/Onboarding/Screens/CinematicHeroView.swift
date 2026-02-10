@@ -415,7 +415,7 @@ struct CinematicHeroView: View {
     }
 
     // Scene 2: 버블 중앙으로 축소
-    try? await Task.sleep(for: .seconds(1.0))
+    try? await Task.sleep(for: .seconds(1.2))
     withAnimation(.easeIn(duration: 0.5)) {
       bubblesCollapsing = true
     }
@@ -426,7 +426,7 @@ struct CinematicHeroView: View {
 
     // Scene 3: 카드 하나씩 캐스케이드 등장
     for i in 1...4 {
-      try? await Task.sleep(for: .seconds(0.15))
+      try? await Task.sleep(for: .seconds(0.25))
       visibleCards = i
     }
 

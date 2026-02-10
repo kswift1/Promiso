@@ -10,6 +10,12 @@ struct BenefitLiveView: View {
   let onAnimationComplete: () -> Void
   let onInteractionComplete: () -> Void
 
+  @Environment(\.verticalSizeClass) private var verticalSizeClass
+
+  private var isCompactHeight: Bool {
+    UIScreen.main.bounds.height < 700
+  }
+
   // MARK: - Mock Data
 
   private struct MockParticipant: Equatable, Identifiable {
@@ -87,9 +93,11 @@ struct BenefitLiveView: View {
         Text("오고 있는지, 물어보지 않아도 돼요")
           .font(.title3.bold())
           .foregroundStyle(Color.pmtext.primary)
+          .minimumScaleFactor(0.8)
         Text("각자 상태만 공유하면,\n잠금화면에서도 모두의 상황이 보여요.")
           .font(.subheadline)
           .foregroundStyle(Color.pmtext.secondary)
+          .minimumScaleFactor(0.8)
       }
       .multilineTextAlignment(.center)
     }
@@ -133,7 +141,7 @@ struct BenefitLiveView: View {
             .foregroundStyle(isSelected ? .white.opacity(0.8) : Color.pmtext.secondary)
         }
       }
-      .frame(maxWidth: .infinity, minHeight: 44)
+      .frame(maxWidth: .infinity, minHeight: isCompactHeight ? 36 : 44)
       .background {
         if isSelected {
           RoundedRectangle(cornerRadius: 14, style: .continuous)
@@ -475,7 +483,7 @@ struct BenefitLiveView: View {
     }
 
     // ETA 버튼 등장
-    try? await Task.sleep(for: .seconds(0.6))
+    try? await Task.sleep(for: .seconds(0.8))
     withAnimation(.easeOut(duration: 0.4)) {
       showETAButtons = true
     }
