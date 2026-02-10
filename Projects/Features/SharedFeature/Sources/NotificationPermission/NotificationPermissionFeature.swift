@@ -14,11 +14,13 @@ extension NotificationPermission {
     @ObservableState
     public struct State: Equatable {
       var config: Config
+      var allowInteractiveDismiss: Bool
       var authorizationStatus: NotificationAuthorizationStatus = .notDetermined
       @Presents var alert: AlertState<Action.Alert>?
 
-      public init(config: Config = .default) {
+      public init(config: Config = .default, allowInteractiveDismiss: Bool = false) {
         self.config = config
+        self.allowInteractiveDismiss = allowInteractiveDismiss
       }
 
       var primaryButtonTitle: String {
@@ -115,7 +117,10 @@ extension NotificationPermission {
           case .primaryButtonTapped:
             switch state.authorizationStatus {
             case .authorized:
-              return .send(.delegate(.dismissed))
+              return .merge(
+                .send(.delegate(.permissionChanged(isGranted: true))),
+                .send(.delegate(.dismissed))
+              )
 
             case .denied:
               return .run { _ in

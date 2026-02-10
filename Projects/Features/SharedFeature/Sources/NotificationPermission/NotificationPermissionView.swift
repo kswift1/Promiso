@@ -10,6 +10,7 @@ extension NotificationPermission {
     @State private var loopContinues: Bool = true
     @State private var currentNotificationIndex: Int = 0
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.scenePhase) private var scenePhase
 
     private let notifications: [(title: String, body: String)] = [
       ("새 약속 도착 📩", "민수님이 대학 동기 모임을 제안했어요. 확인해주세요!"),
@@ -91,7 +92,13 @@ extension NotificationPermission {
       .onDisappear {
         loopContinues = false
       }
-      .interactiveDismissDisabled()
+      .onChange(of: scenePhase) { oldPhase, newPhase in
+        // 백그라운드에서 복귀할 때만 권한 상태 재확인
+        if oldPhase != .active && newPhase == .active {
+          store.send(.view(.onAppear))
+        }
+      }
+      .interactiveDismissDisabled(!store.allowInteractiveDismiss)
       .alert($store.scope(state: \.alert, action: \.alert))
     }
 
