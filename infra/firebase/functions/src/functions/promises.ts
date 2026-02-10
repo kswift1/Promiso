@@ -137,8 +137,8 @@ export const createPromise = onCall<CreatePromiseRequest>(
         longitude: data.location.longitude || null,
       } : null,
       trackingStartMinutesBefore: data.arrivalSharingTime || null,
-      imageUrls: data.imageUrls && data.imageUrls.length > 0
-        ? data.imageUrls.slice(0, 3) : null,
+      imageUrls: data.imageUrls && data.imageUrls.length > 0 ?
+        data.imageUrls.slice(0, 3) : null,
       badgesCleared: false, // 배지 정리 여부 (마감 시 true로 변경)
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
