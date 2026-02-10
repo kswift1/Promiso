@@ -102,8 +102,8 @@ struct BenefitHomeView: View {
 
         todayRow(
           time: "18:00",
-          emoji: "🎂",
-          title: "엄마 생신 저녁",
+          emoji: "📚",
+          title: "스터디",
           tag: "개인",
           tagColor: Color.pmaurora.purple
         )
