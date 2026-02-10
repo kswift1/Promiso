@@ -76,17 +76,23 @@ struct PromiseCardView: View {
 
         // 메인 콘텐츠
         VStack(alignment: .leading, spacing: 8) {
-          // 상단: 시간 + 그룹 + 상태
+          // 상단: 시간 + 상태 + 그룹 + 참여자
           HStack(spacing: 6) {
             Text(promise.timeText)
               .font(.system(size: 13, weight: .medium))
               .foregroundColor(.secondary)
 
-            // 그룹 썸네일 + 그룹명 표시
-            if let group = promise.group {
-              Text("·")
-                .foregroundColor(.secondary.opacity(0.5))
+            Text("·")
+              .foregroundColor(.secondary.opacity(0.5))
 
+            Text(responseStatus.statusText)
+              .font(.system(size: 12, weight: .medium))
+              .foregroundColor(responseStatus.color)
+
+            Spacer()
+
+            // 그룹 썸네일 + 그룹명 + 참여자 수
+            if let group = promise.group {
               HStack(spacing: 4) {
                 GroupThumbnailView(
                   imageUrl: group.imageUrl,
@@ -101,20 +107,10 @@ struct PromiseCardView: View {
               }
             }
 
-            Text("·")
-              .foregroundColor(.secondary.opacity(0.5))
-
-            Text(responseStatus.statusText)
-              .font(.system(size: 12, weight: .medium))
-              .foregroundColor(responseStatus.color)
-
-            Spacer()
-
-            // 참여자 수
             HStack(spacing: 3) {
               Image(systemName: "person.fill")
                 .font(.system(size: 10))
-              Text("\(promise.votes.acceptedCount)/\(promise.minimumParticipants)")
+              Text("\(promise.votes.acceptedCount)/\(promise.group?.memberIds.count ?? promise.minimumParticipants)")
                 .font(.system(size: 12))
             }
             .foregroundColor(.secondary)
