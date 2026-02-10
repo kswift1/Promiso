@@ -99,7 +99,6 @@ extension NotificationPermission {
         }
       }
       .interactiveDismissDisabled(!store.allowInteractiveDismiss)
-      .alert($store.scope(state: \.alert, action: \.alert))
     }
 
     // MARK: - iPhone Preview

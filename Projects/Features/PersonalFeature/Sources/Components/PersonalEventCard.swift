@@ -105,6 +105,17 @@ public struct PersonalEventCard: View {
             }
             .foregroundStyle(.primary)
           }
+
+          // 사진 첨부 표시
+          if !event.imageUrls.isEmpty {
+            HStack(spacing: 4) {
+              Text("📷")
+                .font(.system(size: 14))
+              Text("사진 \(event.imageUrls.count)장")
+                .font(.system(size: 14, weight: .medium))
+            }
+            .foregroundStyle(.secondary)
+          }
         }
       }
     }

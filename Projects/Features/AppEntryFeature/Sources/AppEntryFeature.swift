@@ -212,7 +212,9 @@ extension AppEntry {
               return .send(.internal(.startProfileCheck))
             } else {
               // 온보딩 인트로 완료 여부에 따라 분기
-              let hasCompletedOnboarding = userDefaultsClient.boolForKey(AppConstants.UserDefaults.hasCompletedOnboarding)
+              let hasCompletedOnboarding = userDefaultsClient.boolForKey(
+                AppConstants.UserDefaults.hasCompletedOnboarding
+              )
               if !hasCompletedOnboarding {
                 state.isFullOnboarding = true
                 state.destination = .onboardingIntro(OnboardingIntro.State())
@@ -349,7 +351,8 @@ extension AppEntry {
           }
 
         case .destination(.presented(.onboardingIntro(.delegate(.completed)))):
-          // 인트로 완료 → 알림 권한 요청 (플래그는 알림 권한 완료 후 저장)
+          // 인트로 완료 → 온보딩 완료 플래그 저장 → 알림 권한 요청
+          userDefaultsClient.setBool(true, AppConstants.UserDefaults.hasCompletedOnboarding)
           state.notificationPermission = NotificationPermission.Feature.State()
           return .none
 
@@ -361,23 +364,12 @@ extension AppEntry {
           }
           return .none
 
-        case .destination(.presented(.onboardingStart(.delegate(.enterInviteCode)))):
-          // "입력하러가기" → 메인 + 그룹 참여 열기
+        case .destination(.presented(.onboardingStart(.delegate(.createFirstPromise)))):
+          // "첫 약속 만들기" → 메인 + 약속 생성 열기
           if let userModel = state.pendingUserForMain {
             state.pendingUserForMain = nil
-            state.pendingDeeplink = .joinGroup(inviteCode: "")
+            state.pendingDeeplink = .create
             return .send(.internal(.transitionToMain(userModel, isSignup: true)))
-          }
-          return .none
-
-        case .destination(.presented(.onboardingStart(.delegate(.createGroup)))):
-          // "그룹 생성하기" → 메인 + 그룹 생성 열기
-          if let userModel = state.pendingUserForMain {
-            state.pendingUserForMain = nil
-            return .concatenate(
-              .send(.internal(.transitionToMain(userModel, isSignup: true))),
-              .send(.destination(.presented(.main(.openCreateGroup))))
-            )
           }
           return .none
 
@@ -388,7 +380,7 @@ extension AppEntry {
         case .destination(.presented(.profile(.delegate(.completed(let userModel))))):
           analyticsClient.logEvent(AnalyticsClient.EventName.profileSetupCompleted, nil)
           if state.isFullOnboarding {
-            // 풀 온보딩 플로우 → OnboardingStart (시작 CTA)
+            // 풀 온보딩 플로우 → Screen 10 (시작 CTA)
             state.pendingUserForMain = userModel
             state.destination = .onboardingStart(OnboardingStart.State(nickname: userModel.nickname))
             return .none
@@ -400,8 +392,6 @@ extension AppEntry {
         case .notificationPermission(.presented(.delegate(.dismissed))),
              .notificationPermission(.presented(.delegate(.permissionChanged))):
           state.notificationPermission = nil
-          // 온보딩 완료 플래그 저장 (인트로 + 알림 권한까지 완료)
-          userDefaultsClient.setBool(true, AppConstants.UserDefaults.hasCompletedOnboarding)
           if let userModel = state.pendingUserForMain {
             // 기존 플로우: 프로필 설정 후 알림 권한 → 메인 전환
             state.pendingUserForMain = nil

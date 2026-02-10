@@ -33,6 +33,9 @@ public struct PromiseDTO: Codable {
   // MARK: - 위치
   public let location: LocationDTO?
 
+  // MARK: - 이미지
+  public let imageUrls: [String]?
+
   // MARK: - LiveActivity 설정
   /// LiveActivity 시작 시간 (약속 시간 N분 전)
   public let trackingStartMinutesBefore: Int?
@@ -52,6 +55,7 @@ public struct PromiseDTO: Codable {
     startAt: Timestamp,
     endAt: Timestamp? = nil,
     location: LocationDTO? = nil,
+    imageUrls: [String]? = nil,
     trackingStartMinutesBefore: Int? = nil,
     createdAt: Timestamp = Timestamp(),
     updatedAt: Timestamp = Timestamp()
@@ -66,6 +70,7 @@ public struct PromiseDTO: Codable {
     self.startAt = startAt
     self.endAt = endAt
     self.location = location
+    self.imageUrls = imageUrls
     self.trackingStartMinutesBefore = trackingStartMinutesBefore
     self.createdAt = createdAt
     self.updatedAt = updatedAt
@@ -129,6 +134,7 @@ extension PromiseDTO {
       startAt: Timestamp(date: model.startAt),
       endAt: model.endAt.map { Timestamp(date: $0) },
       location: model.location.map { LocationDTO(model: $0) },
+      imageUrls: model.imageUrls.isEmpty ? nil : model.imageUrls,
       trackingStartMinutesBefore: model.trackingStartMinutesBefore,
       createdAt: Timestamp(date: model.createdAt),
       updatedAt: Timestamp(date: model.updatedAt)

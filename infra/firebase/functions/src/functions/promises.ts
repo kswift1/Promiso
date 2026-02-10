@@ -24,6 +24,28 @@ import {
 } from "../types/api";
 
 /**
+ * Firebase Storage URL 유효성 검증
+ * @param {string} url - 검증할 URL
+ * @return {boolean} Firebase Storage URL 형식이면 true
+ */
+function isValidFirebaseStorageUrl(url: string): boolean {
+  const bucket = admin.storage().bucket();
+  const bucketName = bucket.name;
+
+  // gs:// 형식
+  if (url.startsWith(`gs://${bucketName}/`)) {
+    return true;
+  }
+
+  // https:// 형식
+  if (url.startsWith(`https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/`)) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
  * 약속 생성
  *
  * @remarks
@@ -137,6 +159,9 @@ export const createPromise = onCall<CreatePromiseRequest>(
         longitude: data.location.longitude || null,
       } : null,
       trackingStartMinutesBefore: data.arrivalSharingTime || null,
+      imageUrls: data.imageUrls && data.imageUrls.length > 0 ?
+        data.imageUrls.slice(0, 3).filter(isValidFirebaseStorageUrl) :
+        null,
       badgesCleared: false, // 배지 정리 여부 (마감 시 true로 변경)
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
@@ -523,6 +548,17 @@ export const updatePromise = onCall<UpdatePromiseRequest>(
       }
     }
 
+    // imageUrls (첨부 이미지)
+    if (data.imageUrls !== undefined) {
+      if (data.imageUrls === null || data.imageUrls.length === 0) {
+        updateData.imageUrls = null;
+      } else {
+        updateData.imageUrls = data.imageUrls
+          .slice(0, 3)
+          .filter(isValidFirebaseStorageUrl);
+      }
+    }
+
     // 8. Firestore 업데이트
     await promiseRef.update(updateData);
 
@@ -628,12 +664,28 @@ export const deletePromise = onCall<DeletePromiseRequest>(
       );
     }
 
-    // 6. Firestore에서 삭제 (Hard Delete)
+    // 6. Storage 이미지 정리 (best-effort, imageUrls 존재 여부 무관하게 경로 전체 삭제)
+    try {
+      const bucket = admin.storage().bucket();
+      const [files] = await bucket.getFiles({
+        prefix: `promise_images/${groupId}/${data.promiseId}/`,
+      });
+      if (files.length > 0) {
+        await Promise.all(files.map((file) => file.delete()));
+      }
+    } catch (err) {
+      console.warn(
+        `Failed to clean up images for promise ${data.promiseId}:`,
+        err,
+      );
+    }
+
+    // 7. Firestore에서 삭제 (Hard Delete)
     await promiseRef.delete();
 
     console.log(`🗑️ Promise deleted: ${data.promiseId}`);
 
-    // 7. 응답 반환
+    // 8. 응답 반환
     return {
       success: true,
     };

@@ -3,6 +3,7 @@ import ComposableArchitecture
 import Clients
 import PromisoShared
 import ResourceKit
+import PhotosUI
 
 extension EditPromise {
   public struct RootView: View {
@@ -42,6 +43,22 @@ extension EditPromise {
 
             // 설명 섹션
             descriptionSection
+
+            // 사진 첨부
+            ImageAttachmentSection(
+              existingImageUrls: store.editedPromise.imageUrls.filter { !store.removedImageUrls.contains($0) },
+              localImages: store.localImageData,
+              isUploading: store.isUploadingImages,
+              onPhotosSelected: { items in
+                store.send(.view(.photosSelected(items)))
+              },
+              onRemoveExisting: { index in
+                store.send(.view(.removeExistingImage(index)))
+              },
+              onRemoveLocal: { index in
+                store.send(.view(.removeLocalImage(index)))
+              }
+            )
           }
           .padding(16)
         }

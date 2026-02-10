@@ -1,51 +1,77 @@
 // MARK: - BenefitHomeView.swift
-// Screen 4: Benefit 2 - "열기만 하면, 오늘 뭐 할지 다 보여요"
+// Screen 4: Benefit 2 - "비서처럼 관리하는 홈"
 
 import PromisoShared
-import ResourceKit
 import SwiftUI
 
 struct BenefitHomeView: View {
   let onAnimationComplete: () -> Void
 
-  @State private var showTodaySection: Bool = false
-  @State private var showNeedResponseSection: Bool = false
-  @State private var showUpcomingSection: Bool = false
+  @State private var showTodayCards: [Bool] = [false, false]
+  @State private var showWeekSection: Bool = false
   @State private var showCopy: Bool = false
 
   var body: some View {
     VStack(spacing: 0) {
       Spacer()
 
-      // 홈 화면 프리뷰
-      VStack(spacing: 10) {
-        if showTodaySection {
-          todayCard
-            .transition(.move(edge: .leading).combined(with: .opacity))
+      // 홈 화면 미니어처
+      VStack(alignment: .leading, spacing: 0) {
+        // 오늘의 약속 섹션
+        sectionHeader("오늘의 약속")
+          .padding(.bottom, 12)
+
+        VStack(spacing: 10) {
+          if showTodayCards[0] {
+            scheduleCard(
+              time: "12:00",
+              emoji: "🍝",
+              title: "점심 약속",
+              detail: "회사 동료 3명 · 강남역 2번 출구",
+              isGroup: true
+            )
+            .transition(.move(edge: .top).combined(with: .opacity))
+          }
+
+          if showTodayCards[1] {
+            scheduleCard(
+              time: "18:00",
+              emoji: "🎂",
+              title: "엄마 생신",
+              detail: "가족 모임 · 한정식 예담",
+              isGroup: false
+            )
+            .transition(.move(edge: .top).combined(with: .opacity))
+          }
         }
 
-        if showNeedResponseSection {
-          needResponseBanner
-            .transition(.move(edge: .leading).combined(with: .opacity))
-        }
+        // 이번 주 섹션
+        if showWeekSection {
+          sectionHeader("이번 주")
+            .padding(.top, 20)
+            .padding(.bottom, 8)
 
-        if showUpcomingSection {
-          upcomingCard
-            .transition(.move(edge: .leading).combined(with: .opacity))
+          VStack(alignment: .leading, spacing: 8) {
+            weekItem(day: "수", title: "팀 회식")
+            weekItem(day: "금", title: "대학 동기 모임")
+          }
+          .transition(.opacity.combined(with: .move(edge: .bottom)))
         }
       }
+      .padding(20)
+      .background { glassCardBackground }
       .padding(.horizontal, 24)
 
       Spacer()
-        .frame(height: 28)
+        .frame(height: 32)
 
       // 하단 카피
       if showCopy {
         VStack(spacing: 8) {
-          Text("열기만 하면, 오늘 뭐 할지 다 보여요")
+          Text("\"오늘 뭐 있었지?\"")
             .font(.title3.bold())
             .foregroundStyle(Color.pmtext.primary)
-          Text("개인 약속, 그룹 약속, 응답할 것까지\nPromiso가 알아서 챙겨요")
+          Text("이제 안 물어봐도 돼요")
             .font(.subheadline)
             .foregroundStyle(Color.pmtext.secondary)
         }
@@ -55,231 +81,109 @@ struct BenefitHomeView: View {
 
       Spacer()
     }
-    .onAppear {
-      Task {
-        await runAnimationSequence()
-      }
+    .task {
+      await runAnimationSequence()
     }
   }
 
-  // MARK: - Section 1: 오늘의 일정
+  // MARK: - Components
 
-  private var todayCard: some View {
-    VStack(alignment: .leading, spacing: 0) {
-      // 헤더
-      HStack {
-        Text("오늘의 일정")
-          .font(.pmHeadline)
-          .foregroundStyle(.primary)
-        Spacer()
-        Text("2개")
-          .font(.pmCaption)
-          .foregroundStyle(Color.pmindigo.n500)
-        Image(systemName: "chevron.down")
-          .font(.pmCaption)
-          .foregroundStyle(Color.pmgray.n400)
-      }
-      .padding(.horizontal, 14)
-      .padding(.top, 14)
-      .padding(.bottom, 10)
-
-      Divider()
-        .padding(.horizontal, 14)
-
-      // 일정 목록
-      VStack(spacing: 0) {
-        todayRow(
-          time: "12:00",
-          emoji: "🍝",
-          title: "점심 약속",
-          tag: "회사 동료",
-          tagColor: Color.pmindigo.n500
-        )
-
-        Divider()
-          .padding(.leading, 52)
-          .padding(.trailing, 14)
-
-        todayRow(
-          time: "18:00",
-          emoji: "📚",
-          title: "스터디",
-          tag: "개인",
-          tagColor: Color.pmaurora.purple
-        )
-      }
-      .padding(.bottom, 6)
-    }
-    .adaptiveGlassCard(cornerRadius: 16)
+  private func sectionHeader(_ title: String) -> some View {
+    Text(title)
+      .font(.system(size: 14, weight: .semibold))
+      .foregroundStyle(Color.pmtext.secondary)
   }
 
-  private func todayRow(
+  private func scheduleCard(
     time: String,
     emoji: String,
     title: String,
-    tag: String,
-    tagColor: Color
+    detail: String,
+    isGroup: Bool
   ) -> some View {
-    HStack(spacing: 10) {
+    HStack(spacing: 12) {
+      // 시간
       Text(time)
-        .font(.pmCaption2Medium)
-        .foregroundStyle(.secondary)
-        .frame(width: 38, alignment: .leading)
+        .font(.system(size: 13, weight: .medium, design: .monospaced))
+        .foregroundStyle(Color.pmtext.secondary)
+        .frame(width: 42, alignment: .leading)
 
+      // 구분선
       RoundedRectangle(cornerRadius: 1.5)
-        .fill(tagColor)
-        .frame(width: 3, height: 32)
+        .fill(isGroup ? Color.pmindigo.n500 : Color.pmaurora.purple)
+        .frame(width: 3, height: 40)
 
-      Text(emoji)
-        .font(.pmSubheadline)
-
-      VStack(alignment: .leading, spacing: 1) {
-        Text(title)
-          .font(.pmSubheadlineMedium)
-          .foregroundStyle(.primary)
-          .lineLimit(1)
-        Text(tag)
-          .font(.pmCaption)
-          .foregroundStyle(.secondary)
+      // 내용
+      HStack(spacing: 8) {
+        Text(emoji)
+          .font(.system(size: 22))
+        VStack(alignment: .leading, spacing: 2) {
+          Text(title)
+            .font(.system(size: 15, weight: .semibold))
+            .foregroundStyle(Color.pmtext.primary)
+          Text(detail)
+            .font(.system(size: 12))
+            .foregroundStyle(Color.pmtext.secondary)
+        }
       }
-
-      Spacer(minLength: 0)
-    }
-    .padding(.horizontal, 14)
-    .padding(.vertical, 8)
-  }
-
-  // MARK: - Section 2: 응답 필요
-
-  private var needResponseBanner: some View {
-    HStack(spacing: 10) {
-      Image(systemName: "envelope.badge.fill")
-        .font(.pmBody)
-        .foregroundStyle(.white)
-
-      Text("응답이 필요해요")
-        .font(.pmSubheadlineMedium)
-        .foregroundStyle(.white)
 
       Spacer()
-
-      Text("2개")
-        .font(.pmCaption)
-        .foregroundStyle(.white.opacity(0.85))
-
-      Image(systemName: "chevron.right")
-        .font(.pmCaption)
-        .foregroundStyle(.white.opacity(0.7))
     }
-    .padding(.horizontal, 14)
-    .padding(.vertical, 12)
-    .background(
-      LinearGradient(
-        colors: [Color.orange, Color.orange.opacity(0.8)],
-        startPoint: .leading,
-        endPoint: .trailing
-      )
-    )
-    .clipShape(RoundedRectangle(cornerRadius: 12))
   }
 
-  // MARK: - Section 3: 다가오는 약속
-
-  private var upcomingCard: some View {
-    VStack(alignment: .leading, spacing: 0) {
-      // 헤더
-      HStack {
-        Text("다가오는 약속")
-          .font(.pmHeadline)
-          .foregroundStyle(.primary)
-        Spacer()
-      }
-      .padding(.horizontal, 14)
-      .padding(.top, 14)
-      .padding(.bottom, 10)
-
-      Divider()
-        .padding(.horizontal, 14)
-
-      // 일정 목록
-      VStack(spacing: 0) {
-        upcomingRow(day: "수", date: "12", emoji: "🍖", title: "팀 회식", time: "오후 7시")
-
-        Divider()
-          .padding(.leading, 52)
-          .padding(.trailing, 14)
-
-        upcomingRow(day: "금", date: "14", emoji: "🎬", title: "영화 관람", time: "오후 6시")
-      }
-      .padding(.bottom, 6)
+  private func weekItem(day: String, title: String) -> some View {
+    HStack(spacing: 8) {
+      Text("📅")
+        .font(.system(size: 14))
+      Text(day)
+        .font(.system(size: 13, weight: .semibold))
+        .foregroundStyle(Color.pmindigo.n500)
+      Text("- \(title)")
+        .font(.system(size: 13))
+        .foregroundStyle(Color.pmtext.secondary)
     }
-    .adaptiveGlassCard(cornerRadius: 16)
   }
 
-  private func upcomingRow(
-    day: String,
-    date: String,
-    emoji: String,
-    title: String,
-    time: String
-  ) -> some View {
-    HStack(spacing: 10) {
-      // 요일 + 날짜
-      VStack(spacing: 0) {
-        Text(day)
-          .font(.pmCaption2)
-          .foregroundStyle(.secondary)
-        Text(date)
-          .font(.pmSubheadlineSemibold)
-          .foregroundStyle(Color.pmindigo.n500)
-      }
-      .frame(width: 28)
-
-      Text(emoji)
-        .font(.pmSubheadline)
-
-      Text(title)
-        .font(.pmSubheadlineMedium)
-        .foregroundStyle(.primary)
-        .lineLimit(1)
-
-      Spacer(minLength: 0)
-
-      Text(time)
-        .font(.pmCaption)
-        .foregroundStyle(.secondary)
-
-      Image(systemName: "chevron.right")
-        .font(.system(size: 10))
-        .foregroundStyle(.tertiary)
+  @ViewBuilder
+  private var glassCardBackground: some View {
+    if #available(iOS 26.0, *) {
+      Color.clear
+        .glassEffect(
+          .regular.tint(.white.opacity(0.08)),
+          in: .rect(cornerRadius: 20)
+        )
+    } else {
+      RoundedRectangle(cornerRadius: 20, style: .continuous)
+        .fill(.ultraThinMaterial)
+        .overlay(
+          RoundedRectangle(cornerRadius: 20, style: .continuous)
+            .strokeBorder(Color.white.opacity(0.2), lineWidth: 1)
+        )
     }
-    .padding(.horizontal, 14)
-    .padding(.vertical, 10)
   }
 
   // MARK: - Animation Sequence
 
   private func runAnimationSequence() async {
-    // 오늘의 일정 등장
+    // 오늘의 약속 카드 순차 등장
     try? await Task.sleep(for: .seconds(0.3))
     withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
-      showTodaySection = true
+      showTodayCards[0] = true
     }
 
-    // 응답 필요 슬라이드 인
-    try? await Task.sleep(for: .seconds(0.7))
+    try? await Task.sleep(for: .seconds(0.3))
     withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
-      showNeedResponseSection = true
+      showTodayCards[1] = true
     }
 
-    // 다가오는 약속 슬라이드 인
-    try? await Task.sleep(for: .seconds(0.7))
-    withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
-      showUpcomingSection = true
+    // 이번 주 섹션
+    try? await Task.sleep(for: .seconds(0.5))
+    withAnimation(.easeOut(duration: 0.4)) {
+      showWeekSection = true
     }
 
     // 하단 카피
-    try? await Task.sleep(for: .seconds(0.7))
+    try? await Task.sleep(for: .seconds(0.5))
     withAnimation(.easeOut(duration: 0.4)) {
       showCopy = true
     }

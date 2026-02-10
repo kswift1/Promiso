@@ -91,6 +91,11 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
       callableData["arrivalSharingTime"] = trackingMinutes
     }
 
+    // 이미지 URL 추가
+    if !promise.imageUrls.isEmpty {
+      callableData["imageUrls"] = promise.imageUrls
+    }
+
     // Firebase Functions 호출
     let result = try await functions.httpsCallable("createPromise").call(callableData)
 
@@ -215,6 +220,13 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
       callableData["location"] = locationData
     } else {
       callableData["location"] = NSNull()
+    }
+
+    // 이미지 URL
+    if !promise.imageUrls.isEmpty {
+      callableData["imageUrls"] = promise.imageUrls
+    } else {
+      callableData["imageUrls"] = NSNull()
     }
 
     // Firebase Functions 호출

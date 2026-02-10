@@ -19,6 +19,10 @@ public struct PersonalEventModel: Identifiable, Equatable, Hashable, Sendable {
   // MARK: - 위치
   public var location: LocationInfoModel?
 
+  // MARK: - 이미지
+  /// 첨부 이미지 URL 목록 (최대 3장)
+  public var imageUrls: [String]
+
   // MARK: - 알림
   public var reminderMinutesBefore: Int?
 
@@ -34,6 +38,7 @@ public struct PersonalEventModel: Identifiable, Equatable, Hashable, Sendable {
     startAt: Date = Date().addingTimeInterval(3600),
     endAt: Date? = nil,
     location: LocationInfoModel? = nil,
+    imageUrls: [String] = [],
     reminderMinutesBefore: Int? = nil,
     createdAt: Date = Date(),
     updatedAt: Date = Date()
@@ -45,6 +50,7 @@ public struct PersonalEventModel: Identifiable, Equatable, Hashable, Sendable {
     self.startAt = startAt
     self.endAt = endAt
     self.location = location
+    self.imageUrls = imageUrls
     self.reminderMinutesBefore = reminderMinutesBefore
     self.createdAt = createdAt
     self.updatedAt = updatedAt
@@ -64,6 +70,7 @@ public struct PersonalEventModel: Identifiable, Equatable, Hashable, Sendable {
     startAt: Date = Date().addingTimeInterval(3600),
     endAt: Date? = nil,
     location: LocationInfoModel? = nil,
+    imageUrls: [String] = [],
     reminderMinutesBefore: Int? = nil,
     createdAt: Date = Date(),
     updatedAt: Date = Date()
@@ -76,6 +83,7 @@ public struct PersonalEventModel: Identifiable, Equatable, Hashable, Sendable {
       startAt: startAt,
       endAt: endAt,
       location: location,
+      imageUrls: imageUrls,
       reminderMinutesBefore: reminderMinutesBefore,
       createdAt: createdAt,
       updatedAt: updatedAt
@@ -96,6 +104,7 @@ extension PersonalEventModel {
       startAt: dto.startAt.dateValue(),
       endAt: dto.endAt?.dateValue(),
       location: dto.location.map { LocationInfoModel(dto: $0) },
+      imageUrls: dto.imageUrls ?? [],
       reminderMinutesBefore: dto.reminderMinutesBefore,
       createdAt: dto.createdAt.dateValue(),
       updatedAt: dto.updatedAt.dateValue()

@@ -1,26 +1,58 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // 공통 함수: 이미지 유효성 검사
+    // 공통 함수: 이미지 유효성 검사 (create/update 시에만 사용)
     function isValidImage() {
       return request.resource.size < 5 * 1024 * 1024
              && request.resource.contentType.matches('image/.*');
     }
 
+    // 그룹 멤버십 검증
+    function isGroupMember(groupId) {
+      return request.auth.uid in firestore.get(/databases/(default)/documents/groups/$(groupId)).data.memberIds;
+    }
+
     // 프로필 이미지
-    // 프로젝트 분리 후: env prefix 제거 (각 프로젝트에서 루트 레벨 접근)
     match /profile_images/{userId}/{fileName} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null
-                   && request.auth.uid == userId
-                   && isValidImage();
+      allow create, update: if request.auth != null
+                            && request.auth.uid == userId
+                            && isValidImage();
+      allow delete: if request.auth != null
+                    && request.auth.uid == userId;
     }
 
     // 그룹 이미지
     match /group_images/{groupId}/{fileName} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null
-                   && isValidImage();
+      allow read: if request.auth != null
+                  && isGroupMember(groupId);
+      allow create, update: if request.auth != null
+                            && isGroupMember(groupId)
+                            && isValidImage();
+      allow delete: if request.auth != null
+                    && isGroupMember(groupId);
+    }
+
+    // 약속 첨부 이미지
+    match /promise_images/{groupId}/{promiseId}/{fileName} {
+      allow read: if request.auth != null
+                  && isGroupMember(groupId);
+      allow create, update: if request.auth != null
+                            && isGroupMember(groupId)
+                            && isValidImage();
+      allow delete: if request.auth != null
+                    && isGroupMember(groupId);
+    }
+
+    // 개인 일정 첨부 이미지 (본인만 쓰기/삭제 가능)
+    match /personal_event_images/{userId}/{eventId}/{fileName} {
+      allow read: if request.auth != null
+                  && request.auth.uid == userId;
+      allow create, update: if request.auth != null
+                            && request.auth.uid == userId
+                            && isValidImage();
+      allow delete: if request.auth != null
+                    && request.auth.uid == userId;
     }
 
     // 그 외 모든 경로 차단

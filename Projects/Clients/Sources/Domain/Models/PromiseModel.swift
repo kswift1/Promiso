@@ -29,6 +29,10 @@ public struct PromiseModel: Identifiable, Equatable, Hashable, Sendable {
   // MARK: - 위치
   public var location: LocationInfoModel?
 
+  // MARK: - 이미지
+  /// 첨부 이미지 URL 목록 (최대 3장)
+  public var imageUrls: [String]
+
   // MARK: - LiveActivity 설정
   /// LiveActivity 시작 시간 (약속 시간 N분 전)
   public var trackingStartMinutesBefore: Int?
@@ -50,6 +54,7 @@ public struct PromiseModel: Identifiable, Equatable, Hashable, Sendable {
     startAt: Date = Date().addingTimeInterval(3600),
     endAt: Date? = nil,
     location: LocationInfoModel? = nil,
+    imageUrls: [String] = [],
     trackingStartMinutesBefore: Int? = nil,
     createdAt: Date = Date(),
     updatedAt: Date = Date()
@@ -66,6 +71,7 @@ public struct PromiseModel: Identifiable, Equatable, Hashable, Sendable {
     self.startAt = startAt
     self.endAt = endAt
     self.location = location
+    self.imageUrls = imageUrls
     self.trackingStartMinutesBefore = trackingStartMinutesBefore
     self.createdAt = createdAt
     self.updatedAt = updatedAt
@@ -94,6 +100,7 @@ public struct PromiseModel: Identifiable, Equatable, Hashable, Sendable {
     startAt: Date = Date().addingTimeInterval(3600),
     endAt: Date? = nil,
     location: LocationInfoModel? = nil,
+    imageUrls: [String] = [],
     trackingStartMinutesBefore: Int? = nil,
     createdAt: Date = Date(),
     updatedAt: Date = Date()
@@ -111,6 +118,7 @@ public struct PromiseModel: Identifiable, Equatable, Hashable, Sendable {
       startAt: startAt,
       endAt: endAt,
       location: location,
+      imageUrls: imageUrls,
       trackingStartMinutesBefore: trackingStartMinutesBefore,
       createdAt: createdAt,
       updatedAt: updatedAt
@@ -136,6 +144,7 @@ extension PromiseModel {
       startAt: dto.startAt.dateValue(),
       endAt: dto.endAt?.dateValue(),
       location: dto.location.map { LocationInfoModel(dto: $0) },
+      imageUrls: dto.imageUrls ?? [],
       trackingStartMinutesBefore: dto.trackingStartMinutesBefore,
       createdAt: dto.createdAt.dateValue(),
       updatedAt: dto.updatedAt.dateValue()

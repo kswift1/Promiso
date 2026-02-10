@@ -16,7 +16,6 @@ extension NotificationPermission {
       var config: Config
       var allowInteractiveDismiss: Bool
       var authorizationStatus: NotificationAuthorizationStatus = .notDetermined
-      @Presents var alert: AlertState<Action.Alert>?
 
       public init(config: Config = .default, allowInteractiveDismiss: Bool = false) {
         self.config = config
@@ -78,17 +77,12 @@ extension NotificationPermission {
       case view(ViewAction)
       case `internal`(Internal)
       case delegate(Delegate)
-      case alert(PresentationAction<Alert>)
 
       @CasePathable
       public enum ViewAction: Sendable {
         case onAppear
         case primaryButtonTapped
         case secondaryButtonTapped
-      }
-
-      public enum Alert: Sendable {
-        case confirmSkip
       }
 
       public enum Internal: Sendable {
@@ -143,19 +137,7 @@ extension NotificationPermission {
             }
 
           case .secondaryButtonTapped:
-            state.alert = AlertState {
-              TextState("정말 건너뛸까요?")
-            } actions: {
-              ButtonState(action: .confirmSkip) {
-                TextState("건너뛰기")
-              }
-              ButtonState(role: .cancel) {
-                TextState("알림 켜기")
-              }
-            } message: {
-              TextState("알림 없이는 약속 초대, 확정 알림,\n실시간 현황을 받을 수 없어요")
-            }
-            return .none
+            return .send(.delegate(.dismissed))
           }
 
         case .internal(let internalAction):
@@ -180,17 +162,10 @@ extension NotificationPermission {
             )
           }
 
-        case .alert(.presented(.confirmSkip)):
-          return .send(.delegate(.dismissed))
-
-        case .alert(.dismiss):
-          return .none
-
         case .delegate:
           return .none
         }
       }
-      .ifLet(\.$alert, action: \.alert)
     }
   }
 }

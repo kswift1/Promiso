@@ -2,6 +2,7 @@ import SwiftUI
 import ComposableArchitecture
 import PromisoShared
 import SharedFeature
+import PhotosUI
 
 // MARK: - Root View
 
@@ -22,6 +23,21 @@ extension CreatePersonalEvent {
             locationSection
             reminderSection
             descriptionSection
+
+            // 사진 첨부
+            ImageAttachmentSection(
+              existingImageUrls: store.event.imageUrls.filter { !store.removedImageUrls.contains($0) },
+              localImages: store.localImageData,
+              onPhotosSelected: { items in
+                store.send(.view(.photosSelected(items)))
+              },
+              onRemoveExisting: { index in
+                store.send(.view(.removeExistingImage(index)))
+              },
+              onRemoveLocal: { index in
+                store.send(.view(.removeLocalImage(index)))
+              }
+            )
           }
           .padding(16)
           .padding(.bottom, 24)

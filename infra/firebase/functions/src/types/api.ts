@@ -270,6 +270,9 @@ export interface CreatePromiseRequest {
 
   /** 도착 상황 공유 시작 시간 (분 단위, 선택적) */
   arrivalSharingTime?: number | null;
+
+  /** 첨부 이미지 URL 목록 (선택적, 최대 3장) */
+  imageUrls?: string[] | null;
 }
 
 /**
@@ -357,6 +360,9 @@ export interface UpdatePromiseRequest {
     /** 경도 */
     longitude?: number | null;
   } | null;
+
+  /** 첨부 이미지 URL 목록 (선택적, null이면 삭제, undefined면 변경 없음, 최대 3장) */
+  imageUrls?: string[] | null;
 }
 
 /**
