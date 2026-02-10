@@ -102,7 +102,7 @@ struct ProblemEmpathyView: View {
     // 고충 순차 등장
     try? await Task.sleep(for: .seconds(0.4))
     for i in 0..<painPoints.count {
-      try? await Task.sleep(for: .seconds(0.25))
+      try? await Task.sleep(for: .seconds(0.4))
       withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
         showPainPoints[i] = true
       }

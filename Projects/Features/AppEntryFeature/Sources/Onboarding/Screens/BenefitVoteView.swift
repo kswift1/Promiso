@@ -15,7 +15,7 @@ struct BenefitVoteView: View {
   @State private var showCopy: Bool = false
 
   private let members: [(emoji: String, name: String, index: Int)] = [
-    ("🧑‍💻", "민수", 0), ("😎", "지훈", 1), ("🙋‍♀️", "수진", 2), ("🎧", "예은", 3)
+    ("🧑‍💻", "민수", 0), ("😎", "지훈", 1), ("🐰", "재윤", 2), ("🎧", "예은", 3)
   ]
 
   private let minimumRequired = 3
@@ -236,14 +236,14 @@ struct BenefitVoteView: View {
     // 민수, 지훈 순차 수락
     try? await Task.sleep(for: .seconds(0.5))
     for i in 0..<2 {
-      try? await Task.sleep(for: .seconds(0.3))
+      try? await Task.sleep(for: .seconds(0.4))
       withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
         confirmedMembers.insert(i)
       }
     }
 
-    // 수진 수락 (3번째 = 최소 인원 충족!)
-    try? await Task.sleep(for: .seconds(0.5))
+    // 재윤 수락 (3번째 = 최소 인원 충족!)
+    try? await Task.sleep(for: .seconds(0.7))
     withAnimation(.spring(response: 0.35, dampingFraction: 0.6)) {
       confirmedMembers.insert(2)
     }
