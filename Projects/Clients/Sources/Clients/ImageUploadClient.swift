@@ -73,14 +73,15 @@ extension ImageUploadClient: DependencyKey {
       uploadImages: { images, basePath in
         guard !images.isEmpty else { return [] }
 
-        // 병렬 업로드, 인덱스 기반 순서 보장
+        // 병렬 업로드, UUID 파일명 사용 (수정 시 기존 파일 덮어쓰기 방지)
         let results: [(Int, String)] = try await withThrowingTaskGroup(
           of: (Int, String).self
         ) { group in
           for (index, imageData) in images.enumerated() {
             group.addTask {
               let compressed = compressImageDataForUpload(imageData) ?? imageData
-              let path = "\(basePath)/\(index).jpg"
+              let fileName = UUID().uuidString.lowercased()
+              let path = "\(basePath)/\(fileName).jpg"
               let ref = storage.reference().child(path)
 
               let metadata = StorageMetadata()

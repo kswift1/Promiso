@@ -196,6 +196,17 @@ struct PromiseCard: View {
               }
               .foregroundColor(.secondary)
             }
+
+            // 사진 첨부 표시
+            if !promise.imageUrls.isEmpty {
+              HStack(spacing: 4) {
+                Image(systemName: "photo")
+                  .font(.system(size: 12))
+                Text("사진 \(promise.imageUrls.count)장")
+                  .font(.system(size: 13, weight: .medium))
+              }
+              .foregroundColor(Color.pmindigo.n500)
+            }
           }
         }
 
