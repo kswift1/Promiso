@@ -32,6 +32,7 @@ extension AppEntry {
     @Dependency(\.userDefaultsClient) var userDefaultsClient
     @Dependency(\.clarityClient) var clarityClient
     @Dependency(\.analyticsClient) var analyticsClient
+    @Dependency(\.groupClient) var groupClient
 
     public init() {}
     
@@ -341,11 +342,23 @@ extension AppEntry {
 
             state.destination = .main(RootTab.Feature.State(currentUser: Shared(value: userModel)))
 
+            // 그룹 멤버 캐시 초기화 (백그라운드)
+            let groupIds = userModel.groups.map(\.id)
+            let cacheEffect: Effect<Action> = .run { [groupClient] _ in
+              @Shared(.inMemory(AppConstants.SharedState.groupMembersCache))
+              var groupMembersCache: [String: [UserPublicModel]] = [:]
+              for groupId in groupIds {
+                if let members = try? await groupClient.fetchGroupMembers(groupId) {
+                  $groupMembersCache.withLock { $0[groupId] = members }
+                }
+              }
+            }
+
             if let deeplink = state.pendingDeeplink {
               state.pendingDeeplink = nil
-              return routeDeeplink(deeplink)
+              return .merge(routeDeeplink(deeplink), cacheEffect)
             }
-            return .none
+            return cacheEffect
           }
 
         case .destination(.presented(.onboardingIntro(.delegate(.completed)))):

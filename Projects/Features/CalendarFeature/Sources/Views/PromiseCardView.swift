@@ -97,7 +97,7 @@ struct PromiseCardView: View {
                 GroupThumbnailView(
                   imageUrl: group.imageUrl,
                   name: group.name,
-                  size: 16
+                  size: 24
                 )
 
                 Text(group.name)

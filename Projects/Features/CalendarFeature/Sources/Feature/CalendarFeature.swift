@@ -714,7 +714,28 @@ extension CalendarFeature {
 
         switch result {
         case .success(let promises):
-          state.cachedPromisesByMonth[month] = promises
+          // 그룹 정보 매핑 (UserGroupInfo + groupMembersCache → GroupModel 변환)
+          let groupsDict = Dictionary(
+            uniqueKeysWithValues: state.currentUser.groups.map { ($0.id, $0) }
+          )
+          let membersCache = state.groupMembersCache
+          let promisesWithGroup = promises.map { promise in
+            var mutablePromise = promise
+            if let groupInfo = groupsDict[promise.groupId] {
+              let memberIds = membersCache[promise.groupId]?.map(\.id) ?? []
+              mutablePromise.group = GroupModel(
+                id: groupInfo.id,
+                name: groupInfo.name,
+                imageUrl: groupInfo.imageUrl,
+                memberIds: memberIds,
+                maxMembers: memberIds.count,
+                inviteCode: "",
+                createdBy: ""
+              )
+            }
+            return mutablePromise
+          }
+          state.cachedPromisesByMonth[month] = promisesWithGroup
           state.loadedMonths.insert(month)
           AppLogger.calendar.debugLog("💾 캐시 저장 완료 - \(KoreanDateFormatters.yearMonth.string(from: month)): \(promises.count)개 약속")
 
