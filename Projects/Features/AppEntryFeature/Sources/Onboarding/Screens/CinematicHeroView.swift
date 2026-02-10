@@ -11,6 +11,8 @@ struct CinematicHeroView: View {
   @State private var phase: AnimationPhase = .initial
   @State private var cardSet: CardSet = .random()
   @State private var visibleBubbles: Int = 0
+  @State private var bubblesCollapsing: Bool = false
+  @State private var visibleCards: Int = 0
 
   private struct CardInfo {
     let emoji: String
@@ -75,12 +77,15 @@ struct CinematicHeroView: View {
       ZStack {
         if phase < .organizing {
           messagesView
+            .scaleEffect(bubblesCollapsing ? 0.15 : 1.0)
+            .blur(radius: bubblesCollapsing ? 8 : 0)
+            .opacity(bubblesCollapsing ? 0 : 1)
             .transition(.opacity)
         }
 
         if phase >= .organizing {
           organizedCardsView
-            .transition(.scale(scale: 0.9).combined(with: .opacity))
+            .transition(.opacity)
         }
       }
       .frame(maxHeight: .infinity)
@@ -171,6 +176,8 @@ struct CinematicHeroView: View {
         participantCount: cardSet.confirmed.count,
         badge: .confirmed
       )
+      .cascadeIn(visible: visibleCards >= 1)
+
       // 2. 확정 대기 약속
       promiseCard(
         info: CardInfo(emoji: "🍟", title: "감튀 파티", detail: "케첩 필수 지참", location: "맥도날드"),
@@ -178,6 +185,8 @@ struct CinematicHeroView: View {
         participantCount: "3/4",
         badge: .pending("1명 남음")
       )
+      .cascadeIn(visible: visibleCards >= 2)
+
       // 3. 예정 약속
       promiseCard(
         info: cardSet.upcoming.info,
@@ -185,11 +194,14 @@ struct CinematicHeroView: View {
         participantCount: nil,
         badge: .time(cardSet.upcoming.time)
       )
+      .cascadeIn(visible: visibleCards >= 3)
+
       // 4. 개인 일정
       personalEventCard(
         info: cardSet.personal.info,
         time: cardSet.personal.time
       )
+      .cascadeIn(visible: visibleCards >= 4)
     }
   }
 
@@ -402,15 +414,25 @@ struct CinematicHeroView: View {
       }
     }
 
-    // Scene 2: 정리 시작 (버블을 충분히 보여준 뒤)
+    // Scene 2: 버블 중앙으로 축소
     try? await Task.sleep(for: .seconds(1.0))
-    withAnimation(.spring(response: 0.7, dampingFraction: 0.85)) {
-      phase = .organizing
+    withAnimation(.easeIn(duration: 0.5)) {
+      bubblesCollapsing = true
     }
 
-    // Scene 3: 정리 완료
-    try? await Task.sleep(for: .seconds(0.6))
-    withAnimation(.easeInOut(duration: 0.5)) {
+    // 축소 완료 후 카드 뷰로 전환
+    try? await Task.sleep(for: .seconds(0.5))
+    phase = .organizing
+
+    // Scene 3: 카드 하나씩 캐스케이드 등장
+    for i in 1...4 {
+      try? await Task.sleep(for: .seconds(0.15))
+      visibleCards = i
+    }
+
+    // 정리 완료
+    try? await Task.sleep(for: .seconds(0.3))
+    withAnimation(.easeInOut(duration: 0.3)) {
       phase = .organized
     }
 
@@ -423,5 +445,28 @@ struct CinematicHeroView: View {
     // 애니메이션 완료
     try? await Task.sleep(for: .seconds(0.4))
     onAnimationComplete()
+  }
+}
+
+// MARK: - Cascade Modifier
+
+private struct CascadeModifier: ViewModifier {
+  let visible: Bool
+
+  func body(content: Content) -> some View {
+    content
+      .opacity(visible ? 1 : 0)
+      .offset(y: visible ? 0 : -30)
+      .scaleEffect(visible ? 1 : 0.85)
+      .animation(
+        .spring(response: 0.45, dampingFraction: 0.75),
+        value: visible
+      )
+  }
+}
+
+private extension View {
+  func cascadeIn(visible: Bool) -> some View {
+    modifier(CascadeModifier(visible: visible))
   }
 }
