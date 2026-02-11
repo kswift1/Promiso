@@ -164,37 +164,32 @@ export const getFAQs = onCall<GetFAQsRequest & {databaseId: string}>(
           `(databaseId: ${databaseId})`
         );
 
+        // 클라이언트에는 간결한 메시지만 반환 (상세 정보는 위 console.error 로그 참조)
         switch (response.status) {
           case 401:
             throw new HttpsError(
               "unauthenticated",
-              "Notion API 인증 실패: NOTION_FAQ_API_KEY가 유효하지 않습니다. " +
-              "Secret Manager에서 새 워크스페이스의 API 키로 업데이트하세요."
+              "FAQ 서비스에 일시적인 문제가 발생했습니다."
             );
           case 403:
             throw new HttpsError(
               "permission-denied",
-              "Notion API 권한 부족: Integration에 read content 권한이 있는지 확인하세요."
+              "FAQ 서비스에 일시적인 문제가 발생했습니다."
             );
           case 404:
             throw new HttpsError(
               "not-found",
-              "Notion 데이터베이스를 찾을 수 없습니다 " +
-              `(databaseId: ${databaseId}). ` +
-              "Integration이 해당 데이터베이스에 연결(Connection)되어 있는지, " +
-              "NOTION_FAQ_API_KEY가 올바른 워크스페이스의 키인지 확인하세요."
+              "FAQ 데이터를 찾을 수 없습니다."
             );
           case 400:
             throw new HttpsError(
               "invalid-argument",
-              "Notion API 요청 오류: 데이터베이스 속성명" +
-              "(Question, Answer, Category, Order, Active)이 " +
-              "올바른지 확인하세요."
+              "FAQ 데이터 형식에 문제가 있습니다."
             );
           default:
             throw new HttpsError(
               "unavailable",
-              `Notion API 호출 실패: ${response.status}`
+              "FAQ 서비스에 연결할 수 없습니다."
             );
         }
       }
