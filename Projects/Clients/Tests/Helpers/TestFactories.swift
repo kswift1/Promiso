@@ -19,6 +19,8 @@
 
 import Foundation
 import Testing
+import PromisoShared
+
 @testable import Clients
 
 // MARK: - TestFactories
