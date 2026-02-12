@@ -12,7 +12,7 @@
 - [x] `scripts/install-git-hooks.sh` 수정 — pre-push 설치 추가
 - [x] `Makefile` 수정 — test, test-module, build-module, test-changed, build-changed
 - [x] `.github/workflows/pr-check.yml` 수정 — 커버리지 리포트 + PR 코멘트
-- [ ] Phase 1 커밋
+- [x] Phase 1 커밋
 
 ---
 
