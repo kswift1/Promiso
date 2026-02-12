@@ -158,15 +158,15 @@
 | P40 | `GroupPromiseListFeature.swift` 필터링 | — | ❌ |
 | P41 | `GroupPromiseListFeature.swift` 필터링 | — | ❌ |
 | P42 | UI 컴포넌트 | — | ❌ |
-| P43 | View `lineLimit` ⚠️ 코드=2줄, 규칙=3줄 | — | ❌ |
+| P43 | `PromiseCard.swift` `lineLimit(3)` | — | ❌ |
 | P44 | — | — | — |
 | P45 | HomeFeature / RootTabFeature | — | ❌ |
 
-### ⚠️ 불일치 발견
+### ✅ 불일치 검증 완료
 
-| ID | 내용 |
+| ID | 결과 |
 |----|------|
-| P43 | 규칙=3줄, 코드=`lineLimit(2)` — 확인 필요 |
+| P43 | 수정 완료 — PromiseCard.swift `lineLimit(2)` → `lineLimit(3)` |
 
 ### 핵심 파일
 

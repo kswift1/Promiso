@@ -81,7 +81,7 @@
 | ID | 구현 | 테스트 | 상태 |
 |----|------|--------|:----:|
 | L1 | `PromiseActivityAttributes.swift` `trackingDurationMinutes: Int` (검증 로직 미구현) | — | ❌ |
-| L2 | `LockScreenView.swift` etaOptions (⚠️ 현재 0,5,10분 — 규칙과 불일치) | — | ❌ |
+| L2 | `ArrivalSharingSection.swift` / `EditPromiseView.swift` [15,30,60] | — | ❌ |
 | L3 | `PromiseActivityAttributes.swift` `trackPosition` min/max(0.05, 0.95) | `ParticipantStateTests` 1개 | ✅ |
 
 ### 동작 규칙
@@ -103,11 +103,11 @@
 | L17 | 미구현 (`hasSeenLiveActivityInfo`) | — | ❌ |
 | L18 | `RefreshGate.swift` 유사 패턴 (2초 간격 throttle) | — | ❌ |
 
-### ⚠️ 불일치 발견
+### ✅ 불일치 검증 완료
 
-| ID | 내용 |
+| ID | 결과 |
 |----|------|
-| L2 | 규칙=15분,30분,60분 프리셋, 코드=0분,5분,10분 — 확인 필요 |
+| L2 | 오탐 — LockScreenView의 0/5/10분은 ETA 선택(L8), 추적 프리셋(15/30/60분)은 정상 구현 |
 
 ### 핵심 파일
 

@@ -101,12 +101,12 @@
 | U15 | `UserModel.swift` `GroupRole` enum (admin, member) | 모델 정의 | ⚠️ |
 | U16 | `UserError.swift` `UserPlan` enum (free, pro) | `ErrorModelTests` 2개 | ✅ |
 
-### ⚠️ 주의사항
+### ✅ 불일치 검증 완료
 
-| ID | 내용 |
+| ID | 결과 |
 |----|------|
-| U2 | 회원가입=12자, 설정=20자 불일치 — Backend는 20자 |
-| U11 | 규칙=500ms, 코드=400ms — 확인 필요 |
+| U2 | 정상 — 회원가입=12자(ProfileSetup), 설정=20자(SettingsFeature), 의도된 설계 |
+| U11 | 수정 완료 — ProfileSetup.swift 400ms → 500ms |
 
 ### 핵심 파일
 
