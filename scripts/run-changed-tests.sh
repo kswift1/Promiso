@@ -129,27 +129,32 @@ echo ""
 # 모듈 추출 + 의존성 전파
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-declare -A MODULES
+MODULES=""
 
 while IFS= read -r file; do
   module=$(path_to_module "$file")
   if [ -n "$module" ]; then
-    MODULES["$module"]=1
+    # 중복 방지: 이미 포함되어 있지 않으면 추가
+    if ! echo "$MODULES" | grep -qx "$module"; then
+      MODULES="${MODULES}${MODULES:+$'\n'}${module}"
+    fi
   fi
 done <<< "$ALL_CHANGED"
 
 # 의존성 전파: Shared 변경 → Clients도 체크
-if [ "${MODULES[PromisoShared]+_}" ]; then
+if echo "$MODULES" | grep -qx "PromisoShared"; then
   echo "📦 PromisoShared 변경 감지 → Clients도 체크 대상에 추가"
-  MODULES["Clients"]=1
+  if ! echo "$MODULES" | grep -qx "Clients"; then
+    MODULES="${MODULES}${MODULES:+$'\n'}Clients"
+  fi
 fi
 
-if [ ${#MODULES[@]} -eq 0 ]; then
+if [ -z "$MODULES" ]; then
   echo "✅ 빌드/테스트 대상 모듈이 없습니다. (App/설정 파일만 변경)"
   exit 0
 fi
 
-SORTED_MODULES=($(echo "${!MODULES[@]}" | tr ' ' '\n' | sort))
+SORTED_MODULES=($(echo "$MODULES" | sort))
 
 echo "🎯 대상 모듈 (${#SORTED_MODULES[@]}개):"
 for m in "${SORTED_MODULES[@]}"; do
