@@ -262,7 +262,7 @@ struct NotificationCenterFeatureTests {
   func refreshTriggered_fetchesNotifications() async {
     let notifications = [makeNotification()]
 
-    let store = TestStore(
+    let store = await TestStore(
       initialState: NotificationCenter.Feature.State()
     ) {
       NotificationCenter.Feature()
@@ -296,14 +296,19 @@ struct NotificationCenterFeatureTests {
     let store = TestStore(initialState: state) {
       NotificationCenter.Feature()
     }
+    store.exhaustivity = .off
 
-    await store.send(.internal(.markAllAsReadCompleted(.success(())))) {
-      // 모든 알림이 읽음으로 변경됨
-      if case .loaded(let updatedNotifications) = $0.notificationsState {
-        for notification in updatedNotifications {
-          #expect(notification.isRead == true)
-        }
+    await store.send(.internal(.markAllAsReadCompleted(.success(()))))
+
+    // readAt: Date()가 reducer 내부에서 생성되므로 exhaustive 비교 불가
+    // 수동으로 읽음 상태만 검증
+    if case .loaded(let updatedNotifications) = store.state.notificationsState {
+      #expect(updatedNotifications.count == 3)
+      for notification in updatedNotifications {
+        #expect(notification.isRead == true)
       }
+    } else {
+      Issue.record("Expected .loaded state after markAllAsReadCompleted")
     }
   }
 
