@@ -96,4 +96,11 @@ struct LiveActivityBehaviorRuleTests {
     )
     #expect(attrs.trackingDurationMinutes == 30)
   }
+
+  // MARK: - [L2] 커스텀 입력 최대 자릿수
+
+  @Test("[L2] 커스텀 분 입력 최대 자릿수 = 3 (999분)")
+  func l2_maxCustomMinutesDigits_isThree() {
+    #expect(AppConstants.LiveActivity.maxCustomMinutesDigits == 3)
+  }
 }

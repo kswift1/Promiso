@@ -13,6 +13,7 @@
 import Foundation
 import Testing
 @testable import Clients
+@testable import PromisoShared
 
 // MARK: - 제약 조건 (G1~G8)
 
@@ -74,5 +75,83 @@ struct GroupPermissionRuleTests {
   func g16_atCapacity_cannotJoin() {
     let group = TestFactories.makeGroup(memberIds: ["a", "b", "c"], maxMembers: 3)
     #expect(group.memberIds.count >= group.maxMembers)
+  }
+}
+
+// MARK: - 정렬 (G28)
+
+@Suite("Group 정렬 도메인 규칙")
+struct GroupSortRuleTests {
+
+  // MARK: - [G28] 5가지 정렬 옵션
+
+  @Test("[G28] joinedRecent sortType은 joined")
+  func g28_joinedRecent_sortType() {
+    #expect(GroupSortOption.joinedRecent.sortType == .joined)
+  }
+
+  @Test("[G28] joinedOldest sortType은 joined")
+  func g28_joinedOldest_sortType() {
+    #expect(GroupSortOption.joinedOldest.sortType == .joined)
+  }
+
+  @Test("[G28] nameAscending sortType은 name")
+  func g28_nameAscending_sortType() {
+    #expect(GroupSortOption.nameAscending.sortType == .name)
+  }
+
+  @Test("[G28] nameDescending sortType은 name")
+  func g28_nameDescending_sortType() {
+    #expect(GroupSortOption.nameDescending.sortType == .name)
+  }
+
+  @Test("[G28] custom sortType은 custom")
+  func g28_custom_sortType() {
+    #expect(GroupSortOption.custom(order: ["g1"]).sortType == .custom)
+  }
+
+  @Test("[G28] joinedRecent는 내림차순 (기본 정렬)")
+  func g28_joinedRecent_isDescending() {
+    #expect(GroupSortOption.joinedRecent.isAscending == false)
+  }
+
+  @Test("[G28] toggled 동작 검증")
+  func g28_toggled_reverses() {
+    #expect(GroupSortOption.joinedRecent.toggled == .joinedOldest)
+    #expect(GroupSortOption.joinedOldest.toggled == .joinedRecent)
+    #expect(GroupSortOption.nameAscending.toggled == .nameDescending)
+    #expect(GroupSortOption.nameDescending.toggled == .nameAscending)
+  }
+}
+
+// MARK: - 초대/딥링크 (G30)
+
+@Suite("Group 초대 딥링크 도메인 규칙")
+struct GroupDeeplinkRuleTests {
+
+  // MARK: - [G30] 딥링크 형식: promiso://join/{code}
+
+  @Test("[G30] 초대 메시지에 딥링크 promiso://join/{code} 포함")
+  func g30_message_containsDeeplink() {
+    let message = GroupInviteShareMessage.message(groupName: "테스트 그룹", inviteCode: "ABC123")
+    #expect(message.contains("promiso://join/ABC123"))
+  }
+
+  @Test("[G30] 딥링크에 초대 코드가 정확히 포함됨")
+  func g30_deeplink_containsExactCode() {
+    let message = GroupInviteShareMessage.message(groupName: "그룹", inviteCode: "XYZ789")
+    #expect(message.contains("promiso://join/XYZ789"))
+  }
+
+  @Test("[G30] 초대 메시지에 그룹 이름 포함")
+  func g30_message_containsGroupName() {
+    let message = GroupInviteShareMessage.message(groupName: "우리 모임", inviteCode: "TEST01")
+    #expect(message.contains("우리 모임"))
+  }
+
+  @Test("[G30] 초대 메시지에 초대 코드 포함")
+  func g30_message_containsInviteCode() {
+    let message = GroupInviteShareMessage.message(groupName: "그룹", inviteCode: "CODE42")
+    #expect(message.contains("CODE42"))
   }
 }
