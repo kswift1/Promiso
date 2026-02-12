@@ -347,9 +347,16 @@ extension AppEntry {
             let cacheEffect: Effect<Action> = .run { [groupClient] _ in
               @Shared(.inMemory(AppConstants.SharedState.groupMembersCache))
               var groupMembersCache: [String: [UserPublicModel]] = [:]
-              for groupId in groupIds {
-                if let members = try? await groupClient.fetchGroupMembers(groupId) {
-                  $groupMembersCache.withLock { $0[groupId] = members }
+              await withTaskGroup(of: (String, [UserPublicModel]?).self) { group in
+                for groupId in groupIds {
+                  group.addTask {
+                    (groupId, try? await groupClient.fetchGroupMembers(groupId))
+                  }
+                }
+                for await (groupId, members) in group {
+                  if let members {
+                    $groupMembersCache.withLock { $0[groupId] = members }
+                  }
                 }
               }
             }
