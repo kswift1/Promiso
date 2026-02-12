@@ -52,12 +52,16 @@ AppEntryFeature (Root Coordinator)
 ├── ProfileSetup
 └── RootTabFeature (Tab Coordinator)
     ├── HomeFeature
-    └── GroupFeature
+    ├── GroupFeature
+    ├── PersonalFeature (개인 일정 모드)
+    ├── CalendarFeature
+    └── SettingsFeature
 ```
 
 **설명**:
 - **Coordinator Feature** (AppEntryFeature, RootTabFeature): 네비게이션과 화면 전환을 담당하는 부모 Feature는 자식 Feature들을 직접 의존할 수 있음
-- **Leaf Feature** (HomeFeature, GroupFeature): 실제 비즈니스 로직을 담당하는 Feature들은 서로 의존하지 않음
+- **Leaf Feature** (HomeFeature, GroupFeature, PersonalFeature 등): 실제 비즈니스 로직을 담당하는 Feature들은 서로 의존하지 않음
+- **약속 탭 모드 전환**: GroupFeature와 PersonalFeature는 같은 탭에서 모드 토글로 전환 (탭 재선택 시)
 - Feature 간 통신은 **Delegate 패턴**을 통해서만 수행
 
 ## 🎯 코딩 컨벤션

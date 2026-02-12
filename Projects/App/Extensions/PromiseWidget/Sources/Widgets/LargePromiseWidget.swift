@@ -55,10 +55,10 @@ struct LargePromiseWidgetView: View {
 
   @ViewBuilder
   private var contentView: some View {
-    let todayPromises = Array(entry.todayPromises.prefix(3))
-    let upcomingPromises = Array(entry.upcomingPromises.prefix(4))
+    let todayItems = Array(entry.todayItems.prefix(3))
+    let upcomingItems = Array(entry.upcomingItems.prefix(4))
 
-    if todayPromises.isEmpty && upcomingPromises.isEmpty {
+    if todayItems.isEmpty && upcomingItems.isEmpty {
       EmptyWidgetView(
         icon: "calendar.badge.clock",
         message: "예정된 약속이 없어요",
@@ -66,17 +66,15 @@ struct LargePromiseWidgetView: View {
       )
     } else {
       VStack(alignment: .leading, spacing: 0) {
-        // 오늘 섹션
-        if !todayPromises.isEmpty {
-          todaySection(todayPromises)
+        if !todayItems.isEmpty {
+          todaySection(todayItems)
         }
 
-        // 다가오는 약속 섹션
-        if !upcomingPromises.isEmpty {
-          if !todayPromises.isEmpty {
+        if !upcomingItems.isEmpty {
+          if !todayItems.isEmpty {
             sectionDivider
           }
-          upcomingSection(upcomingPromises)
+          upcomingSection(upcomingItems)
         }
 
         Spacer(minLength: 0)
@@ -91,22 +89,22 @@ struct LargePromiseWidgetView: View {
   // MARK: - Today Section
 
   @ViewBuilder
-  private func todaySection(_ promises: [WidgetPromiseData]) -> some View {
+  private func todaySection(_ items: [WidgetPromiseData]) -> some View {
     VStack(alignment: .leading, spacing: 8) {
-      // 섹션 헤더
       sectionHeader(
         title: "오늘",
         icon: "sun.max.fill",
-        count: promises.count,
+        count: items.count,
         isHighlighted: true
       )
 
-      // 약속 목록
-      ForEach(promises) { promise in
-        if let url = promise.deeplinkURL {
+      ForEach(items, id: \.id) { item in
+        if let url = item.deeplinkURL {
           Link(destination: url) {
-            todayRow(promise)
+            todayRow(item)
           }
+        } else {
+          todayRow(item)
         }
       }
     }
@@ -115,22 +113,22 @@ struct LargePromiseWidgetView: View {
   // MARK: - Upcoming Section
 
   @ViewBuilder
-  private func upcomingSection(_ promises: [WidgetPromiseData]) -> some View {
+  private func upcomingSection(_ items: [WidgetPromiseData]) -> some View {
     VStack(alignment: .leading, spacing: 8) {
-      // 섹션 헤더
       sectionHeader(
-        title: "다가오는 약속",
+        title: "다가오는 일정",
         icon: "calendar",
-        count: promises.count,
+        count: items.count,
         isHighlighted: false
       )
 
-      // 약속 목록
-      ForEach(promises) { promise in
-        if let url = promise.deeplinkURL {
+      ForEach(items, id: \.id) { item in
+        if let url = item.deeplinkURL {
           Link(destination: url) {
-            upcomingRow(promise)
+            upcomingRow(item)
           }
+        } else {
+          upcomingRow(item)
         }
       }
     }
@@ -179,38 +177,49 @@ struct LargePromiseWidgetView: View {
   // MARK: - Row Views
 
   @ViewBuilder
-  private func todayRow(_ promise: WidgetPromiseData) -> some View {
+  private func todayRow(_ item: WidgetPromiseData) -> some View {
     HStack(alignment: .top, spacing: 10) {
       // 이모지
-      Text(promise.emoji)
+      Text(item.emoji)
         .font(.system(size: 24))
         .frame(width: 28)
 
       // 제목 + 메타 정보
       VStack(alignment: .leading, spacing: 2) {
-        Text(promise.title)
+        Text(item.title)
           .font(.subheadline.weight(.semibold))
           .lineLimit(1)
           .foregroundStyle(.primary)
 
         // 메타 정보
         HStack(spacing: 4) {
-          if let location = promise.location {
+          if item.isPersonalEvent {
             HStack(spacing: 2) {
-              Image(systemName: "location.fill")
+              Image(systemName: "person.fill")
                 .font(.system(size: 8))
-              Text(location)
-                .lineLimit(1)
+              Text("개인")
             }
-          }
-          if promise.participantCount > 0 {
-            if promise.location != nil {
+            .foregroundStyle(Color.pmaurora.purple)
+          } else {
+            if let location = item.location {
+              HStack(spacing: 2) {
+                Image(systemName: "location.fill")
+                  .font(.system(size: 8))
+                Text(location)
+                  .lineLimit(1)
+              }
+            }
+
+            if item.location != nil && item.participantCount > 0 {
               Text("·")
             }
-            HStack(spacing: 2) {
-              Image(systemName: "person.2.fill")
-                .font(.system(size: 8))
-              Text("\(promise.participantCount)명")
+
+            if item.participantCount > 0 {
+              HStack(spacing: 2) {
+                Image(systemName: "person.2.fill")
+                  .font(.system(size: 8))
+                Text("\(item.participantCount)명")
+              }
             }
           }
         }
@@ -221,37 +230,43 @@ struct LargePromiseWidgetView: View {
       Spacer(minLength: 4)
 
       // 시간 (강조)
-      Text(formatTime(promise.startAt))
+      Text(formatTime(item.startAt))
         .font(.subheadline.weight(.bold))
-        .foregroundStyle(Color.pmindigo.n500)
+        .foregroundStyle(item.isPersonalEvent ? Color.pmaurora.purple : Color.pmindigo.n500)
     }
     .contentShape(Rectangle())
     .accessibilityElement(children: .combine)
-    .accessibilityLabel(accessibilityLabel(for: promise, isToday: true))
+    .accessibilityLabel(accessibilityLabel(for: item, isToday: true))
   }
 
   @ViewBuilder
-  private func upcomingRow(_ promise: WidgetPromiseData) -> some View {
+  private func upcomingRow(_ item: WidgetPromiseData) -> some View {
     HStack(spacing: 10) {
       // 이모지
-      Text(promise.emoji)
+      Text(item.emoji)
         .font(.system(size: 20))
         .frame(width: 24)
 
       // 제목
-      Text(promise.title)
+      Text(item.title)
         .font(.subheadline)
         .lineLimit(1)
         .foregroundStyle(.primary)
 
+      if item.isPersonalEvent {
+        Text("개인")
+          .font(.caption2.weight(.medium))
+          .foregroundStyle(Color.pmaurora.purple)
+      }
+
       Spacer(minLength: 4)
 
       // 날짜 + 시간
-      dateBadge(promise.startAt)
+      dateBadge(item.startAt)
     }
     .contentShape(Rectangle())
     .accessibilityElement(children: .combine)
-    .accessibilityLabel(accessibilityLabel(for: promise, isToday: false))
+    .accessibilityLabel(accessibilityLabel(for: item, isToday: false))
   }
 
   // MARK: - Date Badge
@@ -294,33 +309,37 @@ struct LargePromiseWidgetView: View {
 
   // MARK: - Accessibility
 
-  private func accessibilityLabel(for promise: WidgetPromiseData, isToday: Bool) -> String {
+  private func accessibilityLabel(for item: WidgetPromiseData, isToday: Bool) -> String {
     let calendar = Calendar.current
     var components: [String] = []
+
+    if item.isPersonalEvent {
+      components.append("개인 일정")
+    }
 
     // 날짜
     if isToday {
       components.append("오늘")
-    } else if calendar.isDateInTomorrow(promise.startAt) {
+    } else if calendar.isDateInTomorrow(item.startAt) {
       components.append("내일")
     } else {
-      components.append(formatShortDate(promise.startAt))
+      components.append(formatShortDate(item.startAt))
     }
 
     // 시간
-    components.append(formatTime(promise.startAt))
+    components.append(formatTime(item.startAt))
 
     // 제목
-    components.append(promise.title)
+    components.append(item.title)
 
     // 장소
-    if let location = promise.location {
+    if let location = item.location {
       components.append(location)
     }
 
-    // 참여자
-    if promise.participantCount > 0 {
-      components.append("\(promise.participantCount)명 참여")
+    // 참여자 (약속만)
+    if !item.isPersonalEvent && item.participantCount > 0 {
+      components.append("\(item.participantCount)명 참여")
     }
 
     return components.joined(separator: ", ")

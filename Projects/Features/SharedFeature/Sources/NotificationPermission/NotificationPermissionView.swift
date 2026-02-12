@@ -1,5 +1,6 @@
 import SwiftUI
 import ComposableArchitecture
+import PromisoShared
 import ResourceKit
 
 extension NotificationPermission {
@@ -7,90 +8,102 @@ extension NotificationPermission {
     @Bindable var store: StoreOf<Feature>
     @State private var animateNotification: Bool = false
     @State private var loopContinues: Bool = true
+    @State private var currentNotificationIndex: Int = 0
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.scenePhase) private var scenePhase
+
+    private let notifications: [(title: String, body: String)] = [
+      ("새 약속 도착 📩", "민수님이 대학 동기 모임을 제안했어요. 확인해주세요!"),
+      ("대학 동기 모임 약속 확정! 🎉", "1월 25일 오후 6시에 만나요!"),
+      ("새 멤버 합류 👋", "예은님이 대학 동기에 들어왔어요"),
+      ("대학 동기 모임 변경 📝", "약속 정보가 수정됐어요. 확인해주세요!"),
+    ]
+
+    private let benefits: [String] = [
+      "약속 초대",
+      "확정 알림",
+      "멤버 합류",
+      "약속 변경",
+    ]
 
     public init(store: StoreOf<Feature>) {
       self.store = store
     }
 
-    /// 현재 시간 + 1시간 00분 기준으로 동적 알림 내용 생성
-    private var dynamicNotificationContent: String {
-      let calendar = Calendar.current
-      let now = Date()
-      // 현재 시간 + 1시간, 분은 00으로 설정
-      var components = calendar.dateComponents([.year, .month, .day, .hour], from: now)
-      components.hour = (components.hour ?? 0) + 1
-      components.minute = 0
-
-      guard let targetDate = calendar.date(from: components) else {
-        return store.config.notificationContent
-      }
-
-      let dateString = KoreanDateFormatters.monthDayHour.string(from: targetDate)
-
-      return "점심 약속 확정! \(dateString)에 만나요"
-    }
-
     public var body: some SwiftUI.View {
       VStack(spacing: 0) {
-          iPhonePreview()
-            .padding(.top, 15)
+        // iPhone 프리뷰 + 푸시 알림 애니메이션
+        iPhonePreview
+          .frame(maxHeight: .infinity)
 
-          VStack(spacing: 20) {
-            Text(store.config.title)
-              .font(.largeTitle.bold())
-              .multilineTextAlignment(.center)
-              .lineLimit(2)
-              .fixedSize(horizontal: false, vertical: true)
+        // 하단 컨텐츠
+        VStack(spacing: 16) {
+          // 타이틀
+          Text("약속을 놓치지 않으려면\n알림을 켜주세요")
+            .font(.title3.bold())
+            .multilineTextAlignment(.center)
+            .foregroundStyle(Color.pmtext.primary)
 
-            Text(store.config.content)
-              .font(.callout)
-              .foregroundStyle(.secondary)
-              .multilineTextAlignment(.center)
-              .lineLimit(3)
-              .fixedSize(horizontal: false, vertical: true)
-
-            Spacer(minLength: 0)
-
-            // Primary Button
-            Button {
-              store.send(.view(.primaryButtonTapped))
-            } label: {
-              Text(store.primaryButtonTitle)
-                .fontWeight(.semibold)
-                .frame(maxWidth: .infinity)
-                .foregroundStyle(.white)
-                .frame(height: 56)
-                .background(Color.pmindigo.n500, in: .rect(cornerRadius: 16))
-            }
-
-            // Secondary Button (나중에 하기)
-            if store.showSecondaryButton {
-              Button {
-                store.send(.view(.secondaryButtonTapped))
-              } label: {
-                Text(store.config.secondaryButtonTitle)
-                  .fontWeight(.medium)
-                  .foregroundStyle(Color.pmindigo.n500.opacity(0.8))
+          // 체크리스트 (한 줄 태그 스타일)
+          HStack(spacing: 8) {
+            ForEach(benefits, id: \.self) { benefit in
+              HStack(spacing: 4) {
+                Image(systemName: "checkmark")
+                  .font(.system(size: 9, weight: .bold))
+                  .foregroundStyle(Color.green)
+                Text(benefit)
+                  .font(.system(size: 13, weight: .medium))
+                  .foregroundStyle(Color.pmtext.secondary)
+              }
+              .padding(.horizontal, 10)
+              .padding(.vertical, 6)
+              .background {
+                Capsule()
+                  .fill(Color.pmtext.primary.opacity(0.06))
               }
             }
           }
-          .padding(.horizontal, 20)
-          .padding(.bottom, 30)
+
+          // Primary Button
+          GlassActionButton(
+            title: store.primaryButtonTitle,
+            isPrimary: true,
+            action: { store.send(.view(.primaryButtonTapped)) }
+          )
+          .padding(.horizontal, 24)
+
+          // Secondary Button (나중에 하기)
+          if store.showSecondaryButton {
+            Button {
+              store.send(.view(.secondaryButtonTapped))
+            } label: {
+              Text(store.config.secondaryButtonTitle)
+                .font(.callout.weight(.medium))
+                .foregroundStyle(Color.pmtext.secondary)
+            }
+          }
         }
+        .padding(.bottom, UIScreen.main.bounds.height < 700 ? 20 : 40)
+      }
+      .auroraBackground()
       .onAppear {
         store.send(.view(.onAppear))
       }
       .onDisappear {
         loopContinues = false
       }
-      .interactiveDismissDisabled()
+      .onChange(of: scenePhase) { oldPhase, newPhase in
+        // 백그라운드에서 복귀할 때만 권한 상태 재확인
+        if oldPhase != .active && newPhase == .active {
+          store.send(.view(.onAppear))
+        }
+      }
+      .interactiveDismissDisabled(!store.allowInteractiveDismiss)
     }
 
     // MARK: - iPhone Preview
 
-    @ViewBuilder
-    private func iPhonePreview() -> some SwiftUI.View {
+    private var iPhonePreview: some SwiftUI.View {
       GeometryReader { geometry in
         let size = geometry.size
         let scale = min(size.height / 340, 1)
@@ -116,7 +129,7 @@ extension NotificationPermission {
               columns: Array(repeating: GridItem(spacing: 15), count: 4),
               spacing: 15
             ) {
-              ForEach(1...12, id: \.self) { _ in
+              ForEach(1...4, id: \.self) { _ in
                 RoundedRectangle(cornerRadius: 10)
                   .frame(height: 55)
               }
@@ -142,7 +155,7 @@ extension NotificationPermission {
           .padding(.top, 15)
 
           // Notification View
-          notificationView()
+          notificationView
         }
         .frame(width: width)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -163,10 +176,10 @@ extension NotificationPermission {
 
     // MARK: - Notification View
 
-    @ViewBuilder
-    private func notificationView() -> some SwiftUI.View {
-      HStack(alignment: .center, spacing: 8) {
-        // App Logo
+    private var notificationView: some SwiftUI.View {
+      let current = notifications[currentNotificationIndex]
+
+      return HStack(alignment: .center, spacing: 8) {
         ResourceKitAsset.notificationLogo.swiftUIImage
           .resizable()
           .scaledToFit()
@@ -175,7 +188,7 @@ extension NotificationPermission {
 
         VStack(alignment: .leading, spacing: 4) {
           HStack {
-            Text(store.config.notificationTitle)
+            Text(current.title)
               .font(.callout)
               .fontWeight(.medium)
               .lineLimit(1)
@@ -188,13 +201,14 @@ extension NotificationPermission {
               .foregroundStyle(.gray)
           }
 
-          Text(dynamicNotificationContent)
+          Text(current.body)
             .font(.caption2)
             .fontWeight(.medium)
             .foregroundStyle(.gray)
             .lineLimit(2)
         }
       }
+      .id(currentNotificationIndex)
       .padding(12)
       .background(.background)
       .clipShape(.rect(cornerRadius: 20))
@@ -225,6 +239,7 @@ extension NotificationPermission {
 
       guard loopContinues else { return }
       try? await Task.sleep(for: .seconds(1.3))
+      currentNotificationIndex = (currentNotificationIndex + 1) % notifications.count
       await loopAnimation()
     }
 
@@ -233,7 +248,6 @@ extension NotificationPermission {
     private var backgroundColor: Color {
       colorScheme == .dark ? .white : .black
     }
-
   }
 }
 

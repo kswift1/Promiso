@@ -1,30 +1,40 @@
 import SwiftUI
+import Clients
 import PromisoShared
 import ResourceKit
 
 // MARK: - Upcoming Date Card
 
-/// 같은 날짜의 약속들을 하나의 카드로 묶는 컴포넌트
+/// 같은 날짜의 일정들을 하나의 카드로 묶는 컴포넌트
 struct UpcomingDateCard: View {
   let date: Date
-  let promises: [PromiseModel]
-  let onPromiseTap: (PromiseModel) -> Void
+  let items: [HomeModels.ScheduleItem]
+  let onItemTap: (HomeModels.ScheduleItem) -> Void
 
   var body: some View {
     HStack(alignment: .top, spacing: 12) {
       // 날짜 배지
       dateBadge
 
-      // 약속 목록
+      // 일정 목록
       VStack(spacing: 0) {
-        ForEach(Array(promises.enumerated()), id: \.element.id) { index, promise in
-          UpcomingPromiseRow(
-            promise: promise,
-            onTap: { onPromiseTap(promise) }
-          )
+        ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+          switch item {
+          case .promise(let promise):
+            UpcomingPromiseRow(
+              promise: promise,
+              onTap: { onItemTap(item) }
+            )
+
+          case .personalEvent(let event):
+            UpcomingPersonalEventRow(
+              event: event,
+              onTap: { onItemTap(item) }
+            )
+          }
 
           // 마지막 아이템이 아니면 Divider
-          if index < promises.count - 1 {
+          if index < items.count - 1 {
             Divider()
               .padding(.vertical, 8)
           }
@@ -180,28 +190,121 @@ private struct UpcomingPromiseRow: View {
   }
 }
 
+// MARK: - Upcoming Personal Event Row
+
+/// 카드 내부의 개별 개인 일정 행
+private struct UpcomingPersonalEventRow: View {
+  let event: PersonalEventModel
+  let onTap: () -> Void
+
+  var body: some View {
+    Button(action: onTap) {
+      HStack(spacing: 8) {
+        // 일정 정보
+        VStack(alignment: .leading, spacing: 4) {
+          // 이모지 + 제목
+          HStack(spacing: 6) {
+            Text(event.displayEmoji)
+              .font(.pmBody)
+
+            Text(event.title)
+              .font(.pmSubheadlineMedium)
+              .foregroundStyle(.primary)
+              .lineLimit(1)
+          }
+
+          // 시간 + 장소
+          HStack(spacing: 12) {
+            // 시간
+            HStack(spacing: 3) {
+              ResourceKitAsset.clockIcon.swiftUIImage
+                .resizable()
+                .renderingMode(.template)
+                .frame(width: 12, height: 12)
+
+              Text(timeString)
+                .font(.pmCaption)
+            }
+
+            // 장소
+            if let location = event.location {
+              HStack(spacing: 3) {
+                ResourceKitAsset.locationIcon.swiftUIImage
+                  .resizable()
+                  .renderingMode(.template)
+                  .frame(width: 12, height: 12)
+
+                Text(location.name)
+                  .font(.pmCaption)
+                  .lineLimit(1)
+              }
+            }
+          }
+          .foregroundStyle(.secondary)
+
+          // 개인 일정 라벨
+          HStack(spacing: 4) {
+            Image(systemName: "person.fill")
+              .font(.system(size: 10))
+
+            Text("개인 일정")
+              .font(.pmCaption)
+          }
+          .foregroundStyle(.secondary)
+        }
+
+        Spacer(minLength: 0)
+
+        // 우측 화살표
+        Image(systemName: "chevron.right")
+          .font(.pmCaption)
+          .foregroundStyle(.tertiary)
+      }
+      .contentShape(Rectangle())
+    }
+    .buttonStyle(.plain)
+  }
+
+  // MARK: - Computed Properties
+
+  private var timeString: String {
+    event.startAt.formattedTime
+  }
+}
+
 // MARK: - Preview
 
 #Preview {
   VStack(spacing: 10) {
-    // 같은 날짜에 여러 약속
+    // 같은 날짜에 약속 + 개인 일정 혼합
     UpcomingDateCard(
       date: Date().addingTimeInterval(86400),
-      promises: [
-        PromiseModel.mock(id: "1", title: "팀 미팅", startAt: Date().addingTimeInterval(86400)),
-        PromiseModel.mock(id: "2", title: "점심 식사", startAt: Date().addingTimeInterval(86400 + 3600)),
-        PromiseModel.mock(id: "3", title: "저녁 약속", startAt: Date().addingTimeInterval(86400 + 7200))
+      items: [
+        .promise(PromiseModel.mock(id: "1", title: "팀 미팅", startAt: Date().addingTimeInterval(86400))),
+        .personalEvent(PersonalEventModel.mock(
+          id: "pe-1",
+          title: "치과 예약",
+          emoji: "🦷",
+          startAt: Date().addingTimeInterval(86400 + 3600),
+          location: LocationInfoModel(name: "서울치과")
+        )),
+        .promise(PromiseModel.mock(id: "3", title: "저녁 약속", startAt: Date().addingTimeInterval(86400 + 7200)))
       ],
-      onPromiseTap: { _ in }
+      onItemTap: { _ in }
     )
 
-    // 하루에 하나의 약속
+    // 하루에 개인 일정만
     UpcomingDateCard(
       date: Date().addingTimeInterval(172800),
-      promises: [
-        PromiseModel.mock(id: "4", title: "영화 관람", startAt: Date().addingTimeInterval(172800))
+      items: [
+        .personalEvent(PersonalEventModel.mock(
+          id: "pe-2",
+          title: "프로젝트 발표",
+          emoji: "💼",
+          startAt: Date().addingTimeInterval(172800)
+        ))
       ],
-      onPromiseTap: { _ in }
+      onItemTap: { _ in }
     )
   }
   .padding()

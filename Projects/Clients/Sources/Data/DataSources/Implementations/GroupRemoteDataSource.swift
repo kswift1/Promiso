@@ -36,6 +36,7 @@ private enum FirebaseConstants {
     static let updateGroup = "updateGroup"
     static let clearGroupBadge = "clearGroupBadge"
     static let transferGroupHost = "transferGroupHost"
+    static let expelMember = "expelMember"
   }
 }
 
@@ -432,6 +433,28 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
       AppLogger.group.debug("[transferHost] Success for groupId: \(groupId)")
     } catch {
       AppLogger.group.error("[transferHost] Failed: \(error.localizedDescription)")
+      throw error
+    }
+  }
+
+  /// 그룹 멤버 추방
+  ///
+  /// - Parameters:
+  ///   - groupId: 그룹 ID
+  ///   - memberId: 추방할 멤버 ID
+  public func expelMember(groupId: String, memberId: String) async throws {
+    let callableData: [String: Any] = [
+      "groupId": groupId,
+      "memberId": memberId
+    ]
+
+    AppLogger.group.debug("[expelMember] Calling with groupId: \(groupId), memberId: \(memberId)")
+
+    do {
+      _ = try await functions.httpsCallable(FirebaseConstants.FunctionName.expelMember).call(callableData)
+      AppLogger.group.debug("[expelMember] Success for groupId: \(groupId)")
+    } catch {
+      AppLogger.group.error("[expelMember] Failed: \(error.localizedDescription)")
       throw error
     }
   }

@@ -7,6 +7,7 @@ import * as admin from 'firebase-admin';
 if (!admin.apps.length) {
   admin.initializeApp({
     projectId: 'promiso-test',
+    storageBucket: 'promiso-test.firebasestorage.app',
   });
 }
 

@@ -8,7 +8,7 @@ Promiso 앱의 FAQ는 Notion 데이터베이스에서 관리됩니다. 이를 �
 
 ### Database ID
 ```
-356188caae734b5ebd73203557a34930
+3029e4970675812ca3d6c852867858a2
 ```
 
 ### 속성 (Properties)
@@ -48,7 +48,7 @@ Promiso 앱의 FAQ는 Notion 데이터베이스에서 관리됩니다. 이를 �
 ### 환경 변수
 ```bash
 API_KEY="ntn_xxxxx"
-DB_ID="356188caae734b5ebd73203557a34930"
+DB_ID="3029e4970675812ca3d6c852867858a2"
 ```
 
 ### FAQ 목록 조회 (Read)

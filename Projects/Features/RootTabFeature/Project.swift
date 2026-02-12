@@ -22,6 +22,7 @@ let project = Project(
         .project(target: "GroupFeature", path: "../GroupFeature"),
         .project(target: "CalendarFeature", path: "../CalendarFeature"),
         .project(target: "SettingsFeature", path: "../SettingsFeature"),
+        .project(target: "PersonalFeature", path: "../PersonalFeature"),
         .project(target: "ExternalDependency", path: "../../ExternalDependency"),
         .project(target: "ResourceKit", path: "../../ResourceKit")
       ],

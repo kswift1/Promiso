@@ -1297,7 +1297,7 @@ private struct TransferHostSheet: View {
 // MARK: - GroupMemberListView
 
 struct GroupMemberListView: View {
-  let store: StoreOf<GroupSettings.Feature>
+  @Bindable var store: StoreOf<GroupSettings.Feature>
 
   var body: some View {
     ScrollView {
@@ -1310,12 +1310,28 @@ struct GroupMemberListView: View {
 
           VStack(spacing: 0) {
             ForEach(Array(store.members.enumerated()), id: \.element.userId) { index, member in
-              MemberRow(
-                member: member,
-                isHost: member.userId == store.group.createdBy,
-                isCurrentUser: member.userId == store.currentUserId,
-                onImageTap: { store.send(.view(.memberImageTapped(member))) }
-              )
+              HStack(spacing: 0) {
+                // 편집 모드: 본인이 아닌 멤버에게 삭제 버튼 표시
+                if store.isEditingMembers && member.userId != store.currentUserId {
+                  Button {
+                    store.send(.view(.expelMemberTapped(member)))
+                  } label: {
+                    Image(systemName: "minus.circle.fill")
+                      .font(.system(size: 22))
+                      .foregroundStyle(Color.pmerror.n500)
+                  }
+                  .buttonStyle(.plain)
+                  .padding(.leading, 16)
+                  .transition(.move(edge: .leading).combined(with: .opacity))
+                }
+
+                MemberRow(
+                  member: member,
+                  isHost: member.userId == store.group.createdBy,
+                  isCurrentUser: member.userId == store.currentUserId,
+                  onImageTap: { store.send(.view(.memberImageTapped(member))) }
+                )
+              }
 
               if index < store.members.count - 1 {
                 Divider()
@@ -1324,18 +1340,21 @@ struct GroupMemberListView: View {
             }
           }
           .adaptiveGlassCard()
+          .animation(.easeInOut(duration: 0.25), value: store.isEditingMembers)
         }
 
         // 초대 섹션
-        VStack(alignment: .leading, spacing: 10) {
-          Text("초대")
-            .font(.system(size: 16, weight: .semibold))
-            .padding(.horizontal, 4)
+        if !store.isEditingMembers {
+          VStack(alignment: .leading, spacing: 10) {
+            Text("초대")
+              .font(.system(size: 16, weight: .semibold))
+              .padding(.horizontal, 4)
 
-          InviteTileRow {
-            store.send(.view(.inviteTapped))
+            InviteTileRow {
+              store.send(.view(.inviteTapped))
+            }
+            .adaptiveGlassCard()
           }
-          .adaptiveGlassCard()
         }
       }
       .padding(.horizontal, 16)
@@ -1345,6 +1364,45 @@ struct GroupMemberListView: View {
     .auroraBackground()
     .navigationTitle("멤버 (\(store.members.count)명)")
     .navigationBarTitleDisplayMode(.inline)
+    .toolbar {
+      if store.canExpelMembers {
+        ToolbarItem(placement: .topBarTrailing) {
+          Button(store.isEditingMembers ? "완료" : "편집") {
+            if store.isEditingMembers {
+              store.send(.view(.doneEditingMembersTapped))
+            } else {
+              store.send(.view(.editMembersTapped))
+            }
+          }
+        }
+      }
+    }
+    .alert(
+      "멤버 추방",
+      isPresented: Binding(
+        get: { store.memberToExpel != nil && !store.isExpellingMember },
+        set: { if !$0 { store.send(.view(.dismissExpelAlert)) } }
+      )
+    ) {
+      Button("취소", role: .cancel) {
+        store.send(.view(.dismissExpelAlert))
+      }
+      Button("추방", role: .destructive) {
+        store.send(.view(.confirmExpelMember))
+      }
+    } message: {
+      if let member = store.memberToExpel {
+        Text("정말 '\(member.displayName)'님을 그룹에서 추방하시겠습니까?\n추방된 멤버가 생성한 미래 약속도 삭제됩니다.")
+      }
+    }
+    .alert("추방 실패", isPresented: Binding(
+      get: { store.expelError != nil },
+      set: { if !$0 { store.send(.view(.dismissExpelError)) } }
+    )) {
+      Button("확인") { store.send(.view(.dismissExpelError)) }
+    } message: {
+      Text(store.expelError ?? "알 수 없는 오류가 발생했습니다.")
+    }
     .fullScreenCover(
       item: Binding(
         get: { store.selectedMemberForImage },

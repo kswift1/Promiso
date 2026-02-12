@@ -7,7 +7,7 @@
 #
 # ============================================================================
 
-.PHONY: setup feature remove-feature color \
+.PHONY: setup ensure-config feature remove-feature color \
         emulator-start functions-build functions-api-preview \
         secrets-pull secrets-push secrets-list secrets-add \
         help
@@ -24,18 +24,19 @@ FORCE ?=
 setup:
 	@echo "🚀 Promiso 프로젝트 초기 설정 중..."
 	@echo ""
-	@echo "1/5 mise 설정 신뢰..."
-	@if command -v mise >/dev/null 2>&1; then \
-		mise trust 2>/dev/null || true; \
-		mise settings set experimental true 2>/dev/null || true; \
-		mise settings set yes true 2>/dev/null || true; \
-		echo "  ✅ mise 설정 완료"; \
-	else \
-		echo "  ⚠️  mise가 설치되어 있지 않습니다."; \
-	fi
-	@echo "2/5 Tuist 의존성 설치..."
+	@echo "1/5 Tuist 의존성 설치..."
 	@tuist install
-	@echo "3/5 Firebase Functions 의존성 pull..."
+	@echo "2/5 Secrets 동기화 (Notion → xcconfig)..."
+	@if [ -n "$$NOTION_API_KEY" ]; then \
+		./scripts/sync-secrets.sh pull; \
+	else \
+		echo "  ⚠️  NOTION_API_KEY가 설정되지 않았습니다. template에서 xcconfig를 복사합니다."; \
+		cp Config/Dev.xcconfig.template Config/Dev.xcconfig 2>/dev/null || true; \
+		cp Config/Stage.xcconfig.template Config/Stage.xcconfig 2>/dev/null || true; \
+		cp Config/Prod.xcconfig.template Config/Prod.xcconfig 2>/dev/null || true; \
+		echo "  ⚠️  실제 API Key를 사용하려면: export NOTION_API_KEY=... && make secrets-pull"; \
+	fi
+	@echo "3/5 Firebase Functions 의존성 설치..."
 	@if command -v npm >/dev/null 2>&1; then \
 		npm --prefix infra/firebase/functions ci; \
 	else \
@@ -48,11 +49,57 @@ setup:
 	@echo ""
 	@echo "✅ 초기 설정 완료!"
 	@echo ""
-	@echo "다음 단계:"
-	@echo "  - Secrets 동기화: make secrets-pull"
-	@echo "  - Firebase 에뮬레이터: make emulator-start"
-	@echo "  - 도움말: make help"
+	@echo "도움말: make help"
 	@echo ""
+
+# xcconfig 파일 준비 (누락 시 자동 보완)
+ensure-config:
+	@missing=false; \
+	for env in Dev Stage Prod; do \
+		if [ ! -f "Config/$${env}.xcconfig" ]; then \
+			missing=true; \
+			break; \
+		fi; \
+	done; \
+	if [ "$$missing" = false ]; then \
+		echo "  ✅ Config/*.xcconfig 이미 존재"; \
+		exit 0; \
+	fi; \
+	echo "  ℹ️  Config/*.xcconfig 누락 감지"; \
+	if [ -n "$$NOTION_API_KEY" ]; then \
+		echo "  🔄 NOTION_API_KEY 감지. Notion 동기화 시도..."; \
+		if ./scripts/sync-secrets.sh pull; then \
+			echo "  ✅ Notion 시크릿 동기화 완료"; \
+		else \
+			echo "  ⚠️  Notion 동기화 실패. 다른 방법으로 계속 진행합니다."; \
+		fi; \
+	fi; \
+	missing_after_sync=false; \
+	for env in Dev Stage Prod; do \
+		if [ ! -f "Config/$${env}.xcconfig" ]; then \
+			missing_after_sync=true; \
+			break; \
+		fi; \
+	done; \
+	if [ "$$missing_after_sync" = false ]; then \
+		echo "  ✅ Config/*.xcconfig 준비 완료"; \
+		exit 0; \
+	fi; \
+	if [ -f ".env" ] || [ -n "$$GOOGLE_CLIENT_ID_DEV" ]; then \
+		echo "  🔧 .env/환경변수 기반 xcconfig 생성 시도..."; \
+		if ./scripts/generate-xcconfig.sh; then \
+			echo "  ✅ xcconfig 자동 생성 완료"; \
+		else \
+			echo "  ⚠️  자동 생성 실패. 템플릿 파일로 대체합니다."; \
+		fi; \
+	fi; \
+	for env in Dev Stage Prod; do \
+		if [ ! -f "Config/$${env}.xcconfig" ]; then \
+			cp "Config/$${env}.xcconfig.template" "Config/$${env}.xcconfig"; \
+			echo "  ⚠️  Config/$${env}.xcconfig 템플릿 복사 완료"; \
+		fi; \
+	done; \
+	echo "  ℹ️  실제 API Key는 make secrets-pull 또는 .env + ./scripts/generate-xcconfig.sh 로 갱신하세요."
 
 # ============================================================================
 # 🏗️  Feature 관리

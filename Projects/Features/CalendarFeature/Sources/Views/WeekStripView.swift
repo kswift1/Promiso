@@ -32,6 +32,7 @@ struct PagingWeekStripView: View {
   let selectedDate: Date
   let promisesByDate: [Date: [PromiseModel]]
   let calendarEventsByDate: [Date: [CalendarEvent]]
+  let personalEventsByDate: [Date: [PersonalEventModel]]
   let currentUserId: String
   let namespace: Namespace.ID
   let onDateSelected: (Date) -> Void
@@ -47,6 +48,7 @@ struct PagingWeekStripView: View {
     selectedDate: Date,
     promisesByDate: [Date: [PromiseModel]],
     calendarEventsByDate: [Date: [CalendarEvent]] = [:],
+    personalEventsByDate: [Date: [PersonalEventModel]] = [:],
     currentUserId: String,
     namespace: Namespace.ID,
     onDateSelected: @escaping (Date) -> Void
@@ -55,6 +57,7 @@ struct PagingWeekStripView: View {
     self.selectedDate = selectedDate
     self.promisesByDate = promisesByDate
     self.calendarEventsByDate = calendarEventsByDate
+    self.personalEventsByDate = personalEventsByDate
     self.currentUserId = currentUserId
     self.namespace = namespace
     self.onDateSelected = onDateSelected
@@ -73,6 +76,7 @@ struct PagingWeekStripView: View {
           selectedDate: selectedDate,
           promisesByDate: promisesByDate,
           calendarEventsByDate: calendarEventsByDate,
+          personalEventsByDate: personalEventsByDate,
           currentUserId: currentUserId,
           namespace: namespace,
           onDateSelected: onDateSelected
@@ -158,6 +162,7 @@ struct WeekStripContent: View {
   let selectedDate: Date
   let promisesByDate: [Date: [PromiseModel]]
   let calendarEventsByDate: [Date: [CalendarEvent]]
+  let personalEventsByDate: [Date: [PersonalEventModel]]
   let currentUserId: String
   let namespace: Namespace.ID
   let onDateSelected: (Date) -> Void
@@ -172,6 +177,7 @@ struct WeekStripContent: View {
           isCurrentMonth: true,
           promiseStatuses: getPromiseStatuses(for: date),
           systemEventCount: getSystemEventCount(for: date),
+          personalEventCount: getPersonalEventCount(for: date),
           namespace: namespace,
           selectionId: "weekSelection",
           onTap: { onDateSelected(date) }
@@ -201,6 +207,11 @@ struct WeekStripContent: View {
   private func getSystemEventCount(for date: Date) -> Int {
     let dateKey = weekStripCalendar.startOfDay(for: date)
     return calendarEventsByDate[dateKey]?.count ?? 0
+  }
+
+  private func getPersonalEventCount(for date: Date) -> Int {
+    let dateKey = weekStripCalendar.startOfDay(for: date)
+    return personalEventsByDate[dateKey]?.count ?? 0
   }
 }
 

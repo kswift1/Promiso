@@ -76,46 +76,42 @@ struct PromiseCardView: View {
 
         // 메인 콘텐츠
         VStack(alignment: .leading, spacing: 8) {
-          // 상단: 시간 + 그룹 + 상태
+          // 상단: 시간 + 상태 + 그룹 + 참여자
           HStack(spacing: 6) {
             Text(promise.timeText)
-              .font(.system(size: 13, weight: .medium))
+              .font(.system(size: 14, weight: .medium))
               .foregroundColor(.secondary)
-
-            // 그룹 썸네일 + 그룹명 표시
-            if let group = promise.group {
-              Text("·")
-                .foregroundColor(.secondary.opacity(0.5))
-
-              HStack(spacing: 4) {
-                GroupThumbnailView(
-                  imageUrl: group.imageUrl,
-                  name: group.name,
-                  size: 16
-                )
-
-                Text(group.name)
-                  .font(.system(size: 12, weight: .medium))
-                  .foregroundColor(.secondary)
-                  .lineLimit(1)
-              }
-            }
 
             Text("·")
               .foregroundColor(.secondary.opacity(0.5))
 
             Text(responseStatus.statusText)
-              .font(.system(size: 12, weight: .medium))
+              .font(.system(size: 13, weight: .medium))
               .foregroundColor(responseStatus.color)
 
             Spacer()
 
-            // 참여자 수
+            // 그룹 썸네일 + 그룹명 + 참여자 수
+            if let group = promise.group {
+              HStack(spacing: 4) {
+                GroupThumbnailView(
+                  imageUrl: group.imageUrl,
+                  name: group.name,
+                  size: 24
+                )
+
+                Text(group.name)
+                  .font(.system(size: 13, weight: .medium))
+                  .foregroundColor(.secondary)
+                  .lineLimit(1)
+              }
+            }
+
             HStack(spacing: 3) {
               Image(systemName: "person.fill")
-                .font(.system(size: 10))
-              Text("\(promise.votes.acceptedCount)/\(promise.minimumParticipants)")
-                .font(.system(size: 12))
+                .font(.system(size: 11))
+              Text("\(promise.votes.acceptedCount)/\(promise.group?.memberIds.count ?? promise.minimumParticipants)")
+                .font(.system(size: 13))
             }
             .foregroundColor(.secondary)
           }
@@ -201,6 +197,7 @@ struct CompactDayRow: View {
   let date: Date
   let promises: [PromiseModel]
   let calendarEvents: [CalendarEvent]
+  let personalEvents: [PersonalEventModel]
   let isSelected: Bool
   let currentUserId: String
   let onTap: () -> Void
@@ -209,6 +206,7 @@ struct CompactDayRow: View {
     date: Date,
     promises: [PromiseModel],
     calendarEvents: [CalendarEvent],
+    personalEvents: [PersonalEventModel] = [],
     isSelected: Bool,
     currentUserId: String = "",
     onTap: @escaping () -> Void
@@ -216,6 +214,7 @@ struct CompactDayRow: View {
     self.date = date
     self.promises = promises
     self.calendarEvents = calendarEvents
+    self.personalEvents = personalEvents
     self.isSelected = isSelected
     self.currentUserId = currentUserId
     self.onTap = onTap
@@ -272,6 +271,28 @@ struct CompactDayRow: View {
                 Text(firstPromise.timeText)
                   .font(.system(size: 12))
                   .foregroundColor(.secondary)
+              }
+            }
+          }
+
+          // 개인 일정이 있으면 표시
+          if !personalEvents.isEmpty {
+            HStack(spacing: 6) {
+              Circle()
+                .fill(Color.pmindigo.n500)
+                .frame(width: 6, height: 6)
+
+              if let firstEvent = personalEvents.first {
+                Text("\(firstEvent.displayEmoji) \(firstEvent.title)")
+                  .font(.system(size: 13))
+                  .foregroundColor(.secondary)
+                  .lineLimit(1)
+
+                if personalEvents.count > 1 {
+                  Text("외 \(personalEvents.count - 1)건")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary.opacity(0.7))
+                }
               }
             }
           }

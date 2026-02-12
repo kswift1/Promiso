@@ -1,9 +1,62 @@
+import Clients
 import Foundation
 import PromisoShared
 
 // MARK: - Home Models Namespace
 
 public enum HomeModels {}
+
+// MARK: - Schedule Item (통합 일정 아이템)
+
+extension HomeModels {
+  /// 홈 화면에서 그룹 약속과 개인 일정을 통합 표시하기 위한 타입
+  public enum ScheduleItem: Identifiable, Equatable {
+    case promise(PromiseModel)
+    case personalEvent(PersonalEventModel)
+
+    public var id: String {
+      switch self {
+      case .promise(let p): return "promise-\(p.id)"
+      case .personalEvent(let e): return "personal-\(e.id)"
+      }
+    }
+
+    public var startAt: Date {
+      switch self {
+      case .promise(let p): return p.startAt
+      case .personalEvent(let e): return e.startAt
+      }
+    }
+
+    public var endAt: Date? {
+      switch self {
+      case .promise(let p): return p.endAt
+      case .personalEvent(let e): return e.endAt
+      }
+    }
+
+    public var displayEmoji: String {
+      switch self {
+      case .promise(let p): return p.displayEmoji
+      case .personalEvent(let e): return e.displayEmoji
+      }
+    }
+
+    public var title: String {
+      switch self {
+      case .promise(let p): return p.title
+      case .personalEvent(let e): return e.title
+      }
+    }
+
+    public var location: LocationInfoModel? {
+      switch self {
+      case .promise(let p): return p.location
+      case .personalEvent(let e): return e.location
+      }
+    }
+  }
+}
 
 // MARK: - Overview Data
 

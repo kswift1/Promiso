@@ -32,6 +32,7 @@ extension AppEntry {
     @Dependency(\.userDefaultsClient) var userDefaultsClient
     @Dependency(\.clarityClient) var clarityClient
     @Dependency(\.analyticsClient) var analyticsClient
+    @Dependency(\.groupClient) var groupClient
 
     public init() {}
     
@@ -60,6 +61,9 @@ extension AppEntry {
 
       /// Provider에서 제공한 프로필 이미지 URL (Google 로그인 시)
       var providerProfileImageURL: URL?
+
+      /// 온보딩 인트로를 거친 신규 유저인지 (Screen 10 표시 여부 결정)
+      var isFullOnboarding: Bool = false
 
       /// 업데이트 알림 타입
       @Presents var updateAlert: UpdateAlertState?
@@ -116,14 +120,17 @@ extension AppEntry {
       case pushNotificationTapped(DeeplinkDestination)
       case subscribeAppRestart
       case appRestartRequested
+      case transitionToMain(UserPrivateModel, isSignup: Bool)
     }
 
     // MARK: - Destination Reducer
 
     @Reducer
     public enum Destination {
+      case onboardingIntro(AppEntry.OnboardingIntro)
       case auth(AuthFeature.Auth.Feature)
       case profile(ProfileSetup)
+      case onboardingStart(AppEntry.OnboardingStart)
       case main(RootTab.Feature)
     }
 
@@ -205,7 +212,14 @@ extension AppEntry {
             if isAuthenticated {
               return .send(.internal(.startProfileCheck))
             } else {
-              state.destination = .auth(Auth.Feature.State())
+              // 온보딩 인트로 완료 여부에 따라 분기
+              let hasCompletedOnboarding = userDefaultsClient.boolForKey(AppConstants.UserDefaults.hasCompletedOnboarding)
+              if !hasCompletedOnboarding {
+                state.isFullOnboarding = true
+                state.destination = .onboardingIntro(OnboardingIntro.State())
+              } else {
+                state.destination = .auth(Auth.Feature.State())
+              }
               if state.splash == .visible {
                 state.splash = .animatingOut
               }
@@ -221,26 +235,11 @@ extension AppEntry {
             
           case .profileCheckResponse(let user, let profile):
             if let userModel = profile {
-              // 기존 사용자 → 바로 메인으로 (알림 권한 체크 안 함)
+              // 기존 사용자 → 바로 메인으로
               if state.splash == .visible {
                 state.splash = .animatingOut
               }
-              WidgetDataManager.saveUserId(userModel.id)
-
-              // Clarity 유저 정보 등록
-              clarityClient.setUser(userModel.id, userModel.nickname)
-
-              // Analytics 유저 정보 등록 및 로그인 이벤트
-              analyticsClient.setUserID(userModel.id)
-              analyticsClient.setUserProperty(userModel.nickname, "nickname")
-              analyticsClient.logEvent(AnalyticsClient.EventName.userLogin, nil)
-
-              state.destination = .main(RootTab.Feature.State(currentUser: Shared(value: userModel)))
-              // pending deeplink가 있으면 처리
-              if let deeplink = state.pendingDeeplink {
-                state.pendingDeeplink = nil
-                return routeDeeplink(deeplink)
-              }
+              return .send(.internal(.transitionToMain(userModel, isSignup: false)))
             } else {
               // 신규 사용자 → 프로필 설정으로
               var profileState = ProfileSetup.State()
@@ -262,19 +261,9 @@ extension AppEntry {
           case .notificationPermissionChecked(let isAuthorized, let userModel):
             if isAuthorized {
               // 이미 권한 허용됨 → 바로 메인으로
-              WidgetDataManager.saveUserId(userModel.id)
-
-              // Clarity 유저 정보 등록
-              clarityClient.setUser(userModel.id, userModel.nickname)
-
-              state.destination = .main(RootTab.Feature.State(currentUser: Shared(value: userModel)))
-              // pending deeplink가 있으면 처리
-              if let deeplink = state.pendingDeeplink {
-                state.pendingDeeplink = nil
-                return routeDeeplink(deeplink)
-              }
+              return .send(.internal(.transitionToMain(userModel, isSignup: true)))
             } else {
-              // 권한 미허용 → 온보딩 표시
+              // 권한 미허용 → 알림 권한 온보딩 표시
               state.pendingUserForMain = userModel
               state.notificationPermission = NotificationPermission.Feature.State()
             }
@@ -338,34 +327,108 @@ extension AppEntry {
             // (UserDefaults.preferredThemeMode 값을 직접 읽음)
 
             return .send(.internal(.startSessionCheck))
+
+          case .transitionToMain(let userModel, let isSignup):
+            WidgetDataManager.saveUserId(userModel.id)
+            clarityClient.setUser(userModel.id, userModel.nickname)
+            analyticsClient.setUserID(userModel.id)
+            analyticsClient.setUserProperty(userModel.nickname, "nickname")
+
+            if isSignup {
+              analyticsClient.logEvent(AnalyticsClient.EventName.userSignup, nil)
+            } else {
+              analyticsClient.logEvent(AnalyticsClient.EventName.userLogin, nil)
+            }
+
+            state.destination = .main(RootTab.Feature.State(currentUser: Shared(value: userModel)))
+
+            // 그룹 멤버 캐시 초기화 (백그라운드)
+            let groupIds = userModel.groups.map(\.id)
+            let cacheEffect: Effect<Action> = .run { [groupClient] _ in
+              @Shared(.inMemory(AppConstants.SharedState.groupMembersCache))
+              var groupMembersCache: [String: [UserPublicModel]] = [:]
+              await withTaskGroup(of: (String, [UserPublicModel]?).self) { group in
+                for groupId in groupIds {
+                  group.addTask {
+                    (groupId, try? await groupClient.fetchGroupMembers(groupId))
+                  }
+                }
+                for await (groupId, members) in group {
+                  if let members {
+                    $groupMembersCache.withLock { $0[groupId] = members }
+                  }
+                }
+              }
+            }
+
+            if let deeplink = state.pendingDeeplink {
+              state.pendingDeeplink = nil
+              return .merge(routeDeeplink(deeplink), cacheEffect)
+            }
+            return cacheEffect
           }
+
+        case .destination(.presented(.onboardingIntro(.delegate(.completed)))):
+          // 인트로 완료 → 알림 권한 요청 (플래그는 알림 권한 완료 후 저장)
+          state.notificationPermission = NotificationPermission.Feature.State()
+          return .none
+
+        case .destination(.presented(.onboardingStart(.delegate(.completed)))):
+          // "나중에 둘러볼게요" → 메인으로
+          if let userModel = state.pendingUserForMain {
+            state.pendingUserForMain = nil
+            return .send(.internal(.transitionToMain(userModel, isSignup: true)))
+          }
+          return .none
+
+        case .destination(.presented(.onboardingStart(.delegate(.enterInviteCode)))):
+          // "입력하러가기" → 메인 + 그룹 참여 열기
+          if let userModel = state.pendingUserForMain {
+            state.pendingUserForMain = nil
+            state.pendingDeeplink = .joinGroup(inviteCode: "")
+            return .send(.internal(.transitionToMain(userModel, isSignup: true)))
+          }
+          return .none
+
+        case .destination(.presented(.onboardingStart(.delegate(.createGroup)))):
+          // "그룹 생성하기" → 메인 + 그룹 생성 열기
+          if let userModel = state.pendingUserForMain {
+            state.pendingUserForMain = nil
+            return .concatenate(
+              .send(.internal(.transitionToMain(userModel, isSignup: true))),
+              .send(.destination(.presented(.main(.openCreateGroup))))
+            )
+          }
+          return .none
 
         case .destination(.presented(.auth(.delegate(.loggedIn(let providerProfileImageURL))))):
           state.providerProfileImageURL = providerProfileImageURL
           return .send(.internal(.startProfileCheck))
 
         case .destination(.presented(.profile(.delegate(.completed(let userModel))))):
-          // 프로필 설정 완료 → 알림 권한 상태 확인
           analyticsClient.logEvent(AnalyticsClient.EventName.profileSetupCompleted, nil)
-          return .send(.internal(.checkNotificationPermission(userModel)))
+          if state.isFullOnboarding {
+            // 풀 온보딩 플로우 → OnboardingStart (시작 CTA)
+            state.pendingUserForMain = userModel
+            state.destination = .onboardingStart(OnboardingStart.State(nickname: userModel.nickname))
+            return .none
+          } else {
+            // 재로그인 후 프로필 설정 (엣지 케이스) → 알림 권한 확인
+            return .send(.internal(.checkNotificationPermission(userModel)))
+          }
 
         case .notificationPermission(.presented(.delegate(.dismissed))),
              .notificationPermission(.presented(.delegate(.permissionChanged))):
-          // 알림 권한 온보딩 완료 → 메인 화면으로 이동
           state.notificationPermission = nil
+          // 온보딩 완료 플래그 저장 (인트로 + 알림 권한까지 완료)
+          userDefaultsClient.setBool(true, AppConstants.UserDefaults.hasCompletedOnboarding)
           if let userModel = state.pendingUserForMain {
+            // 기존 플로우: 프로필 설정 후 알림 권한 → 메인 전환
             state.pendingUserForMain = nil
-            WidgetDataManager.saveUserId(userModel.id)
-
-            // Clarity 유저 정보 등록
-            clarityClient.setUser(userModel.id, userModel.nickname)
-
-            // Analytics 유저 정보 등록 및 회원가입 완료 이벤트
-            analyticsClient.setUserID(userModel.id)
-            analyticsClient.setUserProperty(userModel.nickname, "nickname")
-            analyticsClient.logEvent(AnalyticsClient.EventName.userSignup, nil)
-
-            state.destination = .main(RootTab.Feature.State(currentUser: Shared(value: userModel)))
+            return .send(.internal(.transitionToMain(userModel, isSignup: true)))
+          } else {
+            // 풀 온보딩 플로우: 인트로 후 알림 권한 → 로그인 화면
+            state.destination = .auth(Auth.Feature.State())
           }
           return .none
 
@@ -517,6 +580,11 @@ extension AppEntry {
     @ViewBuilder
     private var contentView: some View {
       switch store.destination {
+      case .onboardingIntro:
+        if let store = store.scope(state: \.destination?.onboardingIntro, action: \.destination.onboardingIntro) {
+          AppEntry.OnboardingIntro.View(store: store)
+        }
+
       case .auth:
         if let store = store.scope(state: \.destination?.auth, action: \.destination.auth) {
           Auth.RootView(store: store)
@@ -527,6 +595,11 @@ extension AppEntry {
           NavigationStack {
             AppEntry.ProfileSetup.View(store: store)
           }
+        }
+
+      case .onboardingStart:
+        if let store = store.scope(state: \.destination?.onboardingStart, action: \.destination.onboardingStart) {
+          AppEntry.OnboardingStart.View(store: store)
         }
 
       case .main:
@@ -560,13 +633,15 @@ extension AppEntry {
 
 extension AppEntry.Feature.State {
   enum DestinationType: Equatable {
-    case auth, profile, main
+    case onboardingIntro, auth, profile, onboardingStart, main
   }
 
   var destinationType: DestinationType? {
     switch destination {
+    case .onboardingIntro: return .onboardingIntro
     case .auth: return .auth
     case .profile: return .profile
+    case .onboardingStart: return .onboardingStart
     case .main: return .main
     case nil: return nil
     }
@@ -644,5 +719,6 @@ private extension AppEntry.Feature.State {
     self.pendingUserForMain = nil
     self.providerProfileImageURL = nil
     self.notificationPermission = nil
+    self.isFullOnboarding = false
   }
 }

@@ -17,6 +17,7 @@
      - [3-2. location (Map)](#3-2-promisespromiseidlocation-map)
    - [4. notifications](#4-notifications-컬렉션)
    - [5. liveActivities](#5-liveactivities-컬렉션)
+   - [6. personalEvents](#6-personalevents-서브컬렉션)
 4. [쿼리 패턴](#쿼리-패턴)
 5. [보안 규칙](#보안-규칙)
 6. [인덱스 설정](#인덱스-설정)
@@ -67,9 +68,12 @@ Firestore Root
 ├─ notifications/                   # 알림 정보
 │  └─ {notificationId}/             # 알림 문서
 │
-└─ liveActivities/                  # LiveActivity 상태 정보
-   └─ {promiseId}/                  # 약속별 LiveActivity 상태
-      └─ participants (Array)       # 참가자별 ETA 상태
+├─ liveActivities/                  # LiveActivity 상태 정보
+│  └─ {promiseId}/                  # 약속별 LiveActivity 상태
+│     └─ participants (Array)       # 참가자별 ETA 상태
+│
+└─ personalEvents/                  # 개인 일정 정보
+   └─ {eventId}/                    # 개인 일정 문서
 ```
 
 ---
@@ -1084,6 +1088,95 @@ liveActivities/{promiseId}
 
 ---
 
+### 6. personalEvents (서브컬렉션)
+
+개인 일정 정보를 저장합니다. 그룹과 무관한 개인적인 일정을 관리합니다.
+
+#### 📍 문서 경로
+
+```
+users/{userId}/personalEvents/{eventId}
+```
+
+#### 🔑 문서 ID
+
+- Firestore 자동 생성 ID 사용
+- 예시: `xYz9Abc123Def456`
+
+#### 📊 필드 구조
+
+| 필드명 | 타입 | 필수 | 기본값 | 설명 |
+|--------|------|------|--------|------|
+| `title` | String | ✅ | - | 일정 제목 |
+| `emoji` | String | ❌ | null | 일정 대표 이모지 (AI 자동 생성) |
+| `description` | String | ❌ | null | 일정 설명 (메모) |
+| `startAt` | Timestamp | ✅ | - | 시작 시각 |
+| `endAt` | Timestamp | ❌ | null | 종료 시각 |
+| `location` | Map | ❌ | null | 장소 정보 (아래 참조) |
+| `location.name` | String | ✅* | - | 장소명 |
+| `location.address` | String | ❌ | null | 주소 |
+| `location.latitude` | Number | ❌ | null | 위도 |
+| `location.longitude` | Number | ❌ | null | 경도 |
+| `reminderMinutesBefore` | Number | ❌ | null | 알림 시간 (분 단위, 예: 30 = 30분 전) |
+| `createdAt` | Timestamp | ✅ | - | 생성 시각 |
+| `updatedAt` | Timestamp | ✅ | - | 수정 시각 |
+
+> *`location.name`은 location Map이 존재할 경우 필수
+> userId는 경로(`users/{userId}`)에 내포되므로 문서에 별도 저장하지 않음
+
+#### 📝 예시 데이터
+
+```json
+// 경로: users/sFeDJwqJbqScbSUp4Jz54MDlnFv1/personalEvents/xYz9Abc123Def456
+{
+  "title": "병원 예약",
+  "emoji": "🏥",
+  "description": "정기 검진",
+  "startAt": "2026-02-10T14:00:00+09:00",
+  "endAt": "2026-02-10T15:00:00+09:00",
+  "location": {
+    "name": "서울대병원",
+    "address": "서울특별시 종로구 대학로 101",
+    "latitude": 37.5796,
+    "longitude": 126.9990
+  },
+  "reminderMinutesBefore": 60,
+  "createdAt": "2026-02-07T10:00:00+09:00",
+  "updatedAt": "2026-02-07T10:00:00+09:00"
+}
+```
+
+#### 💡 설계 의도
+
+- **서브컬렉션 구조**: 항상 단일 사용자 범위 내에서만 접근하므로 users 하위 서브컬렉션으로 구성
+- **단순성**: 그룹/투표 없이 개인 스케줄만 관리, userId 필드/복합 인덱스 불필요
+- **위치 정보 재사용**: promises 컬렉션과 동일한 LocationDTO 구조 사용
+- **보안**: 기존 `users/{userId}/{subcollection}/{docId}` 와일드카드 규칙으로 자동 보호
+- **쿼리 효율성**: startAt 단일 필드 인덱스 (Firestore 자동 생성)로 충분
+
+#### 🔍 쿼리 예시
+
+**활성 일정 조회 (날짜순)**
+```swift
+db.collection("users").document(userId).collection("personalEvents")
+  .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: Date()))
+  .order(by: "startAt")
+  .getDocuments()
+```
+
+**특정 기간의 일정 조회**
+```swift
+let startDate = Date()
+let endDate = Calendar.current.date(byAdding: .month, value: 1, to: startDate)!
+db.collection("users").document(userId).collection("personalEvents")
+  .whereField("startAt", isGreaterThanOrEqualTo: startDate)
+  .whereField("startAt", isLessThan: endDate)
+  .order(by: "startAt")
+  .getDocuments()
+```
+
+---
+
 ## 쿼리 패턴
 
 ### 1. 사용자 관련 쿼리
@@ -1225,6 +1318,42 @@ db.collection("notifications")
 
 ---
 
+### 5. 개인 일정 관련 쿼리
+
+#### 특정 사용자의 일정 목록 (날짜순)
+
+```swift
+db.collection("users").document(userId).collection("personalEvents")
+  .order(by: "startAt", descending: false)
+  .getDocuments()
+```
+
+#### 특정 기간의 일정 조회
+
+```swift
+let startDate = Date()
+let endDate = Calendar.current.date(byAdding: .month, value: 1, to: startDate)!
+db.collection("users").document(userId).collection("personalEvents")
+  .whereField("startAt", isGreaterThanOrEqualTo: startDate)
+  .whereField("startAt", isLessThan: endDate)
+  .order(by: "startAt", descending: false)
+  .getDocuments()
+```
+
+#### 오늘의 개인 일정 조회
+
+```swift
+let startOfDay = Calendar.current.startOfDay(for: Date())
+let endOfDay = Calendar.current.date(byAdding: .day, value: 1, to: startOfDay)!
+db.collection("users").document(userId).collection("personalEvents")
+  .whereField("startAt", isGreaterThanOrEqualTo: startOfDay)
+  .whereField("startAt", isLessThan: endOfDay)
+  .order(by: "startAt", descending: false)
+  .getDocuments()
+```
+
+---
+
 ## 보안 규칙
 
 ### Firestore Security Rules 예시
@@ -1288,6 +1417,10 @@ service cloud.firestore {
                        resource.data.userId == request.auth.uid &&
                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead', 'readAt']);
     }
+
+    // ===== 개인 일정 =====
+    // users/{userId}/personalEvents/{eventId} → users 서브컬렉션 와일드카드 규칙으로 자동 보호
+    // match /{subcollection}/{docId} { allow read, write: if auth.uid == userId; }
   }
 }
 ```
@@ -1331,6 +1464,11 @@ service cloud.firestore {
 | `promises_confirmed_by_group` | groupId | ASC | 확정된 미래 약속 조회 (위젯/홈) |
 |  | isConfirmed | ASC |  |
 |  | startAt | ASC |  |
+
+#### 5. personalEvents 컬렉션
+
+서브컬렉션(`users/{userId}/personalEvents`)이므로 별도 복합 인덱스 불필요.
+`startAt` 단일 필드 인덱스는 Firestore가 자동 생성.
 
 ---
 
@@ -1385,6 +1523,12 @@ service cloud.firestore {
 |  |  | - homeSnapshot 캐시 Deprecated (직접 쿼리로 변경) |  |
 |  |  | - Firestore Trigger 제거 (onPromiseWriteUpdateSnapshot 등) |  |
 |  |  | - 복합 인덱스 추가: groupId + isConfirmed + startAt |  |
+| 2.0 | 2026-02-07 | personalEvents 컬렉션 추가 | Claude |
+|  |  | - users/{userId}/personalEvents 서브컬렉션 추가 (개인 일정 관리) |  |
+|  |  | - 필드: title, emoji, description, startAt, endAt, location(Map), reminderMinutesBefore |  |
+|  |  | - userId는 경로에 내포 (문서 필드에서 제거) |  |
+|  |  | - 기존 users 서브컬렉션 와일드카드 Security Rules로 보호 |  |
+|  |  | - 복합 인덱스 불필요 (startAt 단일 필드 자동 인덱스) |  |
 
 ---
 

@@ -69,6 +69,34 @@ export function validateCreateGroupRequest(data: CreateGroupRequest): void {
 }
 
 /**
+ * Firebase Storage URL 유효성 검증
+ *
+ * @param {string} url - 검증할 URL
+ * @return {boolean} Firebase Storage URL 형식이면 true
+ */
+export function isValidFirebaseStorageUrl(url: string): boolean {
+  const bucket = admin.storage().bucket();
+  const bucketName = bucket.name;
+
+  if (url.startsWith(`gs://${bucketName}/`)) {
+    return true;
+  }
+
+  // iOS SDK downloadURL()은 :443 포트를 포함할 수 있음
+  const httpsPrefix = "https://firebasestorage.googleapis.com";
+  const pathPrefix = `/v0/b/${bucketName}/o/`;
+
+  if (
+    url.startsWith(`${httpsPrefix}${pathPrefix}`) ||
+    url.startsWith(`${httpsPrefix}:443${pathPrefix}`)
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
  * Storage 경로에서 downloadURL 생성
  *
  * @param {string} storagePath - Storage 파일 경로

@@ -56,10 +56,10 @@ public struct AppConfigModel: Equatable, Sendable {
     forceUpdateVersion: "0.0.0",
     recommendedVersion: "0.0.0",
     appStoreURL: "https://apps.apple.com/app/id1625074042",
-    privacyPolicyURL: "https://www.notion.so/2fb655a898de813882b5eebcf35ccb3d",
-    termsOfServiceURL: "https://www.notion.so/2fb655a898de817f9f76fdce51f5a09f",
+    privacyPolicyURL: "https://www.notion.so/3029e497067580beb0aaf485a0dd4a02",
+    termsOfServiceURL: "https://www.notion.so/3029e4970675802ab781e282bb92d63b",
     supportEmail: "kswen0203@icloud.com",
-    notionFAQDatabaseId: "356188caae734b5ebd73203557a34930"
+    notionFAQDatabaseId: "3029e4970675812ca3d6c852867858a2"
   )
 }
 
@@ -146,6 +146,13 @@ public enum AppConstants {
     public static let selectionOpacity: CGFloat = 0.3
   }
 
+  // MARK: - Sync
+
+  public enum Sync {
+    /// 개인 일정 조회 최대 개수
+    public static let personalEventFetchLimit = 100
+  }
+
   // MARK: - LiveActivity
 
   public enum LiveActivity {
@@ -185,6 +192,12 @@ public enum AppConstants {
     public static let calendarEventMappings = "promisoCalendarEventMappings"
     /// 마지막 캘린더 동기화 날짜
     public static let lastCalendarSyncDate = "promisoLastCalendarSyncDate"
+    /// 약속 탭 기본 모드 (group/own)
+    public static let defaultPromiseTabMode = "promisoDefaultPromiseTabMode"
+    /// 개인 일정 캘린더 동기화 활성화 여부
+    public static let personalCalendarSync = "promisoPersonalCalendarSync"
+    /// 앱 소개 온보딩 완료 여부
+    public static let hasCompletedOnboarding = "promisoHasCompletedOnboarding"
   }
 
   // MARK: - Shared State Keys (TCA @Shared inMemory)

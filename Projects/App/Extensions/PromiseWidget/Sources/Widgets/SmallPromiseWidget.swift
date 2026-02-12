@@ -48,8 +48,8 @@ struct SmallPromiseWidgetView: View {
       case .error:
         ErrorWidgetView()
       case .loaded:
-        if let promise = entry.nextPromise {
-          promiseView(promise)
+        if let item = entry.nextItem {
+          scheduleItemView(item)
         } else {
           EmptyWidgetView(
             icon: "calendar.badge.clock",
@@ -62,22 +62,26 @@ struct SmallPromiseWidgetView: View {
   }
 
   @ViewBuilder
-  private func promiseView(_ promise: WidgetPromiseData) -> some View {
+  private func scheduleItemView(_ item: WidgetPromiseData) -> some View {
     VStack(alignment: .leading, spacing: 0) {
-      // 헤더: 이모지 + D-Day 배지
+      // 헤더: 이모지 + 배지
       HStack(alignment: .top) {
-        Text(promise.emoji)
+        Text(item.emoji)
           .font(.system(size: 36))
 
         Spacer()
 
-        dDayBadge(promise.startAt)
+        if item.isPersonalEvent {
+          personalBadge
+        } else {
+          dDayBadge(item.startAt)
+        }
       }
 
       Spacer(minLength: 4)
 
       // 제목
-      Text(promise.title)
+      Text(item.title)
         .font(.subheadline.weight(.semibold))
         .lineLimit(2)
         .foregroundStyle(.primary)
@@ -85,12 +89,12 @@ struct SmallPromiseWidgetView: View {
       Spacer().frame(height: 2)
 
       // 시간 (강조)
-      Text(formatTime(promise.startAt))
+      Text(formatTime(item.startAt))
         .font(.title3.weight(.bold))
-        .foregroundStyle(accentColor)
+        .foregroundStyle(item.isPersonalEvent ? personalColor : accentColor)
 
       // 장소
-      if let location = promise.location {
+      if let location = item.location {
         HStack(spacing: 3) {
           Image(systemName: "location.fill")
             .font(.system(size: 9))
@@ -109,37 +113,52 @@ struct SmallPromiseWidgetView: View {
       WidgetFooterView(updatedAt: entry.date)
     }
     .accessibilityElement(children: .combine)
-    .accessibilityLabel(accessibilityLabel(for: promise))
+    .accessibilityLabel(accessibilityLabel(for: item))
+  }
+
+  // MARK: - Personal Badge
+
+  private var personalBadge: some View {
+    Text("개인")
+      .font(.caption.weight(.bold))
+      .foregroundStyle(.white)
+      .padding(.horizontal, 8)
+      .padding(.vertical, 4)
+      .background(personalColor, in: Capsule())
   }
 
   // MARK: - Accessibility
 
-  private func accessibilityLabel(for promise: WidgetPromiseData) -> String {
+  private func accessibilityLabel(for item: WidgetPromiseData) -> String {
     let calendar = Calendar.current
     var components: [String] = []
 
+    if item.isPersonalEvent {
+      components.append("개인 일정")
+    }
+
     // D-Day
-    if calendar.isDateInToday(promise.startAt) {
+    if calendar.isDateInToday(item.startAt) {
       components.append("오늘")
-    } else if calendar.isDateInTomorrow(promise.startAt) {
+    } else if calendar.isDateInTomorrow(item.startAt) {
       components.append("내일")
     } else {
       let days = calendar.dateComponents(
         [.day],
         from: calendar.startOfDay(for: Date()),
-        to: calendar.startOfDay(for: promise.startAt)
+        to: calendar.startOfDay(for: item.startAt)
       ).day ?? 0
       components.append("\(days)일 후")
     }
 
     // 시간
-    components.append(formatTime(promise.startAt))
+    components.append(formatTime(item.startAt))
 
     // 제목
-    components.append(promise.title)
+    components.append(item.title)
 
     // 장소
-    if let location = promise.location {
+    if let location = item.location {
       components.append(location)
     }
 
@@ -187,6 +206,10 @@ struct SmallPromiseWidgetView: View {
 
   private var accentColor: Color {
     Color.pmindigo.n500
+  }
+
+  private var personalColor: Color {
+    Color.pmaurora.purple
   }
 
   private func formatTime(_ date: Date) -> String {

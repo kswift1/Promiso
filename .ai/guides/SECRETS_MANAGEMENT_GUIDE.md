@@ -65,7 +65,7 @@ Promiso 프로젝트의 시크릿은 **용도별로 다르게 관리**합니다:
 
 ### Database ID
 ```
-5e30fc69caf4432da2bc1183c10960dd
+3029e497067581408524fc758df8e47e
 ```
 
 ### 속성 (Properties)
@@ -106,7 +106,7 @@ source ~/.zshrc
 
 Secrets 데이터베이스에 Integration이 연결되어 있어야 합니다:
 
-1. [Notion Secrets Database](https://notion.so/5e30fc69caf4432da2bc1183c10960dd) 열기
+1. [Notion Secrets Database](https://notion.so/3029e497067581408524fc758df8e47e) 열기
 2. 우측 상단 `...` → `Connections`
 3. 사용 중인 Integration 연결 확인
 
@@ -178,7 +178,7 @@ xcconfig 파일도 업데이트할까요? (y/n): y
 
 #### 방법 2: Notion에서 직접 추가
 
-1. [Secrets Database](https://notion.so/5e30fc69caf4432da2bc1183c10960dd) 열기
+1. [Secrets Database](https://notion.so/3029e497067581408524fc758df8e47e) 열기
 2. 새 행 추가
 3. 각 환경별 값 입력
 4. `make secrets-pull` 실행

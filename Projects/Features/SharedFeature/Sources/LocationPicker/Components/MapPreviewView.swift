@@ -1,6 +1,6 @@
 //
 //  MapPreviewView.swift
-//  GroupFeature
+//  SharedFeature
 //
 
 import SwiftUI

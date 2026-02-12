@@ -1,5 +1,13 @@
 import Foundation
 
+// MARK: - Schedule Type
+
+/// 일정 타입 (그룹 약속 vs 개인 일정)
+public enum ScheduleType: String, Codable, Sendable {
+  case promise   // 그룹 약속
+  case personal  // 개인 일정
+}
+
 // MARK: - Vote Status
 
 /// 내 투표 상태
@@ -9,12 +17,16 @@ public enum MyVoteStatus: String, Codable, Sendable {
   case declined  // 불참 의사 표시함
 }
 
-/// Widget에서 사용하는 경량화된 약속 모델
+/// Widget에서 사용하는 통합 일정 모델 (그룹 약속 + 개인 일정)
 public struct WidgetPromiseData: Codable, Identifiable, Equatable, Sendable {
   // MARK: - Constants
 
   /// 캐시 유효 시간 (2시간)
   private static let staleCacheThreshold: TimeInterval = 2 * 60 * 60
+
+  // MARK: - 일정 타입
+
+  public let type: ScheduleType
 
   // MARK: - 식별자
 
@@ -28,12 +40,12 @@ public struct WidgetPromiseData: Codable, Identifiable, Equatable, Sendable {
   public let endAt: Date?
   public let location: String?
 
-  // MARK: - 그룹 정보
+  // MARK: - 그룹 정보 (개인 일정은 빈 값)
 
   public let groupId: String
   public let groupName: String?
 
-  // MARK: - 상태
+  // MARK: - 상태 (개인 일정은 기본값)
 
   public let isConfirmed: Bool
   public let participantCount: Int
@@ -46,19 +58,21 @@ public struct WidgetPromiseData: Codable, Identifiable, Equatable, Sendable {
   // MARK: - Initializer
 
   public init(
+    type: ScheduleType = .promise,
     id: String,
     title: String,
     emoji: String,
     startAt: Date,
     endAt: Date?,
     location: String?,
-    groupId: String,
-    groupName: String?,
-    isConfirmed: Bool,
-    participantCount: Int,
+    groupId: String = "",
+    groupName: String? = nil,
+    isConfirmed: Bool = true,
+    participantCount: Int = 0,
     myVoteStatus: MyVoteStatus = .pending,
     cachedAt: Date = Date()
   ) {
+    self.type = type
     self.id = id
     self.title = title
     self.emoji = emoji
@@ -75,6 +89,11 @@ public struct WidgetPromiseData: Codable, Identifiable, Equatable, Sendable {
 
   // MARK: - Computed Properties
 
+  /// 개인 일정 여부
+  public var isPersonalEvent: Bool {
+    type == .personal
+  }
+
   /// 캐시 유효성 (2시간 초과 시 stale)
   public var isStale: Bool {
     Date().timeIntervalSince(cachedAt) > Self.staleCacheThreshold
@@ -82,12 +101,21 @@ public struct WidgetPromiseData: Codable, Identifiable, Equatable, Sendable {
 
   /// 딥링크 URL (URLComponents로 안전한 URL 인코딩)
   public var deeplinkURL: URL? {
-    var components = URLComponents(string: "promiso://promise")
-    components?.queryItems = [
-      URLQueryItem(name: "id", value: id),
-      URLQueryItem(name: "groupId", value: groupId)
-    ]
-    return components?.url
+    switch type {
+    case .promise:
+      var components = URLComponents(string: "promiso://promise")
+      components?.queryItems = [
+        URLQueryItem(name: "id", value: id),
+        URLQueryItem(name: "groupId", value: groupId),
+      ]
+      return components?.url
+    case .personal:
+      var components = URLComponents(string: "promiso://personalEvent")
+      components?.queryItems = [
+        URLQueryItem(name: "id", value: id),
+      ]
+      return components?.url
+    }
   }
 
   // MARK: - Placeholder & Preview Data
@@ -95,6 +123,7 @@ public struct WidgetPromiseData: Codable, Identifiable, Equatable, Sendable {
   /// 위젯 갤러리용 플레이스홀더 데이터
   public static var placeholder: WidgetPromiseData {
     WidgetPromiseData(
+      type: .promise,
       id: "placeholder",
       title: "점심 약속",
       emoji: "🍜",
@@ -189,6 +218,51 @@ public struct WidgetPromiseData: Codable, Identifiable, Equatable, Sendable {
   /// 전체 프리뷰 샘플 (오늘 + 다가오는)
   public static var previewAllPromises: [WidgetPromiseData] {
     previewTodayPromises + previewUpcomingPromises
+  }
+
+  // MARK: - Personal Event Preview Samples
+
+  /// 오늘 개인 일정 샘플
+  public static var previewTodayPersonalEvents: [WidgetPromiseData] {
+    let calendar = Calendar.current
+    let now = Date()
+    let todayAfternoon = calendar.date(bySettingHour: 15, minute: 0, second: 0, of: now) ?? now
+
+    return [
+      WidgetPromiseData(
+        type: .personal,
+        id: "pe_today1",
+        title: "병원 예약",
+        emoji: "🏥",
+        startAt: todayAfternoon,
+        endAt: nil,
+        location: "서울대병원"
+      ),
+    ]
+  }
+
+  /// 다가오는 개인 일정 샘플
+  public static var previewUpcomingPersonalEvents: [WidgetPromiseData] {
+    let calendar = Calendar.current
+    let now = Date()
+    let dayAfterTomorrow = calendar.date(byAdding: .day, value: 2, to: now) ?? now
+
+    return [
+      WidgetPromiseData(
+        type: .personal,
+        id: "pe_upcoming1",
+        title: "헬스장",
+        emoji: "💪",
+        startAt: calendar.date(bySettingHour: 7, minute: 0, second: 0, of: dayAfterTomorrow) ?? dayAfterTomorrow,
+        endAt: nil,
+        location: nil
+      ),
+    ]
+  }
+
+  /// 전체 개인 일정 프리뷰 샘플
+  public static var previewAllPersonalEvents: [WidgetPromiseData] {
+    previewTodayPersonalEvents + previewUpcomingPersonalEvents
   }
   #endif
 }
