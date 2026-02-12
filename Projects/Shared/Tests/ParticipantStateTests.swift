@@ -19,6 +19,7 @@
 //  - with(): 불변 객체 패턴으로 ETA 업데이트
 //
 
+import Foundation
 import Testing
 @testable import PromisoShared
 
@@ -88,5 +89,25 @@ struct ParticipantStateTests {
     #expect(updated.name == original.name)
     #expect(updated.estimatedArrivalMinutes == 5)
     #expect(original.estimatedArrivalMinutes == 10)  // immutable 확인
+  }
+
+  // MARK: - PromiseActivityAttributes 테스트
+
+  @Test("[L5] PromiseActivityAttributes 기본 trackingDurationMinutes = 30")
+  func l5_defaultTrackingDuration_is30() {
+    let attrs = PromiseActivityAttributes(
+      promiseId: "test",
+      currentUserId: "user",
+      emoji: "📌",
+      title: "테스트",
+      location: nil,
+      scheduledTime: Date()
+    )
+    #expect(attrs.trackingDurationMinutes == 30)
+  }
+
+  @Test("[L2] 커스텀 분 입력 최대 자릿수 = 3")
+  func l2_maxCustomMinutesDigits_isThree() {
+    #expect(AppConstants.LiveActivity.maxCustomMinutesDigits == 3)
   }
 }

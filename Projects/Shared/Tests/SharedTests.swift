@@ -503,4 +503,55 @@ struct GroupNotificationPreferencesTests {
     #expect(decoded.calendarSync == false)
     #expect(decoded.enabled == true)
   }
+
+  @Test("[N1] 약속 알림 기본 설정은 6종")
+  func n1_defaultPromise_hasSixKeys() {
+    let defaults = GroupNotificationPreferences.defaultPromise
+    #expect(defaults.count == 6)
+  }
+
+  @Test("[N1] 약속 알림 키 세트 검증")
+  func n1_defaultPromise_hasExpectedKeys() {
+    let defaults = GroupNotificationPreferences.defaultPromise
+    let expectedKeys: Set<String> = [
+      "invitation", "reminder", "confirmed",
+      "cancelled", "updated", "attendanceResponse",
+    ]
+    #expect(Set(defaults.keys) == expectedKeys)
+  }
+
+  @Test("[N1] GroupNotificationPreferenceKey는 5종")
+  func n1_preferenceKey_hasFiveCases() {
+    #expect(GroupNotificationPreferenceKey.allCases.count == 5)
+  }
+}
+
+// MARK: - GroupInviteShareMessage 테스트
+
+@Suite("GroupInviteShareMessage 테스트")
+struct GroupInviteShareMessageTests {
+
+  @Test("[G30] 초대 메시지에 딥링크 promiso://join/{code} 포함")
+  func g30_message_containsDeeplink() {
+    let message = GroupInviteShareMessage.message(groupName: "테스트 그룹", inviteCode: "ABC123")
+    #expect(message.contains("promiso://join/ABC123"))
+  }
+
+  @Test("[G30] 딥링크에 초대 코드가 정확히 포함됨")
+  func g30_deeplink_containsExactCode() {
+    let message = GroupInviteShareMessage.message(groupName: "그룹", inviteCode: "XYZ789")
+    #expect(message.contains("promiso://join/XYZ789"))
+  }
+
+  @Test("[G30] 초대 메시지에 그룹 이름 포함")
+  func g30_message_containsGroupName() {
+    let message = GroupInviteShareMessage.message(groupName: "우리 모임", inviteCode: "TEST01")
+    #expect(message.contains("우리 모임"))
+  }
+
+  @Test("[G30] 초대 메시지에 초대 코드 포함")
+  func g30_message_containsInviteCode() {
+    let message = GroupInviteShareMessage.message(groupName: "그룹", inviteCode: "CODE42")
+    #expect(message.contains("CODE42"))
+  }
 }

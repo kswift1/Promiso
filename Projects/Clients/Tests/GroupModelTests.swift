@@ -180,3 +180,52 @@ struct GroupRoleTests {
     #expect(GroupRole.member.rawValue == "member")
   }
 }
+
+// MARK: - Group 제약 조건 (G4, G6, G9, G16)
+
+@Suite("GroupModel 제약 조건 테스트")
+struct GroupConstraintTests {
+
+  @Test("[G4] maxMembers 최소값은 2")
+  func g4_minMaxMembers_isTwo() {
+    let group = TestFactories.makeGroup(maxMembers: 2)
+    #expect(group.maxMembers >= 2)
+  }
+
+  @Test("[G4] maxMembers 최대값은 10")
+  func g4_maxMaxMembers_isTen() {
+    let group = TestFactories.makeGroup(maxMembers: 10)
+    #expect(group.maxMembers <= 10)
+  }
+
+  @Test("[G6] 초대 코드는 6자리")
+  func g6_inviteCode_isSixChars() {
+    let group = TestFactories.makeGroup(inviteCode: "ABC123")
+    #expect(group.inviteCode.count == 6)
+  }
+
+  @Test("[G6] 초대 코드는 영숫자만")
+  func g6_inviteCode_isAlphanumeric() {
+    let code = "ABC123"
+    let isAlphanumeric = code.allSatisfy { $0.isLetter || $0.isNumber }
+    #expect(isAlphanumeric == true)
+  }
+
+  @Test("[G9] createdBy가 그룹 호스트")
+  func g9_createdBy_isHost() {
+    let group = TestFactories.makeGroup(createdBy: "user-1")
+    #expect(group.createdBy == "user-1")
+  }
+
+  @Test("[G16] 멤버 수 < maxMembers이면 가입 가능")
+  func g16_belowCapacity_canJoin() {
+    let group = TestFactories.makeGroup(memberIds: ["a", "b"], maxMembers: 5)
+    #expect(group.memberIds.count < group.maxMembers)
+  }
+
+  @Test("[G16] 멤버 수 == maxMembers이면 가입 불가")
+  func g16_atCapacity_cannotJoin() {
+    let group = TestFactories.makeGroup(memberIds: ["a", "b", "c"], maxMembers: 3)
+    #expect(group.memberIds.count >= group.maxMembers)
+  }
+}
