@@ -1323,8 +1323,7 @@ db.collection("notifications")
 #### 특정 사용자의 일정 목록 (날짜순)
 
 ```swift
-db.collection("personalEvents")
-  .whereField("userId", isEqualTo: userId)
+db.collection("users").document(userId).collection("personalEvents")
   .order(by: "startAt", descending: false)
   .getDocuments()
 ```
@@ -1334,8 +1333,7 @@ db.collection("personalEvents")
 ```swift
 let startDate = Date()
 let endDate = Calendar.current.date(byAdding: .month, value: 1, to: startDate)!
-db.collection("personalEvents")
-  .whereField("userId", isEqualTo: userId)
+db.collection("users").document(userId).collection("personalEvents")
   .whereField("startAt", isGreaterThanOrEqualTo: startDate)
   .whereField("startAt", isLessThan: endDate)
   .order(by: "startAt", descending: false)
@@ -1347,8 +1345,7 @@ db.collection("personalEvents")
 ```swift
 let startOfDay = Calendar.current.startOfDay(for: Date())
 let endOfDay = Calendar.current.date(byAdding: .day, value: 1, to: startOfDay)!
-db.collection("personalEvents")
-  .whereField("userId", isEqualTo: userId)
+db.collection("users").document(userId).collection("personalEvents")
   .whereField("startAt", isGreaterThanOrEqualTo: startOfDay)
   .whereField("startAt", isLessThan: endOfDay)
   .order(by: "startAt", descending: false)
