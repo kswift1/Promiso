@@ -44,41 +44,41 @@
 
 ---
 
-## Wave 2 (병렬 3개) — Phase 3a + 3b + 3c
+## Wave 2 (병렬 3개) — Phase 3a + 3b + 3c ✅
 
-### 워커 A: Client 레이어 테스트 (Phase 3c, ~35 tests)
+### 워커 A: Client 레이어 테스트 (Phase 3c, 47 tests)
 
-- [ ] `Clients/Tests/PromiseClientTests.swift` — liveValue 어댑터, 에러 매핑 (~5)
-- [ ] `Clients/Tests/AuthClientModelTests.swift` — FirebaseUserSnapshot, ServiceTokenBundle (~9)
-- [ ] `Clients/Tests/DataSource/PromiseRemoteDataSourceTests.swift` — Mock 기반 (~6)
-- [ ] `Clients/Tests/DataSource/GroupRemoteDataSourceTests.swift` — Mock 기반 (~4)
-- [ ] `Clients/Tests/DTOMappingTests.swift` — DTO → Model 변환 (~10)
+- [x] `Clients/Tests/PromiseClientTests.swift` — 에러 매핑, localizedDescription (10)
+- [x] `Clients/Tests/AuthClientModelTests.swift` — FirebaseUserSnapshot, ServiceTokenBundle (13)
+- [x] `Clients/Tests/DataSource/PromiseRemoteDataSourceTests.swift` — Mock 기반 (6)
+- [x] `Clients/Tests/DataSource/GroupRemoteDataSourceTests.swift` — Mock 기반 (4)
+- [x] `Clients/Tests/DTOMappingTests.swift` — DTO → Model 변환 (14)
 
-### 워커 B: TCA Reducer 테스트 (Phase 3b, ~91 tests)
+### 워커 B: TCA Reducer 테스트 (Phase 3b, ~117 tests)
 
-- [ ] `HomeFeature/Tests/Sources/HomeFeatureTests.swift` 확장 (~9)
-- [ ] `AuthFeature/Tests/Sources/AuthFeatureTests.swift` 확장 (~6)
-- [ ] `CalendarFeature/Tests/Sources/CalendarFeatureTests.swift` 확장 (~10)
-- [ ] `SettingsFeature/Tests/Sources/SettingsFeatureTests.swift` 새 파일 (~8)
-- [ ] `GroupFeature/Tests/Sources/CreateGroupReducerTests.swift` 새 파일 (~6)
-- [ ] `GroupFeature/Tests/Sources/CreatePromiseReducerTests.swift` 새 파일 (~8)
-- [ ] `GroupFeature/Tests/Sources/JoinGroupReducerTests.swift` 새 파일 (~4)
-- [ ] `GroupFeature/Tests/Sources/GroupSettingsReducerTests.swift` 새 파일 (~4)
-- [ ] `AppEntryFeature/Tests/Sources/AppEntryFeatureTests.swift` 확장 (~7)
-- [ ] `RootTabFeature/Tests/Sources/RootTabFeatureTests.swift` 확장 (~8)
-- [ ] `SharedFeature/Tests/Sources/SharedFeatureTests.swift` 확장 (~13)
-- [ ] `NotificationCenterFeature/Tests/Sources/NotificationCenterFeatureTests.swift` 확장 (~9)
+- [x] `HomeFeature/Tests/Sources/HomeFeatureTests.swift` 확장 (+9)
+- [x] `AuthFeature/Tests/Sources/AuthFeatureTests.swift` 확장 (+6)
+- [x] `CalendarFeature/Tests/Sources/CalendarFeatureTests.swift` 재작성 (~10)
+- [x] `SettingsFeature/Tests/Sources/SettingsFeatureTests.swift` 새 파일
+- [x] `GroupFeature/Tests/Sources/CreateGroupReducerTests.swift` 새 파일
+- [x] `GroupFeature/Tests/Sources/CreatePromiseReducerTests.swift` 새 파일
+- [x] `GroupFeature/Tests/Sources/JoinGroupReducerTests.swift` 새 파일
+- [x] `GroupFeature/Tests/Sources/GroupSettingsReducerTests.swift` 새 파일
+- [x] `AppEntryFeature/Tests/Sources/AppEntryFeatureTests.swift` 확장 (+7)
+- [x] `RootTabFeature/Tests/Sources/RootTabFeatureTests.swift` 확장 (+8)
+- [x] `SharedFeature/Tests/Sources/SharedFeatureTests.swift` 재작성 (52)
+- [x] `NotificationCenterFeature/Tests/Sources/NotificationCenterFeatureTests.swift` 확장 (+25)
 
-### 워커 C: Domain Model 테스트 (Phase 3a, ~81 tests)
+### 워커 C: Domain Model 테스트 (Phase 3a, 156 tests)
 
-- [ ] `Clients/Tests/PromiseModelTests.swift` — responseStatus, isConfirmed, isOngoing 등 (~34)
-- [ ] `Clients/Tests/UserModelTests.swift` — validateNickname, toPublic 등 (~13)
-- [ ] `Clients/Tests/NotificationModelTests.swift` — iconName, deeplink 등 (~10)
-- [ ] `Clients/Tests/SupportingTypesTests.swift` — PromiseVotesModel, LocationInfoModel (~10)
-- [ ] `Clients/Tests/ErrorModelTests.swift` — 에러 타입별 localizedDescription (~9)
-- [ ] `Clients/Tests/GroupModelTests.swift` — 초기화, DTO 변환 (~5)
+- [x] `Clients/Tests/PromiseModelTests.swift` — responseStatus, isConfirmed, isOngoing 등 (52)
+- [x] `Clients/Tests/UserModelTests.swift` — validateNickname, toPublic 등 (23)
+- [x] `Clients/Tests/NotificationModelTests.swift` — iconName, deeplink 등 (24)
+- [x] `Clients/Tests/SupportingTypesTests.swift` — PromiseVotesModel, LocationInfoModel (26)
+- [x] `Clients/Tests/ErrorModelTests.swift` — 에러 타입별 localizedDescription (20)
+- [x] `Clients/Tests/GroupModelTests.swift` — 초기화, DTO 변환 (11)
 
-**Wave 2 완료 후**: 커밋
+**Wave 2 완료**: `67a05e1` 커밋
 
 ---
 
