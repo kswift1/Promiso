@@ -15,6 +15,14 @@
 
 **이 규칙을 위반하면 안 됩니다. 예외 없음.**
 
+### 🔒 도메인 규칙 수정 금지
+
+**`.ai/DOMAIN_RULES.md` 및 `.ai/domain-rules/` 하위 모든 파일은 사용자의 명시적 허락 없이 절대 수정할 수 없습니다.**
+
+- 도메인 규칙 추가/변경/삭제 시 반드시 사용자 확인 후 진행
+- 코드 수정 시 도메인 규칙과 충돌이 발생하면 즉시 사용자에게 알림
+- 규칙 위반이 의심되는 코드 발견 시 경고 표시
+
 ---
 
 ## 프로젝트 개요
@@ -224,6 +232,9 @@ make functions-build               # Functions 빌드
 |------|------|
 | [.ai/PROJECT_CONTEXT.md](../.ai/PROJECT_CONTEXT.md) | 아키텍처, 코딩 컨벤션, 의존성 규칙 |
 | [.ai/FIRESTORE_SCHEMA.md](../.ai/FIRESTORE_SCHEMA.md) | Firestore 데이터 스키마 |
+| [.ai/DOMAIN_RULES.md](../.ai/DOMAIN_RULES.md) | 🔒 도메인 비즈니스 규칙 (**수정 금지**) |
+| [.ai/DOMAIN_RULES_BACKLOG.md](../.ai/DOMAIN_RULES_BACKLOG.md) | 도메인 규칙 백로그 (충돌/누락/예정 변경) |
+| [.ai/TEST_POLICY.md](../.ai/TEST_POLICY.md) | 테스트 설계 기준 및 작성 규칙 |
 | [.ai/archive/CHECKLIST.md](../.ai/archive/CHECKLIST.md) | 개발 체크리스트 |
 | [.ai/archive/PROMPTS.md](../.ai/archive/PROMPTS.md) | 프롬프트 템플릿 모음 |
 
@@ -283,6 +294,19 @@ Features/{Name}Feature/
 - Explore agent 사용 (읽기 전용)
 - 관련 파일 Read
 - 기존 Feature 패턴 분석
+- ⚠️ 수정 대상에 관련된 domain-rules/*.md 읽기 (필수)
+```
+
+**도메인 규칙 확인 (필수)**:
+```
+수정 대상 도메인 → 읽어야 할 파일:
+- 그룹 관련     → .ai/domain-rules/group.md
+- 약속 관련     → .ai/domain-rules/promise.md
+- 사용자 관련   → .ai/domain-rules/user.md
+- 알림 관련     → .ai/domain-rules/notification.md
+- LiveActivity  → .ai/domain-rules/liveactivity.md
+- 위젯 관련     → .ai/domain-rules/widget.md
+- 보안/권한     → .ai/domain-rules/security.md
 ```
 
 **예시**:
@@ -290,6 +314,7 @@ Features/{Name}Feature/
 사용자: "알림 설정 Feature 만들어줘"
 
 Step 1 - 탐색:
+→ .ai/domain-rules/notification.md 읽기 (규칙 확인)
 → Explore agent로 기존 Settings 관련 Feature 찾기
 → SettingsFeature.swift 읽어서 패턴 파악
 → 의존성 구조 확인
