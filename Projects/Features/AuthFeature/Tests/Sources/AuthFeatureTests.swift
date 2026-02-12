@@ -219,4 +219,81 @@ struct AuthFeatureTests {
     #expect(!hash.isEmpty)
     #expect(hash.count == 64) // SHA256은 64자 hex string
   }
+
+  // MARK: - 동일 입력 해시 일관성 테스트
+
+  @Test("sha256 동일 입력 시 동일 해시 반환")
+  func sha256_sameInput_returnsSameHash() {
+    let hash1 = Auth.Feature.sha256("consistent-input")
+    let hash2 = Auth.Feature.sha256("consistent-input")
+    #expect(hash1 == hash2)
+  }
+
+  @Test("sha256 다른 입력 시 다른 해시 반환")
+  func sha256_differentInput_returnsDifferentHash() {
+    let hash1 = Auth.Feature.sha256("input-a")
+    let hash2 = Auth.Feature.sha256("input-b")
+    #expect(hash1 != hash2)
+  }
+
+  // MARK: - 랜덤 Nonce 유일성 테스트
+
+  @Test("randomNonceString 호출마다 다른 값 생성")
+  func randomNonceString_generatesUniqueValues() {
+    let nonce1 = Auth.Feature.randomNonceString()
+    let nonce2 = Auth.Feature.randomNonceString()
+    #expect(nonce1 != nonce2)
+  }
+
+  // MARK: - Apple Login 로딩 중 테스트
+
+  @Test("appleLoginTapped 시 이전 에러 메시지 초기화")
+  func appleLoginTapped_clearsExistingError() async {
+    var state = Auth.Feature.State()
+    state.errorMessage = "이전 에러 메시지"
+
+    let store = TestStore(initialState: state) {
+      Auth.Feature()
+    }
+
+    await store.send(.view(.appleLoginTapped)) {
+      $0.isLoading = true
+      $0.errorMessage = nil
+      #expect($0.pendingAppleLoginNonce != nil)
+    }
+  }
+
+  // MARK: - 다양한 AuthClientError 테스트
+
+  @Test("authResponse - invalidAppleCredential 에러 메시지")
+  func authResponse_invalidAppleCredential_setsCorrectMessage() async {
+    var state = Auth.Feature.State()
+    state.isLoading = true
+
+    let store = TestStore(initialState: state) {
+      Auth.Feature()
+    }
+
+    await store.send(.internal(.authResponse(.failure(.invalidAppleCredential)))) {
+      $0.isLoading = false
+      $0.pendingAppleLoginNonce = nil
+      $0.errorMessage = AuthClientError.invalidAppleCredential.localizedDescription
+    }
+  }
+
+  @Test("authResponse - network 에러 메시지")
+  func authResponse_network_setsCorrectMessage() async {
+    var state = Auth.Feature.State()
+    state.isLoading = true
+
+    let store = TestStore(initialState: state) {
+      Auth.Feature()
+    }
+
+    await store.send(.internal(.authResponse(.failure(.network)))) {
+      $0.isLoading = false
+      $0.pendingAppleLoginNonce = nil
+      $0.errorMessage = AuthClientError.network.localizedDescription
+    }
+  }
 }
