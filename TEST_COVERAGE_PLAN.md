@@ -16,31 +16,31 @@
 
 ---
 
-## Wave 1 (병렬 3개) — Phase 2-1 + 2-2 + 3d
+## Wave 1 (병렬 3개) — Phase 2-1 + 2-2 + 3d ✅
 
 ### 워커 A: 공통 테스트 인프라 (Phase 2-2)
 
-- [ ] `Clients/Tests/Helpers/TestFactories.swift` — 통합 팩토리 (makePromise, makeGroup 등)
-- [ ] `Clients/Tests/Mocks/MockPromiseRemoteDataSource.swift`
-- [ ] `Clients/Tests/Mocks/MockGroupRemoteDataSource.swift`
+- [x] `Clients/Tests/Helpers/TestFactories.swift` — 통합 팩토리 (makePromise, makeGroup 등)
+- [x] `Clients/Tests/Mocks/MockPromiseRemoteDataSource.swift`
+- [x] `Clients/Tests/Mocks/MockGroupRemoteDataSource.swift`
 
 ### 워커 B: XCTest → Swift Testing 마이그레이션 (Phase 2-1)
 
-- [ ] `HomeFeature/Tests/Sources/HomeFeatureTests.swift` — Swift Testing으로 재작성
-- [ ] `AuthFeature/Tests/Sources/AuthFeatureTests.swift` — Swift Testing으로 재작성
-- [ ] `GroupFeature/Tests/Sources/GroupFeatureTests.swift` — Swift Testing으로 재작성
-- [ ] `RootTabFeature/Tests/Sources/RootTabFeatureTests.swift` — Swift Testing으로 재작성
+- [x] `HomeFeature/Tests/Sources/HomeFeatureTests.swift` — Swift Testing으로 재작성
+- [x] `AuthFeature/Tests/Sources/AuthFeatureTests.swift` — Swift Testing으로 재작성
+- [x] `GroupFeature/Tests/Sources/GroupFeatureTests.swift` — Swift Testing으로 재작성
+- [x] `RootTabFeature/Tests/Sources/RootTabFeatureTests.swift` — Swift Testing으로 재작성
 
 ### 워커 C: Shared 유틸리티 테스트 (Phase 3d, ~54 tests)
 
-- [ ] `Shared/Tests/DatePromiseTests.swift` — Date 확장 (~27)
-- [ ] `Shared/Tests/StringExtensionsTests.swift` — isNotEmpty, isNilOrEmpty (~6)
-- [ ] `Shared/Tests/ArrayExtensionsTests.swift` — chunked(into:) (~4)
-- [ ] `Shared/Tests/EmojiModelsTests.swift` — EmojiEntry 디코딩 (~2)
-- [ ] `Shared/Tests/EmojiSuggesterTests.swift` — 키워드 기반 이모지 제안 (~5)
-- [ ] 기존 테스트 파일 확장 — FAQModel, GroupSortOption, LoadingState 등 (~10)
+- [x] `Shared/Tests/DatePromiseTests.swift` — Date 확장 (~27)
+- [x] `Shared/Tests/StringExtensionsTests.swift` — isNotEmpty, isNilOrEmpty (~6)
+- [x] `Shared/Tests/ArrayExtensionsTests.swift` — chunked(into:) (~4)
+- [x] `Shared/Tests/EmojiModelsTests.swift` — EmojiEntry 디코딩 (~2)
+- [x] `Shared/Tests/EmojiSuggesterTests.swift` — 키워드 기반 이모지 제안 (~5)
+- [x] 기존 테스트 파일 확장 — FAQModel, GroupSortOption, LoadingState 등 (~10)
 
-**Wave 1 완료 후**: 커밋
+**Wave 1 완료**: `c80075e` 커밋
 
 ---
 
