@@ -104,17 +104,102 @@ jobs:
             -skipPackagePluginValidation
 
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      # 6. 테스트 실행
+      # 6. 테스트 실행 (커버리지 포함)
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-      - name: Run Tests
+      - name: Run Tests with Coverage
         run: |
-          tuist test -- \
+          tuist test --result-bundle-path TestResults -- \
             -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
-            -skipPackagePluginValidation
+            -skipPackagePluginValidation \
+            -enableCodeCoverage YES
 
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      # 7. 테스트 결과 업로드 (실패 시)
+      # 7. 커버리지 리포트 추출
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+      - name: Extract Coverage Report
+        id: coverage
+        if: always()
+        run: |
+          RESULT_BUNDLE="TestResults.xcresult"
+
+          if [ ! -d "$RESULT_BUNDLE" ]; then
+            echo "report=커버리지 데이터 없음 (xcresult 번들을 찾을 수 없음)" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # JSON 커버리지 리포트 추출
+          COVERAGE_JSON=$(xcrun xccov view --report --json "$RESULT_BUNDLE" 2>/dev/null || true)
+
+          if [ -z "$COVERAGE_JSON" ]; then
+            echo "report=커버리지 데이터를 추출할 수 없음" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # 모듈별 커버리지 추출 (관심 대상 모듈만 필터링)
+          MODULES=("Clients" "PromisoShared" "HomeFeature" "AuthFeature" "GroupFeature" "CalendarFeature" "SettingsFeature" "RootTabFeature" "AppEntryFeature" "SharedFeature" "NotificationCenterFeature")
+
+          TABLE="| 모듈 | 커버리지 | 상태 |\n|------|---------|------|\n"
+
+          TOTAL_COVERED=0
+          TOTAL_LINES=0
+
+          for MODULE in "${MODULES[@]}"; do
+            # jq로 해당 모듈의 커버리지 추출
+            COVERAGE=$(echo "$COVERAGE_JSON" | jq -r --arg mod "$MODULE" '
+              .targets[]
+              | select(.name | test($mod))
+              | .lineCoverage * 100
+              | . * 10 | floor | . / 10
+            ' 2>/dev/null | head -1)
+
+            COVERED=$(echo "$COVERAGE_JSON" | jq -r --arg mod "$MODULE" '
+              .targets[]
+              | select(.name | test($mod))
+              | .coveredLines
+            ' 2>/dev/null | head -1)
+
+            EXECUTABLE=$(echo "$COVERAGE_JSON" | jq -r --arg mod "$MODULE" '
+              .targets[]
+              | select(.name | test($mod))
+              | .executableLines
+            ' 2>/dev/null | head -1)
+
+            if [ -n "$COVERAGE" ] && [ "$COVERAGE" != "null" ]; then
+              # 상태 아이콘 결정
+              STATUS="🟢"
+              COV_INT=${COVERAGE%.*}
+              if [ "${COV_INT:-0}" -lt 30 ]; then
+                STATUS="🔴"
+              elif [ "${COV_INT:-0}" -lt 50 ]; then
+                STATUS="🟡"
+              fi
+
+              TABLE="${TABLE}| ${MODULE} | ${COVERAGE}% | ${STATUS} |\n"
+
+              if [ -n "$COVERED" ] && [ -n "$EXECUTABLE" ]; then
+                TOTAL_COVERED=$((TOTAL_COVERED + ${COVERED:-0}))
+                TOTAL_LINES=$((TOTAL_LINES + ${EXECUTABLE:-0}))
+              fi
+            fi
+          done
+
+          # 전체 커버리지 계산
+          if [ "$TOTAL_LINES" -gt 0 ]; then
+            TOTAL_PCT=$(echo "scale=1; $TOTAL_COVERED * 100 / $TOTAL_LINES" | bc)
+            TABLE="${TABLE}| **전체** | **${TOTAL_PCT}%** | |\n"
+          fi
+
+          # GitHub Output에 저장 (멀티라인)
+          {
+            echo "report<<COVERAGE_EOF"
+            echo -e "$TABLE"
+            echo "COVERAGE_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # 8. 테스트 결과 업로드 (실패 시)
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
       - name: Upload Test Results
@@ -127,7 +212,7 @@ jobs:
             **/test_output/
 
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      # 8. PR 코멘트 (선택)
+      # 9. PR 코멘트 (빌드/테스트 + 커버리지)
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
       - name: Comment PR
@@ -136,10 +221,27 @@ jobs:
         with:
           script: |
             const status = '${{ job.status }}' === 'success' ? '✅' : '❌';
-            const message = `${status} PR 체크 ${status === '✅' ? '성공' : '실패'}
+            const coverageReport = `${{ steps.coverage.outputs.report }}`;
+
+            let message = `${status} **PR 체크 ${status === '✅' ? '성공' : '실패'}**
 
             **빌드**: ${status === '✅' ? '성공' : '실패'}
-            **테스트**: ${status === '✅' ? '통과' : '실패'}
+            **테스트**: ${status === '✅' ? '통과' : '실패'}`;
+
+            if (coverageReport && coverageReport.trim() !== '') {
+              message += `
+
+            <details>
+            <summary>📊 모듈별 커버리지</summary>
+
+            ${coverageReport}
+
+            > 🔴 30% 미만 | 🟡 30~50% | 🟢 50% 이상
+
+            </details>`;
+            }
+
+            message += `
 
             <details>
             <summary>상세 정보</summary>
@@ -150,9 +252,29 @@ jobs:
 
             </details>`;
 
-            github.rest.issues.createComment({
+            // 기존 봇 코멘트 업데이트 (중복 방지)
+            const { data: comments } = await github.rest.issues.listComments({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: message
             });
+
+            const botComment = comments.find(c =>
+              c.user.type === 'Bot' && c.body.includes('PR 체크')
+            );
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                comment_id: botComment.id,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: message,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: message,
+              });
+            }

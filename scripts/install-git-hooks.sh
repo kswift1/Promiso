@@ -22,17 +22,23 @@ fi
 # pre-commit hook 복사
 cp "$SCRIPT_DIR/hooks/pre-commit" "$HOOKS_DIR/pre-commit"
 chmod +x "$HOOKS_DIR/pre-commit"
-
 echo "✅ pre-commit hook installed"
+
+# pre-push hook 복사
+cp "$SCRIPT_DIR/hooks/pre-push" "$HOOKS_DIR/pre-push"
+chmod +x "$HOOKS_DIR/pre-push"
+echo "✅ pre-push hook installed"
+
 echo ""
 echo "🎉 Git Hooks installation complete!"
 echo ""
-echo "이제 커밋 시 자동으로 민감한 파일을 체크합니다:"
-echo "  - .xcconfig 파일"
-echo "  - GoogleService-Info.plist"
-echo "  - .env 파일"
-echo "  - API Keys in code"
-echo "  - Derived 폴더"
+echo "📌 pre-commit: 커밋 시 민감한 파일 체크"
+echo "  - .xcconfig, GoogleService-Info.plist, .env, API Keys, Derived 폴더"
 echo ""
-echo "📝 Hook 위치: .git/hooks/pre-commit"
+echo "📌 pre-push: push 시 변경 모듈 빌드 검증"
+echo "  - 기본: 빌드만 (PROMISO_CHECK_MODE=build)"
+echo "  - 테스트 포함: PROMISO_CHECK_MODE=test git push"
+echo "  - 우회: git push --no-verify"
+echo ""
+echo "📝 Hook 위치: .git/hooks/pre-commit, .git/hooks/pre-push"
 echo ""
