@@ -23,55 +23,55 @@ import Testing
 @Suite("UserPublicModel 닉네임 유효성 검증 테스트")
 struct NicknameValidationTests {
 
-  @Test("유효한 닉네임 (2~12자)이면 nil 반환")
+  @Test("[U1,U2] 유효한 닉네임 (2~12자)이면 nil 반환")
   func validateNickname_validNickname_returnsNil() {
     let result = UserPublicModel.validateNickname("테스트유저")
     #expect(result == nil)
   }
 
-  @Test("2자 닉네임이면 유효")
+  @Test("[U1] 2자 닉네임이면 유효")
   func validateNickname_twoCharacters_returnsNil() {
     let result = UserPublicModel.validateNickname("AB")
     #expect(result == nil)
   }
 
-  @Test("12자 닉네임이면 유효")
+  @Test("[U2] 12자 닉네임이면 유효")
   func validateNickname_twelveCharacters_returnsNil() {
     let result = UserPublicModel.validateNickname("123456789012")
     #expect(result == nil)
   }
 
-  @Test("1자 닉네임이면 tooShort 에러")
+  @Test("[U1] 1자 닉네임이면 tooShort 에러")
   func validateNickname_oneCharacter_returnsTooShort() {
     let result = UserPublicModel.validateNickname("A")
     #expect(result == .tooShort(minimum: 2))
   }
 
-  @Test("빈 문자열이면 tooShort 에러")
+  @Test("[U1] 빈 문자열이면 tooShort 에러")
   func validateNickname_empty_returnsTooShort() {
     let result = UserPublicModel.validateNickname("")
     #expect(result == .tooShort(minimum: 2))
   }
 
-  @Test("13자 이상이면 tooLong 에러")
+  @Test("[U2] 13자 이상이면 tooLong 에러")
   func validateNickname_thirteenCharacters_returnsTooLong() {
     let result = UserPublicModel.validateNickname("1234567890123")
     #expect(result == .tooLong(maximum: 12))
   }
 
-  @Test("중간에 공백이 있으면 containsWhitespace 에러")
+  @Test("[U3] 중간에 공백이 있으면 containsWhitespace 에러")
   func validateNickname_withMiddleWhitespace_returnsContainsWhitespace() {
     let result = UserPublicModel.validateNickname("테스트 유저")
     #expect(result == .containsWhitespace)
   }
 
-  @Test("앞에 공백이 있으면 hasLeadingOrTrailingWhitespace 에러")
+  @Test("[U4] 앞에 공백이 있으면 hasLeadingOrTrailingWhitespace 에러")
   func validateNickname_withLeadingWhitespace_returnsHasLeadingOrTrailing() {
     let result = UserPublicModel.validateNickname(" 테스트유저")
     #expect(result == .hasLeadingOrTrailingWhitespace)
   }
 
-  @Test("뒤에 공백이 있으면 hasLeadingOrTrailingWhitespace 에러")
+  @Test("[U4] 뒤에 공백이 있으면 hasLeadingOrTrailingWhitespace 에러")
   func validateNickname_withTrailingWhitespace_returnsHasLeadingOrTrailing() {
     let result = UserPublicModel.validateNickname("테스트유저 ")
     #expect(result == .hasLeadingOrTrailingWhitespace)
@@ -115,7 +115,7 @@ struct UserModelPropertyTests {
 
   // MARK: - displayName 테스트
 
-  @Test("displayName은 닉네임을 반환")
+  @Test("[U14] displayName은 닉네임을 반환")
   func displayName_returnsNickname() {
     let user = TestFactories.makePublicUser(nickname: "마이닉네임")
     #expect(user.displayName == "마이닉네임")
@@ -123,21 +123,21 @@ struct UserModelPropertyTests {
 
   // MARK: - profileImageUrl 테스트
 
-  @Test("프로필 이미지가 있고 썸네일 URL이 있으면 썸네일 반환")
+  @Test("[U12] 프로필 이미지가 있고 썸네일 URL이 있으면 썸네일 반환")
   func profileImageUrl_withThumbUrl_returnsThumbUrl() {
     let profile = ProfileImage(url: "https://example.com/full.jpg", thumbUrl: "https://example.com/thumb.jpg")
     let user = TestFactories.makePublicUser(profile: profile)
     #expect(user.profileImageUrl == "https://example.com/thumb.jpg")
   }
 
-  @Test("프로필 이미지가 있고 썸네일 없으면 원본 URL 반환")
+  @Test("[U12] 프로필 이미지가 있고 썸네일 없으면 원본 URL 반환")
   func profileImageUrl_withoutThumbUrl_returnsOriginalUrl() {
     let profile = ProfileImage(url: "https://example.com/full.jpg", thumbUrl: nil)
     let user = TestFactories.makePublicUser(profile: profile)
     #expect(user.profileImageUrl == "https://example.com/full.jpg")
   }
 
-  @Test("프로필 이미지가 nil이면 nil 반환")
+  @Test("[U12] 프로필 이미지가 nil이면 nil 반환")
   func profileImageUrl_withNoProfile_returnsNil() {
     let user = TestFactories.makePublicUser(profile: nil)
     #expect(user.profileImageUrl == nil)

@@ -33,13 +33,13 @@ struct ParticipantStateTests {
   // 계산식: (trackingDurationMinutes - ETA) / trackingDurationMinutes
   // 범위: 0.05 ~ 0.95 (도착 시 1.0, 대기 시 0.0)
 
-  @Test("대기 상태(nil ETA)일 때 0.0 반환")
+  @Test("[L8] 대기 상태(nil ETA)일 때 0.0 반환")
   func trackPosition_whenNilETA_returns0() {
     let participant = ParticipantState(id: "1", name: "테스트", estimatedArrivalMinutes: nil)
     #expect(participant.trackPosition(trackingDurationMinutes: 30) == 0.0)
   }
 
-  @Test("도착(ETA 0)일 때 1.0 반환")
+  @Test("[L8,L9] 도착(ETA 0)일 때 1.0 반환")
   func trackPosition_whenETA0_returns1() {
     let participant = ParticipantState(id: "1", name: "테스트", estimatedArrivalMinutes: 0)
     #expect(participant.trackPosition(trackingDurationMinutes: 30) == 1.0)
@@ -51,7 +51,7 @@ struct ParticipantStateTests {
     #expect(participant.trackPosition(trackingDurationMinutes: 30) == 0.5)
   }
 
-  @Test("위치가 0.05 ~ 0.95 범위로 제한됨")
+  @Test("[L3] 위치가 0.05 ~ 0.95 범위로 제한됨")
   func trackPosition_clampsToMinMax() {
     let almostArrived = ParticipantState(id: "1", name: "테스트", estimatedArrivalMinutes: 1)
     let justStarted = ParticipantState(id: "2", name: "테스트2", estimatedArrivalMinutes: 29)

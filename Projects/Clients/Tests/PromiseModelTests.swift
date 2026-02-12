@@ -25,28 +25,28 @@ struct PromiseModelComputedTests {
 
   // MARK: - isConfirmed 테스트
 
-  @Test("accepted >= minimumParticipants 이면 확정")
+  @Test("[P22] accepted >= minimumParticipants 이면 확정")
   func isConfirmed_whenAcceptedMeetsMinimum_returnsTrue() {
     let votes = TestFactories.makeVotes(accepted: ["user1", "user2"])
     let promise = TestFactories.makePromise(minimumParticipants: 2, votes: votes)
     #expect(promise.isConfirmed == true)
   }
 
-  @Test("accepted > minimumParticipants 이면 확정")
+  @Test("[P22] accepted > minimumParticipants 이면 확정")
   func isConfirmed_whenAcceptedExceedsMinimum_returnsTrue() {
     let votes = TestFactories.makeVotes(accepted: ["user1", "user2", "user3"])
     let promise = TestFactories.makePromise(minimumParticipants: 2, votes: votes)
     #expect(promise.isConfirmed == true)
   }
 
-  @Test("accepted < minimumParticipants 이면 미확정")
+  @Test("[P22] accepted < minimumParticipants 이면 미확정")
   func isConfirmed_whenAcceptedBelowMinimum_returnsFalse() {
     let votes = TestFactories.makeVotes(accepted: ["user1"])
     let promise = TestFactories.makePromise(minimumParticipants: 2, votes: votes)
     #expect(promise.isConfirmed == false)
   }
 
-  @Test("accepted 비어있으면 미확정")
+  @Test("[P22] accepted 비어있으면 미확정")
   func isConfirmed_whenNoAccepted_returnsFalse() {
     let votes = TestFactories.makeVotes(accepted: [])
     let promise = TestFactories.makePromise(minimumParticipants: 2, votes: votes)
@@ -55,13 +55,13 @@ struct PromiseModelComputedTests {
 
   // MARK: - isHost 테스트
 
-  @Test("호스트 ID와 일치하면 호스트")
+  @Test("[P10] 호스트 ID와 일치하면 호스트")
   func isHost_whenUserIdMatchesHostId_returnsTrue() {
     let promise = TestFactories.makePromise(hostId: "host-user")
     #expect(promise.isHost(userId: "host-user") == true)
   }
 
-  @Test("호스트 ID와 불일치하면 호스트 아님")
+  @Test("[P10] 호스트 ID와 불일치하면 호스트 아님")
   func isHost_whenUserIdDoesNotMatch_returnsFalse() {
     let promise = TestFactories.makePromise(hostId: "host-user")
     #expect(promise.isHost(userId: "other-user") == false)
@@ -114,7 +114,7 @@ struct PromiseModelTimeTests {
 
   // MARK: - isOngoing 테스트
 
-  @Test("시작 시간 이후이고 종료 시간 전이면 진행 중")
+  @Test("[P34] 시작 시간 이후이고 종료 시간 전이면 진행 중")
   func isOngoing_whenBetweenStartAndEnd_returnsTrue() {
     let startAt = Date().addingTimeInterval(-3600)  // 1시간 전
     let endAt = Date().addingTimeInterval(3600)      // 1시간 후
@@ -122,7 +122,7 @@ struct PromiseModelTimeTests {
     #expect(promise.isOngoing == true)
   }
 
-  @Test("시작 시간 전이면 진행 중 아님")
+  @Test("[P34] 시작 시간 전이면 진행 중 아님")
   func isOngoing_whenBeforeStart_returnsFalse() {
     let startAt = Date().addingTimeInterval(3600)
     let endAt = Date().addingTimeInterval(7200)
@@ -130,7 +130,7 @@ struct PromiseModelTimeTests {
     #expect(promise.isOngoing == false)
   }
 
-  @Test("종료 시간 후이면 진행 중 아님")
+  @Test("[P34] 종료 시간 후이면 진행 중 아님")
   func isOngoing_whenAfterEnd_returnsFalse() {
     let startAt = Date().addingTimeInterval(-7200)
     let endAt = Date().addingTimeInterval(-3600)
@@ -138,14 +138,14 @@ struct PromiseModelTimeTests {
     #expect(promise.isOngoing == false)
   }
 
-  @Test("종료 시간 없으면 시작 이후 진행 중")
+  @Test("[P34] 종료 시간 없으면 시작 이후 진행 중")
   func isOngoing_whenNoEndAtAndAfterStart_returnsTrue() {
     let startAt = Date().addingTimeInterval(-3600)
     let promise = TestFactories.makePromise(startAt: startAt, endAt: nil)
     #expect(promise.isOngoing == true)
   }
 
-  @Test("종료 시간 없고 시작 전이면 진행 중 아님")
+  @Test("[P34] 종료 시간 없고 시작 전이면 진행 중 아님")
   func isOngoing_whenNoEndAtAndBeforeStart_returnsFalse() {
     let startAt = Date().addingTimeInterval(3600)
     let promise = TestFactories.makePromise(startAt: startAt, endAt: nil)
@@ -154,7 +154,7 @@ struct PromiseModelTimeTests {
 
   // MARK: - isPast 테스트
 
-  @Test("종료 시간이 있고 지났으면 과거 약속")
+  @Test("[P35] 종료 시간이 있고 지났으면 과거 약속")
   func isPast_whenEndAtPassed_returnsTrue() {
     let startAt = Date().addingTimeInterval(-7200)
     let endAt = Date().addingTimeInterval(-3600)
@@ -162,14 +162,14 @@ struct PromiseModelTimeTests {
     #expect(promise.isPast == true)
   }
 
-  @Test("종료 시간 없고 시작 시간 지났으면 과거 약속")
+  @Test("[P35] 종료 시간 없고 시작 시간 지났으면 과거 약속")
   func isPast_whenNoEndAtAndStartPassed_returnsTrue() {
     let startAt = Date().addingTimeInterval(-3600)
     let promise = TestFactories.makePromise(startAt: startAt, endAt: nil)
     #expect(promise.isPast == true)
   }
 
-  @Test("시작 시간이 미래면 과거 약속 아님")
+  @Test("[P35] 시작 시간이 미래면 과거 약속 아님")
   func isPast_whenStartInFuture_returnsFalse() {
     let startAt = Date().addingTimeInterval(3600)
     let promise = TestFactories.makePromise(startAt: startAt)
@@ -178,14 +178,14 @@ struct PromiseModelTimeTests {
 
   // MARK: - isUpcoming 테스트
 
-  @Test("시작 시간이 미래면 다가오는 약속")
+  @Test("[P36] 시작 시간이 미래면 다가오는 약속")
   func isUpcoming_whenStartInFuture_returnsTrue() {
     let startAt = Date().addingTimeInterval(3600)
     let promise = TestFactories.makePromise(startAt: startAt)
     #expect(promise.isUpcoming == true)
   }
 
-  @Test("시작 시간이 과거면 다가오는 약속 아님")
+  @Test("[P36] 시작 시간이 과거면 다가오는 약속 아님")
   func isUpcoming_whenStartInPast_returnsFalse() {
     let startAt = Date().addingTimeInterval(-3600)
     let promise = TestFactories.makePromise(startAt: startAt)
@@ -194,7 +194,7 @@ struct PromiseModelTimeTests {
 
   // MARK: - isRealtimeShareable 테스트
 
-  @Test("trackingStartMinutesBefore가 nil이면 공유 불가")
+  @Test("[L7] trackingStartMinutesBefore가 nil이면 공유 불가")
   func isRealtimeShareable_whenNoTracking_returnsFalse() {
     let promise = TestFactories.makePromise(
       startAt: Date().addingTimeInterval(600),
@@ -203,7 +203,7 @@ struct PromiseModelTimeTests {
     #expect(promise.isRealtimeShareable == false)
   }
 
-  @Test("시작 시간 이전 tracking 범위 내이면 공유 가능")
+  @Test("[L7] 시작 시간 이전 tracking 범위 내이면 공유 가능")
   func isRealtimeShareable_whenWithinTrackingWindow_returnsTrue() {
     // 10분 후 시작, 30분 전부터 tracking
     let promise = TestFactories.makePromise(
@@ -213,7 +213,7 @@ struct PromiseModelTimeTests {
     #expect(promise.isRealtimeShareable == true)
   }
 
-  @Test("시작 시간이 tracking 범위 밖이면 공유 불가")
+  @Test("[L7] 시작 시간이 tracking 범위 밖이면 공유 불가")
   func isRealtimeShareable_whenOutsideTrackingWindow_returnsFalse() {
     // 2시간 후 시작, 30분 전부터 tracking
     let promise = TestFactories.makePromise(
@@ -231,19 +231,19 @@ struct PromiseModelDisplayTests {
 
   // MARK: - displayEmoji 테스트
 
-  @Test("이모지가 있으면 해당 이모지 반환")
+  @Test("[P20] 이모지가 있으면 해당 이모지 반환")
   func displayEmoji_whenEmojiSet_returnsEmoji() {
     let promise = TestFactories.makePromise(emoji: "🎉")
     #expect(promise.displayEmoji == "🎉")
   }
 
-  @Test("이모지가 nil이면 기본 이모지 반환")
+  @Test("[P20] 이모지가 nil이면 기본 이모지 반환")
   func displayEmoji_whenEmojiNil_returnsDefault() {
     let promise = TestFactories.makePromise(emoji: nil)
     #expect(promise.displayEmoji == "📌")
   }
 
-  @Test("이모지가 빈 문자열이면 기본 이모지 반환")
+  @Test("[P20] 이모지가 빈 문자열이면 기본 이모지 반환")
   func displayEmoji_whenEmojiEmpty_returnsDefault() {
     let promise = TestFactories.makePromise(emoji: "")
     #expect(promise.displayEmoji == "📌")
@@ -390,7 +390,7 @@ struct PromiseModelResponseStatusTests {
 
   // MARK: - 불발 (failed) 테스트
 
-  @Test("투표 마감 + 미확정이면 불발")
+  @Test("[P23] 투표 마감 + 미확정이면 불발")
   func responseStatus_whenVotingClosedAndNotConfirmed_returnsFailed() {
     let votes = TestFactories.makeVotes(
       accepted: ["user1"],
@@ -401,7 +401,7 @@ struct PromiseModelResponseStatusTests {
     #expect(status == .failed)
   }
 
-  @Test("모든 멤버 응답 + 최소 인원 미달이면 불발")
+  @Test("[P24] 모든 멤버 응답 + 최소 인원 미달이면 불발")
   func responseStatus_whenAllRespondedAndNotConfirmed_returnsFailed() {
     let votes = TestFactories.makeVotes(
       accepted: ["user1"],
@@ -413,7 +413,7 @@ struct PromiseModelResponseStatusTests {
     #expect(status == .failed)
   }
 
-  @Test("남은 인원 모두 찬성해도 최소 인원 불가하면 불발")
+  @Test("[P25] 남은 인원 모두 찬성해도 최소 인원 불가하면 불발")
   func responseStatus_whenCannotReachMinimum_returnsFailed() {
     // 총 4명, 2명 거절, 최소 3명 필요 -> 남은 2명이 다 찬성해도 불가
     let votes = TestFactories.makeVotes(
@@ -428,7 +428,7 @@ struct PromiseModelResponseStatusTests {
 
   // MARK: - 미응답 (needResponse) 테스트
 
-  @Test("내가 아직 투표 안 했으면 미응답")
+  @Test("[P26] 내가 아직 투표 안 했으면 미응답")
   func responseStatus_whenNotVoted_returnsNeedResponse() {
     let votes = TestFactories.makeVotes(
       accepted: ["user1"],
@@ -441,7 +441,7 @@ struct PromiseModelResponseStatusTests {
 
   // MARK: - 확정 (confirmed) 테스트
 
-  @Test("내가 응답했고 약속이 확정되면 confirmed")
+  @Test("[P26] 내가 응답했고 약속이 확정되면 confirmed")
   func responseStatus_whenRespondedAndConfirmed_returnsConfirmed() {
     let votes = TestFactories.makeVotes(
       accepted: ["user1", "user2", "user3"],
@@ -454,7 +454,7 @@ struct PromiseModelResponseStatusTests {
 
   // MARK: - 응답 완료 (responded) 테스트
 
-  @Test("내가 응답했지만 미확정이면 responded")
+  @Test("[P26] 내가 응답했지만 미확정이면 responded")
   func responseStatus_whenRespondedButNotConfirmed_returnsResponded() {
     let votes = TestFactories.makeVotes(
       accepted: ["user1"],
@@ -465,7 +465,7 @@ struct PromiseModelResponseStatusTests {
     #expect(status == .responded)
   }
 
-  @Test("currentUserId가 nil이고 확정이면 confirmed")
+  @Test("[P26] currentUserId가 nil이고 확정이면 confirmed")
   func responseStatus_whenNilUserAndConfirmed_returnsConfirmed() {
     let votes = TestFactories.makeVotes(
       accepted: ["user1", "user2"],
@@ -476,7 +476,7 @@ struct PromiseModelResponseStatusTests {
     #expect(status == .confirmed)
   }
 
-  @Test("currentUserId가 nil이고 미확정이면 responded")
+  @Test("[P26] currentUserId가 nil이고 미확정이면 responded")
   func responseStatus_whenNilUserAndNotConfirmed_returnsResponded() {
     let votes = TestFactories.makeVotes(
       accepted: ["user1"],

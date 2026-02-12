@@ -51,13 +51,13 @@ struct GroupSettingsReducerTests {
 
   // MARK: - 초기 상태 테스트
 
-  @Test("호스트 사용자 isHost true 확인")
+  @Test("[G9] 호스트 사용자 isHost true 확인")
   func isHost_trueForHostUser() {
     let state = makeState(currentUserId: "host-user")
     #expect(state.isHost == true)
   }
 
-  @Test("일반 멤버 isHost false 확인")
+  @Test("[G9] 일반 멤버 isHost false 확인")
   func isHost_falseForMember() {
     let state = makeState(currentUserId: "member-1")
     #expect(state.isHost == false)
@@ -196,5 +196,122 @@ struct GroupSettingsReducerTests {
       $0.isShowingTransferSheet = false
       $0.selectedNewHost = nil
     }
+  }
+
+  // MARK: - 도메인 규칙 테스트
+
+  @Test("[G3] editGroupDescriptionChanged 시 50자로 잘림")
+  func editGroupDescriptionChanged_truncatesAt50Characters() async {
+    var state = makeState()
+    state.editGroup = GroupSettings.Feature.EditGroupState(
+      description: "",
+      maxMembers: 10,
+      selectedPhoto: nil,
+      photoData: nil,
+      isSaving: false,
+      error: nil
+    )
+
+    let store = TestStore(initialState: state) {
+      GroupSettings.Feature()
+    }
+
+    let longText = String(repeating: "가", count: 60)
+    await store.send(.view(.editGroupDescriptionChanged(longText))) {
+      $0.editGroup?.description = String(repeating: "가", count: 50)
+    }
+  }
+
+  @Test("[G3] editGroupDescriptionChanged 시 50자 이하는 그대로")
+  func editGroupDescriptionChanged_shortTextUnchanged() async {
+    var state = makeState()
+    state.editGroup = GroupSettings.Feature.EditGroupState(
+      description: "",
+      maxMembers: 10,
+      selectedPhoto: nil,
+      photoData: nil,
+      isSaving: false,
+      error: nil
+    )
+
+    let store = TestStore(initialState: state) {
+      GroupSettings.Feature()
+    }
+
+    await store.send(.view(.editGroupDescriptionChanged("짧은 설명"))) {
+      $0.editGroup?.description = "짧은 설명"
+    }
+  }
+
+  @Test("[G5] editGroupMaxMembersChanged 시 하한(현재 멤버 수) 이하로 내려가지 않음")
+  func editGroupMaxMembersChanged_clampsToMinimum() async {
+    var state = makeState()
+    state.editGroup = GroupSettings.Feature.EditGroupState(
+      description: "",
+      maxMembers: 10,
+      selectedPhoto: nil,
+      photoData: nil,
+      isSaving: false,
+      error: nil
+    )
+
+    let store = TestStore(initialState: state) {
+      GroupSettings.Feature()
+    }
+
+    // memberIds는 2명이므로 minMaxMembers = max(2, 2) = 2
+    await store.send(.view(.editGroupMaxMembersChanged(1))) {
+      $0.editGroup?.maxMembers = 2
+    }
+  }
+
+  @Test("[G5] editGroupMaxMembersChanged 시 상한(10) 초과하지 않음")
+  func editGroupMaxMembersChanged_clampsToMaximum() async {
+    var state = makeState()
+    state.editGroup = GroupSettings.Feature.EditGroupState(
+      description: "",
+      maxMembers: 10,
+      selectedPhoto: nil,
+      photoData: nil,
+      isSaving: false,
+      error: nil
+    )
+
+    let store = TestStore(initialState: state) {
+      GroupSettings.Feature()
+    }
+
+    await store.send(.view(.editGroupMaxMembersChanged(15))) {
+      $0.editGroup?.maxMembers = 10
+    }
+  }
+
+  @Test("[G12] canTransferHost - 호스트이고 멤버 2명 이상이면 true")
+  func canTransferHost_hostWithMultipleMembers_returnsTrue() {
+    var state = makeState(currentUserId: "host-user")
+    state.members = [
+      UserPublicModel(userId: "host-user", name: "호스트", nickname: "호스트", metadata: .init()),
+      UserPublicModel(userId: "member-1", name: "멤버1", nickname: "멤버1", metadata: .init()),
+    ]
+    #expect(state.canTransferHost == true)
+  }
+
+  @Test("[G12] canTransferHost - 호스트가 아니면 false")
+  func canTransferHost_notHost_returnsFalse() {
+    var state = makeState(currentUserId: "member-1")
+    state.members = [
+      UserPublicModel(userId: "host-user", name: "호스트", nickname: "호스트", metadata: .init()),
+      UserPublicModel(userId: "member-1", name: "멤버1", nickname: "멤버1", metadata: .init()),
+    ]
+    #expect(state.canTransferHost == false)
+  }
+
+  @Test("[G12] canTransferHost - 호스트이지만 혼자면 false")
+  func canTransferHost_hostAlone_returnsFalse() {
+    var state = makeState(currentUserId: "host-user")
+    state.members = [
+      UserPublicModel(userId: "host-user", name: "호스트", nickname: "호스트", metadata: .init()),
+    ]
+    #expect(state.canTransferHost == false)
   }
 }

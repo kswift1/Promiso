@@ -78,7 +78,7 @@ struct PromiseDetailFeatureTests {
 
   // MARK: - Computed Properties 테스트
 
-  @Test("isHost - 호스트일 때 true")
+  @Test("[P10] isHost - 호스트일 때 true")
   func isHost_whenHost_returnsTrue() {
     let promise = makePromise(hostId: "user-1")
     let state = PromiseDetail.Feature.State(
@@ -89,7 +89,7 @@ struct PromiseDetailFeatureTests {
     #expect(state.isHost == true)
   }
 
-  @Test("isHost - 호스트가 아닐 때 false")
+  @Test("[P10] isHost - 호스트가 아닐 때 false")
   func isHost_whenNotHost_returnsFalse() {
     let promise = makePromise(hostId: "host-user")
     let state = PromiseDetail.Feature.State(
@@ -100,7 +100,7 @@ struct PromiseDetailFeatureTests {
     #expect(state.isHost == false)
   }
 
-  @Test("canManage - 약속 호스트이면 true")
+  @Test("[P10] canManage - 약속 호스트이면 true")
   func canManage_promiseHost_returnsTrue() {
     let promise = makePromise(hostId: "user-1")
     let state = PromiseDetail.Feature.State(
@@ -111,7 +111,48 @@ struct PromiseDetailFeatureTests {
     #expect(state.canManage == true)
   }
 
-  @Test("canEdit - 관리 권한이 있고 시작 전이면 true")
+  @Test("[P10] canManage - 그룹 호스트이면 true")
+  func canManage_groupHost_returnsTrue() {
+    var promise = makePromise(hostId: "other-host")
+    promise.group = GroupModel(
+      id: "group-1",
+      name: "그룹",
+      memberIds: ["user-1", "other-host"],
+      maxMembers: 10,
+      inviteCode: "ABC123",
+      createdBy: "user-1"
+    )
+    let state = PromiseDetail.Feature.State(
+      promise: promise,
+      currentUserId: "user-1"
+    )
+
+    #expect(state.isGroupHost == true)
+    #expect(state.canManage == true)
+  }
+
+  @Test("[P10] canManage - 약속 호스트도 그룹 호스트도 아니면 false")
+  func canManage_neitherHost_returnsFalse() {
+    var promise = makePromise(hostId: "host-user")
+    promise.group = GroupModel(
+      id: "group-1",
+      name: "그룹",
+      memberIds: ["host-user", "regular-user"],
+      maxMembers: 10,
+      inviteCode: "ABC123",
+      createdBy: "host-user"
+    )
+    let state = PromiseDetail.Feature.State(
+      promise: promise,
+      currentUserId: "regular-user"
+    )
+
+    #expect(state.isHost == false)
+    #expect(state.isGroupHost == false)
+    #expect(state.canManage == false)
+  }
+
+  @Test("[P12] canEdit - 관리 권한이 있고 시작 전이면 true")
   func canEdit_canManageAndFuture_returnsTrue() {
     let futureDate = Date().addingTimeInterval(7200)
     let promise = makePromise(hostId: "user-1", startAt: futureDate)
@@ -123,7 +164,7 @@ struct PromiseDetailFeatureTests {
     #expect(state.canEdit == true)
   }
 
-  @Test("canEdit - 시작 시간이 지났으면 false")
+  @Test("[P12] canEdit - 시작 시간이 지났으면 false")
   func canEdit_pastStartTime_returnsFalse() {
     let pastDate = Date().addingTimeInterval(-3600)
     let promise = makePromise(hostId: "user-1", startAt: pastDate)
@@ -133,6 +174,24 @@ struct PromiseDetailFeatureTests {
     )
 
     #expect(state.canEdit == false)
+  }
+
+  @Test("[P12] editTapped - canEdit false면 무시")
+  func editTapped_whenCanEditFalse_ignored() async {
+    let pastDate = Date().addingTimeInterval(-3600)
+    let promise = makePromise(hostId: "user-1", startAt: pastDate)
+
+    let state = PromiseDetail.Feature.State(
+      promise: promise,
+      currentUserId: "user-1"
+    )
+
+    let store = TestStore(initialState: state) {
+      PromiseDetail.Feature()
+    }
+
+    // canEdit == false (시작 시간 지남) → editTapped 무시
+    await store.send(.view(.editTapped))
   }
 
   @Test("myVoteStatus - 미투표 시 pending")
@@ -304,7 +363,7 @@ struct PromiseDetailFeatureTests {
     }
   }
 
-  @Test("deleteTapped 시 삭제 확인 알럿 표시")
+  @Test("[P11] deleteTapped 시 삭제 확인 알럿 표시")
   func deleteTapped_showsDeleteAlert() async {
     let promise = makePromise()
 
@@ -333,7 +392,7 @@ struct PromiseDetailFeatureTests {
     }
   }
 
-  @Test("deleteTapped - 이미 삭제 중이면 무시")
+  @Test("[P11] deleteTapped - 이미 삭제 중이면 무시")
   func deleteTapped_whileDeleting_ignored() async {
     let promise = makePromise()
 
