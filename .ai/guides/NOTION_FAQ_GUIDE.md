@@ -166,13 +166,58 @@ Projects/Shared/Sources/Constants/AppConstants.swift
 
 ## 문제 해결
 
+### 워크스페이스 변경 시 체크리스트
+
+Notion 워크스페이스를 변경한 경우 다음을 모두 확인하세요:
+
+1. **Secret Manager 업데이트** (가장 흔한 원인)
+   ```bash
+   # Firebase Secret Manager에서 NOTION_FAQ_API_KEY를 새 워크스페이스의 키로 업데이트
+   firebase functions:secrets:set NOTION_FAQ_API_KEY
+   # 새 워크스페이스 Integration의 API 키 (ntn_xxx...) 입력
+   ```
+
+2. **Integration → Database 연결 확인**
+   - 새 워크스페이스에서 FAQ Database 페이지 열기
+   - 우측 상단 `...` > `Connections` > Integration 추가
+   - Integration이 해당 Database에 접근 권한이 있어야 함
+
+3. **Database 속성명 일치 확인**
+   - 새 Database의 속성명이 정확히 `Question`, `Answer`, `Category`, `Order`, `Active`인지 확인
+   - 속성명이 다르면 `faq.ts`의 filter/sort 및 데이터 변환 코드 수정 필요
+
+4. **코드 내 Database ID 업데이트** (3곳)
+   - `Projects/Shared/Sources/Constants/AppConstants.swift` → `defaultConfig.notionFAQDatabaseId`
+   - `Projects/Clients/Sources/Clients/AppConfigClient.swift` → Remote Config defaults
+   - `infra/firebase/remoteconfig.template.json` → `notionFAQDatabaseId`
+
+5. **Firebase Remote Config 배포**
+   ```bash
+   firebase deploy --only remoteconfig
+   ```
+
+6. **Firebase Functions 재배포** (Secret 변경 시 필수)
+   ```bash
+   firebase deploy --only functions:getFAQs
+   ```
+
+### 401 Unauthorized
+- `NOTION_FAQ_API_KEY`가 유효한지 확인
+- 키가 새 워크스페이스의 Integration에서 발급된 것인지 확인
+
 ### 403 Forbidden
 - Integration이 Database에 연결되었는지 확인
-- API Key가 올바른지 확인
+- Integration의 Capabilities에 **Read content** 권한이 있는지 확인
 
 ### 404 Not Found
+- **가장 흔한 원인**: API 키가 다른 워크스페이스의 키 (워크스페이스 변경 후 Secret Manager 미갱신)
 - Database ID가 올바른지 확인 (URL에서 추출)
 - Notion URL: `https://notion.so/{database_id}?v=...`
+- Integration이 해당 Database에 연결(Connection)되어 있는지 확인
+
+### 400 Bad Request
+- Database 속성명이 코드와 일치하는지 확인
+- 필수 속성: `Question`(Title), `Answer`(Rich Text), `Category`(Select), `Order`(Number), `Active`(Checkbox)
 
 ### 빈 결과
 - `Active` 체크박스가 체크되어 있는지 확인
