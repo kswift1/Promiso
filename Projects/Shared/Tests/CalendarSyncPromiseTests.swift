@@ -213,7 +213,7 @@ struct URLTests {
     let url = URL(string: "promiso://promise/abc123?hash=12345678")
     let parsed = PromisoCalendarTag.parse(from: url)
 
-    #expect(parsed?.promiseId == "abc123")
+    #expect(parsed?.id == "abc123")
     #expect(parsed?.contentHash == "12345678")
   }
 
