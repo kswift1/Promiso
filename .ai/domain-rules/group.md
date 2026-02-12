@@ -61,3 +61,72 @@
 | G30 | 딥링크 형식 | `promiso://join/{code}` | ✅ | — |
 | G31 | 미리보기 멤버 최대 | 10명 | — | ✅ |
 | G32 | 미리보기 인증 불필요 | 비로그인 사용자도 미리보기 가능 | — | ✅ |
+
+---
+
+## 5. 코드 매핑 (Code Mapping)
+
+> 마지막 매핑: 2026-02-12 | iOS 구현 없는 규칙(Backend only)은 `—` 표시
+
+### 제약 조건
+
+| ID | 구현 | 테스트 | 상태 |
+|----|------|--------|:----:|
+| G1 | `CreateGroupFeature.swift` `isValid` (count >= 2) | `CreateGroupReducerTests` 2개 | ✅ |
+| G2 | ❌ iOS 미구현 (Backend만) | — | — |
+| G3 | `GroupSettingsFeature.swift` `editGroupDescriptionChanged` `prefix(50)` | — | ❌ |
+| G4 | `CreateGroupFeature.swift` `MaxMembers` enum (2~10) | — | ❌ |
+| G5 | `GroupSettingsFeature.swift` `minMaxMembers` = max(2, memberCount) | — | ❌ |
+| G6 | `JoinGroupFeature.swift` `isValidCode` (count==6, 영숫자) | — | ❌ |
+| G7~G8 | — | — | — |
+
+### 권한
+
+| ID | 구현 | 테스트 | 상태 |
+|----|------|--------|:----:|
+| G9 | `GroupSettingsFeature.swift` `isHost` (createdBy == currentUserId) | — | ❌ |
+| G10 | `GroupSettingsFeature.swift` `editGroupSaveTapped` | — | ❌ |
+| G11 | `GroupSettingsFeature.swift` `confirmDelete` | — | ❌ |
+| G12 | `GroupSettingsFeature.swift` `canTransferHost` | — | ❌ |
+| G13~G14 | — | — | — |
+| G15 | `GroupSettingsFeature.swift` `confirmLeave` | — | ❌ |
+| G16 | `JoinGroupFeature.swift` `joinGroupTapped` | `JoinGroupPermissionTests` | ✅ |
+| G17 | — | — | — |
+
+### 동작 규칙
+
+| ID | 구현 | 테스트 | 상태 |
+|----|------|--------|:----:|
+| G18~G19 | — (Backend only) | — | — |
+| G20 | `CreateGroupFeature.swift` / `JoinGroupFeature.swift` `notificationEnabled = true` | `CreateGroupPermissionTests` `JoinGroupPermissionTests` | ✅ |
+| G21 | `CreateGroupFeature.swift` / `JoinGroupFeature.swift` `calendarSyncEnabled = true` | `CreateGroupPermissionTests` `JoinGroupPermissionTests` | ✅ |
+| G22~G23 | — | — | — |
+| G24 | `JoinGroupFeature.swift` `isValidCode` | — | ❌ |
+| G25~G26 | — | — | — |
+| G27 | `GroupMainFeature.swift` `sortedGroupsForSelection` (joinedAt 내림차순) | — | ❌ |
+| G28 | `GroupSortOption.swift` enum + `GroupSortSettingsFeature.swift` | — | ❌ |
+
+### 표시 규칙
+
+| ID | 구현 | 테스트 | 상태 |
+|----|------|--------|:----:|
+| G29 | `GroupInviteShareMessage.swift` `inviteLink` | — | ❌ |
+| G30 | `GroupInviteShareMessage.swift` `deeplinkURL` | — | ❌ |
+| G31~G32 | — | — | — |
+
+### 핵심 파일
+
+| 구현 파일 | 경로 | 관련 규칙 |
+|----------|------|----------|
+| CreateGroupFeature.swift | `Features/GroupFeature/Sources/CreateGroup/Main/` | G1,G4,G20,G21 |
+| JoinGroupFeature.swift | `Features/GroupFeature/Sources/JoinGroup/Main/` | G6,G16,G20,G21,G24 |
+| GroupSettingsFeature.swift | `Features/GroupFeature/Sources/GroupSettings/` | G3,G5,G9-G12,G15 |
+| GroupMainFeature.swift | `Features/GroupFeature/Sources/GroupMain/` | G27 |
+| GroupSortOption.swift | `Shared/Sources/Models/` | G28 |
+| GroupInviteShareMessage.swift | `Shared/Sources/Utils/` | G29,G30 |
+
+| 테스트 파일 | 경로 | 관련 규칙 |
+|------------|------|----------|
+| CreateGroupReducerTests.swift | `Features/GroupFeature/Tests/Sources/` | G1 |
+| CreateGroupPermissionTests.swift | `Features/GroupFeature/Tests/Sources/` | G20,G21 |
+| JoinGroupPermissionTests.swift | `Features/GroupFeature/Tests/Sources/` | G16,G20,G21 |

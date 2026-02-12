@@ -96,3 +96,89 @@
 | P43 | 설명 텍스트 접기 줄 수 | 3줄 | ✅ | — |
 | P44 | 캘린더 조회 최대 | 50개 | — | ✅ |
 | P45 | CriticalZone 우선순위 | liveActivity(1) > inProgress(2) > departureSoon(3) | ✅ | — |
+
+---
+
+## 5. 코드 매핑 (Code Mapping)
+
+> 마지막 매핑: 2026-02-12 | iOS 구현 없는 규칙(Backend only)은 `—` 표시
+
+### 제약 조건
+
+| ID | 구현 | 테스트 | 상태 |
+|----|------|--------|:----:|
+| P1 | `PromiseModel.swift` `isTitleValid` | `PromiseModelValidationTests` 4개 | ✅ |
+| P2 | `TitleInputTextField.swift` `prefix(30)` | Preview만 | ⚠️ |
+| P3 | `CreatePromiseFeature.swift` `prefix(500)` | — | ❌ |
+| P4 | `PromiseModel.swift` `isStartTimeValid` | `PromiseModelValidationTests` 2개 | ✅ |
+| P5 | `PromiseModel.swift` `isEndTimeValid` | `PromiseModelValidationTests` 4개 | ✅ |
+| P6 | `PromiseModel.swift` `isMinimumParticipantsValid` | `PromiseModelValidationTests` 4개 | ✅ |
+| P7 | `CreatePromiseFeature.swift` `firstButtonDisabled` | `CreatePromiseReducerTests` 2개 | ✅ |
+| P8 | `CreatePromiseFeature.swift` `secondButtonDisabled` | — | ❌ |
+
+### 권한
+
+| ID | 구현 | 테스트 | 상태 |
+|----|------|--------|:----:|
+| P9 | — | — | — |
+| P10 | `PromiseDetailFeature.swift` `canManage` | — | ❌ |
+| P11 | `PromiseDetailFeature.swift` `canManage` | — | ❌ |
+| P12 | `PromiseDetailFeature.swift` `canEdit` | — | ❌ |
+| P13~P15 | — | — | — |
+
+### 동작 규칙
+
+| ID | 구현 | 테스트 | 상태 |
+|----|------|--------|:----:|
+| P16 | — | — | — |
+| P17 | `CreatePromiseFeature.swift` `.groupSelected` | `CreatePromiseReducerTests` 1개 | ✅ |
+| P18 | `CreatePromiseFeature.swift` `.toggleUseEndTime` | — | ❌ |
+| P19 | — | — | — |
+| P20 | `PromiseModel.swift` `displayEmoji` | `PromiseModelTests` 3개 | ✅ |
+| P21 | — | — | — |
+| P22 | `PromiseModel.swift` `responseStatus` | `PromiseModelTests` 8개 (P22-P26 공통) | ✅ |
+| P23 | ↑ | ↑ | ✅ |
+| P24 | ↑ | ↑ | ✅ |
+| P25 | ↑ | ↑ | ✅ |
+| P26 | ↑ | ↑ | ✅ |
+| P27~P31 | — | — | — |
+| P32 | `EditPromiseFeature.swift` location 필드 없음 (read-only) | — | ❌ |
+| P33 | `EditPromiseFeature.swift` `hasChanges` | — | ❌ |
+| P34 | `PromiseModel.swift` `isOngoing` | `PromiseModelTests` 5개 | ✅ |
+| P35 | `PromiseModel.swift` `isPast` | `PromiseModelTests` 3개 | ✅ |
+| P36 | `PromiseModel.swift` `isUpcoming` | `PromiseModelTests` 2개 | ✅ |
+| P37 | 구현 미확인 (departureSoon 30분) | — | ❌ |
+
+### 표시 규칙
+
+| ID | 구현 | 테스트 | 상태 |
+|----|------|--------|:----:|
+| P38 | `CreatePromiseFeature.swift` `.setTitle` 디바운스 1000ms | — | ❌ |
+| P39 | `GroupPromiseListFeature.swift` 필터링 | — | ❌ |
+| P40 | `GroupPromiseListFeature.swift` 필터링 | — | ❌ |
+| P41 | `GroupPromiseListFeature.swift` 필터링 | — | ❌ |
+| P42 | UI 컴포넌트 | — | ❌ |
+| P43 | View `lineLimit` ⚠️ 코드=2줄, 규칙=3줄 | — | ❌ |
+| P44 | — | — | — |
+| P45 | HomeFeature / RootTabFeature | — | ❌ |
+
+### ⚠️ 불일치 발견
+
+| ID | 내용 |
+|----|------|
+| P43 | 규칙=3줄, 코드=`lineLimit(2)` — 확인 필요 |
+
+### 핵심 파일
+
+| 구현 파일 | 경로 | 관련 규칙 |
+|----------|------|----------|
+| PromiseModel.swift | `Clients/Sources/Domain/Models/` | P1,P4-P6,P20,P22-P26,P34-P36 |
+| CreatePromiseFeature.swift | `Features/GroupFeature/Sources/CreatePromise/Core/` | P2-P3,P7-P8,P17-P18,P38 |
+| PromiseDetailFeature.swift | `Features/SharedFeature/Sources/PromiseDetail/` | P10-P12 |
+| EditPromiseFeature.swift | `Features/SharedFeature/Sources/EditPromise/` | P3,P32-P33 |
+
+| 테스트 파일 | 경로 | 테스트 수 |
+|------------|------|:--------:|
+| PromiseModelValidationTests.swift | `Clients/Tests/` | 22개 |
+| PromiseModelTests.swift | `Clients/Tests/` | 48개 |
+| CreatePromiseReducerTests.swift | `Features/GroupFeature/Tests/Sources/` | 일부 |

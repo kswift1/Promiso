@@ -42,3 +42,40 @@
 |----|------|-----|
 | W12 | 위젯 딥링크 형식 | `promiso://promise?id={id}&groupId={groupId}` |
 | W13 | 위젯 종류 | Small, Medium, Large (3종) |
+
+---
+
+## 5. 코드 매핑 (Code Mapping)
+
+> 마지막 매핑: 2026-02-12
+
+### 제약 조건
+
+| ID | 구현 | 테스트 | 상태 |
+|----|------|--------|:----:|
+| W1~W4 | — (Backend only) | — | — |
+| W5 | `WidgetPromiseData.swift` `staleCacheThreshold = 2 * 60 * 60` + `isStale` | — | ❌ |
+| W6 | `WidgetDataManager.swift` `manualRefreshTTL = 15.0` + `checkTTL()` | — | ❌ |
+
+### 권한 / 동작 규칙
+
+| ID | 구현 | 테스트 | 상태 |
+|----|------|--------|:----:|
+| W7~W11 | — (Backend only 또는 iOS 간접 처리) | — | — |
+
+### 표시 규칙
+
+| ID | 구현 | 테스트 | 상태 |
+|----|------|--------|:----:|
+| W12 | `WidgetPromiseData.swift` `deeplinkURL` (`promiso://promise?id=&groupId=`) | — | ❌ |
+| W13 | `SmallPromiseWidget.swift` / `MediumPromiseWidget.swift` / `LargePromiseWidget.swift` | Preview만 | ⚠️ |
+
+### 핵심 파일
+
+| 구현 파일 | 경로 | 관련 규칙 |
+|----------|------|----------|
+| WidgetPromiseData.swift | `Shared/Sources/Widget/` | W5,W12 |
+| WidgetDataManager.swift | `Shared/Sources/Widget/` | W6 |
+| SmallPromiseWidget.swift | `App/Extensions/PromiseWidget/Sources/Widgets/` | W13 |
+| MediumPromiseWidget.swift | `App/Extensions/PromiseWidget/Sources/Widgets/` | W13 |
+| LargePromiseWidget.swift | `App/Extensions/PromiseWidget/Sources/Widgets/` | W13 |
