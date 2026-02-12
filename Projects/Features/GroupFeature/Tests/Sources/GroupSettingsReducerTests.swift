@@ -70,7 +70,7 @@ struct GroupSettingsReducerTests {
     let store = TestStore(initialState: makeState()) {
       GroupSettings.Feature()
     } withDependencies: {
-      $0.hapticFeedback.buttonTap = {}
+      $0.hapticFeedback.light = {}
       $0.analyticsClient.logEvent = { _, _ in }
     }
 

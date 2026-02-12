@@ -98,6 +98,7 @@ extension AppEntry {
       case scenePhaseChanged(ScenePhase)
     }
     
+    @CasePathable
     public enum InternalAction {
       case checkVersion
       case versionCheckCompleted(VersionCheckResult)

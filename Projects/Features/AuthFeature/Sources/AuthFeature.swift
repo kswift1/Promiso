@@ -51,11 +51,13 @@ extension Auth {
       case googleLoginTapped
     }
     
+    @CasePathable
     public enum Internal: Sendable {
       case appleAuthorizationResult(Result<ASAuthorization, Error>)
       case authResponse(Result<ServiceTokenBundle?, AuthClientError>)
     }
     
+    @CasePathable
     public enum Delegate: Equatable {
       /// 로그인 성공 (providerProfileImageURL: Provider에서 제공한 프로필 이미지 URL)
       case loggedIn(providerProfileImageURL: URL?)

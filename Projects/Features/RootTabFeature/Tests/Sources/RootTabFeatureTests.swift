@@ -21,6 +21,8 @@ import ComposableArchitecture
 import Clients
 import Sharing
 @testable import RootTabFeature
+@testable import GroupFeature
+@testable import HomeFeature
 
 // MARK: - RootTabFeature Tests
 
@@ -71,7 +73,7 @@ struct RootTabFeatureTests {
     ) {
       RootTab.Feature()
     } withDependencies: {
-      $0.hapticFeedback.buttonTap = {}
+      $0.hapticFeedback.light = {}
     }
 
     await store.send(.tabSelected(.group)) {
@@ -89,7 +91,7 @@ struct RootTabFeatureTests {
     ) {
       RootTab.Feature()
     } withDependencies: {
-      $0.hapticFeedback.buttonTap = {}
+      $0.hapticFeedback.light = {}
     }
 
     // home은 기본 선택 탭
@@ -106,7 +108,7 @@ struct RootTabFeatureTests {
     ) {
       RootTab.Feature()
     } withDependencies: {
-      $0.hapticFeedback.buttonTap = {}
+      $0.hapticFeedback.light = {}
     }
 
     await store.send(.tabSelected(.calendar)) {
@@ -127,7 +129,7 @@ struct RootTabFeatureTests {
     let store = TestStore(initialState: state) {
       RootTab.Feature()
     } withDependencies: {
-      $0.hapticFeedback.buttonTap = {}
+      $0.hapticFeedback.light = {}
       $0.notificationClient.getUnreadCount = { _ in 0 }
       $0.notificationClient.setBadgeCount = { _ in }
     }
@@ -326,7 +328,7 @@ struct RootTabFeatureTests {
     ) {
       RootTab.Feature()
     } withDependencies: {
-      $0.hapticFeedback.buttonTap = {}
+      $0.hapticFeedback.light = {}
     }
 
     await store.send(.tabSelected(.settings)) {
@@ -345,7 +347,7 @@ struct RootTabFeatureTests {
     let store = TestStore(initialState: state) {
       RootTab.Feature()
     } withDependencies: {
-      $0.hapticFeedback.buttonTap = {}
+      $0.hapticFeedback.light = {}
     }
 
     await store.send(.tabSelected(.settings)) {
@@ -432,7 +434,7 @@ struct RootTabFeatureTests {
     ) {
       RootTab.Feature()
     } withDependencies: {
-      $0.hapticFeedback.buttonTap = {}
+      $0.hapticFeedback.light = {}
       $0.notificationClient.getUnreadCount = { _ in 0 }
       $0.notificationClient.setBadgeCount = { _ in }
     }

@@ -139,6 +139,7 @@ extension RootTab {
       case `internal`(Internal)
     }
 
+    @CasePathable
     public enum Internal: Equatable, Sendable {
       /// Push to Start 토큰 구독 시작
       case observePushToStartToken
@@ -162,6 +163,7 @@ extension RootTab {
       case syncCalendar
     }
 
+    @CasePathable
     public enum Delegate: Equatable {
       case logoutRequested
       case openJoinGroup(inviteCode: String)

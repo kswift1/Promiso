@@ -290,7 +290,7 @@ struct GroupFeatureTests {
       GroupMain.Feature()
     } withDependencies: {
       $0.promiseClient.respondPromise = { _, _ in
-        RespondPromiseResult(isConfirmed: false, confirmedPromise: nil)
+        RespondPromiseResult(promiseId: "promise-1", status: "accepted", isConfirmed: false, confirmedPromise: nil)
       }
       $0.groupClient.fetchGroupSummaries = { [] }
     }
@@ -322,7 +322,7 @@ struct GroupFeatureTests {
       GroupMain.Feature()
     } withDependencies: {
       $0.promiseClient.respondPromise = { _, _ in
-        RespondPromiseResult(isConfirmed: false, confirmedPromise: nil)
+        RespondPromiseResult(promiseId: "promise-1", status: "accepted", isConfirmed: false, confirmedPromise: nil)
       }
       $0.groupClient.fetchGroupSummaries = { [] }
       $0.calendarSyncClient.removePromise = { _ in }

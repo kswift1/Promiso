@@ -398,6 +398,7 @@ extension GroupMain {
 
       case path(StackActionOf<Path>)
 
+      @CasePathable
       public enum ViewAction: Sendable {
         case onAppear
         case refreshTriggered
@@ -430,6 +431,7 @@ extension GroupMain {
         case openCreatePromiseIfPossible  // Widget 딥링크: 그룹 있으면 약속 생성
       }
 
+      @CasePathable
       public enum Internal: Sendable {
         case fetchGroupList
         case groupListResponse(Result<[UserGroupInfo], AppError>)

@@ -88,12 +88,14 @@ extension EditPromise {
         case clearError
       }
 
+      @CasePathable
       public enum Internal: Sendable {
         case titleDebounced(String)
         case emojiSuggestionsResponse([EmojiSuggestion])
         case updatePromiseResponse(Result<Void, Clients.PromiseClientError>)
       }
 
+      @CasePathable
       public enum Delegate: Sendable {
         case cancelled
         case promiseUpdated(PromiseModel)
