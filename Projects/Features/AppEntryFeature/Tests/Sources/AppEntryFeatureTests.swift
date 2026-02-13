@@ -481,6 +481,151 @@ struct AppEntryFeatureTests {
     #expect(store.state.destinationType == .main)
   }
 
+  // MARK: - 온보딩 인트로 플로우 (비인증 + 온보딩 미완료)
+
+  @Test("sessionCheckResponse 비인증 + 온보딩 미완료 → onboardingIntro")
+  func sessionCheck_unauthenticated_onboardingNotCompleted_showsIntro() async {
+    let store = TestStore(initialState: AppEntry.Feature.State()) {
+      AppEntry.Feature()
+    } withDependencies: {
+      $0.userDefaultsClient.boolForKey = { _ in false }
+    }
+
+    await store.send(.internal(.sessionCheckResponse(isAuthenticated: false))) {
+      $0.isFullOnboarding = true
+      $0.destination = .onboardingIntro(AppEntry.OnboardingIntro.State())
+      $0.splash = .animatingOut
+    }
+  }
+
+  @Test("onboardingIntro.delegate.completed → notificationPermission 표시")
+  func onboardingIntroCompleted_showsNotificationPermission() async {
+    var state = AppEntry.Feature.State()
+    state.destination = .onboardingIntro(AppEntry.OnboardingIntro.State())
+
+    let store = TestStore(initialState: state) {
+      AppEntry.Feature()
+    }
+
+    await store.send(.destination(.presented(.onboardingIntro(.delegate(.completed))))) {
+      $0.notificationPermission = NotificationPermission.Feature.State()
+    }
+  }
+
+  @Test("notificationPermission dismissed + pendingUserForMain nil → auth 화면")
+  func notificationPermissionDismissed_noPendingUser_showsAuth() async {
+    var state = AppEntry.Feature.State()
+    state.notificationPermission = NotificationPermission.Feature.State()
+
+    let store = TestStore(initialState: state) {
+      AppEntry.Feature()
+    } withDependencies: {
+      $0.userDefaultsClient.setBool = { _, _ in }
+    }
+
+    await store.send(.notificationPermission(.presented(.delegate(.dismissed)))) {
+      $0.notificationPermission = nil
+      $0.destination = .auth(AuthFeature.Auth.Feature.State())
+    }
+  }
+
+  // MARK: - Profile + OnboardingStart 플로우
+
+  @Test("profile.completed + isFullOnboarding=true → onboardingStart 표시")
+  func profileCompleted_fullOnboarding_showsOnboardingStart() async {
+    let user = makeUser(id: "full-onboarding-user", nickname: "풀온보딩")
+    var state = AppEntry.Feature.State()
+    state.destination = .profile(AppEntry.ProfileSetup.State())
+    state.isFullOnboarding = true
+
+    let store = TestStore(initialState: state) {
+      AppEntry.Feature()
+    } withDependencies: {
+      $0.analyticsClient.logEvent = { _, _ in }
+    }
+
+    await store.send(.destination(.presented(.profile(.delegate(.completed(user)))))) {
+      $0.pendingUserForMain = user
+      $0.destination = .onboardingStart(AppEntry.OnboardingStart.State(nickname: "풀온보딩"))
+    }
+  }
+
+  @Test("onboardingStart.delegate.completed → pendingUser로 메인 전환")
+  func onboardingStartCompleted_transitionsToMain() async {
+    let user = makeUser(id: "start-completed", nickname: "시작완료")
+    var state = AppEntry.Feature.State()
+    state.pendingUserForMain = user
+    state.destination = .onboardingStart(AppEntry.OnboardingStart.State(nickname: "시작완료"))
+
+    let store = TestStore(initialState: state) {
+      AppEntry.Feature()
+    } withDependencies: {
+      $0.clarityClient.setUser = { _, _ in }
+      $0.analyticsClient.setUserID = { _ in }
+      $0.analyticsClient.setUserProperty = { _, _ in }
+      $0.analyticsClient.logEvent = { _, _ in }
+    }
+    store.exhaustivity = .off(showSkippedAssertions: false)
+
+    await store.send(.destination(.presented(.onboardingStart(.delegate(.completed))))) {
+      $0.pendingUserForMain = nil
+    }
+    await store.receive(\.internal.transitionToMain)
+    #expect(store.state.destinationType == .main)
+  }
+
+  @Test("onboardingStart.delegate.enterInviteCode → joinGroup 딥링크 + 메인 전환")
+  func onboardingStartEnterInviteCode_transitionsToMainWithJoinGroup() async {
+    let user = makeUser(id: "invite-code", nickname: "초대코드")
+    var state = AppEntry.Feature.State()
+    state.pendingUserForMain = user
+    state.destination = .onboardingStart(AppEntry.OnboardingStart.State(nickname: "초대코드"))
+
+    let store = TestStore(initialState: state) {
+      AppEntry.Feature()
+    } withDependencies: {
+      $0.clarityClient.setUser = { _, _ in }
+      $0.analyticsClient.setUserID = { _ in }
+      $0.analyticsClient.setUserProperty = { _, _ in }
+      $0.analyticsClient.logEvent = { _, _ in }
+    }
+    store.exhaustivity = .off(showSkippedAssertions: false)
+
+    await store.send(.destination(.presented(.onboardingStart(.delegate(.enterInviteCode))))) {
+      $0.pendingUserForMain = nil
+      $0.pendingDeeplink = .joinGroup(inviteCode: "")
+    }
+    await store.receive(\.internal.transitionToMain)
+    #expect(store.state.destinationType == .main)
+  }
+
+  @Test("onboardingStart.delegate.createGroup → 메인 전환 + openCreateGroup")
+  func onboardingStartCreateGroup_transitionsToMainAndOpensCreateGroup() async {
+    let user = makeUser(id: "create-group", nickname: "그룹생성")
+    var state = AppEntry.Feature.State()
+    state.pendingUserForMain = user
+    state.destination = .onboardingStart(AppEntry.OnboardingStart.State(nickname: "그룹생성"))
+
+    let store = TestStore(initialState: state) {
+      AppEntry.Feature()
+    } withDependencies: {
+      $0.clarityClient.setUser = { _, _ in }
+      $0.analyticsClient.setUserID = { _ in }
+      $0.analyticsClient.setUserProperty = { _, _ in }
+      $0.analyticsClient.logEvent = { _, _ in }
+    }
+    store.exhaustivity = .off(showSkippedAssertions: false)
+
+    await store.send(.destination(.presented(.onboardingStart(.delegate(.createGroup))))) {
+      $0.pendingUserForMain = nil
+    }
+    await store.receive(\.internal.transitionToMain)
+    #expect(store.state.destinationType == .main)
+    await store.receive(\.destination.presented.main.openCreateGroup)
+  }
+
+  // MARK: - Logout 테스트
+
   @Test("logoutRequested delegate 수신 시 auth로 전환")
   func logoutRequested_movesToAuth() async {
     let state = makeMainState()
