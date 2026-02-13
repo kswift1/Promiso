@@ -4,13 +4,13 @@ import WidgetKit
 
 // MARK: - Circular Widget (원형 잠금화면 위젯)
 
-/// 원형 잠금화면 위젯 - D-Day 표시
-struct CircularPromiseWidget: Widget {
-  let kind: String = "CircularPromiseWidget"
+/// 잠금 화면 원형 위젯 (accessoryCircular) - D-Day 표시
+struct PromiseAccessoryCircularWidget: Widget {
+  let kind: String = WidgetKind.accessoryCircular
 
   var body: some WidgetConfiguration {
     StaticConfiguration(kind: kind, provider: PromiseTimelineProvider()) { entry in
-      CircularPromiseWidgetView(entry: entry)
+      PromiseAccessoryCircularWidgetView(entry: entry)
         .containerBackground(.clear, for: .widget)
     }
     .configurationDisplayName("다음 약속")
@@ -19,7 +19,7 @@ struct CircularPromiseWidget: Widget {
   }
 }
 
-struct CircularPromiseWidgetView: View {
+struct PromiseAccessoryCircularWidgetView: View {
   let entry: WidgetPromiseEntry
 
   var body: some View {
@@ -79,13 +79,13 @@ struct CircularPromiseWidgetView: View {
 
 // MARK: - Rectangular Widget (직사각형 잠금화면 위젯)
 
-/// 직사각형 잠금화면 위젯 - 다음 약속 정보
-struct RectangularPromiseWidget: Widget {
-  let kind: String = "RectangularPromiseWidget"
+/// 잠금 화면 직사각형 위젯 (accessoryRectangular) - 다음 약속 정보
+struct PromiseAccessoryRectangularWidget: Widget {
+  let kind: String = WidgetKind.accessoryRectangular
 
   var body: some WidgetConfiguration {
     StaticConfiguration(kind: kind, provider: PromiseTimelineProvider()) { entry in
-      RectangularPromiseWidgetView(entry: entry)
+      PromiseAccessoryRectangularWidgetView(entry: entry)
         .containerBackground(.clear, for: .widget)
     }
     .configurationDisplayName("다음 약속")
@@ -94,7 +94,7 @@ struct RectangularPromiseWidget: Widget {
   }
 }
 
-struct RectangularPromiseWidgetView: View {
+struct PromiseAccessoryRectangularWidgetView: View {
   let entry: WidgetPromiseEntry
 
   var body: some View {
@@ -198,25 +198,25 @@ struct RectangularPromiseWidgetView: View {
 
 #if DEBUG
 #Preview("Circular - 약속 있음", as: .accessoryCircular) {
-  CircularPromiseWidget()
+  PromiseAccessoryCircularWidget()
 } timeline: {
   WidgetPromiseEntry.previewToday
 }
 
 #Preview("Circular - 약속 없음", as: .accessoryCircular) {
-  CircularPromiseWidget()
+  PromiseAccessoryCircularWidget()
 } timeline: {
   WidgetPromiseEntry(date: Date(), promises: [], state: .empty)
 }
 
 #Preview("Rectangular - 약속 있음", as: .accessoryRectangular) {
-  RectangularPromiseWidget()
+  PromiseAccessoryRectangularWidget()
 } timeline: {
   WidgetPromiseEntry.previewToday
 }
 
 #Preview("Rectangular - 약속 없음", as: .accessoryRectangular) {
-  RectangularPromiseWidget()
+  PromiseAccessoryRectangularWidget()
 } timeline: {
   WidgetPromiseEntry(date: Date(), promises: [], state: .empty)
 }

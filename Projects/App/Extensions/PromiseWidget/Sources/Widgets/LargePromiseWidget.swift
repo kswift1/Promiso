@@ -4,13 +4,13 @@ import ResourceKit
 import SwiftUI
 import WidgetKit
 
-/// 큰 크기 위젯 (4x4) - 오늘 + 다가오는 약속 표시
-struct LargePromiseWidget: Widget {
-  let kind: String = "LargePromiseWidget"
+/// 홈 화면 큰 크기 위젯 (systemLarge) - 오늘 + 다가오는 약속 표시
+struct PromiseSystemLargeWidget: Widget {
+  let kind: String = WidgetKind.systemLarge
 
   var body: some WidgetConfiguration {
     StaticConfiguration(kind: kind, provider: PromiseTimelineProvider()) { entry in
-      LargePromiseWidgetView(entry: entry)
+      PromiseSystemLargeWidgetView(entry: entry)
         .containerBackground(for: .widget) {
           widgetBackground
         }
@@ -31,7 +31,7 @@ struct LargePromiseWidget: Widget {
   }
 }
 
-struct LargePromiseWidgetView: View {
+struct PromiseSystemLargeWidgetView: View {
   let entry: WidgetPromiseEntry
 
   var body: some View {
@@ -352,25 +352,25 @@ struct LargePromiseWidgetView: View {
 
 #if DEBUG
 #Preview("전체 약속", as: .systemLarge) {
-  LargePromiseWidget()
+  PromiseSystemLargeWidget()
 } timeline: {
   WidgetPromiseEntry.previewFull
 }
 
 #Preview("오늘만", as: .systemLarge) {
-  LargePromiseWidget()
+  PromiseSystemLargeWidget()
 } timeline: {
   WidgetPromiseEntry.previewToday
 }
 
 #Preview("다가오는 약속만", as: .systemLarge) {
-  LargePromiseWidget()
+  PromiseSystemLargeWidget()
 } timeline: {
   WidgetPromiseEntry.previewUpcoming
 }
 
 #Preview("약속 없음", as: .systemLarge) {
-  LargePromiseWidget()
+  PromiseSystemLargeWidget()
 } timeline: {
   WidgetPromiseEntry(date: Date(), promises: [], state: .empty)
 }

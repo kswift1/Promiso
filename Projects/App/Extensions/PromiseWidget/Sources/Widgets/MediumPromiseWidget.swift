@@ -4,13 +4,13 @@ import ResourceKit
 import SwiftUI
 import WidgetKit
 
-/// 중간 크기 위젯 (4x2) - 오늘 약속 2-3개 표시
-struct MediumPromiseWidget: Widget {
-  let kind: String = "MediumPromiseWidget"
+/// 홈 화면 중간 크기 위젯 (systemMedium) - 오늘 약속 2-3개 표시
+struct PromiseSystemMediumWidget: Widget {
+  let kind: String = WidgetKind.systemMedium
 
   var body: some WidgetConfiguration {
     StaticConfiguration(kind: kind, provider: PromiseTimelineProvider()) { entry in
-      MediumPromiseWidgetView(entry: entry)
+      PromiseSystemMediumWidgetView(entry: entry)
         .containerBackground(for: .widget) {
           widgetBackground
         }
@@ -31,7 +31,7 @@ struct MediumPromiseWidget: Widget {
   }
 }
 
-struct MediumPromiseWidgetView: View {
+struct PromiseSystemMediumWidgetView: View {
   let entry: WidgetPromiseEntry
 
   var body: some View {
@@ -299,25 +299,25 @@ struct MediumPromiseWidgetView: View {
 
 #if DEBUG
 #Preview("오늘 약속", as: .systemMedium) {
-  MediumPromiseWidget()
+  PromiseSystemMediumWidget()
 } timeline: {
   WidgetPromiseEntry.previewToday
 }
 
 #Preview("다가오는 약속", as: .systemMedium) {
-  MediumPromiseWidget()
+  PromiseSystemMediumWidget()
 } timeline: {
   WidgetPromiseEntry.previewUpcoming
 }
 
 #Preview("약속 없음", as: .systemMedium) {
-  MediumPromiseWidget()
+  PromiseSystemMediumWidget()
 } timeline: {
   WidgetPromiseEntry(date: Date(), promises: [], state: .empty)
 }
 
 #Preview("로그인 필요", as: .systemMedium) {
-  MediumPromiseWidget()
+  PromiseSystemMediumWidget()
 } timeline: {
   WidgetPromiseEntry(date: Date(), promises: [], state: .notLoggedIn)
 }

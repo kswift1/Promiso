@@ -4,13 +4,13 @@ import ResourceKit
 import SwiftUI
 import WidgetKit
 
-/// 작은 크기 위젯 (2x2) - 다음 약속 1개 표시
-struct SmallPromiseWidget: Widget {
-  let kind: String = "SmallPromiseWidget"
+/// 홈 화면 작은 크기 위젯 (systemSmall) - 다음 약속 1개 표시
+struct PromiseSystemSmallWidget: Widget {
+  let kind: String = WidgetKind.systemSmall
 
   var body: some WidgetConfiguration {
     StaticConfiguration(kind: kind, provider: PromiseTimelineProvider()) { entry in
-      SmallPromiseWidgetView(entry: entry)
+      PromiseSystemSmallWidgetView(entry: entry)
         .containerBackground(for: .widget) {
           widgetBackground
         }
@@ -31,7 +31,7 @@ struct SmallPromiseWidget: Widget {
   }
 }
 
-struct SmallPromiseWidgetView: View {
+struct PromiseSystemSmallWidgetView: View {
   let entry: WidgetPromiseEntry
 
   var body: some View {
@@ -223,19 +223,19 @@ struct SmallPromiseWidgetView: View {
 
 #if DEBUG
 #Preview("다음 약속", as: .systemSmall) {
-  SmallPromiseWidget()
+  PromiseSystemSmallWidget()
 } timeline: {
   WidgetPromiseEntry.previewToday
 }
 
 #Preview("약속 없음", as: .systemSmall) {
-  SmallPromiseWidget()
+  PromiseSystemSmallWidget()
 } timeline: {
   WidgetPromiseEntry(date: Date(), promises: [], state: .empty)
 }
 
 #Preview("로그인 필요", as: .systemSmall) {
-  SmallPromiseWidget()
+  PromiseSystemSmallWidget()
 } timeline: {
   WidgetPromiseEntry(date: Date(), promises: [], state: .notLoggedIn)
 }
