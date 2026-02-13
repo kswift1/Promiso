@@ -1,30 +1,8 @@
-//
-//  NotificationCenterFeatureTests.swift
-//  NotificationCenterFeature
-//
-//  NotificationCenter.Feature reducer 테스트 (Swift Testing + TCA TestStore)
-//
-//  ## 테스트 대상
-//  - `NotificationCenterFeature/Sources/NotificationCenterFeature.swift`
-//  - Reducer의 action 처리 및 state 변화 검증
-//
-//  ## 테스트 목적
-//  - onAppear 시 초기 로드 로직 검증
-//  - 필터 변경 로직 검증
-//  - 편집 모드 (선택/삭제) 검증
-//  - 읽음 처리 검증
-//  - Computed properties 검증
-//
-
-import Foundation
 import Testing
-import ComposableArchitecture
-import Clients
 @testable import NotificationCenterFeature
 
-// MARK: - NotificationCenter.Feature Tests
-
 @Suite("NotificationCenter.Feature reducer 테스트")
+@MainActor
 struct NotificationCenterFeatureTests {
 
   // MARK: - Test Helpers
@@ -262,7 +240,7 @@ struct NotificationCenterFeatureTests {
   func refreshTriggered_fetchesNotifications() async {
     let notifications = [makeNotification()]
 
-    let store = await TestStore(
+    let store = TestStore(
       initialState: NotificationCenter.Feature.State()
     ) {
       NotificationCenter.Feature()
@@ -458,6 +436,274 @@ struct NotificationCenterFeatureTests {
     await store.send(.internal(.deleteCompleted(deletedIds: ["notif-1"], .failure(error)))) {
       $0.isDeleting = false
       // 실패 시 notificationsState와 selectedNotificationIds는 변경되지 않음
+    }
+  }
+
+  // MARK: - notificationTapped 테스트
+
+  @Test("notificationTapped - 읽지 않은 약속 알림 탭 시 읽음 처리 + 약속 이동")
+  func notificationTapped_unreadPromise_marksReadAndNavigates() async {
+    let notification = makeNotification(
+      id: "notif-1",
+      type: .promiseInvitation,
+      promiseId: "promise-1",
+      groupId: "group-1",
+      isRead: false
+    )
+
+    var state = NotificationCenter.Feature.State()
+    state.notificationsState = .loaded([notification])
+
+    let store = TestStore(initialState: state) {
+      NotificationCenter.Feature()
+    } withDependencies: {
+      $0.notificationClient.markAsRead = { _ in }
+    }
+    // markAsReadCompleted 내부에서 readAt: Date() 생성 → exhaustive 비교 불가
+    store.exhaustivity = .off(showSkippedAssertions: false)
+
+    await store.send(.view(.notificationTapped(notification)))
+    await store.receive(\.delegate.navigateToPromise)
+    await store.receive(\.internal.markAsReadCompleted)
+  }
+
+  @Test("notificationTapped - 읽은 약속 알림 탭 시 약속 이동만")
+  func notificationTapped_readPromise_onlyNavigates() async {
+    let notification = makeNotification(
+      id: "notif-1",
+      type: .promiseInvitation,
+      promiseId: "promise-1",
+      groupId: "group-1",
+      isRead: true
+    )
+
+    let store = TestStore(
+      initialState: NotificationCenter.Feature.State()
+    ) {
+      NotificationCenter.Feature()
+    }
+
+    await store.send(.view(.notificationTapped(notification)))
+    await store.receive(\.delegate.navigateToPromise)
+  }
+
+  @Test("notificationTapped - 그룹 알림 탭 시 그룹 이동")
+  func notificationTapped_groupNotification_navigatesToGroup() async {
+    let notification = makeNotification(
+      id: "notif-1",
+      type: .groupInvitation,
+      promiseId: nil,
+      groupId: "group-1",
+      isRead: true
+    )
+
+    let store = TestStore(
+      initialState: NotificationCenter.Feature.State()
+    ) {
+      NotificationCenter.Feature()
+    }
+
+    await store.send(.view(.notificationTapped(notification)))
+    await store.receive(\.delegate.navigateToGroup)
+  }
+
+  // MARK: - selectAllTapped 테스트
+
+  @Test("selectAllTapped - 전체 선택")
+  func selectAllTapped_selectsAll() async {
+    let notifications = [
+      makeNotification(id: "notif-1"),
+      makeNotification(id: "notif-2"),
+    ]
+
+    var state = NotificationCenter.Feature.State()
+    state.notificationsState = .loaded(notifications)
+    state.isEditMode = true
+
+    let store = TestStore(initialState: state) {
+      NotificationCenter.Feature()
+    }
+
+    await store.send(.view(.selectAllTapped)) {
+      $0.selectedNotificationIds = ["notif-1", "notif-2"]
+    }
+  }
+
+  @Test("selectAllTapped - 전체 선택 상태에서 전체 해제")
+  func selectAllTapped_allSelected_deselectsAll() async {
+    let notifications = [
+      makeNotification(id: "notif-1"),
+      makeNotification(id: "notif-2"),
+    ]
+
+    var state = NotificationCenter.Feature.State()
+    state.notificationsState = .loaded(notifications)
+    state.isEditMode = true
+    state.selectedNotificationIds = ["notif-1", "notif-2"]
+
+    let store = TestStore(initialState: state) {
+      NotificationCenter.Feature()
+    }
+
+    await store.send(.view(.selectAllTapped)) {
+      $0.selectedNotificationIds = []
+    }
+  }
+
+  // MARK: - loadMoreTriggered 테스트
+
+  @Test("loadMoreTriggered - 추가 로드 시작 및 기존 데이터에 append")
+  func loadMoreTriggered_appendsNewData() async {
+    let existing = [makeNotification(id: "notif-1")]
+    let newNotifications = [makeNotification(id: "notif-2")]
+
+    var state = NotificationCenter.Feature.State()
+    state.notificationsState = .loaded(existing)
+    state.hasMoreData = true
+
+    let store = TestStore(initialState: state) {
+      NotificationCenter.Feature()
+    } withDependencies: {
+      $0.notificationClient.getNotifications = { _, _, _ in newNotifications }
+    }
+
+    await store.send(.view(.loadMoreTriggered)) {
+      $0.isLoadingMore = true
+    }
+
+    await store.receive(\.internal.fetchNotifications)
+
+    await store.receive(\.internal.notificationsResponse) {
+      $0.isLoadingMore = false
+      $0.notificationsState = .loaded(existing + newNotifications)
+      $0.hasMoreData = false // 1 < pageSize(20)
+    }
+  }
+
+  @Test("loadMoreTriggered - 이미 로딩 중이면 무시")
+  func loadMoreTriggered_alreadyLoading_ignored() async {
+    var state = NotificationCenter.Feature.State()
+    state.notificationsState = .loaded([makeNotification()])
+    state.isLoadingMore = true
+
+    let store = TestStore(initialState: state) {
+      NotificationCenter.Feature()
+    }
+
+    await store.send(.view(.loadMoreTriggered))
+  }
+
+  @Test("loadMoreTriggered - hasMoreData false이면 무시")
+  func loadMoreTriggered_noMoreData_ignored() async {
+    var state = NotificationCenter.Feature.State()
+    state.notificationsState = .loaded([makeNotification()])
+    state.hasMoreData = false
+
+    let store = TestStore(initialState: state) {
+      NotificationCenter.Feature()
+    }
+
+    await store.send(.view(.loadMoreTriggered))
+  }
+
+  // MARK: - deleteAllTapped 테스트
+
+  @Test("deleteAllTapped - 전체 알림 삭제")
+  func deleteAllTapped_deletesAllNotifications() async {
+    let notifications = [
+      makeNotification(id: "notif-1"),
+      makeNotification(id: "notif-2"),
+    ]
+
+    var state = NotificationCenter.Feature.State()
+    state.notificationsState = .loaded(notifications)
+
+    let store = TestStore(initialState: state) {
+      NotificationCenter.Feature()
+    } withDependencies: {
+      $0.notificationClient.deleteAllNotifications = { () async throws in }
+    }
+
+    await store.send(.view(.deleteAllTapped)) {
+      $0.isDeleting = true
+    }
+
+    await store.receive(\.internal.deleteCompleted) {
+      $0.isDeleting = false
+      $0.notificationsState = .loaded([])
+      $0.selectedNotificationIds = []
+      $0.isEditMode = false
+    }
+  }
+
+  // MARK: - markAllAsReadTapped 테스트
+
+  @Test("markAllAsReadTapped 시 전체 읽음 처리 API 호출")
+  func markAllAsReadTapped_callsAPI() async {
+    let notifications = [
+      makeNotification(id: "notif-1", isRead: false),
+      makeNotification(id: "notif-2", isRead: false),
+    ]
+
+    var state = NotificationCenter.Feature.State()
+    state.notificationsState = .loaded(notifications)
+
+    let store = TestStore(initialState: state) {
+      NotificationCenter.Feature()
+    } withDependencies: {
+      $0.notificationClient.markAllAsRead = { () async throws in }
+    }
+    // markAllAsReadCompleted 내부에서 readAt: Date() 생성
+    store.exhaustivity = .off(showSkippedAssertions: false)
+
+    await store.send(.view(.markAllAsReadTapped))
+    await store.receive(\.internal.markAllAsReadCompleted)
+
+    if case .loaded(let updated) = store.state.notificationsState {
+      #expect(updated.count == 2)
+      for notification in updated {
+        #expect(notification.isRead == true)
+      }
+    } else {
+      Issue.record("Expected .loaded state after markAllAsReadTapped")
+    }
+  }
+
+  // MARK: - markAllAsReadCompleted 실패 테스트
+
+  @Test("markAllAsReadCompleted 실패 시 상태 변경 없음")
+  func markAllAsReadCompleted_failure_noChange() async {
+    let notifications = [
+      makeNotification(id: "notif-1", isRead: false),
+    ]
+
+    var state = NotificationCenter.Feature.State()
+    state.notificationsState = .loaded(notifications)
+
+    let store = TestStore(initialState: state) {
+      NotificationCenter.Feature()
+    }
+
+    let error = NSError(domain: "test", code: -1)
+    await store.send(.internal(.markAllAsReadCompleted(.failure(error))))
+    // 실패 시 notificationsState 변경 없음
+  }
+
+  // MARK: - notificationsResponse 추가 로드 성공 테스트
+
+  @Test("notificationsResponse 성공 - pageSize 이상이면 hasMoreData true")
+  func notificationsResponse_success_fullPage_hasMoreData() async {
+    let fullPage = (0..<20).map { makeNotification(id: "notif-\($0)") }
+
+    let store = TestStore(
+      initialState: NotificationCenter.Feature.State()
+    ) {
+      NotificationCenter.Feature()
+    }
+
+    await store.send(.internal(.notificationsResponse(.success(fullPage), isRefresh: true))) {
+      $0.notificationsState = .loaded(fullPage)
+      $0.hasMoreData = true // 20 >= pageSize(20)
     }
   }
 }

@@ -62,7 +62,7 @@ BestPractice 패턴 적용 대상입니다.
 
 ### NotificationCenterFeature
 
-- [ ] `NotificationCenterFeatureTests.swift` (463L)
+- [x] `NotificationCenterFeatureTests.swift` (463L → 710L, 25→38 tests, import 정리 + @MainActor + 누락 액션 테스트 추가)
 
 ### RootTabFeature
 
