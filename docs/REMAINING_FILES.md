@@ -57,8 +57,8 @@ BestPractice 패턴 적용 대상입니다.
 
 ### HomeFeature
 
-- [ ] `HomeFeatureTests.swift` (490L)
-- [ ] `HomeFeatureStateTests.swift` (348L)
+- [x] `HomeFeatureTests.swift` (490L → 540L, 20→23 tests, import 정리 + @MainActor + makeStore 헬퍼 + GroupModel Date 안정화)
+- [x] `HomeFeatureStateTests.swift` (348L → 464L, 13→19 tests, import 정리 + @MainActor + filteredPromises/timelineData 추가)
 
 ### NotificationCenterFeature
 

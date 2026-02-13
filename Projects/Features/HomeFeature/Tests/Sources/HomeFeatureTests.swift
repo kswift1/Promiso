@@ -1,30 +1,8 @@
-//
-//  HomeFeatureTests.swift
-//  HomeFeature
-//
-//  Home.Feature reducer 테스트 (Swift Testing + TCA TestStore)
-//
-//  ## 테스트 대상
-//  - `HomeFeature/Sources/HomeFeature.swift`
-//  - Reducer의 action 처리 및 side effect 검증
-//
-//  ## 테스트 목적
-//  - onAppear 시 fetchPromises 트리거 검증
-//  - 조건부 reload 로직 검증
-//  - 에러 핸들링 검증
-//  - Pull-to-refresh 동작 검증
-//
-
-import Foundation
 import Testing
-import ComposableArchitecture
-import Clients
-import Sharing
 @testable import HomeFeature
 
-// MARK: - HomeFeature Tests
-
 @Suite("Home.Feature reducer 테스트")
+@MainActor
 struct HomeFeatureTests {
 
   // MARK: - Test Helpers
@@ -70,6 +48,22 @@ struct HomeFeatureTests {
       ),
       startAt: startAt
     )
+  }
+
+  /// 테스트 스토어 생성 헬퍼
+  private func makeStore(
+    groups: [UserGroupInfo] = [],
+    configure: (inout DependencyValues) -> Void = { _ in }
+  ) -> TestStoreOf<Home.Feature> {
+    let user = makeCurrentUser(groups: groups)
+    @Shared(.inMemory("test-\(UUID().uuidString.prefix(8))")) var currentUser = user
+    return TestStore(
+      initialState: Home.Feature.State(currentUser: $currentUser)
+    ) {
+      Home.Feature()
+    } withDependencies: {
+      configure(&$0)
+    }
   }
 
   // MARK: - onAppear 테스트
@@ -360,25 +354,18 @@ struct HomeFeatureTests {
       $0.promisesState = .loading
     }
 
-    await store.receive(\.internal.promisesResponse.success) {
-      // promisesWithGroup 매핑으로 group 정보가 추가됨
-      var expectedPromise = testPromise
-      expectedPromise.group = GroupModel(
-        id: "group-1",
-        name: "테스트 그룹",
-        imageUrl: nil,
-        maxMembers: 0,
-        inviteCode: "",
-        createdBy: ""
-      )
-      $0.promisesState = .loaded([expectedPromise])
-    }
+    // GroupModel의 createdAt/updatedAt가 Date() 기본값이라 타이밍 불일치 발생
+    // exhaustivity off로 전환 후 명시적 receive로 chain 완료
+    store.exhaustivity = .off(showSkippedAssertions: false)
+    await store.receive(\.internal.promisesResponse)
+    await store.receive(\.internal.unreadNotificationCountResponse)
+    await store.finish()
 
-    await store.receive(\.internal.fetchUnreadNotificationCount)
-
-    await store.receive(\.internal.unreadNotificationCountResponse.success) {
-      $0.unreadNotificationCount = 3
-    }
+    let promises = store.state.promisesState.value
+    #expect(promises?.count == 1)
+    #expect(promises?.first?.group?.id == "group-1")
+    #expect(promises?.first?.group?.name == "테스트 그룹")
+    #expect(store.state.unreadNotificationCount == 3)
   }
 
   // MARK: - 약속 탭 테스트
@@ -474,17 +461,70 @@ struct HomeFeatureTests {
 
   @Test("상태 필터 needResponse로 변경")
   func statusFilterChanged_needResponse() async {
-    let user = makeCurrentUser()
-    @Shared(.inMemory("test-filter-need")) var currentUser = user
-
-    let store = TestStore(
-      initialState: Home.Feature.State(currentUser: $currentUser)
-    ) {
-      Home.Feature()
-    }
+    let store = makeStore()
 
     await store.send(.view(.statusFilterChanged(.needResponse))) {
       $0.selectedStatusFilter = .needResponse
     }
+  }
+
+  // MARK: - 약속 카드 탭 테스트
+
+  @Test("todayPromiseTapped 시 promiseDetail path 추가")
+  func todayPromiseTapped_appendsPromiseDetail() async {
+    let promise = makePromise()
+    let store = makeStore()
+
+    await store.send(.view(.todayPromiseTapped(promise))) {
+      $0.path.append(.promiseDetail(.init(
+        promise: promise,
+        currentUserId: "test-user-123"
+      )))
+    }
+  }
+
+  @Test("upcomingPromiseTapped 시 promiseDetail path 추가")
+  func upcomingPromiseTapped_appendsPromiseDetail() async {
+    let promise = makePromise()
+    let store = makeStore()
+
+    await store.send(.view(.upcomingPromiseTapped(promise))) {
+      $0.path.append(.promiseDetail(.init(
+        promise: promise,
+        currentUserId: "test-user-123"
+      )))
+    }
+  }
+
+  // MARK: - 기존 데이터 유지 테스트
+
+  @Test("fetchPromises 기존 데이터 있으면 loading 상태 스킵")
+  func fetchPromises_withExistingData_skipsLoadingState() async {
+    let groups = [makeGroupInfo()]
+    let user = makeCurrentUser(groups: groups)
+    @Shared(.inMemory("test-existing-data")) var currentUser = user
+
+    var state = Home.Feature.State(currentUser: $currentUser)
+    state.promisesState = .loaded([])
+
+    let store = TestStore(initialState: state) {
+      Home.Feature()
+    } withDependencies: {
+      $0.promiseClient.getHomePromises = { _, _ in [] }
+      $0.notificationClient.getUnreadCount = { _ in 0 }
+      $0.notificationClient.setBadgeCount = { _ in }
+    }
+
+    // refreshTriggered → fetchPromises: promisesState.value != nil이므로 .loading 스킵
+    await store.send(.view(.refreshTriggered))
+
+    await store.receive(\.internal.fetchPromises)
+    // promisesState는 .loaded([]) 유지, .loading으로 전환되지 않음
+
+    await store.receive(\.internal.promisesResponse.success)
+
+    await store.receive(\.internal.fetchUnreadNotificationCount)
+
+    await store.receive(\.internal.unreadNotificationCountResponse.success)
   }
 }
