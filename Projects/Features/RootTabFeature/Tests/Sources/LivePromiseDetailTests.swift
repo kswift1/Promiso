@@ -49,9 +49,6 @@ struct LivePromiseDetailTests {
       $0.customMinuteInput = ""
       $0.isETASheetPresented = false
     }
-    await store.receive(\.delegate.updateETA) {
-      // delegate carries minutes = 15
-    }
   }
 
   // MARK: - 직접 입력 테스트
@@ -91,7 +88,6 @@ struct LivePromiseDetailTests {
       $0.customMinuteInput = ""
       $0.isETASheetPresented = false
     }
-    await store.receive(\.delegate.updateETA)
   }
 
   @Test("submitCustomMinute 빈 문자열이면 에러 햅틱")

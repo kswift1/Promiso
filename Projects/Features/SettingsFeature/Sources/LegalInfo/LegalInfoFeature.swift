@@ -36,6 +36,7 @@ extension LegalInfo {
 
     // MARK: - Action
 
+    @CasePathable
     public enum Action: Sendable {
       case view(View)
       case delegate(Delegate)

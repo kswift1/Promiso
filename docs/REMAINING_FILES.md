@@ -68,13 +68,19 @@ BestPractice 패턴 적용 대상입니다.
 
 - [x] `RootTabFeatureTests.swift` (609L → 705L, 28→35 tests)
 - [x] `LivePromiseDataTests.swift` (115L → 149L, 6→10 tests)
-- [x] `LivePromiseFeatureTests.swift` (399L, 17 tests) — **신규 생성**
-- [x] `LivePromiseDetailTests.swift` (243L, 12 tests) — **신규 생성**
+- [x] `LivePromiseFeatureTests.swift` (399L, 17 tests) — **신규 생성** (+ @Shared withLock 패턴 수정)
+- [x] `LivePromiseDetailTests.swift` (243L, 12 tests) — **신규 생성** (+ delegate receive 제거)
 
 ### SettingsFeature
 
-- [ ] `SettingsFeatureTests.swift` (210L)
-- [ ] `ProfileFeatureTests.swift` (42L)
+- [x] `SettingsFeatureTests.swift` (210L → 390L, 9→21 tests, logoutConfirmed/profileSave/imageDetail 등 추가)
+- [x] `CalendarSettingsFeatureTests.swift` (160L, 8 tests) — **신규 생성**
+- [x] `NotificationSettingsFeatureTests.swift` (155L, 7 tests) — **신규 생성**
+- [x] `GroupNotificationDetailTests.swift` (163L, 7 tests) — **신규 생성**
+- [x] `FAQFeatureTests.swift` (209L, 10 tests) — **신규 생성**
+- [x] `LegalInfoFeatureTests.swift` (57L, 2 tests) — **신규 생성**
+- [x] `SupportFeatureTests.swift` (61L, 2 tests) — **신규 생성**
+- [x] `ProfileFeatureTests.swift` — **삭제** (주석 처리된 XCTest 파일)
 
 ### SharedFeature
 

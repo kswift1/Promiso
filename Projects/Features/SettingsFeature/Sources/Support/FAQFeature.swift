@@ -58,6 +58,7 @@ extension FAQ {
 
     // MARK: - Action
 
+    @CasePathable
     public enum Action: Sendable {
       case view(View)
       case `internal`(Internal)
@@ -71,6 +72,7 @@ extension FAQ {
       case categorySelected(String?)  // nil = 전체
     }
 
+    @CasePathable
     public enum Internal: Equatable, Sendable {
       case faqsLoaded([FAQModel])
       case faqsLoadFailed(String)

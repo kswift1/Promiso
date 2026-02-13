@@ -184,6 +184,7 @@ extension LivePromise {
         case directionsTapped
       }
 
+      @CasePathable
       public enum Delegate: Equatable, Sendable {
         /// ETA 업데이트 요청 (부모에서 처리)
         case updateETA(Int)
@@ -332,6 +333,7 @@ extension LivePromise {
         case refreshFromLiveActivity
       }
 
+      @CasePathable
       public enum Internal: Equatable, Sendable {
         case liveActivityStateUpdated(PromiseActivityAttributes?, PromiseActivityAttributes.ContentState?)
         case processPendingETAUpdate(ETAUpdate)
@@ -344,6 +346,7 @@ extension LivePromise {
         // Push Token 관련 액션 제거됨 - iOS 18 Broadcast 방식 사용
       }
 
+      @CasePathable
       public enum Delegate: Equatable, Sendable {
         /// CompactView 탭 → 상세 뷰 표시 요청
         case showDetail

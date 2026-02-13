@@ -207,4 +207,240 @@ struct SettingsFeatureTests {
       $0.nicknameValidation = .unavailable
     }
   }
+
+  // MARK: - logoutConfirmed 테스트
+
+  @Test("logoutConfirmed 성공 시 로그아웃 완료")
+  func logoutConfirmed_success_completesLogout() async {
+    let user = makeCurrentUser()
+    @Shared(.inMemory("test-logout-confirmed")) var currentUser = user
+
+    var state = Settings.Feature.State(currentUser: $currentUser)
+    state.showLogoutAlert = true
+
+    let store = TestStore(initialState: state) {
+      Settings.Feature()
+    } withDependencies: {
+      $0.authClient.logout = {}
+      $0.hapticFeedback.heavy = {}
+      $0.hapticFeedback.success = {}
+    }
+    store.exhaustivity = .off(showSkippedAssertions: false)
+
+    await store.send(.view(.logoutConfirmed)) {
+      $0.showLogoutAlert = false
+      $0.isLoading = true
+    }
+    await store.receive(\.internal.logoutCompleted) {
+      $0.isLoading = false
+    }
+  }
+
+  @Test("logoutConfirmed 실패 시 에러 메시지 표시")
+  func logoutConfirmed_failure_showsError() async {
+    let user = makeCurrentUser()
+    @Shared(.inMemory("test-logout-failed")) var currentUser = user
+
+    var state = Settings.Feature.State(currentUser: $currentUser)
+    state.showLogoutAlert = true
+
+    let store = TestStore(initialState: state) {
+      Settings.Feature()
+    } withDependencies: {
+      $0.authClient.logout = { throw AuthClientError.unknown }
+      $0.hapticFeedback.heavy = {}
+      $0.hapticFeedback.error = {}
+    }
+    store.exhaustivity = .off(showSkippedAssertions: false)
+
+    await store.send(.view(.logoutConfirmed)) {
+      $0.showLogoutAlert = false
+      $0.isLoading = true
+    }
+    await store.receive(\.internal.logoutFailed) {
+      $0.isLoading = false
+      $0.errorMessage = AuthClientError.unknown.localizedDescription
+    }
+  }
+
+  // MARK: - nicknameChanged 추가 테스트
+
+  @Test("nicknameChanged - 20자 초과 시 invalid 상태")
+  func nicknameChanged_tooLong_setsInvalid() async {
+    let user = makeCurrentUser()
+    @Shared(.inMemory("test-nickname-long")) var currentUser = user
+
+    var state = Settings.Feature.State(currentUser: $currentUser)
+    state.isEditingProfile = true
+
+    let store = TestStore(initialState: state) {
+      Settings.Feature()
+    }
+
+    let longName = String(repeating: "가", count: 21)
+    await store.send(.view(.nicknameChanged(longName))) {
+      $0.editedNickname = longName
+      $0.nicknameValidation = .invalid("닉네임은 20자 이하여야 합니다")
+    }
+  }
+
+  @Test("nicknameChanged - 현재 닉네임과 동일 시 idle 상태")
+  func nicknameChanged_sameAsCurrent_setsIdle() async {
+    let user = makeCurrentUser(nickname: "테스트유저")
+    @Shared(.inMemory("test-nickname-same")) var currentUser = user
+
+    var state = Settings.Feature.State(currentUser: $currentUser)
+    state.isEditingProfile = true
+
+    let store = TestStore(initialState: state) {
+      Settings.Feature()
+    }
+
+    await store.send(.view(.nicknameChanged("테스트유저")))
+  }
+
+  // MARK: - nicknameCheckFailed 테스트
+
+  @Test("nicknameCheckFailed 시 error 상태")
+  func nicknameCheckFailed_setsError() async {
+    let user = makeCurrentUser()
+    @Shared(.inMemory("test-nickname-check-failed")) var currentUser = user
+
+    var state = Settings.Feature.State(currentUser: $currentUser)
+    state.nicknameValidation = .checking
+
+    let store = TestStore(initialState: state) {
+      Settings.Feature()
+    }
+
+    await store.send(.internal(.nicknameCheckFailed("네트워크 에러"))) {
+      $0.nicknameValidation = .error("네트워크 에러")
+    }
+  }
+
+  // MARK: - profileImageSelected 테스트
+
+  @Test("profileImageSelected 시 이미지 데이터 설정")
+  func profileImageSelected_setsImageData() async {
+    let user = makeCurrentUser()
+    @Shared(.inMemory("test-image-selected")) var currentUser = user
+
+    var state = Settings.Feature.State(currentUser: $currentUser)
+    state.isEditingProfile = true
+
+    let imageData = Data([0x01, 0x02, 0x03])
+    let store = TestStore(initialState: state) {
+      Settings.Feature()
+    } withDependencies: {
+      $0.hapticFeedback.selection = {}
+    }
+
+    await store.send(.view(.profileImageSelected(imageData))) {
+      $0.editedProfileImageData = imageData
+    }
+  }
+
+  // MARK: - saveProfileTapped 테스트
+
+  @Test("saveProfileTapped - validation 미통과 시 무시")
+  func saveProfileTapped_invalidValidation_ignored() async {
+    let user = makeCurrentUser()
+    @Shared(.inMemory("test-save-guard")) var currentUser = user
+
+    var state = Settings.Feature.State(currentUser: $currentUser)
+    state.isEditingProfile = true
+    state.editedNickname = "새닉네임"
+    state.nicknameValidation = .checking
+
+    let store = TestStore(initialState: state) {
+      Settings.Feature()
+    }
+
+    await store.send(.view(.saveProfileTapped))
+  }
+
+  // MARK: - profileSaveCompleted 테스트
+
+  @Test("profileSaveCompleted 시 편집 모드 해제 및 사용자 업데이트")
+  func profileSaveCompleted_updatesUserAndExitsEditMode() async {
+    let user = makeCurrentUser(nickname: "원래닉네임")
+    @Shared(.inMemory("test-save-completed")) var currentUser = user
+
+    var state = Settings.Feature.State(currentUser: $currentUser)
+    state.isEditingProfile = true
+    state.isSavingProfile = true
+    state.editedNickname = "새닉네임"
+
+    let updatedUser = makeCurrentUser(nickname: "새닉네임")
+
+    let store = TestStore(initialState: state) {
+      Settings.Feature()
+    }
+
+    await store.send(.internal(.profileSaveCompleted(updatedUser))) {
+      $0.$currentUser.withLock { $0 = updatedUser }
+      $0.isSavingProfile = false
+      $0.isEditingProfile = false
+      $0.editedProfileImageData = nil
+      $0.nicknameValidation = .idle
+    }
+  }
+
+  // MARK: - profileSaveFailed 테스트
+
+  @Test("profileSaveFailed 시 에러 메시지 설정")
+  func profileSaveFailed_setsErrorMessage() async {
+    let user = makeCurrentUser()
+    @Shared(.inMemory("test-save-failed")) var currentUser = user
+
+    var state = Settings.Feature.State(currentUser: $currentUser)
+    state.isEditingProfile = true
+    state.isSavingProfile = true
+
+    let store = TestStore(initialState: state) {
+      Settings.Feature()
+    } withDependencies: {
+      $0.hapticFeedback.error = {}
+    }
+
+    await store.send(.internal(.profileSaveFailed("저장 실패"))) {
+      $0.isSavingProfile = false
+      $0.errorMessage = "저장 실패"
+    }
+  }
+
+  // MARK: - profileImageTapped / imageDetailDismissed 테스트
+
+  @Test("profileImageTapped 시 이미지 상세 보기 표시")
+  func profileImageTapped_showsImageDetail() async {
+    let user = makeCurrentUser()
+    @Shared(.inMemory("test-image-tapped")) var currentUser = user
+
+    let store = TestStore(
+      initialState: Settings.Feature.State(currentUser: $currentUser)
+    ) {
+      Settings.Feature()
+    }
+
+    await store.send(.view(.profileImageTapped)) {
+      $0.showImageDetail = true
+    }
+  }
+
+  @Test("imageDetailDismissed 시 이미지 상세 닫기")
+  func imageDetailDismissed_hidesImageDetail() async {
+    let user = makeCurrentUser()
+    @Shared(.inMemory("test-image-dismissed")) var currentUser = user
+
+    var state = Settings.Feature.State(currentUser: $currentUser)
+    state.showImageDetail = true
+
+    let store = TestStore(initialState: state) {
+      Settings.Feature()
+    }
+
+    await store.send(.view(.imageDetailDismissed)) {
+      $0.showImageDetail = false
+    }
+  }
 }

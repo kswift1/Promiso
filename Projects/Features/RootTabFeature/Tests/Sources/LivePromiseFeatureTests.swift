@@ -59,13 +59,15 @@ struct LivePromiseFeatureTests {
 
     await store.send(.view(.refreshFromLiveActivity))
     await store.receive(\.internal.liveActivityStateUpdated) {
-      $0.data.emoji = "🎉"
-      $0.data.title = "파티"
-      $0.data.location = "홍대"
-      $0.data.hostId = "host-2"
-      $0.data.hostName = "호스트2"
-      $0.data.participants = contentState.participants
-      $0.data.trackingDurationMinutes = 45
+      $0.$data.withLock {
+        $0.emoji = "🎉"
+        $0.title = "파티"
+        $0.location = "홍대"
+        $0.hostId = "host-2"
+        $0.hostName = "호스트2"
+        $0.participants = contentState.participants
+        $0.trackingDurationMinutes = 45
+      }
     }
   }
 
@@ -128,13 +130,15 @@ struct LivePromiseFeatureTests {
     let store = makeStore()
 
     await store.send(.internal(.liveActivityStateUpdated(attributes, contentState))) {
-      $0.data.emoji = "🎉"
-      $0.data.title = "파티"
-      $0.data.location = "홍대"
-      $0.data.hostId = "host-2"
-      $0.data.hostName = "호스트2"
-      $0.data.participants = contentState.participants
-      $0.data.trackingDurationMinutes = 45
+      $0.$data.withLock {
+        $0.emoji = "🎉"
+        $0.title = "파티"
+        $0.location = "홍대"
+        $0.hostId = "host-2"
+        $0.hostName = "호스트2"
+        $0.participants = contentState.participants
+        $0.trackingDurationMinutes = 45
+      }
     }
   }
 
@@ -160,7 +164,7 @@ struct LivePromiseFeatureTests {
     }
 
     await store.send(.internal(.processPendingETAUpdate(etaUpdate))) {
-      $0.data.isProcessingETAUpdate = false
+      $0.$data.withLock { $0.isProcessingETAUpdate = false }
     }
   }
 
@@ -186,7 +190,7 @@ struct LivePromiseFeatureTests {
 
     await store.send(.internal(.processPendingETAUpdate(etaUpdate)))
     await store.receive(\.internal.etaUpdateSent) {
-      $0.data.isProcessingETAUpdate = false
+      $0.$data.withLock { $0.isProcessingETAUpdate = false }
       $0.pendingETAUpdate = nil
     }
     // etaUpdateSent triggers refreshFromLiveActivity
@@ -215,7 +219,7 @@ struct LivePromiseFeatureTests {
 
     await store.send(.internal(.processPendingETAUpdate(etaUpdate)))
     await store.receive(\.internal.etaUpdateFailed) {
-      $0.data.isProcessingETAUpdate = false
+      $0.$data.withLock { $0.isProcessingETAUpdate = false }
       $0.pendingETAUpdate = nil
     }
   }
@@ -234,7 +238,7 @@ struct LivePromiseFeatureTests {
     store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.internal(.etaUpdateSent)) {
-      $0.data.isProcessingETAUpdate = false
+      $0.$data.withLock { $0.isProcessingETAUpdate = false }
       $0.pendingETAUpdate = nil
     }
     // refreshFromLiveActivity chain
@@ -254,7 +258,7 @@ struct LivePromiseFeatureTests {
     }
 
     await store.send(.internal(.etaUpdateFailed)) {
-      $0.data.isProcessingETAUpdate = false
+      $0.$data.withLock { $0.isProcessingETAUpdate = false }
       $0.pendingETAUpdate = nil
     }
   }
@@ -288,8 +292,10 @@ struct LivePromiseFeatureTests {
 
     await store.send(.internal(.observeContentStateUpdates))
     await store.receive(\.internal.contentStateUpdated) {
-      $0.data.participants = newContentState.participants
-      $0.data.trackingDurationMinutes = 20
+      $0.$data.withLock {
+        $0.participants = newContentState.participants
+        $0.trackingDurationMinutes = 20
+      }
     }
   }
 
@@ -306,8 +312,10 @@ struct LivePromiseFeatureTests {
     let store = makeStore()
 
     await store.send(.internal(.contentStateUpdated(updatedContentState))) {
-      $0.data.participants = updatedContentState.participants
-      $0.data.trackingDurationMinutes = 25
+      $0.$data.withLock {
+        $0.participants = updatedContentState.participants
+        $0.trackingDurationMinutes = 25
+      }
     }
   }
 }
