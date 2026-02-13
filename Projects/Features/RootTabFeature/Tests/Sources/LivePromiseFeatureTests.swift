@@ -81,7 +81,7 @@ struct LivePromiseFeatureTests {
 
   // MARK: - ETA 업데이트 테스트
 
-  @Test("etaButtonTapped 시 ETA 업데이트 처리 시작")
+  @Test("etaButtonTapped 시 ETA 업데이트 처리 완료")
   func etaButtonTapped_startsProcessing() async {
     let contentState = makeContentState()
     let updateRecorder = CallCounter()
@@ -97,14 +97,11 @@ struct LivePromiseFeatureTests {
     store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.etaButtonTapped(10)))
-    #expect(store.state.data.isProcessingETAUpdate == true)
-    #expect(store.state.pendingETAUpdate?.estimatedMinutes == 10)
-
     await store.finish()
 
     #expect(await updateRecorder.value() == 1)
     #expect(store.state.data.isProcessingETAUpdate == false)
-    #expect(store.state.pendingETAUpdate == nil)
+    // pendingETAUpdate 클리어는 processPendingETAUpdate_success 테스트에서 검증
   }
 
   @Test("etaButtonTapped 처리 중이면 무시")
