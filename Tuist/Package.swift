@@ -3,8 +3,16 @@
 
 #if TUIST
 import struct ProjectDescription.PackageSettings
+import enum ProjectDescription.Product
 
-let packageSettings = PackageSettings()
+let packageSettings = PackageSettings(
+  productTypes: [
+    "ComposableArchitecture": .framework,
+    "Dependencies": .framework,
+    "XCTestDynamicOverlay": .framework,
+    "IssueReporting": .framework,
+  ]
+)
 #endif
 
 // MARK: - Package Dependencies

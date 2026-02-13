@@ -36,7 +36,6 @@ let project = Project(
       sources: ["Tests/Sources/**"],
       dependencies: [
         .target(name: "AppEntryFeature"),
-        .project(target: "ExternalDependency", path: "../../ExternalDependency")
       ],
       settings: .standard()
     ),

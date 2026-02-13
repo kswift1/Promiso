@@ -1,9 +1,4 @@
-import Foundation
 import Testing
-import ExternalDependency
-import Clients
-import PromisoShared
-import Sharing
 @testable import AppEntryFeature
 
 @Suite("AppEntry.Feature 테스트")
@@ -25,18 +20,13 @@ struct AppEntryFeatureTests {
   @Test("초기 상태에서 destination은 auth")
   func initialState_destinationIsAuth() {
     let state = AppEntry.Feature.State()
-
-    if case .auth = state.destination {
-      // auth 상태 확인
-    } else {
-      Issue.record("destination이 auth가 아닙니다")
-    }
+    #expect(state.destinationType == .auth)
   }
 
   // MARK: - Splash 테스트
 
   @Test("splashAnimationCompleted 시 splash hidden 설정")
-  func splashAnimationCompleted_hidesSpash() async {
+  func splashAnimationCompleted_hidesSplash() async {
     var state = AppEntry.Feature.State()
     state.splash = .animatingOut
 
@@ -68,20 +58,7 @@ struct AppEntryFeatureTests {
     await store.send(.view(.onAppear))
     await store.receive(\.internal.checkVersion)
     await store.receive(\.internal.versionCheckCompleted)
-    await store.receive(\.internal.continueAppFlow)
-
-    // continueAppFlow에서 startSessionCheck, subscribeFCMToken 등 트리거
-    await store.receive(\.internal.startSessionCheck)
-    await store.receive(\.internal.subscribeFCMToken)
-    await store.receive(\.internal.subscribePushNotificationTap)
-    await store.receive(\.internal.subscribeAppRestart)
-
-    await store.receive(\.internal.sessionCheckResponse) {
-      $0.destination = .auth(AuthFeature.Auth.Feature.State())
-      $0.splash = .animatingOut
-    }
-
-    await store.send(.internal(.cancelSubscriptions))
+    await receiveContinueAppFlowUnauthenticated(store)
   }
 
   @Test("onAppear 시 선택 업데이트 필요하면 recommendAlert 설정")
@@ -123,17 +100,7 @@ struct AppEntryFeatureTests {
     await store.receive(\.internal.versionCheckCompleted) {
       $0.updateAlert = nil
     }
-    await store.receive(\.internal.continueAppFlow)
-    await store.receive(\.internal.startSessionCheck)
-    await store.receive(\.internal.subscribeFCMToken)
-    await store.receive(\.internal.subscribePushNotificationTap)
-    await store.receive(\.internal.subscribeAppRestart)
-    await store.receive(\.internal.sessionCheckResponse) {
-      $0.destination = .auth(AuthFeature.Auth.Feature.State())
-      $0.splash = .animatingOut
-    }
-
-    await store.send(.internal(.cancelSubscriptions))
+    await receiveContinueAppFlowUnauthenticated(store)
   }
 
   @Test("scene inactive 시 버전 재체크 안 함")
@@ -216,6 +183,27 @@ struct AppEntryFeatureTests {
     }
   }
 
+  @Test("upToDate 수신 시 기존 updateAlert 닫기 및 앱 진행")
+  func versionCheckCompleted_upToDate_withExistingAlert_clearsAlert() async {
+    var state = AppEntry.Feature.State()
+    state.updateAlert = .recommendUpdate(currentVersion: "1.0.0", recommendedVersion: "1.1.0")
+
+    let store = TestStore(initialState: state) {
+      AppEntry.Feature()
+    } withDependencies: {
+      $0.authClient.isAuthenticated = { false }
+      $0.authClient.currentUser = { nil }
+      $0.deeplinkClient.pushNotificationTapStream = { AsyncStream { _ in } }
+      $0.notificationClient.saveFCMToken = { _ in }
+    }
+
+    await store.send(.internal(.versionCheckCompleted(.upToDate))) {
+      $0.updateAlert = nil
+    }
+
+    await receiveContinueAppFlowUnauthenticated(store)
+  }
+
   @Test("선택 업데이트 나중에 탭 시 updateAlert 닫기 및 앱 진행")
   func updateAlert_laterTapped_forRecommendUpdate_closesAlert() async {
     var state = AppEntry.Feature.State()
@@ -234,18 +222,7 @@ struct AppEntryFeatureTests {
       $0.updateAlert = nil
     }
 
-    // continueAppFlow 체인
-    await store.receive(\.internal.continueAppFlow)
-    await store.receive(\.internal.startSessionCheck)
-    await store.receive(\.internal.subscribeFCMToken)
-    await store.receive(\.internal.subscribePushNotificationTap)
-    await store.receive(\.internal.subscribeAppRestart)
-    await store.receive(\.internal.sessionCheckResponse) {
-      $0.destination = .auth(AuthFeature.Auth.Feature.State())
-      $0.splash = .animatingOut
-    }
-
-    await store.send(.internal(.cancelSubscriptions))
+    await receiveContinueAppFlowUnauthenticated(store)
   }
 
   @Test("강제 업데이트 나중에 탭 시 아무 일도 안 함")
@@ -442,6 +419,29 @@ struct AppEntryFeatureTests {
     #expect(store.state.destinationType == .main)
   }
 
+  @Test("notificationPermission permissionChanged 시 pendingUser로 메인 전환")
+  func notificationPermissionChanged_movesToMainWithPendingUser() async {
+    let user = makeUser(id: "permission-changed-user", nickname: "권한변경유저")
+    var state = AppEntry.Feature.State()
+    state.pendingUserForMain = user
+    state.notificationPermission = NotificationPermission.Feature.State()
+
+    let store = TestStore(initialState: state) {
+      AppEntry.Feature()
+    } withDependencies: {
+      $0.clarityClient.setUser = { _, _ in }
+      $0.analyticsClient.setUserID = { _ in }
+      $0.analyticsClient.setUserProperty = { _, _ in }
+      $0.analyticsClient.logEvent = { _, _ in }
+    }
+    store.exhaustivity = .off(showSkippedAssertions: false)
+
+    await store.send(.notificationPermission(.presented(.delegate(.permissionChanged(isGranted: true)))))
+    #expect(store.state.notificationPermission == nil)
+    #expect(store.state.pendingUserForMain == nil)
+    #expect(store.state.destinationType == .main)
+  }
+
   @Test("logoutRequested delegate 수신 시 auth로 전환")
   func logoutRequested_movesToAuth() async {
     let state = makeMainState()
@@ -495,7 +495,9 @@ struct AppEntryFeatureTests {
     state.providerProfileImageURL = URL(string: "https://example.com/temp.png")
     state.notificationPermission = NotificationPermission.Feature.State()
 
+    let originalFormat = KoreanDateFormatters.use24HourFormat
     KoreanDateFormatters.use24HourFormat = false
+    defer { KoreanDateFormatters.use24HourFormat = originalFormat }
 
     let store = TestStore(initialState: state) {
       AppEntry.Feature()
@@ -618,6 +620,58 @@ struct AppEntryFeatureTests {
     await store.send(.internal(.cancelSubscriptions))
   }
 
+  // MARK: - Deeplink 테스트
+
+  @Test("handleDeeplink 시 메인 아니면 pendingDeeplink에 저장")
+  func handleDeeplink_notOnMain_storesPending() async {
+    let store = TestStore(initialState: AppEntry.Feature.State()) {
+      AppEntry.Feature()
+    } withDependencies: {
+      $0.deeplinkClient.parseURL = { _ in .livePromise(promiseId: "p-1") }
+    }
+
+    await store.send(.view(.handleDeeplink(URL(string: "promiso://live")!))) {
+      $0.pendingDeeplink = .livePromise(promiseId: "p-1")
+    }
+  }
+
+  @Test("handleDeeplink 파싱 실패 시 아무 일도 안 함")
+  func handleDeeplink_parseFailure_doesNothing() async {
+    let store = TestStore(initialState: AppEntry.Feature.State()) {
+      AppEntry.Feature()
+    } withDependencies: {
+      $0.deeplinkClient.parseURL = { _ in nil }
+    }
+
+    await store.send(.view(.handleDeeplink(URL(string: "invalid://url")!)))
+  }
+
+  @Test("handleDeeplink 시 메인이면 즉시 라우팅")
+  func handleDeeplink_onMain_routesImmediately() async {
+    let state = makeMainState()
+
+    let store = TestStore(initialState: state) {
+      AppEntry.Feature()
+    } withDependencies: {
+      $0.deeplinkClient.parseURL = { _ in .livePromise(promiseId: "p-1") }
+    }
+    store.exhaustivity = .off(showSkippedAssertions: false)
+
+    await store.send(.view(.handleDeeplink(URL(string: "promiso://live")!)))
+    await store.receive(\.destination.presented.main.openLivePromiseDetail)
+  }
+
+  @Test("pushNotificationTapped 시 메인 아니면 pendingDeeplink에 저장")
+  func pushNotificationTapped_notOnMain_storesPending() async {
+    let store = TestStore(initialState: AppEntry.Feature.State()) {
+      AppEntry.Feature()
+    }
+
+    await store.send(.internal(.pushNotificationTapped(.group(groupId: "g-1")))) {
+      $0.pendingDeeplink = .group(groupId: "g-1")
+    }
+  }
+
   // MARK: - State Helper 테스트
 
   @Test("destinationType 계산 값 확인")
@@ -647,7 +701,23 @@ struct AppEntryFeatureTests {
 }
 
 private extension AppEntryFeatureTests {
-  
+
+  /// 비인증 상태의 continueAppFlow → sessionCheck → auth 전환 체인 수신 후 구독 정리
+  func receiveContinueAppFlowUnauthenticated(
+    _ store: TestStoreOf<AppEntry.Feature>
+  ) async {
+    await store.receive(\.internal.continueAppFlow)
+    await store.receive(\.internal.startSessionCheck)
+    await store.receive(\.internal.subscribeFCMToken)
+    await store.receive(\.internal.subscribePushNotificationTap)
+    await store.receive(\.internal.subscribeAppRestart)
+    await store.receive(\.internal.sessionCheckResponse) {
+      $0.destination = .auth(AuthFeature.Auth.Feature.State())
+      $0.splash = .animatingOut
+    }
+    await store.send(.internal(.cancelSubscriptions))
+  }
+
   actor URLRecorder {
     private(set) var capturedURL: URL?
     
