@@ -97,6 +97,12 @@ extension AppEntry {
       case handleDeeplink(URL)
       case scenePhaseChanged(ScenePhase)
     }
+
+    private enum SubscriptionCancelID {
+      case fcmToken
+      case pushNotificationTap
+      case appRestart
+    }
     
     @CasePathable
     public enum InternalAction {
@@ -117,6 +123,7 @@ extension AppEntry {
       case pushNotificationTapped(DeeplinkDestination)
       case subscribeAppRestart
       case appRestartRequested
+      case cancelSubscriptions
     }
 
     // MARK: - Destination Reducer
@@ -290,6 +297,7 @@ extension AppEntry {
                 }
                 .map { Action.internal(.fcmTokenReceived($0)) }
             }
+            .cancellable(id: SubscriptionCancelID.fcmToken, cancelInFlight: true)
 
           case .fcmTokenReceived(let token):
             return .run { [notificationClient] send in
@@ -315,6 +323,7 @@ extension AppEntry {
                 await send(.internal(.pushNotificationTapped(destination)))
               }
             }
+            .cancellable(id: SubscriptionCancelID.pushNotificationTap, cancelInFlight: true)
 
           case .pushNotificationTapped(let destination):
             return routeOrPendDeeplink(destination, state: &state)
@@ -325,6 +334,7 @@ extension AppEntry {
                 .publisher(for: AppConstants.Notifications.appRestartRequested)
                 .map { _ in Action.internal(.appRestartRequested) }
             }
+            .cancellable(id: SubscriptionCancelID.appRestart, cancelInFlight: true)
 
           case .appRestartRequested:
             // 앱 상태 리셋 - Splash부터 다시 시작
@@ -339,6 +349,13 @@ extension AppEntry {
             // (UserDefaults.preferredThemeMode 값을 직접 읽음)
 
             return .send(.internal(.startSessionCheck))
+
+          case .cancelSubscriptions:
+            return .merge(
+              .cancel(id: SubscriptionCancelID.fcmToken),
+              .cancel(id: SubscriptionCancelID.pushNotificationTap),
+              .cancel(id: SubscriptionCancelID.appRestart)
+            )
           }
 
         case .destination(.presented(.auth(.delegate(.loggedIn(let providerProfileImageURL))))):

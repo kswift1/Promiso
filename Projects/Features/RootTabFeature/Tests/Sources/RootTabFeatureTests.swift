@@ -27,6 +27,7 @@ import Sharing
 // MARK: - RootTabFeature Tests
 
 @Suite("RootTab.Feature reducer 테스트")
+@MainActor
 struct RootTabFeatureTests {
 
   // MARK: - Test Helpers

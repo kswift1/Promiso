@@ -24,6 +24,7 @@ import Clients
 // MARK: - AuthFeature Tests
 
 @Suite("Auth.Feature reducer 테스트")
+@MainActor
 struct AuthFeatureTests {
 
   // MARK: - Initial State 테스트

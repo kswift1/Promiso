@@ -5,6 +5,7 @@ import Clients
 @testable import AppEntryFeature
 
 @Suite("AppEntry.Feature 테스트")
+@MainActor
 struct AppEntryFeatureTests {
 
   // MARK: - 초기 상태 테스트
@@ -78,6 +79,8 @@ struct AppEntryFeatureTests {
       $0.destination = .auth(AuthFeature.Auth.Feature.State())
       $0.splash = .animatingOut
     }
+
+    await store.send(.internal(.cancelSubscriptions))
   }
 
   // MARK: - Update Alert 테스트
@@ -131,6 +134,8 @@ struct AppEntryFeatureTests {
       $0.destination = .auth(AuthFeature.Auth.Feature.State())
       $0.splash = .animatingOut
     }
+
+    await store.send(.internal(.cancelSubscriptions))
   }
 
   @Test("강제 업데이트 나중에 탭 시 아무 일도 안 함")
