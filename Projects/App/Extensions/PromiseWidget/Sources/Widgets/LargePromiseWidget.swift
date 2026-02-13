@@ -95,7 +95,6 @@ struct LargePromiseWidgetView: View {
       sectionHeader(
         title: "오늘",
         icon: "sun.max.fill",
-        count: entry.todayItems.count,
         isHighlighted: true
       )
 
@@ -119,7 +118,6 @@ struct LargePromiseWidgetView: View {
       sectionHeader(
         title: "다가오는 일정",
         icon: "calendar",
-        count: entry.upcomingItems.count,
         isHighlighted: false
       )
 
@@ -141,7 +139,6 @@ struct LargePromiseWidgetView: View {
   private func sectionHeader(
     title: String,
     icon: String,
-    count: Int,
     isHighlighted: Bool
   ) -> some View {
     HStack(spacing: 6) {
@@ -152,16 +149,6 @@ struct LargePromiseWidgetView: View {
       Text(title)
         .font(.subheadline.weight(.bold))
         .foregroundStyle(.primary)
-
-      Text("\(count)")
-        .font(.caption2.weight(.bold))
-        .foregroundStyle(isHighlighted ? .white : .secondary)
-        .padding(.horizontal, 6)
-        .padding(.vertical, 2)
-        .background(
-          isHighlighted ? Color.pmindigo.n500 : Color.secondary.opacity(0.2),
-          in: Capsule()
-        )
 
       Spacer()
     }

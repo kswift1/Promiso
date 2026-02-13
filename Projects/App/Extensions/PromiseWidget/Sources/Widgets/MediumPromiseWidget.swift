@@ -76,7 +76,7 @@ struct MediumPromiseWidgetView: View {
   @ViewBuilder
   private func todayView(_ items: [WidgetPromiseData]) -> some View {
     VStack(alignment: .leading, spacing: 6) {
-      sectionHeader(title: "오늘", icon: "sun.max.fill", count: entry.todayItems.count)
+      sectionHeader(title: "오늘", icon: "sun.max.fill")
 
       ForEach(items, id: \.id) { item in
         if let url = item.deeplinkURL {
@@ -99,7 +99,7 @@ struct MediumPromiseWidgetView: View {
   @ViewBuilder
   private func upcomingView(_ items: [WidgetPromiseData]) -> some View {
     VStack(alignment: .leading, spacing: 6) {
-      sectionHeader(title: "다가오는 일정", icon: "calendar", count: entry.upcomingItems.count)
+      sectionHeader(title: "다가오는 일정", icon: "calendar")
 
       ForEach(items, id: \.id) { item in
         if let url = item.deeplinkURL {
@@ -122,7 +122,7 @@ struct MediumPromiseWidgetView: View {
   // MARK: - Section Header
 
   @ViewBuilder
-  private func sectionHeader(title: String, icon: String, count: Int) -> some View {
+  private func sectionHeader(title: String, icon: String) -> some View {
     HStack(spacing: 6) {
       Image(systemName: icon)
         .font(.caption.weight(.semibold))
@@ -131,13 +131,6 @@ struct MediumPromiseWidgetView: View {
       Text(title)
         .font(.subheadline.weight(.bold))
         .foregroundStyle(.primary)
-
-      Text("\(count)")
-        .font(.caption.weight(.medium))
-        .foregroundStyle(.white)
-        .padding(.horizontal, 6)
-        .padding(.vertical, 2)
-        .background(Color.pmindigo.n500, in: Capsule())
 
       Spacer()
     }
