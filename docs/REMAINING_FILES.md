@@ -92,22 +92,22 @@ BestPractice 패턴 적용 대상입니다.
 
 TCA TestStore를 사용하지 않는 순수 단위 테스트입니다. BestPractice 중 import/네이밍/구조 규칙만 적용합니다.
 
-- [ ] `AuthClientModelTests.swift` (264L)
-- [ ] `CalendarSyncClientTests.swift` (619L)
-- [ ] `DTOMappingTests.swift` (396L)
-- [ ] `DeeplinkNotificationParserTests.swift` (78L)
-- [ ] `DeeplinkURLParserTests.swift` (180L)
-- [ ] `ErrorModelTests.swift` (182L)
-- [ ] `GroupModelTests.swift` (231L)
-- [ ] `NotificationModelTests.swift` (257L)
-- [ ] `PromiseClientTests.swift` (141L)
-- [ ] `PromiseModelTests.swift` (510L)
-- [ ] `PromiseModelValidationTests.swift` (221L)
-- [ ] `SupportingTypesTests.swift` (290L)
-- [ ] `UserModelTests.swift` (225L)
-- [ ] `Helpers/TestFactories.swift` (307L)
-- [ ] `Mocks/MockGroupRemoteDataSource.swift` (225L)
-- [ ] `Mocks/MockPromiseRemoteDataSource.swift` (253L)
+- [x] `AuthClientModelTests.swift` (264L) — 이미 BestPractice 준수
+- [x] `CalendarSyncClientTests.swift` (619L → 607L, `import ComposableArchitecture` 제거 + @MainActor struct 레벨 통합)
+- [x] `DTOMappingTests.swift` (396L → 395L, `import FirebaseFirestore` 제거)
+- [x] `DeeplinkNotificationParserTests.swift` (78L) — 이미 BestPractice 준수
+- [x] `DeeplinkURLParserTests.swift` (180L) — 이미 BestPractice 준수
+- [x] `ErrorModelTests.swift` (182L) — 이미 BestPractice 준수
+- [x] `GroupModelTests.swift` (231L) — 이미 BestPractice 준수
+- [x] `NotificationModelTests.swift` (257L) — 이미 BestPractice 준수
+- [x] `PromiseClientTests.swift` (141L) — 이미 BestPractice 준수
+- [x] `PromiseModelTests.swift` (510L) — 이미 BestPractice 준수
+- [x] `PromiseModelValidationTests.swift` (221L) — 이미 BestPractice 준수
+- [x] `SupportingTypesTests.swift` (290L) — 이미 BestPractice 준수
+- [x] `UserModelTests.swift` (225L) — 이미 BestPractice 준수
+- [x] `Helpers/TestFactories.swift` (307L) — 이미 BestPractice 준수
+- [x] `Mocks/MockGroupRemoteDataSource.swift` (225L) — 이미 BestPractice 준수
+- [x] `Mocks/MockPromiseRemoteDataSource.swift` (253L) — 이미 BestPractice 준수
 
 ---
 

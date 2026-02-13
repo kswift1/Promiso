@@ -21,7 +21,6 @@ import Foundation
 import Testing
 @testable import Clients
 import PromisoShared
-import FirebaseFirestore
 
 // MARK: - PromiseDTO -> PromiseModel 변환 테스트
 
