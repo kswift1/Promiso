@@ -45,15 +45,15 @@ BestPractice 패턴 적용 대상입니다.
 
 ### GroupFeature
 
-- [ ] `GroupFeatureTests.swift` (403L)
-- [ ] `CreateGroupReducerTests.swift` (164L)
-- [ ] `CreateGroupPermissionTests.swift` (366L)
-- [ ] `CreatePromiseReducerTests.swift` (209L)
-- [ ] `CreatePromiseStepTests.swift` (147L)
-- [ ] `GroupMainStateTests.swift` (343L)
-- [ ] `GroupSettingsReducerTests.swift` (317L)
-- [ ] `JoinGroupPermissionTests.swift` (207L)
-- [ ] `JoinGroupReducerTests.swift` (124L)
+- [x] `GroupFeatureTests.swift` (403L → 429L, 14→17 tests, exhaustivity 정리 + 기존 실패 테스트 수정 + proposalRespondFailed/deletePromiseFailed/sameGroup 추가)
+- [x] `CreateGroupReducerTests.swift` (164L → 213L, 8→10 tests, successAcknowledged/settingsSkipped delegate 테스트 추가)
+- [x] `CreateGroupPermissionTests.swift` (366L → 348L, 17 tests, import 정리 + @MainActor 통합 + func 스페이싱 수정)
+- [x] `CreatePromiseReducerTests.swift` (209L → 300L, 11→17 tests, liveActivityInfo/toggleUseEndTime/createPromiseResponse 추가)
+- [x] `CreatePromiseStepTests.swift` (147L, 16 tests) — 이미 BestPractice 준수
+- [x] `GroupMainStateTests.swift` (343L → 355L, 15→16 tests, filteredPromises needResponse 추가)
+- [x] `GroupSettingsReducerTests.swift` (317L → 504L, 17→27 tests, confirmLeave/confirmDelete/confirmTransferHost + 응답 테스트 추가 + maxMembers 상한 테스트 수정)
+- [x] `JoinGroupPermissionTests.swift` (207L → 197L, 9 tests, import 정리 + @MainActor 통합 + func 스페이싱 수정)
+- [x] `JoinGroupReducerTests.swift` (124L → 211L, 5→9 tests, nextTapped/previewGroupResponse/joinGroupResponse 추가)
 
 ### HomeFeature
 

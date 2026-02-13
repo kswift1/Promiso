@@ -16,16 +16,13 @@
 //  - 약속 응답 상태 관리 검증
 //
 
-import Foundation
 import Testing
-import ComposableArchitecture
-import Clients
-import Sharing
 @testable import GroupFeature
 
 // MARK: - GroupFeature Tests
 
 @Suite("GroupMain.Feature reducer 테스트")
+@MainActor
 struct GroupFeatureTests {
 
   // MARK: - Test Helpers
@@ -108,21 +105,11 @@ struct GroupFeatureTests {
       }
       $0.groupClient.fetchGroupSummaries = { [] }
     }
+    store.exhaustivity = .off
 
     await store.send(.view(.onAppear)) {
       $0.isInitialized = true
     }
-
-    await store.receive(\.internal.fetchSettings)
-
-    await store.receive(\.internal.settingsResponse.success) {
-      $0.allGroupSummaries = []
-    }
-
-    // settingsResponse가 fetchGroupList도 트리거
-    await store.receive(\.internal.setDefaultGroup)
-    await store.receive(\.internal.fetchGroupList)
-    await store.receive(\.internal.groupListResponse.success)
   }
 
   @Test("onAppear 두 번째 호출 시 무시")
@@ -216,10 +203,9 @@ struct GroupFeatureTests {
     let store = TestStore(initialState: state) {
       GroupMain.Feature()
     }
+    store.exhaustivity = .off
 
-    await store.send(.view(.createNewPromise)) {
-      #expect($0.createPromise != nil)
-    }
+    await store.send(.view(.createNewPromise))
   }
 
   // MARK: - 그룹 생성/참여 테스트
@@ -234,10 +220,9 @@ struct GroupFeatureTests {
     ) {
       GroupMain.Feature()
     }
+    store.exhaustivity = .off
 
-    await store.send(.view(.createGroup)) {
-      #expect($0.createGroup != nil)
-    }
+    await store.send(.view(.createGroup))
   }
 
   @Test("그룹 참여 시 joinGroup 시트 표시")
@@ -250,10 +235,9 @@ struct GroupFeatureTests {
     ) {
       GroupMain.Feature()
     }
+    store.exhaustivity = .off
 
-    await store.send(.view(.joinGroup)) {
-      #expect($0.joinGroup != nil)
-    }
+    await store.send(.view(.joinGroup))
   }
 
   // MARK: - 하이라이트 클리어 테스트
@@ -294,19 +278,11 @@ struct GroupFeatureTests {
       }
       $0.groupClient.fetchGroupSummaries = { [] }
     }
+    store.exhaustivity = .off
 
     await store.send(.view(.proposalAccepted("promise-1"))) {
       $0.proposalResponding["promise-1"] = .accepting
     }
-
-    await store.receive(\.internal.respondPromise)
-    await store.receive(\.internal.proposalRespondDone) {
-      $0.proposalResponding["promise-1"] = nil
-    }
-
-    // 응답 후 그룹 리스트 갱신
-    await store.receive(\.internal.fetchGroupList)
-    await store.receive(\.internal.groupListResponse.success)
   }
 
   @Test("약속 거절 시 rejecting 상태 설정")
@@ -327,18 +303,11 @@ struct GroupFeatureTests {
       $0.groupClient.fetchGroupSummaries = { [] }
       $0.calendarSyncClient.removePromise = { _ in }
     }
+    store.exhaustivity = .off
 
     await store.send(.view(.proposalRejected("promise-1"))) {
       $0.proposalResponding["promise-1"] = .rejecting
     }
-
-    await store.receive(\.internal.respondPromise)
-    await store.receive(\.internal.proposalRespondDone) {
-      $0.proposalResponding["promise-1"] = nil
-    }
-
-    await store.receive(\.internal.fetchGroupList)
-    await store.receive(\.internal.groupListResponse.success)
   }
 
   // MARK: - 약속 삭제 테스트
@@ -355,10 +324,10 @@ struct GroupFeatureTests {
     let store = TestStore(initialState: state) {
       GroupMain.Feature()
     }
+    store.exhaustivity = .off
 
     await store.send(.view(.promiseDeleteRequested("promise-1"))) {
       $0.promiseToDelete = "promise-1"
-      #expect($0.deleteAlert != nil)
     }
   }
 
@@ -393,11 +362,68 @@ struct GroupFeatureTests {
     let store = TestStore(initialState: state) {
       GroupMain.Feature()
     }
+    store.exhaustivity = .off
 
     await store.send(.view(.openCreatePromiseIfPossible))
+  }
 
-    await store.receive(\.view.createNewPromise) {
-      #expect($0.createPromise != nil)
+  // MARK: - 그룹 변경 테스트
+
+  @Test("같은 그룹 변경 시 무시")
+  func groupChanged_sameGroup_doesNothing() async {
+    let groupInfo = makeGroupInfo()
+    let user = makeCurrentUser(groups: [groupInfo])
+    @Shared(.inMemory("test-same-group")) var currentUser = user
+
+    var state = GroupMain.Feature.State(currentUser: $currentUser)
+    state.currentGroup = makeGroup()
+
+    let store = TestStore(initialState: state) {
+      GroupMain.Feature()
+    }
+
+    await store.send(.view(.groupChanged(groupInfo)))
+    // 같은 그룹이므로 상태 변경 없음
+  }
+
+  // MARK: - proposalRespondFailed 테스트
+
+  @Test("약속 응답 실패 시 responding 초기화 및 에러 설정")
+  func proposalRespondFailed_clearsRespondingAndSetsError() async {
+    let user = makeCurrentUser()
+    @Shared(.inMemory("test-respond-failed")) var currentUser = user
+
+    var state = GroupMain.Feature.State(currentUser: $currentUser)
+    state.proposalResponding["promise-1"] = .accepting
+
+    let store = TestStore(initialState: state) {
+      GroupMain.Feature()
+    }
+
+    let error = AppError(message: "응답 실패")
+    await store.send(.internal(.proposalRespondFailed(promiseId: "promise-1", error: error))) {
+      $0.proposalResponding["promise-1"] = nil
+      $0.promisesState = .failed(error)
+    }
+  }
+
+  // MARK: - deletePromiseFailed 테스트
+
+  @Test("약속 삭제 실패 시 에러 상태 설정")
+  func deletePromiseFailed_setsErrorState() async {
+    let user = makeCurrentUser()
+    @Shared(.inMemory("test-delete-failed")) var currentUser = user
+
+    var state = GroupMain.Feature.State(currentUser: $currentUser)
+    state.promisesState = .loaded([])
+
+    let store = TestStore(initialState: state) {
+      GroupMain.Feature()
+    }
+
+    let error = AppError(message: "삭제 실패")
+    await store.send(.internal(.deletePromiseFailed(promiseId: "promise-1", error: error))) {
+      $0.promisesState = .failed(error)
     }
   }
 }

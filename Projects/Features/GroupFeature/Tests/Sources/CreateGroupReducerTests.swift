@@ -9,15 +9,13 @@
 //  - Reducer의 action 처리 및 state 변화 검증
 //
 
-import Foundation
 import Testing
-import ComposableArchitecture
-import Clients
 @testable import GroupFeature
 
 // MARK: - CreateGroup Feature Tests
 
 @Suite("CreateGroup.Feature reducer 테스트")
+@MainActor
 struct CreateGroupReducerTests {
 
   // MARK: - Test Helpers
@@ -159,6 +157,57 @@ struct CreateGroupReducerTests {
     await store.send(.internal(.createGroupResponse(.failure(testError)))) {
       $0.isCreating = false
       $0.creationError = testError.localizedDescription
+    }
+  }
+
+  // MARK: - successAcknowledged 테스트
+
+  @Test("성공 확인 시 settings 단계로 이동")
+  func successAcknowledged_movesToSettingsStep() async {
+    let user = makeCurrentUser()
+    let result = GroupCreationResultModel(
+      id: "group-new",
+      name: "테스트 그룹",
+      inviteCode: "ABC123"
+    )
+    var state = CreateGroup.Feature.State(currentUser: user)
+    state.step = .success(result)
+
+    let store = TestStore(initialState: state) {
+      CreateGroup.Feature()
+    } withDependencies: {
+      $0.notificationClient.getAuthorizationStatus = { .authorized }
+      $0.eventKitClient.authorizationStatus = { .fullAccess }
+    }
+    store.exhaustivity = .off
+
+    await store.send(.view(.successAcknowledged)) {
+      $0.step = .settings(result)
+    }
+  }
+
+  // MARK: - settingsSkipped 테스트
+
+  @Test("설정 건너뛰기 시 delegate.groupCreated 전달")
+  func settingsSkipped_sendsGroupCreatedDelegate() async {
+    let user = makeCurrentUser()
+    let result = GroupCreationResultModel(
+      id: "group-new",
+      name: "테스트 그룹",
+      inviteCode: "ABC123"
+    )
+    var state = CreateGroup.Feature.State(currentUser: user)
+    state.step = .settings(result)
+
+    let store = TestStore(initialState: state) {
+      CreateGroup.Feature()
+    } withDependencies: {
+      $0.analyticsClient.logEvent = { _, _ in }
+    }
+
+    await store.send(.view(.settingsSkipped))
+    await store.receive(\.delegate.groupCreated) {
+      $0.step = .input
     }
   }
 }

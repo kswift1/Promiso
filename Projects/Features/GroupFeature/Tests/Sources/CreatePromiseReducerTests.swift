@@ -9,15 +9,13 @@
 //  - Reducer의 action 처리 및 state 변화 검증
 //
 
-import Foundation
 import Testing
-import ComposableArchitecture
-import Clients
 @testable import GroupFeature
 
 // MARK: - CreatePromise Feature Tests
 
 @Suite("CreatePromise.Feature reducer 테스트")
+@MainActor
 struct CreatePromiseReducerTests {
 
   // MARK: - Test Helpers
@@ -204,6 +202,99 @@ struct CreatePromiseReducerTests {
 
     await store.send(.view(.clearCreationError)) {
       $0.creationError = nil
+    }
+  }
+
+  // MARK: - LiveActivity Info 테스트
+
+  @Test("LiveActivity 정보 버튼 탭 시 팝오버 표시")
+  func liveActivityInfoButtonTapped_showsPopover() async {
+    let store = TestStore(
+      initialState: CreatePromise.Feature.State()
+    ) {
+      CreatePromise.Feature()
+    }
+
+    await store.send(.view(.liveActivityInfoButtonTapped)) {
+      $0.showLiveActivityInfo = true
+    }
+  }
+
+  @Test("LiveActivity 정보 팝오버 닫기")
+  func liveActivityInfoDismissed_hidesPopover() async {
+    var state = CreatePromise.Feature.State()
+    state.showLiveActivityInfo = true
+    state.hasSeenLiveActivityInfo = true
+
+    let store = TestStore(initialState: state) {
+      CreatePromise.Feature()
+    }
+
+    await store.send(.view(.liveActivityInfoDismissed)) {
+      $0.showLiveActivityInfo = false
+    }
+  }
+
+  // MARK: - toggleUseEndTime 테스트
+
+  @Test("[P18] 종료시간 토글 ON 시 시작시간 + 2시간 설정")
+  func toggleUseEndTime_on_setsEndAt() async {
+    let store = TestStore(
+      initialState: CreatePromise.Feature.State()
+    ) {
+      CreatePromise.Feature()
+    }
+
+    await store.send(.view(.toggleUseEndTime)) {
+      $0.promise.endAt = $0.promise.startAt.addingTimeInterval(7200)
+    }
+  }
+
+  @Test("종료시간 토글 OFF 시 endAt nil 설정")
+  func toggleUseEndTime_off_clearsEndAt() async {
+    var state = CreatePromise.Feature.State()
+    state.promise.endAt = Date().addingTimeInterval(7200)
+
+    let store = TestStore(initialState: state) {
+      CreatePromise.Feature()
+    }
+
+    await store.send(.view(.toggleUseEndTime)) {
+      $0.promise.endAt = nil
+    }
+  }
+
+  // MARK: - createPromiseResponse 테스트
+
+  @Test("약속 생성 성공 시 delegate.promiseCreated 전달")
+  func createPromiseResponse_success_sendsDelegate() async {
+    var state = CreatePromise.Feature.State()
+    state.isCreatingPromise = true
+
+    let store = TestStore(initialState: state) {
+      CreatePromise.Feature()
+    } withDependencies: {
+      $0.analyticsClient.logEvent = { _, _ in }
+    }
+    store.exhaustivity = .off
+
+    await store.send(.internal(.createPromiseResponse(.success("promise-1")))) {
+      $0.isCreatingPromise = false
+    }
+  }
+
+  @Test("약속 생성 실패 시 에러 설정")
+  func createPromiseResponse_failure_setsError() async {
+    var state = CreatePromise.Feature.State()
+    state.isCreatingPromise = true
+
+    let store = TestStore(initialState: state) {
+      CreatePromise.Feature()
+    }
+
+    await store.send(.internal(.createPromiseResponse(.failure(.unknown("생성 실패"))))) {
+      $0.isCreatingPromise = false
+      $0.creationError = .unknown("생성 실패")
     }
   }
 }
