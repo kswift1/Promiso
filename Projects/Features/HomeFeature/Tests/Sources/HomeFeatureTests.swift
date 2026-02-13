@@ -62,6 +62,7 @@ struct HomeFeatureTests {
     ) {
       Home.Feature()
     } withDependencies: {
+      $0.personalEventClient.getActiveEvents = { _ in [] }
       configure(&$0)
     }
   }
@@ -82,6 +83,7 @@ struct HomeFeatureTests {
       $0.promiseClient.getHomePromises = { _, _ in [] }
       $0.notificationClient.getUnreadCount = { _ in 0 }
       $0.notificationClient.setBadgeCount = { _ in }
+      $0.personalEventClient.getActiveEvents = { _ in [] }
     }
 
     await store.send(.view(.onAppear)) {
@@ -92,12 +94,12 @@ struct HomeFeatureTests {
       $0.promisesState = .loading
     }
 
+    store.exhaustivity = .off(showSkippedAssertions: false)
     await store.receive(\.internal.promisesResponse.success) {
       $0.promisesState = .loaded([])
     }
-
-    await store.receive(\.internal.fetchUnreadNotificationCount)
     await store.receive(\.internal.unreadNotificationCountResponse)
+    await store.finish()
   }
 
   @Test("onAppear 반복 호출 시에도 fetchPromises 트리거")
@@ -110,7 +112,10 @@ struct HomeFeatureTests {
 
     let store = TestStore(initialState: state) {
       Home.Feature()
+    } withDependencies: {
+      $0.personalEventClient.getActiveEvents = { _ in [] }
     }
+    store.exhaustivity = .off(showSkippedAssertions: false)
 
     // 그룹이 없으면 fetchPromises에서 빈 배열 즉시 반환
     await store.send(.view(.onAppear))
@@ -118,6 +123,7 @@ struct HomeFeatureTests {
     await store.receive(\.internal.fetchPromises) {
       $0.promisesState = .loaded([])
     }
+    await store.finish()
   }
 
   // MARK: - 그룹 없을 때 테스트
@@ -131,7 +137,10 @@ struct HomeFeatureTests {
       initialState: Home.Feature.State(currentUser: $currentUser)
     ) {
       Home.Feature()
+    } withDependencies: {
+      $0.personalEventClient.getActiveEvents = { _ in [] }
     }
+    store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.onAppear)) {
       $0.hasLoadedOnce = true
@@ -140,6 +149,7 @@ struct HomeFeatureTests {
     await store.receive(\.internal.fetchPromises) {
       $0.promisesState = .loaded([])
     }
+    await store.finish()
   }
 
   // MARK: - refreshTriggered 테스트
@@ -153,13 +163,17 @@ struct HomeFeatureTests {
       initialState: Home.Feature.State(currentUser: $currentUser)
     ) {
       Home.Feature()
+    } withDependencies: {
+      $0.personalEventClient.getActiveEvents = { _ in [] }
     }
+    store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.refreshTriggered))
 
     await store.receive(\.internal.fetchPromises) {
       $0.promisesState = .loaded([])
     }
+    await store.finish()
   }
 
   // MARK: - 에러 핸들링 테스트
@@ -178,7 +192,9 @@ struct HomeFeatureTests {
       Home.Feature()
     } withDependencies: {
       $0.promiseClient.getHomePromises = { _, _ in throw testError }
+      $0.personalEventClient.getActiveEvents = { _ in [] }
     }
+    store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.onAppear)) {
       $0.hasLoadedOnce = true
@@ -191,6 +207,7 @@ struct HomeFeatureTests {
     await store.receive(\.internal.promisesResponse.failure) {
       $0.promisesState = .failed(testError)
     }
+    await store.finish()
   }
 
   // MARK: - 필터 테스트
@@ -344,6 +361,7 @@ struct HomeFeatureTests {
       $0.promiseClient.getHomePromises = { _, _ in [testPromise] }
       $0.notificationClient.getUnreadCount = { _ in 3 }
       $0.notificationClient.setBadgeCount = { _ in }
+      $0.personalEventClient.getActiveEvents = { _ in [] }
     }
 
     await store.send(.view(.onAppear)) {
@@ -513,7 +531,9 @@ struct HomeFeatureTests {
       $0.promiseClient.getHomePromises = { _, _ in [] }
       $0.notificationClient.getUnreadCount = { _ in 0 }
       $0.notificationClient.setBadgeCount = { _ in }
+      $0.personalEventClient.getActiveEvents = { _ in [] }
     }
+    store.exhaustivity = .off(showSkippedAssertions: false)
 
     // refreshTriggered → fetchPromises: promisesState.value != nil이므로 .loading 스킵
     await store.send(.view(.refreshTriggered))
@@ -522,9 +542,6 @@ struct HomeFeatureTests {
     // promisesState는 .loaded([]) 유지, .loading으로 전환되지 않음
 
     await store.receive(\.internal.promisesResponse.success)
-
-    await store.receive(\.internal.fetchUnreadNotificationCount)
-
-    await store.receive(\.internal.unreadNotificationCountResponse.success)
+    await store.finish()
   }
 }

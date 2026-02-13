@@ -57,8 +57,8 @@ struct RootTabFeatureTests {
   func tabSelected_group_updatesSelectedTab() async {
     let store = makeStore(state: makeState(key: "tab-group"))
 
-    await store.send(.tabSelected(.group)) {
-      $0.selectedTab = .group
+    await store.send(.tabSelected(.promise(.group))) {
+      $0.selectedTab = .promise(.group)
     }
   }
 
@@ -72,7 +72,7 @@ struct RootTabFeatureTests {
   @Test("home 탭 선택 시 selectedTab 업데이트")
   func tabSelected_home_updatesSelectedTab() async {
     var state = makeState(key: "tab-home")
-    state.selectedTab = .group
+    state.selectedTab = .promise(.group)
 
     let store = makeStore(state: state)
     store.exhaustivity = .off(showSkippedAssertions: false)
@@ -124,7 +124,7 @@ struct RootTabFeatureTests {
     store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.openJoinGroupWithCode("INVITE123")) {
-      $0.selectedTab = .group
+      $0.selectedTab = .promise(.group)
     }
     await store.receive(\.groupMain.view.joinGroupWithCode)
   }
@@ -135,7 +135,7 @@ struct RootTabFeatureTests {
     store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.handleGroupDeeplink(.group(groupId: "group-1"))) {
-      $0.selectedTab = .group
+      $0.selectedTab = .promise(.group)
     }
     await store.receive(\.groupMain.view.handleDeeplink)
   }
@@ -146,7 +146,7 @@ struct RootTabFeatureTests {
     store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.openCreatePromiseIfPossible) {
-      $0.selectedTab = .group
+      $0.selectedTab = .promise(.group)
     }
     await store.receive(\.groupMain.view.openCreatePromiseIfPossible)
   }
@@ -157,7 +157,7 @@ struct RootTabFeatureTests {
     store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.home(.delegate(.navigateToGroupWithPromise(groupId: "g-1", promiseId: "p-1")))) {
-      $0.selectedTab = .group
+      $0.selectedTab = .promise(.group)
     }
     await store.receive(\.groupMain.view.handleDeeplink)
   }
@@ -167,7 +167,7 @@ struct RootTabFeatureTests {
     let store = makeStore(state: makeState(key: "home-promise-missing"))
 
     await store.send(.home(.delegate(.navigateToPromise(promiseId: "promise-1", groupId: "missing")))) {
-      $0.selectedTab = .group
+      $0.selectedTab = .promise(.group)
     }
   }
 
@@ -685,8 +685,10 @@ private extension RootTabFeatureTests {
     dependencies.notificationClient.setBadgeCount = { _ in }
 
     dependencies.calendarSyncClient.sync = { _ in CalendarSyncResult() }
+    dependencies.calendarSyncClient.syncPersonalEvents = { _ in CalendarSyncResult() }
     dependencies.analyticsClient.logEvent = { _, _ in }
     dependencies.eventKitClient.authorizationStatus = { .notDetermined }
+    dependencies.personalEventClient.getActiveEvents = { _ in [] }
 
     dependencies.groupClient.fetchGroupSummaries = { [] }
     dependencies.groupClient.fetchGroup = { _ in group }

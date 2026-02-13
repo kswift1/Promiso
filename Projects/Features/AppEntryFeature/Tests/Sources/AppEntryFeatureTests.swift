@@ -53,6 +53,7 @@ struct AppEntryFeatureTests {
       $0.authClient.currentUser = { nil }
       $0.deeplinkClient.pushNotificationTapStream = { AsyncStream { _ in } }
       $0.notificationClient.saveFCMToken = { _ in }
+      $0.userDefaultsClient.boolForKey = { _ in true }
     }
 
     await store.send(.view(.onAppear))
@@ -93,6 +94,7 @@ struct AppEntryFeatureTests {
       $0.authClient.currentUser = { nil }
       $0.deeplinkClient.pushNotificationTapStream = { AsyncStream { _ in } }
       $0.notificationClient.saveFCMToken = { _ in }
+      $0.userDefaultsClient.boolForKey = { _ in true }
     }
 
     await store.send(.view(.scenePhaseChanged(.active)))
@@ -157,6 +159,7 @@ struct AppEntryFeatureTests {
 
     await store.send(.internal(.startProfileCheck))
     await store.receive(\.internal.profileCheckResponse)
+    await store.receive(\.internal.transitionToMain)
     #expect(store.state.destinationType == .main)
   }
 
@@ -195,6 +198,7 @@ struct AppEntryFeatureTests {
       $0.authClient.currentUser = { nil }
       $0.deeplinkClient.pushNotificationTapStream = { AsyncStream { _ in } }
       $0.notificationClient.saveFCMToken = { _ in }
+      $0.userDefaultsClient.boolForKey = { _ in true }
     }
 
     await store.send(.internal(.versionCheckCompleted(.upToDate))) {
@@ -216,6 +220,7 @@ struct AppEntryFeatureTests {
       $0.authClient.currentUser = { nil }
       $0.deeplinkClient.pushNotificationTapStream = { AsyncStream { _ in } }
       $0.notificationClient.saveFCMToken = { _ in }
+      $0.userDefaultsClient.boolForKey = { _ in true }
     }
 
     await store.send(.updateAlert(.laterTapped)) {
@@ -295,6 +300,7 @@ struct AppEntryFeatureTests {
 
     await store.send(.internal(.profileCheckResponse(user: firebaseUser, profile: user)))
     #expect(store.state.splash == .animatingOut)
+    await store.receive(\.internal.transitionToMain)
     #expect(store.state.destinationType == .main)
     #expect(store.state.pendingDeeplink == nil)
   }
@@ -320,6 +326,7 @@ struct AppEntryFeatureTests {
 
     await store.send(.internal(.profileCheckResponse(user: firebaseUser, profile: user)))
     #expect(store.state.splash == .animatingOut)
+    await store.receive(\.internal.transitionToMain)
     #expect(store.state.pendingDeeplink == nil)
     #expect(store.state.destinationType == .main)
     await store.receive(\.destination.presented.main.openLivePromiseDetail)
@@ -397,10 +404,14 @@ struct AppEntryFeatureTests {
       AppEntry.Feature()
     } withDependencies: {
       $0.clarityClient.setUser = { _, _ in }
+      $0.analyticsClient.setUserID = { _ in }
+      $0.analyticsClient.setUserProperty = { _, _ in }
+      $0.analyticsClient.logEvent = { _, _ in }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.internal(.notificationPermissionChecked(isAuthorized: true, user: user)))
+    await store.receive(\.internal.transitionToMain)
     #expect(store.state.pendingDeeplink == nil)
     #expect(store.state.destinationType == .main)
     await store.receive(\.destination.presented.main.openLivePromiseDetail)
@@ -434,10 +445,12 @@ struct AppEntryFeatureTests {
       $0.analyticsClient.setUserID = { _ in }
       $0.analyticsClient.setUserProperty = { _, _ in }
       $0.analyticsClient.logEvent = { _, _ in }
+      $0.userDefaultsClient.setBool = { _, _ in }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.notificationPermission(.presented(.delegate(.dismissed))))
+    await store.receive(\.internal.transitionToMain)
     #expect(store.state.notificationPermission == nil)
     #expect(store.state.pendingUserForMain == nil)
     #expect(store.state.destinationType == .main)
@@ -457,10 +470,12 @@ struct AppEntryFeatureTests {
       $0.analyticsClient.setUserID = { _ in }
       $0.analyticsClient.setUserProperty = { _, _ in }
       $0.analyticsClient.logEvent = { _, _ in }
+      $0.userDefaultsClient.setBool = { _, _ in }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.notificationPermission(.presented(.delegate(.permissionChanged(isGranted: true)))))
+    await store.receive(\.internal.transitionToMain)
     #expect(store.state.notificationPermission == nil)
     #expect(store.state.pendingUserForMain == nil)
     #expect(store.state.destinationType == .main)

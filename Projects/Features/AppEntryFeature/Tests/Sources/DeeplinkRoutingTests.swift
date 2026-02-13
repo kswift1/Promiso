@@ -160,6 +160,7 @@ struct DeeplinkRoutingTests {
       user: makeFirebaseUser(uid: "firebase-main"),
       profile: makeUser(id: "user-main", nickname: "메인유저")
     )))
+    await store.receive(\.internal.transitionToMain)
 
     #expect(store.state.destinationType == .main)
     #expect(store.state.pendingDeeplink == nil)
@@ -318,6 +319,7 @@ struct PushNotificationDeeplinkTests {
       user: makeFirebaseUser(uid: "firebase-push-main"),
       profile: makeUser(id: "user-push-main", nickname: "푸시메인")
     )))
+    await store.receive(\.internal.transitionToMain)
 
     #expect(store.state.destinationType == .main)
     #expect(store.state.pendingDeeplink == nil)

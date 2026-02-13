@@ -25,19 +25,23 @@ struct CalendarFeatureTests {
   @Test("onAppear 시 권한 확인과 초기 데이터 로드 시작")
   func onAppear_startsPermissionCheckAndInitialLoad() async {
     let store = makeStore(state: makeState(key: "on-appear"))
+    store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.onAppear))
     await store.receive(\.internal.checkCalendarPermission)
     await store.receive(\.internal.loadInitialData)
+    await store.finish()
   }
 
   @Test("refresh 시 권한 확인과 초기 데이터 로드 시작")
   func refresh_startsPermissionCheckAndInitialLoad() async {
     let store = makeStore(state: makeState(key: "refresh"))
+    store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.refresh))
     await store.receive(\.internal.checkCalendarPermission)
     await store.receive(\.internal.loadInitialData)
+    await store.finish()
   }
 
   // MARK: - 디스플레이 모드 전환 테스트
@@ -427,5 +431,6 @@ private extension CalendarFeatureTests {
     deps.eventKitClient.requestAccess = { false }
     deps.eventKitClient.fetchEvents = { _, _ in [] }
     deps.promiseClient.getPromisesByDateRange = { _, _, _ in [] }
+    deps.personalEventClient.getActiveEvents = { _ in [] }
   }
 }

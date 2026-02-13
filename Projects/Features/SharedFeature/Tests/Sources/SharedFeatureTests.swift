@@ -1159,7 +1159,10 @@ struct EditPromiseFeatureTests {
       EditPromise.Feature()
     }
 
-    await store.send(.internal(.updatePromiseResponse(.success(())))) {
+    var updatedPromise = promise
+    updatedPromise.title = "수정된 제목"
+
+    await store.send(.internal(.updatePromiseResponse(.success(updatedPromise)))) {
       $0.isUpdating = false
     }
 
