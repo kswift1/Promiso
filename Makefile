@@ -19,7 +19,7 @@ MODULE ?=
 FORCE ?=
 
 # 시뮬레이터 destination
-DESTINATION ?= platform=iOS Simulator,name=iPhone 16,OS=latest
+DESTINATION ?= platform=iOS Simulator,name=iPhone 16,OS=18.3.1
 
 # ============================================================================
 # 🚀 초기 설정
@@ -157,7 +157,9 @@ test-module:
 		exit 1; \
 	fi
 	@echo "🧪 $(MODULE) 테스트 실행 중..."
-	@tuist test $(MODULE)Tests -- \
+	@xcodebuild test \
+		-scheme $(MODULE) \
+		-workspace Promiso.xcworkspace \
 		-destination '$(DESTINATION)' \
 		-skipPackagePluginValidation
 
@@ -169,7 +171,9 @@ build-module:
 		exit 1; \
 	fi
 	@echo "🔨 $(MODULE) 빌드 중..."
-	@tuist build $(MODULE) -- \
+	@xcodebuild build-for-testing \
+		-scheme $(MODULE) \
+		-workspace Promiso.xcworkspace \
 		-destination '$(DESTINATION)' \
 		-skipPackagePluginValidation
 

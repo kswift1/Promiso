@@ -42,7 +42,7 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$PROJECT_ROOT"
 
 # 시뮬레이터 destination
-DESTINATION="platform=iOS Simulator,name=iPhone 16,OS=latest"
+DESTINATION="platform=iOS Simulator,name=iPhone 16,OS=18.3.1"
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 모듈 매핑 함수
@@ -91,12 +91,7 @@ path_to_module() {
 # 모듈 이름 → 테스트 타겟 이름 매핑
 module_to_test_target() {
   local module="$1"
-
-  case "$module" in
-    PromisoShared)  echo "PromisoSharedTests" ;;
-    Clients)        echo "ClientsTests" ;;
-    *)              echo "${module}Tests" ;;
-  esac
+  echo "$module"
 }
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -175,7 +170,9 @@ for module in "${SORTED_MODULES[@]}"; do
   echo "🔨 빌드: $module"
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-  if ! tuist build "$module" -- \
+  if ! xcodebuild build-for-testing \
+    -scheme "$module" \
+    -workspace Promiso.xcworkspace \
     -destination "$DESTINATION" \
     -skipPackagePluginValidation 2>&1; then
     echo "❌ 빌드 실패: $module"
@@ -186,19 +183,20 @@ for module in "${SORTED_MODULES[@]}"; do
   echo "✅ 빌드 성공: $module"
 
   if [ "$CHECK_MODE" = "test" ]; then
-    test_target=$(module_to_test_target "$module")
     echo ""
-    echo "🧪 테스트: $test_target"
+    echo "🧪 테스트: $module"
 
-    if ! tuist test "$test_target" -- \
+    if ! xcodebuild test \
+      -scheme "$module" \
+      -workspace Promiso.xcworkspace \
       -destination "$DESTINATION" \
       -skipPackagePluginValidation 2>&1; then
-      echo "❌ 테스트 실패: $test_target"
+      echo "❌ 테스트 실패: $module"
       FAILED+=("$module (테스트)")
       continue
     fi
 
-    echo "✅ 테스트 성공: $test_target"
+    echo "✅ 테스트 성공: $module"
   fi
 
   echo ""
