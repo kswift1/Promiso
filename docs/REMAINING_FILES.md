@@ -32,8 +32,8 @@ BestPractice 패턴 적용 대상입니다.
 
 ### AppEntryFeature
 
-- [x] `AppEntryFeatureTests.swift` (778L) — **BestPractice 기준 파일**
-- [ ] `DeeplinkRoutingTests.swift` (390L)
+- [x] `AppEntryFeatureTests.swift` (778L → 848L, +4 tests) — **BestPractice 기준 파일**
+- [x] `DeeplinkRoutingTests.swift` (390L → 387L, +3 tests, import/헬퍼 정리)
 
 ### AuthFeature
 

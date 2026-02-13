@@ -1,8 +1,4 @@
 import Testing
-import ComposableArchitecture
-import Clients
-import PromisoShared
-import Sharing
 @testable import AppEntryFeature
 
 @Suite("딥링크 라우팅 테스트")
@@ -181,6 +177,45 @@ struct DeeplinkRoutingTests {
     await store.send(.view(.handleDeeplink(URL(string: "https://example.com")!)))
     #expect(store.state.pendingDeeplink == nil)
   }
+
+  @Test("Auth 화면에서 create 딥링크는 pending으로 저장")
+  func deeplinkWhileAuth_create_storesPending() async {
+    let store = TestStore(initialState: makeAuthState()) {
+      AppEntry.Feature()
+    } withDependencies: {
+      $0.deeplinkClient.parseURL = { _ in .create }
+    }
+
+    await store.send(.view(.handleDeeplink(URL(string: "promiso://create")!))) {
+      $0.pendingDeeplink = .create
+    }
+  }
+
+  @Test("Auth 화면에서 livePromise 딥링크는 pending으로 저장")
+  func deeplinkWhileAuth_livePromise_storesPending() async {
+    let store = TestStore(initialState: makeAuthState()) {
+      AppEntry.Feature()
+    } withDependencies: {
+      $0.deeplinkClient.parseURL = { _ in .livePromise(promiseId: "live-auth") }
+    }
+
+    await store.send(.view(.handleDeeplink(URL(string: "promiso://live/live-auth")!))) {
+      $0.pendingDeeplink = .livePromise(promiseId: "live-auth")
+    }
+  }
+
+  @Test("Auth 화면에서 liveActivityETA 딥링크는 pending으로 저장")
+  func deeplinkWhileAuth_liveActivityETA_storesPending() async {
+    let store = TestStore(initialState: makeAuthState()) {
+      AppEntry.Feature()
+    } withDependencies: {
+      $0.deeplinkClient.parseURL = { _ in .liveActivityETA(promiseId: "eta-auth") }
+    }
+
+    await store.send(.view(.handleDeeplink(URL(string: "promiso://promise/eta-auth/eta")!))) {
+      $0.pendingDeeplink = .liveActivityETA(promiseId: "eta-auth")
+    }
+  }
 }
 
 @Suite("푸시 알림 딥링크 테스트")
@@ -290,47 +325,9 @@ struct PushNotificationDeeplinkTests {
   }
 }
 
-private extension DeeplinkRoutingTests {
-  func makeMainState(key: String) -> AppEntry.Feature.State {
-    makeMainStateForDeeplinkTests(key: key)
-  }
+// MARK: - Shared Helpers
 
-  func makeAuthState() -> AppEntry.Feature.State {
-    makeAuthStateForDeeplinkTests()
-  }
-
-  func makeUser(id: String = "user-1", nickname: String = "테스터") -> UserPrivateModel {
-    makeUserForDeeplinkTests(id: id, nickname: nickname)
-  }
-
-  func makeFirebaseUser(uid: String) -> FirebaseUserSnapshot {
-    makeFirebaseUserForDeeplinkTests(uid: uid)
-  }
-
-  func makeGroupPreviewModel() -> GroupPreviewModel {
-    makeGroupPreviewForDeeplinkTests()
-  }
-}
-
-private extension PushNotificationDeeplinkTests {
-  func makeMainState(key: String) -> AppEntry.Feature.State {
-    makeMainStateForDeeplinkTests(key: key)
-  }
-
-  func makeAuthState() -> AppEntry.Feature.State {
-    makeAuthStateForDeeplinkTests()
-  }
-
-  func makeUser(id: String = "user-1", nickname: String = "테스터") -> UserPrivateModel {
-    makeUserForDeeplinkTests(id: id, nickname: nickname)
-  }
-
-  func makeFirebaseUser(uid: String) -> FirebaseUserSnapshot {
-    makeFirebaseUserForDeeplinkTests(uid: uid)
-  }
-}
-
-private func makeMainStateForDeeplinkTests(key: String) -> AppEntry.Feature.State {
+private func makeMainState(key: String) -> AppEntry.Feature.State {
   @Shared(.inMemory("deeplink-main-user-\(key)")) var mockUser = UserPrivateModel(
     userId: "test-user",
     name: "테스트",
@@ -345,14 +342,14 @@ private func makeMainStateForDeeplinkTests(key: String) -> AppEntry.Feature.Stat
   return state
 }
 
-private func makeAuthStateForDeeplinkTests() -> AppEntry.Feature.State {
+private func makeAuthState() -> AppEntry.Feature.State {
   var state = AppEntry.Feature.State()
   state.destination = .auth(Auth.Feature.State())
   state.splash = .hidden
   return state
 }
 
-private func makeUserForDeeplinkTests(
+private func makeUser(
   id: String = "user-1",
   nickname: String = "테스터"
 ) -> UserPrivateModel {
@@ -366,7 +363,7 @@ private func makeUserForDeeplinkTests(
   )
 }
 
-private func makeFirebaseUserForDeeplinkTests(uid: String) -> FirebaseUserSnapshot {
+private func makeFirebaseUser(uid: String) -> FirebaseUserSnapshot {
   FirebaseUserSnapshot(
     uid: uid,
     email: "\(uid)@example.com",
@@ -378,7 +375,7 @@ private func makeFirebaseUserForDeeplinkTests(uid: String) -> FirebaseUserSnapsh
   )
 }
 
-private func makeGroupPreviewForDeeplinkTests() -> GroupPreviewModel {
+private func makeGroupPreviewModel() -> GroupPreviewModel {
   let group = GroupModel(
     id: "group-preview",
     name: "테스트 그룹",

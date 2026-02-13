@@ -275,6 +275,30 @@ struct AppEntryFeatureTests {
     await store.receive(\.internal.startProfileCheck)
   }
 
+  @Test("profileCheckResponse 기존 사용자 + pending 없으면 메인 전환만")
+  func profileCheck_existingUser_noPending_routesToMainOnly() async {
+    var state = AppEntry.Feature.State()
+    state.splash = .visible
+
+    let user = makeUser(id: "user-no-pending", nickname: "기존유저")
+    let firebaseUser = makeFirebaseUser(uid: "firebase-no-pending")
+
+    let store = TestStore(initialState: state) {
+      AppEntry.Feature()
+    } withDependencies: {
+      $0.clarityClient.setUser = { _, _ in }
+      $0.analyticsClient.setUserID = { _ in }
+      $0.analyticsClient.setUserProperty = { _, _ in }
+      $0.analyticsClient.logEvent = { _, _ in }
+    }
+    store.exhaustivity = .off(showSkippedAssertions: false)
+
+    await store.send(.internal(.profileCheckResponse(user: firebaseUser, profile: user)))
+    #expect(store.state.splash == .animatingOut)
+    #expect(store.state.destinationType == .main)
+    #expect(store.state.pendingDeeplink == nil)
+  }
+
   @Test("profileCheckResponse 기존 사용자면 메인 전환 및 pending 딥링크 처리")
   func profileCheck_existingUser_routesToMainAndProcessesPendingDeeplink() async {
     var state = AppEntry.Feature.State()
@@ -597,6 +621,25 @@ struct AppEntryFeatureTests {
     await store.send(.internal(.fcmTokenReceived("token-3")))
   }
 
+  @Test("subscribePushNotificationTap 구독 중 푸시 수신 시 pushNotificationTapped 전달")
+  func subscribePushNotificationTap_receivesAndForwards() async {
+    let store = TestStore(initialState: AppEntry.Feature.State()) {
+      AppEntry.Feature()
+    } withDependencies: {
+      $0.deeplinkClient.pushNotificationTapStream = {
+        AsyncStream { continuation in
+          continuation.yield(.group(groupId: "push-stream-g1"))
+          continuation.finish()
+        }
+      }
+    }
+
+    await store.send(.internal(.subscribePushNotificationTap))
+    await store.receive(\.internal.pushNotificationTapped) {
+      $0.pendingDeeplink = .group(groupId: "push-stream-g1")
+    }
+  }
+
   @Test("subscribeFCMToken 구독 중 알림 수신 시 fcmTokenReceived 전달")
   func subscribeFCMToken_receivesNotificationToken() async {
     let store = TestStore(initialState: AppEntry.Feature.State()) {
@@ -697,6 +740,33 @@ struct AppEntryFeatureTests {
 
     #expect(profileState.fullName == "")
     #expect(profileState.nickname == "")
+  }
+
+  @Test("ProfileSetup inject 시 user.photoURL 있으면 providerProfileImageURL보다 우선")
+  func profileSetupInject_withUserPhotoURL_prefersUserPhotoURL() {
+    var profileState = AppEntry.ProfileSetup.State()
+    let userPhotoURL = URL(string: "https://example.com/firebase-photo.png")!
+    let providerPhotoURL = URL(string: "https://example.com/provider-photo.png")!
+
+    profileState.inject(
+      user: makeFirebaseUser(photoURL: userPhotoURL),
+      providerProfileImageURL: providerPhotoURL
+    )
+
+    #expect(profileState.profileImage == .url(userPhotoURL))
+  }
+
+  @Test("ProfileSetup inject 시 user.photoURL 없으면 providerProfileImageURL 사용")
+  func profileSetupInject_withoutUserPhotoURL_usesProviderURL() {
+    var profileState = AppEntry.ProfileSetup.State()
+    let providerPhotoURL = URL(string: "https://example.com/provider-photo.png")!
+
+    profileState.inject(
+      user: makeFirebaseUser(photoURL: nil),
+      providerProfileImageURL: providerPhotoURL
+    )
+
+    #expect(profileState.profileImage == .url(providerPhotoURL))
   }
 }
 
