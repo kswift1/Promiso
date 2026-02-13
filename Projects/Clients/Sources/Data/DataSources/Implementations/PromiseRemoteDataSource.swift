@@ -72,7 +72,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
       callableData["endAt"] = iso8601FormatterWithSeoulTimeZone.string(from: endAt)
     }
 
-    if let location = promise.location, !location.name.isEmpty {
+    if let location = promise.location, !location.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
       var locationData: [String: Any] = ["name": location.name]
       if let address = location.address {
         locationData["address"] = address
@@ -89,6 +89,11 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
     // LiveActivity 예약 시작 시간 추가
     if let trackingMinutes = promise.trackingStartMinutesBefore {
       callableData["arrivalSharingTime"] = trackingMinutes
+    }
+
+    // 이미지 URL 추가
+    if !promise.imageUrls.isEmpty {
+      callableData["imageUrls"] = promise.imageUrls
     }
 
     // Firebase Functions 호출
@@ -198,6 +203,30 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
       callableData["trackingStartMinutesBefore"] = trackingMinutes
     } else {
       callableData["trackingStartMinutesBefore"] = NSNull()
+    }
+
+    // location (장소 정보)
+    if let location = promise.location, !location.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+      var locationData: [String: Any] = ["name": location.name]
+      if let address = location.address {
+        locationData["address"] = address
+      }
+      if let latitude = location.latitude {
+        locationData["latitude"] = latitude
+      }
+      if let longitude = location.longitude {
+        locationData["longitude"] = longitude
+      }
+      callableData["location"] = locationData
+    } else {
+      callableData["location"] = NSNull()
+    }
+
+    // 이미지 URL
+    if !promise.imageUrls.isEmpty {
+      callableData["imageUrls"] = promise.imageUrls
+    } else {
+      callableData["imageUrls"] = NSNull()
     }
 
     // Firebase Functions 호출

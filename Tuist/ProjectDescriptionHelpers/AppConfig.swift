@@ -16,7 +16,7 @@ public enum AppConfig {
   public static let defaultRegions = ["en", "ko"]
   
   public static let teamId = "BAC795627G"
-  public static let marketingNumber: String = "1.0.0"
+  public static let marketingNumber: String = "1.1.0"
   
   public static func buildVersion(for environment: String = "dev") -> String {
     let now = Date()
@@ -67,6 +67,8 @@ public enum AppConfig {
       "NSSupportsLiveActivitiesFrequentUpdates": .boolean(true),
       // Kakao Maps SDK
       "KAKAO_NATIVE_APP_KEY": .string("$(KAKAO_NATIVE_APP_KEY)"),
+      // Microsoft Clarity
+      "CLARITY_PROJECT_ID": .string("$(CLARITY_PROJECT_ID)"),
       // ProMotion Display Support (120Hz)
       "CADisableMinimumFrameDurationOnPhone": .boolean(true),
       // App Store 제출: 암호화 사용 여부 (표준 암호화만 사용)

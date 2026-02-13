@@ -73,6 +73,11 @@ extension CalendarFeature {
       /// 숨김 처리된 캘린더 배너 타입들
       var hiddenCalendarBannerTypes: Set<CalendarAuthorizationStatus> = []
 
+      // MARK: - 개인 일정 관련
+
+      /// 개인 일정 목록
+      var personalEvents: [PersonalEventModel] = []
+
       // MARK: - Group 관련
 
       /// 사용자 그룹 정보 조회용 (키: groupId)
@@ -164,6 +169,27 @@ extension CalendarFeature {
         return grouped
       }
 
+      /// 날짜별로 그룹화된 개인 일정
+      var personalEventsByDate: [Date: [PersonalEventModel]] {
+        let calendar = Calendar.current
+        var grouped: [Date: [PersonalEventModel]] = [:]
+
+        for event in personalEvents {
+          let dateKey = calendar.startOfDay(for: event.startAt)
+          if grouped[dateKey] != nil {
+            grouped[dateKey]?.append(event)
+          } else {
+            grouped[dateKey] = [event]
+          }
+        }
+
+        for (date, events) in grouped {
+          grouped[date] = events.sorted { $0.startAt < $1.startAt }
+        }
+
+        return grouped
+      }
+
       /// 표시할 섹션 날짜들
       var sectionDates: [Date] {
         if displayMode == .week {
@@ -178,6 +204,7 @@ extension CalendarFeature {
 
           var allDates = Set(promisesByDate.keys)
           allDates.formUnion(calendarEventsByDate.keys)
+          allDates.formUnion(personalEventsByDate.keys)
 
           return allDates
             .filter { $0 >= monthStart && $0 < monthEnd }
@@ -210,6 +237,7 @@ extension CalendarFeature {
     @Reducer
     public enum Path {
       case promiseDetail(PromiseDetail.Feature)
+      case personalEventDetail(PersonalEventDetail.Feature)
     }
 
     // MARK: - Action
@@ -241,6 +269,8 @@ extension CalendarFeature {
         case requestCalendarPermission
         case openSettings
         case dismissCalendarBanner(CalendarAuthorizationStatus)
+        // 개인 일정 탭
+        case personalEventTapped(PersonalEventModel)
         // 탭 전환 시 데이터 새로고침
         case refresh
       }
@@ -259,6 +289,9 @@ extension CalendarFeature {
         case calendarPermissionResponse(CalendarAuthorizationStatus)
         case fetchCalendarEvents
         case calendarEventsResponse(Result<[CalendarEvent], Error>)
+        // 개인 일정
+        case fetchPersonalEvents
+        case personalEventsResponse(Result<[PersonalEventModel], Error>)
       }
     }
 
@@ -273,6 +306,7 @@ extension CalendarFeature {
 
     @Dependency(\.promiseClient) var promiseClient
     @Dependency(\.eventKitClient) var eventKitClient
+    @Dependency(\.personalEventClient) var personalEventClient
 
     // MARK: - Reducer Body
 
@@ -303,6 +337,11 @@ extension CalendarFeature {
             }
           }
           return .none
+        case .path(.element(id: _, action: .personalEventDetail(.delegate(.eventDeleted)))):
+          _ = state.path.popLast()
+          return .send(.internal(.fetchPersonalEvents))
+        case .path(.element(id: _, action: .personalEventDetail(.delegate(.eventUpdated)))):
+          return .send(.internal(.fetchPersonalEvents))
         case .path:
           return .none
         }
@@ -479,6 +518,7 @@ extension CalendarFeature {
         if state.calendarPermissionStatus.canReadEvents {
           effects.append(.send(.internal(.fetchCalendarEvents)))
         }
+        effects.append(.send(.internal(.fetchPersonalEvents)))
 
         // 인접 월 프리페치
         effects.append(.send(.internal(.prefetchAdjacentMonths)))
@@ -511,6 +551,7 @@ extension CalendarFeature {
         if state.calendarPermissionStatus.canReadEvents {
           effects.append(.send(.internal(.fetchCalendarEvents)))
         }
+        effects.append(.send(.internal(.fetchPersonalEvents)))
 
         // 인접 월 프리페치
         effects.append(.send(.internal(.prefetchAdjacentMonths)))
@@ -556,6 +597,10 @@ extension CalendarFeature {
         state.hiddenCalendarBannerTypes.insert(status)
         return .none
 
+      case .personalEventTapped(let event):
+        state.path.append(.personalEventDetail(.init(event: event)))
+        return .none
+
       case .refresh:
         // 탭 전환 시 최신 데이터 로드
         AppLogger.calendar.debugLog("🔄 refresh - 캘린더 탭 진입 (데이터 새로고침)")
@@ -583,15 +628,20 @@ extension CalendarFeature {
         state.cachedPromisesByMonth.removeAll()
         AppLogger.calendar.debugLog("📦 초기 데이터 로드 (캐시 초기화 완료, 그룹: \(state.userGroupIds.count)개)")
 
-        // 2. 그룹이 있으면 약속 로드
-        guard !state.userGroupIds.isEmpty else {
-          return .none
+        // 2. 개인 일정은 항상 로드
+        var effects: [Effect<Action>] = [
+          .send(.internal(.fetchPersonalEvents))
+        ]
+
+        // 3. 그룹이 있으면 약속 로드
+        if !state.userGroupIds.isEmpty {
+          let monthsToLoad = getMonthsToLoad(state: state)
+          effects.append(contentsOf: monthsToLoad.map { month in
+            Effect<Action>.send(.internal(.fetchPromisesForMonth(month)))
+          })
         }
 
-        let monthsToLoad = getMonthsToLoad(state: state)
-        return .merge(monthsToLoad.map { month in
-          Effect<Action>.send(.internal(.fetchPromisesForMonth(month)))
-        })
+        return .merge(effects)
 
       case .fetchPromisesForMonth(let month):
         let monthStart = month.startOfMonth
@@ -665,7 +715,28 @@ extension CalendarFeature {
 
         switch result {
         case .success(let promises):
-          state.cachedPromisesByMonth[month] = promises
+          // 그룹 정보 매핑 (UserGroupInfo + groupMembersCache → GroupModel 변환)
+          let groupsDict = Dictionary(
+            uniqueKeysWithValues: state.currentUser.groups.map { ($0.id, $0) }
+          )
+          let membersCache = state.groupMembersCache
+          let promisesWithGroup = promises.map { promise in
+            var mutablePromise = promise
+            if let groupInfo = groupsDict[promise.groupId] {
+              let memberIds = membersCache[promise.groupId]?.map(\.id) ?? []
+              mutablePromise.group = GroupModel(
+                id: groupInfo.id,
+                name: groupInfo.name,
+                imageUrl: groupInfo.imageUrl,
+                memberIds: memberIds,
+                maxMembers: memberIds.count,
+                inviteCode: "",
+                createdBy: ""
+              )
+            }
+            return mutablePromise
+          }
+          state.cachedPromisesByMonth[month] = promisesWithGroup
           state.loadedMonths.insert(month)
           AppLogger.calendar.debugLog("💾 캐시 저장 완료 - \(KoreanDateFormatters.yearMonth.string(from: month)): \(promises.count)개 약속")
 
@@ -712,6 +783,25 @@ extension CalendarFeature {
           state.calendarEvents = events
         case .failure:
           state.calendarEvents = []
+        }
+        return .none
+
+      case .fetchPersonalEvents:
+        return .run { [personalEventClient] send in
+          do {
+            let events = try await personalEventClient.getActiveEvents(AppConstants.Sync.personalEventFetchLimit)
+            await send(.internal(.personalEventsResponse(.success(events))))
+          } catch {
+            await send(.internal(.personalEventsResponse(.failure(error))))
+          }
+        }
+
+      case .personalEventsResponse(let result):
+        switch result {
+        case .success(let events):
+          state.personalEvents = events
+        case .failure:
+          state.personalEvents = []
         }
         return .none
       }

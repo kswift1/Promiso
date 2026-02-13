@@ -8,8 +8,9 @@
  */
 import {FieldValue} from "firebase-admin/firestore";
 import {HttpsError, onCall} from "firebase-functions/v2/https";
-import {admin, REGION} from "../config";
+import {admin, REGION, SLACK_WEBHOOK_URL} from "../config";
 import {generateDownloadURL} from "../utils/helpers";
+import {sendSlackSignupNotification} from "../utils/slack";
 import {
   CheckNicknameAvailableRequest,
   CheckNicknameAvailableResponse,
@@ -38,7 +39,7 @@ import {
  * - settings 서브컬렉션: 기본 설정
  */
 export const createUser = onCall<CreateUserRequest>(
-  {region: REGION},
+  {region: REGION, secrets: [SLACK_WEBHOOK_URL]},
   async (request): Promise<CreateUserResponse> => {
     // 1. 인증 확인
     if (!request.auth) {
@@ -116,7 +117,17 @@ export const createUser = onCall<CreateUserRequest>(
         });
       });
 
-      // 5. 응답 반환
+      // 5. Slack 가입 알림 (비차단)
+      sendSlackSignupNotification({
+        nickname: nickname,
+        name: name,
+        providerType: data.provider.type,
+        email: data.provider.email,
+      }).catch((err) => {
+        console.warn("⚠️ [Slack] 알림 전송 실패:", err);
+      });
+
+      // 6. 응답 반환
       return {
         userId: userId,
         createdAt: admin.firestore.Timestamp.now(),

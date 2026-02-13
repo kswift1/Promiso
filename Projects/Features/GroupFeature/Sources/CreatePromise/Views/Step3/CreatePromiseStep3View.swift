@@ -1,6 +1,7 @@
 import SwiftUI
 import Clients
 import ComposableArchitecture
+import PhotosUI
 
 struct CreatePromiseStep3View: View {
   let store: StoreOf<CreatePromise.Feature>
@@ -21,6 +22,19 @@ struct CreatePromiseStep3View: View {
           // 상세 설명
           DescriptionSection(store: store, isFocused: $isDescriptionFocused)
             .id("description")
+
+          // 사진 첨부
+          ImageAttachmentSection(
+            localImages: store.localImageData,
+            onPhotosSelected: { items in
+              store.send(.view(.photosSelected(items)))
+            },
+            onRemoveExisting: { _ in },
+            onRemoveLocal: { index in
+              store.send(.view(.removeLocalImage(index)))
+            }
+          )
+          .id("imageAttachment")
 
           // 최소 참가 인원
           MinimumParticipantsSection(store: store, scrollProxy: proxy)

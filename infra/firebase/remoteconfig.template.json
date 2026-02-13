@@ -24,14 +24,14 @@
     },
     "privacyPolicyURL": {
       "defaultValue": {
-        "value": "https://www.notion.so/2fb655a898de813882b5eebcf35ccb3d"
+        "value": "https://www.notion.so/3029e497067580beb0aaf485a0dd4a02"
       },
       "description": "개인정보처리방침 URL (설정 화면에서 사용)",
       "valueType": "STRING"
     },
     "termsOfServiceURL": {
       "defaultValue": {
-        "value": "https://www.notion.so/2fb655a898de817f9f76fdce51f5a09f"
+        "value": "https://www.notion.so/3029e4970675802ab781e282bb92d63b"
       },
       "description": "이용약관 URL (설정 화면에서 사용)",
       "valueType": "STRING"
@@ -45,7 +45,7 @@
     },
     "notionFAQDatabaseId": {
       "defaultValue": {
-        "value": "356188caae734b5ebd73203557a34930"
+        "value": "3029e4970675812ca3d6c852867858a2"
       },
       "description": "Notion FAQ 데이터베이스 ID (도움말 화면에서 사용)",
       "valueType": "STRING"

@@ -52,6 +52,12 @@ extension GroupSettings {
       var isTransferringHost: Bool = false
       var transferError: String?
 
+      // Expel Member
+      var isEditingMembers: Bool = false
+      var memberToExpel: UserPublicModel?
+      var isExpellingMember: Bool = false
+      var expelError: String?
+
       public init(
         group: GroupModel,
         summary: UserGroupInfo?,
@@ -83,6 +89,11 @@ extension GroupSettings {
       /// 호스트 양도 대상 목록 (본인 제외)
       var transferCandidates: [UserPublicModel] {
         members.filter { $0.userId != currentUserId }
+      }
+
+      /// 추방 가능 여부 (호스트이고 다른 멤버가 있을 때)
+      var canExpelMembers: Bool {
+        isHost && members.count > 1
       }
 
       var isProPlan: Bool {
@@ -172,6 +183,13 @@ extension GroupSettings {
         case confirmTransferHost
         case dismissTransferSheet
         case dismissTransferError
+        // Expel Member
+        case editMembersTapped
+        case doneEditingMembersTapped
+        case expelMemberTapped(UserPublicModel)
+        case confirmExpelMember
+        case dismissExpelAlert
+        case dismissExpelError
       }
 
       public enum Internal: Sendable {
@@ -190,6 +208,7 @@ extension GroupSettings {
           message: String
         )
         case transferHostResponse(Result<Void, Error>)
+        case expelMemberResponse(Result<Void, Error>)
       }
 
       public enum Delegate: Sendable {
@@ -197,6 +216,7 @@ extension GroupSettings {
         case groupDeleted
         case pastPromisesTapped
         case hostTransferred
+        case memberExpelled
       }
     }
 
@@ -490,6 +510,46 @@ extension GroupSettings {
           case .dismissTransferError:
             state.transferError = nil
             return .none
+
+          case .editMembersTapped:
+            state.isEditingMembers = true
+            return .run { [hapticFeedback] _ in
+              await hapticFeedback.buttonTap()
+            }
+
+          case .doneEditingMembersTapped:
+            state.isEditingMembers = false
+            return .run { [hapticFeedback] _ in
+              await hapticFeedback.buttonTap()
+            }
+
+          case .expelMemberTapped(let member):
+            state.memberToExpel = member
+            return .run { [hapticFeedback] _ in
+              await hapticFeedback.warning()
+            }
+
+          case .confirmExpelMember:
+            guard let member = state.memberToExpel else { return .none }
+            state.isExpellingMember = true
+            state.expelError = nil
+            return .run { [groupClient, groupId = state.group.id, hapticFeedback] send in
+              await hapticFeedback.destructive()
+              do {
+                try await groupClient.expelMember(groupId, member.userId)
+                await send(.internal(.expelMemberResponse(.success(()))))
+              } catch {
+                await send(.internal(.expelMemberResponse(.failure(error))))
+              }
+            }
+
+          case .dismissExpelAlert:
+            state.memberToExpel = nil
+            return .none
+
+          case .dismissExpelError:
+            state.expelError = nil
+            return .none
           }
 
         case .internal(let internalAction):
@@ -606,6 +666,41 @@ extension GroupSettings {
           case .transferHostResponse(.failure(let error)):
             state.isTransferringHost = false
             state.transferError = error.localizedDescription
+            return .run { [hapticFeedback] _ in
+              await hapticFeedback.error()
+            }
+
+          case .expelMemberResponse(.success):
+            let expelledMember = state.memberToExpel
+            state.isExpellingMember = false
+            state.memberToExpel = nil
+            // 로컬 멤버 목록에서도 제거
+            if let expelledMember {
+              state.members.removeAll { $0.userId == expelledMember.userId }
+              state.group = GroupModel(
+                id: state.group.id,
+                name: state.group.name,
+                description: state.group.description,
+                imageUrl: state.group.imageUrl,
+                memberIds: state.group.memberIds.filter { $0 != expelledMember.userId },
+                maxMembers: state.group.maxMembers,
+                inviteCode: state.group.inviteCode,
+                createdBy: state.group.createdBy,
+                createdAt: state.group.createdAt,
+                updatedAt: state.group.updatedAt
+              )
+            }
+            return .merge(
+              .send(.delegate(.memberExpelled)),
+              .run { [hapticFeedback] _ in
+                await hapticFeedback.success()
+              }
+            )
+
+          case .expelMemberResponse(.failure(let error)):
+            state.isExpellingMember = false
+            state.memberToExpel = nil
+            state.expelError = error.localizedDescription
             return .run { [hapticFeedback] _ in
               await hapticFeedback.error()
             }

@@ -5,7 +5,10 @@
 //  Created by 김성원 on 9/30/25.
 //
 
-// TODO: LiveActivity 활성화 선택 화면 추가, 지도 추가, 이미지 추가
+import PhotosUI
+import _PhotosUI_SwiftUI
+
+// TODO: LiveActivity 활성화 선택 화면 추가, 지도 추가
 public enum CreatePromise {
   
   
@@ -19,6 +22,7 @@ public enum CreatePromise {
     @Dependency(\.emojiClient) var emojiClient
     @Dependency(\.mapClient) var mapClient
     @Dependency(\.analyticsClient) var analyticsClient
+    @Dependency(\.imageUploadClient) var imageUploadClient
 
 
     private enum CancelID: Hashable {
@@ -44,6 +48,10 @@ public enum CreatePromise {
 
       // 장소 사용 여부 (토글 상태)
       var useLocation: Bool = true
+
+      // 이미지 첨부
+      var localImageData: [Data] = []
+      var isUploadingImages: Bool = false
 
       // 장소 선택 sheet
       @Presents var locationPicker: LocationPicker.Feature.State?
@@ -156,6 +164,9 @@ public enum CreatePromise {
         case locationPickerTapped
         case setLocation(LocationInfoModel?)
         case toggleUseLocation
+        // 이미지 첨부
+        case photosSelected([PhotosPickerItem])
+        case removeLocalImage(Int)
       }
       
       // 내부에서만 발생하는 이벤트 (이펙트 응답/디바운스 등)
@@ -168,6 +179,8 @@ public enum CreatePromise {
         case fetchPromiseCounts([String])
         case promiseCountsResponse([String: Int])
         case createPromiseResponse(Result<String, Clients.PromiseClientError>)
+        case photosLoaded([Data])
+        case imageUploadCompleted(Result<[String], Error>)
         case liveActivityInfoSeenLoaded(Bool)
       }
       
@@ -206,9 +219,26 @@ public enum CreatePromise {
             // groupId 설정 (hostId는 서버에서 auth.uid로 설정)
             var promiseToCreate = state.promise
             promiseToCreate.groupId = state.promise.group?.id ?? ""
-            return .run { [promise = promiseToCreate, promiseClient] send in
+            let localImages = state.localImageData
+            state.isUploadingImages = !localImages.isEmpty
+            return .run { [promise = promiseToCreate, promiseClient, imageUploadClient] send in
               do {
                 let promiseId = try await promiseClient.createPromise(promise)
+
+                // 이미지가 있으면 업로드 후 약속 업데이트
+                if !localImages.isEmpty {
+                  do {
+                    let imageUrls = try await imageUploadClient.uploadImages(localImages, "promise_images/\(promise.groupId)/\(promiseId)")
+                    var updatedPromise = promise
+                    updatedPromise.id = promiseId
+                    updatedPromise.imageUrls = imageUrls
+                    try await promiseClient.updatePromise(updatedPromise)
+                  } catch {
+                    AppLogger.general.error("이미지 업로드 실패: \(error.localizedDescription)")
+                    // 이미지 업로드 실패해도 약속 생성은 성공 처리
+                  }
+                }
+
                 await send(.internal(.createPromiseResponse(.success(promiseId))))
               } catch let e as Clients.PromiseClientError {
                 await send(.internal(.createPromiseResponse(.failure(e))))
@@ -325,6 +355,22 @@ public enum CreatePromise {
           case .toggleUseLocation:
             state.useLocation.toggle()
             return .none
+
+          case .photosSelected(let items):
+            return .run { send in
+              var loadedData: [Data] = []
+              for item in items {
+                if let data = try? await item.loadTransferable(type: Data.self) {
+                  loadedData.append(data)
+                }
+              }
+              await send(.internal(.photosLoaded(loadedData)))
+            }
+
+          case .removeLocalImage(let index):
+            guard index < state.localImageData.count else { return .none }
+            state.localImageData.remove(at: index)
+            return .none
           }
           
           // MARK: - Internal
@@ -411,6 +457,7 @@ public enum CreatePromise {
 
           case .createPromiseResponse(.success(let id)):
             state.isCreatingPromise = false
+            state.isUploadingImages = false
             analyticsClient.logEvent(
               AnalyticsClient.EventName.promiseCreated,
               [
@@ -419,9 +466,10 @@ public enum CreatePromise {
               ]
             )
             return .send(.delegate(.promiseCreated(id: id)))
-            
+
           case .createPromiseResponse(.failure(let e)):
             state.isCreatingPromise = false
+            state.isUploadingImages = false
             state.creationError = e
             return .none
 
@@ -431,6 +479,15 @@ public enum CreatePromise {
             if !hasSeen {
               state.showLiveActivityInfo = true
             }
+            return .none
+
+          case .photosLoaded(let data):
+            let remaining = 3 - state.localImageData.count
+            let toAdd = Array(data.prefix(remaining))
+            state.localImageData.append(contentsOf: toAdd)
+            return .none
+
+          case .imageUploadCompleted:
             return .none
           }
           

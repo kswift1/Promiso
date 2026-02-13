@@ -76,6 +76,8 @@ extension Settings {
       public var showImageDetail: Bool = false
       /// 24시간 형식 사용 여부 (@Shared로 앱 전체 공유)
       @Shared(.appStorage(AppConstants.UserDefaults.use24HourFormat)) public var use24HourFormat: Bool = false
+      /// 약속 탭 기본 모드 (group/own)
+      @Shared(.appStorage(AppConstants.UserDefaults.defaultPromiseTabMode)) public var defaultPromiseTabMode: String = "group"
 
       /// State를 위한 기본 initializer
       public init(
@@ -102,6 +104,7 @@ extension Settings {
     public enum Path {
       case accountInfo(AccountInfo.Feature)
       case dateTimeSettings(DateTimeSettings.Feature)
+      case promiseTabModeSettings(PromiseTabModeSettings.Feature)
       case themeSettings(ThemeSettings.Feature)
       case notificationSettings(NotificationSettings.Feature)
       case groupNotificationDetail(GroupNotificationDetail.Feature)
@@ -153,6 +156,8 @@ extension Settings {
       case accountInfoTapped
       /// 날짜 시간 표시 탭
       case dateTimeSettingsTapped
+      /// 약속 탭 기본 모드 탭
+      case promiseTabModeSettingsTapped
       /// 화면 모드 탭
       case themeSettingsTapped
       /// 알림 설정 탭
@@ -187,6 +192,8 @@ extension Settings {
       case profileImageTapped
       /// 프로필 이미지 상세 닫기
       case imageDetailDismissed
+      /// 약속 탭 기본 모드 변경
+      case defaultPromiseTabModeChanged(String)
     }
 
     /// 내부 비즈니스 로직 처리 결과 액션
@@ -263,6 +270,10 @@ extension Settings {
 
           case .dateTimeSettingsTapped:
             state.path.append(.dateTimeSettings(DateTimeSettings.Feature.State()))
+            return .run { _ in await hapticFeedback.selection() }
+
+          case .promiseTabModeSettingsTapped:
+            state.path.append(.promiseTabModeSettings(PromiseTabModeSettings.Feature.State()))
             return .run { _ in await hapticFeedback.selection() }
 
           case .themeSettingsTapped:
@@ -394,6 +405,12 @@ extension Settings {
           case .imageDetailDismissed:
             state.showImageDetail = false
             return .none
+
+          case .defaultPromiseTabModeChanged(let mode):
+            state.$defaultPromiseTabMode.withLock { $0 = mode }
+            return .run { _ in
+              await hapticFeedback.selection()
+            }
           }
 
         // MARK: - Internal Actions
@@ -533,6 +550,8 @@ extension Settings {
           AccountInfo.RootView(store: accountInfoStore)
         case .dateTimeSettings(let store):
           DateTimeSettings.RootView(store: store)
+        case .promiseTabModeSettings(let store):
+          PromiseTabModeSettings.RootView(store: store)
         case .themeSettings(let store):
           ThemeSettings.RootView(store: store)
         case .notificationSettings(let store):
@@ -607,10 +626,15 @@ extension DateTimeSettings {
     @ObservableState
     public struct State: Equatable {
       @Shared(.appStorage(AppConstants.UserDefaults.use24HourFormat)) public var use24HourFormat: Bool = false
+      /// 선택된 값 (임시)
+      var selectedValue: Bool = false
       /// 재시작 확인 Alert 표시 여부
       var showRestartAlert: Bool = false
-      /// 변경하려는 값 (Alert 확인 시 적용)
-      var pendingValue: Bool?
+
+      /// 변경사항이 있는지
+      var hasChanges: Bool {
+        selectedValue != use24HourFormat
+      }
 
       public init() {}
     }
@@ -621,7 +645,8 @@ extension DateTimeSettings {
 
     public enum View: Equatable, Sendable {
       case onAppear
-      case use24HourFormatChanged(Bool)
+      case formatSelected(Bool)
+      case saveChanges
       case restartConfirmed
       case restartCancelled
     }
@@ -632,12 +657,16 @@ extension DateTimeSettings {
         case .view(let viewAction):
           switch viewAction {
           case .onAppear:
+            state.selectedValue = state.use24HourFormat
             return .none
 
-          case .use24HourFormatChanged(let value):
-            // 값이 변경된 경우에만 Alert 표시
-            guard value != state.use24HourFormat else { return .none }
-            state.pendingValue = value
+          case .formatSelected(let value):
+            state.selectedValue = value
+            return .run { _ in
+              await hapticFeedback.selection()
+            }
+
+          case .saveChanges:
             state.showRestartAlert = true
             return .run { _ in
               await hapticFeedback.medium()
@@ -645,10 +674,8 @@ extension DateTimeSettings {
 
           case .restartConfirmed:
             state.showRestartAlert = false
-            guard let newValue = state.pendingValue else { return .none }
-            state.$use24HourFormat.withLock { $0 = newValue }
-            KoreanDateFormatters.use24HourFormat = newValue
-            state.pendingValue = nil
+            state.$use24HourFormat.withLock { $0 = state.selectedValue }
+            KoreanDateFormatters.use24HourFormat = state.selectedValue
             return .run { [notificationCenter] _ in
               await hapticFeedback.success()
               // 앱 재시작 요청 Notification 발송
@@ -657,7 +684,6 @@ extension DateTimeSettings {
 
           case .restartCancelled:
             state.showRestartAlert = false
-            state.pendingValue = nil
             return .none
           }
         }
@@ -678,6 +704,7 @@ extension DateTimeSettings {
       ScrollView {
         VStack(spacing: 16) {
           timeFormatSection
+          exampleCardSection
         }
         .padding(.horizontal, 16)
         .padding(.top, 12)
@@ -686,6 +713,17 @@ extension DateTimeSettings {
       .auroraBackground()
       .navigationTitle("날짜 시간 표시")
       .navigationBarTitleDisplayMode(.inline)
+      .toolbar {
+        ToolbarItem(placement: .navigationBarTrailing) {
+          if store.hasChanges {
+            Button("변경") {
+              store.send(.view(.saveChanges))
+            }
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundStyle(Color.pmindigo.n500)
+          }
+        }
+      }
       .onAppear {
         store.send(.view(.onAppear))
       }
@@ -710,32 +748,12 @@ extension DateTimeSettings {
           .font(.system(size: 16, weight: .semibold))
           .padding(.horizontal, 4)
 
-        HStack(spacing: 12) {
-          Image(systemName: "clock")
-            .font(.system(size: 16, weight: .semibold))
-            .foregroundStyle(Color.pmindigo.n500)
-
-          VStack(alignment: .leading, spacing: 2) {
-            Text(store.use24HourFormat ? "24시간 형식" : "12시간 형식")
-              .font(.body)
-              .foregroundStyle(Color.pmtext.primary)
-
-            Text(store.use24HourFormat ? "예: 14:30" : "예: 오후 2:30")
-              .font(.caption)
-              .foregroundStyle(Color.pmtext.secondary)
-          }
-
-          Spacer()
-
-          Toggle("", isOn: Binding(
-            get: { store.use24HourFormat },
-            set: { store.send(.view(.use24HourFormatChanged($0))) }
-          ))
-          .labelsHidden()
-          .tint(Color.pmindigo.n500)
+        VStack(spacing: 0) {
+          formatRow(is24Hour: false, title: "12시간 형식", description: "예: 오후 2:30")
+          Divider()
+            .padding(.leading, 48)
+          formatRow(is24Hour: true, title: "24시간 형식", description: "예: 14:30")
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
         .adaptiveGlassCard()
 
         Text("앱 전체에서 사용되는 시간 표시 형식을 설정합니다.")
@@ -743,6 +761,114 @@ extension DateTimeSettings {
           .foregroundStyle(Color.pmtext.secondary)
           .padding(.horizontal, 4)
       }
+    }
+
+    private func formatRow(is24Hour: Bool, title: String, description: String) -> some View {
+      Button {
+        store.send(.view(.formatSelected(is24Hour)))
+      } label: {
+        HStack(spacing: 12) {
+          Image(systemName: "clock")
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundStyle(Color.pmindigo.n500)
+            .frame(width: 20)
+
+          VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+              .font(.body)
+              .foregroundStyle(Color.pmtext.primary)
+
+            Text(description)
+              .font(.caption)
+              .foregroundStyle(Color.pmtext.secondary)
+          }
+
+          Spacer()
+
+          if store.selectedValue == is24Hour {
+            Image(systemName: "checkmark")
+              .font(.system(size: 14, weight: .semibold))
+              .foregroundStyle(Color.pmindigo.n500)
+          }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .contentShape(Rectangle())
+      }
+      .buttonStyle(.plain)
+    }
+
+    private var exampleCardSection: some View {
+      VStack(alignment: .leading, spacing: 10) {
+        Text("미리보기")
+          .font(.system(size: 16, weight: .semibold))
+          .padding(.horizontal, 4)
+
+        ExamplePromiseCard(use24Hour: store.selectedValue)
+
+        Text("실제 약속 카드는 위와 같이 표시됩니다.")
+          .font(.system(size: 12))
+          .foregroundStyle(Color.pmtext.secondary)
+          .padding(.horizontal, 4)
+      }
+    }
+  }
+
+  // MARK: - Example Promise Card
+
+  private struct ExamplePromiseCard: View {
+    let use24Hour: Bool
+
+    private var timeString: String {
+      if use24Hour {
+        return "14:30 - 16:30"
+      } else {
+        return "오후 2:30 - 오후 4:30"
+      }
+    }
+
+    private var dateString: String {
+      "2월 15일 (토)"
+    }
+
+    var body: some View {
+      VStack(alignment: .leading, spacing: 14) {
+        // Main Content
+        HStack(alignment: .top, spacing: 12) {
+          Text("🍽️")
+            .font(.system(size: 44))
+
+          VStack(alignment: .leading, spacing: 10) {
+            Text("팀 회식")
+              .font(.system(size: 19, weight: .bold))
+              .foregroundColor(.primary)
+
+            VStack(alignment: .leading, spacing: 6) {
+              // Date & Time
+              HStack(spacing: 4) {
+                Text("⏰")
+                  .font(.system(size: 14))
+                Text("\(dateString) \(timeString)")
+                  .font(.system(size: 14, weight: .medium))
+              }
+              .foregroundColor(.primary)
+
+              // Location
+              HStack(spacing: 4) {
+                Text("📍")
+                  .font(.system(size: 14))
+                Text("강남역 3번 출구")
+                  .font(.system(size: 14, weight: .medium))
+              }
+              .foregroundColor(.primary)
+            }
+          }
+
+          Spacer()
+        }
+      }
+      .padding(16)
+      .adaptiveGlassCard()
     }
   }
 }
@@ -938,6 +1064,246 @@ extension ThemeSettings {
       case .light: return "항상 밝은 화면으로 표시"
       case .dark: return "항상 어두운 화면으로 표시"
       }
+    }
+  }
+}
+
+// MARK: - PromiseTabModeSettings Namespace
+
+public enum PromiseTabModeSettings {}
+
+// MARK: - PromiseTabModeSettings Feature
+
+extension PromiseTabModeSettings {
+
+  @Reducer
+  public struct Feature {
+    @Dependency(\.hapticFeedback) var hapticFeedback
+
+    public init() {}
+
+    @ObservableState
+    public struct State: Equatable {
+      @Shared(.appStorage(AppConstants.UserDefaults.defaultPromiseTabMode)) public var defaultPromiseTabMode: String = "group"
+
+      public init() {}
+    }
+
+    public enum Action: Equatable, Sendable {
+      case view(View)
+    }
+
+    public enum View: Equatable, Sendable {
+      case onAppear
+      case tabModeChanged(String)
+    }
+
+    public var body: some ReducerOf<Self> {
+      Reduce { state, action in
+        switch action {
+        case .view(let viewAction):
+          switch viewAction {
+          case .onAppear:
+            return .none
+
+          case .tabModeChanged(let mode):
+            state.$defaultPromiseTabMode.withLock { $0 = mode }
+            return .run { _ in
+              await hapticFeedback.selection()
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // MARK: - Root View
+
+  public struct RootView: View {
+    @Bindable private var store: StoreOf<Feature>
+
+    public init(store: StoreOf<Feature>) {
+      self.store = store
+    }
+
+    public var body: some View {
+      ScrollView {
+        VStack(spacing: 16) {
+          tabModeSection
+          tabBarPreviewSection
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 12)
+        .padding(.bottom, 24)
+      }
+      .auroraBackground()
+      .navigationTitle("약속 탭 기본 모드")
+      .navigationBarTitleDisplayMode(.inline)
+      .onAppear {
+        store.send(.view(.onAppear))
+      }
+    }
+
+    private var tabModeSection: some View {
+      VStack(alignment: .leading, spacing: 10) {
+        Text("기본 모드")
+          .font(.system(size: 16, weight: .semibold))
+          .padding(.horizontal, 4)
+
+        VStack(spacing: 0) {
+          tabModeRow(mode: "group", icon: "person.3.fill", title: "그룹", description: "그룹 약속을 기본으로 표시")
+          Divider()
+            .padding(.leading, 48)
+          tabModeRow(mode: "own", icon: "person.fill", title: "개인", description: "개인 일정을 기본으로 표시")
+        }
+        .adaptiveGlassCard()
+
+        Text("약속 탭을 열었을 때 기본으로 표시할 모드를 선택합니다.")
+          .font(.system(size: 12))
+          .foregroundStyle(Color.pmtext.secondary)
+          .padding(.horizontal, 4)
+      }
+    }
+
+    private func tabModeRow(mode: String, icon: String, title: String, description: String) -> some View {
+      Button {
+        store.send(.view(.tabModeChanged(mode)))
+      } label: {
+        HStack(spacing: 12) {
+          Image(systemName: icon)
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundStyle(Color.pmindigo.n500)
+            .frame(width: 20)
+
+          VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+              .font(.body)
+              .foregroundStyle(Color.pmtext.primary)
+
+            Text(description)
+              .font(.caption)
+              .foregroundStyle(Color.pmtext.secondary)
+          }
+
+          Spacer()
+
+          if store.defaultPromiseTabMode == mode {
+            Image(systemName: "checkmark")
+              .font(.system(size: 14, weight: .semibold))
+              .foregroundStyle(Color.pmindigo.n500)
+          }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .contentShape(Rectangle())
+      }
+      .buttonStyle(.plain)
+    }
+
+    private var tabBarPreviewSection: some View {
+      VStack(alignment: .leading, spacing: 10) {
+        Text("미리보기")
+          .font(.system(size: 16, weight: .semibold))
+          .padding(.horizontal, 4)
+
+        TabBarPreview(selectedMode: store.defaultPromiseTabMode)
+          .adaptiveGlassCard()
+
+        Text("실제 탭바는 위와 같이 표시됩니다.")
+          .font(.system(size: 12))
+          .foregroundStyle(Color.pmtext.secondary)
+          .padding(.horizontal, 4)
+      }
+    }
+  }
+
+  // MARK: - TabBarPreview
+
+  private struct TabBarPreview: View {
+    let selectedMode: String
+
+    var body: some View {
+      if #available(iOS 26.0, *) {
+        ios26TabBarPreview
+      } else {
+        fallbackTabBarPreview
+      }
+    }
+
+    @available(iOS 26.0, *)
+    private var ios26TabBarPreview: some View {
+      HStack(spacing: 8) {
+        TabItemView(icon: "house.fill", label: "홈", isSelected: false)
+        TabItemView(
+          icon: selectedMode == "group" ? "person.3.fill" : "person.fill",
+          label: selectedMode == "group" ? "그룹" : "개인",
+          isSelected: true
+        )
+        TabItemView(icon: "calendar", label: "캘린더", isSelected: false)
+        TabItemView(icon: "gearshape.fill", label: "설정", isSelected: false)
+      }
+      .padding(8)
+      .background(
+        RoundedRectangle(cornerRadius: 24)
+          .fill(.regularMaterial.opacity(0.7))
+      )
+      .frame(height: 76)
+    }
+
+    private var fallbackTabBarPreview: some View {
+      HStack(spacing: 8) {
+        TabItemView(icon: "house.fill", label: "홈", isSelected: false)
+        TabItemView(
+          icon: selectedMode == "group" ? "person.3.fill" : "person.fill",
+          label: selectedMode == "group" ? "그룹" : "개인",
+          isSelected: true
+        )
+        TabItemView(icon: "calendar", label: "캘린더", isSelected: false)
+        TabItemView(icon: "gearshape.fill", label: "설정", isSelected: false)
+      }
+      .padding(8)
+      .background(
+        RoundedRectangle(cornerRadius: 24)
+          .fill(Color.white.opacity(0.1))
+      )
+      .frame(height: 76)
+    }
+  }
+
+  // MARK: - TabItemView
+
+  private struct TabItemView: View {
+    let icon: String
+    let label: String
+    let isSelected: Bool
+
+    var body: some View {
+      VStack(spacing: 4) {
+        Image(systemName: icon)
+          .font(.system(size: 22, weight: .medium))
+          .foregroundStyle(isSelected ? Color.pmindigo.n500 : Color.pmtext.secondary)
+
+        Text(label)
+          .font(.system(size: 11, weight: .medium))
+          .foregroundStyle(isSelected ? Color.pmindigo.n500 : Color.pmtext.secondary)
+      }
+      .frame(maxWidth: .infinity)
+      .padding(.vertical, 8)
+      .background(
+        Group {
+          if isSelected {
+            if #available(iOS 26.0, *) {
+              Capsule()
+                .fill(.ultraThinMaterial)
+                .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
+            } else {
+              Capsule()
+                .fill(Color.white.opacity(0.2))
+                .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
+            }
+          }
+        }
+      )
     }
   }
 }

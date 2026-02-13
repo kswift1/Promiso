@@ -128,10 +128,10 @@ extension AppConfigClient: DependencyKey {
       RemoteConfigKeys.forceUpdateVersion: "0.0.0" as NSString,
       RemoteConfigKeys.recommendedVersion: "0.0.0" as NSString,
       RemoteConfigKeys.appStoreURL: "https://apps.apple.com/app/id1625074042" as NSString,
-      RemoteConfigKeys.privacyPolicyURL: "https://www.notion.so/2fb655a898de813882b5eebcf35ccb3d" as NSString,
-      RemoteConfigKeys.termsOfServiceURL: "https://www.notion.so/2fb655a898de817f9f76fdce51f5a09f" as NSString,
+      RemoteConfigKeys.privacyPolicyURL: "https://www.notion.so/3029e497067580beb0aaf485a0dd4a02" as NSString,
+      RemoteConfigKeys.termsOfServiceURL: "https://www.notion.so/3029e4970675802ab781e282bb92d63b" as NSString,
       RemoteConfigKeys.supportEmail: "kswen0203@icloud.com" as NSString,
-      RemoteConfigKeys.notionFAQDatabaseId: "356188caae734b5ebd73203557a34930" as NSString
+      RemoteConfigKeys.notionFAQDatabaseId: "3029e4970675812ca3d6c852867858a2" as NSString
     ]
     remoteConfig.setDefaults(defaults)
 

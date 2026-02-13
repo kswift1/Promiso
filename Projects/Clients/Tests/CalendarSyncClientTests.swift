@@ -64,7 +64,11 @@ struct CalendarSyncClientTests {
         return CalendarSyncResult()
       },
       addPromise: { _, _ in },
-      removePromise: { _ in }
+      removePromise: { _ in },
+      syncPersonalEvents: { _ in CalendarSyncResult() },
+      addPersonalEvent: { _, _ in },
+      removePersonalEvent: { _ in },
+      updatePersonalEvent: { _, _ in }
     )
 
     await withDependencies {

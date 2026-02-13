@@ -159,11 +159,39 @@ export const getFAQs = onCall<GetFAQsRequest & {databaseId: string}>(
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`Notion API error: ${response.status} - ${errorText}`);
-        throw new HttpsError(
-          "unavailable",
-          `Notion API 호출 실패: ${response.status}`
+        console.error(
+          `Notion API error: ${response.status} - ${errorText} ` +
+          `(databaseId: ${databaseId})`
         );
+
+        // 클라이언트에는 간결한 메시지만 반환 (상세 정보는 위 console.error 로그 참조)
+        switch (response.status) {
+          case 401:
+            throw new HttpsError(
+              "unauthenticated",
+              "FAQ 서비스에 일시적인 문제가 발생했습니다."
+            );
+          case 403:
+            throw new HttpsError(
+              "permission-denied",
+              "FAQ 서비스에 일시적인 문제가 발생했습니다."
+            );
+          case 404:
+            throw new HttpsError(
+              "not-found",
+              "FAQ 데이터를 찾을 수 없습니다."
+            );
+          case 400:
+            throw new HttpsError(
+              "invalid-argument",
+              "FAQ 데이터 형식에 문제가 있습니다."
+            );
+          default:
+            throw new HttpsError(
+              "unavailable",
+              "FAQ 서비스에 연결할 수 없습니다."
+            );
+        }
       }
 
       const data: NotionQueryResponse =

@@ -81,10 +81,20 @@ extension FAQClient: DependencyKey {
         }
 
         // Firebase Functions 호출 (Notion API 프록시)
-        let callable = functions.httpsCallable("getFAQs")
-        let result = try await callable.call(["databaseId": databaseId])
+        let resultData: Any
+        do {
+          let callable = functions.httpsCallable("getFAQs")
+          let result = try await callable.call(["databaseId": databaseId])
+          resultData = result.data
+        } catch {
+          let code = (error as? NSError)?.code ?? 0
+          throw FAQClientError.fetchFailed(
+            statusCode: code,
+            message: error.localizedDescription
+          )
+        }
 
-        guard let data = try? JSONSerialization.data(withJSONObject: result.data) else {
+        guard let data = try? JSONSerialization.data(withJSONObject: resultData) else {
           throw FAQClientError.decodingFailed("Failed to serialize response data")
         }
 

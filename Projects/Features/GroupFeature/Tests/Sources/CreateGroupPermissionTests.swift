@@ -38,12 +38,6 @@ private func makeTestGroupResult() -> GroupCreationResultModel {
   )
 }
 
-private func makeSuccessState() -> CreateGroup.Feature.State {
-  var state = CreateGroup.Feature.State(currentUser: makeTestUser())
-  state.step = .success(makeTestGroupResult())
-  return state
-}
-
 private func makeSettingsState() -> CreateGroup.Feature.State {
   var state = CreateGroup.Feature.State(currentUser: makeTestUser())
   state.step = .settings(makeTestGroupResult())
@@ -139,10 +133,10 @@ struct NotificationPermissionTests {
     }
   }
 
-  @Test("권한 notDetermined 상태에서 토글 ON 시 권한 요청 후 granted면 활성화")
-  func notificationToggle_on_whenNotDetermined_requestsPermission_granted() async {
+  @Test("권한 요청 후 granted면 authorized 설정")
+  func notificationPermissionResponse_granted_setsAuthorized() async {
     var state = makeSettingsState()
-    state.notificationEnabled = false
+    state.notificationEnabled = true
     state.notificationAuthStatus = .notDetermined
 
     let store = TestStore(initialState: state) {
@@ -156,8 +150,8 @@ struct NotificationPermissionTests {
     }
   }
 
-  @Test("권한 notDetermined 상태에서 토글 ON 시 권한 요청 후 denied면 비활성화")
-  func notificationToggle_on_whenNotDetermined_requestsPermission_denied() async {
+  @Test("권한 요청 후 denied면 notificationEnabled = false")
+  func notificationPermissionResponse_denied_disables() async {
     var state = makeSettingsState()
     state.notificationEnabled = true  // 토글 ON 상태로 시작
     state.notificationAuthStatus = .notDetermined
@@ -282,10 +276,10 @@ struct CalendarPermissionTests {
     }
   }
 
-  @Test("권한 notDetermined 상태에서 토글 ON 시 권한 요청 후 granted면 활성화")
-  func calendarToggle_on_whenNotDetermined_requestsPermission_granted() async {
+  @Test("권한 요청 후 granted면 fullAccess 설정")
+  func calendarPermissionResponse_granted_setsFullAccess() async {
     var state = makeSettingsState()
-    state.calendarSyncEnabled = false
+    state.calendarSyncEnabled = true
     state.calendarAuthStatus = .notDetermined
 
     let store = TestStore(initialState: state) {
@@ -299,8 +293,8 @@ struct CalendarPermissionTests {
     }
   }
 
-  @Test("권한 notDetermined 상태에서 토글 ON 시 권한 요청 후 denied면 Alert 표시 (토글 ON 유지)")
-  func calendarToggle_on_whenNotDetermined_requestsPermission_denied() async {
+  @Test("권한 요청 후 denied면 Alert 표시 (토글 ON 유지)")
+  func calendarPermissionResponse_denied_showsAlert() async {
     var state = makeSettingsState()
     state.calendarSyncEnabled = true  // 토글 ON 상태로 시작
     state.calendarAuthStatus = .notDetermined

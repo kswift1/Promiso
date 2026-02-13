@@ -316,7 +316,6 @@ struct HomeFeatureStateTests {
     #expect(state.todayPromises.isEmpty)
     #expect(state.pendingPromises.isEmpty)
     #expect(state.upcomingPromises.isEmpty)
-    #expect(state.allPromises.isEmpty)
   }
 
   @Test("idle 상태에서 빈 배열 반환")
@@ -326,7 +325,6 @@ struct HomeFeatureStateTests {
     #expect(state.todayPromises.isEmpty)
     #expect(state.pendingPromises.isEmpty)
     #expect(state.upcomingPromises.isEmpty)
-    #expect(state.allPromises.isEmpty)
   }
 
   // MARK: - filteredPromises 테스트

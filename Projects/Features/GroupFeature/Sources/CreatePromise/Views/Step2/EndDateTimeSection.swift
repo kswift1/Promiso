@@ -64,27 +64,7 @@ struct EndTimePicker: View {
   }
   
   private var durationText: String {
-    let days = Int(currentDuration / 86400)
-    let hours = Int((currentDuration.truncatingRemainder(dividingBy: 86400)) / 3600)
-    let minutes = Int((currentDuration.truncatingRemainder(dividingBy: 3600)) / 60)
-    
-    var parts: [String] = []
-    
-    if days > 0 {
-      parts.append("\(days)일")
-    }
-    if hours > 0 {
-      parts.append("\(hours)시간")
-    }
-    if minutes > 0 {
-      parts.append("\(minutes)분")
-    }
-    
-    if parts.isEmpty {
-      return "총 0분"
-    }
-    
-    return "총 " + parts.joined(separator: " ")
+    startDate.durationText(to: endDate, prefix: "총 ")
   }
   
   private var formattedDate: String {

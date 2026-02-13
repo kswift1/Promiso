@@ -105,6 +105,11 @@ extension GroupMain {
     @ViewBuilder
     private var groupDetailView: some View {
       VStack(spacing: 0) {
+        // 헤더
+        groupHeaderSection
+          .padding(.horizontal, 16)
+          .padding(.top, 8)
+
         // 그룹 가로 바 (상단 고정)
         GroupHorizontalBar(
           groups: store.groupBarItems,
@@ -162,6 +167,25 @@ extension GroupMain {
       }
       .overlay {
         morphingFABMenu
+      }
+    }
+
+    // MARK: - Group Header
+
+    private var defaultMode: PromiseMode {
+      let saved = UserDefaults.standard.string(forKey: AppConstants.UserDefaults.defaultPromiseTabMode) ?? "group"
+      return saved == "own" ? .personal : .group
+    }
+
+    @ViewBuilder
+    private var groupHeaderSection: some View {
+      PromiseTabHeader(
+        selectedMode: .group,
+        defaultMode: defaultMode
+      ) { mode in
+        if mode == .personal {
+          store.send(.view(.switchToPersonalMode))
+        }
       }
     }
 
@@ -487,6 +511,11 @@ extension GroupMain {
     @ViewBuilder
     private var groupDetailEmptyView: some View {
       ScrollView {
+        // 헤더
+        groupHeaderSection
+          .padding(.horizontal, 16)
+          .padding(.top, 8)
+
         // 그룹 가로 바 (빈 상태에서도 생성/참여 버튼 제공)
         GroupHorizontalBar(
           groups: store.groupBarItems,

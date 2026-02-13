@@ -7,14 +7,17 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-HOOKS_DIR="$PROJECT_ROOT/.git/hooks"
+
+# worktree 환경에서도 올바른 hooks 경로를 찾기 위해 git rev-parse 사용
+GIT_DIR="$(cd "$PROJECT_ROOT" && git rev-parse --git-common-dir 2>/dev/null)"
+HOOKS_DIR="$GIT_DIR/hooks"
 
 echo "📦 Installing Git Hooks..."
 echo ""
 
-# .git/hooks 디렉토리 확인
+# hooks 디렉토리 확인
 if [ ! -d "$HOOKS_DIR" ]; then
-  echo "❌ Error: .git/hooks directory not found"
+  echo "❌ Error: Git hooks directory not found: $HOOKS_DIR"
   echo "Make sure you're in a Git repository."
   exit 1
 fi
@@ -24,21 +27,11 @@ cp "$SCRIPT_DIR/hooks/pre-commit" "$HOOKS_DIR/pre-commit"
 chmod +x "$HOOKS_DIR/pre-commit"
 echo "✅ pre-commit hook installed"
 
-# pre-push hook 복사
-cp "$SCRIPT_DIR/hooks/pre-push" "$HOOKS_DIR/pre-push"
-chmod +x "$HOOKS_DIR/pre-push"
-echo "✅ pre-push hook installed"
-
 echo ""
 echo "🎉 Git Hooks installation complete!"
 echo ""
 echo "📌 pre-commit: 커밋 시 민감한 파일 체크"
 echo "  - .xcconfig, GoogleService-Info.plist, .env, API Keys, Derived 폴더"
 echo ""
-echo "📌 pre-push: push 시 변경 모듈 빌드 검증"
-echo "  - 기본: 빌드만 (PROMISO_CHECK_MODE=build)"
-echo "  - 테스트 포함: PROMISO_CHECK_MODE=test git push"
-echo "  - 우회: git push --no-verify"
-echo ""
-echo "📝 Hook 위치: .git/hooks/pre-commit, .git/hooks/pre-push"
+echo "📝 Hook 위치: $HOOKS_DIR/pre-commit"
 echo ""

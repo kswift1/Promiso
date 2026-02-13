@@ -93,8 +93,11 @@ lines = [
     "",
     "import SwiftUI",
     "",
+    "/// Bundle 탐색용 앵커 클래스 (Widget Extension 등 별도 프로세스에서도 안정적으로 동작)",
+    "private class ResourceKitBundleToken {}",
+    "",
     "public extension Color {",
-    f"    private static let bundle = Bundle(identifier: \"{bundle_id}\")",
+    "    private static let bundle: Bundle = Bundle(for: ResourceKitBundleToken.self)",
     ""
 ]
 

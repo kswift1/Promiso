@@ -55,37 +55,36 @@ struct MediumPromiseWidgetView: View {
 
   @ViewBuilder
   private var contentView: some View {
-    let promises = Array(entry.todayPromises.prefix(3))
+    let todayItems = Array(entry.todayItems.prefix(3))
 
-    if promises.isEmpty {
-      // 오늘 약속이 없으면 다가오는 약속 표시
-      let upcoming = Array(entry.upcomingPromises.prefix(3))
-      if upcoming.isEmpty {
+    if todayItems.isEmpty {
+      let upcomingItems = Array(entry.upcomingItems.prefix(3))
+      if upcomingItems.isEmpty {
         EmptyWidgetView(
           icon: "calendar.badge.clock",
           message: "예정된 약속이 없어요",
           hint: "새 약속을 만들어보세요"
         )
       } else {
-        upcomingView(upcoming)
+        upcomingView(upcomingItems)
       }
     } else {
-      todayView(promises)
+      todayView(todayItems)
     }
   }
 
   @ViewBuilder
-  private func todayView(_ promises: [WidgetPromiseData]) -> some View {
+  private func todayView(_ items: [WidgetPromiseData]) -> some View {
     VStack(alignment: .leading, spacing: 6) {
-      // 섹션 헤더
-      sectionHeader(title: "오늘", icon: "sun.max.fill", count: promises.count)
+      sectionHeader(title: "오늘", icon: "sun.max.fill", count: items.count)
 
-      // 약속 목록
-      ForEach(promises) { promise in
-        if let url = promise.deeplinkURL {
+      ForEach(items, id: \.id) { item in
+        if let url = item.deeplinkURL {
           Link(destination: url) {
-            todayRow(promise)
+            todayRow(item)
           }
+        } else {
+          todayRow(item)
         }
       }
 
@@ -98,17 +97,17 @@ struct MediumPromiseWidgetView: View {
   }
 
   @ViewBuilder
-  private func upcomingView(_ promises: [WidgetPromiseData]) -> some View {
+  private func upcomingView(_ items: [WidgetPromiseData]) -> some View {
     VStack(alignment: .leading, spacing: 6) {
-      // 섹션 헤더
-      sectionHeader(title: "다가오는 약속", icon: "calendar", count: promises.count)
+      sectionHeader(title: "다가오는 일정", icon: "calendar", count: items.count)
 
-      // 약속 목록
-      ForEach(promises) { promise in
-        if let url = promise.deeplinkURL {
+      ForEach(items, id: \.id) { item in
+        if let url = item.deeplinkURL {
           Link(destination: url) {
-            upcomingRow(promise)
+            upcomingRow(item)
           }
+        } else {
+          upcomingRow(item)
         }
       }
 
@@ -148,21 +147,30 @@ struct MediumPromiseWidgetView: View {
   // MARK: - Row Views
 
   @ViewBuilder
-  private func todayRow(_ promise: WidgetPromiseData) -> some View {
+  private func todayRow(_ item: WidgetPromiseData) -> some View {
     HStack(spacing: 10) {
       // 이모지
-      Text(promise.emoji)
+      Text(item.emoji)
         .font(.system(size: 22))
         .frame(width: 26)
 
-      // 제목 + 장소
+      // 제목 + 장소/개인 라벨
       VStack(alignment: .leading, spacing: 1) {
-        Text(promise.title)
+        Text(item.title)
           .font(.subheadline.weight(.medium))
           .lineLimit(1)
           .foregroundStyle(.primary)
 
-        if let location = promise.location {
+        if item.isPersonalEvent {
+          HStack(spacing: 2) {
+            Image(systemName: "person.fill")
+              .font(.system(size: 8))
+            Text("개인")
+              .lineLimit(1)
+          }
+          .font(.caption2)
+          .foregroundStyle(Color.pmaurora.purple)
+        } else if let location = item.location {
           HStack(spacing: 2) {
             Image(systemName: "location.fill")
               .font(.system(size: 8))
@@ -177,37 +185,43 @@ struct MediumPromiseWidgetView: View {
       Spacer(minLength: 4)
 
       // 시간 (강조)
-      Text(formatTime(promise.startAt))
+      Text(formatTime(item.startAt))
         .font(.subheadline.weight(.bold))
-        .foregroundStyle(Color.pmindigo.n500)
+        .foregroundStyle(item.isPersonalEvent ? Color.pmaurora.purple : Color.pmindigo.n500)
     }
     .contentShape(Rectangle())
     .accessibilityElement(children: .combine)
-    .accessibilityLabel(accessibilityLabel(for: promise, isToday: true))
+    .accessibilityLabel(accessibilityLabel(for: item, isToday: true))
   }
 
   @ViewBuilder
-  private func upcomingRow(_ promise: WidgetPromiseData) -> some View {
+  private func upcomingRow(_ item: WidgetPromiseData) -> some View {
     HStack(spacing: 10) {
       // 이모지
-      Text(promise.emoji)
+      Text(item.emoji)
         .font(.system(size: 20))
         .frame(width: 24)
 
       // 제목
-      Text(promise.title)
+      Text(item.title)
         .font(.subheadline)
         .lineLimit(1)
         .foregroundStyle(.primary)
 
+      if item.isPersonalEvent {
+        Text("개인")
+          .font(.caption2.weight(.medium))
+          .foregroundStyle(Color.pmaurora.purple)
+      }
+
       Spacer(minLength: 4)
 
       // 날짜 배지
-      dateBadge(promise.startAt)
+      dateBadge(item.startAt)
     }
     .contentShape(Rectangle())
     .accessibilityElement(children: .combine)
-    .accessibilityLabel(accessibilityLabel(for: promise, isToday: false))
+    .accessibilityLabel(accessibilityLabel(for: item, isToday: false))
   }
 
   // MARK: - Date Badge
@@ -250,27 +264,31 @@ struct MediumPromiseWidgetView: View {
 
   // MARK: - Accessibility
 
-  private func accessibilityLabel(for promise: WidgetPromiseData, isToday: Bool) -> String {
+  private func accessibilityLabel(for item: WidgetPromiseData, isToday: Bool) -> String {
     let calendar = Calendar.current
     var components: [String] = []
+
+    if item.isPersonalEvent {
+      components.append("개인 일정")
+    }
 
     // 날짜
     if isToday {
       components.append("오늘")
-    } else if calendar.isDateInTomorrow(promise.startAt) {
+    } else if calendar.isDateInTomorrow(item.startAt) {
       components.append("내일")
     } else {
-      components.append(formatShortDate(promise.startAt))
+      components.append(formatShortDate(item.startAt))
     }
 
     // 시간
-    components.append(formatTime(promise.startAt))
+    components.append(formatTime(item.startAt))
 
     // 제목
-    components.append(promise.title)
+    components.append(item.title)
 
     // 장소
-    if let location = promise.location {
+    if let location = item.location {
       components.append(location)
     }
 

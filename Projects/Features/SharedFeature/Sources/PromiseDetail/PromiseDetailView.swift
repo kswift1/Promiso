@@ -8,6 +8,7 @@ extension PromiseDetail {
   public struct RootView: View {
     @Bindable private var store: StoreOf<Feature>
     @State private var isDescriptionExpanded = false
+    @State private var selectedImageIndex: Int?
 
     public init(store: StoreOf<Feature>) {
       self.store = store
@@ -18,6 +19,12 @@ extension PromiseDetail {
         VStack(spacing: 24) {
           headerSection
           scheduleSection
+
+          // 이미지 갤러리
+          if !store.promise.imageUrls.isEmpty {
+            imageGallerySection
+          }
+
           if !store.promise.isPast {
             responseSection
           }
@@ -169,6 +176,39 @@ extension PromiseDetail {
           )
         }
         .adaptiveGlassCard()
+      }
+    }
+
+    // MARK: - Image Gallery Section
+
+    @ViewBuilder
+    private var imageGallerySection: some View {
+      VStack(spacing: 0) {
+        PromiseDetailSectionHeader(title: "사진")
+
+        ScrollView(.horizontal, showsIndicators: false) {
+          HStack(spacing: 10) {
+            ForEach(Array(store.promise.imageUrls.enumerated()), id: \.offset) { index, url in
+              GalleryImageThumbnail(url: url)
+                .onTapGesture { selectedImageIndex = index }
+            }
+          }
+          .padding(.horizontal, 16)
+          .padding(.vertical, 12)
+        }
+        .adaptiveGlassCard()
+      }
+      .fullScreenCover(isPresented: Binding(
+        get: { selectedImageIndex != nil },
+        set: { if !$0 { selectedImageIndex = nil } }
+      )) {
+        if let index = selectedImageIndex {
+          PhotoGalleryViewer(
+            imageUrls: store.promise.imageUrls,
+            initialIndex: index,
+            onDismiss: { selectedImageIndex = nil }
+          )
+        }
       }
     }
 
@@ -337,12 +377,12 @@ extension PromiseDetail {
               } label: {
                 Label("약속 수정", systemImage: "pencil")
               }
+            }
 
-              Button(role: .destructive) {
-                store.send(.view(.deleteTapped))
-              } label: {
-                Label("약속 삭제", systemImage: "trash")
-              }
+            Button(role: .destructive) {
+              store.send(.view(.deleteTapped))
+            } label: {
+              Label("약속 삭제", systemImage: "trash")
             }
           } label: {
             Image(systemName: "ellipsis.circle")
