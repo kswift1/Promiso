@@ -66,8 +66,10 @@ BestPractice 패턴 적용 대상입니다.
 
 ### RootTabFeature
 
-- [ ] `RootTabFeatureTests.swift` (609L)
-- [ ] `LivePromiseDataTests.swift` (115L)
+- [x] `RootTabFeatureTests.swift` (609L → 705L, 28→35 tests)
+- [x] `LivePromiseDataTests.swift` (115L → 149L, 6→10 tests)
+- [x] `LivePromiseFeatureTests.swift` (399L, 17 tests) — **신규 생성**
+- [x] `LivePromiseDetailTests.swift` (243L, 12 tests) — **신규 생성**
 
 ### SettingsFeature
 
