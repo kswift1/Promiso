@@ -1,60 +1,15 @@
-//
-//  RootTabFeatureTests.swift
-//  RootTabFeature
-//
-//  RootTab.Feature reducer 테스트 (Swift Testing + TCA TestStore)
-//
-//  ## 테스트 대상
-//  - `RootTabFeature/Sources/RootTabFeature.swift`
-//  - Reducer의 action 처리 및 state 변화 검증
-//
-//  ## 테스트 목적
-//  - Lifecycle (onAppear) 동작 검증
-//  - 탭 전환 로직 검증
-//  - 딥링크 처리 검증
-//  - 하위 Feature delegate 전달 검증
-//
-
-import Foundation
 import Testing
-import ComposableArchitecture
-import Clients
-import Sharing
 @testable import RootTabFeature
-@testable import GroupFeature
-@testable import HomeFeature
 
-// MARK: - RootTabFeature Tests
-
-@Suite("RootTab.Feature reducer 테스트")
+@Suite("RootTab.Feature 테스트")
 @MainActor
 struct RootTabFeatureTests {
 
-  // MARK: - Test Helpers
-
-  /// 테스트용 현재 사용자 생성
-  private func makeCurrentUser(
-    groups: [UserGroupInfo] = []
-  ) -> UserPrivateModel {
-    UserPrivateModel(
-      userId: "test-user",
-      name: "테스트",
-      nickname: "테스트유저",
-      email: "test@example.com",
-      provider: "apple",
-      metadata: .init(),
-      groups: groups
-    )
-  }
-
-  // MARK: - Initial State 테스트
+  // MARK: - 초기 상태 테스트
 
   @Test("초기 상태 기본값 확인")
   func initialState_hasCorrectDefaults() {
-    let user = makeCurrentUser()
-    @Shared(.inMemory("test-initial")) var currentUser = user
-
-    let state = RootTab.Feature.State(currentUser: $currentUser)
+    let state = makeState(key: "initial")
 
     #expect(state.selectedTab == .home)
     #expect(state.livePromise == nil)
@@ -62,20 +17,45 @@ struct RootTabFeatureTests {
     #expect(state.pendingETASheetRequest == false)
   }
 
+  // MARK: - onAppear 테스트
+
+  @Test("onAppear 시 부트스트랩 내부 액션 시작")
+  func onAppear_startsBootstrapFlow() async {
+    let refreshCounter = CallCounter()
+    let requestCounter = CallCounter()
+    let syncRecorder = GroupIdsRecorder()
+
+    let store = makeStore(state: makeState(key: "on-appear")) {
+      $0.authClient.refreshWidgetAuthToken = {
+        await refreshCounter.increment()
+      }
+      $0.authClient.requestWidgetToken = {
+        await requestCounter.increment()
+      }
+      $0.calendarSyncClient.sync = { ids in
+        await syncRecorder.record(ids)
+        return CalendarSyncResult()
+      }
+    }
+
+    await store.send(.onAppear)
+    await store.receive(\.internal.refreshWidgetAuthToken)
+    await store.receive(\.internal.requestWidgetToken)
+    await store.receive(\.internal.observePushToStartToken)
+    await store.receive(\.internal.observeActivityUpdates)
+    await store.receive(\.internal.syncCalendar)
+    await store.finish()
+
+    #expect(await refreshCounter.value() == 1)
+    #expect(await requestCounter.value() == 1)
+    #expect(await syncRecorder.value() == Set<String>())
+  }
+
   // MARK: - 탭 선택 테스트
 
-  @Test("탭 선택 시 selectedTab 업데이트")
-  func tabSelected_updatesSelectedTab() async {
-    let user = makeCurrentUser()
-    @Shared(.inMemory("test-tab-select")) var currentUser = user
-
-    let store = TestStore(
-      initialState: RootTab.Feature.State(currentUser: $currentUser)
-    ) {
-      RootTab.Feature()
-    } withDependencies: {
-      $0.hapticFeedback.light = {}
-    }
+  @Test("group 탭 선택 시 selectedTab 업데이트")
+  func tabSelected_group_updatesSelectedTab() async {
+    let store = makeStore(state: makeState(key: "tab-group"))
 
     await store.send(.tabSelected(.group)) {
       $0.selectedTab = .group
@@ -83,404 +63,643 @@ struct RootTabFeatureTests {
   }
 
   @Test("같은 탭 재선택 시 selectedTab 유지")
-  func tabSelected_sameTab_noStateChange() async {
-    let user = makeCurrentUser()
-    @Shared(.inMemory("test-tab-same")) var currentUser = user
+  func tabSelected_sameTab_keepsSelectedTab() async {
+    let store = makeStore(state: makeState(key: "tab-same"))
 
-    let store = TestStore(
-      initialState: RootTab.Feature.State(currentUser: $currentUser)
-    ) {
-      RootTab.Feature()
-    } withDependencies: {
-      $0.hapticFeedback.light = {}
-    }
-
-    // home은 기본 선택 탭
     await store.send(.tabSelected(.home))
   }
 
-  @Test("캘린더 탭 선택 시 refresh 전달")
-  func tabSelected_calendar_sendsRefresh() async {
-    let user = makeCurrentUser()
-    @Shared(.inMemory("test-tab-calendar")) var currentUser = user
+  @Test("home 탭 선택 시 selectedTab 업데이트")
+  func tabSelected_home_updatesSelectedTab() async {
+    var state = makeState(key: "tab-home")
+    state.selectedTab = .group
 
-    let store = TestStore(
-      initialState: RootTab.Feature.State(currentUser: $currentUser)
-    ) {
-      RootTab.Feature()
-    } withDependencies: {
-      $0.hapticFeedback.light = {}
-    }
-
-    await store.send(.tabSelected(.calendar)) {
-      $0.selectedTab = .calendar
-    }
-
-    await store.receive(\.calendar.view.refresh)
-  }
-
-  @Test("홈 탭 선택 시 알림 배지 새로고침 전달")
-  func tabSelected_home_sendsRefreshNotificationBadge() async {
-    let user = makeCurrentUser()
-    @Shared(.inMemory("test-tab-home")) var currentUser = user
-
-    var state = RootTab.Feature.State(currentUser: $currentUser)
-    state.selectedTab = .group // 다른 탭에서 시작
-
-    let store = TestStore(initialState: state) {
-      RootTab.Feature()
-    } withDependencies: {
-      $0.hapticFeedback.light = {}
-      $0.notificationClient.getUnreadCount = { _ in 0 }
-      $0.notificationClient.setBadgeCount = { _ in }
-    }
+    let store = makeStore(state: state)
+    store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.tabSelected(.home)) {
       $0.selectedTab = .home
     }
-
     await store.receive(\.home.view.refreshNotificationBadge)
-    // 알림 개수 조회 체인
-    await store.receive(\.home.internal.fetchUnreadNotificationCount)
-    await store.receive(\.home.internal.unreadNotificationCountResponse)
   }
 
-  // MARK: - 딥링크 테스트
+  @Test("calendar 탭 선택 시 refresh 전달")
+  func tabSelected_calendar_sendsRefresh() async {
+    var state = makeState(key: "tab-calendar")
+    state.selectedTab = .home
 
-  @Test("초대 코드 딥링크 시 그룹 탭으로 이동")
-  func openJoinGroupWithCode_switchesToGroupTab() async {
-    let user = makeCurrentUser()
-    @Shared(.inMemory("test-deeplink-join")) var currentUser = user
+    let store = makeStore(state: state)
+    store.exhaustivity = .off(showSkippedAssertions: false)
 
-    let store = TestStore(
-      initialState: RootTab.Feature.State(currentUser: $currentUser)
-    ) {
-      RootTab.Feature()
+    await store.send(.tabSelected(.calendar)) {
+      $0.selectedTab = .calendar
     }
-
-    await store.send(.openJoinGroupWithCode("INVITE123")) {
-      $0.selectedTab = .group
-    }
-
-    await store.receive(\.groupMain.view.joinGroupWithCode) {
-      #expect($0.groupMain.joinGroup != nil)
-    }
-
-    // joinGroupWithCode는 자동으로 nextTapped도 전송
-    await store.receive(\.groupMain.joinGroup)
+    await store.receive(\.calendar.view.refresh)
   }
 
-  @Test("그룹 딥링크 시 그룹 탭으로 이동")
-  func handleGroupDeeplink_switchesToGroupTab() async {
-    let user = makeCurrentUser()
-    @Shared(.inMemory("test-deeplink-group")) var currentUser = user
+  @Test("settings 탭 선택 시 selectedTab 업데이트")
+  func tabSelected_settings_updatesSelectedTab() async {
+    let store = makeStore(state: makeState(key: "tab-settings"))
 
-    var state = RootTab.Feature.State(currentUser: $currentUser)
-    state.groupMain.allGroupSummaries = []
-
-    let store = TestStore(initialState: state) {
-      RootTab.Feature()
-    } withDependencies: {
-      $0.groupClient.fetchGroupSummaries = { [] }
-    }
-
-    await store.send(.handleGroupDeeplink(.group(groupId: "group-1"))) {
-      $0.selectedTab = .group
-    }
-
-    await store.receive(\.groupMain.view.handleDeeplink) {
-      $0.groupMain.pendingDeeplink = .group(groupId: "group-1")
-    }
-
-    // 그룹을 찾지 못하면 fetchGroupList 트리거
-    await store.receive(\.groupMain.internal.fetchGroupList)
-    await store.receive(\.groupMain.internal.groupListResponse.success)
-  }
-
-  // MARK: - Widget 딥링크 테스트
-
-  @Test("Widget 약속 생성 딥링크 시 그룹 탭으로 이동")
-  func openCreatePromiseIfPossible_switchesToGroupTab() async {
-    let user = makeCurrentUser()
-    @Shared(.inMemory("test-widget-create")) var currentUser = user
-
-    var state = RootTab.Feature.State(currentUser: $currentUser)
-    state.groupMain.allGroupSummaries = []
-
-    let store = TestStore(initialState: state) {
-      RootTab.Feature()
-    }
-
-    await store.send(.openCreatePromiseIfPossible) {
-      $0.selectedTab = .group
-    }
-
-    await store.receive(\.groupMain.view.openCreatePromiseIfPossible)
-    // 그룹 없으므로 추가 동작 없음
-  }
-
-  // MARK: - LiveActivity ETA 시트 테스트
-
-  @Test("livePromise 없을 때 ETA 시트 열기 요청 시 pending 설정")
-  func openLiveActivityETASheet_noLivePromise_setsPending() async {
-    let user = makeCurrentUser()
-    @Shared(.inMemory("test-eta-pending")) var currentUser = user
-
-    let store = TestStore(
-      initialState: RootTab.Feature.State(currentUser: $currentUser)
-    ) {
-      RootTab.Feature()
-    }
-
-    await store.send(.openLiveActivityETASheet) {
-      $0.pendingETASheetRequest = true
+    await store.send(.tabSelected(.settings)) {
+      $0.selectedTab = .settings
     }
   }
 
-  // MARK: - Settings Delegate 테스트
+  // MARK: - Delegate 전달 테스트
 
-  @Test("Settings 로그아웃 delegate 전달")
-  func settingsLogout_sendsDelegate() async {
-    let user = makeCurrentUser()
-    @Shared(.inMemory("test-logout")) var currentUser = user
-
-    let store = TestStore(
-      initialState: RootTab.Feature.State(currentUser: $currentUser)
-    ) {
-      RootTab.Feature()
-    }
+  @Test("settings delegate didLogout 시 상위 delegate 전달")
+  func settingsDidLogout_forwardsDelegate() async {
+    let store = makeStore(state: makeState(key: "settings-logout"))
 
     await store.send(.settings(.delegate(.didLogout)))
     await store.receive(\.delegate.logoutRequested)
   }
 
-  // MARK: - Home Delegate 테스트
+  // MARK: - 딥링크/네비게이션 테스트
 
-  @Test("Home navigateToGroupWithPromise delegate 시 그룹 탭 이동")
-  func homeNavigateToGroupWithPromise_switchesToGroupTab() async {
-    let groups = [UserGroupInfo(id: "group-1", name: "그룹1")]
-    let user = makeCurrentUser(groups: groups)
-    @Shared(.inMemory("test-home-navigate")) var currentUser = user
+  @Test("openJoinGroupWithCode 시 그룹 탭으로 전환")
+  func openJoinGroupWithCode_switchesToGroupTab() async {
+    let store = makeStore(state: makeState(key: "join-code"))
+    store.exhaustivity = .off(showSkippedAssertions: false)
 
-    var state = RootTab.Feature.State(currentUser: $currentUser)
-    state.groupMain.allGroupSummaries = groups
-
-    let store = TestStore(initialState: state) {
-      RootTab.Feature()
-    } withDependencies: {
-      $0.groupClient.fetchGroupSummaries = { groups }
-      $0.groupClient.fetchGroup = { _ in
-        GroupModel(id: "group-1", name: "그룹1", maxMembers: 10, inviteCode: "ABC", createdBy: "host")
-      }
-      $0.groupClient.fetchGroupMembers = { _ in [] }
-      $0.groupClient.clearGroupBadge = { _ in }
-      $0.promiseClient.subscribeToPromises = { _, _ in AsyncStream { _ in } }
-    }
-
-    await store.send(.home(.delegate(.navigateToGroupWithPromise(groupId: "group-1", promiseId: "promise-1")))) {
+    await store.send(.openJoinGroupWithCode("INVITE123")) {
       $0.selectedTab = .group
     }
-
-    await store.receive(\.groupMain.view.handleDeeplink) {
-      $0.groupMain.pendingDeeplink = .promiseInList(
-        promiseId: "promise-1",
-        groupId: "group-1",
-        filter: .needResponse
-      )
-    }
-
-    // 이미 선택된 그룹이면 그룹 변경 발생
-    await store.receive(\.groupMain.view.groupChanged) {
-      $0.groupMain.currentGroup = nil
-      $0.groupMain.pendingGroupId = "group-1"
-      $0.groupMain.promisesState = .loading
-      $0.groupMain.pastPromisesState = .idle
-    }
-
-    await store.receive(\.groupMain.internal.fetchCurrentGroup)
+    await store.receive(\.groupMain.view.joinGroupWithCode)
   }
 
-  // MARK: - Home navigateToAllPromises 테스트
+  @Test("handleGroupDeeplink 시 그룹 탭으로 전환")
+  func handleGroupDeeplink_switchesToGroupTab() async {
+    let store = makeStore(state: makeState(key: "group-deeplink"))
+    store.exhaustivity = .off(showSkippedAssertions: false)
 
-  @Test("Home navigateToAllPromises delegate 처리")
-  func homeNavigateToAllPromises_handled() async {
-    let user = makeCurrentUser()
-    @Shared(.inMemory("test-home-all")) var currentUser = user
-
-    let store = TestStore(
-      initialState: RootTab.Feature.State(currentUser: $currentUser)
-    ) {
-      RootTab.Feature()
+    await store.send(.handleGroupDeeplink(.group(groupId: "group-1"))) {
+      $0.selectedTab = .group
     }
+    await store.receive(\.groupMain.view.handleDeeplink)
+  }
 
-    // delegate 처리 (현재 .none 반환)
+  @Test("openCreatePromiseIfPossible 시 그룹 탭으로 전환")
+  func openCreatePromiseIfPossible_switchesToGroupTab() async {
+    let store = makeStore(state: makeState(key: "create-promise"))
+    store.exhaustivity = .off(showSkippedAssertions: false)
+
+    await store.send(.openCreatePromiseIfPossible) {
+      $0.selectedTab = .group
+    }
+    await store.receive(\.groupMain.view.openCreatePromiseIfPossible)
+  }
+
+  @Test("Home navigateToGroupWithPromise delegate 시 그룹 탭 전환")
+  func homeNavigateToGroupWithPromise_switchesToGroupTab() async {
+    let store = makeStore(state: makeState(key: "home-to-group"))
+    store.exhaustivity = .off(showSkippedAssertions: false)
+
+    await store.send(.home(.delegate(.navigateToGroupWithPromise(groupId: "g-1", promiseId: "p-1")))) {
+      $0.selectedTab = .group
+    }
+    await store.receive(\.groupMain.view.handleDeeplink)
+  }
+
+  @Test("Home navigateToPromise delegate 시 그룹 없으면 탭만 변경")
+  func homeNavigateToPromise_missingGroup_onlyChangesTab() async {
+    let store = makeStore(state: makeState(key: "home-promise-missing"))
+
+    await store.send(.home(.delegate(.navigateToPromise(promiseId: "promise-1", groupId: "missing")))) {
+      $0.selectedTab = .group
+    }
+  }
+
+  @Test("Home navigateToAllPromises delegate 시 아무 동작 안 함")
+  func homeNavigateToAllPromises_doesNothing() async {
+    let store = makeStore(state: makeState(key: "home-all-promises"))
     await store.send(.home(.delegate(.navigateToAllPromises)))
   }
 
-  // MARK: - 추가 탭 선택 테스트
+  // MARK: - LivePromise 테스트
 
-  @Test("settings 탭 선택 시 selectedTab 변경")
-  func tabSelected_settings_updatesTab() async {
-    let user = makeCurrentUser()
-    @Shared(.inMemory("test-tab-settings")) var currentUser = user
-
-    let store = TestStore(
-      initialState: RootTab.Feature.State(currentUser: $currentUser)
-    ) {
-      RootTab.Feature()
-    } withDependencies: {
-      $0.hapticFeedback.light = {}
-    }
-
-    await store.send(.tabSelected(.settings)) {
-      $0.selectedTab = .settings
-    }
-  }
-
-  @Test("group 탭에서 settings 탭으로 전환")
-  func tabSelected_groupToSettings() async {
-    let user = makeCurrentUser()
-    @Shared(.inMemory("test-tab-group-settings")) var currentUser = user
-
-    var state = RootTab.Feature.State(currentUser: $currentUser)
-    state.selectedTab = .group
-
-    let store = TestStore(initialState: state) {
-      RootTab.Feature()
-    } withDependencies: {
-      $0.hapticFeedback.light = {}
-    }
-
-    await store.send(.tabSelected(.settings)) {
-      $0.selectedTab = .settings
-    }
-  }
-
-  // MARK: - LiveActivity ETA 시트 테스트 (추가)
-
-  @Test("livePromise 있을 때 ETA 시트 열기 - livePromiseDetail 생성")
-  func openLiveActivityETASheet_withLivePromise_setsPending() async {
-    let user = makeCurrentUser()
-    @Shared(.inMemory("test-eta-live")) var currentUser = user
-
-    // livePromise가 없으면 pendingETASheetRequest = true
-    let store = TestStore(
-      initialState: RootTab.Feature.State(currentUser: $currentUser)
-    ) {
-      RootTab.Feature()
-    }
+  @Test("livePromise 없을 때 ETA 시트 요청 시 pending 플래그 설정")
+  func openLiveActivityETASheet_withoutLivePromise_setsPendingFlag() async {
+    let store = makeStore(state: makeState(key: "eta-without-live"))
 
     await store.send(.openLiveActivityETASheet) {
       $0.pendingETASheetRequest = true
     }
   }
 
-  // MARK: - Initial State 추가 검증
+  @Test("livePromise 있을 때 ETA 시트 요청 시 detail 생성 후 시트 표시")
+  func openLiveActivityETASheet_withLivePromise_opensDetailAndSheet() async {
+    let state = stateWithLivePromise(base: makeState(key: "eta-with-live"))
+    let store = makeStore(state: state)
+    store.exhaustivity = .off(showSkippedAssertions: false)
 
-  @Test("초기 상태에서 groupMain 상태 확인")
-  func initialState_groupMainExists() {
-    let user = makeCurrentUser()
-    @Shared(.inMemory("test-groupmain-init")) var currentUser = user
-
-    let state = RootTab.Feature.State(currentUser: $currentUser)
-
-    #expect(state.groupMain.currentGroup == nil)
-  }
-
-  @Test("초기 상태에서 home 상태 확인")
-  func initialState_homeExists() {
-    let user = makeCurrentUser()
-    @Shared(.inMemory("test-home-init")) var currentUser = user
-
-    let state = RootTab.Feature.State(currentUser: $currentUser)
-
-    #expect(state.home.hasLoadedOnce == false)
-    #expect(state.home.selectedGroupId == nil)
-  }
-
-  // MARK: - openCreatePromiseIfPossible 추가 테스트
-
-  @Test("openCreatePromiseIfPossible 시 그룹 탭으로 이동 (그룹 있는 경우)")
-  func openCreatePromiseIfPossible_withGroups_switchesToGroupTab() async {
-    let groups = [UserGroupInfo(id: "group-1", name: "그룹1")]
-    let user = makeCurrentUser(groups: groups)
-    @Shared(.inMemory("test-widget-create-groups")) var currentUser = user
-
-    var state = RootTab.Feature.State(currentUser: $currentUser)
-    state.groupMain.allGroupSummaries = groups
-
-    let store = TestStore(initialState: state) {
-      RootTab.Feature()
-    }
-
-    await store.send(.openCreatePromiseIfPossible) {
-      $0.selectedTab = .group
-    }
-
-    // groupMain이 약속 생성 처리
-    await store.receive(\.groupMain.view.openCreatePromiseIfPossible) {
-      $0.groupMain.createPromise = CreatePromise.Feature.State()
+    await store.send(.openLiveActivityETASheet)
+    #expect(store.state.livePromiseDetail != nil)
+    await store.receive(\.internal.openETASheetAfterDelay) {
+      $0.livePromiseDetail?.isETASheetPresented = true
     }
   }
 
-  // MARK: - Tab 전체 순회 테스트
+  @Test("openLivePromiseDetail 시 livePromise 있으면 detail 생성")
+  func openLivePromiseDetail_withLivePromise_setsDetail() async {
+    let state = stateWithLivePromise(base: makeState(key: "open-live-detail"))
+    let store = makeStore(state: state)
+    store.exhaustivity = .off(showSkippedAssertions: false)
 
-  @Test("모든 탭 순차 선택")
-  func allTabs_canBeSelected() async {
-    let user = makeCurrentUser()
-    @Shared(.inMemory("test-all-tabs")) var currentUser = user
+    await store.send(.openLivePromiseDetail)
+    #expect(store.state.livePromiseDetail != nil)
+    await store.finish()
+  }
 
-    let store = TestStore(
-      initialState: RootTab.Feature.State(currentUser: $currentUser)
-    ) {
+  @Test("openLivePromiseDetail 시 livePromise 없으면 아무 동작 안 함")
+  func openLivePromiseDetail_withoutLivePromise_doesNothing() async {
+    let store = makeStore(state: makeState(key: "open-live-detail-nil"))
+    await store.send(.openLivePromiseDetail)
+  }
+
+  @Test("livePromise delegate showDetail 시 detail 생성")
+  func livePromiseShowDetail_setsDetail() async {
+    let state = stateWithLivePromise(base: makeState(key: "delegate-show-detail"))
+    let store = makeStore(state: state)
+    store.exhaustivity = .off(showSkippedAssertions: false)
+
+    await store.send(.livePromise(.delegate(.showDetail)))
+    #expect(store.state.livePromiseDetail != nil)
+  }
+
+  // MARK: - 내부 액션 테스트 (Widget/Auth)
+
+  @Test("refreshWidgetAuthToken 내부 액션 호출 시 authClient 실행")
+  func refreshWidgetAuthToken_callsAuthClient() async {
+    let recorder = CallCounter()
+    let store = makeStore(state: makeState(key: "refresh-widget")) {
+      $0.authClient.refreshWidgetAuthToken = {
+        await recorder.increment()
+      }
+    }
+
+    await store.send(.internal(.refreshWidgetAuthToken))
+    await store.finish()
+    #expect(await recorder.value() == 1)
+  }
+
+  @Test("requestWidgetToken 내부 액션 호출 시 authClient 실행")
+  func requestWidgetToken_callsAuthClient() async {
+    let recorder = CallCounter()
+    let store = makeStore(state: makeState(key: "request-widget")) {
+      $0.authClient.requestWidgetToken = {
+        await recorder.increment()
+      }
+    }
+
+    await store.send(.internal(.requestWidgetToken))
+    await store.finish()
+    #expect(await recorder.value() == 1)
+  }
+
+  // MARK: - 내부 액션 테스트 (Push Token)
+
+  @Test("observePushToStartToken 구독 시 token 수신 후 저장")
+  func observePushToStartToken_emitsAndSavesToken() async {
+    let original = UserDefaults.standard.string(forKey: cacheKey)
+    UserDefaults.standard.removeObject(forKey: cacheKey)
+    defer { restoreCacheKey(original) }
+
+    let recorder = TokenRecorder()
+
+    let store = makeStore(state: makeState(key: "observe-push-token")) {
+      $0.liveActivityClient.observePushToStartTokenUpdates = {
+        AsyncStream { continuation in
+          continuation.yield("token-1")
+          continuation.finish()
+        }
+      }
+      $0.notificationClient.saveLiveActivityPushToStartToken = { token in
+        await recorder.record(token)
+      }
+    }
+
+    await store.send(.internal(.observePushToStartToken))
+    await store.receive(\.internal.pushToStartTokenReceived)
+    await store.finish()
+    #expect(await recorder.values() == ["token-1"])
+  }
+
+  @Test("pushToStartTokenReceived 중복 토큰이면 저장 생략")
+  func pushToStartTokenReceived_duplicate_skipsSave() async {
+    let original = UserDefaults.standard.string(forKey: cacheKey)
+    UserDefaults.standard.set("same-token", forKey: cacheKey)
+    defer { restoreCacheKey(original) }
+
+    let recorder = CallCounter()
+
+    let store = makeStore(state: makeState(key: "push-token-duplicate")) {
+      $0.notificationClient.saveLiveActivityPushToStartToken = { _ in
+        await recorder.increment()
+      }
+    }
+
+    await store.send(.internal(.pushToStartTokenReceived("same-token")))
+    await store.finish()
+    #expect(await recorder.value() == 0)
+  }
+
+  // MARK: - 내부 액션 테스트 (LiveActivity)
+
+  @Test("activityUpdateReceived active면 livePromise 생성")
+  func activityUpdateReceived_active_setsLivePromise() async {
+    let update = makeActiveUpdate()
+    let expectedData = makeLiveData(participants: update.contentState?.participants)
+    let store = makeStore(state: makeState(key: "activity-active"))
+
+    await store.send(.internal(.activityUpdateReceived(update))) {
+      $0.livePromise = LivePromise.Feature.State(data: Shared(value: expectedData))
+    }
+    await store.receive(\.groupMain.internal.liveActivityChanged) {
+      $0.groupMain.liveActivityPromiseId = "promise-1"
+    }
+  }
+
+  @Test("activityUpdateReceived active + pendingETASheet이면 pending 소비 후 ETA 시트 열기")
+  func activityUpdateReceived_active_withPendingETASheet_consumesPending() async {
+    var state = makeState(key: "activity-pending-eta")
+    state.pendingETASheetRequest = true
+    let store = makeStore(state: state)
+    store.exhaustivity = .off(showSkippedAssertions: false)
+
+    await store.send(.internal(.activityUpdateReceived(makeActiveUpdate())))
+    #expect(store.state.pendingETASheetRequest == false)
+    #expect(store.state.livePromise != nil)
+    await store.finish()
+  }
+
+  @Test("activityUpdateReceived inactive면 livePromise 제거")
+  func activityUpdateReceived_inactive_clearsLivePromise() async {
+    let state = stateWithLivePromise(base: makeState(key: "activity-inactive"))
+    let update = ActivityUpdate(attributes: nil, contentState: nil, activityState: .ended)
+    let store = makeStore(state: state)
+
+    await store.send(.internal(.activityUpdateReceived(update))) {
+      $0.livePromise = nil
+    }
+    await store.receive(\.groupMain.internal.liveActivityChanged)
+  }
+
+  @Test("observeActivityState 스트림 있으면 activityStateChanged 전달")
+  func observeActivityState_withStream_emitsStateChanged() async {
+    let store = makeStore(state: makeState(key: "observe-activity-state")) {
+      $0.liveActivityClient.observeActivityStateUpdates = { _ in
+        AsyncStream { continuation in
+          continuation.yield(.active)
+          continuation.finish()
+        }
+      }
+    }
+
+    await store.send(.internal(.observeActivityState(activityId: "activity-1")))
+    await store.receive(\.internal.activityStateChanged)
+    await store.finish()
+  }
+
+  @Test("observeActivityState 스트림 nil이면 아무 동작 안 함")
+  func observeActivityState_nilStream_doesNothing() async {
+    let store = makeStore(state: makeState(key: "observe-activity-nil"))
+    await store.send(.internal(.observeActivityState(activityId: "no-stream")))
+  }
+
+  @Test("activityStateChanged dismissed면 livePromise 제거")
+  func activityStateChanged_dismissed_clearsLivePromise() async {
+    let state = stateWithLivePromise(base: makeState(key: "activity-dismissed"))
+    let store = makeStore(state: state)
+
+    await store.send(.internal(.activityStateChanged(.dismissed))) {
+      $0.livePromise = nil
+    }
+    await store.receive(\.groupMain.internal.liveActivityChanged)
+  }
+
+  @Test("activityStateChanged ended면 livePromise 제거")
+  func activityStateChanged_ended_clearsLivePromise() async {
+    let state = stateWithLivePromise(base: makeState(key: "activity-ended"))
+    let store = makeStore(state: state)
+
+    await store.send(.internal(.activityStateChanged(.ended))) {
+      $0.livePromise = nil
+    }
+    await store.receive(\.groupMain.internal.liveActivityChanged)
+  }
+
+  @Test("activityStateChanged active면 아무 동작 안 함")
+  func activityStateChanged_active_doesNothing() async {
+    let state = stateWithLivePromise(base: makeState(key: "activity-active-noop"))
+    let store = makeStore(state: state)
+    await store.send(.internal(.activityStateChanged(.active)))
+  }
+
+  @Test("openETASheetAfterDelay 시 detail ETA 시트 표시")
+  func openETASheetAfterDelay_setsPresentedFlag() async {
+    let state = stateWithLivePromiseDetail(base: stateWithLivePromise(base: makeState(key: "open-eta-delay")))
+    let store = makeStore(state: state)
+
+    await store.send(.internal(.openETASheetAfterDelay)) {
+      $0.livePromiseDetail?.isETASheetPresented = true
+    }
+    await store.finish()
+  }
+
+  // MARK: - 내부 액션 테스트 (Calendar)
+
+  @Test("syncCalendar 시 calendarSync 활성 그룹만 동기화")
+  func syncCalendar_syncsEnabledGroupsOnly() async {
+    let enabled = UserGroupInfo(
+      id: "group-enabled",
+      name: "활성 그룹",
+      notifications: GroupNotificationSettings(calendarSync: true)
+    )
+    let disabled = UserGroupInfo(
+      id: "group-disabled",
+      name: "비활성 그룹",
+      notifications: GroupNotificationSettings(calendarSync: false)
+    )
+    let recorder = GroupIdsRecorder()
+    let user = makeCurrentUser(groups: [enabled, disabled])
+
+    let store = makeStore(state: makeState(user: user, key: "sync-calendar")) {
+      $0.calendarSyncClient.sync = { ids in
+        await recorder.record(ids)
+        return CalendarSyncResult()
+      }
+    }
+
+    await store.send(.internal(.syncCalendar))
+    await store.finish()
+    #expect(await recorder.value() == Set(["group-enabled"]))
+  }
+
+  // MARK: - livePromiseDetail delegate 테스트
+
+  @Test("livePromiseDetail updateETA 시 활성 Activity 없으면 무시")
+  func livePromiseDetailUpdateETA_withoutActiveActivity_doesNothing() async {
+    let state = stateWithLivePromiseDetail(base: stateWithLivePromise(base: makeState(key: "update-eta-no-activity")))
+    let recorder = CallCounter()
+
+    let store = makeStore(state: state) {
+      $0.liveActivityClient.currentAttributes = { nil }
+      $0.liveActivityClient.currentState = { nil }
+      $0.promiseClient.updateETA = { _, _, _ in
+        await recorder.increment()
+      }
+    }
+
+    await store.send(.livePromiseDetail(.presented(.delegate(.updateETA(10)))))
+    await store.finish()
+    #expect(await recorder.value() == 0)
+  }
+
+  @Test("livePromiseDetail updateETA 시 활성 Activity 있으면 API 호출")
+  func livePromiseDetailUpdateETA_withActiveActivity_callsPromiseClient() async {
+    let state = stateWithLivePromiseDetail(base: stateWithLivePromise(base: makeState(key: "update-eta-active")))
+    let attributes = makeActivityAttributes(channelId: "channel-1")
+    let contentState = makeActivityContentState()
+    let recorder = ETAUpdateRecorder()
+
+    let store = makeStore(state: state) {
+      $0.liveActivityClient.currentAttributes = { attributes }
+      $0.liveActivityClient.currentState = { contentState }
+      $0.promiseClient.updateETA = { channelId, participants, trackingDuration in
+        await recorder.record(channelId: channelId, participants: participants, trackingDuration: trackingDuration)
+      }
+    }
+
+    await store.send(.livePromiseDetail(.presented(.delegate(.updateETA(12)))))
+    await store.finish()
+
+    let snapshot = await recorder.value()
+    #expect(snapshot?.channelId == "channel-1")
+    #expect(snapshot?.trackingDuration == 30)
+    #expect(snapshot?.participants.first(where: { $0.id == "test-user" })?.estimatedArrivalMinutes == 12)
+  }
+}
+
+private extension RootTabFeatureTests {
+  var cacheKey: String { "lastPushToStartToken" }
+
+  func restoreCacheKey(_ original: String?) {
+    if let original {
+      UserDefaults.standard.set(original, forKey: cacheKey)
+    } else {
+      UserDefaults.standard.removeObject(forKey: cacheKey)
+    }
+  }
+
+  actor CallCounter {
+    private var count = 0
+
+    func increment() {
+      count += 1
+    }
+
+    func value() -> Int {
+      count
+    }
+  }
+
+  actor TokenRecorder {
+    private var tokens: [String] = []
+
+    func record(_ token: String) {
+      tokens.append(token)
+    }
+
+    func values() -> [String] {
+      tokens
+    }
+  }
+
+  actor GroupIdsRecorder {
+    private var groupIds: Set<String> = []
+
+    func record(_ ids: Set<String>) {
+      groupIds = ids
+    }
+
+    func value() -> Set<String> {
+      groupIds
+    }
+  }
+
+  actor ETAUpdateRecorder {
+    struct Snapshot: Equatable {
+      var channelId: String
+      var participants: [ParticipantState]
+      var trackingDuration: Int
+    }
+
+    private var snapshot: Snapshot?
+
+    func record(channelId: String, participants: [ParticipantState], trackingDuration: Int) {
+      snapshot = Snapshot(
+        channelId: channelId,
+        participants: participants,
+        trackingDuration: trackingDuration
+      )
+    }
+
+    func value() -> Snapshot? {
+      snapshot
+    }
+  }
+
+  func makeStore(
+    state: RootTab.Feature.State,
+    configure: (inout DependencyValues) -> Void = { _ in }
+  ) -> TestStoreOf<RootTab.Feature> {
+    TestStore(initialState: state) {
       RootTab.Feature()
     } withDependencies: {
-      $0.hapticFeedback.light = {}
-      $0.notificationClient.getUnreadCount = { _ in 0 }
-      $0.notificationClient.setBadgeCount = { _ in }
+      applyRootTabDefaultDependencies(&$0)
+      configure(&$0)
     }
-
-    // home -> group
-    await store.send(.tabSelected(.group)) {
-      $0.selectedTab = .group
-    }
-
-    // group -> calendar
-    await store.send(.tabSelected(.calendar)) {
-      $0.selectedTab = .calendar
-    }
-
-    await store.receive(\.calendar.view.refresh)
-
-    // calendar -> settings
-    await store.send(.tabSelected(.settings)) {
-      $0.selectedTab = .settings
-    }
-
-    // settings -> home
-    await store.send(.tabSelected(.home)) {
-      $0.selectedTab = .home
-    }
-
-    await store.receive(\.home.view.refreshNotificationBadge)
-    await store.receive(\.home.internal.fetchUnreadNotificationCount)
-    await store.receive(\.home.internal.unreadNotificationCountResponse)
   }
 
-  // MARK: - openLivePromiseDetail 테스트
+  func makeCurrentUser(
+    id: String = "test-user",
+    groups: [UserGroupInfo] = []
+  ) -> UserPrivateModel {
+    UserPrivateModel(
+      userId: id,
+      name: "테스트",
+      nickname: "테스트유저",
+      email: "\(id)@example.com",
+      provider: "apple",
+      metadata: .init(),
+      groups: groups
+    )
+  }
 
-  @Test("openLivePromiseDetail 시 livePromise 없으면 무시")
-  func openLivePromiseDetail_noLivePromise_noChange() async {
-    let user = makeCurrentUser()
-    @Shared(.inMemory("test-live-detail-nil")) var currentUser = user
+  func makeState(
+    user: UserPrivateModel? = nil,
+    key: String
+  ) -> RootTab.Feature.State {
+    let resolvedUser = user ?? makeCurrentUser()
+    @Shared(.inMemory("root-tab-\(key)")) var currentUser = resolvedUser
+    return RootTab.Feature.State(currentUser: $currentUser)
+  }
 
-    let store = TestStore(
-      initialState: RootTab.Feature.State(currentUser: $currentUser)
-    ) {
-      RootTab.Feature()
+  func stateWithLivePromise(base: RootTab.Feature.State) -> RootTab.Feature.State {
+    var state = base
+    state.livePromise = LivePromise.Feature.State(data: Shared(value: makeLiveData()))
+    return state
+  }
+
+  func stateWithLivePromiseDetail(base: RootTab.Feature.State) -> RootTab.Feature.State {
+    var state = base
+    if let livePromise = state.livePromise {
+      state.livePromiseDetail = LivePromise.Detail.State(data: livePromise.$data)
     }
+    return state
+  }
 
-    // livePromise가 nil이면 아무 변경 없음 (Notification으로 처리)
-    await store.send(.openLivePromiseDetail)
+  func makeLiveData(participants: [ParticipantState]? = nil) -> LivePromise.Data {
+    let resolvedParticipants = participants ?? [
+      ParticipantState(id: "test-user", name: "나", estimatedArrivalMinutes: 5),
+      ParticipantState(id: "user-2", name: "친구", estimatedArrivalMinutes: 8)
+    ]
+
+    return LivePromise.Data(
+      emoji: "📍",
+      title: "약속",
+      location: "강남역",
+      scheduledTime: Date(timeIntervalSince1970: 1_700_000_000),
+      participants: resolvedParticipants,
+      currentUserId: "test-user",
+      trackingDurationMinutes: 30,
+      hostId: "host-1",
+      hostName: "호스트",
+      groupName: "테스트 그룹",
+      groupImageUrl: nil
+    )
+  }
+
+  func makeActivityAttributes(channelId: String = "channel-1") -> PromiseActivityAttributes {
+    PromiseActivityAttributes(
+      promiseId: "promise-1",
+      currentUserId: "test-user",
+      emoji: "📍",
+      title: "약속",
+      location: "강남역",
+      scheduledTime: Date(timeIntervalSince1970: 1_700_000_000),
+      trackingDurationMinutes: 30,
+      hostId: "host-1",
+      hostName: "호스트",
+      channelId: channelId,
+      groupName: "테스트 그룹",
+      groupImageUrl: nil
+    )
+  }
+
+  func makeActivityContentState() -> PromiseActivityAttributes.ContentState {
+    PromiseActivityAttributes.ContentState(
+      trackingDurationMinutes: 30,
+      participants: [
+        ParticipantState(id: "test-user", name: "나", estimatedArrivalMinutes: 5),
+        ParticipantState(id: "user-2", name: "친구", estimatedArrivalMinutes: 15)
+      ]
+    )
+  }
+
+  func makeActiveUpdate() -> ActivityUpdate {
+    ActivityUpdate(
+      attributes: makeActivityAttributes(),
+      contentState: makeActivityContentState(),
+      activityState: .active
+    )
+  }
+  func applyRootTabDefaultDependencies(_ dependencies: inout DependencyValues) {
+    let group = GroupModel(
+      id: "default-group",
+      name: "기본 그룹",
+      maxMembers: 10,
+      inviteCode: "DEFAULT",
+      createdBy: "host"
+    )
+    let preview = GroupPreviewModel(group: group, members: [])
+
+    dependencies.authClient.refreshWidgetAuthToken = {}
+    dependencies.authClient.requestWidgetToken = {}
+
+    dependencies.liveActivityClient.observePushToStartTokenUpdates = {
+      AsyncStream { $0.finish() }
+    }
+    dependencies.liveActivityClient.observeActivityUpdates = {
+      AsyncStream { $0.finish() }
+    }
+    dependencies.liveActivityClient.observeActivityStateUpdates = { _ in nil }
+    dependencies.liveActivityClient.activeActivityId = { nil }
+    dependencies.liveActivityClient.currentAttributes = { nil }
+    dependencies.liveActivityClient.currentState = { nil }
+
+    dependencies.notificationClient.saveLiveActivityPushToStartToken = { _ in }
+    dependencies.notificationClient.getUnreadCount = { _ in 0 }
+    dependencies.notificationClient.setBadgeCount = { _ in }
+
+    dependencies.calendarSyncClient.sync = { _ in CalendarSyncResult() }
+    dependencies.analyticsClient.logEvent = { _, _ in }
+    dependencies.eventKitClient.authorizationStatus = { .notDetermined }
+
+    dependencies.groupClient.fetchGroupSummaries = { [] }
+    dependencies.groupClient.fetchGroup = { _ in group }
+    dependencies.groupClient.fetchGroupMembers = { _ in [] }
+    dependencies.groupClient.previewGroup = { _ in preview }
+    dependencies.groupClient.clearGroupBadge = { _ in }
+
+    dependencies.promiseClient.subscribeToPromises = { _, _ in
+      AsyncStream { continuation in
+        continuation.finish()
+      }
+    }
+    dependencies.promiseClient.getPastPromises = { _, _, _ in [] }
+    dependencies.promiseClient.updateETA = { _, _, _ in }
   }
 }

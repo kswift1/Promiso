@@ -112,4 +112,38 @@ struct LivePromiseDataTests {
     )
     #expect(data.currentUserETA == 15)
   }
+
+  // MARK: - hasCoordinates 테스트
+
+  @Test("좌표 정보 있으면 true 반환")
+  func hasCoordinates_withBothValues_returnsTrue() {
+    let data = LivePromise.Data(
+      latitude: 37.4979,
+      longitude: 127.0276
+    )
+    #expect(data.hasCoordinates == true)
+  }
+
+  @Test("위도 없으면 false 반환")
+  func hasCoordinates_withoutLatitude_returnsFalse() {
+    let data = LivePromise.Data(longitude: 127.0276)
+    #expect(data.hasCoordinates == false)
+  }
+
+  @Test("경도 없으면 false 반환")
+  func hasCoordinates_withoutLongitude_returnsFalse() {
+    let data = LivePromise.Data(latitude: 37.4979)
+    #expect(data.hasCoordinates == false)
+  }
+
+  // MARK: - 엣지 케이스 테스트
+
+  @Test("참가자 없으면 모든 카운트 0")
+  func emptyParticipants_allCountsZero() {
+    let data = LivePromise.Data(participants: [])
+    #expect(data.arrivedCount == 0)
+    #expect(data.inTransitCount == 0)
+    #expect(data.currentUserParticipant == nil)
+    #expect(data.currentUserETA == nil)
+  }
 }
