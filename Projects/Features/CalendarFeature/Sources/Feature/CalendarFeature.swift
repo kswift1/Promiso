@@ -245,6 +245,7 @@ extension CalendarFeature {
         case refresh
       }
 
+      @CasePathable
       public enum InternalAction: Sendable {
         case transitionCompleted
         // 초기화 관련

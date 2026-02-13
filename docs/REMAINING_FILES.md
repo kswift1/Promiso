@@ -41,7 +41,7 @@ BestPractice 패턴 적용 대상입니다.
 
 ### CalendarFeature
 
-- [ ] `CalendarFeatureTests.swift` (347L)
+- [x] `CalendarFeatureTests.swift` (347L → 430L, 11→16 tests, 주석 해제 + BestPractice 정리 + InternalAction @CasePathable 추가)
 
 ### GroupFeature
 
