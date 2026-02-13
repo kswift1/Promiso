@@ -151,22 +151,22 @@ jobs:
             # jq로 해당 모듈의 커버리지 추출
             COVERAGE=$(echo "$COVERAGE_JSON" | jq -r --arg mod "$MODULE" '
               .targets[]
-              | select(.name | test($mod))
+              | select(.name == ($mod + ".framework"))
               | .lineCoverage * 100
               | . * 10 | floor | . / 10
-            ' 2>/dev/null | head -1)
+            ' 2>/dev/null)
 
             COVERED=$(echo "$COVERAGE_JSON" | jq -r --arg mod "$MODULE" '
               .targets[]
-              | select(.name | test($mod))
+              | select(.name == ($mod + ".framework"))
               | .coveredLines
-            ' 2>/dev/null | head -1)
+            ' 2>/dev/null)
 
             EXECUTABLE=$(echo "$COVERAGE_JSON" | jq -r --arg mod "$MODULE" '
               .targets[]
-              | select(.name | test($mod))
+              | select(.name == ($mod + ".framework"))
               | .executableLines
-            ' 2>/dev/null | head -1)
+            ' 2>/dev/null)
 
             if [ -n "$COVERAGE" ] && [ "$COVERAGE" != "null" ]; then
               # 상태 아이콘 결정
