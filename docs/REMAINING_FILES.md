@@ -84,7 +84,7 @@ BestPractice 패턴 적용 대상입니다.
 
 ### SharedFeature
 
-- [ ] `SharedFeatureTests.swift` (1026L)
+- [x] `SharedFeatureTests.swift` (1026L → 1170L, 55→63 tests, import 정리 + @MainActor 통합 + 기존 실패 테스트 수정 + onAppear/editTapped/resetTapped/mapTapped/setEndDate/saveTapped 추가)
 
 ---
 

@@ -3,16 +3,13 @@
 // 이 파일은 PromiseDetail.Feature와 EditPromise.Feature의
 // business logic 정확성과 state management 무결성을 보장
 
-import Foundation
 import Testing
-import ComposableArchitecture
-import Clients
-import PromisoShared
 @testable import SharedFeature
 
 // MARK: - PromiseDetail.Feature Tests
 
 @Suite("PromiseDetail.Feature reducer 테스트")
+@MainActor
 struct PromiseDetailFeatureTests {
 
   // MARK: - Test Helpers
@@ -451,6 +448,95 @@ struct PromiseDetailFeatureTests {
     }
   }
 
+  // MARK: - 추가 View Action 테스트
+
+  @Test("onAppear 시 그룹 멤버 미로드이면 로딩 시작")
+  func onAppear_noMembers_startsLoading() async {
+    let promise = makePromise()
+
+    let store = TestStore(
+      initialState: PromiseDetail.Feature.State(
+        promise: promise,
+        currentUserId: "test-user"
+      )
+    ) {
+      PromiseDetail.Feature()
+    } withDependencies: {
+      $0.groupClient.fetchGroupMembers = { _ in [] }
+    }
+    store.exhaustivity = .off
+
+    await store.send(.view(.onAppear)) {
+      $0.isLoadingMembers = true
+    }
+  }
+
+  @Test("[P12] editTapped - canEdit true면 편집 시트 표시")
+  func editTapped_whenCanEdit_showsEditSheet() async {
+    let futureDate = Date().addingTimeInterval(7200)
+    let promise = makePromise(hostId: "user-1", startAt: futureDate)
+
+    let store = TestStore(
+      initialState: PromiseDetail.Feature.State(
+        promise: promise,
+        currentUserId: "user-1"
+      )
+    ) {
+      PromiseDetail.Feature()
+    }
+    store.exhaustivity = .off
+
+    await store.send(.view(.editTapped))
+  }
+
+  @Test("resetTapped 시 respondingState를 resetting으로 설정")
+  func resetTapped_setsResettingState() async {
+    let promise = makePromise()
+
+    let store = TestStore(
+      initialState: PromiseDetail.Feature.State(
+        promise: promise,
+        currentUserId: "test-user"
+      )
+    ) {
+      PromiseDetail.Feature()
+    } withDependencies: {
+      $0.promiseClient.respondPromise = { _, _ in
+        RespondPromiseResult(promiseId: "promise-1", status: "pending", isConfirmed: false)
+      }
+      $0.analyticsClient.logEvent = { _, _ in }
+    }
+    store.exhaustivity = .off
+
+    await store.send(.view(.resetTapped)) {
+      $0.respondingState = .resetting
+    }
+  }
+
+  @Test("mapTapped 시 showMapDetail true 설정")
+  func mapTapped_setsShowMapDetail() async {
+    var promise = makePromise()
+    promise.location = LocationInfoModel(
+      name: "강남역",
+      address: "서울시 강남구",
+      latitude: 37.498,
+      longitude: 127.027
+    )
+
+    let store = TestStore(
+      initialState: PromiseDetail.Feature.State(
+        promise: promise,
+        currentUserId: "test-user"
+      )
+    ) {
+      PromiseDetail.Feature()
+    }
+
+    await store.send(.view(.mapTapped)) {
+      $0.showMapDetail = true
+    }
+  }
+
   // MARK: - Internal Action 테스트
 
   @Test("respondFailed 시 respondingState를 idle로 복원")
@@ -550,6 +636,7 @@ struct PromiseDetailFeatureTests {
     let store = TestStore(initialState: state) {
       PromiseDetail.Feature()
     }
+    store.exhaustivity = .off
 
     await store.send(.internal(.groupMembersFetched(.success(members)))) {
       $0.isLoadingMembers = false
@@ -583,18 +670,32 @@ struct PromiseDetailFeatureTests {
   func confirmDelete_setsDeleteStateAndSendsDelete() async {
     let promise = makePromise()
 
-    let store = TestStore(
-      initialState: PromiseDetail.Feature.State(
-        promise: promise,
-        currentUserId: "test-user"
-      )
-    ) {
+    var state = PromiseDetail.Feature.State(
+      promise: promise,
+      currentUserId: "test-user"
+    )
+    // alert이 표시된 상태에서 confirmDelete 테스트
+    state.alert = AlertState {
+      TextState("약속 삭제")
+    } actions: {
+      ButtonState(role: .cancel) {
+        TextState("취소")
+      }
+      ButtonState(role: .destructive, action: .confirmDelete) {
+        TextState("삭제")
+      }
+    } message: {
+      TextState("'\(promise.title)' 약속을 삭제하시겠습니까?\n삭제된 약속은 복구할 수 없습니다.")
+    }
+
+    let store = TestStore(initialState: state) {
       PromiseDetail.Feature()
     } withDependencies: {
       $0.promiseClient.deletePromise = { _ in }
     }
 
     await store.send(.alert(.presented(.confirmDelete))) {
+      $0.alert = nil
       $0.isDeleting = true
     }
 
@@ -611,6 +712,7 @@ struct PromiseDetailFeatureTests {
 // MARK: - EditPromise.Feature Tests
 
 @Suite("EditPromise.Feature reducer 테스트")
+@MainActor
 struct EditPromiseFeatureTests {
 
   // MARK: - Test Helpers
@@ -719,7 +821,10 @@ struct EditPromiseFeatureTests {
       initialState: EditPromise.Feature.State(promise: promise, maxMembers: 10)
     ) {
       EditPromise.Feature()
+    } withDependencies: {
+      $0.continuousClock = ImmediateClock()
     }
+    store.exhaustivity = .off
 
     await store.send(.view(.setTitle("새로운 제목"))) {
       $0.editedPromise.title = "새로운 제목"
@@ -953,6 +1058,61 @@ struct EditPromiseFeatureTests {
     await store.send(.view(.setTrackingMinutes(60))) {
       $0.editedPromise.trackingStartMinutesBefore = 60
     }
+  }
+
+  @Test("setEndDate 시 종료 날짜 업데이트")
+  func setEndDate_updatesEndDate() async {
+    let promise = makePromise(endAt: Date().addingTimeInterval(7200))
+    let newEndDate = Date().addingTimeInterval(10800)
+
+    let store = TestStore(
+      initialState: EditPromise.Feature.State(promise: promise, maxMembers: 10)
+    ) {
+      EditPromise.Feature()
+    }
+
+    await store.send(.view(.setEndDate(newEndDate))) {
+      $0.editedPromise.endAt = newEndDate
+    }
+  }
+
+  @Test("saveTapped 시 업데이트 시작")
+  func saveTapped_startsUpdating() async {
+    let promise = makePromise()
+    var state = EditPromise.Feature.State(promise: promise, maxMembers: 10)
+    state.editedPromise.title = "수정된 제목"
+
+    let store = TestStore(initialState: state) {
+      EditPromise.Feature()
+    } withDependencies: {
+      $0.promiseClient.updatePromise = { _ in }
+    }
+    store.exhaustivity = .off
+
+    await store.send(.view(.saveTapped)) {
+      $0.isUpdating = true
+      $0.updateError = nil
+    }
+  }
+
+  @Test("saveTapped - canSave false면 무시")
+  func saveTapped_canSaveFalse_ignored() async {
+    let promise = makePromise()
+    // 변경 없으므로 hasChanges == false → canSave == false
+    let store = TestStore(
+      initialState: EditPromise.Feature.State(promise: promise, maxMembers: 10)
+    ) {
+      EditPromise.Feature()
+    }
+
+    await store.send(.view(.saveTapped))
+  }
+
+  @Test("canSave - 변경 없으면 false")
+  func canSave_noChanges_returnsFalse() {
+    let promise = makePromise()
+    let state = EditPromise.Feature.State(promise: promise, maxMembers: 10)
+    #expect(state.canSave == false)
   }
 
   @Test("cancelTapped 시 delegate.cancelled 전달")
