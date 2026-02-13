@@ -9,10 +9,10 @@ struct WidgetFooterView: View {
   var body: some View {
     HStack(spacing: 6) {
       // 업데이트 시간
-      Text(formatUpdatedTime(updatedAt))
+      Text("\(formatUpdatedTime(updatedAt)) 기준")
         .font(.caption2)
         .foregroundStyle(.tertiary)
-        .accessibilityLabel("\(formatUpdatedTime(updatedAt)) 업데이트")
+        .accessibilityLabel("\(formatUpdatedTime(updatedAt)) 기준 업데이트")
 
       // 새로고침 버튼
       Button(intent: RefreshWidgetIntent()) {
@@ -20,6 +20,7 @@ struct WidgetFooterView: View {
           .font(.system(size: 10, weight: .medium))
           .foregroundStyle(.secondary)
           .frame(width: 22, height: 22)
+          .contentShape(Circle())
           .background(Color.secondary.opacity(0.12), in: Circle())
       }
       .buttonStyle(.plain)
