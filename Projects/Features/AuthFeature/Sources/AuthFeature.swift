@@ -1,7 +1,6 @@
 import AuthenticationServices
 import Clients
-import ComposableArchitecture
-import Dependencies
+import ExternalDependency
 import Foundation
 import SwiftUI
 import CryptoKit

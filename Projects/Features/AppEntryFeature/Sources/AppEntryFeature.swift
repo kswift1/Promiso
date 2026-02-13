@@ -1,8 +1,7 @@
 // MARK: - AppEntryFeature.swift
 import AuthFeature
 import Clients
-import ComposableArchitecture
-import Dependencies
+import ExternalDependency
 import PromisoShared
 import RootTabFeature
 import ResourceKit

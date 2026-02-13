@@ -1,6 +1,6 @@
 // MARK: - Default Exports (자동 생성)
 @_exported import Clients
-@_exported import ComposableArchitecture
+@_exported import ExternalDependency
 @_exported import SwiftUI
 @_exported import PromisoShared
 @_exported import AuthFeature
