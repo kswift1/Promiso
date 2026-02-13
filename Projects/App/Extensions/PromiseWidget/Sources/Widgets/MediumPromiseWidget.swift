@@ -90,9 +90,11 @@ struct PromiseSystemMediumWidgetView: View {
 
       Spacer(minLength: 0)
     }
-    .padding()
+    .padding(0)
     .overlay(alignment: .bottomTrailing) {
-      WidgetFooterView(updatedAt: entry.date)
+      WidgetFooterView(updatedAt: entry.date, showLabel: true)
+        .padding(.bottom, -10)
+        .padding(.trailing, -6)
     }
   }
 
@@ -113,9 +115,11 @@ struct PromiseSystemMediumWidgetView: View {
 
       Spacer(minLength: 0)
     }
-    .padding()
+    .padding(0)
     .overlay(alignment: .bottomTrailing) {
-      WidgetFooterView(updatedAt: entry.date)
+      WidgetFooterView(updatedAt: entry.date, showLabel: true)
+        .padding(.bottom, -10)
+        .padding(.trailing, -6)
     }
   }
 
@@ -213,7 +217,7 @@ struct PromiseSystemMediumWidgetView: View {
       // 제목 + 그룹명
       HStack(spacing: 4) {
         Text(item.title)
-          .font(.subheadline)
+          .font(.subheadline.weight(.semibold))
           .lineLimit(1)
           .foregroundStyle(.primary)
 
