@@ -11,6 +11,8 @@ let packageSettings = PackageSettings(
     "Dependencies": .framework,
     "XCTestDynamicOverlay": .framework,
     "IssueReporting": .framework,
+    "CombineSchedulers": .framework,
+    "ConcurrencyExtras": .framework,
   ]
 )
 #endif

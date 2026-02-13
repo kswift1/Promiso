@@ -76,7 +76,7 @@ struct MediumPromiseWidgetView: View {
   @ViewBuilder
   private func todayView(_ items: [WidgetPromiseData]) -> some View {
     VStack(alignment: .leading, spacing: 6) {
-      sectionHeader(title: "오늘", icon: "sun.max.fill", count: items.count)
+      sectionHeader(title: "오늘", icon: "sun.max.fill", count: entry.todayItems.count)
 
       ForEach(items, id: \.id) { item in
         if let url = item.deeplinkURL {
@@ -99,7 +99,7 @@ struct MediumPromiseWidgetView: View {
   @ViewBuilder
   private func upcomingView(_ items: [WidgetPromiseData]) -> some View {
     VStack(alignment: .leading, spacing: 6) {
-      sectionHeader(title: "다가오는 일정", icon: "calendar", count: items.count)
+      sectionHeader(title: "다가오는 일정", icon: "calendar", count: entry.upcomingItems.count)
 
       ForEach(items, id: \.id) { item in
         if let url = item.deeplinkURL {
@@ -202,11 +202,19 @@ struct MediumPromiseWidgetView: View {
         .font(.system(size: 20))
         .frame(width: 24)
 
-      // 제목
-      Text(item.title)
-        .font(.subheadline)
-        .lineLimit(1)
-        .foregroundStyle(.primary)
+      // 제목 + 그룹명
+      HStack(spacing: 4) {
+        Text(item.title)
+          .font(.subheadline)
+          .lineLimit(1)
+          .foregroundStyle(.primary)
+
+        if let groupName = item.groupName {
+          Text(groupName)
+            .font(.caption2.weight(.medium))
+            .foregroundStyle(Color.pmindigo.n500)
+        }
+      }
 
       if item.isPersonalEvent {
         Text("개인")

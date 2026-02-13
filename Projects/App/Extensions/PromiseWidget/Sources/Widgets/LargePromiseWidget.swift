@@ -20,7 +20,7 @@ struct LargePromiseWidget: Widget {
     .description("오늘과 다가오는 약속을 한눈에 확인하세요")
     .supportedFamilies([.systemLarge])
   }
-
+  
   @ViewBuilder
   private var widgetBackground: some View {
     if #available(iOS 26.0, *) {
@@ -56,7 +56,8 @@ struct LargePromiseWidgetView: View {
   @ViewBuilder
   private var contentView: some View {
     let todayItems = Array(entry.todayItems.prefix(3))
-    let upcomingItems = Array(entry.upcomingItems.prefix(4))
+    let maxUpcoming = todayItems.isEmpty ? 7 : max(7 - todayItems.count, 3)
+    let upcomingItems = Array(entry.upcomingItems.prefix(maxUpcoming))
 
     if todayItems.isEmpty && upcomingItems.isEmpty {
       EmptyWidgetView(
@@ -94,7 +95,7 @@ struct LargePromiseWidgetView: View {
       sectionHeader(
         title: "오늘",
         icon: "sun.max.fill",
-        count: items.count,
+        count: entry.todayItems.count,
         isHighlighted: true
       )
 
@@ -114,11 +115,11 @@ struct LargePromiseWidgetView: View {
 
   @ViewBuilder
   private func upcomingSection(_ items: [WidgetPromiseData]) -> some View {
-    VStack(alignment: .leading, spacing: 8) {
+    VStack(alignment: .leading, spacing: 6) {
       sectionHeader(
         title: "다가오는 일정",
         icon: "calendar",
-        count: items.count,
+        count: entry.upcomingItems.count,
         isHighlighted: false
       )
 
@@ -186,10 +187,18 @@ struct LargePromiseWidgetView: View {
 
       // 제목 + 메타 정보
       VStack(alignment: .leading, spacing: 2) {
-        Text(item.title)
-          .font(.subheadline.weight(.semibold))
-          .lineLimit(1)
-          .foregroundStyle(.primary)
+        HStack(spacing: 4) {
+          Text(item.title)
+            .font(.subheadline.weight(.semibold))
+            .lineLimit(1)
+            .foregroundStyle(.primary)
+
+          if let groupName = item.groupName {
+            Text(groupName)
+              .font(.caption2.weight(.medium))
+              .foregroundStyle(Color.pmindigo.n500)
+          }
+        }
 
         // 메타 정보
         HStack(spacing: 4) {
@@ -247,11 +256,19 @@ struct LargePromiseWidgetView: View {
         .font(.system(size: 20))
         .frame(width: 24)
 
-      // 제목
-      Text(item.title)
-        .font(.subheadline)
-        .lineLimit(1)
-        .foregroundStyle(.primary)
+      // 제목 + 그룹명
+      HStack(spacing: 4) {
+        Text(item.title)
+          .font(.subheadline)
+          .lineLimit(1)
+          .foregroundStyle(.primary)
+
+        if let groupName = item.groupName {
+          Text(groupName)
+            .font(.caption2.weight(.medium))
+            .foregroundStyle(Color.pmindigo.n500)
+        }
+      }
 
       if item.isPersonalEvent {
         Text("개인")
