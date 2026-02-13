@@ -37,7 +37,7 @@ BestPractice 패턴 적용 대상입니다.
 
 ### AuthFeature
 
-- [ ] `AuthFeatureTests.swift` (300L)
+- [x] `AuthFeatureTests.swift` (300L → 286L, 중복 제거 + 에러 폴백 테스트 추가, BestPractice 정리)
 
 ### CalendarFeature
 

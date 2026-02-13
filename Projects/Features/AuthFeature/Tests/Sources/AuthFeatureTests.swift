@@ -1,29 +1,7 @@
-//
-//  AuthFeatureTests.swift
-//  AuthFeature
-//
-//  Auth.Feature reducer 테스트 (Swift Testing + TCA TestStore)
-//
-//  ## 테스트 대상
-//  - `AuthFeature/Sources/AuthFeature.swift`
-//  - Reducer의 action 처리 및 state 변화 검증
-//
-//  ## 테스트 목적
-//  - Apple 로그인 탭 시 로딩 상태 및 nonce 설정 검증
-//  - Google 로그인 플로우 검증
-//  - 인증 응답 성공/실패 핸들링 검증
-//  - 에러 메시지 표시 검증
-//
-
-import Foundation
 import Testing
-import ComposableArchitecture
-import Clients
 @testable import AuthFeature
 
-// MARK: - AuthFeature Tests
-
-@Suite("Auth.Feature reducer 테스트")
+@Suite("Auth.Feature 테스트")
 @MainActor
 struct AuthFeatureTests {
 
@@ -47,13 +25,15 @@ struct AuthFeatureTests {
     ) {
       Auth.Feature()
     }
+    // nonce는 랜덤 생성이므로 exhaustivity off 후 별도 검증
+    store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.appleLoginTapped)) {
       $0.isLoading = true
       $0.errorMessage = nil
-      // nonce는 랜덤 생성이므로 nil이 아닌지만 검증
-      #expect($0.pendingAppleLoginNonce != nil)
     }
+    #expect(store.state.pendingAppleLoginNonce != nil)
+    #expect(store.state.pendingAppleLoginNonce?.count == 32)
   }
 
   @Test("Apple 인증 실패 시 에러 상태 설정")
@@ -182,27 +162,6 @@ struct AuthFeatureTests {
     }
   }
 
-  // MARK: - Nonce 누락 테스트
-
-  @Test("Apple 인증 성공 시 nonce 없으면 에러")
-  func appleAuthorizationResult_missingNonce_setsError() async {
-    var state = Auth.Feature.State()
-    state.isLoading = true
-    state.pendingAppleLoginNonce = nil // nonce 없음
-
-    let store = TestStore(initialState: state) {
-      Auth.Feature()
-    }
-
-    // 유효한 ASAuthorization을 만들 수 없으므로 nonce 누락 시나리오를
-    // 직접 테스트하기는 어려움. authResponse.failure로 대체 테스트.
-    await store.send(.internal(.authResponse(.failure(.invalidAppleCredential)))) {
-      $0.isLoading = false
-      $0.pendingAppleLoginNonce = nil
-      $0.errorMessage = AuthClientError.invalidAppleCredential.localizedDescription
-    }
-  }
-
   // MARK: - Helper 테스트
 
   @Test("randomNonceString 길이 검증")
@@ -256,12 +215,13 @@ struct AuthFeatureTests {
     let store = TestStore(initialState: state) {
       Auth.Feature()
     }
+    store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.appleLoginTapped)) {
       $0.isLoading = true
       $0.errorMessage = nil
-      #expect($0.pendingAppleLoginNonce != nil)
     }
+    #expect(store.state.pendingAppleLoginNonce != nil)
   }
 
   // MARK: - 다양한 AuthClientError 테스트
@@ -295,6 +255,32 @@ struct AuthFeatureTests {
       $0.isLoading = false
       $0.pendingAppleLoginNonce = nil
       $0.errorMessage = AuthClientError.network.localizedDescription
+    }
+  }
+
+  // MARK: - Google 로그인 에러 폴백 테스트
+
+  @Test("Google 로그인 시 일반 Error는 .unknown으로 폴백")
+  func googleLoginTapped_genericError_fallsBackToUnknown() async {
+    enum GenericError: Error { case unexpected }
+
+    let store = TestStore(
+      initialState: Auth.Feature.State()
+    ) {
+      Auth.Feature()
+    } withDependencies: {
+      $0.authClient.signInWithGoogle = { throw GenericError.unexpected }
+    }
+
+    await store.send(.view(.googleLoginTapped)) {
+      $0.isLoading = true
+      $0.errorMessage = nil
+    }
+
+    await store.receive(\.internal.authResponse.failure) {
+      $0.isLoading = false
+      $0.pendingAppleLoginNonce = nil
+      $0.errorMessage = AuthClientError.unknown.localizedDescription
     }
   }
 }
