@@ -211,6 +211,58 @@ public struct WidgetPromiseData: Codable, Identifiable, Equatable, Sendable {
         isConfirmed: true,
         participantCount: 8,
         myVoteStatus: .voted
+      ),
+      WidgetPromiseData(
+        id: "upcoming3",
+        title: "동창회 모임",
+        emoji: "🍻",
+        startAt: calendar.date(bySettingHour: 19, minute: 0, second: 0, of: calendar.date(byAdding: .day, value: 3, to: now) ?? now) ?? now,
+        endAt: nil,
+        location: "이태원 펍",
+        groupId: "g4",
+        groupName: "고등학교",
+        isConfirmed: true,
+        participantCount: 6,
+        myVoteStatus: .voted
+      ),
+      WidgetPromiseData(
+        id: "upcoming4",
+        title: "치과 예약",
+        emoji: "🏥",
+        startAt: calendar.date(bySettingHour: 10, minute: 30, second: 0, of: calendar.date(byAdding: .day, value: 4, to: now) ?? now) ?? now,
+        endAt: nil,
+        location: nil,
+        groupId: "g5",
+        groupName: "개인",
+        isConfirmed: true,
+        participantCount: 1,
+        myVoteStatus: .voted
+      ),
+      WidgetPromiseData(
+        id: "upcoming5",
+        title: "팀 회식",
+        emoji: "🥘",
+        startAt: calendar.date(bySettingHour: 18, minute: 30, second: 0, of: calendar.date(byAdding: .day, value: 6, to: now) ?? now) ?? now,
+        endAt: nil,
+        location: "강남 고기집",
+        groupId: "g6",
+        groupName: "회사",
+        isConfirmed: false,
+        participantCount: 10,
+        myVoteStatus: .pending
+      ),
+      WidgetPromiseData(
+        id: "upcoming6",
+        title: "독서 모임",
+        emoji: "📖",
+        startAt: calendar.date(bySettingHour: 15, minute: 0, second: 0, of: calendar.date(byAdding: .day, value: 8, to: now) ?? now) ?? now,
+        endAt: nil,
+        location: "교보문고 카페",
+        groupId: "g7",
+        groupName: "독서클럽",
+        isConfirmed: true,
+        participantCount: 4,
+        myVoteStatus: .voted
       )
     ]
   }
