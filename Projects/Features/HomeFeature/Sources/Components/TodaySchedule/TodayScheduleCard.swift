@@ -143,8 +143,8 @@ struct TodayScheduleCard: View {
       // 이 일정 시작 전인데, 이전 일정은 끝났거나 없는 경우
       if now < start {
         if index == 0 {
-          // 첫 일정 전이면 마커 표시 안함 (아직 일정 시작 전)
-          return .insideItem
+          // 첫 일정 전에도 현재 시간 마커 표시
+          return .beforeIndex(0)
         }
 
         // 이전 일정 종료 시간 확인
