@@ -115,14 +115,14 @@ TCA TestStore를 사용하지 않는 순수 단위 테스트입니다. BestPract
 
 TCA TestStore를 사용하지 않는 순수 단위 테스트입니다. BestPractice 중 import/네이밍/구조 규칙만 적용합니다.
 
-- [ ] `SharedTests.swift` (557L)
-- [ ] `DatePromiseTests.swift` (503L)
-- [ ] `CalendarSyncPromiseTests.swift` (257L)
-- [ ] `ParticipantStateTests.swift` (113L)
-- [ ] `EmojiModelsTests.swift` (107L)
-- [ ] `EmojiSuggesterTests.swift` (108L)
-- [ ] `StringExtensionsTests.swift` (102L)
-- [ ] `ArrayExtensionsTests.swift` (77L)
+- [x] `SharedTests.swift` (557L) — 이미 BestPractice 준수
+- [x] `DatePromiseTests.swift` (503L) — 이미 BestPractice 준수
+- [x] `CalendarSyncPromiseTests.swift` (257L) — 이미 BestPractice 준수
+- [x] `ParticipantStateTests.swift` (113L) — 이미 BestPractice 준수
+- [x] `EmojiModelsTests.swift` (107L) — 이미 BestPractice 준수
+- [x] `EmojiSuggesterTests.swift` (108L) — 이미 BestPractice 준수
+- [x] `StringExtensionsTests.swift` (102L) — 이미 BestPractice 준수
+- [x] `ArrayExtensionsTests.swift` (77L) — 이미 BestPractice 준수
 
 ---
 

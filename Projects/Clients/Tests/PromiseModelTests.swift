@@ -327,7 +327,7 @@ struct PromiseModelDisplayTests {
 
   @Test("투표 마감까지 분 단위 남으면 'N분 후' 반환")
   func deadlineText_whenMinutesRemaining_returnsMinutesText() {
-    let votes = TestFactories.makeVotes(until: Date().addingTimeInterval(1500))
+    let votes = TestFactories.makeVotes(until: Date().addingTimeInterval(1530))
     let promise = TestFactories.makePromise(votes: votes)
     #expect(promise.deadlineText == "25분 후")
   }
