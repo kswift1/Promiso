@@ -197,10 +197,8 @@ test-module:
 		echo "Usage: make test-module MODULE=HomeFeature"; \
 		echo ""; \
 		echo "사용 가능한 모듈:"; \
-		echo "  Features: HomeFeature, AuthFeature, GroupFeature, CalendarFeature,"; \
-		echo "            SettingsFeature, RootTabFeature, AppEntryFeature,"; \
-		echo "            SharedFeature, NotificationCenterFeature"; \
-		echo "  Core:     Clients, PromisoShared"; \
+		echo "  Features: $$(ls -d Projects/Features/*Feature 2>/dev/null | xargs -n 1 basename | tr '\n' ' ')"; \
+		echo "  Core:     $$(ls -d Projects/Clients Projects/Shared 2>/dev/null | xargs -n 1 basename | tr '\n' ' ')"; \
 		exit 1; \
 	fi
 	@echo "🧪 $(MODULE) 테스트 실행 중..."
