@@ -135,6 +135,7 @@ extension PromiseDetail {
         case confirmDelete
       }
 
+      @CasePathable
       public enum Internal: Sendable {
         case respondPromise(status: PromiseAttendanceStatus)
         case respondDone(status: PromiseAttendanceStatus)
@@ -149,6 +150,7 @@ extension PromiseDetail {
         case realPromiseFetched(Result<PromiseModel, Error>)
       }
 
+      @CasePathable
       public enum Delegate: Sendable {
         case dismiss
         case promiseDeleted(id: String)

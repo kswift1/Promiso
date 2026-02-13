@@ -18,15 +18,13 @@
 //  - 날짜별 그룹화 로직 검증
 //
 
-import Foundation
 import Testing
-import Clients
-import Sharing
 @testable import GroupFeature
 
 // MARK: - GroupMain State Tests
 
 @Suite("GroupMain.Feature.State computed properties 테스트")
+@MainActor
 struct GroupMainStateTests {
 
   // MARK: - Test Helpers
@@ -339,5 +337,19 @@ struct GroupMainStateTests {
     let keys = state.promiseListAnimationKey
     #expect(keys.contains("p1"))
     #expect(keys.contains("p2"))
+  }
+
+  // MARK: - filteredPromises 추가 테스트
+
+  @Test("needResponse 필터 시 미응답 약속만 반환")
+  func filteredPromises_needResponse_returnsUnrespondedOnly() {
+    let responded = makePromise(id: "responded", accepted: ["current-user"])
+    let unresponded = makePromise(id: "unresponded", accepted: [])
+
+    var state = makeState(promises: [responded, unresponded])
+    state.selectedFilter = .needResponse
+
+    #expect(state.filteredPromises.count == 1)
+    #expect(state.filteredPromises.first?.id == "unresponded")
   }
 }

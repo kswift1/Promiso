@@ -95,6 +95,7 @@ extension NotificationCenter {
         case deleteAllTapped
       }
 
+      @CasePathable
       public enum Internal: Sendable {
         /// 알림 목록 조회
         case fetchNotifications(isRefresh: Bool)
@@ -108,6 +109,7 @@ extension NotificationCenter {
         case deleteCompleted(deletedIds: [String], Result<Void, Error>)
       }
 
+      @CasePathable
       public enum Delegate: Sendable {
         /// 약속 상세로 이동
         case navigateToPromise(promiseId: String, groupId: String)

@@ -57,6 +57,7 @@ extension NotificationSettings {
 
     // MARK: - Action
 
+    @CasePathable
     public enum Action: Sendable {
       case view(View)
       case `internal`(Internal)
@@ -71,6 +72,7 @@ extension NotificationSettings {
       case groupTapped(UserGroupInfo)
     }
 
+    @CasePathable
     public enum Internal: Equatable, Sendable {
       case systemAuthStatusReceived(NotificationAuthorizationStatus)
       case groupsLoaded([UserGroupInfo])
@@ -337,6 +339,7 @@ extension GroupNotificationDetail {
       }
     }
 
+    @CasePathable
     public enum Action: Sendable {
       case view(View)
       case `internal`(Internal)
@@ -349,6 +352,7 @@ extension GroupNotificationDetail {
       case preferenceToggled(GroupNotificationPreferenceKey, Bool)
     }
 
+    @CasePathable
     public enum Internal: Equatable, Sendable {
       case updateSucceeded
       case updateFailed(GroupNotificationSettings)

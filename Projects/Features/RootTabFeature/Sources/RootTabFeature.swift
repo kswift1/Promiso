@@ -2,7 +2,7 @@
 // TCA 1.22.2를 사용한 RootTab Feature의 Implementation layer
 
 import Combine
-import ComposableArchitecture
+import ExternalDependency
 import SwiftUI
 
 import Clients
@@ -190,6 +190,7 @@ extension RootTab {
       case `internal`(Internal)
     }
 
+    @CasePathable
     public enum Internal: Equatable, Sendable {
       /// Push to Start 토큰 구독 시작
       case observePushToStartToken
@@ -213,6 +214,7 @@ extension RootTab {
       case syncCalendar
     }
 
+    @CasePathable
     public enum Delegate: Equatable, Sendable {
       case logoutRequested
       case openJoinGroup(inviteCode: String)

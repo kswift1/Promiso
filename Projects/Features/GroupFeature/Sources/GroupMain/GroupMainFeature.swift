@@ -398,6 +398,7 @@ extension GroupMain {
 
       case path(StackActionOf<Path>)
 
+      @CasePathable
       public enum ViewAction: Sendable {
         case onAppear
         case refreshTriggered
@@ -431,6 +432,7 @@ extension GroupMain {
         case switchToPersonalMode  // 개인 모드로 전환 요청
       }
 
+      @CasePathable
       public enum Internal: Sendable {
         case fetchGroupList
         case groupListResponse(Result<[UserGroupInfo], AppError>)

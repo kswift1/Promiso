@@ -80,7 +80,7 @@ let project = Project(
       contents: #"""
 // MARK: - Default Exports (자동 생성)
 @_exported import Clients
-@_exported import ComposableArchitecture
+@_exported import ExternalDependency
 @_exported import SwiftUI
 @_exported import PromisoShared
 @_exported import ResourceKit
@@ -257,7 +257,7 @@ struct {{ name }}FeatureTests {
 // 이 앱은 Feature 개발과 visual testing을 위한 격리된 환경을 제공
 
 import SwiftUI
-import ComposableArchitecture
+import ExternalDependency
 import {{ name }}Feature
 
 // MARK: - Example Application

@@ -1,27 +1,8 @@
-//
-//  HomeFeatureStateTests.swift
-//  HomeFeature
-//
-//  HomeFeature.State computed properties 테스트
-//
-//  ## 테스트 대상
-//  - `HomeFeature/Sources/HomeFeature.swift`
-//  - State의 computed properties (직접 쿼리 기반)
-//
-//  ## 테스트 목적
-//  - PromiseModel 배열 기반 약속 필터링 및 정렬 로직 검증
-//  - 로딩 상태 판단 로직 검증
-//
-
-import Foundation
 import Testing
-import Clients
-import Sharing
 @testable import HomeFeature
 
-// MARK: - HomeFeature State Tests
-
 @Suite("HomeFeature.State computed properties 테스트")
+@MainActor
 struct HomeFeatureStateTests {
 
   // MARK: - Test Helpers
@@ -69,12 +50,14 @@ struct HomeFeatureStateTests {
   /// 테스트용 State 생성
   private func makeState(
     promisesState: LoadingState<[PromiseModel]> = .idle,
-    selectedStatusFilter: HomeModels.StatusFilter = .all
+    selectedStatusFilter: HomeModels.StatusFilter = .all,
+    selectedGroupId: String? = nil
   ) -> Home.Feature.State {
-    @Shared(.inMemory("test-current-user")) var currentUser = makeCurrentUser()
+    @Shared(.inMemory("test-\(UUID().uuidString.prefix(8))")) var currentUser = makeCurrentUser()
     var state = Home.Feature.State(currentUser: $currentUser)
     state.promisesState = promisesState
     state.selectedStatusFilter = selectedStatusFilter
+    state.selectedGroupId = selectedGroupId
     return state
   }
 
@@ -342,5 +325,138 @@ struct HomeFeatureStateTests {
     #expect(state.todayPromises.isEmpty)
     #expect(state.pendingPromises.isEmpty)
     #expect(state.upcomingPromises.isEmpty)
+  }
+
+  // MARK: - filteredPromises 테스트
+
+  @Test("그룹 필터 적용 시 해당 그룹 약속만 반환")
+  func filteredPromises_withGroupFilter_filtersByGroup() {
+    let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date())!
+    let promise1 = makePromise(id: "p1", groupId: "group-1", startAt: tomorrow)
+    let promise2 = makePromise(id: "p2", groupId: "group-2", startAt: tomorrow)
+
+    let state = makeState(
+      promisesState: .loaded([promise1, promise2]),
+      selectedGroupId: "group-1"
+    )
+
+    #expect(state.filteredPromises.count == 1)
+    #expect(state.filteredPromises.first?.id == "p1")
+  }
+
+  @Test("확정됨 필터 적용 시 확정 약속만 반환")
+  func filteredPromises_confirmed_returnsOnlyConfirmed() {
+    let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date())!
+    let confirmedVotes = PromiseVotesModel(
+      accepted: ["u1", "u2"],
+      declined: [],
+      until: Date()
+    )
+    let unconfirmedVotes = PromiseVotesModel(
+      accepted: [],
+      declined: [],
+      until: tomorrow
+    )
+
+    let confirmed = makePromise(id: "confirmed", startAt: tomorrow, votes: confirmedVotes)
+    let unconfirmed = makePromise(id: "unconfirmed", startAt: tomorrow, votes: unconfirmedVotes)
+
+    let state = makeState(
+      promisesState: .loaded([confirmed, unconfirmed]),
+      selectedStatusFilter: .confirmed
+    )
+
+    #expect(state.filteredPromises.count == 1)
+    #expect(state.filteredPromises.first?.id == "confirmed")
+  }
+
+  @Test("응답 필요 필터 적용 시 미응답 약속만 반환")
+  func filteredPromises_needResponse_returnsOnlyPending() {
+    let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date())!
+    // current-user가 accepted/declined에 없음 → pending
+    let pendingVotes = PromiseVotesModel(
+      accepted: [],
+      declined: [],
+      until: tomorrow
+    )
+    // current-user가 accepted → not pending
+    let acceptedVotes = PromiseVotesModel(
+      accepted: ["current-user", "u2"],
+      declined: [],
+      until: Date()
+    )
+
+    let pending = makePromise(id: "pending", startAt: tomorrow, votes: pendingVotes)
+    let accepted = makePromise(id: "accepted", startAt: tomorrow, votes: acceptedVotes)
+
+    let state = makeState(
+      promisesState: .loaded([pending, accepted]),
+      selectedStatusFilter: .needResponse
+    )
+
+    #expect(state.filteredPromises.count == 1)
+    #expect(state.filteredPromises.first?.id == "pending")
+  }
+
+  @Test("진행 중 필터 적용 시 미확정+투표 마감 전 약속만 반환")
+  func filteredPromises_inProgress_returnsInProgress() {
+    let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date())!
+    // 미확정 + 투표 마감 전
+    let inProgressVotes = PromiseVotesModel(
+      accepted: [],
+      declined: [],
+      until: tomorrow
+    )
+    // 확정됨 → inProgress 아님
+    let confirmedVotes = PromiseVotesModel(
+      accepted: ["u1", "u2"],
+      declined: [],
+      until: Date()
+    )
+
+    let inProgress = makePromise(id: "in-progress", startAt: tomorrow, votes: inProgressVotes)
+    let confirmed = makePromise(id: "confirmed", startAt: tomorrow, votes: confirmedVotes)
+
+    let state = makeState(
+      promisesState: .loaded([inProgress, confirmed]),
+      selectedStatusFilter: .inProgress
+    )
+
+    #expect(state.filteredPromises.count == 1)
+    #expect(state.filteredPromises.first?.id == "in-progress")
+  }
+
+  // MARK: - timelineData 테스트
+
+  @Test("날짜별 그룹화된 타임라인 반환")
+  func timelineData_groupsByDate() {
+    let calendar = Calendar.current
+    let tomorrow = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: Date()))!
+    let dayAfter = calendar.date(byAdding: .day, value: 2, to: calendar.startOfDay(for: Date()))!
+
+    let p1 = makePromise(id: "p1", startAt: tomorrow)
+    let p2 = makePromise(id: "p2", startAt: tomorrow.addingTimeInterval(3600))
+    let p3 = makePromise(id: "p3", startAt: dayAfter)
+
+    let state = makeState(promisesState: .loaded([p1, p2, p3]))
+
+    #expect(state.timelineData.count == 2)
+    #expect(state.timelineData[0].promises.count == 2)
+    #expect(state.timelineData[1].promises.count == 1)
+  }
+
+  @Test("타임라인 시간순 정렬 확인")
+  func timelineData_sortedByTime() {
+    let calendar = Calendar.current
+    let tomorrow = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: Date()))!
+
+    let later = makePromise(id: "later", startAt: tomorrow.addingTimeInterval(7200))
+    let earlier = makePromise(id: "earlier", startAt: tomorrow.addingTimeInterval(3600))
+
+    let state = makeState(promisesState: .loaded([later, earlier]))
+
+    #expect(state.timelineData.count == 1)
+    #expect(state.timelineData[0].promises[0].id == "earlier")
+    #expect(state.timelineData[0].promises[1].id == "later")
   }
 }

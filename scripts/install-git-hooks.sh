@@ -25,17 +25,13 @@ fi
 # pre-commit hook 복사
 cp "$SCRIPT_DIR/hooks/pre-commit" "$HOOKS_DIR/pre-commit"
 chmod +x "$HOOKS_DIR/pre-commit"
-
 echo "✅ pre-commit hook installed"
+
 echo ""
 echo "🎉 Git Hooks installation complete!"
 echo ""
-echo "이제 커밋 시 자동으로 민감한 파일을 체크합니다:"
-echo "  - .xcconfig 파일"
-echo "  - GoogleService-Info.plist"
-echo "  - .env 파일"
-echo "  - API Keys in code"
-echo "  - Derived 폴더"
+echo "📌 pre-commit: 커밋 시 민감한 파일 체크"
+echo "  - .xcconfig, GoogleService-Info.plist, .env, API Keys, Derived 폴더"
 echo ""
 echo "📝 Hook 위치: $HOOKS_DIR/pre-commit"
 echo ""

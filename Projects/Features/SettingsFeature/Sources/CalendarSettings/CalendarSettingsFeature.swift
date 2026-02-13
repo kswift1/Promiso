@@ -54,6 +54,7 @@ extension CalendarSettings {
 
     // MARK: - Action
 
+    @CasePathable
     public enum Action: Sendable {
       case view(View)
       case `internal`(Internal)
@@ -68,6 +69,7 @@ extension CalendarSettings {
       case personalCalendarSyncToggled(Bool)
     }
 
+    @CasePathable
     public enum Internal: Equatable, Sendable {
       case authorizationStatusUpdated(CalendarAuthorizationStatus)
       case accessRequestCompleted(Bool)

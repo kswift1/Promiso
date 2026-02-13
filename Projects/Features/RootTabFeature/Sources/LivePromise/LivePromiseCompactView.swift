@@ -5,7 +5,7 @@
 //  Created by Promiso on 2026-01-19.
 //
 
-import ComposableArchitecture
+import ExternalDependency
 import Lottie
 import ResourceKit
 import SwiftUI

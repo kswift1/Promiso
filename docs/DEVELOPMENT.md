@@ -6,7 +6,7 @@
 
 - 목적: 일상 개발 작업의 구현/테스트/컨벤션 기준 제공
 - 대상 독자: iOS 기능 개발자
-- 최종 수정일: 2026-02-06
+- 최종 수정일: 2026-02-13
 - 관련 문서: [README.md](README.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [ENVIRONMENT.md](ENVIRONMENT.md)
 
 ## 범위 안내
@@ -423,137 +423,59 @@ public struct RootTab {
 
 ## 3. 테스트 작성
 
-### 3.1 Swift Testing 사용
+### 3.1 BestPractice 참조
 
-Promiso는 **Swift Testing** 프레임워크를 사용합니다 (`import Testing`).
+> **기준 파일**: `Projects/Features/AppEntryFeature/Tests/Sources/AppEntryFeatureTests.swift`
 
-#### 기본 테스트 구조
+새 Feature 테스트 작성 시 이 파일의 패턴을 따릅니다.
+
+- **테스트 설계 기준** (무엇을 테스트할지): [.ai/TEST_POLICY.md](../.ai/TEST_POLICY.md)
+- **의존성/패턴 상세 규칙** (어떻게 테스트할지): [TESTING_DEPENDENCY_RULES.md](TESTING_DEPENDENCY_RULES.md)
+
+### 3.2 핵심 규칙 요약
 
 ```swift
-import ComposableArchitecture
-import Testing
-@testable import NotificationFeature
+import Testing                      // Swift Testing 필수, XCTest 금지
+@testable import {Name}Feature      // Feature 모듈만 의존
 
-@Suite("Notification Feature Tests")
+@Suite("{Name}.Feature 테스트")      // 한글 Suite 설명
 @MainActor
-struct NotificationFeatureTests {
-
-  @Test("화면 진입 시 알림 로드")
-  func testOnAppear() async {
-    let store = TestStore(initialState: Notification.Feature.State()) {
-      Notification.Feature()
+struct {Name}FeatureTests {
+  @Test("한글 설명")                  // 한글 @Test 설명
+  func action_condition_result() async {  // 영어 함수명
+    let store = TestStore(initialState: .init()) {
+      Feature()
     } withDependencies: {
-      $0.notificationClient.fetchNotifications = { [.mock1, .mock2] }
+      $0.client.method = { ... }    // 필요한 것만 override
     }
 
-    // Action 전송
-    await store.send(.view(.onAppear)) {
-      $0.isLoading = true
-    }
-
-    // 응답 검증
-    await store.receive(\.internal.notificationsResponse.success) {
-      $0.isLoading = false
-      $0.notifications = [.mock1, .mock2]
-    }
-  }
-
-  @Test("알림 탭 시 Delegate 전달")
-  func testNotificationTapped() async {
-    let store = TestStore(
-      initialState: Notification.Feature.State(notifications: [.mock1])
-    ) {
-      Notification.Feature()
-    }
-
-    await store.send(.view(.notificationTapped(.mock1.id)))
-    await store.receive(\.delegate.notificationSelected)
+    await store.send(.view(.action)) { $0.prop = value }
+    await store.receive(\.internal.response) { $0.data = result }
   }
 }
 ```
 
-**테스트 작성 원칙**:
-- `TestStore` 사용
-- Mock 의존성 주입 (`withDependencies`)
-- Action 전송 → State 변경 검증
-- 비동기 응답 검증 (`await store.receive`)
+| 항목 | 규칙 |
+|------|------|
+| 프레임워크 | Swift Testing (`@Test`, `#expect`) — XCTest 금지 |
+| import | `Testing` + `@testable import Feature`만 |
+| exhaustivity | 기본 on, child reducer 영향 시에만 off |
+| 구독 정리 | subscription 시작 시 `cancelSubscriptions` 필수 |
+| 에러/조건 분기 | 성공/실패, 허용/거부 쌍으로 테스트 |
+| 헬퍼 | `private extension`에 `make*` 팩토리, 체인 헬퍼 |
+| 전역 상태 | `defer`로 원래 값 복원 |
 
-### 3.2 Mock 데이터 작성
-
-#### Model+Mock.swift 패턴
-
-```swift
-// NotificationItem+Mock.swift
-extension NotificationItem {
-  static let mock1 = NotificationItem(
-    id: "1",
-    title: "새 메시지",
-    message: "그룹에 초대되었습니다",
-    timestamp: Date(),
-    isRead: false
-  )
-
-  static let mock2 = NotificationItem(
-    id: "2",
-    title: "약속 알림",
-    message: "내일 약속이 있습니다",
-    timestamp: Date().addingTimeInterval(-3600),
-    isRead: true
-  )
-
-  static let mocks = [mock1, mock2]
-}
-```
-
-### 3.3 TestStore 고급 기법
-
-#### exhaustivity 설정
-
-```swift
-let store = TestStore(initialState: State()) {
-  Feature()
-}
-
-// 특정 Action만 검증하고 나머지는 무시
-store.exhaustivity = .off
-
-// 또는 특정 케이스만 검증
-store.exhaustivity = .off(showSkippedAssertions: true)
-```
-
-#### confirmation으로 비동기 검증
-
-```swift
-@Test("API 호출 횟수 검증")
-func testAPICallCount() async {
-  await confirmation("API called exactly once", expectedCount: 1) { @Sendable confirm in
-    let store = Store(initialState: Notification.Feature.State()) {
-      Notification.Feature()
-    } withDependencies: {
-      $0.notificationClient.fetchNotifications = {
-        confirm()
-        return [.mock1]
-      }
-    }
-
-    await store.send(.view(.onAppear))
-    try? await Task.sleep(for: .milliseconds(100))
-  }
-}
-```
-
-### 3.4 테스트 실행
+### 3.3 테스트 실행
 
 ```bash
+# 모듈 단위 테스트
+make test-module MODULE={Name}Feature
+
 # 전체 테스트
 tuist test
 
 # 특정 Feature 테스트
-tuist test NotificationFeatureTests
-
-# Xcode에서 실행
-# Cmd + U (전체 테스트)
-# Cmd + 6 → Test Navigator → 개별 테스트 실행
+tuist test {Name}FeatureTests
 ```
 
 ---
@@ -920,4 +842,4 @@ let query = db.collection("promises")
 
 ---
 
-**마지막 업데이트**: 2026-02-01
+**마지막 업데이트**: 2026-02-13

@@ -220,7 +220,7 @@ extension AppEntry {
 
             state.isCheckingNickname = true
             return .run { [nickname = name] send in
-              try await Task.sleep(for: .milliseconds(400))
+              try await Task.sleep(for: .milliseconds(500))
               do {
                 let isAvailable = try await userProfileClient.isNicknameAvailable(nickname)
                 await send(.internal(.nicknameAvailabilityResponse(.success(isAvailable))))

@@ -162,7 +162,7 @@ struct PromiseCard: View {
             Text(description)
               .font(.system(size: 14))
               .foregroundColor(.secondary)
-              .lineLimit(2)
+              .lineLimit(3)
           }
 
           VStack(alignment: .leading, spacing: 6) {

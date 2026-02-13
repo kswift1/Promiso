@@ -108,6 +108,7 @@ extension EditPromise {
         case removeExistingImage(Int)
       }
 
+      @CasePathable
       public enum Internal: Sendable {
         case titleDebounced(String)
         case emojiSuggestionsResponse([EmojiSuggestion])
@@ -115,6 +116,7 @@ extension EditPromise {
         case updatePromiseResponse(Result<PromiseModel, Clients.PromiseClientError>)
       }
 
+      @CasePathable
       public enum Delegate: Sendable {
         case cancelled
         case promiseUpdated(PromiseModel)

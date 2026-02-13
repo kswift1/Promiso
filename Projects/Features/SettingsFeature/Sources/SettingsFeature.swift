@@ -133,6 +133,7 @@ extension Settings {
 
     /// Profile Feature 내에서 발생할 수 있는 모든 가능한 action
     /// ViewAction / InternalAction / DelegateAction으로 분리하여 관심사 분리
+    @CasePathable
     public enum Action: Sendable {
       case view(View)
       case `internal`(Internal)
@@ -196,6 +197,7 @@ extension Settings {
     }
 
     /// 내부 비즈니스 로직 처리 결과 액션
+    @CasePathable
     public enum Internal: Equatable, Sendable {
       /// 로그아웃 완료
       case logoutCompleted

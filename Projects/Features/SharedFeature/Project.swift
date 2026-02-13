@@ -35,7 +35,7 @@ let project = Project(
       dependencies: [
         .target(name: "SharedFeature")
       ],
-      settings: .standard()
+      settings: .standard(base: ["OTHER_LDFLAGS": ""])
     ),
 
     // Example App (Demo)

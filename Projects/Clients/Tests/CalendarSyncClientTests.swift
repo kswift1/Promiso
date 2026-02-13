@@ -7,7 +7,6 @@
 
 import Foundation
 import Testing
-import ComposableArchitecture
 @testable import Clients
 import PromisoShared
 
@@ -50,10 +49,10 @@ private func makeExistingEvent(
 // MARK: - Sync Logic Tests
 
 @Suite("CalendarSyncClient 동기화 테스트")
+@MainActor
 struct CalendarSyncClientTests {
 
   @Test("권한 없으면 에러 발생")
-  @MainActor
   func syncWithoutPermissionThrowsError() async {
     let client = CalendarSyncClient(
       sync: { _ in
@@ -90,7 +89,6 @@ struct CalendarSyncClientTests {
   }
 
   @Test("새 약속 추가")
-  @MainActor
   func syncAddsNewPromises() async throws {
     let promise = makePromise(id: "promise1", groupId: "group1")
     var addedEvents: [NewCalendarEvent] = []
@@ -148,7 +146,6 @@ struct CalendarSyncClientTests {
   }
 
   @Test("비활성화된 그룹 약속은 무시")
-  @MainActor
   func syncIgnoresDisabledGroups() async throws {
     let promise1 = makePromise(id: "promise1", groupId: "group1")
     let promise2 = makePromise(id: "promise2", groupId: "group2")
@@ -195,7 +192,6 @@ struct CalendarSyncClientTests {
   }
 
   @Test("이미 존재하는 약속은 skip")
-  @MainActor
   func syncSkipsExistingPromises() async throws {
     let promise = makePromise(id: "promise1", groupId: "group1")
     let existingEvent = makeExistingEvent(
@@ -237,7 +233,6 @@ struct CalendarSyncClientTests {
   }
 
   @Test("해시 변경 시 업데이트")
-  @MainActor
   func syncUpdatesOnHashChange() async throws {
     let promise = makePromise(id: "promise1", title: "변경된 제목", groupId: "group1")
     let existingEvent = makeExistingEvent(
@@ -293,7 +288,6 @@ struct CalendarSyncClientTests {
   }
 
   @Test("서버에 없는 약속 삭제")
-  @MainActor
   func syncDeletesRemovedPromises() async throws {
     let existingEvent = makeExistingEvent(
       eventIdentifier: "event1",
@@ -329,7 +323,6 @@ struct CalendarSyncClientTests {
   }
 
   @Test("복합 시나리오: 추가, 업데이트, 삭제 동시")
-  @MainActor
   func syncComplexScenario() async throws {
     // 서버: promise1 (새로움), promise2 (변경됨)
     let promise1 = makePromise(id: "promise1", title: "새 약속", groupId: "group1")
@@ -427,10 +420,10 @@ struct CalendarSyncClientTests {
 // MARK: - Real-time Sync Tests
 
 @Suite("CalendarSyncClient 실시간 동기화 테스트")
+@MainActor
 struct RealTimeSyncTests {
 
   @Test("단일 약속 추가 - 그룹 동기화 활성화")
-  @MainActor
   func addPromiseWithSyncEnabled() async throws {
     let promise = makePromise(id: "promise1", groupId: "group1")
     var addedEvents: [NewCalendarEvent] = []
@@ -477,7 +470,6 @@ struct RealTimeSyncTests {
   }
 
   @Test("단일 약속 추가 - 그룹 동기화 비활성화")
-  @MainActor
   func addPromiseWithSyncDisabled() async throws {
     let promise = makePromise(id: "promise1", groupId: "group1")
     var addedEvents: [NewCalendarEvent] = []
@@ -516,7 +508,6 @@ struct RealTimeSyncTests {
   }
 
   @Test("단일 약속 추가 - 이미 존재하면 skip")
-  @MainActor
   func addPromiseSkipsIfExists() async throws {
     let promise = makePromise(id: "promise1", groupId: "group1")
     let existingEvent = makeExistingEvent(
@@ -555,7 +546,6 @@ struct RealTimeSyncTests {
   }
 
   @Test("단일 약속 제거")
-  @MainActor
   func removePromise() async throws {
     let existingEvent = makeExistingEvent(
       eventIdentifier: "event1",
@@ -591,7 +581,6 @@ struct RealTimeSyncTests {
   }
 
   @Test("단일 약속 제거 - 존재하지 않으면 무시")
-  @MainActor
   func removePromiseIgnoresIfNotExists() async throws {
     var deletedEventIds: [String] = []
 

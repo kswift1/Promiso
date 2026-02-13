@@ -121,6 +121,7 @@ extension Home {
         case personalEventTapped(PersonalEventModel)
       }
 
+      @CasePathable
       public enum Internal: Sendable {
         /// 홈 약속 조회 (Firestore 직접 쿼리)
         case fetchPromises
@@ -138,6 +139,7 @@ extension Home {
         case unreadNotificationCountResponse(Result<Int, Error>)
       }
 
+      @CasePathable
       public enum Delegate: Sendable {
         /// 약속 상세로 네비게이션 (legacy - 그룹 탭 이동용)
         case navigateToPromise(promiseId: String, groupId: String)

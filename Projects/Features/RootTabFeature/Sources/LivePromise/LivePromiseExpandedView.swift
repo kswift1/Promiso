@@ -58,7 +58,7 @@
 //
 
 import Clients
-import ComposableArchitecture
+import ExternalDependency
 import Lottie
 import ResourceKit
 import SwiftUI
@@ -936,5 +936,4 @@ extension LivePromise {
     }
   }
 }
-
 

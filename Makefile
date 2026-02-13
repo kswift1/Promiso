@@ -10,11 +10,16 @@
 .PHONY: setup ensure-config feature remove-feature color \
         emulator-start functions-build functions-api-preview \
         secrets-pull secrets-push secrets-list secrets-add \
+        test test-module build-module test-changed \
         help
 
 # 기본값 설정
 FEATURE_NAME ?=
+MODULE ?=
 FORCE ?=
+
+# 시뮬레이터 destination
+DESTINATION ?= platform=iOS Simulator,name=iPhone 16,OS=18.3.1
 
 # ============================================================================
 # 🚀 초기 설정
@@ -175,6 +180,59 @@ remove-feature:
 	@echo "🎉 피쳐 '$(FEATURE_NAME)'가 성공적으로 삭제되었습니다!"
 
 # ============================================================================
+# 🧪 테스트
+# ============================================================================
+
+# 전체 테스트 실행
+test:
+	@echo "🧪 전체 테스트 실행 중..."
+	@tuist test -- \
+		-destination '$(DESTINATION)' \
+		-skipPackagePluginValidation
+
+# 특정 모듈 테스트 (MODULE=HomeFeature, Clients, PromisoShared 등)
+test-module:
+	@if [ -z "$(MODULE)" ]; then \
+		echo "❌ Error: 모듈 이름이 필요합니다."; \
+		echo "Usage: make test-module MODULE=HomeFeature"; \
+		echo ""; \
+		echo "사용 가능한 모듈:"; \
+		echo "  Features: $$(ls -d Projects/Features/*Feature 2>/dev/null | xargs -n 1 basename | tr '\n' ' ')"; \
+		echo "  Core:     $$(ls -d Projects/Clients Projects/Shared 2>/dev/null | xargs -n 1 basename | tr '\n' ' ')"; \
+		exit 1; \
+	fi
+	@echo "🧪 $(MODULE) 테스트 실행 중..."
+	@xcodebuild test \
+		-scheme $(MODULE) \
+		-workspace Promiso.xcworkspace \
+		-destination '$(DESTINATION)' \
+		-skipPackagePluginValidation
+
+# 특정 모듈 빌드만
+build-module:
+	@if [ -z "$(MODULE)" ]; then \
+		echo "❌ Error: 모듈 이름이 필요합니다."; \
+		echo "Usage: make build-module MODULE=HomeFeature"; \
+		exit 1; \
+	fi
+	@echo "🔨 $(MODULE) 빌드 중..."
+	@xcodebuild build-for-testing \
+		-scheme $(MODULE) \
+		-workspace Promiso.xcworkspace \
+		-destination '$(DESTINATION)' \
+		-skipPackagePluginValidation
+
+# 변경된 모듈만 테스트
+test-changed:
+	@echo "🔍 변경 모듈 감지 후 테스트 실행..."
+	@PROMISO_CHECK_MODE=test ./scripts/run-changed-tests.sh
+
+# 변경된 모듈만 빌드
+build-changed:
+	@echo "🔍 변경 모듈 감지 후 빌드 실행..."
+	@PROMISO_CHECK_MODE=build ./scripts/run-changed-tests.sh
+
+# ============================================================================
 # 🎨 리소스 관리
 # ============================================================================
 
@@ -253,6 +311,14 @@ help:
 	@echo "  make feature FEATURE_NAME=<Name>        새 피쳐 생성"
 	@echo "  make remove-feature FEATURE_NAME=<Name> 피쳐 삭제"
 	@echo "  make remove-feature ... FORCE=1         확인 없이 삭제"
+	@echo ""
+	@echo "  🧪 테스트"
+	@echo "  ─────────────────────────────────────────────────────────────────"
+	@echo "  make test                               전체 테스트 실행"
+	@echo "  make test-module MODULE=<Name>          특정 모듈 테스트"
+	@echo "  make build-module MODULE=<Name>         특정 모듈 빌드"
+	@echo "  make test-changed                       변경 모듈만 테스트"
+	@echo "  make build-changed                      변경 모듈만 빌드"
 	@echo ""
 	@echo "  🎨 리소스 관리"
 	@echo "  ─────────────────────────────────────────────────────────────────"
