@@ -81,14 +81,10 @@ public struct GroupThumbnailView: View {
       loadingState = .idle
       return
     }
-
     loadingState = .loading
-
-    do {
-      let request = ImageRequest(url: url)
-      let image = try await ImagePipeline.shared.image(for: request)
+    if let image = await ImageLoader.loadImage(from: url) {
       loadingState = .loaded(image)
-    } catch {
+    } else {
       loadingState = .failed
     }
   }

@@ -229,6 +229,8 @@ public enum AppConstants {
     public static let memoryCacheCostLimit: Int = 100 * 1024 * 1024
     /// 메모리 캐시 최대 이미지 수
     public static let memoryCacheCountLimit: Int = 200
+    /// Firebase URL 캐시 최대 엔트리 수
+    public static let urlCacheMaxEntries: Int = 500
   }
 
   // MARK: - Time Intervals
