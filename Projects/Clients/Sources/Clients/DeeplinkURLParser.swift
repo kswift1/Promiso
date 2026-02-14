@@ -11,7 +11,7 @@ import Foundation
 /// - `promiso://promise/{promiseId}/eta` → LiveActivity ETA 변경 시트
 /// - `promiso://live/{promiseId}` → LivePromise 상세 화면 (ETA 시트 없이)
 /// - `promiso://create` → 약속 만들기 화면 (Widget용, 그룹 있을 때만)
-/// - `promiso://personalEvent/{eventId}` → 개인 일정 (Widget용, 홈 탭으로 이동)
+/// - `promiso://personalEvent/{eventId}` → 개인 일정 (Widget용, 개인 모드 탭으로 이동 + 상세 push)
 ///
 /// - SeeAlso: `.ai/DEEPLINK_GUIDE.md`
 public enum DeeplinkURLParser {

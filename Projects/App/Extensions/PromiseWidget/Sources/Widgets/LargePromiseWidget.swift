@@ -312,18 +312,26 @@ struct PromiseSystemLargeWidgetView: View {
 
   // MARK: - Date Formatting
 
-  private func formatTime(_ date: Date) -> String {
+  private static let timeFormatter: DateFormatter = {
     let formatter = DateFormatter()
     formatter.locale = Locale(identifier: "ko_KR")
     formatter.dateFormat = "a h:mm"
-    return formatter.string(from: date)
-  }
+    return formatter
+  }()
 
-  private func formatShortDate(_ date: Date) -> String {
+  private static let shortDateFormatter: DateFormatter = {
     let formatter = DateFormatter()
     formatter.locale = Locale(identifier: "ko_KR")
     formatter.dateFormat = "M/d"
-    return formatter.string(from: date)
+    return formatter
+  }()
+
+  private func formatTime(_ date: Date) -> String {
+    Self.timeFormatter.string(from: date)
+  }
+
+  private func formatShortDate(_ date: Date) -> String {
+    Self.shortDateFormatter.string(from: date)
   }
 
   // MARK: - Accessibility
