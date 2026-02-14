@@ -60,6 +60,8 @@ function notificationPreferencePath(
     return {category: "group", key: "invitation"};
   case NotificationType.GroupUpdate:
     return {category: "group", key: "update"};
+  case NotificationType.LocationSharingReminder:
+    return null; // 별도 설정 불가 (항상 발송)
   case NotificationType.System:
     return null;
   default:
@@ -91,6 +93,8 @@ function legacyPreferenceKey(type: NotificationType): string | null {
     return "groupInvitation";
   case NotificationType.GroupUpdate:
     return "groupUpdate";
+  case NotificationType.LocationSharingReminder:
+    return null; // 별도 설정 불가
   case NotificationType.System:
     return null;
   default:

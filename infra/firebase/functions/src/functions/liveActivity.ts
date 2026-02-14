@@ -26,6 +26,7 @@ import {
   APNS_BUNDLE_ID,
 } from "../config";
 import {getCurrentEnvironment} from "../utils/firestore";
+import {sendPushNotificationInternal} from "./notifications.js";
 
 /**
  * APNs 환경 결정
@@ -55,7 +56,9 @@ import {
   UpdateETAResponse,
   ScheduledLiveActivityTaskPayload,
   ScheduledLiveActivityEndTaskPayload,
+  ScheduledNudgeTaskPayload,
   APNsLiveActivityUpdatePayload,
+  NotificationType,
 } from "../types/api";
 
 /**
@@ -941,6 +944,26 @@ export const executeLiveActivityStart = onTaskDispatched<
     console.log(
       `📅 LiveActivity end scheduled: ${promiseId} in ${endDelaySeconds}s`
     );
+
+    // 9. 넛지 푸시 Task 예약 (trackingMinutes / 2 후)
+    const nudgeDelaySeconds = Math.max(
+      0,
+      Math.floor((trackingMinutes / 2) * 60)
+    );
+
+    const nudgeQueue = getFunctions().taskQueue<ScheduledNudgeTaskPayload>(
+      `locations/${REGION}/functions/executeETASharingNudge`
+    );
+
+    await nudgeQueue.enqueue(
+      {promiseId},
+      {scheduleDelaySeconds: nudgeDelaySeconds}
+    );
+
+    console.log(
+      `📅 ETA nudge scheduled: ${promiseId} in ${nudgeDelaySeconds}s ` +
+      `(${trackingMinutes / 2}min)`
+    );
   }
 );
 
@@ -1142,6 +1165,92 @@ export const onPromiseConfirmedScheduleLiveActivity = onDocumentUpdated(
     console.log(
       `📅 LiveActivity scheduled: ${promiseId} at ` +
       `${scheduleTime.toISOString()}${isImmediate ? " (즉시 실행)" : ""}`
+    );
+  }
+);
+
+/**
+ * ETA 공유 넛지 푸시 태스크 핸들러
+ *
+ * @remarks
+ * Cloud Tasks에 의해 LiveActivity 시작 후 trackingMinutes/2 경과 시 실행됩니다.
+ * accepted 참가자 전원에게 FCM 넛지 알림을 발송합니다.
+ *
+ * @why 약속 시간 전 참가자들이 ETA 공유를 잊지 않도록 행동 유도
+ * @see N11 (notification.md), L17-L20 (liveactivity.md)
+ */
+export const executeETASharingNudge = onTaskDispatched<
+  ScheduledNudgeTaskPayload
+>(
+  {
+    region: REGION,
+    retryConfig: {
+      maxAttempts: 2,
+      minBackoffSeconds: 10,
+    },
+    rateLimits: {
+      maxConcurrentDispatches: 10,
+    },
+  },
+  async (req) => {
+    const {promiseId} = req.data;
+    console.log(`🔔 ETA nudge executing: ${promiseId}`);
+
+    const db = admin.firestore();
+    const promisesCollection = db.collection("promises");
+
+    // 1. 약속 정보 조회
+    const promiseDoc = await promisesCollection.doc(promiseId).get();
+    if (!promiseDoc.exists) {
+      console.warn(`Promise not found: ${promiseId}`);
+      return;
+    }
+
+    const promiseData = promiseDoc.data();
+    if (!promiseData) {
+      console.warn(`Promise data is empty: ${promiseId}`);
+      return;
+    }
+
+    const title = promiseData.title as string;
+    const groupId = promiseData.groupId as string;
+    const startAt = promiseData.startAt as admin.firestore.Timestamp;
+    const accepted = promiseData.votes?.accepted as string[] || [];
+
+    // 2. 약속이 아직 시작 전인지 확인
+    const now = new Date();
+    const startTime = startAt.toDate();
+    if (now >= startTime) {
+      console.log(`⏰ Promise already started, skipping nudge: ${promiseId}`);
+      return;
+    }
+
+    // 3. 남은 시간 계산 (분)
+    const remainingMinutes = Math.ceil(
+      (startTime.getTime() - now.getTime()) / (60 * 1000)
+    );
+
+    // 4. 수신자가 없으면 스킵
+    if (accepted.length === 0) {
+      console.log(`📭 No accepted participants for nudge: ${promiseId}`);
+      return;
+    }
+
+    // 5. FCM 넛지 푸시 발송
+    await sendPushNotificationInternal({
+      userIds: accepted,
+      type: NotificationType.LocationSharingReminder,
+      title: `⏰ ${title} ${remainingMinutes}분 전!`,
+      body: "잘 오고 계신가요? 👋 잠금화면 또는 앱에서 실시간 도착 예정시간을 공유해주세요!",
+      promiseId,
+      groupId,
+      relatedUserId: null,
+      data: null,
+    });
+
+    console.log(
+      `🔔 ETA nudge sent: ${promiseId}, ` +
+      `${accepted.length} recipients, ${remainingMinutes}min before`
     );
   }
 );
