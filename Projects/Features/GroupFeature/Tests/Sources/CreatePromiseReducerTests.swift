@@ -129,8 +129,8 @@ struct CreatePromiseReducerTests {
     }
   }
 
-  @Test("decrementParticipants 시 최소 참가인원 감소 (최소 1)")
-  func decrementParticipants_decrementsCountMinOne() async {
+  @Test("decrementParticipants 시 최소 참가인원 감소 (최소 2)")
+  func decrementParticipants_decrementsCountMinTwo() async {
     let group = makeGroup(memberIds: ["user-1", "user-2", "user-3"])
     var state = CreatePromise.Feature.State()
     state.promise.group = group
@@ -140,11 +140,7 @@ struct CreatePromiseReducerTests {
       CreatePromise.Feature()
     }
 
-    await store.send(.view(.decrementParticipants)) {
-      $0.promise.minimumParticipants = 1
-    }
-
-    // 이미 1이므로 감소하지 않음
+    // 이미 2이므로 감소하지 않음
     await store.send(.view(.decrementParticipants))
   }
 

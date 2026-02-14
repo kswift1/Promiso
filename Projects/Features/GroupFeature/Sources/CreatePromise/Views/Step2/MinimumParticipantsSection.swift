@@ -91,7 +91,7 @@ struct MinimumParticipantsSection: View {
         }) {
           Image(systemName: "minus.circle.fill")
             .font(.system(size: 32))
-            .foregroundColor(currentMinimum <= 1 ? Color(.systemGray4) : Color.pmindigo.n500)
+            .foregroundColor(currentMinimum <= 2 ? Color(.systemGray4) : Color.pmindigo.n500)
             .scaleEffect(isMinusPressed ? 0.85 : 1.0)
         }
         .buttonRepeatBehavior(.enabled)
@@ -99,10 +99,10 @@ struct MinimumParticipantsSection: View {
         .sensoryFeedback(.impact(flexibility: .soft), trigger: currentMinimum)
         .simultaneousGesture(
           DragGesture(minimumDistance: 0)
-            .onChanged { _ in if currentMinimum > 1 { isMinusPressed = true } }
+            .onChanged { _ in if currentMinimum > 2 { isMinusPressed = true } }
             .onEnded { _ in isMinusPressed = false }
         )
-        .disabled(currentMinimum <= 1)
+        .disabled(currentMinimum <= 2)
 
       VStack(spacing: 4) {
         Text("\(currentMinimum)명")

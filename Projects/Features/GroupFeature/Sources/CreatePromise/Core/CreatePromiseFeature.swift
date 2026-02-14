@@ -259,8 +259,12 @@ public enum CreatePromise {
 
           case .groupSelected(let group):
             state.promise.group = group
-            let defaultMinimum = max(1, Int(ceil(Double(group.maxMembers) / 2.0)))
-            state.promise.minimumParticipants = defaultMinimum
+            if group.maxMembers <= 1 {
+              state.promise.minimumParticipants = 1
+            } else {
+              let defaultMinimum = max(2, Int(ceil(Double(group.maxMembers) / 2.0)))
+              state.promise.minimumParticipants = defaultMinimum
+            }
             return .none
 
           case .retryLoadGroups:
@@ -290,7 +294,7 @@ public enum CreatePromise {
 
           case .decrementParticipants:
             let current = state.promise.minimumParticipants
-            if current > 1 { state.promise.minimumParticipants = current - 1 }
+            if current > 2 { state.promise.minimumParticipants = current - 1 }
             return .none
 
           case .setDescription(let description):
