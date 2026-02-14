@@ -203,18 +203,18 @@ struct TimelineItemView: View {
     return "\(liveStartTime.formattedTime) 실시간 공유 시작"
   }
 
-  /// 현재 진행 중인 약속인지 (startAt ~ endAt, endAt 없으면 startAt ~ startAt+2시간)
+  /// 현재 진행 중인 약속인지 (종료시간 없으면 단발성 = 시작 즉시 종료)
   private var isNow: Bool {
     let now = Date()
     let start = promise.startAt
-    let end = promise.endAt ?? promise.startAt.addingTimeInterval(7200)
+    let end = promise.endAt ?? promise.startAt
     return now >= start && now <= end
   }
 
   /// 이미 종료된 약속인지
   var isPast: Bool {
     let now = Date()
-    let end = promise.endAt ?? promise.startAt.addingTimeInterval(7200)
+    let end = promise.endAt ?? promise.startAt
     return now > end
   }
 

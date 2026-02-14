@@ -115,9 +115,9 @@ extension PersonalEventModel {
 // MARK: - Time-based Properties
 
 extension PersonalEventModel {
-  /// endAt이 없는 경우 기본 종료 시간 (startAt + 1시간)
+  /// endAt이 없는 경우 단발성 일정 (시작 = 종료)
   public var effectiveEndAt: Date {
-    endAt ?? startAt.addingTimeInterval(3600)
+    endAt ?? startAt
   }
 
   /// 일정이 진행 중인지 확인
