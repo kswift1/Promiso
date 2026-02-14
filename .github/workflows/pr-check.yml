@@ -3,13 +3,21 @@ name: PR Check
 on:
   pull_request:
     branches: [develop, staging, main, 'release/**']
+  issue_comment:
+    types: [created]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.event.issue.number }}
   cancel-in-progress: true
 
 jobs:
   build-and-test:
+    # PR 이벤트 또는 PR 코멘트에서 /check 명령어
+    if: >
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'issue_comment' &&
+       github.event.issue.pull_request &&
+       startsWith(github.event.comment.body, '/check'))
     runs-on: macos-15
     timeout-minutes: 45
     permissions:
@@ -18,11 +26,53 @@ jobs:
 
     steps:
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # 0. /check 명령어 처리 (코멘트 트리거)
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+      - name: React to /check command
+        if: github.event_name == 'issue_comment'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: 'rocket'
+            });
+
+      - name: Get PR ref
+        id: pr-ref
+        uses: actions/github-script@v7
+        with:
+          script: |
+            let ref, sha, prNumber;
+            if (context.eventName === 'issue_comment') {
+              prNumber = context.issue.number;
+              const { data: pr } = await github.rest.pulls.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber,
+              });
+              ref = pr.head.ref;
+              sha = pr.head.sha;
+            } else {
+              ref = context.payload.pull_request.head.ref;
+              sha = context.payload.pull_request.head.sha;
+              prNumber = context.payload.pull_request.number;
+            }
+            core.setOutput('ref', ref);
+            core.setOutput('sha', sha);
+            core.setOutput('pr_number', prNumber);
+
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       # 1. 체크아웃 및 환경 설정
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.pr-ref.outputs.ref }}
 
       - name: Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1
@@ -222,10 +272,15 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+            const prNumber = ${{ steps.pr-ref.outputs.pr_number }};
+            const branch = '${{ steps.pr-ref.outputs.ref }}';
+            const sha = '${{ steps.pr-ref.outputs.sha }}';
             const status = '${{ job.status }}' === 'success' ? '✅' : '❌';
+            const isSlashCommand = '${{ github.event_name }}' === 'issue_comment';
+            const trigger = isSlashCommand ? '(`/check` 명령어)' : '';
             const coverageReport = `${{ steps.coverage.outputs.report }}`;
 
-            let message = `${status} **PR 체크 ${status === '✅' ? '성공' : '실패'}**
+            let message = `${status} **PR 체크 ${status === '✅' ? '성공' : '실패'}** ${trigger}
 
             **빌드**: ${status === '✅' ? '성공' : '실패'}
             **테스트**: ${status === '✅' ? '통과' : '실패'}`;
@@ -249,14 +304,14 @@ jobs:
             <summary>상세 정보</summary>
 
             - Workflow: ${{ github.workflow }}
-            - Branch: ${{ github.head_ref }}
-            - Commit: ${{ github.sha }}
+            - Branch: ${branch}
+            - Commit: ${sha}
 
             </details>`;
 
             // 기존 봇 코멘트 업데이트 (중복 방지)
             const { data: comments } = await github.rest.issues.listComments({
-              issue_number: context.issue.number,
+              issue_number: prNumber,
               owner: context.repo.owner,
               repo: context.repo.repo,
             });
@@ -274,7 +329,7 @@ jobs:
               });
             } else {
               await github.rest.issues.createComment({
-                issue_number: context.issue.number,
+                issue_number: prNumber,
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 body: message,
