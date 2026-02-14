@@ -274,6 +274,11 @@ extension PersonalEventModel {
   /// 알림 본문
   public var notificationBody: String {
     guard let minutes = reminderMinutesBefore else { return "" }
+    if minutes == 0 { return "지금 시작하는 일정입니다" }
+    if minutes >= 1440 {
+      let days = minutes / 1440
+      return "\(days)일 후 시작하는 일정입니다"
+    }
     if minutes >= 60 { return "\(minutes / 60)시간 후 시작하는 일정입니다" }
     return "\(minutes)분 후 시작하는 일정입니다"
   }

@@ -234,6 +234,11 @@ extension PersonalEventDetail {
     }
 
     private func reminderText(_ minutes: Int) -> String {
+      if minutes == 0 { return "이벤트 시점" }
+      if minutes >= 1440 {
+        let days = minutes / 1440
+        return "\(days)일 전"
+      }
       if minutes >= 60 {
         return "\(minutes / 60)시간 전"
       }
