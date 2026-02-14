@@ -11,6 +11,7 @@ import Foundation
 /// - `promiso://promise/{promiseId}/eta` → LiveActivity ETA 변경 시트
 /// - `promiso://live/{promiseId}` → LivePromise 상세 화면 (ETA 시트 없이)
 /// - `promiso://create` → 약속 만들기 화면 (Widget용, 그룹 있을 때만)
+/// - `promiso://personalEvent/{eventId}` → 개인 일정 (Widget용, 홈 탭으로 이동)
 ///
 /// - SeeAlso: `.ai/DEEPLINK_GUIDE.md`
 public enum DeeplinkURLParser {
@@ -36,6 +37,9 @@ public enum DeeplinkURLParser {
 
     case "create":
       return .create
+
+    case "personalEvent":
+      return parsePersonalEvent(from: url)
 
     default:
       return nil
@@ -87,5 +91,13 @@ private extension DeeplinkURLParser {
       return nil
     }
     return .livePromise(promiseId: promiseId)
+  }
+
+  /// promiso://personalEvent/{eventId}
+  static func parsePersonalEvent(from url: URL) -> DeeplinkDestination? {
+    guard let eventId = url.pathComponents.dropFirst().first else {
+      return nil
+    }
+    return .personalEvent(eventId: eventId)
   }
 }

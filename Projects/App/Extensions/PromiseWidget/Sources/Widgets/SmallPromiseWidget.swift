@@ -50,6 +50,7 @@ struct PromiseSystemSmallWidgetView: View {
       case .loaded:
         if let item = entry.nextItem {
           scheduleItemView(item)
+            .widgetURL(item.deeplinkURL)
         } else {
           EmptyWidgetView(
             icon: "calendar.badge.clock",

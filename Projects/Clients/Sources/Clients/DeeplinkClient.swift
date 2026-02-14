@@ -19,6 +19,8 @@ public enum DeeplinkDestination: Equatable, Sendable {
   case livePromise(promiseId: String)
   /// 약속 만들기 화면 (Widget에서 "약속 만들기" 버튼)
   case create
+  /// 개인 일정 (Widget에서 탭 시 홈 탭으로 이동)
+  case personalEvent(eventId: String)
 }
 
 // MARK: - Client
