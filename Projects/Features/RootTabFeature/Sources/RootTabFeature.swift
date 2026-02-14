@@ -184,6 +184,8 @@ extension RootTab {
       case openLivePromiseDetail
       /// Widget "약속 만들기" 버튼 → 그룹 탭 이동 + 약속 생성 (그룹 있을 때만)
       case openCreatePromiseIfPossible
+      /// Widget 개인 일정 탭 → 홈 탭 이동 + 개인 일정 상세 열기
+      case openPersonalEventDetail(eventId: String)
       /// 온보딩에서 그룹 생성 열기
       case openCreateGroup
       /// 내부 액션
@@ -426,6 +428,11 @@ extension RootTab {
           state.promiseMode = .group
           state.selectedTab = .promise(.group)
           return .send(.groupMain(.view(.openCreatePromiseIfPossible)))
+
+        case .openPersonalEventDetail(let eventId):
+          state.promiseMode = .own
+          state.selectedTab = .promise(.own)
+          return .send(.personalMode(.view(.openEventFromDeeplink(eventId: eventId))))
 
         case .openCreateGroup:
           // 그룹 탭으로 이동 후 그룹 생성 열기

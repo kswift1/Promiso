@@ -713,6 +713,10 @@ extension AppEntry.Feature {
     case .create:
       // Widget "약속 만들기" 버튼 → 그룹 탭 이동 + 약속 생성 (그룹 있을 때만)
       return .send(.destination(.presented(.main(.openCreatePromiseIfPossible))))
+
+    case .personalEvent(let eventId):
+      // Widget 개인 일정 탭 → 홈 탭 이동 + 개인 일정 상세 열기
+      return .send(.destination(.presented(.main(.openPersonalEventDetail(eventId: eventId)))))
     }
   }
 

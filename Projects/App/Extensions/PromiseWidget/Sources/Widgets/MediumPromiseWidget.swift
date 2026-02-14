@@ -4,13 +4,13 @@ import ResourceKit
 import SwiftUI
 import WidgetKit
 
-/// 중간 크기 위젯 (4x2) - 오늘 약속 2-3개 표시
-struct MediumPromiseWidget: Widget {
-  let kind: String = "MediumPromiseWidget"
+/// 홈 화면 중간 크기 위젯 (systemMedium) - 오늘 약속 2-3개 표시
+struct PromiseSystemMediumWidget: Widget {
+  let kind: String = WidgetKind.systemMedium
 
   var body: some WidgetConfiguration {
     StaticConfiguration(kind: kind, provider: PromiseTimelineProvider()) { entry in
-      MediumPromiseWidgetView(entry: entry)
+      PromiseSystemMediumWidgetView(entry: entry)
         .containerBackground(for: .widget) {
           widgetBackground
         }
@@ -31,7 +31,7 @@ struct MediumPromiseWidget: Widget {
   }
 }
 
-struct MediumPromiseWidgetView: View {
+struct PromiseSystemMediumWidgetView: View {
   let entry: WidgetPromiseEntry
 
   var body: some View {
@@ -75,8 +75,8 @@ struct MediumPromiseWidgetView: View {
 
   @ViewBuilder
   private func todayView(_ items: [WidgetPromiseData]) -> some View {
-    VStack(alignment: .leading, spacing: 6) {
-      sectionHeader(title: "오늘", icon: "sun.max.fill", count: entry.todayItems.count)
+    VStack(alignment: .leading, spacing: 4) {
+      sectionHeader(title: "오늘", icon: "sun.max.fill")
 
       ForEach(items, id: \.id) { item in
         if let url = item.deeplinkURL {
@@ -90,16 +90,18 @@ struct MediumPromiseWidgetView: View {
 
       Spacer(minLength: 0)
     }
-    .padding()
+    .padding(0)
     .overlay(alignment: .bottomTrailing) {
-      WidgetFooterView(updatedAt: entry.date)
+      WidgetFooterView(updatedAt: entry.date, showLabel: true)
+        .padding(.bottom, -10)
+        .padding(.trailing, -6)
     }
   }
 
   @ViewBuilder
   private func upcomingView(_ items: [WidgetPromiseData]) -> some View {
     VStack(alignment: .leading, spacing: 6) {
-      sectionHeader(title: "다가오는 일정", icon: "calendar", count: entry.upcomingItems.count)
+      sectionHeader(title: "다가오는 일정", icon: "calendar")
 
       ForEach(items, id: \.id) { item in
         if let url = item.deeplinkURL {
@@ -113,16 +115,18 @@ struct MediumPromiseWidgetView: View {
 
       Spacer(minLength: 0)
     }
-    .padding()
+    .padding(0)
     .overlay(alignment: .bottomTrailing) {
-      WidgetFooterView(updatedAt: entry.date)
+      WidgetFooterView(updatedAt: entry.date, showLabel: true)
+        .padding(.bottom, -10)
+        .padding(.trailing, -6)
     }
   }
 
   // MARK: - Section Header
 
   @ViewBuilder
-  private func sectionHeader(title: String, icon: String, count: Int) -> some View {
+  private func sectionHeader(title: String, icon: String) -> some View {
     HStack(spacing: 6) {
       Image(systemName: icon)
         .font(.caption.weight(.semibold))
@@ -131,13 +135,6 @@ struct MediumPromiseWidgetView: View {
       Text(title)
         .font(.subheadline.weight(.bold))
         .foregroundStyle(.primary)
-
-      Text("\(count)")
-        .font(.caption.weight(.medium))
-        .foregroundStyle(.white)
-        .padding(.horizontal, 6)
-        .padding(.vertical, 2)
-        .background(Color.pmindigo.n500, in: Capsule())
 
       Spacer()
     }
@@ -148,45 +145,60 @@ struct MediumPromiseWidgetView: View {
 
   @ViewBuilder
   private func todayRow(_ item: WidgetPromiseData) -> some View {
-    HStack(spacing: 10) {
+    HStack(spacing: 6) {
       // 이모지
       Text(item.emoji)
-        .font(.system(size: 22))
-        .frame(width: 26)
+        .font(.system(size: 18))
+        .frame(width: 22)
 
-      // 제목 + 장소/개인 라벨
-      VStack(alignment: .leading, spacing: 1) {
+      // 제목 + 메타 정보
+      VStack(alignment: .leading, spacing: 0) {
         Text(item.title)
-          .font(.subheadline.weight(.medium))
+          .font(.caption.weight(.medium))
           .lineLimit(1)
           .foregroundStyle(.primary)
 
         if item.isPersonalEvent {
           HStack(spacing: 2) {
             Image(systemName: "person.fill")
-              .font(.system(size: 8))
+              .font(.system(size: 7))
             Text("개인")
               .lineLimit(1)
           }
           .font(.caption2)
           .foregroundStyle(Color.pmaurora.purple)
-        } else if let location = item.location {
-          HStack(spacing: 2) {
-            Image(systemName: "location.fill")
-              .font(.system(size: 8))
-            Text(location)
-              .lineLimit(1)
+        } else {
+          HStack(spacing: 3) {
+            if let location = item.location {
+              HStack(spacing: 2) {
+                Image(systemName: "location.fill")
+                  .font(.system(size: 7))
+                Text(location)
+                  .lineLimit(1)
+              }
+              .foregroundStyle(.secondary)
+            }
+
+            if item.location != nil && item.groupName != nil {
+              Text("·")
+                .foregroundStyle(.secondary)
+            }
+
+            if let groupName = item.groupName {
+              Text(groupName)
+                .lineLimit(1)
+                .foregroundStyle(Color.pmindigo.n500)
+            }
           }
           .font(.caption2)
-          .foregroundStyle(.secondary)
         }
       }
 
-      Spacer(minLength: 4)
+      Spacer(minLength: 2)
 
       // 시간 (강조)
       Text(formatTime(item.startAt))
-        .font(.subheadline.weight(.bold))
+        .font(.caption.weight(.bold))
         .foregroundStyle(item.isPersonalEvent ? Color.pmaurora.purple : Color.pmindigo.n500)
     }
     .contentShape(Rectangle())
@@ -205,7 +217,7 @@ struct MediumPromiseWidgetView: View {
       // 제목 + 그룹명
       HStack(spacing: 4) {
         Text(item.title)
-          .font(.subheadline)
+          .font(.subheadline.weight(.semibold))
           .lineLimit(1)
           .foregroundStyle(.primary)
 
@@ -256,18 +268,26 @@ struct MediumPromiseWidgetView: View {
 
   // MARK: - Date Formatting
 
-  private func formatTime(_ date: Date) -> String {
+  private static let timeFormatter: DateFormatter = {
     let formatter = DateFormatter()
     formatter.locale = Locale(identifier: "ko_KR")
     formatter.dateFormat = "a h:mm"
-    return formatter.string(from: date)
-  }
+    return formatter
+  }()
 
-  private func formatShortDate(_ date: Date) -> String {
+  private static let shortDateFormatter: DateFormatter = {
     let formatter = DateFormatter()
     formatter.locale = Locale(identifier: "ko_KR")
     formatter.dateFormat = "M/d"
-    return formatter.string(from: date)
+    return formatter
+  }()
+
+  private func formatTime(_ date: Date) -> String {
+    Self.timeFormatter.string(from: date)
+  }
+
+  private func formatShortDate(_ date: Date) -> String {
+    Self.shortDateFormatter.string(from: date)
   }
 
   // MARK: - Accessibility
@@ -306,26 +326,77 @@ struct MediumPromiseWidgetView: View {
 
 #if DEBUG
 #Preview("오늘 약속", as: .systemMedium) {
-  MediumPromiseWidget()
+  PromiseSystemMediumWidget()
 } timeline: {
   WidgetPromiseEntry.previewToday
 }
 
 #Preview("다가오는 약속", as: .systemMedium) {
-  MediumPromiseWidget()
+  PromiseSystemMediumWidget()
 } timeline: {
   WidgetPromiseEntry.previewUpcoming
 }
 
 #Preview("약속 없음", as: .systemMedium) {
-  MediumPromiseWidget()
+  PromiseSystemMediumWidget()
 } timeline: {
   WidgetPromiseEntry(date: Date(), promises: [], state: .empty)
 }
 
 #Preview("로그인 필요", as: .systemMedium) {
-  MediumPromiseWidget()
+  PromiseSystemMediumWidget()
 } timeline: {
   WidgetPromiseEntry(date: Date(), promises: [], state: .notLoggedIn)
+}
+
+#Preview("긴 텍스트", as: .systemMedium) {
+  PromiseSystemMediumWidget()
+} timeline: {
+  WidgetPromiseEntry(
+    date: Date(),
+    promises: {
+      let calendar = Calendar.current
+      let now = Date()
+      let today1 = calendar.date(bySettingHour: 11, minute: 30, second: 0, of: now) ?? now
+      let today2 = calendar.date(bySettingHour: 14, minute: 0, second: 0, of: now) ?? now
+      let today3 = calendar.date(bySettingHour: 19, minute: 0, second: 0, of: now) ?? now
+      return [
+        WidgetPromiseData(
+          id: "long1",
+          title: "대학교 졸업 10주년 기념 동창회 모임",
+          emoji: "🎓",
+          startAt: today1,
+          endAt: nil,
+          location: "서울특별시 강남구 역삼동 스타벅스 리저브점",
+          groupId: "g1",
+          groupName: "서울대학교 컴퓨터공학과 2015학번",
+          participantCount: 12
+        ),
+        WidgetPromiseData(
+          id: "long2",
+          title: "프로미소 앱 디자인 리뷰 회의",
+          emoji: "💻",
+          startAt: today2,
+          endAt: nil,
+          location: "판교 테크노밸리 네이버 그린팩토리 3층",
+          groupId: "g2",
+          groupName: "프로미소 개발팀 디자인파트",
+          participantCount: 6
+        ),
+        WidgetPromiseData(
+          id: "long3",
+          title: "크리스마스 파티 겸 연말 송년회",
+          emoji: "🎄",
+          startAt: today3,
+          endAt: nil,
+          location: "이태원 해밀턴 호텔 루프탑 바",
+          groupId: "g3",
+          groupName: "직장동료 번개모임 친목회",
+          participantCount: 15
+        ),
+      ]
+    }(),
+    state: .loaded
+  )
 }
 #endif

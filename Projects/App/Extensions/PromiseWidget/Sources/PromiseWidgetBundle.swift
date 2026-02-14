@@ -4,10 +4,10 @@ import WidgetKit
 @main
 struct PromiseWidgetBundle: WidgetBundle {
   var body: some Widget {
-    SmallPromiseWidget()
-    MediumPromiseWidget()
-    LargePromiseWidget()
-    CircularPromiseWidget()
-    RectangularPromiseWidget()
+    PromiseSystemSmallWidget()
+    PromiseSystemMediumWidget()
+    PromiseSystemLargeWidget()
+    PromiseAccessoryCircularWidget()
+    PromiseAccessoryRectangularWidget()
   }
 }

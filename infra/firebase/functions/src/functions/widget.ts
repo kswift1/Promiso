@@ -198,7 +198,7 @@ function toISOString(
  * 약속 직접 쿼리
  *
  * @description Firestore에서 사용자 그룹의 약속을 직접 조회
- * @limit 위젯에 필요한 최소 데이터만 조회 (today 3개 + upcoming 4개 = 7개)
+ * @limit 위젯에 필요한 데이터 조회 (today 최대 6개 + upcoming 최대 9개)
  *
  * @param {string} userId 사용자 ID
  * @return {Promise<WidgetSnapshotDocument>} 위젯 데이터
@@ -260,7 +260,7 @@ async function fetchPromisesDirectly(
       .where("isConfirmed", "==", true)
       .where("startAt", ">=", now)
       .orderBy("startAt", "asc")
-      .limit(7) // 위젯 최대 표시 개수 (today 3 + upcoming 4)
+      .limit(15) // 위젯 최대 표시 개수 (today 6 + upcoming 9)
       .get();
 
     for (const doc of snapshot.docs) {
@@ -332,7 +332,7 @@ async function fetchPromisesDirectly(
     const personalSnapshot = await personalEventsRef
       .where("startAt", ">=", now)
       .orderBy("startAt", "asc")
-      .limit(5)
+      .limit(15)
       .get();
 
     for (const doc of personalSnapshot.docs) {
@@ -386,9 +386,9 @@ async function fetchPromisesDirectly(
     new Date(a.startAt).getTime() - new Date(b.startAt).getTime()
   );
 
-  // today 3개, upcoming 4개로 제한
-  const limitedToday = todayPromises.slice(0, 3);
-  const limitedUpcoming = upcomingPromises.slice(0, 4);
+  // today 최대 6개, upcoming 최대 9개로 제한
+  const limitedToday = todayPromises.slice(0, 6);
+  const limitedUpcoming = upcomingPromises.slice(0, 9);
 
   // 7. next = 첫 번째 일정 (today 우선, 없으면 upcoming)
   const nextPromise = limitedToday[0] || limitedUpcoming[0] || null;

@@ -151,6 +151,18 @@ struct RootTabFeatureTests {
     await store.receive(\.groupMain.view.openCreatePromiseIfPossible)
   }
 
+  @Test("openPersonalEventDetail 시 개인 모드 탭 전환 후 딥링크 전달")
+  func openPersonalEventDetail_switchesToPersonalModeTab() async {
+    let store = makeStore(state: makeState(key: "personal-event-deeplink"))
+    store.exhaustivity = .off(showSkippedAssertions: false)
+
+    await store.send(.openPersonalEventDetail(eventId: "event-123")) {
+      $0.promiseMode = .own
+      $0.selectedTab = .promise(.own)
+    }
+    await store.receive(\.personalMode)
+  }
+
   @Test("Home navigateToGroupWithPromise delegate 시 그룹 탭 전환")
   func homeNavigateToGroupWithPromise_switchesToGroupTab() async {
     let store = makeStore(state: makeState(key: "home-to-group"))
@@ -689,6 +701,7 @@ private extension RootTabFeatureTests {
     dependencies.analyticsClient.logEvent = { _, _ in }
     dependencies.eventKitClient.authorizationStatus = { .notDetermined }
     dependencies.personalEventClient.getActiveEvents = { _ in [] }
+    dependencies.personalEventClient.getEvent = { _ in nil }
 
     dependencies.groupClient.fetchGroupSummaries = { [] }
     dependencies.groupClient.fetchGroup = { _ in group }
