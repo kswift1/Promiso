@@ -367,7 +367,7 @@ extension PromiseModel {
 
   /// 최소 참가 인원 유효성
   public var isMinimumParticipantsValid: Bool {
-    minimumParticipants >= 2
+    minimumParticipants >= 1
   }
 
   /// 생성 가능 여부
