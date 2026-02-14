@@ -60,6 +60,10 @@
 | ID | 규칙 | 조건 |
 |----|------|------|
 | L16 | 첫 도착 알림 | `arrivedCount == 1 && totalCount > 1 && 본인이 방금 도착` |
+| L17 | 넛지 푸시 발송 시점 | LiveActivity 시작 후 `trackingMinutes / 2` 경과 시 (예: 30분 추적 → 15분 전) |
+| L18 | 넛지 푸시 대상 분류 | ETA == nil → 대기중 메시지, ETA > 0 → 이동중 메시지, ETA == 0 → 제외 |
+| L19 | 넛지 푸시 발송 횟수 | 약속당 1회만 |
+| L20 | 넛지 푸시 예약 | LiveActivity 스케줄링 시 함께 예약 (L10과 연동) |
 
 ---
 
@@ -67,5 +71,5 @@
 
 | ID | 규칙 | 값 |
 |----|------|-----|
-| L17 | 첫 사용 안내 팝오버 | `hasSeenLiveActivityInfo` UserDefaults 키로 최초 1회만 |
-| L18 | ETA 업데이트 동시성 보호 | `isProcessingETAUpdate` guard |
+| L21 | 첫 사용 안내 팝오버 | `hasSeenLiveActivityInfo` UserDefaults 키로 최초 1회만 |
+| L22 | ETA 업데이트 동시성 보호 | `isProcessingETAUpdate` guard |
