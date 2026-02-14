@@ -91,17 +91,11 @@ public enum CreatePromise {
       }
 
       var firstButtonDisabled: Bool {
-        // 제목이 비어있거나 그룹이 선택되지 않았거나 그룹 멤버가 1명 이하인 경우
         if !promise.isTitleValid {
           return true
         }
 
-        guard let group = promise.group else {
-          return true
-        }
-
-        // 그룹 멤버가 1명 이하면 비활성화
-        if group.memberIds.count <= 1 {
+        if promise.group == nil {
           return true
         }
 
@@ -265,12 +259,8 @@ public enum CreatePromise {
 
           case .groupSelected(let group):
             state.promise.group = group
-            if group.memberIds.count == 2 {
-              state.promise.minimumParticipants = 2
-            } else {
-              let defaultMinimum = Int(ceil(Double(group.memberIds.count) / 2.0))
-              state.promise.minimumParticipants = defaultMinimum
-            }
+            let defaultMinimum = max(1, Int(ceil(Double(group.maxMembers) / 2.0)))
+            state.promise.minimumParticipants = defaultMinimum
             return .none
 
           case .retryLoadGroups:
@@ -293,14 +283,14 @@ public enum CreatePromise {
             return .none
 
           case .incrementParticipants:
-            guard let max = state.promise.group?.memberIds.count else { return .none }
+            guard let max = state.promise.group?.maxMembers else { return .none }
             let current = state.promise.minimumParticipants
             if current < max { state.promise.minimumParticipants = current + 1 }
             return .none
 
           case .decrementParticipants:
             let current = state.promise.minimumParticipants
-            if current > 2 { state.promise.minimumParticipants = current - 1 }
+            if current > 1 { state.promise.minimumParticipants = current - 1 }
             return .none
 
           case .setDescription(let description):

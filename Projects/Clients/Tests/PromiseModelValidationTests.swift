@@ -142,10 +142,10 @@ struct PromiseModelValidationTests {
     #expect(promise.isMinimumParticipantsValid == true)
   }
 
-  @Test("[P6] 최소 참가 인원 1명이면 무효")
-  func isMinimumParticipantsValid_withOne_returnsFalse() {
+  @Test("[P6] 최소 참가 인원 1명이면 유효")
+  func isMinimumParticipantsValid_withOne_returnsTrue() {
     let promise = makePromise(minimumParticipants: 1)
-    #expect(promise.isMinimumParticipantsValid == false)
+    #expect(promise.isMinimumParticipantsValid == true)
   }
 
   @Test("[P6] 최소 참가 인원 0명이면 무효")

@@ -119,6 +119,30 @@ private struct WidgetPromiseDTO: Decodable {
 ///   - App에서 promises/personalEvents를 각각 다른 시점에 저장
 /// - **로드**: `loadAllItems()`로 2개 키를 병합하여 startAt 정렬 반환
 /// - **서버 Fetch**: 서버에서 통합된 응답을 받아 type별로 분리 저장
+// MARK: - Widget Kind 상수
+
+/// 위젯 kind 식별자 상수
+public enum WidgetKind {
+  /// 홈 화면 위젯 (systemSmall) - 다음 약속 1개 표시
+  public static let systemSmall = "PromiseSystemSmall"
+  /// 홈 화면 위젯 (systemMedium) - 오늘 약속 2-3개 표시
+  public static let systemMedium = "PromiseSystemMedium"
+  /// 홈 화면 위젯 (systemLarge) - 오늘 + 다가오는 약속 표시
+  public static let systemLarge = "PromiseSystemLarge"
+  /// 잠금 화면 위젯 (accessoryCircular) - D-Day 표시
+  public static let accessoryCircular = "PromiseAccessoryCircular"
+  /// 잠금 화면 위젯 (accessoryRectangular) - 다음 약속 정보
+  public static let accessoryRectangular = "PromiseAccessoryRectangular"
+
+  /// 모든 위젯 kind 목록
+  public static let all: [String] = [
+    systemSmall, systemMedium, systemLarge,
+    accessoryCircular, accessoryRectangular,
+  ]
+}
+
+// MARK: - WidgetDataManager
+
 public enum WidgetDataManager {
   // MARK: - Constants
 
@@ -262,9 +286,9 @@ public enum WidgetDataManager {
 
   /// 모든 Widget 타임라인 갱신
   public static func reloadWidgets() {
-    WidgetCenter.shared.reloadTimelines(ofKind: "SmallPromiseWidget")
-    WidgetCenter.shared.reloadTimelines(ofKind: "MediumPromiseWidget")
-    WidgetCenter.shared.reloadTimelines(ofKind: "LargePromiseWidget")
+    for kind in WidgetKind.all {
+      WidgetCenter.shared.reloadTimelines(ofKind: kind)
+    }
   }
 
   // MARK: - Server Refresh (Silent Push용 - Fallback)

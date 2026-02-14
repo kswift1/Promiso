@@ -99,23 +99,20 @@ public struct WidgetPromiseData: Codable, Identifiable, Equatable, Sendable {
     Date().timeIntervalSince(cachedAt) > Self.staleCacheThreshold
   }
 
-  /// 딥링크 URL (URLComponents로 안전한 URL 인코딩)
+  /// 딥링크 URL (경로 기반 - DeeplinkURLParser와 일치)
   public var deeplinkURL: URL? {
+    var components = URLComponents()
+    components.scheme = "promiso"
+
     switch type {
     case .promise:
-      var components = URLComponents(string: "promiso://promise")
-      components?.queryItems = [
-        URLQueryItem(name: "id", value: id),
-        URLQueryItem(name: "groupId", value: groupId),
-      ]
-      return components?.url
+      components.host = "promise"
+      components.path = "/\(id)/\(groupId)"
     case .personal:
-      var components = URLComponents(string: "promiso://personalEvent")
-      components?.queryItems = [
-        URLQueryItem(name: "id", value: id),
-      ]
-      return components?.url
+      components.host = "personalEvent"
+      components.path = "/\(id)"
     }
+    return components.url
   }
 
   // MARK: - Placeholder & Preview Data

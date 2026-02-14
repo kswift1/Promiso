@@ -231,6 +231,7 @@ extension Home {
           case .personalEventTapped(let event):
             state.path.append(.personalEventDetail(.init(event: event)))
             return .none
+
           }
 
         case .internal(let internalAction):

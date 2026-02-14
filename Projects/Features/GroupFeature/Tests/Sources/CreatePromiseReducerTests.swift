@@ -79,8 +79,8 @@ struct CreatePromiseReducerTests {
 
   // MARK: - Group Selection 테스트
 
-  @Test("groupSelected 시 그룹 설정 및 최소 참가인원 자동 계산 (2명 그룹)")
-  func groupSelected_twoMembers_setsMinParticipantsToTwo() async {
+  @Test("groupSelected 시 그룹 설정 및 최소 참가인원 자동 계산 (maxMembers 기준)")
+  func groupSelected_setsMinParticipantsBasedOnMaxMembers() async {
     let group = makeGroup(memberIds: ["user-1", "user-2"])
 
     let store = TestStore(
@@ -91,12 +91,12 @@ struct CreatePromiseReducerTests {
 
     await store.send(.view(.groupSelected(group))) {
       $0.promise.group = group
-      $0.promise.minimumParticipants = 2
+      $0.promise.minimumParticipants = 5  // ceil(maxMembers(10) / 2) = 5
     }
   }
 
-  @Test("groupSelected 시 3명 이상 그룹에서 절반으로 최소 참가인원 설정")
-  func groupSelected_threeOrMore_setsMinParticipantsToHalf() async {
+  @Test("groupSelected 시 maxMembers 기준으로 최소 참가인원 설정")
+  func groupSelected_differentMemberCount_setsMinParticipantsBasedOnMaxMembers() async {
     let group = makeGroup(memberIds: ["user-1", "user-2", "user-3", "user-4"])
 
     let store = TestStore(
@@ -107,7 +107,7 @@ struct CreatePromiseReducerTests {
 
     await store.send(.view(.groupSelected(group))) {
       $0.promise.group = group
-      $0.promise.minimumParticipants = 2  // ceil(4/2) = 2
+      $0.promise.minimumParticipants = 5  // ceil(maxMembers(10) / 2) = 5
     }
   }
 
@@ -129,8 +129,8 @@ struct CreatePromiseReducerTests {
     }
   }
 
-  @Test("decrementParticipants 시 최소 참가인원 감소 (최소 2)")
-  func decrementParticipants_decrementsCountMinTwo() async {
+  @Test("decrementParticipants 시 최소 참가인원 감소 (최소 1)")
+  func decrementParticipants_decrementsCountMinOne() async {
     let group = makeGroup(memberIds: ["user-1", "user-2", "user-3"])
     var state = CreatePromise.Feature.State()
     state.promise.group = group
@@ -140,7 +140,11 @@ struct CreatePromiseReducerTests {
       CreatePromise.Feature()
     }
 
-    // 이미 2이므로 감소하지 않음
+    await store.send(.view(.decrementParticipants)) {
+      $0.promise.minimumParticipants = 1
+    }
+
+    // 이미 1이므로 감소하지 않음
     await store.send(.view(.decrementParticipants))
   }
 
