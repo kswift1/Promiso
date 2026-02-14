@@ -101,12 +101,18 @@ public struct WidgetPromiseData: Codable, Identifiable, Equatable, Sendable {
 
   /// 딥링크 URL (경로 기반 - DeeplinkURLParser와 일치)
   public var deeplinkURL: URL? {
+    var components = URLComponents()
+    components.scheme = "promiso"
+
     switch type {
     case .promise:
-      return URL(string: "promiso://promise/\(id)/\(groupId)")
+      components.host = "promise"
+      components.path = "/\(id)/\(groupId)"
     case .personal:
-      return URL(string: "promiso://personalEvent/\(id)")
+      components.host = "personalEvent"
+      components.path = "/\(id)"
     }
+    return components.url
   }
 
   // MARK: - Placeholder & Preview Data
