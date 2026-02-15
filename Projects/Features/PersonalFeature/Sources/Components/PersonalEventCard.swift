@@ -45,7 +45,7 @@ public struct PersonalEventCard: View {
     .adaptiveGlassCard()
     .contextMenu {
       Button(action: onTap) {
-        Label("상세 보기", systemImage: "info.circle")
+        Label(LocalizedStrings.Personal.viewDetail, systemImage: "info.circle")
       }
 
       Button(action: onEdit) {
@@ -111,7 +111,7 @@ public struct PersonalEventCard: View {
             HStack(spacing: 4) {
               Text("📷")
                 .font(.system(size: 14))
-              Text("사진 \(event.imageUrls.count)장")
+              Text(LocalizedStrings.Personal.photoCount(event.imageUrls.count))
                 .font(.system(size: 14, weight: .medium))
             }
             .foregroundStyle(.secondary)
@@ -131,7 +131,7 @@ public struct PersonalEventCard: View {
         HStack(spacing: 4) {
           Image(systemName: isReminderSent ? "checkmark.circle.fill" : "bell.fill")
             .font(.system(size: 12))
-          Text(isReminderSent ? "알림 완료" : reminderText(minutes))
+          Text(isReminderSent ? LocalizedStrings.Personal.reminderSent : reminderText(minutes))
             .font(.system(size: 13, weight: .medium))
         }
         .foregroundStyle(isReminderSent ? .green : .secondary)
@@ -144,8 +144,8 @@ public struct PersonalEventCard: View {
   // MARK: - Helper
 
   private func reminderText(_ minutes: Int) -> String {
-    if minutes >= 60 { return "\(minutes / 60)시간 전 알림" }
-    return "\(minutes)분 전 알림"
+    if minutes >= 60 { return LocalizedStrings.Personal.reminderHours(minutes / 60) }
+    return LocalizedStrings.Personal.reminderMinutes(minutes)
   }
 }
 
@@ -170,11 +170,11 @@ private struct PersonalEventStatusBadge: View {
   }
 
   private var statusText: String {
-    if event.isOngoing { return "진행 중" }
-    if event.isPast { return "종료" }
+    if event.isOngoing { return LocalizedStrings.Promise.ongoing }
+    if event.isPast { return LocalizedStrings.Personal.statusEnded }
     let calendar = Calendar.current
-    if calendar.isDateInToday(event.startAt) { return "오늘" }
-    return "예정"
+    if calendar.isDateInToday(event.startAt) { return LocalizedStrings.Personal.statusToday }
+    return LocalizedStrings.Personal.statusUpcoming
   }
 
   private var iconName: String {

@@ -181,7 +181,7 @@ extension AppEntry {
               return .none
             }
             if state.isNicknameAvailable != true {
-              state.nicknameError = "닉네임 중복 확인을 완료해주세요"
+              state.nicknameError = LocalizedStrings.Profile.nicknameCheckRequired
               return .none
             }
             return .send(.internal(.saveProfile))
@@ -268,10 +268,10 @@ extension AppEntry {
             switch result {
             case .success(let isAvailable):
               state.isNicknameAvailable = isAvailable
-              state.nicknameError = isAvailable ? nil : "이미 사용 중인 닉네임이에요"
+              state.nicknameError = isAvailable ? nil : LocalizedStrings.Profile.nicknameTaken
             case .failure:
               state.isNicknameAvailable = nil
-              state.nicknameError = "닉네임 확인에 실패했어요. 잠시 후 다시 시도해주세요"
+              state.nicknameError = LocalizedStrings.Profile.nicknameCheckFailed
             }
             return .none
 
@@ -334,7 +334,7 @@ extension AppEntry {
             print("❌ Profile save failed: \(error.localizedDescription)")
 
             state.alert = AlertState {
-              TextState("프로필 저장 실패")
+              TextState(LocalizedStrings.Profile.saveFailed)
             } actions: {
               ButtonState(role: .cancel) {
                 TextState("확인")
@@ -386,10 +386,10 @@ extension AppEntry {
 
           // 타이틀
           VStack(spacing: 8) {
-            Text("친구들이 알아볼 수 있게")
+            Text(LocalizedStrings.Profile.setupTitle1)
               .font(.title2.bold())
               .foregroundStyle(Color.pmtext.primary)
-            Text("프로필을 설정해주세요")
+            Text(LocalizedStrings.Profile.setupTitle2)
               .font(.title2.bold())
               .foregroundStyle(Color.pmtext.primary)
           }
@@ -408,11 +408,11 @@ extension AppEntry {
           // 닉네임 입력
           VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
-              Text("닉네임")
+              Text(LocalizedStrings.Profile.nickname)
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(.primary)
 
-              TextField("2-12자 이내로 입력해주세요", text: $localNickname)
+              TextField(LocalizedStrings.Profile.nicknamePlaceholder, text: $localNickname)
                 .onChange(of: localNickname) { _, newValue in
                   store.send(.view(.nicknameChanged(newValue)))
                 }
@@ -442,7 +442,7 @@ extension AppEntry {
           // 완료 버튼
           VStack(spacing: 15) {
             GlassActionButton(
-              title: store.isSaving ? "저장중..." : "완료",
+              title: store.isSaving ? LocalizedStrings.Profile.saving : LocalizedStrings.Common.done,
               isPrimary: true,
               isEnabled: store.nicknameError == nil
                 && store.nickname.count >= 2
@@ -515,12 +515,12 @@ extension AppEntry {
           HStack(spacing: 6) {
             ProgressView()
               .scaleEffect(0.6, anchor: .center)
-            Text("닉네임 확인 중...")
+            Text(LocalizedStrings.Profile.nicknameChecking)
               .font(.footnote)
               .foregroundStyle(.secondary)
           }
         } else if store.isNicknameAvailable == false {
-          Text("이미 사용 중인 닉네임이에요")
+          Text(LocalizedStrings.Profile.nicknameTaken)
             .font(.footnote)
             .foregroundStyle(.red)
         } else if store.isNicknameAvailable == true {
@@ -528,7 +528,7 @@ extension AppEntry {
             Image(systemName: "checkmark.circle.fill")
               .foregroundStyle(.green)
               .font(.footnote)
-            Text("사용 가능한 닉네임이에요")
+            Text(LocalizedStrings.Profile.nicknameAvailable)
               .font(.footnote)
               .foregroundStyle(.green)
           }
@@ -624,7 +624,7 @@ private struct PhotoSection: SwiftUI.View {
           Image(systemName: "plus.circle.fill")
             .font(.system(size: 32))
             .foregroundStyle(Color(.systemGray3))
-          Text("사진 선택")
+          Text(LocalizedStrings.Profile.selectPhoto)
             .font(.body.weight(.semibold))
             .foregroundStyle(Color.pmtext.primary.opacity(0.8))
         }

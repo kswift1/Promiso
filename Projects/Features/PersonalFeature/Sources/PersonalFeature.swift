@@ -14,7 +14,14 @@ extension PersonalMode {
     case all = "전체"
     case past = "과거"
 
-    public var title: String { rawValue }
+    public var title: String {
+      switch self {
+      case .today: return LocalizedStrings.Personal.filterToday
+      case .future: return LocalizedStrings.Personal.filterFuture
+      case .all: return LocalizedStrings.Personal.filterAll
+      case .past: return LocalizedStrings.Personal.filterPast
+      }
+    }
 
     public var icon: String {
       switch self {

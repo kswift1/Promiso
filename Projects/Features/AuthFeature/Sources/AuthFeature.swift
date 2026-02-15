@@ -97,7 +97,7 @@ extension Auth {
           case .appleAuthorizationResult(.success(let authorization)):
             guard let nonce = state.pendingAppleLoginNonce else {
               state.isLoading = false
-              state.errorMessage = "로그인 요청에 실패했습니다. 다시 시도해주세요."
+              state.errorMessage = LocalizedStrings.Auth.loginRequestFailed
               return .none
             }
             return .run { send in
@@ -215,12 +215,12 @@ extension Auth {
                 animated: animated,
                 lines: [
                   .init(
-                    text: "약속을",
+                    text: LocalizedStrings.Auth.heroPromisesWord,
                     font: .system(size: 48, weight: .black),
                     style: AnyShapeStyle(Color.pmtext.primary)
                   ),
                   .init(
-                    text: "더 특별하게.",
+                    text: LocalizedStrings.Auth.heroMoreSpecial,
                     font: .system(size: 48, weight: .black),
                     style: AnyShapeStyle(
                       LinearGradient(
@@ -234,12 +234,12 @@ extension Auth {
                     )
                   ),
                   .init(
-                    text: "소중한 순간들을",
+                    text: LocalizedStrings.Auth.heroPreciousMoments,
                     font: .system(size: 18, weight: .medium),
                     style: AnyShapeStyle(Color.pmtext.secondary)
                   ),
                   .init(
-                    text: "Promiso와 함께하세요.",
+                    text: LocalizedStrings.Auth.heroWithPromiso,
                     font: .system(size: 18, weight: .medium),
                     style: AnyShapeStyle(Color.pmtext.secondary)
                   )
@@ -363,7 +363,7 @@ extension Auth {
           HStack(spacing: 12) {
             Image(systemName: "apple.logo")
               .font(.system(size: 20, weight: .medium))
-            Text("Apple로 계속하기")
+            Text(LocalizedStrings.Auth.continueWithApple)
               .font(.system(size: 16, weight: .semibold))
           }
           .foregroundColor(.white)
@@ -380,7 +380,7 @@ extension Auth {
             ResourceKitAsset.googleLogo.swiftUIImage
               .resizable()
               .frame(width: 20, height: 20)
-            Text("Google로 계속하기")
+            Text(LocalizedStrings.Auth.continueWithGoogle)
               .font(.system(size: 16, weight: .semibold))
           }
           .foregroundColor(.primary)

@@ -792,6 +792,391 @@
         "ko": { "stringUnit": { "state": "translated", "value": "그룹" } },
         "en": { "stringUnit": { "state": "translated", "value": "Group" } }
       }
+    },
+    "auth.error.loginRequestFailed": {
+      "comment": "로그인 요청 실패",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "로그인 요청에 실패했습니다. 다시 시도해주세요." } },
+        "en": { "stringUnit": { "state": "translated", "value": "Login request failed. Please try again." } }
+      }
+    },
+    "auth.hero.promisesWord": {
+      "comment": "히어로 텍스트 - 약속을",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "약속을" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Promises," } }
+      }
+    },
+    "auth.hero.moreSpecial": {
+      "comment": "히어로 텍스트 - 더 특별하게",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "더 특별하게." } },
+        "en": { "stringUnit": { "state": "translated", "value": "made special." } }
+      }
+    },
+    "auth.hero.preciousMoments": {
+      "comment": "히어로 텍스트 - 소중한 순간들을",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "소중한 순간들을" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Precious moments," } }
+      }
+    },
+    "auth.hero.withPromiso": {
+      "comment": "히어로 텍스트 - Promiso와 함께",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "Promiso와 함께하세요." } },
+        "en": { "stringUnit": { "state": "translated", "value": "with Promiso." } }
+      }
+    },
+    "auth.continueWithApple": {
+      "comment": "Apple 로그인 버튼",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "Apple로 계속하기" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Continue with Apple" } }
+      }
+    },
+    "auth.continueWithGoogle": {
+      "comment": "Google 로그인 버튼",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "Google로 계속하기" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Continue with Google" } }
+      }
+    },
+    "notification.title": {
+      "comment": "알림 화면 타이틀",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "알림" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Notifications" } }
+      }
+    },
+    "notification.markAllAsRead": {
+      "comment": "모두 읽음 버튼",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "모두 읽음" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Mark all as read" } }
+      }
+    },
+    "notification.selectAll": {
+      "comment": "전체 선택",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "전체 선택" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Select all" } }
+      }
+    },
+    "notification.selectedCount": {
+      "comment": "선택된 알림 개수",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "%lld개 선택됨" } },
+        "en": { "stringUnit": { "state": "translated", "value": "%lld selected" } }
+      }
+    },
+    "notification.empty.title": {
+      "comment": "알림 없음 타이틀",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "알림이 없어요" } },
+        "en": { "stringUnit": { "state": "translated", "value": "No notifications" } }
+      }
+    },
+    "notification.empty.subtitle": {
+      "comment": "알림 없음 설명",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "새로운 약속이나 그룹 소식이 있으면\n여기서 알려드릴게요" } },
+        "en": { "stringUnit": { "state": "translated", "value": "We'll notify you here when there are\nnew promises or group updates" } }
+      }
+    },
+    "notification.error.loadFailed": {
+      "comment": "알림 로드 실패",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "알림을 불러올 수 없어요" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Unable to load notifications" } }
+      }
+    },
+    "notification.filter.all": {
+      "comment": "알림 필터 - 전체",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "전체" } },
+        "en": { "stringUnit": { "state": "translated", "value": "All" } }
+      }
+    },
+    "notification.filter.unread": {
+      "comment": "알림 필터 - 안 읽음",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "안 읽음" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Unread" } }
+      }
+    },
+    "onboarding.start": {
+      "comment": "시작하기 버튼",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "시작하기" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Get Started" } }
+      }
+    },
+    "onboarding.ready.title": {
+      "comment": "온보딩 완료 타이틀",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "준비 완료!" } },
+        "en": { "stringUnit": { "state": "translated", "value": "All Set!" } }
+      }
+    },
+    "onboarding.ready.subtitle": {
+      "comment": "온보딩 완료 서브타이틀",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "이번 주에 만날 친구,\n누가 떠올라요?" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Who comes to mind\nfor this week's meetup?" } }
+      }
+    },
+    "onboarding.ready.description": {
+      "comment": "온보딩 완료 설명",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "그 약속, 그룹을 생성하고 한 번에 잡아보세요" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Create a group and schedule it all at once" } }
+      }
+    },
+    "onboarding.hasInviteCode": {
+      "comment": "초대코드 있음 버튼",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "초대코드가 있어요" } },
+        "en": { "stringUnit": { "state": "translated", "value": "I have an invite code" } }
+      }
+    },
+    "onboarding.skipForNow": {
+      "comment": "건너뛰기 버튼",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "괜찮아요" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Not now" } }
+      }
+    },
+    "onboarding.laterHint": {
+      "comment": "나중에 안내 문구",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "나중에 홈에서도 언제든 할 수 있어요" } },
+        "en": { "stringUnit": { "state": "translated", "value": "You can always do this later from home" } }
+      }
+    },
+    "appEntry.update.forceTitle": {
+      "comment": "강제 업데이트 타이틀",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "업데이트 필요" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Update Required" } }
+      }
+    },
+    "appEntry.update.recommendTitle": {
+      "comment": "권장 업데이트 타이틀",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "새 버전 안내" } },
+        "en": { "stringUnit": { "state": "translated", "value": "New Version Available" } }
+      }
+    },
+    "appEntry.update.action": {
+      "comment": "업데이트 버튼",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "업데이트" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Update" } }
+      }
+    },
+    "appEntry.update.later": {
+      "comment": "나중에 버튼",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "나중에" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Later" } }
+      }
+    },
+    "profile.error.nicknameCheckRequired": {
+      "comment": "닉네임 중복 확인 필요",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "닉네임 중복 확인을 완료해주세요" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Please complete nickname verification" } }
+      }
+    },
+    "profile.error.nicknameTaken": {
+      "comment": "닉네임 중복",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "이미 사용 중인 닉네임이에요" } },
+        "en": { "stringUnit": { "state": "translated", "value": "This nickname is already taken" } }
+      }
+    },
+    "profile.error.nicknameCheckFailed": {
+      "comment": "닉네임 확인 실패",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "닉네임 확인에 실패했어요. 잠시 후 다시 시도해주세요" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Nickname check failed. Please try again later" } }
+      }
+    },
+    "profile.error.saveFailed": {
+      "comment": "프로필 저장 실패",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "프로필 저장 실패" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Failed to save profile" } }
+      }
+    },
+    "profile.setup.title1": {
+      "comment": "프로필 설정 타이틀 1",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "친구들이 알아볼 수 있게" } },
+        "en": { "stringUnit": { "state": "translated", "value": "So your friends can recognize you," } }
+      }
+    },
+    "profile.setup.title2": {
+      "comment": "프로필 설정 타이틀 2",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "프로필을 설정해주세요" } },
+        "en": { "stringUnit": { "state": "translated", "value": "set up your profile" } }
+      }
+    },
+    "profile.nickname": {
+      "comment": "닉네임 라벨",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "닉네임" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Nickname" } }
+      }
+    },
+    "profile.nickname.placeholder": {
+      "comment": "닉네임 입력 플레이스홀더",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "2-12자 이내로 입력해주세요" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Enter 2-12 characters" } }
+      }
+    },
+    "profile.saving": {
+      "comment": "저장중 표시",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "저장중..." } },
+        "en": { "stringUnit": { "state": "translated", "value": "Saving..." } }
+      }
+    },
+    "profile.nickname.checking": {
+      "comment": "닉네임 확인 중",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "닉네임 확인 중..." } },
+        "en": { "stringUnit": { "state": "translated", "value": "Checking nickname..." } }
+      }
+    },
+    "profile.nickname.available": {
+      "comment": "사용 가능한 닉네임",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "사용 가능한 닉네임이에요" } },
+        "en": { "stringUnit": { "state": "translated", "value": "This nickname is available" } }
+      }
+    },
+    "profile.selectPhoto": {
+      "comment": "사진 선택 버튼",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "사진 선택" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Select Photo" } }
+      }
+    },
+    "personal.empty.today": {
+      "comment": "오늘 일정 없음",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "오늘 일정이 없어요\n여유로운 하루를 보내세요" } },
+        "en": { "stringUnit": { "state": "translated", "value": "No events today\nEnjoy your day" } }
+      }
+    },
+    "personal.empty.future": {
+      "comment": "예정 일정 없음",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "예정된 일정이 없어요\n+ 버튼으로 새 일정을 만들어보세요" } },
+        "en": { "stringUnit": { "state": "translated", "value": "No upcoming events\nTap + to create one" } }
+      }
+    },
+    "personal.empty.all": {
+      "comment": "전체 일정 없음",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "아직 일정이 없어요\n+ 버튼으로 새 일정을 만들어보세요" } },
+        "en": { "stringUnit": { "state": "translated", "value": "No events yet\nTap + to create one" } }
+      }
+    },
+    "personal.empty.past": {
+      "comment": "지난 일정 없음",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "지난 일정이 없어요" } },
+        "en": { "stringUnit": { "state": "translated", "value": "No past events" } }
+      }
+    },
+    "personal.event.viewDetail": {
+      "comment": "상세 보기",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "상세 보기" } },
+        "en": { "stringUnit": { "state": "translated", "value": "View Details" } }
+      }
+    },
+    "personal.event.photoCount": {
+      "comment": "사진 개수",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "사진 %lld장" } },
+        "en": { "stringUnit": { "state": "translated", "value": "%lld photos" } }
+      }
+    },
+    "personal.event.reminderSent": {
+      "comment": "알림 완료",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "알림 완료" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Reminded" } }
+      }
+    },
+    "personal.event.reminderHours": {
+      "comment": "시간 전 알림",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "%lld시간 전 알림" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Reminder %lld hours before" } }
+      }
+    },
+    "personal.event.reminderMinutes": {
+      "comment": "분 전 알림",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "%lld분 전 알림" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Reminder %lld minutes before" } }
+      }
+    },
+    "personal.event.status.ended": {
+      "comment": "일정 종료",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "종료" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Ended" } }
+      }
+    },
+    "personal.event.status.today": {
+      "comment": "오늘 일정",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "오늘" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Today" } }
+      }
+    },
+    "personal.event.status.upcoming": {
+      "comment": "예정 일정",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "예정" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Upcoming" } }
+      }
+    },
+    "personal.filter.today": {
+      "comment": "필터 - 오늘",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "오늘" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Today" } }
+      }
+    },
+    "personal.filter.future": {
+      "comment": "필터 - 미래",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "미래" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Future" } }
+      }
+    },
+    "personal.filter.all": {
+      "comment": "필터 - 전체",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "전체" } },
+        "en": { "stringUnit": { "state": "translated", "value": "All" } }
+      }
+    },
+    "personal.filter.past": {
+      "comment": "필터 - 과거",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "과거" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Past" } }
+      }
     }
   }
 }

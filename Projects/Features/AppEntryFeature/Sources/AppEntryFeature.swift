@@ -520,8 +520,8 @@ extension AppEntry {
     // MARK: - Alert Strings
 
     private enum AlertStrings {
-      static let forceUpdateTitle = "업데이트 필요"
-      static let recommendUpdateTitle = "새 버전 안내"
+      static let forceUpdateTitle = LocalizedStrings.AppEntry.forceUpdateTitle
+      static let recommendUpdateTitle = LocalizedStrings.AppEntry.recommendUpdateTitle
 
       static func forceUpdateMessage(current: String, required: String) -> String {
         "앱을 계속 사용하려면 최신 버전으로 업데이트해주세요.\n\n현재 버전: \(current)\n필요 버전: \(required)"
@@ -561,11 +561,11 @@ extension AppEntry {
         ),
         presenting: store.updateAlert
       ) { alertState in
-        Button("업데이트") {
+        Button(LocalizedStrings.AppEntry.updateAction) {
           store.send(.updateAlert(.updateTapped))
         }
         if case .recommendUpdate = alertState {
-          Button("나중에", role: .cancel) {
+          Button(LocalizedStrings.AppEntry.updateLater, role: .cancel) {
             store.send(.updateAlert(.laterTapped))
           }
         }

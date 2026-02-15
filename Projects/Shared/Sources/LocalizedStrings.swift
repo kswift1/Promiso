@@ -49,6 +49,19 @@ public enum LocalizedStrings {
     public static let loginSuccess = String(localized: "auth.success.login", bundle: LocalizedStrings.bundle)
     public static let signupSuccess = String(localized: "auth.success.signup", bundle: LocalizedStrings.bundle)
     public static let logoutSuccess = String(localized: "auth.success.logout", bundle: LocalizedStrings.bundle)
+
+    // Login Request
+    public static let loginRequestFailed = String(localized: "auth.error.loginRequestFailed", bundle: LocalizedStrings.bundle)
+
+    // Hero Text
+    public static let heroPromisesWord = String(localized: "auth.hero.promisesWord", bundle: LocalizedStrings.bundle)
+    public static let heroMoreSpecial = String(localized: "auth.hero.moreSpecial", bundle: LocalizedStrings.bundle)
+    public static let heroPreciousMoments = String(localized: "auth.hero.preciousMoments", bundle: LocalizedStrings.bundle)
+    public static let heroWithPromiso = String(localized: "auth.hero.withPromiso", bundle: LocalizedStrings.bundle)
+
+    // Social Login
+    public static let continueWithApple = String(localized: "auth.continueWithApple", bundle: LocalizedStrings.bundle)
+    public static let continueWithGoogle = String(localized: "auth.continueWithGoogle", bundle: LocalizedStrings.bundle)
   }
 
   // MARK: - Promises
@@ -174,6 +187,86 @@ public enum LocalizedStrings {
     public static let promise = String(localized: "tab.promise", bundle: LocalizedStrings.bundle)
     public static let calendar = String(localized: "tab.calendar", bundle: LocalizedStrings.bundle)
     public static let group = String(localized: "tab.group", bundle: LocalizedStrings.bundle)
+  }
+
+  // MARK: - Notification
+  public enum Notification {
+    public static let title = String(localized: "notification.title", bundle: LocalizedStrings.bundle)
+    public static let markAllAsRead = String(localized: "notification.markAllAsRead", bundle: LocalizedStrings.bundle)
+    public static let selectAll = String(localized: "notification.selectAll", bundle: LocalizedStrings.bundle)
+    public static func selectedCount(_ count: Int) -> String {
+      String(localized: "notification.selectedCount", bundle: LocalizedStrings.bundle)
+        .replacingOccurrences(of: "%lld", with: "\(count)")
+    }
+    public static let emptyTitle = String(localized: "notification.empty.title", bundle: LocalizedStrings.bundle)
+    public static let emptySubtitle = String(localized: "notification.empty.subtitle", bundle: LocalizedStrings.bundle)
+    public static let loadFailed = String(localized: "notification.error.loadFailed", bundle: LocalizedStrings.bundle)
+    public static let filterAll = String(localized: "notification.filter.all", bundle: LocalizedStrings.bundle)
+    public static let filterUnread = String(localized: "notification.filter.unread", bundle: LocalizedStrings.bundle)
+  }
+
+  // MARK: - Onboarding
+  public enum Onboarding {
+    public static let start = String(localized: "onboarding.start", bundle: LocalizedStrings.bundle)
+    public static let readyTitle = String(localized: "onboarding.ready.title", bundle: LocalizedStrings.bundle)
+    public static let readySubtitle = String(localized: "onboarding.ready.subtitle", bundle: LocalizedStrings.bundle)
+    public static let readyDescription = String(localized: "onboarding.ready.description", bundle: LocalizedStrings.bundle)
+    public static let hasInviteCode = String(localized: "onboarding.hasInviteCode", bundle: LocalizedStrings.bundle)
+    public static let skipForNow = String(localized: "onboarding.skipForNow", bundle: LocalizedStrings.bundle)
+    public static let laterHint = String(localized: "onboarding.laterHint", bundle: LocalizedStrings.bundle)
+  }
+
+  // MARK: - AppEntry
+  public enum AppEntry {
+    public static let forceUpdateTitle = String(localized: "appEntry.update.forceTitle", bundle: LocalizedStrings.bundle)
+    public static let recommendUpdateTitle = String(localized: "appEntry.update.recommendTitle", bundle: LocalizedStrings.bundle)
+    public static let updateAction = String(localized: "appEntry.update.action", bundle: LocalizedStrings.bundle)
+    public static let updateLater = String(localized: "appEntry.update.later", bundle: LocalizedStrings.bundle)
+  }
+
+  // MARK: - Profile
+  public enum Profile {
+    public static let nicknameCheckRequired = String(localized: "profile.error.nicknameCheckRequired", bundle: LocalizedStrings.bundle)
+    public static let nicknameTaken = String(localized: "profile.error.nicknameTaken", bundle: LocalizedStrings.bundle)
+    public static let nicknameCheckFailed = String(localized: "profile.error.nicknameCheckFailed", bundle: LocalizedStrings.bundle)
+    public static let saveFailed = String(localized: "profile.error.saveFailed", bundle: LocalizedStrings.bundle)
+    public static let setupTitle1 = String(localized: "profile.setup.title1", bundle: LocalizedStrings.bundle)
+    public static let setupTitle2 = String(localized: "profile.setup.title2", bundle: LocalizedStrings.bundle)
+    public static let nickname = String(localized: "profile.nickname", bundle: LocalizedStrings.bundle)
+    public static let nicknamePlaceholder = String(localized: "profile.nickname.placeholder", bundle: LocalizedStrings.bundle)
+    public static let saving = String(localized: "profile.saving", bundle: LocalizedStrings.bundle)
+    public static let nicknameChecking = String(localized: "profile.nickname.checking", bundle: LocalizedStrings.bundle)
+    public static let nicknameAvailable = String(localized: "profile.nickname.available", bundle: LocalizedStrings.bundle)
+    public static let selectPhoto = String(localized: "profile.selectPhoto", bundle: LocalizedStrings.bundle)
+  }
+
+  // MARK: - Personal
+  public enum Personal {
+    public static let emptyToday = String(localized: "personal.empty.today", bundle: LocalizedStrings.bundle)
+    public static let emptyFuture = String(localized: "personal.empty.future", bundle: LocalizedStrings.bundle)
+    public static let emptyAll = String(localized: "personal.empty.all", bundle: LocalizedStrings.bundle)
+    public static let emptyPast = String(localized: "personal.empty.past", bundle: LocalizedStrings.bundle)
+    public static let viewDetail = String(localized: "personal.event.viewDetail", bundle: LocalizedStrings.bundle)
+    public static func photoCount(_ count: Int) -> String {
+      String(localized: "personal.event.photoCount", bundle: LocalizedStrings.bundle)
+        .replacingOccurrences(of: "%lld", with: "\(count)")
+    }
+    public static let reminderSent = String(localized: "personal.event.reminderSent", bundle: LocalizedStrings.bundle)
+    public static func reminderHours(_ hours: Int) -> String {
+      String(localized: "personal.event.reminderHours", bundle: LocalizedStrings.bundle)
+        .replacingOccurrences(of: "%lld", with: "\(hours)")
+    }
+    public static func reminderMinutes(_ minutes: Int) -> String {
+      String(localized: "personal.event.reminderMinutes", bundle: LocalizedStrings.bundle)
+        .replacingOccurrences(of: "%lld", with: "\(minutes)")
+    }
+    public static let statusEnded = String(localized: "personal.event.status.ended", bundle: LocalizedStrings.bundle)
+    public static let statusToday = String(localized: "personal.event.status.today", bundle: LocalizedStrings.bundle)
+    public static let statusUpcoming = String(localized: "personal.event.status.upcoming", bundle: LocalizedStrings.bundle)
+    public static let filterToday = String(localized: "personal.filter.today", bundle: LocalizedStrings.bundle)
+    public static let filterFuture = String(localized: "personal.filter.future", bundle: LocalizedStrings.bundle)
+    public static let filterAll = String(localized: "personal.filter.all", bundle: LocalizedStrings.bundle)
+    public static let filterPast = String(localized: "personal.filter.past", bundle: LocalizedStrings.bundle)
   }
 }
 
