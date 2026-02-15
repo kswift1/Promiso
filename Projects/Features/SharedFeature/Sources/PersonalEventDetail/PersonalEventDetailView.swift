@@ -111,7 +111,7 @@ extension PersonalEventDetail {
 
     private var statusColor: Color {
       if store.event.isOngoing { return .green }
-      if store.event.isPast { return Color(UIColor.systemGray) }
+      if store.event.isPast { return Color.pmgray.n500 }
       let calendar = Calendar.current
       if calendar.isDateInToday(store.event.startAt) { return .orange }
       return Color.pmindigo.n500
