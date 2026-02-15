@@ -11,8 +11,10 @@ public enum LiveActivityImageStore {
 
   // MARK: - Constants
 
-  /// App Group Identifier (Entitlements 파일과 일치)
-  private static let appGroupIdentifier = "group.com.promiso.shared"
+  /// App Group Identifier (현재 환경의 Entitlements 값과 일치)
+  private static var appGroupIdentifier: String {
+    LiveActivityIntentKey.suiteName
+  }
 
   /// 이미지 저장 디렉토리명
   private static let imageDirectoryName = "LiveActivityImages"
