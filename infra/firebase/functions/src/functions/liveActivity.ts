@@ -741,7 +741,7 @@ export const executeLiveActivityStart = onTaskDispatched<
     secrets: [APNS_KEY_ID, APNS_TEAM_ID, APNS_AUTH_KEY],
   },
   async (req) => {
-    const {promiseId} = req.data;
+    const {promiseId, scheduledAt} = req.data;
     console.log(`⏰ Scheduled LiveActivity start: ${promiseId}`);
 
     const db = admin.firestore();
@@ -770,6 +770,21 @@ export const executeLiveActivityStart = onTaskDispatched<
     const minParticipants = promiseData.minimumParticipants as number || 2;
     const trackingMinutes =
       (promiseData.trackingStartMinutesBefore as number) || 30;
+
+    // stale task 감지: 예약 시간이 다르면 스킵
+    const scheduledAtTs =
+      promiseData.liveActivityScheduledAt as
+        admin.firestore.Timestamp;
+    const storedScheduledAt = scheduledAtTs
+      ?.toDate()
+      .toISOString();
+
+    if (!scheduledAt || storedScheduledAt !== scheduledAt) {
+      console.log(
+        `⏭️ Stale LiveActivity task, skipping: ${promiseId}`
+      );
+      return;
+    }
 
     // 2. 그룹 정보 조회
     const groupsCollection = db.collection("groups");
@@ -1098,7 +1113,17 @@ export const onPromiseConfirmedScheduleLiveActivity = onDocumentUpdated(
       return;
     }
 
-    const shouldSchedule = justConfirmed || trackingEnabledOnConfirmed;
+    // 시작 시간 변경 확인
+    const beforeStartAt = before.startAt as admin.firestore.Timestamp;
+    const afterStartAt = after.startAt as admin.firestore.Timestamp;
+    const startAtChanged =
+      beforeStartAt?.toMillis() !== afterStartAt?.toMillis();
+    const rescheduleOnTimeChange =
+      isNowConfirmed && startAtChanged && afterTrackingMinutes !== null;
+
+    const shouldSchedule = justConfirmed ||
+      trackingEnabledOnConfirmed ||
+      rescheduleOnTimeChange;
 
     if (!shouldSchedule) {
       return;
@@ -1149,7 +1174,7 @@ export const onPromiseConfirmedScheduleLiveActivity = onDocumentUpdated(
     );
 
     await queue.enqueue(
-      {promiseId},
+      {promiseId, scheduledAt: scheduleTime.toISOString()},
       {scheduleDelaySeconds: delaySeconds}
     );
 

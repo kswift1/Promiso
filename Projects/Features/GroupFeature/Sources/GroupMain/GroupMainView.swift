@@ -46,7 +46,10 @@ extension GroupMain {
       .fullScreenCover(
         store: store.scope(state: \.$createPromise, action: \.createPromise)
       ) { childStore in
-        CreatePromise.RootView(store: childStore)
+        NavigationStack {
+          CreatePromise.RootView(store: childStore)
+        }
+        .toolbar(.hidden, for: .navigationBar)
       }
       .fullScreenCover(
         store: store.scope(state: \.$createGroup, action: \.createGroup)

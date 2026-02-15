@@ -51,16 +51,6 @@ extension CreatePersonalEvent {
             }
           }
 
-          ToolbarItemGroup(placement: .keyboard) {
-            Spacer()
-            Button {
-              UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-            } label: {
-              Image(systemName: "keyboard.chevron.compact.down")
-                .foregroundStyle(Color.pmtext.secondary)
-            }
-          }
-
           ToolbarItem(placement: .confirmationAction) {
             if store.isSaving {
               ProgressView()
@@ -73,6 +63,7 @@ extension CreatePersonalEvent {
             }
           }
         }
+        .keyboardDismissToolbar()
       }
       .alert(
         "오류",

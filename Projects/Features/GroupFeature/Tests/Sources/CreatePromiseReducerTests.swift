@@ -46,7 +46,7 @@ struct CreatePromiseReducerTests {
     #expect(state.isCreatingPromise == false)
     #expect(state.creationError == nil)
     #expect(state.isEmojiLoading == false)
-    #expect(state.useLocation == true)
+    #expect(state.useLocation == false)
     #expect(state.showLiveActivityInfo == false)
   }
 

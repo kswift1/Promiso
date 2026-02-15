@@ -7,6 +7,7 @@
 
 import PhotosUI
 import _PhotosUI_SwiftUI
+import PromisoShared
 
 // TODO: LiveActivity 활성화 선택 화면 추가, 지도 추가
 public enum CreatePromise {
@@ -47,7 +48,7 @@ public enum CreatePromise {
       var hasSeenLiveActivityInfo: Bool = true  // 기본 true (로드 전까지 팝업 안 띄움)
 
       // 장소 사용 여부 (토글 상태)
-      var useLocation: Bool = true
+      var useLocation: Bool = false
 
       // 이미지 첨부
       var localImageData: [Data] = []
@@ -67,7 +68,7 @@ public enum CreatePromise {
         isEmojiLoading: Bool = false,
         showLiveActivityInfo: Bool = false,
         hasSeenLiveActivityInfo: Bool = true,
-        useLocation: Bool = true,
+        useLocation: Bool = false,
         locationPicker: LocationPicker.Feature.State? = nil
       ) {
         self.currentStep = currentStep
@@ -558,6 +559,7 @@ extension CreatePromise {
         }
         .frame(height: geometry.size.height)
       }
+      .keyboardDismissToolbar(iconColor: .secondary)
       .ignoresSafeArea(.keyboard, edges: .bottom)
       .onAppear {
         store.send(.view(.onAppear))
