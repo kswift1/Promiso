@@ -174,12 +174,13 @@ struct ToastModifier: ViewModifier {
       .overlay(alignment: position == .top ? .top : .bottom) {
         if let message {
           toastView(for: message)
+            .contentShape(Rectangle())
             .transition(
               .move(edge: position == .top ? .top : .bottom)
               .combined(with: .opacity)
             )
             .offset(y: dragOffset)
-            .gesture(dismissGesture)
+            .simultaneousGesture(dismissGesture)
             .padding(.horizontal, 16)
             .padding(position == .top ? .top : .bottom, 8)
             .accessibilityElement(children: .combine)
