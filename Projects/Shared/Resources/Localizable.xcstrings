@@ -1,0 +1,797 @@
+{
+  "sourceLanguage": "ko",
+  "version": "1.0",
+  "strings": {
+    "common.ok": {
+      "comment": "OK 버튼",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "확인" } },
+        "en": { "stringUnit": { "state": "translated", "value": "OK" } }
+      }
+    },
+    "common.cancel": {
+      "comment": "취소 버튼",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "취소" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Cancel" } }
+      }
+    },
+    "common.save": {
+      "comment": "저장 버튼",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "저장" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Save" } }
+      }
+    },
+    "common.delete": {
+      "comment": "삭제 버튼",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "삭제" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Delete" } }
+      }
+    },
+    "common.edit": {
+      "comment": "편집 버튼",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "편집" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Edit" } }
+      }
+    },
+    "common.done": {
+      "comment": "완료 버튼",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "완료" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Done" } }
+      }
+    },
+    "common.next": {
+      "comment": "다음 버튼",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "다음" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Next" } }
+      }
+    },
+    "common.back": {
+      "comment": "뒤로 버튼",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "뒤로" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Back" } }
+      }
+    },
+    "common.confirm": {
+      "comment": "확인 버튼",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "확인" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Confirm" } }
+      }
+    },
+    "common.retry": {
+      "comment": "재시도 버튼",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "재시도" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Retry" } }
+      }
+    },
+    "common.loading": {
+      "comment": "로딩 중",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "로딩 중" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Loading" } }
+      }
+    },
+    "common.error": {
+      "comment": "오류",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "오류" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Error" } }
+      }
+    },
+    "common.success": {
+      "comment": "성공",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "성공" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Success" } }
+      }
+    },
+    "common.warning": {
+      "comment": "경고",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "경고" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Warning" } }
+      }
+    },
+    "common.info": {
+      "comment": "정보",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "정보" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Info" } }
+      }
+    },
+    "auth.login": {
+      "comment": "로그인",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "로그인" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Log In" } }
+      }
+    },
+    "auth.logout": {
+      "comment": "로그아웃",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "로그아웃" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Log Out" } }
+      }
+    },
+    "auth.signup": {
+      "comment": "회원가입",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "회원가입" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Sign Up" } }
+      }
+    },
+    "auth.email": {
+      "comment": "이메일",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "이메일" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Email" } }
+      }
+    },
+    "auth.password": {
+      "comment": "비밀번호",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "비밀번호" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Password" } }
+      }
+    },
+    "auth.confirmPassword": {
+      "comment": "비밀번호 확인",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "비밀번호 확인" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Confirm Password" } }
+      }
+    },
+    "auth.name": {
+      "comment": "이름",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "이름" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Name" } }
+      }
+    },
+    "auth.phoneNumber": {
+      "comment": "전화번호",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "전화번호" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Phone Number" } }
+      }
+    },
+    "auth.forgotPassword": {
+      "comment": "비밀번호를 잊으셨나요?",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "비밀번호를 잊으셨나요?" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Forgot Password?" } }
+      }
+    },
+    "auth.error.invalidEmail": {
+      "comment": "올바른 이메일 형식이 아닙니다",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "올바른 이메일 형식이 아닙니다" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Invalid email format" } }
+      }
+    },
+    "auth.error.invalidPassword": {
+      "comment": "비밀번호는 8자 이상이어야 합니다",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "비밀번호는 8자 이상이어야 합니다" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Password must be at least 8 characters" } }
+      }
+    },
+    "auth.error.passwordMismatch": {
+      "comment": "비밀번호가 일치하지 않습니다",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "비밀번호가 일치하지 않습니다" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Passwords do not match" } }
+      }
+    },
+    "auth.error.loginFailed": {
+      "comment": "로그인에 실패했습니다",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "로그인에 실패했습니다" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Login failed" } }
+      }
+    },
+    "auth.error.signupFailed": {
+      "comment": "회원가입에 실패했습니다",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "회원가입에 실패했습니다" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Sign up failed" } }
+      }
+    },
+    "auth.success.login": {
+      "comment": "로그인되었습니다",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "로그인되었습니다" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Logged in successfully" } }
+      }
+    },
+    "auth.success.signup": {
+      "comment": "회원가입이 완료되었습니다",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "회원가입이 완료되었습니다" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Sign up completed" } }
+      }
+    },
+    "auth.success.logout": {
+      "comment": "로그아웃되었습니다",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "로그아웃되었습니다" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Logged out successfully" } }
+      }
+    },
+    "promise.promise": {
+      "comment": "약속",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "약속" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Promise" } }
+      }
+    },
+    "promise.promises": {
+      "comment": "약속들",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "약속들" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Promises" } }
+      }
+    },
+    "promise.create": {
+      "comment": "약속 만들기",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "약속 만들기" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Create Promise" } }
+      }
+    },
+    "promise.edit": {
+      "comment": "약속 편집",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "약속 편집" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Edit Promise" } }
+      }
+    },
+    "promise.delete": {
+      "comment": "약속 삭제",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "약속 삭제" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Delete Promise" } }
+      }
+    },
+    "promise.join": {
+      "comment": "약속 참가",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "약속 참가" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Join Promise" } }
+      }
+    },
+    "promise.leave": {
+      "comment": "약속 나가기",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "약속 나가기" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Leave Promise" } }
+      }
+    },
+    "promise.complete": {
+      "comment": "약속 완료",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "약속 완료" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Complete Promise" } }
+      }
+    },
+    "promise.cancel": {
+      "comment": "약속 취소",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "약속 취소" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Cancel Promise" } }
+      }
+    },
+    "promise.title": {
+      "comment": "제목",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "제목" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Title" } }
+      }
+    },
+    "promise.description": {
+      "comment": "설명",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "설명" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Description" } }
+      }
+    },
+    "promise.location": {
+      "comment": "장소",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "장소" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Location" } }
+      }
+    },
+    "promise.dateTime": {
+      "comment": "날짜 및 시간",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "날짜 및 시간" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Date & Time" } }
+      }
+    },
+    "promise.participants": {
+      "comment": "참가자",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "참가자" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Participants" } }
+      }
+    },
+    "promise.status.scheduled": {
+      "comment": "예정됨",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "예정됨" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Scheduled" } }
+      }
+    },
+    "promise.status.ongoing": {
+      "comment": "진행 중",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "진행 중" } },
+        "en": { "stringUnit": { "state": "translated", "value": "In Progress" } }
+      }
+    },
+    "promise.status.completed": {
+      "comment": "완료됨",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "완료됨" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Completed" } }
+      }
+    },
+    "promise.status.missed": {
+      "comment": "놓침",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "놓침" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Missed" } }
+      }
+    },
+    "promise.status.cancelled": {
+      "comment": "취소됨",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "취소됨" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Cancelled" } }
+      }
+    },
+    "promise.priority.low": {
+      "comment": "낮음",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "낮음" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Low" } }
+      }
+    },
+    "promise.priority.normal": {
+      "comment": "보통",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "보통" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Normal" } }
+      }
+    },
+    "promise.priority.high": {
+      "comment": "높음",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "높음" } },
+        "en": { "stringUnit": { "state": "translated", "value": "High" } }
+      }
+    },
+    "promise.priority.urgent": {
+      "comment": "긴급",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "긴급" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Urgent" } }
+      }
+    },
+    "promise.empty.title": {
+      "comment": "약속이 없습니다",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "약속이 없습니다" } },
+        "en": { "stringUnit": { "state": "translated", "value": "No promises" } }
+      }
+    },
+    "promise.empty.subtitle": {
+      "comment": "새로운 약속을 만들어보세요",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "새로운 약속을 만들어보세요" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Create a new promise" } }
+      }
+    },
+    "promise.empty.action": {
+      "comment": "첫 번째 약속 만들기",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "첫 번째 약속 만들기" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Create your first promise" } }
+      }
+    },
+    "promise.success.create": {
+      "comment": "약속이 생성되었습니다",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "약속이 생성되었습니다" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Promise created" } }
+      }
+    },
+    "promise.success.update": {
+      "comment": "약속이 수정되었습니다",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "약속이 수정되었습니다" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Promise updated" } }
+      }
+    },
+    "promise.success.delete": {
+      "comment": "약속이 삭제되었습니다",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "약속이 삭제되었습니다" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Promise deleted" } }
+      }
+    },
+    "promise.success.join": {
+      "comment": "약속에 참가했습니다",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "약속에 참가했습니다" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Joined the promise" } }
+      }
+    },
+    "promise.success.leave": {
+      "comment": "약속에서 나왔습니다",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "약속에서 나왔습니다" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Left the promise" } }
+      }
+    },
+    "promise.success.complete": {
+      "comment": "약속을 완료했습니다",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "약속을 완료했습니다" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Promise completed" } }
+      }
+    },
+    "group.group": {
+      "comment": "그룹",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "그룹" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Group" } }
+      }
+    },
+    "group.groups": {
+      "comment": "그룹들",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "그룹들" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Groups" } }
+      }
+    },
+    "group.create": {
+      "comment": "그룹 만들기",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "그룹 만들기" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Create Group" } }
+      }
+    },
+    "group.edit": {
+      "comment": "그룹 편집",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "그룹 편집" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Edit Group" } }
+      }
+    },
+    "group.delete": {
+      "comment": "그룹 삭제",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "그룹 삭제" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Delete Group" } }
+      }
+    },
+    "group.join": {
+      "comment": "그룹 가입",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "그룹 가입" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Join Group" } }
+      }
+    },
+    "group.leave": {
+      "comment": "그룹 나가기",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "그룹 나가기" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Leave Group" } }
+      }
+    },
+    "group.name": {
+      "comment": "그룹 이름",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "그룹 이름" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Group Name" } }
+      }
+    },
+    "group.description": {
+      "comment": "그룹 설명",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "그룹 설명" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Group Description" } }
+      }
+    },
+    "group.members": {
+      "comment": "멤버",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "멤버" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Members" } }
+      }
+    },
+    "group.inviteCode": {
+      "comment": "초대 코드",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "초대 코드" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Invite Code" } }
+      }
+    },
+    "group.inviteMembers": {
+      "comment": "멤버 초대",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "멤버 초대" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Invite Members" } }
+      }
+    },
+    "group.role.owner": {
+      "comment": "소유자",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "소유자" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Owner" } }
+      }
+    },
+    "group.role.admin": {
+      "comment": "관리자",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "관리자" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Admin" } }
+      }
+    },
+    "group.role.moderator": {
+      "comment": "모더레이터",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "모더레이터" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Moderator" } }
+      }
+    },
+    "group.role.member": {
+      "comment": "멤버",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "멤버" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Member" } }
+      }
+    },
+    "group.empty.title": {
+      "comment": "가입한 그룹이 없습니다",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "가입한 그룹이 없습니다" } },
+        "en": { "stringUnit": { "state": "translated", "value": "No groups joined" } }
+      }
+    },
+    "group.empty.subtitle": {
+      "comment": "새로운 그룹을 만들거나 기존 그룹에 가입해보세요",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "새로운 그룹을 만들거나 기존 그룹에 가입해보세요" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Create a new group or join an existing one" } }
+      }
+    },
+    "group.empty.action": {
+      "comment": "첫 번째 그룹 만들기",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "첫 번째 그룹 만들기" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Create your first group" } }
+      }
+    },
+    "group.success.create": {
+      "comment": "그룹이 생성되었습니다",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "그룹이 생성되었습니다" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Group created" } }
+      }
+    },
+    "group.success.join": {
+      "comment": "그룹에 가입했습니다",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "그룹에 가입했습니다" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Joined the group" } }
+      }
+    },
+    "group.success.leave": {
+      "comment": "그룹에서 나왔습니다",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "그룹에서 나왔습니다" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Left the group" } }
+      }
+    },
+    "settings.settings": {
+      "comment": "설정",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "설정" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Settings" } }
+      }
+    },
+    "settings.profile": {
+      "comment": "프로필",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "프로필" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Profile" } }
+      }
+    },
+    "settings.notifications": {
+      "comment": "알림",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "알림" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Notifications" } }
+      }
+    },
+    "settings.privacy": {
+      "comment": "개인정보",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "개인정보" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Privacy" } }
+      }
+    },
+    "settings.about": {
+      "comment": "앱 정보",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "앱 정보" } },
+        "en": { "stringUnit": { "state": "translated", "value": "About" } }
+      }
+    },
+    "settings.help": {
+      "comment": "도움말",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "도움말" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Help" } }
+      }
+    },
+    "settings.contact": {
+      "comment": "문의하기",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "문의하기" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Contact Us" } }
+      }
+    },
+    "settings.theme": {
+      "comment": "테마",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "테마" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Theme" } }
+      }
+    },
+    "settings.theme.light": {
+      "comment": "라이트 모드",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "라이트 모드" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Light Mode" } }
+      }
+    },
+    "settings.theme.dark": {
+      "comment": "다크 모드",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "다크 모드" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Dark Mode" } }
+      }
+    },
+    "settings.theme.system": {
+      "comment": "시스템 설정",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "시스템 설정" } },
+        "en": { "stringUnit": { "state": "translated", "value": "System" } }
+      }
+    },
+    "settings.language": {
+      "comment": "언어",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "언어" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Language" } }
+      }
+    },
+    "settings.notifications.push": {
+      "comment": "푸시 알림",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "푸시 알림" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Push Notifications" } }
+      }
+    },
+    "settings.notifications.email": {
+      "comment": "이메일 알림",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "이메일 알림" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Email Notifications" } }
+      }
+    },
+    "settings.success.save": {
+      "comment": "설정이 저장되었습니다",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "설정이 저장되었습니다" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Settings saved" } }
+      }
+    },
+    "settings.success.update": {
+      "comment": "정보가 업데이트되었습니다",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "정보가 업데이트되었습니다" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Information updated" } }
+      }
+    },
+    "error.network": {
+      "comment": "네트워크 연결을 확인해주세요",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "네트워크 연결을 확인해주세요" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Please check your network connection" } }
+      }
+    },
+    "error.unknown": {
+      "comment": "알 수 없는 오류가 발생했습니다",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "알 수 없는 오류가 발생했습니다" } },
+        "en": { "stringUnit": { "state": "translated", "value": "An unknown error occurred" } }
+      }
+    },
+    "error.server": {
+      "comment": "서버 오류가 발생했습니다",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "서버 오류가 발생했습니다" } },
+        "en": { "stringUnit": { "state": "translated", "value": "A server error occurred" } }
+      }
+    },
+    "error.timeout": {
+      "comment": "요청 시간이 초과되었습니다",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "요청 시간이 초과되었습니다" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Request timed out" } }
+      }
+    },
+    "error.validation": {
+      "comment": "입력 정보를 확인해주세요",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "입력 정보를 확인해주세요" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Please check your input" } }
+      }
+    },
+    "error.permission": {
+      "comment": "권한이 없습니다",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "권한이 없습니다" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Permission denied" } }
+      }
+    },
+    "error.notFound": {
+      "comment": "요청한 정보를 찾을 수 없습니다",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "요청한 정보를 찾을 수 없습니다" } },
+        "en": { "stringUnit": { "state": "translated", "value": "The requested information was not found" } }
+      }
+    },
+    "tab.home": {
+      "comment": "홈",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "홈" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Home" } }
+      }
+    },
+    "tab.promise": {
+      "comment": "약속",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "약속" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Promise" } }
+      }
+    },
+    "tab.calendar": {
+      "comment": "달력",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "달력" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Calendar" } }
+      }
+    },
+    "tab.group": {
+      "comment": "그룹",
+      "localizations": {
+        "ko": { "stringUnit": { "state": "translated", "value": "그룹" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Group" } }
+      }
+    }
+  }
+}
