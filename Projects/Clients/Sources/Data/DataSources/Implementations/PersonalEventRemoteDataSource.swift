@@ -74,12 +74,13 @@ public class PersonalEventRemoteDataSource: PersonalEventRemoteDataSourceProtoco
 
   // MARK: - Query Operations
 
-  /// 활성 일정 조회 (startAt >= now, 시간순)
+  /// 활성 일정 조회 (오늘 시작 이후, 시간순)
   public func getActiveEvents(limit: Int) async throws -> [PersonalEventModel] {
     let collection = try eventsCollection()
+    let startOfToday = Calendar.current.startOfDay(for: Date())
 
     let query = collection
-      .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: Date()))
+      .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: startOfToday))
       .order(by: "startAt")
       .limit(to: limit)
 
