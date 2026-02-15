@@ -5,6 +5,21 @@ AI(Claude)가 서버 코드를 관리하며, iOS 개발자가 히스토리를 �
 
 ---
 
+## 2026-02-14
+
+### feat: ETA 공유 넛지 푸시 알림
+- **기능**: LiveActivity 시작 후 trackingMinutes/2 경과 시 FCM 넛지 알림 발송
+- **대상**: accepted 참가자 전원
+- **메시지**: 제목 "⏰ {약속명} X분 전!", 본문 "잘 오고 계신가요? 👋 잠금화면 또는 앱에서 실시간 도착 예정시간을 공유해주세요!"
+- **변경**:
+  - `NotificationType.LocationSharingReminder` 추가 (api.ts)
+  - `executeETASharingNudge` Cloud Task 핸들러 신규 (liveActivity.ts)
+  - `executeLiveActivityStart`에서 넛지 Task 예약 추가
+- **iOS 연동**: 변경 없음 (기존 FCM 수신 + 위젯 딥링크로 처리)
+- **도메인 규칙**: notification.md (N11), liveactivity.md (L17-L20)
+
+---
+
 ## 2026-01-21
 
 ### refactor: 도메인별 파일 분리
