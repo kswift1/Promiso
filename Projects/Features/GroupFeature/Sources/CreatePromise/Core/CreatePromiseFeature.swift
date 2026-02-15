@@ -7,6 +7,7 @@
 
 import PhotosUI
 import _PhotosUI_SwiftUI
+import PromisoShared
 
 // TODO: LiveActivity 활성화 선택 화면 추가, 지도 추가
 public enum CreatePromise {
@@ -558,17 +559,7 @@ extension CreatePromise {
         }
         .frame(height: geometry.size.height)
       }
-      .toolbar {
-        ToolbarItemGroup(placement: .keyboard) {
-          Spacer()
-          Button {
-            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-          } label: {
-            Image(systemName: "keyboard.chevron.compact.down")
-              .foregroundStyle(.secondary)
-          }
-        }
-      }
+      .keyboardDismissToolbar(iconColor: .secondary)
       .ignoresSafeArea(.keyboard, edges: .bottom)
       .onAppear {
         store.send(.view(.onAppear))
