@@ -525,38 +525,52 @@ extension CreatePromise {
     }
 
     public var body: some View {
-      GeometryReader { geometry in
-        VStack(spacing: 0) {
-          
-          // Progress Header
-          ProgressHeader(
-            currentStep: store.currentStep.rawValue,
-            totalSteps: CreatePromiseStep.allCases.count,
-            title: "약속 만들기"
-          ) {
-            store.send(.delegate(.dismiss))
-          }
-          
-          store.currentStep.contentView(store: store)
-          
-          Spacer()
-          
-          // Bottom Buttons (키보드에 가려지지 않도록 고정)
-          HStack(spacing: 12) {
-            store.currentStep.leftButton(store: store)
+      NavigationStack {
+        GeometryReader { geometry in
+          VStack(spacing: 0) {
             
-            store.currentStep.rightButton(store: store)
+            // Progress Header
+            ProgressHeader(
+              currentStep: store.currentStep.rawValue,
+              totalSteps: CreatePromiseStep.allCases.count,
+              title: "약속 만들기"
+            ) {
+              store.send(.delegate(.dismiss))
+            }
+            
+            store.currentStep.contentView(store: store)
+            
+            Spacer()
+            
+            // Bottom Buttons (키보드에 가려지지 않도록 고정)
+            HStack(spacing: 12) {
+              store.currentStep.leftButton(store: store)
+              
+              store.currentStep.rightButton(store: store)
+            }
+            .padding(16)
+            .background(Color(.systemBackground))
+            .overlay(
+              Rectangle()
+                .fill(Color(.systemGray5))
+                .frame(height: 1),
+              alignment: .top
+            )
           }
-          .padding(16)
-          .background(Color(.systemBackground))
-          .overlay(
-            Rectangle()
-              .fill(Color(.systemGray5))
-              .frame(height: 1),
-            alignment: .top
-          )
+          .frame(height: geometry.size.height)
         }
-        .frame(height: geometry.size.height)
+      }
+      .toolbar(.hidden, for: .navigationBar)
+      .toolbar {
+        ToolbarItemGroup(placement: .keyboard) {
+          Spacer()
+          Button {
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+          } label: {
+            Image(systemName: "keyboard.chevron.compact.down")
+              .foregroundStyle(.secondary)
+          }
+        }
       }
       .ignoresSafeArea(.keyboard, edges: .bottom)
       .onAppear {
