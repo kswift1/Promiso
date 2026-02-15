@@ -771,13 +771,18 @@ export const executeLiveActivityStart = onTaskDispatched<
     const trackingMinutes =
       (promiseData.trackingStartMinutesBefore as number) || 30;
 
-    // stale task 감지: 페이로드의 예약 시간과 DB의 예약 시간이 다르면 스킵
-    const storedScheduledAt = (promiseData.liveActivityScheduledAt as admin.firestore.Timestamp)
+    // stale task 감지: 예약 시간이 다르면 스킵
+    const scheduledAtTs =
+      promiseData.liveActivityScheduledAt as
+        admin.firestore.Timestamp;
+    const storedScheduledAt = scheduledAtTs
       ?.toDate()
       .toISOString();
 
     if (!scheduledAt || storedScheduledAt !== scheduledAt) {
-      console.log(`⏭️ Stale LiveActivity task detected, skipping: ${promiseId}`);
+      console.log(
+        `⏭️ Stale LiveActivity task, skipping: ${promiseId}`
+      );
       return;
     }
 
