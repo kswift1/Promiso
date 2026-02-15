@@ -220,6 +220,21 @@ public enum AppConstants {
     public static let appRestartRequested = NSNotification.Name("AppRestartRequested")
   }
 
+  // MARK: - Image Cache
+
+  public enum ImageCache {
+    /// 디스크 캐시 이름
+    public static let diskCacheName = "com.promiso.imageCache"
+    /// 디스크 캐시 최대 크기 (150MB)
+    public static let diskCacheSizeLimit: Int = 150 * 1024 * 1024
+    /// 메모리 캐시 최대 크기 (100MB)
+    public static let memoryCacheCostLimit: Int = 100 * 1024 * 1024
+    /// 메모리 캐시 최대 이미지 수
+    public static let memoryCacheCountLimit: Int = 200
+    /// Firebase URL 캐시 최대 엔트리 수
+    public static let urlCacheMaxEntries: Int = 500
+  }
+
   // MARK: - Time Intervals
 
   public enum TimeIntervals {

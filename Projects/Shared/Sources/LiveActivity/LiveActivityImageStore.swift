@@ -121,14 +121,42 @@ public enum LiveActivityImageStore {
     return image
   }
 
+  // MARK: - Cache Invalidation
+
+  /// 특정 사용자의 캐시된 프로필 이미지 삭제 (프로필 변경 시 호출)
+  ///
+  /// - Parameter userId: 삭제할 사용자 ID
+  public static func invalidateImage(userId: String) {
+    guard let directoryURL = imageDirectoryURL else { return }
+    let fileName = makeFileName(userId: userId)
+    let fileURL = directoryURL.appendingPathComponent(fileName)
+    try? FileManager.default.removeItem(at: fileURL)
+  }
+
+  /// 특정 사용자의 캐시된 이미지 존재 여부 확인
+  ///
+  /// - Parameter userId: 확인할 사용자 ID
+  /// - Returns: 캐시 존재 여부
+  public static func hasImage(userId: String) -> Bool {
+    guard let directoryURL = imageDirectoryURL else { return false }
+
+    let fileName = makeFileName(userId: userId)
+    let fileURL = directoryURL.appendingPathComponent(fileName)
+    return FileManager.default.fileExists(atPath: fileURL.path)
+  }
+
   // MARK: - Helpers
 
   /// 사용자 ID로 파일명 생성
   ///
+  /// Path traversal 방지를 위해 경로 구분자를 제거한다.
+  ///
   /// - Parameter userId: 사용자 ID
   /// - Returns: 파일명 (예: "profile-abc123.jpg")
   public static func makeFileName(userId: String) -> String {
-    "profile-\(userId).jpg"
+    let sanitized = userId.replacingOccurrences(of: "/", with: "")
+      .replacingOccurrences(of: "..", with: "")
+    return "profile-\(sanitized).jpg"
   }
 
   // MARK: - Debug

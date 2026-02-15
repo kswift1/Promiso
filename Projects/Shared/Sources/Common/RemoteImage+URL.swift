@@ -24,7 +24,7 @@ extension RemoteImage {
         await RemoteImageURLCache.shared.set(downloadURL, for: url)
         return downloadURL
       } catch {
-        print("Failed to get download URL for storage path: \(url), error: \(error)")
+        // Firebase Storage 다운로드 URL 변환 실패
         return nil
       }
     }
@@ -43,27 +43,69 @@ extension RemoteImage {
   }
 }
 
-private actor RemoteImageURLCache {
+actor RemoteImageURLCache {
   static let shared = RemoteImageURLCache()
 
   private struct CacheEntry {
     let url: URL
     let expiresAt: Date
+    var lastAccessedAt: Date
+
+    init(url: URL, expiresAt: Date, lastAccessedAt: Date = Date()) {
+      self.url = url
+      self.expiresAt = expiresAt
+      self.lastAccessedAt = lastAccessedAt
+    }
   }
 
   private var entries: [String: CacheEntry] = [:]
 
+  /// 현재 캐시 엔트리 수
+  var count: Int {
+    entries.count
+  }
+
   func url(for key: String) -> URL? {
-    guard let entry = entries[key] else { return nil }
+    guard var entry = entries[key] else { return nil }
     if entry.expiresAt <= Date() {
       entries[key] = nil
       return nil
     }
+    entry.lastAccessedAt = Date()
+    entries[key] = entry
     return entry.url
   }
 
   func set(_ url: URL, for key: String) {
     let expiresAt = Date().addingTimeInterval(AppConstants.TimeIntervals.cacheExpiry)
     entries[key] = CacheEntry(url: url, expiresAt: expiresAt)
+    evictIfNeeded()
+  }
+
+  /// 만료된 엔트리 일괄 삭제
+  ///
+  /// - Returns: 삭제된 엔트리 수
+  @discardableResult
+  func removeExpired() -> Int {
+    let now = Date()
+    let expiredKeys = entries.filter { $0.value.expiresAt <= now }.map(\.key)
+    for key in expiredKeys {
+      entries[key] = nil
+    }
+    return expiredKeys.count
+  }
+
+  // MARK: - Private
+
+  private func evictIfNeeded() {
+    let maxEntries = AppConstants.ImageCache.urlCacheMaxEntries
+    guard entries.count > maxEntries else { return }
+    let sortedKeys = entries
+      .sorted { $0.value.lastAccessedAt < $1.value.lastAccessedAt }
+      .prefix(entries.count - maxEntries)
+      .map(\.key)
+    for key in sortedKeys {
+      entries[key] = nil
+    }
   }
 }
