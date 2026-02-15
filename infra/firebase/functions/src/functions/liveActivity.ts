@@ -1270,8 +1270,8 @@ export const executeETASharingNudge = onTaskDispatched<
     }
 
     // 5. FCM 넛지 푸시 발송
-    const safeTitle = title.replace(/[<>&'"/]/g, "").slice(0, 100);
-
+    const safeTitle = title
+      .replace(/[<>&'"/]/g, "").slice(0, 100);
     await sendPushNotificationInternal({
       userIds: accepted,
       type: NotificationType.LocationSharingReminder,
