@@ -62,8 +62,8 @@ extension CreatePersonalEvent {
               .disabled(!store.canSave)
             }
           }
-        .keyboardDismissToolbar()
         }
+        .keyboardDismissToolbar()
       }
       .alert(
         "오류",
