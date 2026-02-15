@@ -226,8 +226,12 @@ extension PersonalMode {
 
           case .openEventFromDeeplink(let eventId):
             return .run { send in
-              if let event = try await personalEventClient.getEvent(eventId) {
-                await send(.view(.eventTapped(event)))
+              do {
+                if let event = try await personalEventClient.getEvent(eventId) {
+                  await send(.view(.eventTapped(event)))
+                }
+              } catch {
+                AppLogger.personal.error("딥링크 일정 조회 실패: \(error.localizedDescription)")
               }
             }
           }
