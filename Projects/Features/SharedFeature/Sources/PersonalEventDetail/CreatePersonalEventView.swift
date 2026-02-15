@@ -375,6 +375,14 @@ extension CreatePersonalEvent {
       .padding(.horizontal, 16)
       .padding(.vertical, 12)
       .adaptiveGlassCard()
+
+      if let warning = store.reminderWarning {
+        Text(warning)
+          .font(.pmCaption)
+          .foregroundStyle(.red)
+          .padding(.horizontal, 16)
+          .padding(.top, 4)
+      }
     }
 
     // MARK: - Description Section

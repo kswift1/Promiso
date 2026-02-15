@@ -50,6 +50,8 @@ extension CreatePersonalEvent {
       var errorMessage: String?
       /// 알림 권한 미허용 시 보류할 분 값
       var pendingReminderMinutes: Int?
+      /// 알림 시간 성립 불가 시 경고 메시지
+      var reminderWarning: String?
 
       @Presents var locationPicker: LocationPicker.Feature.State?
       @Presents var notificationPermission: NotificationPermission.Feature.State?
@@ -148,6 +150,16 @@ extension CreatePersonalEvent {
             if let endAt = state.event.endAt, endAt <= date {
               state.event.endAt = date.addingTimeInterval(3600)
             }
+            // 기존 알림 설정 재검증
+            if let minutes = state.event.reminderMinutesBefore {
+              let reminderDate = date.addingTimeInterval(-Double(minutes) * 60)
+              if reminderDate <= Date() {
+                state.reminderWarning = "일정 시작까지 남은 시간이 부족하여 알림을 설정할 수 없습니다"
+                state.event.reminderMinutesBefore = nil
+              } else {
+                state.reminderWarning = nil
+              }
+            }
             return .none
 
           case .endDateChanged(let date):
@@ -165,6 +177,15 @@ extension CreatePersonalEvent {
 
           case .reminderOptionSelected(let minutes):
             if let minutes {
+              // 알림 시간 성립 여부 검증
+              let reminderDate = state.event.startAt.addingTimeInterval(-Double(minutes) * 60)
+              if reminderDate <= Date() {
+                state.reminderWarning = "일정 시작까지 남은 시간이 부족하여 알림을 설정할 수 없습니다"
+                state.event.reminderMinutesBefore = nil
+                state.pendingReminderMinutes = nil
+                return .run { _ in await hapticFeedback.error() }
+              }
+              state.reminderWarning = nil
               // 알림 설정 시 권한 확인
               state.pendingReminderMinutes = minutes
               return .run { [notificationClient] send in
@@ -175,6 +196,7 @@ extension CreatePersonalEvent {
               // "없음" 선택
               state.event.reminderMinutesBefore = nil
               state.pendingReminderMinutes = nil
+              state.reminderWarning = nil
               return .run { _ in await hapticFeedback.selection() }
             }
 
@@ -484,7 +506,7 @@ extension CreatePersonalEvent {
       case 1440: return .oneDay
       case 2880: return .twoDays
       case 10080: return .oneWeek
-      default: return .thirtyMinutes
+      default: return .none
       }
     }
   }
