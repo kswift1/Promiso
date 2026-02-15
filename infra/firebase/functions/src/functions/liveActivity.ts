@@ -1212,10 +1212,18 @@ export const executeETASharingNudge = onTaskDispatched<
       return;
     }
 
-    const title = promiseData.title as string;
-    const groupId = promiseData.groupId as string;
-    const startAt = promiseData.startAt as admin.firestore.Timestamp;
-    const accepted = promiseData.votes?.accepted as string[] || [];
+    const {title, groupId, startAt, votes} = promiseData;
+
+    if (
+      typeof title !== "string" ||
+      typeof groupId !== "string" ||
+      !(startAt instanceof admin.firestore.Timestamp)
+    ) {
+      console.warn(`Invalid data types in promise document: ${promiseId}`);
+      return;
+    }
+
+    const accepted = Array.isArray(votes?.accepted) ? votes.accepted : [];
 
     // 2. 약속이 아직 시작 전인지 확인
     const now = new Date();
@@ -1240,7 +1248,7 @@ export const executeETASharingNudge = onTaskDispatched<
     await sendPushNotificationInternal({
       userIds: accepted,
       type: NotificationType.LocationSharingReminder,
-      title: `⏰ ${title} ${remainingMinutes}분 전!`,
+      title: `⏰ ${title.replace(/[<>&'"\/]/g, "").slice(0, 100)} ${remainingMinutes}분 전!`,
       body: "잘 오고 계신가요? 👋 잠금화면 또는 앱에서 실시간 도착 예정시간을 공유해주세요!",
       promiseId,
       groupId,
