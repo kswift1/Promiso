@@ -53,7 +53,7 @@ struct TodayScheduleCard: View {
   private var cardHeader: some View {
     HStack(spacing: 8) {
       VStack(alignment: .leading, spacing: 2) {
-        Text("오늘의 일정")
+        Text(LocalizedStrings.Home.todaySchedule)
           .font(.pmHeadline)
           .foregroundStyle(.primary)
 
@@ -66,7 +66,7 @@ struct TodayScheduleCard: View {
 
       // 일정 개수 (배경 없음)
       if !items.isEmpty {
-        Text("\(items.count)개")
+        Text(LocalizedStrings.Home.itemCount(items.count))
           .font(.pmSubheadlineMedium)
           .foregroundStyle(Color.pmindigo.n500)
       }

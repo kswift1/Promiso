@@ -40,7 +40,7 @@ struct UpcomingSection: View {
 
   private var sectionHeader: some View {
     HStack {
-      Text("다가오는 일정")
+      Text(LocalizedStrings.Home.upcomingSchedule)
         .font(.pmHeadline)
         .foregroundStyle(.primary)
 
@@ -50,7 +50,7 @@ struct UpcomingSection: View {
       if items.count > maxDisplayCount {
         Button(action: onSeeAllTap) {
           HStack(spacing: 2) {
-            Text("전체")
+            Text(LocalizedStrings.Common.all)
               .font(.pmSubheadline)
 
             Image(systemName: "chevron.right")
@@ -80,11 +80,11 @@ struct UpcomingSection: View {
 
       // 텍스트
       VStack(alignment: .leading, spacing: 2) {
-        Text("예정된 일정이 없어요")
+        Text(LocalizedStrings.Home.noUpcomingTitle)
           .font(.pmSubheadlineSemibold)
           .foregroundStyle(.primary)
 
-        Text("새로운 약속이나 일정을 만들어보세요")
+        Text(LocalizedStrings.Home.noUpcomingSubtitle)
           .font(.pmCaption)
           .foregroundStyle(.secondary)
       }

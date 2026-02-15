@@ -104,7 +104,7 @@ struct PersonalEventTimelineItemView: View {
           Image(systemName: "person.fill")
             .font(.system(size: 9))
 
-          Text("개인")
+          Text(LocalizedStrings.Home.personalLabel)
             .font(.system(size: 11, weight: .medium))
         }
         .foregroundStyle(Color.pmindigo.n500)
@@ -194,9 +194,9 @@ struct PersonalEventTimelineItemView: View {
 
   private func reminderText(minutes: Int) -> String {
     if minutes >= 60 {
-      return "\(minutes / 60)시간 전"
+      return LocalizedStrings.Home.reminderHoursBefore(minutes / 60)
     }
-    return "\(minutes)분 전"
+    return LocalizedStrings.Home.reminderMinutesBefore(minutes)
   }
 
   private var hasDescription: Bool {

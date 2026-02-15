@@ -739,7 +739,7 @@ extension Home {
           .foregroundStyle(.secondary)
           .multilineTextAlignment(.center)
 
-        Button("다시 시도") {
+        Button(LocalizedStrings.Common.retry) {
           store.send(.view(.refreshTriggered))
         }
         .buttonStyle(.bordered)

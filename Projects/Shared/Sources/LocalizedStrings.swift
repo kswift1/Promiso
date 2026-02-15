@@ -24,6 +24,24 @@ public enum LocalizedStrings {
     public static let success = String(localized: "common.success", bundle: LocalizedStrings.bundle)
     public static let warning = String(localized: "common.warning", bundle: LocalizedStrings.bundle)
     public static let info = String(localized: "common.info", bundle: LocalizedStrings.bundle)
+    public static let modify = String(localized: "common.modify", bundle: LocalizedStrings.bundle)
+    public static let change = String(localized: "common.change", bundle: LocalizedStrings.bundle)
+    public static let laterAction = String(localized: "common.later", bundle: LocalizedStrings.bundle)
+    public static let all = String(localized: "common.all", bundle: LocalizedStrings.bundle)
+    public static let today = String(localized: "common.today", bundle: LocalizedStrings.bundle)
+    public static let photo = String(localized: "common.photo", bundle: LocalizedStrings.bundle)
+    public static let settings = String(localized: "common.settings", bundle: LocalizedStrings.bundle)
+    public static let start = String(localized: "common.start", bundle: LocalizedStrings.bundle)
+    public static let endTime = String(localized: "common.endTime", bundle: LocalizedStrings.bundle)
+    public static let date = String(localized: "common.date", bundle: LocalizedStrings.bundle)
+    public static let time = String(localized: "common.time", bundle: LocalizedStrings.bundle)
+    public static let location = String(localized: "common.location", bundle: LocalizedStrings.bundle)
+    public static let reminder = String(localized: "common.reminder", bundle: LocalizedStrings.bundle)
+    public static let directions = String(localized: "common.directions", bundle: LocalizedStrings.bundle)
+    public static let schedule = String(localized: "common.schedule", bundle: LocalizedStrings.bundle)
+    public static let personalEvent = String(localized: "common.personalEvent", bundle: LocalizedStrings.bundle)
+    public static let seeMore = String(localized: "common.seeMore", bundle: LocalizedStrings.bundle)
+    public static let collapse = String(localized: "common.collapse", bundle: LocalizedStrings.bundle)
   }
 
   // MARK: - Authentication
@@ -238,6 +256,321 @@ public enum LocalizedStrings {
     public static let nicknameChecking = String(localized: "profile.nickname.checking", bundle: LocalizedStrings.bundle)
     public static let nicknameAvailable = String(localized: "profile.nickname.available", bundle: LocalizedStrings.bundle)
     public static let selectPhoto = String(localized: "profile.selectPhoto", bundle: LocalizedStrings.bundle)
+  }
+
+  // MARK: - Home
+  public enum Home {
+    // Pending Section
+    public static let needResponse = String(localized: "home.pending.needResponse", bundle: LocalizedStrings.bundle)
+    public static let closed = String(localized: "home.pending.closed", bundle: LocalizedStrings.bundle)
+    public static func minutesRemaining(_ minutes: Int) -> String {
+      String(localized: "home.pending.minutesRemaining", bundle: LocalizedStrings.bundle)
+        .replacingOccurrences(of: "%lld", with: "\(minutes)")
+    }
+    public static func hoursRemaining(_ hours: Int) -> String {
+      String(localized: "home.pending.hoursRemaining", bundle: LocalizedStrings.bundle)
+        .replacingOccurrences(of: "%lld", with: "\(hours)")
+    }
+
+    // Timeline
+    public static let accepted = String(localized: "home.timeline.accepted", bundle: LocalizedStrings.bundle)
+    public static let declined = String(localized: "home.timeline.declined", bundle: LocalizedStrings.bundle)
+    public static let tomorrow = String(localized: "home.timeline.tomorrow", bundle: LocalizedStrings.bundle)
+    public static let dayAfterTomorrow = String(localized: "home.timeline.dayAfterTomorrow", bundle: LocalizedStrings.bundle)
+
+    // Need Response Banner
+    public static let responseNeeded = String(localized: "home.banner.responseNeeded", bundle: LocalizedStrings.bundle)
+    public static func promisesToRespond(_ count: Int) -> String {
+      String(localized: "home.banner.promisesToRespond", bundle: LocalizedStrings.bundle)
+        .replacingOccurrences(of: "%lld", with: "\(count)")
+    }
+
+    // Empty State
+    public static let emptyNoPromisesTitle = String(localized: "home.empty.noPromises.title", bundle: LocalizedStrings.bundle)
+    public static let emptyNoPromisesMessage = String(localized: "home.empty.noPromises.message", bundle: LocalizedStrings.bundle)
+    public static let emptyNoFilterTitle = String(localized: "home.empty.noFilter.title", bundle: LocalizedStrings.bundle)
+    public static let emptyNoFilterMessage = String(localized: "home.empty.noFilter.message", bundle: LocalizedStrings.bundle)
+    public static let emptyNoGroupsTitle = String(localized: "home.empty.noGroups.title", bundle: LocalizedStrings.bundle)
+    public static let emptyNoGroupsMessage = String(localized: "home.empty.noGroups.message", bundle: LocalizedStrings.bundle)
+    public static let createNewPromise = String(localized: "home.empty.createPromise", bundle: LocalizedStrings.bundle)
+    public static let resetFilter = String(localized: "home.empty.resetFilter", bundle: LocalizedStrings.bundle)
+    public static let findGroups = String(localized: "home.empty.findGroups", bundle: LocalizedStrings.bundle)
+    public static let joinWithInviteLink = String(localized: "home.empty.joinWithLink", bundle: LocalizedStrings.bundle)
+
+    // Today Schedule
+    public static let todaySchedule = String(localized: "home.today.schedule", bundle: LocalizedStrings.bundle)
+    public static func itemCount(_ count: Int) -> String {
+      String(localized: "home.today.itemCount", bundle: LocalizedStrings.bundle)
+        .replacingOccurrences(of: "%lld", with: "\(count)")
+    }
+    public static let nextScheduleUntil = String(localized: "home.today.nextUntil", bundle: LocalizedStrings.bundle)
+    public static let startingSoon = String(localized: "home.today.startingSoon", bundle: LocalizedStrings.bundle)
+    public static func hoursMinutes(_ hours: Int, _ minutes: Int) -> String {
+      String(localized: "home.today.hoursMinutes", bundle: LocalizedStrings.bundle)
+        .replacingOccurrences(of: "%1$lld", with: "\(hours)")
+        .replacingOccurrences(of: "%2$lld", with: "\(minutes)")
+    }
+    public static func minutesOnly(_ minutes: Int) -> String {
+      String(localized: "home.today.minutesOnly", bundle: LocalizedStrings.bundle)
+        .replacingOccurrences(of: "%lld", with: "\(minutes)")
+    }
+
+    // Today Empty State Messages
+    public static let emptyDawnTitle = String(localized: "home.today.empty.dawn.title", bundle: LocalizedStrings.bundle)
+    public static let emptyDawnSubtitle = String(localized: "home.today.empty.dawn.subtitle", bundle: LocalizedStrings.bundle)
+    public static let emptyMorningTitle = String(localized: "home.today.empty.morning.title", bundle: LocalizedStrings.bundle)
+    public static let emptyMorningSubtitle = String(localized: "home.today.empty.morning.subtitle", bundle: LocalizedStrings.bundle)
+    public static let emptyLunchTitle = String(localized: "home.today.empty.lunch.title", bundle: LocalizedStrings.bundle)
+    public static let emptyLunchSubtitle = String(localized: "home.today.empty.lunch.subtitle", bundle: LocalizedStrings.bundle)
+    public static let emptyAfternoonTitle = String(localized: "home.today.empty.afternoon.title", bundle: LocalizedStrings.bundle)
+    public static let emptyAfternoonSubtitle = String(localized: "home.today.empty.afternoon.subtitle", bundle: LocalizedStrings.bundle)
+    public static let emptyEveningTitle = String(localized: "home.today.empty.evening.title", bundle: LocalizedStrings.bundle)
+    public static let emptyEveningSubtitle = String(localized: "home.today.empty.evening.subtitle", bundle: LocalizedStrings.bundle)
+    public static let emptyNightTitle = String(localized: "home.today.empty.night.title", bundle: LocalizedStrings.bundle)
+    public static let emptyNightSubtitle = String(localized: "home.today.empty.night.subtitle", bundle: LocalizedStrings.bundle)
+
+    public static let emptyRandom1Title = String(localized: "home.today.empty.random1.title", bundle: LocalizedStrings.bundle)
+    public static let emptyRandom1Subtitle = String(localized: "home.today.empty.random1.subtitle", bundle: LocalizedStrings.bundle)
+    public static let emptyRandom2Title = String(localized: "home.today.empty.random2.title", bundle: LocalizedStrings.bundle)
+    public static let emptyRandom2Subtitle = String(localized: "home.today.empty.random2.subtitle", bundle: LocalizedStrings.bundle)
+    public static let emptyRandom3Title = String(localized: "home.today.empty.random3.title", bundle: LocalizedStrings.bundle)
+    public static let emptyRandom3Subtitle = String(localized: "home.today.empty.random3.subtitle", bundle: LocalizedStrings.bundle)
+    public static let emptyRandom4Title = String(localized: "home.today.empty.random4.title", bundle: LocalizedStrings.bundle)
+    public static let emptyRandom4Subtitle = String(localized: "home.today.empty.random4.subtitle", bundle: LocalizedStrings.bundle)
+    public static let emptyRandom5Title = String(localized: "home.today.empty.random5.title", bundle: LocalizedStrings.bundle)
+    public static let emptyRandom5Subtitle = String(localized: "home.today.empty.random5.subtitle", bundle: LocalizedStrings.bundle)
+    public static let emptyRandom6Title = String(localized: "home.today.empty.random6.title", bundle: LocalizedStrings.bundle)
+    public static let emptyRandom6Subtitle = String(localized: "home.today.empty.random6.subtitle", bundle: LocalizedStrings.bundle)
+    public static let emptyRandom7Title = String(localized: "home.today.empty.random7.title", bundle: LocalizedStrings.bundle)
+    public static let emptyRandom7Subtitle = String(localized: "home.today.empty.random7.subtitle", bundle: LocalizedStrings.bundle)
+    public static let emptyRandom8Title = String(localized: "home.today.empty.random8.title", bundle: LocalizedStrings.bundle)
+    public static let emptyRandom8Subtitle = String(localized: "home.today.empty.random8.subtitle", bundle: LocalizedStrings.bundle)
+    public static let emptyRandom9Title = String(localized: "home.today.empty.random9.title", bundle: LocalizedStrings.bundle)
+    public static let emptyRandom9Subtitle = String(localized: "home.today.empty.random9.subtitle", bundle: LocalizedStrings.bundle)
+    public static let emptyRandom10Title = String(localized: "home.today.empty.random10.title", bundle: LocalizedStrings.bundle)
+    public static let emptyRandom10Subtitle = String(localized: "home.today.empty.random10.subtitle", bundle: LocalizedStrings.bundle)
+    public static let emptyRandom11Title = String(localized: "home.today.empty.random11.title", bundle: LocalizedStrings.bundle)
+    public static let emptyRandom11Subtitle = String(localized: "home.today.empty.random11.subtitle", bundle: LocalizedStrings.bundle)
+    public static let emptyRandom12Title = String(localized: "home.today.empty.random12.title", bundle: LocalizedStrings.bundle)
+    public static let emptyRandom12Subtitle = String(localized: "home.today.empty.random12.subtitle", bundle: LocalizedStrings.bundle)
+
+    // Complete Messages
+    public static let completeDawnTitle = String(localized: "home.today.complete.dawn.title", bundle: LocalizedStrings.bundle)
+    public static let completeMorningTitle = String(localized: "home.today.complete.morning.title", bundle: LocalizedStrings.bundle)
+    public static let completeLunchTitle = String(localized: "home.today.complete.lunch.title", bundle: LocalizedStrings.bundle)
+    public static let completeAfternoonTitle = String(localized: "home.today.complete.afternoon.title", bundle: LocalizedStrings.bundle)
+    public static let completeEveningTitle = String(localized: "home.today.complete.evening.title", bundle: LocalizedStrings.bundle)
+    public static let completeNightTitle = String(localized: "home.today.complete.night.title", bundle: LocalizedStrings.bundle)
+
+    public static let completeRandom1Title = String(localized: "home.today.complete.random1.title", bundle: LocalizedStrings.bundle)
+    public static let completeRandom2Title = String(localized: "home.today.complete.random2.title", bundle: LocalizedStrings.bundle)
+    public static let completeRandom3Title = String(localized: "home.today.complete.random3.title", bundle: LocalizedStrings.bundle)
+    public static let completeRandom4Title = String(localized: "home.today.complete.random4.title", bundle: LocalizedStrings.bundle)
+    public static let completeRandom5Title = String(localized: "home.today.complete.random5.title", bundle: LocalizedStrings.bundle)
+    public static let completeRandom6Title = String(localized: "home.today.complete.random6.title", bundle: LocalizedStrings.bundle)
+
+    // Upcoming
+    public static let upcomingSchedule = String(localized: "home.upcoming.title", bundle: LocalizedStrings.bundle)
+    public static let noUpcomingTitle = String(localized: "home.upcoming.empty.title", bundle: LocalizedStrings.bundle)
+    public static let noUpcomingSubtitle = String(localized: "home.upcoming.empty.subtitle", bundle: LocalizedStrings.bundle)
+    public static func participantsConfirmed(_ count: Int) -> String {
+      String(localized: "home.upcoming.participantsConfirmed", bundle: LocalizedStrings.bundle)
+        .replacingOccurrences(of: "%lld", with: "\(count)")
+    }
+    public static func groupParticipants(_ group: String, _ count: Int) -> String {
+      String(localized: "home.upcoming.groupParticipants", bundle: LocalizedStrings.bundle)
+        .replacingOccurrences(of: "%1$@", with: group)
+        .replacingOccurrences(of: "%2$lld", with: "\(count)")
+    }
+
+    // PersonalEventTimeline
+    public static let personalLabel = String(localized: "home.personalEvent.label", bundle: LocalizedStrings.bundle)
+    public static func reminderHoursBefore(_ hours: Int) -> String {
+      String(localized: "home.personalEvent.reminderHours", bundle: LocalizedStrings.bundle)
+        .replacingOccurrences(of: "%lld", with: "\(hours)")
+    }
+    public static func reminderMinutesBefore(_ minutes: Int) -> String {
+      String(localized: "home.personalEvent.reminderMinutes", bundle: LocalizedStrings.bundle)
+        .replacingOccurrences(of: "%lld", with: "\(minutes)")
+    }
+
+    // Timeline
+    public static let startLiveSharing = String(localized: "home.timeline.startLiveSharing", bundle: LocalizedStrings.bundle)
+
+    // StatusFilter display titles
+    public static let filterAll = String(localized: "home.filter.all", bundle: LocalizedStrings.bundle)
+    public static let filterNeedResponse = String(localized: "home.filter.needResponse", bundle: LocalizedStrings.bundle)
+    public static let filterConfirmed = String(localized: "home.filter.confirmed", bundle: LocalizedStrings.bundle)
+    public static let filterInProgress = String(localized: "home.filter.inProgress", bundle: LocalizedStrings.bundle)
+  }
+
+  // MARK: - Shared (SharedFeature)
+  public enum Shared {
+    // Edit Promise
+    public static let editPromiseTitle = String(localized: "shared.editPromise.title", bundle: LocalizedStrings.bundle)
+    public static let editFailed = String(localized: "shared.editPromise.failed", bundle: LocalizedStrings.bundle)
+    public static let promiseTitlePlaceholder = String(localized: "shared.editPromise.titlePlaceholder", bundle: LocalizedStrings.bundle)
+    public static let optional = String(localized: "shared.editPromise.optional", bundle: LocalizedStrings.bundle)
+    public static let addLocation = String(localized: "shared.editPromise.addLocation", bundle: LocalizedStrings.bundle)
+    public static let minimumParticipants = String(localized: "shared.editPromise.minimumParticipants", bundle: LocalizedStrings.bundle)
+    public static func maxMembers(_ count: Int) -> String {
+      String(localized: "shared.editPromise.maxMembers", bundle: LocalizedStrings.bundle)
+        .replacingOccurrences(of: "%lld", with: "\(count)")
+    }
+    public static func minMembersDescription(_ count: Int) -> String {
+      String(localized: "shared.editPromise.minMembersDescription", bundle: LocalizedStrings.bundle)
+        .replacingOccurrences(of: "%lld", with: "\(count)")
+    }
+    public static let liveSharing = String(localized: "shared.editPromise.liveSharing", bundle: LocalizedStrings.bundle)
+    public static func liveStartMinutes(_ minutes: Int) -> String {
+      String(localized: "shared.editPromise.liveStartMinutes", bundle: LocalizedStrings.bundle)
+        .replacingOccurrences(of: "%lld", with: "\(minutes)")
+    }
+    public static func liveSharingDescription(_ minutes: Int) -> String {
+      String(localized: "shared.editPromise.liveSharingDescription", bundle: LocalizedStrings.bundle)
+        .replacingOccurrences(of: "%lld", with: "\(minutes)")
+    }
+    public static let manualStart = String(localized: "shared.editPromise.manualStart", bundle: LocalizedStrings.bundle)
+    public static func minutesBefore(_ minutes: Int) -> String {
+      String(localized: "shared.editPromise.minutesBefore", bundle: LocalizedStrings.bundle)
+        .replacingOccurrences(of: "%lld", with: "\(minutes)")
+    }
+    public static let minutesBeforeStartLabel = String(localized: "shared.editPromise.minutesBeforeStartLabel", bundle: LocalizedStrings.bundle)
+
+    // Promise Detail
+    public static let voteDeadline = String(localized: "shared.promiseDetail.voteDeadline", bundle: LocalizedStrings.bundle)
+    public static let minimumConfirmMembers = String(localized: "shared.promiseDetail.minimumConfirm", bundle: LocalizedStrings.bundle)
+    public static func membersCount(_ count: Int) -> String {
+      String(localized: "shared.promiseDetail.membersCount", bundle: LocalizedStrings.bundle)
+        .replacingOccurrences(of: "%lld", with: "\(count)")
+    }
+    public static let participantsSection = String(localized: "shared.promiseDetail.participants", bundle: LocalizedStrings.bundle)
+    public static func participantsJoined(_ current: Int, _ total: Int) -> String {
+      String(localized: "shared.promiseDetail.participantsJoined", bundle: LocalizedStrings.bundle)
+        .replacingOccurrences(of: "%1$lld", with: "\(current)")
+        .replacingOccurrences(of: "%2$lld", with: "\(total)")
+    }
+    public static let responseAccepted = String(localized: "shared.promiseDetail.accepted", bundle: LocalizedStrings.bundle)
+    public static let responseDeclined = String(localized: "shared.promiseDetail.declined", bundle: LocalizedStrings.bundle)
+    public static let responseNoAnswer = String(localized: "shared.promiseDetail.noAnswer", bundle: LocalizedStrings.bundle)
+    public static let myResponse = String(localized: "shared.promiseDetail.myResponse", bundle: LocalizedStrings.bundle)
+    public static let editPromise = String(localized: "shared.promiseDetail.edit", bundle: LocalizedStrings.bundle)
+    public static let deletePromise = String(localized: "shared.promiseDetail.delete", bundle: LocalizedStrings.bundle)
+    public static let undetermined = String(localized: "shared.promiseDetail.undetermined", bundle: LocalizedStrings.bundle)
+    public static func deletePromiseConfirm(_ title: String) -> String {
+      String(localized: "shared.promiseDetail.deleteConfirm", bundle: LocalizedStrings.bundle)
+        .replacingOccurrences(of: "%@", with: title)
+    }
+
+    // Promise Detail Status
+    public static let statusNeedResponse = String(localized: "shared.promiseDetail.status.needResponse", bundle: LocalizedStrings.bundle)
+    public static let statusWaitingConfirm = String(localized: "shared.promiseDetail.status.waitingConfirm", bundle: LocalizedStrings.bundle)
+    public static let statusConfirmed = String(localized: "shared.promiseDetail.status.confirmed", bundle: LocalizedStrings.bundle)
+    public static let statusFailed = String(localized: "shared.promiseDetail.status.failed", bundle: LocalizedStrings.bundle)
+
+    // Location Picker
+    public static let locationSearch = String(localized: "shared.location.search", bundle: LocalizedStrings.bundle)
+    public static let searchPlaceholder = String(localized: "shared.location.searchPlaceholder", bundle: LocalizedStrings.bundle)
+    public static let recentSearch = String(localized: "shared.location.recentSearch", bundle: LocalizedStrings.bundle)
+    public static let noSearchResults = String(localized: "shared.location.noResults", bundle: LocalizedStrings.bundle)
+    public static let tryOtherKeyword = String(localized: "shared.location.tryOther", bundle: LocalizedStrings.bundle)
+    public static let searchError = String(localized: "shared.location.searchError", bundle: LocalizedStrings.bundle)
+    public static let selectThisLocation = String(localized: "shared.location.select", bundle: LocalizedStrings.bundle)
+    public static let searchLocationHint = String(localized: "shared.location.searchHint", bundle: LocalizedStrings.bundle)
+    public static let searchExamples = String(localized: "shared.location.searchExamples", bundle: LocalizedStrings.bundle)
+
+    // Notification Permission
+    public static let goToSettings = String(localized: "shared.notification.goToSettings", bundle: LocalizedStrings.bundle)
+    public static let notificationTitle = String(localized: "shared.notification.title", bundle: LocalizedStrings.bundle)
+    public static let notificationSubtitle = String(localized: "shared.notification.subtitle", bundle: LocalizedStrings.bundle)
+    public static let notificationPreviewTitle = String(localized: "shared.notification.previewTitle", bundle: LocalizedStrings.bundle)
+    public static let notificationPreviewBody = String(localized: "shared.notification.previewBody", bundle: LocalizedStrings.bundle)
+    public static let allowNotification = String(localized: "shared.notification.allow", bundle: LocalizedStrings.bundle)
+    public static let permissionTitle = String(localized: "shared.notification.permissionTitle", bundle: LocalizedStrings.bundle)
+    public static let benefitInvite = String(localized: "shared.notification.benefit.invite", bundle: LocalizedStrings.bundle)
+    public static let benefitConfirm = String(localized: "shared.notification.benefit.confirm", bundle: LocalizedStrings.bundle)
+    public static let benefitMember = String(localized: "shared.notification.benefit.member", bundle: LocalizedStrings.bundle)
+    public static let benefitChange = String(localized: "shared.notification.benefit.change", bundle: LocalizedStrings.bundle)
+    public static let now = String(localized: "shared.notification.now", bundle: LocalizedStrings.bundle)
+
+    // Personal Event Detail
+    public static let deleteEvent = String(localized: "shared.personalDetail.deleteEvent", bundle: LocalizedStrings.bundle)
+    public static func deleteEventConfirm(_ title: String) -> String {
+      String(localized: "shared.personalDetail.deleteConfirm", bundle: LocalizedStrings.bundle)
+        .replacingOccurrences(of: "%@", with: title)
+    }
+    public static let statusOngoing = String(localized: "shared.personalDetail.status.ongoing", bundle: LocalizedStrings.bundle)
+    public static let statusEnded = String(localized: "shared.personalDetail.status.ended", bundle: LocalizedStrings.bundle)
+    public static let statusToday = String(localized: "shared.personalDetail.status.today", bundle: LocalizedStrings.bundle)
+    public static let statusUpcoming = String(localized: "shared.personalDetail.status.upcoming", bundle: LocalizedStrings.bundle)
+    public static func reminderHours(_ hours: Int) -> String {
+      String(localized: "shared.personalDetail.reminderHours", bundle: LocalizedStrings.bundle)
+        .replacingOccurrences(of: "%lld", with: "\(hours)")
+    }
+    public static func reminderMinutes(_ minutes: Int) -> String {
+      String(localized: "shared.personalDetail.reminderMinutes", bundle: LocalizedStrings.bundle)
+        .replacingOccurrences(of: "%lld", with: "\(minutes)")
+    }
+
+    // Create Personal Event
+    public static let newEvent = String(localized: "shared.createEvent.new", bundle: LocalizedStrings.bundle)
+    public static let editEvent = String(localized: "shared.createEvent.edit", bundle: LocalizedStrings.bundle)
+    public static let eventTitlePlaceholder = String(localized: "shared.createEvent.titlePlaceholder", bundle: LocalizedStrings.bundle)
+    public static let reminderLabel = String(localized: "shared.createEvent.reminder", bundle: LocalizedStrings.bundle)
+    public static let memoPlaceholder = String(localized: "shared.createEvent.memoPlaceholder", bundle: LocalizedStrings.bundle)
+
+    // Reminder Options
+    public static let reminder5min = String(localized: "shared.reminder.5min", bundle: LocalizedStrings.bundle)
+    public static let reminder10min = String(localized: "shared.reminder.10min", bundle: LocalizedStrings.bundle)
+    public static let reminder15min = String(localized: "shared.reminder.15min", bundle: LocalizedStrings.bundle)
+    public static let reminder30min = String(localized: "shared.reminder.30min", bundle: LocalizedStrings.bundle)
+    public static let reminder1hour = String(localized: "shared.reminder.1hour", bundle: LocalizedStrings.bundle)
+    public static let reminder2hours = String(localized: "shared.reminder.2hours", bundle: LocalizedStrings.bundle)
+
+    // Image Attachment
+    public static let imageUploading = String(localized: "shared.image.uploading", bundle: LocalizedStrings.bundle)
+  }
+
+  // MARK: - Calendar
+  public enum Calendar {
+    public static let loadingPromises = String(localized: "calendar.loading", bundle: LocalizedStrings.bundle)
+    public static let noPromises = String(localized: "calendar.empty.title", bundle: LocalizedStrings.bundle)
+    public static let createNewPromise = String(localized: "calendar.empty.subtitle", bundle: LocalizedStrings.bundle)
+    public static let monthSchedule = String(localized: "calendar.monthSchedule", bundle: LocalizedStrings.bundle)
+    public static func dayCount(_ count: Int) -> String {
+      String(localized: "calendar.dayCount", bundle: LocalizedStrings.bundle)
+        .replacingOccurrences(of: "%lld", with: "\(count)")
+    }
+
+    // Weekday
+    public static let weekdaySun = String(localized: "calendar.weekday.sun", bundle: LocalizedStrings.bundle)
+    public static let weekdayMon = String(localized: "calendar.weekday.mon", bundle: LocalizedStrings.bundle)
+    public static let weekdayTue = String(localized: "calendar.weekday.tue", bundle: LocalizedStrings.bundle)
+    public static let weekdayWed = String(localized: "calendar.weekday.wed", bundle: LocalizedStrings.bundle)
+    public static let weekdayThu = String(localized: "calendar.weekday.thu", bundle: LocalizedStrings.bundle)
+    public static let weekdayFri = String(localized: "calendar.weekday.fri", bundle: LocalizedStrings.bundle)
+    public static let weekdaySat = String(localized: "calendar.weekday.sat", bundle: LocalizedStrings.bundle)
+
+    // Calendar Permission Banner
+    public static let syncCalendarTitle = String(localized: "calendar.sync.title", bundle: LocalizedStrings.bundle)
+    public static let syncCalendarSubtitle = String(localized: "calendar.sync.subtitle", bundle: LocalizedStrings.bundle)
+    public static let syncAction = String(localized: "calendar.sync.action", bundle: LocalizedStrings.bundle)
+    public static let readAccessTitle = String(localized: "calendar.sync.readAccess.title", bundle: LocalizedStrings.bundle)
+    public static let readAccessSubtitle = String(localized: "calendar.sync.readAccess.subtitle", bundle: LocalizedStrings.bundle)
+    public static let calendarPermissionTitle = String(localized: "calendar.sync.permission.title", bundle: LocalizedStrings.bundle)
+    public static let calendarPermissionSubtitle = String(localized: "calendar.sync.permission.subtitle", bundle: LocalizedStrings.bundle)
+    public static let doNotShowAgain = String(localized: "calendar.sync.doNotShow", bundle: LocalizedStrings.bundle)
+
+    // Promise Card Status
+    public static let statusWaiting = String(localized: "calendar.promise.statusWaiting", bundle: LocalizedStrings.bundle)
+    public static let statusVoting = String(localized: "calendar.promise.statusVoting", bundle: LocalizedStrings.bundle)
+    public static let statusConfirmed = String(localized: "calendar.promise.statusConfirmed", bundle: LocalizedStrings.bundle)
+    public static let statusFailed = String(localized: "calendar.promise.statusFailed", bundle: LocalizedStrings.bundle)
+    public static let respondAction = String(localized: "calendar.promise.respond", bundle: LocalizedStrings.bundle)
+    public static func additionalItems(_ count: Int) -> String {
+      String(localized: "calendar.promise.additionalItems", bundle: LocalizedStrings.bundle)
+        .replacingOccurrences(of: "%lld", with: "\(count)")
+    }
   }
 
   // MARK: - Personal

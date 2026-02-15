@@ -29,10 +29,10 @@ extension PromiseResponseStatus {
 
   var statusText: String {
     switch self {
-    case .needResponse: return "응답 대기"
-    case .responded:    return "투표중"
-    case .confirmed:    return "확정"
-    case .failed:       return "미성사"
+    case .needResponse: return LocalizedStrings.Calendar.statusWaiting
+    case .responded:    return LocalizedStrings.Calendar.statusVoting
+    case .confirmed:    return LocalizedStrings.Calendar.statusConfirmed
+    case .failed:       return LocalizedStrings.Calendar.statusFailed
     }
   }
 }
@@ -144,7 +144,7 @@ struct PromiseCardView: View {
             HStack(spacing: 4) {
               Text("📡")
                 .font(.system(size: 10))
-              Text("\(minutes)분 전 실시간 공유 시작")
+              Text(LocalizedStrings.Shared.liveStartMinutes(minutes))
                 .font(.system(size: 13))
                 .lineLimit(1)
             }
@@ -176,7 +176,7 @@ extension PromiseCardView {
       HStack(spacing: 8) {
         Image(systemName: "hand.tap.fill")
           .font(.system(size: 14, weight: .medium))
-        Text("응답하기")
+        Text(LocalizedStrings.Calendar.respondAction)
           .font(.system(size: 15, weight: .semibold))
       }
       .foregroundColor(.white)
@@ -262,7 +262,7 @@ struct CompactDayRow: View {
                     .lineLimit(1)
 
                   if promises.count > 1 {
-                    Text("외 \(promises.count - 1)건")
+                    Text(LocalizedStrings.Calendar.additionalItems(promises.count - 1))
                       .font(.system(size: 12))
                       .foregroundColor(.secondary)
                   }
@@ -289,7 +289,7 @@ struct CompactDayRow: View {
                   .lineLimit(1)
 
                 if personalEvents.count > 1 {
-                  Text("외 \(personalEvents.count - 1)건")
+                  Text(LocalizedStrings.Calendar.additionalItems(personalEvents.count - 1))
                     .font(.system(size: 11))
                     .foregroundColor(.secondary.opacity(0.7))
                 }
@@ -311,7 +311,7 @@ struct CompactDayRow: View {
                   .lineLimit(1)
 
                 if calendarEvents.count > 1 {
-                  Text("외 \(calendarEvents.count - 1)건")
+                  Text(LocalizedStrings.Calendar.additionalItems(calendarEvents.count - 1))
                     .font(.system(size: 11))
                     .foregroundColor(.secondary.opacity(0.7))
                 }
@@ -370,7 +370,7 @@ struct EmptyDayPlaceholder: View {
 
   var body: some View {
     HStack {
-      Text("약속이 없습니다")
+      Text(LocalizedStrings.Calendar.noPromises)
         .font(.system(size: 15))
         .foregroundColor(.secondary)
       Spacer()

@@ -120,6 +120,15 @@ extension HomeModels {
     case needResponse = "응답 필요"
     case confirmed = "확정됨"
     case inProgress = "진행 중"
+
+    public var displayTitle: String {
+      switch self {
+      case .all: return LocalizedStrings.Home.filterAll
+      case .needResponse: return LocalizedStrings.Home.filterNeedResponse
+      case .confirmed: return LocalizedStrings.Home.filterConfirmed
+      case .inProgress: return LocalizedStrings.Home.filterInProgress
+      }
+    }
   }
 }
 

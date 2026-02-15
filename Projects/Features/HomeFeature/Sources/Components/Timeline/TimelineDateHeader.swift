@@ -23,11 +23,11 @@ struct TimelineDateHeader: View {
     let now = Date()
 
     if calendar.isDateInToday(date) {
-      return "오늘"
+      return LocalizedStrings.Common.today
     } else if calendar.isDateInTomorrow(date) {
-      return "내일"
+      return LocalizedStrings.Home.tomorrow
     } else if calendar.isDate(date, equalTo: now.addingTimeInterval(86400 * 2), toGranularity: .day) {
-      return "모레"
+      return LocalizedStrings.Home.dayAfterTomorrow
     } else {
       return KoreanDateFormatters.sectionHeader.string(from: date)
     }

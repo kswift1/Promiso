@@ -123,13 +123,13 @@ struct PendingCard: View {
 
     // 24시간 이내면 시간/분 단위로 표시
     if hoursRemaining <= 0 {
-      return "마감"
+      return LocalizedStrings.Home.closed
     } else if hoursRemaining < 1 {
       let minutes = max(1, Int(ceil(hoursRemaining * 60)))
-      return "\(minutes)분 남음"
+      return LocalizedStrings.Home.minutesRemaining(minutes)
     } else if hoursRemaining <= 24 {
       let hours = Int(ceil(hoursRemaining))
-      return "\(hours)시간 남음"
+      return LocalizedStrings.Home.hoursRemaining(hours)
     }
 
     // 그 외에는 D-day 표시

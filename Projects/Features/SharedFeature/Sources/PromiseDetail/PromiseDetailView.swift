@@ -110,13 +110,13 @@ extension PromiseDetail {
 
     private var scheduleSection: some View {
       VStack(spacing: 0) {
-        PromiseDetailSectionHeader(title: "일정")
+        PromiseDetailSectionHeader(title: LocalizedStrings.Common.schedule)
 
         VStack(spacing: 0) {
           // 날짜 & 시간
           PromiseDetailEmojiInfoRow(
             emoji: "📅",
-            title: "날짜",
+            title: LocalizedStrings.Common.date,
             value: formatFullDate(store.promise.startAt)
           )
 
@@ -124,7 +124,7 @@ extension PromiseDetail {
 
           PromiseDetailEmojiInfoRow(
             emoji: "⏰",
-            title: "시간",
+            title: LocalizedStrings.Common.time,
             value: store.promise.timeRangeText
           )
 
@@ -161,7 +161,7 @@ extension PromiseDetail {
 
             PromiseDetailEmojiInfoRow(
               emoji: "⏳",
-              title: "투표 마감",
+              title: LocalizedStrings.Shared.voteDeadline,
               value: deadline
             )
           }
@@ -171,8 +171,8 @@ extension PromiseDetail {
           // 최소 확정 인원
           PromiseDetailEmojiInfoRow(
             emoji: "👥",
-            title: "최소 확정 인원",
-            value: "\(store.promise.minimumParticipants)명"
+            title: LocalizedStrings.Shared.minimumConfirmMembers,
+            value: LocalizedStrings.Shared.membersCount(store.promise.minimumParticipants)
           )
         }
         .adaptiveGlassCard()
@@ -184,7 +184,7 @@ extension PromiseDetail {
     @ViewBuilder
     private var imageGallerySection: some View {
       VStack(spacing: 0) {
-        PromiseDetailSectionHeader(title: "사진")
+        PromiseDetailSectionHeader(title: LocalizedStrings.Common.photo)
 
         ScrollView(.horizontal, showsIndicators: false) {
           HStack(spacing: 10) {
@@ -217,7 +217,7 @@ extension PromiseDetail {
     private var participantsSection: some View {
       VStack(spacing: 0) {
         PromiseDetailSectionHeader(
-          title: "참여자",
+          title: LocalizedStrings.Shared.participantsSection,
           trailing: store.isLoadingMembers ? nil : "\(store.promise.votes.acceptedCount)/\(store.groupMembers?.count ?? 0)명 참여"
         )
 
@@ -263,14 +263,14 @@ extension PromiseDetail {
             // 수락
             if !store.promise.votes.accepted.isEmpty {
               PromiseDetailParticipantGroupRow(
-                title: "참여",
+                title: LocalizedStrings.Shared.responseAccepted,
                 count: store.promise.votes.acceptedCount,
                 userIds: store.promise.votes.accepted,
                 members: store.groupMembers,
                 color: participantColor(.accepted)
               ) {
                 store.send(.view(.participantGroupTapped(
-                  title: "참여",
+                  title: LocalizedStrings.Shared.responseAccepted,
                   userIds: store.promise.votes.accepted,
                   colorType: .accepted
                 )))
@@ -280,14 +280,14 @@ extension PromiseDetail {
             // 거절
             if !store.promise.votes.declined.isEmpty {
               PromiseDetailParticipantGroupRow(
-                title: "불참",
+                title: LocalizedStrings.Shared.responseDeclined,
                 count: store.promise.votes.declinedCount,
                 userIds: store.promise.votes.declined,
                 members: store.groupMembers,
                 color: participantColor(.declined)
               ) {
                 store.send(.view(.participantGroupTapped(
-                  title: "불참",
+                  title: LocalizedStrings.Shared.responseDeclined,
                   userIds: store.promise.votes.declined,
                   colorType: .declined
                 )))
@@ -301,14 +301,14 @@ extension PromiseDetail {
 
               if !pendingUserIds.isEmpty {
                 PromiseDetailParticipantGroupRow(
-                  title: "미응답",
+                  title: LocalizedStrings.Shared.responseNoAnswer,
                   count: pendingUserIds.count,
                   userIds: pendingUserIds,
                   members: members,
                   color: participantColor(.pending)
                 ) {
                   store.send(.view(.participantGroupTapped(
-                    title: "미응답",
+                    title: LocalizedStrings.Shared.responseNoAnswer,
                     userIds: pendingUserIds,
                     colorType: .pending
                   )))
@@ -324,7 +324,7 @@ extension PromiseDetail {
 
     private var responseSection: some View {
       VStack(spacing: 0) {
-        PromiseDetailSectionHeader(title: "내 응답")
+        PromiseDetailSectionHeader(title: LocalizedStrings.Shared.myResponse)
 
         ResponseBubblePicker(
           currentStatus: store.myVoteStatus,
@@ -347,7 +347,7 @@ extension PromiseDetail {
         HStack(spacing: 8) {
           Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
             .font(.system(size: 16))
-          Text("길찾기")
+          Text(LocalizedStrings.Common.directions)
             .font(.system(size: 16, weight: .semibold))
         }
         .foregroundStyle(.white)
@@ -375,14 +375,14 @@ extension PromiseDetail {
               Button {
                 store.send(.view(.editTapped))
               } label: {
-                Label("약속 수정", systemImage: "pencil")
+                Label(LocalizedStrings.Shared.editPromise, systemImage: "pencil")
               }
             }
 
             Button(role: .destructive) {
               store.send(.view(.deleteTapped))
             } label: {
-              Label("약속 삭제", systemImage: "trash")
+              Label(LocalizedStrings.Shared.deletePromise, systemImage: "trash")
             }
           } label: {
             Image(systemName: "ellipsis.circle")
@@ -448,9 +448,9 @@ private struct ResponseBubblePicker: View {
 
   private var statusText: String {
     switch currentStatus {
-    case .accepted: return "참여"
-    case .pending: return "미정"
-    case .declined: return "불참"
+    case .accepted: return LocalizedStrings.Shared.responseAccepted
+    case .pending: return LocalizedStrings.Shared.undetermined
+    case .declined: return LocalizedStrings.Shared.responseDeclined
     }
   }
 
@@ -483,7 +483,7 @@ private struct ResponseBubblePicker: View {
 
         Spacer()
 
-        Text("변경")
+        Text(LocalizedStrings.Common.change)
           .font(.system(size: 14, weight: .medium))
           .foregroundStyle(.secondary)
       }
@@ -542,7 +542,7 @@ private struct ResponsePopoverContent: View {
     HStack(spacing: 20) {
       PopoverBubble(
         icon: "checkmark",
-        title: "참여",
+        title: LocalizedStrings.Shared.responseAccepted,
         color: .green,
         isSelected: currentStatus == .accepted,
         isLoading: respondingState == .accepting
@@ -552,7 +552,7 @@ private struct ResponsePopoverContent: View {
 
       PopoverBubble(
         icon: "minus",
-        title: "미정",
+        title: LocalizedStrings.Shared.undetermined,
         color: Color(.systemGray),
         isSelected: currentStatus == .pending,
         isLoading: respondingState == .resetting
@@ -562,7 +562,7 @@ private struct ResponsePopoverContent: View {
 
       PopoverBubble(
         icon: "xmark",
-        title: "불참",
+        title: LocalizedStrings.Shared.responseDeclined,
         color: .red,
         isSelected: currentStatus == .declined,
         isLoading: respondingState == .rejecting

@@ -199,16 +199,16 @@ extension PromiseDetail {
             guard !state.isDeleting else { return .none }
             let promiseTitle = state.promise.title
             state.alert = AlertState {
-              TextState("약속 삭제")
+              TextState(LocalizedStrings.Shared.deletePromise)
             } actions: {
               ButtonState(role: .cancel) {
-                TextState("취소")
+                TextState(LocalizedStrings.Common.cancel)
               }
               ButtonState(role: .destructive, action: .confirmDelete) {
-                TextState("삭제")
+                TextState(LocalizedStrings.Common.delete)
               }
             } message: {
-              TextState("'\(promiseTitle)' 약속을 삭제하시겠습니까?\n삭제된 약속은 복구할 수 없습니다.")
+              TextState(LocalizedStrings.Shared.deletePromiseConfirm(promiseTitle))
             }
             return .none
 

@@ -69,7 +69,7 @@ extension CreatePersonalEvent {
       }
 
       var navigationTitle: String {
-        mode == .create ? "새 일정" : "일정 수정"
+        mode == .create ? LocalizedStrings.Shared.newEvent : LocalizedStrings.Shared.editEvent
       }
     }
 
@@ -428,12 +428,12 @@ extension CreatePersonalEvent {
 
     public var title: String {
       switch self {
-      case .fiveMinutes: return "5분 전"
-      case .tenMinutes: return "10분 전"
-      case .fifteenMinutes: return "15분 전"
-      case .thirtyMinutes: return "30분 전"
-      case .oneHour: return "1시간 전"
-      case .twoHours: return "2시간 전"
+      case .fiveMinutes: return LocalizedStrings.Shared.reminder5min
+      case .tenMinutes: return LocalizedStrings.Shared.reminder10min
+      case .fifteenMinutes: return LocalizedStrings.Shared.reminder15min
+      case .thirtyMinutes: return LocalizedStrings.Shared.reminder30min
+      case .oneHour: return LocalizedStrings.Shared.reminder1hour
+      case .twoHours: return LocalizedStrings.Shared.reminder2hours
       }
     }
   }

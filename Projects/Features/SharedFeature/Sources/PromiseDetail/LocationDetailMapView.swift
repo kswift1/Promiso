@@ -82,7 +82,7 @@ public struct LocationDetailMapView: View {
         HStack(spacing: 8) {
           Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
             .font(.system(size: 16))
-          Text("길찾기")
+          Text(LocalizedStrings.Common.directions)
             .font(.system(size: 16, weight: .semibold))
         }
         .foregroundStyle(.white)

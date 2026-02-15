@@ -49,11 +49,11 @@ extension LocationPicker {
           }
         }
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: store.previewPlace != nil)
-        .navigationTitle("장소 검색")
+        .navigationTitle(LocalizedStrings.Shared.locationSearch)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
           ToolbarItem(placement: .cancellationAction) {
-            Button("취소") {
+            Button(LocalizedStrings.Common.cancel) {
               store.send(.view(.dismissTapped))
             }
           }
@@ -114,7 +114,7 @@ private struct SearchBar: View {
         .foregroundColor(.secondary)
         .font(.system(size: 16))
 
-      TextField("장소를 검색하세요", text: $text)
+      TextField(LocalizedStrings.Shared.searchPlaceholder, text: $text)
         .textFieldStyle(.plain)
         .autocorrectionDisabled()
         .focused(isFocused)
@@ -193,7 +193,7 @@ private struct HistoryListView: View {
       ScrollView {
         LazyVStack(spacing: 0) {
           HStack {
-            Text("최근 검색")
+            Text(LocalizedStrings.Shared.recentSearch)
               .font(.system(size: 13, weight: .medium))
               .foregroundColor(.secondary)
             Spacer()
@@ -367,11 +367,11 @@ private struct EmptyResultView: View {
         .font(.system(size: 48))
         .foregroundColor(.secondary)
 
-      Text("검색 결과가 없습니다")
+      Text(LocalizedStrings.Shared.noSearchResults)
         .font(.system(size: 16, weight: .medium))
         .foregroundColor(.secondary)
 
-      Text("다른 키워드로 검색해 보세요")
+      Text(LocalizedStrings.Shared.tryOtherKeyword)
         .font(.system(size: 14))
         .foregroundColor(.secondary.opacity(0.8))
 
@@ -393,7 +393,7 @@ private struct ErrorView: View {
         .font(.system(size: 48))
         .foregroundColor(.orange)
 
-      Text("검색 중 오류가 발생했습니다")
+      Text(LocalizedStrings.Shared.searchError)
         .font(.system(size: 16, weight: .medium))
         .foregroundColor(.primary)
 
@@ -447,7 +447,7 @@ private struct MiniMapPreview: View {
       .padding(12)
 
       Button(action: onConfirm) {
-        Text("이 장소 선택")
+        Text(LocalizedStrings.Shared.selectThisLocation)
           .font(.system(size: 16, weight: .semibold))
           .foregroundColor(.white)
           .frame(maxWidth: .infinity)
@@ -489,11 +489,11 @@ private struct PlaceholderView: View {
         .font(.system(size: 48))
         .foregroundColor(Color.pmindigo.n300)
 
-      Text("장소를 검색해 보세요")
+      Text(LocalizedStrings.Shared.searchLocationHint)
         .font(.system(size: 16, weight: .medium))
         .foregroundColor(.secondary)
 
-      Text("카페, 식당, 영화관 등")
+      Text(LocalizedStrings.Shared.searchExamples)
         .font(.system(size: 14))
         .foregroundColor(.secondary.opacity(0.8))
 

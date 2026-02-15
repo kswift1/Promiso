@@ -64,7 +64,7 @@ public struct PromiseDetailExpandableText: View {
             isExpanded.toggle()
           }
         } label: {
-          Text(isExpanded ? "접기" : "더보기")
+          Text(isExpanded ? LocalizedStrings.Common.collapse : LocalizedStrings.Common.seeMore)
             .font(.system(size: 13, weight: .medium))
             .foregroundStyle(.blue)
         }
@@ -157,7 +157,7 @@ public struct PromiseDetailLocationInfoRow: View {
           HStack(spacing: 4) {
             Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
               .font(.system(size: 14))
-            Text("길찾기")
+            Text(LocalizedStrings.Common.directions)
               .font(.system(size: 14, weight: .medium))
           }
           .foregroundStyle(.white)
@@ -312,13 +312,13 @@ public struct PromiseDetailStatusBadgeView: View {
   private var displayText: String {
     switch status {
     case .needResponse:
-      return "응답 필요"
+      return LocalizedStrings.Shared.statusNeedResponse
     case .responded:
-      return "확정 대기"
+      return LocalizedStrings.Shared.statusWaitingConfirm
     case .confirmed:
-      return "확정됨"
+      return LocalizedStrings.Shared.statusConfirmed
     case .failed:
-      return "미성사"
+      return LocalizedStrings.Shared.statusFailed
     }
   }
 

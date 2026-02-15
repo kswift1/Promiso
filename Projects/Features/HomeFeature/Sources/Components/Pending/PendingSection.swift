@@ -34,7 +34,7 @@ struct PendingSection: View {
 
   private var sectionHeader: some View {
     HStack(spacing: 8) {
-      Text("응답 필요")
+      Text(LocalizedStrings.Home.needResponse)
         .font(.headline)
         .foregroundStyle(.primary)
 
