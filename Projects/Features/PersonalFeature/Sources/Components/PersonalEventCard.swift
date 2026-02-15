@@ -144,8 +144,22 @@ public struct PersonalEventCard: View {
   // MARK: - Helper
 
   private func reminderText(_ minutes: Int) -> String {
-    if minutes >= 60 { return LocalizedStrings.Personal.reminderHours(minutes / 60) }
-    return LocalizedStrings.Personal.reminderMinutes(minutes)
+    let minutesPerHour = 60
+    let minutesPerDay = 24 * minutesPerHour
+    let minutesPerWeek = 7 * minutesPerDay
+
+    switch minutes {
+    case 0:
+      return LocalizedStrings.Personal.reminderAtEvent
+    case let value where value >= minutesPerWeek && value % minutesPerWeek == 0:
+      return LocalizedStrings.Personal.reminderWeeks(value / minutesPerWeek)
+    case let value where value >= minutesPerDay:
+      return LocalizedStrings.Personal.reminderDays(value / minutesPerDay)
+    case let value where value >= minutesPerHour:
+      return LocalizedStrings.Personal.reminderHours(value / minutesPerHour)
+    default:
+      return LocalizedStrings.Personal.reminderMinutes(minutes)
+    }
   }
 }
 

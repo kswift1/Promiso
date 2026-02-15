@@ -231,6 +231,7 @@ extension Home {
           case .personalEventTapped(let event):
             state.path.append(.personalEventDetail(.init(event: event)))
             return .none
+
           }
 
         case .internal(let internalAction):
@@ -428,7 +429,7 @@ extension Home.Feature.State {
       .filter { $0.startAt >= startOfDay && $0.startAt < endOfDay && $0.isConfirmed }
       .map { HomeModels.ScheduleItem.promise($0) }
     let eventItems = allPersonalEvents
-      .filter { $0.startAt >= startOfDay && $0.startAt < endOfDay && !$0.isPast }
+      .filter { $0.startAt >= startOfDay && $0.startAt < endOfDay }
       .map { HomeModels.ScheduleItem.personalEvent($0) }
     return (promiseItems + eventItems).sorted { $0.startAt < $1.startAt }
   }

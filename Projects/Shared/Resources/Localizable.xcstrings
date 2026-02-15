@@ -4051,6 +4051,42 @@
         }
       }
     },
+    "personal.event.reminderAtEvent" : {
+      "comment" : "이벤트 시점 알림",
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reminder at event time"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이벤트 시점 알림"
+          }
+        }
+      }
+    },
+    "personal.event.reminderDays" : {
+      "comment" : "일 전 알림",
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reminder %lld days before"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld일 전 알림"
+          }
+        }
+      }
+    },
     "personal.event.reminderHours" : {
       "comment" : "시간 전 알림",
       "extractionState" : "stale",
@@ -4101,6 +4137,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "알림 완료"
+          }
+        }
+      }
+    },
+    "personal.event.reminderWeeks" : {
+      "comment" : "주 전 알림",
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reminder %lld weeks before"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld주 전 알림"
           }
         }
       }
@@ -6706,6 +6760,96 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "30분 전"
+          }
+        }
+      }
+    },
+    "shared.reminder.1day" : {
+      "comment" : "1일 전",
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 day before"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1일 전"
+          }
+        }
+      }
+    },
+    "shared.reminder.2days" : {
+      "comment" : "2일 전",
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "2 days before"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "2일 전"
+          }
+        }
+      }
+    },
+    "shared.reminder.1week" : {
+      "comment" : "1주 전",
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 week before"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1주 전"
+          }
+        }
+      }
+    },
+    "shared.reminder.atEvent" : {
+      "comment" : "이벤트 시점",
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "At event time"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이벤트 시점"
+          }
+        }
+      }
+    },
+    "shared.reminder.none" : {
+      "comment" : "없음",
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "None"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "없음"
           }
         }
       }

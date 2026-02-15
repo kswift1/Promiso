@@ -39,20 +39,18 @@ struct CreatePromiseStep3View: View {
           // 최소 참가 인원
           MinimumParticipantsSection(store: store, scrollProxy: proxy)
             .id("minimumParticipants")
-
-          // 약속 미리보기
-          PromisePreviewSection(store: store)
-            .id("preview")
         }
         .padding(16)
       }
       .simultaneousGesture(
         DragGesture().onChanged { _ in
           isDescriptionFocused = false
+          UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         }
       )
       .onTapGesture {
         isDescriptionFocused = false
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
       }
       .onChange(of: isDescriptionFocused) { _, newValue in
         if newValue {

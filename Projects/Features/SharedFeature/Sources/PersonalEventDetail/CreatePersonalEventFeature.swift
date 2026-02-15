@@ -47,8 +47,11 @@ extension CreatePersonalEvent {
       var isSaving: Bool = false
       var isEmojiLoading: Bool = false
       var useEndTime: Bool = false
-      var useReminder: Bool = false
       var errorMessage: String?
+      /// 알림 권한 미허용 시 보류할 분 값
+      var pendingReminderMinutes: Int?
+      /// 알림 시간 성립 불가 시 경고 메시지
+      var reminderWarning: String?
 
       @Presents var locationPicker: LocationPicker.Feature.State?
       @Presents var notificationPermission: NotificationPermission.Feature.State?
@@ -61,7 +64,6 @@ extension CreatePersonalEvent {
         self.event = event
         self.mode = mode
         self.useEndTime = event.endAt != nil
-        self.useReminder = event.reminderMinutesBefore != nil
       }
 
       var canSave: Bool {
@@ -89,8 +91,7 @@ extension CreatePersonalEvent {
       case startDateChanged(Date)
       case endDateChanged(Date)
       case toggleUseEndTime
-      case toggleUseReminder
-      case reminderChanged(Int)
+      case reminderOptionSelected(Int?)
       case descriptionChanged(String)
       case locationTapped
       case removeLocation
@@ -149,6 +150,16 @@ extension CreatePersonalEvent {
             if let endAt = state.event.endAt, endAt <= date {
               state.event.endAt = date.addingTimeInterval(3600)
             }
+            // 기존 알림 설정 재검증
+            if let minutes = state.event.reminderMinutesBefore {
+              let reminderDate = date.addingTimeInterval(-Double(minutes) * 60)
+              if reminderDate <= Date() {
+                state.reminderWarning = "일정 시작까지 남은 시간이 부족하여 알림을 설정할 수 없습니다"
+                state.event.reminderMinutesBefore = nil
+              } else {
+                state.reminderWarning = nil
+              }
+            }
             return .none
 
           case .endDateChanged(let date):
@@ -164,22 +175,30 @@ extension CreatePersonalEvent {
             }
             return .run { _ in await hapticFeedback.selection() }
 
-          case .toggleUseReminder:
-            if !state.useReminder {
-              // 켜려고 할 때 권한 확인
+          case .reminderOptionSelected(let minutes):
+            if let minutes {
+              // 알림 시간 성립 여부 검증
+              let reminderDate = state.event.startAt.addingTimeInterval(-Double(minutes) * 60)
+              if reminderDate <= Date() {
+                state.reminderWarning = "일정 시작까지 남은 시간이 부족하여 알림을 설정할 수 없습니다"
+                state.event.reminderMinutesBefore = nil
+                state.pendingReminderMinutes = nil
+                return .run { _ in await hapticFeedback.error() }
+              }
+              state.reminderWarning = nil
+              // 알림 설정 시 권한 확인
+              state.pendingReminderMinutes = minutes
               return .run { [notificationClient] send in
                 let status = await notificationClient.getAuthorizationStatus()
                 await send(.internal(.notificationStatusChecked(status)))
               }
             } else {
-              state.useReminder = false
+              // "없음" 선택
               state.event.reminderMinutesBefore = nil
+              state.pendingReminderMinutes = nil
+              state.reminderWarning = nil
               return .run { _ in await hapticFeedback.selection() }
             }
-
-          case .reminderChanged(let minutes):
-            state.event.reminderMinutesBefore = minutes
-            return .none
 
           case .descriptionChanged(let text):
             let trimmed = String(text.prefix(500))
@@ -353,8 +372,8 @@ extension CreatePersonalEvent {
           case .notificationStatusChecked(let status):
             switch status {
             case .authorized, .provisional, .ephemeral:
-              state.useReminder = true
-              state.event.reminderMinutesBefore = 30
+              state.event.reminderMinutesBefore = state.pendingReminderMinutes
+              state.pendingReminderMinutes = nil
               return .run { _ in await hapticFeedback.selection() }
             case .notDetermined, .denied:
               state.notificationPermission = NotificationPermission.Feature.State(allowInteractiveDismiss: true)
@@ -380,15 +399,15 @@ extension CreatePersonalEvent {
 
         case .notificationPermission(.presented(.delegate(.permissionChanged(let isGranted)))):
           if isGranted {
-            state.useReminder = true
-            state.event.reminderMinutesBefore = 30
+            state.event.reminderMinutesBefore = state.pendingReminderMinutes
           }
+          state.pendingReminderMinutes = nil
           return .none
 
         case .notificationPermission(.presented(.delegate(.dismissed))):
           state.notificationPermission = nil
-          // 스와이프로 닫았을 때도 권한 상태 재확인 후 useReminder 업데이트
-          guard !state.useReminder else { return .none }
+          // 스와이프로 닫았을 때도 권한 상태 재확인 후 pending 적용
+          guard state.pendingReminderMinutes != nil else { return .none }
           return .run { [notificationClient] send in
             let status = await notificationClient.getAuthorizationStatus()
             if status == .authorized || status == .provisional || status == .ephemeral {
@@ -418,22 +437,76 @@ extension CreatePersonalEvent {
 // MARK: - Reminder Options
 
 extension CreatePersonalEvent {
-  public enum ReminderOption: Int, CaseIterable, Sendable {
-    case fiveMinutes = 5
-    case tenMinutes = 10
-    case fifteenMinutes = 15
-    case thirtyMinutes = 30
-    case oneHour = 60
-    case twoHours = 120
+  public enum ReminderOption: Equatable, Sendable {
+    case none
+    case atEvent
+    case fiveMinutes
+    case tenMinutes
+    case fifteenMinutes
+    case thirtyMinutes
+    case oneHour
+    case twoHours
+    case oneDay
+    case twoDays
+    case oneWeek
+
+    public var minutes: Int? {
+      switch self {
+      case .none: return nil
+      case .atEvent: return 0
+      case .fiveMinutes: return 5
+      case .tenMinutes: return 10
+      case .fifteenMinutes: return 15
+      case .thirtyMinutes: return 30
+      case .oneHour: return 60
+      case .twoHours: return 120
+      case .oneDay: return 1440
+      case .twoDays: return 2880
+      case .oneWeek: return 10080
+      }
+    }
 
     public var title: String {
       switch self {
+      case .none: return LocalizedStrings.Shared.reminderNone
+      case .atEvent: return LocalizedStrings.Shared.reminderAtEvent
       case .fiveMinutes: return LocalizedStrings.Shared.reminder5min
       case .tenMinutes: return LocalizedStrings.Shared.reminder10min
       case .fifteenMinutes: return LocalizedStrings.Shared.reminder15min
       case .thirtyMinutes: return LocalizedStrings.Shared.reminder30min
       case .oneHour: return LocalizedStrings.Shared.reminder1hour
       case .twoHours: return LocalizedStrings.Shared.reminder2hours
+      case .oneDay: return LocalizedStrings.Shared.reminder1day
+      case .twoDays: return LocalizedStrings.Shared.reminder2days
+      case .oneWeek: return LocalizedStrings.Shared.reminder1week
+      }
+    }
+
+    /// 분 단위 → 분 이하 옵션
+    public static let shortOptions: [ReminderOption] = [
+      .atEvent, .fiveMinutes, .tenMinutes, .fifteenMinutes,
+      .thirtyMinutes, .oneHour, .twoHours,
+    ]
+
+    /// 일 단위 옵션
+    public static let longOptions: [ReminderOption] = [
+      .oneDay, .twoDays, .oneWeek,
+    ]
+
+    public static func from(minutes: Int?) -> ReminderOption {
+      guard let minutes else { return .none }
+      switch minutes {
+      case 0: return .atEvent
+      case 5: return .fiveMinutes
+      case 10: return .tenMinutes
+      case 15: return .fifteenMinutes
+      case 30: return .thirtyMinutes
+      case 60: return .oneHour
+      case 120: return .twoHours
+      case 1440: return .oneDay
+      case 2880: return .twoDays
+      case 10080: return .oneWeek
+      default: return .none
       }
     }
   }

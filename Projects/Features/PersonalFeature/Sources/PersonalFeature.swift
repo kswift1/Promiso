@@ -153,6 +153,8 @@ extension PersonalMode {
         case editEvent(PersonalEventModel)
         case deleteEvent(PersonalEventModel)
         case switchToGroupMode
+        /// 위젯 딥링크로 개인 일정 상세 열기
+        case openEventFromDeeplink(eventId: String)
       }
 
       public enum Internal: Sendable {
@@ -228,6 +230,19 @@ extension PersonalMode {
           case .switchToGroupMode:
             // RootTabFeature에서 처리
             return .none
+
+          case .openEventFromDeeplink(let eventId):
+            return .run { send in
+              do {
+                if let event = try await personalEventClient.getEvent(eventId) {
+                  await send(.view(.eventTapped(event)))
+                } else {
+                  AppLogger.personal.warning("딥링크 일정을 찾을 수 없음: \(eventId)")
+                }
+              } catch {
+                AppLogger.personal.error("딥링크 일정 조회 실패: \(error.localizedDescription)")
+              }
+            }
           }
 
         case let .internal(internalAction):

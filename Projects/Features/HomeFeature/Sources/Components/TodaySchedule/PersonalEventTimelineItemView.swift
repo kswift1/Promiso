@@ -193,6 +193,15 @@ struct PersonalEventTimelineItemView: View {
   }
 
   private func reminderText(minutes: Int) -> String {
+    if minutes == 0 { return "이벤트 시점" }
+    if minutes >= 10080 && minutes % (1440 * 7) == 0 {
+      let weeks = minutes / (1440 * 7)
+      return "\(weeks)주 전"
+    }
+    if minutes >= 1440 {
+      let days = minutes / 1440
+      return "\(days)일 전"
+    }
     if minutes >= 60 {
       return LocalizedStrings.Home.reminderHoursBefore(minutes / 60)
     }

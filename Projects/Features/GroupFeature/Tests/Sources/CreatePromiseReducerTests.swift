@@ -23,13 +23,14 @@ struct CreatePromiseReducerTests {
   private func makeGroup(
     id: String = "group-1",
     name: String = "테스트 그룹",
-    memberIds: [String] = ["user-1", "user-2", "user-3"]
+    memberIds: [String] = ["user-1", "user-2", "user-3"],
+    maxMembers: Int = 10
   ) -> GroupModel {
     GroupModel(
       id: id,
       name: name,
       memberIds: memberIds,
-      maxMembers: 10,
+      maxMembers: maxMembers,
       inviteCode: "ABC123",
       createdBy: "user-1"
     )
@@ -45,7 +46,7 @@ struct CreatePromiseReducerTests {
     #expect(state.isCreatingPromise == false)
     #expect(state.creationError == nil)
     #expect(state.isEmojiLoading == false)
-    #expect(state.useLocation == true)
+    #expect(state.useLocation == false)
     #expect(state.showLiveActivityInfo == false)
   }
 
@@ -79,8 +80,8 @@ struct CreatePromiseReducerTests {
 
   // MARK: - Group Selection 테스트
 
-  @Test("groupSelected 시 그룹 설정 및 최소 참가인원 자동 계산 (2명 그룹)")
-  func groupSelected_twoMembers_setsMinParticipantsToTwo() async {
+  @Test("groupSelected 시 그룹 설정 및 최소 참가인원 자동 계산 (maxMembers 기준)")
+  func groupSelected_setsMinParticipantsBasedOnMaxMembers() async {
     let group = makeGroup(memberIds: ["user-1", "user-2"])
 
     let store = TestStore(
@@ -91,12 +92,12 @@ struct CreatePromiseReducerTests {
 
     await store.send(.view(.groupSelected(group))) {
       $0.promise.group = group
-      $0.promise.minimumParticipants = 2
+      $0.promise.minimumParticipants = 5  // ceil(maxMembers(10) / 2) = 5
     }
   }
 
-  @Test("groupSelected 시 3명 이상 그룹에서 절반으로 최소 참가인원 설정")
-  func groupSelected_threeOrMore_setsMinParticipantsToHalf() async {
+  @Test("groupSelected 시 maxMembers 기준으로 최소 참가인원 설정")
+  func groupSelected_differentMemberCount_setsMinParticipantsBasedOnMaxMembers() async {
     let group = makeGroup(memberIds: ["user-1", "user-2", "user-3", "user-4"])
 
     let store = TestStore(
@@ -107,7 +108,23 @@ struct CreatePromiseReducerTests {
 
     await store.send(.view(.groupSelected(group))) {
       $0.promise.group = group
-      $0.promise.minimumParticipants = 2  // ceil(4/2) = 2
+      $0.promise.minimumParticipants = 5  // ceil(maxMembers(10) / 2) = 5
+    }
+  }
+
+  @Test("1인 그룹(maxMembers == 1) 선택 시 최소 참가인원 1명 고정")
+  func groupSelected_singleMemberGroup_setsMinParticipantsToOne() async {
+    let group = makeGroup(memberIds: ["user-1"], maxMembers: 1)
+
+    let store = TestStore(
+      initialState: CreatePromise.Feature.State()
+    ) {
+      CreatePromise.Feature()
+    }
+
+    await store.send(.view(.groupSelected(group))) {
+      $0.promise.group = group
+      $0.promise.minimumParticipants = 1
     }
   }
 

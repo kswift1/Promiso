@@ -55,8 +55,21 @@ struct PromiseSystemLargeWidgetView: View {
 
   @ViewBuilder
   private var contentView: some View {
-    let todayItems = Array(entry.todayItems.prefix(3))
-    let maxUpcoming = todayItems.isEmpty ? 7 : max(7 - todayItems.count, 3)
+    let todayItems: [WidgetPromiseData] = {
+      if entry.upcomingItems.isEmpty {
+        return Array(entry.todayItems.prefix(6))
+      } else {
+        return Array(entry.todayItems.prefix(3))
+      }
+    }()
+    let maxUpcoming: Int = {
+      if todayItems.isEmpty { return 9 }
+      switch todayItems.count {
+      case 1: return 6
+      case 2: return 5
+      default: return 4
+      }
+    }()
     let upcomingItems = Array(entry.upcomingItems.prefix(maxUpcoming))
 
     if todayItems.isEmpty && upcomingItems.isEmpty {
@@ -80,9 +93,11 @@ struct PromiseSystemLargeWidgetView: View {
 
         Spacer(minLength: 0)
       }
-      .padding()
+      .padding(0)
       .overlay(alignment: .bottomTrailing) {
-        WidgetFooterView(updatedAt: entry.date)
+        WidgetFooterView(updatedAt: entry.date, showLabel: true)
+          .padding(.bottom, -10)
+          .padding(.trailing, -6)
       }
     }
   }
@@ -297,18 +312,26 @@ struct PromiseSystemLargeWidgetView: View {
 
   // MARK: - Date Formatting
 
-  private func formatTime(_ date: Date) -> String {
+  private static let timeFormatter: DateFormatter = {
     let formatter = DateFormatter()
     formatter.locale = Locale(identifier: "ko_KR")
     formatter.dateFormat = "a h:mm"
-    return formatter.string(from: date)
-  }
+    return formatter
+  }()
 
-  private func formatShortDate(_ date: Date) -> String {
+  private static let shortDateFormatter: DateFormatter = {
     let formatter = DateFormatter()
     formatter.locale = Locale(identifier: "ko_KR")
     formatter.dateFormat = "M/d"
-    return formatter.string(from: date)
+    return formatter
+  }()
+
+  private func formatTime(_ date: Date) -> String {
+    Self.timeFormatter.string(from: date)
+  }
+
+  private func formatShortDate(_ date: Date) -> String {
+    Self.shortDateFormatter.string(from: date)
   }
 
   // MARK: - Accessibility
@@ -351,27 +374,209 @@ struct PromiseSystemLargeWidgetView: View {
 }
 
 #if DEBUG
-#Preview("전체 약속", as: .systemLarge) {
-  PromiseSystemLargeWidget()
-} timeline: {
-  WidgetPromiseEntry.previewFull
-}
 
-#Preview("오늘만", as: .systemLarge) {
-  PromiseSystemLargeWidget()
-} timeline: {
-  WidgetPromiseEntry.previewToday
-}
-
-#Preview("다가오는 약속만", as: .systemLarge) {
-  PromiseSystemLargeWidget()
-} timeline: {
-  WidgetPromiseEntry.previewUpcoming
-}
+// MARK: - 기본 상태
 
 #Preview("약속 없음", as: .systemLarge) {
   PromiseSystemLargeWidget()
 } timeline: {
   WidgetPromiseEntry(date: Date(), promises: [], state: .empty)
+}
+
+#Preview("로그인 필요", as: .systemLarge) {
+  PromiseSystemLargeWidget()
+} timeline: {
+  WidgetPromiseEntry(date: Date(), promises: [], state: .notLoggedIn)
+}
+
+// MARK: - 오늘만
+
+#Preview("오늘 6개 (최대)", as: .systemLarge) {
+  PromiseSystemLargeWidget()
+} timeline: {
+  WidgetPromiseEntry(
+    date: Date(),
+    promises: {
+      let cal = Calendar.current
+      let now = Date()
+      let emojis = ["🍽️", "💻", "☕", "🧘", "📞", "🎮"]
+      let titles = ["점심 모임", "디자인 리뷰", "커피챗", "요가 수업", "전화 미팅", "게임 모임"]
+      let locations: [String?] = ["강남역", "판교", "합정 카페", "홍대", nil, nil]
+      let groups: [String?] = ["직장 동료", "개발팀", "프로젝트팀", nil, "마케팅팀", "친구들"]
+      return (0..<6).map { i in
+        WidgetPromiseData(
+          type: i == 3 ? .personal : .promise,
+          id: "t\(i)", title: titles[i], emoji: emojis[i],
+          startAt: cal.date(bySettingHour: 9 + i * 2, minute: 0, second: 0, of: now) ?? now,
+          endAt: nil, location: locations[i],
+          groupId: groups[i] != nil ? "g\(i)" : "", groupName: groups[i],
+          participantCount: i == 3 ? 0 : i + 3
+        )
+      }
+    }(),
+    state: .loaded
+  )
+}
+
+// MARK: - 다가오는만
+
+#Preview("다가오는 9개 (최대)", as: .systemLarge) {
+  PromiseSystemLargeWidget()
+} timeline: {
+  WidgetPromiseEntry(
+    date: Date(),
+    promises: {
+      let cal = Calendar.current
+      let now = Date()
+      let emojis = ["☕", "🎂", "🎬", "🏃", "📚", "🎵", "🍕", "🎯", "🏖️"]
+      let titles = ["카페 미팅", "생일 파티", "영화 관람", "러닝 모임", "독서 모임", "공연 관람", "피자 파티", "볼링 대회", "여행 계획"]
+      let groups: [String?] = ["프로젝트팀", "친구들", "동호회", nil, "북클럽", "문화팀", "직장 동료", "친구들", "가족"]
+      let locations: [String?] = ["합정", "이태원", "CGV", nil, "교보문고", "예술의전당", "이태원", "코엑스", nil]
+      return (0..<9).map { i in
+        let date = cal.date(byAdding: .day, value: i + 1, to:
+          cal.date(bySettingHour: 12 + (i % 3) * 3, minute: 0, second: 0, of: now) ?? now
+        ) ?? now
+        return WidgetPromiseData(
+          type: i == 3 ? .personal : .promise,
+          id: "u\(i)", title: titles[i], emoji: emojis[i],
+          startAt: date, endAt: nil, location: locations[i],
+          groupId: groups[i] != nil ? "g\(i)" : "", groupName: groups[i],
+          participantCount: i == 3 ? 0 : i + 2
+        )
+      }
+    }(),
+    state: .loaded
+  )
+}
+
+// MARK: - 혼합 (오늘 1 + 다가오는 6)
+
+#Preview("혼합: 오늘 1 + 다가오는 6", as: .systemLarge) {
+  PromiseSystemLargeWidget()
+} timeline: {
+  WidgetPromiseEntry(
+    date: Date(),
+    promises: {
+      let cal = Calendar.current
+      let now = Date()
+      var items: [WidgetPromiseData] = []
+      items.append(WidgetPromiseData(
+        id: "t0", title: "점심 모임", emoji: "🍽️",
+        startAt: cal.date(bySettingHour: 12, minute: 0, second: 0, of: now) ?? now,
+        endAt: nil, location: "강남역", groupId: "g0", groupName: "직장 동료", participantCount: 4
+      ))
+      let uEmojis = ["☕", "🎂", "🎬", "🍕", "🎯", "🏖️"]
+      let uTitles = ["카페 미팅", "생일 파티", "영화 관람", "피자 파티", "볼링 대회", "여행 계획"]
+      for i in 0..<6 {
+        let date = cal.date(byAdding: .day, value: i + 1, to:
+          cal.date(bySettingHour: 14, minute: 0, second: 0, of: now) ?? now) ?? now
+        items.append(WidgetPromiseData(
+          id: "u\(i)", title: uTitles[i], emoji: uEmojis[i],
+          startAt: date, endAt: nil, location: nil,
+          groupId: "g\(i+1)", groupName: "그룹\(i+1)", participantCount: i + 2
+        ))
+      }
+      return items
+    }(),
+    state: .loaded
+  )
+}
+
+// MARK: - 혼합 (오늘 2 + 다가오는 5)
+
+#Preview("혼합: 오늘 2 + 다가오는 5", as: .systemLarge) {
+  PromiseSystemLargeWidget()
+} timeline: {
+  WidgetPromiseEntry(
+    date: Date(),
+    promises: {
+      let cal = Calendar.current
+      let now = Date()
+      var items: [WidgetPromiseData] = []
+      let tEmojis = ["🍽️", "💻"]
+      let tTitles = ["점심 모임", "디자인 리뷰"]
+      for i in 0..<2 {
+        items.append(WidgetPromiseData(
+          id: "t\(i)", title: tTitles[i], emoji: tEmojis[i],
+          startAt: cal.date(bySettingHour: 12 + i * 3, minute: 0, second: 0, of: now) ?? now,
+          endAt: nil, location: i == 0 ? "강남역" : nil,
+          groupId: "g\(i)", groupName: "팀\(i+1)", participantCount: i + 3
+        ))
+      }
+      let uEmojis = ["☕", "🎂", "🎬", "🍕", "🎯"]
+      let uTitles = ["카페 미팅", "생일 파티", "영화 관람", "피자 파티", "볼링 대회"]
+      for i in 0..<5 {
+        let date = cal.date(byAdding: .day, value: i + 1, to:
+          cal.date(bySettingHour: 14, minute: 0, second: 0, of: now) ?? now) ?? now
+        items.append(WidgetPromiseData(
+          id: "u\(i)", title: uTitles[i], emoji: uEmojis[i],
+          startAt: date, endAt: nil, location: nil,
+          groupId: "g\(i+10)", groupName: "그룹\(i+1)", participantCount: i + 2
+        ))
+      }
+      return items
+    }(),
+    state: .loaded
+  )
+}
+
+// MARK: - 혼합 (오늘 3 + 다가오는 4)
+
+#Preview("혼합: 오늘 3 + 다가오는 4", as: .systemLarge) {
+  PromiseSystemLargeWidget()
+} timeline: {
+  WidgetPromiseEntry(
+    date: Date(),
+    promises: {
+      let cal = Calendar.current
+      let now = Date()
+      var items: [WidgetPromiseData] = []
+      let tEmojis = ["🍽️", "💻", "🧘"]
+      let tTitles = ["점심 모임", "디자인 리뷰", "저녁 요가"]
+      for i in 0..<3 {
+        items.append(WidgetPromiseData(
+          type: i == 2 ? .personal : .promise,
+          id: "t\(i)", title: tTitles[i], emoji: tEmojis[i],
+          startAt: cal.date(bySettingHour: 12 + i * 3, minute: 0, second: 0, of: now) ?? now,
+          endAt: nil, location: i == 0 ? "강남역" : nil,
+          groupId: i < 2 ? "g\(i)" : "", groupName: i < 2 ? "팀\(i+1)" : nil,
+          participantCount: i == 2 ? 0 : i + 3
+        ))
+      }
+      let uEmojis = ["☕", "🎂", "🎬", "🍕"]
+      let uTitles = ["카페 미팅", "생일 파티", "영화 관람", "피자 파티"]
+      for i in 0..<4 {
+        let date = cal.date(byAdding: .day, value: i + 1, to:
+          cal.date(bySettingHour: 14, minute: 0, second: 0, of: now) ?? now) ?? now
+        items.append(WidgetPromiseData(
+          id: "u\(i)", title: uTitles[i], emoji: uEmojis[i],
+          startAt: date, endAt: nil, location: nil,
+          groupId: "g\(i+10)", groupName: "그룹\(i+1)", participantCount: i + 2
+        ))
+      }
+      return items
+    }(),
+    state: .loaded
+  )
+}
+
+// MARK: - 기존 프리셋
+
+#Preview("전체 (프리셋)", as: .systemLarge) {
+  PromiseSystemLargeWidget()
+} timeline: {
+  WidgetPromiseEntry.previewFull
+}
+
+#Preview("오늘 (프리셋)", as: .systemLarge) {
+  PromiseSystemLargeWidget()
+} timeline: {
+  WidgetPromiseEntry.previewToday
+}
+
+#Preview("다가오는 (프리셋)", as: .systemLarge) {
+  PromiseSystemLargeWidget()
+} timeline: {
+  WidgetPromiseEntry.previewUpcoming
 }
 #endif

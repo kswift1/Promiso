@@ -548,6 +548,11 @@ public enum LocalizedStrings {
     public static var reminder30min: String { String(localized: "shared.reminder.30min", bundle: bundle) }
     public static var reminder1hour: String { String(localized: "shared.reminder.1hour", bundle: bundle) }
     public static var reminder2hours: String { String(localized: "shared.reminder.2hours", bundle: bundle) }
+    public static var reminderNone: String { String(localized: "shared.reminder.none", bundle: bundle) }
+    public static var reminderAtEvent: String { String(localized: "shared.reminder.atEvent", bundle: bundle) }
+    public static var reminder1day: String { String(localized: "shared.reminder.1day", bundle: bundle) }
+    public static var reminder2days: String { String(localized: "shared.reminder.2days", bundle: bundle) }
+    public static var reminder1week: String { String(localized: "shared.reminder.1week", bundle: bundle) }
 
     // Image Attachment
     public static var imageUploading: String { String(localized: "shared.image.uploading", bundle: bundle) }
@@ -607,9 +612,18 @@ public enum LocalizedStrings {
         .replacingOccurrences(of: "%lld", with: "\(count)")
     }
     public static var reminderSent: String { String(localized: "personal.event.reminderSent", bundle: bundle) }
+    public static var reminderAtEvent: String { String(localized: "personal.event.reminderAtEvent", bundle: bundle) }
     public static func reminderHours(_ hours: Int) -> String {
       String(localized: "personal.event.reminderHours", bundle: bundle)
         .replacingOccurrences(of: "%lld", with: "\(hours)")
+    }
+    public static func reminderDays(_ days: Int) -> String {
+      String(localized: "personal.event.reminderDays", bundle: bundle)
+        .replacingOccurrences(of: "%lld", with: "\(days)")
+    }
+    public static func reminderWeeks(_ weeks: Int) -> String {
+      String(localized: "personal.event.reminderWeeks", bundle: bundle)
+        .replacingOccurrences(of: "%lld", with: "\(weeks)")
     }
     public static func reminderMinutes(_ minutes: Int) -> String {
       String(localized: "personal.event.reminderMinutes", bundle: bundle)

@@ -124,17 +124,7 @@ extension EditPromise {
             .focused($focusedField, equals: .title)
             .font(.system(size: 18, weight: .medium))
             .textFieldStyle(.plain)
-            .toolbar {
-              ToolbarItemGroup(placement: .keyboard) {
-                Spacer()
-                Button {
-                  focusedField = nil
-                } label: {
-                  Image(systemName: "keyboard.chevron.compact.down")
-                    .foregroundStyle(Color.pmtext.secondary)
-                }
-              }
-            }
+            .keyboardDismissToolbar()
           }
 
           Text("\(store.editedPromise.title.count)/30")

@@ -35,6 +35,11 @@ extension HomeModels {
       }
     }
 
+    /// endAt이 없는 경우 단발성 (시작 = 종료)
+    public var effectiveEndAt: Date {
+      endAt ?? startAt
+    }
+
     public var displayEmoji: String {
       switch self {
       case .promise(let p): return p.displayEmoji

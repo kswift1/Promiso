@@ -3161,9 +3161,9 @@ components:
           example: group_friends
         minimumParticipants:
           type: integer
-          minimum: 2
+          minimum: 1
           description: 최소 참가자 수 (확정 기준)
-          example: 2
+          example: 1
         votes:
           type: object
           description: 투표 정보 (상태별 userId 배열 + 마감 시각)
@@ -3296,7 +3296,7 @@ components:
 
         minimumParticipants:
           type: integer
-          minimum: 2
+          minimum: 1
           description: 최소 참가 인원
           example: 3
 
@@ -3474,7 +3474,7 @@ components:
 
         minimumParticipants:
           type: integer
-          minimum: 2
+          minimum: 1
           nullable: true
           description: 최소 참가 인원 (선택적)
           example: 3

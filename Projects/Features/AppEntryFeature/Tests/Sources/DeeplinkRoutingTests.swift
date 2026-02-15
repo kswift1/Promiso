@@ -205,6 +205,34 @@ struct DeeplinkRoutingTests {
     }
   }
 
+  @Test("personalEvent 딥링크는 메인에서 개인 일정 상세 라우팅")
+  func routePersonalEvent_sendsOpenPersonalEventDetail() async {
+    let store = TestStore(initialState: makeMainState(key: "deeplink-personal-main")) {
+      AppEntry.Feature()
+    } withDependencies: {
+      $0.deeplinkClient.parseURL = { _ in .personalEvent(eventId: "event-123") }
+      $0.personalEventClient.getEvent = { _ in nil }
+    }
+    store.exhaustivity = .off(showSkippedAssertions: false)
+
+    await store.send(.view(.handleDeeplink(URL(string: "promiso://personalEvent/event-123")!)))
+    #expect(store.state.pendingDeeplink == nil)
+    await store.receive(\.destination.presented.main.openPersonalEventDetail)
+  }
+
+  @Test("Auth 화면에서 personalEvent 딥링크는 pending으로 저장")
+  func deeplinkWhileAuth_personalEvent_storesPending() async {
+    let store = TestStore(initialState: makeAuthState()) {
+      AppEntry.Feature()
+    } withDependencies: {
+      $0.deeplinkClient.parseURL = { _ in .personalEvent(eventId: "event-auth") }
+    }
+
+    await store.send(.view(.handleDeeplink(URL(string: "promiso://personalEvent/event-auth")!))) {
+      $0.pendingDeeplink = .personalEvent(eventId: "event-auth")
+    }
+  }
+
   @Test("Auth 화면에서 liveActivityETA 딥링크는 pending으로 저장")
   func deeplinkWhileAuth_liveActivityETA_storesPending() async {
     let store = TestStore(initialState: makeAuthState()) {

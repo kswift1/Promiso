@@ -138,9 +138,9 @@ private struct RemoteImageThumbnail: View {
         loadFailed = true
         return
       }
-      do {
-        loadedImage = try await ImagePipeline.shared.image(for: ImageRequest(url: imageUrl))
-      } catch {
+      if let image = await ImageLoader.loadImage(from: imageUrl) {
+        loadedImage = image
+      } else {
         loadFailed = true
       }
     }
@@ -246,9 +246,9 @@ public struct GalleryImageThumbnail: View {
         loadFailed = true
         return
       }
-      do {
-        loadedImage = try await ImagePipeline.shared.image(for: ImageRequest(url: imageUrl))
-      } catch {
+      if let image = await ImageLoader.loadImage(from: imageUrl) {
+        loadedImage = image
+      } else {
         loadFailed = true
       }
     }

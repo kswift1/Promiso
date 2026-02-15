@@ -50,6 +50,7 @@ struct PromiseSystemSmallWidgetView: View {
       case .loaded:
         if let item = entry.nextItem {
           scheduleItemView(item)
+            .widgetURL(item.deeplinkURL)
         } else {
           EmptyWidgetView(
             icon: "calendar.badge.clock",
@@ -71,14 +72,10 @@ struct PromiseSystemSmallWidgetView: View {
 
         Spacer()
 
-        if item.isPersonalEvent {
-          personalBadge
-        } else {
-          dDayBadge(item.startAt)
-        }
+        dDayBadge(item.startAt)
       }
 
-      Spacer(minLength: 4)
+      Spacer(minLength: 2)
 
       // 제목
       Text(item.title)
@@ -86,31 +83,33 @@ struct PromiseSystemSmallWidgetView: View {
         .lineLimit(2)
         .foregroundStyle(.primary)
 
-      Spacer().frame(height: 2)
+      Spacer().frame(height: 1)
 
       // 시간 (강조)
       Text(formatTime(item.startAt))
-        .font(.title3.weight(.bold))
+        .font(.subheadline.weight(.bold))
         .foregroundStyle(item.isPersonalEvent ? personalColor : accentColor)
 
       // 장소
       if let location = item.location {
-        HStack(spacing: 3) {
+        HStack(spacing: 2) {
           Image(systemName: "location.fill")
-            .font(.system(size: 9))
+            .font(.system(size: 8))
           Text(location)
             .lineLimit(1)
         }
-        .font(.caption)
+        .font(.caption2)
         .foregroundStyle(.secondary)
-        .padding(.top, 2)
+        .padding(.top, 1)
       }
 
       Spacer(minLength: 0)
     }
-    .padding()
+    .padding(0)
     .overlay(alignment: .bottomTrailing) {
-      WidgetFooterView(updatedAt: entry.date)
+      WidgetFooterView(updatedAt: entry.date, showLabel: false)
+        .padding(.bottom, -10)
+        .padding(.trailing, -6)
     }
     .accessibilityElement(children: .combine)
     .accessibilityLabel(accessibilityLabel(for: item))
@@ -212,11 +211,15 @@ struct PromiseSystemSmallWidgetView: View {
     Color.pmaurora.purple
   }
 
-  private func formatTime(_ date: Date) -> String {
+  private static let timeFormatter: DateFormatter = {
     let formatter = DateFormatter()
     formatter.locale = Locale(identifier: "ko_KR")
     formatter.dateFormat = "a h:mm"
-    return formatter.string(from: date)
+    return formatter
+  }()
+
+  private func formatTime(_ date: Date) -> String {
+    Self.timeFormatter.string(from: date)
   }
 }
 
@@ -238,5 +241,184 @@ struct PromiseSystemSmallWidgetView: View {
   PromiseSystemSmallWidget()
 } timeline: {
   WidgetPromiseEntry(date: Date(), promises: [], state: .notLoggedIn)
+}
+
+#Preview("오늘 약속", as: .systemSmall) {
+  PromiseSystemSmallWidget()
+} timeline: {
+  WidgetPromiseEntry(
+    date: Date(),
+    promises: [
+      WidgetPromiseData(
+        id: "today1",
+        title: "점심 모임",
+        emoji: "🍽️",
+        startAt: Calendar.current.date(bySettingHour: 12, minute: 30, second: 0, of: Date()) ?? Date(),
+        endAt: nil,
+        location: "강남역 맛집",
+        groupId: "g1",
+        groupName: "직장 동료",
+        participantCount: 4
+      )
+    ],
+    state: .loaded
+  )
+}
+
+#Preview("내일 약속", as: .systemSmall) {
+  PromiseSystemSmallWidget()
+} timeline: {
+  WidgetPromiseEntry(
+    date: Date(),
+    promises: [
+      WidgetPromiseData(
+        id: "tomorrow1",
+        title: "카페 미팅",
+        emoji: "☕",
+        startAt: Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.date(bySettingHour: 15, minute: 0, second: 0, of: Date()) ?? Date()) ?? Date(),
+        endAt: nil,
+        location: "합정 카페",
+        groupId: "g2",
+        groupName: "프로젝트팀",
+        participantCount: 3
+      )
+    ],
+    state: .loaded
+  )
+}
+
+#Preview("D-5 약속", as: .systemSmall) {
+  PromiseSystemSmallWidget()
+} timeline: {
+  WidgetPromiseEntry(
+    date: Date(),
+    promises: [
+      WidgetPromiseData(
+        id: "d5",
+        title: "생일 파티",
+        emoji: "🎂",
+        startAt: Calendar.current.date(byAdding: .day, value: 5, to: Calendar.current.date(bySettingHour: 19, minute: 0, second: 0, of: Date()) ?? Date()) ?? Date(),
+        endAt: nil,
+        location: "이태원 레스토랑",
+        groupId: "g3",
+        groupName: "친구들",
+        participantCount: 8
+      )
+    ],
+    state: .loaded
+  )
+}
+
+#Preview("오늘 개인 일정", as: .systemSmall) {
+  PromiseSystemSmallWidget()
+} timeline: {
+  WidgetPromiseEntry(
+    date: Date(),
+    promises: [
+      WidgetPromiseData(
+        type: .personal,
+        id: "pe1",
+        title: "아침 운동",
+        emoji: "🏃",
+        startAt: Calendar.current.date(bySettingHour: 7, minute: 0, second: 0, of: Date()) ?? Date(),
+        endAt: nil,
+        location: nil,
+        groupId: "",
+        groupName: nil,
+        participantCount: 0
+      )
+    ],
+    state: .loaded
+  )
+}
+
+#Preview("내일 개인 일정", as: .systemSmall) {
+  PromiseSystemSmallWidget()
+} timeline: {
+  WidgetPromiseEntry(
+    date: Date(),
+    promises: [
+      WidgetPromiseData(
+        type: .personal,
+        id: "pe2",
+        title: "병원 예약",
+        emoji: "🏥",
+        startAt: Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.date(bySettingHour: 10, minute: 30, second: 0, of: Date()) ?? Date()) ?? Date(),
+        endAt: nil,
+        location: "서울대병원",
+        groupId: "",
+        groupName: nil,
+        participantCount: 0
+      )
+    ],
+    state: .loaded
+  )
+}
+
+#Preview("긴 제목 (그룹)", as: .systemSmall) {
+  PromiseSystemSmallWidget()
+} timeline: {
+  WidgetPromiseEntry(
+    date: Date(),
+    promises: [
+      WidgetPromiseData(
+        id: "long1",
+        title: "대학교 졸업 10주년 기념 동창회 모임",
+        emoji: "🎓",
+        startAt: Calendar.current.date(bySettingHour: 18, minute: 0, second: 0, of: Date()) ?? Date(),
+        endAt: nil,
+        location: "서울특별시 강남구 역삼동 스타벅스 리저브점",
+        groupId: "g1",
+        groupName: "서울대 컴공 15학번",
+        participantCount: 12
+      )
+    ],
+    state: .loaded
+  )
+}
+
+#Preview("긴 제목 (개인)", as: .systemSmall) {
+  PromiseSystemSmallWidget()
+} timeline: {
+  WidgetPromiseEntry(
+    date: Date(),
+    promises: [
+      WidgetPromiseData(
+        type: .personal,
+        id: "pe-long1",
+        title: "아침 요가 수업 & 명상 프로그램",
+        emoji: "🧘",
+        startAt: Calendar.current.date(bySettingHour: 7, minute: 30, second: 0, of: Date()) ?? Date(),
+        endAt: nil,
+        location: "홍대입구역 3번출구 요가스튜디오",
+        groupId: "",
+        groupName: nil,
+        participantCount: 0
+      )
+    ],
+    state: .loaded
+  )
+}
+
+#Preview("장소 없음", as: .systemSmall) {
+  PromiseSystemSmallWidget()
+} timeline: {
+  WidgetPromiseEntry(
+    date: Date(),
+    promises: [
+      WidgetPromiseData(
+        id: "noloc",
+        title: "온라인 회의",
+        emoji: "💻",
+        startAt: Calendar.current.date(bySettingHour: 14, minute: 0, second: 0, of: Date()) ?? Date(),
+        endAt: nil,
+        location: nil,
+        groupId: "g4",
+        groupName: "개발팀",
+        participantCount: 5
+      )
+    ],
+    state: .loaded
+  )
 }
 #endif
