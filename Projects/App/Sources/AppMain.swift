@@ -18,6 +18,9 @@ struct PromisoApp: App {
     if UserDefaults.standard.string(forKey: AppConstants.UserDefaults.preferredThemeMode) == nil {
       UserDefaults.standard.set(AppConstants.ThemeMode.system.rawValue, forKey: AppConstants.UserDefaults.preferredThemeMode)
     }
+
+    // 선호 언어 번들 설정
+    LocalizedStrings.configure()
   }
   @Environment(\.scenePhase) private var scenePhase
 

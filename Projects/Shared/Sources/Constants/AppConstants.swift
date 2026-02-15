@@ -194,6 +194,8 @@ public enum AppConstants {
     public static let lastCalendarSyncDate = "promisoLastCalendarSyncDate"
     /// 약속 탭 기본 모드 (group/own)
     public static let defaultPromiseTabMode = "promisoDefaultPromiseTabMode"
+    /// 선호하는 앱 언어 (ko/en, nil이면 시스템 기본)
+    public static let preferredLanguage = "promisoPreferredLanguage"
     /// 개인 일정 캘린더 동기화 활성화 여부
     public static let personalCalendarSync = "promisoPersonalCalendarSync"
     /// 앱 소개 온보딩 완료 여부

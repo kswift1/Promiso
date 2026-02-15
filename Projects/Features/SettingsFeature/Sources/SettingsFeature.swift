@@ -106,6 +106,7 @@ extension Settings {
       case dateTimeSettings(DateTimeSettings.Feature)
       case promiseTabModeSettings(PromiseTabModeSettings.Feature)
       case themeSettings(ThemeSettings.Feature)
+      case languageSettings(LanguageSettings.Feature)
       case notificationSettings(NotificationSettings.Feature)
       case groupNotificationDetail(GroupNotificationDetail.Feature)
       case calendarSettings(CalendarSettings.Feature)
@@ -160,6 +161,8 @@ extension Settings {
       case promiseTabModeSettingsTapped
       /// 화면 모드 탭
       case themeSettingsTapped
+      /// 언어 설정 탭
+      case languageSettingsTapped
       /// 알림 설정 탭
       case notificationSettingsTapped
       /// 캘린더 설정 탭
@@ -278,6 +281,10 @@ extension Settings {
 
           case .themeSettingsTapped:
             state.path.append(.themeSettings(ThemeSettings.Feature.State()))
+            return .run { _ in await hapticFeedback.selection() }
+
+          case .languageSettingsTapped:
+            state.path.append(.languageSettings(LanguageSettings.Feature.State()))
             return .run { _ in await hapticFeedback.selection() }
 
           case .notificationSettingsTapped:
@@ -554,6 +561,8 @@ extension Settings {
           PromiseTabModeSettings.RootView(store: store)
         case .themeSettings(let store):
           ThemeSettings.RootView(store: store)
+        case .languageSettings(let store):
+          LanguageSettings.RootView(store: store)
         case .notificationSettings(let store):
           NotificationSettings.RootView(store: store)
         case .groupNotificationDetail(let store):
@@ -1064,6 +1073,188 @@ extension ThemeSettings {
       case .light: return "항상 밝은 화면으로 표시"
       case .dark: return "항상 어두운 화면으로 표시"
       }
+    }
+  }
+}
+
+// MARK: - LanguageSettings Namespace
+
+public enum LanguageSettings {}
+
+// MARK: - LanguageSettings Feature
+
+extension LanguageSettings {
+
+  @Reducer
+  public struct Feature {
+    @Dependency(\.hapticFeedback) var hapticFeedback
+    @Dependency(\.notificationCenter) var notificationCenter
+
+    public init() {}
+
+    @ObservableState
+    public struct State: Equatable {
+      @Shared(.appStorage(AppConstants.UserDefaults.preferredLanguage)) public var preferredLanguage: String = ""
+      /// 재시작 확인 Alert 표시 여부
+      var showRestartAlert: Bool = false
+      /// 변경하려는 값 (Alert 확인 시 적용)
+      var pendingValue: AppLanguage?
+
+      public init() {}
+    }
+
+    public enum Action: Equatable, Sendable {
+      case view(View)
+    }
+
+    public enum View: Equatable, Sendable {
+      case onAppear
+      case languageChanged(AppLanguage)
+      case restartConfirmed
+      case restartCancelled
+    }
+
+    public var body: some ReducerOf<Self> {
+      Reduce { state, action in
+        switch action {
+        case .view(let viewAction):
+          switch viewAction {
+          case .onAppear:
+            return .none
+
+          case .languageChanged(let language):
+            // 값이 변경된 경우에만 Alert 표시
+            guard language.rawValue != state.preferredLanguage else { return .none }
+            state.pendingValue = language
+            state.showRestartAlert = true
+            return .run { _ in
+              await hapticFeedback.medium()
+            }
+
+          case .restartConfirmed:
+            state.showRestartAlert = false
+            guard let newLanguage = state.pendingValue else { return .none }
+            state.$preferredLanguage.withLock { $0 = newLanguage.rawValue }
+            state.pendingValue = nil
+            return .run { [notificationCenter] _ in
+              await hapticFeedback.success()
+              notificationCenter.post(name: AppConstants.Notifications.appRestartRequested, object: nil)
+            }
+
+          case .restartCancelled:
+            state.showRestartAlert = false
+            state.pendingValue = nil
+            return .none
+          }
+        }
+      }
+    }
+  }
+
+  // MARK: - Root View
+
+  public struct RootView: View {
+    @Bindable private var store: StoreOf<Feature>
+
+    public init(store: StoreOf<Feature>) {
+      self.store = store
+    }
+
+    private var currentLanguage: AppLanguage {
+      if store.preferredLanguage.isEmpty {
+        // 시스템 기본 - 현재 시스템 언어 감지
+        let systemLang = Locale.current.language.languageCode?.identifier ?? "ko"
+        return AppLanguage(rawValue: systemLang) ?? .korean
+      }
+      return AppLanguage(rawValue: store.preferredLanguage) ?? .korean
+    }
+
+    public var body: some View {
+      ScrollView {
+        VStack(spacing: 16) {
+          languageSection
+
+          systemLanguageHint
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 12)
+        .padding(.bottom, 24)
+      }
+      .auroraBackground()
+      .navigationTitle(LocalizedStrings.Settings.language)
+      .navigationBarTitleDisplayMode(.inline)
+      .onAppear {
+        store.send(.view(.onAppear))
+      }
+      .alert(LocalizedStrings.Settings.languageRestartTitle, isPresented: Binding(
+        get: { store.showRestartAlert },
+        set: { if !$0 { store.send(.view(.restartCancelled)) } }
+      )) {
+        Button(LocalizedStrings.Common.cancel, role: .cancel) {
+          store.send(.view(.restartCancelled))
+        }
+        Button(LocalizedStrings.Settings.languageRestartAction) {
+          store.send(.view(.restartConfirmed))
+        }
+      } message: {
+        Text(LocalizedStrings.Settings.languageRestartMessage)
+      }
+    }
+
+    private var languageSection: some View {
+      VStack(alignment: .leading, spacing: 10) {
+        Text(LocalizedStrings.Settings.languageSectionTitle)
+          .font(.system(size: 16, weight: .semibold))
+          .padding(.horizontal, 4)
+
+        VStack(spacing: 0) {
+          ForEach(AppLanguage.allCases, id: \.rawValue) { language in
+            languageRow(language: language)
+            if language != AppLanguage.allCases.last {
+              Divider()
+                .padding(.leading, 48)
+            }
+          }
+        }
+        .adaptiveGlassCard()
+      }
+    }
+
+    private var systemLanguageHint: some View {
+      Text(LocalizedStrings.Settings.languageHint)
+        .font(.system(size: 12))
+        .foregroundStyle(Color.pmtext.secondary)
+        .padding(.horizontal, 4)
+    }
+
+    private func languageRow(language: AppLanguage) -> some View {
+      Button {
+        store.send(.view(.languageChanged(language)))
+      } label: {
+        HStack(spacing: 12) {
+          Text(language.icon)
+            .font(.system(size: 20))
+            .frame(width: 24)
+
+          VStack(alignment: .leading, spacing: 2) {
+            Text(language.displayName)
+              .font(.body)
+              .foregroundStyle(Color.pmtext.primary)
+          }
+
+          Spacer()
+
+          if currentLanguage == language {
+            Image(systemName: "checkmark")
+              .font(.system(size: 14, weight: .semibold))
+              .foregroundStyle(Color.pmindigo.n500)
+          }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .contentShape(Rectangle())
+      }
+      .buttonStyle(.plain)
     }
   }
 }

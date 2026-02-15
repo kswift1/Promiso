@@ -325,6 +325,9 @@ extension AppEntry {
             .cancellable(id: SubscriptionCancelID.appRestart, cancelInFlight: true)
 
           case .appRestartRequested:
+            // 언어 번들 재설정
+            LocalizedStrings.configure()
+
             // 앱 상태 리셋 - Splash부터 다시 시작
             state.reset()
 
