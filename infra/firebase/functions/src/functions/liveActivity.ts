@@ -771,6 +771,12 @@ export const executeLiveActivityStart = onTaskDispatched<
     const trackingMinutes =
       (promiseData.trackingStartMinutesBefore as number) || 30;
 
+    // 시간 변경 등으로 스케줄이 리셋된 경우 스킵 (기존 Cloud Task 실행 방지)
+    if (promiseData.liveActivityScheduled === false) {
+      console.log(`⏭️ LiveActivity schedule was reset, skipping: ${promiseId}`);
+      return;
+    }
+
     // 2. 그룹 정보 조회
     const groupsCollection = db.collection("groups");
     const groupDoc = await groupsCollection.doc(groupId).get();
@@ -1098,7 +1104,17 @@ export const onPromiseConfirmedScheduleLiveActivity = onDocumentUpdated(
       return;
     }
 
-    const shouldSchedule = justConfirmed || trackingEnabledOnConfirmed;
+    // 시작 시간 변경 확인
+    const beforeStartAt = before.startAt as admin.firestore.Timestamp;
+    const afterStartAt = after.startAt as admin.firestore.Timestamp;
+    const startAtChanged =
+      beforeStartAt?.toMillis() !== afterStartAt?.toMillis();
+    const rescheduleOnTimeChange =
+      isNowConfirmed && startAtChanged && afterTrackingMinutes !== null;
+
+    const shouldSchedule = justConfirmed ||
+      trackingEnabledOnConfirmed ||
+      rescheduleOnTimeChange;
 
     if (!shouldSchedule) {
       return;
