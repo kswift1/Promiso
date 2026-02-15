@@ -1334,6 +1334,8 @@ export interface RegisterPushToStartTokenResponse {
 export interface ScheduledLiveActivityTaskPayload {
   /** 약속 ID */
   promiseId: string;
+  /** 태스크가 실행되도록 예약된 시간 (ISO 문자열) */
+  scheduledAt: string;
 }
 
 /**

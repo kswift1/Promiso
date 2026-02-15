@@ -741,7 +741,7 @@ export const executeLiveActivityStart = onTaskDispatched<
     secrets: [APNS_KEY_ID, APNS_TEAM_ID, APNS_AUTH_KEY],
   },
   async (req) => {
-    const {promiseId} = req.data;
+    const {promiseId, scheduledAt} = req.data;
     console.log(`⏰ Scheduled LiveActivity start: ${promiseId}`);
 
     const db = admin.firestore();
@@ -771,9 +771,13 @@ export const executeLiveActivityStart = onTaskDispatched<
     const trackingMinutes =
       (promiseData.trackingStartMinutesBefore as number) || 30;
 
-    // 시간 변경 등으로 스케줄이 리셋된 경우 스킵 (기존 Cloud Task 실행 방지)
-    if (promiseData.liveActivityScheduled === false) {
-      console.log(`⏭️ LiveActivity schedule was reset, skipping: ${promiseId}`);
+    // stale task 감지: 페이로드의 예약 시간과 DB의 예약 시간이 다르면 스킵
+    const storedScheduledAt = (promiseData.liveActivityScheduledAt as admin.firestore.Timestamp)
+      ?.toDate()
+      .toISOString();
+
+    if (!scheduledAt || storedScheduledAt !== scheduledAt) {
+      console.log(`⏭️ Stale LiveActivity task detected, skipping: ${promiseId}`);
       return;
     }
 
@@ -1165,7 +1169,7 @@ export const onPromiseConfirmedScheduleLiveActivity = onDocumentUpdated(
     );
 
     await queue.enqueue(
-      {promiseId},
+      {promiseId, scheduledAt: scheduleTime.toISOString()},
       {scheduleDelaySeconds: delaySeconds}
     );
 
