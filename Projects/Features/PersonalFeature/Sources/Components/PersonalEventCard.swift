@@ -144,6 +144,11 @@ public struct PersonalEventCard: View {
   // MARK: - Helper
 
   private func reminderText(_ minutes: Int) -> String {
+    if minutes == 0 { return "이벤트 시점 알림" }
+    if minutes >= 10080 && minutes % (1440 * 7) == 0 {
+      return "\(minutes / (1440 * 7))주 전 알림"
+    }
+    if minutes >= 1440 { return "\(minutes / 1440)일 전 알림" }
     if minutes >= 60 { return "\(minutes / 60)시간 전 알림" }
     return "\(minutes)분 전 알림"
   }
