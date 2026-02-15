@@ -196,6 +196,12 @@ extension PromiseModel {
 // MARK: - Time-based Properties
 
 extension PromiseModel {
+  /// endAt이 없는 경우 단발성 약속 (시작 = 종료)
+  public var effectiveEndAt: Date {
+    endAt ?? startAt
+  }
+
+
   /// 실시간 공유 가능 여부 (trackingStartMinutesBefore 전부터)
   public var isRealtimeShareable: Bool {
     guard let trackingMinutes = trackingStartMinutesBefore else { return false }

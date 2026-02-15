@@ -206,16 +206,12 @@ struct TimelineItemView: View {
   /// 현재 진행 중인 약속인지 (종료시간 없으면 단발성 = 시작 즉시 종료)
   private var isNow: Bool {
     let now = Date()
-    let start = promise.startAt
-    let end = promise.endAt ?? promise.startAt
-    return now >= start && now <= end
+    return now >= promise.startAt && now <= promise.effectiveEndAt
   }
 
   /// 이미 종료된 약속인지
   var isPast: Bool {
-    let now = Date()
-    let end = promise.endAt ?? promise.startAt
-    return now > end
+    Date() > promise.effectiveEndAt
   }
 
   /// 아직 시작 전인 약속인지
