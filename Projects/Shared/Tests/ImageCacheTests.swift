@@ -179,6 +179,13 @@ struct LiveActivityImageStoreTests {
     #expect(LiveActivityImageStore.makeFileName(userId: "ABC") == "profile-ABC.jpg")
   }
 
+  @Test("makeFileName path traversal 방지")
+  func makeFileNameSanitizesPathTraversal() {
+    #expect(LiveActivityImageStore.makeFileName(userId: "../../etc/passwd") == "profile-etcpasswd.jpg")
+    #expect(LiveActivityImageStore.makeFileName(userId: "a/b/c") == "profile-abc.jpg")
+    #expect(LiveActivityImageStore.makeFileName(userId: "..") == "profile-.jpg")
+  }
+
   @Test("imageSize 상수 확인")
   func imageSizeConstant() {
     #expect(LiveActivityImageStore.imageSize == 64)
@@ -275,6 +282,11 @@ struct LiveActivityImageStoreTests {
 
 @Suite("AppConstants.ImageCache 테스트")
 struct ImageCacheConstantsTests {
+
+  @Test("디스크 캐시 이름")
+  func diskCacheName() {
+    #expect(AppConstants.ImageCache.diskCacheName == "com.promiso.imageCache")
+  }
 
   @Test("디스크 캐시 크기 150MB")
   func diskCacheSize() {

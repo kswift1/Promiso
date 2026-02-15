@@ -149,10 +149,14 @@ public enum LiveActivityImageStore {
 
   /// 사용자 ID로 파일명 생성
   ///
+  /// Path traversal 방지를 위해 경로 구분자를 제거한다.
+  ///
   /// - Parameter userId: 사용자 ID
   /// - Returns: 파일명 (예: "profile-abc123.jpg")
   public static func makeFileName(userId: String) -> String {
-    "profile-\(userId).jpg"
+    let sanitized = userId.replacingOccurrences(of: "/", with: "")
+      .replacingOccurrences(of: "..", with: "")
+    return "profile-\(sanitized).jpg"
   }
 
   // MARK: - Debug

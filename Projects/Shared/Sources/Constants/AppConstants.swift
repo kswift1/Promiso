@@ -223,6 +223,8 @@ public enum AppConstants {
   // MARK: - Image Cache
 
   public enum ImageCache {
+    /// 디스크 캐시 이름
+    public static let diskCacheName = "com.promiso.imageCache"
     /// 디스크 캐시 최대 크기 (150MB)
     public static let diskCacheSizeLimit: Int = 150 * 1024 * 1024
     /// 메모리 캐시 최대 크기 (100MB)
