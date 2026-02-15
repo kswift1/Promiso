@@ -23,13 +23,14 @@ struct CreatePromiseReducerTests {
   private func makeGroup(
     id: String = "group-1",
     name: String = "테스트 그룹",
-    memberIds: [String] = ["user-1", "user-2", "user-3"]
+    memberIds: [String] = ["user-1", "user-2", "user-3"],
+    maxMembers: Int = 10
   ) -> GroupModel {
     GroupModel(
       id: id,
       name: name,
       memberIds: memberIds,
-      maxMembers: 10,
+      maxMembers: maxMembers,
       inviteCode: "ABC123",
       createdBy: "user-1"
     )
@@ -108,6 +109,22 @@ struct CreatePromiseReducerTests {
     await store.send(.view(.groupSelected(group))) {
       $0.promise.group = group
       $0.promise.minimumParticipants = 5  // ceil(maxMembers(10) / 2) = 5
+    }
+  }
+
+  @Test("1인 그룹(maxMembers == 1) 선택 시 최소 참가인원 1명 고정")
+  func groupSelected_singleMemberGroup_setsMinParticipantsToOne() async {
+    let group = makeGroup(memberIds: ["user-1"], maxMembers: 1)
+
+    let store = TestStore(
+      initialState: CreatePromise.Feature.State()
+    ) {
+      CreatePromise.Feature()
+    }
+
+    await store.send(.view(.groupSelected(group))) {
+      $0.promise.group = group
+      $0.promise.minimumParticipants = 1
     }
   }
 

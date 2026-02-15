@@ -229,6 +229,8 @@ extension PersonalMode {
               do {
                 if let event = try await personalEventClient.getEvent(eventId) {
                   await send(.view(.eventTapped(event)))
+                } else {
+                  AppLogger.personal.warning("딥링크 일정을 찾을 수 없음: \(eventId)")
                 }
               } catch {
                 AppLogger.personal.error("딥링크 일정 조회 실패: \(error.localizedDescription)")

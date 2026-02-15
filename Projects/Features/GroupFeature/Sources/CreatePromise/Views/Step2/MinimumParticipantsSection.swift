@@ -73,7 +73,7 @@ struct MinimumParticipantsSection: View {
       }
       .padding(16)
       .frame(maxWidth: .infinity, alignment: .leading)
-      .background(Color(.systemGray6))
+      .background(Color.pmgray.n100)
       .clipShape(RoundedRectangle(cornerRadius: 12))
     }
   }
@@ -91,7 +91,7 @@ struct MinimumParticipantsSection: View {
         }) {
           Image(systemName: "minus.circle.fill")
             .font(.system(size: 32))
-            .foregroundColor(currentMinimum <= 2 ? Color(.systemGray4) : Color.pmindigo.n500)
+            .foregroundColor(currentMinimum <= 2 ? Color.pmgray.n400 : Color.pmindigo.n500)
             .scaleEffect(isMinusPressed ? 0.85 : 1.0)
         }
         .buttonRepeatBehavior(.enabled)
@@ -126,7 +126,7 @@ struct MinimumParticipantsSection: View {
         }) {
           Image(systemName: "plus.circle.fill")
             .font(.system(size: 32))
-            .foregroundColor(currentMinimum >= maxParticipants ? Color(.systemGray4) : Color.pmindigo.n500)
+            .foregroundColor(currentMinimum >= maxParticipants ? Color.pmgray.n400 : Color.pmindigo.n500)
             .scaleEffect(isPlusPressed ? 0.85 : 1.0)
         }
         .buttonRepeatBehavior(.enabled)

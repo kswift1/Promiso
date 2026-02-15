@@ -258,7 +258,7 @@ extension CreatePersonalEvent {
             } label: {
               Image(systemName: "xmark.circle.fill")
                 .font(.system(size: 20))
-                .foregroundStyle(Color(UIColor.systemGray3))
+                .foregroundStyle(Color.pmgray.n400)
             }
             .buttonStyle(.plain)
           }
