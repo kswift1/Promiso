@@ -484,7 +484,7 @@ extension CreatePersonalEvent {
       case 1440: return .oneDay
       case 2880: return .twoDays
       case 10080: return .oneWeek
-      default: return .thirtyMinutes
+      default: return .none
       }
     }
   }
