@@ -47,8 +47,9 @@ extension CreatePersonalEvent {
       var isSaving: Bool = false
       var isEmojiLoading: Bool = false
       var useEndTime: Bool = false
-      var useReminder: Bool = false
       var errorMessage: String?
+      /// 알림 권한 미허용 시 보류할 분 값
+      var pendingReminderMinutes: Int?
 
       @Presents var locationPicker: LocationPicker.Feature.State?
       @Presents var notificationPermission: NotificationPermission.Feature.State?
@@ -61,7 +62,6 @@ extension CreatePersonalEvent {
         self.event = event
         self.mode = mode
         self.useEndTime = event.endAt != nil
-        self.useReminder = event.reminderMinutesBefore != nil
       }
 
       var canSave: Bool {
@@ -89,8 +89,7 @@ extension CreatePersonalEvent {
       case startDateChanged(Date)
       case endDateChanged(Date)
       case toggleUseEndTime
-      case toggleUseReminder
-      case reminderChanged(Int)
+      case reminderOptionSelected(Int?)
       case descriptionChanged(String)
       case locationTapped
       case removeLocation
@@ -164,22 +163,20 @@ extension CreatePersonalEvent {
             }
             return .run { _ in await hapticFeedback.selection() }
 
-          case .toggleUseReminder:
-            if !state.useReminder {
-              // 켜려고 할 때 권한 확인
+          case .reminderOptionSelected(let minutes):
+            if let minutes {
+              // 알림 설정 시 권한 확인
+              state.pendingReminderMinutes = minutes
               return .run { [notificationClient] send in
                 let status = await notificationClient.getAuthorizationStatus()
                 await send(.internal(.notificationStatusChecked(status)))
               }
             } else {
-              state.useReminder = false
+              // "없음" 선택
               state.event.reminderMinutesBefore = nil
+              state.pendingReminderMinutes = nil
               return .run { _ in await hapticFeedback.selection() }
             }
-
-          case .reminderChanged(let minutes):
-            state.event.reminderMinutesBefore = minutes
-            return .none
 
           case .descriptionChanged(let text):
             let trimmed = String(text.prefix(500))
@@ -353,8 +350,8 @@ extension CreatePersonalEvent {
           case .notificationStatusChecked(let status):
             switch status {
             case .authorized, .provisional, .ephemeral:
-              state.useReminder = true
-              state.event.reminderMinutesBefore = 30
+              state.event.reminderMinutesBefore = state.pendingReminderMinutes
+              state.pendingReminderMinutes = nil
               return .run { _ in await hapticFeedback.selection() }
             case .notDetermined, .denied:
               state.notificationPermission = NotificationPermission.Feature.State(allowInteractiveDismiss: true)
@@ -380,15 +377,15 @@ extension CreatePersonalEvent {
 
         case .notificationPermission(.presented(.delegate(.permissionChanged(let isGranted)))):
           if isGranted {
-            state.useReminder = true
-            state.event.reminderMinutesBefore = 30
+            state.event.reminderMinutesBefore = state.pendingReminderMinutes
           }
+          state.pendingReminderMinutes = nil
           return .none
 
         case .notificationPermission(.presented(.delegate(.dismissed))):
           state.notificationPermission = nil
-          // 스와이프로 닫았을 때도 권한 상태 재확인 후 useReminder 업데이트
-          guard !state.useReminder else { return .none }
+          // 스와이프로 닫았을 때도 권한 상태 재확인 후 pending 적용
+          guard state.pendingReminderMinutes != nil else { return .none }
           return .run { [notificationClient] send in
             let status = await notificationClient.getAuthorizationStatus()
             if status == .authorized || status == .provisional || status == .ephemeral {
@@ -418,22 +415,76 @@ extension CreatePersonalEvent {
 // MARK: - Reminder Options
 
 extension CreatePersonalEvent {
-  public enum ReminderOption: Int, CaseIterable, Sendable {
-    case fiveMinutes = 5
-    case tenMinutes = 10
-    case fifteenMinutes = 15
-    case thirtyMinutes = 30
-    case oneHour = 60
-    case twoHours = 120
+  public enum ReminderOption: Equatable, Sendable {
+    case none
+    case atEvent
+    case fiveMinutes
+    case tenMinutes
+    case fifteenMinutes
+    case thirtyMinutes
+    case oneHour
+    case twoHours
+    case oneDay
+    case twoDays
+    case oneWeek
+
+    public var minutes: Int? {
+      switch self {
+      case .none: return nil
+      case .atEvent: return 0
+      case .fiveMinutes: return 5
+      case .tenMinutes: return 10
+      case .fifteenMinutes: return 15
+      case .thirtyMinutes: return 30
+      case .oneHour: return 60
+      case .twoHours: return 120
+      case .oneDay: return 1440
+      case .twoDays: return 2880
+      case .oneWeek: return 10080
+      }
+    }
 
     public var title: String {
       switch self {
+      case .none: return "없음"
+      case .atEvent: return "이벤트 시점"
       case .fiveMinutes: return "5분 전"
       case .tenMinutes: return "10분 전"
       case .fifteenMinutes: return "15분 전"
       case .thirtyMinutes: return "30분 전"
       case .oneHour: return "1시간 전"
       case .twoHours: return "2시간 전"
+      case .oneDay: return "1일 전"
+      case .twoDays: return "2일 전"
+      case .oneWeek: return "1주 전"
+      }
+    }
+
+    /// 분 단위 → 분 이하 옵션
+    public static let shortOptions: [ReminderOption] = [
+      .atEvent, .fiveMinutes, .tenMinutes, .fifteenMinutes,
+      .thirtyMinutes, .oneHour, .twoHours,
+    ]
+
+    /// 일 단위 옵션
+    public static let longOptions: [ReminderOption] = [
+      .oneDay, .twoDays, .oneWeek,
+    ]
+
+    public static func from(minutes: Int?) -> ReminderOption {
+      guard let minutes else { return .none }
+      switch minutes {
+      case 0: return .atEvent
+      case 5: return .fiveMinutes
+      case 10: return .tenMinutes
+      case 15: return .fifteenMinutes
+      case 30: return .thirtyMinutes
+      case 60: return .oneHour
+      case 120: return .twoHours
+      case 1440: return .oneDay
+      case 2880: return .twoDays
+      case 10080: return .oneWeek
+      default: return .thirtyMinutes
       }
     }
   }

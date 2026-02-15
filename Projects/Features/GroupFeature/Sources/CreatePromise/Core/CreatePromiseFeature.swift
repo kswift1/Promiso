@@ -259,8 +259,12 @@ public enum CreatePromise {
 
           case .groupSelected(let group):
             state.promise.group = group
-            let defaultMinimum = max(1, Int(ceil(Double(group.maxMembers) / 2.0)))
-            state.promise.minimumParticipants = defaultMinimum
+            if group.maxMembers <= 1 {
+              state.promise.minimumParticipants = 1
+            } else {
+              let defaultMinimum = max(2, Int(ceil(Double(group.maxMembers) / 2.0)))
+              state.promise.minimumParticipants = defaultMinimum
+            }
             return .none
 
           case .retryLoadGroups:
@@ -289,8 +293,9 @@ public enum CreatePromise {
             return .none
 
           case .decrementParticipants:
+            // P6: 멀티 멤버 그룹에서 최소 참가 인원 하한은 2명 (1명 그룹은 isFixedAtOne UI로 고정)
             let current = state.promise.minimumParticipants
-            if current > 1 { state.promise.minimumParticipants = current - 1 }
+            if current > 2 { state.promise.minimumParticipants = current - 1 }
             return .none
 
           case .setDescription(let description):
