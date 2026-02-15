@@ -194,6 +194,8 @@ struct NotificationCenterFeatureTests {
     } withDependencies: {
       $0.notificationClient.deleteNotifications = { _ in }
     }
+    // toastMessage는 UUID 기반 Equatable이므로 exhaustive 비교 불가
+    store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.deleteSelectedTapped)) {
       $0.isDeleting = true
@@ -205,6 +207,11 @@ struct NotificationCenterFeatureTests {
       $0.selectedNotificationIds = []
       $0.isEditMode = false
     }
+
+    // Toast 내용 검증
+    #expect(store.state.toastMessage?.type == .success)
+    #expect(store.state.toastMessage?.title == "알림 2개를 삭제했어요")
+    #expect(store.state.toastMessage?.position == .bottom)
   }
 
   @Test("deleteSelectedTapped - 선택 없으면 무시")
@@ -431,12 +438,20 @@ struct NotificationCenterFeatureTests {
     let store = TestStore(initialState: state) {
       NotificationCenter.Feature()
     }
+    // toastMessage는 UUID 기반 Equatable이므로 exhaustive 비교 불가
+    store.exhaustivity = .off(showSkippedAssertions: false)
 
     let error = NSError(domain: "test", code: -1)
     await store.send(.internal(.deleteCompleted(deletedIds: ["notif-1"], .failure(error)))) {
       $0.isDeleting = false
       // 실패 시 notificationsState와 selectedNotificationIds는 변경되지 않음
     }
+
+    // Toast 내용 검증
+    #expect(store.state.toastMessage?.type == .error)
+    #expect(store.state.toastMessage?.title == "알림 삭제에 실패했어요")
+    #expect(store.state.toastMessage?.subtitle == error.localizedDescription)
+    #expect(store.state.toastMessage?.position == .bottom)
   }
 
   // MARK: - notificationTapped 테스트
@@ -623,6 +638,8 @@ struct NotificationCenterFeatureTests {
     } withDependencies: {
       $0.notificationClient.deleteAllNotifications = { () async throws in }
     }
+    // toastMessage는 UUID 기반 Equatable이므로 exhaustive 비교 불가
+    store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.deleteAllTapped)) {
       $0.isDeleting = true
@@ -634,6 +651,11 @@ struct NotificationCenterFeatureTests {
       $0.selectedNotificationIds = []
       $0.isEditMode = false
     }
+
+    // Toast 내용 검증
+    #expect(store.state.toastMessage?.type == .success)
+    #expect(store.state.toastMessage?.title == "알림 2개를 삭제했어요")
+    #expect(store.state.toastMessage?.position == .bottom)
   }
 
   // MARK: - markAllAsReadTapped 테스트
@@ -684,9 +706,18 @@ struct NotificationCenterFeatureTests {
       NotificationCenter.Feature()
     }
 
+    // toastMessage는 UUID 기반 Equatable이므로 exhaustive 비교 불가
+    store.exhaustivity = .off(showSkippedAssertions: false)
+
     let error = NSError(domain: "test", code: -1)
     await store.send(.internal(.markAllAsReadCompleted(.failure(error))))
     // 실패 시 notificationsState 변경 없음
+
+    // Toast 내용 검증
+    #expect(store.state.toastMessage?.type == .error)
+    #expect(store.state.toastMessage?.title == "읽음 처리에 실패했어요")
+    #expect(store.state.toastMessage?.subtitle == error.localizedDescription)
+    #expect(store.state.toastMessage?.position == .bottom)
   }
 
   // MARK: - notificationsResponse 추가 로드 성공 테스트

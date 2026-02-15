@@ -328,10 +328,12 @@ extension GroupNotificationDetail {
     public struct State: Equatable {
       public var group: UserGroupInfo
       public var isSystemNotificationEnabled: Bool
+      public var toastMessage: ToastMessage?
 
       public init(group: UserGroupInfo, isSystemNotificationEnabled: Bool) {
         self.group = group
         self.isSystemNotificationEnabled = isSystemNotificationEnabled
+        self.toastMessage = nil
       }
 
       var isGroupEnabled: Bool {
@@ -350,12 +352,13 @@ extension GroupNotificationDetail {
     public enum View: Equatable, Sendable {
       case groupNotificationToggled(Bool)
       case preferenceToggled(GroupNotificationPreferenceKey, Bool)
+      case toastDismissed
     }
 
     @CasePathable
     public enum Internal: Equatable, Sendable {
       case updateSucceeded
-      case updateFailed(GroupNotificationSettings)
+      case updateFailed(GroupNotificationSettings, String)
     }
 
     public enum Delegate: Equatable, Sendable {
@@ -381,7 +384,7 @@ extension GroupNotificationDetail {
                 await send(.internal(.updateSucceeded))
                 await send(.delegate(.settingsUpdated(groupId: groupId, settings: updatedSettings)))
               } catch {
-                await send(.internal(.updateFailed(previousSettings)))
+                await send(.internal(.updateFailed(previousSettings, error.localizedDescription)))
               }
             }
 
@@ -399,18 +402,33 @@ extension GroupNotificationDetail {
                 await send(.internal(.updateSucceeded))
                 await send(.delegate(.settingsUpdated(groupId: groupId, settings: updatedSettings)))
               } catch {
-                await send(.internal(.updateFailed(previousSettings)))
+                await send(.internal(.updateFailed(previousSettings, error.localizedDescription)))
               }
             }
+
+          case .toastDismissed:
+            state.toastMessage = nil
+            return .none
           }
 
         case .internal(let internalAction):
           switch internalAction {
           case .updateSucceeded:
+            state.toastMessage = ToastMessage(
+              type: .success,
+              title: "알림 설정을 저장했어요",
+              position: .bottom
+            )
             return .run { _ in await hapticFeedback.success() }
 
-          case .updateFailed(let previousSettings):
+          case .updateFailed(let previousSettings, let message):
             state.group = state.group.withNotifications(previousSettings)
+            state.toastMessage = ToastMessage(
+              type: .error,
+              title: "알림 설정 저장에 실패했어요",
+              subtitle: message,
+              position: .bottom
+            )
             return .run { _ in await hapticFeedback.error() }
           }
 
@@ -450,6 +468,10 @@ extension GroupNotificationDetail {
       .auroraBackground()
       .navigationTitle(store.group.name)
       .navigationBarTitleDisplayMode(.inline)
+      .toast(Binding(
+        get: { store.toastMessage },
+        set: { _ in store.send(.view(.toastDismissed)) }
+      ))
     }
 
     private var groupToggleSection: some View {

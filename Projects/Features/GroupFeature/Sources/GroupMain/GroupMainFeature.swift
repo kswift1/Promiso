@@ -171,6 +171,8 @@ extension GroupMain {
 
       // 공유 시트용
       var sharePromise: PromiseModel?
+      /// 화면 토스트 메시지
+      var toastMessage: ToastMessage?
 
       @Presents var createPromise: CreatePromise.Feature.State?
       @Presents var createGroup: CreateGroup.Feature.State?
@@ -364,7 +366,6 @@ extension GroupMain {
 
     @Reducer
     public enum Path {
-      case manageGroupFeature(ManageGroup.Feature)
       case groupSettings(GroupSettings.Feature)
       case groupPromiseList(GroupPromiseList.Feature)
       case promiseDetail(PromiseDetail.Feature)
@@ -411,7 +412,6 @@ extension GroupMain {
         case promiseTapped(PromiseModel)
         case promiseShared(String)
         case sharePromiseDismissed
-        case groupManageTapped
         case createNewPromise
         case createGroup
         case joinGroup
@@ -430,6 +430,7 @@ extension GroupMain {
         case directionsTapped(String)  // 길찾기 (promiseId)
         case openCreatePromiseIfPossible  // Widget 딥링크: 그룹 있으면 약속 생성
         case switchToPersonalMode  // 개인 모드로 전환 요청
+        case toastDismissed
       }
 
       @CasePathable
@@ -579,18 +580,6 @@ extension GroupMain {
             mapClient.openDirections(coordinate, location.name)
             return .none
 
-          case .groupManageTapped:
-            guard let currentGroup = state.currentGroup else { return .none }
-            let summary = state.allGroupSummaries?.first { $0.id == currentGroup.id }
-            state.path.append(.manageGroupFeature(.init(
-              group: currentGroup,
-              summary: summary,
-              currentUserId: state.currentUser.userId,
-              preloadedMembers: state.currentGroupMembers,
-              promises: state.promisesState.value ?? []
-            )))
-            return .none
-
           case .createNewPromise:
             var promise = PromiseModel.empty
             // 현재 보고 있는 그룹을 기본 선택
@@ -735,6 +724,10 @@ extension GroupMain {
 
           case .switchToPersonalMode:
             // RootTabFeature에서 처리
+            return .none
+
+          case .toastDismissed:
+            state.toastMessage = nil
             return .none
           }
 
@@ -951,6 +944,11 @@ extension GroupMain {
             }
 
           case .deletePromiseDone:
+            state.toastMessage = ToastMessage(
+              type: .success,
+              title: "약속이 삭제되었어요",
+              position: .bottom
+            )
             return .none
 
           case .deletePromiseFailed(_, let error):
@@ -1052,6 +1050,11 @@ extension GroupMain {
           return .none
 
         case .createPromise(.presented(.delegate(.promiseCreated))):
+          state.toastMessage = ToastMessage(
+            type: .success,
+            title: "약속이 생성되었어요",
+            position: .bottom
+          )
           state.createPromise = nil
           return .none
 
@@ -1070,6 +1073,11 @@ extension GroupMain {
           return .none
 
         case .createGroup(.presented(.delegate(.groupCreated))):
+          state.toastMessage = ToastMessage(
+            type: .success,
+            title: "그룹이 생성되었어요",
+            position: .bottom
+          )
           state.createGroup = nil
           return .send(.internal(.fetchGroupList))
 
@@ -1081,6 +1089,11 @@ extension GroupMain {
           return .none
 
         case .joinGroup(.presented(.delegate(.groupJoined))):
+          state.toastMessage = ToastMessage(
+            type: .success,
+            title: "그룹에 참여했어요",
+            position: .bottom
+          )
           state.joinGroup = nil
           return .send(.internal(.fetchGroupList))
 
@@ -1092,6 +1105,11 @@ extension GroupMain {
           return .none
 
         case .editPromise(.presented(.delegate(.promiseUpdated))):
+          state.toastMessage = ToastMessage(
+            type: .success,
+            title: "약속이 수정되었어요",
+            position: .bottom
+          )
           state.editPromise = nil
           return .none
 
@@ -1148,6 +1166,11 @@ extension GroupMain {
           }
           state.path.removeAll()
           state.currentGroup = nil
+          state.toastMessage = ToastMessage(
+            type: .success,
+            title: "그룹을 나왔어요",
+            position: .bottom
+          )
           return .send(.internal(.fetchGroupList))
 
         case .path(.element(id: _, action: .groupSettings(.delegate(.groupDeleted)))):
@@ -1156,6 +1179,11 @@ extension GroupMain {
           }
           state.path.removeAll()
           state.currentGroup = nil
+          state.toastMessage = ToastMessage(
+            type: .success,
+            title: "그룹이 삭제되었어요",
+            position: .bottom
+          )
           return .send(.internal(.fetchGroupList))
 
         case .path(.element(id: _, action: .groupSettings(.delegate(.pastPromisesTapped)))):
@@ -1173,38 +1201,17 @@ extension GroupMain {
             state.$groupMembersCache.withLock { $0.removeValue(forKey: groupId) }
           }
           state.path.removeAll()
+          state.toastMessage = ToastMessage(
+            type: .success,
+            title: "호스트를 양도했어요",
+            position: .bottom
+          )
           return .send(.internal(.fetchGroupList))
 
         // GroupPromiseList delegate actions
         case .path(.element(id: _, action: .groupPromiseList(.delegate(.promiseSelected(let promise))))):
           state.path.append(.promiseDetail(.init(
             promise: promise,
-            currentUserId: state.currentUser.userId,
-            groupMembers: state.currentGroupMembers
-          )))
-          return .none
-
-        // ManageGroup delegate actions (legacy)
-        case .path(.element(id: _, action: .manageGroupFeature(.delegate(.groupLeft)))):
-          if let groupId = state.currentGroup?.id {
-            state.$groupMembersCache.withLock { $0.removeValue(forKey: groupId) }
-          }
-          state.path.removeAll()
-          state.currentGroup = nil
-          return .send(.internal(.fetchGroupList))
-
-        case .path(.element(id: _, action: .manageGroupFeature(.delegate(.groupDeleted)))):
-          if let groupId = state.currentGroup?.id {
-            state.$groupMembersCache.withLock { $0.removeValue(forKey: groupId) }
-          }
-          state.path.removeAll()
-          state.currentGroup = nil
-          return .send(.internal(.fetchGroupList))
-
-        case .path(.element(id: _, action: .manageGroupFeature(.delegate(.pastPromisesTapped)))):
-          guard let groupId = state.currentGroup?.id else { return .none }
-          state.path.append(.pastPromises(.init(
-            groupId: groupId,
             currentUserId: state.currentUser.userId,
             groupMembers: state.currentGroupMembers
           )))
@@ -1224,9 +1231,19 @@ extension GroupMain {
 
         case .path(.element(id: _, action: .promiseDetail(.delegate(.promiseDeleted)))):
           _ = state.path.popLast()
+          state.toastMessage = ToastMessage(
+            type: .success,
+            title: "약속이 삭제되었어요",
+            position: .bottom
+          )
           return .none
 
         case .path(.element(id: _, action: .promiseDetail(.delegate(.promiseUpdated)))):
+          state.toastMessage = ToastMessage(
+            type: .success,
+            title: "약속이 수정되었어요",
+            position: .bottom
+          )
           return .none
 
         case .path:

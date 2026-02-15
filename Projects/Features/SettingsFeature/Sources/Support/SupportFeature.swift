@@ -32,6 +32,7 @@ extension Support {
 
     @ObservableState
     public struct State: Equatable {
+      var toastMessage: ToastMessage?
       public init() {}
     }
 
@@ -40,6 +41,7 @@ extension Support {
     @CasePathable
     public enum Action: Sendable {
       case view(View)
+      case `internal`(Internal)
       case delegate(Delegate)
     }
 
@@ -48,6 +50,11 @@ extension Support {
       case onAppear
       case faqTapped
       case bugReportTapped
+      case toastDismissed
+    }
+
+    public enum Internal: Equatable, Sendable {
+      case bugReportOpenResult(Bool)
     }
 
     public enum Delegate: Equatable, Sendable {
@@ -69,7 +76,7 @@ extension Support {
           }
 
         case .view(.bugReportTapped):
-          return .run { _ in
+          return .run { send in
             await hapticFeedback.selection()
             // 이메일 앱 열기
             let email = AppConstants.App.supportEmail
@@ -77,7 +84,7 @@ extension Support {
             let body = Strings.BugReport.body(
               version: AppConstants.App.version,
               build: AppConstants.App.buildNumber,
-              device: deviceModel(),
+              device: Self.deviceModel(),
               osVersion: UIDevice.current.systemVersion
             )
 
@@ -85,9 +92,25 @@ extension Support {
             let encodedBody = body.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
 
             if let url = URL(string: "mailto:\(email)?subject=\(encodedSubject)&body=\(encodedBody)") {
-              await openURL(url)
+              let opened = await openURL(url)
+              await send(.internal(.bugReportOpenResult(opened)))
+            } else {
+              await send(.internal(.bugReportOpenResult(false)))
             }
           }
+
+        case .view(.toastDismissed):
+          state.toastMessage = nil
+          return .none
+
+        case .internal(.bugReportOpenResult(let opened)):
+          state.toastMessage = ToastMessage(
+            type: opened ? .success : .error,
+            title: opened ? "메일 앱을 열었어요" : "메일 앱을 열 수 없어요",
+            subtitle: opened ? nil : "기기의 메일 설정을 확인해주세요.",
+            position: .bottom
+          )
+          return .none
 
         case .delegate:
           return .none
@@ -97,7 +120,7 @@ extension Support {
 
     // MARK: - Helpers
 
-    private func deviceModel() -> String {
+    private static func deviceModel() -> String {
       var systemInfo = utsname()
       uname(&systemInfo)
       let machineMirror = Mirror(reflecting: systemInfo.machine)
@@ -189,6 +212,10 @@ extension Support {
       .onAppear {
         store.send(.view(.onAppear))
       }
+      .toast(Binding(
+        get: { store.toastMessage },
+        set: { _ in store.send(.view(.toastDismissed)) }
+      ))
     }
   }
 

@@ -1,4 +1,5 @@
 import ComposableArchitecture
+import PromisoShared
 import SharedFeature
 import SwiftUI
 
@@ -56,6 +57,7 @@ extension PersonalMode {
       var pastEventsState: LoadingState<[PersonalEventModel]> = .idle
       var selectedFilter: EventFilter = .today
       @Shared var currentUser: UserPrivateModel
+      var toastMessage: ToastMessage?
 
       @Presents var createEvent: CreatePersonalEvent.Feature.State?
       @Presents var eventDetail: PersonalEventDetail.Feature.State?
@@ -148,6 +150,8 @@ extension PersonalMode {
         case switchToGroupMode
         /// 위젯 딥링크로 개인 일정 상세 열기
         case openEventFromDeeplink(eventId: String)
+        /// 토스트 닫힘
+        case toastDismissed
       }
 
       public enum Internal: Sendable {
@@ -236,6 +240,10 @@ extension PersonalMode {
                 AppLogger.personal.error("딥링크 일정 조회 실패: \(error.localizedDescription)")
               }
             }
+
+          case .toastDismissed:
+            state.toastMessage = nil
+            return .none
           }
 
         case let .internal(internalAction):
@@ -309,10 +317,21 @@ extension PersonalMode {
             return .none
 
           case .eventDeleted:
+            state.toastMessage = ToastMessage(
+              type: .success,
+              title: "일정이 삭제되었어요",
+              position: .bottom
+            )
             return .none
 
           case .eventDeleteFailed(let message):
             state.eventsState = .failed(AppError(message: message))
+            state.toastMessage = ToastMessage(
+              type: .error,
+              title: "일정 삭제에 실패했어요",
+              subtitle: message,
+              position: .bottom
+            )
             return .none
 
           case .syncPersonalCalendar:
@@ -331,6 +350,11 @@ extension PersonalMode {
 
         case .createEvent(.presented(.delegate(.eventCreated))),
              .createEvent(.presented(.delegate(.eventUpdated))):
+          state.toastMessage = ToastMessage(
+            type: .success,
+            title: "일정이 저장되었어요",
+            position: .bottom
+          )
           state.createEvent = nil
           return .none
 
@@ -344,10 +368,20 @@ extension PersonalMode {
         // MARK: - EventDetail Delegate
 
         case .eventDetail(.presented(.delegate(.eventDeleted))):
+          state.toastMessage = ToastMessage(
+            type: .success,
+            title: "일정이 삭제되었어요",
+            position: .bottom
+          )
           state.eventDetail = nil
           return .none
 
         case .eventDetail(.presented(.delegate(.eventUpdated))):
+          state.toastMessage = ToastMessage(
+            type: .success,
+            title: "일정이 수정되었어요",
+            position: .bottom
+          )
           return .none
 
         case .eventDetail:

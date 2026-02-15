@@ -89,6 +89,8 @@ extension CalendarFeature {
 
       /// 네비게이션 경로 (약속 상세 등)
       var path = StackState<Path.State>()
+      /// 화면 토스트 메시지
+      var toastMessage: ToastMessage?
 
       // MARK: - Computed Properties
 
@@ -273,6 +275,8 @@ extension CalendarFeature {
         case personalEventTapped(PersonalEventModel)
         // 탭 전환 시 데이터 새로고침
         case refresh
+        // 토스트 닫힘
+        case toastDismissed
       }
 
       @CasePathable
@@ -322,12 +326,22 @@ extension CalendarFeature {
           return .none
         case .path(.element(id: _, action: .promiseDetail(.delegate(.promiseDeleted)))):
           _ = state.path.popLast()
+          state.toastMessage = ToastMessage(
+            type: .success,
+            title: "약속이 삭제되었어요",
+            position: .bottom
+          )
           // 데이터 새로고침
           let currentMonth = state.selectedDate.startOfMonth
           state.loadedMonths.remove(currentMonth)
           state.cachedPromisesByMonth.removeValue(forKey: currentMonth)
           return .send(.internal(.fetchPromisesForMonth(currentMonth)))
         case .path(.element(id: _, action: .promiseDetail(.delegate(.promiseUpdated(let promise))))):
+          state.toastMessage = ToastMessage(
+            type: .success,
+            title: "약속이 수정되었어요",
+            position: .bottom
+          )
           // 로컬 캐시 업데이트
           let monthKey = promise.startAt.startOfMonth
           if var monthPromises = state.cachedPromisesByMonth[monthKey] {
@@ -339,8 +353,18 @@ extension CalendarFeature {
           return .none
         case .path(.element(id: _, action: .personalEventDetail(.delegate(.eventDeleted)))):
           _ = state.path.popLast()
+          state.toastMessage = ToastMessage(
+            type: .success,
+            title: "개인 일정이 삭제되었어요",
+            position: .bottom
+          )
           return .send(.internal(.fetchPersonalEvents))
         case .path(.element(id: _, action: .personalEventDetail(.delegate(.eventUpdated)))):
+          state.toastMessage = ToastMessage(
+            type: .success,
+            title: "개인 일정이 수정되었어요",
+            position: .bottom
+          )
           return .send(.internal(.fetchPersonalEvents))
         case .path:
           return .none
@@ -608,6 +632,10 @@ extension CalendarFeature {
           .send(.internal(.checkCalendarPermission)),
           .send(.internal(.loadInitialData))
         )
+
+      case .toastDismissed:
+        state.toastMessage = nil
+        return .none
       }
     }
 
