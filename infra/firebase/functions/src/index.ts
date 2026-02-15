@@ -63,6 +63,7 @@ export {
   widgetUpdateETA,
   executeLiveActivityStart,
   executeLiveActivityEnd,
+  executeETASharingNudge,
   onPromiseConfirmedScheduleLiveActivity,
 } from "./functions/liveActivity";
 

@@ -18,7 +18,7 @@ infra/firebase/functions/
 │   │   ├── groups.ts         # 그룹 관련 (5개)
 │   │   ├── promises.ts       # 약속 관련 (3개)
 │   │   ├── notifications.ts  # FCM 푸시 (4개)
-│   │   ├── liveActivity.ts   # LiveActivity (6개)
+│   │   ├── liveActivity.ts   # LiveActivity (7개)
 │   │   └── emoji.ts          # 이모지 생성 (1개)
 │   ├── utils/
 │   │   ├── helpers.ts        # 검증, 초대코드 생성 등
