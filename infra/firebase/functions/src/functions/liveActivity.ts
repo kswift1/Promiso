@@ -1261,10 +1261,12 @@ export const executeETASharingNudge = onTaskDispatched<
     }
 
     // 5. FCM 넛지 푸시 발송
+    const safeTitle = title.replace(/[<>&'"/]/g, "").slice(0, 100);
+
     await sendPushNotificationInternal({
       userIds: accepted,
       type: NotificationType.LocationSharingReminder,
-      title: `⏰ ${title.replace(/[<>&'"\/]/g, "").slice(0, 100)} ${remainingMinutes}분 전!`,
+      title: `⏰ ${safeTitle} ${remainingMinutes}분 전!`,
       body: "잘 오고 계신가요? 👋 잠금화면 또는 앱에서 실시간 도착 예정시간을 공유해주세요!",
       promiseId,
       groupId,
