@@ -130,12 +130,13 @@ extension EditPromise {
         case .view(let viewAction):
           switch viewAction {
           case .setTitle(let title):
-            state.editedPromise.title = String(title.prefix(30))
+            let sanitizedTitle = String(title.prefix(30))
+            state.editedPromise.title = sanitizedTitle
             return .merge(
               .cancel(id: CancelID.emojiSuggestDebounce),
-              .run { [clock, title] send in
+              .run { [clock, sanitizedTitle] send in
                 try await clock.sleep(for: .milliseconds(1_000))
-                await send(.internal(.titleDebounced(title)))
+                await send(.internal(.titleDebounced(sanitizedTitle)))
               }
               .cancellable(id: CancelID.emojiSuggestDebounce, cancelInFlight: true)
             )
