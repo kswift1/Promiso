@@ -187,13 +187,7 @@ extension CalendarSettings {
           state.isRequestingAccess = false
           let status = eventKitClient.authorizationStatus()
           state.authorizationStatus = status
-          if granted {
-            state.toastMessage = ToastMessage(
-              type: .success,
-              title: "캘린더 접근 권한이 허용되었어요",
-              position: .bottom
-            )
-          } else {
+          if !granted {
             state.toastMessage = ToastMessage(
               type: .warning,
               title: "캘린더 접근 권한이 거부되었어요",
@@ -233,11 +227,13 @@ extension CalendarSettings {
             )
             state.groups[groupIndex] = updatedGroup
           }
-          state.toastMessage = ToastMessage(
-            type: success ? .success : .error,
-            title: success ? "그룹 캘린더 동기화 설정을 저장했어요" : "그룹 캘린더 동기화 저장에 실패했어요",
-            position: .bottom
-          )
+          if !success {
+            state.toastMessage = ToastMessage(
+              type: .error,
+              title: "그룹 캘린더 동기화 저장에 실패했어요",
+              position: .bottom
+            )
+          }
 
           return .run { _ in
             if success {
@@ -248,13 +244,6 @@ extension CalendarSettings {
           }
 
         case .internal(.personalSyncCompleted):
-          state.toastMessage = ToastMessage(
-            type: .success,
-            title: state.personalCalendarSyncEnabled
-              ? "개인 일정 캘린더 동기화를 켰어요"
-              : "개인 일정 캘린더 동기화를 껐어요",
-            position: .bottom
-          )
           return .none
         }
       }

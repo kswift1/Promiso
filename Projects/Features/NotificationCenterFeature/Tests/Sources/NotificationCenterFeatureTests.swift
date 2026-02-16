@@ -207,11 +207,6 @@ struct NotificationCenterFeatureTests {
       $0.selectedNotificationIds = []
       $0.isEditMode = false
     }
-
-    // Toast 내용 검증
-    #expect(store.state.toastMessage?.type == .success)
-    #expect(store.state.toastMessage?.title == "알림 2개를 삭제했어요")
-    #expect(store.state.toastMessage?.position == .bottom)
   }
 
   @Test("deleteSelectedTapped - 선택 없으면 무시")
@@ -651,11 +646,6 @@ struct NotificationCenterFeatureTests {
       $0.selectedNotificationIds = []
       $0.isEditMode = false
     }
-
-    // Toast 내용 검증
-    #expect(store.state.toastMessage?.type == .success)
-    #expect(store.state.toastMessage?.title == "알림 2개를 삭제했어요")
-    #expect(store.state.toastMessage?.position == .bottom)
   }
 
   // MARK: - markAllAsReadTapped 테스트

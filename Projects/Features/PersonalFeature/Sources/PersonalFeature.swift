@@ -317,11 +317,6 @@ extension PersonalMode {
             return .none
 
           case .eventDeleted:
-            state.toastMessage = ToastMessage(
-              type: .success,
-              title: "일정이 삭제되었어요",
-              position: .bottom
-            )
             return .none
 
           case .eventDeleteFailed(let message):
@@ -350,11 +345,6 @@ extension PersonalMode {
 
         case .createEvent(.presented(.delegate(.eventCreated))),
              .createEvent(.presented(.delegate(.eventUpdated))):
-          state.toastMessage = ToastMessage(
-            type: .success,
-            title: "일정이 저장되었어요",
-            position: .bottom
-          )
           state.createEvent = nil
           return .none
 
@@ -368,20 +358,10 @@ extension PersonalMode {
         // MARK: - EventDetail Delegate
 
         case .eventDetail(.presented(.delegate(.eventDeleted))):
-          state.toastMessage = ToastMessage(
-            type: .success,
-            title: "일정이 삭제되었어요",
-            position: .bottom
-          )
           state.eventDetail = nil
           return .none
 
         case .eventDetail(.presented(.delegate(.eventUpdated))):
-          state.toastMessage = ToastMessage(
-            type: .success,
-            title: "일정이 수정되었어요",
-            position: .bottom
-          )
           return .none
 
         case .eventDetail:

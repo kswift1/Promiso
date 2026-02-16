@@ -619,11 +619,6 @@ extension GroupSettings {
           case .editGroupSaveResponse(.success(let updatedGroup)):
             state.group = updatedGroup
             state.editGroup = nil
-            state.toastMessage = ToastMessage(
-              type: .success,
-              title: "그룹 정보가 저장되었어요",
-              position: .bottom
-            )
             return .run { [hapticFeedback] _ in
               await hapticFeedback.success()
             }
@@ -641,13 +636,7 @@ extension GroupSettings {
 
           case .notificationPermissionResponse(let granted):
             state.systemAuthStatus = granted ? .authorized : .denied
-            if granted {
-              state.toastMessage = ToastMessage(
-                type: .success,
-                title: "알림 권한이 허용되었어요",
-                position: .bottom
-              )
-            } else {
+            if !granted {
               state.toastMessage = ToastMessage(
                 type: .warning,
                 title: "알림 권한이 거부되었어요",
@@ -725,19 +714,6 @@ extension GroupSettings {
                 createdBy: state.group.createdBy,
                 createdAt: state.group.createdAt,
                 updatedAt: state.group.updatedAt
-              )
-            }
-            if let expelledMember {
-              state.toastMessage = ToastMessage(
-                type: .success,
-                title: "\(expelledMember.nickname)님을 추방했어요",
-                position: .bottom
-              )
-            } else {
-              state.toastMessage = ToastMessage(
-                type: .success,
-                title: "멤버를 추방했어요",
-                position: .bottom
               )
             }
             return .merge(

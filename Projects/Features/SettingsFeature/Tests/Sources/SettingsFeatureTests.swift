@@ -386,11 +386,6 @@ struct SettingsFeatureTests {
       $0.editedProfileImageData = nil
       $0.nicknameValidation = .idle
     }
-
-    // Toast 내용 검증
-    #expect(store.state.toastMessage?.type == .success)
-    #expect(store.state.toastMessage?.title == "프로필이 저장되었어요")
-    #expect(store.state.toastMessage?.position == .bottom)
   }
 
   // MARK: - profileSaveFailed 테스트

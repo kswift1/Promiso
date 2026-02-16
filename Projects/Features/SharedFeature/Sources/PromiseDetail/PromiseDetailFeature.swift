@@ -347,26 +347,6 @@ extension PromiseDetail {
               until: state.promise.votes.until
             )
 
-            switch status {
-            case .accepted:
-              state.toastMessage = ToastMessage(
-                type: .success,
-                title: "참석 응답을 보냈어요",
-                position: .bottom
-              )
-            case .declined:
-              state.toastMessage = ToastMessage(
-                type: .success,
-                title: "불참 응답을 보냈어요",
-                position: .bottom
-              )
-            case .pending:
-              state.toastMessage = ToastMessage(
-                type: .info,
-                title: "응답을 취소했어요",
-                position: .bottom
-              )
-            }
             return .send(.delegate(.promiseUpdated(state.promise)))
 
           case .respondFailed(let error):

@@ -414,11 +414,6 @@ extension GroupNotificationDetail {
         case .internal(let internalAction):
           switch internalAction {
           case .updateSucceeded:
-            state.toastMessage = ToastMessage(
-              type: .success,
-              title: "알림 설정을 저장했어요",
-              position: .bottom
-            )
             return .run { _ in await hapticFeedback.success() }
 
           case .updateFailed(let previousSettings, let message):

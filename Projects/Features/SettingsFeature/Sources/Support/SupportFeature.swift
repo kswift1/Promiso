@@ -103,13 +103,7 @@ extension Support {
           state.toastMessage = nil
           return .none
 
-        case .internal(.bugReportOpenResult(let opened)):
-          state.toastMessage = ToastMessage(
-            type: opened ? .success : .error,
-            title: opened ? "메일 앱을 열었어요" : "메일 앱을 열 수 없어요",
-            subtitle: opened ? nil : "기기의 메일 설정을 확인해주세요.",
-            position: .bottom
-          )
+        case .internal(.bugReportOpenResult):
           return .none
 
         case .delegate:

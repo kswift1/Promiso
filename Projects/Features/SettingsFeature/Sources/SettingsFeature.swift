@@ -461,11 +461,6 @@ extension Settings {
             state.isEditingProfile = false
             state.editedProfileImageData = nil
             state.nicknameValidation = .idle
-            state.toastMessage = ToastMessage(
-              type: .success,
-              title: "프로필이 저장되었어요",
-              position: .bottom
-            )
             return .none
 
           case .profileSaveFailed(let errorMessage):

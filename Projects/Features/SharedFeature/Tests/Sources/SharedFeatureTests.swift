@@ -267,10 +267,6 @@ struct PromiseDetailFeatureTests {
       )
     }
 
-    #expect(store.state.toastMessage?.type == .success)
-    #expect(store.state.toastMessage?.title == "참석 응답을 보냈어요")
-    #expect(store.state.toastMessage?.position == .bottom)
-
     await store.receive(\.delegate.promiseUpdated)
   }
 
@@ -308,10 +304,6 @@ struct PromiseDetailFeatureTests {
         until: $0.promise.votes.until
       )
     }
-
-    #expect(store.state.toastMessage?.type == .success)
-    #expect(store.state.toastMessage?.title == "불참 응답을 보냈어요")
-    #expect(store.state.toastMessage?.position == .bottom)
 
     await store.receive(\.delegate.promiseUpdated)
   }

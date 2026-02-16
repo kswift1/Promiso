@@ -352,11 +352,6 @@ extension NotificationCenter {
                 }
                 state.notificationsState = .loaded(notifications)
               }
-              state.toastMessage = ToastMessage(
-                type: .success,
-                title: "모든 알림을 읽음 처리했어요",
-                position: .bottom
-              )
             case .failure(let error):
               state.toastMessage = ToastMessage(
                 type: .error,
@@ -377,14 +372,6 @@ extension NotificationCenter {
                 state.selectedNotificationIds = []
                 state.isEditMode = false
               }
-              let successTitle = deletedIds.count > 1
-                ? "알림 \(deletedIds.count)개를 삭제했어요"
-                : "알림을 삭제했어요"
-              state.toastMessage = ToastMessage(
-                type: .success,
-                title: successTitle,
-                position: .bottom
-              )
             case .failure(let error):
               state.toastMessage = ToastMessage(
                 type: .error,

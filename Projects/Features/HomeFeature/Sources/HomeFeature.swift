@@ -362,20 +362,10 @@ extension Home {
 
         case .path(.element(id: _, action: .promiseDetail(.delegate(.promiseDeleted)))):
           _ = state.path.popLast()
-          state.toastMessage = ToastMessage(
-            type: .success,
-            title: "약속이 삭제되었어요",
-            position: .bottom
-          )
           // 삭제 후 다시 조회
           return .send(.internal(.fetchPromises))
 
         case .path(.element(id: _, action: .promiseDetail(.delegate(.promiseUpdated)))):
-          state.toastMessage = ToastMessage(
-            type: .success,
-            title: "약속이 수정되었어요",
-            position: .bottom
-          )
           // 수정 후 다시 조회
           return .send(.internal(.fetchPromises))
 
@@ -383,19 +373,9 @@ extension Home {
 
         case .path(.element(id: _, action: .personalEventDetail(.delegate(.eventDeleted)))):
           _ = state.path.popLast()
-          state.toastMessage = ToastMessage(
-            type: .success,
-            title: "개인 일정이 삭제되었어요",
-            position: .bottom
-          )
           return .send(.internal(.fetchPersonalEvents))
 
         case .path(.element(id: _, action: .personalEventDetail(.delegate(.eventUpdated)))):
-          state.toastMessage = ToastMessage(
-            type: .success,
-            title: "개인 일정이 수정되었어요",
-            position: .bottom
-          )
           return .send(.internal(.fetchPersonalEvents))
 
         // MARK: - NotificationCenter Path Actions

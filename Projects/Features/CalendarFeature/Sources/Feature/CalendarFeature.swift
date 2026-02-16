@@ -326,22 +326,12 @@ extension CalendarFeature {
           return .none
         case .path(.element(id: _, action: .promiseDetail(.delegate(.promiseDeleted)))):
           _ = state.path.popLast()
-          state.toastMessage = ToastMessage(
-            type: .success,
-            title: "약속이 삭제되었어요",
-            position: .bottom
-          )
           // 데이터 새로고침
           let currentMonth = state.selectedDate.startOfMonth
           state.loadedMonths.remove(currentMonth)
           state.cachedPromisesByMonth.removeValue(forKey: currentMonth)
           return .send(.internal(.fetchPromisesForMonth(currentMonth)))
         case .path(.element(id: _, action: .promiseDetail(.delegate(.promiseUpdated(let promise))))):
-          state.toastMessage = ToastMessage(
-            type: .success,
-            title: "약속이 수정되었어요",
-            position: .bottom
-          )
           // 로컬 캐시 업데이트
           let monthKey = promise.startAt.startOfMonth
           if var monthPromises = state.cachedPromisesByMonth[monthKey] {
@@ -353,18 +343,8 @@ extension CalendarFeature {
           return .none
         case .path(.element(id: _, action: .personalEventDetail(.delegate(.eventDeleted)))):
           _ = state.path.popLast()
-          state.toastMessage = ToastMessage(
-            type: .success,
-            title: "개인 일정이 삭제되었어요",
-            position: .bottom
-          )
           return .send(.internal(.fetchPersonalEvents))
         case .path(.element(id: _, action: .personalEventDetail(.delegate(.eventUpdated)))):
-          state.toastMessage = ToastMessage(
-            type: .success,
-            title: "개인 일정이 수정되었어요",
-            position: .bottom
-          )
           return .send(.internal(.fetchPersonalEvents))
         case .path:
           return .none
