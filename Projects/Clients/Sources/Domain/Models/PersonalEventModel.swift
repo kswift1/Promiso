@@ -177,10 +177,7 @@ extension PersonalEventModel {
     if calendar.isDateInYesterday(startAt) {
       return "어제"
     }
-    let formatter = DateFormatter()
-    formatter.locale = LocaleManager.appLocale
-    formatter.dateFormat = "M월 d일"
-    return formatter.string(from: startAt)
+    return LocalizedDateFormatters.monthDayString(from: startAt)
   }
 
   /// 위치 텍스트 (없으면 기본값)

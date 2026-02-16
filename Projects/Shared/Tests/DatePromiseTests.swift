@@ -101,13 +101,12 @@ struct PromiseDateStringTests {
     #expect(yesterday.promiseDateString == "어제")
   }
 
-  @Test("30일 뒤 날짜는 'M월 d일' 형식 반환")
+  @Test("30일 뒤 날짜는 monthDay 포맷 반환")
   func farFutureDate_returnsMonthDay() {
     let farDate = Calendar.current.date(byAdding: .day, value: 30, to: Date())!
     let result = farDate.promiseDateString
-    // M월 d일 형식인지 확인
-    #expect(result.contains("월"))
-    #expect(result.contains("일"))
+    let expected = LocalizedDateFormatters.monthDayString(from: farDate)
+    #expect(result == expected)
   }
 }
 
@@ -380,7 +379,7 @@ struct TimeIntervalPromiseTests {
 @Suite("LocalizedDateFormatters 테스트")
 struct LocalizedDateFormattersTests {
 
-  @Test("sectionHeader는 'M월 d일 (E)' 형식")
+  @Test("sectionHeader는 날짜+요일 형식")
   func sectionHeaderFormat() {
     var components = DateComponents()
     components.year = 2025
@@ -388,12 +387,12 @@ struct LocalizedDateFormattersTests {
     components.day = 15
     let date = Calendar.current.date(from: components)!
     let result = LocalizedDateFormatters.sectionHeader.string(from: date)
-    #expect(result.contains("1월"))
-    #expect(result.contains("15일"))
+    #expect(result.contains("15"))
     #expect(result.contains("("))
+    #expect(result.contains(")"))
   }
 
-  @Test("monthDay는 'M월 d일' 형식")
+  @Test("monthDay는 월/일 정보 포함")
   func monthDayFormat() {
     var components = DateComponents()
     components.year = 2025
@@ -401,18 +400,20 @@ struct LocalizedDateFormattersTests {
     components.day = 5
     let date = Calendar.current.date(from: components)!
     let result = LocalizedDateFormatters.monthDay.string(from: date)
-    #expect(result == "3월 5일")
+    #expect(!result.isEmpty)
+    #expect(result.contains("5"))
   }
 
-  @Test("yearMonthDay는 'yyyy년 M월 d일' 형식")
+  @Test("yearMonthDay는 연/월/일 정보 포함")
   func yearMonthDayFormat() {
     var components = DateComponents()
-    components.year = 2025
+    components.year = 2031
     components.month = 12
-    components.day = 25
+    components.day = 4
     let date = Calendar.current.date(from: components)!
     let result = LocalizedDateFormatters.yearMonthDay.string(from: date)
-    #expect(result == "2025년 12월 25일")
+    #expect(result.contains("2031"))
+    #expect(result.contains("4"))
   }
 
   @Test("date는 'yyyy-MM-dd' 형식")
@@ -430,8 +431,7 @@ struct LocalizedDateFormattersTests {
   func endTimeString_todayReturnsTimeOnly() {
     let today = Date()
     let result = LocalizedDateFormatters.endTimeString(from: today)
-    // 오늘이면 시간만 반환되므로 "월"이 포함되지 않음
-    #expect(!result.contains("월"))
+    #expect(result == LocalizedDateFormatters.timeString(from: today))
   }
 
   @Test("endTimeString(relativeTo:): 같은 날이면 시간만 반환")
@@ -440,8 +440,7 @@ struct LocalizedDateFormattersTests {
     let start = calendar.date(bySettingHour: 10, minute: 0, second: 0, of: Date())!
     let end = calendar.date(bySettingHour: 14, minute: 30, second: 0, of: Date())!
     let result = LocalizedDateFormatters.endTimeString(from: end, relativeTo: start)
-    // 같은 날이면 시간만 → "월"이 포함되지 않음
-    #expect(!result.contains("월"))
+    #expect(result == LocalizedDateFormatters.timeString(from: end))
   }
 
   @Test("endTimeString(relativeTo:): 다른 날이면 날짜+시간 반환")
@@ -450,8 +449,7 @@ struct LocalizedDateFormattersTests {
     let start = Date()
     let end = calendar.date(byAdding: .day, value: 2, to: start)!
     let result = LocalizedDateFormatters.endTimeString(from: end, relativeTo: start)
-    #expect(result.contains("월"))
-    #expect(result.contains("일"))
+    #expect(result.hasPrefix(LocalizedDateFormatters.monthDayString(from: end)))
   }
 }
 

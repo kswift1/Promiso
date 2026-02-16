@@ -962,6 +962,15 @@ extension ThemeSettings {
   public struct RootView: View {
     @Bindable private var store: StoreOf<Feature>
 
+    private enum ThemeModeKoreanCopy {
+      static let navigationTitle = "화면 모드"
+      static let sectionTitle = "화면 모드 설정"
+      static let sectionHint = "앱 전체의 화면 모드를 설정합니다. 시스템 설정을 따르거나 라이트/다크 모드를 직접 선택할 수 있습니다."
+      static let systemDescription = "기기 설정에 따라 자동 변경"
+      static let lightDescription = "항상 밝은 화면으로 표시"
+      static let darkDescription = "항상 어두운 화면으로 표시"
+    }
+
     public init(store: StoreOf<Feature>) {
       self.store = store
     }
@@ -980,7 +989,7 @@ extension ThemeSettings {
         .padding(.bottom, 24)
       }
       .auroraBackground()
-      .navigationTitle(LocalizedStrings.SettingsStrings.themeMode)
+      .navigationTitle(ThemeModeKoreanCopy.navigationTitle)
       .navigationBarTitleDisplayMode(.inline)
       .onAppear {
         store.send(.view(.onAppear))
@@ -1002,7 +1011,7 @@ extension ThemeSettings {
 
     private var themeModeSection: some View {
       VStack(alignment: .leading, spacing: 10) {
-        Text(LocalizedStrings.SettingsStrings.themeModeSection)
+        Text(ThemeModeKoreanCopy.sectionTitle)
           .font(.system(size: 16, weight: .semibold))
           .padding(.horizontal, 4)
 
@@ -1017,7 +1026,7 @@ extension ThemeSettings {
         }
         .adaptiveGlassCard()
 
-        Text(LocalizedStrings.SettingsStrings.themeModeHint)
+        Text(ThemeModeKoreanCopy.sectionHint)
           .font(.system(size: 12))
           .foregroundStyle(Color.pmtext.secondary)
           .padding(.horizontal, 4)
@@ -1069,9 +1078,9 @@ extension ThemeSettings {
 
     private func description(for mode: AppConstants.ThemeMode) -> String {
       switch mode {
-      case .system: return LocalizedStrings.SettingsStrings.themeModeSystem
-      case .light: return LocalizedStrings.SettingsStrings.themeModeLight
-      case .dark: return LocalizedStrings.SettingsStrings.themeModeDark
+      case .system: return ThemeModeKoreanCopy.systemDescription
+      case .light: return ThemeModeKoreanCopy.lightDescription
+      case .dark: return ThemeModeKoreanCopy.darkDescription
       }
     }
   }

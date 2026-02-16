@@ -52,11 +52,8 @@ public extension Date {
         return formatter.string(from: self)
       }
     }
-    
-    let formatter = DateFormatter()
-    formatter.dateFormat = "M월 d일"
-    formatter.locale = LocaleManager.appLocale
-    return formatter.string(from: self)
+
+    return LocalizedDateFormatters.monthDayString(from: self)
   }
   
   /// 약속 시간을 표시용으로 포맷팅 (12/24시간 설정 적용)

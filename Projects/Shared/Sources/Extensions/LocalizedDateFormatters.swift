@@ -17,21 +17,37 @@ public enum LocalizedDateFormatters {
     }
   }
 
+  /// 현재 앱 로케일이 한국어인지 여부
+  private static var isKoreanLocale: Bool {
+    LocaleManager.appLocale.language.languageCode?.identifier == "ko"
+  }
+
+  /// 한국어/비한국어 로케일별 포맷 분기
+  private static func localeAwareDateFormat(korean: String, nonKorean: String) -> String {
+    isKoreanLocale ? korean : nonKorean
+  }
+
   /// 시간 포맷터 업데이트
   private static func updateTimeFormatters() {
     let format = use24HourFormat ? "HH:mm" : "a h:mm"
     time.dateFormat = format
 
-    let fullFormat = use24HourFormat ? "yyyy년 M월 d일 HH:mm" : "yyyy년 M월 d일 a h:mm"
+    let fullFormat = use24HourFormat
+      ? localeAwareDateFormat(korean: "yyyy년 M월 d일 HH:mm", nonKorean: "MMM d, yyyy HH:mm")
+      : localeAwareDateFormat(korean: "yyyy년 M월 d일 a h:mm", nonKorean: "MMM d, yyyy h:mm a")
     full.dateFormat = fullFormat
 
-    let monthDayTimeFormat = use24HourFormat ? "M월 d일 HH:mm" : "M월 d일 a h:mm"
+    let monthDayTimeFormat = use24HourFormat
+      ? localeAwareDateFormat(korean: "M월 d일 HH:mm", nonKorean: "MMM d HH:mm")
+      : localeAwareDateFormat(korean: "M월 d일 a h:mm", nonKorean: "MMM d h:mm a")
     monthDayTime.dateFormat = monthDayTimeFormat
 
     let shortDateTimeFormat = use24HourFormat ? "M/d(E) HH:mm" : "M/d(E) a h:mm"
     shortDateTime.dateFormat = shortDateTimeFormat
 
-    let monthDayHourFormat = use24HourFormat ? "M월 d일 H시" : "M월 d일 a h시"
+    let monthDayHourFormat = use24HourFormat
+      ? localeAwareDateFormat(korean: "M월 d일 H시", nonKorean: "MMM d H")
+      : localeAwareDateFormat(korean: "M월 d일 a h시", nonKorean: "MMM d h a")
     monthDayHour.dateFormat = monthDayHourFormat
   }
 
@@ -41,7 +57,7 @@ public enum LocalizedDateFormatters {
   public static let sectionHeader: DateFormatter = {
     let formatter = DateFormatter()
     formatter.locale = LocaleManager.appLocale
-    formatter.dateFormat = "M월 d일 (E)"
+    formatter.dateFormat = localeAwareDateFormat(korean: "M월 d일 (E)", nonKorean: "MMM d (E)")
     return formatter
   }()
 
@@ -57,7 +73,7 @@ public enum LocalizedDateFormatters {
   public static let month: DateFormatter = {
     let formatter = DateFormatter()
     formatter.locale = LocaleManager.appLocale
-    formatter.dateFormat = "M월"
+    formatter.dateFormat = localeAwareDateFormat(korean: "M월", nonKorean: "MMM")
     return formatter
   }()
 
@@ -73,7 +89,7 @@ public enum LocalizedDateFormatters {
   public static let monthDay: DateFormatter = {
     let formatter = DateFormatter()
     formatter.locale = LocaleManager.appLocale
-    formatter.dateFormat = "M월 d일"
+    formatter.dateFormat = localeAwareDateFormat(korean: "M월 d일", nonKorean: "MMM d")
     return formatter
   }()
 
@@ -81,7 +97,7 @@ public enum LocalizedDateFormatters {
   public static let monthDayWeekday: DateFormatter = {
     let formatter = DateFormatter()
     formatter.locale = LocaleManager.appLocale
-    formatter.dateFormat = "M월 d일 EEEE"
+    formatter.dateFormat = localeAwareDateFormat(korean: "M월 d일 EEEE", nonKorean: "MMM d EEEE")
     return formatter
   }()
 
@@ -89,7 +105,7 @@ public enum LocalizedDateFormatters {
   public static let yearMonth: DateFormatter = {
     let formatter = DateFormatter()
     formatter.locale = LocaleManager.appLocale
-    formatter.dateFormat = "yyyy년 M월"
+    formatter.dateFormat = localeAwareDateFormat(korean: "yyyy년 M월", nonKorean: "yyyy MMM")
     return formatter
   }()
 
@@ -97,7 +113,7 @@ public enum LocalizedDateFormatters {
   public static let yearMonthDay: DateFormatter = {
     let formatter = DateFormatter()
     formatter.locale = LocaleManager.appLocale
-    formatter.dateFormat = "yyyy년 M월 d일"
+    formatter.dateFormat = localeAwareDateFormat(korean: "yyyy년 M월 d일", nonKorean: "MMM d, yyyy")
     return formatter
   }()
 
@@ -105,7 +121,7 @@ public enum LocalizedDateFormatters {
   public static let monthWeek: DateFormatter = {
     let formatter = DateFormatter()
     formatter.locale = LocaleManager.appLocale
-    formatter.dateFormat = "M월 W주차"
+    formatter.dateFormat = localeAwareDateFormat(korean: "M월 W주차", nonKorean: "MMM W")
     return formatter
   }()
 
@@ -129,7 +145,9 @@ public enum LocalizedDateFormatters {
   public static let monthDayHour: DateFormatter = {
     let formatter = DateFormatter()
     formatter.locale = LocaleManager.appLocale
-    formatter.dateFormat = use24HourFormat ? "M월 d일 H시" : "M월 d일 a h시"
+    formatter.dateFormat = use24HourFormat
+      ? localeAwareDateFormat(korean: "M월 d일 H시", nonKorean: "MMM d H")
+      : localeAwareDateFormat(korean: "M월 d일 a h시", nonKorean: "MMM d h a")
     return formatter
   }()
 
@@ -155,7 +173,9 @@ public enum LocalizedDateFormatters {
   public static let full: DateFormatter = {
     let formatter = DateFormatter()
     formatter.locale = LocaleManager.appLocale
-    formatter.dateFormat = use24HourFormat ? "yyyy년 M월 d일 HH:mm" : "yyyy년 M월 d일 a h:mm"
+    formatter.dateFormat = use24HourFormat
+      ? localeAwareDateFormat(korean: "yyyy년 M월 d일 HH:mm", nonKorean: "MMM d, yyyy HH:mm")
+      : localeAwareDateFormat(korean: "yyyy년 M월 d일 a h:mm", nonKorean: "MMM d, yyyy h:mm a")
     return formatter
   }()
 
@@ -163,7 +183,9 @@ public enum LocalizedDateFormatters {
   public static let monthDayTime: DateFormatter = {
     let formatter = DateFormatter()
     formatter.locale = LocaleManager.appLocale
-    formatter.dateFormat = use24HourFormat ? "M월 d일 HH:mm" : "M월 d일 a h:mm"
+    formatter.dateFormat = use24HourFormat
+      ? localeAwareDateFormat(korean: "M월 d일 HH:mm", nonKorean: "MMM d HH:mm")
+      : localeAwareDateFormat(korean: "M월 d일 a h:mm", nonKorean: "MMM d h:mm a")
     return formatter
   }()
 
