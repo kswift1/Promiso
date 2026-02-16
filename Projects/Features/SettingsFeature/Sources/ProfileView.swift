@@ -48,7 +48,7 @@ extension Settings {
 
           // MARK: - 앱 설정 섹션
           VStack(alignment: .leading, spacing: 10) {
-            Text("앱 설정")
+            Text(LocalizedStrings.SettingsStrings.appSettings)
               .font(.system(size: 16, weight: .semibold))
               .padding(.horizontal, 4)
 
@@ -62,7 +62,7 @@ extension Settings {
                     .foregroundStyle(Color.pmindigo.n500)
                     .frame(width: 24, height: 24)
 
-                  Text("날짜 시간 표시")
+                  Text(LocalizedStrings.SettingsStrings.dateTimeDisplay)
                     .font(.body)
                     .foregroundStyle(Color.pmtext.primary)
 
@@ -90,7 +90,7 @@ extension Settings {
                     .foregroundStyle(Color.pmindigo.n500)
                     .frame(width: 24, height: 24)
 
-                  Text("화면 모드")
+                  Text(LocalizedStrings.SettingsStrings.themeMode)
                     .font(.body)
                     .foregroundStyle(Color.pmtext.primary)
 
@@ -118,7 +118,7 @@ extension Settings {
                     .foregroundStyle(Color.pmindigo.n500)
                     .frame(width: 24, height: 24)
 
-                  Text(LocalizedStrings.Settings.language)
+                  Text(LocalizedStrings.SettingsStrings.language)
                     .font(.body)
                     .foregroundStyle(Color.pmtext.primary)
 
@@ -146,7 +146,7 @@ extension Settings {
                     .foregroundStyle(Color.pmindigo.n500)
                     .frame(width: 24, height: 24)
 
-                  Text("알림 설정")
+                  Text(LocalizedStrings.SettingsStrings.notifications)
                     .font(.body)
                     .foregroundStyle(Color.pmtext.primary)
 
@@ -174,7 +174,7 @@ extension Settings {
                     .foregroundStyle(Color.pmindigo.n500)
                     .frame(width: 24, height: 24)
 
-                  Text("캘린더 설정")
+                  Text(LocalizedStrings.SettingsStrings.calendarSettings)
                     .font(.body)
                     .foregroundStyle(Color.pmtext.primary)
 
@@ -202,7 +202,7 @@ extension Settings {
                     .foregroundStyle(Color.pmindigo.n500)
                     .frame(width: 24, height: 24)
 
-                  Text("약속 탭 기본 모드")
+                  Text(LocalizedStrings.SettingsStrings.promiseTabDefaultMode)
                     .font(.body)
                     .foregroundStyle(Color.pmtext.primary)
 
@@ -231,7 +231,7 @@ extension Settings {
                 .foregroundStyle(Color.pmindigo.n500)
                 .frame(width: 24, height: 24)
 
-              Text("지원")
+              Text(LocalizedStrings.SettingsStrings.support)
                 .font(.body)
                 .foregroundStyle(Color.pmtext.primary)
 
@@ -250,7 +250,7 @@ extension Settings {
 
           // MARK: - 정보 섹션
           VStack(alignment: .leading, spacing: 10) {
-            Text("정보")
+            Text(LocalizedStrings.SettingsStrings.info)
               .font(.system(size: 16, weight: .semibold))
               .padding(.horizontal, 4)
 
@@ -264,7 +264,7 @@ extension Settings {
                     .foregroundStyle(Color.pmindigo.n500)
                     .frame(width: 24, height: 24)
 
-                  Text("약관 및 정책")
+                  Text(LocalizedStrings.SettingsStrings.termsAndPolicies)
                     .font(.body)
                     .foregroundStyle(Color.pmtext.primary)
 
@@ -292,7 +292,7 @@ extension Settings {
                     .foregroundStyle(Color.pmindigo.n500)
                     .frame(width: 24, height: 24)
 
-                  Text("앱 정보")
+                  Text(LocalizedStrings.SettingsStrings.appInfo)
                     .font(.body)
                     .foregroundStyle(Color.pmtext.primary)
 
@@ -315,7 +315,7 @@ extension Settings {
           // MARK: - 개발자 섹션 (Dev/Stage only)
           if isDeveloperMenuEnabled {
             VStack(alignment: .leading, spacing: 10) {
-              Text("개발자")
+              Text(LocalizedStrings.SettingsStrings.developer)
                 .font(.system(size: 16, weight: .semibold))
                 .padding(.horizontal, 4)
 
@@ -328,7 +328,7 @@ extension Settings {
                     .foregroundStyle(Color.pmindigo.n500)
                     .frame(width: 24, height: 24)
 
-                  Text("개발자 설정")
+                  Text(LocalizedStrings.SettingsStrings.developerSettings)
                     .font(.body)
                     .foregroundStyle(Color.pmtext.primary)
 
@@ -353,7 +353,7 @@ extension Settings {
         .padding(.bottom, 24)
       }
       .auroraBackground()
-      .navigationTitle("설정")
+      .navigationTitle(LocalizedStrings.SettingsStrings.title)
       .navigationBarTitleDisplayMode(.large)
       .sheet(
         isPresented: Binding(
@@ -400,7 +400,7 @@ extension Settings {
             .scaleEffect(1.2)
             .tint(.white)
 
-          Text("로그아웃 중...")
+          Text(LocalizedStrings.SettingsStrings.loggingOut)
             .font(.body)
             .foregroundStyle(.white)
         }

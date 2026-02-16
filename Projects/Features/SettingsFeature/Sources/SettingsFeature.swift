@@ -332,15 +332,15 @@ extension Settings {
             state.editedNickname = nickname
             // 닉네임 유효성 검사
             if nickname.isEmpty {
-              state.nicknameValidation = .invalid("닉네임을 입력해주세요")
+              state.nicknameValidation = .invalid(LocalizedStrings.SettingsStrings.nicknameRequired)
               return .none
             }
             if nickname.count < 2 {
-              state.nicknameValidation = .invalid("닉네임은 2자 이상이어야 합니다")
+              state.nicknameValidation = .invalid(LocalizedStrings.SettingsStrings.nicknameTooShort)
               return .none
             }
             if nickname.count > 20 {
-              state.nicknameValidation = .invalid("닉네임은 20자 이하여야 합니다")
+              state.nicknameValidation = .invalid(LocalizedStrings.SettingsStrings.nicknameTooLong)
               return .none
             }
             // 현재 닉네임과 동일하면 검사 생략
@@ -606,13 +606,13 @@ public enum SettingsError: Error, Equatable, LocalizedError {
   public var errorDescription: String? {
     switch self {
     case .logoutFailed:
-      return "로그아웃에 실패했습니다. 다시 시도해주세요."
+      return LocalizedStrings.SettingsStrings.logoutFailed
     case .userNotFound:
-      return "사용자 정보를 찾을 수 없습니다."
+      return LocalizedStrings.SettingsStrings.userNotFound
     case .imageLoadFailed:
-      return "이미지를 불러오는데 실패했습니다."
+      return LocalizedStrings.SettingsStrings.imageLoadFailed
     case .unknown:
-      return "알 수 없는 오류가 발생했습니다."
+      return LocalizedStrings.SettingsStrings.unknownError
     }
   }
 }
@@ -720,12 +720,12 @@ extension DateTimeSettings {
         .padding(.bottom, 24)
       }
       .auroraBackground()
-      .navigationTitle("날짜 시간 표시")
+      .navigationTitle(LocalizedStrings.SettingsStrings.dateTimeDisplay)
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
         ToolbarItem(placement: .navigationBarTrailing) {
           if store.hasChanges {
-            Button("변경") {
+            Button(LocalizedStrings.Common.change) {
               store.send(.view(.saveChanges))
             }
             .font(.system(size: 16, weight: .semibold))
@@ -736,36 +736,36 @@ extension DateTimeSettings {
       .onAppear {
         store.send(.view(.onAppear))
       }
-      .alert("앱 재시작", isPresented: Binding(
+      .alert(LocalizedStrings.SettingsStrings.restartTitle, isPresented: Binding(
         get: { store.showRestartAlert },
         set: { if !$0 { store.send(.view(.restartCancelled)) } }
       )) {
-        Button("취소", role: .cancel) {
+        Button(LocalizedStrings.Common.cancel, role: .cancel) {
           store.send(.view(.restartCancelled))
         }
-        Button("재시작") {
+        Button(LocalizedStrings.SettingsStrings.restart) {
           store.send(.view(.restartConfirmed))
         }
       } message: {
-        Text("시간 표시 형식을 변경하려면 앱을 재시작해야 합니다.\n지금 재시작하시겠습니까?")
+        Text(LocalizedStrings.SettingsStrings.restartMessage)
       }
     }
 
     private var timeFormatSection: some View {
       VStack(alignment: .leading, spacing: 10) {
-        Text("시간 표시 형식")
+        Text(LocalizedStrings.SettingsStrings.timeFormatSection)
           .font(.system(size: 16, weight: .semibold))
           .padding(.horizontal, 4)
 
         VStack(spacing: 0) {
-          formatRow(is24Hour: false, title: "12시간 형식", description: "예: 오후 2:30")
+          formatRow(is24Hour: false, title: LocalizedStrings.SettingsStrings.timeFormat12Hour, description: LocalizedStrings.SettingsStrings.timeFormat12HourExample)
           Divider()
             .padding(.leading, 48)
-          formatRow(is24Hour: true, title: "24시간 형식", description: "예: 14:30")
+          formatRow(is24Hour: true, title: LocalizedStrings.SettingsStrings.timeFormat24Hour, description: LocalizedStrings.SettingsStrings.timeFormat24HourExample)
         }
         .adaptiveGlassCard()
 
-        Text("앱 전체에서 사용되는 시간 표시 형식을 설정합니다.")
+        Text(LocalizedStrings.SettingsStrings.timeFormatHint)
           .font(.system(size: 12))
           .foregroundStyle(Color.pmtext.secondary)
           .padding(.horizontal, 4)
@@ -809,13 +809,13 @@ extension DateTimeSettings {
 
     private var exampleCardSection: some View {
       VStack(alignment: .leading, spacing: 10) {
-        Text("미리보기")
+        Text(LocalizedStrings.SettingsStrings.preview)
           .font(.system(size: 16, weight: .semibold))
           .padding(.horizontal, 4)
 
         ExamplePromiseCard(use24Hour: store.selectedValue)
 
-        Text("실제 약속 카드는 위와 같이 표시됩니다.")
+        Text(LocalizedStrings.SettingsStrings.previewHint)
           .font(.system(size: 12))
           .foregroundStyle(Color.pmtext.secondary)
           .padding(.horizontal, 4)
@@ -980,29 +980,29 @@ extension ThemeSettings {
         .padding(.bottom, 24)
       }
       .auroraBackground()
-      .navigationTitle("화면 모드")
+      .navigationTitle(LocalizedStrings.SettingsStrings.themeMode)
       .navigationBarTitleDisplayMode(.inline)
       .onAppear {
         store.send(.view(.onAppear))
       }
-      .alert("앱 재시작", isPresented: Binding(
+      .alert(LocalizedStrings.SettingsStrings.restartTitle, isPresented: Binding(
         get: { store.showRestartAlert },
         set: { if !$0 { store.send(.view(.restartCancelled)) } }
       )) {
-        Button("취소", role: .cancel) {
+        Button(LocalizedStrings.Common.cancel, role: .cancel) {
           store.send(.view(.restartCancelled))
         }
-        Button("재시작") {
+        Button(LocalizedStrings.SettingsStrings.restart) {
           store.send(.view(.restartConfirmed))
         }
       } message: {
-        Text("화면 모드를 변경하려면 앱을 재시작해야 합니다.\n지금 재시작하시겠습니까?")
+        Text(LocalizedStrings.SettingsStrings.themeModeRestartMessage)
       }
     }
 
     private var themeModeSection: some View {
       VStack(alignment: .leading, spacing: 10) {
-        Text("화면 모드 설정")
+        Text(LocalizedStrings.SettingsStrings.themeModeSection)
           .font(.system(size: 16, weight: .semibold))
           .padding(.horizontal, 4)
 
@@ -1017,7 +1017,7 @@ extension ThemeSettings {
         }
         .adaptiveGlassCard()
 
-        Text("앱 전체의 화면 모드를 설정합니다. 시스템 설정을 따르거나 라이트/다크 모드를 직접 선택할 수 있습니다.")
+        Text(LocalizedStrings.SettingsStrings.themeModeHint)
           .font(.system(size: 12))
           .foregroundStyle(Color.pmtext.secondary)
           .padding(.horizontal, 4)
@@ -1069,9 +1069,9 @@ extension ThemeSettings {
 
     private func description(for mode: AppConstants.ThemeMode) -> String {
       switch mode {
-      case .system: return "기기 설정에 따라 자동 변경"
-      case .light: return "항상 밝은 화면으로 표시"
-      case .dark: return "항상 어두운 화면으로 표시"
+      case .system: return LocalizedStrings.SettingsStrings.themeModeSystem
+      case .light: return LocalizedStrings.SettingsStrings.themeModeLight
+      case .dark: return LocalizedStrings.SettingsStrings.themeModeDark
       }
     }
   }
@@ -1181,29 +1181,29 @@ extension LanguageSettings {
         .padding(.bottom, 24)
       }
       .auroraBackground()
-      .navigationTitle(LocalizedStrings.Settings.language)
+      .navigationTitle(LocalizedStrings.SettingsStrings.language)
       .navigationBarTitleDisplayMode(.inline)
       .onAppear {
         store.send(.view(.onAppear))
       }
-      .alert(LocalizedStrings.Settings.languageRestartTitle, isPresented: Binding(
+      .alert(LocalizedStrings.SettingsStrings.languageRestartTitle, isPresented: Binding(
         get: { store.showRestartAlert },
         set: { if !$0 { store.send(.view(.restartCancelled)) } }
       )) {
         Button(LocalizedStrings.Common.cancel, role: .cancel) {
           store.send(.view(.restartCancelled))
         }
-        Button(LocalizedStrings.Settings.languageRestartAction) {
+        Button(LocalizedStrings.SettingsStrings.languageRestartAction) {
           store.send(.view(.restartConfirmed))
         }
       } message: {
-        Text(LocalizedStrings.Settings.languageRestartMessage)
+        Text(LocalizedStrings.SettingsStrings.languageRestartMessage)
       }
     }
 
     private var languageSection: some View {
       VStack(alignment: .leading, spacing: 10) {
-        Text(LocalizedStrings.Settings.languageSectionTitle)
+        Text(LocalizedStrings.SettingsStrings.languageSectionTitle)
           .font(.system(size: 16, weight: .semibold))
           .padding(.horizontal, 4)
 
@@ -1221,7 +1221,7 @@ extension LanguageSettings {
     }
 
     private var systemLanguageHint: some View {
-      Text(LocalizedStrings.Settings.languageHint)
+      Text(LocalizedStrings.SettingsStrings.languageHint)
         .font(.system(size: 12))
         .foregroundStyle(Color.pmtext.secondary)
         .padding(.horizontal, 4)
@@ -1328,7 +1328,7 @@ extension PromiseTabModeSettings {
         .padding(.bottom, 24)
       }
       .auroraBackground()
-      .navigationTitle("약속 탭 기본 모드")
+      .navigationTitle(LocalizedStrings.SettingsStrings.promiseTabDefaultMode)
       .navigationBarTitleDisplayMode(.inline)
       .onAppear {
         store.send(.view(.onAppear))
@@ -1337,19 +1337,19 @@ extension PromiseTabModeSettings {
 
     private var tabModeSection: some View {
       VStack(alignment: .leading, spacing: 10) {
-        Text("기본 모드")
+        Text(LocalizedStrings.SettingsStrings.promiseTabModeDefault)
           .font(.system(size: 16, weight: .semibold))
           .padding(.horizontal, 4)
 
         VStack(spacing: 0) {
-          tabModeRow(mode: "group", icon: "person.3.fill", title: "그룹", description: "그룹 약속을 기본으로 표시")
+          tabModeRow(mode: "group", icon: "person.3.fill", title: LocalizedStrings.SettingsStrings.promiseTabModeGroup, description: LocalizedStrings.SettingsStrings.promiseTabModeGroupDescription)
           Divider()
             .padding(.leading, 48)
-          tabModeRow(mode: "own", icon: "person.fill", title: "개인", description: "개인 일정을 기본으로 표시")
+          tabModeRow(mode: "own", icon: "person.fill", title: LocalizedStrings.SettingsStrings.promiseTabModeOwn, description: LocalizedStrings.SettingsStrings.promiseTabModeOwnDescription)
         }
         .adaptiveGlassCard()
 
-        Text("약속 탭을 열었을 때 기본으로 표시할 모드를 선택합니다.")
+        Text(LocalizedStrings.SettingsStrings.promiseTabModeHint)
           .font(.system(size: 12))
           .foregroundStyle(Color.pmtext.secondary)
           .padding(.horizontal, 4)
@@ -1393,14 +1393,14 @@ extension PromiseTabModeSettings {
 
     private var tabBarPreviewSection: some View {
       VStack(alignment: .leading, spacing: 10) {
-        Text("미리보기")
+        Text(LocalizedStrings.SettingsStrings.preview)
           .font(.system(size: 16, weight: .semibold))
           .padding(.horizontal, 4)
 
         TabBarPreview(selectedMode: store.defaultPromiseTabMode)
           .adaptiveGlassCard()
 
-        Text("실제 탭바는 위와 같이 표시됩니다.")
+        Text(LocalizedStrings.SettingsStrings.promiseTabModePreviewHint)
           .font(.system(size: 12))
           .foregroundStyle(Color.pmtext.secondary)
           .padding(.horizontal, 4)
@@ -1424,14 +1424,14 @@ extension PromiseTabModeSettings {
     @available(iOS 26.0, *)
     private var ios26TabBarPreview: some View {
       HStack(spacing: 8) {
-        TabItemView(icon: "house.fill", label: "홈", isSelected: false)
+        TabItemView(icon: "house.fill", label: LocalizedStrings.SettingsStrings.tabHome, isSelected: false)
         TabItemView(
           icon: selectedMode == "group" ? "person.3.fill" : "person.fill",
-          label: selectedMode == "group" ? "그룹" : "개인",
+          label: selectedMode == "group" ? LocalizedStrings.SettingsStrings.tabGroup : LocalizedStrings.SettingsStrings.tabOwn,
           isSelected: true
         )
-        TabItemView(icon: "calendar", label: "캘린더", isSelected: false)
-        TabItemView(icon: "gearshape.fill", label: "설정", isSelected: false)
+        TabItemView(icon: "calendar", label: LocalizedStrings.SettingsStrings.tabCalendar, isSelected: false)
+        TabItemView(icon: "gearshape.fill", label: LocalizedStrings.SettingsStrings.tabSettings, isSelected: false)
       }
       .padding(8)
       .background(
@@ -1443,14 +1443,14 @@ extension PromiseTabModeSettings {
 
     private var fallbackTabBarPreview: some View {
       HStack(spacing: 8) {
-        TabItemView(icon: "house.fill", label: "홈", isSelected: false)
+        TabItemView(icon: "house.fill", label: LocalizedStrings.SettingsStrings.tabHome, isSelected: false)
         TabItemView(
           icon: selectedMode == "group" ? "person.3.fill" : "person.fill",
-          label: selectedMode == "group" ? "그룹" : "개인",
+          label: selectedMode == "group" ? LocalizedStrings.SettingsStrings.tabGroup : LocalizedStrings.SettingsStrings.tabOwn,
           isSelected: true
         )
-        TabItemView(icon: "calendar", label: "캘린더", isSelected: false)
-        TabItemView(icon: "gearshape.fill", label: "설정", isSelected: false)
+        TabItemView(icon: "calendar", label: LocalizedStrings.SettingsStrings.tabCalendar, isSelected: false)
+        TabItemView(icon: "gearshape.fill", label: LocalizedStrings.SettingsStrings.tabSettings, isSelected: false)
       }
       .padding(8)
       .background(

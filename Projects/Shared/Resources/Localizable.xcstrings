@@ -10559,6 +10559,1287 @@
           "stringUnit": { "state": "translated", "value": "'%@' 약속을 삭제하시겠습니까?\n삭제된 약속은 복구할 수 없습니다." }
         }
       }
+    },
+    "settings.title": {
+      "comment": "설정",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Settings" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "설정" } }
+      }
+    },
+    "settings.appSettings": {
+      "comment": "앱 설정",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "App Settings" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "앱 설정" } }
+      }
+    },
+    "settings.support": {
+      "comment": "지원",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Support" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "지원" } }
+      }
+    },
+    "settings.info": {
+      "comment": "정보",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Info" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "정보" } }
+      }
+    },
+    "settings.developer": {
+      "comment": "개발자",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Developer" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "개발자" } }
+      }
+    },
+    "settings.dateTimeDisplay": {
+      "comment": "날짜 시간 표시",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Date & Time Display" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "날짜 시간 표시" } }
+      }
+    },
+    "settings.themeMode": {
+      "comment": "화면 모드",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Theme Mode" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "화면 모드" } }
+      }
+    },
+    "settings.notifications": {
+      "comment": "알림 설정",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Notification Settings" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "알림 설정" } }
+      }
+    },
+    "settings.calendarSettings": {
+      "comment": "캘린더 설정",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Calendar Settings" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "캘린더 설정" } }
+      }
+    },
+    "settings.promiseTabDefaultMode": {
+      "comment": "약속 탭 기본 모드",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Default Promise Tab Mode" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "약속 탭 기본 모드" } }
+      }
+    },
+    "settings.termsAndPolicies": {
+      "comment": "약관 및 정책",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Terms & Policies" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "약관 및 정책" } }
+      }
+    },
+    "settings.appInfo": {
+      "comment": "앱 정보",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "App Info" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "앱 정보" } }
+      }
+    },
+    "settings.developerSettings": {
+      "comment": "개발자 설정",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Developer Settings" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "개발자 설정" } }
+      }
+    },
+    "settings.profileEdit": {
+      "comment": "프로필 편집",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Edit Profile" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "프로필 편집" } }
+      }
+    },
+    "settings.profileEditCancel": {
+      "comment": "취소",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Cancel" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "취소" } }
+      }
+    },
+    "settings.profileEditSave": {
+      "comment": "저장",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Save" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "저장" } }
+      }
+    },
+    "settings.nickname": {
+      "comment": "닉네임",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Nickname" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "닉네임" } }
+      }
+    },
+    "settings.nicknamePlaceholder": {
+      "comment": "닉네임을 입력하세요",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Enter nickname" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "닉네임을 입력하세요" } }
+      }
+    },
+    "settings.nicknameRequired": {
+      "comment": "닉네임을 입력해주세요",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Please enter a nickname" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "닉네임을 입력해주세요" } }
+      }
+    },
+    "settings.nicknameTooShort": {
+      "comment": "닉네임은 2자 이상이어야 합니다",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Nickname must be at least 2 characters" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "닉네임은 2자 이상이어야 합니다" } }
+      }
+    },
+    "settings.nicknameTooLong": {
+      "comment": "닉네임은 20자 이하여야 합니다",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Nickname must be 20 characters or less" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "닉네임은 20자 이하여야 합니다" } }
+      }
+    },
+    "settings.nicknameValidationHint": {
+      "comment": "2~20자 이내로 입력해주세요",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Please enter 2-20 characters" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "2~20자 이내로 입력해주세요" } }
+      }
+    },
+    "settings.nicknameAvailable": {
+      "comment": "사용 가능한 닉네임입니다",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "This nickname is available" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "사용 가능한 닉네임입니다" } }
+      }
+    },
+    "settings.nicknameUnavailable": {
+      "comment": "이미 사용 중인 닉네임입니다",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "This nickname is already taken" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "이미 사용 중인 닉네임입니다" } }
+      }
+    },
+    "settings.nicknameCheckFailed": {
+      "comment": "확인 실패: ",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Check failed: " } },
+        "ko": { "stringUnit": { "state": "translated", "value": "확인 실패: " } }
+      }
+    },
+    "settings.accountInfo": {
+      "comment": "계정 정보",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Account Info" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "계정 정보" } }
+      }
+    },
+    "settings.email": {
+      "comment": "이메일",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Email" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "이메일" } }
+      }
+    },
+    "settings.loginMethod": {
+      "comment": "로그인 방식",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Login Method" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "로그인 방식" } }
+      }
+    },
+    "settings.joinDate": {
+      "comment": "가입일",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Join Date" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "가입일" } }
+      }
+    },
+    "settings.logout": {
+      "comment": "로그아웃",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Logout" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "로그아웃" } }
+      }
+    },
+    "settings.logoutConfirm": {
+      "comment": "정말 로그아웃 하시겠습니까?",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Are you sure you want to logout?" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "정말 로그아웃 하시겠습니까?" } }
+      }
+    },
+    "settings.loggingOut": {
+      "comment": "로그아웃 중...",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Logging out..." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "로그아웃 중..." } }
+      }
+    },
+    "settings.deleteAccount": {
+      "comment": "탈퇴하기",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Delete Account" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "탈퇴하기" } }
+      }
+    },
+    "settings.deleteAccountTitle": {
+      "comment": "회원 탈퇴",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Delete Account" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "회원 탈퇴" } }
+      }
+    },
+    "settings.deleteAccountConfirm": {
+      "comment": "탈퇴 시 모든 데이터가 삭제되며 복구할 수 없습니다.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "All data will be permanently deleted and cannot be recovered." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "탈퇴 시 모든 데이터가 삭제되며 복구할 수 없습니다." } }
+      }
+    },
+    "settings.deleteAccountFailed": {
+      "comment": "탈퇴 실패",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Delete Failed" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "탈퇴 실패" } }
+      }
+    },
+    "settings.errorTitle": {
+      "comment": "오류",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Error" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "오류" } }
+      }
+    },
+    "settings.logoutFailed": {
+      "comment": "로그아웃에 실패했습니다. 다시 시도해주세요.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Logout failed. Please try again." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "로그아웃에 실패했습니다. 다시 시도해주세요." } }
+      }
+    },
+    "settings.userNotFound": {
+      "comment": "사용자 정보를 찾을 수 없습니다.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "User information not found." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "사용자 정보를 찾을 수 없습니다." } }
+      }
+    },
+    "settings.imageLoadFailed": {
+      "comment": "이미지를 불러오는데 실패했습니다.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Failed to load image." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "이미지를 불러오는데 실패했습니다." } }
+      }
+    },
+    "settings.unknownError": {
+      "comment": "알 수 없는 오류가 발생했습니다.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "An unknown error occurred." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "알 수 없는 오류가 발생했습니다." } }
+      }
+    },
+    "settings.timeFormatSection": {
+      "comment": "시간 표시 형식",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Time Display Format" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "시간 표시 형식" } }
+      }
+    },
+    "settings.timeFormat12Hour": {
+      "comment": "12시간 형식",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "12-hour format" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "12시간 형식" } }
+      }
+    },
+    "settings.timeFormat12HourExample": {
+      "comment": "예: 오후 2:30",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "e.g. 2:30 PM" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "예: 오후 2:30" } }
+      }
+    },
+    "settings.timeFormat24Hour": {
+      "comment": "24시간 형식",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "24-hour format" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "24시간 형식" } }
+      }
+    },
+    "settings.timeFormat24HourExample": {
+      "comment": "예: 14:30",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "e.g. 14:30" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "예: 14:30" } }
+      }
+    },
+    "settings.timeFormatHint": {
+      "comment": "앱 전체에서 사용되는 시간 표시 형식을 설정합니다.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Set the time display format used throughout the app." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "앱 전체에서 사용되는 시간 표시 형식을 설정합니다." } }
+      }
+    },
+    "settings.preview": {
+      "comment": "미리보기",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Preview" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "미리보기" } }
+      }
+    },
+    "settings.previewHint": {
+      "comment": "실제 약속 카드는 위와 같이 표시됩니다.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Actual promise cards will be displayed as shown above." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "실제 약속 카드는 위와 같이 표시됩니다." } }
+      }
+    },
+    "settings.restartTitle": {
+      "comment": "앱 재시작",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Restart App" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "앱 재시작" } }
+      }
+    },
+    "settings.restartMessage": {
+      "comment": "시간 표시 형식을 변경하려면 앱을 재시작해야 합니다.\\n지금 재시작하시겠습니까?",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "The app needs to restart to change the time format.\\nRestart now?" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "시간 표시 형식을 변경하려면 앱을 재시작해야 합니다.\\n지금 재시작하시겠습니까?" } }
+      }
+    },
+    "settings.restart": {
+      "comment": "재시작",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Restart" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "재시작" } }
+      }
+    },
+    "settings.themeModeSection": {
+      "comment": "화면 모드 설정",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Theme Mode Settings" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "화면 모드 설정" } }
+      }
+    },
+    "settings.themeModeHint": {
+      "comment": "앱 전체의 화면 모드를 설정합니다. 시스템 설정을 따르거나 라이트/다크 모드를 직접 선택할 수 있습니다.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Set the theme mode for the entire app. Follow system settings or choose Light/Dark mode directly." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "앱 전체의 화면 모드를 설정합니다. 시스템 설정을 따르거나 라이트/다크 모드를 직접 선택할 수 있습니다." } }
+      }
+    },
+    "settings.themeModeSystem": {
+      "comment": "기기 설정에 따라 자동 변경",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Automatically change based on device settings" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "기기 설정에 따라 자동 변경" } }
+      }
+    },
+    "settings.themeModeLight": {
+      "comment": "항상 밝은 화면으로 표시",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Always show in light mode" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "항상 밝은 화면으로 표시" } }
+      }
+    },
+    "settings.themeModeDark": {
+      "comment": "항상 어두운 화면으로 표시",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Always show in dark mode" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "항상 어두운 화면으로 표시" } }
+      }
+    },
+    "settings.themeModeRestartMessage": {
+      "comment": "화면 모드를 변경하려면 앱을 재시작해야 합니다.\\n지금 재시작하시겠습니까?",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "The app needs to restart to change the theme mode.\\nRestart now?" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "화면 모드를 변경하려면 앱을 재시작해야 합니다.\\n지금 재시작하시겠습니까?" } }
+      }
+    },
+    "settings.promiseTabModeDefault": {
+      "comment": "기본 모드",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Default Mode" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "기본 모드" } }
+      }
+    },
+    "settings.promiseTabModeGroup": {
+      "comment": "그룹",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Group" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "그룹" } }
+      }
+    },
+    "settings.promiseTabModeGroupDescription": {
+      "comment": "그룹 약속을 기본으로 표시",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Show group promises by default" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "그룹 약속을 기본으로 표시" } }
+      }
+    },
+    "settings.promiseTabModeOwn": {
+      "comment": "개인",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Personal" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "개인" } }
+      }
+    },
+    "settings.promiseTabModeOwnDescription": {
+      "comment": "개인 일정을 기본으로 표시",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Show personal schedule by default" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "개인 일정을 기본으로 표시" } }
+      }
+    },
+    "settings.promiseTabModeHint": {
+      "comment": "약속 탭을 열었을 때 기본으로 표시할 모드를 선택합니다.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Choose the default mode to display when opening the promise tab." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "약속 탭을 열었을 때 기본으로 표시할 모드를 선택합니다." } }
+      }
+    },
+    "settings.promiseTabModePreviewHint": {
+      "comment": "실제 탭바는 위와 같이 표시됩니다.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "The actual tab bar will be displayed as shown above." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "실제 탭바는 위와 같이 표시됩니다." } }
+      }
+    },
+    "settings.tab.home": {
+      "comment": "홈",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Home" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "홈" } }
+      }
+    },
+    "settings.tab.group": {
+      "comment": "그룹",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Group" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "그룹" } }
+      }
+    },
+    "settings.tab.own": {
+      "comment": "개인",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Personal" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "개인" } }
+      }
+    },
+    "settings.tab.calendar": {
+      "comment": "캘린더",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Calendar" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "캘린더" } }
+      }
+    },
+    "settings.tab.settings": {
+      "comment": "설정",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Settings" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "설정" } }
+      }
+    },
+    "settings.notificationSettings.title": {
+      "comment": "알림 설정",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Notification Settings" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "알림 설정" } }
+      }
+    },
+    "settings.notificationSettings.appPush": {
+      "comment": "앱 푸시 알림",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "App Push Notifications" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "앱 푸시 알림" } }
+      }
+    },
+    "settings.notificationSettings.allow": {
+      "comment": "알림 허용",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Allow Notifications" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "알림 허용" } }
+      }
+    },
+    "settings.notificationSettings.enableInSettings": {
+      "comment": "시스템 설정에서 알림을 허용해주세요",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Please enable notifications in system settings" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "시스템 설정에서 알림을 허용해주세요" } }
+      }
+    },
+    "settings.notificationSettings.groupNotifications": {
+      "comment": "그룹별 알림",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Group Notifications" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "그룹별 알림" } }
+      }
+    },
+    "settings.notificationSettings.noGroups": {
+      "comment": "가입된 그룹이 없습니다",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "No groups joined" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "가입된 그룹이 없습니다" } }
+      }
+    },
+    "settings.notificationSettings.groupToggle": {
+      "comment": "그룹 알림",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Group Notifications" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "그룹 알림" } }
+      }
+    },
+    "settings.notificationSettings.receive": {
+      "comment": "알림 받기",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Receive Notifications" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "알림 받기" } }
+      }
+    },
+    "settings.notificationSettings.thisGroupOn": {
+      "comment": "이 그룹의 알림을 받습니다",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Receiving notifications from this group" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "이 그룹의 알림을 받습니다" } }
+      }
+    },
+    "settings.notificationSettings.thisGroupOff": {
+      "comment": "이 그룹의 알림이 꺼져있습니다",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Notifications from this group are off" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "이 그룹의 알림이 꺼져있습니다" } }
+      }
+    },
+    "settings.notificationSettings.types": {
+      "comment": "알림 종류",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Notification Types" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "알림 종류" } }
+      }
+    },
+    "settings.notificationSettings.mustBeOn": {
+      "comment": "그룹 알림이 켜져 있어야 도착해요",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Group notifications must be enabled to receive" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "그룹 알림이 켜져 있어야 도착해요" } }
+      }
+    },
+    "settings.notificationSettings.canToggle": {
+      "comment": "해당 알림을 켜고 끌 수 있어요",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "You can toggle this notification on or off" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "해당 알림을 켜고 끌 수 있어요" } }
+      }
+    },
+    "settings.notificationSettings.newPromise": {
+      "comment": "새 약속 도착 📩",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "New Promise Arrived 📩" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "새 약속 도착 📩" } }
+      }
+    },
+    "settings.notificationSettings.confirmed": {
+      "comment": "영화 관람 약속 확정! 🎉",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Movie Promise Confirmed! 🎉" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "영화 관람 약속 확정! 🎉" } }
+      }
+    },
+    "settings.notificationSettings.cancelled": {
+      "comment": "영화 관람 약속 무산 😢",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Movie Promise Cancelled 😢" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "영화 관람 약속 무산 😢" } }
+      }
+    },
+    "settings.notificationSettings.updated": {
+      "comment": "영화 관람 변경 📝",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Movie Promise Updated 📝" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "영화 관람 변경 📝" } }
+      }
+    },
+    "settings.notificationSettings.newMember": {
+      "comment": "새 멤버 합류 👋",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "New Member Joined 👋" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "새 멤버 합류 👋" } }
+      }
+    },
+    "settings.notificationSettings.invitationBody": {
+      "comment": "성원님이 영화 관람을 제안했어요. 확인해주세요!",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Sungwon suggested a movie. Check it out!" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "성원님이 영화 관람을 제안했어요. 확인해주세요!" } }
+      }
+    },
+    "settings.notificationSettings.confirmedBody": {
+      "comment": "오늘 오후 2:00에 만나요!",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Let's meet today at 2:00 PM!" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "오늘 오후 2:00에 만나요!" } }
+      }
+    },
+    "settings.notificationSettings.cancelledBody": {
+      "comment": "참여 인원이 부족해서 확정되지 않았어요",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Not enough participants to confirm" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "참여 인원이 부족해서 확정되지 않았어요" } }
+      }
+    },
+    "settings.notificationSettings.updatedBody": {
+      "comment": "약속 정보가 수정됐어요. 확인해주세요!",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Promise details have been updated. Check it out!" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "약속 정보가 수정됐어요. 확인해주세요!" } }
+      }
+    },
+    "settings.notificationSettings.newMemberBody": {
+      "comment": "재윤님이 대학 친구들에 들어왔어요",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Jaeyoon joined College Friends" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "재윤님이 대학 친구들에 들어왔어요" } }
+      }
+    },
+    "settings.notificationSettings.now": {
+      "comment": "지금",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Now" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "지금" } }
+      }
+    },
+    "settings.calendarSettings.title": {
+      "comment": "캘린더 설정",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Calendar Settings" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "캘린더 설정" } }
+      }
+    },
+    "settings.calendarSettings.access": {
+      "comment": "캘린더 접근",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Calendar Access" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "캘린더 접근" } }
+      }
+    },
+    "settings.calendarSettings.sync": {
+      "comment": "캘린더 연동",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Calendar Sync" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "캘린더 연동" } }
+      }
+    },
+    "settings.calendarSettings.enableInSettings": {
+      "comment": "시스템 설정에서 캘린더 접근을 허용해주세요",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Please enable calendar access in system settings" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "시스템 설정에서 캘린더 접근을 허용해주세요" } }
+      }
+    },
+    "settings.calendarSettings.restricted": {
+      "comment": "기기 설정에 의해 캘린더 접근이 제한되어 있습니다",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Calendar access is restricted by device settings" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "기기 설정에 의해 캘린더 접근이 제한되어 있습니다" } }
+      }
+    },
+    "settings.calendarSettings.permissionDetails": {
+      "comment": "권한 상세",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Permission Details" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "권한 상세" } }
+      }
+    },
+    "settings.calendarSettings.read": {
+      "comment": "읽기",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Read" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "읽기" } }
+      }
+    },
+    "settings.calendarSettings.readDescription": {
+      "comment": "달력 앱의 일정을 불러와 약속과 함께 표시합니다.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Fetch events from Calendar app and display with promises." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "달력 앱의 일정을 불러와 약속과 함께 표시합니다." } }
+      }
+    },
+    "settings.calendarSettings.write": {
+      "comment": "쓰기",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Write" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "쓰기" } }
+      }
+    },
+    "settings.calendarSettings.writeDescription": {
+      "comment": "확정된 약속을 달력 앱에 추가합니다.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Add confirmed promises to Calendar app." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "확정된 약속을 달력 앱에 추가합니다." } }
+      }
+    },
+    "settings.calendarSettings.permissionHint": {
+      "comment": "캘린더 권한을 허용하면 약속과 기존 일정을 함께 확인할 수 있습니다.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Enable calendar permissions to view promises and existing events together." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "캘린더 권한을 허용하면 약속과 기존 일정을 함께 확인할 수 있습니다." } }
+      }
+    },
+    "settings.calendarSettings.personalSchedule": {
+      "comment": "개인 일정",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Personal Schedule" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "개인 일정" } }
+      }
+    },
+    "settings.calendarSettings.personalSync": {
+      "comment": "개인 일정 동기화",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Sync Personal Schedule" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "개인 일정 동기화" } }
+      }
+    },
+    "settings.calendarSettings.personalSyncHint": {
+      "comment": "개인 일정을 달력 앱에 자동으로 추가합니다.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Automatically add personal events to Calendar app." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "개인 일정을 달력 앱에 자동으로 추가합니다." } }
+      }
+    },
+    "settings.calendarSettings.groupWritePermissions": {
+      "comment": "그룹별 쓰기 권한",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Group Write Permissions" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "그룹별 쓰기 권한" } }
+      }
+    },
+    "settings.calendarSettings.groupWriteHint": {
+      "comment": "그룹별로 확정된 약속을 달력 앱에 추가할지 설정합니다.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Configure whether to add confirmed promises to Calendar app per group." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "그룹별로 확정된 약속을 달력 앱에 추가할지 설정합니다." } }
+      }
+    },
+    "settings.appInfo.title": {
+      "comment": "앱 정보",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "App Info" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "앱 정보" } }
+      }
+    },
+    "settings.appInfo.version": {
+      "comment": "앱 버전",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "App Version" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "앱 버전" } }
+      }
+    },
+    "settings.appInfo.environment": {
+      "comment": "환경",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Environment" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "환경" } }
+      }
+    },
+    "settings.legalInfo.title": {
+      "comment": "약관 및 정책",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Terms & Policies" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "약관 및 정책" } }
+      }
+    },
+    "settings.legalInfo.privacyPolicy": {
+      "comment": "개인정보처리방침",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Privacy Policy" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "개인정보처리방침" } }
+      }
+    },
+    "settings.legalInfo.termsOfService": {
+      "comment": "이용약관",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Terms of Service" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "이용약관" } }
+      }
+    },
+    "settings.support.title": {
+      "comment": "지원",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Support" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "지원" } }
+      }
+    },
+    "settings.support.faq": {
+      "comment": "자주 묻는 질문",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "FAQ" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "자주 묻는 질문" } }
+      }
+    },
+    "settings.support.bugReport": {
+      "comment": "오류 제보",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Report a Bug" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "오류 제보" } }
+      }
+    },
+    "settings.faq.title": {
+      "comment": "자주 묻는 질문",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Frequently Asked Questions" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "자주 묻는 질문" } }
+      }
+    },
+    "settings.faq.loading": {
+      "comment": "FAQ를 불러오는 중...",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Loading FAQ..." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "FAQ를 불러오는 중..." } }
+      }
+    },
+    "settings.faq.retry": {
+      "comment": "다시 시도",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Retry" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "다시 시도" } }
+      }
+    },
+    "settings.faq.empty": {
+      "comment": "등록된 FAQ가 없습니다",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "No FAQs available" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "등록된 FAQ가 없습니다" } }
+      }
+    },
+    "settings.faq.all": {
+      "comment": "전체",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "All" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "전체" } }
+      }
+    },
+    "settings.developer.uiTest": {
+      "comment": "UI 테스트",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "UI Test" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "UI 테스트" } }
+      }
+    },
+    "settings.developer.liveActivityTest": {
+      "comment": "LiveActivity 테스트",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "LiveActivity Test" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "LiveActivity 테스트" } }
+      }
+    },
+    "settings.developer.livePromiseSettings": {
+      "comment": "LivePromise 설정",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "LivePromise Settings" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "LivePromise 설정" } }
+      }
+    },
+    "settings.developer.statusOn": {
+      "comment": "켜짐",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "On" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "켜짐" } }
+      }
+    },
+    "settings.developer.statusOff": {
+      "comment": "꺼짐",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Off" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "꺼짐" } }
+      }
+    },
+    "settings.developer.crashlyticsTest": {
+      "comment": "Crashlytics 테스트",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Crashlytics Test" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "Crashlytics 테스트" } }
+      }
+    },
+    "settings.developer.crashWillOccur": {
+      "comment": "크래시 발생",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Crash Will Occur" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "크래시 발생" } }
+      }
+    },
+    "settings.developer.deviceInfo": {
+      "comment": "디바이스 정보",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Device Info" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "디바이스 정보" } }
+      }
+    },
+    "settings.developer.iosVersion": {
+      "comment": "iOS 버전",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "iOS Version" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "iOS 버전" } }
+      }
+    },
+    "settings.developer.appVersion": {
+      "comment": "앱 버전",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "App Version" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "앱 버전" } }
+      }
+    },
+    "settings.liveActivityTest.existingActivity": {
+      "comment": "기존 활동",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Existing activity: " } },
+        "ko": { "stringUnit": { "state": "translated", "value": "기존 활동: " } }
+      }
+    },
+    "settings.liveActivityTest.disabled": {
+      "comment": "라이브액티비티 비활성화됨",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Live Activity disabled" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "라이브액티비티 비활성화됨" } }
+      }
+    },
+    "settings.liveActivityTest.cachedFiles": {
+      "comment": "캐시된 파일",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Cached files: " } },
+        "ko": { "stringUnit": { "state": "translated", "value": "캐시된 파일: " } }
+      }
+    },
+    "settings.liveActivityTest.mockMeeting": {
+      "comment": "점심 모임",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Lunch Meeting" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "점심 모임" } }
+      }
+    },
+    "settings.liveActivityTest.mockLocation": {
+      "comment": "강남역 11번 출구",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Gangnam Station Exit 11" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "강남역 11번 출구" } }
+      }
+    },
+    "settings.liveActivityTest.arrived": {
+      "comment": "도착",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Arrived" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "도착" } }
+      }
+    },
+    "settings.liveActivityTest.waiting": {
+      "comment": "대기",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Waiting" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "대기" } }
+      }
+    },
+    "settings.liveActivityTest.groupingTest": {
+      "comment": "그룹화 테스트",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Grouping Test" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "그룹화 테스트" } }
+      }
+    },
+    "settings.liveActivityTest.sequentialArrivalStarting": {
+      "comment": "순차 도착 시작...",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Sequential arrival starting..." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "순차 도착 시작..." } }
+      }
+    },
+    "settings.liveActivityTest.mixedStatus": {
+      "comment": "혼합 상태",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Mixed Status" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "혼합 상태" } }
+      }
+    },
+    "settings.liveActivityTest.started": {
+      "comment": "시작됨",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Started: " } },
+        "ko": { "stringUnit": { "state": "translated", "value": "시작됨: " } }
+      }
+    },
+    "settings.liveActivityTest.ended": {
+      "comment": "종료됨",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Ended" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "종료됨" } }
+      }
+    },
+    "settings.liveActivityTest.failed": {
+      "comment": "실패",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Failed: " } },
+        "ko": { "stringUnit": { "state": "translated", "value": "실패: " } }
+      }
+    },
+    "settings.liveActivityTest.allToWaiting": {
+      "comment": "모두 → 대기",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "All → Waiting" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "모두 → 대기" } }
+      }
+    },
+    "settings.liveActivityTest.allTo15Min": {
+      "comment": "모두 → 15분",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "All → 15min" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "모두 → 15분" } }
+      }
+    },
+    "settings.liveActivityTest.allToArrived": {
+      "comment": "모두 → 도착",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "All → Arrived" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "모두 → 도착" } }
+      }
+    },
+    "settings.liveActivityTest.title": {
+      "comment": "LiveActivity 테스트",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "LiveActivity Test" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "LiveActivity 테스트" } }
+      }
+    },
+    "settings.liveActivityTest.header": {
+      "comment": "🧪 라이브액티비티 테스트",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "🧪 Live Activity Test" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "🧪 라이브액티비티 테스트" } }
+      }
+    },
+    "settings.liveActivityTest.active": {
+      "comment": "활성",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Active" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "활성" } }
+      }
+    },
+    "settings.liveActivityTest.individualETA": {
+      "comment": "개별 ETA 설정",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Individual ETA Settings" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "개별 ETA 설정" } }
+      }
+    },
+    "settings.liveActivityTest.me": {
+      "comment": "나",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Me" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "나" } }
+      }
+    },
+    "settings.liveActivityTest.mockNameMinsu": {
+      "comment": "민수",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Minsu" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "민수" } }
+      }
+    },
+    "settings.liveActivityTest.mockNameJihyun": {
+      "comment": "지현",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Jihyun" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "지현" } }
+      }
+    },
+    "settings.liveActivityTest.mockNameSeoyeon": {
+      "comment": "서연",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Seoyeon" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "서연" } }
+      }
+    },
+    "settings.liveActivityTest.scenarioTest": {
+      "comment": "시나리오 테스트",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Scenario Test" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "시나리오 테스트" } }
+      }
+    },
+    "settings.liveActivityTest.allWaiting": {
+      "comment": "모두 대기",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "All Waiting" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "모두 대기" } }
+      }
+    },
+    "settings.liveActivityTest.allDeparted15Min": {
+      "comment": "모두 출발(15분)",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "All Departed (15min)" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "모두 출발(15분)" } }
+      }
+    },
+    "settings.liveActivityTest.allArrived": {
+      "comment": "모두 도착",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "All Arrived" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "모두 도착" } }
+      }
+    },
+    "settings.liveActivityTest.sequentialArrival": {
+      "comment": "순차 도착",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Sequential Arrival" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "순차 도착" } }
+      }
+    },
+    "settings.liveActivityTest.endLiveActivity": {
+      "comment": "라이브액티비티 종료",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "End Live Activity" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "라이브액티비티 종료" } }
+      }
+    },
+    "settings.liveActivityTest.startMockLiveActivity": {
+      "comment": "목 라이브액티비티 시작",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Start Mock Live Activity" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "목 라이브액티비티 시작" } }
+      }
+    },
+    "settings.liveActivityTest.mockDescription": {
+      "comment": "30분 후 약속, 4명 참가자 목 데이터로 시작",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Start with mock data: meeting in 30 min, 4 participants" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "30분 후 약속, 4명 참가자 목 데이터로 시작" } }
+      }
+    },
+    "settings.liveActivityTest.debugInfo": {
+      "comment": "디버그 정보",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Debug Info" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "디버그 정보" } }
+      }
+    },
+    "settings.liveActivityTest.activityId": {
+      "comment": "Activity ID",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Activity ID" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "Activity ID" } }
+      }
+    },
+    "settings.liveActivityTest.activeActivityCount": {
+      "comment": "활성 액티비티 수",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Active Activity Count" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "활성 액티비티 수" } }
+      }
+    },
+    "settings.liveActivityTest.location": {
+      "comment": "장소",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Location" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "장소" } }
+      }
+    },
+    "settings.liveActivityTest.coordinates": {
+      "comment": "좌표",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Coordinates" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "좌표" } }
+      }
+    },
+    "settings.liveActivityTest.trackingTime": {
+      "comment": "추적 시간",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Tracking Time" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "추적 시간" } }
+      }
+    },
+    "settings.liveActivityTest.participantCount": {
+      "comment": "참가자 수",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Participant Count" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "참가자 수" } }
+      }
+    },
+    "settings.liveActivityTest.minutes": {
+      "comment": "분",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "min" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "분" } }
+      }
+    },
+    "settings.liveActivityTest.eta30Min": {
+      "comment": "30분",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "30min" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "30분" } }
+      }
+    },
+    "settings.liveActivityTest.eta15Min": {
+      "comment": "15분",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "15min" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "15분" } }
+      }
+    },
+    "settings.liveActivityTest.eta10Min": {
+      "comment": "10분",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "10min" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "10분" } }
+      }
+    },
+    "settings.liveActivityTest.eta5Min": {
+      "comment": "5분",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "5min" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "5분" } }
+      }
+    },
+    "settings.bottomAccessory.livePromiseDisplay": {
+      "comment": "LivePromise 표시",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Show LivePromise" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "LivePromise 표시" } }
+      }
+    },
+    "settings.bottomAccessory.description": {
+      "comment": "TabBar 하단에 실시간 약속 추적 바를 표시합니다.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Display real-time promise tracking bar below the TabBar." } },
+        "ko": { "stringUnit": { "state": "translated", "value": "TabBar 하단에 실시간 약속 추적 바를 표시합니다." } }
+      }
+    },
+    "settings.bottomAccessory.currentAPIMode": {
+      "comment": "현재 API 모드",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Current API Mode" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "현재 API 모드" } }
+      }
+    },
+    "settings.policy.privacyPolicy": {
+      "comment": "개인정보처리방침",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Privacy Policy" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "개인정보처리방침" } }
+      }
+    },
+    "settings.policy.termsOfService": {
+      "comment": "이용약관",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Terms of Service" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "이용약관" } }
+      }
     }
   },
   "version": "1.0"

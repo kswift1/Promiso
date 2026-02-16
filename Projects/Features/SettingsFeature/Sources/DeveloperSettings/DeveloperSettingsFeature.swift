@@ -96,7 +96,7 @@ extension DeveloperSettings {
         VStack(spacing: 16) {
           // UI 테스트 섹션
           VStack(alignment: .leading, spacing: 10) {
-            Text("UI 테스트")
+            Text(LocalizedStrings.SettingsStrings.uiTest)
               .font(.system(size: 16, weight: .semibold))
               .padding(.horizontal, 4)
 
@@ -108,7 +108,7 @@ extension DeveloperSettings {
                   Image(systemName: "waveform")
                     .foregroundStyle(.purple)
                     .frame(width: 28)
-                  Text("LiveActivity 테스트")
+                  Text(LocalizedStrings.SettingsStrings.liveActivityTest)
                   Spacer()
                   Image(systemName: "chevron.right")
                     .font(.caption)
@@ -131,9 +131,9 @@ extension DeveloperSettings {
                   Image(systemName: "rectangle.bottomhalf.inset.filled")
                     .foregroundStyle(.blue)
                     .frame(width: 28)
-                  Text("LivePromise 설정")
+                  Text(LocalizedStrings.SettingsStrings.livePromiseSettings)
                   Spacer()
-                  Text(isLivePromiseEnabled ? "켜짐" : "꺼짐")
+                  Text(isLivePromiseEnabled ? LocalizedStrings.SettingsStrings.statusOn : LocalizedStrings.SettingsStrings.statusOff)
                     .font(.caption)
                     .foregroundStyle(isLivePromiseEnabled ? .green : .secondary)
                   Image(systemName: "chevron.right")
@@ -157,9 +157,9 @@ extension DeveloperSettings {
                   Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundStyle(.red)
                     .frame(width: 28)
-                  Text("Crashlytics 테스트")
+                  Text(LocalizedStrings.SettingsStrings.crashlyticsTest)
                   Spacer()
-                  Text("크래시 발생")
+                  Text(LocalizedStrings.SettingsStrings.crashWillOccur)
                     .font(.caption)
                     .foregroundStyle(.red)
                   Image(systemName: "chevron.right")
@@ -178,13 +178,13 @@ extension DeveloperSettings {
 
           // 디바이스 정보 섹션
           VStack(alignment: .leading, spacing: 10) {
-            Text("디바이스 정보")
+            Text(LocalizedStrings.SettingsStrings.deviceInfo)
               .font(.system(size: 16, weight: .semibold))
               .padding(.horizontal, 4)
 
             VStack(spacing: 0) {
               HStack {
-                Text("iOS 버전")
+                Text(LocalizedStrings.SettingsStrings.iosVersion)
                 Spacer()
                 Text(UIDevice.current.systemVersion)
                   .foregroundStyle(.secondary)
@@ -196,7 +196,7 @@ extension DeveloperSettings {
                 .background(Color.white.opacity(0.12))
 
               HStack {
-                Text("앱 버전")
+                Text(LocalizedStrings.SettingsStrings.appVersionLabel)
                 Spacer()
                 Text("\(AppConstants.App.version) (\(AppConstants.App.buildNumber))")
                   .foregroundStyle(.secondary)
@@ -212,7 +212,7 @@ extension DeveloperSettings {
         .padding(.bottom, 24)
       }
       .auroraBackground()
-      .navigationTitle("개발자 설정")
+      .navigationTitle(LocalizedStrings.SettingsStrings.developerSettings)
       .navigationBarTitleDisplayMode(.inline)
       .navigationDestination(
         item: $store.scope(state: \.liveActivityTest, action: \.liveActivityTest)

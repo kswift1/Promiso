@@ -160,7 +160,7 @@ extension FAQ {
       .scrollContentBackground(.hidden)
       .background(Color.clear)
       .auroraBackground()
-      .navigationTitle("자주 묻는 질문")
+      .navigationTitle(LocalizedStrings.SettingsStrings.faqTitle)
       .navigationBarTitleDisplayMode(.inline)
       .onAppear {
         store.send(.view(.onAppear))
@@ -196,7 +196,7 @@ extension FAQ {
       ScrollView(.horizontal, showsIndicators: false) {
         HStack(spacing: 8) {
           // 전체 버튼
-          categoryChip(title: "전체", isSelected: store.selectedCategory == nil) {
+          categoryChip(title: LocalizedStrings.SettingsStrings.faqAll, isSelected: store.selectedCategory == nil) {
             store.send(.view(.categorySelected(nil)), animation: .easeInOut(duration: 0.3))
           }
 
@@ -300,7 +300,7 @@ extension FAQ {
       VStack(spacing: 16) {
         ProgressView()
           .scaleEffect(1.2)
-        Text("FAQ를 불러오는 중...")
+        Text(LocalizedStrings.SettingsStrings.faqLoading)
           .font(.body)
           .foregroundStyle(Color.pmtext.secondary)
       }
@@ -323,7 +323,7 @@ extension FAQ {
         Button {
           store.send(.view(.retryTapped))
         } label: {
-          Text("다시 시도")
+          Text(LocalizedStrings.SettingsStrings.faqRetry)
             .font(.body)
             .fontWeight(.medium)
             .foregroundStyle(Color.pmindigo.n500)
@@ -345,7 +345,7 @@ extension FAQ {
           .font(.largeTitle)
           .foregroundStyle(Color.pmgray.n400)
 
-        Text("등록된 FAQ가 없습니다")
+        Text(LocalizedStrings.SettingsStrings.faqEmpty)
           .font(.body)
           .foregroundStyle(Color.pmtext.secondary)
       }

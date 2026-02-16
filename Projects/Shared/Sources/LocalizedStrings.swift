@@ -177,7 +177,7 @@ public enum LocalizedStrings {
   }
 
   // MARK: - Settings
-  public enum Settings {
+  public enum SettingsStrings {
     public static var settings: String { String(localized: "settings.settings", bundle: bundle) }
     public static var profile: String { String(localized: "settings.profile", bundle: bundle) }
     public static var notifications: String { String(localized: "settings.notifications", bundle: bundle) }
@@ -208,6 +208,229 @@ public enum LocalizedStrings {
     // Success Messages
     public static var saveSuccess: String { String(localized: "settings.success.save", bundle: bundle) }
     public static var updateSuccess: String { String(localized: "settings.success.update", bundle: bundle) }
+
+    // MARK: - Batch 4 Settings Group 1 Localization
+    // Main
+    public static var title: String { String(localized: "settings.title", bundle: bundle) }
+    public static var appSettings: String { String(localized: "settings.appSettings", bundle: bundle) }
+    public static var support: String { String(localized: "settings.support", bundle: bundle) }
+    public static var info: String { String(localized: "settings.info", bundle: bundle) }
+    public static var developer: String { String(localized: "settings.developer", bundle: bundle) }
+
+    // Menu Items
+    public static var dateTimeDisplay: String { String(localized: "settings.dateTimeDisplay", bundle: bundle) }
+    public static var themeMode: String { String(localized: "settings.themeMode", bundle: bundle) }
+    public static var calendarSettings: String { String(localized: "settings.calendarSettings", bundle: bundle) }
+    public static var promiseTabDefaultMode: String { String(localized: "settings.promiseTabDefaultMode", bundle: bundle) }
+    public static var termsAndPolicies: String { String(localized: "settings.termsAndPolicies", bundle: bundle) }
+    public static var appInfo: String { String(localized: "settings.appInfo", bundle: bundle) }
+    public static var developerSettings: String { String(localized: "settings.developerSettings", bundle: bundle) }
+
+    // Profile
+    public static var profileEdit: String { String(localized: "settings.profileEdit", bundle: bundle) }
+    public static var profileEditCancel: String { String(localized: "settings.profileEditCancel", bundle: bundle) }
+    public static var profileEditSave: String { String(localized: "settings.profileEditSave", bundle: bundle) }
+    public static var nickname: String { String(localized: "settings.nickname", bundle: bundle) }
+    public static var nicknamePlaceholder: String { String(localized: "settings.nicknamePlaceholder", bundle: bundle) }
+    public static var nicknameRequired: String { String(localized: "settings.nicknameRequired", bundle: bundle) }
+    public static var nicknameTooShort: String { String(localized: "settings.nicknameTooShort", bundle: bundle) }
+    public static var nicknameTooLong: String { String(localized: "settings.nicknameTooLong", bundle: bundle) }
+    public static var nicknameValidationHint: String { String(localized: "settings.nicknameValidationHint", bundle: bundle) }
+    public static var nicknameAvailable: String { String(localized: "settings.nicknameAvailable", bundle: bundle) }
+    public static var nicknameUnavailable: String { String(localized: "settings.nicknameUnavailable", bundle: bundle) }
+    public static var nicknameCheckFailed: String { String(localized: "settings.nicknameCheckFailed", bundle: bundle) }
+
+    // Account Info
+    public static var accountInfo: String { String(localized: "settings.accountInfo", bundle: bundle) }
+    public static var email: String { String(localized: "settings.email", bundle: bundle) }
+    public static var loginMethod: String { String(localized: "settings.loginMethod", bundle: bundle) }
+    public static var joinDate: String { String(localized: "settings.joinDate", bundle: bundle) }
+    public static var logout: String { String(localized: "settings.logout", bundle: bundle) }
+    public static var logoutConfirm: String { String(localized: "settings.logoutConfirm", bundle: bundle) }
+    public static var loggingOut: String { String(localized: "settings.loggingOut", bundle: bundle) }
+    public static var deleteAccount: String { String(localized: "settings.deleteAccount", bundle: bundle) }
+    public static var deleteAccountTitle: String { String(localized: "settings.deleteAccountTitle", bundle: bundle) }
+    public static var deleteAccountConfirm: String { String(localized: "settings.deleteAccountConfirm", bundle: bundle) }
+    public static var deleteAccountFailed: String { String(localized: "settings.deleteAccountFailed", bundle: bundle) }
+
+    // Errors
+    public static var errorTitle: String { String(localized: "settings.errorTitle", bundle: bundle) }
+    public static var logoutFailed: String { String(localized: "settings.logoutFailed", bundle: bundle) }
+    public static var userNotFound: String { String(localized: "settings.userNotFound", bundle: bundle) }
+    public static var imageLoadFailed: String { String(localized: "settings.imageLoadFailed", bundle: bundle) }
+    public static var unknownError: String { String(localized: "settings.unknownError", bundle: bundle) }
+
+    // Date Time Settings
+    public static var timeFormatSection: String { String(localized: "settings.timeFormatSection", bundle: bundle) }
+    public static var timeFormat12Hour: String { String(localized: "settings.timeFormat12Hour", bundle: bundle) }
+    public static var timeFormat12HourExample: String { String(localized: "settings.timeFormat12HourExample", bundle: bundle) }
+    public static var timeFormat24Hour: String { String(localized: "settings.timeFormat24Hour", bundle: bundle) }
+    public static var timeFormat24HourExample: String { String(localized: "settings.timeFormat24HourExample", bundle: bundle) }
+    public static var timeFormatHint: String { String(localized: "settings.timeFormatHint", bundle: bundle) }
+    public static var preview: String { String(localized: "settings.preview", bundle: bundle) }
+    public static var previewHint: String { String(localized: "settings.previewHint", bundle: bundle) }
+    public static var restartTitle: String { String(localized: "settings.restartTitle", bundle: bundle) }
+    public static var restartMessage: String { String(localized: "settings.restartMessage", bundle: bundle) }
+    public static var restart: String { String(localized: "settings.restart", bundle: bundle) }
+
+    // Theme Settings
+    public static var themeModeSection: String { String(localized: "settings.themeModeSection", bundle: bundle) }
+    public static var themeModeHint: String { String(localized: "settings.themeModeHint", bundle: bundle) }
+    public static var themeModeSystem: String { String(localized: "settings.themeModeSystem", bundle: bundle) }
+    public static var themeModeLight: String { String(localized: "settings.themeModeLight", bundle: bundle) }
+    public static var themeModeDark: String { String(localized: "settings.themeModeDark", bundle: bundle) }
+    public static var themeModeRestartMessage: String { String(localized: "settings.themeModeRestartMessage", bundle: bundle) }
+
+    // Promise Tab Mode Settings
+    public static var promiseTabModeDefault: String { String(localized: "settings.promiseTabModeDefault", bundle: bundle) }
+    public static var promiseTabModeGroup: String { String(localized: "settings.promiseTabModeGroup", bundle: bundle) }
+    public static var promiseTabModeGroupDescription: String { String(localized: "settings.promiseTabModeGroupDescription", bundle: bundle) }
+    public static var promiseTabModeOwn: String { String(localized: "settings.promiseTabModeOwn", bundle: bundle) }
+    public static var promiseTabModeOwnDescription: String { String(localized: "settings.promiseTabModeOwnDescription", bundle: bundle) }
+    public static var promiseTabModeHint: String { String(localized: "settings.promiseTabModeHint", bundle: bundle) }
+    public static var promiseTabModePreviewHint: String { String(localized: "settings.promiseTabModePreviewHint", bundle: bundle) }
+
+    // Tab Bar Labels
+    public static var tabHome: String { String(localized: "settings.tab.home", bundle: bundle) }
+    public static var tabGroup: String { String(localized: "settings.tab.group", bundle: bundle) }
+    public static var tabOwn: String { String(localized: "settings.tab.own", bundle: bundle) }
+    public static var tabCalendar: String { String(localized: "settings.tab.calendar", bundle: bundle) }
+    public static var tabSettings: String { String(localized: "settings.tab.settings", bundle: bundle) }
+
+    // MARK: - Batch 4 Settings Group 2 Localization
+    // Notification Settings
+    public static var notificationSettingsTitle: String { String(localized: "settings.notificationSettings.title", bundle: bundle) }
+    public static var appPushNotifications: String { String(localized: "settings.notificationSettings.appPush", bundle: bundle) }
+    public static var allowNotifications: String { String(localized: "settings.notificationSettings.allow", bundle: bundle) }
+    public static var enableNotificationsInSettings: String { String(localized: "settings.notificationSettings.enableInSettings", bundle: bundle) }
+    public static var groupNotifications: String { String(localized: "settings.notificationSettings.groupNotifications", bundle: bundle) }
+    public static var noGroupsJoined: String { String(localized: "settings.notificationSettings.noGroups", bundle: bundle) }
+    public static var groupNotificationToggle: String { String(localized: "settings.notificationSettings.groupToggle", bundle: bundle) }
+    public static var receiveNotifications: String { String(localized: "settings.notificationSettings.receive", bundle: bundle) }
+    public static var thisGroupNotificationsOn: String { String(localized: "settings.notificationSettings.thisGroupOn", bundle: bundle) }
+    public static var thisGroupNotificationsOff: String { String(localized: "settings.notificationSettings.thisGroupOff", bundle: bundle) }
+    public static var notificationTypes: String { String(localized: "settings.notificationSettings.types", bundle: bundle) }
+    public static var groupNotificationMustBeOn: String { String(localized: "settings.notificationSettings.mustBeOn", bundle: bundle) }
+    public static var notificationCanToggle: String { String(localized: "settings.notificationSettings.canToggle", bundle: bundle) }
+    public static var newPromiseArrived: String { String(localized: "settings.notificationSettings.newPromise", bundle: bundle) }
+    public static var promiseConfirmedTitle: String { String(localized: "settings.notificationSettings.confirmed", bundle: bundle) }
+    public static var promiseCancelledTitle: String { String(localized: "settings.notificationSettings.cancelled", bundle: bundle) }
+    public static var promiseUpdatedTitle: String { String(localized: "settings.notificationSettings.updated", bundle: bundle) }
+    public static var newMemberJoinedTitle: String { String(localized: "settings.notificationSettings.newMember", bundle: bundle) }
+    public static var promiseInvitationBody: String { String(localized: "settings.notificationSettings.invitationBody", bundle: bundle) }
+    public static var promiseConfirmedBody: String { String(localized: "settings.notificationSettings.confirmedBody", bundle: bundle) }
+    public static var promiseCancelledBody: String { String(localized: "settings.notificationSettings.cancelledBody", bundle: bundle) }
+    public static var promiseUpdatedBody: String { String(localized: "settings.notificationSettings.updatedBody", bundle: bundle) }
+    public static var newMemberJoinedBody: String { String(localized: "settings.notificationSettings.newMemberBody", bundle: bundle) }
+    public static var now: String { String(localized: "settings.notificationSettings.now", bundle: bundle) }
+
+    // Calendar Settings
+    public static var calendarSettingsTitle: String { String(localized: "settings.calendarSettings.title", bundle: bundle) }
+    public static var calendarAccess: String { String(localized: "settings.calendarSettings.access", bundle: bundle) }
+    public static var calendarSync: String { String(localized: "settings.calendarSettings.sync", bundle: bundle) }
+    public static var enableCalendarInSettings: String { String(localized: "settings.calendarSettings.enableInSettings", bundle: bundle) }
+    public static var calendarAccessRestricted: String { String(localized: "settings.calendarSettings.restricted", bundle: bundle) }
+    public static var permissionDetails: String { String(localized: "settings.calendarSettings.permissionDetails", bundle: bundle) }
+    public static var readPermission: String { String(localized: "settings.calendarSettings.read", bundle: bundle) }
+    public static var readPermissionDescription: String { String(localized: "settings.calendarSettings.readDescription", bundle: bundle) }
+    public static var writePermission: String { String(localized: "settings.calendarSettings.write", bundle: bundle) }
+    public static var writePermissionDescription: String { String(localized: "settings.calendarSettings.writeDescription", bundle: bundle) }
+    public static var calendarPermissionHint: String { String(localized: "settings.calendarSettings.permissionHint", bundle: bundle) }
+    public static var personalSchedule: String { String(localized: "settings.calendarSettings.personalSchedule", bundle: bundle) }
+    public static var personalScheduleSync: String { String(localized: "settings.calendarSettings.personalSync", bundle: bundle) }
+    public static var personalScheduleSyncHint: String { String(localized: "settings.calendarSettings.personalSyncHint", bundle: bundle) }
+    public static var groupWritePermissions: String { String(localized: "settings.calendarSettings.groupWritePermissions", bundle: bundle) }
+    public static var groupWritePermissionsHint: String { String(localized: "settings.calendarSettings.groupWriteHint", bundle: bundle) }
+
+    // App Info
+    public static var appInfoTitle: String { String(localized: "settings.appInfo.title", bundle: bundle) }
+    public static var appVersion: String { String(localized: "settings.appInfo.version", bundle: bundle) }
+    public static var environment: String { String(localized: "settings.appInfo.environment", bundle: bundle) }
+
+    // Legal Info
+    public static var legalInfoTitle: String { String(localized: "settings.legalInfo.title", bundle: bundle) }
+    public static var privacyPolicy: String { String(localized: "settings.legalInfo.privacyPolicy", bundle: bundle) }
+    public static var termsOfService: String { String(localized: "settings.legalInfo.termsOfService", bundle: bundle) }
+
+    // Support
+    public static var supportTitle: String { String(localized: "settings.support.title", bundle: bundle) }
+    public static var faq: String { String(localized: "settings.support.faq", bundle: bundle) }
+    public static var bugReport: String { String(localized: "settings.support.bugReport", bundle: bundle) }
+
+    // FAQ
+    public static var faqTitle: String { String(localized: "settings.faq.title", bundle: bundle) }
+    public static var faqLoading: String { String(localized: "settings.faq.loading", bundle: bundle) }
+    public static var faqRetry: String { String(localized: "settings.faq.retry", bundle: bundle) }
+    public static var faqEmpty: String { String(localized: "settings.faq.empty", bundle: bundle) }
+    public static var faqAll: String { String(localized: "settings.faq.all", bundle: bundle) }
+
+    // MARK: - Batch 4 Settings Group 3 Localization
+    // Developer Settings
+    public static var uiTest: String { String(localized: "settings.developer.uiTest", bundle: bundle) }
+    public static var liveActivityTest: String { String(localized: "settings.developer.liveActivityTest", bundle: bundle) }
+    public static var livePromiseSettings: String { String(localized: "settings.developer.livePromiseSettings", bundle: bundle) }
+    public static var statusOn: String { String(localized: "settings.developer.statusOn", bundle: bundle) }
+    public static var statusOff: String { String(localized: "settings.developer.statusOff", bundle: bundle) }
+    public static var crashlyticsTest: String { String(localized: "settings.developer.crashlyticsTest", bundle: bundle) }
+    public static var crashWillOccur: String { String(localized: "settings.developer.crashWillOccur", bundle: bundle) }
+    public static var deviceInfo: String { String(localized: "settings.developer.deviceInfo", bundle: bundle) }
+    public static var iosVersion: String { String(localized: "settings.developer.iosVersion", bundle: bundle) }
+    public static var appVersionLabel: String { String(localized: "settings.developer.appVersion", bundle: bundle) }
+
+    // LiveActivity Test
+    public static var existingActivity: String { String(localized: "settings.liveActivityTest.existingActivity", bundle: bundle) }
+    public static var liveActivityDisabled: String { String(localized: "settings.liveActivityTest.disabled", bundle: bundle) }
+    public static var cachedFiles: String { String(localized: "settings.liveActivityTest.cachedFiles", bundle: bundle) }
+    public static var mockMeeting: String { String(localized: "settings.liveActivityTest.mockMeeting", bundle: bundle) }
+    public static var mockLocation: String { String(localized: "settings.liveActivityTest.mockLocation", bundle: bundle) }
+    public static var arrived: String { String(localized: "settings.liveActivityTest.arrived", bundle: bundle) }
+    public static var waiting: String { String(localized: "settings.liveActivityTest.waiting", bundle: bundle) }
+    public static var groupingTest: String { String(localized: "settings.liveActivityTest.groupingTest", bundle: bundle) }
+    public static var sequentialArrivalStarting: String { String(localized: "settings.liveActivityTest.sequentialArrivalStarting", bundle: bundle) }
+    public static var mixedStatus: String { String(localized: "settings.liveActivityTest.mixedStatus", bundle: bundle) }
+    public static var started: String { String(localized: "settings.liveActivityTest.started", bundle: bundle) }
+    public static var ended: String { String(localized: "settings.liveActivityTest.ended", bundle: bundle) }
+    public static var failed: String { String(localized: "settings.liveActivityTest.failed", bundle: bundle) }
+    public static var allToWaiting: String { String(localized: "settings.liveActivityTest.allToWaiting", bundle: bundle) }
+    public static var allTo15Min: String { String(localized: "settings.liveActivityTest.allTo15Min", bundle: bundle) }
+    public static var allToArrived: String { String(localized: "settings.liveActivityTest.allToArrived", bundle: bundle) }
+    public static var liveActivityTestTitle: String { String(localized: "settings.liveActivityTest.title", bundle: bundle) }
+    public static var liveActivityTestHeader: String { String(localized: "settings.liveActivityTest.header", bundle: bundle) }
+    public static var active: String { String(localized: "settings.liveActivityTest.active", bundle: bundle) }
+    public static var individualETASettings: String { String(localized: "settings.liveActivityTest.individualETA", bundle: bundle) }
+    public static var me: String { String(localized: "settings.liveActivityTest.me", bundle: bundle) }
+    public static var mockNameMinsu: String { String(localized: "settings.liveActivityTest.mockNameMinsu", bundle: bundle) }
+    public static var mockNameJihyun: String { String(localized: "settings.liveActivityTest.mockNameJihyun", bundle: bundle) }
+    public static var mockNameSeoyeon: String { String(localized: "settings.liveActivityTest.mockNameSeoyeon", bundle: bundle) }
+    public static var scenarioTest: String { String(localized: "settings.liveActivityTest.scenarioTest", bundle: bundle) }
+    public static var allWaiting: String { String(localized: "settings.liveActivityTest.allWaiting", bundle: bundle) }
+    public static var allDeparted15Min: String { String(localized: "settings.liveActivityTest.allDeparted15Min", bundle: bundle) }
+    public static var allArrived: String { String(localized: "settings.liveActivityTest.allArrived", bundle: bundle) }
+    public static var sequentialArrival: String { String(localized: "settings.liveActivityTest.sequentialArrival", bundle: bundle) }
+    public static var endLiveActivity: String { String(localized: "settings.liveActivityTest.endLiveActivity", bundle: bundle) }
+    public static var startMockLiveActivity: String { String(localized: "settings.liveActivityTest.startMockLiveActivity", bundle: bundle) }
+    public static var mockDescription: String { String(localized: "settings.liveActivityTest.mockDescription", bundle: bundle) }
+    public static var debugInfo: String { String(localized: "settings.liveActivityTest.debugInfo", bundle: bundle) }
+    public static var activityId: String { String(localized: "settings.liveActivityTest.activityId", bundle: bundle) }
+    public static var activeActivityCount: String { String(localized: "settings.liveActivityTest.activeActivityCount", bundle: bundle) }
+    public static var location: String { String(localized: "settings.liveActivityTest.location", bundle: bundle) }
+    public static var coordinates: String { String(localized: "settings.liveActivityTest.coordinates", bundle: bundle) }
+    public static var trackingTime: String { String(localized: "settings.liveActivityTest.trackingTime", bundle: bundle) }
+    public static var participantCount: String { String(localized: "settings.liveActivityTest.participantCount", bundle: bundle) }
+    public static var minutes: String { String(localized: "settings.liveActivityTest.minutes", bundle: bundle) }
+    public static var eta30Min: String { String(localized: "settings.liveActivityTest.eta30Min", bundle: bundle) }
+    public static var eta15Min: String { String(localized: "settings.liveActivityTest.eta15Min", bundle: bundle) }
+    public static var eta10Min: String { String(localized: "settings.liveActivityTest.eta10Min", bundle: bundle) }
+    public static var eta5Min: String { String(localized: "settings.liveActivityTest.eta5Min", bundle: bundle) }
+
+    // Bottom Accessory Info
+    public static var livePromiseDisplay: String { String(localized: "settings.bottomAccessory.livePromiseDisplay", bundle: bundle) }
+    public static var livePromiseDescription: String { String(localized: "settings.bottomAccessory.description", bundle: bundle) }
+    public static var currentAPIMode: String { String(localized: "settings.bottomAccessory.currentAPIMode", bundle: bundle) }
+
+    // Policy View
+    public static var privacyPolicyTitle: String { String(localized: "settings.policy.privacyPolicy", bundle: bundle) }
+    public static var termsOfServiceTitle: String { String(localized: "settings.policy.termsOfService", bundle: bundle) }
   }
 
   // MARK: - Errors

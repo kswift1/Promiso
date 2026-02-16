@@ -163,7 +163,7 @@ extension NotificationSettings {
         .padding(.bottom, 24)
       }
       .auroraBackground()
-      .navigationTitle("알림 설정")
+      .navigationTitle(LocalizedStrings.SettingsStrings.notificationSettingsTitle)
       .navigationBarTitleDisplayMode(.inline)
       .onAppear {
         store.send(.view(.onAppear))
@@ -179,7 +179,7 @@ extension NotificationSettings {
 
     private var appNotificationSection: some View {
       VStack(alignment: .leading, spacing: 10) {
-        Text("앱 푸시 알림")
+        Text(LocalizedStrings.SettingsStrings.appPushNotifications)
           .font(.system(size: 16, weight: .semibold))
           .padding(.horizontal, 4)
 
@@ -192,7 +192,7 @@ extension NotificationSettings {
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(Color.pmindigo.n500)
 
-              Text("알림 허용")
+              Text(LocalizedStrings.SettingsStrings.allowNotifications)
                 .foregroundStyle(.primary)
 
               Spacer()
@@ -211,7 +211,7 @@ extension NotificationSettings {
         .adaptiveGlassCard()
 
         if store.systemAuthStatus == .denied {
-          Label("시스템 설정에서 알림을 허용해주세요", systemImage: "exclamationmark.triangle")
+          Label(LocalizedStrings.SettingsStrings.enableNotificationsInSettings, systemImage: "exclamationmark.triangle")
             .font(.system(size: 12))
             .foregroundStyle(Color.pmerror.n500)
             .padding(.horizontal, 4)
@@ -223,7 +223,7 @@ extension NotificationSettings {
 
     private var groupNotificationSection: some View {
       VStack(alignment: .leading, spacing: 10) {
-        Text("그룹별 알림")
+        Text(LocalizedStrings.SettingsStrings.groupNotifications)
           .font(.system(size: 16, weight: .semibold))
           .padding(.horizontal, 4)
 
@@ -240,7 +240,7 @@ extension NotificationSettings {
             Image(systemName: "person.3")
               .font(.system(size: 32))
               .foregroundStyle(Color.pmtext.secondary)
-            Text("가입된 그룹이 없습니다")
+            Text(LocalizedStrings.SettingsStrings.noGroupsJoined)
               .font(.subheadline)
               .foregroundStyle(Color.pmtext.secondary)
           }
@@ -454,7 +454,7 @@ extension GroupNotificationDetail {
 
     private var groupToggleSection: some View {
       VStack(alignment: .leading, spacing: 10) {
-        Text("그룹 알림")
+        Text(LocalizedStrings.SettingsStrings.groupNotificationToggle)
           .font(.system(size: 16, weight: .semibold))
           .padding(.horizontal, 4)
 
@@ -467,14 +467,14 @@ extension GroupNotificationDetail {
 
           VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 6) {
-              Text("알림 받기")
+              Text(LocalizedStrings.SettingsStrings.receiveNotifications)
                 .font(.body)
                 .foregroundStyle(.primary)
 
               tooltipButton(for: .groupNotifications)
             }
 
-            Text(store.isGroupEnabled ? "이 그룹의 알림을 받습니다" : "이 그룹의 알림이 꺼져있습니다")
+            Text(store.isGroupEnabled ? LocalizedStrings.SettingsStrings.thisGroupNotificationsOn : LocalizedStrings.SettingsStrings.thisGroupNotificationsOff)
               .font(.caption)
               .foregroundStyle(.secondary)
           }
@@ -496,7 +496,7 @@ extension GroupNotificationDetail {
 
     private var detailSettingsSection: some View {
       VStack(alignment: .leading, spacing: 10) {
-        Text("알림 종류")
+        Text(LocalizedStrings.SettingsStrings.notificationTypes)
           .font(.system(size: 16, weight: .semibold))
           .padding(.horizontal, 4)
 
@@ -604,7 +604,7 @@ private enum NotificationTooltip: Identifiable, Equatable {
   var title: String {
     switch self {
     case .groupNotifications:
-      return "그룹 알림"
+      return LocalizedStrings.SettingsStrings.groupNotificationToggle
     case .preference(let key):
       return key.title
     }
@@ -613,28 +613,28 @@ private enum NotificationTooltip: Identifiable, Equatable {
   var subtitle: String {
     switch self {
     case .groupNotifications:
-      return "그룹 알림이 켜져 있어야 도착해요"
+      return LocalizedStrings.SettingsStrings.groupNotificationMustBeOn
     case .preference(let key):
-      return key.subtitle ?? "해당 알림을 켜고 끌 수 있어요"
+      return key.subtitle ?? LocalizedStrings.SettingsStrings.notificationCanToggle
     }
   }
 
   var previewTitle: String {
     switch self {
     case .groupNotifications:
-      return "새 약속 도착 📩"
+      return LocalizedStrings.SettingsStrings.newPromiseArrived
     case .preference(let key):
       switch key {
       case .promiseInvitation:
-        return "새 약속 도착 📩"
+        return LocalizedStrings.SettingsStrings.newPromiseArrived
       case .promiseConfirmed:
-        return "영화 관람 약속 확정! 🎉"
+        return LocalizedStrings.SettingsStrings.promiseConfirmedTitle
       case .promiseCancelled:
-        return "영화 관람 약속 무산 😢"
+        return LocalizedStrings.SettingsStrings.promiseCancelledTitle
       case .promiseUpdated:
-        return "영화 관람 변경 📝"
+        return LocalizedStrings.SettingsStrings.promiseUpdatedTitle
       case .groupUpdate:
-        return "새 멤버 합류 👋"
+        return LocalizedStrings.SettingsStrings.newMemberJoinedTitle
       }
     }
   }
@@ -642,19 +642,19 @@ private enum NotificationTooltip: Identifiable, Equatable {
   var previewBody: String {
     switch self {
     case .groupNotifications:
-      return "성원님이 영화 관람을 제안했어요. 확인해주세요!"
+      return LocalizedStrings.SettingsStrings.promiseInvitationBody
     case .preference(let key):
       switch key {
       case .promiseInvitation:
-        return "성원님이 영화 관람을 제안했어요. 확인해주세요!"
+        return LocalizedStrings.SettingsStrings.promiseInvitationBody
       case .promiseConfirmed:
-        return "오늘 오후 2:00에 만나요!"
+        return LocalizedStrings.SettingsStrings.promiseConfirmedBody
       case .promiseCancelled:
-        return "참여 인원이 부족해서 확정되지 않았어요"
+        return LocalizedStrings.SettingsStrings.promiseCancelledBody
       case .promiseUpdated:
-        return "약속 정보가 수정됐어요. 확인해주세요!"
+        return LocalizedStrings.SettingsStrings.promiseUpdatedBody
       case .groupUpdate:
-        return "재윤님이 대학 친구들에 들어왔어요"
+        return LocalizedStrings.SettingsStrings.newMemberJoinedBody
       }
     }
   }
@@ -711,7 +711,7 @@ private struct NotificationInfoPopover: View {
 
           Spacer(minLength: 0)
 
-          Text("지금")
+          Text(LocalizedStrings.SettingsStrings.now)
             .font(.caption2)
             .fontWeight(.medium)
             .foregroundStyle(.gray)

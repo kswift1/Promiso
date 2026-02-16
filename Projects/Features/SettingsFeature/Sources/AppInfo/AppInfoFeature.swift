@@ -74,7 +74,7 @@ extension AppInfo {
         VStack(spacing: 16) {
           // 버전 정보 섹션
           VStack(spacing: 0) {
-            infoRow(icon: "tag.fill", label: "앱 버전", value: store.appVersion)
+            infoRow(icon: "tag.fill", label: LocalizedStrings.SettingsStrings.appVersion, value: store.appVersion)
 
             // Dev/Stage 환경에서만 환경 정보 표시
             if let environment = store.environment {
@@ -83,7 +83,7 @@ extension AppInfo {
 
               infoRow(
                 icon: "flask.fill",
-                label: "환경",
+                label: LocalizedStrings.SettingsStrings.environment,
                 value: environment.displayName,
                 valueColor: environment.color
               )
@@ -96,7 +96,7 @@ extension AppInfo {
         .padding(.bottom, 24)
       }
       .auroraBackground()
-      .navigationTitle("앱 정보")
+      .navigationTitle(LocalizedStrings.SettingsStrings.appInfoTitle)
       .navigationBarTitleDisplayMode(.inline)
       .onAppear {
         store.send(.view(.onAppear))
