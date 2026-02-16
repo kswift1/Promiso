@@ -1,4 +1,5 @@
 import AppIntents
+import PromisoShared
 import ResourceKit
 import SwiftUI
 
@@ -10,10 +11,10 @@ struct WidgetFooterView: View {
   var body: some View {
     HStack(spacing: 6) {
       // 업데이트 시간
-      Text(showLabel ? "\(formatUpdatedTime(updatedAt)) 기준" : formatUpdatedTime(updatedAt))
+      Text(showLabel ? "\(formatUpdatedTime(updatedAt)) \(LocalizedStrings.Widget.updatedBasis)" : formatUpdatedTime(updatedAt))
         .font(.caption2)
         .foregroundStyle(.tertiary)
-        .accessibilityLabel("\(formatUpdatedTime(updatedAt)) 기준 업데이트")
+        .accessibilityLabel("\(formatUpdatedTime(updatedAt)) \(LocalizedStrings.Widget.updatedBasis) \(LocalizedStrings.Widget.update)")
 
       // 새로고침 버튼
       Button(intent: RefreshWidgetIntent()) {
@@ -25,7 +26,7 @@ struct WidgetFooterView: View {
           .background(Color.secondary.opacity(0.12), in: Circle())
       }
       .buttonStyle(.plain)
-      .accessibilityLabel("새로고침")
+      .accessibilityLabel(LocalizedStrings.Widget.refresh)
     }
   }
 

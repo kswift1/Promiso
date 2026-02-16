@@ -13,8 +13,8 @@ struct PromiseAccessoryCircularWidget: Widget {
       PromiseAccessoryCircularWidgetView(entry: entry)
         .containerBackground(.clear, for: .widget)
     }
-    .configurationDisplayName("다음 약속")
-    .description("다음 약속까지 남은 일수")
+    .configurationDisplayName(LocalizedStrings.Widget.configNextPromise)
+    .description(LocalizedStrings.Widget.configDaysRemaining)
     .supportedFamilies([.accessoryCircular])
   }
 }
@@ -30,7 +30,7 @@ struct PromiseAccessoryCircularWidgetView: View {
         Image(systemName: "calendar")
           .font(.title2)
       }
-      .accessibilityLabel("약속 없음")
+      .accessibilityLabel(LocalizedStrings.Widget.noPromises)
     case .loaded:
       if let item = entry.nextItem {
         ZStack {
@@ -50,7 +50,7 @@ struct PromiseAccessoryCircularWidgetView: View {
           Image(systemName: "calendar")
             .font(.title2)
         }
-        .accessibilityLabel("약속 없음")
+        .accessibilityLabel(LocalizedStrings.Widget.noPromises)
       }
     }
   }
@@ -58,9 +58,9 @@ struct PromiseAccessoryCircularWidgetView: View {
   private func dDayText(_ date: Date) -> String {
     let calendar = Calendar.current
     if calendar.isDateInToday(date) {
-      return "오늘"
+      return LocalizedStrings.Widget.today
     } else if calendar.isDateInTomorrow(date) {
-      return "내일"
+      return LocalizedStrings.Widget.tomorrow
     } else {
       let days = calendar.dateComponents(
         [.day],
@@ -72,7 +72,7 @@ struct PromiseAccessoryCircularWidgetView: View {
   }
 
   private func circularAccessibilityLabel(for item: WidgetPromiseData) -> String {
-    let prefix = item.isPersonalEvent ? "개인 일정, " : ""
+    let prefix = item.isPersonalEvent ? "\(LocalizedStrings.Widget.personalEvent), " : ""
     return "\(prefix)\(dDayText(item.startAt)), \(item.title)"
   }
 }
@@ -88,8 +88,8 @@ struct PromiseAccessoryRectangularWidget: Widget {
       PromiseAccessoryRectangularWidgetView(entry: entry)
         .containerBackground(.clear, for: .widget)
     }
-    .configurationDisplayName("다음 약속")
-    .description("다음 약속 정보를 확인하세요")
+    .configurationDisplayName(LocalizedStrings.Widget.configNextPromise)
+    .description(LocalizedStrings.Widget.configPromiseInfo)
     .supportedFamilies([.accessoryRectangular])
   }
 }
@@ -100,16 +100,16 @@ struct PromiseAccessoryRectangularWidgetView: View {
   var body: some View {
     switch entry.state {
     case .notLoggedIn:
-      emptyView(message: "로그인 필요")
+      emptyView(message: LocalizedStrings.Widget.loginRequired)
     case .empty:
-      emptyView(message: "예정된 약속 없음")
+      emptyView(message: LocalizedStrings.Widget.noScheduledPromises)
     case .error:
-      emptyView(message: "데이터 로드 실패")
+      emptyView(message: LocalizedStrings.Widget.dataLoadFailed)
     case .loaded:
       if let item = entry.nextItem {
         scheduleItemView(item)
       } else {
-        emptyView(message: "예정된 약속 없음")
+        emptyView(message: LocalizedStrings.Widget.noScheduledPromises)
       }
     }
   }
@@ -133,7 +133,7 @@ struct PromiseAccessoryRectangularWidgetView: View {
         Text(item.emoji)
           .font(.system(size: 20))
         if item.isPersonalEvent {
-          Text("개인")
+          Text(LocalizedStrings.Widget.personal)
             .font(.system(size: 9, weight: .bold))
         } else {
           Text(dDayText(item.startAt))
@@ -161,9 +161,9 @@ struct PromiseAccessoryRectangularWidgetView: View {
   private func dDayText(_ date: Date) -> String {
     let calendar = Calendar.current
     if calendar.isDateInToday(date) {
-      return "오늘"
+      return LocalizedStrings.Widget.today
     } else if calendar.isDateInTomorrow(date) {
-      return "내일"
+      return LocalizedStrings.Widget.tomorrow
     } else {
       let days = calendar.dateComponents(
         [.day],
@@ -184,7 +184,7 @@ struct PromiseAccessoryRectangularWidgetView: View {
   private func rectangularAccessibilityLabel(for item: WidgetPromiseData) -> String {
     var components: [String] = []
     if item.isPersonalEvent {
-      components.append("개인 일정")
+      components.append(LocalizedStrings.Widget.personalEvent)
     }
     components.append(contentsOf: [dDayText(item.startAt), formatTime(item.startAt), item.title])
     if let location = item.location {

@@ -1430,3 +1430,60 @@ public enum AppLanguage: String, CaseIterable {
     return AppLanguage(rawValue: raw)
   }
 }
+
+// MARK: - Widget Strings
+
+extension LocalizedStrings {
+  /// 위젯에서 사용하는 문자열
+  public enum Widget {
+    // MARK: - Error
+    public static var errorTitle: String { String(localized: "widget.error.title", bundle: bundle) }
+    public static var errorRetryHint: String { String(localized: "widget.error.retryHint", bundle: bundle) }
+
+    // MARK: - Auth
+    public static var authNotLoggedInTitle: String { String(localized: "widget.auth.notLoggedInTitle", bundle: bundle) }
+    public static var authOpenAppHint: String { String(localized: "widget.auth.openAppHint", bundle: bundle) }
+
+    // MARK: - Empty
+    public static var emptyCreatePromiseButton: String { String(localized: "widget.empty.createPromiseButton", bundle: bundle) }
+    public static var emptyNoPromisesMessage: String { String(localized: "widget.empty.noPromisesMessage", bundle: bundle) }
+    public static var emptyCreateNewHint: String { String(localized: "widget.empty.createNewHint", bundle: bundle) }
+    public static var emptyNoTodayPromises: String { String(localized: "widget.empty.noTodayPromises", bundle: bundle) }
+
+    // MARK: - Configuration
+    public static var configNextPromise: String { String(localized: "widget.config.nextPromise", bundle: bundle) }
+    public static var configNextPromiseDescription: String { String(localized: "widget.config.nextPromiseDescription", bundle: bundle) }
+    public static var configTodayPromises: String { String(localized: "widget.config.todayPromises", bundle: bundle) }
+    public static var configTodayPromisesDescription: String { String(localized: "widget.config.todayPromisesDescription", bundle: bundle) }
+    public static var configAllPromises: String { String(localized: "widget.config.allPromises", bundle: bundle) }
+    public static var configAllPromisesDescription: String { String(localized: "widget.config.allPromisesDescription", bundle: bundle) }
+    public static var configDaysRemaining: String { String(localized: "widget.config.daysRemaining", bundle: bundle) }
+    public static var configPromiseInfo: String { String(localized: "widget.config.promiseInfo", bundle: bundle) }
+
+    // MARK: - Common
+    public static var today: String { String(localized: "widget.common.today", bundle: bundle) }
+    public static var tomorrow: String { String(localized: "widget.common.tomorrow", bundle: bundle) }
+    public static var upcomingSchedule: String { String(localized: "widget.common.upcomingSchedule", bundle: bundle) }
+    public static var personal: String { String(localized: "widget.common.personal", bundle: bundle) }
+    public static var personalEvent: String { String(localized: "widget.common.personalEvent", bundle: bundle) }
+    public static var participantCount: String { String(localized: "widget.common.participantCount", bundle: bundle) }
+    public static var updatedBasis: String { String(localized: "widget.common.updatedBasis", bundle: bundle) }
+    public static var refresh: String { String(localized: "widget.common.refresh", bundle: bundle) }
+    public static var noPromises: String { String(localized: "widget.common.noPromises", bundle: bundle) }
+    public static var loginRequired: String { String(localized: "widget.common.loginRequired", bundle: bundle) }
+    public static var noScheduledPromises: String { String(localized: "widget.common.noScheduledPromises", bundle: bundle) }
+    public static var dataLoadFailed: String { String(localized: "widget.common.dataLoadFailed", bundle: bundle) }
+    public static var button: String { String(localized: "widget.button", bundle: bundle) }
+    public static var update: String { String(localized: "widget.update", bundle: bundle) }
+    public static var daysLater: String { String(localized: "widget.daysLater", bundle: bundle) }
+    public static var participantCountShort: String { String(localized: "widget.participantCountShort", bundle: bundle) }
+  }
+
+  // MARK: - PromiseModeSegment
+  public enum PromiseModeSegment {
+    public static var group: String { String(localized: "promiseModeSegment.group", bundle: bundle) }
+    public static var personal: String { String(localized: "promiseModeSegment.personal", bundle: bundle) }
+    public static var promiseTitle: String { String(localized: "promiseModeSegment.promiseTitle", bundle: bundle) }
+    public static var modePickerLabel: String { String(localized: "promiseModeSegment.modePickerLabel", bundle: bundle) }
+  }
+}

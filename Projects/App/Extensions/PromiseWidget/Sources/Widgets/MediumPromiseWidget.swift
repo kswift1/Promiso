@@ -16,8 +16,8 @@ struct PromiseSystemMediumWidget: Widget {
         }
         .widgetAccentable()
     }
-    .configurationDisplayName("오늘의 약속")
-    .description("오늘 예정된 약속을 확인하세요")
+    .configurationDisplayName(LocalizedStrings.Widget.configTodayPromises)
+    .description(LocalizedStrings.Widget.configTodayPromisesDescription)
     .supportedFamilies([.systemMedium])
   }
 
@@ -42,8 +42,8 @@ struct PromiseSystemMediumWidgetView: View {
       case .empty:
         EmptyWidgetView(
           icon: "calendar.badge.clock",
-          message: "오늘 예정된 약속이 없어요",
-          hint: "새 약속을 만들어보세요"
+          message: LocalizedStrings.Widget.emptyNoTodayPromises,
+          hint: LocalizedStrings.Widget.emptyCreateNewHint
         )
       case .error:
         ErrorWidgetView()
@@ -62,8 +62,8 @@ struct PromiseSystemMediumWidgetView: View {
       if upcomingItems.isEmpty {
         EmptyWidgetView(
           icon: "calendar.badge.clock",
-          message: "예정된 약속이 없어요",
-          hint: "새 약속을 만들어보세요"
+          message: LocalizedStrings.Widget.emptyNoPromisesMessage,
+          hint: LocalizedStrings.Widget.emptyCreateNewHint
         )
       } else {
         upcomingView(upcomingItems)
@@ -76,7 +76,7 @@ struct PromiseSystemMediumWidgetView: View {
   @ViewBuilder
   private func todayView(_ items: [WidgetPromiseData]) -> some View {
     VStack(alignment: .leading, spacing: 4) {
-      sectionHeader(title: "오늘", icon: "sun.max.fill")
+      sectionHeader(title: LocalizedStrings.Widget.today, icon: "sun.max.fill")
 
       ForEach(items, id: \.id) { item in
         if let url = item.deeplinkURL {
@@ -101,7 +101,7 @@ struct PromiseSystemMediumWidgetView: View {
   @ViewBuilder
   private func upcomingView(_ items: [WidgetPromiseData]) -> some View {
     VStack(alignment: .leading, spacing: 6) {
-      sectionHeader(title: "다가오는 일정", icon: "calendar")
+      sectionHeader(title: LocalizedStrings.Widget.upcomingSchedule, icon: "calendar")
 
       ForEach(items, id: \.id) { item in
         if let url = item.deeplinkURL {
@@ -162,7 +162,7 @@ struct PromiseSystemMediumWidgetView: View {
           HStack(spacing: 2) {
             Image(systemName: "person.fill")
               .font(.system(size: 7))
-            Text("개인")
+            Text(LocalizedStrings.Widget.personal)
               .lineLimit(1)
           }
           .font(.caption2)
@@ -229,7 +229,7 @@ struct PromiseSystemMediumWidgetView: View {
       }
 
       if item.isPersonalEvent {
-        Text("개인")
+        Text(LocalizedStrings.Widget.personal)
           .font(.caption2.weight(.medium))
           .foregroundStyle(Color.pmaurora.purple)
       }
@@ -252,7 +252,7 @@ struct PromiseSystemMediumWidgetView: View {
 
     HStack(spacing: 3) {
       if calendar.isDateInTomorrow(date) {
-        Text("내일")
+        Text(LocalizedStrings.Widget.tomorrow)
           .font(.caption.weight(.medium))
           .foregroundStyle(Color.pmindigo.n500)
       } else {
@@ -297,14 +297,14 @@ struct PromiseSystemMediumWidgetView: View {
     var components: [String] = []
 
     if item.isPersonalEvent {
-      components.append("개인 일정")
+      components.append(LocalizedStrings.Widget.personalEvent)
     }
 
     // 날짜
     if isToday {
-      components.append("오늘")
+      components.append(LocalizedStrings.Widget.today)
     } else if calendar.isDateInTomorrow(item.startAt) {
-      components.append("내일")
+      components.append(LocalizedStrings.Widget.tomorrow)
     } else {
       components.append(formatShortDate(item.startAt))
     }

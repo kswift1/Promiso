@@ -16,8 +16,8 @@ struct PromiseSystemSmallWidget: Widget {
         }
         .widgetAccentable()
     }
-    .configurationDisplayName("다음 약속")
-    .description("다음 약속을 확인하세요")
+    .configurationDisplayName(LocalizedStrings.Widget.configNextPromise)
+    .description(LocalizedStrings.Widget.configNextPromiseDescription)
     .supportedFamilies([.systemSmall])
   }
 
@@ -42,8 +42,8 @@ struct PromiseSystemSmallWidgetView: View {
       case .empty:
         EmptyWidgetView(
           icon: "calendar.badge.clock",
-          message: "예정된 약속이 없어요",
-          hint: "새 약속을 만들어보세요"
+          message: LocalizedStrings.Widget.emptyNoPromisesMessage,
+          hint: LocalizedStrings.Widget.emptyCreateNewHint
         )
       case .error:
         ErrorWidgetView()
@@ -54,8 +54,8 @@ struct PromiseSystemSmallWidgetView: View {
         } else {
           EmptyWidgetView(
             icon: "calendar.badge.clock",
-            message: "예정된 약속이 없어요",
-            hint: "새 약속을 만들어보세요"
+            message: LocalizedStrings.Widget.emptyNoPromisesMessage,
+            hint: LocalizedStrings.Widget.emptyCreateNewHint
           )
         }
       }
@@ -118,7 +118,7 @@ struct PromiseSystemSmallWidgetView: View {
   // MARK: - Personal Badge
 
   private var personalBadge: some View {
-    Text("개인")
+    Text(LocalizedStrings.Widget.personal)
       .font(.caption.weight(.bold))
       .foregroundStyle(.white)
       .padding(.horizontal, 8)
@@ -133,21 +133,21 @@ struct PromiseSystemSmallWidgetView: View {
     var components: [String] = []
 
     if item.isPersonalEvent {
-      components.append("개인 일정")
+      components.append(LocalizedStrings.Widget.personalEvent)
     }
 
     // D-Day
     if calendar.isDateInToday(item.startAt) {
-      components.append("오늘")
+      components.append(LocalizedStrings.Widget.today)
     } else if calendar.isDateInTomorrow(item.startAt) {
-      components.append("내일")
+      components.append(LocalizedStrings.Widget.tomorrow)
     } else {
       let days = calendar.dateComponents(
         [.day],
         from: calendar.startOfDay(for: Date()),
         to: calendar.startOfDay(for: item.startAt)
       ).day ?? 0
-      components.append("\(days)일 후")
+      components.append(String(format: LocalizedStrings.Widget.daysLater, days))
     }
 
     // 시간
@@ -172,14 +172,14 @@ struct PromiseSystemSmallWidgetView: View {
 
     Group {
       if calendar.isDateInToday(date) {
-        Text("오늘")
+        Text(LocalizedStrings.Widget.today)
           .font(.caption.weight(.bold))
           .foregroundStyle(.white)
           .padding(.horizontal, 8)
           .padding(.vertical, 4)
           .background(accentColor, in: Capsule())
       } else if calendar.isDateInTomorrow(date) {
-        Text("내일")
+        Text(LocalizedStrings.Widget.tomorrow)
           .font(.caption.weight(.medium))
           .foregroundStyle(accentColor)
           .padding(.horizontal, 8)

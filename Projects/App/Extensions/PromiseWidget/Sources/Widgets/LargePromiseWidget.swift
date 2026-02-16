@@ -16,8 +16,8 @@ struct PromiseSystemLargeWidget: Widget {
         }
         .widgetAccentable()
     }
-    .configurationDisplayName("약속 일정")
-    .description("오늘과 다가오는 약속을 한눈에 확인하세요")
+    .configurationDisplayName(LocalizedStrings.Widget.configAllPromises)
+    .description(LocalizedStrings.Widget.configAllPromisesDescription)
     .supportedFamilies([.systemLarge])
   }
   
@@ -42,8 +42,8 @@ struct PromiseSystemLargeWidgetView: View {
       case .empty:
         EmptyWidgetView(
           icon: "calendar.badge.clock",
-          message: "예정된 약속이 없어요",
-          hint: "새 약속을 만들어보세요"
+          message: LocalizedStrings.Widget.emptyNoPromisesMessage,
+          hint: LocalizedStrings.Widget.emptyCreateNewHint
         )
       case .error:
         ErrorWidgetView()
@@ -75,8 +75,8 @@ struct PromiseSystemLargeWidgetView: View {
     if todayItems.isEmpty && upcomingItems.isEmpty {
       EmptyWidgetView(
         icon: "calendar.badge.clock",
-        message: "예정된 약속이 없어요",
-        hint: "새 약속을 만들어보세요"
+        message: LocalizedStrings.Widget.emptyNoPromisesMessage,
+        hint: LocalizedStrings.Widget.emptyCreateNewHint
       )
     } else {
       VStack(alignment: .leading, spacing: 0) {
@@ -108,7 +108,7 @@ struct PromiseSystemLargeWidgetView: View {
   private func todaySection(_ items: [WidgetPromiseData]) -> some View {
     VStack(alignment: .leading, spacing: 8) {
       sectionHeader(
-        title: "오늘",
+        title: LocalizedStrings.Widget.today,
         icon: "sun.max.fill",
         isHighlighted: true
       )
@@ -131,7 +131,7 @@ struct PromiseSystemLargeWidgetView: View {
   private func upcomingSection(_ items: [WidgetPromiseData]) -> some View {
     VStack(alignment: .leading, spacing: 6) {
       sectionHeader(
-        title: "다가오는 일정",
+        title: LocalizedStrings.Widget.upcomingSchedule,
         icon: "calendar",
         isHighlighted: false
       )
@@ -208,7 +208,7 @@ struct PromiseSystemLargeWidgetView: View {
             HStack(spacing: 2) {
               Image(systemName: "person.fill")
                 .font(.system(size: 8))
-              Text("개인")
+              Text(LocalizedStrings.Widget.personal)
             }
             .foregroundStyle(Color.pmaurora.purple)
           } else {
@@ -229,7 +229,7 @@ struct PromiseSystemLargeWidgetView: View {
               HStack(spacing: 2) {
                 Image(systemName: "person.2.fill")
                   .font(.system(size: 8))
-                Text("\(item.participantCount)명")
+                Text(String(format: LocalizedStrings.Widget.participantCountShort, item.participantCount))
               }
             }
           }
@@ -273,7 +273,7 @@ struct PromiseSystemLargeWidgetView: View {
       }
 
       if item.isPersonalEvent {
-        Text("개인")
+        Text(LocalizedStrings.Widget.personal)
           .font(.caption2.weight(.medium))
           .foregroundStyle(Color.pmaurora.purple)
       }
@@ -296,7 +296,7 @@ struct PromiseSystemLargeWidgetView: View {
 
     HStack(spacing: 4) {
       if calendar.isDateInTomorrow(date) {
-        Text("내일")
+        Text(LocalizedStrings.Widget.tomorrow)
           .font(.caption.weight(.medium))
           .foregroundStyle(Color.pmindigo.n500)
       } else {
@@ -341,14 +341,14 @@ struct PromiseSystemLargeWidgetView: View {
     var components: [String] = []
 
     if item.isPersonalEvent {
-      components.append("개인 일정")
+      components.append(LocalizedStrings.Widget.personalEvent)
     }
 
     // 날짜
     if isToday {
-      components.append("오늘")
+      components.append(LocalizedStrings.Widget.today)
     } else if calendar.isDateInTomorrow(item.startAt) {
-      components.append("내일")
+      components.append(LocalizedStrings.Widget.tomorrow)
     } else {
       components.append(formatShortDate(item.startAt))
     }
@@ -366,7 +366,7 @@ struct PromiseSystemLargeWidgetView: View {
 
     // 참여자 (약속만)
     if !item.isPersonalEvent && item.participantCount > 0 {
-      components.append("\(item.participantCount)명 참여")
+      components.append(String(format: LocalizedStrings.Widget.participantCount, item.participantCount))
     }
 
     return components.joined(separator: ", ")

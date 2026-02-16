@@ -1,3 +1,4 @@
+import PromisoShared
 import ResourceKit
 import SwiftUI
 
@@ -11,11 +12,11 @@ struct ErrorWidgetView: View {
         .symbolRenderingMode(.hierarchical)
 
       VStack(spacing: 4) {
-        Text(WidgetStrings.Error.title)
+        Text(LocalizedStrings.Widget.errorTitle)
           .font(.subheadline.weight(.medium))
           .foregroundStyle(.primary)
 
-        Text(WidgetStrings.Error.retryHint)
+        Text(LocalizedStrings.Widget.errorRetryHint)
           .font(.caption)
           .foregroundStyle(.secondary)
       }
@@ -24,7 +25,7 @@ struct ErrorWidgetView: View {
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .widgetURL(URL(string: "promiso://home"))
     .accessibilityElement(children: .combine)
-    .accessibilityLabel("\(WidgetStrings.Error.title). \(WidgetStrings.Error.retryHint)")
+    .accessibilityLabel("\(LocalizedStrings.Widget.errorTitle). \(LocalizedStrings.Widget.errorRetryHint)")
   }
 }
 
