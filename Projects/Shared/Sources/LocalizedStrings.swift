@@ -485,6 +485,251 @@ public enum LocalizedStrings {
     public static var hasInviteCode: String { String(localized: "onboarding.hasInviteCode", bundle: bundle) }
     public static var skipForNow: String { String(localized: "onboarding.skipForNow", bundle: bundle) }
     public static var laterHint: String { String(localized: "onboarding.laterHint", bundle: bundle) }
+
+    // Intro - Problem
+    public static var introProblemCountLabel: String {
+      String(localized: "onboarding.intro.problem.countLabel", bundle: bundle)
+    }
+    public static var introProblemPainPoint1: String {
+      String(localized: "onboarding.intro.problem.painPoint1", bundle: bundle)
+    }
+    public static var introProblemPainPoint2: String {
+      String(localized: "onboarding.intro.problem.painPoint2", bundle: bundle)
+    }
+    public static var introProblemPainPoint3: String {
+      String(localized: "onboarding.intro.problem.painPoint3", bundle: bundle)
+    }
+    public static var introProblemBottomLine1: String {
+      String(localized: "onboarding.intro.problem.bottomLine1", bundle: bundle)
+    }
+    public static var introProblemBottomLine2: String {
+      String(localized: "onboarding.intro.problem.bottomLine2", bundle: bundle)
+    }
+
+    // Intro - Vote
+    public static var introVoteTitle: String {
+      String(localized: "onboarding.intro.vote.title", bundle: bundle)
+    }
+    public static var introVoteSubtitle: String {
+      String(localized: "onboarding.intro.vote.subtitle", bundle: bundle)
+    }
+    public static var introVoteGroupName: String {
+      String(localized: "onboarding.intro.vote.groupName", bundle: bundle)
+    }
+    public static func introVoteAcceptedCount(_ accepted: Int, _ total: Int) -> String {
+      String(localized: "onboarding.intro.vote.acceptedCount", bundle: bundle)
+        .replacingOccurrences(of: "%1$lld", with: "\(accepted)")
+        .replacingOccurrences(of: "%2$lld", with: "\(total)")
+    }
+    public static func introVoteMinimumRequired(_ count: Int) -> String {
+      String(localized: "onboarding.intro.vote.minimumRequired", bundle: bundle)
+        .replacingOccurrences(of: "%lld", with: "\(count)")
+    }
+    public static var introVoteAutoConfirmed: String {
+      String(localized: "onboarding.intro.vote.autoConfirmed", bundle: bundle)
+    }
+    public static var introVoteAccepted: String {
+      String(localized: "onboarding.intro.vote.accepted", bundle: bundle)
+    }
+    public static var introVoteWaiting: String {
+      String(localized: "onboarding.intro.vote.waiting", bundle: bundle)
+    }
+    public static var introVoteNow: String {
+      String(localized: "onboarding.intro.vote.now", bundle: bundle)
+    }
+    public static var introVoteNotificationTitle: String {
+      String(localized: "onboarding.intro.vote.notificationTitle", bundle: bundle)
+    }
+    public static var introVoteNotificationSubtitle: String {
+      String(localized: "onboarding.intro.vote.notificationSubtitle", bundle: bundle)
+    }
+
+    // Intro - Home
+    public static var introHomeTitle: String {
+      String(localized: "onboarding.intro.home.title", bundle: bundle)
+    }
+    public static var introHomeSubtitle: String {
+      String(localized: "onboarding.intro.home.subtitle", bundle: bundle)
+    }
+    public static var introHomeTodayTitle: String {
+      String(localized: "onboarding.intro.home.todayTitle", bundle: bundle)
+    }
+    public static func introHomeItemCount(_ count: Int) -> String {
+      String(localized: "onboarding.intro.home.itemCount", bundle: bundle)
+        .replacingOccurrences(of: "%lld", with: "\(count)")
+    }
+    public static var introHomeTodayRow1Title: String {
+      String(localized: "onboarding.intro.home.todayRow1.title", bundle: bundle)
+    }
+    public static var introHomeTodayRow1Tag: String {
+      String(localized: "onboarding.intro.home.todayRow1.tag", bundle: bundle)
+    }
+    public static var introHomeTodayRow2Title: String {
+      String(localized: "onboarding.intro.home.todayRow2.title", bundle: bundle)
+    }
+    public static var introHomeTodayRow2Tag: String {
+      String(localized: "onboarding.intro.home.todayRow2.tag", bundle: bundle)
+    }
+    public static var introHomeNeedResponseTitle: String {
+      String(localized: "onboarding.intro.home.needResponseTitle", bundle: bundle)
+    }
+    public static var introHomeUpcomingTitle: String {
+      String(localized: "onboarding.intro.home.upcomingTitle", bundle: bundle)
+    }
+    public static var introHomeUpcomingRow1Day: String {
+      String(localized: "onboarding.intro.home.upcomingRow1.day", bundle: bundle)
+    }
+    public static var introHomeUpcomingRow1Title: String {
+      String(localized: "onboarding.intro.home.upcomingRow1.title", bundle: bundle)
+    }
+    public static var introHomeUpcomingRow1Time: String {
+      String(localized: "onboarding.intro.home.upcomingRow1.time", bundle: bundle)
+    }
+    public static var introHomeUpcomingRow2Day: String {
+      String(localized: "onboarding.intro.home.upcomingRow2.day", bundle: bundle)
+    }
+    public static var introHomeUpcomingRow2Title: String {
+      String(localized: "onboarding.intro.home.upcomingRow2.title", bundle: bundle)
+    }
+    public static var introHomeUpcomingRow2Time: String {
+      String(localized: "onboarding.intro.home.upcomingRow2.time", bundle: bundle)
+    }
+
+    // Intro - Live
+    public static func introLiveEtaMinutes(_ minutes: Int) -> String {
+      String(localized: "onboarding.intro.live.etaMinutes", bundle: bundle)
+        .replacingOccurrences(of: "%lld", with: "\(minutes)")
+    }
+    public static var introLiveEtaArrived: String {
+      String(localized: "onboarding.intro.live.etaArrived", bundle: bundle)
+    }
+    public static var introLiveTapHint: String {
+      String(localized: "onboarding.intro.live.tapHint", bundle: bundle)
+    }
+    public static var introLiveTitle: String {
+      String(localized: "onboarding.intro.live.title", bundle: bundle)
+    }
+    public static var introLiveSubtitle: String {
+      String(localized: "onboarding.intro.live.subtitle", bundle: bundle)
+    }
+    public static var introLiveMinuteUnit: String {
+      String(localized: "onboarding.intro.live.minuteUnit", bundle: bundle)
+    }
+    public static var introLiveGroupName: String {
+      String(localized: "onboarding.intro.live.groupName", bundle: bundle)
+    }
+    public static var introLiveTimeRemaining: String {
+      String(localized: "onboarding.intro.live.timeRemaining", bundle: bundle)
+    }
+    public static var introLiveRealtime: String {
+      String(localized: "onboarding.intro.live.realtime", bundle: bundle)
+    }
+    public static var introLiveMe: String {
+      String(localized: "onboarding.intro.live.me", bundle: bundle)
+    }
+    public static var introLiveStatusBeforeStart: String {
+      String(localized: "onboarding.intro.live.status.beforeStart", bundle: bundle)
+    }
+    public static var introLiveStatusArrived: String {
+      String(localized: "onboarding.intro.live.status.arrived", bundle: bundle)
+    }
+    public static var introLiveStatusAlmostThere: String {
+      String(localized: "onboarding.intro.live.status.almostThere", bundle: bundle)
+    }
+    public static var introLiveStatusLateExpected: String {
+      String(localized: "onboarding.intro.live.status.lateExpected", bundle: bundle)
+    }
+    public static var introLiveStatusOnTheWay: String {
+      String(localized: "onboarding.intro.live.status.onTheWay", bundle: bundle)
+    }
+    public static var introLiveBadgeArrived: String {
+      String(localized: "onboarding.intro.live.badge.arrived", bundle: bundle)
+    }
+    public static var introLiveBadgeWaiting: String {
+      String(localized: "onboarding.intro.live.badge.waiting", bundle: bundle)
+    }
+
+    // Intro - Hero
+    public static var introHeroBubble1: String {
+      String(localized: "onboarding.intro.hero.bubble1", bundle: bundle)
+    }
+    public static var introHeroBubble2: String {
+      String(localized: "onboarding.intro.hero.bubble2", bundle: bundle)
+    }
+    public static var introHeroBubble3: String {
+      String(localized: "onboarding.intro.hero.bubble3", bundle: bundle)
+    }
+    public static var introHeroBubble4: String {
+      String(localized: "onboarding.intro.hero.bubble4", bundle: bundle)
+    }
+    public static var introHeroGroupClassmates: String {
+      String(localized: "onboarding.intro.hero.group.classmates", bundle: bundle)
+    }
+    public static var introHeroGroupFries: String {
+      String(localized: "onboarding.intro.hero.group.fries", bundle: bundle)
+    }
+    public static func introHeroGroupParticipantCount(_ countText: String) -> String {
+      String(localized: "onboarding.intro.hero.group.participantCount", bundle: bundle)
+        .replacingOccurrences(of: "%@", with: countText)
+    }
+    public static var introHeroFriesTitle: String {
+      String(localized: "onboarding.intro.hero.fries.title", bundle: bundle)
+    }
+    public static var introHeroFriesDetail: String {
+      String(localized: "onboarding.intro.hero.fries.detail", bundle: bundle)
+    }
+    public static var introHeroFriesLocation: String {
+      String(localized: "onboarding.intro.hero.fries.location", bundle: bundle)
+    }
+    public static var introHeroPendingOneLeft: String {
+      String(localized: "onboarding.intro.hero.pendingOneLeft", bundle: bundle)
+    }
+    public static var introHeroConfirmedBadge: String {
+      String(localized: "onboarding.intro.hero.confirmedBadge", bundle: bundle)
+    }
+    public static var introHeroPersonalBadge: String {
+      String(localized: "onboarding.intro.hero.personalBadge", bundle: bundle)
+    }
+    public static var introHeroTaglineLine1: String {
+      String(localized: "onboarding.intro.hero.tagline.line1", bundle: bundle)
+    }
+    public static var introHeroTaglineLine2: String {
+      String(localized: "onboarding.intro.hero.tagline.line2", bundle: bundle)
+    }
+
+    public static func introHeroConfirmedTitle(_ index: Int) -> String {
+      String(localized: "onboarding.intro.hero.confirmed.\(index).title", bundle: bundle)
+    }
+    public static func introHeroConfirmedDetail(_ index: Int) -> String {
+      String(localized: "onboarding.intro.hero.confirmed.\(index).detail", bundle: bundle)
+    }
+    public static func introHeroConfirmedLocation(_ index: Int) -> String {
+      String(localized: "onboarding.intro.hero.confirmed.\(index).location", bundle: bundle)
+    }
+    public static func introHeroUpcomingTitle(_ index: Int) -> String {
+      String(localized: "onboarding.intro.hero.upcoming.\(index).title", bundle: bundle)
+    }
+    public static func introHeroUpcomingDetail(_ index: Int) -> String {
+      String(localized: "onboarding.intro.hero.upcoming.\(index).detail", bundle: bundle)
+    }
+    public static func introHeroUpcomingLocation(_ index: Int) -> String {
+      String(localized: "onboarding.intro.hero.upcoming.\(index).location", bundle: bundle)
+    }
+    public static func introHeroUpcomingTime(_ index: Int) -> String {
+      String(localized: "onboarding.intro.hero.upcoming.\(index).time", bundle: bundle)
+    }
+    public static func introHeroPersonalTitle(_ index: Int) -> String {
+      String(localized: "onboarding.intro.hero.personal.\(index).title", bundle: bundle)
+    }
+    public static func introHeroPersonalDetail(_ index: Int) -> String {
+      String(localized: "onboarding.intro.hero.personal.\(index).detail", bundle: bundle)
+    }
+    public static func introHeroPersonalLocation(_ index: Int) -> String {
+      String(localized: "onboarding.intro.hero.personal.\(index).location", bundle: bundle)
+    }
+    public static func introHeroPersonalTime(_ index: Int) -> String {
+      String(localized: "onboarding.intro.hero.personal.\(index).time", bundle: bundle)
+    }
   }
 
   // MARK: - AppEntry
