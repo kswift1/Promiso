@@ -2,19 +2,84 @@
   "sourceLanguage" : "ko",
   "strings" : {
     "* iPhone 14 Pro 이상부터 가능해요" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "* Available on iPhone 14 Pro and later"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "* iPhone 14 Pro 이상부터 가능해요"
+          }
+        }
+      }
     },
     "|" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "|"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "|"
+          }
+        }
+      }
     },
     "✓" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✓"
+          }
+        }
+      }
     },
     "🏁" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "🏁"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "🏁"
+          }
+        }
+      }
     },
     "📍" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "📍"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "📍"
+          }
+        }
+      }
     },
     "appEntry.update.action" : {
       "comment" : "업데이트 버튼",
@@ -4045,7 +4110,7 @@
     },
     "groupPromiseList.navigationTitle" : {
       "comment" : "그룹 약속 목록 네비게이션 타이틀 (예: 지민과 나 약속)",
-      "extractionState" : "stale",
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4249,7 +4314,7 @@
       }
     },
     "groupSettings.notificationSettingsTitle" : {
-      "extractionState" : "stale",
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -8234,7 +8299,20 @@
       }
     },
     "Page %@" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Page %@"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Page %@"
+          }
+        }
+      }
     },
     "pastPromises.emptyFilteredSubtitle" : {
       "comment" : "필터된 빈 상태 서브타이틀",
@@ -9714,7 +9792,7 @@
     },
     "promiseCard.hostProposal" : {
       "comment" : "호스트의 약속 제안 (예: 성원님의 약속 제안)",
-      "extractionState" : "stale",
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -14099,7 +14177,7 @@
     },
     "shared.editPromise.optional" : {
       "comment" : "선택사항",
-      "extractionState" : "stale",
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -14873,7 +14951,7 @@
     },
     "shared.promiseDetail.participantsJoined" : {
       "comment" : "N/N명 참여",
-      "extractionState" : "stale",
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -15861,37 +15939,180 @@
       }
     },
     "그룹 만들기" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Create Group"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "그룹 만들기"
+          }
+        }
+      }
     },
     "다이나믹 아일랜드" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dynamic Island"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "다이나믹 아일랜드"
+          }
+        }
+      }
     },
     "도착까지" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Until Arrival"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "도착까지"
+          }
+        }
+      }
     },
     "삭제하기" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "삭제하기"
+          }
+        }
+      }
     },
     "실시간" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Real-time"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "실시간"
+          }
+        }
+      }
     },
     "실시간 공유란?" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What is Real-time Sharing?"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "실시간 공유란?"
+          }
+        }
+      }
     },
     "약속 시간" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Promise Time"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "약속 시간"
+          }
+        }
+      }
     },
     "약속 시간 전에 자동으로 시작돼요" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Starts automatically before the promise time"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "약속 시간 전에 자동으로 시작돼요"
+          }
+        }
+      }
     },
     "잠금화면" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lock Screen"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "잠금화면"
+          }
+        }
+      }
     },
     "잠금화면과 다이나믹 아일랜드에서\n친구들의 도착 상황을 실시간으로 확인할 수 있어요" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check your friends' arrival status in real-time on the Lock Screen and Dynamic Island"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "잠금화면과 다이나믹 아일랜드에서\n친구들의 도착 상황을 실시간으로 확인할 수 있어요"
+          }
+        }
+      }
     },
     "초대 코드로 참여하기" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Join with Invite Code"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "초대 코드로 참여하기"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"
