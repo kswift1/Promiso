@@ -17,8 +17,6 @@ extension GroupMain {
           rootContent
         } destination: { store in
           switch store.case {
-          case .manageGroupFeature(let manageGroupStore):
-            ManageGroup.RootView(store: manageGroupStore)
           case .groupSettings(let groupSettingsStore):
             GroupSettings.View(store: groupSettingsStore)
           case .groupPromiseList(let groupPromiseListStore):
@@ -42,6 +40,10 @@ extension GroupMain {
       }
       .auroraBackground()
       .toolbarVisibility(.hidden, for: .navigationBar)
+      .toast(Binding(
+        get: { store.toastMessage },
+        set: { _ in store.send(.view(.toastDismissed)) }
+      ))
       .onAppear { store.send(.view(.onAppear)) }
       .fullScreenCover(
         store: store.scope(state: \.$createPromise, action: \.createPromise)

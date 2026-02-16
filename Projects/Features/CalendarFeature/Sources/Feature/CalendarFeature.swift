@@ -89,6 +89,8 @@ extension CalendarFeature {
 
       /// 네비게이션 경로 (약속 상세 등)
       var path = StackState<Path.State>()
+      /// 화면 토스트 메시지
+      var toastMessage: ToastMessage?
 
       // MARK: - Computed Properties
 
@@ -273,6 +275,8 @@ extension CalendarFeature {
         case personalEventTapped(PersonalEventModel)
         // 탭 전환 시 데이터 새로고침
         case refresh
+        // 토스트 닫힘
+        case toastDismissed
       }
 
       @CasePathable
@@ -608,6 +612,10 @@ extension CalendarFeature {
           .send(.internal(.checkCalendarPermission)),
           .send(.internal(.loadInitialData))
         )
+
+      case .toastDismissed:
+        state.toastMessage = nil
+        return .none
       }
     }
 

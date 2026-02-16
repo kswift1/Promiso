@@ -40,6 +40,7 @@ extension CalendarSettings {
       public var groups: [UserGroupInfo]
       public var updatingGroupIds: Set<String>
       public var personalCalendarSyncEnabled: Bool
+      public var toastMessage: ToastMessage?
 
       public init() {
         self.authorizationStatus = .notDetermined
@@ -49,6 +50,7 @@ extension CalendarSettings {
         self.personalCalendarSyncEnabled = UserDefaults.standard.bool(
           forKey: AppConstants.UserDefaults.personalCalendarSync
         )
+        self.toastMessage = nil
       }
     }
 
@@ -67,6 +69,7 @@ extension CalendarSettings {
       case calendarToggleTapped
       case groupCalendarSyncToggled(groupId: String, enabled: Bool)
       case personalCalendarSyncToggled(Bool)
+      case toastDismissed
     }
 
     @CasePathable
@@ -172,6 +175,10 @@ extension CalendarSettings {
             }
           }
 
+        case .view(.toastDismissed):
+          state.toastMessage = nil
+          return .none
+
         case .internal(.authorizationStatusUpdated(let status)):
           state.authorizationStatus = status
           return .none
@@ -180,6 +187,14 @@ extension CalendarSettings {
           state.isRequestingAccess = false
           let status = eventKitClient.authorizationStatus()
           state.authorizationStatus = status
+          if !granted {
+            state.toastMessage = ToastMessage(
+              type: .warning,
+              title: "캘린더 접근 권한이 거부되었어요",
+              subtitle: "설정에서 권한을 변경할 수 있어요.",
+              position: .top
+            )
+          }
           return .run { _ in
             if granted {
               await hapticFeedback.success()
@@ -211,6 +226,13 @@ extension CalendarSettings {
               imageUrl: updatedGroup.imageUrl
             )
             state.groups[groupIndex] = updatedGroup
+          }
+          if !success {
+            state.toastMessage = ToastMessage(
+              type: .error,
+              title: "그룹 캘린더 동기화 저장에 실패했어요",
+              position: .top
+            )
           }
 
           return .run { _ in
@@ -267,6 +289,10 @@ extension CalendarSettings {
           store.send(.view(.onSceneActive))
         }
       }
+      .toast(Binding(
+        get: { store.toastMessage },
+        set: { _ in store.send(.view(.toastDismissed)) }
+      ))
     }
 
     // MARK: - Calendar Access Section
