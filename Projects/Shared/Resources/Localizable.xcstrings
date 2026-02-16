@@ -18,7 +18,7 @@
     },
     "appEntry.update.action" : {
       "comment" : "업데이트 버튼",
-      "extractionState" : "stale",
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
