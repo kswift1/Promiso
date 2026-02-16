@@ -830,14 +830,14 @@ extension DateTimeSettings {
 
     private var timeString: String {
       if use24Hour {
-        return "14:30 - 16:30"
+        return LocalizedStrings.SettingsStrings.exampleTime24
       } else {
-        return "오후 2:30 - 오후 4:30"
+        return LocalizedStrings.SettingsStrings.exampleTime12
       }
     }
 
     private var dateString: String {
-      "2월 15일 (토)"
+      LocalizedStrings.SettingsStrings.exampleDate
     }
 
     var body: some View {
@@ -848,7 +848,7 @@ extension DateTimeSettings {
             .font(.system(size: 44))
 
           VStack(alignment: .leading, spacing: 10) {
-            Text("팀 회식")
+            Text(LocalizedStrings.SettingsStrings.exampleTitle)
               .font(.system(size: 19, weight: .bold))
               .foregroundColor(.primary)
 
@@ -866,7 +866,7 @@ extension DateTimeSettings {
               HStack(spacing: 4) {
                 Text("📍")
                   .font(.system(size: 14))
-                Text("강남역 3번 출구")
+                Text(LocalizedStrings.SettingsStrings.exampleLocation)
                   .font(.system(size: 14, weight: .medium))
               }
               .foregroundColor(.primary)

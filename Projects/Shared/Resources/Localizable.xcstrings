@@ -5420,7 +5420,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "가나다"
+            "value" : "이름순"
           }
         }
       }
@@ -13829,6 +13829,91 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "시간 표시 형식"
+          }
+        }
+      }
+    },
+    "settings.timeFormat.example.time12" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "2:30 PM - 4:30 PM"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "오후 2:30 - 오후 4:30"
+          }
+        }
+      }
+    },
+    "settings.timeFormat.example.time24" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "14:30 - 16:30"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "14:30 - 16:30"
+          }
+        }
+      }
+    },
+    "settings.timeFormat.example.date" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feb 15 (Sat)"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "2월 15일 (토)"
+          }
+        }
+      }
+    },
+    "settings.timeFormat.example.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Team Dinner"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "팀 회식"
+          }
+        }
+      }
+    },
+    "settings.timeFormat.example.location" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gangnam Station Exit 3"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "강남역 3번 출구"
           }
         }
       }

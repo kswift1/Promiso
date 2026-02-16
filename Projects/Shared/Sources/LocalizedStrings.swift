@@ -431,6 +431,13 @@ public enum LocalizedStrings {
     // Policy View
     public static var privacyPolicyTitle: String { String(localized: "settings.policy.privacyPolicy", bundle: bundle) }
     public static var termsOfServiceTitle: String { String(localized: "settings.policy.termsOfService", bundle: bundle) }
+
+    // Time Format Example (Preview Card)
+    public static var exampleTime12: String { String(localized: "settings.timeFormat.example.time12", bundle: bundle) }
+    public static var exampleTime24: String { String(localized: "settings.timeFormat.example.time24", bundle: bundle) }
+    public static var exampleDate: String { String(localized: "settings.timeFormat.example.date", bundle: bundle) }
+    public static var exampleTitle: String { String(localized: "settings.timeFormat.example.title", bundle: bundle) }
+    public static var exampleLocation: String { String(localized: "settings.timeFormat.example.location", bundle: bundle) }
   }
 
   // MARK: - Errors
