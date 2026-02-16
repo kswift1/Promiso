@@ -29,7 +29,7 @@ struct TimelineDateHeader: View {
     } else if calendar.isDate(date, equalTo: now.addingTimeInterval(86400 * 2), toGranularity: .day) {
       return LocalizedStrings.Home.dayAfterTomorrow
     } else {
-      return KoreanDateFormatters.sectionHeader.string(from: date)
+      return LocalizedDateFormatters.sectionHeader.string(from: date)
     }
   }
 }

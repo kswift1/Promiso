@@ -1,4 +1,5 @@
 import Foundation
+import PromisoShared
 
 // MARK: - NotificationModel
 
@@ -157,7 +158,7 @@ extension NotificationModel {
   /// 생성 시각 상대 표시 (예: "방금 전", "5분 전", "어제")
   public var relativeTimeString: String {
     let formatter = RelativeDateTimeFormatter()
-    formatter.locale = Locale(identifier: "ko_KR")
+    formatter.locale = LocaleManager.appLocale
     formatter.unitsStyle = .abbreviated
     return formatter.localizedString(for: createdAt, relativeTo: Date())
   }

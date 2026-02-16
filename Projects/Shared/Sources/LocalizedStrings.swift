@@ -1422,12 +1422,32 @@ public enum AppLanguage: String, CaseIterable {
     }
   }
 
+  public var locale: Locale {
+    switch self {
+    case .korean: return Locale(identifier: "ko_KR")
+    case .english: return Locale(identifier: "en_US")
+    }
+  }
+
   /// 현재 설정된 언어 (UserDefaults 기반, nil이면 시스템 기본)
   public static var current: AppLanguage? {
     guard let raw = UserDefaults.standard.string(forKey: "promisoPreferredLanguage") else {
       return nil
     }
     return AppLanguage(rawValue: raw)
+  }
+}
+
+// MARK: - Locale Manager
+
+public enum LocaleManager {
+  /// 앱에서 사용할 Locale (UserDefaults 기반)
+  public static var appLocale: Locale {
+    if let language = AppLanguage.current {
+      return language.locale
+    }
+    // UserDefaults에 값이 없으면 시스템 기본
+    return Locale.current
   }
 }
 

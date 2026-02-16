@@ -166,7 +166,7 @@ struct TodayScheduleCard: View {
   // MARK: - Computed Properties
 
   private var todayDateString: String {
-    KoreanDateFormatters.monthDayWeekday.string(from: Date())
+    LocalizedDateFormatters.monthDayWeekday.string(from: Date())
   }
 }
 

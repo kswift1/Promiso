@@ -71,15 +71,15 @@ struct UpcomingDateCard: View {
   // MARK: - Computed Properties
 
   private var monthString: String {
-    KoreanDateFormatters.month.string(from: date)
+    LocalizedDateFormatters.month.string(from: date)
   }
 
   private var dayString: String {
-    KoreanDateFormatters.day.string(from: date)
+    LocalizedDateFormatters.day.string(from: date)
   }
 
   private var weekdayString: String {
-    KoreanDateFormatters.weekday.string(from: date)
+    LocalizedDateFormatters.weekday.string(from: date)
   }
 
   private var weekdayColor: Color {

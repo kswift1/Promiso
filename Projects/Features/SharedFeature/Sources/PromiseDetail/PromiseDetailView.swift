@@ -394,7 +394,7 @@ extension PromiseDetail {
     // MARK: - Helpers
 
     private func formatFullDate(_ date: Date) -> String {
-      KoreanDateFormatters.sectionHeader.string(from: date)
+      LocalizedDateFormatters.sectionHeader.string(from: date)
     }
 
     private func participantColor(_ type: PromiseDetail.Feature.ParticipantColorType) -> Color {

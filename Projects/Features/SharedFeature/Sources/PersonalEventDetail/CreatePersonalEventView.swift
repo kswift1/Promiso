@@ -148,7 +148,7 @@ extension CreatePersonalEvent {
             )
             .labelsHidden()
             .tint(Color.pmindigo.n500)
-            .environment(\.locale, Locale(identifier: "ko_KR"))
+            .environment(\.locale, LocaleManager.appLocale)
           }
           .padding(.horizontal, 16)
           .padding(.vertical, 12)
@@ -205,7 +205,7 @@ extension CreatePersonalEvent {
             )
             .labelsHidden()
             .tint(Color.pmindigo.n500)
-            .environment(\.locale, Locale(identifier: "ko_KR"))
+            .environment(\.locale, LocaleManager.appLocale)
           }
           .padding(.horizontal, 16)
           .padding(.vertical, 12)

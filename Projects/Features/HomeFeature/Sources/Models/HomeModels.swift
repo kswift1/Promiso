@@ -93,7 +93,7 @@ extension HomeModels {
     public var id: String { dayKey }   // "2026-01-26" 형식 (타임존 안전)
 
     private var dayKey: String {
-      KoreanDateFormatters.date.string(from: day)
+      LocalizedDateFormatters.date.string(from: day)
     }
 
     public init(day: Date, promises: [PromiseModel]) {

@@ -189,7 +189,7 @@ struct PersonalEventTimelineItemView: View {
   }
 
   private func endTimeString(_ endAt: Date) -> String {
-    KoreanDateFormatters.endTimeString(from: endAt)
+    LocalizedDateFormatters.endTimeString(from: endAt)
   }
 
   private func reminderText(minutes: Int) -> String {

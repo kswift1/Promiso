@@ -176,7 +176,7 @@ struct PromiseAccessoryRectangularWidgetView: View {
 
   private func formatTime(_ date: Date) -> String {
     let formatter = DateFormatter()
-    formatter.locale = Locale(identifier: "ko_KR")
+    formatter.locale = LocaleManager.appLocale
     formatter.dateFormat = "a h:mm"
     return formatter.string(from: date)
   }

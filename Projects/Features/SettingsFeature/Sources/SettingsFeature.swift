@@ -684,7 +684,7 @@ extension DateTimeSettings {
           case .restartConfirmed:
             state.showRestartAlert = false
             state.$use24HourFormat.withLock { $0 = state.selectedValue }
-            KoreanDateFormatters.use24HourFormat = state.selectedValue
+            LocalizedDateFormatters.use24HourFormat = state.selectedValue
             return .run { [notificationCenter] _ in
               await hapticFeedback.success()
               // 앱 재시작 요청 Notification 발송

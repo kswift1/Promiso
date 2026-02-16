@@ -344,7 +344,7 @@ struct CompactDayRow: View {
   }
 
   private var weekday: String {
-    KoreanDateFormatters.weekday.string(from: date)
+    LocalizedDateFormatters.weekday.string(from: date)
   }
 
   private var isToday: Bool {

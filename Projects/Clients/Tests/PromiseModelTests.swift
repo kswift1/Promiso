@@ -287,7 +287,7 @@ struct PromiseModelDisplayTests {
     let promise = TestFactories.makePromise(startAt: futureDate)
 
     let formatter = DateFormatter()
-    formatter.locale = Locale(identifier: "ko_KR")
+    formatter.locale = LocaleManager.appLocale
     formatter.dateFormat = "M월 d일"
     let expected = formatter.string(from: futureDate)
 

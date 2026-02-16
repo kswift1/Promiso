@@ -19,7 +19,7 @@ struct InlineDateTimePicker: View {
   }
   
   private var formattedDate: String {
-    KoreanDateFormatters.dateDot.string(from: date)
+    LocalizedDateFormatters.dateDot.string(from: date)
   }
 
   private var formattedTime: String {
@@ -136,7 +136,7 @@ struct InlineDateTimePicker: View {
               displayedComponents: [.date]
             )
             .datePickerStyle(.graphical)
-            .environment(\.locale, Locale(identifier: "ko_KR"))
+            .environment(\.locale, LocaleManager.appLocale)
             // Bugfix for AutoLayout-Issue (https://stackoverflow.com/questions/73475000/datepicker-with-graphical-style-breaks-layout-constraints-on-ios-16-0)
             .frame(width: 320)
             .scaleEffect(1.05)
@@ -148,7 +148,7 @@ struct InlineDateTimePicker: View {
               displayedComponents: [.hourAndMinute]
             )
             .datePickerStyle(.wheel)
-            .environment(\.locale, Locale(identifier: "ko_KR"))
+            .environment(\.locale, LocaleManager.appLocale)
             .labelsHidden()
           }
         }

@@ -137,11 +137,11 @@ extension LivePromise {
     // MARK: - Formatters
 
     private func formatTime(_ date: Date) -> String {
-      KoreanDateFormatters.time12Hour.string(from: date)
+      LocalizedDateFormatters.time12Hour.string(from: date)
     }
 
     private func formatPeriod(_ date: Date) -> String {
-      KoreanDateFormatters.amPm.string(from: date)
+      LocalizedDateFormatters.amPm.string(from: date)
     }
   }
 
@@ -274,11 +274,11 @@ extension LivePromise {
     // MARK: - Formatters
 
     private func formatTime(_ date: Date) -> String {
-      KoreanDateFormatters.time12Hour.string(from: date)
+      LocalizedDateFormatters.time12Hour.string(from: date)
     }
 
     private func formatPeriod(_ date: Date) -> String {
-      KoreanDateFormatters.amPm.string(from: date)
+      LocalizedDateFormatters.amPm.string(from: date)
     }
   }
 }

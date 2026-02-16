@@ -76,8 +76,8 @@ public struct CalendarEvent: Identifiable, Equatable, Sendable {
       return "종일"
     }
 
-    let start = KoreanDateFormatters.time.string(from: startDate)
-    let end = KoreanDateFormatters.time.string(from: endDate)
+    let start = LocalizedDateFormatters.time.string(from: startDate)
+    let end = LocalizedDateFormatters.time.string(from: endDate)
     return "\(start) - \(end)"
   }
 }

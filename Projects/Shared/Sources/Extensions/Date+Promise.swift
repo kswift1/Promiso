@@ -48,20 +48,20 @@ public extension Date {
       if abs(daysFromNow) < 7 {
         let formatter = DateFormatter()
         formatter.dateFormat = "EEEE"
-        formatter.locale = Locale(identifier: "ko_KR")
+        formatter.locale = LocaleManager.appLocale
         return formatter.string(from: self)
       }
     }
     
     let formatter = DateFormatter()
     formatter.dateFormat = "M월 d일"
-    formatter.locale = Locale(identifier: "ko_KR")
+    formatter.locale = LocaleManager.appLocale
     return formatter.string(from: self)
   }
   
   /// 약속 시간을 표시용으로 포맷팅 (12/24시간 설정 적용)
   var promiseTimeString: String {
-    KoreanDateFormatters.timeString(from: self)
+    LocalizedDateFormatters.timeString(from: self)
   }
   
   /// 약속 날짜와 시간을 함께 표시

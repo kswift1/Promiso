@@ -194,7 +194,7 @@ struct TimelineItemView: View {
   }
 
   private func endTimeString(_ endAt: Date) -> String {
-    KoreanDateFormatters.endTimeString(from: endAt)
+    LocalizedDateFormatters.endTimeString(from: endAt)
   }
 
   /// 실시간 공유 시작 시간 문자열

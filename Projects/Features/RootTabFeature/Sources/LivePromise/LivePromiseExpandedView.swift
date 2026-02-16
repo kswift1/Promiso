@@ -412,7 +412,7 @@ extension LivePromise {
     }
 
     private func formatDateText(_ date: Date) -> String {
-      KoreanDateFormatters.sectionHeader.string(from: date)
+      LocalizedDateFormatters.sectionHeader.string(from: date)
     }
 
     private func formatTimeText(_ date: Date) -> String {
@@ -907,7 +907,7 @@ extension LivePromise {
     // MARK: - Helper Functions
 
     private func formatTime(_ date: Date) -> String {
-      KoreanDateFormatters.time12Hour.string(from: date)
+      LocalizedDateFormatters.time12Hour.string(from: date)
     }
 
     private func statusText(for participant: ParticipantState) -> String {

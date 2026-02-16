@@ -332,7 +332,7 @@ extension AppEntry {
             state.reset()
 
             // 시간 포맷 다시 로드
-            KoreanDateFormatters.use24HourFormat = userDefaultsClient.boolForKey(
+            LocalizedDateFormatters.use24HourFormat = userDefaultsClient.boolForKey(
               AppConstants.UserDefaults.use24HourFormat
             )
 

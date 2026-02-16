@@ -170,7 +170,7 @@ struct PendingCard: View {
   }
 
   private var dateTimeString: String {
-    KoreanDateFormatters.shortDateTime.string(from: promise.startAt)
+    LocalizedDateFormatters.shortDateTime.string(from: promise.startAt)
   }
 
   private var progressRatio: CGFloat {

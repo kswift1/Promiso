@@ -314,14 +314,14 @@ struct PromiseSystemLargeWidgetView: View {
 
   private static let timeFormatter: DateFormatter = {
     let formatter = DateFormatter()
-    formatter.locale = Locale(identifier: "ko_KR")
+    formatter.locale = LocaleManager.appLocale
     formatter.dateFormat = "a h:mm"
     return formatter
   }()
 
   private static let shortDateFormatter: DateFormatter = {
     let formatter = DateFormatter()
-    formatter.locale = Locale(identifier: "ko_KR")
+    formatter.locale = LocaleManager.appLocale
     formatter.dateFormat = "M/d"
     return formatter
   }()

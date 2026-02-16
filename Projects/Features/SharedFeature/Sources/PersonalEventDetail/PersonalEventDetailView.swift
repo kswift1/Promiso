@@ -230,7 +230,7 @@ extension PersonalEventDetail {
     // MARK: - Helpers
 
     private func formatFullDate(_ date: Date) -> String {
-      KoreanDateFormatters.sectionHeader.string(from: date)
+      LocalizedDateFormatters.sectionHeader.string(from: date)
     }
 
     private func reminderText(_ minutes: Int) -> String {

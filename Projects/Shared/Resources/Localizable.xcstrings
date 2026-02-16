@@ -10054,6 +10054,78 @@
         }
       }
     },
+    "promiseModeSegment.group" : {
+      "comment" : "약속 모드 세그먼트 - 그룹",
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Group"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "그룹"
+          }
+        }
+      }
+    },
+    "promiseModeSegment.modePickerLabel" : {
+      "comment" : "약속 모드 세그먼트 - 모드 선택 레이블",
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mode"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "모드"
+          }
+        }
+      }
+    },
+    "promiseModeSegment.personal" : {
+      "comment" : "약속 모드 세그먼트 - 개인",
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Personal"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "개인"
+          }
+        }
+      }
+    },
+    "promiseModeSegment.promiseTitle" : {
+      "comment" : "약속 모드 세그먼트 - 약속 타이틀",
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Promises"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "약속"
+          }
+        }
+      }
+    },
     "rootTab.tabMode.group" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -15248,24 +15320,6 @@
         }
       }
     },
-    "widget.common.dataLoadFailed" : {
-      "comment" : "위젯 공통 - 데이터 로드 실패",
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Data load failed"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "데이터 로드 실패"
-          }
-        }
-      }
-    },
     "widget.button" : {
       "comment" : "위젯 - 버튼",
       "extractionState" : "stale",
@@ -15284,128 +15338,20 @@
         }
       }
     },
-    "widget.update" : {
-      "comment" : "위젯 - 업데이트",
+    "widget.common.dataLoadFailed" : {
+      "comment" : "위젯 공통 - 데이터 로드 실패",
       "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Update"
+            "value" : "Data load failed"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "업데이트"
-          }
-        }
-      }
-    },
-    "widget.daysLater" : {
-      "comment" : "위젯 - N일 후 (포맷: %lld일 후)",
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "in %lld days"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld일 후"
-          }
-        }
-      }
-    },
-    "widget.participantCountShort" : {
-      "comment" : "위젯 - 참가자 수 (포맷: %lld명)",
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld명"
-          }
-        }
-      }
-    },
-    "promiseModeSegment.group" : {
-      "comment" : "약속 모드 세그먼트 - 그룹",
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Group"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "그룹"
-          }
-        }
-      }
-    },
-    "promiseModeSegment.personal" : {
-      "comment" : "약속 모드 세그먼트 - 개인",
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Personal"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "개인"
-          }
-        }
-      }
-    },
-    "promiseModeSegment.promiseTitle" : {
-      "comment" : "약속 모드 세그먼트 - 약속 타이틀",
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Promises"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "약속"
-          }
-        }
-      }
-    },
-    "promiseModeSegment.modePickerLabel" : {
-      "comment" : "약속 모드 세그먼트 - 모드 선택 레이블",
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mode"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "모드"
+            "value" : "데이터 로드 실패"
           }
         }
       }
@@ -15752,6 +15698,24 @@
         }
       }
     },
+    "widget.daysLater" : {
+      "comment" : "위젯 - N일 후 (포맷: %lld일 후)",
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "in %lld days"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld일 후"
+          }
+        }
+      }
+    },
     "widget.empty.createNewHint" : {
       "comment" : "위젯 새 약속 만들기 힌트",
       "extractionState" : "stale",
@@ -15860,6 +15824,42 @@
         }
       }
     },
+    "widget.participantCountShort" : {
+      "comment" : "위젯 - 참가자 수 (포맷: %lld명)",
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld명"
+          }
+        }
+      }
+    },
+    "widget.update" : {
+      "comment" : "위젯 - 업데이트",
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "업데이트"
+          }
+        }
+      }
+    },
     "그룹 만들기" : {
 
     },
@@ -15876,9 +15876,6 @@
 
     },
     "실시간 공유란?" : {
-
-    },
-    "약속" : {
 
     },
     "약속 시간" : {

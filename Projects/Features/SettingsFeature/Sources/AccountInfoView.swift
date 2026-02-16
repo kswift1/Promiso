@@ -156,7 +156,7 @@ extension AccountInfo {
 
     // MARK: - Static Properties
 
-    private static let createdAtFormatter = KoreanDateFormatters.yearMonthDay
+    private static let createdAtFormatter = LocalizedDateFormatters.yearMonthDay
 
     public init(store: StoreOf<Feature>) {
       self.store = store

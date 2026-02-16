@@ -323,9 +323,9 @@ extension PastPromises {
       let dateYear = Calendar.current.component(.year, from: date)
 
       if dateYear == currentYear {
-        return KoreanDateFormatters.monthDay.string(from: date)
+        return LocalizedDateFormatters.monthDay.string(from: date)
       } else {
-        return KoreanDateFormatters.yearMonthDay.string(from: date)
+        return LocalizedDateFormatters.yearMonthDay.string(from: date)
       }
     }
   }

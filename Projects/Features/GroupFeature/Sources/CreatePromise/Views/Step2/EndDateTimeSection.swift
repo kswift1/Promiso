@@ -69,7 +69,7 @@ struct EndTimePicker: View {
   }
   
   private var formattedDate: String {
-    KoreanDateFormatters.dateDot.string(from: endDate)
+    LocalizedDateFormatters.dateDot.string(from: endDate)
   }
 
   private var formattedTime: String {
@@ -186,7 +186,7 @@ struct EndTimePicker: View {
               displayedComponents: [.date]
             )
             .datePickerStyle(.graphical)
-            .environment(\.locale, Locale(identifier: "ko_KR"))
+            .environment(\.locale, LocaleManager.appLocale)
             .frame(width: 320)
             .scaleEffect(1.05)
           } else {
@@ -197,7 +197,7 @@ struct EndTimePicker: View {
               displayedComponents: [.hourAndMinute]
             )
             .datePickerStyle(.wheel)
-            .environment(\.locale, Locale(identifier: "ko_KR"))
+            .environment(\.locale, LocaleManager.appLocale)
             .labelsHidden()
           }
         }
