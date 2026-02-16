@@ -564,7 +564,7 @@ struct PromiseDetailFeatureTests {
     #expect(store.state.toastMessage?.type == .error)
     #expect(store.state.toastMessage?.title == "응답 전송에 실패했어요")
     #expect(store.state.toastMessage?.subtitle == "네트워크 오류")
-    #expect(store.state.toastMessage?.position == .bottom)
+    #expect(store.state.toastMessage?.position == .top)
   }
 
   @Test("deleteDone 시 isDeleting false 및 delegate 전달")
@@ -610,7 +610,7 @@ struct PromiseDetailFeatureTests {
     #expect(store.state.toastMessage?.type == .error)
     #expect(store.state.toastMessage?.title == "약속 삭제에 실패했어요")
     #expect(store.state.toastMessage?.subtitle == "삭제 실패")
-    #expect(store.state.toastMessage?.position == .bottom)
+    #expect(store.state.toastMessage?.position == .top)
   }
 
   @Test("promiseUpdated 시 promise 상태 업데이트")

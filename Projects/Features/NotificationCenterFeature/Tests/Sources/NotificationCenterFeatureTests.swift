@@ -446,7 +446,7 @@ struct NotificationCenterFeatureTests {
     #expect(store.state.toastMessage?.type == .error)
     #expect(store.state.toastMessage?.title == "알림 삭제에 실패했어요")
     #expect(store.state.toastMessage?.subtitle == error.localizedDescription)
-    #expect(store.state.toastMessage?.position == .bottom)
+    #expect(store.state.toastMessage?.position == .top)
   }
 
   // MARK: - notificationTapped 테스트
@@ -707,7 +707,7 @@ struct NotificationCenterFeatureTests {
     #expect(store.state.toastMessage?.type == .error)
     #expect(store.state.toastMessage?.title == "읽음 처리에 실패했어요")
     #expect(store.state.toastMessage?.subtitle == error.localizedDescription)
-    #expect(store.state.toastMessage?.position == .bottom)
+    #expect(store.state.toastMessage?.position == .top)
   }
 
   // MARK: - notificationsResponse 추가 로드 성공 테스트

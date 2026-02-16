@@ -416,7 +416,7 @@ struct SettingsFeatureTests {
     #expect(store.state.toastMessage?.type == .error)
     #expect(store.state.toastMessage?.title == "프로필 저장에 실패했어요")
     #expect(store.state.toastMessage?.subtitle == "저장 실패")
-    #expect(store.state.toastMessage?.position == .bottom)
+    #expect(store.state.toastMessage?.position == .top)
   }
 
   // MARK: - profileImageTapped / imageDetailDismissed 테스트

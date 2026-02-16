@@ -192,7 +192,7 @@ extension CalendarSettings {
               type: .warning,
               title: "캘린더 접근 권한이 거부되었어요",
               subtitle: "설정에서 권한을 변경할 수 있어요.",
-              position: .bottom
+              position: .top
             )
           }
           return .run { _ in
@@ -231,7 +231,7 @@ extension CalendarSettings {
             state.toastMessage = ToastMessage(
               type: .error,
               title: "그룹 캘린더 동기화 저장에 실패했어요",
-              position: .bottom
+              position: .top
             )
           }
 

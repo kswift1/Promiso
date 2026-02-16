@@ -422,7 +422,7 @@ extension GroupNotificationDetail {
               type: .error,
               title: "알림 설정 저장에 실패했어요",
               subtitle: message,
-              position: .bottom
+              position: .top
             )
             return .run { _ in await hapticFeedback.error() }
           }

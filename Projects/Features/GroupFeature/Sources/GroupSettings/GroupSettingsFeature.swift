@@ -641,7 +641,7 @@ extension GroupSettings {
                 type: .warning,
                 title: "알림 권한이 거부되었어요",
                 subtitle: "설정에서 변경할 수 있어요.",
-                position: .bottom
+                position: .top
               )
             }
             return .run { [hapticFeedback] _ in
@@ -659,7 +659,7 @@ extension GroupSettings {
               type: .error,
               title: "알림 설정 저장에 실패했어요",
               subtitle: message,
-              position: .bottom
+              position: .top
             )
             return .run { [hapticFeedback] _ in
               await hapticFeedback.error()
@@ -672,7 +672,7 @@ extension GroupSettings {
               type: .error,
               title: "\(key.title) 설정 저장에 실패했어요",
               subtitle: message,
-              position: .bottom
+              position: .top
             )
             return .run { [hapticFeedback] _ in
               await hapticFeedback.error()
@@ -731,7 +731,7 @@ extension GroupSettings {
               type: .error,
               title: "멤버 추방에 실패했어요",
               subtitle: error.localizedDescription,
-              position: .bottom
+              position: .top
             )
             return .run { [hapticFeedback] _ in
               await hapticFeedback.error()

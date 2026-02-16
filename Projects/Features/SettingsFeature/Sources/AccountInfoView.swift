@@ -147,7 +147,7 @@ extension AccountInfo {
               type: .error,
               title: "회원 탈퇴에 실패했어요",
               subtitle: error,
-              position: .bottom
+              position: .top
             )
             return .run { _ in
               await hapticFeedback.error()

@@ -355,7 +355,7 @@ extension PromiseDetail {
               type: .error,
               title: "응답 전송에 실패했어요",
               subtitle: error.message,
-              position: .bottom
+              position: .top
             )
             return .none
 
@@ -380,7 +380,7 @@ extension PromiseDetail {
               type: .error,
               title: "약속 삭제에 실패했어요",
               subtitle: error.message,
-              position: .bottom
+              position: .top
             )
             return .none
 

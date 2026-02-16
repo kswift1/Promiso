@@ -439,7 +439,7 @@ extension Settings {
               type: .error,
               title: "로그아웃에 실패했어요",
               subtitle: error.localizedDescription,
-              position: .bottom
+              position: .top
             )
             return .run { _ in
               await hapticFeedback.error()
@@ -470,7 +470,7 @@ extension Settings {
               type: .error,
               title: "프로필 저장에 실패했어요",
               subtitle: errorMessage,
-              position: .bottom
+              position: .top
             )
             return .run { _ in
               await hapticFeedback.error()

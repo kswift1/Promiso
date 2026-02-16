@@ -325,7 +325,7 @@ extension PersonalMode {
               type: .error,
               title: "일정 삭제에 실패했어요",
               subtitle: message,
-              position: .bottom
+              position: .top
             )
             return .none
 

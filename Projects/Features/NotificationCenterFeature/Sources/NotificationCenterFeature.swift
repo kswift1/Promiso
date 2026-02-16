@@ -357,7 +357,7 @@ extension NotificationCenter {
                 type: .error,
                 title: "읽음 처리에 실패했어요",
                 subtitle: error.localizedDescription,
-                position: .bottom
+                position: .top
               )
             }
             return .none
@@ -377,7 +377,7 @@ extension NotificationCenter {
                 type: .error,
                 title: "알림 삭제에 실패했어요",
                 subtitle: error.localizedDescription,
-                position: .bottom
+                position: .top
               )
             }
             return .none
