@@ -1,4 +1,5 @@
 import ComposableArchitecture
+import PromisoShared
 import SharedFeature
 import SwiftUI
 
@@ -63,6 +64,7 @@ extension PersonalMode {
       var pastEventsState: LoadingState<[PersonalEventModel]> = .idle
       var selectedFilter: EventFilter = .today
       @Shared var currentUser: UserPrivateModel
+      var toastMessage: ToastMessage?
 
       @Presents var createEvent: CreatePersonalEvent.Feature.State?
       @Presents var eventDetail: PersonalEventDetail.Feature.State?
@@ -155,6 +157,8 @@ extension PersonalMode {
         case switchToGroupMode
         /// 위젯 딥링크로 개인 일정 상세 열기
         case openEventFromDeeplink(eventId: String)
+        /// 토스트 닫힘
+        case toastDismissed
       }
 
       public enum Internal: Sendable {
@@ -243,6 +247,10 @@ extension PersonalMode {
                 AppLogger.personal.error("딥링크 일정 조회 실패: \(error.localizedDescription)")
               }
             }
+
+          case .toastDismissed:
+            state.toastMessage = nil
+            return .none
           }
 
         case let .internal(internalAction):
@@ -320,6 +328,12 @@ extension PersonalMode {
 
           case .eventDeleteFailed(let message):
             state.eventsState = .failed(AppError(message: message))
+            state.toastMessage = ToastMessage(
+              type: .error,
+              title: "일정 삭제에 실패했어요",
+              subtitle: message,
+              position: .top
+            )
             return .none
 
           case .syncPersonalCalendar:

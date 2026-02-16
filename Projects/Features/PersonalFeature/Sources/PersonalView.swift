@@ -1,5 +1,6 @@
 import SwiftUI
 import ComposableArchitecture
+import PromisoShared
 import SharedFeature
 
 extension PersonalMode {
@@ -29,6 +30,10 @@ extension PersonalMode {
       .overlay(alignment: .bottomTrailing) {
         fabButton
       }
+      .toast(Binding(
+        get: { store.toastMessage },
+        set: { _ in store.send(.view(.toastDismissed)) }
+      ))
       .onAppear {
         store.send(.view(.onAppear))
       }

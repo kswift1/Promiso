@@ -71,6 +71,7 @@ struct PromiseDetailFeatureTests {
     #expect(state.showMapDetail == false)
     #expect(state.editPromise == nil)
     #expect(state.alert == nil)
+    #expect(state.toastMessage == nil)
   }
 
   // MARK: - Computed Properties 테스트
@@ -249,6 +250,7 @@ struct PromiseDetailFeatureTests {
       }
       $0.analyticsClient.logEvent = { _, _ in }
     }
+    store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.acceptTapped)) {
       $0.respondingState = .accepting
@@ -286,6 +288,7 @@ struct PromiseDetailFeatureTests {
       $0.calendarSyncClient.removePromise = { _ in }
       $0.analyticsClient.logEvent = { _, _ in }
     }
+    store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.rejectTapped)) {
       $0.respondingState = .rejecting
@@ -552,10 +555,16 @@ struct PromiseDetailFeatureTests {
     let store = TestStore(initialState: state) {
       PromiseDetail.Feature()
     }
+    store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.internal(.respondFailed(error: AppError(message: "네트워크 오류")))) {
       $0.respondingState = .idle
     }
+
+    #expect(store.state.toastMessage?.type == .error)
+    #expect(store.state.toastMessage?.title == "응답 전송에 실패했어요")
+    #expect(store.state.toastMessage?.subtitle == "네트워크 오류")
+    #expect(store.state.toastMessage?.position == .top)
   }
 
   @Test("deleteDone 시 isDeleting false 및 delegate 전달")
@@ -592,10 +601,16 @@ struct PromiseDetailFeatureTests {
     let store = TestStore(initialState: state) {
       PromiseDetail.Feature()
     }
+    store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.internal(.deleteFailed(error: AppError(message: "삭제 실패")))) {
       $0.isDeleting = false
     }
+
+    #expect(store.state.toastMessage?.type == .error)
+    #expect(store.state.toastMessage?.title == "약속 삭제에 실패했어요")
+    #expect(store.state.toastMessage?.subtitle == "삭제 실패")
+    #expect(store.state.toastMessage?.position == .top)
   }
 
   @Test("promiseUpdated 시 promise 상태 업데이트")

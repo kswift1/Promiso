@@ -168,7 +168,6 @@ public enum CreatePromise {
       public enum Internal: Sendable {
         case titleDebounced(String)
         case emojiGenerationResponse(Result<String, Error>)
-        case emojiSuggestionsResponse([EmojiSuggestion])
         case fetchGroupList
         case groupListResponse(Result<[GroupModel], Error>)
         case fetchPromiseCounts([String])
@@ -391,14 +390,7 @@ public enum CreatePromise {
             return .none
 
           case .emojiGenerationResponse(.failure):
-            // Fallback: 기존 로컬 EmojiSuggester 사용
-            return .run { [title = state.promise.title] send in
-              let picks = await EmojiSuggestorProvider.shared.suggest(for: title, topK: 10)
-              await send(.internal(.emojiSuggestionsResponse(picks)))
-            }
-
-          case .emojiSuggestionsResponse(let picks):
-            state.promise.emoji = picks.first?.emoji ?? "📅"
+            state.promise.emoji = "📅"
             state.isEmojiLoading = false
             return .none
             

@@ -62,6 +62,10 @@ extension NotificationCenter {
       .onAppear {
         store.send(.view(.onAppear))
       }
+      .toast(Binding(
+        get: { store.toastMessage },
+        set: { _ in store.send(.view(.toastDismissed)) }
+      ))
     }
 
     // MARK: - Header View
