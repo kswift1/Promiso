@@ -3,6 +3,7 @@ import ProjectDescriptionHelpers
 
 let project = Project(
   name: "ResourceKit",
+  options: .options(developmentRegion: "ko"),
   targets: [
     .target(
       name: "ResourceKit",
