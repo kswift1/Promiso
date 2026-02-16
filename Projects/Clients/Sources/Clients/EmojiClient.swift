@@ -45,9 +45,10 @@ extension EmojiClient: TestDependencyKey {
   public static let previewValue = Self(
     generate: { title in
       try await Task.sleep(for: .milliseconds(500))
+      let sanitizedTitle = EmojiClient.sanitizeTitle(title)
 
       // 간단한 키워드 매핑 목업
-      let lowercased = title.lowercased()
+      let lowercased = sanitizedTitle.lowercased()
       if lowercased.contains("점심") || lowercased.contains("저녁") || lowercased.contains("식사") || lowercased.contains("밥") {
         return "🍽️"
       } else if lowercased.contains("커피") || lowercased.contains("카페") {
@@ -83,6 +84,25 @@ extension DependencyValues {
   }
 }
 
+// MARK: - Input Sanitization
+
+private extension EmojiClient {
+  static let maxTitleLength = 30
+
+  static func sanitizeTitle(_ title: String) -> String {
+    let collapsedWhitespace = title.replacingOccurrences(
+      of: #"\s+"#,
+      with: " ",
+      options: .regularExpression
+    )
+    return String(
+      collapsedWhitespace
+        .trimmingCharacters(in: .whitespacesAndNewlines)
+        .prefix(maxTitleLength)
+    )
+  }
+}
+
 // MARK: - Live Implementation
 
 extension EmojiClient: DependencyKey {
@@ -91,12 +111,17 @@ extension EmojiClient: DependencyKey {
 
     return Self(
       generate: { title in
+        let sanitizedTitle = EmojiClient.sanitizeTitle(title)
+        guard !sanitizedTitle.isEmpty else {
+          throw EmojiClientError.invalidResponse
+        }
+
         let startTime = CFAbsoluteTimeGetCurrent()
-        AppLogger.emoji.debug("🎯 [EmojiClient] 이모지 생성 시작 - 제목: \(title)")
+        AppLogger.emoji.debug("🎯 [EmojiClient] 이모지 생성 시작 - 제목: \(sanitizedTitle)")
 
         do {
           // Firebase Functions 호출
-          let result = try await functions.httpsCallable("generateEmoji").call(["title": title])
+          let result = try await functions.httpsCallable("generateEmoji").call(["title": sanitizedTitle])
 
           guard let data = result.data as? [String: Any],
                 let emoji = data["emoji"] as? String

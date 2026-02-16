@@ -11,6 +11,7 @@ extension EditPromise {
     @Dependency(\.continuousClock) var clock
     @Dependency(\.promiseClient) var promiseClient
     @Dependency(\.imageUploadClient) var imageUploadClient
+    @Dependency(\.emojiClient) var emojiClient
 
     private enum CancelID: Hashable {
       case emojiSuggestDebounce
@@ -111,7 +112,7 @@ extension EditPromise {
       @CasePathable
       public enum Internal: Sendable {
         case titleDebounced(String)
-        case emojiSuggestionsResponse([EmojiSuggestion])
+        case emojiGenerationResponse(Result<String, Error>)
         case photosLoaded([Data])
         case updatePromiseResponse(Result<PromiseModel, Clients.PromiseClientError>)
       }
@@ -129,12 +130,13 @@ extension EditPromise {
         case .view(let viewAction):
           switch viewAction {
           case .setTitle(let title):
-            state.editedPromise.title = String(title.prefix(30))
+            let sanitizedTitle = String(title.prefix(30))
+            state.editedPromise.title = sanitizedTitle
             return .merge(
               .cancel(id: CancelID.emojiSuggestDebounce),
-              .run { [clock, title] send in
+              .run { [clock, sanitizedTitle] send in
                 try await clock.sleep(for: .milliseconds(1_000))
-                await send(.internal(.titleDebounced(title)))
+                await send(.internal(.titleDebounced(sanitizedTitle)))
               }
               .cancellable(id: CancelID.emojiSuggestDebounce, cancelInFlight: true)
             )
@@ -280,15 +282,20 @@ extension EditPromise {
             guard !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return .none }
             // 제목이 원본과 다를 때만 이모지 추천
             guard title != state.originalPromise.title else { return .none }
-            return .run { [title] send in
-              let picks = await EmojiSuggestorProvider.shared.suggest(for: title, topK: 10)
-              await send(.internal(.emojiSuggestionsResponse(picks)))
+            return .run { [emojiClient, title] send in
+              do {
+                let emoji = try await emojiClient.generate(title)
+                await send(.internal(.emojiGenerationResponse(.success(emoji))))
+              } catch {
+                await send(.internal(.emojiGenerationResponse(.failure(error))))
+              }
             }
 
-          case .emojiSuggestionsResponse(let picks):
-            if let firstEmoji = picks.first?.emoji {
-              state.editedPromise.emoji = firstEmoji
-            }
+          case .emojiGenerationResponse(.success(let emoji)):
+            state.editedPromise.emoji = emoji
+            return .none
+
+          case .emojiGenerationResponse(.failure):
             return .none
 
           case .photosLoaded(let data):
