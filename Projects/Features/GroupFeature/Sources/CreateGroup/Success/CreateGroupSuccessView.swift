@@ -47,10 +47,10 @@ struct CreateGroupSuccessView: View {
           }
 
           VStack(spacing: 12) {
-            Text("그룹이 만들어졌어요!")
+            Text(LocalizedStrings.CreateGroup.successTitle)
               .font(.title.bold())
 
-            Text("친구들에게 초대 코드를 공유해\n함께 약속을 만들어보세요")
+            Text(LocalizedStrings.CreateGroup.successSubtitle)
               .font(.body)
               .foregroundStyle(.secondary)
               .multilineTextAlignment(.center)
@@ -71,7 +71,7 @@ struct CreateGroupSuccessView: View {
                 )
               )
 
-            Text("초대 코드")
+            Text(LocalizedStrings.CreateGroup.inviteCode)
               .font(.headline)
 
             Spacer()
@@ -126,7 +126,7 @@ struct CreateGroupSuccessView: View {
             HStack(spacing: 8) {
               Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 14))
-              Text("복사되었습니다!")
+              Text(LocalizedStrings.CreateGroup.copied)
                 .font(.subheadline.weight(.medium))
             }
             .foregroundStyle(.green)
@@ -147,7 +147,7 @@ struct CreateGroupSuccessView: View {
             HStack(spacing: 8) {
               Image(systemName: "square.and.arrow.up")
                 .font(.system(size: 18))
-              Text("공유하기")
+              Text(LocalizedStrings.CreateGroup.share)
                 .font(.headline)
             }
             .frame(maxWidth: .infinity)
@@ -164,7 +164,7 @@ struct CreateGroupSuccessView: View {
           }
 
           Button(action: onConfirm) {
-            Text("완료")
+            Text(LocalizedStrings.Common.done)
               .font(.headline)
               .frame(maxWidth: .infinity)
               .frame(height: 56)

@@ -31,8 +31,15 @@ public enum Tab: Equatable, Hashable {
   case settings
 
   public enum PromiseTabMode: String, Equatable, Hashable, Sendable {
-    case group = "그룹"
-    case own = "개인"
+    case group = "group"
+    case own = "own"
+
+    var displayTitle: String {
+      switch self {
+      case .group: return LocalizedStrings.RootTab.tabModeGroup
+      case .own: return LocalizedStrings.RootTab.tabModePersonal
+      }
+    }
   }
 
   var isPromise: Bool {
@@ -47,10 +54,10 @@ public enum Tab: Equatable, Hashable {
 
   var label: String {
     switch self {
-    case .home: return "홈"
-    case .promise(let mode): return mode.rawValue
-    case .calendar: return "캘린더"
-    case .settings: return "설정"
+    case .home: return LocalizedStrings.TabBar.home
+    case .promise(let mode): return mode.displayTitle
+    case .calendar: return LocalizedStrings.TabBar.calendar
+    case .settings: return LocalizedStrings.TabBar.settings
     }
   }
 
@@ -671,7 +678,7 @@ extension RootTab {
     private var tabView: some View {
       TabView(selection: $store.selectedTab.sending(\.tabSelected)) {
         tabContentView(for: .home)
-          .tabItem { Label("홈", systemImage: "house.fill") }
+          .tabItem { Label(LocalizedStrings.TabBar.home, systemImage: "house.fill") }
           .tag(Tab.home)
 
         tabContentView(for: .promise(store.promiseMode))
@@ -684,11 +691,11 @@ extension RootTab {
           .tag(Tab.promise(store.promiseMode))
 
         tabContentView(for: .calendar)
-          .tabItem { Label("캘린더", systemImage: "calendar") }
+          .tabItem { Label(LocalizedStrings.TabBar.calendar, systemImage: "calendar") }
           .tag(Tab.calendar)
 
         tabContentView(for: .settings)
-          .tabItem { Label("설정", systemImage: "gearshape.fill") }
+          .tabItem { Label(LocalizedStrings.TabBar.settings, systemImage: "gearshape.fill") }
           .tag(Tab.settings)
       }
       .tabViewStyle(.tabBarOnly)

@@ -30,7 +30,7 @@ extension ManageGroup {
             // Description
             if let description = store.group.description, !description.isEmpty {
               VStack(alignment: .leading, spacing: 8) {
-                Label("소개", systemImage: "text.alignleft")
+                Label(LocalizedStrings.ManageGroup.introduction, systemImage: "text.alignleft")
                   .font(.subheadline.weight(.semibold))
                   .foregroundStyle(.secondary)
 
@@ -45,7 +45,7 @@ extension ManageGroup {
             HStack(spacing: 24) {
               statItem(
                 icon: "person.2.fill",
-                label: "현재 인원",
+                label: LocalizedStrings.ManageGroup.currentMembers,
                 value: "\(store.group.memberIds.count)"
               )
 
@@ -54,7 +54,7 @@ extension ManageGroup {
 
               statItem(
                 icon: "person.3.fill",
-                label: "최대 인원",
+                label: LocalizedStrings.ManageGroup.maxMembers,
                 value: "\(store.group.maxMembers)"
               )
 
@@ -63,7 +63,7 @@ extension ManageGroup {
 
               statItem(
                 icon: "clock.fill",
-                label: "진행중 약속",
+                label: LocalizedStrings.ManageGroup.activePromises,
                 value: "\(store.activePromiseCount)"
               )
             }
@@ -75,14 +75,14 @@ extension ManageGroup {
           // Members Section
           VStack(alignment: .leading, spacing: 16) {
             HStack {
-              Label("멤버", systemImage: "person.2")
+              Label(LocalizedStrings.Group.members, systemImage: "person.2")
                 .font(.headline)
                 .foregroundStyle(.primary)
 
               Spacer()
 
               if case .loaded(let members) = store.membersState {
-                Text("\(members.count)명")
+                Text(LocalizedStrings.ManageGroup.membersCount(members.count))
                   .font(.subheadline.weight(.semibold))
                   .foregroundStyle(.secondary)
               }
@@ -98,7 +98,7 @@ extension ManageGroup {
             store.send(.view(.pastPromisesTapped))
           } label: {
             HStack {
-              Label("지난 약속", systemImage: "clock.arrow.circlepath")
+              Label(LocalizedStrings.ManageGroup.pastPromises, systemImage: "clock.arrow.circlepath")
                 .font(.headline)
                 .foregroundStyle(.primary)
 
@@ -123,7 +123,7 @@ extension ManageGroup {
         .padding(.horizontal, 20)
       }
       .auroraBackground()
-      .navigationTitle("그룹 상세")
+      .navigationTitle(LocalizedStrings.ManageGroup.title)
       .navigationBarTitleDisplayMode(.inline)
 //      .toolbar {
 //        ToolbarItem(placement: .topBarTrailing) {
@@ -153,36 +153,36 @@ extension ManageGroup {
 //      }
       .onAppear { store.send(.view(.onAppear)) }
       .confirmationDialog(
-        "그룹 나가기",
+        LocalizedStrings.ManageGroup.leaveGroup,
         isPresented: $showLeaveConfirmation,
         actions: {
-          Button("나가기", role: .destructive) {
+          Button(LocalizedStrings.ManageGroup.leave, role: .destructive) {
             store.send(.view(.confirmLeave))
           }
-          Button("취소", role: .cancel) {}
+          Button(LocalizedStrings.Common.cancel, role: .cancel) {}
         },
         message: {
-          Text("정말로 이 그룹을 나가시겠습니까?")
+          Text(LocalizedStrings.ManageGroup.leaveGroupConfirm)
         }
       )
       .confirmationDialog(
-        "그룹 삭제",
+        LocalizedStrings.ManageGroup.deleteGroup,
         isPresented: $showDeleteConfirmation,
         actions: {
-          Button("삭제", role: .destructive) {
+          Button(LocalizedStrings.Common.delete, role: .destructive) {
             store.send(.view(.confirmDelete))
           }
-          Button("취소", role: .cancel) {}
+          Button(LocalizedStrings.Common.cancel, role: .cancel) {}
         },
         message: {
-          Text("그룹을 삭제하면 모든 멤버가 그룹에서 제거되며, 복구할 수 없습니다.")
+          Text(LocalizedStrings.ManageGroup.deleteGroupConfirm)
         }
       )
       .alert(
-        "오류",
+        LocalizedStrings.Common.error,
         isPresented: .constant(store.leaveError != nil || store.deleteError != nil),
         actions: {
-          Button("확인") {
+          Button(LocalizedStrings.Common.ok) {
             store.send(.view(.dismissError))
           }
         },
@@ -246,27 +246,27 @@ extension ManageGroup {
         .presentationDetents([.medium, .large])
       }
       .confirmationDialog(
-        "호스트 양도",
+        LocalizedStrings.ManageGroup.transferHost,
         isPresented: $showTransferConfirmation,
         actions: {
-          Button("양도", role: .destructive) {
+          Button(LocalizedStrings.ManageGroup.transfer, role: .destructive) {
             store.send(.view(.confirmTransferHost))
           }
-          Button("취소", role: .cancel) {
+          Button(LocalizedStrings.Common.cancel, role: .cancel) {
             store.send(.view(.cancelTransferHost))
           }
         },
         message: {
           if let newHost = store.selectedNewHost {
-            Text("\(newHost.nickname)님에게 호스트를 양도하시겠습니까?\n양도 후에는 되돌릴 수 없습니다.")
+            Text(LocalizedStrings.ManageGroup.transferHostConfirm(newHost.nickname))
           }
         }
       )
       .alert(
-        "호스트 양도 실패",
+        LocalizedStrings.ManageGroup.transferHostFailed,
         isPresented: .constant(store.transferError != nil),
         actions: {
-          Button("확인") {
+          Button(LocalizedStrings.Common.ok) {
             store.send(.view(.dismissError))
           }
         },
@@ -300,7 +300,7 @@ extension ManageGroup {
         HStack(spacing: 6) {
           Image(systemName: store.isHost ? "crown.fill" : "person.fill")
             .font(.system(size: 12))
-          Text(store.isHost ? "호스트" : "멤버")
+          Text(store.isHost ? LocalizedStrings.ManageGroup.host : LocalizedStrings.ManageGroup.memberRole)
             .font(.system(size: 14, weight: .semibold))
         }
         .foregroundStyle(.white)
@@ -364,7 +364,7 @@ extension ManageGroup {
           Image(systemName: "exclamationmark.triangle")
             .font(.system(size: 32))
             .foregroundStyle(.secondary)
-          Text("멤버 목록을 불러올 수 없습니다")
+          Text(LocalizedStrings.ManageGroup.memberLoadFailed)
             .font(.subheadline)
             .foregroundStyle(.secondary)
         }
@@ -413,7 +413,7 @@ extension ManageGroup {
                     .foregroundStyle(.orange)
                     .frame(width: 24)
 
-                  Text("호스트 양도")
+                  Text(LocalizedStrings.ManageGroup.transferHost)
                     .font(.system(size: 16))
                     .foregroundStyle(.primary)
 
@@ -441,7 +441,7 @@ extension ManageGroup {
                   .foregroundStyle(.red)
                   .frame(width: 24)
 
-                Text("그룹 삭제")
+                Text(LocalizedStrings.ManageGroup.deleteGroup)
                   .font(.system(size: 16))
                   .foregroundStyle(.red)
 
@@ -471,7 +471,7 @@ extension ManageGroup {
                   .foregroundStyle(.primary)
                   .frame(width: 24)
 
-                Text("그룹 나가기")
+                Text(LocalizedStrings.ManageGroup.leaveGroup)
                   .font(.system(size: 16))
                   .foregroundStyle(.primary)
 
@@ -672,10 +672,10 @@ private struct TransferHostSheet: View {
               )
             )
 
-          Text("새로운 호스트 선택")
+          Text(LocalizedStrings.ManageGroup.selectNewHost)
             .font(.title2.weight(.bold))
 
-          Text("그룹을 관리할 새로운 호스트를 선택해주세요")
+          Text(LocalizedStrings.ManageGroup.selectNewHostDescription)
             .font(.subheadline)
             .foregroundStyle(.secondary)
             .multilineTextAlignment(.center)
@@ -750,7 +750,7 @@ private struct TransferHostSheet: View {
                 ProgressView()
                   .tint(.white)
               } else {
-                Text("호스트 양도")
+                Text(LocalizedStrings.ManageGroup.transferHost)
               }
             }
             .font(.headline)
@@ -769,7 +769,7 @@ private struct TransferHostSheet: View {
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
         ToolbarItem(placement: .topBarLeading) {
-          Button("취소") {
+          Button(LocalizedStrings.Common.cancel) {
             onCancel()
           }
         }

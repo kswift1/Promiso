@@ -424,7 +424,7 @@ public enum MaxMembers: Int, CaseIterable, Equatable, Sendable {
   case ten = 10
 
   var displayText: String {
-    "\(rawValue)명"
+    LocalizedStrings.CreateGroup.membersCount(rawValue)
   }
 }
 

@@ -129,7 +129,7 @@ struct PromiseSectionView: View {
   private func moreButton(count: Int, action: @escaping () -> Void) -> some View {
     Button(action: action) {
       HStack(spacing: 4) {
-        Text("\(count)개 더 보기")
+        Text(LocalizedStrings.GroupComponents.seeMoreCount(count))
           .font(.system(size: 14, weight: .medium))
         Image(systemName: "chevron.right")
           .font(.system(size: 12, weight: .medium))

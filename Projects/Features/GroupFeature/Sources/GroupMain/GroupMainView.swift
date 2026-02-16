@@ -198,14 +198,14 @@ extension GroupMain {
       MorphingFABMenu(
         items: [
           FABMenuItem(
-            title: "약속 생성",
+            title: LocalizedStrings.GroupMain.createPromise,
             icon: "calendar.badge.plus",
             tintColor: .pmindigo.n500
           ) {
             store.send(.view(.createNewPromise))
           },
           FABMenuItem(
-            title: "그룹 설정",
+            title: LocalizedStrings.GroupMain.groupSettings,
             icon: "gearshape",
             tintColor: .pmindigo.n500
           ) {
@@ -250,7 +250,7 @@ extension GroupMain {
           .foregroundStyle(.secondary)
           .multilineTextAlignment(.center)
 
-        Button("다시 시도") {
+        Button(LocalizedStrings.GroupMain.retry) {
           store.send(.view(.refreshTriggered))
         }
         .buttonStyle(.bordered)
@@ -408,14 +408,14 @@ extension GroupMain {
             Button {
               store.send(.view(.responseChanged(promiseId, .pending)))
             } label: {
-              Label("되돌리기", systemImage: "arrow.uturn.backward.circle.fill")
+              Label(LocalizedStrings.GroupMain.undo, systemImage: "arrow.uturn.backward.circle.fill")
             }
             .tint(.blue)
           } else {
             Button {
               store.send(.view(.proposalAccepted(promiseId)))
             } label: {
-              Label("수락", systemImage: "checkmark.circle.fill")
+              Label(LocalizedStrings.GroupMain.accept, systemImage: "checkmark.circle.fill")
             }
             .tint(.green)
           }
@@ -428,14 +428,14 @@ extension GroupMain {
             Button {
               store.send(.view(.responseChanged(promiseId, .pending)))
             } label: {
-              Label("되돌리기", systemImage: "arrow.uturn.backward.circle.fill")
+              Label(LocalizedStrings.GroupMain.undo, systemImage: "arrow.uturn.backward.circle.fill")
             }
             .tint(.blue)
           } else {
             Button {
               store.send(.view(.proposalRejected(promiseId)))
             } label: {
-              Label("거절", systemImage: "xmark.circle.fill")
+              Label(LocalizedStrings.GroupMain.reject, systemImage: "xmark.circle.fill")
             }
             .tint(.red)
           }
@@ -480,15 +480,15 @@ extension GroupMain {
     private var emptyFilterDescription: String {
       switch store.selectedFilter {
       case .needResponse:
-        return "지금은 응답이 필요한 약속이 없어요\n모든 약속에 응답한 상태예요 👍"
+        return LocalizedStrings.GroupMain.emptyNeedResponse
       case .responded:
-        return "아직 응답한 약속이 없어요\n확정되면 자동으로 확정 탭으로 옮겨져요"
+        return LocalizedStrings.GroupMain.emptyResponded
       case .confirmed:
-        return "아직 확정된 약속이 없어요\n+ 버튼으로 새 약속을 만들어보세요"
+        return LocalizedStrings.GroupMain.emptyConfirmed
       case .all:
-        return "지금은 진행 중이거나 예정된 약속이 없어요\n새 약속이나 초대가 생기면 여기에 보여요"
+        return LocalizedStrings.GroupMain.emptyAll
       case .past:
-        return "아직 지난 약속이 없어요\n완료된 약속 기록이 여기에 쌓여요"
+        return LocalizedStrings.GroupMain.emptyPast
       }
     }
 
@@ -557,7 +557,7 @@ extension GroupMain {
                 .font(.system(size: 47))
 
               // Description (2줄)
-              Text("아직 속한 그룹이 없어요\n상단의 + 버튼으로 그룹을 만들거나 참여해보세요")
+              Text(LocalizedStrings.GroupMain.noGroupsDescription)
                 .font(.system(size: 16))
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -752,7 +752,7 @@ private struct ShakeEffect: ViewModifier {
         HStack {
           let progress = clamp((shakeOffset - 8) / 40)
           swipeHintBubble(
-            title: "수락",
+            title: LocalizedStrings.GroupMain.accept,
             systemImage: "checkmark.circle.fill",
             fillColor: .green,
             progress: progress
@@ -773,7 +773,7 @@ private struct ShakeEffect: ViewModifier {
 
           let progress = clamp((abs(shakeOffset) - 8) / 40)
           swipeHintBubble(
-            title: "거절",
+            title: LocalizedStrings.GroupMain.reject,
             systemImage: "xmark.circle.fill",
             fillColor: .red,
             progress: progress

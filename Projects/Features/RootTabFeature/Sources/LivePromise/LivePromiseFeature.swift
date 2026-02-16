@@ -101,9 +101,17 @@ extension LivePromise {
 extension LivePromise {
   /// 상세 화면 탭 종류
   public enum DetailTab: String, CaseIterable, Equatable, Sendable {
-    case status = "현황"
-    case map = "지도"
-    case chat = "채팅"
+    case status = "status"
+    case map = "map"
+    case chat = "chat"
+
+    var displayTitle: String {
+      switch self {
+      case .status: return LocalizedStrings.LivePromise.tabStatus
+      case .map: return LocalizedStrings.LivePromise.tabMap
+      case .chat: return LocalizedStrings.LivePromise.tabChat
+      }
+    }
   }
 
   /// 약속 추적 상세 화면 Reducer

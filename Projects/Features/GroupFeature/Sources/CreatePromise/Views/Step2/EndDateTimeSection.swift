@@ -1,6 +1,7 @@
 import SwiftUI
 import Clients
 import ComposableArchitecture
+import PromisoShared
 import ResourceKit
 
 struct EndDateTimeSection: View {
@@ -13,7 +14,7 @@ struct EndDateTimeSection: View {
 
   var body: some View {
     SectionPlaceHolder(
-      placeHolderTitle: "종료 시간",
+      placeHolderTitle: LocalizedStrings.CreatePromise.endTime,
       placeHolderAccessory: {
         Toggle("", isOn: Binding(
           get: { useEndTime },
@@ -64,7 +65,7 @@ struct EndTimePicker: View {
   }
   
   private var durationText: String {
-    startDate.durationText(to: endDate, prefix: "총 ")
+    startDate.durationText(to: endDate, prefix: LocalizedStrings.CreatePromise.totalDurationPrefix)
   }
   
   private var formattedDate: String {
@@ -103,7 +104,7 @@ struct EndTimePicker: View {
               .foregroundColor(Color.pmindigo.n500)
 
             VStack(alignment: .leading, spacing: 2) {
-              Text("날짜")
+              Text(LocalizedStrings.Common.date)
                 .font(.system(size: 11))
                 .foregroundColor(.secondary)
               Text(formattedDate)
@@ -150,7 +151,7 @@ struct EndTimePicker: View {
               .foregroundColor(Color.pmindigo.n500)
 
             VStack(alignment: .leading, spacing: 2) {
-              Text("시간")
+              Text(LocalizedStrings.Common.time)
                 .font(.system(size: 11))
                 .foregroundColor(.secondary)
               Text(formattedTime)

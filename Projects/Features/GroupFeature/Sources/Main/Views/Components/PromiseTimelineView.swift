@@ -1,5 +1,6 @@
 import SwiftUI
 import Clients
+import PromisoShared
 
 // MARK: - Swipe Action Config
 
@@ -188,7 +189,7 @@ private struct PromiseRow: View {
     case .accepted:
       // 이미 수락한 경우 → 되돌리기
       return SwipeActionConfig(
-        title: "되돌리기",
+        title: LocalizedStrings.GroupMain.undo,
         systemImage: "arrow.uturn.backward.circle.fill",
         color: .blue,
         action: { onChangeResponse?(promise.id, .pending) }
@@ -196,7 +197,7 @@ private struct PromiseRow: View {
     case .declined, .pending:
       // 거절했거나 미응답 → 수락
       return SwipeActionConfig(
-        title: "수락",
+        title: LocalizedStrings.GroupMain.accept,
         systemImage: "checkmark.circle.fill",
         color: .green,
         action: { onAccept(promise.id) }
@@ -210,7 +211,7 @@ private struct PromiseRow: View {
     case .declined:
       // 이미 거절한 경우 → 되돌리기
       return SwipeActionConfig(
-        title: "되돌리기",
+        title: LocalizedStrings.GroupMain.undo,
         systemImage: "arrow.uturn.backward.circle.fill",
         color: .blue,
         action: { onChangeResponse?(promise.id, .pending) }
@@ -218,7 +219,7 @@ private struct PromiseRow: View {
     case .accepted, .pending:
       // 수락했거나 미응답 → 거절
       return SwipeActionConfig(
-        title: "거절",
+        title: LocalizedStrings.GroupMain.reject,
         systemImage: "xmark.circle.fill",
         color: .red,
         action: { onReject(promise.id) }
@@ -356,7 +357,7 @@ private struct ErrorView: View {
         .font(.system(size: 60))
         .foregroundColor(.orange)
 
-      Text("오류가 발생했습니다")
+      Text(LocalizedStrings.GroupComponents.errorOccurred)
         .font(.system(size: 18, weight: .semibold))
         .foregroundColor(.primary)
 
@@ -403,13 +404,13 @@ private struct EmptyPromisesView: View {
   private var message: String {
     switch filter {
     case .all:
-      return "아직 약속이 없어요\n새로운 약속을 만들어보세요"
+      return LocalizedStrings.GroupComponents.emptyAll
     case .needResponse:
-      return "답변이 필요한 약속이 없어요"
+      return LocalizedStrings.GroupComponents.emptyNeedResponse
     case .responded:
-      return "응답한 약속이 없어요"
+      return LocalizedStrings.GroupComponents.emptyResponded
     case .confirmed:
-      return "확정된 약속이 없어요"
+      return LocalizedStrings.GroupComponents.emptyConfirmed
     }
   }
 }

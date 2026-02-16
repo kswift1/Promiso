@@ -72,7 +72,7 @@ struct PromiseCard: View {
   }
 
   private var isLocationUndecided: Bool {
-    promise.locationText == "장소 미정"
+    promise.location?.name == nil
   }
 
   private var hasCoordinates: Bool {
@@ -102,7 +102,7 @@ struct PromiseCard: View {
 
   @ViewBuilder
   private var confirmationProgressText: some View {
-    Text("약속 확정까지 \(remainingForConfirmation)명 남았어요!")
+    Text(LocalizedStrings.PromiseCard.confirmationRemaining(remainingForConfirmation))
       .font(.system(size: 13, weight: .medium))
       .foregroundColor(.orange)
   }
@@ -121,15 +121,15 @@ struct PromiseCard: View {
 
         VStack(alignment: .leading, spacing: 2) {
           if isHost {
-            Text("내 약속 제안")
+            Text(LocalizedStrings.PromiseCard.myProposal)
               .font(.system(size: 13, weight: .semibold))
               .foregroundColor(.primary)
           } else if let hostName = host?.displayName {
-            Text("\(hostName)님의 약속 제안")
+            Text(LocalizedStrings.PromiseCard.hostProposal(hostName))
               .font(.system(size: 13, weight: .semibold))
               .foregroundColor(.primary)
           } else {
-            Text("약속 제안")
+            Text(LocalizedStrings.PromiseCard.proposal)
               .font(.system(size: 13, weight: .semibold))
               .foregroundColor(.primary)
           }
@@ -191,7 +191,7 @@ struct PromiseCard: View {
               HStack(spacing: 4) {
                 Text("📡")
                   .font(.system(size: 14))
-                Text("\(minutes)분 전 실시간 공유 시작")
+                Text(LocalizedStrings.PromiseCard.liveShareStart(minutes))
                   .font(.system(size: 14, weight: .medium))
               }
               .foregroundColor(.secondary)
@@ -202,7 +202,7 @@ struct PromiseCard: View {
               HStack(spacing: 4) {
                 Text("📷")
                   .font(.system(size: 14))
-                Text("사진 \(promise.imageUrls.count)장")
+                Text(LocalizedStrings.PromiseCard.photoCount(promise.imageUrls.count))
                   .font(.system(size: 14, weight: .medium))
               }
               .foregroundColor(.secondary)
@@ -216,7 +216,7 @@ struct PromiseCard: View {
       // Bottom Section - Participant count & Avatars
       HStack {
         // Participant count (투표한 인원 / 전체 인원)
-        Text("\(promise.votes.votedCount)/\(groupMembers?.count ?? 0)명 투표")
+        Text(LocalizedStrings.PromiseCard.voteCount(promise.votes.votedCount, groupMembers?.count ?? 0))
           .font(.system(size: 13, weight: .medium))
           .foregroundColor(.secondary)
 
@@ -255,7 +255,7 @@ struct PromiseCard: View {
                 HStack(spacing: 4) {
                   Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
                     .font(.system(size: 12, weight: .semibold))
-                  Text("길찾기")
+                  Text(LocalizedStrings.Common.directions)
                     .font(.system(size: 12, weight: .semibold))
                 }
                 .foregroundColor(Color.pmindigo.n500)
@@ -275,22 +275,22 @@ struct PromiseCard: View {
     .contextMenu {
       // 응답 변경 옵션 (과거 약속, 실시간 공유 중인 약속은 제외)
       if let onChangeResponse = onChangeResponse, !promise.isPast, !promise.isRealtimeShareable {
-        Section("응답 변경") {
+        Section(LocalizedStrings.PromiseCard.changeResponse) {
           if myVoteStatus != .accepted {
             Button(action: { onChangeResponse(.accepted) }) {
-              Label("수락", systemImage: "checkmark.circle.fill")
+              Label(LocalizedStrings.PromiseCard.acceptAction, systemImage: "checkmark.circle.fill")
             }
           }
 
           if myVoteStatus != .declined {
             Button(action: { onChangeResponse(.declined) }) {
-              Label("거절", systemImage: "xmark.circle.fill")
+              Label(LocalizedStrings.PromiseCard.rejectAction, systemImage: "xmark.circle.fill")
             }
           }
 
           if myVoteStatus != .pending {
             Button(action: { onChangeResponse(.pending) }) {
-              Label("미정으로 되돌리기", systemImage: "arrow.uturn.backward.circle.fill")
+              Label(LocalizedStrings.PromiseCard.resetToPending, systemImage: "arrow.uturn.backward.circle.fill")
             }
           }
         }
@@ -300,25 +300,25 @@ struct PromiseCard: View {
       if isHost {
         if canEdit, let onEdit = onEdit {
           Button(action: onEdit) {
-            Label("약속 수정", systemImage: "pencil")
+            Label(LocalizedStrings.PromiseCard.editPromise, systemImage: "pencil")
           }
         }
 
         if let onDelete = onDelete {
           Button(role: .destructive, action: onDelete) {
-            Label("약속 삭제", systemImage: "trash")
+            Label(LocalizedStrings.PromiseCard.deletePromise, systemImage: "trash")
           }
         }
       }
 
       // 항상 표시되는 옵션들
       Button(action: onTap) {
-        Label("상세 보기", systemImage: "info.circle")
+        Label(LocalizedStrings.PromiseCard.viewDetail, systemImage: "info.circle")
       }
 
       if let onShare {
         Button(action: onShare) {
-          Label("공유하기", systemImage: "square.and.arrow.up")
+          Label(LocalizedStrings.PromiseCard.share, systemImage: "square.and.arrow.up")
         }
       }
     }
@@ -380,9 +380,9 @@ private struct ResponseBadge: View {
   private var title: String {
     switch status {
     case .accepted:
-      return "수락함"
+      return LocalizedStrings.PromiseCard.responseAccepted
     case .declined:
-      return "거절함"
+      return LocalizedStrings.PromiseCard.responseDeclined
     case .pending:
       return ""
     }
@@ -404,7 +404,7 @@ private struct ResponseBadge: View {
       Circle()
         .fill(color)
         .frame(width: 6, height: 6)
-      Text("내 응답: \(title)")
+      Text(LocalizedStrings.PromiseCard.myResponseLabel(title))
         .font(.system(size: 12, weight: .semibold))
         .foregroundColor(color)
     }
@@ -426,11 +426,11 @@ private struct StatusBadge: View {
   private var respondingText: String {
     switch respondingState {
     case .accepting:
-      return "수락 중"
+      return LocalizedStrings.PromiseCard.accepting
     case .rejecting:
-      return "거절 중"
+      return LocalizedStrings.PromiseCard.rejecting
     case .resetting:
-      return "되돌리는 중"
+      return LocalizedStrings.PromiseCard.resetting
     case .idle:
       return ""
     }
@@ -506,10 +506,10 @@ private struct StatusBadge: View {
 extension PromiseResponseStatus {
   var displayText: String {
     switch self {
-    case .needResponse: return "응답 필요"
-    case .responded: return "확정 대기"
-    case .confirmed: return "확정됨"
-    case .failed: return "미성사"
+    case .needResponse: return LocalizedStrings.PromiseCard.statusNeedResponse
+    case .responded: return LocalizedStrings.PromiseCard.statusResponded
+    case .confirmed: return LocalizedStrings.PromiseCard.statusConfirmed
+    case .failed: return LocalizedStrings.PromiseCard.statusFailed
     }
   }
 
