@@ -15,6 +15,54 @@ import * as https from "https";
 // 기상청 API 키 (Secret Manager에서 관리)
 const KMA_API_KEY = defineSecret("KMA_API_KEY");
 
+// MARK: - Server Cache
+
+const CACHE_TTL_MS = 30 * 60 * 1000; // 30분
+const CACHE_MAX_ENTRIES = 500;
+
+interface CacheEntry {
+  expiresAt: number;
+  value: GetWeatherResponse;
+}
+
+const weatherCache = new Map<string, CacheEntry>();
+
+function buildCacheKey(
+  lat: number, lng: number, dateStr: string
+): string {
+  const date = new Date(dateStr);
+  const hourBucket = Math.floor(
+    date.getTime() / (60 * 60 * 1000)
+  );
+  return `${lat.toFixed(2)}_${lng.toFixed(2)}_${hourBucket}`;
+}
+
+function readCache(
+  key: string, now: number
+): GetWeatherResponse | null {
+  const entry = weatherCache.get(key);
+  if (!entry) return null;
+  if (entry.expiresAt <= now) {
+    weatherCache.delete(key);
+    return null;
+  }
+  return entry.value;
+}
+
+function writeCache(
+  key: string, value: GetWeatherResponse, now: number
+): void {
+  weatherCache.set(key, {
+    value,
+    expiresAt: now + CACHE_TTL_MS,
+  });
+  if (weatherCache.size > CACHE_MAX_ENTRIES) {
+    for (const [k, v] of weatherCache.entries()) {
+      if (v.expiresAt <= now) weatherCache.delete(k);
+    }
+  }
+}
+
 /**
  * 날씨 조회 요청
  */
@@ -362,7 +410,18 @@ export const getWeather = onCall<GetWeatherRequest>(
       );
     }
 
-    // 1. API 키 확인 → 없으면 Mock 데이터
+    // 1. 캐시 확인
+    const now = Date.now();
+    const cacheKey = buildCacheKey(
+      latitude, longitude, targetDate
+    );
+    const cached = readCache(cacheKey, now);
+    if (cached) {
+      console.log(`Weather: cache hit ${cacheKey}`);
+      return cached;
+    }
+
+    // 2. API 키 확인 → 없으면 Mock 데이터
     const apiKey = KMA_API_KEY.value().trim();
     if (!apiKey) {
       console.log(
@@ -559,7 +618,9 @@ export const getWeather = onCall<GetWeatherRequest>(
         `Weather: ${forecasts.length} slots`
       );
 
-      return {forecasts};
+      const result = {forecasts};
+      writeCache(cacheKey, result, now);
+      return result;
     } catch (error) {
       if (error instanceof HttpsError) {
         throw error;
