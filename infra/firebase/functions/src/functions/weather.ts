@@ -27,6 +27,13 @@ interface CacheEntry {
 
 const weatherCache = new Map<string, CacheEntry>();
 
+/**
+ * 캐시 키 생성 (좌표 + 시간 버킷)
+ * @param {number} lat - 위도
+ * @param {number} lng - 경도
+ * @param {string} dateStr - ISO 8601 날짜
+ * @return {string} 캐시 키
+ */
 function buildCacheKey(
   lat: number, lng: number, dateStr: string
 ): string {
@@ -37,6 +44,12 @@ function buildCacheKey(
   return `${lat.toFixed(2)}_${lng.toFixed(2)}_${hourBucket}`;
 }
 
+/**
+ * 캐시 조회 (만료 시 자동 삭제)
+ * @param {string} key - 캐시 키
+ * @param {number} now - 현재 시각 (epoch ms)
+ * @return {GetWeatherResponse | null} 캐시된 응답
+ */
 function readCache(
   key: string, now: number
 ): GetWeatherResponse | null {
@@ -49,6 +62,12 @@ function readCache(
   return entry.value;
 }
 
+/**
+ * 캐시 저장 (초과 시 만료 항목 정리)
+ * @param {string} key - 캐시 키
+ * @param {GetWeatherResponse} value - 응답 데이터
+ * @param {number} now - 현재 시각 (epoch ms)
+ */
 function writeCache(
   key: string, value: GetWeatherResponse, now: number
 ): void {
