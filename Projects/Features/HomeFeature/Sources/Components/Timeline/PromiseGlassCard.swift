@@ -4,6 +4,7 @@ import PromisoShared
 struct PromiseGlassCard: View {
   let promise: PromiseModel
   let currentUserId: String
+  let weather: WeatherInfo?
   let onTap: () -> Void
 
   private var myVoteStatus: VoteStatus {
@@ -52,17 +53,27 @@ struct PromiseGlassCard: View {
               .lineLimit(1)
           }
 
-          // 장소
+          // 장소 + 날씨
           if let location = promise.location {
-            HStack(spacing: 4) {
-              Image(systemName: "location.fill")
-                .font(.caption2)
+            HStack(spacing: 6) {
+              HStack(spacing: 4) {
+                Image(systemName: "location.fill")
+                  .font(.caption2)
 
-              Text(location.name)
-                .font(.caption)
-                .lineLimit(1)
+                Text(location.name)
+                  .font(.caption)
+                  .lineLimit(1)
+              }
+              .foregroundStyle(.secondary)
+
+              if let weather = weather,
+                 let forecast = weather.forecast(for: promise.startAt) {
+                WeatherBadge(
+                  forecast: forecast,
+                  referenceTimeText: promise.startAt.formattedTime
+                )
+              }
             }
-            .foregroundStyle(.secondary)
           }
 
           // 하단: 투표 상태 점 + 마감 정보

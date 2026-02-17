@@ -9,6 +9,7 @@ import ResourceKit
 struct UpcomingDateCard: View {
   let date: Date
   let items: [HomeModels.ScheduleItem]
+  let weatherCache: [String: WeatherInfo]
   let onItemTap: (HomeModels.ScheduleItem) -> Void
 
   var body: some View {
@@ -23,12 +24,14 @@ struct UpcomingDateCard: View {
           case .promise(let promise):
             UpcomingPromiseRow(
               promise: promise,
+              weather: weatherCache[promise.id],
               onTap: { onItemTap(item) }
             )
 
           case .personalEvent(let event):
             UpcomingPersonalEventRow(
               event: event,
+              weather: weatherCache[event.id],
               onTap: { onItemTap(item) }
             )
           }
@@ -97,6 +100,7 @@ struct UpcomingDateCard: View {
 /// 카드 내부의 개별 약속 행
 private struct UpcomingPromiseRow: View {
   let promise: PromiseModel
+  let weather: WeatherInfo?
   let onTap: () -> Void
 
   var body: some View {
@@ -115,7 +119,7 @@ private struct UpcomingPromiseRow: View {
               .lineLimit(1)
           }
 
-          // 시간 + 장소
+          // 시간 + 장소 + 날씨
           HStack(spacing: 12) {
             // 시간
             HStack(spacing: 3) {
@@ -140,6 +144,15 @@ private struct UpcomingPromiseRow: View {
                   .font(.pmCaption)
                   .lineLimit(1)
               }
+            }
+
+            // 날씨
+            if let weather = weather,
+               let forecast = weather.forecast(for: promise.startAt) {
+              WeatherBadge(
+                forecast: forecast,
+                referenceTimeText: promise.startAt.formattedTime
+              )
             }
           }
           .foregroundStyle(.secondary)
@@ -195,6 +208,7 @@ private struct UpcomingPromiseRow: View {
 /// 카드 내부의 개별 개인 일정 행
 private struct UpcomingPersonalEventRow: View {
   let event: PersonalEventModel
+  let weather: WeatherInfo?
   let onTap: () -> Void
 
   var body: some View {
@@ -213,7 +227,7 @@ private struct UpcomingPersonalEventRow: View {
               .lineLimit(1)
           }
 
-          // 시간 + 장소
+          // 시간 + 장소 + 날씨
           HStack(spacing: 12) {
             // 시간
             HStack(spacing: 3) {
@@ -238,6 +252,15 @@ private struct UpcomingPersonalEventRow: View {
                   .font(.pmCaption)
                   .lineLimit(1)
               }
+            }
+
+            // 날씨
+            if let weather = weather,
+               let forecast = weather.forecast(for: event.startAt) {
+              WeatherBadge(
+                forecast: forecast,
+                referenceTimeText: event.startAt.formattedTime
+              )
             }
           }
           .foregroundStyle(.secondary)
@@ -290,6 +313,7 @@ private struct UpcomingPersonalEventRow: View {
         )),
         .promise(PromiseModel.mock(id: "3", title: "저녁 약속", startAt: Date().addingTimeInterval(86400 + 7200)))
       ],
+      weatherCache: [:],
       onItemTap: { _ in }
     )
 
@@ -304,6 +328,7 @@ private struct UpcomingPersonalEventRow: View {
           startAt: Date().addingTimeInterval(172800)
         ))
       ],
+      weatherCache: [:],
       onItemTap: { _ in }
     )
   }

@@ -8,6 +8,7 @@ import ResourceKit
 /// 다가오는 일정 섹션 - 확정된 미래 약속과 개인 일정
 struct UpcomingSection: View {
   let items: [HomeModels.ScheduleItem]
+  let weatherCache: [String: WeatherInfo]
   let onItemTap: (HomeModels.ScheduleItem) -> Void
   let onSeeAllTap: () -> Void
 
@@ -28,6 +29,7 @@ struct UpcomingSection: View {
             UpcomingDateCard(
               date: group.date,
               items: group.items,
+              weatherCache: weatherCache,
               onItemTap: onItemTap
             )
           }
@@ -139,6 +141,7 @@ private struct DateGroup {
       .promise(PromiseModel.mock(id: "2", title: "저녁 식사", startAt: Date().addingTimeInterval(172800))),
       .promise(PromiseModel.mock(id: "3", title: "영화 관람", startAt: Date().addingTimeInterval(259200)))
     ],
+    weatherCache: [:],
     onItemTap: { _ in },
     onSeeAllTap: {}
   )
@@ -149,6 +152,7 @@ private struct DateGroup {
 #Preview("일정 없음") {
   UpcomingSection(
     items: [],
+    weatherCache: [:],
     onItemTap: { _ in },
     onSeeAllTap: {}
   )

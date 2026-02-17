@@ -9,6 +9,7 @@ struct TimelineItemView: View {
   let promise: PromiseModel
   let isFirst: Bool
   let isLast: Bool
+  let weather: WeatherInfo?
   let onTap: () -> Void
 
   @State private var showLiveActivityInfo = false
@@ -115,20 +116,30 @@ struct TimelineItemView: View {
       }
       .foregroundStyle(.secondary)
 
-      // 장소
+      // 장소 + 날씨
       if let location = promise.location {
-        HStack(spacing: 4) {
-          ResourceKitAsset.locationIcon.swiftUIImage
-            .renderingMode(.template)
-            .resizable()
-            .scaledToFit()
-            .frame(width: 14, height: 14)
+        HStack(spacing: 6) {
+          HStack(spacing: 4) {
+            ResourceKitAsset.locationIcon.swiftUIImage
+              .renderingMode(.template)
+              .resizable()
+              .scaledToFit()
+              .frame(width: 14, height: 14)
 
-          Text(location.name)
-            .font(.pmCaption)
-            .lineLimit(1)
+            Text(location.name)
+              .font(.pmCaption)
+              .lineLimit(1)
+          }
+          .foregroundStyle(.secondary)
+
+          if let weather = weather,
+             let forecast = weather.forecast(for: promise.startAt) {
+            WeatherBadge(
+              forecast: forecast,
+              referenceTimeText: promise.startAt.formattedTime
+            )
+          }
         }
-        .foregroundStyle(.secondary)
       }
 
       // 실시간 공유 시작 시간
@@ -248,6 +259,7 @@ struct TimelineItemView: View {
       ),
       isFirst: true,
       isLast: false,
+      weather: nil,
       onTap: {}
     )
 
@@ -259,6 +271,7 @@ struct TimelineItemView: View {
       ),
       isFirst: false,
       isLast: true,
+      weather: nil,
       onTap: {}
     )
   }

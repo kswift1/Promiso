@@ -20,12 +20,15 @@ struct PromiseCard: View {
   let statusOverride: PromiseResponseStatus?
   let showsResponseDetails: Bool
 
+  let weather: WeatherInfo?
+
   init(
     promise: PromiseModel,
     currentUserId: String,
     groupMembers: [UserPublicModel]?,
     respondingState: GroupMain.RespondingState,
     isLive: Bool = false,
+    weather: WeatherInfo? = nil,
     onTap: @escaping () -> Void,
     onAccept: @escaping () -> Void,
     onReject: @escaping () -> Void,
@@ -42,6 +45,7 @@ struct PromiseCard: View {
     self.groupMembers = groupMembers
     self.respondingState = respondingState
     self.isLive = isLive
+    self.weather = weather
     self.onTap = onTap
     self.onAccept = onAccept
     self.onReject = onReject
@@ -177,13 +181,23 @@ struct PromiseCard: View {
 
             // Location (only if not "장소 미정")
             if !isLocationUndecided {
-              HStack(spacing: 4) {
-                Text("📍")
-                  .font(.system(size: 14))
-                Text(promise.locationText)
-                  .font(.system(size: 14, weight: .medium))
+              HStack(spacing: 8) {
+                HStack(spacing: 4) {
+                  Text("📍")
+                    .font(.system(size: 14))
+                  Text(promise.locationText)
+                    .font(.system(size: 14, weight: .medium))
+                }
+                .foregroundColor(.primary)
+
+                if let weather = weather,
+                   let forecast = weather.forecast(for: promise.startAt) {
+                  WeatherBadge(
+                    forecast: forecast,
+                    referenceTimeText: promise.startAt.formattedTime
+                  )
+                }
               }
-              .foregroundColor(.primary)
             }
 
             // Arrival Sharing (과거 약속은 표시 안 함)

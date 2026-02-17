@@ -20,6 +20,15 @@ extension PromiseDetail {
           headerSection
           scheduleSection
 
+          // 날씨 섹션
+          if let weatherInfo = store.weatherInfo {
+            PromiseDetailWeatherSection(
+              weatherInfo: weatherInfo,
+              startAt: store.promise.startAt,
+              endAt: store.promise.endAt
+            )
+          }
+
           // 이미지 갤러리
           if !store.promise.imageUrls.isEmpty {
             imageGallerySection

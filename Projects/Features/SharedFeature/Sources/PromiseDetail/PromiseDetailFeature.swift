@@ -12,6 +12,7 @@ extension PromiseDetail {
     @Dependency(\.groupClient) var groupClient
     @Dependency(\.calendarSyncClient) var calendarSyncClient
     @Dependency(\.analyticsClient) var analyticsClient
+    @Dependency(\.weatherClient) var weatherClient
 
     public init() {}
 
@@ -26,6 +27,13 @@ extension PromiseDetail {
       // 그룹 멤버 정보 (참여자 이름 표시용)
       var groupMembers: [UserPublicModel]?
       var isLoadingMembers: Bool = false
+
+      // 날씨 정보
+      var weatherInfo: WeatherInfo?
+
+      /// 날씨 캐시 (전역 공유)
+      @Shared(.inMemory("weatherCache"))
+      var weatherCache: [String: WeatherInfo] = [:]
 
       /// 그룹 멤버 캐시 (전역 공유)
       @Shared(.inMemory(AppConstants.SharedState.groupMembersCache))
@@ -148,6 +156,8 @@ extension PromiseDetail {
         case groupMembersFetched(Result<[UserPublicModel], Error>)
         case fetchRealPromise
         case realPromiseFetched(Result<PromiseModel, Error>)
+        case fetchWeather
+        case weatherFetched(Result<WeatherInfo, Error>)
       }
 
       @CasePathable
@@ -164,16 +174,32 @@ extension PromiseDetail {
         case .view(let viewAction):
           switch viewAction {
           case .onAppear:
+            // 날씨 캐시 확인
+            if let cached = state.weatherCache[state.promise.id] {
+              state.weatherInfo = cached
+            }
+
             // 그룹 멤버 캐시 확인 → 없으면 로드
             if state.groupMembers == nil {
               // 캐시에서 먼저 확인
               if let cached = state.groupMembersCache[state.promise.groupId] {
                 state.groupMembers = cached
+                // 날씨만 fetch (캐시 없으면)
+                if state.weatherInfo == nil {
+                  return .send(.internal(.fetchWeather))
+                }
                 return .none
               }
-              // 캐시 miss → 서버에서 로드
+              // 캐시 miss → 서버에서 로드 + 날씨
               state.isLoadingMembers = true
-              return .send(.internal(.fetchGroupMembers))
+              return .merge(
+                .send(.internal(.fetchGroupMembers)),
+                state.weatherInfo == nil ? .send(.internal(.fetchWeather)) : .none
+              )
+            }
+            // 날씨만 fetch (캐시 없으면)
+            if state.weatherInfo == nil {
+              return .send(.internal(.fetchWeather))
             }
             return .none
 
@@ -410,6 +436,33 @@ extension PromiseDetail {
               state.promise = promise
             case .failure:
               break // 실패해도 기존 데이터 유지
+            }
+            return .none
+
+          case .fetchWeather:
+            guard let lat = state.promise.location?.latitude,
+                  let lng = state.promise.location?.longitude,
+                  !state.promise.isPast else {
+              return .none
+            }
+            // 예보 범위(10일) 밖이면 조회 안 함
+            let maxDate = Date().addingTimeInterval(10 * 24 * 3600)
+            guard state.promise.startAt < maxDate else { return .none }
+
+            let date = state.promise.startAt
+            return .run { [weatherClient] send in
+              do {
+                let info = try await weatherClient.getWeather(lat, lng, date)
+                await send(.internal(.weatherFetched(.success(info))))
+              } catch {
+                await send(.internal(.weatherFetched(.failure(error))))
+              }
+            }
+
+          case .weatherFetched(let result):
+            if case .success(let info) = result {
+              state.weatherInfo = info
+              state.$weatherCache.withLock { $0[state.promise.id] = info }
             }
             return .none
           }

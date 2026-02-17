@@ -1,4 +1,5 @@
 import SwiftUI
+import Clients
 import PromisoShared
 import ResourceKit
 
@@ -7,6 +8,7 @@ import ResourceKit
 /// 응답 필요 개별 카드 - 탭하면 해당 그룹 약속으로 이동
 struct PendingCard: View {
   let promise: PromiseModel
+  let weather: WeatherInfo?
   let onTap: () -> Void
 
   var body: some View {
@@ -30,7 +32,7 @@ struct PendingCard: View {
             .lineLimit(1)
         }
 
-        // 날짜 + 시간
+        // 날짜 + 시간 + 날씨
         HStack(spacing: 4) {
           ResourceKitAsset.calendarIcon.swiftUIImage
             .resizable()
@@ -39,6 +41,16 @@ struct PendingCard: View {
 
           Text(dateTimeString)
             .font(.caption)
+
+          if let weather = weather,
+             let forecast = weather.forecast(for: promise.startAt) {
+            Image(systemName: forecast.condition.sfSymbolName)
+              .symbolRenderingMode(.multicolor)
+              .font(.caption)
+            Text("\(Int(forecast.temperature))°")
+              .font(.caption)
+              .foregroundStyle(forecast.condition.iconColor)
+          }
         }
         .foregroundStyle(.secondary)
 
@@ -195,11 +207,13 @@ struct PendingCard: View {
   HStack {
     PendingCard(
       promise: PromiseModel.mock(id: "1", title: "저녁 모임"),
+      weather: nil,
       onTap: {}
     )
 
     PendingCard(
       promise: PromiseModel.mock(id: "2", title: "주말 약속"),
+      weather: nil,
       onTap: {}
     )
   }

@@ -43,17 +43,20 @@ extension PromiseResponseStatus {
 struct PromiseCardView: View {
   let promise: PromiseModel
   let currentUserId: String
+  let weather: WeatherInfo?
   let onTap: () -> Void
   let onRespond: (() -> Void)?
 
   init(
     promise: PromiseModel,
     currentUserId: String,
+    weather: WeatherInfo? = nil,
     onTap: @escaping () -> Void,
     onRespond: (() -> Void)? = nil
   ) {
     self.promise = promise
     self.currentUserId = currentUserId
+    self.weather = weather
     self.onTap = onTap
     self.onRespond = onRespond
   }
@@ -127,16 +130,26 @@ struct PromiseCardView: View {
               .lineLimit(1)
           }
 
-          // 위치 (있는 경우)
+          // 위치 + 날씨 (있는 경우)
           if let location = promise.location {
-            HStack(spacing: 4) {
-              Image(systemName: "location.fill")
-                .font(.system(size: 10))
-              Text(location.name)
-                .font(.system(size: 13))
-                .lineLimit(1)
+            HStack(spacing: 8) {
+              HStack(spacing: 4) {
+                Image(systemName: "location.fill")
+                  .font(.system(size: 10))
+                Text(location.name)
+                  .font(.system(size: 13))
+                  .lineLimit(1)
+              }
+              .foregroundColor(.secondary.opacity(0.8))
+
+              if let weather = weather,
+                 let forecast = weather.forecast(for: promise.startAt) {
+                WeatherBadge(
+                  forecast: forecast,
+                  referenceTimeText: promise.startAt.formattedTime
+                )
+              }
             }
-            .foregroundColor(.secondary.opacity(0.8))
           }
 
           // 실시간 공유 (과거 약속은 표시 안 함)
