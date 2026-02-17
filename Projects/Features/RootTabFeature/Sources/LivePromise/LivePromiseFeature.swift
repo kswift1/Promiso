@@ -96,6 +96,21 @@ extension LivePromise {
   }
 }
 
+private extension LiveActivityClientError {
+  var userMessage: String {
+    switch self {
+    case .notSupported:
+      return LocalizedStrings.LivePromise.errorNotSupported
+    case .activityNotFound:
+      return LocalizedStrings.LivePromise.errorActivityNotFound
+    case .startFailed:
+      return LocalizedStrings.LivePromise.errorStartFailed
+    case .updateFailed:
+      return LocalizedStrings.LivePromise.errorUpdateFailed
+    }
+  }
+}
+
 // MARK: - Detail Feature
 
 extension LivePromise {
@@ -447,7 +462,11 @@ extension LivePromise {
 
                 try await liveActivityClient.update(activityId, updatedState)
                 await send(.internal(.etaUpdateSent))
+              } catch let clientError as LiveActivityClientError {
+                AppLogger.liveActivity.error("ETA 업데이트 실패: \(clientError.userMessage)")
+                await send(.internal(.etaUpdateFailed))
               } catch {
+                AppLogger.liveActivity.error("ETA 업데이트 실패: \(error.localizedDescription)")
                 await send(.internal(.etaUpdateFailed))
               }
             }
