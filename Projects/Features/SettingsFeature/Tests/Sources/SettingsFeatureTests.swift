@@ -259,7 +259,7 @@ struct SettingsFeatureTests {
     }
     await store.receive(\.internal.logoutFailed) {
       $0.isLoading = false
-      $0.errorMessage = AuthClientError.unknown.localizedDescription
+      $0.errorMessage = LocalizedStrings.Error.unknownError
     }
   }
 

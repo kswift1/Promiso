@@ -287,3 +287,20 @@ extension ManageGroup {
     }
   }
 }
+
+// MARK: - AuthClientError Localization
+
+extension AuthClientError {
+  var localizedMessage: String {
+    switch self {
+    case .invalidCredentials: return LocalizedStrings.Error.authInvalidCredentials
+    case .alreadyExists: return LocalizedStrings.Error.authAlreadyExists
+    case .network: return LocalizedStrings.Error.authNetwork
+    case .invalidAppleCredential: return LocalizedStrings.Error.authInvalidAppleCredential
+    case .missingIdentityToken: return LocalizedStrings.Error.authMissingIdentityToken
+    case .providerUnavailable: return LocalizedStrings.Error.authProviderUnavailable
+    case .isGroupHost: return LocalizedStrings.Error.authIsGroupHost
+    case .unknown: return LocalizedStrings.Error.unknownError
+    }
+  }
+}
