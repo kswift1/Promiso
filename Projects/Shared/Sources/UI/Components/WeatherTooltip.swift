@@ -2,10 +2,10 @@ import SwiftUI
 
 // MARK: - Weather Tooltip (Level 2)
 
-/// 플로팅 팝오버 - 행동 추천 + 날씨 상세
+/// 플로팅 팝오버 - 날씨 요약 + 자연어 제안
 public struct WeatherTooltip: View {
   private let forecast: HourlyForecast
-  private let advices: [WeatherAdvice]
+  private let suggestions: [WeatherSuggestion]
   private let referenceTimeText: String?
 
   public init(
@@ -14,32 +14,12 @@ public struct WeatherTooltip: View {
     referenceTimeText: String? = nil
   ) {
     self.forecast = forecast
-    self.advices = advices.isEmpty ? WeatherAdvice.from(forecast: forecast) : advices
+    self.suggestions = WeatherSuggestion.from(forecast: forecast)
     self.referenceTimeText = referenceTimeText
   }
 
   public var body: some View {
     VStack(alignment: .leading, spacing: 12) {
-      // 행동 추천 (있을 때만)
-      if !advices.isEmpty {
-        VStack(alignment: .leading, spacing: 6) {
-          ForEach(Array(advices.enumerated()), id: \.offset) { _, advice in
-            HStack(spacing: 8) {
-              Image(systemName: advice.icon)
-                .font(.system(size: 14))
-                .foregroundStyle(advice.color)
-                .frame(width: 20)
-
-              Text(advice.message)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.primary)
-            }
-          }
-        }
-
-        Divider()
-      }
-
       // 날씨 요약
       HStack(spacing: 8) {
         Image(systemName: forecast.condition.sfSymbolName)
@@ -57,26 +37,26 @@ public struct WeatherTooltip: View {
           .foregroundStyle(.primary)
       }
 
-      // 체감온도
-      Text("체감 \(Int(forecast.feelsLikeTemperature.rounded()))°")
-        .font(.system(size: 13))
-        .foregroundStyle(.secondary)
+      // 자연어 제안
+      if !suggestions.isEmpty {
+        Divider()
 
-      // 상세 정보
-      VStack(spacing: 6) {
-        weatherDetailRow(
-          icon: "drop.fill",
-          label: "강수확률",
-          value: "\(forecast.precipitationProbability)%",
-          color: .blue
-        )
+        VStack(alignment: .leading, spacing: 8) {
+          ForEach(Array(suggestions.enumerated()), id: \.offset) { _, suggestion in
+            HStack(alignment: .top, spacing: 8) {
+              Image(systemName: suggestion.icon)
+                .font(.system(size: 12))
+                .foregroundStyle(suggestion.color)
+                .frame(width: 16, alignment: .center)
+                .padding(.top, 2)
 
-        weatherDetailRow(
-          icon: "wind",
-          label: "바람",
-          value: String(format: "%.1fm/s", forecast.windSpeed),
-          color: .teal
-        )
+              Text(suggestion.message)
+                .font(.system(size: 13))
+                .foregroundStyle(.primary)
+                .fixedSize(horizontal: false, vertical: true)
+            }
+          }
+        }
       }
 
       // 기준 시각
@@ -90,54 +70,101 @@ public struct WeatherTooltip: View {
       }
     }
     .padding(16)
-    .frame(width: 240)
-  }
-
-  // MARK: - Detail Row
-
-  private func weatherDetailRow(
-    icon: String,
-    label: String,
-    value: String,
-    color: Color
-  ) -> some View {
-    HStack(spacing: 8) {
-      Image(systemName: icon)
-        .font(.system(size: 12))
-        .foregroundStyle(color)
-        .frame(width: 16)
-
-      Text(label)
-        .font(.system(size: 13))
-        .foregroundStyle(.secondary)
-
-      Spacer()
-
-      Text(value)
-        .font(.system(size: 13, weight: .medium))
-        .foregroundStyle(.primary)
-    }
+    .frame(width: 260)
   }
 
 }
 
 // MARK: - Preview
 
-#Preview {
-  Color.clear
-    .popover(isPresented: .constant(true)) {
-      WeatherTooltip(
-        forecast: HourlyForecast(
-          dateTime: Date(),
-          temperature: 18,
-          feelsLikeTemperature: 15,
-          condition: .cloudy,
-          precipitationProbability: 70,
-          humidity: 65,
-          windSpeed: 5.2,
-          precipitationAmount: "1mm"
-        ),
-        referenceTimeText: "오후 2:00"
-      )
-    }
+#Preview("비 오는 날") {
+  WeatherTooltip(
+    forecast: HourlyForecast(
+      dateTime: Date(),
+      temperature: 14,
+      feelsLikeTemperature: 10,
+      condition: .rain,
+      precipitationProbability: 80,
+      humidity: 75,
+      windSpeed: 6.0,
+      precipitationAmount: "3mm"
+    ),
+    referenceTimeText: "2월 18일 14:30"
+  )
+}
+
+#Preview("맑고 쾌적한 날") {
+  WeatherTooltip(
+    forecast: HourlyForecast(
+      dateTime: Date(),
+      temperature: 22,
+      feelsLikeTemperature: 21,
+      condition: .clear,
+      precipitationProbability: 5,
+      humidity: 50,
+      windSpeed: 2.0
+    ),
+    referenceTimeText: "3월 5일 13:00"
+  )
+}
+
+#Preview("한겨울 폭설") {
+  WeatherTooltip(
+    forecast: HourlyForecast(
+      dateTime: Date(),
+      temperature: -5,
+      feelsLikeTemperature: -12,
+      condition: .snow,
+      precipitationProbability: 90,
+      humidity: 70,
+      windSpeed: 8.5,
+      precipitationAmount: "5cm"
+    ),
+    referenceTimeText: "1월 10일 09:00"
+  )
+}
+
+#Preview("한여름 무더위") {
+  WeatherTooltip(
+    forecast: HourlyForecast(
+      dateTime: Date(),
+      temperature: 34,
+      feelsLikeTemperature: 37,
+      condition: .clear,
+      precipitationProbability: 10,
+      humidity: 85,
+      windSpeed: 1.5
+    ),
+    referenceTimeText: "7월 25일 15:00"
+  )
+}
+
+#Preview("흐리고 건조") {
+  WeatherTooltip(
+    forecast: HourlyForecast(
+      dateTime: Date(),
+      temperature: 8,
+      feelsLikeTemperature: 5,
+      condition: .overcast,
+      precipitationProbability: 20,
+      humidity: 25,
+      windSpeed: 3.0
+    ),
+    referenceTimeText: "11월 20일 17:00"
+  )
+}
+
+#Preview("강풍 주의") {
+  WeatherTooltip(
+    forecast: HourlyForecast(
+      dateTime: Date(),
+      temperature: 12,
+      feelsLikeTemperature: 5,
+      condition: .cloudy,
+      precipitationProbability: 40,
+      humidity: 55,
+      windSpeed: 15.0
+    ),
+    referenceTimeText: "4월 3일 11:00"
+  )
 }

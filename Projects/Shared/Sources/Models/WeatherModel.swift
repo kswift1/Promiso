@@ -245,6 +245,202 @@ public enum WeatherAdvice: Equatable, Sendable {
   }
 }
 
+// MARK: - Weather Suggestion
+
+public struct WeatherSuggestion: Equatable, Sendable {
+  public let icon: String
+  public let message: String
+  public let color: Color
+
+  public init(icon: String, message: String, color: Color) {
+    self.icon = icon
+    self.message = message
+    self.color = color
+  }
+
+  public static func from(forecast: HourlyForecast) -> [WeatherSuggestion] {
+    var suggestions: [WeatherSuggestion] = []
+
+    let feels = forecast.feelsLikeTemperature
+    let prob = forecast.precipitationProbability
+    let wind = forecast.windSpeed
+    let humidity = forecast.humidity
+
+    // 1. 옷차림 (체감온도 기준)
+    switch feels {
+    case ..<(-10):
+      suggestions.append(.init(
+        icon: "thermometer.snowflake",
+        message: "한파 수준의 추위예요",
+        color: .cyan
+      ))
+    case -10..<0:
+      suggestions.append(.init(
+        icon: "thermometer.snowflake",
+        message: "영하로 내려가요. 단단히 입고 나오세요",
+        color: .cyan
+      ))
+    case 0..<5:
+      suggestions.append(.init(
+        icon: "thermometer.low",
+        message: "꽤 추워요. 두꺼운 겉옷이 필요해요",
+        color: .blue
+      ))
+    case 5..<10:
+      suggestions.append(.init(
+        icon: "thermometer.low",
+        message: "쌀쌀해요. 겉옷을 챙기세요",
+        color: .blue
+      ))
+    case 10..<15:
+      suggestions.append(.init(
+        icon: "tshirt.fill",
+        message: "선선해요. 가벼운 겉옷이면 충분해요",
+        color: .teal
+      ))
+    case 15..<20:
+      suggestions.append(.init(
+        icon: "figure.walk",
+        message: "활동하기 좋은 날씨예요",
+        color: .green
+      ))
+    case 20..<25:
+      suggestions.append(.init(
+        icon: "tshirt.fill",
+        message: "따뜻해요. 가볍게 입으세요",
+        color: .orange
+      ))
+    case 25..<30:
+      suggestions.append(.init(
+        icon: "sun.max.fill",
+        message: "더워요. 시원하게 입으세요",
+        color: .orange
+      ))
+    case 30..<35:
+      suggestions.append(.init(
+        icon: "thermometer.sun.fill",
+        message: "무더워요. 수분 보충에 신경 쓰세요",
+        color: .red
+      ))
+    default:
+      suggestions.append(.init(
+        icon: "thermometer.sun.fill",
+        message: "폭염 수준이에요. 야외 활동을 줄이세요",
+        color: .red
+      ))
+    }
+
+    // 2. 체감온도 차이 (바람 영향)
+    let tempDiff = forecast.temperature - feels
+    if tempDiff >= 5 {
+      suggestions.append(.init(
+        icon: "wind",
+        message: "체감온도는 \(Int(feels.rounded()))°로 실제보다 \(Int(tempDiff.rounded()))도 낮아요",
+        color: .purple
+      ))
+    }
+
+    // 3. 비/눈
+    switch forecast.condition {
+    case .snow:
+      if prob >= 70 {
+        suggestions.append(.init(
+          icon: "snowflake",
+          message: "눈이 많이 올 수 있어요. 이동 시 여유를 두세요",
+          color: .cyan
+        ))
+      } else if prob >= 40 {
+        suggestions.append(.init(
+          icon: "snowflake",
+          message: "눈이 올 수 있어요. 길이 미끄러울 수 있어요",
+          color: .cyan
+        ))
+      }
+    case .rain, .shower:
+      if prob >= 70 {
+        suggestions.append(.init(
+          icon: "umbrella.fill",
+          message: "비 올 가능성이 높아요. 우산 필수예요",
+          color: .blue
+        ))
+      } else if prob >= 40 {
+        suggestions.append(.init(
+          icon: "umbrella.fill",
+          message: "비가 올 수 있어요. 우산을 챙기세요",
+          color: .blue
+        ))
+      }
+    case .rainSnow:
+      suggestions.append(.init(
+        icon: "umbrella.fill",
+        message: "비와 눈이 섞여 내릴 수 있어요",
+        color: .blue
+      ))
+    default:
+      if prob >= 50 {
+        suggestions.append(.init(
+          icon: "umbrella.fill",
+          message: "강수 확률 \(prob)%. 우산을 챙기세요",
+          color: .blue
+        ))
+      }
+    }
+
+    // 4. 강풍 (8m/s 이상만, 약한 바람은 생략)
+    if wind >= 14 {
+      suggestions.append(.init(
+        icon: "wind",
+        message: "강풍이 예상돼요. 야외 활동에 주의하세요",
+        color: .purple
+      ))
+    } else if wind >= 8 {
+      suggestions.append(.init(
+        icon: "wind",
+        message: "바람이 제법 강해요",
+        color: .purple
+      ))
+    }
+
+    // 5. 습도 (고온+고습일 때만, 건조는 10° 이상일 때만)
+    if humidity >= 80 && feels >= 25 {
+      suggestions.append(.init(
+        icon: "humidity.fill",
+        message: "습도가 높아 체감온도가 더 높아요",
+        color: .teal
+      ))
+    } else if humidity <= 30 && feels >= 10 {
+      suggestions.append(.init(
+        icon: "drop.degreesign",
+        message: "공기가 건조해요. 물을 자주 마시세요",
+        color: .orange
+      ))
+    }
+
+    // 6. 자외선 (맑고 따뜻할 때)
+    if forecast.condition == .clear && feels >= 20 {
+      suggestions.append(.init(
+        icon: "sun.max.trianglebadge.exclamationmark",
+        message: "자외선이 강할 수 있어요. 선크림을 챙기세요",
+        color: .orange
+      ))
+    }
+
+    // 7. 좋은 날씨 (다른 경고가 없을 때)
+    if suggestions.count <= 1 &&
+       (forecast.condition == .clear || forecast.condition == .cloudy) &&
+       feels >= 15 && feels <= 28 &&
+       wind < 8 && prob < 30 {
+      suggestions.append(.init(
+        icon: "leaf.fill",
+        message: "야외 활동하기 좋은 날씨예요",
+        color: .green
+      ))
+    }
+
+    return suggestions
+  }
+}
+
 // MARK: - Private Helpers
 
 /// 날씨 상태의 심각도 (worst-case 판단용)
