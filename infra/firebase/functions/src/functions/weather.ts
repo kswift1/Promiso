@@ -343,9 +343,15 @@ export const getWeather = onCall<GetWeatherRequest>(
   {
     region: REGION,
     secrets: [KMA_API_KEY],
-    invoker: "public",
   },
   async (request): Promise<GetWeatherResponse> => {
+    if (!request.auth) {
+      throw new HttpsError(
+        "unauthenticated",
+        "로그인이 필요합니다"
+      );
+    }
+
     const {latitude, longitude, targetDate} =
       request.data;
 
