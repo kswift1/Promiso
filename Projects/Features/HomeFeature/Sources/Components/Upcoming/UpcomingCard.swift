@@ -155,7 +155,8 @@ private struct UpcomingPromiseRow: View {
             WeatherCardStrip(
               forecast: forecast,
               rangeForecasts: weather.forecasts(from: promise.startAt, to: promise.endAt),
-              referenceTimeText: promise.startAt.formattedMonthDayTime
+              referenceTimeText: promise.startAt.formattedMonthDayTime,
+              forecastSource: weather.forecastSource(for: promise.startAt)
             )
           }
         }
@@ -272,7 +273,8 @@ private struct UpcomingPersonalEventRow: View {
             WeatherCardStrip(
               forecast: forecast,
               rangeForecasts: weather.forecasts(from: event.startAt, to: event.endAt),
-              referenceTimeText: event.startAt.formattedMonthDayTime
+              referenceTimeText: event.startAt.formattedMonthDayTime,
+              forecastSource: weather.forecastSource(for: event.startAt)
             )
           }
         }

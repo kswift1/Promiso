@@ -588,9 +588,12 @@ async function fetchMidTemp(
   for (let d = 3; d <= 10; d++) {
     const minKey = `taMin${d}` as keyof typeof item;
     const maxKey = `taMax${d}` as keyof typeof item;
+    const minVal = item[minKey];
+    const maxVal = item[maxKey];
+    if (minVal == null || maxVal == null) continue;
     result[d] = {
-      min: item[minKey] as number,
-      max: item[maxKey] as number,
+      min: minVal as number,
+      max: maxVal as number,
     };
   }
   return result;

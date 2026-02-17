@@ -23,14 +23,15 @@ private struct ForecastItem: Decodable {
 }
 
 /// 일별 예보 아이템 (중기예보)
+/// Firebase SDK가 JS number를 Double로 변환하므로 Int 필드도 Double로 수신
 private struct DailyForecastItem: Decodable {
   let date: String
   let minTemperature: Double
   let maxTemperature: Double
   let amCondition: String
   let pmCondition: String
-  let amPrecipitationProbability: Int
-  let pmPrecipitationProbability: Int
+  let amPrecipitationProbability: Double
+  let pmPrecipitationProbability: Double
 }
 
 // MARK: - WeatherDataSource
@@ -78,6 +79,7 @@ final class WeatherDataSource: Sendable {
     do {
       response = try decoder.decode(WeatherResponse.self, from: data)
     } catch {
+      print("🌤️ [DataSource] 디코딩 실패: \(error)")
       throw WeatherDataSourceError.invalidResponse
     }
 
@@ -118,8 +120,8 @@ final class WeatherDataSource: Sendable {
         maxTemperature: item.maxTemperature,
         amCondition: WeatherCondition(rawValue: item.amCondition) ?? .unknown,
         pmCondition: WeatherCondition(rawValue: item.pmCondition) ?? .unknown,
-        amPrecipitationProbability: item.amPrecipitationProbability,
-        pmPrecipitationProbability: item.pmPrecipitationProbability
+        amPrecipitationProbability: Int(item.amPrecipitationProbability),
+        pmPrecipitationProbability: Int(item.pmPrecipitationProbability)
       )
     }
 

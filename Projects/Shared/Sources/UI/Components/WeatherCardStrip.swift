@@ -8,6 +8,7 @@ public struct WeatherCardStrip: View {
   private let forecast: HourlyForecast
   private let rangeForecasts: [HourlyForecast]
   private let referenceTimeText: String?
+  private let forecastSource: ForecastSource
   private let suggestions: [WeatherSuggestion]
   @State private var showTooltip = false
   @State private var currentIndex = 0
@@ -15,11 +16,13 @@ public struct WeatherCardStrip: View {
   public init(
     forecast: HourlyForecast,
     rangeForecasts: [HourlyForecast] = [],
-    referenceTimeText: String? = nil
+    referenceTimeText: String? = nil,
+    forecastSource: ForecastSource = .shortTerm
   ) {
     self.forecast = forecast
     self.rangeForecasts = rangeForecasts
     self.referenceTimeText = referenceTimeText
+    self.forecastSource = forecastSource
     self.suggestions = WeatherSuggestion.from(forecast: forecast)
   }
 
@@ -68,7 +71,8 @@ public struct WeatherCardStrip: View {
       WeatherTooltip(
         forecast: forecast,
         rangeForecasts: rangeForecasts,
-        referenceTimeText: referenceTimeText
+        referenceTimeText: referenceTimeText,
+        forecastSource: forecastSource
       )
       .presentationCompactAdaptation(.popover)
     }
@@ -141,18 +145,22 @@ private struct MarqueeText: View {
     guard isOverflowing, !animating else { return }
     animating = true
     let overflow = textWidth - containerWidth
+    let scrollDuration = Double(overflow) / 30.0
 
-    // 1초 대기 → 스크롤 → 1초 대기 → 복귀
+    // 1초 대기 → 스크롤 → 1.5초 대기 → 복귀 → 반복
     DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-      withAnimation(.easeInOut(duration: Double(overflow) / 30.0)) {
+      withAnimation(.easeInOut(duration: scrollDuration)) {
         offset = -overflow
       }
 
-      DispatchQueue.main.asyncAfter(deadline: .now() + Double(overflow) / 30.0 + 1.5) {
+      DispatchQueue.main.asyncAfter(deadline: .now() + scrollDuration + 1.5) {
         withAnimation(.easeInOut(duration: 0.3)) {
           offset = 0
         }
-        animating = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3 + 1.0) {
+          animating = false
+          startMarqueeIfNeeded()
+        }
       }
     }
   }

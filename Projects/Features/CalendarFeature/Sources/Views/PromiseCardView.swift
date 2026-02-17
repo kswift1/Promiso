@@ -160,7 +160,8 @@ struct PromiseCardView: View {
             WeatherCardStrip(
               forecast: forecast,
               rangeForecasts: weather.forecasts(from: promise.startAt, to: promise.endAt),
-              referenceTimeText: promise.startAt.formattedMonthDayTime
+              referenceTimeText: promise.startAt.formattedMonthDayTime,
+              forecastSource: weather.forecastSource(for: promise.startAt)
             )
           }
 

@@ -9,17 +9,20 @@ public struct WeatherTooltip: View {
   private let rangeForecasts: [HourlyForecast]
   private let suggestions: [WeatherSuggestion]
   private let referenceTimeText: String?
+  private let forecastSource: ForecastSource
 
   public init(
     forecast: HourlyForecast,
     rangeForecasts: [HourlyForecast] = [],
     advices: [WeatherAdvice] = [],
-    referenceTimeText: String? = nil
+    referenceTimeText: String? = nil,
+    forecastSource: ForecastSource = .shortTerm
   ) {
     self.forecast = forecast
     self.rangeForecasts = rangeForecasts
     self.suggestions = WeatherSuggestion.from(forecast: forecast)
     self.referenceTimeText = referenceTimeText
+    self.forecastSource = forecastSource
   }
 
   // MARK: - Range Computations
@@ -97,21 +100,39 @@ public struct WeatherTooltip: View {
 
         Spacer()
 
-        weatherStat(
-          icon: "wind",
-          label: "바람",
-          value: windRangeText,
-          color: windRange.max >= 8 ? .purple : .secondary
-        )
+        if forecastSource == .midTerm {
+          weatherStat(
+            icon: "thermometer.medium",
+            label: "최저/최고",
+            value: intRangeText(tempRange, suffix: "°"),
+            color: .secondary
+          )
+        } else {
+          weatherStat(
+            icon: "wind",
+            label: "바람",
+            value: windRangeText,
+            color: windRange.max >= 8 ? .purple : .secondary
+          )
+        }
 
         Spacer()
 
-        weatherStat(
-          icon: "humidity.fill",
-          label: "습도",
-          value: intRangeText(humidityRange, suffix: "%"),
-          color: humidityRange.max >= 80 ? .teal : .secondary
-        )
+        if forecastSource == .midTerm {
+          weatherStat(
+            icon: "sun.max.fill",
+            label: "날씨",
+            value: forecast.condition.description,
+            color: forecast.condition.iconColor
+          )
+        } else {
+          weatherStat(
+            icon: "humidity.fill",
+            label: "습도",
+            value: intRangeText(humidityRange, suffix: "%"),
+            color: humidityRange.max >= 80 ? .teal : .secondary
+          )
+        }
       }
 
       // 자연어 제안
@@ -139,7 +160,8 @@ public struct WeatherTooltip: View {
       // 출처 · 기준 시각
       HStack(spacing: 0) {
         Spacer()
-        Text("기상청 단기예보")
+        Text(forecastSource == .midTerm ?
+          "기상청 중기예보" : "기상청 단기예보")
           .font(.system(size: 11))
           .foregroundStyle(.tertiary)
         if let timeText = referenceTimeText {
