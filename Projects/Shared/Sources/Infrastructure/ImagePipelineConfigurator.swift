@@ -13,7 +13,7 @@ public enum ImagePipelineConfigurator {
   /// - Note: `AppDelegate.didFinishLaunchingWithOptions`에서 1회 호출
   public static func configure() {
     var config = ImagePipeline.Configuration.withDataCache(
-      name: "com.promiso.imageCache",
+      name: AppConstants.ImageCache.diskCacheName,
       sizeLimit: AppConstants.ImageCache.diskCacheSizeLimit
     )
 

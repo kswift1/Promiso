@@ -70,6 +70,8 @@ extension Settings {
       public var isSavingProfile: Bool
       /// 에러 메시지
       public var errorMessage: String?
+      /// 화면 토스트 메시지
+      public var toastMessage: ToastMessage?
       /// 네비게이션 경로
       public var path = StackState<Path.State>()
       /// 프로필 이미지 상세 보기 표시 여부
@@ -95,6 +97,7 @@ extension Settings {
         self.nicknameValidation = .idle
         self.isSavingProfile = false
         self.errorMessage = nil
+        self.toastMessage = nil
       }
     }
 
@@ -194,6 +197,8 @@ extension Settings {
       case imageDetailDismissed
       /// 약속 탭 기본 모드 변경
       case defaultPromiseTabModeChanged(String)
+      /// 토스트 닫힘
+      case toastDismissed
     }
 
     /// 내부 비즈니스 로직 처리 결과 액션
@@ -411,6 +416,10 @@ extension Settings {
             return .run { _ in
               await hapticFeedback.selection()
             }
+
+          case .toastDismissed:
+            state.toastMessage = nil
+            return .none
           }
 
         // MARK: - Internal Actions
@@ -426,6 +435,12 @@ extension Settings {
           case .logoutFailed(let error):
             state.isLoading = false
             state.errorMessage = error.localizedDescription
+            state.toastMessage = ToastMessage(
+              type: .error,
+              title: "로그아웃에 실패했어요",
+              subtitle: error.localizedDescription,
+              position: .top
+            )
             return .run { _ in
               await hapticFeedback.error()
             }
@@ -451,6 +466,12 @@ extension Settings {
           case .profileSaveFailed(let errorMessage):
             state.isSavingProfile = false
             state.errorMessage = errorMessage
+            state.toastMessage = ToastMessage(
+              type: .error,
+              title: "프로필 저장에 실패했어요",
+              subtitle: errorMessage,
+              position: .top
+            )
             return .run { _ in
               await hapticFeedback.error()
             }
@@ -576,6 +597,10 @@ extension Settings {
         #endif
         }
       }
+      .toast(Binding(
+        get: { store.toastMessage },
+        set: { _ in store.send(.view(.toastDismissed)) }
+      ))
     }
   }
 }

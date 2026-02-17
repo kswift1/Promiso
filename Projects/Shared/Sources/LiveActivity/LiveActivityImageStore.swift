@@ -11,8 +11,10 @@ public enum LiveActivityImageStore {
 
   // MARK: - Constants
 
-  /// App Group Identifier (Entitlements 파일과 일치)
-  private static let appGroupIdentifier = "group.com.promiso.shared"
+  /// App Group Identifier (현재 환경의 Entitlements 값과 일치)
+  private static var appGroupIdentifier: String {
+    LiveActivityIntentKey.suiteName
+  }
 
   /// 이미지 저장 디렉토리명
   private static let imageDirectoryName = "LiveActivityImages"
@@ -149,10 +151,14 @@ public enum LiveActivityImageStore {
 
   /// 사용자 ID로 파일명 생성
   ///
+  /// Path traversal 방지를 위해 경로 구분자를 제거한다.
+  ///
   /// - Parameter userId: 사용자 ID
   /// - Returns: 파일명 (예: "profile-abc123.jpg")
   public static func makeFileName(userId: String) -> String {
-    "profile-\(userId).jpg"
+    let sanitized = userId.replacingOccurrences(of: "/", with: "")
+      .replacingOccurrences(of: "..", with: "")
+    return "profile-\(sanitized).jpg"
   }
 
   // MARK: - Debug

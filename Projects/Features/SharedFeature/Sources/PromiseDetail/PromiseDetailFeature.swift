@@ -55,6 +55,8 @@ extension PromiseDetail {
       // 삭제 확인 알럿
       @Presents var alert: AlertState<Action.Alert>?
 
+      var toastMessage: ToastMessage?
+
       public init(
         promise: PromiseModel,
         currentUserId: String,
@@ -136,6 +138,7 @@ extension PromiseDetail {
         case directionsTapped
         case mapTapped
         case mapDetailDismissed
+        case toastDismissed
       }
 
       @CasePathable
@@ -292,6 +295,10 @@ extension PromiseDetail {
           case .mapDetailDismissed:
             state.showMapDetail = false
             return .none
+
+          case .toastDismissed:
+            state.toastMessage = nil
+            return .none
           }
 
         case .internal(let internalAction):
@@ -365,10 +372,17 @@ extension PromiseDetail {
               declined: newDeclined,
               until: state.promise.votes.until
             )
+
             return .send(.delegate(.promiseUpdated(state.promise)))
 
-          case .respondFailed:
+          case .respondFailed(let error):
             state.respondingState = .idle
+            state.toastMessage = ToastMessage(
+              type: .error,
+              title: "응답 전송에 실패했어요",
+              subtitle: error.message,
+              position: .top
+            )
             return .none
 
           case .deletePromise:
@@ -386,8 +400,14 @@ extension PromiseDetail {
             state.isDeleting = false
             return .send(.delegate(.promiseDeleted(id: state.promise.id)))
 
-          case .deleteFailed:
+          case .deleteFailed(let error):
             state.isDeleting = false
+            state.toastMessage = ToastMessage(
+              type: .error,
+              title: "약속 삭제에 실패했어요",
+              subtitle: error.message,
+              position: .top
+            )
             return .none
 
           case .promiseUpdated(let promise):

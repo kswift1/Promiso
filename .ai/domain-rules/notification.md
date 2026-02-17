@@ -4,7 +4,7 @@
 
 ---
 
-## 1. 알림 카테고리 (9종)
+## 1. 알림 카테고리 (10종)
 
 | 카테고리 | 설명 | 트리거 |
 |---------|------|--------|
@@ -13,6 +13,7 @@
 | promiseConfirmed | 약속 확정 알림 | onPromiseVotesUpdated |
 | promiseCancelled | 약속 미성사 알림 | onPromiseVotesUpdated |
 | promiseUpdated | 약속 수정 알림 | onPromiseInfoUpdated |
+| locationSharingReminder | 실시간 공유 넛지 알림 | (예약) LiveActivity 시작 후 trackingMinutes/2 경과 |
 | groupInvitation | 그룹 초대 알림 | — |
 | groupUpdate | 그룹 수정 알림 | onGroupImageUpdated |
 | attendanceResponse | 출석 응답 알림 | onPromiseVotesUpdated |
@@ -46,6 +47,9 @@
 | N8 | 그룹 수정 알림 수신자 | 호스트 제외, 나머지 멤버 |
 | N9 | 알림 시간 포맷 | KST (Asia/Seoul) 기준 |
 | N10 | 미성사 판정 조건 | 남은 가능 인원 < minimumParticipants |
+| N11 | 실시간 공유 넛지 메시지 | 대상: accepted 참가자 전원, 제목: "⏰ {약속명} X분 전!", 본문: "잘 오고 계신가요? 👋 잠금화면 또는 앱에서 실시간 도착 예정시간을 공유해주세요!" |
+| N11-a | 실시간 공유 넛지 발송 횟수 | 1회만 |
+| N11-b | 실시간 공유 넛지 별도 설정 | 없음 (항상 발송, 알림 설정에서 on/off 불가) |
 
 ---
 
@@ -63,5 +67,5 @@
 
 | ID | 규칙 | 값 |
 |----|------|-----|
-| N11 | 알림 딥링크 | 약속 → `.promise(promiseId, groupId)`, 그룹 → `.group(groupId)`, system → `.none` |
-| N12 | 알림 필터 | all, unread (2종) |
+| N12 | 알림 딥링크 | 약속 → `.promise(promiseId, groupId)`, 그룹 → `.group(groupId)`, locationSharingReminder → `promiso://promise?id={id}&groupId={groupId}` (위젯 딥링크와 동일, W12), system → `.none` |
+| N13 | 알림 필터 | all, unread (2종) |

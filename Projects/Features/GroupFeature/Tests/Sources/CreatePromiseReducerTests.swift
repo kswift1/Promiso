@@ -23,13 +23,14 @@ struct CreatePromiseReducerTests {
   private func makeGroup(
     id: String = "group-1",
     name: String = "테스트 그룹",
-    memberIds: [String] = ["user-1", "user-2", "user-3"]
+    memberIds: [String] = ["user-1", "user-2", "user-3"],
+    maxMembers: Int = 10
   ) -> GroupModel {
     GroupModel(
       id: id,
       name: name,
       memberIds: memberIds,
-      maxMembers: 10,
+      maxMembers: maxMembers,
       inviteCode: "ABC123",
       createdBy: "user-1"
     )
@@ -45,7 +46,7 @@ struct CreatePromiseReducerTests {
     #expect(state.isCreatingPromise == false)
     #expect(state.creationError == nil)
     #expect(state.isEmojiLoading == false)
-    #expect(state.useLocation == true)
+    #expect(state.useLocation == false)
     #expect(state.showLiveActivityInfo == false)
   }
 
@@ -111,6 +112,22 @@ struct CreatePromiseReducerTests {
     }
   }
 
+  @Test("1인 그룹(maxMembers == 1) 선택 시 최소 참가인원 1명 고정")
+  func groupSelected_singleMemberGroup_setsMinParticipantsToOne() async {
+    let group = makeGroup(memberIds: ["user-1"], maxMembers: 1)
+
+    let store = TestStore(
+      initialState: CreatePromise.Feature.State()
+    ) {
+      CreatePromise.Feature()
+    }
+
+    await store.send(.view(.groupSelected(group))) {
+      $0.promise.group = group
+      $0.promise.minimumParticipants = 1
+    }
+  }
+
   // MARK: - Participants 테스트
 
   @Test("incrementParticipants 시 최소 참가인원 증가")
@@ -129,8 +146,8 @@ struct CreatePromiseReducerTests {
     }
   }
 
-  @Test("decrementParticipants 시 최소 참가인원 감소 (최소 1)")
-  func decrementParticipants_decrementsCountMinOne() async {
+  @Test("decrementParticipants 시 최소 참가인원 감소 (최소 2)")
+  func decrementParticipants_decrementsCountMinTwo() async {
     let group = makeGroup(memberIds: ["user-1", "user-2", "user-3"])
     var state = CreatePromise.Feature.State()
     state.promise.group = group
@@ -140,11 +157,7 @@ struct CreatePromiseReducerTests {
       CreatePromise.Feature()
     }
 
-    await store.send(.view(.decrementParticipants)) {
-      $0.promise.minimumParticipants = 1
-    }
-
-    // 이미 1이므로 감소하지 않음
+    // 이미 2이므로 감소하지 않음
     await store.send(.view(.decrementParticipants))
   }
 

@@ -11,7 +11,7 @@
 | W1 | Widget Token 유효기간 | 30일 | — | ✅ |
 | W2 | Widget Token 갱신 권장 | 만료 7일 전 | — | ✅ |
 | W3 | Widget Token scope | `widget:read` (읽기 전용) | — | ✅ |
-| W4 | 위젯 데이터 최대 | today + upcoming = 7개 | — | ✅ |
+| W4 | 위젯 데이터 최대 | today 최대 6개 + upcoming 최대 9개 | — | ✅ |
 | W5 | 캐시 유효 기간 | 2시간 | ✅ | — |
 | W6 | 수동 새로고침 최소 간격 | 15초 | ✅ | — |
 
@@ -40,5 +40,6 @@
 
 | ID | 규칙 | 값 |
 |----|------|-----|
-| W12 | 위젯 딥링크 형식 | `promiso://promise?id={id}&groupId={groupId}` |
-| W13 | 위젯 종류 | Small, Medium, Large (3종) |
+| W12 | 위젯 딥링크 (약속) | `promiso://promise/{promiseId}/{groupId}` |
+| W13 | 위젯 딥링크 (개인일정) | `promiso://personalEvent/{eventId}` |
+| W14 | 위젯 종류 | Small, Medium, Large (3종) |

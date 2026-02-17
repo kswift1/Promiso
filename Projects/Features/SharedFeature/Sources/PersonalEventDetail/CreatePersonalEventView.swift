@@ -51,16 +51,6 @@ extension CreatePersonalEvent {
             }
           }
 
-          ToolbarItemGroup(placement: .keyboard) {
-            Spacer()
-            Button {
-              UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-            } label: {
-              Image(systemName: "keyboard.chevron.compact.down")
-                .foregroundStyle(Color.pmtext.secondary)
-            }
-          }
-
           ToolbarItem(placement: .confirmationAction) {
             if store.isSaving {
               ProgressView()
@@ -73,6 +63,7 @@ extension CreatePersonalEvent {
             }
           }
         }
+        .keyboardDismissToolbar()
       }
       .alert(
         "오류",
@@ -258,7 +249,7 @@ extension CreatePersonalEvent {
             } label: {
               Image(systemName: "xmark.circle.fill")
                 .font(.system(size: 20))
-                .foregroundStyle(Color(UIColor.systemGray3))
+                .foregroundStyle(Color.pmgray.n400)
             }
             .buttonStyle(.plain)
           }
@@ -303,62 +294,86 @@ extension CreatePersonalEvent {
 
     @ViewBuilder
     private var reminderSection: some View {
-      VStack(spacing: 0) {
-        HStack {
-          Image(systemName: "bell")
-            .font(.body)
-            .foregroundStyle(Color.pmindigo.n500)
-            .frame(width: 24)
+      let currentOption = CreatePersonalEvent.ReminderOption.from(
+        minutes: store.event.reminderMinutesBefore
+      )
+      HStack {
+        Image(systemName: "bell")
+          .font(.body)
+          .foregroundStyle(Color.pmindigo.n500)
+          .frame(width: 24)
 
-          Text("미리 알림")
-            .font(.body)
-            .foregroundStyle(Color.pmtext.primary)
+        Text("미리 알림")
+          .font(.body)
+          .foregroundStyle(Color.pmtext.primary)
 
-          Spacer()
+        Spacer()
 
-          Toggle("", isOn: Binding(
-            get: { store.useReminder },
-            set: { _ in store.send(.view(.toggleUseReminder), animation: .default) }
-          ))
-          .labelsHidden()
-          .tint(Color.pmindigo.n500)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        Menu {
+          Button {
+            store.send(.view(.reminderOptionSelected(nil)), animation: .default)
+          } label: {
+            if currentOption == .none {
+              Label("없음", systemImage: "checkmark")
+            } else {
+              Text("없음")
+            }
+          }
 
-        if store.useReminder {
           Divider()
-            .background(Color.white.opacity(0.12))
 
-          let currentMinutes = store.event.reminderMinutesBefore ?? 30
-          ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-              ForEach(CreatePersonalEvent.ReminderOption.allCases, id: \.rawValue) { option in
-                Button {
-                  store.send(.view(.reminderChanged(option.rawValue)))
-                } label: {
-                  Text(option.title)
-                    .font(.system(size: 14, weight: currentMinutes == option.rawValue ? .semibold : .regular))
-                    .foregroundStyle(currentMinutes == option.rawValue ? .white : Color.pmtext.primary)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(
-                      currentMinutes == option.rawValue
-                        ? Color.pmindigo.n500
-                        : Color(UIColor.systemGray6)
-                    )
-                    .clipShape(Capsule())
-                }
-                .buttonStyle(.plain)
+          ForEach(CreatePersonalEvent.ReminderOption.shortOptions, id: \.title) { option in
+            Button {
+              store.send(.view(.reminderOptionSelected(option.minutes)), animation: .default)
+            } label: {
+              if currentOption == option {
+                Label(option.title, systemImage: "checkmark")
+              } else {
+                Text(option.title)
               }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
           }
-          .transition(.opacity.combined(with: .move(edge: .top)))
+
+          Divider()
+
+          ForEach(CreatePersonalEvent.ReminderOption.longOptions, id: \.title) { option in
+            Button {
+              store.send(.view(.reminderOptionSelected(option.minutes)), animation: .default)
+            } label: {
+              if currentOption == option {
+                Label(option.title, systemImage: "checkmark")
+              } else {
+                Text(option.title)
+              }
+            }
+          }
+        } label: {
+          HStack(spacing: 4) {
+            Text(currentOption.title)
+              .font(.system(size: 15))
+              .foregroundStyle(
+                currentOption == .none
+                  ? Color.pmtext.secondary
+                  : Color.pmindigo.n500
+              )
+
+            Image(systemName: "chevron.up.chevron.down")
+              .font(.system(size: 11))
+              .foregroundStyle(Color.pmtext.secondary)
+          }
         }
       }
+      .padding(.horizontal, 16)
+      .padding(.vertical, 12)
       .adaptiveGlassCard()
+
+      if let warning = store.reminderWarning {
+        Text(warning)
+          .font(.pmCaption)
+          .foregroundStyle(.red)
+          .padding(.horizontal, 16)
+          .padding(.top, 4)
+      }
     }
 
     // MARK: - Description Section

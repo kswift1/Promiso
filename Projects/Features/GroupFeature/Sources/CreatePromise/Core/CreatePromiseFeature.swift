@@ -7,6 +7,7 @@
 
 import PhotosUI
 import _PhotosUI_SwiftUI
+import PromisoShared
 
 // TODO: LiveActivity 활성화 선택 화면 추가, 지도 추가
 public enum CreatePromise {
@@ -47,7 +48,7 @@ public enum CreatePromise {
       var hasSeenLiveActivityInfo: Bool = true  // 기본 true (로드 전까지 팝업 안 띄움)
 
       // 장소 사용 여부 (토글 상태)
-      var useLocation: Bool = true
+      var useLocation: Bool = false
 
       // 이미지 첨부
       var localImageData: [Data] = []
@@ -67,7 +68,7 @@ public enum CreatePromise {
         isEmojiLoading: Bool = false,
         showLiveActivityInfo: Bool = false,
         hasSeenLiveActivityInfo: Bool = true,
-        useLocation: Bool = true,
+        useLocation: Bool = false,
         locationPicker: LocationPicker.Feature.State? = nil
       ) {
         self.currentStep = currentStep
@@ -167,7 +168,6 @@ public enum CreatePromise {
       public enum Internal: Sendable {
         case titleDebounced(String)
         case emojiGenerationResponse(Result<String, Error>)
-        case emojiSuggestionsResponse([EmojiSuggestion])
         case fetchGroupList
         case groupListResponse(Result<[GroupModel], Error>)
         case fetchPromiseCounts([String])
@@ -259,8 +259,12 @@ public enum CreatePromise {
 
           case .groupSelected(let group):
             state.promise.group = group
-            let defaultMinimum = max(1, Int(ceil(Double(group.maxMembers) / 2.0)))
-            state.promise.minimumParticipants = defaultMinimum
+            if group.maxMembers <= 1 {
+              state.promise.minimumParticipants = 1
+            } else {
+              let defaultMinimum = max(2, Int(ceil(Double(group.maxMembers) / 2.0)))
+              state.promise.minimumParticipants = defaultMinimum
+            }
             return .none
 
           case .retryLoadGroups:
@@ -289,8 +293,9 @@ public enum CreatePromise {
             return .none
 
           case .decrementParticipants:
+            // P6: 멀티 멤버 그룹에서 최소 참가 인원 하한은 2명 (1명 그룹은 isFixedAtOne UI로 고정)
             let current = state.promise.minimumParticipants
-            if current > 1 { state.promise.minimumParticipants = current - 1 }
+            if current > 2 { state.promise.minimumParticipants = current - 1 }
             return .none
 
           case .setDescription(let description):
@@ -385,14 +390,7 @@ public enum CreatePromise {
             return .none
 
           case .emojiGenerationResponse(.failure):
-            // Fallback: 기존 로컬 EmojiSuggester 사용
-            return .run { [title = state.promise.title] send in
-              let picks = await EmojiSuggestorProvider.shared.suggest(for: title, topK: 10)
-              await send(.internal(.emojiSuggestionsResponse(picks)))
-            }
-
-          case .emojiSuggestionsResponse(let picks):
-            state.promise.emoji = picks.first?.emoji ?? "📅"
+            state.promise.emoji = "📅"
             state.isEmojiLoading = false
             return .none
             
@@ -553,6 +551,7 @@ extension CreatePromise {
         }
         .frame(height: geometry.size.height)
       }
+      .keyboardDismissToolbar(iconColor: .secondary)
       .ignoresSafeArea(.keyboard, edges: .bottom)
       .onAppear {
         store.send(.view(.onAppear))

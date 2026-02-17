@@ -1089,6 +1089,8 @@ export enum NotificationType {
   GroupUpdate = "group_update",
   /** 참석 응답 */
   AttendanceResponse = "attendance_response",
+  /** 실시간 공유 넛지 */
+  LocationSharingReminder = "location_sharing_reminder",
   /** 시스템 알림 */
   System = "system",
 }
@@ -1330,6 +1332,16 @@ export interface RegisterPushToStartTokenResponse {
  * Cloud Tasks에서 사용되는 내부 타입
  */
 export interface ScheduledLiveActivityTaskPayload {
+  /** 약속 ID */
+  promiseId: string;
+  /** 태스크가 실행되도록 예약된 시간 (ISO 문자열) */
+  scheduledAt: string;
+}
+
+/**
+ * ETA 공유 넛지 푸시 예약 Task Payload
+ */
+export interface ScheduledNudgeTaskPayload {
   /** 약속 ID */
   promiseId: string;
 }

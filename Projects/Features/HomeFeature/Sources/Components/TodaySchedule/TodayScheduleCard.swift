@@ -134,26 +134,21 @@ struct TodayScheduleCard: View {
     let now = Date()
 
     for (index, item) in sortedItems.enumerated() {
-      let start = item.startAt
-      let end = item.endAt ?? item.startAt.addingTimeInterval(7200)
-
       // 현재 진행 중인 일정이 있으면 마커 표시 안함
-      if now >= start && now <= end {
+      if now >= item.startAt && now <= item.effectiveEndAt {
         return .insideItem
       }
 
       // 이 일정 시작 전인데, 이전 일정은 끝났거나 없는 경우
-      if now < start {
+      if now < item.startAt {
         if index == 0 {
-          // 첫 일정 전이면 마커 표시 안함 (아직 일정 시작 전)
-          return .insideItem
+          // 첫 일정 전에도 현재 시간 마커 표시
+          return .beforeIndex(0)
         }
 
         // 이전 일정 종료 시간 확인
         let previousItem = sortedItems[index - 1]
-        let previousEnd = previousItem.endAt ?? previousItem.startAt.addingTimeInterval(7200)
-
-        if now > previousEnd {
+        if now > previousItem.effectiveEndAt {
           // 이전 일정 끝났고, 다음 일정 시작 전 = 빈 시간
           return .beforeIndex(index)
         }
@@ -162,8 +157,7 @@ struct TodayScheduleCard: View {
 
     // 마지막 일정 종료 후인지 확인
     if let lastItem = sortedItems.last {
-      let lastEnd = lastItem.endAt ?? lastItem.startAt.addingTimeInterval(7200)
-      if now > lastEnd {
+      if now > lastItem.effectiveEndAt {
         return .afterAll
       }
     }

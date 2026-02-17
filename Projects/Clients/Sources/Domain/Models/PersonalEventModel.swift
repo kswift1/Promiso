@@ -115,9 +115,9 @@ extension PersonalEventModel {
 // MARK: - Time-based Properties
 
 extension PersonalEventModel {
-  /// endAt이 없는 경우 기본 종료 시간 (startAt + 1시간)
+  /// endAt이 없는 경우 단발성 일정 (시작 = 종료)
   public var effectiveEndAt: Date {
-    endAt ?? startAt.addingTimeInterval(3600)
+    endAt ?? startAt
   }
 
   /// 일정이 진행 중인지 확인
@@ -274,8 +274,18 @@ extension PersonalEventModel {
   /// 알림 본문
   public var notificationBody: String {
     guard let minutes = reminderMinutesBefore else { return "" }
-    if minutes >= 60 { return "\(minutes / 60)시간 후 시작하는 일정입니다" }
-    return "\(minutes)분 후 시작하는 일정입니다"
+    switch minutes {
+    case 0:
+      return "지금 시작하는 일정입니다"
+    case let m where m >= 10080 && m % (1440 * 7) == 0:
+      return "\(m / (1440 * 7))주 후 시작하는 일정입니다"
+    case let m where m >= 1440:
+      return "\(m / 1440)일 후 시작하는 일정입니다"
+    case let m where m >= 60:
+      return "\(m / 60)시간 후 시작하는 일정입니다"
+    default:
+      return "\(minutes)분 후 시작하는 일정입니다"
+    }
   }
 }
 
