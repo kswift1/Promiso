@@ -198,7 +198,7 @@ public enum LocationPicker {
 
           case .searchResponse(.failure(let error)):
             state.isSearching = false
-            state.searchError = (error as? MapDataSourceError)?.localizedMessage ?? LocalizedStrings.Error.unknownError
+            state.searchError = LocalizedStrings.Error.unknownError
             return .none
 
           case .historyLoaded(let history):
@@ -220,17 +220,6 @@ public enum LocationPicker {
           return .none
         }
       }
-    }
-  }
-}
-
-// MARK: - MapDataSourceError Localization
-
-extension MapDataSourceError {
-  var localizedMessage: String {
-    switch self {
-    case .invalidResponse: return LocalizedStrings.Error.mapInvalidResponse
-    case .httpError: return LocalizedStrings.Error.mapHttpError
     }
   }
 }
