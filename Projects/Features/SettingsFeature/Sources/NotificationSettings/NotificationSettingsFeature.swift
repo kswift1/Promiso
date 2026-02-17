@@ -776,3 +776,16 @@ private struct NotificationInfoPopover: View {
     await loopAnimation()
   }
 }
+
+// MARK: - NotificationClientError Localization
+
+extension NotificationClientError {
+  var localizedMessage: String {
+    switch self {
+    case .authenticationRequired: return LocalizedStrings.Error.notificationAuthRequired
+    case .tokenNotFound: return LocalizedStrings.Error.notificationTokenNotFound
+    case .saveFailed: return LocalizedStrings.Error.notificationSaveFailed
+    case .deleteFailed: return LocalizedStrings.Error.notificationDeleteFailed
+    }
+  }
+}
