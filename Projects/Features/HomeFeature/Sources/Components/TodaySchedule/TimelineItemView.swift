@@ -118,28 +118,18 @@ struct TimelineItemView: View {
 
       // 장소 + 날씨
       if let location = promise.location {
-        HStack(spacing: 6) {
-          HStack(spacing: 4) {
-            ResourceKitAsset.locationIcon.swiftUIImage
-              .renderingMode(.template)
-              .resizable()
-              .scaledToFit()
-              .frame(width: 14, height: 14)
+        HStack(spacing: 4) {
+          ResourceKitAsset.locationIcon.swiftUIImage
+            .renderingMode(.template)
+            .resizable()
+            .scaledToFit()
+            .frame(width: 14, height: 14)
 
-            Text(location.name)
-              .font(.pmCaption)
-              .lineLimit(1)
-          }
-          .foregroundStyle(.secondary)
-
-          if let weather = weather,
-             let forecast = weather.forecast(for: promise.startAt) {
-            WeatherBadge(
-              forecast: forecast,
-              referenceTimeText: promise.startAt.formattedMonthDayTime
-            )
-          }
+          Text(location.name)
+            .font(.pmCaption)
+            .lineLimit(1)
         }
+        .foregroundStyle(.secondary)
       }
 
       // 실시간 공유 시작 시간
@@ -167,6 +157,16 @@ struct TimelineItemView: View {
           }
         }
         .foregroundStyle(.secondary)
+      }
+
+      // 날씨
+      if let weather = weather,
+         let forecast = weather.forecast(for: promise.startAt) {
+        WeatherCardStrip(
+          forecast: forecast,
+          rangeForecasts: weather.forecasts(from: promise.startAt, to: promise.endAt),
+          referenceTimeText: promise.startAt.formattedMonthDayTime
+        )
       }
     }
   }

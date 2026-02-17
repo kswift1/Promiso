@@ -118,6 +118,12 @@ public struct WeatherInfo: Equatable, Hashable, Sendable, Codable {
     })
   }
 
+  /// 약속 구간 내 시간대별 예보 필터
+  public func forecasts(from start: Date, to end: Date?) -> [HourlyForecast] {
+    guard let end = end else { return [] }
+    return hourlyForecasts.filter { $0.dateTime >= start && $0.dateTime <= end }
+  }
+
   /// 약속 구간(startAt~endAt) 내 worst-case 기반 예보 요약
   public func worstCaseForecast(from start: Date, to end: Date?) -> HourlyForecast? {
     guard let end = end else { return forecast(for: start) }

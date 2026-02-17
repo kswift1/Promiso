@@ -181,23 +181,13 @@ struct PromiseCard: View {
 
             // Location (only if not "장소 미정")
             if !isLocationUndecided {
-              HStack(spacing: 8) {
-                HStack(spacing: 4) {
-                  Text("📍")
-                    .font(.system(size: 14))
-                  Text(promise.locationText)
-                    .font(.system(size: 14, weight: .medium))
-                }
-                .foregroundColor(.primary)
-
-                if let weather = weather,
-                   let forecast = weather.forecast(for: promise.startAt) {
-                  WeatherBadge(
-                    forecast: forecast,
-                    referenceTimeText: promise.startAt.formattedMonthDayTime
-                  )
-                }
+              HStack(spacing: 4) {
+                Text("📍")
+                  .font(.system(size: 14))
+                Text(promise.locationText)
+                  .font(.system(size: 14, weight: .medium))
               }
+              .foregroundColor(.primary)
             }
 
             // Arrival Sharing (과거 약속은 표시 안 함)
@@ -220,6 +210,16 @@ struct PromiseCard: View {
                   .font(.system(size: 14, weight: .medium))
               }
               .foregroundColor(.secondary)
+            }
+
+            // 날씨
+            if let weather = weather,
+               let forecast = weather.forecast(for: promise.startAt) {
+              WeatherCardStrip(
+                forecast: forecast,
+                rangeForecasts: weather.forecasts(from: promise.startAt, to: promise.endAt),
+                referenceTimeText: promise.startAt.formattedMonthDayTime
+              )
             }
           }
         }

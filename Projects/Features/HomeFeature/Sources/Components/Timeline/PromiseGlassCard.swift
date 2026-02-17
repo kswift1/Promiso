@@ -53,27 +53,17 @@ struct PromiseGlassCard: View {
               .lineLimit(1)
           }
 
-          // 장소 + 날씨
+          // 장소
           if let location = promise.location {
-            HStack(spacing: 6) {
-              HStack(spacing: 4) {
-                Image(systemName: "location.fill")
-                  .font(.caption2)
+            HStack(spacing: 4) {
+              Image(systemName: "location.fill")
+                .font(.caption2)
 
-                Text(location.name)
-                  .font(.caption)
-                  .lineLimit(1)
-              }
-              .foregroundStyle(.secondary)
-
-              if let weather = weather,
-                 let forecast = weather.forecast(for: promise.startAt) {
-                WeatherBadge(
-                  forecast: forecast,
-                  referenceTimeText: promise.startAt.formattedMonthDayTime
-                )
-              }
+              Text(location.name)
+                .font(.caption)
+                .lineLimit(1)
             }
+            .foregroundStyle(.secondary)
           }
 
           // 하단: 투표 상태 점 + 마감 정보
@@ -97,6 +87,16 @@ struct PromiseGlassCard: View {
                   .foregroundStyle(.secondary)
               }
             }
+          }
+
+          // 날씨
+          if let weather = weather,
+             let forecast = weather.forecast(for: promise.startAt) {
+            WeatherCardStrip(
+              forecast: forecast,
+              rangeForecasts: weather.forecasts(from: promise.startAt, to: promise.endAt),
+              referenceTimeText: promise.startAt.formattedMonthDayTime
+            )
           }
         }
 

@@ -22,11 +22,6 @@ struct PromiseDetailWeatherSection: View {
     return weatherInfo.forecast(for: startAt)
   }
 
-  private var advices: [WeatherAdvice] {
-    guard let forecast = displayedForecast else { return [] }
-    return WeatherAdvice.from(forecast: forecast)
-  }
-
   private var timeRangeForecasts: [HourlyForecast] {
     let end = endAt ?? startAt.addingTimeInterval(7200)
     // 약속 시간 1시간 전부터 종료 시간까지
@@ -137,28 +132,6 @@ struct PromiseDetailWeatherSection: View {
           .padding(.vertical, 8)
         }
 
-        // 행동 추천
-        if !advices.isEmpty {
-          Divider()
-            .padding(.horizontal, 16)
-
-          VStack(alignment: .leading, spacing: 6) {
-            ForEach(Array(advices.enumerated()), id: \.offset) { _, advice in
-              HStack(spacing: 8) {
-                Image(systemName: advice.icon)
-                  .font(.system(size: 14))
-                  .foregroundStyle(advice.color)
-                  .frame(width: 20)
-
-                Text(advice.message)
-                  .font(.system(size: 14, weight: .semibold))
-                  .foregroundStyle(.primary)
-              }
-            }
-          }
-          .padding(.horizontal, 16)
-          .padding(.bottom, 12)
-        }
       }
       .adaptiveGlassCard()
     }

@@ -130,26 +130,16 @@ struct PromiseCardView: View {
               .lineLimit(1)
           }
 
-          // 위치 + 날씨 (있는 경우)
+          // 위치
           if let location = promise.location {
-            HStack(spacing: 8) {
-              HStack(spacing: 4) {
-                Image(systemName: "location.fill")
-                  .font(.system(size: 10))
-                Text(location.name)
-                  .font(.system(size: 13))
-                  .lineLimit(1)
-              }
-              .foregroundColor(.secondary.opacity(0.8))
-
-              if let weather = weather,
-                 let forecast = weather.forecast(for: promise.startAt) {
-                WeatherBadge(
-                  forecast: forecast,
-                  referenceTimeText: promise.startAt.formattedMonthDayTime
-                )
-              }
+            HStack(spacing: 4) {
+              Image(systemName: "location.fill")
+                .font(.system(size: 10))
+              Text(location.name)
+                .font(.system(size: 13))
+                .lineLimit(1)
             }
+            .foregroundColor(.secondary.opacity(0.8))
           }
 
           // 실시간 공유 (과거 약속은 표시 안 함)
@@ -162,6 +152,16 @@ struct PromiseCardView: View {
                 .lineLimit(1)
             }
             .foregroundColor(.secondary.opacity(0.8))
+          }
+
+          // 날씨
+          if let weather = weather,
+             let forecast = weather.forecast(for: promise.startAt) {
+            WeatherCardStrip(
+              forecast: forecast,
+              rangeForecasts: weather.forecasts(from: promise.startAt, to: promise.endAt),
+              referenceTimeText: promise.startAt.formattedMonthDayTime
+            )
           }
 
           // 응답하기 버튼 (필요한 경우)
