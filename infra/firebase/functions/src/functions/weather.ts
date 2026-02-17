@@ -355,10 +355,10 @@ export const getWeather = onCall<GetWeatherRequest>(
       );
     }
 
-    // 1. 시간 범위 검증 (과거 / 72시간 초과)
+    // 1. 시간 범위 검증 (과거 / 5일 초과)
     const now = Date.now();
     const targetMs = new Date(targetDate).getTime();
-    const MAX_FORECAST_MS = 72 * 60 * 60 * 1000;
+    const MAX_FORECAST_MS = 5 * 24 * 60 * 60 * 1000;
 
     if (targetMs < now) {
       return {forecasts: []};
@@ -391,10 +391,9 @@ export const getWeather = onCall<GetWeatherRequest>(
       latitude, longitude
     );
 
-    // 5. 발표 시각 계산
-    const target = new Date(targetDate);
+    // 5. 발표 시각 계산 (현재 시각 기준 최신 발표)
     const {baseDate, baseTime} =
-      getBaseDateTime(target);
+      getBaseDateTime(new Date(now));
 
     console.log(
       `Weather: (${latitude},${longitude})` +
@@ -413,7 +412,7 @@ export const getWeather = onCall<GetWeatherRequest>(
         "/VilageFcstInfoService_2.0" +
         "/getVilageFcst" +
         "?serviceKey=" + encodedKey +
-        "&numOfRows=300" +
+        "&numOfRows=1000" +
         "&pageNo=1" +
         "&dataType=JSON" +
         "&base_date=" + baseDate +

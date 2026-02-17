@@ -381,8 +381,8 @@ extension Home {
               event.location?.longitude != nil
             }
 
-            // 단기예보 범위(72시간) 밖 필터링 (추후 중기예보로 확장 예정)
-            let maxDate = Date().addingTimeInterval(72 * 3600)
+            // 단기예보 범위(5일) 밖 필터링
+            let maxDate = Date().addingTimeInterval(5 * 24 * 3600)
 
             struct LocationKey: Hashable {
               let lat: Double
