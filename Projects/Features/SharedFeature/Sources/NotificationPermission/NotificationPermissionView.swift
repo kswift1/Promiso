@@ -54,6 +54,8 @@ extension NotificationPermission {
                 Text(benefit)
                   .font(.system(size: 13, weight: .medium))
                   .foregroundStyle(Color.pmtext.secondary)
+                  .lineLimit(1)
+                  .minimumScaleFactor(0.85)
               }
               .padding(.horizontal, 10)
               .padding(.vertical, 6)
