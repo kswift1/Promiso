@@ -285,75 +285,6 @@ function calculateFeelsLike(
 }
 
 /**
- * Mock 날씨 데이터 생성 (API 키 미설정 시)
- * @param {number} latitude - 위도
- * @param {number} longitude - 경도
- * @param {string} targetDateStr - ISO 8601 날짜
- * @return {GetWeatherResponse} Mock 예보 데이터
- */
-function generateMockWeather(
-  latitude: number,
-  longitude: number,
-  targetDateStr: string
-): GetWeatherResponse {
-  const targetDate = new Date(targetDateStr);
-  const seed = Math.floor(
-    latitude * 100 + longitude * 100 +
-    targetDate.getDate()
-  );
-
-  const conditions = [
-    "clear", "cloudy", "overcast", "rain",
-    "clear", "cloudy", "clear", "shower",
-  ];
-
-  const forecasts = [];
-  for (let i = 0; i < 12; i++) {
-    const forecastDate = new Date(
-      targetDate.getTime() + i * 3600 * 1000
-    );
-    const hour = forecastDate.getHours();
-
-    const condIdx = (seed + i) % conditions.length;
-    const sinVal = Math.sin(
-      (hour - 6) * Math.PI / 12
-    );
-    const baseTemp = 15 + sinVal * 8;
-    const temp = Math.round(
-      (baseTemp + (seed % 5) - 2) * 10
-    ) / 10;
-    const humidity = 50 + ((seed + i * 7) % 30);
-    const windSpeed = Math.round(
-      (2 + ((seed + i * 3) % 8)) * 10
-    ) / 10;
-    const fl = calculateFeelsLike(
-      temp, windSpeed, humidity
-    );
-    const feelsLike = Math.round(fl * 10) / 10;
-    const condition = conditions[condIdx];
-    const isWet =
-      condition === "rain" || condition === "shower";
-    const precipProb = isWet ?
-      50 + ((seed + i) % 40) :
-      (seed + i) % 30;
-
-    forecasts.push({
-      dateTime: forecastDate.toISOString(),
-      temperature: temp,
-      feelsLikeTemperature: feelsLike,
-      condition: condition,
-      precipitationProbability: precipProb,
-      humidity: humidity,
-      windSpeed: windSpeed,
-      precipitationAmount:
-        condition === "rain" ? "1mm" : "",
-    });
-  }
-
-  return {forecasts};
-}
-
-/**
  * 기상청 API 카테고리별 값 파싱
  */
 interface ForecastSlot {
@@ -400,11 +331,6 @@ function mapToCondition(
  * @why 기상청 API 키를 클라이언트에 노출하지 않기 위함
  * @ios HomeFeature, PromiseDetailFeature에서 호출
  * @added 2026-02-17
- *
- * @remarks
- * **Mock 모드**
- * - KMA_API_KEY 미설정 시 결정론적 Mock 데이터 반환
- * - 개발/테스트 환경에서 API 키 없이도 동작
  */
 export const getWeather = onCall<GetWeatherRequest>(
   {
@@ -429,8 +355,19 @@ export const getWeather = onCall<GetWeatherRequest>(
       );
     }
 
-    // 1. 캐시 확인
+    // 1. 시간 범위 검증 (과거 / 72시간 초과)
     const now = Date.now();
+    const targetMs = new Date(targetDate).getTime();
+    const MAX_FORECAST_MS = 72 * 60 * 60 * 1000;
+
+    if (targetMs < now) {
+      return {forecasts: []};
+    }
+    if (targetMs > now + MAX_FORECAST_MS) {
+      return {forecasts: []};
+    }
+
+    // 2. 캐시 확인
     const cacheKey = buildCacheKey(
       latitude, longitude, targetDate
     );
@@ -440,23 +377,21 @@ export const getWeather = onCall<GetWeatherRequest>(
       return cached;
     }
 
-    // 2. API 키 확인 → 없으면 Mock 데이터
+    // 3. API 키 확인
     const apiKey = KMA_API_KEY.value().trim();
     if (!apiKey) {
-      console.log(
-        "KMA_API_KEY not set, mock weather"
-      );
-      return generateMockWeather(
-        latitude, longitude, targetDate
+      throw new HttpsError(
+        "failed-precondition",
+        "KMA_API_KEY가 설정되지 않았습니다"
       );
     }
 
-    // 2. 좌표 → 기상청 격자 변환
+    // 4. 좌표 → 기상청 격자 변환
     const {nx, ny} = convertToGrid(
       latitude, longitude
     );
 
-    // 3. 발표 시각 계산
+    // 5. 발표 시각 계산
     const target = new Date(targetDate);
     const {baseDate, baseTime} =
       getBaseDateTime(target);
@@ -541,9 +476,7 @@ export const getWeather = onCall<GetWeatherRequest>(
         console.error(
           `KMA API result error: ${msg}`
         );
-        return generateMockWeather(
-          latitude, longitude, targetDate
-        );
+        return {forecasts: []};
       }
 
       const items =
@@ -646,9 +579,7 @@ export const getWeather = onCall<GetWeatherRequest>(
       }
 
       console.error("Weather API error:", error);
-      return generateMockWeather(
-        latitude, longitude, targetDate
-      );
+      return {forecasts: []};
     }
   }
 );
