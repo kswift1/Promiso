@@ -182,13 +182,15 @@ extension PromiseDetail {
               state.weatherInfo = cached
             }
 
+            let needsWeatherFetch = state.weatherInfo == nil
+              || isWeatherStale(state.weatherInfo)
+
             // 그룹 멤버 캐시 확인 → 없으면 로드
             if state.groupMembers == nil {
               // 캐시에서 먼저 확인
               if let cached = state.groupMembersCache[state.promise.groupId] {
                 state.groupMembers = cached
-                // 날씨만 fetch (캐시 없으면)
-                if state.weatherInfo == nil {
+                if needsWeatherFetch {
                   return .send(.internal(.fetchWeather))
                 }
                 return .none
@@ -197,11 +199,10 @@ extension PromiseDetail {
               state.isLoadingMembers = true
               return .merge(
                 .send(.internal(.fetchGroupMembers)),
-                state.weatherInfo == nil ? .send(.internal(.fetchWeather)) : .none
+                needsWeatherFetch ? .send(.internal(.fetchWeather)) : .none
               )
             }
-            // 날씨만 fetch (캐시 없으면)
-            if state.weatherInfo == nil {
+            if needsWeatherFetch {
               return .send(.internal(.fetchWeather))
             }
             return .none
@@ -514,6 +515,11 @@ extension PromiseDetail {
         EditPromise.Feature()
       }
       .ifLet(\.$alert, action: \.alert)
+    }
+
+    private func isWeatherStale(_ info: WeatherInfo?) -> Bool {
+      guard let info else { return true }
+      return Date().timeIntervalSince(info.fetchedAt) > 6 * 3600
     }
   }
 }

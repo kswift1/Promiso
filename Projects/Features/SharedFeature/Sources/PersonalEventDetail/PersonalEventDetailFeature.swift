@@ -90,7 +90,9 @@ extension PersonalEventDetail {
             if let cached = state.weatherCache[state.event.id] {
               state.weatherInfo = cached
             }
-            if state.weatherInfo == nil {
+            let needsFetch = state.weatherInfo == nil
+              || isWeatherStale(state.weatherInfo)
+            if needsFetch {
               return .send(.internal(.fetchWeather))
             }
             return .none
@@ -222,6 +224,11 @@ extension PersonalEventDetail {
         CreatePersonalEvent.Feature()
       }
       .ifLet(\.$deleteAlert, action: \.alert)
+    }
+
+    private func isWeatherStale(_ info: WeatherInfo?) -> Bool {
+      guard let info else { return true }
+      return Date().timeIntervalSince(info.fetchedAt) > 6 * 3600
     }
   }
 }
