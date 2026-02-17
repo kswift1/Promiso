@@ -7,6 +7,7 @@ import PromisoShared
 /// getWeather Functions 응답
 private struct WeatherResponse: Decodable {
   let forecasts: [ForecastItem]
+  let dailyForecasts: [DailyForecastItem]?
 }
 
 /// 예보 아이템
@@ -19,6 +20,17 @@ private struct ForecastItem: Decodable {
   let humidity: Int
   let windSpeed: Double
   let precipitationAmount: String?
+}
+
+/// 일별 예보 아이템 (중기예보)
+private struct DailyForecastItem: Decodable {
+  let date: String
+  let minTemperature: Double
+  let maxTemperature: Double
+  let amCondition: String
+  let pmCondition: String
+  let amPrecipitationProbability: Int
+  let pmPrecipitationProbability: Int
 }
 
 // MARK: - WeatherDataSource
@@ -69,7 +81,7 @@ final class WeatherDataSource: Sendable {
       throw WeatherDataSourceError.invalidResponse
     }
 
-    // 4. 변환
+    // 4. 변환 — 시간별 예보
     print("🌤️ [DataSource] 응답 forecasts: \(response.forecasts.count)개")
     let forecasts = response.forecasts.compactMap { item -> HourlyForecast? in
       guard let dateTime = dateFormatter.date(from: item.dateTime) else {
@@ -90,10 +102,36 @@ final class WeatherDataSource: Sendable {
       )
     }
 
+    // 4-2. 변환 — 일별 예보 (중기예보)
+    let dailyDateFormatter = DateFormatter()
+    dailyDateFormatter.dateFormat = "yyyy-MM-dd"
+    dailyDateFormatter.timeZone = TimeZone(identifier: "Asia/Seoul")
+
+    let dailyForecasts: [DailyForecast] = (response.dailyForecasts ?? []).compactMap { item in
+      guard let date = dailyDateFormatter.date(from: item.date) else {
+        print("🌤️ [DataSource] 일별 날짜 파싱 실패: \(item.date)")
+        return nil
+      }
+      return DailyForecast(
+        date: date,
+        minTemperature: item.minTemperature,
+        maxTemperature: item.maxTemperature,
+        amCondition: WeatherCondition(rawValue: item.amCondition) ?? .unknown,
+        pmCondition: WeatherCondition(rawValue: item.pmCondition) ?? .unknown,
+        amPrecipitationProbability: item.amPrecipitationProbability,
+        pmPrecipitationProbability: item.pmPrecipitationProbability
+      )
+    }
+
+    if !dailyForecasts.isEmpty {
+      print("🌤️ [DataSource] 중기예보: \(dailyForecasts.count)일")
+    }
+
     let weatherInfo = WeatherInfo(
       fetchedAt: Date(),
       current: forecasts.first(where: { abs($0.dateTime.timeIntervalSince(targetDate)) < 3600 }),
-      hourlyForecasts: forecasts
+      hourlyForecasts: forecasts,
+      dailyForecasts: dailyForecasts
     )
 
     // 5. 캐시 저장

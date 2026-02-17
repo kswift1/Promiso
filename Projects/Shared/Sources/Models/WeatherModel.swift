@@ -91,6 +91,83 @@ public struct HourlyForecast: Equatable, Hashable, Sendable, Codable {
   }
 }
 
+// MARK: - Daily Forecast (중기예보)
+
+/// 일별 예보 데이터 (중기예보 기반)
+public struct DailyForecast: Equatable, Hashable, Sendable, Codable {
+  public let date: Date
+  public let minTemperature: Double
+  public let maxTemperature: Double
+  public let amCondition: WeatherCondition
+  public let pmCondition: WeatherCondition
+  public let amPrecipitationProbability: Int
+  public let pmPrecipitationProbability: Int
+
+  public init(
+    date: Date,
+    minTemperature: Double,
+    maxTemperature: Double,
+    amCondition: WeatherCondition,
+    pmCondition: WeatherCondition,
+    amPrecipitationProbability: Int,
+    pmPrecipitationProbability: Int
+  ) {
+    self.date = date
+    self.minTemperature = minTemperature
+    self.maxTemperature = maxTemperature
+    self.amCondition = amCondition
+    self.pmCondition = pmCondition
+    self.amPrecipitationProbability = amPrecipitationProbability
+    self.pmPrecipitationProbability = pmPrecipitationProbability
+  }
+
+  /// 더 심각한 쪽의 날씨 상태
+  public var representativeCondition: WeatherCondition {
+    let amSeverity = conditionSeverity(amCondition)
+    let pmSeverity = conditionSeverity(pmCondition)
+    return amSeverity >= pmSeverity ? amCondition : pmCondition
+  }
+
+  /// 오전/오후 중 높은 강수확률
+  public var maxPrecipitationProbability: Int {
+    max(amPrecipitationProbability, pmPrecipitationProbability)
+  }
+
+  /// 평균 기온
+  public var averageTemperature: Double {
+    (minTemperature + maxTemperature) / 2
+  }
+
+  /// 약속 시간 기준 오전/오후 날씨 조건 반환
+  public func condition(for date: Date) -> WeatherCondition {
+    let hour = Calendar.current.component(.hour, from: date)
+    return hour < 12 ? amCondition : pmCondition
+  }
+
+  /// 카드 표시용 HourlyForecast 변환
+  public func toRepresentativeForecast(for date: Date) -> HourlyForecast {
+    let hour = Calendar.current.component(.hour, from: date)
+    let isAm = hour < 12
+    return HourlyForecast(
+      dateTime: date,
+      temperature: averageTemperature,
+      feelsLikeTemperature: averageTemperature,
+      condition: isAm ? amCondition : pmCondition,
+      precipitationProbability: isAm
+        ? amPrecipitationProbability
+        : pmPrecipitationProbability,
+      humidity: 0,
+      windSpeed: 0
+    )
+  }
+}
+
+/// 예보 출처
+public enum ForecastSource: Equatable, Sendable {
+  case shortTerm
+  case midTerm
+}
+
 // MARK: - Weather Info
 
 /// 날씨 정보 (특정 위치/시간대의 전체 예보)
@@ -98,24 +175,71 @@ public struct WeatherInfo: Equatable, Hashable, Sendable, Codable {
   public let fetchedAt: Date
   public let current: HourlyForecast?
   public let hourlyForecasts: [HourlyForecast]
+  public let dailyForecasts: [DailyForecast]
 
   public init(
     fetchedAt: Date = Date(),
     current: HourlyForecast? = nil,
-    hourlyForecasts: [HourlyForecast] = []
+    hourlyForecasts: [HourlyForecast] = [],
+    dailyForecasts: [DailyForecast] = []
   ) {
     self.fetchedAt = fetchedAt
     self.current = current
     self.hourlyForecasts = hourlyForecasts
+    self.dailyForecasts = dailyForecasts
   }
 
-  /// startAt 기준 가장 가까운 예보 조회
+  /// startAt 기준 가장 가까운 예보 조회 (단기 → 중기 fallback)
   public func forecast(for date: Date) -> HourlyForecast? {
-    guard !hourlyForecasts.isEmpty else { return current }
+    // 1. 단기예보에서 ±3시간 이내 검색
+    if !hourlyForecasts.isEmpty {
+      let closest = hourlyForecasts.min(by: { forecast1, forecast2 in
+        abs(forecast1.dateTime.timeIntervalSince(date)) < abs(forecast2.dateTime.timeIntervalSince(date))
+      })
+      if let closest,
+         abs(closest.dateTime.timeIntervalSince(date)) <= 10800 {
+        return closest
+      }
+    }
 
-    return hourlyForecasts.min(by: { forecast1, forecast2 in
-      abs(forecast1.dateTime.timeIntervalSince(date)) < abs(forecast2.dateTime.timeIntervalSince(date))
-    })
+    // 2. 중기예보에서 같은 날짜 검색 → HourlyForecast 변환
+    let calendar = Calendar.current
+    if let daily = dailyForecasts.first(where: {
+      calendar.isDate($0.date, inSameDayAs: date)
+    }) {
+      return daily.toRepresentativeForecast(for: date)
+    }
+
+    // 3. 단기예보 중 가장 가까운 것 (±3시간 넘어도)
+    if !hourlyForecasts.isEmpty {
+      return hourlyForecasts.min(by: { forecast1, forecast2 in
+        abs(forecast1.dateTime.timeIntervalSince(date)) < abs(forecast2.dateTime.timeIntervalSince(date))
+      })
+    }
+
+    return current
+  }
+
+  /// 예보 출처 확인
+  public func forecastSource(for date: Date) -> ForecastSource {
+    if !hourlyForecasts.isEmpty {
+      let closest = hourlyForecasts.min(by: { forecast1, forecast2 in
+        abs(forecast1.dateTime.timeIntervalSince(date)) < abs(forecast2.dateTime.timeIntervalSince(date))
+      })
+      if let closest,
+         abs(closest.dateTime.timeIntervalSince(date)) <= 10800 {
+        return .shortTerm
+      }
+    }
+
+    let calendar = Calendar.current
+    if dailyForecasts.contains(where: {
+      calendar.isDate($0.date, inSameDayAs: date)
+    }) {
+      return .midTerm
+    }
+
+    return .shortTerm
   }
 
   /// 약속 구간 내 시간대별 예보 필터
@@ -392,34 +516,38 @@ public struct WeatherSuggestion: Equatable, Sendable {
       }
     }
 
-    // 4. 강풍 (8m/s 이상만, 약한 바람은 생략)
-    if wind >= 14 {
-      suggestions.append(.init(
-        icon: "wind",
-        message: "강풍이 예상돼요. 야외 활동에 주의하세요",
-        color: .purple
-      ))
-    } else if wind >= 8 {
-      suggestions.append(.init(
-        icon: "wind",
-        message: "바람이 제법 강해요",
-        color: .purple
-      ))
+    // 4. 강풍 (8m/s 이상만, 약한 바람은 생략, 중기예보 0이면 스킵)
+    if wind > 0 {
+      if wind >= 14 {
+        suggestions.append(.init(
+          icon: "wind",
+          message: "강풍이 예상돼요. 야외 활동에 주의하세요",
+          color: .purple
+        ))
+      } else if wind >= 8 {
+        suggestions.append(.init(
+          icon: "wind",
+          message: "바람이 제법 강해요",
+          color: .purple
+        ))
+      }
     }
 
-    // 5. 습도 (고온+고습일 때만, 건조는 10° 이상일 때만)
-    if humidity >= 80 && feels >= 25 {
-      suggestions.append(.init(
-        icon: "humidity.fill",
-        message: "습도가 높아 체감온도가 더 높아요",
-        color: .teal
-      ))
-    } else if humidity <= 30 && feels >= 10 {
-      suggestions.append(.init(
-        icon: "drop.degreesign",
-        message: "공기가 건조해요. 물을 자주 마시세요",
-        color: .orange
-      ))
+    // 5. 습도 (고온+고습일 때만, 건조는 10° 이상일 때만, 중기예보 0이면 스킵)
+    if humidity > 0 {
+      if humidity >= 80 && feels >= 25 {
+        suggestions.append(.init(
+          icon: "humidity.fill",
+          message: "습도가 높아 체감온도가 더 높아요",
+          color: .teal
+        ))
+      } else if humidity <= 30 && feels >= 10 {
+        suggestions.append(.init(
+          icon: "drop.degreesign",
+          message: "공기가 건조해요. 물을 자주 마시세요",
+          color: .orange
+        ))
+      }
     }
 
     // 6. 자외선 (맑고 따뜻할 때)

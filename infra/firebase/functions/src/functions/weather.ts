@@ -1,7 +1,7 @@
 /**
  * Weather Functions
  *
- * 기상청 공공데이터 API 프록시 (단기예보)
+ * 기상청 공공데이터 API 프록시 (단기예보 + 중기예보)
  *
  * @added 2026-02-17
  * @why 기상청 API 키 노출 방지 + 좌표→격자 변환 서버 처리
@@ -92,6 +92,19 @@ export interface GetWeatherRequest {
 }
 
 /**
+ * 일별 예보 (중기예보)
+ */
+export interface DailyForecastItem {
+  date: string;
+  minTemperature: number;
+  maxTemperature: number;
+  amCondition: string;
+  pmCondition: string;
+  amPrecipitationProbability: number;
+  pmPrecipitationProbability: number;
+}
+
+/**
  * 날씨 조회 응답
  */
 export interface GetWeatherResponse {
@@ -105,6 +118,7 @@ export interface GetWeatherResponse {
     windSpeed: number;
     precipitationAmount: string;
   }>;
+  dailyForecasts?: DailyForecastItem[];
 }
 
 /**
@@ -325,8 +339,378 @@ function mapToCondition(
   }
 }
 
+// MARK: - Mid-Term Forecast (중기예보)
+
+interface MidTermRegion {
+  name: string;
+  tempRegId: string; // getMidTa
+  landRegId: string; // getMidLandFcst
+  lat: number;
+  lng: number;
+}
+
+/* eslint-disable max-len */
+const MID_TERM_REGIONS: MidTermRegion[] = [
+  // 서울/인천/경기
+  {name: "서울", tempRegId: "11B10101", landRegId: "11B00000", lat: 37.567, lng: 126.978},
+  {name: "인천", tempRegId: "11B20201", landRegId: "11B00000", lat: 37.456, lng: 126.705},
+  {name: "수원", tempRegId: "11B20601", landRegId: "11B00000", lat: 37.264, lng: 127.029},
+  {name: "파주", tempRegId: "11B20305", landRegId: "11B00000", lat: 37.760, lng: 126.770},
+  // 강원영서
+  {name: "춘천", tempRegId: "11D10301", landRegId: "11D10000", lat: 37.881, lng: 127.730},
+  {name: "원주", tempRegId: "11D10401", landRegId: "11D10000", lat: 37.342, lng: 127.920},
+  // 강원영동
+  {name: "강릉", tempRegId: "11D20501", landRegId: "11D20000", lat: 37.752, lng: 128.876},
+  // 충북
+  {name: "청주", tempRegId: "11C10301", landRegId: "11C10000", lat: 36.642, lng: 127.489},
+  // 대전/세종/충남
+  {name: "대전", tempRegId: "11C20401", landRegId: "11C20000", lat: 36.350, lng: 127.385},
+  {name: "세종", tempRegId: "11C20404", landRegId: "11C20000", lat: 36.480, lng: 127.260},
+  // 전북
+  {name: "전주", tempRegId: "11F10201", landRegId: "11F10000", lat: 35.824, lng: 127.148},
+  // 광주/전남
+  {name: "광주", tempRegId: "11F20501", landRegId: "11F20000", lat: 35.160, lng: 126.853},
+  {name: "여수", tempRegId: "11F20401", landRegId: "11F20000", lat: 34.760, lng: 127.662},
+  {name: "목포", tempRegId: "21F20801", landRegId: "11F20000", lat: 34.812, lng: 126.392},
+  // 대구/경북
+  {name: "대구", tempRegId: "11H10701", landRegId: "11H10000", lat: 35.871, lng: 128.601},
+  {name: "안동", tempRegId: "11H10501", landRegId: "11H10000", lat: 36.568, lng: 128.729},
+  // 부산/울산/경남
+  {name: "부산", tempRegId: "11H20201", landRegId: "11H20000", lat: 35.180, lng: 129.076},
+  {name: "울산", tempRegId: "11H20101", landRegId: "11H20000", lat: 35.538, lng: 129.311},
+  {name: "창원", tempRegId: "11H20301", landRegId: "11H20000", lat: 35.228, lng: 128.681},
+  // 제주
+  {name: "제주", tempRegId: "11G00201", landRegId: "11G00000", lat: 33.510, lng: 126.522},
+  {name: "서귀포", tempRegId: "11G00401", landRegId: "11G00000", lat: 33.253, lng: 126.560},
+];
+/* eslint-enable max-len */
+
 /**
- * 날씨 조회 (기상청 단기예보 API 프록시)
+ * 유클리드 거리 기반 최근접 도시 반환
+ * @param {number} lat - 위도
+ * @param {number} lng - 경도
+ * @return {MidTermRegion} 최근접 도시
+ */
+function findNearestRegion(
+  lat: number, lng: number
+): MidTermRegion {
+  let nearest = MID_TERM_REGIONS[0];
+  let minDist = Infinity;
+  for (const region of MID_TERM_REGIONS) {
+    const d = Math.pow(lat - region.lat, 2) +
+      Math.pow(lng - region.lng, 2);
+    if (d < minDist) {
+      minDist = d;
+      nearest = region;
+    }
+  }
+  return nearest;
+}
+
+/**
+ * 중기예보 발표 시각 계산 (06시/18시 KST)
+ * @param {Date} now - 현재 시각
+ * @return {string} tmFc (yyyyMMddHHmm 형식)
+ */
+function getMidTermBaseTime(now: Date): string {
+  const kstOffset = 9 * 60;
+  const kst = new Date(
+    now.getTime() + kstOffset * 60 * 1000
+  );
+  const h = kst.getUTCHours();
+
+  const baseDate = new Date(kst);
+  let baseHour: string;
+
+  if (h >= 18) {
+    baseHour = "1800";
+  } else if (h >= 6) {
+    baseHour = "0600";
+  } else {
+    // 06시 이전 → 전날 18시 기준
+    baseDate.setUTCDate(baseDate.getUTCDate() - 1);
+    baseHour = "1800";
+  }
+
+  const y = baseDate.getUTCFullYear();
+  const m = String(baseDate.getUTCMonth() + 1)
+    .padStart(2, "0");
+  const d = String(baseDate.getUTCDate())
+    .padStart(2, "0");
+
+  return `${y}${m}${d}${baseHour}`;
+}
+
+/**
+ * 기상청 중기기온예보 API 응답
+ */
+interface KMAMidTaResponse {
+  response: {
+    header: { resultCode: string; resultMsg: string };
+    body?: {
+      items?: {
+        item?: Array<{
+          regId: string;
+          taMin3: number; taMax3: number;
+          taMin4: number; taMax4: number;
+          taMin5: number; taMax5: number;
+          taMin6: number; taMax6: number;
+          taMin7: number; taMax7: number;
+          taMin8: number; taMax8: number;
+          taMin9: number; taMax9: number;
+          taMin10: number; taMax10: number;
+        }>;
+      };
+    };
+  };
+}
+
+/**
+ * 기상청 중기육상예보 API 응답
+ */
+interface KMAMidLandResponse {
+  response: {
+    header: { resultCode: string; resultMsg: string };
+    body?: {
+      items?: {
+        item?: Array<{
+          regId: string;
+          wf3Am: string; wf3Pm: string;
+          wf4Am: string; wf4Pm: string;
+          wf5Am: string; wf5Pm: string;
+          wf6Am: string; wf6Pm: string;
+          wf7Am: string; wf7Pm: string;
+          wf8: string;
+          wf9: string;
+          wf10: string;
+          rnSt3Am: number; rnSt3Pm: number;
+          rnSt4Am: number; rnSt4Pm: number;
+          rnSt5Am: number; rnSt5Pm: number;
+          rnSt6Am: number; rnSt6Pm: number;
+          rnSt7Am: number; rnSt7Pm: number;
+          rnSt8: number;
+          rnSt9: number;
+          rnSt10: number;
+        }>;
+      };
+    };
+  };
+}
+
+/**
+ * wf 문자열 → WeatherCondition 매핑
+ * @param {string} wf - 날씨 예보 문자열 (예: "맑음", "구름많고 비")
+ * @return {string} WeatherCondition
+ */
+function mapWfToCondition(wf: string): string {
+  if (!wf) return "unknown";
+  if (wf.includes("비/눈") || wf.includes("눈/비")) {
+    return "rainSnow";
+  }
+  if (wf.includes("눈")) return "snow";
+  if (wf.includes("소나기")) return "shower";
+  if (wf.includes("비")) return "rain";
+  if (wf.includes("흐림")) return "overcast";
+  if (wf.includes("구름많")) return "cloudy";
+  if (wf.includes("맑")) return "clear";
+  return "cloudy";
+}
+
+/**
+ * HTTPS GET 요청 유틸리티
+ * @param {string} path - 요청 경로
+ * @return {Promise<T>} JSON 파싱된 응답
+ */
+function kmaGet<T>(path: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const req = https.get(
+      {
+        hostname: "apis.data.go.kr",
+        path: path,
+        headers: {"Accept": "application/json"},
+      },
+      (res) => {
+        let body = "";
+        res.on("data", (c) => {
+          body += c;
+        });
+        res.on("end", () => {
+          if (res.statusCode !== 200) {
+            reject(new Error(
+              "KMA " + res.statusCode
+            ));
+            return;
+          }
+          try {
+            resolve(JSON.parse(body));
+          } catch (e) {
+            reject(e);
+          }
+        });
+      }
+    );
+    req.on("error", reject);
+    req.end();
+  });
+}
+
+/**
+ * 중기기온예보 호출
+ * @param {string} regId - 기온 예보 지역코드
+ * @param {string} tmFc - 발표 시각 (yyyyMMddHHmm)
+ * @param {string} apiKey - 기상청 API 키
+ * @return {object} 일별 최저/최고 기온 (3~10일)
+ */
+async function fetchMidTemp(
+  regId: string, tmFc: string, apiKey: string
+): Promise<Record<number, { min: number; max: number }>> {
+  const encodedKey = encodeURIComponent(apiKey);
+  const path =
+    "/1360000/MidFcstInfoService/getMidTa" +
+    "?serviceKey=" + encodedKey +
+    "&numOfRows=10&pageNo=1" +
+    "&dataType=JSON" +
+    "&regId=" + regId +
+    "&tmFc=" + tmFc;
+
+  const data = await kmaGet<KMAMidTaResponse>(path);
+  if (data.response.header.resultCode !== "00") {
+    console.error(
+      "MidTa error:", data.response.header.resultMsg
+    );
+    return {};
+  }
+
+  const item = data.response.body?.items?.item?.[0];
+  if (!item) return {};
+
+  const result: Record<number, {min: number; max: number}> = {};
+  for (let d = 3; d <= 10; d++) {
+    const minKey = `taMin${d}` as keyof typeof item;
+    const maxKey = `taMax${d}` as keyof typeof item;
+    result[d] = {
+      min: item[minKey] as number,
+      max: item[maxKey] as number,
+    };
+  }
+  return result;
+}
+
+/**
+ * 중기육상예보 호출
+ * @param {string} regId - 육상 예보 지역코드
+ * @param {string} tmFc - 발표 시각 (yyyyMMddHHmm)
+ * @param {string} apiKey - 기상청 API 키
+ * @return {object} 일별 날씨/강수확률 (3~10일)
+ */
+async function fetchMidLand(
+  regId: string, tmFc: string, apiKey: string
+): Promise<Record<number, {
+  wfAm: string; wfPm: string;
+  rnStAm: number; rnStPm: number;
+}>> {
+  const encodedKey = encodeURIComponent(apiKey);
+  const path =
+    "/1360000/MidFcstInfoService/getMidLandFcst" +
+    "?serviceKey=" + encodedKey +
+    "&numOfRows=10&pageNo=1" +
+    "&dataType=JSON" +
+    "&regId=" + regId +
+    "&tmFc=" + tmFc;
+
+  const data = await kmaGet<KMAMidLandResponse>(path);
+  if (data.response.header.resultCode !== "00") {
+    console.error(
+      "MidLand error:", data.response.header.resultMsg
+    );
+    return {};
+  }
+
+  const item = data.response.body?.items?.item?.[0];
+  if (!item) return {};
+
+  const result: Record<number, {
+    wfAm: string; wfPm: string;
+    rnStAm: number; rnStPm: number;
+  }> = {};
+
+  // Day 3~7: 오전/오후 분리
+  for (let d = 3; d <= 7; d++) {
+    const wfAmKey = `wf${d}Am` as keyof typeof item;
+    const wfPmKey = `wf${d}Pm` as keyof typeof item;
+    const rnAmKey = `rnSt${d}Am` as keyof typeof item;
+    const rnPmKey = `rnSt${d}Pm` as keyof typeof item;
+    result[d] = {
+      wfAm: item[wfAmKey] as string,
+      wfPm: item[wfPmKey] as string,
+      rnStAm: item[rnAmKey] as number,
+      rnStPm: item[rnPmKey] as number,
+    };
+  }
+
+  // Day 8~10: 오전/오후 통합
+  for (let d = 8; d <= 10; d++) {
+    const wfKey = `wf${d}` as keyof typeof item;
+    const rnKey = `rnSt${d}` as keyof typeof item;
+    const wf = item[wfKey] as string;
+    const rn = item[rnKey] as number;
+    result[d] = {
+      wfAm: wf, wfPm: wf,
+      rnStAm: rn, rnStPm: rn,
+    };
+  }
+
+  return result;
+}
+
+/**
+ * 중기예보 병합 → DailyForecastItem 배열 생성
+ * @param {Date} baseKstDate - 발표일 기준 KST 날짜
+ * @param {Record} temps - 기온 데이터
+ * @param {Record} lands - 날씨/강수확률 데이터
+ * @return {DailyForecastItem[]} 일별 예보 배열
+ */
+function mergeMidForecasts(
+  baseKstDate: Date,
+  temps: Record<number, { min: number; max: number }>,
+  lands: Record<number, {
+    wfAm: string; wfPm: string;
+    rnStAm: number; rnStPm: number;
+  }>
+): DailyForecastItem[] {
+  const results: DailyForecastItem[] = [];
+
+  for (let d = 3; d <= 10; d++) {
+    const temp = temps[d];
+    const land = lands[d];
+    if (!temp || !land) continue;
+
+    const forecastDate = new Date(baseKstDate);
+    forecastDate.setUTCDate(
+      forecastDate.getUTCDate() + d
+    );
+    const y = forecastDate.getUTCFullYear();
+    const m = String(forecastDate.getUTCMonth() + 1)
+      .padStart(2, "0");
+    const dy = String(forecastDate.getUTCDate())
+      .padStart(2, "0");
+
+    results.push({
+      date: `${y}-${m}-${dy}`,
+      minTemperature: temp.min,
+      maxTemperature: temp.max,
+      amCondition: mapWfToCondition(land.wfAm),
+      pmCondition: mapWfToCondition(land.wfPm),
+      amPrecipitationProbability: land.rnStAm,
+      pmPrecipitationProbability: land.rnStPm,
+    });
+  }
+
+  return results;
+}
+
+/**
+ * 날씨 조회 (기상청 단기예보 + 중기예보 API 프록시)
  *
  * @why 기상청 API 키를 클라이언트에 노출하지 않기 위함
  * @ios HomeFeature, PromiseDetailFeature에서 호출
@@ -355,10 +739,11 @@ export const getWeather = onCall<GetWeatherRequest>(
       );
     }
 
-    // 1. 시간 범위 검증 (과거 / 5일 초과)
+    // 1. 시간 범위 검증 (과거 / 10일 초과)
     const now = Date.now();
     const targetMs = new Date(targetDate).getTime();
-    const MAX_FORECAST_MS = 5 * 24 * 60 * 60 * 1000;
+    const MAX_FORECAST_MS = 10 * 24 * 60 * 60 * 1000;
+    const SHORT_TERM_MS = 5 * 24 * 60 * 60 * 1000;
 
     if (targetMs < now) {
       return {forecasts: []};
@@ -366,6 +751,9 @@ export const getWeather = onCall<GetWeatherRequest>(
     if (targetMs > now + MAX_FORECAST_MS) {
       return {forecasts: []};
     }
+
+    const diffMs = targetMs - now;
+    const needMidTerm = diffMs > SHORT_TERM_MS;
 
     // 2. 캐시 확인
     const cacheKey = buildCacheKey(
@@ -569,7 +957,76 @@ export const getWeather = onCall<GetWeatherRequest>(
         `Weather: ${forecasts.length} slots`
       );
 
-      const result = {forecasts};
+      // 7. 중기예보 (3일 초과 시)
+      let dailyForecasts: DailyForecastItem[] | undefined;
+      if (needMidTerm) {
+        try {
+          const region = findNearestRegion(
+            latitude, longitude
+          );
+          const tmFc = getMidTermBaseTime(new Date(now));
+          console.log(
+            `MidTerm: region=${region.name}` +
+            ` temp=${region.tempRegId}` +
+            ` land=${region.landRegId}` +
+            ` tmFc=${tmFc}`
+          );
+
+          // 캐시 확인
+          const midCacheKey =
+            `mid_${region.tempRegId}_${tmFc}`;
+          const midCached = readCache(midCacheKey, now);
+          if (midCached && midCached.dailyForecasts) {
+            dailyForecasts = midCached.dailyForecasts;
+          } else {
+            const [temps, lands] = await Promise.all([
+              fetchMidTemp(
+                region.tempRegId, tmFc, apiKey
+              ),
+              fetchMidLand(
+                region.landRegId, tmFc, apiKey
+              ),
+            ]);
+
+            // 발표일 기준 KST 날짜 계산
+            const kstOffset = 9 * 60;
+            const baseKst = new Date(
+              now + kstOffset * 60 * 1000
+            );
+            // 발표 시각의 날짜 (00:00 UTC 기준)
+            baseKst.setUTCHours(0, 0, 0, 0);
+
+            dailyForecasts = mergeMidForecasts(
+              baseKst, temps, lands
+            );
+
+            console.log(
+              `MidTerm: ${dailyForecasts.length} days`
+            );
+
+            // 중기예보 캐시 저장
+            if (dailyForecasts.length > 0) {
+              writeCache(midCacheKey, {
+                forecasts: [],
+                dailyForecasts,
+              }, now);
+            }
+          }
+        } catch (midError) {
+          console.error(
+            "MidTerm API error:", midError
+          );
+          // 중기 실패해도 단기만 반환
+        }
+      }
+
+      const hasDailyForecasts =
+        dailyForecasts && dailyForecasts.length > 0;
+      const result: GetWeatherResponse = {
+        forecasts,
+        ...(hasDailyForecasts ?
+          {dailyForecasts} : {}),
+      };
       writeCache(cacheKey, result, now);
       return result;
     } catch (error) {

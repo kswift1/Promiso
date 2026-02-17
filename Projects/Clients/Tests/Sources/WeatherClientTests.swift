@@ -42,12 +42,13 @@ struct WeatherConditionTests {
 struct WeatherInfoTests {
 
   private func makeForecasts(count: Int, baseDate: Date = Date()) -> [HourlyForecast] {
-    (0..<count).map { i in
-      HourlyForecast(
+    (0..<count).map { (i: Int) -> HourlyForecast in
+      let condition: WeatherCondition = i % 3 == 0 ? .clear : (i % 3 == 1 ? .cloudy : .rain)
+      return HourlyForecast(
         dateTime: baseDate.addingTimeInterval(Double(i) * 3600),
         temperature: 15 + Double(i),
         feelsLikeTemperature: 13 + Double(i),
-        condition: i % 3 == 0 ? .clear : (i % 3 == 1 ? .cloudy : .rain),
+        condition: condition,
         precipitationProbability: i * 10,
         humidity: 50 + i * 2,
         windSpeed: 2.0 + Double(i) * 0.5
@@ -221,6 +222,195 @@ struct WeatherAdviceTests {
     )
     let advices = WeatherAdvice.from(forecast: forecast)
     #expect(advices.count <= 2)
+  }
+}
+
+// MARK: - DailyForecast Tests
+
+@Suite("DailyForecast")
+struct DailyForecastTests {
+
+  private func makeDailyForecast(
+    amCondition: WeatherCondition = .clear,
+    pmCondition: WeatherCondition = .rain,
+    amProb: Int = 10,
+    pmProb: Int = 70,
+    minTemp: Double = 5,
+    maxTemp: Double = 15
+  ) -> DailyForecast {
+    DailyForecast(
+      date: Date(),
+      minTemperature: minTemp,
+      maxTemperature: maxTemp,
+      amCondition: amCondition,
+      pmCondition: pmCondition,
+      amPrecipitationProbability: amProb,
+      pmPrecipitationProbability: pmProb
+    )
+  }
+
+  @Test("representativeCondition은 더 심각한 쪽 반환")
+  func representativeCondition() {
+    let daily = makeDailyForecast(
+      amCondition: .cloudy, pmCondition: .rain
+    )
+    #expect(daily.representativeCondition == .rain)
+
+    let daily2 = makeDailyForecast(
+      amCondition: .snow, pmCondition: .cloudy
+    )
+    #expect(daily2.representativeCondition == .snow)
+  }
+
+  @Test("maxPrecipitationProbability는 높은 쪽 반환")
+  func maxPrecipitationProbability() {
+    let daily = makeDailyForecast(amProb: 20, pmProb: 80)
+    #expect(daily.maxPrecipitationProbability == 80)
+
+    let daily2 = makeDailyForecast(amProb: 90, pmProb: 30)
+    #expect(daily2.maxPrecipitationProbability == 90)
+  }
+
+  @Test("averageTemperature 계산")
+  func averageTemperature() {
+    let daily = makeDailyForecast(minTemp: 5, maxTemp: 15)
+    #expect(daily.averageTemperature == 10.0)
+  }
+
+  @Test("toRepresentativeForecast가 올바른 HourlyForecast 생성")
+  func toRepresentativeForecast() {
+    let calendar = Calendar.current
+    // 오전 9시
+    let amDate = calendar.date(
+      bySettingHour: 9, minute: 0, second: 0, of: Date()
+    )!
+    let daily = makeDailyForecast(
+      amCondition: .clear, pmCondition: .rain,
+      amProb: 10, pmProb: 70,
+      minTemp: 5, maxTemp: 15
+    )
+    let amForecast = daily.toRepresentativeForecast(for: amDate)
+    #expect(amForecast.condition == .clear)
+    #expect(amForecast.precipitationProbability == 10)
+    #expect(amForecast.temperature == 10.0)
+    #expect(amForecast.humidity == 0)
+    #expect(amForecast.windSpeed == 0)
+
+    // 오후 3시
+    let pmDate = calendar.date(
+      bySettingHour: 15, minute: 0, second: 0, of: Date()
+    )!
+    let pmForecast = daily.toRepresentativeForecast(for: pmDate)
+    #expect(pmForecast.condition == .rain)
+    #expect(pmForecast.precipitationProbability == 70)
+  }
+
+  @Test("condition(for:) 오전/오후 구분")
+  func conditionForDate() {
+    let calendar = Calendar.current
+    let daily = makeDailyForecast(
+      amCondition: .clear, pmCondition: .overcast
+    )
+    let amDate = calendar.date(
+      bySettingHour: 8, minute: 0, second: 0, of: Date()
+    )!
+    let pmDate = calendar.date(
+      bySettingHour: 14, minute: 0, second: 0, of: Date()
+    )!
+    #expect(daily.condition(for: amDate) == .clear)
+    #expect(daily.condition(for: pmDate) == .overcast)
+  }
+}
+
+// MARK: - WeatherInfo Fallback Tests
+
+@Suite("WeatherInfo Fallback")
+struct WeatherInfoFallbackTests {
+
+  @Test("단기 데이터 있으면 단기 반환")
+  func forecastShortTerm() {
+    let base = Date()
+    let hourly = HourlyForecast(
+      dateTime: base,
+      temperature: 20,
+      feelsLikeTemperature: 18,
+      condition: .clear,
+      precipitationProbability: 10,
+      humidity: 55,
+      windSpeed: 3.0
+    )
+    let info = WeatherInfo(
+      fetchedAt: Date(),
+      hourlyForecasts: [hourly]
+    )
+    let result = info.forecast(for: base)
+    #expect(result?.temperature == 20.0)
+    #expect(result?.humidity == 55)
+  }
+
+  @Test("단기 없고 중기 있으면 중기 변환값 반환")
+  func forecastMidTermFallback() {
+    let calendar = Calendar.current
+    let targetDate = calendar.date(
+      bySettingHour: 14, minute: 0, second: 0,
+      of: Date().addingTimeInterval(4 * 86400)
+    )!
+
+    let daily = DailyForecast(
+      date: targetDate,
+      minTemperature: 3,
+      maxTemperature: 13,
+      amCondition: .cloudy,
+      pmCondition: .rain,
+      amPrecipitationProbability: 20,
+      pmPrecipitationProbability: 80
+    )
+
+    let info = WeatherInfo(
+      fetchedAt: Date(),
+      hourlyForecasts: [],
+      dailyForecasts: [daily]
+    )
+
+    let result = info.forecast(for: targetDate)
+    #expect(result != nil)
+    #expect(result?.condition == .rain) // 오후
+    #expect(result?.precipitationProbability == 80)
+    #expect(result?.temperature == 8.0) // (3 + 13) / 2
+    #expect(result?.humidity == 0)
+    #expect(result?.windSpeed == 0)
+  }
+
+  @Test("forecastSource 올바른 출처 반환")
+  func forecastSource() {
+    let base = Date()
+    let hourly = HourlyForecast(
+      dateTime: base,
+      temperature: 20,
+      feelsLikeTemperature: 18,
+      condition: .clear,
+      precipitationProbability: 10,
+      humidity: 55,
+      windSpeed: 3.0
+    )
+    let farDate = base.addingTimeInterval(5 * 86400)
+    let daily = DailyForecast(
+      date: farDate,
+      minTemperature: 5,
+      maxTemperature: 15,
+      amCondition: .cloudy,
+      pmCondition: .overcast,
+      amPrecipitationProbability: 30,
+      pmPrecipitationProbability: 50
+    )
+    let info = WeatherInfo(
+      fetchedAt: Date(),
+      hourlyForecasts: [hourly],
+      dailyForecasts: [daily]
+    )
+
+    #expect(info.forecastSource(for: base) == .shortTerm)
+    #expect(info.forecastSource(for: farDate) == .midTerm)
   }
 }
 
