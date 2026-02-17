@@ -136,7 +136,7 @@ struct TimelineItemView: View {
              let forecast = weather.forecast(for: promise.startAt) {
             WeatherBadge(
               forecast: forecast,
-              referenceTimeText: promise.startAt.formattedTime
+              referenceTimeText: promise.startAt.formattedMonthDayTime
             )
           }
         }

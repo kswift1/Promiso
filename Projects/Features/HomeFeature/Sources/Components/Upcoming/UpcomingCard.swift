@@ -151,7 +151,7 @@ private struct UpcomingPromiseRow: View {
                let forecast = weather.forecast(for: promise.startAt) {
               WeatherBadge(
                 forecast: forecast,
-                referenceTimeText: promise.startAt.formattedTime
+                referenceTimeText: promise.startAt.formattedMonthDayTime
               )
             }
           }
@@ -259,7 +259,7 @@ private struct UpcomingPersonalEventRow: View {
                let forecast = weather.forecast(for: event.startAt) {
               WeatherBadge(
                 forecast: forecast,
-                referenceTimeText: event.startAt.formattedTime
+                referenceTimeText: event.startAt.formattedMonthDayTime
               )
             }
           }

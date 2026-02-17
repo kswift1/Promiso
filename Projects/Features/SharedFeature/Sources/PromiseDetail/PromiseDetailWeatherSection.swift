@@ -9,6 +9,12 @@ struct PromiseDetailWeatherSection: View {
   let startAt: Date
   let endAt: Date?
 
+  @State private var selectedForecast: HourlyForecast?
+
+  private var displayedForecast: HourlyForecast? {
+    selectedForecast ?? targetForecast
+  }
+
   private var targetForecast: HourlyForecast? {
     if let endAt = endAt, endAt.timeIntervalSince(startAt) >= 7200 {
       return weatherInfo.worstCaseForecast(from: startAt, to: endAt)
@@ -17,7 +23,7 @@ struct PromiseDetailWeatherSection: View {
   }
 
   private var advices: [WeatherAdvice] {
-    guard let forecast = targetForecast else { return [] }
+    guard let forecast = displayedForecast else { return [] }
     return WeatherAdvice.from(forecast: forecast)
   }
 
@@ -30,38 +36,21 @@ struct PromiseDetailWeatherSection: View {
     }
   }
 
+  private var spansMultipleDays: Bool {
+    guard let first = timeRangeForecasts.first,
+          let last = timeRangeForecasts.last else { return false }
+    return !Calendar.current.isDate(first.dateTime, inSameDayAs: last.dateTime)
+  }
+
   var body: some View {
     VStack(spacing: 0) {
       PromiseDetailSectionHeader(title: "날씨")
 
       VStack(spacing: 12) {
-        // 행동 추천
-        if !advices.isEmpty {
-          VStack(alignment: .leading, spacing: 6) {
-            ForEach(Array(advices.enumerated()), id: \.offset) { _, advice in
-              HStack(spacing: 8) {
-                Image(systemName: advice.icon)
-                  .font(.system(size: 14))
-                  .foregroundStyle(advice.color)
-                  .frame(width: 20)
-
-                Text(advice.message)
-                  .font(.system(size: 14, weight: .semibold))
-                  .foregroundStyle(.primary)
-              }
-            }
-          }
-          .padding(.horizontal, 16)
-          .padding(.top, 12)
-
-          Divider()
-            .padding(.horizontal, 16)
-        }
-
         // 약속 시간 날씨 요약
-        if let forecast = targetForecast {
+        if let forecast = displayedForecast {
           VStack(alignment: .leading, spacing: 8) {
-            Text("약속 시간 (\(startAt.formattedTime))")
+            Text(displayedTimeLabel)
               .font(.system(size: 13, weight: .medium))
               .foregroundStyle(.secondary)
 
@@ -119,7 +108,7 @@ struct PromiseDetailWeatherSection: View {
         }
 
         // 하단 상세 정보
-        if let forecast = targetForecast {
+        if let forecast = displayedForecast {
           Divider()
             .padding(.horizontal, 16)
 
@@ -147,6 +136,29 @@ struct PromiseDetailWeatherSection: View {
           }
           .padding(.vertical, 8)
         }
+
+        // 행동 추천
+        if !advices.isEmpty {
+          Divider()
+            .padding(.horizontal, 16)
+
+          VStack(alignment: .leading, spacing: 6) {
+            ForEach(Array(advices.enumerated()), id: \.offset) { _, advice in
+              HStack(spacing: 8) {
+                Image(systemName: advice.icon)
+                  .font(.system(size: 14))
+                  .foregroundStyle(advice.color)
+                  .frame(width: 20)
+
+                Text(advice.message)
+                  .font(.system(size: 14, weight: .semibold))
+                  .foregroundStyle(.primary)
+              }
+            }
+          }
+          .padding(.horizontal, 16)
+          .padding(.bottom, 12)
+        }
       }
       .adaptiveGlassCard()
     }
@@ -155,10 +167,18 @@ struct PromiseDetailWeatherSection: View {
   // MARK: - Hourly Forecast Cell
 
   private func hourlyForecastCell(_ forecast: HourlyForecast) -> some View {
-    VStack(spacing: 6) {
+    let isSelected = selectedForecast?.dateTime == forecast.dateTime
+
+    return VStack(spacing: 6) {
+      if spansMultipleDays {
+        Text(dayString(forecast.dateTime))
+          .font(.system(size: 10, weight: .bold))
+          .foregroundStyle(.primary)
+      }
+
       Text(hourString(forecast.dateTime))
         .font(.system(size: 12, weight: .medium))
-        .foregroundStyle(.secondary)
+        .foregroundStyle(isSelected ? .primary : .secondary)
 
       Image(systemName: forecast.condition.sfSymbolName)
         .symbolRenderingMode(.multicolor)
@@ -167,19 +187,33 @@ struct PromiseDetailWeatherSection: View {
       Text("\(Int(forecast.temperature.rounded()))°")
         .font(.system(size: 14, weight: .semibold))
         .foregroundStyle(.primary)
-
-      Text("\(forecast.precipitationProbability)%")
-        .font(.system(size: 11))
-        .foregroundStyle(forecast.precipitationProbability >= 50 ? .blue : .secondary)
     }
     .frame(width: 52)
     .padding(.vertical, 8)
     .background(
-      isPromiseTime(forecast.dateTime) ?
-        Color.pmindigo.n500.opacity(0.08) :
-        Color.clear
+      isSelected ?
+        Color.pmindigo.n500.opacity(0.15) :
+        isPromiseTime(forecast.dateTime) ?
+          Color.pmindigo.n500.opacity(0.08) :
+          Color.clear
+    )
+    .overlay(
+      isSelected ?
+        RoundedRectangle(cornerRadius: 8)
+          .stroke(Color.pmindigo.n500.opacity(0.4), lineWidth: 1.5)
+        : nil
     )
     .clipShape(RoundedRectangle(cornerRadius: 8))
+    .contentShape(Rectangle())
+    .onTapGesture {
+      withAnimation(.easeInOut(duration: 0.2)) {
+        if isSelected {
+          selectedForecast = nil
+        } else {
+          selectedForecast = forecast
+        }
+      }
+    }
   }
 
   // MARK: - Detail Item
@@ -199,9 +233,27 @@ struct PromiseDetailWeatherSection: View {
 
   // MARK: - Helpers
 
+  private var displayedTimeLabel: String {
+    if let selected = selectedForecast {
+      let hour = Calendar.current.component(.hour, from: selected.dateTime)
+      if spansMultipleDays {
+        return "\(dayString(selected.dateTime)) \(hour)시"
+      }
+      return "\(hour)시"
+    }
+    return "약속 시간 (\(startAt.formattedTime))"
+  }
+
   private func hourString(_ date: Date) -> String {
     let hour = Calendar.current.component(.hour, from: date)
     return "\(hour)시"
+  }
+
+  private func dayString(_ date: Date) -> String {
+    let calendar = Calendar.current
+    let month = calendar.component(.month, from: date)
+    let day = calendar.component(.day, from: date)
+    return "\(month)/\(day)"
   }
 
   private func isPromiseTime(_ date: Date) -> Bool {
