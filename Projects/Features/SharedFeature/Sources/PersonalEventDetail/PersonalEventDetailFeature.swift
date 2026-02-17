@@ -16,6 +16,7 @@ extension PersonalEventDetail {
     @Dependency(\.hapticFeedback) var hapticFeedback
     @Dependency(\.calendarSyncClient) var calendarSyncClient
     @Dependency(\.imageUploadClient) var imageUploadClient
+    @Dependency(\.weatherClient) var weatherClient
 
     public init() {}
 
@@ -26,6 +27,11 @@ extension PersonalEventDetail {
       var event: PersonalEventModel
       var isDeleting: Bool = false
       var showShareSheet: Bool = false
+
+      var weatherInfo: WeatherInfo?
+
+      @Shared(.inMemory("weatherCache"))
+      var weatherCache: [String: WeatherInfo] = [:]
 
       @Presents var editEvent: CreatePersonalEvent.Feature.State?
       @Presents var deleteAlert: AlertState<Action.Alert>?
@@ -45,6 +51,7 @@ extension PersonalEventDetail {
       case alert(PresentationAction<Alert>)
 
       public enum View: Sendable {
+        case onAppear
         case editTapped
         case deleteTapped
         case shareTapped
@@ -54,6 +61,8 @@ extension PersonalEventDetail {
       public enum Internal: Sendable {
         case deleteSuccess
         case deleteFailed(String)
+        case fetchWeather
+        case weatherFetched(Result<WeatherInfo, Error>)
       }
 
       public enum Delegate: Sendable {
@@ -77,6 +86,15 @@ extension PersonalEventDetail {
 
         case let .view(viewAction):
           switch viewAction {
+          case .onAppear:
+            if let cached = state.weatherCache[state.event.id] {
+              state.weatherInfo = cached
+            }
+            if state.weatherInfo == nil {
+              return .send(.internal(.fetchWeather))
+            }
+            return .none
+
           case .editTapped:
             state.editEvent = CreatePersonalEvent.Feature.State(
               event: state.event,
@@ -123,6 +141,32 @@ extension PersonalEventDetail {
           case .deleteFailed:
             state.isDeleting = false
             return .run { _ in await hapticFeedback.error() }
+
+          case .fetchWeather:
+            guard let lat = state.event.location?.latitude,
+                  let lng = state.event.location?.longitude,
+                  !state.event.isPast else {
+              return .none
+            }
+            let maxDate = Date().addingTimeInterval(10 * 24 * 3600)
+            guard state.event.startAt < maxDate else { return .none }
+
+            let date = state.event.startAt
+            return .run { [weatherClient] send in
+              do {
+                let info = try await weatherClient.getWeather(lat, lng, date)
+                await send(.internal(.weatherFetched(.success(info))))
+              } catch {
+                await send(.internal(.weatherFetched(.failure(error))))
+              }
+            }
+
+          case .weatherFetched(let result):
+            if case .success(let info) = result {
+              state.weatherInfo = info
+              state.$weatherCache.withLock { $0[state.event.id] = info }
+            }
+            return .none
           }
 
         // MARK: - Alert Actions
