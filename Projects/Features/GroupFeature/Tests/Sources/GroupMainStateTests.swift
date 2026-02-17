@@ -19,6 +19,7 @@
 //
 
 import Testing
+import PromisoShared
 @testable import GroupFeature
 
 // MARK: - GroupMain State Tests
@@ -289,7 +290,7 @@ struct GroupMainStateTests {
 
     #expect(state.groupBarItems.count == 1)
     #expect(state.groupBarItems[0].id == GroupMain.onboardingGroupId)
-    #expect(state.groupBarItems[0].name == "Promiso 시작하기")
+    #expect(state.groupBarItems[0].name == LocalizedStrings.GroupMain.onboardingGroupName)
   }
 
   // MARK: - isPastFilterLoading 테스트

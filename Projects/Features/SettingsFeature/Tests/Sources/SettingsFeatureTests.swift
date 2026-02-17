@@ -14,6 +14,7 @@ import Testing
 import ComposableArchitecture
 import Clients
 import Sharing
+import PromisoShared
 @testable import SettingsFeature
 
 // MARK: - SettingsFeature Tests
@@ -133,7 +134,7 @@ struct SettingsFeatureTests {
 
     await store.send(.view(.nicknameChanged(""))) {
       $0.editedNickname = ""
-      $0.nicknameValidation = .invalid("닉네임을 입력해주세요")
+      $0.nicknameValidation = .invalid(LocalizedStrings.SettingsStrings.nicknameRequired)
     }
   }
 
@@ -151,7 +152,7 @@ struct SettingsFeatureTests {
 
     await store.send(.view(.nicknameChanged("A"))) {
       $0.editedNickname = "A"
-      $0.nicknameValidation = .invalid("닉네임은 2자 이상이어야 합니다")
+      $0.nicknameValidation = .invalid(LocalizedStrings.SettingsStrings.nicknameTooShort)
     }
   }
 
@@ -280,7 +281,7 @@ struct SettingsFeatureTests {
     let longName = String(repeating: "가", count: 21)
     await store.send(.view(.nicknameChanged(longName))) {
       $0.editedNickname = longName
-      $0.nicknameValidation = .invalid("닉네임은 20자 이하여야 합니다")
+      $0.nicknameValidation = .invalid(LocalizedStrings.SettingsStrings.nicknameTooLong)
     }
   }
 

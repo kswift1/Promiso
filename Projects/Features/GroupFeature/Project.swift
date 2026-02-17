@@ -34,7 +34,8 @@ let project = Project(
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Tests/Sources/**"],
       dependencies: [
-        .target(name: "GroupFeature")
+        .target(name: "GroupFeature"),
+        .project(target: "PromisoShared", path: "../../Shared")
       ],
       settings: .standard()
     ),

@@ -4,6 +4,7 @@
 // business logic 정확성과 state management 무결성을 보장
 
 import Testing
+import PromisoShared
 @testable import SharedFeature
 
 // MARK: - PromiseDetail.Feature Tests
@@ -378,16 +379,16 @@ struct PromiseDetailFeatureTests {
 
     await store.send(.view(.deleteTapped)) {
       $0.alert = AlertState {
-        TextState("약속 삭제")
+        TextState(LocalizedStrings.Shared.deletePromise)
       } actions: {
         ButtonState(role: .cancel) {
-          TextState("취소")
+          TextState(LocalizedStrings.Common.cancel)
         }
         ButtonState(role: .destructive, action: .confirmDelete) {
-          TextState("삭제")
+          TextState(LocalizedStrings.Common.delete)
         }
       } message: {
-        TextState("'\(promise.title)' 약속을 삭제하시겠습니까?\n삭제된 약속은 복구할 수 없습니다.")
+        TextState(LocalizedStrings.Shared.deletePromiseConfirm(promise.title))
       }
     }
   }
