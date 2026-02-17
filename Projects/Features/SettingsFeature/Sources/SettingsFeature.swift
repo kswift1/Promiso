@@ -360,7 +360,7 @@ extension Settings {
                 let isAvailable = try await userProfileClient.isNicknameAvailable(nickname)
                 await send(.internal(.nicknameCheckResult(isAvailable)))
               } catch {
-                await send(.internal(.nicknameCheckFailed(error.localizedDescription)))
+                await send(.internal(.nicknameCheckFailed((error as? UserProfileError)?.localizedMessage ?? LocalizedStrings.Error.unknownError)))
               }
             }
             .debounce(id: CancelID.nicknameCheck, for: .milliseconds(500), scheduler: DispatchQueue.main)
@@ -395,7 +395,7 @@ extension Settings {
                 let updatedUser = try await userProfileClient.getPrivateProfile(.me)
                 await send(.internal(.profileSaveCompleted(updatedUser)))
               } catch {
-                await send(.internal(.profileSaveFailed(error.localizedDescription)))
+                await send(.internal(.profileSaveFailed((error as? UserProfileError)?.localizedMessage ?? LocalizedStrings.Error.unknownError)))
               }
             }
 
@@ -441,11 +441,11 @@ extension Settings {
 
           case .logoutFailed(let error):
             state.isLoading = false
-            state.errorMessage = error.localizedDescription
+            state.errorMessage = error.localizedMessage
             state.toastMessage = ToastMessage(
               type: .error,
               title: "로그아웃에 실패했어요",
-              subtitle: error.localizedDescription,
+              subtitle: error.localizedMessage,
               position: .top
             )
             return .run { _ in
@@ -1529,6 +1529,44 @@ extension PromiseTabModeSettings {
           }
         }
       )
+    }
+  }
+}
+
+// MARK: - CalendarSyncError Localization
+
+extension CalendarSyncError {
+  var localizedMessage: String {
+    switch self {
+    case .noWritePermission: return LocalizedStrings.Error.calendarNoWritePermission
+    case .fetchFailed(_): return LocalizedStrings.Error.calendarFetchFailed
+    case .syncFailed(_): return LocalizedStrings.Error.calendarSyncFailed
+    }
+  }
+}
+
+// MARK: - UserProfileError Localization
+
+extension UserProfileError {
+  var localizedMessage: String {
+    switch self {
+    case .invalidData: return LocalizedStrings.Error.userInvalidData
+    case .userNotFound: return LocalizedStrings.Error.userNotFound
+    case .uploadFailed: return LocalizedStrings.Error.userUploadFailed
+    case .networkError: return LocalizedStrings.Error.userNetworkError
+    case .authenticationRequired: return LocalizedStrings.Error.userAuthRequired
+    case .permissionDenied: return LocalizedStrings.Error.userPermissionDenied
+    }
+  }
+}
+
+// MARK: - AppConfigClientError Localization
+
+extension AppConfigClientError {
+  var localizedMessage: String {
+    switch self {
+    case .fetchFailed(_): return LocalizedStrings.Error.appConfigFetchFailed
+    case .invalidVersion(_): return LocalizedStrings.Error.appConfigInvalidVersion
     }
   }
 }

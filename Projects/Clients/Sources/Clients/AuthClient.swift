@@ -11,7 +11,7 @@ import UIKit
 
 // MARK: - Error
 
-public enum AuthClientError: Error, Equatable, LocalizedError {
+public enum AuthClientError: Error, Equatable {
   case invalidCredentials
   case alreadyExists
   case network
@@ -20,27 +20,6 @@ public enum AuthClientError: Error, Equatable, LocalizedError {
   case providerUnavailable
   case isGroupHost
   case unknown
-
-  public var errorDescription: String? {
-    switch self {
-    case .invalidCredentials:
-      return "이메일 또는 비밀번호가 올바르지 않습니다."
-    case .alreadyExists:
-      return "이미 가입된 계정입니다."
-    case .network:
-      return "네트워크 연결을 확인해주세요."
-    case .invalidAppleCredential:
-      return "애플 인증 정보를 가져오지 못했습니다."
-    case .missingIdentityToken:
-      return "애플 인증 토큰을 가져오지 못했습니다."
-    case .providerUnavailable:
-      return "해당 로그인 제공자를 사용할 수 없습니다."
-    case .isGroupHost:
-      return "그룹 호스트는 탈퇴할 수 없습니다. 먼저 그룹을 삭제하거나 호스트를 양도해주세요."
-    case .unknown:
-      return "알 수 없는 오류가 발생했습니다."
-    }
-  }
 }
 
 // MARK: - Models

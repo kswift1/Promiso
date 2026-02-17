@@ -117,7 +117,7 @@ extension LiveActivityTest {
                 )
                 await send(.internal(.activityStarted(activity.id, attributes, initialState)))
               } catch {
-                await send(.internal(.activityFailed(error.localizedDescription)))
+                await send(.internal(.activityFailed(LocalizedStrings.Error.unknownError)))
               }
             }
 

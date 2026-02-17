@@ -91,8 +91,10 @@ extension FAQ {
             do {
               let faqs = try await faqClient.fetchFAQs()
               await send(.internal(.faqsLoaded(faqs)))
+            } catch let faqError as FAQClientError {
+              await send(.internal(.faqsLoadFailed(faqError.localizedMessage)))
             } catch {
-              await send(.internal(.faqsLoadFailed(error.localizedDescription)))
+              await send(.internal(.faqsLoadFailed(LocalizedStrings.Error.unknownError)))
             }
           }
 
@@ -350,6 +352,18 @@ extension FAQ {
           .foregroundStyle(Color.pmtext.secondary)
       }
       .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+  }
+}
+
+// MARK: - FAQClientError Localization
+
+extension FAQClientError {
+  var localizedMessage: String {
+    switch self {
+    case .fetchFailed(_, _): return LocalizedStrings.Error.faqFetchFailed
+    case .decodingFailed(_): return LocalizedStrings.Error.faqDecodingFailed
+    case .invalidConfiguration: return LocalizedStrings.Error.faqInvalidConfiguration
     }
   }
 }

@@ -324,7 +324,7 @@ extension CreateGroup {
 
           case .createGroupResponse(.failure(let error)):
             state.isCreating = false
-            state.creationError = error.localizedDescription
+            state.creationError = (error as? GroupClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError
             return .none
 
           case .saveSettingsResponse(.success), .saveSettingsResponse(.failure):

@@ -144,7 +144,7 @@ extension PersonalEventDetail {
 
               await send(.internal(.deleteSuccess))
             } catch {
-              await send(.internal(.deleteFailed(error.localizedDescription)))
+              await send(.internal(.deleteFailed(LocalizedStrings.Error.unknownError)))
             }
           }
 

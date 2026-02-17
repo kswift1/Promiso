@@ -1,3 +1,4 @@
+import Clients
 import ComposableArchitecture
 import PromisoShared
 import SharedFeature
@@ -227,7 +228,7 @@ extension PersonalMode {
                 try? await calendarSyncClient.removePersonalEvent(event.id)
                 await send(.internal(.eventDeleted(event.id)))
               } catch {
-                await send(.internal(.eventDeleteFailed(error.localizedDescription)))
+                await send(.internal(.eventDeleteFailed(LocalizedStrings.Error.unknownError)))
               }
             }
 
@@ -279,7 +280,7 @@ extension PersonalMode {
                 let pastEvents = try await personalEventClient.getPastEvents(50, nil)
                 await send(.internal(.pastEventsLoaded(pastEvents)))
               } catch {
-                await send(.internal(.pastEventsFailed(error.localizedDescription)))
+                await send(.internal(.pastEventsFailed(LocalizedStrings.Error.unknownError)))
               }
             }
 
@@ -381,6 +382,21 @@ extension PersonalMode {
       .ifLet(\.$eventDetail, action: \.eventDetail) {
         PersonalEventDetail.Feature()
       }
+    }
+  }
+}
+
+// MARK: - EventKitClientError Localization
+
+extension EventKitClientError {
+  var localizedMessage: String {
+    switch self {
+    case .accessDenied: return LocalizedStrings.Error.calendarAccessDenied
+    case .accessRestricted: return LocalizedStrings.Error.calendarAccessRestricted
+    case .writeNotAllowed: return LocalizedStrings.Error.calendarWriteNotAllowed
+    case .saveFailed(_): return LocalizedStrings.Error.calendarSaveFailed
+    case .eventStoreError(_): return LocalizedStrings.Error.calendarStoreError
+    case .unknown(_): return LocalizedStrings.Error.unknownError
     }
   }
 }

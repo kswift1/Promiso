@@ -97,7 +97,7 @@ extension EditPromise {
           }
         } message: {
           if let error = store.updateError {
-            Text(error.localizedDescription)
+            Text(error.localizedMessage)
           }
         }
         .sheet(item: $store.scope(state: \.locationPicker, action: \.locationPicker)) { pickerStore in
@@ -605,5 +605,22 @@ private struct ScaleButtonStyle: ButtonStyle {
     configuration.label
       .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
       .animation(.spring(response: 0.2, dampingFraction: 0.6), value: configuration.isPressed)
+  }
+}
+
+// MARK: - PromiseClientError Localization
+
+extension Clients.PromiseClientError {
+  var localizedMessage: String {
+    switch self {
+    case .networkError: return LocalizedStrings.Error.networkError
+    case .unauthorized: return LocalizedStrings.Error.userAuthRequired
+    case .notFound: return LocalizedStrings.Error.notFoundError
+    case .serverError: return LocalizedStrings.Error.serverError
+    case .invalidData: return LocalizedStrings.Error.validationError
+    case .groupNotFound: return LocalizedStrings.Error.notFoundError
+    case .notGroupMember: return LocalizedStrings.Error.permissionError
+    case .unknown: return LocalizedStrings.Error.unknownError
+    }
   }
 }

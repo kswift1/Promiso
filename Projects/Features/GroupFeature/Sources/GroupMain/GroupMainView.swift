@@ -244,7 +244,7 @@ extension GroupMain {
           .font(.system(size: 40))
           .foregroundStyle(.secondary)
 
-        Text(error.localizedDescription)
+        Text((error as? GroupClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError)
           .font(.subheadline)
           .foregroundStyle(.secondary)
           .multilineTextAlignment(.center)

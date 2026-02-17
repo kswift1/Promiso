@@ -112,21 +112,21 @@ extension Auth {
               }
             }
             
-          case .appleAuthorizationResult(.failure(let error)):
+          case .appleAuthorizationResult(.failure):
             state.isLoading = false
             state.pendingAppleLoginNonce = nil
-            state.errorMessage = error.localizedDescription
+            state.errorMessage = LocalizedStrings.Error.authInvalidAppleCredential
             return .none
-            
+
           case .authResponse(.success):
             state.isLoading = false
             state.pendingAppleLoginNonce = nil
             return .none
-            
+
           case .authResponse(.failure(let error)):
             state.isLoading = false
             state.pendingAppleLoginNonce = nil
-            state.errorMessage = error.localizedDescription
+            state.errorMessage = error.localizedMessage
             return .none
           }
           
@@ -511,5 +511,22 @@ extension Auth {
       animated: true
     )
     .preferredColorScheme(.light)
+  }
+}
+
+// MARK: - AuthClientError Localization
+
+extension AuthClientError {
+  var localizedMessage: String {
+    switch self {
+    case .invalidCredentials: return LocalizedStrings.Error.authInvalidCredentials
+    case .alreadyExists: return LocalizedStrings.Error.authAlreadyExists
+    case .network: return LocalizedStrings.Error.authNetwork
+    case .invalidAppleCredential: return LocalizedStrings.Error.authInvalidAppleCredential
+    case .missingIdentityToken: return LocalizedStrings.Error.authMissingIdentityToken
+    case .providerUnavailable: return LocalizedStrings.Error.authProviderUnavailable
+    case .isGroupHost: return LocalizedStrings.Error.authIsGroupHost
+    case .unknown: return LocalizedStrings.Error.unknownError
+    }
   }
 }

@@ -384,7 +384,7 @@ extension GroupNotificationDetail {
                 await send(.internal(.updateSucceeded))
                 await send(.delegate(.settingsUpdated(groupId: groupId, settings: updatedSettings)))
               } catch {
-                await send(.internal(.updateFailed(previousSettings, error.localizedDescription)))
+                await send(.internal(.updateFailed(previousSettings, (error as? NotificationClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError)))
               }
             }
 
@@ -402,7 +402,7 @@ extension GroupNotificationDetail {
                 await send(.internal(.updateSucceeded))
                 await send(.delegate(.settingsUpdated(groupId: groupId, settings: updatedSettings)))
               } catch {
-                await send(.internal(.updateFailed(previousSettings, error.localizedDescription)))
+                await send(.internal(.updateFailed(previousSettings, (error as? NotificationClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError)))
               }
             }
 

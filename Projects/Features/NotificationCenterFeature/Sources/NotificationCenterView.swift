@@ -282,7 +282,7 @@ extension NotificationCenter {
           .font(.headline)
           .foregroundStyle(Color.pmgray.n500)
 
-        Text(error.localizedDescription)
+        Text((error as? NotificationClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError)
           .font(.subheadline)
           .foregroundStyle(Color.pmgray.n400)
           .multilineTextAlignment(.center)

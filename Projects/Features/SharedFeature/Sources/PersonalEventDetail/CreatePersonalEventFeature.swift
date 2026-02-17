@@ -289,7 +289,7 @@ extension CreatePersonalEvent {
 
                 await send(.internal(.saveSuccess(savedEvent)))
               } catch {
-                await send(.internal(.saveFailed(error.localizedDescription)))
+                await send(.internal(.saveFailed(LocalizedStrings.Error.unknownError)))
               }
             }
 

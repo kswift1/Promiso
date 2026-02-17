@@ -137,7 +137,7 @@ struct GroupListView: View {
         .font(.headline)
         .foregroundColor(.primary)
 
-      Text(error.localizedDescription)
+      Text((error as? GroupClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError)
         .font(.subheadline)
         .foregroundColor(.secondary)
         .multilineTextAlignment(.center)

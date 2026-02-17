@@ -5,21 +5,10 @@ import FirebaseStorage
 import PromisoShared
 
 /// 그룹 원격 데이터 소스 에러
-public enum GroupRemoteDataSourceError: Error, LocalizedError {
+public enum GroupRemoteDataSourceError: Error {
   case invalidFunctionResponse
   case invalidRequestData
   case imageUploadFailed
-
-  public var errorDescription: String? {
-    switch self {
-    case .invalidFunctionResponse:
-      return "서버 응답이 올바르지 않아요. 잠시 후 다시 시도해주세요."
-    case .invalidRequestData:
-      return "요청 데이터가 올바르지 않아요."
-    case .imageUploadFailed:
-      return "그룹 사진 업로드에 실패했어요. 잠시 후 다시 시도해주세요."
-    }
-  }
 }
 
 // MARK: - Firebase 상수

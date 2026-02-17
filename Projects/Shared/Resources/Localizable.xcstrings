@@ -2776,6 +2776,636 @@
         }
       }
     },
+    "error.appConfig.fetchFailed" : {
+      "comment" : "앱 설정을 불러오는데 실패했습니다",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to load app configuration."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "앱 설정을 불러오는데 실패했습니다."
+          }
+        }
+      }
+    },
+    "error.appConfig.invalidVersion" : {
+      "comment" : "유효하지 않은 버전 형식입니다",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invalid version format."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "유효하지 않은 버전 형식입니다."
+          }
+        }
+      }
+    },
+    "error.auth.alreadyExists" : {
+      "comment" : "이미 가입된 계정입니다",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This account already exists."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이미 가입된 계정입니다."
+          }
+        }
+      }
+    },
+    "error.auth.invalidAppleCredential" : {
+      "comment" : "애플 인증 정보를 가져오지 못했습니다",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to get Apple credentials."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "애플 인증 정보를 가져오지 못했습니다."
+          }
+        }
+      }
+    },
+    "error.auth.invalidCredentials" : {
+      "comment" : "이메일 또는 비밀번호가 올바르지 않습니다",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invalid email or password."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이메일 또는 비밀번호가 올바르지 않습니다."
+          }
+        }
+      }
+    },
+    "error.auth.isGroupHost" : {
+      "comment" : "그룹 호스트는 탈퇴할 수 없습니다",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You cannot leave as a group host. Please delete the group or transfer the host role first."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "그룹 호스트는 탈퇴할 수 없습니다. 먼저 그룹을 삭제하거나 호스트를 양도해주세요."
+          }
+        }
+      }
+    },
+    "error.auth.missingIdentityToken" : {
+      "comment" : "애플 인증 토큰을 가져오지 못했습니다",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to get Apple identity token."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "애플 인증 토큰을 가져오지 못했습니다."
+          }
+        }
+      }
+    },
+    "error.auth.network" : {
+      "comment" : "네트워크 연결을 확인해주세요 (Auth)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Please check your network connection."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "네트워크 연결을 확인해주세요."
+          }
+        }
+      }
+    },
+    "error.auth.providerUnavailable" : {
+      "comment" : "해당 로그인 제공자를 사용할 수 없습니다",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The login provider is unavailable."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "해당 로그인 제공자를 사용할 수 없습니다."
+          }
+        }
+      }
+    },
+    "error.calendar.accessDenied" : {
+      "comment" : "캘린더 접근이 거부되었습니다",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Calendar access denied. Please allow access in Settings."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "캘린더 접근이 거부되었습니다. 설정에서 권한을 허용해주세요."
+          }
+        }
+      }
+    },
+    "error.calendar.accessRestricted" : {
+      "comment" : "캘린더 접근이 제한되어 있습니다",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Calendar access is restricted."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "캘린더 접근이 제한되어 있습니다."
+          }
+        }
+      }
+    },
+    "error.calendar.fetchFailed" : {
+      "comment" : "약속 조회 실패",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to fetch promises"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "약속 조회 실패"
+          }
+        }
+      }
+    },
+    "error.calendar.noWritePermission" : {
+      "comment" : "캘린더 쓰기 권한이 없습니다",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No calendar write permission."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "캘린더 쓰기 권한이 없습니다."
+          }
+        }
+      }
+    },
+    "error.calendar.saveFailed" : {
+      "comment" : "캘린더 저장 실패",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to save to calendar"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "캘린더 저장 실패"
+          }
+        }
+      }
+    },
+    "error.calendar.storeError" : {
+      "comment" : "캘린더 오류",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Calendar error"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "캘린더 오류"
+          }
+        }
+      }
+    },
+    "error.calendar.syncFailed" : {
+      "comment" : "동기화 실패",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sync failed"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "동기화 실패"
+          }
+        }
+      }
+    },
+    "error.calendar.writeNotAllowed" : {
+      "comment" : "캘린더 쓰기 권한이 없습니다 (EventKit)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Calendar write access not allowed."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "캘린더 쓰기 권한이 없습니다."
+          }
+        }
+      }
+    },
+    "error.faq.decodingFailed" : {
+      "comment" : "FAQ 데이터를 읽는데 실패했습니다",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to read FAQ data."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "FAQ 데이터를 읽는데 실패했습니다."
+          }
+        }
+      }
+    },
+    "error.faq.fetchFailed" : {
+      "comment" : "FAQ를 불러오는데 실패했습니다",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to load FAQ."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "FAQ를 불러오는데 실패했습니다."
+          }
+        }
+      }
+    },
+    "error.faq.invalidConfiguration" : {
+      "comment" : "FAQ 설정이 올바르지 않습니다",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invalid FAQ configuration."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "FAQ 설정이 올바르지 않습니다."
+          }
+        }
+      }
+    },
+    "error.group.imageUploadFailed" : {
+      "comment" : "그룹 사진 업로드에 실패했어요",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to upload group photo. Please try again later."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "그룹 사진 업로드에 실패했어요. 잠시 후 다시 시도해주세요."
+          }
+        }
+      }
+    },
+    "error.group.invalidRequestData" : {
+      "comment" : "요청 데이터가 올바르지 않아요",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invalid request data."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "요청 데이터가 올바르지 않아요."
+          }
+        }
+      }
+    },
+    "error.group.invalidResponse" : {
+      "comment" : "서버 응답이 올바르지 않아요",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invalid server response. Please try again later."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "서버 응답이 올바르지 않아요. 잠시 후 다시 시도해주세요."
+          }
+        }
+      }
+    },
+    "error.map.httpError" : {
+      "comment" : "서버 오류가 발생했습니다",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Server error occurred."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "서버 오류가 발생했습니다."
+          }
+        }
+      }
+    },
+    "error.map.invalidResponse" : {
+      "comment" : "응답을 처리할 수 없습니다",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unable to process response."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "응답을 처리할 수 없습니다."
+          }
+        }
+      }
+    },
+    "error.notification.authRequired" : {
+      "comment" : "로그인이 필요합니다",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Login is required."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "로그인이 필요합니다."
+          }
+        }
+      }
+    },
+    "error.notification.deleteFailed" : {
+      "comment" : "토큰 삭제에 실패했습니다",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to delete token."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "토큰 삭제에 실패했습니다."
+          }
+        }
+      }
+    },
+    "error.notification.saveFailed" : {
+      "comment" : "토큰 저장에 실패했습니다",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to save token."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "토큰 저장에 실패했습니다."
+          }
+        }
+      }
+    },
+    "error.notification.tokenNotFound" : {
+      "comment" : "FCM 토큰을 찾을 수 없습니다",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "FCM token not found."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "FCM 토큰을 찾을 수 없습니다."
+          }
+        }
+      }
+    },
+    "error.user.authRequired" : {
+      "comment" : "로그인이 필요합니다",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Login is required."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "로그인이 필요합니다."
+          }
+        }
+      }
+    },
+    "error.user.invalidData" : {
+      "comment" : "프로필 데이터 형식이 올바르지 않습니다",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invalid profile data format."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "프로필 데이터 형식이 올바르지 않습니다."
+          }
+        }
+      }
+    },
+    "error.user.networkError" : {
+      "comment" : "네트워크 연결을 확인해주세요",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Please check your network connection."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "네트워크 연결을 확인해주세요."
+          }
+        }
+      }
+    },
+    "error.user.notFound" : {
+      "comment" : "사용자를 찾을 수 없습니다",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "User not found."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "사용자를 찾을 수 없습니다."
+          }
+        }
+      }
+    },
+    "error.user.permissionDenied" : {
+      "comment" : "권한이 없습니다",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permission denied."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "권한이 없습니다."
+          }
+        }
+      }
+    },
+    "error.user.uploadFailed" : {
+      "comment" : "프로필 업로드에 실패했습니다",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to upload profile."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "프로필 업로드에 실패했습니다."
+          }
+        }
+      }
+    },
     "group.create" : {
       "comment" : "그룹 만들기",
       "extractionState" : "manual",
@@ -7360,6 +7990,78 @@
         }
       }
     },
+    "livePromise.error.activityNotFound" : {
+      "comment" : "라이브액티비티 활성 인스턴스 없음",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Could not find an active Live Activity."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "활성화된 라이브액티비티를 찾을 수 없습니다."
+          }
+        }
+      }
+    },
+    "livePromise.error.notSupported" : {
+      "comment" : "라이브액티비티 미지원 기기",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Live Activity is not supported on this device."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 기기에서는 라이브액티비티를 지원하지 않습니다."
+          }
+        }
+      }
+    },
+    "livePromise.error.startFailed" : {
+      "comment" : "라이브액티비티 시작 실패",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to start Live Activity."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "라이브액티비티 시작에 실패했습니다."
+          }
+        }
+      }
+    },
+    "livePromise.error.updateFailed" : {
+      "comment" : "라이브액티비티 업데이트 실패",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to update Live Activity."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "라이브액티비티 업데이트에 실패했습니다."
+          }
+        }
+      }
+    },
     "livePromise.groupFallback" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -9097,7 +9799,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "See you tomorrow at 6:00 PM!"
+            "value" : "Tomorrow, 6:00 PM"
           }
         },
         "ko" : {
@@ -9115,7 +9817,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "🎓 College friends meetup is confirmed! 🎉"
+            "value" : "🎓 Meetup confirmed! 🎉"
           }
         },
         "ko" : {
@@ -9169,7 +9871,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Once enough join, it confirms itself"
+            "value" : "Auto-confirm when enough join"
           }
         },
         "ko" : {
@@ -16679,7 +17381,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Promise Changes"
+            "value" : "Updates"
           }
         },
         "ko" : {
@@ -16697,7 +17399,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Confirmation Alerts"
+            "value" : "Confirmed"
           }
         },
         "ko" : {
@@ -16715,7 +17417,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Promise Invites"
+            "value" : "Invites"
           }
         },
         "ko" : {
@@ -16733,7 +17435,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Member Joins"
+            "value" : "Joins"
           }
         },
         "ko" : {
@@ -16805,7 +17507,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lunch promise confirmed! Meet on Jan 25 at 1 PM"
+            "value" : "Lunch confirmed. Jan 25, 1 PM"
           }
         },
         "ko" : {
@@ -16823,7 +17525,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Promise confirmed! 🎉"
+            "value" : "Confirmed! 🎉"
           }
         },
         "ko" : {

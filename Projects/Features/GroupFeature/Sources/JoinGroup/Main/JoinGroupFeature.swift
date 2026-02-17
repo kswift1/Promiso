@@ -339,7 +339,7 @@ extension JoinGroup {
 
           case .previewGroupResponse(.failure(let error)):
             state.isLoadingPreview = false
-            state.previewError = error.localizedDescription
+            state.previewError = (error as? GroupClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError
             return .none
 
           case .joinGroupResponse(.success(let group)):
@@ -359,7 +359,7 @@ extension JoinGroup {
 
           case .joinGroupResponse(.failure(let error)):
             state.isJoining = false
-            state.joinError = error.localizedDescription
+            state.joinError = (error as? GroupClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError
             return .none
 
           case .saveSettingsResponse(.success), .saveSettingsResponse(.failure):
@@ -441,6 +441,20 @@ extension JoinGroup {
           return .none
         }
       }
+    }
+  }
+}
+
+// MARK: - GroupClientError Localization
+
+extension GroupClientError {
+  var localizedMessage: String {
+    switch self {
+    case .networkError: return LocalizedStrings.Error.networkError
+    case .unauthorized: return LocalizedStrings.Error.authInvalidCredentials
+    case .notFound: return LocalizedStrings.Error.notFoundError
+    case .serverError: return LocalizedStrings.Error.serverError
+    case .unknown: return LocalizedStrings.Error.unknownError
     }
   }
 }

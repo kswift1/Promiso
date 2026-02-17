@@ -250,7 +250,7 @@ extension ManageGroup {
 
           case .leaveGroupResponse(.failure(let error)):
             state.isLeavingGroup = false
-            state.leaveError = error.localizedDescription
+            state.leaveError = (error as? AuthClientError)?.localizedMessage ?? (error as? GroupClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError
             return .none
 
           case .deleteGroupResponse(.success):
@@ -259,7 +259,7 @@ extension ManageGroup {
 
           case .deleteGroupResponse(.failure(let error)):
             state.isDeletingGroup = false
-            state.deleteError = error.localizedDescription
+            state.deleteError = (error as? AuthClientError)?.localizedMessage ?? (error as? GroupClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError
             return .none
 
           case .transferHostResponse(.success):
@@ -276,7 +276,7 @@ extension ManageGroup {
 
           case .transferHostResponse(.failure(let error)):
             state.isTransferringHost = false
-            state.transferError = error.localizedDescription
+            state.transferError = (error as? AuthClientError)?.localizedMessage ?? (error as? GroupClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError
             return .none
           }
 

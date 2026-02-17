@@ -98,7 +98,7 @@ struct PromiseTimelineView: View {
 
   private func errorStateScrollView(error: Error) -> some View {
     ScrollView {
-      ErrorView(message: error.localizedDescription)
+      ErrorView(message: (error as? GroupClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError)
         .padding(.top, 60)
     }
   }

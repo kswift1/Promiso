@@ -237,7 +237,7 @@ public enum CreatePromise {
               } catch let e as Clients.PromiseClientError {
                 await send(.internal(.createPromiseResponse(.failure(e))))
               } catch {
-                await send(.internal(.createPromiseResponse(.failure(.unknown(error.localizedDescription)))))
+                await send(.internal(.createPromiseResponse(.failure(.unknown(nil)))))
               }
             }
             
@@ -568,7 +568,7 @@ extension CreatePromise {
         }
       } message: {
         if let error = store.creationError {
-          Text(error.localizedDescription)
+          Text(error.localizedMessage)
         }
       }
     }
@@ -709,6 +709,23 @@ extension CreatePromiseStep {
       CreatePromiseStep2View(store: store)
     case .third:
       CreatePromiseStep3View(store: store)
+    }
+  }
+}
+
+// MARK: - PromiseClientError Localization
+
+extension Clients.PromiseClientError {
+  var localizedMessage: String {
+    switch self {
+    case .networkError: return LocalizedStrings.Error.networkError
+    case .unauthorized: return LocalizedStrings.Error.userAuthRequired
+    case .notFound: return LocalizedStrings.Error.notFoundError
+    case .serverError: return LocalizedStrings.Error.serverError
+    case .invalidData: return LocalizedStrings.Error.validationError
+    case .groupNotFound: return LocalizedStrings.Error.notFoundError
+    case .notGroupMember: return LocalizedStrings.Error.permissionError
+    case .unknown: return LocalizedStrings.Error.unknownError
     }
   }
 }

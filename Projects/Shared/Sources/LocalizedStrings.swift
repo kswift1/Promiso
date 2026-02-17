@@ -449,6 +449,57 @@ public enum LocalizedStrings {
     public static var validationError: String { String(localized: "error.validation", bundle: bundle) }
     public static var permissionError: String { String(localized: "error.permission", bundle: bundle) }
     public static var notFoundError: String { String(localized: "error.notFound", bundle: bundle) }
+
+    // Auth
+    public static var authInvalidCredentials: String { String(localized: "error.auth.invalidCredentials", bundle: bundle) }
+    public static var authAlreadyExists: String { String(localized: "error.auth.alreadyExists", bundle: bundle) }
+    public static var authNetwork: String { String(localized: "error.auth.network", bundle: bundle) }
+    public static var authInvalidAppleCredential: String { String(localized: "error.auth.invalidAppleCredential", bundle: bundle) }
+    public static var authMissingIdentityToken: String { String(localized: "error.auth.missingIdentityToken", bundle: bundle) }
+    public static var authProviderUnavailable: String { String(localized: "error.auth.providerUnavailable", bundle: bundle) }
+    public static var authIsGroupHost: String { String(localized: "error.auth.isGroupHost", bundle: bundle) }
+
+    // Notification
+    public static var notificationAuthRequired: String { String(localized: "error.notification.authRequired", bundle: bundle) }
+    public static var notificationTokenNotFound: String { String(localized: "error.notification.tokenNotFound", bundle: bundle) }
+    public static var notificationSaveFailed: String { String(localized: "error.notification.saveFailed", bundle: bundle) }
+    public static var notificationDeleteFailed: String { String(localized: "error.notification.deleteFailed", bundle: bundle) }
+
+    // Calendar
+    public static var calendarNoWritePermission: String { String(localized: "error.calendar.noWritePermission", bundle: bundle) }
+    public static var calendarFetchFailed: String { String(localized: "error.calendar.fetchFailed", bundle: bundle) }
+    public static var calendarSyncFailed: String { String(localized: "error.calendar.syncFailed", bundle: bundle) }
+    public static var calendarAccessDenied: String { String(localized: "error.calendar.accessDenied", bundle: bundle) }
+    public static var calendarAccessRestricted: String { String(localized: "error.calendar.accessRestricted", bundle: bundle) }
+    public static var calendarWriteNotAllowed: String { String(localized: "error.calendar.writeNotAllowed", bundle: bundle) }
+    public static var calendarSaveFailed: String { String(localized: "error.calendar.saveFailed", bundle: bundle) }
+    public static var calendarStoreError: String { String(localized: "error.calendar.storeError", bundle: bundle) }
+
+    // FAQ
+    public static var faqFetchFailed: String { String(localized: "error.faq.fetchFailed", bundle: bundle) }
+    public static var faqDecodingFailed: String { String(localized: "error.faq.decodingFailed", bundle: bundle) }
+    public static var faqInvalidConfiguration: String { String(localized: "error.faq.invalidConfiguration", bundle: bundle) }
+
+    // AppConfig
+    public static var appConfigFetchFailed: String { String(localized: "error.appConfig.fetchFailed", bundle: bundle) }
+    public static var appConfigInvalidVersion: String { String(localized: "error.appConfig.invalidVersion", bundle: bundle) }
+
+    // User Profile
+    public static var userInvalidData: String { String(localized: "error.user.invalidData", bundle: bundle) }
+    public static var userNotFound: String { String(localized: "error.user.notFound", bundle: bundle) }
+    public static var userUploadFailed: String { String(localized: "error.user.uploadFailed", bundle: bundle) }
+    public static var userNetworkError: String { String(localized: "error.user.networkError", bundle: bundle) }
+    public static var userAuthRequired: String { String(localized: "error.user.authRequired", bundle: bundle) }
+    public static var userPermissionDenied: String { String(localized: "error.user.permissionDenied", bundle: bundle) }
+
+    // Group Data Source
+    public static var groupInvalidResponse: String { String(localized: "error.group.invalidResponse", bundle: bundle) }
+    public static var groupInvalidRequestData: String { String(localized: "error.group.invalidRequestData", bundle: bundle) }
+    public static var groupImageUploadFailed: String { String(localized: "error.group.imageUploadFailed", bundle: bundle) }
+
+    // Map
+    public static var mapInvalidResponse: String { String(localized: "error.map.invalidResponse", bundle: bundle) }
+    public static var mapHttpError: String { String(localized: "error.map.httpError", bundle: bundle) }
   }
 
   // MARK: - Tab Bar
@@ -698,37 +749,114 @@ public enum LocalizedStrings {
     }
 
     public static func introHeroConfirmedTitle(_ index: Int) -> String {
-      String(localized: "onboarding.intro.hero.confirmed.\(index).title", bundle: bundle)
+      switch index {
+      case 1: return String(localized: "onboarding.intro.hero.confirmed.1.title", bundle: bundle)
+      case 2: return String(localized: "onboarding.intro.hero.confirmed.2.title", bundle: bundle)
+      case 3: return String(localized: "onboarding.intro.hero.confirmed.3.title", bundle: bundle)
+      case 4: return String(localized: "onboarding.intro.hero.confirmed.4.title", bundle: bundle)
+      case 5: return String(localized: "onboarding.intro.hero.confirmed.5.title", bundle: bundle)
+      default: return String(localized: "onboarding.intro.hero.confirmed.1.title", bundle: bundle)
+      }
     }
     public static func introHeroConfirmedDetail(_ index: Int) -> String {
-      String(localized: "onboarding.intro.hero.confirmed.\(index).detail", bundle: bundle)
+      switch index {
+      case 1: return String(localized: "onboarding.intro.hero.confirmed.1.detail", bundle: bundle)
+      case 2: return String(localized: "onboarding.intro.hero.confirmed.2.detail", bundle: bundle)
+      case 3: return String(localized: "onboarding.intro.hero.confirmed.3.detail", bundle: bundle)
+      case 4: return String(localized: "onboarding.intro.hero.confirmed.4.detail", bundle: bundle)
+      case 5: return String(localized: "onboarding.intro.hero.confirmed.5.detail", bundle: bundle)
+      default: return String(localized: "onboarding.intro.hero.confirmed.1.detail", bundle: bundle)
+      }
     }
     public static func introHeroConfirmedLocation(_ index: Int) -> String {
-      String(localized: "onboarding.intro.hero.confirmed.\(index).location", bundle: bundle)
+      switch index {
+      case 1: return String(localized: "onboarding.intro.hero.confirmed.1.location", bundle: bundle)
+      case 2: return String(localized: "onboarding.intro.hero.confirmed.2.location", bundle: bundle)
+      case 3: return String(localized: "onboarding.intro.hero.confirmed.3.location", bundle: bundle)
+      case 4: return String(localized: "onboarding.intro.hero.confirmed.4.location", bundle: bundle)
+      case 5: return String(localized: "onboarding.intro.hero.confirmed.5.location", bundle: bundle)
+      default: return String(localized: "onboarding.intro.hero.confirmed.1.location", bundle: bundle)
+      }
     }
     public static func introHeroUpcomingTitle(_ index: Int) -> String {
-      String(localized: "onboarding.intro.hero.upcoming.\(index).title", bundle: bundle)
+      switch index {
+      case 1: return String(localized: "onboarding.intro.hero.upcoming.1.title", bundle: bundle)
+      case 2: return String(localized: "onboarding.intro.hero.upcoming.2.title", bundle: bundle)
+      case 3: return String(localized: "onboarding.intro.hero.upcoming.3.title", bundle: bundle)
+      case 4: return String(localized: "onboarding.intro.hero.upcoming.4.title", bundle: bundle)
+      case 5: return String(localized: "onboarding.intro.hero.upcoming.5.title", bundle: bundle)
+      default: return String(localized: "onboarding.intro.hero.upcoming.1.title", bundle: bundle)
+      }
     }
     public static func introHeroUpcomingDetail(_ index: Int) -> String {
-      String(localized: "onboarding.intro.hero.upcoming.\(index).detail", bundle: bundle)
+      switch index {
+      case 1: return String(localized: "onboarding.intro.hero.upcoming.1.detail", bundle: bundle)
+      case 2: return String(localized: "onboarding.intro.hero.upcoming.2.detail", bundle: bundle)
+      case 3: return String(localized: "onboarding.intro.hero.upcoming.3.detail", bundle: bundle)
+      case 4: return String(localized: "onboarding.intro.hero.upcoming.4.detail", bundle: bundle)
+      case 5: return String(localized: "onboarding.intro.hero.upcoming.5.detail", bundle: bundle)
+      default: return String(localized: "onboarding.intro.hero.upcoming.1.detail", bundle: bundle)
+      }
     }
     public static func introHeroUpcomingLocation(_ index: Int) -> String {
-      String(localized: "onboarding.intro.hero.upcoming.\(index).location", bundle: bundle)
+      switch index {
+      case 1: return String(localized: "onboarding.intro.hero.upcoming.1.location", bundle: bundle)
+      case 2: return String(localized: "onboarding.intro.hero.upcoming.2.location", bundle: bundle)
+      case 3: return String(localized: "onboarding.intro.hero.upcoming.3.location", bundle: bundle)
+      case 4: return String(localized: "onboarding.intro.hero.upcoming.4.location", bundle: bundle)
+      case 5: return String(localized: "onboarding.intro.hero.upcoming.5.location", bundle: bundle)
+      default: return String(localized: "onboarding.intro.hero.upcoming.1.location", bundle: bundle)
+      }
     }
     public static func introHeroUpcomingTime(_ index: Int) -> String {
-      String(localized: "onboarding.intro.hero.upcoming.\(index).time", bundle: bundle)
+      switch index {
+      case 1: return String(localized: "onboarding.intro.hero.upcoming.1.time", bundle: bundle)
+      case 2: return String(localized: "onboarding.intro.hero.upcoming.2.time", bundle: bundle)
+      case 3: return String(localized: "onboarding.intro.hero.upcoming.3.time", bundle: bundle)
+      case 4: return String(localized: "onboarding.intro.hero.upcoming.4.time", bundle: bundle)
+      case 5: return String(localized: "onboarding.intro.hero.upcoming.5.time", bundle: bundle)
+      default: return String(localized: "onboarding.intro.hero.upcoming.1.time", bundle: bundle)
+      }
     }
     public static func introHeroPersonalTitle(_ index: Int) -> String {
-      String(localized: "onboarding.intro.hero.personal.\(index).title", bundle: bundle)
+      switch index {
+      case 1: return String(localized: "onboarding.intro.hero.personal.1.title", bundle: bundle)
+      case 2: return String(localized: "onboarding.intro.hero.personal.2.title", bundle: bundle)
+      case 3: return String(localized: "onboarding.intro.hero.personal.3.title", bundle: bundle)
+      case 4: return String(localized: "onboarding.intro.hero.personal.4.title", bundle: bundle)
+      case 5: return String(localized: "onboarding.intro.hero.personal.5.title", bundle: bundle)
+      default: return String(localized: "onboarding.intro.hero.personal.1.title", bundle: bundle)
+      }
     }
     public static func introHeroPersonalDetail(_ index: Int) -> String {
-      String(localized: "onboarding.intro.hero.personal.\(index).detail", bundle: bundle)
+      switch index {
+      case 1: return String(localized: "onboarding.intro.hero.personal.1.detail", bundle: bundle)
+      case 2: return String(localized: "onboarding.intro.hero.personal.2.detail", bundle: bundle)
+      case 3: return String(localized: "onboarding.intro.hero.personal.3.detail", bundle: bundle)
+      case 4: return String(localized: "onboarding.intro.hero.personal.4.detail", bundle: bundle)
+      case 5: return String(localized: "onboarding.intro.hero.personal.5.detail", bundle: bundle)
+      default: return String(localized: "onboarding.intro.hero.personal.1.detail", bundle: bundle)
+      }
     }
     public static func introHeroPersonalLocation(_ index: Int) -> String {
-      String(localized: "onboarding.intro.hero.personal.\(index).location", bundle: bundle)
+      switch index {
+      case 1: return String(localized: "onboarding.intro.hero.personal.1.location", bundle: bundle)
+      case 2: return String(localized: "onboarding.intro.hero.personal.2.location", bundle: bundle)
+      case 3: return String(localized: "onboarding.intro.hero.personal.3.location", bundle: bundle)
+      case 4: return String(localized: "onboarding.intro.hero.personal.4.location", bundle: bundle)
+      case 5: return String(localized: "onboarding.intro.hero.personal.5.location", bundle: bundle)
+      default: return String(localized: "onboarding.intro.hero.personal.1.location", bundle: bundle)
+      }
     }
     public static func introHeroPersonalTime(_ index: Int) -> String {
-      String(localized: "onboarding.intro.hero.personal.\(index).time", bundle: bundle)
+      switch index {
+      case 1: return String(localized: "onboarding.intro.hero.personal.1.time", bundle: bundle)
+      case 2: return String(localized: "onboarding.intro.hero.personal.2.time", bundle: bundle)
+      case 3: return String(localized: "onboarding.intro.hero.personal.3.time", bundle: bundle)
+      case 4: return String(localized: "onboarding.intro.hero.personal.4.time", bundle: bundle)
+      case 5: return String(localized: "onboarding.intro.hero.personal.5.time", bundle: bundle)
+      default: return String(localized: "onboarding.intro.hero.personal.1.time", bundle: bundle)
+      }
     }
   }
 
@@ -1602,6 +1730,12 @@ public enum LocalizedStrings {
     public static var minuteUnit: String { String(localized: "livePromise.eta.minuteUnit", bundle: bundle) }
     public static var minutesUntilArrival: String { String(localized: "livePromise.eta.minutesUntilArrival", bundle: bundle) }
     public static var confirm: String { String(localized: "livePromise.eta.confirm", bundle: bundle) }
+
+    // Error
+    public static var errorNotSupported: String { String(localized: "livePromise.error.notSupported", bundle: bundle) }
+    public static var errorActivityNotFound: String { String(localized: "livePromise.error.activityNotFound", bundle: bundle) }
+    public static var errorStartFailed: String { String(localized: "livePromise.error.startFailed", bundle: bundle) }
+    public static var errorUpdateFailed: String { String(localized: "livePromise.error.updateFailed", bundle: bundle) }
 
     // Fallback
     public static var groupFallback: String { String(localized: "livePromise.groupFallback", bundle: bundle) }

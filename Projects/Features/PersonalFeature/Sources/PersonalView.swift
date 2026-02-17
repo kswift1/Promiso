@@ -190,7 +190,7 @@ extension PersonalMode {
             .font(.system(size: 50))
             .foregroundStyle(.secondary)
 
-          Text(error.localizedDescription)
+          Text(LocalizedStrings.Error.unknownError)
             .font(.subheadline)
             .foregroundStyle(.secondary)
             .multilineTextAlignment(.center)

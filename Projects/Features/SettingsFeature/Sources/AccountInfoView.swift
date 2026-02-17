@@ -114,7 +114,7 @@ extension AccountInfo {
                 try await authClient.deleteAccount()
                 await send(.internal(.deleteAccountCompleted))
               } catch {
-                await send(.internal(.deleteAccountFailed(error.localizedDescription)))
+                await send(.internal(.deleteAccountFailed((error as? AuthClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError)))
               }
             }
 

@@ -340,7 +340,7 @@ extension AppEntry {
                 TextState("확인")
               }
             } message: {
-              TextState(error.localizedDescription)
+              TextState((error as? UserProfileError)?.localizedMessage ?? LocalizedStrings.Error.unknownError)
             }
 
             return .none
@@ -636,4 +636,19 @@ private struct PhotoSection: SwiftUI.View {
 
 private enum CancelID {
   case nicknameCheck
+}
+
+// MARK: - UserProfileError Localization
+
+extension UserProfileError {
+  var localizedMessage: String {
+    switch self {
+    case .invalidData: return LocalizedStrings.Error.userInvalidData
+    case .userNotFound: return LocalizedStrings.Error.userNotFound
+    case .uploadFailed: return LocalizedStrings.Error.userUploadFailed
+    case .networkError: return LocalizedStrings.Error.userNetworkError
+    case .authenticationRequired: return LocalizedStrings.Error.userAuthRequired
+    case .permissionDenied: return LocalizedStrings.Error.userPermissionDenied
+    }
+  }
 }
