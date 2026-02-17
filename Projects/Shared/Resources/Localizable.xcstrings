@@ -16479,6 +16479,114 @@
         }
       }
     },
+    "settings.themeMode.dark.description" : {
+      "comment" : "항상 어두운 화면으로 표시",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Always displayed in dark mode"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "항상 어두운 화면으로 표시"
+          }
+        }
+      }
+    },
+    "settings.themeMode.light.description" : {
+      "comment" : "항상 밝은 화면으로 표시",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Always displayed in light mode"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "항상 밝은 화면으로 표시"
+          }
+        }
+      }
+    },
+    "settings.themeMode.navigationTitle" : {
+      "comment" : "화면 모드",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Display Mode"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "화면 모드"
+          }
+        }
+      }
+    },
+    "settings.themeMode.sectionHint" : {
+      "comment" : "앱 전체의 화면 모드를 설정합니다. 시스템 설정을 따르거나 라이트/다크 모드를 직접 선택할 수 있습니다.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Set the display mode for the entire app. Follow system settings or choose light/dark mode directly."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "앱 전체의 화면 모드를 설정합니다. 시스템 설정을 따르거나 라이트/다크 모드를 직접 선택할 수 있습니다."
+          }
+        }
+      }
+    },
+    "settings.themeMode.sectionTitle" : {
+      "comment" : "화면 모드 설정",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Display Mode Settings"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "화면 모드 설정"
+          }
+        }
+      }
+    },
+    "settings.themeMode.system.description" : {
+      "comment" : "기기 설정에 따라 자동 변경",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatically changes based on device settings"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "기기 설정에 따라 자동 변경"
+          }
+        }
+      }
+    },
     "settings.themeModeDark" : {
       "comment" : "항상 어두운 화면으로 표시",
       "extractionState" : "manual",

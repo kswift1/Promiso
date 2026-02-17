@@ -192,6 +192,14 @@ public enum LocalizedStrings {
     public static var darkMode: String { String(localized: "settings.theme.dark", bundle: bundle) }
     public static var systemMode: String { String(localized: "settings.theme.system", bundle: bundle) }
 
+    // Theme Mode Screen
+    public static var themeModeNavigationTitle: String { String(localized: "settings.themeMode.navigationTitle", bundle: bundle) }
+    public static var themeModeSectionTitle: String { String(localized: "settings.themeMode.sectionTitle", bundle: bundle) }
+    public static var themeModeSectionHint: String { String(localized: "settings.themeMode.sectionHint", bundle: bundle) }
+    public static var themeModeSystemDescription: String { String(localized: "settings.themeMode.system.description", bundle: bundle) }
+    public static var themeModeLightDescription: String { String(localized: "settings.themeMode.light.description", bundle: bundle) }
+    public static var themeModeDarkDescription: String { String(localized: "settings.themeMode.dark.description", bundle: bundle) }
+
     // Language
     public static var language: String { String(localized: "settings.language", bundle: bundle) }
     // Language Settings

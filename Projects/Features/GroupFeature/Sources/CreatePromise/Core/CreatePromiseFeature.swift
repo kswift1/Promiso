@@ -237,7 +237,7 @@ public enum CreatePromise {
               } catch let e as Clients.PromiseClientError {
                 await send(.internal(.createPromiseResponse(.failure(e))))
               } catch {
-                await send(.internal(.createPromiseResponse(.failure(.unknown(nil)))))
+                await send(.internal(.createPromiseResponse(.failure(.unknown(String(describing: error))))))
               }
             }
             
