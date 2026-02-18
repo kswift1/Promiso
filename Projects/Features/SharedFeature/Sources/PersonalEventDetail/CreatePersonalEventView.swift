@@ -1,5 +1,6 @@
 import SwiftUI
 import ComposableArchitecture
+import Clients
 import PromisoShared
 import PhotosUI
 
@@ -19,6 +20,10 @@ extension CreatePersonalEvent {
           VStack(spacing: 16) {
             essentialSection
             endTimeSection
+            // 일정 충돌 경고 (Pro plan)
+            if store.userPlan == .pro {
+              conflictSection
+            }
             locationSection
             reminderSection
             descriptionSection
@@ -40,6 +45,9 @@ extension CreatePersonalEvent {
           }
           .padding(16)
           .padding(.bottom, 24)
+          .onAppear {
+            store.send(.view(.onAppear))
+          }
         }
         .auroraBackground()
         .navigationTitle(store.mode == .create ? LocalizedStrings.Shared.newEvent : LocalizedStrings.Shared.editEvent)
@@ -213,6 +221,86 @@ extension CreatePersonalEvent {
         }
       }
       .adaptiveGlassCard()
+    }
+
+    // MARK: - Conflict Warning Section
+
+    @ViewBuilder
+    private var conflictSection: some View {
+      if store.isCheckingConflicts {
+        HStack(spacing: 8) {
+          ProgressView()
+            .scaleEffect(0.8)
+          Text("일정 확인 중...")
+            .font(.system(size: 14))
+            .foregroundStyle(.secondary)
+        }
+        .padding(.vertical, 8)
+      } else if !store.conflicts.isEmpty {
+        let hasConfirmed = store.conflicts.contains { $0.severity == .confirmed }
+        VStack(alignment: .leading, spacing: 12) {
+          HStack(spacing: 6) {
+            Image(systemName: "exclamationmark.triangle.fill")
+              .font(.system(size: 14))
+              .foregroundStyle(hasConfirmed ? Color.pmwarning.n600 : Color.pmwarning.n500)
+            Text(hasConfirmed ? "겹치는 일정이 있어요" : "아직 확정되지 않은 약속이 있어요")
+              .font(.system(size: 15, weight: .semibold))
+              .foregroundStyle(hasConfirmed ? Color.pmwarning.n600 : Color.pmwarning.n500)
+          }
+
+          ForEach(store.conflicts) { conflict in
+            HStack(spacing: 10) {
+              Circle()
+                .fill((conflict.severity == .confirmed ? Color.pmwarning.n600 : Color.pmwarning.n500).opacity(0.15))
+                .frame(width: 32, height: 32)
+                .overlay(
+                  Text(conflict.emoji ?? (conflict.source == .promise ? "📌" : "📅"))
+                    .font(.system(size: 14))
+                )
+
+              VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                  Text(conflict.title)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+
+                  if conflict.severity == .pending {
+                    Text("미확정")
+                      .font(.system(size: 11, weight: .medium))
+                      .foregroundStyle(Color.pmwarning.n500)
+                      .padding(.horizontal, 6)
+                      .padding(.vertical, 2)
+                      .background(Color.pmwarning.n500.opacity(0.12))
+                      .clipShape(Capsule())
+                  }
+                }
+
+                Text(conflict.startAt.formattedTime + (conflict.endAt.map { " ~ \($0.formattedTime)" } ?? ""))
+                  .font(.system(size: 12))
+                  .foregroundStyle(.secondary)
+              }
+
+              Spacer()
+
+              Text({
+                let m = conflict.overlapMinutes
+                if m >= 60 {
+                  let h = m / 60
+                  let r = m % 60
+                  return r > 0 ? "\(h)시간 \(r)분 겹침" : "\(h)시간 겹침"
+                }
+                return "\(m)분 겹침"
+              }())
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(conflict.severity == .confirmed ? Color.pmwarning.n600 : Color.pmwarning.n500)
+            }
+            .padding(.vertical, 4)
+          }
+        }
+        .padding(16)
+        .adaptiveGlassCard()
+      }
     }
 
     // MARK: - Location Section
