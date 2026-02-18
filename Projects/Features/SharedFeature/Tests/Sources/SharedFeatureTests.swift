@@ -327,8 +327,8 @@ struct PromiseDetailFeatureTests {
     // respondingState가 idle이 아니므로 아무 동작 없음
   }
 
-  @Test("shareTapped 시 showShareOptions 설정")
-  func shareTapped_setsShowShareOptions() async {
+  @Test("shareTapped 시 showShareSheet 설정")
+  func shareTapped_setsShowShareSheet() async {
     let promise = makePromise()
 
     let store = TestStore(
@@ -341,27 +341,27 @@ struct PromiseDetailFeatureTests {
     }
 
     await store.send(.view(.shareTapped)) {
-      $0.showShareOptions = true
+      $0.showShareSheet = true
     }
   }
 
-  @Test("systemShareTapped 시 showShareSheet 설정")
-  func systemShareTapped_setsShowShareSheet() async {
+  @Test("systemShareTapped 시 systemShareText 설정")
+  func systemShareTapped_setsSystemShareText() async {
     let promise = makePromise()
 
     var state = PromiseDetail.Feature.State(
       promise: promise,
       currentUserId: "test-user"
     )
-    state.showShareOptions = true
+    state.showShareSheet = true
 
     let store = TestStore(initialState: state) {
       PromiseDetail.Feature()
     }
 
     await store.send(.view(.systemShareTapped)) {
-      $0.showShareOptions = false
-      $0.showShareSheet = true
+      $0.showShareSheet = false
+      $0.systemShareText = promise.shareText
     }
   }
 

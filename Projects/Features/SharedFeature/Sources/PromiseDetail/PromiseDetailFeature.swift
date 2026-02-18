@@ -24,8 +24,8 @@ extension PromiseDetail {
       var respondingState: RespondingState = .idle
       var isDeleting: Bool = false
       var showShareSheet: Bool = false
-      var showShareOptions: Bool = false
       var isKakaoSharing: Bool = false
+      var systemShareText: String?
 
       // 그룹 멤버 정보 (참여자 이름 표시용)
       var groupMembers: [UserPublicModel]?
@@ -138,7 +138,7 @@ extension PromiseDetail {
         case kakaoShareTapped
         case systemShareTapped
         case shareSheetDismissed
-        case shareOptionsDismissed
+        case systemShareSheetDismissed
         case participantGroupTapped(title: String, userIds: [String], colorType: ParticipantColorType)
         case memberSheetDismissed
         case directionsTapped
@@ -259,11 +259,10 @@ extension PromiseDetail {
             return .none
 
           case .shareTapped:
-            state.showShareOptions = true
+            state.showShareSheet = true
             return .none
 
           case .kakaoShareTapped:
-            state.showShareOptions = false
             state.isKakaoSharing = true
             let promise = state.promise
             return .run { [kakaoShareClient, analyticsClient] send in
@@ -290,16 +289,18 @@ extension PromiseDetail {
             }
 
           case .systemShareTapped:
-            state.showShareOptions = false
-            state.showShareSheet = true
+            let shareText = state.promise.shareText
+            state.showShareSheet = false
+            state.systemShareText = shareText
             return .none
 
           case .shareSheetDismissed:
             state.showShareSheet = false
+            state.isKakaoSharing = false
             return .none
 
-          case .shareOptionsDismissed:
-            state.showShareOptions = false
+          case .systemShareSheetDismissed:
+            state.systemShareText = nil
             return .none
 
           case let .participantGroupTapped(title, userIds, colorType):
@@ -534,6 +535,7 @@ extension PromiseDetail {
             state.isKakaoSharing = false
             switch result {
             case .shared, .webShared:
+              state.showShareSheet = false
               state.toastMessage = ToastMessage(
                 type: .success,
                 title: "약속을 공유했어요",
@@ -541,7 +543,6 @@ extension PromiseDetail {
               )
               return .none
             case .fallbackToSystem:
-              state.showShareSheet = true
               return .none
             }
           }

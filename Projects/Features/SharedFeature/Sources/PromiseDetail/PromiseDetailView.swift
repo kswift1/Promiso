@@ -74,27 +74,24 @@ extension PromiseDetail {
         get: { store.showShareSheet },
         set: { _ in store.send(.view(.shareSheetDismissed)) }
       )) {
-        ShareSheet(items: [store.promise.shareText])
+        PromiseShareSheet(
+          promise: store.promise,
+          isKakaoSharing: store.isKakaoSharing,
+          onKakaoShareTapped: {
+            store.send(.view(.kakaoShareTapped))
+          },
+          onSystemShareTapped: {
+            store.send(.view(.systemShareTapped))
+          }
+        )
+        .presentationDetents([.height(340)])
+        .presentationDragIndicator(.visible)
       }
-      .confirmationDialog(
-        "공유 방법 선택",
-        isPresented: Binding(
-          get: { store.showShareOptions },
-          set: { if !$0 { store.send(.view(.shareOptionsDismissed)) } }
-        ),
-        titleVisibility: .visible
-      ) {
-        Button {
-          store.send(.view(.kakaoShareTapped))
-        } label: {
-          Label("카카오톡으로 공유", systemImage: "paperplane.fill")
-        }
-
-        Button {
-          store.send(.view(.systemShareTapped))
-        } label: {
-          Label("다른 앱으로 공유", systemImage: "square.and.arrow.up")
-        }
+      .sheet(item: Binding(
+        get: { store.systemShareText.map { ShareTextItem(text: $0) } },
+        set: { _ in store.send(.view(.systemShareSheetDismissed)) }
+      )) { item in
+        ShareSheet(items: [item.text])
       }
       .navigationDestination(isPresented: Binding(
         get: { store.showMapDetail },

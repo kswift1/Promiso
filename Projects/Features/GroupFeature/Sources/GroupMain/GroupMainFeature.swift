@@ -184,15 +184,17 @@ extension GroupMain {
       /// 과거 약속 상태 (별도 fetch)
       var pastPromisesState: LoadingState<[PromiseModel]> = .idle
 
-      // 공유 시트용
+      // 약속 공유 시트용
       var sharePromise: PromiseModel?
+      var isKakaoPromiseSharing: Bool = false
+      var systemShareText: String?
       /// 화면 토스트 메시지
       var toastMessage: ToastMessage?
 
       /// 그룹 초대 시트 표시 여부
       var showGroupInviteSheet: Bool = false
-      /// 카카오 공유 진행 중
-      var isKakaoSharing: Bool = false
+      /// 카카오 초대 공유 진행 중
+      var isKakaoInviteSharing: Bool = false
       /// context menu에서 그룹 전환 후 실행할 액션
       enum PendingContextAction: Equatable, Sendable {
         case invite
@@ -441,7 +443,6 @@ extension GroupMain {
         case responseChanged(String, PromiseAttendanceStatus)
         case promiseTapped(PromiseModel)
         case promiseShared(String)
-        case sharePromiseDismissed
         case createNewPromise
         case createGroup
         case joinGroup
@@ -467,6 +468,10 @@ extension GroupMain {
         case contextCreatePromiseTapped(String)  // 약속 만들기 (groupId)
         case dismissGroupInviteSheet
         case kakaoInviteShareTapped
+        case kakaoPromiseShareTapped
+        case systemPromiseShareTapped
+        case dismissPromiseShareSheet
+        case systemShareSheetDismissed
       }
 
       @CasePathable
@@ -495,6 +500,7 @@ extension GroupMain {
         case fetchSettings
         case settingsResponse(Result<UserSettings, AppError>)
         case kakaoInviteShareResult(KakaoShareResult)
+        case kakaoPromiseShareResult(KakaoShareResult)
       }
     }
 
@@ -600,10 +606,6 @@ extension GroupMain {
               return .none
             }
             state.sharePromise = promise
-            return .none
-
-          case .sharePromiseDismissed:
-            state.sharePromise = nil
             return .none
 
           case .directionsTapped(let promiseId):
@@ -800,7 +802,7 @@ extension GroupMain {
 
           case .kakaoInviteShareTapped:
             guard let group = state.currentGroup else { return .none }
-            state.isKakaoSharing = true
+            state.isKakaoInviteSharing = true
             let groupName = group.name
             let inviteCode = group.inviteCode
             let memberCount = group.memberIds.count
@@ -843,6 +845,48 @@ extension GroupMain {
               )
               await send(.internal(.kakaoInviteShareResult(result)))
             }
+
+          case .kakaoPromiseShareTapped:
+            guard let promise = state.sharePromise else { return .none }
+            state.isKakaoPromiseSharing = true
+            return .run { [kakaoShareClient, hapticFeedback, analyticsClient] send in
+              await hapticFeedback.buttonTap()
+              analyticsClient.logEvent(
+                "kakao_promise_shared",
+                [
+                  AnalyticsClient.ParameterKey.promiseID: promise.id,
+                  "share_method": "kakao"
+                ]
+              )
+              let result = await kakaoShareClient.sharePromise(
+                promise.title,
+                promise.displayEmoji,
+                promise.dateText,
+                promise.timeText,
+                promise.location?.name,
+                promise.location?.address,
+                promise.id,
+                promise.groupId,
+                promise.description,
+                promise.imageUrls.first
+              )
+              await send(.internal(.kakaoPromiseShareResult(result)))
+            }
+
+          case .systemPromiseShareTapped:
+            guard let promise = state.sharePromise else { return .none }
+            state.systemShareText = promise.shareText
+            state.sharePromise = nil
+            return .none
+
+          case .dismissPromiseShareSheet:
+            state.sharePromise = nil
+            state.isKakaoPromiseSharing = false
+            return .none
+
+          case .systemShareSheetDismissed:
+            state.systemShareText = nil
+            return .none
           }
 
         // MARK: - Internal Actions
@@ -1165,13 +1209,30 @@ extension GroupMain {
             )
 
           case .kakaoInviteShareResult(let result):
-            state.isKakaoSharing = false
+            state.isKakaoInviteSharing = false
             switch result {
             case .shared, .webShared:
               state.showGroupInviteSheet = false
               state.toastMessage = ToastMessage(
                 type: .success,
                 title: "초대 링크를 공유했어요",
+                position: .top
+              )
+              return .run { [hapticFeedback] _ in
+                await hapticFeedback.success()
+              }
+            case .fallbackToSystem:
+              return .none
+            }
+
+          case .kakaoPromiseShareResult(let result):
+            state.isKakaoPromiseSharing = false
+            switch result {
+            case .shared, .webShared:
+              state.sharePromise = nil
+              state.toastMessage = ToastMessage(
+                type: .success,
+                title: "약속을 공유했어요",
                 position: .top
               )
               return .run { [hapticFeedback] _ in

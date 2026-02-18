@@ -66,9 +66,26 @@ extension GroupMain {
       }
       .sheet(item: Binding(
         get: { store.sharePromise },
-        set: { _ in store.send(.view(.sharePromiseDismissed)) }
+        set: { _ in store.send(.view(.dismissPromiseShareSheet)) }
       )) { promise in
-        ShareSheet(items: [promise.shareText])
+        PromiseShareSheet(
+          promise: promise,
+          isKakaoSharing: store.isKakaoPromiseSharing,
+          onKakaoShareTapped: {
+            store.send(.view(.kakaoPromiseShareTapped))
+          },
+          onSystemShareTapped: {
+            store.send(.view(.systemPromiseShareTapped))
+          }
+        )
+        .presentationDetents([.height(340)])
+        .presentationDragIndicator(.visible)
+      }
+      .sheet(item: Binding(
+        get: { store.systemShareText.map { ShareTextItem(text: $0) } },
+        set: { _ in store.send(.view(.systemShareSheetDismissed)) }
+      )) { item in
+        ShareSheet(items: [item.text])
       }
       .sheet(
         store: store.scope(state: \.$editPromise, action: \.editPromise)
@@ -109,7 +126,7 @@ extension GroupMain {
           InviteSheet(
             groupName: group.name,
             inviteCode: group.inviteCode,
-            isKakaoSharing: store.isKakaoSharing,
+            isKakaoSharing: store.isKakaoInviteSharing,
             onKakaoShareTapped: {
               store.send(.view(.kakaoInviteShareTapped))
             }
@@ -692,19 +709,6 @@ private struct OnboardingCardView: View {
   }
 }
 
-// MARK: - ShareSheet
-
-import UIKit
-
-struct ShareSheet: UIViewControllerRepresentable {
-  let items: [Any]
-
-  func makeUIViewController(context: Context) -> UIActivityViewController {
-    UIActivityViewController(activityItems: items, applicationActivities: nil)
-  }
-
-  func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
-}
 
 // MARK: - SortSettingsSheetContent
 
