@@ -4,6 +4,7 @@ import PromisoShared
 struct PromiseGlassCard: View {
   let promise: PromiseModel
   let currentUserId: String
+  let weather: WeatherInfo?
   let onTap: () -> Void
 
   private var myVoteStatus: VoteStatus {
@@ -86,6 +87,17 @@ struct PromiseGlassCard: View {
                   .foregroundStyle(.secondary)
               }
             }
+          }
+
+          // 날씨
+          if let weather = weather,
+             let forecast = weather.forecast(for: promise.startAt) {
+            WeatherCardStrip(
+              forecast: forecast,
+              rangeForecasts: weather.forecasts(from: promise.startAt, to: promise.endAt),
+              referenceTimeText: promise.startAt.formattedMonthDayTime,
+              forecastSource: weather.forecastSource(for: promise.startAt)
+            )
           }
         }
 

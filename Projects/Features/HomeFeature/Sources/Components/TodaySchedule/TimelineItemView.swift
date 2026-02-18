@@ -9,6 +9,7 @@ struct TimelineItemView: View {
   let promise: PromiseModel
   let isFirst: Bool
   let isLast: Bool
+  let weather: WeatherInfo?
   let onTap: () -> Void
 
   @State private var showLiveActivityInfo = false
@@ -32,6 +33,19 @@ struct TimelineItemView: View {
             Spacer(minLength: 0)
           }
           .padding(.vertical, 8)
+
+          // 날씨
+          if let weather = weather,
+             let forecast = weather.forecast(for: promise.startAt) {
+            WeatherCardStrip(
+              forecast: forecast,
+              rangeForecasts: weather.forecasts(from: promise.startAt, to: promise.endAt),
+              referenceTimeText: promise.startAt.formattedMonthDayTime,
+              forecastSource: weather.forecastSource(for: promise.startAt)
+            )
+            .padding(.horizontal, 8)
+            .padding(.bottom, 8)
+          }
 
           // Divider (마지막 아이템 제외)
           if !isLast {
@@ -115,7 +129,7 @@ struct TimelineItemView: View {
       }
       .foregroundStyle(.secondary)
 
-      // 장소
+      // 장소 + 날씨
       if let location = promise.location {
         HStack(spacing: 4) {
           ResourceKitAsset.locationIcon.swiftUIImage
@@ -244,6 +258,7 @@ struct TimelineItemView: View {
       ),
       isFirst: true,
       isLast: false,
+      weather: nil,
       onTap: {}
     )
 
@@ -255,6 +270,7 @@ struct TimelineItemView: View {
       ),
       isFirst: false,
       isLast: true,
+      weather: nil,
       onTap: {}
     )
   }

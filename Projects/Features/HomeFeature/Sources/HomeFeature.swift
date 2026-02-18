@@ -24,6 +24,7 @@ extension Home {
     @Dependency(\.promiseClient) var promiseClient
     @Dependency(\.notificationClient) var notificationClient
     @Dependency(\.personalEventClient) var personalEventClient
+    @Dependency(\.weatherClient) var weatherClient
 
     public init() {}
 
@@ -45,6 +46,10 @@ extension Home {
 
       /// 개인 일정 데이터
       var personalEventsState: LoadingState<[PersonalEventModel]> = .idle
+
+      /// 날씨 캐시 (scheduleId → WeatherInfo)
+      @Shared(.inMemory("weatherCache"))
+      var weatherCache: [String: WeatherInfo] = [:]
 
       /// 초기 로드 여부
       var hasLoadedOnce: Bool = false
@@ -141,6 +146,10 @@ extension Home {
         case fetchUnreadNotificationCount
         /// 안 읽은 알림 개수 응답
         case unreadNotificationCountResponse(Result<Int, Error>)
+        /// 날씨 정보 조회
+        case fetchWeather
+        /// 날씨 정보 응답 (scheduleId → WeatherInfo)
+        case weatherResponse(String, Result<WeatherInfo, Error>)
       }
 
       @CasePathable
@@ -295,8 +304,11 @@ extension Home {
               )
               WidgetDataManager.reloadWidgets()
 
-              // 약속 로드 성공 시 알림 개수도 조회
-              return .send(.internal(.fetchUnreadNotificationCount))
+              // 약속 로드 성공 시 알림 개수 + 날씨 조회
+              return .merge(
+                .send(.internal(.fetchUnreadNotificationCount)),
+                .send(.internal(.fetchWeather))
+              )
 
             case .failure(let error):
               state.promisesState = .failed(error)
@@ -347,6 +359,84 @@ extension Home {
               return .run { [notificationClient] _ in
                 await notificationClient.setBadgeCount(count)
               }
+            }
+            return .none
+
+          case .fetchWeather:
+            let promises = state.allPromises.filter { promise in
+              let hasLat = promise.location?.latitude != nil
+              let hasLng = promise.location?.longitude != nil
+              let notPast = !promise.isPast
+              return hasLat && hasLng && notPast
+            }
+            let events = (state.personalEventsState.value ?? []).filter { event in
+              event.location?.latitude != nil &&
+              event.location?.longitude != nil
+            }
+
+            // 예보 범위(10일) 밖 필터링 (단기 5일 + 중기 10일)
+            let maxDate = Date().addingTimeInterval(10 * 24 * 3600)
+
+            struct LocationKey: Hashable {
+              let lat: Double
+              let lng: Double
+              let hour: Int
+            }
+
+            var seen = Set<LocationKey>()
+            var effects: [Effect<Action>] = []
+
+            for promise in promises where promise.startAt < maxDate {
+              guard let lat = promise.location?.latitude,
+                    let lng = promise.location?.longitude else { continue }
+              let hour = Calendar.current.component(.hour, from: promise.startAt)
+              let key = LocationKey(
+                lat: (lat * 100).rounded() / 100,
+                lng: (lng * 100).rounded() / 100,
+                hour: hour
+              )
+              guard seen.insert(key).inserted else { continue }
+
+              let id = promise.id
+              let date = promise.startAt
+              effects.append(.run { [weatherClient] send in
+                do {
+                  let info = try await weatherClient.getWeather(lat, lng, date)
+                  await send(.internal(.weatherResponse(id, .success(info))))
+                } catch {
+                  await send(.internal(.weatherResponse(id, .failure(error))))
+                }
+              })
+            }
+
+            for event in events where event.startAt < maxDate {
+              guard let lat = event.location?.latitude,
+                    let lng = event.location?.longitude else { continue }
+              let hour = Calendar.current.component(.hour, from: event.startAt)
+              let key = LocationKey(
+                lat: (lat * 100).rounded() / 100,
+                lng: (lng * 100).rounded() / 100,
+                hour: hour
+              )
+              guard seen.insert(key).inserted else { continue }
+
+              let id = event.id
+              let date = event.startAt
+              effects.append(.run { [weatherClient] send in
+                do {
+                  let info = try await weatherClient.getWeather(lat, lng, date)
+                  await send(.internal(.weatherResponse(id, .success(info))))
+                } catch {
+                  await send(.internal(.weatherResponse(id, .failure(error))))
+                }
+              })
+            }
+
+            return effects.isEmpty ? .none : .merge(effects)
+
+          case .weatherResponse(let scheduleId, let result):
+            if case .success(let info) = result {
+              state.$weatherCache.withLock { $0[scheduleId] = info }
             }
             return .none
           }
@@ -609,6 +699,7 @@ extension Home {
               // 오늘의 일정 카드
               TodayScheduleCard(
                 items: store.todayScheduleItems,
+                weatherCache: store.weatherCache,
                 onItemTap: { item in
                   switch item {
                   case .promise(let p):
@@ -624,6 +715,7 @@ extension Home {
               if !store.pendingPromises.isEmpty {
                 PendingSection(
                   promises: store.pendingPromises,
+                  groupMembersCache: store.groupMembersCache,
                   onPromiseTap: { promise in
                     store.send(.view(.pendingPromiseTapped(promise)))
                   }
@@ -634,6 +726,7 @@ extension Home {
               // 다가오는 일정 섹션
               UpcomingSection(
                 items: store.upcomingScheduleItems,
+                weatherCache: store.weatherCache,
                 onItemTap: { item in
                   switch item {
                   case .promise(let p):

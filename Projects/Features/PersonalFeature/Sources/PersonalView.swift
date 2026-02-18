@@ -218,6 +218,7 @@ extension PersonalMode {
             ForEach(section.events) { event in
               PersonalEventCard(
                 event: event,
+                weather: store.weatherCache[event.id],
                 onTap: {
                   store.send(.view(.eventTapped(event)))
                 },

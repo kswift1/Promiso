@@ -9,6 +9,7 @@ import ResourceKit
 struct UpcomingDateCard: View {
   let date: Date
   let items: [HomeModels.ScheduleItem]
+  let weatherCache: [String: WeatherInfo]
   let onItemTap: (HomeModels.ScheduleItem) -> Void
 
   var body: some View {
@@ -23,12 +24,14 @@ struct UpcomingDateCard: View {
           case .promise(let promise):
             UpcomingPromiseRow(
               promise: promise,
+              weather: weatherCache[promise.id],
               onTap: { onItemTap(item) }
             )
 
           case .personalEvent(let event):
             UpcomingPersonalEventRow(
               event: event,
+              weather: weatherCache[event.id],
               onTap: { onItemTap(item) }
             )
           }
@@ -97,6 +100,7 @@ struct UpcomingDateCard: View {
 /// 카드 내부의 개별 약속 행
 private struct UpcomingPromiseRow: View {
   let promise: PromiseModel
+  let weather: WeatherInfo?
   let onTap: () -> Void
 
   var body: some View {
@@ -104,7 +108,7 @@ private struct UpcomingPromiseRow: View {
       HStack(spacing: 8) {
         // 약속 정보
         VStack(alignment: .leading, spacing: 4) {
-          // 이모지 + 제목
+          // 이모지 + 제목 + 날씨 칩
           HStack(spacing: 6) {
             Text(promise.displayEmoji)
               .font(.pmBody)
@@ -113,11 +117,22 @@ private struct UpcomingPromiseRow: View {
               .font(.pmSubheadlineMedium)
               .foregroundStyle(.primary)
               .lineLimit(1)
+
+            Spacer(minLength: 0)
+
+            if let weather = weather,
+               let forecast = weather.forecast(for: promise.startAt) {
+              WeatherBadge(
+                forecast: forecast,
+                rangeForecasts: weather.forecasts(from: promise.startAt, to: promise.endAt),
+                referenceTimeText: promise.startAt.formattedMonthDayTime,
+                forecastSource: weather.forecastSource(for: promise.startAt)
+              )
+            }
           }
 
           // 시간 + 장소
           HStack(spacing: 12) {
-            // 시간
             HStack(spacing: 3) {
               ResourceKitAsset.clockIcon.swiftUIImage
                 .resizable()
@@ -128,7 +143,6 @@ private struct UpcomingPromiseRow: View {
                 .font(.pmCaption)
             }
 
-            // 장소
             if let location = promise.location {
               HStack(spacing: 3) {
                 ResourceKitAsset.locationIcon.swiftUIImage
@@ -195,6 +209,7 @@ private struct UpcomingPromiseRow: View {
 /// 카드 내부의 개별 개인 일정 행
 private struct UpcomingPersonalEventRow: View {
   let event: PersonalEventModel
+  let weather: WeatherInfo?
   let onTap: () -> Void
 
   var body: some View {
@@ -202,7 +217,7 @@ private struct UpcomingPersonalEventRow: View {
       HStack(spacing: 8) {
         // 일정 정보
         VStack(alignment: .leading, spacing: 4) {
-          // 이모지 + 제목
+          // 이모지 + 제목 + 날씨 칩
           HStack(spacing: 6) {
             Text(event.displayEmoji)
               .font(.pmBody)
@@ -211,6 +226,18 @@ private struct UpcomingPersonalEventRow: View {
               .font(.pmSubheadlineMedium)
               .foregroundStyle(.primary)
               .lineLimit(1)
+
+            Spacer(minLength: 0)
+
+            if let weather = weather,
+               let forecast = weather.forecast(for: event.startAt) {
+              WeatherBadge(
+                forecast: forecast,
+                rangeForecasts: weather.forecasts(from: event.startAt, to: event.endAt),
+                referenceTimeText: event.startAt.formattedMonthDayTime,
+                forecastSource: weather.forecastSource(for: event.startAt)
+              )
+            }
           }
 
           // 시간 + 장소
@@ -290,6 +317,7 @@ private struct UpcomingPersonalEventRow: View {
         )),
         .promise(PromiseModel.mock(id: "3", title: "저녁 약속", startAt: Date().addingTimeInterval(86400 + 7200)))
       ],
+      weatherCache: [:],
       onItemTap: { _ in }
     )
 
@@ -304,6 +332,7 @@ private struct UpcomingPersonalEventRow: View {
           startAt: Date().addingTimeInterval(172800)
         ))
       ],
+      weatherCache: [:],
       onItemTap: { _ in }
     )
   }

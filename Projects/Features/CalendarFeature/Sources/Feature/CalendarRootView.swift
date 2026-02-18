@@ -243,6 +243,7 @@ extension CalendarFeature {
               PromiseCardView(
                 promise: promise,
                 currentUserId: store.currentUserId,
+                weather: store.weatherCache[promise.id],
                 onTap: { store.send(.view(.promiseTapped(promise))) },
                 onRespond: promise.responseStatus(currentUserId: store.currentUserId) == .needResponse
                   ? { store.send(.view(.promiseRespondTapped(promise))) }
@@ -262,6 +263,7 @@ extension CalendarFeature {
             case .personalEvent(let event):
               PersonalEventCardView(
                 event: event,
+                weather: store.weatherCache[event.id],
                 onTap: { store.send(.view(.personalEventTapped(event))) }
               )
               .padding(.horizontal, 16)

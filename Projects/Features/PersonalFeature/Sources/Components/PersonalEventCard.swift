@@ -9,17 +9,20 @@ import PromisoShared
 /// - 상태별 배지 표시 (진행 중/오늘/다가오는/지난)
 public struct PersonalEventCard: View {
   let event: PersonalEventModel
+  let weather: WeatherInfo?
   let onTap: () -> Void
   let onEdit: () -> Void
   let onDelete: () -> Void
 
   public init(
     event: PersonalEventModel,
+    weather: WeatherInfo? = nil,
     onTap: @escaping () -> Void,
     onEdit: @escaping () -> Void,
     onDelete: @escaping () -> Void
   ) {
     self.event = event
+    self.weather = weather
     self.onTap = onTap
     self.onEdit = onEdit
     self.onDelete = onDelete
@@ -36,6 +39,17 @@ public struct PersonalEventCard: View {
         // 하단: 알림 정보
         if event.reminderMinutesBefore != nil {
           bottomSection
+        }
+
+        // 날씨
+        if let weather = weather,
+           let forecast = weather.forecast(for: event.startAt) {
+          WeatherCardStrip(
+            forecast: forecast,
+            rangeForecasts: weather.forecasts(from: event.startAt, to: event.endAt),
+            referenceTimeText: event.startAt.formattedMonthDayTime,
+            forecastSource: weather.forecastSource(for: event.startAt)
+          )
         }
       }
       .padding(16)
