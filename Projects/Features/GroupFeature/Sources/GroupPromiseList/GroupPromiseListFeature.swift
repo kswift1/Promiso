@@ -54,7 +54,10 @@ extension GroupPromiseList {
             .sorted { $0.startAt < $1.startAt }
         case .confirmed:
           return promises
-            .filter { $0.isConfirmed }
+            .filter {
+              $0.isConfirmed
+              && $0.myVoteStatus(userId: currentUserId) != .pending
+            }
             .sorted { $0.startAt < $1.startAt }
         case .all:
           return promises.sorted { $0.startAt < $1.startAt }

@@ -10,9 +10,9 @@ public enum PersonalMode {}
 extension PersonalMode {
   /// 개인 일정 필터
   public enum EventFilter: String, CaseIterable, Sendable, CategoryFilterItem {
+    case all = "전체"
     case today = "오늘"
     case future = "미래"
-    case all = "전체"
     case past = "과거"
 
     public var title: String { rawValue }
@@ -55,7 +55,7 @@ extension PersonalMode {
     public struct State: Equatable, Sendable {
       var eventsState: LoadingState<[PersonalEventModel]> = .idle
       var pastEventsState: LoadingState<[PersonalEventModel]> = .idle
-      var selectedFilter: EventFilter = .today
+      var selectedFilter: EventFilter = .all
       @Shared var currentUser: UserPrivateModel
       @Shared(.inMemory("weatherCache"))
       var weatherCache: [String: WeatherInfo] = [:]

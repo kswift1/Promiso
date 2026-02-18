@@ -13,10 +13,10 @@ public enum GroupMain {}
 extension GroupMain {
   /// 약속 목록 필터 (Apple Mail 스타일)
   public enum PromiseFilter: String, CaseIterable, Sendable, CategoryFilterItem {
+    case all = "전체"
     case needResponse = "응답 필요"
     case responded = "응답 완료"
     case confirmed = "확정"
-    case all = "전체"
     case past = "과거"
 
     public var title: String { rawValue }
@@ -162,7 +162,7 @@ extension GroupMain {
       var pendingGroupId: String?
 
       /// 현재 선택된 필터
-      var selectedFilter: GroupMain.PromiseFilter = .needResponse
+      var selectedFilter: GroupMain.PromiseFilter = .all
 
       /// 그룹 정렬 옵션 (커스텀의 경우 순서 포함)
       var groupSortOption: GroupSortOption = .joinedRecent
@@ -256,11 +256,14 @@ extension GroupMain {
           .sorted { $0.votes.until < $1.votes.until }  // 마감 임박순
       }
 
-      /// 확정된 약속 목록 (시작 시간순)
+      /// 확정된 약속 목록 (시작 시간순, 내가 응답한 것만)
       var confirmedPromises: [PromiseModel] {
         guard case .loaded(let promises) = promisesState else { return [] }
         return promises
-          .filter { $0.isConfirmed && $0.startAt > Date() }  // 확정 + 미래 약속만
+          .filter {
+            $0.isConfirmed && $0.startAt > Date()
+            && $0.myVoteStatus(userId: currentUser.userId) != .pending
+          }
           .sorted { $0.startAt < $1.startAt }
       }
 
