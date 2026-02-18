@@ -421,7 +421,7 @@ struct PromiseDetailWeatherSection: View {
   }
 
   private func weekdayString(_ date: Date) -> String {
-    KoreanDateFormatters.weekday.string(from: date)
+    LocalizedDateFormatters.weekday.string(from: date)
   }
 
   private func isPromiseTime(_ date: Date) -> Bool {
