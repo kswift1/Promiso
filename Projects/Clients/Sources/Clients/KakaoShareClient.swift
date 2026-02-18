@@ -74,7 +74,7 @@ extension KakaoShareClient: DependencyKey {
           link: Link(
             webUrl: URL(string: "https://\(webHost)/invite/\(inviteCode)"),
             mobileWebUrl: URL(string: "https://\(webHost)/invite/\(inviteCode)"),
-            iosExecutionParams: ["scheme": "\(scheme)://join/\(inviteCode)"]
+            iosExecutionParams: ["path": "join/\(inviteCode)"]
           )
         ),
         buttons: [
@@ -83,7 +83,7 @@ extension KakaoShareClient: DependencyKey {
             link: Link(
               webUrl: URL(string: "https://\(webHost)/invite/\(inviteCode)"),
               mobileWebUrl: URL(string: "https://\(webHost)/invite/\(inviteCode)"),
-              iosExecutionParams: ["scheme": "\(scheme)://join/\(inviteCode)"]
+              iosExecutionParams: ["path": "join/\(inviteCode)"]
             )
           )
         ]
@@ -98,7 +98,7 @@ extension KakaoShareClient: DependencyKey {
       let promiseLink = Link(
         webUrl: URL(string: "https://\(webHost)/promise/\(promiseId)/\(groupId)"),
         mobileWebUrl: URL(string: "https://\(webHost)/promise/\(promiseId)/\(groupId)"),
-        iosExecutionParams: ["scheme": "\(scheme)://promise/\(promiseId)/\(groupId)"]
+        iosExecutionParams: ["path": "promise/\(promiseId)/\(groupId)"]
       )
 
       let descriptionText = "📅 \(dateText) \(timeText)" + (locationName.map { "\n📍 \($0)" } ?? "")

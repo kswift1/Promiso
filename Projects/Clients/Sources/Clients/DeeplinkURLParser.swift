@@ -14,6 +14,10 @@ import PromisoShared
 /// - `{scheme}://create` → 약속 만들기 화면 (Widget용, 그룹 있을 때만)
 /// - `{scheme}://personalEvent/{eventId}` → 개인 일정 (Widget용, 개인 모드 탭으로 이동 + 상세 push)
 ///
+/// 카카오톡 공유 URL 형식:
+/// - `kakao{APP_KEY}://kakaolink?path=join/{inviteCode}` → 초대 코드로 그룹 참여
+/// - `kakao{APP_KEY}://kakaolink?path=promise/{promiseId}/{groupId}` → 약속 상세 화면
+///
 /// - SeeAlso: `.ai/DEEPLINK_GUIDE.md`
 public enum DeeplinkURLParser {
 
@@ -21,6 +25,11 @@ public enum DeeplinkURLParser {
   /// - Parameter url: 딥링크 URL (예: promiso://join/ABC123)
   /// - Returns: 파싱된 목적지 (파싱 실패 시 nil)
   public static func parse(_ url: URL) -> DeeplinkDestination? {
+    // 카카오톡 공유 URL 처리 (kakao{APP_KEY}://kakaolink?path=...)
+    if url.scheme?.hasPrefix("kakao") == true, url.host == "kakaolink" {
+      return parseKakaoLink(from: url)
+    }
+
     guard url.scheme == AppConstants.Deeplink.scheme else { return nil }
 
     switch url.host {
@@ -41,6 +50,43 @@ public enum DeeplinkURLParser {
 
     case "personalEvent":
       return parsePersonalEvent(from: url)
+
+    default:
+      return nil
+    }
+  }
+}
+
+// MARK: - Kakao Link Parser
+
+private extension DeeplinkURLParser {
+
+  /// kakao{APP_KEY}://kakaolink?path=join/{inviteCode}
+  /// → promiso-dev://join/{inviteCode} 와 동일하게 처리
+  static func parseKakaoLink(from url: URL) -> DeeplinkDestination? {
+    guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+          let path = components.queryItems?.first(where: { $0.name == "path" })?.value else {
+      return nil
+    }
+
+    // path를 "/" 기준으로 분리: "join/ABC123" → ["join", "ABC123"]
+    let segments = path.split(separator: "/").map(String.init)
+    guard let action = segments.first else { return nil }
+
+    switch action {
+    case "join":
+      guard segments.count >= 2 else { return nil }
+      return .joinGroup(inviteCode: segments[1])
+
+    case "promise":
+      guard segments.count >= 3 else { return nil }
+      let promiseId = segments[1]
+      let groupId = segments[2]
+      return .promise(promiseId: promiseId, groupId: groupId)
+
+    case "group":
+      guard segments.count >= 2 else { return nil }
+      return .group(groupId: segments[1])
 
     default:
       return nil

@@ -32,6 +32,21 @@ public enum AppConfig {
   
   public static func infoPlist(for environment: String = "prod") -> [String: Plist.Value] {
     // API Keys는 xcconfig 파일에서 환경별로 관리 (Config/*.xcconfig, gitignored)
+    // Deeplink는 비밀값이 아니므로 환경별 직접 설정
+    let deeplinkScheme: String
+    let deeplinkWebHost: String
+    switch environment {
+    case "dev":
+      deeplinkScheme = "promiso-dev"
+      deeplinkWebHost = "dev.promiso.app"
+    case "stage":
+      deeplinkScheme = "promiso-stage"
+      deeplinkWebHost = "stage.promiso.app"
+    default:
+      deeplinkScheme = "promiso"
+      deeplinkWebHost = "promiso.app"
+    }
+
     return [
       "CFBundleShortVersionString": .string(AppConfig.marketingNumber),
       "CFBundleVersion": .string(AppConfig.buildVersion(for: environment)),
@@ -49,7 +64,7 @@ public enum AppConfig {
         [
           "CFBundleTypeRole": "Editor",
           "CFBundleURLName": "com.promiso.deeplink",
-          "CFBundleURLSchemes": [.string("$(DEEPLINK_SCHEME)")]
+          "CFBundleURLSchemes": [.string(deeplinkScheme)]
         ],
         [
           "CFBundleTypeRole": "Editor",
@@ -75,8 +90,8 @@ public enum AppConfig {
       "NSSupportsLiveActivities": .boolean(true),
       "NSSupportsLiveActivitiesFrequentUpdates": .boolean(true),
       // Deeplink
-      "DEEPLINK_SCHEME": .string("$(DEEPLINK_SCHEME)"),
-      "DEEPLINK_WEB_HOST": .string("$(DEEPLINK_WEB_HOST)"),
+      "DEEPLINK_SCHEME": .string(deeplinkScheme),
+      "DEEPLINK_WEB_HOST": .string(deeplinkWebHost),
       // Kakao SDK
       "KAKAO_NATIVE_APP_KEY": .string("$(KAKAO_NATIVE_APP_KEY)"),
       // Microsoft Clarity
