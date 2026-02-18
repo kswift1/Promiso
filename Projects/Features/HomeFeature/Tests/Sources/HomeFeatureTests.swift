@@ -82,7 +82,6 @@ struct HomeFeatureTests {
     } withDependencies: {
       $0.promiseClient.getHomePromises = { _, _ in [] }
       $0.notificationClient.getUnreadCount = { _ in 0 }
-      $0.notificationClient.setBadgeCount = { _ in }
       $0.personalEventClient.getActiveEvents = { _ in [] }
     }
 
@@ -294,7 +293,6 @@ struct HomeFeatureTests {
       Home.Feature()
     } withDependencies: {
       $0.notificationClient.getUnreadCount = { _ in 5 }
-      $0.notificationClient.setBadgeCount = { _ in }
     }
 
     await store.send(.view(.refreshNotificationBadge))
@@ -360,7 +358,6 @@ struct HomeFeatureTests {
     } withDependencies: {
       $0.promiseClient.getHomePromises = { _, _ in [testPromise] }
       $0.notificationClient.getUnreadCount = { _ in 3 }
-      $0.notificationClient.setBadgeCount = { _ in }
       $0.personalEventClient.getActiveEvents = { _ in [] }
     }
 
@@ -466,7 +463,6 @@ struct HomeFeatureTests {
       Home.Feature()
     } withDependencies: {
       $0.notificationClient.getUnreadCount = { _ in throw NSError(domain: "test", code: -1) }
-      $0.notificationClient.setBadgeCount = { _ in }
     }
 
     await store.send(.view(.refreshNotificationBadge))
@@ -530,7 +526,6 @@ struct HomeFeatureTests {
     } withDependencies: {
       $0.promiseClient.getHomePromises = { _, _ in [] }
       $0.notificationClient.getUnreadCount = { _ in 0 }
-      $0.notificationClient.setBadgeCount = { _ in }
       $0.personalEventClient.getActiveEvents = { _ in [] }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)

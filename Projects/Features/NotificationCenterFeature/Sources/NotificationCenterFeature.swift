@@ -111,6 +111,8 @@ extension NotificationCenter {
         case markAllAsReadCompleted(Result<Void, Error>)
         /// 삭제 완료
         case deleteCompleted(deletedIds: [String], Result<Void, Error>)
+        /// 시스템 배지 클리어
+        case clearBadge
       }
 
       @CasePathable
@@ -136,7 +138,10 @@ extension NotificationCenter {
             guard !state.hasLoadedOnce else { return .none }
             state.hasLoadedOnce = true
             state.notificationsState = .loading
-            return .send(.internal(.fetchNotifications(isRefresh: true)))
+            return .merge(
+              .send(.internal(.fetchNotifications(isRefresh: true))),
+              .send(.internal(.clearBadge))
+            )
 
           case .refreshTriggered:
             return .send(.internal(.fetchNotifications(isRefresh: true)))
@@ -383,6 +388,11 @@ extension NotificationCenter {
               )
             }
             return .none
+
+          case .clearBadge:
+            return .run { [notificationClient] _ in
+              await notificationClient.setBadgeCount(0)
+            }
           }
 
         // MARK: - Delegate Actions

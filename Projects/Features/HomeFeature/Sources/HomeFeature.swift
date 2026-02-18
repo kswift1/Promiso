@@ -355,10 +355,6 @@ extension Home {
           case .unreadNotificationCountResponse(let result):
             if case .success(let count) = result {
               state.unreadNotificationCount = count
-              // 시스템 배지도 동기화
-              return .run { [notificationClient] _ in
-                await notificationClient.setBadgeCount(count)
-              }
             }
             return .none
 
@@ -472,7 +468,7 @@ extension Home {
 
         case .path(.element(id: _, action: .notificationCenter(.delegate(.dismiss)))):
           _ = state.path.popLast()
-          return .none
+          return .send(.internal(.fetchUnreadNotificationCount))
 
         case .path(.element(id: _, action: .notificationCenter(.delegate(.navigateToPromise(let promiseId, let groupId))))):
           _ = state.path.popLast()

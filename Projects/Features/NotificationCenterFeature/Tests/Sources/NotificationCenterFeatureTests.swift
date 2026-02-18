@@ -59,6 +59,7 @@ struct NotificationCenterFeatureTests {
       NotificationCenter.Feature()
     } withDependencies: {
       $0.notificationClient.getNotifications = { _, _, _ in notifications }
+      $0.notificationClient.setBadgeCount = { _ in }
     }
 
     await store.send(.view(.onAppear)) {
@@ -67,6 +68,7 @@ struct NotificationCenterFeatureTests {
     }
 
     await store.receive(\.internal.fetchNotifications)
+    await store.receive(\.internal.clearBadge)
 
     await store.receive(\.internal.notificationsResponse) {
       $0.notificationsState = .loaded(notifications)
