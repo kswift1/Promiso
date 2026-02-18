@@ -119,6 +119,15 @@ public struct PromiseClient: Sendable {
   /// 약속 응답 (캘린더 동기화용 결과 반환)
   public var respondPromise: @Sendable (_ promiseId: String, _ status: PromiseAttendanceStatus) async throws -> RespondPromiseResult
 
+  // MARK: - Schedule Conflict
+
+  /// 사용자가 수락한 약속을 날짜 범위로 조회 (일정 충돌 감지용)
+  public var getAcceptedPromisesByDateRange: @Sendable (
+    _ userId: String,
+    _ startDate: Date,
+    _ endDate: Date
+  ) async throws -> [PromiseModel]
+
   // MARK: - Calendar Sync
 
   /// 캘린더 동기화용 확정 약속 조회 (미래 약속만)
@@ -208,6 +217,10 @@ extension PromiseClient: TestDependencyKey {
         confirmedPromise: nil
       )
     },
+    getAcceptedPromisesByDateRange: { _, _, _ in
+      try await Task.sleep(for: .seconds(0.3))
+      return []
+    },
     getConfirmedPromisesForCalendar: {
       try await Task.sleep(for: .seconds(0.3))
       return []
@@ -287,6 +300,9 @@ extension PromiseClient: DependencyKey {
           promiseId: promiseId,
           status: status.rawValue
         )
+      },
+      getAcceptedPromisesByDateRange: { userId, startDate, endDate in
+        try await dataSource.getAcceptedPromisesByDateRange(userId: userId, startDate: startDate, endDate: endDate)
       },
       getConfirmedPromisesForCalendar: {
         try await dataSource.getConfirmedPromisesForCalendar()
