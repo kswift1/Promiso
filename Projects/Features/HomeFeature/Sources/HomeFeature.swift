@@ -363,17 +363,10 @@ extension Home {
             return .none
 
           case .fetchWeather:
-            // 위치가 있는 일정들의 날씨 조회
-            print("🌤️ [Weather] fetchWeather 시작 - 전체 약속 수: \(state.allPromises.count)")
             let promises = state.allPromises.filter { promise in
               let hasLat = promise.location?.latitude != nil
               let hasLng = promise.location?.longitude != nil
               let notPast = !promise.isPast
-              if !hasLat || !hasLng {
-                print("🌤️ [Weather] 스킵 (좌표 없음): \(promise.title) - lat:\(promise.location?.latitude as Any), lng:\(promise.location?.longitude as Any)")
-              } else if !notPast {
-                print("🌤️ [Weather] 스킵 (과거): \(promise.title)")
-              }
               return hasLat && hasLng && notPast
             }
             let events = (state.personalEventsState.value ?? []).filter { event in
@@ -389,8 +382,6 @@ extension Home {
               let lng: Double
               let hour: Int
             }
-
-            print("🌤️ [Weather] 좌표 있는 약속: \(promises.count)개, 개인일정: \(events.count)개")
 
             var seen = Set<LocationKey>()
             var effects: [Effect<Action>] = []
@@ -408,14 +399,11 @@ extension Home {
 
               let id = promise.id
               let date = promise.startAt
-              print("🌤️ [Weather] 요청: \(promise.title) - lat:\(lat), lng:\(lng), date:\(date)")
               effects.append(.run { [weatherClient] send in
                 do {
                   let info = try await weatherClient.getWeather(lat, lng, date)
-                  print("🌤️ [Weather] ✅ 성공: \(id) - \(info.hourlyForecasts.count)개 예보")
                   await send(.internal(.weatherResponse(id, .success(info))))
                 } catch {
-                  print("🌤️ [Weather] ❌ 실패: \(id) - \(error)")
                   await send(.internal(.weatherResponse(id, .failure(error))))
                 }
               })
@@ -444,16 +432,11 @@ extension Home {
               })
             }
 
-            print("🌤️ [Weather] 총 \(effects.count)개 요청 발송")
             return effects.isEmpty ? .none : .merge(effects)
 
           case .weatherResponse(let scheduleId, let result):
-            switch result {
-            case .success(let info):
+            if case .success(let info) = result {
               state.$weatherCache.withLock { $0[scheduleId] = info }
-              print("🌤️ [Weather] 캐시 저장: \(scheduleId), forecasts: \(info.hourlyForecasts.count)")
-            case .failure(let error):
-              print("🌤️ [Weather] 캐시 실패: \(scheduleId) - \(error)")
             }
             return .none
           }

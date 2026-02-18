@@ -45,16 +45,16 @@ final class WeatherDataSource: Sendable {
   func getWeather(lat: Double, lng: Double, targetDate: Date) async throws -> WeatherInfo {
     // 1. 캐시 키 생성 (소수점 2자리 반올림 + 시간 단위)
     let cacheKey = Self.cacheKey(lat: lat, lng: lng, date: targetDate)
-    print("🌤️ [DataSource] getWeather lat:\(lat), lng:\(lng), key:\(cacheKey)")
+
 
     // 2. 캐시 확인
     if let cached = await cache.get(key: cacheKey) {
-      print("🌤️ [DataSource] 캐시 히트: \(cacheKey)")
+
       return cached
     }
 
     // 3. Firebase Functions 호출
-    print("🌤️ [DataSource] Firebase Functions 호출 시작")
+
     let callable = functions.httpsCallable("getWeather")
 
     let requestFormatter = ISO8601DateFormatter()
@@ -79,15 +79,15 @@ final class WeatherDataSource: Sendable {
     do {
       response = try decoder.decode(WeatherResponse.self, from: data)
     } catch {
-      print("🌤️ [DataSource] 디코딩 실패: \(error)")
+
       throw WeatherDataSourceError.invalidResponse
     }
 
     // 4. 변환 — 시간별 예보
-    print("🌤️ [DataSource] 응답 forecasts: \(response.forecasts.count)개")
+
     let forecasts = response.forecasts.compactMap { item -> HourlyForecast? in
       guard let dateTime = dateFormatter.date(from: item.dateTime) else {
-        print("🌤️ [DataSource] 날짜 파싱 실패: \(item.dateTime)")
+
         return nil
       }
       let condition = WeatherCondition(rawValue: item.condition) ?? .unknown
@@ -111,7 +111,7 @@ final class WeatherDataSource: Sendable {
 
     let dailyForecasts: [DailyForecast] = (response.dailyForecasts ?? []).compactMap { item in
       guard let date = dailyDateFormatter.date(from: item.date) else {
-        print("🌤️ [DataSource] 일별 날짜 파싱 실패: \(item.date)")
+
         return nil
       }
       return DailyForecast(
@@ -125,9 +125,6 @@ final class WeatherDataSource: Sendable {
       )
     }
 
-    if !dailyForecasts.isEmpty {
-      print("🌤️ [DataSource] 중기예보: \(dailyForecasts.count)일")
-    }
 
     let weatherInfo = WeatherInfo(
       fetchedAt: Date(),

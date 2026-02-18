@@ -15,6 +15,44 @@ import * as https from "https";
 // 기상청 API 키 (Secret Manager에서 관리)
 const KMA_API_KEY = defineSecret("KMA_API_KEY");
 
+// MARK: - KMA Error Codes
+
+/** 기상청 API 에러코드 → 설명 매핑 */
+const KMA_ERROR_CODES: Record<string, string> = {
+  "00": "NORMAL_SERVICE",
+  "01": "APPLICATION_ERROR (어플리케이션 에러)",
+  "02": "DB_ERROR (데이터베이스 에러)",
+  "03": "NODATA_ERROR (데이터없음)",
+  "04": "HTTP_ERROR",
+  "05": "SERVICETIME_OUT (서비스 연결실패)",
+  "10": "INVALID_REQUEST_PARAMETER_ERROR (잘못된 요청 파라메터)",
+  "11": "NO_MANDATORY_REQUEST_PARAMETERS_ERROR (필수 파라메터 없음)",
+  "12": "NO_OPENAPI_SERVICE_ERROR (서비스 없거나 폐기됨)",
+  "20": "SERVICE_ACCESS_DENIED_ERROR (접근거부)",
+  "21": "TEMPORARILY_DISABLE_THE_SERVICEKEY_ERROR (서비스키 일시 중단)",
+  "22": "LIMITED_NUMBER_OF_SERVICE_REQUESTS_EXCEEDS_ERROR (요청 초과)",
+  "30": "SERVICE_KEY_IS_NOT_REGISTERED_ERROR (미등록 서비스키)",
+  "31": "DEADLINE_HAS_EXPIRED_ERROR (기한만료 서비스키)",
+  "32": "UNREGISTERED_IP_ERROR (미등록 IP)",
+  "33": "UNSIGNED_CALL_ERROR (서명되지 않은 호출)",
+  "99": "UNKNOWN_ERROR (기타에러)",
+};
+
+/**
+ * KMA API 에러 코드를 구조화된 로그 메시지로 변환
+ * @param {string} api - API 이름 (getVilageFcst 등)
+ * @param {string} code - 기상청 resultCode
+ * @param {string} msg - 기상청 resultMsg
+ */
+function logKmaError(
+  api: string, code: string, msg: string
+): void {
+  const desc = KMA_ERROR_CODES[code] ?? `UNKNOWN(${code})`;
+  console.error(
+    `[KMA] ${api} error: code=${code} (${desc}), msg=${msg}`
+  );
+}
+
 // MARK: - Server Cache
 
 const CACHE_TTL_MS = 30 * 60 * 1000; // 30분
@@ -575,8 +613,10 @@ async function fetchMidTemp(
 
   const data = await kmaGet<KMAMidTaResponse>(path);
   if (data.response.header.resultCode !== "00") {
-    console.error(
-      "MidTa error:", data.response.header.resultMsg
+    logKmaError(
+      "getMidTa",
+      data.response.header.resultCode,
+      data.response.header.resultMsg
     );
     return {};
   }
@@ -623,8 +663,10 @@ async function fetchMidLand(
 
   const data = await kmaGet<KMAMidLandResponse>(path);
   if (data.response.header.resultCode !== "00") {
-    console.error(
-      "MidLand error:", data.response.header.resultMsg
+    logKmaError(
+      "getMidLandFcst",
+      data.response.header.resultCode,
+      data.response.header.resultMsg
     );
     return {};
   }
@@ -861,10 +903,10 @@ export const getWeather = onCall<GetWeatherRequest>(
       const resultCode =
         data.response.header.resultCode;
       if (resultCode !== "00") {
-        const msg =
-          data.response.header.resultMsg;
-        console.error(
-          `KMA API result error: ${msg}`
+        logKmaError(
+          "getVilageFcst",
+          resultCode,
+          data.response.header.resultMsg
         );
         return {forecasts: []};
       }
