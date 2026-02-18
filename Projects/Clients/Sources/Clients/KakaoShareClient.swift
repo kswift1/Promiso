@@ -73,7 +73,7 @@ public struct KakaoShareClient: Sendable {
     _ groupId: String,
     _ promiseDescription: String?,
     _ imageUrl: String?
-  ) async -> KakaoShareResult = { _, _, _, _, _, _, _, _, _, _, _ in .fallbackToSystem }
+  ) async -> KakaoShareResult = { _, _, _, _, _, _, _, _, _, _ in .fallbackToSystem }
 }
 
 // MARK: - Deeplink Config Helper
@@ -272,7 +272,7 @@ extension KakaoShareClient: TestDependencyKey {
   public static let previewValue = Self(
     isKakaoTalkAvailable: { true },
     shareGroupInvite: { _, _, _, _, _, _, _ in .shared },
-    sharePromise: { _, _, _, _, _, _, _, _, _, _, _ in .shared }
+    sharePromise: { _, _, _, _, _, _, _, _, _, _ in .shared }
   )
 }
 
