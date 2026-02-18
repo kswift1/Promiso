@@ -101,7 +101,7 @@ function readCache(
 }
 
 /**
- * 캐시 저장 (초과 시 만료 항목 정리)
+ * 캐시 저장 (초과 시 만료 항목 정리 + LRU eviction)
  * @param {string} key - 캐시 키
  * @param {GetWeatherResponse} value - 응답 데이터
  * @param {number} now - 현재 시각 (epoch ms)
@@ -114,8 +114,15 @@ function writeCache(
     expiresAt: now + CACHE_TTL_MS,
   });
   if (weatherCache.size > CACHE_MAX_ENTRIES) {
+    // 1차: 만료 항목 정리
     for (const [k, v] of weatherCache.entries()) {
       if (v.expiresAt <= now) weatherCache.delete(k);
+    }
+    // 2차: 여전히 초과 시 가장 오래된 항목 제거
+    while (weatherCache.size > CACHE_MAX_ENTRIES) {
+      const firstKey = weatherCache.keys().next().value;
+      if (firstKey !== undefined) weatherCache.delete(firstKey);
+      else break;
     }
   }
 }
@@ -829,8 +836,7 @@ export const getWeather = onCall<GetWeatherRequest>(
       getBaseDateTime(new Date(now));
 
     console.log(
-      `Weather: (${latitude},${longitude})` +
-      ` nx=${nx},ny=${ny}` +
+      `Weather: nx=${nx},ny=${ny}` +
       ` base=${baseDate}/${baseTime}`
     );
 

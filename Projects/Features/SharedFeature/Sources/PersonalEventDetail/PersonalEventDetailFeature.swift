@@ -226,9 +226,12 @@ extension PersonalEventDetail {
       .ifLet(\.$deleteAlert, action: \.alert)
     }
 
+    /// 날씨 캐시 유효 시간 (6시간)
+    private static let weatherStalenessInterval: TimeInterval = 6 * 3600
+
     private func isWeatherStale(_ info: WeatherInfo?) -> Bool {
       guard let info else { return true }
-      return Date().timeIntervalSince(info.fetchedAt) > 6 * 3600
+      return Date().timeIntervalSince(info.fetchedAt) > Self.weatherStalenessInterval
     }
   }
 }
