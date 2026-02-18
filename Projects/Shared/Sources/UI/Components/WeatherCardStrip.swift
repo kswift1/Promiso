@@ -51,9 +51,13 @@ public struct WeatherCardStrip: View {
             insertion: .opacity.combined(with: .move(edge: .bottom)),
             removal: .opacity.combined(with: .move(edge: .top))
           ))
-
-          Spacer(minLength: 0)
         }
+
+        Spacer(minLength: 0)
+
+        Image(systemName: "info.circle")
+          .font(.system(size: 14))
+          .foregroundStyle(.tertiary)
       }
       .padding(.horizontal, 12)
       .padding(.vertical, 10)
