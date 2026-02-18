@@ -99,16 +99,106 @@ struct PromiseCard: View {
     statusOverride ?? responseStatus
   }
 
-  /// 확정까지 남은 인원 수
-  private var remainingForConfirmation: Int {
-    max(0, promise.minimumParticipants - promise.votes.acceptedCount)
+  // MARK: - Participation Progress
+
+  private var totalMembers: Int {
+    groupMembers?.count ?? promise.minimumParticipants
   }
 
-  @ViewBuilder
-  private var confirmationProgressText: some View {
-    Text("약속 확정까지 \(remainingForConfirmation)명 남았어요!")
-      .font(.system(size: 13, weight: .medium))
-      .foregroundColor(.orange)
+  private var acceptedCount: Int {
+    promise.votes.acceptedCount
+  }
+
+  private var participationProgress: some View {
+    let total = max(totalMembers, promise.minimumParticipants)
+    let accepted = acceptedCount
+    let confirm = promise.minimumParticipants
+    let isConfirmed = accepted >= confirm
+
+    return VStack(spacing: 6) {
+      // 프로그레스 바
+      GeometryReader { geometry in
+        let barWidth = geometry.size.width
+        let acceptedRatio = min(1.0, CGFloat(accepted) / CGFloat(max(total, 1)))
+        let confirmRatio = min(1.0, CGFloat(confirm) / CGFloat(max(total, 1)))
+
+        ZStack(alignment: .leading) {
+          // 배경 (전체)
+          Capsule()
+            .fill(Color.gray.opacity(0.15))
+
+          // 수락 인원 채움
+          Capsule()
+            .fill(isConfirmed ? Color.green : Color.green.opacity(0.7))
+            .frame(width: max(0, barWidth * acceptedRatio))
+
+          // 확정 기준선
+          if confirm < total {
+            RoundedRectangle(cornerRadius: 1)
+              .fill(Color.pmindigo.n500)
+              .frame(width: 2, height: 10)
+              .offset(x: barWidth * confirmRatio - 1)
+          }
+        }
+      }
+      .frame(height: 6)
+
+      // 범례 + 내 응답
+      HStack(spacing: 0) {
+        HStack(spacing: 3) {
+          Circle()
+            .fill(Color.green)
+            .frame(width: 6, height: 6)
+          Text("수락 \(accepted)")
+            .foregroundColor(.green)
+        }
+
+        Text(" · ")
+          .foregroundColor(.secondary.opacity(0.5))
+
+        HStack(spacing: 3) {
+          RoundedRectangle(cornerRadius: 0.5)
+            .fill(Color.pmindigo.n500)
+            .frame(width: 2, height: 8)
+          Text("확정 \(confirm)")
+            .foregroundColor(Color.pmindigo.n500)
+        }
+
+        Text(" · ")
+          .foregroundColor(.secondary.opacity(0.5))
+
+        HStack(spacing: 3) {
+          Circle()
+            .fill(Color.gray.opacity(0.3))
+            .frame(width: 6, height: 6)
+          Text("전체 \(totalMembers)")
+            .foregroundColor(.secondary)
+        }
+
+        Spacer()
+
+        // 내 응답 + 아바타
+        if myVoteStatus != .pending {
+          HStack(spacing: 4) {
+            Circle()
+              .fill(myVoteStatus == .accepted ? Color.green : Color.red)
+              .frame(width: 5, height: 5)
+            Text(myVoteStatus == .accepted ? "수락함" : "거절함")
+              .foregroundColor(myVoteStatus == .accepted ? .green : .red)
+          }
+        }
+
+        if !votedMembers.isEmpty {
+          ParticipantsAvatarView(
+            members: votedMembers,
+            currentUserId: currentUserId,
+            maxDisplay: 4
+          )
+          .padding(.leading, 6)
+        }
+      }
+      .font(.system(size: 11, weight: .medium))
+    }
   }
 
   var body: some View {
@@ -217,60 +307,27 @@ struct PromiseCard: View {
         Spacer()
       }
 
-      // Bottom Section - Participant count & Avatars
-      HStack {
-        // Participant count (투표한 인원 / 전체 인원)
-        Text("\(promise.votes.votedCount)/\(groupMembers?.count ?? 0)명 투표")
-          .font(.system(size: 13, weight: .medium))
-          .foregroundColor(.secondary)
+      // Bottom Section - 참여 현황 프로그레스
+      participationProgress
 
-        Spacer()
-
-        // Participant Avatars (투표한 멤버들)
-        if !votedMembers.isEmpty {
-          ParticipantsAvatarView(
-            members: votedMembers,
-            currentUserId: currentUserId,
-            maxDisplay: 4
-          )
-        }
-      }
-
-      // 확정까지 남은 인원 (미확정 상태에서만 표시)
-      if showsResponseDetails {
-        if case .needResponse = displayStatus, remainingForConfirmation > 0 {
-          confirmationProgressText
-        } else if case .responded = displayStatus, remainingForConfirmation > 0 {
-          confirmationProgressText
-        }
-
-        // My response badge & Directions button
-        if myVoteStatus != .pending || (isLive && hasCoordinates) {
-          HStack {
-            if myVoteStatus != .pending {
-              ResponseBadge(status: myVoteStatus == .accepted ? .accepted : .declined)
+      // 길찾기 버튼 (Live 상태 + 좌표가 있을 때)
+      if showsResponseDetails, isLive && hasCoordinates, let onDirections {
+        HStack {
+          Spacer()
+          Button(action: onDirections) {
+            HStack(spacing: 4) {
+              Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
+                .font(.system(size: 12, weight: .semibold))
+              Text("길찾기")
+                .font(.system(size: 12, weight: .semibold))
             }
-
-            Spacer()
-
-            // 길찾기 버튼 (Live 상태 + 좌표가 있을 때)
-            if isLive && hasCoordinates, let onDirections {
-              Button(action: onDirections) {
-                HStack(spacing: 4) {
-                  Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
-                    .font(.system(size: 12, weight: .semibold))
-                  Text("길찾기")
-                    .font(.system(size: 12, weight: .semibold))
-                }
-                .foregroundColor(Color.pmindigo.n500)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(Color.pmindigo.n500.opacity(0.12))
-                .clipShape(Capsule())
-              }
-              .buttonStyle(.plain)
-            }
+            .foregroundColor(Color.pmindigo.n500)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(Color.pmindigo.n500.opacity(0.12))
+            .clipShape(Capsule())
           }
+          .buttonStyle(.plain)
         }
       }
 
@@ -386,47 +443,6 @@ private struct ParticipantsAvatarView: View {
           )
       }
     }
-  }
-}
-
-private struct ResponseBadge: View {
-  let status: PromiseAttendanceStatus
-
-  private var title: String {
-    switch status {
-    case .accepted:
-      return "수락함"
-    case .declined:
-      return "거절함"
-    case .pending:
-      return ""
-    }
-  }
-
-  private var color: Color {
-    switch status {
-    case .accepted:
-      return .green
-    case .declined:
-      return .red
-    case .pending:
-      return .blue
-    }
-  }
-
-  var body: some View {
-    HStack(spacing: 6) {
-      Circle()
-        .fill(color)
-        .frame(width: 6, height: 6)
-      Text("내 응답: \(title)")
-        .font(.system(size: 12, weight: .semibold))
-        .foregroundColor(color)
-    }
-    .padding(.horizontal, 10)
-    .padding(.vertical, 6)
-    .background(color.opacity(0.12))
-    .clipShape(Capsule())
   }
 }
 
