@@ -28,6 +28,8 @@ extension CreateGroup {
     @Dependency(\.eventKitClient) var eventKitClient
     @Dependency(\.notificationClient) var notificationClient
     @Dependency(\.analyticsClient) var analyticsClient
+    @Dependency(\.kakaoShareClient) var kakaoShareClient
+    @Dependency(\.hapticFeedback) var hapticFeedback
 
     public init() {}
 
@@ -56,6 +58,7 @@ extension CreateGroup {
       // Progress & Error
       var isCreating: Bool = false
       var creationError: String?
+      var isKakaoSharing: Bool = false
 
       // Settings (그룹 생성 후 초기 설정)
       var notificationEnabled: Bool = true
@@ -113,6 +116,7 @@ extension CreateGroup {
         case errorAlertDismissed
         // Success
         case successAcknowledged
+        case kakaoInviteShareTapped
         // Settings
         case notificationToggled(Bool)
         case calendarSyncToggled(Bool)
@@ -132,6 +136,7 @@ extension CreateGroup {
         case notificationPermissionResponse(Bool)
         case calendarAuthStatusChecked(CalendarAuthorizationStatus)
         case calendarPermissionResponse(Bool)
+        case kakaoInviteShareResult(KakaoShareResult)
       }
 
       @CasePathable
@@ -188,6 +193,27 @@ extension CreateGroup {
           case .errorAlertDismissed:
             state.creationError = nil
             return .none
+
+          case .kakaoInviteShareTapped:
+            guard case .success(let result) = state.step else { return .none }
+            state.isKakaoSharing = true
+            let groupName = result.name
+            let inviteCode = result.inviteCode
+            let maxMembers = state.maxMembers.rawValue
+            let inviterName = state.currentUser.nickname
+            return .run { [kakaoShareClient, hapticFeedback] send in
+              await hapticFeedback.buttonTap()
+              let shareResult = await kakaoShareClient.shareGroupInvite(
+                groupName,
+                inviteCode,
+                1,
+                maxMembers,
+                nil,
+                inviterName,
+                []
+              )
+              await send(.internal(.kakaoInviteShareResult(shareResult)))
+            }
 
           case .successAcknowledged:
             guard case .success(let result) = state.step else { return .none }
@@ -394,6 +420,17 @@ extension CreateGroup {
               state.showCalendarPermissionInfoAlert = true
             }
             return .none
+
+          case .kakaoInviteShareResult(let result):
+            state.isKakaoSharing = false
+            switch result {
+            case .shared, .webShared:
+              return .run { [hapticFeedback] _ in
+                await hapticFeedback.success()
+              }
+            case .fallbackToSystem:
+              return .none
+            }
           }
 
         case .binding:
