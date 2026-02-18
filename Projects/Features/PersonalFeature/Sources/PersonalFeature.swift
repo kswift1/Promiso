@@ -57,6 +57,8 @@ extension PersonalMode {
       var pastEventsState: LoadingState<[PersonalEventModel]> = .idle
       var selectedFilter: EventFilter = .today
       @Shared var currentUser: UserPrivateModel
+      @Shared(.inMemory("weatherCache"))
+      var weatherCache: [String: WeatherInfo] = [:]
       var toastMessage: ToastMessage?
 
       @Presents var createEvent: CreatePersonalEvent.Feature.State?

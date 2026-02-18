@@ -362,6 +362,7 @@ extension GroupMain {
         groupMembers: store.currentGroupMembers,
         respondingState: store.proposalResponding[promiseId] ?? .idle,
         isLive: store.liveActivityPromiseId == promiseId,
+        weather: store.weatherCache[promiseId],
         onTap: {
           store.send(.view(.promiseTapped(promise)))
         },

@@ -73,6 +73,12 @@ extension CalendarFeature {
       /// 숨김 처리된 캘린더 배너 타입들
       var hiddenCalendarBannerTypes: Set<CalendarAuthorizationStatus> = []
 
+      // MARK: - 날씨 관련
+
+      /// 날씨 캐시 (HomeFeature와 공유)
+      @Shared(.inMemory("weatherCache"))
+      var weatherCache: [String: WeatherInfo] = [:]
+
       // MARK: - 개인 일정 관련
 
       /// 개인 일정 목록

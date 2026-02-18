@@ -211,21 +211,21 @@ struct PromiseCard: View {
               }
               .foregroundColor(.secondary)
             }
-
-            // 날씨
-            if let weather = weather,
-               let forecast = weather.forecast(for: promise.startAt) {
-              WeatherCardStrip(
-                forecast: forecast,
-                rangeForecasts: weather.forecasts(from: promise.startAt, to: promise.endAt),
-                referenceTimeText: promise.startAt.formattedMonthDayTime,
-                forecastSource: weather.forecastSource(for: promise.startAt)
-              )
-            }
           }
         }
 
         Spacer()
+      }
+
+      // 날씨
+      if let weather = weather,
+         let forecast = weather.forecast(for: promise.startAt) {
+        WeatherCardStrip(
+          forecast: forecast,
+          rangeForecasts: weather.forecasts(from: promise.startAt, to: promise.endAt),
+          referenceTimeText: promise.startAt.formattedMonthDayTime,
+          forecastSource: weather.forecastSource(for: promise.startAt)
+        )
       }
 
       // Bottom Section - Participant count & Avatars

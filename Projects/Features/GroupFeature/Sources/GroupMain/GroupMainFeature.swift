@@ -148,6 +148,10 @@ extension GroupMain {
       @Shared(.inMemory(AppConstants.SharedState.groupCalendarSyncCache))
       public var groupCalendarSyncCache: [String: Bool] = [:]
 
+      /// 날씨 캐시 (전역 공유)
+      @Shared(.inMemory("weatherCache"))
+      var weatherCache: [String: WeatherInfo] = [:]
+
       /// 현재 그룹 멤버 (캐시에서 조회)
       var currentGroupMembers: [UserPublicModel]? {
         guard let groupId = currentGroup?.id else { return nil }

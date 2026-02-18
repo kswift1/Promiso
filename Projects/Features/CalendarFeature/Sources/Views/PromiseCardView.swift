@@ -71,14 +71,15 @@ struct PromiseCardView: View {
 
   var body: some View {
     Button(action: onTap) {
-      HStack(spacing: 12) {
-        // 왼쪽: 상태 컬러 바
-        RoundedRectangle(cornerRadius: 2)
-          .fill(responseStatus.color)
-          .frame(width: 4)
+      VStack(alignment: .leading, spacing: 0) {
+        HStack(spacing: 12) {
+          // 왼쪽: 상태 컬러 바
+          RoundedRectangle(cornerRadius: 2)
+            .fill(responseStatus.color)
+            .frame(width: 4)
 
-        // 메인 콘텐츠
-        VStack(alignment: .leading, spacing: 8) {
+          // 메인 콘텐츠
+          VStack(alignment: .leading, spacing: 8) {
           // 상단: 시간 + 상태 + 그룹 + 참여자
           HStack(spacing: 6) {
             Text(promise.timeText)
@@ -154,21 +155,23 @@ struct PromiseCardView: View {
             .foregroundColor(.secondary.opacity(0.8))
           }
 
-          // 날씨
-          if let weather = weather,
-             let forecast = weather.forecast(for: promise.startAt) {
-            WeatherCardStrip(
-              forecast: forecast,
-              rangeForecasts: weather.forecasts(from: promise.startAt, to: promise.endAt),
-              referenceTimeText: promise.startAt.formattedMonthDayTime,
-              forecastSource: weather.forecastSource(for: promise.startAt)
-            )
-          }
-
           // 응답하기 버튼 (필요한 경우)
           if needsMyResponse, let onRespond = onRespond {
             respondButton(action: onRespond)
           }
+        }
+        }
+
+        // 날씨
+        if let weather = weather,
+           let forecast = weather.forecast(for: promise.startAt) {
+          WeatherCardStrip(
+            forecast: forecast,
+            rangeForecasts: weather.forecasts(from: promise.startAt, to: promise.endAt),
+            referenceTimeText: promise.startAt.formattedMonthDayTime,
+            forecastSource: weather.forecastSource(for: promise.startAt)
+          )
+          .padding(.top, 8)
         }
       }
       .padding(.horizontal, 12)
