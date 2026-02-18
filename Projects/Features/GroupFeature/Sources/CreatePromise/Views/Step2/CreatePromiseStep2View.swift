@@ -23,13 +23,11 @@ struct CreatePromiseStep2View: View {
           EndDateTimeSection(store: store, scrollProxy: proxy)
             .id("endDateTime")
 
-          // 일정 충돌 경고 (Pro plan)
-          if store.userPlan == .pro {
-            ConflictWarningSection(
-              conflicts: store.conflicts,
-              isChecking: store.isCheckingConflicts
-            )
-          }
+          // 일정 충돌 경고
+          ConflictWarningSection(
+            conflicts: store.conflicts,
+            isChecking: store.isCheckingConflicts
+          )
 
           // 장소 (선택)
           LocationSection(store: store)

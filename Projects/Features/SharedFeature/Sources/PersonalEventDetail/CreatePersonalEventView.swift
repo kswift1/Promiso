@@ -20,10 +20,8 @@ extension CreatePersonalEvent {
           VStack(spacing: 16) {
             essentialSection
             endTimeSection
-            // 일정 충돌 경고 (Pro plan)
-            if store.userPlan == .pro {
-              conflictSection
-            }
+            // 일정 충돌 경고
+            conflictSection
             locationSection
             reminderSection
             descriptionSection

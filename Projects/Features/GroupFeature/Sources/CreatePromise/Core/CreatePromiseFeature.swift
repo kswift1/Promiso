@@ -531,15 +531,12 @@ public enum CreatePromise {
     // MARK: - Schedule Conflict Check
 
     private func checkConflictsEffect(state: inout State) -> Effect<Action> {
-      guard state.userPlan == .pro else { return .none }
       guard !state.currentUserId.isEmpty else { return .none }
 
       state.isCheckingConflicts = true
 
       let userId = state.currentUserId
       let startAt = state.promise.startAt
-      let planDesc = String(describing: state.userPlan)
-      AppLogger.group.info("[ConflictCheck] 약속 생성 - 충돌 체크 요청 (plan: \(planDesc), startAt: \(startAt))")
       let endAt = state.promise.endAt
 
       return .run { [scheduleConflictClient, clock] send in

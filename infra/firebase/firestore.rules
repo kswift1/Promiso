@@ -65,6 +65,10 @@ service cloud.firestore {
       allow read: if request.auth != null &&
                      request.auth.uid in get(/databases/$(database)/documents/groups/$(resource.data.groupId)).data.memberIds;
 
+      // 본인이 수락한 약속 읽기 가능 (일정 충돌 감지용)
+      allow read: if request.auth != null &&
+                     request.auth.uid in resource.data.votes.accepted;
+
       // 그룹 멤버만 약속 생성 가능
       allow create: if request.auth != null &&
                        request.auth.uid in get(/databases/$(database)/documents/groups/$(request.resource.data.groupId)).data.memberIds;
