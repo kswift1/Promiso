@@ -108,7 +108,7 @@ private struct UpcomingPromiseRow: View {
       HStack(spacing: 8) {
         // 약속 정보
         VStack(alignment: .leading, spacing: 4) {
-          // 이모지 + 제목
+          // 이모지 + 제목 + 날씨 칩
           HStack(spacing: 6) {
             Text(promise.displayEmoji)
               .font(.pmBody)
@@ -117,6 +117,18 @@ private struct UpcomingPromiseRow: View {
               .font(.pmSubheadlineMedium)
               .foregroundStyle(.primary)
               .lineLimit(1)
+
+            Spacer(minLength: 0)
+
+            if let weather = weather,
+               let forecast = weather.forecast(for: promise.startAt) {
+              WeatherBadge(
+                forecast: forecast,
+                rangeForecasts: weather.forecasts(from: promise.startAt, to: promise.endAt),
+                referenceTimeText: promise.startAt.formattedMonthDayTime,
+                forecastSource: weather.forecastSource(for: promise.startAt)
+              )
+            }
           }
 
           // 시간 + 장소
@@ -148,17 +160,6 @@ private struct UpcomingPromiseRow: View {
 
           // 그룹 · 참여자
           groupParticipantsView
-
-          // 날씨
-          if let weather = weather,
-             let forecast = weather.forecast(for: promise.startAt) {
-            WeatherCardStrip(
-              forecast: forecast,
-              rangeForecasts: weather.forecasts(from: promise.startAt, to: promise.endAt),
-              referenceTimeText: promise.startAt.formattedMonthDayTime,
-              forecastSource: weather.forecastSource(for: promise.startAt)
-            )
-          }
         }
 
         Spacer(minLength: 0)
@@ -216,7 +217,7 @@ private struct UpcomingPersonalEventRow: View {
       HStack(spacing: 8) {
         // 일정 정보
         VStack(alignment: .leading, spacing: 4) {
-          // 이모지 + 제목
+          // 이모지 + 제목 + 날씨 칩
           HStack(spacing: 6) {
             Text(event.displayEmoji)
               .font(.pmBody)
@@ -225,6 +226,18 @@ private struct UpcomingPersonalEventRow: View {
               .font(.pmSubheadlineMedium)
               .foregroundStyle(.primary)
               .lineLimit(1)
+
+            Spacer(minLength: 0)
+
+            if let weather = weather,
+               let forecast = weather.forecast(for: event.startAt) {
+              WeatherBadge(
+                forecast: forecast,
+                rangeForecasts: weather.forecasts(from: event.startAt, to: event.endAt),
+                referenceTimeText: event.startAt.formattedMonthDayTime,
+                forecastSource: weather.forecastSource(for: event.startAt)
+              )
+            }
           }
 
           // 시간 + 장소
@@ -265,17 +278,6 @@ private struct UpcomingPersonalEventRow: View {
               .font(.pmCaption)
           }
           .foregroundStyle(.secondary)
-
-          // 날씨
-          if let weather = weather,
-             let forecast = weather.forecast(for: event.startAt) {
-            WeatherCardStrip(
-              forecast: forecast,
-              rangeForecasts: weather.forecasts(from: event.startAt, to: event.endAt),
-              referenceTimeText: event.startAt.formattedMonthDayTime,
-              forecastSource: weather.forecastSource(for: event.startAt)
-            )
-          }
         }
 
         Spacer(minLength: 0)

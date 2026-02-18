@@ -35,10 +35,6 @@ public struct WeatherBadge: View {
         Text("\(Int(forecast.temperature.rounded()))°")
           .font(.system(size: 12, weight: .medium))
           .foregroundStyle(.primary)
-
-        Image(systemName: "info.circle")
-          .font(.system(size: 10))
-          .foregroundStyle(.tertiary)
       }
       .padding(.horizontal, 8)
       .padding(.vertical, 4)

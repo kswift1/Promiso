@@ -431,7 +431,7 @@ public struct WeatherSuggestion: Equatable, Sendable {
     case 15..<20:
       suggestions.append(.init(
         icon: "figure.walk",
-        message: "활동하기 좋은 날씨예요",
+        message: "가장 쾌적한 기온이에요",
         color: .green
       ))
     case 20..<25:

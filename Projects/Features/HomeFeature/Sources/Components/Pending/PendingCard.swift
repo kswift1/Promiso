@@ -14,10 +14,19 @@ struct PendingCard: View {
   var body: some View {
     Button(action: onTap) {
       VStack(alignment: .leading, spacing: 10) {
-        // 상단: D-day 배지
+        // 상단: D-day 배지 + 날씨 칩
         HStack {
           dDayBadge
           Spacer()
+          if let weather = weather,
+             let forecast = weather.forecast(for: promise.startAt) {
+            WeatherBadge(
+              forecast: forecast,
+              rangeForecasts: weather.forecasts(from: promise.startAt, to: promise.endAt),
+              referenceTimeText: promise.startAt.formattedMonthDayTime,
+              forecastSource: weather.forecastSource(for: promise.startAt)
+            )
+          }
         }
 
         // 중간: 이모지 + 제목
@@ -32,7 +41,7 @@ struct PendingCard: View {
             .lineLimit(1)
         }
 
-        // 날짜 + 시간 + 날씨
+        // 날짜 + 시간
         HStack(spacing: 4) {
           ResourceKitAsset.calendarIcon.swiftUIImage
             .resizable()
@@ -41,16 +50,6 @@ struct PendingCard: View {
 
           Text(dateTimeString)
             .font(.caption)
-
-          if let weather = weather,
-             let forecast = weather.forecast(for: promise.startAt) {
-            Image(systemName: forecast.condition.sfSymbolName)
-              .symbolRenderingMode(.multicolor)
-              .font(.caption)
-            Text("\(Int(forecast.temperature))°")
-              .font(.caption)
-              .foregroundStyle(forecast.condition.iconColor)
-          }
         }
         .foregroundStyle(.secondary)
 
