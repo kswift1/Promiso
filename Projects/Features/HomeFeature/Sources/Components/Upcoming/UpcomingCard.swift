@@ -227,7 +227,7 @@ private struct UpcomingPersonalEventRow: View {
               .lineLimit(1)
           }
 
-          // 시간 + 장소 + 날씨
+          // 시간 + 장소
           HStack(spacing: 12) {
             // 시간
             HStack(spacing: 3) {
@@ -253,7 +253,6 @@ private struct UpcomingPersonalEventRow: View {
                   .lineLimit(1)
               }
             }
-
           }
           .foregroundStyle(.secondary)
 

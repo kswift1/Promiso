@@ -12,6 +12,7 @@ public struct WeatherCardStrip: View {
   private let suggestions: [WeatherSuggestion]
   @State private var showTooltip = false
   @State private var currentIndex = 0
+  @State private var rotationTimer: Timer?
 
   public init(
     forecast: HourlyForecast,
@@ -81,6 +82,7 @@ public struct WeatherCardStrip: View {
       .presentationCompactAdaptation(.popover)
     }
     .onAppear { startRotation() }
+    .onDisappear { stopRotation() }
   }
 
   private var stripBackground: some ShapeStyle {
@@ -88,12 +90,17 @@ public struct WeatherCardStrip: View {
   }
 
   private func startRotation() {
-    guard suggestions.count > 1 else { return }
-    Timer.scheduledTimer(withTimeInterval: 3.5, repeats: true) { _ in
+    guard suggestions.count > 1, rotationTimer == nil else { return }
+    rotationTimer = Timer.scheduledTimer(withTimeInterval: 3.5, repeats: true) { _ in
       withAnimation(.easeInOut(duration: 0.4)) {
         currentIndex = (currentIndex + 1) % suggestions.count
       }
     }
+  }
+
+  private func stopRotation() {
+    rotationTimer?.invalidate()
+    rotationTimer = nil
   }
 }
 
@@ -151,17 +158,17 @@ private struct MarqueeText: View {
     let overflow = textWidth - containerWidth
     let scrollDuration = Double(overflow) / 30.0
 
-    // 1초 대기 → 스크롤 → 1.5초 대기 → 복귀 → 반복
+    // 1초 대기 → 스크롤 → 1.5초 대기 → 동일 속도로 복귀 → 반복
     DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
       withAnimation(.easeInOut(duration: scrollDuration)) {
         offset = -overflow
       }
 
       DispatchQueue.main.asyncAfter(deadline: .now() + scrollDuration + 1.5) {
-        withAnimation(.easeInOut(duration: 0.3)) {
+        withAnimation(.easeInOut(duration: scrollDuration)) {
           offset = 0
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3 + 1.0) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + scrollDuration + 1.0) {
           animating = false
           startMarqueeIfNeeded()
         }

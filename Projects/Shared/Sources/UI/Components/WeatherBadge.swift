@@ -6,18 +6,21 @@ import SwiftUI
 /// 탭하면 WeatherTooltip 팝오버 표시
 public struct WeatherBadge: View {
   private let forecast: HourlyForecast
-  private let advices: [WeatherAdvice]
+  private let rangeForecasts: [HourlyForecast]
   private let referenceTimeText: String?
+  private let forecastSource: ForecastSource
   @State private var showTooltip = false
 
   public init(
     forecast: HourlyForecast,
-    advices: [WeatherAdvice] = [],
-    referenceTimeText: String? = nil
+    rangeForecasts: [HourlyForecast] = [],
+    referenceTimeText: String? = nil,
+    forecastSource: ForecastSource = .shortTerm
   ) {
     self.forecast = forecast
-    self.advices = advices.isEmpty ? WeatherAdvice.from(forecast: forecast) : advices
+    self.rangeForecasts = rangeForecasts
     self.referenceTimeText = referenceTimeText
+    self.forecastSource = forecastSource
   }
 
   public var body: some View {
@@ -32,6 +35,10 @@ public struct WeatherBadge: View {
         Text("\(Int(forecast.temperature.rounded()))°")
           .font(.system(size: 12, weight: .medium))
           .foregroundStyle(.primary)
+
+        Image(systemName: "info.circle")
+          .font(.system(size: 10))
+          .foregroundStyle(.tertiary)
       }
       .padding(.horizontal, 8)
       .padding(.vertical, 4)
@@ -42,8 +49,9 @@ public struct WeatherBadge: View {
     .popover(isPresented: $showTooltip, arrowEdge: .bottom) {
       WeatherTooltip(
         forecast: forecast,
-        advices: advices,
-        referenceTimeText: referenceTimeText
+        rangeForecasts: rangeForecasts,
+        referenceTimeText: referenceTimeText,
+        forecastSource: forecastSource
       )
       .presentationCompactAdaptation(.popover)
     }
