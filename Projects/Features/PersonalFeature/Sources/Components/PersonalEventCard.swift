@@ -36,6 +36,11 @@ public struct PersonalEventCard: View {
         // 메인 콘텐츠: 상태 배지 + 이모지 + 제목/설명/시간/장소
         mainContent
 
+        // 하단: 알림 정보
+        if event.reminderMinutesBefore != nil {
+          bottomSection
+        }
+
         // 날씨
         if let weather = weather,
            let forecast = weather.forecast(for: event.startAt) {
@@ -45,11 +50,6 @@ public struct PersonalEventCard: View {
             referenceTimeText: event.startAt.formattedMonthDayTime,
             forecastSource: weather.forecastSource(for: event.startAt)
           )
-        }
-
-        // 하단: 알림 정보
-        if event.reminderMinutesBefore != nil {
-          bottomSection
         }
       }
       .padding(16)

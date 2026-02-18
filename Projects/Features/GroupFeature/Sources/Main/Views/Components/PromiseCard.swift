@@ -217,17 +217,6 @@ struct PromiseCard: View {
         Spacer()
       }
 
-      // 날씨
-      if let weather = weather,
-         let forecast = weather.forecast(for: promise.startAt) {
-        WeatherCardStrip(
-          forecast: forecast,
-          rangeForecasts: weather.forecasts(from: promise.startAt, to: promise.endAt),
-          referenceTimeText: promise.startAt.formattedMonthDayTime,
-          forecastSource: weather.forecastSource(for: promise.startAt)
-        )
-      }
-
       // Bottom Section - Participant count & Avatars
       HStack {
         // Participant count (투표한 인원 / 전체 인원)
@@ -283,6 +272,17 @@ struct PromiseCard: View {
             }
           }
         }
+      }
+
+      // 날씨
+      if let weather = weather,
+         let forecast = weather.forecast(for: promise.startAt) {
+        WeatherCardStrip(
+          forecast: forecast,
+          rangeForecasts: weather.forecasts(from: promise.startAt, to: promise.endAt),
+          referenceTimeText: promise.startAt.formattedMonthDayTime,
+          forecastSource: weather.forecastSource(for: promise.startAt)
+        )
       }
     }
     .padding(16)
