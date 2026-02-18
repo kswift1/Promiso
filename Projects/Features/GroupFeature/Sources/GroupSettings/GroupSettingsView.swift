@@ -1087,9 +1087,22 @@ private struct SheetsModifier: ViewModifier {
         InviteSheet(
           groupName: store.group.name,
           inviteCode: store.inviteCode,
+          isKakaoSharing: store.isKakaoSharing,
+          onKakaoShareTapped: {
+            store.send(.view(.kakaoShareTapped))
+          }
         )
-        .presentationDetents([.height(270)])
+        .presentationDetents([.height(340)])
         .presentationDragIndicator(.visible)
+      }
+      .sheet(isPresented: Binding(
+        get: { store.showSystemShareSheet },
+        set: { if !$0 { store.send(.view(.systemShareSheetDismissed)) } }
+      )) {
+        ShareSheet(items: [GroupInviteShareMessage.message(
+          groupName: store.group.name,
+          inviteCode: store.inviteCode
+        )])
       }
   }
 }
@@ -1511,6 +1524,8 @@ private struct InviteTileRow: View {
 struct InviteSheet: View {
   let groupName: String
   let inviteCode: String
+  let isKakaoSharing: Bool
+  let onKakaoShareTapped: () -> Void
 
   @State private var isCopied = false
 
@@ -1562,6 +1577,26 @@ struct InviteSheet: View {
       .background(Color(.systemGray6))
       .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
 
+      // 카카오톡으로 공유 (Primary)
+      Button {
+        onKakaoShareTapped()
+      } label: {
+        HStack(spacing: 8) {
+          Image(systemName: "paperplane.fill")
+          Text("카카오톡으로 공유")
+        }
+        .font(.system(size: 16, weight: .semibold))
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 14)
+        .background(Color(red: 254/255, green: 229/255, blue: 0/255))
+        .foregroundStyle(.black)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+      }
+      .buttonStyle(.scale)
+      .disabled(isKakaoSharing)
+      .opacity(isKakaoSharing ? 0.6 : 1)
+
+      // 다른 앱으로 공유 (Secondary)
       GroupInviteShareMessage.shareLink(groupName: groupName, inviteCode: inviteCode) {
         HStack(spacing: 8) {
           Image(systemName: "square.and.arrow.up")
@@ -1570,8 +1605,8 @@ struct InviteSheet: View {
         .font(.system(size: 16, weight: .semibold))
         .frame(maxWidth: .infinity)
         .padding(.vertical, 14)
-        .background(Color.pmindigo.n500)
-        .foregroundStyle(.white)
+        .background(Color.pmindigo.n500.opacity(0.12))
+        .foregroundStyle(Color.pmindigo.n500)
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
       }
       .buttonStyle(.scale)

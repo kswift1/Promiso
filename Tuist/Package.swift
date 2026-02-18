@@ -78,6 +78,14 @@ enum Dependencies {
     )
   }
 
+  // MARK: - Kakao SDK (Share)
+  static func kakaoSDK() -> Package.Dependency {
+    .package(
+      url: "https://github.com/kakao/kakao-ios-sdk",
+      .upToNextMajor(from: "2.27.2")
+    )
+  }
+
   // MARK: - All Dependencies
   static var all: [Package.Dependency] { [
     tca(),
@@ -88,6 +96,7 @@ enum Dependencies {
     clarity(),
     lottie(),
     kakaoMaps(),
+    kakaoSDK(),
   ]}
 }
 

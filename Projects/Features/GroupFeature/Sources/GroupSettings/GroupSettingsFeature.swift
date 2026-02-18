@@ -13,6 +13,7 @@ extension GroupSettings {
     @Dependency(\.notificationClient) var notificationClient
     @Dependency(\.hapticFeedback) var hapticFeedback
     @Dependency(\.analyticsClient) var analyticsClient
+    @Dependency(\.kakaoShareClient) var kakaoShareClient
 
     @ObservableState
     public struct State: Equatable {
@@ -58,6 +59,10 @@ extension GroupSettings {
       var memberToExpel: UserPublicModel?
       var isExpellingMember: Bool = false
       var expelError: String?
+
+      // Kakao Share
+      var isKakaoSharing: Bool = false
+      var showSystemShareSheet: Bool = false
 
       public init(
         group: GroupModel,
@@ -192,6 +197,9 @@ extension GroupSettings {
         case dismissExpelAlert
         case dismissExpelError
         case toastDismissed
+        // Kakao Share
+        case kakaoShareTapped
+        case systemShareSheetDismissed
       }
 
       public enum Internal: Sendable {
@@ -211,6 +219,7 @@ extension GroupSettings {
         )
         case transferHostResponse(Result<Void, Error>)
         case expelMemberResponse(Result<Void, Error>)
+        case kakaoShareResult(KakaoShareResult)
       }
 
       public enum Delegate: Sendable {
@@ -556,6 +565,34 @@ extension GroupSettings {
           case .toastDismissed:
             state.toastMessage = nil
             return .none
+
+          case .kakaoShareTapped:
+            state.isKakaoSharing = true
+            let groupName = state.group.name
+            let inviteCode = state.group.inviteCode
+            let memberCount = state.group.memberIds.count
+            let maxMembers = state.group.maxMembers
+            return .run { [kakaoShareClient, hapticFeedback, analyticsClient] send in
+              await hapticFeedback.buttonTap()
+              analyticsClient.logEvent(
+                "kakao_group_invite_shared",
+                [
+                  AnalyticsClient.ParameterKey.groupName: groupName,
+                  "share_method": "kakao"
+                ]
+              )
+              let result = await kakaoShareClient.shareGroupInvite(
+                groupName,
+                inviteCode,
+                memberCount,
+                maxMembers
+              )
+              await send(.internal(.kakaoShareResult(result)))
+            }
+
+          case .systemShareSheetDismissed:
+            state.showSystemShareSheet = false
+            return .none
           }
 
         case .internal(let internalAction):
@@ -736,6 +773,23 @@ extension GroupSettings {
             )
             return .run { [hapticFeedback] _ in
               await hapticFeedback.error()
+            }
+
+          case .kakaoShareResult(let result):
+            state.isKakaoSharing = false
+            switch result {
+            case .shared, .webShared:
+              state.toastMessage = ToastMessage(
+                type: .success,
+                title: "초대 링크를 공유했어요",
+                position: .top
+              )
+              return .run { [hapticFeedback] _ in
+                await hapticFeedback.success()
+              }
+            case .fallbackToSystem:
+              state.showSystemShareSheet = true
+              return .none
             }
           }
 

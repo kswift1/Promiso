@@ -50,8 +50,17 @@ public enum AppConfig {
           "CFBundleTypeRole": "Editor",
           "CFBundleURLName": "com.promiso.deeplink",
           "CFBundleURLSchemes": [.string("promiso")]
+        ],
+        [
+          "CFBundleTypeRole": "Editor",
+          "CFBundleURLName": "com.promiso.kakaolink",
+          "CFBundleURLSchemes": [.string("kakao$(KAKAO_NATIVE_APP_KEY)")]
         ]
       ],
+      "LSApplicationQueriesSchemes": .array([
+        .string("kakaolink"),
+        .string("kakaokompassauth")
+      ]),
       "GIDClientID": .string("$(GOOGLE_CLIENT_ID)"),
       // Calendar permissions
       "NSCalendarsUsageDescription": .string("캘린더 일정을 표시하려면 접근 권한이 필요합니다."),
@@ -65,8 +74,10 @@ public enum AppConfig {
       // Live Activity Support
       "NSSupportsLiveActivities": .boolean(true),
       "NSSupportsLiveActivitiesFrequentUpdates": .boolean(true),
-      // Kakao Maps SDK
+      // Kakao SDK
       "KAKAO_NATIVE_APP_KEY": .string("$(KAKAO_NATIVE_APP_KEY)"),
+      "KAKAO_GROUP_INVITE_TEMPLATE_ID": .string("$(KAKAO_GROUP_INVITE_TEMPLATE_ID)"),
+      "KAKAO_PROMISE_SHARE_TEMPLATE_ID": .string("$(KAKAO_PROMISE_SHARE_TEMPLATE_ID)"),
       // Microsoft Clarity
       "CLARITY_PROJECT_ID": .string("$(CLARITY_PROJECT_ID)"),
       // ProMotion Display Support (120Hz)

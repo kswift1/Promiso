@@ -13,6 +13,7 @@ extension PromiseDetail {
     @Dependency(\.calendarSyncClient) var calendarSyncClient
     @Dependency(\.analyticsClient) var analyticsClient
     @Dependency(\.weatherClient) var weatherClient
+    @Dependency(\.kakaoShareClient) var kakaoShareClient
 
     public init() {}
 
@@ -23,6 +24,8 @@ extension PromiseDetail {
       var respondingState: RespondingState = .idle
       var isDeleting: Bool = false
       var showShareSheet: Bool = false
+      var showShareOptions: Bool = false
+      var isKakaoSharing: Bool = false
 
       // 그룹 멤버 정보 (참여자 이름 표시용)
       var groupMembers: [UserPublicModel]?
@@ -132,7 +135,10 @@ extension PromiseDetail {
         case deleteTapped
         case editTapped
         case shareTapped
+        case kakaoShareTapped
+        case systemShareTapped
         case shareSheetDismissed
+        case shareOptionsDismissed
         case participantGroupTapped(title: String, userIds: [String], colorType: ParticipantColorType)
         case memberSheetDismissed
         case directionsTapped
@@ -161,6 +167,7 @@ extension PromiseDetail {
         case realPromiseFetched(Result<PromiseModel, Error>)
         case fetchWeather
         case weatherFetched(Result<WeatherInfo, Error>)
+        case kakaoShareResult(KakaoShareResult)
       }
 
       @CasePathable
@@ -252,11 +259,44 @@ extension PromiseDetail {
             return .none
 
           case .shareTapped:
+            state.showShareOptions = true
+            return .none
+
+          case .kakaoShareTapped:
+            state.showShareOptions = false
+            state.isKakaoSharing = true
+            let promise = state.promise
+            return .run { [kakaoShareClient, analyticsClient] send in
+              analyticsClient.logEvent(
+                "kakao_promise_shared",
+                [
+                  AnalyticsClient.ParameterKey.promiseID: promise.id,
+                  "share_method": "kakao"
+                ]
+              )
+              let result = await kakaoShareClient.sharePromise(
+                promise.title,
+                promise.displayEmoji,
+                promise.dateText,
+                promise.timeText,
+                promise.location?.name,
+                promise.id,
+                promise.groupId
+              )
+              await send(.internal(.kakaoShareResult(result)))
+            }
+
+          case .systemShareTapped:
+            state.showShareOptions = false
             state.showShareSheet = true
             return .none
 
           case .shareSheetDismissed:
             state.showShareSheet = false
+            return .none
+
+          case .shareOptionsDismissed:
+            state.showShareOptions = false
             return .none
 
           case let .participantGroupTapped(title, userIds, colorType):
@@ -486,6 +526,21 @@ extension PromiseDetail {
               state.$weatherCache.withLock { $0[state.promise.id] = info }
             }
             return .none
+
+          case .kakaoShareResult(let result):
+            state.isKakaoSharing = false
+            switch result {
+            case .shared, .webShared:
+              state.toastMessage = ToastMessage(
+                type: .success,
+                title: "약속을 공유했어요",
+                position: .top
+              )
+              return .none
+            case .fallbackToSystem:
+              state.showShareSheet = true
+              return .none
+            }
           }
 
         case .delegate:

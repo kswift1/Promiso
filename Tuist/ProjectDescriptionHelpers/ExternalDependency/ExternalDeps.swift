@@ -24,6 +24,9 @@ public enum ExternalDeps: CaseIterable {
   /// Maps - Kakao Maps SDK
   case kakaoMaps
 
+  /// Kakao SDK (Share)
+  case kakaoShare
+
   public static func allExternalDeps() -> [TargetDependency] {
     ExternalDeps.allCases.flatMap { $0.targetDependency }
   }
@@ -65,6 +68,12 @@ public enum ExternalDeps: CaseIterable {
 
     case .kakaoMaps:
       return [.external(name: "KakaoMapsSDK-SPM")]
+
+    case .kakaoShare:
+      return [
+        .external(name: "KakaoSDKCommon"),
+        .external(name: "KakaoSDKShare"),
+      ]
     }
   }
 }
