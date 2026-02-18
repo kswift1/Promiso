@@ -76,10 +76,11 @@ public struct GroupMember: Identifiable, Equatable, Sendable {
 // MARK: - Status Filter
 
 public enum StatusFilter: String, CaseIterable, Equatable, Sendable {
+  case all
   case needResponse
   case responded
   case confirmed
-  case all
+
 
   public var displayTitle: String {
     switch self {

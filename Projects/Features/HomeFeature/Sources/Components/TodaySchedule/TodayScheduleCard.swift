@@ -8,6 +8,7 @@ import ResourceKit
 /// 오늘의 일정 카드 - 확정된 오늘 약속과 개인 일정을 타임라인으로 표시
 struct TodayScheduleCard: View {
   let items: [HomeModels.ScheduleItem]
+  let weatherCache: [String: WeatherInfo]
   let onItemTap: (HomeModels.ScheduleItem) -> Void
 
   @State private var isExpanded: Bool = true
@@ -98,6 +99,7 @@ struct TodayScheduleCard: View {
             promise: promise,
             isFirst: index == 0 && currentTimePosition != .beforeIndex(0),
             isLast: index == sortedItems.count - 1 && currentTimePosition != .afterAll,
+            weather: weatherCache[promise.id],
             onTap: { onItemTap(item) }
           )
 
@@ -193,6 +195,7 @@ struct TodayScheduleCard: View {
         startAt: Date().addingTimeInterval(7200)
       ))
     ],
+    weatherCache: [:],
     onItemTap: { _ in }
   )
   .padding()
@@ -202,6 +205,7 @@ struct TodayScheduleCard: View {
 #Preview("일정 없음") {
   TodayScheduleCard(
     items: [],
+    weatherCache: [:],
     onItemTap: { _ in }
   )
   .padding()

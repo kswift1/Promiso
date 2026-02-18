@@ -23,6 +23,10 @@ extension GroupPromiseList {
       @Shared(.inMemory(AppConstants.SharedState.groupCalendarSyncCache))
       var groupCalendarSyncCache: [String: Bool] = [:]
 
+      /// 날씨 캐시 (전역 공유)
+      @Shared(.inMemory("weatherCache"))
+      var weatherCache: [String: WeatherInfo] = [:]
+
       public init(
         group: GroupModel,
         promises: [PromiseModel],
@@ -50,7 +54,10 @@ extension GroupPromiseList {
             .sorted { $0.startAt < $1.startAt }
         case .confirmed:
           return promises
-            .filter { $0.isConfirmed }
+            .filter {
+              $0.isConfirmed
+              && $0.myVoteStatus(userId: currentUserId) != .pending
+            }
             .sorted { $0.startAt < $1.startAt }
         case .all:
           return promises.sorted { $0.startAt < $1.startAt }

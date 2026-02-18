@@ -18,6 +18,16 @@ extension PersonalEventDetail {
           headerSection
           scheduleSection
 
+          // 날씨
+          if let weatherInfo = store.weatherInfo,
+             !store.event.isPast {
+            PromiseDetailWeatherSection(
+              weatherInfo: weatherInfo,
+              startAt: store.event.startAt,
+              endAt: store.event.endAt
+            )
+          }
+
           // 이미지 갤러리
           if !store.event.imageUrls.isEmpty {
             imageGallerySection
@@ -27,6 +37,7 @@ extension PersonalEventDetail {
         .padding(.vertical, 24)
       }
       .auroraBackground()
+      .onAppear { store.send(.view(.onAppear)) }
       .navigationBarTitleDisplayMode(.inline)
       .toolbar { toolbarContent }
       .alert(store: store.scope(state: \.$deleteAlert, action: \.alert))

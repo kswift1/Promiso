@@ -35,6 +35,9 @@ export const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
 // Slack Webhook 시크릿 (가입 알림용)
 export const SLACK_WEBHOOK_URL = defineSecret("SLACK_WEBHOOK_URL");
 
+// 기상청 공공데이터 API 시크릿
+export const KMA_API_KEY = defineSecret("KMA_API_KEY");
+
 // APNs 호스트 설정
 export const APNS_HOST_PRODUCTION = "api.push.apple.com";
 export const APNS_HOST_DEVELOPMENT = "api.sandbox.push.apple.com";
