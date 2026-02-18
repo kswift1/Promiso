@@ -164,23 +164,29 @@ extension KakaoShareClient: DependencyKey {
       )
 
       let imageURL = imageUrl.flatMap { URL(string: $0) }
+        ?? KakaoDeeplinkConfig.fallbackImageURL
 
-      var descriptionParts: [String] = []
-      descriptionParts.append("📅 \(dateText) \(timeText)")
+      // Line 1: 일정 + 장소
+      var line1 = "\(dateText) \(timeText)"
       if let locationName {
-        descriptionParts.append("📍 \(locationName)")
+        line1 += " · \(locationName)"
       }
-      if acceptedCount > 0 || pendingCount > 0 {
-        var statusParts: [String] = []
-        if acceptedCount > 0 {
-          statusParts.append("✅ \(acceptedCount)명 수락")
-        }
-        if pendingCount > 0 {
-          statusParts.append("\(pendingCount)명 대기 중")
-        }
-        descriptionParts.append(statusParts.joined(separator: " · "))
+
+      // Line 2: 현재상황 (수락/대기)
+      var statusParts: [String] = []
+      if acceptedCount > 0 {
+        statusParts.append("✅ \(acceptedCount)명 수락")
       }
-      let descriptionText = descriptionParts.joined(separator: "\n")
+      if pendingCount > 0 {
+        statusParts.append("\(pendingCount)명 대기 중")
+      }
+
+      let descriptionText: String
+      if statusParts.isEmpty {
+        descriptionText = line1
+      } else {
+        descriptionText = line1 + "\n" + statusParts.joined(separator: " · ")
+      }
 
       let buttons = [
         Button(title: "약속 확인하기", link: promiseLink)
@@ -192,7 +198,7 @@ extension KakaoShareClient: DependencyKey {
           address: address,
           addressTitle: locationName,
           content: Content(
-            title: "\(emoji) \(title)",
+            title: "\(emoji) \(title) — 약속을 확인해보세요",
             imageUrl: imageURL,
             description: descriptionText,
             link: promiseLink
@@ -204,7 +210,7 @@ extension KakaoShareClient: DependencyKey {
       } else {
         let feedTemplate = FeedTemplate(
           content: Content(
-            title: "\(emoji) \(title)",
+            title: "\(emoji) \(title) — 약속을 확인해보세요",
             imageUrl: imageURL,
             description: descriptionText,
             link: promiseLink
