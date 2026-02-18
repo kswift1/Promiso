@@ -71,8 +71,7 @@ public struct KakaoShareClient: Sendable {
     _ address: String?,
     _ promiseId: String,
     _ groupId: String,
-    _ acceptedCount: Int,
-    _ pendingCount: Int,
+    _ promiseDescription: String?,
     _ imageUrl: String?
   ) async -> KakaoShareResult = { _, _, _, _, _, _, _, _, _, _, _ in .fallbackToSystem }
 }
@@ -154,7 +153,7 @@ extension KakaoShareClient: DependencyKey {
 
       return await shareDefaultTemplate(templatable: templatable)
     },
-    sharePromise: { title, emoji, dateText, timeText, locationName, address, promiseId, groupId, acceptedCount, pendingCount, imageUrl in
+    sharePromise: { title, emoji, dateText, timeText, locationName, address, promiseId, groupId, promiseDescription, imageUrl in
       let webHost = KakaoDeeplinkConfig.webHost
 
       let promiseLink = Link(
@@ -172,20 +171,12 @@ extension KakaoShareClient: DependencyKey {
         line1 += " · \(locationName)"
       }
 
-      // Line 2: 현재상황 (수락/대기)
-      var statusParts: [String] = []
-      if acceptedCount > 0 {
-        statusParts.append("✅ \(acceptedCount)명 수락")
-      }
-      if pendingCount > 0 {
-        statusParts.append("\(pendingCount)명 대기 중")
-      }
-
+      // Line 2: 약속 내용
       let descriptionText: String
-      if statusParts.isEmpty {
-        descriptionText = line1
+      if let promiseDescription, !promiseDescription.isEmpty {
+        descriptionText = line1 + "\n" + promiseDescription
       } else {
-        descriptionText = line1 + "\n" + statusParts.joined(separator: " · ")
+        descriptionText = line1
       }
 
       let buttons = [
