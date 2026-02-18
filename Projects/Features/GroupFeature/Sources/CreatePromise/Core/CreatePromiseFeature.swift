@@ -210,7 +210,10 @@ public enum CreatePromise {
           switch viewAction {
             
           case .onAppear:
-            return .send(.internal(.fetchGroupList))
+            return .merge(
+              .send(.internal(.fetchGroupList)),
+              checkConflictsEffect(state: &state)
+            )
             
           case .nextStep:
             state.currentStep.next()

@@ -414,7 +414,7 @@ extension CreatePersonalEvent {
           case .userPlanLoaded(let plan, let userId):
             state.userPlan = plan
             state.currentUserId = userId
-            return .none
+            return checkConflictsEffect(state: &state)
           }
 
         // MARK: - LocationPicker
