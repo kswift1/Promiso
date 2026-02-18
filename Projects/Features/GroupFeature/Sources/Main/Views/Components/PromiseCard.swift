@@ -152,6 +152,8 @@ struct PromiseCard: View {
               .offset(x: barWidth * confirmRatio - 1)
           }
         }
+        .animation(.easeInOut(duration: 0.35), value: accepted)
+        .animation(.easeInOut(duration: 0.35), value: declined)
       }
       .frame(height: 6)
 
@@ -162,6 +164,7 @@ struct PromiseCard: View {
             .fill(Color.green)
             .frame(width: 6, height: 6)
           Text("참여 \(accepted)")
+            .contentTransition(.numericText())
             .foregroundColor(.green)
         }
 
@@ -173,6 +176,7 @@ struct PromiseCard: View {
             .fill(Color.red.opacity(0.7))
             .frame(width: 6, height: 6)
           Text("불참 \(declined)")
+            .contentTransition(.numericText())
             .foregroundColor(.red)
         }
 
@@ -209,6 +213,7 @@ struct PromiseCard: View {
             Text(myVoteStatus == .accepted ? "참여함" : "불참함")
               .foregroundColor(myVoteStatus == .accepted ? .green : .red)
           }
+          .transition(.opacity.combined(with: .scale(scale: 0.8)))
         }
 
         if !votedMembers.isEmpty {
@@ -221,6 +226,9 @@ struct PromiseCard: View {
         }
       }
       .font(.system(size: 11, weight: .medium))
+      .animation(.easeInOut(duration: 0.35), value: accepted)
+      .animation(.easeInOut(duration: 0.35), value: declined)
+      .animation(.easeInOut(duration: 0.3), value: myVoteStatus)
     }
   }
 

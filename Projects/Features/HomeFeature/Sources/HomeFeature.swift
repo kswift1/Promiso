@@ -715,6 +715,7 @@ extension Home {
               if !store.pendingPromises.isEmpty {
                 PendingSection(
                   promises: store.pendingPromises,
+                  groupMembersCache: store.groupMembersCache,
                   onPromiseTap: { promise in
                     store.send(.view(.pendingPromiseTapped(promise)))
                   }
