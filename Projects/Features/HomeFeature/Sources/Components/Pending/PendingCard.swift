@@ -8,7 +8,7 @@ import ResourceKit
 /// 응답 필요 개별 카드 - 탭하면 해당 그룹 약속으로 이동
 struct PendingCard: View {
   let promise: PromiseModel
-  let totalMembers: Int?
+  let totalMembers: Int
   let onTap: () -> Void
 
   var body: some View {
@@ -95,8 +95,7 @@ struct PendingCard: View {
     let accepted = promise.votes.acceptedCount
     let declined = promise.votes.declinedCount
     let confirm = promise.minimumParticipants
-    let memberCount = totalMembers ?? confirm
-    let total = max(memberCount, confirm)
+    let total = max(totalMembers, confirm)
     let isConfirmed = accepted >= confirm
 
     return GeometryReader { geometry in

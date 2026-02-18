@@ -428,7 +428,6 @@ struct PromiseCard: View {
   }
 }
 
-
 // MARK: - Participants Avatar View
 
 private struct ParticipantsAvatarView: View {

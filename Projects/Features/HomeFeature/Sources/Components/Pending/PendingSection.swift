@@ -21,7 +21,7 @@ struct PendingSection: View {
           ForEach(promises) { promise in
             PendingCard(
               promise: promise,
-              totalMembers: groupMembersCache[promise.groupId]?.count,
+              totalMembers: groupMembersCache[promise.groupId]?.count ?? promise.minimumParticipants,
               onTap: { onPromiseTap(promise) }
             )
           }
