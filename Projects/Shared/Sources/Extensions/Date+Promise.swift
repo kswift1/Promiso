@@ -8,27 +8,27 @@ public extension Date {
     let interval = self.timeIntervalSinceNow
     
     if interval < 0 {
-      return "지남"
+      return LocalizedStrings.DateFormat.passed
     } else if interval < 60 {
-      return "\(Int(interval))초 후"
+      return LocalizedStrings.DateFormat.secondsLater(Int(interval))
     } else if interval < 3600 {
       let minutes = Int(interval / 60)
-      return "\(minutes)분 후"
+      return LocalizedStrings.DateFormat.minutesLater(minutes)
     } else if interval < 86400 {
       let hours = Int(interval / 3600)
       let minutes = Int((interval.truncatingRemainder(dividingBy: 3600)) / 60)
       if minutes > 0 {
-        return "\(hours)시간 \(minutes)분 후"
+        return LocalizedStrings.DateFormat.hoursMinutesLater(hours, minutes)
       } else {
-        return "\(hours)시간 후"
+        return LocalizedStrings.DateFormat.hoursLater(hours)
       }
     } else {
       let days = Int(interval / 86400)
       let hours = Int((interval.truncatingRemainder(dividingBy: 86400)) / 3600)
       if hours > 0 {
-        return "\(days)일 \(hours)시간 후"
+        return LocalizedStrings.DateFormat.daysHoursLater(days, hours)
       } else {
-        return "\(days)일 후"
+        return LocalizedStrings.DateFormat.daysLater(days)
       }
     }
   }
@@ -39,11 +39,11 @@ public extension Date {
     let now = Date()
     
     if calendar.isDateInToday(self) {
-      return "오늘"
+      return LocalizedStrings.DateFormat.today
     } else if calendar.isDateInTomorrow(self) {
-      return "내일"
+      return LocalizedStrings.DateFormat.tomorrow
     } else if calendar.isDateInYesterday(self) {
-      return "어제"
+      return LocalizedStrings.DateFormat.yesterday
     } else if let daysFromNow = calendar.dateComponents([.day], from: now, to: self).day {
       if abs(daysFromNow) < 7 {
         let formatter = DateFormatter()
@@ -66,7 +66,7 @@ public extension Date {
     let dateString = promiseDateString
     let timeString = promiseTimeString
     
-    if dateString == "오늘" || dateString == "내일" || dateString == "어제" {
+    if dateString == LocalizedStrings.DateFormat.today || dateString == LocalizedStrings.DateFormat.tomorrow || dateString == LocalizedStrings.DateFormat.yesterday {
       return "\(dateString) \(timeString)"
     } else {
       return "\(dateString) \(timeString)"
@@ -130,11 +130,11 @@ public extension Date {
     let minutes = Int((interval.truncatingRemainder(dividingBy: 3600)) / 60)
 
     var parts: [String] = []
-    if days > 0 { parts.append("\(days)일") }
-    if hours > 0 { parts.append("\(hours)시간") }
-    if minutes > 0 { parts.append("\(minutes)분") }
+    if days > 0 { parts.append(LocalizedStrings.DateFormat.durationDays(days)) }
+    if hours > 0 { parts.append(LocalizedStrings.DateFormat.durationHours(hours)) }
+    if minutes > 0 { parts.append(LocalizedStrings.DateFormat.durationMinutes(minutes)) }
 
-    guard !parts.isEmpty else { return "\(prefix)0분" }
+    guard !parts.isEmpty else { return prefix + LocalizedStrings.DateFormat.durationMinutes(0) }
     return prefix + parts.joined(separator: " ")
   }
 

@@ -1598,6 +1598,7 @@ public enum LocalizedStrings {
     public static func precipitation(_ percent: Int) -> String {
       String(localized: "weather.precipitation", bundle: bundle)
         .replacingOccurrences(of: "%lld", with: "\(percent)")
+        .replacingOccurrences(of: "%%", with: "%")
     }
     public static var hourlyForecast: String { String(localized: "weather.hourlyForecast", bundle: bundle) }
     public static var dailyForecast: String { String(localized: "weather.dailyForecast", bundle: bundle) }
@@ -1605,6 +1606,7 @@ public enum LocalizedStrings {
     public static var humidity: String { String(localized: "weather.humidity", bundle: bundle) }
     public static var wind: String { String(localized: "weather.wind", bundle: bundle) }
     public static var midTermSource: String { String(localized: "weather.midTermSource", bundle: bundle) }
+    public static var shortTermSource: String { String(localized: "weather.shortTermSource", bundle: bundle) }
     public static func promiseTime(_ time: String) -> String {
       String(localized: "weather.promiseTime", bundle: bundle)
         .replacingOccurrences(of: "%@", with: time)
@@ -1613,6 +1615,110 @@ public enum LocalizedStrings {
       String(localized: "weather.hourLabel", bundle: bundle)
         .replacingOccurrences(of: "%lld", with: "\(hour)")
     }
+    // Tooltip
+    public static func feelsLikeRange(_ range: String) -> String {
+      String(localized: "weather.tooltip.feelsLikeRange", bundle: bundle)
+        .replacingOccurrences(of: "%@", with: range)
+    }
+    public static var precipitationLabel: String { String(localized: "weather.tooltip.precipitationLabel", bundle: bundle) }
+    public static var tempRangeLabel: String { String(localized: "weather.tooltip.tempRangeLabel", bundle: bundle) }
+    public static var weatherLabel: String { String(localized: "weather.tooltip.weatherLabel", bundle: bundle) }
+    public static func referenceTime(_ time: String) -> String {
+      String(localized: "weather.tooltip.referenceTime", bundle: bundle)
+        .replacingOccurrences(of: "%@", with: time)
+    }
+    // Condition
+    public static var conditionClear: String { String(localized: "weather.condition.clear", bundle: bundle) }
+    public static var conditionCloudy: String { String(localized: "weather.condition.cloudy", bundle: bundle) }
+    public static var conditionOvercast: String { String(localized: "weather.condition.overcast", bundle: bundle) }
+    public static var conditionRain: String { String(localized: "weather.condition.rain", bundle: bundle) }
+    public static var conditionRainSnow: String { String(localized: "weather.condition.rainSnow", bundle: bundle) }
+    public static var conditionSnow: String { String(localized: "weather.condition.snow", bundle: bundle) }
+    public static var conditionShower: String { String(localized: "weather.condition.shower", bundle: bundle) }
+    public static var conditionUnknown: String { String(localized: "weather.condition.unknown", bundle: bundle) }
+    // Advice
+    public static var adviceBringUmbrella: String { String(localized: "weather.advice.bringUmbrella", bundle: bundle) }
+    public static var adviceDressWarm: String { String(localized: "weather.advice.dressWarm", bundle: bundle) }
+    public static var adviceDressCool: String { String(localized: "weather.advice.dressCool", bundle: bundle) }
+    public static var adviceStrongWind: String { String(localized: "weather.advice.strongWind", bundle: bundle) }
+    public static var adviceHeavySnow: String { String(localized: "weather.advice.heavySnow", bundle: bundle) }
+    public static var adviceClearWeather: String { String(localized: "weather.advice.clearWeather", bundle: bundle) }
+    public static var adviceHotWeather: String { String(localized: "weather.advice.hotWeather", bundle: bundle) }
+    // Suggestion
+    public static var suggestExtremeCold: String { String(localized: "weather.suggest.extremeCold", bundle: bundle) }
+    public static var suggestBelowFreezing: String { String(localized: "weather.suggest.belowFreezing", bundle: bundle) }
+    public static var suggestVeryCold: String { String(localized: "weather.suggest.veryCold", bundle: bundle) }
+    public static var suggestChilly: String { String(localized: "weather.suggest.chilly", bundle: bundle) }
+    public static var suggestCool: String { String(localized: "weather.suggest.cool", bundle: bundle) }
+    public static var suggestComfortable: String { String(localized: "weather.suggest.comfortable", bundle: bundle) }
+    public static var suggestWarm: String { String(localized: "weather.suggest.warm", bundle: bundle) }
+    public static var suggestHot: String { String(localized: "weather.suggest.hot", bundle: bundle) }
+    public static var suggestVeryHot: String { String(localized: "weather.suggest.veryHot", bundle: bundle) }
+    public static var suggestExtremeHeat: String { String(localized: "weather.suggest.extremeHeat", bundle: bundle) }
+    public static func suggestFeelsLikeDiff(_ feels: Int, _ diff: Int) -> String {
+      String(localized: "weather.suggest.feelsLikeDiff", bundle: bundle)
+        .replacingOccurrences(of: "{feels}", with: "\(feels)")
+        .replacingOccurrences(of: "{diff}", with: "\(diff)")
+    }
+    public static var suggestHeavySnow: String { String(localized: "weather.suggest.heavySnow", bundle: bundle) }
+    public static var suggestPossibleSnow: String { String(localized: "weather.suggest.possibleSnow", bundle: bundle) }
+    public static var suggestLikelyRain: String { String(localized: "weather.suggest.likelyRain", bundle: bundle) }
+    public static var suggestPossibleRain: String { String(localized: "weather.suggest.possibleRain", bundle: bundle) }
+    public static var suggestRainSnow: String { String(localized: "weather.suggest.rainSnow", bundle: bundle) }
+    public static func suggestPrecipChance(_ prob: Int) -> String {
+      String(localized: "weather.suggest.precipChance", bundle: bundle)
+        .replacingOccurrences(of: "{prob}", with: "\(prob)")
+    }
+    public static var suggestStrongWind: String { String(localized: "weather.suggest.strongWind", bundle: bundle) }
+    public static var suggestModerateWind: String { String(localized: "weather.suggest.moderateWind", bundle: bundle) }
+    public static var suggestHighHumidity: String { String(localized: "weather.suggest.highHumidity", bundle: bundle) }
+    public static var suggestDry: String { String(localized: "weather.suggest.dry", bundle: bundle) }
+    public static var suggestUvWarning: String { String(localized: "weather.suggest.uvWarning", bundle: bundle) }
+    public static var suggestNiceWeather: String { String(localized: "weather.suggest.niceWeather", bundle: bundle) }
+  }
+
+  // MARK: - DateFormat
+  public enum DateFormat {
+    public static var passed: String { String(localized: "date.passed", bundle: bundle) }
+    public static func secondsLater(_ sec: Int) -> String {
+      String(localized: "date.secondsLater", bundle: bundle)
+        .replacingOccurrences(of: "%lld", with: "\(sec)")
+    }
+    public static func minutesLater(_ min: Int) -> String {
+      String(localized: "date.minutesLater", bundle: bundle)
+        .replacingOccurrences(of: "%lld", with: "\(min)")
+    }
+    public static func hoursMinutesLater(_ hours: Int, _ min: Int) -> String {
+      String(localized: "date.hoursMinutesLater", bundle: bundle)
+        .replacingOccurrences(of: "{hours}", with: "\(hours)")
+        .replacingOccurrences(of: "{min}", with: "\(min)")
+    }
+    public static func hoursLater(_ hours: Int) -> String {
+      String(localized: "date.hoursLater", bundle: bundle)
+        .replacingOccurrences(of: "%lld", with: "\(hours)")
+    }
+    public static func daysHoursLater(_ days: Int, _ hours: Int) -> String {
+      String(localized: "date.daysHoursLater", bundle: bundle)
+        .replacingOccurrences(of: "{days}", with: "\(days)")
+        .replacingOccurrences(of: "{hours}", with: "\(hours)")
+    }
+    public static func daysLater(_ days: Int) -> String {
+      String(localized: "date.daysLater", bundle: bundle)
+        .replacingOccurrences(of: "%lld", with: "\(days)")
+    }
+    public static var today: String { String(localized: "date.today", bundle: bundle) }
+    public static var tomorrow: String { String(localized: "date.tomorrow", bundle: bundle) }
+    public static var yesterday: String { String(localized: "date.yesterday", bundle: bundle) }
+    public static func durationDays(_ d: Int) -> String { "\(d)" + String(localized: "date.duration.days", bundle: bundle) }
+    public static func durationHours(_ h: Int) -> String { "\(h)" + String(localized: "date.duration.hours", bundle: bundle) }
+    public static func durationMinutes(_ m: Int) -> String { "\(m)" + String(localized: "date.duration.minutes", bundle: bundle) }
+  }
+
+  // MARK: - ThemeMode
+  public enum ThemeMode {
+    public static var system: String { String(localized: "themeMode.system", bundle: bundle) }
+    public static var light: String { String(localized: "themeMode.light", bundle: bundle) }
+    public static var dark: String { String(localized: "themeMode.dark", bundle: bundle) }
   }
 
   // MARK: - KakaoShare (Toast)

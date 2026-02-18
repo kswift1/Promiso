@@ -107,15 +107,15 @@ extension PersonalMode {
         // 과거: 최신순 (어제 → 이전 날짜)
         if selectedFilter == .past {
           return grouped.sorted { lhs, rhs in
-            if lhs.key == "어제" { return true }
-            if rhs.key == "어제" { return false }
+            if lhs.key == LocalizedStrings.DateFormat.yesterday { return true }
+            if rhs.key == LocalizedStrings.DateFormat.yesterday { return false }
             return lhs.key > rhs.key
           }.map { (date: $0.key, events: $0.value) }
         }
 
         // 오늘/미래/전체: 시간순 (오늘 → 내일 → 이후)
         return grouped.sorted { lhs, rhs in
-          let priorityOrder = ["오늘": 0, "내일": 1]
+          let priorityOrder = [LocalizedStrings.DateFormat.today: 0, LocalizedStrings.DateFormat.tomorrow: 1]
           let lhsPriority = priorityOrder[lhs.key] ?? 2
           let rhsPriority = priorityOrder[rhs.key] ?? 2
           if lhsPriority != rhsPriority { return lhsPriority < rhsPriority }

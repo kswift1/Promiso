@@ -163,10 +163,7 @@ extension PromiseDetail {
             Divider().padding(.leading, 44)
 
             PromiseDetailLocationInfoRow(
-              location: location,
-              onDirectionsTapped: {
-                store.send(.view(.directionsTapped))
-              }
+              location: location
             )
 
             // 지도 미리보기 (좌표가 있는 경우)
@@ -174,14 +171,33 @@ extension PromiseDetail {
                let longitude = location.longitude {
               Divider().padding(.leading, 44)
 
-              PromiseDetailLocationMapPreview(
-                latitude: latitude,
-                longitude: longitude,
-                placeName: location.name,
-                onTap: {
-                  store.send(.view(.mapTapped))
+              ZStack(alignment: .bottomTrailing) {
+                PromiseDetailLocationMapPreview(
+                  latitude: latitude,
+                  longitude: longitude,
+                  placeName: location.name,
+                  onTap: {
+                    store.send(.view(.mapTapped))
+                  }
+                )
+
+                Button {
+                  store.send(.view(.directionsTapped))
+                } label: {
+                  HStack(spacing: 4) {
+                    Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
+                      .font(.system(size: 13))
+                    Text(LocalizedStrings.Common.directions)
+                      .font(.system(size: 13, weight: .medium))
+                  }
+                  .foregroundStyle(.white)
+                  .padding(.horizontal, 10)
+                  .padding(.vertical, 6)
+                  .background(Color.pmindigo.n500)
+                  .clipShape(Capsule())
                 }
-              )
+                .padding(10)
+              }
             }
           }
 

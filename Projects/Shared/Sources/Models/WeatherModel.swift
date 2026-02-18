@@ -42,17 +42,17 @@ public enum WeatherCondition: String, Equatable, Hashable, Sendable, Codable, Ca
     }
   }
 
-  /// 한글 설명
+  /// 날씨 상태 설명
   public var description: String {
     switch self {
-    case .clear: return "맑음"
-    case .cloudy: return "구름많음"
-    case .overcast: return "흐림"
-    case .rain: return "비"
-    case .rainSnow: return "비/눈"
-    case .snow: return "눈"
-    case .shower: return "소나기"
-    case .unknown: return "정보없음"
+    case .clear: return LocalizedStrings.Weather.conditionClear
+    case .cloudy: return LocalizedStrings.Weather.conditionCloudy
+    case .overcast: return LocalizedStrings.Weather.conditionOvercast
+    case .rain: return LocalizedStrings.Weather.conditionRain
+    case .rainSnow: return LocalizedStrings.Weather.conditionRainSnow
+    case .snow: return LocalizedStrings.Weather.conditionSnow
+    case .shower: return LocalizedStrings.Weather.conditionShower
+    case .unknown: return LocalizedStrings.Weather.conditionUnknown
     }
   }
 }
@@ -297,13 +297,13 @@ public enum WeatherAdvice: Equatable, Sendable {
 
   public var message: String {
     switch self {
-    case .bringUmbrella: return "우산을 챙기세요"
-    case .dressWarm: return "겉옷을 준비하세요"
-    case .dressCool: return "가볍게 입으세요"
-    case .strongWind: return "바람이 강해요, 주의하세요"
-    case .heavySnow: return "폭설 예보, 이동에 주의하세요"
-    case .clearWeather: return "야외 활동하기 좋은 날씨예요"
-    case .hotWeather: return "더위에 주의하세요"
+    case .bringUmbrella: return LocalizedStrings.Weather.adviceBringUmbrella
+    case .dressWarm: return LocalizedStrings.Weather.adviceDressWarm
+    case .dressCool: return LocalizedStrings.Weather.adviceDressCool
+    case .strongWind: return LocalizedStrings.Weather.adviceStrongWind
+    case .heavySnow: return LocalizedStrings.Weather.adviceHeavySnow
+    case .clearWeather: return LocalizedStrings.Weather.adviceClearWeather
+    case .hotWeather: return LocalizedStrings.Weather.adviceHotWeather
     }
   }
 
@@ -399,65 +399,25 @@ public struct WeatherSuggestion: Equatable, Sendable {
     // 1. 옷차림 (체감온도 기준)
     switch feels {
     case ..<(-10):
-      suggestions.append(.init(
-        icon: "thermometer.snowflake",
-        message: "한파 수준의 추위예요",
-        color: .cyan
-      ))
+      suggestions.append(.init(icon: "thermometer.snowflake", message: LocalizedStrings.Weather.suggestExtremeCold, color: .cyan))
     case -10..<0:
-      suggestions.append(.init(
-        icon: "thermometer.snowflake",
-        message: "영하로 내려가요. 단단히 입고 나오세요",
-        color: .cyan
-      ))
+      suggestions.append(.init(icon: "thermometer.snowflake", message: LocalizedStrings.Weather.suggestBelowFreezing, color: .cyan))
     case 0..<5:
-      suggestions.append(.init(
-        icon: "thermometer.low",
-        message: "꽤 추워요. 두꺼운 겉옷이 필요해요",
-        color: .blue
-      ))
+      suggestions.append(.init(icon: "thermometer.low", message: LocalizedStrings.Weather.suggestVeryCold, color: .blue))
     case 5..<10:
-      suggestions.append(.init(
-        icon: "thermometer.low",
-        message: "쌀쌀해요. 겉옷을 챙기세요",
-        color: .blue
-      ))
+      suggestions.append(.init(icon: "thermometer.low", message: LocalizedStrings.Weather.suggestChilly, color: .blue))
     case 10..<15:
-      suggestions.append(.init(
-        icon: "tshirt.fill",
-        message: "선선해요. 가벼운 겉옷이면 충분해요",
-        color: .teal
-      ))
+      suggestions.append(.init(icon: "tshirt.fill", message: LocalizedStrings.Weather.suggestCool, color: .teal))
     case 15..<20:
-      suggestions.append(.init(
-        icon: "figure.walk",
-        message: "가장 쾌적한 기온이에요",
-        color: .green
-      ))
+      suggestions.append(.init(icon: "figure.walk", message: LocalizedStrings.Weather.suggestComfortable, color: .green))
     case 20..<25:
-      suggestions.append(.init(
-        icon: "tshirt.fill",
-        message: "따뜻해요. 가볍게 입으세요",
-        color: .orange
-      ))
+      suggestions.append(.init(icon: "tshirt.fill", message: LocalizedStrings.Weather.suggestWarm, color: .orange))
     case 25..<30:
-      suggestions.append(.init(
-        icon: "sun.max.fill",
-        message: "더워요. 시원하게 입으세요",
-        color: .orange
-      ))
+      suggestions.append(.init(icon: "sun.max.fill", message: LocalizedStrings.Weather.suggestHot, color: .orange))
     case 30..<35:
-      suggestions.append(.init(
-        icon: "thermometer.sun.fill",
-        message: "무더워요. 수분 보충에 신경 쓰세요",
-        color: .red
-      ))
+      suggestions.append(.init(icon: "thermometer.sun.fill", message: LocalizedStrings.Weather.suggestVeryHot, color: .red))
     default:
-      suggestions.append(.init(
-        icon: "thermometer.sun.fill",
-        message: "폭염 수준이에요. 야외 활동을 줄이세요",
-        color: .red
-      ))
+      suggestions.append(.init(icon: "thermometer.sun.fill", message: LocalizedStrings.Weather.suggestExtremeHeat, color: .red))
     }
 
     // 2. 체감온도 차이 (바람 영향)
@@ -465,7 +425,7 @@ public struct WeatherSuggestion: Equatable, Sendable {
     if tempDiff >= 5 {
       suggestions.append(.init(
         icon: "wind",
-        message: "체감온도는 \(Int(feels.rounded()))°로 실제보다 \(Int(tempDiff.rounded()))도 낮아요",
+        message: LocalizedStrings.Weather.suggestFeelsLikeDiff(Int(feels.rounded()), Int(tempDiff.rounded())),
         color: .purple
       ))
     }
@@ -474,89 +434,45 @@ public struct WeatherSuggestion: Equatable, Sendable {
     switch forecast.condition {
     case .snow:
       if prob >= 70 {
-        suggestions.append(.init(
-          icon: "snowflake",
-          message: "눈이 많이 올 수 있어요. 이동 시 여유를 두세요",
-          color: .cyan
-        ))
+        suggestions.append(.init(icon: "snowflake", message: LocalizedStrings.Weather.suggestHeavySnow, color: .cyan))
       } else if prob >= 40 {
-        suggestions.append(.init(
-          icon: "snowflake",
-          message: "눈이 올 수 있어요. 길이 미끄러울 수 있어요",
-          color: .cyan
-        ))
+        suggestions.append(.init(icon: "snowflake", message: LocalizedStrings.Weather.suggestPossibleSnow, color: .cyan))
       }
     case .rain, .shower:
       if prob >= 70 {
-        suggestions.append(.init(
-          icon: "umbrella.fill",
-          message: "비 올 가능성이 높아요. 우산 필수예요",
-          color: .blue
-        ))
+        suggestions.append(.init(icon: "umbrella.fill", message: LocalizedStrings.Weather.suggestLikelyRain, color: .blue))
       } else if prob >= 40 {
-        suggestions.append(.init(
-          icon: "umbrella.fill",
-          message: "비가 올 수 있어요. 우산을 챙기세요",
-          color: .blue
-        ))
+        suggestions.append(.init(icon: "umbrella.fill", message: LocalizedStrings.Weather.suggestPossibleRain, color: .blue))
       }
     case .rainSnow:
-      suggestions.append(.init(
-        icon: "umbrella.fill",
-        message: "비와 눈이 섞여 내릴 수 있어요",
-        color: .blue
-      ))
+      suggestions.append(.init(icon: "umbrella.fill", message: LocalizedStrings.Weather.suggestRainSnow, color: .blue))
     default:
       if prob >= 50 {
-        suggestions.append(.init(
-          icon: "umbrella.fill",
-          message: "강수 확률 \(prob)%. 우산을 챙기세요",
-          color: .blue
-        ))
+        suggestions.append(.init(icon: "umbrella.fill", message: LocalizedStrings.Weather.suggestPrecipChance(prob), color: .blue))
       }
     }
 
     // 4. 강풍 (8m/s 이상만, 약한 바람은 생략, 중기예보 0이면 스킵)
     if wind > 0 {
       if wind >= 14 {
-        suggestions.append(.init(
-          icon: "wind",
-          message: "강풍이 예상돼요. 야외 활동에 주의하세요",
-          color: .purple
-        ))
+        suggestions.append(.init(icon: "wind", message: LocalizedStrings.Weather.suggestStrongWind, color: .purple))
       } else if wind >= 8 {
-        suggestions.append(.init(
-          icon: "wind",
-          message: "바람이 제법 강해요",
-          color: .purple
-        ))
+        suggestions.append(.init(icon: "wind", message: LocalizedStrings.Weather.suggestModerateWind, color: .purple))
       }
     }
 
     // 5. 습도 (고온+고습일 때만, 건조는 10° 이상일 때만, 중기예보 0이면 스킵)
     if humidity > 0 {
       if humidity >= 80 && feels >= 25 {
-        suggestions.append(.init(
-          icon: "humidity.fill",
-          message: "습도가 높아 체감온도가 더 높아요",
-          color: .teal
-        ))
+        suggestions.append(.init(icon: "humidity.fill", message: LocalizedStrings.Weather.suggestHighHumidity, color: .teal))
       } else if humidity <= 30 && feels >= 10 {
-        suggestions.append(.init(
-          icon: "drop.degreesign",
-          message: "공기가 건조해요. 물을 자주 마시세요",
-          color: .orange
-        ))
+        suggestions.append(.init(icon: "drop.degreesign", message: LocalizedStrings.Weather.suggestDry, color: .orange))
       }
     }
 
     // 6. 자외선 (맑고 따뜻할 때)
     if forecast.condition == .clear && feels >= 20 {
-      suggestions.append(.init(
-        icon: "sun.max.trianglebadge.exclamationmark",
-        message: "자외선이 강할 수 있어요. 선크림을 챙기세요",
-        color: .orange
-      ))
+      suggestions.append(.init(icon: "sun.max.trianglebadge.exclamationmark", message: LocalizedStrings.Weather.suggestUvWarning, color: .orange))
     }
 
     // 7. 좋은 날씨 (다른 경고가 없을 때)
@@ -564,11 +480,7 @@ public struct WeatherSuggestion: Equatable, Sendable {
        (forecast.condition == .clear || forecast.condition == .cloudy) &&
        feels >= 15 && feels <= 28 &&
        wind < 8 && prob < 30 {
-      suggestions.append(.init(
-        icon: "leaf.fill",
-        message: "야외 활동하기 좋은 날씨예요",
-        color: .green
-      ))
+      suggestions.append(.init(icon: "leaf.fill", message: LocalizedStrings.Weather.suggestNiceWeather, color: .green))
     }
 
     return suggestions

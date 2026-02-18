@@ -190,9 +190,9 @@ public enum AppConstants {
 
     public var displayName: String {
       switch self {
-      case .system: return "시스템 설정 따르기"
-      case .light: return "라이트 모드"
-      case .dark: return "다크 모드"
+      case .system: return LocalizedStrings.ThemeMode.system
+      case .light: return LocalizedStrings.ThemeMode.light
+      case .dark: return LocalizedStrings.ThemeMode.dark
       }
     }
   }

@@ -121,15 +121,9 @@ public struct PromiseDetailEmojiInfoRow: View {
 
 public struct PromiseDetailLocationInfoRow: View {
   private let location: LocationInfoModel
-  private let onDirectionsTapped: () -> Void
 
-  public init(location: LocationInfoModel, onDirectionsTapped: @escaping () -> Void) {
+  public init(location: LocationInfoModel) {
     self.location = location
-    self.onDirectionsTapped = onDirectionsTapped
-  }
-
-  private var hasCoordinates: Bool {
-    location.latitude != nil && location.longitude != nil
   }
 
   public var body: some View {
@@ -146,27 +140,10 @@ public struct PromiseDetailLocationInfoRow: View {
           Text(address)
             .font(.system(size: 13))
             .foregroundStyle(.secondary)
-            .lineLimit(1)
         }
       }
 
       Spacer()
-
-      if hasCoordinates {
-        Button(action: onDirectionsTapped) {
-          HStack(spacing: 4) {
-            Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
-              .font(.system(size: 14))
-            Text(LocalizedStrings.Common.directions)
-              .font(.system(size: 14, weight: .medium))
-          }
-          .foregroundStyle(.white)
-          .padding(.horizontal, 12)
-          .padding(.vertical, 6)
-          .background(Color.pmindigo.n500)
-          .clipShape(Capsule())
-        }
-      }
     }
     .padding(.horizontal, 16)
     .padding(.vertical, 14)
