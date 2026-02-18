@@ -24,6 +24,7 @@ public enum GroupInviteShareMessage {
   }
 
   private static func deeplinkURL(inviteCode: String) -> URL {
-    URL(string: "promiso://join/\(inviteCode)")!
+    AppConstants.Deeplink.url(path: "join/\(inviteCode)")
+      ?? URL(string: "promiso://join/\(inviteCode)")!
   }
 }

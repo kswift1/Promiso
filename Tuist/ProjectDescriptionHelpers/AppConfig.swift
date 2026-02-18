@@ -49,7 +49,7 @@ public enum AppConfig {
         [
           "CFBundleTypeRole": "Editor",
           "CFBundleURLName": "com.promiso.deeplink",
-          "CFBundleURLSchemes": [.string("promiso")]
+          "CFBundleURLSchemes": [.string("$(DEEPLINK_SCHEME)")]
         ],
         [
           "CFBundleTypeRole": "Editor",
@@ -74,6 +74,9 @@ public enum AppConfig {
       // Live Activity Support
       "NSSupportsLiveActivities": .boolean(true),
       "NSSupportsLiveActivitiesFrequentUpdates": .boolean(true),
+      // Deeplink
+      "DEEPLINK_SCHEME": .string("$(DEEPLINK_SCHEME)"),
+      "DEEPLINK_WEB_HOST": .string("$(DEEPLINK_WEB_HOST)"),
       // Kakao SDK
       "KAKAO_NATIVE_APP_KEY": .string("$(KAKAO_NATIVE_APP_KEY)"),
       "KAKAO_GROUP_INVITE_TEMPLATE_ID": .string("$(KAKAO_GROUP_INVITE_TEMPLATE_ID)"),

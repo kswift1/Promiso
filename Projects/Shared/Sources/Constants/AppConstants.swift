@@ -130,6 +130,26 @@ public enum AppConstants {
     #endif
   }
 
+  // MARK: - Deeplink
+
+  /// 딥링크 설정 (환경별 xcconfig에서 주입)
+  public enum Deeplink {
+    /// URL 스킴 (dev: promiso-dev, stage: promiso-stage, prod: promiso)
+    public static var scheme: String {
+      Bundle.main.object(forInfoDictionaryKey: "DEEPLINK_SCHEME") as? String ?? "promiso"
+    }
+
+    /// 웹 호스트 (dev: dev.promiso.app, stage: stage.promiso.app, prod: promiso.app)
+    public static var webHost: String {
+      Bundle.main.object(forInfoDictionaryKey: "DEEPLINK_WEB_HOST") as? String ?? "promiso.app"
+    }
+
+    /// 딥링크 URL 생성 (예: promiso-dev://join/ABC123)
+    public static func url(path: String) -> URL? {
+      URL(string: "\(scheme)://\(path)")
+    }
+  }
+
   // MARK: - UI Constants
 
   public enum UI {

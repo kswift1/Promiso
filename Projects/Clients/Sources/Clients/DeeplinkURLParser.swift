@@ -1,17 +1,18 @@
 import Foundation
+import PromisoShared
 
 // MARK: - DeeplinkURLParser
 
 /// 딥링크 URL 파싱 담당
 ///
-/// 지원하는 URL 형식:
-/// - `promiso://join/{inviteCode}` → 초대 코드로 그룹 참여
-/// - `promiso://group/{groupId}` → 그룹 상세 화면
-/// - `promiso://promise/{promiseId}/{groupId}` → 약속 상세 화면
-/// - `promiso://promise/{promiseId}/eta` → LiveActivity ETA 변경 시트
-/// - `promiso://live/{promiseId}` → LivePromise 상세 화면 (ETA 시트 없이)
-/// - `promiso://create` → 약속 만들기 화면 (Widget용, 그룹 있을 때만)
-/// - `promiso://personalEvent/{eventId}` → 개인 일정 (Widget용, 개인 모드 탭으로 이동 + 상세 push)
+/// 지원하는 URL 형식 ({scheme}은 환경별로 다름: promiso-dev, promiso-stage, promiso):
+/// - `{scheme}://join/{inviteCode}` → 초대 코드로 그룹 참여
+/// - `{scheme}://group/{groupId}` → 그룹 상세 화면
+/// - `{scheme}://promise/{promiseId}/{groupId}` → 약속 상세 화면
+/// - `{scheme}://promise/{promiseId}/eta` → LiveActivity ETA 변경 시트
+/// - `{scheme}://live/{promiseId}` → LivePromise 상세 화면 (ETA 시트 없이)
+/// - `{scheme}://create` → 약속 만들기 화면 (Widget용, 그룹 있을 때만)
+/// - `{scheme}://personalEvent/{eventId}` → 개인 일정 (Widget용, 개인 모드 탭으로 이동 + 상세 push)
 ///
 /// - SeeAlso: `.ai/DEEPLINK_GUIDE.md`
 public enum DeeplinkURLParser {
@@ -20,7 +21,7 @@ public enum DeeplinkURLParser {
   /// - Parameter url: 딥링크 URL (예: promiso://join/ABC123)
   /// - Returns: 파싱된 목적지 (파싱 실패 시 nil)
   public static func parse(_ url: URL) -> DeeplinkDestination? {
-    guard url.scheme == "promiso" else { return nil }
+    guard url.scheme == AppConstants.Deeplink.scheme else { return nil }
 
     switch url.host {
     case "join":

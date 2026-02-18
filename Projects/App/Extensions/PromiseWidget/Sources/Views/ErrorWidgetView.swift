@@ -23,7 +23,7 @@ struct ErrorWidgetView: View {
       .multilineTextAlignment(.center)
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
-    .widgetURL(URL(string: "promiso://home"))
+    .widgetURL(AppConstants.Deeplink.url(path: "home"))
     .accessibilityElement(children: .combine)
     .accessibilityLabel("\(LocalizedStrings.Widget.errorTitle). \(LocalizedStrings.Widget.errorRetryHint)")
   }

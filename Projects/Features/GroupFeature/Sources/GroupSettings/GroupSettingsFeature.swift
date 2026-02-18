@@ -115,7 +115,7 @@ extension GroupSettings {
       }
 
       var inviteLink: String {
-        "https://promiso.app/invite/\(group.inviteCode)"
+        "https://\(AppConstants.Deeplink.webHost)/invite/\(group.inviteCode)"
       }
 
       var minMaxMembers: Int {

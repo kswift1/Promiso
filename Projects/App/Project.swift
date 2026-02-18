@@ -115,6 +115,7 @@ let liveActivityDev = Target.target(
   deploymentTargets: .iOS(AppConfig.deploymentTargets),
   infoPlist: .extendingDefault(with: [
     "CFBundleDisplayName": "Promiso Live Activity [DEV]",
+    "DEEPLINK_SCHEME": "promiso-dev",
     "NSExtension": [
       "NSExtensionPointIdentifier": "com.apple.widgetkit-extension"
     ]
@@ -139,6 +140,7 @@ let liveActivityStage = Target.target(
   deploymentTargets: .iOS(AppConfig.deploymentTargets),
   infoPlist: .extendingDefault(with: [
     "CFBundleDisplayName": "Promiso Live Activity [STAGE]",
+    "DEEPLINK_SCHEME": "promiso-stage",
     "NSExtension": [
       "NSExtensionPointIdentifier": "com.apple.widgetkit-extension"
     ]
@@ -175,6 +177,7 @@ let liveActivityProd = Target.target(
   deploymentTargets: .iOS(AppConfig.deploymentTargets),
   infoPlist: .extendingDefault(with: [
     "CFBundleDisplayName": "Promiso Live Activity",
+    "DEEPLINK_SCHEME": "promiso",
     "NSExtension": [
       "NSExtensionPointIdentifier": "com.apple.widgetkit-extension"
     ]
@@ -211,6 +214,7 @@ let promiseWidgetDev = Target.target(
   deploymentTargets: .iOS(AppConfig.deploymentTargets),
   infoPlist: .extendingDefault(with: [
     "CFBundleDisplayName": "Promiso [DEV]",
+    "DEEPLINK_SCHEME": "promiso-dev",
     "NSExtension": [
       "NSExtensionPointIdentifier": "com.apple.widgetkit-extension"
     ]
@@ -235,6 +239,7 @@ let promiseWidgetStage = Target.target(
   deploymentTargets: .iOS(AppConfig.deploymentTargets),
   infoPlist: .extendingDefault(with: [
     "CFBundleDisplayName": "Promiso [STAGE]",
+    "DEEPLINK_SCHEME": "promiso-stage",
     "NSExtension": [
       "NSExtensionPointIdentifier": "com.apple.widgetkit-extension"
     ]
@@ -271,6 +276,7 @@ let promiseWidgetProd = Target.target(
   deploymentTargets: .iOS(AppConfig.deploymentTargets),
   infoPlist: .extendingDefault(with: [
     "CFBundleDisplayName": "Promiso",
+    "DEEPLINK_SCHEME": "promiso",
     "NSExtension": [
       "NSExtensionPointIdentifier": "com.apple.widgetkit-extension"
     ]
