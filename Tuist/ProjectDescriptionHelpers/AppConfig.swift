@@ -79,8 +79,6 @@ public enum AppConfig {
       "DEEPLINK_WEB_HOST": .string("$(DEEPLINK_WEB_HOST)"),
       // Kakao SDK
       "KAKAO_NATIVE_APP_KEY": .string("$(KAKAO_NATIVE_APP_KEY)"),
-      "KAKAO_GROUP_INVITE_TEMPLATE_ID": .string("$(KAKAO_GROUP_INVITE_TEMPLATE_ID)"),
-      "KAKAO_PROMISE_SHARE_TEMPLATE_ID": .string("$(KAKAO_PROMISE_SHARE_TEMPLATE_ID)"),
       // Microsoft Clarity
       "CLARITY_PROJECT_ID": .string("$(CLARITY_PROJECT_ID)"),
       // ProMotion Display Support (120Hz)

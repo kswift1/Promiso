@@ -20,3 +20,4 @@
 @_exported import KakaoMapsSDK
 @_exported import KakaoSDKCommon
 @_exported import KakaoSDKShare
+@_exported import KakaoSDKTemplate

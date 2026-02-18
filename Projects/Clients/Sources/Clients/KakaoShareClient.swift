@@ -3,6 +3,7 @@ import Foundation
 import UIKit
 import KakaoSDKShare
 import KakaoSDKCommon
+import KakaoSDKTemplate
 
 // MARK: - Share Result
 
@@ -37,28 +38,21 @@ public struct KakaoShareClient: Sendable {
     _ dateText: String,
     _ timeText: String,
     _ locationName: String?,
+    _ address: String?,
     _ promiseId: String,
     _ groupId: String
-  ) async -> KakaoShareResult = { _, _, _, _, _, _, _ in .fallbackToSystem }
+  ) async -> KakaoShareResult = { _, _, _, _, _, _, _, _ in .fallbackToSystem }
 }
 
-// MARK: - Template ID Helper
+// MARK: - Deeplink Config Helper
 
-private enum KakaoTemplateConfig {
-  static var groupInviteTemplateId: Int64 {
-    guard let idString = Bundle.main.object(forInfoDictionaryKey: "KAKAO_GROUP_INVITE_TEMPLATE_ID") as? String,
-          let id = Int64(idString) else {
-      return 0
-    }
-    return id
+private enum KakaoDeeplinkConfig {
+  static var scheme: String {
+    Bundle.main.object(forInfoDictionaryKey: "DEEPLINK_SCHEME") as? String ?? "promiso"
   }
 
-  static var promiseShareTemplateId: Int64 {
-    guard let idString = Bundle.main.object(forInfoDictionaryKey: "KAKAO_PROMISE_SHARE_TEMPLATE_ID") as? String,
-          let id = Int64(idString) else {
-      return 0
-    }
-    return id
+  static var webHost: String {
+    Bundle.main.object(forInfoDictionaryKey: "DEEPLINK_WEB_HOST") as? String ?? "promiso.app"
   }
 }
 
@@ -70,51 +64,90 @@ extension KakaoShareClient: DependencyKey {
       ShareApi.isKakaoTalkSharingAvailable()
     },
     shareGroupInvite: { groupName, inviteCode, memberCount, maxMembers in
-      let templateId = KakaoTemplateConfig.groupInviteTemplateId
-      guard templateId > 0 else { return .fallbackToSystem }
+      let scheme = KakaoDeeplinkConfig.scheme
+      let webHost = KakaoDeeplinkConfig.webHost
 
-      let templateArgs = [
-        "GROUP_NAME": groupName,
-        "INVITE_CODE": inviteCode,
-        "MEMBER_COUNT": "\(memberCount)",
-        "MAX_MEMBERS": "\(maxMembers)",
-      ]
+      let feedTemplate = FeedTemplate(
+        content: Content(
+          title: "🎉 \(groupName) 그룹에 초대합니다!",
+          description: "👥 \(memberCount)/\(maxMembers)명 참여 중\n초대 코드: \(inviteCode)",
+          link: Link(
+            webUrl: URL(string: "https://\(webHost)/invite/\(inviteCode)"),
+            mobileWebUrl: URL(string: "https://\(webHost)/invite/\(inviteCode)"),
+            iosExecutionParams: ["scheme": "\(scheme)://join/\(inviteCode)"]
+          )
+        ),
+        buttons: [
+          Button(
+            title: "그룹 참여하기",
+            link: Link(
+              webUrl: URL(string: "https://\(webHost)/invite/\(inviteCode)"),
+              mobileWebUrl: URL(string: "https://\(webHost)/invite/\(inviteCode)"),
+              iosExecutionParams: ["scheme": "\(scheme)://join/\(inviteCode)"]
+            )
+          )
+        ]
+      )
 
-      return await shareCustomTemplate(templateId: templateId, templateArgs: templateArgs)
+      return await shareDefaultTemplate(templatable: feedTemplate)
     },
-    sharePromise: { title, emoji, dateText, timeText, locationName, promiseId, groupId in
-      let templateId = KakaoTemplateConfig.promiseShareTemplateId
-      guard templateId > 0 else { return .fallbackToSystem }
+    sharePromise: { title, emoji, dateText, timeText, locationName, address, promiseId, groupId in
+      let scheme = KakaoDeeplinkConfig.scheme
+      let webHost = KakaoDeeplinkConfig.webHost
 
-      var templateArgs = [
-        "TITLE": title,
-        "EMOJI": emoji,
-        "DATE": dateText,
-        "TIME": timeText,
-        "PROMISE_ID": promiseId,
-        "GROUP_ID": groupId,
+      let promiseLink = Link(
+        webUrl: URL(string: "https://\(webHost)/promise/\(promiseId)/\(groupId)"),
+        mobileWebUrl: URL(string: "https://\(webHost)/promise/\(promiseId)/\(groupId)"),
+        iosExecutionParams: ["scheme": "\(scheme)://promise/\(promiseId)/\(groupId)"]
+      )
+
+      let descriptionText = "📅 \(dateText) \(timeText)" + (locationName.map { "\n📍 \($0)" } ?? "")
+
+      let buttons = [
+        Button(title: "약속 보기", link: promiseLink)
       ]
-      if let locationName {
-        templateArgs["LOCATION"] = locationName
-      }
 
-      return await shareCustomTemplate(templateId: templateId, templateArgs: templateArgs)
+      // 위치 정보가 있으면 LocationTemplate, 없으면 FeedTemplate
+      if let address, !address.isEmpty {
+        let locationTemplate = LocationTemplate(
+          address: address,
+          addressTitle: locationName,
+          content: Content(
+            title: "\(emoji) \(title)",
+            description: descriptionText,
+            link: promiseLink
+          ),
+          buttons: buttons
+        )
+
+        return await shareDefaultTemplate(templatable: locationTemplate)
+      } else {
+        let feedTemplate = FeedTemplate(
+          content: Content(
+            title: "\(emoji) \(title)",
+            description: descriptionText,
+            link: promiseLink
+          ),
+          buttons: buttons
+        )
+
+        return await shareDefaultTemplate(templatable: feedTemplate)
+      }
     }
   )
 }
 
 // MARK: - Share Helper
 
-private func shareCustomTemplate(
-  templateId: Int64,
-  templateArgs: [String: String]
+/// 기본 템플릿 (FeedTemplate, LocationTemplate 등) 공유
+private func shareDefaultTemplate(
+  templatable: Templatable
 ) async -> KakaoShareResult {
   // 1. 카카오톡 설치 → 앱으로 공유
   if ShareApi.isKakaoTalkSharingAvailable() {
     let result = await withCheckedContinuation { continuation in
-      ShareApi.shared.shareCustom(
-        templateId: templateId,
-        templateArgs: templateArgs
+      ShareApi.shared.shareDefault(
+        templatable: templatable
       ) { sharingResult, error in
         if let error {
           continuation.resume(returning: Result<URL, Error>.failure(error))
@@ -138,10 +171,7 @@ private func shareCustomTemplate(
   }
 
   // 2. 카카오톡 미설치 → 웹 URL 생성
-  if let webUrl = ShareApi.shared.makeCustomUrl(
-    templateId: templateId,
-    templateArgs: templateArgs
-  ) {
+  if let webUrl = ShareApi.shared.makeDefaultUrl(templatable: templatable) {
     await MainActor.run {
       UIApplication.shared.open(webUrl, options: [:], completionHandler: nil)
     }
@@ -164,7 +194,7 @@ extension KakaoShareClient: TestDependencyKey {
   public static let previewValue = Self(
     isKakaoTalkAvailable: { true },
     shareGroupInvite: { _, _, _, _ in .shared },
-    sharePromise: { _, _, _, _, _, _, _ in .shared }
+    sharePromise: { _, _, _, _, _, _, _, _ in .shared }
   )
 }
 

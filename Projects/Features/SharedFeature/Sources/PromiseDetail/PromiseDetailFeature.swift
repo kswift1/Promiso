@@ -280,6 +280,7 @@ extension PromiseDetail {
                 promise.dateText,
                 promise.timeText,
                 promise.location?.name,
+                promise.location?.address,
                 promise.id,
                 promise.groupId
               )

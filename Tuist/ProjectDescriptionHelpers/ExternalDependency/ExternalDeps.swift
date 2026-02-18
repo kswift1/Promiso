@@ -73,6 +73,7 @@ public enum ExternalDeps: CaseIterable {
       return [
         .external(name: "KakaoSDKCommon"),
         .external(name: "KakaoSDKShare"),
+        .external(name: "KakaoSDKTemplate"),
       ]
     }
   }
