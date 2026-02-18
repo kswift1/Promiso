@@ -200,19 +200,19 @@ private struct GroupBarItemView: View {
       Button {
         onInvite()
       } label: {
-        Label("멤버 초대", systemImage: "person.badge.plus")
+        Label(LocalizedStrings.GroupHorizontalBar.inviteMembers, systemImage: "person.badge.plus")
       }
 
       Button {
         onSettings()
       } label: {
-        Label("알림 설정", systemImage: "bell.badge")
+        Label(LocalizedStrings.GroupHorizontalBar.notificationSettings, systemImage: "bell.badge")
       }
 
       Button {
         onSettings()
       } label: {
-        Label("그룹 설정", systemImage: "gearshape")
+        Label(LocalizedStrings.GroupHorizontalBar.groupSettings, systemImage: "gearshape")
       }
 
       Divider()
@@ -220,13 +220,13 @@ private struct GroupBarItemView: View {
       Button {
         onSortSettings()
       } label: {
-        Label("그룹 정렬", systemImage: "arrow.up.arrow.down")
+        Label(LocalizedStrings.GroupHorizontalBar.sortGroups, systemImage: "arrow.up.arrow.down")
       }
 
       Button {
         onCreatePromise()
       } label: {
-        Label("약속 만들기", systemImage: "plus.circle")
+        Label(LocalizedStrings.GroupHorizontalBar.createPromise, systemImage: "plus.circle")
       }
     }
   }

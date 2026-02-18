@@ -1962,6 +1962,24 @@
         }
       }
     },
+    "createGroup.kakaoInviteButton" : {
+      "comment" : "카카오톡으로 초대장 보내기 버튼",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Send Invite via KakaoTalk"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "카카오톡으로 초대장 보내기"
+          }
+        }
+      }
+    },
     "createGroup.successSubtitle" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4156,6 +4174,78 @@
         }
       }
     },
+    "groupHorizontalBar.inviteMembers" : {
+      "comment" : "멤버 초대 context menu",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invite Members"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "멤버 초대"
+          }
+        }
+      }
+    },
+    "groupHorizontalBar.notificationSettings" : {
+      "comment" : "알림 설정 context menu",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notification Settings"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "알림 설정"
+          }
+        }
+      }
+    },
+    "groupHorizontalBar.groupSettings" : {
+      "comment" : "그룹 설정 context menu",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Group Settings"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "그룹 설정"
+          }
+        }
+      }
+    },
+    "groupHorizontalBar.createPromise" : {
+      "comment" : "약속 만들기 context menu",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Create Promise"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "약속 만들기"
+          }
+        }
+      }
+    },
     "groupMain.accept" : {
       "comment" : "수락",
       "extractionState" : "manual",
@@ -6081,6 +6171,60 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "그룹 정렬"
+          }
+        }
+      }
+    },
+    "kakaoShare.inviteLinkShared" : {
+      "comment" : "초대 링크 공유 성공 토스트",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invite link shared"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "초대 링크를 공유했어요"
+          }
+        }
+      }
+    },
+    "kakaoShare.promiseShared" : {
+      "comment" : "약속 공유 성공 토스트",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Promise shared"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "약속을 공유했어요"
+          }
+        }
+      }
+    },
+    "kakaoShare.kakaoInviteButton" : {
+      "comment" : "카카오톡으로 초대장 보내기 버튼 (범용)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Send Invite via KakaoTalk"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "카카오톡으로 초대장 보내기"
           }
         }
       }
@@ -12555,6 +12699,78 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "제목"
+          }
+        }
+      }
+    },
+    "promiseShare.title" : {
+      "comment" : "약속 공유 시트 제목",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Share Promise"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "약속 공유"
+          }
+        }
+      }
+    },
+    "promiseShare.subtitle" : {
+      "comment" : "약속 공유 시트 부제목",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Share this promise with friends"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "친구들에게 약속을 공유해보세요"
+          }
+        }
+      }
+    },
+    "promiseShare.kakaoButton" : {
+      "comment" : "카카오톡으로 공유 버튼",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Share via KakaoTalk"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "카카오톡으로 공유"
+          }
+        }
+      }
+    },
+    "promiseShare.systemButton" : {
+      "comment" : "다른 앱으로 공유 버튼",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Share via Other Apps"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "다른 앱으로 공유"
           }
         }
       }

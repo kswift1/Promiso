@@ -1215,7 +1215,7 @@ extension GroupMain {
               state.showGroupInviteSheet = false
               state.toastMessage = ToastMessage(
                 type: .success,
-                title: "초대 링크를 공유했어요",
+                title: LocalizedStrings.KakaoShare.inviteLinkShared,
                 position: .top
               )
               return .run { [hapticFeedback] _ in
@@ -1232,7 +1232,7 @@ extension GroupMain {
               state.sharePromise = nil
               state.toastMessage = ToastMessage(
                 type: .success,
-                title: "약속을 공유했어요",
+                title: LocalizedStrings.KakaoShare.promiseShared,
                 position: .top
               )
               return .run { [hapticFeedback] _ in

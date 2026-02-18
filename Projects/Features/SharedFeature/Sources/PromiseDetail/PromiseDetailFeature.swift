@@ -538,7 +538,7 @@ extension PromiseDetail {
               state.showShareSheet = false
               state.toastMessage = ToastMessage(
                 type: .success,
-                title: "약속을 공유했어요",
+                title: LocalizedStrings.KakaoShare.promiseShared,
                 position: .top
               )
               return .none

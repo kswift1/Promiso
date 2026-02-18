@@ -1587,7 +1587,7 @@ struct InviteSheet: View {
             .resizable()
             .scaledToFit()
             .frame(width: 20, height: 20)
-          Text("카카오톡으로 초대장 보내기")
+          Text(LocalizedStrings.KakaoShare.kakaoInviteButton)
         }
         .font(.system(size: 16, weight: .semibold))
         .frame(maxWidth: .infinity)

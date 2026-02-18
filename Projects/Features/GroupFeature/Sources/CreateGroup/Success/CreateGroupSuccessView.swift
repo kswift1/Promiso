@@ -155,7 +155,7 @@ struct CreateGroupSuccessView: View {
                 .resizable()
                 .scaledToFit()
                 .frame(width: 20, height: 20)
-              Text("카카오톡으로 초대장 보내기")
+              Text(LocalizedStrings.CreateGroup.kakaoInviteButton)
                 .font(.headline)
             }
             .frame(maxWidth: .infinity)

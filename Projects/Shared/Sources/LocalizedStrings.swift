@@ -1280,6 +1280,7 @@ public enum LocalizedStrings {
     public static var inviteCode: String { String(localized: "createGroup.inviteCode", bundle: bundle) }
     public static var copied: String { String(localized: "createGroup.copied", bundle: bundle) }
     public static var share: String { String(localized: "createGroup.share", bundle: bundle) }
+    public static var kakaoInviteButton: String { String(localized: "createGroup.kakaoInviteButton", bundle: bundle) }
     // MaxMembers display
     public static func membersCount(_ count: Int) -> String {
       String(localized: "createGroup.membersCount", bundle: bundle)
@@ -1561,6 +1562,11 @@ public enum LocalizedStrings {
     public static var createGroup: String { String(localized: "groupHorizontalBar.createGroup", bundle: bundle) }
     public static var joinWithCode: String { String(localized: "groupHorizontalBar.joinWithCode", bundle: bundle) }
     public static var sortGroups: String { String(localized: "groupHorizontalBar.sortGroups", bundle: bundle) }
+    // Context Menu
+    public static var inviteMembers: String { String(localized: "groupHorizontalBar.inviteMembers", bundle: bundle) }
+    public static var notificationSettings: String { String(localized: "groupHorizontalBar.notificationSettings", bundle: bundle) }
+    public static var groupSettings: String { String(localized: "groupHorizontalBar.groupSettings", bundle: bundle) }
+    public static var createPromise: String { String(localized: "groupHorizontalBar.createPromise", bundle: bundle) }
   }
 
   // MARK: - GroupSortSettings
@@ -1572,6 +1578,21 @@ public enum LocalizedStrings {
     public static var sortJoined: String { String(localized: "groupSortSettings.sort.joined", bundle: bundle) }
     public static var sortName: String { String(localized: "groupSortSettings.sort.name", bundle: bundle) }
     public static var sortCustom: String { String(localized: "groupSortSettings.sort.custom", bundle: bundle) }
+  }
+
+  // MARK: - PromiseShare
+  public enum PromiseShare {
+    public static var title: String { String(localized: "promiseShare.title", bundle: bundle) }
+    public static var subtitle: String { String(localized: "promiseShare.subtitle", bundle: bundle) }
+    public static var kakaoButton: String { String(localized: "promiseShare.kakaoButton", bundle: bundle) }
+    public static var systemButton: String { String(localized: "promiseShare.systemButton", bundle: bundle) }
+  }
+
+  // MARK: - KakaoShare (Toast)
+  public enum KakaoShare {
+    public static var inviteLinkShared: String { String(localized: "kakaoShare.inviteLinkShared", bundle: bundle) }
+    public static var promiseShared: String { String(localized: "kakaoShare.promiseShared", bundle: bundle) }
+    public static var kakaoInviteButton: String { String(localized: "kakaoShare.kakaoInviteButton", bundle: bundle) }
   }
 
   // MARK: - GroupComponents

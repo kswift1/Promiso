@@ -45,10 +45,10 @@ public struct PromiseShareSheet: View {
     VStack(spacing: 20) {
       HStack(alignment: .top) {
         VStack(alignment: .leading, spacing: 4) {
-          Text("약속 공유")
+          Text(LocalizedStrings.PromiseShare.title)
             .font(.system(size: 20, weight: .bold))
 
-          Text("친구들에게 약속을 공유해보세요")
+          Text(LocalizedStrings.PromiseShare.subtitle)
             .font(.system(size: 13))
             .foregroundStyle(.secondary)
         }
@@ -93,7 +93,7 @@ public struct PromiseShareSheet: View {
             .resizable()
             .scaledToFit()
             .frame(width: 20, height: 20)
-          Text("카카오톡으로 공유")
+          Text(LocalizedStrings.PromiseShare.kakaoButton)
         }
         .font(.system(size: 16, weight: .semibold))
         .frame(maxWidth: .infinity)
@@ -111,7 +111,7 @@ public struct PromiseShareSheet: View {
       } label: {
         HStack(spacing: 8) {
           Image(systemName: "square.and.arrow.up")
-          Text("다른 앱으로 공유")
+          Text(LocalizedStrings.PromiseShare.systemButton)
         }
         .font(.system(size: 16, weight: .semibold))
         .frame(maxWidth: .infinity)
