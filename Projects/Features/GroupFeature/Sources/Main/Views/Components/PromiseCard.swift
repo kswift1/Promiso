@@ -109,9 +109,14 @@ struct PromiseCard: View {
     promise.votes.acceptedCount
   }
 
+  private var declinedCount: Int {
+    promise.votes.declinedCount
+  }
+
   private var participationProgress: some View {
     let total = max(totalMembers, promise.minimumParticipants)
     let accepted = acceptedCount
+    let declined = declinedCount
     let confirm = promise.minimumParticipants
     let isConfirmed = accepted >= confirm
 
@@ -120,6 +125,7 @@ struct PromiseCard: View {
       GeometryReader { geometry in
         let barWidth = geometry.size.width
         let acceptedRatio = min(1.0, CGFloat(accepted) / CGFloat(max(total, 1)))
+        let declinedRatio = min(1.0 - acceptedRatio, CGFloat(declined) / CGFloat(max(total, 1)))
         let confirmRatio = min(1.0, CGFloat(confirm) / CGFloat(max(total, 1)))
 
         ZStack(alignment: .leading) {
@@ -127,10 +133,16 @@ struct PromiseCard: View {
           Capsule()
             .fill(Color.gray.opacity(0.15))
 
-          // 수락 인원 채움
-          Capsule()
-            .fill(isConfirmed ? Color.green : Color.green.opacity(0.7))
-            .frame(width: max(0, barWidth * acceptedRatio))
+          // 참여 + 불참 채움
+          HStack(spacing: 0) {
+            Rectangle()
+              .fill(isConfirmed ? Color.green : Color.green.opacity(0.7))
+              .frame(width: max(0, barWidth * acceptedRatio))
+            Rectangle()
+              .fill(Color.red.opacity(0.5))
+              .frame(width: max(0, barWidth * declinedRatio))
+          }
+          .clipShape(Capsule())
 
           // 확정 기준선
           if confirm < total {
@@ -149,8 +161,19 @@ struct PromiseCard: View {
           Circle()
             .fill(Color.green)
             .frame(width: 6, height: 6)
-          Text("수락 \(accepted)")
+          Text("참여 \(accepted)")
             .foregroundColor(.green)
+        }
+
+        Text(" · ")
+          .foregroundColor(.secondary.opacity(0.5))
+
+        HStack(spacing: 3) {
+          Circle()
+            .fill(Color.red.opacity(0.7))
+            .frame(width: 6, height: 6)
+          Text("불참 \(declined)")
+            .foregroundColor(.red)
         }
 
         Text(" · ")
@@ -183,7 +206,7 @@ struct PromiseCard: View {
             Circle()
               .fill(myVoteStatus == .accepted ? Color.green : Color.red)
               .frame(width: 5, height: 5)
-            Text(myVoteStatus == .accepted ? "수락함" : "거절함")
+            Text(myVoteStatus == .accepted ? "참여함" : "불참함")
               .foregroundColor(myVoteStatus == .accepted ? .green : .red)
           }
         }
