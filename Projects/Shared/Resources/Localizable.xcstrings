@@ -16351,19 +16351,19 @@
       }
     },
     "settings.restartMessage" : {
-      "comment" : "시간 표시 형식을 변경하려면 앱을 재시작해야 합니다.\\n지금 재시작하시겠습니까?",
+      "comment" : "시간 표시 형식 변경 시 재시작 안내",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The app needs to restart to change the time format.\\nRestart now?"
+            "value" : "The app needs to restart to change the time format.\nRestart now?"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "시간 표시 형식을 변경하려면 앱을 재시작해야 합니다.\\n지금 재시작하시겠습니까?"
+            "value" : "시간 표시 형식을 변경하려면 앱을 재시작해야 합니다.\n지금 재시작하시겠습니까?"
           }
         }
       }
@@ -16873,19 +16873,19 @@
       }
     },
     "settings.themeModeRestartMessage" : {
-      "comment" : "화면 모드를 변경하려면 앱을 재시작해야 합니다.\\n지금 재시작하시겠습니까?",
+      "comment" : "화면 모드 변경 시 재시작 안내",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The app needs to restart to change the theme mode.\\nRestart now?"
+            "value" : "The app needs to restart to change the theme mode.\nRestart now?"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "화면 모드를 변경하려면 앱을 재시작해야 합니다.\\n지금 재시작하시겠습니까?"
+            "value" : "화면 모드를 변경하려면 앱을 재시작해야 합니다.\n지금 재시작하시겠습니까?"
           }
         }
       }
