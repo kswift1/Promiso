@@ -46,14 +46,6 @@ extension PersonalEventDetail {
       ) { editStore in
         CreatePersonalEvent.RootView(store: editStore)
       }
-      .sheet(
-        isPresented: Binding(
-          get: { store.showShareSheet },
-          set: { if !$0 { store.send(.view(.shareSheetDismissed)) } }
-        )
-      ) {
-        ShareSheet(items: [store.event.shareText])
-      }
     }
 
     // MARK: - Header Section
@@ -213,12 +205,6 @@ extension PersonalEventDetail {
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-      ToolbarItem(placement: .topBarTrailing) {
-        ToolbarButton(imageName: "square.and.arrow.up") {
-          store.send(.view(.shareTapped))
-        }
-      }
-
       ToolbarItem(placement: .topBarTrailing) {
         Menu {
           Button {

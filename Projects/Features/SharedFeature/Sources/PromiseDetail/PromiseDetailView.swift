@@ -392,9 +392,11 @@ extension PromiseDetail {
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-      ToolbarItem(placement: .topBarTrailing) {
-        ToolbarButton(imageName: "square.and.arrow.up") {
-          store.send(.view(.shareTapped))
+      if !store.promise.isPast {
+        ToolbarItem(placement: .topBarTrailing) {
+          ToolbarButton(imageName: "square.and.arrow.up") {
+            store.send(.view(.shareTapped))
+          }
         }
       }
 

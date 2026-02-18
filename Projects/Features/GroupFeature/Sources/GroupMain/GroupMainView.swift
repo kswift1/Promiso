@@ -426,7 +426,7 @@ extension GroupMain {
         onChangeResponse: { status in
           store.send(.view(.responseChanged(promiseId, status)))
         },
-        onShare: {
+        onShare: promise.isPast ? nil : {
           store.send(.view(.promiseShared(promiseId)))
         },
         onDirections: {

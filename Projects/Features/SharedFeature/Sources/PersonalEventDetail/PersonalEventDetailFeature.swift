@@ -26,7 +26,6 @@ extension PersonalEventDetail {
     public struct State: Equatable, Sendable {
       var event: PersonalEventModel
       var isDeleting: Bool = false
-      var showShareSheet: Bool = false
 
       var weatherInfo: WeatherInfo?
 
@@ -54,8 +53,6 @@ extension PersonalEventDetail {
         case onAppear
         case editTapped
         case deleteTapped
-        case shareTapped
-        case shareSheetDismissed
       }
 
       public enum Internal: Sendable {
@@ -120,13 +117,6 @@ extension PersonalEventDetail {
             }
             return .none
 
-          case .shareTapped:
-            state.showShareSheet = true
-            return .none
-
-          case .shareSheetDismissed:
-            state.showShareSheet = false
-            return .none
           }
 
         // MARK: - Internal Actions
