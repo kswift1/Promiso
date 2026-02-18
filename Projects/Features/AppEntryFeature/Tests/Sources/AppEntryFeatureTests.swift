@@ -679,9 +679,9 @@ struct AppEntryFeatureTests {
     state.providerProfileImageURL = URL(string: "https://example.com/temp.png")
     state.notificationPermission = NotificationPermission.Feature.State()
 
-    let originalFormat = KoreanDateFormatters.use24HourFormat
-    KoreanDateFormatters.use24HourFormat = false
-    defer { KoreanDateFormatters.use24HourFormat = originalFormat }
+    let originalFormat = LocalizedDateFormatters.use24HourFormat
+    LocalizedDateFormatters.use24HourFormat = false
+    defer { LocalizedDateFormatters.use24HourFormat = originalFormat }
 
     let store = TestStore(initialState: state) {
       AppEntry.Feature()
@@ -698,7 +698,7 @@ struct AppEntryFeatureTests {
       $0.providerProfileImageURL = nil
       $0.notificationPermission = nil
     }
-    #expect(KoreanDateFormatters.use24HourFormat == true)
+    #expect(LocalizedDateFormatters.use24HourFormat == true)
 
     await store.receive(\.internal.startSessionCheck)
     await store.receive(\.internal.sessionCheckResponse) {

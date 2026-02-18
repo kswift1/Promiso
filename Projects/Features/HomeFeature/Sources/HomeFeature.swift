@@ -840,12 +840,12 @@ extension Home {
           .font(.system(size: 40))
           .foregroundStyle(.secondary)
 
-        Text(error.localizedDescription)
+        Text(LocalizedStrings.Error.unknownError)
           .font(.subheadline)
           .foregroundStyle(.secondary)
           .multilineTextAlignment(.center)
 
-        Button("다시 시도") {
+        Button(LocalizedStrings.Common.retry) {
           store.send(.view(.refreshTriggered))
         }
         .buttonStyle(.bordered)

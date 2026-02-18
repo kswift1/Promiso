@@ -132,7 +132,7 @@ struct PromiseGlassCard: View {
       let daysLeft = calendar.dateComponents([.day], from: Date(), to: promise.votes.until).day ?? 0
       return "D-\(daysLeft)"
     } else {
-      return myVoteStatus == .accepted ? "참여" : "불참"
+      return myVoteStatus == .accepted ? LocalizedStrings.Home.accepted : LocalizedStrings.Home.declined
     }
   }
 

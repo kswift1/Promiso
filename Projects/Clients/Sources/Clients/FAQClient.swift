@@ -20,21 +20,10 @@ public struct FAQClient: Sendable {
 
 // MARK: - Error
 
-public enum FAQClientError: Error, LocalizedError {
+public enum FAQClientError: Error {
   case fetchFailed(statusCode: Int, message: String)
   case decodingFailed(String)
   case invalidConfiguration
-
-  public var errorDescription: String? {
-    switch self {
-    case .fetchFailed:
-      return "FAQ를 불러오는데 실패했습니다."
-    case .decodingFailed:
-      return "FAQ 데이터를 읽는데 실패했습니다."
-    case .invalidConfiguration:
-      return "FAQ 설정이 올바르지 않습니다."
-    }
-  }
 }
 
 // MARK: - Firebase Functions Response Models

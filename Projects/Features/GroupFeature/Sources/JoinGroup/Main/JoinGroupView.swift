@@ -48,10 +48,10 @@ extension JoinGroup {
         store.send(.view(.onAppear))
       }
       .alert(
-        "오류",
+        LocalizedStrings.Common.error,
         isPresented: .constant(store.previewError != nil),
         actions: {
-          Button("확인") {
+          Button(LocalizedStrings.Common.ok) {
             store.send(.view(.previewErrorAlertDismissed))
           }
         },
@@ -62,10 +62,10 @@ extension JoinGroup {
         }
       )
       .alert(
-        "참여 실패",
+        LocalizedStrings.JoinGroup.joinFailed,
         isPresented: .constant(store.joinError != nil),
         actions: {
-          Button("확인") {
+          Button(LocalizedStrings.Common.ok) {
             store.send(.view(.joinErrorAlertDismissed))
           }
         },
@@ -80,9 +80,9 @@ extension JoinGroup {
     private var navigationTitle: String {
       switch store.step {
       case .enterCode, .preview:
-        return "그룹 참여"
+        return LocalizedStrings.JoinGroup.title
       case .settings:
-        return "초기 설정"
+        return LocalizedStrings.JoinGroup.initialSettings
       }
     }
   }
@@ -157,10 +157,10 @@ private struct EnterCodeView: View {
       
       // Title & Description
       VStack(spacing: 8) {
-        Text("초대 코드 입력")
+        Text(LocalizedStrings.JoinGroup.enterInviteCode)
           .font(.title2.bold())
-        
-        Text("6자리 초대 코드를\n입력해주세요")
+
+        Text(LocalizedStrings.JoinGroup.enterCodeDescription)
           .font(.body)
           .foregroundStyle(.secondary)
           .multilineTextAlignment(.center)
@@ -220,7 +220,7 @@ private struct EnterCodeView: View {
             isCodeFieldFocused = true
           }
         } label: {
-          Label("붙여넣기", systemImage: "doc.on.clipboard")
+          Label(LocalizedStrings.JoinGroup.paste, systemImage: "doc.on.clipboard")
         }
       }
 
@@ -228,7 +228,7 @@ private struct EnterCodeView: View {
         Button {
           UIPasteboard.general.string = store.inviteCode
         } label: {
-          Label("복사", systemImage: "doc.on.doc")
+          Label(LocalizedStrings.JoinGroup.copy, systemImage: "doc.on.doc")
         }
       }
     }
@@ -296,7 +296,7 @@ private struct EnterCodeView: View {
             .font(.system(size: 18))
         }
         
-        Text(store.isLoadingPreview ? "확인 중..." : "다음")
+        Text(store.isLoadingPreview ? LocalizedStrings.JoinGroup.checking : LocalizedStrings.Common.next)
           .font(.headline)
       }
       .frame(maxWidth: .infinity)
@@ -345,7 +345,7 @@ private struct PreviewView: View {
             // Description
             if let description = group.description, !description.isEmpty {
               VStack(alignment: .leading, spacing: 8) {
-                Label("소개", systemImage: "text.alignleft")
+                Label(LocalizedStrings.ManageGroup.introduction, systemImage: "text.alignleft")
                   .font(.subheadline.weight(.semibold))
                   .foregroundStyle(.secondary)
 
@@ -360,7 +360,7 @@ private struct PreviewView: View {
             HStack(spacing: 24) {
               statItem(
                 icon: "person.2.fill",
-                label: "현재 인원",
+                label: LocalizedStrings.ManageGroup.currentMembers,
                 value: "\(group.memberIds.count)"
               )
 
@@ -369,7 +369,7 @@ private struct PreviewView: View {
 
               statItem(
                 icon: "person.3.fill",
-                label: "최대 인원",
+                label: LocalizedStrings.ManageGroup.maxMembers,
                 value: "\(group.maxMembers)"
               )
             }
@@ -384,13 +384,13 @@ private struct PreviewView: View {
           if !members.isEmpty {
             VStack(alignment: .leading, spacing: 16) {
               HStack {
-                Label("멤버", systemImage: "person.2")
+                Label(LocalizedStrings.Group.members, systemImage: "person.2")
                   .font(.headline)
                   .foregroundStyle(.primary)
 
                 Spacer()
 
-                Text("\(members.count)명")
+                Text(LocalizedStrings.ManageGroup.membersCount(members.count))
                   .font(.subheadline.weight(.semibold))
                   .foregroundStyle(.secondary)
               }
@@ -548,7 +548,7 @@ private struct PreviewView: View {
             .font(.system(size: 20))
         }
 
-        Text(store.isJoining ? "참여 중..." : "그룹 참여하기")
+        Text(store.isJoining ? LocalizedStrings.JoinGroup.joining : LocalizedStrings.JoinGroup.joinButton)
           .font(.system(size: 18, weight: .semibold))
       }
       .frame(maxWidth: .infinity)
@@ -631,7 +631,7 @@ private struct OverflowGridItem: View {
           .strokeBorder(Color(.systemGray4), lineWidth: 2)
       )
 
-      Text("더보기")
+      Text(LocalizedStrings.JoinGroup.seeMore)
         .font(.caption)
         .foregroundStyle(.secondary)
     }

@@ -353,10 +353,11 @@ extension NotificationCenter {
                 state.notificationsState = .loaded(notifications)
               }
             case .failure(let error):
+              let message = (error as? NotificationClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError
               state.toastMessage = ToastMessage(
                 type: .error,
                 title: "읽음 처리에 실패했어요",
-                subtitle: error.localizedDescription,
+                subtitle: message,
                 position: .top
               )
             }
@@ -373,10 +374,11 @@ extension NotificationCenter {
                 state.isEditMode = false
               }
             case .failure(let error):
+              let message = (error as? NotificationClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError
               state.toastMessage = ToastMessage(
                 type: .error,
                 title: "알림 삭제에 실패했어요",
-                subtitle: error.localizedDescription,
+                subtitle: message,
                 position: .top
               )
             }
@@ -436,5 +438,18 @@ extension NotificationCenter.Feature.State {
   /// 선택 개수
   var selectedCount: Int {
     selectedNotificationIds.count
+  }
+}
+
+// MARK: - NotificationClientError Localization
+
+extension NotificationClientError {
+  var localizedMessage: String {
+    switch self {
+    case .authenticationRequired: return LocalizedStrings.Error.notificationAuthRequired
+    case .tokenNotFound: return LocalizedStrings.Error.notificationTokenNotFound
+    case .saveFailed: return LocalizedStrings.Error.notificationSaveFailed
+    case .deleteFailed: return LocalizedStrings.Error.notificationDeleteFailed
+    }
   }
 }

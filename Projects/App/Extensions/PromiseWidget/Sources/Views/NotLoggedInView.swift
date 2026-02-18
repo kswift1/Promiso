@@ -1,3 +1,4 @@
+import PromisoShared
 import ResourceKit
 import SwiftUI
 
@@ -11,11 +12,11 @@ struct NotLoggedInView: View {
         .symbolRenderingMode(.hierarchical)
 
       VStack(spacing: 4) {
-        Text(WidgetStrings.Auth.notLoggedInTitle)
+        Text(LocalizedStrings.Widget.authNotLoggedInTitle)
           .font(.subheadline.weight(.medium))
           .foregroundStyle(.primary)
 
-        Text(WidgetStrings.Auth.openAppHint)
+        Text(LocalizedStrings.Widget.authOpenAppHint)
           .font(.caption)
           .foregroundStyle(.secondary)
       }
@@ -23,7 +24,7 @@ struct NotLoggedInView: View {
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .widgetURL(URL(string: "promiso://home"))
     .accessibilityElement(children: .combine)
-    .accessibilityLabel("\(WidgetStrings.Auth.notLoggedInTitle). \(WidgetStrings.Auth.openAppHint)")
+    .accessibilityLabel("\(LocalizedStrings.Widget.authNotLoggedInTitle). \(LocalizedStrings.Widget.authOpenAppHint)")
   }
 }
 

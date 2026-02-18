@@ -1,6 +1,7 @@
 import SwiftUI
 import Clients
 import ComposableArchitecture
+import PromisoShared
 
 struct TitleInputTextField: View {
   let title: String
@@ -28,7 +29,7 @@ struct TitleInputTextField: View {
   
   var body: some View {
     VStack(alignment: .trailing, spacing: 6) {
-      TextField("예: 영화 관람, 카페 미팅", text: Binding(
+      TextField(LocalizedStrings.CreatePromise.titlePlaceholder, text: Binding(
         get: { title },
         set: { newValue in
           let trimmed = String(newValue.prefix(titlePrefix))

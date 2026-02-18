@@ -13,13 +13,21 @@ public enum GroupMain {}
 extension GroupMain {
   /// 약속 목록 필터 (Apple Mail 스타일)
   public enum PromiseFilter: String, CaseIterable, Sendable, CategoryFilterItem {
-    case all = "전체"
-    case needResponse = "응답 필요"
-    case responded = "응답 완료"
-    case confirmed = "확정"
-    case past = "과거"
+    case all
+    case needResponse
+    case responded
+    case confirmed
+    case past
 
-    public var title: String { rawValue }
+    public var title: String {
+      switch self {
+      case .needResponse: return LocalizedStrings.GroupMain.filterNeedResponse
+      case .responded: return LocalizedStrings.GroupMain.filterResponded
+      case .confirmed: return LocalizedStrings.GroupMain.filterConfirmed
+      case .all: return LocalizedStrings.GroupMain.filterAll
+      case .past: return LocalizedStrings.GroupMain.filterPast
+      }
+    }
 
     public var icon: String {
       switch self {
@@ -77,15 +85,15 @@ extension GroupMain {
 
     var title: String {
       switch self {
-      case .createGroup: return "그룹 만들기"
-      case .joinGroup: return "친구 초대 코드로 참여"
+      case .createGroup: return LocalizedStrings.GroupMain.createGroupCard
+      case .joinGroup: return LocalizedStrings.GroupMain.joinGroupCard
       }
     }
 
     var subtitle: String {
       switch self {
-      case .createGroup: return "친구들과 함께할 그룹을 만들어보세요"
-      case .joinGroup: return "초대 코드를 입력해서 그룹에 참여하세요"
+      case .createGroup: return LocalizedStrings.GroupMain.createGroupCardSubtitle
+      case .joinGroup: return LocalizedStrings.GroupMain.joinGroupCardSubtitle
       }
     }
 
@@ -226,7 +234,7 @@ extension GroupMain {
           return [
             GroupBarItem(
               id: GroupMain.onboardingGroupId,
-              name: "Promiso 시작하기",
+              name: LocalizedStrings.GroupMain.onboardingGroupName,
               localImage: ResourceKitAsset.notificationLogo.swiftUIImage,
               hasNewActivity: false,
               isSelected: true
@@ -523,16 +531,16 @@ extension GroupMain {
             }
             state.promiseToDelete = id
             state.deleteAlert = AlertState {
-              TextState("약속 삭제")
+              TextState(LocalizedStrings.GroupMain.deletePromiseTitle)
             } actions: {
               ButtonState(role: .cancel) {
-                TextState("취소")
+                TextState(LocalizedStrings.Common.cancel)
               }
               ButtonState(role: .destructive, action: .confirmDelete) {
-                TextState("삭제")
+                TextState(LocalizedStrings.Common.delete)
               }
             } message: {
-              TextState("'\(promise.title)' 약속을 삭제하시겠습니까?\n삭제된 약속은 복구할 수 없습니다.")
+              TextState(LocalizedStrings.GroupMain.deletePromiseConfirm(promise.title))
             }
             return .none
 

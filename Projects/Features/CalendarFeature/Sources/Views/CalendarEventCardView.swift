@@ -180,9 +180,9 @@ struct CalendarPermissionBanner: View {
       bannerContent(
         icon: "calendar.badge.plus",
         iconColor: Color.pmindigo.n500,
-        title: "시스템 캘린더 연동",
-        message: "시스템 캘린더 일정을 함께 표시하세요",
-        buttonLabel: "연동하기",
+        title: LocalizedStrings.Calendar.syncCalendarTitle,
+        message: LocalizedStrings.Calendar.syncCalendarSubtitle,
+        buttonLabel: LocalizedStrings.Calendar.syncAction,
         buttonColor: Color.pmindigo.n500,
         buttonAction: onRequestPermission
       )
@@ -190,9 +190,9 @@ struct CalendarPermissionBanner: View {
       bannerContent(
         icon: "calendar.badge.exclamationmark",
         iconColor: Color.pmpurple.n400,
-        title: "읽기 권한 필요",
-        message: "시스템 캘린더를 읽으려면 전체 액세스가 필요해요",
-        buttonLabel: "설정",
+        title: LocalizedStrings.Calendar.readAccessTitle,
+        message: LocalizedStrings.Calendar.readAccessSubtitle,
+        buttonLabel: LocalizedStrings.Common.settings,
         buttonColor: Color.pmpurple.n500,
         buttonAction: onOpenSettings
       )
@@ -200,9 +200,9 @@ struct CalendarPermissionBanner: View {
       bannerContent(
         icon: "calendar.badge.exclamationmark",
         iconColor: Color.pmpurple.n600,
-        title: "캘린더 권한 필요",
-        message: "시스템 캘린더 접근을 위해선 권한이 필요해요",
-        buttonLabel: "설정",
+        title: LocalizedStrings.Calendar.calendarPermissionTitle,
+        message: LocalizedStrings.Calendar.calendarPermissionSubtitle,
+        buttonLabel: LocalizedStrings.Common.settings,
         buttonColor: Color.pmpurple.n600,
         buttonAction: onOpenSettings
       )
@@ -260,7 +260,7 @@ struct CalendarPermissionBanner: View {
           HStack(spacing: 4) {
             Image(systemName: dontShowAgain ? "checkmark.square.fill" : "square")
               .font(.system(size: 12))
-            Text("다시 보지 않기")
+            Text(LocalizedStrings.Calendar.doNotShowAgain)
               .font(.system(size: 11))
           }
           .foregroundColor(.secondary)

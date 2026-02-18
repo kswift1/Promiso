@@ -76,7 +76,12 @@ public enum AppConfig {
       // 세로 모드만 지원 (가로 모드 비활성화)
       "UISupportedInterfaceOrientations": .array([
         .string("UIInterfaceOrientationPortrait")
-      ])
+      ]),
+      "CFBundleLocalizations": .array([
+        .string("ko"),
+        .string("en")
+      ]),
+      "CFBundleDevelopmentRegion": .string("ko"),
     ]
   }
 }

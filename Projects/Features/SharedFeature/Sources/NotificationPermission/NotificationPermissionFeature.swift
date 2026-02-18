@@ -1,5 +1,6 @@
 import ComposableArchitecture
 import Clients
+import PromisoShared
 
 public enum NotificationPermission {}
 
@@ -25,9 +26,9 @@ extension NotificationPermission {
       var primaryButtonTitle: String {
         switch authorizationStatus {
         case .authorized:
-          return "완료"
+          return LocalizedStrings.Common.done
         case .denied:
-          return "설정으로 이동"
+          return LocalizedStrings.Shared.goToSettings
         default:
           return config.primaryButtonTitle
         }
@@ -63,12 +64,12 @@ extension NotificationPermission {
       }
 
       public static let `default` = Config(
-        title: "알림을 켜고\n약속을 놓치지 마세요",
-        content: "새로운 약속 초대, 응답 현황, 약속 확정 알림을\n실시간으로 받아보세요.",
-        notificationTitle: "약속 확정! 🎉",
-        notificationContent: "점심 약속 확정! 1월 25일 오후 1시에 만나요",
-        primaryButtonTitle: "알림 허용",
-        secondaryButtonTitle: "나중에 하기"
+        title: LocalizedStrings.Shared.permissionTitle,
+        content: LocalizedStrings.Shared.notificationSubtitle,
+        notificationTitle: LocalizedStrings.Shared.notificationPreviewTitle,
+        notificationContent: LocalizedStrings.Shared.notificationPreviewBody,
+        primaryButtonTitle: LocalizedStrings.Shared.allowNotification,
+        secondaryButtonTitle: LocalizedStrings.Common.laterAction
       )
     }
 

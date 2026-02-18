@@ -177,7 +177,7 @@ struct JoinGroupReducerTests {
     var state = JoinGroup.Feature.State(currentUser: user)
     state.isLoadingPreview = true
 
-    let error = NSError(domain: "test", code: -1, userInfo: [NSLocalizedDescriptionKey: "미리보기 실패"])
+    let error = GroupClientError.serverError
 
     let store = TestStore(initialState: state) {
       JoinGroup.Feature()
@@ -185,7 +185,7 @@ struct JoinGroupReducerTests {
 
     await store.send(.internal(.previewGroupResponse(.failure(error)))) {
       $0.isLoadingPreview = false
-      $0.previewError = "미리보기 실패"
+      $0.previewError = error.localizedMessage
     }
   }
 
@@ -197,7 +197,7 @@ struct JoinGroupReducerTests {
     var state = JoinGroup.Feature.State(currentUser: user)
     state.isJoining = true
 
-    let error = NSError(domain: "test", code: -1, userInfo: [NSLocalizedDescriptionKey: "참여 실패"])
+    let error = GroupClientError.serverError
 
     let store = TestStore(initialState: state) {
       JoinGroup.Feature()
@@ -205,7 +205,7 @@ struct JoinGroupReducerTests {
 
     await store.send(.internal(.joinGroupResponse(.failure(error)))) {
       $0.isJoining = false
-      $0.joinError = "참여 실패"
+      $0.joinError = error.localizedMessage
     }
   }
 }

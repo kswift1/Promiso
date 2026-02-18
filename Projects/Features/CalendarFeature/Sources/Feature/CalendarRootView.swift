@@ -296,13 +296,13 @@ extension CalendarFeature {
 
     private var monthModeHeader: some View {
       HStack {
-        Text("이번 달 일정")
+        Text(LocalizedStrings.Calendar.monthSchedule)
           .font(.system(size: 20, weight: .bold))
           .foregroundColor(.primary)
 
         Spacer()
 
-        Text("\(store.sectionDates.count)일")
+        Text(LocalizedStrings.Calendar.dayCount(store.sectionDates.count))
           .font(.system(size: 14, weight: .medium))
           .foregroundColor(.secondary)
       }
@@ -349,7 +349,7 @@ extension CalendarFeature {
           .scaleEffect(1.2)
           .tint(Color.pmindigo.n500)
 
-        Text("약속을 불러오는 중...")
+        Text(LocalizedStrings.Calendar.loadingPromises)
           .font(.system(size: 15))
           .foregroundColor(.secondary)
 
@@ -371,11 +371,11 @@ extension CalendarFeature {
           .font(.system(size: 52, weight: .light))
           .foregroundColor(.secondary.opacity(0.6))
 
-        Text("약속이 없습니다")
+        Text(LocalizedStrings.Calendar.noPromises)
           .font(.system(size: 18, weight: .semibold))
           .foregroundColor(.primary)
 
-        Text("새로운 약속을 만들어보세요")
+        Text(LocalizedStrings.Calendar.createNewPromise)
           .font(.system(size: 15))
           .foregroundColor(.secondary)
 

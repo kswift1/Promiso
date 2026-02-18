@@ -71,7 +71,7 @@ extension CreatePersonalEvent {
       }
 
       var navigationTitle: String {
-        mode == .create ? "새 일정" : "일정 수정"
+        mode == .create ? LocalizedStrings.Shared.newEvent : LocalizedStrings.Shared.editEvent
       }
     }
 
@@ -289,7 +289,7 @@ extension CreatePersonalEvent {
 
                 await send(.internal(.saveSuccess(savedEvent)))
               } catch {
-                await send(.internal(.saveFailed(error.localizedDescription)))
+                await send(.internal(.saveFailed(LocalizedStrings.Error.unknownError)))
               }
             }
 
@@ -468,17 +468,17 @@ extension CreatePersonalEvent {
 
     public var title: String {
       switch self {
-      case .none: return "없음"
-      case .atEvent: return "이벤트 시점"
-      case .fiveMinutes: return "5분 전"
-      case .tenMinutes: return "10분 전"
-      case .fifteenMinutes: return "15분 전"
-      case .thirtyMinutes: return "30분 전"
-      case .oneHour: return "1시간 전"
-      case .twoHours: return "2시간 전"
-      case .oneDay: return "1일 전"
-      case .twoDays: return "2일 전"
-      case .oneWeek: return "1주 전"
+      case .none: return LocalizedStrings.Shared.reminderNone
+      case .atEvent: return LocalizedStrings.Shared.reminderAtEvent
+      case .fiveMinutes: return LocalizedStrings.Shared.reminder5min
+      case .tenMinutes: return LocalizedStrings.Shared.reminder10min
+      case .fifteenMinutes: return LocalizedStrings.Shared.reminder15min
+      case .thirtyMinutes: return LocalizedStrings.Shared.reminder30min
+      case .oneHour: return LocalizedStrings.Shared.reminder1hour
+      case .twoHours: return LocalizedStrings.Shared.reminder2hours
+      case .oneDay: return LocalizedStrings.Shared.reminder1day
+      case .twoDays: return LocalizedStrings.Shared.reminder2days
+      case .oneWeek: return LocalizedStrings.Shared.reminder1week
       }
     }
 

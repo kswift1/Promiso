@@ -107,16 +107,16 @@ extension PersonalEventDetail {
           case .deleteTapped:
             let eventTitle = state.event.title
             state.deleteAlert = AlertState {
-              TextState("일정 삭제")
+              TextState(LocalizedStrings.Shared.deleteEvent)
             } actions: {
               ButtonState(role: .destructive, action: .confirmDelete) {
-                TextState("삭제")
+                TextState(LocalizedStrings.Common.delete)
               }
               ButtonState(role: .cancel) {
-                TextState("취소")
+                TextState(LocalizedStrings.Common.cancel)
               }
             } message: {
-              TextState("'\(eventTitle)' 일정을 삭제하시겠습니까?")
+              TextState(LocalizedStrings.Shared.deleteEventConfirm(eventTitle))
             }
             return .none
 
@@ -190,7 +190,7 @@ extension PersonalEventDetail {
 
               await send(.internal(.deleteSuccess))
             } catch {
-              await send(.internal(.deleteFailed(error.localizedDescription)))
+              await send(.internal(.deleteFailed(LocalizedStrings.Error.unknownError)))
             }
           }
 

@@ -114,7 +114,7 @@ extension AccountInfo {
                 try await authClient.deleteAccount()
                 await send(.internal(.deleteAccountCompleted))
               } catch {
-                await send(.internal(.deleteAccountFailed(error.localizedDescription)))
+                await send(.internal(.deleteAccountFailed((error as? AuthClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError)))
               }
             }
 
@@ -168,7 +168,7 @@ extension AccountInfo {
 
     // MARK: - Static Properties
 
-    private static let createdAtFormatter = KoreanDateFormatters.yearMonthDay
+    private static let createdAtFormatter = LocalizedDateFormatters.yearMonthDay
 
     public init(store: StoreOf<Feature>) {
       self.store = store
@@ -228,59 +228,59 @@ extension AccountInfo {
         .padding(.vertical, 24)
       }
       .auroraBackground()
-      .navigationTitle("계정 정보")
+      .navigationTitle(LocalizedStrings.SettingsStrings.accountInfo)
       .navigationBarTitleDisplayMode(.large)
       .toolbar {
         ToolbarItem(placement: .topBarTrailing) {
           Button {
             store.send(.view(.editProfileTapped))
           } label: {
-            Text("편집")
+            Text(LocalizedStrings.Common.edit)
               .font(.body)
               .foregroundStyle(Color.pmindigo.n500)
           }
         }
       }
       .alert(
-        "로그아웃",
+        LocalizedStrings.SettingsStrings.logout,
         isPresented: Binding(
           get: { store.showLogoutAlert },
           set: { if !$0 { store.send(.view(.logoutCancelled)) } }
         )
       ) {
-        Button("취소", role: .cancel) {
+        Button(LocalizedStrings.Common.cancel, role: .cancel) {
           store.send(.view(.logoutCancelled))
         }
-        Button("로그아웃", role: .destructive) {
+        Button(LocalizedStrings.SettingsStrings.logout, role: .destructive) {
           store.send(.view(.logoutConfirmed))
         }
       } message: {
-        Text("정말 로그아웃 하시겠습니까?")
+        Text(LocalizedStrings.SettingsStrings.logoutConfirm)
       }
       .alert(
-        "회원 탈퇴",
+        LocalizedStrings.SettingsStrings.deleteAccountTitle,
         isPresented: Binding(
           get: { store.showDeleteAccountAlert },
           set: { if !$0 { store.send(.view(.deleteAccountCancelled)) } }
         )
       ) {
-        Button("취소", role: .cancel) {
+        Button(LocalizedStrings.Common.cancel, role: .cancel) {
           store.send(.view(.deleteAccountCancelled))
         }
-        Button("탈퇴하기", role: .destructive) {
+        Button(LocalizedStrings.SettingsStrings.deleteAccount, role: .destructive) {
           store.send(.view(.deleteAccountConfirmed))
         }
       } message: {
-        Text("탈퇴 시 모든 데이터가 삭제되며 복구할 수 없습니다.")
+        Text(LocalizedStrings.SettingsStrings.deleteAccountConfirm)
       }
       .alert(
-        "탈퇴 실패",
+        LocalizedStrings.SettingsStrings.deleteAccountFailed,
         isPresented: Binding(
           get: { store.deleteAccountError != nil },
           set: { if !$0 { store.send(.view(.dismissDeleteAccountError)) } }
         )
       ) {
-        Button("확인") {
+        Button(LocalizedStrings.Common.confirm) {
           store.send(.view(.dismissDeleteAccountError))
         }
       } message: {
@@ -311,7 +311,7 @@ extension AccountInfo {
               .foregroundStyle(Color.pmindigo.n500)
               .frame(width: 24, height: 24)
 
-            Text("로그아웃")
+            Text(LocalizedStrings.SettingsStrings.logout)
               .font(.body)
               .foregroundStyle(Color.pmtext.primary)
 
@@ -336,7 +336,7 @@ extension AccountInfo {
               .foregroundStyle(Color.pmerror.n500)
               .frame(width: 24, height: 24)
 
-            Text("탈퇴하기")
+            Text(LocalizedStrings.SettingsStrings.deleteAccount)
               .font(.body)
               .foregroundStyle(Color.pmerror.n500)
 
@@ -364,7 +364,7 @@ extension AccountInfo {
         // 이메일
         accountInfoRow(
           icon: "envelope.fill",
-          title: "이메일",
+          title: LocalizedStrings.SettingsStrings.email,
           value: store.currentUser.email
         )
 
@@ -374,7 +374,7 @@ extension AccountInfo {
         // 로그인 방식
         accountInfoRowWithIcon(
           icon: "key.fill",
-          title: "로그인 방식",
+          title: LocalizedStrings.SettingsStrings.loginMethod,
           value: providerDisplayName,
           valueIconView: providerIconView
         )
@@ -385,7 +385,7 @@ extension AccountInfo {
         // 가입일
         accountInfoRow(
           icon: "calendar",
-          title: "가입일",
+          title: LocalizedStrings.SettingsStrings.joinDate,
           value: formattedCreatedAt
         )
       }
@@ -451,6 +451,23 @@ extension AccountInfo {
 }
 
 // MARK: - Preview
+
+// MARK: - AuthClientError Localization
+
+extension AuthClientError {
+  var localizedMessage: String {
+    switch self {
+    case .invalidCredentials: return LocalizedStrings.Error.authInvalidCredentials
+    case .alreadyExists: return LocalizedStrings.Error.authAlreadyExists
+    case .network: return LocalizedStrings.Error.authNetwork
+    case .invalidAppleCredential: return LocalizedStrings.Error.authInvalidAppleCredential
+    case .missingIdentityToken: return LocalizedStrings.Error.authMissingIdentityToken
+    case .providerUnavailable: return LocalizedStrings.Error.authProviderUnavailable
+    case .isGroupHost: return LocalizedStrings.Error.authIsGroupHost
+    case .unknown: return LocalizedStrings.Error.unknownError
+    }
+  }
+}
 
 #Preview("Account Info") {
   NavigationStack {

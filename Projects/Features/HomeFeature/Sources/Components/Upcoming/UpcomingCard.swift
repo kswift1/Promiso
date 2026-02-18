@@ -74,15 +74,15 @@ struct UpcomingDateCard: View {
   // MARK: - Computed Properties
 
   private var monthString: String {
-    KoreanDateFormatters.month.string(from: date)
+    LocalizedDateFormatters.month.string(from: date)
   }
 
   private var dayString: String {
-    KoreanDateFormatters.day.string(from: date)
+    LocalizedDateFormatters.day.string(from: date)
   }
 
   private var weekdayString: String {
-    KoreanDateFormatters.weekday.string(from: date)
+    LocalizedDateFormatters.weekday.string(from: date)
   }
 
   private var weekdayColor: Color {
@@ -187,10 +187,10 @@ private struct UpcomingPromiseRow: View {
 
       // 그룹명 · 참여자
       if let groupName = promise.group?.name {
-        Text("\(groupName) · \(promise.votes.accepted.count)명 참여 확정")
+        Text(LocalizedStrings.Home.groupParticipants(groupName, promise.votes.accepted.count))
           .font(.pmCaption)
       } else {
-        Text("\(promise.votes.accepted.count)명 참여 확정")
+        Text(LocalizedStrings.Home.participantsConfirmed(promise.votes.accepted.count))
           .font(.pmCaption)
       }
     }
@@ -274,7 +274,7 @@ private struct UpcomingPersonalEventRow: View {
             Image(systemName: "person.fill")
               .font(.system(size: 10))
 
-            Text("개인 일정")
+            Text(LocalizedStrings.Common.personalEvent)
               .font(.pmCaption)
           }
           .foregroundStyle(.secondary)

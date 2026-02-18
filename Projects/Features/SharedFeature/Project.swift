@@ -5,6 +5,7 @@ private let feature: Feature = .shared
 
 let project = Project(
   name: feature.fullName,
+  options: .options(developmentRegion: "ko"),
   targets: [
 
     // Main Feature (TCA)
@@ -33,7 +34,8 @@ let project = Project(
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Tests/Sources/**"],
       dependencies: [
-        .target(name: "SharedFeature")
+        .target(name: "SharedFeature"),
+        .project(target: "PromisoShared", path: "../../Shared")
       ],
       settings: .standard(base: ["OTHER_LDFLAGS": ""])
     ),

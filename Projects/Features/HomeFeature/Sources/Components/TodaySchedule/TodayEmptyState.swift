@@ -40,49 +40,49 @@ extension TodayEmptyState {
   static let timeMessages: [TimeOfDay: RandomMessage] = [
     .dawn: RandomMessage(
       emoji: "🌅",
-      title: "고요한 새벽이에요",
-      subtitle: "평온한 아침을 맞이하세요"
+      title: LocalizedStrings.Home.emptyDawnTitle,
+      subtitle: LocalizedStrings.Home.emptyDawnSubtitle
     ),
     .morning: RandomMessage(
       emoji: "☀️",
-      title: "상쾌한 아침이에요",
-      subtitle: "활기찬 하루를 시작해보세요"
+      title: LocalizedStrings.Home.emptyMorningTitle,
+      subtitle: LocalizedStrings.Home.emptyMorningSubtitle
     ),
     .lunch: RandomMessage(
       emoji: "🌤️",
-      title: "느긋한 점심시간이에요",
-      subtitle: "맛있는 식사 즐기세요"
+      title: LocalizedStrings.Home.emptyLunchTitle,
+      subtitle: LocalizedStrings.Home.emptyLunchSubtitle
     ),
     .afternoon: RandomMessage(
       emoji: "⛅",
-      title: "여유로운 오후예요",
-      subtitle: "편안한 시간을 즐겨보세요"
+      title: LocalizedStrings.Home.emptyAfternoonTitle,
+      subtitle: LocalizedStrings.Home.emptyAfternoonSubtitle
     ),
     .evening: RandomMessage(
       emoji: "🌆",
-      title: "편안한 저녁이에요",
-      subtitle: "하루를 마무리하는 시간"
+      title: LocalizedStrings.Home.emptyEveningTitle,
+      subtitle: LocalizedStrings.Home.emptyEveningSubtitle
     ),
     .night: RandomMessage(
       emoji: "🌙",
-      title: "고요한 밤이에요",
-      subtitle: "편안한 휴식을 취하세요"
+      title: LocalizedStrings.Home.emptyNightTitle,
+      subtitle: LocalizedStrings.Home.emptyNightSubtitle
     ),
   ]
 
   static let randomMessages: [RandomMessage] = [
-    RandomMessage(emoji: "💫", title: "나만의 시간이에요", subtitle: "소중한 시간을 가져보세요"),
-    RandomMessage(emoji: "🌈", title: "여유로운 하루예요", subtitle: "천천히 숨을 고르는 시간"),
-    RandomMessage(emoji: "✨", title: "자유로운 시간이에요", subtitle: "하고 싶었던 일을 해보세요"),
-    RandomMessage(emoji: "🎨", title: "특별한 일정이 없어요", subtitle: "취미 생활을 즐겨보세요"),
-    RandomMessage(emoji: "📚", title: "느긋한 하루예요", subtitle: "좋아하는 책을 펼쳐보세요"),
-    RandomMessage(emoji: "🎵", title: "평온한 시간이에요", subtitle: "음악과 함께하는 여유"),
-    RandomMessage(emoji: "🏃", title: "여유가 있는 날이에요", subtitle: "가벼운 산책은 어떠세요?"),
-    RandomMessage(emoji: "🍵", title: "한가한 시간이에요", subtitle: "따뜻한 차 한잔의 여유"),
-    RandomMessage(emoji: "🧘", title: "조용한 하루예요", subtitle: "마음을 비우는 시간"),
-    RandomMessage(emoji: "🌱", title: "나를 위한 시간이에요", subtitle: "자신을 돌보는 시간을 가져요"),
-    RandomMessage(emoji: "☕", title: "여유있는 오늘이에요", subtitle: "편안하게 쉬어가는 하루"),
-    RandomMessage(emoji: "🌿", title: "평화로운 하루예요", subtitle: "자연스럽게 흐르는 시간"),
+    RandomMessage(emoji: "💫", title: LocalizedStrings.Home.emptyRandom1Title, subtitle: LocalizedStrings.Home.emptyRandom1Subtitle),
+    RandomMessage(emoji: "🌈", title: LocalizedStrings.Home.emptyRandom2Title, subtitle: LocalizedStrings.Home.emptyRandom2Subtitle),
+    RandomMessage(emoji: "✨", title: LocalizedStrings.Home.emptyRandom3Title, subtitle: LocalizedStrings.Home.emptyRandom3Subtitle),
+    RandomMessage(emoji: "🎨", title: LocalizedStrings.Home.emptyRandom4Title, subtitle: LocalizedStrings.Home.emptyRandom4Subtitle),
+    RandomMessage(emoji: "📚", title: LocalizedStrings.Home.emptyRandom5Title, subtitle: LocalizedStrings.Home.emptyRandom5Subtitle),
+    RandomMessage(emoji: "🎵", title: LocalizedStrings.Home.emptyRandom6Title, subtitle: LocalizedStrings.Home.emptyRandom6Subtitle),
+    RandomMessage(emoji: "🏃", title: LocalizedStrings.Home.emptyRandom7Title, subtitle: LocalizedStrings.Home.emptyRandom7Subtitle),
+    RandomMessage(emoji: "🍵", title: LocalizedStrings.Home.emptyRandom8Title, subtitle: LocalizedStrings.Home.emptyRandom8Subtitle),
+    RandomMessage(emoji: "🧘", title: LocalizedStrings.Home.emptyRandom9Title, subtitle: LocalizedStrings.Home.emptyRandom9Subtitle),
+    RandomMessage(emoji: "🌱", title: LocalizedStrings.Home.emptyRandom10Title, subtitle: LocalizedStrings.Home.emptyRandom10Subtitle),
+    RandomMessage(emoji: "☕", title: LocalizedStrings.Home.emptyRandom11Title, subtitle: LocalizedStrings.Home.emptyRandom11Subtitle),
+    RandomMessage(emoji: "🌿", title: LocalizedStrings.Home.emptyRandom12Title, subtitle: LocalizedStrings.Home.emptyRandom12Subtitle),
   ]
 }
 

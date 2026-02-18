@@ -169,13 +169,13 @@ extension PersonalMode {
     private var emptyFilterDescription: String {
       switch store.selectedFilter {
       case .today:
-        return "오늘 일정이 없어요\n여유로운 하루를 보내세요"
+        return LocalizedStrings.Personal.emptyToday
       case .future:
-        return "예정된 일정이 없어요\n+ 버튼으로 새 일정을 만들어보세요"
+        return LocalizedStrings.Personal.emptyFuture
       case .all:
-        return "아직 일정이 없어요\n+ 버튼으로 새 일정을 만들어보세요"
+        return LocalizedStrings.Personal.emptyAll
       case .past:
-        return "지난 일정이 없어요"
+        return LocalizedStrings.Personal.emptyPast
       }
     }
 
@@ -190,7 +190,7 @@ extension PersonalMode {
             .font(.system(size: 50))
             .foregroundStyle(.secondary)
 
-          Text(error.localizedDescription)
+          Text(LocalizedStrings.Error.unknownError)
             .font(.subheadline)
             .foregroundStyle(.secondary)
             .multilineTextAlignment(.center)

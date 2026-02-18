@@ -330,6 +330,7 @@ let targets: [Target] = {
 
 let project = Project(
   name: AppConfig.name,
+  options: .options(developmentRegion: "ko"),
   settings: .settings(
     configurations: [
       .debug(name: "Debug"),

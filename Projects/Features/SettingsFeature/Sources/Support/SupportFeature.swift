@@ -149,7 +149,7 @@ extension Support {
                   .foregroundStyle(Color.pmindigo.n500)
                   .frame(width: 24, height: 24)
 
-                Text("자주 묻는 질문")
+                Text(LocalizedStrings.SettingsStrings.faq)
                   .font(.body)
                   .foregroundStyle(Color.pmtext.primary)
 
@@ -178,7 +178,7 @@ extension Support {
                   .foregroundStyle(Color.pmindigo.n500)
                   .frame(width: 24, height: 24)
 
-                Text("오류 제보")
+                Text(LocalizedStrings.SettingsStrings.bugReport)
                   .font(.body)
                   .foregroundStyle(Color.pmtext.primary)
 
@@ -201,7 +201,7 @@ extension Support {
         .padding(.bottom, 24)
       }
       .auroraBackground()
-      .navigationTitle("지원")
+      .navigationTitle(LocalizedStrings.SettingsStrings.supportTitle)
       .navigationBarTitleDisplayMode(.inline)
       .onAppear {
         store.send(.view(.onAppear))

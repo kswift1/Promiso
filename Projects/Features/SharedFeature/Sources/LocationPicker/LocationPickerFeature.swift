@@ -198,7 +198,7 @@ public enum LocationPicker {
 
           case .searchResponse(.failure(let error)):
             state.isSearching = false
-            state.searchError = error.localizedDescription
+            state.searchError = LocalizedStrings.Error.unknownError
             return .none
 
           case .historyLoaded(let history):

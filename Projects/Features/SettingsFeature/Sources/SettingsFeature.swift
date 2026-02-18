@@ -109,6 +109,7 @@ extension Settings {
       case dateTimeSettings(DateTimeSettings.Feature)
       case promiseTabModeSettings(PromiseTabModeSettings.Feature)
       case themeSettings(ThemeSettings.Feature)
+      case languageSettings(LanguageSettings.Feature)
       case notificationSettings(NotificationSettings.Feature)
       case groupNotificationDetail(GroupNotificationDetail.Feature)
       case calendarSettings(CalendarSettings.Feature)
@@ -163,6 +164,8 @@ extension Settings {
       case promiseTabModeSettingsTapped
       /// 화면 모드 탭
       case themeSettingsTapped
+      /// 언어 설정 탭
+      case languageSettingsTapped
       /// 알림 설정 탭
       case notificationSettingsTapped
       /// 캘린더 설정 탭
@@ -285,6 +288,10 @@ extension Settings {
             state.path.append(.themeSettings(ThemeSettings.Feature.State()))
             return .run { _ in await hapticFeedback.selection() }
 
+          case .languageSettingsTapped:
+            state.path.append(.languageSettings(LanguageSettings.Feature.State()))
+            return .run { _ in await hapticFeedback.selection() }
+
           case .notificationSettingsTapped:
             state.path.append(.notificationSettings(
               NotificationSettings.Feature.State(currentUserId: state.currentUser.userId)
@@ -330,15 +337,15 @@ extension Settings {
             state.editedNickname = nickname
             // 닉네임 유효성 검사
             if nickname.isEmpty {
-              state.nicknameValidation = .invalid("닉네임을 입력해주세요")
+              state.nicknameValidation = .invalid(LocalizedStrings.SettingsStrings.nicknameRequired)
               return .none
             }
             if nickname.count < 2 {
-              state.nicknameValidation = .invalid("닉네임은 2자 이상이어야 합니다")
+              state.nicknameValidation = .invalid(LocalizedStrings.SettingsStrings.nicknameTooShort)
               return .none
             }
             if nickname.count > 20 {
-              state.nicknameValidation = .invalid("닉네임은 20자 이하여야 합니다")
+              state.nicknameValidation = .invalid(LocalizedStrings.SettingsStrings.nicknameTooLong)
               return .none
             }
             // 현재 닉네임과 동일하면 검사 생략
@@ -353,7 +360,7 @@ extension Settings {
                 let isAvailable = try await userProfileClient.isNicknameAvailable(nickname)
                 await send(.internal(.nicknameCheckResult(isAvailable)))
               } catch {
-                await send(.internal(.nicknameCheckFailed(error.localizedDescription)))
+                await send(.internal(.nicknameCheckFailed((error as? UserProfileError)?.localizedMessage ?? LocalizedStrings.Error.unknownError)))
               }
             }
             .debounce(id: CancelID.nicknameCheck, for: .milliseconds(500), scheduler: DispatchQueue.main)
@@ -388,7 +395,7 @@ extension Settings {
                 let updatedUser = try await userProfileClient.getPrivateProfile(.me)
                 await send(.internal(.profileSaveCompleted(updatedUser)))
               } catch {
-                await send(.internal(.profileSaveFailed(error.localizedDescription)))
+                await send(.internal(.profileSaveFailed((error as? UserProfileError)?.localizedMessage ?? LocalizedStrings.Error.unknownError)))
               }
             }
 
@@ -434,11 +441,11 @@ extension Settings {
 
           case .logoutFailed(let error):
             state.isLoading = false
-            state.errorMessage = error.localizedDescription
+            state.errorMessage = error.localizedMessage
             state.toastMessage = ToastMessage(
               type: .error,
               title: "로그아웃에 실패했어요",
-              subtitle: error.localizedDescription,
+              subtitle: error.localizedMessage,
               position: .top
             )
             return .run { _ in
@@ -575,6 +582,8 @@ extension Settings {
           PromiseTabModeSettings.RootView(store: store)
         case .themeSettings(let store):
           ThemeSettings.RootView(store: store)
+        case .languageSettings(let store):
+          LanguageSettings.RootView(store: store)
         case .notificationSettings(let store):
           NotificationSettings.RootView(store: store)
         case .groupNotificationDetail(let store):
@@ -622,13 +631,13 @@ public enum SettingsError: Error, Equatable, LocalizedError {
   public var errorDescription: String? {
     switch self {
     case .logoutFailed:
-      return "로그아웃에 실패했습니다. 다시 시도해주세요."
+      return LocalizedStrings.SettingsStrings.logoutFailed
     case .userNotFound:
-      return "사용자 정보를 찾을 수 없습니다."
+      return LocalizedStrings.SettingsStrings.userNotFound
     case .imageLoadFailed:
-      return "이미지를 불러오는데 실패했습니다."
+      return LocalizedStrings.SettingsStrings.imageLoadFailed
     case .unknown:
-      return "알 수 없는 오류가 발생했습니다."
+      return LocalizedStrings.SettingsStrings.unknownError
     }
   }
 }
@@ -700,7 +709,7 @@ extension DateTimeSettings {
           case .restartConfirmed:
             state.showRestartAlert = false
             state.$use24HourFormat.withLock { $0 = state.selectedValue }
-            KoreanDateFormatters.use24HourFormat = state.selectedValue
+            LocalizedDateFormatters.use24HourFormat = state.selectedValue
             return .run { [notificationCenter] _ in
               await hapticFeedback.success()
               // 앱 재시작 요청 Notification 발송
@@ -736,12 +745,12 @@ extension DateTimeSettings {
         .padding(.bottom, 24)
       }
       .auroraBackground()
-      .navigationTitle("날짜 시간 표시")
+      .navigationTitle(LocalizedStrings.SettingsStrings.dateTimeDisplay)
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
         ToolbarItem(placement: .navigationBarTrailing) {
           if store.hasChanges {
-            Button("변경") {
+            Button(LocalizedStrings.Common.change) {
               store.send(.view(.saveChanges))
             }
             .font(.system(size: 16, weight: .semibold))
@@ -752,36 +761,36 @@ extension DateTimeSettings {
       .onAppear {
         store.send(.view(.onAppear))
       }
-      .alert("앱 재시작", isPresented: Binding(
+      .alert(LocalizedStrings.SettingsStrings.restartTitle, isPresented: Binding(
         get: { store.showRestartAlert },
         set: { if !$0 { store.send(.view(.restartCancelled)) } }
       )) {
-        Button("취소", role: .cancel) {
+        Button(LocalizedStrings.Common.cancel, role: .cancel) {
           store.send(.view(.restartCancelled))
         }
-        Button("재시작") {
+        Button(LocalizedStrings.SettingsStrings.restart) {
           store.send(.view(.restartConfirmed))
         }
       } message: {
-        Text("시간 표시 형식을 변경하려면 앱을 재시작해야 합니다.\n지금 재시작하시겠습니까?")
+        Text(LocalizedStrings.SettingsStrings.restartMessage)
       }
     }
 
     private var timeFormatSection: some View {
       VStack(alignment: .leading, spacing: 10) {
-        Text("시간 표시 형식")
+        Text(LocalizedStrings.SettingsStrings.timeFormatSection)
           .font(.system(size: 16, weight: .semibold))
           .padding(.horizontal, 4)
 
         VStack(spacing: 0) {
-          formatRow(is24Hour: false, title: "12시간 형식", description: "예: 오후 2:30")
+          formatRow(is24Hour: false, title: LocalizedStrings.SettingsStrings.timeFormat12Hour, description: LocalizedStrings.SettingsStrings.timeFormat12HourExample)
           Divider()
             .padding(.leading, 48)
-          formatRow(is24Hour: true, title: "24시간 형식", description: "예: 14:30")
+          formatRow(is24Hour: true, title: LocalizedStrings.SettingsStrings.timeFormat24Hour, description: LocalizedStrings.SettingsStrings.timeFormat24HourExample)
         }
         .adaptiveGlassCard()
 
-        Text("앱 전체에서 사용되는 시간 표시 형식을 설정합니다.")
+        Text(LocalizedStrings.SettingsStrings.timeFormatHint)
           .font(.system(size: 12))
           .foregroundStyle(Color.pmtext.secondary)
           .padding(.horizontal, 4)
@@ -825,13 +834,13 @@ extension DateTimeSettings {
 
     private var exampleCardSection: some View {
       VStack(alignment: .leading, spacing: 10) {
-        Text("미리보기")
+        Text(LocalizedStrings.SettingsStrings.preview)
           .font(.system(size: 16, weight: .semibold))
           .padding(.horizontal, 4)
 
         ExamplePromiseCard(use24Hour: store.selectedValue)
 
-        Text("실제 약속 카드는 위와 같이 표시됩니다.")
+        Text(LocalizedStrings.SettingsStrings.previewHint)
           .font(.system(size: 12))
           .foregroundStyle(Color.pmtext.secondary)
           .padding(.horizontal, 4)
@@ -846,14 +855,14 @@ extension DateTimeSettings {
 
     private var timeString: String {
       if use24Hour {
-        return "14:30 - 16:30"
+        return LocalizedStrings.SettingsStrings.exampleTime24
       } else {
-        return "오후 2:30 - 오후 4:30"
+        return LocalizedStrings.SettingsStrings.exampleTime12
       }
     }
 
     private var dateString: String {
-      "2월 15일 (토)"
+      LocalizedStrings.SettingsStrings.exampleDate
     }
 
     var body: some View {
@@ -864,7 +873,7 @@ extension DateTimeSettings {
             .font(.system(size: 44))
 
           VStack(alignment: .leading, spacing: 10) {
-            Text("팀 회식")
+            Text(LocalizedStrings.SettingsStrings.exampleTitle)
               .font(.system(size: 19, weight: .bold))
               .foregroundColor(.primary)
 
@@ -882,7 +891,7 @@ extension DateTimeSettings {
               HStack(spacing: 4) {
                 Text("📍")
                   .font(.system(size: 14))
-                Text("강남역 3번 출구")
+                Text(LocalizedStrings.SettingsStrings.exampleLocation)
                   .font(.system(size: 14, weight: .medium))
               }
               .foregroundColor(.primary)
@@ -996,29 +1005,29 @@ extension ThemeSettings {
         .padding(.bottom, 24)
       }
       .auroraBackground()
-      .navigationTitle("화면 모드")
+      .navigationTitle(LocalizedStrings.SettingsStrings.themeModeNavigationTitle)
       .navigationBarTitleDisplayMode(.inline)
       .onAppear {
         store.send(.view(.onAppear))
       }
-      .alert("앱 재시작", isPresented: Binding(
+      .alert(LocalizedStrings.SettingsStrings.restartTitle, isPresented: Binding(
         get: { store.showRestartAlert },
         set: { if !$0 { store.send(.view(.restartCancelled)) } }
       )) {
-        Button("취소", role: .cancel) {
+        Button(LocalizedStrings.Common.cancel, role: .cancel) {
           store.send(.view(.restartCancelled))
         }
-        Button("재시작") {
+        Button(LocalizedStrings.SettingsStrings.restart) {
           store.send(.view(.restartConfirmed))
         }
       } message: {
-        Text("화면 모드를 변경하려면 앱을 재시작해야 합니다.\n지금 재시작하시겠습니까?")
+        Text(LocalizedStrings.SettingsStrings.themeModeRestartMessage)
       }
     }
 
     private var themeModeSection: some View {
       VStack(alignment: .leading, spacing: 10) {
-        Text("화면 모드 설정")
+        Text(LocalizedStrings.SettingsStrings.themeModeSectionTitle)
           .font(.system(size: 16, weight: .semibold))
           .padding(.horizontal, 4)
 
@@ -1033,7 +1042,7 @@ extension ThemeSettings {
         }
         .adaptiveGlassCard()
 
-        Text("앱 전체의 화면 모드를 설정합니다. 시스템 설정을 따르거나 라이트/다크 모드를 직접 선택할 수 있습니다.")
+        Text(LocalizedStrings.SettingsStrings.themeModeSectionHint)
           .font(.system(size: 12))
           .foregroundStyle(Color.pmtext.secondary)
           .padding(.horizontal, 4)
@@ -1085,10 +1094,192 @@ extension ThemeSettings {
 
     private func description(for mode: AppConstants.ThemeMode) -> String {
       switch mode {
-      case .system: return "기기 설정에 따라 자동 변경"
-      case .light: return "항상 밝은 화면으로 표시"
-      case .dark: return "항상 어두운 화면으로 표시"
+      case .system: return LocalizedStrings.SettingsStrings.themeModeSystemDescription
+      case .light: return LocalizedStrings.SettingsStrings.themeModeLightDescription
+      case .dark: return LocalizedStrings.SettingsStrings.themeModeDarkDescription
       }
+    }
+  }
+}
+
+// MARK: - LanguageSettings Namespace
+
+public enum LanguageSettings {}
+
+// MARK: - LanguageSettings Feature
+
+extension LanguageSettings {
+
+  @Reducer
+  public struct Feature {
+    @Dependency(\.hapticFeedback) var hapticFeedback
+    @Dependency(\.notificationCenter) var notificationCenter
+
+    public init() {}
+
+    @ObservableState
+    public struct State: Equatable {
+      @Shared(.appStorage(AppConstants.UserDefaults.preferredLanguage)) public var preferredLanguage: String = ""
+      /// 재시작 확인 Alert 표시 여부
+      var showRestartAlert: Bool = false
+      /// 변경하려는 값 (Alert 확인 시 적용)
+      var pendingValue: AppLanguage?
+
+      public init() {}
+    }
+
+    public enum Action: Equatable, Sendable {
+      case view(View)
+    }
+
+    public enum View: Equatable, Sendable {
+      case onAppear
+      case languageChanged(AppLanguage)
+      case restartConfirmed
+      case restartCancelled
+    }
+
+    public var body: some ReducerOf<Self> {
+      Reduce { state, action in
+        switch action {
+        case .view(let viewAction):
+          switch viewAction {
+          case .onAppear:
+            return .none
+
+          case .languageChanged(let language):
+            // 값이 변경된 경우에만 Alert 표시
+            guard language.rawValue != state.preferredLanguage else { return .none }
+            state.pendingValue = language
+            state.showRestartAlert = true
+            return .run { _ in
+              await hapticFeedback.medium()
+            }
+
+          case .restartConfirmed:
+            state.showRestartAlert = false
+            guard let newLanguage = state.pendingValue else { return .none }
+            state.$preferredLanguage.withLock { $0 = newLanguage.rawValue }
+            state.pendingValue = nil
+            return .run { [notificationCenter] _ in
+              await hapticFeedback.success()
+              notificationCenter.post(name: AppConstants.Notifications.appRestartRequested, object: nil)
+            }
+
+          case .restartCancelled:
+            state.showRestartAlert = false
+            state.pendingValue = nil
+            return .none
+          }
+        }
+      }
+    }
+  }
+
+  // MARK: - Root View
+
+  public struct RootView: View {
+    @Bindable private var store: StoreOf<Feature>
+
+    public init(store: StoreOf<Feature>) {
+      self.store = store
+    }
+
+    private var currentLanguage: AppLanguage {
+      if store.preferredLanguage.isEmpty {
+        // 시스템 기본 - 현재 시스템 언어 감지
+        let systemLang = Locale.current.language.languageCode?.identifier ?? "ko"
+        return AppLanguage(rawValue: systemLang) ?? .korean
+      }
+      return AppLanguage(rawValue: store.preferredLanguage) ?? .korean
+    }
+
+    public var body: some View {
+      ScrollView {
+        VStack(spacing: 16) {
+          languageSection
+
+          systemLanguageHint
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 12)
+        .padding(.bottom, 24)
+      }
+      .auroraBackground()
+      .navigationTitle(LocalizedStrings.SettingsStrings.language)
+      .navigationBarTitleDisplayMode(.inline)
+      .onAppear {
+        store.send(.view(.onAppear))
+      }
+      .alert(LocalizedStrings.SettingsStrings.languageRestartTitle, isPresented: Binding(
+        get: { store.showRestartAlert },
+        set: { if !$0 { store.send(.view(.restartCancelled)) } }
+      )) {
+        Button(LocalizedStrings.Common.cancel, role: .cancel) {
+          store.send(.view(.restartCancelled))
+        }
+        Button(LocalizedStrings.SettingsStrings.languageRestartAction) {
+          store.send(.view(.restartConfirmed))
+        }
+      } message: {
+        Text(LocalizedStrings.SettingsStrings.languageRestartMessage)
+      }
+    }
+
+    private var languageSection: some View {
+      VStack(alignment: .leading, spacing: 10) {
+        Text(LocalizedStrings.SettingsStrings.languageSectionTitle)
+          .font(.system(size: 16, weight: .semibold))
+          .padding(.horizontal, 4)
+
+        VStack(spacing: 0) {
+          ForEach(AppLanguage.allCases, id: \.rawValue) { language in
+            languageRow(language: language)
+            if language != AppLanguage.allCases.last {
+              Divider()
+                .padding(.leading, 48)
+            }
+          }
+        }
+        .adaptiveGlassCard()
+      }
+    }
+
+    private var systemLanguageHint: some View {
+      Text(LocalizedStrings.SettingsStrings.languageHint)
+        .font(.system(size: 12))
+        .foregroundStyle(Color.pmtext.secondary)
+        .padding(.horizontal, 4)
+    }
+
+    private func languageRow(language: AppLanguage) -> some View {
+      Button {
+        store.send(.view(.languageChanged(language)))
+      } label: {
+        HStack(spacing: 12) {
+          Text(language.icon)
+            .font(.system(size: 20))
+            .frame(width: 24)
+
+          VStack(alignment: .leading, spacing: 2) {
+            Text(language.displayName)
+              .font(.body)
+              .foregroundStyle(Color.pmtext.primary)
+          }
+
+          Spacer()
+
+          if currentLanguage == language {
+            Image(systemName: "checkmark")
+              .font(.system(size: 14, weight: .semibold))
+              .foregroundStyle(Color.pmindigo.n500)
+          }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .contentShape(Rectangle())
+      }
+      .buttonStyle(.plain)
     }
   }
 }
@@ -1162,7 +1353,7 @@ extension PromiseTabModeSettings {
         .padding(.bottom, 24)
       }
       .auroraBackground()
-      .navigationTitle("약속 탭 기본 모드")
+      .navigationTitle(LocalizedStrings.SettingsStrings.promiseTabDefaultMode)
       .navigationBarTitleDisplayMode(.inline)
       .onAppear {
         store.send(.view(.onAppear))
@@ -1171,19 +1362,19 @@ extension PromiseTabModeSettings {
 
     private var tabModeSection: some View {
       VStack(alignment: .leading, spacing: 10) {
-        Text("기본 모드")
+        Text(LocalizedStrings.SettingsStrings.promiseTabModeDefault)
           .font(.system(size: 16, weight: .semibold))
           .padding(.horizontal, 4)
 
         VStack(spacing: 0) {
-          tabModeRow(mode: "group", icon: "person.3.fill", title: "그룹", description: "그룹 약속을 기본으로 표시")
+          tabModeRow(mode: "group", icon: "person.3.fill", title: LocalizedStrings.SettingsStrings.promiseTabModeGroup, description: LocalizedStrings.SettingsStrings.promiseTabModeGroupDescription)
           Divider()
             .padding(.leading, 48)
-          tabModeRow(mode: "own", icon: "person.fill", title: "개인", description: "개인 일정을 기본으로 표시")
+          tabModeRow(mode: "own", icon: "person.fill", title: LocalizedStrings.SettingsStrings.promiseTabModeOwn, description: LocalizedStrings.SettingsStrings.promiseTabModeOwnDescription)
         }
         .adaptiveGlassCard()
 
-        Text("약속 탭을 열었을 때 기본으로 표시할 모드를 선택합니다.")
+        Text(LocalizedStrings.SettingsStrings.promiseTabModeHint)
           .font(.system(size: 12))
           .foregroundStyle(Color.pmtext.secondary)
           .padding(.horizontal, 4)
@@ -1227,14 +1418,14 @@ extension PromiseTabModeSettings {
 
     private var tabBarPreviewSection: some View {
       VStack(alignment: .leading, spacing: 10) {
-        Text("미리보기")
+        Text(LocalizedStrings.SettingsStrings.preview)
           .font(.system(size: 16, weight: .semibold))
           .padding(.horizontal, 4)
 
         TabBarPreview(selectedMode: store.defaultPromiseTabMode)
           .adaptiveGlassCard()
 
-        Text("실제 탭바는 위와 같이 표시됩니다.")
+        Text(LocalizedStrings.SettingsStrings.promiseTabModePreviewHint)
           .font(.system(size: 12))
           .foregroundStyle(Color.pmtext.secondary)
           .padding(.horizontal, 4)
@@ -1258,14 +1449,14 @@ extension PromiseTabModeSettings {
     @available(iOS 26.0, *)
     private var ios26TabBarPreview: some View {
       HStack(spacing: 8) {
-        TabItemView(icon: "house.fill", label: "홈", isSelected: false)
+        TabItemView(icon: "house.fill", label: LocalizedStrings.SettingsStrings.tabHome, isSelected: false)
         TabItemView(
           icon: selectedMode == "group" ? "person.3.fill" : "person.fill",
-          label: selectedMode == "group" ? "그룹" : "개인",
+          label: selectedMode == "group" ? LocalizedStrings.SettingsStrings.tabGroup : LocalizedStrings.SettingsStrings.tabOwn,
           isSelected: true
         )
-        TabItemView(icon: "calendar", label: "캘린더", isSelected: false)
-        TabItemView(icon: "gearshape.fill", label: "설정", isSelected: false)
+        TabItemView(icon: "calendar", label: LocalizedStrings.SettingsStrings.tabCalendar, isSelected: false)
+        TabItemView(icon: "gearshape.fill", label: LocalizedStrings.SettingsStrings.tabSettings, isSelected: false)
       }
       .padding(8)
       .background(
@@ -1277,14 +1468,14 @@ extension PromiseTabModeSettings {
 
     private var fallbackTabBarPreview: some View {
       HStack(spacing: 8) {
-        TabItemView(icon: "house.fill", label: "홈", isSelected: false)
+        TabItemView(icon: "house.fill", label: LocalizedStrings.SettingsStrings.tabHome, isSelected: false)
         TabItemView(
           icon: selectedMode == "group" ? "person.3.fill" : "person.fill",
-          label: selectedMode == "group" ? "그룹" : "개인",
+          label: selectedMode == "group" ? LocalizedStrings.SettingsStrings.tabGroup : LocalizedStrings.SettingsStrings.tabOwn,
           isSelected: true
         )
-        TabItemView(icon: "calendar", label: "캘린더", isSelected: false)
-        TabItemView(icon: "gearshape.fill", label: "설정", isSelected: false)
+        TabItemView(icon: "calendar", label: LocalizedStrings.SettingsStrings.tabCalendar, isSelected: false)
+        TabItemView(icon: "gearshape.fill", label: LocalizedStrings.SettingsStrings.tabSettings, isSelected: false)
       }
       .padding(8)
       .background(
@@ -1329,6 +1520,44 @@ extension PromiseTabModeSettings {
           }
         }
       )
+    }
+  }
+}
+
+// MARK: - CalendarSyncError Localization
+
+extension CalendarSyncError {
+  var localizedMessage: String {
+    switch self {
+    case .noWritePermission: return LocalizedStrings.Error.calendarNoWritePermission
+    case .fetchFailed(_): return LocalizedStrings.Error.calendarFetchFailed
+    case .syncFailed(_): return LocalizedStrings.Error.calendarSyncFailed
+    }
+  }
+}
+
+// MARK: - UserProfileError Localization
+
+extension UserProfileError {
+  var localizedMessage: String {
+    switch self {
+    case .invalidData: return LocalizedStrings.Error.userInvalidData
+    case .userNotFound: return LocalizedStrings.Error.userNotFound
+    case .uploadFailed: return LocalizedStrings.Error.userUploadFailed
+    case .networkError: return LocalizedStrings.Error.userNetworkError
+    case .authenticationRequired: return LocalizedStrings.Error.userAuthRequired
+    case .permissionDenied: return LocalizedStrings.Error.userPermissionDenied
+    }
+  }
+}
+
+// MARK: - AppConfigClientError Localization
+
+extension AppConfigClientError {
+  var localizedMessage: String {
+    switch self {
+    case .fetchFailed(_): return LocalizedStrings.Error.appConfigFetchFailed
+    case .invalidVersion(_): return LocalizedStrings.Error.appConfigInvalidVersion
     }
   }
 }

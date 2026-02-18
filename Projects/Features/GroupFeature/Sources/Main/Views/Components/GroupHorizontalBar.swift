@@ -222,13 +222,13 @@ private struct AddGroupMenuButton: View {
       Button {
         onCreateGroup()
       } label: {
-        Label("그룹 생성", systemImage: "person.3.fill")
+        Label(LocalizedStrings.GroupHorizontalBar.createGroup, systemImage: "person.3.fill")
       }
 
       Button {
         onJoinGroup()
       } label: {
-        Label("초대 코드로 참여", systemImage: "link")
+        Label(LocalizedStrings.GroupHorizontalBar.joinWithCode, systemImage: "link")
       }
 
       Divider()
@@ -236,7 +236,7 @@ private struct AddGroupMenuButton: View {
       Button {
         onSortSettings()
       } label: {
-        Label("그룹 정렬", systemImage: "arrow.up.arrow.down")
+        Label(LocalizedStrings.GroupHorizontalBar.sortGroups, systemImage: "arrow.up.arrow.down")
       }
     } label: {
       Circle()

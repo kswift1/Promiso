@@ -24,7 +24,7 @@ struct DiaryStyleSectionHeader: View {
   }
 
   private var formattedDate: String {
-    KoreanDateFormatters.sectionHeader.string(from: date)
+    LocalizedDateFormatters.sectionHeader.string(from: date)
   }
 }
 

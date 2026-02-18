@@ -52,17 +52,17 @@ extension AppEntry.OnboardingStart {
 
             if showTitle {
               VStack(spacing: 10) {
-                Text("준비 완료!")
+                Text(LocalizedStrings.Onboarding.readyTitle)
                   .font(.largeTitle.bold())
                   .foregroundStyle(Color.pmtext.primary)
 
-                Text("이번 주에 만날 친구,\n누가 떠올라요?")
+                Text(LocalizedStrings.Onboarding.readySubtitle)
                   .font(.title3)
                   .foregroundStyle(Color.pmtext.secondary)
                   .multilineTextAlignment(.center)
                   .lineSpacing(4)
 
-                Text("그 약속, 그룹을 생성하고 한 번에 잡아보세요")
+                Text(LocalizedStrings.Onboarding.readyDescription)
                   .font(.subheadline)
                   .foregroundStyle(Color.pmtext.secondary.opacity(0.8))
                   .padding(.top, 4)
@@ -95,7 +95,7 @@ extension AppEntry.OnboardingStart {
               HStack(spacing: 8) {
                 Image(systemName: "link")
                   .font(.system(size: 15, weight: .semibold))
-                Text("초대코드가 있어요")
+                Text(LocalizedStrings.Onboarding.hasInviteCode)
                   .font(.callout.weight(.semibold))
               }
               .foregroundStyle(Color.pmindigo.n500)
@@ -118,7 +118,7 @@ extension AppEntry.OnboardingStart {
             Button {
               store.send(.view(.personalScheduleTapped))
             } label: {
-              Text("괜찮아요")
+              Text(LocalizedStrings.Onboarding.skipForNow)
                 .font(.callout.weight(.medium))
                 .foregroundStyle(Color.pmtext.secondary)
             }
@@ -128,7 +128,7 @@ extension AppEntry.OnboardingStart {
 
           // 안내 문구
           if showFooter {
-            Text("나중에 홈에서도 언제든 할 수 있어요")
+            Text(LocalizedStrings.Onboarding.laterHint)
               .font(.caption)
               .foregroundStyle(Color.pmtext.secondary.opacity(0.6))
               .padding(.top, 2)

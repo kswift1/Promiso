@@ -73,7 +73,7 @@ extension LivePromise {
               Text("•")
                 .font(.system(size: 8))
             }
-            Text("\(store.data.participants.count)명")
+            Text(LocalizedStrings.LivePromise.participantCount(store.data.participants.count))
               .font(.caption2)
           }
           .foregroundStyle(secondaryTextColor)
@@ -137,11 +137,11 @@ extension LivePromise {
     // MARK: - Formatters
 
     private func formatTime(_ date: Date) -> String {
-      KoreanDateFormatters.time12Hour.string(from: date)
+      LocalizedDateFormatters.time12Hour.string(from: date)
     }
 
     private func formatPeriod(_ date: Date) -> String {
-      KoreanDateFormatters.amPm.string(from: date)
+      LocalizedDateFormatters.amPm.string(from: date)
     }
   }
 
@@ -191,7 +191,7 @@ extension LivePromise {
               Text("•")
                 .font(.system(size: 8))
             }
-            Text("\(store.data.participants.count)명")
+            Text(LocalizedStrings.LivePromise.participantCount(store.data.participants.count))
               .font(.caption2)
           }
           .foregroundStyle(colorScheme == .dark ? Color.pmgray.n400 : Color.pmgray.n500)
@@ -243,7 +243,7 @@ extension LivePromise {
               Text("•")
                 .font(.system(size: 8))
             }
-            Text("\(store.data.participants.count)명")
+            Text(LocalizedStrings.LivePromise.participantCount(store.data.participants.count))
               .font(.caption2)
           }
           .foregroundStyle(colorScheme == .dark ? Color.pmgray.n400 : Color.pmgray.n500)
@@ -274,11 +274,11 @@ extension LivePromise {
     // MARK: - Formatters
 
     private func formatTime(_ date: Date) -> String {
-      KoreanDateFormatters.time12Hour.string(from: date)
+      LocalizedDateFormatters.time12Hour.string(from: date)
     }
 
     private func formatPeriod(_ date: Date) -> String {
-      KoreanDateFormatters.amPm.string(from: date)
+      LocalizedDateFormatters.amPm.string(from: date)
     }
   }
 }

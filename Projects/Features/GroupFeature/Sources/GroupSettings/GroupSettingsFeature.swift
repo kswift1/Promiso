@@ -348,7 +348,7 @@ extension GroupSettings {
               } catch {
                 await send(.internal(.groupNotificationsUpdateFailed(
                   previousValue: previousValue,
-                  message: error.localizedDescription
+                  message: (error as? GroupClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError
                 )))
               }
             }
@@ -369,7 +369,7 @@ extension GroupSettings {
                 await send(.internal(.notificationPreferenceUpdateFailed(
                   key: key,
                   previousValue: previousValue,
-                  message: error.localizedDescription
+                  message: (error as? GroupClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError
                 )))
               }
             }
@@ -591,7 +591,7 @@ extension GroupSettings {
 
           case .leaveGroupResponse(.failure(let error)):
             state.isLeavingGroup = false
-            state.leaveError = error.localizedDescription
+            state.leaveError = (error as? AuthClientError)?.localizedMessage ?? (error as? GroupClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError
             return .run { [hapticFeedback] _ in
               await hapticFeedback.error()
             }
@@ -607,7 +607,7 @@ extension GroupSettings {
 
           case .deleteGroupResponse(.failure(let error)):
             state.isDeletingGroup = false
-            state.deleteError = error.localizedDescription
+            state.deleteError = (error as? AuthClientError)?.localizedMessage ?? (error as? GroupClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError
             return .run { [hapticFeedback] _ in
               await hapticFeedback.error()
             }
@@ -625,7 +625,7 @@ extension GroupSettings {
 
           case .editGroupSaveResponse(.failure(let error)):
             state.editGroup?.isSaving = false
-            state.editGroup?.error = error.localizedDescription
+            state.editGroup?.error = (error as? AuthClientError)?.localizedMessage ?? (error as? GroupClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError
             return .run { [hapticFeedback] _ in
               await hapticFeedback.error()
             }
@@ -691,7 +691,7 @@ extension GroupSettings {
 
           case .transferHostResponse(.failure(let error)):
             state.isTransferringHost = false
-            state.transferError = error.localizedDescription
+            state.transferError = (error as? AuthClientError)?.localizedMessage ?? (error as? GroupClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError
             return .run { [hapticFeedback] _ in
               await hapticFeedback.error()
             }
@@ -726,11 +726,12 @@ extension GroupSettings {
           case .expelMemberResponse(.failure(let error)):
             state.isExpellingMember = false
             state.memberToExpel = nil
-            state.expelError = error.localizedDescription
+            let expelErrorMessage = (error as? AuthClientError)?.localizedMessage ?? (error as? GroupClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError
+            state.expelError = expelErrorMessage
             state.toastMessage = ToastMessage(
               type: .error,
               title: "멤버 추방에 실패했어요",
-              subtitle: error.localizedDescription,
+              subtitle: expelErrorMessage,
               position: .top
             )
             return .run { [hapticFeedback] _ in

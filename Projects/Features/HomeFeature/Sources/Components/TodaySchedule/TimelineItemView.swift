@@ -124,7 +124,7 @@ struct TimelineItemView: View {
             .font(.pmCaption)
         }
 
-        Text("\(promise.votes.accepted.count)명 참여 확정")
+        Text(LocalizedStrings.Home.participantsConfirmed(promise.votes.accepted.count))
           .font(.pmCaption)
       }
       .foregroundStyle(.secondary)
@@ -208,13 +208,13 @@ struct TimelineItemView: View {
   }
 
   private func endTimeString(_ endAt: Date) -> String {
-    KoreanDateFormatters.endTimeString(from: endAt)
+    LocalizedDateFormatters.endTimeString(from: endAt)
   }
 
   /// 실시간 공유 시작 시간 문자열
   private func liveStartTimeString(minutes: Int) -> String {
     let liveStartTime = promise.startAt.addingTimeInterval(-Double(minutes * 60))
-    return "\(liveStartTime.formattedTime) 실시간 공유 시작"
+    return "\(liveStartTime.formattedTime) \(LocalizedStrings.Home.startLiveSharing)"
   }
 
   /// 현재 진행 중인 약속인지 (종료시간 없으면 단발성 = 시작 즉시 종료)

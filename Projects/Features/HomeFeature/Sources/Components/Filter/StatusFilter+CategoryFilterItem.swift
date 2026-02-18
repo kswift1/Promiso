@@ -5,7 +5,7 @@ import PromisoShared
 
 extension HomeModels.StatusFilter: CategoryFilterItem {
   public var title: String {
-    rawValue
+    displayTitle
   }
 
   public var icon: String {

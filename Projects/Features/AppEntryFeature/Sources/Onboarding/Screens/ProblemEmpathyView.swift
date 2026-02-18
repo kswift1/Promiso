@@ -13,11 +13,13 @@ struct ProblemEmpathyView: View {
 
   private let targetCount = 47
 
-  private let painPoints: [(emoji: String, text: String)] = [
-    ("😩", "\"토요일 되는 사람?\" 단톡방 폭격"),
-    ("😶", "읽고 답 안 하는 친구"),
-    ("🤔", "\"그때 뭐 하기로 했지?\"")
-  ]
+  private var painPoints: [(emoji: String, text: String)] {
+    [
+      ("😩", LocalizedStrings.Onboarding.introProblemPainPoint1),
+      ("😶", LocalizedStrings.Onboarding.introProblemPainPoint2),
+      ("🤔", LocalizedStrings.Onboarding.introProblemPainPoint3)
+    ]
+  }
 
   var body: some View {
     VStack(spacing: 0) {
@@ -36,7 +38,7 @@ struct ProblemEmpathyView: View {
           )
           .contentTransition(.numericText(value: Double(count)))
 
-        Text("약속 하나 잡는 데 카톡 수 💬")
+        Text(LocalizedStrings.Onboarding.introProblemCountLabel)
           .font(.system(size: 16, weight: .medium))
           .foregroundStyle(Color.pmtext.secondary)
       }
@@ -62,10 +64,10 @@ struct ProblemEmpathyView: View {
       // 하단 공감 카피
       if showBottomCopy {
         VStack(spacing: 6) {
-          Text("약속은 즐거워야 하는데")
+          Text(LocalizedStrings.Onboarding.introProblemBottomLine1)
             .font(.system(size: 18, weight: .semibold))
             .foregroundStyle(Color.pmtext.primary)
-          Text("잡는 과정이 제일 피곤하잖아요")
+          Text(LocalizedStrings.Onboarding.introProblemBottomLine2)
             .font(.system(size: 18, weight: .semibold))
             .foregroundStyle(Color.pmtext.secondary)
         }

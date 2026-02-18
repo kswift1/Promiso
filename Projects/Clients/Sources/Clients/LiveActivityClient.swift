@@ -358,24 +358,11 @@ extension LiveActivityClient: DependencyKey {
 
 // MARK: - Error
 
-public enum LiveActivityClientError: Error, Equatable, LocalizedError {
+public enum LiveActivityClientError: Error, Equatable {
   case notSupported
   case activityNotFound
   case startFailed
   case updateFailed
-
-  public var errorDescription: String? {
-    switch self {
-    case .notSupported:
-      return "이 기기에서는 라이브액티비티를 지원하지 않습니다."
-    case .activityNotFound:
-      return "활성화된 라이브액티비티를 찾을 수 없습니다."
-    case .startFailed:
-      return "라이브액티비티 시작에 실패했습니다."
-    case .updateFailed:
-      return "라이브액티비티 업데이트에 실패했습니다."
-    }
-  }
 }
 
 // MARK: - Dependency Registration

@@ -330,11 +330,14 @@ extension AppEntry {
             .cancellable(id: SubscriptionCancelID.appRestart, cancelInFlight: true)
 
           case .appRestartRequested:
+            // 언어 번들 재설정
+            LocalizedStrings.configure()
+
             // 앱 상태 리셋 - Splash부터 다시 시작
             state.reset()
 
             // 시간 포맷 다시 로드
-            KoreanDateFormatters.use24HourFormat = userDefaultsClient.boolForKey(
+            LocalizedDateFormatters.use24HourFormat = userDefaultsClient.boolForKey(
               AppConstants.UserDefaults.use24HourFormat
             )
 
@@ -538,8 +541,8 @@ extension AppEntry {
     // MARK: - Alert Strings
 
     private enum AlertStrings {
-      static let forceUpdateTitle = "업데이트 필요"
-      static let recommendUpdateTitle = "새 버전 안내"
+      static let forceUpdateTitle = LocalizedStrings.AppEntry.forceUpdateTitle
+      static let recommendUpdateTitle = LocalizedStrings.AppEntry.recommendUpdateTitle
 
       static func forceUpdateMessage(current: String, required: String) -> String {
         "앱을 계속 사용하려면 최신 버전으로 업데이트해주세요.\n\n현재 버전: \(current)\n필요 버전: \(required)"
@@ -579,11 +582,11 @@ extension AppEntry {
         ),
         presenting: store.updateAlert
       ) { alertState in
-        Button("업데이트") {
+        Button(LocalizedStrings.AppEntry.updateAction) {
           store.send(.updateAlert(.updateTapped))
         }
         if case .recommendUpdate = alertState {
-          Button("나중에", role: .cancel) {
+          Button(LocalizedStrings.AppEntry.updateLater, role: .cancel) {
             store.send(.updateAlert(.laterTapped))
           }
         }

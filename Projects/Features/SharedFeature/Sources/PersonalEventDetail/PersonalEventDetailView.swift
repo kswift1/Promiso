@@ -105,11 +105,11 @@ extension PersonalEventDetail {
     }
 
     private var statusText: String {
-      if store.event.isOngoing { return "진행 중" }
-      if store.event.isPast { return "종료" }
+      if store.event.isOngoing { return LocalizedStrings.Shared.statusOngoing }
+      if store.event.isPast { return LocalizedStrings.Shared.statusEnded }
       let calendar = Calendar.current
-      if calendar.isDateInToday(store.event.startAt) { return "오늘" }
-      return "예정"
+      if calendar.isDateInToday(store.event.startAt) { return LocalizedStrings.Shared.statusToday }
+      return LocalizedStrings.Shared.statusUpcoming
     }
 
     private var statusIconName: String {
@@ -132,13 +132,13 @@ extension PersonalEventDetail {
 
     private var scheduleSection: some View {
       VStack(spacing: 0) {
-        PromiseDetailSectionHeader(title: "일정")
+        PromiseDetailSectionHeader(title: LocalizedStrings.Common.schedule)
 
         VStack(spacing: 0) {
           // 날짜
           PromiseDetailEmojiInfoRow(
             emoji: "📅",
-            title: "날짜",
+            title: LocalizedStrings.Common.date,
             value: formatFullDate(store.event.startAt)
           )
 
@@ -147,7 +147,7 @@ extension PersonalEventDetail {
           // 시간
           PromiseDetailEmojiInfoRow(
             emoji: "⏰",
-            title: "시간",
+            title: LocalizedStrings.Common.time,
             value: store.event.timeRangeText
           )
 
@@ -157,7 +157,7 @@ extension PersonalEventDetail {
 
             PromiseDetailEmojiInfoRow(
               emoji: "📍",
-              title: "장소",
+              title: LocalizedStrings.Common.location,
               value: location.name
             )
           }
@@ -168,7 +168,7 @@ extension PersonalEventDetail {
 
             PromiseDetailEmojiInfoRow(
               emoji: "🔔",
-              title: "알림",
+              title: LocalizedStrings.Common.reminder,
               value: reminderText(minutes)
             )
           }
@@ -181,7 +181,7 @@ extension PersonalEventDetail {
 
     private var imageGallerySection: some View {
       VStack(spacing: 0) {
-        PromiseDetailSectionHeader(title: "사진")
+        PromiseDetailSectionHeader(title: LocalizedStrings.Common.photo)
 
         ScrollView(.horizontal, showsIndicators: false) {
           HStack(spacing: 10) {
@@ -224,13 +224,13 @@ extension PersonalEventDetail {
           Button {
             store.send(.view(.editTapped))
           } label: {
-            Label("수정", systemImage: "pencil")
+            Label(LocalizedStrings.Common.modify, systemImage: "pencil")
           }
 
           Button(role: .destructive) {
             store.send(.view(.deleteTapped))
           } label: {
-            Label("삭제", systemImage: "trash")
+            Label(LocalizedStrings.Common.delete, systemImage: "trash")
           }
         } label: {
           Image(systemName: "ellipsis.circle")
@@ -241,7 +241,7 @@ extension PersonalEventDetail {
     // MARK: - Helpers
 
     private func formatFullDate(_ date: Date) -> String {
-      KoreanDateFormatters.sectionHeader.string(from: date)
+      LocalizedDateFormatters.sectionHeader.string(from: date)
     }
 
     private func reminderText(_ minutes: Int) -> String {
@@ -255,9 +255,9 @@ extension PersonalEventDetail {
         return "\(days)일 전"
       }
       if minutes >= 60 {
-        return "\(minutes / 60)시간 전"
+        return LocalizedStrings.Shared.reminderHours(minutes / 60)
       }
-      return "\(minutes)분 전"
+      return LocalizedStrings.Shared.reminderMinutes(minutes)
     }
   }
 }

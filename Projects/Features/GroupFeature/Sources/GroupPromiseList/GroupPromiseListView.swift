@@ -27,7 +27,7 @@ extension GroupPromiseList {
         .padding(.vertical, 16)
       }
       .background(Color(.systemGroupedBackground))
-      .navigationTitle("\(store.group.name) 약속")
+      .navigationTitle(LocalizedStrings.GroupPromiseList.navigationTitle(store.group.name))
       .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -38,7 +38,7 @@ extension GroupPromiseList {
         HStack(spacing: 8) {
           ForEach(StatusFilter.allCases, id: \.self) { filter in
             FilterButton(
-              title: filter.rawValue,
+              title: filter.displayTitle,
               isSelected: store.selectedFilter == filter,
               action: { store.send(.view(.filterChanged(filter))) }
             )
@@ -92,13 +92,13 @@ extension GroupPromiseList {
     private var emptyStateMessage: String {
       switch store.selectedFilter {
       case .needResponse:
-        return "응답이 필요한 약속이 없어요"
+        return LocalizedStrings.GroupPromiseList.emptyNeedResponse
       case .responded:
-        return "응답 완료된 약속이 없어요"
+        return LocalizedStrings.GroupPromiseList.emptyResponded
       case .confirmed:
-        return "확정된 약속이 없어요"
+        return LocalizedStrings.GroupPromiseList.emptyConfirmed
       case .all:
-        return "아직 약속이 없어요"
+        return LocalizedStrings.GroupPromiseList.emptyAll
       }
     }
   }
