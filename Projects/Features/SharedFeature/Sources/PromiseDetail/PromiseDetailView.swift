@@ -171,33 +171,32 @@ extension PromiseDetail {
                let longitude = location.longitude {
               Divider().padding(.leading, 44)
 
-              ZStack(alignment: .bottomTrailing) {
-                PromiseDetailLocationMapPreview(
-                  latitude: latitude,
-                  longitude: longitude,
-                  placeName: location.name,
-                  onTap: {
-                    store.send(.view(.mapTapped))
-                  }
-                )
-
-                Button {
-                  store.send(.view(.directionsTapped))
-                } label: {
-                  HStack(spacing: 4) {
-                    Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
-                      .font(.system(size: 13))
-                    Text(LocalizedStrings.Common.directions)
-                      .font(.system(size: 13, weight: .medium))
-                  }
-                  .foregroundStyle(.white)
-                  .padding(.horizontal, 10)
-                  .padding(.vertical, 6)
-                  .background(Color.pmindigo.n500)
-                  .clipShape(Capsule())
+              PromiseDetailLocationMapPreview(
+                latitude: latitude,
+                longitude: longitude,
+                placeName: location.name,
+                onTap: {
+                  store.send(.view(.mapTapped))
                 }
-                .padding(10)
+              )
+
+              Button {
+                store.send(.view(.directionsTapped))
+              } label: {
+                HStack(spacing: 6) {
+                  Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
+                    .font(.system(size: 14))
+                  Text(LocalizedStrings.Common.directions)
+                    .font(.system(size: 14, weight: .medium))
+                }
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background(Color.pmindigo.n500)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
               }
+              .padding(.horizontal, 16)
+              .padding(.vertical, 8)
             }
           }
 

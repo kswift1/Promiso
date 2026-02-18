@@ -170,6 +170,8 @@ public struct WeatherTooltip: View {
             .foregroundStyle(.tertiary)
         }
       }
+      .lineLimit(1)
+      .minimumScaleFactor(0.8)
     }
     .padding(16)
     .frame(width: 260)

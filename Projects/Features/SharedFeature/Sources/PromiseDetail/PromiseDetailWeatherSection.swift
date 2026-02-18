@@ -88,9 +88,17 @@ struct PromiseDetailWeatherSection: View {
     // 약속 시간 날씨 요약
     if let forecast = displayedForecast {
       VStack(alignment: .leading, spacing: 8) {
-        Text(displayedTimeLabel)
-          .font(.system(size: 13, weight: .medium))
-          .foregroundStyle(.secondary)
+        HStack(spacing: 4) {
+          Text(displayedTimeLabel)
+            .font(.system(size: 13, weight: .medium))
+            .foregroundStyle(.secondary)
+
+          Spacer()
+
+          Text(LocalizedStrings.Weather.shortTermSource)
+            .font(.system(size: 11, weight: .medium))
+            .foregroundStyle(.tertiary)
+        }
 
         HStack(spacing: 12) {
           Image(systemName: forecast.condition.sfSymbolName)
