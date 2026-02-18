@@ -715,7 +715,6 @@ extension Home {
               if !store.pendingPromises.isEmpty {
                 PendingSection(
                   promises: store.pendingPromises,
-                  weatherCache: store.weatherCache,
                   onPromiseTap: { promise in
                     store.send(.view(.pendingPromiseTapped(promise)))
                   }

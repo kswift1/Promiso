@@ -8,26 +8,13 @@ import ResourceKit
 /// 응답 필요 개별 카드 - 탭하면 해당 그룹 약속으로 이동
 struct PendingCard: View {
   let promise: PromiseModel
-  let weather: WeatherInfo?
   let onTap: () -> Void
 
   var body: some View {
     Button(action: onTap) {
       VStack(alignment: .leading, spacing: 10) {
-        // 상단: D-day 배지 + 날씨 칩
-        HStack {
-          dDayBadge
-          Spacer()
-          if let weather = weather,
-             let forecast = weather.forecast(for: promise.startAt) {
-            WeatherBadge(
-              forecast: forecast,
-              rangeForecasts: weather.forecasts(from: promise.startAt, to: promise.endAt),
-              referenceTimeText: promise.startAt.formattedMonthDayTime,
-              forecastSource: weather.forecastSource(for: promise.startAt)
-            )
-          }
-        }
+        // 상단: D-day 배지
+        dDayBadge
 
         // 중간: 이모지 + 제목
         HStack(spacing: 6) {
@@ -206,13 +193,11 @@ struct PendingCard: View {
   HStack {
     PendingCard(
       promise: PromiseModel.mock(id: "1", title: "저녁 모임"),
-      weather: nil,
       onTap: {}
     )
 
     PendingCard(
       promise: PromiseModel.mock(id: "2", title: "주말 약속"),
-      weather: nil,
       onTap: {}
     )
   }

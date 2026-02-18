@@ -7,7 +7,6 @@ import PromisoShared
 /// 응답 필요 섹션 - 투표가 필요한 약속들
 struct PendingSection: View {
   let promises: [PromiseModel]
-  let weatherCache: [String: WeatherInfo]
   let onPromiseTap: (PromiseModel) -> Void
 
   var body: some View {
@@ -21,7 +20,6 @@ struct PendingSection: View {
           ForEach(promises) { promise in
             PendingCard(
               promise: promise,
-              weather: weatherCache[promise.id],
               onTap: { onPromiseTap(promise) }
             )
           }
@@ -67,7 +65,6 @@ struct PendingSection: View {
       PromiseModel.mock(id: "1", title: "저녁 모임"),
       PromiseModel.mock(id: "2", title: "주말 약속")
     ],
-    weatherCache: [:],
     onPromiseTap: { _ in }
   )
   .padding()
