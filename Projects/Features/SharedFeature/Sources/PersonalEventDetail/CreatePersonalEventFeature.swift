@@ -407,11 +407,13 @@ extension CreatePersonalEvent {
             }
 
           case .conflictsLoaded(let conflicts):
+            AppLogger.personal.info("[ConflictCheck] 개인 일정 - 충돌 결과 수신: \(conflicts.count)건")
             state.conflicts = conflicts
             state.isCheckingConflicts = false
             return .none
 
           case .userPlanLoaded(let plan, let userId):
+            AppLogger.personal.info("[ConflictCheck] UserPlan 로드 완료: \(String(describing: plan)), userId: \(userId)")
             state.userPlan = plan
             state.currentUserId = userId
             return checkConflictsEffect(state: &state)
@@ -478,6 +480,8 @@ extension CreatePersonalEvent {
 
       let userId = state.currentUserId
       let startAt = state.event.startAt
+      let planDesc = String(describing: state.userPlan)
+      AppLogger.personal.info("[ConflictCheck] 개인 일정 - 충돌 체크 요청 (plan: \(planDesc), startAt: \(startAt))")
       let endAt = state.event.endAt
 
       return .run { [scheduleConflictClient, clock] send in

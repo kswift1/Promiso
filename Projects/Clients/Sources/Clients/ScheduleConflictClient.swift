@@ -74,6 +74,8 @@ extension ScheduleConflictClient: DependencyKey {
         let rangeStart = startAt.addingTimeInterval(-ConflictCheckConstants.lookbackInterval)
         let rangeEnd = newEffectiveEnd
 
+        AppLogger.general.info("[ConflictCheck] 충돌 체크 시작 - userId: \(userId), startAt: \(startAt), endAt: \(String(describing: endAt)), rangeStart: \(rangeStart), rangeEnd: \(rangeEnd)")
+
         // 병렬 조회: 수락한 그룹 약속 + 개인 일정
         async let acceptedPromises = promiseClient.getAcceptedPromisesByDateRange(
           userId, rangeStart, rangeEnd
@@ -124,6 +126,11 @@ extension ScheduleConflictClient: DependencyKey {
             endAt: event.endAt,
             overlapMinutes: overlapMinutes
           ))
+        }
+
+        AppLogger.general.info("[ConflictCheck] 결과 - 충돌 \(conflicts.count)건 감지")
+        for conflict in conflicts {
+          AppLogger.general.debug("[ConflictCheck]  - \(conflict.source == .promise ? "약속" : "개인") '\(conflict.title)' \(conflict.overlapMinutes)분 겹침 (\(conflict.severity == .confirmed ? "확정" : "미확정"))")
         }
 
         // 겹침 시간 내림차순 정렬

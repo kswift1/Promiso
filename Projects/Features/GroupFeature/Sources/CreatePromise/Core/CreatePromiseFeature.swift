@@ -495,6 +495,7 @@ public enum CreatePromise {
             return .none
 
           case .conflictsLoaded(let conflicts):
+            AppLogger.group.info("[ConflictCheck] 약속 생성 - 충돌 결과 수신: \(conflicts.count)건")
             state.conflicts = conflicts
             state.isCheckingConflicts = false
             return .none
@@ -537,6 +538,8 @@ public enum CreatePromise {
 
       let userId = state.currentUserId
       let startAt = state.promise.startAt
+      let planDesc = String(describing: state.userPlan)
+      AppLogger.group.info("[ConflictCheck] 약속 생성 - 충돌 체크 요청 (plan: \(planDesc), startAt: \(startAt))")
       let endAt = state.promise.endAt
 
       return .run { [scheduleConflictClient, clock] send in
