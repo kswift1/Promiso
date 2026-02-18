@@ -19414,6 +19414,204 @@
           }
         }
       }
+    },
+    "weather.sectionTitle" : {
+      "comment" : "날씨 섹션 제목",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weather"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "날씨"
+          }
+        }
+      }
+    },
+    "weather.feelsLike" : {
+      "comment" : "체감 온도 (예: 체감 25°)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feels %lld°"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "체감 %lld°"
+          }
+        }
+      }
+    },
+    "weather.precipitation" : {
+      "comment" : "강수 확률 (예: 강수 30%)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Precip %lld%%"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "강수 %lld%%"
+          }
+        }
+      }
+    },
+    "weather.hourlyForecast" : {
+      "comment" : "시간대별 예보 제목",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hourly Forecast"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "시간대별 예보"
+          }
+        }
+      }
+    },
+    "weather.dailyForecast" : {
+      "comment" : "일별 예보 제목",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Daily Forecast"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "일별 예보"
+          }
+        }
+      }
+    },
+    "weather.feelsLikeLabel" : {
+      "comment" : "체감 레이블",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feels"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "체감"
+          }
+        }
+      }
+    },
+    "weather.humidity" : {
+      "comment" : "습도 레이블",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Humidity"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "습도"
+          }
+        }
+      }
+    },
+    "weather.wind" : {
+      "comment" : "바람 레이블",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wind"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "바람"
+          }
+        }
+      }
+    },
+    "weather.midTermSource" : {
+      "comment" : "기상청 중기예보 출처 표시",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "KMA Mid-term Forecast"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "기상청 중기예보"
+          }
+        }
+      }
+    },
+    "weather.promiseTime" : {
+      "comment" : "약속 시간 표시 (예: 약속 시간 (오후 3:00))",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Promise time (%@)"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "약속 시간 (%@)"
+          }
+        }
+      }
+    },
+    "weather.hourLabel" : {
+      "comment" : "시간 레이블 (예: 15시)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lldh"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld시"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

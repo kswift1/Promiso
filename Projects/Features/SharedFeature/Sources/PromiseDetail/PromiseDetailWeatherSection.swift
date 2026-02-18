@@ -68,7 +68,7 @@ struct PromiseDetailWeatherSection: View {
 
   var body: some View {
     VStack(spacing: 0) {
-      PromiseDetailSectionHeader(title: "날씨")
+      PromiseDetailSectionHeader(title: LocalizedStrings.Weather.sectionTitle)
 
       VStack(spacing: 12) {
         if isMidTerm {
@@ -106,14 +106,14 @@ struct PromiseDetailWeatherSection: View {
                 .font(.system(size: 20, weight: .bold))
             }
 
-            Text("체감 \(Int(forecast.feelsLikeTemperature.rounded()))°")
+            Text(LocalizedStrings.Weather.feelsLike(Int(forecast.feelsLikeTemperature.rounded())))
               .font(.system(size: 13))
               .foregroundStyle(.secondary)
           }
 
           Spacer()
 
-          Text("강수 \(forecast.precipitationProbability)%")
+          Text(LocalizedStrings.Weather.precipitation(forecast.precipitationProbability))
             .font(.system(size: 14, weight: .medium))
             .foregroundStyle(forecast.precipitationProbability >= 50 ? .blue : .secondary)
         }
@@ -128,7 +128,7 @@ struct PromiseDetailWeatherSection: View {
         .padding(.horizontal, 16)
 
       VStack(alignment: .leading, spacing: 8) {
-        Text("시간대별 예보")
+        Text(LocalizedStrings.Weather.hourlyForecast)
           .font(.system(size: 13, weight: .medium))
           .foregroundStyle(.secondary)
           .padding(.horizontal, 16)
@@ -152,7 +152,7 @@ struct PromiseDetailWeatherSection: View {
 
       HStack(spacing: 0) {
         detailItem(
-          label: "체감",
+          label: LocalizedStrings.Weather.feelsLikeLabel,
           value: "\(Int(forecast.feelsLikeTemperature.rounded()))°"
         )
 
@@ -160,7 +160,7 @@ struct PromiseDetailWeatherSection: View {
           .frame(height: 24)
 
         detailItem(
-          label: "습도",
+          label: LocalizedStrings.Weather.humidity,
           value: "\(forecast.humidity)%"
         )
 
@@ -168,7 +168,7 @@ struct PromiseDetailWeatherSection: View {
           .frame(height: 24)
 
         detailItem(
-          label: "바람",
+          label: LocalizedStrings.Weather.wind,
           value: String(format: "%.1fm/s", forecast.windSpeed)
         )
       }
@@ -194,7 +194,7 @@ struct PromiseDetailWeatherSection: View {
 
           Spacer()
 
-          Text("기상청 중기예보")
+          Text(LocalizedStrings.Weather.midTermSource)
             .font(.system(size: 11, weight: .medium))
             .foregroundStyle(.tertiary)
         }
@@ -232,7 +232,7 @@ struct PromiseDetailWeatherSection: View {
 
           Spacer()
 
-          Text("강수 \(daily.maxPrecipitationProbability)%")
+          Text(LocalizedStrings.Weather.precipitation(daily.maxPrecipitationProbability))
             .font(.system(size: 14, weight: .semibold))
             .foregroundStyle(daily.maxPrecipitationProbability >= 50 ? .blue : .secondary)
         }
@@ -246,7 +246,7 @@ struct PromiseDetailWeatherSection: View {
           .padding(.horizontal, 16)
 
         VStack(alignment: .leading, spacing: 8) {
-          Text("일별 예보")
+          Text(LocalizedStrings.Weather.dailyForecast)
             .font(.system(size: 13, weight: .medium))
             .foregroundStyle(.secondary)
             .padding(.horizontal, 16)
@@ -269,7 +269,7 @@ struct PromiseDetailWeatherSection: View {
     if let selected = selectedDailyForecast {
       return "\(dayString(selected.date)) (\(weekdayString(selected.date)))"
     }
-    return "약속 시간 (\(startAt.formattedMonthDayTime))"
+    return LocalizedStrings.Weather.promiseTime(startAt.formattedMonthDayTime)
   }
 
   // MARK: - Daily Forecast Cell
@@ -401,16 +401,16 @@ struct PromiseDetailWeatherSection: View {
     if let selected = selectedForecast {
       let hour = Calendar.current.component(.hour, from: selected.dateTime)
       if spansMultipleDays {
-        return "\(dayString(selected.dateTime)) \(hour)시"
+        return "\(dayString(selected.dateTime)) \(LocalizedStrings.Weather.hourLabel(hour))"
       }
-      return "\(hour)시"
+      return LocalizedStrings.Weather.hourLabel(hour)
     }
-    return "약속 시간 (\(startAt.formattedTime))"
+    return LocalizedStrings.Weather.promiseTime(startAt.formattedTime)
   }
 
   private func hourString(_ date: Date) -> String {
     let hour = Calendar.current.component(.hour, from: date)
-    return "\(hour)시"
+    return LocalizedStrings.Weather.hourLabel(hour)
   }
 
   private func dayString(_ date: Date) -> String {

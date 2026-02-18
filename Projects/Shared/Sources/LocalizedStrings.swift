@@ -1588,6 +1588,33 @@ public enum LocalizedStrings {
     public static var systemButton: String { String(localized: "promiseShare.systemButton", bundle: bundle) }
   }
 
+  // MARK: - Weather
+  public enum Weather {
+    public static var sectionTitle: String { String(localized: "weather.sectionTitle", bundle: bundle) }
+    public static func feelsLike(_ temp: Int) -> String {
+      String(localized: "weather.feelsLike", bundle: bundle)
+        .replacingOccurrences(of: "%lld", with: "\(temp)")
+    }
+    public static func precipitation(_ percent: Int) -> String {
+      String(localized: "weather.precipitation", bundle: bundle)
+        .replacingOccurrences(of: "%lld", with: "\(percent)")
+    }
+    public static var hourlyForecast: String { String(localized: "weather.hourlyForecast", bundle: bundle) }
+    public static var dailyForecast: String { String(localized: "weather.dailyForecast", bundle: bundle) }
+    public static var feelsLikeLabel: String { String(localized: "weather.feelsLikeLabel", bundle: bundle) }
+    public static var humidity: String { String(localized: "weather.humidity", bundle: bundle) }
+    public static var wind: String { String(localized: "weather.wind", bundle: bundle) }
+    public static var midTermSource: String { String(localized: "weather.midTermSource", bundle: bundle) }
+    public static func promiseTime(_ time: String) -> String {
+      String(localized: "weather.promiseTime", bundle: bundle)
+        .replacingOccurrences(of: "%@", with: time)
+    }
+    public static func hourLabel(_ hour: Int) -> String {
+      String(localized: "weather.hourLabel", bundle: bundle)
+        .replacingOccurrences(of: "%lld", with: "\(hour)")
+    }
+  }
+
   // MARK: - KakaoShare (Toast)
   public enum KakaoShare {
     public static var inviteLinkShared: String { String(localized: "kakaoShare.inviteLinkShared", bundle: bundle) }
