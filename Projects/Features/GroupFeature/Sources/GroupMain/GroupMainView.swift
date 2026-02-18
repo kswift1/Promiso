@@ -99,6 +99,25 @@ extension GroupMain {
       .confirmationDialog(
         store: store.scope(state: \.$groupActionSheet, action: \.groupActionSheet)
       )
+      .sheet(
+        isPresented: Binding(
+          get: { store.showGroupInviteSheet },
+          set: { if !$0 { store.send(.view(.dismissGroupInviteSheet)) } }
+        )
+      ) {
+        if let group = store.currentGroup {
+          InviteSheet(
+            groupName: group.name,
+            inviteCode: group.inviteCode,
+            isKakaoSharing: store.isKakaoSharing,
+            onKakaoShareTapped: {
+              store.send(.view(.kakaoInviteShareTapped))
+            }
+          )
+          .presentationDetents([.height(340)])
+          .presentationDragIndicator(.visible)
+        }
+      }
     }
 
 
@@ -119,6 +138,12 @@ extension GroupMain {
           onGroupTap: { groupId in
             store.send(.view(.groupTapped(groupId)))
           },
+          onGroupInvite: { groupId in
+            store.send(.view(.groupInviteTapped(groupId)))
+          },
+          onGroupSettings: { groupId in
+            store.send(.view(.groupContextSettingsTapped(groupId)))
+          },
           onCreateGroup: {
             store.send(.view(.createGroup))
           },
@@ -127,6 +152,9 @@ extension GroupMain {
           },
           onSortSettings: {
             store.send(.view(.sortSettingsTapped))
+          },
+          onCreatePromise: { groupId in
+            store.send(.view(.contextCreatePromiseTapped(groupId)))
           }
         )
 
@@ -526,6 +554,12 @@ extension GroupMain {
           onGroupTap: { groupId in
             store.send(.view(.groupTapped(groupId)))
           },
+          onGroupInvite: { groupId in
+            store.send(.view(.groupInviteTapped(groupId)))
+          },
+          onGroupSettings: { groupId in
+            store.send(.view(.groupContextSettingsTapped(groupId)))
+          },
           onCreateGroup: {
             store.send(.view(.createGroup))
           },
@@ -534,6 +568,9 @@ extension GroupMain {
           },
           onSortSettings: {
             store.send(.view(.sortSettingsTapped))
+          },
+          onCreatePromise: { groupId in
+            store.send(.view(.contextCreatePromiseTapped(groupId)))
           }
         )
 

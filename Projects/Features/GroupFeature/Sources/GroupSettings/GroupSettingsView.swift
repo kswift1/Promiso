@@ -1577,13 +1577,17 @@ struct InviteSheet: View {
       .background(Color(.systemGray6))
       .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
 
-      // 카카오톡으로 공유 (Primary)
+      // 카카오톡으로 초대장 보내기 (Primary)
       Button {
         onKakaoShareTapped()
       } label: {
         HStack(spacing: 8) {
-          Image(systemName: "paperplane.fill")
-          Text("카카오톡으로 공유")
+          ResourceKitAsset.kakaoLogo.swiftUIImage
+            .renderingMode(.template)
+            .resizable()
+            .scaledToFit()
+            .frame(width: 20, height: 20)
+          Text("카카오톡으로 초대장 보내기")
         }
         .font(.system(size: 16, weight: .semibold))
         .frame(maxWidth: .infinity)

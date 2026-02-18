@@ -189,7 +189,7 @@ extension KakaoShareClient: DependencyKey {
           address: address,
           addressTitle: locationName,
           content: Content(
-            title: "\(emoji) \(title) — 약속을 확인해보세요",
+            title: "\(emoji) \(title) 약속을 확인해보세요 📩",
             imageUrl: imageURL,
             description: descriptionText,
             link: promiseLink
@@ -201,7 +201,7 @@ extension KakaoShareClient: DependencyKey {
       } else {
         let feedTemplate = FeedTemplate(
           content: Content(
-            title: "\(emoji) \(title) — 약속을 확인해보세요",
+            title: "\(emoji) \(title) 약속을 확인해보세요 📩",
             imageUrl: imageURL,
             description: descriptionText,
             link: promiseLink

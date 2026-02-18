@@ -5420,19 +5420,19 @@
       }
     },
     "groupSettingsView.inviteTitle" : {
-      "comment" : "친구 초대 타이틀",
+      "comment" : "멤버 초대 타이틀",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Invite Friends"
+            "value" : "Invite Members"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "친구 초대"
+            "value" : "멤버 초대"
           }
         }
       }
