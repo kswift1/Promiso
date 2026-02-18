@@ -64,18 +64,23 @@ extension GroupSettings {
       var isKakaoSharing: Bool = false
       var showSystemShareSheet: Bool = false
 
+      // Upcoming Promises (카카오 공유용)
+      var upcomingPromises: [PromiseModel] = []
+
       public init(
         group: GroupModel,
         summary: UserGroupInfo?,
         currentUserId: String,
         userPlan: UserPlan,
-        preloadedMembers: [UserPublicModel]? = nil
+        preloadedMembers: [UserPublicModel]? = nil,
+        upcomingPromises: [PromiseModel] = []
       ) {
         self.group = group
         self.summary = summary
         self.currentUserId = currentUserId
         self.userPlan = userPlan
         self.notificationSettings = summary?.notifications ?? GroupNotificationSettings()
+        self.upcomingPromises = upcomingPromises
 
         if let preloadedMembers = preloadedMembers {
           self.membersState = .loaded(preloadedMembers)
@@ -572,20 +577,41 @@ extension GroupSettings {
             let inviteCode = state.group.inviteCode
             let memberCount = state.group.memberIds.count
             let maxMembers = state.group.maxMembers
+            let groupImageUrl = state.group.imageUrl
+            let inviterName = state.members
+              .first { $0.userId == state.currentUserId }?.displayName ?? ""
+            let promiseInfos = state.upcomingPromises
+              .filter { $0.isUpcoming }
+              .sorted { $0.startAt < $1.startAt }
+              .prefix(3)
+              .map { promise in
+                PromiseShareInfo(
+                  title: promise.title,
+                  emoji: promise.displayEmoji,
+                  dateText: promise.dateText,
+                  timeText: promise.timeText,
+                  locationName: promise.location?.name,
+                  imageUrl: promise.imageUrls.first
+                )
+              }
             return .run { [kakaoShareClient, hapticFeedback, analyticsClient] send in
               await hapticFeedback.buttonTap()
               analyticsClient.logEvent(
                 "kakao_group_invite_shared",
                 [
                   AnalyticsClient.ParameterKey.groupName: groupName,
-                  "share_method": "kakao"
+                  "share_method": "kakao",
+                  "promise_count": "\(promiseInfos.count)"
                 ]
               )
               let result = await kakaoShareClient.shareGroupInvite(
                 groupName,
                 inviteCode,
                 memberCount,
-                maxMembers
+                maxMembers,
+                groupImageUrl,
+                inviterName,
+                promiseInfos
               )
               await send(.internal(.kakaoShareResult(result)))
             }

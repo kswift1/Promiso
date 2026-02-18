@@ -1283,12 +1283,14 @@ private func handleGroupSettingsTapped(
 ) -> Effect<GroupMain.Feature.Action> {
   guard let currentGroup = state.currentGroup else { return .none }
   let summary = state.allGroupSummaries?.first { $0.id == currentGroup.id }
+  let upcomingPromises = state.allPromises.filter { $0.isUpcoming }
   state.path.append(.groupSettings(.init(
     group: currentGroup,
     summary: summary,
     currentUserId: state.currentUser.userId,
     userPlan: state.userPlan,
-    preloadedMembers: state.currentGroupMembers
+    preloadedMembers: state.currentGroupMembers,
+    upcomingPromises: upcomingPromises
   )))
   return .none
 }

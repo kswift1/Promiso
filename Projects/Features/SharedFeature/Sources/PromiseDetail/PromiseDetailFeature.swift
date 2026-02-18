@@ -266,6 +266,9 @@ extension PromiseDetail {
             state.showShareOptions = false
             state.isKakaoSharing = true
             let promise = state.promise
+            let totalMembers = state.groupMembers?.count ?? 0
+            let acceptedCount = promise.votes.acceptedCount
+            let pendingCount = max(0, totalMembers - acceptedCount - promise.votes.declinedCount)
             return .run { [kakaoShareClient, analyticsClient] send in
               analyticsClient.logEvent(
                 "kakao_promise_shared",
@@ -282,7 +285,10 @@ extension PromiseDetail {
                 promise.location?.name,
                 promise.location?.address,
                 promise.id,
-                promise.groupId
+                promise.groupId,
+                acceptedCount,
+                pendingCount,
+                promise.imageUrls.first
               )
               await send(.internal(.kakaoShareResult(result)))
             }

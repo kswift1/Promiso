@@ -16,6 +16,33 @@ public enum KakaoShareResult: Equatable, Sendable {
   case fallbackToSystem
 }
 
+// MARK: - Promise Share Info
+
+public struct PromiseShareInfo: Equatable, Sendable {
+  public let title: String
+  public let emoji: String
+  public let dateText: String
+  public let timeText: String
+  public let locationName: String?
+  public let imageUrl: String?
+
+  public init(
+    title: String,
+    emoji: String,
+    dateText: String,
+    timeText: String,
+    locationName: String?,
+    imageUrl: String? = nil
+  ) {
+    self.title = title
+    self.emoji = emoji
+    self.dateText = dateText
+    self.timeText = timeText
+    self.locationName = locationName
+    self.imageUrl = imageUrl
+  }
+}
+
 // MARK: - Client
 
 @DependencyClient
@@ -28,8 +55,11 @@ public struct KakaoShareClient: Sendable {
     _ groupName: String,
     _ inviteCode: String,
     _ memberCount: Int,
-    _ maxMembers: Int
-  ) async -> KakaoShareResult = { _, _, _, _ in .fallbackToSystem }
+    _ maxMembers: Int,
+    _ groupImageUrl: String?,
+    _ inviterName: String,
+    _ upcomingPromises: [PromiseShareInfo]
+  ) async -> KakaoShareResult = { _, _, _, _, _, _, _ in .fallbackToSystem }
 
   /// 약속 카카오톡 공유
   public var sharePromise: @Sendable (
@@ -40,8 +70,11 @@ public struct KakaoShareClient: Sendable {
     _ locationName: String?,
     _ address: String?,
     _ promiseId: String,
-    _ groupId: String
-  ) async -> KakaoShareResult = { _, _, _, _, _, _, _, _ in .fallbackToSystem }
+    _ groupId: String,
+    _ acceptedCount: Int,
+    _ pendingCount: Int,
+    _ imageUrl: String?
+  ) async -> KakaoShareResult = { _, _, _, _, _, _, _, _, _, _, _ in .fallbackToSystem }
 }
 
 // MARK: - Deeplink Config Helper
@@ -54,6 +87,10 @@ private enum KakaoDeeplinkConfig {
   static var webHost: String {
     Bundle.main.object(forInfoDictionaryKey: "DEEPLINK_WEB_HOST") as? String ?? "promiso.app"
   }
+
+  static let fallbackImageURL = URL(
+    string: "https://firebasestorage.googleapis.com/v0/b/promiso-prod.firebasestorage.app/o/app_config%2Finvite_image.png?alt=media&token=428a4a85-4060-48aa-a175-96440bf4d6fa"
+  )
 }
 
 // MARK: - Live Implementation
@@ -63,36 +100,61 @@ extension KakaoShareClient: DependencyKey {
     isKakaoTalkAvailable: {
       ShareApi.isKakaoTalkSharingAvailable()
     },
-    shareGroupInvite: { groupName, inviteCode, memberCount, maxMembers in
-      let scheme = KakaoDeeplinkConfig.scheme
+    shareGroupInvite: { groupName, inviteCode, memberCount, maxMembers, groupImageUrl, inviterName, upcomingPromises in
       let webHost = KakaoDeeplinkConfig.webHost
 
-      let feedTemplate = FeedTemplate(
-        content: Content(
-          title: "🎉 \(groupName) 그룹에 초대합니다!",
-          description: "👥 \(memberCount)/\(maxMembers)명 참여 중\n초대 코드: \(inviteCode)",
-          link: Link(
-            webUrl: URL(string: "https://\(webHost)/invite/\(inviteCode)"),
-            mobileWebUrl: URL(string: "https://\(webHost)/invite/\(inviteCode)"),
-            iosExecutionParams: ["path": "join/\(inviteCode)"]
-          )
-        ),
-        buttons: [
-          Button(
-            title: "그룹 참여하기",
-            link: Link(
-              webUrl: URL(string: "https://\(webHost)/invite/\(inviteCode)"),
-              mobileWebUrl: URL(string: "https://\(webHost)/invite/\(inviteCode)"),
-              iosExecutionParams: ["path": "join/\(inviteCode)"]
-            )
-          )
-        ]
+      let inviteLink = Link(
+        webUrl: URL(string: "https://\(webHost)/invite/\(inviteCode)"),
+        mobileWebUrl: URL(string: "https://\(webHost)/invite/\(inviteCode)"),
+        iosExecutionParams: ["path": "join/\(inviteCode)"]
       )
 
-      return await shareDefaultTemplate(templatable: feedTemplate)
+      let mainImageURL = groupImageUrl.flatMap { URL(string: $0) }
+        ?? KakaoDeeplinkConfig.fallbackImageURL
+
+      let templatable: Templatable
+
+      // 약속 있음: FeedTemplate + ItemContent (첫 번째 약속)
+      if let firstPromise = upcomingPromises.first {
+        let locationText = firstPromise.locationName.map { " · \($0)" } ?? ""
+        let promiseImageURL = firstPromise.imageUrl.flatMap { URL(string: $0) }
+
+        templatable = FeedTemplate(
+          content: Content(
+            title: "\(inviterName)님이 \(groupName) 그룹에 초대했어요 👋",
+            imageUrl: mainImageURL,
+            description: "참여하고 약속을 함께 관리해보세요",
+            link: inviteLink
+          ),
+          itemContent: ItemContent(
+            profileText: "다가오는 약속",
+            titleImageText: "\(firstPromise.emoji) \(firstPromise.title)",
+            titleImageUrl: promiseImageURL,
+            titleImageCategory: "\(firstPromise.dateText) \(firstPromise.timeText)\(locationText)"
+          ),
+          buttons: [
+            Button(title: "참여하기", link: inviteLink)
+          ]
+        )
+
+      // 약속 없음: FeedTemplate (기본 초대)
+      } else {
+        templatable = FeedTemplate(
+          content: Content(
+            title: "\(inviterName)님이 \(groupName) 그룹에 초대했어요 👋",
+            imageUrl: mainImageURL,
+            description: "참여하고 약속을 함께 관리해보세요",
+            link: inviteLink
+          ),
+          buttons: [
+            Button(title: "참여하기", link: inviteLink)
+          ]
+        )
+      }
+
+      return await shareDefaultTemplate(templatable: templatable)
     },
-    sharePromise: { title, emoji, dateText, timeText, locationName, address, promiseId, groupId in
-      let scheme = KakaoDeeplinkConfig.scheme
+    sharePromise: { title, emoji, dateText, timeText, locationName, address, promiseId, groupId, acceptedCount, pendingCount, imageUrl in
       let webHost = KakaoDeeplinkConfig.webHost
 
       let promiseLink = Link(
@@ -101,10 +163,27 @@ extension KakaoShareClient: DependencyKey {
         iosExecutionParams: ["path": "promise/\(promiseId)/\(groupId)"]
       )
 
-      let descriptionText = "📅 \(dateText) \(timeText)" + (locationName.map { "\n📍 \($0)" } ?? "")
+      let imageURL = imageUrl.flatMap { URL(string: $0) }
+
+      var descriptionParts: [String] = []
+      descriptionParts.append("📅 \(dateText) \(timeText)")
+      if let locationName {
+        descriptionParts.append("📍 \(locationName)")
+      }
+      if acceptedCount > 0 || pendingCount > 0 {
+        var statusParts: [String] = []
+        if acceptedCount > 0 {
+          statusParts.append("✅ \(acceptedCount)명 수락")
+        }
+        if pendingCount > 0 {
+          statusParts.append("\(pendingCount)명 대기 중")
+        }
+        descriptionParts.append(statusParts.joined(separator: " · "))
+      }
+      let descriptionText = descriptionParts.joined(separator: "\n")
 
       let buttons = [
-        Button(title: "약속 보기", link: promiseLink)
+        Button(title: "약속 확인하기", link: promiseLink)
       ]
 
       // 위치 정보가 있으면 LocationTemplate, 없으면 FeedTemplate
@@ -114,6 +193,7 @@ extension KakaoShareClient: DependencyKey {
           addressTitle: locationName,
           content: Content(
             title: "\(emoji) \(title)",
+            imageUrl: imageURL,
             description: descriptionText,
             link: promiseLink
           ),
@@ -125,6 +205,7 @@ extension KakaoShareClient: DependencyKey {
         let feedTemplate = FeedTemplate(
           content: Content(
             title: "\(emoji) \(title)",
+            imageUrl: imageURL,
             description: descriptionText,
             link: promiseLink
           ),
@@ -193,8 +274,8 @@ extension KakaoShareClient: TestDependencyKey {
 
   public static let previewValue = Self(
     isKakaoTalkAvailable: { true },
-    shareGroupInvite: { _, _, _, _ in .shared },
-    sharePromise: { _, _, _, _, _, _, _, _ in .shared }
+    shareGroupInvite: { _, _, _, _, _, _, _ in .shared },
+    sharePromise: { _, _, _, _, _, _, _, _, _, _, _ in .shared }
   )
 }
 
