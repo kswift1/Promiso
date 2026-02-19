@@ -224,15 +224,17 @@ private func shareDefaultTemplate(
   // 1. 카카오톡 설치 → 앱으로 공유
   if ShareApi.isKakaoTalkSharingAvailable() {
     let result = await withCheckedContinuation { continuation in
-      ShareApi.shared.shareDefault(
-        templatable: templatable
-      ) { sharingResult, error in
-        if let error {
-          continuation.resume(returning: Result<URL, Error>.failure(error))
-        } else if let url = sharingResult?.url {
-          continuation.resume(returning: .success(url))
-        } else {
-          continuation.resume(returning: .failure(SdkError(reason: .Unknown)))
+      DispatchQueue.main.async {
+        ShareApi.shared.shareDefault(
+          templatable: templatable
+        ) { sharingResult, error in
+          if let error {
+            continuation.resume(returning: Result<URL, Error>.failure(error))
+          } else if let url = sharingResult?.url {
+            continuation.resume(returning: .success(url))
+          } else {
+            continuation.resume(returning: .failure(SdkError(reason: .Unknown)))
+          }
         }
       }
     }
