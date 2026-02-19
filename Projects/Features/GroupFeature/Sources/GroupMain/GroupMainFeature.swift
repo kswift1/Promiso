@@ -809,7 +809,7 @@ extension GroupMain {
             let maxMembers = group.maxMembers
             let groupImageUrl = group.imageUrl
             let inviterName = state.currentGroupMembers?
-              .first { $0.userId == state.currentUser.userId }?.displayName ?? ""
+              .first { $0.userId == state.currentUser.userId }?.displayName ?? state.currentUser.nickname
             let promiseInfos = state.allPromises
               .filter { $0.isUpcoming }
               .sorted { $0.startAt < $1.startAt }
