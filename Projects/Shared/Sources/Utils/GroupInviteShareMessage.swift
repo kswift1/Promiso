@@ -23,8 +23,12 @@ public enum GroupInviteShareMessage {
     ShareLink(item: message(groupName: groupName, inviteCode: inviteCode), label: label)
   }
 
+  // swiftlint:disable:next force_unwrapping
+  private static let fallbackBaseURL = URL(string: "promiso://join")!
+
   private static func deeplinkURL(inviteCode: String) -> URL {
     AppConstants.Deeplink.url(path: "join/\(inviteCode)")
-      ?? URL(string: "promiso://join/\(inviteCode)")!
+      ?? URL(string: "promiso://join/\(inviteCode)")
+      ?? fallbackBaseURL
   }
 }
