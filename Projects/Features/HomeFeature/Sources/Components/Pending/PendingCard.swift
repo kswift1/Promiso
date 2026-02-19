@@ -120,6 +120,17 @@ struct PendingCard: View {
         }
         .clipShape(Capsule())
 
+        // 인원별 마디
+        if total > 1 {
+          ForEach(1..<total, id: \.self) { i in
+            let x = barWidth * CGFloat(i) / CGFloat(total)
+            RoundedRectangle(cornerRadius: 0.5)
+              .fill(Color.gray.opacity(0.35))
+              .frame(width: 1, height: 4)
+              .offset(x: x - 0.5)
+          }
+        }
+
         // 확정 기준선
         if confirm < total {
           RoundedRectangle(cornerRadius: 1)

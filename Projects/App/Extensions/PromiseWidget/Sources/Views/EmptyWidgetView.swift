@@ -35,7 +35,7 @@ struct EmptyWidgetView: View {
       .multilineTextAlignment(.center)
 
       // 약속 추가 버튼
-      if let createURL = URL(string: "promiso://create") {
+      if let createURL = AppConstants.Deeplink.url(path: "create") {
         Link(destination: createURL) {
           HStack(spacing: 4) {
             Image(systemName: "plus")

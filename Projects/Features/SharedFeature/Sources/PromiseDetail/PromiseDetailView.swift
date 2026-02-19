@@ -74,7 +74,24 @@ extension PromiseDetail {
         get: { store.showShareSheet },
         set: { _ in store.send(.view(.shareSheetDismissed)) }
       )) {
-        ShareSheet(items: [store.promise.shareText])
+        PromiseShareSheet(
+          promise: store.promise,
+          isKakaoSharing: store.isKakaoSharing,
+          onKakaoShareTapped: {
+            store.send(.view(.kakaoShareTapped))
+          },
+          onSystemShareTapped: {
+            store.send(.view(.systemShareTapped))
+          }
+        )
+        .presentationDetents([.height(340)])
+        .presentationDragIndicator(.visible)
+      }
+      .sheet(item: Binding(
+        get: { store.systemShareText.map { ShareTextItem(text: $0) } },
+        set: { _ in store.send(.view(.systemShareSheetDismissed)) }
+      )) { item in
+        ShareSheet(items: [item.text])
       }
       .navigationDestination(isPresented: Binding(
         get: { store.showMapDetail },
@@ -146,10 +163,7 @@ extension PromiseDetail {
             Divider().padding(.leading, 44)
 
             PromiseDetailLocationInfoRow(
-              location: location,
-              onDirectionsTapped: {
-                store.send(.view(.directionsTapped))
-              }
+              location: location
             )
 
             // 지도 미리보기 (좌표가 있는 경우)
@@ -165,6 +179,24 @@ extension PromiseDetail {
                   store.send(.view(.mapTapped))
                 }
               )
+
+              Button {
+                store.send(.view(.directionsTapped))
+              } label: {
+                HStack(spacing: 6) {
+                  Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
+                    .font(.system(size: 14))
+                  Text(LocalizedStrings.Common.directions)
+                    .font(.system(size: 14, weight: .medium))
+                }
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background(Color.pmindigo.n500)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+              }
+              .padding(.horizontal, 16)
+              .padding(.vertical, 8)
             }
           }
 
@@ -375,9 +407,11 @@ extension PromiseDetail {
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-      ToolbarItem(placement: .topBarTrailing) {
-        ToolbarButton(imageName: "square.and.arrow.up") {
-          store.send(.view(.shareTapped))
+      if !store.promise.isPast {
+        ToolbarItem(placement: .topBarTrailing) {
+          ToolbarButton(imageName: "square.and.arrow.up") {
+            store.send(.view(.shareTapped))
+          }
         }
       }
 

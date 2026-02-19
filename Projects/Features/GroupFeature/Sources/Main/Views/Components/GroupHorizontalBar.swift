@@ -13,7 +13,6 @@ public struct GroupBarItem: Identifiable, Equatable {
   public let hasNewActivity: Bool
   public let isSelected: Bool
   public let joinedAt: Date?
-
   public init(
     id: String,
     name: String,
@@ -49,24 +48,33 @@ struct GroupHorizontalBar: View {
   let groups: [GroupBarItem]
   let isLoading: Bool
   let onGroupTap: (String) -> Void
+  let onGroupInvite: (String) -> Void
+  let onGroupSettings: (String) -> Void
   let onCreateGroup: () -> Void
   let onJoinGroup: () -> Void
   let onSortSettings: () -> Void
+  let onCreatePromise: (String) -> Void
 
   init(
     groups: [GroupBarItem],
     isLoading: Bool = false,
     onGroupTap: @escaping (String) -> Void,
+    onGroupInvite: @escaping (String) -> Void,
+    onGroupSettings: @escaping (String) -> Void,
     onCreateGroup: @escaping () -> Void,
     onJoinGroup: @escaping () -> Void,
-    onSortSettings: @escaping () -> Void
+    onSortSettings: @escaping () -> Void,
+    onCreatePromise: @escaping (String) -> Void
   ) {
     self.groups = groups
     self.isLoading = isLoading
     self.onGroupTap = onGroupTap
+    self.onGroupInvite = onGroupInvite
+    self.onGroupSettings = onGroupSettings
     self.onCreateGroup = onCreateGroup
     self.onJoinGroup = onJoinGroup
     self.onSortSettings = onSortSettings
+    self.onCreatePromise = onCreatePromise
   }
 
   var body: some View {
@@ -82,7 +90,11 @@ struct GroupHorizontalBar: View {
             ForEach(groups) { group in
               GroupBarItemView(
                 group: group,
-                onTap: { onGroupTap(group.id) }
+                onTap: { onGroupTap(group.id) },
+                onInvite: { onGroupInvite(group.id) },
+                onSettings: { onGroupSettings(group.id) },
+                onSortSettings: { onSortSettings() },
+                onCreatePromise: { onCreatePromise(group.id) }
               )
               .id(group.id)
             }
@@ -144,6 +156,10 @@ private struct GroupBarSkeletonItem: View {
 private struct GroupBarItemView: View {
   let group: GroupBarItem
   let onTap: () -> Void
+  let onInvite: () -> Void
+  let onSettings: () -> Void
+  let onSortSettings: () -> Void
+  let onCreatePromise: () -> Void
 
   var body: some View {
     Button {
@@ -180,6 +196,39 @@ private struct GroupBarItemView: View {
       }
     }
     .buttonStyle(.scale)
+    .contextMenu {
+      Button {
+        onInvite()
+      } label: {
+        Label(LocalizedStrings.GroupHorizontalBar.inviteMembers, systemImage: "person.badge.plus")
+      }
+
+      Button {
+        onSettings()
+      } label: {
+        Label(LocalizedStrings.GroupHorizontalBar.notificationSettings, systemImage: "bell.badge")
+      }
+
+      Button {
+        onSettings()
+      } label: {
+        Label(LocalizedStrings.GroupHorizontalBar.groupSettings, systemImage: "gearshape")
+      }
+
+      Divider()
+
+      Button {
+        onSortSettings()
+      } label: {
+        Label(LocalizedStrings.GroupHorizontalBar.sortGroups, systemImage: "arrow.up.arrow.down")
+      }
+
+      Button {
+        onCreatePromise()
+      } label: {
+        Label(LocalizedStrings.GroupHorizontalBar.createPromise, systemImage: "plus.circle")
+      }
+    }
   }
 
   @ViewBuilder
@@ -267,9 +316,12 @@ private struct AddGroupMenuButton: View {
         GroupBarItem(id: "g5", name: "주말 등산 동호회 멤버들", hasNewActivity: false, isSelected: false)
       ],
       onGroupTap: { id in print("Group tapped: \(id)") },
+      onGroupInvite: { id in print("Group invite: \(id)") },
+      onGroupSettings: { id in print("Group settings: \(id)") },
       onCreateGroup: { print("Create group") },
       onJoinGroup: { print("Join group") },
-      onSortSettings: { print("Sort settings") }
+      onSortSettings: { print("Sort settings") },
+      onCreatePromise: { id in print("Create promise: \(id)") }
     )
     .background(Color(.systemGroupedBackground))
 
@@ -281,9 +333,12 @@ private struct AddGroupMenuButton: View {
   GroupHorizontalBar(
     groups: [],
     onGroupTap: { _ in },
+    onGroupInvite: { _ in },
+    onGroupSettings: { _ in },
     onCreateGroup: { },
     onJoinGroup: { },
-    onSortSettings: { }
+    onSortSettings: { },
+    onCreatePromise: { _ in }
   )
   .background(Color(.systemGroupedBackground))
 }
@@ -293,9 +348,12 @@ private struct AddGroupMenuButton: View {
     groups: [],
     isLoading: true,
     onGroupTap: { _ in },
+    onGroupInvite: { _ in },
+    onGroupSettings: { _ in },
     onCreateGroup: { },
     onJoinGroup: { },
-    onSortSettings: { }
+    onSortSettings: { },
+    onCreatePromise: { _ in }
   )
   .background(Color(.systemGroupedBackground))
 }

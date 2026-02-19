@@ -9,9 +9,12 @@ import SwiftUI
 
 import Clients
 import PromisoShared
+import ResourceKit
 
 struct CreateGroupSuccessView: View {
   let result: GroupCreationResultModel
+  let isKakaoSharing: Bool
+  let onKakaoShareTapped: () -> Void
   let onConfirm: () -> Void
   @State private var isCopied = false
   
@@ -142,7 +145,30 @@ struct CreateGroupSuccessView: View {
 
         // Action Buttons
         VStack(spacing: 12) {
-          
+          // 카카오톡으로 초대장 보내기
+          Button {
+            onKakaoShareTapped()
+          } label: {
+            HStack(spacing: 8) {
+              ResourceKitAsset.kakaoLogo.swiftUIImage
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 20, height: 20)
+              Text(LocalizedStrings.CreateGroup.kakaoInviteButton)
+                .font(.headline)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 56)
+            .background(Color(red: 254/255, green: 229/255, blue: 0/255))
+            .foregroundStyle(.black)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+          }
+          .buttonStyle(.scale)
+          .disabled(isKakaoSharing)
+          .opacity(isKakaoSharing ? 0.6 : 1)
+
+          // 다른 앱으로 공유
           GroupInviteShareMessage.shareLink(groupName: result.name, inviteCode: result.inviteCode) {
             HStack(spacing: 8) {
               Image(systemName: "square.and.arrow.up")
@@ -152,16 +178,11 @@ struct CreateGroupSuccessView: View {
             }
             .frame(maxWidth: .infinity)
             .frame(height: 56)
-            .background(Color.pmindigo.n500)
-            .foregroundStyle(.white)
+            .background(Color.pmindigo.n500.opacity(0.12))
+            .foregroundStyle(Color.pmindigo.n500)
             .clipShape(RoundedRectangle(cornerRadius: 16))
-            .shadow(
-              color: Color.pmindigo.n500.opacity(0.2),
-              radius: 10,
-              x: 0,
-              y: 6
-            )
           }
+          .buttonStyle(.scale)
 
           Button(action: onConfirm) {
             Text(LocalizedStrings.Common.done)

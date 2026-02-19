@@ -28,9 +28,16 @@ extension CreateGroup {
             inputView
 
           case .success(let result):
-            CreateGroupSuccessView(result: result) {
-              store.send(.view(.successAcknowledged))
-            }
+            CreateGroupSuccessView(
+              result: result,
+              isKakaoSharing: store.isKakaoSharing,
+              onKakaoShareTapped: {
+                store.send(.view(.kakaoInviteShareTapped))
+              },
+              onConfirm: {
+                store.send(.view(.successAcknowledged))
+              }
+            )
 
           case .settings(let result):
             CreateGroupSettingsView(

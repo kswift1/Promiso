@@ -345,6 +345,26 @@ struct PromiseDetailFeatureTests {
     }
   }
 
+  @Test("systemShareTapped 시 systemShareText 설정")
+  func systemShareTapped_setsSystemShareText() async {
+    let promise = makePromise()
+
+    var state = PromiseDetail.Feature.State(
+      promise: promise,
+      currentUserId: "test-user"
+    )
+    state.showShareSheet = true
+
+    let store = TestStore(initialState: state) {
+      PromiseDetail.Feature()
+    }
+
+    await store.send(.view(.systemShareTapped)) {
+      $0.showShareSheet = false
+      $0.systemShareText = promise.shareText
+    }
+  }
+
   @Test("shareSheetDismissed 시 showShareSheet 해제")
   func shareSheetDismissed_clearsShowShareSheet() async {
     let promise = makePromise()

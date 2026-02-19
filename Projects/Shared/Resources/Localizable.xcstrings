@@ -1,6 +1,9 @@
 {
   "sourceLanguage" : "ko",
   "strings" : {
+    " · 기준: %@" : {
+
+    },
     "* iPhone 14 Pro 이상부터 가능해요" : {
       "localizations" : {
         "en" : {
@@ -16,6 +19,9 @@
           }
         }
       }
+    },
+    "%@°" : {
+
     },
     "|" : {
       "localizations" : {
@@ -584,6 +590,9 @@
           }
         }
       }
+    },
+    "Bottom" : {
+
     },
     "calendar.dayCount" : {
       "comment" : "N일",
@@ -1953,6 +1962,24 @@
         }
       }
     },
+    "createGroup.kakaoInviteButton" : {
+      "comment" : "카카오톡으로 초대장 보내기 버튼",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Send Invite via KakaoTalk"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "카카오톡으로 초대장 보내기"
+          }
+        }
+      }
+    },
     "createGroup.successSubtitle" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2650,131 +2677,8 @@
         }
       }
     },
-    "error.network" : {
-      "comment" : "네트워크 연결을 확인해주세요",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Please check your network connection"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "네트워크 연결을 확인해주세요"
-          }
-        }
-      }
-    },
-    "error.notFound" : {
-      "comment" : "요청한 정보를 찾을 수 없습니다",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The requested information was not found"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "요청한 정보를 찾을 수 없습니다"
-          }
-        }
-      }
-    },
-    "error.permission" : {
-      "comment" : "권한이 없습니다",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Permission denied"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "권한이 없습니다"
-          }
-        }
-      }
-    },
-    "error.server" : {
-      "comment" : "서버 오류가 발생했습니다",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "A server error occurred"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "서버 오류가 발생했습니다"
-          }
-        }
-      }
-    },
-    "error.timeout" : {
-      "comment" : "요청 시간이 초과되었습니다",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Request timed out"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "요청 시간이 초과되었습니다"
-          }
-        }
-      }
-    },
-    "error.unknown" : {
-      "comment" : "알 수 없는 오류가 발생했습니다",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "An unknown error occurred"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "알 수 없는 오류가 발생했습니다"
-          }
-        }
-      }
-    },
-    "error.validation" : {
-      "comment" : "입력 정보를 확인해주세요",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Please check your input"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "입력 정보를 확인해주세요"
-          }
-        }
-      }
+    "Error Toast" : {
+
     },
     "error.appConfig.fetchFailed" : {
       "comment" : "앱 설정을 불러오는데 실패했습니다",
@@ -3226,6 +3130,42 @@
         }
       }
     },
+    "error.network" : {
+      "comment" : "네트워크 연결을 확인해주세요",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Please check your network connection"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "네트워크 연결을 확인해주세요"
+          }
+        }
+      }
+    },
+    "error.notFound" : {
+      "comment" : "요청한 정보를 찾을 수 없습니다",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The requested information was not found"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "요청한 정보를 찾을 수 없습니다"
+          }
+        }
+      }
+    },
     "error.notification.authRequired" : {
       "comment" : "로그인이 필요합니다",
       "extractionState" : "manual",
@@ -3294,6 +3234,78 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "FCM 토큰을 찾을 수 없습니다."
+          }
+        }
+      }
+    },
+    "error.permission" : {
+      "comment" : "권한이 없습니다",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permission denied"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "권한이 없습니다"
+          }
+        }
+      }
+    },
+    "error.server" : {
+      "comment" : "서버 오류가 발생했습니다",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A server error occurred"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "서버 오류가 발생했습니다"
+          }
+        }
+      }
+    },
+    "error.timeout" : {
+      "comment" : "요청 시간이 초과되었습니다",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Request timed out"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "요청 시간이 초과되었습니다"
+          }
+        }
+      }
+    },
+    "error.unknown" : {
+      "comment" : "알 수 없는 오류가 발생했습니다",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "An unknown error occurred"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "알 수 없는 오류가 발생했습니다"
           }
         }
       }
@@ -3402,6 +3414,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "프로필 업로드에 실패했습니다."
+          }
+        }
+      }
+    },
+    "error.validation" : {
+      "comment" : "입력 정보를 확인해주세요",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Please check your input"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "입력 정보를 확인해주세요"
           }
         }
       }
@@ -4140,6 +4170,78 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "그룹 정렬"
+          }
+        }
+      }
+    },
+    "groupHorizontalBar.inviteMembers" : {
+      "comment" : "멤버 초대 context menu",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invite Members"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "멤버 초대"
+          }
+        }
+      }
+    },
+    "groupHorizontalBar.notificationSettings" : {
+      "comment" : "알림 설정 context menu",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notification Settings"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "알림 설정"
+          }
+        }
+      }
+    },
+    "groupHorizontalBar.groupSettings" : {
+      "comment" : "그룹 설정 context menu",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Group Settings"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "그룹 설정"
+          }
+        }
+      }
+    },
+    "groupHorizontalBar.createPromise" : {
+      "comment" : "약속 만들기 context menu",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Create Promise"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "약속 만들기"
           }
         }
       }
@@ -5408,19 +5510,19 @@
       }
     },
     "groupSettingsView.inviteTitle" : {
-      "comment" : "친구 초대 타이틀",
+      "comment" : "멤버 초대 타이틀",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Invite Friends"
+            "value" : "Invite Members"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "친구 초대"
+            "value" : "멤버 초대"
           }
         }
       }
@@ -6069,6 +6171,60 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "그룹 정렬"
+          }
+        }
+      }
+    },
+    "kakaoShare.inviteLinkShared" : {
+      "comment" : "초대 링크 공유 성공 토스트",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invite link shared"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "초대 링크를 공유했어요"
+          }
+        }
+      }
+    },
+    "kakaoShare.promiseShared" : {
+      "comment" : "약속 공유 성공 토스트",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Promise shared"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "약속을 공유했어요"
+          }
+        }
+      }
+    },
+    "kakaoShare.kakaoInviteButton" : {
+      "comment" : "카카오톡으로 초대장 보내기 버튼 (범용)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Send Invite via KakaoTalk"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "카카오톡으로 초대장 보내기"
           }
         }
       }
@@ -7639,6 +7795,9 @@
         }
       }
     },
+    "Info Toast" : {
+
+    },
     "joinGroup.checking" : {
       "comment" : "확인 중",
       "extractionState" : "manual",
@@ -7871,6 +8030,78 @@
         }
       }
     },
+    "livePromise.error.activityNotFound" : {
+      "comment" : "라이브액티비티 활성 인스턴스 없음",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Could not find an active Live Activity."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "활성화된 라이브액티비티를 찾을 수 없습니다."
+          }
+        }
+      }
+    },
+    "livePromise.error.notSupported" : {
+      "comment" : "라이브액티비티 미지원 기기",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Live Activity is not supported on this device."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 기기에서는 라이브액티비티를 지원하지 않습니다."
+          }
+        }
+      }
+    },
+    "livePromise.error.startFailed" : {
+      "comment" : "라이브액티비티 시작 실패",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to start Live Activity."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "라이브액티비티 시작에 실패했습니다."
+          }
+        }
+      }
+    },
+    "livePromise.error.updateFailed" : {
+      "comment" : "라이브액티비티 업데이트 실패",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to update Live Activity."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "라이브액티비티 업데이트에 실패했습니다."
+          }
+        }
+      }
+    },
     "livePromise.eta.arrived" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -7986,78 +8217,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "실제 도착과 다를 수 있어요."
-          }
-        }
-      }
-    },
-    "livePromise.error.activityNotFound" : {
-      "comment" : "라이브액티비티 활성 인스턴스 없음",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Could not find an active Live Activity."
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "활성화된 라이브액티비티를 찾을 수 없습니다."
-          }
-        }
-      }
-    },
-    "livePromise.error.notSupported" : {
-      "comment" : "라이브액티비티 미지원 기기",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Live Activity is not supported on this device."
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "이 기기에서는 라이브액티비티를 지원하지 않습니다."
-          }
-        }
-      }
-    },
-    "livePromise.error.startFailed" : {
-      "comment" : "라이브액티비티 시작 실패",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Failed to start Live Activity."
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "라이브액티비티 시작에 실패했습니다."
-          }
-        }
-      }
-    },
-    "livePromise.error.updateFailed" : {
-      "comment" : "라이브액티비티 업데이트 실패",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Failed to update Live Activity."
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "라이브액티비티 업데이트에 실패했습니다."
           }
         }
       }
@@ -8892,110 +9051,1262 @@
         }
       }
     },
-    "onboarding.laterHint" : {
-      "comment" : "나중에 안내 문구",
+    "onboarding.intro.hero.bubble1" : {
+      "comment" : "온보딩 인트로 히어로 메시지 1",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "You can always do this later from home"
+            "value" : "Who can do Saturday? 🙋"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "나중에 홈에서도 언제든 할 수 있어요"
+            "value" : "토요일 되는 사람? 🙋"
           }
         }
       }
     },
-    "onboarding.ready.description" : {
-      "comment" : "온보딩 완료 설명",
+    "onboarding.intro.hero.bubble2" : {
+      "comment" : "온보딩 인트로 히어로 메시지 2",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Create a group and schedule it all at once"
+            "value" : "I can only do after 7"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "그 약속, 그룹을 생성하고 한 번에 잡아보세요"
+            "value" : "나 7시 이후만 돼"
           }
         }
       }
     },
-    "onboarding.ready.subtitle" : {
-      "comment" : "온보딩 완료 서브타이틀",
+    "onboarding.intro.hero.bubble3" : {
+      "comment" : "온보딩 인트로 히어로 메시지 3",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Who comes to mind\nfor this week's meetup?"
+            "value" : "Seen... no reply..."
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "이번 주에 만날 친구,\n누가 떠올라요?"
+            "value" : "읽씹..."
           }
         }
       }
     },
-    "onboarding.ready.title" : {
-      "comment" : "온보딩 완료 타이틀",
+    "onboarding.intro.hero.bubble4" : {
+      "comment" : "온보딩 인트로 히어로 메시지 4",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "All Set!"
+            "value" : "So what did we decide?"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "준비 완료!"
+            "value" : "결국 어떻게 된거야?"
           }
         }
       }
     },
-    "onboarding.skipForNow" : {
-      "comment" : "건너뛰기 버튼",
+    "onboarding.intro.hero.confirmed.1.detail" : {
+      "comment" : "온보딩 인트로 히어로 확정 옵션 1 설명",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Not now"
+            "value" : "Movie then dinner!"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "괜찮아요"
+            "value" : "영화 보고 저녁!"
           }
         }
       }
     },
-    "onboarding.start" : {
-      "comment" : "시작하기 버튼",
+    "onboarding.intro.hero.confirmed.1.location" : {
+      "comment" : "온보딩 인트로 히어로 확정 옵션 1 장소",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Get Started"
+            "value" : "CGV Gangnam"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "시작하기"
+            "value" : "CGV 강남"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.confirmed.1.title" : {
+      "comment" : "온보딩 인트로 히어로 확정 옵션 1 제목",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "College Friends Meetup"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "대학 동기 모임"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.confirmed.2.detail" : {
+      "comment" : "온보딩 인트로 히어로 확정 옵션 2 설명",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quarter-end dinner"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "분기 마무리 회식"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.confirmed.2.location" : {
+      "comment" : "온보딩 인트로 히어로 확정 옵션 2 장소",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gangnam BBQ"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "강남 고깃집"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.confirmed.2.title" : {
+      "comment" : "온보딩 인트로 히어로 확정 옵션 2 제목",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Team Dinner"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "회식"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.confirmed.3.detail" : {
+      "comment" : "온보딩 인트로 히어로 확정 옵션 3 설명",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This week's match"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이번 주 매치"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.confirmed.3.location" : {
+      "comment" : "온보딩 인트로 히어로 확정 옵션 3 장소",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jamsil Futsal Field"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "잠실 풋살장"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.confirmed.3.title" : {
+      "comment" : "온보딩 인트로 히어로 확정 옵션 3 제목",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Futsal Match"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "풋살 모임"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.confirmed.4.detail" : {
+      "comment" : "온보딩 인트로 히어로 확정 옵션 4 설명",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stress relief!"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "스트레스 해소!"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.confirmed.4.location" : {
+      "comment" : "온보딩 인트로 히어로 확정 옵션 4 장소",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hongdae Coin Karaoke"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "홍대 코인노래방"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.confirmed.4.title" : {
+      "comment" : "온보딩 인트로 히어로 확정 옵션 4 제목",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Karaoke Hangout"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "노래방 번개"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.confirmed.5.detail" : {
+      "comment" : "온보딩 인트로 히어로 확정 옵션 5 설명",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "We made it through the week"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "한 주 고생했다"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.confirmed.5.location" : {
+      "comment" : "온보딩 인트로 히어로 확정 옵션 5 장소",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Euljiro Pub"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "을지로 호프집"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.confirmed.5.title" : {
+      "comment" : "온보딩 인트로 히어로 확정 옵션 5 제목",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Friday Chicken & Beer"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "금요 치맥"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.confirmedBadge" : {
+      "comment" : "온보딩 인트로 히어로 확정 배지",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Confirmed"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "확정"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.fries.detail" : {
+      "comment" : "온보딩 인트로 히어로 감튀 카드 설명",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bring ketchup"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "케첩 필수 지참"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.fries.location" : {
+      "comment" : "온보딩 인트로 히어로 감튀 카드 장소",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "McDonald's"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "맥도날드"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.fries.title" : {
+      "comment" : "온보딩 인트로 히어로 감튀 카드 제목",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fries Party"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "감튀 파티"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.group.classmates" : {
+      "comment" : "온보딩 인트로 히어로 그룹명 대학 동기",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "College Friends"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "대학 동기"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.group.fries" : {
+      "comment" : "온보딩 인트로 히어로 그룹명 감튀 그룹",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fries Crew"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "감튀 그룹"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.group.participantCount" : {
+      "comment" : "온보딩 인트로 히어로 그룹 참여 인원",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "· %@ people"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "· %@명"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.pendingOneLeft" : {
+      "comment" : "온보딩 인트로 히어로 확정 대기 배지",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 left"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1명 남음"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.personal.1.detail" : {
+      "comment" : "온보딩 인트로 히어로 개인 옵션 1 설명",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Target score 900"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "목표 900점"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.personal.1.location" : {
+      "comment" : "온보딩 인트로 히어로 개인 옵션 1 장소",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SNU Test Center"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "서울대 시험장"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.personal.1.time" : {
+      "comment" : "온보딩 인트로 히어로 개인 옵션 1 시간",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "2 PM"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "오후 2시"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.personal.1.title" : {
+      "comment" : "온보딩 인트로 히어로 개인 옵션 1 제목",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "TOEIC Exam"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "토익 시험"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.personal.2.detail" : {
+      "comment" : "온보딩 인트로 히어로 개인 옵션 2 설명",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cut + color"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "커트 + 염색"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.personal.2.location" : {
+      "comment" : "온보딩 인트로 히어로 개인 옵션 2 장소",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hair Salon"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "헤어살롱"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.personal.2.time" : {
+      "comment" : "온보딩 인트로 히어로 개인 옵션 2 시간",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "3 PM"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "오후 3시"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.personal.2.title" : {
+      "comment" : "온보딩 인트로 히어로 개인 옵션 2 제목",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hair Salon Appointment"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "미용실 예약"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.personal.3.detail" : {
+      "comment" : "온보딩 인트로 히어로 개인 옵션 3 설명",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annual checkup"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "연례 종합검진"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.personal.3.location" : {
+      "comment" : "온보딩 인트로 히어로 개인 옵션 3 장소",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seoul Hospital"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "서울병원"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.personal.3.time" : {
+      "comment" : "온보딩 인트로 히어로 개인 옵션 3 시간",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "9 AM"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "오전 9시"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.personal.3.title" : {
+      "comment" : "온보딩 인트로 히어로 개인 옵션 3 제목",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Health Checkup"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "건강검진"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.personal.4.detail" : {
+      "comment" : "온보딩 인트로 히어로 개인 옵션 4 설명",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Teeth cleaning"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "스케일링"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.personal.4.location" : {
+      "comment" : "온보딩 인트로 히어로 개인 옵션 4 장소",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yonsei Dental Clinic"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "연세치과"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.personal.4.time" : {
+      "comment" : "온보딩 인트로 히어로 개인 옵션 4 시간",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "4 PM"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "오후 4시"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.personal.4.title" : {
+      "comment" : "온보딩 인트로 히어로 개인 옵션 4 제목",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dentist Appointment"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "치과 예약"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.personal.5.detail" : {
+      "comment" : "온보딩 인트로 히어로 개인 옵션 5 설명",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leg day"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "하체 운동 Day"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.personal.5.location" : {
+      "comment" : "온보딩 인트로 히어로 개인 옵션 5 장소",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fitness Center"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "피트니스센터"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.personal.5.time" : {
+      "comment" : "온보딩 인트로 히어로 개인 옵션 5 시간",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "7 PM"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "오후 7시"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.personal.5.title" : {
+      "comment" : "온보딩 인트로 히어로 개인 옵션 5 제목",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PT Session"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PT 수업"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.personalBadge" : {
+      "comment" : "온보딩 인트로 히어로 개인 배지",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Personal"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "개인"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.tagline.line1" : {
+      "comment" : "온보딩 인트로 히어로 태그라인 1",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scattered plans,"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "흩어진 약속,"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.tagline.line2" : {
+      "comment" : "온보딩 인트로 히어로 태그라인 2",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Promiso keeps them organized"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이제 Promiso가 챙길게요"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.upcoming.1.detail" : {
+      "comment" : "온보딩 인트로 히어로 예정 옵션 1 설명",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gift ready"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "선물 준비 완료"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.upcoming.1.location" : {
+      "comment" : "온보딩 인트로 히어로 예정 옵션 1 장소",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Korean Restaurant"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "한정식집"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.upcoming.1.time" : {
+      "comment" : "온보딩 인트로 히어로 예정 옵션 1 시간",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tomorrow 6 PM"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "내일 오후 6시"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.upcoming.1.title" : {
+      "comment" : "온보딩 인트로 히어로 예정 옵션 1 제목",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mom's Birthday Dinner"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "엄마 생신 저녁"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.upcoming.2.detail" : {
+      "comment" : "온보딩 인트로 히어로 예정 옵션 2 설명",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Midterm prep"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "중간고사 대비"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.upcoming.2.location" : {
+      "comment" : "온보딩 인트로 히어로 예정 옵션 2 장소",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Starbucks Yeoksam"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "스타벅스 역삼점"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.upcoming.2.time" : {
+      "comment" : "온보딩 인트로 히어로 예정 옵션 2 시간",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saturday 10 AM"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "토요일 오전 10시"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.upcoming.2.title" : {
+      "comment" : "온보딩 인트로 히어로 예정 옵션 2 제목",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cafe Study"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "카페 스터디"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.upcoming.3.detail" : {
+      "comment" : "온보딩 인트로 히어로 예정 옵션 3 설명",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bukhansan route"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "북한산 코스"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.upcoming.3.location" : {
+      "comment" : "온보딩 인트로 히어로 예정 옵션 3 장소",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bukhansan Entrance"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "북한산 입구"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.upcoming.3.time" : {
+      "comment" : "온보딩 인트로 히어로 예정 옵션 3 시간",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sunday 7 AM"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "일요일 오전 7시"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.upcoming.3.title" : {
+      "comment" : "온보딩 인트로 히어로 예정 옵션 3 제목",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hiking Group"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "등산 모임"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.upcoming.4.detail" : {
+      "comment" : "온보딩 인트로 히어로 예정 옵션 4 설명",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beginner class #3"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "초급반 3회차"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.upcoming.4.location" : {
+      "comment" : "온보딩 인트로 히어로 예정 옵션 4 장소",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Olympic Park"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "올림픽공원"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.upcoming.4.time" : {
+      "comment" : "온보딩 인트로 히어로 예정 옵션 4 시간",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wednesday 7 PM"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "수요일 오후 7시"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.upcoming.4.title" : {
+      "comment" : "온보딩 인트로 히어로 예정 옵션 4 제목",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tennis Lesson"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "테니스 레슨"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.upcoming.5.detail" : {
+      "comment" : "온보딩 인트로 히어로 예정 옵션 5 설명",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Meeting after a long time"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "오랜만에 만남"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.upcoming.5.location" : {
+      "comment" : "온보딩 인트로 히어로 예정 옵션 5 장소",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gwanghwamun Restaurant"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "광화문 맛집"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.upcoming.5.time" : {
+      "comment" : "온보딩 인트로 히어로 예정 옵션 5 시간",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Today 12 PM"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "오늘 낮 12시"
+          }
+        }
+      }
+    },
+    "onboarding.intro.hero.upcoming.5.title" : {
+      "comment" : "온보딩 인트로 히어로 예정 옵션 5 제목",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lunch Meetup"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "점심 약속"
           }
         }
       }
@@ -9900,1262 +11211,110 @@
         }
       }
     },
-    "onboarding.intro.hero.bubble1" : {
-      "comment" : "온보딩 인트로 히어로 메시지 1",
+    "onboarding.laterHint" : {
+      "comment" : "나중에 안내 문구",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Who can do Saturday? 🙋"
+            "value" : "You can always do this later from home"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "토요일 되는 사람? 🙋"
+            "value" : "나중에 홈에서도 언제든 할 수 있어요"
           }
         }
       }
     },
-    "onboarding.intro.hero.bubble2" : {
-      "comment" : "온보딩 인트로 히어로 메시지 2",
+    "onboarding.ready.description" : {
+      "comment" : "온보딩 완료 설명",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "I can only do after 7"
+            "value" : "Create a group and schedule it all at once"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "나 7시 이후만 돼"
+            "value" : "그 약속, 그룹을 생성하고 한 번에 잡아보세요"
           }
         }
       }
     },
-    "onboarding.intro.hero.bubble3" : {
-      "comment" : "온보딩 인트로 히어로 메시지 3",
+    "onboarding.ready.subtitle" : {
+      "comment" : "온보딩 완료 서브타이틀",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Seen... no reply..."
+            "value" : "Who comes to mind\nfor this week's meetup?"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "읽씹..."
+            "value" : "이번 주에 만날 친구,\n누가 떠올라요?"
           }
         }
       }
     },
-    "onboarding.intro.hero.bubble4" : {
-      "comment" : "온보딩 인트로 히어로 메시지 4",
+    "onboarding.ready.title" : {
+      "comment" : "온보딩 완료 타이틀",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "So what did we decide?"
+            "value" : "All Set!"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "결국 어떻게 된거야?"
+            "value" : "준비 완료!"
           }
         }
       }
     },
-    "onboarding.intro.hero.confirmed.1.detail" : {
-      "comment" : "온보딩 인트로 히어로 확정 옵션 1 설명",
+    "onboarding.skipForNow" : {
+      "comment" : "건너뛰기 버튼",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Movie then dinner!"
+            "value" : "Not now"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "영화 보고 저녁!"
+            "value" : "괜찮아요"
           }
         }
       }
     },
-    "onboarding.intro.hero.confirmed.1.location" : {
-      "comment" : "온보딩 인트로 히어로 확정 옵션 1 장소",
+    "onboarding.start" : {
+      "comment" : "시작하기 버튼",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "CGV Gangnam"
+            "value" : "Get Started"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "CGV 강남"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.confirmed.1.title" : {
-      "comment" : "온보딩 인트로 히어로 확정 옵션 1 제목",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "College Friends Meetup"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "대학 동기 모임"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.confirmed.2.detail" : {
-      "comment" : "온보딩 인트로 히어로 확정 옵션 2 설명",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Quarter-end dinner"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "분기 마무리 회식"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.confirmed.2.location" : {
-      "comment" : "온보딩 인트로 히어로 확정 옵션 2 장소",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gangnam BBQ"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "강남 고깃집"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.confirmed.2.title" : {
-      "comment" : "온보딩 인트로 히어로 확정 옵션 2 제목",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Team Dinner"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "회식"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.confirmed.3.detail" : {
-      "comment" : "온보딩 인트로 히어로 확정 옵션 3 설명",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "This week's match"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "이번 주 매치"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.confirmed.3.location" : {
-      "comment" : "온보딩 인트로 히어로 확정 옵션 3 장소",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Jamsil Futsal Field"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "잠실 풋살장"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.confirmed.3.title" : {
-      "comment" : "온보딩 인트로 히어로 확정 옵션 3 제목",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Futsal Match"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "풋살 모임"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.confirmed.4.detail" : {
-      "comment" : "온보딩 인트로 히어로 확정 옵션 4 설명",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Stress relief!"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "스트레스 해소!"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.confirmed.4.location" : {
-      "comment" : "온보딩 인트로 히어로 확정 옵션 4 장소",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hongdae Coin Karaoke"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "홍대 코인노래방"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.confirmed.4.title" : {
-      "comment" : "온보딩 인트로 히어로 확정 옵션 4 제목",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Karaoke Hangout"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "노래방 번개"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.confirmed.5.detail" : {
-      "comment" : "온보딩 인트로 히어로 확정 옵션 5 설명",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "We made it through the week"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "한 주 고생했다"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.confirmed.5.location" : {
-      "comment" : "온보딩 인트로 히어로 확정 옵션 5 장소",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Euljiro Pub"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "을지로 호프집"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.confirmed.5.title" : {
-      "comment" : "온보딩 인트로 히어로 확정 옵션 5 제목",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Friday Chicken & Beer"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "금요 치맥"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.confirmedBadge" : {
-      "comment" : "온보딩 인트로 히어로 확정 배지",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Confirmed"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "확정"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.fries.detail" : {
-      "comment" : "온보딩 인트로 히어로 감튀 카드 설명",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bring ketchup"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "케첩 필수 지참"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.fries.location" : {
-      "comment" : "온보딩 인트로 히어로 감튀 카드 장소",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "McDonald's"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "맥도날드"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.fries.title" : {
-      "comment" : "온보딩 인트로 히어로 감튀 카드 제목",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fries Party"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "감튀 파티"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.group.classmates" : {
-      "comment" : "온보딩 인트로 히어로 그룹명 대학 동기",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "College Friends"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "대학 동기"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.group.fries" : {
-      "comment" : "온보딩 인트로 히어로 그룹명 감튀 그룹",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fries Crew"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "감튀 그룹"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.group.participantCount" : {
-      "comment" : "온보딩 인트로 히어로 그룹 참여 인원",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "· %@ people"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "· %@명"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.pendingOneLeft" : {
-      "comment" : "온보딩 인트로 히어로 확정 대기 배지",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 left"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1명 남음"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.personalBadge" : {
-      "comment" : "온보딩 인트로 히어로 개인 배지",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Personal"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "개인"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.tagline.line1" : {
-      "comment" : "온보딩 인트로 히어로 태그라인 1",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Scattered plans,"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "흩어진 약속,"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.tagline.line2" : {
-      "comment" : "온보딩 인트로 히어로 태그라인 2",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Promiso keeps them organized"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "이제 Promiso가 챙길게요"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.upcoming.1.detail" : {
-      "comment" : "온보딩 인트로 히어로 예정 옵션 1 설명",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gift ready"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "선물 준비 완료"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.upcoming.1.location" : {
-      "comment" : "온보딩 인트로 히어로 예정 옵션 1 장소",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Korean Restaurant"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "한정식집"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.upcoming.1.time" : {
-      "comment" : "온보딩 인트로 히어로 예정 옵션 1 시간",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tomorrow 6 PM"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "내일 오후 6시"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.upcoming.1.title" : {
-      "comment" : "온보딩 인트로 히어로 예정 옵션 1 제목",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mom's Birthday Dinner"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "엄마 생신 저녁"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.upcoming.2.detail" : {
-      "comment" : "온보딩 인트로 히어로 예정 옵션 2 설명",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Midterm prep"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "중간고사 대비"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.upcoming.2.location" : {
-      "comment" : "온보딩 인트로 히어로 예정 옵션 2 장소",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Starbucks Yeoksam"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "스타벅스 역삼점"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.upcoming.2.time" : {
-      "comment" : "온보딩 인트로 히어로 예정 옵션 2 시간",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Saturday 10 AM"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "토요일 오전 10시"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.upcoming.2.title" : {
-      "comment" : "온보딩 인트로 히어로 예정 옵션 2 제목",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cafe Study"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "카페 스터디"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.upcoming.3.detail" : {
-      "comment" : "온보딩 인트로 히어로 예정 옵션 3 설명",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bukhansan route"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "북한산 코스"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.upcoming.3.location" : {
-      "comment" : "온보딩 인트로 히어로 예정 옵션 3 장소",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bukhansan Entrance"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "북한산 입구"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.upcoming.3.time" : {
-      "comment" : "온보딩 인트로 히어로 예정 옵션 3 시간",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sunday 7 AM"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "일요일 오전 7시"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.upcoming.3.title" : {
-      "comment" : "온보딩 인트로 히어로 예정 옵션 3 제목",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hiking Group"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "등산 모임"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.upcoming.4.detail" : {
-      "comment" : "온보딩 인트로 히어로 예정 옵션 4 설명",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Beginner class #3"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "초급반 3회차"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.upcoming.4.location" : {
-      "comment" : "온보딩 인트로 히어로 예정 옵션 4 장소",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Olympic Park"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "올림픽공원"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.upcoming.4.time" : {
-      "comment" : "온보딩 인트로 히어로 예정 옵션 4 시간",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wednesday 7 PM"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "수요일 오후 7시"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.upcoming.4.title" : {
-      "comment" : "온보딩 인트로 히어로 예정 옵션 4 제목",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tennis Lesson"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "테니스 레슨"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.upcoming.5.detail" : {
-      "comment" : "온보딩 인트로 히어로 예정 옵션 5 설명",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Meeting after a long time"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "오랜만에 만남"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.upcoming.5.location" : {
-      "comment" : "온보딩 인트로 히어로 예정 옵션 5 장소",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gwanghwamun Restaurant"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "광화문 맛집"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.upcoming.5.time" : {
-      "comment" : "온보딩 인트로 히어로 예정 옵션 5 시간",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Today 12 PM"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "오늘 낮 12시"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.upcoming.5.title" : {
-      "comment" : "온보딩 인트로 히어로 예정 옵션 5 제목",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Lunch Meetup"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "점심 약속"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.personal.1.detail" : {
-      "comment" : "온보딩 인트로 히어로 개인 옵션 1 설명",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Target score 900"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "목표 900점"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.personal.1.location" : {
-      "comment" : "온보딩 인트로 히어로 개인 옵션 1 장소",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "SNU Test Center"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "서울대 시험장"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.personal.1.time" : {
-      "comment" : "온보딩 인트로 히어로 개인 옵션 1 시간",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "2 PM"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "오후 2시"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.personal.1.title" : {
-      "comment" : "온보딩 인트로 히어로 개인 옵션 1 제목",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "TOEIC Exam"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "토익 시험"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.personal.2.detail" : {
-      "comment" : "온보딩 인트로 히어로 개인 옵션 2 설명",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cut + color"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "커트 + 염색"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.personal.2.location" : {
-      "comment" : "온보딩 인트로 히어로 개인 옵션 2 장소",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hair Salon"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "헤어살롱"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.personal.2.time" : {
-      "comment" : "온보딩 인트로 히어로 개인 옵션 2 시간",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "3 PM"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "오후 3시"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.personal.2.title" : {
-      "comment" : "온보딩 인트로 히어로 개인 옵션 2 제목",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hair Salon Appointment"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "미용실 예약"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.personal.3.detail" : {
-      "comment" : "온보딩 인트로 히어로 개인 옵션 3 설명",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Annual checkup"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "연례 종합검진"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.personal.3.location" : {
-      "comment" : "온보딩 인트로 히어로 개인 옵션 3 장소",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Seoul Hospital"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "서울병원"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.personal.3.time" : {
-      "comment" : "온보딩 인트로 히어로 개인 옵션 3 시간",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "9 AM"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "오전 9시"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.personal.3.title" : {
-      "comment" : "온보딩 인트로 히어로 개인 옵션 3 제목",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Health Checkup"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "건강검진"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.personal.4.detail" : {
-      "comment" : "온보딩 인트로 히어로 개인 옵션 4 설명",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Teeth cleaning"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "스케일링"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.personal.4.location" : {
-      "comment" : "온보딩 인트로 히어로 개인 옵션 4 장소",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Yonsei Dental Clinic"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "연세치과"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.personal.4.time" : {
-      "comment" : "온보딩 인트로 히어로 개인 옵션 4 시간",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "4 PM"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "오후 4시"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.personal.4.title" : {
-      "comment" : "온보딩 인트로 히어로 개인 옵션 4 제목",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dentist Appointment"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "치과 예약"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.personal.5.detail" : {
-      "comment" : "온보딩 인트로 히어로 개인 옵션 5 설명",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Leg day"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "하체 운동 Day"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.personal.5.location" : {
-      "comment" : "온보딩 인트로 히어로 개인 옵션 5 장소",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fitness Center"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "피트니스센터"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.personal.5.time" : {
-      "comment" : "온보딩 인트로 히어로 개인 옵션 5 시간",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "7 PM"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "오후 7시"
-          }
-        }
-      }
-    },
-    "onboarding.intro.hero.personal.5.title" : {
-      "comment" : "온보딩 인트로 히어로 개인 옵션 5 제목",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "PT Session"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "PT 수업"
+            "value" : "시작하기"
           }
         }
       }
@@ -12540,6 +12699,78 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "제목"
+          }
+        }
+      }
+    },
+    "promiseShare.title" : {
+      "comment" : "약속 공유 시트 제목",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Share Promise"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "약속 공유"
+          }
+        }
+      }
+    },
+    "promiseShare.subtitle" : {
+      "comment" : "약속 공유 시트 부제목",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Share this promise with friends"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "친구들에게 약속을 공유해보세요"
+          }
+        }
+      }
+    },
+    "promiseShare.kakaoButton" : {
+      "comment" : "카카오톡으로 공유 버튼",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Share via KakaoTalk"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "카카오톡으로 공유"
+          }
+        }
+      }
+    },
+    "promiseShare.systemButton" : {
+      "comment" : "다른 앱으로 공유 버튼",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Share via Other Apps"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "다른 앱으로 공유"
           }
         }
       }
@@ -16120,19 +16351,19 @@
       }
     },
     "settings.restartMessage" : {
-      "comment" : "시간 표시 형식을 변경하려면 앱을 재시작해야 합니다.\\n지금 재시작하시겠습니까?",
+      "comment" : "시간 표시 형식 변경 시 재시작 안내",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The app needs to restart to change the time format.\\nRestart now?"
+            "value" : "The app needs to restart to change the time format.\nRestart now?"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "시간 표시 형식을 변경하려면 앱을 재시작해야 합니다.\\n지금 재시작하시겠습니까?"
+            "value" : "시간 표시 형식을 변경하려면 앱을 재시작해야 합니다.\n지금 재시작하시겠습니까?"
           }
         }
       }
@@ -16642,19 +16873,19 @@
       }
     },
     "settings.themeModeRestartMessage" : {
-      "comment" : "화면 모드를 변경하려면 앱을 재시작해야 합니다.\\n지금 재시작하시겠습니까?",
+      "comment" : "화면 모드 변경 시 재시작 안내",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The app needs to restart to change the theme mode.\\nRestart now?"
+            "value" : "The app needs to restart to change the theme mode.\nRestart now?"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "화면 모드를 변경하려면 앱을 재시작해야 합니다.\\n지금 재시작하시겠습니까?"
+            "value" : "화면 모드를 변경하려면 앱을 재시작해야 합니다.\n지금 재시작하시겠습니까?"
           }
         }
       }
@@ -16691,6 +16922,91 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "기기 설정에 따라 자동 변경"
+          }
+        }
+      }
+    },
+    "settings.timeFormat.example.date" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feb 15 (Sat)"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "2월 15일 (토)"
+          }
+        }
+      }
+    },
+    "settings.timeFormat.example.location" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gangnam Station Exit 3"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "강남역 3번 출구"
+          }
+        }
+      }
+    },
+    "settings.timeFormat.example.time12" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "2:30 PM - 4:30 PM"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "오후 2:30 - 오후 4:30"
+          }
+        }
+      }
+    },
+    "settings.timeFormat.example.time24" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "14:30 - 16:30"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "14:30 - 16:30"
+          }
+        }
+      }
+    },
+    "settings.timeFormat.example.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Team Dinner"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "팀 회식"
           }
         }
       }
@@ -16799,91 +17115,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "시간 표시 형식"
-          }
-        }
-      }
-    },
-    "settings.timeFormat.example.time12" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "2:30 PM - 4:30 PM"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "오후 2:30 - 오후 4:30"
-          }
-        }
-      }
-    },
-    "settings.timeFormat.example.time24" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "14:30 - 16:30"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "14:30 - 16:30"
-          }
-        }
-      }
-    },
-    "settings.timeFormat.example.date" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Feb 15 (Sat)"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "2월 15일 (토)"
-          }
-        }
-      }
-    },
-    "settings.timeFormat.example.title" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Team Dinner"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "팀 회식"
-          }
-        }
-      }
-    },
-    "settings.timeFormat.example.location" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gangnam Station Exit 3"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "강남역 3번 출구"
           }
         }
       }
@@ -18328,6 +18559,12 @@
         }
       }
     },
+    "Snackbar (Action)" : {
+
+    },
+    "Success Toast" : {
+
+    },
     "tab.calendar" : {
       "comment" : "달력",
       "extractionState" : "manual",
@@ -18416,6 +18653,12 @@
           }
         }
       }
+    },
+    "Top" : {
+
+    },
+    "Warning Toast" : {
+
     },
     "widget.auth.notLoggedInTitle" : {
       "comment" : "위젯 로그인 필요 타이틀",
@@ -19153,6 +19396,9 @@
         }
       }
     },
+    "체감 %@" : {
+
+    },
     "초대 코드로 참여하기" : {
       "localizations" : {
         "en" : {
@@ -19167,6 +19413,764 @@
             "value" : "초대 코드로 참여하기"
           }
         }
+      }
+    },
+    "weather.sectionTitle" : {
+      "comment" : "날씨 섹션 제목",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weather"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "날씨"
+          }
+        }
+      }
+    },
+    "weather.feelsLike" : {
+      "comment" : "체감 온도 (예: 체감 25°)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feels %lld°"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "체감 %lld°"
+          }
+        }
+      }
+    },
+    "weather.precipitation" : {
+      "comment" : "강수 확률 (예: 강수 30%)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Precip %lld%%"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "강수 %lld%%"
+          }
+        }
+      }
+    },
+    "weather.hourlyForecast" : {
+      "comment" : "시간대별 예보 제목",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hourly Forecast"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "시간대별 예보"
+          }
+        }
+      }
+    },
+    "weather.dailyForecast" : {
+      "comment" : "일별 예보 제목",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Daily Forecast"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "일별 예보"
+          }
+        }
+      }
+    },
+    "weather.feelsLikeLabel" : {
+      "comment" : "체감 레이블",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feels"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "체감"
+          }
+        }
+      }
+    },
+    "weather.humidity" : {
+      "comment" : "습도 레이블",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Humidity"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "습도"
+          }
+        }
+      }
+    },
+    "weather.wind" : {
+      "comment" : "바람 레이블",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wind"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "바람"
+          }
+        }
+      }
+    },
+    "weather.midTermSource" : {
+      "comment" : "기상청 중기예보 출처 표시",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "KMA Mid-term Forecast"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "기상청 중기예보"
+          }
+        }
+      }
+    },
+    "weather.promiseTime" : {
+      "comment" : "약속 시간 표시 (예: 약속 시간 (오후 3:00))",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Promise time (%@)"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "약속 시간 (%@)"
+          }
+        }
+      }
+    },
+    "weather.hourLabel" : {
+      "comment" : "시간 레이블 (예: 15시)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lldh"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld시"
+          }
+        }
+      }
+    },
+    "weather.shortTermSource" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "KMA Short-term Forecast"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "기상청 단기예보"
+          }
+        }
+      }
+    },
+    "weather.tooltip.feelsLikeRange" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feels %@"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "체감 %@"
+          }
+        }
+      }
+    },
+    "weather.tooltip.precipitationLabel" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Precip"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "강수"
+          }
+        }
+      }
+    },
+    "weather.tooltip.tempRangeLabel" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Low/High"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "최저/최고"
+          }
+        }
+      }
+    },
+    "weather.tooltip.weatherLabel" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weather"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "날씨"
+          }
+        }
+      }
+    },
+    "weather.tooltip.referenceTime" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : " · As of: %@"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : " · 기준: %@"
+          }
+        }
+      }
+    },
+    "weather.condition.clear" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "맑음"
+          }
+        }
+      }
+    },
+    "weather.condition.cloudy" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostly Cloudy"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "구름많음"
+          }
+        }
+      }
+    },
+    "weather.condition.overcast" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Overcast"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "흐림"
+          }
+        }
+      }
+    },
+    "weather.condition.rain" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rain"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "비"
+          }
+        }
+      }
+    },
+    "weather.condition.rainSnow" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rain/Snow"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "비/눈"
+          }
+        }
+      }
+    },
+    "weather.condition.snow" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Snow"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "눈"
+          }
+        }
+      }
+    },
+    "weather.condition.shower" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Showers"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "소나기"
+          }
+        }
+      }
+    },
+    "weather.condition.unknown" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unknown"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "정보없음"
+          }
+        }
+      }
+    },
+    "weather.advice.bringUmbrella" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Bring an umbrella" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "우산을 챙기세요" } }
+      }
+    },
+    "weather.advice.dressWarm" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Dress warmly" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "겉옷을 준비하세요" } }
+      }
+    },
+    "weather.advice.dressCool" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Dress lightly" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "가볍게 입으세요" } }
+      }
+    },
+    "weather.advice.strongWind" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Strong winds, be careful" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "바람이 강해요, 주의하세요" } }
+      }
+    },
+    "weather.advice.heavySnow" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Heavy snow expected, travel with caution" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "폭설 예보, 이동에 주의하세요" } }
+      }
+    },
+    "weather.advice.clearWeather" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Great weather for outdoor activities" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "야외 활동하기 좋은 날씨예요" } }
+      }
+    },
+    "weather.advice.hotWeather" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Watch out for the heat" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "더위에 주의하세요" } }
+      }
+    },
+    "weather.suggest.extremeCold" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Extreme cold wave" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "한파 수준의 추위예요" } }
+      }
+    },
+    "weather.suggest.belowFreezing" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Below freezing. Bundle up" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "영하로 내려가요. 단단히 입고 나오세요" } }
+      }
+    },
+    "weather.suggest.veryCold" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Very cold. A thick coat is needed" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "꽤 추워요. 두꺼운 겉옷이 필요해요" } }
+      }
+    },
+    "weather.suggest.chilly" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Chilly. Bring a jacket" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "쌀쌀해요. 겉옷을 챙기세요" } }
+      }
+    },
+    "weather.suggest.cool" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Cool. A light jacket will do" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "선선해요. 가벼운 겉옷이면 충분해요" } }
+      }
+    },
+    "weather.suggest.comfortable" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Most comfortable temperature" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "가장 쾌적한 기온이에요" } }
+      }
+    },
+    "weather.suggest.warm" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Warm. Dress lightly" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "따뜻해요. 가볍게 입으세요" } }
+      }
+    },
+    "weather.suggest.hot" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Hot. Dress cool" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "더워요. 시원하게 입으세요" } }
+      }
+    },
+    "weather.suggest.veryHot" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Very hot. Stay hydrated" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "무더워요. 수분 보충에 신경 쓰세요" } }
+      }
+    },
+    "weather.suggest.extremeHeat" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Extreme heat. Reduce outdoor activities" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "폭염 수준이에요. 야외 활동을 줄이세요" } }
+      }
+    },
+    "weather.suggest.feelsLikeDiff" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Feels like {feels}°, {diff}° lower than actual" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "체감온도는 {feels}°로 실제보다 {diff}도 낮아요" } }
+      }
+    },
+    "weather.suggest.heavySnow" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Heavy snow possible. Allow extra travel time" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "눈이 많이 올 수 있어요. 이동 시 여유를 두세요" } }
+      }
+    },
+    "weather.suggest.possibleSnow" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Snow possible. Roads may be slippery" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "눈이 올 수 있어요. 길이 미끄러울 수 있어요" } }
+      }
+    },
+    "weather.suggest.likelyRain" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Rain is likely. Umbrella is a must" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "비 올 가능성이 높아요. 우산 필수예요" } }
+      }
+    },
+    "weather.suggest.possibleRain" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Rain possible. Bring an umbrella" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "비가 올 수 있어요. 우산을 챙기세요" } }
+      }
+    },
+    "weather.suggest.rainSnow" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Mixed rain and snow possible" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "비와 눈이 섞여 내릴 수 있어요" } }
+      }
+    },
+    "weather.suggest.precipChance" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "{prob}% chance of precipitation. Bring an umbrella" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "강수 확률 {prob}%. 우산을 챙기세요" } }
+      }
+    },
+    "weather.suggest.strongWind" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Strong winds expected. Be careful outdoors" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "강풍이 예상돼요. 야외 활동에 주의하세요" } }
+      }
+    },
+    "weather.suggest.moderateWind" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Fairly windy" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "바람이 제법 강해요" } }
+      }
+    },
+    "weather.suggest.highHumidity" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "High humidity makes it feel hotter" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "습도가 높아 체감온도가 더 높아요" } }
+      }
+    },
+    "weather.suggest.dry" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Dry air. Drink water often" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "공기가 건조해요. 물을 자주 마시세요" } }
+      }
+    },
+    "weather.suggest.uvWarning" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "UV may be strong. Apply sunscreen" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "자외선이 강할 수 있어요. 선크림을 챙기세요" } }
+      }
+    },
+    "weather.suggest.niceWeather" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Great weather for outdoor activities" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "야외 활동하기 좋은 날씨예요" } }
+      }
+    },
+    "date.passed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Passed" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "지남" } }
+      }
+    },
+    "date.secondsLater" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "In %lld sec" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "%lld초 후" } }
+      }
+    },
+    "date.minutesLater" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "In %lld min" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "%lld분 후" } }
+      }
+    },
+    "date.hoursMinutesLater" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "In {hours}h {min}m" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "{hours}시간 {min}분 후" } }
+      }
+    },
+    "date.hoursLater" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "In %lld hours" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "%lld시간 후" } }
+      }
+    },
+    "date.daysHoursLater" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "In {days}d {hours}h" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "{days}일 {hours}시간 후" } }
+      }
+    },
+    "date.daysLater" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "In %lld days" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "%lld일 후" } }
+      }
+    },
+    "date.today" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Today" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "오늘" } }
+      }
+    },
+    "date.tomorrow" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Tomorrow" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "내일" } }
+      }
+    },
+    "date.yesterday" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Yesterday" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "어제" } }
+      }
+    },
+    "date.duration.days" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "d" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "일" } }
+      }
+    },
+    "date.duration.hours" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "h" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "시간" } }
+      }
+    },
+    "date.duration.minutes" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "m" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "분" } }
+      }
+    },
+    "themeMode.system" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Follow System" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "시스템 설정 따르기" } }
+      }
+    },
+    "themeMode.light" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Light Mode" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "라이트 모드" } }
+      }
+    },
+    "themeMode.dark" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Dark Mode" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "다크 모드" } }
       }
     }
   },

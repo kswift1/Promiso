@@ -22,7 +22,7 @@ struct NotLoggedInView: View {
       }
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
-    .widgetURL(URL(string: "promiso://home"))
+    .widgetURL(AppConstants.Deeplink.url(path: "home"))
     .accessibilityElement(children: .combine)
     .accessibilityLabel("\(LocalizedStrings.Widget.authNotLoggedInTitle). \(LocalizedStrings.Widget.authOpenAppHint)")
   }

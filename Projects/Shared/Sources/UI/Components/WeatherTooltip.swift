@@ -81,7 +81,7 @@ public struct WeatherTooltip: View {
             .font(.system(size: 22, weight: .bold))
             .foregroundStyle(.primary)
 
-          Text("체감 \(intRangeText(feelsRange, suffix: "°"))")
+          Text(LocalizedStrings.Weather.feelsLikeRange(intRangeText(feelsRange, suffix: "°")))
             .font(.system(size: 12, weight: .medium))
             .foregroundStyle(.secondary)
         }
@@ -93,7 +93,7 @@ public struct WeatherTooltip: View {
       HStack(spacing: 0) {
         weatherStat(
           icon: "drop.fill",
-          label: "강수",
+          label: LocalizedStrings.Weather.precipitationLabel,
           value: intRangeText(precipRange, suffix: "%"),
           color: precipRange.max >= 50 ? .blue : .secondary
         )
@@ -103,14 +103,14 @@ public struct WeatherTooltip: View {
         if forecastSource == .midTerm {
           weatherStat(
             icon: "thermometer.medium",
-            label: "최저/최고",
+            label: LocalizedStrings.Weather.tempRangeLabel,
             value: intRangeText(tempRange, suffix: "°"),
             color: .secondary
           )
         } else {
           weatherStat(
             icon: "wind",
-            label: "바람",
+            label: LocalizedStrings.Weather.wind,
             value: windRangeText,
             color: windRange.max >= 8 ? .purple : .secondary
           )
@@ -121,14 +121,14 @@ public struct WeatherTooltip: View {
         if forecastSource == .midTerm {
           weatherStat(
             icon: "sun.max.fill",
-            label: "날씨",
+            label: LocalizedStrings.Weather.weatherLabel,
             value: forecast.condition.description,
             color: forecast.condition.iconColor
           )
         } else {
           weatherStat(
             icon: "humidity.fill",
-            label: "습도",
+            label: LocalizedStrings.Weather.humidity,
             value: intRangeText(humidityRange, suffix: "%"),
             color: humidityRange.max >= 80 ? .teal : .secondary
           )
@@ -161,15 +161,17 @@ public struct WeatherTooltip: View {
       HStack(spacing: 0) {
         Spacer()
         Text(forecastSource == .midTerm ?
-          "기상청 중기예보" : "기상청 단기예보")
+          LocalizedStrings.Weather.midTermSource : LocalizedStrings.Weather.shortTermSource)
           .font(.system(size: 11))
           .foregroundStyle(.tertiary)
         if let timeText = referenceTimeText {
-          Text(" · 기준: \(timeText)")
+          Text(LocalizedStrings.Weather.referenceTime(timeText))
             .font(.system(size: 11))
             .foregroundStyle(.tertiary)
         }
       }
+      .lineLimit(1)
+      .minimumScaleFactor(0.8)
     }
     .padding(16)
     .frame(width: 260)

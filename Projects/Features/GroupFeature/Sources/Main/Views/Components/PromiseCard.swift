@@ -144,6 +144,17 @@ struct PromiseCard: View {
           }
           .clipShape(Capsule())
 
+          // 인원별 마디 (점선)
+          if total > 1 {
+            ForEach(1..<total, id: \.self) { i in
+              let x = barWidth * CGFloat(i) / CGFloat(total)
+              RoundedRectangle(cornerRadius: 0.5)
+                .fill(Color.gray.opacity(0.35))
+                .frame(width: 1, height: 6)
+                .offset(x: x - 0.5)
+            }
+          }
+
           // 확정 기준선
           if confirm < total {
             RoundedRectangle(cornerRadius: 1)
@@ -226,6 +237,8 @@ struct PromiseCard: View {
         }
       }
       .font(.system(size: 11, weight: .medium))
+      .minimumScaleFactor(0.8)
+      .lineLimit(1)
       .animation(.easeInOut(duration: 0.35), value: accepted)
       .animation(.easeInOut(duration: 0.35), value: declined)
       .animation(.easeInOut(duration: 0.3), value: myVoteStatus)

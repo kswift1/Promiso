@@ -13,6 +13,7 @@ extension GroupSettings {
     @Dependency(\.notificationClient) var notificationClient
     @Dependency(\.hapticFeedback) var hapticFeedback
     @Dependency(\.analyticsClient) var analyticsClient
+    @Dependency(\.kakaoShareClient) var kakaoShareClient
 
     @ObservableState
     public struct State: Equatable {
@@ -59,18 +60,27 @@ extension GroupSettings {
       var isExpellingMember: Bool = false
       var expelError: String?
 
+      // Kakao Share
+      var isKakaoSharing: Bool = false
+      var showSystemShareSheet: Bool = false
+
+      // Upcoming Promises (카카오 공유용)
+      var upcomingPromises: [PromiseModel] = []
+
       public init(
         group: GroupModel,
         summary: UserGroupInfo?,
         currentUserId: String,
         userPlan: UserPlan,
-        preloadedMembers: [UserPublicModel]? = nil
+        preloadedMembers: [UserPublicModel]? = nil,
+        upcomingPromises: [PromiseModel] = []
       ) {
         self.group = group
         self.summary = summary
         self.currentUserId = currentUserId
         self.userPlan = userPlan
         self.notificationSettings = summary?.notifications ?? GroupNotificationSettings()
+        self.upcomingPromises = upcomingPromises
 
         if let preloadedMembers = preloadedMembers {
           self.membersState = .loaded(preloadedMembers)
@@ -110,7 +120,7 @@ extension GroupSettings {
       }
 
       var inviteLink: String {
-        "https://promiso.app/invite/\(group.inviteCode)"
+        "https://\(AppConstants.Deeplink.webHost)/invite/\(group.inviteCode)"
       }
 
       var minMaxMembers: Int {
@@ -192,6 +202,9 @@ extension GroupSettings {
         case dismissExpelAlert
         case dismissExpelError
         case toastDismissed
+        // Kakao Share
+        case kakaoShareTapped
+        case systemShareSheetDismissed
       }
 
       public enum Internal: Sendable {
@@ -211,6 +224,7 @@ extension GroupSettings {
         )
         case transferHostResponse(Result<Void, Error>)
         case expelMemberResponse(Result<Void, Error>)
+        case kakaoShareResult(KakaoShareResult)
       }
 
       public enum Delegate: Sendable {
@@ -556,6 +570,55 @@ extension GroupSettings {
           case .toastDismissed:
             state.toastMessage = nil
             return .none
+
+          case .kakaoShareTapped:
+            state.isKakaoSharing = true
+            let groupName = state.group.name
+            let inviteCode = state.group.inviteCode
+            let memberCount = state.group.memberIds.count
+            let maxMembers = state.group.maxMembers
+            let groupImageUrl = state.group.imageUrl
+            let inviterName = state.members
+              .first { $0.userId == state.currentUserId }?.displayName ?? ""
+            let promiseInfos = state.upcomingPromises
+              .filter { $0.isUpcoming }
+              .sorted { $0.startAt < $1.startAt }
+              .prefix(3)
+              .map { promise in
+                PromiseShareInfo(
+                  title: promise.title,
+                  emoji: promise.displayEmoji,
+                  dateText: promise.dateText,
+                  timeText: promise.timeText,
+                  locationName: promise.location?.name,
+                  imageUrl: promise.imageUrls.first
+                )
+              }
+            return .run { [kakaoShareClient, hapticFeedback, analyticsClient] send in
+              await hapticFeedback.buttonTap()
+              analyticsClient.logEvent(
+                "kakao_group_invite_shared",
+                [
+                  AnalyticsClient.ParameterKey.groupName: groupName,
+                  "share_method": "kakao",
+                  "promise_count": "\(promiseInfos.count)"
+                ]
+              )
+              let result = await kakaoShareClient.shareGroupInvite(
+                groupName,
+                inviteCode,
+                memberCount,
+                maxMembers,
+                groupImageUrl,
+                inviterName,
+                promiseInfos
+              )
+              await send(.internal(.kakaoShareResult(result)))
+            }
+
+          case .systemShareSheetDismissed:
+            state.showSystemShareSheet = false
+            return .none
           }
 
         case .internal(let internalAction):
@@ -736,6 +799,23 @@ extension GroupSettings {
             )
             return .run { [hapticFeedback] _ in
               await hapticFeedback.error()
+            }
+
+          case .kakaoShareResult(let result):
+            state.isKakaoSharing = false
+            switch result {
+            case .shared, .webShared:
+              state.toastMessage = ToastMessage(
+                type: .success,
+                title: LocalizedStrings.KakaoShare.inviteLinkShared,
+                position: .top
+              )
+              return .run { [hapticFeedback] _ in
+                await hapticFeedback.success()
+              }
+            case .fallbackToSystem:
+              state.showSystemShareSheet = true
+              return .none
             }
           }
 

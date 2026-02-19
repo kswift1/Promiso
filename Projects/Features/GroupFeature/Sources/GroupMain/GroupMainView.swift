@@ -66,9 +66,26 @@ extension GroupMain {
       }
       .sheet(item: Binding(
         get: { store.sharePromise },
-        set: { _ in store.send(.view(.sharePromiseDismissed)) }
+        set: { _ in store.send(.view(.dismissPromiseShareSheet)) }
       )) { promise in
-        ShareSheet(items: [promise.shareText])
+        PromiseShareSheet(
+          promise: promise,
+          isKakaoSharing: store.isKakaoPromiseSharing,
+          onKakaoShareTapped: {
+            store.send(.view(.kakaoPromiseShareTapped))
+          },
+          onSystemShareTapped: {
+            store.send(.view(.systemPromiseShareTapped))
+          }
+        )
+        .presentationDetents([.height(340)])
+        .presentationDragIndicator(.visible)
+      }
+      .sheet(item: Binding(
+        get: { store.systemShareText.map { ShareTextItem(text: $0) } },
+        set: { _ in store.send(.view(.systemShareSheetDismissed)) }
+      )) { item in
+        ShareSheet(items: [item.text])
       }
       .sheet(
         store: store.scope(state: \.$editPromise, action: \.editPromise)
@@ -99,6 +116,25 @@ extension GroupMain {
       .confirmationDialog(
         store: store.scope(state: \.$groupActionSheet, action: \.groupActionSheet)
       )
+      .sheet(
+        isPresented: Binding(
+          get: { store.showGroupInviteSheet },
+          set: { if !$0 { store.send(.view(.dismissGroupInviteSheet)) } }
+        )
+      ) {
+        if let group = store.currentGroup {
+          InviteSheet(
+            groupName: group.name,
+            inviteCode: group.inviteCode,
+            isKakaoSharing: store.isKakaoInviteSharing,
+            onKakaoShareTapped: {
+              store.send(.view(.kakaoInviteShareTapped))
+            }
+          )
+          .presentationDetents([.height(340)])
+          .presentationDragIndicator(.visible)
+        }
+      }
     }
 
 
@@ -119,6 +155,12 @@ extension GroupMain {
           onGroupTap: { groupId in
             store.send(.view(.groupTapped(groupId)))
           },
+          onGroupInvite: { groupId in
+            store.send(.view(.groupInviteTapped(groupId)))
+          },
+          onGroupSettings: { groupId in
+            store.send(.view(.groupContextSettingsTapped(groupId)))
+          },
           onCreateGroup: {
             store.send(.view(.createGroup))
           },
@@ -127,6 +169,9 @@ extension GroupMain {
           },
           onSortSettings: {
             store.send(.view(.sortSettingsTapped))
+          },
+          onCreatePromise: { groupId in
+            store.send(.view(.contextCreatePromiseTapped(groupId)))
           }
         )
 
@@ -381,7 +426,7 @@ extension GroupMain {
         onChangeResponse: { status in
           store.send(.view(.responseChanged(promiseId, status)))
         },
-        onShare: {
+        onShare: promise.isPast ? nil : {
           store.send(.view(.promiseShared(promiseId)))
         },
         onDirections: {
@@ -526,6 +571,12 @@ extension GroupMain {
           onGroupTap: { groupId in
             store.send(.view(.groupTapped(groupId)))
           },
+          onGroupInvite: { groupId in
+            store.send(.view(.groupInviteTapped(groupId)))
+          },
+          onGroupSettings: { groupId in
+            store.send(.view(.groupContextSettingsTapped(groupId)))
+          },
           onCreateGroup: {
             store.send(.view(.createGroup))
           },
@@ -534,6 +585,9 @@ extension GroupMain {
           },
           onSortSettings: {
             store.send(.view(.sortSettingsTapped))
+          },
+          onCreatePromise: { groupId in
+            store.send(.view(.contextCreatePromiseTapped(groupId)))
           }
         )
 
@@ -655,19 +709,6 @@ private struct OnboardingCardView: View {
   }
 }
 
-// MARK: - ShareSheet
-
-import UIKit
-
-struct ShareSheet: UIViewControllerRepresentable {
-  let items: [Any]
-
-  func makeUIViewController(context: Context) -> UIActivityViewController {
-    UIActivityViewController(activityItems: items, applicationActivities: nil)
-  }
-
-  func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
-}
 
 // MARK: - SortSettingsSheetContent
 

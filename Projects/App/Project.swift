@@ -29,7 +29,9 @@ let promisoDev = Target.target(
       "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME": .string("AccentColor"),
       "PRODUCT_BUNDLE_IDENTIFIER": .string("com.promiso.dev"),
       "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
-      "CODE_SIGN_STYLE": .string("Automatic")
+      "CODE_SIGN_STYLE": .string("Automatic"),
+      "DEEPLINK_SCHEME": .string("promiso-dev"),
+      "DEEPLINK_WEB_HOST": .string("dev.promiso.app")
     ],
     configurations: [
       .debug(name: "Debug", xcconfig: .relativeToRoot("Config/Dev.xcconfig")),
@@ -57,7 +59,9 @@ let promisoStage = Target.target(
       "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME": .string("AccentColor"),
       "PRODUCT_BUNDLE_IDENTIFIER": .string("com.promiso.stage"),
       "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
-      "CODE_SIGN_STYLE": .string("Manual")
+      "CODE_SIGN_STYLE": .string("Manual"),
+      "DEEPLINK_SCHEME": .string("promiso-stage"),
+      "DEEPLINK_WEB_HOST": .string("stage.promiso.app")
     ],
     configurations: [
       .debug(name: "Debug", settings: [
@@ -90,7 +94,9 @@ let promisoProd = Target.target(
     base: [
       "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME": .string("AccentColor"),
       "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
-      "CODE_SIGN_STYLE": .string("Manual")
+      "CODE_SIGN_STYLE": .string("Manual"),
+      "DEEPLINK_SCHEME": .string("promiso"),
+      "DEEPLINK_WEB_HOST": .string("promiso.app")
     ],
     configurations: [
       .debug(name: "Debug", settings: [
@@ -115,6 +121,7 @@ let liveActivityDev = Target.target(
   deploymentTargets: .iOS(AppConfig.deploymentTargets),
   infoPlist: .extendingDefault(with: [
     "CFBundleDisplayName": "Promiso Live Activity [DEV]",
+    "DEEPLINK_SCHEME": "promiso-dev",
     "NSExtension": [
       "NSExtensionPointIdentifier": "com.apple.widgetkit-extension"
     ]
@@ -139,6 +146,7 @@ let liveActivityStage = Target.target(
   deploymentTargets: .iOS(AppConfig.deploymentTargets),
   infoPlist: .extendingDefault(with: [
     "CFBundleDisplayName": "Promiso Live Activity [STAGE]",
+    "DEEPLINK_SCHEME": "promiso-stage",
     "NSExtension": [
       "NSExtensionPointIdentifier": "com.apple.widgetkit-extension"
     ]
@@ -175,6 +183,7 @@ let liveActivityProd = Target.target(
   deploymentTargets: .iOS(AppConfig.deploymentTargets),
   infoPlist: .extendingDefault(with: [
     "CFBundleDisplayName": "Promiso Live Activity",
+    "DEEPLINK_SCHEME": "promiso",
     "NSExtension": [
       "NSExtensionPointIdentifier": "com.apple.widgetkit-extension"
     ]
@@ -211,6 +220,7 @@ let promiseWidgetDev = Target.target(
   deploymentTargets: .iOS(AppConfig.deploymentTargets),
   infoPlist: .extendingDefault(with: [
     "CFBundleDisplayName": "Promiso [DEV]",
+    "DEEPLINK_SCHEME": "promiso-dev",
     "NSExtension": [
       "NSExtensionPointIdentifier": "com.apple.widgetkit-extension"
     ]
@@ -235,6 +245,7 @@ let promiseWidgetStage = Target.target(
   deploymentTargets: .iOS(AppConfig.deploymentTargets),
   infoPlist: .extendingDefault(with: [
     "CFBundleDisplayName": "Promiso [STAGE]",
+    "DEEPLINK_SCHEME": "promiso-stage",
     "NSExtension": [
       "NSExtensionPointIdentifier": "com.apple.widgetkit-extension"
     ]
@@ -271,6 +282,7 @@ let promiseWidgetProd = Target.target(
   deploymentTargets: .iOS(AppConfig.deploymentTargets),
   infoPlist: .extendingDefault(with: [
     "CFBundleDisplayName": "Promiso",
+    "DEEPLINK_SCHEME": "promiso",
     "NSExtension": [
       "NSExtensionPointIdentifier": "com.apple.widgetkit-extension"
     ]

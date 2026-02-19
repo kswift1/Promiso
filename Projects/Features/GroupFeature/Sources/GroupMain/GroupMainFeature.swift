@@ -132,6 +132,9 @@ extension GroupMain {
     @Dependency(\.userSettingsClient) var userSettingsClient
     @Dependency(\.mapClient) var mapClient
     @Dependency(\.calendarSyncClient) var calendarSyncClient
+    @Dependency(\.kakaoShareClient) var kakaoShareClient
+    @Dependency(\.hapticFeedback) var hapticFeedback
+    @Dependency(\.analyticsClient) var analyticsClient
 
     public init() {}
 
@@ -181,10 +184,24 @@ extension GroupMain {
       /// 과거 약속 상태 (별도 fetch)
       var pastPromisesState: LoadingState<[PromiseModel]> = .idle
 
-      // 공유 시트용
+      // 약속 공유 시트용
       var sharePromise: PromiseModel?
+      var isKakaoPromiseSharing: Bool = false
+      var systemShareText: String?
       /// 화면 토스트 메시지
       var toastMessage: ToastMessage?
+
+      /// 그룹 초대 시트 표시 여부
+      var showGroupInviteSheet: Bool = false
+      /// 카카오 초대 공유 진행 중
+      var isKakaoInviteSharing: Bool = false
+      /// context menu에서 그룹 전환 후 실행할 액션
+      enum PendingContextAction: Equatable, Sendable {
+        case invite
+        case settings
+        case createPromise
+      }
+      var pendingContextAction: PendingContextAction?
 
       @Presents var createPromise: CreatePromise.Feature.State?
       @Presents var createGroup: CreateGroup.Feature.State?
@@ -426,7 +443,6 @@ extension GroupMain {
         case responseChanged(String, PromiseAttendanceStatus)
         case promiseTapped(PromiseModel)
         case promiseShared(String)
-        case sharePromiseDismissed
         case createNewPromise
         case createGroup
         case joinGroup
@@ -446,6 +462,16 @@ extension GroupMain {
         case openCreatePromiseIfPossible  // Widget 딥링크: 그룹 있으면 약속 생성
         case switchToPersonalMode  // 개인 모드로 전환 요청
         case toastDismissed
+        // Context Menu Actions
+        case groupInviteTapped(String)  // 그룹 초대 (groupId)
+        case groupContextSettingsTapped(String)  // 그룹 설정 (groupId)
+        case contextCreatePromiseTapped(String)  // 약속 만들기 (groupId)
+        case dismissGroupInviteSheet
+        case kakaoInviteShareTapped
+        case kakaoPromiseShareTapped
+        case systemPromiseShareTapped
+        case dismissPromiseShareSheet
+        case systemShareSheetDismissed
       }
 
       @CasePathable
@@ -473,6 +499,8 @@ extension GroupMain {
         case pastPromisesResponse(Result<[PromiseModel], AppError>)
         case fetchSettings
         case settingsResponse(Result<UserSettings, AppError>)
+        case kakaoInviteShareResult(KakaoShareResult)
+        case kakaoPromiseShareResult(KakaoShareResult)
       }
     }
 
@@ -578,10 +606,6 @@ extension GroupMain {
               return .none
             }
             state.sharePromise = promise
-            return .none
-
-          case .sharePromiseDismissed:
-            state.sharePromise = nil
             return .none
 
           case .directionsTapped(let promiseId):
@@ -744,6 +768,125 @@ extension GroupMain {
           case .toastDismissed:
             state.toastMessage = nil
             return .none
+
+          // MARK: - Context Menu Actions
+
+          case .groupInviteTapped(let groupId):
+            if groupId == state.currentGroup?.id {
+              state.showGroupInviteSheet = true
+              return .none
+            } else {
+              state.pendingContextAction = .invite
+              return .send(.view(.groupTapped(groupId)))
+            }
+
+          case .groupContextSettingsTapped(let groupId):
+            if groupId == state.currentGroup?.id {
+              return handleGroupSettingsTapped(&state)
+            } else {
+              state.pendingContextAction = .settings
+              return .send(.view(.groupTapped(groupId)))
+            }
+
+          case .contextCreatePromiseTapped(let groupId):
+            if groupId == state.currentGroup?.id {
+              return .send(.view(.createNewPromise))
+            } else {
+              state.pendingContextAction = .createPromise
+              return .send(.view(.groupTapped(groupId)))
+            }
+
+          case .dismissGroupInviteSheet:
+            state.showGroupInviteSheet = false
+            return .none
+
+          case .kakaoInviteShareTapped:
+            guard let group = state.currentGroup else { return .none }
+            state.isKakaoInviteSharing = true
+            let groupName = group.name
+            let inviteCode = group.inviteCode
+            let memberCount = group.memberIds.count
+            let maxMembers = group.maxMembers
+            let groupImageUrl = group.imageUrl
+            let inviterName = state.currentGroupMembers?
+              .first { $0.userId == state.currentUser.userId }?.displayName ?? state.currentUser.nickname
+            let promiseInfos = state.allPromises
+              .filter { $0.isUpcoming }
+              .sorted { $0.startAt < $1.startAt }
+              .prefix(3)
+              .map { promise in
+                PromiseShareInfo(
+                  title: promise.title,
+                  emoji: promise.displayEmoji,
+                  dateText: promise.dateText,
+                  timeText: promise.timeText,
+                  locationName: promise.location?.name,
+                  imageUrl: promise.imageUrls.first
+                )
+              }
+            return .run { [kakaoShareClient, hapticFeedback, analyticsClient] send in
+              await hapticFeedback.buttonTap()
+              analyticsClient.logEvent(
+                "kakao_group_invite_shared",
+                [
+                  AnalyticsClient.ParameterKey.groupName: groupName,
+                  "share_method": "kakao",
+                  "promise_count": "\(promiseInfos.count)"
+                ]
+              )
+              let result = await kakaoShareClient.shareGroupInvite(
+                groupName,
+                inviteCode,
+                memberCount,
+                maxMembers,
+                groupImageUrl,
+                inviterName,
+                promiseInfos
+              )
+              await send(.internal(.kakaoInviteShareResult(result)))
+            }
+
+          case .kakaoPromiseShareTapped:
+            guard let promise = state.sharePromise else { return .none }
+            state.isKakaoPromiseSharing = true
+            return .run { [kakaoShareClient, hapticFeedback, analyticsClient] send in
+              await hapticFeedback.buttonTap()
+              analyticsClient.logEvent(
+                "kakao_promise_shared",
+                [
+                  AnalyticsClient.ParameterKey.promiseID: promise.id,
+                  "share_method": "kakao"
+                ]
+              )
+              let result = await kakaoShareClient.sharePromise(
+                promise.title,
+                promise.displayEmoji,
+                promise.dateText,
+                promise.timeText,
+                promise.location?.name,
+                promise.location?.address,
+                promise.id,
+                promise.groupId,
+                promise.description,
+                promise.imageUrls.first
+              )
+              await send(.internal(.kakaoPromiseShareResult(result)))
+            }
+
+          case .systemPromiseShareTapped:
+            guard let promise = state.sharePromise else { return .none }
+            state.systemShareText = promise.shareText
+            state.sharePromise = nil
+            return .none
+
+          case .dismissPromiseShareSheet:
+            state.sharePromise = nil
+            state.isKakaoPromiseSharing = false
+            return .none
+
+          case .systemShareSheetDismissed:
+            state.systemShareText = nil
+            return .none
           }
 
         // MARK: - Internal Actions
@@ -815,11 +958,24 @@ extension GroupMain {
           case .currentGroupResponse(.success(let group)):
             state.currentGroup = group
             state.pendingGroupId = nil
-            // 그룹 로드 시 badge 클리어 후 멤버 정보 fetch
-            return .merge(
+
+            // context menu에서 그룹 전환 후 대기 중인 액션 실행
+            var effects: [Effect<Action>] = [
               .send(.internal(.clearBadge(groupId: group.id))),
               .send(.internal(.fetchGroupMembers(groupId: group.id)))
-            )
+            ]
+            if let pendingAction = state.pendingContextAction {
+              state.pendingContextAction = nil
+              switch pendingAction {
+              case .invite:
+                state.showGroupInviteSheet = true
+              case .settings:
+                effects.append(handleGroupSettingsTapped(&state))
+              case .createPromise:
+                effects.append(.send(.view(.createNewPromise)))
+              }
+            }
+            return .merge(effects)
 
           case .currentGroupResponse(.failure(let error)):
             state.pendingGroupId = nil
@@ -1052,6 +1208,40 @@ extension GroupMain {
               .send(.internal(.fetchGroupList))
             )
 
+          case .kakaoInviteShareResult(let result):
+            state.isKakaoInviteSharing = false
+            switch result {
+            case .shared, .webShared:
+              state.showGroupInviteSheet = false
+              state.toastMessage = ToastMessage(
+                type: .success,
+                title: LocalizedStrings.KakaoShare.inviteLinkShared,
+                position: .top
+              )
+              return .run { [hapticFeedback] _ in
+                await hapticFeedback.success()
+              }
+            case .fallbackToSystem:
+              return .none
+            }
+
+          case .kakaoPromiseShareResult(let result):
+            state.isKakaoPromiseSharing = false
+            switch result {
+            case .shared, .webShared:
+              state.sharePromise = nil
+              state.toastMessage = ToastMessage(
+                type: .success,
+                title: LocalizedStrings.KakaoShare.promiseShared,
+                position: .top
+              )
+              return .run { [hapticFeedback] _ in
+                await hapticFeedback.success()
+              }
+            case .fallbackToSystem:
+              return .none
+            }
+
           }
 
         // MARK: - Child Feature Actions
@@ -1283,12 +1473,14 @@ private func handleGroupSettingsTapped(
 ) -> Effect<GroupMain.Feature.Action> {
   guard let currentGroup = state.currentGroup else { return .none }
   let summary = state.allGroupSummaries?.first { $0.id == currentGroup.id }
+  let upcomingPromises = state.allPromises.filter { $0.isUpcoming }
   state.path.append(.groupSettings(.init(
     group: currentGroup,
     summary: summary,
     currentUserId: state.currentUser.userId,
     userPlan: state.userPlan,
-    preloadedMembers: state.currentGroupMembers
+    preloadedMembers: state.currentGroupMembers,
+    upcomingPromises: upcomingPromises
   )))
   return .none
 }
