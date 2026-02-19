@@ -2,6 +2,7 @@
 import AuthFeature
 import Clients
 import ExternalDependency
+import FirebaseMessaging
 import PromisoShared
 import RootTabFeature
 import ResourceKit
@@ -128,6 +129,8 @@ extension AppEntry {
       case appRestartRequested
       case cancelSubscriptions
       case transitionToMain(UserPrivateModel, isSignup: Bool)
+      case requestFCMToken
+      case fcmTokenFetched(String)
     }
 
     // MARK: - Destination Reducer
@@ -291,7 +294,9 @@ extension AppEntry {
             return .run { [notificationClient] send in
               // 로그인된 사용자만 토큰 저장
               let isAuthenticated = await authClient.isAuthenticated()
-              guard isAuthenticated else { return }
+              guard isAuthenticated else {
+                return
+              }
 
               do {
                 try await notificationClient.saveFCMToken(token)
@@ -380,9 +385,22 @@ extension AppEntry {
 
             if let deeplink = state.pendingDeeplink {
               state.pendingDeeplink = nil
-              return .merge(routeDeeplink(deeplink), cacheEffect)
+              return .merge(routeDeeplink(deeplink), cacheEffect, .send(.internal(.requestFCMToken)))
             }
-            return cacheEffect
+            return .merge(cacheEffect, .send(.internal(.requestFCMToken)))
+
+          case .requestFCMToken:
+            return .run { send in
+              do {
+                let token = try await Messaging.messaging().token()
+                await send(.internal(.fcmTokenFetched(token)))
+              } catch {
+                // 토큰 요청 실패는 조용히 무시 (앱 동작에 치명적이지 않음)
+              }
+            }
+
+          case .fcmTokenFetched(let token):
+            return .send(.internal(.fcmTokenReceived(token)))
           }
 
         case .destination(.presented(.onboardingIntro(.delegate(.completed)))):
@@ -713,6 +731,10 @@ extension AppEntry.Feature {
     case .create:
       // Widget "약속 만들기" 버튼 → 그룹 탭 이동 + 약속 생성 (그룹 있을 때만)
       return .send(.destination(.presented(.main(.openCreatePromiseIfPossible))))
+
+    case .personalEvent(let eventId):
+      // Widget 개인 일정 탭 → 홈 탭 이동 + 개인 일정 상세 열기
+      return .send(.destination(.presented(.main(.openPersonalEventDetail(eventId: eventId)))))
     }
   }
 

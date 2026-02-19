@@ -5,14 +5,15 @@ import SwiftUI
 /// 위젯 하단 푸터 (업데이트 시간 + 새로고침 버튼)
 struct WidgetFooterView: View {
   let updatedAt: Date
+  var showLabel: Bool = true
 
   var body: some View {
     HStack(spacing: 6) {
       // 업데이트 시간
-      Text(formatUpdatedTime(updatedAt))
+      Text(showLabel ? "\(formatUpdatedTime(updatedAt)) 기준" : formatUpdatedTime(updatedAt))
         .font(.caption2)
         .foregroundStyle(.tertiary)
-        .accessibilityLabel("\(formatUpdatedTime(updatedAt)) 업데이트")
+        .accessibilityLabel("\(formatUpdatedTime(updatedAt)) 기준 업데이트")
 
       // 새로고침 버튼
       Button(intent: RefreshWidgetIntent()) {
@@ -20,6 +21,7 @@ struct WidgetFooterView: View {
           .font(.system(size: 10, weight: .medium))
           .foregroundStyle(.secondary)
           .frame(width: 22, height: 22)
+          .contentShape(Circle())
           .background(Color.secondary.opacity(0.12), in: Circle())
       }
       .buttonStyle(.plain)

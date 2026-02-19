@@ -231,12 +231,7 @@ public struct ImageDetailView: View {
   private func loadImage() async {
     guard let urlString = imageUrl,
           let url = URL(string: urlString) else { return }
-    do {
-      let request = ImageRequest(url: url)
-      loadedImage = try await ImagePipeline.shared.image(for: request)
-    } catch {
-      loadedImage = nil
-    }
+    loadedImage = await ImageLoader.loadImage(from: url)
   }
 }
 

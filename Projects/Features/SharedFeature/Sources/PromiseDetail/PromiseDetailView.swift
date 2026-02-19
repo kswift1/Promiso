@@ -57,6 +57,10 @@ extension PromiseDetail {
         EditPromise.RootView(store: editStore)
       }
       .alert(store: store.scope(state: \.$alert, action: \.alert))
+      .toast(Binding(
+        get: { store.toastMessage },
+        set: { _ in store.send(.view(.toastDismissed)) }
+      ))
       .sheet(isPresented: Binding(
         get: { store.showShareSheet },
         set: { _ in store.send(.view(.shareSheetDismissed)) }

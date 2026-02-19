@@ -143,7 +143,9 @@ struct HomeFeatureStateTests {
 
   @Test("다가오는 약속 목록 반환")
   func upcomingPromises_returnsConfirmedUpcomingPromises() {
-    let calendar = Calendar.current
+    // 실제 구현(Home.Feature.State.todayRange)과 동일하게 KST 기준으로 계산
+    var calendar = Calendar.current
+    calendar.timeZone = TimeZone(identifier: "Asia/Seoul") ?? .current
     let now = Date()
     let startOfToday = calendar.startOfDay(for: now)
     let tomorrow = calendar.date(byAdding: .day, value: 1, to: startOfToday)!

@@ -4,6 +4,7 @@
 import SwiftUI
 import ComposableArchitecture
 import Clients
+import PromisoShared
 import ResourceKit
 import SharedFeature
 
@@ -46,6 +47,10 @@ extension CalendarFeature {
           promiseListSection
         }
         .auroraBackground()
+        .toast(Binding(
+          get: { store.toastMessage },
+          set: { _ in store.send(.view(.toastDismissed)) }
+        ))
         .onAppear {
           store.send(.view(.onAppear))
         }

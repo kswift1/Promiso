@@ -177,4 +177,23 @@ struct DeeplinkURLParserTests {
     let result = DeeplinkURLParser.parse(url)
     #expect(result == .create)
   }
+
+  // MARK: - personalEvent 딥링크
+  //
+  // Widget에서 개인 일정 탭 시 사용됩니다.
+  // 앱을 열고 개인 모드 탭에서 개인 일정 상세를 표시합니다.
+  // → PersonalEventDetailView 표시
+
+  @Test("promiso://personalEvent/{eventId} 파싱")
+  func parse_personalEvent_extractsEventId() {
+    let url = URL(string: "promiso://personalEvent/event123")!
+    let result = DeeplinkURLParser.parse(url)
+    #expect(result == .personalEvent(eventId: "event123"))
+  }
+
+  @Test("personalEvent 경로에 eventId 없으면 nil")
+  func parse_personalEvent_withoutId_returnsNil() {
+    let url = URL(string: "promiso://personalEvent")!
+    #expect(DeeplinkURLParser.parse(url) == nil)
+  }
 }

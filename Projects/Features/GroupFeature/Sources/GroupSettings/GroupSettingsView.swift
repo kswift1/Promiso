@@ -29,6 +29,10 @@ extension GroupSettings {
         .onAppear { store.send(.view(.onAppear)) }
         .modifier(SheetsModifier(store: store))
         .modifier(AlertsModifier(store: store))
+        .toast(Binding(
+          get: { store.toastMessage },
+          set: { _ in store.send(.view(.toastDismissed)) }
+        ))
         .sheet(
           isPresented: Binding(
             get: { store.editGroup != nil },

@@ -29,6 +29,8 @@ extension NotificationCenter {
     public struct State: Equatable {
       /// 알림 목록 상태
       var notificationsState: LoadingState<[NotificationModel]> = .idle
+      /// 화면 토스트 메시지
+      var toastMessage: ToastMessage?
 
       /// 선택된 필터
       var filter: NotificationFilter = .all
@@ -93,6 +95,8 @@ extension NotificationCenter {
         case deleteSelectedTapped
         /// 전체 알림 삭제
         case deleteAllTapped
+        /// 토스트 닫힘
+        case toastDismissed
       }
 
       @CasePathable
@@ -250,6 +254,10 @@ extension NotificationCenter {
                 await send(.internal(.deleteCompleted(deletedIds: allIds, .failure(error))))
               }
             }
+
+          case .toastDismissed:
+            state.toastMessage = nil
+            return .none
           }
 
         // MARK: - Internal Actions
@@ -323,36 +331,54 @@ extension NotificationCenter {
             return .none
 
           case .markAllAsReadCompleted(let result):
-            if case .success = result,
-               case .loaded(var notifications) = state.notificationsState {
-              notifications = notifications.map { notification in
-                guard !notification.isRead else { return notification }
-                return NotificationModel(
-                  notificationId: notification.notificationId,
-                  userId: notification.userId,
-                  type: notification.type,
-                  title: notification.title,
-                  body: notification.body,
-                  promiseId: notification.promiseId,
-                  groupId: notification.groupId,
-                  relatedUserId: notification.relatedUserId,
-                  isRead: true,
-                  createdAt: notification.createdAt,
-                  readAt: Date()
-                )
+            switch result {
+            case .success:
+              if case .loaded(var notifications) = state.notificationsState {
+                notifications = notifications.map { notification in
+                  guard !notification.isRead else { return notification }
+                  return NotificationModel(
+                    notificationId: notification.notificationId,
+                    userId: notification.userId,
+                    type: notification.type,
+                    title: notification.title,
+                    body: notification.body,
+                    promiseId: notification.promiseId,
+                    groupId: notification.groupId,
+                    relatedUserId: notification.relatedUserId,
+                    isRead: true,
+                    createdAt: notification.createdAt,
+                    readAt: Date()
+                  )
+                }
+                state.notificationsState = .loaded(notifications)
               }
-              state.notificationsState = .loaded(notifications)
+            case .failure(let error):
+              state.toastMessage = ToastMessage(
+                type: .error,
+                title: "읽음 처리에 실패했어요",
+                subtitle: error.localizedDescription,
+                position: .top
+              )
             }
             return .none
 
           case .deleteCompleted(let deletedIds, let result):
             state.isDeleting = false
-            if case .success = result,
-               case .loaded(var notifications) = state.notificationsState {
-              notifications.removeAll { deletedIds.contains($0.notificationId) }
-              state.notificationsState = .loaded(notifications)
-              state.selectedNotificationIds = []
-              state.isEditMode = false
+            switch result {
+            case .success:
+              if case .loaded(var notifications) = state.notificationsState {
+                notifications.removeAll { deletedIds.contains($0.notificationId) }
+                state.notificationsState = .loaded(notifications)
+                state.selectedNotificationIds = []
+                state.isEditMode = false
+              }
+            case .failure(let error):
+              state.toastMessage = ToastMessage(
+                type: .error,
+                title: "알림 삭제에 실패했어요",
+                subtitle: error.localizedDescription,
+                position: .top
+              )
             }
             return .none
           }

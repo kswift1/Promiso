@@ -66,10 +66,10 @@ export const createPromise = onCall<CreatePromiseRequest>(
       );
     }
 
-    if (data.minimumParticipants < 2) {
+    if (data.minimumParticipants < 1) {
       throw new HttpsError(
         "invalid-argument",
-        "최소 참가 인원은 2명 이상이어야 합니다",
+        "최소 참가 인원은 1명 이상이어야 합니다",
       );
     }
 
@@ -371,11 +371,11 @@ export const updatePromise = onCall<UpdatePromiseRequest>(
     if (
       data.minimumParticipants !== undefined &&
       data.minimumParticipants !== null &&
-      data.minimumParticipants < 2
+      data.minimumParticipants < 1
     ) {
       throw new HttpsError(
         "invalid-argument",
-        "최소 참가 인원은 2명 이상이어야 합니다",
+        "최소 참가 인원은 1명 이상이어야 합니다",
       );
     }
 

@@ -250,7 +250,7 @@ struct GroupCard: View {
   }
 
   private var hasTooFewMembers: Bool {
-    model.memberIds.count <= 1
+    model.memberIds.isEmpty
   }
 
   private var isDisabled: Bool {
@@ -259,7 +259,7 @@ struct GroupCard: View {
 
   private var disabledReason: String? {
     if hasTooFewMembers {
-      return "약속을 만들려면 최소 2명 이상의 멤버가 필요합니다"
+      return "그룹에 멤버가 없습니다"
     } else if isAtLimit {
       return "활성 약속이 \(maxActivePromises)개에 도달했습니다"
     }

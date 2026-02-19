@@ -33,6 +33,7 @@ extension AccountInfo {
       public var showDeleteAccountAlert: Bool = false
       public var isDeletingAccount: Bool = false
       public var deleteAccountError: String?
+      public var toastMessage: ToastMessage?
 
       public init(currentUser: UserPrivateModel) {
         self.currentUser = currentUser
@@ -55,6 +56,7 @@ extension AccountInfo {
       case deleteAccountConfirmed
       case deleteAccountCancelled
       case dismissDeleteAccountError
+      case toastDismissed
     }
 
     public enum Internal: Equatable, Sendable {
@@ -123,6 +125,10 @@ extension AccountInfo {
           case .dismissDeleteAccountError:
             state.deleteAccountError = nil
             return .none
+
+          case .toastDismissed:
+            state.toastMessage = nil
+            return .none
           }
 
         case .internal(let internalAction):
@@ -137,6 +143,12 @@ extension AccountInfo {
           case .deleteAccountFailed(let error):
             state.isDeletingAccount = false
             state.deleteAccountError = error
+            state.toastMessage = ToastMessage(
+              type: .error,
+              title: "회원 탈퇴에 실패했어요",
+              subtitle: error,
+              position: .top
+            )
             return .run { _ in
               await hapticFeedback.error()
             }
@@ -279,6 +291,10 @@ extension AccountInfo {
       .onAppear {
         store.send(.view(.onAppear))
       }
+      .toast(Binding(
+        get: { store.toastMessage },
+        set: { _ in store.send(.view(.toastDismissed)) }
+      ))
     }
 
     // MARK: - Account Management Section

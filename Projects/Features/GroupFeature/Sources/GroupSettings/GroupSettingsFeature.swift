@@ -35,6 +35,7 @@ extension GroupSettings {
       var showDeleteAlert: Bool = false
       var leaveError: String?
       var deleteError: String?
+      var toastMessage: ToastMessage?
 
       // Image Detail
       var selectedMemberForImage: UserPublicModel?
@@ -190,6 +191,7 @@ extension GroupSettings {
         case confirmExpelMember
         case dismissExpelAlert
         case dismissExpelError
+        case toastDismissed
       }
 
       public enum Internal: Sendable {
@@ -550,6 +552,10 @@ extension GroupSettings {
           case .dismissExpelError:
             state.expelError = nil
             return .none
+
+          case .toastDismissed:
+            state.toastMessage = nil
+            return .none
           }
 
         case .internal(let internalAction):
@@ -630,6 +636,14 @@ extension GroupSettings {
 
           case .notificationPermissionResponse(let granted):
             state.systemAuthStatus = granted ? .authorized : .denied
+            if !granted {
+              state.toastMessage = ToastMessage(
+                type: .warning,
+                title: "알림 권한이 거부되었어요",
+                subtitle: "설정에서 변경할 수 있어요.",
+                position: .top
+              )
+            }
             return .run { [hapticFeedback] _ in
               if granted {
                 await hapticFeedback.success()
@@ -641,6 +655,12 @@ extension GroupSettings {
           case .groupNotificationsUpdateFailed(let previousValue, let message):
             state.notificationSettings.enabled = previousValue
             state.notificationError = message
+            state.toastMessage = ToastMessage(
+              type: .error,
+              title: "알림 설정 저장에 실패했어요",
+              subtitle: message,
+              position: .top
+            )
             return .run { [hapticFeedback] _ in
               await hapticFeedback.error()
             }
@@ -648,6 +668,12 @@ extension GroupSettings {
           case .notificationPreferenceUpdateFailed(let key, let previousValue, let message):
             state.notificationSettings.setValue(previousValue, for: key)
             state.notificationError = message
+            state.toastMessage = ToastMessage(
+              type: .error,
+              title: "\(key.title) 설정 저장에 실패했어요",
+              subtitle: message,
+              position: .top
+            )
             return .run { [hapticFeedback] _ in
               await hapticFeedback.error()
             }
@@ -701,6 +727,12 @@ extension GroupSettings {
             state.isExpellingMember = false
             state.memberToExpel = nil
             state.expelError = error.localizedDescription
+            state.toastMessage = ToastMessage(
+              type: .error,
+              title: "멤버 추방에 실패했어요",
+              subtitle: error.localizedDescription,
+              position: .top
+            )
             return .run { [hapticFeedback] _ in
               await hapticFeedback.error()
             }

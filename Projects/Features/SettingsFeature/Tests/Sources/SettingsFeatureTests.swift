@@ -376,6 +376,8 @@ struct SettingsFeatureTests {
     let store = TestStore(initialState: state) {
       Settings.Feature()
     }
+    // toastMessage는 UUID 기반 Equatable이므로 exhaustive 비교 불가
+    store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.internal(.profileSaveCompleted(updatedUser))) {
       $0.$currentUser.withLock { $0 = updatedUser }
@@ -402,11 +404,19 @@ struct SettingsFeatureTests {
     } withDependencies: {
       $0.hapticFeedback.error = {}
     }
+    // toastMessage는 UUID 기반 Equatable이므로 exhaustive 비교 불가
+    store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.internal(.profileSaveFailed("저장 실패"))) {
       $0.isSavingProfile = false
       $0.errorMessage = "저장 실패"
     }
+
+    // Toast 내용 검증
+    #expect(store.state.toastMessage?.type == .error)
+    #expect(store.state.toastMessage?.title == "프로필 저장에 실패했어요")
+    #expect(store.state.toastMessage?.subtitle == "저장 실패")
+    #expect(store.state.toastMessage?.position == .top)
   }
 
   // MARK: - profileImageTapped / imageDetailDismissed 테스트

@@ -59,6 +59,8 @@ extension Home {
       // MARK: UI
       /// 스크롤 타겟
       var scrollTarget: HomeModels.ScrollTarget? = nil
+      /// 화면 상단/하단 토스트 메시지
+      var toastMessage: ToastMessage?
 
       // MARK: Notification
       /// 안 읽은 알림 개수
@@ -119,6 +121,8 @@ extension Home {
         case refreshNotificationBadge
         /// 개인 일정 카드 탭
         case personalEventTapped(PersonalEventModel)
+        /// 토스트 닫힘
+        case toastDismissed
       }
 
       @CasePathable
@@ -231,6 +235,11 @@ extension Home {
           case .personalEventTapped(let event):
             state.path.append(.personalEventDetail(.init(event: event)))
             return .none
+
+          case .toastDismissed:
+            state.toastMessage = nil
+            return .none
+
           }
 
         case .internal(let internalAction):
@@ -428,7 +437,7 @@ extension Home.Feature.State {
       .filter { $0.startAt >= startOfDay && $0.startAt < endOfDay && $0.isConfirmed }
       .map { HomeModels.ScheduleItem.promise($0) }
     let eventItems = allPersonalEvents
-      .filter { $0.startAt >= startOfDay && $0.startAt < endOfDay && !$0.isPast }
+      .filter { $0.startAt >= startOfDay && $0.startAt < endOfDay }
       .map { HomeModels.ScheduleItem.personalEvent($0) }
     return (promiseItems + eventItems).sorted { $0.startAt < $1.startAt }
   }
@@ -650,6 +659,10 @@ extension Home {
           store.send(.view(.refreshTriggered))
         }
         .auroraBackground()
+        .toast(Binding(
+          get: { store.toastMessage },
+          set: { _ in store.send(.view(.toastDismissed)) }
+        ))
         .toolbar {
           ToolbarItem(placement: .topBarTrailing) {
             NotificationButton(

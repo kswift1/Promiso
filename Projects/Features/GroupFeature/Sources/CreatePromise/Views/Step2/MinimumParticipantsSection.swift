@@ -14,21 +14,21 @@ struct MinimumParticipantsSection: View {
     store.promise.minimumParticipants
   }
 
-  // 2명 고정 여부
-  private var isFixedAtTwo: Bool {
-    store.promise.group?.memberIds.count == 2
+  // 1명 고정 여부 (그룹 최대 인원이 1명인 경우)
+  private var isFixedAtOne: Bool {
+    store.promise.group?.maxMembers == 1
   }
 
-  // 최대 인원 (기본값 2명)
+  // 최대 인원 (그룹 최대 인원 기준)
   private var maxParticipants: Int {
-    store.promise.group?.memberIds.count ?? 2
+    store.promise.group?.maxMembers ?? 1
   }
   
   var body: some View {
     SectionPlaceHolder(placeHolderTitle: "최소 참가 인원") {
       VStack(alignment: .leading, spacing: 12) {
-        if isFixedAtTwo {
-          // 2명 고정 케이스
+        if isFixedAtOne {
+          // 1명 고정 케이스
           fixedParticipantsView
         } else {
           // 선택 가능한 케이스
@@ -46,15 +46,15 @@ struct MinimumParticipantsSection: View {
     }
   }
   
-  // MARK: - 2명 고정 UI
+  // MARK: - 1명 고정 UI
   private var fixedParticipantsView: some View {
     VStack(spacing: 16) {
       VStack(spacing: 8) {
-        Text("2명")
+        Text("1명")
           .font(.system(size: 36, weight: .bold))
           .foregroundColor(.primary)
 
-        Text("최대 2명")
+        Text("최대 1명")
           .font(.system(size: 13))
           .foregroundColor(.secondary)
       }
@@ -67,13 +67,13 @@ struct MinimumParticipantsSection: View {
           .font(.system(size: 16))
           .foregroundColor(.secondary)
 
-        Text("그룹이 2명이므로 최소 참가 인원이 2명으로 고정됩니다")
+        Text("그룹 최대 인원이 1명이므로 최소 참가 인원이 1명으로 고정됩니다")
           .font(.system(size: 14))
           .foregroundColor(.secondary)
       }
       .padding(16)
       .frame(maxWidth: .infinity, alignment: .leading)
-      .background(Color(.systemGray6))
+      .background(Color.pmgray.n100)
       .clipShape(RoundedRectangle(cornerRadius: 12))
     }
   }
@@ -91,7 +91,7 @@ struct MinimumParticipantsSection: View {
         }) {
           Image(systemName: "minus.circle.fill")
             .font(.system(size: 32))
-            .foregroundColor(currentMinimum <= 2 ? Color(.systemGray4) : Color.pmindigo.n500)
+            .foregroundColor(currentMinimum <= 2 ? Color.pmgray.n400 : Color.pmindigo.n500)
             .scaleEffect(isMinusPressed ? 0.85 : 1.0)
         }
         .buttonRepeatBehavior(.enabled)
@@ -126,7 +126,7 @@ struct MinimumParticipantsSection: View {
         }) {
           Image(systemName: "plus.circle.fill")
             .font(.system(size: 32))
-            .foregroundColor(currentMinimum >= maxParticipants ? Color(.systemGray4) : Color.pmindigo.n500)
+            .foregroundColor(currentMinimum >= maxParticipants ? Color.pmgray.n400 : Color.pmindigo.n500)
             .scaleEffect(isPlusPressed ? 0.85 : 1.0)
         }
         .buttonRepeatBehavior(.enabled)
@@ -180,7 +180,7 @@ struct MinimumParticipantsSection: View {
         .font(.system(size: 14))
         .foregroundColor(Color.pmwarning.n600)
 
-      Text("최소 참가 인원이 그룹 멤버 수와 같습니다. 한 명이라도 불참하면 약속이 취소됩니다.")
+      Text("최소 참가 인원이 그룹 최대 인원과 같습니다. 한 명이라도 불참하면 약속이 취소됩니다.")
         .font(.system(size: 13))
         .foregroundColor(.secondary)
         .fixedSize(horizontal: false, vertical: true)
