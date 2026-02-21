@@ -867,7 +867,7 @@ extension Home {
       ScrollView {
         LazyVStack(spacing: 20) {
           Color.clear
-            .frame(height: 100)
+            .frame(height: SafeArea.topOffset)
           
           if store.isLoading && !store.hasLoadedOnce {
             loadingView
@@ -957,7 +957,7 @@ extension Home {
       .frame(maxWidth: .infinity, alignment: .top)
       .background(
         Color(.systemBackground)
-          .clipShape(RoundedRectangle(cornerRadius: 32))
+          .clipShape(.rect(topLeadingRadius: 0, bottomLeadingRadius: 32, bottomTrailingRadius: 32, topTrailingRadius: 0))
           .shadow(color: .black.opacity(0.12), radius: 30, y: 15)
       )
       .ignoresSafeArea(edges: .top)

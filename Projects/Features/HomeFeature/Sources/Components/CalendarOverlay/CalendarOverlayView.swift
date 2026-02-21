@@ -29,7 +29,7 @@ struct CalendarOverlayView: View {
   var body: some View {
     VStack(spacing: 16) {
       Color.clear
-        .frame(height: 100)
+        .frame(height: SafeArea.topOffset)
       
       // Header
       calendarHeader
