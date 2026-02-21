@@ -808,33 +808,36 @@ extension Home {
           // MARK: - Calendar Overlay (전면)
           calendarOverlay
         }
+        .ignoresSafeArea(edges: [.top, .bottom])
         .auroraBackground()
         .toast(Binding(
           get: { store.toastMessage },
           set: { _ in store.send(.view(.toastDismissed)) }
         ))
+        .toolbarBackground(.hidden, for: .navigationBar)
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
           ToolbarItem(placement: .topBarTrailing) {
-            HStack(spacing: 8) {
-              // 캘린더 오버레이 토글 버튼
-              Button {
-                store.send(.view(.calendarOverlayOpened), animation: .spring(response: 0.55, dampingFraction: 1.0))
-              } label: {
-                Image(systemName: "calendar")
-                  .font(.system(size: 16, weight: .medium))
-                  .foregroundStyle(Color.pmindigo.n500)
-                  .frame(width: 36, height: 36)
-                  .adaptiveGlassBackground(cornerRadius: 18)
-              }
-
-              NotificationButton(
-                badgeCount: store.unreadNotificationCount,
-                action: {
-                  store.send(.view(.notificationButtonTapped))
-                }
-              )
-              .id(store.unreadNotificationCount)
+            // 캘린더 오버레이 토글 버튼
+            Button {
+              store.send(.view(.calendarOverlayOpened), animation: .spring(response: 0.55, dampingFraction: 1.0))
+            } label: {
+              Image(systemName: "calendar")
+                .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(Color.pmindigo.n500)
+                .frame(width: 36, height: 36)
+                .adaptiveGlassBackground(cornerRadius: 18)
             }
+          }
+
+          ToolbarItem(placement: .topBarTrailing) {
+            NotificationButton(
+              badgeCount: store.unreadNotificationCount,
+              action: {
+                store.send(.view(.notificationButtonTapped))
+              }
+            )
+            .id(store.unreadNotificationCount)
           }
         }
         .onAppear {
@@ -863,6 +866,9 @@ extension Home {
     private var homeContent: some View {
       ScrollView {
         LazyVStack(spacing: 20) {
+          Color.clear
+            .frame(height: 100)
+          
           if store.isLoading && !store.hasLoadedOnce {
             loadingView
           } else if let error = store.promisesState.error {
@@ -946,7 +952,6 @@ extension Home {
           store.send(.view(.overlayNextMonth))
         }
       )
-      .padding(.top, 60)
       .padding(.horizontal, 4)
       .padding(.bottom, 16)
       .frame(maxWidth: .infinity, alignment: .top)
@@ -954,8 +959,8 @@ extension Home {
         Color(.systemBackground)
           .clipShape(RoundedRectangle(cornerRadius: 32))
           .shadow(color: .black.opacity(0.12), radius: 30, y: 15)
-          .ignoresSafeArea(edges: .top)
       )
+      .ignoresSafeArea(edges: .top)
       // mask reveal (위에서 아래로)
       .mask(alignment: .top) {
         Rectangle()
