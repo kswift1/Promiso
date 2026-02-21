@@ -961,14 +961,13 @@ extension Home {
           .shadow(color: .black.opacity(0.12), radius: 30, y: 15)
       )
       .ignoresSafeArea(edges: .top)
-      // mask reveal (위에서 아래로)
+      // 슬라이드 + reveal 조합: 콘텐츠가 살짝 내려오면서 위에서부터 드러남
+      .offset(y: store.showCalendarOverlay ? 0 : -150)
       .mask(alignment: .top) {
         Rectangle()
-          .frame(height: (store.showCalendarOverlay || store.isCalendarDismissing) ? UIScreen.main.bounds.height : 0)
+          .frame(height: store.showCalendarOverlay ? UIScreen.main.bounds.height : 0)
           .ignoresSafeArea(edges: .top)
       }
-      // 닫기: 위로 슬라이드
-      .offset(y: store.isCalendarDismissing ? -(UIScreen.main.bounds.height + 200) : 0)
       .allowsHitTesting(store.showCalendarOverlay)
     }
 
