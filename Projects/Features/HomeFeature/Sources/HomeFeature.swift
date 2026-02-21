@@ -67,6 +67,18 @@ extension Home {
       /// 화면 상단/하단 토스트 메시지
       var toastMessage: ToastMessage?
 
+      // MARK: Calendar Overlay
+      /// 캘린더 오버레이 표시 여부
+      var showCalendarOverlay: Bool = false
+      /// 오버레이 닫기 애니메이션 진행 중
+      var isCalendarDismissing: Bool = false
+      /// 오버레이 캘린더 현재 월
+      var overlayCalendarMonth: Date = Date()
+      /// 오버레이 캘린더 선택 날짜
+      var overlaySelectedDate: Date = Date()
+      /// 오버레이 인디케이터 dot 표시 여부 (지연 애니메이션)
+      var overlayDotsVisible: Bool = false
+
       // MARK: Notification
       /// 안 읽은 알림 개수
       var unreadNotificationCount: Int = 0
@@ -128,6 +140,20 @@ extension Home {
         case personalEventTapped(PersonalEventModel)
         /// 토스트 닫힘
         case toastDismissed
+        /// 캘린더 오버레이 열기
+        case calendarOverlayOpened
+        /// 캘린더 오버레이 닫기
+        case calendarOverlayClosed
+        /// 오버레이 캘린더 날짜 선택
+        case overlayDateSelected(Date)
+        /// 오버레이 캘린더 이전 월
+        case overlayPreviousMonth
+        /// 오버레이 캘린더 다음 월
+        case overlayNextMonth
+        /// 오버레이 dots 애니메이션 완료
+        case overlayDotsAppeared
+        /// 오버레이 닫기 애니메이션 완료
+        case overlayDismissCompleted
       }
 
       @CasePathable
@@ -247,6 +273,48 @@ extension Home {
 
           case .toastDismissed:
             state.toastMessage = nil
+            return .none
+
+          case .calendarOverlayOpened:
+            state.overlayCalendarMonth = Date()
+            state.overlaySelectedDate = Date()
+            state.showCalendarOverlay = true
+            return .run { send in
+              try await Task.sleep(nanoseconds: 350_000_000)
+              await send(.view(.overlayDotsAppeared))
+            }
+
+          case .calendarOverlayClosed:
+            state.isCalendarDismissing = true
+            state.showCalendarOverlay = false
+            state.overlayDotsVisible = false
+            return .run { send in
+              try await Task.sleep(nanoseconds: 500_000_000)
+              await send(.view(.overlayDismissCompleted))
+            }
+
+          case .overlayDateSelected(let date):
+            state.overlaySelectedDate = date
+            return .none
+
+          case .overlayPreviousMonth:
+            if let prev = Calendar.current.date(byAdding: .month, value: -1, to: state.overlayCalendarMonth) {
+              state.overlayCalendarMonth = prev
+            }
+            return .none
+
+          case .overlayNextMonth:
+            if let next = Calendar.current.date(byAdding: .month, value: 1, to: state.overlayCalendarMonth) {
+              state.overlayCalendarMonth = next
+            }
+            return .none
+
+          case .overlayDotsAppeared:
+            state.overlayDotsVisible = true
+            return .none
+
+          case .overlayDismissCompleted:
+            state.isCalendarDismissing = false
             return .none
 
           }
@@ -670,6 +738,49 @@ extension Home.Feature.State {
   var pendingResponseCount: Int {
     pendingPromises.count
   }
+
+  // MARK: - Calendar Overlay Computed
+
+  /// 오버레이 캘린더에 표시할 날짜 셀 배열
+  var overlayCalendarDays: [OverlayCalendarModels.DayItem] {
+    OverlayCalendarModels.generateMonthDays(
+      for: overlayCalendarMonth,
+      selectedDate: overlaySelectedDate,
+      scheduleCountsByDate: overlayScheduleCountsByDate
+    )
+  }
+
+  /// 날짜별 일정 개수 (약속 + 개인 일정)
+  private var overlayScheduleCountsByDate: [Date: Int] {
+    let calendar = Calendar.current
+    var counts: [Date: Int] = [:]
+
+    // 약속
+    for promise in allPromises {
+      let dateKey = calendar.startOfDay(for: promise.startAt)
+      counts[dateKey, default: 0] += 1
+    }
+
+    // 개인 일정
+    for event in (personalEventsState.value ?? []) {
+      let dateKey = calendar.startOfDay(for: event.startAt)
+      counts[dateKey, default: 0] += 1
+    }
+
+    return counts
+  }
+
+  /// 오버레이에서 선택된 날짜의 일정 아이템
+  var overlaySelectedDateItems: [HomeModels.ScheduleItem] {
+    let calendar = Calendar.current
+    let promiseItems = allPromises
+      .filter { calendar.isDate($0.startAt, inSameDayAs: overlaySelectedDate) }
+      .map { HomeModels.ScheduleItem.promise($0) }
+    let eventItems = (personalEventsState.value ?? [])
+      .filter { calendar.isDate($0.startAt, inSameDayAs: overlaySelectedDate) }
+      .map { HomeModels.ScheduleItem.personalEvent($0) }
+    return (promiseItems + eventItems).sorted { $0.startAt < $1.startAt }
+  }
 }
 
 // MARK: - Root View
@@ -685,67 +796,17 @@ extension Home {
 
     public var body: some View {
       NavigationStack(path: $store.scope(state: \.path, action: \.path)) {
-        ScrollView {
-          LazyVStack(spacing: 20) {
-            if store.isLoading && !store.hasLoadedOnce {
-              loadingView
-            } else if let error = store.promisesState.error {
-              errorView(error: error)
-            } else {
-              // 오늘의 일정 카드
-              TodayScheduleCard(
-                items: store.todayScheduleItems,
-                weatherCache: store.weatherCache,
-                onItemTap: { item in
-                  switch item {
-                  case .promise(let p):
-                    store.send(.view(.todayPromiseTapped(p)))
-                  case .personalEvent(let e):
-                    store.send(.view(.personalEventTapped(e)))
-                  }
-                }
-              )
-              .padding(.horizontal, 16)
+        ZStack(alignment: .top) {
+          // MARK: - Home Content (배경)
+          homeContent
+            .scaleEffect(store.showCalendarOverlay ? 0.88 : 1.0)
+            .opacity(store.showCalendarOverlay ? 0.4 : 1.0)
+            .blur(radius: store.showCalendarOverlay ? 8 : 0)
+            .clipShape(RoundedRectangle(cornerRadius: store.showCalendarOverlay ? 30 : 0))
+            .allowsHitTesting(!store.showCalendarOverlay)
 
-              // 응답 필요 섹션 (있을 때만 표시)
-              if !store.pendingPromises.isEmpty {
-                PendingSection(
-                  promises: store.pendingPromises,
-                  groupMembersCache: store.groupMembersCache,
-                  onPromiseTap: { promise in
-                    store.send(.view(.pendingPromiseTapped(promise)))
-                  }
-                )
-                .padding(.horizontal, 16)
-              }
-
-              // 다가오는 일정 섹션
-              UpcomingSection(
-                items: store.upcomingScheduleItems,
-                weatherCache: store.weatherCache,
-                onItemTap: { item in
-                  switch item {
-                  case .promise(let p):
-                    store.send(.view(.upcomingPromiseTapped(p)))
-                  case .personalEvent(let e):
-                    store.send(.view(.personalEventTapped(e)))
-                  }
-                },
-                onSeeAllTap: {
-                  store.send(.view(.seeAllUpcomingTapped))
-                }
-              )
-              .padding(.horizontal, 16)
-            }
-
-            // 하단 여백 (FAB 및 탭바 공간)
-            Color.clear
-              .frame(height: 100)
-          }
-          .padding(.top, 8)
-        }
-        .refreshable {
-          store.send(.view(.refreshTriggered))
+          // MARK: - Calendar Overlay (전면)
+          calendarOverlay
         }
         .auroraBackground()
         .toast(Binding(
@@ -754,13 +815,26 @@ extension Home {
         ))
         .toolbar {
           ToolbarItem(placement: .topBarTrailing) {
-            NotificationButton(
-              badgeCount: store.unreadNotificationCount,
-              action: {
-                store.send(.view(.notificationButtonTapped))
+            HStack(spacing: 8) {
+              // 캘린더 오버레이 토글 버튼
+              Button {
+                store.send(.view(.calendarOverlayOpened), animation: .spring(response: 0.55, dampingFraction: 1.0))
+              } label: {
+                Image(systemName: "calendar")
+                  .font(.system(size: 16, weight: .medium))
+                  .foregroundStyle(Color.pmindigo.n500)
+                  .frame(width: 36, height: 36)
+                  .adaptiveGlassBackground(cornerRadius: 18)
               }
-            )
-            .id(store.unreadNotificationCount)
+
+              NotificationButton(
+                badgeCount: store.unreadNotificationCount,
+                action: {
+                  store.send(.view(.notificationButtonTapped))
+                }
+              )
+              .id(store.unreadNotificationCount)
+            }
           }
         }
         .onAppear {
@@ -782,6 +856,115 @@ extension Home {
           NotificationCenterFeature.NotificationCenter.RootView(store: notificationStore)
         }
       }
+    }
+
+    // MARK: - Home Content
+
+    private var homeContent: some View {
+      ScrollView {
+        LazyVStack(spacing: 20) {
+          if store.isLoading && !store.hasLoadedOnce {
+            loadingView
+          } else if let error = store.promisesState.error {
+            errorView(error: error)
+          } else {
+            // 오늘의 일정 카드
+            TodayScheduleCard(
+              items: store.todayScheduleItems,
+              weatherCache: store.weatherCache,
+              onItemTap: { item in
+                switch item {
+                case .promise(let p):
+                  store.send(.view(.todayPromiseTapped(p)))
+                case .personalEvent(let e):
+                  store.send(.view(.personalEventTapped(e)))
+                }
+              }
+            )
+            .padding(.horizontal, 16)
+
+            // 응답 필요 섹션 (있을 때만 표시)
+            if !store.pendingPromises.isEmpty {
+              PendingSection(
+                promises: store.pendingPromises,
+                groupMembersCache: store.groupMembersCache,
+                onPromiseTap: { promise in
+                  store.send(.view(.pendingPromiseTapped(promise)))
+                }
+              )
+              .padding(.horizontal, 16)
+            }
+
+            // 다가오는 일정 섹션
+            UpcomingSection(
+              items: store.upcomingScheduleItems,
+              weatherCache: store.weatherCache,
+              onItemTap: { item in
+                switch item {
+                case .promise(let p):
+                  store.send(.view(.upcomingPromiseTapped(p)))
+                case .personalEvent(let e):
+                  store.send(.view(.personalEventTapped(e)))
+                }
+              },
+              onSeeAllTap: {
+                store.send(.view(.seeAllUpcomingTapped))
+              }
+            )
+            .padding(.horizontal, 16)
+          }
+
+          // 하단 여백 (FAB 및 탭바 공간)
+          Color.clear
+            .frame(height: 100)
+        }
+        .padding(.top, 8)
+      }
+      .refreshable {
+        store.send(.view(.refreshTriggered))
+      }
+    }
+
+    // MARK: - Calendar Overlay
+
+    private var calendarOverlay: some View {
+      CalendarOverlayView(
+        currentMonth: store.overlayCalendarMonth,
+        days: store.overlayCalendarDays,
+        todayScheduleItems: store.overlaySelectedDateItems,
+        selectedDate: store.overlaySelectedDate,
+        onClose: {
+          store.send(.view(.calendarOverlayClosed), animation: .spring(response: 0.5, dampingFraction: 1.0))
+        },
+        onDateSelected: { date in
+          store.send(.view(.overlayDateSelected(date)))
+        },
+        onPreviousMonth: {
+          store.send(.view(.overlayPreviousMonth))
+        },
+        onNextMonth: {
+          store.send(.view(.overlayNextMonth))
+        }
+      )
+      .padding(.top, 60)
+      .padding(.horizontal, 4)
+      .padding(.bottom, 16)
+      .frame(maxWidth: .infinity, alignment: .top)
+      .background(
+        Color(.systemBackground)
+          .clipShape(RoundedRectangle(cornerRadius: 32))
+          .shadow(color: .black.opacity(0.12), radius: 30, y: 15)
+          .ignoresSafeArea(edges: .top)
+      )
+      // mask reveal (위에서 아래로)
+      .mask(alignment: .top) {
+        Rectangle()
+          .frame(height: (store.showCalendarOverlay || store.isCalendarDismissing) ? UIScreen.main.bounds.height : 0)
+          .ignoresSafeArea(edges: .top)
+      }
+      // 닫기: 위로 슬라이드
+      .offset(y: store.isCalendarDismissing ? -(UIScreen.main.bounds.height + 200) : 0)
+      .allowsHitTesting(store.showCalendarOverlay)
     }
 
     // MARK: - Loading View
