@@ -28,6 +28,12 @@ extension Home {
 
     public init() {}
 
+    // MARK: - CancelID
+
+    private enum CancelID {
+      case overlayDotsAnimation
+    }
+
     // MARK: - State
 
     @ObservableState
@@ -278,20 +284,19 @@ extension Home {
           case .calendarOverlayOpened:
             state.overlayCalendarMonth = Date()
             state.overlaySelectedDate = Date()
+            state.overlayDotsVisible = false
             state.showCalendarOverlay = true
             return .run { send in
               try await Task.sleep(nanoseconds: 350_000_000)
               await send(.view(.overlayDotsAppeared))
             }
+            .cancellable(id: CancelID.overlayDotsAnimation)
 
           case .calendarOverlayClosed:
-            state.isCalendarDismissing = true
             state.showCalendarOverlay = false
             state.overlayDotsVisible = false
-            return .run { send in
-              try await Task.sleep(nanoseconds: 500_000_000)
-              await send(.view(.overlayDismissCompleted))
-            }
+            state.isCalendarDismissing = false
+            return .cancel(id: CancelID.overlayDotsAnimation)
 
           case .overlayDateSelected(let date):
             state.overlaySelectedDate = date
@@ -314,7 +319,6 @@ extension Home {
             return .none
 
           case .overlayDismissCompleted:
-            state.isCalendarDismissing = false
             return .none
 
           }
@@ -796,59 +800,67 @@ extension Home {
 
     public var body: some View {
       NavigationStack(path: $store.scope(state: \.path, action: \.path)) {
-        ZStack(alignment: .top) {
-          // MARK: - Home Content (배경)
-          homeContent
-            .scaleEffect(store.showCalendarOverlay ? 0.88 : 1.0)
-            .opacity(store.showCalendarOverlay ? 0.4 : 1.0)
-            .blur(radius: store.showCalendarOverlay ? 8 : 0)
-            .clipShape(RoundedRectangle(cornerRadius: store.showCalendarOverlay ? 30 : 0))
-            .allowsHitTesting(!store.showCalendarOverlay)
+        homeContent
+          .auroraBackground()
+          .toast(Binding(
+            get: { store.toastMessage },
+            set: { _ in store.send(.view(.toastDismissed)) }
+          ))
+          .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+              // 캘린더 오버레이 토글 버튼
+              Button {
+                store.send(.view(.calendarOverlayOpened))
+              } label: {
+                Image(systemName: "calendar")
+                  .font(.system(size: 16, weight: .medium))
+                  .foregroundStyle(Color.pmindigo.n500)
+                  .frame(width: 36, height: 36)
+                  .adaptiveGlassBackground(cornerRadius: 18)
+              }
+            }
 
-          // MARK: - Calendar Overlay (전면)
-          calendarOverlay
-        }
-        .ignoresSafeArea(edges: [.top, .bottom])
-        .auroraBackground()
-        .toast(Binding(
-          get: { store.toastMessage },
-          set: { _ in store.send(.view(.toastDismissed)) }
-        ))
-        .toolbarBackground(.hidden, for: .navigationBar)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-          ToolbarItem(placement: .topBarTrailing) {
-            // 캘린더 오버레이 토글 버튼
-            Button {
-              store.send(.view(.calendarOverlayOpened), animation: .spring(response: 0.55, dampingFraction: 1.0))
-            } label: {
-              Image(systemName: "calendar")
-                .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(Color.pmindigo.n500)
-                .frame(width: 36, height: 36)
-                .adaptiveGlassBackground(cornerRadius: 18)
+            ToolbarItem(placement: .topBarTrailing) {
+              NotificationButton(
+                badgeCount: store.unreadNotificationCount,
+                action: {
+                  store.send(.view(.notificationButtonTapped))
+                }
+              )
+              .id(store.unreadNotificationCount)
             }
           }
-
-          ToolbarItem(placement: .topBarTrailing) {
-            NotificationButton(
-              badgeCount: store.unreadNotificationCount,
-              action: {
-                store.send(.view(.notificationButtonTapped))
-              }
-            )
-            .id(store.unreadNotificationCount)
-          }
-        }
-        .onAppear {
-          store.send(.view(.onAppear))
-        }
-        .onChange(of: scenePhase) { oldPhase, newPhase in
-          // background → active 시 다시 로드
-          if oldPhase == .background && newPhase == .active {
+          .onAppear {
             store.send(.view(.onAppear))
           }
-        }
+          .onChange(of: scenePhase) { oldPhase, newPhase in
+            // background → active 시 다시 로드
+            if oldPhase == .background && newPhase == .active {
+              store.send(.view(.onAppear))
+            }
+          }
+          .background(
+            CalendarOverlayPresenter(
+              isPresented: store.showCalendarOverlay,
+              currentMonth: store.overlayCalendarMonth,
+              days: store.overlayCalendarDays,
+              todayScheduleItems: store.overlaySelectedDateItems,
+              selectedDate: store.overlaySelectedDate,
+              onClose: {
+                store.send(.view(.calendarOverlayClosed))
+              },
+              onDateSelected: { date in
+                store.send(.view(.overlayDateSelected(date)))
+              },
+              onPreviousMonth: {
+                store.send(.view(.overlayPreviousMonth))
+              },
+              onNextMonth: {
+                store.send(.view(.overlayNextMonth))
+              }
+            )
+            .frame(width: 0, height: 0)
+          )
       } destination: { store in
         switch store.case {
         case .promiseDetail(let detailStore):
@@ -866,9 +878,6 @@ extension Home {
     private var homeContent: some View {
       ScrollView {
         LazyVStack(spacing: 20) {
-          Color.clear
-            .frame(height: SafeArea.topOffset)
-          
           if store.isLoading && !store.hasLoadedOnce {
             loadingView
           } else if let error = store.promisesState.error {
@@ -931,45 +940,6 @@ extension Home {
       }
     }
 
-    // MARK: - Calendar Overlay
-
-    private var calendarOverlay: some View {
-      CalendarOverlayView(
-        currentMonth: store.overlayCalendarMonth,
-        days: store.overlayCalendarDays,
-        todayScheduleItems: store.overlaySelectedDateItems,
-        selectedDate: store.overlaySelectedDate,
-        onClose: {
-          store.send(.view(.calendarOverlayClosed), animation: .spring(response: 0.5, dampingFraction: 1.0))
-        },
-        onDateSelected: { date in
-          store.send(.view(.overlayDateSelected(date)))
-        },
-        onPreviousMonth: {
-          store.send(.view(.overlayPreviousMonth))
-        },
-        onNextMonth: {
-          store.send(.view(.overlayNextMonth))
-        }
-      )
-      .padding(.horizontal, 4)
-      .padding(.bottom, 16)
-      .frame(maxWidth: .infinity, alignment: .top)
-      .background(
-        Color(.systemBackground)
-          .clipShape(.rect(topLeadingRadius: 0, bottomLeadingRadius: 32, bottomTrailingRadius: 32, topTrailingRadius: 0))
-          .shadow(color: .black.opacity(0.12), radius: 30, y: 15)
-      )
-      .ignoresSafeArea(edges: .top)
-      // 슬라이드 + reveal 조합: 콘텐츠가 살짝 내려오면서 위에서부터 드러남
-      .offset(y: store.showCalendarOverlay ? 0 : -150)
-      .mask(alignment: .top) {
-        Rectangle()
-          .frame(height: store.showCalendarOverlay ? UIScreen.main.bounds.height : 0)
-          .ignoresSafeArea(edges: .top)
-      }
-      .allowsHitTesting(store.showCalendarOverlay)
-    }
 
     // MARK: - Loading View
 
