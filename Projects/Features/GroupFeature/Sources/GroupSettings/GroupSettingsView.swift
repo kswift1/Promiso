@@ -118,6 +118,44 @@ extension GroupSettings {
     private var menuSection: some SwiftUI.View {
       VStack(alignment: .leading, spacing: 10) {
         VStack(spacing: 0) {
+          // 그룹 색상
+          NavigationLink {
+            GroupColorPickerView(store: store)
+          } label: {
+            HStack(spacing: 12) {
+              if let groupColor = store.groupColor {
+                Circle()
+                  .fill(groupColor.color)
+                  .frame(width: 20, height: 20)
+              } else {
+                Image(systemName: "paintpalette")
+                  .font(.system(size: 16, weight: .semibold))
+                  .foregroundStyle(Color.pmindigo.n500)
+              }
+
+              Text("그룹 색상")
+                .foregroundStyle(.primary)
+              Spacer()
+              if let groupColor = store.groupColor {
+                Text(groupColor.displayName)
+                  .foregroundStyle(.secondary)
+              } else {
+                Text("미설정")
+                  .foregroundStyle(.secondary)
+              }
+              Image(systemName: "chevron.right")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.tertiary)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+          }
+          .buttonStyle(.plain)
+
+          dividerLine
+
           NavigationLink {
             NotificationSettingsView(store: store)
           } label: {
@@ -1631,6 +1669,125 @@ struct InviteSheet: View {
 }
 
 // MARK: - Preview
+
+// MARK: - GroupColorPickerView
+
+private struct GroupColorPickerView: View {
+  let store: StoreOf<GroupSettings.Feature>
+
+  private let columns = [
+    GridItem(.adaptive(minimum: 64), spacing: 16)
+  ]
+
+  var body: some View {
+    ScrollView {
+      VStack(alignment: .leading, spacing: 20) {
+        currentSelectionSection
+        colorGridSection
+
+        if store.groupColor != nil {
+          resetButton
+        }
+      }
+      .padding(.horizontal, 16)
+      .padding(.top, 12)
+      .padding(.bottom, 24)
+    }
+    .navigationTitle("그룹 색상")
+    .navigationBarTitleDisplayMode(.inline)
+  }
+
+  private var currentSelectionSection: some View {
+    VStack(alignment: .leading, spacing: 10) {
+      Text("현재 색상")
+        .font(.system(size: 16, weight: .semibold))
+        .padding(.horizontal, 4)
+
+      HStack(spacing: 12) {
+        if let color = store.groupColor {
+          Circle()
+            .fill(color.color)
+            .frame(width: 40, height: 40)
+          Text(color.displayName)
+            .font(.system(size: 16, weight: .medium))
+        } else {
+          Circle()
+            .fill(Color.pmgray.n300)
+            .frame(width: 40, height: 40)
+          Text("미설정")
+            .font(.system(size: 16, weight: .medium))
+            .foregroundStyle(.secondary)
+        }
+        Spacer()
+      }
+      .padding(16)
+      .adaptiveGlassCard()
+    }
+  }
+
+  private var colorGridSection: some View {
+    VStack(alignment: .leading, spacing: 10) {
+      Text("색상 선택")
+        .font(.system(size: 16, weight: .semibold))
+        .padding(.horizontal, 4)
+
+      LazyVGrid(columns: columns, spacing: 16) {
+        ForEach(GroupColor.allCases, id: \.self) { color in
+          colorCell(color)
+        }
+      }
+      .padding(16)
+      .adaptiveGlassCard()
+    }
+  }
+
+  private func colorCell(_ color: GroupColor) -> some View {
+    Button {
+      store.send(.view(.groupColorChanged(color)))
+    } label: {
+      VStack(spacing: 8) {
+        ZStack {
+          Circle()
+            .fill(color.color)
+            .frame(width: 48, height: 48)
+
+          if store.groupColor == color {
+            Circle()
+              .strokeBorder(.white, lineWidth: 3)
+              .frame(width: 48, height: 48)
+
+            Image(systemName: "checkmark")
+              .font(.system(size: 16, weight: .bold))
+              .foregroundStyle(.white)
+          }
+        }
+
+        Text(color.displayName)
+          .font(.system(size: 11))
+          .foregroundStyle(store.groupColor == color ? .primary : .secondary)
+      }
+    }
+    .buttonStyle(.plain)
+  }
+
+  private var resetButton: some View {
+    Button {
+      store.send(.view(.groupColorChanged(nil)))
+    } label: {
+      HStack {
+        Image(systemName: "arrow.counterclockwise")
+          .font(.system(size: 14, weight: .semibold))
+        Text("색상 초기화")
+          .font(.system(size: 14, weight: .medium))
+      }
+      .foregroundStyle(Color.pmgray.n500)
+      .frame(maxWidth: .infinity)
+      .padding(.vertical, 12)
+      .adaptiveGlassCard()
+    }
+    .buttonStyle(.plain)
+  }
+}
 
 #Preview {
   NavigationStack {

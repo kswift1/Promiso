@@ -380,6 +380,26 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
     )
   }
 
+  /// 그룹 색상 업데이트 (개인별)
+  public func updateGroupColor(
+    groupId: String,
+    userId: String,
+    color: GroupColor?
+  ) async throws {
+    let userRef = db.environmentCollection("users").document(userId)
+    let colorValue: Any = color?.rawValue ?? FieldValue.delete()
+    try await userRef.setData(
+      [
+        "groups": [
+          groupId: [
+            "groupColor": colorValue
+          ]
+        ]
+      ],
+      merge: true
+    )
+  }
+
   /// 그룹 배지 클리어 (Fire & Forget)
   ///
   /// - Parameters:
@@ -539,6 +559,8 @@ private extension UserGroupInfo {
     let joinedAt = (data["joinedAt"] as? Timestamp)?.dateValue()
     let hasNewActivity = data["hasNewActivity"] as? Bool ?? false
     let imageUrl = data["imageUrl"] as? String
+    let groupColorString = data["groupColor"] as? String
+    let groupColor = groupColorString.flatMap { GroupColor(rawValue: $0) }
 
     self.init(
       id: id,
@@ -547,7 +569,8 @@ private extension UserGroupInfo {
       joinedAt: joinedAt,
       notifications: notifications,
       hasNewActivity: hasNewActivity,
-      imageUrl: imageUrl
+      imageUrl: imageUrl,
+      groupColor: groupColor
     )
   }
 }
