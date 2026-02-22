@@ -24,6 +24,9 @@ final class CalendarOverlayPresentationController: UIPresentationController {
     dimmingView.frame = containerView.bounds
     containerView.insertSubview(dimmingView, at: 0)
 
+    let tap = UITapGestureRecognizer(target: self, action: #selector(dimmingViewTapped))
+    dimmingView.addGestureRecognizer(tap)
+
     let presentingView = presentingViewController.view!
     presentingView.layer.masksToBounds = true
 
@@ -48,6 +51,16 @@ final class CalendarOverlayPresentationController: UIPresentationController {
         self.dimmingView.alpha = 0
       }
     )
+  }
+
+  // MARK: - Dimming View Tap
+
+  @objc nonisolated private func dimmingViewTapped() {
+    MainActor.assumeIsolated {
+      if let calendarVC = presentedViewController as? CalendarOverlayHostingController {
+        calendarVC.viewModel.onClose()
+      }
+    }
   }
 
   // MARK: - Interactive Dismiss Progress
