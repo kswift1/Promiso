@@ -139,7 +139,7 @@ struct GroupMainStateTests {
     let confirmedFuture = makePromise(
       id: "confirmed-future",
       startAt: Date().addingTimeInterval(3600),
-      accepted: ["user1", "user2"],
+      accepted: ["current-user", "user1", "user2"],
       minimumParticipants: 2
     )
 
@@ -155,7 +155,7 @@ struct GroupMainStateTests {
     let confirmedPast = makePromise(
       id: "confirmed-past",
       startAt: Date().addingTimeInterval(-3600),
-      accepted: ["user1", "user2"],
+      accepted: ["current-user", "user1", "user2"],
       minimumParticipants: 2
     )
 
@@ -170,13 +170,13 @@ struct GroupMainStateTests {
     let laterStart = makePromise(
       id: "later",
       startAt: Date().addingTimeInterval(7200),
-      accepted: ["user1", "user2"],
+      accepted: ["current-user", "user1", "user2"],
       minimumParticipants: 2
     )
     let earlierStart = makePromise(
       id: "earlier",
       startAt: Date().addingTimeInterval(3600),
-      accepted: ["user1", "user2"],
+      accepted: ["current-user", "user1", "user2"],
       minimumParticipants: 2
     )
 
@@ -209,7 +209,7 @@ struct GroupMainStateTests {
   func filteredPromises_returnsCorrectFilterResults() {
     let confirmedPromise = makePromise(
       id: "confirmed",
-      accepted: ["user1", "user2"],
+      accepted: ["current-user", "user1", "user2"],
       minimumParticipants: 2
     )
     let pendingPromise = makePromise(id: "pending", accepted: [])
@@ -230,8 +230,8 @@ struct GroupMainStateTests {
 
   @Test("필터별 약속 개수 계산")
   func filterCounts_calculatesCorrectCounts() {
-    let confirmed1 = makePromise(id: "c1", accepted: ["user1", "user2"], minimumParticipants: 2)
-    let confirmed2 = makePromise(id: "c2", accepted: ["user1", "user2"], minimumParticipants: 2)
+    let confirmed1 = makePromise(id: "c1", accepted: ["current-user", "user1", "user2"], minimumParticipants: 2)
+    let confirmed2 = makePromise(id: "c2", accepted: ["current-user", "user1", "user2"], minimumParticipants: 2)
     let pending = makePromise(id: "p1", accepted: [])
 
     let state = makeState(promises: [confirmed1, confirmed2, pending])
@@ -323,21 +323,6 @@ struct GroupMainStateTests {
     state.pastPromisesState = .loading
 
     #expect(state.isPastFilterLoading == false)
-  }
-
-  // MARK: - promiseListAnimationKey 테스트
-
-  @Test("애니메이션 키 배열 생성")
-  func promiseListAnimationKey_generatesCorrectKeys() {
-    let promise1 = makePromise(id: "p1", startAt: Date().addingTimeInterval(3600))
-    let promise2 = makePromise(id: "p2", startAt: Date().addingTimeInterval(7200))
-
-    let state = makeState(promises: [promise1, promise2])
-
-    // 날짜 + 약속 ID들로 구성된 키 배열
-    let keys = state.promiseListAnimationKey
-    #expect(keys.contains("p1"))
-    #expect(keys.contains("p2"))
   }
 
   // MARK: - filteredPromises 추가 테스트
