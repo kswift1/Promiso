@@ -173,14 +173,16 @@ struct DayDetailView: View {
   }
 
   private enum Formatters {
+    static let displayTimeZone = Calendar.promiseDisplay.timeZone
+
     static let weekday: DateFormatter = {
-      let f = DateFormatter(); f.locale = .current; f.dateFormat = "EEEE"; return f
+      let f = DateFormatter(); f.locale = .current; f.timeZone = displayTimeZone; f.dateFormat = "EEEE"; return f
     }()
     static let shortDate: DateFormatter = {
-      let f = DateFormatter(); f.locale = .current; f.setLocalizedDateFormatFromTemplate("MMMd"); return f
+      let f = DateFormatter(); f.locale = .current; f.timeZone = displayTimeZone; f.setLocalizedDateFormatFromTemplate("MMMd"); return f
     }()
     static let time: DateFormatter = {
-      let f = DateFormatter(); f.locale = .current; f.dateFormat = "a h:mm"; return f
+      let f = DateFormatter(); f.locale = .current; f.timeZone = displayTimeZone; f.dateFormat = "a h:mm"; return f
     }()
   }
 

@@ -20766,6 +20766,60 @@
           }
         }
       }
+    },
+    "calendar.dayPeriod.afternoon": {
+      "comment": "캘린더 일간 상세 시간대 - 오후",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afternoon"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오후"
+          }
+        }
+      }
+    },
+    "calendar.dayPeriod.morning": {
+      "comment": "캘린더 일간 상세 시간대 - 오전",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Morning"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오전"
+          }
+        }
+      }
+    },
+    "calendar.dayPeriod.night": {
+      "comment": "캘린더 일간 상세 시간대 - 밤",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Night"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "저녁"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

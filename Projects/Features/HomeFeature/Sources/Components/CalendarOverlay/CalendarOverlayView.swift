@@ -493,23 +493,25 @@ struct CalendarOverlayView: View {
   // MARK: - Formatters
 
   private enum Formatters {
+    static let displayTimeZone = Calendar.promiseDisplay.timeZone
+
     static let year: DateFormatter = {
-      let f = DateFormatter(); f.dateFormat = "yyyy"; return f
+      let f = DateFormatter(); f.timeZone = displayTimeZone; f.dateFormat = "yyyy"; return f
     }()
     static let month: DateFormatter = {
-      let f = DateFormatter(); f.locale = .current; f.dateFormat = "MMMM"; return f
+      let f = DateFormatter(); f.locale = .current; f.timeZone = displayTimeZone; f.dateFormat = "MMMM"; return f
     }()
     static let todayDate: DateFormatter = {
-      let f = DateFormatter(); f.locale = .current; f.setLocalizedDateFormatFromTemplate("MMMMd"); return f
+      let f = DateFormatter(); f.locale = .current; f.timeZone = displayTimeZone; f.setLocalizedDateFormatFromTemplate("MMMMd"); return f
     }()
     static let weekday: DateFormatter = {
-      let f = DateFormatter(); f.locale = .current; f.dateFormat = "EEEE"; return f
+      let f = DateFormatter(); f.locale = .current; f.timeZone = displayTimeZone; f.dateFormat = "EEEE"; return f
     }()
     static let shortDate: DateFormatter = {
-      let f = DateFormatter(); f.locale = .current; f.setLocalizedDateFormatFromTemplate("MMMd"); return f
+      let f = DateFormatter(); f.locale = .current; f.timeZone = displayTimeZone; f.setLocalizedDateFormatFromTemplate("MMMd"); return f
     }()
     static let time: DateFormatter = {
-      let f = DateFormatter(); f.locale = .current; f.dateFormat = "a h:mm"; return f
+      let f = DateFormatter(); f.locale = .current; f.timeZone = displayTimeZone; f.dateFormat = "a h:mm"; return f
     }()
   }
 

@@ -30,7 +30,6 @@ extension Home {
     // MARK: - CancelID
 
     private enum CancelID {
-      case overlayDotsAnimation
       case overlayWeatherFetch
     }
 
@@ -76,14 +75,10 @@ extension Home {
       // MARK: Calendar Overlay
       /// 캘린더 오버레이 표시 여부
       var showCalendarOverlay: Bool = false
-      /// 오버레이 닫기 애니메이션 진행 중
-      var isCalendarDismissing: Bool = false
       /// 오버레이 캘린더 현재 월
       var overlayCalendarMonth: Date = Date()
       /// 오버레이 캘린더 선택 날짜
       var overlaySelectedDate: Date = Date()
-      /// 오버레이 인디케이터 dot 표시 여부 (지연 애니메이션)
-      var overlayDotsVisible: Bool = false
       /// 오버레이 날씨 상태
       var overlayWeatherState: OverlayWeatherState = .needsPermission
       /// 오버레이 일간 상세 모드
@@ -180,10 +175,6 @@ extension Home {
         case overlayPreviousMonth
         /// 오버레이 캘린더 다음 월
         case overlayNextMonth
-        /// 오버레이 dots 애니메이션 완료
-        case overlayDotsAppeared
-        /// 오버레이 닫기 애니메이션 완료
-        case overlayDismissCompleted
         /// 오버레이 날씨 카드 탭 (권한 요청)
         case overlayWeatherCardTapped
         /// 오버레이 월간 뷰로 복귀
@@ -319,7 +310,6 @@ extension Home {
           case .calendarOverlayOpened:
             state.overlayCalendarMonth = Date()
             state.overlaySelectedDate = Date()
-            state.overlayDotsVisible = false
             state.showCalendarOverlay = true
 
             // 위치 권한 동기 체크
@@ -327,33 +317,17 @@ extension Home {
             switch authStatus {
             case .authorized:
               state.overlayWeatherState = .loading
-              return .merge(
-                .run { send in
-                  try await Task.sleep(nanoseconds: 350_000_000)
-                  await send(.view(.overlayDotsAppeared))
-                }
-                .cancellable(id: CancelID.overlayDotsAnimation),
-                .send(.internal(.fetchOverlayWeather))
-              )
+              return .send(.internal(.fetchOverlayWeather))
             case .notDetermined, .denied:
               state.overlayWeatherState = .needsPermission
-              return .run { send in
-                try await Task.sleep(nanoseconds: 350_000_000)
-                await send(.view(.overlayDotsAppeared))
-              }
-              .cancellable(id: CancelID.overlayDotsAnimation)
+              return .none
             }
 
           case .calendarOverlayClosed:
             state.showCalendarOverlay = false
-            state.overlayDotsVisible = false
-            state.isCalendarDismissing = false
             state.overlayWeatherState = .needsPermission
             state.overlayDetailMode = false
-            return .merge(
-              .cancel(id: CancelID.overlayDotsAnimation),
-              .cancel(id: CancelID.overlayWeatherFetch)
-            )
+            return .cancel(id: CancelID.overlayWeatherFetch)
 
           case .overlayDateSelected(let date):
             state.overlaySelectedDate = date
@@ -374,13 +348,6 @@ extension Home {
             }
             return .none
 
-          case .overlayDotsAppeared:
-            state.overlayDotsVisible = true
-            return .none
-
-          case .overlayDismissCompleted:
-            return .none
-
           case .overlayWeatherCardTapped:
             state.overlayWeatherState = .loading
             return .send(.internal(.fetchOverlayWeather))
@@ -393,7 +360,6 @@ extension Home {
             // 일간 상세에서 일정 아이템 탭 → 오버레이 닫고 상세로 이동
             state.showCalendarOverlay = false
             state.overlayDetailMode = false
-            state.overlayDotsVisible = false
             state.overlayWeatherState = .needsPermission
             switch item {
             case .promise(let promise):
@@ -406,10 +372,7 @@ extension Home {
             case .personalEvent(let event):
               state.path.append(.personalEventDetail(.init(event: event)))
             }
-            return .merge(
-              .cancel(id: CancelID.overlayDotsAnimation),
-              .cancel(id: CancelID.overlayWeatherFetch)
-            )
+            return .cancel(id: CancelID.overlayWeatherFetch)
 
           }
 

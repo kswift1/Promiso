@@ -54,9 +54,9 @@ enum OverlayCalendarModels {
 
     var displayTitle: String {
       switch self {
-      case .morning: return "Morning"
-      case .afternoon: return "Afternoon"
-      case .night: return "Night"
+      case .morning: return LocalizedStrings.Calendar.dayPeriodMorning
+      case .afternoon: return LocalizedStrings.Calendar.dayPeriodAfternoon
+      case .night: return LocalizedStrings.Calendar.dayPeriodNight
       }
     }
 

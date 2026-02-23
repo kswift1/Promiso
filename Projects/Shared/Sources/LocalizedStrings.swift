@@ -1202,6 +1202,9 @@ public enum LocalizedStrings {
 
     // Day Detail
     public static var noSchedules: String { String(localized: "calendar.dayDetail.noSchedules", bundle: bundle) }
+    public static var dayPeriodMorning: String { String(localized: "calendar.dayPeriod.morning", bundle: bundle) }
+    public static var dayPeriodAfternoon: String { String(localized: "calendar.dayPeriod.afternoon", bundle: bundle) }
+    public static var dayPeriodNight: String { String(localized: "calendar.dayPeriod.night", bundle: bundle) }
 
     // Weather Permission
     public static var weatherPermissionTitle: String { String(localized: "calendar.weather.permission.title", bundle: bundle) }
