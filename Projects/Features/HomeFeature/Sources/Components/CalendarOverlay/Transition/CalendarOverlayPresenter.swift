@@ -48,9 +48,21 @@ struct CalendarOverlayPresenter: UIViewControllerRepresentable {
         viewModel.weekDays = weekDays
       }
 
+      // dismiss/transition 중에는 중복 present 방지
+      if coordinator.isTransitioning {
+        return
+      }
+
+      // 혹시 참조가 남아 있으면 정리
+      if coordinator.overlayViewController == nil, coordinator.viewModel != nil {
+        coordinator.viewModel = nil
+      }
+
       // 아직 present 안 된 경우
-      if !coordinator.isPresenting {
-        coordinator.isPresenting = true
+      if coordinator.overlayViewController == nil {
+        guard let presentingVC = uiViewController.modalPresentationHost else { return }
+        // 다른 모달이 떠 있는 동안에는 오버레이를 새로 띄우지 않음
+        guard presentingVC.presentedViewController == nil else { return }
 
         let viewModel = CalendarOverlayViewModel(
           currentMonth: currentMonth,
@@ -75,25 +87,38 @@ struct CalendarOverlayPresenter: UIViewControllerRepresentable {
         let calendarVC = CalendarOverlayHostingController(viewModel: viewModel)
         calendarVC.modalPresentationStyle = .custom
         calendarVC.transitioningDelegate = coordinator.transitionDelegate
+        coordinator.overlayViewController = calendarVC
+        coordinator.isTransitioning = true
 
-        // 부모 VC 찾기
-        let presentingVC = uiViewController.presentingParent ?? uiViewController
-        presentingVC.present(calendarVC, animated: true)
-      }
-    } else {
-      // dismiss
-      if coordinator.isPresenting {
-        let presentingVC = uiViewController.presentingParent ?? uiViewController
-        if presentingVC.presentedViewController != nil {
-          presentingVC.dismiss(animated: true) {
-            coordinator.isPresenting = false
+        presentingVC.present(calendarVC, animated: true) {
+          coordinator.isTransitioning = false
+          if calendarVC.presentingViewController == nil {
+            coordinator.overlayViewController = nil
             coordinator.viewModel = nil
           }
-        } else {
-          // 제스처로 이미 dismiss 완료된 경우
-          coordinator.isPresenting = false
+        }
+      }
+    } else {
+      // dismiss는 오버레이 자신만 대상으로 수행
+      if coordinator.isTransitioning {
+        return
+      }
+
+      guard let overlayVC = coordinator.overlayViewController else {
+        coordinator.viewModel = nil
+        return
+      }
+
+      if overlayVC.presentingViewController != nil || overlayVC.isBeingPresented {
+        coordinator.isTransitioning = true
+        overlayVC.dismiss(animated: true) {
+          coordinator.isTransitioning = false
+          coordinator.overlayViewController = nil
           coordinator.viewModel = nil
         }
+      } else {
+        coordinator.overlayViewController = nil
+        coordinator.viewModel = nil
       }
     }
   }
@@ -102,23 +127,20 @@ struct CalendarOverlayPresenter: UIViewControllerRepresentable {
 
   final class Coordinator {
     let transitionDelegate = CalendarOverlayTransitionDelegate()
-    var isPresenting = false
+    var isTransitioning = false
     var viewModel: CalendarOverlayViewModel?
+    weak var overlayViewController: CalendarOverlayHostingController?
   }
 }
 
 // MARK: - UIViewController Extension
 
 private extension UIViewController {
-  /// 실제 present 가능한 부모 VC 찾기
-  var presentingParent: UIViewController? {
+  /// representable 기준 루트 컨테이너 VC
+  var modalPresentationHost: UIViewController? {
     var candidate: UIViewController? = self
     while let parent = candidate?.parent {
       candidate = parent
-    }
-    // 이미 present 중인 VC가 있으면 그걸 사용
-    if candidate?.presentedViewController != nil {
-      return nil // 이미 present 중
     }
     return candidate
   }
