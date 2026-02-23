@@ -141,6 +141,9 @@ extension RootTab {
       /// 선호 언어 — 변경 시 뷰 트리 재구성 트리거
       @Shared(.appStorage(AppConstants.UserDefaults.preferredLanguage)) var preferredLanguage: String = ""
 
+      /// 24시간 형식 — 변경 시 뷰 트리 재구성 트리거
+      @Shared(.appStorage(AppConstants.UserDefaults.use24HourFormat)) var use24HourFormat: Bool = false
+
       /// LivePromise State (약속 추적 바) - nil이면 숨김
       var livePromise: LivePromise.Feature.State?
 
@@ -655,7 +658,7 @@ extension RootTab {
       tabViewWithLivePromise
         .tint(Color.pmbrand.primary)
         .preferredColorScheme(preferredColorScheme)
-        .id(store.preferredLanguage)
+        .id("\(store.preferredLanguage)_\(store.use24HourFormat)")
         .onAppear { store.send(.onAppear) }
         .fullScreenCover(isPresented: $expandLivePromise, onDismiss: {
           // 스와이프로 dismiss 시 TCA 상태 정리

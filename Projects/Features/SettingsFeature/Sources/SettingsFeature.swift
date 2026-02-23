@@ -1028,10 +1028,6 @@ extension LanguageSettings {
     @ObservableState
     public struct State: Equatable {
       @Shared(.appStorage(AppConstants.UserDefaults.preferredLanguage)) public var preferredLanguage: String = ""
-      /// 재시작 확인 Alert 표시 여부
-      var showRestartAlert: Bool = false
-      /// 변경하려는 값 (Alert 확인 시 적용)
-      var pendingValue: AppLanguage?
 
       public init() {}
     }
@@ -1043,8 +1039,6 @@ extension LanguageSettings {
     public enum View: Equatable, Sendable {
       case onAppear
       case languageChanged(AppLanguage)
-      case changeConfirmed
-      case changeCancelled
     }
 
     public var body: some ReducerOf<Self> {
@@ -1056,29 +1050,13 @@ extension LanguageSettings {
             return .none
 
           case .languageChanged(let language):
-            // 값이 변경된 경우에만 Alert 표시
             guard language.rawValue != state.preferredLanguage else { return .none }
-            state.pendingValue = language
-            state.showRestartAlert = true
-            return .run { _ in
-              await hapticFeedback.medium()
-            }
-
-          case .changeConfirmed:
-            state.showRestartAlert = false
-            guard let newLanguage = state.pendingValue else { return .none }
-            state.$preferredLanguage.withLock { $0 = newLanguage.rawValue }
-            state.pendingValue = nil
+            state.$preferredLanguage.withLock { $0 = language.rawValue }
             LocalizedStrings.configure()
             LocalizedDateFormatters.updateLocale()
             return .run { _ in
-              await hapticFeedback.success()
+              await hapticFeedback.selection()
             }
-
-          case .changeCancelled:
-            state.showRestartAlert = false
-            state.pendingValue = nil
-            return .none
           }
         }
       }
@@ -1119,19 +1097,6 @@ extension LanguageSettings {
       .navigationBarTitleDisplayMode(.inline)
       .onAppear {
         store.send(.view(.onAppear))
-      }
-      .alert(LocalizedStrings.SettingsStrings.languageRestartTitle, isPresented: Binding(
-        get: { store.showRestartAlert },
-        set: { if !$0 { store.send(.view(.changeCancelled)) } }
-      )) {
-        Button(LocalizedStrings.Common.cancel, role: .cancel) {
-          store.send(.view(.changeCancelled))
-        }
-        Button(LocalizedStrings.SettingsStrings.languageRestartAction) {
-          store.send(.view(.changeConfirmed))
-        }
-      } message: {
-        Text(LocalizedStrings.SettingsStrings.languageRestartMessage)
       }
     }
 
