@@ -446,6 +446,8 @@ struct CalendarOverlayView: View {
 
   @ViewBuilder
   private func weatherCard(_ weather: HourlyForecast) -> some View {
+    let shape = RoundedRectangle(cornerRadius: 20, style: .continuous)
+
     let content = ZStack {
       weatherGradient(for: weather.condition)
 
@@ -489,19 +491,24 @@ struct CalendarOverlayView: View {
     }
     .frame(height: 130)
     .compositingGroup()
-    .mask(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    .clipShape(shape)
 
     if #available(iOS 26.0, *) {
-      content
-        .glassEffect(.regular, in: .rect(cornerRadius: 20))
+      GlassEffectContainer {
+        content
+          .glassEffect(.regular, in: .rect(cornerRadius: 20))
+          .clipShape(shape)
+      }
+      .clipShape(shape)
         .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 4)
     } else {
       content
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
+        .background(.ultraThinMaterial, in: shape)
         .overlay(
-          RoundedRectangle(cornerRadius: 20)
+          shape
             .strokeBorder(.white.opacity(0.2), lineWidth: 1)
         )
+        .clipShape(shape)
         .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 4)
     }
   }
