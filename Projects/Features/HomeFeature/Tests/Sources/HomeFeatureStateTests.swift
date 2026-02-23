@@ -81,10 +81,10 @@ struct HomeFeatureStateTests {
     #expect(state.isLoading == false)
   }
 
-  // MARK: - todayPromises 테스트
+  // MARK: - homeContentSnapshot.todayPromises 테스트
 
   @Test("오늘 약속 목록 반환")
-  func todayPromises_returnsConfirmedTodayPromises() {
+  func homeContentSnapshot_todayPromises_returnsConfirmedTodayPromises() {
     // KST 타임존 사용 (실제 코드와 동일)
     var calendar = Calendar.current
     calendar.timeZone = TimeZone(identifier: "Asia/Seoul") ?? .current
@@ -112,13 +112,13 @@ struct HomeFeatureStateTests {
 
     let state = makeState(promisesState: .loaded([promise1, promise2]))
 
-    #expect(state.todayPromises.count == 2)
+    #expect(state.homeContentSnapshot.todayPromises.count == 2)
   }
 
-  // MARK: - pendingPromises 테스트
+  // MARK: - homeContentSnapshot.pendingPromises 테스트
 
   @Test("응답 필요 약속 목록 반환")
-  func pendingPromises_returnsPendingVotePromises() {
+  func homeContentSnapshot_pendingPromises_returnsPendingVotePromises() {
     let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date())!
     
     // current-user가 pending (accepted/declined에 없음)
@@ -136,13 +136,13 @@ struct HomeFeatureStateTests {
 
     let state = makeState(promisesState: .loaded([promise]))
 
-    #expect(state.pendingPromises.count == 1)
+    #expect(state.homeContentSnapshot.pendingPromises.count == 1)
   }
 
-  // MARK: - upcomingPromises 테스트
+  // MARK: - homeContentSnapshot.upcomingPromises 테스트
 
   @Test("다가오는 약속 목록 반환")
-  func upcomingPromises_returnsConfirmedUpcomingPromises() {
+  func homeContentSnapshot_upcomingPromises_returnsConfirmedUpcomingPromises() {
     // 실제 구현(Home.Feature.State.todayRange)과 동일하게 KST 기준으로 계산
     var calendar = Calendar.current
     calendar.timeZone = TimeZone(identifier: "Asia/Seoul") ?? .current
@@ -165,7 +165,7 @@ struct HomeFeatureStateTests {
 
     let state = makeState(promisesState: .loaded([promise]))
 
-    #expect(state.upcomingPromises.count == 1)
+    #expect(state.homeContentSnapshot.upcomingPromises.count == 1)
   }
 
   // MARK: - allPromises 테스트
@@ -315,18 +315,18 @@ struct HomeFeatureStateTests {
   func emptyPromises_returnsEmptyArrays() {
     let state = makeState(promisesState: .loaded([]))
 
-    #expect(state.todayPromises.isEmpty)
-    #expect(state.pendingPromises.isEmpty)
-    #expect(state.upcomingPromises.isEmpty)
+    #expect(state.homeContentSnapshot.todayPromises.isEmpty)
+    #expect(state.homeContentSnapshot.pendingPromises.isEmpty)
+    #expect(state.homeContentSnapshot.upcomingPromises.isEmpty)
   }
 
   @Test("idle 상태에서 빈 배열 반환")
   func idleState_returnsEmptyArrays() {
     let state = makeState(promisesState: .idle)
 
-    #expect(state.todayPromises.isEmpty)
-    #expect(state.pendingPromises.isEmpty)
-    #expect(state.upcomingPromises.isEmpty)
+    #expect(state.homeContentSnapshot.todayPromises.isEmpty)
+    #expect(state.homeContentSnapshot.pendingPromises.isEmpty)
+    #expect(state.homeContentSnapshot.upcomingPromises.isEmpty)
   }
 
   // MARK: - filteredPromises 테스트

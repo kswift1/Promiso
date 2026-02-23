@@ -749,31 +749,6 @@ extension Home.Feature.State {
     )
   }
 
-  /// 오늘의 확정 약속 (오늘 + 확정) - criticalZoneData 등에서 사용
-  var todayPromises: [PromiseModel] {
-    homeContentSnapshot.todayPromises
-  }
-
-  /// 오늘의 통합 일정 (그룹 약속 + 개인 일정, startAt 정렬)
-  var todayScheduleItems: [HomeModels.ScheduleItem] {
-    homeContentSnapshot.todayScheduleItems
-  }
-
-  /// 응답 필요 약속 (미응답 + 투표 마감 전, 마감 임박순, 최대 5개)
-  var pendingPromises: [PromiseModel] {
-    homeContentSnapshot.pendingPromises
-  }
-
-  /// 다가오는 확정 약속 (내일 이후 + 확정 + 내가 수락, 최대 10개)
-  var upcomingPromises: [PromiseModel] {
-    homeContentSnapshot.upcomingPromises
-  }
-
-  /// 다가오는 통합 일정 (그룹 약속 + 개인 일정, startAt 정렬, 최대 10개)
-  var upcomingScheduleItems: [HomeModels.ScheduleItem] {
-    homeContentSnapshot.upcomingScheduleItems
-  }
-
   /// 필터링된 약속 (id 기반 안전)
   var filteredPromises: [PromiseModel] {
     var promises = allPromises
