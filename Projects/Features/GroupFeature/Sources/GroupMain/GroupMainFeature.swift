@@ -631,6 +631,27 @@ extension GroupMain {
           case .groupListResponse(.success(let groupSummaries)):
             state.allGroupSummaries = groupSummaries
 
+            // Shared currentUser.groups를 서버 기준으로 동기화
+            var latestGroupsById: [String: UserGroupInfo] = [:]
+            for summary in groupSummaries {
+              latestGroupsById[summary.id] = summary
+            }
+            let normalizedGroups = latestGroupsById.values.sorted {
+              ($0.joinedAt ?? .distantPast) > ($1.joinedAt ?? .distantPast)
+            }
+            state.$currentUser.withLock { user in
+              user = UserPrivateModel(
+                userId: user.userId,
+                name: user.name,
+                nickname: user.nickname,
+                email: user.email,
+                provider: user.provider,
+                profile: user.profile,
+                metadata: user.metadata,
+                groups: normalizedGroups
+              )
+            }
+
             // 그룹 캘린더 동기화 설정 캐시 업데이트
             state.$groupCalendarSyncCache.withLock { cache in
               for group in groupSummaries {
@@ -1069,6 +1090,19 @@ extension GroupMain {
         case .path(.element(id: _, action: .groupSettings(.delegate(.groupLeft)))):
           if let groupId = state.currentGroup?.id {
             state.$groupMembersCache.withLock { _ = $0.removeValue(forKey: groupId) }
+            state.$currentUser.withLock { user in
+              let updatedGroups = user.groups.filter { $0.id != groupId }
+              user = UserPrivateModel(
+                userId: user.userId,
+                name: user.name,
+                nickname: user.nickname,
+                email: user.email,
+                provider: user.provider,
+                profile: user.profile,
+                metadata: user.metadata,
+                groups: updatedGroups
+              )
+            }
           }
           state.path.removeAll()
           state.currentGroup = nil
@@ -1077,6 +1111,19 @@ extension GroupMain {
         case .path(.element(id: _, action: .groupSettings(.delegate(.groupDeleted)))):
           if let groupId = state.currentGroup?.id {
             state.$groupMembersCache.withLock { _ = $0.removeValue(forKey: groupId) }
+            state.$currentUser.withLock { user in
+              let updatedGroups = user.groups.filter { $0.id != groupId }
+              user = UserPrivateModel(
+                userId: user.userId,
+                name: user.name,
+                nickname: user.nickname,
+                email: user.email,
+                provider: user.provider,
+                profile: user.profile,
+                metadata: user.metadata,
+                groups: updatedGroups
+              )
+            }
           }
           state.path.removeAll()
           state.currentGroup = nil

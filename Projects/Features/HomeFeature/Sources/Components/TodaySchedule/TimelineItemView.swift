@@ -45,6 +45,10 @@ struct TimelineItemView: View {
             )
             .padding(.horizontal, 8)
             .padding(.bottom, 8)
+          } else if shouldShowWeatherSkeleton {
+            weatherLoadingPlaceholder
+              .padding(.horizontal, 8)
+              .padding(.bottom, 8)
           }
 
           // Divider (마지막 아이템 제외)
@@ -209,6 +213,44 @@ struct TimelineItemView: View {
 
   private func endTimeString(_ endAt: Date) -> String {
     LocalizedDateFormatters.endTimeString(from: endAt)
+  }
+
+  /// 날씨 조회가 진행 중인 경우 스켈레톤 노출
+  private var shouldShowWeatherSkeleton: Bool {
+    guard weather == nil else { return false }
+    guard let location = promise.location,
+          location.latitude != nil,
+          location.longitude != nil else { return false }
+
+    let now = Date()
+    let maxDate = now.addingTimeInterval(10 * 24 * 3600)
+    return promise.startAt >= now && promise.startAt < maxDate
+  }
+
+  private var weatherLoadingPlaceholder: some View {
+    HStack(spacing: 8) {
+      Circle()
+        .fill(Color.pmgray.n300.opacity(0.45))
+        .frame(width: 16, height: 16)
+
+      RoundedRectangle(cornerRadius: 4)
+        .fill(Color.pmgray.n300.opacity(0.35))
+        .frame(width: 52, height: 10)
+
+      RoundedRectangle(cornerRadius: 4)
+        .fill(Color.pmgray.n300.opacity(0.30))
+        .frame(height: 10)
+    }
+    .padding(.horizontal, 12)
+    .padding(.vertical, 10)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(Color.pmgray.n100.opacity(0.55))
+    .clipShape(RoundedRectangle(cornerRadius: 12))
+    .overlay(
+      RoundedRectangle(cornerRadius: 12)
+        .stroke(Color.pmgray.n200.opacity(0.7), lineWidth: 1)
+    )
+    .shimmer()
   }
 
   /// 실시간 공유 시작 시간 문자열

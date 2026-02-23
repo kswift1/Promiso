@@ -422,7 +422,10 @@ extension Home {
             }
 
             // 그룹이 없으면 빈 배열 반환
-            let groupIds = state.currentUser.groups.map(\.id)
+            var seenGroupIds = Set<String>()
+            let groupIds = state.currentUser.groups.compactMap { groupInfo in
+              seenGroupIds.insert(groupInfo.id).inserted ? groupInfo.id : nil
+            }
             guard !groupIds.isEmpty else {
               state.promisesState = .loaded([])
               state.refreshHomeContentSnapshot()
@@ -442,9 +445,10 @@ extension Home {
             switch result {
             case .success(let promises):
               // 그룹 정보 매핑 (UserGroupInfo → GroupModel 변환)
-              let groupsDict = Dictionary(
-                uniqueKeysWithValues: state.currentUser.groups.map { ($0.id, $0) }
-              )
+              var groupsDict: [String: UserGroupInfo] = [:]
+              for groupInfo in state.currentUser.groups {
+                groupsDict[groupInfo.id] = groupInfo
+              }
               let promisesWithGroup = promises.map { promise in
                 var mutablePromise = promise
                 if let groupInfo = groupsDict[promise.groupId] {

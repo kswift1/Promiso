@@ -128,6 +128,8 @@ private struct UpcomingPromiseRow: View {
                 referenceTimeText: promise.startAt.formattedMonthDayTime,
                 forecastSource: weather.forecastSource(for: promise.startAt)
               )
+            } else if shouldShowWeatherSkeleton {
+              WeatherBadgeLoadingPlaceholder()
             }
           }
 
@@ -202,6 +204,17 @@ private struct UpcomingPromiseRow: View {
   private var timeString: String {
     promise.startAt.formattedTime
   }
+
+  private var shouldShowWeatherSkeleton: Bool {
+    guard weather == nil else { return false }
+    guard let location = promise.location,
+          location.latitude != nil,
+          location.longitude != nil else { return false }
+
+    let now = Date()
+    let maxDate = now.addingTimeInterval(10 * 24 * 3600)
+    return promise.startAt >= now && promise.startAt < maxDate
+  }
 }
 
 // MARK: - Upcoming Personal Event Row
@@ -237,6 +250,8 @@ private struct UpcomingPersonalEventRow: View {
                 referenceTimeText: event.startAt.formattedMonthDayTime,
                 forecastSource: weather.forecastSource(for: event.startAt)
               )
+            } else if shouldShowWeatherSkeleton {
+              WeatherBadgeLoadingPlaceholder()
             }
           }
 
@@ -296,6 +311,30 @@ private struct UpcomingPersonalEventRow: View {
 
   private var timeString: String {
     event.startAt.formattedTime
+  }
+
+  private var shouldShowWeatherSkeleton: Bool {
+    guard weather == nil else { return false }
+    guard let location = event.location,
+          location.latitude != nil,
+          location.longitude != nil else { return false }
+
+    let now = Date()
+    let maxDate = now.addingTimeInterval(10 * 24 * 3600)
+    return event.startAt >= now && event.startAt < maxDate
+  }
+}
+
+private struct WeatherBadgeLoadingPlaceholder: View {
+  var body: some View {
+    Capsule()
+      .fill(Color.pmgray.n200.opacity(0.6))
+      .frame(width: 46, height: 24)
+      .overlay(
+        Capsule()
+          .stroke(Color.pmgray.n300.opacity(0.5), lineWidth: 1)
+      )
+      .shimmer()
   }
 }
 
