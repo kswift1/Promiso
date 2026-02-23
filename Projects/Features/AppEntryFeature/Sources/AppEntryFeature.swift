@@ -105,7 +105,6 @@ extension AppEntry {
     private enum SubscriptionCancelID {
       case fcmToken
       case pushNotificationTap
-      case appRestart
     }
     
     @CasePathable
@@ -125,8 +124,6 @@ extension AppEntry {
       case fcmTokenSaved
       case subscribePushNotificationTap
       case pushNotificationTapped(DeeplinkDestination)
-      case subscribeAppRestart
-      case appRestartRequested
       case cancelSubscriptions
       case transitionToMain(UserPrivateModel, isSignup: Bool)
       case requestFCMToken
@@ -208,8 +205,7 @@ extension AppEntry {
             return .merge(
               .send(.internal(.startSessionCheck)),
               .send(.internal(.subscribeFCMToken)),
-              .send(.internal(.subscribePushNotificationTap)),
-              .send(.internal(.subscribeAppRestart))
+              .send(.internal(.subscribePushNotificationTap))
             )
 
           case .startSessionCheck:
@@ -321,36 +317,10 @@ extension AppEntry {
           case .pushNotificationTapped(let destination):
             return routeOrPendDeeplink(destination, state: &state)
 
-          case .subscribeAppRestart:
-            return .publisher {
-              NotificationCenter.default
-                .publisher(for: AppConstants.Notifications.appRestartRequested)
-                .map { _ in Action.internal(.appRestartRequested) }
-            }
-            .cancellable(id: SubscriptionCancelID.appRestart, cancelInFlight: true)
-
-          case .appRestartRequested:
-            // 언어 번들 재설정
-            LocalizedStrings.configure()
-
-            // 앱 상태 리셋 - Splash부터 다시 시작
-            state.reset()
-
-            // 시간 포맷 다시 로드
-            LocalizedDateFormatters.use24HourFormat = userDefaultsClient.boolForKey(
-              AppConstants.UserDefaults.use24HourFormat
-            )
-
-            // 테마 모드는 RootTab에서 preferredColorScheme으로 자동 적용됨
-            // (UserDefaults.preferredThemeMode 값을 직접 읽음)
-
-            return .send(.internal(.startSessionCheck))
-
           case .cancelSubscriptions:
             return .merge(
               .cancel(id: SubscriptionCancelID.fcmToken),
-              .cancel(id: SubscriptionCancelID.pushNotificationTap),
-              .cancel(id: SubscriptionCancelID.appRestart)
+              .cancel(id: SubscriptionCancelID.pushNotificationTap)
             )
 
           case .transitionToMain(let userModel, let isSignup):

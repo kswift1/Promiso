@@ -14728,13 +14728,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Restart"
+            "value": "Change"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "재시작"
+            "value": "변경"
           }
         }
       }
@@ -14745,13 +14745,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The app needs to restart to change the language.\nRestart now?"
+            "value": "Change app language?\nThe screen will refresh automatically."
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "언어를 변경하려면 앱을 재시작해야 합니다.\n지금 재시작하시겠습니까?"
+            "value": "앱 언어를 변경하시겠습니까?\n화면이 자동으로 새로고침됩니다."
           }
         }
       }
@@ -14762,13 +14762,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Restart App"
+            "value": "Change Language"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "앱 재시작"
+            "value": "언어 변경"
           }
         }
       }
@@ -17149,19 +17149,19 @@
       }
     },
     "settings.themeMode.system.description": {
-      "comment": "기기 설정에 따라 자동 변경",
+      "comment": "기기 설정에 따름",
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Automatically changes based on device settings"
+            "value": "Follows device setting"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "기기 설정에 따라 자동 변경"
+            "value": "기기 설정에 따름"
           }
         }
       }
@@ -17257,7 +17257,7 @@
       }
     },
     "settings.themeModeSystem": {
-      "comment": "기기 설정에 따라 자동 변경",
+      "comment": "기기 설정에 따름",
       "extractionState": "manual",
       "localizations": {
         "en": {

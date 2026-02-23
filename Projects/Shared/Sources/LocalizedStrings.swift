@@ -12,7 +12,7 @@ public enum LocalizedStrings {
   public static var bundle: Bundle { _bundle }
 
   /// 선호 언어로 번들 설정
-  /// - AppMain.init()과 appRestartRequested에서 호출
+  /// - AppMain.init()에서 호출
   public static func configure() {
     guard let lang = UserDefaults.standard.string(forKey: "promisoPreferredLanguage"),
           let path = Bundle.module.path(forResource: lang, ofType: "lproj"),

@@ -238,8 +238,6 @@ public enum AppConstants {
     public static let fcmTokenDidReceive = NSNotification.Name("FCMTokenDidReceive")
     /// 푸시 알림 탭 시 발송 (userInfo: ["type": String, "promiseId": String?, "groupId": String?])
     public static let pushNotificationTapped = NSNotification.Name("PushNotificationTapped")
-    /// 앱 재시작 요청 (설정 변경 등으로 인해 앱 상태 리셋 필요 시)
-    public static let appRestartRequested = NSNotification.Name("AppRestartRequested")
   }
 
   // MARK: - Image Cache
