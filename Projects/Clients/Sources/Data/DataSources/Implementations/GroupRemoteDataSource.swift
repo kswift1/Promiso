@@ -388,16 +388,9 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
   ) async throws {
     let userRef = db.environmentCollection("users").document(userId)
     let colorValue: Any = color?.rawValue ?? FieldValue.delete()
-    try await userRef.setData(
-      [
-        "groups": [
-          groupId: [
-            "groupColor": colorValue
-          ]
-        ]
-      ],
-      merge: true
-    )
+    try await userRef.updateData([
+      "groups.\(groupId).groupColor": colorValue
+    ])
   }
 
   /// 그룹 배지 클리어 (Fire & Forget)

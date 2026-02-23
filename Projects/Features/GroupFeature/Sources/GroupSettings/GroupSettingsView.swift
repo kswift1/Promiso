@@ -133,7 +133,7 @@ extension GroupSettings {
                   .foregroundStyle(Color.pmindigo.n500)
               }
 
-              Text("그룹 색상")
+              Text(LocalizedStrings.GroupSettingsView.groupColorTitle)
                 .foregroundStyle(.primary)
               Spacer()
               if let groupColor = store.groupColor {
@@ -1698,13 +1698,13 @@ private struct GroupColorPickerView: View {
       .padding(.top, 12)
       .padding(.bottom, 24)
     }
-    .navigationTitle("그룹 색상")
+    .navigationTitle(LocalizedStrings.GroupSettingsView.groupColorTitle)
     .navigationBarTitleDisplayMode(.inline)
   }
 
   private var previewSection: some View {
     VStack(alignment: .leading, spacing: 10) {
-      Text("미리보기")
+      Text(LocalizedStrings.GroupSettingsView.groupColorPreview)
         .font(.system(size: 16, weight: .semibold))
         .padding(.horizontal, 4)
 
@@ -1728,7 +1728,7 @@ private struct GroupColorPickerView: View {
     HStack(spacing: 16) {
       // 미리보기 라벨
       VStack(alignment: .leading, spacing: 4) {
-        Text("그룹 탭")
+        Text(LocalizedStrings.GroupSettingsView.groupColorGroupTab)
           .font(.system(size: 13, weight: .semibold))
           .foregroundStyle(.secondary)
         Text("상단 그룹 바에 표시됩니다")
@@ -1767,7 +1767,7 @@ private struct GroupColorPickerView: View {
     HStack(spacing: 16) {
       // 미리보기 라벨
       VStack(alignment: .leading, spacing: 4) {
-        Text("약속 카드")
+        Text(LocalizedStrings.GroupSettingsView.groupColorPromiseCard)
           .font(.system(size: 13, weight: .semibold))
           .foregroundStyle(.secondary)
         Text("약속 카드에 색상이 표시됩니다")
@@ -1854,7 +1854,7 @@ private struct GroupColorPickerView: View {
       HStack {
         Image(systemName: "arrow.counterclockwise")
           .font(.system(size: 14, weight: .semibold))
-        Text("색상 초기화")
+        Text(LocalizedStrings.GroupSettingsView.groupColorReset)
           .font(.system(size: 14, weight: .medium))
       }
       .foregroundStyle(Color.pmgray.n500)

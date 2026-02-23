@@ -240,7 +240,7 @@ extension GroupSettings {
         case pastPromisesTapped
         case hostTransferred
         case memberExpelled
-        case groupColorChanged
+        case groupColorChanged(GroupColor?)
       }
     }
 
@@ -582,7 +582,7 @@ extension GroupSettings {
               await hapticFeedback.selection()
               do {
                 try await groupClient.updateGroupColor(groupId, color)
-                await send(.delegate(.groupColorChanged))
+                await send(.delegate(.groupColorChanged(color)))
               } catch {
                 await send(.internal(.groupColorUpdateFailed(
                   previousColor: previousColor,
