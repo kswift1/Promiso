@@ -1,15 +1,19 @@
 import SwiftUI
 import Clients
-import ComposableArchitecture
 import PromisoShared
 
 // MARK: - Conflict Warning Section
 
-struct ConflictWarningSection: View {
+public struct ConflictWarningSection: View {
   let conflicts: [ScheduleConflict]
   let isChecking: Bool
 
-  var body: some View {
+  public init(conflicts: [ScheduleConflict], isChecking: Bool) {
+    self.conflicts = conflicts
+    self.isChecking = isChecking
+  }
+
+  public var body: some View {
     if isChecking {
       HStack(spacing: 8) {
         ProgressView()
