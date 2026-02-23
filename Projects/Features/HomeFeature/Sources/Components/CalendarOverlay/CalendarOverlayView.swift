@@ -443,8 +443,9 @@ struct CalendarOverlayView: View {
 
   // MARK: - Weather Card
 
+  @ViewBuilder
   private func weatherCard(_ weather: HourlyForecast) -> some View {
-    ZStack {
+    let content = ZStack {
       weatherGradient(for: weather.condition)
 
       Image(systemName: weather.condition.sfSymbolName)
@@ -470,7 +471,22 @@ struct CalendarOverlayView: View {
       .frame(maxWidth: .infinity, alignment: .leading)
     }
     .frame(height: 130)
-    .clipShape(RoundedRectangle(cornerRadius: 20))
+    .compositingGroup()
+    .mask(RoundedRectangle(cornerRadius: 20, style: .continuous))
+
+    if #available(iOS 26.0, *) {
+      content
+        .glassEffect(.regular, in: .rect(cornerRadius: 20))
+        .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 4)
+    } else {
+      content
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
+        .overlay(
+          RoundedRectangle(cornerRadius: 20)
+            .strokeBorder(.white.opacity(0.2), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 4)
+    }
   }
 
   private func weatherGradient(for condition: WeatherCondition) -> LinearGradient {
