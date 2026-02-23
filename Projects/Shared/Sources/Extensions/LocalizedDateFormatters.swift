@@ -60,13 +60,11 @@ public enum LocalizedDateFormatters {
     sectionHeader.dateFormat = localeAwareDateFormat(korean: "M월 d일 (E)", nonKorean: "MMM d (E)")
 
     weekday.locale = locale
-    // weekday.dateFormat = "E"  // 로케일 무관 포맷은 locale만 갱신
 
     month.locale = locale
     month.dateFormat = localeAwareDateFormat(korean: "M월", nonKorean: "MMM")
 
     day.locale = locale
-    // day.dateFormat = "d"  // 로케일 무관
 
     monthDay.locale = locale
     monthDay.dateFormat = localeAwareDateFormat(korean: "M월 d일", nonKorean: "MMM d")
