@@ -41,8 +41,7 @@ public enum LocationClientError: Error, Sendable {
 extension LocationClient: DependencyKey {
   public static let liveValue = Self(
     authorizationStatus: {
-      let manager = CLLocationManager()
-      switch manager.authorizationStatus {
+      switch CLLocationManager().authorizationStatus {
       case .authorizedWhenInUse, .authorizedAlways:
         return .authorized
       case .denied, .restricted:
