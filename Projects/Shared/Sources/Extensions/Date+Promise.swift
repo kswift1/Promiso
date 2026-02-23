@@ -1,5 +1,7 @@
 import Foundation
 
+private let promiseDisplayTimeZone = TimeZone(identifier: "Asia/Seoul") ?? .current
+
 // MARK: - Promise-specific Date Extensions
 
 public extension Date {
@@ -35,7 +37,7 @@ public extension Date {
   
   /// 약속 날짜를 표시용으로 포맷팅
   var promiseDateString: String {
-    let calendar = Calendar.current
+    let calendar = Calendar.promiseDisplay
     let now = Date()
     
     if calendar.isDateInToday(self) {
@@ -149,6 +151,13 @@ public extension Date {
 // MARK: - Calendar Extensions for Promise
 
 public extension Calendar {
+  /// 약속 표시/분류용 캘린더 (KST 기준)
+  static var promiseDisplay: Calendar {
+    var calendar = Calendar.current
+    calendar.timeZone = promiseDisplayTimeZone
+    return calendar
+  }
+
   /// 두 날짜가 같은 약속 그룹인지 확인 (같은 날인지)
   func isSamePromiseDay(_ date1: Date, _ date2: Date) -> Bool {
     return isDate(date1, equalTo: date2, toGranularity: .day)

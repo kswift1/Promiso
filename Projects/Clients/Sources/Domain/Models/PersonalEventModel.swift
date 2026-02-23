@@ -167,7 +167,7 @@ extension PersonalEventModel {
 
   /// 날짜 텍스트 (예: "오늘", "내일", "어제", "1월 15일")
   public var dateText: String {
-    let calendar = Calendar.current
+    let calendar = Calendar.promiseDisplay
     if calendar.isDateInToday(startAt) {
       return LocalizedStrings.DateFormat.today
     }

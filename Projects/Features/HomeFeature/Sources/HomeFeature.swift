@@ -678,8 +678,7 @@ extension Home.Feature.State {
 
   /// 오늘 날짜 범위 (KST 기준)
   private var todayRange: (start: Date, end: Date) {
-    var calendar = Calendar.current
-    calendar.timeZone = TimeZone(identifier: "Asia/Seoul") ?? .current
+    let calendar = Calendar.promiseDisplay
     let startOfDay = calendar.startOfDay(for: Date())
     let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) ?? startOfDay
     return (startOfDay, endOfDay)
