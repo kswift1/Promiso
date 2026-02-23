@@ -12,6 +12,8 @@ struct CalendarMonthPager: UIViewControllerRepresentable {
   let onDateSelected: (Date) -> Void
   let onPreviousMonth: () -> Void
   let onNextMonth: () -> Void
+  let detailMode: Bool
+  let selectedRowIndex: Int
 
   func makeCoordinator() -> Coordinator {
     Coordinator(pager: self)
@@ -53,6 +55,13 @@ struct CalendarMonthPager: UIViewControllerRepresentable {
         onDateSelected: onDateSelected
       )
     }
+
+    // detailMode 변경 감지
+    let animated = coordinator.previousDetailMode != nil
+    if coordinator.previousDetailMode != detailMode {
+      coordinator.previousDetailMode = detailMode
+      vc.applyDetailMode(detailMode, selectedRowIndex: selectedRowIndex, animated: animated)
+    }
   }
 
   // MARK: - Coordinator
@@ -61,12 +70,14 @@ struct CalendarMonthPager: UIViewControllerRepresentable {
     var pager: CalendarMonthPager
     weak var pagerVC: PagerViewController?
     var needsRecenter = false
+    var previousDetailMode: Bool?
 
     init(pager: CalendarMonthPager) {
       self.pager = pager
     }
 
     func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
+      if pager.detailMode { return }
       let pageWidth = scrollView.bounds.width
       guard pageWidth > 0 else { return }
       let currentPage = Int(round(scrollView.contentOffset.x / pageWidth))
@@ -92,9 +103,16 @@ struct CalendarMonthPager: UIViewControllerRepresentable {
     private let contentView = UIView()
     private var pageHostingControllers: [UIHostingController<CalendarMonthGridView>] = []
 
+    // Grid layout constants
+    private let rowHeight: CGFloat = 44
+    private let gridSpacing: CGFloat = 6
+    private var rowUnit: CGFloat { rowHeight + gridSpacing }
+    private var fullGridHeight: CGFloat { 6 * rowHeight + 5 * gridSpacing }
+
     override func viewDidLoad() {
       super.viewDidLoad()
       view.backgroundColor = .clear
+      view.clipsToBounds = true
 
       scrollView.isPagingEnabled = true
       scrollView.showsHorizontalScrollIndicator = false
@@ -185,7 +203,7 @@ struct CalendarMonthPager: UIViewControllerRepresentable {
 
         NSLayoutConstraint.activate([
           vc.view.topAnchor.constraint(equalTo: contentView.topAnchor),
-          vc.view.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
+          vc.view.heightAnchor.constraint(equalToConstant: fullGridHeight),
           vc.view.widthAnchor.constraint(equalTo: contentView.widthAnchor, multiplier: pageWidth),
         ])
 
@@ -216,6 +234,48 @@ struct CalendarMonthPager: UIViewControllerRepresentable {
       let pageWidth = scrollView.bounds.width
       guard pageWidth > 0 else { return }
       scrollView.setContentOffset(CGPoint(x: pageWidth, y: 0), animated: animated)
+    }
+
+    // MARK: - Detail Mode
+
+    func applyDetailMode(_ detailMode: Bool, selectedRowIndex: Int, animated: Bool) {
+      guard pageHostingControllers.count == 3 else { return }
+      let centerPage = pageHostingControllers[1]
+
+      if detailMode {
+        scrollView.isScrollEnabled = false
+        let offsetY = -CGFloat(selectedRowIndex) * rowUnit
+        let targetTransform = CGAffineTransform(translationX: 0, y: offsetY)
+
+        if animated {
+          UIView.animate(
+            withDuration: 0.45,
+            delay: 0,
+            usingSpringWithDamping: 0.95,
+            initialSpringVelocity: 0
+          ) {
+            centerPage.view.transform = targetTransform
+          }
+        } else {
+          centerPage.view.transform = targetTransform
+        }
+      } else {
+        if animated {
+          UIView.animate(
+            withDuration: 0.45,
+            delay: 0,
+            usingSpringWithDamping: 0.95,
+            initialSpringVelocity: 0
+          ) {
+            centerPage.view.transform = .identity
+          } completion: { _ in
+            self.scrollView.isScrollEnabled = true
+          }
+        } else {
+          centerPage.view.transform = .identity
+          scrollView.isScrollEnabled = true
+        }
+      }
     }
 
     override func viewDidLayoutSubviews() {

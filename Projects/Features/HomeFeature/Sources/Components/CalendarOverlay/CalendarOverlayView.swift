@@ -33,16 +33,11 @@ struct CalendarOverlayView: View {
   private let rowHeight: CGFloat = 44
   private let gridSpacing: CGFloat = 6
 
-  /// 1행 단위 높이 (행 높이 + 간격)
-  private var rowUnit: CGFloat { rowHeight + gridSpacing }
-
   /// detail mode에서 보이는 날짜 행 영역 (선택된 주 1행)
   private var compactGridHeight: CGFloat { rowHeight }
 
-  /// detail mode에서 날짜 행을 위로 밀어 선택 주를 요일 헤더 바로 아래로 배치
-  private var contentShift: CGFloat {
-    detailMode ? -CGFloat(selectedRowIndex) * rowUnit : 0
-  }
+  /// 전체 6행 그리드 높이
+  private var fullGridHeight: CGFloat { 6 * rowHeight + 5 * gridSpacing }
 
   private let weekdayLabels = [
     LocalizedStrings.Calendar.weekdayMon,
@@ -114,44 +109,19 @@ struct CalendarOverlayView: View {
 
   // MARK: - Date Rows Grid
 
-  @ViewBuilder
   private var dateRowsGrid: some View {
-    if detailMode {
-      // Detail mode: 커튼 효과 (선택 주만 표시)
-      VStack(spacing: gridSpacing) {
-        ForEach(Array(dayRows.enumerated()), id: \.offset) { _, row in
-          HStack(spacing: 0) {
-            ForEach(row) { day in
-              Button {
-                if day.isCurrentMonth {
-                  onDateSelected(day.date)
-                }
-              } label: {
-                OverlayCalendarDayCell(day: day)
-                  .frame(maxWidth: .infinity)
-              }
-              .buttonStyle(.plain)
-              .disabled(!day.isCurrentMonth)
-            }
-          }
-        }
-      }
-      .offset(y: contentShift)
-      .frame(height: compactGridHeight, alignment: .top)
-      .clipped()
-      .contentShape(Rectangle())
-    } else {
-      // Month mode: UIKit UIScrollView 기반 3페이지 페이저
-      CalendarMonthPager(
-        prevDays: prevMonthDays,
-        currentDays: days,
-        nextDays: nextMonthDays,
-        onDateSelected: onDateSelected,
-        onPreviousMonth: onPreviousMonth,
-        onNextMonth: onNextMonth
-      )
-      .frame(height: 6 * rowHeight + 5 * gridSpacing)
-    }
+    CalendarMonthPager(
+      prevDays: prevMonthDays,
+      currentDays: days,
+      nextDays: nextMonthDays,
+      onDateSelected: onDateSelected,
+      onPreviousMonth: onPreviousMonth,
+      onNextMonth: onNextMonth,
+      detailMode: detailMode,
+      selectedRowIndex: selectedRowIndex
+    )
+    .frame(height: detailMode ? compactGridHeight : fullGridHeight)
+    .clipped()
   }
 
   /// 요일 헤더 행

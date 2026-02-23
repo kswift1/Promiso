@@ -204,7 +204,6 @@ private struct CalendarOverlayContentView: View {
         onScheduleItemTapped: viewModel.onScheduleItemTapped
       )
       .padding(.top, topPad)
-      .padding(.horizontal, 4)
       .padding(.bottom, bottomPad)
     }
     .background(alignment: .top) {
