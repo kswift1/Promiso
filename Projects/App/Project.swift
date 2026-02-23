@@ -121,6 +121,8 @@ let liveActivityDev = Target.target(
   deploymentTargets: .iOS(AppConfig.deploymentTargets),
   infoPlist: .extendingDefault(with: [
     "CFBundleDisplayName": "Promiso Live Activity [DEV]",
+    "CFBundleShortVersionString": .string(AppConfig.marketingNumber),
+    "CFBundleVersion": .string(AppConfig.buildVersion(for: "dev")),
     "DEEPLINK_SCHEME": "promiso-dev",
     "NSExtension": [
       "NSExtensionPointIdentifier": "com.apple.widgetkit-extension"
@@ -146,6 +148,8 @@ let liveActivityStage = Target.target(
   deploymentTargets: .iOS(AppConfig.deploymentTargets),
   infoPlist: .extendingDefault(with: [
     "CFBundleDisplayName": "Promiso Live Activity [STAGE]",
+    "CFBundleShortVersionString": .string(AppConfig.marketingNumber),
+    "CFBundleVersion": .string(AppConfig.buildVersion(for: "stage")),
     "DEEPLINK_SCHEME": "promiso-stage",
     "NSExtension": [
       "NSExtensionPointIdentifier": "com.apple.widgetkit-extension"
@@ -183,6 +187,8 @@ let liveActivityProd = Target.target(
   deploymentTargets: .iOS(AppConfig.deploymentTargets),
   infoPlist: .extendingDefault(with: [
     "CFBundleDisplayName": "Promiso Live Activity",
+    "CFBundleShortVersionString": .string(AppConfig.marketingNumber),
+    "CFBundleVersion": .string(AppConfig.buildVersion(for: "prod")),
     "DEEPLINK_SCHEME": "promiso",
     "NSExtension": [
       "NSExtensionPointIdentifier": "com.apple.widgetkit-extension"
@@ -220,6 +226,8 @@ let promiseWidgetDev = Target.target(
   deploymentTargets: .iOS(AppConfig.deploymentTargets),
   infoPlist: .extendingDefault(with: [
     "CFBundleDisplayName": "Promiso [DEV]",
+    "CFBundleShortVersionString": .string(AppConfig.marketingNumber),
+    "CFBundleVersion": .string(AppConfig.buildVersion(for: "dev")),
     "DEEPLINK_SCHEME": "promiso-dev",
     "NSExtension": [
       "NSExtensionPointIdentifier": "com.apple.widgetkit-extension"
@@ -245,6 +253,8 @@ let promiseWidgetStage = Target.target(
   deploymentTargets: .iOS(AppConfig.deploymentTargets),
   infoPlist: .extendingDefault(with: [
     "CFBundleDisplayName": "Promiso [STAGE]",
+    "CFBundleShortVersionString": .string(AppConfig.marketingNumber),
+    "CFBundleVersion": .string(AppConfig.buildVersion(for: "stage")),
     "DEEPLINK_SCHEME": "promiso-stage",
     "NSExtension": [
       "NSExtensionPointIdentifier": "com.apple.widgetkit-extension"
@@ -282,6 +292,8 @@ let promiseWidgetProd = Target.target(
   deploymentTargets: .iOS(AppConfig.deploymentTargets),
   infoPlist: .extendingDefault(with: [
     "CFBundleDisplayName": "Promiso",
+    "CFBundleShortVersionString": .string(AppConfig.marketingNumber),
+    "CFBundleVersion": .string(AppConfig.buildVersion(for: "prod")),
     "DEEPLINK_SCHEME": "promiso",
     "NSExtension": [
       "NSExtensionPointIdentifier": "com.apple.widgetkit-extension"

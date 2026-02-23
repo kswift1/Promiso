@@ -60,6 +60,12 @@ extension CreatePersonalEvent {
       var localImageData: [Data] = []
       var removedImageUrls: [String] = []
 
+      // 일정 충돌 감지
+      var userPlan: UserPlan = .free
+      var currentUserId: String = ""
+      var conflicts: [ScheduleConflict] = []
+      var isCheckingConflicts: Bool = false
+      
       public init(event: PersonalEventModel = .empty, mode: Mode = .create) {
         self.event = event
         self.mode = mode

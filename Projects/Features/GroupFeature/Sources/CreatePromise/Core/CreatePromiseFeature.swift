@@ -54,6 +54,12 @@ public enum CreatePromise {
       var localImageData: [Data] = []
       var isUploadingImages: Bool = false
 
+      // 일정 충돌 감지
+      var userPlan: UserPlan = .free
+      var currentUserId: String = ""
+      var conflicts: [ScheduleConflict] = []
+      var isCheckingConflicts: Bool = false
+      
       // 장소 선택 sheet
       @Presents var locationPicker: LocationPicker.Feature.State?
 
