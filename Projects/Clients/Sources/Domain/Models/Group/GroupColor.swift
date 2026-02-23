@@ -1,20 +1,20 @@
 import SwiftUI
 
 /// 그룹별 개인 색상 설정
-/// Firestore에 rawValue(String)로 저장됨
+/// Firestore에 hex 문자열로 저장됨
 public enum GroupColor: String, CaseIterable, Codable, Equatable, Hashable, Sendable {
-  case indigo
-  case purple
-  case pink
-  case blue
-  case cyan
-  case teal
-  case green
-  case mint
-  case yellow
-  case orange
-  case red
-  case brown
+  case indigo = "#5856D6"
+  case purple = "#AF52DE"
+  case pink = "#FF2D55"
+  case blue = "#007AFF"
+  case cyan = "#32ADE6"
+  case teal = "#30B0C7"
+  case green = "#34C759"
+  case mint = "#00C7BE"
+  case yellow = "#FFCC00"
+  case orange = "#FF9500"
+  case red = "#FF3B30"
+  case brown = "#A2845E"
 
   /// 사용자에게 표시할 이름
   public var displayName: String {
@@ -36,19 +36,28 @@ public enum GroupColor: String, CaseIterable, Codable, Equatable, Hashable, Send
 
   /// 대표 색상 (SwiftUI)
   public var color: Color {
-    switch self {
-    case .indigo: return .indigo
-    case .purple: return .purple
-    case .pink: return .pink
-    case .blue: return .blue
-    case .cyan: return .cyan
-    case .teal: return .teal
-    case .green: return .green
-    case .mint: return .mint
-    case .yellow: return .yellow
-    case .orange: return .orange
-    case .red: return .red
-    case .brown: return .brown
-    }
+    Color(hex: rawValue)
+  }
+}
+
+private extension Color {
+  /// Hex 문자열로부터 Color 생성
+  /// - Parameter hex: "#RRGGBB" 형식의 hex 문자열
+  init(hex: String) {
+    let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+    var int: UInt64 = 0
+    Scanner(string: hex).scanHexInt64(&int)
+    let r, g, b: UInt64
+    r = (int >> 16) & 0xFF
+    g = (int >> 8) & 0xFF
+    b = int & 0xFF
+
+    self.init(
+      .sRGB,
+      red: Double(r) / 255,
+      green: Double(g) / 255,
+      blue: Double(b) / 255,
+      opacity: 1
+    )
   }
 }
