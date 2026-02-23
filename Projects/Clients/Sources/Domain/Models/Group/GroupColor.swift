@@ -15,6 +15,14 @@ public enum GroupColor: String, CaseIterable, Codable, Equatable, Hashable, Send
   case orange = "#FF9500"
   case red = "#FF3B30"
   case brown = "#A2845E"
+  case lavender = "#C4B5FD"
+  case rose = "#FB7185"
+  case coral = "#F97068"
+  case peach = "#FDBA74"
+  case sky = "#7DD3FC"
+  case sage = "#86EFAC"
+  case wine = "#BE123C"
+  case navy = "#1E3A5F"
 
   /// 사용자에게 표시할 이름
   public var displayName: String {
@@ -31,6 +39,14 @@ public enum GroupColor: String, CaseIterable, Codable, Equatable, Hashable, Send
     case .orange: return "오렌지"
     case .red: return "레드"
     case .brown: return "브라운"
+    case .lavender: return "라벤더"
+    case .rose: return "로즈"
+    case .coral: return "코랄"
+    case .peach: return "피치"
+    case .sky: return "하늘"
+    case .sage: return "세이지"
+    case .wine: return "와인"
+    case .navy: return "네이비"
     }
   }
 
