@@ -6034,7 +6034,11 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Group Settings"
+            "value" : "Group Settings"
+          }
+        }
+      }
+    },
     "groupSettingsView.groupColor.title" : {
       "comment" : "그룹 색상",
       "extractionState" : "manual",
