@@ -302,7 +302,11 @@ extension PromiseClient: DependencyKey {
         )
       },
       getAcceptedPromisesByDateRange: { userId, startDate, endDate in
-        try await dataSource.getAcceptedPromisesByDateRange(userId: userId, startDate: startDate, endDate: endDate)
+        do {
+          return try await dataSource.getAcceptedPromisesByDateRange(userId: userId, startDate: startDate, endDate: endDate)
+        } catch {
+          throw PromiseClientError(from: error)
+        }
       },
       getConfirmedPromisesForCalendar: {
         try await dataSource.getConfirmedPromisesForCalendar()

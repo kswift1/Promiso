@@ -74,7 +74,7 @@ extension ScheduleConflictClient: DependencyKey {
         let rangeStart = startAt.addingTimeInterval(-ConflictCheckConstants.lookbackInterval)
         let rangeEnd = newEffectiveEnd
 
-        AppLogger.general.info("[ConflictCheck] 충돌 체크 시작 - userId: \(userId), startAt: \(startAt), endAt: \(String(describing: endAt)), rangeStart: \(rangeStart), rangeEnd: \(rangeEnd)")
+        AppLogger.general.info("[ConflictCheck] 충돌 체크 시작")
 
         // 병렬 조회: 수락한 그룹 약속 + 개인 일정
         async let acceptedPromises = promiseClient.getAcceptedPromisesByDateRange(
@@ -88,49 +88,41 @@ extension ScheduleConflictClient: DependencyKey {
 
         // 그룹 약속 겹침 판정
         for promise in try await acceptedPromises {
-          let existEnd = promise.endAt ?? promise.startAt.addingTimeInterval(ConflictCheckConstants.defaultDuration)
-          guard promise.startAt < newEffectiveEnd && existEnd > startAt else { continue }
-
-          let overlapStart = max(promise.startAt, startAt)
-          let overlapEnd = min(existEnd, newEffectiveEnd)
-          let overlapMinutes = max(0, Int(overlapEnd.timeIntervalSince(overlapStart) / 60))
-
-          conflicts.append(ScheduleConflict(
+          if let conflict = makeConflictIfOverlapping(
             id: promise.id,
             source: .promise,
             severity: promise.isConfirmed ? .confirmed : .pending,
             title: promise.title,
             emoji: promise.emoji,
-            startAt: promise.startAt,
-            endAt: promise.endAt,
-            overlapMinutes: overlapMinutes
-          ))
+            existingStart: promise.startAt,
+            existingEnd: promise.endAt,
+            newStart: startAt,
+            newEffectiveEnd: newEffectiveEnd
+          ) {
+            conflicts.append(conflict)
+          }
         }
 
         // 개인 일정 겹침 판정
         for event in try await personalEvents {
-          let existEnd = event.endAt ?? event.startAt.addingTimeInterval(ConflictCheckConstants.defaultDuration)
-          guard event.startAt < newEffectiveEnd && existEnd > startAt else { continue }
-
-          let overlapStart = max(event.startAt, startAt)
-          let overlapEnd = min(existEnd, newEffectiveEnd)
-          let overlapMinutes = max(0, Int(overlapEnd.timeIntervalSince(overlapStart) / 60))
-
-          conflicts.append(ScheduleConflict(
+          if let conflict = makeConflictIfOverlapping(
             id: event.id,
             source: .personalEvent,
             severity: .confirmed,
             title: event.title,
             emoji: event.emoji,
-            startAt: event.startAt,
-            endAt: event.endAt,
-            overlapMinutes: overlapMinutes
-          ))
+            existingStart: event.startAt,
+            existingEnd: event.endAt,
+            newStart: startAt,
+            newEffectiveEnd: newEffectiveEnd
+          ) {
+            conflicts.append(conflict)
+          }
         }
 
         AppLogger.general.info("[ConflictCheck] 결과 - 충돌 \(conflicts.count)건 감지")
         for conflict in conflicts {
-          AppLogger.general.debug("[ConflictCheck]  - \(conflict.source == .promise ? "약속" : "개인") '\(conflict.title)' \(conflict.overlapMinutes)분 겹침 (\(conflict.severity == .confirmed ? "확정" : "미확정"))")
+          AppLogger.general.debug("[ConflictCheck]  - \(conflict.source == .promise ? "약속" : "개인") \(conflict.overlapMinutes)분 겹침 (\(conflict.severity == .confirmed ? "확정" : "미확정"))")
         }
 
         // 겹침 시간 내림차순 정렬
@@ -138,4 +130,37 @@ extension ScheduleConflictClient: DependencyKey {
       }
     )
   }()
+}
+
+// MARK: - Private Helpers
+
+/// 기존 일정과 새 일정의 겹침을 판정하여 ScheduleConflict를 생성
+private func makeConflictIfOverlapping(
+  id: String,
+  source: ScheduleConflict.Source,
+  severity: ScheduleConflict.Severity,
+  title: String,
+  emoji: String?,
+  existingStart: Date,
+  existingEnd: Date?,
+  newStart: Date,
+  newEffectiveEnd: Date
+) -> ScheduleConflict? {
+  let existEnd = existingEnd ?? existingStart.addingTimeInterval(ConflictCheckConstants.defaultDuration)
+  guard existingStart < newEffectiveEnd && existEnd > newStart else { return nil }
+
+  let overlapStart = max(existingStart, newStart)
+  let overlapEnd = min(existEnd, newEffectiveEnd)
+  let overlapMinutes = max(0, Int(overlapEnd.timeIntervalSince(overlapStart) / 60))
+
+  return ScheduleConflict(
+    id: id,
+    source: source,
+    severity: severity,
+    title: title,
+    emoji: emoji,
+    startAt: existingStart,
+    endAt: existingEnd,
+    overlapMinutes: overlapMinutes
+  )
 }

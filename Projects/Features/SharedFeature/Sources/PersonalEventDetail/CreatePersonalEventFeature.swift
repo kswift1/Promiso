@@ -413,7 +413,7 @@ extension CreatePersonalEvent {
             return .none
 
           case .userPlanLoaded(let plan, let userId):
-            AppLogger.personal.info("[ConflictCheck] UserPlan 로드 완료: \(String(describing: plan)), userId: \(userId)")
+            AppLogger.personal.info("[ConflictCheck] UserPlan 로드 완료: \(String(describing: plan))")
             state.userPlan = plan
             state.currentUserId = userId
             return checkConflictsEffect(state: &state)
