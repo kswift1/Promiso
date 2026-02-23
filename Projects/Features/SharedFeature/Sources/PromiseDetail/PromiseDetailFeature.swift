@@ -350,7 +350,6 @@ extension PromiseDetail {
           switch internalAction {
           case .respondPromise(let status):
             let promiseId = state.promise.id
-            let groupId = state.promise.groupId
             let calendarSyncCache = state.groupCalendarSyncCache
             return .run { [promiseClient, calendarSyncClient] send in
               do {

@@ -244,8 +244,8 @@ extension LiveActivityClient: DependencyKey {
 
       return AsyncStream { continuation in
         let task = Task {
-          for await state in activity.contentStateUpdates {
-            continuation.yield(state)
+          for await content in activity.contentUpdates {
+            continuation.yield(content.state)
           }
           continuation.finish()
         }
@@ -288,12 +288,18 @@ extension LiveActivityClient: DependencyKey {
       AsyncStream { continuation in
         let task = Task {
           for await activity in Activity<PromiseActivityAttributes>.activityUpdates {
-            let stateValue: ActivityStateValue = switch activity.activityState {
-              case .active: .active
-              case .dismissed: .dismissed
-              case .ended: .ended
-              case .stale: .stale
-              @unknown default: .unknown
+            let stateValue: ActivityStateValue
+            switch activity.activityState {
+            case .active:
+              stateValue = .active
+            case .dismissed:
+              stateValue = .dismissed
+            case .ended:
+              stateValue = .ended
+            case .stale:
+              stateValue = .stale
+            default:
+              stateValue = .unknown
             }
 
             AppLogger.liveActivity.debug("activityUpdates: \(stateValue.rawValue)")
@@ -328,12 +334,18 @@ extension LiveActivityClient: DependencyKey {
       return AsyncStream { continuation in
         let task = Task {
           for await state in activity.activityStateUpdates {
-            let stateValue: ActivityStateValue = switch state {
-              case .active: .active
-              case .dismissed: .dismissed
-              case .ended: .ended
-              case .stale: .stale
-              @unknown default: .unknown
+            let stateValue: ActivityStateValue
+            switch state {
+            case .active:
+              stateValue = .active
+            case .dismissed:
+              stateValue = .dismissed
+            case .ended:
+              stateValue = .ended
+            case .stale:
+              stateValue = .stale
+            default:
+              stateValue = .unknown
             }
 
             AppLogger.liveActivity.debug("activityStateUpdates: \(stateValue.rawValue)")

@@ -468,7 +468,9 @@ extension AuthClient: DependencyKey {
 
         do {
           let functions = DefaultFunctionsProvider().functions
-          let deviceId = UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
+          let deviceId = await MainActor.run {
+            UIDevice.current.identifierForVendor?.uuidString
+          } ?? UUID().uuidString
 
           let result = try await functions
             .httpsCallable(FirebaseConstants.generateWidgetTokenFunction)

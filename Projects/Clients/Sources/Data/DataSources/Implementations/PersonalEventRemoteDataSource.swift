@@ -5,7 +5,7 @@ import PromisoShared
 
 /// PersonalEvent 관련 Firestore CRUD 및 쿼리 작업을 담당하는 DataSource
 /// 경로: users/{userId}/personalEvents/{eventId}
-public class PersonalEventRemoteDataSource: PersonalEventRemoteDataSourceProtocol {
+public final class PersonalEventRemoteDataSource: PersonalEventRemoteDataSourceProtocol {
   private let firestore: FirestoreProviding
   private let subcollectionName: String
   private var db: Firestore { firestore.db }
@@ -40,7 +40,7 @@ public class PersonalEventRemoteDataSource: PersonalEventRemoteDataSourceProtoco
     let dto = PersonalEventDTO(model: event)
     let docRef = collection.document()
 
-    try await docRef.setData(from: dto)
+    try docRef.setData(from: dto)
     AppLogger.personal.info("📅 [PersonalEvent] 일정 생성 성공: \(docRef.documentID)")
 
     return docRef.documentID
@@ -54,7 +54,7 @@ public class PersonalEventRemoteDataSource: PersonalEventRemoteDataSourceProtoco
     updatedEvent.updatedAt = Date()
     let dto = PersonalEventDTO(model: updatedEvent)
 
-    try await collection.document(event.id).setData(from: dto)
+    try collection.document(event.id).setData(from: dto)
     AppLogger.personal.info("📅 [PersonalEvent] 일정 업데이트 성공: \(event.id)")
   }
 

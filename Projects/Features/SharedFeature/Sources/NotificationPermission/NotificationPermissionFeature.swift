@@ -13,7 +13,7 @@ extension NotificationPermission {
     public init() {}
 
     @ObservableState
-    public struct State: Equatable {
+    public struct State: Equatable, Sendable {
       var config: Config
       var allowInteractiveDismiss: Bool
       var authorizationStatus: NotificationAuthorizationStatus = .notDetermined
