@@ -1,6 +1,9 @@
 # Promiso - Claude Code 컨텍스트
 
-## 절대 규칙
+## 절대 규칙 (메인 Claude 전용)
+
+> 아래 규칙은 **메인 Claude에만 적용**됩니다.
+> sub-agent(implementer, reviewer, test-writer, researcher)는 각자의 `.claude/agents/*.md` 프롬프트를 따릅니다.
 
 ```
 ❌ 즉시 코드 작성 금지 — 반드시 워크플로우 실행

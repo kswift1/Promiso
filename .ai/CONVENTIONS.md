@@ -289,4 +289,3 @@ struct FeatureTests {
 | `.ai/FIRESTORE_SCHEMA.md` | Firestore 데이터 스키마 |
 | `.ai/TEST_POLICY.md` | 테스트 설계 기준 |
 | `.ai/templates/*.swift` | 코드 템플릿 (Feature/View/Test) |
-| `.ai/knowledge/*.md` | TCA, Firebase, SwiftUI 지식 캐시 |
