@@ -64,7 +64,7 @@ final class MockPromiseRemoteDataSource: PromiseRemoteDataSourceProtocol, @unche
   var getActivePromisesHandler: ((String, Int) async throws -> [PromiseModel])?
   var getPastPromisesHandler: ((String, Int, Date?) async throws -> [PromiseModel])?
   var getPromisesByDateRangeHandler: (([String], Date, Date) async throws -> [PromiseModel])?
-  var getAcceptedPromisesByDateRangeHandler: ((String, Date, Date) async throws -> [PromiseModel])?
+  var getAcceptedPromisesByDateRangeHandler: ((Date, Date) async throws -> [PromiseModel])?
   var getActivePromiseCountHandler: ((String) async throws -> Int)?
   var subscribeToActivePromisesHandler: ((String, Int) -> AsyncStream<[PromiseModel]>)?
   var getHomePromisesHandler: (([String], Int) async throws -> [PromiseModel])?
@@ -192,10 +192,10 @@ final class MockPromiseRemoteDataSource: PromiseRemoteDataSourceProtocol, @unche
     return []
   }
 
-  func getAcceptedPromisesByDateRange(userId: String, startDate: Date, endDate: Date) async throws -> [PromiseModel] {
+  func getAcceptedPromisesByDateRange(startDate: Date, endDate: Date) async throws -> [PromiseModel] {
     getAcceptedPromisesByDateRangeCallCount += 1
     if let handler = getAcceptedPromisesByDateRangeHandler {
-      return try await handler(userId, startDate, endDate)
+      return try await handler(startDate, endDate)
     }
     return []
   }

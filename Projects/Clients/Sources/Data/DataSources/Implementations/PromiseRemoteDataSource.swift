@@ -378,8 +378,12 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
   }
 
   /// 사용자가 수락한 약속을 날짜 범위로 조회 (일정 충돌 감지용)
-  /// votes.accepted array-contains userId + startAt 범위 쿼리
-  public func getAcceptedPromisesByDateRange(userId: String, startDate: Date, endDate: Date) async throws -> [PromiseModel] {
+  /// 인증된 사용자의 UID를 직접 사용하여 보안 강화
+  public func getAcceptedPromisesByDateRange(startDate: Date, endDate: Date) async throws -> [PromiseModel] {
+    guard let userId = Auth.auth().currentUser?.uid else {
+      return []
+    }
+
     let query = db.environmentCollection(collectionName)
       .whereField("votes.accepted", arrayContains: userId)
       .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: startDate))

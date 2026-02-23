@@ -83,7 +83,7 @@ struct ScheduleConflictClientTests {
     )
 
     let result = try await withDependencies {
-      $0.promiseClient.getAcceptedPromisesByDateRange = { _, _, _ in
+      $0.promiseClient.getAcceptedPromisesByDateRange = { _, _ in
         [existingPromise]
       }
       $0.personalEventClient.getEventsByDateRange = { _, _ in
@@ -113,7 +113,7 @@ struct ScheduleConflictClientTests {
     )
 
     let result = try await withDependencies {
-      $0.promiseClient.getAcceptedPromisesByDateRange = { _, _, _ in
+      $0.promiseClient.getAcceptedPromisesByDateRange = { _, _ in
         [existingPromise]
       }
       $0.personalEventClient.getEventsByDateRange = { _, _ in
@@ -150,7 +150,7 @@ struct ScheduleConflictClientTests {
     )
 
     let result = try await withDependencies {
-      $0.promiseClient.getAcceptedPromisesByDateRange = { _, _, _ in
+      $0.promiseClient.getAcceptedPromisesByDateRange = { _, _ in
         [existingPromise]
       }
       $0.personalEventClient.getEventsByDateRange = { _, _ in
@@ -185,7 +185,7 @@ struct ScheduleConflictClientTests {
     )
 
     let result = try await withDependencies {
-      $0.promiseClient.getAcceptedPromisesByDateRange = { _, _, _ in
+      $0.promiseClient.getAcceptedPromisesByDateRange = { _, _ in
         []
       }
       $0.personalEventClient.getEventsByDateRange = { _, _ in
@@ -222,7 +222,7 @@ struct ScheduleConflictClientTests {
 
     // endAt = nil -> effectiveEnd = baseDate + 2h
     let result = try await withDependencies {
-      $0.promiseClient.getAcceptedPromisesByDateRange = { _, _, _ in
+      $0.promiseClient.getAcceptedPromisesByDateRange = { _, _ in
         [existingPromise]
       }
       $0.personalEventClient.getEventsByDateRange = { _, _ in
@@ -274,7 +274,7 @@ struct ScheduleConflictClientTests {
     )
 
     let result = try await withDependencies {
-      $0.promiseClient.getAcceptedPromisesByDateRange = { _, _, _ in
+      $0.promiseClient.getAcceptedPromisesByDateRange = { _, _ in
         [fullyContained, partialBefore, partialAfter]
       }
       $0.personalEventClient.getEventsByDateRange = { _, _ in
@@ -334,7 +334,7 @@ struct ScheduleConflictClientTests {
     )
 
     let result = try await withDependencies {
-      $0.promiseClient.getAcceptedPromisesByDateRange = { _, _, _ in
+      $0.promiseClient.getAcceptedPromisesByDateRange = { _, _ in
         [small]
       }
       $0.personalEventClient.getEventsByDateRange = { _, _ in
@@ -392,7 +392,7 @@ struct ScheduleConflictClientTests {
     )
 
     let result = try await withDependencies {
-      $0.promiseClient.getAcceptedPromisesByDateRange = { _, _, _ in
+      $0.promiseClient.getAcceptedPromisesByDateRange = { _, _ in
         [confirmedPromise, pendingPromise]
       }
       $0.personalEventClient.getEventsByDateRange = { _, _ in

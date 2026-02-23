@@ -78,7 +78,7 @@ extension ScheduleConflictClient: DependencyKey {
 
         // 병렬 조회: 수락한 그룹 약속 + 개인 일정
         async let acceptedPromises = promiseClient.getAcceptedPromisesByDateRange(
-          userId, rangeStart, rangeEnd
+          rangeStart, rangeEnd
         )
         async let personalEvents = personalEventClient.getEventsByDateRange(
           rangeStart, rangeEnd
