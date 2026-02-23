@@ -14,6 +14,7 @@ final class CalendarOverlayViewModel {
   var days: [OverlayCalendarModels.DayItem]
   var nextMonthDays: [OverlayCalendarModels.DayItem]
   var weatherState: OverlayWeatherState
+  var weatherLocationText: String?
   var detailMode: Bool
   var scheduleItems: [HomeModels.ScheduleItem]
   var weekDays: [OverlayCalendarModels.DayItem]
@@ -32,6 +33,7 @@ final class CalendarOverlayViewModel {
     days: [OverlayCalendarModels.DayItem],
     nextMonthDays: [OverlayCalendarModels.DayItem],
     weatherState: OverlayWeatherState,
+    weatherLocationText: String?,
     detailMode: Bool,
     scheduleItems: [HomeModels.ScheduleItem],
     weekDays: [OverlayCalendarModels.DayItem],
@@ -49,6 +51,7 @@ final class CalendarOverlayViewModel {
     self.days = days
     self.nextMonthDays = nextMonthDays
     self.weatherState = weatherState
+    self.weatherLocationText = weatherLocationText
     self.detailMode = detailMode
     self.scheduleItems = scheduleItems
     self.weekDays = weekDays
@@ -192,6 +195,7 @@ private struct CalendarOverlayContentView: View {
         days: viewModel.days,
         nextMonthDays: viewModel.nextMonthDays,
         weatherState: viewModel.weatherState,
+        weatherLocationText: viewModel.weatherLocationText,
         detailMode: isCollapsed,
         scheduleItems: viewModel.scheduleItems,
         weekDays: viewModel.weekDays,

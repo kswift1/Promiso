@@ -64,6 +64,7 @@ extension Home {
               days: store.overlayCalendarDays,
               nextMonthDays: store.overlayNextMonthDays,
               weatherState: store.overlayWeatherState,
+              weatherLocationText: store.overlayWeatherLocationText,
               detailMode: store.overlayDetailMode,
               scheduleItems: store.overlaySelectedDateScheduleItems,
               weekDays: store.overlaySelectedWeekDays,

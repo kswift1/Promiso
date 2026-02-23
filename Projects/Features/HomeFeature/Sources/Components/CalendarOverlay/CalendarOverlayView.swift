@@ -14,6 +14,7 @@ struct CalendarOverlayView: View {
   let days: [OverlayCalendarModels.DayItem]
   let nextMonthDays: [OverlayCalendarModels.DayItem]
   let weatherState: OverlayWeatherState
+  let weatherLocationText: String?
   let detailMode: Bool
   let scheduleItems: [HomeModels.ScheduleItem]
   let weekDays: [OverlayCalendarModels.DayItem]
@@ -459,13 +460,29 @@ struct CalendarOverlayView: View {
         Text(weather.condition.description)
           .font(.system(size: 13, weight: .medium))
           .foregroundStyle(.white.opacity(0.8))
+
         Spacer()
-        Text("\(Int(weather.temperature.rounded()))°C")
-          .font(.system(size: 36, weight: .bold))
-          .foregroundStyle(.white)
-        Text(todayDateString)
-          .font(.system(size: 13))
-          .foregroundStyle(.white.opacity(0.7))
+
+        HStack(alignment: .bottom, spacing: 12) {
+          VStack(alignment: .leading, spacing: 2) {
+            Text("\(Int(weather.temperature.rounded()))°C")
+              .font(.system(size: 36, weight: .bold))
+              .foregroundStyle(.white)
+            Text(todayDateString)
+              .font(.system(size: 13))
+              .foregroundStyle(.white.opacity(0.7))
+          }
+
+          Spacer(minLength: 8)
+
+          Text(weatherReferenceText(for: weather))
+            .font(.system(size: 11, weight: .medium))
+            .foregroundStyle(.white.opacity(0.78))
+            .multilineTextAlignment(.trailing)
+            .lineLimit(2)
+            .truncationMode(.tail)
+            .frame(maxWidth: 180, alignment: .trailing)
+        }
       }
       .padding(16)
       .frame(maxWidth: .infinity, alignment: .leading)
@@ -529,6 +546,9 @@ struct CalendarOverlayView: View {
     static let time: DateFormatter = {
       let f = DateFormatter(); f.locale = .current; f.timeZone = displayTimeZone; f.dateFormat = "a h:mm"; return f
     }()
+    static let weatherReferenceTime: DateFormatter = {
+      let f = DateFormatter(); f.locale = .current; f.timeZone = displayTimeZone; f.setLocalizedDateFormatFromTemplate("j:mm"); return f
+    }()
   }
 
   // MARK: - Computed Helpers
@@ -547,6 +567,14 @@ struct CalendarOverlayView: View {
 
   private func timeString(for date: Date) -> String {
     Formatters.time.string(from: date)
+  }
+
+  private func weatherReferenceText(for weather: HourlyForecast) -> String {
+    let timeText = Formatters.weatherReferenceTime.string(from: weather.dateTime)
+    let locationText = weatherLocationText?
+      .trimmingCharacters(in: .whitespacesAndNewlines)
+      .nonEmpty ?? LocalizedStrings.Calendar.weatherCurrentLocation
+    return LocalizedStrings.Calendar.weatherReference("\(timeText) · \(locationText)")
   }
 
   private func itemGroupName(_ item: HomeModels.ScheduleItem) -> String? {
@@ -573,6 +601,12 @@ struct CalendarOverlayView: View {
   }
 }
 
+private extension String {
+  var nonEmpty: String? {
+    isEmpty ? nil : self
+  }
+}
+
 // MARK: - Preview
 
 #Preview("월간") {
@@ -589,6 +623,7 @@ struct CalendarOverlayView: View {
       dateTime: Date(), temperature: 14, feelsLikeTemperature: 10,
       condition: .clear, precipitationProbability: 10, humidity: 50, windSpeed: 3.0
     )),
+    weatherLocationText: "서울 중구",
     detailMode: false,
     scheduleItems: [],
     weekDays: [],
@@ -609,6 +644,7 @@ struct CalendarOverlayView: View {
     ),
     nextMonthDays: [],
     weatherState: .needsPermission,
+    weatherLocationText: nil,
     detailMode: true,
     scheduleItems: [],
     weekDays: [],

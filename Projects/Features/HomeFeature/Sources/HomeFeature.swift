@@ -81,6 +81,8 @@ extension Home {
       var overlaySelectedDate: Date = Date()
       /// 오버레이 날씨 상태
       var overlayWeatherState: OverlayWeatherState = .needsPermission
+      /// 오버레이 날씨 기준 위치 텍스트
+      var overlayWeatherLocationText: String? = nil
       /// 오버레이 일간 상세 모드
       var overlayDetailMode: Bool = false
 
@@ -206,7 +208,7 @@ extension Home {
         /// 오버레이 현재 위치 날씨 조회
         case fetchOverlayWeather
         /// 오버레이 날씨 응답
-        case overlayWeatherResponse(Result<WeatherInfo, Error>)
+        case overlayWeatherResponse(Result<WeatherInfo, Error>, String?)
       }
 
       @CasePathable
@@ -316,9 +318,11 @@ extension Home {
             let authStatus = locationClient.authorizationStatus()
             switch authStatus {
             case .authorized:
+              state.overlayWeatherLocationText = nil
               state.overlayWeatherState = .loading
               return .send(.internal(.fetchOverlayWeather))
             case .notDetermined, .denied:
+              state.overlayWeatherLocationText = nil
               state.overlayWeatherState = .needsPermission
               return .none
             }
@@ -326,6 +330,7 @@ extension Home {
           case .calendarOverlayClosed:
             state.showCalendarOverlay = false
             state.overlayWeatherState = .needsPermission
+            state.overlayWeatherLocationText = nil
             state.overlayDetailMode = false
             return .cancel(id: CancelID.overlayWeatherFetch)
 
@@ -349,6 +354,7 @@ extension Home {
             return .none
 
           case .overlayWeatherCardTapped:
+            state.overlayWeatherLocationText = nil
             state.overlayWeatherState = .loading
             return .send(.internal(.fetchOverlayWeather))
 
@@ -361,6 +367,7 @@ extension Home {
             state.showCalendarOverlay = false
             state.overlayDetailMode = false
             state.overlayWeatherState = .needsPermission
+            state.overlayWeatherLocationText = nil
             switch item {
             case .promise(let promise):
               let groupMembers = state.groupMembersCache[promise.groupId]
@@ -579,26 +586,39 @@ extension Home {
             return .run { [locationClient, weatherClient] send in
               do {
                 let location = try await locationClient.getCurrentLocation()
-                let weather = try await weatherClient.getWeather(
+                async let weather = weatherClient.getWeather(
                   location.latitude, location.longitude, Date()
                 )
-                await send(.internal(.overlayWeatherResponse(.success(weather))))
+                async let locationText: String? = {
+                  do {
+                    return try await locationClient.reverseGeocode(location)
+                  } catch {
+                    return nil
+                  }
+                }()
+
+                let info = try await weather
+                let address = await locationText
+                await send(.internal(.overlayWeatherResponse(.success(info), address)))
               } catch {
-                await send(.internal(.overlayWeatherResponse(.failure(error))))
+                await send(.internal(.overlayWeatherResponse(.failure(error), nil)))
               }
             }
             .cancellable(id: CancelID.overlayWeatherFetch)
 
-          case .overlayWeatherResponse(let result):
+          case .overlayWeatherResponse(let result, let locationText):
             switch result {
             case .success(let info):
               if let forecast = info.current ?? info.hourlyForecasts.first {
                 state.overlayWeatherState = .loaded(forecast)
+                state.overlayWeatherLocationText = locationText
               } else {
                 state.overlayWeatherState = .failed
+                state.overlayWeatherLocationText = nil
               }
             case .failure:
               state.overlayWeatherState = .failed
+              state.overlayWeatherLocationText = nil
             }
             return .none
 

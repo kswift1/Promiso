@@ -18,6 +18,8 @@ public struct LocationClient: Sendable {
   public var authorizationStatus: @Sendable () -> LocationAuthorizationStatus = { .notDetermined }
   /// 현재 위치 좌표 조회 (권한 미부여 시 자동 요청)
   public var getCurrentLocation: @Sendable () async throws -> Coordinate
+  /// 좌표를 사람이 읽을 수 있는 주소 텍스트로 변환
+  public var reverseGeocode: @Sendable (_ coordinate: Coordinate) async throws -> String?
 }
 
 // MARK: - Dependency Registration
@@ -62,8 +64,51 @@ extension LocationClient: DependencyKey {
         }
       }
       throw LocationClientError.unavailable
+    },
+    reverseGeocode: { coordinate in
+      let geocoder = CLGeocoder()
+      let placemarks = try await geocoder.reverseGeocodeLocation(
+        CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+      )
+      return Self.displayAddress(from: placemarks.first)
     }
   )
+
+  private static func displayAddress(from placemark: CLPlacemark?) -> String? {
+    guard let placemark else { return nil }
+
+    let primary = uniqueAddressParts([
+      placemark.locality,
+      placemark.subLocality,
+    ])
+    if !primary.isEmpty {
+      return primary.joined(separator: " ")
+    }
+
+    let fallback = uniqueAddressParts([
+      placemark.administrativeArea,
+      placemark.locality,
+      placemark.thoroughfare,
+      placemark.subThoroughfare,
+      placemark.name,
+    ])
+    return fallback.isEmpty ? nil : fallback.joined(separator: " ")
+  }
+
+  private static func uniqueAddressParts(_ values: [String?]) -> [String] {
+    var seen = Set<String>()
+    var parts: [String] = []
+
+    for value in values {
+      guard let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines),
+            !trimmed.isEmpty,
+            seen.insert(trimmed).inserted else {
+        continue
+      }
+      parts.append(trimmed)
+    }
+    return parts
+  }
 }
 
 // MARK: - Test / Preview
@@ -74,11 +119,13 @@ extension LocationClient: TestDependencyKey {
     getCurrentLocation: {
       // 서울 시청
       Coordinate(latitude: 37.5665, longitude: 126.9780)
-    }
+    },
+    reverseGeocode: { _ in "서울 중구" }
   )
 
   public static let testValue = Self(
     authorizationStatus: unimplemented("\(Self.self).authorizationStatus", placeholder: .notDetermined),
-    getCurrentLocation: unimplemented("\(Self.self).getCurrentLocation")
+    getCurrentLocation: unimplemented("\(Self.self).getCurrentLocation"),
+    reverseGeocode: unimplemented("\(Self.self).reverseGeocode", placeholder: nil)
   )
 }

@@ -875,6 +875,42 @@
         }
       }
     },
+    "calendar.weather.currentLocation": {
+      "comment": "오버레이 날씨 - 위치 미확인 fallback",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Current location"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "현재 위치"
+          }
+        }
+      }
+    },
+    "calendar.weather.reference": {
+      "comment": "오버레이 날씨 - 기준 시간/위치",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "As of %@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 기준"
+          }
+        }
+      }
+    },
     "calendar.sync.permission.title": {
       "comment": "캘린더 권한 필요",
       "extractionState": "manual",

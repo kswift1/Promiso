@@ -1209,6 +1209,11 @@ public enum LocalizedStrings {
     // Weather Permission
     public static var weatherPermissionTitle: String { String(localized: "calendar.weather.permission.title", bundle: bundle) }
     public static var weatherPermissionDescription: String { String(localized: "calendar.weather.permission.description", bundle: bundle) }
+    public static var weatherCurrentLocation: String { String(localized: "calendar.weather.currentLocation", bundle: bundle) }
+    public static func weatherReference(_ value: String) -> String {
+      String(localized: "calendar.weather.reference", bundle: bundle)
+        .replacingOccurrences(of: "%@", with: value)
+    }
 
     // Promise Card Status
     public static var statusWaiting: String { String(localized: "calendar.promise.statusWaiting", bundle: bundle) }
