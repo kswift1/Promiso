@@ -25,6 +25,8 @@ struct CalendarOverlayView: View {
   let onBackToMonth: () -> Void
   let onScheduleItemTapped: (HomeModels.ScheduleItem) -> Void
 
+  // MARK: - State
+
   // MARK: - Grid Layout Constants
 
   private let weekdayHeight: CGFloat = 24
@@ -112,31 +114,44 @@ struct CalendarOverlayView: View {
 
   // MARK: - Date Rows Grid
 
-  /// 날짜 행들만 표시, detail mode에서 선택 주만 남도록 축소 + clipped
+  @ViewBuilder
   private var dateRowsGrid: some View {
-    VStack(spacing: gridSpacing) {
-      ForEach(Array(dayRows.enumerated()), id: \.offset) { index, row in
-        HStack(spacing: 0) {
-          ForEach(row) { day in
-            Button {
-              if day.isCurrentMonth {
-                onDateSelected(day.date)
+    if detailMode {
+      // Detail mode: 커튼 효과 (선택 주만 표시)
+      VStack(spacing: gridSpacing) {
+        ForEach(Array(dayRows.enumerated()), id: \.offset) { _, row in
+          HStack(spacing: 0) {
+            ForEach(row) { day in
+              Button {
+                if day.isCurrentMonth {
+                  onDateSelected(day.date)
+                }
+              } label: {
+                OverlayCalendarDayCell(day: day)
+                  .frame(maxWidth: .infinity)
               }
-            } label: {
-              OverlayCalendarDayCell(day: day)
-                .frame(maxWidth: .infinity)
+              .buttonStyle(.plain)
+              .disabled(!day.isCurrentMonth)
             }
-            .buttonStyle(.plain)
-            .disabled(!day.isCurrentMonth && !detailMode)
           }
         }
       }
+      .offset(y: contentShift)
+      .frame(height: compactGridHeight, alignment: .top)
+      .clipped()
+      .contentShape(Rectangle())
+    } else {
+      // Month mode: UIKit UIScrollView 기반 3페이지 페이저
+      CalendarMonthPager(
+        prevDays: prevMonthDays,
+        currentDays: days,
+        nextDays: nextMonthDays,
+        onDateSelected: onDateSelected,
+        onPreviousMonth: onPreviousMonth,
+        onNextMonth: onNextMonth
+      )
+      .frame(height: 6 * rowHeight + 5 * gridSpacing)
     }
-    .offset(y: contentShift)
-    .frame(height: detailMode ? compactGridHeight : nil, alignment: .top)
-    .clipped()
-    .contentShape(Rectangle())
-    .simultaneousGesture(monthSwipeGesture)
   }
 
   /// 요일 헤더 행
@@ -152,18 +167,6 @@ struct CalendarOverlayView: View {
     }
   }
 
-  /// 월간 모드에서만 좌우 스와이프로 월 전환
-  private var monthSwipeGesture: some Gesture {
-    DragGesture(minimumDistance: 50, coordinateSpace: .local)
-      .onEnded { value in
-        guard !detailMode else { return }
-        if value.translation.width > 50 {
-          onPreviousMonth()
-        } else if value.translation.width < -50 {
-          onNextMonth()
-        }
-      }
-  }
 
   // MARK: - Header Section
 
@@ -193,22 +196,6 @@ struct CalendarOverlayView: View {
       Spacer()
 
       HStack(spacing: 12) {
-        Button(action: onPreviousMonth) {
-          Image(systemName: "chevron.left")
-            .font(.system(size: 14, weight: .semibold))
-            .foregroundStyle(.secondary)
-            .frame(width: 32, height: 32)
-            .contentShape(Rectangle())
-        }
-
-        Button(action: onNextMonth) {
-          Image(systemName: "chevron.right")
-            .font(.system(size: 14, weight: .semibold))
-            .foregroundStyle(.secondary)
-            .frame(width: 32, height: 32)
-            .contentShape(Rectangle())
-        }
-
         Button(action: onClose) {
           Image(systemName: "xmark")
             .font(.system(size: 14, weight: .semibold))
