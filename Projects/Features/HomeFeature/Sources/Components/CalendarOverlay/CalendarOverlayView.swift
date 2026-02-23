@@ -89,11 +89,30 @@ struct CalendarOverlayView: View {
       }
       .background(Color(.systemBackground))
       .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: 20, bottomTrailingRadius: 20))
+      .background(
+        UnevenRoundedRectangle(bottomLeadingRadius: 20, bottomTrailingRadius: 20)
+          .fill(Color(.systemBackground))
+          .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 4)
+          .mask {
+            VStack(spacing: 0) {
+              Color.clear
+              Color.black.frame(height: 20)
+            }
+          }
+      )
+
+      // 상단 카드 아래 인셋 그라데이션
+      LinearGradient(
+        colors: [Color.black.opacity(0.02), Color.clear],
+        startPoint: .top,
+        endPoint: .bottom
+      )
+      .frame(height: 8)
+      .clipShape(UnevenRoundedRectangle(topLeadingRadius: 20, topTrailingRadius: 20))
 
       // MARK: 하단 섹션 (날짜 그리드 + 날씨) — 회색, 꽉 채움
       dateRowsGrid
         .padding(.horizontal, 20)
-        .padding(.top, 12)
         .padding(.bottom, detailMode ? 8 : 0)
 
       Spacer(minLength: 0)
