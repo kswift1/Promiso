@@ -1525,6 +1525,13 @@ public enum LocalizedStrings {
       String(localized: "groupSettingsView.membersCount", bundle: bundle)
         .replacingOccurrences(of: "%lld", with: "\(count)")
     }
+
+    // Group Color
+    public static var groupColorTitle: String { String(localized: "groupSettingsView.groupColor.title", bundle: bundle) }
+    public static var groupColorPreview: String { String(localized: "groupSettingsView.groupColor.preview", bundle: bundle) }
+    public static var groupColorGroupTab: String { String(localized: "groupSettingsView.groupColor.groupTab", bundle: bundle) }
+    public static var groupColorPromiseCard: String { String(localized: "groupSettingsView.groupColor.promiseCard", bundle: bundle) }
+    public static var groupColorReset: String { String(localized: "groupSettingsView.groupColor.reset", bundle: bundle) }
   }
 
   // MARK: - GroupMain

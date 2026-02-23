@@ -6035,6 +6035,104 @@
           "stringUnit": {
             "state": "translated",
             "value": "Group Settings"
+    "groupSettingsView.groupColor.title" : {
+      "comment" : "그룹 색상",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Group Color"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "그룹 색상"
+          }
+        }
+      }
+    },
+    "groupSettingsView.groupColor.preview" : {
+      "comment" : "미리보기",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preview"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "미리보기"
+          }
+        }
+      }
+    },
+    "groupSettingsView.groupColor.groupTab" : {
+      "comment" : "그룹 탭",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Group Tab"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "그룹 탭"
+          }
+        }
+      }
+    },
+    "groupSettingsView.groupColor.promiseCard" : {
+      "comment" : "약속 카드",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Promise Card"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "약속 카드"
+          }
+        }
+      }
+    },
+    "groupSettingsView.groupColor.reset" : {
+      "comment" : "색상 초기화",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reset Color"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "색상 초기화"
+          }
+        }
+      }
+    },
+    "groupSettingsView.unknownError" : {
+      "comment" : "알 수 없는 오류",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "An unknown error occurred."
           }
         },
         "ko": {

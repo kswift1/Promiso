@@ -10,9 +10,8 @@ description: PR 또는 현재 변경사항 코드 리뷰
 ## 실행 순서
 
 1. 변경된 파일 목록 확인
-2. **code-reviewer** 에이전트로 각 파일 검토
-3. Firebase 관련 파일 변경 시 **firebase-cost-advisor** 에이전트로 비용 분석
-4. 리뷰 결과 종합 보고
+2. **reviewer** 에이전트로 각 파일 검토 (코드 품질 + Firebase 비용 + 보안 통합)
+3. 리뷰 결과 종합 보고
 
 ## 사용 예시
 

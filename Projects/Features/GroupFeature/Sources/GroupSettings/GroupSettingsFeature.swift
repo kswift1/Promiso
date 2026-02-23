@@ -46,6 +46,9 @@ extension GroupSettings {
       // Notifications
       var notificationSettings: GroupNotificationSettings
       var notificationError: String?
+
+      // Group Color
+      var groupColor: GroupColor?
       var systemAuthStatus: NotificationAuthorizationStatus = .notDetermined
 
       // Transfer Host
@@ -81,6 +84,7 @@ extension GroupSettings {
         self.userPlan = userPlan
         self.notificationSettings = summary?.notifications ?? GroupNotificationSettings()
         self.upcomingPromises = upcomingPromises
+        self.groupColor = summary?.groupColor
 
         if let preloadedMembers = preloadedMembers {
           self.membersState = .loaded(preloadedMembers)
@@ -205,6 +209,8 @@ extension GroupSettings {
         // Kakao Share
         case kakaoShareTapped
         case systemShareSheetDismissed
+        // Group Color
+        case groupColorChanged(GroupColor?)
       }
 
       public enum Internal: Sendable {
@@ -225,6 +231,7 @@ extension GroupSettings {
         case transferHostResponse(Result<Void, Error>)
         case expelMemberResponse(Result<Void, Error>)
         case kakaoShareResult(KakaoShareResult)
+        case groupColorUpdateFailed(previousColor: GroupColor?, message: String)
       }
 
       public enum Delegate: Sendable {
@@ -233,6 +240,7 @@ extension GroupSettings {
         case pastPromisesTapped
         case hostTransferred
         case memberExpelled
+        case groupColorChanged(GroupColor?)
       }
     }
 
@@ -567,6 +575,22 @@ extension GroupSettings {
             state.expelError = nil
             return .none
 
+          case .groupColorChanged(let color):
+            let previousColor = state.groupColor
+            state.groupColor = color
+            return .run { [groupClient, groupId = state.group.id, hapticFeedback] send in
+              await hapticFeedback.selection()
+              do {
+                try await groupClient.updateGroupColor(groupId, color)
+                await send(.delegate(.groupColorChanged(color)))
+              } catch {
+                await send(.internal(.groupColorUpdateFailed(
+                  previousColor: previousColor,
+                  message: error.localizedDescription
+                )))
+              }
+            }
+
           case .toastDismissed:
             state.toastMessage = nil
             return .none
@@ -816,6 +840,18 @@ extension GroupSettings {
             case .fallbackToSystem:
               state.showSystemShareSheet = true
               return .none
+            }
+
+          case .groupColorUpdateFailed(let previousColor, let message):
+            state.groupColor = previousColor
+            state.toastMessage = ToastMessage(
+              type: .error,
+              title: "색상 변경에 실패했어요",
+              subtitle: message,
+              position: .top
+            )
+            return .run { [hapticFeedback] _ in
+              await hapticFeedback.error()
             }
           }
 
