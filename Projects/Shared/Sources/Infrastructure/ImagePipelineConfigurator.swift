@@ -37,7 +37,7 @@ public enum ImagePipelineConfigurator {
 /// Firebase download URL은 `?alt=media&token=xxx` 쿼리가 포함되는데,
 /// 토큰이 갱신되면 같은 이미지인데도 캐시 미스가 발생한다.
 /// 쿼리 파라미터를 제거하여 경로 기반으로 캐시 키를 생성한다.
-private final class FirebaseImageCacheDelegate: ImagePipelineDelegate, @unchecked Sendable {
+private final class FirebaseImageCacheDelegate: ImagePipelineDelegate {
   static let shared = FirebaseImageCacheDelegate()
 
   func cacheKey(for request: ImageRequest, pipeline: ImagePipeline) -> String? {
