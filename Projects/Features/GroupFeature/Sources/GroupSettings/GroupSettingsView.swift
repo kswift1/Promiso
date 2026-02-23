@@ -118,6 +118,44 @@ extension GroupSettings {
     private var menuSection: some SwiftUI.View {
       VStack(alignment: .leading, spacing: 10) {
         VStack(spacing: 0) {
+          // 그룹 색상
+          NavigationLink {
+            GroupColorPickerView(store: store)
+          } label: {
+            HStack(spacing: 12) {
+              if let groupColor = store.groupColor {
+                Circle()
+                  .fill(groupColor.color)
+                  .frame(width: 20, height: 20)
+              } else {
+                Image(systemName: "paintpalette")
+                  .font(.system(size: 16, weight: .semibold))
+                  .foregroundStyle(Color.pmindigo.n500)
+              }
+
+              Text(LocalizedStrings.GroupSettingsView.groupColorTitle)
+                .foregroundStyle(.primary)
+              Spacer()
+              if let groupColor = store.groupColor {
+                Text(groupColor.displayName)
+                  .foregroundStyle(.secondary)
+              } else {
+                Text("미설정")
+                  .foregroundStyle(.secondary)
+              }
+              Image(systemName: "chevron.right")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.tertiary)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+          }
+          .buttonStyle(.plain)
+
+          dividerLine
+
           NavigationLink {
             NotificationSettingsView(store: store)
           } label: {
@@ -1631,6 +1669,202 @@ struct InviteSheet: View {
 }
 
 // MARK: - Preview
+
+// MARK: - GroupColorPickerView
+
+private struct GroupColorPickerView: View {
+  let store: StoreOf<GroupSettings.Feature>
+
+  private let columns = [
+    GridItem(.flexible(), spacing: 12),
+    GridItem(.flexible(), spacing: 12),
+    GridItem(.flexible(), spacing: 12),
+    GridItem(.flexible(), spacing: 12),
+    GridItem(.flexible(), spacing: 12),
+    GridItem(.flexible(), spacing: 12),
+  ]
+
+  var body: some View {
+    ScrollView {
+      VStack(alignment: .leading, spacing: 20) {
+        previewSection
+        colorGridSection
+
+        if store.groupColor != nil {
+          resetButton
+        }
+      }
+      .padding(.horizontal, 16)
+      .padding(.top, 12)
+      .padding(.bottom, 24)
+    }
+    .navigationTitle(LocalizedStrings.GroupSettingsView.groupColorTitle)
+    .navigationBarTitleDisplayMode(.inline)
+  }
+
+  private var previewSection: some View {
+    VStack(alignment: .leading, spacing: 10) {
+      Text(LocalizedStrings.GroupSettingsView.groupColorPreview)
+        .font(.system(size: 16, weight: .semibold))
+        .padding(.horizontal, 4)
+
+      VStack(spacing: 16) {
+        // 1. 그룹 바 아이템 미리보기
+        groupBarPreview
+
+        Divider()
+          .padding(.horizontal, 8)
+
+        // 2. 약속 카드 미리보기
+        promiseCardPreview
+      }
+      .padding(16)
+      .adaptiveGlassCard()
+    }
+  }
+
+  /// 그룹 바 아이템 미리보기 - 홈 상단 그룹 바에서 보이는 형태
+  private var groupBarPreview: some View {
+    HStack(spacing: 16) {
+      // 미리보기 라벨
+      VStack(alignment: .leading, spacing: 4) {
+        Text(LocalizedStrings.GroupSettingsView.groupColorGroupTab)
+          .font(.system(size: 13, weight: .semibold))
+          .foregroundStyle(.secondary)
+        Text("상단 그룹 바에 표시됩니다")
+          .font(.system(size: 11))
+          .foregroundStyle(.tertiary)
+      }
+
+      Spacer()
+
+      // 그룹 바 아이템 (실제 GroupBarItemView와 동일한 스타일)
+      VStack(alignment: .center, spacing: 6) {
+        GroupThumbnailView(
+          imageUrl: store.group.imageUrl,
+          name: store.group.name,
+          size: 56
+        )
+        .overlay(
+          Circle()
+            .stroke(
+              store.groupColor?.color ?? Color.pmindigo.n500,
+              lineWidth: 3
+            )
+        )
+
+        Text(store.group.name)
+          .font(.system(size: 11, weight: .semibold))
+          .foregroundStyle(.primary)
+          .lineLimit(1)
+          .frame(width: 72)
+      }
+    }
+  }
+
+  /// 약속 카드 미리보기 - 약속 카드 왼쪽에 색상 바로 표시
+  private var promiseCardPreview: some View {
+    HStack(spacing: 16) {
+      // 미리보기 라벨
+      VStack(alignment: .leading, spacing: 4) {
+        Text(LocalizedStrings.GroupSettingsView.groupColorPromiseCard)
+          .font(.system(size: 13, weight: .semibold))
+          .foregroundStyle(.secondary)
+        Text("약속 카드에 색상이 표시됩니다")
+          .font(.system(size: 11))
+          .foregroundStyle(.tertiary)
+      }
+
+      Spacer()
+
+      // 미니 약속 카드 미리보기
+      HStack(spacing: 0) {
+        // 왼쪽 색상 바
+        RoundedRectangle(cornerRadius: 2)
+          .fill(store.groupColor?.color ?? Color.pmgray.n300)
+          .frame(width: 4)
+
+        // 카드 내용
+        VStack(alignment: .leading, spacing: 4) {
+          Text("🍽️ 점심 약속")
+            .font(.system(size: 13, weight: .bold))
+          HStack(spacing: 4) {
+            Text("⏰")
+              .font(.system(size: 11))
+            Text("오늘 12:00")
+              .font(.system(size: 11, weight: .medium))
+          }
+          .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+      }
+      .background(Color.pmgray.n50.opacity(0.5))
+      .clipShape(RoundedRectangle(cornerRadius: 8))
+      .overlay(
+        RoundedRectangle(cornerRadius: 8)
+          .strokeBorder(Color.pmgray.n200, lineWidth: 0.5)
+      )
+    }
+  }
+
+  private var colorGridSection: some View {
+    VStack(alignment: .leading, spacing: 10) {
+      Text("색상 선택")
+        .font(.system(size: 16, weight: .semibold))
+        .padding(.horizontal, 4)
+
+      LazyVGrid(columns: columns, spacing: 16) {
+        ForEach(GroupColor.allCases, id: \.self) { color in
+          colorCell(color)
+        }
+      }
+      .padding(16)
+      .adaptiveGlassCard()
+    }
+  }
+
+  private func colorCell(_ color: GroupColor) -> some View {
+    Button {
+      store.send(.view(.groupColorChanged(color)))
+    } label: {
+      ZStack {
+        Circle()
+          .fill(color.color)
+          .frame(width: 48, height: 48)
+
+        if store.groupColor == color {
+          Circle()
+            .strokeBorder(.white, lineWidth: 3)
+            .frame(width: 48, height: 48)
+
+          Image(systemName: "checkmark")
+            .font(.system(size: 16, weight: .bold))
+            .foregroundStyle(.white)
+        }
+      }
+    }
+    .buttonStyle(.plain)
+  }
+
+  private var resetButton: some View {
+    Button {
+      store.send(.view(.groupColorChanged(nil)))
+    } label: {
+      HStack {
+        Image(systemName: "arrow.counterclockwise")
+          .font(.system(size: 14, weight: .semibold))
+        Text(LocalizedStrings.GroupSettingsView.groupColorReset)
+          .font(.system(size: 14, weight: .medium))
+      }
+      .foregroundStyle(Color.pmgray.n500)
+      .frame(maxWidth: .infinity)
+      .padding(.vertical, 12)
+      .adaptiveGlassCard()
+    }
+    .buttonStyle(.plain)
+  }
+}
 
 #Preview {
   NavigationStack {
