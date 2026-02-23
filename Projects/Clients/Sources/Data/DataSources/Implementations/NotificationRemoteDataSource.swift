@@ -14,7 +14,7 @@ private enum FirebaseConstants {
 // MARK: - Data Source
 
 /// Firebase Firestore를 통한 알림 관련 데이터 관리
-public final class NotificationRemoteDataSource: @unchecked Sendable {
+public actor NotificationRemoteDataSource {
   private let db: Firestore
 
   /// 현재 디바이스 ID (앱 설치 시 생성되는 고유 ID)

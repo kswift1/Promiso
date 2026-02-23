@@ -51,7 +51,7 @@ private struct UpdateUserSettingsRequest: Encodable {
 // MARK: - Data Source
 
 /// Firebase Functions를 통한 사용자 프로필 데이터 관리
-public final class UserProfileRemoteDataSource: UserProfileRemoteDataSourceProtocol, @unchecked Sendable {
+public actor UserProfileRemoteDataSource: UserProfileRemoteDataSourceProtocol {
   private let functions: Functions
   private let storage: Storage
   private let db: Firestore
@@ -125,34 +125,22 @@ public final class UserProfileRemoteDataSource: UserProfileRemoteDataSourceProto
   public func getUsersByIds(userIds: [String]) async throws -> [UserPublicModel] {
     guard !userIds.isEmpty else { return [] }
 
-    // 병렬로 각 사용자 조회
-    let results = await withTaskGroup(of: (String, Result<UserProfile, Error>).self) { group in
-      for userId in userIds {
-        group.addTask {
-          let result = await Result {
-            try await self.getProfileModel(uid: userId, isPublic: true)
-          }
-          return (userId, result)
-        }
-      }
+    var users: [UserPublicModel] = []
+    users.reserveCapacity(userIds.count)
 
-      var profiles: [(String, UserProfile)] = []
-      for await (userId, result) in group {
-        if case .success(let profile) = result {
-          profiles.append((userId, profile))
+    // 순차 조회: 실패한 사용자는 스킵
+    for userId in userIds {
+      do {
+        let profile = try await getProfileModel(uid: userId, isPublic: true)
+        if case .public(let userPublic) = profile {
+          users.append(userPublic)
         }
+      } catch {
+        continue
       }
-      return profiles
     }
 
-    // UserPublicModel으로 변환 (순서는 원본 userIds 순서 유지)
-    return userIds.compactMap { userId in
-      guard let (_, profile) = results.first(where: { $0.0 == userId }),
-            case .public(let userPublic) = profile else {
-        return nil
-      }
-      return userPublic
-    }
+    return users
   }
 
   /// 사용자 프로필 업데이트

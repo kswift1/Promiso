@@ -32,7 +32,7 @@ private enum FirebaseConstants {
 /// Firebase Functions를 통한 그룹 데이터 관리
 ///
 /// - GroupRemoteDataSource는 Clients 레이어에 속함
-public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchecked Sendable {
+public actor GroupRemoteDataSource: GroupRemoteDataSourceProtocol {
   private let functions: Functions
   private let storage: Storage
   private let db: Firestore
@@ -162,27 +162,19 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
   }
 
   private func fetchGroupsInParallel(ids: [String]) async throws -> [GroupModel] {
-    try await withThrowingTaskGroup(of: GroupModel?.self) { group in
-      for groupId in ids {
-        group.addTask { [db] in
-          let groupRef = db.environmentCollection("groups").document(groupId)
-          let groupSnapshot = try await groupRef.getDocument()
-          guard groupSnapshot.exists else { return nil }
+    var groups: [GroupModel] = []
+    groups.reserveCapacity(ids.count)
 
-          let dto = try groupSnapshot.data(as: GroupDTO.self)
-          return GroupModel(dto: dto, id: groupId)
-        }
-      }
+    for groupId in ids {
+      let groupRef = db.environmentCollection("groups").document(groupId)
+      let groupSnapshot = try await groupRef.getDocument()
+      guard groupSnapshot.exists else { continue }
 
-      var groups: [GroupModel] = []
-      for try await groupModel in group {
-        if let groupModel {
-          groups.append(groupModel)
-        }
-      }
-
-      return groups
+      let dto = try groupSnapshot.data(as: GroupDTO.self)
+      groups.append(GroupModel(dto: dto, id: groupId))
     }
+
+    return groups
   }
 
   /// 네비게이션용 그룹 요약 목록 조회

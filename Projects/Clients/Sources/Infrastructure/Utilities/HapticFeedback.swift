@@ -22,55 +22,73 @@ public protocol HapticFeedbackProtocol: Sendable {
 
 // MARK: - Haptic Feedback Implementation
 
-/// 햅틱 피드백 서비스 구현
-public final class HapticFeedback: HapticFeedbackProtocol, @unchecked Sendable {
+@MainActor
+private final class HapticGeneratorStore {
+  static let shared = HapticGeneratorStore()
+
   private let impactLight = UIImpactFeedbackGenerator(style: .light)
   private let impactMedium = UIImpactFeedbackGenerator(style: .medium)
   private let impactHeavy = UIImpactFeedbackGenerator(style: .heavy)
   private let notification = UINotificationFeedbackGenerator()
   private let selection = UISelectionFeedbackGenerator()
-  
-  public init() {
-    // 피드백 제너레이터 준비 (성능 향상)
+
+  private init() {
     impactLight.prepare()
     impactMedium.prepare()
     impactHeavy.prepare()
     notification.prepare()
     selection.prepare()
   }
+
+  func impact(_ style: UIImpactFeedbackGenerator.FeedbackStyle) {
+    let generator: UIImpactFeedbackGenerator
+
+    switch style {
+    case .light:
+      generator = impactLight
+    case .medium:
+      generator = impactMedium
+    case .heavy:
+      generator = impactHeavy
+    case .soft:
+      generator = impactLight
+    case .rigid:
+      generator = impactHeavy
+    @unknown default:
+      generator = impactMedium
+    }
+
+    generator.impactOccurred()
+  }
+
+  func notificationOccurred(_ type: UINotificationFeedbackGenerator.FeedbackType) {
+    notification.notificationOccurred(type)
+  }
+
+  func selectionChanged() {
+    selection.selectionChanged()
+  }
+}
+
+/// 햅틱 피드백 서비스 구현
+public actor HapticFeedback: HapticFeedbackProtocol {
+  public init() {}
   
   public func impact(_ style: UIImpactFeedbackGenerator.FeedbackStyle) async {
     await MainActor.run {
-      let generator: UIImpactFeedbackGenerator
-      
-      switch style {
-      case .light:
-        generator = impactLight
-      case .medium:
-        generator = impactMedium
-      case .heavy:
-        generator = impactHeavy
-      case .soft:
-        generator = impactLight
-      case .rigid:
-        generator = impactHeavy
-      @unknown default:
-        generator = impactMedium
-      }
-      
-      generator.impactOccurred()
+      HapticGeneratorStore.shared.impact(style)
     }
   }
   
   public func notification(_ type: UINotificationFeedbackGenerator.FeedbackType) async {
     await MainActor.run {
-      notification.notificationOccurred(type)
+      HapticGeneratorStore.shared.notificationOccurred(type)
     }
   }
   
   public func selection() async {
     await MainActor.run {
-      selection.selectionChanged()
+      HapticGeneratorStore.shared.selectionChanged()
     }
   }
   
