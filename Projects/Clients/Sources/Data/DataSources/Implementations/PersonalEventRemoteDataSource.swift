@@ -108,6 +108,19 @@ public class PersonalEventRemoteDataSource: PersonalEventRemoteDataSourceProtoco
     return try snapshot.documents.compactMap { try convertDocumentToEvent($0) }
   }
 
+  /// 날짜 범위로 개인 일정 조회 (일정 충돌 감지용)
+  public func getEventsByDateRange(startDate: Date, endDate: Date) async throws -> [PersonalEventModel] {
+    let collection = try eventsCollection()
+
+    let query = collection
+      .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: startDate))
+      .whereField("startAt", isLessThan: Timestamp(date: endDate))
+      .order(by: "startAt")
+
+    let snapshot = try await query.getDocuments()
+    return try snapshot.documents.compactMap { try convertDocumentToEvent($0) }
+  }
+
   // MARK: - Real-time Listener
 
   /// 활성 일정 실시간 구독 (과거 일정 제외)
