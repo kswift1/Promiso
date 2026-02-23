@@ -286,39 +286,105 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
 
   /// 다가오는 약속 조회 (사용자가 속한 그룹들의 약속)
   ///
-  /// 그룹 10개 단위 chunk로 분할해 병렬 조회한 뒤,
-  /// 전역 정렬 + limit을 적용한다.
-  /// 각 chunk에서 동일 limit을 적용해 불필요한 Firestore read를 줄인다.
+  /// 그룹 10개 단위 chunk로 분할해 병렬 조회한다.
+  /// 처음에는 chunk 수에 비례한 소량만 읽고,
+  /// 필요한 chunk만 단계적으로 확장 조회해 Firestore read를 줄인다.
   public func getUpcomingPromises(groupIds: [String], limit: Int) async throws -> [PromiseModel] {
     guard !groupIds.isEmpty, limit > 0 else { return [] }
 
     let now = Date()
     let chunks = groupIds.chunked(into: 10)
-    let limitPerChunk = limit
+    guard !chunks.isEmpty else { return [] }
 
-    let allPromises = try await withThrowingTaskGroup(of: [PromiseModel].self) { group in
-      for chunk in chunks {
+    let batchSize = max(1, min(limit, Int(ceil(Double(limit) / Double(chunks.count)))))
+
+    var states = try await withThrowingTaskGroup(of: (Int, UpcomingChunkFetchResult).self) { group in
+      for (index, chunk) in chunks.enumerated() {
         group.addTask { [db, collectionName] in
-          let query = db.environmentCollection(collectionName)
-            .whereField("groupId", in: chunk)
-            .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: now))
-            .order(by: "startAt")
-            .limit(to: limitPerChunk)
-
-          let snapshot = try await query.getDocuments()
-          return try snapshot.documents.compactMap { try convertDocumentToPromise($0) }
+          let result = try await fetchUpcomingChunk(
+            db: db,
+            collectionName: collectionName,
+            groupIds: chunk,
+            from: now,
+            limit: batchSize
+          )
+          return (index, result)
         }
       }
 
-      var results: [PromiseModel] = []
-      for try await promises in group {
-        results.append(contentsOf: promises)
+      var initialResults: [(Int, UpcomingChunkFetchResult)] = []
+      initialResults.reserveCapacity(chunks.count)
+      for try await item in group {
+        initialResults.append(item)
       }
-      return results
+
+      return initialResults
+        .sorted { $0.0 < $1.0 }
+        .map { index, result in
+          UpcomingChunkState(
+            groupIds: chunks[index],
+            promises: result.promises,
+            nextIndex: 0,
+            fetchedLimit: batchSize,
+            fetchedDocumentCount: result.fetchedDocumentCount
+          )
+        }
     }
 
-    // 정렬 후 limit 적용
-    return Array(allPromises.sorted { $0.startAt < $1.startAt }.prefix(limit))
+    var merged: [PromiseModel] = []
+    merged.reserveCapacity(limit)
+    var seenIds = Set<String>()
+    seenIds.reserveCapacity(limit)
+
+    while merged.count < limit {
+      // 현재 버퍼가 소진된 chunk만 단계적으로 확장 조회한다.
+      let expansionTargets = states.indices.filter {
+        !states[$0].hasNextPromise && states[$0].canExpand(maxLimit: limit)
+      }
+
+      if !expansionTargets.isEmpty {
+        let expandedResults = try await withThrowingTaskGroup(
+          of: (Int, Int, UpcomingChunkFetchResult).self
+        ) { group in
+          for index in expansionTargets {
+            let nextLimit = min(limit, states[index].fetchedLimit + batchSize)
+            let chunk = states[index].groupIds
+            group.addTask { [db, collectionName] in
+              let result = try await fetchUpcomingChunk(
+                db: db,
+                collectionName: collectionName,
+                groupIds: chunk,
+                from: now,
+                limit: nextLimit
+              )
+              return (index, nextLimit, result)
+            }
+          }
+
+          var results: [(Int, Int, UpcomingChunkFetchResult)] = []
+          results.reserveCapacity(expansionTargets.count)
+          for try await item in group {
+            results.append(item)
+          }
+          return results
+        }
+
+        for (index, requestedLimit, result) in expandedResults {
+          states[index].applyFetchResult(result, requestedLimit: requestedLimit)
+        }
+      }
+
+      guard let selectedIndex = nextUpcomingChunkIndex(states: states) else {
+        break
+      }
+
+      let nextPromise = states[selectedIndex].consumeNextPromise()
+      if seenIds.insert(nextPromise.id).inserted {
+        merged.append(nextPromise)
+      }
+    }
+
+    return merged
   }
   
   /// 활성 약속 조회
@@ -569,11 +635,97 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
 
   // MARK: - Helper Methods
 
+  private func nextUpcomingChunkIndex(states: [UpcomingChunkState]) -> Int? {
+    var selectedIndex: Int?
+
+    for index in states.indices where states[index].hasNextPromise {
+      guard let currentSelected = selectedIndex else {
+        selectedIndex = index
+        continue
+      }
+
+      guard let candidate = states[index].nextPromise,
+            let selected = states[currentSelected].nextPromise else {
+        continue
+      }
+
+      if candidate.startAt < selected.startAt
+        || (candidate.startAt == selected.startAt && candidate.id < selected.id) {
+        selectedIndex = index
+      }
+    }
+
+    return selectedIndex
+  }
+
   private func documentSnapshotToPromise(_ document: DocumentSnapshot) throws -> PromiseModel? {
     guard document.exists else { return nil }
     let dto = try document.data(as: PromiseDTO.self)
     return PromiseModel(dto: dto, id: document.documentID)
   }
+}
+
+private struct UpcomingChunkFetchResult {
+  let promises: [PromiseModel]
+  let fetchedDocumentCount: Int
+}
+
+private struct UpcomingChunkState {
+  let groupIds: [String]
+  var promises: [PromiseModel]
+  var nextIndex: Int
+  var fetchedLimit: Int
+  var fetchedDocumentCount: Int
+
+  var hasNextPromise: Bool {
+    nextIndex < promises.count
+  }
+
+  var nextPromise: PromiseModel? {
+    guard hasNextPromise else { return nil }
+    return promises[nextIndex]
+  }
+
+  mutating func consumeNextPromise() -> PromiseModel {
+    let promise = promises[nextIndex]
+    nextIndex += 1
+    return promise
+  }
+
+  func canExpand(maxLimit: Int) -> Bool {
+    fetchedLimit < maxLimit && fetchedDocumentCount >= fetchedLimit
+  }
+
+  mutating func applyFetchResult(_ result: UpcomingChunkFetchResult, requestedLimit: Int) {
+    promises = result.promises
+    fetchedLimit = requestedLimit
+    fetchedDocumentCount = result.fetchedDocumentCount
+    if nextIndex > promises.count {
+      nextIndex = promises.count
+    }
+  }
+}
+
+private func fetchUpcomingChunk(
+  db: Firestore,
+  collectionName: String,
+  groupIds: [String],
+  from: Date,
+  limit: Int
+) async throws -> UpcomingChunkFetchResult {
+  let query = db.environmentCollection(collectionName)
+    .whereField("groupId", in: groupIds)
+    .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: from))
+    .order(by: "startAt")
+    .limit(to: limit)
+
+  let snapshot = try await query.getDocuments()
+  let promises = try snapshot.documents.compactMap { try convertDocumentToPromise($0) }
+
+  return UpcomingChunkFetchResult(
+    promises: promises,
+    fetchedDocumentCount: snapshot.documents.count
+  )
 }
 
 // MARK: - Document Conversion Helper

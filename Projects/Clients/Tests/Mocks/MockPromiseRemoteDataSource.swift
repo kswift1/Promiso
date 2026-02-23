@@ -22,7 +22,7 @@ import PromisoShared
 
 // MARK: - MockPromiseRemoteDataSource
 
-final class MockPromiseRemoteDataSource: PromiseRemoteDataSourceProtocol, @unchecked Sendable {
+final class MockPromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
 
   // MARK: - Call Counts
 

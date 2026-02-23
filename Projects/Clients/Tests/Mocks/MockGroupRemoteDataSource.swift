@@ -22,7 +22,7 @@ import PromisoShared
 
 // MARK: - MockGroupRemoteDataSource
 
-final class MockGroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchecked Sendable {
+final class MockGroupRemoteDataSource: GroupRemoteDataSourceProtocol {
 
   // MARK: - Call Counts
 
