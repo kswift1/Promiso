@@ -657,7 +657,7 @@ extension DateTimeSettings {
     public init() {}
 
     @ObservableState
-    public struct State: Equatable {
+    public struct State: Equatable, Sendable {
       @Shared(.appStorage(AppConstants.UserDefaults.use24HourFormat)) public var use24HourFormat: Bool = false
       /// 선택된 값 (임시)
       var selectedValue: Bool = false
@@ -869,7 +869,7 @@ extension ThemeSettings {
     public init() {}
 
     @ObservableState
-    public struct State: Equatable {
+    public struct State: Equatable, Sendable {
       @Shared(.appStorage(AppConstants.UserDefaults.preferredThemeMode)) public var themeMode: String = AppConstants.ThemeMode.system.rawValue
 
       public init() {}
@@ -1026,7 +1026,7 @@ extension LanguageSettings {
     public init() {}
 
     @ObservableState
-    public struct State: Equatable {
+    public struct State: Equatable, Sendable {
       @Shared(.appStorage(AppConstants.UserDefaults.preferredLanguage)) public var preferredLanguage: String = ""
 
       public init() {}
@@ -1173,7 +1173,7 @@ extension PromiseTabModeSettings {
     public init() {}
 
     @ObservableState
-    public struct State: Equatable {
+    public struct State: Equatable, Sendable {
       @Shared(.appStorage(AppConstants.UserDefaults.defaultPromiseTabMode)) public var defaultPromiseTabMode: String = "group"
 
       public init() {}

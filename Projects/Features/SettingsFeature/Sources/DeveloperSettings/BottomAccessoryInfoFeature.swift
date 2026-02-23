@@ -18,7 +18,7 @@ extension BottomAccessoryInfo {
     public init() {}
 
     @ObservableState
-    public struct State: Equatable {
+    public struct State: Equatable, Sendable {
       var isEnabled: Bool
 
       public init() {

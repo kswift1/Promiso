@@ -34,7 +34,7 @@ extension CalendarSettings {
     // MARK: - State
 
     @ObservableState
-    public struct State: Equatable {
+    public struct State: Equatable, Sendable {
       public var authorizationStatus: CalendarAuthorizationStatus
       public var isRequestingAccess: Bool
       public var groups: [UserGroupInfo]
@@ -153,12 +153,13 @@ extension CalendarSettings {
           var updatedGroup = state.groups[groupIndex]
           var settings = updatedGroup.notifications ?? GroupNotificationSettings()
           settings.calendarSync = enabled
+          let updatedSettings = settings
           updatedGroup = UserGroupInfo(
             id: updatedGroup.id,
             name: updatedGroup.name,
             role: updatedGroup.role,
             joinedAt: updatedGroup.joinedAt,
-            notifications: settings,
+            notifications: updatedSettings,
             hasNewActivity: updatedGroup.hasNewActivity,
             imageUrl: updatedGroup.imageUrl
           )
@@ -167,7 +168,7 @@ extension CalendarSettings {
           return .run { send in
             await hapticFeedback.selection()
             do {
-              try await groupClient.updateGroupNotificationSettings(groupId, settings)
+              try await groupClient.updateGroupNotificationSettings(groupId, updatedSettings)
               await send(.internal(.groupSettingsUpdateCompleted(groupId: groupId, success: true, previousValue: nil)))
             } catch {
               // 실패 시 이전 값으로 롤백

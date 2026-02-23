@@ -19,7 +19,7 @@ extension LiveActivityTest {
     public init() {}
 
     @ObservableState
-    public struct State: Equatable {
+    public struct State: Equatable, Sendable {
       var isLiveActivityActive: Bool = false
       var activityId: String?
       var statusMessage: String = ""

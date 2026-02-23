@@ -1966,7 +1966,7 @@ public enum LocalizationHelper {
 
 // MARK: - App Language
 
-public enum AppLanguage: String, CaseIterable {
+public enum AppLanguage: String, CaseIterable, Sendable {
   case korean = "ko"
   case english = "en"
 

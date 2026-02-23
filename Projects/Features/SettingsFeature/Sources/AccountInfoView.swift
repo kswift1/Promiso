@@ -27,7 +27,7 @@ extension AccountInfo {
     public init() {}
 
     @ObservableState
-    public struct State: Equatable {
+    public struct State: Equatable, Sendable {
       public var currentUser: UserPrivateModel
       public var showLogoutAlert: Bool = false
       public var showDeleteAccountAlert: Bool = false

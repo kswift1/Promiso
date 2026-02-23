@@ -31,7 +31,7 @@ extension NotificationSettings {
     // MARK: - State
 
     @ObservableState
-    public struct State: Equatable {
+    public struct State: Equatable, Sendable {
       public let currentUserId: String
       public var systemAuthStatus: NotificationAuthorizationStatus = .notDetermined
       public var groups: [UserGroupInfo] = []
@@ -325,7 +325,7 @@ extension GroupNotificationDetail {
     @Dependency(\.hapticFeedback) var hapticFeedback
 
     @ObservableState
-    public struct State: Equatable {
+    public struct State: Equatable, Sendable {
       public var group: UserGroupInfo
       public var isSystemNotificationEnabled: Bool
       public var toastMessage: ToastMessage?
@@ -374,15 +374,16 @@ extension GroupNotificationDetail {
             let previousSettings = state.group.notifications ?? GroupNotificationSettings()
             var updatedSettings = previousSettings
             updatedSettings.enabled = enabled
-            state.group = state.group.withNotifications(updatedSettings)
+            let nextSettings = updatedSettings
+            state.group = state.group.withNotifications(nextSettings)
             let groupId = state.group.id
 
             return .run { [groupClient] send in
               await hapticFeedback.selection()
               do {
-                try await groupClient.updateGroupNotificationSettings(groupId, updatedSettings)
+                try await groupClient.updateGroupNotificationSettings(groupId, nextSettings)
                 await send(.internal(.updateSucceeded))
-                await send(.delegate(.settingsUpdated(groupId: groupId, settings: updatedSettings)))
+                await send(.delegate(.settingsUpdated(groupId: groupId, settings: nextSettings)))
               } catch {
                 await send(.internal(.updateFailed(previousSettings, (error as? NotificationClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError)))
               }
@@ -392,15 +393,16 @@ extension GroupNotificationDetail {
             let previousSettings = state.group.notifications ?? GroupNotificationSettings()
             var updatedSettings = previousSettings
             updatedSettings.setValue(enabled, for: key)
-            state.group = state.group.withNotifications(updatedSettings)
+            let nextSettings = updatedSettings
+            state.group = state.group.withNotifications(nextSettings)
             let groupId = state.group.id
 
             return .run { [groupClient] send in
               await hapticFeedback.selection()
               do {
-                try await groupClient.updateGroupNotificationSettings(groupId, updatedSettings)
+                try await groupClient.updateGroupNotificationSettings(groupId, nextSettings)
                 await send(.internal(.updateSucceeded))
-                await send(.delegate(.settingsUpdated(groupId: groupId, settings: updatedSettings)))
+                await send(.delegate(.settingsUpdated(groupId: groupId, settings: nextSettings)))
               } catch {
                 await send(.internal(.updateFailed(previousSettings, (error as? NotificationClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError)))
               }

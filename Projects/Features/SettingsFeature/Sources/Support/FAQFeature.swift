@@ -32,7 +32,7 @@ extension FAQ {
     // MARK: - State
 
     @ObservableState
-    public struct State: Equatable {
+    public struct State: Equatable, Sendable {
       public var faqs: [FAQModel] = []
       public var isLoading: Bool = false
       public var errorMessage: String?

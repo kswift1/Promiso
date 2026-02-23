@@ -30,7 +30,7 @@ extension LegalInfo {
     // MARK: - State
 
     @ObservableState
-    public struct State: Equatable {
+    public struct State: Equatable, Sendable {
       public init() {}
     }
 

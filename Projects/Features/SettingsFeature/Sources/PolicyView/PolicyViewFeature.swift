@@ -25,7 +25,7 @@ extension PolicyView {
     // MARK: - State
 
     @ObservableState
-    public struct State: Equatable {
+    public struct State: Equatable, Sendable {
       public let policyType: PolicyType
       public let url: URL
       public var isLoading: Bool

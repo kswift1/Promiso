@@ -26,7 +26,7 @@ extension DeveloperSettings {
     // MARK: - State
 
     @ObservableState
-    public struct State: Equatable {
+    public struct State: Equatable, Sendable {
       @Presents var liveActivityTest: LiveActivityTest.Feature.State?
       @Presents var bottomAccessoryInfo: BottomAccessoryInfo.Feature.State?
 

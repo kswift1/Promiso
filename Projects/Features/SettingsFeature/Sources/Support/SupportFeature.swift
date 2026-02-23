@@ -31,7 +31,7 @@ extension Support {
     // MARK: - State
 
     @ObservableState
-    public struct State: Equatable {
+    public struct State: Equatable, Sendable {
       var toastMessage: ToastMessage?
       public init() {}
     }
@@ -81,11 +81,12 @@ extension Support {
             // 이메일 앱 열기
             let email = AppConstants.App.supportEmail
             let subject = Strings.BugReport.subject
+            let osVersion = await MainActor.run { UIDevice.current.systemVersion }
             let body = Strings.BugReport.body(
               version: AppConstants.App.version,
               build: AppConstants.App.buildNumber,
               device: Self.deviceModel(),
-              osVersion: UIDevice.current.systemVersion
+              osVersion: osVersion
             )
 
             let encodedSubject = subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""

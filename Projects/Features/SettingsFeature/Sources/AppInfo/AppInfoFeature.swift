@@ -26,7 +26,7 @@ extension AppInfo {
     // MARK: - State
 
     @ObservableState
-    public struct State: Equatable {
+    public struct State: Equatable, Sendable {
       public let appVersion: String
       public let environment: AppEnvironment?
 
