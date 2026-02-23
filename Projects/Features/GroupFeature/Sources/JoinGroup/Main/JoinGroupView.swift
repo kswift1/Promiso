@@ -715,7 +715,7 @@ private struct GroupImageView: View {
       let request = ImageRequest(url: url)
       loadedImage = try await ImagePipeline.shared.image(for: request)
     } catch {
-      print("Failed to load image: \(error)")
+      AppLogger.general.warning("JoinGroup image load failed: \(error.localizedDescription)")
       // 에러 발생 시 system image 표시 (loadedImage가 nil이므로 자동으로 표시됨)
     }
   }

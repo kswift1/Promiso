@@ -47,17 +47,11 @@ struct NeedResponseBanner: View {
 
 #Preview {
   VStack(spacing: 16) {
-    NeedResponseBanner(count: 3) {
-      print("Banner tapped")
-    }
+    NeedResponseBanner(count: 3) { }
 
-    NeedResponseBanner(count: 1) {
-      print("Banner tapped")
-    }
+    NeedResponseBanner(count: 1) { }
 
-    NeedResponseBanner(count: 10) {
-      print("Banner tapped")
-    }
+    NeedResponseBanner(count: 10) { }
   }
   .padding()
   .auroraBackground()

@@ -462,7 +462,7 @@ private struct ScaleButtonStyle: ButtonStyle {
     selectedGroupId: "g2",
     groupPromiseCounts: ["g2": 5, "g3": 10], // g3 is at limit
     maxActivePromises: 10,
-    onGroupSelected: { group in print("Selected: \(group.name)") },
+    onGroupSelected: { _ in },
     onRetry: {},
     onCreateGroup: {},
     isFocused: $focus
@@ -493,7 +493,7 @@ private struct ScaleButtonStyle: ButtonStyle {
     groupPromiseCounts: [:],
     maxActivePromises: 10,
     onGroupSelected: { _ in },
-    onRetry: { print("Retry tapped") },
+    onRetry: { },
     onCreateGroup: {},
     isFocused: $focus
   )

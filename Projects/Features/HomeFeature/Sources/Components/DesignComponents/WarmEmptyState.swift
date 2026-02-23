@@ -146,8 +146,8 @@ struct WarmEmptyState: View {
 #Preview("약속 없음") {
   WarmEmptyState(
     style: .noPromises,
-    onPrimaryAction: { print("새 약속 만들기") },
-    onSecondaryAction: { print("나중에") }
+    onPrimaryAction: { },
+    onSecondaryAction: { }
   )
   .auroraBackground()
 }
@@ -155,7 +155,7 @@ struct WarmEmptyState: View {
 #Preview("필터 결과 없음") {
   WarmEmptyState(
     style: .noFilterResults,
-    onPrimaryAction: { print("필터 초기화") }
+    onPrimaryAction: { }
   )
   .auroraBackground()
 }
@@ -163,8 +163,8 @@ struct WarmEmptyState: View {
 #Preview("그룹 없음") {
   WarmEmptyState(
     style: .noGroups,
-    onPrimaryAction: { print("그룹 찾기") },
-    onSecondaryAction: { print("초대 링크") }
+    onPrimaryAction: { },
+    onSecondaryAction: { }
   )
   .auroraBackground()
 }

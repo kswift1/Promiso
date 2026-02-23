@@ -286,15 +286,15 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
 
   /// 다가오는 약속 조회 (사용자가 속한 그룹들의 약속)
   ///
-  /// - TODO: Firestore 비용 최적화 필요
-  ///   현재: 모든 문서를 가져온 후 로컬에서 limit 적용 (불필요한 reads 발생)
-  ///   개선: 쿼리에 .limit() 추가하여 읽기 횟수 최소화
-  ///   주의: 여러 chunk에 분산된 경우 정렬 순서 보장 어려움 (설계 검토 필요)
+  /// 그룹 10개 단위 chunk로 분할해 병렬 조회한 뒤,
+  /// 전역 정렬 + limit을 적용한다.
+  /// 각 chunk에서 동일 limit을 적용해 불필요한 Firestore read를 줄인다.
   public func getUpcomingPromises(groupIds: [String], limit: Int) async throws -> [PromiseModel] {
-    guard !groupIds.isEmpty else { return [] }
+    guard !groupIds.isEmpty, limit > 0 else { return [] }
 
     let now = Date()
     let chunks = groupIds.chunked(into: 10)
+    let limitPerChunk = limit
 
     let allPromises = try await withThrowingTaskGroup(of: [PromiseModel].self) { group in
       for chunk in chunks {
@@ -302,6 +302,8 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
           let query = db.environmentCollection(collectionName)
             .whereField("groupId", in: chunk)
             .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: now))
+            .order(by: "startAt")
+            .limit(to: limitPerChunk)
 
           let snapshot = try await query.getDocuments()
           return try snapshot.documents.compactMap { try convertDocumentToPromise($0) }

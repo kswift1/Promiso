@@ -188,7 +188,7 @@ public final class UserProfileRemoteDataSource: UserProfileRemoteDataSourceProto
     do {
       _ = try await profileImageRef.putDataAsync(uploadData, metadata: metadata)
     } catch {
-      print("❌ Storage upload error:", error)
+      AppLogger.general.error("Storage upload error: \(error.localizedDescription)")
       throw UserProfileError.uploadFailed
     }
 

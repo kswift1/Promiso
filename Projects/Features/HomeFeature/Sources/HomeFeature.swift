@@ -1027,7 +1027,11 @@ extension Home {
     // MARK: - Home Content
 
     private var homeContent: some View {
-      ScrollView {
+      let todayScheduleItems = store.todayScheduleItems
+      let pendingPromises = store.pendingPromises
+      let upcomingScheduleItems = store.upcomingScheduleItems
+
+      return ScrollView {
         LazyVStack(spacing: 20) {
           if store.isLoading && !store.hasLoadedOnce {
             loadingView
@@ -1036,7 +1040,7 @@ extension Home {
           } else {
             // 오늘의 일정 카드
             TodayScheduleCard(
-              items: store.todayScheduleItems,
+              items: todayScheduleItems,
               weatherCache: store.weatherCache,
               onItemTap: { item in
                 switch item {
@@ -1050,9 +1054,9 @@ extension Home {
             .padding(.horizontal, 16)
 
             // 응답 필요 섹션 (있을 때만 표시)
-            if !store.pendingPromises.isEmpty {
+            if !pendingPromises.isEmpty {
               PendingSection(
-                promises: store.pendingPromises,
+                promises: pendingPromises,
                 groupMembersCache: store.groupMembersCache,
                 onPromiseTap: { promise in
                   store.send(.view(.pendingPromiseTapped(promise)))
@@ -1063,7 +1067,7 @@ extension Home {
 
             // 다가오는 일정 섹션
             UpcomingSection(
-              items: store.upcomingScheduleItems,
+              items: upcomingScheduleItems,
               weatherCache: store.weatherCache,
               onItemTap: { item in
                 switch item {

@@ -153,9 +153,9 @@ struct PromiseSectionView: View {
       maxDisplay: 2,
       currentUserId: PromiseModel.previewCurrentUserId,
       onPromiseTap: { _ in },
-      onMoreTap: { print("More tapped") },
-      onAccept: { _ in print("Accept") },
-      onReject: { _ in print("Reject") }
+      onMoreTap: { },
+      onAccept: { _ in },
+      onReject: { _ in }
     )
   }
   .background(Color(.systemGroupedBackground))

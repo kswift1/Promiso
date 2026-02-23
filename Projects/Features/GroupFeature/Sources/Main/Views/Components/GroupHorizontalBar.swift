@@ -315,13 +315,13 @@ private struct AddGroupMenuButton: View {
         GroupBarItem(id: "g4", name: "우리 가족 단톡방", hasNewActivity: true, isSelected: false),
         GroupBarItem(id: "g5", name: "주말 등산 동호회 멤버들", hasNewActivity: false, isSelected: false)
       ],
-      onGroupTap: { id in print("Group tapped: \(id)") },
-      onGroupInvite: { id in print("Group invite: \(id)") },
-      onGroupSettings: { id in print("Group settings: \(id)") },
-      onCreateGroup: { print("Create group") },
-      onJoinGroup: { print("Join group") },
-      onSortSettings: { print("Sort settings") },
-      onCreatePromise: { id in print("Create promise: \(id)") }
+      onGroupTap: { _ in },
+      onGroupInvite: { _ in },
+      onGroupSettings: { _ in },
+      onCreateGroup: { },
+      onJoinGroup: { },
+      onSortSettings: { },
+      onCreatePromise: { _ in }
     )
     .background(Color(.systemGroupedBackground))
 

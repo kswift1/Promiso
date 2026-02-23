@@ -345,14 +345,14 @@ extension GroupMain {
     private var promiseListView: some View {
       ScrollViewReader { proxy in
         List {
-          ForEach(store.groupedFilteredPromises, id: \.date) { section in
+          ForEach(store.groupedFilteredPromises, id: \.day) { section in
             Section {
               ForEach(section.promises, id: \.id) { promise in
                 promiseRowView(for: promise)
                   .id(promise.id)
               }
             } header: {
-              dateSectionHeader(section.date)
+              dateSectionHeader(section.title)
             }
             .listSectionSeparator(.hidden)
           }

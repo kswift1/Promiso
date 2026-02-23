@@ -641,7 +641,7 @@ private struct GroupImageView: View {
       let request = ImageRequest(url: url)
       loadedImage = try await ImagePipeline.shared.image(for: request)
     } catch {
-      print("Failed to load image: \(error)")
+      AppLogger.general.warning("ManageGroup image load failed: \(error.localizedDescription)")
     }
   }
 }

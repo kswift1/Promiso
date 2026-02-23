@@ -310,7 +310,7 @@ extension AppEntry {
               } catch {
                 if let userProfileError = error as? UserProfileError, userProfileError == .uploadFailed {
                   // uploadFailed 에러는 무시하고 프로필 조회만 시도
-                  print("⚠️ Profile image upload failed, continuing without image...")
+                  AppLogger.general.warning("Profile image upload failed, continuing without image")
                   do {
                     let userModel = try await userProfileClient.getPrivateProfile(.me)
                     await send(.internal(.profileSaved(userModel)))
@@ -331,7 +331,7 @@ extension AppEntry {
           case .profileSaveFailed(let error):
             state.isSaving = false
             state.isSkippingPhoto = false
-            print("❌ Profile save failed: \(error.localizedDescription)")
+            AppLogger.general.error("Profile save failed: \(error.localizedDescription)")
 
             state.alert = AlertState {
               TextState(LocalizedStrings.Profile.saveFailed)

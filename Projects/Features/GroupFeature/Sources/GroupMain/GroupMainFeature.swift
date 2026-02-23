@@ -340,36 +340,78 @@ extension GroupMain {
       }
 
       /// 날짜별로 그룹화된 필터된 약속 목록
-      var groupedFilteredPromises: [(date: String, promises: [PromiseModel])] {
-        let grouped = Dictionary(grouping: filteredPromises, by: { $0.dateText })
+      var groupedFilteredPromises: [(day: Date, title: String, promises: [PromiseModel])] {
+        let calendar = Calendar.current
+        let grouped = Dictionary(grouping: filteredPromises) { promise in
+          calendar.startOfDay(for: promise.startAt)
+        }
 
-        return grouped.sorted { lhs, rhs in
-          // 오늘 > 내일 > 나머지 (날짜순)
-          let priorityOrder = ["오늘": 0, "내일": 1]
-          let lhsPriority = priorityOrder[lhs.key] ?? 2
-          let rhsPriority = priorityOrder[rhs.key] ?? 2
+        return grouped
+          .sorted { $0.key < $1.key }
+          .map { day, promises in
+            let title: String
+            if calendar.isDateInToday(day) {
+              title = LocalizedStrings.DateFormat.today
+            } else if calendar.isDateInTomorrow(day) {
+              title = LocalizedStrings.DateFormat.tomorrow
+            } else {
+              title = LocalizedDateFormatters.monthDayString(from: day)
+            }
 
-          if lhsPriority != rhsPriority {
-            return lhsPriority < rhsPriority
+            return (day: day, title: title, promises: promises)
           }
-          return lhs.key < rhs.key
-        }.map { (date: $0.key, promises: $0.value) }
       }
 
       /// 리스트 애니메이션 키 (DiffableDataSource 스타일)
       var promiseListAnimationKey: [String] {
         groupedFilteredPromises.flatMap { section in
-          [section.date] + section.promises.map(\.id)
+          [String(Int(section.day.timeIntervalSince1970))] + section.promises.map(\.id)
         }
       }
 
       /// 필터별 약속 개수 (과거 필터 제외)
       var filterCounts: [GroupMain.PromiseFilter: Int] {
-        [
-          .needResponse: needResponsePromises.count,
-          .responded: respondedPromises.count,
-          .confirmed: confirmedPromises.count,
-          .all: allPromises.count
+        guard case .loaded(let promises) = promisesState else {
+          return [
+            .needResponse: 0,
+            .responded: 0,
+            .confirmed: 0,
+            .all: 0
+          ]
+        }
+
+        let currentUserId = currentUser.userId
+        let totalGroupMembers = currentGroupMembers?.count
+        let now = Date()
+
+        var needResponseCount = 0
+        var respondedCount = 0
+        var confirmedCount = 0
+
+        for promise in promises {
+          let responseStatus = promise.responseStatus(
+            currentUserId: currentUserId,
+            totalGroupMembers: totalGroupMembers
+          )
+
+          if responseStatus == .needResponse {
+            needResponseCount += 1
+          } else if responseStatus == .responded, !promise.isConfirmed {
+            respondedCount += 1
+          }
+
+          if promise.isConfirmed,
+             promise.startAt > now,
+             promise.myVoteStatus(userId: currentUserId) != .pending {
+            confirmedCount += 1
+          }
+        }
+
+        return [
+          .needResponse: needResponseCount,
+          .responded: respondedCount,
+          .confirmed: confirmedCount,
+          .all: promises.count
           // .past는 제외 (별도 fetch이므로)
         ]
       }
@@ -388,9 +430,10 @@ extension GroupMain {
           if order.isEmpty {
             return groups
           }
+          let orderSet = Set(order)
           let groupDict = Dictionary(uniqueKeysWithValues: groups.map { ($0.id, $0) })
           let ordered = order.compactMap { groupDict[$0] }
-          let remaining = groups.filter { group in !order.contains(group.id) }
+          let remaining = groups.filter { group in !orderSet.contains(group.id) }
           return ordered + remaining
         }
       }
