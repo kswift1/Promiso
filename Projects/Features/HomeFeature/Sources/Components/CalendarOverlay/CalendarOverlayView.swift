@@ -34,8 +34,8 @@ struct CalendarOverlayView: View {
   /// 1행 단위 높이 (행 높이 + 간격)
   private var rowUnit: CGFloat { rowHeight + gridSpacing }
 
-  /// detail mode에서 보이는 영역 (요일 헤더 + 선택된 주)
-  private var compactGridHeight: CGFloat { weekdayHeight + gridSpacing + rowHeight }
+  /// detail mode에서 보이는 날짜 행 영역 (선택된 주 1행)
+  private var compactGridHeight: CGFloat { rowHeight }
 
   /// detail mode에서 날짜 행을 위로 밀어 선택 주를 요일 헤더 바로 아래로 배치
   private var contentShift: CGFloat {
@@ -69,76 +69,70 @@ struct CalendarOverlayView: View {
 
   var body: some View {
     VStack(spacing: 0) {
-      // MARK: 헤더
-      headerSection
+      // MARK: 상단 섹션 (헤더 + 일정 + 요일) — 흰색 카드, rounded bottom
+      VStack(spacing: 0) {
+        headerSection
+          .padding(.horizontal, 20)
+          .padding(.bottom, 16)
+
+        // 일정 리스트 (항상 존재, detail mode에서 확장)
+        dayScheduleList
+          .frame(maxHeight: detailMode ? .infinity : 0)
+          .opacity(detailMode ? 1 : 0)
+          .clipped()
+
+        // Spacer (항상 존재, detail mode에서 확장 → 그리드를 아래로 밀어냄)
+        Spacer(minLength: 0)
+          .frame(maxHeight: detailMode ? .infinity : 0)
+
+        // 요일 헤더 — 흰색 영역 하단
+        weekdayHeaderRow
+          .padding(.horizontal, 20)
+          .padding(.bottom, 12)
+      }
+      .background(Color(.systemBackground))
+      .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: 20, bottomTrailingRadius: 20))
+
+      // MARK: 하단 섹션 (날짜 그리드 + 날씨) — 회색, 꽉 채움
+      dateRowsGrid
         .padding(.horizontal, 20)
-        .padding(.bottom, 16)
+        .padding(.top, 12)
+        .padding(.bottom, detailMode ? 8 : 0)
 
-      // MARK: 일정 리스트 (항상 존재, detail mode에서 확장)
-      dayScheduleList
-        .frame(maxHeight: detailMode ? .infinity : 0)
-        .opacity(detailMode ? 1 : 0)
-        .clipped()
-
-      // MARK: Spacer (항상 존재, detail mode에서 확장 → 그리드를 아래로 밀어냄)
       Spacer(minLength: 0)
-        .frame(maxHeight: detailMode ? .infinity : 0)
 
-      Divider()
-        .foregroundStyle(Color(.separator).opacity(0.3))
-        .padding(.horizontal, 20)
-        .opacity(detailMode ? 1 : 0)
-
-      // MARK: 접이식 캘린더 그리드
-      collapsibleCalendarGrid
-        .padding(.horizontal, 20)
-        .padding(.vertical, detailMode ? 8 : 0)
-
-      // MARK: 하단 (날씨카드 - detail mode에서 아래로 슬라이드)
       bottomCard
         .padding(.horizontal, 20)
-        .padding(.top, detailMode ? 0 : 16)
         .offset(y: detailMode ? 160 : 0)
         .frame(height: detailMode ? 0 : nil)
         .opacity(detailMode ? 0 : 1)
-
-      Spacer().frame(height: 20)
+        .padding(.bottom, 16)
     }
   }
 
-  // MARK: - Calendar Grid (ZStack 커튼 방식)
+  // MARK: - Date Rows Grid
 
-  /// 요일 헤더가 고정되고, 날짜 행이 뒤에서 위로 스크롤되며 요일 뒤로 사라지는 커튼 효과
-  private var collapsibleCalendarGrid: some View {
-    ZStack(alignment: .top) {
-      // Layer 1 (뒤): 날짜 행들 — detail mode에서 위로 스크롤
-      VStack(spacing: gridSpacing) {
-        // 요일 헤더 자리 확보
-        Color.clear.frame(height: weekdayHeight + gridSpacing)
-
-        ForEach(Array(dayRows.enumerated()), id: \.offset) { index, row in
-          HStack(spacing: 0) {
-            ForEach(row) { day in
-              Button {
-                if day.isCurrentMonth {
-                  onDateSelected(day.date)
-                }
-              } label: {
-                OverlayCalendarDayCell(day: day)
-                  .frame(maxWidth: .infinity)
+  /// 날짜 행들만 표시, detail mode에서 선택 주만 남도록 축소 + clipped
+  private var dateRowsGrid: some View {
+    VStack(spacing: gridSpacing) {
+      ForEach(Array(dayRows.enumerated()), id: \.offset) { index, row in
+        HStack(spacing: 0) {
+          ForEach(row) { day in
+            Button {
+              if day.isCurrentMonth {
+                onDateSelected(day.date)
               }
-              .buttonStyle(.plain)
-              .disabled(!day.isCurrentMonth && !detailMode)
+            } label: {
+              OverlayCalendarDayCell(day: day)
+                .frame(maxWidth: .infinity)
             }
+            .buttonStyle(.plain)
+            .disabled(!day.isCurrentMonth && !detailMode)
           }
         }
       }
-      .offset(y: contentShift)
-
-      // Layer 2 (앞): 요일 헤더 — 불투명 배경으로 지나가는 행을 가림
-      weekdayHeaderRow
-        .background(Color(.systemBackground))
     }
+    .offset(y: contentShift)
     .frame(height: detailMode ? compactGridHeight : nil, alignment: .top)
     .clipped()
     .contentShape(Rectangle())

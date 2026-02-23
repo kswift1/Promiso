@@ -82,7 +82,7 @@ final class CalendarOverlayHostingController: UIHostingController<AnyView> {
   override func viewDidLoad() {
     super.viewDidLoad()
     safeAreaRegions = []
-    view.backgroundColor = .systemBackground
+    view.backgroundColor = .secondarySystemBackground
     view.layer.cornerRadius = 32
     view.layer.maskedCorners = [.layerMinXMaxYCorner, .layerMaxXMaxYCorner]
     view.clipsToBounds = true
@@ -206,6 +206,10 @@ private struct CalendarOverlayContentView: View {
       .padding(.top, topPad)
       .padding(.horizontal, 4)
       .padding(.bottom, bottomPad)
+    }
+    .background(alignment: .top) {
+      Color(.systemBackground)
+        .frame(height: SafeArea.topInset + 16)
     }
     .onChange(of: viewModel.detailMode) { _, newValue in
       withAnimation(.spring(duration: 0.45, bounce: 0.05)) {
