@@ -1200,6 +1200,13 @@ public enum LocalizedStrings {
     public static var calendarPermissionSubtitle: String { String(localized: "calendar.sync.permission.subtitle", bundle: bundle) }
     public static var doNotShowAgain: String { String(localized: "calendar.sync.doNotShow", bundle: bundle) }
 
+    // Day Detail
+    public static var noSchedules: String { String(localized: "calendar.dayDetail.noSchedules", bundle: bundle) }
+
+    // Weather Permission
+    public static var weatherPermissionTitle: String { String(localized: "calendar.weather.permission.title", bundle: bundle) }
+    public static var weatherPermissionDescription: String { String(localized: "calendar.weather.permission.description", bundle: bundle) }
+
     // Promise Card Status
     public static var statusWaiting: String { String(localized: "calendar.promise.statusWaiting", bundle: bundle) }
     public static var statusVoting: String { String(localized: "calendar.promise.statusVoting", bundle: bundle) }
