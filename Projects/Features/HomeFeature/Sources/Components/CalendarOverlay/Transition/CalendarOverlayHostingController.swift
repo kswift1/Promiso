@@ -9,32 +9,38 @@ import ResourceKit
 @Observable
 final class CalendarOverlayViewModel {
   var currentMonth: Date
+  var prevMonthDays: [OverlayCalendarModels.DayItem]
   var days: [OverlayCalendarModels.DayItem]
-  var todayScheduleItems: [HomeModels.ScheduleItem]
-  var selectedDate: Date
+  var nextMonthDays: [OverlayCalendarModels.DayItem]
+  var weatherState: OverlayWeatherState
   let onClose: () -> Void
   let onDateSelected: (Date) -> Void
   let onPreviousMonth: () -> Void
   let onNextMonth: () -> Void
+  let onWeatherCardTapped: () -> Void
 
   init(
     currentMonth: Date,
+    prevMonthDays: [OverlayCalendarModels.DayItem],
     days: [OverlayCalendarModels.DayItem],
-    todayScheduleItems: [HomeModels.ScheduleItem],
-    selectedDate: Date,
+    nextMonthDays: [OverlayCalendarModels.DayItem],
+    weatherState: OverlayWeatherState,
     onClose: @escaping () -> Void,
     onDateSelected: @escaping (Date) -> Void,
     onPreviousMonth: @escaping () -> Void,
-    onNextMonth: @escaping () -> Void
+    onNextMonth: @escaping () -> Void,
+    onWeatherCardTapped: @escaping () -> Void
   ) {
     self.currentMonth = currentMonth
+    self.prevMonthDays = prevMonthDays
     self.days = days
-    self.todayScheduleItems = todayScheduleItems
-    self.selectedDate = selectedDate
+    self.nextMonthDays = nextMonthDays
+    self.weatherState = weatherState
     self.onClose = onClose
     self.onDateSelected = onDateSelected
     self.onPreviousMonth = onPreviousMonth
     self.onNextMonth = onNextMonth
+    self.onWeatherCardTapped = onWeatherCardTapped
   }
 }
 
@@ -57,12 +63,14 @@ final class CalendarOverlayHostingController: UIHostingController<AnyView> {
 
   override func viewDidLoad() {
     super.viewDidLoad()
+    safeAreaRegions = []
     view.backgroundColor = .systemBackground
     view.layer.cornerRadius = 32
     view.layer.maskedCorners = [.layerMinXMaxYCorner, .layerMaxXMaxYCorner]
     view.clipsToBounds = true
 
     let pan = UIPanGestureRecognizer(target: self, action: #selector(handlePan(_:)))
+    pan.delegate = self
     view.addGestureRecognizer(pan)
   }
 
@@ -133,25 +141,46 @@ final class CalendarOverlayHostingController: UIHostingController<AnyView> {
   }
 }
 
+// MARK: - UIGestureRecognizerDelegate
+
+extension CalendarOverlayHostingController: UIGestureRecognizerDelegate {
+  nonisolated func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+    MainActor.assumeIsolated {
+      guard let pan = gestureRecognizer as? UIPanGestureRecognizer else { return true }
+      let velocity = pan.velocity(in: view)
+      // 수직 방향일 때만 dismiss pan 시작 (수평 드래그는 SwiftUI에 위임)
+      return abs(velocity.y) > abs(velocity.x)
+    }
+  }
+}
+
 // MARK: - Content View
 
 private struct CalendarOverlayContentView: View {
   var viewModel: CalendarOverlayViewModel
 
   var body: some View {
-    CalendarOverlayView(
-      currentMonth: viewModel.currentMonth,
-      days: viewModel.days,
-      todayScheduleItems: viewModel.todayScheduleItems,
-      selectedDate: viewModel.selectedDate,
-      onClose: viewModel.onClose,
-      onDateSelected: viewModel.onDateSelected,
-      onPreviousMonth: viewModel.onPreviousMonth,
-      onNextMonth: viewModel.onNextMonth
-    )
-    .padding(.top, SafeArea.topInset + 16)
-    .padding(.horizontal, 4)
-    .padding(.bottom, 16)
-    .frame(maxWidth: .infinity, alignment: .top)
+    GeometryReader { proxy in
+      let topPad = SafeArea.topInset + 16
+      let bottomPad: CGFloat = 16
+      let availableHeight = proxy.size.height - topPad - bottomPad
+
+      CalendarOverlayView(
+        availableHeight: availableHeight,
+        currentMonth: viewModel.currentMonth,
+        prevMonthDays: viewModel.prevMonthDays,
+        days: viewModel.days,
+        nextMonthDays: viewModel.nextMonthDays,
+        weatherState: viewModel.weatherState,
+        onClose: viewModel.onClose,
+        onDateSelected: viewModel.onDateSelected,
+        onPreviousMonth: viewModel.onPreviousMonth,
+        onNextMonth: viewModel.onNextMonth,
+        onWeatherCardTapped: viewModel.onWeatherCardTapped
+      )
+      .padding(.top, topPad)
+      .padding(.horizontal, 4)
+      .padding(.bottom, bottomPad)
+    }
   }
 }

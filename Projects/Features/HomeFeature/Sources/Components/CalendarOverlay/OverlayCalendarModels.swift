@@ -1,6 +1,20 @@
 import Foundation
 import PromisoShared
 
+// MARK: - Overlay Weather State
+
+/// 캘린더 오버레이 하단 날씨 카드 상태
+enum OverlayWeatherState: Equatable, Sendable {
+  /// 위치 권한 미부여 (탭하면 권한 요청)
+  case needsPermission
+  /// 날씨 로딩 중
+  case loading
+  /// 날씨 로드 완료
+  case loaded(HourlyForecast)
+  /// 날씨 로드 실패
+  case failed
+}
+
 // MARK: - Overlay Calendar Models
 
 enum OverlayCalendarModels {
@@ -79,6 +93,22 @@ enum OverlayCalendarModels {
           isToday: calendar.isDate(dayDate, inSameDayAs: today),
           scheduleCount: count
         ))
+      }
+    }
+
+    // 다음 월 placeholder (42셀 = 6행으로 고정)
+    let remaining = 42 - days.count
+    if remaining > 0 {
+      let lastDate = monthInterval.end
+      for i in 0..<remaining {
+        if let nextDate = calendar.date(byAdding: .day, value: i, to: lastDate) {
+          let dayNum = calendar.component(.day, from: nextDate)
+          days.append(DayItem(
+            date: nextDate,
+            dayNumber: dayNum,
+            isCurrentMonth: false
+          ))
+        }
       }
     }
 

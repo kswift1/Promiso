@@ -7,13 +7,8 @@ final class CalendarOverlayPresentationController: UIPresentationController {
 
   override var frameOfPresentedViewInContainerView: CGRect {
     guard let containerView else { return .zero }
-    if let calendarVC = presentedViewController as? CalendarOverlayHostingController {
-      let height = calendarVC.sizeThatFits(
-        in: CGSize(width: containerView.bounds.width, height: .greatestFiniteMagnitude)
-      ).height
-      return CGRect(x: 0, y: 0, width: containerView.bounds.width, height: height)
-    }
-    return containerView.bounds
+    let height = containerView.bounds.height * 0.85
+    return CGRect(x: 0, y: 0, width: containerView.bounds.width, height: height)
   }
 
   override func presentationTransitionWillBegin() {

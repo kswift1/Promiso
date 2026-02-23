@@ -77,6 +77,8 @@ public enum AppConfig {
         .string("kakaokompassauth")
       ]),
       "GIDClientID": .string("$(GOOGLE_CLIENT_ID)"),
+      // Location permissions
+      "NSLocationWhenInUseUsageDescription": .string("현재 위치의 날씨 정보를 제공하기 위해 위치 접근 권한이 필요합니다."),
       // Calendar permissions
       "NSCalendarsUsageDescription": .string("캘린더 일정을 표시하려면 접근 권한이 필요합니다."),
       "NSCalendarsFullAccessUsageDescription": .string("캘린더 일정을 표시하려면 접근 권한이 필요합니다."),

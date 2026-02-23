@@ -6,42 +6,46 @@ import ResourceKit
 
 /// Home 화면 위에 표시되는 캘린더 오버레이
 struct CalendarOverlayView: View {
+  let availableHeight: CGFloat
   let currentMonth: Date
+  let prevMonthDays: [OverlayCalendarModels.DayItem]
   let days: [OverlayCalendarModels.DayItem]
-  let todayScheduleItems: [HomeModels.ScheduleItem]
-  let selectedDate: Date
+  let nextMonthDays: [OverlayCalendarModels.DayItem]
+  let weatherState: OverlayWeatherState
   let onClose: () -> Void
   let onDateSelected: (Date) -> Void
   let onPreviousMonth: () -> Void
   let onNextMonth: () -> Void
+  let onWeatherCardTapped: () -> Void
 
-  private let columns = Array(repeating: GridItem(.flexible(), spacing: 0), count: 7)
-  private let weekdays = [
-    LocalizedStrings.Calendar.weekdayMon,
-    LocalizedStrings.Calendar.weekdayTue,
-    LocalizedStrings.Calendar.weekdayWed,
-    LocalizedStrings.Calendar.weekdayThu,
-    LocalizedStrings.Calendar.weekdayFri,
-    LocalizedStrings.Calendar.weekdaySat,
-    LocalizedStrings.Calendar.weekdaySun,
-  ]
+  /// 헤더(~62) + 하단카드(~140) + spacing(16*2) + padding(horizontal 20*2, bottom 20) = ~254
+  private var pagerHeight: CGFloat {
+    let headerHeight: CGFloat = 70
+    let bottomCardHeight: CGFloat = 140
+    let spacings: CGFloat = 16 * 2
+    let bottomPadding: CGFloat = 20
+    let fixed = headerHeight + bottomCardHeight + spacings + bottomPadding
+    return max(availableHeight - fixed, 200)
+  }
 
   var body: some View {
     VStack(spacing: 16) {
-      Color.clear
-        .frame(height: SafeArea.topOffset)
-      
       // Header
       calendarHeader
 
-      // Weekday labels
-      weekdayHeader
+      // Month pager (UIKit UIScrollView 기반 좌우 스와이프)
+      CalendarMonthPager(
+        prevDays: prevMonthDays,
+        currentDays: days,
+        nextDays: nextMonthDays,
+        onDateSelected: onDateSelected,
+        onPreviousMonth: onPreviousMonth,
+        onNextMonth: onNextMonth
+      )
+      .frame(height: pagerHeight)
 
-      // Day grid
-      dayGrid
-
-      // Selected date summary
-      selectedDateSummary
+      // Bottom card (weather or permission)
+      bottomCard
     }
     .padding(.horizontal, 20)
     .padding(.bottom, 20)
@@ -91,86 +95,197 @@ struct CalendarOverlayView: View {
     }
   }
 
-  // MARK: - Weekday Header
-
-  private var weekdayHeader: some View {
-    LazyVGrid(columns: columns, spacing: 0) {
-      ForEach(Array(weekdays.enumerated()), id: \.offset) { _, day in
-        Text(day)
-          .font(.system(size: 12, weight: .medium))
-          .foregroundStyle(Color.pmgray.n400)
-          .frame(maxWidth: .infinity)
-          .frame(height: 24)
-      }
-    }
-  }
-
-  // MARK: - Day Grid
-
-  private var dayGrid: some View {
-    LazyVGrid(columns: columns, spacing: 6) {
-      ForEach(days) { day in
-        Button {
-          if day.isCurrentMonth {
-            onDateSelected(day.date)
-          }
-        } label: {
-          OverlayCalendarDayCell(day: day)
-        }
-        .buttonStyle(.plain)
-        .disabled(!day.isCurrentMonth)
-      }
-    }
-  }
-
-  // MARK: - Selected Date Summary
+  // MARK: - Bottom Card
 
   @ViewBuilder
-  private var selectedDateSummary: some View {
-    let selectedDayItems = todayScheduleItems.filter { item in
-      Calendar.current.isDate(item.startAt, inSameDayAs: selectedDate)
+  private var bottomCard: some View {
+    switch weatherState {
+    case .needsPermission:
+      permissionCard
+
+    case .loading:
+      loadingCard
+
+    case .loaded(let weather):
+      weatherCard(weather)
+
+    case .failed:
+      failedCard
     }
+  }
 
-    VStack(alignment: .leading, spacing: 8) {
-      Text(selectedDateString)
-        .font(.pmSubheadlineSemibold)
-        .foregroundStyle(.primary)
+  // MARK: - Permission Card
 
-      if selectedDayItems.isEmpty {
-        Text(LocalizedStrings.Calendar.noPromises)
-          .font(.pmCaption)
-          .foregroundStyle(.secondary)
-          .padding(.vertical, 8)
-      } else {
-        ForEach(selectedDayItems.prefix(3)) { item in
-          HStack(spacing: 8) {
-            Circle()
-              .fill(Color.pmindigo.n400)
-              .frame(width: 6, height: 6)
+  private var permissionCard: some View {
+    Button(action: onWeatherCardTapped) {
+      HStack(spacing: 14) {
+        Image(systemName: "location.fill")
+          .font(.system(size: 22))
+          .foregroundStyle(Color.pmindigo.n500)
+          .frame(width: 40, height: 40)
+          .background(Color.pmindigo.n500.opacity(0.12))
+          .clipShape(Circle())
 
-            Text(item.title)
-              .font(.pmBody)
-              .foregroundStyle(.primary)
-              .lineLimit(1)
+        VStack(alignment: .leading, spacing: 2) {
+          Text(LocalizedStrings.Calendar.weatherPermissionTitle)
+            .font(.system(size: 14, weight: .semibold))
+            .foregroundStyle(.primary)
 
-            Spacer()
-
-            Text(timeString(from: item.startAt))
-              .font(.pmCaption)
-              .foregroundStyle(.secondary)
-          }
+          Text(LocalizedStrings.Calendar.weatherPermissionDescription)
+            .font(.system(size: 12))
+            .foregroundStyle(.secondary)
         }
 
-        if selectedDayItems.count > 3 {
-          Text(LocalizedStrings.Calendar.additionalItems(selectedDayItems.count - 3))
-            .font(.pmCaption)
-            .foregroundStyle(Color.pmindigo.n500)
-        }
+        Spacer()
+
+        Image(systemName: "chevron.right")
+          .font(.system(size: 12, weight: .semibold))
+          .foregroundStyle(.tertiary)
       }
+      .padding(16)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .adaptiveGlassCard(cornerRadius: 16)
+      .contentShape(Rectangle())
     }
-    .padding(16)
-    .frame(maxWidth: .infinity, alignment: .leading)
-    .adaptiveGlassCard(cornerRadius: 16)
+    .buttonStyle(.plain)
+  }
+
+  // MARK: - Loading Card
+
+  private var loadingCard: some View {
+    ZStack {
+      RoundedRectangle(cornerRadius: 20)
+        .fill(Color(.systemGray6))
+
+      VStack(alignment: .leading, spacing: 4) {
+        // 날씨 상태 텍스트 자리
+        SkeletonView(cornerRadius: 4)
+          .frame(width: 80, height: 14)
+
+        Spacer()
+
+        // 온도 자리
+        SkeletonView(cornerRadius: 6)
+          .frame(width: 100, height: 36)
+
+        // 날짜 자리
+        SkeletonView(cornerRadius: 4)
+          .frame(width: 120, height: 14)
+      }
+      .padding(16)
+      .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    .frame(height: 130)
+    .clipShape(RoundedRectangle(cornerRadius: 20))
+  }
+
+  // MARK: - Failed Card
+
+  private var failedCard: some View {
+    Button(action: onWeatherCardTapped) {
+      HStack(spacing: 14) {
+        Image(systemName: "arrow.clockwise")
+          .font(.system(size: 22))
+          .foregroundStyle(.secondary)
+          .frame(width: 40, height: 40)
+          .background(Color(.systemGray5))
+          .clipShape(Circle())
+
+        Text(LocalizedStrings.Calendar.weatherPermissionTitle)
+          .font(.system(size: 14, weight: .semibold))
+          .foregroundStyle(.primary)
+
+        Spacer()
+
+        Image(systemName: "chevron.right")
+          .font(.system(size: 12, weight: .semibold))
+          .foregroundStyle(.tertiary)
+      }
+      .padding(16)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .adaptiveGlassCard(cornerRadius: 16)
+      .contentShape(Rectangle())
+    }
+    .buttonStyle(.plain)
+  }
+
+  // MARK: - Weather Card
+
+  private func weatherCard(_ weather: HourlyForecast) -> some View {
+    ZStack {
+      // Background gradient
+      weatherGradient(for: weather.condition)
+
+      // Large decorative weather icon
+      Image(systemName: weather.condition.sfSymbolName)
+        .symbolRenderingMode(.multicolor)
+        .font(.system(size: 80))
+        .opacity(0.3)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
+        .offset(x: 20, y: -10)
+
+      // Content
+      VStack(alignment: .leading, spacing: 4) {
+        Text(weather.condition.description)
+          .font(.system(size: 13, weight: .medium))
+          .foregroundStyle(.white.opacity(0.8))
+
+        Spacer()
+
+        Text("\(Int(weather.temperature.rounded()))°C")
+          .font(.system(size: 36, weight: .bold))
+          .foregroundStyle(.white)
+
+        Text(todayDateString)
+          .font(.system(size: 13))
+          .foregroundStyle(.white.opacity(0.7))
+      }
+      .padding(16)
+      .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    .frame(height: 130)
+    .clipShape(RoundedRectangle(cornerRadius: 20))
+  }
+
+  private func weatherGradient(for condition: WeatherCondition) -> LinearGradient {
+    switch condition {
+    case .clear:
+      return LinearGradient(
+        colors: [.orange.opacity(0.8), .pink.opacity(0.6)],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+      )
+    case .cloudy:
+      return LinearGradient(
+        colors: [.gray.opacity(0.6), .blue.opacity(0.4)],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+      )
+    case .overcast:
+      return LinearGradient(
+        colors: [.gray.opacity(0.7), .gray.opacity(0.5)],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+      )
+    case .rain, .shower:
+      return LinearGradient(
+        colors: [.blue.opacity(0.7), .indigo.opacity(0.8)],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+      )
+    case .rainSnow, .snow:
+      return LinearGradient(
+        colors: [.cyan.opacity(0.5), .blue.opacity(0.4)],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+      )
+    case .unknown:
+      return LinearGradient(
+        colors: [.gray.opacity(0.5), .gray.opacity(0.4)],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+      )
+    }
   }
 
   // MARK: - Computed
@@ -188,33 +303,70 @@ struct CalendarOverlayView: View {
     return formatter.string(from: currentMonth)
   }
 
-  private var selectedDateString: String {
-    LocalizedDateFormatters.monthDayWeekday.string(from: selectedDate)
-  }
-
-  private func timeString(from date: Date) -> String {
+  private var todayDateString: String {
     let formatter = DateFormatter()
-    formatter.dateFormat = "HH:mm"
-    return formatter.string(from: date)
+    formatter.locale = Locale.current
+    formatter.setLocalizedDateFormatFromTemplate("MMMMd")
+    return formatter.string(from: Date())
   }
 }
 
 // MARK: - Preview
 
-#Preview {
+#Preview("날씨 로드됨") {
   CalendarOverlayView(
+    availableHeight: 600,
     currentMonth: Date(),
+    prevMonthDays: OverlayCalendarModels.generateMonthDays(
+      for: Calendar.current.date(byAdding: .month, value: -1, to: Date()) ?? Date(),
+      selectedDate: Date(),
+      scheduleCountsByDate: [:]
+    ),
     days: OverlayCalendarModels.generateMonthDays(
       for: Date(),
       selectedDate: Date(),
       scheduleCountsByDate: [:]
     ),
-    todayScheduleItems: [],
-    selectedDate: Date(),
+    nextMonthDays: OverlayCalendarModels.generateMonthDays(
+      for: Calendar.current.date(byAdding: .month, value: 1, to: Date()) ?? Date(),
+      selectedDate: Date(),
+      scheduleCountsByDate: [:]
+    ),
+    weatherState: .loaded(HourlyForecast(
+      dateTime: Date(),
+      temperature: 14,
+      feelsLikeTemperature: 10,
+      condition: .clear,
+      precipitationProbability: 10,
+      humidity: 50,
+      windSpeed: 3.0
+    )),
     onClose: {},
     onDateSelected: { _ in },
     onPreviousMonth: {},
-    onNextMonth: {}
+    onNextMonth: {},
+    onWeatherCardTapped: {}
+  )
+  .auroraBackground()
+}
+
+#Preview("권한 필요") {
+  CalendarOverlayView(
+    availableHeight: 600,
+    currentMonth: Date(),
+    prevMonthDays: [],
+    days: OverlayCalendarModels.generateMonthDays(
+      for: Date(),
+      selectedDate: Date(),
+      scheduleCountsByDate: [:]
+    ),
+    nextMonthDays: [],
+    weatherState: .needsPermission,
+    onClose: {},
+    onDateSelected: { _ in },
+    onPreviousMonth: {},
+    onNextMonth: {},
+    onWeatherCardTapped: {}
   )
   .auroraBackground()
 }

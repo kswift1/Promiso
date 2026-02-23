@@ -25,6 +25,7 @@ extension Home {
     @Dependency(\.notificationClient) var notificationClient
     @Dependency(\.personalEventClient) var personalEventClient
     @Dependency(\.weatherClient) var weatherClient
+    @Dependency(\.locationClient) var locationClient
 
     public init() {}
 
@@ -32,6 +33,7 @@ extension Home {
 
     private enum CancelID {
       case overlayDotsAnimation
+      case overlayWeatherFetch
     }
 
     // MARK: - State
@@ -84,6 +86,8 @@ extension Home {
       var overlaySelectedDate: Date = Date()
       /// 오버레이 인디케이터 dot 표시 여부 (지연 애니메이션)
       var overlayDotsVisible: Bool = false
+      /// 오버레이 날씨 상태
+      var overlayWeatherState: OverlayWeatherState = .needsPermission
 
       // MARK: Notification
       /// 안 읽은 알림 개수
@@ -160,6 +164,8 @@ extension Home {
         case overlayDotsAppeared
         /// 오버레이 닫기 애니메이션 완료
         case overlayDismissCompleted
+        /// 오버레이 날씨 카드 탭 (권한 요청)
+        case overlayWeatherCardTapped
       }
 
       @CasePathable
@@ -182,6 +188,10 @@ extension Home {
         case fetchWeather
         /// 날씨 정보 응답 (scheduleId → WeatherInfo)
         case weatherResponse(String, Result<WeatherInfo, Error>)
+        /// 오버레이 현재 위치 날씨 조회
+        case fetchOverlayWeather
+        /// 오버레이 날씨 응답
+        case overlayWeatherResponse(Result<WeatherInfo, Error>)
       }
 
       @CasePathable
@@ -286,17 +296,38 @@ extension Home {
             state.overlaySelectedDate = Date()
             state.overlayDotsVisible = false
             state.showCalendarOverlay = true
-            return .run { send in
-              try await Task.sleep(nanoseconds: 350_000_000)
-              await send(.view(.overlayDotsAppeared))
+
+            // 위치 권한 동기 체크
+            let authStatus = locationClient.authorizationStatus()
+            switch authStatus {
+            case .authorized:
+              state.overlayWeatherState = .loading
+              return .merge(
+                .run { send in
+                  try await Task.sleep(nanoseconds: 350_000_000)
+                  await send(.view(.overlayDotsAppeared))
+                }
+                .cancellable(id: CancelID.overlayDotsAnimation),
+                .send(.internal(.fetchOverlayWeather))
+              )
+            case .notDetermined, .denied:
+              state.overlayWeatherState = .needsPermission
+              return .run { send in
+                try await Task.sleep(nanoseconds: 350_000_000)
+                await send(.view(.overlayDotsAppeared))
+              }
+              .cancellable(id: CancelID.overlayDotsAnimation)
             }
-            .cancellable(id: CancelID.overlayDotsAnimation)
 
           case .calendarOverlayClosed:
             state.showCalendarOverlay = false
             state.overlayDotsVisible = false
             state.isCalendarDismissing = false
-            return .cancel(id: CancelID.overlayDotsAnimation)
+            state.overlayWeatherState = .needsPermission
+            return .merge(
+              .cancel(id: CancelID.overlayDotsAnimation),
+              .cancel(id: CancelID.overlayWeatherFetch)
+            )
 
           case .overlayDateSelected(let date):
             state.overlaySelectedDate = date
@@ -320,6 +351,10 @@ extension Home {
 
           case .overlayDismissCompleted:
             return .none
+
+          case .overlayWeatherCardTapped:
+            state.overlayWeatherState = .loading
+            return .send(.internal(.fetchOverlayWeather))
 
           }
 
@@ -403,6 +438,8 @@ extension Home {
               state.personalEventsState = .loaded(events)
               WidgetDataManager.savePersonalEvents(events.toWidgetData())
               WidgetDataManager.reloadWidgets()
+              // 개인 일정 날씨도 조회 (이미 캐시된 항목은 스킵)
+              return .send(.internal(.fetchWeather))
             case .failure:
               // 개인 일정 실패 시 빈 배열로 처리 (그룹 약속은 정상 표시)
               state.personalEventsState = .loaded([])
@@ -431,15 +468,18 @@ extension Home {
             return .none
 
           case .fetchWeather:
+            let cachedIds = state.weatherCache
             let promises = state.allPromises.filter { promise in
               let hasLat = promise.location?.latitude != nil
               let hasLng = promise.location?.longitude != nil
               let notPast = !promise.isPast
-              return hasLat && hasLng && notPast
+              let notCached = cachedIds[promise.id] == nil
+              return hasLat && hasLng && notPast && notCached
             }
             let events = (state.personalEventsState.value ?? []).filter { event in
               event.location?.latitude != nil &&
-              event.location?.longitude != nil
+              event.location?.longitude != nil &&
+              cachedIds[event.id] == nil
             }
 
             // 예보 범위(10일) 밖 필터링 (단기 5일 + 중기 10일)
@@ -505,6 +545,33 @@ extension Home {
           case .weatherResponse(let scheduleId, let result):
             if case .success(let info) = result {
               state.$weatherCache.withLock { $0[scheduleId] = info }
+            }
+            return .none
+
+          case .fetchOverlayWeather:
+            return .run { [locationClient, weatherClient] send in
+              do {
+                let location = try await locationClient.getCurrentLocation()
+                let weather = try await weatherClient.getWeather(
+                  location.latitude, location.longitude, Date()
+                )
+                await send(.internal(.overlayWeatherResponse(.success(weather))))
+              } catch {
+                await send(.internal(.overlayWeatherResponse(.failure(error))))
+              }
+            }
+            .cancellable(id: CancelID.overlayWeatherFetch)
+
+          case .overlayWeatherResponse(let result):
+            switch result {
+            case .success(let info):
+              if let forecast = info.current ?? info.hourlyForecasts.first {
+                state.overlayWeatherState = .loaded(forecast)
+              } else {
+                state.overlayWeatherState = .failed
+              }
+            case .failure:
+              state.overlayWeatherState = .failed
             }
             return .none
           }
@@ -754,6 +821,28 @@ extension Home.Feature.State {
     )
   }
 
+  /// 이전 월 캘린더 날짜 셀 배열
+  var overlayPrevMonthDays: [OverlayCalendarModels.DayItem] {
+    guard let prevMonth = Calendar.current.date(byAdding: .month, value: -1, to: overlayCalendarMonth)
+    else { return [] }
+    return OverlayCalendarModels.generateMonthDays(
+      for: prevMonth,
+      selectedDate: overlaySelectedDate,
+      scheduleCountsByDate: overlayScheduleCountsByDate
+    )
+  }
+
+  /// 다음 월 캘린더 날짜 셀 배열
+  var overlayNextMonthDays: [OverlayCalendarModels.DayItem] {
+    guard let nextMonth = Calendar.current.date(byAdding: .month, value: 1, to: overlayCalendarMonth)
+    else { return [] }
+    return OverlayCalendarModels.generateMonthDays(
+      for: nextMonth,
+      selectedDate: overlaySelectedDate,
+      scheduleCountsByDate: overlayScheduleCountsByDate
+    )
+  }
+
   /// 날짜별 일정 개수 (약속 + 개인 일정)
   private var overlayScheduleCountsByDate: [Date: Int] {
     let calendar = Calendar.current
@@ -774,17 +863,6 @@ extension Home.Feature.State {
     return counts
   }
 
-  /// 오버레이에서 선택된 날짜의 일정 아이템
-  var overlaySelectedDateItems: [HomeModels.ScheduleItem] {
-    let calendar = Calendar.current
-    let promiseItems = allPromises
-      .filter { calendar.isDate($0.startAt, inSameDayAs: overlaySelectedDate) }
-      .map { HomeModels.ScheduleItem.promise($0) }
-    let eventItems = (personalEventsState.value ?? [])
-      .filter { calendar.isDate($0.startAt, inSameDayAs: overlaySelectedDate) }
-      .map { HomeModels.ScheduleItem.personalEvent($0) }
-    return (promiseItems + eventItems).sorted { $0.startAt < $1.startAt }
-  }
 }
 
 // MARK: - Root View
@@ -816,7 +894,6 @@ extension Home {
                   .font(.system(size: 16, weight: .medium))
                   .foregroundStyle(Color.pmindigo.n500)
                   .frame(width: 36, height: 36)
-                  .adaptiveGlassBackground(cornerRadius: 18)
               }
             }
 
@@ -843,9 +920,10 @@ extension Home {
             CalendarOverlayPresenter(
               isPresented: store.showCalendarOverlay,
               currentMonth: store.overlayCalendarMonth,
+              prevMonthDays: store.overlayPrevMonthDays,
               days: store.overlayCalendarDays,
-              todayScheduleItems: store.overlaySelectedDateItems,
-              selectedDate: store.overlaySelectedDate,
+              nextMonthDays: store.overlayNextMonthDays,
+              weatherState: store.overlayWeatherState,
               onClose: {
                 store.send(.view(.calendarOverlayClosed))
               },
@@ -857,6 +935,9 @@ extension Home {
               },
               onNextMonth: {
                 store.send(.view(.overlayNextMonth))
+              },
+              onWeatherCardTapped: {
+                store.send(.view(.overlayWeatherCardTapped))
               }
             )
             .frame(width: 0, height: 0)

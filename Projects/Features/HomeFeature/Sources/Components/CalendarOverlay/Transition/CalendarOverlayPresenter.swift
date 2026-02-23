@@ -7,13 +7,15 @@ import PromisoShared
 struct CalendarOverlayPresenter: UIViewControllerRepresentable {
   let isPresented: Bool
   let currentMonth: Date
+  let prevMonthDays: [OverlayCalendarModels.DayItem]
   let days: [OverlayCalendarModels.DayItem]
-  let todayScheduleItems: [HomeModels.ScheduleItem]
-  let selectedDate: Date
+  let nextMonthDays: [OverlayCalendarModels.DayItem]
+  let weatherState: OverlayWeatherState
   let onClose: () -> Void
   let onDateSelected: (Date) -> Void
   let onPreviousMonth: () -> Void
   let onNextMonth: () -> Void
+  let onWeatherCardTapped: () -> Void
 
   func makeCoordinator() -> Coordinator {
     Coordinator()
@@ -30,9 +32,10 @@ struct CalendarOverlayPresenter: UIViewControllerRepresentable {
       // ViewModel 업데이트 (이미 presented인 경우)
       if let viewModel = coordinator.viewModel {
         viewModel.currentMonth = currentMonth
+        viewModel.prevMonthDays = prevMonthDays
         viewModel.days = days
-        viewModel.todayScheduleItems = todayScheduleItems
-        viewModel.selectedDate = selectedDate
+        viewModel.nextMonthDays = nextMonthDays
+        viewModel.weatherState = weatherState
       }
 
       // 아직 present 안 된 경우
@@ -41,13 +44,15 @@ struct CalendarOverlayPresenter: UIViewControllerRepresentable {
 
         let viewModel = CalendarOverlayViewModel(
           currentMonth: currentMonth,
+          prevMonthDays: prevMonthDays,
           days: days,
-          todayScheduleItems: todayScheduleItems,
-          selectedDate: selectedDate,
+          nextMonthDays: nextMonthDays,
+          weatherState: weatherState,
           onClose: onClose,
           onDateSelected: onDateSelected,
           onPreviousMonth: onPreviousMonth,
-          onNextMonth: onNextMonth
+          onNextMonth: onNextMonth,
+          onWeatherCardTapped: onWeatherCardTapped
         )
         coordinator.viewModel = viewModel
 

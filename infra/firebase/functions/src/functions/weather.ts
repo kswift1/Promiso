@@ -791,13 +791,14 @@ export const getWeather = onCall<GetWeatherRequest>(
       );
     }
 
-    // 1. 시간 범위 검증 (과거 / 10일 초과)
+    // 1. 시간 범위 검증 (3시간 이상 과거 / 10일 초과)
     const now = Date.now();
     const targetMs = new Date(targetDate).getTime();
     const MAX_FORECAST_MS = 10 * 24 * 60 * 60 * 1000;
     const SHORT_TERM_MS = 5 * 24 * 60 * 60 * 1000;
+    const PAST_TOLERANCE_MS = 3 * 60 * 60 * 1000; // 3시간
 
-    if (targetMs < now) {
+    if (targetMs < now - PAST_TOLERANCE_MS) {
       return {forecasts: []};
     }
     if (targetMs > now + MAX_FORECAST_MS) {
