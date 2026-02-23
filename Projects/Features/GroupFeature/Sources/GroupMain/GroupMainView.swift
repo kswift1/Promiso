@@ -343,9 +343,14 @@ extension GroupMain {
 
     @ViewBuilder
     private var promiseListView: some View {
+      let sections = store.groupedFilteredPromises
+      let animationKey = sections.flatMap { section in
+        [String(Int(section.day.timeIntervalSince1970))] + section.promises.map(\.id)
+      }
+
       ScrollViewReader { proxy in
         List {
-          ForEach(store.groupedFilteredPromises, id: \.day) { section in
+          ForEach(sections, id: \.day) { section in
             Section {
               ForEach(section.promises, id: \.id) { promise in
                 promiseRowView(for: promise)
@@ -368,7 +373,7 @@ extension GroupMain {
         .refreshable {
           store.send(.view(.refreshTriggered))
         }
-        .animation(.snappy, value: store.promiseListAnimationKey)
+        .animation(.snappy, value: animationKey)
         .onChange(of: store.highlightedPromiseId) { _, newValue in
           if let promiseId = newValue {
             withAnimation(.easeInOut(duration: 0.3)) {

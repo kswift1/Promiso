@@ -51,25 +51,25 @@ struct PromiseTimelineView: View {
     }
   }
 
-  private var groupedPromises: [(date: String, promises: [PromiseModel])] {
-    let grouped = Dictionary(grouping: filteredPromises, by: { $0.dateText })
-
-    return grouped.sorted { lhs, rhs in
-      let priorityOrder = ["오늘": 0, "내일": 1]
-      let lhsPriority = priorityOrder[lhs.key] ?? 2
-      let rhsPriority = priorityOrder[rhs.key] ?? 2
-
-      if lhsPriority != rhsPriority {
-        return lhsPriority < rhsPriority
-      }
-      return lhs.key < rhs.key
-    }.map { (date: $0.key, promises: $0.value) }
-  }
-
-  private var animationKey: [String] {
-    groupedPromises.flatMap { section in
-      [section.date] + section.promises.map(\.id)
+  private var groupedPromises: [(day: Date, title: String, promises: [PromiseModel])] {
+    let calendar = Calendar.current
+    let grouped = Dictionary(grouping: filteredPromises) { promise in
+      calendar.startOfDay(for: promise.startAt)
     }
+
+    return grouped
+      .sorted { $0.key < $1.key }
+      .map { day, promises in
+        let title: String
+        if calendar.isDateInToday(day) {
+          title = LocalizedStrings.DateFormat.today
+        } else if calendar.isDateInTomorrow(day) {
+          title = LocalizedStrings.DateFormat.tomorrow
+        } else {
+          title = LocalizedDateFormatters.monthDayString(from: day)
+        }
+        return (day: day, title: title, promises: promises.sorted { $0.startAt < $1.startAt })
+      }
   }
 
   var body: some View {
@@ -78,10 +78,11 @@ struct PromiseTimelineView: View {
       loadingView
 
     case .loaded:
-      if groupedPromises.isEmpty {
+      let sections = groupedPromises
+      if sections.isEmpty {
         emptyStateScrollView
       } else {
-        promisesListView
+        promisesListView(sections: sections)
       }
 
     case .failed(let error):
@@ -116,9 +117,13 @@ struct PromiseTimelineView: View {
     }
   }
 
-  private var promisesListView: some View {
-    List {
-      ForEach(groupedPromises, id: \.date) { section in
+  private func promisesListView(sections: [(day: Date, title: String, promises: [PromiseModel])]) -> some View {
+    let animationKey = sections.flatMap { section in
+      [String(Int(section.day.timeIntervalSince1970))] + section.promises.map(\.id)
+    }
+
+    return List {
+      ForEach(sections, id: \.day) { section in
         Section {
           ForEach(section.promises) { promise in
             PromiseRow(
@@ -136,7 +141,7 @@ struct PromiseTimelineView: View {
             )
           }
         } header: {
-          sectionHeader(for: section.date)
+          sectionHeader(for: section.title, isFirst: section.day == sections.first?.day)
         }
         .listSectionSeparator(.hidden)
       }
@@ -147,9 +152,9 @@ struct PromiseTimelineView: View {
   }
 
   @ViewBuilder
-  private func sectionHeader(for date: String) -> some View {
+  private func sectionHeader(for title: String, isFirst: Bool) -> some View {
     HStack {
-      Text(date)
+      Text(title)
         .font(.system(size: 20, weight: .bold))
         .foregroundColor(.primary)
         .textCase(nil)
@@ -159,7 +164,7 @@ struct PromiseTimelineView: View {
         .frame(height: 1)
     }
     .padding(.horizontal, 16)
-    .padding(.top, date == groupedPromises.first?.date ? 12 : 24)
+    .padding(.top, isFirst ? 12 : 24)
     .padding(.bottom, 12)
   }
 }

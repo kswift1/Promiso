@@ -101,32 +101,46 @@ extension PersonalMode {
       }
 
       /// 날짜별로 그룹화된 일정
-      var groupedEvents: [(date: String, events: [PersonalEventModel])] {
-        let grouped = Dictionary(grouping: filteredEvents, by: { $0.dateText })
-
-        // 과거: 최신순 (어제 → 이전 날짜)
-        if selectedFilter == .past {
-          return grouped.sorted { lhs, rhs in
-            if lhs.key == LocalizedStrings.DateFormat.yesterday { return true }
-            if rhs.key == LocalizedStrings.DateFormat.yesterday { return false }
-            return lhs.key > rhs.key
-          }.map { (date: $0.key, events: $0.value) }
+      var groupedEvents: [(day: Date, title: String, events: [PersonalEventModel])] {
+        let calendar = Calendar.current
+        let grouped = Dictionary(grouping: filteredEvents) { event in
+          calendar.startOfDay(for: event.startAt)
         }
 
-        // 오늘/미래/전체: 시간순 (오늘 → 내일 → 이후)
-        return grouped.sorted { lhs, rhs in
-          let priorityOrder = [LocalizedStrings.DateFormat.today: 0, LocalizedStrings.DateFormat.tomorrow: 1]
-          let lhsPriority = priorityOrder[lhs.key] ?? 2
-          let rhsPriority = priorityOrder[rhs.key] ?? 2
-          if lhsPriority != rhsPriority { return lhsPriority < rhsPriority }
-          return lhs.key < rhs.key
-        }.map { (date: $0.key, events: $0.value) }
+        return grouped
+          .sorted { lhs, rhs in
+            if selectedFilter == .past {
+              return lhs.key > rhs.key
+            }
+            return lhs.key < rhs.key
+          }
+          .map { day, events in
+            let title: String
+            if calendar.isDateInToday(day) {
+              title = LocalizedStrings.DateFormat.today
+            } else if calendar.isDateInTomorrow(day) {
+              title = LocalizedStrings.DateFormat.tomorrow
+            } else if calendar.isDateInYesterday(day) {
+              title = LocalizedStrings.DateFormat.yesterday
+            } else {
+              title = LocalizedDateFormatters.monthDayString(from: day)
+            }
+
+            let sortedEvents = events.sorted { lhs, rhs in
+              if selectedFilter == .past {
+                return lhs.startAt > rhs.startAt
+              }
+              return lhs.startAt < rhs.startAt
+            }
+
+            return (day: day, title: title, events: sortedEvents)
+          }
       }
 
       /// 리스트 애니메이션 키 (DiffableDataSource 스타일)
       var eventListAnimationKey: [String] {
         groupedEvents.flatMap { section in
-          [section.date] + section.events.map(\.id)
+          [String(Int(section.day.timeIntervalSince1970))] + section.events.map(\.id)
         }
       }
 

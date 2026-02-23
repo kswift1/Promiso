@@ -685,71 +685,93 @@ extension Home.Feature.State {
     return (startOfDay, endOfDay)
   }
 
+  /// 홈 본문에서 공통으로 사용하는 파생 데이터 스냅샷
+  struct HomeContentSnapshot {
+    let todayPromises: [PromiseModel]
+    let todayScheduleItems: [HomeModels.ScheduleItem]
+    let pendingPromises: [PromiseModel]
+    let upcomingPromises: [PromiseModel]
+    let upcomingScheduleItems: [HomeModels.ScheduleItem]
+  }
+
+  var homeContentSnapshot: HomeContentSnapshot {
+    let (startOfDay, endOfDay) = todayRange
+    let userId = currentUser.userId
+
+    var todayPromises: [PromiseModel] = []
+    var todayScheduleItems: [HomeModels.ScheduleItem] = []
+    var pendingPromises: [PromiseModel] = []
+    var upcomingPromises: [PromiseModel] = []
+    var upcomingScheduleItems: [HomeModels.ScheduleItem] = []
+
+    for promise in allPromises {
+      if promise.startAt >= startOfDay, promise.startAt < endOfDay, promise.isConfirmed {
+        todayPromises.append(promise)
+        todayScheduleItems.append(.promise(promise))
+      }
+
+      if promise.myVoteStatus(userId: userId) == .pending, !promise.isVotingClosed {
+        pendingPromises.append(promise)
+      }
+
+      if promise.startAt >= endOfDay,
+         promise.isConfirmed,
+         promise.myVoteStatus(userId: userId) == .accepted {
+        upcomingPromises.append(promise)
+        upcomingScheduleItems.append(.promise(promise))
+      }
+    }
+
+    for event in allPersonalEvents {
+      if event.startAt >= startOfDay, event.startAt < endOfDay {
+        todayScheduleItems.append(.personalEvent(event))
+      } else if event.startAt >= endOfDay {
+        upcomingScheduleItems.append(.personalEvent(event))
+      }
+    }
+
+    pendingPromises.sort { lhs, rhs in
+      lhs.votes.until < rhs.votes.until
+    }
+    pendingPromises = Array(pendingPromises.prefix(5))
+    upcomingPromises = Array(upcomingPromises.prefix(10))
+
+    todayScheduleItems.sort { $0.startAt < $1.startAt }
+    upcomingScheduleItems.sort { $0.startAt < $1.startAt }
+    upcomingScheduleItems = Array(upcomingScheduleItems.prefix(10))
+
+    return HomeContentSnapshot(
+      todayPromises: todayPromises,
+      todayScheduleItems: todayScheduleItems,
+      pendingPromises: pendingPromises,
+      upcomingPromises: upcomingPromises,
+      upcomingScheduleItems: upcomingScheduleItems
+    )
+  }
+
   /// 오늘의 확정 약속 (오늘 + 확정) - criticalZoneData 등에서 사용
   var todayPromises: [PromiseModel] {
-    let (startOfDay, endOfDay) = todayRange
-    return allPromises
-      .filter { $0.startAt >= startOfDay && $0.startAt < endOfDay && $0.isConfirmed }
+    homeContentSnapshot.todayPromises
   }
 
   /// 오늘의 통합 일정 (그룹 약속 + 개인 일정, startAt 정렬)
   var todayScheduleItems: [HomeModels.ScheduleItem] {
-    let (startOfDay, endOfDay) = todayRange
-    let promiseItems = allPromises
-      .filter { $0.startAt >= startOfDay && $0.startAt < endOfDay && $0.isConfirmed }
-      .map { HomeModels.ScheduleItem.promise($0) }
-    let eventItems = allPersonalEvents
-      .filter { $0.startAt >= startOfDay && $0.startAt < endOfDay }
-      .map { HomeModels.ScheduleItem.personalEvent($0) }
-    return (promiseItems + eventItems).sorted { $0.startAt < $1.startAt }
+    homeContentSnapshot.todayScheduleItems
   }
 
   /// 응답 필요 약속 (미응답 + 투표 마감 전, 마감 임박순, 최대 5개)
   var pendingPromises: [PromiseModel] {
-    let userId = currentUser.userId
-    return allPromises
-      .filter { $0.myVoteStatus(userId: userId) == .pending && !$0.isVotingClosed }
-      .sorted { lhs, rhs in
-        let lhsDeadline = lhs.votes.until
-        let rhsDeadline = rhs.votes.until
-        return lhsDeadline < rhsDeadline
-      }
-      .prefix(5)
-      .map { $0 }
+    homeContentSnapshot.pendingPromises
   }
 
   /// 다가오는 확정 약속 (내일 이후 + 확정 + 내가 수락, 최대 10개)
   var upcomingPromises: [PromiseModel] {
-    let (_, endOfDay) = todayRange
-    let userId = currentUser.userId
-    return allPromises
-      .filter {
-        $0.startAt >= endOfDay &&
-        $0.isConfirmed &&
-        $0.myVoteStatus(userId: userId) == .accepted
-      }
-      .prefix(10)
-      .map { $0 }
+    homeContentSnapshot.upcomingPromises
   }
 
   /// 다가오는 통합 일정 (그룹 약속 + 개인 일정, startAt 정렬, 최대 10개)
   var upcomingScheduleItems: [HomeModels.ScheduleItem] {
-    let (_, endOfDay) = todayRange
-    let userId = currentUser.userId
-    let promiseItems = allPromises
-      .filter {
-        $0.startAt >= endOfDay &&
-        $0.isConfirmed &&
-        $0.myVoteStatus(userId: userId) == .accepted
-      }
-      .map { HomeModels.ScheduleItem.promise($0) }
-    let eventItems = allPersonalEvents
-      .filter { $0.startAt >= endOfDay }
-      .map { HomeModels.ScheduleItem.personalEvent($0) }
-    return (promiseItems + eventItems)
-      .sorted { $0.startAt < $1.startAt }
-      .prefix(10)
-      .map { $0 }
+    homeContentSnapshot.upcomingScheduleItems
   }
 
   /// 필터링된 약속 (id 기반 안전)
@@ -782,20 +804,22 @@ extension Home.Feature.State {
 
   /// Overview 데이터
   var overviewData: HomeModels.OverviewData {
-    let nextPromise = todayPromises
+    let snapshot = homeContentSnapshot
+    let nextPromise = snapshot.todayPromises
       .filter { $0.startAt > Date() }
       .first
 
     return HomeModels.OverviewData(
-      todayCount: todayScheduleItems.count,
+      todayCount: snapshot.todayScheduleItems.count,
       nextPromise: nextPromise,
-      needResponseCount: pendingPromises.count
+      needResponseCount: snapshot.pendingPromises.count
     )
   }
 
   /// Critical Zone 데이터 (실시간 계산 필요)
   var criticalZoneData: HomeModels.CriticalZoneData? {
     let now = Date()
+    let todayPromises = homeContentSnapshot.todayPromises
 
     // todayPromises에서 실시간 상태 계산
     if let livePromise = todayPromises.first(where: { $0.isRealtimeShareable }) {
@@ -844,7 +868,7 @@ extension Home.Feature.State {
 
   /// 응답 필요 개수 (배지용)
   var pendingResponseCount: Int {
-    pendingPromises.count
+    homeContentSnapshot.pendingPromises.count
   }
 
   // MARK: - Calendar Overlay Computed
@@ -1027,9 +1051,7 @@ extension Home {
     // MARK: - Home Content
 
     private var homeContent: some View {
-      let todayScheduleItems = store.todayScheduleItems
-      let pendingPromises = store.pendingPromises
-      let upcomingScheduleItems = store.upcomingScheduleItems
+      let snapshot = store.homeContentSnapshot
 
       return ScrollView {
         LazyVStack(spacing: 20) {
@@ -1040,7 +1062,7 @@ extension Home {
           } else {
             // 오늘의 일정 카드
             TodayScheduleCard(
-              items: todayScheduleItems,
+              items: snapshot.todayScheduleItems,
               weatherCache: store.weatherCache,
               onItemTap: { item in
                 switch item {
@@ -1054,9 +1076,9 @@ extension Home {
             .padding(.horizontal, 16)
 
             // 응답 필요 섹션 (있을 때만 표시)
-            if !pendingPromises.isEmpty {
+            if !snapshot.pendingPromises.isEmpty {
               PendingSection(
-                promises: pendingPromises,
+                promises: snapshot.pendingPromises,
                 groupMembersCache: store.groupMembersCache,
                 onPromiseTap: { promise in
                   store.send(.view(.pendingPromiseTapped(promise)))
@@ -1067,7 +1089,7 @@ extension Home {
 
             // 다가오는 일정 섹션
             UpcomingSection(
-              items: upcomingScheduleItems,
+              items: snapshot.upcomingScheduleItems,
               weatherCache: store.weatherCache,
               onItemTap: { item in
                 switch item {

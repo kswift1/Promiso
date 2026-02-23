@@ -213,7 +213,7 @@ extension PersonalMode {
     @ViewBuilder
     private var eventListView: some View {
       List {
-        ForEach(store.groupedEvents, id: \.date) { section in
+        ForEach(store.groupedEvents, id: \.day) { section in
           Section {
             ForEach(section.events) { event in
               PersonalEventCard(
@@ -249,7 +249,7 @@ extension PersonalMode {
               .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
             }
           } header: {
-            dateSectionHeader(section.date)
+            dateSectionHeader(section.title)
           }
           .listSectionSeparator(.hidden)
         }

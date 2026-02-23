@@ -268,10 +268,10 @@ extension PromiseModel {
   public var dateText: String {
     let calendar = Calendar.current
     if calendar.isDateInToday(startAt) {
-      return "오늘"
+      return LocalizedStrings.DateFormat.today
     }
     if calendar.isDateInTomorrow(startAt) {
-      return "내일"
+      return LocalizedStrings.DateFormat.tomorrow
     }
     return LocalizedDateFormatters.monthDayString(from: startAt)
   }
