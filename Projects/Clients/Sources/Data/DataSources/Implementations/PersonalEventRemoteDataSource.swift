@@ -5,7 +5,7 @@ import PromisoShared
 
 /// PersonalEvent 관련 Firestore CRUD 및 쿼리 작업을 담당하는 DataSource
 /// 경로: users/{userId}/personalEvents/{eventId}
-public final class PersonalEventRemoteDataSource: PersonalEventRemoteDataSourceProtocol {
+public actor PersonalEventRemoteDataSource: PersonalEventRemoteDataSourceProtocol {
   private let firestore: FirestoreProviding
   private let subcollectionName: String
   private var db: Firestore { firestore.db }
@@ -124,7 +124,7 @@ public final class PersonalEventRemoteDataSource: PersonalEventRemoteDataSourceP
   // MARK: - Real-time Listener
 
   /// 활성 일정 실시간 구독 (과거 일정 제외)
-  public func subscribeToActiveEvents(limit: Int) -> AsyncStream<[PersonalEventModel]> {
+  public func subscribeToActiveEvents(limit: Int) async -> AsyncStream<[PersonalEventModel]> {
     AppLogger.personal.debug("📅 [PersonalEvent] subscribeToActiveEvents 호출")
 
     return AsyncStream { continuation in

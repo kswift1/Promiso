@@ -264,7 +264,8 @@ extension PersonalMode {
             }
             return .run { send in
               var hasReceived = false
-              for await events in personalEventClient.subscribeToActiveEvents(50) {
+              let activeEventsStream = await personalEventClient.subscribeToActiveEvents(50)
+              for await events in activeEventsStream {
                 hasReceived = true
                 await send(.internal(.eventsUpdated(events)))
               }

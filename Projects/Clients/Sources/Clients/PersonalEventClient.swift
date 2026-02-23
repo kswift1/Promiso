@@ -82,7 +82,7 @@ public struct PersonalEventClient: Sendable {
   public var getPastEvents: @Sendable (_ limit: Int, _ lastStartAt: Date?) async throws -> [PersonalEventModel]
 
   /// 활성 일정 실시간 구독
-  public var subscribeToActiveEvents: @Sendable (_ limit: Int) -> AsyncStream<[PersonalEventModel]> = { _ in AsyncStream { _ in } }
+  public var subscribeToActiveEvents: @Sendable (_ limit: Int) async -> AsyncStream<[PersonalEventModel]> = { _ in AsyncStream { _ in } }
 
   /// 날짜 범위로 개인 일정 조회 (일정 충돌 감지용)
   public var getEventsByDateRange: @Sendable (_ startDate: Date, _ endDate: Date) async throws -> [PersonalEventModel]
@@ -194,7 +194,7 @@ extension PersonalEventClient: DependencyKey {
         }
       },
       subscribeToActiveEvents: { limit in
-        dataSource.subscribeToActiveEvents(limit: limit)
+        await dataSource.subscribeToActiveEvents(limit: limit)
       },
       getEventsByDateRange: { startDate, endDate in
         do {

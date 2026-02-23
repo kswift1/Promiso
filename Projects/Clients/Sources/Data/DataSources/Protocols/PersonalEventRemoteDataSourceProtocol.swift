@@ -17,5 +17,5 @@ public protocol PersonalEventRemoteDataSourceProtocol: Sendable {
   func getEventsByDateRange(startDate: Date, endDate: Date) async throws -> [PersonalEventModel]
 
   // MARK: - Real-time Listener
-  func subscribeToActiveEvents(limit: Int) -> AsyncStream<[PersonalEventModel]>
+  func subscribeToActiveEvents(limit: Int) async -> AsyncStream<[PersonalEventModel]>
 }
