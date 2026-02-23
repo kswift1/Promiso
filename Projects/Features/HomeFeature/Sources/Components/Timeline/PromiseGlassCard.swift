@@ -128,7 +128,7 @@ struct PromiseGlassCard: View {
 
   private var statusText: String {
     if myVoteStatus == .pending {
-      let calendar = Calendar.current
+      let calendar = Calendar.promiseDisplay
       let daysLeft = calendar.dateComponents([.day], from: Date(), to: promise.votes.until).day ?? 0
       return "D-\(daysLeft)"
     } else {

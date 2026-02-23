@@ -99,6 +99,26 @@ extension Home {
       /// 네비게이션 경로 (약속 상세)
       var path = StackState<Path.State>()
 
+      /// 홈 본문에서 공통으로 사용하는 파생 데이터 스냅샷
+      struct HomeContentSnapshot: Equatable {
+        let todayPromises: [PromiseModel]
+        let todayScheduleItems: [HomeModels.ScheduleItem]
+        let pendingPromises: [PromiseModel]
+        let upcomingPromises: [PromiseModel]
+        let upcomingScheduleItems: [HomeModels.ScheduleItem]
+
+        static let empty = Self(
+          todayPromises: [],
+          todayScheduleItems: [],
+          pendingPromises: [],
+          upcomingPromises: [],
+          upcomingScheduleItems: []
+        )
+      }
+
+      /// 액션 처리 시점에 계산해 보관하는 홈 스냅샷
+      var homeContentSnapshot: HomeContentSnapshot = .empty
+
       public init(currentUser: Shared<UserPrivateModel>) {
         self._currentUser = currentUser
       }
@@ -223,6 +243,7 @@ extension Home {
             if !state.hasLoadedOnce {
               state.hasLoadedOnce = true
             }
+            state.refreshHomeContentSnapshot()
             // Firestore에서 직접 쿼리 (약속 + 개인 일정 병렬)
             return .merge(
               .send(.internal(.fetchPromises)),
@@ -344,13 +365,13 @@ extension Home {
             return .none
 
           case .overlayPreviousMonth:
-            if let prev = Calendar.current.date(byAdding: .month, value: -1, to: state.overlayCalendarMonth) {
+            if let prev = Calendar.promiseDisplay.date(byAdding: .month, value: -1, to: state.overlayCalendarMonth) {
               state.overlayCalendarMonth = prev
             }
             return .none
 
           case .overlayNextMonth:
-            if let next = Calendar.current.date(byAdding: .month, value: 1, to: state.overlayCalendarMonth) {
+            if let next = Calendar.promiseDisplay.date(byAdding: .month, value: 1, to: state.overlayCalendarMonth) {
               state.overlayCalendarMonth = next
             }
             return .none
@@ -406,6 +427,7 @@ extension Home {
             let groupIds = state.currentUser.groups.map(\.id)
             guard !groupIds.isEmpty else {
               state.promisesState = .loaded([])
+              state.refreshHomeContentSnapshot()
               return .none
             }
 
@@ -440,6 +462,7 @@ extension Home {
                 return mutablePromise
               }
               state.promisesState = .loaded(promisesWithGroup)
+              state.refreshHomeContentSnapshot()
 
               // 위젯 캐시 업데이트 (확정된 약속만)
               WidgetDataManager.savePromises(
@@ -455,6 +478,7 @@ extension Home {
 
             case .failure(let error):
               state.promisesState = .failed(error)
+              state.refreshHomeContentSnapshot()
             }
             return .none
 
@@ -472,6 +496,7 @@ extension Home {
             switch result {
             case .success(let events):
               state.personalEventsState = .loaded(events)
+              state.refreshHomeContentSnapshot()
               WidgetDataManager.savePersonalEvents(events.toWidgetData())
               WidgetDataManager.reloadWidgets()
               // 개인 일정 날씨도 조회 (이미 캐시된 항목은 스킵)
@@ -479,6 +504,7 @@ extension Home {
             case .failure:
               // 개인 일정 실패 시 빈 배열로 처리 (그룹 약속은 정상 표시)
               state.personalEventsState = .loaded([])
+              state.refreshHomeContentSnapshot()
             }
             return .none
 
@@ -533,7 +559,7 @@ extension Home {
             for promise in promises where promise.startAt < maxDate {
               guard let lat = promise.location?.latitude,
                     let lng = promise.location?.longitude else { continue }
-              let hour = Calendar.current.component(.hour, from: promise.startAt)
+              let hour = Calendar.promiseDisplay.component(.hour, from: promise.startAt)
               let key = LocationKey(
                 lat: (lat * 100).rounded() / 100,
                 lng: (lng * 100).rounded() / 100,
@@ -556,7 +582,7 @@ extension Home {
             for event in events where event.startAt < maxDate {
               guard let lat = event.location?.latitude,
                     let lng = event.location?.longitude else { continue }
-              let hour = Calendar.current.component(.hour, from: event.startAt)
+              let hour = Calendar.promiseDisplay.component(.hour, from: event.startAt)
               let key = LocationKey(
                 lat: (lat * 100).rounded() / 100,
                 lng: (lng * 100).rounded() / 100,
@@ -684,16 +710,13 @@ extension Home.Feature.State {
     return (startOfDay, endOfDay)
   }
 
-  /// 홈 본문에서 공통으로 사용하는 파생 데이터 스냅샷
-  struct HomeContentSnapshot {
-    let todayPromises: [PromiseModel]
-    let todayScheduleItems: [HomeModels.ScheduleItem]
-    let pendingPromises: [PromiseModel]
-    let upcomingPromises: [PromiseModel]
-    let upcomingScheduleItems: [HomeModels.ScheduleItem]
+  /// 홈 본문에서 공통으로 사용하는 파생 데이터 스냅샷 갱신
+  mutating func refreshHomeContentSnapshot() {
+    homeContentSnapshot = buildHomeContentSnapshot()
   }
 
-  var homeContentSnapshot: HomeContentSnapshot {
+  /// 홈 본문에서 공통으로 사용하는 파생 데이터 스냅샷 생성
+  private func buildHomeContentSnapshot() -> HomeContentSnapshot {
     let (startOfDay, endOfDay) = todayRange
     let userId = currentUser.userId
 
@@ -817,7 +840,7 @@ extension Home.Feature.State {
   /// Timeline 데이터 (날짜별 그룹화)
   var timelineData: [HomeModels.TimelineSection] {
     let grouped = Dictionary(grouping: filteredPromises) { promise in
-      Calendar.current.startOfDay(for: promise.startAt)
+      Calendar.promiseDisplay.startOfDay(for: promise.startAt)
     }
 
     return grouped
@@ -858,7 +881,7 @@ extension Home.Feature.State {
 
   /// 이전 월 캘린더 날짜 셀 배열
   var overlayPrevMonthDays: [OverlayCalendarModels.DayItem] {
-    guard let prevMonth = Calendar.current.date(byAdding: .month, value: -1, to: overlayCalendarMonth)
+    guard let prevMonth = Calendar.promiseDisplay.date(byAdding: .month, value: -1, to: overlayCalendarMonth)
     else { return [] }
     return OverlayCalendarModels.generateMonthDays(
       for: prevMonth,
@@ -869,7 +892,7 @@ extension Home.Feature.State {
 
   /// 다음 월 캘린더 날짜 셀 배열
   var overlayNextMonthDays: [OverlayCalendarModels.DayItem] {
-    guard let nextMonth = Calendar.current.date(byAdding: .month, value: 1, to: overlayCalendarMonth)
+    guard let nextMonth = Calendar.promiseDisplay.date(byAdding: .month, value: 1, to: overlayCalendarMonth)
     else { return [] }
     return OverlayCalendarModels.generateMonthDays(
       for: nextMonth,
@@ -880,7 +903,7 @@ extension Home.Feature.State {
 
   /// 선택된 날짜의 실제 일정 아이템 (약속 + 개인 일정)
   var overlaySelectedDateScheduleItems: [HomeModels.ScheduleItem] {
-    let calendar = Calendar.current
+    let calendar = Calendar.promiseDisplay
     let selectedDay = calendar.startOfDay(for: overlaySelectedDate)
     guard let nextDay = calendar.date(byAdding: .day, value: 1, to: selectedDay) else { return [] }
 
@@ -903,7 +926,7 @@ extension Home.Feature.State {
 
   /// 날짜별 일정 개수 (약속 + 개인 일정)
   private var overlayScheduleCountsByDate: [Date: Int] {
-    let calendar = Calendar.current
+    let calendar = Calendar.promiseDisplay
     var counts: [Date: Int] = [:]
 
     // 약속

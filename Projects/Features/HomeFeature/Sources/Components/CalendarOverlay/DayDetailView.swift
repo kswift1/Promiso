@@ -167,7 +167,7 @@ struct DayDetailView: View {
 
   private var groupedByTimePeriod: [OverlayCalendarModels.TimePeriod: [HomeModels.ScheduleItem]] {
     Dictionary(grouping: scheduleItems) { item in
-      let hour = Calendar.current.component(.hour, from: item.startAt)
+      let hour = Calendar.promiseDisplay.component(.hour, from: item.startAt)
       return OverlayCalendarModels.TimePeriod.from(hour: hour)
     }
   }
@@ -232,7 +232,7 @@ struct DayDetailView: View {
         group: GroupModel(id: "g1", name: "개발팀", maxMembers: 10, inviteCode: "", createdBy: ""),
         minimumParticipants: 2,
         votes: .init(),
-        startAt: Calendar.current.date(bySettingHour: 10, minute: 0, second: 0, of: Date()) ?? Date(),
+        startAt: Calendar.promiseDisplay.date(bySettingHour: 10, minute: 0, second: 0, of: Date()) ?? Date(),
         createdAt: Date(),
         updatedAt: Date()
       )),
@@ -245,7 +245,7 @@ struct DayDetailView: View {
         group: GroupModel(id: "g2", name: "친구들", maxMembers: 10, inviteCode: "", createdBy: ""),
         minimumParticipants: 2,
         votes: .init(),
-        startAt: Calendar.current.date(bySettingHour: 12, minute: 30, second: 0, of: Date()) ?? Date(),
+        startAt: Calendar.promiseDisplay.date(bySettingHour: 12, minute: 30, second: 0, of: Date()) ?? Date(),
         createdAt: Date(),
         updatedAt: Date()
       )),
@@ -258,14 +258,14 @@ struct DayDetailView: View {
         group: GroupModel(id: "g1", name: "개발팀", maxMembers: 10, inviteCode: "", createdBy: ""),
         minimumParticipants: 3,
         votes: .init(),
-        startAt: Calendar.current.date(bySettingHour: 19, minute: 0, second: 0, of: Date()) ?? Date(),
+        startAt: Calendar.promiseDisplay.date(bySettingHour: 19, minute: 0, second: 0, of: Date()) ?? Date(),
         createdAt: Date(),
         updatedAt: Date()
       )),
     ],
     weekDays: (0..<7).map { i in
       OverlayCalendarModels.DayItem(
-        date: Calendar.current.date(byAdding: .day, value: i - 3, to: Date()) ?? Date(),
+        date: Calendar.promiseDisplay.date(byAdding: .day, value: i - 3, to: Date()) ?? Date(),
         dayNumber: 10 + i,
         isSelected: i == 3,
         isToday: i == 3,
@@ -284,7 +284,7 @@ struct DayDetailView: View {
     scheduleItems: [],
     weekDays: (0..<7).map { i in
       OverlayCalendarModels.DayItem(
-        date: Calendar.current.date(byAdding: .day, value: i - 3, to: Date()) ?? Date(),
+        date: Calendar.promiseDisplay.date(byAdding: .day, value: i - 3, to: Date()) ?? Date(),
         dayNumber: 10 + i,
         isSelected: i == 3,
         isToday: i == 3,

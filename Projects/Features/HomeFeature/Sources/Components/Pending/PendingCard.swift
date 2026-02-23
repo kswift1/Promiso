@@ -162,7 +162,7 @@ struct PendingCard: View {
     }
 
     // 그 외에는 D-day 표시
-    let calendar = Calendar.current
+    let calendar = Calendar.promiseDisplay
     let nowDay = calendar.startOfDay(for: now)
     let voteDay = calendar.startOfDay(for: voteDate)
     let days = calendar.dateComponents([.day], from: nowDay, to: voteDay).day ?? 0
@@ -184,7 +184,7 @@ struct PendingCard: View {
       return .red
     }
 
-    let calendar = Calendar.current
+    let calendar = Calendar.promiseDisplay
     let nowDay = calendar.startOfDay(for: now)
     let voteDay = calendar.startOfDay(for: voteDate)
     let days = calendar.dateComponents([.day], from: nowDay, to: voteDay).day ?? 0

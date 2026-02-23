@@ -19,14 +19,16 @@ struct TimelineDateHeader: View {
   }
 
   private var dateText: String {
-    let calendar = Calendar.current
+    let calendar = Calendar.promiseDisplay
     let now = Date()
+    let dayAfterTomorrow = calendar.date(byAdding: .day, value: 2, to: now)
 
     if calendar.isDateInToday(date) {
       return LocalizedStrings.Common.today
     } else if calendar.isDateInTomorrow(date) {
       return LocalizedStrings.Home.tomorrow
-    } else if calendar.isDate(date, equalTo: now.addingTimeInterval(86400 * 2), toGranularity: .day) {
+    } else if let dayAfterTomorrow,
+              calendar.isDate(date, equalTo: dayAfterTomorrow, toGranularity: .day) {
       return LocalizedStrings.Home.dayAfterTomorrow
     } else {
       return LocalizedDateFormatters.sectionHeader.string(from: date)

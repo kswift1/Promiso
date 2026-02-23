@@ -86,7 +86,7 @@ struct UpcomingDateCard: View {
   }
 
   private var weekdayColor: Color {
-    let weekday = Calendar.current.component(.weekday, from: date)
+    let weekday = Calendar.promiseDisplay.component(.weekday, from: date)
     switch weekday {
     case 1: return .red      // 일요일
     case 7: return .blue     // 토요일

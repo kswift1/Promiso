@@ -87,7 +87,7 @@ enum OverlayCalendarModels {
     from monthDays: [DayItem],
     selectedDate: Date
   ) -> [DayItem] {
-    let calendar = Calendar.current
+    let calendar = Calendar.promiseDisplay
     // 42셀 = 6행 × 7열, 선택된 날짜의 행(row) 찾기
     guard let index = monthDays.firstIndex(where: {
       calendar.isDate($0.date, inSameDayAs: selectedDate)
@@ -106,7 +106,7 @@ enum OverlayCalendarModels {
     selectedDate: Date,
     scheduleCountsByDate: [Date: Int]
   ) -> [DayItem] {
-    let calendar = Calendar.current
+    let calendar = Calendar.promiseDisplay
     let today = Date()
 
     guard let monthInterval = calendar.dateInterval(of: .month, for: date),

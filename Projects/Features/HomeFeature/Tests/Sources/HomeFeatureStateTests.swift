@@ -58,6 +58,7 @@ struct HomeFeatureStateTests {
     state.promisesState = promisesState
     state.selectedStatusFilter = selectedStatusFilter
     state.selectedGroupId = selectedGroupId
+    state.refreshHomeContentSnapshot()
     return state
   }
 
@@ -86,8 +87,7 @@ struct HomeFeatureStateTests {
   @Test("오늘 약속 목록 반환")
   func homeContentSnapshot_todayPromises_returnsConfirmedTodayPromises() {
     // KST 타임존 사용 (실제 코드와 동일)
-    var calendar = Calendar.current
-    calendar.timeZone = TimeZone(identifier: "Asia/Seoul") ?? .current
+    let calendar = Calendar.promiseDisplay
     let now = Date()
     let startOfToday = calendar.startOfDay(for: now)
     let todayAfternoon = calendar.date(byAdding: .hour, value: 14, to: startOfToday)!
@@ -119,7 +119,7 @@ struct HomeFeatureStateTests {
 
   @Test("응답 필요 약속 목록 반환")
   func homeContentSnapshot_pendingPromises_returnsPendingVotePromises() {
-    let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date())!
+    let tomorrow = Calendar.promiseDisplay.date(byAdding: .day, value: 1, to: Date())!
     
     // current-user가 pending (accepted/declined에 없음)
     let votes = PromiseVotesModel(
@@ -144,8 +144,7 @@ struct HomeFeatureStateTests {
   @Test("다가오는 약속 목록 반환")
   func homeContentSnapshot_upcomingPromises_returnsConfirmedUpcomingPromises() {
     // 실제 구현(Home.Feature.State.todayRange)과 동일하게 KST 기준으로 계산
-    var calendar = Calendar.current
-    calendar.timeZone = TimeZone(identifier: "Asia/Seoul") ?? .current
+    let calendar = Calendar.promiseDisplay
     let now = Date()
     let startOfToday = calendar.startOfDay(for: now)
     let tomorrow = calendar.date(byAdding: .day, value: 1, to: startOfToday)!
@@ -172,7 +171,7 @@ struct HomeFeatureStateTests {
 
   @Test("모든 약속 반환")
   func allPromises_returnsAllPromises() {
-    let calendar = Calendar.current
+    let calendar = Calendar.promiseDisplay
     let now = Date()
     let startOfToday = calendar.startOfDay(for: now)
     let todayAfternoon = calendar.date(byAdding: .hour, value: 14, to: startOfToday)!
@@ -216,7 +215,7 @@ struct HomeFeatureStateTests {
 
   @Test("응답 필요 개수 반환")
   func pendingResponseCount_returnsPendingCount() {
-    let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date())!
+    let tomorrow = Calendar.promiseDisplay.date(byAdding: .day, value: 1, to: Date())!
     
     let votes1 = PromiseVotesModel(
       accepted: [],
@@ -257,8 +256,7 @@ struct HomeFeatureStateTests {
   @Test("오늘 약속 개수 계산")
   func overviewData_todayCount() {
     // KST 타임존 사용 (실제 코드와 동일)
-    var calendar = Calendar.current
-    calendar.timeZone = TimeZone(identifier: "Asia/Seoul") ?? .current
+    let calendar = Calendar.promiseDisplay
     let now = Date()
     let startOfToday = calendar.startOfDay(for: now)
     let todayAfternoon = calendar.date(byAdding: .hour, value: 14, to: startOfToday)!
@@ -280,7 +278,7 @@ struct HomeFeatureStateTests {
 
   @Test("응답 필요 개수 계산")
   func overviewData_needResponseCount() {
-    let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date())!
+    let tomorrow = Calendar.promiseDisplay.date(byAdding: .day, value: 1, to: Date())!
     
     let votes1 = PromiseVotesModel(
       accepted: [],
@@ -333,7 +331,7 @@ struct HomeFeatureStateTests {
 
   @Test("그룹 필터 적용 시 해당 그룹 약속만 반환")
   func filteredPromises_withGroupFilter_filtersByGroup() {
-    let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date())!
+    let tomorrow = Calendar.promiseDisplay.date(byAdding: .day, value: 1, to: Date())!
     let promise1 = makePromise(id: "p1", groupId: "group-1", startAt: tomorrow)
     let promise2 = makePromise(id: "p2", groupId: "group-2", startAt: tomorrow)
 
@@ -348,7 +346,7 @@ struct HomeFeatureStateTests {
 
   @Test("확정됨 필터 적용 시 확정 약속만 반환")
   func filteredPromises_confirmed_returnsOnlyConfirmed() {
-    let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date())!
+    let tomorrow = Calendar.promiseDisplay.date(byAdding: .day, value: 1, to: Date())!
     let confirmedVotes = PromiseVotesModel(
       accepted: ["u1", "u2"],
       declined: [],
@@ -374,7 +372,7 @@ struct HomeFeatureStateTests {
 
   @Test("응답 필요 필터 적용 시 미응답 약속만 반환")
   func filteredPromises_needResponse_returnsOnlyPending() {
-    let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date())!
+    let tomorrow = Calendar.promiseDisplay.date(byAdding: .day, value: 1, to: Date())!
     // current-user가 accepted/declined에 없음 → pending
     let pendingVotes = PromiseVotesModel(
       accepted: [],
@@ -402,7 +400,7 @@ struct HomeFeatureStateTests {
 
   @Test("진행 중 필터 적용 시 미확정+투표 마감 전 약속만 반환")
   func filteredPromises_inProgress_returnsInProgress() {
-    let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date())!
+    let tomorrow = Calendar.promiseDisplay.date(byAdding: .day, value: 1, to: Date())!
     // 미확정 + 투표 마감 전
     let inProgressVotes = PromiseVotesModel(
       accepted: [],
@@ -432,7 +430,7 @@ struct HomeFeatureStateTests {
 
   @Test("날짜별 그룹화된 타임라인 반환")
   func timelineData_groupsByDate() {
-    let calendar = Calendar.current
+    let calendar = Calendar.promiseDisplay
     let tomorrow = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: Date()))!
     let dayAfter = calendar.date(byAdding: .day, value: 2, to: calendar.startOfDay(for: Date()))!
 
@@ -449,7 +447,7 @@ struct HomeFeatureStateTests {
 
   @Test("타임라인 시간순 정렬 확인")
   func timelineData_sortedByTime() {
-    let calendar = Calendar.current
+    let calendar = Calendar.promiseDisplay
     let tomorrow = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: Date()))!
 
     let later = makePromise(id: "later", startAt: tomorrow.addingTimeInterval(7200))

@@ -58,7 +58,7 @@ struct CalendarOverlayView: View {
 
   /// 선택된 날짜가 포함된 행 인덱스
   private var selectedRowIndex: Int {
-    let calendar = Calendar.current
+    let calendar = Calendar.promiseDisplay
     return dayRows.firstIndex { row in
       row.contains { calendar.isDate($0.date, inSameDayAs: selectedDate) }
     } ?? 0
@@ -523,7 +523,7 @@ struct CalendarOverlayView: View {
 
   private var groupedByTimePeriod: [OverlayCalendarModels.TimePeriod: [HomeModels.ScheduleItem]] {
     Dictionary(grouping: scheduleItems) { item in
-      OverlayCalendarModels.TimePeriod.from(hour: Calendar.current.component(.hour, from: item.startAt))
+      OverlayCalendarModels.TimePeriod.from(hour: Calendar.promiseDisplay.component(.hour, from: item.startAt))
     }
   }
 

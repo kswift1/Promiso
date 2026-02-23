@@ -1,4 +1,5 @@
 import SwiftUI
+import PromisoShared
 import ResourceKit
 
 // MARK: - Week Strip View
@@ -85,7 +86,7 @@ struct WeekStripView: View {
   WeekStripView(
     weekDays: (0..<7).map { i in
       OverlayCalendarModels.DayItem(
-        date: Calendar.current.date(byAdding: .day, value: i, to: Date()) ?? Date(),
+        date: Calendar.promiseDisplay.date(byAdding: .day, value: i, to: Date()) ?? Date(),
         dayNumber: 10 + i,
         isSelected: i == 3,
         isToday: i == 0,

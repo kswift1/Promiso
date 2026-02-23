@@ -105,7 +105,7 @@ struct UpcomingSection: View {
 
   /// 날짜별로 그룹화된 일정
   private var groupedByDate: [DateGroup] {
-    let calendar = Calendar.current
+    let calendar = Calendar.promiseDisplay
     var groups: [Date: [HomeModels.ScheduleItem]] = [:]
 
     for item in displayedItems {
