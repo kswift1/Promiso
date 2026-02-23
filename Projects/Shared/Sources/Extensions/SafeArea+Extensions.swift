@@ -10,8 +10,11 @@ public enum SafeArea {
       .safeAreaInsets.top ?? 0
   }
 
+  /// 표준 네비게이션 바 높이
+  private static let standardNavigationBarHeight: CGFloat = 44
+
   /// Navigation bar 높이를 포함한 상단 오프셋 (safe area top + toolbar 영역)
   public static var topOffset: CGFloat {
-    topInset + 44
+    topInset + standardNavigationBarHeight
   }
 }

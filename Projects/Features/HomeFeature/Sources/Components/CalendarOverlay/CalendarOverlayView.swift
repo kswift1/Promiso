@@ -490,27 +490,36 @@ struct CalendarOverlayView: View {
     }
   }
 
+  // MARK: - Formatters
+
+  private enum Formatters {
+    static let year: DateFormatter = {
+      let f = DateFormatter(); f.dateFormat = "yyyy"; return f
+    }()
+    static let month: DateFormatter = {
+      let f = DateFormatter(); f.locale = .current; f.dateFormat = "MMMM"; return f
+    }()
+    static let todayDate: DateFormatter = {
+      let f = DateFormatter(); f.locale = .current; f.setLocalizedDateFormatFromTemplate("MMMMd"); return f
+    }()
+    static let weekday: DateFormatter = {
+      let f = DateFormatter(); f.locale = .current; f.dateFormat = "EEEE"; return f
+    }()
+    static let shortDate: DateFormatter = {
+      let f = DateFormatter(); f.locale = .current; f.setLocalizedDateFormatFromTemplate("MMMd"); return f
+    }()
+    static let time: DateFormatter = {
+      let f = DateFormatter(); f.locale = .current; f.dateFormat = "a h:mm"; return f
+    }()
+  }
+
   // MARK: - Computed Helpers
 
-  private var yearString: String {
-    let f = DateFormatter(); f.dateFormat = "yyyy"; return f.string(from: currentMonth)
-  }
-
-  private var monthString: String {
-    let f = DateFormatter(); f.locale = .current; f.dateFormat = "MMMM"; return f.string(from: currentMonth)
-  }
-
-  private var todayDateString: String {
-    let f = DateFormatter(); f.locale = .current; f.setLocalizedDateFormatFromTemplate("MMMMd"); return f.string(from: Date())
-  }
-
-  private var selectedWeekdayString: String {
-    let f = DateFormatter(); f.locale = .current; f.dateFormat = "EEEE"; return f.string(from: selectedDate)
-  }
-
-  private var selectedDateString: String {
-    let f = DateFormatter(); f.locale = .current; f.setLocalizedDateFormatFromTemplate("MMMd"); return f.string(from: selectedDate)
-  }
+  private var yearString: String { Formatters.year.string(from: currentMonth) }
+  private var monthString: String { Formatters.month.string(from: currentMonth) }
+  private var todayDateString: String { Formatters.todayDate.string(from: Date()) }
+  private var selectedWeekdayString: String { Formatters.weekday.string(from: selectedDate) }
+  private var selectedDateString: String { Formatters.shortDate.string(from: selectedDate) }
 
   private var groupedByTimePeriod: [OverlayCalendarModels.TimePeriod: [HomeModels.ScheduleItem]] {
     Dictionary(grouping: scheduleItems) { item in
@@ -519,7 +528,7 @@ struct CalendarOverlayView: View {
   }
 
   private func timeString(for date: Date) -> String {
-    let f = DateFormatter(); f.locale = .current; f.dateFormat = "a h:mm"; return f.string(from: date)
+    Formatters.time.string(from: date)
   }
 
   private func itemGroupName(_ item: HomeModels.ScheduleItem) -> String? {

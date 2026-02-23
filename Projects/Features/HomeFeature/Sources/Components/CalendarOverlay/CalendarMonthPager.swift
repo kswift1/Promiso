@@ -149,7 +149,9 @@ struct CalendarMonthPager: UIViewControllerRepresentable {
     ) {
       scrollView.delegate = coordinator
 
+      let pageWidthMultiplier = 1.0 / 3.0
       let daysArrays = [prevDays, currentDays, nextDays]
+
       for (index, days) in daysArrays.enumerated() {
         let gridView = CalendarMonthGridView(days: days, onDateSelected: onDateSelected)
         let hostingVC = UIHostingController(rootView: gridView)
@@ -160,60 +162,21 @@ struct CalendarMonthPager: UIViewControllerRepresentable {
         contentView.addSubview(hostingVC.view)
         hostingVC.didMove(toParent: self)
 
-        let pageWidth = 1.0 / 3.0
-
         NSLayoutConstraint.activate([
           hostingVC.view.topAnchor.constraint(equalTo: contentView.topAnchor),
-          hostingVC.view.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
-          hostingVC.view.widthAnchor.constraint(equalTo: contentView.widthAnchor, multiplier: pageWidth),
-          hostingVC.view.leadingAnchor.constraint(
-            equalTo: contentView.leadingAnchor,
-            constant: 0
-          ),
-        ])
-
-        // 각 페이지 위치 설정 (leading constraint 대신 multiplier 활용)
-        if index > 0 {
-          hostingVC.view.leadingAnchor.constraint(
-            equalTo: pageHostingControllers[index - 1].view.trailingAnchor
-          ).isActive = true
-          // 위에서 잡은 leading to contentView 제거를 위해 별도 처리
-        }
-
-        pageHostingControllers.append(hostingVC)
-      }
-
-      // Leading constraints 재설정
-      setupPageConstraints()
-    }
-
-    private func setupPageConstraints() {
-      guard pageHostingControllers.count == 3 else { return }
-
-      // 기존 constraints를 제거하고 재설정
-      for vc in pageHostingControllers {
-        vc.view.removeFromSuperview()
-      }
-
-      for (index, vc) in pageHostingControllers.enumerated() {
-        contentView.addSubview(vc.view)
-        vc.view.translatesAutoresizingMaskIntoConstraints = false
-
-        let pageWidth = 1.0 / 3.0
-
-        NSLayoutConstraint.activate([
-          vc.view.topAnchor.constraint(equalTo: contentView.topAnchor),
-          vc.view.heightAnchor.constraint(equalToConstant: fullGridHeight),
-          vc.view.widthAnchor.constraint(equalTo: contentView.widthAnchor, multiplier: pageWidth),
+          hostingVC.view.heightAnchor.constraint(equalToConstant: fullGridHeight),
+          hostingVC.view.widthAnchor.constraint(equalTo: contentView.widthAnchor, multiplier: pageWidthMultiplier),
         ])
 
         if index == 0 {
-          vc.view.leadingAnchor.constraint(equalTo: contentView.leadingAnchor).isActive = true
+          hostingVC.view.leadingAnchor.constraint(equalTo: contentView.leadingAnchor).isActive = true
         } else {
-          vc.view.leadingAnchor.constraint(
+          hostingVC.view.leadingAnchor.constraint(
             equalTo: pageHostingControllers[index - 1].view.trailingAnchor
           ).isActive = true
         }
+
+        pageHostingControllers.append(hostingVC)
       }
     }
 

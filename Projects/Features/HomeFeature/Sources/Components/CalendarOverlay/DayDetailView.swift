@@ -172,25 +172,23 @@ struct DayDetailView: View {
     }
   }
 
-  private var weekdayString: String {
-    let formatter = DateFormatter()
-    formatter.locale = Locale.current
-    formatter.dateFormat = "EEEE"
-    return formatter.string(from: selectedDate)
+  private enum Formatters {
+    static let weekday: DateFormatter = {
+      let f = DateFormatter(); f.locale = .current; f.dateFormat = "EEEE"; return f
+    }()
+    static let shortDate: DateFormatter = {
+      let f = DateFormatter(); f.locale = .current; f.setLocalizedDateFormatFromTemplate("MMMd"); return f
+    }()
+    static let time: DateFormatter = {
+      let f = DateFormatter(); f.locale = .current; f.dateFormat = "a h:mm"; return f
+    }()
   }
 
-  private var dateString: String {
-    let formatter = DateFormatter()
-    formatter.locale = Locale.current
-    formatter.setLocalizedDateFormatFromTemplate("MMMd")
-    return formatter.string(from: selectedDate)
-  }
+  private var weekdayString: String { Formatters.weekday.string(from: selectedDate) }
+  private var dateString: String { Formatters.shortDate.string(from: selectedDate) }
 
   private func timeString(for date: Date) -> String {
-    let formatter = DateFormatter()
-    formatter.locale = Locale.current
-    formatter.dateFormat = "a h:mm"
-    return formatter.string(from: date)
+    Formatters.time.string(from: date)
   }
 
   private func groupName(for item: HomeModels.ScheduleItem) -> String? {

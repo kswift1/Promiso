@@ -15,9 +15,7 @@ struct CalendarMonthGridView: View {
     LazyVGrid(columns: columns, spacing: 6) {
       ForEach(days) { day in
         Button {
-          if day.isCurrentMonth {
-            onDateSelected(day.date)
-          }
+          onDateSelected(day.date)
         } label: {
           OverlayCalendarDayCell(day: day)
         }
