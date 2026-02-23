@@ -125,22 +125,36 @@ public actor UserProfileRemoteDataSource: UserProfileRemoteDataSourceProtocol {
   public func getUsersByIds(userIds: [String]) async throws -> [UserPublicModel] {
     guard !userIds.isEmpty else { return [] }
 
-    var users: [UserPublicModel] = []
-    users.reserveCapacity(userIds.count)
-
-    // 순차 조회: 실패한 사용자는 스킵
-    for userId in userIds {
-      do {
-        let profile = try await getProfileModel(uid: userId, isPublic: true)
-        if case .public(let userPublic) = profile {
-          users.append(userPublic)
+    let indexedUsers = await withTaskGroup(of: (Int, UserPublicModel?).self) { group in
+      for (index, userId) in userIds.enumerated() {
+        group.addTask { [self] in
+          do {
+            let profile = try await getProfileModel(uid: userId, isPublic: true)
+            if case .public(let userPublic) = profile {
+              return (index, userPublic)
+            }
+          } catch {
+            return (index, nil)
+          }
+          return (index, nil)
         }
-      } catch {
-        continue
       }
+
+      var results: [(Int, UserPublicModel)] = []
+      results.reserveCapacity(userIds.count)
+
+      for await (index, userPublic) in group {
+        if let userPublic {
+          results.append((index, userPublic))
+        }
+      }
+
+      return results
     }
 
-    return users
+    return indexedUsers
+      .sorted { $0.0 < $1.0 }
+      .map(\.1)
   }
 
   /// 사용자 프로필 업데이트

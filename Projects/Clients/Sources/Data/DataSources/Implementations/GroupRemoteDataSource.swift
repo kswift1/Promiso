@@ -162,19 +162,31 @@ public actor GroupRemoteDataSource: GroupRemoteDataSourceProtocol {
   }
 
   private func fetchGroupsInParallel(ids: [String]) async throws -> [GroupModel] {
-    var groups: [GroupModel] = []
-    groups.reserveCapacity(ids.count)
+    try await withThrowingTaskGroup(of: GroupModel?.self) { group in
+      for groupId in ids {
+        group.addTask {
+          // Task 내부에서 Firestore 인스턴스를 생성해 non-Sendable 캡처를 피한다.
+          let firestore = Firestore.firestore()
+          let groupRef = firestore.environmentCollection("groups").document(groupId)
+          let groupSnapshot = try await groupRef.getDocument()
+          guard groupSnapshot.exists else { return nil }
 
-    for groupId in ids {
-      let groupRef = db.environmentCollection("groups").document(groupId)
-      let groupSnapshot = try await groupRef.getDocument()
-      guard groupSnapshot.exists else { continue }
+          let dto = try groupSnapshot.data(as: GroupDTO.self)
+          return GroupModel(dto: dto, id: groupId)
+        }
+      }
 
-      let dto = try groupSnapshot.data(as: GroupDTO.self)
-      groups.append(GroupModel(dto: dto, id: groupId))
+      var groups: [GroupModel] = []
+      groups.reserveCapacity(ids.count)
+
+      for try await groupModel in group {
+        if let groupModel {
+          groups.append(groupModel)
+        }
+      }
+
+      return groups
     }
-
-    return groups
   }
 
   /// 네비게이션용 그룹 요약 목록 조회
