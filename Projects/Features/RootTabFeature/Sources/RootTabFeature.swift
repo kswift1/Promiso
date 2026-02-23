@@ -135,6 +135,12 @@ extension RootTab {
       /// 현재 사용자 정보 (모든 탭에서 참조 공유)
       @Shared var currentUser: UserPrivateModel
 
+      /// 테마 모드 (system/light/dark) — 설정 변경 시 preferredColorScheme 자동 갱신
+      @Shared(.appStorage(AppConstants.UserDefaults.preferredThemeMode)) var themeMode: String = AppConstants.ThemeMode.system.rawValue
+
+      /// 선호 언어 — 변경 시 뷰 트리 재구성 트리거
+      @Shared(.appStorage(AppConstants.UserDefaults.preferredLanguage)) var preferredLanguage: String = ""
+
       /// LivePromise State (약속 추적 바) - nil이면 숨김
       var livePromise: LivePromise.Feature.State?
 
@@ -638,8 +644,7 @@ extension RootTab {
 
     /// 현재 설정된 테마 모드를 ColorScheme으로 변환
     private var preferredColorScheme: ColorScheme? {
-      let themeMode = UserDefaults.standard.string(forKey: AppConstants.UserDefaults.preferredThemeMode) ?? AppConstants.ThemeMode.system.rawValue
-      switch AppConstants.ThemeMode(rawValue: themeMode) ?? .system {
+      switch AppConstants.ThemeMode(rawValue: store.themeMode) ?? .system {
       case .system: return nil
       case .light: return .light
       case .dark: return .dark
@@ -650,6 +655,7 @@ extension RootTab {
       tabViewWithLivePromise
         .tint(Color.pmbrand.primary)
         .preferredColorScheme(preferredColorScheme)
+        .id(store.preferredLanguage)
         .onAppear { store.send(.onAppear) }
         .fullScreenCover(isPresented: $expandLivePromise, onDismiss: {
           // 스와이프로 dismiss 시 TCA 상태 정리

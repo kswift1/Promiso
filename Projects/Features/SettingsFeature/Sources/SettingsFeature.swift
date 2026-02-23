@@ -653,7 +653,6 @@ extension DateTimeSettings {
   @Reducer
   public struct Feature {
     @Dependency(\.hapticFeedback) var hapticFeedback
-    @Dependency(\.notificationCenter) var notificationCenter
 
     public init() {}
 
@@ -662,13 +661,6 @@ extension DateTimeSettings {
       @Shared(.appStorage(AppConstants.UserDefaults.use24HourFormat)) public var use24HourFormat: Bool = false
       /// 선택된 값 (임시)
       var selectedValue: Bool = false
-      /// 재시작 확인 Alert 표시 여부
-      var showRestartAlert: Bool = false
-
-      /// 변경사항이 있는지
-      var hasChanges: Bool {
-        selectedValue != use24HourFormat
-      }
 
       public init() {}
     }
@@ -680,9 +672,6 @@ extension DateTimeSettings {
     public enum View: Equatable, Sendable {
       case onAppear
       case formatSelected(Bool)
-      case saveChanges
-      case restartConfirmed
-      case restartCancelled
     }
 
     public var body: some ReducerOf<Self> {
@@ -696,29 +685,11 @@ extension DateTimeSettings {
 
           case .formatSelected(let value):
             state.selectedValue = value
+            state.$use24HourFormat.withLock { $0 = value }
+            LocalizedDateFormatters.use24HourFormat = value
             return .run { _ in
               await hapticFeedback.selection()
             }
-
-          case .saveChanges:
-            state.showRestartAlert = true
-            return .run { _ in
-              await hapticFeedback.medium()
-            }
-
-          case .restartConfirmed:
-            state.showRestartAlert = false
-            state.$use24HourFormat.withLock { $0 = state.selectedValue }
-            LocalizedDateFormatters.use24HourFormat = state.selectedValue
-            return .run { [notificationCenter] _ in
-              await hapticFeedback.success()
-              // 앱 재시작 요청 Notification 발송
-              notificationCenter.post(name: AppConstants.Notifications.appRestartRequested, object: nil)
-            }
-
-          case .restartCancelled:
-            state.showRestartAlert = false
-            return .none
           }
         }
       }
@@ -747,32 +718,8 @@ extension DateTimeSettings {
       .auroraBackground()
       .navigationTitle(LocalizedStrings.SettingsStrings.dateTimeDisplay)
       .navigationBarTitleDisplayMode(.inline)
-      .toolbar {
-        ToolbarItem(placement: .navigationBarTrailing) {
-          if store.hasChanges {
-            Button(LocalizedStrings.Common.change) {
-              store.send(.view(.saveChanges))
-            }
-            .font(.system(size: 16, weight: .semibold))
-            .foregroundStyle(Color.pmindigo.n500)
-          }
-        }
-      }
       .onAppear {
         store.send(.view(.onAppear))
-      }
-      .alert(LocalizedStrings.SettingsStrings.restartTitle, isPresented: Binding(
-        get: { store.showRestartAlert },
-        set: { if !$0 { store.send(.view(.restartCancelled)) } }
-      )) {
-        Button(LocalizedStrings.Common.cancel, role: .cancel) {
-          store.send(.view(.restartCancelled))
-        }
-        Button(LocalizedStrings.SettingsStrings.restart) {
-          store.send(.view(.restartConfirmed))
-        }
-      } message: {
-        Text(LocalizedStrings.SettingsStrings.restartMessage)
       }
     }
 
@@ -918,17 +865,12 @@ extension ThemeSettings {
   @Reducer
   public struct Feature {
     @Dependency(\.hapticFeedback) var hapticFeedback
-    @Dependency(\.notificationCenter) var notificationCenter
 
     public init() {}
 
     @ObservableState
     public struct State: Equatable {
       @Shared(.appStorage(AppConstants.UserDefaults.preferredThemeMode)) public var themeMode: String = AppConstants.ThemeMode.system.rawValue
-      /// 재시작 확인 Alert 표시 여부
-      var showRestartAlert: Bool = false
-      /// 변경하려는 값 (Alert 확인 시 적용)
-      var pendingValue: AppConstants.ThemeMode?
 
       public init() {}
     }
@@ -940,8 +882,6 @@ extension ThemeSettings {
     public enum View: Equatable, Sendable {
       case onAppear
       case themeModeChanged(AppConstants.ThemeMode)
-      case restartConfirmed
-      case restartCancelled
     }
 
     public var body: some ReducerOf<Self> {
@@ -953,29 +893,11 @@ extension ThemeSettings {
             return .none
 
           case .themeModeChanged(let mode):
-            // 값이 변경된 경우에만 Alert 표시
             guard mode.rawValue != state.themeMode else { return .none }
-            state.pendingValue = mode
-            state.showRestartAlert = true
+            state.$themeMode.withLock { $0 = mode.rawValue }
             return .run { _ in
-              await hapticFeedback.medium()
+              await hapticFeedback.selection()
             }
-
-          case .restartConfirmed:
-            state.showRestartAlert = false
-            guard let newMode = state.pendingValue else { return .none }
-            state.$themeMode.withLock { $0 = newMode.rawValue }
-            state.pendingValue = nil
-            return .run { [notificationCenter] _ in
-              await hapticFeedback.success()
-              // 앱 재시작 요청 Notification 발송
-              notificationCenter.post(name: AppConstants.Notifications.appRestartRequested, object: nil)
-            }
-
-          case .restartCancelled:
-            state.showRestartAlert = false
-            state.pendingValue = nil
-            return .none
           }
         }
       }
@@ -1009,19 +931,6 @@ extension ThemeSettings {
       .navigationBarTitleDisplayMode(.inline)
       .onAppear {
         store.send(.view(.onAppear))
-      }
-      .alert(LocalizedStrings.SettingsStrings.restartTitle, isPresented: Binding(
-        get: { store.showRestartAlert },
-        set: { if !$0 { store.send(.view(.restartCancelled)) } }
-      )) {
-        Button(LocalizedStrings.Common.cancel, role: .cancel) {
-          store.send(.view(.restartCancelled))
-        }
-        Button(LocalizedStrings.SettingsStrings.restart) {
-          store.send(.view(.restartConfirmed))
-        }
-      } message: {
-        Text(LocalizedStrings.SettingsStrings.themeModeRestartMessage)
       }
     }
 
@@ -1113,7 +1022,6 @@ extension LanguageSettings {
   @Reducer
   public struct Feature {
     @Dependency(\.hapticFeedback) var hapticFeedback
-    @Dependency(\.notificationCenter) var notificationCenter
 
     public init() {}
 
@@ -1135,8 +1043,8 @@ extension LanguageSettings {
     public enum View: Equatable, Sendable {
       case onAppear
       case languageChanged(AppLanguage)
-      case restartConfirmed
-      case restartCancelled
+      case changeConfirmed
+      case changeCancelled
     }
 
     public var body: some ReducerOf<Self> {
@@ -1156,17 +1064,18 @@ extension LanguageSettings {
               await hapticFeedback.medium()
             }
 
-          case .restartConfirmed:
+          case .changeConfirmed:
             state.showRestartAlert = false
             guard let newLanguage = state.pendingValue else { return .none }
             state.$preferredLanguage.withLock { $0 = newLanguage.rawValue }
             state.pendingValue = nil
-            return .run { [notificationCenter] _ in
+            LocalizedStrings.configure()
+            LocalizedDateFormatters.updateLocale()
+            return .run { _ in
               await hapticFeedback.success()
-              notificationCenter.post(name: AppConstants.Notifications.appRestartRequested, object: nil)
             }
 
-          case .restartCancelled:
+          case .changeCancelled:
             state.showRestartAlert = false
             state.pendingValue = nil
             return .none
@@ -1213,13 +1122,13 @@ extension LanguageSettings {
       }
       .alert(LocalizedStrings.SettingsStrings.languageRestartTitle, isPresented: Binding(
         get: { store.showRestartAlert },
-        set: { if !$0 { store.send(.view(.restartCancelled)) } }
+        set: { if !$0 { store.send(.view(.changeCancelled)) } }
       )) {
         Button(LocalizedStrings.Common.cancel, role: .cancel) {
-          store.send(.view(.restartCancelled))
+          store.send(.view(.changeCancelled))
         }
         Button(LocalizedStrings.SettingsStrings.languageRestartAction) {
-          store.send(.view(.restartConfirmed))
+          store.send(.view(.changeConfirmed))
         }
       } message: {
         Text(LocalizedStrings.SettingsStrings.languageRestartMessage)

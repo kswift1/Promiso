@@ -51,6 +51,53 @@ public enum LocalizedDateFormatters {
     monthDayHour.dateFormat = monthDayHourFormat
   }
 
+  /// 언어 변경 시 모든 포맷터의 locale과 dateFormat을 갱신
+  public static func updateLocale() {
+    let locale = LocaleManager.appLocale
+
+    // 날짜 포맷터 (locale + dateFormat 모두 갱신)
+    sectionHeader.locale = locale
+    sectionHeader.dateFormat = localeAwareDateFormat(korean: "M월 d일 (E)", nonKorean: "MMM d (E)")
+
+    weekday.locale = locale
+    // weekday.dateFormat = "E"  // 로케일 무관 포맷은 locale만 갱신
+
+    month.locale = locale
+    month.dateFormat = localeAwareDateFormat(korean: "M월", nonKorean: "MMM")
+
+    day.locale = locale
+    // day.dateFormat = "d"  // 로케일 무관
+
+    monthDay.locale = locale
+    monthDay.dateFormat = localeAwareDateFormat(korean: "M월 d일", nonKorean: "MMM d")
+
+    monthDayWeekday.locale = locale
+    monthDayWeekday.dateFormat = localeAwareDateFormat(korean: "M월 d일 EEEE", nonKorean: "MMM d EEEE")
+
+    yearMonth.locale = locale
+    yearMonth.dateFormat = localeAwareDateFormat(korean: "yyyy년 M월", nonKorean: "yyyy MMM")
+
+    yearMonthDay.locale = locale
+    yearMonthDay.dateFormat = localeAwareDateFormat(korean: "yyyy년 M월 d일", nonKorean: "MMM d, yyyy")
+
+    monthWeek.locale = locale
+    monthWeek.dateFormat = localeAwareDateFormat(korean: "M월 W주차", nonKorean: "MMM W")
+
+    date.locale = locale
+    dateDot.locale = locale
+
+    // 시간 포맷터 (locale 갱신 + 기존 updateTimeFormatters로 dateFormat 갱신)
+    time.locale = locale
+    full.locale = locale
+    monthDayTime.locale = locale
+    shortDateTime.locale = locale
+    monthDayHour.locale = locale
+    time12Hour.locale = locale
+    amPm.locale = locale
+
+    updateTimeFormatters()
+  }
+
   // MARK: - Cached Formatters (날짜)
 
   /// 섹션 헤더용 (예: "1월 15일 (수)")
