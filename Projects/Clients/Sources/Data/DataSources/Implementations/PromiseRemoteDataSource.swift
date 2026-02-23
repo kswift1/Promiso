@@ -377,6 +377,23 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
     return allPromises.sorted { $0.startAt < $1.startAt }
   }
 
+  /// 사용자가 수락한 약속을 날짜 범위로 조회 (일정 충돌 감지용)
+  /// 인증된 사용자의 UID를 직접 사용하여 보안 강화
+  public func getAcceptedPromisesByDateRange(startDate: Date, endDate: Date) async throws -> [PromiseModel] {
+    guard let userId = Auth.auth().currentUser?.uid else {
+      return []
+    }
+
+    let query = db.environmentCollection(collectionName)
+      .whereField("votes.accepted", arrayContains: userId)
+      .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: startDate))
+      .whereField("startAt", isLessThan: Timestamp(date: endDate))
+      .order(by: "startAt")
+
+    let snapshot = try await query.getDocuments()
+    return try snapshot.documents.compactMap { try convertDocumentToPromise($0) }
+  }
+
   /// 그룹의 활성 약속 개수 조회 (Firestore count aggregation 사용)
   /// subscribeToActivePromises와 동일한 조건 (startAt >= now)
   /// 과거 여부는 클라이언트에서 isPast로 계산

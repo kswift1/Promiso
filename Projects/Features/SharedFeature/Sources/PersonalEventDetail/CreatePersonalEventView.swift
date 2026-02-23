@@ -1,5 +1,6 @@
 import SwiftUI
 import ComposableArchitecture
+import Clients
 import PromisoShared
 import PhotosUI
 
@@ -19,6 +20,8 @@ extension CreatePersonalEvent {
           VStack(spacing: 16) {
             essentialSection
             endTimeSection
+            // 일정 충돌 경고
+            conflictSection
             locationSection
             reminderSection
             descriptionSection
@@ -40,6 +43,9 @@ extension CreatePersonalEvent {
           }
           .padding(16)
           .padding(.bottom, 24)
+          .onAppear {
+            store.send(.view(.onAppear))
+          }
         }
         .auroraBackground()
         .navigationTitle(store.mode == .create ? LocalizedStrings.Shared.newEvent : LocalizedStrings.Shared.editEvent)
@@ -213,6 +219,16 @@ extension CreatePersonalEvent {
         }
       }
       .adaptiveGlassCard()
+    }
+
+    // MARK: - Conflict Warning Section
+
+    @ViewBuilder
+    private var conflictSection: some View {
+      ConflictWarningSection(
+        conflicts: store.conflicts,
+        isChecking: store.isCheckingConflicts
+      )
     }
 
     // MARK: - Location Section

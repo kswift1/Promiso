@@ -22,6 +22,8 @@ extension CreatePersonalEvent {
     @Dependency(\.calendarSyncClient) var calendarSyncClient
     @Dependency(\.imageUploadClient) var imageUploadClient
     @Dependency(\.authClient) var authClient
+    @Dependency(\.scheduleConflictClient) var scheduleConflictClient
+    @Dependency(\.userSettingsClient) var userSettingsClient
 
     public init() {}
 
@@ -29,6 +31,7 @@ extension CreatePersonalEvent {
 
     private enum CancelID {
       case emojiDebounce
+      case conflictCheckDebounce
     }
 
     // MARK: - Mode
@@ -60,7 +63,7 @@ extension CreatePersonalEvent {
       var localImageData: [Data] = []
       var removedImageUrls: [String] = []
 
-      // 일정 충돌 감지
+      // 일정 충돌 감지 (Pro plan)
       var userPlan: UserPlan = .free
       var currentUserId: String = ""
       var conflicts: [ScheduleConflict] = []
@@ -108,6 +111,7 @@ extension CreatePersonalEvent {
       case photosSelected([PhotosPickerItem])
       case removeLocalImage(Int)
       case removeExistingImage(Int)
+      case onAppear
     }
 
     public enum Internal: Sendable {
@@ -118,6 +122,8 @@ extension CreatePersonalEvent {
       case saveSuccess(PersonalEventModel)
       case saveFailed(String)
       case notificationStatusChecked(NotificationAuthorizationStatus)
+      case conflictsLoaded([ScheduleConflict])
+      case userPlanLoaded(UserPlan, String)
     }
 
     @CasePathable
@@ -137,6 +143,17 @@ extension CreatePersonalEvent {
 
         case let .view(viewAction):
           switch viewAction {
+          case .onAppear:
+            return .run { [authClient, userSettingsClient] send in
+              guard let user = await authClient.currentUser() else { return }
+              do {
+                let settings = try await userSettingsClient.fetchSettings(user.uid)
+                await send(.internal(.userPlanLoaded(settings.plan, user.uid)))
+              } catch {
+                // 설정 로드 실패 시 무료 플랜으로 처리 (충돌 감지 비활성)
+              }
+            }
+
           case .titleChanged(let title):
             let oldTitle = state.event.title
             state.event.title = String(title.prefix(30))
@@ -166,11 +183,11 @@ extension CreatePersonalEvent {
                 state.reminderWarning = nil
               }
             }
-            return .none
+            return checkConflictsEffect(state: &state)
 
           case .endDateChanged(let date):
             state.event.endAt = date
-            return .none
+            return checkConflictsEffect(state: &state)
 
           case .toggleUseEndTime:
             state.useEndTime.toggle()
@@ -179,7 +196,10 @@ extension CreatePersonalEvent {
             } else {
               state.event.endAt = nil
             }
-            return .run { _ in await hapticFeedback.selection() }
+            return .merge(
+              .run { _ in await hapticFeedback.selection() },
+              checkConflictsEffect(state: &state)
+            )
 
           case .reminderOptionSelected(let minutes):
             if let minutes {
@@ -385,6 +405,18 @@ extension CreatePersonalEvent {
               state.notificationPermission = NotificationPermission.Feature.State(allowInteractiveDismiss: true)
               return .none
             }
+
+          case .conflictsLoaded(let conflicts):
+            AppLogger.personal.info("[ConflictCheck] 개인 일정 - 충돌 결과 수신: \(conflicts.count)건")
+            state.conflicts = conflicts
+            state.isCheckingConflicts = false
+            return .none
+
+          case .userPlanLoaded(let plan, let userId):
+            AppLogger.personal.info("[ConflictCheck] UserPlan 로드 완료: \(String(describing: plan))")
+            state.userPlan = plan
+            state.currentUserId = userId
+            return checkConflictsEffect(state: &state)
           }
 
         // MARK: - LocationPicker
@@ -436,6 +468,29 @@ extension CreatePersonalEvent {
       .ifLet(\.$notificationPermission, action: \.notificationPermission) {
         NotificationPermission.Feature()
       }
+    }
+
+    // MARK: - Schedule Conflict Check
+
+    private func checkConflictsEffect(state: inout State) -> Effect<Action> {
+      guard !state.currentUserId.isEmpty else { return .none }
+
+      state.isCheckingConflicts = true
+
+      let userId = state.currentUserId
+      let startAt = state.event.startAt
+      let endAt = state.event.endAt
+
+      return .run { [scheduleConflictClient, clock] send in
+        try await clock.sleep(for: .milliseconds(500))
+        do {
+          let conflicts = try await scheduleConflictClient.checkConflicts(userId, startAt, endAt)
+          await send(.internal(.conflictsLoaded(conflicts)))
+        } catch {
+          await send(.internal(.conflictsLoaded([])))
+        }
+      }
+      .cancellable(id: CancelID.conflictCheckDebounce, cancelInFlight: true)
     }
   }
 }

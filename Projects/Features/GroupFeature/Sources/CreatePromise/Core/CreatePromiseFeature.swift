@@ -24,10 +24,12 @@ public enum CreatePromise {
     @Dependency(\.mapClient) var mapClient
     @Dependency(\.analyticsClient) var analyticsClient
     @Dependency(\.imageUploadClient) var imageUploadClient
+    @Dependency(\.scheduleConflictClient) var scheduleConflictClient
 
 
     private enum CancelID: Hashable {
       case emojiSuggestDebounce
+      case conflictCheckDebounce
     }
     
     @ObservableState
@@ -54,7 +56,7 @@ public enum CreatePromise {
       var localImageData: [Data] = []
       var isUploadingImages: Bool = false
 
-      // 일정 충돌 감지
+      // 일정 충돌 감지 (Pro plan)
       var userPlan: UserPlan = .free
       var currentUserId: String = ""
       var conflicts: [ScheduleConflict] = []
@@ -75,6 +77,8 @@ public enum CreatePromise {
         showLiveActivityInfo: Bool = false,
         hasSeenLiveActivityInfo: Bool = true,
         useLocation: Bool = false,
+        userPlan: UserPlan = .free,
+        currentUserId: String = "",
         locationPicker: LocationPicker.Feature.State? = nil
       ) {
         self.currentStep = currentStep
@@ -88,6 +92,8 @@ public enum CreatePromise {
         self.showLiveActivityInfo = showLiveActivityInfo
         self.hasSeenLiveActivityInfo = hasSeenLiveActivityInfo
         self.useLocation = useLocation
+        self.userPlan = userPlan
+        self.currentUserId = currentUserId
         self.locationPicker = locationPicker
       }
 
@@ -182,6 +188,7 @@ public enum CreatePromise {
         case photosLoaded([Data])
         case imageUploadCompleted(Result<[String], Error>)
         case liveActivityInfoSeenLoaded(Bool)
+        case conflictsLoaded([ScheduleConflict])
       }
       
       // 상위 전달 이벤트 (네비/라우팅/완료 알림 등)
@@ -203,7 +210,10 @@ public enum CreatePromise {
           switch viewAction {
             
           case .onAppear:
-            return .send(.internal(.fetchGroupList))
+            return .merge(
+              .send(.internal(.fetchGroupList)),
+              checkConflictsEffect(state: &state)
+            )
             
           case .nextStep:
             state.currentStep.next()
@@ -282,7 +292,7 @@ public enum CreatePromise {
 
           case .setEndDate(let date):
             state.promise.endAt = date
-            return .none
+            return checkConflictsEffect(state: &state)
 
           case .toggleUseEndTime:
             if state.promise.endAt == nil {
@@ -290,7 +300,7 @@ public enum CreatePromise {
             } else {
               state.promise.endAt = nil
             }
-            return .none
+            return checkConflictsEffect(state: &state)
 
           case .incrementParticipants:
             guard let max = state.promise.group?.maxMembers else { return .none }
@@ -318,7 +328,7 @@ public enum CreatePromise {
             if let end = state.promise.endAt, end <= date {
               state.promise.endAt = date.addingTimeInterval(7200)
             }
-            return .none
+            return checkConflictsEffect(state: &state)
 
           case .createGroupTapped:
             return .send(.delegate(.createGroupRequested))
@@ -483,6 +493,12 @@ public enum CreatePromise {
 
           case .imageUploadCompleted:
             return .none
+
+          case .conflictsLoaded(let conflicts):
+            AppLogger.group.info("[ConflictCheck] 약속 생성 - 충돌 결과 수신: \(conflicts.count)건")
+            state.conflicts = conflicts
+            state.isCheckingConflicts = false
+            return .none
           }
           
           // MARK: - Binding
@@ -510,6 +526,29 @@ public enum CreatePromise {
       .ifLet(\.$locationPicker, action: \.locationPicker) {
         LocationPicker.Feature()
       }
+    }
+
+    // MARK: - Schedule Conflict Check
+
+    private func checkConflictsEffect(state: inout State) -> Effect<Action> {
+      guard !state.currentUserId.isEmpty else { return .none }
+
+      state.isCheckingConflicts = true
+
+      let userId = state.currentUserId
+      let startAt = state.promise.startAt
+      let endAt = state.promise.endAt
+
+      return .run { [scheduleConflictClient, clock] send in
+        try await clock.sleep(for: .milliseconds(500))
+        do {
+          let conflicts = try await scheduleConflictClient.checkConflicts(userId, startAt, endAt)
+          await send(.internal(.conflictsLoaded(conflicts)))
+        } catch {
+          await send(.internal(.conflictsLoaded([])))
+        }
+      }
+      .cancellable(id: CancelID.conflictCheckDebounce, cancelInFlight: true)
     }
   }
 }
