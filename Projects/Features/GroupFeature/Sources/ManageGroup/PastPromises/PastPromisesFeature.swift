@@ -12,7 +12,7 @@ extension PastPromises {
     @Dependency(\.promiseClient) var promiseClient
 
     @ObservableState
-    public struct State: Equatable, Sendable {
+    public struct State: Equatable {
       public let groupId: String
       public let currentUserId: String
       public let groupMembers: [UserPublicModel]?

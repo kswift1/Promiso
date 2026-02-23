@@ -116,14 +116,14 @@ extension Home {
     // MARK: - Action
 
     @CasePathable
-    public enum Action: Sendable {
+    public enum Action {
       case view(View)
       case `internal`(Internal)
       case delegate(Delegate)
       case path(StackActionOf<Path>)
 
       @CasePathable
-      public enum View: Sendable {
+      public enum View {
         /// 화면 나타남
         case onAppear
         /// Pull to refresh
@@ -175,7 +175,7 @@ extension Home {
       }
 
       @CasePathable
-      public enum Internal: Sendable {
+      public enum Internal {
         /// 홈 약속 조회 (Firestore 직접 쿼리)
         case fetchPromises
         /// 홈 약속 응답
@@ -201,7 +201,7 @@ extension Home {
       }
 
       @CasePathable
-      public enum Delegate: Sendable {
+      public enum Delegate {
         /// 약속 상세로 네비게이션 (legacy - 그룹 탭 이동용)
         case navigateToPromise(promiseId: String, groupId: String)
         /// 그룹 탭의 특정 약속으로 네비게이션 (응답 필요 카드에서)
@@ -710,8 +710,8 @@ extension Home.Feature.State {
     return allPromises
       .filter { $0.myVoteStatus(userId: userId) == .pending && !$0.isVotingClosed }
       .sorted { lhs, rhs in
-        let lhsDeadline = lhs.votes.until ?? .distantFuture
-        let rhsDeadline = rhs.votes.until ?? .distantFuture
+        let lhsDeadline = lhs.votes.until
+        let rhsDeadline = rhs.votes.until
         return lhsDeadline < rhsDeadline
       }
       .prefix(5)

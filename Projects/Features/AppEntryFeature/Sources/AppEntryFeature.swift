@@ -12,7 +12,6 @@ import SwiftUI
 // MARK: - Feature Namespace
 
 public enum AppEntry {}
-extension AppEntry.Feature.State: Sendable {}
 extension AppEntry.Feature.Destination.State: Equatable {}
 
 // MARK: - Feature Implementation

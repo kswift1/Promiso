@@ -314,7 +314,7 @@ extension RootTab {
             .promiseInList(promiseId: promiseId, groupId: groupId, filter: .needResponse)
           ))))
 
-        case .home(.delegate(.navigateToPromise(let promiseId, let groupId))):
+        case .home(.delegate(.navigateToPromise(_, let groupId))):
           state.promiseMode = .group
           state.selectedTab = .promise(.group)
           if let groupInfo = state.groupMain.allGroupSummaries?.first(where: { $0.id == groupId }) {

@@ -862,7 +862,3 @@ extension GroupSettings {
     }
   }
 }
-
-// MARK: - Sendable
-
-extension GroupSettings.Feature.State: Sendable {}

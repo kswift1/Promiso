@@ -158,7 +158,3 @@ extension GroupPromiseList {
     }
   }
 }
-
-// MARK: - Equatable
-
-extension GroupPromiseList.Feature.State: Sendable {}

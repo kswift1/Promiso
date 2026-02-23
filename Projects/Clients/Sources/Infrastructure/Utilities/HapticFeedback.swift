@@ -50,6 +50,10 @@ public final class HapticFeedback: HapticFeedbackProtocol, @unchecked Sendable {
         generator = impactMedium
       case .heavy:
         generator = impactHeavy
+      case .soft:
+        generator = impactLight
+      case .rigid:
+        generator = impactHeavy
       @unknown default:
         generator = impactMedium
       }

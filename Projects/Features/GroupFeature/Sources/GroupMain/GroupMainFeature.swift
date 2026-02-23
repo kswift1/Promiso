@@ -396,7 +396,7 @@ extension GroupMain {
       }
     }
 
-    @Reducer
+    @Reducer(state: .equatable)
     public enum Path {
       case groupSettings(GroupSettings.Feature)
       case groupPromiseList(GroupPromiseList.Feature)
@@ -415,7 +415,7 @@ extension GroupMain {
       case joinGroup
     }
 
-    public enum Action: Sendable {
+    public enum Action {
       case view(ViewAction)
       case binding(BindingAction<State>)
       case `internal`(Internal)
@@ -432,7 +432,7 @@ extension GroupMain {
       case path(StackActionOf<Path>)
 
       @CasePathable
-      public enum ViewAction: Sendable {
+      public enum ViewAction {
         case onAppear
         case refreshTriggered
         case groupChanged(UserGroupInfo)
@@ -475,7 +475,7 @@ extension GroupMain {
       }
 
       @CasePathable
-      public enum Internal: Sendable {
+      public enum Internal {
         case fetchGroupList
         case groupListResponse(Result<[UserGroupInfo], AppError>)
         case setDefaultGroup(groups: [UserGroupInfo])
@@ -523,7 +523,7 @@ extension GroupMain {
             }
             // 현재 그룹 멤버 캐시 무효화 후 다시 로드
             if let groupId = state.currentGroup?.id {
-              state.$groupMembersCache.withLock { $0.removeValue(forKey: groupId) }
+              state.$groupMembersCache.withLock { _ = $0.removeValue(forKey: groupId) }
               return .merge(
                 .send(.internal(.fetchGroupList)),
                 .send(.internal(.fetchGroupMembers(groupId: groupId)))
@@ -1344,7 +1344,7 @@ extension GroupMain {
         // GroupSettings delegate actions
         case .path(.element(id: _, action: .groupSettings(.delegate(.groupLeft)))):
           if let groupId = state.currentGroup?.id {
-            state.$groupMembersCache.withLock { $0.removeValue(forKey: groupId) }
+            state.$groupMembersCache.withLock { _ = $0.removeValue(forKey: groupId) }
           }
           state.path.removeAll()
           state.currentGroup = nil
@@ -1352,7 +1352,7 @@ extension GroupMain {
 
         case .path(.element(id: _, action: .groupSettings(.delegate(.groupDeleted)))):
           if let groupId = state.currentGroup?.id {
-            state.$groupMembersCache.withLock { $0.removeValue(forKey: groupId) }
+            state.$groupMembersCache.withLock { _ = $0.removeValue(forKey: groupId) }
           }
           state.path.removeAll()
           state.currentGroup = nil
@@ -1370,7 +1370,7 @@ extension GroupMain {
         case .path(.element(id: _, action: .groupSettings(.delegate(.hostTransferred)))):
           // 호스트 양도 후 설정 화면을 닫고 그룹 데이터 새로고침
           if let groupId = state.currentGroup?.id {
-            state.$groupMembersCache.withLock { $0.removeValue(forKey: groupId) }
+            state.$groupMembersCache.withLock { _ = $0.removeValue(forKey: groupId) }
           }
           state.path.removeAll()
           return .send(.internal(.fetchGroupList))
@@ -1420,11 +1420,6 @@ extension GroupMain {
     }
   }
 }
-
-// MARK: - Path Conformances
-
-extension GroupMain.Feature.Path.State: Equatable, Sendable {}
-extension GroupMain.Feature.Path.Action: Sendable {}
 
 // MARK: - New UI Action Helpers
 

@@ -41,10 +41,11 @@ public final class NotificationRemoteDataSource: @unchecked Sendable {
   public func saveFCMToken(userId: String, token: String) async throws {
     let usersCollection = db.environmentCollection("users")
     let userRef = usersCollection.document(userId)
+    let platform = await MainActor.run { UIDevice.current.systemName.lowercased() }
 
     let deviceData: [String: Any] = [
       "fcmToken": token,
-      "platform": UIDevice.current.systemName.lowercased(),
+      "platform": platform,
       "lastActiveAt": FieldValue.serverTimestamp(),
       "createdAt": FieldValue.serverTimestamp()
     ]
@@ -319,4 +320,3 @@ public final class NotificationRemoteDataSource: @unchecked Sendable {
     AppLogger.notification.debug("전체 알림 삭제 (\(documents.count)개, userId: \(userId))")
   }
 }
-

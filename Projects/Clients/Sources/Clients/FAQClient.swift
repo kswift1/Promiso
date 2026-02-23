@@ -76,7 +76,7 @@ extension FAQClient: DependencyKey {
           let result = try await callable.call(["databaseId": databaseId])
           resultData = result.data
         } catch {
-          let code = (error as? NSError)?.code ?? 0
+          let code = (error as NSError).code
           throw FAQClientError.fetchFailed(
             statusCode: code,
             message: error.localizedDescription

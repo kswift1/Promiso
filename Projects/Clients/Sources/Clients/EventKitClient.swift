@@ -203,16 +203,16 @@ extension EventKitClient: TestDependencyKey {
     openSettings: { }
   )
 
-  public static let testValue = Self(
-    authorizationStatus: unimplemented("\(Self.self).authorizationStatus", placeholder: .notDetermined),
-    requestAccess: unimplemented("\(Self.self).requestAccess", placeholder: false),
-    fetchEvents: unimplemented("\(Self.self).fetchEvents", placeholder: []),
-    addEvent: unimplemented("\(Self.self).addEvent", placeholder: ""),
-    updateEvent: unimplemented("\(Self.self).updateEvent"),
-    deleteEvent: unimplemented("\(Self.self).deleteEvent"),
-    getPromisoEvents: unimplemented("\(Self.self).getPromisoEvents", placeholder: []),
-    observeChanges: unimplemented("\(Self.self).observeChanges"),
-    openSettings: unimplemented("\(Self.self).openSettings")
+  public static let testValue: Self = Self(
+    authorizationStatus: { .notDetermined },
+    requestAccess: { false },
+    fetchEvents: { _, _ in [] },
+    addEvent: { _ in "" },
+    updateEvent: { _, _, _ in },
+    deleteEvent: { _ in },
+    getPromisoEvents: { [] },
+    observeChanges: { AsyncStream { _ in } },
+    openSettings: { }
   )
 }
 

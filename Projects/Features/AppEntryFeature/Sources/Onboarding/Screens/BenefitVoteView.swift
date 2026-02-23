@@ -238,14 +238,14 @@ struct BenefitVoteView: View {
     for i in 0..<2 {
       try? await Task.sleep(for: .seconds(0.6))
       withAnimation(.spring(response: 0.55, dampingFraction: 0.7)) {
-        confirmedMembers.insert(i)
+        _ = confirmedMembers.insert(i)
       }
     }
 
     // 재윤 수락 (3번째 = 최소 인원 충족!)
     try? await Task.sleep(for: .seconds(0.9))
     withAnimation(.spring(response: 0.55, dampingFraction: 0.6)) {
-      confirmedMembers.insert(2)
+      _ = confirmedMembers.insert(2)
     }
 
     // 자동 확정 배너

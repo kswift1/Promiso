@@ -3,7 +3,7 @@ import Foundation
 import UIKit
 import KakaoSDKShare
 import KakaoSDKCommon
-import KakaoSDKTemplate
+@preconcurrency import KakaoSDKTemplate
 
 // MARK: - Share Result
 

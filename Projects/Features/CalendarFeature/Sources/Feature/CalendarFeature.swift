@@ -18,7 +18,7 @@ extension CalendarFeature {
   // MARK: - Reducer
 
   @Reducer
-  public struct Feature: Sendable {
+  public struct Feature {
     public init() {}
 
     // MARK: - State
@@ -242,7 +242,7 @@ extension CalendarFeature {
 
     // MARK: - Path (Navigation)
 
-    @Reducer
+    @Reducer(state: .equatable)
     public enum Path {
       case promiseDetail(PromiseDetail.Feature)
       case personalEventDetail(PersonalEventDetail.Feature)
@@ -251,13 +251,13 @@ extension CalendarFeature {
     // MARK: - Action
 
     @CasePathable
-    public enum Action: Sendable {
+    public enum Action {
       case view(ViewAction)
       case `internal`(InternalAction)
       case path(StackActionOf<Path>)
 
       @CasePathable
-      public enum ViewAction: Sendable {
+      public enum ViewAction {
         case onAppear
         case toggleDisplayMode
         case selectDate(Date)
@@ -286,7 +286,7 @@ extension CalendarFeature {
       }
 
       @CasePathable
-      public enum InternalAction: Sendable {
+      public enum InternalAction {
         case transitionCompleted
         // 초기화 관련
         case loadInitialData              // 캐시 초기화 + 약속 로드
@@ -830,8 +830,3 @@ extension CalendarFeature {
     }
   }
 }
-
-// MARK: - Path Conformances
-
-extension CalendarFeature.Feature.Path.State: Equatable, Sendable {}
-extension CalendarFeature.Feature.Path.Action: Sendable {}

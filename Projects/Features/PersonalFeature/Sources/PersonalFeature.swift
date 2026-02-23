@@ -60,7 +60,7 @@ extension PersonalMode {
     public init() {}
 
     @ObservableState
-    public struct State: Equatable, Sendable {
+    public struct State: Equatable {
       var eventsState: LoadingState<[PersonalEventModel]> = .idle
       var pastEventsState: LoadingState<[PersonalEventModel]> = .idle
       var selectedFilter: EventFilter = .all
