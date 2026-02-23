@@ -88,6 +88,8 @@ extension Home {
       var overlayDotsVisible: Bool = false
       /// 오버레이 날씨 상태
       var overlayWeatherState: OverlayWeatherState = .needsPermission
+      /// 오버레이 일간 상세 모드
+      var overlayDetailMode: Bool = false
 
       // MARK: Notification
       /// 안 읽은 알림 개수
@@ -166,6 +168,10 @@ extension Home {
         case overlayDismissCompleted
         /// 오버레이 날씨 카드 탭 (권한 요청)
         case overlayWeatherCardTapped
+        /// 오버레이 월간 뷰로 복귀
+        case overlayBackToMonth
+        /// 오버레이 일간 상세에서 일정 탭
+        case overlayScheduleItemTapped(HomeModels.ScheduleItem)
       }
 
       @CasePathable
@@ -324,6 +330,7 @@ extension Home {
             state.overlayDotsVisible = false
             state.isCalendarDismissing = false
             state.overlayWeatherState = .needsPermission
+            state.overlayDetailMode = false
             return .merge(
               .cancel(id: CancelID.overlayDotsAnimation),
               .cancel(id: CancelID.overlayWeatherFetch)
@@ -331,6 +338,9 @@ extension Home {
 
           case .overlayDateSelected(let date):
             state.overlaySelectedDate = date
+            if !state.overlayDetailMode {
+              state.overlayDetailMode = true
+            }
             return .none
 
           case .overlayPreviousMonth:
@@ -355,6 +365,32 @@ extension Home {
           case .overlayWeatherCardTapped:
             state.overlayWeatherState = .loading
             return .send(.internal(.fetchOverlayWeather))
+
+          case .overlayBackToMonth:
+            state.overlayDetailMode = false
+            return .none
+
+          case .overlayScheduleItemTapped(let item):
+            // 일간 상세에서 일정 아이템 탭 → 오버레이 닫고 상세로 이동
+            state.showCalendarOverlay = false
+            state.overlayDetailMode = false
+            state.overlayDotsVisible = false
+            state.overlayWeatherState = .needsPermission
+            switch item {
+            case .promise(let promise):
+              let groupMembers = state.groupMembersCache[promise.groupId]
+              state.path.append(.promiseDetail(.init(
+                promise: promise,
+                currentUserId: state.currentUser.userId,
+                groupMembers: groupMembers
+              )))
+            case .personalEvent(let event):
+              state.path.append(.personalEventDetail(.init(event: event)))
+            }
+            return .merge(
+              .cancel(id: CancelID.overlayDotsAnimation),
+              .cancel(id: CancelID.overlayWeatherFetch)
+            )
 
           }
 
@@ -574,6 +610,7 @@ extension Home {
               state.overlayWeatherState = .failed
             }
             return .none
+
           }
 
         case .delegate:
@@ -843,6 +880,29 @@ extension Home.Feature.State {
     )
   }
 
+  /// 선택된 날짜의 실제 일정 아이템 (약속 + 개인 일정)
+  var overlaySelectedDateScheduleItems: [HomeModels.ScheduleItem] {
+    let calendar = Calendar.current
+    let selectedDay = calendar.startOfDay(for: overlaySelectedDate)
+    guard let nextDay = calendar.date(byAdding: .day, value: 1, to: selectedDay) else { return [] }
+
+    let promiseItems = allPromises
+      .filter { $0.startAt >= selectedDay && $0.startAt < nextDay }
+      .map { HomeModels.ScheduleItem.promise($0) }
+    let eventItems = (personalEventsState.value ?? [])
+      .filter { $0.startAt >= selectedDay && $0.startAt < nextDay }
+      .map { HomeModels.ScheduleItem.personalEvent($0) }
+    return (promiseItems + eventItems).sorted { $0.startAt < $1.startAt }
+  }
+
+  /// 선택된 날짜가 속한 주의 7일 (주간 스트립용)
+  var overlaySelectedWeekDays: [OverlayCalendarModels.DayItem] {
+    OverlayCalendarModels.extractWeekDays(
+      from: overlayCalendarDays,
+      selectedDate: overlaySelectedDate
+    )
+  }
+
   /// 날짜별 일정 개수 (약속 + 개인 일정)
   private var overlayScheduleCountsByDate: [Date: Int] {
     let calendar = Calendar.current
@@ -920,10 +980,14 @@ extension Home {
             CalendarOverlayPresenter(
               isPresented: store.showCalendarOverlay,
               currentMonth: store.overlayCalendarMonth,
+              selectedDate: store.overlaySelectedDate,
               prevMonthDays: store.overlayPrevMonthDays,
               days: store.overlayCalendarDays,
               nextMonthDays: store.overlayNextMonthDays,
               weatherState: store.overlayWeatherState,
+              detailMode: store.overlayDetailMode,
+              scheduleItems: store.overlaySelectedDateScheduleItems,
+              weekDays: store.overlaySelectedWeekDays,
               onClose: {
                 store.send(.view(.calendarOverlayClosed))
               },
@@ -938,6 +1002,12 @@ extension Home {
               },
               onWeatherCardTapped: {
                 store.send(.view(.overlayWeatherCardTapped))
+              },
+              onBackToMonth: {
+                store.send(.view(.overlayBackToMonth), animation: .easeInOut(duration: 0.3))
+              },
+              onScheduleItemTapped: { item in
+                store.send(.view(.overlayScheduleItemTapped(item)))
               }
             )
             .frame(width: 0, height: 0)

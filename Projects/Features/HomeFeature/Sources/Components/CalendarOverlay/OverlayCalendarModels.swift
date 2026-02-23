@@ -46,6 +46,60 @@ enum OverlayCalendarModels {
     }
   }
 
+  /// 시간대 구분
+  enum TimePeriod: String, CaseIterable {
+    case morning
+    case afternoon
+    case night
+
+    var displayTitle: String {
+      switch self {
+      case .morning: return "Morning"
+      case .afternoon: return "Afternoon"
+      case .night: return "Night"
+      }
+    }
+
+    var tintColor: TimePeriodColor {
+      switch self {
+      case .morning: return .morning
+      case .afternoon: return .afternoon
+      case .night: return .night
+      }
+    }
+
+    static func from(hour: Int) -> TimePeriod {
+      switch hour {
+      case 0..<12: return .morning
+      case 12..<18: return .afternoon
+      default: return .night
+      }
+    }
+  }
+
+  /// 시간대별 색상 테마
+  enum TimePeriodColor {
+    case morning, afternoon, night
+  }
+
+  /// 선택된 날짜가 속한 주의 7일을 추출 (월요일 시작)
+  static func extractWeekDays(
+    from monthDays: [DayItem],
+    selectedDate: Date
+  ) -> [DayItem] {
+    let calendar = Calendar.current
+    // 42셀 = 6행 × 7열, 선택된 날짜의 행(row) 찾기
+    guard let index = monthDays.firstIndex(where: {
+      calendar.isDate($0.date, inSameDayAs: selectedDate)
+    }) else {
+      // 선택된 날짜가 현재 월에 없으면 첫 주 반환
+      return Array(monthDays.prefix(7))
+    }
+    let rowStart = (index / 7) * 7
+    let rowEnd = min(rowStart + 7, monthDays.count)
+    return Array(monthDays[rowStart..<rowEnd])
+  }
+
   /// 현재 월의 날짜 배열을 생성
   static func generateMonthDays(
     for date: Date,

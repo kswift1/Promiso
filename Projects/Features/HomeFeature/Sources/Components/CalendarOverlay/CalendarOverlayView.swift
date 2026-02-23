@@ -5,53 +5,184 @@ import ResourceKit
 // MARK: - Calendar Overlay View
 
 /// Home 화면 위에 표시되는 캘린더 오버레이
+/// 날짜 탭 시 선택된 주(row)만 남기고 나머지 행이 접히며, 해당 주가 하단으로 내려감
 struct CalendarOverlayView: View {
   let availableHeight: CGFloat
   let currentMonth: Date
+  let selectedDate: Date
   let prevMonthDays: [OverlayCalendarModels.DayItem]
   let days: [OverlayCalendarModels.DayItem]
   let nextMonthDays: [OverlayCalendarModels.DayItem]
   let weatherState: OverlayWeatherState
+  let detailMode: Bool
+  let scheduleItems: [HomeModels.ScheduleItem]
+  let weekDays: [OverlayCalendarModels.DayItem]
   let onClose: () -> Void
   let onDateSelected: (Date) -> Void
   let onPreviousMonth: () -> Void
   let onNextMonth: () -> Void
   let onWeatherCardTapped: () -> Void
+  let onBackToMonth: () -> Void
+  let onScheduleItemTapped: (HomeModels.ScheduleItem) -> Void
 
-  /// 헤더(~62) + 하단카드(~140) + spacing(16*2) + padding(horizontal 20*2, bottom 20) = ~254
-  private var pagerHeight: CGFloat {
-    let headerHeight: CGFloat = 70
-    let bottomCardHeight: CGFloat = 140
-    let spacings: CGFloat = 16 * 2
-    let bottomPadding: CGFloat = 20
-    let fixed = headerHeight + bottomCardHeight + spacings + bottomPadding
-    return max(availableHeight - fixed, 200)
+  // MARK: - Grid Layout Constants
+
+  private let weekdayHeight: CGFloat = 24
+  private let rowHeight: CGFloat = 44
+  private let gridSpacing: CGFloat = 6
+
+  /// 1행 단위 높이 (행 높이 + 간격)
+  private var rowUnit: CGFloat { rowHeight + gridSpacing }
+
+  /// detail mode에서 보이는 영역 (요일 헤더 + 선택된 주)
+  private var compactGridHeight: CGFloat { weekdayHeight + gridSpacing + rowHeight }
+
+  /// detail mode에서 날짜 행을 위로 밀어 선택 주를 요일 헤더 바로 아래로 배치
+  private var contentShift: CGFloat {
+    detailMode ? -CGFloat(selectedRowIndex) * rowUnit : 0
+  }
+
+  private let weekdayLabels = [
+    LocalizedStrings.Calendar.weekdayMon,
+    LocalizedStrings.Calendar.weekdayTue,
+    LocalizedStrings.Calendar.weekdayWed,
+    LocalizedStrings.Calendar.weekdayThu,
+    LocalizedStrings.Calendar.weekdayFri,
+    LocalizedStrings.Calendar.weekdaySat,
+    LocalizedStrings.Calendar.weekdaySun,
+  ]
+
+  /// 42셀을 6행으로 분할
+  private var dayRows: [[OverlayCalendarModels.DayItem]] {
+    stride(from: 0, to: days.count, by: 7).map {
+      Array(days[$0..<min($0 + 7, days.count)])
+    }
+  }
+
+  /// 선택된 날짜가 포함된 행 인덱스
+  private var selectedRowIndex: Int {
+    let calendar = Calendar.current
+    return dayRows.firstIndex { row in
+      row.contains { calendar.isDate($0.date, inSameDayAs: selectedDate) }
+    } ?? 0
   }
 
   var body: some View {
-    VStack(spacing: 16) {
-      // Header
-      calendarHeader
+    VStack(spacing: 0) {
+      // MARK: 헤더
+      headerSection
+        .padding(.horizontal, 20)
+        .padding(.bottom, 16)
 
-      // Month pager (UIKit UIScrollView 기반 좌우 스와이프)
-      CalendarMonthPager(
-        prevDays: prevMonthDays,
-        currentDays: days,
-        nextDays: nextMonthDays,
-        onDateSelected: onDateSelected,
-        onPreviousMonth: onPreviousMonth,
-        onNextMonth: onNextMonth
-      )
-      .frame(height: pagerHeight)
+      // MARK: 일정 리스트 (항상 존재, detail mode에서 확장)
+      dayScheduleList
+        .frame(maxHeight: detailMode ? .infinity : 0)
+        .opacity(detailMode ? 1 : 0)
+        .clipped()
 
-      // Bottom card (weather or permission)
+      // MARK: Spacer (항상 존재, detail mode에서 확장 → 그리드를 아래로 밀어냄)
+      Spacer(minLength: 0)
+        .frame(maxHeight: detailMode ? .infinity : 0)
+
+      Divider()
+        .foregroundStyle(Color(.separator).opacity(0.3))
+        .padding(.horizontal, 20)
+        .opacity(detailMode ? 1 : 0)
+
+      // MARK: 접이식 캘린더 그리드
+      collapsibleCalendarGrid
+        .padding(.horizontal, 20)
+        .padding(.vertical, detailMode ? 8 : 0)
+
+      // MARK: 하단 (날씨카드 - detail mode에서 아래로 슬라이드)
       bottomCard
+        .padding(.horizontal, 20)
+        .padding(.top, detailMode ? 0 : 16)
+        .offset(y: detailMode ? 160 : 0)
+        .frame(height: detailMode ? 0 : nil)
+        .opacity(detailMode ? 0 : 1)
+
+      Spacer().frame(height: 20)
     }
-    .padding(.horizontal, 20)
-    .padding(.bottom, 20)
   }
 
-  // MARK: - Calendar Header
+  // MARK: - Calendar Grid (ZStack 커튼 방식)
+
+  /// 요일 헤더가 고정되고, 날짜 행이 뒤에서 위로 스크롤되며 요일 뒤로 사라지는 커튼 효과
+  private var collapsibleCalendarGrid: some View {
+    ZStack(alignment: .top) {
+      // Layer 1 (뒤): 날짜 행들 — detail mode에서 위로 스크롤
+      VStack(spacing: gridSpacing) {
+        // 요일 헤더 자리 확보
+        Color.clear.frame(height: weekdayHeight + gridSpacing)
+
+        ForEach(Array(dayRows.enumerated()), id: \.offset) { index, row in
+          HStack(spacing: 0) {
+            ForEach(row) { day in
+              Button {
+                if day.isCurrentMonth {
+                  onDateSelected(day.date)
+                }
+              } label: {
+                OverlayCalendarDayCell(day: day)
+                  .frame(maxWidth: .infinity)
+              }
+              .buttonStyle(.plain)
+              .disabled(!day.isCurrentMonth && !detailMode)
+            }
+          }
+        }
+      }
+      .offset(y: contentShift)
+
+      // Layer 2 (앞): 요일 헤더 — 불투명 배경으로 지나가는 행을 가림
+      weekdayHeaderRow
+        .background(Color(.systemBackground))
+    }
+    .frame(height: detailMode ? compactGridHeight : nil, alignment: .top)
+    .clipped()
+    .contentShape(Rectangle())
+    .simultaneousGesture(monthSwipeGesture)
+  }
+
+  /// 요일 헤더 행
+  private var weekdayHeaderRow: some View {
+    HStack(spacing: 0) {
+      ForEach(weekdayLabels.indices, id: \.self) { i in
+        Text(weekdayLabels[i])
+          .font(.system(size: 12, weight: .medium))
+          .foregroundStyle(Color.pmgray.n400)
+          .frame(maxWidth: .infinity)
+          .frame(height: weekdayHeight)
+      }
+    }
+  }
+
+  /// 월간 모드에서만 좌우 스와이프로 월 전환
+  private var monthSwipeGesture: some Gesture {
+    DragGesture(minimumDistance: 50, coordinateSpace: .local)
+      .onEnded { value in
+        guard !detailMode else { return }
+        if value.translation.width > 50 {
+          onPreviousMonth()
+        } else if value.translation.width < -50 {
+          onNextMonth()
+        }
+      }
+  }
+
+  // MARK: - Header Section
+
+  @ViewBuilder
+  private var headerSection: some View {
+    if detailMode {
+      dayDetailHeader
+    } else {
+      calendarHeader
+    }
+  }
+
+  // MARK: - Month Header
 
   private var calendarHeader: some View {
     HStack(alignment: .top) {
@@ -95,6 +226,146 @@ struct CalendarOverlayView: View {
     }
   }
 
+  // MARK: - Day Detail Header
+
+  private var dayDetailHeader: some View {
+    HStack(alignment: .top) {
+      Button(action: onBackToMonth) {
+        Image(systemName: "chevron.left")
+          .font(.system(size: 14, weight: .semibold))
+          .foregroundStyle(.secondary)
+          .frame(width: 32, height: 32)
+          .contentShape(Rectangle())
+      }
+
+      VStack(alignment: .leading, spacing: 0) {
+        Text(selectedWeekdayString)
+          .font(.system(size: 28, weight: .bold))
+          .foregroundStyle(.primary)
+
+        Text(selectedDateString)
+          .font(.system(size: 20, weight: .semibold))
+          .foregroundStyle(.secondary)
+      }
+
+      Spacer()
+
+      Button(action: onClose) {
+        Image(systemName: "xmark")
+          .font(.system(size: 14, weight: .semibold))
+          .foregroundStyle(.secondary)
+          .frame(width: 32, height: 32)
+          .adaptiveGlassBackground(cornerRadius: 16)
+      }
+    }
+  }
+
+  // MARK: - Day Schedule List
+
+  private var dayScheduleList: some View {
+    ScrollView {
+      VStack(spacing: 12) {
+        let grouped = groupedByTimePeriod
+        ForEach(OverlayCalendarModels.TimePeriod.allCases, id: \.self) { period in
+          if let items = grouped[period], !items.isEmpty {
+            timePeriodSection(period: period, items: items)
+          }
+        }
+
+        if scheduleItems.isEmpty {
+          emptyScheduleView
+        }
+      }
+      .padding(.horizontal, 20)
+      .padding(.vertical, 8)
+    }
+  }
+
+  // MARK: - Time Period Section
+
+  private func timePeriodSection(
+    period: OverlayCalendarModels.TimePeriod,
+    items: [HomeModels.ScheduleItem]
+  ) -> some View {
+    VStack(alignment: .leading, spacing: 10) {
+      Text(period.displayTitle)
+        .font(.system(size: 13, weight: .semibold))
+        .foregroundStyle(periodTitleColor(period))
+        .padding(.leading, 4)
+
+      VStack(spacing: 8) {
+        ForEach(items) { item in
+          Button {
+            onScheduleItemTapped(item)
+          } label: {
+            scheduleItemRow(item)
+          }
+          .buttonStyle(.plain)
+        }
+      }
+      .padding(14)
+      .background(periodBackgroundColor(period))
+      .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+  }
+
+  // MARK: - Schedule Item Row
+
+  private func scheduleItemRow(_ item: HomeModels.ScheduleItem) -> some View {
+    HStack(spacing: 12) {
+      Text(item.displayEmoji)
+        .font(.system(size: 24))
+        .frame(width: 36, height: 36)
+
+      VStack(alignment: .leading, spacing: 2) {
+        Text(item.title)
+          .font(.system(size: 15, weight: .medium))
+          .foregroundStyle(.primary)
+          .lineLimit(1)
+
+        HStack(spacing: 6) {
+          Text(timeString(for: item.startAt))
+            .font(.system(size: 12))
+            .foregroundStyle(.secondary)
+
+          if let name = itemGroupName(item) {
+            Text("·")
+              .font(.system(size: 12))
+              .foregroundStyle(.tertiary)
+
+            Text(name)
+              .font(.system(size: 12))
+              .foregroundStyle(.secondary)
+              .lineLimit(1)
+          }
+        }
+      }
+
+      Spacer()
+
+      Image(systemName: "chevron.right")
+        .font(.system(size: 11, weight: .semibold))
+        .foregroundStyle(.tertiary)
+    }
+    .contentShape(Rectangle())
+  }
+
+  // MARK: - Empty Schedule
+
+  private var emptyScheduleView: some View {
+    VStack(spacing: 12) {
+      Image(systemName: "calendar.badge.clock")
+        .font(.system(size: 36))
+        .foregroundStyle(.tertiary)
+
+      Text(LocalizedStrings.Calendar.noSchedules)
+        .font(.system(size: 14))
+        .foregroundStyle(.secondary)
+    }
+    .frame(maxWidth: .infinity)
+    .padding(.vertical, 40)
+  }
+
   // MARK: - Bottom Card
 
   @ViewBuilder
@@ -102,13 +373,10 @@ struct CalendarOverlayView: View {
     switch weatherState {
     case .needsPermission:
       permissionCard
-
     case .loading:
       loadingCard
-
     case .loaded(let weather):
       weatherCard(weather)
-
     case .failed:
       failedCard
     }
@@ -158,17 +426,11 @@ struct CalendarOverlayView: View {
         .fill(Color(.systemGray6))
 
       VStack(alignment: .leading, spacing: 4) {
-        // 날씨 상태 텍스트 자리
         SkeletonView(cornerRadius: 4)
           .frame(width: 80, height: 14)
-
         Spacer()
-
-        // 온도 자리
         SkeletonView(cornerRadius: 6)
           .frame(width: 100, height: 36)
-
-        // 날짜 자리
         SkeletonView(cornerRadius: 4)
           .frame(width: 120, height: 14)
       }
@@ -213,10 +475,8 @@ struct CalendarOverlayView: View {
 
   private func weatherCard(_ weather: HourlyForecast) -> some View {
     ZStack {
-      // Background gradient
       weatherGradient(for: weather.condition)
 
-      // Large decorative weather icon
       Image(systemName: weather.condition.sfSymbolName)
         .symbolRenderingMode(.multicolor)
         .font(.system(size: 80))
@@ -224,18 +484,14 @@ struct CalendarOverlayView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
         .offset(x: 20, y: -10)
 
-      // Content
       VStack(alignment: .leading, spacing: 4) {
         Text(weather.condition.description)
           .font(.system(size: 13, weight: .medium))
           .foregroundStyle(.white.opacity(0.8))
-
         Spacer()
-
         Text("\(Int(weather.temperature.rounded()))°C")
           .font(.system(size: 36, weight: .bold))
           .foregroundStyle(.white)
-
         Text(todayDateString)
           .font(.system(size: 13))
           .foregroundStyle(.white.opacity(0.7))
@@ -250,123 +506,117 @@ struct CalendarOverlayView: View {
   private func weatherGradient(for condition: WeatherCondition) -> LinearGradient {
     switch condition {
     case .clear:
-      return LinearGradient(
-        colors: [.orange.opacity(0.8), .pink.opacity(0.6)],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-      )
+      LinearGradient(colors: [.orange.opacity(0.8), .pink.opacity(0.6)], startPoint: .topLeading, endPoint: .bottomTrailing)
     case .cloudy:
-      return LinearGradient(
-        colors: [.gray.opacity(0.6), .blue.opacity(0.4)],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-      )
+      LinearGradient(colors: [.gray.opacity(0.6), .blue.opacity(0.4)], startPoint: .topLeading, endPoint: .bottomTrailing)
     case .overcast:
-      return LinearGradient(
-        colors: [.gray.opacity(0.7), .gray.opacity(0.5)],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-      )
+      LinearGradient(colors: [.gray.opacity(0.7), .gray.opacity(0.5)], startPoint: .topLeading, endPoint: .bottomTrailing)
     case .rain, .shower:
-      return LinearGradient(
-        colors: [.blue.opacity(0.7), .indigo.opacity(0.8)],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-      )
+      LinearGradient(colors: [.blue.opacity(0.7), .indigo.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing)
     case .rainSnow, .snow:
-      return LinearGradient(
-        colors: [.cyan.opacity(0.5), .blue.opacity(0.4)],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-      )
+      LinearGradient(colors: [.cyan.opacity(0.5), .blue.opacity(0.4)], startPoint: .topLeading, endPoint: .bottomTrailing)
     case .unknown:
-      return LinearGradient(
-        colors: [.gray.opacity(0.5), .gray.opacity(0.4)],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-      )
+      LinearGradient(colors: [.gray.opacity(0.5), .gray.opacity(0.4)], startPoint: .topLeading, endPoint: .bottomTrailing)
     }
   }
 
-  // MARK: - Computed
+  // MARK: - Computed Helpers
 
   private var yearString: String {
-    let formatter = DateFormatter()
-    formatter.dateFormat = "yyyy"
-    return formatter.string(from: currentMonth)
+    let f = DateFormatter(); f.dateFormat = "yyyy"; return f.string(from: currentMonth)
   }
 
   private var monthString: String {
-    let formatter = DateFormatter()
-    formatter.locale = Locale.current
-    formatter.dateFormat = "MMMM"
-    return formatter.string(from: currentMonth)
+    let f = DateFormatter(); f.locale = .current; f.dateFormat = "MMMM"; return f.string(from: currentMonth)
   }
 
   private var todayDateString: String {
-    let formatter = DateFormatter()
-    formatter.locale = Locale.current
-    formatter.setLocalizedDateFormatFromTemplate("MMMMd")
-    return formatter.string(from: Date())
+    let f = DateFormatter(); f.locale = .current; f.setLocalizedDateFormatFromTemplate("MMMMd"); return f.string(from: Date())
+  }
+
+  private var selectedWeekdayString: String {
+    let f = DateFormatter(); f.locale = .current; f.dateFormat = "EEEE"; return f.string(from: selectedDate)
+  }
+
+  private var selectedDateString: String {
+    let f = DateFormatter(); f.locale = .current; f.setLocalizedDateFormatFromTemplate("MMMd"); return f.string(from: selectedDate)
+  }
+
+  private var groupedByTimePeriod: [OverlayCalendarModels.TimePeriod: [HomeModels.ScheduleItem]] {
+    Dictionary(grouping: scheduleItems) { item in
+      OverlayCalendarModels.TimePeriod.from(hour: Calendar.current.component(.hour, from: item.startAt))
+    }
+  }
+
+  private func timeString(for date: Date) -> String {
+    let f = DateFormatter(); f.locale = .current; f.dateFormat = "a h:mm"; return f.string(from: date)
+  }
+
+  private func itemGroupName(_ item: HomeModels.ScheduleItem) -> String? {
+    switch item {
+    case .promise(let p): return p.group?.name
+    case .personalEvent: return nil
+    }
+  }
+
+  private func periodTitleColor(_ period: OverlayCalendarModels.TimePeriod) -> Color {
+    switch period {
+    case .morning: Color(.systemGreen)
+    case .afternoon: Color(.systemBlue)
+    case .night: Color(.systemIndigo)
+    }
+  }
+
+  private func periodBackgroundColor(_ period: OverlayCalendarModels.TimePeriod) -> Color {
+    switch period {
+    case .morning: Color(.systemGreen).opacity(0.08)
+    case .afternoon: Color(.systemBlue).opacity(0.08)
+    case .night: Color(.systemIndigo).opacity(0.08)
+    }
   }
 }
 
 // MARK: - Preview
 
-#Preview("날씨 로드됨") {
+#Preview("월간") {
   CalendarOverlayView(
     availableHeight: 600,
     currentMonth: Date(),
-    prevMonthDays: OverlayCalendarModels.generateMonthDays(
-      for: Calendar.current.date(byAdding: .month, value: -1, to: Date()) ?? Date(),
-      selectedDate: Date(),
-      scheduleCountsByDate: [:]
-    ),
+    selectedDate: Date(),
+    prevMonthDays: [],
     days: OverlayCalendarModels.generateMonthDays(
-      for: Date(),
-      selectedDate: Date(),
-      scheduleCountsByDate: [:]
+      for: Date(), selectedDate: Date(), scheduleCountsByDate: [:]
     ),
-    nextMonthDays: OverlayCalendarModels.generateMonthDays(
-      for: Calendar.current.date(byAdding: .month, value: 1, to: Date()) ?? Date(),
-      selectedDate: Date(),
-      scheduleCountsByDate: [:]
-    ),
+    nextMonthDays: [],
     weatherState: .loaded(HourlyForecast(
-      dateTime: Date(),
-      temperature: 14,
-      feelsLikeTemperature: 10,
-      condition: .clear,
-      precipitationProbability: 10,
-      humidity: 50,
-      windSpeed: 3.0
+      dateTime: Date(), temperature: 14, feelsLikeTemperature: 10,
+      condition: .clear, precipitationProbability: 10, humidity: 50, windSpeed: 3.0
     )),
-    onClose: {},
-    onDateSelected: { _ in },
-    onPreviousMonth: {},
-    onNextMonth: {},
-    onWeatherCardTapped: {}
+    detailMode: false,
+    scheduleItems: [],
+    weekDays: [],
+    onClose: {}, onDateSelected: { _ in }, onPreviousMonth: {}, onNextMonth: {},
+    onWeatherCardTapped: {}, onBackToMonth: {}, onScheduleItemTapped: { _ in }
   )
   .auroraBackground()
 }
 
-#Preview("권한 필요") {
+#Preview("일간 상세") {
   CalendarOverlayView(
     availableHeight: 600,
     currentMonth: Date(),
+    selectedDate: Date(),
     prevMonthDays: [],
     days: OverlayCalendarModels.generateMonthDays(
-      for: Date(),
-      selectedDate: Date(),
-      scheduleCountsByDate: [:]
+      for: Date(), selectedDate: Date(), scheduleCountsByDate: [:]
     ),
     nextMonthDays: [],
     weatherState: .needsPermission,
-    onClose: {},
-    onDateSelected: { _ in },
-    onPreviousMonth: {},
-    onNextMonth: {},
-    onWeatherCardTapped: {}
+    detailMode: true,
+    scheduleItems: [],
+    weekDays: [],
+    onClose: {}, onDateSelected: { _ in }, onPreviousMonth: {}, onNextMonth: {},
+    onWeatherCardTapped: {}, onBackToMonth: {}, onScheduleItemTapped: { _ in }
   )
   .auroraBackground()
 }

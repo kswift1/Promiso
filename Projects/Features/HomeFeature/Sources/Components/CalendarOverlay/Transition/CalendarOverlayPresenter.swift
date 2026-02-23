@@ -7,15 +7,21 @@ import PromisoShared
 struct CalendarOverlayPresenter: UIViewControllerRepresentable {
   let isPresented: Bool
   let currentMonth: Date
+  let selectedDate: Date
   let prevMonthDays: [OverlayCalendarModels.DayItem]
   let days: [OverlayCalendarModels.DayItem]
   let nextMonthDays: [OverlayCalendarModels.DayItem]
   let weatherState: OverlayWeatherState
+  let detailMode: Bool
+  let scheduleItems: [HomeModels.ScheduleItem]
+  let weekDays: [OverlayCalendarModels.DayItem]
   let onClose: () -> Void
   let onDateSelected: (Date) -> Void
   let onPreviousMonth: () -> Void
   let onNextMonth: () -> Void
   let onWeatherCardTapped: () -> Void
+  let onBackToMonth: () -> Void
+  let onScheduleItemTapped: (HomeModels.ScheduleItem) -> Void
 
   func makeCoordinator() -> Coordinator {
     Coordinator()
@@ -32,10 +38,14 @@ struct CalendarOverlayPresenter: UIViewControllerRepresentable {
       // ViewModel 업데이트 (이미 presented인 경우)
       if let viewModel = coordinator.viewModel {
         viewModel.currentMonth = currentMonth
+        viewModel.selectedDate = selectedDate
         viewModel.prevMonthDays = prevMonthDays
         viewModel.days = days
         viewModel.nextMonthDays = nextMonthDays
         viewModel.weatherState = weatherState
+        viewModel.detailMode = detailMode
+        viewModel.scheduleItems = scheduleItems
+        viewModel.weekDays = weekDays
       }
 
       // 아직 present 안 된 경우
@@ -44,15 +54,21 @@ struct CalendarOverlayPresenter: UIViewControllerRepresentable {
 
         let viewModel = CalendarOverlayViewModel(
           currentMonth: currentMonth,
+          selectedDate: selectedDate,
           prevMonthDays: prevMonthDays,
           days: days,
           nextMonthDays: nextMonthDays,
           weatherState: weatherState,
+          detailMode: detailMode,
+          scheduleItems: scheduleItems,
+          weekDays: weekDays,
           onClose: onClose,
           onDateSelected: onDateSelected,
           onPreviousMonth: onPreviousMonth,
           onNextMonth: onNextMonth,
-          onWeatherCardTapped: onWeatherCardTapped
+          onWeatherCardTapped: onWeatherCardTapped,
+          onBackToMonth: onBackToMonth,
+          onScheduleItemTapped: onScheduleItemTapped
         )
         coordinator.viewModel = viewModel
 
