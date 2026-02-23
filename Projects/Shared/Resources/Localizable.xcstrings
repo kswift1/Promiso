@@ -14711,13 +14711,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Choose the language for the app. The app will restart when changed."
+            "value": "Choose the language for the app."
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "앱에서 사용할 언어를 선택합니다. 변경 시 앱이 재시작됩니다."
+            "value": "앱에서 사용할 언어를 선택합니다."
           }
         }
       }
