@@ -5,6 +5,7 @@
 import Clients
 import ComposableArchitecture
 import PromisoShared
+import ProPlanFeature
 import SwiftUI
 
 // MARK: - Feature Namespace
@@ -118,6 +119,7 @@ extension Settings {
       case legalInfo(LegalInfo.Feature)
       case policyView(PolicyView.Feature)
       case appInfo(AppInfo.Feature)
+      case proPlan(ProPlan.Feature)
       #if DEBUG
       case developerSettings(DeveloperSettings.Feature)
       #endif
@@ -174,6 +176,8 @@ extension Settings {
       case supportTapped
       /// 약관 및 정책 탭
       case legalInfoTapped
+      /// 프로 플랜 탭
+      case proPlanTapped
       /// 앱 정보 탭
       case appInfoTapped
       #if DEBUG
@@ -309,6 +313,12 @@ extension Settings {
           case .legalInfoTapped:
             state.path.append(.legalInfo(LegalInfo.Feature.State()))
             return .run { _ in await hapticFeedback.selection() }
+
+          case .proPlanTapped:
+            state.path.append(.proPlan(ProPlan.Feature.State()))
+            return .run { _ in
+              await hapticFeedback.selection()
+            }
 
           case .appInfoTapped:
             state.path.append(.appInfo(AppInfo.Feature.State()))
@@ -550,6 +560,12 @@ extension Settings {
             return .none
           }
 
+        case .path(.element(_, action: .proPlan(.delegate(let delegate)))):
+          switch delegate {
+          case .subscriptionStatusChanged:
+            return .none
+          }
+
         case .path:
           return .none
         }
@@ -600,6 +616,8 @@ extension Settings {
           PolicyView.RootView(store: store)
         case .appInfo(let store):
           AppInfo.RootView(store: store)
+        case .proPlan(let store):
+          ProPlan.RootView(store: store)
         #if DEBUG
         case .developerSettings(let store):
           DeveloperSettings.RootView(store: store)

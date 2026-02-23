@@ -1,16 +1,15 @@
 import ProjectDescription
 import ProjectDescriptionHelpers
 
-private let feature: Feature = .settings
+private let feature: Feature = .proPlan
 
 let project = Project(
   name: feature.fullName,
-  options: .options(developmentRegion: "ko"),
   targets: [
 
     // Main Feature (TCA)
     .target(
-      name: "SettingsFeature",
+      name: "ProPlanFeature",
       destinations: .iOS,
       product: .framework,
       bundleId: "\(feature.defaultBundleIdPrefix)",
@@ -21,29 +20,28 @@ let project = Project(
         .project(target: "PromisoShared", path: "../../Shared"),
         .project(target: "ResourceKit", path: "../../ResourceKit"),
         .project(target: "ExternalDependency", path: "../../ExternalDependency"),
-        .project(target: "ProPlanFeature", path: "../ProPlanFeature")
+        .project(target: "SharedFeature", path: "../SharedFeature")
       ],
       settings: .standard()
     ),
 
     // Unit Tests
     .target(
-      name: "SettingsFeatureTests",
+      name: "ProPlanFeatureTests",
       destinations: .iOS,
       product: .unitTests,
       bundleId: "\(feature.defaultBundleIdPrefix).tests",
       deploymentTargets: .iOS("\(AppConfig.deploymentTargets)"),
       sources: ["Tests/Sources/**"],
       dependencies: [
-        .target(name: "SettingsFeature"),
-        .project(target: "PromisoShared", path: "../../Shared")
+        .target(name: "ProPlanFeature")
       ],
       settings: .standard()
     ),
 
     // Example App (Demo)
     .target(
-      name: "SettingsFeatureExample",
+      name: "ProPlanFeatureExample",
       destinations: .iOS,
       product: .app,
       bundleId: "\(feature.defaultBundleIdPrefix).example",
@@ -54,7 +52,7 @@ let project = Project(
       sources: ["Example/Sources/**"],
       resources: ["Example/Resources/**"],
       dependencies: [
-        .target(name: "SettingsFeature")
+        .target(name: "ProPlanFeature")
       ],
       settings: .standard()
     )
