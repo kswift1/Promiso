@@ -61,22 +61,10 @@ extension ProPlan {
     @ViewBuilder
     private var headerSection: some View {
       VStack(spacing: 16) {
-        // 아이콘
-        ZStack {
-          Circle()
-            .fill(
-              LinearGradient(
-                colors: [Color.pmaurora.purple, Color.pmaurora.pink],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-              )
-            )
-            .frame(width: 80, height: 80)
-
-          Image(systemName: "star.fill")
-            .font(.system(size: 36))
-            .foregroundStyle(.white)
-        }
+        ResourceKitAsset.paywallHero.swiftUIImage
+          .resizable()
+          .scaledToFit()
+          .frame(maxWidth: 260)
 
         // 타이틀
         Text("Promiso Pro")
