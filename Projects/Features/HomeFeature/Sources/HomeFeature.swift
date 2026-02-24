@@ -30,6 +30,7 @@ extension Home {
     // MARK: - CancelID
 
     private enum CancelID {
+      case weatherFetch
       case overlayWeatherFetch
     }
 
@@ -203,8 +204,8 @@ extension Home {
         case unreadNotificationCountResponse(Result<Int, Error>)
         /// 날씨 정보 조회
         case fetchWeather
-        /// 날씨 정보 응답 (scheduleId → WeatherInfo)
-        case weatherResponse(String, Result<WeatherInfo, Error>)
+        /// 날씨 정보 배치 응답 (scheduleId → WeatherInfo)
+        case weatherBatchResponse([String: WeatherInfo])
         /// 오버레이 현재 위치 날씨 조회
         case fetchOverlayWeather
         /// 오버레이 날씨 응답
@@ -519,66 +520,115 @@ extension Home {
             // 예보 범위(10일) 밖 필터링 (단기 5일 + 중기 10일)
             let maxDate = Date().addingTimeInterval(10 * 24 * 3600)
 
-            struct LocationKey: Hashable {
+            struct LocationKey: Hashable, Sendable {
               let lat: Double
               let lng: Double
               let hour: Int
             }
 
-            var seen = Set<LocationKey>()
-            var effects: [Effect<Action>] = []
+            struct WeatherFetchTarget: Sendable {
+              let lat: Double
+              let lng: Double
+              let date: Date
+              var scheduleIds: [String]
+            }
 
-            for promise in promises where promise.startAt < maxDate {
-              guard let lat = promise.location?.latitude,
-                    let lng = promise.location?.longitude else { continue }
-              let hour = Calendar.promiseDisplay.component(.hour, from: promise.startAt)
+            var targetsByKey: [LocationKey: WeatherFetchTarget] = [:]
+
+            func upsertTarget(
+              scheduleId: String,
+              lat: Double,
+              lng: Double,
+              date: Date
+            ) {
+              let hour = Calendar.promiseDisplay.component(.hour, from: date)
               let key = LocationKey(
                 lat: (lat * 100).rounded() / 100,
                 lng: (lng * 100).rounded() / 100,
                 hour: hour
               )
-              guard seen.insert(key).inserted else { continue }
 
-              let id = promise.id
-              let date = promise.startAt
-              effects.append(.run { [weatherClient] send in
-                do {
-                  let info = try await weatherClient.getWeather(lat, lng, date)
-                  await send(.internal(.weatherResponse(id, .success(info))))
-                } catch {
-                  await send(.internal(.weatherResponse(id, .failure(error))))
+              if var existing = targetsByKey[key] {
+                if !existing.scheduleIds.contains(scheduleId) {
+                  existing.scheduleIds.append(scheduleId)
+                  targetsByKey[key] = existing
                 }
-              })
+                return
+              }
+
+              targetsByKey[key] = WeatherFetchTarget(
+                lat: lat,
+                lng: lng,
+                date: date,
+                scheduleIds: [scheduleId]
+              )
+            }
+
+            for promise in promises where promise.startAt < maxDate {
+              guard let lat = promise.location?.latitude,
+                    let lng = promise.location?.longitude else { continue }
+              upsertTarget(
+                scheduleId: promise.id,
+                lat: lat,
+                lng: lng,
+                date: promise.startAt
+              )
             }
 
             for event in events where event.startAt < maxDate {
               guard let lat = event.location?.latitude,
                     let lng = event.location?.longitude else { continue }
-              let hour = Calendar.promiseDisplay.component(.hour, from: event.startAt)
-              let key = LocationKey(
-                lat: (lat * 100).rounded() / 100,
-                lng: (lng * 100).rounded() / 100,
-                hour: hour
+              upsertTarget(
+                scheduleId: event.id,
+                lat: lat,
+                lng: lng,
+                date: event.startAt
               )
-              guard seen.insert(key).inserted else { continue }
-
-              let id = event.id
-              let date = event.startAt
-              effects.append(.run { [weatherClient] send in
-                do {
-                  let info = try await weatherClient.getWeather(lat, lng, date)
-                  await send(.internal(.weatherResponse(id, .success(info))))
-                } catch {
-                  await send(.internal(.weatherResponse(id, .failure(error))))
-                }
-              })
             }
 
-            return effects.isEmpty ? .none : .merge(effects)
+            let targets = Array(targetsByKey.values)
+            guard !targets.isEmpty else { return .none }
 
-          case .weatherResponse(let scheduleId, let result):
-            if case .success(let info) = result {
-              state.$weatherCache.withLock { $0[scheduleId] = info }
+            return .run { [weatherClient] send in
+              var updates: [String: WeatherInfo] = [:]
+
+              await withTaskGroup(of: (WeatherFetchTarget, WeatherInfo?).self) { group in
+                for target in targets {
+                  group.addTask {
+                    do {
+                      let info = try await weatherClient.getWeather(
+                        target.lat,
+                        target.lng,
+                        target.date
+                      )
+                      return (target, info)
+                    } catch {
+                      return (target, nil)
+                    }
+                  }
+                }
+
+                for await (target, info) in group {
+                  guard let info else { continue }
+                  for scheduleId in target.scheduleIds {
+                    updates[scheduleId] = info
+                  }
+                }
+              }
+
+              guard !updates.isEmpty else { return }
+              await send(.internal(.weatherBatchResponse(updates)))
+            }
+            .cancellable(id: CancelID.weatherFetch, cancelInFlight: true)
+
+          case .weatherBatchResponse(let updates):
+            guard !updates.isEmpty else { return .none }
+            state.$weatherCache.withLock { cache in
+              for (scheduleId, info) in updates {
+                if cache[scheduleId] != info {
+                  cache[scheduleId] = info
+                }
+              }
             }
             return .none
 
