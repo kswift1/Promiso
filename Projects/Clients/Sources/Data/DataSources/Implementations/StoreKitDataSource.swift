@@ -47,6 +47,38 @@ final class StoreKitDataSource: Sendable {
     }
   }
 
+  // MARK: - Purchase with Receipt (서버 검증용)
+
+  func purchaseWithReceipt(productId: String) async throws -> PurchaseResult {
+    let storeProducts = try await Product.products(for: [productId])
+    guard let product = storeProducts.first else {
+      throw SubscriptionError.productNotFound
+    }
+
+    let result = try await product.purchase()
+
+    switch result {
+    case .success(let verification):
+      let transaction = try checkVerified(verification)
+      await transaction.finish()
+
+      // JWS 토큰 추출
+      let jwsString = verification.jwsRepresentation
+
+      let status = try await fetchCurrentStatus()
+      return PurchaseResult(jwsString: jwsString, localStatus: status)
+
+    case .userCancelled:
+      throw SubscriptionError.purchaseCancelled
+
+    case .pending:
+      throw SubscriptionError.purchasePending
+
+    @unknown default:
+      throw SubscriptionError.unknown
+    }
+  }
+
   // MARK: - Restore
 
   func restore() async throws -> SubscriptionStatus {

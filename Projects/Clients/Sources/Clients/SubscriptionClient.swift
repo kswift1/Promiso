@@ -1,5 +1,6 @@
 import ComposableArchitecture
 import Foundation
+import FirebaseFunctions
 
 // MARK: - Client
 
@@ -11,6 +12,9 @@ public struct SubscriptionClient: Sendable {
   /// 상품 구매
   public var purchase: @Sendable (_ productId: String) async throws -> SubscriptionStatus
 
+  /// 구매 후 JWS 토큰을 포함한 결과 반환 (서버 검증용)
+  public var purchaseWithReceipt: @Sendable (_ productId: String) async throws -> PurchaseResult
+
   /// 구매 복원
   public var restore: @Sendable () async throws -> SubscriptionStatus
 
@@ -19,6 +23,9 @@ public struct SubscriptionClient: Sendable {
 
   /// 구독 상태 실시간 스트림
   public var statusStream: @Sendable () -> AsyncStream<SubscriptionStatus> = { .finished }
+
+  /// 서버에 구매 검증 요청
+  public var verifyPurchase: @Sendable (_ transactionJWS: String, _ productId: String) async throws -> SubscriptionStatus
 }
 
 // MARK: - Test & Preview Values
@@ -27,23 +34,29 @@ extension SubscriptionClient: TestDependencyKey {
   public static let testValue = Self(
     fetchProducts: unimplemented("\(Self.self).fetchProducts", placeholder: []),
     purchase: unimplemented("\(Self.self).purchase", placeholder: .none),
+    purchaseWithReceipt: unimplemented("\(Self.self).purchaseWithReceipt", placeholder: PurchaseResult(jwsString: "", localStatus: .none)),
     restore: unimplemented("\(Self.self).restore", placeholder: .none),
     fetchStatus: unimplemented("\(Self.self).fetchStatus", placeholder: .none),
-    statusStream: unimplemented("\(Self.self).statusStream", placeholder: .finished)
+    statusStream: unimplemented("\(Self.self).statusStream", placeholder: .finished),
+    verifyPurchase: unimplemented("\(Self.self).verifyPurchase", placeholder: .none)
   )
 
   public static let previewValue = Self(
     fetchProducts: {
       try await Task.sleep(for: .seconds(0.5))
       return [
-        SubscriptionProduct(id: "promiso_pro_monthly", type: .monthly, displayName: "월간 프로", description: "매월 자동 갱신", displayPrice: "₩4,900", price: 4900),
-        SubscriptionProduct(id: "promiso_pro_yearly", type: .yearly, displayName: "연간 프로", description: "매년 자동 갱신", displayPrice: "₩39,000", price: 39000),
-        SubscriptionProduct(id: "promiso_pro_lifetime", type: .lifetime, displayName: "평생 프로", description: "한 번 결제, 영구 사용", displayPrice: "₩99,000", price: 99000)
+        SubscriptionProduct(id: "com.promiso.pro.monthly", type: .monthly, displayName: "월간 프로", description: "매월 자동 갱신", displayPrice: "₩2,900", price: 2900),
+        SubscriptionProduct(id: "com.promiso.pro.yearly", type: .yearly, displayName: "연간 프로", description: "매년 자동 갱신 (월 ₩2,075)", displayPrice: "₩24,900", price: 24900),
+        SubscriptionProduct(id: "com.promiso.pro.lifetime", type: .lifetime, displayName: "평생 프로", description: "한 번 결제, 영구 사용", displayPrice: "₩54,000", price: 54000)
       ]
     },
     purchase: { _ in
       try await Task.sleep(for: .seconds(1.0))
       return .subscribed(expirationDate: Date().addingTimeInterval(30 * 24 * 3600))
+    },
+    purchaseWithReceipt: { _ in
+      try await Task.sleep(for: .seconds(1.0))
+      return PurchaseResult(jwsString: "mock-jws-token", localStatus: .subscribed(expirationDate: Date().addingTimeInterval(30 * 24 * 3600)))
     },
     restore: {
       try await Task.sleep(for: .seconds(0.5))
@@ -57,6 +70,10 @@ extension SubscriptionClient: TestDependencyKey {
         continuation.yield(.none)
         continuation.finish()
       }
+    },
+    verifyPurchase: { _, _ in
+      try await Task.sleep(for: .seconds(1.0))
+      return .subscribed(expirationDate: Date().addingTimeInterval(30 * 24 * 3600))
     }
   )
 }
@@ -83,6 +100,9 @@ extension SubscriptionClient: DependencyKey {
       purchase: { productId in
         try await dataSource.purchase(productId: productId)
       },
+      purchaseWithReceipt: { productId in
+        try await dataSource.purchaseWithReceipt(productId: productId)
+      },
       restore: {
         try await dataSource.restore()
       },
@@ -91,7 +111,46 @@ extension SubscriptionClient: DependencyKey {
       },
       statusStream: {
         dataSource.statusStream()
+      },
+      verifyPurchase: { jwsString, productId in
+        try await verifyPurchaseOnServer(transactionJWS: jwsString, productId: productId)
       }
     )
   }()
+
+  private static func verifyPurchaseOnServer(transactionJWS: String, productId: String) async throws -> SubscriptionStatus {
+    let functions = DefaultFunctionsProvider().functions
+
+    let result = try await functions.httpsCallable("verifyPurchase").call([
+      "transactionJWS": transactionJWS,
+      "productId": productId,
+    ])
+
+    guard let data = result.data as? [String: Any],
+          let statusData = data["subscriptionStatus"] as? [String: Any],
+          let statusString = statusData["status"] as? String else {
+      throw SubscriptionError.verificationFailed
+    }
+
+    switch statusString {
+    case "subscribed":
+      let expirationString = statusData["expirationDate"] as? String
+      let expirationDate = expirationString.flatMap { ISO8601DateFormatter().date(from: $0) }
+      return .subscribed(expirationDate: expirationDate)
+    case "lifetime":
+      return .lifetime
+    case "expired":
+      let expirationString = statusData["expirationDate"] as? String
+      let expirationDate = expirationString.flatMap { ISO8601DateFormatter().date(from: $0) }
+      return .expired(expirationDate: expirationDate ?? Date())
+    case "gracePeriod":
+      let expirationString = statusData["expirationDate"] as? String
+      let expirationDate = expirationString.flatMap { ISO8601DateFormatter().date(from: $0) } ?? Date()
+      return .gracePeriod(expirationDate: expirationDate)
+    case "revoked":
+      return .revoked
+    default:
+      return .none
+    }
+  }
 }

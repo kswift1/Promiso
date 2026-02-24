@@ -35,9 +35,7 @@ extension ProPlan {
     // MARK: - Dependencies
 
     @Dependency(\.subscriptionClient) private var subscriptionClient
-    @Dependency(\.userSettingsClient) private var userSettingsClient
     @Dependency(\.hapticFeedback) private var hapticFeedback
-    @Dependency(\.authClient) private var authClient
 
     /// Reducer를 위한 기본 initializer
     public init() {}
@@ -183,9 +181,15 @@ extension ProPlan {
             state.errorMessage = nil
             return .run { send in
               await hapticFeedback.medium()
-              await send(.internal(.purchaseResponse(
-                Result { try await subscriptionClient.purchase(productId) }
-              )))
+              do {
+                // 1. StoreKit 구매 + JWS 토큰 획득
+                let result = try await subscriptionClient.purchaseWithReceipt(productId)
+                // 2. 서버에 검증 요청
+                let verifiedStatus = try await subscriptionClient.verifyPurchase(result.jwsString, productId)
+                await send(.internal(.purchaseResponse(.success(verifiedStatus))))
+              } catch {
+                await send(.internal(.purchaseResponse(.failure(error))))
+              }
             }
 
           case .restoreTapped:
@@ -234,14 +238,9 @@ extension ProPlan {
             state.isPurchasing = false
             state.subscriptionStatus = status
 
-            // 구독 성공 시 UserSettings 업데이트
             if status.isPro {
               return .run { send in
                 await hapticFeedback.success()
-                // userId 조회
-                if let uid = await authClient.currentUser()?.uid {
-                  try? await userSettingsClient.updatePlan(uid, .pro)
-                }
                 await send(.delegate(.subscriptionStatusChanged(status)))
               }
             }
@@ -260,13 +259,9 @@ extension ProPlan {
             state.isPurchasing = false
             state.subscriptionStatus = status
 
-            // 복원 성공 시 UserSettings 업데이트
             if status.isPro {
               return .run { send in
                 await hapticFeedback.success()
-                if let uid = await authClient.currentUser()?.uid {
-                  try? await userSettingsClient.updatePlan(uid, .pro)
-                }
                 await send(.delegate(.subscriptionStatusChanged(status)))
               }
             }

@@ -141,16 +141,18 @@ extension ProPlan {
         }
         .padding(.horizontal, 24)
         .padding(.vertical, 16)
+        .background(
+          LinearGradient(
+            colors: [Color.pmaurora.purple, Color.pmaurora.pink],
+            startPoint: .leading,
+            endPoint: .trailing
+          ),
+          in: RoundedRectangle(cornerRadius: 16)
+        )
         .contentShape(Rectangle())
       }
       .disabled(store.selectedProductId == nil || store.isPurchasing)
-      .adaptiveGlassCard()
-      .overlay {
-        if store.selectedProductId != nil && !store.isPurchasing {
-          RoundedRectangle(cornerRadius: 16)
-            .stroke(Color.pmindigo.n500, lineWidth: 2)
-        }
-      }
+      .opacity((store.selectedProductId == nil || store.isPurchasing) ? 0.5 : 1.0)
     }
 
     // MARK: - Restore Button
@@ -297,31 +299,31 @@ extension ProPlan {
       initialState: ProPlan.Feature.State(
         products: [
           SubscriptionProduct(
-            id: "promiso_pro_monthly",
+            id: "com.promiso.pro.monthly",
             type: .monthly,
             displayName: "월간 프로",
             description: "매월 자동 갱신",
-            displayPrice: "₩4,900",
-            price: 4900
+            displayPrice: "₩2,900",
+            price: 2900
           ),
           SubscriptionProduct(
-            id: "promiso_pro_yearly",
+            id: "com.promiso.pro.yearly",
             type: .yearly,
             displayName: "연간 프로",
-            description: "매년 자동 갱신 (월 ₩3,250)",
-            displayPrice: "₩39,000",
-            price: 39000
+            description: "매년 자동 갱신 (월 ₩2,075)",
+            displayPrice: "₩24,900",
+            price: 24900
           ),
           SubscriptionProduct(
-            id: "promiso_pro_lifetime",
+            id: "com.promiso.pro.lifetime",
             type: .lifetime,
             displayName: "평생 프로",
             description: "한 번 결제, 영구 사용",
-            displayPrice: "₩99,000",
-            price: 99000
+            displayPrice: "₩59,000",
+            price: 59000
           )
         ],
-        selectedProductId: "promiso_pro_yearly"
+        selectedProductId: "com.promiso.pro.yearly"
       )
     ) {
       ProPlan.Feature()
@@ -337,16 +339,16 @@ extension ProPlan {
       initialState: ProPlan.Feature.State(
         products: [
           SubscriptionProduct(
-            id: "promiso_pro_yearly",
+            id: "com.promiso.pro.yearly",
             type: .yearly,
             displayName: "연간 프로",
-            description: "매년 자동 갱신",
-            displayPrice: "₩39,000",
-            price: 39000
+            description: "매년 자동 갱신 (월 ₩2,075)",
+            displayPrice: "₩24,900",
+            price: 24900
           )
         ],
         isPurchasing: true,
-        selectedProductId: "promiso_pro_yearly"
+        selectedProductId: "com.promiso.pro.yearly"
       )
     ) {
       ProPlan.Feature()

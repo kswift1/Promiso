@@ -53,7 +53,7 @@ struct ProPlanFeatureTests {
     await store.receive(\.internal.productsResponse.success) {
       $0.isLoadingProducts = false
       $0.products = Self.mockProducts
-      $0.selectedProductId = "promiso_pro_yearly"
+      $0.selectedProductId = "com.promiso.pro.yearly"
     }
 
     await store.receive(\.internal.statusUpdated) {
@@ -93,8 +93,8 @@ struct ProPlanFeatureTests {
     let store = makeStore()
     store.exhaustivity = .off(showSkippedAssertions: false)
 
-    await store.send(.view(.productSelected("promiso_pro_monthly"))) {
-      $0.selectedProductId = "promiso_pro_monthly"
+    await store.send(.view(.productSelected("com.promiso.pro.monthly"))) {
+      $0.selectedProductId = "com.promiso.pro.monthly"
     }
   }
 
@@ -103,13 +103,9 @@ struct ProPlanFeatureTests {
   @Test("구매 성공 시 구독 상태 업데이트 및 delegate 전달")
   func purchaseTapped_success_updatesStatusAndSendsDelegate() async {
     var state = ProPlan.Feature.State()
-    state.selectedProductId = "promiso_pro_yearly"
+    state.selectedProductId = "com.promiso.pro.yearly"
 
-    let store = makeStore(state: state) {
-      $0.authClient.currentUser = {
-        FirebaseUserSnapshot(uid: "test-uid", email: "test@test.com", displayName: "Test", photoURL: nil)
-      }
-    }
+    let store = makeStore(state: state)
     store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.purchaseTapped)) {
@@ -131,10 +127,10 @@ struct ProPlanFeatureTests {
     }
 
     var state = ProPlan.Feature.State()
-    state.selectedProductId = "promiso_pro_yearly"
+    state.selectedProductId = "com.promiso.pro.yearly"
 
     let store = makeStore(state: state) {
-      $0.subscriptionClient.purchase = { _ in throw TestError.failed }
+      $0.subscriptionClient.purchaseWithReceipt = { _ in throw TestError.failed }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
@@ -165,9 +161,6 @@ struct ProPlanFeatureTests {
   func restoreTapped_success_updatesStatus() async {
     let store = makeStore {
       $0.subscriptionClient.restore = { .lifetime }
-      $0.authClient.currentUser = {
-        FirebaseUserSnapshot(uid: "test-uid", email: "test@test.com", displayName: "Test", photoURL: nil)
-      }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
@@ -269,7 +262,7 @@ struct ProPlanFeatureTests {
     await store.send(.internal(.productsResponse(.success(Self.mockProducts)))) {
       $0.isLoadingProducts = false
       $0.products = Self.mockProducts
-      $0.selectedProductId = "promiso_pro_yearly"
+      $0.selectedProductId = "com.promiso.pro.yearly"
     }
   }
 
@@ -290,28 +283,28 @@ struct ProPlanFeatureTests {
 private extension ProPlanFeatureTests {
   static let mockProducts: [SubscriptionProduct] = [
     SubscriptionProduct(
-      id: "promiso_pro_monthly",
+      id: "com.promiso.pro.monthly",
       type: .monthly,
       displayName: "월간 프로",
       description: "매월 자동 갱신",
-      displayPrice: "₩4,900",
-      price: 4900
+      displayPrice: "₩2,900",
+      price: 2900
     ),
     SubscriptionProduct(
-      id: "promiso_pro_yearly",
+      id: "com.promiso.pro.yearly",
       type: .yearly,
       displayName: "연간 프로",
-      description: "매년 자동 갱신",
-      displayPrice: "₩39,000",
-      price: 39000
+      description: "매년 자동 갱신 (월 ₩2,075)",
+      displayPrice: "₩24,900",
+      price: 24900
     ),
     SubscriptionProduct(
-      id: "promiso_pro_lifetime",
+      id: "com.promiso.pro.lifetime",
       type: .lifetime,
       displayName: "평생 프로",
       description: "한 번 결제, 영구 사용",
-      displayPrice: "₩99,000",
-      price: 99000
+      displayPrice: "₩59,000",
+      price: 59000
     )
   ]
 
@@ -325,11 +318,13 @@ private extension ProPlanFeatureTests {
       let expirationDate = Date().addingTimeInterval(365 * 24 * 3600)
       $0.subscriptionClient.fetchProducts = { Self.mockProducts }
       $0.subscriptionClient.purchase = { _ in .subscribed(expirationDate: expirationDate) }
+      $0.subscriptionClient.purchaseWithReceipt = { _ in
+        PurchaseResult(jwsString: "mock-jws-token", localStatus: .subscribed(expirationDate: expirationDate))
+      }
+      $0.subscriptionClient.verifyPurchase = { _, _ in .subscribed(expirationDate: expirationDate) }
       $0.subscriptionClient.restore = { .none }
       $0.subscriptionClient.fetchStatus = { .none }
       $0.subscriptionClient.statusStream = { .finished }
-      $0.userSettingsClient.updatePlan = { _, _ in }
-      $0.authClient.currentUser = { nil }
       $0.hapticFeedback = .testValue
       configure(&$0)
     }

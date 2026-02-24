@@ -108,3 +108,11 @@ export {searchPlaces} from "./functions/kakaoMap";
 // ============================================================================
 export {getWeather} from "./functions/weather";
 
+// ============================================================================
+// Subscription Functions (구독 서버 검증)
+// ============================================================================
+export {
+  verifyPurchase,
+  appleServerNotification,
+} from "./functions/subscription";
+

@@ -4,9 +4,9 @@ import Foundation
 
 /// 구독 상품 유형
 public enum SubscriptionProductType: String, Sendable {
-  case monthly = "promiso_pro_monthly"
-  case yearly = "promiso_pro_yearly"
-  case lifetime = "promiso_pro_lifetime"
+  case monthly = "com.promiso.pro.monthly"
+  case yearly = "com.promiso.pro.yearly"
+  case lifetime = "com.promiso.pro.lifetime"
 }
 
 /// 구독 상품 정보
@@ -53,4 +53,15 @@ public enum SubscriptionStatus: Equatable, Sendable {
   }
 
   public var isPro: Bool { isActive }
+}
+
+/// 구매 결과 (JWS 토큰 포함)
+public struct PurchaseResult: Equatable, Sendable {
+  public let jwsString: String
+  public let localStatus: SubscriptionStatus
+
+  public init(jwsString: String, localStatus: SubscriptionStatus) {
+    self.jwsString = jwsString
+    self.localStatus = localStatus
+  }
 }
