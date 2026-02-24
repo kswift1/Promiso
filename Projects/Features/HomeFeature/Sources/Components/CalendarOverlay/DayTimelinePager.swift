@@ -46,21 +46,17 @@ struct DayTimelinePager: UIViewControllerRepresentable {
       )
       vc.recenterToCurrentPage(animated: false)
 
-      // 센터 페이지(page 1) 오프셋 설정
+      // 센터(page 1): 도착 페이지의 오프셋을 동기적으로 즉시 복원
+      vc.applyCenterOffset(coordinator.arrivedPageOffset)
+
+      // 인접 페이지(page 0, 2): 캐시 오프셋으로 async 프리셋
       let calendar = Calendar.promiseDisplay
       let selectedDay = calendar.startOfDay(for: coordinator.pager.selectedDate)
-      let centerOffset = coordinator.savedOffsets[selectedDay]
-      vc.applyVerticalOffset(at: 1, savedOffset: centerOffset)
-
-      // 인접 페이지 오프셋 프리셋 (스와이프 시작 시 즉시 올바른 위치)
-      if let prevDay = calendar.date(byAdding: .day, value: -1, to: selectedDay) {
-        let prevOffset = coordinator.savedOffsets[prevDay]
-        vc.applyVerticalOffset(at: 0, savedOffset: prevOffset)
-      }
-      if let nextDay = calendar.date(byAdding: .day, value: 1, to: selectedDay) {
-        let nextOffset = coordinator.savedOffsets[nextDay]
-        vc.applyVerticalOffset(at: 2, savedOffset: nextOffset)
-      }
+      let prevDay = calendar.date(byAdding: .day, value: -1, to: selectedDay)
+      let nextDay = calendar.date(byAdding: .day, value: 1, to: selectedDay)
+      let prevOffset = prevDay.flatMap { coordinator.savedOffsets[$0] }
+      let nextOffset = nextDay.flatMap { coordinator.savedOffsets[$0] }
+      vc.presetAdjacentOffsets(prevOffset: prevOffset, nextOffset: nextOffset)
     } else {
       // 일반 업데이트 (선택 날짜 변경 등)
       vc.updatePages(
@@ -79,6 +75,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
     weak var pagerVC: PagerViewController?
     var needsRecenter = false
     var savedOffsets: [Date: CGFloat] = [:]
+    var arrivedPageOffset: CGFloat = 0
 
     init(pager: DayTimelinePager) {
       self.pager = pager
@@ -89,22 +86,34 @@ struct DayTimelinePager: UIViewControllerRepresentable {
       guard pageWidth > 0 else { return }
       let currentPage = Int(round(scrollView.contentOffset.x / pageWidth))
 
-      if currentPage == 0 || currentPage == 2 {
-        // center page(page 1)의 수직 오프셋을 현재 날짜로 저장
+      if currentPage == 0 {
         let calendar = Calendar.promiseDisplay
         let dateKey = calendar.startOfDay(for: pager.selectedDate)
+        // 떠나는 페이지(page 1)의 오프셋 캐시
         if let innerSV = pagerVC?.findInnerScrollView(at: 1) {
           savedOffsets[dateKey] = innerSV.contentOffset.y
         }
-
-        needsRecenter = true
-        if currentPage == 0 {
-          pager.onPreviousDay()
-        } else {
-          pager.onNextDay()
+        // 도착한 페이지(page 0)의 현재 오프셋 보존
+        if let innerSV = pagerVC?.findInnerScrollView(at: 0) {
+          arrivedPageOffset = innerSV.contentOffset.y
         }
+        needsRecenter = true
+        pager.onPreviousDay()
+      } else if currentPage == 2 {
+        let calendar = Calendar.promiseDisplay
+        let dateKey = calendar.startOfDay(for: pager.selectedDate)
+        // 떠나는 페이지(page 1)의 오프셋 캐시
+        if let innerSV = pagerVC?.findInnerScrollView(at: 1) {
+          savedOffsets[dateKey] = innerSV.contentOffset.y
+        }
+        // 도착한 페이지(page 2)의 현재 오프셋 보존
+        if let innerSV = pagerVC?.findInnerScrollView(at: 2) {
+          arrivedPageOffset = innerSV.contentOffset.y
+        }
+        needsRecenter = true
+        pager.onNextDay()
       }
-      // currentPage == 1 → 원래 위치, 아무것도 안 함
+      // currentPage == 1 → 아무것도 안 함
     }
   }
 
@@ -230,22 +239,49 @@ struct DayTimelinePager: UIViewControllerRepresentable {
       return nil
     }
 
-    /// 날짜별 캐시된 오프셋이 있으면 복원, 없으면 현재 시간 위치로 스크롤
-    fileprivate func applyVerticalOffset(at pageIndex: Int, savedOffset: CGFloat?) {
+    /// 센터 페이지 오프셋을 동기적으로 복원 (화면에 보이므로 즉시 적용)
+    func applyCenterOffset(_ offset: CGFloat) {
+      // SwiftUI rootView 변경 후 레이아웃을 강제 실행
+      for vc in pageHostingControllers {
+        vc.view.setNeedsLayout()
+      }
+      view.layoutIfNeeded()
+
+      // 동기적으로 센터 페이지 inner scroll의 offset 설정
+      if let innerScrollView = findInnerScrollView(at: 1) {
+        innerScrollView.contentOffset.y = offset
+      }
+    }
+
+    /// 인접 페이지(오프스크린) 오프셋 프리셋 — async OK
+    func presetAdjacentOffsets(prevOffset: CGFloat?, nextOffset: CGFloat?) {
       DispatchQueue.main.async { [weak self] in
-        guard let self,
-              let innerScrollView = self.findInnerScrollView(at: pageIndex) else { return }
-        if let offset = savedOffset {
-          innerScrollView.contentOffset.y = offset
-        } else {
-          // 현재 시간 기준 스크롤 (1시간 전 위치)
-          let hourHeight: CGFloat = 52
-          let hour = max(0, Calendar.promiseDisplay.component(.hour, from: Date()) - 1)
-          let targetY = CGFloat(hour) * hourHeight
-          let maxY = max(0, innerScrollView.contentSize.height - innerScrollView.bounds.height)
-          innerScrollView.contentOffset.y = min(targetY, maxY)
+        guard let self else { return }
+        // page 0 (이전일)
+        if let innerSV = self.findInnerScrollView(at: 0) {
+          if let offset = prevOffset {
+            innerSV.contentOffset.y = offset
+          } else {
+            self.scrollToCurrentTime(scrollView: innerSV)
+          }
+        }
+        // page 2 (다음일)
+        if let innerSV = self.findInnerScrollView(at: 2) {
+          if let offset = nextOffset {
+            innerSV.contentOffset.y = offset
+          } else {
+            self.scrollToCurrentTime(scrollView: innerSV)
+          }
         }
       }
+    }
+
+    private func scrollToCurrentTime(scrollView: UIScrollView) {
+      let hourHeight: CGFloat = 52
+      let hour = max(0, Calendar.promiseDisplay.component(.hour, from: Date()) - 1)
+      let targetY = CGFloat(hour) * hourHeight
+      let maxY = max(0, scrollView.contentSize.height - scrollView.bounds.height)
+      scrollView.contentOffset.y = min(targetY, maxY)
     }
 
     override func viewDidLayoutSubviews() {
