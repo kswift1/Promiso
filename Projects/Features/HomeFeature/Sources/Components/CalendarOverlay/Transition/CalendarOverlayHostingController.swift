@@ -15,7 +15,7 @@ final class CalendarOverlayViewModel {
   var nextMonthDays: [OverlayCalendarModels.DayItem]
   var weatherState: OverlayWeatherState
   var weatherLocationText: String?
-  var detailMode: Bool
+  var calendarMode: CalendarMode
   var scheduleItems: [HomeModels.ScheduleItem]
   var weekDays: [OverlayCalendarModels.DayItem]
   let onClose: () -> Void
@@ -34,7 +34,7 @@ final class CalendarOverlayViewModel {
     nextMonthDays: [OverlayCalendarModels.DayItem],
     weatherState: OverlayWeatherState,
     weatherLocationText: String?,
-    detailMode: Bool,
+    calendarMode: CalendarMode,
     scheduleItems: [HomeModels.ScheduleItem],
     weekDays: [OverlayCalendarModels.DayItem],
     onClose: @escaping () -> Void,
@@ -52,7 +52,7 @@ final class CalendarOverlayViewModel {
     self.nextMonthDays = nextMonthDays
     self.weatherState = weatherState
     self.weatherLocationText = weatherLocationText
-    self.detailMode = detailMode
+    self.calendarMode = calendarMode
     self.scheduleItems = scheduleItems
     self.weekDays = weekDays
     self.onClose = onClose
@@ -179,7 +179,7 @@ extension CalendarOverlayHostingController: UIGestureRecognizerDelegate {
 
 private struct CalendarOverlayContentView: View {
   var viewModel: CalendarOverlayViewModel
-  @State private var isCollapsed = false
+  @State private var animatedMode: CalendarMode = .monthly
 
   var body: some View {
     GeometryReader { proxy in
@@ -196,7 +196,7 @@ private struct CalendarOverlayContentView: View {
         nextMonthDays: viewModel.nextMonthDays,
         weatherState: viewModel.weatherState,
         weatherLocationText: viewModel.weatherLocationText,
-        detailMode: isCollapsed,
+        calendarMode: animatedMode,
         scheduleItems: viewModel.scheduleItems,
         weekDays: viewModel.weekDays,
         onClose: viewModel.onClose,
@@ -214,9 +214,9 @@ private struct CalendarOverlayContentView: View {
       Color(.systemBackground)
         .frame(height: SafeArea.topInset + 16)
     }
-    .onChange(of: viewModel.detailMode) { _, newValue in
+    .onChange(of: viewModel.calendarMode) { _, newValue in
       withAnimation(.spring(duration: 0.45, bounce: 0.05)) {
-        isCollapsed = newValue
+        animatedMode = newValue
       }
     }
   }

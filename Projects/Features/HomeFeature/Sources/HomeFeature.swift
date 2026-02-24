@@ -84,8 +84,8 @@ extension Home {
       var overlayWeatherState: OverlayWeatherState = .needsPermission
       /// 오버레이 날씨 기준 위치 텍스트
       var overlayWeatherLocationText: String? = nil
-      /// 오버레이 일간 상세 모드
-      var overlayDetailMode: Bool = false
+      /// 오버레이 캘린더 표시 모드
+      var overlayCalendarMode: CalendarMode = .monthly
 
       // MARK: Notification
       /// 안 읽은 알림 개수
@@ -332,13 +332,13 @@ extension Home {
             state.showCalendarOverlay = false
             state.overlayWeatherState = .needsPermission
             state.overlayWeatherLocationText = nil
-            state.overlayDetailMode = false
+            state.overlayCalendarMode = .monthly
             return .cancel(id: CancelID.overlayWeatherFetch)
 
           case .overlayDateSelected(let date):
             state.overlaySelectedDate = date
-            if !state.overlayDetailMode {
-              state.overlayDetailMode = true
+            if state.overlayCalendarMode == .monthly {
+              state.overlayCalendarMode = .weekly
             }
             return .none
 
@@ -360,13 +360,13 @@ extension Home {
             return .send(.internal(.fetchOverlayWeather))
 
           case .overlayBackToMonth:
-            state.overlayDetailMode = false
+            state.overlayCalendarMode = .monthly
             return .none
 
           case .overlayScheduleItemTapped(let item):
             // 일간 상세에서 일정 아이템 탭 → 오버레이 닫고 상세로 이동
             state.showCalendarOverlay = false
-            state.overlayDetailMode = false
+            state.overlayCalendarMode = .monthly
             state.overlayWeatherState = .needsPermission
             state.overlayWeatherLocationText = nil
             switch item {
