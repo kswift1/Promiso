@@ -92,7 +92,7 @@ struct DetailWeekPager: UIViewControllerRepresentable {
     private let contentView = UIView()
     private var pageHostingControllers: [UIHostingController<WeekRowView>] = []
 
-    private let rowHeight: CGFloat = 44
+    private let rowHeight: CGFloat = 48
 
     override func viewDidLoad() {
       super.viewDidLoad()

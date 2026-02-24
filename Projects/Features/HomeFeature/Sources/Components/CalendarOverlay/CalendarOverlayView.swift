@@ -208,7 +208,7 @@ struct CalendarOverlayView: View {
         }
       }
     )
-    .frame(height: rowHeight)
+    .frame(height: rowHeight + 4)
   }
 
   /// 요일 헤더 행
