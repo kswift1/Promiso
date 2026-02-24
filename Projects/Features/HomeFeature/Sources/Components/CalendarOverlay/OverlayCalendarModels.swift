@@ -15,6 +15,16 @@ enum OverlayWeatherState: Equatable, Sendable {
   case failed
 }
 
+// MARK: - Calendar Mode
+
+/// 캘린더 오버레이 표시 모드
+enum CalendarMode: Equatable, Sendable {
+  /// 월간 달력 (6행 그리드 + 날씨 카드)
+  case monthly
+  /// 주간 달력 (선택된 주 1행 + 일정 리스트)
+  case weekly
+}
+
 // MARK: - Overlay Calendar Models
 
 enum OverlayCalendarModels {

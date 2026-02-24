@@ -15,7 +15,7 @@ final class CalendarOverlayViewModel {
   var nextMonthDays: [OverlayCalendarModels.DayItem]
   var weatherState: OverlayWeatherState
   var weatherLocationText: String?
-  var detailMode: Bool
+  var calendarMode: CalendarMode
   var scheduleItems: [HomeModels.ScheduleItem]
   var prevDayScheduleItems: [HomeModels.ScheduleItem]
   var nextDayScheduleItems: [HomeModels.ScheduleItem]
@@ -36,7 +36,7 @@ final class CalendarOverlayViewModel {
     nextMonthDays: [OverlayCalendarModels.DayItem],
     weatherState: OverlayWeatherState,
     weatherLocationText: String?,
-    detailMode: Bool,
+    calendarMode: CalendarMode,
     scheduleItems: [HomeModels.ScheduleItem],
     prevDayScheduleItems: [HomeModels.ScheduleItem],
     nextDayScheduleItems: [HomeModels.ScheduleItem],
@@ -56,7 +56,7 @@ final class CalendarOverlayViewModel {
     self.nextMonthDays = nextMonthDays
     self.weatherState = weatherState
     self.weatherLocationText = weatherLocationText
-    self.detailMode = detailMode
+    self.calendarMode = calendarMode
     self.scheduleItems = scheduleItems
     self.prevDayScheduleItems = prevDayScheduleItems
     self.nextDayScheduleItems = nextDayScheduleItems
@@ -185,7 +185,7 @@ extension CalendarOverlayHostingController: UIGestureRecognizerDelegate {
 
 private struct CalendarOverlayContentView: View {
   var viewModel: CalendarOverlayViewModel
-  @State private var isCollapsed = false
+  @State private var animatedMode: CalendarMode = .monthly
 
   var body: some View {
     GeometryReader { proxy in
@@ -202,7 +202,7 @@ private struct CalendarOverlayContentView: View {
         nextMonthDays: viewModel.nextMonthDays,
         weatherState: viewModel.weatherState,
         weatherLocationText: viewModel.weatherLocationText,
-        detailMode: isCollapsed,
+        calendarMode: animatedMode,
         scheduleItems: viewModel.scheduleItems,
         prevDayScheduleItems: viewModel.prevDayScheduleItems,
         nextDayScheduleItems: viewModel.nextDayScheduleItems,
@@ -222,9 +222,9 @@ private struct CalendarOverlayContentView: View {
       Color(.systemBackground)
         .frame(height: SafeArea.topInset + 16)
     }
-    .onChange(of: viewModel.detailMode) { _, newValue in
+    .onChange(of: viewModel.calendarMode) { _, newValue in
       withAnimation(.spring(duration: 0.45, bounce: 0.05)) {
-        isCollapsed = newValue
+        animatedMode = newValue
       }
     }
   }

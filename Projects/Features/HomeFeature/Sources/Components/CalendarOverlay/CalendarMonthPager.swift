@@ -12,7 +12,7 @@ struct CalendarMonthPager: UIViewControllerRepresentable {
   let onDateSelected: (Date) -> Void
   let onPreviousMonth: () -> Void
   let onNextMonth: () -> Void
-  let detailMode: Bool
+  let calendarMode: CalendarMode
   let selectedRowIndex: Int
 
   func makeCoordinator() -> Coordinator {
@@ -56,11 +56,11 @@ struct CalendarMonthPager: UIViewControllerRepresentable {
       )
     }
 
-    // detailMode 변경 감지
-    let animated = coordinator.previousDetailMode != nil
-    if coordinator.previousDetailMode != detailMode {
-      coordinator.previousDetailMode = detailMode
-      vc.applyDetailMode(detailMode, selectedRowIndex: selectedRowIndex, animated: animated)
+    // calendarMode 변경 감지
+    let animated = coordinator.previousCalendarMode != nil
+    if coordinator.previousCalendarMode != calendarMode {
+      coordinator.previousCalendarMode = calendarMode
+      vc.applyCalendarMode(calendarMode, selectedRowIndex: selectedRowIndex, animated: animated)
     }
   }
 
@@ -70,14 +70,14 @@ struct CalendarMonthPager: UIViewControllerRepresentable {
     var pager: CalendarMonthPager
     weak var pagerVC: PagerViewController?
     var needsRecenter = false
-    var previousDetailMode: Bool?
+    var previousCalendarMode: CalendarMode?
 
     init(pager: CalendarMonthPager) {
       self.pager = pager
     }
 
     func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
-      if pager.detailMode { return }
+      if pager.calendarMode == .weekly { return }
       let pageWidth = scrollView.bounds.width
       guard pageWidth > 0 else { return }
       let currentPage = Int(round(scrollView.contentOffset.x / pageWidth))
@@ -199,13 +199,13 @@ struct CalendarMonthPager: UIViewControllerRepresentable {
       scrollView.setContentOffset(CGPoint(x: pageWidth, y: 0), animated: animated)
     }
 
-    // MARK: - Detail Mode
+    // MARK: - Calendar Mode
 
-    func applyDetailMode(_ detailMode: Bool, selectedRowIndex: Int, animated: Bool) {
+    func applyCalendarMode(_ calendarMode: CalendarMode, selectedRowIndex: Int, animated: Bool) {
       guard pageHostingControllers.count == 3 else { return }
       let centerPage = pageHostingControllers[1]
 
-      if detailMode {
+      if calendarMode == .weekly {
         scrollView.isScrollEnabled = false
         let offsetY = -CGFloat(selectedRowIndex) * rowUnit
         let targetTransform = CGAffineTransform(translationX: 0, y: offsetY)

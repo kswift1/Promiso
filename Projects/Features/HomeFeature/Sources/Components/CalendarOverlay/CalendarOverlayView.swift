@@ -15,7 +15,7 @@ struct CalendarOverlayView: View {
   let nextMonthDays: [OverlayCalendarModels.DayItem]
   let weatherState: OverlayWeatherState
   let weatherLocationText: String?
-  let detailMode: Bool
+  let calendarMode: CalendarMode
   let scheduleItems: [HomeModels.ScheduleItem]
   let prevDayScheduleItems: [HomeModels.ScheduleItem]
   let nextDayScheduleItems: [HomeModels.ScheduleItem]
@@ -28,7 +28,7 @@ struct CalendarOverlayView: View {
   let onBackToMonth: () -> Void
   let onScheduleItemTapped: (HomeModels.ScheduleItem) -> Void
 
-  // MARK: - State
+  private var isWeekly: Bool { calendarMode == .weekly }
 
   // MARK: - Grid Layout Constants
 
@@ -36,7 +36,7 @@ struct CalendarOverlayView: View {
   private let rowHeight: CGFloat = 44
   private let gridSpacing: CGFloat = 6
 
-  /// detail mode에서 보이는 날짜 행 영역 (선택된 주 1행)
+  /// weekly 모드에서 보이는 날짜 행 영역 (선택된 주 1행)
   private var compactGridHeight: CGFloat { rowHeight }
 
   /// 전체 6행 그리드 높이
@@ -113,15 +113,15 @@ struct CalendarOverlayView: View {
           .padding(.horizontal, 20)
           .padding(.bottom, 16)
 
-        // 일정 리스트 (항상 존재, detail mode에서 확장)
+        // 일정 리스트 (항상 존재, weekly 모드에서 확장)
         dayScheduleList
-          .frame(maxHeight: detailMode ? .infinity : 0)
-          .opacity(detailMode ? 1 : 0)
+          .frame(maxHeight: isWeekly ? .infinity : 0)
+          .opacity(isWeekly ? 1 : 0)
           .clipped()
 
-        // Spacer (항상 존재, detail mode에서 확장 → 그리드를 아래로 밀어냄)
+        // Spacer (항상 존재, weekly 모드에서 확장 → 그리드를 아래로 밀어냄)
         Spacer(minLength: 0)
-          .frame(maxHeight: 0)
+          .frame(maxHeight: isWeekly ? .infinity : 0)
 
         // 요일 헤더 — 흰색 영역 하단
         weekdayHeaderRow
@@ -152,22 +152,17 @@ struct CalendarOverlayView: View {
       .clipShape(UnevenRoundedRectangle(topLeadingRadius: 20, topTrailingRadius: 20))
 
       // MARK: 하단 섹션 (날짜 그리드 + 날씨) — 회색, 꽉 채움
-      if detailMode {
-        detailWeekPagerView
-          .padding(.horizontal, 20)
-          .padding(.bottom, 8)
-      } else {
-        dateRowsGrid
-          .padding(.horizontal, 20)
-      }
+      dateRowsGrid
+        .padding(.horizontal, 20)
+        .padding(.bottom, isWeekly ? 8 : 0)
 
       Spacer(minLength: 0)
 
       bottomCard
         .padding(.horizontal, 20)
-        .offset(y: detailMode ? 160 : 0)
-        .frame(height: detailMode ? 0 : nil)
-        .opacity(detailMode ? 0 : 1)
+        .offset(y: isWeekly ? 160 : 0)
+        .frame(height: isWeekly ? 0 : nil)
+        .opacity(isWeekly ? 0 : 1)
         .padding(.bottom, 16)
     }
   }
@@ -182,10 +177,10 @@ struct CalendarOverlayView: View {
       onDateSelected: onDateSelected,
       onPreviousMonth: onPreviousMonth,
       onNextMonth: onNextMonth,
-      detailMode: detailMode,
+      calendarMode: calendarMode,
       selectedRowIndex: selectedRowIndex
     )
-    .frame(height: detailMode ? compactGridHeight : fullGridHeight)
+    .frame(height: isWeekly ? compactGridHeight : fullGridHeight)
     .clipped()
   }
 
@@ -229,7 +224,7 @@ struct CalendarOverlayView: View {
 
   @ViewBuilder
   private var headerSection: some View {
-    if detailMode {
+    if isWeekly {
       dayDetailHeader
     } else {
       calendarHeader
@@ -579,7 +574,7 @@ private extension String {
       condition: .clear, precipitationProbability: 10, humidity: 50, windSpeed: 3.0
     )),
     weatherLocationText: "서울 중구",
-    detailMode: false,
+    calendarMode: .monthly,
     scheduleItems: [],
     prevDayScheduleItems: [],
     nextDayScheduleItems: [],
@@ -590,7 +585,7 @@ private extension String {
   .auroraBackground()
 }
 
-#Preview("일간 상세") {
+#Preview("주간 상세") {
   CalendarOverlayView(
     availableHeight: 600,
     currentMonth: Date(),
@@ -602,7 +597,7 @@ private extension String {
     nextMonthDays: [],
     weatherState: .needsPermission,
     weatherLocationText: nil,
-    detailMode: true,
+    calendarMode: .weekly,
     scheduleItems: [],
     prevDayScheduleItems: [],
     nextDayScheduleItems: [],
