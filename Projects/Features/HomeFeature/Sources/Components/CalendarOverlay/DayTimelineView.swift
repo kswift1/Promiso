@@ -53,12 +53,10 @@ struct DayTimelineView: View {
         .padding(.horizontal, 20)
       }
       .onAppear {
-        // 첫 일정 위치로 자동 스크롤 (일정 1시간 전 위치)
-        if let first = scheduleItems.first {
-          let hour = max(0, Calendar.promiseDisplay.component(.hour, from: first.startAt) - 1)
-          withAnimation(.easeOut(duration: 0.3)) {
-            proxy.scrollTo(hour, anchor: .top)
-          }
+        // 현재 시간 기준으로 자동 스크롤 (1시간 전 위치)
+        let hour = max(0, Calendar.promiseDisplay.component(.hour, from: Date()) - 1)
+        withAnimation(.easeOut(duration: 0.3)) {
+          proxy.scrollTo(hour, anchor: .top)
         }
       }
     }

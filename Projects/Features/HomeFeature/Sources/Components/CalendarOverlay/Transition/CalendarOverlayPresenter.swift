@@ -15,6 +15,8 @@ struct CalendarOverlayPresenter: UIViewControllerRepresentable {
   let weatherLocationText: String?
   let detailMode: Bool
   let scheduleItems: [HomeModels.ScheduleItem]
+  let prevDayScheduleItems: [HomeModels.ScheduleItem]
+  let nextDayScheduleItems: [HomeModels.ScheduleItem]
   let weekDays: [OverlayCalendarModels.DayItem]
   let onClose: () -> Void
   let onDateSelected: (Date) -> Void
@@ -47,6 +49,8 @@ struct CalendarOverlayPresenter: UIViewControllerRepresentable {
         viewModel.weatherLocationText = weatherLocationText
         viewModel.detailMode = detailMode
         viewModel.scheduleItems = scheduleItems
+        viewModel.prevDayScheduleItems = prevDayScheduleItems
+        viewModel.nextDayScheduleItems = nextDayScheduleItems
         viewModel.weekDays = weekDays
       }
 
@@ -76,6 +80,8 @@ struct CalendarOverlayPresenter: UIViewControllerRepresentable {
           weatherLocationText: weatherLocationText,
           detailMode: detailMode,
           scheduleItems: scheduleItems,
+          prevDayScheduleItems: prevDayScheduleItems,
+          nextDayScheduleItems: nextDayScheduleItems,
           weekDays: weekDays,
           onClose: onClose,
           onDateSelected: onDateSelected,

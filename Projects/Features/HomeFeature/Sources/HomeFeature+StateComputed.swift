@@ -228,6 +228,35 @@ extension Home.Feature.State {
     return (promiseItems + eventItems).sorted { $0.startAt < $1.startAt }
   }
 
+  /// 선택된 날짜의 전일 일정 아이템
+  var overlayPrevDayScheduleItems: [HomeModels.ScheduleItem] {
+    let calendar = Calendar.promiseDisplay
+    guard let prevDay = calendar.date(byAdding: .day, value: -1, to: calendar.startOfDay(for: overlaySelectedDate)),
+          let nextDay = calendar.date(byAdding: .day, value: 1, to: prevDay) else { return [] }
+    let promiseItems = allPromises
+      .filter { $0.startAt >= prevDay && $0.startAt < nextDay }
+      .map { HomeModels.ScheduleItem.promise($0) }
+    let eventItems = (personalEventsState.value ?? [])
+      .filter { $0.startAt >= prevDay && $0.startAt < nextDay }
+      .map { HomeModels.ScheduleItem.personalEvent($0) }
+    return (promiseItems + eventItems).sorted { $0.startAt < $1.startAt }
+  }
+
+  /// 선택된 날짜의 다음일 일정 아이템
+  var overlayNextDayScheduleItems: [HomeModels.ScheduleItem] {
+    let calendar = Calendar.promiseDisplay
+    let selectedDay = calendar.startOfDay(for: overlaySelectedDate)
+    guard let nextDayStart = calendar.date(byAdding: .day, value: 1, to: selectedDay),
+          let nextDayEnd = calendar.date(byAdding: .day, value: 1, to: nextDayStart) else { return [] }
+    let promiseItems = allPromises
+      .filter { $0.startAt >= nextDayStart && $0.startAt < nextDayEnd }
+      .map { HomeModels.ScheduleItem.promise($0) }
+    let eventItems = (personalEventsState.value ?? [])
+      .filter { $0.startAt >= nextDayStart && $0.startAt < nextDayEnd }
+      .map { HomeModels.ScheduleItem.personalEvent($0) }
+    return (promiseItems + eventItems).sorted { $0.startAt < $1.startAt }
+  }
+
   /// 선택된 날짜가 속한 주의 7일 (주간 스트립용)
   var overlaySelectedWeekDays: [OverlayCalendarModels.DayItem] {
     OverlayCalendarModels.extractWeekDays(

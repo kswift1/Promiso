@@ -67,6 +67,8 @@ extension Home {
               weatherLocationText: store.overlayWeatherLocationText,
               detailMode: store.overlayDetailMode,
               scheduleItems: store.overlaySelectedDateScheduleItems,
+              prevDayScheduleItems: store.overlayPrevDayScheduleItems,
+              nextDayScheduleItems: store.overlayNextDayScheduleItems,
               weekDays: store.overlaySelectedWeekDays,
               onClose: {
                 store.send(.view(.calendarOverlayClosed))

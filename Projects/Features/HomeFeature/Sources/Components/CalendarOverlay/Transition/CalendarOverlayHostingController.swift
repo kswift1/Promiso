@@ -17,6 +17,8 @@ final class CalendarOverlayViewModel {
   var weatherLocationText: String?
   var detailMode: Bool
   var scheduleItems: [HomeModels.ScheduleItem]
+  var prevDayScheduleItems: [HomeModels.ScheduleItem]
+  var nextDayScheduleItems: [HomeModels.ScheduleItem]
   var weekDays: [OverlayCalendarModels.DayItem]
   let onClose: () -> Void
   let onDateSelected: (Date) -> Void
@@ -36,6 +38,8 @@ final class CalendarOverlayViewModel {
     weatherLocationText: String?,
     detailMode: Bool,
     scheduleItems: [HomeModels.ScheduleItem],
+    prevDayScheduleItems: [HomeModels.ScheduleItem],
+    nextDayScheduleItems: [HomeModels.ScheduleItem],
     weekDays: [OverlayCalendarModels.DayItem],
     onClose: @escaping () -> Void,
     onDateSelected: @escaping (Date) -> Void,
@@ -54,6 +58,8 @@ final class CalendarOverlayViewModel {
     self.weatherLocationText = weatherLocationText
     self.detailMode = detailMode
     self.scheduleItems = scheduleItems
+    self.prevDayScheduleItems = prevDayScheduleItems
+    self.nextDayScheduleItems = nextDayScheduleItems
     self.weekDays = weekDays
     self.onClose = onClose
     self.onDateSelected = onDateSelected
@@ -198,6 +204,8 @@ private struct CalendarOverlayContentView: View {
         weatherLocationText: viewModel.weatherLocationText,
         detailMode: isCollapsed,
         scheduleItems: viewModel.scheduleItems,
+        prevDayScheduleItems: viewModel.prevDayScheduleItems,
+        nextDayScheduleItems: viewModel.nextDayScheduleItems,
         weekDays: viewModel.weekDays,
         onClose: viewModel.onClose,
         onDateSelected: viewModel.onDateSelected,

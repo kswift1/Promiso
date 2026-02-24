@@ -17,6 +17,8 @@ struct CalendarOverlayView: View {
   let weatherLocationText: String?
   let detailMode: Bool
   let scheduleItems: [HomeModels.ScheduleItem]
+  let prevDayScheduleItems: [HomeModels.ScheduleItem]
+  let nextDayScheduleItems: [HomeModels.ScheduleItem]
   let weekDays: [OverlayCalendarModels.DayItem]
   let onClose: () -> Void
   let onDateSelected: (Date) -> Void
@@ -299,25 +301,22 @@ struct CalendarOverlayView: View {
   // MARK: - Day Schedule List
 
   private var dayScheduleList: some View {
-    DayTimelineView(
-      scheduleItems: scheduleItems,
-      onScheduleItemTapped: onScheduleItemTapped
-    )
-    .simultaneousGesture(
-      DragGesture(minimumDistance: 50)
-        .onEnded { value in
-          let horizontal = value.translation.width
-          let vertical = value.translation.height
-          guard abs(horizontal) > abs(vertical) else { return }
-          let calendar = Calendar.promiseDisplay
-          if horizontal < 0,
-             let next = calendar.date(byAdding: .day, value: 1, to: selectedDate) {
-            onDateSelected(next)
-          } else if horizontal > 0,
-                    let prev = calendar.date(byAdding: .day, value: -1, to: selectedDate) {
-            onDateSelected(prev)
-          }
+    DayTimelinePager(
+      selectedDate: selectedDate,
+      prevDayScheduleItems: prevDayScheduleItems,
+      currentDayScheduleItems: scheduleItems,
+      nextDayScheduleItems: nextDayScheduleItems,
+      onScheduleItemTapped: onScheduleItemTapped,
+      onPreviousDay: {
+        if let prev = Calendar.promiseDisplay.date(byAdding: .day, value: -1, to: selectedDate) {
+          onDateSelected(prev)
         }
+      },
+      onNextDay: {
+        if let next = Calendar.promiseDisplay.date(byAdding: .day, value: 1, to: selectedDate) {
+          onDateSelected(next)
+        }
+      }
     )
   }
 
@@ -582,6 +581,8 @@ private extension String {
     weatherLocationText: "서울 중구",
     detailMode: false,
     scheduleItems: [],
+    prevDayScheduleItems: [],
+    nextDayScheduleItems: [],
     weekDays: [],
     onClose: {}, onDateSelected: { _ in }, onPreviousMonth: {}, onNextMonth: {},
     onWeatherCardTapped: {}, onBackToMonth: {}, onScheduleItemTapped: { _ in }
@@ -603,6 +604,8 @@ private extension String {
     weatherLocationText: nil,
     detailMode: true,
     scheduleItems: [],
+    prevDayScheduleItems: [],
+    nextDayScheduleItems: [],
     weekDays: [],
     onClose: {}, onDateSelected: { _ in }, onPreviousMonth: {}, onNextMonth: {},
     onWeatherCardTapped: {}, onBackToMonth: {}, onScheduleItemTapped: { _ in }
