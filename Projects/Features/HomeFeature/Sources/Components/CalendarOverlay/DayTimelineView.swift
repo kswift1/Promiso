@@ -30,31 +30,22 @@ struct DayTimelineView: View {
   // MARK: - Timeline Content
 
   private var timelineContent: some View {
-    ScrollViewReader { proxy in
-      ScrollView(.vertical, showsIndicators: false) {
-        ZStack(alignment: .topLeading) {
-          // Layer 1: 시간 눈금 + 구분선
-          timeGrid
+    ScrollView(.vertical, showsIndicators: false) {
+      ZStack(alignment: .topLeading) {
+        // Layer 1: 시간 눈금 + 구분선
+        timeGrid
 
-          // Layer 2: 일정 블록들
-          ForEach(scheduleItems) { item in
-            scheduleBlock(item)
-              .frame(maxWidth: .infinity, alignment: .leading)
-              .padding(.leading, timeLabelWidth + 16)
-              .padding(.trailing, 4)
-              .offset(y: yOffset(for: item.startAt))
-          }
-        }
-        .frame(width: nil, height: totalHeight)
-        .padding(.horizontal, 20)
-      }
-      .onAppear {
-        // 현재 시간 기준으로 자동 스크롤 (1시간 전 위치)
-        let hour = max(0, Calendar.promiseDisplay.component(.hour, from: Date()) - 1)
-        withAnimation(.easeOut(duration: 0.3)) {
-          proxy.scrollTo(hour, anchor: .top)
+        // Layer 2: 일정 블록들
+        ForEach(scheduleItems) { item in
+          scheduleBlock(item)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.leading, timeLabelWidth + 16)
+            .padding(.trailing, 4)
+            .offset(y: yOffset(for: item.startAt))
         }
       }
+      .frame(width: nil, height: totalHeight)
+      .padding(.horizontal, 20)
     }
   }
 
@@ -79,7 +70,6 @@ struct DayTimelineView: View {
           }
         }
         .frame(height: hourHeight)
-        .id(hour) // ScrollViewReader 앵커용
       }
     }
     .frame(height: totalHeight)
@@ -137,21 +127,6 @@ struct DayTimelineView: View {
       .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
-  }
-
-  // MARK: - Empty State
-
-  private var emptyStateView: some View {
-    VStack(spacing: 12) {
-      Image(systemName: "calendar.badge.clock")
-        .font(.system(size: 36))
-        .foregroundStyle(.tertiary)
-      Text(LocalizedStrings.Calendar.noSchedules)
-        .font(.system(size: 14))
-        .foregroundStyle(.secondary)
-    }
-    .frame(maxWidth: .infinity)
-    .padding(.vertical, 40)
   }
 
   // MARK: - Helpers
