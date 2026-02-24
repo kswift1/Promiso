@@ -24,11 +24,7 @@ struct DayTimelineView: View {
   // MARK: - Body
 
   var body: some View {
-    if scheduleItems.isEmpty {
-      emptyStateView
-    } else {
-      timelineContent
-    }
+    timelineContent
   }
 
   // MARK: - Timeline Content
