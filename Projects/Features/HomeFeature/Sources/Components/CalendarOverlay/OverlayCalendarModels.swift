@@ -100,6 +100,49 @@ enum OverlayCalendarModels {
     return Array(monthDays[rowStart..<rowEnd])
   }
 
+  /// selectedDate 기준으로 해당 주의 7일 DayItem 배열 생성 (월요일 시작)
+  /// - Parameters:
+  ///   - date: 기준 날짜 (이 날짜가 포함된 주를 생성)
+  ///   - selectedDate: 현재 선택된 날짜 (isSelected 표시용)
+  ///   - currentMonth: 현재 표시 중인 월 (isCurrentMonth 판단용)
+  ///   - scheduleCountsByDate: 날짜별 일정 개수
+  static func generateWeekDays(
+    for date: Date,
+    selectedDate: Date,
+    currentMonth: Date,
+    scheduleCountsByDate: [Date: Int]
+  ) -> [DayItem] {
+    let calendar = Calendar.promiseDisplay
+    let today = Date()
+
+    // 해당 주의 월요일 찾기
+    // weekday: 일=1, 월=2, ..., 토=7
+    let weekday = calendar.component(.weekday, from: date)
+    let daysFromMonday = (weekday - 2 + 7) % 7
+    guard let monday = calendar.date(byAdding: .day, value: -daysFromMonday, to: date) else {
+      return []
+    }
+
+    return (0..<7).compactMap { offset in
+      guard let dayDate = calendar.date(byAdding: .day, value: offset, to: monday) else {
+        return nil
+      }
+      let dayNumber = calendar.component(.day, from: dayDate)
+      let isCurrentMonth = calendar.isDate(dayDate, equalTo: currentMonth, toGranularity: .month)
+      let dateKey = calendar.startOfDay(for: dayDate)
+      let count = scheduleCountsByDate[dateKey] ?? 0
+
+      return DayItem(
+        date: dayDate,
+        dayNumber: dayNumber,
+        isCurrentMonth: isCurrentMonth,
+        isSelected: calendar.isDate(dayDate, inSameDayAs: selectedDate),
+        isToday: calendar.isDate(dayDate, inSameDayAs: today),
+        scheduleCount: count
+      )
+    }
+  }
+
   /// 현재 월의 날짜 배열을 생성
   static func generateMonthDays(
     for date: Date,

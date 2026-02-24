@@ -337,6 +337,11 @@ extension Home {
 
           case .overlayDateSelected(let date):
             state.overlaySelectedDate = date
+            // 선택된 날짜가 현재 표시 월과 다르면 월 전환
+            let calendar = Calendar.promiseDisplay
+            if !calendar.isDate(date, equalTo: state.overlayCalendarMonth, toGranularity: .month) {
+              state.overlayCalendarMonth = date
+            }
             if !state.overlayDetailMode {
               state.overlayDetailMode = true
             }

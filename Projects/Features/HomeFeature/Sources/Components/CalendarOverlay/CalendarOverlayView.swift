@@ -65,6 +65,44 @@ struct CalendarOverlayView: View {
     } ?? 0
   }
 
+  // MARK: - Detail Week Data
+
+  /// 이전 주 데이터 (selectedDate - 7일 기준)
+  private var detailPrevWeekDays: [OverlayCalendarModels.DayItem] {
+    guard let prevDate = Calendar.promiseDisplay.date(byAdding: .day, value: -7, to: selectedDate) else {
+      return []
+    }
+    return OverlayCalendarModels.generateWeekDays(
+      for: prevDate,
+      selectedDate: selectedDate,
+      currentMonth: currentMonth,
+      scheduleCountsByDate: [:]
+    )
+  }
+
+  /// 현재 주 데이터 (selectedDate 기준)
+  private var detailCurrentWeekDays: [OverlayCalendarModels.DayItem] {
+    OverlayCalendarModels.generateWeekDays(
+      for: selectedDate,
+      selectedDate: selectedDate,
+      currentMonth: currentMonth,
+      scheduleCountsByDate: [:]
+    )
+  }
+
+  /// 다음 주 데이터 (selectedDate + 7일 기준)
+  private var detailNextWeekDays: [OverlayCalendarModels.DayItem] {
+    guard let nextDate = Calendar.promiseDisplay.date(byAdding: .day, value: 7, to: selectedDate) else {
+      return []
+    }
+    return OverlayCalendarModels.generateWeekDays(
+      for: nextDate,
+      selectedDate: selectedDate,
+      currentMonth: currentMonth,
+      scheduleCountsByDate: [:]
+    )
+  }
+
   var body: some View {
     VStack(spacing: 0) {
       // MARK: 상단 섹션 (헤더 + 일정 + 요일) — 흰색 카드, rounded bottom
@@ -112,9 +150,14 @@ struct CalendarOverlayView: View {
       .clipShape(UnevenRoundedRectangle(topLeadingRadius: 20, topTrailingRadius: 20))
 
       // MARK: 하단 섹션 (날짜 그리드 + 날씨) — 회색, 꽉 채움
-      dateRowsGrid
-        .padding(.horizontal, 20)
-        .padding(.bottom, detailMode ? 8 : 0)
+      if detailMode {
+        detailWeekPagerView
+          .padding(.horizontal, 20)
+          .padding(.bottom, 8)
+      } else {
+        dateRowsGrid
+          .padding(.horizontal, 20)
+      }
 
       Spacer(minLength: 0)
 
@@ -142,6 +185,28 @@ struct CalendarOverlayView: View {
     )
     .frame(height: detailMode ? compactGridHeight : fullGridHeight)
     .clipped()
+  }
+
+  // MARK: - Detail Week Pager
+
+  private var detailWeekPagerView: some View {
+    DetailWeekPager(
+      prevWeekDays: detailPrevWeekDays,
+      currentWeekDays: detailCurrentWeekDays,
+      nextWeekDays: detailNextWeekDays,
+      onDateSelected: onDateSelected,
+      onPreviousWeek: {
+        if let prev = Calendar.promiseDisplay.date(byAdding: .day, value: -7, to: selectedDate) {
+          onDateSelected(prev)
+        }
+      },
+      onNextWeek: {
+        if let next = Calendar.promiseDisplay.date(byAdding: .day, value: 7, to: selectedDate) {
+          onDateSelected(next)
+        }
+      }
+    )
+    .frame(height: rowHeight)
   }
 
   /// 요일 헤더 행
@@ -237,6 +302,22 @@ struct CalendarOverlayView: View {
     DayTimelineView(
       scheduleItems: scheduleItems,
       onScheduleItemTapped: onScheduleItemTapped
+    )
+    .simultaneousGesture(
+      DragGesture(minimumDistance: 50)
+        .onEnded { value in
+          let horizontal = value.translation.width
+          let vertical = value.translation.height
+          guard abs(horizontal) > abs(vertical) else { return }
+          let calendar = Calendar.promiseDisplay
+          if horizontal < 0,
+             let next = calendar.date(byAdding: .day, value: 1, to: selectedDate) {
+            onDateSelected(next)
+          } else if horizontal > 0,
+                    let prev = calendar.date(byAdding: .day, value: -1, to: selectedDate) {
+            onDateSelected(prev)
+          }
+        }
     )
   }
 
