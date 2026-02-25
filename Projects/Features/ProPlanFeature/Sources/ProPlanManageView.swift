@@ -196,7 +196,8 @@ extension ProPlan {
           isPresented: Binding(
             get: { store.showManageView },
             set: { if !$0 { store.send(.view(.dismissManageView)) } }
-          )
+          ),
+          subscriptionGroupID: "21947112"
         )
 
         // 안내 텍스트

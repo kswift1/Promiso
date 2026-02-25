@@ -327,12 +327,6 @@ extension ProPlan {
       .onAppear {
         store.send(.view(.onAppear))
       }
-      .sheet(isPresented: Binding(
-        get: { store.showManageView },
-        set: { if !$0 { store.send(.view(.dismissManageView)) } }
-      )) {
-        ProPlanManageView(store: store)
-      }
       .alert(
         "오류",
         isPresented: Binding(
