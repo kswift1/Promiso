@@ -121,7 +121,7 @@ struct CalendarOverlayView: View {
 
         // Spacer (항상 존재, weekly 모드에서 확장 → 그리드를 아래로 밀어냄)
         Spacer(minLength: 0)
-          .frame(maxHeight: isWeekly ? .infinity : 0)
+          .frame(maxHeight: 0)
 
         // 요일 헤더 — 흰색 영역 하단
         weekdayHeaderRow
@@ -152,9 +152,14 @@ struct CalendarOverlayView: View {
       .clipShape(UnevenRoundedRectangle(topLeadingRadius: 20, topTrailingRadius: 20))
 
       // MARK: 하단 섹션 (날짜 그리드 + 날씨) — 회색, 꽉 채움
-      dateRowsGrid
-        .padding(.horizontal, 20)
-        .padding(.bottom, isWeekly ? 8 : 0)
+      if isWeekly {
+        detailWeekPagerView
+          .padding(.horizontal, 20)
+          .padding(.bottom, 8)
+      } else {
+        dateRowsGrid
+          .padding(.horizontal, 20)
+      }
 
       Spacer(minLength: 0)
 

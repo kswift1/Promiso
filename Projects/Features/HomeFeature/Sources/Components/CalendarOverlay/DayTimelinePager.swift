@@ -34,6 +34,8 @@ struct DayTimelinePager: UIViewControllerRepresentable {
   func updateUIViewController(_ vc: PagerViewController, context: Context) {
     let coordinator = context.coordinator
     coordinator.pager = self
+    let calendar = Calendar.promiseDisplay
+    let selectedDay = calendar.startOfDay(for: selectedDate)
 
     if coordinator.needsRecenter {
       coordinator.needsRecenter = false
@@ -53,8 +55,6 @@ struct DayTimelinePager: UIViewControllerRepresentable {
       vc.applyOffset(at: 1, offset: coordinator.arrivedPageOffset)
 
       // 인접 페이지: 캐시 오프셋 또는 현재 시간
-      let calendar = Calendar.promiseDisplay
-      let selectedDay = calendar.startOfDay(for: coordinator.pager.selectedDate)
       let prevDay = calendar.date(byAdding: .day, value: -1, to: selectedDay)
       let nextDay = calendar.date(byAdding: .day, value: 1, to: selectedDay)
       let fallbackOffset = vc.currentTimeOffset()
@@ -62,18 +62,51 @@ struct DayTimelinePager: UIViewControllerRepresentable {
       let nextOffset = nextDay.flatMap { coordinator.savedOffsets[$0] } ?? fallbackOffset
       vc.applyOffset(at: 0, offset: prevOffset)
       vc.applyOffset(at: 2, offset: nextOffset)
+      coordinator.lastSelectedDay = selectedDay
     } else {
-      // 일반 업데이트 — 오프셋 보존
-      let savedOffsets = vc.saveAllOffsets()
-      vc.updatePages(
-        prevDayScheduleItems: prevDayScheduleItems,
-        currentDayScheduleItems: currentDayScheduleItems,
-        nextDayScheduleItems: nextDayScheduleItems,
-        onScheduleItemTapped: onScheduleItemTapped
-      )
-      if !savedOffsets.isEmpty {
-        vc.restoreOffsets(savedOffsets)
+      let previousDay = coordinator.lastSelectedDay
+      let isDateChanged = previousDay != selectedDay
+
+      if isDateChanged {
+        // 날짜 탭 전환: 떠나는 날짜(center page)의 현재 오프셋을 날짜 키로 저장
+        if let centerSV = vc.findInnerScrollView(at: 1) {
+          coordinator.savedOffsets[previousDay] = centerSV.contentOffset.y
+        }
+
+        vc.updatePages(
+          prevDayScheduleItems: prevDayScheduleItems,
+          currentDayScheduleItems: currentDayScheduleItems,
+          nextDayScheduleItems: nextDayScheduleItems,
+          onScheduleItemTapped: onScheduleItemTapped
+        )
+        vc.recenterToCurrentPage(animated: false)
+        vc.forceLayout()
+
+        // 날짜 탭 전환: 새 center/인접 페이지를 날짜 캐시 기준으로 복원
+        let prevDay = calendar.date(byAdding: .day, value: -1, to: selectedDay)
+        let nextDay = calendar.date(byAdding: .day, value: 1, to: selectedDay)
+        let fallbackOffset = vc.currentTimeOffset()
+        let centerOffset = coordinator.savedOffsets[selectedDay] ?? fallbackOffset
+        let prevOffset = prevDay.flatMap { coordinator.savedOffsets[$0] } ?? fallbackOffset
+        let nextOffset = nextDay.flatMap { coordinator.savedOffsets[$0] } ?? fallbackOffset
+
+        vc.applyOffset(at: 1, offset: centerOffset)
+        vc.applyOffset(at: 0, offset: prevOffset)
+        vc.applyOffset(at: 2, offset: nextOffset)
+      } else {
+        // 일반 업데이트 — 오프셋 보존
+        let savedOffsets = vc.saveAllOffsets()
+        vc.updatePages(
+          prevDayScheduleItems: prevDayScheduleItems,
+          currentDayScheduleItems: currentDayScheduleItems,
+          nextDayScheduleItems: nextDayScheduleItems,
+          onScheduleItemTapped: onScheduleItemTapped
+        )
+        if !savedOffsets.isEmpty {
+          vc.restoreOffsets(savedOffsets)
+        }
       }
+      coordinator.lastSelectedDay = selectedDay
     }
   }
 
@@ -85,9 +118,11 @@ struct DayTimelinePager: UIViewControllerRepresentable {
     var needsRecenter = false
     var savedOffsets: [Date: CGFloat] = [:]
     var arrivedPageOffset: CGFloat = 0
+    var lastSelectedDay: Date
 
     init(pager: DayTimelinePager) {
       self.pager = pager
+      self.lastSelectedDay = Calendar.promiseDisplay.startOfDay(for: pager.selectedDate)
     }
 
     func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
