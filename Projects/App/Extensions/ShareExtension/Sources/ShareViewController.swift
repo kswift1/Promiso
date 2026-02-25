@@ -138,7 +138,7 @@ class ShareViewController: UIViewController {
     while let current = responder {
       if current.responds(to: selector) {
         let application = current as AnyObject
-        application.perform(selector, with: url, with: [:])
+        _ = application.perform(selector, with: url, with: [:])
         return
       }
       responder = current.next
@@ -188,7 +188,7 @@ class ShareViewController: UIViewController {
           return
         }
 
-        continuation.resume(returning: compressImage(resolvedImage))
+        continuation.resume(returning: self.compressImage(resolvedImage))
       }
     }
   }
