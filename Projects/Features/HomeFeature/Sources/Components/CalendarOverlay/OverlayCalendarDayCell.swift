@@ -5,6 +5,7 @@ import ResourceKit
 
 struct OverlayCalendarDayCell: View {
   let day: OverlayCalendarModels.DayItem
+  var showSelectedHighlight: Bool = true
 
   private var textColor: Color {
     if day.isSelected { return .white }
@@ -16,11 +17,11 @@ struct OverlayCalendarDayCell: View {
   var body: some View {
     VStack(spacing: 4) {
       ZStack {
-        if day.isSelected {
+        if showSelectedHighlight && day.isSelected {
           Circle()
             .fill(Color.pmindigo.n500)
             .frame(width: 36, height: 36)
-        } else if day.isToday {
+        } else if day.isToday && !day.isSelected {
           Circle()
             .stroke(Color.pmindigo.n500, lineWidth: 1.5)
             .frame(width: 36, height: 36)
@@ -29,6 +30,7 @@ struct OverlayCalendarDayCell: View {
         Text("\(day.dayNumber)")
           .font(.system(size: 14, weight: day.isSelected || day.isToday ? .bold : .regular))
           .foregroundStyle(textColor)
+          .contentTransition(.numericText())
       }
       .frame(width: 36, height: 36)
 

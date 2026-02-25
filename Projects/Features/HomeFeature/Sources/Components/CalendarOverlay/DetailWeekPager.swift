@@ -202,17 +202,40 @@ private struct WeekRowView: View {
   let days: [OverlayCalendarModels.DayItem]
   let onDateSelected: (Date) -> Void
 
+  private var selectedIndex: Int? {
+    days.firstIndex(where: { $0.isSelected })
+  }
+
   var body: some View {
-    HStack(spacing: 0) {
-      ForEach(days) { day in
-        Button {
-          onDateSelected(day.date)
-        } label: {
-          OverlayCalendarDayCell(day: day)
+    ZStack {
+      // Layer 1: 슬라이딩 하이라이트 원
+      GeometryReader { geo in
+        let cellWidth = geo.size.width / max(CGFloat(days.count), 1)
+
+        if let idx = selectedIndex {
+          Circle()
+            .fill(Color.pmindigo.n500)
+            .frame(width: 36, height: 36)
+            .position(
+              x: cellWidth * CGFloat(idx) + cellWidth / 2,
+              y: geo.size.height / 2 - 4
+            )
         }
-        .buttonStyle(.plain)
-        .frame(maxWidth: .infinity)
-        .contentShape(Rectangle())
+      }
+      .animation(.spring(duration: 0.3), value: selectedIndex)
+
+      // Layer 2: 날짜 셀 (하이라이트 원 제외)
+      HStack(spacing: 0) {
+        ForEach(days) { day in
+          Button {
+            onDateSelected(day.date)
+          } label: {
+            OverlayCalendarDayCell(day: day, showSelectedHighlight: false)
+          }
+          .buttonStyle(.plain)
+          .frame(maxWidth: .infinity)
+          .contentShape(Rectangle())
+        }
       }
     }
   }

@@ -247,11 +247,14 @@ struct CalendarOverlayView: View {
         Text(yearString)
           .font(.system(size: 28, weight: .bold))
           .foregroundStyle(.primary)
+          .contentTransition(.numericText())
 
         Text(monthString)
           .font(.system(size: 34, weight: .bold))
           .foregroundStyle(.primary)
+          .contentTransition(.numericText())
       }
+      .animation(.spring(duration: 0.3), value: currentMonth)
 
       Spacer()
 
@@ -283,11 +286,14 @@ struct CalendarOverlayView: View {
         Text(selectedWeekdayString)
           .font(.system(size: 28, weight: .bold))
           .foregroundStyle(.primary)
+          .contentTransition(.numericText())
 
         Text(selectedDateString)
           .font(.system(size: 20, weight: .semibold))
           .foregroundStyle(.secondary)
+          .contentTransition(.numericText())
       }
+      .animation(.spring(duration: 0.3), value: selectedDate)
 
       Spacer()
 
