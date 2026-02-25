@@ -29,6 +29,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
       prevDayScheduleItems: prevDayScheduleItems,
       currentDayScheduleItems: currentDayScheduleItems,
       nextDayScheduleItems: nextDayScheduleItems,
+      selectedDate: selectedDate,
       onScheduleItemTapped: onScheduleItemTapped,
       currentUserId: currentUserId,
       weatherCache: weatherCache,
@@ -55,6 +56,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
         prevDayScheduleItems: prevDayScheduleItems,
         currentDayScheduleItems: currentDayScheduleItems,
         nextDayScheduleItems: nextDayScheduleItems,
+        selectedDate: selectedDate,
         onScheduleItemTapped: onScheduleItemTapped,
         currentUserId: coordinator.pager.currentUserId,
         weatherCache: coordinator.pager.weatherCache,
@@ -95,6 +97,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
         vc.updateSinglePage(
           at: targetPage,
           scheduleItems: currentDayScheduleItems,
+          displayDate: selectedDay,
           onScheduleItemTapped: onScheduleItemTapped,
           currentUserId: currentUserId,
           weatherCache: weatherCache,
@@ -117,6 +120,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
           prevDayScheduleItems: prevDayScheduleItems,
           currentDayScheduleItems: currentDayScheduleItems,
           nextDayScheduleItems: nextDayScheduleItems,
+          selectedDate: selectedDate,
           onScheduleItemTapped: onScheduleItemTapped,
           currentUserId: coordinator.pager.currentUserId,
           weatherCache: coordinator.pager.weatherCache,
@@ -157,6 +161,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
         prevDayScheduleItems: pager.prevDayScheduleItems,
         currentDayScheduleItems: pager.currentDayScheduleItems,
         nextDayScheduleItems: pager.nextDayScheduleItems,
+        selectedDate: pager.selectedDate,
         onScheduleItemTapped: pager.onScheduleItemTapped,
         currentUserId: pager.currentUserId,
         weatherCache: pager.weatherCache,
@@ -266,6 +271,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
       prevDayScheduleItems: [HomeModels.ScheduleItem],
       currentDayScheduleItems: [HomeModels.ScheduleItem],
       nextDayScheduleItems: [HomeModels.ScheduleItem],
+      selectedDate: Date,
       onScheduleItemTapped: @escaping (HomeModels.ScheduleItem) -> Void,
       currentUserId: String,
       weatherCache: [String: WeatherInfo],
@@ -274,11 +280,17 @@ struct DayTimelinePager: UIViewControllerRepresentable {
       scrollView.delegate = coordinator
 
       let pageWidthMultiplier = 1.0 / 3.0
+      let calendar = Calendar.promiseDisplay
+      let currentDay = calendar.startOfDay(for: selectedDate)
+      let prevDay = calendar.date(byAdding: .day, value: -1, to: currentDay) ?? currentDay
+      let nextDay = calendar.date(byAdding: .day, value: 1, to: currentDay) ?? currentDay
+      let displayDates = [prevDay, currentDay, nextDay]
       let itemsArrays = [prevDayScheduleItems, currentDayScheduleItems, nextDayScheduleItems]
 
       for (index, items) in itemsArrays.enumerated() {
         let dayTimelineView = DayTimelineView(
           scheduleItems: items,
+          displayDate: displayDates[index],
           onScheduleItemTapped: onScheduleItemTapped,
           currentUserId: currentUserId,
           weatherCache: weatherCache,
@@ -314,16 +326,23 @@ struct DayTimelinePager: UIViewControllerRepresentable {
       prevDayScheduleItems: [HomeModels.ScheduleItem],
       currentDayScheduleItems: [HomeModels.ScheduleItem],
       nextDayScheduleItems: [HomeModels.ScheduleItem],
+      selectedDate: Date,
       onScheduleItemTapped: @escaping (HomeModels.ScheduleItem) -> Void,
       currentUserId: String,
       weatherCache: [String: WeatherInfo],
       groupColorMap: [String: Color]
     ) {
+      let calendar = Calendar.promiseDisplay
+      let currentDay = calendar.startOfDay(for: selectedDate)
+      let prevDay = calendar.date(byAdding: .day, value: -1, to: currentDay) ?? currentDay
+      let nextDay = calendar.date(byAdding: .day, value: 1, to: currentDay) ?? currentDay
+      let displayDates = [prevDay, currentDay, nextDay]
       let itemsArrays = [prevDayScheduleItems, currentDayScheduleItems, nextDayScheduleItems]
       for (index, vc) in pageHostingControllers.enumerated() {
         guard index < itemsArrays.count else { break }
         vc.rootView = DayTimelineView(
           scheduleItems: itemsArrays[index],
+          displayDate: displayDates[index],
           onScheduleItemTapped: onScheduleItemTapped,
           currentUserId: currentUserId,
           weatherCache: weatherCache,
@@ -342,6 +361,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
     func updateSinglePage(
       at index: Int,
       scheduleItems: [HomeModels.ScheduleItem],
+      displayDate: Date,
       onScheduleItemTapped: @escaping (HomeModels.ScheduleItem) -> Void,
       currentUserId: String,
       weatherCache: [String: WeatherInfo],
@@ -350,6 +370,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
       guard index < pageHostingControllers.count else { return }
       pageHostingControllers[index].rootView = DayTimelineView(
         scheduleItems: scheduleItems,
+        displayDate: displayDate,
         onScheduleItemTapped: onScheduleItemTapped,
         currentUserId: currentUserId,
         weatherCache: weatherCache,

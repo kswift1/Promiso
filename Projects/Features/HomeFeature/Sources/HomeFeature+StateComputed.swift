@@ -40,7 +40,7 @@ extension Home.Feature.State {
     var upcomingScheduleItems: [HomeModels.ScheduleItem] = []
 
     for promise in allPromises {
-      if promise.startAt >= startOfDay, promise.startAt < endOfDay, promise.isConfirmed {
+      if promise.startAt < endOfDay, promise.effectiveEndAt >= startOfDay, promise.isConfirmed {
         todayPromises.append(promise)
         todayScheduleItems.append(.promise(promise))
       }
@@ -58,7 +58,7 @@ extension Home.Feature.State {
     }
 
     for event in allPersonalEvents {
-      if event.startAt >= startOfDay, event.startAt < endOfDay {
+      if event.startAt < endOfDay, event.effectiveEndAt >= startOfDay {
         todayScheduleItems.append(.personalEvent(event))
       } else if event.startAt >= endOfDay {
         upcomingScheduleItems.append(.personalEvent(event))
@@ -150,10 +150,19 @@ extension Home.Feature.State {
     return nil
   }
 
-  /// Timeline 데이터 (날짜별 그룹화)
+  /// Timeline 데이터 (날짜별 그룹화, multi-day 약속 포함)
   var timelineData: [HomeModels.TimelineSection] {
-    let grouped = Dictionary(grouping: filteredPromises) { promise in
-      Calendar.promiseDisplay.startOfDay(for: promise.startAt)
+    var grouped: [Date: [PromiseModel]] = [:]
+    let calendar = Calendar.promiseDisplay
+    for promise in filteredPromises {
+      let startDay = calendar.startOfDay(for: promise.startAt)
+      let endDay = calendar.startOfDay(for: promise.effectiveEndAt)
+      var day = startDay
+      while day <= endDay {
+        grouped[day, default: []].append(promise)
+        guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
+        day = next
+      }
     }
 
     return grouped
@@ -224,10 +233,10 @@ extension Home.Feature.State {
     guard let nextDay = calendar.date(byAdding: .day, value: 1, to: selectedDay) else { return [] }
 
     let promiseItems = allPromises
-      .filter { $0.startAt >= selectedDay && $0.startAt < nextDay }
+      .filter { $0.startAt < nextDay && $0.effectiveEndAt >= selectedDay }
       .map { HomeModels.ScheduleItem.promise($0) }
     let eventItems = (personalEventsState.value ?? [])
-      .filter { $0.startAt >= selectedDay && $0.startAt < nextDay }
+      .filter { $0.startAt < nextDay && $0.effectiveEndAt >= selectedDay }
       .map { HomeModels.ScheduleItem.personalEvent($0) }
     return (promiseItems + eventItems).sorted { $0.startAt < $1.startAt }
   }
@@ -238,10 +247,10 @@ extension Home.Feature.State {
     guard let prevDay = calendar.date(byAdding: .day, value: -1, to: calendar.startOfDay(for: overlaySelectedDate)),
           let nextDay = calendar.date(byAdding: .day, value: 1, to: prevDay) else { return [] }
     let promiseItems = allPromises
-      .filter { $0.startAt >= prevDay && $0.startAt < nextDay }
+      .filter { $0.startAt < nextDay && $0.effectiveEndAt >= prevDay }
       .map { HomeModels.ScheduleItem.promise($0) }
     let eventItems = (personalEventsState.value ?? [])
-      .filter { $0.startAt >= prevDay && $0.startAt < nextDay }
+      .filter { $0.startAt < nextDay && $0.effectiveEndAt >= prevDay }
       .map { HomeModels.ScheduleItem.personalEvent($0) }
     return (promiseItems + eventItems).sorted { $0.startAt < $1.startAt }
   }
@@ -253,10 +262,10 @@ extension Home.Feature.State {
     guard let nextDayStart = calendar.date(byAdding: .day, value: 1, to: selectedDay),
           let nextDayEnd = calendar.date(byAdding: .day, value: 1, to: nextDayStart) else { return [] }
     let promiseItems = allPromises
-      .filter { $0.startAt >= nextDayStart && $0.startAt < nextDayEnd }
+      .filter { $0.startAt < nextDayEnd && $0.effectiveEndAt >= nextDayStart }
       .map { HomeModels.ScheduleItem.promise($0) }
     let eventItems = (personalEventsState.value ?? [])
-      .filter { $0.startAt >= nextDayStart && $0.startAt < nextDayEnd }
+      .filter { $0.startAt < nextDayEnd && $0.effectiveEndAt >= nextDayStart }
       .map { HomeModels.ScheduleItem.personalEvent($0) }
     return (promiseItems + eventItems).sorted { $0.startAt < $1.startAt }
   }
@@ -285,27 +294,41 @@ extension Home.Feature.State {
     var indicators: [Date: [OverlayCalendarModels.ScheduleIndicator]] = [:]
 
     for promise in allPromises {
-      let dateKey = calendar.startOfDay(for: promise.startAt)
       let color = colorMap[promise.groupId] ?? Color.pmindigo.n500
-      indicators[dateKey, default: []].append(
-        .init(id: promise.id, color: color, title: promise.title)
-      )
+      let startDay = calendar.startOfDay(for: promise.startAt)
+      let endDay = calendar.startOfDay(for: promise.effectiveEndAt)
+      var day = startDay
+      while day <= endDay {
+        indicators[day, default: []].append(
+          .init(id: "\(promise.id)_\(day.timeIntervalSince1970)", color: color, title: promise.title)
+        )
+        guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
+        day = next
+      }
     }
 
     for event in (personalEventsState.value ?? []) {
-      let dateKey = calendar.startOfDay(for: event.startAt)
-      indicators[dateKey, default: []].append(
-        .init(id: event.id, color: OverlayCalendarModels.ScheduleIndicator.personalColor, title: event.title)
-      )
+      let startDay = calendar.startOfDay(for: event.startAt)
+      let endDay = calendar.startOfDay(for: event.effectiveEndAt)
+      var day = startDay
+      while day <= endDay {
+        indicators[day, default: []].append(
+          .init(id: "\(event.id)_\(day.timeIntervalSince1970)", color: OverlayCalendarModels.ScheduleIndicator.personalColor, title: event.title)
+        )
+        guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
+        day = next
+      }
     }
 
     // startAt 순 정렬
     for (key, value) in indicators {
       indicators[key] = value.sorted { lhs, rhs in
-        let lhsPromise = allPromises.first { $0.id == lhs.id }
-        let rhsPromise = allPromises.first { $0.id == rhs.id }
-        let lhsDate = lhsPromise?.startAt ?? (personalEventsState.value ?? []).first { $0.id == lhs.id }?.startAt ?? .distantFuture
-        let rhsDate = rhsPromise?.startAt ?? (personalEventsState.value ?? []).first { $0.id == rhs.id }?.startAt ?? .distantFuture
+        let lhsId = lhs.id.components(separatedBy: "_").first ?? lhs.id
+        let rhsId = rhs.id.components(separatedBy: "_").first ?? rhs.id
+        let lhsPromise = allPromises.first { $0.id == lhsId }
+        let rhsPromise = allPromises.first { $0.id == rhsId }
+        let lhsDate = lhsPromise?.startAt ?? (personalEventsState.value ?? []).first { $0.id == lhsId }?.startAt ?? .distantFuture
+        let rhsDate = rhsPromise?.startAt ?? (personalEventsState.value ?? []).first { $0.id == rhsId }?.startAt ?? .distantFuture
         return lhsDate < rhsDate
       }
     }
@@ -318,16 +341,28 @@ extension Home.Feature.State {
     let calendar = Calendar.promiseDisplay
     var counts: [Date: Int] = [:]
 
-    // 약속
+    // 약속 (multi-day 포함)
     for promise in allPromises {
-      let dateKey = calendar.startOfDay(for: promise.startAt)
-      counts[dateKey, default: 0] += 1
+      let startDay = calendar.startOfDay(for: promise.startAt)
+      let endDay = calendar.startOfDay(for: promise.effectiveEndAt)
+      var day = startDay
+      while day <= endDay {
+        counts[day, default: 0] += 1
+        guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
+        day = next
+      }
     }
 
-    // 개인 일정
+    // 개인 일정 (multi-day 포함)
     for event in (personalEventsState.value ?? []) {
-      let dateKey = calendar.startOfDay(for: event.startAt)
-      counts[dateKey, default: 0] += 1
+      let startDay = calendar.startOfDay(for: event.startAt)
+      let endDay = calendar.startOfDay(for: event.effectiveEndAt)
+      var day = startDay
+      while day <= endDay {
+        counts[day, default: 0] += 1
+        guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
+        day = next
+      }
     }
 
     return counts

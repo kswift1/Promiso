@@ -7,6 +7,7 @@ import ResourceKit
 /// 00~24시 전체 시간을 수직 축으로 표시하는 타임라인 뷰
 struct DayTimelineView: View {
   let scheduleItems: [HomeModels.ScheduleItem]
+  let displayDate: Date
   let onScheduleItemTapped: (HomeModels.ScheduleItem) -> Void
   let currentUserId: String
   let weatherCache: [String: WeatherInfo]
@@ -42,7 +43,7 @@ struct DayTimelineView: View {
         // Layer 2: 이벤트 시간 레이블
         ForEach(scheduleItems) { item in
           eventTimeLabel(item)
-            .offset(y: yOffset(for: item.startAt))
+            .offset(y: yOffset(for: clampedStartAt(for: item)))
         }
 
         // Layer 3: 일정 블록들
@@ -51,7 +52,7 @@ struct DayTimelineView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.leading, timeLabelWidth + eventTimeLabelWidth + 8)
             .padding(.trailing, 4)
-            .offset(y: yOffset(for: item.startAt))
+            .offset(y: yOffset(for: clampedStartAt(for: item)))
         }
 
       }
@@ -108,6 +109,16 @@ struct DayTimelineView: View {
   private func scheduleBlock(_ item: HomeModels.ScheduleItem) -> some View {
     let blockHeight = blockHeight(for: item)
     let isCompact = blockHeight < 64
+    let fromPrev = continuesFromPreviousDay(item)
+    let toNext = continuesToNextDay(item)
+    let topRadius: CGFloat = fromPrev ? 0 : 10
+    let bottomRadius: CGFloat = toNext ? 0 : 10
+    let cardShape = UnevenRoundedRectangle(
+      topLeadingRadius: topRadius,
+      bottomLeadingRadius: bottomRadius,
+      bottomTrailingRadius: bottomRadius,
+      topTrailingRadius: topRadius
+    )
 
     return Button {
       onScheduleItemTapped(item)
@@ -172,8 +183,10 @@ struct DayTimelineView: View {
 
         Spacer(minLength: 0)
       }
-      .frame(height: blockHeight)
-      .adaptiveGlassCard(cornerRadius: 10)
+      .frame(height: blockHeight, alignment: .top)
+      .background(.ultraThinMaterial, in: cardShape)
+      .overlay(cardShape.strokeBorder(.white.opacity(0.2), lineWidth: 1))
+      .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 4)
       .overlay(alignment: .topTrailing) {
         weatherBadge(for: item)
           .padding(.top, 4)
@@ -181,15 +194,15 @@ struct DayTimelineView: View {
       }
       .overlay(alignment: .leading) {
         UnevenRoundedRectangle(
-          topLeadingRadius: 10,
-          bottomLeadingRadius: 10,
+          topLeadingRadius: topRadius,
+          bottomLeadingRadius: bottomRadius,
           bottomTrailingRadius: 0,
           topTrailingRadius: 0
         )
         .fill(barColor(for: item))
         .frame(width: colorBarWidth)
       }
-      .clipShape(RoundedRectangle(cornerRadius: 10))
+      .clipShape(cardShape)
       .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
@@ -200,16 +213,22 @@ struct DayTimelineView: View {
   private func eventTimeLabel(_ item: HomeModels.ScheduleItem) -> some View {
     let blockHeight = blockHeight(for: item)
     let color = barColor(for: item)
+    let clampedStart = clampedStartAt(for: item)
+    let clampedEnd = clampedEndAt(for: item)
+    let fromPrev = continuesFromPreviousDay(item)
+    let toNext = continuesToNextDay(item)
 
     return VStack(spacing: 0) {
-      Text(timeString(for: item.startAt))
-        .font(.system(size: 9, weight: .medium, design: .monospaced))
-        .foregroundStyle(color)
+      if !fromPrev {
+        Text(timeString(for: clampedStart))
+          .font(.system(size: 9, weight: .medium, design: .monospaced))
+          .foregroundStyle(color)
+      }
 
       Spacer(minLength: 0)
 
-      if let endAt = item.endAt {
-        Text(timeString(for: endAt))
+      if item.endAt != nil && !toNext {
+        Text(timeString(for: clampedEnd))
           .font(.system(size: 9, weight: .medium, design: .monospaced))
           .foregroundStyle(color.opacity(0.6))
       }
@@ -241,12 +260,40 @@ struct DayTimelineView: View {
     return (CGFloat(hour) + CGFloat(minute) / 60.0) * hourHeight
   }
 
+  /// 해당 날짜의 시작/종료 시각
+  private var dayStart: Date {
+    Calendar.promiseDisplay.startOfDay(for: displayDate)
+  }
+
+  private var dayEnd: Date {
+    Calendar.promiseDisplay.date(byAdding: .day, value: 1, to: dayStart) ?? dayStart
+  }
+
+  /// multi-day 일정의 시작 시간을 해당 날짜로 클램핑
+  private func clampedStartAt(for item: HomeModels.ScheduleItem) -> Date {
+    max(item.startAt, dayStart)
+  }
+
+  /// multi-day 일정의 종료 시간을 해당 날짜로 클램핑
+  private func clampedEndAt(for item: HomeModels.ScheduleItem) -> Date {
+    min(item.effectiveEndAt, dayEnd)
+  }
+
+  /// 이전 날짜에서 이어지는 일정인지
+  private func continuesFromPreviousDay(_ item: HomeModels.ScheduleItem) -> Bool {
+    item.startAt < dayStart
+  }
+
+  /// 다음 날짜로 이어지는 일정인지
+  private func continuesToNextDay(_ item: HomeModels.ScheduleItem) -> Bool {
+    item.effectiveEndAt > dayEnd
+  }
+
   /// 일정 블록 높이 (duration 기반, 최소 blockMinHeight)
   private func blockHeight(for item: HomeModels.ScheduleItem) -> CGFloat {
-    guard let endAt = item.endAt else {
-      return blockMinHeight
-    }
-    let duration = endAt.timeIntervalSince(item.startAt)
+    let start = clampedStartAt(for: item)
+    let end = clampedEndAt(for: item)
+    let duration = end.timeIntervalSince(start)
     let hours = duration / 3600.0
     let calculatedHeight = CGFloat(hours) * hourHeight
     return max(blockMinHeight, calculatedHeight)
@@ -402,6 +449,7 @@ struct DayTimelineView: View {
 
   DayTimelineView(
     scheduleItems: items,
+    displayDate: today,
     onScheduleItemTapped: { _ in },
     currentUserId: "host1",
     weatherCache: [:],
@@ -413,6 +461,7 @@ struct DayTimelineView: View {
 #Preview("일정 없음") {
   DayTimelineView(
     scheduleItems: [],
+    displayDate: Date(),
     onScheduleItemTapped: { _ in },
     currentUserId: "preview",
     weatherCache: [:],
