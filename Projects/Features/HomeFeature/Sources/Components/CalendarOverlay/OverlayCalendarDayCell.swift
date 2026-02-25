@@ -7,6 +7,8 @@ struct OverlayCalendarDayCell: View {
   let day: OverlayCalendarModels.DayItem
   var showSelectedHighlight: Bool = true
 
+  private let maxVisibleIndicators = 2
+
   private var textColor: Color {
     if day.isSelected { return .white }
     if !day.isCurrentMonth { return Color.pmgray.n300 }
@@ -15,7 +17,7 @@ struct OverlayCalendarDayCell: View {
   }
 
   var body: some View {
-    VStack(spacing: 4) {
+    VStack(spacing: 2) {
       ZStack {
         if showSelectedHighlight && day.isSelected {
           Circle()
@@ -34,19 +36,36 @@ struct OverlayCalendarDayCell: View {
       }
       .frame(width: 36, height: 36)
 
-      // 일정 인디케이터 (최대 3개 점)
-      if day.isCurrentMonth && day.scheduleCount > 0 {
-        HStack(spacing: 3) {
-          ForEach(0..<min(day.scheduleCount, 3), id: \.self) { _ in
-            Circle()
-              .fill(day.isSelected ? .white.opacity(0.8) : Color.pmindigo.n400)
-              .frame(width: 4, height: 4)
+      // 일정 인디케이터 (컬러 바 + 축약 제목)
+      if day.isCurrentMonth && !day.scheduleIndicators.isEmpty {
+        VStack(spacing: 1) {
+          ForEach(day.scheduleIndicators.prefix(maxVisibleIndicators)) { indicator in
+            HStack(alignment: .center, spacing: 2) {
+              RoundedRectangle(cornerRadius: 1)
+                .fill(indicator.color)
+                .frame(width: 2)
+
+              Text(indicator.title)
+                .font(.system(size: 7, weight: .medium))
+                .foregroundStyle(Color.secondary)
+                .lineLimit(1)
+                .truncationMode(.tail)
+            }
+            .frame(height: 10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+          }
+
+          if day.scheduleIndicators.count > maxVisibleIndicators {
+            Text("+\(day.scheduleIndicators.count - maxVisibleIndicators)")
+              .font(.system(size: 7, weight: .medium))
+              .foregroundStyle(Color.secondary)
+              .padding(.leading, 4)
           }
         }
-        .frame(height: 4)
+        .frame(width: 36, alignment: .leading)
       } else {
         Spacer()
-          .frame(height: 4)
+          .frame(height: 12)
       }
     }
   }
@@ -57,10 +76,22 @@ struct OverlayCalendarDayCell: View {
 #Preview {
   HStack(spacing: 8) {
     OverlayCalendarDayCell(
-      day: .init(date: Date(), dayNumber: 6, isSelected: true, scheduleCount: 2)
+      day: .init(
+        date: Date(), dayNumber: 6, isSelected: true, scheduleCount: 3,
+        scheduleIndicators: [
+          .init(id: "1", color: .red, title: "팀 미팅"),
+          .init(id: "2", color: .blue, title: "점심 약속"),
+          .init(id: "3", color: .green, title: "저녁"),
+        ]
+      )
     )
     OverlayCalendarDayCell(
-      day: .init(date: Date(), dayNumber: 7, isToday: true, scheduleCount: 1)
+      day: .init(
+        date: Date(), dayNumber: 7, isToday: true, scheduleCount: 1,
+        scheduleIndicators: [
+          .init(id: "1", color: .orange, title: "회의")
+        ]
+      )
     )
     OverlayCalendarDayCell(
       day: .init(date: Date(), dayNumber: 8, scheduleCount: 0)

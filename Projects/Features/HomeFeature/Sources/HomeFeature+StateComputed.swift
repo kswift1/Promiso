@@ -188,7 +188,8 @@ extension Home.Feature.State {
     OverlayCalendarModels.generateMonthDays(
       for: overlayCalendarMonth,
       selectedDate: overlaySelectedDate,
-      scheduleCountsByDate: overlayScheduleCountsByDate
+      scheduleCountsByDate: overlayScheduleCountsByDate,
+      scheduleIndicatorsByDate: overlayScheduleIndicatorsByDate
     )
   }
 
@@ -199,7 +200,8 @@ extension Home.Feature.State {
     return OverlayCalendarModels.generateMonthDays(
       for: prevMonth,
       selectedDate: overlaySelectedDate,
-      scheduleCountsByDate: overlayScheduleCountsByDate
+      scheduleCountsByDate: overlayScheduleCountsByDate,
+      scheduleIndicatorsByDate: overlayScheduleIndicatorsByDate
     )
   }
 
@@ -210,7 +212,8 @@ extension Home.Feature.State {
     return OverlayCalendarModels.generateMonthDays(
       for: nextMonth,
       selectedDate: overlaySelectedDate,
-      scheduleCountsByDate: overlayScheduleCountsByDate
+      scheduleCountsByDate: overlayScheduleCountsByDate,
+      scheduleIndicatorsByDate: overlayScheduleIndicatorsByDate
     )
   }
 
@@ -273,6 +276,41 @@ extension Home.Feature.State {
         group.groupColor.map { (group.id, $0.color) }
       }
     )
+  }
+
+  /// 날짜별 일정 인디케이터 (그룹 컬러 + 제목)
+  private var overlayScheduleIndicatorsByDate: [Date: [OverlayCalendarModels.ScheduleIndicator]] {
+    let calendar = Calendar.promiseDisplay
+    let colorMap = overlayGroupColorMap
+    var indicators: [Date: [OverlayCalendarModels.ScheduleIndicator]] = [:]
+
+    for promise in allPromises {
+      let dateKey = calendar.startOfDay(for: promise.startAt)
+      let color = colorMap[promise.groupId] ?? Color.pmindigo.n500
+      indicators[dateKey, default: []].append(
+        .init(id: promise.id, color: color, title: promise.title)
+      )
+    }
+
+    for event in (personalEventsState.value ?? []) {
+      let dateKey = calendar.startOfDay(for: event.startAt)
+      indicators[dateKey, default: []].append(
+        .init(id: event.id, color: OverlayCalendarModels.ScheduleIndicator.personalColor, title: event.title)
+      )
+    }
+
+    // startAt 순 정렬
+    for (key, value) in indicators {
+      indicators[key] = value.sorted { lhs, rhs in
+        let lhsPromise = allPromises.first { $0.id == lhs.id }
+        let rhsPromise = allPromises.first { $0.id == rhs.id }
+        let lhsDate = lhsPromise?.startAt ?? (personalEventsState.value ?? []).first { $0.id == lhs.id }?.startAt ?? .distantFuture
+        let rhsDate = rhsPromise?.startAt ?? (personalEventsState.value ?? []).first { $0.id == rhs.id }?.startAt ?? .distantFuture
+        return lhsDate < rhsDate
+      }
+    }
+
+    return indicators
   }
 
   /// 날짜별 일정 개수 (약속 + 개인 일정)

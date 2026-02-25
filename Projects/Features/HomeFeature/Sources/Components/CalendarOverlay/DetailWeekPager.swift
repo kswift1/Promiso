@@ -92,12 +92,12 @@ struct DetailWeekPager: UIViewControllerRepresentable {
     private let contentView = UIView()
     private var pageHostingControllers: [UIHostingController<WeekRowView>] = []
 
-    private let rowHeight: CGFloat = 48
+    private let rowHeight: CGFloat = 52
 
     override func viewDidLoad() {
       super.viewDidLoad()
       view.backgroundColor = .clear
-      view.clipsToBounds = true
+      view.clipsToBounds = false
 
       scrollView.isPagingEnabled = true
       scrollView.showsHorizontalScrollIndicator = false
