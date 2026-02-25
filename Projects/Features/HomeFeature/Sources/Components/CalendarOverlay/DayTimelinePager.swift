@@ -43,6 +43,11 @@ struct DayTimelinePager: UIViewControllerRepresentable {
     let calendar = Calendar.promiseDisplay
     let selectedDay = calendar.startOfDay(for: selectedDate)
 
+    // 날짜 탭 슬라이드 애니메이션 중에는 업데이트 스킵
+    if coordinator.isAnimatingDateTap {
+      return
+    }
+
     if coordinator.needsRecenter {
       coordinator.needsRecenter = false
 
@@ -82,29 +87,29 @@ struct DayTimelinePager: UIViewControllerRepresentable {
           coordinator.savedOffsets[previousDay] = centerSV.contentOffset.y
         }
 
-        vc.updatePages(
-          prevDayScheduleItems: prevDayScheduleItems,
-          currentDayScheduleItems: currentDayScheduleItems,
-          nextDayScheduleItems: nextDayScheduleItems,
+        // 슬라이드 방향 결정
+        let goingForward = selectedDay > previousDay
+        let targetPage = goingForward ? 2 : 0
+
+        // 타겟 페이지에 새 날짜 데이터 로드
+        vc.updateSinglePage(
+          at: targetPage,
+          scheduleItems: currentDayScheduleItems,
           onScheduleItemTapped: onScheduleItemTapped,
-          currentUserId: coordinator.pager.currentUserId,
-          weatherCache: coordinator.pager.weatherCache,
-          groupColorMap: coordinator.pager.groupColorMap
+          currentUserId: currentUserId,
+          weatherCache: weatherCache,
+          groupColorMap: groupColorMap
         )
-        vc.recenterToCurrentPage(animated: false)
         vc.forceLayout()
 
-        // 날짜 탭 전환: 새 center/인접 페이지를 날짜 캐시 기준으로 복원
-        let prevDay = calendar.date(byAdding: .day, value: -1, to: selectedDay)
-        let nextDay = calendar.date(byAdding: .day, value: 1, to: selectedDay)
-        let fallbackOffset = vc.currentTimeOffset()
-        let centerOffset = coordinator.savedOffsets[selectedDay] ?? fallbackOffset
-        let prevOffset = prevDay.flatMap { coordinator.savedOffsets[$0] } ?? fallbackOffset
-        let nextOffset = nextDay.flatMap { coordinator.savedOffsets[$0] } ?? fallbackOffset
+        // 타겟 페이지 오프셋 적용
+        let targetOffset = coordinator.savedOffsets[selectedDay] ?? vc.currentTimeOffset()
+        vc.applyOffset(at: targetPage, offset: targetOffset)
 
-        vc.applyOffset(at: 1, offset: centerOffset)
-        vc.applyOffset(at: 0, offset: prevOffset)
-        vc.applyOffset(at: 2, offset: nextOffset)
+        // 슬라이드 애니메이션
+        coordinator.isAnimatingDateTap = true
+        coordinator.lastSelectedDay = selectedDay
+        vc.scrollToPage(targetPage, animated: true)
       } else {
         // 일반 업데이트 — 오프셋 보존
         let savedOffsets = vc.saveAllOffsets()
@@ -134,10 +139,45 @@ struct DayTimelinePager: UIViewControllerRepresentable {
     var savedOffsets: [Date: CGFloat] = [:]
     var arrivedPageOffset: CGFloat = 0
     var lastSelectedDay: Date
+    var isAnimatingDateTap = false
 
     init(pager: DayTimelinePager) {
       self.pager = pager
       self.lastSelectedDay = Calendar.promiseDisplay.startOfDay(for: pager.selectedDate)
+    }
+
+    func scrollViewDidEndScrollingAnimation(_ scrollView: UIScrollView) {
+      guard isAnimatingDateTap else { return }
+      isAnimatingDateTap = false
+
+      guard let vc = pagerVC else { return }
+
+      // 애니메이션 완료 후 전체 페이지를 올바른 데이터로 교체 + 리센터
+      vc.updatePages(
+        prevDayScheduleItems: pager.prevDayScheduleItems,
+        currentDayScheduleItems: pager.currentDayScheduleItems,
+        nextDayScheduleItems: pager.nextDayScheduleItems,
+        onScheduleItemTapped: pager.onScheduleItemTapped,
+        currentUserId: pager.currentUserId,
+        weatherCache: pager.weatherCache,
+        groupColorMap: pager.groupColorMap
+      )
+      vc.recenterToCurrentPage(animated: false)
+      vc.forceLayout()
+
+      let calendar = Calendar.promiseDisplay
+      let selectedDay = calendar.startOfDay(for: pager.selectedDate)
+      let prevDay = calendar.date(byAdding: .day, value: -1, to: selectedDay)
+      let nextDay = calendar.date(byAdding: .day, value: 1, to: selectedDay)
+      let fallbackOffset = vc.currentTimeOffset()
+
+      let centerOffset = savedOffsets[selectedDay] ?? fallbackOffset
+      let prevOffset = prevDay.flatMap { savedOffsets[$0] } ?? fallbackOffset
+      let nextOffset = nextDay.flatMap { savedOffsets[$0] } ?? fallbackOffset
+
+      vc.applyOffset(at: 1, offset: centerOffset)
+      vc.applyOffset(at: 0, offset: prevOffset)
+      vc.applyOffset(at: 2, offset: nextOffset)
     }
 
     func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
@@ -296,6 +336,32 @@ struct DayTimelinePager: UIViewControllerRepresentable {
       let pageWidth = scrollView.bounds.width
       guard pageWidth > 0 else { return }
       scrollView.setContentOffset(CGPoint(x: pageWidth, y: 0), animated: animated)
+    }
+
+    /// 단일 페이지 데이터 업데이트
+    func updateSinglePage(
+      at index: Int,
+      scheduleItems: [HomeModels.ScheduleItem],
+      onScheduleItemTapped: @escaping (HomeModels.ScheduleItem) -> Void,
+      currentUserId: String,
+      weatherCache: [String: WeatherInfo],
+      groupColorMap: [String: Color]
+    ) {
+      guard index < pageHostingControllers.count else { return }
+      pageHostingControllers[index].rootView = DayTimelineView(
+        scheduleItems: scheduleItems,
+        onScheduleItemTapped: onScheduleItemTapped,
+        currentUserId: currentUserId,
+        weatherCache: weatherCache,
+        groupColorMap: groupColorMap
+      )
+    }
+
+    /// 지정 페이지로 스크롤
+    func scrollToPage(_ page: Int, animated: Bool) {
+      let pageWidth = scrollView.bounds.width
+      guard pageWidth > 0 else { return }
+      scrollView.setContentOffset(CGPoint(x: CGFloat(page) * pageWidth, y: 0), animated: animated)
     }
 
     fileprivate func findInnerScrollView(at pageIndex: Int) -> UIScrollView? {

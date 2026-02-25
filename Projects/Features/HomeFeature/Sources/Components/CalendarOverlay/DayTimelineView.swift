@@ -49,6 +49,8 @@ struct DayTimelineView: View {
 
       }
       .frame(width: nil, height: totalHeight)
+      .padding(.top, 10)
+      .padding(.bottom, 10)
       .padding(.leading, 8)
       .padding(.trailing, 20)
     }
