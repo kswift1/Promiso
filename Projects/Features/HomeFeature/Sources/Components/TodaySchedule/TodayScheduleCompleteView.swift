@@ -50,21 +50,21 @@ struct TodayScheduleCompleteView: View {
 
 extension TodayScheduleCompleteView {
   static let timeMessages: [TimeOfDay: RandomMessage] = [
-    .dawn: RandomMessage(emoji: "🌅", title: "새벽 일정을 마쳤어요", subtitle: ""),
-    .morning: RandomMessage(emoji: "☀️", title: "오전 일정 완료!", subtitle: ""),
-    .lunch: RandomMessage(emoji: "🍽️", title: "점심 일정을 마쳤어요", subtitle: ""),
-    .afternoon: RandomMessage(emoji: "⛅", title: "오후 일정을 마쳤어요", subtitle: ""),
-    .evening: RandomMessage(emoji: "🌆", title: "저녁 일정 완료!", subtitle: ""),
-    .night: RandomMessage(emoji: "🌙", title: "오늘 일정을 모두 마쳤어요", subtitle: ""),
+    .dawn: RandomMessage(emoji: "🌅", title: LocalizedStrings.Home.completeDawnTitle, subtitle: ""),
+    .morning: RandomMessage(emoji: "☀️", title: LocalizedStrings.Home.completeMorningTitle, subtitle: ""),
+    .lunch: RandomMessage(emoji: "🍽️", title: LocalizedStrings.Home.completeLunchTitle, subtitle: ""),
+    .afternoon: RandomMessage(emoji: "⛅", title: LocalizedStrings.Home.completeAfternoonTitle, subtitle: ""),
+    .evening: RandomMessage(emoji: "🌆", title: LocalizedStrings.Home.completeEveningTitle, subtitle: ""),
+    .night: RandomMessage(emoji: "🌙", title: LocalizedStrings.Home.completeNightTitle, subtitle: ""),
   ]
 
   static let randomMessages: [RandomMessage] = [
-    RandomMessage(emoji: "🎉", title: "오늘 일정을 모두 마쳤어요", subtitle: ""),
-    RandomMessage(emoji: "✅", title: "모든 약속을 잘 지켰어요", subtitle: ""),
-    RandomMessage(emoji: "🏆", title: "오늘도 완벽한 하루!", subtitle: ""),
-    RandomMessage(emoji: "💪", title: "일정 완료!", subtitle: ""),
-    RandomMessage(emoji: "🌟", title: "모든 일정을 마쳤어요", subtitle: ""),
-    RandomMessage(emoji: "👏", title: "약속 완료!", subtitle: ""),
+    RandomMessage(emoji: "🎉", title: LocalizedStrings.Home.completeRandom1Title, subtitle: ""),
+    RandomMessage(emoji: "✅", title: LocalizedStrings.Home.completeRandom2Title, subtitle: ""),
+    RandomMessage(emoji: "🏆", title: LocalizedStrings.Home.completeRandom3Title, subtitle: ""),
+    RandomMessage(emoji: "💪", title: LocalizedStrings.Home.completeRandom4Title, subtitle: ""),
+    RandomMessage(emoji: "🌟", title: LocalizedStrings.Home.completeRandom5Title, subtitle: ""),
+    RandomMessage(emoji: "👏", title: LocalizedStrings.Home.completeRandom6Title, subtitle: ""),
   ]
 }
 

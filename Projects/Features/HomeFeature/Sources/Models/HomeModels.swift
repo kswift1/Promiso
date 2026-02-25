@@ -93,7 +93,7 @@ extension HomeModels {
     public var id: String { dayKey }   // "2026-01-26" 형식 (타임존 안전)
 
     private var dayKey: String {
-      KoreanDateFormatters.date.string(from: day)
+      LocalizedDateFormatters.date.string(from: day)
     }
 
     public init(day: Date, promises: [PromiseModel]) {
@@ -125,6 +125,15 @@ extension HomeModels {
     case needResponse = "응답 필요"
     case confirmed = "확정됨"
     case inProgress = "진행 중"
+
+    public var displayTitle: String {
+      switch self {
+      case .all: return LocalizedStrings.Home.filterAll
+      case .needResponse: return LocalizedStrings.Home.filterNeedResponse
+      case .confirmed: return LocalizedStrings.Home.filterConfirmed
+      case .inProgress: return LocalizedStrings.Home.filterInProgress
+      }
+    }
   }
 }
 

@@ -82,7 +82,7 @@ struct CurrentTimeMarkerView: View {
   private var nextScheduleInfo: some View {
     VStack(alignment: .leading, spacing: 2) {
       let remaining = remainingTimeString(until: nextPromiseStartAt)
-      Text("다음 일정까지")
+      Text(LocalizedStrings.Home.nextScheduleUntil)
         .font(.pmCaption)
         .foregroundStyle(.secondary)
 
@@ -97,15 +97,15 @@ struct CurrentTimeMarkerView: View {
   private func remainingTimeString(until date: Date) -> String {
     let interval = date.timeIntervalSince(currentTime)
 
-    guard interval > 0 else { return "곧 시작" }
+    guard interval > 0 else { return LocalizedStrings.Home.startingSoon }
 
     let hours = Int(interval) / 3600
     let minutes = (Int(interval) % 3600) / 60
 
     if hours > 0 {
-      return "\(hours)시간 \(minutes)분"
+      return LocalizedStrings.Home.hoursMinutes(hours, minutes)
     } else {
-      return "\(minutes)분"
+      return LocalizedStrings.Home.minutesOnly(minutes)
     }
   }
 }

@@ -1,3 +1,4 @@
+import PromisoShared
 import ResourceKit
 import SwiftUI
 
@@ -34,17 +35,19 @@ struct EmptyWidgetView: View {
       .multilineTextAlignment(.center)
 
       // 약속 추가 버튼
-      Link(destination: URL(string: "promiso://create")!) {
-        HStack(spacing: 4) {
-          Image(systemName: "plus")
-            .font(.system(size: 10, weight: .semibold))
-          Text(WidgetStrings.Empty.createPromiseButton)
-            .font(.caption.weight(.medium))
+      if let createURL = AppConstants.Deeplink.url(path: "create") {
+        Link(destination: createURL) {
+          HStack(spacing: 4) {
+            Image(systemName: "plus")
+              .font(.system(size: 10, weight: .semibold))
+            Text(LocalizedStrings.Widget.emptyCreatePromiseButton)
+              .font(.caption.weight(.medium))
+          }
+          .foregroundStyle(.white)
+          .padding(.horizontal, 12)
+          .padding(.vertical, 6)
+          .background(Color.pmindigo.n500, in: Capsule())
         }
-        .foregroundStyle(.white)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
-        .background(Color.pmindigo.n500, in: Capsule())
       }
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -57,7 +60,7 @@ struct EmptyWidgetView: View {
     if let hint {
       label += ". \(hint)"
     }
-    label += ". \(WidgetStrings.Empty.createPromiseButton) 버튼"
+    label += ". \(LocalizedStrings.Widget.emptyCreatePromiseButton) \(LocalizedStrings.Widget.button)"
     return label
   }
 }

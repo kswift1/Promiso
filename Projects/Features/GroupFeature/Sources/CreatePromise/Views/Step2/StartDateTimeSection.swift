@@ -1,6 +1,7 @@
 import SwiftUI
 import Clients
 import ComposableArchitecture
+import PromisoShared
 import ResourceKit
 
 // MARK: - Inline DateTimePicker with Separate Touch Areas
@@ -18,7 +19,7 @@ struct InlineDateTimePicker: View {
   }
   
   private var formattedDate: String {
-    KoreanDateFormatters.dateDot.string(from: date)
+    LocalizedDateFormatters.dateDot.string(from: date)
   }
 
   private var formattedTime: String {
@@ -53,7 +54,7 @@ struct InlineDateTimePicker: View {
               .foregroundColor(Color.pmindigo.n500)
 
             VStack(alignment: .leading, spacing: 2) {
-              Text("날짜")
+              Text(LocalizedStrings.Common.date)
                 .font(.system(size: 11))
                 .foregroundColor(.secondary)
               Text(formattedDate)
@@ -72,10 +73,10 @@ struct InlineDateTimePicker: View {
             .onChanged { _ in isDatePressed = true }
             .onEnded { _ in isDatePressed = false }
         )
-        
+
         Divider()
           .frame(height: 32)
-        
+
         // 시간 영역
         Button(action: {
           withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
@@ -100,7 +101,7 @@ struct InlineDateTimePicker: View {
               .foregroundColor(Color.pmindigo.n500)
 
             VStack(alignment: .leading, spacing: 2) {
-              Text("시간")
+              Text(LocalizedStrings.Common.time)
                 .font(.system(size: 11))
                 .foregroundColor(.secondary)
               Text(formattedTime)
@@ -135,7 +136,7 @@ struct InlineDateTimePicker: View {
               displayedComponents: [.date]
             )
             .datePickerStyle(.graphical)
-            .environment(\.locale, Locale(identifier: "ko_KR"))
+            .environment(\.locale, LocaleManager.appLocale)
             // Bugfix for AutoLayout-Issue (https://stackoverflow.com/questions/73475000/datepicker-with-graphical-style-breaks-layout-constraints-on-ios-16-0)
             .frame(width: 320)
             .scaleEffect(1.05)
@@ -147,7 +148,7 @@ struct InlineDateTimePicker: View {
               displayedComponents: [.hourAndMinute]
             )
             .datePickerStyle(.wheel)
-            .environment(\.locale, Locale(identifier: "ko_KR"))
+            .environment(\.locale, LocaleManager.appLocale)
             .labelsHidden()
           }
         }
@@ -175,7 +176,7 @@ struct StartDateTimeSection: View {
   }
 
   var body: some View {
-    SectionPlaceHolder(placeHolderTitle: "시작 시간") {
+    SectionPlaceHolder(placeHolderTitle: LocalizedStrings.CreatePromise.startTime) {
       VStack(spacing: 0) {
         InlineDateTimePicker(
           date: Binding(
@@ -193,7 +194,7 @@ struct StartDateTimeSection: View {
               .font(.system(size: 14))
               .foregroundColor(Color.pmwarning.n600)
 
-            Text("시작 시간이 1시간 이내입니다. 멤버들이 응답할 시간이 부족할 수 있습니다.")
+            Text(LocalizedStrings.CreatePromise.startTimeWarning)
               .font(.system(size: 13))
               .foregroundColor(.secondary)
               .fixedSize(horizontal: false, vertical: true)

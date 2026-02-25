@@ -13,6 +13,7 @@ extension GroupSettings {
     @Dependency(\.notificationClient) var notificationClient
     @Dependency(\.hapticFeedback) var hapticFeedback
     @Dependency(\.analyticsClient) var analyticsClient
+    @Dependency(\.kakaoShareClient) var kakaoShareClient
 
     @ObservableState
     public struct State: Equatable {
@@ -45,6 +46,9 @@ extension GroupSettings {
       // Notifications
       var notificationSettings: GroupNotificationSettings
       var notificationError: String?
+
+      // Group Color
+      var groupColor: GroupColor?
       var systemAuthStatus: NotificationAuthorizationStatus = .notDetermined
 
       // Transfer Host
@@ -59,18 +63,28 @@ extension GroupSettings {
       var isExpellingMember: Bool = false
       var expelError: String?
 
+      // Kakao Share
+      var isKakaoSharing: Bool = false
+      var showSystemShareSheet: Bool = false
+
+      // Upcoming Promises (카카오 공유용)
+      var upcomingPromises: [PromiseModel] = []
+
       public init(
         group: GroupModel,
         summary: UserGroupInfo?,
         currentUserId: String,
         userPlan: UserPlan,
-        preloadedMembers: [UserPublicModel]? = nil
+        preloadedMembers: [UserPublicModel]? = nil,
+        upcomingPromises: [PromiseModel] = []
       ) {
         self.group = group
         self.summary = summary
         self.currentUserId = currentUserId
         self.userPlan = userPlan
         self.notificationSettings = summary?.notifications ?? GroupNotificationSettings()
+        self.upcomingPromises = upcomingPromises
+        self.groupColor = summary?.groupColor
 
         if let preloadedMembers = preloadedMembers {
           self.membersState = .loaded(preloadedMembers)
@@ -110,7 +124,7 @@ extension GroupSettings {
       }
 
       var inviteLink: String {
-        "https://promiso.app/invite/\(group.inviteCode)"
+        "https://\(AppConstants.Deeplink.webHost)/invite/\(group.inviteCode)"
       }
 
       var minMaxMembers: Int {
@@ -192,6 +206,11 @@ extension GroupSettings {
         case dismissExpelAlert
         case dismissExpelError
         case toastDismissed
+        // Kakao Share
+        case kakaoShareTapped
+        case systemShareSheetDismissed
+        // Group Color
+        case groupColorChanged(GroupColor?)
       }
 
       public enum Internal: Sendable {
@@ -211,6 +230,8 @@ extension GroupSettings {
         )
         case transferHostResponse(Result<Void, Error>)
         case expelMemberResponse(Result<Void, Error>)
+        case kakaoShareResult(KakaoShareResult)
+        case groupColorUpdateFailed(previousColor: GroupColor?, message: String)
       }
 
       public enum Delegate: Sendable {
@@ -219,6 +240,7 @@ extension GroupSettings {
         case pastPromisesTapped
         case hostTransferred
         case memberExpelled
+        case groupColorChanged(GroupColor?)
       }
     }
 
@@ -348,7 +370,7 @@ extension GroupSettings {
               } catch {
                 await send(.internal(.groupNotificationsUpdateFailed(
                   previousValue: previousValue,
-                  message: error.localizedDescription
+                  message: (error as? GroupClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError
                 )))
               }
             }
@@ -369,7 +391,7 @@ extension GroupSettings {
                 await send(.internal(.notificationPreferenceUpdateFailed(
                   key: key,
                   previousValue: previousValue,
-                  message: error.localizedDescription
+                  message: (error as? GroupClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError
                 )))
               }
             }
@@ -553,8 +575,73 @@ extension GroupSettings {
             state.expelError = nil
             return .none
 
+          case .groupColorChanged(let color):
+            let previousColor = state.groupColor
+            state.groupColor = color
+            return .run { [groupClient, groupId = state.group.id, hapticFeedback] send in
+              await hapticFeedback.selection()
+              do {
+                try await groupClient.updateGroupColor(groupId, color)
+                await send(.delegate(.groupColorChanged(color)))
+              } catch {
+                await send(.internal(.groupColorUpdateFailed(
+                  previousColor: previousColor,
+                  message: error.localizedDescription
+                )))
+              }
+            }
+
           case .toastDismissed:
             state.toastMessage = nil
+            return .none
+
+          case .kakaoShareTapped:
+            state.isKakaoSharing = true
+            let groupName = state.group.name
+            let inviteCode = state.group.inviteCode
+            let memberCount = state.group.memberIds.count
+            let maxMembers = state.group.maxMembers
+            let groupImageUrl = state.group.imageUrl
+            let inviterName = state.members
+              .first { $0.userId == state.currentUserId }?.displayName ?? ""
+            let promiseInfos = state.upcomingPromises
+              .filter { $0.isUpcoming }
+              .sorted { $0.startAt < $1.startAt }
+              .prefix(3)
+              .map { promise in
+                PromiseShareInfo(
+                  title: promise.title,
+                  emoji: promise.displayEmoji,
+                  dateText: promise.dateText,
+                  timeText: promise.timeText,
+                  locationName: promise.location?.name,
+                  imageUrl: promise.imageUrls.first
+                )
+              }
+            return .run { [kakaoShareClient, hapticFeedback, analyticsClient] send in
+              await hapticFeedback.buttonTap()
+              analyticsClient.logEvent(
+                "kakao_group_invite_shared",
+                [
+                  AnalyticsClient.ParameterKey.groupName: groupName,
+                  "share_method": "kakao",
+                  "promise_count": "\(promiseInfos.count)"
+                ]
+              )
+              let result = await kakaoShareClient.shareGroupInvite(
+                groupName,
+                inviteCode,
+                memberCount,
+                maxMembers,
+                groupImageUrl,
+                inviterName,
+                promiseInfos
+              )
+              await send(.internal(.kakaoShareResult(result)))
+            }
+
+          case .systemShareSheetDismissed:
+            state.showSystemShareSheet = false
             return .none
           }
 
@@ -591,7 +678,7 @@ extension GroupSettings {
 
           case .leaveGroupResponse(.failure(let error)):
             state.isLeavingGroup = false
-            state.leaveError = error.localizedDescription
+            state.leaveError = (error as? AuthClientError)?.localizedMessage ?? (error as? GroupClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError
             return .run { [hapticFeedback] _ in
               await hapticFeedback.error()
             }
@@ -607,7 +694,7 @@ extension GroupSettings {
 
           case .deleteGroupResponse(.failure(let error)):
             state.isDeletingGroup = false
-            state.deleteError = error.localizedDescription
+            state.deleteError = (error as? AuthClientError)?.localizedMessage ?? (error as? GroupClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError
             return .run { [hapticFeedback] _ in
               await hapticFeedback.error()
             }
@@ -625,7 +712,7 @@ extension GroupSettings {
 
           case .editGroupSaveResponse(.failure(let error)):
             state.editGroup?.isSaving = false
-            state.editGroup?.error = error.localizedDescription
+            state.editGroup?.error = (error as? AuthClientError)?.localizedMessage ?? (error as? GroupClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError
             return .run { [hapticFeedback] _ in
               await hapticFeedback.error()
             }
@@ -691,7 +778,7 @@ extension GroupSettings {
 
           case .transferHostResponse(.failure(let error)):
             state.isTransferringHost = false
-            state.transferError = error.localizedDescription
+            state.transferError = (error as? AuthClientError)?.localizedMessage ?? (error as? GroupClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError
             return .run { [hapticFeedback] _ in
               await hapticFeedback.error()
             }
@@ -726,11 +813,41 @@ extension GroupSettings {
           case .expelMemberResponse(.failure(let error)):
             state.isExpellingMember = false
             state.memberToExpel = nil
-            state.expelError = error.localizedDescription
+            let expelErrorMessage = (error as? AuthClientError)?.localizedMessage ?? (error as? GroupClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError
+            state.expelError = expelErrorMessage
             state.toastMessage = ToastMessage(
               type: .error,
               title: "멤버 추방에 실패했어요",
-              subtitle: error.localizedDescription,
+              subtitle: expelErrorMessage,
+              position: .top
+            )
+            return .run { [hapticFeedback] _ in
+              await hapticFeedback.error()
+            }
+
+          case .kakaoShareResult(let result):
+            state.isKakaoSharing = false
+            switch result {
+            case .shared, .webShared:
+              state.toastMessage = ToastMessage(
+                type: .success,
+                title: LocalizedStrings.KakaoShare.inviteLinkShared,
+                position: .top
+              )
+              return .run { [hapticFeedback] _ in
+                await hapticFeedback.success()
+              }
+            case .fallbackToSystem:
+              state.showSystemShareSheet = true
+              return .none
+            }
+
+          case .groupColorUpdateFailed(let previousColor, let message):
+            state.groupColor = previousColor
+            state.toastMessage = ToastMessage(
+              type: .error,
+              title: "색상 변경에 실패했어요",
+              subtitle: message,
               position: .top
             )
             return .run { [hapticFeedback] _ in
@@ -745,7 +862,3 @@ extension GroupSettings {
     }
   }
 }
-
-// MARK: - Sendable
-
-extension GroupSettings.Feature.State: Sendable {}

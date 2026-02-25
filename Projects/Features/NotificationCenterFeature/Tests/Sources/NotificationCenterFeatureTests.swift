@@ -1,4 +1,5 @@
 import Testing
+import PromisoShared
 @testable import NotificationCenterFeature
 
 @Suite("NotificationCenter.Feature reducer 테스트")
@@ -58,6 +59,7 @@ struct NotificationCenterFeatureTests {
       NotificationCenter.Feature()
     } withDependencies: {
       $0.notificationClient.getNotifications = { _, _, _ in notifications }
+      $0.notificationClient.setBadgeCount = { _ in }
     }
 
     await store.send(.view(.onAppear)) {
@@ -66,6 +68,7 @@ struct NotificationCenterFeatureTests {
     }
 
     await store.receive(\.internal.fetchNotifications)
+    await store.receive(\.internal.clearBadge)
 
     await store.receive(\.internal.notificationsResponse) {
       $0.notificationsState = .loaded(notifications)
@@ -445,7 +448,7 @@ struct NotificationCenterFeatureTests {
     // Toast 내용 검증
     #expect(store.state.toastMessage?.type == .error)
     #expect(store.state.toastMessage?.title == "알림 삭제에 실패했어요")
-    #expect(store.state.toastMessage?.subtitle == error.localizedDescription)
+    #expect(store.state.toastMessage?.subtitle == LocalizedStrings.Error.unknownError)
     #expect(store.state.toastMessage?.position == .top)
   }
 
@@ -706,7 +709,7 @@ struct NotificationCenterFeatureTests {
     // Toast 내용 검증
     #expect(store.state.toastMessage?.type == .error)
     #expect(store.state.toastMessage?.title == "읽음 처리에 실패했어요")
-    #expect(store.state.toastMessage?.subtitle == error.localizedDescription)
+    #expect(store.state.toastMessage?.subtitle == LocalizedStrings.Error.unknownError)
     #expect(store.state.toastMessage?.position == .top)
   }
 

@@ -1,6 +1,7 @@
 import SwiftUI
 import Clients
 import ComposableArchitecture
+import PromisoShared
 
 struct DescriptionSection: View {
   let store: StoreOf<CreatePromise.Feature>
@@ -8,12 +9,12 @@ struct DescriptionSection: View {
 
   var body: some View {
     SectionPlaceHolder(
-      placeHolderTitle: "상세 설명",
+      placeHolderTitle: LocalizedStrings.CreatePromise.descriptionSection,
     ) {
       VStack(alignment: .trailing, spacing: 8) {
         ZStack(alignment: .topLeading) {
           if store.promise.description?.isEmpty ?? true {
-            Text("약속에 대한 추가 정보를 입력하세요\n예: 주차 정보, 복장, 준비물 등")
+            Text(LocalizedStrings.CreatePromise.descriptionPlaceholder)
               .font(.system(size: 15))
               .foregroundColor(.secondary)
               .padding(.horizontal, 16)

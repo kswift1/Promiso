@@ -1,4 +1,5 @@
 import SwiftUI
+import Clients
 import PromisoShared
 
 // MARK: - Pending Section
@@ -6,6 +7,7 @@ import PromisoShared
 /// 응답 필요 섹션 - 투표가 필요한 약속들
 struct PendingSection: View {
   let promises: [PromiseModel]
+  let groupMembersCache: [String: [UserPublicModel]]
   let onPromiseTap: (PromiseModel) -> Void
 
   var body: some View {
@@ -19,6 +21,7 @@ struct PendingSection: View {
           ForEach(promises) { promise in
             PendingCard(
               promise: promise,
+              totalMembers: groupMembersCache[promise.groupId]?.count ?? promise.minimumParticipants,
               onTap: { onPromiseTap(promise) }
             )
           }
@@ -34,7 +37,7 @@ struct PendingSection: View {
 
   private var sectionHeader: some View {
     HStack(spacing: 8) {
-      Text("응답 필요")
+      Text(LocalizedStrings.Home.needResponse)
         .font(.headline)
         .foregroundStyle(.primary)
 
@@ -64,6 +67,7 @@ struct PendingSection: View {
       PromiseModel.mock(id: "1", title: "저녁 모임"),
       PromiseModel.mock(id: "2", title: "주말 약속")
     ],
+    groupMembersCache: [:],
     onPromiseTap: { _ in }
   )
   .padding()

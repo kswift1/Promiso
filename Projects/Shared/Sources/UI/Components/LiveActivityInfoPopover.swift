@@ -42,11 +42,11 @@ public struct LiveActivityInfoPopover: View {
 
   private var displayTimeComponents: (ampm: String, time: String) {
     guard let date = promiseTime else {
-      return ("PM", "6:00")
+      return ("오후", "6:00")
     }
     let hour = Calendar.current.component(.hour, from: date)
     let minute = Calendar.current.component(.minute, from: date)
-    let ampm = hour < 12 ? "AM" : "PM"
+    let ampm = hour < 12 ? "오전" : "오후"
     let displayHour = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour)
     let timeString = String(format: "%d:%02d", displayHour, minute)
     return (ampm, timeString)

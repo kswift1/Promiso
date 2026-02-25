@@ -111,6 +111,8 @@ extension NotificationCenter {
         case markAllAsReadCompleted(Result<Void, Error>)
         /// 삭제 완료
         case deleteCompleted(deletedIds: [String], Result<Void, Error>)
+        /// 시스템 배지 클리어
+        case clearBadge
       }
 
       @CasePathable
@@ -136,7 +138,10 @@ extension NotificationCenter {
             guard !state.hasLoadedOnce else { return .none }
             state.hasLoadedOnce = true
             state.notificationsState = .loading
-            return .send(.internal(.fetchNotifications(isRefresh: true)))
+            return .merge(
+              .send(.internal(.fetchNotifications(isRefresh: true))),
+              .send(.internal(.clearBadge))
+            )
 
           case .refreshTriggered:
             return .send(.internal(.fetchNotifications(isRefresh: true)))
@@ -353,10 +358,11 @@ extension NotificationCenter {
                 state.notificationsState = .loaded(notifications)
               }
             case .failure(let error):
+              let message = (error as? NotificationClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError
               state.toastMessage = ToastMessage(
                 type: .error,
                 title: "읽음 처리에 실패했어요",
-                subtitle: error.localizedDescription,
+                subtitle: message,
                 position: .top
               )
             }
@@ -373,14 +379,20 @@ extension NotificationCenter {
                 state.isEditMode = false
               }
             case .failure(let error):
+              let message = (error as? NotificationClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError
               state.toastMessage = ToastMessage(
                 type: .error,
                 title: "알림 삭제에 실패했어요",
-                subtitle: error.localizedDescription,
+                subtitle: message,
                 position: .top
               )
             }
             return .none
+
+          case .clearBadge:
+            return .run { [notificationClient] _ in
+              await notificationClient.setBadgeCount(0)
+            }
           }
 
         // MARK: - Delegate Actions
@@ -436,5 +448,18 @@ extension NotificationCenter.Feature.State {
   /// 선택 개수
   var selectedCount: Int {
     selectedNotificationIds.count
+  }
+}
+
+// MARK: - NotificationClientError Localization
+
+extension NotificationClientError {
+  var localizedMessage: String {
+    switch self {
+    case .authenticationRequired: return LocalizedStrings.Error.notificationAuthRequired
+    case .tokenNotFound: return LocalizedStrings.Error.notificationTokenNotFound
+    case .saveFailed: return LocalizedStrings.Error.notificationSaveFailed
+    case .deleteFailed: return LocalizedStrings.Error.notificationDeleteFailed
+    }
   }
 }

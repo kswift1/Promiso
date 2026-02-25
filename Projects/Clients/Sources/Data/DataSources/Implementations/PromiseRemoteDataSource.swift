@@ -286,37 +286,105 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
 
   /// 다가오는 약속 조회 (사용자가 속한 그룹들의 약속)
   ///
-  /// - TODO: Firestore 비용 최적화 필요
-  ///   현재: 모든 문서를 가져온 후 로컬에서 limit 적용 (불필요한 reads 발생)
-  ///   개선: 쿼리에 .limit() 추가하여 읽기 횟수 최소화
-  ///   주의: 여러 chunk에 분산된 경우 정렬 순서 보장 어려움 (설계 검토 필요)
+  /// 그룹 10개 단위 chunk로 분할해 병렬 조회한다.
+  /// 처음에는 chunk 수에 비례한 소량만 읽고,
+  /// 필요한 chunk만 단계적으로 확장 조회해 Firestore read를 줄인다.
   public func getUpcomingPromises(groupIds: [String], limit: Int) async throws -> [PromiseModel] {
-    guard !groupIds.isEmpty else { return [] }
+    guard !groupIds.isEmpty, limit > 0 else { return [] }
 
     let now = Date()
     let chunks = groupIds.chunked(into: 10)
+    guard !chunks.isEmpty else { return [] }
 
-    let allPromises = try await withThrowingTaskGroup(of: [PromiseModel].self) { group in
-      for chunk in chunks {
+    let batchSize = max(1, min(limit, Int(ceil(Double(limit) / Double(chunks.count)))))
+
+    var states = try await withThrowingTaskGroup(of: (Int, UpcomingChunkFetchResult).self) { group in
+      for (index, chunk) in chunks.enumerated() {
         group.addTask { [db, collectionName] in
-          let query = db.environmentCollection(collectionName)
-            .whereField("groupId", in: chunk)
-            .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: now))
-
-          let snapshot = try await query.getDocuments()
-          return try snapshot.documents.compactMap { try convertDocumentToPromise($0) }
+          let result = try await fetchUpcomingChunk(
+            db: db,
+            collectionName: collectionName,
+            groupIds: chunk,
+            from: now,
+            limit: batchSize
+          )
+          return (index, result)
         }
       }
 
-      var results: [PromiseModel] = []
-      for try await promises in group {
-        results.append(contentsOf: promises)
+      var initialResults: [(Int, UpcomingChunkFetchResult)] = []
+      initialResults.reserveCapacity(chunks.count)
+      for try await item in group {
+        initialResults.append(item)
       }
-      return results
+
+      return initialResults
+        .sorted { $0.0 < $1.0 }
+        .map { index, result in
+          UpcomingChunkState(
+            groupIds: chunks[index],
+            promises: result.promises,
+            nextIndex: 0,
+            fetchedLimit: batchSize,
+            fetchedDocumentCount: result.fetchedDocumentCount
+          )
+        }
     }
 
-    // 정렬 후 limit 적용
-    return Array(allPromises.sorted { $0.startAt < $1.startAt }.prefix(limit))
+    var merged: [PromiseModel] = []
+    merged.reserveCapacity(limit)
+    var seenIds = Set<String>()
+    seenIds.reserveCapacity(limit)
+
+    while merged.count < limit {
+      // 현재 버퍼가 소진된 chunk만 단계적으로 확장 조회한다.
+      let expansionTargets = states.indices.filter {
+        !states[$0].hasNextPromise && states[$0].canExpand(maxLimit: limit)
+      }
+
+      if !expansionTargets.isEmpty {
+        let expandedResults = try await withThrowingTaskGroup(
+          of: (Int, Int, UpcomingChunkFetchResult).self
+        ) { group in
+          for index in expansionTargets {
+            let nextLimit = min(limit, states[index].fetchedLimit + batchSize)
+            let chunk = states[index].groupIds
+            group.addTask { [db, collectionName] in
+              let result = try await fetchUpcomingChunk(
+                db: db,
+                collectionName: collectionName,
+                groupIds: chunk,
+                from: now,
+                limit: nextLimit
+              )
+              return (index, nextLimit, result)
+            }
+          }
+
+          var results: [(Int, Int, UpcomingChunkFetchResult)] = []
+          results.reserveCapacity(expansionTargets.count)
+          for try await item in group {
+            results.append(item)
+          }
+          return results
+        }
+
+        for (index, requestedLimit, result) in expandedResults {
+          states[index].applyFetchResult(result, requestedLimit: requestedLimit)
+        }
+      }
+
+      guard let selectedIndex = nextUpcomingChunkIndex(states: states) else {
+        break
+      }
+
+      let nextPromise = states[selectedIndex].consumeNextPromise()
+      if seenIds.insert(nextPromise.id).inserted {
+        merged.append(nextPromise)
+      }
+    }
+
+    return merged
   }
   
   /// 활성 약속 조회
@@ -377,6 +445,23 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
     return allPromises.sorted { $0.startAt < $1.startAt }
   }
 
+  /// 사용자가 수락한 약속을 날짜 범위로 조회 (일정 충돌 감지용)
+  /// 인증된 사용자의 UID를 직접 사용하여 보안 강화
+  public func getAcceptedPromisesByDateRange(startDate: Date, endDate: Date) async throws -> [PromiseModel] {
+    guard let userId = Auth.auth().currentUser?.uid else {
+      return []
+    }
+
+    let query = db.environmentCollection(collectionName)
+      .whereField("votes.accepted", arrayContains: userId)
+      .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: startDate))
+      .whereField("startAt", isLessThan: Timestamp(date: endDate))
+      .order(by: "startAt")
+
+    let snapshot = try await query.getDocuments()
+    return try snapshot.documents.compactMap { try convertDocumentToPromise($0) }
+  }
+
   /// 그룹의 활성 약속 개수 조회 (Firestore count aggregation 사용)
   /// subscribeToActivePromises와 동일한 조건 (startAt >= now)
   /// 과거 여부는 클라이언트에서 isPast로 계산
@@ -391,55 +476,34 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
 
   /// 활성 약속 실시간 구독 (과거 약속 제외)
   public func subscribeToActivePromises(groupId: String, limit: Int) -> AsyncStream<[PromiseModel]> {
-    print("[PromiseDataSource] 🔔 subscribeToActivePromises 호출: groupId=\(groupId)")
     return AsyncStream { continuation in
-      print("[PromiseDataSource] 🔔 AsyncStream 생성됨")
-
       let query = db.environmentCollection(collectionName)
         .whereField("groupId", isEqualTo: groupId)
         .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: Date()))
         .order(by: "startAt")
         .limit(to: limit)
 
-      print("[PromiseDataSource] 🔔 Firestore 리스너 등록 중...")
-      let listener = query.addSnapshotListener { [weak self] snapshot, error in
-        guard let self = self else {
-          print("[PromiseDataSource] ⚠️ self가 nil")
-          return
-        }
-
+      let listener = query.addSnapshotListener { snapshot, error in
         if let error = error {
-          print("[PromiseDataSource] ❌ Listener error: \(error.localizedDescription)")
+          AppLogger.general.error("활성 약속 리스너 오류: \(error.localizedDescription)")
           return
         }
 
-        guard let snapshot = snapshot else {
-          print("[PromiseDataSource] ⚠️ snapshot이 nil")
-          return
-        }
+        guard let snapshot else { return }
 
-        print("[PromiseDataSource] 📥 스냅샷 수신: \(snapshot.documents.count)개 문서")
-        let now = Date()
         let promises = snapshot.documents.compactMap { doc -> PromiseModel? in
           do {
-            let promise = try convertDocumentToPromise(doc)
-            return promise
+            return try convertDocumentToPromise(doc)
           } catch {
-            print("[PromiseDataSource] ❌ 파싱 에러: \(error)")
+            AppLogger.general.error("활성 약속 파싱 실패: \(error.localizedDescription)")
             return nil
           }
-        }
-        print("[PromiseDataSource] ✅ 파싱 완료: \(promises.count)개 약속")
-        print("[PromiseDataSource] 📅 현재 시간: \(now)")
-        for promise in promises {
-          print("[PromiseDataSource] - \(promise.title): startAt=\(promise.startAt), endAt=\(String(describing: promise.endAt)), isPast=\(promise.isPast), isConfirmed=\(promise.isConfirmed)")
         }
 
         continuation.yield(promises)
       }
 
-      continuation.onTermination = { reason in
-        print("[PromiseDataSource] 🛑 리스너 종료: \(reason)")
+      continuation.onTermination = { _ in
         listener.remove()
       }
     }
@@ -571,11 +635,97 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
 
   // MARK: - Helper Methods
 
+  private func nextUpcomingChunkIndex(states: [UpcomingChunkState]) -> Int? {
+    var selectedIndex: Int?
+
+    for index in states.indices where states[index].hasNextPromise {
+      guard let currentSelected = selectedIndex else {
+        selectedIndex = index
+        continue
+      }
+
+      guard let candidate = states[index].nextPromise,
+            let selected = states[currentSelected].nextPromise else {
+        continue
+      }
+
+      if candidate.startAt < selected.startAt
+        || (candidate.startAt == selected.startAt && candidate.id < selected.id) {
+        selectedIndex = index
+      }
+    }
+
+    return selectedIndex
+  }
+
   private func documentSnapshotToPromise(_ document: DocumentSnapshot) throws -> PromiseModel? {
     guard document.exists else { return nil }
     let dto = try document.data(as: PromiseDTO.self)
     return PromiseModel(dto: dto, id: document.documentID)
   }
+}
+
+private struct UpcomingChunkFetchResult {
+  let promises: [PromiseModel]
+  let fetchedDocumentCount: Int
+}
+
+private struct UpcomingChunkState {
+  let groupIds: [String]
+  var promises: [PromiseModel]
+  var nextIndex: Int
+  var fetchedLimit: Int
+  var fetchedDocumentCount: Int
+
+  var hasNextPromise: Bool {
+    nextIndex < promises.count
+  }
+
+  var nextPromise: PromiseModel? {
+    guard hasNextPromise else { return nil }
+    return promises[nextIndex]
+  }
+
+  mutating func consumeNextPromise() -> PromiseModel {
+    let promise = promises[nextIndex]
+    nextIndex += 1
+    return promise
+  }
+
+  func canExpand(maxLimit: Int) -> Bool {
+    fetchedLimit < maxLimit && fetchedDocumentCount >= fetchedLimit
+  }
+
+  mutating func applyFetchResult(_ result: UpcomingChunkFetchResult, requestedLimit: Int) {
+    promises = result.promises
+    fetchedLimit = requestedLimit
+    fetchedDocumentCount = result.fetchedDocumentCount
+    if nextIndex > promises.count {
+      nextIndex = promises.count
+    }
+  }
+}
+
+private func fetchUpcomingChunk(
+  db: Firestore,
+  collectionName: String,
+  groupIds: [String],
+  from: Date,
+  limit: Int
+) async throws -> UpcomingChunkFetchResult {
+  let query = db.environmentCollection(collectionName)
+    .whereField("groupId", in: groupIds)
+    .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: from))
+    .order(by: "startAt")
+    .limit(to: limit)
+
+  let snapshot = try await query.getDocuments()
+  let promises = try snapshot.documents.compactMap { try convertDocumentToPromise($0) }
+
+  return UpcomingChunkFetchResult(
+    promises: promises,
+    fetchedDocumentCount: snapshot.documents.count
+  )
 }
 
 // MARK: - Document Conversion Helper

@@ -22,7 +22,7 @@ import PromisoShared
 
 // MARK: - MockGroupRemoteDataSource
 
-final class MockGroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchecked Sendable {
+final class MockGroupRemoteDataSource: GroupRemoteDataSourceProtocol {
 
   // MARK: - Call Counts
 
@@ -38,6 +38,7 @@ final class MockGroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchecked
   private(set) var previewGroupCallCount = 0
   private(set) var joinGroupCallCount = 0
   private(set) var clearGroupBadgeCallCount = 0
+  private(set) var updateGroupColorCallCount = 0
 
   // MARK: - Captured Arguments
 
@@ -65,6 +66,7 @@ final class MockGroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchecked
   var previewGroupHandler: ((String) async throws -> GroupPreviewModel)?
   var joinGroupHandler: ((String, String) async throws -> GroupModel)?
   var clearGroupBadgeHandler: ((String) async -> Void)?
+  var updateGroupColorHandler: ((String, String, GroupColor?) async throws -> Void)?
 
   // MARK: - Reset
 
@@ -82,6 +84,7 @@ final class MockGroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchecked
     previewGroupCallCount = 0
     joinGroupCallCount = 0
     clearGroupBadgeCallCount = 0
+    updateGroupColorCallCount = 0
 
     fetchGroupArguments = []
     leaveGroupArguments = []
@@ -220,6 +223,19 @@ final class MockGroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchecked
     clearGroupBadgeArguments.append(groupId)
     if let handler = clearGroupBadgeHandler {
       await handler(groupId)
+    }
+  }
+
+  // MARK: - Color Operations
+
+  func updateGroupColor(
+    groupId: String,
+    userId: String,
+    color: GroupColor?
+  ) async throws {
+    updateGroupColorCallCount += 1
+    if let handler = updateGroupColorHandler {
+      try await handler(groupId, userId, color)
     }
   }
 }

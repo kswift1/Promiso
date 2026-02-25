@@ -42,10 +42,10 @@ struct BenefitHomeView: View {
       // 하단 카피
       if showCopy {
         VStack(spacing: 8) {
-          Text("열기만 하면, 오늘 뭐 할지 다 보여요")
+          Text(LocalizedStrings.Onboarding.introHomeTitle)
             .font(.title3.bold())
             .foregroundStyle(Color.pmtext.primary)
-          Text("개인 약속, 그룹 약속, 응답할 것까지\nPromiso가 알아서 챙겨요")
+          Text(LocalizedStrings.Onboarding.introHomeSubtitle)
             .font(.subheadline)
             .foregroundStyle(Color.pmtext.secondary)
         }
@@ -68,11 +68,11 @@ struct BenefitHomeView: View {
     VStack(alignment: .leading, spacing: 0) {
       // 헤더
       HStack {
-        Text("오늘의 일정")
+        Text(LocalizedStrings.Onboarding.introHomeTodayTitle)
           .font(.pmHeadline)
           .foregroundStyle(.primary)
         Spacer()
-        Text("2개")
+        Text(LocalizedStrings.Onboarding.introHomeItemCount(2))
           .font(.pmCaption)
           .foregroundStyle(Color.pmindigo.n500)
         Image(systemName: "chevron.down")
@@ -91,8 +91,8 @@ struct BenefitHomeView: View {
         todayRow(
           time: "12:00",
           emoji: "🍝",
-          title: "점심 약속",
-          tag: "회사 동료",
+          title: LocalizedStrings.Onboarding.introHomeTodayRow1Title,
+          tag: LocalizedStrings.Onboarding.introHomeTodayRow1Tag,
           tagColor: Color.pmindigo.n500
         )
 
@@ -103,8 +103,8 @@ struct BenefitHomeView: View {
         todayRow(
           time: "18:00",
           emoji: "📚",
-          title: "스터디",
-          tag: "개인",
+          title: LocalizedStrings.Onboarding.introHomeTodayRow2Title,
+          tag: LocalizedStrings.Onboarding.introHomeTodayRow2Tag,
           tagColor: Color.pmaurora.purple
         )
       }
@@ -157,13 +157,13 @@ struct BenefitHomeView: View {
         .font(.pmBody)
         .foregroundStyle(.white)
 
-      Text("응답이 필요해요")
+      Text(LocalizedStrings.Onboarding.introHomeNeedResponseTitle)
         .font(.pmSubheadlineMedium)
         .foregroundStyle(.white)
 
       Spacer()
 
-      Text("2개")
+      Text(LocalizedStrings.Onboarding.introHomeItemCount(2))
         .font(.pmCaption)
         .foregroundStyle(.white.opacity(0.85))
 
@@ -189,7 +189,7 @@ struct BenefitHomeView: View {
     VStack(alignment: .leading, spacing: 0) {
       // 헤더
       HStack {
-        Text("다가오는 약속")
+        Text(LocalizedStrings.Onboarding.introHomeUpcomingTitle)
           .font(.pmHeadline)
           .foregroundStyle(.primary)
         Spacer()
@@ -203,13 +203,25 @@ struct BenefitHomeView: View {
 
       // 일정 목록
       VStack(spacing: 0) {
-        upcomingRow(day: "수", date: "12", emoji: "🍖", title: "팀 회식", time: "오후 7시")
+        upcomingRow(
+          day: LocalizedStrings.Onboarding.introHomeUpcomingRow1Day,
+          date: "12",
+          emoji: "🍖",
+          title: LocalizedStrings.Onboarding.introHomeUpcomingRow1Title,
+          time: LocalizedStrings.Onboarding.introHomeUpcomingRow1Time
+        )
 
         Divider()
           .padding(.leading, 52)
           .padding(.trailing, 14)
 
-        upcomingRow(day: "금", date: "14", emoji: "🎬", title: "영화 관람", time: "오후 6시")
+        upcomingRow(
+          day: LocalizedStrings.Onboarding.introHomeUpcomingRow2Day,
+          date: "14",
+          emoji: "🎬",
+          title: LocalizedStrings.Onboarding.introHomeUpcomingRow2Title,
+          time: LocalizedStrings.Onboarding.introHomeUpcomingRow2Time
+        )
       }
       .padding(.bottom, 6)
     }

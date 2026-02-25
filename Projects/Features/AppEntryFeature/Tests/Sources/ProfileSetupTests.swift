@@ -1,4 +1,5 @@
 import Testing
+import PromisoShared
 @testable import AppEntryFeature
 
 @Suite("AppEntry.ProfileSetup 테스트")
@@ -93,7 +94,7 @@ struct ProfileSetupTests {
       AppEntry.ProfileSetup()
     }
     await store.send(.view(.nextTapped)) {
-      $0.nicknameError = "닉네임 중복 확인을 완료해주세요"
+      $0.nicknameError = LocalizedStrings.Profile.nicknameCheckRequired
     }
   }
 
@@ -106,7 +107,7 @@ struct ProfileSetupTests {
       AppEntry.ProfileSetup()
     }
     await store.send(.view(.nextTapped)) {
-      $0.nicknameError = "닉네임 중복 확인을 완료해주세요"
+      $0.nicknameError = LocalizedStrings.Profile.nicknameCheckRequired
     }
   }
 
@@ -317,7 +318,7 @@ struct ProfileSetupTests {
     await store.send(.internal(.nicknameAvailabilityResponse(.success(false)))) {
       $0.isCheckingNickname = false
       $0.isNicknameAvailable = false
-      $0.nicknameError = "이미 사용 중인 닉네임이에요"
+      $0.nicknameError = LocalizedStrings.Profile.nicknameTaken
     }
   }
 
@@ -333,7 +334,7 @@ struct ProfileSetupTests {
     await store.send(.internal(.nicknameAvailabilityResponse(.failure(error)))) {
       $0.isCheckingNickname = false
       $0.isNicknameAvailable = nil
-      $0.nicknameError = "닉네임 확인에 실패했어요. 잠시 후 다시 시도해주세요"
+      $0.nicknameError = LocalizedStrings.Profile.nicknameCheckFailed
     }
   }
 

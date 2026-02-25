@@ -25,14 +25,23 @@ extension PolicyView {
     // MARK: - State
 
     @ObservableState
-    public struct State: Equatable {
+    public struct State: Equatable, Sendable {
       public let policyType: PolicyType
       public let url: URL
       public var isLoading: Bool
 
-      public enum PolicyType: String, Equatable, Sendable {
-        case privacyPolicy = "개인정보처리방침"
-        case termsOfService = "이용약관"
+      public enum PolicyType: Equatable, Sendable {
+        case privacyPolicy
+        case termsOfService
+
+        public var title: String {
+          switch self {
+          case .privacyPolicy:
+            return LocalizedStrings.SettingsStrings.privacyPolicyTitle
+          case .termsOfService:
+            return LocalizedStrings.SettingsStrings.termsOfServiceTitle
+          }
+        }
       }
 
       public init(policyType: PolicyType, url: URL) {
@@ -93,7 +102,7 @@ extension PolicyView {
             .background(Color.clear)
         }
       }
-      .navigationTitle(store.policyType.rawValue)
+      .navigationTitle(store.policyType.title)
       .navigationBarTitleDisplayMode(.inline)
       .onAppear {
         store.send(.view(.onAppear))

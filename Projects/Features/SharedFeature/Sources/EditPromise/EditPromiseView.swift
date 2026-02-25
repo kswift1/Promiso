@@ -63,12 +63,12 @@ extension EditPromise {
           .padding(16)
         }
         .scrollDismissesKeyboard(.interactively)
-        .navigationTitle("약속 수정")
+        .navigationTitle(LocalizedStrings.Shared.editPromiseTitle)
         .navigationBarTitleDisplayMode(.inline)
         .auroraBackground()
         .toolbar {
           ToolbarItem(placement: .cancellationAction) {
-            Button("취소") {
+            Button(LocalizedStrings.Common.cancel) {
               store.send(.view(.cancelTapped))
             }
           }
@@ -77,7 +77,7 @@ extension EditPromise {
             if store.isUpdating {
               ProgressView()
             } else {
-              Button("수정") {
+              Button(LocalizedStrings.Common.modify) {
                 store.send(.view(.saveTapped))
               }
               .fontWeight(.semibold)
@@ -86,18 +86,18 @@ extension EditPromise {
           }
         }
         .alert(
-          "수정 실패",
+          LocalizedStrings.Shared.editFailed,
           isPresented: Binding(
             get: { store.updateError != nil },
             set: { if !$0 { store.send(.view(.clearError)) } }
           )
         ) {
-          Button("확인", role: .cancel) {
+          Button(LocalizedStrings.Common.confirm, role: .cancel) {
             store.send(.view(.clearError))
           }
         } message: {
           if let error = store.updateError {
-            Text(error.localizedDescription)
+            Text(error.localizedMessage)
           }
         }
         .sheet(item: $store.scope(state: \.locationPicker, action: \.locationPicker)) { pickerStore in
@@ -117,7 +117,7 @@ extension EditPromise {
               .font(.system(size: 28))
               .frame(width: 40, height: 40)
 
-            TextField("약속 제목", text: Binding(
+            TextField(LocalizedStrings.Shared.promiseTitlePlaceholder, text: Binding(
               get: { store.editedPromise.title },
               set: { store.send(.view(.setTitle($0))) }
             ))
@@ -143,7 +143,7 @@ extension EditPromise {
             .foregroundStyle(Color.pmindigo.n500)
             .frame(width: 24)
 
-          Text("시작")
+          Text(LocalizedStrings.Common.start)
             .font(.body)
             .foregroundStyle(Color.pmtext.primary)
 
@@ -160,7 +160,7 @@ extension EditPromise {
           )
           .labelsHidden()
           .tint(Color.pmindigo.n500)
-          .environment(\.locale, Locale(identifier: "ko_KR"))
+          .environment(\.locale, LocaleManager.appLocale)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
@@ -173,11 +173,11 @@ extension EditPromise {
     private var descriptionSection: some View {
       VStack(alignment: .leading, spacing: 12) {
         HStack(spacing: 4) {
-          Text("설명")
+          Text(LocalizedStrings.Promise.description)
             .font(.system(size: 15, weight: .semibold))
             .foregroundStyle(.primary)
 
-          Text("(선택)")
+          Text(LocalizedStrings.Shared.optional)
             .font(.system(size: 13))
             .foregroundStyle(.secondary)
         }
@@ -208,11 +208,11 @@ extension EditPromise {
     private var locationSection: some View {
       VStack(alignment: .leading, spacing: 12) {
         HStack(spacing: 4) {
-          Text("장소")
+          Text(LocalizedStrings.Common.location)
             .font(.system(size: 15, weight: .semibold))
             .foregroundStyle(.primary)
 
-          Text("(선택)")
+          Text(LocalizedStrings.Shared.optional)
             .font(.system(size: 13))
             .foregroundStyle(.secondary)
         }
@@ -278,7 +278,7 @@ extension EditPromise {
                 .font(.body)
                 .foregroundColor(Color.pmindigo.n500)
 
-              Text("장소 추가")
+              Text(LocalizedStrings.Shared.addLocation)
                 .font(.system(size: 15))
                 .foregroundStyle(.primary)
 
@@ -309,7 +309,7 @@ extension EditPromise {
             .foregroundStyle(Color.pmindigo.n500)
             .frame(width: 24)
 
-          Text("종료 시간")
+          Text(LocalizedStrings.Common.endTime)
             .font(.body)
             .foregroundStyle(Color.pmtext.primary)
 
@@ -349,7 +349,7 @@ extension EditPromise {
             )
             .labelsHidden()
             .tint(Color.pmindigo.n500)
-            .environment(\.locale, Locale(identifier: "ko_KR"))
+            .environment(\.locale, LocaleManager.appLocale)
           }
           .padding(.horizontal, 16)
           .padding(.vertical, 12)
@@ -364,7 +364,7 @@ extension EditPromise {
     private var minimumParticipantsSection: some View {
       VStack(alignment: .leading, spacing: 12) {
         HStack(spacing: 4) {
-          Text("최소 참가 인원")
+          Text(LocalizedStrings.Shared.minimumParticipants)
             .font(.system(size: 15, weight: .semibold))
             .foregroundStyle(.primary)
 
@@ -398,7 +398,7 @@ extension EditPromise {
               .foregroundColor(.primary)
               .contentTransition(.numericText())
 
-            Text("최대 \(store.maxMembers)명")
+            Text(LocalizedStrings.Shared.maxMembers(store.maxMembers))
               .font(.system(size: 13))
               .foregroundColor(.secondary)
           }
@@ -430,7 +430,7 @@ extension EditPromise {
             .font(.system(size: 20))
             .foregroundColor(Color.pmindigo.n500)
 
-          Text("최소 \(store.editedPromise.minimumParticipants)명이 참석하면 약속이 자동으로 확정됩니다")
+          Text(LocalizedStrings.Shared.minMembersDescription(store.editedPromise.minimumParticipants))
             .font(.system(size: 14))
             .foregroundColor(.primary)
 
@@ -448,11 +448,11 @@ extension EditPromise {
       VStack(alignment: .leading, spacing: 12) {
         HStack {
           HStack(spacing: 4) {
-            Text("실시간 공유")
+            Text(LocalizedStrings.Shared.liveSharing)
               .font(.system(size: 15, weight: .semibold))
               .foregroundStyle(.primary)
 
-            Text("(선택)")
+            Text(LocalizedStrings.Shared.optional)
               .font(.system(size: 13))
               .foregroundStyle(.secondary)
           }
@@ -506,7 +506,7 @@ extension EditPromise {
                     }
                   }
 
-                Text("분 전 시작")
+                Text(LocalizedStrings.Shared.minutesBeforeStartLabel)
                   .font(.system(size: 15))
                   .foregroundStyle(.secondary)
 
@@ -523,7 +523,7 @@ extension EditPromise {
               Text("📡")
                 .font(.system(size: 18))
 
-              Text("약속 \(store.editedPromise.trackingStartMinutesBefore ?? 30)분 전부터 실시간 공유가 시작됩니다")
+              Text(LocalizedStrings.Shared.liveSharingDescription(store.editedPromise.trackingStartMinutesBefore ?? 30))
                 .font(.system(size: 14))
                 .foregroundColor(.primary)
 
@@ -562,7 +562,7 @@ extension EditPromise {
           focusedField = .trackingMinutes
         }
       } label: {
-        Text("직접")
+        Text(LocalizedStrings.Shared.manualStart)
           .font(.system(size: 14, weight: .medium))
           .frame(maxWidth: .infinity)
           .padding(.vertical, 12)
@@ -584,7 +584,7 @@ extension EditPromise {
         }
         store.send(.view(.setTrackingMinutes(minutes)), animation: .spring(response: 0.2, dampingFraction: 0.7))
       } label: {
-        Text("\(minutes)분 전")
+        Text(LocalizedStrings.Shared.minutesBefore(minutes))
           .font(.system(size: 14, weight: .medium))
           .frame(maxWidth: .infinity)
           .padding(.vertical, 12)
@@ -605,5 +605,22 @@ private struct ScaleButtonStyle: ButtonStyle {
     configuration.label
       .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
       .animation(.spring(response: 0.2, dampingFraction: 0.6), value: configuration.isPressed)
+  }
+}
+
+// MARK: - PromiseClientError Localization
+
+extension Clients.PromiseClientError {
+  var localizedMessage: String {
+    switch self {
+    case .networkError: return LocalizedStrings.Error.networkError
+    case .unauthorized: return LocalizedStrings.Error.userAuthRequired
+    case .notFound: return LocalizedStrings.Error.notFoundError
+    case .serverError: return LocalizedStrings.Error.serverError
+    case .invalidData: return LocalizedStrings.Error.validationError
+    case .groupNotFound: return LocalizedStrings.Error.notFoundError
+    case .notGroupMember: return LocalizedStrings.Error.permissionError
+    case .unknown: return LocalizedStrings.Error.unknownError
+    }
   }
 }

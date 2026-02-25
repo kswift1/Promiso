@@ -57,15 +57,15 @@ struct CreateGroupSettingsView: View {
       }
     }
     .alert(
-      "캘린더 권한 안내",
+      LocalizedStrings.GroupSettings.calendarPermissionTitle,
       isPresented: .constant(showCalendarPermissionInfoAlert),
       actions: {
-        Button("확인") {
+        Button(LocalizedStrings.Common.ok) {
           onCalendarPermissionInfoAlertDismiss()
         }
       },
       message: {
-        Text("설정이 저장되었습니다.\n캘린더 동기화를 사용하려면 나중에 시스템 설정에서 캘린더 권한을 허용해주세요.")
+        Text(LocalizedStrings.GroupSettings.calendarPermissionMessage)
       }
     )
   }
@@ -97,10 +97,10 @@ struct CreateGroupSettingsView: View {
       }
 
       VStack(spacing: 8) {
-        Text("'\(groupName)' 알림 설정")
+        Text(LocalizedStrings.GroupSettings.notificationSettingsTitle(groupName))
           .font(.title2.bold())
 
-        Text("이 그룹의 알림과 캘린더 동기화를\n설정해주세요")
+        Text(LocalizedStrings.GroupSettings.notificationSettingsSubtitle)
           .font(.body)
           .foregroundStyle(.secondary)
           .multilineTextAlignment(.center)
@@ -155,7 +155,7 @@ struct CreateGroupSettingsView: View {
       }
 
       VStack(alignment: .leading, spacing: 4) {
-        Text("푸시 알림")
+        Text(LocalizedStrings.GroupSettings.pushNotification)
           .font(.headline)
 
         Text(notificationSubtitle)
@@ -176,9 +176,9 @@ struct CreateGroupSettingsView: View {
 
   private var notificationSubtitle: String {
     if notificationAuthStatus == .denied {
-      return "권한 없음 - 토글 시 설정으로 이동"
+      return LocalizedStrings.GroupSettings.notificationDenied
     }
-    return "새로운 약속 초대, 일정 변경, 리마인더를 알려드려요"
+    return LocalizedStrings.GroupSettings.notificationDescription
   }
 
   private var notificationSubtitleColor: Color {
@@ -214,7 +214,7 @@ struct CreateGroupSettingsView: View {
 
       VStack(alignment: .leading, spacing: 4) {
         HStack(spacing: 6) {
-          Text("캘린더 동기화")
+          Text(LocalizedStrings.GroupSettings.calendarSync)
             .font(.headline)
 
           if !calendarAuthStatus.canWriteEvents && calendarSyncEnabled {
@@ -242,10 +242,10 @@ struct CreateGroupSettingsView: View {
     switch calendarAuthStatus {
     case .denied, .restricted:
       return calendarSyncEnabled
-        ? "권한 없음 - 설정에서 허용하면 동기화가 시작돼요"
-        : "권한 없음 - 토글 ON 후 설정에서 허용 필요"
+        ? LocalizedStrings.GroupSettings.calendarDeniedSyncOn
+        : LocalizedStrings.GroupSettings.calendarDeniedSyncOff
     case .writeOnly, .fullAccess, .authorized, .notDetermined:
-      return "확정된 약속을 기기 캘린더에 자동으로 추가해요"
+      return LocalizedStrings.GroupSettings.calendarDescription
     }
   }
 
@@ -274,7 +274,7 @@ struct CreateGroupSettingsView: View {
             ProgressView()
               .tint(.white)
           }
-          Text(isSaving ? "저장 중..." : "설정 완료")
+          Text(isSaving ? LocalizedStrings.GroupSettings.saving : LocalizedStrings.GroupSettings.complete)
             .font(.headline)
         }
         .frame(maxWidth: .infinity)
@@ -292,13 +292,13 @@ struct CreateGroupSettingsView: View {
       .disabled(isSaving)
 
       Button(action: onSkip) {
-        Text("건너뛰기")
+        Text(LocalizedStrings.GroupSettings.skip)
           .font(.subheadline)
           .foregroundStyle(.secondary)
       }
       .disabled(isSaving)
 
-      Text("나중에 그룹 설정에서 변경할 수 있어요")
+      Text(LocalizedStrings.GroupSettings.changeableHint)
         .font(.caption)
         .foregroundStyle(.tertiary)
     }

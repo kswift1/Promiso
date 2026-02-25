@@ -137,11 +137,11 @@ struct GroupSortOptionTests {
     #expect(GroupSortOption.SortType.custom.icon.isNotEmpty)
   }
 
-  @Test("SortType의 rawValue가 한글")
+  @Test("SortType의 rawValue가 영문 키")
   func sortTypeRawValue() {
-    #expect(GroupSortOption.SortType.joined.rawValue == "가입일")
-    #expect(GroupSortOption.SortType.name.rawValue == "가나다")
-    #expect(GroupSortOption.SortType.custom.rawValue == "직접 설정")
+    #expect(GroupSortOption.SortType.joined.rawValue == "joined")
+    #expect(GroupSortOption.SortType.name.rawValue == "name")
+    #expect(GroupSortOption.SortType.custom.rawValue == "custom")
   }
 
   @Test("Codable: joinedRecent 인코딩/디코딩")

@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import PromisoShared
 
 // MARK: - Home Snapshot Document
 
@@ -314,11 +315,7 @@ public struct HomeSnapshotMeta: Codable, Equatable, Sendable {
   /// - Returns: 오늘 업데이트되었으면 true
   public var isUpdatedToday: Bool {
     guard let date = updatedAtDate else { return false }
-
-    // KST 기준으로 오늘인지 확인
-    var calendar = Calendar.current
-    calendar.timeZone = TimeZone(identifier: "Asia/Seoul") ?? .current
-    return calendar.isDateInToday(date)
+    return Calendar.promiseDisplay.isDateInToday(date)
   }
 }
 

@@ -66,9 +66,26 @@ extension GroupMain {
       }
       .sheet(item: Binding(
         get: { store.sharePromise },
-        set: { _ in store.send(.view(.sharePromiseDismissed)) }
+        set: { _ in store.send(.view(.dismissPromiseShareSheet)) }
       )) { promise in
-        ShareSheet(items: [promise.shareText])
+        PromiseShareSheet(
+          promise: promise,
+          isKakaoSharing: store.isKakaoPromiseSharing,
+          onKakaoShareTapped: {
+            store.send(.view(.kakaoPromiseShareTapped))
+          },
+          onSystemShareTapped: {
+            store.send(.view(.systemPromiseShareTapped))
+          }
+        )
+        .presentationDetents([.height(340)])
+        .presentationDragIndicator(.visible)
+      }
+      .sheet(item: Binding(
+        get: { store.systemShareText.map { ShareTextItem(text: $0) } },
+        set: { _ in store.send(.view(.systemShareSheetDismissed)) }
+      )) { item in
+        ShareSheet(items: [item.text])
       }
       .sheet(
         store: store.scope(state: \.$editPromise, action: \.editPromise)
@@ -99,6 +116,25 @@ extension GroupMain {
       .confirmationDialog(
         store: store.scope(state: \.$groupActionSheet, action: \.groupActionSheet)
       )
+      .sheet(
+        isPresented: Binding(
+          get: { store.showGroupInviteSheet },
+          set: { if !$0 { store.send(.view(.dismissGroupInviteSheet)) } }
+        )
+      ) {
+        if let group = store.currentGroup {
+          InviteSheet(
+            groupName: group.name,
+            inviteCode: group.inviteCode,
+            isKakaoSharing: store.isKakaoInviteSharing,
+            onKakaoShareTapped: {
+              store.send(.view(.kakaoInviteShareTapped))
+            }
+          )
+          .presentationDetents([.height(340)])
+          .presentationDragIndicator(.visible)
+        }
+      }
     }
 
 
@@ -119,6 +155,12 @@ extension GroupMain {
           onGroupTap: { groupId in
             store.send(.view(.groupTapped(groupId)))
           },
+          onGroupInvite: { groupId in
+            store.send(.view(.groupInviteTapped(groupId)))
+          },
+          onGroupSettings: { groupId in
+            store.send(.view(.groupContextSettingsTapped(groupId)))
+          },
           onCreateGroup: {
             store.send(.view(.createGroup))
           },
@@ -127,6 +169,9 @@ extension GroupMain {
           },
           onSortSettings: {
             store.send(.view(.sortSettingsTapped))
+          },
+          onCreatePromise: { groupId in
+            store.send(.view(.contextCreatePromiseTapped(groupId)))
           }
         )
 
@@ -197,14 +242,14 @@ extension GroupMain {
       MorphingFABMenu(
         items: [
           FABMenuItem(
-            title: "약속 생성",
+            title: LocalizedStrings.GroupMain.createPromise,
             icon: "calendar.badge.plus",
             tintColor: .pmindigo.n500
           ) {
             store.send(.view(.createNewPromise))
           },
           FABMenuItem(
-            title: "그룹 설정",
+            title: LocalizedStrings.GroupMain.groupSettings,
             icon: "gearshape",
             tintColor: .pmindigo.n500
           ) {
@@ -244,12 +289,12 @@ extension GroupMain {
           .font(.system(size: 40))
           .foregroundStyle(.secondary)
 
-        Text(error.localizedDescription)
+        Text((error as? GroupClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError)
           .font(.subheadline)
           .foregroundStyle(.secondary)
           .multilineTextAlignment(.center)
 
-        Button("다시 시도") {
+        Button(LocalizedStrings.GroupMain.retry) {
           store.send(.view(.refreshTriggered))
         }
         .buttonStyle(.bordered)
@@ -298,16 +343,21 @@ extension GroupMain {
 
     @ViewBuilder
     private var promiseListView: some View {
+      let sections = store.groupedFilteredPromises
+      let animationKey = sections.flatMap { section in
+        [String(Int(section.day.timeIntervalSince1970))] + section.promises.map(\.id)
+      }
+
       ScrollViewReader { proxy in
         List {
-          ForEach(store.groupedFilteredPromises, id: \.date) { section in
+          ForEach(sections, id: \.day) { section in
             Section {
               ForEach(section.promises, id: \.id) { promise in
                 promiseRowView(for: promise)
                   .id(promise.id)
               }
             } header: {
-              dateSectionHeader(section.date)
+              dateSectionHeader(section.title)
             }
             .listSectionSeparator(.hidden)
           }
@@ -323,7 +373,7 @@ extension GroupMain {
         .refreshable {
           store.send(.view(.refreshTriggered))
         }
-        .animation(.snappy, value: store.promiseListAnimationKey)
+        .animation(.snappy, value: animationKey)
         .onChange(of: store.highlightedPromiseId) { _, newValue in
           if let promiseId = newValue {
             withAnimation(.easeInOut(duration: 0.3)) {
@@ -362,6 +412,7 @@ extension GroupMain {
         groupMembers: store.currentGroupMembers,
         respondingState: store.proposalResponding[promiseId] ?? .idle,
         isLive: store.liveActivityPromiseId == promiseId,
+        weather: store.weatherCache[promiseId],
         onTap: {
           store.send(.view(.promiseTapped(promise)))
         },
@@ -380,7 +431,7 @@ extension GroupMain {
         onChangeResponse: { status in
           store.send(.view(.responseChanged(promiseId, status)))
         },
-        onShare: {
+        onShare: promise.isPast ? nil : {
           store.send(.view(.promiseShared(promiseId)))
         },
         onDirections: {
@@ -407,14 +458,14 @@ extension GroupMain {
             Button {
               store.send(.view(.responseChanged(promiseId, .pending)))
             } label: {
-              Label("되돌리기", systemImage: "arrow.uturn.backward.circle.fill")
+              Label(LocalizedStrings.GroupMain.undo, systemImage: "arrow.uturn.backward.circle.fill")
             }
             .tint(.blue)
           } else {
             Button {
               store.send(.view(.proposalAccepted(promiseId)))
             } label: {
-              Label("수락", systemImage: "checkmark.circle.fill")
+              Label(LocalizedStrings.GroupMain.accept, systemImage: "checkmark.circle.fill")
             }
             .tint(.green)
           }
@@ -427,14 +478,14 @@ extension GroupMain {
             Button {
               store.send(.view(.responseChanged(promiseId, .pending)))
             } label: {
-              Label("되돌리기", systemImage: "arrow.uturn.backward.circle.fill")
+              Label(LocalizedStrings.GroupMain.undo, systemImage: "arrow.uturn.backward.circle.fill")
             }
             .tint(.blue)
           } else {
             Button {
               store.send(.view(.proposalRejected(promiseId)))
             } label: {
-              Label("거절", systemImage: "xmark.circle.fill")
+              Label(LocalizedStrings.GroupMain.reject, systemImage: "xmark.circle.fill")
             }
             .tint(.red)
           }
@@ -479,15 +530,15 @@ extension GroupMain {
     private var emptyFilterDescription: String {
       switch store.selectedFilter {
       case .needResponse:
-        return "지금은 응답이 필요한 약속이 없어요\n모든 약속에 응답한 상태예요 👍"
+        return LocalizedStrings.GroupMain.emptyNeedResponse
       case .responded:
-        return "아직 응답한 약속이 없어요\n확정되면 자동으로 확정 탭으로 옮겨져요"
+        return LocalizedStrings.GroupMain.emptyResponded
       case .confirmed:
-        return "아직 확정된 약속이 없어요\n+ 버튼으로 새 약속을 만들어보세요"
+        return LocalizedStrings.GroupMain.emptyConfirmed
       case .all:
-        return "지금은 진행 중이거나 예정된 약속이 없어요\n새 약속이나 초대가 생기면 여기에 보여요"
+        return LocalizedStrings.GroupMain.emptyAll
       case .past:
-        return "아직 지난 약속이 없어요\n완료된 약속 기록이 여기에 쌓여요"
+        return LocalizedStrings.GroupMain.emptyPast
       }
     }
 
@@ -525,6 +576,12 @@ extension GroupMain {
           onGroupTap: { groupId in
             store.send(.view(.groupTapped(groupId)))
           },
+          onGroupInvite: { groupId in
+            store.send(.view(.groupInviteTapped(groupId)))
+          },
+          onGroupSettings: { groupId in
+            store.send(.view(.groupContextSettingsTapped(groupId)))
+          },
           onCreateGroup: {
             store.send(.view(.createGroup))
           },
@@ -533,6 +590,9 @@ extension GroupMain {
           },
           onSortSettings: {
             store.send(.view(.sortSettingsTapped))
+          },
+          onCreatePromise: { groupId in
+            store.send(.view(.contextCreatePromiseTapped(groupId)))
           }
         )
 
@@ -556,7 +616,7 @@ extension GroupMain {
                 .font(.system(size: 47))
 
               // Description (2줄)
-              Text("아직 속한 그룹이 없어요\n상단의 + 버튼으로 그룹을 만들거나 참여해보세요")
+              Text(LocalizedStrings.GroupMain.noGroupsDescription)
                 .font(.system(size: 16))
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -654,19 +714,6 @@ private struct OnboardingCardView: View {
   }
 }
 
-// MARK: - ShareSheet
-
-import UIKit
-
-struct ShareSheet: UIViewControllerRepresentable {
-  let items: [Any]
-
-  func makeUIViewController(context: Context) -> UIActivityViewController {
-    UIActivityViewController(activityItems: items, applicationActivities: nil)
-  }
-
-  func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
-}
 
 // MARK: - SortSettingsSheetContent
 
@@ -751,7 +798,7 @@ private struct ShakeEffect: ViewModifier {
         HStack {
           let progress = clamp((shakeOffset - 8) / 40)
           swipeHintBubble(
-            title: "수락",
+            title: LocalizedStrings.GroupMain.accept,
             systemImage: "checkmark.circle.fill",
             fillColor: .green,
             progress: progress
@@ -772,7 +819,7 @@ private struct ShakeEffect: ViewModifier {
 
           let progress = clamp((abs(shakeOffset) - 8) / 40)
           swipeHintBubble(
-            title: "거절",
+            title: LocalizedStrings.GroupMain.reject,
             systemImage: "xmark.circle.fill",
             fillColor: .red,
             progress: progress

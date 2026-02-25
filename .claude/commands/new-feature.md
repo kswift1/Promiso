@@ -9,14 +9,14 @@ description: 새로운 TCA Feature 생성 (Reducer + View + Tests)
 
 ## 실행 순서
 
-1. **feature-generator** 에이전트로 Feature 코드 생성
+1. **implementer** 에이전트로 Feature 코드 생성
    - `{Name}Feature.swift` (State, Action, Reducer)
    - `{Name}View.swift` (SwiftUI View)
 
 2. **test-writer** 에이전트로 테스트 코드 생성
    - `{Name}FeatureTests.swift`
 
-3. **code-reviewer** 에이전트로 생성된 코드 검토
+3. **reviewer** 에이전트로 생성된 코드 검토
 
 ## 생성 위치
 

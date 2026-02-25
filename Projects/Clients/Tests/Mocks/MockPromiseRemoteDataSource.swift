@@ -22,7 +22,7 @@ import PromisoShared
 
 // MARK: - MockPromiseRemoteDataSource
 
-final class MockPromiseRemoteDataSource: PromiseRemoteDataSourceProtocol, @unchecked Sendable {
+final class MockPromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
 
   // MARK: - Call Counts
 
@@ -36,6 +36,7 @@ final class MockPromiseRemoteDataSource: PromiseRemoteDataSourceProtocol, @unche
   private(set) var getActivePromisesCallCount = 0
   private(set) var getPastPromisesCallCount = 0
   private(set) var getPromisesByDateRangeCallCount = 0
+  private(set) var getAcceptedPromisesByDateRangeCallCount = 0
   private(set) var getActivePromiseCountCallCount = 0
   private(set) var subscribeToActivePromisesCallCount = 0
   private(set) var getHomePromisesCallCount = 0
@@ -63,6 +64,7 @@ final class MockPromiseRemoteDataSource: PromiseRemoteDataSourceProtocol, @unche
   var getActivePromisesHandler: ((String, Int) async throws -> [PromiseModel])?
   var getPastPromisesHandler: ((String, Int, Date?) async throws -> [PromiseModel])?
   var getPromisesByDateRangeHandler: (([String], Date, Date) async throws -> [PromiseModel])?
+  var getAcceptedPromisesByDateRangeHandler: ((Date, Date) async throws -> [PromiseModel])?
   var getActivePromiseCountHandler: ((String) async throws -> Int)?
   var subscribeToActivePromisesHandler: ((String, Int) -> AsyncStream<[PromiseModel]>)?
   var getHomePromisesHandler: (([String], Int) async throws -> [PromiseModel])?
@@ -84,6 +86,7 @@ final class MockPromiseRemoteDataSource: PromiseRemoteDataSourceProtocol, @unche
     getActivePromisesCallCount = 0
     getPastPromisesCallCount = 0
     getPromisesByDateRangeCallCount = 0
+    getAcceptedPromisesByDateRangeCallCount = 0
     getActivePromiseCountCallCount = 0
     subscribeToActivePromisesCallCount = 0
     getHomePromisesCallCount = 0
@@ -185,6 +188,14 @@ final class MockPromiseRemoteDataSource: PromiseRemoteDataSourceProtocol, @unche
     getPromisesByDateRangeCallCount += 1
     if let handler = getPromisesByDateRangeHandler {
       return try await handler(groupIds, startDate, endDate)
+    }
+    return []
+  }
+
+  func getAcceptedPromisesByDateRange(startDate: Date, endDate: Date) async throws -> [PromiseModel] {
+    getAcceptedPromisesByDateRangeCallCount += 1
+    if let handler = getAcceptedPromisesByDateRangeHandler {
+      return try await handler(startDate, endDate)
     }
     return []
   }

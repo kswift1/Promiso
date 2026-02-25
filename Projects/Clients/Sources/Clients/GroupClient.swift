@@ -77,6 +77,12 @@ public struct GroupClient: Sendable {
     _ settings: GroupNotificationSettings
   ) async throws -> Void
 
+  /// 그룹 색상 업데이트 (개인별)
+  public var updateGroupColor: @Sendable (
+    _ groupId: String,
+    _ color: GroupColor?
+  ) async throws -> Void
+
   /// 그룹 배지 클리어 (Fire & Forget)
   public var clearGroupBadge: @Sendable (_ groupId: String) async -> Void = { _ in }
 
@@ -103,6 +109,7 @@ extension GroupClient: TestDependencyKey {
     deleteGroup: unimplemented("\(Self.self).deleteGroup"),
     updateGroup: unimplemented("\(Self.self).updateGroup"),
     updateGroupNotificationSettings: unimplemented("\(Self.self).updateGroupNotificationSettings"),
+    updateGroupColor: unimplemented("\(Self.self).updateGroupColor"),
     clearGroupBadge: { _ in },
     transferHost: unimplemented("\(Self.self).transferHost"),
     expelMember: unimplemented("\(Self.self).expelMember")
@@ -220,6 +227,9 @@ extension GroupClient: TestDependencyKey {
     updateGroupNotificationSettings: { _, _ in
       try await Task.sleep(for: .seconds(0.2))
     },
+    updateGroupColor: { _, _ in
+      try await Task.sleep(for: .seconds(0.2))
+    },
     clearGroupBadge: { _ in },
     transferHost: { _, _ in
       try await Task.sleep(for: .seconds(0.5))
@@ -314,6 +324,16 @@ extension GroupClient: DependencyKey {
           groupId: groupId,
           userId: currentUser.uid,
           settings: settings
+        )
+      },
+      updateGroupColor: { groupId, color in
+        guard let currentUser = await authClient.currentUser() else {
+          throw GroupClientError.unauthorized
+        }
+        try await dataSource.updateGroupColor(
+          groupId: groupId,
+          userId: currentUser.uid,
+          color: color
         )
       },
       clearGroupBadge: { groupId in

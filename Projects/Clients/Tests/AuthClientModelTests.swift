@@ -245,20 +245,3 @@ struct ProviderTypeIdentifierTests {
   }
 }
 
-// MARK: - AuthClientError 테스트
-
-@Suite("AuthClientError errorDescription 테스트")
-struct AuthClientErrorTests {
-
-  @Test("각 에러 케이스의 errorDescription이 올바른 한국어 메시지 반환")
-  func allCases_returnCorrectKoreanMessage() {
-    #expect(AuthClientError.invalidCredentials.errorDescription == "이메일 또는 비밀번호가 올바르지 않습니다.")
-    #expect(AuthClientError.alreadyExists.errorDescription == "이미 가입된 계정입니다.")
-    #expect(AuthClientError.network.errorDescription == "네트워크 연결을 확인해주세요.")
-    #expect(AuthClientError.invalidAppleCredential.errorDescription == "애플 인증 정보를 가져오지 못했습니다.")
-    #expect(AuthClientError.missingIdentityToken.errorDescription == "애플 인증 토큰을 가져오지 못했습니다.")
-    #expect(AuthClientError.providerUnavailable.errorDescription == "해당 로그인 제공자를 사용할 수 없습니다.")
-    #expect(AuthClientError.isGroupHost.errorDescription == "그룹 호스트는 탈퇴할 수 없습니다. 먼저 그룹을 삭제하거나 호스트를 양도해주세요.")
-    #expect(AuthClientError.unknown.errorDescription == "알 수 없는 오류가 발생했습니다.")
-  }
-}

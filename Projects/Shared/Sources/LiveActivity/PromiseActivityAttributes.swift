@@ -4,7 +4,7 @@ import Foundation
 // MARK: - Promise Activity Attributes
 
 /// 라이브액티비티의 고정 속성 (Activity 생성 시 설정, 이후 변경 불가)
-public struct PromiseActivityAttributes: ActivityAttributes, Equatable {
+public struct PromiseActivityAttributes: ActivityAttributes, Equatable, Sendable {
 
   // MARK: - Attributes (고정 정보)
 

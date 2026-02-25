@@ -18,6 +18,7 @@ public protocol PromiseRemoteDataSourceProtocol {
   func getActivePromises(groupId: String, limit: Int) async throws -> [PromiseModel]
   func getPastPromises(groupId: String, limit: Int, lastStartAt: Date?) async throws -> [PromiseModel]
   func getPromisesByDateRange(groupIds: [String], startDate: Date, endDate: Date) async throws -> [PromiseModel]
+  func getAcceptedPromisesByDateRange(startDate: Date, endDate: Date) async throws -> [PromiseModel]
 
   // MARK: - Count Operations
   func getActivePromiseCount(groupId: String) async throws -> Int

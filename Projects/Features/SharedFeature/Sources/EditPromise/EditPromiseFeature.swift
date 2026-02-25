@@ -242,7 +242,7 @@ extension EditPromise {
               } catch let e as Clients.PromiseClientError {
                 await send(.internal(.updatePromiseResponse(.failure(e))))
               } catch {
-                await send(.internal(.updatePromiseResponse(.failure(.unknown(error.localizedDescription)))))
+                await send(.internal(.updatePromiseResponse(.failure(.unknown(nil)))))
               }
             }
 

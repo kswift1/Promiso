@@ -1,3 +1,4 @@
+import Clients
 import ComposableArchitecture
 import PromisoShared
 import SharedFeature
@@ -10,12 +11,19 @@ public enum PersonalMode {}
 extension PersonalMode {
   /// 개인 일정 필터
   public enum EventFilter: String, CaseIterable, Sendable, CategoryFilterItem {
+    case all = "전체"
     case today = "오늘"
     case future = "미래"
-    case all = "전체"
     case past = "과거"
 
-    public var title: String { rawValue }
+    public var title: String {
+      switch self {
+      case .today: return LocalizedStrings.Personal.filterToday
+      case .future: return LocalizedStrings.Personal.filterFuture
+      case .all: return LocalizedStrings.Personal.filterAll
+      case .past: return LocalizedStrings.Personal.filterPast
+      }
+    }
 
     public var icon: String {
       switch self {
@@ -52,11 +60,13 @@ extension PersonalMode {
     public init() {}
 
     @ObservableState
-    public struct State: Equatable, Sendable {
+    public struct State: Equatable {
       var eventsState: LoadingState<[PersonalEventModel]> = .idle
       var pastEventsState: LoadingState<[PersonalEventModel]> = .idle
-      var selectedFilter: EventFilter = .today
+      var selectedFilter: EventFilter = .all
       @Shared var currentUser: UserPrivateModel
+      @Shared(.inMemory("weatherCache"))
+      var weatherCache: [String: WeatherInfo] = [:]
       var toastMessage: ToastMessage?
 
       @Presents var createEvent: CreatePersonalEvent.Feature.State?
@@ -91,32 +101,46 @@ extension PersonalMode {
       }
 
       /// 날짜별로 그룹화된 일정
-      var groupedEvents: [(date: String, events: [PersonalEventModel])] {
-        let grouped = Dictionary(grouping: filteredEvents, by: { $0.dateText })
-
-        // 과거: 최신순 (어제 → 이전 날짜)
-        if selectedFilter == .past {
-          return grouped.sorted { lhs, rhs in
-            if lhs.key == "어제" { return true }
-            if rhs.key == "어제" { return false }
-            return lhs.key > rhs.key
-          }.map { (date: $0.key, events: $0.value) }
+      var groupedEvents: [(day: Date, title: String, events: [PersonalEventModel])] {
+        let calendar = Calendar.current
+        let grouped = Dictionary(grouping: filteredEvents) { event in
+          calendar.startOfDay(for: event.startAt)
         }
 
-        // 오늘/미래/전체: 시간순 (오늘 → 내일 → 이후)
-        return grouped.sorted { lhs, rhs in
-          let priorityOrder = ["오늘": 0, "내일": 1]
-          let lhsPriority = priorityOrder[lhs.key] ?? 2
-          let rhsPriority = priorityOrder[rhs.key] ?? 2
-          if lhsPriority != rhsPriority { return lhsPriority < rhsPriority }
-          return lhs.key < rhs.key
-        }.map { (date: $0.key, events: $0.value) }
+        return grouped
+          .sorted { lhs, rhs in
+            if selectedFilter == .past {
+              return lhs.key > rhs.key
+            }
+            return lhs.key < rhs.key
+          }
+          .map { day, events in
+            let title: String
+            if calendar.isDateInToday(day) {
+              title = LocalizedStrings.DateFormat.today
+            } else if calendar.isDateInTomorrow(day) {
+              title = LocalizedStrings.DateFormat.tomorrow
+            } else if calendar.isDateInYesterday(day) {
+              title = LocalizedStrings.DateFormat.yesterday
+            } else {
+              title = LocalizedDateFormatters.monthDayString(from: day)
+            }
+
+            let sortedEvents = events.sorted { lhs, rhs in
+              if selectedFilter == .past {
+                return lhs.startAt > rhs.startAt
+              }
+              return lhs.startAt < rhs.startAt
+            }
+
+            return (day: day, title: title, events: sortedEvents)
+          }
       }
 
       /// 리스트 애니메이션 키 (DiffableDataSource 스타일)
       var eventListAnimationKey: [String] {
         groupedEvents.flatMap { section in
-          [section.date] + section.events.map(\.id)
+          [String(Int(section.day.timeIntervalSince1970))] + section.events.map(\.id)
         }
       }
 
@@ -220,7 +244,7 @@ extension PersonalMode {
                 try? await calendarSyncClient.removePersonalEvent(event.id)
                 await send(.internal(.eventDeleted(event.id)))
               } catch {
-                await send(.internal(.eventDeleteFailed(error.localizedDescription)))
+                await send(.internal(.eventDeleteFailed(LocalizedStrings.Error.unknownError)))
               }
             }
 
@@ -254,7 +278,8 @@ extension PersonalMode {
             }
             return .run { send in
               var hasReceived = false
-              for await events in personalEventClient.subscribeToActiveEvents(50) {
+              let activeEventsStream = await personalEventClient.subscribeToActiveEvents(50)
+              for await events in activeEventsStream {
                 hasReceived = true
                 await send(.internal(.eventsUpdated(events)))
               }
@@ -272,7 +297,7 @@ extension PersonalMode {
                 let pastEvents = try await personalEventClient.getPastEvents(50, nil)
                 await send(.internal(.pastEventsLoaded(pastEvents)))
               } catch {
-                await send(.internal(.pastEventsFailed(error.localizedDescription)))
+                await send(.internal(.pastEventsFailed(LocalizedStrings.Error.unknownError)))
               }
             }
 
@@ -374,6 +399,21 @@ extension PersonalMode {
       .ifLet(\.$eventDetail, action: \.eventDetail) {
         PersonalEventDetail.Feature()
       }
+    }
+  }
+}
+
+// MARK: - EventKitClientError Localization
+
+extension EventKitClientError {
+  var localizedMessage: String {
+    switch self {
+    case .accessDenied: return LocalizedStrings.Error.calendarAccessDenied
+    case .accessRestricted: return LocalizedStrings.Error.calendarAccessRestricted
+    case .writeNotAllowed: return LocalizedStrings.Error.calendarWriteNotAllowed
+    case .saveFailed(_): return LocalizedStrings.Error.calendarSaveFailed
+    case .eventStoreError(_): return LocalizedStrings.Error.calendarStoreError
+    case .unknown(_): return LocalizedStrings.Error.unknownError
     }
   }
 }

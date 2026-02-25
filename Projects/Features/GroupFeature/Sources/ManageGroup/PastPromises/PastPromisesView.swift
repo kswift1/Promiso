@@ -14,7 +14,7 @@ extension PastPromises {
 
     private var groupedPromises: [(date: String, promises: [PromiseModel])] {
       guard store.sortOption != .participants else {
-        return [("전체", store.filteredPromises)]
+        return [(LocalizedStrings.Common.all, store.filteredPromises)]
       }
 
       var result: [(date: String, promises: [PromiseModel])] = []
@@ -51,7 +51,7 @@ extension PastPromises {
         }
       }
       .auroraBackground()
-      .navigationTitle("지난 약속")
+      .navigationTitle(LocalizedStrings.PastPromises.title)
       .navigationBarTitleDisplayMode(.inline)
       .onAppear { store.send(.view(.onAppear)) }
       .refreshable { store.send(.view(.refreshTriggered)) }
@@ -61,7 +61,7 @@ extension PastPromises {
           set: { store.send(.view(.searchQueryChanged($0))) }
         ),
         placement: .navigationBarDrawer(displayMode: .always),
-        prompt: "제목·설명·장소로 검색"
+        prompt: LocalizedStrings.PastPromises.searchPlaceholder
       )
     }
 
@@ -94,11 +94,11 @@ extension PastPromises {
             )
           )
 
-        Text("지난 약속이 없습니다")
+        Text(LocalizedStrings.PastPromises.emptyTitle)
           .font(.headline)
           .foregroundStyle(.secondary)
 
-        Text("완료된 약속이 여기에 표시됩니다")
+        Text(LocalizedStrings.PastPromises.emptySubtitle)
           .font(.subheadline)
           .foregroundStyle(.tertiary)
 
@@ -122,11 +122,11 @@ extension PastPromises {
           .font(.system(size: 48))
           .foregroundStyle(.secondary)
 
-        Text("조건에 맞는 지난 약속이 없습니다")
+        Text(LocalizedStrings.PastPromises.emptyFilteredTitle)
           .font(.headline)
           .foregroundStyle(.secondary)
 
-        Text("필터를 변경하거나 검색어를 확인해보세요")
+        Text(LocalizedStrings.PastPromises.emptyFilteredSubtitle)
           .font(.subheadline)
           .foregroundStyle(.tertiary)
 
@@ -145,12 +145,12 @@ extension PastPromises {
           .font(.system(size: 48))
           .foregroundStyle(.secondary)
 
-        Text("데이터를 불러올 수 없습니다")
+        Text(LocalizedStrings.PastPromises.loadFailed)
           .font(.headline)
           .foregroundStyle(.secondary)
 
         Button(action: { store.send(.view(.refreshTriggered)) }) {
-          Text("다시 시도")
+          Text(LocalizedStrings.Common.retry)
             .font(.subheadline.weight(.semibold))
             .foregroundColor(.white)
             .padding(.horizontal, 24)
@@ -258,9 +258,9 @@ extension PastPromises {
               store.send(.view(.sortOptionChanged(option)))
             } label: {
               if store.sortOption == option {
-                Label(option.rawValue, systemImage: "checkmark")
+                Label(option.displayTitle, systemImage: "checkmark")
               } else {
-                Text(option.rawValue)
+                Text(option.displayTitle)
               }
             }
           }
@@ -286,7 +286,7 @@ extension PastPromises {
       return Button {
         store.send(.view(.statusFilterChanged(filter)))
       } label: {
-        Text(filter.rawValue)
+        Text(filter.displayTitle)
           .font(.system(size: 13, weight: .semibold))
           .foregroundStyle(isSelected ? Color.pmindigo.n500 : .secondary)
           .padding(.horizontal, 10)
@@ -323,9 +323,9 @@ extension PastPromises {
       let dateYear = Calendar.current.component(.year, from: date)
 
       if dateYear == currentYear {
-        return KoreanDateFormatters.monthDay.string(from: date)
+        return LocalizedDateFormatters.monthDay.string(from: date)
       } else {
-        return KoreanDateFormatters.yearMonthDay.string(from: date)
+        return LocalizedDateFormatters.yearMonthDay.string(from: date)
       }
     }
   }

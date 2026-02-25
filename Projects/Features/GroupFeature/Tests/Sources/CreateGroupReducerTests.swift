@@ -148,7 +148,7 @@ struct CreateGroupReducerTests {
     var state = CreateGroup.Feature.State(currentUser: user)
     state.isCreating = true
 
-    let testError = NSError(domain: "test", code: -1, userInfo: [NSLocalizedDescriptionKey: "생성 실패"])
+    let testError = GroupClientError.serverError
 
     let store = TestStore(initialState: state) {
       CreateGroup.Feature()
@@ -156,7 +156,7 @@ struct CreateGroupReducerTests {
 
     await store.send(.internal(.createGroupResponse(.failure(testError)))) {
       $0.isCreating = false
-      $0.creationError = testError.localizedDescription
+      $0.creationError = testError.localizedMessage
     }
   }
 

@@ -30,7 +30,7 @@ extension LegalInfo {
     // MARK: - State
 
     @ObservableState
-    public struct State: Equatable {
+    public struct State: Equatable, Sendable {
       public init() {}
     }
 
@@ -108,7 +108,7 @@ extension LegalInfo {
                   .foregroundStyle(Color.pmindigo.n500)
                   .frame(width: 24, height: 24)
 
-                Text("개인정보처리방침")
+                Text(LocalizedStrings.SettingsStrings.privacyPolicy)
                   .font(.body)
                   .foregroundStyle(Color.pmtext.primary)
 
@@ -136,7 +136,7 @@ extension LegalInfo {
                   .foregroundStyle(Color.pmindigo.n500)
                   .frame(width: 24, height: 24)
 
-                Text("이용약관")
+                Text(LocalizedStrings.SettingsStrings.termsOfService)
                   .font(.body)
                   .foregroundStyle(Color.pmtext.primary)
 
@@ -159,7 +159,7 @@ extension LegalInfo {
         .padding(.bottom, 24)
       }
       .auroraBackground()
-      .navigationTitle("약관 및 정책")
+      .navigationTitle(LocalizedStrings.SettingsStrings.legalInfoTitle)
       .navigationBarTitleDisplayMode(.inline)
       .onAppear {
         store.send(.view(.onAppear))

@@ -5,21 +5,10 @@ import FirebaseStorage
 import PromisoShared
 
 /// 그룹 원격 데이터 소스 에러
-public enum GroupRemoteDataSourceError: Error, LocalizedError {
+public enum GroupRemoteDataSourceError: Error {
   case invalidFunctionResponse
   case invalidRequestData
   case imageUploadFailed
-
-  public var errorDescription: String? {
-    switch self {
-    case .invalidFunctionResponse:
-      return "서버 응답이 올바르지 않아요. 잠시 후 다시 시도해주세요."
-    case .invalidRequestData:
-      return "요청 데이터가 올바르지 않아요."
-    case .imageUploadFailed:
-      return "그룹 사진 업로드에 실패했어요. 잠시 후 다시 시도해주세요."
-    }
-  }
 }
 
 // MARK: - Firebase 상수
@@ -43,7 +32,7 @@ private enum FirebaseConstants {
 /// Firebase Functions를 통한 그룹 데이터 관리
 ///
 /// - GroupRemoteDataSource는 Clients 레이어에 속함
-public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchecked Sendable {
+public actor GroupRemoteDataSource: GroupRemoteDataSourceProtocol {
   private let functions: Functions
   private let storage: Storage
   private let db: Firestore
@@ -175,8 +164,10 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
   private func fetchGroupsInParallel(ids: [String]) async throws -> [GroupModel] {
     try await withThrowingTaskGroup(of: GroupModel?.self) { group in
       for groupId in ids {
-        group.addTask { [db] in
-          let groupRef = db.environmentCollection("groups").document(groupId)
+        group.addTask {
+          // Task 내부에서 Firestore 인스턴스를 생성해 non-Sendable 캡처를 피한다.
+          let firestore = Firestore.firestore()
+          let groupRef = firestore.environmentCollection("groups").document(groupId)
           let groupSnapshot = try await groupRef.getDocument()
           guard groupSnapshot.exists else { return nil }
 
@@ -186,6 +177,8 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
       }
 
       var groups: [GroupModel] = []
+      groups.reserveCapacity(ids.count)
+
       for try await groupModel in group {
         if let groupModel {
           groups.append(groupModel)
@@ -391,6 +384,19 @@ public final class GroupRemoteDataSource: GroupRemoteDataSourceProtocol, @unchec
     )
   }
 
+  /// 그룹 색상 업데이트 (개인별)
+  public func updateGroupColor(
+    groupId: String,
+    userId: String,
+    color: GroupColor?
+  ) async throws {
+    let userRef = db.environmentCollection("users").document(userId)
+    let colorValue: Any = color?.rawValue ?? FieldValue.delete()
+    try await userRef.updateData([
+      "groups.\(groupId).groupColor": colorValue
+    ])
+  }
+
   /// 그룹 배지 클리어 (Fire & Forget)
   ///
   /// - Parameters:
@@ -550,6 +556,8 @@ private extension UserGroupInfo {
     let joinedAt = (data["joinedAt"] as? Timestamp)?.dateValue()
     let hasNewActivity = data["hasNewActivity"] as? Bool ?? false
     let imageUrl = data["imageUrl"] as? String
+    let groupColorString = data["groupColor"] as? String
+    let groupColor = groupColorString.flatMap { GroupColor(rawValue: $0) }
 
     self.init(
       id: id,
@@ -558,7 +566,8 @@ private extension UserGroupInfo {
       joinedAt: joinedAt,
       notifications: notifications,
       hasNewActivity: hasNewActivity,
-      imageUrl: imageUrl
+      imageUrl: imageUrl,
+      groupColor: groupColor
     )
   }
 }

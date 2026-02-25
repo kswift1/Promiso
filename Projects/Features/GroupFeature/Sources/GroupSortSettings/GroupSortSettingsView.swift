@@ -54,17 +54,17 @@ extension GroupSortSettings {
 
           sortOptionsSection
         }
-        .navigationTitle("그룹 정렬")
+        .navigationTitle(LocalizedStrings.GroupSortSettings.title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
           ToolbarItem(placement: .cancellationAction) {
-            Button("취소") {
+            Button(LocalizedStrings.Common.cancel) {
               onCancel?()
             }
           }
 
           ToolbarItem(placement: .confirmationAction) {
-            Button("완료") {
+            Button(LocalizedStrings.Common.done) {
               onConfirm?(finalOption)
             }
             .fontWeight(.semibold)
@@ -104,7 +104,7 @@ extension GroupSortSettings {
     private var previewSection: some View {
       VStack(alignment: .leading, spacing: 12) {
         HStack {
-          Text(store.selectedOption.sortType == .custom ? "길게 눌러서 순서를 변경하세요" : "미리보기")
+          Text(store.selectedOption.sortType == .custom ? LocalizedStrings.GroupSortSettings.longPressHint : LocalizedStrings.GroupSortSettings.preview)
             .font(.system(size: 13, weight: .medium))
             .foregroundStyle(.secondary)
 
@@ -226,7 +226,7 @@ extension GroupSortSettings {
             .foregroundStyle(isSelected(sortType) ? Color.pmindigo.n500 : .secondary)
             .frame(width: 24)
 
-          Text(sortType.rawValue)
+          Text(sortType.displayTitle)
             .font(.system(size: 16))
             .foregroundStyle(.primary)
 

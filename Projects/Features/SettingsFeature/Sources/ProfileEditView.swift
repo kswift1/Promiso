@@ -45,11 +45,11 @@ extension Settings {
           UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         }
         .auroraBackground()
-        .navigationTitle("프로필 편집")
+        .navigationTitle(LocalizedStrings.SettingsStrings.profileEdit)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
           ToolbarItem(placement: .navigationBarLeading) {
-            Button("취소") {
+            Button(LocalizedStrings.Common.cancel) {
               store.send(.view(.cancelEditTapped))
             }
             .foregroundStyle(Color.pmtext.secondary)
@@ -60,7 +60,7 @@ extension Settings {
               ProgressView()
                 .tint(Color.pmtext.secondary)
             } else {
-              Button("저장") {
+              Button(LocalizedStrings.Common.save) {
                 store.send(.view(.saveProfileTapped))
               }
               .fontWeight(.semibold)
@@ -70,13 +70,13 @@ extension Settings {
           }
         }
         .alert(
-          "오류",
+          LocalizedStrings.SettingsStrings.errorTitle,
           isPresented: Binding(
             get: { store.errorMessage != nil },
             set: { if !$0 { store.send(.view(.dismissError)) } }
           )
         ) {
-          Button("확인", role: .cancel) {
+          Button(LocalizedStrings.Common.confirm, role: .cancel) {
             store.send(.view(.dismissError))
           }
         } message: {
@@ -160,13 +160,13 @@ extension Settings {
 
     private var nicknameSection: some View {
       VStack(alignment: .leading, spacing: 12) {
-        Text("닉네임")
+        Text(LocalizedStrings.SettingsStrings.nickname)
           .font(.headline)
           .foregroundStyle(Color.pmtext.primary)
 
         VStack(alignment: .leading, spacing: 8) {
           HStack {
-            TextField("닉네임을 입력하세요", text: Binding(
+            TextField(LocalizedStrings.SettingsStrings.nicknamePlaceholder, text: Binding(
               get: { store.editedNickname },
               set: { store.send(.view(.nicknameChanged($0))) }
             ))
@@ -214,15 +214,15 @@ extension Settings {
     private var validationMessage: some View {
       switch store.nicknameValidation {
       case .idle, .checking:
-        Text("2~20자 이내로 입력해주세요")
+        Text(LocalizedStrings.SettingsStrings.nicknameValidationHint)
           .font(.caption)
           .foregroundStyle(Color.pmgray.n400)
       case .available:
-        Text("사용 가능한 닉네임입니다")
+        Text(LocalizedStrings.SettingsStrings.nicknameAvailable)
           .font(.caption)
           .foregroundStyle(Color.pmsuccess.n500)
       case .unavailable:
-        Text("이미 사용 중인 닉네임입니다")
+        Text(LocalizedStrings.SettingsStrings.nicknameUnavailable)
           .font(.caption)
           .foregroundStyle(Color.pmerror.n500)
       case .invalid(let message):
@@ -230,7 +230,7 @@ extension Settings {
           .font(.caption)
           .foregroundStyle(Color.pmwarning.n500)
       case .error(let message):
-        Text("확인 실패: \(message)")
+        Text(LocalizedStrings.SettingsStrings.nicknameCheckFailed + message)
           .font(.caption)
           .foregroundStyle(Color.pmgray.n400)
       }

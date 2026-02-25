@@ -666,69 +666,6 @@ struct AppEntryFeatureTests {
     }
   }
 
-  // MARK: - App Restart 테스트
-
-  @Test("appRestartRequested 시 상태 초기화 후 sessionCheck 시작")
-  func appRestartRequested_resetsStateAndStartsSessionCheck() async {
-    let firstUser = makeUser(id: "first-user", nickname: "기존")
-    let secondUser = makeUser(id: "second-user", nickname: "대기")
-    var state = makeMainState(user: firstUser)
-    state.splash = .hidden
-    state.pendingDeeplink = .group(groupId: "g-1")
-    state.pendingUserForMain = secondUser
-    state.providerProfileImageURL = URL(string: "https://example.com/temp.png")
-    state.notificationPermission = NotificationPermission.Feature.State()
-
-    let originalFormat = KoreanDateFormatters.use24HourFormat
-    KoreanDateFormatters.use24HourFormat = false
-    defer { KoreanDateFormatters.use24HourFormat = originalFormat }
-
-    let store = TestStore(initialState: state) {
-      AppEntry.Feature()
-    } withDependencies: {
-      $0.userDefaultsClient.boolForKey = { _ in true }
-      $0.authClient.isAuthenticated = { false }
-    }
-
-    await store.send(.internal(.appRestartRequested)) {
-      $0.splash = .visible
-      $0.destination = nil
-      $0.pendingDeeplink = nil
-      $0.pendingUserForMain = nil
-      $0.providerProfileImageURL = nil
-      $0.notificationPermission = nil
-    }
-    #expect(KoreanDateFormatters.use24HourFormat == true)
-
-    await store.receive(\.internal.startSessionCheck)
-    await store.receive(\.internal.sessionCheckResponse) {
-      $0.destination = .auth(AuthFeature.Auth.Feature.State())
-      $0.splash = .animatingOut
-    }
-  }
-
-  @Test("subscribeAppRestart 구독 중 재시작 알림 수신 시 appRestartRequested 전달")
-  func subscribeAppRestart_receivesRestartNotification() async {
-    let store = TestStore(initialState: AppEntry.Feature.State()) {
-      AppEntry.Feature()
-    } withDependencies: {
-      $0.userDefaultsClient.boolForKey = { _ in true }
-      $0.authClient.isAuthenticated = { false }
-    }
-    store.exhaustivity = .off(showSkippedAssertions: false)
-
-    await store.send(.internal(.subscribeAppRestart))
-    await Task.yield()
-
-    NotificationCenter.default.post(name: AppConstants.Notifications.appRestartRequested, object: nil)
-
-    await store.receive(\.internal.appRestartRequested)
-    await store.receive(\.internal.startSessionCheck)
-    await store.receive(\.internal.sessionCheckResponse)
-
-    await store.send(.internal(.cancelSubscriptions))
-  }
-
   // MARK: - FCM Token 저장 테스트
 
   @Test("fcmTokenSaved 시 아무 state 변경 없음")

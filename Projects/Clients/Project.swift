@@ -3,6 +3,7 @@ import ProjectDescriptionHelpers
 
 let project = Project(
   name: "Clients",
+  options: .options(developmentRegion: "ko"),
   targets: [
     .target(
       name: "Clients",

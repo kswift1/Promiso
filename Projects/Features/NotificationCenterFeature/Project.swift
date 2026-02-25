@@ -5,6 +5,7 @@ private let feature: Feature = .notificationCenter
 
 let project = Project(
   name: feature.fullName,
+  options: .options(developmentRegion: "ko"),
   targets: [
 
     // Main Feature (TCA)

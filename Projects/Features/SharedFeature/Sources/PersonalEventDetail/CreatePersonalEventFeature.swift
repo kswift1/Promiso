@@ -22,6 +22,8 @@ extension CreatePersonalEvent {
     @Dependency(\.calendarSyncClient) var calendarSyncClient
     @Dependency(\.imageUploadClient) var imageUploadClient
     @Dependency(\.authClient) var authClient
+    @Dependency(\.scheduleConflictClient) var scheduleConflictClient
+    @Dependency(\.userSettingsClient) var userSettingsClient
 
     public init() {}
 
@@ -29,6 +31,7 @@ extension CreatePersonalEvent {
 
     private enum CancelID {
       case emojiDebounce
+      case conflictCheckDebounce
     }
 
     // MARK: - Mode
@@ -60,6 +63,12 @@ extension CreatePersonalEvent {
       var localImageData: [Data] = []
       var removedImageUrls: [String] = []
 
+      // 일정 충돌 감지 (Pro plan)
+      var userPlan: UserPlan = .free
+      var currentUserId: String = ""
+      var conflicts: [ScheduleConflict] = []
+      var isCheckingConflicts: Bool = false
+      
       public init(event: PersonalEventModel = .empty, mode: Mode = .create) {
         self.event = event
         self.mode = mode
@@ -71,7 +80,7 @@ extension CreatePersonalEvent {
       }
 
       var navigationTitle: String {
-        mode == .create ? "새 일정" : "일정 수정"
+        mode == .create ? LocalizedStrings.Shared.newEvent : LocalizedStrings.Shared.editEvent
       }
     }
 
@@ -102,6 +111,7 @@ extension CreatePersonalEvent {
       case photosSelected([PhotosPickerItem])
       case removeLocalImage(Int)
       case removeExistingImage(Int)
+      case onAppear
     }
 
     public enum Internal: Sendable {
@@ -112,6 +122,8 @@ extension CreatePersonalEvent {
       case saveSuccess(PersonalEventModel)
       case saveFailed(String)
       case notificationStatusChecked(NotificationAuthorizationStatus)
+      case conflictsLoaded([ScheduleConflict])
+      case userPlanLoaded(UserPlan, String)
     }
 
     @CasePathable
@@ -131,6 +143,17 @@ extension CreatePersonalEvent {
 
         case let .view(viewAction):
           switch viewAction {
+          case .onAppear:
+            return .run { [authClient, userSettingsClient] send in
+              guard let user = await authClient.currentUser() else { return }
+              do {
+                let settings = try await userSettingsClient.fetchSettings(user.uid)
+                await send(.internal(.userPlanLoaded(settings.plan, user.uid)))
+              } catch {
+                // 설정 로드 실패 시 무료 플랜으로 처리 (충돌 감지 비활성)
+              }
+            }
+
           case .titleChanged(let title):
             let oldTitle = state.event.title
             state.event.title = String(title.prefix(30))
@@ -160,11 +183,11 @@ extension CreatePersonalEvent {
                 state.reminderWarning = nil
               }
             }
-            return .none
+            return checkConflictsEffect(state: &state)
 
           case .endDateChanged(let date):
             state.event.endAt = date
-            return .none
+            return checkConflictsEffect(state: &state)
 
           case .toggleUseEndTime:
             state.useEndTime.toggle()
@@ -173,7 +196,10 @@ extension CreatePersonalEvent {
             } else {
               state.event.endAt = nil
             }
-            return .run { _ in await hapticFeedback.selection() }
+            return .merge(
+              .run { _ in await hapticFeedback.selection() },
+              checkConflictsEffect(state: &state)
+            )
 
           case .reminderOptionSelected(let minutes):
             if let minutes {
@@ -289,7 +315,7 @@ extension CreatePersonalEvent {
 
                 await send(.internal(.saveSuccess(savedEvent)))
               } catch {
-                await send(.internal(.saveFailed(error.localizedDescription)))
+                await send(.internal(.saveFailed(LocalizedStrings.Error.unknownError)))
               }
             }
 
@@ -379,6 +405,18 @@ extension CreatePersonalEvent {
               state.notificationPermission = NotificationPermission.Feature.State(allowInteractiveDismiss: true)
               return .none
             }
+
+          case .conflictsLoaded(let conflicts):
+            AppLogger.personal.info("[ConflictCheck] 개인 일정 - 충돌 결과 수신: \(conflicts.count)건")
+            state.conflicts = conflicts
+            state.isCheckingConflicts = false
+            return .none
+
+          case .userPlanLoaded(let plan, let userId):
+            AppLogger.personal.info("[ConflictCheck] UserPlan 로드 완료: \(String(describing: plan))")
+            state.userPlan = plan
+            state.currentUserId = userId
+            return checkConflictsEffect(state: &state)
           }
 
         // MARK: - LocationPicker
@@ -431,6 +469,29 @@ extension CreatePersonalEvent {
         NotificationPermission.Feature()
       }
     }
+
+    // MARK: - Schedule Conflict Check
+
+    private func checkConflictsEffect(state: inout State) -> Effect<Action> {
+      guard !state.currentUserId.isEmpty else { return .none }
+
+      state.isCheckingConflicts = true
+
+      let userId = state.currentUserId
+      let startAt = state.event.startAt
+      let endAt = state.event.endAt
+
+      return .run { [scheduleConflictClient, clock] send in
+        try await clock.sleep(for: .milliseconds(500))
+        do {
+          let conflicts = try await scheduleConflictClient.checkConflicts(userId, startAt, endAt)
+          await send(.internal(.conflictsLoaded(conflicts)))
+        } catch {
+          await send(.internal(.conflictsLoaded([])))
+        }
+      }
+      .cancellable(id: CancelID.conflictCheckDebounce, cancelInFlight: true)
+    }
   }
 }
 
@@ -468,17 +529,17 @@ extension CreatePersonalEvent {
 
     public var title: String {
       switch self {
-      case .none: return "없음"
-      case .atEvent: return "이벤트 시점"
-      case .fiveMinutes: return "5분 전"
-      case .tenMinutes: return "10분 전"
-      case .fifteenMinutes: return "15분 전"
-      case .thirtyMinutes: return "30분 전"
-      case .oneHour: return "1시간 전"
-      case .twoHours: return "2시간 전"
-      case .oneDay: return "1일 전"
-      case .twoDays: return "2일 전"
-      case .oneWeek: return "1주 전"
+      case .none: return LocalizedStrings.Shared.reminderNone
+      case .atEvent: return LocalizedStrings.Shared.reminderAtEvent
+      case .fiveMinutes: return LocalizedStrings.Shared.reminder5min
+      case .tenMinutes: return LocalizedStrings.Shared.reminder10min
+      case .fifteenMinutes: return LocalizedStrings.Shared.reminder15min
+      case .thirtyMinutes: return LocalizedStrings.Shared.reminder30min
+      case .oneHour: return LocalizedStrings.Shared.reminder1hour
+      case .twoHours: return LocalizedStrings.Shared.reminder2hours
+      case .oneDay: return LocalizedStrings.Shared.reminder1day
+      case .twoDays: return LocalizedStrings.Shared.reminder2days
+      case .oneWeek: return LocalizedStrings.Shared.reminder1week
       }
     }
 
