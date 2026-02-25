@@ -508,6 +508,9 @@ extension GroupMain {
             if let description = info.description {
               promise.description = description
             }
+            if let location = info.location {
+              promise.location = LocationInfoModel(name: location)
+            }
             state.createPromise = CreatePromise.Feature.State(
               promise: promise,
               groupSummaries: state.allGroupSummaries,
