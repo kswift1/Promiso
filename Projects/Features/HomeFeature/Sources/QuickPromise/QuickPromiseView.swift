@@ -2,6 +2,7 @@ import Clients
 import ComposableArchitecture
 import PhotosUI
 import _PhotosUI_SwiftUI
+import PromisoShared
 import ResourceKit
 import SwiftUI
 
@@ -56,7 +57,7 @@ extension QuickPromise {
           .font(.system(size: 16, weight: .semibold))
           .foregroundStyle(Color.pmindigo.n500)
 
-        Text("빠른 약속 만들기")
+        Text(LocalizedStrings.QuickPromise.title)
           .font(.system(size: 16, weight: .bold))
 
         Spacer()
@@ -79,7 +80,7 @@ extension QuickPromise {
     private var inputSection: some View {
       HStack(spacing: 8) {
         // 텍스트 입력 필드
-        TextField("텍스트를 붙여넣거나 입력하세요", text: Binding(
+        TextField(LocalizedStrings.QuickPromise.textPlaceholder, text: Binding(
           get: { store.inputText },
           set: { store.send(.view(.textChanged($0))) }
         ), axis: .vertical)
@@ -158,24 +159,24 @@ extension QuickPromise {
           Image(systemName: info.source == .image ? "photo" : "text.quote")
             .font(.system(size: 12))
             .foregroundStyle(.secondary)
-          Text("추출된 정보")
+          Text(LocalizedStrings.QuickPromise.extractedInfo)
             .font(.system(size: 12, weight: .medium))
             .foregroundStyle(.secondary)
         }
 
         // 제목
         if let title = info.title {
-          infoRow(icon: "pencil", label: "제목", value: title)
+          infoRow(icon: "pencil", label: LocalizedStrings.QuickPromise.labelTitle, value: title)
         }
 
         // 날짜/시간
         if let date = info.date {
-          infoRow(icon: "calendar", label: "일시", value: Self.dateTimeString(from: date))
+          infoRow(icon: "calendar", label: LocalizedStrings.QuickPromise.labelDateTime, value: Self.dateTimeString(from: date))
         }
 
         // 장소
         if let location = info.location {
-          infoRow(icon: "mappin", label: "장소", value: location)
+          infoRow(icon: "mappin", label: LocalizedStrings.QuickPromise.labelLocation, value: location)
         }
 
         // 정보 없음
@@ -184,7 +185,7 @@ extension QuickPromise {
             Image(systemName: "info.circle")
               .font(.system(size: 14))
               .foregroundStyle(.secondary)
-            Text("약속 정보를 추출하지 못했습니다. 직접 입력해주세요.")
+            Text(LocalizedStrings.QuickPromise.noInfoMessage)
               .font(.system(size: 13))
               .foregroundStyle(.secondary)
           }
@@ -197,7 +198,7 @@ extension QuickPromise {
           HStack(spacing: 6) {
             Image(systemName: "plus.circle.fill")
               .font(.system(size: 14))
-            Text("약속 만들기")
+            Text(LocalizedStrings.QuickPromise.createButton)
               .font(.system(size: 14, weight: .semibold))
           }
           .frame(maxWidth: .infinity)

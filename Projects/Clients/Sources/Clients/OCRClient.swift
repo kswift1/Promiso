@@ -1,5 +1,6 @@
 import ComposableArchitecture
 import Foundation
+import PromisoShared
 import UIKit
 import Vision
 
@@ -13,11 +14,11 @@ public enum OCRError: Error, Equatable, Sendable {
   public var localizedDescription: String {
     switch self {
     case .imageConversionFailed:
-      return "이미지 변환에 실패했습니다"
+      return LocalizedStrings.QuickPromise.errorImageConversion
     case .recognitionFailed(let message):
-      return "텍스트 인식 실패: \(message)"
+      return "\(LocalizedStrings.QuickPromise.errorRecognitionFailed): \(message)"
     case .noTextFound:
-      return "이미지에서 텍스트를 찾을 수 없습니다"
+      return LocalizedStrings.QuickPromise.errorNoTextFound
     }
   }
 }

@@ -147,13 +147,13 @@ extension QuickPromise {
 
           case .textExtractionResult(.failure):
             state.isExtracting = false
-            state.extractionError = "텍스트 분석에 실패했습니다"
+            state.extractionError = LocalizedStrings.QuickPromise.errorTextAnalysis
             return .none
 
           case .imageDataLoaded(let data):
             guard let data else {
               state.isExtractingFromImage = false
-              state.extractionError = "이미지를 불러올 수 없습니다"
+              state.extractionError = LocalizedStrings.QuickPromise.errorImageLoad
               return .none
             }
             return .run { [extractionClient] send in
@@ -173,7 +173,7 @@ extension QuickPromise {
 
           case .imageExtractionResult(.failure):
             state.isExtractingFromImage = false
-            state.extractionError = "이미지에서 텍스트를 추출할 수 없습니다"
+            state.extractionError = LocalizedStrings.QuickPromise.errorImageExtraction
             return .none
           }
 

@@ -206,7 +206,7 @@ extension Home {
             .font(.system(size: 14, weight: .semibold))
             .foregroundStyle(Color.pmindigo.n500)
 
-          Text("빠른 약속 만들기")
+          Text(LocalizedStrings.QuickPromise.title)
             .font(.system(size: 14, weight: .semibold))
 
           Spacer()
