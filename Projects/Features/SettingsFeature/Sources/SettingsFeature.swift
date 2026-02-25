@@ -231,6 +231,8 @@ extension Settings {
     public enum Delegate: Equatable, Sendable {
       /// 로그아웃 완료됨 (부모에서 화면 전환 처리)
       case didLogout
+      /// 구독 상태 변경됨 (ProPlan에서 전달)
+      case subscriptionStatusChanged(SubscriptionStatus)
     }
 
     // MARK: - Reducer Body
@@ -562,8 +564,8 @@ extension Settings {
 
         case .path(.element(_, action: .proPlan(.delegate(let delegate)))):
           switch delegate {
-          case .subscriptionStatusChanged:
-            return .none
+          case .subscriptionStatusChanged(let status):
+            return .send(.delegate(.subscriptionStatusChanged(status)))
           }
 
         case .path:

@@ -266,15 +266,61 @@ struct ProPlanFeatureTests {
     }
   }
 
-  @Test("statusUpdated 시 구독 상태 업데이트")
-  func statusUpdated_updatesSubscriptionStatus() async {
+  @Test("statusUpdated 시 상태 변경되면 delegate 전달")
+  func statusUpdated_changedStatus_sendsDelegate() async {
     let store = makeStore()
+    store.exhaustivity = .off(showSkippedAssertions: false)
 
     let expirationDate = Date().addingTimeInterval(30 * 24 * 3600)
 
     await store.send(.internal(.statusUpdated(.subscribed(expirationDate: expirationDate)))) {
       $0.subscriptionStatus = .subscribed(expirationDate: expirationDate)
     }
+
+    await store.receive(\.delegate.subscriptionStatusChanged)
+  }
+
+  @Test("statusUpdated 시 동일한 상태면 delegate 전달 안함")
+  func statusUpdated_sameStatus_noDelegate() async {
+    var state = ProPlan.Feature.State()
+    state.subscriptionStatus = .none
+
+    let store = makeStore(state: state)
+
+    await store.send(.internal(.statusUpdated(.none)))
+    // delegate 없음 - 상태 동일
+  }
+
+  @Test("statusUpdated 시 revoked로 변경되면 delegate 전달")
+  func statusUpdated_revoked_sendsDelegate() async {
+    var state = ProPlan.Feature.State()
+    state.subscriptionStatus = .lifetime
+
+    let store = makeStore(state: state)
+    store.exhaustivity = .off(showSkippedAssertions: false)
+
+    await store.send(.internal(.statusUpdated(.revoked))) {
+      $0.subscriptionStatus = .revoked
+    }
+
+    await store.receive(\.delegate.subscriptionStatusChanged)
+  }
+
+  @Test("statusUpdated 시 gracePeriod로 변경되면 delegate 전달")
+  func statusUpdated_gracePeriod_sendsDelegate() async {
+    let expirationDate = Date().addingTimeInterval(15 * 24 * 3600)
+    var state = ProPlan.Feature.State()
+    state.subscriptionStatus = .subscribed(expirationDate: expirationDate)
+
+    let store = makeStore(state: state)
+    store.exhaustivity = .off(showSkippedAssertions: false)
+
+    let gracePeriodDate = Date().addingTimeInterval(7 * 24 * 3600)
+    await store.send(.internal(.statusUpdated(.gracePeriod(expirationDate: gracePeriodDate)))) {
+      $0.subscriptionStatus = .gracePeriod(expirationDate: gracePeriodDate)
+    }
+
+    await store.receive(\.delegate.subscriptionStatusChanged)
   }
 }
 
@@ -325,6 +371,7 @@ private extension ProPlanFeatureTests {
       $0.subscriptionClient.restore = { .none }
       $0.subscriptionClient.fetchStatus = { .none }
       $0.subscriptionClient.statusStream = { .finished }
+      $0.subscriptionClient.unifiedStatusStream = { .finished }
       $0.hapticFeedback = .testValue
       configure(&$0)
     }

@@ -89,31 +89,41 @@ final class StoreKitDataSource: Sendable {
   // MARK: - Current Status
 
   func fetchCurrentStatus() async throws -> SubscriptionStatus {
-    // 1. 평생 구매 확인
-    for await result in Transaction.currentEntitlements {
+    var lifetimeTransaction: StoreKit.Transaction?
+    var latestSubscriptionTransaction: StoreKit.Transaction?
+
+    // 단일 패스로 entitlements 수집
+    for await result in StoreKit.Transaction.currentEntitlements {
       guard let transaction = try? checkVerified(result) else { continue }
+
       if transaction.productID == SubscriptionProductType.lifetime.rawValue {
-        if transaction.revocationDate == nil {
-          return .lifetime
-        }
+        lifetimeTransaction = transaction
+      } else if transaction.productID == SubscriptionProductType.monthly.rawValue
+                || transaction.productID == SubscriptionProductType.yearly.rawValue {
+        latestSubscriptionTransaction = transaction
       }
     }
 
-    // 2. 구독 상태 확인
-    for await result in Transaction.currentEntitlements {
-      guard let transaction = try? checkVerified(result) else { continue }
-      let productId = transaction.productID
-      guard productId == SubscriptionProductType.monthly.rawValue
-              || productId == SubscriptionProductType.yearly.rawValue else {
-        continue
+    // 1. Lifetime 판별
+    if let lifetime = lifetimeTransaction {
+      if lifetime.revocationDate != nil {
+        return .revoked
       }
+      return .lifetime
+    }
 
-      if transaction.revocationDate != nil {
+    // 2. 구독 판별
+    if let subscription = latestSubscriptionTransaction {
+      if subscription.revocationDate != nil {
         return .revoked
       }
 
-      if let expirationDate = transaction.expirationDate {
+      if let expirationDate = subscription.expirationDate {
         if expirationDate > Date() {
+          // Grace period 감지
+          if let gracePeriodExpiration = try? await detectGracePeriod(for: subscription) {
+            return .gracePeriod(expirationDate: gracePeriodExpiration)
+          }
           return .subscribed(expirationDate: expirationDate)
         } else {
           return .expired(expirationDate: expirationDate)
@@ -124,12 +134,32 @@ final class StoreKitDataSource: Sendable {
     return .none
   }
 
+  // MARK: - Grace Period Detection
+
+  private func detectGracePeriod(for transaction: StoreKit.Transaction) async throws -> Date? {
+    let products = try await Product.products(for: [transaction.productID])
+    guard let product = products.first,
+          let subscription = product.subscription else { return nil }
+
+    let statuses = try await subscription.status
+    for status in statuses {
+      guard case .verified(let renewalInfo) = status.renewalInfo,
+            case .verified(let transactionInfo) = status.transaction,
+            transactionInfo.originalID == transaction.originalID else { continue }
+
+      if let gracePeriodExpiration = renewalInfo.gracePeriodExpirationDate {
+        return gracePeriodExpiration
+      }
+    }
+    return nil
+  }
+
   // MARK: - Status Stream
 
   func statusStream() -> AsyncStream<SubscriptionStatus> {
     AsyncStream { continuation in
       let task = Task {
-        for await result in Transaction.updates {
+        for await result in StoreKit.Transaction.updates {
           guard let _ = try? self.checkVerified(result) else { continue }
           if let status = try? await self.fetchCurrentStatus() {
             continuation.yield(status)
@@ -188,6 +218,71 @@ public enum SubscriptionError: Error, Equatable, LocalizedError {
       return "구매 검증에 실패했습니다."
     case .unknown:
       return "알 수 없는 오류가 발생했습니다."
+    }
+  }
+}
+
+// MARK: - SubscriptionRemoteDataSource
+
+import FirebaseAuth
+@preconcurrency import FirebaseFirestore
+
+/// Firestore subscriptions/{userId} 문서의 실시간 변경을 감지하는 DataSource
+/// Apple webhook → Firebase Functions → Firestore 업데이트를 클라이언트에서 수신
+final class SubscriptionRemoteDataSource: Sendable {
+  private let db: Firestore
+
+  init(db: Firestore = Firestore.firestore()) {
+    self.db = db
+  }
+
+  /// subscriptions/{userId} 문서의 실시간 변경 스트림
+  func subscribeToStatus() -> AsyncStream<SubscriptionStatus> {
+    AsyncStream { continuation in
+      guard let currentUserId = Auth.auth().currentUser?.uid else {
+        continuation.finish()
+        return
+      }
+
+      let docRef = db.collection("subscriptions").document(currentUserId)
+
+      let listener = docRef.addSnapshotListener { snapshot, error in
+        if error != nil { return }
+
+        guard let data = snapshot?.data() else {
+          continuation.yield(.none)
+          return
+        }
+
+        let status = Self.parseStatus(from: data)
+        continuation.yield(status)
+      }
+
+      continuation.onTermination = { _ in
+        listener.remove()
+      }
+    }
+  }
+
+  private static func parseStatus(from data: [String: Any]) -> SubscriptionStatus {
+    guard let statusString = data["status"] as? String else { return .none }
+
+    let expirationDateString = data["expirationDate"] as? String
+    let expirationDate = expirationDateString.flatMap { ISO8601DateFormatter().date(from: $0) }
+
+    switch statusString {
+    case "subscribed":
+      return .subscribed(expirationDate: expirationDate)
+    case "lifetime":
+      return .lifetime
+    case "expired":
+      return .expired(expirationDate: expirationDate ?? Date())
+    case "gracePeriod":
+      return .gracePeriod(expirationDate: expirationDate ?? Date())
+    case "revoked":
+      return .revoked
+    default:
+      return .none
     }
   }
 }

@@ -277,7 +277,11 @@ extension ProPlan {
             }
 
           case .statusUpdated(let status):
+            let previousStatus = state.subscriptionStatus
             state.subscriptionStatus = status
+            if previousStatus != status {
+              return .send(.delegate(.subscriptionStatusChanged(status)))
+            }
             return .none
           }
 

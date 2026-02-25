@@ -26,6 +26,10 @@ public struct SubscriptionClient: Sendable {
 
   /// 서버에 구매 검증 요청
   public var verifyPurchase: @Sendable (_ transactionJWS: String, _ productId: String) async throws -> SubscriptionStatus
+
+  /// 통합 구독 상태 스트림 (StoreKit Transaction.updates + Firestore subscriptions/{userId} 병합)
+  /// 앱 레벨에서 구독 상태 변경을 실시간 감지
+  public var unifiedStatusStream: @Sendable () -> AsyncStream<SubscriptionStatus> = { .finished }
 }
 
 // MARK: - Test & Preview Values
@@ -38,7 +42,8 @@ extension SubscriptionClient: TestDependencyKey {
     restore: unimplemented("\(Self.self).restore", placeholder: .none),
     fetchStatus: unimplemented("\(Self.self).fetchStatus", placeholder: .none),
     statusStream: unimplemented("\(Self.self).statusStream", placeholder: .finished),
-    verifyPurchase: unimplemented("\(Self.self).verifyPurchase", placeholder: .none)
+    verifyPurchase: unimplemented("\(Self.self).verifyPurchase", placeholder: .none),
+    unifiedStatusStream: unimplemented("\(Self.self).unifiedStatusStream", placeholder: .finished)
   )
 
   public static let previewValue = Self(
@@ -74,6 +79,12 @@ extension SubscriptionClient: TestDependencyKey {
     verifyPurchase: { _, _ in
       try await Task.sleep(for: .seconds(1.0))
       return .subscribed(expirationDate: Date().addingTimeInterval(30 * 24 * 3600))
+    },
+    unifiedStatusStream: {
+      AsyncStream { continuation in
+        continuation.yield(.none)
+        continuation.finish()
+      }
     }
   )
 }
@@ -92,6 +103,7 @@ extension DependencyValues {
 extension SubscriptionClient: DependencyKey {
   public static let liveValue: SubscriptionClient = {
     let dataSource = StoreKitDataSource()
+    let remoteDataSource = SubscriptionRemoteDataSource()
 
     return Self(
       fetchProducts: {
@@ -114,6 +126,31 @@ extension SubscriptionClient: DependencyKey {
       },
       verifyPurchase: { jwsString, productId in
         try await verifyPurchaseOnServer(transactionJWS: jwsString, productId: productId)
+      },
+      unifiedStatusStream: {
+        AsyncStream { continuation in
+          let task = Task {
+            await withTaskGroup(of: Void.self) { group in
+              // StoreKit Transaction.updates
+              group.addTask {
+                for await status in dataSource.statusStream() {
+                  continuation.yield(status)
+                }
+              }
+              // Firestore subscriptions/{userId} listener
+              group.addTask {
+                for await status in remoteDataSource.subscribeToStatus() {
+                  continuation.yield(status)
+                }
+              }
+              await group.waitForAll()
+            }
+            continuation.finish()
+          }
+          continuation.onTermination = { _ in
+            task.cancel()
+          }
+        }
       }
     )
   }()
