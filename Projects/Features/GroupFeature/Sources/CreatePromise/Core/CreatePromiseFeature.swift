@@ -65,6 +65,9 @@ public enum CreatePromise {
       // 장소 선택 sheet
       @Presents var locationPicker: LocationPicker.Feature.State?
 
+      // pre-fill 정보 (퀵 약속에서 전달)
+      var prefillInfo: PromiseExtractedInfo?
+
       public init(
         currentStep: CreatePromiseStep = .first,
         promise: PromiseModel = .empty,
@@ -79,7 +82,8 @@ public enum CreatePromise {
         useLocation: Bool = false,
         userPlan: UserPlan = .free,
         currentUserId: String = "",
-        locationPicker: LocationPicker.Feature.State? = nil
+        locationPicker: LocationPicker.Feature.State? = nil,
+        prefillInfo: PromiseExtractedInfo? = nil
       ) {
         self.currentStep = currentStep
         self.promise = promise
@@ -95,6 +99,7 @@ public enum CreatePromise {
         self.userPlan = userPlan
         self.currentUserId = currentUserId
         self.locationPicker = locationPicker
+        self.prefillInfo = prefillInfo
       }
 
       /// 그룹이 활성 약속 제한에 도달했는지 확인
