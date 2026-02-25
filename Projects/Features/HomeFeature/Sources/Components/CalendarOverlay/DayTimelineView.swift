@@ -113,11 +113,6 @@ struct DayTimelineView: View {
       onScheduleItemTapped(item)
     } label: {
       HStack(spacing: 0) {
-        // 좌측 컬러 바
-        RoundedRectangle(cornerRadius: 2)
-          .fill(barColor(for: item))
-          .frame(width: colorBarWidth)
-
         VStack(alignment: .leading, spacing: 2) {
           // Row 1: 이모지 + 제목 + 상태
           HStack(spacing: 5) {
@@ -147,11 +142,11 @@ struct DayTimelineView: View {
                   .lineLimit(1)
               }
 
-              if case .promise(let p) = item, let group = p.group {
+              if case .promise(let p) = item {
                 Text("·")
                   .font(.system(size: 10))
                   .foregroundStyle(.tertiary)
-                Text("👤 \(p.votes.acceptedCount)/\(group.memberIds.count)")
+                Text("👤 \(p.votes.acceptedCount)/\(p.minimumParticipants)")
                   .font(.system(size: 10))
                   .foregroundStyle(.secondary)
               }
@@ -170,19 +165,6 @@ struct DayTimelineView: View {
               }
             }
 
-            // Row 4: 날씨 (약속에 날씨 데이터가 있을 때만)
-            if case .promise(let p) = item,
-               let weatherInfo = weatherCache[p.id],
-               let forecast = weatherInfo.forecast(for: p.startAt) {
-              HStack(spacing: 4) {
-                Image(systemName: forecast.condition.sfSymbolName)
-                  .symbolRenderingMode(.multicolor)
-                  .font(.system(size: 10))
-                Text("\(Int(forecast.temperature.rounded()))°")
-                  .font(.system(size: 10, weight: .medium))
-                  .foregroundStyle(.secondary)
-              }
-            }
           }
         }
         .padding(.horizontal, 10)
@@ -191,7 +173,22 @@ struct DayTimelineView: View {
         Spacer(minLength: 0)
       }
       .frame(height: blockHeight)
-      .background(blockBackground(for: item))
+      .adaptiveGlassCard(cornerRadius: 10)
+      .overlay(alignment: .topTrailing) {
+        weatherBadge(for: item)
+          .padding(.top, 4)
+          .padding(.trailing, 4)
+      }
+      .overlay(alignment: .leading) {
+        UnevenRoundedRectangle(
+          topLeadingRadius: 10,
+          bottomLeadingRadius: 10,
+          bottomTrailingRadius: 0,
+          topTrailingRadius: 0
+        )
+        .fill(barColor(for: item))
+        .frame(width: colorBarWidth)
+      }
       .clipShape(RoundedRectangle(cornerRadius: 10))
       .contentShape(Rectangle())
     }
@@ -278,12 +275,40 @@ struct DayTimelineView: View {
     }
   }
 
+  @ViewBuilder
+  private func weatherBadge(for item: HomeModels.ScheduleItem) -> some View {
+    switch item {
+    case .promise(let p):
+      if let weatherInfo = weatherCache[p.id],
+         let forecast = weatherInfo.forecast(for: p.startAt) {
+        WeatherBadge(
+          forecast: forecast,
+          rangeForecasts: weatherInfo.forecasts(from: p.startAt, to: p.endAt),
+          referenceTimeText: p.startAt.formattedMonthDayTime,
+          forecastSource: weatherInfo.forecastSource(for: p.startAt)
+        )
+      }
+    case .personalEvent(let e):
+      if let weatherInfo = weatherCache[e.id],
+         let forecast = weatherInfo.forecast(for: e.startAt) {
+        WeatherBadge(
+          forecast: forecast,
+          rangeForecasts: weatherInfo.forecasts(from: e.startAt, to: e.endAt),
+          referenceTimeText: e.startAt.formattedMonthDayTime,
+          forecastSource: weatherInfo.forecastSource(for: e.startAt)
+        )
+      }
+    }
+  }
+
   private func timeString(for date: Date) -> String {
     Formatters.time.string(from: date)
   }
 
   private func promiseResponseStatus(_ promise: PromiseModel) -> PromiseResponseStatus {
-    promise.responseStatus(currentUserId: currentUserId, totalGroupMembers: promise.group?.memberIds.count)
+    let memberCount = promise.group?.memberIds.count
+    let totalMembers = (memberCount ?? 0) > 0 ? memberCount : nil
+    return promise.responseStatus(currentUserId: currentUserId, totalGroupMembers: totalMembers)
   }
 
   private func statusColor(for status: PromiseResponseStatus) -> Color {
