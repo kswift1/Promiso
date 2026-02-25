@@ -214,6 +214,7 @@ struct ProPlanFeatureTests {
     await store.receive(\.internal.restoreResponse.success) {
       $0.isPurchasing = false
       $0.subscriptionStatus = .none
+      $0.errorMessage = "이전에 구매한 내역이 없습니다."
     }
   }
 

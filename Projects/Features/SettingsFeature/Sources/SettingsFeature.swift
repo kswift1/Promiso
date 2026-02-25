@@ -81,13 +81,16 @@ extension Settings {
       @Shared(.appStorage(AppConstants.UserDefaults.use24HourFormat)) public var use24HourFormat: Bool = false
       /// 약속 탭 기본 모드 (group/own)
       @Shared(.appStorage(AppConstants.UserDefaults.defaultPromiseTabMode)) public var defaultPromiseTabMode: String = "group"
+      /// 구독 상태 (RootTab에서 전달)
+      public var subscriptionStatus: SubscriptionStatus = .none
 
       /// State를 위한 기본 initializer
       public init(
         currentUser: Shared<UserPrivateModel>,
         showLogoutAlert: Bool = false,
         isLoading: Bool = false,
-        isEditingProfile: Bool = false
+        isEditingProfile: Bool = false,
+        subscriptionStatus: SubscriptionStatus = .none
       ) {
         self._currentUser = currentUser
         self.showLogoutAlert = showLogoutAlert
@@ -99,6 +102,7 @@ extension Settings {
         self.isSavingProfile = false
         self.errorMessage = nil
         self.toastMessage = nil
+        self.subscriptionStatus = subscriptionStatus
       }
     }
 

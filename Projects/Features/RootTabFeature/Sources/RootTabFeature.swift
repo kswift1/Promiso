@@ -212,6 +212,8 @@ extension RootTab {
       case openPersonalEventDetail(eventId: String)
       /// 온보딩에서 그룹 생성 열기
       case openCreateGroup
+      /// 딥링크에서 ProPlan 화면 열기
+      case openProPlan
       /// Scene phase 변경 (포그라운드 복귀 시 구독 상태 갱신)
       case scenePhaseChanged(ScenePhase)
       /// 내부 액션
@@ -370,6 +372,7 @@ extension RootTab {
 
         case .settings(.delegate(.subscriptionStatusChanged(let status))):
           state.subscriptionStatus = status
+          state.settings.subscriptionStatus = status
           return .none
 
         case .settings:
@@ -476,6 +479,10 @@ extension RootTab {
           state.promiseMode = .group
           state.selectedTab = .promise(.group)
           return .send(.groupMain(.view(.createGroup)))
+
+        case .openProPlan:
+          state.selectedTab = .settings
+          return .send(.settings(.view(.proPlanTapped)))
 
         case .internal(let internalAction):
           switch internalAction {
@@ -629,6 +636,7 @@ extension RootTab {
 
           case .subscriptionStatusChanged(let status):
             state.subscriptionStatus = status
+            state.settings.subscriptionStatus = status
             return .none
 
           case .refreshSubscriptionStatus:

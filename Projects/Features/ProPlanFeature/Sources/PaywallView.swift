@@ -43,6 +43,9 @@ extension ProPlan {
 
             // MARK: - 복원 링크
             restoreButton
+
+            // MARK: - 법적 고지
+            legalSection
           }
           .padding(.horizontal, 20)
           .padding(.vertical, 32)
@@ -156,6 +159,26 @@ extension ProPlan {
           .underline()
       }
       .disabled(store.isPurchasing)
+    }
+
+    // MARK: - Legal Section
+
+    @ViewBuilder
+    private var legalSection: some View {
+      VStack(spacing: 8) {
+        Text("구독은 확인 시 iTunes 계정으로 청구됩니다. 구독은 현재 기간 종료 최소 24시간 전에 자동 갱신 해제하지 않으면 자동으로 갱신됩니다. 갱신 요금은 현재 기간 종료 전 24시간 이내에 청구됩니다. 구독은 구매 후 계정 설정에서 관리 및 취소할 수 있습니다.")
+          .font(.caption2)
+          .foregroundStyle(Color.pmgray.n400)
+          .multilineTextAlignment(.center)
+
+        HStack(spacing: 16) {
+          Link("이용약관", destination: URL(string: "https://promiso.app/terms")!)
+          Link("개인정보처리방침", destination: URL(string: "https://promiso.app/privacy")!)
+        }
+        .font(.caption2)
+        .foregroundStyle(Color.pmindigo.n500)
+      }
+      .padding(.top, 8)
     }
 
     // MARK: - Loading Overlay

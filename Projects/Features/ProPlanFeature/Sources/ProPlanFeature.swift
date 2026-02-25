@@ -250,6 +250,17 @@ extension ProPlan {
 
           case .purchaseResponse(.failure(let error)):
             state.isPurchasing = false
+            // 사용자 취소는 에러가 아님
+            if let subscriptionError = error as? SubscriptionError,
+               subscriptionError == .purchaseCancelled {
+              return .none
+            }
+            // 가족 구매 승인 대기
+            if let subscriptionError = error as? SubscriptionError,
+               subscriptionError == .purchasePending {
+              state.errorMessage = "가족 구성원의 구매 승인이 필요합니다. 승인 후 자동으로 적용됩니다."
+              return .none
+            }
             state.errorMessage = "구매에 실패했습니다. 다시 시도해 주세요."
             return .run { _ in
               await hapticFeedback.error()
@@ -265,9 +276,9 @@ extension ProPlan {
                 await send(.delegate(.subscriptionStatusChanged(status)))
               }
             }
-            return .run { _ in
-              await hapticFeedback.success()
-            }
+            // 구매 내역 없음
+            state.errorMessage = "이전에 구매한 내역이 없습니다."
+            return .none
 
           case .restoreResponse(.failure(let error)):
             state.isPurchasing = false

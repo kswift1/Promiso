@@ -170,7 +170,7 @@ extension ProPlan {
     private var manageSubscriptionSection: some View {
       VStack(spacing: 12) {
         Button {
-          // iOS 15+에서는 .manageSubscriptionsSheet 수식어 사용
+          store.send(.view(.manageSubscriptionTapped))
         } label: {
           HStack {
             Image(systemName: "gearshape.fill")
@@ -192,7 +192,12 @@ extension ProPlan {
         }
         .buttonStyle(.plain)
         .adaptiveGlassCard()
-        .manageSubscriptionsSheet(isPresented: .constant(false))
+        .manageSubscriptionsSheet(
+          isPresented: Binding(
+            get: { store.showManageView },
+            set: { if !$0 { store.send(.view(.dismissManageView)) } }
+          )
+        )
 
         // 안내 텍스트
         Text("구독 관리, 취소 및 환불은 Apple 설정에서 가능합니다.")

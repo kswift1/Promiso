@@ -71,6 +71,23 @@ extension Settings {
                 .font(.body)
                 .foregroundStyle(Color.pmtext.primary)
 
+              if store.subscriptionStatus.isPro {
+                Text("PRO")
+                  .font(.caption2)
+                  .fontWeight(.bold)
+                  .foregroundStyle(.white)
+                  .padding(.horizontal, 6)
+                  .padding(.vertical, 2)
+                  .background(
+                    LinearGradient(
+                      colors: [Color.pmaurora.purple, Color.pmaurora.pink],
+                      startPoint: .leading,
+                      endPoint: .trailing
+                    ),
+                    in: Capsule()
+                  )
+              }
+
               Spacer()
 
               Image(systemName: "chevron.right")
