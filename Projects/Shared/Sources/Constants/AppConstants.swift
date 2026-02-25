@@ -150,6 +150,15 @@ public enum AppConstants {
     }
   }
 
+  // MARK: - App Group
+
+  public enum AppGroup {
+    /// App Group Suite 이름 (환경별로 다름)
+    public static var suiteName: String {
+      LiveActivityIntentKey.suiteName
+    }
+  }
+
   // MARK: - Share Extension Keys (App Group UserDefaults)
 
   public enum ShareExtension {
@@ -161,6 +170,8 @@ public enum AppConstants {
     public static let sharedImageDataKey = "shareExtension.sharedImageData"
     /// 공유 요청 타임스탬프 (유효성 검증용)
     public static let sharedTimestampKey = "shareExtension.timestamp"
+    /// 공유 콘텐츠 유효 기간 (5분)
+    public static let contentValidityDuration: TimeInterval = 5 * 60
   }
 
   // MARK: - UI Constants

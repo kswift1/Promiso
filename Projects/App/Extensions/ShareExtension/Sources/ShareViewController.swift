@@ -97,7 +97,7 @@ class ShareViewController: UIViewController {
     }
 
     // Save to App Group UserDefaults
-    guard let defaults = UserDefaults(suiteName: LiveActivityIntentKey.suiteName) else { return }
+    guard let defaults = UserDefaults(suiteName: AppConstants.AppGroup.suiteName) else { return }
 
     defaults.set(Date().timeIntervalSince1970, forKey: AppConstants.ShareExtension.sharedTimestampKey)
 
@@ -111,7 +111,6 @@ class ShareViewController: UIViewController {
       defaults.removeObject(forKey: AppConstants.ShareExtension.sharedTextKey)
     }
 
-    defaults.synchronize()
   }
 
   // MARK: - Open Main App via Deeplink

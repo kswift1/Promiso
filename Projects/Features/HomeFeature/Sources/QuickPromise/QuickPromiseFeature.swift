@@ -143,8 +143,7 @@ extension QuickPromise {
 
           case .loadSharedContent:
             return .run { send in
-              let suiteName = LiveActivityIntentKey.suiteName
-              guard let defaults = UserDefaults(suiteName: suiteName) else { return }
+              guard let defaults = UserDefaults(suiteName: AppConstants.AppGroup.suiteName) else { return }
 
               let contentType = defaults.string(forKey: AppConstants.ShareExtension.contentTypeKey)
               let sharedText = defaults.string(forKey: AppConstants.ShareExtension.sharedTextKey)
@@ -157,8 +156,8 @@ extension QuickPromise {
               defaults.removeObject(forKey: AppConstants.ShareExtension.sharedImageDataKey)
               defaults.removeObject(forKey: AppConstants.ShareExtension.sharedTimestampKey)
 
-              // 타임스탬프 검증 (5분 이내만 유효)
-              let isStale = Date().timeIntervalSince1970 - timestamp > 300
+              // 타임스탬프 검증 (유효 기간 이내만 유효)
+              let isStale = Date().timeIntervalSince1970 - timestamp > AppConstants.ShareExtension.contentValidityDuration
               guard !isStale else { return }
 
               await send(.internal(.sharedContentLoaded(
