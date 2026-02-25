@@ -16,6 +16,7 @@ struct DayTimelineView: View {
 
   private let hourHeight: CGFloat = 52
   private let timeLabelWidth: CGFloat = 44
+  private let eventTimeLabelWidth: CGFloat = 40
   private let blockMinHeight: CGFloat = 48
   private let colorBarWidth: CGFloat = 4
   private let totalHours: Int = 24
@@ -38,11 +39,17 @@ struct DayTimelineView: View {
         // Layer 1: 시간 눈금 + 구분선
         timeGrid
 
-        // Layer 2: 일정 블록들
+        // Layer 2: 이벤트 시간 레이블
+        ForEach(scheduleItems) { item in
+          eventTimeLabel(item)
+            .offset(y: yOffset(for: item.startAt))
+        }
+
+        // Layer 3: 일정 블록들
         ForEach(scheduleItems) { item in
           scheduleBlock(item)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.leading, timeLabelWidth + 16)
+            .padding(.leading, timeLabelWidth + eventTimeLabelWidth + 8)
             .padding(.trailing, 4)
             .offset(y: yOffset(for: item.startAt))
         }
@@ -189,6 +196,29 @@ struct DayTimelineView: View {
       .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
+  }
+
+  // MARK: - Event Time Label
+
+  private func eventTimeLabel(_ item: HomeModels.ScheduleItem) -> some View {
+    let blockHeight = blockHeight(for: item)
+    let color = barColor(for: item)
+
+    return VStack(spacing: 0) {
+      Text(timeString(for: item.startAt))
+        .font(.system(size: 9, weight: .medium, design: .monospaced))
+        .foregroundStyle(color)
+
+      Spacer(minLength: 0)
+
+      if let endAt = item.endAt {
+        Text(timeString(for: endAt))
+          .font(.system(size: 9, weight: .medium, design: .monospaced))
+          .foregroundStyle(color.opacity(0.6))
+      }
+    }
+    .frame(width: eventTimeLabelWidth, height: blockHeight, alignment: .leading)
+    .padding(.leading, timeLabelWidth)
   }
 
   // MARK: - Dashed Line
