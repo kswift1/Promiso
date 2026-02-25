@@ -463,25 +463,23 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
   }
 
   /// 그룹의 활성 약속 개수 조회 (Firestore count aggregation 사용)
-  /// subscribeToActivePromises와 동일한 조건
-  /// multi-day 일정 포함을 위해 7일 전부터 조회
+  /// subscribeToActivePromises와 동일한 조건 (startAt >= now)
+  /// 과거 여부는 클라이언트에서 isPast로 계산
   public func getActivePromiseCount(groupId: String) async throws -> Int {
-    let lookbackStart = Calendar.current.startOfDay(for: Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date())
     let query = db.environmentCollection(collectionName)
       .whereField("groupId", isEqualTo: groupId)
-      .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: lookbackStart))
+      .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: Date()))
 
     let snapshot = try await query.count.getAggregation(source: .server)
     return Int(truncating: snapshot.count)
   }
 
-  /// 활성 약속 실시간 구독 (multi-day 포함, 7일 전부터)
+  /// 활성 약속 실시간 구독 (과거 약속 제외)
   public func subscribeToActivePromises(groupId: String, limit: Int) -> AsyncStream<[PromiseModel]> {
     return AsyncStream { continuation in
-      let lookbackStart = Calendar.current.startOfDay(for: Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date())
       let query = db.environmentCollection(collectionName)
         .whereField("groupId", isEqualTo: groupId)
-        .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: lookbackStart))
+        .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: Date()))
         .order(by: "startAt")
         .limit(to: limit)
 
@@ -519,8 +517,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
     guard !groupIds.isEmpty else { return [] }
 
     let calendar = Calendar.current
-    // multi-day 일정을 포함하기 위해 7일 전부터 조회
-    let lookbackStart = calendar.startOfDay(for: calendar.date(byAdding: .day, value: -7, to: Date()) ?? Date())
+    let startOfToday = calendar.startOfDay(for: Date())
     let chunks = groupIds.chunked(into: 10)
 
     let allPromises = try await withThrowingTaskGroup(of: [PromiseModel].self) { group in
@@ -528,7 +525,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
         group.addTask { [db, collectionName] in
           let query = db.environmentCollection(collectionName)
             .whereField("groupId", in: chunk)
-            .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: lookbackStart))
+            .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: startOfToday))
             .order(by: "startAt")
             .limit(to: limitPerChunk)
 

@@ -32,6 +32,7 @@ extension Home {
     private enum CancelID {
       case weatherFetch
       case overlayWeatherFetch
+      case overlayScheduleFetch
     }
 
     // MARK: - State
@@ -86,6 +87,12 @@ extension Home {
       var overlayWeatherLocationText: String? = nil
       /// 오버레이 캘린더 표시 모드
       var overlayCalendarMode: CalendarMode = .monthly
+      /// 오버레이 월별 약속 캐시 (키: 월 시작일)
+      var overlayPromisesByMonth: [Date: [PromiseModel]] = [:]
+      /// 이미 로드된 오버레이 월 (중복 요청 방지)
+      var overlayLoadedMonths: Set<Date> = []
+      /// 오버레이 개인 일정
+      var overlayPersonalEvents: [PersonalEventModel] = []
 
       // MARK: Notification
       /// 안 읽은 알림 개수
@@ -210,6 +217,16 @@ extension Home {
         case fetchOverlayWeather
         /// 오버레이 날씨 응답
         case overlayWeatherResponse(Result<WeatherInfo, Error>, String?)
+        /// 오버레이 월별 약속 조회
+        case fetchOverlaySchedules(month: Date)
+        /// 오버레이 월별 약속 응답
+        case overlaySchedulesResponse(month: Date, Result<[PromiseModel], Error>)
+        /// 오버레이 인접 월 프리페치
+        case prefetchOverlayAdjacentMonths
+        /// 오버레이 개인 일정 조회
+        case fetchOverlayPersonalEvents
+        /// 오버레이 개인 일정 응답
+        case overlayPersonalEventsResponse(Result<[PersonalEventModel], Error>)
       }
 
       @CasePathable
@@ -314,50 +331,67 @@ extension Home {
             state.overlayCalendarMonth = Date()
             state.overlaySelectedDate = Date()
             state.showCalendarOverlay = true
+            // 오버레이 캐시 초기화
+            state.overlayPromisesByMonth.removeAll()
+            state.overlayLoadedMonths.removeAll()
+            state.overlayPersonalEvents.removeAll()
+
+            let currentMonth = Date().startOfMonth
 
             // 위치 권한 동기 체크
             let authStatus = locationClient.authorizationStatus()
+            let weatherEffect: Effect<Action>
             switch authStatus {
             case .authorized:
               state.overlayWeatherLocationText = nil
               state.overlayWeatherState = .loading
-              return .send(.internal(.fetchOverlayWeather))
+              weatherEffect = .send(.internal(.fetchOverlayWeather))
             case .notDetermined, .denied:
               state.overlayWeatherLocationText = nil
               state.overlayWeatherState = .needsPermission
-              return .none
+              weatherEffect = .none
             }
+
+            return .merge(
+              weatherEffect,
+              .send(.internal(.fetchOverlaySchedules(month: currentMonth))),
+              .send(.internal(.fetchOverlayPersonalEvents))
+            )
 
           case .calendarOverlayClosed:
             state.showCalendarOverlay = false
             state.overlayWeatherState = .needsPermission
             state.overlayWeatherLocationText = nil
             state.overlayCalendarMode = .monthly
+            state.overlayPromisesByMonth.removeAll()
+            state.overlayLoadedMonths.removeAll()
+            state.overlayPersonalEvents.removeAll()
             return .cancel(id: CancelID.overlayWeatherFetch)
 
           case .overlayDateSelected(let date):
             state.overlaySelectedDate = date
-            // 선택된 날짜가 현재 표시 월과 다르면 월 전환
             let calendar = Calendar.promiseDisplay
+            var effects: [Effect<Action>] = []
             if !calendar.isDate(date, equalTo: state.overlayCalendarMonth, toGranularity: .month) {
               state.overlayCalendarMonth = date
+              effects.append(.send(.internal(.fetchOverlaySchedules(month: date))))
             }
             if state.overlayCalendarMode == .monthly {
               state.overlayCalendarMode = .weekly
             }
-            return .none
+            return effects.isEmpty ? .none : .merge(effects)
 
           case .overlayPreviousMonth:
             if let prev = Calendar.promiseDisplay.date(byAdding: .month, value: -1, to: state.overlayCalendarMonth) {
               state.overlayCalendarMonth = prev
             }
-            return .none
+            return .send(.internal(.fetchOverlaySchedules(month: state.overlayCalendarMonth)))
 
           case .overlayNextMonth:
             if let next = Calendar.promiseDisplay.date(byAdding: .month, value: 1, to: state.overlayCalendarMonth) {
               state.overlayCalendarMonth = next
             }
-            return .none
+            return .send(.internal(.fetchOverlaySchedules(month: state.overlayCalendarMonth)))
 
           case .overlayWeatherCardTapped:
             state.overlayWeatherLocationText = nil
@@ -677,6 +711,96 @@ extension Home {
             }
             return .none
 
+          case .fetchOverlaySchedules(let month):
+            let monthStart = month.startOfMonth
+            guard !state.overlayLoadedMonths.contains(monthStart) else { return .none }
+            state.overlayLoadedMonths.insert(monthStart)
+
+            var seenGroupIds = Set<String>()
+            let groupIds = state.currentUser.groups.compactMap { groupInfo in
+              seenGroupIds.insert(groupInfo.id).inserted ? groupInfo.id : nil
+            }
+            guard !groupIds.isEmpty else {
+              state.overlayPromisesByMonth[monthStart] = []
+              return .none
+            }
+
+            let calendar = Calendar.current
+            let endDate = calendar.date(byAdding: .month, value: 1, to: monthStart) ?? monthStart
+
+            return .merge(
+              .run { [promiseClient] send in
+                do {
+                  let promises = try await promiseClient.getPromisesByDateRange(groupIds, monthStart, endDate)
+                  await send(.internal(.overlaySchedulesResponse(month: monthStart, .success(promises))))
+                } catch {
+                  await send(.internal(.overlaySchedulesResponse(month: monthStart, .failure(error))))
+                }
+              },
+              .send(.internal(.prefetchOverlayAdjacentMonths))
+            )
+
+          case .overlaySchedulesResponse(let month, let result):
+            switch result {
+            case .success(let promises):
+              var groupsDict: [String: UserGroupInfo] = [:]
+              for groupInfo in state.currentUser.groups {
+                groupsDict[groupInfo.id] = groupInfo
+              }
+              let promisesWithGroup = promises.map { promise in
+                var mutablePromise = promise
+                if let groupInfo = groupsDict[promise.groupId] {
+                  mutablePromise.group = GroupModel(
+                    id: groupInfo.id,
+                    name: groupInfo.name,
+                    imageUrl: groupInfo.imageUrl,
+                    maxMembers: 0,
+                    inviteCode: "",
+                    createdBy: ""
+                  )
+                }
+                return mutablePromise
+              }
+              state.overlayPromisesByMonth[month] = promisesWithGroup
+            case .failure:
+              state.overlayLoadedMonths.remove(month)
+            }
+            return .none
+
+          case .prefetchOverlayAdjacentMonths:
+            let calendar = Calendar.current
+            let currentMonth = state.overlayCalendarMonth.startOfMonth
+
+            var effects: [Effect<Action>] = []
+            if let prevMonth = calendar.date(byAdding: .month, value: -1, to: currentMonth)?.startOfMonth,
+               !state.overlayLoadedMonths.contains(prevMonth) {
+              effects.append(.send(.internal(.fetchOverlaySchedules(month: prevMonth))))
+            }
+            if let nextMonth = calendar.date(byAdding: .month, value: 1, to: currentMonth)?.startOfMonth,
+               !state.overlayLoadedMonths.contains(nextMonth) {
+              effects.append(.send(.internal(.fetchOverlaySchedules(month: nextMonth))))
+            }
+            return effects.isEmpty ? .none : .merge(effects)
+
+          case .fetchOverlayPersonalEvents:
+            return .run { [personalEventClient] send in
+              do {
+                let events = try await personalEventClient.getActiveEvents(200)
+                await send(.internal(.overlayPersonalEventsResponse(.success(events))))
+              } catch {
+                await send(.internal(.overlayPersonalEventsResponse(.failure(error))))
+              }
+            }
+
+          case .overlayPersonalEventsResponse(let result):
+            switch result {
+            case .success(let events):
+              state.overlayPersonalEvents = events
+            case .failure:
+              break
+            }
+            return .none
+
           }
 
         case .delegate:
@@ -690,12 +814,24 @@ extension Home {
 
         case .path(.element(id: _, action: .promiseDetail(.delegate(.promiseDeleted)))):
           _ = state.path.popLast()
-          // 삭제 후 다시 조회
-          return .send(.internal(.fetchPromises))
+          // 오버레이 캐시 무효화
+          let deletedMonth = state.overlaySelectedDate.startOfMonth
+          state.overlayLoadedMonths.remove(deletedMonth)
+          state.overlayPromisesByMonth.removeValue(forKey: deletedMonth)
+          return .merge(
+            .send(.internal(.fetchPromises)),
+            state.showCalendarOverlay ? .send(.internal(.fetchOverlaySchedules(month: deletedMonth))) : .none
+          )
 
         case .path(.element(id: _, action: .promiseDetail(.delegate(.promiseUpdated)))):
-          // 수정 후 다시 조회
-          return .send(.internal(.fetchPromises))
+          // 오버레이 캐시 무효화
+          let updatedMonth = state.overlaySelectedDate.startOfMonth
+          state.overlayLoadedMonths.remove(updatedMonth)
+          state.overlayPromisesByMonth.removeValue(forKey: updatedMonth)
+          return .merge(
+            .send(.internal(.fetchPromises)),
+            state.showCalendarOverlay ? .send(.internal(.fetchOverlaySchedules(month: updatedMonth))) : .none
+          )
 
         // MARK: - PersonalEventDetail Path Actions
 
