@@ -28,11 +28,31 @@ enum CalendarMode: Equatable, Sendable {
 // MARK: - Overlay Calendar Models
 
 enum OverlayCalendarModels {
+  /// multi-day 일정에서 해당 날짜의 위치
+  enum SpanPosition: Equatable, Sendable {
+    /// 단일 날짜 일정
+    case single
+    /// multi-day 시작일
+    case start
+    /// multi-day 중간일
+    case middle
+    /// multi-day 종료일
+    case end
+  }
+
   /// 날짜 셀에 표시할 일정 인디케이터
   struct ScheduleIndicator: Equatable, Identifiable {
     let id: String
     let color: Color
     let title: String
+    let spanPosition: SpanPosition
+
+    init(id: String, color: Color, title: String, spanPosition: SpanPosition = .single) {
+      self.id = id
+      self.color = color
+      self.title = title
+      self.spanPosition = spanPosition
+    }
 
     /// 개인 일정용 기본 색상
     static let personalColor = Color.pminfo.n500

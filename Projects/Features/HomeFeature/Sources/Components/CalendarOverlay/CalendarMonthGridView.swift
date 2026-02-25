@@ -18,6 +18,7 @@ struct CalendarMonthGridView: View {
           onDateSelected(day.date)
         } label: {
           OverlayCalendarDayCell(day: day)
+            .frame(maxHeight: .infinity, alignment: .top)
         }
         .buttonStyle(.plain)
         .disabled(!day.isCurrentMonth)

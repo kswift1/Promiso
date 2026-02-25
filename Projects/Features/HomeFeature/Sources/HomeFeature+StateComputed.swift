@@ -297,10 +297,17 @@ extension Home.Feature.State {
       let color = colorMap[promise.groupId] ?? Color.pmindigo.n500
       let startDay = calendar.startOfDay(for: promise.startAt)
       let endDay = calendar.startOfDay(for: promise.effectiveEndAt)
+      let isMultiDay = startDay != endDay
       var day = startDay
       while day <= endDay {
+        let position: OverlayCalendarModels.SpanPosition = {
+          if !isMultiDay { return .single }
+          if day == startDay { return .start }
+          if day == endDay { return .end }
+          return .middle
+        }()
         indicators[day, default: []].append(
-          .init(id: "\(promise.id)_\(day.timeIntervalSince1970)", color: color, title: promise.title)
+          .init(id: "\(promise.id)_\(day.timeIntervalSince1970)", color: color, title: promise.title, spanPosition: position)
         )
         guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
         day = next
@@ -310,10 +317,17 @@ extension Home.Feature.State {
     for event in (personalEventsState.value ?? []) {
       let startDay = calendar.startOfDay(for: event.startAt)
       let endDay = calendar.startOfDay(for: event.effectiveEndAt)
+      let isMultiDay = startDay != endDay
       var day = startDay
       while day <= endDay {
+        let position: OverlayCalendarModels.SpanPosition = {
+          if !isMultiDay { return .single }
+          if day == startDay { return .start }
+          if day == endDay { return .end }
+          return .middle
+        }()
         indicators[day, default: []].append(
-          .init(id: "\(event.id)_\(day.timeIntervalSince1970)", color: OverlayCalendarModels.ScheduleIndicator.personalColor, title: event.title)
+          .init(id: "\(event.id)_\(day.timeIntervalSince1970)", color: OverlayCalendarModels.ScheduleIndicator.personalColor, title: event.title, spanPosition: position)
         )
         guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
         day = next
