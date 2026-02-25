@@ -195,6 +195,8 @@ extension Home {
         case overlayBackToMonth
         /// 오버레이 일간 상세에서 일정 탭
         case overlayScheduleItemTapped(HomeModels.ScheduleItem)
+        /// Share Extension에서 공유 콘텐츠로 빠른 약속 열기
+        case openQuickPromiseFromShareExtension
       }
 
       @CasePathable
@@ -330,6 +332,10 @@ extension Home {
           case .quickPromiseSheetDismissed:
             state.showQuickPromiseSheet = false
             return .none
+
+          case .openQuickPromiseFromShareExtension:
+            state.showQuickPromiseSheet = true
+            return .send(.quickPromise(.view(.loadSharedContent)))
 
           case .calendarOverlayOpened:
             state.overlayCalendarMonth = Date()

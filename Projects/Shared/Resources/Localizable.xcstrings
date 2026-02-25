@@ -21094,6 +21094,57 @@
           }
         }
       }
+    },
+    "shareExtension.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Send to Promiso"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Promiso로 보내기"
+          }
+        }
+      }
+    },
+    "shareExtension.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Extract promise info from shared content"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "공유한 내용에서 약속 정보를 추출합니다"
+          }
+        }
+      }
+    },
+    "shareExtension.sendButton": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Analyze in Promiso"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Promiso에서 분석하기"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

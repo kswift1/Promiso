@@ -62,6 +62,8 @@ extension QuickPromise {
         case clearTapped
         /// 에러 닫기
         case errorDismissed
+        /// Share Extension에서 공유된 콘텐츠 로드 + 자동 분석
+        case loadSharedContent
       }
 
       @CasePathable
@@ -72,6 +74,8 @@ extension QuickPromise {
         case imageExtractionResult(Result<PromiseExtractedInfo, Error>)
         /// 이미지 로드 완료
         case imageDataLoaded(Data?)
+        /// Share Extension 공유 콘텐츠 로드 결과
+        case sharedContentLoaded(type: String?, text: String?, imageData: Data?)
       }
 
       @CasePathable
@@ -136,6 +140,33 @@ extension QuickPromise {
           case .errorDismissed:
             state.extractionError = nil
             return .none
+
+          case .loadSharedContent:
+            return .run { send in
+              let suiteName = LiveActivityIntentKey.suiteName
+              guard let defaults = UserDefaults(suiteName: suiteName) else { return }
+
+              let contentType = defaults.string(forKey: AppConstants.ShareExtension.contentTypeKey)
+              let sharedText = defaults.string(forKey: AppConstants.ShareExtension.sharedTextKey)
+              let sharedImageData = defaults.data(forKey: AppConstants.ShareExtension.sharedImageDataKey)
+              let timestamp = defaults.double(forKey: AppConstants.ShareExtension.sharedTimestampKey)
+
+              // 읽은 후 즉시 정리
+              defaults.removeObject(forKey: AppConstants.ShareExtension.contentTypeKey)
+              defaults.removeObject(forKey: AppConstants.ShareExtension.sharedTextKey)
+              defaults.removeObject(forKey: AppConstants.ShareExtension.sharedImageDataKey)
+              defaults.removeObject(forKey: AppConstants.ShareExtension.sharedTimestampKey)
+
+              // 타임스탬프 검증 (5분 이내만 유효)
+              let isStale = Date().timeIntervalSince1970 - timestamp > 300
+              guard !isStale else { return }
+
+              await send(.internal(.sharedContentLoaded(
+                type: contentType,
+                text: sharedText,
+                imageData: sharedImageData
+              )))
+            }
           }
 
         case .internal(let internalAction):
@@ -175,6 +206,39 @@ extension QuickPromise {
             state.isExtractingFromImage = false
             state.extractionError = LocalizedStrings.QuickPromise.errorImageExtraction
             return .none
+
+          case .sharedContentLoaded(let type, let text, let imageData):
+            switch type {
+            case "text":
+              guard let text, !text.isEmpty else { return .none }
+              state.inputText = text
+              state.isExtracting = true
+              state.extractionError = nil
+              return .run { [extractionClient] send in
+                do {
+                  let info = try await extractionClient.extractFromText(text)
+                  await send(.internal(.textExtractionResult(.success(info))))
+                } catch {
+                  await send(.internal(.textExtractionResult(.failure(error))))
+                }
+              }
+
+            case "image":
+              guard let imageData, !imageData.isEmpty else { return .none }
+              state.isExtractingFromImage = true
+              state.extractionError = nil
+              return .run { [extractionClient] send in
+                do {
+                  let info = try await extractionClient.extractFromImage(imageData)
+                  await send(.internal(.imageExtractionResult(.success(info))))
+                } catch {
+                  await send(.internal(.imageExtractionResult(.failure(error))))
+                }
+              }
+
+            default:
+              return .none
+            }
           }
 
         case .delegate:

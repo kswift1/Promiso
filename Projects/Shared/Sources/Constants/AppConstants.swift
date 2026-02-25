@@ -150,6 +150,19 @@ public enum AppConstants {
     }
   }
 
+  // MARK: - Share Extension Keys (App Group UserDefaults)
+
+  public enum ShareExtension {
+    /// 공유된 콘텐츠 타입 ("text" | "image")
+    public static let contentTypeKey = "shareExtension.contentType"
+    /// 공유된 텍스트 문자열
+    public static let sharedTextKey = "shareExtension.sharedText"
+    /// 공유된 이미지 데이터 (JPEG)
+    public static let sharedImageDataKey = "shareExtension.sharedImageData"
+    /// 공유 요청 타임스탬프 (유효성 검증용)
+    public static let sharedTimestampKey = "shareExtension.timestamp"
+  }
+
   // MARK: - UI Constants
 
   public enum UI {

@@ -202,6 +202,8 @@ extension RootTab {
       case openCreatePromiseIfPossible
       /// Widget 개인 일정 탭 → 홈 탭 이동 + 개인 일정 상세 열기
       case openPersonalEventDetail(eventId: String)
+      /// Share Extension → 홈 탭 이동 + QuickPromise 시트 열기
+      case openQuickPromiseFromShareExtension
       /// 온보딩에서 그룹 생성 열기
       case openCreateGroup
       /// 내부 액션
@@ -455,6 +457,10 @@ extension RootTab {
           state.promiseMode = .own
           state.selectedTab = .promise(.own)
           return .send(.personalMode(.view(.openEventFromDeeplink(eventId: eventId))))
+
+        case .openQuickPromiseFromShareExtension:
+          state.selectedTab = .home
+          return .send(.home(.view(.openQuickPromiseFromShareExtension)))
 
         case .openCreateGroup:
           // 그룹 탭으로 이동 후 그룹 생성 열기

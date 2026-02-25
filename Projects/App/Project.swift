@@ -22,7 +22,8 @@ let promisoDev = Target.target(
   entitlements: .file(path: "PromisoDev.entitlements"),
   dependencies: AppFeatureDeps.allDeps + [
     .target(name: "LiveActivityWidgetExtension-Dev"),
-    .target(name: "PromiseWidgetExtension-Dev")
+    .target(name: "PromiseWidgetExtension-Dev"),
+    .target(name: "ShareExtension-Dev")
   ],
   settings: .settings(
     base: [
@@ -52,7 +53,8 @@ let promisoStage = Target.target(
   entitlements: .file(path: "PromisoStage.entitlements"),
   dependencies: AppFeatureDeps.allDeps + [
     .target(name: "LiveActivityWidgetExtension-Stage"),
-    .target(name: "PromiseWidgetExtension-Stage")
+    .target(name: "PromiseWidgetExtension-Stage"),
+    .target(name: "ShareExtension-Stage")
   ],
   settings: .settings(
     base: [
@@ -88,7 +90,8 @@ let promisoProd = Target.target(
   entitlements: .file(path: "Promiso.entitlements"),
   dependencies: AppFeatureDeps.allDeps + [
     .target(name: "LiveActivityWidgetExtension"),
-    .target(name: "PromiseWidgetExtension")
+    .target(name: "PromiseWidgetExtension"),
+    .target(name: "ShareExtension")
   ],
   settings: .settings(
     base: [
@@ -323,6 +326,137 @@ let promiseWidgetProd = Target.target(
   )
 )
 
+// MARK: - Share Extension Targets
+
+let shareExtensionDev = Target.target(
+  name: "ShareExtension-Dev",
+  destinations: .iOS,
+  product: .appExtension,
+  bundleId: "com.promiso.dev.share",
+  deploymentTargets: .iOS(AppConfig.deploymentTargets),
+  infoPlist: .extendingDefault(with: [
+    "CFBundleDisplayName": "Promiso [DEV]",
+    "CFBundleShortVersionString": .string(AppConfig.marketingNumber),
+    "CFBundleVersion": .string(AppConfig.buildVersion(for: "dev")),
+    "DEEPLINK_SCHEME": "promiso-dev",
+    "NSExtension": [
+      "NSExtensionPointIdentifier": "com.apple.share-services",
+      "NSExtensionPrincipalClass": "$(PRODUCT_MODULE_NAME).ShareViewController",
+      "NSExtensionAttributes": [
+        "NSExtensionActivationRule": [
+          "NSExtensionActivationSupportsText": true,
+          "NSExtensionActivationSupportsImageWithMaxCount": 1,
+          "NSExtensionActivationSupportsWebURLWithMaxCount": 1
+        ]
+      ]
+    ]
+  ]),
+  sources: ["Extensions/ShareExtension/Sources/**"],
+  entitlements: .file(path: "Extensions/ShareExtension/ShareExtension-Dev.entitlements"),
+  dependencies: [
+    .project(target: "PromisoShared", path: "../Shared"),
+    .project(target: "ResourceKit", path: "../ResourceKit")
+  ],
+  settings: .standard(base: [
+    "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
+    "CODE_SIGN_STYLE": .string("Automatic")
+  ])
+)
+
+let shareExtensionStage = Target.target(
+  name: "ShareExtension-Stage",
+  destinations: .iOS,
+  product: .appExtension,
+  bundleId: "com.promiso.stage.share",
+  deploymentTargets: .iOS(AppConfig.deploymentTargets),
+  infoPlist: .extendingDefault(with: [
+    "CFBundleDisplayName": "Promiso [STAGE]",
+    "CFBundleShortVersionString": .string(AppConfig.marketingNumber),
+    "CFBundleVersion": .string(AppConfig.buildVersion(for: "stage")),
+    "DEEPLINK_SCHEME": "promiso-stage",
+    "NSExtension": [
+      "NSExtensionPointIdentifier": "com.apple.share-services",
+      "NSExtensionPrincipalClass": "$(PRODUCT_MODULE_NAME).ShareViewController",
+      "NSExtensionAttributes": [
+        "NSExtensionActivationRule": [
+          "NSExtensionActivationSupportsText": true,
+          "NSExtensionActivationSupportsImageWithMaxCount": 1,
+          "NSExtensionActivationSupportsWebURLWithMaxCount": 1
+        ]
+      ]
+    ]
+  ]),
+  sources: ["Extensions/ShareExtension/Sources/**"],
+  entitlements: .file(path: "Extensions/ShareExtension/ShareExtension-Stage.entitlements"),
+  dependencies: [
+    .project(target: "PromisoShared", path: "../Shared"),
+    .project(target: "ResourceKit", path: "../ResourceKit")
+  ],
+  settings: .settings(
+    base: [
+      "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
+      "CODE_SIGN_STYLE": .string("Manual")
+    ],
+    configurations: [
+      .debug(name: "Debug", settings: [
+        "PROVISIONING_PROFILE_SPECIFIER": .string("match Development com.promiso.stage.share"),
+        "CODE_SIGN_IDENTITY": .string("Apple Development")
+      ]),
+      .release(name: "Release", settings: [
+        "PROVISIONING_PROFILE_SPECIFIER": .string("match AppStore com.promiso.stage.share"),
+        "CODE_SIGN_IDENTITY": .string("Apple Distribution")
+      ])
+    ]
+  )
+)
+
+let shareExtensionProd = Target.target(
+  name: "ShareExtension",
+  destinations: .iOS,
+  product: .appExtension,
+  bundleId: "\(AppConfig.bundleId).share",
+  deploymentTargets: .iOS(AppConfig.deploymentTargets),
+  infoPlist: .extendingDefault(with: [
+    "CFBundleDisplayName": "Promiso",
+    "CFBundleShortVersionString": .string(AppConfig.marketingNumber),
+    "CFBundleVersion": .string(AppConfig.buildVersion(for: "prod")),
+    "DEEPLINK_SCHEME": "promiso",
+    "NSExtension": [
+      "NSExtensionPointIdentifier": "com.apple.share-services",
+      "NSExtensionPrincipalClass": "$(PRODUCT_MODULE_NAME).ShareViewController",
+      "NSExtensionAttributes": [
+        "NSExtensionActivationRule": [
+          "NSExtensionActivationSupportsText": true,
+          "NSExtensionActivationSupportsImageWithMaxCount": 1,
+          "NSExtensionActivationSupportsWebURLWithMaxCount": 1
+        ]
+      ]
+    ]
+  ]),
+  sources: ["Extensions/ShareExtension/Sources/**"],
+  entitlements: .file(path: "Extensions/ShareExtension/ShareExtension.entitlements"),
+  dependencies: [
+    .project(target: "PromisoShared", path: "../Shared"),
+    .project(target: "ResourceKit", path: "../ResourceKit")
+  ],
+  settings: .settings(
+    base: [
+      "DEVELOPMENT_TEAM": .string(AppConfig.teamId),
+      "CODE_SIGN_STYLE": .string("Manual")
+    ],
+    configurations: [
+      .debug(name: "Debug", settings: [
+        "PROVISIONING_PROFILE_SPECIFIER": .string("match Development com.promiso.share"),
+        "CODE_SIGN_IDENTITY": .string("Apple Development")
+      ]),
+      .release(name: "Release", settings: [
+        "PROVISIONING_PROFILE_SPECIFIER": .string("match AppStore com.promiso.share"),
+        "CODE_SIGN_IDENTITY": .string("Apple Distribution")
+      ])
+    ]
+  )
+)
+
 // MARK: - Environment-based Target Filtering
 
 /// 환경변수 TUIST_ENV에 따라 생성할 타겟 결정
@@ -339,14 +473,14 @@ let environment: String = {
 let targets: [Target] = {
   switch environment {
   case "dev":
-    return [promisoDev, liveActivityDev, promiseWidgetDev]
+    return [promisoDev, liveActivityDev, promiseWidgetDev, shareExtensionDev]
   case "stage":
-    return [promisoStage, liveActivityStage, promiseWidgetStage]
+    return [promisoStage, liveActivityStage, promiseWidgetStage, shareExtensionStage]
   case "prod":
-    return [promisoProd, liveActivityProd, promiseWidgetProd]
+    return [promisoProd, liveActivityProd, promiseWidgetProd, shareExtensionProd]
   default:
     // 잘못된 값이 들어오면 dev로 fallback
-    return [promisoDev, liveActivityDev, promiseWidgetDev]
+    return [promisoDev, liveActivityDev, promiseWidgetDev, shareExtensionDev]
   }
 }()
 

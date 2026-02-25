@@ -51,6 +51,9 @@ public enum DeeplinkURLParser {
     case "personalEvent":
       return parsePersonalEvent(from: url)
 
+    case "share":
+      return .shareExtension
+
     default:
       return nil
     }

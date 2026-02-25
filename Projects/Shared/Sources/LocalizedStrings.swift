@@ -2069,6 +2069,13 @@ extension LocalizedStrings {
     public static var participantCountShort: String { String(localized: "widget.participantCountShort", bundle: bundle) }
   }
 
+  // MARK: - ShareExtension
+  public enum ShareExtension {
+    public static var title: String { String(localized: "shareExtension.title", bundle: bundle) }
+    public static var subtitle: String { String(localized: "shareExtension.subtitle", bundle: bundle) }
+    public static var sendButton: String { String(localized: "shareExtension.sendButton", bundle: bundle) }
+  }
+
   // MARK: - PromiseModeSegment
   public enum PromiseModeSegment {
     public static var group: String { String(localized: "promiseModeSegment.group", bundle: bundle) }
