@@ -66,6 +66,12 @@ extension Home {
       /// 안 읽은 알림 개수
       var unreadNotificationCount: Int = 0
 
+      // MARK: Quick Promise
+      /// 빠른 약속 만들기 (텍스트/이미지 → 파싱 → 약속 생성)
+      var quickPromise = QuickPromise.Feature.State()
+      /// 빠른 약속 시트 표시 여부
+      var showQuickPromiseSheet: Bool = false
+
       // MARK: Navigation
       /// 네비게이션 경로 (약속 상세)
       var path = StackState<Path.State>()
@@ -92,6 +98,7 @@ extension Home {
       case `internal`(Internal)
       case delegate(Delegate)
       case path(StackActionOf<Path>)
+      case quickPromise(QuickPromise.Feature.Action)
 
       @CasePathable
       public enum View: Sendable {
@@ -123,6 +130,10 @@ extension Home {
         case personalEventTapped(PersonalEventModel)
         /// 토스트 닫힘
         case toastDismissed
+        /// 빠른 약속 버튼 탭
+        case quickPromiseButtonTapped
+        /// 빠른 약속 시트 닫힘
+        case quickPromiseSheetDismissed
       }
 
       @CasePathable
@@ -151,6 +162,8 @@ extension Home {
         case navigateToGroupWithPromise(groupId: String, promiseId: String)
         /// 모든 약속 보기 화면으로 네비게이션
         case navigateToAllPromises
+        /// 빠른 약속 생성 요청 (추출 정보 → CreatePromise pre-fill)
+        case createPromiseWithExtractedInfo(PromiseExtractedInfo)
       }
     }
 
@@ -238,6 +251,14 @@ extension Home {
 
           case .toastDismissed:
             state.toastMessage = nil
+            return .none
+
+          case .quickPromiseButtonTapped:
+            state.showQuickPromiseSheet = true
+            return .none
+
+          case .quickPromiseSheetDismissed:
+            state.showQuickPromiseSheet = false
             return .none
 
           }
@@ -354,6 +375,15 @@ extension Home {
         case .delegate:
           return .none
 
+        // MARK: - QuickPromise Actions
+
+        case .quickPromise(.delegate(.createPromiseRequested(let info))):
+          state.showQuickPromiseSheet = false
+          return .send(.delegate(.createPromiseWithExtractedInfo(info)))
+
+        case .quickPromise:
+          return .none
+
         // MARK: - Path Actions
 
         case .path(.element(id: _, action: .promiseDetail(.delegate(.dismiss)))):
@@ -397,6 +427,10 @@ extension Home {
         }
       }
       .forEach(\.path, action: \.path)
+
+      Scope(state: \.quickPromise, action: \.quickPromise) {
+        QuickPromise.Feature()
+      }
     }
   }
 }
@@ -606,6 +640,10 @@ extension Home {
             } else if let error = store.promisesState.error {
               errorView(error: error)
             } else {
+              // 빠른 약속 만들기 버튼
+              quickPromiseButton
+                .padding(.horizontal, 16)
+
               // 오늘의 일정 카드
               TodayScheduleCard(
                 items: store.todayScheduleItems,
@@ -674,6 +712,20 @@ extension Home {
             .id(store.unreadNotificationCount)
           }
         }
+        .sheet(isPresented: Binding(
+          get: { store.showQuickPromiseSheet },
+          set: { newValue in
+            if !newValue {
+              store.send(.view(.quickPromiseSheetDismissed))
+            }
+          }
+        )) {
+          QuickPromise.CardView(
+            store: store.scope(state: \.quickPromise, action: \.quickPromise)
+          )
+          .presentationDetents([.medium, .large])
+          .presentationDragIndicator(.visible)
+        }
         .onAppear {
           store.send(.view(.onAppear))
         }
@@ -693,6 +745,44 @@ extension Home {
           NotificationCenterFeature.NotificationCenter.RootView(store: notificationStore)
         }
       }
+    }
+
+    // MARK: - Quick Promise Button
+
+    @ViewBuilder
+    private var quickPromiseButton: some View {
+      Button {
+        store.send(.view(.quickPromiseButtonTapped))
+      } label: {
+        HStack(spacing: 8) {
+          Image(systemName: "sparkles")
+            .font(.system(size: 14, weight: .semibold))
+            .foregroundStyle(Color.pmindigo.n500)
+
+          Text("빠른 약속 만들기")
+            .font(.system(size: 14, weight: .semibold))
+
+          Spacer()
+
+          Image(systemName: "chevron.right")
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .contentShape(Rectangle())
+        .background {
+          if #available(iOS 26.0, *) {
+            RoundedRectangle(cornerRadius: 14)
+              .fill(.clear)
+              .glassEffect(.regular, in: .rect(cornerRadius: 14))
+          } else {
+            RoundedRectangle(cornerRadius: 14)
+              .fill(.ultraThinMaterial)
+          }
+        }
+      }
+      .buttonStyle(.plain)
     }
 
     // MARK: - Loading View
