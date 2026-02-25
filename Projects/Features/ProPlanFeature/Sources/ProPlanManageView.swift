@@ -240,12 +240,16 @@ extension ProPlan {
       }
     }
 
-    private func formattedDate(_ date: Date) -> String {
+    private static let dateFormatter: DateFormatter = {
       let formatter = DateFormatter()
       formatter.dateStyle = .medium
       formatter.timeStyle = .none
       formatter.locale = Locale(identifier: "ko_KR")
-      return formatter.string(from: date)
+      return formatter
+    }()
+
+    private func formattedDate(_ date: Date) -> String {
+      Self.dateFormatter.string(from: date)
     }
   }
 }

@@ -155,6 +155,8 @@ extension SubscriptionClient: DependencyKey {
     )
   }()
 
+  private static let iso8601Formatter = ISO8601DateFormatter()
+
   private static func verifyPurchaseOnServer(transactionJWS: String, productId: String) async throws -> SubscriptionStatus {
     let functions = DefaultFunctionsProvider().functions
 
@@ -172,17 +174,17 @@ extension SubscriptionClient: DependencyKey {
     switch statusString {
     case "subscribed":
       let expirationString = statusData["expirationDate"] as? String
-      let expirationDate = expirationString.flatMap { ISO8601DateFormatter().date(from: $0) }
+      let expirationDate = expirationString.flatMap { iso8601Formatter.date(from: $0) }
       return .subscribed(expirationDate: expirationDate)
     case "lifetime":
       return .lifetime
     case "expired":
       let expirationString = statusData["expirationDate"] as? String
-      let expirationDate = expirationString.flatMap { ISO8601DateFormatter().date(from: $0) }
-      return .expired(expirationDate: expirationDate ?? Date())
+      let expirationDate = expirationString.flatMap { iso8601Formatter.date(from: $0) }
+      return .expired(expirationDate: expirationDate ?? .distantPast)
     case "gracePeriod":
       let expirationString = statusData["expirationDate"] as? String
-      let expirationDate = expirationString.flatMap { ISO8601DateFormatter().date(from: $0) } ?? Date()
+      let expirationDate = expirationString.flatMap { iso8601Formatter.date(from: $0) } ?? .distantFuture
       return .gracePeriod(expirationDate: expirationDate)
     case "revoked":
       return .revoked

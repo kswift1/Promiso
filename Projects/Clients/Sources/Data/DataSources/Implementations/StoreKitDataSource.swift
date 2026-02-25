@@ -264,11 +264,13 @@ final class SubscriptionRemoteDataSource: Sendable {
     }
   }
 
+  private static let iso8601Formatter = ISO8601DateFormatter()
+
   private static func parseStatus(from data: [String: Any]) -> SubscriptionStatus {
     guard let statusString = data["status"] as? String else { return .none }
 
     let expirationDateString = data["expirationDate"] as? String
-    let expirationDate = expirationDateString.flatMap { ISO8601DateFormatter().date(from: $0) }
+    let expirationDate = expirationDateString.flatMap { iso8601Formatter.date(from: $0) }
 
     switch statusString {
     case "subscribed":
@@ -276,9 +278,9 @@ final class SubscriptionRemoteDataSource: Sendable {
     case "lifetime":
       return .lifetime
     case "expired":
-      return .expired(expirationDate: expirationDate ?? Date())
+      return .expired(expirationDate: expirationDate ?? .distantPast)
     case "gracePeriod":
-      return .gracePeriod(expirationDate: expirationDate ?? Date())
+      return .gracePeriod(expirationDate: expirationDate ?? .distantFuture)
     case "revoked":
       return .revoked
     default:

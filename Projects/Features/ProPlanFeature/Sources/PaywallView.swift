@@ -172,8 +172,12 @@ extension ProPlan {
           .multilineTextAlignment(.center)
 
         HStack(spacing: 16) {
-          Link("이용약관", destination: URL(string: "https://promiso.app/terms")!)
-          Link("개인정보처리방침", destination: URL(string: "https://promiso.app/privacy")!)
+          if let termsURL = URL(string: "https://promiso.app/terms") {
+            Link("이용약관", destination: termsURL)
+          }
+          if let privacyURL = URL(string: "https://promiso.app/privacy") {
+            Link("개인정보처리방침", destination: privacyURL)
+          }
         }
         .font(.caption2)
         .foregroundStyle(Color.pmindigo.n500)
