@@ -13,6 +13,9 @@ struct DayTimelinePager: UIViewControllerRepresentable {
   let onScheduleItemTapped: (HomeModels.ScheduleItem) -> Void
   let onPreviousDay: () -> Void
   let onNextDay: () -> Void
+  let currentUserId: String
+  let weatherCache: [String: WeatherInfo]
+  let groupColorMap: [String: Color]
 
   func makeCoordinator() -> Coordinator {
     Coordinator(pager: self)
@@ -26,7 +29,10 @@ struct DayTimelinePager: UIViewControllerRepresentable {
       prevDayScheduleItems: prevDayScheduleItems,
       currentDayScheduleItems: currentDayScheduleItems,
       nextDayScheduleItems: nextDayScheduleItems,
-      onScheduleItemTapped: onScheduleItemTapped
+      onScheduleItemTapped: onScheduleItemTapped,
+      currentUserId: currentUserId,
+      weatherCache: weatherCache,
+      groupColorMap: groupColorMap
     )
     return vc
   }
@@ -44,7 +50,10 @@ struct DayTimelinePager: UIViewControllerRepresentable {
         prevDayScheduleItems: prevDayScheduleItems,
         currentDayScheduleItems: currentDayScheduleItems,
         nextDayScheduleItems: nextDayScheduleItems,
-        onScheduleItemTapped: onScheduleItemTapped
+        onScheduleItemTapped: onScheduleItemTapped,
+        currentUserId: coordinator.pager.currentUserId,
+        weatherCache: coordinator.pager.weatherCache,
+        groupColorMap: coordinator.pager.groupColorMap
       )
       vc.recenterToCurrentPage(animated: false)
 
@@ -77,7 +86,10 @@ struct DayTimelinePager: UIViewControllerRepresentable {
           prevDayScheduleItems: prevDayScheduleItems,
           currentDayScheduleItems: currentDayScheduleItems,
           nextDayScheduleItems: nextDayScheduleItems,
-          onScheduleItemTapped: onScheduleItemTapped
+          onScheduleItemTapped: onScheduleItemTapped,
+          currentUserId: coordinator.pager.currentUserId,
+          weatherCache: coordinator.pager.weatherCache,
+          groupColorMap: coordinator.pager.groupColorMap
         )
         vc.recenterToCurrentPage(animated: false)
         vc.forceLayout()
@@ -100,7 +112,10 @@ struct DayTimelinePager: UIViewControllerRepresentable {
           prevDayScheduleItems: prevDayScheduleItems,
           currentDayScheduleItems: currentDayScheduleItems,
           nextDayScheduleItems: nextDayScheduleItems,
-          onScheduleItemTapped: onScheduleItemTapped
+          onScheduleItemTapped: onScheduleItemTapped,
+          currentUserId: coordinator.pager.currentUserId,
+          weatherCache: coordinator.pager.weatherCache,
+          groupColorMap: coordinator.pager.groupColorMap
         )
         if !savedOffsets.isEmpty {
           vc.restoreOffsets(savedOffsets)
@@ -211,7 +226,10 @@ struct DayTimelinePager: UIViewControllerRepresentable {
       prevDayScheduleItems: [HomeModels.ScheduleItem],
       currentDayScheduleItems: [HomeModels.ScheduleItem],
       nextDayScheduleItems: [HomeModels.ScheduleItem],
-      onScheduleItemTapped: @escaping (HomeModels.ScheduleItem) -> Void
+      onScheduleItemTapped: @escaping (HomeModels.ScheduleItem) -> Void,
+      currentUserId: String,
+      weatherCache: [String: WeatherInfo],
+      groupColorMap: [String: Color]
     ) {
       scrollView.delegate = coordinator
 
@@ -221,7 +239,10 @@ struct DayTimelinePager: UIViewControllerRepresentable {
       for (index, items) in itemsArrays.enumerated() {
         let dayTimelineView = DayTimelineView(
           scheduleItems: items,
-          onScheduleItemTapped: onScheduleItemTapped
+          onScheduleItemTapped: onScheduleItemTapped,
+          currentUserId: currentUserId,
+          weatherCache: weatherCache,
+          groupColorMap: groupColorMap
         )
         let hostingVC = UIHostingController(rootView: dayTimelineView)
         hostingVC.view.backgroundColor = .clear
@@ -253,14 +274,20 @@ struct DayTimelinePager: UIViewControllerRepresentable {
       prevDayScheduleItems: [HomeModels.ScheduleItem],
       currentDayScheduleItems: [HomeModels.ScheduleItem],
       nextDayScheduleItems: [HomeModels.ScheduleItem],
-      onScheduleItemTapped: @escaping (HomeModels.ScheduleItem) -> Void
+      onScheduleItemTapped: @escaping (HomeModels.ScheduleItem) -> Void,
+      currentUserId: String,
+      weatherCache: [String: WeatherInfo],
+      groupColorMap: [String: Color]
     ) {
       let itemsArrays = [prevDayScheduleItems, currentDayScheduleItems, nextDayScheduleItems]
       for (index, vc) in pageHostingControllers.enumerated() {
         guard index < itemsArrays.count else { break }
         vc.rootView = DayTimelineView(
           scheduleItems: itemsArrays[index],
-          onScheduleItemTapped: onScheduleItemTapped
+          onScheduleItemTapped: onScheduleItemTapped,
+          currentUserId: currentUserId,
+          weatherCache: weatherCache,
+          groupColorMap: groupColorMap
         )
       }
     }

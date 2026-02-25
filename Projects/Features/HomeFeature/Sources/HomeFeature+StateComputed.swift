@@ -1,5 +1,6 @@
 import Clients
 import PromisoShared
+import SwiftUI
 
 // MARK: - State Computed Properties
 
@@ -262,6 +263,15 @@ extension Home.Feature.State {
     OverlayCalendarModels.extractWeekDays(
       from: overlayCalendarDays,
       selectedDate: overlaySelectedDate
+    )
+  }
+
+  /// 오버레이에서 사용하는 그룹 ID → GroupColor.color 매핑
+  var overlayGroupColorMap: [String: Color] {
+    Dictionary(
+      uniqueKeysWithValues: currentUser.groups.compactMap { group in
+        group.groupColor.map { (group.id, $0.color) }
+      }
     )
   }
 

@@ -8,6 +8,9 @@ import ResourceKit
 struct DayTimelineView: View {
   let scheduleItems: [HomeModels.ScheduleItem]
   let onScheduleItemTapped: (HomeModels.ScheduleItem) -> Void
+  let currentUserId: String
+  let weatherCache: [String: WeatherInfo]
+  let groupColorMap: [String: Color]
 
   // MARK: - Constants
 
@@ -43,9 +46,11 @@ struct DayTimelineView: View {
             .padding(.trailing, 4)
             .offset(y: yOffset(for: item.startAt))
         }
+
       }
       .frame(width: nil, height: totalHeight)
-      .padding(.horizontal, 20)
+      .padding(.leading, 8)
+      .padding(.trailing, 20)
     }
   }
 
@@ -54,19 +59,33 @@ struct DayTimelineView: View {
   private var timeGrid: some View {
     VStack(alignment: .leading, spacing: 0) {
       ForEach(0..<totalHours, id: \.self) { hour in
-        HStack(alignment: .top, spacing: 8) {
-          // 시간 레이블
-          Text(String(format: "%02d:00", hour))
-            .font(.system(size: 11, weight: .medium, design: .monospaced))
-            .foregroundStyle(.tertiary)
-            .frame(width: timeLabelWidth, alignment: .trailing)
+        ZStack(alignment: .topLeading) {
+          // 정각 행
+          HStack(spacing: 8) {
+            Text(String(format: "%02d:00", hour))
+              .font(.system(size: 11, weight: .medium, design: .monospaced))
+              .foregroundStyle(.tertiary)
+              .frame(width: timeLabelWidth, alignment: .leading)
 
-          // 구분선
-          VStack(spacing: 0) {
+            // 정각 실선
             Rectangle()
-              .fill(Color(.separator).opacity(0.12))
+              .fill(Color(.separator).opacity(0.5))
               .frame(height: 0.5)
-            Spacer()
+          }
+          .frame(height: 14, alignment: .center)
+          .offset(y: -7)
+
+          // 30분 점선
+          HStack(alignment: .top, spacing: 8) {
+            Color.clear
+              .frame(width: timeLabelWidth)
+
+            VStack(spacing: 0) {
+              Spacer()
+                .frame(height: hourHeight / 2)
+              dashedLine
+              Spacer()
+            }
           }
         }
         .frame(height: hourHeight)
@@ -79,6 +98,7 @@ struct DayTimelineView: View {
 
   private func scheduleBlock(_ item: HomeModels.ScheduleItem) -> some View {
     let blockHeight = blockHeight(for: item)
+    let isCompact = blockHeight < 64
 
     return Button {
       onScheduleItemTapped(item)
@@ -89,35 +109,75 @@ struct DayTimelineView: View {
           .fill(barColor(for: item))
           .frame(width: colorBarWidth)
 
-        VStack(alignment: .leading, spacing: 3) {
-          HStack(spacing: 6) {
+        VStack(alignment: .leading, spacing: 2) {
+          // Row 1: 이모지 + 제목 + 상태
+          HStack(spacing: 5) {
             Text(item.displayEmoji)
-              .font(.system(size: 16))
+              .font(.system(size: isCompact ? 14 : 16))
 
             Text(item.title)
               .font(.system(size: 13, weight: .semibold))
               .foregroundStyle(.primary)
               .lineLimit(1)
+
+            if case .promise(let p) = item {
+              let status = promiseResponseStatus(p)
+              Text(statusText(for: status))
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(statusColor(for: status))
+            }
           }
 
-          HStack(spacing: 5) {
-            Text(timeRangeString(for: item))
-              .font(.system(size: 10, weight: .medium, design: .monospaced))
-              .foregroundStyle(Color.pmgray.n600)
+          if !isCompact {
+            // Row 2: 그룹명 + 참여자수
+            HStack(spacing: 5) {
+              if let name = groupName(for: item) {
+                Text(name)
+                  .font(.system(size: 10))
+                  .foregroundStyle(.secondary)
+                  .lineLimit(1)
+              }
 
-            if let name = groupName(for: item) {
-              Text("·")
-                .font(.system(size: 10))
-                .foregroundStyle(.tertiary)
-              Text(name)
-                .font(.system(size: 10))
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
+              if case .promise(let p) = item, let group = p.group {
+                Text("·")
+                  .font(.system(size: 10))
+                  .foregroundStyle(.tertiary)
+                Text("👤 \(p.votes.acceptedCount)/\(group.memberIds.count)")
+                  .font(.system(size: 10))
+                  .foregroundStyle(.secondary)
+              }
+            }
+
+            // Row 3: 장소 (있을 때만)
+            if let location = itemLocation(for: item), !location.isEmpty {
+              HStack(spacing: 4) {
+                Image(systemName: "location.fill")
+                  .font(.system(size: 9))
+                  .foregroundStyle(Color.pmgray.n400)
+                Text(location)
+                  .font(.system(size: 10))
+                  .foregroundStyle(.secondary)
+                  .lineLimit(1)
+              }
+            }
+
+            // Row 4: 날씨 (약속에 날씨 데이터가 있을 때만)
+            if case .promise(let p) = item,
+               let weatherInfo = weatherCache[p.id],
+               let forecast = weatherInfo.forecast(for: p.startAt) {
+              HStack(spacing: 4) {
+                Image(systemName: forecast.condition.sfSymbolName)
+                  .symbolRenderingMode(.multicolor)
+                  .font(.system(size: 10))
+                Text("\(Int(forecast.temperature.rounded()))°")
+                  .font(.system(size: 10, weight: .medium))
+                  .foregroundStyle(.secondary)
+              }
             }
           }
         }
         .padding(.horizontal, 10)
-        .padding(.vertical, 8)
+        .padding(.vertical, 6)
 
         Spacer(minLength: 0)
       }
@@ -127,6 +187,19 @@ struct DayTimelineView: View {
       .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
+  }
+
+  // MARK: - Dashed Line
+
+  private var dashedLine: some View {
+    GeometryReader { geo in
+      Path { path in
+        path.move(to: CGPoint(x: 0, y: 0))
+        path.addLine(to: CGPoint(x: geo.size.width, y: 0))
+      }
+      .stroke(Color(.separator).opacity(0.45), style: StrokeStyle(lineWidth: 0.5, dash: [4, 3]))
+    }
+    .frame(height: 0.5)
   }
 
   // MARK: - Helpers
@@ -150,20 +223,15 @@ struct DayTimelineView: View {
     return max(blockMinHeight, calculatedHeight)
   }
 
-  /// 블록 배경색 (타입별 연한 색상)
+  /// 블록 배경색 (그룹 컬러 기반 연한 배경)
   private func blockBackground(for item: HomeModels.ScheduleItem) -> Color {
-    switch item {
-    case .promise:
-      return Color.pmindigo.n50
-    case .personalEvent:
-      return Color.pminfo.n50
-    }
+    barColor(for: item).opacity(0.08)
   }
 
   private func barColor(for item: HomeModels.ScheduleItem) -> Color {
     switch item {
-    case .promise:
-      return Color.pmindigo.n500
+    case .promise(let p):
+      return groupColorMap[p.groupId] ?? Color.pmindigo.n500
     case .personalEvent:
       return Color.pminfo.n500
     }
@@ -178,16 +246,39 @@ struct DayTimelineView: View {
     }
   }
 
-  private func timeRangeString(for item: HomeModels.ScheduleItem) -> String {
-    let start = timeString(for: item.startAt)
-    if let end = item.endAt {
-      return "\(start) - \(timeString(for: end))"
-    }
-    return start
-  }
-
   private func timeString(for date: Date) -> String {
     Formatters.time.string(from: date)
+  }
+
+  private func promiseResponseStatus(_ promise: PromiseModel) -> PromiseResponseStatus {
+    promise.responseStatus(currentUserId: currentUserId, totalGroupMembers: promise.group?.memberIds.count)
+  }
+
+  private func statusColor(for status: PromiseResponseStatus) -> Color {
+    switch status {
+    case .needResponse: return Color.pmwarning.n500
+    case .responded:    return Color.pmwarning.n600
+    case .confirmed:    return Color.pmsuccess.n500
+    case .failed:       return Color.pmgray.n400
+    }
+  }
+
+  private func statusText(for status: PromiseResponseStatus) -> String {
+    switch status {
+    case .needResponse: return "응답 필요"
+    case .responded:    return "투표 완료"
+    case .confirmed:    return "확정"
+    case .failed:       return "미확정"
+    }
+  }
+
+  private func itemLocation(for item: HomeModels.ScheduleItem) -> String? {
+    switch item {
+    case .promise(let p):
+      return p.location?.name
+    case .personalEvent(let e):
+      return e.location?.name
+    }
   }
 
   // MARK: - Formatters
@@ -254,7 +345,10 @@ struct DayTimelineView: View {
 
   DayTimelineView(
     scheduleItems: items,
-    onScheduleItemTapped: { _ in }
+    onScheduleItemTapped: { _ in },
+    currentUserId: "host1",
+    weatherCache: [:],
+    groupColorMap: ["g1": Color.pmindigo.n500, "g2": .orange]
   )
   .auroraBackground()
 }
@@ -262,7 +356,10 @@ struct DayTimelineView: View {
 #Preview("일정 없음") {
   DayTimelineView(
     scheduleItems: [],
-    onScheduleItemTapped: { _ in }
+    onScheduleItemTapped: { _ in },
+    currentUserId: "preview",
+    weatherCache: [:],
+    groupColorMap: [:]
   )
   .auroraBackground()
 }

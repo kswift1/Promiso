@@ -70,6 +70,9 @@ extension Home {
               prevDayScheduleItems: store.overlayPrevDayScheduleItems,
               nextDayScheduleItems: store.overlayNextDayScheduleItems,
               weekDays: store.overlaySelectedWeekDays,
+              currentUserId: store.currentUser.userId,
+              weatherCache: store.weatherCache,
+              groupColorMap: store.overlayGroupColorMap,
               onClose: {
                 store.send(.view(.calendarOverlayClosed))
               },

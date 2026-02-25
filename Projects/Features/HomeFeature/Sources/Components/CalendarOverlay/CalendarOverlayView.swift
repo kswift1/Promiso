@@ -27,6 +27,9 @@ struct CalendarOverlayView: View {
   let onWeatherCardTapped: () -> Void
   let onBackToMonth: () -> Void
   let onScheduleItemTapped: (HomeModels.ScheduleItem) -> Void
+  let currentUserId: String
+  let weatherCache: [String: WeatherInfo]
+  let groupColorMap: [String: Color]
 
   private var isWeekly: Bool { calendarMode == .weekly }
 
@@ -316,7 +319,10 @@ struct CalendarOverlayView: View {
         if let next = Calendar.promiseDisplay.date(byAdding: .day, value: 1, to: selectedDate) {
           onDateSelected(next)
         }
-      }
+      },
+      currentUserId: currentUserId,
+      weatherCache: weatherCache,
+      groupColorMap: groupColorMap
     )
   }
 
@@ -585,7 +591,10 @@ private extension String {
     nextDayScheduleItems: [],
     weekDays: [],
     onClose: {}, onDateSelected: { _ in }, onPreviousMonth: {}, onNextMonth: {},
-    onWeatherCardTapped: {}, onBackToMonth: {}, onScheduleItemTapped: { _ in }
+    onWeatherCardTapped: {}, onBackToMonth: {}, onScheduleItemTapped: { _ in },
+    currentUserId: "preview-user",
+    weatherCache: [:],
+    groupColorMap: [:]
   )
   .auroraBackground()
 }
@@ -608,7 +617,10 @@ private extension String {
     nextDayScheduleItems: [],
     weekDays: [],
     onClose: {}, onDateSelected: { _ in }, onPreviousMonth: {}, onNextMonth: {},
-    onWeatherCardTapped: {}, onBackToMonth: {}, onScheduleItemTapped: { _ in }
+    onWeatherCardTapped: {}, onBackToMonth: {}, onScheduleItemTapped: { _ in },
+    currentUserId: "preview-user",
+    weatherCache: [:],
+    groupColorMap: [:]
   )
   .auroraBackground()
 }
