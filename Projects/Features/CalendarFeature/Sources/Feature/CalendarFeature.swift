@@ -35,6 +35,9 @@ extension CalendarFeature {
       /// 표시 모드 (주간/월간)
       var displayMode: CalendarDisplayMode = .week
 
+      /// 월간 뷰 확장 상태 (collapsed: dot + 시트, expanded: 바 + 스크롤)
+      var monthExpansionState: MonthViewExpansionState = .collapsed
+
       /// 현재 주의 시작일
       var currentWeekStart: Date
 
@@ -238,6 +241,169 @@ extension CalendarFeature {
       var isInitialLoading: Bool {
         isLoadingPromises && loadedMonths.isEmpty
       }
+
+      // MARK: - Group Color Map
+
+      /// 그룹별 컬러 맵 (groupId → Color)
+      var groupColorMap: [String: Color] {
+        Dictionary(
+          uniqueKeysWithValues: currentUser.groups.compactMap { group in
+            group.groupColor.map { (group.id, $0.color) }
+          }
+        )
+      }
+
+      // MARK: - Schedule Indicators
+
+      /// 날짜별 일정 인디케이터 (월간 그리드 셀용)
+      var scheduleIndicatorsByDate: [Date: [CalendarFeature.ScheduleIndicator]] {
+        let calendar = Calendar.current
+        let colorMap = groupColorMap
+        var indicators: [Date: [CalendarFeature.ScheduleIndicator]] = [:]
+
+        // 약속 — 3페이지 페이저를 위해 현재 월 ± 1개월 포함
+        let currentMonthKey = currentMonth.startOfMonth
+        let prevMonthKey = calendar.date(byAdding: .month, value: -1, to: currentMonthKey)?.startOfMonth
+        let nextMonthKey = calendar.date(byAdding: .month, value: 1, to: currentMonthKey)?.startOfMonth
+        let allPromises: [PromiseModel] = [prevMonthKey, currentMonthKey, nextMonthKey].compactMap { $0 }.flatMap { cachedPromisesByMonth[$0] ?? [] }
+        // 중복 제거 (날짜 경계 약속이 여러 월에 걸칠 수 있음)
+        let uniquePromises = Dictionary(grouping: allPromises, by: \.id).compactMap(\.value.first)
+        for promise in uniquePromises {
+          let color = colorMap[promise.groupId] ?? Color.pmindigo.n500
+          let startDay = calendar.startOfDay(for: promise.startAt)
+          let endDay = calendar.startOfDay(for: promise.effectiveEndAt)
+          let isMultiDay = startDay != endDay
+          var day = startDay
+          while day <= endDay {
+            let position: CalendarFeature.SpanPosition = {
+              if !isMultiDay { return .single }
+              if day == startDay { return .start }
+              if day == endDay { return .end }
+              return .middle
+            }()
+            indicators[day, default: []].append(
+              .init(
+                id: "\(promise.id)_\(day.timeIntervalSince1970)",
+                color: color,
+                title: promise.title,
+                spanPosition: position,
+                startAt: promise.startAt,
+                endAt: promise.endAt,
+                emoji: promise.emoji
+              )
+            )
+            guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
+            day = next
+          }
+        }
+
+        // 개인 일정
+        for event in personalEvents {
+          let startDay = calendar.startOfDay(for: event.startAt)
+          let endDay = calendar.startOfDay(for: event.effectiveEndAt)
+          let isMultiDay = startDay != endDay
+          var day = startDay
+          while day <= endDay {
+            let position: CalendarFeature.SpanPosition = {
+              if !isMultiDay { return .single }
+              if day == startDay { return .start }
+              if day == endDay { return .end }
+              return .middle
+            }()
+            indicators[day, default: []].append(
+              .init(
+                id: "\(event.id)_\(day.timeIntervalSince1970)",
+                color: CalendarFeature.ScheduleIndicator.personalColor,
+                title: event.title,
+                spanPosition: position,
+                startAt: event.startAt,
+                endAt: event.endAt,
+                emoji: event.emoji
+              )
+            )
+            guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
+            day = next
+          }
+        }
+
+        // 시스템 캘린더 이벤트
+        for event in calendarEvents {
+          let startDay = calendar.startOfDay(for: event.startDate)
+          let endDay = calendar.startOfDay(for: event.endDate)
+          let isMultiDay = startDay != endDay
+          var day = startDay
+          while day <= endDay {
+            let position: CalendarFeature.SpanPosition = {
+              if !isMultiDay { return .single }
+              if day == startDay { return .start }
+              if day == endDay { return .end }
+              return .middle
+            }()
+            indicators[day, default: []].append(
+              .init(
+                id: "cal_\(event.id)_\(day.timeIntervalSince1970)",
+                color: event.calendarColor,
+                title: event.title,
+                spanPosition: position,
+                startAt: event.startDate,
+                endAt: event.endDate
+              )
+            )
+            guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
+            day = next
+          }
+        }
+
+        // startAt 순 정렬
+        for (key, value) in indicators {
+          indicators[key] = value.sorted { $0.startAt < $1.startAt }
+        }
+
+        return indicators
+      }
+
+      // MARK: - Schedule Items for Timeline
+
+      /// 선택된 날짜의 타임라인 아이템
+      var selectedDateScheduleItems: [CalendarFeature.ScheduleItem] {
+        let calendar = Calendar.current
+        let selectedDay = calendar.startOfDay(for: selectedDate)
+        guard let nextDay = calendar.date(byAdding: .day, value: 1, to: selectedDay) else { return [] }
+        return buildScheduleItems(from: selectedDay, to: nextDay)
+      }
+
+      /// 전일 타임라인 아이템
+      var prevDayScheduleItems: [CalendarFeature.ScheduleItem] {
+        let calendar = Calendar.current
+        let selectedDay = calendar.startOfDay(for: selectedDate)
+        guard let prevDay = calendar.date(byAdding: .day, value: -1, to: selectedDay) else { return [] }
+        return buildScheduleItems(from: prevDay, to: selectedDay)
+      }
+
+      /// 다음일 타임라인 아이템
+      var nextDayScheduleItems: [CalendarFeature.ScheduleItem] {
+        let calendar = Calendar.current
+        let selectedDay = calendar.startOfDay(for: selectedDate)
+        guard let nextDay = calendar.date(byAdding: .day, value: 1, to: selectedDay),
+              let dayAfter = calendar.date(byAdding: .day, value: 2, to: selectedDay) else { return [] }
+        return buildScheduleItems(from: nextDay, to: dayAfter)
+      }
+
+      private func buildScheduleItems(from start: Date, to end: Date) -> [CalendarFeature.ScheduleItem] {
+        let currentMonthKey = selectedDate.startOfMonth
+        let allPromises = cachedPromisesByMonth[currentMonthKey] ?? []
+
+        let promiseItems = allPromises
+          .filter { $0.startAt < end && $0.effectiveEndAt >= start }
+          .map { CalendarFeature.ScheduleItem.promise($0) }
+        let personalItems = personalEvents
+          .filter { $0.startAt < end && $0.effectiveEndAt >= start }
+          .map { CalendarFeature.ScheduleItem.personalEvent($0) }
+        let calendarItems = calendarEvents
+          .filter { $0.startDate < end && $0.endDate >= start }
+          .map { CalendarFeature.ScheduleItem.calendarEvent($0) }
+        return (promiseItems + personalItems + calendarItems).sorted { $0.startAt < $1.startAt }
+      }
     }
 
     // MARK: - Path (Navigation)
@@ -283,6 +449,11 @@ extension CalendarFeature {
         case refresh
         // 토스트 닫힘
         case toastDismissed
+        // 타임라인 일정 아이템 탭
+        case scheduleItemTapped(CalendarFeature.ScheduleItem)
+        case createPersonalEventFromTimeline(Date)
+        case createPromiseFromTimeline
+        case toggleMonthExpansion
       }
 
       @CasePathable
@@ -308,7 +479,7 @@ extension CalendarFeature {
     // MARK: - Cancellation IDs
 
     private enum CancelID: Hashable {
-      case fetchPromises
+      case fetchPromisesForMonth(Date)
       case fetchCalendarEvents
     }
 
@@ -376,6 +547,8 @@ extension CalendarFeature {
         )
 
       case .toggleDisplayMode:
+        // 월간 확장 상태 리셋
+        state.monthExpansionState = .collapsed
         state.isTransitioning = true
         state.displayMode = state.displayMode == .week ? .month : .week
 
@@ -622,6 +795,34 @@ extension CalendarFeature {
       case .toastDismissed:
         state.toastMessage = nil
         return .none
+
+      case .scheduleItemTapped(let item):
+        switch item {
+        case .promise(let promise):
+          let groupMembers = state.groupMembersCache[promise.groupId]
+          state.path.append(.promiseDetail(.init(
+            promise: promise,
+            currentUserId: state.currentUserId,
+            groupMembers: groupMembers
+          )))
+        case .personalEvent(let event):
+          state.path.append(.personalEventDetail(.init(event: event)))
+        case .calendarEvent:
+          break  // 시스템 캘린더 이벤트는 탭 무시 (현재)
+        }
+        return .none
+
+      case .createPersonalEventFromTimeline:
+        // TODO: 개인 일정 생성 플로우 연결
+        return .none
+
+      case .createPromiseFromTimeline:
+        // TODO: 약속 생성 플로우 연결
+        return .none
+
+      case .toggleMonthExpansion:
+        state.monthExpansionState = state.monthExpansionState == .collapsed ? .expanded : .collapsed
+        return .none
       }
     }
 
@@ -693,7 +894,7 @@ extension CalendarFeature {
             await send(.internal(.promisesResponseForMonth(month: monthStart, .failure(error))))
           }
         }
-        .cancellable(id: CancelID.fetchPromises, cancelInFlight: true)
+        .cancellable(id: CancelID.fetchPromisesForMonth(monthStart), cancelInFlight: true)
 
       case .prefetchAdjacentMonths:
         // 선택된 날짜 기준 전/후 월 프리페치

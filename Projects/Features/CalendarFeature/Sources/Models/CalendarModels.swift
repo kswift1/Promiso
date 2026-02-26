@@ -3,6 +3,7 @@
 
 import SwiftUI
 import SharedFeature
+import Clients
 
 #if canImport(UIKit)
 import UIKit
@@ -14,6 +15,12 @@ import UIKit
 public enum CalendarDisplayMode: Equatable, Sendable {
   case week
   case month
+}
+
+/// 월간 뷰 확장 상태
+public enum MonthViewExpansionState: Equatable, Sendable {
+  case collapsed   // dot 인디케이터 + 하단 시트
+  case expanded    // 풀 인디케이터 바 + 스크롤
 }
 
 // MARK: - Mock Promise Status
@@ -158,6 +165,109 @@ public struct MockParticipant: Identifiable, Equatable, Sendable {
     self.id = id
     self.name = name
     self.profileEmoji = profileEmoji
+  }
+}
+
+// MARK: - Schedule Indicator Types
+
+extension CalendarFeature {
+  /// multi-day 일정에서 해당 날짜의 위치
+  public enum SpanPosition: Equatable, Sendable {
+    case single
+    case start
+    case middle
+    case end
+  }
+
+  /// 날짜 셀에 표시할 일정 인디케이터 (colored bar + truncated title)
+  public struct ScheduleIndicator: Equatable, Identifiable, Sendable {
+    public let id: String
+    public let color: Color
+    public let title: String
+    public let spanPosition: SpanPosition
+    public let startAt: Date
+    public let endAt: Date?
+    public let emoji: String?
+
+    public init(
+      id: String,
+      color: Color,
+      title: String,
+      spanPosition: SpanPosition = .single,
+      startAt: Date = .distantPast,
+      endAt: Date? = nil,
+      emoji: String? = nil
+    ) {
+      self.id = id
+      self.color = color
+      self.title = title
+      self.spanPosition = spanPosition
+      self.startAt = startAt
+      self.endAt = endAt
+      self.emoji = emoji
+    }
+
+    public static let personalColor = Color.pminfo.n500
+    public static let systemEventColor = Color.gray
+  }
+
+  /// 24시간 타임라인에서 표시할 통합 일정 아이템
+  public enum ScheduleItem: Identifiable, Equatable {
+    case promise(PromiseModel)
+    case personalEvent(PersonalEventModel)
+    case calendarEvent(CalendarEvent)
+
+    public var id: String {
+      switch self {
+      case .promise(let p): return "promise-\(p.id)"
+      case .personalEvent(let e): return "personal-\(e.id)"
+      case .calendarEvent(let e): return "calendar-\(e.id)"
+      }
+    }
+
+    public var startAt: Date {
+      switch self {
+      case .promise(let p): return p.startAt
+      case .personalEvent(let e): return e.startAt
+      case .calendarEvent(let e): return e.startDate
+      }
+    }
+
+    public var endAt: Date? {
+      switch self {
+      case .promise(let p): return p.endAt
+      case .personalEvent(let e): return e.endAt
+      case .calendarEvent(let e): return e.endDate
+      }
+    }
+
+    public var effectiveEndAt: Date {
+      endAt ?? startAt
+    }
+
+    public var displayEmoji: String {
+      switch self {
+      case .promise(let p): return p.displayEmoji
+      case .personalEvent(let e): return e.displayEmoji
+      case .calendarEvent: return "📅"
+      }
+    }
+
+    public var title: String {
+      switch self {
+      case .promise(let p): return p.title
+      case .personalEvent(let e): return e.title
+      case .calendarEvent(let e): return e.title
+      }
+    }
+
+    public var location: LocationInfoModel? {
+      switch self {
+      case .promise(let p): return p.location
+      case .personalEvent(let e): return e.location
+      case .calendarEvent: return nil
+      }
+    }
   }
 }
 
