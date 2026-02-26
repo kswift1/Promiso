@@ -18,6 +18,9 @@ struct CalendarOverlayPresenter: UIViewControllerRepresentable {
   let prevDayScheduleItems: [HomeModels.ScheduleItem]
   let nextDayScheduleItems: [HomeModels.ScheduleItem]
   let weekDays: [OverlayCalendarModels.DayItem]
+  let currentUserId: String
+  let weatherCache: [String: WeatherInfo]
+  let groupColorMap: [String: Color]
   let onClose: () -> Void
   let onDateSelected: (Date) -> Void
   let onPreviousMonth: () -> Void
@@ -25,6 +28,8 @@ struct CalendarOverlayPresenter: UIViewControllerRepresentable {
   let onWeatherCardTapped: () -> Void
   let onBackToMonth: () -> Void
   let onScheduleItemTapped: (HomeModels.ScheduleItem) -> Void
+  let onCreatePersonalEvent: (Date) -> Void
+  let onCreatePromise: () -> Void
 
   func makeCoordinator() -> Coordinator {
     Coordinator()
@@ -52,6 +57,9 @@ struct CalendarOverlayPresenter: UIViewControllerRepresentable {
         viewModel.prevDayScheduleItems = prevDayScheduleItems
         viewModel.nextDayScheduleItems = nextDayScheduleItems
         viewModel.weekDays = weekDays
+        viewModel.currentUserId = currentUserId
+        viewModel.weatherCache = weatherCache
+        viewModel.groupColorMap = groupColorMap
       }
 
       // dismiss/transition 중에는 중복 present 방지
@@ -83,13 +91,18 @@ struct CalendarOverlayPresenter: UIViewControllerRepresentable {
           prevDayScheduleItems: prevDayScheduleItems,
           nextDayScheduleItems: nextDayScheduleItems,
           weekDays: weekDays,
+          currentUserId: currentUserId,
+          weatherCache: weatherCache,
+          groupColorMap: groupColorMap,
           onClose: onClose,
           onDateSelected: onDateSelected,
           onPreviousMonth: onPreviousMonth,
           onNextMonth: onNextMonth,
           onWeatherCardTapped: onWeatherCardTapped,
           onBackToMonth: onBackToMonth,
-          onScheduleItemTapped: onScheduleItemTapped
+          onScheduleItemTapped: onScheduleItemTapped,
+          onCreatePersonalEvent: onCreatePersonalEvent,
+          onCreatePromise: onCreatePromise
         )
         coordinator.viewModel = viewModel
 

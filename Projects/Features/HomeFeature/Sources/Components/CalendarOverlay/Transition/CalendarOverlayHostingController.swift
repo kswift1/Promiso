@@ -20,6 +20,9 @@ final class CalendarOverlayViewModel {
   var prevDayScheduleItems: [HomeModels.ScheduleItem]
   var nextDayScheduleItems: [HomeModels.ScheduleItem]
   var weekDays: [OverlayCalendarModels.DayItem]
+  var currentUserId: String
+  var weatherCache: [String: WeatherInfo]
+  var groupColorMap: [String: Color]
   let onClose: () -> Void
   let onDateSelected: (Date) -> Void
   let onPreviousMonth: () -> Void
@@ -27,6 +30,8 @@ final class CalendarOverlayViewModel {
   let onWeatherCardTapped: () -> Void
   let onBackToMonth: () -> Void
   let onScheduleItemTapped: (HomeModels.ScheduleItem) -> Void
+  let onCreatePersonalEvent: (Date) -> Void
+  let onCreatePromise: () -> Void
 
   init(
     currentMonth: Date,
@@ -41,13 +46,18 @@ final class CalendarOverlayViewModel {
     prevDayScheduleItems: [HomeModels.ScheduleItem],
     nextDayScheduleItems: [HomeModels.ScheduleItem],
     weekDays: [OverlayCalendarModels.DayItem],
+    currentUserId: String,
+    weatherCache: [String: WeatherInfo],
+    groupColorMap: [String: Color],
     onClose: @escaping () -> Void,
     onDateSelected: @escaping (Date) -> Void,
     onPreviousMonth: @escaping () -> Void,
     onNextMonth: @escaping () -> Void,
     onWeatherCardTapped: @escaping () -> Void,
     onBackToMonth: @escaping () -> Void,
-    onScheduleItemTapped: @escaping (HomeModels.ScheduleItem) -> Void
+    onScheduleItemTapped: @escaping (HomeModels.ScheduleItem) -> Void,
+    onCreatePersonalEvent: @escaping (Date) -> Void,
+    onCreatePromise: @escaping () -> Void
   ) {
     self.currentMonth = currentMonth
     self.selectedDate = selectedDate
@@ -61,6 +71,9 @@ final class CalendarOverlayViewModel {
     self.prevDayScheduleItems = prevDayScheduleItems
     self.nextDayScheduleItems = nextDayScheduleItems
     self.weekDays = weekDays
+    self.currentUserId = currentUserId
+    self.weatherCache = weatherCache
+    self.groupColorMap = groupColorMap
     self.onClose = onClose
     self.onDateSelected = onDateSelected
     self.onPreviousMonth = onPreviousMonth
@@ -68,6 +81,8 @@ final class CalendarOverlayViewModel {
     self.onWeatherCardTapped = onWeatherCardTapped
     self.onBackToMonth = onBackToMonth
     self.onScheduleItemTapped = onScheduleItemTapped
+    self.onCreatePersonalEvent = onCreatePersonalEvent
+    self.onCreatePromise = onCreatePromise
   }
 }
 
@@ -213,7 +228,12 @@ private struct CalendarOverlayContentView: View {
         onNextMonth: viewModel.onNextMonth,
         onWeatherCardTapped: viewModel.onWeatherCardTapped,
         onBackToMonth: viewModel.onBackToMonth,
-        onScheduleItemTapped: viewModel.onScheduleItemTapped
+        onScheduleItemTapped: viewModel.onScheduleItemTapped,
+        onCreatePersonalEvent: viewModel.onCreatePersonalEvent,
+        onCreatePromise: viewModel.onCreatePromise,
+        currentUserId: viewModel.currentUserId,
+        weatherCache: viewModel.weatherCache,
+        groupColorMap: viewModel.groupColorMap
       )
       .padding(.top, topPad)
       .padding(.bottom, bottomPad)

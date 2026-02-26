@@ -27,13 +27,18 @@ struct CalendarOverlayView: View {
   let onWeatherCardTapped: () -> Void
   let onBackToMonth: () -> Void
   let onScheduleItemTapped: (HomeModels.ScheduleItem) -> Void
+  let onCreatePersonalEvent: (Date) -> Void
+  let onCreatePromise: () -> Void
+  let currentUserId: String
+  let weatherCache: [String: WeatherInfo]
+  let groupColorMap: [String: Color]
 
   private var isWeekly: Bool { calendarMode == .weekly }
 
   // MARK: - Grid Layout Constants
 
   private let weekdayHeight: CGFloat = 24
-  private let rowHeight: CGFloat = 44
+  private let rowHeight: CGFloat = 62
   private let gridSpacing: CGFloat = 6
 
   /// weekly 모드에서 보이는 날짜 행 영역 (선택된 주 1행)
@@ -155,20 +160,17 @@ struct CalendarOverlayView: View {
       if isWeekly {
         detailWeekPagerView
           .padding(.horizontal, 20)
-          .padding(.bottom, 8)
+          .padding(.bottom, 16)
       } else {
         dateRowsGrid
           .padding(.horizontal, 20)
+
+        Spacer(minLength: 0)
+
+        bottomCard
+          .padding(.horizontal, 20)
+          .padding(.bottom, 16)
       }
-
-      Spacer(minLength: 0)
-
-      bottomCard
-        .padding(.horizontal, 20)
-        .offset(y: isWeekly ? 160 : 0)
-        .frame(height: isWeekly ? 0 : nil)
-        .opacity(isWeekly ? 0 : 1)
-        .padding(.bottom, 16)
     }
   }
 
@@ -180,6 +182,8 @@ struct CalendarOverlayView: View {
       currentDays: days,
       nextDays: nextMonthDays,
       onDateSelected: onDateSelected,
+      onCreatePersonalEvent: onCreatePersonalEvent,
+      onCreatePromise: onCreatePromise,
       onPreviousMonth: onPreviousMonth,
       onNextMonth: onNextMonth,
       calendarMode: calendarMode,
@@ -208,7 +212,7 @@ struct CalendarOverlayView: View {
         }
       }
     )
-    .frame(height: rowHeight + 4)
+    .frame(height: 56)
   }
 
   /// 요일 헤더 행
@@ -239,27 +243,21 @@ struct CalendarOverlayView: View {
   // MARK: - Month Header
 
   private var calendarHeader: some View {
-    HStack(alignment: .top) {
-      VStack(alignment: .leading, spacing: 0) {
-        Text(yearString)
-          .font(.system(size: 28, weight: .bold))
-          .foregroundStyle(.primary)
-
-        Text(monthString)
-          .font(.system(size: 34, weight: .bold))
-          .foregroundStyle(.primary)
-      }
+    HStack(alignment: .center) {
+      Text(yearMonthString)
+        .font(.system(size: 22, weight: .bold))
+        .foregroundStyle(.primary)
+        .contentTransition(.numericText())
+        .animation(.spring(duration: 0.3), value: currentMonth)
 
       Spacer()
 
-      HStack(spacing: 12) {
-        Button(action: onClose) {
-          Image(systemName: "xmark")
-            .font(.system(size: 14, weight: .semibold))
-            .foregroundStyle(.secondary)
-            .frame(width: 32, height: 32)
-            .adaptiveGlassBackground(cornerRadius: 16)
-        }
+      Button(action: onClose) {
+        Image(systemName: "xmark")
+          .font(.system(size: 14, weight: .semibold))
+          .foregroundStyle(.secondary)
+          .frame(width: 32, height: 32)
+          .adaptiveGlassBackground(cornerRadius: 16)
       }
     }
   }
@@ -280,11 +278,14 @@ struct CalendarOverlayView: View {
         Text(selectedWeekdayString)
           .font(.system(size: 28, weight: .bold))
           .foregroundStyle(.primary)
+          .contentTransition(.numericText())
 
         Text(selectedDateString)
           .font(.system(size: 20, weight: .semibold))
           .foregroundStyle(.secondary)
+          .contentTransition(.numericText())
       }
+      .animation(.spring(duration: 0.3), value: selectedDate)
 
       Spacer()
 
@@ -316,7 +317,13 @@ struct CalendarOverlayView: View {
         if let next = Calendar.promiseDisplay.date(byAdding: .day, value: 1, to: selectedDate) {
           onDateSelected(next)
         }
-      }
+      },
+      onCreatePersonalEvent: onCreatePersonalEvent,
+      onCreatePromise: onCreatePromise,
+      calendarMode: calendarMode,
+      currentUserId: currentUserId,
+      weatherCache: weatherCache,
+      groupColorMap: groupColorMap
     )
   }
 
@@ -525,6 +532,9 @@ struct CalendarOverlayView: View {
     static let month: DateFormatter = {
       let f = DateFormatter(); f.locale = .current; f.timeZone = displayTimeZone; f.dateFormat = "MMMM"; return f
     }()
+    static let yearMonth: DateFormatter = {
+      let f = DateFormatter(); f.locale = .current; f.timeZone = displayTimeZone; f.setLocalizedDateFormatFromTemplate("yyyyMMMM"); return f
+    }()
     static let todayDate: DateFormatter = {
       let f = DateFormatter(); f.locale = .current; f.timeZone = displayTimeZone; f.setLocalizedDateFormatFromTemplate("MMMMd"); return f
     }()
@@ -543,6 +553,7 @@ struct CalendarOverlayView: View {
 
   private var yearString: String { Formatters.year.string(from: currentMonth) }
   private var monthString: String { Formatters.month.string(from: currentMonth) }
+  private var yearMonthString: String { Formatters.yearMonth.string(from: currentMonth) }
   private var todayDateString: String { Formatters.todayDate.string(from: Date()) }
   private var selectedWeekdayString: String { Formatters.weekday.string(from: selectedDate) }
   private var selectedDateString: String { Formatters.shortDate.string(from: selectedDate) }
@@ -585,7 +596,11 @@ private extension String {
     nextDayScheduleItems: [],
     weekDays: [],
     onClose: {}, onDateSelected: { _ in }, onPreviousMonth: {}, onNextMonth: {},
-    onWeatherCardTapped: {}, onBackToMonth: {}, onScheduleItemTapped: { _ in }
+    onWeatherCardTapped: {}, onBackToMonth: {}, onScheduleItemTapped: { _ in },
+    onCreatePersonalEvent: { _ in }, onCreatePromise: {},
+    currentUserId: "preview-user",
+    weatherCache: [:],
+    groupColorMap: [:]
   )
   .auroraBackground()
 }
@@ -608,7 +623,11 @@ private extension String {
     nextDayScheduleItems: [],
     weekDays: [],
     onClose: {}, onDateSelected: { _ in }, onPreviousMonth: {}, onNextMonth: {},
-    onWeatherCardTapped: {}, onBackToMonth: {}, onScheduleItemTapped: { _ in }
+    onWeatherCardTapped: {}, onBackToMonth: {}, onScheduleItemTapped: { _ in },
+    onCreatePersonalEvent: { _ in }, onCreatePromise: {},
+    currentUserId: "preview-user",
+    weatherCache: [:],
+    groupColorMap: [:]
   )
   .auroraBackground()
 }

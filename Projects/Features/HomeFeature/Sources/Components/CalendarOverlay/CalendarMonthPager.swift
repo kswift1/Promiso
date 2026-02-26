@@ -10,6 +10,8 @@ struct CalendarMonthPager: UIViewControllerRepresentable {
   let currentDays: [OverlayCalendarModels.DayItem]
   let nextDays: [OverlayCalendarModels.DayItem]
   let onDateSelected: (Date) -> Void
+  let onCreatePersonalEvent: (Date) -> Void
+  let onCreatePromise: () -> Void
   let onPreviousMonth: () -> Void
   let onNextMonth: () -> Void
   let calendarMode: CalendarMode
@@ -27,7 +29,9 @@ struct CalendarMonthPager: UIViewControllerRepresentable {
       prevDays: prevDays,
       currentDays: currentDays,
       nextDays: nextDays,
-      onDateSelected: onDateSelected
+      onDateSelected: onDateSelected,
+      onCreatePersonalEvent: onCreatePersonalEvent,
+      onCreatePromise: onCreatePromise
     )
     return vc
   }
@@ -43,7 +47,9 @@ struct CalendarMonthPager: UIViewControllerRepresentable {
         prevDays: prevDays,
         currentDays: currentDays,
         nextDays: nextDays,
-        onDateSelected: onDateSelected
+        onDateSelected: onDateSelected,
+        onCreatePersonalEvent: onCreatePersonalEvent,
+        onCreatePromise: onCreatePromise
       )
       vc.recenterToCurrentPage(animated: false)
     } else {
@@ -52,7 +58,9 @@ struct CalendarMonthPager: UIViewControllerRepresentable {
         prevDays: prevDays,
         currentDays: currentDays,
         nextDays: nextDays,
-        onDateSelected: onDateSelected
+        onDateSelected: onDateSelected,
+        onCreatePersonalEvent: onCreatePersonalEvent,
+        onCreatePromise: onCreatePromise
       )
     }
 
@@ -104,7 +112,7 @@ struct CalendarMonthPager: UIViewControllerRepresentable {
     private var pageHostingControllers: [UIHostingController<CalendarMonthGridView>] = []
 
     // Grid layout constants
-    private let rowHeight: CGFloat = 44
+    private let rowHeight: CGFloat = 62
     private let gridSpacing: CGFloat = 6
     private var rowUnit: CGFloat { rowHeight + gridSpacing }
     private var fullGridHeight: CGFloat { 6 * rowHeight + 5 * gridSpacing }
@@ -145,7 +153,9 @@ struct CalendarMonthPager: UIViewControllerRepresentable {
       prevDays: [OverlayCalendarModels.DayItem],
       currentDays: [OverlayCalendarModels.DayItem],
       nextDays: [OverlayCalendarModels.DayItem],
-      onDateSelected: @escaping (Date) -> Void
+      onDateSelected: @escaping (Date) -> Void,
+      onCreatePersonalEvent: @escaping (Date) -> Void,
+      onCreatePromise: @escaping () -> Void
     ) {
       scrollView.delegate = coordinator
 
@@ -153,7 +163,7 @@ struct CalendarMonthPager: UIViewControllerRepresentable {
       let daysArrays = [prevDays, currentDays, nextDays]
 
       for (index, days) in daysArrays.enumerated() {
-        let gridView = CalendarMonthGridView(days: days, onDateSelected: onDateSelected)
+        let gridView = CalendarMonthGridView(days: days, onDateSelected: onDateSelected, onCreatePersonalEvent: onCreatePersonalEvent, onCreatePromise: onCreatePromise)
         let hostingVC = UIHostingController(rootView: gridView)
         hostingVC.view.backgroundColor = .clear
         hostingVC.view.translatesAutoresizingMaskIntoConstraints = false
@@ -184,12 +194,14 @@ struct CalendarMonthPager: UIViewControllerRepresentable {
       prevDays: [OverlayCalendarModels.DayItem],
       currentDays: [OverlayCalendarModels.DayItem],
       nextDays: [OverlayCalendarModels.DayItem],
-      onDateSelected: @escaping (Date) -> Void
+      onDateSelected: @escaping (Date) -> Void,
+      onCreatePersonalEvent: @escaping (Date) -> Void,
+      onCreatePromise: @escaping () -> Void
     ) {
       let daysArrays = [prevDays, currentDays, nextDays]
       for (index, vc) in pageHostingControllers.enumerated() {
         guard index < daysArrays.count else { break }
-        vc.rootView = CalendarMonthGridView(days: daysArrays[index], onDateSelected: onDateSelected)
+        vc.rootView = CalendarMonthGridView(days: daysArrays[index], onDateSelected: onDateSelected, onCreatePersonalEvent: onCreatePersonalEvent, onCreatePromise: onCreatePromise)
       }
     }
 

@@ -326,6 +326,10 @@ extension RootTab {
           // TODO: 모든 약속 보기 화면으로 이동 (추후 구현)
           return .none
 
+        case .home(.delegate(.navigateToCreatePromise)):
+          state.promiseMode = .group
+          state.selectedTab = .promise(.group)
+          return .send(.groupMain(.view(.openCreatePromiseIfPossible)))
         case .home(.delegate(.createPromiseWithExtractedInfo(let info))):
           // 그룹 탭으로 전환 → CreatePromise 열기 (추출 정보 pre-fill)
           state.promiseMode = .group

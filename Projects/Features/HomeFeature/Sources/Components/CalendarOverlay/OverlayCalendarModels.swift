@@ -28,6 +28,43 @@ enum CalendarMode: Equatable, Sendable {
 // MARK: - Overlay Calendar Models
 
 enum OverlayCalendarModels {
+  /// multi-day 일정에서 해당 날짜의 위치
+  enum SpanPosition: Equatable, Sendable {
+    /// 단일 날짜 일정
+    case single
+    /// multi-day 시작일
+    case start
+    /// multi-day 중간일
+    case middle
+    /// multi-day 종료일
+    case end
+  }
+
+  /// 날짜 셀에 표시할 일정 인디케이터
+  struct ScheduleIndicator: Equatable, Identifiable {
+    let id: String
+    let color: Color
+    let title: String
+    let spanPosition: SpanPosition
+    let startAt: Date
+    let endAt: Date?
+    let emoji: String?
+
+    init(id: String, color: Color, title: String, spanPosition: SpanPosition = .single,
+         startAt: Date = .distantPast, endAt: Date? = nil, emoji: String? = nil) {
+      self.id = id
+      self.color = color
+      self.title = title
+      self.spanPosition = spanPosition
+      self.startAt = startAt
+      self.endAt = endAt
+      self.emoji = emoji
+    }
+
+    /// 개인 일정용 기본 색상
+    static let personalColor = Color.pminfo.n500
+  }
+
   /// 오버레이 캘린더에서 표시할 날짜 셀 데이터
   struct DayItem: Identifiable, Equatable {
     let id: String
@@ -37,6 +74,7 @@ enum OverlayCalendarModels {
     let isSelected: Bool
     let isToday: Bool
     let scheduleCount: Int
+    let scheduleIndicators: [ScheduleIndicator]
 
     init(
       date: Date,
@@ -44,7 +82,8 @@ enum OverlayCalendarModels {
       isCurrentMonth: Bool = true,
       isSelected: Bool = false,
       isToday: Bool = false,
-      scheduleCount: Int = 0
+      scheduleCount: Int = 0,
+      scheduleIndicators: [ScheduleIndicator] = []
     ) {
       self.id = "\(dayNumber)-\(isCurrentMonth)"
       self.date = date
@@ -53,6 +92,7 @@ enum OverlayCalendarModels {
       self.isSelected = isSelected
       self.isToday = isToday
       self.scheduleCount = scheduleCount
+      self.scheduleIndicators = scheduleIndicators
     }
   }
 
@@ -120,7 +160,8 @@ enum OverlayCalendarModels {
     for date: Date,
     selectedDate: Date,
     currentMonth: Date,
-    scheduleCountsByDate: [Date: Int]
+    scheduleCountsByDate: [Date: Int],
+    scheduleIndicatorsByDate: [Date: [ScheduleIndicator]] = [:]
   ) -> [DayItem] {
     let calendar = Calendar.promiseDisplay
     let today = Date()
@@ -148,7 +189,8 @@ enum OverlayCalendarModels {
         isCurrentMonth: isCurrentMonth,
         isSelected: calendar.isDate(dayDate, inSameDayAs: selectedDate),
         isToday: calendar.isDate(dayDate, inSameDayAs: today),
-        scheduleCount: count
+        scheduleCount: count,
+        scheduleIndicators: scheduleIndicatorsByDate[dateKey] ?? []
       )
     }
   }
@@ -157,7 +199,8 @@ enum OverlayCalendarModels {
   static func generateMonthDays(
     for date: Date,
     selectedDate: Date,
-    scheduleCountsByDate: [Date: Int]
+    scheduleCountsByDate: [Date: Int],
+    scheduleIndicatorsByDate: [Date: [ScheduleIndicator]] = [:]
   ) -> [DayItem] {
     let calendar = Calendar.promiseDisplay
     let today = Date()
@@ -198,7 +241,8 @@ enum OverlayCalendarModels {
           isCurrentMonth: true,
           isSelected: calendar.isDate(dayDate, inSameDayAs: selectedDate),
           isToday: calendar.isDate(dayDate, inSameDayAs: today),
-          scheduleCount: count
+          scheduleCount: count,
+          scheduleIndicators: scheduleIndicatorsByDate[dateKey] ?? []
         ))
       }
     }

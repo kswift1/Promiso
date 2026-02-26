@@ -1225,6 +1225,11 @@ public enum LocalizedStrings {
       String(localized: "calendar.promise.additionalItems", bundle: bundle)
         .replacingOccurrences(of: "%lld", with: "\(count)")
     }
+
+    // Context Menu
+    public static var viewSchedule: String { String(localized: "calendar.contextMenu.viewSchedule", bundle: bundle) }
+    public static var addPersonalEvent: String { String(localized: "calendar.contextMenu.addPersonalEvent", bundle: bundle) }
+    public static var createPromise: String { String(localized: "calendar.contextMenu.createPromise", bundle: bundle) }
   }
 
   // MARK: - Personal

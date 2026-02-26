@@ -13,6 +13,12 @@ struct DayTimelinePager: UIViewControllerRepresentable {
   let onScheduleItemTapped: (HomeModels.ScheduleItem) -> Void
   let onPreviousDay: () -> Void
   let onNextDay: () -> Void
+  let onCreatePersonalEvent: (Date) -> Void
+  let onCreatePromise: () -> Void
+  let calendarMode: CalendarMode
+  let currentUserId: String
+  let weatherCache: [String: WeatherInfo]
+  let groupColorMap: [String: Color]
 
   func makeCoordinator() -> Coordinator {
     Coordinator(pager: self)
@@ -21,12 +27,19 @@ struct DayTimelinePager: UIViewControllerRepresentable {
   func makeUIViewController(context: Context) -> PagerViewController {
     let vc = PagerViewController()
     vc.coordinator = context.coordinator
+    vc.calendarMode = calendarMode
     context.coordinator.pagerVC = vc
     vc.setupPages(
       prevDayScheduleItems: prevDayScheduleItems,
       currentDayScheduleItems: currentDayScheduleItems,
       nextDayScheduleItems: nextDayScheduleItems,
-      onScheduleItemTapped: onScheduleItemTapped
+      selectedDate: selectedDate,
+      onScheduleItemTapped: onScheduleItemTapped,
+      onCreatePersonalEvent: onCreatePersonalEvent,
+      onCreatePromise: onCreatePromise,
+      currentUserId: currentUserId,
+      weatherCache: weatherCache,
+      groupColorMap: groupColorMap
     )
     return vc
   }
@@ -34,8 +47,14 @@ struct DayTimelinePager: UIViewControllerRepresentable {
   func updateUIViewController(_ vc: PagerViewController, context: Context) {
     let coordinator = context.coordinator
     coordinator.pager = self
+    vc.calendarMode = calendarMode
     let calendar = Calendar.promiseDisplay
     let selectedDay = calendar.startOfDay(for: selectedDate)
+
+    // 날짜 탭 슬라이드 애니메이션 중에는 업데이트 스킵
+    if coordinator.isAnimatingDateTap {
+      return
+    }
 
     if coordinator.needsRecenter {
       coordinator.needsRecenter = false
@@ -44,7 +63,13 @@ struct DayTimelinePager: UIViewControllerRepresentable {
         prevDayScheduleItems: prevDayScheduleItems,
         currentDayScheduleItems: currentDayScheduleItems,
         nextDayScheduleItems: nextDayScheduleItems,
-        onScheduleItemTapped: onScheduleItemTapped
+        selectedDate: selectedDate,
+        onScheduleItemTapped: onScheduleItemTapped,
+        onCreatePersonalEvent: coordinator.pager.onCreatePersonalEvent,
+        onCreatePromise: coordinator.pager.onCreatePromise,
+        currentUserId: coordinator.pager.currentUserId,
+        weatherCache: coordinator.pager.weatherCache,
+        groupColorMap: coordinator.pager.groupColorMap
       )
       vc.recenterToCurrentPage(animated: false)
 
@@ -73,26 +98,32 @@ struct DayTimelinePager: UIViewControllerRepresentable {
           coordinator.savedOffsets[previousDay] = centerSV.contentOffset.y
         }
 
-        vc.updatePages(
-          prevDayScheduleItems: prevDayScheduleItems,
-          currentDayScheduleItems: currentDayScheduleItems,
-          nextDayScheduleItems: nextDayScheduleItems,
-          onScheduleItemTapped: onScheduleItemTapped
+        // 슬라이드 방향 결정
+        let goingForward = selectedDay > previousDay
+        let targetPage = goingForward ? 2 : 0
+
+        // 타겟 페이지에 새 날짜 데이터 로드
+        vc.updateSinglePage(
+          at: targetPage,
+          scheduleItems: currentDayScheduleItems,
+          displayDate: selectedDay,
+          onScheduleItemTapped: onScheduleItemTapped,
+          onCreatePersonalEvent: onCreatePersonalEvent,
+          onCreatePromise: onCreatePromise,
+          currentUserId: currentUserId,
+          weatherCache: weatherCache,
+          groupColorMap: groupColorMap
         )
-        vc.recenterToCurrentPage(animated: false)
         vc.forceLayout()
 
-        // 날짜 탭 전환: 새 center/인접 페이지를 날짜 캐시 기준으로 복원
-        let prevDay = calendar.date(byAdding: .day, value: -1, to: selectedDay)
-        let nextDay = calendar.date(byAdding: .day, value: 1, to: selectedDay)
-        let fallbackOffset = vc.currentTimeOffset()
-        let centerOffset = coordinator.savedOffsets[selectedDay] ?? fallbackOffset
-        let prevOffset = prevDay.flatMap { coordinator.savedOffsets[$0] } ?? fallbackOffset
-        let nextOffset = nextDay.flatMap { coordinator.savedOffsets[$0] } ?? fallbackOffset
+        // 타겟 페이지 오프셋 적용
+        let targetOffset = coordinator.savedOffsets[selectedDay] ?? vc.currentTimeOffset()
+        vc.applyOffset(at: targetPage, offset: targetOffset)
 
-        vc.applyOffset(at: 1, offset: centerOffset)
-        vc.applyOffset(at: 0, offset: prevOffset)
-        vc.applyOffset(at: 2, offset: nextOffset)
+        // 슬라이드 애니메이션
+        coordinator.isAnimatingDateTap = true
+        coordinator.lastSelectedDay = selectedDay
+        vc.scrollToPage(targetPage, animated: true)
       } else {
         // 일반 업데이트 — 오프셋 보존
         let savedOffsets = vc.saveAllOffsets()
@@ -100,7 +131,13 @@ struct DayTimelinePager: UIViewControllerRepresentable {
           prevDayScheduleItems: prevDayScheduleItems,
           currentDayScheduleItems: currentDayScheduleItems,
           nextDayScheduleItems: nextDayScheduleItems,
-          onScheduleItemTapped: onScheduleItemTapped
+          selectedDate: selectedDate,
+          onScheduleItemTapped: onScheduleItemTapped,
+          onCreatePersonalEvent: coordinator.pager.onCreatePersonalEvent,
+          onCreatePromise: coordinator.pager.onCreatePromise,
+          currentUserId: coordinator.pager.currentUserId,
+          weatherCache: coordinator.pager.weatherCache,
+          groupColorMap: coordinator.pager.groupColorMap
         )
         if !savedOffsets.isEmpty {
           vc.restoreOffsets(savedOffsets)
@@ -119,10 +156,48 @@ struct DayTimelinePager: UIViewControllerRepresentable {
     var savedOffsets: [Date: CGFloat] = [:]
     var arrivedPageOffset: CGFloat = 0
     var lastSelectedDay: Date
+    var isAnimatingDateTap = false
 
     init(pager: DayTimelinePager) {
       self.pager = pager
       self.lastSelectedDay = Calendar.promiseDisplay.startOfDay(for: pager.selectedDate)
+    }
+
+    func scrollViewDidEndScrollingAnimation(_ scrollView: UIScrollView) {
+      guard isAnimatingDateTap else { return }
+      isAnimatingDateTap = false
+
+      guard let vc = pagerVC else { return }
+
+      // 애니메이션 완료 후 전체 페이지를 올바른 데이터로 교체 + 리센터
+      vc.updatePages(
+        prevDayScheduleItems: pager.prevDayScheduleItems,
+        currentDayScheduleItems: pager.currentDayScheduleItems,
+        nextDayScheduleItems: pager.nextDayScheduleItems,
+        selectedDate: pager.selectedDate,
+        onScheduleItemTapped: pager.onScheduleItemTapped,
+        onCreatePersonalEvent: pager.onCreatePersonalEvent,
+        onCreatePromise: pager.onCreatePromise,
+        currentUserId: pager.currentUserId,
+        weatherCache: pager.weatherCache,
+        groupColorMap: pager.groupColorMap
+      )
+      vc.recenterToCurrentPage(animated: false)
+      vc.forceLayout()
+
+      let calendar = Calendar.promiseDisplay
+      let selectedDay = calendar.startOfDay(for: pager.selectedDate)
+      let prevDay = calendar.date(byAdding: .day, value: -1, to: selectedDay)
+      let nextDay = calendar.date(byAdding: .day, value: 1, to: selectedDay)
+      let fallbackOffset = vc.currentTimeOffset()
+
+      let centerOffset = savedOffsets[selectedDay] ?? fallbackOffset
+      let prevOffset = prevDay.flatMap { savedOffsets[$0] } ?? fallbackOffset
+      let nextOffset = nextDay.flatMap { savedOffsets[$0] } ?? fallbackOffset
+
+      vc.applyOffset(at: 1, offset: centerOffset)
+      vc.applyOffset(at: 0, offset: prevOffset)
+      vc.applyOffset(at: 2, offset: nextOffset)
     }
 
     func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
@@ -169,6 +244,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
 
   final class PagerViewController: UIViewController {
     var coordinator: Coordinator?
+    var calendarMode: CalendarMode = .weekly
     private let scrollView = UIScrollView()
     private let contentView = UIView()
     private var pageHostingControllers: [UIHostingController<DayTimelineView>] = []
@@ -211,17 +287,35 @@ struct DayTimelinePager: UIViewControllerRepresentable {
       prevDayScheduleItems: [HomeModels.ScheduleItem],
       currentDayScheduleItems: [HomeModels.ScheduleItem],
       nextDayScheduleItems: [HomeModels.ScheduleItem],
-      onScheduleItemTapped: @escaping (HomeModels.ScheduleItem) -> Void
+      selectedDate: Date,
+      onScheduleItemTapped: @escaping (HomeModels.ScheduleItem) -> Void,
+      onCreatePersonalEvent: @escaping (Date) -> Void,
+      onCreatePromise: @escaping () -> Void,
+      currentUserId: String,
+      weatherCache: [String: WeatherInfo],
+      groupColorMap: [String: Color]
     ) {
       scrollView.delegate = coordinator
 
       let pageWidthMultiplier = 1.0 / 3.0
+      let calendar = Calendar.promiseDisplay
+      let currentDay = calendar.startOfDay(for: selectedDate)
+      let prevDay = calendar.date(byAdding: .day, value: -1, to: currentDay) ?? currentDay
+      let nextDay = calendar.date(byAdding: .day, value: 1, to: currentDay) ?? currentDay
+      let displayDates = [prevDay, currentDay, nextDay]
       let itemsArrays = [prevDayScheduleItems, currentDayScheduleItems, nextDayScheduleItems]
 
       for (index, items) in itemsArrays.enumerated() {
         let dayTimelineView = DayTimelineView(
           scheduleItems: items,
-          onScheduleItemTapped: onScheduleItemTapped
+          displayDate: displayDates[index],
+          onScheduleItemTapped: onScheduleItemTapped,
+          onCreatePersonalEvent: onCreatePersonalEvent,
+          onCreatePromise: onCreatePromise,
+          calendarMode: calendarMode,
+          currentUserId: currentUserId,
+          weatherCache: weatherCache,
+          groupColorMap: groupColorMap
         )
         let hostingVC = UIHostingController(rootView: dayTimelineView)
         hostingVC.view.backgroundColor = .clear
@@ -253,14 +347,32 @@ struct DayTimelinePager: UIViewControllerRepresentable {
       prevDayScheduleItems: [HomeModels.ScheduleItem],
       currentDayScheduleItems: [HomeModels.ScheduleItem],
       nextDayScheduleItems: [HomeModels.ScheduleItem],
-      onScheduleItemTapped: @escaping (HomeModels.ScheduleItem) -> Void
+      selectedDate: Date,
+      onScheduleItemTapped: @escaping (HomeModels.ScheduleItem) -> Void,
+      onCreatePersonalEvent: @escaping (Date) -> Void,
+      onCreatePromise: @escaping () -> Void,
+      currentUserId: String,
+      weatherCache: [String: WeatherInfo],
+      groupColorMap: [String: Color]
     ) {
+      let calendar = Calendar.promiseDisplay
+      let currentDay = calendar.startOfDay(for: selectedDate)
+      let prevDay = calendar.date(byAdding: .day, value: -1, to: currentDay) ?? currentDay
+      let nextDay = calendar.date(byAdding: .day, value: 1, to: currentDay) ?? currentDay
+      let displayDates = [prevDay, currentDay, nextDay]
       let itemsArrays = [prevDayScheduleItems, currentDayScheduleItems, nextDayScheduleItems]
       for (index, vc) in pageHostingControllers.enumerated() {
         guard index < itemsArrays.count else { break }
         vc.rootView = DayTimelineView(
           scheduleItems: itemsArrays[index],
-          onScheduleItemTapped: onScheduleItemTapped
+          displayDate: displayDates[index],
+          onScheduleItemTapped: onScheduleItemTapped,
+          onCreatePersonalEvent: onCreatePersonalEvent,
+          onCreatePromise: onCreatePromise,
+          calendarMode: calendarMode,
+          currentUserId: currentUserId,
+          weatherCache: weatherCache,
+          groupColorMap: groupColorMap
         )
       }
     }
@@ -269,6 +381,39 @@ struct DayTimelinePager: UIViewControllerRepresentable {
       let pageWidth = scrollView.bounds.width
       guard pageWidth > 0 else { return }
       scrollView.setContentOffset(CGPoint(x: pageWidth, y: 0), animated: animated)
+    }
+
+    /// 단일 페이지 데이터 업데이트
+    func updateSinglePage(
+      at index: Int,
+      scheduleItems: [HomeModels.ScheduleItem],
+      displayDate: Date,
+      onScheduleItemTapped: @escaping (HomeModels.ScheduleItem) -> Void,
+      onCreatePersonalEvent: @escaping (Date) -> Void,
+      onCreatePromise: @escaping () -> Void,
+      currentUserId: String,
+      weatherCache: [String: WeatherInfo],
+      groupColorMap: [String: Color]
+    ) {
+      guard index < pageHostingControllers.count else { return }
+      pageHostingControllers[index].rootView = DayTimelineView(
+        scheduleItems: scheduleItems,
+        displayDate: displayDate,
+        onScheduleItemTapped: onScheduleItemTapped,
+        onCreatePersonalEvent: onCreatePersonalEvent,
+        onCreatePromise: onCreatePromise,
+        calendarMode: calendarMode,
+        currentUserId: currentUserId,
+        weatherCache: weatherCache,
+        groupColorMap: groupColorMap
+      )
+    }
+
+    /// 지정 페이지로 스크롤
+    func scrollToPage(_ page: Int, animated: Bool) {
+      let pageWidth = scrollView.bounds.width
+      guard pageWidth > 0 else { return }
+      scrollView.setContentOffset(CGPoint(x: CGFloat(page) * pageWidth, y: 0), animated: animated)
     }
 
     fileprivate func findInnerScrollView(at pageIndex: Int) -> UIScrollView? {
