@@ -63,7 +63,7 @@ extension CreatePersonalEvent {
       var localImageData: [Data] = []
       var removedImageUrls: [String] = []
 
-      // 일정 충돌 감지 (Pro plan)
+      // 일정 충돌 감지
       var userPlan: UserPlan = .free
       var currentUserId: String = ""
       var conflicts: [ScheduleConflict] = []
@@ -480,11 +480,12 @@ extension CreatePersonalEvent {
       let userId = state.currentUserId
       let startAt = state.event.startAt
       let endAt = state.event.endAt
+      let excludeIds: Set<String> = state.mode == .edit ? [state.event.id] : []
 
       return .run { [scheduleConflictClient, clock] send in
         try await clock.sleep(for: .milliseconds(500))
         do {
-          let conflicts = try await scheduleConflictClient.checkConflicts(userId, startAt, endAt)
+          let conflicts = try await scheduleConflictClient.checkConflicts(userId, startAt, endAt, excludeIds)
           await send(.internal(.conflictsLoaded(conflicts)))
         } catch {
           await send(.internal(.conflictsLoaded([])))

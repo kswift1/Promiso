@@ -6,19 +6,9 @@
 //
 
 import ComposableArchitecture
+import FirebaseFunctions
 import Foundation
 import PromisoShared
-
-// MARK: - Constants
-
-private enum ConflictCheckConstants {
-  /// 겹침 검사를 위한 하한 버퍼 (12시간)
-  /// 최대 12시간 전에 시작해서 아직 진행 중인 일정을 포착
-  static let lookbackInterval: TimeInterval = 12 * 3600
-
-  /// endAt이 nil일 때 기본 지속 시간 (2시간, P18)
-  static let defaultDuration: TimeInterval = 7200
-}
 
 // MARK: - Client
 
@@ -31,11 +21,13 @@ public struct ScheduleConflictClient: Sendable {
   ///   - userId: 현재 사용자 ID
   ///   - startAt: 새 약속/일정 시작 시간
   ///   - endAt: 새 약속/일정 종료 시간 (nil이면 startAt + 2h)
+  ///   - excludeIds: 충돌 결과에서 제외할 일정 ID (편집 시 자기 자신 제외)
   /// - Returns: 겹치는 일정 목록
   public var checkConflicts: @Sendable (
     _ userId: String,
     _ startAt: Date,
-    _ endAt: Date?
+    _ endAt: Date?,
+    _ excludeIds: Set<String>
   ) async throws -> [ScheduleConflict]
 }
 
@@ -45,7 +37,7 @@ extension ScheduleConflictClient: TestDependencyKey {
   public static let testValue = Self()
 
   public static let previewValue = Self(
-    checkConflicts: { _, _, _ in
+    checkConflicts: { _, _, _, _ in
       try await Task.sleep(for: .seconds(0.3))
       return []
     }
@@ -61,106 +53,74 @@ extension DependencyValues {
   }
 }
 
+// MARK: - Cloud Function Response
+
+private struct CheckConflictsResponse: Decodable {
+  let conflicts: [ConflictItem]
+}
+
+private struct ConflictItem: Decodable {
+  let id: String
+  let source: String
+  let severity: String
+  let title: String
+  let emoji: String?
+  let startAt: String
+  let endAt: String?
+  let overlapMinutes: Int
+}
+
 // MARK: - Live Implementation
 
 extension ScheduleConflictClient: DependencyKey {
-  public static let liveValue: ScheduleConflictClient = {
-    @Dependency(\.promiseClient) var promiseClient
-    @Dependency(\.personalEventClient) var personalEventClient
+  public static let liveValue = ScheduleConflictClient(
+    checkConflicts: { _, startAt, endAt, excludeIds in
+      let functions = DefaultFunctionsProvider().functions
+      let iso8601Formatter = ISO8601DateFormatter()
+      iso8601Formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
 
-    return ScheduleConflictClient(
-      checkConflicts: { userId, startAt, endAt in
-        let newEffectiveEnd = endAt ?? startAt.addingTimeInterval(ConflictCheckConstants.defaultDuration)
-        let rangeStart = startAt.addingTimeInterval(-ConflictCheckConstants.lookbackInterval)
-        let rangeEnd = newEffectiveEnd
+      AppLogger.general.info("[ConflictCheck] Cloud Function 충돌 체크 시작")
 
-        AppLogger.general.info("[ConflictCheck] 충돌 체크 시작")
-
-        // 병렬 조회: 수락한 그룹 약속 + 개인 일정
-        async let acceptedPromises = promiseClient.getAcceptedPromisesByDateRange(
-          rangeStart, rangeEnd
-        )
-        async let personalEvents = personalEventClient.getEventsByDateRange(
-          rangeStart, rangeEnd
-        )
-
-        var conflicts: [ScheduleConflict] = []
-
-        // 그룹 약속 겹침 판정
-        for promise in try await acceptedPromises {
-          if let conflict = makeConflictIfOverlapping(
-            id: promise.id,
-            source: .promise,
-            severity: promise.isConfirmed ? .confirmed : .pending,
-            title: promise.title,
-            emoji: promise.emoji,
-            existingStart: promise.startAt,
-            existingEnd: promise.endAt,
-            newStart: startAt,
-            newEffectiveEnd: newEffectiveEnd
-          ) {
-            conflicts.append(conflict)
-          }
-        }
-
-        // 개인 일정 겹침 판정
-        for event in try await personalEvents {
-          if let conflict = makeConflictIfOverlapping(
-            id: event.id,
-            source: .personalEvent,
-            severity: .confirmed,
-            title: event.title,
-            emoji: event.emoji,
-            existingStart: event.startAt,
-            existingEnd: event.endAt,
-            newStart: startAt,
-            newEffectiveEnd: newEffectiveEnd
-          ) {
-            conflicts.append(conflict)
-          }
-        }
-
-        AppLogger.general.info("[ConflictCheck] 결과 - 충돌 \(conflicts.count)건 감지")
-        for conflict in conflicts {
-          AppLogger.general.debug("[ConflictCheck]  - \(conflict.source == .promise ? "약속" : "개인") \(conflict.overlapMinutes)분 겹침 (\(conflict.severity == .confirmed ? "확정" : "미확정"))")
-        }
-
-        // 겹침 시간 내림차순 정렬
-        return conflicts.sorted { $0.overlapMinutes > $1.overlapMinutes }
+      var params: [String: Any] = [
+        "startAt": iso8601Formatter.string(from: startAt),
+      ]
+      if let endAt {
+        params["endAt"] = iso8601Formatter.string(from: endAt)
       }
-    )
-  }()
-}
+      if !excludeIds.isEmpty {
+        params["excludeIds"] = Array(excludeIds)
+      }
 
-// MARK: - Private Helpers
+      let result = try await functions.httpsCallable("checkScheduleConflicts").call(params)
 
-/// 기존 일정과 새 일정의 겹침을 판정하여 ScheduleConflict를 생성
-private func makeConflictIfOverlapping(
-  id: String,
-  source: ScheduleConflict.Source,
-  severity: ScheduleConflict.Severity,
-  title: String,
-  emoji: String?,
-  existingStart: Date,
-  existingEnd: Date?,
-  newStart: Date,
-  newEffectiveEnd: Date
-) -> ScheduleConflict? {
-  let existEnd = existingEnd ?? existingStart.addingTimeInterval(ConflictCheckConstants.defaultDuration)
-  guard existingStart < newEffectiveEnd && existEnd > newStart else { return nil }
+      guard
+        let data = try? JSONSerialization.data(withJSONObject: result.data),
+        let response = try? JSONDecoder().decode(CheckConflictsResponse.self, from: data)
+      else {
+        AppLogger.general.error("[ConflictCheck] 응답 파싱 실패")
+        return []
+      }
 
-  let overlapStart = max(existingStart, newStart)
-  let overlapEnd = min(existEnd, newEffectiveEnd)
-  let overlapMinutes = max(0, Int(overlapEnd.timeIntervalSince(overlapStart) / 60))
+      let conflicts = response.conflicts.compactMap { item -> ScheduleConflict? in
+        let source: ScheduleConflict.Source = item.source == "promise" ? .promise : .personalEvent
+        let severity: ScheduleConflict.Severity = item.severity == "confirmed" ? .confirmed : .pending
+        let itemStartAt = iso8601Formatter.date(from: item.startAt) ?? startAt
+        let itemEndAt = item.endAt.flatMap { iso8601Formatter.date(from: $0) }
 
-  return ScheduleConflict(
-    id: id,
-    source: source,
-    severity: severity,
-    title: title,
-    emoji: emoji,
-    startAt: existingStart,
-    endAt: existingEnd,
-    overlapMinutes: overlapMinutes
+        return ScheduleConflict(
+          id: item.id,
+          source: source,
+          severity: severity,
+          title: item.title,
+          emoji: item.emoji,
+          startAt: itemStartAt,
+          endAt: itemEndAt,
+          overlapMinutes: item.overlapMinutes
+        )
+      }
+
+      AppLogger.general.info("[ConflictCheck] 결과 - 충돌 \(conflicts.count)건 감지")
+      return conflicts
+    }
   )
 }

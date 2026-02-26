@@ -457,6 +457,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
       .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: startDate))
       .whereField("startAt", isLessThan: Timestamp(date: endDate))
       .order(by: "startAt")
+      .limit(to: 50)
 
     let snapshot = try await query.getDocuments()
     return try snapshot.documents.compactMap { try convertDocumentToPromise($0) }

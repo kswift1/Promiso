@@ -108,3 +108,16 @@ export {searchPlaces} from "./functions/kakaoMap";
 // ============================================================================
 export {getWeather} from "./functions/weather";
 
+// ============================================================================
+// Schedule Conflict Functions (일정 충돌 감지 + scheduleSlots 비정규화)
+// ============================================================================
+export {
+  checkScheduleConflicts,
+  onPromiseCreatedSlot,
+  onPromiseUpdatedSlot,
+  onPromiseDeletedSlot,
+  onPersonalEventCreatedSlot,
+  onPersonalEventUpdatedSlot,
+  onPersonalEventDeletedSlot,
+} from "./functions/scheduleConflicts";
+
