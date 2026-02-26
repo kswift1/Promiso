@@ -65,8 +65,8 @@ extension Home {
             store.send(.view(.onAppear))
           }
           .onChange(of: scenePhase) { oldPhase, newPhase in
-            // background → active 시 다시 로드
-            if oldPhase == .background && newPhase == .active {
+            // inactive/background → active 시 다시 로드
+            if newPhase == .active && oldPhase != .active {
               store.send(.view(.onAppear))
             }
           }
