@@ -219,7 +219,11 @@ struct DayTimelineView: View {
     let toNext = continuesToNextDay(item)
 
     return VStack(spacing: 0) {
-      if !fromPrev {
+      if fromPrev {
+        Text(dateTimeString(for: item.startAt))
+          .font(.system(size: 9, weight: .medium, design: .monospaced))
+          .foregroundStyle(color)
+      } else {
         Text(timeString(for: clampedStart))
           .font(.system(size: 9, weight: .medium, design: .monospaced))
           .foregroundStyle(color)
@@ -227,7 +231,13 @@ struct DayTimelineView: View {
 
       Spacer(minLength: 0)
 
-      if item.endAt != nil && !toNext {
+      if toNext {
+        if let endAt = item.endAt {
+          Text(dateTimeString(for: endAt))
+            .font(.system(size: 9, weight: .medium, design: .monospaced))
+            .foregroundStyle(color.opacity(0.6))
+        }
+      } else if item.endAt != nil {
         Text(timeString(for: clampedEnd))
           .font(.system(size: 9, weight: .medium, design: .monospaced))
           .foregroundStyle(color.opacity(0.6))
@@ -352,6 +362,10 @@ struct DayTimelineView: View {
     Formatters.time.string(from: date)
   }
 
+  private func dateTimeString(for date: Date) -> String {
+    Formatters.dateTime.string(from: date)
+  }
+
   private func promiseResponseStatus(_ promise: PromiseModel) -> PromiseResponseStatus {
     let memberCount = promise.group?.memberIds.count
     let totalMembers = (memberCount ?? 0) > 0 ? memberCount : nil
@@ -394,6 +408,14 @@ struct DayTimelineView: View {
       f.locale = Locale(identifier: "en_US_POSIX")
       f.timeZone = displayTimeZone
       f.dateFormat = "HH:mm"
+      return f
+    }()
+
+    static let dateTime: DateFormatter = {
+      let f = DateFormatter()
+      f.locale = Locale(identifier: "en_US_POSIX")
+      f.timeZone = displayTimeZone
+      f.dateFormat = "M/d HH:mm"
       return f
     }()
   }
