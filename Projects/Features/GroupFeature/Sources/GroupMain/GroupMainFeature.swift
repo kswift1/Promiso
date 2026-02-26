@@ -184,6 +184,7 @@ extension GroupMain {
         case sortSettingsTapped  // "그룹 정렬"
         case directionsTapped(String)  // 길찾기 (promiseId)
         case openCreatePromiseIfPossible  // Widget 딥링크: 그룹 있으면 약속 생성
+        case openCreatePromiseWithExtractedInfo(PromiseExtractedInfo)  // 퀵 약속: 추출 정보 pre-fill
         case switchToPersonalMode  // 개인 모드로 전환 요청
         case toastDismissed
         // Context Menu Actions
@@ -490,6 +491,38 @@ extension GroupMain {
             }
             // 그룹 있음 → 약속 생성 화면 열기
             return .send(.view(.createNewPromise))
+
+          case .openCreatePromiseWithExtractedInfo(let info):
+            // 퀵 약속: 추출 정보로 CreatePromise 열기
+            guard let groups = state.allGroupSummaries, !groups.isEmpty else {
+              return .none
+            }
+            var promise = PromiseModel.empty
+            if let currentGroup = state.currentGroup {
+              promise.group = currentGroup
+              promise.groupId = currentGroup.id
+            }
+            // 추출 정보 적용
+            if let title = info.title {
+              promise.title = title
+            }
+            if let date = info.date {
+              promise.startAt = date
+            }
+            if let description = info.description {
+              promise.description = description
+            }
+            if let location = info.location {
+              promise.location = LocationInfoModel(name: location)
+            }
+            state.createPromise = CreatePromise.Feature.State(
+              promise: promise,
+              groupSummaries: state.allGroupSummaries,
+              userPlan: state.userPlan,
+              currentUserId: state.currentUser.userId,
+              prefillInfo: info
+            )
+            return .none
 
           case .switchToPersonalMode:
             // RootTabFeature에서 처리

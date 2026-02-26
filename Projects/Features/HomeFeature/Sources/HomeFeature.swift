@@ -103,6 +103,12 @@ extension Home {
       /// 안 읽은 알림 개수
       var unreadNotificationCount: Int = 0
 
+      // MARK: Quick Promise
+      /// 빠른 약속 만들기 (텍스트/이미지 → 파싱 → 약속 생성)
+      var quickPromise = QuickPromise.Feature.State()
+      /// 빠른 약속 시트 표시 여부
+      var showQuickPromiseSheet: Bool = false
+
       // MARK: Navigation
       /// 네비게이션 경로 (약속 상세)
       var path = StackState<Path.State>()
@@ -150,6 +156,7 @@ extension Home {
       case delegate(Delegate)
       case path(StackActionOf<Path>)
       case createPersonalEvent(PresentationAction<CreatePersonalEvent.Feature.Action>)
+      case quickPromise(QuickPromise.Feature.Action)
 
       @CasePathable
       public enum View {
@@ -181,6 +188,10 @@ extension Home {
         case personalEventTapped(PersonalEventModel)
         /// 토스트 닫힘
         case toastDismissed
+        /// 빠른 약속 버튼 탭
+        case quickPromiseButtonTapped
+        /// 빠른 약속 시트 닫힘
+        case quickPromiseSheetDismissed
         /// 캘린더 오버레이 열기
         case calendarOverlayOpened
         /// 캘린더 오버레이 닫기
@@ -251,6 +262,8 @@ extension Home {
         case navigateToAllPromises
         /// 오버레이에서 약속 만들기 요청 (→ RootTab → GroupMain)
         case navigateToCreatePromise
+        /// 빠른 약속 생성 요청 (추출 정보 → CreatePromise pre-fill)
+        case createPromiseWithExtractedInfo(PromiseExtractedInfo)
       }
     }
 
@@ -339,6 +352,14 @@ extension Home {
 
           case .toastDismissed:
             state.toastMessage = nil
+            return .none
+
+          case .quickPromiseButtonTapped:
+            state.showQuickPromiseSheet = true
+            return .none
+
+          case .quickPromiseSheetDismissed:
+            state.showQuickPromiseSheet = false
             return .none
 
           case .calendarOverlayOpened:
@@ -897,6 +918,15 @@ extension Home {
         case .delegate:
           return .none
 
+        // MARK: - QuickPromise Actions
+
+        case .quickPromise(.delegate(.createPromiseRequested(let info))):
+          state.showQuickPromiseSheet = false
+          return .send(.delegate(.createPromiseWithExtractedInfo(info)))
+
+        case .quickPromise:
+          return .none
+
         // MARK: - Path Actions
 
         case .path(.element(id: _, action: .promiseDetail(.delegate(.dismiss)))):
@@ -954,6 +984,9 @@ extension Home {
       .forEach(\.path, action: \.path)
       .ifLet(\.$createPersonalEvent, action: \.createPersonalEvent) {
         CreatePersonalEvent.Feature()
+
+      Scope(state: \.quickPromise, action: \.quickPromise) {
+        QuickPromise.Feature()
       }
     }
   }
