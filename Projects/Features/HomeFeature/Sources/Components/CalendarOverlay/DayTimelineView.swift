@@ -78,7 +78,9 @@ struct DayTimelineView: View {
       .padding(.leading, 8)
       .padding(.trailing, 20)
     }
-    .scrollDisabled(creationStartSlot != nil)
+    .onDisappear {
+      creationStartSlot = nil
+    }
   }
 
   // MARK: - Interaction Slots (Layer 1.5)
