@@ -91,8 +91,10 @@ extension Home {
       var overlayPromisesByMonth: [Date: [PromiseModel]] = [:]
       /// 이미 로드된 오버레이 월 (중복 요청 방지)
       var overlayLoadedMonths: Set<Date> = []
-      /// 오버레이 개인 일정
-      var overlayPersonalEvents: [PersonalEventModel] = []
+      /// 오버레이 월별 개인 일정 캐시 (키: 월 시작일)
+      var overlayPersonalEventsByMonth: [Date: [PersonalEventModel]] = [:]
+      /// 이미 로드된 오버레이 개인 일정 월 (중복 요청 방지)
+      var overlayLoadedPersonalEventMonths: Set<Date> = []
 
       // MARK: Notification
       /// 안 읽은 알림 개수
@@ -223,10 +225,12 @@ extension Home {
         case overlaySchedulesResponse(month: Date, Result<[PromiseModel], Error>)
         /// 오버레이 인접 월 프리페치
         case prefetchOverlayAdjacentMonths
-        /// 오버레이 개인 일정 조회
-        case fetchOverlayPersonalEvents
-        /// 오버레이 개인 일정 응답
-        case overlayPersonalEventsResponse(Result<[PersonalEventModel], Error>)
+        /// 오버레이 월별 개인 일정 조회
+        case fetchOverlayPersonalEvents(month: Date)
+        /// 오버레이 월별 개인 일정 응답
+        case overlayPersonalEventsResponse(month: Date, Result<[PersonalEventModel], Error>)
+        /// 오버레이 인접 월 개인 일정 프리페치
+        case prefetchOverlayAdjacentPersonalEvents
       }
 
       @CasePathable
@@ -334,7 +338,8 @@ extension Home {
             // 오버레이 캐시 초기화
             state.overlayPromisesByMonth.removeAll()
             state.overlayLoadedMonths.removeAll()
-            state.overlayPersonalEvents.removeAll()
+            state.overlayPersonalEventsByMonth.removeAll()
+            state.overlayLoadedPersonalEventMonths.removeAll()
 
             let currentMonth = Date().startOfMonth
 
@@ -355,7 +360,7 @@ extension Home {
             return .merge(
               weatherEffect,
               .send(.internal(.fetchOverlaySchedules(month: currentMonth))),
-              .send(.internal(.fetchOverlayPersonalEvents))
+              .send(.internal(.fetchOverlayPersonalEvents(month: currentMonth)))
             )
 
           case .calendarOverlayClosed:
@@ -365,7 +370,8 @@ extension Home {
             state.overlayCalendarMode = .monthly
             state.overlayPromisesByMonth.removeAll()
             state.overlayLoadedMonths.removeAll()
-            state.overlayPersonalEvents.removeAll()
+            state.overlayPersonalEventsByMonth.removeAll()
+            state.overlayLoadedPersonalEventMonths.removeAll()
             return .cancel(id: CancelID.overlayWeatherFetch)
 
           case .overlayDateSelected(let date):
@@ -375,6 +381,7 @@ extension Home {
             if !calendar.isDate(date, equalTo: state.overlayCalendarMonth, toGranularity: .month) {
               state.overlayCalendarMonth = date
               effects.append(.send(.internal(.fetchOverlaySchedules(month: date))))
+              effects.append(.send(.internal(.fetchOverlayPersonalEvents(month: date))))
             }
             if state.overlayCalendarMode == .monthly {
               state.overlayCalendarMode = .weekly
@@ -385,13 +392,19 @@ extension Home {
             if let prev = Calendar.promiseDisplay.date(byAdding: .month, value: -1, to: state.overlayCalendarMonth) {
               state.overlayCalendarMonth = prev
             }
-            return .send(.internal(.fetchOverlaySchedules(month: state.overlayCalendarMonth)))
+            return .merge(
+              .send(.internal(.fetchOverlaySchedules(month: state.overlayCalendarMonth))),
+              .send(.internal(.fetchOverlayPersonalEvents(month: state.overlayCalendarMonth)))
+            )
 
           case .overlayNextMonth:
             if let next = Calendar.promiseDisplay.date(byAdding: .month, value: 1, to: state.overlayCalendarMonth) {
               state.overlayCalendarMonth = next
             }
-            return .send(.internal(.fetchOverlaySchedules(month: state.overlayCalendarMonth)))
+            return .merge(
+              .send(.internal(.fetchOverlaySchedules(month: state.overlayCalendarMonth))),
+              .send(.internal(.fetchOverlayPersonalEvents(month: state.overlayCalendarMonth)))
+            )
 
           case .overlayWeatherCardTapped:
             state.overlayWeatherLocationText = nil
@@ -782,24 +795,49 @@ extension Home {
             }
             return effects.isEmpty ? .none : .merge(effects)
 
-          case .fetchOverlayPersonalEvents:
-            return .run { [personalEventClient] send in
-              do {
-                let events = try await personalEventClient.getActiveEvents(200)
-                await send(.internal(.overlayPersonalEventsResponse(.success(events))))
-              } catch {
-                await send(.internal(.overlayPersonalEventsResponse(.failure(error))))
-              }
-            }
+          case .fetchOverlayPersonalEvents(let month):
+            let monthStart = month.startOfMonth
+            guard !state.overlayLoadedPersonalEventMonths.contains(monthStart) else { return .none }
+            state.overlayLoadedPersonalEventMonths.insert(monthStart)
 
-          case .overlayPersonalEventsResponse(let result):
+            let calendar = Calendar.current
+            let endDate = calendar.date(byAdding: .month, value: 1, to: monthStart) ?? monthStart
+
+            return .merge(
+              .run { [personalEventClient] send in
+                do {
+                  let events = try await personalEventClient.getEventsByDateRange(monthStart, endDate)
+                  await send(.internal(.overlayPersonalEventsResponse(month: monthStart, .success(events))))
+                } catch {
+                  await send(.internal(.overlayPersonalEventsResponse(month: monthStart, .failure(error))))
+                }
+              },
+              .send(.internal(.prefetchOverlayAdjacentPersonalEvents))
+            )
+
+          case .overlayPersonalEventsResponse(let month, let result):
             switch result {
             case .success(let events):
-              state.overlayPersonalEvents = events
+              state.overlayPersonalEventsByMonth[month] = events
             case .failure:
-              break
+              state.overlayLoadedPersonalEventMonths.remove(month)
             }
             return .none
+
+          case .prefetchOverlayAdjacentPersonalEvents:
+            let calendar = Calendar.current
+            let currentMonth = state.overlayCalendarMonth.startOfMonth
+
+            var effects: [Effect<Action>] = []
+            if let prevMonth = calendar.date(byAdding: .month, value: -1, to: currentMonth)?.startOfMonth,
+               !state.overlayLoadedPersonalEventMonths.contains(prevMonth) {
+              effects.append(.send(.internal(.fetchOverlayPersonalEvents(month: prevMonth))))
+            }
+            if let nextMonth = calendar.date(byAdding: .month, value: 1, to: currentMonth)?.startOfMonth,
+               !state.overlayLoadedPersonalEventMonths.contains(nextMonth) {
+              effects.append(.send(.internal(.fetchOverlayPersonalEvents(month: nextMonth))))
+            }
+            return effects.isEmpty ? .none : .merge(effects)
 
           }
 

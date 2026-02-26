@@ -46,12 +46,19 @@ enum OverlayCalendarModels {
     let color: Color
     let title: String
     let spanPosition: SpanPosition
+    let startAt: Date
+    let endAt: Date?
+    let emoji: String?
 
-    init(id: String, color: Color, title: String, spanPosition: SpanPosition = .single) {
+    init(id: String, color: Color, title: String, spanPosition: SpanPosition = .single,
+         startAt: Date = .distantPast, endAt: Date? = nil, emoji: String? = nil) {
       self.id = id
       self.color = color
       self.title = title
       self.spanPosition = spanPosition
+      self.startAt = startAt
+      self.endAt = endAt
+      self.emoji = emoji
     }
 
     /// 개인 일정용 기본 색상

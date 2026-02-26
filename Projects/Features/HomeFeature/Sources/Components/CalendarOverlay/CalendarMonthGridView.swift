@@ -14,14 +14,28 @@ struct CalendarMonthGridView: View {
   var body: some View {
     LazyVGrid(columns: columns, spacing: 6) {
       ForEach(days) { day in
-        Button {
-          onDateSelected(day.date)
-        } label: {
+        if day.isCurrentMonth {
+          Button {
+            onDateSelected(day.date)
+          } label: {
+            OverlayCalendarDayCell(day: day)
+              .frame(maxHeight: .infinity, alignment: .top)
+              .contentShape(Rectangle())
+          }
+          .buttonStyle(.plain)
+          .contextMenu {
+            Button {
+              onDateSelected(day.date)
+            } label: {
+              Label("일정 보기", systemImage: "calendar")
+            }
+          } preview: {
+            DaySchedulePreviewView(day: day)
+          }
+        } else {
           OverlayCalendarDayCell(day: day)
             .frame(maxHeight: .infinity, alignment: .top)
         }
-        .buttonStyle(.plain)
-        .disabled(!day.isCurrentMonth)
       }
     }
   }

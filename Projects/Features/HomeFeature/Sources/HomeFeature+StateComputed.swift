@@ -198,9 +198,10 @@ extension Home.Feature.State {
     return overlayPromisesByMonth.values.flatMap { $0 }.filter { seen.insert($0.id).inserted }
   }
 
-  /// 오버레이용 전체 개인 일정
+  /// 오버레이용 전체 개인 일정 (로드된 모든 월에서 합산, 중복 제거)
   private var overlayAllPersonalEvents: [PersonalEventModel] {
-    overlayPersonalEvents
+    var seen = Set<String>()
+    return overlayPersonalEventsByMonth.values.flatMap { $0 }.filter { seen.insert($0.id).inserted }
   }
 
   /// 오버레이 캘린더에 표시할 날짜 셀 배열
@@ -318,7 +319,8 @@ extension Home.Feature.State {
           return .middle
         }()
         indicators[day, default: []].append(
-          .init(id: "\(promise.id)_\(day.timeIntervalSince1970)", color: color, title: promise.title, spanPosition: position)
+          .init(id: "\(promise.id)_\(day.timeIntervalSince1970)", color: color, title: promise.title, spanPosition: position,
+                startAt: promise.startAt, endAt: promise.endAt, emoji: promise.emoji)
         )
         guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
         day = next
@@ -338,7 +340,8 @@ extension Home.Feature.State {
           return .middle
         }()
         indicators[day, default: []].append(
-          .init(id: "\(event.id)_\(day.timeIntervalSince1970)", color: OverlayCalendarModels.ScheduleIndicator.personalColor, title: event.title, spanPosition: position)
+          .init(id: "\(event.id)_\(day.timeIntervalSince1970)", color: OverlayCalendarModels.ScheduleIndicator.personalColor, title: event.title, spanPosition: position,
+                startAt: event.startAt, endAt: event.endAt, emoji: event.emoji)
         )
         guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
         day = next
