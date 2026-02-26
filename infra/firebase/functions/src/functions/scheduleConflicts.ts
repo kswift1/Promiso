@@ -41,6 +41,7 @@ const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
  *
  * @param {Date} startAt 시작 시간
  * @param {Date} endAt 종료 시간
+ * @param {number} maxDays 최대 날짜 수
  * @return {string[]} YYYY-MM-DD 키 배열
  */
 function getDateKeys(
@@ -67,6 +68,12 @@ function getDateKeys(
   return {keys, isTruncated: false};
 }
 
+/**
+ * 일정 범위가 최대 허용 기간 내인지 검증
+ *
+ * @param {Date} startAt 시작 시간
+ * @param {Date} endAt 종료 시간
+ */
 function assertDateRangeWithinLimit(startAt: Date, endAt: Date): void {
   const rangeMs = endAt.getTime() - startAt.getTime();
   const maxRangeMs = MAX_SLOT_DATE_RANGE_DAYS * MILLISECONDS_PER_DAY;
@@ -135,7 +142,8 @@ async function upsertSlot(
   );
   if (isTruncated) {
     console.warn(
-      `⚠️ upsertSlot: 기간이 너무 김 (${slotEntry.id}), 최대 ${MAX_SLOT_DATE_RANGE_DAYS}일만 반영됩니다`,
+      `⚠️ upsertSlot: 기간이 너무 김 (${slotEntry.id}), ` +
+      `최대 ${MAX_SLOT_DATE_RANGE_DAYS}일만 반영됩니다`,
     );
   }
 
@@ -185,7 +193,8 @@ async function removeSlot(
   );
   if (isTruncated) {
     console.warn(
-      `⚠️ removeSlot: 기간이 너무 김 (${slotId}), 최대 ${MAX_SLOT_DATE_RANGE_DAYS}일만 반영됩니다`,
+      `⚠️ removeSlot: 기간이 너무 김 (${slotId}), ` +
+      `최대 ${MAX_SLOT_DATE_RANGE_DAYS}일만 반영됩니다`,
     );
   }
 
