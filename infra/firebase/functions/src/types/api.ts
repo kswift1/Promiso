@@ -1660,3 +1660,107 @@ export interface APNsLiveActivityUpdatePayload {
     };
   };
 }
+
+// ============================================================================
+// Schedule Conflict Check (일정 충돌 감지)
+// ============================================================================
+
+/**
+ * 일정 충돌 확인 요청
+ *
+ * @remarks
+ * - 인증 필수 (Firebase Auth)
+ * - userId는 request.auth.uid에서 자동 추출
+ * - 서버 사이드에서 scheduleSlots 기반 O(1) 충돌 체크
+ */
+export interface CheckScheduleConflictsRequest {
+  /** 새 일정 시작 시간 (ISO 8601) */
+  startAt: string;
+
+  /** 새 일정 종료 시간 (ISO 8601, nullable → startAt + 2h) */
+  endAt?: string | null;
+
+  /** 충돌 결과에서 제외할 일정 ID (편집 시 자기 자신 제외) */
+  excludeIds?: string[];
+}
+
+/**
+ * 충돌 감지된 일정 정보
+ */
+export interface ScheduleConflictItem {
+  /** 일정 ID */
+  id: string;
+
+  /** 일정 종류 */
+  source: "promise" | "personalEvent";
+
+  /** 확정 상태 */
+  severity: "confirmed" | "pending";
+
+  /** 일정 제목 */
+  title: string;
+
+  /** 일정 이모지 */
+  emoji: string | null;
+
+  /** 시작 시간 (ISO 8601) */
+  startAt: string;
+
+  /** 종료 시간 (ISO 8601, nullable) */
+  endAt: string | null;
+
+  /** 겹치는 시간 (분) */
+  overlapMinutes: number;
+}
+
+/**
+ * 일정 충돌 확인 응답
+ */
+export interface CheckScheduleConflictsResponse {
+  /** 충돌 일정 목록 (겹침 시간 내림차순) */
+  conflicts: ScheduleConflictItem[];
+}
+
+/**
+ * Schedule Slot (비정규화된 일정 슬롯)
+ *
+ * @path users/{userId}/scheduleSlots/{YYYY-MM-DD}
+ *
+ * @remarks
+ * - Firestore 트리거로 자동 유지
+ * - 약속 생성/수정/삭제, 개인 일정 생성/수정/삭제 시 갱신
+ * - 충돌 체크 시 해당 날짜 문서만 읽으면 됨 (O(1))
+ */
+export interface ScheduleSlotDocument {
+  /** 해당 날짜의 일정 슬롯 목록 */
+  slots: ScheduleSlotEntry[];
+
+  /** 마지막 업데이트 시간 */
+  updatedAt: FirebaseFirestore.Timestamp;
+}
+
+/**
+ * 개별 일정 슬롯 엔트리
+ */
+export interface ScheduleSlotEntry {
+  /** 일정 ID (promise ID 또는 personalEvent ID) */
+  id: string;
+
+  /** 일정 종류 */
+  type: "promise" | "personalEvent";
+
+  /** 일정 제목 */
+  title: string;
+
+  /** 일정 이모지 */
+  emoji: string | null;
+
+  /** 시작 시간 (ISO 8601) */
+  startAt: string;
+
+  /** 종료 시간 (ISO 8601, nullable) */
+  endAt: string | null;
+
+  /** 확정 상태 (promise: isConfirmed 기반, personalEvent: 항상 confirmed) */
+  severity: "confirmed" | "pending";
+}
