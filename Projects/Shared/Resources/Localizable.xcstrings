@@ -6070,115 +6070,115 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value" : "Group Settings"
+            "value": "Group Settings"
           }
         }
       }
     },
-    "groupSettingsView.groupColor.title" : {
-      "comment" : "그룹 색상",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Group Color"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "그룹 색상"
-          }
-        }
-      }
-    },
-    "groupSettingsView.groupColor.preview" : {
-      "comment" : "미리보기",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Preview"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "미리보기"
-          }
-        }
-      }
-    },
-    "groupSettingsView.groupColor.groupTab" : {
-      "comment" : "그룹 탭",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Group Tab"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "그룹 탭"
-          }
-        }
-      }
-    },
-    "groupSettingsView.groupColor.promiseCard" : {
-      "comment" : "약속 카드",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Promise Card"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "약속 카드"
-          }
-        }
-      }
-    },
-    "groupSettingsView.groupColor.reset" : {
-      "comment" : "색상 초기화",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reset Color"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "색상 초기화"
-          }
-        }
-      }
-    },
-    "groupSettingsView.unknownError" : {
-      "comment" : "알 수 없는 오류",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "An unknown error occurred."
+    "groupSettingsView.groupColor.title": {
+      "comment": "그룹 색상",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Group Color"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "그룹 설정"
+            "value": "그룹 색상"
+          }
+        }
+      }
+    },
+    "groupSettingsView.groupColor.preview": {
+      "comment": "미리보기",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preview"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "미리보기"
+          }
+        }
+      }
+    },
+    "groupSettingsView.groupColor.groupTab": {
+      "comment": "그룹 탭",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Group Tab"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "그룹 탭"
+          }
+        }
+      }
+    },
+    "groupSettingsView.groupColor.promiseCard": {
+      "comment": "약속 카드",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Promise Card"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "약속 카드"
+          }
+        }
+      }
+    },
+    "groupSettingsView.groupColor.reset": {
+      "comment": "색상 초기화",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reset Color"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "색상 초기화"
+          }
+        }
+      }
+    },
+    "groupSettingsView.unknownError": {
+      "comment": "알 수 없는 오류",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "An unknown error occurred."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "알 수 없는 오류가 발생했습니다."
           }
         }
       }
@@ -6431,24 +6431,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "잠시 후 다시 시도해주세요."
-          }
-        }
-      }
-    },
-    "groupSettingsView.unknownError": {
-      "comment": "알 수 없는 오류",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "An unknown error occurred."
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "알 수 없는 오류가 발생했습니다."
           }
         }
       }
@@ -20857,127 +20839,39 @@
         }
       }
     },
-    "quickPromise.title": {
-      "extractionState": "manual",
+    "calendar.contextMenu.viewSchedule": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Quick Promise"
+            "value": "View Schedule"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "빠른 약속 만들기"
+            "value": "일정 보기"
           }
         }
       }
     },
-    "quickPromise.textPlaceholder": {
-      "extractionState": "manual",
+    "calendar.contextMenu.addPersonalEvent": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Paste or type text"
+            "value": "Add Personal Event"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "텍스트를 붙여넣거나 입력하세요"
+            "value": "개인 일정 추가"
           }
         }
       }
     },
-    "quickPromise.extractedInfo": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Extracted Info"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "추출된 정보"
-          }
-        }
-      }
-    },
-    "quickPromise.label.title": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Title"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "제목"
-          }
-        }
-      }
-    },
-    "quickPromise.label.dateTime": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Date"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "일시"
-          }
-        }
-      }
-    },
-    "quickPromise.label.location": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Place"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "장소"
-          }
-        }
-      }
-    },
-    "quickPromise.noInfoMessage": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Could not extract promise info. Please enter manually."
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "약속 정보를 추출하지 못했습니다. 직접 입력해주세요."
-          }
-        }
-      }
-    },
-    "quickPromise.createButton": {
-      "extractionState": "manual",
+    "calendar.contextMenu.createPromise": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -20989,108 +20883,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "약속 만들기"
-          }
-        }
-      }
-    },
-    "quickPromise.error.textAnalysis": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Text analysis failed"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "텍스트 분석에 실패했습니다"
-          }
-        }
-      }
-    },
-    "quickPromise.error.imageLoad": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Unable to load image"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "이미지를 불러올 수 없습니다"
-          }
-        }
-      }
-    },
-    "quickPromise.error.imageExtraction": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Unable to extract text from image"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "이미지에서 텍스트를 추출할 수 없습니다"
-          }
-        }
-      }
-    },
-    "quickPromise.error.imageConversion": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Image conversion failed"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "이미지 변환에 실패했습니다"
-          }
-        }
-      }
-    },
-    "quickPromise.error.recognitionFailed": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Text recognition failed"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "텍스트 인식 실패"
-          }
-        }
-      }
-    },
-    "quickPromise.error.noTextFound": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No text found in image"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "이미지에서 텍스트를 찾을 수 없습니다"
           }
         }
       }

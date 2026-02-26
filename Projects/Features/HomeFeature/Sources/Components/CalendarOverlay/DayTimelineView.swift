@@ -195,7 +195,7 @@ struct DayTimelineView: View {
           onCreatePersonalEvent(dateForSlot(startSlot))
           creationStartSlot = nil
         } label: {
-          Label("개인 일정", systemImage: "plus.circle.fill")
+          Label(LocalizedStrings.Calendar.addPersonalEvent, systemImage: "plus.circle.fill")
             .font(.system(size: 11, weight: .semibold))
             .foregroundStyle(Color.pminfo.n500)
         }
@@ -205,7 +205,7 @@ struct DayTimelineView: View {
           onCreatePromise()
           creationStartSlot = nil
         } label: {
-          Label("약속 만들기", systemImage: "person.2.circle.fill")
+          Label(LocalizedStrings.Calendar.createPromise, systemImage: "person.2.circle.fill")
             .font(.system(size: 11, weight: .semibold))
             .foregroundStyle(Color.pmindigo.n500)
         }

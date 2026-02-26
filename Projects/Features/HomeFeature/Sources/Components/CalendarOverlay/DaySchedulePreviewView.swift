@@ -18,7 +18,7 @@ struct DaySchedulePreviewView: View {
 
       if day.scheduleIndicators.isEmpty {
         // 빈 상태
-        Text("일정이 없습니다")
+        Text(LocalizedStrings.Calendar.noSchedules)
           .font(.system(size: 14))
           .foregroundStyle(.secondary)
           .frame(maxWidth: .infinity, alignment: .center)

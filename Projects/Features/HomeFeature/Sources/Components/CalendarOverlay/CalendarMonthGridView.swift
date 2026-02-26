@@ -29,19 +29,19 @@ struct CalendarMonthGridView: View {
             Button {
               onDateSelected(day.date)
             } label: {
-              Label("일정 보기", systemImage: "calendar")
+              Label(LocalizedStrings.Calendar.viewSchedule, systemImage: "calendar")
             }
 
             Button {
               onCreatePersonalEvent(day.date)
             } label: {
-              Label("개인 일정 추가", systemImage: "plus.circle")
+              Label(LocalizedStrings.Calendar.addPersonalEvent, systemImage: "plus.circle")
             }
 
             Button {
               onCreatePromise()
             } label: {
-              Label("약속 만들기", systemImage: "person.2.circle")
+              Label(LocalizedStrings.Calendar.createPromise, systemImage: "person.2.circle")
             }
           } preview: {
             DaySchedulePreviewView(day: day)
