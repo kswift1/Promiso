@@ -447,11 +447,12 @@ struct DayTimelinePager: UIViewControllerRepresentable {
       innerSV.contentOffset.y = offset
     }
 
-    /// 현재 시간 기준 오프셋 계산 (hour - 1) * 52
+    /// 현재 시간 기준 오프셋 계산 (hour - 1) * 52, 19시 이후는 16시 영역으로 cap
     func currentTimeOffset() -> CGFloat {
       let hourHeight: CGFloat = 52
-      let hour = max(0, Calendar.promiseDisplay.component(.hour, from: Date()) - 1)
-      return CGFloat(hour) * hourHeight
+      let hour = Calendar.promiseDisplay.component(.hour, from: Date())
+      let capped = max(0, min(hour, 16) - 1)
+      return CGFloat(capped) * hourHeight
     }
 
     /// 모든 페이지의 현재 inner scroll offset 저장
