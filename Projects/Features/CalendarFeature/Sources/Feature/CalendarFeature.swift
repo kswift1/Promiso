@@ -713,11 +713,7 @@ extension CalendarFeature {
         let monthStart = newMonth.startOfMonth
         state.currentMonth = monthStart
 
-        // selectedDate가 이미 해당 월 내에 있으면 유지, 아니면 월의 첫날로 동기화
-        let selectedMonthStart = state.selectedDate.startOfMonth
-        if !Calendar.current.isDate(selectedMonthStart, inSameDayAs: monthStart) {
-          state.selectedDate = monthStart
-        }
+        // selectedDate는 변경하지 않음 — 다른 월이면 셀에서 선택 표시 안 됨
         AppLogger.calendar.debugLog("📆 monthPageChanged - 월: \(LocalizedDateFormatters.yearMonth.string(from: newMonth)), 선택된 날짜: \(LocalizedDateFormatters.date.string(from: state.selectedDate))")
 
         // 해당 월 로드 (캐시되지 않은 경우만)

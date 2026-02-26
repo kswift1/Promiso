@@ -333,7 +333,7 @@ struct MonthGridContent: View {
         ForEach(calendarDates, id: \.self) { date in
           CalendarIndicatorDayCell(
             date: date,
-            isSelected: monthGridCalendar.isDate(date, inSameDayAs: selectedDate),
+            isSelected: isCurrentMonth(date) && monthGridCalendar.isDate(date, inSameDayAs: selectedDate),
             isToday: monthGridCalendar.isDateInToday(date),
             isCurrentMonth: isCurrentMonth(date),
             scheduleIndicators: getScheduleIndicators(for: date),
