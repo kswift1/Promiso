@@ -984,6 +984,7 @@ extension Home {
       .forEach(\.path, action: \.path)
       .ifLet(\.$createPersonalEvent, action: \.createPersonalEvent) {
         CreatePersonalEvent.Feature()
+      }
 
       Scope(state: \.quickPromise, action: \.quickPromise) {
         QuickPromise.Feature()
