@@ -15,6 +15,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
   let onNextDay: () -> Void
   let onCreatePersonalEvent: (Date) -> Void
   let onCreatePromise: () -> Void
+  let calendarMode: CalendarMode
   let currentUserId: String
   let weatherCache: [String: WeatherInfo]
   let groupColorMap: [String: Color]
@@ -26,6 +27,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
   func makeUIViewController(context: Context) -> PagerViewController {
     let vc = PagerViewController()
     vc.coordinator = context.coordinator
+    vc.calendarMode = calendarMode
     context.coordinator.pagerVC = vc
     vc.setupPages(
       prevDayScheduleItems: prevDayScheduleItems,
@@ -45,6 +47,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
   func updateUIViewController(_ vc: PagerViewController, context: Context) {
     let coordinator = context.coordinator
     coordinator.pager = self
+    vc.calendarMode = calendarMode
     let calendar = Calendar.promiseDisplay
     let selectedDay = calendar.startOfDay(for: selectedDate)
 
@@ -241,6 +244,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
 
   final class PagerViewController: UIViewController {
     var coordinator: Coordinator?
+    var calendarMode: CalendarMode = .weekly
     private let scrollView = UIScrollView()
     private let contentView = UIView()
     private var pageHostingControllers: [UIHostingController<DayTimelineView>] = []
@@ -308,6 +312,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
           onScheduleItemTapped: onScheduleItemTapped,
           onCreatePersonalEvent: onCreatePersonalEvent,
           onCreatePromise: onCreatePromise,
+          calendarMode: calendarMode,
           currentUserId: currentUserId,
           weatherCache: weatherCache,
           groupColorMap: groupColorMap
@@ -364,6 +369,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
           onScheduleItemTapped: onScheduleItemTapped,
           onCreatePersonalEvent: onCreatePersonalEvent,
           onCreatePromise: onCreatePromise,
+          calendarMode: calendarMode,
           currentUserId: currentUserId,
           weatherCache: weatherCache,
           groupColorMap: groupColorMap
@@ -396,6 +402,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
         onScheduleItemTapped: onScheduleItemTapped,
         onCreatePersonalEvent: onCreatePersonalEvent,
         onCreatePromise: onCreatePromise,
+        calendarMode: calendarMode,
         currentUserId: currentUserId,
         weatherCache: weatherCache,
         groupColorMap: groupColorMap

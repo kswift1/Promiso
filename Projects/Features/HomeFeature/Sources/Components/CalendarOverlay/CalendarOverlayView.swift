@@ -320,6 +320,7 @@ struct CalendarOverlayView: View {
       },
       onCreatePersonalEvent: onCreatePersonalEvent,
       onCreatePromise: onCreatePromise,
+      calendarMode: calendarMode,
       currentUserId: currentUserId,
       weatherCache: weatherCache,
       groupColorMap: groupColorMap

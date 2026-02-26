@@ -12,6 +12,7 @@ struct DayTimelineView: View {
   let onScheduleItemTapped: (HomeModels.ScheduleItem) -> Void
   let onCreatePersonalEvent: (Date) -> Void
   let onCreatePromise: () -> Void
+  let calendarMode: CalendarMode
   let currentUserId: String
   let weatherCache: [String: WeatherInfo]
   let groupColorMap: [String: Color]
@@ -78,7 +79,10 @@ struct DayTimelineView: View {
       .padding(.leading, 8)
       .padding(.trailing, 20)
     }
-    .onDisappear {
+    .onChange(of: displayDate) {
+      creationStartSlot = nil
+    }
+    .onChange(of: calendarMode) {
       creationStartSlot = nil
     }
   }
@@ -699,6 +703,7 @@ struct DayTimelineView: View {
     onScheduleItemTapped: { _ in },
     onCreatePersonalEvent: { _ in },
     onCreatePromise: {},
+    calendarMode: .weekly,
     currentUserId: "host1",
     weatherCache: [:],
     groupColorMap: ["g1": Color.pmindigo.n500, "g2": .orange]
@@ -713,6 +718,7 @@ struct DayTimelineView: View {
     onScheduleItemTapped: { _ in },
     onCreatePersonalEvent: { _ in },
     onCreatePromise: {},
+    calendarMode: .weekly,
     currentUserId: "preview",
     weatherCache: [:],
     groupColorMap: [:]
