@@ -479,7 +479,11 @@ extension GroupMain {
             return .none
 
           case .openCreatePromiseIfPossible:
-            // Widget 딥링크: 그룹이 있으면 CreatePromise 열기, 없으면 그룹 탭만 표시
+            // onAppear 전이면 currentUser.groups에서 fallback 로드
+            if state.allGroupSummaries == nil {
+              let summaries = state.sortedGroupsForSelection(state.currentUser.groups)
+              state.allGroupSummaries = summaries
+            }
             guard let groups = state.allGroupSummaries, !groups.isEmpty else {
               // 그룹 없음 → 그룹 탭 화면 유지 (온보딩 모드)
               return .none

@@ -13,6 +13,8 @@ struct DayTimelinePager: UIViewControllerRepresentable {
   let onScheduleItemTapped: (HomeModels.ScheduleItem) -> Void
   let onPreviousDay: () -> Void
   let onNextDay: () -> Void
+  let onCreatePersonalEvent: (Date) -> Void
+  let onCreatePromise: () -> Void
   let currentUserId: String
   let weatherCache: [String: WeatherInfo]
   let groupColorMap: [String: Color]
@@ -31,6 +33,8 @@ struct DayTimelinePager: UIViewControllerRepresentable {
       nextDayScheduleItems: nextDayScheduleItems,
       selectedDate: selectedDate,
       onScheduleItemTapped: onScheduleItemTapped,
+      onCreatePersonalEvent: onCreatePersonalEvent,
+      onCreatePromise: onCreatePromise,
       currentUserId: currentUserId,
       weatherCache: weatherCache,
       groupColorMap: groupColorMap
@@ -58,6 +62,8 @@ struct DayTimelinePager: UIViewControllerRepresentable {
         nextDayScheduleItems: nextDayScheduleItems,
         selectedDate: selectedDate,
         onScheduleItemTapped: onScheduleItemTapped,
+        onCreatePersonalEvent: coordinator.pager.onCreatePersonalEvent,
+        onCreatePromise: coordinator.pager.onCreatePromise,
         currentUserId: coordinator.pager.currentUserId,
         weatherCache: coordinator.pager.weatherCache,
         groupColorMap: coordinator.pager.groupColorMap
@@ -99,6 +105,8 @@ struct DayTimelinePager: UIViewControllerRepresentable {
           scheduleItems: currentDayScheduleItems,
           displayDate: selectedDay,
           onScheduleItemTapped: onScheduleItemTapped,
+          onCreatePersonalEvent: onCreatePersonalEvent,
+          onCreatePromise: onCreatePromise,
           currentUserId: currentUserId,
           weatherCache: weatherCache,
           groupColorMap: groupColorMap
@@ -122,6 +130,8 @@ struct DayTimelinePager: UIViewControllerRepresentable {
           nextDayScheduleItems: nextDayScheduleItems,
           selectedDate: selectedDate,
           onScheduleItemTapped: onScheduleItemTapped,
+          onCreatePersonalEvent: coordinator.pager.onCreatePersonalEvent,
+          onCreatePromise: coordinator.pager.onCreatePromise,
           currentUserId: coordinator.pager.currentUserId,
           weatherCache: coordinator.pager.weatherCache,
           groupColorMap: coordinator.pager.groupColorMap
@@ -163,6 +173,8 @@ struct DayTimelinePager: UIViewControllerRepresentable {
         nextDayScheduleItems: pager.nextDayScheduleItems,
         selectedDate: pager.selectedDate,
         onScheduleItemTapped: pager.onScheduleItemTapped,
+        onCreatePersonalEvent: pager.onCreatePersonalEvent,
+        onCreatePromise: pager.onCreatePromise,
         currentUserId: pager.currentUserId,
         weatherCache: pager.weatherCache,
         groupColorMap: pager.groupColorMap
@@ -273,6 +285,8 @@ struct DayTimelinePager: UIViewControllerRepresentable {
       nextDayScheduleItems: [HomeModels.ScheduleItem],
       selectedDate: Date,
       onScheduleItemTapped: @escaping (HomeModels.ScheduleItem) -> Void,
+      onCreatePersonalEvent: @escaping (Date) -> Void,
+      onCreatePromise: @escaping () -> Void,
       currentUserId: String,
       weatherCache: [String: WeatherInfo],
       groupColorMap: [String: Color]
@@ -292,6 +306,8 @@ struct DayTimelinePager: UIViewControllerRepresentable {
           scheduleItems: items,
           displayDate: displayDates[index],
           onScheduleItemTapped: onScheduleItemTapped,
+          onCreatePersonalEvent: onCreatePersonalEvent,
+          onCreatePromise: onCreatePromise,
           currentUserId: currentUserId,
           weatherCache: weatherCache,
           groupColorMap: groupColorMap
@@ -328,6 +344,8 @@ struct DayTimelinePager: UIViewControllerRepresentable {
       nextDayScheduleItems: [HomeModels.ScheduleItem],
       selectedDate: Date,
       onScheduleItemTapped: @escaping (HomeModels.ScheduleItem) -> Void,
+      onCreatePersonalEvent: @escaping (Date) -> Void,
+      onCreatePromise: @escaping () -> Void,
       currentUserId: String,
       weatherCache: [String: WeatherInfo],
       groupColorMap: [String: Color]
@@ -344,6 +362,8 @@ struct DayTimelinePager: UIViewControllerRepresentable {
           scheduleItems: itemsArrays[index],
           displayDate: displayDates[index],
           onScheduleItemTapped: onScheduleItemTapped,
+          onCreatePersonalEvent: onCreatePersonalEvent,
+          onCreatePromise: onCreatePromise,
           currentUserId: currentUserId,
           weatherCache: weatherCache,
           groupColorMap: groupColorMap
@@ -363,6 +383,8 @@ struct DayTimelinePager: UIViewControllerRepresentable {
       scheduleItems: [HomeModels.ScheduleItem],
       displayDate: Date,
       onScheduleItemTapped: @escaping (HomeModels.ScheduleItem) -> Void,
+      onCreatePersonalEvent: @escaping (Date) -> Void,
+      onCreatePromise: @escaping () -> Void,
       currentUserId: String,
       weatherCache: [String: WeatherInfo],
       groupColorMap: [String: Color]
@@ -372,6 +394,8 @@ struct DayTimelinePager: UIViewControllerRepresentable {
         scheduleItems: scheduleItems,
         displayDate: displayDate,
         onScheduleItemTapped: onScheduleItemTapped,
+        onCreatePersonalEvent: onCreatePersonalEvent,
+        onCreatePromise: onCreatePromise,
         currentUserId: currentUserId,
         weatherCache: weatherCache,
         groupColorMap: groupColorMap

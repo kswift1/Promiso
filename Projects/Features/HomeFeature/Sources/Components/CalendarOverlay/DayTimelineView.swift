@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import PromisoShared
 import ResourceKit
 
@@ -9,9 +10,18 @@ struct DayTimelineView: View {
   let scheduleItems: [HomeModels.ScheduleItem]
   let displayDate: Date
   let onScheduleItemTapped: (HomeModels.ScheduleItem) -> Void
+  let onCreatePersonalEvent: (Date) -> Void
+  let onCreatePromise: () -> Void
   let currentUserId: String
   let weatherCache: [String: WeatherInfo]
   let groupColorMap: [String: Color]
+
+  // MARK: - State
+
+  @State private var creationStartSlot: Int? = nil  // 상단 (0-47), nil = 비활성
+  @State private var creationEndSlot: Int = 0        // 하단 (1-48)
+  @State private var dragAnchorStart: Int = 0        // 드래그 시작 시점 start
+  @State private var dragAnchorEnd: Int = 0          // 드래그 시작 시점 end
 
   // MARK: - Constants
 
@@ -40,6 +50,9 @@ struct DayTimelineView: View {
         // Layer 1: 시간 눈금 + 구분선
         timeGrid
 
+        // Layer 1.5: 상호작용 슬롯 (Long Press → 생성 블록)
+        interactionSlots
+
         // Layer 2: 이벤트 시간 레이블
         ForEach(scheduleItems) { item in
           eventTimeLabel(item)
@@ -55,13 +68,211 @@ struct DayTimelineView: View {
             .offset(y: yOffset(for: clampedStartAt(for: item)))
         }
 
+        // Layer 4: 생성 블록 오버레이 (creationSlot != nil일 때만)
+        creationBlockOverlay
       }
       .frame(width: nil, height: totalHeight)
+      .coordinateSpace(name: "timeline")
       .padding(.top, 10)
       .padding(.bottom, 10)
       .padding(.leading, 8)
       .padding(.trailing, 20)
     }
+    .scrollDisabled(creationStartSlot != nil)
+  }
+
+  // MARK: - Interaction Slots (Layer 1.5)
+
+  private var interactionSlots: some View {
+    VStack(spacing: 0) {
+      ForEach(0..<48, id: \.self) { slot in
+        Color.clear
+          .frame(height: hourHeight / 2)
+          .contentShape(Rectangle())
+          .onLongPressGesture(minimumDuration: 0.5) {
+            let impactMedium = UIImpactFeedbackGenerator(style: .medium)
+            impactMedium.impactOccurred()
+            creationStartSlot = slot
+            creationEndSlot = min(48, slot + 2)
+            dragAnchorStart = slot
+            dragAnchorEnd = min(48, slot + 2)
+          }
+      }
+    }
+    .frame(height: totalHeight)
+  }
+
+  // MARK: - Creation Block Overlay (Layer 4)
+
+  @ViewBuilder
+  private var creationBlockOverlay: some View {
+    if let startSlot = creationStartSlot {
+      let endSlot = creationEndSlot
+      let blockHeight = CGFloat(endSlot - startSlot) * (hourHeight / 2)
+      let blockY = CGFloat(startSlot) * (hourHeight / 2)
+      let startHour = startSlot / 2
+      let startMinute = (startSlot % 2) * 30
+      let endHour = endSlot / 2
+      let endMinute = (endSlot % 2) * 30
+
+      // Layer 4a: dismiss 배경
+      Color.clear
+        .frame(height: totalHeight)
+        .contentShape(Rectangle())
+        .onTapGesture {
+          withAnimation(.easeOut(duration: 0.2)) {
+            creationStartSlot = nil
+          }
+        }
+
+      // Layer 4b: 시간 레이블
+      VStack(spacing: 0) {
+        Text(String(format: "%02d:%02d", startHour, startMinute))
+          .font(.system(size: 9, weight: .bold, design: .monospaced))
+          .foregroundStyle(Color.pmindigo.n500)
+        Spacer(minLength: 0)
+        Text(String(format: "%02d:%02d", endHour, endMinute))
+          .font(.system(size: 9, weight: .bold, design: .monospaced))
+          .foregroundStyle(Color.pmindigo.n500.opacity(0.6))
+      }
+      .frame(width: eventTimeLabelWidth, height: blockHeight, alignment: .leading)
+      .padding(.leading, timeLabelWidth)
+      .offset(y: blockY)
+
+      // Layer 4c: 생성 블록 + 리사이즈 핸들
+      creationBlockWithHandles(
+        startSlot: startSlot,
+        endSlot: endSlot,
+        blockHeight: blockHeight
+      )
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .padding(.leading, timeLabelWidth + eventTimeLabelWidth + 8)
+      .padding(.trailing, 4)
+      .offset(y: blockY)
+    }
+  }
+
+  // MARK: - Creation Block with Resize Handles
+
+  private let handleZoneHeight: CGFloat = 16
+
+  private func creationBlockWithHandles(startSlot: Int, endSlot: Int, blockHeight: CGFloat) -> some View {
+    let shape = RoundedRectangle(cornerRadius: 10)
+
+    // VStack으로 상단/중간/하단 영역을 명확히 분리 → 제스처 충돌 방지
+    return VStack(spacing: 0) {
+      // 상단 리사이즈 핸들 영역
+      HStack {
+        Spacer()
+        Capsule()
+          .fill(Color.pmindigo.n500.opacity(0.5))
+          .frame(width: 32, height: 4)
+        Spacer()
+      }
+      .frame(height: handleZoneHeight)
+      .contentShape(Rectangle())
+      .gesture(
+        DragGesture(minimumDistance: 3, coordinateSpace: .named("timeline"))
+          .onChanged { value in
+            let slot = Int(round(value.location.y / (hourHeight / 2)))
+            creationStartSlot = max(0, min(creationEndSlot - 2, slot))
+          }
+          .onEnded { value in
+            let slot = Int(round(value.location.y / (hourHeight / 2)))
+            dragAnchorStart = max(0, min(creationEndSlot - 2, slot))
+          }
+      )
+
+      // 중간 영역: 이동 드래그 + 액션 버튼
+      HStack(spacing: 12) {
+        Button {
+          onCreatePersonalEvent(dateForSlot(startSlot))
+          creationStartSlot = nil
+        } label: {
+          Label("개인 일정", systemImage: "plus.circle.fill")
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundStyle(Color.pminfo.n500)
+        }
+        .buttonStyle(.plain)
+
+        Button {
+          onCreatePromise()
+          creationStartSlot = nil
+        } label: {
+          Label("약속 만들기", systemImage: "person.2.circle.fill")
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundStyle(Color.pmindigo.n500)
+        }
+        .buttonStyle(.plain)
+      }
+      .frame(maxWidth: .infinity, maxHeight: .infinity)
+      .contentShape(Rectangle())
+      .gesture(
+        DragGesture(minimumDistance: 5, coordinateSpace: .named("timeline"))
+          .onChanged { value in
+            let duration = dragAnchorEnd - dragAnchorStart
+            let delta = Int(round((value.location.y - value.startLocation.y) / (hourHeight / 2)))
+            let newStart = max(0, min(48 - duration, dragAnchorStart + delta))
+            creationStartSlot = newStart
+            creationEndSlot = newStart + duration
+          }
+          .onEnded { value in
+            let duration = dragAnchorEnd - dragAnchorStart
+            let delta = Int(round((value.location.y - value.startLocation.y) / (hourHeight / 2)))
+            let newStart = max(0, min(48 - duration, dragAnchorStart + delta))
+            dragAnchorStart = newStart
+            dragAnchorEnd = newStart + duration
+          }
+      )
+
+      // 하단 리사이즈 핸들 영역
+      HStack {
+        Spacer()
+        Capsule()
+          .fill(Color.pmindigo.n500.opacity(0.5))
+          .frame(width: 32, height: 4)
+        Spacer()
+      }
+      .frame(height: handleZoneHeight)
+      .contentShape(Rectangle())
+      .gesture(
+        DragGesture(minimumDistance: 3, coordinateSpace: .named("timeline"))
+          .onChanged { value in
+            let slot = Int(round(value.location.y / (hourHeight / 2)))
+            creationEndSlot = max((creationStartSlot ?? 0) + 2, min(48, slot))
+          }
+          .onEnded { value in
+            let slot = Int(round(value.location.y / (hourHeight / 2)))
+            dragAnchorEnd = max((creationStartSlot ?? 0) + 2, min(48, slot))
+          }
+      )
+    }
+    .frame(height: blockHeight)
+    .background(.ultraThinMaterial, in: shape)
+    .overlay(
+      shape.strokeBorder(
+        Color.pmindigo.n500.opacity(0.5),
+        style: StrokeStyle(lineWidth: 1.5, dash: [6, 4])
+      )
+    )
+    .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
+  }
+
+  // MARK: - Slot Helpers
+
+  /// 일정 아이템의 시작 시간을 30분 슬롯으로 변환
+  private func slotForItem(_ item: HomeModels.ScheduleItem) -> Int {
+    let start = clampedStartAt(for: item)
+    let cal = Calendar.promiseDisplay
+    let hour = cal.component(.hour, from: start)
+    let minute = cal.component(.minute, from: start)
+    return hour * 2 + (minute >= 30 ? 1 : 0)
+  }
+
+  private func dateForSlot(_ slot: Int) -> Date {
+    let hour = slot / 2
+    let minute = (slot % 2) * 30
+    return Calendar.promiseDisplay.date(bySettingHour: hour, minute: minute, second: 0, of: displayDate) ?? displayDate
   }
 
   // MARK: - Time Grid
@@ -206,6 +417,17 @@ struct DayTimelineView: View {
       .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
+    .simultaneousGesture(
+      LongPressGesture(minimumDuration: 0.5)
+        .onEnded { _ in
+          UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+          let s = slotForItem(item)
+          creationStartSlot = s
+          creationEndSlot = min(48, s + 2)
+          dragAnchorStart = s
+          dragAnchorEnd = min(48, s + 2)
+        }
+    )
   }
 
   // MARK: - Event Time Label
@@ -473,6 +695,8 @@ struct DayTimelineView: View {
     scheduleItems: items,
     displayDate: today,
     onScheduleItemTapped: { _ in },
+    onCreatePersonalEvent: { _ in },
+    onCreatePromise: {},
     currentUserId: "host1",
     weatherCache: [:],
     groupColorMap: ["g1": Color.pmindigo.n500, "g2": .orange]
@@ -485,6 +709,8 @@ struct DayTimelineView: View {
     scheduleItems: [],
     displayDate: Date(),
     onScheduleItemTapped: { _ in },
+    onCreatePersonalEvent: { _ in },
+    onCreatePromise: {},
     currentUserId: "preview",
     weatherCache: [:],
     groupColorMap: [:]

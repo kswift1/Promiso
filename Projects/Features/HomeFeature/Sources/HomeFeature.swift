@@ -96,6 +96,9 @@ extension Home {
       /// 이미 로드된 오버레이 개인 일정 월 (중복 요청 방지)
       var overlayLoadedPersonalEventMonths: Set<Date> = []
 
+      /// 개인 일정 생성 모달
+      @Presents var createPersonalEvent: CreatePersonalEvent.Feature.State?
+
       // MARK: Notification
       /// 안 읽은 알림 개수
       var unreadNotificationCount: Int = 0
@@ -146,6 +149,7 @@ extension Home {
       case `internal`(Internal)
       case delegate(Delegate)
       case path(StackActionOf<Path>)
+      case createPersonalEvent(PresentationAction<CreatePersonalEvent.Feature.Action>)
 
       @CasePathable
       public enum View {
@@ -193,6 +197,10 @@ extension Home {
         case overlayBackToMonth
         /// 오버레이 일간 상세에서 일정 탭
         case overlayScheduleItemTapped(HomeModels.ScheduleItem)
+        /// 오버레이 개인 일정 추가 (context menu)
+        case overlayCreatePersonalEventTapped(Date)
+        /// 오버레이 약속 만들기 (context menu)
+        case overlayCreatePromiseTapped
       }
 
       @CasePathable
@@ -241,6 +249,8 @@ extension Home {
         case navigateToGroupWithPromise(groupId: String, promiseId: String)
         /// 모든 약속 보기 화면으로 네비게이션
         case navigateToAllPromises
+        /// 오버레이에서 약속 만들기 요청 (→ RootTab → GroupMain)
+        case navigateToCreatePromise
       }
     }
 
@@ -433,6 +443,38 @@ extension Home {
               state.path.append(.personalEventDetail(.init(event: event)))
             }
             return .cancel(id: CancelID.overlayWeatherFetch)
+
+          case .overlayCreatePersonalEventTapped(let date):
+            // 오버레이 닫기
+            state.showCalendarOverlay = false
+            state.overlayCalendarMode = .monthly
+            state.overlayWeatherState = .needsPermission
+            state.overlayWeatherLocationText = nil
+            // 개인 일정 생성 모달 열기 (선택 날짜로 초기화)
+            let calendar = Calendar.promiseDisplay
+            let components = calendar.dateComponents([.hour, .minute], from: date)
+            let isTimePrecise = (components.hour ?? 0) != 0 || (components.minute ?? 0) != 0
+            let startAt: Date
+            if isTimePrecise {
+              startAt = date
+            } else {
+              startAt = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: date) ?? date
+            }
+            state.createPersonalEvent = CreatePersonalEvent.Feature.State(
+              event: PersonalEventModel(startAt: startAt)
+            )
+            return .cancel(id: CancelID.overlayWeatherFetch)
+
+          case .overlayCreatePromiseTapped:
+            // 오버레이 닫기 + delegate로 위임
+            state.showCalendarOverlay = false
+            state.overlayCalendarMode = .monthly
+            state.overlayWeatherState = .needsPermission
+            state.overlayWeatherLocationText = nil
+            return .merge(
+              .cancel(id: CancelID.overlayWeatherFetch),
+              .send(.delegate(.navigateToCreatePromise))
+            )
 
           }
 
@@ -841,6 +883,17 @@ extension Home {
 
           }
 
+        case .createPersonalEvent(.presented(.delegate(.eventCreated))):
+          state.createPersonalEvent = nil
+          return .send(.internal(.fetchPersonalEvents))
+
+        case .createPersonalEvent(.presented(.delegate(.dismiss))):
+          state.createPersonalEvent = nil
+          return .none
+
+        case .createPersonalEvent:
+          return .none
+
         case .delegate:
           return .none
 
@@ -899,6 +952,9 @@ extension Home {
         }
       }
       .forEach(\.path, action: \.path)
+      .ifLet(\.$createPersonalEvent, action: \.createPersonalEvent) {
+        CreatePersonalEvent.Feature()
+      }
     }
   }
 }

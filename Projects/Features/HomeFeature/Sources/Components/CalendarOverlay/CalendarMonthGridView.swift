@@ -8,6 +8,8 @@ import ResourceKit
 struct CalendarMonthGridView: View {
   let days: [OverlayCalendarModels.DayItem]
   let onDateSelected: (Date) -> Void
+  let onCreatePersonalEvent: (Date) -> Void
+  let onCreatePromise: () -> Void
 
   private let columns = Array(repeating: GridItem(.flexible(), spacing: 0), count: 7)
 
@@ -28,6 +30,18 @@ struct CalendarMonthGridView: View {
               onDateSelected(day.date)
             } label: {
               Label("일정 보기", systemImage: "calendar")
+            }
+
+            Button {
+              onCreatePersonalEvent(day.date)
+            } label: {
+              Label("개인 일정 추가", systemImage: "plus.circle")
+            }
+
+            Button {
+              onCreatePromise()
+            } label: {
+              Label("약속 만들기", systemImage: "person.2.circle")
             }
           } preview: {
             DaySchedulePreviewView(day: day)

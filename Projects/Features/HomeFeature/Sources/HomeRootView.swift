@@ -93,6 +93,12 @@ extension Home {
               },
               onScheduleItemTapped: { item in
                 store.send(.view(.overlayScheduleItemTapped(item)))
+              },
+              onCreatePersonalEvent: { date in
+                store.send(.view(.overlayCreatePersonalEventTapped(date)))
+              },
+              onCreatePromise: {
+                store.send(.view(.overlayCreatePromiseTapped))
               }
             )
             .frame(width: 0, height: 0)
@@ -105,6 +111,13 @@ extension Home {
           PersonalEventDetail.RootView(store: personalEventDetailStore)
         case .notificationCenter(let notificationStore):
           NotificationCenterFeature.NotificationCenter.RootView(store: notificationStore)
+        }
+      }
+      .sheet(
+        item: $store.scope(state: \.createPersonalEvent, action: \.createPersonalEvent)
+      ) { createEventStore in
+        NavigationStack {
+          CreatePersonalEvent.RootView(store: createEventStore)
         }
       }
     }

@@ -27,6 +27,8 @@ struct CalendarOverlayView: View {
   let onWeatherCardTapped: () -> Void
   let onBackToMonth: () -> Void
   let onScheduleItemTapped: (HomeModels.ScheduleItem) -> Void
+  let onCreatePersonalEvent: (Date) -> Void
+  let onCreatePromise: () -> Void
   let currentUserId: String
   let weatherCache: [String: WeatherInfo]
   let groupColorMap: [String: Color]
@@ -180,6 +182,8 @@ struct CalendarOverlayView: View {
       currentDays: days,
       nextDays: nextMonthDays,
       onDateSelected: onDateSelected,
+      onCreatePersonalEvent: onCreatePersonalEvent,
+      onCreatePromise: onCreatePromise,
       onPreviousMonth: onPreviousMonth,
       onNextMonth: onNextMonth,
       calendarMode: calendarMode,
@@ -314,6 +318,8 @@ struct CalendarOverlayView: View {
           onDateSelected(next)
         }
       },
+      onCreatePersonalEvent: onCreatePersonalEvent,
+      onCreatePromise: onCreatePromise,
       currentUserId: currentUserId,
       weatherCache: weatherCache,
       groupColorMap: groupColorMap
@@ -590,6 +596,7 @@ private extension String {
     weekDays: [],
     onClose: {}, onDateSelected: { _ in }, onPreviousMonth: {}, onNextMonth: {},
     onWeatherCardTapped: {}, onBackToMonth: {}, onScheduleItemTapped: { _ in },
+    onCreatePersonalEvent: { _ in }, onCreatePromise: {},
     currentUserId: "preview-user",
     weatherCache: [:],
     groupColorMap: [:]
@@ -616,6 +623,7 @@ private extension String {
     weekDays: [],
     onClose: {}, onDateSelected: { _ in }, onPreviousMonth: {}, onNextMonth: {},
     onWeatherCardTapped: {}, onBackToMonth: {}, onScheduleItemTapped: { _ in },
+    onCreatePersonalEvent: { _ in }, onCreatePromise: {},
     currentUserId: "preview-user",
     weatherCache: [:],
     groupColorMap: [:]
