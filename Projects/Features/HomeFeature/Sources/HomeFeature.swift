@@ -281,8 +281,26 @@ extension Home {
               state.hasLoadedOnce = true
             }
             state.refreshHomeContentSnapshot()
+
+            // 오버레이가 열려 있고 denied/needsPermission 상태면 권한 재체크
+            var weatherEffect: Effect<Action> = .none
+            if state.showCalendarOverlay {
+              let authStatus = locationClient.authorizationStatus()
+              switch authStatus {
+              case .authorized where state.overlayWeatherState == .denied
+                || state.overlayWeatherState == .needsPermission:
+                state.overlayWeatherState = .loading
+                weatherEffect = .send(.internal(.fetchOverlayWeather))
+              case .denied where state.overlayWeatherState != .denied:
+                state.overlayWeatherState = .denied
+              default:
+                break
+              }
+            }
+
             // Firestore에서 직접 쿼리 (약속 + 개인 일정 병렬)
             return .merge(
+              weatherEffect,
               .send(.internal(.fetchPromises)),
               .send(.internal(.fetchPersonalEvents))
             )
@@ -452,8 +470,12 @@ extension Home {
                 }
               }
             }
-            state.overlayWeatherLocationText = nil
-            state.overlayWeatherState = .loading
+            // needsPermission: OS 다이얼로그 표시 중에는 상태 유지, 결과에 따라 전환
+            let isFirstRequest = state.overlayWeatherState == .needsPermission
+            if !isFirstRequest {
+              state.overlayWeatherLocationText = nil
+              state.overlayWeatherState = .loading
+            }
             return .send(.internal(.fetchOverlayWeather))
 
           case .overlayBackToMonth:
@@ -764,7 +786,33 @@ extension Home {
           case .fetchOverlayWeather:
             return .run { [locationClient, weatherClient] send in
               do {
-                let location = try await locationClient.getCurrentLocation()
+                // getCurrentLocation() 호출 후 권한 거부 시 스트림이 멈추므로 타임아웃 + 권한 재체크
+                let location = try await withThrowingTaskGroup(of: Coordinate.self) { group in
+                  group.addTask {
+                    try await locationClient.getCurrentLocation()
+                  }
+                  group.addTask {
+                    // 권한 다이얼로그 대기 후 거부 감지
+                    try await Task.sleep(for: .seconds(1))
+                    while true {
+                      let status = locationClient.authorizationStatus()
+                      if status == .denied {
+                        throw LocationClientError.denied
+                      }
+                      if status == .authorized {
+                        // getCurrentLocation 태스크가 위치를 반환할 때까지 대기
+                        try await Task.sleep(for: .seconds(10))
+                        throw LocationClientError.unavailable
+                      }
+                      try await Task.sleep(for: .milliseconds(500))
+                    }
+                  }
+                  guard let result = try await group.next() else {
+                    throw LocationClientError.unavailable
+                  }
+                  group.cancelAll()
+                  return result
+                }
                 async let weather = weatherClient.getWeather(
                   location.latitude, location.longitude, Date()
                 )
@@ -796,7 +844,12 @@ extension Home {
                 state.overlayWeatherLocationText = nil
               }
             case .failure:
-              state.overlayWeatherState = .failed
+              let authStatus = locationClient.authorizationStatus()
+              if authStatus == .denied {
+                state.overlayWeatherState = .denied
+              } else {
+                state.overlayWeatherState = .failed
+              }
               state.overlayWeatherLocationText = nil
             }
             return .none
