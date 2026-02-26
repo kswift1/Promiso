@@ -259,6 +259,7 @@ extension CalendarFeature {
       var scheduleIndicatorsByDate: [Date: [CalendarFeature.ScheduleIndicator]] {
         let calendar = Calendar.current
         let colorMap = groupColorMap
+        let groupsMap = userGroupsMap
         var indicators: [Date: [CalendarFeature.ScheduleIndicator]] = [:]
 
         // 약속 — 3페이지 페이저를 위해 현재 월 ± 1개월 포함
@@ -281,6 +282,7 @@ extension CalendarFeature {
               if day == endDay { return .end }
               return .middle
             }()
+            let groupInfo = groupsMap[promise.groupId]
             indicators[day, default: []].append(
               .init(
                 id: "\(promise.id)_\(day.timeIntervalSince1970)",
@@ -289,7 +291,13 @@ extension CalendarFeature {
                 spanPosition: position,
                 startAt: promise.startAt,
                 endAt: promise.endAt,
-                emoji: promise.emoji
+                emoji: promise.emoji,
+                sourceType: .promise(id: promise.id, groupId: promise.groupId),
+                description: promise.description,
+                locationName: promise.location?.name,
+                imageUrls: promise.imageUrls,
+                groupName: groupInfo?.name,
+                groupImageUrl: groupInfo?.imageUrl
               )
             )
             guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
@@ -318,7 +326,11 @@ extension CalendarFeature {
                 spanPosition: position,
                 startAt: event.startAt,
                 endAt: event.endAt,
-                emoji: event.emoji
+                emoji: event.emoji,
+                sourceType: .personalEvent(id: event.id),
+                description: event.description,
+                locationName: event.location?.name,
+                imageUrls: event.imageUrls
               )
             )
             guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
@@ -346,7 +358,8 @@ extension CalendarFeature {
                 title: event.title,
                 spanPosition: position,
                 startAt: event.startDate,
-                endAt: event.endDate
+                endAt: event.endDate,
+                sourceType: .calendarEvent(id: event.id)
               )
             )
             guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
@@ -453,6 +466,9 @@ extension CalendarFeature {
         case scheduleItemTapped(CalendarFeature.ScheduleItem)
         case createPersonalEventFromTimeline(Date)
         case createPromiseFromTimeline
+        case indicatorTapped(CalendarFeature.ScheduleIndicator)
+        case dayLongPressCreatePersonalEvent(Date)
+        case dayLongPressCreatePromise(Date)
         case toggleMonthExpansion
       }
 
@@ -813,6 +829,35 @@ extension CalendarFeature {
       case .createPromiseFromTimeline:
         // TODO: 약속 생성 플로우 연결
         return .none
+
+      case .indicatorTapped(let indicator):
+        switch indicator.sourceType {
+        case .promise(let promiseId, let groupId):
+          let allPromises = state.cachedPromisesByMonth.values.flatMap { $0 }
+          guard let promise = allPromises.first(where: { $0.id == promiseId }) else {
+            return .none
+          }
+          let groupMembers = state.groupMembersCache[groupId]
+          state.path.append(.promiseDetail(.init(
+            promise: promise,
+            currentUserId: state.currentUserId,
+            groupMembers: groupMembers
+          )))
+        case .personalEvent(let eventId):
+          guard let event = state.personalEvents.first(where: { $0.id == eventId }) else {
+            return .none
+          }
+          state.path.append(.personalEventDetail(.init(event: event)))
+        case .calendarEvent, .unknown:
+          break
+        }
+        return .none
+
+      case .dayLongPressCreatePersonalEvent(let date):
+        return .send(.view(.createPersonalEventFromTimeline(date)))
+
+      case .dayLongPressCreatePromise:
+        return .send(.view(.createPromiseFromTimeline))
 
       case .toggleMonthExpansion:
         state.monthExpansionState = state.monthExpansionState == .collapsed ? .expanded : .collapsed

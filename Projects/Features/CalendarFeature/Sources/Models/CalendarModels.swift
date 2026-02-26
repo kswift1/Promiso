@@ -179,6 +179,14 @@ extension CalendarFeature {
     case end
   }
 
+  /// 인디케이터 소스 타입 (탭 시 상세 화면 이동에 사용)
+  public enum ScheduleSourceType: Equatable, Sendable {
+    case promise(id: String, groupId: String)
+    case personalEvent(id: String)
+    case calendarEvent(id: String)
+    case unknown
+  }
+
   /// 날짜 셀에 표시할 일정 인디케이터 (colored bar + truncated title)
   public struct ScheduleIndicator: Equatable, Identifiable, Sendable {
     public let id: String
@@ -188,6 +196,13 @@ extension CalendarFeature {
     public let startAt: Date
     public let endAt: Date?
     public let emoji: String?
+    public let sourceType: ScheduleSourceType
+    // 프리뷰용 상세 정보
+    public let description: String?
+    public let locationName: String?
+    public let imageUrls: [String]
+    public let groupName: String?
+    public let groupImageUrl: String?
 
     public init(
       id: String,
@@ -196,7 +211,13 @@ extension CalendarFeature {
       spanPosition: SpanPosition = .single,
       startAt: Date = .distantPast,
       endAt: Date? = nil,
-      emoji: String? = nil
+      emoji: String? = nil,
+      sourceType: ScheduleSourceType = .unknown,
+      description: String? = nil,
+      locationName: String? = nil,
+      imageUrls: [String] = [],
+      groupName: String? = nil,
+      groupImageUrl: String? = nil
     ) {
       self.id = id
       self.color = color
@@ -205,6 +226,12 @@ extension CalendarFeature {
       self.startAt = startAt
       self.endAt = endAt
       self.emoji = emoji
+      self.sourceType = sourceType
+      self.description = description
+      self.locationName = locationName
+      self.imageUrls = imageUrls
+      self.groupName = groupName
+      self.groupImageUrl = groupImageUrl
     }
 
     public static let personalColor = Color.pminfo.n500
