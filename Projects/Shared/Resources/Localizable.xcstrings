@@ -1110,6 +1110,78 @@
         }
       }
     },
+    "calendar.weather.denied.title" : {
+      "comment" : "위치 권한 거부 타이틀",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Location Permission Denied"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "위치 권한이 꺼져 있어요"
+          }
+        }
+      }
+    },
+    "calendar.weather.denied.description" : {
+      "comment" : "위치 권한 거부 설명",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap to open Settings and enable location"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "설정에서 위치 권한을 허용해 주세요"
+          }
+        }
+      }
+    },
+    "calendar.weather.failed.title" : {
+      "comment" : "날씨 로드 실패 타이틀",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weather Unavailable"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "날씨를 불러올 수 없어요"
+          }
+        }
+      }
+    },
+    "calendar.weather.failed.description" : {
+      "comment" : "날씨 로드 실패 설명",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap to try again"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "탭하여 다시 시도해 주세요"
+          }
+        }
+      }
+    },
     "calendar.weather.reference" : {
       "comment" : "오버레이 날씨 - 기준 시간/위치",
       "extractionState" : "manual",

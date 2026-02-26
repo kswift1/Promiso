@@ -335,6 +335,8 @@ struct CalendarOverlayView: View {
     switch weatherState {
     case .needsPermission:
       permissionCard
+    case .denied:
+      deniedCard
     case .loading:
       loadingCard
     case .loaded(let weather):
@@ -348,33 +350,77 @@ struct CalendarOverlayView: View {
 
   private var permissionCard: some View {
     Button(action: onWeatherCardTapped) {
-      HStack(spacing: 14) {
-        Image(systemName: "location.fill")
-          .font(.system(size: 22))
-          .foregroundStyle(Color.pmindigo.n500)
-          .frame(width: 40, height: 40)
-          .background(Color.pmindigo.n500.opacity(0.12))
-          .clipShape(Circle())
+      ZStack(alignment: .bottomTrailing) {
+        VStack(alignment: .leading, spacing: 8) {
+          Image(systemName: "location.fill")
+            .font(.system(size: 22))
+            .foregroundStyle(Color.pmindigo.n500)
+            .frame(width: 40, height: 40)
+            .background(Color.pmindigo.n500.opacity(0.12))
+            .clipShape(Circle())
 
-        VStack(alignment: .leading, spacing: 2) {
+          Spacer()
+
           Text(LocalizedStrings.Calendar.weatherPermissionTitle)
-            .font(.system(size: 14, weight: .semibold))
+            .font(.system(size: 15, weight: .semibold))
             .foregroundStyle(.primary)
 
           Text(LocalizedStrings.Calendar.weatherPermissionDescription)
             .font(.system(size: 12))
             .foregroundStyle(.secondary)
         }
-
-        Spacer()
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
 
         Image(systemName: "chevron.right")
           .font(.system(size: 12, weight: .semibold))
           .foregroundStyle(.tertiary)
+          .frame(width: 32, height: 32)
+          .adaptiveGlassBackground(cornerRadius: 16)
+          .padding(12)
       }
-      .padding(16)
-      .frame(maxWidth: .infinity, alignment: .leading)
-      .adaptiveGlassCard(cornerRadius: 16)
+      .frame(height: 130)
+      .adaptiveGlassCard(cornerRadius: 20)
+      .contentShape(Rectangle())
+    }
+    .buttonStyle(.plain)
+  }
+
+  // MARK: - Denied Card
+
+  private var deniedCard: some View {
+    Button(action: onWeatherCardTapped) {
+      ZStack(alignment: .bottomTrailing) {
+        VStack(alignment: .leading, spacing: 8) {
+          Image(systemName: "location.slash.fill")
+            .font(.system(size: 22))
+            .foregroundStyle(Color.pmerror.n500)
+            .frame(width: 40, height: 40)
+            .background(Color.pmerror.n500.opacity(0.12))
+            .clipShape(Circle())
+
+          Spacer()
+
+          Text(LocalizedStrings.Calendar.weatherDeniedTitle)
+            .font(.system(size: 15, weight: .semibold))
+            .foregroundStyle(.primary)
+
+          Text(LocalizedStrings.Calendar.weatherDeniedDescription)
+            .font(.system(size: 12))
+            .foregroundStyle(.secondary)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+
+        Image(systemName: "gearshape")
+          .font(.system(size: 14, weight: .semibold))
+          .foregroundStyle(.secondary)
+          .frame(width: 32, height: 32)
+          .adaptiveGlassBackground(cornerRadius: 16)
+          .padding(12)
+      }
+      .frame(height: 130)
+      .adaptiveGlassCard(cornerRadius: 20)
       .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
@@ -383,51 +429,59 @@ struct CalendarOverlayView: View {
   // MARK: - Loading Card
 
   private var loadingCard: some View {
-    ZStack {
-      RoundedRectangle(cornerRadius: 20)
-        .fill(Color(.systemGray6))
-
-      VStack(alignment: .leading, spacing: 4) {
-        SkeletonView(cornerRadius: 4)
-          .frame(width: 80, height: 14)
-        Spacer()
-        SkeletonView(cornerRadius: 6)
-          .frame(width: 100, height: 36)
-        SkeletonView(cornerRadius: 4)
-          .frame(width: 120, height: 14)
-      }
-      .padding(16)
-      .frame(maxWidth: .infinity, alignment: .leading)
+    VStack(alignment: .leading, spacing: 4) {
+      SkeletonView(cornerRadius: 4)
+        .frame(width: 80, height: 14)
+      Spacer()
+      SkeletonView(cornerRadius: 6)
+        .frame(width: 100, height: 36)
+      SkeletonView(cornerRadius: 4)
+        .frame(width: 120, height: 14)
     }
+    .padding(16)
+    .frame(maxWidth: .infinity, alignment: .leading)
     .frame(height: 130)
-    .clipShape(RoundedRectangle(cornerRadius: 20))
+    .adaptiveGlassCard(cornerRadius: 20)
   }
 
   // MARK: - Failed Card
 
   private var failedCard: some View {
     Button(action: onWeatherCardTapped) {
-      HStack(spacing: 14) {
-        Image(systemName: "arrow.clockwise")
-          .font(.system(size: 22))
-          .foregroundStyle(.secondary)
-          .frame(width: 40, height: 40)
-          .background(Color(.systemGray5))
-          .clipShape(Circle())
+      ZStack(alignment: .bottomTrailing) {
+        VStack(alignment: .leading, spacing: 8) {
+          Image(systemName: "cloud.slash")
+            .font(.system(size: 22))
+            .foregroundStyle(.secondary)
+            .frame(width: 40, height: 40)
+            .background(Color(.systemGray5))
+            .clipShape(Circle())
 
-        Text(LocalizedStrings.Calendar.weatherPermissionTitle)
-          .font(.system(size: 14, weight: .semibold))
-          .foregroundStyle(.primary)
+          Spacer()
 
-        Spacer()
+          Text(LocalizedStrings.Calendar.weatherFailedTitle)
+            .font(.system(size: 15, weight: .semibold))
+            .foregroundStyle(.primary)
 
-        Image(systemName: "chevron.right")
-          .font(.system(size: 12, weight: .semibold))
-          .foregroundStyle(.tertiary)
+          Text(LocalizedStrings.Calendar.weatherFailedDescription)
+            .font(.system(size: 12))
+            .foregroundStyle(.secondary)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+
+        Button(action: onWeatherCardTapped) {
+          Image(systemName: "arrow.clockwise")
+            .font(.system(size: 14, weight: .semibold))
+            .foregroundStyle(.secondary)
+            .frame(width: 32, height: 32)
+            .adaptiveGlassBackground(cornerRadius: 16)
+        }
+        .buttonStyle(.plain)
+        .padding(12)
       }
-      .padding(16)
-      .frame(maxWidth: .infinity, alignment: .leading)
-      .adaptiveGlassCard(cornerRadius: 16)
+      .frame(height: 130)
+      .adaptiveGlassCard(cornerRadius: 20)
       .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
@@ -468,13 +522,24 @@ struct CalendarOverlayView: View {
 
           Spacer(minLength: 8)
 
-          Text(weatherReferenceText(for: weather))
-            .font(.system(size: 11, weight: .medium))
-            .foregroundStyle(.white.opacity(0.78))
-            .multilineTextAlignment(.trailing)
-            .lineLimit(2)
-            .truncationMode(.tail)
-            .frame(maxWidth: 180, alignment: .trailing)
+          HStack(spacing: 8) {
+            Text(weatherReferenceText(for: weather))
+              .font(.system(size: 11, weight: .medium))
+              .foregroundStyle(.white.opacity(0.78))
+              .multilineTextAlignment(.trailing)
+              .lineLimit(2)
+              .truncationMode(.tail)
+
+            Button(action: onWeatherCardTapped) {
+              Image(systemName: "arrow.clockwise")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.7))
+                .frame(width: 28, height: 28)
+                .background(.white.opacity(0.15))
+                .clipShape(Circle())
+            }
+            .buttonStyle(.plain)
+          }
         }
       }
       .padding(16)

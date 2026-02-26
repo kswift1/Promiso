@@ -5,6 +5,7 @@ import Clients
 import NotificationCenterFeature
 import PromisoShared
 import SharedFeature
+import UIKit
 
 // MARK: - Feature Namespace
 
@@ -382,9 +383,13 @@ extension Home {
               state.overlayWeatherLocationText = nil
               state.overlayWeatherState = .loading
               weatherEffect = .send(.internal(.fetchOverlayWeather))
-            case .notDetermined, .denied:
+            case .notDetermined:
               state.overlayWeatherLocationText = nil
               state.overlayWeatherState = .needsPermission
+              weatherEffect = .none
+            case .denied:
+              state.overlayWeatherLocationText = nil
+              state.overlayWeatherState = .denied
               weatherEffect = .none
             }
 
@@ -438,6 +443,15 @@ extension Home {
             )
 
           case .overlayWeatherCardTapped:
+            if state.overlayWeatherState == .denied {
+              return .run { _ in
+                await MainActor.run {
+                  if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                  }
+                }
+              }
+            }
             state.overlayWeatherLocationText = nil
             state.overlayWeatherState = .loading
             return .send(.internal(.fetchOverlayWeather))

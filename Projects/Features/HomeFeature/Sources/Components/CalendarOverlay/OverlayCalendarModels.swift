@@ -5,8 +5,10 @@ import PromisoShared
 
 /// 캘린더 오버레이 하단 날씨 카드 상태
 enum OverlayWeatherState: Equatable, Sendable {
-  /// 위치 권한 미부여 (탭하면 권한 요청)
+  /// 위치 권한 미요청 (탭하면 권한 요청)
   case needsPermission
+  /// 위치 권한 거부됨 (탭하면 설정으로 이동)
+  case denied
   /// 날씨 로딩 중
   case loading
   /// 날씨 로드 완료
