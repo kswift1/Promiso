@@ -602,7 +602,7 @@ extension CalendarFeature {
         return .none
 
       case .moveToPreviousPeriod:
-        let previousMonth = state.selectedDate.startOfMonth
+        let previousMonth = state.currentMonth.startOfMonth
         if state.displayMode == .week {
           if let newWeekStart = calendar.date(byAdding: .weekOfYear, value: -1, to: state.currentWeekStart) {
             state.currentWeekStart = newWeekStart
@@ -611,17 +611,16 @@ extension CalendarFeature {
         } else {
           if let newMonth = calendar.date(byAdding: .month, value: -1, to: state.currentMonth) {
             state.currentMonth = newMonth
-            state.selectedDate = newMonth
           }
         }
-        let newMonth = state.selectedDate.startOfMonth
+        let newMonth = state.currentMonth.startOfMonth
         if previousMonth != newMonth && !state.loadedMonths.contains(newMonth) {
           return .send(.internal(.fetchPromisesForMonth(newMonth)))
         }
         return .none
 
       case .moveToNextPeriod:
-        let previousMonth = state.selectedDate.startOfMonth
+        let previousMonth = state.currentMonth.startOfMonth
         if state.displayMode == .week {
           if let newWeekStart = calendar.date(byAdding: .weekOfYear, value: 1, to: state.currentWeekStart) {
             state.currentWeekStart = newWeekStart
@@ -630,10 +629,9 @@ extension CalendarFeature {
         } else {
           if let newMonth = calendar.date(byAdding: .month, value: 1, to: state.currentMonth) {
             state.currentMonth = newMonth
-            state.selectedDate = newMonth
           }
         }
-        let newMonth = state.selectedDate.startOfMonth
+        let newMonth = state.currentMonth.startOfMonth
         if previousMonth != newMonth && !state.loadedMonths.contains(newMonth) {
           return .send(.internal(.fetchPromisesForMonth(newMonth)))
         }

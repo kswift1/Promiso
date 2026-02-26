@@ -3,6 +3,7 @@
 
 import SwiftUI
 import ResourceKit
+import PromisoShared
 
 // MARK: - Shared Calendar Instance
 
@@ -136,24 +137,27 @@ struct CalendarIndicatorDayCell: View {
   @ViewBuilder
   private var expandedIndicatorArea: some View {
     if isCurrentMonth && !scheduleIndicators.isEmpty {
-      VStack(spacing: 1) {
+      VStack(spacing: 3) {
         ForEach(scheduleIndicators) { indicator in
-          HStack(alignment: .center, spacing: 2) {
+          HStack(alignment: .top, spacing: 2) {
             RoundedRectangle(cornerRadius: 1)
               .fill(indicator.color)
-              .frame(width: 2)
+              .frame(width: 2, height: 10)
 
             Text(indicator.title)
               .font(.system(size: 7, weight: .medium))
               .foregroundStyle(Color.secondary)
-              .lineLimit(1)
+              .lineLimit(2)
               .truncationMode(.tail)
+              .fixedSize(horizontal: false, vertical: true)
           }
-          .frame(height: 10)
+          .padding(.horizontal, 3)
+          .padding(.vertical, 2)
           .frame(maxWidth: .infinity, alignment: .leading)
+          .adaptiveGlassBackground(cornerRadius: 4)
         }
       }
-      .frame(width: 36, alignment: .leading)
+      .frame(maxWidth: .infinity, alignment: .leading)
     } else {
       Color.clear.frame(height: 0)
     }

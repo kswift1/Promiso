@@ -31,6 +31,7 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
     vc.showAllIndicators = showAllIndicators
     vc.coordinator = context.coordinator
     context.coordinator.pagerVC = vc
+    context.coordinator.lastKnownMonth = currentMonth.startOfMonth
     vc.setupPages(
       prevMonth: prevMonth,
       currentMonth: currentMonth.startOfMonth,
@@ -60,11 +61,24 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
       vc.showAllIndicators = showAllIndicators
     }
 
+    let currentMonthStart = currentMonth.startOfMonth
+
+    // 외부(화살표/오늘 버튼)에서 월 변경 감지 → 슬라이드 애니메이션
+    if !coordinator.needsRecenter,
+       let lastMonth = coordinator.lastKnownMonth,
+       lastMonth != currentMonthStart {
+      let direction: Coordinator.SlideDirection = currentMonthStart > lastMonth ? .right : .left
+      coordinator.pendingSlideDirection = direction
+    }
+    coordinator.lastKnownMonth = currentMonthStart
+
     if coordinator.needsRecenter {
+      // 스와이프 완료 후 리센터 (애니메이션 없음 — 이미 사용자가 스와이프함)
       coordinator.needsRecenter = false
+      coordinator.pendingSlideDirection = nil
       vc.updatePages(
         prevMonth: prevMonth,
-        currentMonth: currentMonth.startOfMonth,
+        currentMonth: currentMonthStart,
         nextMonth: nextMonth,
         selectedDate: selectedDate,
         scheduleIndicatorsByDate: scheduleIndicatorsByDate,
@@ -75,10 +89,30 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
         onCollapseToWeek: onCollapseToWeek
       )
       vc.recenterToCurrentPage(animated: false)
+    } else if let direction = coordinator.pendingSlideDirection {
+      // 화살표/오늘 버튼 → 슬라이드 애니메이션
+      coordinator.pendingSlideDirection = nil
+      let targetPage: Int = direction == .right ? 2 : 0
+      vc.slideTo(page: targetPage) {
+        vc.updatePages(
+          prevMonth: self.prevMonth,
+          currentMonth: currentMonthStart,
+          nextMonth: self.nextMonth,
+          selectedDate: self.selectedDate,
+          scheduleIndicatorsByDate: self.scheduleIndicatorsByDate,
+          namespace: self.namespace,
+          isCompactMode: self.isCompactMode,
+          showAllIndicators: self.showAllIndicators,
+          onDateSelected: self.onDateSelected,
+          onCollapseToWeek: self.onCollapseToWeek
+        )
+        vc.recenterToCurrentPage(animated: false)
+      }
     } else {
+      // 일반 데이터 업데이트 (선택 날짜 변경 등)
       vc.updatePages(
         prevMonth: prevMonth,
-        currentMonth: currentMonth.startOfMonth,
+        currentMonth: currentMonthStart,
         nextMonth: nextMonth,
         selectedDate: selectedDate,
         scheduleIndicatorsByDate: scheduleIndicatorsByDate,
@@ -89,7 +123,6 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
         onCollapseToWeek: onCollapseToWeek
       )
     }
-
   }
 
   // MARK: - Helpers
@@ -108,6 +141,11 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
     var parent: PagingMonthGridView
     weak var pagerVC: PagerViewController?
     var needsRecenter = false
+    /// 외부(화살표/오늘 버튼)에서 월 변경 시 슬라이드 애니메이션 방향
+    var pendingSlideDirection: SlideDirection?
+    var lastKnownMonth: Date?
+
+    enum SlideDirection { case left, right }
 
     init(parent: PagingMonthGridView) {
       self.parent = parent
@@ -287,6 +325,21 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
       let pageWidth = scrollView.bounds.width
       guard pageWidth > 0 else { return }
       scrollView.setContentOffset(CGPoint(x: pageWidth, y: 0), animated: animated)
+    }
+
+    /// 지정 페이지로 애니메이션 슬라이드 후 완료 콜백 실행
+    func slideTo(page: Int, completion: @escaping () -> Void) {
+      let pageWidth = scrollView.bounds.width
+      guard pageWidth > 0 else {
+        completion()
+        return
+      }
+      let targetOffset = CGPoint(x: pageWidth * CGFloat(page), y: 0)
+      UIView.animate(withDuration: 0.3, delay: 0, options: .curveEaseInOut) {
+        self.scrollView.contentOffset = targetOffset
+      } completion: { _ in
+        completion()
+      }
     }
 
     override func viewDidLayoutSubviews() {
