@@ -12,9 +12,9 @@ import PromisoShared
 // MARK: - Constants
 
 private enum ConflictCheckConstants {
-  /// 겹침 검사를 위한 하한 버퍼 (12시간)
-  /// 최대 12시간 전에 시작해서 아직 진행 중인 일정을 포착
-  static let lookbackInterval: TimeInterval = 12 * 3600
+  /// 겹침 검사를 위한 하한 버퍼 (24시간)
+  /// 최대 24시간 전에 시작해서 아직 진행 중인 일정을 포착
+  static let lookbackInterval: TimeInterval = 24 * 3600
 
   /// endAt이 nil일 때 기본 지속 시간 (2시간, P18)
   static let defaultDuration: TimeInterval = 7200
@@ -31,11 +31,13 @@ public struct ScheduleConflictClient: Sendable {
   ///   - userId: 현재 사용자 ID
   ///   - startAt: 새 약속/일정 시작 시간
   ///   - endAt: 새 약속/일정 종료 시간 (nil이면 startAt + 2h)
+  ///   - excludeIds: 충돌 결과에서 제외할 일정 ID (편집 시 자기 자신 제외)
   /// - Returns: 겹치는 일정 목록
   public var checkConflicts: @Sendable (
     _ userId: String,
     _ startAt: Date,
-    _ endAt: Date?
+    _ endAt: Date?,
+    _ excludeIds: Set<String>
   ) async throws -> [ScheduleConflict]
 }
 
@@ -45,7 +47,7 @@ extension ScheduleConflictClient: TestDependencyKey {
   public static let testValue = Self()
 
   public static let previewValue = Self(
-    checkConflicts: { _, _, _ in
+    checkConflicts: { _, _, _, _ in
       try await Task.sleep(for: .seconds(0.3))
       return []
     }
@@ -69,7 +71,7 @@ extension ScheduleConflictClient: DependencyKey {
     @Dependency(\.personalEventClient) var personalEventClient
 
     return ScheduleConflictClient(
-      checkConflicts: { userId, startAt, endAt in
+      checkConflicts: { userId, startAt, endAt, excludeIds in
         let newEffectiveEnd = endAt ?? startAt.addingTimeInterval(ConflictCheckConstants.defaultDuration)
         let rangeStart = startAt.addingTimeInterval(-ConflictCheckConstants.lookbackInterval)
         let rangeEnd = newEffectiveEnd
@@ -125,8 +127,10 @@ extension ScheduleConflictClient: DependencyKey {
           AppLogger.general.debug("[ConflictCheck]  - \(conflict.source == .promise ? "약속" : "개인") \(conflict.overlapMinutes)분 겹침 (\(conflict.severity == .confirmed ? "확정" : "미확정"))")
         }
 
-        // 겹침 시간 내림차순 정렬
-        return conflicts.sorted { $0.overlapMinutes > $1.overlapMinutes }
+        // excludeIds 필터링 + 겹침 시간 내림차순 정렬
+        return conflicts
+          .filter { !excludeIds.contains($0.id) }
+          .sorted { $0.overlapMinutes > $1.overlapMinutes }
       }
     )
   }()

@@ -514,6 +514,8 @@ extension GroupMain {
             state.createPromise = CreatePromise.Feature.State(
               promise: promise,
               groupSummaries: state.allGroupSummaries,
+              userPlan: state.userPlan,
+              currentUserId: state.currentUser.userId,
               prefillInfo: info
             )
             return .none

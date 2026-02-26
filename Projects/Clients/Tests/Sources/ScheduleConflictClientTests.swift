@@ -90,7 +90,7 @@ struct ScheduleConflictClientTests {
         [existingEvent]
       }
     } operation: {
-      try await ScheduleConflictClient.liveValue.checkConflicts("user1", newStart, nil)
+      try await ScheduleConflictClient.liveValue.checkConflicts("user1", newStart, nil, [])
     }
 
     #expect(result.isEmpty)
@@ -120,7 +120,7 @@ struct ScheduleConflictClientTests {
         []
       }
     } operation: {
-      try await ScheduleConflictClient.liveValue.checkConflicts("user1", newStart, newEnd)
+      try await ScheduleConflictClient.liveValue.checkConflicts("user1", newStart, newEnd, [])
     }
 
     #expect(result.count == 1)
@@ -157,7 +157,7 @@ struct ScheduleConflictClientTests {
         []
       }
     } operation: {
-      try await ScheduleConflictClient.liveValue.checkConflicts("user1", newStart, newEnd)
+      try await ScheduleConflictClient.liveValue.checkConflicts("user1", newStart, newEnd, [])
     }
 
     #expect(result.count == 1)
@@ -192,7 +192,7 @@ struct ScheduleConflictClientTests {
         [existingEvent]
       }
     } operation: {
-      try await ScheduleConflictClient.liveValue.checkConflicts("user1", newStart, newEnd)
+      try await ScheduleConflictClient.liveValue.checkConflicts("user1", newStart, newEnd, [])
     }
 
     #expect(result.count == 1)
@@ -229,7 +229,7 @@ struct ScheduleConflictClientTests {
         []
       }
     } operation: {
-      try await ScheduleConflictClient.liveValue.checkConflicts("user1", newStart, nil)
+      try await ScheduleConflictClient.liveValue.checkConflicts("user1", newStart, nil, [])
     }
 
     #expect(result.count == 1)
@@ -281,7 +281,7 @@ struct ScheduleConflictClientTests {
         []
       }
     } operation: {
-      try await ScheduleConflictClient.liveValue.checkConflicts("user1", newStart, newEnd)
+      try await ScheduleConflictClient.liveValue.checkConflicts("user1", newStart, newEnd, [])
     }
 
     #expect(result.count == 3)
@@ -341,7 +341,7 @@ struct ScheduleConflictClientTests {
         [large, medium]
       }
     } operation: {
-      try await ScheduleConflictClient.liveValue.checkConflicts("user1", newStart, newEnd)
+      try await ScheduleConflictClient.liveValue.checkConflicts("user1", newStart, newEnd, [])
     }
 
     #expect(result.count == 3)
@@ -399,7 +399,7 @@ struct ScheduleConflictClientTests {
         [personalEvent]
       }
     } operation: {
-      try await ScheduleConflictClient.liveValue.checkConflicts("user1", newStart, newEnd)
+      try await ScheduleConflictClient.liveValue.checkConflicts("user1", newStart, newEnd, [])
     }
 
     #expect(result.count == 3)
@@ -425,5 +425,71 @@ struct ScheduleConflictClientTests {
     let personal = result.first { $0.id == "mix-personal-event" }
     #expect(personal?.severity == .confirmed) // 개인 일정은 항상 confirmed
     #expect(personal?.emoji == "🏃")
+  }
+
+  // MARK: - Test 9: excludeIds로 자기 자신 제외
+
+  @Test("excludeIds로 자기 자신 제외")
+  func excludeIdsFiltersOutSelf() async throws {
+    let newStart = Self.baseDate
+    let newEnd = Self.baseDate.addingTimeInterval(2 * 3600) // 14:00 ~ 16:00
+
+    // 기존 일정 2개: 하나는 제외할 ID
+    let selfEvent = Self.makeEvent(
+      id: "self-event",
+      title: "자기 자신",
+      startAt: Self.baseDate,
+      endAt: Self.baseDate.addingTimeInterval(2 * 3600)
+    )
+    let otherEvent = Self.makeEvent(
+      id: "other-event",
+      title: "다른 일정",
+      startAt: Self.baseDate.addingTimeInterval(1 * 3600),
+      endAt: Self.baseDate.addingTimeInterval(3 * 3600)
+    )
+
+    let result = try await withDependencies {
+      $0.promiseClient.getAcceptedPromisesByDateRange = { _, _ in [] }
+      $0.personalEventClient.getEventsByDateRange = { _, _ in
+        [selfEvent, otherEvent]
+      }
+    } operation: {
+      try await ScheduleConflictClient.liveValue.checkConflicts("user1", newStart, newEnd, ["self-event"])
+    }
+
+    #expect(result.count == 1)
+    #expect(result.first?.id == "other-event")
+  }
+
+  // MARK: - Test 10: excludeIds 빈 Set이면 모두 포함
+
+  @Test("excludeIds 빈 Set이면 모두 포함")
+  func emptyExcludeIdsIncludesAll() async throws {
+    let newStart = Self.baseDate
+    let newEnd = Self.baseDate.addingTimeInterval(2 * 3600)
+
+    let event1 = Self.makeEvent(
+      id: "event-a",
+      title: "일정 A",
+      startAt: Self.baseDate,
+      endAt: Self.baseDate.addingTimeInterval(1 * 3600)
+    )
+    let event2 = Self.makeEvent(
+      id: "event-b",
+      title: "일정 B",
+      startAt: Self.baseDate.addingTimeInterval(1 * 3600),
+      endAt: Self.baseDate.addingTimeInterval(2 * 3600)
+    )
+
+    let result = try await withDependencies {
+      $0.promiseClient.getAcceptedPromisesByDateRange = { _, _ in [] }
+      $0.personalEventClient.getEventsByDateRange = { _, _ in
+        [event1, event2]
+      }
+    } operation: {
+      try await ScheduleConflictClient.liveValue.checkConflicts("user1", newStart, newEnd, [])
+    }
+
+    #expect(result.count == 2)
   }
 }

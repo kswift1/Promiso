@@ -56,7 +56,7 @@ public enum CreatePromise {
       var localImageData: [Data] = []
       var isUploadingImages: Bool = false
 
-      // 일정 충돌 감지 (Pro plan)
+      // 일정 충돌 감지
       var userPlan: UserPlan = .free
       var currentUserId: String = ""
       var conflicts: [ScheduleConflict] = []
@@ -547,7 +547,7 @@ public enum CreatePromise {
       return .run { [scheduleConflictClient, clock] send in
         try await clock.sleep(for: .milliseconds(500))
         do {
-          let conflicts = try await scheduleConflictClient.checkConflicts(userId, startAt, endAt)
+          let conflicts = try await scheduleConflictClient.checkConflicts(userId, startAt, endAt, [])
           await send(.internal(.conflictsLoaded(conflicts)))
         } catch {
           await send(.internal(.conflictsLoaded([])))
