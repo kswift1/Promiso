@@ -55,6 +55,12 @@ extension DependencyValues {
 
 // MARK: - Cloud Function Response
 
+private let conflictCheckISO8601Formatter: ISO8601DateFormatter = {
+  let formatter = ISO8601DateFormatter()
+  formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+  return formatter
+}()
+
 private struct CheckConflictsResponse: Decodable {
   let conflicts: [ConflictItem]
 }
@@ -76,8 +82,7 @@ extension ScheduleConflictClient: DependencyKey {
   public static let liveValue = ScheduleConflictClient(
     checkConflicts: { _, startAt, endAt, excludeIds in
       let functions = DefaultFunctionsProvider().functions
-      let iso8601Formatter = ISO8601DateFormatter()
-      iso8601Formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+      let iso8601Formatter = conflictCheckISO8601Formatter
 
       AppLogger.general.info("[ConflictCheck] Cloud Function 충돌 체크 시작")
 
@@ -93,34 +98,38 @@ extension ScheduleConflictClient: DependencyKey {
 
       let result = try await functions.httpsCallable("checkScheduleConflicts").call(params)
 
-      guard
-        let data = try? JSONSerialization.data(withJSONObject: result.data),
-        let response = try? JSONDecoder().decode(CheckConflictsResponse.self, from: data)
-      else {
+      do {
+        let data = try JSONSerialization.data(withJSONObject: result.data)
+        let response = try JSONDecoder().decode(CheckConflictsResponse.self, from: data)
+
+        let conflicts = response.conflicts.compactMap { item -> ScheduleConflict? in
+          let source: ScheduleConflict.Source = item.source == "promise" ? .promise : .personalEvent
+          let severity: ScheduleConflict.Severity = item.severity == "confirmed" ? .confirmed : .pending
+          guard let itemStartAt = iso8601Formatter.date(from: item.startAt) else {
+            AppLogger.general.error("[ConflictCheck] 서버 응답 파싱 실패 - startAt: \(item.startAt)")
+            return nil
+          }
+          let itemEndAt = item.endAt.flatMap { iso8601Formatter.date(from: $0) }
+
+          return ScheduleConflict(
+            id: item.id,
+            source: source,
+            severity: severity,
+            title: item.title,
+            emoji: item.emoji,
+            startAt: itemStartAt,
+            endAt: itemEndAt,
+            overlapMinutes: item.overlapMinutes
+          )
+        }
+
+        AppLogger.general.info("[ConflictCheck] 결과 - 충돌 \(conflicts.count)건 감지")
+        return conflicts
+      } catch {
         AppLogger.general.error("[ConflictCheck] 응답 파싱 실패")
-        return []
+        AppLogger.general.error("[ConflictCheck] error: \(error)")
+        throw error
       }
-
-      let conflicts = response.conflicts.compactMap { item -> ScheduleConflict? in
-        let source: ScheduleConflict.Source = item.source == "promise" ? .promise : .personalEvent
-        let severity: ScheduleConflict.Severity = item.severity == "confirmed" ? .confirmed : .pending
-        let itemStartAt = iso8601Formatter.date(from: item.startAt) ?? startAt
-        let itemEndAt = item.endAt.flatMap { iso8601Formatter.date(from: $0) }
-
-        return ScheduleConflict(
-          id: item.id,
-          source: source,
-          severity: severity,
-          title: item.title,
-          emoji: item.emoji,
-          startAt: itemStartAt,
-          endAt: itemEndAt,
-          overlapMinutes: item.overlapMinutes
-        )
-      }
-
-      AppLogger.general.info("[ConflictCheck] 결과 - 충돌 \(conflicts.count)건 감지")
-      return conflicts
     }
   )
 }

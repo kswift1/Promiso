@@ -29,6 +29,8 @@ import {
 
 /** endAt이 null일 때 기본 지속 시간 (2시간, ms) */
 const DEFAULT_DURATION_MS = 2 * 60 * 60 * 1000;
+const MAX_SLOT_DATE_RANGE_DAYS = 31;
+const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 
 // ============================================================================
 // Helpers
@@ -41,7 +43,11 @@ const DEFAULT_DURATION_MS = 2 * 60 * 60 * 1000;
  * @param {Date} endAt 종료 시간
  * @return {string[]} YYYY-MM-DD 키 배열
  */
-function getDateKeys(startAt: Date, endAt: Date): string[] {
+function getDateKeys(
+  startAt: Date,
+  endAt: Date,
+  maxDays: number = Number.MAX_SAFE_INTEGER,
+): { keys: string[]; isTruncated: boolean } {
   const keys: string[] = [];
   const current = new Date(startAt);
   current.setUTCHours(0, 0, 0, 0);
@@ -52,9 +58,25 @@ function getDateKeys(startAt: Date, endAt: Date): string[] {
   while (current <= endDate) {
     keys.push(current.toISOString().slice(0, 10));
     current.setUTCDate(current.getUTCDate() + 1);
+
+    if (keys.length >= maxDays && current <= endDate) {
+      return {keys, isTruncated: true};
+    }
   }
 
-  return keys;
+  return {keys, isTruncated: false};
+}
+
+function assertDateRangeWithinLimit(startAt: Date, endAt: Date): void {
+  const rangeMs = endAt.getTime() - startAt.getTime();
+  const maxRangeMs = MAX_SLOT_DATE_RANGE_DAYS * MILLISECONDS_PER_DAY;
+
+  if (rangeMs > maxRangeMs) {
+    throw new HttpsError(
+      "invalid-argument",
+      `일정 조회 범위는 ${MAX_SLOT_DATE_RANGE_DAYS}일 이내여야 합니다`,
+    );
+  }
 }
 
 /**
@@ -106,7 +128,16 @@ async function upsertSlot(
     slotEntry.endAt.toDate() :
     new Date(startAt.getTime() + DEFAULT_DURATION_MS);
 
-  const dateKeys = getDateKeys(startAt, endAt);
+  const {keys: dateKeys, isTruncated} = getDateKeys(
+    startAt,
+    endAt,
+    MAX_SLOT_DATE_RANGE_DAYS,
+  );
+  if (isTruncated) {
+    console.warn(
+      `⚠️ upsertSlot: 기간이 너무 김 (${slotEntry.id}), 최대 ${MAX_SLOT_DATE_RANGE_DAYS}일만 반영됩니다`,
+    );
+  }
 
   await Promise.all(dateKeys.map((dateKey) => {
     const docRef = db
@@ -147,7 +178,16 @@ async function removeSlot(
   const db = admin.firestore();
   const effectiveEnd = endAt ??
     new Date(startAt.getTime() + DEFAULT_DURATION_MS);
-  const dateKeys = getDateKeys(startAt, effectiveEnd);
+  const {keys: dateKeys, isTruncated} = getDateKeys(
+    startAt,
+    effectiveEnd,
+    MAX_SLOT_DATE_RANGE_DAYS,
+  );
+  if (isTruncated) {
+    console.warn(
+      `⚠️ removeSlot: 기간이 너무 김 (${slotId}), 최대 ${MAX_SLOT_DATE_RANGE_DAYS}일만 반영됩니다`,
+    );
+  }
 
   await Promise.all(dateKeys.map((dateKey) => {
     const docRef = db
@@ -160,6 +200,10 @@ async function removeSlot(
 
       const slots: ScheduleSlotEntry[] = doc.data()?.slots ?? [];
       const filtered = slots.filter((s) => s.id !== slotId);
+
+      if (filtered.length === slots.length) {
+        return;
+      }
 
       if (filtered.length === 0) {
         tx.delete(docRef);
@@ -210,10 +254,21 @@ export const checkScheduleConflicts =
       const endAt = data.endAt ?
         new Date(data.endAt) :
         new Date(startAt.getTime() + DEFAULT_DURATION_MS);
+      assertDateRangeWithinLimit(startAt, endAt);
       const excludeIds = new Set(data.excludeIds ?? []);
 
       // 해당 날짜 범위의 scheduleSlots 조회
-      const dateKeys = getDateKeys(startAt, endAt);
+      const {keys: dateKeys, isTruncated} = getDateKeys(
+        startAt,
+        endAt,
+        MAX_SLOT_DATE_RANGE_DAYS,
+      );
+      if (isTruncated) {
+        throw new HttpsError(
+          "invalid-argument",
+          `일정 조회 범위는 ${MAX_SLOT_DATE_RANGE_DAYS}일 이내여야 합니다`,
+        );
+      }
       const db = admin.firestore();
       const slotsCollection = db
         .collection("users").doc(userId)
