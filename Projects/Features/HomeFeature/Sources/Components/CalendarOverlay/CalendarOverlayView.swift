@@ -522,24 +522,13 @@ struct CalendarOverlayView: View {
 
           Spacer(minLength: 8)
 
-          HStack(spacing: 8) {
-            Text(weatherReferenceText(for: weather))
-              .font(.system(size: 11, weight: .medium))
-              .foregroundStyle(.white.opacity(0.78))
-              .multilineTextAlignment(.trailing)
-              .lineLimit(2)
-              .truncationMode(.tail)
-
-            Button(action: onWeatherCardTapped) {
-              Image(systemName: "arrow.clockwise")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.7))
-                .frame(width: 28, height: 28)
-                .background(.white.opacity(0.15))
-                .clipShape(Circle())
-            }
-            .buttonStyle(.plain)
-          }
+          Text(weatherReferenceText(for: weather))
+            .font(.system(size: 11, weight: .medium))
+            .foregroundStyle(.white.opacity(0.78))
+            .multilineTextAlignment(.trailing)
+            .lineLimit(2)
+            .truncationMode(.tail)
+            .frame(maxWidth: 180, alignment: .trailing)
         }
       }
       .padding(16)
