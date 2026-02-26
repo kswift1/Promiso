@@ -126,6 +126,15 @@ extension CalendarFeature {
           },
           onCollapseToWeek: { date in
             store.send(.view(.collapseToWeek(date)), animation: .spring(response: 0.45, dampingFraction: 0.8))
+          },
+          onIndicatorTapped: { indicator in
+            store.send(.view(.indicatorTapped(indicator)))
+          },
+          onDayCreatePersonalEvent: { date in
+            store.send(.view(.dayLongPressCreatePersonalEvent(date)))
+          },
+          onDayCreatePromise: { date in
+            store.send(.view(.dayLongPressCreatePromise(date)))
           }
         )
         .padding(.top, 12)

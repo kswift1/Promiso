@@ -20,6 +20,9 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
   var showAllIndicators: Bool = false
   let onDateSelected: (Date) -> Void
   let onCollapseToWeek: (Date) -> Void
+  var onIndicatorTapped: ((CalendarFeature.ScheduleIndicator) -> Void)? = nil
+  var onDayCreatePersonalEvent: ((Date) -> Void)? = nil
+  var onDayCreatePromise: ((Date) -> Void)? = nil
 
   func makeCoordinator() -> Coordinator {
     Coordinator(parent: self)
@@ -42,7 +45,10 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
       isCompactMode: isCompactMode,
       showAllIndicators: showAllIndicators,
       onDateSelected: onDateSelected,
-      onCollapseToWeek: onCollapseToWeek
+      onCollapseToWeek: onCollapseToWeek,
+      onIndicatorTapped: onIndicatorTapped,
+      onDayCreatePersonalEvent: onDayCreatePersonalEvent,
+      onDayCreatePromise: onDayCreatePromise
     )
     return vc
   }
@@ -86,7 +92,10 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
         isCompactMode: isCompactMode,
         showAllIndicators: showAllIndicators,
         onDateSelected: onDateSelected,
-        onCollapseToWeek: onCollapseToWeek
+        onCollapseToWeek: onCollapseToWeek,
+        onIndicatorTapped: onIndicatorTapped,
+        onDayCreatePersonalEvent: onDayCreatePersonalEvent,
+        onDayCreatePromise: onDayCreatePromise
       )
       vc.recenterToCurrentPage(animated: false)
     } else if let direction = coordinator.pendingSlideDirection {
@@ -104,7 +113,10 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
           isCompactMode: self.isCompactMode,
           showAllIndicators: self.showAllIndicators,
           onDateSelected: self.onDateSelected,
-          onCollapseToWeek: self.onCollapseToWeek
+          onCollapseToWeek: self.onCollapseToWeek,
+          onIndicatorTapped: self.onIndicatorTapped,
+          onDayCreatePersonalEvent: self.onDayCreatePersonalEvent,
+          onDayCreatePromise: self.onDayCreatePromise
         )
         vc.recenterToCurrentPage(animated: false)
       }
@@ -120,7 +132,10 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
         isCompactMode: isCompactMode,
         showAllIndicators: showAllIndicators,
         onDateSelected: onDateSelected,
-        onCollapseToWeek: onCollapseToWeek
+        onCollapseToWeek: onCollapseToWeek,
+        onIndicatorTapped: onIndicatorTapped,
+        onDayCreatePersonalEvent: onDayCreatePersonalEvent,
+        onDayCreatePromise: onDayCreatePromise
       )
     }
   }
@@ -229,7 +244,10 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
       isCompactMode: Bool,
       showAllIndicators: Bool = false,
       onDateSelected: @escaping (Date) -> Void,
-      onCollapseToWeek: @escaping (Date) -> Void
+      onCollapseToWeek: @escaping (Date) -> Void,
+      onIndicatorTapped: ((CalendarFeature.ScheduleIndicator) -> Void)? = nil,
+      onDayCreatePersonalEvent: ((Date) -> Void)? = nil,
+      onDayCreatePromise: ((Date) -> Void)? = nil
     ) {
       scrollView.delegate = coordinator
 
@@ -245,7 +263,10 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
           isCompactMode: isCompactMode,
           showAllIndicators: showAllIndicators,
           onDateSelected: onDateSelected,
-          onCollapseToWeek: onCollapseToWeek
+          onCollapseToWeek: onCollapseToWeek,
+          onIndicatorTapped: onIndicatorTapped,
+          onDayCreatePersonalEvent: onDayCreatePersonalEvent,
+          onDayCreatePromise: onDayCreatePromise
         )
         let hostingVC = UIHostingController(rootView: gridView)
         hostingVC.view.backgroundColor = .clear
@@ -294,7 +315,10 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
       isCompactMode: Bool,
       showAllIndicators: Bool = false,
       onDateSelected: @escaping (Date) -> Void,
-      onCollapseToWeek: @escaping (Date) -> Void
+      onCollapseToWeek: @escaping (Date) -> Void,
+      onIndicatorTapped: ((CalendarFeature.ScheduleIndicator) -> Void)? = nil,
+      onDayCreatePersonalEvent: ((Date) -> Void)? = nil,
+      onDayCreatePromise: ((Date) -> Void)? = nil
     ) {
       let months = [prevMonth, currentMonth, nextMonth]
       for (index, vc) in pageHostingControllers.enumerated() {
@@ -307,7 +331,10 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
           isCompactMode: isCompactMode,
           showAllIndicators: showAllIndicators,
           onDateSelected: onDateSelected,
-          onCollapseToWeek: onCollapseToWeek
+          onCollapseToWeek: onCollapseToWeek,
+          onIndicatorTapped: onIndicatorTapped,
+          onDayCreatePersonalEvent: onDayCreatePersonalEvent,
+          onDayCreatePromise: onDayCreatePromise
         )
       }
     }
@@ -365,6 +392,9 @@ struct MonthGridContent: View {
   var showAllIndicators: Bool = false
   let onDateSelected: (Date) -> Void
   let onCollapseToWeek: (Date) -> Void
+  var onIndicatorTapped: ((CalendarFeature.ScheduleIndicator) -> Void)? = nil
+  var onDayCreatePersonalEvent: ((Date) -> Void)? = nil
+  var onDayCreatePromise: ((Date) -> Void)? = nil
 
   private let columns = Array(repeating: GridItem(.flexible(), spacing: 0), count: 7)
 
@@ -394,7 +424,10 @@ struct MonthGridContent: View {
             selectionId: "monthSelection",
             isCompactMode: isCompactMode,
             showAllIndicators: showAllIndicators,
-            onTap: { onDateSelected(date) }
+            onTap: { onDateSelected(date) },
+            onIndicatorTapped: onIndicatorTapped,
+            onDayCreatePersonalEvent: onDayCreatePersonalEvent,
+            onDayCreatePromise: onDayCreatePromise
           )
         }
       }
