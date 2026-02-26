@@ -8,7 +8,7 @@
  * @ios ScheduleConflictClient
  */
 
-import {FieldValue} from "firebase-admin/firestore";
+import {FieldValue, Timestamp} from "firebase-admin/firestore";
 import {HttpsError, onCall} from "firebase-functions/v2/https";
 import {
   onDocumentCreated,
@@ -60,14 +60,14 @@ function getDateKeys(startAt: Date, endAt: Date): string[] {
 /**
  * ScheduleSlotEntry 생성 헬퍼
  *
- * @param {string} id 일정 ID
- * @param {"promise" | "personalEvent"} type 일정 종류
- * @param {string} title 일정 제목
- * @param {string | null} emoji 이모지
- * @param {Date} startAt 시작 시간
- * @param {Date | null} endAt 종료 시간
- * @param {"confirmed" | "pending"} severity 확정 상태
- * @return {ScheduleSlotEntry} 슬롯 엔트리
+ * @param {string} id - 일정 ID
+ * @param {"promise" | "personalEvent"} type - 일정 종류
+ * @param {string} title - 일정 제목
+ * @param {string | null} emoji - 이모지
+ * @param {Date} startAt - 시작 시간
+ * @param {Date | null} endAt - 종료 시간
+ * @param {"confirmed" | "pending"} severity - 확정 상태
+ * @return {ScheduleSlotEntry} 슬롯 엔트리 (startAt/endAt은 Timestamp)
  */
 function createSlotEntry(
   id: string,
@@ -83,8 +83,8 @@ function createSlotEntry(
     type,
     title,
     emoji,
-    startAt: startAt.toISOString(),
-    endAt: endAt ? endAt.toISOString() : null,
+    startAt: Timestamp.fromDate(startAt),
+    endAt: endAt ? Timestamp.fromDate(endAt) : null,
     severity,
   };
 }
@@ -101,9 +101,9 @@ async function upsertSlot(
   slotEntry: ScheduleSlotEntry,
 ): Promise<void> {
   const db = admin.firestore();
-  const startAt = new Date(slotEntry.startAt);
+  const startAt = slotEntry.startAt.toDate();
   const endAt = slotEntry.endAt ?
-    new Date(slotEntry.endAt) :
+    slotEntry.endAt.toDate() :
     new Date(startAt.getTime() + DEFAULT_DURATION_MS);
 
   const dateKeys = getDateKeys(startAt, endAt);
@@ -241,9 +241,9 @@ export const checkScheduleConflicts =
       for (const [, slot] of allSlots) {
         if (excludeIds.has(slot.id)) continue;
 
-        const slotStart = new Date(slot.startAt);
+        const slotStart = slot.startAt.toDate();
         const slotEnd = slot.endAt ?
-          new Date(slot.endAt) :
+          slot.endAt.toDate() :
           new Date(slotStart.getTime() + DEFAULT_DURATION_MS);
 
         // 겹침 조건: slotStart < endAt && slotEnd > startAt
@@ -263,8 +263,8 @@ export const checkScheduleConflicts =
             severity: slot.severity,
             title: slot.title,
             emoji: slot.emoji,
-            startAt: slot.startAt,
-            endAt: slot.endAt,
+            startAt: slot.startAt.toDate().toISOString(),
+            endAt: slot.endAt ? slot.endAt.toDate().toISOString() : null,
             overlapMinutes,
           });
         }

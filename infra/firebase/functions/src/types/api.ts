@@ -1755,11 +1755,11 @@ export interface ScheduleSlotEntry {
   /** 일정 이모지 */
   emoji: string | null;
 
-  /** 시작 시간 (ISO 8601) */
-  startAt: string;
+  /** 시작 시간 */
+  startAt: FirebaseFirestore.Timestamp;
 
-  /** 종료 시간 (ISO 8601, nullable) */
-  endAt: string | null;
+  /** 종료 시간 (nullable) */
+  endAt: FirebaseFirestore.Timestamp | null;
 
   /** 확정 상태 (promise: isConfirmed 기반, personalEvent: 항상 confirmed) */
   severity: "confirmed" | "pending";
