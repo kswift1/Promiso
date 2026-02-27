@@ -18,25 +18,28 @@ struct CalendarHeader: View {
 
   var body: some View {
     HStack(spacing: 12) {
-      // 이전 버튼
-      Button(action: onMovePrevious) {
-        Image(systemName: "chevron.left")
-          .font(.system(size: 16, weight: .semibold))
-          .foregroundColor(.primary)
-          .frame(width: 36, height: 36)
-      }
+      // < 타이틀 > 네비게이션
+      HStack(spacing: 0) {
+        Button(action: onMovePrevious) {
+          Image(systemName: "chevron.left")
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundColor(.primary)
+            .frame(width: 28, height: 36)
+        }
 
-      // 타이틀
-      Text(title)
-        .font(.system(size: 18, weight: .bold))
-        .foregroundColor(.primary)
-
-      // 다음 버튼
-      Button(action: onMoveNext) {
-        Image(systemName: "chevron.right")
-          .font(.system(size: 16, weight: .semibold))
+        Text(title)
+          .font(.system(size: 18, weight: .bold).monospacedDigit())
           .foregroundColor(.primary)
-          .frame(width: 36, height: 36)
+          .frame(width: 120)
+          .contentTransition(.numericText())
+          .animation(.spring(duration: 0.3), value: title)
+
+        Button(action: onMoveNext) {
+          Image(systemName: "chevron.right")
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundColor(.primary)
+            .frame(width: 28, height: 36)
+        }
       }
 
       Spacer()
