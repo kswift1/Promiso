@@ -1223,6 +1223,22 @@ public enum LocalizedStrings {
         .replacingOccurrences(of: "%@", with: value)
     }
 
+    // Weather Detail
+    public static var weatherDetailTitle: String { String(localized: "calendar.weather.detail.title", bundle: bundle) }
+    public static var weatherHourlyTitle: String { String(localized: "calendar.weather.hourly.title", bundle: bundle) }
+    public static var weatherSuggestionsTitle: String { String(localized: "calendar.weather.suggestions.title", bundle: bundle) }
+    public static func weatherFeelsLike(_ temp: String) -> String {
+      String(localized: "calendar.weather.feelsLike", bundle: bundle)
+        .replacingOccurrences(of: "%@", with: temp)
+    }
+    public static var weatherToday: String { String(localized: "calendar.weather.today", bundle: bundle) }
+    public static var weatherTomorrow: String { String(localized: "calendar.weather.tomorrow", bundle: bundle) }
+    public static func weatherMinMax(_ low: String, _ high: String) -> String {
+      String(localized: "calendar.weather.minMax", bundle: bundle)
+        .replacingOccurrences(of: "%1$@", with: low)
+        .replacingOccurrences(of: "%2$@", with: high)
+    }
+
     // Promise Card Status
     public static var statusWaiting: String { String(localized: "calendar.promise.statusWaiting", bundle: bundle) }
     public static var statusVoting: String { String(localized: "calendar.promise.statusVoting", bundle: bundle) }

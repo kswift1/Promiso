@@ -80,6 +80,7 @@ extension Home {
               nextMonthDays: store.overlayNextMonthDays,
               weatherState: store.overlayWeatherState,
               weatherLocationText: store.overlayWeatherLocationText,
+              weatherInfo: store.overlayWeatherInfo,
               calendarMode: store.overlayCalendarMode,
               scheduleItems: store.overlaySelectedDateScheduleItems,
               prevDayScheduleItems: store.overlayPrevDayScheduleItems,

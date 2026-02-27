@@ -25,6 +25,8 @@ enum CalendarMode: Equatable, Sendable {
   case monthly
   /// 주간 달력 (선택된 주 1행 + 일정 리스트)
   case weekly
+  /// 날씨 상세 (시간별 예보)
+  case weatherDetail
 }
 
 // MARK: - Overlay Calendar Models

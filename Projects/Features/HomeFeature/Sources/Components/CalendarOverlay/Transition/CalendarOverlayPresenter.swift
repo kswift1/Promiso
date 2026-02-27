@@ -13,6 +13,7 @@ struct CalendarOverlayPresenter: UIViewControllerRepresentable {
   let nextMonthDays: [OverlayCalendarModels.DayItem]
   let weatherState: OverlayWeatherState
   let weatherLocationText: String?
+  let weatherInfo: WeatherInfo?
   let calendarMode: CalendarMode
   let scheduleItems: [HomeModels.ScheduleItem]
   let prevDayScheduleItems: [HomeModels.ScheduleItem]
@@ -52,6 +53,7 @@ struct CalendarOverlayPresenter: UIViewControllerRepresentable {
         viewModel.nextMonthDays = nextMonthDays
         viewModel.weatherState = weatherState
         viewModel.weatherLocationText = weatherLocationText
+        viewModel.weatherInfo = weatherInfo
         viewModel.calendarMode = calendarMode
         viewModel.scheduleItems = scheduleItems
         viewModel.prevDayScheduleItems = prevDayScheduleItems
@@ -86,6 +88,7 @@ struct CalendarOverlayPresenter: UIViewControllerRepresentable {
           nextMonthDays: nextMonthDays,
           weatherState: weatherState,
           weatherLocationText: weatherLocationText,
+          weatherInfo: weatherInfo,
           calendarMode: calendarMode,
           scheduleItems: scheduleItems,
           prevDayScheduleItems: prevDayScheduleItems,

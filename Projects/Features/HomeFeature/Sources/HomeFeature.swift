@@ -86,6 +86,8 @@ extension Home {
       var overlayWeatherState: OverlayWeatherState = .needsPermission
       /// 오버레이 날씨 기준 위치 텍스트
       var overlayWeatherLocationText: String? = nil
+      /// 오버레이 날씨 전체 정보 (시간별 예보 포함)
+      var overlayWeatherInfo: WeatherInfo? = nil
       /// 오버레이 캘린더 표시 모드
       var overlayCalendarMode: CalendarMode = .monthly
       /// 오버레이 월별 약속 캐시 (키: 월 시작일)
@@ -421,6 +423,7 @@ extension Home {
             state.showCalendarOverlay = false
             state.overlayWeatherState = .needsPermission
             state.overlayWeatherLocationText = nil
+            state.overlayWeatherInfo = nil
             state.overlayCalendarMode = .monthly
             state.overlayPromisesByMonth.removeAll()
             state.overlayLoadedMonths.removeAll()
@@ -461,6 +464,11 @@ extension Home {
             )
 
           case .overlayWeatherCardTapped:
+            // loaded 상태: 날씨 상세 보기
+            if case .loaded = state.overlayWeatherState {
+              state.overlayCalendarMode = .weatherDetail
+              return .none
+            }
             if state.overlayWeatherState == .denied {
               return .run { _ in
                 await MainActor.run {
@@ -488,6 +496,7 @@ extension Home {
             state.overlayCalendarMode = .monthly
             state.overlayWeatherState = .needsPermission
             state.overlayWeatherLocationText = nil
+            state.overlayWeatherInfo = nil
             switch item {
             case .promise(let promise):
               let groupMembers = state.groupMembersCache[promise.groupId]
@@ -507,6 +516,7 @@ extension Home {
             state.overlayCalendarMode = .monthly
             state.overlayWeatherState = .needsPermission
             state.overlayWeatherLocationText = nil
+            state.overlayWeatherInfo = nil
             // 개인 일정 생성 모달 열기 (선택 날짜로 초기화)
             let calendar = Calendar.promiseDisplay
             let components = calendar.dateComponents([.hour, .minute], from: date)
@@ -528,6 +538,7 @@ extension Home {
             state.overlayCalendarMode = .monthly
             state.overlayWeatherState = .needsPermission
             state.overlayWeatherLocationText = nil
+            state.overlayWeatherInfo = nil
             return .merge(
               .cancel(id: CancelID.overlayWeatherFetch),
               .send(.delegate(.navigateToCreatePromise))
@@ -839,9 +850,11 @@ extension Home {
               if let forecast = info.current ?? info.hourlyForecasts.first {
                 state.overlayWeatherState = .loaded(forecast)
                 state.overlayWeatherLocationText = locationText
+                state.overlayWeatherInfo = info
               } else {
                 state.overlayWeatherState = .failed
                 state.overlayWeatherLocationText = nil
+                state.overlayWeatherInfo = nil
               }
             case .failure:
               let authStatus = locationClient.authorizationStatus()
@@ -851,6 +864,7 @@ extension Home {
                 state.overlayWeatherState = .failed
               }
               state.overlayWeatherLocationText = nil
+              state.overlayWeatherInfo = nil
             }
             return .none
 

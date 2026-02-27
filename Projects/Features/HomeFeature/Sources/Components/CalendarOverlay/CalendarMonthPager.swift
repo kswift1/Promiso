@@ -112,8 +112,8 @@ struct CalendarMonthPager: UIViewControllerRepresentable {
     private var pageHostingControllers: [UIHostingController<CalendarMonthGridView>] = []
 
     // Grid layout constants
-    private let rowHeight: CGFloat = 62
-    private let gridSpacing: CGFloat = 6
+    private let rowHeight: CGFloat = 46
+    private let gridSpacing: CGFloat = 4
     private var rowUnit: CGFloat { rowHeight + gridSpacing }
     private var fullGridHeight: CGFloat { 6 * rowHeight + 5 * gridSpacing }
 

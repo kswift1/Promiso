@@ -15,6 +15,7 @@ struct CalendarOverlayView: View {
   let nextMonthDays: [OverlayCalendarModels.DayItem]
   let weatherState: OverlayWeatherState
   let weatherLocationText: String?
+  let weatherInfo: WeatherInfo?
   let calendarMode: CalendarMode
   let scheduleItems: [HomeModels.ScheduleItem]
   let prevDayScheduleItems: [HomeModels.ScheduleItem]
@@ -34,12 +35,13 @@ struct CalendarOverlayView: View {
   let groupColorMap: [String: Color]
 
   private var isWeekly: Bool { calendarMode == .weekly }
+  private var isWeatherDetail: Bool { calendarMode == .weatherDetail }
 
   // MARK: - Grid Layout Constants
 
   private let weekdayHeight: CGFloat = 24
-  private let rowHeight: CGFloat = 62
-  private let gridSpacing: CGFloat = 6
+  private let rowHeight: CGFloat = 46
+  private let gridSpacing: CGFloat = 4
 
   /// weekly 모드에서 보이는 날짜 행 영역 (선택된 주 1행)
   private var compactGridHeight: CGFloat { rowHeight }
@@ -112,7 +114,7 @@ struct CalendarOverlayView: View {
 
   var body: some View {
     VStack(spacing: 0) {
-      // MARK: 상단 섹션 (헤더 + 일정 + 요일) — 흰색 카드, rounded bottom
+      // MARK: 상단 섹션 (헤더 + 일정/날씨상세 + 요일) — 흰색 카드, rounded bottom
       VStack(spacing: 0) {
         headerSection
           .padding(.horizontal, 20)
@@ -124,16 +126,26 @@ struct CalendarOverlayView: View {
           .opacity(isWeekly ? 1 : 0)
           .clipped()
 
+        // 날씨 상세 (항상 존재, weatherDetail 모드에서 확장 — 위에서 내려오는 효과)
+        weatherDetailContent
+          .padding(.horizontal, 20)
+          .frame(maxHeight: isWeatherDetail ? .infinity : 0)
+          .opacity(isWeatherDetail ? 1 : 0)
+          .clipped()
+
         // Spacer (항상 존재, weekly 모드에서 확장 → 그리드를 아래로 밀어냄)
         Spacer(minLength: 0)
           .frame(maxHeight: 0)
 
-        // 요일 헤더 — 흰색 영역 하단
+        // 요일 헤더 — 흰색 영역 하단 (weatherDetail 모드에서 축소)
         weekdayHeaderRow
           .padding(.horizontal, 20)
-          .padding(.bottom, 12)
+          .padding(.bottom, isWeatherDetail ? 0 : 12)
+          .frame(height: isWeatherDetail ? 0 : nil)
+          .opacity(isWeatherDetail ? 0 : 1)
+          .clipped()
       }
-      .background(Color(.systemBackground))
+      .background(isWeatherDetail ? Color(.secondarySystemBackground) : Color(.systemBackground))
       .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: 20, bottomTrailingRadius: 20))
       .background(
         UnevenRoundedRectangle(bottomLeadingRadius: 20, bottomTrailingRadius: 20)
@@ -162,16 +174,22 @@ struct CalendarOverlayView: View {
           .padding(.horizontal, 20)
           .padding(.bottom, 16)
       } else {
-        dateRowsGrid
-          .padding(.horizontal, 20)
+        VStack(spacing: 0) {
+          dateRowsGrid
+            .padding(.horizontal, 20)
 
-        Spacer(minLength: 0)
+          Spacer(minLength: 0)
 
-        bottomCard
-          .padding(.horizontal, 20)
-          .padding(.bottom, 16)
+          bottomCard
+            .padding(.horizontal, 20)
+            .padding(.bottom, 16)
+        }
+        .frame(maxHeight: isWeatherDetail ? 0 : .infinity)
+        .opacity(isWeatherDetail ? 0 : 1)
+        .clipped()
       }
     }
+    .background(Color(.secondarySystemBackground))
   }
 
   // MARK: - Date Rows Grid
@@ -233,7 +251,9 @@ struct CalendarOverlayView: View {
 
   @ViewBuilder
   private var headerSection: some View {
-    if isWeekly {
+    if isWeatherDetail {
+      weatherDetailHeader
+    } else if isWeekly {
       dayDetailHeader
     } else {
       calendarHeader
@@ -504,17 +524,39 @@ struct CalendarOverlayView: View {
         .offset(x: 20, y: -10)
 
       VStack(alignment: .leading, spacing: 4) {
-        Text(weather.condition.description)
-          .font(.system(size: 13, weight: .medium))
+        if let tip = WeatherSuggestion.from(forecast: weather).first {
+          HStack(spacing: 6) {
+            Image(systemName: tip.icon)
+              .font(.system(size: 11))
+            Text(tip.message)
+              .font(.system(size: 11, weight: .medium))
+              .lineLimit(1)
+          }
           .foregroundStyle(.white.opacity(0.8))
+          .padding(.horizontal, 10)
+          .padding(.vertical, 5)
+          .background(.white.opacity(0.15))
+          .clipShape(Capsule())
+        }
 
         Spacer()
 
         HStack(alignment: .bottom, spacing: 12) {
           VStack(alignment: .leading, spacing: 2) {
-            Text("\(Int(weather.temperature.rounded()))°C")
-              .font(.system(size: 36, weight: .bold))
-              .foregroundStyle(.white)
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+              Text(weather.condition.description)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(.white.opacity(0.8))
+              Text("\(Int(weather.temperature.rounded()))°")
+                .font(.system(size: 28, weight: .bold))
+                .foregroundStyle(.white)
+              if let info = weatherInfo,
+                 let (low, high) = todayTemperatureRange(from: info) {
+                Text("↑\(Int(high.rounded()))° ↓\(Int(low.rounded()))°")
+                  .font(.system(size: 14, weight: .medium))
+                  .foregroundStyle(.white.opacity(0.7))
+              }
+            }
             Text(todayDateString)
               .font(.system(size: 13))
               .foregroundStyle(.white.opacity(0.7))
@@ -525,10 +567,9 @@ struct CalendarOverlayView: View {
           Text(weatherReferenceText(for: weather))
             .font(.system(size: 11, weight: .medium))
             .foregroundStyle(.white.opacity(0.78))
-            .multilineTextAlignment(.trailing)
-            .lineLimit(2)
+            .lineLimit(1)
             .truncationMode(.tail)
-            .frame(maxWidth: 180, alignment: .trailing)
+            .minimumScaleFactor(0.8)
         }
       }
       .padding(16)
@@ -538,23 +579,244 @@ struct CalendarOverlayView: View {
     .compositingGroup()
     .clipShape(shape)
 
-    if #available(iOS 26.0, *) {
-      GlassEffectContainer {
-        content
-          .glassEffect(.regular, in: .rect(cornerRadius: 20))
-          .clipShape(shape)
-      }
-      .clipShape(shape)
-        .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 4)
-    } else {
-      content
-        .background(.ultraThinMaterial, in: shape)
-        .overlay(
-          shape
-            .strokeBorder(.white.opacity(0.2), lineWidth: 1)
-        )
+    Button(action: onWeatherCardTapped) {
+      if #available(iOS 26.0, *) {
+        GlassEffectContainer {
+          content
+            .glassEffect(.regular, in: .rect(cornerRadius: 20))
+            .clipShape(shape)
+        }
         .clipShape(shape)
-        .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 4)
+          .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 4)
+      } else {
+        content
+          .background(.ultraThinMaterial, in: shape)
+          .overlay(
+            shape
+              .strokeBorder(.white.opacity(0.2), lineWidth: 1)
+          )
+          .clipShape(shape)
+          .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 4)
+      }
+    }
+    .buttonStyle(.plain)
+  }
+
+  // MARK: - Weather Detail Header
+
+  private var weatherDetailHeader: some View {
+    HStack(alignment: .top) {
+      Button(action: onBackToMonth) {
+        Image(systemName: "chevron.left")
+          .font(.system(size: 14, weight: .semibold))
+          .foregroundStyle(.secondary)
+          .frame(width: 32, height: 32)
+          .contentShape(Rectangle())
+      }
+
+      VStack(alignment: .leading, spacing: 0) {
+        Text(LocalizedStrings.Calendar.weatherDetailTitle)
+          .font(.system(size: 28, weight: .bold))
+          .foregroundStyle(.primary)
+
+        if let locationText = weatherLocationText {
+          Text(locationText)
+            .font(.system(size: 20, weight: .semibold))
+            .foregroundStyle(.secondary)
+        }
+      }
+
+      Spacer()
+
+      Button(action: onClose) {
+        Image(systemName: "xmark")
+          .font(.system(size: 14, weight: .semibold))
+          .foregroundStyle(.secondary)
+          .frame(width: 32, height: 32)
+          .adaptiveGlassBackground(cornerRadius: 16)
+      }
+    }
+  }
+
+  // MARK: - Weather Detail Content
+
+  @ViewBuilder
+  private var weatherDetailContent: some View {
+    if let info = weatherInfo, case .loaded(let current) = weatherState {
+      ScrollView(.vertical, showsIndicators: false) {
+        VStack(spacing: 16) {
+          weatherDetailInfoBar(current, info: info)
+
+          if !info.hourlyForecasts.isEmpty {
+            weatherHourlySection(info.hourlyForecasts)
+          }
+
+          let suggestions = WeatherSuggestion.from(forecast: current)
+          if !suggestions.isEmpty {
+            weatherSuggestionsSection(suggestions)
+          }
+        }
+      }
+    }
+  }
+
+  private func weatherDetailInfoBar(_ forecast: HourlyForecast, info: WeatherInfo) -> some View {
+    let todayMinMax = todayTemperatureRange(from: info)
+
+    return VStack(alignment: .leading, spacing: 8) {
+      HStack(spacing: 8) {
+        Image(systemName: forecast.condition.sfSymbolName)
+          .symbolRenderingMode(.multicolor)
+          .font(.system(size: 24))
+
+        Text("\(Int(forecast.temperature.rounded()))°")
+          .font(.system(size: 24, weight: .bold))
+          .foregroundStyle(.primary)
+
+        Text(forecast.condition.description)
+          .font(.system(size: 15, weight: .medium))
+          .foregroundStyle(.secondary)
+
+        Spacer()
+
+        if let (low, high) = todayMinMax {
+          Text("↑\(Int(high.rounded()))° ↓\(Int(low.rounded()))°")
+            .font(.system(size: 14, weight: .medium))
+            .foregroundStyle(.secondary)
+        }
+      }
+
+      HStack(spacing: 16) {
+        Label(
+          LocalizedStrings.Calendar.weatherFeelsLike("\(Int(forecast.feelsLikeTemperature.rounded()))°"),
+          systemImage: "thermometer.medium"
+        )
+        Label("\(forecast.humidity)%", systemImage: "humidity.fill")
+        Label(
+          String(format: "%.1fm/s", forecast.windSpeed),
+          systemImage: "wind"
+        )
+      }
+      .font(.system(size: 12, weight: .medium))
+      .foregroundStyle(.secondary)
+    }
+    .padding(16)
+    .adaptiveGlassBackground(cornerRadius: 16)
+  }
+
+  private func todayTemperatureRange(from info: WeatherInfo) -> (min: Double, max: Double)? {
+    let calendar = Calendar.promiseDisplay
+    let today = Date()
+
+    // 1. dailyForecasts에서 오늘 데이터 확인
+    if let daily = info.dailyForecasts.first(where: { calendar.isDate($0.date, inSameDayAs: today) }) {
+      return (daily.minTemperature, daily.maxTemperature)
+    }
+
+    // 2. hourlyForecasts에서 오늘 데이터로 계산
+    let todayForecasts = info.hourlyForecasts.filter { calendar.isDate($0.dateTime, inSameDayAs: today) }
+    guard todayForecasts.count >= 2 else { return nil }
+
+    let minTemp = todayForecasts.map(\.temperature).min() ?? 0
+    let maxTemp = todayForecasts.map(\.temperature).max() ?? 0
+    return (minTemp, maxTemp)
+  }
+
+  private func weatherHourlySection(_ forecasts: [HourlyForecast]) -> some View {
+    let calendar = Calendar.promiseDisplay
+    let today = Date()
+    let grouped = Dictionary(grouping: forecasts) { forecast in
+      calendar.startOfDay(for: forecast.dateTime)
+    }
+    let sortedDays = grouped.keys.sorted()
+
+    return VStack(alignment: .leading, spacing: 16) {
+      Text(LocalizedStrings.Calendar.weatherHourlyTitle)
+        .font(.system(size: 15, weight: .semibold))
+        .foregroundStyle(.primary)
+
+      ForEach(sortedDays, id: \.self) { day in
+        if let dayForecasts = grouped[day] {
+          VStack(alignment: .leading, spacing: 8) {
+            Text(weatherDayLabel(for: day, today: today, calendar: calendar))
+              .font(.system(size: 13, weight: .semibold))
+              .foregroundStyle(.secondary)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+              HStack(spacing: 12) {
+                ForEach(Array(dayForecasts.enumerated()), id: \.offset) { _, forecast in
+                  weatherHourlyItem(forecast)
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  private func weatherDayLabel(for date: Date, today: Date, calendar: Calendar) -> String {
+    if calendar.isDate(date, inSameDayAs: today) {
+      return LocalizedStrings.Calendar.weatherToday
+    } else if let tomorrow = calendar.date(byAdding: .day, value: 1, to: today),
+              calendar.isDate(date, inSameDayAs: tomorrow) {
+      return LocalizedStrings.Calendar.weatherTomorrow
+    } else {
+      return Formatters.shortDate.string(from: date)
+    }
+  }
+
+  private func weatherHourlyItem(_ forecast: HourlyForecast) -> some View {
+    VStack(spacing: 6) {
+      Text(Formatters.hourOnly.string(from: forecast.dateTime))
+        .font(.system(size: 12, weight: .medium))
+        .foregroundStyle(.secondary)
+
+      Image(systemName: forecast.condition.sfSymbolName)
+        .symbolRenderingMode(.multicolor)
+        .font(.system(size: 22))
+        .frame(height: 28)
+
+      Text("\(Int(forecast.temperature.rounded()))°")
+        .font(.system(size: 15, weight: .semibold))
+        .foregroundStyle(.primary)
+
+      if forecast.precipitationProbability > 0 {
+        Text("\(forecast.precipitationProbability)%")
+          .font(.system(size: 11))
+          .foregroundStyle(.blue)
+      }
+    }
+    .frame(width: 56)
+    .padding(.vertical, 12)
+    .adaptiveGlassBackground(cornerRadius: 12)
+  }
+
+  private func weatherSuggestionsSection(_ suggestions: [WeatherSuggestion]) -> some View {
+    VStack(alignment: .leading, spacing: 12) {
+      Text(LocalizedStrings.Calendar.weatherSuggestionsTitle)
+        .font(.system(size: 15, weight: .semibold))
+        .foregroundStyle(.primary)
+
+      VStack(spacing: 8) {
+        ForEach(Array(suggestions.enumerated()), id: \.offset) { _, suggestion in
+          HStack(spacing: 12) {
+            Image(systemName: suggestion.icon)
+              .font(.system(size: 16))
+              .foregroundStyle(suggestion.color)
+              .frame(width: 32, height: 32)
+              .background(suggestion.color.opacity(0.12))
+              .clipShape(Circle())
+
+            Text(suggestion.message)
+              .font(.system(size: 13))
+              .foregroundStyle(.primary)
+              .frame(maxWidth: .infinity, alignment: .leading)
+          }
+          .padding(12)
+          .adaptiveGlassBackground(cornerRadius: 12)
+        }
+      }
     }
   }
 
@@ -601,6 +863,9 @@ struct CalendarOverlayView: View {
     static let weatherReferenceTime: DateFormatter = {
       let f = DateFormatter(); f.locale = .current; f.timeZone = displayTimeZone; f.setLocalizedDateFormatFromTemplate("j:mm"); return f
     }()
+    static let hourOnly: DateFormatter = {
+      let f = DateFormatter(); f.locale = .current; f.timeZone = displayTimeZone; f.setLocalizedDateFormatFromTemplate("j"); return f
+    }()
   }
 
   // MARK: - Computed Helpers
@@ -644,6 +909,7 @@ private extension String {
       condition: .clear, precipitationProbability: 10, humidity: 50, windSpeed: 3.0
     )),
     weatherLocationText: "서울 중구",
+    weatherInfo: nil,
     calendarMode: .monthly,
     scheduleItems: [],
     prevDayScheduleItems: [],
@@ -671,6 +937,7 @@ private extension String {
     nextMonthDays: [],
     weatherState: .needsPermission,
     weatherLocationText: nil,
+    weatherInfo: nil,
     calendarMode: .weekly,
     scheduleItems: [],
     prevDayScheduleItems: [],

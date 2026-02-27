@@ -1200,6 +1200,132 @@
         }
       }
     },
+    "calendar.weather.detail.title" : {
+      "comment" : "날씨 상세 뷰 타이틀",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weather"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "날씨"
+          }
+        }
+      }
+    },
+    "calendar.weather.hourly.title" : {
+      "comment" : "시간별 예보 섹션 타이틀",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hourly Forecast"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "시간별 예보"
+          }
+        }
+      }
+    },
+    "calendar.weather.suggestions.title" : {
+      "comment" : "날씨 팁 섹션 타이틀",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weather Tips"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "날씨 팁"
+          }
+        }
+      }
+    },
+    "calendar.weather.today" : {
+      "comment" : "오늘",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Today"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "오늘"
+          }
+        }
+      }
+    },
+    "calendar.weather.tomorrow" : {
+      "comment" : "내일",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tomorrow"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "내일"
+          }
+        }
+      }
+    },
+    "calendar.weather.minMax" : {
+      "comment" : "최저/최고 기온 (%1$@ = 최저, %2$@ = 최고)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ / %2$@"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ / %2$@"
+          }
+        }
+      }
+    },
+    "calendar.weather.feelsLike" : {
+      "comment" : "체감 온도 레이블 (%@ = 온도)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feels %@"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "체감 %@"
+          }
+        }
+      }
+    },
     "calendar.weekday.fri" : {
       "comment" : "금요일 약어",
       "extractionState" : "manual",
