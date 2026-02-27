@@ -57,14 +57,12 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
     let coordinator = context.coordinator
     coordinator.parent = self
 
-    // isCompactMode 변경 시 높이 업데이트
-    if vc.isCompactMode != isCompactMode {
-      vc.updateCompactMode(isCompactMode)
-    }
-
-    // showAllIndicators 변경 감지
-    if vc.showAllIndicators != showAllIndicators {
-      vc.showAllIndicators = showAllIndicators
+    // 모드 전환 시 6행 유지 상태로 높이/제약만 단계적으로 전환
+    if vc.isCompactMode != isCompactMode || vc.showAllIndicators != showAllIndicators {
+      vc.updateLayoutMode(
+        isCompactMode: isCompactMode,
+        showAllIndicators: showAllIndicators
+      )
     }
 
     let currentMonthStart = currentMonth.startOfMonth
@@ -194,6 +192,7 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
     private let contentView = UIView()
     private var pageHostingControllers: [UIHostingController<MonthGridContent>] = []
     private var heightConstraints: [NSLayoutConstraint] = []
+    private var bottomConstraints: [NSLayoutConstraint] = []
 
     // Grid layout constants
     var isCompactMode: Bool = false
@@ -281,13 +280,16 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
           hostingVC.view.widthAnchor.constraint(equalTo: contentView.widthAnchor, multiplier: pageWidthMultiplier),
         ]
 
+        let heightConstraint = hostingVC.view.heightAnchor.constraint(equalToConstant: fullGridHeight)
+        let bottomConstraint = hostingVC.view.bottomAnchor.constraint(equalTo: contentView.bottomAnchor)
+        heightConstraints.append(heightConstraint)
+        bottomConstraints.append(bottomConstraint)
+
         if showAllIndicators {
           // 페이지가 가용 높이를 채우도록 — 내부 ScrollView가 오버플로 처리
-          constraints.append(hostingVC.view.bottomAnchor.constraint(equalTo: contentView.bottomAnchor))
+          constraints.append(bottomConstraint)
         } else {
           // 고정 높이
-          let heightConstraint = hostingVC.view.heightAnchor.constraint(equalToConstant: fullGridHeight)
-          heightConstraints.append(heightConstraint)
           constraints.append(heightConstraint)
         }
 
@@ -339,13 +341,81 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
       }
     }
 
-    func updateCompactMode(_ isCompactMode: Bool) {
+    func updateLayoutMode(isCompactMode: Bool, showAllIndicators: Bool) {
+      let wasExpanded = self.showAllIndicators
+      let isExpanding = !wasExpanded && showAllIndicators
+      let isCollapsing = wasExpanded && !showAllIndicators
+
+      self.showAllIndicators = showAllIndicators
+
+      if isExpanding {
+        // 1) 고정 높이 상태에서 row 높이를 먼저 키워 아래로 내려가는 모션을 만든다.
+        setExpandedConstraintMode(false)
+        self.isCompactMode = isCompactMode
+        updateHeightConstraintConstants()
+
+        UIView.animate(
+          withDuration: 0.28,
+          delay: 0,
+          options: [.curveEaseInOut, .beginFromCurrentState, .allowUserInteraction]
+        ) {
+          self.view.layoutIfNeeded()
+        } completion: { _ in
+          // 2) 모션 후 expanded 제약으로 전환
+          self.setExpandedConstraintMode(true)
+          UIView.animate(
+            withDuration: 0.18,
+            delay: 0,
+            options: [.curveEaseInOut, .beginFromCurrentState, .allowUserInteraction]
+          ) {
+            self.view.layoutIfNeeded()
+          }
+        }
+        return
+      }
+
+      if isCollapsing {
+        // expanded -> fixed 높이로 되돌린 뒤 compact row로 축소
+        self.isCompactMode = false
+        updateHeightConstraintConstants()
+        setExpandedConstraintMode(false)
+        view.layoutIfNeeded()
+
+        self.isCompactMode = isCompactMode
+        updateHeightConstraintConstants()
+        UIView.animate(
+          withDuration: 0.28,
+          delay: 0,
+          options: [.curveEaseInOut, .beginFromCurrentState, .allowUserInteraction]
+        ) {
+          self.view.layoutIfNeeded()
+        }
+        return
+      }
+
       self.isCompactMode = isCompactMode
+      updateHeightConstraintConstants()
+      UIView.animate(
+        withDuration: 0.28,
+        delay: 0,
+        options: [.curveEaseInOut, .beginFromCurrentState, .allowUserInteraction]
+      ) {
+        self.view.layoutIfNeeded()
+      }
+    }
+
+    private func updateHeightConstraintConstants() {
       let newHeight = fullGridHeight
       for constraint in heightConstraints {
         constraint.constant = newHeight
       }
-      view.layoutIfNeeded()
+    }
+
+    private func setExpandedConstraintMode(_ isExpanded: Bool) {
+      for (heightConstraint, bottomConstraint) in zip(heightConstraints, bottomConstraints) {
+        heightConstraint.isActive = !isExpanded
+        bottomConstraint.isActive = isExpanded
+      }
     }
 
     func recenterToCurrentPage(animated: Bool) {
@@ -399,21 +469,25 @@ struct MonthGridContent: View {
   private let columns = Array(repeating: GridItem(.flexible(), spacing: 0), count: 7)
 
   var body: some View {
-    if showAllIndicators {
-      // Expanded: 페이지 내부 세로 스크롤 (HomeOverlay 패턴 — 고정 높이 페이저 + 내부 스크롤)
-      ScrollView(.vertical, showsIndicators: false) {
+    Group {
+      if showAllIndicators {
+        // Expanded: 페이지 내부 세로 스크롤 (HomeOverlay 패턴 — 고정 높이 페이저 + 내부 스크롤)
+        ScrollView(.vertical, showsIndicators: false) {
+          gridContent
+        }
+      } else {
         gridContent
       }
-    } else {
-      gridContent
     }
+    .animation(.spring(response: 0.32, dampingFraction: 0.82), value: isCompactMode)
+    .animation(.spring(response: 0.32, dampingFraction: 0.82), value: showAllIndicators)
   }
 
   private var gridContent: some View {
     VStack(spacing: 8) {
       // 날짜 그리드
       LazyVGrid(columns: columns, spacing: 6) {
-        ForEach(calendarDates, id: \.self) { date in
+        ForEach(Array(calendarDates.enumerated()), id: \.offset) { _, date in
           CalendarIndicatorDayCell(
             date: date,
             isSelected: isCurrentMonth(date) && monthGridCalendar.isDate(date, inSameDayAs: selectedDate),
