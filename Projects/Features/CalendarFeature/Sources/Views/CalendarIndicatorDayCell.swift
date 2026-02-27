@@ -118,9 +118,28 @@ struct CalendarIndicatorDayCell: View {
 
       // 인디케이터 카드들 — 각각 탭 + 롱프레스
       expandedInteractiveArea
+
+      // 하단 빈 공간 — 롱프레스: 일 프리뷰 + 생성 메뉴
+      Spacer(minLength: 0)
+        .contentShape(Rectangle())
+        .onTapGesture { onTap() }
+        .contextMenu {
+          Button {
+            onDayCreatePersonalEvent?(date)
+          } label: {
+            Label(LocalizedStrings.Calendar.addPersonalEvent, systemImage: "plus.circle")
+          }
+          Button {
+            onDayCreatePromise?(date)
+          } label: {
+            Label(LocalizedStrings.Calendar.createPromise, systemImage: "person.2.circle")
+          }
+        } preview: {
+          ExpandedDayPreviewView(date: date, indicators: scheduleIndicators)
+        }
     }
     .frame(minHeight: 46, alignment: .top)
-    .frame(maxHeight: .infinity, alignment: .top)
+    .frame(maxHeight: .infinity)
     .frame(maxWidth: .infinity, alignment: .top)
     .opacity(isCurrentMonth ? 1 : 0.3)
   }
