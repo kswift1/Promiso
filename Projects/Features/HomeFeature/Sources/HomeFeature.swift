@@ -392,6 +392,9 @@ extension Home {
           _ = state.path.popLast()
           return .send(.delegate(.navigateToGroupWithPromise(groupId: groupId, promiseId: "")))
 
+        case .path(.element(id: _, action: .notificationCenter(.delegate(.refreshBadgeCount)))):
+          return .send(.internal(.fetchUnreadNotificationCount))
+
         case .path:
           return .none
         }

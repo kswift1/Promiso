@@ -121,6 +121,8 @@ extension NotificationCenter {
         case navigateToGroup(groupId: String)
         /// 닫기
         case dismiss
+        /// 뱃지 카운트 갱신 요청
+        case refreshBadgeCount
       }
     }
 
@@ -327,6 +329,7 @@ extension NotificationCenter {
               )
               notifications[index] = updated
               state.notificationsState = .loaded(notifications)
+              return .send(.delegate(.refreshBadgeCount))
             }
             return .none
 
@@ -352,6 +355,7 @@ extension NotificationCenter {
                 }
                 state.notificationsState = .loaded(notifications)
               }
+              return .send(.delegate(.refreshBadgeCount))
             case .failure(let error):
               state.toastMessage = ToastMessage(
                 type: .error,
@@ -359,8 +363,8 @@ extension NotificationCenter {
                 subtitle: error.localizedDescription,
                 position: .top
               )
+              return .none
             }
-            return .none
 
           case .deleteCompleted(let deletedIds, let result):
             state.isDeleting = false
@@ -372,6 +376,7 @@ extension NotificationCenter {
                 state.selectedNotificationIds = []
                 state.isEditMode = false
               }
+              return .send(.delegate(.refreshBadgeCount))
             case .failure(let error):
               state.toastMessage = ToastMessage(
                 type: .error,
@@ -379,8 +384,8 @@ extension NotificationCenter {
                 subtitle: error.localizedDescription,
                 position: .top
               )
+              return .none
             }
-            return .none
           }
 
         // MARK: - Delegate Actions
