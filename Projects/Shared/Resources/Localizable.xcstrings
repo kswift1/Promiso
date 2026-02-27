@@ -1236,6 +1236,24 @@
         }
       }
     },
+    "calendar.weather.weekly.title" : {
+      "comment" : "주간 예보 섹션 타이틀",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weekly Forecast"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "주간 예보"
+          }
+        }
+      }
+    },
     "calendar.weather.suggestions.title" : {
       "comment" : "날씨 팁 섹션 타이틀",
       "extractionState" : "manual",

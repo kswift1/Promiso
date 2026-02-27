@@ -1226,6 +1226,7 @@ public enum LocalizedStrings {
     // Weather Detail
     public static var weatherDetailTitle: String { String(localized: "calendar.weather.detail.title", bundle: bundle) }
     public static var weatherHourlyTitle: String { String(localized: "calendar.weather.hourly.title", bundle: bundle) }
+    public static var weatherWeeklyTitle: String { String(localized: "calendar.weather.weekly.title", bundle: bundle) }
     public static var weatherSuggestionsTitle: String { String(localized: "calendar.weather.suggestions.title", bundle: bundle) }
     public static func weatherFeelsLike(_ temp: String) -> String {
       String(localized: "calendar.weather.feelsLike", bundle: bundle)

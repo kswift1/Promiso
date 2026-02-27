@@ -146,11 +146,11 @@ struct CalendarOverlayView: View {
           .clipped()
       }
       .background(isWeatherDetail ? Color(.secondarySystemBackground) : Color(.systemBackground))
-      .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: 20, bottomTrailingRadius: 20))
+      .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: isWeatherDetail ? 0 : 20, bottomTrailingRadius: isWeatherDetail ? 0 : 20))
       .background(
-        UnevenRoundedRectangle(bottomLeadingRadius: 20, bottomTrailingRadius: 20)
+        UnevenRoundedRectangle(bottomLeadingRadius: isWeatherDetail ? 0 : 20, bottomTrailingRadius: isWeatherDetail ? 0 : 20)
           .fill(Color(.systemBackground))
-          .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 4)
+          .shadow(color: .black.opacity(isWeatherDetail ? 0 : 0.06), radius: 8, x: 0, y: 4)
           .mask {
             VStack(spacing: 0) {
               Color.clear
@@ -160,13 +160,15 @@ struct CalendarOverlayView: View {
       )
 
       // 상단 카드 아래 인셋 그라데이션
-      LinearGradient(
-        colors: [Color.black.opacity(0.02), Color.clear],
-        startPoint: .top,
-        endPoint: .bottom
-      )
-      .frame(height: 8)
-      .clipShape(UnevenRoundedRectangle(topLeadingRadius: 20, topTrailingRadius: 20))
+      if !isWeatherDetail {
+        LinearGradient(
+          colors: [Color.black.opacity(0.02), Color.clear],
+          startPoint: .top,
+          endPoint: .bottom
+        )
+        .frame(height: 8)
+        .clipShape(UnevenRoundedRectangle(topLeadingRadius: 20, topTrailingRadius: 20))
+      }
 
       // MARK: 하단 섹션 (날짜 그리드 + 날씨) — 회색, 꽉 채움
       if isWeekly {
@@ -550,16 +552,13 @@ struct CalendarOverlayView: View {
               Text("\(Int(weather.temperature.rounded()))°")
                 .font(.system(size: 28, weight: .bold))
                 .foregroundStyle(.white)
-              if let info = weatherInfo,
-                 let (low, high) = todayTemperatureRange(from: info) {
-                Text("↑\(Int(high.rounded()))° ↓\(Int(low.rounded()))°")
-                  .font(.system(size: 14, weight: .medium))
-                  .foregroundStyle(.white.opacity(0.7))
-              }
             }
-            Text(todayDateString)
-              .font(.system(size: 13))
-              .foregroundStyle(.white.opacity(0.7))
+            if let info = weatherInfo,
+               let (low, high) = todayTemperatureRange(from: info) {
+              Text("↑\(Int(high.rounded()))°  ↓\(Int(low.rounded()))°")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(.white.opacity(0.7))
+            }
           }
 
           Spacer(minLength: 8)
@@ -647,14 +646,11 @@ struct CalendarOverlayView: View {
         VStack(spacing: 16) {
           weatherDetailInfoBar(current, info: info)
 
-          if !info.hourlyForecasts.isEmpty {
-            weatherHourlySection(info.hourlyForecasts)
+          let dailySummaries = buildDailySummaries(from: info)
+          if !dailySummaries.isEmpty {
+            weatherDailySection(dailySummaries)
           }
 
-          let suggestions = WeatherSuggestion.from(forecast: current)
-          if !suggestions.isEmpty {
-            weatherSuggestionsSection(suggestions)
-          }
         }
       }
     }
@@ -704,6 +700,56 @@ struct CalendarOverlayView: View {
     .adaptiveGlassBackground(cornerRadius: 16)
   }
 
+  /// hourlyForecasts를 일별로 그룹핑하여 DailyForecast 배열 생성
+  /// hourlyForecasts가 비어있으면 dailyForecasts fallback
+  private func buildDailySummaries(from info: WeatherInfo) -> [DailyForecast] {
+    // dailyForecasts가 이미 있으면 그대로 사용
+    if !info.dailyForecasts.isEmpty {
+      return info.dailyForecasts
+    }
+
+    // hourlyForecasts를 날짜별로 그룹핑
+    let calendar = Calendar.promiseDisplay
+    let grouped = Dictionary(grouping: info.hourlyForecasts) { forecast in
+      calendar.startOfDay(for: forecast.dateTime)
+    }
+
+    return grouped.keys.sorted().compactMap { day -> DailyForecast? in
+      guard let forecasts = grouped[day], forecasts.count >= 2 else { return nil }
+
+      let minTemp = forecasts.map(\.temperature).min() ?? 0
+      let maxTemp = forecasts.map(\.temperature).max() ?? 0
+      let maxPrecip = forecasts.map(\.precipitationProbability).max() ?? 0
+
+      // 가장 심각한 날씨 상태를 대표 조건으로
+      let worstCondition = forecasts.map(\.condition)
+        .max(by: { conditionSeverity($0) < conditionSeverity($1) }) ?? .unknown
+
+      return DailyForecast(
+        date: day,
+        minTemperature: minTemp,
+        maxTemperature: maxTemp,
+        amCondition: worstCondition,
+        pmCondition: worstCondition,
+        amPrecipitationProbability: maxPrecip,
+        pmPrecipitationProbability: maxPrecip
+      )
+    }
+  }
+
+  private func conditionSeverity(_ condition: WeatherCondition) -> Int {
+    switch condition {
+    case .clear: return 0
+    case .cloudy: return 1
+    case .overcast: return 2
+    case .shower: return 3
+    case .rain: return 4
+    case .rainSnow: return 5
+    case .snow: return 6
+    case .unknown: return -1
+    }
+  }
+
   private func todayTemperatureRange(from info: WeatherInfo) -> (min: Double, max: Double)? {
     let calendar = Calendar.promiseDisplay
     let today = Date()
@@ -722,103 +768,75 @@ struct CalendarOverlayView: View {
     return (minTemp, maxTemp)
   }
 
-  private func weatherHourlySection(_ forecasts: [HourlyForecast]) -> some View {
+  private func weatherDailySection(_ forecasts: [DailyForecast]) -> some View {
     let calendar = Calendar.promiseDisplay
     let today = Date()
-    let grouped = Dictionary(grouping: forecasts) { forecast in
-      calendar.startOfDay(for: forecast.dateTime)
-    }
-    let sortedDays = grouped.keys.sorted()
 
-    return VStack(alignment: .leading, spacing: 16) {
-      Text(LocalizedStrings.Calendar.weatherHourlyTitle)
+    return VStack(alignment: .leading, spacing: 12) {
+      Text(LocalizedStrings.Calendar.weatherWeeklyTitle)
         .font(.system(size: 15, weight: .semibold))
         .foregroundStyle(.primary)
 
-      ForEach(sortedDays, id: \.self) { day in
-        if let dayForecasts = grouped[day] {
-          VStack(alignment: .leading, spacing: 8) {
-            Text(weatherDayLabel(for: day, today: today, calendar: calendar))
-              .font(.system(size: 13, weight: .semibold))
+      VStack(spacing: 0) {
+        ForEach(Array(forecasts.enumerated()), id: \.offset) { index, daily in
+          HStack(spacing: 0) {
+            Text(dailyRowLabel(for: daily.date, today: today, calendar: calendar))
+              .font(.system(size: 14, weight: .medium))
+              .foregroundStyle(.primary)
+              .frame(width: 36, alignment: .leading)
+
+            Image(systemName: daily.representativeCondition.sfSymbolName)
+              .symbolRenderingMode(.multicolor)
+              .font(.system(size: 18))
+              .frame(width: 28)
+
+            if daily.maxPrecipitationProbability > 0 {
+              Text("\(daily.maxPrecipitationProbability)%")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(.blue)
+                .frame(width: 36, alignment: .leading)
+            } else {
+              Spacer().frame(width: 36)
+            }
+
+            Spacer()
+
+            Text("\(Int(daily.minTemperature.rounded()))°")
+              .font(.system(size: 14))
               .foregroundStyle(.secondary)
 
-            ScrollView(.horizontal, showsIndicators: false) {
-              HStack(spacing: 12) {
-                ForEach(Array(dayForecasts.enumerated()), id: \.offset) { _, forecast in
-                  weatherHourlyItem(forecast)
-                }
-              }
-            }
+            Text(" / ")
+              .font(.system(size: 12))
+              .foregroundStyle(.tertiary)
+
+            Text("\(Int(daily.maxTemperature.rounded()))°")
+              .font(.system(size: 14, weight: .semibold))
+              .foregroundStyle(.primary)
+          }
+          .padding(.vertical, 10)
+
+          if index < forecasts.count - 1 {
+            Divider().padding(.horizontal, 4)
           }
         }
       }
+      .padding(.horizontal, 12)
+      .padding(.vertical, 4)
+      .adaptiveGlassBackground(cornerRadius: 16)
     }
   }
 
-  private func weatherDayLabel(for date: Date, today: Date, calendar: Calendar) -> String {
+  private func dailyRowLabel(for date: Date, today: Date, calendar: Calendar) -> String {
     if calendar.isDate(date, inSameDayAs: today) {
       return LocalizedStrings.Calendar.weatherToday
     } else if let tomorrow = calendar.date(byAdding: .day, value: 1, to: today),
               calendar.isDate(date, inSameDayAs: tomorrow) {
       return LocalizedStrings.Calendar.weatherTomorrow
     } else {
-      return Formatters.shortDate.string(from: date)
+      return Formatters.shortWeekday.string(from: date)
     }
   }
 
-  private func weatherHourlyItem(_ forecast: HourlyForecast) -> some View {
-    VStack(spacing: 6) {
-      Text(Formatters.hourOnly.string(from: forecast.dateTime))
-        .font(.system(size: 12, weight: .medium))
-        .foregroundStyle(.secondary)
-
-      Image(systemName: forecast.condition.sfSymbolName)
-        .symbolRenderingMode(.multicolor)
-        .font(.system(size: 22))
-        .frame(height: 28)
-
-      Text("\(Int(forecast.temperature.rounded()))°")
-        .font(.system(size: 15, weight: .semibold))
-        .foregroundStyle(.primary)
-
-      if forecast.precipitationProbability > 0 {
-        Text("\(forecast.precipitationProbability)%")
-          .font(.system(size: 11))
-          .foregroundStyle(.blue)
-      }
-    }
-    .frame(width: 56)
-    .padding(.vertical, 12)
-    .adaptiveGlassBackground(cornerRadius: 12)
-  }
-
-  private func weatherSuggestionsSection(_ suggestions: [WeatherSuggestion]) -> some View {
-    VStack(alignment: .leading, spacing: 12) {
-      Text(LocalizedStrings.Calendar.weatherSuggestionsTitle)
-        .font(.system(size: 15, weight: .semibold))
-        .foregroundStyle(.primary)
-
-      VStack(spacing: 8) {
-        ForEach(Array(suggestions.enumerated()), id: \.offset) { _, suggestion in
-          HStack(spacing: 12) {
-            Image(systemName: suggestion.icon)
-              .font(.system(size: 16))
-              .foregroundStyle(suggestion.color)
-              .frame(width: 32, height: 32)
-              .background(suggestion.color.opacity(0.12))
-              .clipShape(Circle())
-
-            Text(suggestion.message)
-              .font(.system(size: 13))
-              .foregroundStyle(.primary)
-              .frame(maxWidth: .infinity, alignment: .leading)
-          }
-          .padding(12)
-          .adaptiveGlassBackground(cornerRadius: 12)
-        }
-      }
-    }
-  }
 
   private func weatherGradient(for condition: WeatherCondition) -> LinearGradient {
     switch condition {
@@ -865,6 +883,9 @@ struct CalendarOverlayView: View {
     }()
     static let hourOnly: DateFormatter = {
       let f = DateFormatter(); f.locale = .current; f.timeZone = displayTimeZone; f.setLocalizedDateFormatFromTemplate("j"); return f
+    }()
+    static let shortWeekday: DateFormatter = {
+      let f = DateFormatter(); f.locale = .current; f.timeZone = displayTimeZone; f.dateFormat = "E"; return f
     }()
   }
 
