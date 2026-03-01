@@ -51,7 +51,7 @@ private struct UpdateUserSettingsRequest: Encodable {
 // MARK: - Data Source
 
 /// Firebase Functions를 통한 사용자 프로필 데이터 관리
-public final class UserProfileRemoteDataSource: UserProfileRemoteDataSourceProtocol, @unchecked Sendable {
+public actor UserProfileRemoteDataSource: UserProfileRemoteDataSourceProtocol {
   private let functions: Functions
   private let storage: Storage
   private let db: Firestore
@@ -125,34 +125,36 @@ public final class UserProfileRemoteDataSource: UserProfileRemoteDataSourceProto
   public func getUsersByIds(userIds: [String]) async throws -> [UserPublicModel] {
     guard !userIds.isEmpty else { return [] }
 
-    // 병렬로 각 사용자 조회
-    let results = await withTaskGroup(of: (String, Result<UserProfile, Error>).self) { group in
-      for userId in userIds {
-        group.addTask {
-          let result = await Result {
-            try await self.getProfileModel(uid: userId, isPublic: true)
+    let indexedUsers = await withTaskGroup(of: (Int, UserPublicModel?).self) { group in
+      for (index, userId) in userIds.enumerated() {
+        group.addTask { [self] in
+          do {
+            let profile = try await getProfileModel(uid: userId, isPublic: true)
+            if case .public(let userPublic) = profile {
+              return (index, userPublic)
+            }
+          } catch {
+            return (index, nil)
           }
-          return (userId, result)
+          return (index, nil)
         }
       }
 
-      var profiles: [(String, UserProfile)] = []
-      for await (userId, result) in group {
-        if case .success(let profile) = result {
-          profiles.append((userId, profile))
+      var results: [(Int, UserPublicModel)] = []
+      results.reserveCapacity(userIds.count)
+
+      for await (index, userPublic) in group {
+        if let userPublic {
+          results.append((index, userPublic))
         }
       }
-      return profiles
+
+      return results
     }
 
-    // UserPublicModel으로 변환 (순서는 원본 userIds 순서 유지)
-    return userIds.compactMap { userId in
-      guard let (_, profile) = results.first(where: { $0.0 == userId }),
-            case .public(let userPublic) = profile else {
-        return nil
-      }
-      return userPublic
-    }
+    return indexedUsers
+      .sorted { $0.0 < $1.0 }
+      .map(\.1)
   }
 
   /// 사용자 프로필 업데이트
@@ -188,7 +190,7 @@ public final class UserProfileRemoteDataSource: UserProfileRemoteDataSourceProto
     do {
       _ = try await profileImageRef.putDataAsync(uploadData, metadata: metadata)
     } catch {
-      print("❌ Storage upload error:", error)
+      AppLogger.general.error("Storage upload error: \(error.localizedDescription)")
       throw UserProfileError.uploadFailed
     }
 

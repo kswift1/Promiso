@@ -64,7 +64,7 @@ public struct PromiseDetailExpandableText: View {
             isExpanded.toggle()
           }
         } label: {
-          Text(isExpanded ? "접기" : "더보기")
+          Text(isExpanded ? LocalizedStrings.Common.collapse : LocalizedStrings.Common.seeMore)
             .font(.system(size: 13, weight: .medium))
             .foregroundStyle(.blue)
         }
@@ -121,15 +121,9 @@ public struct PromiseDetailEmojiInfoRow: View {
 
 public struct PromiseDetailLocationInfoRow: View {
   private let location: LocationInfoModel
-  private let onDirectionsTapped: () -> Void
 
-  public init(location: LocationInfoModel, onDirectionsTapped: @escaping () -> Void) {
+  public init(location: LocationInfoModel) {
     self.location = location
-    self.onDirectionsTapped = onDirectionsTapped
-  }
-
-  private var hasCoordinates: Bool {
-    location.latitude != nil && location.longitude != nil
   }
 
   public var body: some View {
@@ -146,27 +140,10 @@ public struct PromiseDetailLocationInfoRow: View {
           Text(address)
             .font(.system(size: 13))
             .foregroundStyle(.secondary)
-            .lineLimit(1)
         }
       }
 
       Spacer()
-
-      if hasCoordinates {
-        Button(action: onDirectionsTapped) {
-          HStack(spacing: 4) {
-            Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
-              .font(.system(size: 14))
-            Text("길찾기")
-              .font(.system(size: 14, weight: .medium))
-          }
-          .foregroundStyle(.white)
-          .padding(.horizontal, 12)
-          .padding(.vertical, 6)
-          .background(Color.pmindigo.n500)
-          .clipShape(Capsule())
-        }
-      }
     }
     .padding(.horizontal, 16)
     .padding(.vertical, 14)
@@ -312,13 +289,13 @@ public struct PromiseDetailStatusBadgeView: View {
   private var displayText: String {
     switch status {
     case .needResponse:
-      return "응답 필요"
+      return LocalizedStrings.Shared.statusNeedResponse
     case .responded:
-      return "확정 대기"
+      return LocalizedStrings.Shared.statusWaitingConfirm
     case .confirmed:
-      return "확정됨"
+      return LocalizedStrings.Shared.statusConfirmed
     case .failed:
-      return "미성사"
+      return LocalizedStrings.Shared.statusFailed
     }
   }
 

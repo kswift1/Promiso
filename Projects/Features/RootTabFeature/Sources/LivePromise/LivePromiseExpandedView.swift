@@ -263,11 +263,11 @@ extension LivePromise {
         HStack(spacing: 10) {
           GroupThumbnailView(
             imageUrl: groupImageUrl,
-            name: groupName ?? "그룹",
+            name: groupName ?? LocalizedStrings.LivePromise.groupFallback,
             size: 32
           )
 
-          Text(groupName ?? "그룹")
+          Text(groupName ?? LocalizedStrings.LivePromise.groupFallback)
             .font(.system(size: 13, weight: .semibold))
             .foregroundColor(.primary)
 
@@ -412,7 +412,7 @@ extension LivePromise {
     }
 
     private func formatDateText(_ date: Date) -> String {
-      KoreanDateFormatters.sectionHeader.string(from: date)
+      LocalizedDateFormatters.sectionHeader.string(from: date)
     }
 
     private func formatTimeText(_ date: Date) -> String {
@@ -436,15 +436,15 @@ extension LivePromise {
         }
 
         if hours > 0 {
-          Text("\(hours)시간 \(minutes)분")
+          Text(LocalizedStrings.LivePromise.hoursMinutes(hours, minutes))
             .font(.title3.weight(.bold).monospacedDigit())
         } else {
-          Text("\(minutes)분")
+          Text(LocalizedStrings.LivePromise.minutesOnly(minutes))
             .font(.title3.weight(.bold).monospacedDigit())
         }
 
         if isOverdue {
-          Text("지남")
+          Text(LocalizedStrings.LivePromise.elapsed)
             .font(.subheadline.weight(.medium))
         }
       }
@@ -457,7 +457,7 @@ extension LivePromise {
           .playing(loopMode: .loop)
           .frame(width: 14, height: 10)
 
-        Text("실시간")
+        Text(LocalizedStrings.LivePromise.realtime)
           .font(.system(size: 10, weight: .medium))
           .foregroundStyle(colorScheme == .dark ? Color.pmindigo.n200 : Color.pmindigo.n600)
       }
@@ -480,7 +480,7 @@ extension LivePromise {
         HStack(spacing: 8) {
           Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
             .font(.system(size: 16, weight: .semibold))
-          Text("길찾기")
+          Text(LocalizedStrings.LivePromise.directions)
             .font(.system(size: 15, weight: .semibold))
         }
         .foregroundStyle(.white)
@@ -555,14 +555,14 @@ extension LivePromise {
           Circle()
             .fill(Color.pmindigo.n500)
             .frame(width: 8, height: 8)
-          Text("참가자 현황")
+          Text(LocalizedStrings.LivePromise.participantsStatus)
             .font(.subheadline.weight(.semibold))
             .foregroundStyle(primaryTextColor)
         }
 
         Spacer()
 
-        Text("\(store.data.arrivedCount)/\(store.data.participants.count) 도착")
+        Text(LocalizedStrings.LivePromise.arrivedCount(store.data.arrivedCount, store.data.participants.count))
           .font(.caption.weight(.medium))
           .foregroundStyle(secondaryTextColor)
       }
@@ -571,8 +571,8 @@ extension LivePromise {
 
     private var participantNotice: some View {
       VStack(alignment: .leading, spacing: 2) {
-        Text("도착 예정 시간은 참가자가 직접 입력한 예상 시간이에요.")
-        Text("실제 도착과 다를 수 있어요.")
+        Text(LocalizedStrings.LivePromise.etaNotice1)
+        Text(LocalizedStrings.LivePromise.etaNotice2)
       }
       .font(.caption2)
       .foregroundStyle(.tertiary)
@@ -611,7 +611,7 @@ extension LivePromise {
               .foregroundStyle(primaryTextColor)
 
             if isCurrentUser {
-              Text("나")
+              Text(LocalizedStrings.LivePromise.me)
                 .font(.caption2.weight(.bold))
                 .foregroundStyle(Color.pmindigo.n500)
                 .padding(.horizontal, 6)
@@ -637,7 +637,7 @@ extension LivePromise {
           etaBadge(for: participant, isLate: isLate)
 
           if isCurrentUser {
-            Text("변경")
+            Text(LocalizedStrings.LivePromise.changeAction)
               .font(.caption.weight(.medium))
               .foregroundStyle(secondaryTextColor)
           }
@@ -674,7 +674,7 @@ extension LivePromise {
               .foregroundStyle(.white)
 
             if isCurrentUser {
-              Text("나")
+              Text(LocalizedStrings.LivePromise.me)
                 .font(.caption2.weight(.bold))
                 .foregroundStyle(.white)
                 .padding(.horizontal, 6)
@@ -694,7 +694,7 @@ extension LivePromise {
           etaBadge(for: participant, isLate: isLate)
 
           if isCurrentUser {
-            Text("변경")
+            Text(LocalizedStrings.LivePromise.changeAction)
               .font(.caption.weight(.medium))
               .foregroundStyle(Color.white.opacity(0.6))
           }
@@ -767,7 +767,7 @@ extension LivePromise {
             HStack(spacing: 4) {
               Image(systemName: "checkmark")
                 .font(.caption.weight(.bold))
-              Text("도착")
+              Text(LocalizedStrings.LivePromise.arrived)
                 .font(.subheadline.weight(.semibold))
             }
             .foregroundStyle(Color.pmsuccess.n500)
@@ -786,7 +786,7 @@ extension LivePromise {
                   .fill(Color.pmindigo.n500)
                   .frame(width: 6, height: 6)
               }
-              Text("\(eta)분")
+              Text(LocalizedStrings.LivePromise.etaMinutes(eta))
                 .font(.subheadline.weight(.bold))
                 .foregroundStyle(isLate ? Color.pmerror.n500 : Color.pmindigo.n500)
             }
@@ -799,7 +799,7 @@ extension LivePromise {
           }
         } else {
           // 대기
-          Text("대기")
+          Text(LocalizedStrings.LivePromise.waiting)
             .font(.subheadline)
             .foregroundStyle(secondaryTextColor)
             .padding(.horizontal, 12)
@@ -816,30 +816,30 @@ extension LivePromise {
         // ETA 버튼들
         VStack(spacing: 12) {
           HStack(spacing: 12) {
-            etaSheetButton(title: "도착", emoji: "🏁", minutes: 0, color: Color.pmsuccess.n500)
-            etaSheetButton(title: "5분", emoji: nil, minutes: 5, color: Color.pmindigo.n500)
+            etaSheetButton(title: LocalizedStrings.LivePromise.etaArrived, emoji: "🏁", minutes: 0, color: Color.pmsuccess.n500)
+            etaSheetButton(title: LocalizedStrings.LivePromise.etaMinutes(5), emoji: nil, minutes: 5, color: Color.pmindigo.n500)
           }
 
           HStack(spacing: 12) {
-            etaSheetButton(title: "10분", emoji: nil, minutes: 10, color: Color.pmindigo.n500)
-            etaSheetButton(title: "15분", emoji: nil, minutes: 15, color: Color.pmindigo.n500)
+            etaSheetButton(title: LocalizedStrings.LivePromise.etaMinutes(10), emoji: nil, minutes: 10, color: Color.pmindigo.n500)
+            etaSheetButton(title: LocalizedStrings.LivePromise.etaMinutes(15), emoji: nil, minutes: 15, color: Color.pmindigo.n500)
           }
 
           HStack(spacing: 12) {
-            etaSheetButton(title: "20분", emoji: nil, minutes: 20, color: Color.pmwarning.n500)
-            etaSheetButton(title: "30분", emoji: nil, minutes: 30, color: Color.pmerror.n500)
+            etaSheetButton(title: LocalizedStrings.LivePromise.etaMinutes(20), emoji: nil, minutes: 20, color: Color.pmwarning.n500)
+            etaSheetButton(title: LocalizedStrings.LivePromise.etaMinutes(30), emoji: nil, minutes: 30, color: Color.pmerror.n500)
           }
         }
         .padding(.top, 12)
 
         // 직접 입력
         VStack(spacing: 8) {
-          Text("직접 입력")
+          Text(LocalizedStrings.LivePromise.directInput)
             .font(.subheadline.weight(.medium))
             .foregroundStyle(secondaryTextColor)
 
           HStack(spacing: 12) {
-            TextField("분", text: $store.customMinuteInput.sending(\.view.customMinuteInputChanged))
+            TextField(LocalizedStrings.LivePromise.minuteUnit, text: $store.customMinuteInput.sending(\.view.customMinuteInputChanged))
               .keyboardType(.numberPad)
               .multilineTextAlignment(.center)
               .font(.title2.weight(.bold))
@@ -852,7 +852,7 @@ extension LivePromise {
                 }
               }
 
-            Text("분 후 도착")
+            Text(LocalizedStrings.LivePromise.minutesUntilArrival)
               .font(.body)
               .foregroundStyle(secondaryTextColor)
 
@@ -861,7 +861,7 @@ extension LivePromise {
             Button {
               store.send(.view(.submitCustomMinute))
             } label: {
-              Text("확인")
+              Text(LocalizedStrings.LivePromise.confirm)
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(.white)
                 .padding(.horizontal, 20)
@@ -907,7 +907,7 @@ extension LivePromise {
     // MARK: - Helper Functions
 
     private func formatTime(_ date: Date) -> String {
-      KoreanDateFormatters.time12Hour.string(from: date)
+      LocalizedDateFormatters.time12Hour.string(from: date)
     }
 
     private func statusText(for participant: ParticipantState) -> String {

@@ -76,8 +76,8 @@ public struct CalendarEvent: Identifiable, Equatable, Sendable {
       return "종일"
     }
 
-    let start = KoreanDateFormatters.time.string(from: startDate)
-    let end = KoreanDateFormatters.time.string(from: endDate)
+    let start = LocalizedDateFormatters.time.string(from: startDate)
+    let end = LocalizedDateFormatters.time.string(from: endDate)
     return "\(start) - \(end)"
   }
 }
@@ -113,30 +113,13 @@ public struct NewCalendarEvent: Equatable, Sendable {
 
 // MARK: - Client Error
 
-public enum EventKitClientError: Error, Equatable, LocalizedError {
+public enum EventKitClientError: Error, Equatable {
   case accessDenied
   case accessRestricted
   case writeNotAllowed
   case saveFailed(String)
   case eventStoreError(String)
   case unknown(String)
-
-  public var errorDescription: String? {
-    switch self {
-    case .accessDenied:
-      return "캘린더 접근이 거부되었습니다. 설정에서 권한을 허용해주세요."
-    case .accessRestricted:
-      return "캘린더 접근이 제한되어 있습니다."
-    case .writeNotAllowed:
-      return "캘린더 쓰기 권한이 없습니다."
-    case .saveFailed(let message):
-      return "캘린더 저장 실패: \(message)"
-    case .eventStoreError(let message):
-      return "캘린더 오류: \(message)"
-    case .unknown(let message):
-      return "알 수 없는 오류: \(message)"
-    }
-  }
 }
 
 // MARK: - Client
@@ -220,16 +203,16 @@ extension EventKitClient: TestDependencyKey {
     openSettings: { }
   )
 
-  public static let testValue = Self(
-    authorizationStatus: unimplemented("\(Self.self).authorizationStatus", placeholder: .notDetermined),
-    requestAccess: unimplemented("\(Self.self).requestAccess", placeholder: false),
-    fetchEvents: unimplemented("\(Self.self).fetchEvents", placeholder: []),
-    addEvent: unimplemented("\(Self.self).addEvent", placeholder: ""),
-    updateEvent: unimplemented("\(Self.self).updateEvent"),
-    deleteEvent: unimplemented("\(Self.self).deleteEvent"),
-    getPromisoEvents: unimplemented("\(Self.self).getPromisoEvents", placeholder: []),
-    observeChanges: unimplemented("\(Self.self).observeChanges"),
-    openSettings: unimplemented("\(Self.self).openSettings")
+  public static let testValue: Self = Self(
+    authorizationStatus: { .notDetermined },
+    requestAccess: { false },
+    fetchEvents: { _, _ in [] },
+    addEvent: { _ in "" },
+    updateEvent: { _, _, _ in },
+    deleteEvent: { _ in },
+    getPromisoEvents: { [] },
+    observeChanges: { AsyncStream { _ in } },
+    openSettings: { }
   )
 }
 

@@ -5,7 +5,7 @@ import PromisoShared
 // MARK: - Data Source
 
 /// Firestore를 통한 사용자 설정 데이터 관리
-public final class UserSettingsRemoteDataSource: @unchecked Sendable {
+public actor UserSettingsRemoteDataSource {
   private let db: Firestore
 
   public init(db: Firestore = Firestore.firestore()) {

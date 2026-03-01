@@ -277,7 +277,6 @@ struct ButtonExamples: View {
   VStack(spacing: 24) {
     // Bounce Style
     Button {
-      print("Bounce tapped")
     } label: {
       Text("Bounce Style")
         .font(.headline)
@@ -290,7 +289,6 @@ struct ButtonExamples: View {
 
     // Scale Style
     Button {
-      print("Scale tapped")
     } label: {
       Text("Scale Style")
         .font(.headline)
@@ -303,7 +301,6 @@ struct ButtonExamples: View {
 
     // Haptic Bounce Style
     Button {
-      print("Haptic Bounce tapped")
     } label: {
       Text("Haptic Bounce")
         .font(.headline)
@@ -323,7 +320,6 @@ struct ButtonExamples: View {
           .foregroundStyle(.white)
       )
       .pressable {
-        print("Circle pressed")
       }
   }
   .padding()

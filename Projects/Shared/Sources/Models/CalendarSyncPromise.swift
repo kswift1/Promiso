@@ -85,9 +85,9 @@ public struct PromisoCalendarEvent: Equatable, Sendable {
 // MARK: - Promiso Calendar URL Utilities
 
 public enum PromisoCalendarTag {
-  /// URL 스킴: promiso://promise/{promiseId}?hash={contentHash}
-  /// 개인 일정: promiso://personal/{eventId}?hash={contentHash}
-  public static let scheme = "promiso"
+  /// URL 스킴: {scheme}://promise/{promiseId}?hash={contentHash}
+  /// 개인 일정: {scheme}://personal/{eventId}?hash={contentHash}
+  public static var scheme: String { AppConstants.Deeplink.scheme }
   public static let promiseHost = "promise"
   public static let personalHost = "personal"
 

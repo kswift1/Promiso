@@ -53,9 +53,17 @@ public enum GroupSortOption: Sendable, Equatable {
 
   /// 정렬 타입
   public enum SortType: String {
-    case joined = "가입일"
-    case name = "가나다"
-    case custom = "직접 설정"
+    case joined
+    case name
+    case custom
+
+    public var displayTitle: String {
+      switch self {
+      case .joined: return LocalizedStrings.GroupSortSettings.sortJoined
+      case .name: return LocalizedStrings.GroupSortSettings.sortName
+      case .custom: return LocalizedStrings.GroupSortSettings.sortCustom
+      }
+    }
 
     public var icon: String {
       switch self {

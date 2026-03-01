@@ -192,7 +192,7 @@ struct ETASegmentedControl: View {
       }
 
       // "직접 입력" 버튼 - 앱으로 이동 (항상 비선택 상태)
-      if let url = URL(string: "promiso://promise/\(attrs.promiseId)/eta") {
+      if let url = AppConstants.Deeplink.url(path: "promise/\(attrs.promiseId)/eta") {
         Link(destination: url) {
           Text("직접 입력")
             .font(.system(size: 11, weight: .medium))

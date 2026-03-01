@@ -1,5 +1,6 @@
 import SwiftUI
 import ComposableArchitecture
+import Clients
 import PromisoShared
 import PhotosUI
 
@@ -19,6 +20,8 @@ extension CreatePersonalEvent {
           VStack(spacing: 16) {
             essentialSection
             endTimeSection
+            // 일정 충돌 경고
+            conflictSection
             locationSection
             reminderSection
             descriptionSection
@@ -40,13 +43,16 @@ extension CreatePersonalEvent {
           }
           .padding(16)
           .padding(.bottom, 24)
+          .onAppear {
+            store.send(.view(.onAppear))
+          }
         }
         .auroraBackground()
-        .navigationTitle(store.mode == .create ? "새 일정" : "일정 수정")
+        .navigationTitle(store.mode == .create ? LocalizedStrings.Shared.newEvent : LocalizedStrings.Shared.editEvent)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
           ToolbarItem(placement: .cancellationAction) {
-            Button("취소") {
+            Button(LocalizedStrings.Common.cancel) {
               store.send(.view(.dismissTapped))
             }
           }
@@ -55,7 +61,7 @@ extension CreatePersonalEvent {
             if store.isSaving {
               ProgressView()
             } else {
-              Button(store.mode == .create ? "저장" : "수정") {
+              Button(store.mode == .create ? LocalizedStrings.Common.save : LocalizedStrings.Common.modify) {
                 store.send(.view(.saveTapped))
               }
               .fontWeight(.semibold)
@@ -66,13 +72,13 @@ extension CreatePersonalEvent {
         .keyboardDismissToolbar()
       }
       .alert(
-        "오류",
+        LocalizedStrings.Common.error,
         isPresented: Binding(
           get: { store.errorMessage != nil },
           set: { if !$0 { store.send(.view(.dismissError)) } }
         ),
         actions: {
-          Button("확인") { store.send(.view(.dismissError)) }
+          Button(LocalizedStrings.Common.confirm) { store.send(.view(.dismissError)) }
         },
         message: {
           if let message = store.errorMessage {
@@ -107,7 +113,7 @@ extension CreatePersonalEvent {
               }
               .frame(width: 40, height: 40)
 
-              TextField("일정 제목을 입력하세요", text: Binding(
+              TextField(LocalizedStrings.Shared.eventTitlePlaceholder, text: Binding(
                 get: { store.event.title },
                 set: { store.send(.view(.titleChanged($0))) }
               ))
@@ -131,7 +137,7 @@ extension CreatePersonalEvent {
               .foregroundStyle(Color.pmindigo.n500)
               .frame(width: 24)
 
-            Text("시작")
+            Text(LocalizedStrings.Common.start)
               .font(.body)
               .foregroundStyle(Color.pmtext.primary)
 
@@ -148,7 +154,7 @@ extension CreatePersonalEvent {
             )
             .labelsHidden()
             .tint(Color.pmindigo.n500)
-            .environment(\.locale, Locale(identifier: "ko_KR"))
+            .environment(\.locale, LocaleManager.appLocale)
           }
           .padding(.horizontal, 16)
           .padding(.vertical, 12)
@@ -167,7 +173,7 @@ extension CreatePersonalEvent {
             .foregroundStyle(Color.pmindigo.n500)
             .frame(width: 24)
 
-          Text("종료 시간")
+          Text(LocalizedStrings.Common.endTime)
             .font(.body)
             .foregroundStyle(Color.pmtext.primary)
 
@@ -205,7 +211,7 @@ extension CreatePersonalEvent {
             )
             .labelsHidden()
             .tint(Color.pmindigo.n500)
-            .environment(\.locale, Locale(identifier: "ko_KR"))
+            .environment(\.locale, LocaleManager.appLocale)
           }
           .padding(.horizontal, 16)
           .padding(.vertical, 12)
@@ -213,6 +219,16 @@ extension CreatePersonalEvent {
         }
       }
       .adaptiveGlassCard()
+    }
+
+    // MARK: - Conflict Warning Section
+
+    @ViewBuilder
+    private var conflictSection: some View {
+      ConflictWarningSection(
+        conflicts: store.conflicts,
+        isChecking: store.isCheckingConflicts
+      )
     }
 
     // MARK: - Location Section
@@ -270,7 +286,7 @@ extension CreatePersonalEvent {
                 .foregroundStyle(Color.pmindigo.n500)
                 .frame(width: 24)
 
-              Text("장소 추가")
+              Text(LocalizedStrings.Shared.addLocation)
                 .font(.body)
                 .foregroundStyle(Color.pmtext.primary)
 
@@ -303,7 +319,7 @@ extension CreatePersonalEvent {
           .foregroundStyle(Color.pmindigo.n500)
           .frame(width: 24)
 
-        Text("미리 알림")
+        Text(LocalizedStrings.Shared.reminderLabel)
           .font(.body)
           .foregroundStyle(Color.pmtext.primary)
 
@@ -314,9 +330,9 @@ extension CreatePersonalEvent {
             store.send(.view(.reminderOptionSelected(nil)), animation: .default)
           } label: {
             if currentOption == .none {
-              Label("없음", systemImage: "checkmark")
+              Label(LocalizedStrings.Shared.reminderNone, systemImage: "checkmark")
             } else {
-              Text("없음")
+              Text(LocalizedStrings.Shared.reminderNone)
             }
           }
 
@@ -382,7 +398,7 @@ extension CreatePersonalEvent {
     private var descriptionSection: some View {
       VStack(alignment: .trailing, spacing: 4) {
         TextField(
-          "메모를 입력하세요 (선택)",
+          LocalizedStrings.Shared.memoPlaceholder,
           text: Binding(
             get: { store.event.description ?? "" },
             set: { store.send(.view(.descriptionChanged($0))) }

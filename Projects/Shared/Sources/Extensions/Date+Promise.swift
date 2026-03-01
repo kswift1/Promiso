@@ -1,5 +1,7 @@
 import Foundation
 
+private let promiseDisplayTimeZone = TimeZone(identifier: "Asia/Seoul") ?? .current
+
 // MARK: - Promise-specific Date Extensions
 
 public extension Date {
@@ -8,60 +10,57 @@ public extension Date {
     let interval = self.timeIntervalSinceNow
     
     if interval < 0 {
-      return "지남"
+      return LocalizedStrings.DateFormat.passed
     } else if interval < 60 {
-      return "\(Int(interval))초 후"
+      return LocalizedStrings.DateFormat.secondsLater(Int(interval))
     } else if interval < 3600 {
       let minutes = Int(interval / 60)
-      return "\(minutes)분 후"
+      return LocalizedStrings.DateFormat.minutesLater(minutes)
     } else if interval < 86400 {
       let hours = Int(interval / 3600)
       let minutes = Int((interval.truncatingRemainder(dividingBy: 3600)) / 60)
       if minutes > 0 {
-        return "\(hours)시간 \(minutes)분 후"
+        return LocalizedStrings.DateFormat.hoursMinutesLater(hours, minutes)
       } else {
-        return "\(hours)시간 후"
+        return LocalizedStrings.DateFormat.hoursLater(hours)
       }
     } else {
       let days = Int(interval / 86400)
       let hours = Int((interval.truncatingRemainder(dividingBy: 86400)) / 3600)
       if hours > 0 {
-        return "\(days)일 \(hours)시간 후"
+        return LocalizedStrings.DateFormat.daysHoursLater(days, hours)
       } else {
-        return "\(days)일 후"
+        return LocalizedStrings.DateFormat.daysLater(days)
       }
     }
   }
   
   /// 약속 날짜를 표시용으로 포맷팅
   var promiseDateString: String {
-    let calendar = Calendar.current
+    let calendar = Calendar.promiseDisplay
     let now = Date()
     
     if calendar.isDateInToday(self) {
-      return "오늘"
+      return LocalizedStrings.DateFormat.today
     } else if calendar.isDateInTomorrow(self) {
-      return "내일"
+      return LocalizedStrings.DateFormat.tomorrow
     } else if calendar.isDateInYesterday(self) {
-      return "어제"
+      return LocalizedStrings.DateFormat.yesterday
     } else if let daysFromNow = calendar.dateComponents([.day], from: now, to: self).day {
       if abs(daysFromNow) < 7 {
         let formatter = DateFormatter()
         formatter.dateFormat = "EEEE"
-        formatter.locale = Locale(identifier: "ko_KR")
+        formatter.locale = LocaleManager.appLocale
         return formatter.string(from: self)
       }
     }
-    
-    let formatter = DateFormatter()
-    formatter.dateFormat = "M월 d일"
-    formatter.locale = Locale(identifier: "ko_KR")
-    return formatter.string(from: self)
+
+    return LocalizedDateFormatters.monthDayString(from: self)
   }
   
   /// 약속 시간을 표시용으로 포맷팅 (12/24시간 설정 적용)
   var promiseTimeString: String {
-    KoreanDateFormatters.timeString(from: self)
+    LocalizedDateFormatters.timeString(from: self)
   }
   
   /// 약속 날짜와 시간을 함께 표시
@@ -69,7 +68,7 @@ public extension Date {
     let dateString = promiseDateString
     let timeString = promiseTimeString
     
-    if dateString == "오늘" || dateString == "내일" || dateString == "어제" {
+    if dateString == LocalizedStrings.DateFormat.today || dateString == LocalizedStrings.DateFormat.tomorrow || dateString == LocalizedStrings.DateFormat.yesterday {
       return "\(dateString) \(timeString)"
     } else {
       return "\(dateString) \(timeString)"
@@ -133,11 +132,11 @@ public extension Date {
     let minutes = Int((interval.truncatingRemainder(dividingBy: 3600)) / 60)
 
     var parts: [String] = []
-    if days > 0 { parts.append("\(days)일") }
-    if hours > 0 { parts.append("\(hours)시간") }
-    if minutes > 0 { parts.append("\(minutes)분") }
+    if days > 0 { parts.append(LocalizedStrings.DateFormat.durationDays(days)) }
+    if hours > 0 { parts.append(LocalizedStrings.DateFormat.durationHours(hours)) }
+    if minutes > 0 { parts.append(LocalizedStrings.DateFormat.durationMinutes(minutes)) }
 
-    guard !parts.isEmpty else { return "\(prefix)0분" }
+    guard !parts.isEmpty else { return prefix + LocalizedStrings.DateFormat.durationMinutes(0) }
     return prefix + parts.joined(separator: " ")
   }
 
@@ -152,6 +151,13 @@ public extension Date {
 // MARK: - Calendar Extensions for Promise
 
 public extension Calendar {
+  /// 약속 표시/분류용 캘린더 (KST 기준)
+  static var promiseDisplay: Calendar {
+    var calendar = Calendar.current
+    calendar.timeZone = promiseDisplayTimeZone
+    return calendar
+  }
+
   /// 두 날짜가 같은 약속 그룹인지 확인 (같은 날인지)
   func isSamePromiseDay(_ date1: Date, _ date2: Date) -> Bool {
     return isDate(date1, equalTo: date2, toGranularity: .day)

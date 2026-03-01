@@ -1,6 +1,7 @@
 import SwiftUI
 import Clients
 import ComposableArchitecture
+import PromisoShared
 import ResourceKit
 
 struct MinimumParticipantsSection: View {
@@ -25,7 +26,7 @@ struct MinimumParticipantsSection: View {
   }
   
   var body: some View {
-    SectionPlaceHolder(placeHolderTitle: "최소 참가 인원") {
+    SectionPlaceHolder(placeHolderTitle: LocalizedStrings.CreatePromise.minimumParticipants) {
       VStack(alignment: .leading, spacing: 12) {
         if isFixedAtOne {
           // 1명 고정 케이스
@@ -50,11 +51,11 @@ struct MinimumParticipantsSection: View {
   private var fixedParticipantsView: some View {
     VStack(spacing: 16) {
       VStack(spacing: 8) {
-        Text("1명")
+        Text(LocalizedStrings.CreatePromise.participantsCount(1))
           .font(.system(size: 36, weight: .bold))
           .foregroundColor(.primary)
 
-        Text("최대 1명")
+        Text(LocalizedStrings.CreatePromise.maxParticipants(1))
           .font(.system(size: 13))
           .foregroundColor(.secondary)
       }
@@ -67,7 +68,7 @@ struct MinimumParticipantsSection: View {
           .font(.system(size: 16))
           .foregroundColor(.secondary)
 
-        Text("그룹 최대 인원이 1명이므로 최소 참가 인원이 1명으로 고정됩니다")
+        Text(LocalizedStrings.CreatePromise.fixedParticipantsInfo)
           .font(.system(size: 14))
           .foregroundColor(.secondary)
       }
@@ -105,12 +106,12 @@ struct MinimumParticipantsSection: View {
         .disabled(currentMinimum <= 2)
 
       VStack(spacing: 4) {
-        Text("\(currentMinimum)명")
+        Text(LocalizedStrings.CreatePromise.participantsCount(currentMinimum))
           .font(.system(size: 36, weight: .bold))
           .foregroundColor(.primary)
           .contentTransition(.numericText())
 
-        Text("최대 \(maxParticipants)명")
+        Text(LocalizedStrings.CreatePromise.maxParticipants(maxParticipants))
           .font(.system(size: 13))
           .foregroundColor(.secondary)
       }
@@ -160,7 +161,7 @@ struct MinimumParticipantsSection: View {
         .font(.system(size: 20))
         .foregroundColor(Color.pmindigo.n500)
 
-      Text("최소 \(currentMinimum)명이 참석하면 약속이 자동으로 확정됩니다")
+      Text(LocalizedStrings.CreatePromise.autoConfirmInfo(currentMinimum))
         .font(.system(size: 14))
         .foregroundColor(.primary)
         .fixedSize(horizontal: false, vertical: true)
@@ -180,7 +181,7 @@ struct MinimumParticipantsSection: View {
         .font(.system(size: 14))
         .foregroundColor(Color.pmwarning.n600)
 
-      Text("최소 참가 인원이 그룹 최대 인원과 같습니다. 한 명이라도 불참하면 약속이 취소됩니다.")
+      Text(LocalizedStrings.CreatePromise.maxParticipantsWarning)
         .font(.system(size: 13))
         .foregroundColor(.secondary)
         .fixedSize(horizontal: false, vertical: true)

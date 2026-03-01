@@ -38,10 +38,10 @@ struct BenefitVoteView: View {
         // 하단 카피
         if showCopy {
           VStack(spacing: 8) {
-            Text("인원 모이면, 알아서 확정")
+            Text(LocalizedStrings.Onboarding.introVoteTitle)
               .font(.title3.bold())
               .foregroundStyle(Color.pmtext.primary)
-            Text("수락만 누르세요. 나머지는 Promiso가 할게요.")
+            Text(LocalizedStrings.Onboarding.introVoteSubtitle)
               .font(.subheadline)
               .foregroundStyle(Color.pmtext.secondary)
           }
@@ -77,10 +77,10 @@ struct BenefitVoteView: View {
         Text("🎓")
           .font(.system(size: 28))
         VStack(alignment: .leading, spacing: 2) {
-          Text("대학 동기 모임")
+          Text(LocalizedStrings.Onboarding.introVoteGroupName)
             .font(.system(size: 17, weight: .bold))
             .foregroundStyle(Color.pmtext.primary)
-          Text("\(confirmedMembers.count)/4 수락")
+          Text(LocalizedStrings.Onboarding.introVoteAcceptedCount(confirmedMembers.count, members.count))
             .font(.system(size: 13))
             .foregroundStyle(Color.pmtext.secondary)
             .contentTransition(.numericText(value: Double(confirmedMembers.count)))
@@ -89,7 +89,7 @@ struct BenefitVoteView: View {
         Spacer()
 
         // 최소 인원 표시
-        Text("최소 \(minimumRequired)명")
+        Text(LocalizedStrings.Onboarding.introVoteMinimumRequired(minimumRequired))
           .font(.system(size: 12, weight: .semibold))
           .foregroundStyle(Color.pmindigo.n500)
           .padding(.horizontal, 8)
@@ -113,7 +113,7 @@ struct BenefitVoteView: View {
           Spacer()
           Image(systemName: "checkmark.seal.fill")
             .font(.system(size: 14))
-          Text("자동 확정!")
+          Text(LocalizedStrings.Onboarding.introVoteAutoConfirmed)
             .font(.system(size: 15, weight: .bold))
           Spacer()
         }
@@ -140,7 +140,7 @@ struct BenefitVoteView: View {
         HStack(spacing: 4) {
           Image(systemName: "checkmark.circle.fill")
             .foregroundStyle(Color.green)
-          Text("수락")
+          Text(LocalizedStrings.Onboarding.introVoteAccepted)
             .font(.system(size: 13, weight: .medium))
             .foregroundStyle(Color.green)
         }
@@ -149,7 +149,7 @@ struct BenefitVoteView: View {
         HStack(spacing: 4) {
           Image(systemName: "clock")
             .foregroundStyle(Color.pmtext.secondary)
-          Text("대기중")
+          Text(LocalizedStrings.Onboarding.introVoteWaiting)
             .font(.system(size: 13, weight: .medium))
             .foregroundStyle(Color.pmtext.secondary)
         }
@@ -174,15 +174,15 @@ struct BenefitVoteView: View {
             .font(.system(size: 13, weight: .semibold))
             .foregroundStyle(Color.pmtext.primary)
           Spacer()
-          Text("지금")
+          Text(LocalizedStrings.Onboarding.introVoteNow)
             .font(.system(size: 12))
             .foregroundStyle(Color.pmtext.secondary)
         }
-        Text("🎓 대학 동기 모임 약속 확정! 🎉")
+        Text(LocalizedStrings.Onboarding.introVoteNotificationTitle)
           .font(.system(size: 14, weight: .medium))
           .foregroundStyle(Color.pmtext.primary)
           .lineLimit(1)
-        Text("내일 오후 6:00에 만나요!")
+        Text(LocalizedStrings.Onboarding.introVoteNotificationSubtitle)
           .font(.system(size: 13))
           .foregroundStyle(Color.pmtext.secondary)
           .lineLimit(1)
@@ -238,14 +238,14 @@ struct BenefitVoteView: View {
     for i in 0..<2 {
       try? await Task.sleep(for: .seconds(0.6))
       withAnimation(.spring(response: 0.55, dampingFraction: 0.7)) {
-        confirmedMembers.insert(i)
+        _ = confirmedMembers.insert(i)
       }
     }
 
     // 재윤 수락 (3번째 = 최소 인원 충족!)
     try? await Task.sleep(for: .seconds(0.9))
     withAnimation(.spring(response: 0.55, dampingFraction: 0.6)) {
-      confirmedMembers.insert(2)
+      _ = confirmedMembers.insert(2)
     }
 
     // 자동 확정 배너

@@ -92,11 +92,11 @@ struct GroupListView: View {
           )
       }
 
-      Text("아직 가입한 그룹이 없어요")
+      Text(LocalizedStrings.CreatePromise.noGroupsTitle)
         .font(.headline)
         .foregroundColor(.primary)
 
-      Text("새로운 그룹을 만들어 친구들을 초대해보세요")
+      Text(LocalizedStrings.CreatePromise.noGroupsSubtitle)
         .font(.subheadline)
         .foregroundColor(.secondary)
         .multilineTextAlignment(.center)
@@ -133,11 +133,11 @@ struct GroupListView: View {
           )
       }
 
-      Text("그룹을 불러오지 못했어요")
+      Text(LocalizedStrings.CreatePromise.loadGroupsFailed)
         .font(.headline)
         .foregroundColor(.primary)
 
-      Text(error.localizedDescription)
+      Text((error as? GroupClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError)
         .font(.subheadline)
         .foregroundColor(.secondary)
         .multilineTextAlignment(.center)
@@ -161,7 +161,7 @@ private struct CreateGroupButton: View {
       HStack(spacing: 8) {
         Image(systemName: "plus.circle.fill")
           .font(.system(size: 18))
-        Text("새 그룹 만들기")
+        Text(LocalizedStrings.CreatePromise.createNewGroup)
           .font(.headline)
       }
       .foregroundStyle(.white)
@@ -196,7 +196,7 @@ private struct RetryButton: View {
       HStack(spacing: 8) {
         Image(systemName: "arrow.clockwise")
           .font(.system(size: 18))
-        Text("다시 시도")
+        Text(LocalizedStrings.CreatePromise.retryButton)
           .font(.headline)
       }
       .foregroundStyle(.white)
@@ -259,9 +259,9 @@ struct GroupCard: View {
 
   private var disabledReason: String? {
     if hasTooFewMembers {
-      return "그룹에 멤버가 없습니다"
+      return LocalizedStrings.CreatePromise.noMembersInGroup
     } else if isAtLimit {
-      return "활성 약속이 \(maxActivePromises)개에 도달했습니다"
+      return LocalizedStrings.CreatePromise.activePromisesAtLimit(maxActivePromises)
     }
     return nil
   }
@@ -327,7 +327,7 @@ struct GroupCard: View {
               .font(.system(size: 17, weight: .semibold))
               .foregroundColor(isDisabled ? .secondary : .primary)
 
-            Text("\(model.memberIds.count)명")
+            Text(LocalizedStrings.CreatePromise.memberCount(model.memberIds.count))
               .font(.system(size: 14))
               .foregroundColor(.secondary)
           }
@@ -462,7 +462,7 @@ private struct ScaleButtonStyle: ButtonStyle {
     selectedGroupId: "g2",
     groupPromiseCounts: ["g2": 5, "g3": 10], // g3 is at limit
     maxActivePromises: 10,
-    onGroupSelected: { group in print("Selected: \(group.name)") },
+    onGroupSelected: { _ in },
     onRetry: {},
     onCreateGroup: {},
     isFocused: $focus
@@ -493,7 +493,7 @@ private struct ScaleButtonStyle: ButtonStyle {
     groupPromiseCounts: [:],
     maxActivePromises: 10,
     onGroupSelected: { _ in },
-    onRetry: { print("Retry tapped") },
+    onRetry: { },
     onCreateGroup: {},
     isFocused: $focus
   )

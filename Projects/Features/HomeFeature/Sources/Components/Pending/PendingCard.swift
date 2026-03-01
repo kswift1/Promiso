@@ -1,4 +1,5 @@
 import SwiftUI
+import Clients
 import PromisoShared
 import ResourceKit
 
@@ -7,16 +8,14 @@ import ResourceKit
 /// 응답 필요 개별 카드 - 탭하면 해당 그룹 약속으로 이동
 struct PendingCard: View {
   let promise: PromiseModel
+  let totalMembers: Int
   let onTap: () -> Void
 
   var body: some View {
     Button(action: onTap) {
       VStack(alignment: .leading, spacing: 10) {
         // 상단: D-day 배지
-        HStack {
-          dDayBadge
-          Spacer()
-        }
+        dDayBadge
 
         // 중간: 이모지 + 제목
         HStack(spacing: 6) {
@@ -93,25 +92,55 @@ struct PendingCard: View {
   // MARK: - Vote Progress View
 
   private var voteProgressView: some View {
-    HStack(spacing: 6) {
-      // 진행 바
-      GeometryReader { geometry in
-        ZStack(alignment: .leading) {
-          Capsule()
-            .fill(Color.gray.opacity(0.2))
+    let accepted = promise.votes.acceptedCount
+    let declined = promise.votes.declinedCount
+    let confirm = promise.minimumParticipants
+    let total = max(totalMembers, confirm)
+    let isConfirmed = accepted >= confirm
 
-          Capsule()
-            .fill(progressColor)
-            .frame(width: geometry.size.width * progressRatio)
+    return GeometryReader { geometry in
+      let barWidth = geometry.size.width
+      let acceptedRatio = min(1.0, CGFloat(accepted) / CGFloat(max(total, 1)))
+      let declinedRatio = min(1.0 - acceptedRatio, CGFloat(declined) / CGFloat(max(total, 1)))
+      let confirmRatio = min(1.0, CGFloat(confirm) / CGFloat(max(total, 1)))
+
+      ZStack(alignment: .leading) {
+        // 배경 (전체)
+        Capsule()
+          .fill(Color.gray.opacity(0.2))
+
+        // 참여 + 불참 채움
+        HStack(spacing: 0) {
+          Rectangle()
+            .fill(isConfirmed ? Color.green : Color.green.opacity(0.7))
+            .frame(width: max(0, barWidth * acceptedRatio))
+          Rectangle()
+            .fill(Color.red.opacity(0.5))
+            .frame(width: max(0, barWidth * declinedRatio))
+        }
+        .clipShape(Capsule())
+
+        // 인원별 마디
+        if total > 1 {
+          ForEach(1..<total, id: \.self) { i in
+            let x = barWidth * CGFloat(i) / CGFloat(total)
+            RoundedRectangle(cornerRadius: 0.5)
+              .fill(Color.gray.opacity(0.35))
+              .frame(width: 1, height: 4)
+              .offset(x: x - 0.5)
+          }
+        }
+
+        // 확정 기준선
+        if confirm < total {
+          RoundedRectangle(cornerRadius: 1)
+            .fill(Color.pmindigo.n500)
+            .frame(width: 2, height: 8)
+            .offset(x: barWidth * confirmRatio - 1)
         }
       }
-      .frame(height: 4)
-
-      // 참여자 수
-      Text("\(promise.votes.accepted.count)/\(promise.minimumParticipants)")
-        .font(.caption2)
-        .foregroundStyle(.secondary)
     }
+    .frame(height: 4)
   }
 
   // MARK: - Computed Properties
@@ -123,17 +152,17 @@ struct PendingCard: View {
 
     // 24시간 이내면 시간/분 단위로 표시
     if hoursRemaining <= 0 {
-      return "마감"
+      return LocalizedStrings.Home.closed
     } else if hoursRemaining < 1 {
       let minutes = max(1, Int(ceil(hoursRemaining * 60)))
-      return "\(minutes)분 남음"
+      return LocalizedStrings.Home.minutesRemaining(minutes)
     } else if hoursRemaining <= 24 {
       let hours = Int(ceil(hoursRemaining))
-      return "\(hours)시간 남음"
+      return LocalizedStrings.Home.hoursRemaining(hours)
     }
 
     // 그 외에는 D-day 표시
-    let calendar = Calendar.current
+    let calendar = Calendar.promiseDisplay
     let nowDay = calendar.startOfDay(for: now)
     let voteDay = calendar.startOfDay(for: voteDate)
     let days = calendar.dateComponents([.day], from: nowDay, to: voteDay).day ?? 0
@@ -155,7 +184,7 @@ struct PendingCard: View {
       return .red
     }
 
-    let calendar = Calendar.current
+    let calendar = Calendar.promiseDisplay
     let nowDay = calendar.startOfDay(for: now)
     let voteDay = calendar.startOfDay(for: voteDate)
     let days = calendar.dateComponents([.day], from: nowDay, to: voteDay).day ?? 0
@@ -170,23 +199,9 @@ struct PendingCard: View {
   }
 
   private var dateTimeString: String {
-    KoreanDateFormatters.shortDateTime.string(from: promise.startAt)
+    LocalizedDateFormatters.shortDateTime.string(from: promise.startAt)
   }
 
-  private var progressRatio: CGFloat {
-    guard promise.minimumParticipants > 0 else { return 0 }
-    return min(1.0, CGFloat(promise.votes.accepted.count) / CGFloat(promise.minimumParticipants))
-  }
-
-  private var progressColor: Color {
-    if progressRatio >= 1.0 {
-      return .green
-    } else if progressRatio >= 0.5 {
-      return .orange
-    } else {
-      return Color.pmindigo.n500
-    }
-  }
 }
 
 // MARK: - Preview
@@ -195,11 +210,13 @@ struct PendingCard: View {
   HStack {
     PendingCard(
       promise: PromiseModel.mock(id: "1", title: "저녁 모임"),
+      totalMembers: 5,
       onTap: {}
     )
 
     PendingCard(
       promise: PromiseModel.mock(id: "2", title: "주말 약속"),
+      totalMembers: 4,
       onTap: {}
     )
   }

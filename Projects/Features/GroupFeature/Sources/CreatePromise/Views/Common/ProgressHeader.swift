@@ -124,9 +124,7 @@ struct ProgressSegment: View {
         currentStep: 0,
         totalSteps: 3,
         title: "약속 만들기"
-    ) {
-        print("닫기 버튼 탭")
-    }
+    ) { }
 }
 
 #Preview("Step 1 (2/3)") {
@@ -134,9 +132,7 @@ struct ProgressSegment: View {
         currentStep: 1,
         totalSteps: 3,
         title: "약속 만들기"
-    ) {
-        print("닫기 버튼 탭")
-    }
+    ) { }
 }
 
 #Preview("Step 2 (3/3)") {
@@ -144,9 +140,7 @@ struct ProgressSegment: View {
         currentStep: 2,
         totalSteps: 3,
         title: "약속 만들기"
-    ) {
-        print("닫기 버튼 탭")
-    }
+    ) { }
 }
 
 #Preview("4단계 진행 중") {
@@ -182,9 +176,7 @@ struct ProgressSegment: View {
         currentStep: 1,
         totalSteps: 3,
         title: "새로운 프로젝트 생성하기"
-    ) {
-        print("닫기")
-    }
+    ) { }
 }
 
 #Preview("다크모드") {
@@ -273,9 +265,7 @@ struct ProgressSegment: View {
             currentStep: 1,
             totalSteps: 3,
             title: "약속 만들기"
-        ) {
-            print("닫기")
-        }
+        ) { }
         
         ScrollView {
             VStack(spacing: 24) {

@@ -27,7 +27,7 @@ struct ArrivalSharingSection: View {
     VStack(alignment: .leading, spacing: 10) {
       // 커스텀 헤더 (제목 + info 버튼 + 토글)
       HStack(spacing: 8) {
-        Text("실시간 공유")
+        Text(LocalizedStrings.CreatePromise.liveSharing)
           .font(.system(size: 15, weight: .semibold))
           .foregroundColor(.primary)
 
@@ -76,7 +76,7 @@ struct ArrivalSharingSection: View {
       if isEnabled {
         VStack(spacing: 12) {
           // 설명
-          Text("약속 시간 전부터 참가자들의 도착 상황을 실시간으로 공유해요")
+          Text(LocalizedStrings.CreatePromise.liveSharingDescription)
             .font(.system(size: 13))
             .foregroundColor(.secondary)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -85,7 +85,7 @@ struct ArrivalSharingSection: View {
           HStack(spacing: 8) {
             // 15분
             TimeOptionChip(
-              title: "15분 전",
+              title: LocalizedStrings.CreatePromise.minutes15Before,
               isSelected: selectedMinutes == 15
             ) {
               isCustomInputFocused = false
@@ -97,7 +97,7 @@ struct ArrivalSharingSection: View {
 
             // 30분
             TimeOptionChip(
-              title: "30분 전",
+              title: LocalizedStrings.CreatePromise.minutes30Before,
               isSelected: selectedMinutes == 30
             ) {
               isCustomInputFocused = false
@@ -109,7 +109,7 @@ struct ArrivalSharingSection: View {
 
             // 1시간
             TimeOptionChip(
-              title: "1시간 전",
+              title: LocalizedStrings.CreatePromise.hour1Before,
               isSelected: selectedMinutes == 60
             ) {
               isCustomInputFocused = false
@@ -222,7 +222,7 @@ private struct CustomMinuteInput: View {
 
   var body: some View {
     HStack(spacing: 2) {
-      TextField("", text: $text, prompt: Text("직접").foregroundColor(isActive ? .white.opacity(0.6) : .secondary))
+      TextField("", text: $text, prompt: Text(LocalizedStrings.CreatePromise.customInput).foregroundColor(isActive ? .white.opacity(0.6) : .secondary))
         .font(.system(size: 13, weight: isActive ? .semibold : .medium))
         .foregroundColor(isActive ? .white : .primary)
         .multilineTextAlignment(.center)
@@ -241,7 +241,7 @@ private struct CustomMinuteInput: View {
           }
         }
 
-      Text("분 전")
+      Text(LocalizedStrings.CreatePromise.minutesBefore)
         .font(.system(size: 13, weight: isActive ? .semibold : .medium))
         .foregroundColor(isActive ? .white : .primary)
         .fixedSize()

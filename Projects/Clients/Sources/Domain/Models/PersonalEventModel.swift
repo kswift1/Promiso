@@ -154,7 +154,7 @@ extension PersonalEventModel {
   /// 종료 시간 텍스트 (예: "오후 5:00" 또는 다음날이면 "1월 28일 오전 1:00")
   public var endTimeText: String? {
     guard let endAt = endAt else { return nil }
-    return KoreanDateFormatters.endTimeString(from: endAt, relativeTo: startAt)
+    return LocalizedDateFormatters.endTimeString(from: endAt, relativeTo: startAt)
   }
 
   /// 시간 범위 텍스트 (예: "오후 2:00 ~ 오후 5:00" 또는 "오후 2:00 ~ 1월 28일 오전 1:00")
@@ -167,20 +167,17 @@ extension PersonalEventModel {
 
   /// 날짜 텍스트 (예: "오늘", "내일", "어제", "1월 15일")
   public var dateText: String {
-    let calendar = Calendar.current
+    let calendar = Calendar.promiseDisplay
     if calendar.isDateInToday(startAt) {
-      return "오늘"
+      return LocalizedStrings.DateFormat.today
     }
     if calendar.isDateInTomorrow(startAt) {
-      return "내일"
+      return LocalizedStrings.DateFormat.tomorrow
     }
     if calendar.isDateInYesterday(startAt) {
-      return "어제"
+      return LocalizedStrings.DateFormat.yesterday
     }
-    let formatter = DateFormatter()
-    formatter.locale = Locale(identifier: "ko_KR")
-    formatter.dateFormat = "M월 d일"
-    return formatter.string(from: startAt)
+    return LocalizedDateFormatters.monthDayString(from: startAt)
   }
 
   /// 위치 텍스트 (없으면 기본값)

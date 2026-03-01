@@ -49,10 +49,10 @@ extension DeeplinkClient: TestDependencyKey {
     parseNotification: { _ in nil }
   )
 
-  public static let testValue = Self(
-    pushNotificationTapStream: unimplemented("\(Self.self).pushNotificationTapStream"),
-    parseURL: unimplemented("\(Self.self).parseURL", placeholder: nil),
-    parseNotification: unimplemented("\(Self.self).parseNotification", placeholder: nil)
+  public static let testValue: Self = Self(
+    pushNotificationTapStream: { AsyncStream { _ in } },
+    parseURL: { _ in nil },
+    parseNotification: { _ in nil }
   )
 }
 

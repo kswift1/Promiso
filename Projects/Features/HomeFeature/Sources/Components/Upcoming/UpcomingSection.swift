@@ -8,6 +8,7 @@ import ResourceKit
 /// 다가오는 일정 섹션 - 확정된 미래 약속과 개인 일정
 struct UpcomingSection: View {
   let items: [HomeModels.ScheduleItem]
+  let weatherCache: [String: WeatherInfo]
   let onItemTap: (HomeModels.ScheduleItem) -> Void
   let onSeeAllTap: () -> Void
 
@@ -28,6 +29,7 @@ struct UpcomingSection: View {
             UpcomingDateCard(
               date: group.date,
               items: group.items,
+              weatherCache: weatherCache,
               onItemTap: onItemTap
             )
           }
@@ -40,7 +42,7 @@ struct UpcomingSection: View {
 
   private var sectionHeader: some View {
     HStack {
-      Text("다가오는 일정")
+      Text(LocalizedStrings.Home.upcomingSchedule)
         .font(.pmHeadline)
         .foregroundStyle(.primary)
 
@@ -50,7 +52,7 @@ struct UpcomingSection: View {
       if items.count > maxDisplayCount {
         Button(action: onSeeAllTap) {
           HStack(spacing: 2) {
-            Text("전체")
+            Text(LocalizedStrings.Common.all)
               .font(.pmSubheadline)
 
             Image(systemName: "chevron.right")
@@ -80,11 +82,11 @@ struct UpcomingSection: View {
 
       // 텍스트
       VStack(alignment: .leading, spacing: 2) {
-        Text("예정된 일정이 없어요")
+        Text(LocalizedStrings.Home.noUpcomingTitle)
           .font(.pmSubheadlineSemibold)
           .foregroundStyle(.primary)
 
-        Text("새로운 약속이나 일정을 만들어보세요")
+        Text(LocalizedStrings.Home.noUpcomingSubtitle)
           .font(.pmCaption)
           .foregroundStyle(.secondary)
       }
@@ -103,7 +105,7 @@ struct UpcomingSection: View {
 
   /// 날짜별로 그룹화된 일정
   private var groupedByDate: [DateGroup] {
-    let calendar = Calendar.current
+    let calendar = Calendar.promiseDisplay
     var groups: [Date: [HomeModels.ScheduleItem]] = [:]
 
     for item in displayedItems {
@@ -139,6 +141,7 @@ private struct DateGroup {
       .promise(PromiseModel.mock(id: "2", title: "저녁 식사", startAt: Date().addingTimeInterval(172800))),
       .promise(PromiseModel.mock(id: "3", title: "영화 관람", startAt: Date().addingTimeInterval(259200)))
     ],
+    weatherCache: [:],
     onItemTap: { _ in },
     onSeeAllTap: {}
   )
@@ -149,6 +152,7 @@ private struct DateGroup {
 #Preview("일정 없음") {
   UpcomingSection(
     items: [],
+    weatherCache: [:],
     onItemTap: { _ in },
     onSeeAllTap: {}
   )

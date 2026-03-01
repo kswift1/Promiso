@@ -31,8 +31,15 @@ public enum Tab: Equatable, Hashable {
   case settings
 
   public enum PromiseTabMode: String, Equatable, Hashable, Sendable {
-    case group = "그룹"
-    case own = "개인"
+    case group = "group"
+    case own = "own"
+
+    var displayTitle: String {
+      switch self {
+      case .group: return LocalizedStrings.RootTab.tabModeGroup
+      case .own: return LocalizedStrings.RootTab.tabModePersonal
+      }
+    }
   }
 
   var isPromise: Bool {
@@ -47,10 +54,10 @@ public enum Tab: Equatable, Hashable {
 
   var label: String {
     switch self {
-    case .home: return "홈"
-    case .promise(let mode): return mode.rawValue
-    case .calendar: return "캘린더"
-    case .settings: return "설정"
+    case .home: return LocalizedStrings.TabBar.home
+    case .promise(let mode): return mode.displayTitle
+    case .calendar: return LocalizedStrings.TabBar.calendar
+    case .settings: return LocalizedStrings.TabBar.settings
     }
   }
 
@@ -127,6 +134,15 @@ extension RootTab {
 
       /// 현재 사용자 정보 (모든 탭에서 참조 공유)
       @Shared var currentUser: UserPrivateModel
+
+      /// 테마 모드 (system/light/dark) — 설정 변경 시 preferredColorScheme 자동 갱신
+      @Shared(.appStorage(AppConstants.UserDefaults.preferredThemeMode)) var themeMode: String = AppConstants.ThemeMode.system.rawValue
+
+      /// 선호 언어 — 변경 시 뷰 트리 재구성 트리거
+      @Shared(.appStorage(AppConstants.UserDefaults.preferredLanguage)) var preferredLanguage: String = ""
+
+      /// 24시간 형식 — 변경 시 뷰 트리 재구성 트리거
+      @Shared(.appStorage(AppConstants.UserDefaults.use24HourFormat)) var use24HourFormat: Bool = false
 
       /// LivePromise State (약속 추적 바) - nil이면 숨김
       var livePromise: LivePromise.Feature.State?
@@ -298,7 +314,7 @@ extension RootTab {
             .promiseInList(promiseId: promiseId, groupId: groupId, filter: .needResponse)
           ))))
 
-        case .home(.delegate(.navigateToPromise(let promiseId, let groupId))):
+        case .home(.delegate(.navigateToPromise(_, let groupId))):
           state.promiseMode = .group
           state.selectedTab = .promise(.group)
           if let groupInfo = state.groupMain.allGroupSummaries?.first(where: { $0.id == groupId }) {
@@ -309,6 +325,16 @@ extension RootTab {
         case .home(.delegate(.navigateToAllPromises)):
           // TODO: 모든 약속 보기 화면으로 이동 (추후 구현)
           return .none
+
+        case .home(.delegate(.navigateToCreatePromise)):
+          state.promiseMode = .group
+          state.selectedTab = .promise(.group)
+          return .send(.groupMain(.view(.openCreatePromiseIfPossible)))
+        case .home(.delegate(.createPromiseWithExtractedInfo(let info))):
+          // 그룹 탭으로 전환 → CreatePromise 열기 (추출 정보 pre-fill)
+          state.promiseMode = .group
+          state.selectedTab = .promise(.group)
+          return .send(.groupMain(.view(.openCreatePromiseWithExtractedInfo(info))))
 
         case .home:
           return .none
@@ -631,8 +657,7 @@ extension RootTab {
 
     /// 현재 설정된 테마 모드를 ColorScheme으로 변환
     private var preferredColorScheme: ColorScheme? {
-      let themeMode = UserDefaults.standard.string(forKey: AppConstants.UserDefaults.preferredThemeMode) ?? AppConstants.ThemeMode.system.rawValue
-      switch AppConstants.ThemeMode(rawValue: themeMode) ?? .system {
+      switch AppConstants.ThemeMode(rawValue: store.themeMode) ?? .system {
       case .system: return nil
       case .light: return .light
       case .dark: return .dark
@@ -643,6 +668,7 @@ extension RootTab {
       tabViewWithLivePromise
         .tint(Color.pmbrand.primary)
         .preferredColorScheme(preferredColorScheme)
+        .id("\(store.preferredLanguage)_\(store.use24HourFormat)")
         .onAppear { store.send(.onAppear) }
         .fullScreenCover(isPresented: $expandLivePromise, onDismiss: {
           // 스와이프로 dismiss 시 TCA 상태 정리
@@ -671,7 +697,7 @@ extension RootTab {
     private var tabView: some View {
       TabView(selection: $store.selectedTab.sending(\.tabSelected)) {
         tabContentView(for: .home)
-          .tabItem { Label("홈", systemImage: "house.fill") }
+          .tabItem { Label(LocalizedStrings.TabBar.home, systemImage: "house.fill") }
           .tag(Tab.home)
 
         tabContentView(for: .promise(store.promiseMode))
@@ -684,11 +710,11 @@ extension RootTab {
           .tag(Tab.promise(store.promiseMode))
 
         tabContentView(for: .calendar)
-          .tabItem { Label("캘린더", systemImage: "calendar") }
+          .tabItem { Label(LocalizedStrings.TabBar.calendar, systemImage: "calendar") }
           .tag(Tab.calendar)
 
         tabContentView(for: .settings)
-          .tabItem { Label("설정", systemImage: "gearshape.fill") }
+          .tabItem { Label(LocalizedStrings.TabBar.settings, systemImage: "gearshape.fill") }
           .tag(Tab.settings)
       }
       .tabViewStyle(.tabBarOnly)

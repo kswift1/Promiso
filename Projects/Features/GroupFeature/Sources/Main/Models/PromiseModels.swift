@@ -43,8 +43,8 @@ public enum GroupRole: String, Equatable, Sendable {
 
   var displayText: String {
     switch self {
-    case .admin: return "관리자"
-    case .member: return "멤버"
+    case .admin: return LocalizedStrings.ManageGroup.host
+    case .member: return LocalizedStrings.ManageGroup.memberRole
     }
   }
 }
@@ -76,8 +76,18 @@ public struct GroupMember: Identifiable, Equatable, Sendable {
 // MARK: - Status Filter
 
 public enum StatusFilter: String, CaseIterable, Equatable, Sendable {
-  case needResponse = "응답 필요"
-  case responded = "응답 완료"
-  case confirmed = "확정"
-  case all = "전체"
+  case all
+  case needResponse
+  case responded
+  case confirmed
+
+
+  public var displayTitle: String {
+    switch self {
+    case .needResponse: return LocalizedStrings.GroupPromiseList.filterNeedResponse
+    case .responded: return LocalizedStrings.GroupPromiseList.filterResponded
+    case .confirmed: return LocalizedStrings.GroupPromiseList.filterConfirmed
+    case .all: return LocalizedStrings.GroupPromiseList.filterAll
+    }
+  }
 }

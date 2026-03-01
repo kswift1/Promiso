@@ -3,6 +3,7 @@
 
 import SwiftUI
 import ResourceKit
+import PromisoShared
 
 // MARK: - Calendar Header
 
@@ -43,7 +44,7 @@ struct CalendarHeader: View {
       // 오늘 버튼
       if !isSelectedDateToday {
         Button(action: onMoveToToday) {
-          Text("오늘")
+          Text(LocalizedStrings.Common.today)
             .font(.system(size: 14, weight: .semibold))
             .foregroundColor(Color.pmindigo.n500)
             .padding(.horizontal, 12)
@@ -69,7 +70,15 @@ struct CalendarHeader: View {
 // MARK: - Weekday Header
 
 struct WeekdayHeader: View {
-  private let weekdaySymbols = ["일", "월", "화", "수", "목", "금", "토"]
+  private let weekdaySymbols = [
+    LocalizedStrings.Calendar.weekdaySun,
+    LocalizedStrings.Calendar.weekdayMon,
+    LocalizedStrings.Calendar.weekdayTue,
+    LocalizedStrings.Calendar.weekdayWed,
+    LocalizedStrings.Calendar.weekdayThu,
+    LocalizedStrings.Calendar.weekdayFri,
+    LocalizedStrings.Calendar.weekdaySat,
+  ]
 
   var body: some View {
     HStack(spacing: 0) {
@@ -85,10 +94,8 @@ struct WeekdayHeader: View {
   }
 
   private func weekdayColor(for symbol: String) -> Color {
-    switch symbol {
-    case "일": return .red.opacity(0.8)
-    case "토": return .blue.opacity(0.8)
-    default: return .secondary
-    }
+    if symbol == LocalizedStrings.Calendar.weekdaySun { return .red.opacity(0.8) }
+    if symbol == LocalizedStrings.Calendar.weekdaySat { return .blue.opacity(0.8) }
+    return .secondary
   }
 }

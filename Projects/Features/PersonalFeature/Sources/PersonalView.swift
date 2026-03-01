@@ -169,13 +169,13 @@ extension PersonalMode {
     private var emptyFilterDescription: String {
       switch store.selectedFilter {
       case .today:
-        return "오늘 일정이 없어요\n여유로운 하루를 보내세요"
+        return LocalizedStrings.Personal.emptyToday
       case .future:
-        return "예정된 일정이 없어요\n+ 버튼으로 새 일정을 만들어보세요"
+        return LocalizedStrings.Personal.emptyFuture
       case .all:
-        return "아직 일정이 없어요\n+ 버튼으로 새 일정을 만들어보세요"
+        return LocalizedStrings.Personal.emptyAll
       case .past:
-        return "지난 일정이 없어요"
+        return LocalizedStrings.Personal.emptyPast
       }
     }
 
@@ -190,7 +190,7 @@ extension PersonalMode {
             .font(.system(size: 50))
             .foregroundStyle(.secondary)
 
-          Text(error.localizedDescription)
+          Text(LocalizedStrings.Error.unknownError)
             .font(.subheadline)
             .foregroundStyle(.secondary)
             .multilineTextAlignment(.center)
@@ -213,11 +213,12 @@ extension PersonalMode {
     @ViewBuilder
     private var eventListView: some View {
       List {
-        ForEach(store.groupedEvents, id: \.date) { section in
+        ForEach(store.groupedEvents, id: \.day) { section in
           Section {
             ForEach(section.events) { event in
               PersonalEventCard(
                 event: event,
+                weather: store.weatherCache[event.id],
                 onTap: {
                   store.send(.view(.eventTapped(event)))
                 },
@@ -248,7 +249,7 @@ extension PersonalMode {
               .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
             }
           } header: {
-            dateSectionHeader(section.date)
+            dateSectionHeader(section.title)
           }
           .listSectionSeparator(.hidden)
         }

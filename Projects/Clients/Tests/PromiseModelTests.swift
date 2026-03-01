@@ -15,6 +15,7 @@
 //
 
 import Foundation
+import PromisoShared
 import Testing
 @testable import Clients
 
@@ -280,16 +281,13 @@ struct PromiseModelDisplayTests {
     #expect(promise.dateText == "내일")
   }
 
-  @Test("그 외 날짜면 'M월 d일' 형식 반환")
+  @Test("그 외 날짜면 monthDay 포맷 반환")
   func dateText_whenOtherDate_returnsFormattedDate() {
     // 10일 후의 날짜
     let futureDate = Calendar.current.date(byAdding: .day, value: 10, to: Date())!
     let promise = TestFactories.makePromise(startAt: futureDate)
 
-    let formatter = DateFormatter()
-    formatter.locale = Locale(identifier: "ko_KR")
-    formatter.dateFormat = "M월 d일"
-    let expected = formatter.string(from: futureDate)
+    let expected = LocalizedDateFormatters.monthDayString(from: futureDate)
 
     #expect(promise.dateText == expected)
   }

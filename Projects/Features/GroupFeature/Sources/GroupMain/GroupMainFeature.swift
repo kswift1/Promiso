@@ -1,109 +1,6 @@
-  import ComposableArchitecture
+import ComposableArchitecture
 import PromisoShared
 import Clients
-import SwiftUI
-import UIKit
-import Nuke
-import ResourceKit
-
-public enum GroupMain {}
-
-// MARK: - Promise Filter
-
-extension GroupMain {
-  /// 약속 목록 필터 (Apple Mail 스타일)
-  public enum PromiseFilter: String, CaseIterable, Sendable, CategoryFilterItem {
-    case needResponse = "응답 필요"
-    case responded = "응답 완료"
-    case confirmed = "확정"
-    case all = "전체"
-    case past = "과거"
-
-    public var title: String { rawValue }
-
-    public var icon: String {
-      switch self {
-      case .needResponse: return "envelope.badge"
-      case .responded: return "clock.badge.checkmark"
-      case .confirmed: return "checkmark.circle.fill"
-      case .all: return "tray.fill"
-      case .past: return "clock.arrow.circlepath"
-      }
-    }
-
-    public var selectedColor: Color {
-      switch self {
-      case .needResponse: return .orange
-      case .responded: return .blue
-      case .confirmed: return .green
-      case .all: return .pmindigo.n500
-      case .past: return Color(UIColor.systemGray)
-      }
-    }
-
-    public var hasSeparatorBefore: Bool {
-      self == .past
-    }
-  }
-}
-
-// MARK: - Deeplink
-
-extension GroupMain {
-  /// 그룹 탭에서 처리할 딥링크 목적지
-  public enum Deeplink: Equatable, Sendable {
-    /// 그룹 상세 화면
-    case group(groupId: String)
-    /// 약속 상세 화면
-    case promise(promiseId: String, groupId: String)
-    /// 약속 목록에서 특정 약속으로 스크롤 (필터 적용)
-    case promiseInList(promiseId: String, groupId: String, filter: PromiseFilter)
-  }
-}
-
-// MARK: - Onboarding
-// TODO: onboarding - 추후 고도화 필요 (튜토리얼, 샘플 데이터 등)
-
-extension GroupMain {
-  /// 온보딩용 Mock 그룹 ID
-  static let onboardingGroupId = "__onboarding__"
-
-  /// 온보딩 카드 타입
-  public enum OnboardingCard: CaseIterable, Identifiable {
-    case createGroup
-    case joinGroup
-
-    public var id: Self { self }
-
-    var title: String {
-      switch self {
-      case .createGroup: return "그룹 만들기"
-      case .joinGroup: return "친구 초대 코드로 참여"
-      }
-    }
-
-    var subtitle: String {
-      switch self {
-      case .createGroup: return "친구들과 함께할 그룹을 만들어보세요"
-      case .joinGroup: return "초대 코드를 입력해서 그룹에 참여하세요"
-      }
-    }
-
-    var icon: String {
-      switch self {
-      case .createGroup: return "person.3.fill"
-      case .joinGroup: return "link.circle.fill"
-      }
-    }
-
-    var color: Color {
-      switch self {
-      case .createGroup: return .blue
-      case .joinGroup: return .green
-      }
-    }
-  }
-}
 
 extension GroupMain {
   private enum CancelID: Hashable {
@@ -124,6 +21,9 @@ extension GroupMain {
     @Dependency(\.userSettingsClient) var userSettingsClient
     @Dependency(\.mapClient) var mapClient
     @Dependency(\.calendarSyncClient) var calendarSyncClient
+    @Dependency(\.kakaoShareClient) var kakaoShareClient
+    @Dependency(\.hapticFeedback) var hapticFeedback
+    @Dependency(\.analyticsClient) var analyticsClient
 
     public init() {}
 
@@ -148,6 +48,10 @@ extension GroupMain {
       @Shared(.inMemory(AppConstants.SharedState.groupCalendarSyncCache))
       public var groupCalendarSyncCache: [String: Bool] = [:]
 
+      /// 날씨 캐시 (전역 공유)
+      @Shared(.inMemory("weatherCache"))
+      var weatherCache: [String: WeatherInfo] = [:]
+
       /// 현재 그룹 멤버 (캐시에서 조회)
       var currentGroupMembers: [UserPublicModel]? {
         guard let groupId = currentGroup?.id else { return nil }
@@ -158,7 +62,7 @@ extension GroupMain {
       var pendingGroupId: String?
 
       /// 현재 선택된 필터
-      var selectedFilter: GroupMain.PromiseFilter = .needResponse
+      var selectedFilter: GroupMain.PromiseFilter = .all
 
       /// 그룹 정렬 옵션 (커스텀의 경우 순서 포함)
       var groupSortOption: GroupSortOption = .joinedRecent
@@ -169,10 +73,24 @@ extension GroupMain {
       /// 과거 약속 상태 (별도 fetch)
       var pastPromisesState: LoadingState<[PromiseModel]> = .idle
 
-      // 공유 시트용
+      // 약속 공유 시트용
       var sharePromise: PromiseModel?
+      var isKakaoPromiseSharing: Bool = false
+      var systemShareText: String?
       /// 화면 토스트 메시지
       var toastMessage: ToastMessage?
+
+      /// 그룹 초대 시트 표시 여부
+      var showGroupInviteSheet: Bool = false
+      /// 카카오 초대 공유 진행 중
+      var isKakaoInviteSharing: Bool = false
+      /// context menu에서 그룹 전환 후 실행할 액션
+      enum PendingContextAction: Equatable, Sendable {
+        case invite
+        case settings
+        case createPromise
+      }
+      var pendingContextAction: PendingContextAction?
 
       @Presents var createPromise: CreatePromise.Feature.State?
       @Presents var createGroup: CreateGroup.Feature.State?
@@ -200,171 +118,9 @@ extension GroupMain {
       public init(currentUser: Shared<UserPrivateModel>) {
         self._currentUser = currentUser
       }
-
-      // MARK: - Computed Properties for New UI
-
-      /// 그룹 로딩 중 여부
-      var isGroupsLoading: Bool {
-        allGroupSummaries == nil
-      }
-
-      /// 온보딩 모드 여부 (그룹이 없을 때)
-      var isOnboardingMode: Bool {
-        allGroupSummaries?.isEmpty == true
-      }
-
-      /// 그룹 가로 바용 아이템 목록
-      var groupBarItems: [GroupBarItem] {
-        guard let groups = allGroupSummaries else { return [] }
-
-        // 그룹이 없으면 온보딩 Mock 그룹 표시
-        if groups.isEmpty {
-          return [
-            GroupBarItem(
-              id: GroupMain.onboardingGroupId,
-              name: "Promiso 시작하기",
-              localImage: ResourceKitAsset.notificationLogo.swiftUIImage,
-              hasNewActivity: false,
-              isSelected: true
-            )
-          ]
-        }
-
-        let sortedGroups = sortedGroupsForSelection(groups)
-
-        return sortedGroups.map { group in
-          GroupBarItem(
-            id: group.id,
-            name: group.name,
-            imageUrl: group.imageUrl,
-            hasNewActivity: group.hasNewActivity,
-            isSelected: group.id == currentGroup?.id,
-            joinedAt: group.joinedAt
-          )
-        }
-      }
-
-      /// 응답 필요 약속 목록 (마감 임박순)
-      var needResponsePromises: [PromiseModel] {
-        guard case .loaded(let promises) = promisesState else { return [] }
-        return promises
-          .filter { $0.responseStatus(currentUserId: currentUser.userId, totalGroupMembers: currentGroupMembers?.count) == .needResponse }
-          .sorted { $0.votes.until < $1.votes.until }  // 마감 임박순
-      }
-
-      /// 확정된 약속 목록 (시작 시간순)
-      var confirmedPromises: [PromiseModel] {
-        guard case .loaded(let promises) = promisesState else { return [] }
-        return promises
-          .filter { $0.isConfirmed && $0.startAt > Date() }  // 확정 + 미래 약속만
-          .sorted { $0.startAt < $1.startAt }
-      }
-
-      /// 모든 약속 (시간순)
-      var allPromises: [PromiseModel] {
-        guard case .loaded(let promises) = promisesState else { return [] }
-        return promises.sorted { $0.startAt < $1.startAt }
-      }
-
-      /// 응답 완료 약속 목록 (시작 시간순)
-      var respondedPromises: [PromiseModel] {
-        guard case .loaded(let promises) = promisesState else { return [] }
-        return promises
-          .filter {
-            let status = $0.responseStatus(
-              currentUserId: currentUser.userId,
-              totalGroupMembers: currentGroupMembers?.count
-            )
-            return status == .responded && !$0.isConfirmed
-          }
-          .sorted { $0.startAt < $1.startAt }
-      }
-
-      /// 과거 약속 목록 (최신순, 별도 fetch된 데이터)
-      var pastPromises: [PromiseModel] {
-        guard case .loaded(let promises) = pastPromisesState else { return [] }
-        return promises.sorted { $0.startAt > $1.startAt }  // 최신순
-      }
-
-      /// 현재 필터에 따른 약속 목록
-      var filteredPromises: [PromiseModel] {
-        switch selectedFilter {
-        case .needResponse:
-          return needResponsePromises
-        case .responded:
-          return respondedPromises
-        case .confirmed:
-          return confirmedPromises
-        case .all:
-          return allPromises
-        case .past:
-          return pastPromises
-        }
-      }
-
-      /// 과거 필터 로딩 중 여부
-      var isPastFilterLoading: Bool {
-        selectedFilter == .past && pastPromisesState == .loading
-      }
-
-      /// 날짜별로 그룹화된 필터된 약속 목록
-      var groupedFilteredPromises: [(date: String, promises: [PromiseModel])] {
-        let grouped = Dictionary(grouping: filteredPromises, by: { $0.dateText })
-
-        return grouped.sorted { lhs, rhs in
-          // 오늘 > 내일 > 나머지 (날짜순)
-          let priorityOrder = ["오늘": 0, "내일": 1]
-          let lhsPriority = priorityOrder[lhs.key] ?? 2
-          let rhsPriority = priorityOrder[rhs.key] ?? 2
-
-          if lhsPriority != rhsPriority {
-            return lhsPriority < rhsPriority
-          }
-          return lhs.key < rhs.key
-        }.map { (date: $0.key, promises: $0.value) }
-      }
-
-      /// 리스트 애니메이션 키 (DiffableDataSource 스타일)
-      var promiseListAnimationKey: [String] {
-        groupedFilteredPromises.flatMap { section in
-          [section.date] + section.promises.map(\.id)
-        }
-      }
-
-      /// 필터별 약속 개수 (과거 필터 제외)
-      var filterCounts: [GroupMain.PromiseFilter: Int] {
-        [
-          .needResponse: needResponsePromises.count,
-          .responded: respondedPromises.count,
-          .confirmed: confirmedPromises.count,
-          .all: allPromises.count
-          // .past는 제외 (별도 fetch이므로)
-        ]
-      }
-
-      func sortedGroupsForSelection(_ groups: [UserGroupInfo]) -> [UserGroupInfo] {
-        switch groupSortOption {
-        case .joinedRecent:
-          return groups.sorted { ($0.joinedAt ?? .distantPast) > ($1.joinedAt ?? .distantPast) }
-        case .joinedOldest:
-          return groups.sorted { ($0.joinedAt ?? .distantPast) < ($1.joinedAt ?? .distantPast) }
-        case .nameAscending:
-          return groups.sorted { $0.name < $1.name }
-        case .nameDescending:
-          return groups.sorted { $0.name > $1.name }
-        case .custom(let order):
-          if order.isEmpty {
-            return groups
-          }
-          let groupDict = Dictionary(uniqueKeysWithValues: groups.map { ($0.id, $0) })
-          let ordered = order.compactMap { groupDict[$0] }
-          let remaining = groups.filter { group in !order.contains(group.id) }
-          return ordered + remaining
-        }
-      }
     }
 
-    @Reducer
+    @Reducer(state: .equatable)
     public enum Path {
       case groupSettings(GroupSettings.Feature)
       case groupPromiseList(GroupPromiseList.Feature)
@@ -383,7 +139,7 @@ extension GroupMain {
       case joinGroup
     }
 
-    public enum Action: Sendable {
+    public enum Action {
       case view(ViewAction)
       case binding(BindingAction<State>)
       case `internal`(Internal)
@@ -400,7 +156,7 @@ extension GroupMain {
       case path(StackActionOf<Path>)
 
       @CasePathable
-      public enum ViewAction: Sendable {
+      public enum ViewAction {
         case onAppear
         case refreshTriggered
         case groupChanged(UserGroupInfo)
@@ -411,7 +167,6 @@ extension GroupMain {
         case responseChanged(String, PromiseAttendanceStatus)
         case promiseTapped(PromiseModel)
         case promiseShared(String)
-        case sharePromiseDismissed
         case createNewPromise
         case createGroup
         case joinGroup
@@ -429,12 +184,23 @@ extension GroupMain {
         case sortSettingsTapped  // "그룹 정렬"
         case directionsTapped(String)  // 길찾기 (promiseId)
         case openCreatePromiseIfPossible  // Widget 딥링크: 그룹 있으면 약속 생성
+        case openCreatePromiseWithExtractedInfo(PromiseExtractedInfo)  // 퀵 약속: 추출 정보 pre-fill
         case switchToPersonalMode  // 개인 모드로 전환 요청
         case toastDismissed
+        // Context Menu Actions
+        case groupInviteTapped(String)  // 그룹 초대 (groupId)
+        case groupContextSettingsTapped(String)  // 그룹 설정 (groupId)
+        case contextCreatePromiseTapped(String)  // 약속 만들기 (groupId)
+        case dismissGroupInviteSheet
+        case kakaoInviteShareTapped
+        case kakaoPromiseShareTapped
+        case systemPromiseShareTapped
+        case dismissPromiseShareSheet
+        case systemShareSheetDismissed
       }
 
       @CasePathable
-      public enum Internal: Sendable {
+      public enum Internal {
         case fetchGroupList
         case groupListResponse(Result<[UserGroupInfo], AppError>)
         case setDefaultGroup(groups: [UserGroupInfo])
@@ -458,6 +224,8 @@ extension GroupMain {
         case pastPromisesResponse(Result<[PromiseModel], AppError>)
         case fetchSettings
         case settingsResponse(Result<UserSettings, AppError>)
+        case kakaoInviteShareResult(KakaoShareResult)
+        case kakaoPromiseShareResult(KakaoShareResult)
       }
     }
 
@@ -480,7 +248,7 @@ extension GroupMain {
             }
             // 현재 그룹 멤버 캐시 무효화 후 다시 로드
             if let groupId = state.currentGroup?.id {
-              state.$groupMembersCache.withLock { $0.removeValue(forKey: groupId) }
+              state.$groupMembersCache.withLock { _ = $0.removeValue(forKey: groupId) }
               return .merge(
                 .send(.internal(.fetchGroupList)),
                 .send(.internal(.fetchGroupMembers(groupId: groupId)))
@@ -516,16 +284,16 @@ extension GroupMain {
             }
             state.promiseToDelete = id
             state.deleteAlert = AlertState {
-              TextState("약속 삭제")
+              TextState(LocalizedStrings.GroupMain.deletePromiseTitle)
             } actions: {
               ButtonState(role: .cancel) {
-                TextState("취소")
+                TextState(LocalizedStrings.Common.cancel)
               }
               ButtonState(role: .destructive, action: .confirmDelete) {
-                TextState("삭제")
+                TextState(LocalizedStrings.Common.delete)
               }
             } message: {
-              TextState("'\(promise.title)' 약속을 삭제하시겠습니까?\n삭제된 약속은 복구할 수 없습니다.")
+              TextState(LocalizedStrings.GroupMain.deletePromiseConfirm(promise.title))
             }
             return .none
 
@@ -565,10 +333,6 @@ extension GroupMain {
             state.sharePromise = promise
             return .none
 
-          case .sharePromiseDismissed:
-            state.sharePromise = nil
-            return .none
-
           case .directionsTapped(let promiseId):
             guard let promise = state.promisesState.value?.first(where: { $0.id == promiseId }),
                   let location = promise.location,
@@ -589,7 +353,9 @@ extension GroupMain {
             }
             state.createPromise = CreatePromise.Feature.State(
               promise: promise,
-              groupSummaries: state.allGroupSummaries
+              groupSummaries: state.allGroupSummaries,
+              userPlan: state.userPlan,
+              currentUserId: state.currentUser.userId
             )
             return .none
 
@@ -714,7 +480,11 @@ extension GroupMain {
             return .none
 
           case .openCreatePromiseIfPossible:
-            // Widget 딥링크: 그룹이 있으면 CreatePromise 열기, 없으면 그룹 탭만 표시
+            // onAppear 전이면 currentUser.groups에서 fallback 로드
+            if state.allGroupSummaries == nil {
+              let summaries = state.sortedGroupsForSelection(state.currentUser.groups)
+              state.allGroupSummaries = summaries
+            }
             guard let groups = state.allGroupSummaries, !groups.isEmpty else {
               // 그룹 없음 → 그룹 탭 화면 유지 (온보딩 모드)
               return .none
@@ -722,12 +492,163 @@ extension GroupMain {
             // 그룹 있음 → 약속 생성 화면 열기
             return .send(.view(.createNewPromise))
 
+          case .openCreatePromiseWithExtractedInfo(let info):
+            // 퀵 약속: 추출 정보로 CreatePromise 열기
+            guard let groups = state.allGroupSummaries, !groups.isEmpty else {
+              return .none
+            }
+            var promise = PromiseModel.empty
+            if let currentGroup = state.currentGroup {
+              promise.group = currentGroup
+              promise.groupId = currentGroup.id
+            }
+            // 추출 정보 적용
+            if let title = info.title {
+              promise.title = title
+            }
+            if let date = info.date {
+              promise.startAt = date
+            }
+            if let description = info.description {
+              promise.description = description
+            }
+            if let location = info.location {
+              promise.location = LocationInfoModel(name: location)
+            }
+            state.createPromise = CreatePromise.Feature.State(
+              promise: promise,
+              groupSummaries: state.allGroupSummaries,
+              userPlan: state.userPlan,
+              currentUserId: state.currentUser.userId,
+              prefillInfo: info
+            )
+            return .none
+
           case .switchToPersonalMode:
             // RootTabFeature에서 처리
             return .none
 
           case .toastDismissed:
             state.toastMessage = nil
+            return .none
+
+          // MARK: - Context Menu Actions
+
+          case .groupInviteTapped(let groupId):
+            if groupId == state.currentGroup?.id {
+              state.showGroupInviteSheet = true
+              return .none
+            } else {
+              state.pendingContextAction = .invite
+              return .send(.view(.groupTapped(groupId)))
+            }
+
+          case .groupContextSettingsTapped(let groupId):
+            if groupId == state.currentGroup?.id {
+              return handleGroupSettingsTapped(&state)
+            } else {
+              state.pendingContextAction = .settings
+              return .send(.view(.groupTapped(groupId)))
+            }
+
+          case .contextCreatePromiseTapped(let groupId):
+            if groupId == state.currentGroup?.id {
+              return .send(.view(.createNewPromise))
+            } else {
+              state.pendingContextAction = .createPromise
+              return .send(.view(.groupTapped(groupId)))
+            }
+
+          case .dismissGroupInviteSheet:
+            state.showGroupInviteSheet = false
+            return .none
+
+          case .kakaoInviteShareTapped:
+            guard let group = state.currentGroup else { return .none }
+            state.isKakaoInviteSharing = true
+            let groupName = group.name
+            let inviteCode = group.inviteCode
+            let memberCount = group.memberIds.count
+            let maxMembers = group.maxMembers
+            let groupImageUrl = group.imageUrl
+            let inviterName = state.currentGroupMembers?
+              .first { $0.userId == state.currentUser.userId }?.displayName ?? state.currentUser.nickname
+            let promiseInfos = state.allPromises
+              .filter { $0.isUpcoming }
+              .sorted { $0.startAt < $1.startAt }
+              .prefix(3)
+              .map { promise in
+                PromiseShareInfo(
+                  title: promise.title,
+                  emoji: promise.displayEmoji,
+                  dateText: promise.dateText,
+                  timeText: promise.timeText,
+                  locationName: promise.location?.name,
+                  imageUrl: promise.imageUrls.first
+                )
+              }
+            return .run { [kakaoShareClient, hapticFeedback, analyticsClient] send in
+              await hapticFeedback.buttonTap()
+              analyticsClient.logEvent(
+                "kakao_group_invite_shared",
+                [
+                  AnalyticsClient.ParameterKey.groupName: groupName,
+                  "share_method": "kakao",
+                  "promise_count": "\(promiseInfos.count)"
+                ]
+              )
+              let result = await kakaoShareClient.shareGroupInvite(
+                groupName,
+                inviteCode,
+                memberCount,
+                maxMembers,
+                groupImageUrl,
+                inviterName,
+                promiseInfos
+              )
+              await send(.internal(.kakaoInviteShareResult(result)))
+            }
+
+          case .kakaoPromiseShareTapped:
+            guard let promise = state.sharePromise else { return .none }
+            state.isKakaoPromiseSharing = true
+            return .run { [kakaoShareClient, hapticFeedback, analyticsClient] send in
+              await hapticFeedback.buttonTap()
+              analyticsClient.logEvent(
+                "kakao_promise_shared",
+                [
+                  AnalyticsClient.ParameterKey.promiseID: promise.id,
+                  "share_method": "kakao"
+                ]
+              )
+              let result = await kakaoShareClient.sharePromise(
+                promise.title,
+                promise.displayEmoji,
+                promise.dateText,
+                promise.timeText,
+                promise.location?.name,
+                promise.location?.address,
+                promise.id,
+                promise.groupId,
+                promise.description,
+                promise.imageUrls.first
+              )
+              await send(.internal(.kakaoPromiseShareResult(result)))
+            }
+
+          case .systemPromiseShareTapped:
+            guard let promise = state.sharePromise else { return .none }
+            state.systemShareText = promise.shareText
+            state.sharePromise = nil
+            return .none
+
+          case .dismissPromiseShareSheet:
+            state.sharePromise = nil
+            state.isKakaoPromiseSharing = false
+            return .none
+
+          case .systemShareSheetDismissed:
+            state.systemShareText = nil
             return .none
           }
 
@@ -746,6 +667,27 @@ extension GroupMain {
 
           case .groupListResponse(.success(let groupSummaries)):
             state.allGroupSummaries = groupSummaries
+
+            // Shared currentUser.groups를 서버 기준으로 동기화
+            var latestGroupsById: [String: UserGroupInfo] = [:]
+            for summary in groupSummaries {
+              latestGroupsById[summary.id] = summary
+            }
+            let normalizedGroups = latestGroupsById.values.sorted {
+              ($0.joinedAt ?? .distantPast) > ($1.joinedAt ?? .distantPast)
+            }
+            state.$currentUser.withLock { user in
+              user = UserPrivateModel(
+                userId: user.userId,
+                name: user.name,
+                nickname: user.nickname,
+                email: user.email,
+                provider: user.provider,
+                profile: user.profile,
+                metadata: user.metadata,
+                groups: normalizedGroups
+              )
+            }
 
             // 그룹 캘린더 동기화 설정 캐시 업데이트
             state.$groupCalendarSyncCache.withLock { cache in
@@ -800,11 +742,24 @@ extension GroupMain {
           case .currentGroupResponse(.success(let group)):
             state.currentGroup = group
             state.pendingGroupId = nil
-            // 그룹 로드 시 badge 클리어 후 멤버 정보 fetch
-            return .merge(
+
+            // context menu에서 그룹 전환 후 대기 중인 액션 실행
+            var effects: [Effect<Action>] = [
               .send(.internal(.clearBadge(groupId: group.id))),
               .send(.internal(.fetchGroupMembers(groupId: group.id)))
-            )
+            ]
+            if let pendingAction = state.pendingContextAction {
+              state.pendingContextAction = nil
+              switch pendingAction {
+              case .invite:
+                state.showGroupInviteSheet = true
+              case .settings:
+                effects.append(handleGroupSettingsTapped(&state))
+              case .createPromise:
+                effects.append(.send(.view(.createNewPromise)))
+              }
+            }
+            return .merge(effects)
 
           case .currentGroupResponse(.failure(let error)):
             state.pendingGroupId = nil
@@ -1037,6 +992,40 @@ extension GroupMain {
               .send(.internal(.fetchGroupList))
             )
 
+          case .kakaoInviteShareResult(let result):
+            state.isKakaoInviteSharing = false
+            switch result {
+            case .shared, .webShared:
+              state.showGroupInviteSheet = false
+              state.toastMessage = ToastMessage(
+                type: .success,
+                title: LocalizedStrings.KakaoShare.inviteLinkShared,
+                position: .top
+              )
+              return .run { [hapticFeedback] _ in
+                await hapticFeedback.success()
+              }
+            case .fallbackToSystem:
+              return .none
+            }
+
+          case .kakaoPromiseShareResult(let result):
+            state.isKakaoPromiseSharing = false
+            switch result {
+            case .shared, .webShared:
+              state.sharePromise = nil
+              state.toastMessage = ToastMessage(
+                type: .success,
+                title: LocalizedStrings.KakaoShare.promiseShared,
+                position: .top
+              )
+              return .run { [hapticFeedback] _ in
+                await hapticFeedback.success()
+              }
+            case .fallbackToSystem:
+              return .none
+            }
+
           }
 
         // MARK: - Child Feature Actions
@@ -1137,7 +1126,20 @@ extension GroupMain {
         // GroupSettings delegate actions
         case .path(.element(id: _, action: .groupSettings(.delegate(.groupLeft)))):
           if let groupId = state.currentGroup?.id {
-            state.$groupMembersCache.withLock { $0.removeValue(forKey: groupId) }
+            state.$groupMembersCache.withLock { _ = $0.removeValue(forKey: groupId) }
+            state.$currentUser.withLock { user in
+              let updatedGroups = user.groups.filter { $0.id != groupId }
+              user = UserPrivateModel(
+                userId: user.userId,
+                name: user.name,
+                nickname: user.nickname,
+                email: user.email,
+                provider: user.provider,
+                profile: user.profile,
+                metadata: user.metadata,
+                groups: updatedGroups
+              )
+            }
           }
           state.path.removeAll()
           state.currentGroup = nil
@@ -1145,7 +1147,20 @@ extension GroupMain {
 
         case .path(.element(id: _, action: .groupSettings(.delegate(.groupDeleted)))):
           if let groupId = state.currentGroup?.id {
-            state.$groupMembersCache.withLock { $0.removeValue(forKey: groupId) }
+            state.$groupMembersCache.withLock { _ = $0.removeValue(forKey: groupId) }
+            state.$currentUser.withLock { user in
+              let updatedGroups = user.groups.filter { $0.id != groupId }
+              user = UserPrivateModel(
+                userId: user.userId,
+                name: user.name,
+                nickname: user.nickname,
+                email: user.email,
+                provider: user.provider,
+                profile: user.profile,
+                metadata: user.metadata,
+                groups: updatedGroups
+              )
+            }
           }
           state.path.removeAll()
           state.currentGroup = nil
@@ -1163,7 +1178,7 @@ extension GroupMain {
         case .path(.element(id: _, action: .groupSettings(.delegate(.hostTransferred)))):
           // 호스트 양도 후 설정 화면을 닫고 그룹 데이터 새로고침
           if let groupId = state.currentGroup?.id {
-            state.$groupMembersCache.withLock { $0.removeValue(forKey: groupId) }
+            state.$groupMembersCache.withLock { _ = $0.removeValue(forKey: groupId) }
           }
           state.path.removeAll()
           return .send(.internal(.fetchGroupList))
@@ -1210,114 +1225,6 @@ extension GroupMain {
       .ifLet(\.$deleteAlert, action: \.deleteAlert)
       .ifLet(\.$groupActionSheet, action: \.groupActionSheet)
       .forEach(\.path, action: \.path)
-    }
-  }
-}
-
-// MARK: - Path Conformances
-
-extension GroupMain.Feature.Path.State: Equatable, Sendable {}
-extension GroupMain.Feature.Path.Action: Sendable {}
-
-// MARK: - New UI Action Helpers
-
-private func handleMoreNeedResponseTapped(
-  _ state: inout GroupMain.Feature.State
-) -> Effect<GroupMain.Feature.Action> {
-  guard let currentGroup = state.currentGroup else { return .none }
-  state.path.append(.groupPromiseList(.init(
-    group: currentGroup,
-    promises: state.allPromises,
-    currentUserId: state.currentUser.userId,
-    groupMembers: state.currentGroupMembers,
-    initialFilter: .needResponse
-  )))
-  return .none
-}
-
-private func handleMoreConfirmedTapped(
-  _ state: inout GroupMain.Feature.State
-) -> Effect<GroupMain.Feature.Action> {
-  guard let currentGroup = state.currentGroup else { return .none }
-  state.path.append(.groupPromiseList(.init(
-    group: currentGroup,
-    promises: state.allPromises,
-    currentUserId: state.currentUser.userId,
-    groupMembers: state.currentGroupMembers,
-    initialFilter: .confirmed
-  )))
-  return .none
-}
-
-private func handleAllPromisesTapped(
-  _ state: inout GroupMain.Feature.State
-) -> Effect<GroupMain.Feature.Action> {
-  guard let currentGroup = state.currentGroup else { return .none }
-  state.path.append(.groupPromiseList(.init(
-    group: currentGroup,
-    promises: state.allPromises,
-    currentUserId: state.currentUser.userId,
-    groupMembers: state.currentGroupMembers,
-    initialFilter: .all
-  )))
-  return .none
-}
-
-private func handleGroupSettingsTapped(
-  _ state: inout GroupMain.Feature.State
-) -> Effect<GroupMain.Feature.Action> {
-  guard let currentGroup = state.currentGroup else { return .none }
-  let summary = state.allGroupSummaries?.first { $0.id == currentGroup.id }
-  state.path.append(.groupSettings(.init(
-    group: currentGroup,
-    summary: summary,
-    currentUserId: state.currentUser.userId,
-    userPlan: state.userPlan,
-    preloadedMembers: state.currentGroupMembers
-  )))
-  return .none
-}
-
-// MARK: - Deeplink Helpers
-
-extension GroupMain.Feature.State {
-  /// 딥링크 처리 시 다른 그룹으로 이동하는 경우에만 path 초기화
-  mutating func clearPathIfGroupChanged(targetGroupId: String) {
-    if currentGroup?.id != targetGroupId {
-      path.removeAll()
-    }
-  }
-}
-
-// MARK: - LiveActivity Profile Image Caching
-
-/// LiveActivity용 프로필 이미지 사전 캐싱
-///
-/// APNs 원격 LiveActivity 시작 시 앱 코드가 실행되지 않으므로,
-/// 멤버 로드 시점에 미리 App Group에 캐싱합니다.
-/// - 이미 캐시된 이미지는 스킵
-/// - 다운로드 실패 시 Widget에서 이모지로 fallback
-private func cacheProfileImagesForLiveActivity(members: [UserPublicModel]) async {
-  AppLogger.liveActivity.debug("프로필 이미지 캐싱 시작: \(members.count)명")
-
-  await withTaskGroup(of: Void.self) { group in
-    for member in members {
-      group.addTask {
-        guard let urlString = member.profileImageUrl,
-              let url = URL(string: urlString) else {
-          AppLogger.liveActivity.debug("프로필 URL 없음: \(member.userId)")
-          return
-        }
-
-        // 매번 저장 (덮어쓰기) - 프로필 변경 즉시 반영
-        // Nuke 캐시로 네트워크 비용 없음, TaskGroup이 병렬 처리
-        do {
-          let image = try await ImagePipeline.shared.image(for: url)
-          LiveActivityImageStore.saveImage(image, userId: member.userId)
-        } catch {
-          AppLogger.liveActivity.error("다운로드 실패: \(member.userId), \(error)")
-        }
-      }
     }
   }
 }

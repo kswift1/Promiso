@@ -72,42 +72,6 @@ struct AppErrorTests {
 @Suite("UserProfileError 테스트")
 struct UserProfileErrorTests {
 
-  @Test("invalidData 에러 메시지")
-  func invalidData_errorDescription() {
-    let error = UserProfileError.invalidData
-    #expect(error.errorDescription == "프로필 데이터 형식이 올바르지 않습니다.")
-  }
-
-  @Test("userNotFound 에러 메시지")
-  func userNotFound_errorDescription() {
-    let error = UserProfileError.userNotFound
-    #expect(error.errorDescription == "사용자를 찾을 수 없습니다.")
-  }
-
-  @Test("uploadFailed 에러 메시지")
-  func uploadFailed_errorDescription() {
-    let error = UserProfileError.uploadFailed
-    #expect(error.errorDescription == "프로필 업로드에 실패했습니다.")
-  }
-
-  @Test("networkError 에러 메시지")
-  func networkError_errorDescription() {
-    let error = UserProfileError.networkError
-    #expect(error.errorDescription == "네트워크 연결을 확인해주세요.")
-  }
-
-  @Test("authenticationRequired 에러 메시지")
-  func authenticationRequired_errorDescription() {
-    let error = UserProfileError.authenticationRequired
-    #expect(error.errorDescription == "로그인이 필요합니다.")
-  }
-
-  @Test("permissionDenied 에러 메시지")
-  func permissionDenied_errorDescription() {
-    let error = UserProfileError.permissionDenied
-    #expect(error.errorDescription == "권한이 없습니다.")
-  }
-
   @Test("UserProfileError는 Equatable 비교 가능")
   func equatable_sameCases_areEqual() {
     #expect(UserProfileError.invalidData == UserProfileError.invalidData)

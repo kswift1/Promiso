@@ -12,7 +12,6 @@ import SwiftUI
 // MARK: - Feature Namespace
 
 public enum AppEntry {}
-extension AppEntry.Feature.State: Sendable {}
 extension AppEntry.Feature.Destination.State: Equatable {}
 
 // MARK: - Feature Implementation
@@ -105,7 +104,6 @@ extension AppEntry {
     private enum SubscriptionCancelID {
       case fcmToken
       case pushNotificationTap
-      case appRestart
     }
     
     @CasePathable
@@ -125,8 +123,6 @@ extension AppEntry {
       case fcmTokenSaved
       case subscribePushNotificationTap
       case pushNotificationTapped(DeeplinkDestination)
-      case subscribeAppRestart
-      case appRestartRequested
       case cancelSubscriptions
       case transitionToMain(UserPrivateModel, isSignup: Bool)
       case requestFCMToken
@@ -208,8 +204,7 @@ extension AppEntry {
             return .merge(
               .send(.internal(.startSessionCheck)),
               .send(.internal(.subscribeFCMToken)),
-              .send(.internal(.subscribePushNotificationTap)),
-              .send(.internal(.subscribeAppRestart))
+              .send(.internal(.subscribePushNotificationTap))
             )
 
           case .startSessionCheck:
@@ -321,33 +316,10 @@ extension AppEntry {
           case .pushNotificationTapped(let destination):
             return routeOrPendDeeplink(destination, state: &state)
 
-          case .subscribeAppRestart:
-            return .publisher {
-              NotificationCenter.default
-                .publisher(for: AppConstants.Notifications.appRestartRequested)
-                .map { _ in Action.internal(.appRestartRequested) }
-            }
-            .cancellable(id: SubscriptionCancelID.appRestart, cancelInFlight: true)
-
-          case .appRestartRequested:
-            // 앱 상태 리셋 - Splash부터 다시 시작
-            state.reset()
-
-            // 시간 포맷 다시 로드
-            KoreanDateFormatters.use24HourFormat = userDefaultsClient.boolForKey(
-              AppConstants.UserDefaults.use24HourFormat
-            )
-
-            // 테마 모드는 RootTab에서 preferredColorScheme으로 자동 적용됨
-            // (UserDefaults.preferredThemeMode 값을 직접 읽음)
-
-            return .send(.internal(.startSessionCheck))
-
           case .cancelSubscriptions:
             return .merge(
               .cancel(id: SubscriptionCancelID.fcmToken),
-              .cancel(id: SubscriptionCancelID.pushNotificationTap),
-              .cancel(id: SubscriptionCancelID.appRestart)
+              .cancel(id: SubscriptionCancelID.pushNotificationTap)
             )
 
           case .transitionToMain(let userModel, let isSignup):
@@ -538,8 +510,8 @@ extension AppEntry {
     // MARK: - Alert Strings
 
     private enum AlertStrings {
-      static let forceUpdateTitle = "업데이트 필요"
-      static let recommendUpdateTitle = "새 버전 안내"
+      static let forceUpdateTitle = LocalizedStrings.AppEntry.forceUpdateTitle
+      static let recommendUpdateTitle = LocalizedStrings.AppEntry.recommendUpdateTitle
 
       static func forceUpdateMessage(current: String, required: String) -> String {
         "앱을 계속 사용하려면 최신 버전으로 업데이트해주세요.\n\n현재 버전: \(current)\n필요 버전: \(required)"
@@ -579,11 +551,11 @@ extension AppEntry {
         ),
         presenting: store.updateAlert
       ) { alertState in
-        Button("업데이트") {
+        Button(LocalizedStrings.AppEntry.updateAction) {
           store.send(.updateAlert(.updateTapped))
         }
         if case .recommendUpdate = alertState {
-          Button("나중에", role: .cancel) {
+          Button(LocalizedStrings.AppEntry.updateLater, role: .cancel) {
             store.send(.updateAlert(.laterTapped))
           }
         }

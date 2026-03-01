@@ -28,9 +28,16 @@ extension CreateGroup {
             inputView
 
           case .success(let result):
-            CreateGroupSuccessView(result: result) {
-              store.send(.view(.successAcknowledged))
-            }
+            CreateGroupSuccessView(
+              result: result,
+              isKakaoSharing: store.isKakaoSharing,
+              onKakaoShareTapped: {
+                store.send(.view(.kakaoInviteShareTapped))
+              },
+              onConfirm: {
+                store.send(.view(.successAcknowledged))
+              }
+            )
 
           case .settings(let result):
             CreateGroupSettingsView(
@@ -68,7 +75,7 @@ extension CreateGroup {
         store.send(.view(.onAppear))
       }
       .alert(
-        "그룹 생성에 실패했어요",
+        LocalizedStrings.CreateGroup.creationFailedTitle,
         isPresented: Binding(
           get: { store.creationError != nil },
           set: { isPresented in
@@ -78,12 +85,12 @@ extension CreateGroup {
           }
         ),
         actions: {
-          Button("확인", role: .cancel) {
+          Button(LocalizedStrings.Common.ok, role: .cancel) {
             store.send(.view(.errorAlertDismissed))
           }
         },
         message: {
-          Text(store.creationError ?? "잠시 후 다시 시도해주세요.")
+          Text(store.creationError ?? LocalizedStrings.CreateGroup.creationFailedDefault)
         }
       )
       .auroraBackground()
@@ -92,7 +99,7 @@ extension CreateGroup {
     private var navigationTitle: String {
       switch store.step {
       case .input:
-        return "그룹 만들기"
+        return LocalizedStrings.CreateGroup.title
       case .success:
         return ""
       case .settings:
@@ -176,7 +183,7 @@ private struct PhotoUploadSection: View {
   
   var body: some View {
     VStack(spacing: 12) {
-      Text("그룹 사진")
+      Text(LocalizedStrings.CreateGroup.groupPhoto)
         .font(.system(size: 16, weight: .semibold))
         .foregroundColor(.primary)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -211,7 +218,7 @@ private struct PhotosPickerButton: View {
                 Image(systemName: "camera.fill")
                   .font(.system(size: 28))
                   .foregroundColor(.secondary)
-                Text("사진 추가")
+                Text(LocalizedStrings.CreateGroup.addPhoto)
                   .font(.system(size: 13))
                   .foregroundColor(.secondary)
               }
@@ -233,7 +240,7 @@ private struct GroupNameSection: View {
   var body: some View {
     VStack(spacing: 12) {
       HStack {
-        Text("그룹 이름")
+        Text(LocalizedStrings.CreateGroup.groupName)
           .font(.system(size: 16, weight: .semibold))
           .foregroundColor(.primary)
 
@@ -244,7 +251,7 @@ private struct GroupNameSection: View {
           .foregroundColor(characterCount >= 2 ? .secondary : .red)
       }
 
-      TextField("그룹 이름을 입력하세요", text: $groupName)
+      TextField(LocalizedStrings.CreateGroup.groupNamePlaceholder, text: $groupName)
         .textFieldStyle(.plain)
         .padding(12)
         .background(Color(.systemBackground))
@@ -257,12 +264,12 @@ private struct GroupNameSection: View {
 
       VStack(alignment: .leading, spacing: 4) {
         if characterCount > 0 && characterCount < 2 {
-          Text("최소 2자 이상 입력해주세요")
+          Text(LocalizedStrings.CreateGroup.groupNameMinLength)
             .font(.system(size: 12))
             .foregroundColor(.red)
         }
 
-        Label("그룹 이름은 생성 후 변경할 수 없습니다", systemImage: "info.circle")
+        Label(LocalizedStrings.CreateGroup.groupNameCannotChange, systemImage: "info.circle")
           .font(.system(size: 12))
           .foregroundColor(.secondary)
       }
@@ -282,7 +289,7 @@ private struct GroupDescriptionSection: View {
   var body: some View {
     VStack(spacing: 12) {
       HStack {
-        Text("그룹 설명")
+        Text(LocalizedStrings.CreateGroup.groupDescription)
           .font(.system(size: 16, weight: .semibold))
           .foregroundColor(.primary)
 
@@ -293,7 +300,7 @@ private struct GroupDescriptionSection: View {
           .foregroundColor(.secondary)
       }
 
-      TextField("그룹 설명을 입력하세요 (선택)", text: $groupDescription, axis: .vertical)
+      TextField(LocalizedStrings.CreateGroup.groupDescriptionPlaceholder, text: $groupDescription, axis: .vertical)
         .lineLimit(2, reservesSpace: true)
         .textFieldStyle(.plain)
         .padding(12)
@@ -315,7 +322,7 @@ private struct MaxMembersSection: View {
   
   var body: some View {
     HStack {
-      Text("최대 인원")
+      Text(LocalizedStrings.CreateGroup.maxMembers)
         .font(.system(size: 16, weight: .semibold))
         .foregroundColor(.primary)
       
@@ -342,7 +349,7 @@ private struct BottomButton: View {
   var body: some View {
     VStack(spacing: 8) {
       GlassActionButton(
-        title: isLoading ? "만드는 중..." : "그룹 만들기",
+        title: isLoading ? LocalizedStrings.CreateGroup.creating : LocalizedStrings.CreateGroup.createButton,
         isPrimary: true,
         isVisible: true,
         isEnabled: isInputValid && !isLoading,
@@ -356,7 +363,7 @@ private struct BottomButton: View {
         }
       }
       
-      Text("그룹을 만들면 자동으로 관리자가 됩니다")
+      Text(LocalizedStrings.CreateGroup.adminHint)
         .font(.system(size: 12))
         .foregroundColor(.secondary)
     }
