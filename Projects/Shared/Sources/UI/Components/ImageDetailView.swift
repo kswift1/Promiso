@@ -69,7 +69,6 @@ public struct ImageDetailView: View {
         .onTapGesture(count: 2, perform: handleDoubleTap)
       }
     }
-    .background(ClearBackground())
     .task(id: imageUrl) {
       await loadImage()
     }
@@ -235,16 +234,3 @@ public struct ImageDetailView: View {
   }
 }
 
-// MARK: - Clear Background Helper
-
-struct ClearBackground: UIViewRepresentable {
-  func makeUIView(context: Context) -> UIView {
-    let view = UIView()
-    DispatchQueue.main.async {
-      view.superview?.superview?.backgroundColor = .clear
-    }
-    return view
-  }
-  
-  func updateUIView(_ uiView: UIView, context: Context) {}
-}

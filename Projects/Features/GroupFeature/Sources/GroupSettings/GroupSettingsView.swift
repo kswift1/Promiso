@@ -1173,6 +1173,7 @@ private struct AlertsModifier: ViewModifier {
           displayName: member.displayName,
           onDismiss: { store.send(.view(.imageDetailDismissed)) }
         )
+        .presentationBackground(.black)
       }
       .fullScreenCover(isPresented: groupImageDetailBinding) {
         PromisoShared.ImageDetailView(
@@ -1418,7 +1419,7 @@ struct GroupMemberListView: View {
         displayName: member.displayName,
         onDismiss: { store.send(.view(.imageDetailDismissed)) }
       )
-      .presentationBackground(.clear)
+      .presentationBackground(.black)
     }
   }
 }

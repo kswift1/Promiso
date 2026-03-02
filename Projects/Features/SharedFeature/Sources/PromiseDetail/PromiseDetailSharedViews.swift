@@ -391,6 +391,7 @@ public struct PromiseDetailMemberListSheet: View {
         displayName: member.displayName,
         onDismiss: { selectedMember = nil }
       )
+      .presentationBackground(.black)
     }
   }
 }
