@@ -1,6 +1,22 @@
 import SwiftUI
 import Nuke
 
+// MARK: - ImageDetailItem
+
+public struct ImageDetailItem: Identifiable, Equatable {
+  public let id: String
+  public let imageUrl: String?
+  public let displayName: String
+
+  public init(id: String, imageUrl: String?, displayName: String) {
+    self.id = id
+    self.imageUrl = imageUrl
+    self.displayName = displayName
+  }
+}
+
+// MARK: - ImageDetailView
+
 public struct ImageDetailView: View {
   let imageUrl: String?
   let displayName: String

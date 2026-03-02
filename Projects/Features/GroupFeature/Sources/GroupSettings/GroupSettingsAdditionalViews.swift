@@ -71,20 +71,6 @@ struct AlertsModifier: ViewModifier {
     )
   }
 
-  private var imageDetailBinding: Binding<UserPublicModel?> {
-    Binding(
-      get: { store.selectedMemberForImage },
-      set: { if $0 == nil { store.send(.view(.imageDetailDismissed)) } }
-    )
-  }
-
-  private var groupImageDetailBinding: Binding<Bool> {
-    Binding(
-      get: { store.showGroupImageDetail },
-      set: { if !$0 { store.send(.view(.groupImageDetailDismissed)) } }
-    )
-  }
-
   private var transferSheetBinding: Binding<Bool> {
     Binding(
       get: { store.isShowingTransferSheet },
@@ -118,28 +104,26 @@ struct AlertsModifier: ViewModifier {
       } message: {
         Text(store.leaveError ?? store.deleteError ?? store.notificationError ?? LocalizedStrings.GroupSettingsView.unknownError)
       }
-      .overlay {
-        if let member = store.selectedMemberForImage {
-          PromisoShared.ImageDetailView(
-            imageUrl: member.profileImageUrl,
-            displayName: member.displayName,
-            onDismiss: { store.send(.view(.imageDetailDismissed)) }
-          )
-          .ignoresSafeArea()
-          .transition(.opacity)
-          .zIndex(1)
-        } else if store.showGroupImageDetail {
-          PromisoShared.ImageDetailView(
-            imageUrl: store.group.imageUrl,
-            displayName: store.group.name,
-            onDismiss: { store.send(.view(.groupImageDetailDismissed)) }
-          )
-          .ignoresSafeArea()
-          .transition(.opacity)
-          .zIndex(1)
-        }
+      .fullScreenCover(
+        item: Binding(
+          get: {
+            if let member = store.selectedMemberForImage {
+              return PromisoShared.ImageDetailItem(id: "member-\(member.userId)", imageUrl: member.profileImageUrl, displayName: member.displayName)
+            } else if store.showGroupImageDetail {
+              return PromisoShared.ImageDetailItem(id: "group", imageUrl: store.group.imageUrl, displayName: store.group.name)
+            }
+            return nil
+          },
+          set: { if $0 == nil { store.send(.view(.imageDetailDismissed)) } }
+        )
+      ) { item in
+        PromisoShared.ImageDetailView(
+          imageUrl: item.imageUrl,
+          displayName: item.displayName,
+          onDismiss: { store.send(.view(.imageDetailDismissed)) }
+        )
+        .presentationBackground(.black)
       }
-      .animation(.easeInOut(duration: 0.2), value: store.selectedMemberForImage != nil || store.showGroupImageDetail)
       .sheet(isPresented: transferSheetBinding) {
         TransferHostSheet(store: store)
       }
@@ -261,6 +245,16 @@ private struct TransferHostSheet: View {
 struct GroupMemberListView: View {
   @Bindable var store: StoreOf<GroupSettings.Feature>
 
+  private var imageDetailItemBinding: Binding<PromisoShared.ImageDetailItem?> {
+    Binding(
+      get: {
+        guard let member = store.selectedMemberForImage else { return nil }
+        return PromisoShared.ImageDetailItem(id: "member-\(member.userId)", imageUrl: member.profileImageUrl, displayName: member.displayName)
+      },
+      set: { if $0 == nil { store.send(.view(.imageDetailDismissed)) } }
+    )
+  }
+
   var body: some View {
     ScrollView {
       VStack(spacing: 16) {
@@ -365,19 +359,14 @@ struct GroupMemberListView: View {
     } message: {
       Text(store.expelError ?? LocalizedStrings.GroupSettingsView.unknownError)
     }
-    .overlay {
-      if let member = store.selectedMemberForImage {
-        PromisoShared.ImageDetailView(
-          imageUrl: member.profileImageUrl,
-          displayName: member.displayName,
-          onDismiss: { store.send(.view(.imageDetailDismissed)) }
-        )
-        .ignoresSafeArea()
-        .transition(.opacity)
-        .zIndex(1)
-      }
+    .fullScreenCover(item: imageDetailItemBinding) { item in
+      PromisoShared.ImageDetailView(
+        imageUrl: item.imageUrl,
+        displayName: item.displayName,
+        onDismiss: { store.send(.view(.imageDetailDismissed)) }
+      )
+      .presentationBackground(.black)
     }
-    .animation(.easeInOut(duration: 0.2), value: store.selectedMemberForImage != nil)
   }
 }
 
