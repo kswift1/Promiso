@@ -20,11 +20,11 @@ struct WeatherConditionTests {
     #expect(WeatherCondition.unknown.sfSymbolName == "questionmark.circle")
   }
 
-  @Test("한글 설명이 올바르게 매핑됨")
+  @Test("로컬라이즈된 설명이 올바르게 매핑됨")
   func descriptions() {
-    #expect(WeatherCondition.clear.description == "맑음")
-    #expect(WeatherCondition.rain.description == "비")
-    #expect(WeatherCondition.snow.description == "눈")
+    #expect(WeatherCondition.clear.description == LocalizedStrings.Weather.conditionClear)
+    #expect(WeatherCondition.rain.description == LocalizedStrings.Weather.conditionRain)
+    #expect(WeatherCondition.snow.description == LocalizedStrings.Weather.conditionSnow)
   }
 
   @Test("Codable 라운드트립")
