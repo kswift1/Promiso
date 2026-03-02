@@ -20,28 +20,7 @@ extension Home {
       NavigationStack(path: $store.scope(state: \.path, action: \.path)) {
         homeContent
           .auroraBackground()
-          .toast(Binding(
-            get: { store.toastMessage },
-            set: { _ in store.send(.view(.toastDismissed)) }
-          ))
           .toolbar {
-            ToolbarItem(placement: .principal) {
-              Button {
-                store.send(.view(.calendarOverlayOpened))
-              } label: {
-                HStack(spacing: 4) {
-                  Text(Date(), format: .dateTime.month().day().weekday(.wide))
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(.primary)
-
-                  Image(systemName: "chevron.down")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                }
-              }
-              .buttonStyle(.plain)
-            }
-
             ToolbarItem(placement: .topBarTrailing) {
               NotificationButton(
                 badgeCount: store.unreadNotificationCount,
@@ -52,6 +31,10 @@ extension Home {
               .id(store.unreadNotificationCount)
             }
           }
+          .toast(Binding(
+            get: { store.toastMessage },
+            set: { _ in store.send(.view(.toastDismissed)) }
+          ))
           .sheet(isPresented: Binding(
             get: { store.showQuickPromiseSheet },
             set: { newValue in
@@ -143,6 +126,29 @@ extension Home {
       }
     }
 
+    // MARK: - Home Header
+
+    private var homeHeader: some View {
+      HStack {
+        Button {
+          store.send(.view(.calendarOverlayOpened))
+        } label: {
+          HStack(spacing: 6) {
+            Text(Date(), format: .dateTime.month().day().weekday(.wide))
+              .font(.system(size: 28, weight: .bold))
+              .foregroundStyle(.primary)
+
+            Image(systemName: "chevron.down")
+              .font(.system(size: 12, weight: .semibold))
+              .foregroundStyle(.secondary)
+          }
+        }
+        .buttonStyle(.plain)
+
+        Spacer()
+      }
+    }
+
     // MARK: - Home Content
 
     private var homeContent: some View {
@@ -150,6 +156,10 @@ extension Home {
 
       return ScrollView {
         LazyVStack(spacing: 20) {
+          // 홈 헤더
+          homeHeader
+            .padding(.horizontal, 16)
+
           if store.isLoading && !store.hasLoadedOnce {
             loadingView
           } else if let error = store.promisesState.error {

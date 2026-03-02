@@ -53,15 +53,9 @@ struct TodayScheduleCard: View {
 
   private var cardHeader: some View {
     HStack(spacing: 8) {
-      VStack(alignment: .leading, spacing: 2) {
-        Text(LocalizedStrings.Home.todaySchedule)
-          .font(.pmHeadline)
-          .foregroundStyle(.primary)
-
-        Text(todayDateString)
-          .font(.pmCaption)
-          .foregroundStyle(.secondary)
-      }
+      Text(LocalizedStrings.Home.todaySchedule)
+        .font(.pmHeadline)
+        .foregroundStyle(.primary)
 
       Spacer()
 
@@ -165,11 +159,6 @@ struct TodayScheduleCard: View {
     return .insideItem
   }
 
-  // MARK: - Computed Properties
-
-  private var todayDateString: String {
-    LocalizedDateFormatters.monthDayWeekday.string(from: Date())
-  }
 }
 
 // MARK: - Preview
