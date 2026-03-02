@@ -16,6 +16,15 @@ public enum CalendarFeature {}
 
 extension CalendarFeature {
 
+  // MARK: - Status Filter
+
+  public enum StatusFilter: String, Equatable, CaseIterable, Sendable {
+    case all
+    case needResponse
+    case confirmed
+    case unconfirmed
+  }
+
   // MARK: - Reducer
 
   @Reducer
@@ -88,6 +97,17 @@ extension CalendarFeature {
       /// 개인 일정 목록
       var personalEvents: [PersonalEventModel] = []
 
+      // MARK: - Filter
+
+      /// 선택된 그룹 ID (빈 Set = 전체, 필터 해제)
+      var selectedGroupIds: Set<String> = []
+
+      /// 선택된 상태 필터
+      var selectedStatusFilter: StatusFilter = .all
+
+      /// 필터 시트 표시 여부
+      var isFilterSheetPresented: Bool = false
+
       // MARK: - Group 관련
 
       /// 사용자 그룹 정보 조회용 (키: groupId)
@@ -151,7 +171,7 @@ extension CalendarFeature {
 
         // 선택된 날짜의 월 기준으로 캐시 조회
         let currentMonthKey = selectedDate.startOfMonth
-        let allPromises = cachedPromisesByMonth[currentMonthKey] ?? []
+        let allPromises = filteredPromises(for: currentMonthKey)
 
         // 날짜별 그룹화
         for promise in allPromises {
@@ -255,6 +275,11 @@ extension CalendarFeature {
         isLoadingPromises && loadedMonths.isEmpty
       }
 
+      /// 필터 활성 여부 (헤더 뱃지용)
+      var isFilterActive: Bool {
+        !selectedGroupIds.isEmpty || selectedStatusFilter != .all
+      }
+
       // MARK: - Group Color Map
 
       /// 그룹별 컬러 맵 (groupId → Color)
@@ -279,7 +304,7 @@ extension CalendarFeature {
         let currentMonthKey = currentMonth.startOfMonth
         let prevMonthKey = calendar.date(byAdding: .month, value: -1, to: currentMonthKey)?.startOfMonth
         let nextMonthKey = calendar.date(byAdding: .month, value: 1, to: currentMonthKey)?.startOfMonth
-        let allPromises: [PromiseModel] = [prevMonthKey, currentMonthKey, nextMonthKey].compactMap { $0 }.flatMap { cachedPromisesByMonth[$0] ?? [] }
+        let allPromises: [PromiseModel] = [prevMonthKey, currentMonthKey, nextMonthKey].compactMap { $0 }.flatMap { filteredPromises(for: $0) }
         // 중복 제거 (날짜 경계 약속이 여러 월에 걸칠 수 있음)
         let uniquePromises = Dictionary(grouping: allPromises, by: \.id).compactMap(\.value.first)
         for promise in uniquePromises {
@@ -384,10 +409,36 @@ extension CalendarFeature {
         cachedPromisesByMonth.values.lazy.flatMap { $0 }.first { $0.id == id }
       }
 
+      /// 필터가 적용된 약속 목록 (그룹 + 상태 필터)
+      func filteredPromises(for monthKey: Date) -> [PromiseModel] {
+        var promises = cachedPromisesByMonth[monthKey] ?? []
+
+        // 그룹 필터
+        if !selectedGroupIds.isEmpty {
+          promises = promises.filter { selectedGroupIds.contains($0.groupId) }
+        }
+
+        // 상태 필터
+        switch selectedStatusFilter {
+        case .all:
+          break
+        case .needResponse:
+          promises = promises.filter {
+            $0.myVoteStatus(userId: currentUserId) == .pending && !$0.isVotingClosed
+          }
+        case .confirmed:
+          promises = promises.filter { $0.isConfirmed }
+        case .unconfirmed:
+          promises = promises.filter { !$0.isConfirmed && !$0.isVotingClosed }
+        }
+
+        return promises
+      }
+
       private func buildScheduleItems(from start: Date, to end: Date) -> [CalendarFeature.ScheduleItem] {
         // start/end가 속한 월을 모두 포함하여 월 경계 누락 방지
         let monthKeys = Set([start.startOfMonth, end.startOfMonth, selectedDate.startOfMonth])
-        let allPromises = Array(Set(monthKeys.flatMap { cachedPromisesByMonth[$0] ?? [] }))
+        let allPromises = Array(Set(monthKeys.flatMap { filteredPromises(for: $0) }))
 
         let promiseItems = allPromises
           .filter { $0.startAt < end && $0.effectiveEndAt >= start }
@@ -495,6 +546,12 @@ extension CalendarFeature {
         case dayLongPressCreatePersonalEvent(Date)
         case dayLongPressCreatePromise(Date)
         case toggleMonthExpansion
+        // 필터 관련
+        case filterIconTapped
+        case filterGroupToggled(String)
+        case filterStatusChanged(StatusFilter)
+        case filterReset
+        case filterSheetDismissed
       }
 
       @CasePathable
@@ -1058,6 +1115,31 @@ extension CalendarFeature {
 
       case .toggleMonthExpansion:
         state.monthExpansionState = state.monthExpansionState == .collapsed ? .expanded : .collapsed
+        return .none
+
+      case .filterIconTapped:
+        state.isFilterSheetPresented = true
+        return .none
+
+      case .filterGroupToggled(let groupId):
+        if state.selectedGroupIds.contains(groupId) {
+          state.selectedGroupIds.remove(groupId)
+        } else {
+          state.selectedGroupIds.insert(groupId)
+        }
+        return .none
+
+      case .filterStatusChanged(let filter):
+        state.selectedStatusFilter = filter
+        return .none
+
+      case .filterReset:
+        state.selectedGroupIds = []
+        state.selectedStatusFilter = .all
+        return .none
+
+      case .filterSheetDismissed:
+        state.isFilterSheetPresented = false
         return .none
       }
     }

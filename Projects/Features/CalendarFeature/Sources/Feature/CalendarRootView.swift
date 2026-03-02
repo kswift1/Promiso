@@ -29,6 +29,8 @@ extension CalendarFeature {
             title: store.headerTitle,
             displayMode: store.displayMode,
             isSelectedDateToday: store.isSelectedDateToday,
+            isFilterActive: store.isFilterActive,
+            onFilterTapped: { store.send(.view(.filterIconTapped)) },
             onToggleMode: { store.send(.view(.toggleDisplayMode), animation: .spring(response: 0.45, dampingFraction: 0.8)) },
             onMoveToToday: { store.send(.view(.moveToToday), animation: .spring(response: 0.35, dampingFraction: 0.85)) },
             onMovePrevious: { store.send(.view(.moveToPreviousPeriod), animation: .spring(response: 0.35, dampingFraction: 0.85)) },
@@ -84,6 +86,32 @@ extension CalendarFeature {
           set: { _ in store.send(.view(.systemShareSheetDismissed)) }
         )) { item in
           ShareSheet(items: [item.text])
+        }
+        .sheet(isPresented: Binding(
+          get: { store.isFilterSheetPresented },
+          set: { newValue in
+            if !newValue {
+              store.send(.view(.filterSheetDismissed))
+            }
+          }
+        )) {
+          CalendarFilterSheetView(
+            groups: store.currentUser.groups,
+            groupColorMap: store.groupColorMap,
+            selectedGroupIds: store.selectedGroupIds,
+            selectedStatus: store.selectedStatusFilter,
+            onGroupToggled: { groupId in
+              store.send(.view(.filterGroupToggled(groupId)))
+            },
+            onStatusChanged: { filter in
+              store.send(.view(.filterStatusChanged(filter)))
+            },
+            onReset: {
+              store.send(.view(.filterReset))
+            }
+          )
+          .presentationDetents([.medium])
+          .presentationDragIndicator(.visible)
         }
         .toast(Binding(
           get: { store.toastMessage },
