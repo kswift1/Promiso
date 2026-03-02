@@ -1209,10 +1209,35 @@ public enum LocalizedStrings {
     // Weather Permission
     public static var weatherPermissionTitle: String { String(localized: "calendar.weather.permission.title", bundle: bundle) }
     public static var weatherPermissionDescription: String { String(localized: "calendar.weather.permission.description", bundle: bundle) }
+
+    // Weather Denied
+    public static var weatherDeniedTitle: String { String(localized: "calendar.weather.denied.title", bundle: bundle) }
+    public static var weatherDeniedDescription: String { String(localized: "calendar.weather.denied.description", bundle: bundle) }
+
+    // Weather Failed
+    public static var weatherFailedTitle: String { String(localized: "calendar.weather.failed.title", bundle: bundle) }
+    public static var weatherFailedDescription: String { String(localized: "calendar.weather.failed.description", bundle: bundle) }
     public static var weatherCurrentLocation: String { String(localized: "calendar.weather.currentLocation", bundle: bundle) }
     public static func weatherReference(_ value: String) -> String {
       String(localized: "calendar.weather.reference", bundle: bundle)
         .replacingOccurrences(of: "%@", with: value)
+    }
+
+    // Weather Detail
+    public static var weatherDetailTitle: String { String(localized: "calendar.weather.detail.title", bundle: bundle) }
+    public static var weatherHourlyTitle: String { String(localized: "calendar.weather.hourly.title", bundle: bundle) }
+    public static var weatherWeeklyTitle: String { String(localized: "calendar.weather.weekly.title", bundle: bundle) }
+    public static var weatherSuggestionsTitle: String { String(localized: "calendar.weather.suggestions.title", bundle: bundle) }
+    public static func weatherFeelsLike(_ temp: String) -> String {
+      String(localized: "calendar.weather.feelsLike", bundle: bundle)
+        .replacingOccurrences(of: "%@", with: temp)
+    }
+    public static var weatherToday: String { String(localized: "calendar.weather.today", bundle: bundle) }
+    public static var weatherTomorrow: String { String(localized: "calendar.weather.tomorrow", bundle: bundle) }
+    public static func weatherMinMax(_ low: String, _ high: String) -> String {
+      String(localized: "calendar.weather.minMax", bundle: bundle)
+        .replacingOccurrences(of: "%1$@", with: low)
+        .replacingOccurrences(of: "%2$@", with: high)
     }
 
     // Promise Card Status

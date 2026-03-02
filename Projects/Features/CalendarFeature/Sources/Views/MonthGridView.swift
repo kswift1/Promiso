@@ -1,151 +1,381 @@
 // MARK: - MonthGridView.swift
-// 월간 캘린더 그리드 뷰 - TabView 기반 페이징 + 동적 로딩
+// 월간 캘린더 그리드 뷰 - UIKit UIScrollView 기반 3페이지 페이저
 
 import SwiftUI
-import Clients
-
-// MARK: - Height Preference Key
-
-private struct MonthContentHeightKey: PreferenceKey {
-  static var defaultValue: CGFloat = 0
-  static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-    value = max(value, nextValue())
-  }
-}
+import UIKit
 
 // MARK: - Shared Calendar
 
 private let monthGridCalendar = Calendar.current
 
-// MARK: - Constants
-
-private enum MonthPagesConfig {
-  static let pageRange = 6          // 전후 6개월
-  static let reloadThreshold = 2    // 경계에서 2개월 이내면 재생성
-}
-
 // MARK: - Paging Month Grid View
 
-/// TabView 기반 월간 캘린더 (동적 페이지 로딩)
-struct PagingMonthGridView: View {
+/// UIScrollView 기반 3페이지 월간 캘린더 (prev / current / next month)
+struct PagingMonthGridView: UIViewControllerRepresentable {
   @Binding var currentMonth: Date
   let selectedDate: Date
-  let promisesByDate: [Date: [PromiseModel]]
-  let calendarEventsByDate: [Date: [CalendarEvent]]
-  let personalEventsByDate: [Date: [PersonalEventModel]]
-  let currentUserId: String
+  let scheduleIndicatorsByDate: [Date: [CalendarFeature.ScheduleIndicator]]
   let namespace: Namespace.ID
+  let isCompactMode: Bool
+  var showAllIndicators: Bool = false
   let onDateSelected: (Date) -> Void
   let onCollapseToWeek: (Date) -> Void
+  var onIndicatorTapped: ((CalendarFeature.ScheduleIndicator) -> Void)? = nil
+  var onDayCreatePersonalEvent: ((Date) -> Void)? = nil
+  var onDayCreatePromise: ((Date) -> Void)? = nil
 
-  // 로컬 상태
-  @State private var localSelection: Date
-  @State private var contentHeight: CGFloat = 320
-  @State private var monthPages: [Date] = []
-  @State private var centerMonth: Date
-
-  init(
-    currentMonth: Binding<Date>,
-    selectedDate: Date,
-    promisesByDate: [Date: [PromiseModel]],
-    calendarEventsByDate: [Date: [CalendarEvent]] = [:],
-    personalEventsByDate: [Date: [PersonalEventModel]] = [:],
-    currentUserId: String,
-    namespace: Namespace.ID,
-    onDateSelected: @escaping (Date) -> Void,
-    onCollapseToWeek: @escaping (Date) -> Void
-  ) {
-    self._currentMonth = currentMonth
-    self.selectedDate = selectedDate
-    self.promisesByDate = promisesByDate
-    self.calendarEventsByDate = calendarEventsByDate
-    self.personalEventsByDate = personalEventsByDate
-    self.currentUserId = currentUserId
-    self.namespace = namespace
-    self.onDateSelected = onDateSelected
-    self.onCollapseToWeek = onCollapseToWeek
-
-    let initialMonth = currentMonth.wrappedValue.startOfMonth
-    self._localSelection = State(initialValue: initialMonth)
-    self._centerMonth = State(initialValue: initialMonth)
-    self._monthPages = State(initialValue: Self.generatePages(around: initialMonth))
+  func makeCoordinator() -> Coordinator {
+    Coordinator(parent: self)
   }
 
-  var body: some View {
-    TabView(selection: $localSelection) {
-      ForEach(monthPages, id: \.self) { month in
-        MonthGridContent(
+  func makeUIViewController(context: Context) -> PagerViewController {
+    let vc = PagerViewController()
+    vc.isCompactMode = isCompactMode
+    vc.showAllIndicators = showAllIndicators
+    vc.coordinator = context.coordinator
+    context.coordinator.pagerVC = vc
+    context.coordinator.lastKnownMonth = currentMonth.startOfMonth
+    vc.setupPages(
+      prevMonth: prevMonth,
+      currentMonth: currentMonth.startOfMonth,
+      nextMonth: nextMonth,
+      selectedDate: selectedDate,
+      scheduleIndicatorsByDate: scheduleIndicatorsByDate,
+      namespace: namespace,
+      isCompactMode: isCompactMode,
+      showAllIndicators: showAllIndicators,
+      onDateSelected: onDateSelected,
+      onCollapseToWeek: onCollapseToWeek,
+      onIndicatorTapped: onIndicatorTapped,
+      onDayCreatePersonalEvent: onDayCreatePersonalEvent,
+      onDayCreatePromise: onDayCreatePromise
+    )
+    return vc
+  }
+
+  func updateUIViewController(_ vc: PagerViewController, context: Context) {
+    let coordinator = context.coordinator
+    coordinator.parent = self
+
+    // isCompactMode 변경 시 높이 업데이트
+    if vc.isCompactMode != isCompactMode {
+      vc.updateCompactMode(isCompactMode)
+    }
+
+    // showAllIndicators 변경 감지
+    if vc.showAllIndicators != showAllIndicators {
+      vc.showAllIndicators = showAllIndicators
+    }
+
+    let currentMonthStart = currentMonth.startOfMonth
+
+    // 외부(화살표/오늘 버튼)에서 월 변경 감지 → 슬라이드 애니메이션
+    if !coordinator.needsRecenter,
+       let lastMonth = coordinator.lastKnownMonth,
+       lastMonth != currentMonthStart {
+      let direction: Coordinator.SlideDirection = currentMonthStart > lastMonth ? .right : .left
+      coordinator.pendingSlideDirection = direction
+    }
+    coordinator.lastKnownMonth = currentMonthStart
+
+    if coordinator.needsRecenter {
+      // 스와이프 완료 후 리센터 (애니메이션 없음 — 이미 사용자가 스와이프함)
+      coordinator.needsRecenter = false
+      coordinator.pendingSlideDirection = nil
+      vc.updatePages(
+        prevMonth: prevMonth,
+        currentMonth: currentMonthStart,
+        nextMonth: nextMonth,
+        selectedDate: selectedDate,
+        scheduleIndicatorsByDate: scheduleIndicatorsByDate,
+        namespace: namespace,
+        isCompactMode: isCompactMode,
+        showAllIndicators: showAllIndicators,
+        onDateSelected: onDateSelected,
+        onCollapseToWeek: onCollapseToWeek,
+        onIndicatorTapped: onIndicatorTapped,
+        onDayCreatePersonalEvent: onDayCreatePersonalEvent,
+        onDayCreatePromise: onDayCreatePromise
+      )
+      vc.recenterToCurrentPage(animated: false)
+    } else if let direction = coordinator.pendingSlideDirection {
+      // 화살표/오늘 버튼 → 슬라이드 애니메이션
+      coordinator.pendingSlideDirection = nil
+      let targetPage: Int = direction == .right ? 2 : 0
+      vc.slideTo(page: targetPage) {
+        vc.updatePages(
+          prevMonth: self.prevMonth,
+          currentMonth: currentMonthStart,
+          nextMonth: self.nextMonth,
+          selectedDate: self.selectedDate,
+          scheduleIndicatorsByDate: self.scheduleIndicatorsByDate,
+          namespace: self.namespace,
+          isCompactMode: self.isCompactMode,
+          showAllIndicators: self.showAllIndicators,
+          onDateSelected: self.onDateSelected,
+          onCollapseToWeek: self.onCollapseToWeek,
+          onIndicatorTapped: self.onIndicatorTapped,
+          onDayCreatePersonalEvent: self.onDayCreatePersonalEvent,
+          onDayCreatePromise: self.onDayCreatePromise
+        )
+        vc.recenterToCurrentPage(animated: false)
+      }
+    } else {
+      // 일반 데이터 업데이트 (선택 날짜 변경 등)
+      vc.updatePages(
+        prevMonth: prevMonth,
+        currentMonth: currentMonthStart,
+        nextMonth: nextMonth,
+        selectedDate: selectedDate,
+        scheduleIndicatorsByDate: scheduleIndicatorsByDate,
+        namespace: namespace,
+        isCompactMode: isCompactMode,
+        showAllIndicators: showAllIndicators,
+        onDateSelected: onDateSelected,
+        onCollapseToWeek: onCollapseToWeek,
+        onIndicatorTapped: onIndicatorTapped,
+        onDayCreatePersonalEvent: onDayCreatePersonalEvent,
+        onDayCreatePromise: onDayCreatePromise
+      )
+    }
+  }
+
+  // MARK: - Helpers
+
+  private var prevMonth: Date {
+    monthGridCalendar.date(byAdding: .month, value: -1, to: currentMonth.startOfMonth) ?? currentMonth.startOfMonth
+  }
+
+  private var nextMonth: Date {
+    monthGridCalendar.date(byAdding: .month, value: 1, to: currentMonth.startOfMonth) ?? currentMonth.startOfMonth
+  }
+
+  // MARK: - Coordinator
+
+  final class Coordinator: NSObject, UIScrollViewDelegate {
+    var parent: PagingMonthGridView
+    weak var pagerVC: PagerViewController?
+    var needsRecenter = false
+    /// 외부(화살표/오늘 버튼)에서 월 변경 시 슬라이드 애니메이션 방향
+    var pendingSlideDirection: SlideDirection?
+    var lastKnownMonth: Date?
+
+    enum SlideDirection { case left, right }
+
+    init(parent: PagingMonthGridView) {
+      self.parent = parent
+    }
+
+    func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
+      let pageWidth = scrollView.bounds.width
+      guard pageWidth > 0 else { return }
+      let currentPage = Int(round(scrollView.contentOffset.x / pageWidth))
+
+      if currentPage == 0 {
+        // 이전 월로 이동
+        needsRecenter = true
+        let prev = monthGridCalendar.date(byAdding: .month, value: -1, to: parent.currentMonth.startOfMonth) ?? parent.currentMonth
+        parent.currentMonth = prev.startOfMonth
+      } else if currentPage == 2 {
+        // 다음 월로 이동
+        needsRecenter = true
+        let next = monthGridCalendar.date(byAdding: .month, value: 1, to: parent.currentMonth.startOfMonth) ?? parent.currentMonth
+        parent.currentMonth = next.startOfMonth
+      }
+      // currentPage == 1 → 원래 위치, 아무것도 안 함
+    }
+  }
+
+  // MARK: - PagerViewController
+
+  final class PagerViewController: UIViewController {
+    var coordinator: Coordinator?
+    private let scrollView = UIScrollView()
+    private let contentView = UIView()
+    private var pageHostingControllers: [UIHostingController<MonthGridContent>] = []
+    private var heightConstraints: [NSLayoutConstraint] = []
+
+    // Grid layout constants
+    var isCompactMode: Bool = false
+    var showAllIndicators: Bool = false
+    private var rowHeight: CGFloat { isCompactMode ? 46 : 62 }
+    private let gridSpacing: CGFloat = 6
+    private var fullGridHeight: CGFloat { 6 * rowHeight + 5 * gridSpacing }
+
+    override func viewDidLoad() {
+      super.viewDidLoad()
+      view.backgroundColor = .clear
+      view.clipsToBounds = true
+
+      scrollView.isPagingEnabled = true
+      scrollView.showsHorizontalScrollIndicator = false
+      scrollView.showsVerticalScrollIndicator = false
+      scrollView.bounces = true
+      scrollView.clipsToBounds = true
+      scrollView.translatesAutoresizingMaskIntoConstraints = false
+
+      contentView.translatesAutoresizingMaskIntoConstraints = false
+
+      view.addSubview(scrollView)
+      scrollView.addSubview(contentView)
+
+      NSLayoutConstraint.activate([
+        scrollView.topAnchor.constraint(equalTo: view.topAnchor),
+        scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+        scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+        scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+
+        contentView.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
+        contentView.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor),
+        contentView.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor),
+        contentView.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
+        contentView.heightAnchor.constraint(equalTo: scrollView.frameLayoutGuide.heightAnchor),
+        contentView.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor, multiplier: 3),
+      ])
+    }
+
+    func setupPages(
+      prevMonth: Date,
+      currentMonth: Date,
+      nextMonth: Date,
+      selectedDate: Date,
+      scheduleIndicatorsByDate: [Date: [CalendarFeature.ScheduleIndicator]],
+      namespace: Namespace.ID,
+      isCompactMode: Bool,
+      showAllIndicators: Bool = false,
+      onDateSelected: @escaping (Date) -> Void,
+      onCollapseToWeek: @escaping (Date) -> Void,
+      onIndicatorTapped: ((CalendarFeature.ScheduleIndicator) -> Void)? = nil,
+      onDayCreatePersonalEvent: ((Date) -> Void)? = nil,
+      onDayCreatePromise: ((Date) -> Void)? = nil
+    ) {
+      scrollView.delegate = coordinator
+
+      let months = [prevMonth, currentMonth, nextMonth]
+      let pageWidthMultiplier = 1.0 / 3.0
+
+      for (index, month) in months.enumerated() {
+        let gridView = MonthGridContent(
           currentMonth: month,
           selectedDate: selectedDate,
-          promisesByDate: promisesByDate,
-          calendarEventsByDate: calendarEventsByDate,
-          personalEventsByDate: personalEventsByDate,
-          currentUserId: currentUserId,
+          scheduleIndicatorsByDate: scheduleIndicatorsByDate,
           namespace: namespace,
+          isCompactMode: isCompactMode,
+          showAllIndicators: showAllIndicators,
           onDateSelected: onDateSelected,
-          onCollapseToWeek: onCollapseToWeek
+          onCollapseToWeek: onCollapseToWeek,
+          onIndicatorTapped: onIndicatorTapped,
+          onDayCreatePersonalEvent: onDayCreatePersonalEvent,
+          onDayCreatePromise: onDayCreatePromise
         )
-        .tag(month)
-      }
-    }
-    .tabViewStyle(.page(indexDisplayMode: .never))
-    .frame(height: contentHeight)
-    .onPreferenceChange(MonthContentHeightKey.self) { height in
-      if height > 0 {
-        contentHeight = height
-      }
-    }
-    .onChange(of: currentMonth) { _, newValue in
-      // 외부에서 변경된 경우 (화살표 버튼, 오늘 버튼 등)
-      let normalized = newValue.startOfMonth
-      if !monthGridCalendar.isDate(localSelection, inSameDayAs: normalized) {
-        // 페이지 범위 밖이면 재생성
-        if !monthPages.contains(where: { monthGridCalendar.isDate($0, inSameDayAs: normalized) }) {
-          reloadPages(around: normalized)
+        let hostingVC = UIHostingController(rootView: gridView)
+        hostingVC.view.backgroundColor = .clear
+        hostingVC.view.translatesAutoresizingMaskIntoConstraints = false
+
+        addChild(hostingVC)
+        contentView.addSubview(hostingVC.view)
+        hostingVC.didMove(toParent: self)
+
+        var constraints: [NSLayoutConstraint] = [
+          hostingVC.view.topAnchor.constraint(equalTo: contentView.topAnchor),
+          hostingVC.view.widthAnchor.constraint(equalTo: contentView.widthAnchor, multiplier: pageWidthMultiplier),
+        ]
+
+        if showAllIndicators {
+          // 페이지가 가용 높이를 채우도록 — 내부 ScrollView가 오버플로 처리
+          constraints.append(hostingVC.view.bottomAnchor.constraint(equalTo: contentView.bottomAnchor))
+        } else {
+          // 고정 높이
+          let heightConstraint = hostingVC.view.heightAnchor.constraint(equalToConstant: fullGridHeight)
+          heightConstraints.append(heightConstraint)
+          constraints.append(heightConstraint)
         }
-        // 슬라이드 애니메이션 적용 (스프링)
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-          localSelection = normalized
+
+        NSLayoutConstraint.activate(constraints)
+
+        if index == 0 {
+          hostingVC.view.leadingAnchor.constraint(equalTo: contentView.leadingAnchor).isActive = true
+        } else {
+          hostingVC.view.leadingAnchor.constraint(
+            equalTo: pageHostingControllers[index - 1].view.trailingAnchor
+          ).isActive = true
         }
+
+        pageHostingControllers.append(hostingVC)
       }
     }
-    .onChange(of: localSelection) { oldValue, newValue in
-      // 스와이프로 페이지가 변경 완료된 경우
-      if !monthGridCalendar.isDate(oldValue, inSameDayAs: newValue) {
-        currentMonth = newValue
 
-        // 경계 근처면 페이지 재생성
-        checkAndReloadIfNeeded(currentPage: newValue)
+    func updatePages(
+      prevMonth: Date,
+      currentMonth: Date,
+      nextMonth: Date,
+      selectedDate: Date,
+      scheduleIndicatorsByDate: [Date: [CalendarFeature.ScheduleIndicator]],
+      namespace: Namespace.ID,
+      isCompactMode: Bool,
+      showAllIndicators: Bool = false,
+      onDateSelected: @escaping (Date) -> Void,
+      onCollapseToWeek: @escaping (Date) -> Void,
+      onIndicatorTapped: ((CalendarFeature.ScheduleIndicator) -> Void)? = nil,
+      onDayCreatePersonalEvent: ((Date) -> Void)? = nil,
+      onDayCreatePromise: ((Date) -> Void)? = nil
+    ) {
+      let months = [prevMonth, currentMonth, nextMonth]
+      for (index, vc) in pageHostingControllers.enumerated() {
+        guard index < months.count else { break }
+        vc.rootView = MonthGridContent(
+          currentMonth: months[index],
+          selectedDate: selectedDate,
+          scheduleIndicatorsByDate: scheduleIndicatorsByDate,
+          namespace: namespace,
+          isCompactMode: isCompactMode,
+          showAllIndicators: showAllIndicators,
+          onDateSelected: onDateSelected,
+          onCollapseToWeek: onCollapseToWeek,
+          onIndicatorTapped: onIndicatorTapped,
+          onDayCreatePersonalEvent: onDayCreatePersonalEvent,
+          onDayCreatePromise: onDayCreatePromise
+        )
       }
     }
-  }
 
-  // MARK: - Page Management
-
-  private static func generatePages(around centerMonth: Date) -> [Date] {
-    let range = -MonthPagesConfig.pageRange...MonthPagesConfig.pageRange
-    return range.compactMap { offset in
-      monthGridCalendar.date(byAdding: .month, value: offset, to: centerMonth)?.startOfMonth
+    func updateCompactMode(_ isCompactMode: Bool) {
+      self.isCompactMode = isCompactMode
+      let newHeight = fullGridHeight
+      for constraint in heightConstraints {
+        constraint.constant = newHeight
+      }
+      view.layoutIfNeeded()
     }
-  }
 
-  private func reloadPages(around newCenter: Date) {
-    centerMonth = newCenter
-    monthPages = Self.generatePages(around: newCenter)
-  }
+    func recenterToCurrentPage(animated: Bool) {
+      let pageWidth = scrollView.bounds.width
+      guard pageWidth > 0 else { return }
+      scrollView.setContentOffset(CGPoint(x: pageWidth, y: 0), animated: animated)
+    }
 
-  private func checkAndReloadIfNeeded(currentPage: Date) {
-    guard let currentIndex = monthPages.firstIndex(where: {
-      monthGridCalendar.isDate($0, inSameDayAs: currentPage)
-    }) else { return }
+    /// 지정 페이지로 애니메이션 슬라이드 후 완료 콜백 실행
+    func slideTo(page: Int, completion: @escaping () -> Void) {
+      let pageWidth = scrollView.bounds.width
+      guard pageWidth > 0 else {
+        completion()
+        return
+      }
+      let targetOffset = CGPoint(x: pageWidth * CGFloat(page), y: 0)
+      UIView.animate(withDuration: 0.3, delay: 0, options: .curveEaseInOut) {
+        self.scrollView.contentOffset = targetOffset
+      } completion: { _ in
+        completion()
+      }
+    }
 
-    let distanceFromStart = currentIndex
-    let distanceFromEnd = monthPages.count - 1 - currentIndex
-
-    // 경계에서 threshold 이내면 재생성
-    if distanceFromStart <= MonthPagesConfig.reloadThreshold ||
-       distanceFromEnd <= MonthPagesConfig.reloadThreshold {
-      reloadPages(around: currentPage)
+    override func viewDidLayoutSubviews() {
+      super.viewDidLayoutSubviews()
+      // 초기 레이아웃 후 center page(index 1)로 이동
+      let pageWidth = scrollView.bounds.width
+      if pageWidth > 0 && scrollView.contentOffset.x == 0 {
+        scrollView.contentOffset = CGPoint(x: pageWidth, y: 0)
+      }
     }
   }
 }
@@ -156,48 +386,54 @@ struct PagingMonthGridView: View {
 struct MonthGridContent: View {
   let currentMonth: Date
   let selectedDate: Date
-  let promisesByDate: [Date: [PromiseModel]]
-  let calendarEventsByDate: [Date: [CalendarEvent]]
-  let personalEventsByDate: [Date: [PersonalEventModel]]
-  let currentUserId: String
+  let scheduleIndicatorsByDate: [Date: [CalendarFeature.ScheduleIndicator]]
   let namespace: Namespace.ID
+  let isCompactMode: Bool
+  var showAllIndicators: Bool = false
   let onDateSelected: (Date) -> Void
   let onCollapseToWeek: (Date) -> Void
+  var onIndicatorTapped: ((CalendarFeature.ScheduleIndicator) -> Void)? = nil
+  var onDayCreatePersonalEvent: ((Date) -> Void)? = nil
+  var onDayCreatePromise: ((Date) -> Void)? = nil
 
   private let columns = Array(repeating: GridItem(.flexible(), spacing: 0), count: 7)
 
   var body: some View {
+    if showAllIndicators {
+      // Expanded: 페이지 내부 세로 스크롤 (HomeOverlay 패턴 — 고정 높이 페이저 + 내부 스크롤)
+      ScrollView(.vertical, showsIndicators: false) {
+        gridContent
+      }
+    } else {
+      gridContent
+    }
+  }
+
+  private var gridContent: some View {
     VStack(spacing: 8) {
       // 날짜 그리드
-      LazyVGrid(columns: columns, spacing: 8) {
+      LazyVGrid(columns: columns, spacing: 6) {
         ForEach(calendarDates, id: \.self) { date in
-          DayCell(
+          CalendarIndicatorDayCell(
             date: date,
-            isSelected: monthGridCalendar.isDate(date, inSameDayAs: selectedDate),
+            isSelected: isCurrentMonth(date) && monthGridCalendar.isDate(date, inSameDayAs: selectedDate),
             isToday: monthGridCalendar.isDateInToday(date),
             isCurrentMonth: isCurrentMonth(date),
-            promiseStatuses: getPromiseStatuses(for: date),
-            systemEventCount: getSystemEventCount(for: date),
-            personalEventCount: getPersonalEventCount(for: date),
+            scheduleIndicators: getScheduleIndicators(for: date),
             namespace: namespace,
             selectionId: "monthSelection",
-            onTap: {
-              onDateSelected(date)
-            }
+            isCompactMode: isCompactMode,
+            showAllIndicators: showAllIndicators,
+            onTap: { onDateSelected(date) },
+            onIndicatorTapped: onIndicatorTapped,
+            onDayCreatePersonalEvent: onDayCreatePersonalEvent,
+            onDayCreatePromise: onDayCreatePromise
           )
         }
       }
     }
     .padding(.horizontal, 8)
     .padding(.top, 4)
-    .background(
-      GeometryReader { geometry in
-        Color.clear.preference(
-          key: MonthContentHeightKey.self,
-          value: geometry.size.height
-        )
-      }
-    )
   }
 
   // MARK: - Computed Properties
@@ -227,20 +463,9 @@ struct MonthGridContent: View {
     return dateMonth == currentMonthValue
   }
 
-  private func getPromiseStatuses(for date: Date) -> [PromiseResponseStatus] {
+  private func getScheduleIndicators(for date: Date) -> [CalendarFeature.ScheduleIndicator] {
     let dateKey = monthGridCalendar.startOfDay(for: date)
-    guard let promises = promisesByDate[dateKey] else { return [] }
-    return promises.map { $0.responseStatus(currentUserId: currentUserId) }
-  }
-
-  private func getSystemEventCount(for date: Date) -> Int {
-    let dateKey = monthGridCalendar.startOfDay(for: date)
-    return calendarEventsByDate[dateKey]?.count ?? 0
-  }
-
-  private func getPersonalEventCount(for date: Date) -> Int {
-    let dateKey = monthGridCalendar.startOfDay(for: date)
-    return personalEventsByDate[dateKey]?.count ?? 0
+    return scheduleIndicatorsByDate[dateKey] ?? []
   }
 }
 
@@ -259,12 +484,12 @@ struct MonthGridContent: View {
     PagingMonthGridView(
       currentMonth: $currentMonth,
       selectedDate: selectedDate,
-      promisesByDate: [:],
-      currentUserId: "preview_user",
+      scheduleIndicatorsByDate: [:],
       namespace: namespace,
+      isCompactMode: false,
       onDateSelected: { selectedDate = $0 },
       onCollapseToWeek: { _ in }
     )
-    .frame(height: 320)
+    .frame(height: 420)
   }
 }

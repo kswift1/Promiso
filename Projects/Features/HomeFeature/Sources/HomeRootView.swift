@@ -20,23 +20,7 @@ extension Home {
       NavigationStack(path: $store.scope(state: \.path, action: \.path)) {
         homeContent
           .auroraBackground()
-          .toast(Binding(
-            get: { store.toastMessage },
-            set: { _ in store.send(.view(.toastDismissed)) }
-          ))
           .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-              // 캘린더 오버레이 토글 버튼
-              Button {
-                store.send(.view(.calendarOverlayOpened))
-              } label: {
-                Image(systemName: "calendar")
-                  .font(.system(size: 16, weight: .medium))
-                  .foregroundStyle(Color.pmindigo.n500)
-                  .frame(width: 36, height: 36)
-              }
-            }
-
             ToolbarItem(placement: .topBarTrailing) {
               NotificationButton(
                 badgeCount: store.unreadNotificationCount,
@@ -47,6 +31,10 @@ extension Home {
               .id(store.unreadNotificationCount)
             }
           }
+          .toast(Binding(
+            get: { store.toastMessage },
+            set: { _ in store.send(.view(.toastDismissed)) }
+          ))
           .sheet(isPresented: Binding(
             get: { store.showQuickPromiseSheet },
             set: { newValue in
@@ -65,8 +53,8 @@ extension Home {
             store.send(.view(.onAppear))
           }
           .onChange(of: scenePhase) { oldPhase, newPhase in
-            // background → active 시 다시 로드
-            if oldPhase == .background && newPhase == .active {
+            // inactive/background → active 시 다시 로드
+            if newPhase == .active && oldPhase != .active {
               store.send(.view(.onAppear))
             }
           }
@@ -80,6 +68,7 @@ extension Home {
               nextMonthDays: store.overlayNextMonthDays,
               weatherState: store.overlayWeatherState,
               weatherLocationText: store.overlayWeatherLocationText,
+              weatherInfo: store.overlayWeatherInfo,
               calendarMode: store.overlayCalendarMode,
               scheduleItems: store.overlaySelectedDateScheduleItems,
               prevDayScheduleItems: store.overlayPrevDayScheduleItems,
@@ -137,6 +126,29 @@ extension Home {
       }
     }
 
+    // MARK: - Home Header
+
+    private var homeHeader: some View {
+      HStack {
+        Button {
+          store.send(.view(.calendarOverlayOpened))
+        } label: {
+          HStack(spacing: 6) {
+            Text(Date(), format: .dateTime.month().day().weekday(.wide))
+              .font(.system(size: 28, weight: .bold))
+              .foregroundStyle(.primary)
+
+            Image(systemName: "chevron.down")
+              .font(.system(size: 12, weight: .semibold))
+              .foregroundStyle(.secondary)
+          }
+        }
+        .buttonStyle(.plain)
+
+        Spacer()
+      }
+    }
+
     // MARK: - Home Content
 
     private var homeContent: some View {
@@ -144,6 +156,10 @@ extension Home {
 
       return ScrollView {
         LazyVStack(spacing: 20) {
+          // 홈 헤더
+          homeHeader
+            .padding(.horizontal, 16)
+
           if store.isLoading && !store.hasLoadedOnce {
             loadingView
           } else if let error = store.promisesState.error {

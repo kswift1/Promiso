@@ -7,7 +7,7 @@ struct OverlayCalendarDayCell: View {
   let day: OverlayCalendarModels.DayItem
   var showSelectedHighlight: Bool = true
 
-  private let maxVisibleIndicators = 2
+  private let maxVisibleDots = 3
 
   private var textColor: Color {
     if day.isSelected { return .white }
@@ -16,56 +16,50 @@ struct OverlayCalendarDayCell: View {
     return .primary
   }
 
+  /// 중복 색상 제거한 인디케이터
+  private var uniqueColorIndicators: [OverlayCalendarModels.ScheduleIndicator] {
+    var seen = Set<String>()
+    return day.scheduleIndicators.filter { indicator in
+      let key = indicator.color.description
+      if seen.contains(key) { return false }
+      seen.insert(key)
+      return true
+    }
+  }
+
   var body: some View {
     VStack(spacing: 2) {
       ZStack {
         if showSelectedHighlight && day.isSelected {
           Circle()
             .fill(Color.pmindigo.n500)
-            .frame(width: 36, height: 36)
+            .frame(width: 32, height: 32)
         } else if day.isToday && !day.isSelected {
           Circle()
             .stroke(Color.pmindigo.n500, lineWidth: 1.5)
-            .frame(width: 36, height: 36)
+            .frame(width: 32, height: 32)
         }
 
         Text("\(day.dayNumber)")
-          .font(.system(size: 14, weight: day.isSelected || day.isToday ? .bold : .regular))
+          .font(.system(size: 13, weight: day.isSelected || day.isToday ? .bold : .regular))
           .foregroundStyle(textColor)
           .contentTransition(.numericText())
       }
-      .frame(width: 36, height: 36)
+      .frame(width: 32, height: 32)
 
-      // 일정 인디케이터 (컬러 바 + 축약 제목)
+      // 일정 인디케이터 (컬러 dot)
       if day.isCurrentMonth && !day.scheduleIndicators.isEmpty {
-        VStack(spacing: 1) {
-          ForEach(day.scheduleIndicators.prefix(maxVisibleIndicators)) { indicator in
-            HStack(alignment: .center, spacing: 2) {
-              RoundedRectangle(cornerRadius: 1)
-                .fill(indicator.color)
-                .frame(width: 2)
-
-              Text(indicator.title)
-                .font(.system(size: 7, weight: .medium))
-                .foregroundStyle(Color.secondary)
-                .lineLimit(1)
-                .truncationMode(.tail)
-            }
-            .frame(height: 10)
-            .frame(maxWidth: .infinity, alignment: .leading)
-          }
-
-          if day.scheduleIndicators.count > maxVisibleIndicators {
-            Text("+\(day.scheduleIndicators.count - maxVisibleIndicators)")
-              .font(.system(size: 7, weight: .medium))
-              .foregroundStyle(Color.secondary)
-              .padding(.leading, 4)
+        HStack(spacing: 3) {
+          ForEach(uniqueColorIndicators.prefix(maxVisibleDots)) { indicator in
+            Circle()
+              .fill(indicator.color)
+              .frame(width: 5, height: 5)
           }
         }
-        .frame(width: 36, alignment: .leading)
+        .frame(height: 8)
       } else {
         Spacer()
-          .frame(height: 12)
+          .frame(height: 8)
       }
     }
   }

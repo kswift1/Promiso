@@ -14,7 +14,7 @@ struct CalendarMonthGridView: View {
   private let columns = Array(repeating: GridItem(.flexible(), spacing: 0), count: 7)
 
   var body: some View {
-    LazyVGrid(columns: columns, spacing: 6) {
+    LazyVGrid(columns: columns, spacing: 4) {
       ForEach(days) { day in
         if day.isCurrentMonth {
           Button {

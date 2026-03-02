@@ -2,7 +2,6 @@
 // 주간 캘린더 스트립 뷰 - TabView 기반 페이징 + 동적 로딩
 
 import SwiftUI
-import Clients
 
 // MARK: - Height Preference Key
 
@@ -30,10 +29,7 @@ private enum WeekPagesConfig {
 struct PagingWeekStripView: View {
   @Binding var currentWeekStart: Date
   let selectedDate: Date
-  let promisesByDate: [Date: [PromiseModel]]
-  let calendarEventsByDate: [Date: [CalendarEvent]]
-  let personalEventsByDate: [Date: [PersonalEventModel]]
-  let currentUserId: String
+  let scheduleIndicatorsByDate: [Date: [CalendarFeature.ScheduleIndicator]]
   let namespace: Namespace.ID
   let onDateSelected: (Date) -> Void
 
@@ -46,19 +42,13 @@ struct PagingWeekStripView: View {
   init(
     currentWeekStart: Binding<Date>,
     selectedDate: Date,
-    promisesByDate: [Date: [PromiseModel]],
-    calendarEventsByDate: [Date: [CalendarEvent]] = [:],
-    personalEventsByDate: [Date: [PersonalEventModel]] = [:],
-    currentUserId: String,
+    scheduleIndicatorsByDate: [Date: [CalendarFeature.ScheduleIndicator]],
     namespace: Namespace.ID,
     onDateSelected: @escaping (Date) -> Void
   ) {
     self._currentWeekStart = currentWeekStart
     self.selectedDate = selectedDate
-    self.promisesByDate = promisesByDate
-    self.calendarEventsByDate = calendarEventsByDate
-    self.personalEventsByDate = personalEventsByDate
-    self.currentUserId = currentUserId
+    self.scheduleIndicatorsByDate = scheduleIndicatorsByDate
     self.namespace = namespace
     self.onDateSelected = onDateSelected
 
@@ -74,10 +64,7 @@ struct PagingWeekStripView: View {
         WeekStripContent(
           weekDates: getWeekDates(for: weekStart),
           selectedDate: selectedDate,
-          promisesByDate: promisesByDate,
-          calendarEventsByDate: calendarEventsByDate,
-          personalEventsByDate: personalEventsByDate,
-          currentUserId: currentUserId,
+          scheduleIndicatorsByDate: scheduleIndicatorsByDate,
           namespace: namespace,
           onDateSelected: onDateSelected
         )
@@ -160,24 +147,19 @@ struct PagingWeekStripView: View {
 struct WeekStripContent: View {
   let weekDates: [Date]
   let selectedDate: Date
-  let promisesByDate: [Date: [PromiseModel]]
-  let calendarEventsByDate: [Date: [CalendarEvent]]
-  let personalEventsByDate: [Date: [PersonalEventModel]]
-  let currentUserId: String
+  let scheduleIndicatorsByDate: [Date: [CalendarFeature.ScheduleIndicator]]
   let namespace: Namespace.ID
   let onDateSelected: (Date) -> Void
 
   var body: some View {
     HStack(spacing: 0) {
       ForEach(weekDates, id: \.self) { date in
-        DayCell(
+        CalendarIndicatorDayCell(
           date: date,
           isSelected: weekStripCalendar.isDate(date, inSameDayAs: selectedDate),
           isToday: weekStripCalendar.isDateInToday(date),
           isCurrentMonth: true,
-          promiseStatuses: getPromiseStatuses(for: date),
-          systemEventCount: getSystemEventCount(for: date),
-          personalEventCount: getPersonalEventCount(for: date),
+          scheduleIndicators: getScheduleIndicators(for: date),
           namespace: namespace,
           selectionId: "weekSelection",
           onTap: { onDateSelected(date) }
@@ -198,20 +180,9 @@ struct WeekStripContent: View {
 
   // MARK: - Helper
 
-  private func getPromiseStatuses(for date: Date) -> [PromiseResponseStatus] {
+  private func getScheduleIndicators(for date: Date) -> [CalendarFeature.ScheduleIndicator] {
     let dateKey = weekStripCalendar.startOfDay(for: date)
-    guard let promises = promisesByDate[dateKey] else { return [] }
-    return promises.map { $0.responseStatus(currentUserId: currentUserId) }
-  }
-
-  private func getSystemEventCount(for date: Date) -> Int {
-    let dateKey = weekStripCalendar.startOfDay(for: date)
-    return calendarEventsByDate[dateKey]?.count ?? 0
-  }
-
-  private func getPersonalEventCount(for date: Date) -> Int {
-    let dateKey = weekStripCalendar.startOfDay(for: date)
-    return personalEventsByDate[dateKey]?.count ?? 0
+    return scheduleIndicatorsByDate[dateKey] ?? []
   }
 }
 
@@ -230,8 +201,7 @@ struct WeekStripContent: View {
     PagingWeekStripView(
       currentWeekStart: $currentWeekStart,
       selectedDate: selectedDate,
-      promisesByDate: [:],
-      currentUserId: "preview_user",
+      scheduleIndicatorsByDate: [:],
       namespace: namespace,
       onDateSelected: { selectedDate = $0 }
     )

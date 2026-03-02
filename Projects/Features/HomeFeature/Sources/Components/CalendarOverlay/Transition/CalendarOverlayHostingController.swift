@@ -15,6 +15,7 @@ final class CalendarOverlayViewModel {
   var nextMonthDays: [OverlayCalendarModels.DayItem]
   var weatherState: OverlayWeatherState
   var weatherLocationText: String?
+  var weatherInfo: WeatherInfo?
   var calendarMode: CalendarMode
   var scheduleItems: [HomeModels.ScheduleItem]
   var prevDayScheduleItems: [HomeModels.ScheduleItem]
@@ -41,6 +42,7 @@ final class CalendarOverlayViewModel {
     nextMonthDays: [OverlayCalendarModels.DayItem],
     weatherState: OverlayWeatherState,
     weatherLocationText: String?,
+    weatherInfo: WeatherInfo?,
     calendarMode: CalendarMode,
     scheduleItems: [HomeModels.ScheduleItem],
     prevDayScheduleItems: [HomeModels.ScheduleItem],
@@ -66,6 +68,7 @@ final class CalendarOverlayViewModel {
     self.nextMonthDays = nextMonthDays
     self.weatherState = weatherState
     self.weatherLocationText = weatherLocationText
+    self.weatherInfo = weatherInfo
     self.calendarMode = calendarMode
     self.scheduleItems = scheduleItems
     self.prevDayScheduleItems = prevDayScheduleItems
@@ -217,6 +220,7 @@ private struct CalendarOverlayContentView: View {
         nextMonthDays: viewModel.nextMonthDays,
         weatherState: viewModel.weatherState,
         weatherLocationText: viewModel.weatherLocationText,
+        weatherInfo: viewModel.weatherInfo,
         calendarMode: animatedMode,
         scheduleItems: viewModel.scheduleItems,
         prevDayScheduleItems: viewModel.prevDayScheduleItems,
@@ -239,9 +243,10 @@ private struct CalendarOverlayContentView: View {
       .padding(.bottom, bottomPad)
     }
     .background(alignment: .top) {
-      Color(.systemBackground)
+      Color(animatedMode == .weatherDetail ? .secondarySystemBackground : .systemBackground)
         .frame(height: SafeArea.topInset + 16)
     }
+    .background(Color(.secondarySystemBackground))
     .onChange(of: viewModel.calendarMode) { _, newValue in
       withAnimation(.spring(duration: 0.45, bounce: 0.05)) {
         animatedMode = newValue
