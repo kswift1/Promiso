@@ -413,8 +413,14 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
 
     private func setExpandedConstraintMode(_ isExpanded: Bool) {
       for (heightConstraint, bottomConstraint) in zip(heightConstraints, bottomConstraints) {
-        heightConstraint.isActive = !isExpanded
-        bottomConstraint.isActive = isExpanded
+        // 먼저 비활성화 후 활성화하여 동시 제약 충돌 방지
+        if isExpanded {
+          heightConstraint.isActive = false
+          bottomConstraint.isActive = true
+        } else {
+          bottomConstraint.isActive = false
+          heightConstraint.isActive = true
+        }
       }
     }
 
