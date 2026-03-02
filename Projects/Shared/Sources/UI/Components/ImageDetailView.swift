@@ -59,7 +59,7 @@ public struct ImageDetailView: View {
                 .opacity(isZoomedOut ? 1.0 : 0.0)
             }
             .padding(.horizontal, 16)
-            .padding(.top, 8)
+            .padding(.top, SafeArea.topInset + 8)
             Spacer()
           }
         }
@@ -69,6 +69,8 @@ public struct ImageDetailView: View {
         .onTapGesture(count: 2, perform: handleDoubleTap)
       }
     }
+    .navigationBarBackButtonHidden()
+    .toolbar(.hidden, for: .navigationBar)
     .task(id: imageUrl) {
       await loadImage()
     }
