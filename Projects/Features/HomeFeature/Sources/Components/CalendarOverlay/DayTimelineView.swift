@@ -84,13 +84,13 @@ struct DayTimelineView: View {
       .padding(.leading, 8)
       .padding(.trailing, 20)
     }
-    .gesture(
+    .simultaneousGesture(
       MagnifyGesture()
         .onChanged { value in
           let newScale = gestureScale * value.magnification
           zoomScale = min(maxZoomScale, max(minZoomScale, newScale))
         }
-        .onEnded { value in
+        .onEnded { _ in
           gestureScale = zoomScale
         }
     )
@@ -100,7 +100,6 @@ struct DayTimelineView: View {
     .onChange(of: calendarMode) {
       creationStartSlot = nil
     }
-    .animation(.easeInOut(duration: 0.2), value: zoomScale)
   }
 
   // MARK: - Overlap-Aware Schedule Blocks (Layer 2 + 3)
