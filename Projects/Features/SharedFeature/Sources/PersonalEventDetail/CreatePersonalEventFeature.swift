@@ -517,6 +517,7 @@ extension CreatePersonalEvent {
         return .cancel(id: CancelID.weatherFetchDebounce)
       }
 
+      state.weatherInfo = nil
       state.isWeatherLoading = true
       return .run { [weatherClient, clock] send in
         if debounce {
