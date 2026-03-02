@@ -24,17 +24,34 @@ struct DayTimelineView: View {
   @State private var dragAnchorStart: Int = 0        // 드래그 시작 시점 start
   @State private var dragAnchorEnd: Int = 0          // 드래그 시작 시점 end
 
+  /// 핀치줌 스케일
+  @State private var zoomScale: CGFloat = 1.0
+  @State private var gestureScale: CGFloat = 1.0
+
   // MARK: - Constants
 
-  private let hourHeight: CGFloat = 52
+  private let baseHourHeight: CGFloat = 52
+  private let minZoomScale: CGFloat = 0.5
+  private let maxZoomScale: CGFloat = 3.0
   private let timeLabelWidth: CGFloat = 44
   private let eventTimeLabelWidth: CGFloat = 40
-  private let blockMinHeight: CGFloat = 48
   private let colorBarWidth: CGFloat = 4
   private let totalHours: Int = 24
 
+  private var hourHeight: CGFloat {
+    baseHourHeight * zoomScale
+  }
+
+  private var blockMinHeight: CGFloat {
+    max(36, 48 * zoomScale)
+  }
+
   private var totalHeight: CGFloat {
     CGFloat(totalHours) * hourHeight
+  }
+
+  private var pixelsPerMinute: CGFloat {
+    hourHeight / 60.0
   }
 
   // MARK: - Body
@@ -54,20 +71,8 @@ struct DayTimelineView: View {
         // Layer 1.5: 상호작용 슬롯 (Long Press → 생성 블록)
         interactionSlots
 
-        // Layer 2: 이벤트 시간 레이블
-        ForEach(scheduleItems) { item in
-          eventTimeLabel(item)
-            .offset(y: yOffset(for: clampedStartAt(for: item)))
-        }
-
-        // Layer 3: 일정 블록들
-        ForEach(scheduleItems) { item in
-          scheduleBlock(item)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.leading, timeLabelWidth + eventTimeLabelWidth + 8)
-            .padding(.trailing, 4)
-            .offset(y: yOffset(for: clampedStartAt(for: item)))
-        }
+        // Layer 2 + 3: 겹침 레이아웃 엔진 기반 렌더링
+        overlapAwareScheduleBlocks
 
         // Layer 4: 생성 블록 오버레이 (creationSlot != nil일 때만)
         creationBlockOverlay
@@ -79,12 +84,104 @@ struct DayTimelineView: View {
       .padding(.leading, 8)
       .padding(.trailing, 20)
     }
+    .gesture(
+      MagnifyGesture()
+        .onChanged { value in
+          let newScale = gestureScale * value.magnification
+          zoomScale = min(maxZoomScale, max(minZoomScale, newScale))
+        }
+        .onEnded { value in
+          gestureScale = zoomScale
+        }
+    )
     .onChange(of: displayDate) {
       creationStartSlot = nil
     }
     .onChange(of: calendarMode) {
       creationStartSlot = nil
     }
+    .animation(.easeInOut(duration: 0.2), value: zoomScale)
+  }
+
+  // MARK: - Overlap-Aware Schedule Blocks (Layer 2 + 3)
+
+  @ViewBuilder
+  private var overlapAwareScheduleBlocks: some View {
+    let layoutResults = computeOverlapLayout()
+
+    GeometryReader { geo in
+      let blockAreaWidth = geo.size.width - timeLabelWidth - eventTimeLabelWidth - 8 - 4
+
+      ForEach(Array(zip(scheduleItems.indices, scheduleItems)), id: \.1.id) { index, item in
+        if let layout = layoutResults[safe: index], layout.columnIndex >= 0 {
+          let yPos = yOffset(for: clampedStartAt(for: item))
+
+          switch layout.severity {
+          case .none, .layerable:
+            eventTimeLabel(item)
+              .offset(y: yPos)
+              .zIndex(Double(layout.zIndex))
+
+            scheduleBlock(item, layout: layout)
+              .frame(width: blockAreaWidth, alignment: .leading)
+              .padding(.leading, timeLabelWidth + eventTimeLabelWidth + 8)
+              .offset(y: yPos)
+              .zIndex(Double(layout.zIndex))
+
+          case .colliding:
+            if layout.columnIndex == 0 {
+              eventTimeLabel(item)
+                .offset(y: yPos)
+            }
+
+            let colWidth = (blockAreaWidth - TimelineOverlapLayout.columnGap * CGFloat(layout.columnCount - 1)) / CGFloat(layout.columnCount)
+            let colX = CGFloat(layout.columnIndex) * (colWidth + TimelineOverlapLayout.columnGap)
+
+            scheduleBlock(item, layout: layout)
+              .frame(width: colWidth, alignment: .leading)
+              .offset(x: timeLabelWidth + eventTimeLabelWidth + 8 + colX, y: yPos)
+              .overlay(alignment: .topTrailing) {
+                if layout.overflowCount > 0 {
+                  overflowBadge(count: layout.overflowCount)
+                    .offset(x: timeLabelWidth + eventTimeLabelWidth + 8 + colX + colWidth - 8, y: yPos + 4)
+                }
+              }
+          }
+        }
+      }
+    }
+    .frame(height: totalHeight)
+  }
+
+  private func computeOverlapLayout() -> [TimelineOverlapLayout.LayoutResult] {
+    let dayStartDate = dayStart
+
+    let starts: [CGFloat] = scheduleItems.map { item in
+      let start = clampedStartAt(for: item)
+      return CGFloat(start.timeIntervalSince(dayStartDate)) / 60.0
+    }
+
+    let durations: [CGFloat] = scheduleItems.map { item in
+      let start = clampedStartAt(for: item)
+      let end = clampedEndAt(for: item)
+      let dur = CGFloat(end.timeIntervalSince(start)) / 60.0
+      return max(dur, CGFloat(blockMinHeight) / pixelsPerMinute)
+    }
+
+    return TimelineOverlapLayout.computeLayout(
+      startMinutes: starts,
+      durationMinutes: durations,
+      pixelsPerMinute: pixelsPerMinute
+    )
+  }
+
+  private func overflowBadge(count: Int) -> some View {
+    Text("+\(count)")
+      .font(.system(size: 10, weight: .bold))
+      .foregroundStyle(.white)
+      .padding(.horizontal, 6)
+      .padding(.vertical, 2)
+      .background(Color.pmgray.n500, in: Capsule())
   }
 
   // MARK: - Interaction Slots (Layer 1.5)
@@ -323,7 +420,10 @@ struct DayTimelineView: View {
 
   // MARK: - Schedule Block
 
-  private func scheduleBlock(_ item: HomeModels.ScheduleItem) -> some View {
+  private func scheduleBlock(
+    _ item: HomeModels.ScheduleItem,
+    layout: TimelineOverlapLayout.LayoutResult? = nil
+  ) -> some View {
     let blockHeight = blockHeight(for: item)
     let isCompact = blockHeight < 64
     let fromPrev = continuesFromPreviousDay(item)
@@ -336,6 +436,11 @@ struct DayTimelineView: View {
       bottomTrailingRadius: bottomRadius,
       topTrailingRadius: topRadius
     )
+
+    let isLayerableBack = layout?.severity == .layerable && layout?.zIndex == 0
+    let barOpacity: Double = isLayerableBack ? 0.4 : 1.0
+    let cardShadow: Double = (layout?.severity == .layerable && (layout?.zIndex ?? 0) > 0)
+      ? 0.15 : 0.08
 
     return Button {
       onScheduleItemTapped(item)
@@ -392,7 +497,6 @@ struct DayTimelineView: View {
                   .lineLimit(1)
               }
             }
-
           }
         }
         .padding(.horizontal, 10)
@@ -403,11 +507,13 @@ struct DayTimelineView: View {
       .frame(height: blockHeight, alignment: .top)
       .background(.ultraThinMaterial, in: cardShape)
       .overlay(cardShape.strokeBorder(.white.opacity(0.2), lineWidth: 1))
-      .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 4)
+      .shadow(color: .black.opacity(cardShadow), radius: 8, x: 0, y: 4)
       .overlay(alignment: .topTrailing) {
-        weatherBadge(for: item)
-          .padding(.top, 4)
-          .padding(.trailing, 4)
+        if layout?.severity != .colliding {
+          weatherBadge(for: item)
+            .padding(.top, 4)
+            .padding(.trailing, 4)
+        }
       }
       .overlay(alignment: .leading) {
         UnevenRoundedRectangle(
@@ -416,7 +522,7 @@ struct DayTimelineView: View {
           bottomTrailingRadius: 0,
           topTrailingRadius: 0
         )
-        .fill(barColor(for: item))
+        .fill(barColor(for: item).opacity(barOpacity))
         .frame(width: colorBarWidth)
       }
       .clipShape(cardShape)
