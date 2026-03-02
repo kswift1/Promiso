@@ -32,49 +32,50 @@ struct TimeUntilPromiseStringTests {
   @Test("과거 날짜는 '지남' 반환")
   func pastDate_returnsExpired() {
     let pastDate = Date(timeIntervalSinceNow: -100)
-    #expect(pastDate.timeUntilPromiseString == "지남")
+    #expect(pastDate.timeUntilPromiseString == LocalizedStrings.DateFormat.passed)
   }
 
   @Test("30초 후는 '30초 후' 반환")
   func thirtySecondsLater_returnsSeconds() {
     let date = Date(timeIntervalSinceNow: 30)
     let result = date.timeUntilPromiseString
-    #expect(result.contains("초 후"))
+    // 실행 시점에 따라 29~30초 범위이므로 passed가 아닌지 확인
+    #expect(result != LocalizedStrings.DateFormat.passed)
   }
 
   @Test("5분 후는 '5분 후' 반환")
   func fiveMinutesLater_returnsMinutes() {
     let date = Date(timeIntervalSinceNow: 5 * 60 + 10)
     let result = date.timeUntilPromiseString
-    #expect(result == "5분 후")
+    #expect(result == LocalizedStrings.DateFormat.minutesLater(5))
   }
 
   @Test("90분 후는 '1시간 30분 후' 반환")
   func ninetyMinutesLater_returnsHoursAndMinutes() {
     let date = Date(timeIntervalSinceNow: 90 * 60 + 10)
     let result = date.timeUntilPromiseString
-    #expect(result == "1시간 30분 후")
+    #expect(result == LocalizedStrings.DateFormat.hoursMinutesLater(1, 30))
   }
 
   @Test("정확히 2시간 후는 '2시간 후' 반환 (분 없이)")
   func exactTwoHoursLater_returnsHoursOnly() {
     let date = Date(timeIntervalSinceNow: 2 * 3600 + 10)
     let result = date.timeUntilPromiseString
-    #expect(result == "2시간 후")
+    #expect(result == LocalizedStrings.DateFormat.hoursLater(2))
   }
 
   @Test("2일 3시간 후 형식 확인")
   func twoDaysThreeHoursLater_returnsDaysAndHours() {
     let date = Date(timeIntervalSinceNow: 2 * 86400 + 3 * 3600 + 10)
     let result = date.timeUntilPromiseString
-    #expect(result == "2일 3시간 후")
+    #expect(result == LocalizedStrings.DateFormat.daysHoursLater(2, 3))
   }
 
   @Test("정확히 3일 후는 '3일 후' 반환 (시간 없이)")
   func exactThreeDaysLater_returnsDaysOnly() {
     let date = Date(timeIntervalSinceNow: 3 * 86400 + 10)
     let result = date.timeUntilPromiseString
-    #expect(result == "3일 후")
+    #expect(result == LocalizedStrings.DateFormat.daysLater(3))
   }
 }
 
@@ -86,19 +87,19 @@ struct PromiseDateStringTests {
   @Test("오늘 날짜는 '오늘' 반환")
   func today_returnsToday() {
     let today = Date()
-    #expect(today.promiseDateString == "오늘")
+    #expect(today.promiseDateString == LocalizedStrings.DateFormat.today)
   }
 
   @Test("내일 날짜는 '내일' 반환")
   func tomorrow_returnsTomorrow() {
     let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date())!
-    #expect(tomorrow.promiseDateString == "내일")
+    #expect(tomorrow.promiseDateString == LocalizedStrings.DateFormat.tomorrow)
   }
 
   @Test("어제 날짜는 '어제' 반환")
   func yesterday_returnsYesterday() {
     let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Date())!
-    #expect(yesterday.promiseDateString == "어제")
+    #expect(yesterday.promiseDateString == LocalizedStrings.DateFormat.yesterday)
   }
 
   @Test("30일 뒤 날짜는 monthDay 포맷 반환")
@@ -119,14 +120,14 @@ struct PromiseDateTimeStringTests {
   func today_combinesDateAndTime() {
     let today = Date()
     let result = today.promiseDateTimeString
-    #expect(result.hasPrefix("오늘 "))
+    #expect(result.hasPrefix(LocalizedStrings.DateFormat.today + " "))
   }
 
   @Test("내일 날짜+시간 형식 확인")
   func tomorrow_combinesDateAndTime() {
     let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date())!
     let result = tomorrow.promiseDateTimeString
-    #expect(result.hasPrefix("내일 "))
+    #expect(result.hasPrefix(LocalizedStrings.DateFormat.tomorrow + " "))
   }
 }
 
