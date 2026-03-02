@@ -169,8 +169,8 @@ extension CalendarFeature {
         let calendar = Calendar.current
         var grouped: [Date: [PromiseModel]] = [:]
 
-        // 선택된 날짜의 월 기준으로 캐시 조회
-        let currentMonthKey = selectedDate.startOfMonth
+        // 월간 모드: currentMonth 기준 / 주간 모드: selectedDate 기준
+        let currentMonthKey = currentMonth.startOfMonth
         let allPromises = filteredPromises(for: currentMonthKey)
 
         // 날짜별 그룹화
