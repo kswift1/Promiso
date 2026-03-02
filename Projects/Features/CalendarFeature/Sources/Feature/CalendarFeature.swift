@@ -1359,8 +1359,11 @@ extension CalendarFeature {
 
     /// 현재 표시 범위에 필요한 월 목록 반환 (항상 월 단위로 관리)
     private func getMonthsToLoad(state: State) -> [Date] {
-      // 선택된 날짜 기준 현재 월
-      return [state.selectedDate.startOfMonth]
+      // 선택된 날짜 + 현재 보고 있는 월 모두 포함
+      var months = Set<Date>()
+      months.insert(state.selectedDate.startOfMonth)
+      months.insert(state.currentMonth.startOfMonth)
+      return Array(months)
     }
   }
 }
