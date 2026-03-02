@@ -497,15 +497,12 @@ struct CalendarOverlayView: View {
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
 
-        Button(action: onWeatherCardTapped) {
-          Image(systemName: "arrow.clockwise")
-            .font(.system(size: 14, weight: .semibold))
-            .foregroundStyle(.secondary)
-            .frame(width: 32, height: 32)
-            .adaptiveGlassBackground(cornerRadius: 16)
-        }
-        .buttonStyle(.plain)
-        .padding(12)
+        Image(systemName: "arrow.clockwise")
+          .font(.system(size: 14, weight: .semibold))
+          .foregroundStyle(.secondary)
+          .frame(width: 32, height: 32)
+          .adaptiveGlassBackground(cornerRadius: 16)
+          .padding(12)
       }
       .frame(height: 130)
       .adaptiveGlassCard(cornerRadius: 20)

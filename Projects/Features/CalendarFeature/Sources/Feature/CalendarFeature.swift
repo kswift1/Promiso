@@ -271,99 +271,63 @@ extension CalendarFeature {
         let uniquePromises = Dictionary(grouping: allPromises, by: \.id).compactMap(\.value.first)
         for promise in uniquePromises {
           let color = colorMap[promise.groupId] ?? Color.pmindigo.n500
-          let startDay = calendar.startOfDay(for: promise.startAt)
-          let endDay = calendar.startOfDay(for: promise.effectiveEndAt)
-          let isMultiDay = startDay != endDay
-          var day = startDay
-          while day <= endDay {
-            let position: CalendarFeature.SpanPosition = {
-              if !isMultiDay { return .single }
-              if day == startDay { return .start }
-              if day == endDay { return .end }
-              return .middle
-            }()
-            let groupInfo = groupsMap[promise.groupId]
-            indicators[day, default: []].append(
-              .init(
-                id: "\(promise.id)_\(day.timeIntervalSince1970)",
-                color: color,
-                title: promise.title,
-                spanPosition: position,
-                startAt: promise.startAt,
-                endAt: promise.endAt,
-                emoji: promise.emoji,
-                sourceType: .promise(id: promise.id, groupId: promise.groupId),
-                description: promise.description,
-                locationName: promise.location?.name,
-                imageUrls: promise.imageUrls,
-                groupName: groupInfo?.name,
-                groupImageUrl: groupInfo?.imageUrl
-              )
+          let groupInfo = groupsMap[promise.groupId]
+          spreadIndicators(
+            startAt: promise.startAt, endAt: promise.effectiveEndAt, into: &indicators
+          ) { day, position in
+            .init(
+              id: "\(promise.id)_\(day.timeIntervalSince1970)",
+              color: color,
+              title: promise.title,
+              spanPosition: position,
+              startAt: promise.startAt,
+              endAt: promise.endAt,
+              emoji: promise.emoji,
+              sourceType: .promise(id: promise.id, groupId: promise.groupId),
+              description: promise.description,
+              locationName: promise.location?.name,
+              imageUrls: promise.imageUrls,
+              groupName: groupInfo?.name,
+              groupImageUrl: groupInfo?.imageUrl
             )
-            guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
-            day = next
           }
         }
 
         // 개인 일정
         for event in personalEvents {
-          let startDay = calendar.startOfDay(for: event.startAt)
-          let endDay = calendar.startOfDay(for: event.effectiveEndAt)
-          let isMultiDay = startDay != endDay
-          var day = startDay
-          while day <= endDay {
-            let position: CalendarFeature.SpanPosition = {
-              if !isMultiDay { return .single }
-              if day == startDay { return .start }
-              if day == endDay { return .end }
-              return .middle
-            }()
-            indicators[day, default: []].append(
-              .init(
-                id: "\(event.id)_\(day.timeIntervalSince1970)",
-                color: CalendarFeature.ScheduleIndicator.personalColor,
-                title: event.title,
-                spanPosition: position,
-                startAt: event.startAt,
-                endAt: event.endAt,
-                emoji: event.emoji,
-                sourceType: .personalEvent(id: event.id),
-                description: event.description,
-                locationName: event.location?.name,
-                imageUrls: event.imageUrls
-              )
+          spreadIndicators(
+            startAt: event.startAt, endAt: event.effectiveEndAt, into: &indicators
+          ) { day, position in
+            .init(
+              id: "\(event.id)_\(day.timeIntervalSince1970)",
+              color: CalendarFeature.ScheduleIndicator.personalColor,
+              title: event.title,
+              spanPosition: position,
+              startAt: event.startAt,
+              endAt: event.endAt,
+              emoji: event.emoji,
+              sourceType: .personalEvent(id: event.id),
+              description: event.description,
+              locationName: event.location?.name,
+              imageUrls: event.imageUrls
             )
-            guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
-            day = next
           }
         }
 
         // 시스템 캘린더 이벤트
         for event in calendarEvents {
-          let startDay = calendar.startOfDay(for: event.startDate)
-          let endDay = calendar.startOfDay(for: event.endDate)
-          let isMultiDay = startDay != endDay
-          var day = startDay
-          while day <= endDay {
-            let position: CalendarFeature.SpanPosition = {
-              if !isMultiDay { return .single }
-              if day == startDay { return .start }
-              if day == endDay { return .end }
-              return .middle
-            }()
-            indicators[day, default: []].append(
-              .init(
-                id: "cal_\(event.id)_\(day.timeIntervalSince1970)",
-                color: event.calendarColor,
-                title: event.title,
-                spanPosition: position,
-                startAt: event.startDate,
-                endAt: event.endDate,
-                sourceType: .calendarEvent(id: event.id)
-              )
+          spreadIndicators(
+            startAt: event.startDate, endAt: event.endDate, into: &indicators
+          ) { day, position in
+            .init(
+              id: "cal_\(event.id)_\(day.timeIntervalSince1970)",
+              color: event.calendarColor,
+              title: event.title,
+              spanPosition: position,
+              startAt: event.startDate,
+              endAt: event.endDate,
+              sourceType: .calendarEvent(id: event.id)
             )
-            guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
-            day = next
           }
         }
 
@@ -402,9 +366,20 @@ extension CalendarFeature {
         return buildScheduleItems(from: nextDay, to: dayAfter)
       }
 
+      /// 캐시된 약속에서 ID로 O(n) 검색 (월별 분산 캐시에서 단일 약속 조회)
+      func findCachedPromise(id: String) -> PromiseModel? {
+        for promises in cachedPromisesByMonth.values {
+          if let found = promises.first(where: { $0.id == id }) {
+            return found
+          }
+        }
+        return nil
+      }
+
       private func buildScheduleItems(from start: Date, to end: Date) -> [CalendarFeature.ScheduleItem] {
-        let currentMonthKey = selectedDate.startOfMonth
-        let allPromises = cachedPromisesByMonth[currentMonthKey] ?? []
+        // start/end가 속한 월을 모두 포함하여 월 경계 누락 방지
+        let monthKeys = Set([start.startOfMonth, end.startOfMonth, selectedDate.startOfMonth])
+        let allPromises = Array(Set(monthKeys.flatMap { cachedPromisesByMonth[$0] ?? [] }))
 
         let promiseItems = allPromises
           .filter { $0.startAt < end && $0.effectiveEndAt >= start }
@@ -416,6 +391,31 @@ extension CalendarFeature {
           .filter { $0.startDate < end && $0.endDate >= start }
           .map { CalendarFeature.ScheduleItem.calendarEvent($0) }
         return (promiseItems + personalItems + calendarItems).sorted { $0.startAt < $1.startAt }
+      }
+
+      /// 일정을 날짜별로 펼쳐서 인디케이터 딕셔너리에 추가
+      private func spreadIndicators(
+        startAt: Date,
+        endAt: Date,
+        into indicators: inout [Date: [CalendarFeature.ScheduleIndicator]],
+        makeIndicator: (Date, CalendarFeature.SpanPosition) -> CalendarFeature.ScheduleIndicator
+      ) {
+        let calendar = Calendar.current
+        let startDay = calendar.startOfDay(for: startAt)
+        let endDay = calendar.startOfDay(for: endAt)
+        let isMultiDay = startDay != endDay
+        var day = startDay
+        while day <= endDay {
+          let position: CalendarFeature.SpanPosition = {
+            if !isMultiDay { return .single }
+            if day == startDay { return .start }
+            if day == endDay { return .end }
+            return .middle
+          }()
+          indicators[day, default: []].append(makeIndicator(day, position))
+          guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
+          day = next
+        }
       }
     }
 
@@ -833,8 +833,7 @@ extension CalendarFeature {
       case .indicatorTapped(let indicator):
         switch indicator.sourceType {
         case .promise(let promiseId, let groupId):
-          let allPromises = state.cachedPromisesByMonth.values.flatMap { $0 }
-          guard let promise = allPromises.first(where: { $0.id == promiseId }) else {
+          guard let promise = state.findCachedPromise(id: promiseId) else {
             return .none
           }
           let groupMembers = state.groupMembersCache[groupId]

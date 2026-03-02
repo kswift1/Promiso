@@ -25,6 +25,7 @@ extension Home {
     @Dependency(\.personalEventClient) var personalEventClient
     @Dependency(\.weatherClient) var weatherClient
     @Dependency(\.locationClient) var locationClient
+    @Dependency(\.openURL) var openURL
 
     public init() {}
 
@@ -470,11 +471,9 @@ extension Home {
               return .none
             }
             if state.overlayWeatherState == .denied {
-              return .run { _ in
-                await MainActor.run {
-                  if let url = URL(string: UIApplication.openSettingsURLString) {
-                    UIApplication.shared.open(url)
-                  }
+              return .run { [openURL] _ in
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                  await openURL(url)
                 }
               }
             }
