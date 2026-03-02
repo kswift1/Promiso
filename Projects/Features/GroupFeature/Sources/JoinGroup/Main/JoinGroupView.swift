@@ -425,26 +425,29 @@ private struct PreviewView: View {
         }
       }
     }
-    .fullScreenCover(
-      item: Binding(
-        get: {
-          if let member = store.selectedMemberForImage {
-            return ImageDetailItem(id: "member-\(member.userId)", imageUrl: member.profileImageUrl, displayName: member.nickname)
-          } else if store.showGroupImageDetail {
-            return ImageDetailItem(id: "group", imageUrl: group.imageUrl, displayName: group.name)
-          }
-          return nil
-        },
-        set: { if $0 == nil { store.send(.view(.imageDetailDismissed)) } }
-      )
-    ) { item in
-      ImageDetailView(
-        imageUrl: item.imageUrl,
-        displayName: item.displayName,
-        onDismiss: { store.send(.view(.imageDetailDismissed)) }
-      )
-      .presentationBackground(.black)
+    .overlay {
+      if let member = store.selectedMemberForImage {
+        ImageDetailView(
+          imageUrl: member.profileImageUrl,
+          displayName: member.nickname,
+          onDismiss: { store.send(.view(.imageDetailDismissed)) }
+        )
+        .ignoresSafeArea()
+        .transition(.opacity)
+        .zIndex(1)
+      } else if store.showGroupImageDetail {
+        ImageDetailView(
+          imageUrl: group.imageUrl,
+          displayName: group.name,
+          onDismiss: { store.send(.view(.imageDetailDismissed)) }
+        )
+        .ignoresSafeArea()
+        .transition(.opacity)
+        .zIndex(1)
+      }
     }
+    .animation(.easeInOut(duration: 0.2), value: store.selectedMemberForImage != nil || store.showGroupImageDetail)
+    .toolbar(store.selectedMemberForImage != nil || store.showGroupImageDetail ? .hidden : .automatic, for: .tabBar)
   }
 
   // MARK: - Header Section
