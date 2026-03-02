@@ -26,7 +26,6 @@ extension View {
     if #available(iOS 26.0, *) {
       self
         .glassEffect(.regular.interactive(), in: .rect(cornerRadius: cornerRadius))
-        .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 4)
     } else {
       self
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: cornerRadius))
