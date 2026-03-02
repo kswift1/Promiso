@@ -192,36 +192,33 @@ extension ManageGroup {
           }
         }
       )
-      .fullScreenCover(
-        item: Binding(
-          get: { store.selectedMemberForImage },
-          set: { _ in store.send(.view(.imageDetailDismissed)) }
-        )
-      ) { member in
-        ImageDetailView(
-          imageUrl: member.profileImageUrl,
-          displayName: member.nickname,
-          onDismiss: {
-            store.send(.view(.imageDetailDismissed))
-          }
-        )
-        .presentationBackground(.black)
+      .overlay {
+        if let member = store.selectedMemberForImage {
+          ImageDetailView(
+            imageUrl: member.profileImageUrl,
+            displayName: member.nickname,
+            onDismiss: {
+              store.send(.view(.imageDetailDismissed))
+            }
+          )
+          .ignoresSafeArea()
+          .transition(.opacity)
+          .zIndex(1)
+        } else if store.showGroupImageDetail {
+          ImageDetailView(
+            imageUrl: store.group.imageUrl,
+            displayName: store.group.name,
+            onDismiss: {
+              store.send(.view(.imageDetailDismissed))
+            }
+          )
+          .ignoresSafeArea()
+          .transition(.opacity)
+          .zIndex(1)
+        }
       }
-      .fullScreenCover(
-        isPresented: Binding(
-          get: { store.showGroupImageDetail },
-          set: { if !$0 { store.send(.view(.imageDetailDismissed)) } }
-        )
-      ) {
-        ImageDetailView(
-          imageUrl: store.group.imageUrl,
-          displayName: store.group.name,
-          onDismiss: {
-            store.send(.view(.imageDetailDismissed))
-          }
-        )
-        .presentationBackground(.black)
-      }
+      .animation(.easeInOut(duration: 0.2), value: store.selectedMemberForImage != nil)
+      .animation(.easeInOut(duration: 0.2), value: store.showGroupImageDetail)
       .sheet(
         isPresented: Binding(
           get: { store.isShowingTransferSheet },
