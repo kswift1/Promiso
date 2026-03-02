@@ -212,6 +212,7 @@ extension PromiseDetail {
             initialIndex: index,
             onDismiss: { selectedImageIndex = nil }
           )
+          .presentationBackground(.black)
         }
       }
     }

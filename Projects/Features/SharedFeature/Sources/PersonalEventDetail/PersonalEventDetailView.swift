@@ -194,6 +194,7 @@ extension PersonalEventDetail {
             initialIndex: index,
             onDismiss: { selectedImageIndex = nil }
           )
+          .presentationBackground(.black)
         }
       }
     }

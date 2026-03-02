@@ -61,7 +61,6 @@ public struct PhotoGalleryViewer: View {
         Spacer()
       }
     }
-    .background(ClearBackground())
   }
 }
 
