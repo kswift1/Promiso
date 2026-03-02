@@ -57,8 +57,8 @@ struct AppEntryFeatureTests {
     }
 
     await store.send(.view(.onAppear))
-    await store.receive(\.internal.checkVersion) { _ in }
-    await store.receive(\.internal.versionCheckCompleted) { _ in }
+    await store.receive(\.internal.checkVersion)
+    await store.receive(\.internal.versionCheckCompleted)
     await receiveContinueAppFlowUnauthenticated(store)
   }
 
@@ -75,7 +75,7 @@ struct AppEntryFeatureTests {
     }
 
     await store.send(.view(.onAppear))
-    await store.receive(\.internal.checkVersion) { _ in }
+    await store.receive(\.internal.checkVersion)
     await store.receive(\.internal.versionCheckCompleted) {
       $0.updateAlert = .recommendUpdate(currentVersion: "1.0.0", recommendedVersion: "1.1.0")
     }
@@ -98,7 +98,7 @@ struct AppEntryFeatureTests {
     }
 
     await store.send(.view(.scenePhaseChanged(.active)))
-    await store.receive(\.internal.recheckVersionAfterAppStore) { _ in }
+    await store.receive(\.internal.recheckVersionAfterAppStore)
     await store.receive(\.internal.versionCheckCompleted) {
       $0.updateAlert = nil
     }
@@ -126,7 +126,7 @@ struct AppEntryFeatureTests {
     }
 
     await store.send(.internal(.sessionCheckResponse(isAuthenticated: true)))
-    await store.receive(\.internal.startProfileCheck) { _ in }
+    await store.receive(\.internal.startProfileCheck)
   }
 
   @Test("startProfileCheck currentUser=nil 이면 종료")
@@ -158,8 +158,8 @@ struct AppEntryFeatureTests {
     store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.internal(.startProfileCheck))
-    await store.receive(\.internal.profileCheckResponse) { _ in }
-    await store.receive(\.internal.transitionToMain) { _ in }
+    await store.receive(\.internal.profileCheckResponse)
+    await store.receive(\.internal.transitionToMain)
     #expect(store.state.destinationType == .main)
   }
 
@@ -179,7 +179,7 @@ struct AppEntryFeatureTests {
 
     await store.send(.view(.onAppear))
 
-    await store.receive(\.internal.checkVersion) { _ in }
+    await store.receive(\.internal.checkVersion)
 
     await store.receive(\.internal.versionCheckCompleted) {
       $0.updateAlert = .forceUpdate(currentVersion: "1.0.0", requiredVersion: "2.0.0")
@@ -277,7 +277,7 @@ struct AppEntryFeatureTests {
     await store.send(.destination(.presented(.auth(.delegate(.loggedIn(providerProfileImageURL: profileImageURL)))))) {
       $0.providerProfileImageURL = profileImageURL
     }
-    await store.receive(\.internal.startProfileCheck) { _ in }
+    await store.receive(\.internal.startProfileCheck)
   }
 
   @Test("profileCheckResponse 기존 사용자 + pending 없으면 메인 전환만")
@@ -300,7 +300,7 @@ struct AppEntryFeatureTests {
 
     await store.send(.internal(.profileCheckResponse(user: firebaseUser, profile: user)))
     #expect(store.state.splash == .animatingOut)
-    await store.receive(\.internal.transitionToMain) { _ in }
+    await store.receive(\.internal.transitionToMain)
     #expect(store.state.destinationType == .main)
     #expect(store.state.pendingDeeplink == nil)
   }
@@ -326,10 +326,10 @@ struct AppEntryFeatureTests {
 
     await store.send(.internal(.profileCheckResponse(user: firebaseUser, profile: user)))
     #expect(store.state.splash == .animatingOut)
-    await store.receive(\.internal.transitionToMain) { _ in }
+    await store.receive(\.internal.transitionToMain)
     #expect(store.state.pendingDeeplink == nil)
     #expect(store.state.destinationType == .main)
-    await store.receive(\.destination.presented.main.openLivePromiseDetail) { _ in }
+    await store.receive(\.destination.presented.main.openLivePromiseDetail)
   }
 
   @Test("profileCheckResponse 신규 사용자면 profile setup으로 전환")
@@ -370,7 +370,7 @@ struct AppEntryFeatureTests {
     }
 
     await store.send(.destination(.presented(.profile(.delegate(.completed(user)))))) 
-    await store.receive(\.internal.checkNotificationPermission) { _ in }
+    await store.receive(\.internal.checkNotificationPermission)
     await store.receive(\.internal.notificationPermissionChecked) {
       $0.pendingUserForMain = user
       $0.notificationPermission = NotificationPermission.Feature.State()
@@ -411,10 +411,10 @@ struct AppEntryFeatureTests {
     store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.internal(.notificationPermissionChecked(isAuthorized: true, user: user)))
-    await store.receive(\.internal.transitionToMain) { _ in }
+    await store.receive(\.internal.transitionToMain)
     #expect(store.state.pendingDeeplink == nil)
     #expect(store.state.destinationType == .main)
-    await store.receive(\.destination.presented.main.openLivePromiseDetail) { _ in }
+    await store.receive(\.destination.presented.main.openLivePromiseDetail)
   }
 
   @Test("notificationPermissionChecked 미허용 시 온보딩 표시")
@@ -450,7 +450,7 @@ struct AppEntryFeatureTests {
     store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.notificationPermission(.presented(.delegate(.dismissed))))
-    await store.receive(\.internal.transitionToMain) { _ in }
+    await store.receive(\.internal.transitionToMain)
     #expect(store.state.notificationPermission == nil)
     #expect(store.state.pendingUserForMain == nil)
     #expect(store.state.destinationType == .main)
@@ -475,7 +475,7 @@ struct AppEntryFeatureTests {
     store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.notificationPermission(.presented(.delegate(.permissionChanged(isGranted: true)))))
-    await store.receive(\.internal.transitionToMain) { _ in }
+    await store.receive(\.internal.transitionToMain)
     #expect(store.state.notificationPermission == nil)
     #expect(store.state.pendingUserForMain == nil)
     #expect(store.state.destinationType == .main)
@@ -570,7 +570,7 @@ struct AppEntryFeatureTests {
     await store.send(.destination(.presented(.onboardingStart(.delegate(.completed))))) {
       $0.pendingUserForMain = nil
     }
-    await store.receive(\.internal.transitionToMain) { _ in }
+    await store.receive(\.internal.transitionToMain)
     #expect(store.state.destinationType == .main)
   }
 
@@ -595,7 +595,7 @@ struct AppEntryFeatureTests {
       $0.pendingUserForMain = nil
       $0.pendingDeeplink = .joinGroup(inviteCode: "")
     }
-    await store.receive(\.internal.transitionToMain) { _ in }
+    await store.receive(\.internal.transitionToMain)
     #expect(store.state.destinationType == .main)
   }
 
@@ -619,9 +619,9 @@ struct AppEntryFeatureTests {
     await store.send(.destination(.presented(.onboardingStart(.delegate(.createGroup))))) {
       $0.pendingUserForMain = nil
     }
-    await store.receive(\.internal.transitionToMain) { _ in }
+    await store.receive(\.internal.transitionToMain)
     #expect(store.state.destinationType == .main)
-    await store.receive(\.destination.presented.main.openCreateGroup) { _ in }
+    await store.receive(\.destination.presented.main.openCreateGroup)
   }
 
   // MARK: - Logout 테스트
@@ -689,7 +689,7 @@ struct AppEntryFeatureTests {
     }
 
     await store.send(.internal(.fcmTokenReceived("token-1")))
-    await store.receive(\.internal.fcmTokenSaved) { _ in }
+    await store.receive(\.internal.fcmTokenSaved)
   }
 
   @Test("fcmTokenReceived 비인증 상태면 저장 시도 안 함")
@@ -756,7 +756,7 @@ struct AppEntryFeatureTests {
       userInfo: ["token": "stream-token"]
     )
 
-    await store.receive(\.internal.fcmTokenReceived) { _ in }
+    await store.receive(\.internal.fcmTokenReceived)
     await store.send(.internal(.cancelSubscriptions))
   }
 
@@ -798,7 +798,7 @@ struct AppEntryFeatureTests {
     store.exhaustivity = .off(showSkippedAssertions: false)
 
     await store.send(.view(.handleDeeplink(URL(string: "promiso://live")!)))
-    await store.receive(\.destination.presented.main.openLivePromiseDetail) { _ in }
+    await store.receive(\.destination.presented.main.openLivePromiseDetail)
   }
 
   @Test("pushNotificationTapped 시 메인 아니면 pendingDeeplink에 저장")
@@ -873,10 +873,10 @@ private extension AppEntryFeatureTests {
   func receiveContinueAppFlowUnauthenticated(
     _ store: TestStoreOf<AppEntry.Feature>
   ) async {
-    await store.receive(\.internal.continueAppFlow) { _ in }
-    await store.receive(\.internal.startSessionCheck) { _ in }
-    await store.receive(\.internal.subscribeFCMToken) { _ in }
-    await store.receive(\.internal.subscribePushNotificationTap) { _ in }
+    await store.receive(\.internal.continueAppFlow)
+    await store.receive(\.internal.startSessionCheck)
+    await store.receive(\.internal.subscribeFCMToken)
+    await store.receive(\.internal.subscribePushNotificationTap)
     await store.receive(\.internal.sessionCheckResponse) {
       $0.destination = .auth(AuthFeature.Auth.Feature.State())
       $0.splash = .animatingOut
