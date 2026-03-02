@@ -17,7 +17,7 @@ struct DeeplinkRoutingTests {
 
     await store.send(.view(.handleDeeplink(URL(string: "promiso://join/ABC123")!)))
     #expect(store.state.pendingDeeplink == nil)
-    await store.receive(\.destination.presented.main.openJoinGroupWithCode)
+    await store.receive(\.destination.presented.main.openJoinGroupWithCode) { _ in }
   }
 
   @Test("group 딥링크는 메인에서 handleGroupDeeplink로 전달")
@@ -32,7 +32,7 @@ struct DeeplinkRoutingTests {
 
     await store.send(.view(.handleDeeplink(URL(string: "promiso://group/group-123")!)))
     #expect(store.state.pendingDeeplink == nil)
-    await store.receive(\.destination.presented.main.handleGroupDeeplink)
+    await store.receive(\.destination.presented.main.handleGroupDeeplink) { _ in }
   }
 
   @Test("promise 딥링크는 메인에서 handleGroupDeeplink로 전달")
@@ -47,7 +47,7 @@ struct DeeplinkRoutingTests {
 
     await store.send(.view(.handleDeeplink(URL(string: "promiso://promise/promise-1/group-1")!)))
     #expect(store.state.pendingDeeplink == nil)
-    await store.receive(\.destination.presented.main.handleGroupDeeplink)
+    await store.receive(\.destination.presented.main.handleGroupDeeplink) { _ in }
   }
 
   @Test("liveActivityETA 딥링크는 ETA 시트 오픈 액션 전달")
@@ -61,7 +61,7 @@ struct DeeplinkRoutingTests {
 
     await store.send(.view(.handleDeeplink(URL(string: "promiso://promise/promise-eta/eta")!)))
     #expect(store.state.pendingDeeplink == nil)
-    await store.receive(\.destination.presented.main.openLiveActivityETASheet)
+    await store.receive(\.destination.presented.main.openLiveActivityETASheet) { _ in }
   }
 
   @Test("livePromise 딥링크는 상세 오픈 액션 전달")
@@ -75,7 +75,7 @@ struct DeeplinkRoutingTests {
 
     await store.send(.view(.handleDeeplink(URL(string: "promiso://live/promise-live")!)))
     #expect(store.state.pendingDeeplink == nil)
-    await store.receive(\.destination.presented.main.openLivePromiseDetail)
+    await store.receive(\.destination.presented.main.openLivePromiseDetail) { _ in }
   }
 
   @Test("create 딥링크는 그룹 탭 약속 생성 액션 전달")
@@ -90,7 +90,7 @@ struct DeeplinkRoutingTests {
 
     await store.send(.view(.handleDeeplink(URL(string: "promiso://create")!)))
     #expect(store.state.pendingDeeplink == nil)
-    await store.receive(\.destination.presented.main.openCreatePromiseIfPossible)
+    await store.receive(\.destination.presented.main.openCreatePromiseIfPossible) { _ in }
   }
 
   @Test("Auth 화면에서 joinGroup 딥링크는 pending으로 저장")
@@ -160,11 +160,11 @@ struct DeeplinkRoutingTests {
       user: makeFirebaseUser(uid: "firebase-main"),
       profile: makeUser(id: "user-main", nickname: "메인유저")
     )))
-    await store.receive(\.internal.transitionToMain)
+    await store.receive(\.internal.transitionToMain) { _ in }
 
     #expect(store.state.destinationType == .main)
     #expect(store.state.pendingDeeplink == nil)
-    await store.receive(\.destination.presented.main.handleGroupDeeplink)
+    await store.receive(\.destination.presented.main.handleGroupDeeplink) { _ in }
   }
 
   @Test("잘못된 URL은 무시된다")
@@ -217,7 +217,7 @@ struct DeeplinkRoutingTests {
 
     await store.send(.view(.handleDeeplink(URL(string: "promiso://personalEvent/event-123")!)))
     #expect(store.state.pendingDeeplink == nil)
-    await store.receive(\.destination.presented.main.openPersonalEventDetail)
+    await store.receive(\.destination.presented.main.openPersonalEventDetail) { _ in }
   }
 
   @Test("Auth 화면에서 personalEvent 딥링크는 pending으로 저장")
@@ -261,7 +261,7 @@ struct PushNotificationDeeplinkTests {
 
     await store.send(.internal(.pushNotificationTapped(.promise(promiseId: "p1", groupId: "g1"))))
     #expect(store.state.pendingDeeplink == nil)
-    await store.receive(\.destination.presented.main.handleGroupDeeplink)
+    await store.receive(\.destination.presented.main.handleGroupDeeplink) { _ in }
   }
 
   @Test("푸시 group 탭은 handleGroupDeeplink로 라우팅")
@@ -275,7 +275,7 @@ struct PushNotificationDeeplinkTests {
 
     await store.send(.internal(.pushNotificationTapped(.group(groupId: "g1"))))
     #expect(store.state.pendingDeeplink == nil)
-    await store.receive(\.destination.presented.main.handleGroupDeeplink)
+    await store.receive(\.destination.presented.main.handleGroupDeeplink) { _ in }
   }
 
   @Test("푸시 liveActivityETA 탭은 ETA 시트 오픈으로 라우팅")
@@ -287,7 +287,7 @@ struct PushNotificationDeeplinkTests {
 
     await store.send(.internal(.pushNotificationTapped(.liveActivityETA(promiseId: "p-eta"))))
     #expect(store.state.pendingDeeplink == nil)
-    await store.receive(\.destination.presented.main.openLiveActivityETASheet)
+    await store.receive(\.destination.presented.main.openLiveActivityETASheet) { _ in }
   }
 
   @Test("푸시 livePromise 탭은 상세 오픈으로 라우팅")
@@ -299,7 +299,7 @@ struct PushNotificationDeeplinkTests {
 
     await store.send(.internal(.pushNotificationTapped(.livePromise(promiseId: "p-live"))))
     #expect(store.state.pendingDeeplink == nil)
-    await store.receive(\.destination.presented.main.openLivePromiseDetail)
+    await store.receive(\.destination.presented.main.openLivePromiseDetail) { _ in }
   }
 
   @Test("Auth 화면에서 푸시 promise 탭은 pending 저장")
@@ -347,11 +347,11 @@ struct PushNotificationDeeplinkTests {
       user: makeFirebaseUser(uid: "firebase-push-main"),
       profile: makeUser(id: "user-push-main", nickname: "푸시메인")
     )))
-    await store.receive(\.internal.transitionToMain)
+    await store.receive(\.internal.transitionToMain) { _ in }
 
     #expect(store.state.destinationType == .main)
     #expect(store.state.pendingDeeplink == nil)
-    await store.receive(\.destination.presented.main.handleGroupDeeplink)
+    await store.receive(\.destination.presented.main.handleGroupDeeplink) { _ in }
   }
 }
 
