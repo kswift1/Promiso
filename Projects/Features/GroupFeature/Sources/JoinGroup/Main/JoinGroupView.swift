@@ -450,8 +450,7 @@ private struct PreviewView: View {
         .zIndex(1)
       }
     }
-    .animation(.easeInOut(duration: 0.2), value: store.selectedMemberForImage != nil)
-    .animation(.easeInOut(duration: 0.2), value: store.showGroupImageDetail)
+    .animation(.easeInOut(duration: 0.2), value: store.selectedMemberForImage != nil || store.showGroupImageDetail)
   }
 
   // MARK: - Header Section

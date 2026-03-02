@@ -217,8 +217,7 @@ extension ManageGroup {
           .zIndex(1)
         }
       }
-      .animation(.easeInOut(duration: 0.2), value: store.selectedMemberForImage != nil)
-      .animation(.easeInOut(duration: 0.2), value: store.showGroupImageDetail)
+      .animation(.easeInOut(duration: 0.2), value: store.selectedMemberForImage != nil || store.showGroupImageDetail)
       .sheet(
         isPresented: Binding(
           get: { store.isShowingTransferSheet },
