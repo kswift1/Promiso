@@ -187,6 +187,7 @@ extension GroupMain {
         case openCreatePromiseWithExtractedInfo(PromiseExtractedInfo)  // 퀵 약속: 추출 정보 pre-fill
         case switchToPersonalMode  // 개인 모드로 전환 요청
         case toastDismissed
+        case tabReturned
         // Context Menu Actions
         case groupInviteTapped(String)  // 그룹 초대 (groupId)
         case groupContextSettingsTapped(String)  // 그룹 설정 (groupId)
@@ -241,6 +242,11 @@ extension GroupMain {
             state.isInitialized = true
             // 정렬 설정을 먼저 로드한 후 그룹 리스트 표시
             return .send(.internal(.fetchSettings))
+
+          case .tabReturned:
+            // 탭 복귀 시 그룹 목록만 갱신 (약속은 실시간 리스너로 처리)
+            guard state.isInitialized else { return .none }
+            return .send(.internal(.fetchGroupList))
 
           case .refreshTriggered:
             if !state.promisesState.isLoaded {

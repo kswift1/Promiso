@@ -63,8 +63,11 @@ extension CalendarFeature {
       /// 이미 로드된 월 (중복 요청 방지)
       var loadedMonths: Set<Date> = []
 
-      /// 약속 로딩 중
-      var isLoadingPromises: Bool = false
+      /// 약속 로딩 중인 월 목록
+      var loadingMonths: Set<Date> = []
+
+      /// 약속 로딩 중 여부 (computed)
+      var isLoadingPromises: Bool { !loadingMonths.isEmpty }
 
       /// 주간 ↔ 월간 전환 애니메이션 진행 중
       var isTransitioning: Bool = false
@@ -1156,19 +1159,20 @@ extension CalendarFeature {
         return .none
 
       case .loadInitialData:
-        // 1. 캐시 초기화
-        state.loadedMonths.removeAll()
-        state.cachedPromisesByMonth.removeAll()
-        AppLogger.calendar.debugLog("📦 초기 데이터 로드 (캐시 초기화 완료, 그룹: \(state.userGroupIds.count)개)")
+        // 현재 보고 있는 월 + 인접 월만 선택적 무효화 (전체 캐시 삭제 X)
+        let monthsToLoad = getMonthsToLoad(state: state)
+        for month in monthsToLoad {
+          state.loadedMonths.remove(month)
+        }
+        AppLogger.calendar.debugLog("📦 데이터 로드 (선택적 무효화: \(monthsToLoad.count)개 월, 그룹: \(state.userGroupIds.count)개)")
 
-        // 2. 개인 일정은 항상 로드
+        // 개인 일정은 항상 로드
         var effects: [Effect<Action>] = [
           .send(.internal(.fetchPersonalEvents))
         ]
 
-        // 3. 그룹이 있으면 약속 로드
+        // 그룹이 있으면 약속 로드
         if !state.userGroupIds.isEmpty {
-          let monthsToLoad = getMonthsToLoad(state: state)
           effects.append(contentsOf: monthsToLoad.map { month in
             Effect<Action>.send(.internal(.fetchPromisesForMonth(month)))
           })
@@ -1191,7 +1195,7 @@ extension CalendarFeature {
           return .none
         }
 
-        state.isLoadingPromises = true
+        state.loadingMonths.insert(monthStart)
         AppLogger.calendar.debugLog("🌐 API 요청 시작 - \(LocalizedDateFormatters.yearMonth.string(from: monthStart))")
 
         // 월의 시작과 끝 계산
@@ -1244,7 +1248,7 @@ extension CalendarFeature {
         })
 
       case .promisesResponseForMonth(let month, let result):
-        state.isLoadingPromises = false
+        state.loadingMonths.remove(month)
 
         switch result {
         case .success(let promises):
@@ -1276,6 +1280,10 @@ extension CalendarFeature {
         case .failure(let error):
           // 실패해도 재시도 가능하도록 loadedMonths에 추가하지 않음
           AppLogger.calendar.debugLog("⚠️ 캐시 저장 실패 - \(LocalizedDateFormatters.yearMonth.string(from: month)): \(error.localizedDescription)", type: .error)
+          state.toastMessage = ToastMessage(
+            type: .error,
+            title: "약속을 불러오지 못했습니다"
+          )
         }
         return .none
 
@@ -1315,7 +1323,8 @@ extension CalendarFeature {
         case .success(let events):
           state.calendarEvents = events
         case .failure:
-          state.calendarEvents = []
+          // 에러 시 기존 데이터 유지 (빈 배열로 덮어쓰지 않음)
+          break
         }
         return .none
 
@@ -1334,7 +1343,8 @@ extension CalendarFeature {
         case .success(let events):
           state.personalEvents = events
         case .failure:
-          state.personalEvents = []
+          // 에러 시 기존 데이터 유지 (빈 배열로 덮어쓰지 않음)
+          break
         }
         return .none
 

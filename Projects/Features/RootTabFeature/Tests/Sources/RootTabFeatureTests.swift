@@ -60,6 +60,7 @@ struct RootTabFeatureTests {
     await store.send(.tabSelected(.promise(.group))) {
       $0.selectedTab = .promise(.group)
     }
+    await store.receive(\.groupMain.view.tabReturned)
   }
 
   @Test("같은 탭 재선택 시 selectedTab 유지")

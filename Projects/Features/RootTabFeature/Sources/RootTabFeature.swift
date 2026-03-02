@@ -301,7 +301,9 @@ extension RootTab {
             // Analytics 이벤트 로깅
             analyticsClient.logEvent(AnalyticsClient.EventName.settingsOpened, nil)
           case .promise:
-            break
+            if state.promiseMode == .group {
+              effects.append(.send(.groupMain(.view(.tabReturned))))
+            }
           }
 
           return .merge(effects)
