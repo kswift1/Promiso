@@ -243,7 +243,7 @@ private struct CalendarOverlayContentView: View {
       .padding(.bottom, bottomPad)
     }
     .background(alignment: .top) {
-      Color(.systemBackground)
+      Color(animatedMode == .weatherDetail ? .secondarySystemBackground : .systemBackground)
         .frame(height: SafeArea.topInset + 16)
     }
     .background(Color(.secondarySystemBackground))

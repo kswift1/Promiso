@@ -127,11 +127,16 @@ struct CalendarOverlayView: View {
           .clipped()
 
         // 날씨 상세 (항상 존재, weatherDetail 모드에서 확장 — 위에서 내려오는 효과)
-        weatherDetailContent
-          .padding(.horizontal, 20)
-          .frame(maxHeight: isWeatherDetail ? .infinity : 0)
-          .opacity(isWeatherDetail ? 1 : 0)
-          .clipped()
+        if isWeatherDetail {
+          weatherDetailContent
+            .padding(.horizontal, 20)
+        } else {
+          weatherDetailContent
+            .padding(.horizontal, 20)
+            .frame(maxHeight: 0)
+            .opacity(0)
+            .clipped()
+        }
 
         // Spacer (항상 존재, weekly 모드에서 확장 → 그리드를 아래로 밀어냄)
         Spacer(minLength: 0)
@@ -650,7 +655,6 @@ struct CalendarOverlayView: View {
           if !dailySummaries.isEmpty {
             weatherDailySection(dailySummaries)
           }
-
         }
       }
     }
@@ -697,7 +701,7 @@ struct CalendarOverlayView: View {
       .foregroundStyle(.secondary)
     }
     .padding(16)
-    .adaptiveGlassBackground(cornerRadius: 16)
+    .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 16))
   }
 
   /// hourlyForecasts를 일별로 그룹핑하여 DailyForecast 배열 생성
@@ -822,7 +826,7 @@ struct CalendarOverlayView: View {
       }
       .padding(.horizontal, 12)
       .padding(.vertical, 4)
-      .adaptiveGlassBackground(cornerRadius: 16)
+      .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 16))
     }
   }
 

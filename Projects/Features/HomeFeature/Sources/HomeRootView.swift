@@ -25,16 +25,21 @@ extension Home {
             set: { _ in store.send(.view(.toastDismissed)) }
           ))
           .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-              // 캘린더 오버레이 토글 버튼
+            ToolbarItem(placement: .principal) {
               Button {
                 store.send(.view(.calendarOverlayOpened))
               } label: {
-                Image(systemName: "calendar")
-                  .font(.system(size: 16, weight: .medium))
-                  .foregroundStyle(Color.pmindigo.n500)
-                  .frame(width: 36, height: 36)
+                HStack(spacing: 4) {
+                  Text(Date(), format: .dateTime.month().day().weekday(.wide))
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(.primary)
+
+                  Image(systemName: "chevron.down")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                }
               }
+              .buttonStyle(.plain)
             }
 
             ToolbarItem(placement: .topBarTrailing) {
