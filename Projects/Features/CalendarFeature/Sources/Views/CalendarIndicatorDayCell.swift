@@ -35,55 +35,54 @@ struct CalendarIndicatorDayCell: View {
   }
 
   var body: some View {
-    if showAllIndicators {
-      expandedModeBody
+    if isCompactMode || showAllIndicators {
+      // 월간 모드: compact ↔ expanded morphing
+      morphingBody
     } else {
-      Button(action: onTap) {
-        VStack(spacing: 2) {
-          // 날짜 원형 배경 + 숫자
-          ZStack {
-            if isSelected {
-              Circle()
-                .fill(Color.pmindigo.n500)
-                .matchedGeometryEffect(id: selectionId, in: namespace)
-            } else if isToday {
-              Circle()
-                .stroke(Color.pmindigo.n500, lineWidth: 2)
-            }
-            Text(dayNumber)
-              .font(.system(size: 14, weight: isSelected || isToday ? .bold : .regular))
-              .foregroundColor(textColor)
-              .contentTransition(.numericText())
-          }
-          .frame(width: 36, height: 36)
-
-          // 인디케이터 분기
-          if isCompactMode {
-            compactIndicatorArea
-              .frame(height: 8)
-          } else if showAllIndicators {
-            expandedIndicatorArea
-          } else {
-            indicatorArea
-              .frame(height: 22)
-              .clipped()
-          }
-        }
-        .frame(height: showAllIndicators ? nil : (isCompactMode ? 46 : 62))
-        .frame(minHeight: showAllIndicators ? 46 : nil, alignment: .top)
-        .frame(maxHeight: showAllIndicators ? .infinity : nil, alignment: .top)
-      }
-      .buttonStyle(.plain)
-      .frame(maxWidth: .infinity, alignment: .top)
-      .opacity(isCurrentMonth ? 1 : 0.3)
+      // 주간 모드: 기존 normal bar (변경 없음)
+      normalBarBody
     }
   }
 
-  // MARK: - Expanded Mode Body
+  // MARK: - Normal Bar Body (주간 모드)
 
-  private var expandedModeBody: some View {
-    VStack(spacing: 2) {
-      // 날짜 숫자 영역 — 탭: selectDate, 롱프레스: 일 프리뷰 + 생성 메뉴
+  private var normalBarBody: some View {
+    Button(action: onTap) {
+      VStack(spacing: 2) {
+        ZStack {
+          if isSelected {
+            Circle()
+              .fill(Color.pmindigo.n500)
+              .matchedGeometryEffect(id: selectionId, in: namespace)
+          } else if isToday {
+            Circle()
+              .stroke(Color.pmindigo.n500, lineWidth: 2)
+          }
+          Text(dayNumber)
+            .font(.system(size: 14, weight: isSelected || isToday ? .bold : .regular))
+            .foregroundColor(textColor)
+            .contentTransition(.numericText())
+        }
+        .frame(width: 36, height: 36)
+
+        indicatorArea
+          .frame(height: 22)
+          .clipped()
+      }
+      .frame(height: 62)
+    }
+    .buttonStyle(.plain)
+    .frame(maxWidth: .infinity, alignment: .top)
+    .opacity(isCurrentMonth ? 1 : 0.3)
+  }
+
+  // MARK: - Morphing Body (월간 모드)
+
+  private var morphingBody: some View {
+    let isCompact = isCompactMode && !showAllIndicators
+
+    return VStack(spacing: 2) {
+      // 날짜 원형 — 항상 동일
       ZStack {
         if isSelected {
           Circle()
@@ -102,28 +101,7 @@ struct CalendarIndicatorDayCell: View {
       .contentShape(Circle())
       .onTapGesture { onTap() }
       .contextMenu {
-        Button {
-          onDayCreatePersonalEvent?(date)
-        } label: {
-          Label(LocalizedStrings.Calendar.addPersonalEvent, systemImage: "plus.circle")
-        }
-        Button {
-          onDayCreatePromise?(date)
-        } label: {
-          Label(LocalizedStrings.Calendar.createPromise, systemImage: "person.2.circle")
-        }
-      } preview: {
-        ExpandedDayPreviewView(date: date, indicators: scheduleIndicators)
-      }
-
-      // 인디케이터 카드들 — 각각 탭 + 롱프레스
-      expandedInteractiveArea
-
-      // 하단 빈 공간 — 롱프레스: 일 프리뷰 + 생성 메뉴
-      Spacer(minLength: 0)
-        .contentShape(Rectangle())
-        .onTapGesture { onTap() }
-        .contextMenu {
+        if showAllIndicators {
           Button {
             onDayCreatePersonalEvent?(date)
           } label: {
@@ -134,85 +112,119 @@ struct CalendarIndicatorDayCell: View {
           } label: {
             Label(LocalizedStrings.Calendar.createPromise, systemImage: "person.2.circle")
           }
-        } preview: {
+        }
+      } preview: {
+        if showAllIndicators {
           ExpandedDayPreviewView(date: date, indicators: scheduleIndicators)
         }
+      }
+
+      // Morphing 인디케이터 영역
+      morphingIndicatorSection(isCompact: isCompact)
+
+      // Expanded 하단 스페이서 + 컨텍스트 메뉴
+      if showAllIndicators {
+        Spacer(minLength: 0)
+          .contentShape(Rectangle())
+          .onTapGesture { onTap() }
+          .contextMenu {
+            Button {
+              onDayCreatePersonalEvent?(date)
+            } label: {
+              Label(LocalizedStrings.Calendar.addPersonalEvent, systemImage: "plus.circle")
+            }
+            Button {
+              onDayCreatePromise?(date)
+            } label: {
+              Label(LocalizedStrings.Calendar.createPromise, systemImage: "person.2.circle")
+            }
+          } preview: {
+            ExpandedDayPreviewView(date: date, indicators: scheduleIndicators)
+          }
+      }
     }
-    .frame(minHeight: 46, alignment: .top)
-    .frame(maxHeight: .infinity)
+    .frame(height: showAllIndicators ? nil : (isCompact ? 46 : 62))
+    .frame(minHeight: showAllIndicators ? 46 : nil, alignment: .top)
+    .frame(maxHeight: showAllIndicators ? .infinity : nil, alignment: .top)
     .frame(maxWidth: .infinity, alignment: .top)
     .opacity(isCurrentMonth ? 1 : 0.3)
+    .contentShape(Rectangle())
+    .onTapGesture { onTap() }
   }
 
   @ViewBuilder
-  private var expandedInteractiveArea: some View {
+  private func morphingIndicatorSection(isCompact: Bool) -> some View {
     if isCurrentMonth && !scheduleIndicators.isEmpty {
-      VStack(spacing: 3) {
-        ForEach(scheduleIndicators) { indicator in
-          Button {
-            onIndicatorTapped?(indicator)
-          } label: {
-            HStack(alignment: .top, spacing: 2) {
-              RoundedRectangle(cornerRadius: 1)
-                .fill(indicator.color)
-                .frame(width: 2, height: 10)
-              Text(indicator.title)
-                .font(.system(size: 7, weight: .medium))
-                .foregroundStyle(Color.secondary)
-                .lineLimit(2)
-                .truncationMode(.tail)
-                .fixedSize(horizontal: false, vertical: true)
-            }
-            .padding(.horizontal, 3)
-            .padding(.vertical, 2)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .adaptiveGlassBackground(cornerRadius: 4)
-          }
-          .buttonStyle(.plain)
-          .contextMenu {
-            Button {
-              onIndicatorTapped?(indicator)
-            } label: {
-              Label(LocalizedStrings.PromiseCard.viewDetail, systemImage: "info.circle")
-            }
-          } preview: {
-            IndicatorPreviewView(indicator: indicator)
-          }
+      let displayCount = isCompact
+        ? min(3, scheduleIndicators.count)
+        : scheduleIndicators.count
+      let layout = isCompact
+        ? AnyLayout(HStackLayout(spacing: 3))
+        : AnyLayout(VStackLayout(spacing: 3))
+
+      layout {
+        ForEach(Array(scheduleIndicators.prefix(displayCount))) { indicator in
+          morphingIndicatorItem(indicator, isCompact: isCompact)
         }
       }
-      .frame(maxWidth: .infinity, alignment: .leading)
+      .frame(height: isCompact ? 8 : nil)
+      .frame(maxWidth: isCompact ? nil : .infinity, alignment: isCompact ? .center : .leading)
     } else {
-      Color.clear.frame(height: 0)
+      Color.clear.frame(height: isCompact ? 8 : 0)
+    }
+  }
+
+  private func morphingIndicatorItem(
+    _ indicator: CalendarFeature.ScheduleIndicator,
+    isCompact: Bool
+  ) -> some View {
+    HStack(alignment: .top, spacing: isCompact ? 0 : 2) {
+      // 색상 도형: Circle(5×5) ↔ RoundedRect(2×10)
+      RoundedRectangle(cornerRadius: isCompact ? 2.5 : 1)
+        .fill(indicator.color)
+        .frame(width: isCompact ? 5 : 2, height: isCompact ? 5 : 10)
+
+      // 제목: compact에서 0 width + 0 opacity
+      Text(indicator.title)
+        .font(.system(size: 7, weight: .medium))
+        .foregroundStyle(Color.secondary)
+        .lineLimit(showAllIndicators ? 2 : 1)
+        .truncationMode(.tail)
+        .fixedSize(horizontal: false, vertical: !isCompact)
+        .opacity(isCompact ? 0 : 1)
+        .frame(maxWidth: isCompact ? 0 : .infinity, alignment: .leading)
+        .clipped()
+    }
+    .padding(.horizontal, showAllIndicators ? 3 : 0)
+    .padding(.vertical, showAllIndicators ? 2 : 0)
+    .frame(maxWidth: isCompact ? nil : .infinity, alignment: .leading)
+    .background(
+      RoundedRectangle(cornerRadius: 4)
+        .fill(.ultraThinMaterial)
+        .opacity(showAllIndicators ? 1 : 0)
+    )
+    .contentShape(Rectangle())
+    .onTapGesture {
+      if showAllIndicators {
+        onIndicatorTapped?(indicator)
+      }
+    }
+    .contextMenu {
+      if showAllIndicators {
+        Button {
+          onIndicatorTapped?(indicator)
+        } label: {
+          Label(LocalizedStrings.PromiseCard.viewDetail, systemImage: "info.circle")
+        }
+      }
+    } preview: {
+      if showAllIndicators {
+        IndicatorPreviewView(indicator: indicator)
+      }
     }
   }
 
   // MARK: - Indicator Views
-
-  @ViewBuilder
-  private var compactIndicatorArea: some View {
-    if isCurrentMonth && !scheduleIndicators.isEmpty {
-      HStack(spacing: 3) {
-        ForEach(uniqueColorIndicators.prefix(3)) { indicator in
-          Circle()
-            .fill(indicator.color)
-            .frame(width: 5, height: 5)
-        }
-      }
-    } else {
-      Color.clear
-    }
-  }
-
-  /// 고유 색상별 인디케이터 (중복 색상 제거 — description으로 판별)
-  private var uniqueColorIndicators: [CalendarFeature.ScheduleIndicator] {
-    var seenDescriptions = Set<String>()
-    return scheduleIndicators.filter { indicator in
-      let key = indicator.color.description
-      if seenDescriptions.contains(key) { return false }
-      seenDescriptions.insert(key)
-      return true
-    }
-  }
 
   @ViewBuilder
   private var indicatorArea: some View {
@@ -244,35 +256,6 @@ struct CalendarIndicatorDayCell: View {
       .frame(width: 36, alignment: .leading)
     } else {
       Color.clear
-    }
-  }
-
-  @ViewBuilder
-  private var expandedIndicatorArea: some View {
-    if isCurrentMonth && !scheduleIndicators.isEmpty {
-      VStack(spacing: 3) {
-        ForEach(scheduleIndicators) { indicator in
-          HStack(alignment: .top, spacing: 2) {
-            RoundedRectangle(cornerRadius: 1)
-              .fill(indicator.color)
-              .frame(width: 2, height: 10)
-
-            Text(indicator.title)
-              .font(.system(size: 7, weight: .medium))
-              .foregroundStyle(Color.secondary)
-              .lineLimit(2)
-              .truncationMode(.tail)
-              .fixedSize(horizontal: false, vertical: true)
-          }
-          .padding(.horizontal, 3)
-          .padding(.vertical, 2)
-          .frame(maxWidth: .infinity, alignment: .leading)
-          .adaptiveGlassBackground(cornerRadius: 4)
-        }
-      }
-      .frame(maxWidth: .infinity, alignment: .leading)
-    } else {
-      Color.clear.frame(height: 0)
     }
   }
 

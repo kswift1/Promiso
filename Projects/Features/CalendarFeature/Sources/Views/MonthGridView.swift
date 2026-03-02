@@ -472,21 +472,33 @@ struct MonthGridContent: View {
   var onDayCreatePersonalEvent: ((Date) -> Void)? = nil
   var onDayCreatePromise: ((Date) -> Void)? = nil
 
+  // 애니메이션용 로컬 상태 — rootView 교체 시에도 보존됨 (root view의 @State)
+  @State private var animCompact: Bool = true
+  @State private var animShowAll: Bool = false
+
   private let columns = Array(repeating: GridItem(.flexible(), spacing: 0), count: 7)
 
   var body: some View {
-    Group {
-      if showAllIndicators {
-        // Expanded: 페이지 내부 세로 스크롤 (HomeOverlay 패턴 — 고정 높이 페이저 + 내부 스크롤)
-        ScrollView(.vertical, showsIndicators: false) {
-          gridContent
-        }
-      } else {
-        gridContent
+    ScrollView(.vertical, showsIndicators: false) {
+      gridContent
+    }
+    .scrollDisabled(!animShowAll)
+    .onAppear {
+      animCompact = isCompactMode && !showAllIndicators
+      animShowAll = showAllIndicators
+    }
+    .onChange(of: isCompactMode) { _, _ in
+      withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+        animCompact = isCompactMode && !showAllIndicators
+        animShowAll = showAllIndicators
       }
     }
-    .animation(.spring(response: 0.32, dampingFraction: 0.82), value: isCompactMode)
-    .animation(.spring(response: 0.32, dampingFraction: 0.82), value: showAllIndicators)
+    .onChange(of: showAllIndicators) { _, _ in
+      withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+        animCompact = isCompactMode && !showAllIndicators
+        animShowAll = showAllIndicators
+      }
+    }
   }
 
   private var gridContent: some View {
@@ -502,8 +514,8 @@ struct MonthGridContent: View {
             scheduleIndicators: getScheduleIndicators(for: date),
             namespace: namespace,
             selectionId: "monthSelection",
-            isCompactMode: isCompactMode,
-            showAllIndicators: showAllIndicators,
+            isCompactMode: animCompact,
+            showAllIndicators: animShowAll,
             onTap: { onDateSelected(date) },
             onIndicatorTapped: onIndicatorTapped,
             onDayCreatePersonalEvent: onDayCreatePersonalEvent,
