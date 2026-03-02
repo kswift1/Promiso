@@ -55,7 +55,7 @@ struct AuthFeatureTests {
     await store.send(.internal(.appleAuthorizationResult(.failure(testError)))) {
       $0.isLoading = false
       $0.pendingAppleLoginNonce = nil
-      $0.errorMessage = testError.localizedDescription
+      $0.errorMessage = AuthClientError.invalidAppleCredential.localizedMessage
     }
   }
 
@@ -114,7 +114,7 @@ struct AuthFeatureTests {
     await store.receive(\.internal.authResponse.failure) {
       $0.isLoading = false
       $0.pendingAppleLoginNonce = nil
-      $0.errorMessage = AuthClientError.network.localizedDescription
+      $0.errorMessage = AuthClientError.network.localizedMessage
     }
   }
 
@@ -158,7 +158,7 @@ struct AuthFeatureTests {
     await store.send(.internal(.authResponse(.failure(.unknown)))) {
       $0.isLoading = false
       $0.pendingAppleLoginNonce = nil
-      $0.errorMessage = AuthClientError.unknown.localizedDescription
+      $0.errorMessage = AuthClientError.unknown.localizedMessage
     }
   }
 
@@ -238,7 +238,7 @@ struct AuthFeatureTests {
     await store.send(.internal(.authResponse(.failure(.invalidAppleCredential)))) {
       $0.isLoading = false
       $0.pendingAppleLoginNonce = nil
-      $0.errorMessage = AuthClientError.invalidAppleCredential.localizedDescription
+      $0.errorMessage = AuthClientError.invalidAppleCredential.localizedMessage
     }
   }
 
@@ -254,7 +254,7 @@ struct AuthFeatureTests {
     await store.send(.internal(.authResponse(.failure(.network)))) {
       $0.isLoading = false
       $0.pendingAppleLoginNonce = nil
-      $0.errorMessage = AuthClientError.network.localizedDescription
+      $0.errorMessage = AuthClientError.network.localizedMessage
     }
   }
 
@@ -280,7 +280,7 @@ struct AuthFeatureTests {
     await store.receive(\.internal.authResponse.failure) {
       $0.isLoading = false
       $0.pendingAppleLoginNonce = nil
-      $0.errorMessage = AuthClientError.unknown.localizedDescription
+      $0.errorMessage = AuthClientError.unknown.localizedMessage
     }
   }
 }

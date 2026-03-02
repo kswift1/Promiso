@@ -106,6 +106,9 @@ public struct UserGroupInfo: Codable, Equatable, Hashable, Identifiable, Sendabl
   /// 그룹 이미지 URL
   public let imageUrl: String?
 
+  /// 개인별 그룹 색상 설정
+  public let groupColor: GroupColor?
+
   public init(
     id: String,
     name: String,
@@ -113,7 +116,8 @@ public struct UserGroupInfo: Codable, Equatable, Hashable, Identifiable, Sendabl
     joinedAt: Date? = nil,
     notifications: GroupNotificationSettings? = nil,
     hasNewActivity: Bool = false,
-    imageUrl: String? = nil
+    imageUrl: String? = nil,
+    groupColor: GroupColor? = nil
   ) {
     self.id = id
     self.name = name
@@ -122,6 +126,7 @@ public struct UserGroupInfo: Codable, Equatable, Hashable, Identifiable, Sendabl
     self.notifications = notifications
     self.hasNewActivity = hasNewActivity
     self.imageUrl = imageUrl
+    self.groupColor = groupColor
   }
 }
 

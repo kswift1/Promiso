@@ -34,7 +34,7 @@ public enum FirebaseEnvironment: String, CaseIterable, Sendable {
 /// Firebase 환경 관리자
 ///
 /// 프로젝트 분리 후에는 GoogleService-Info.plist에 따라 환경이 결정됨.
-public final class FirebaseEnvironmentManager: ObservableObject, @unchecked Sendable {
+public final class FirebaseEnvironmentManager: ObservableObject {
   public static let shared = FirebaseEnvironmentManager()
 
   @Published public private(set) var current: FirebaseEnvironment

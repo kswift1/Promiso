@@ -1,4 +1,5 @@
 import SwiftUI
+import PromisoShared
 
 /// 따뜻한 느낌의 빈 상태 컴포넌트
 struct WarmEmptyState: View {
@@ -98,20 +99,20 @@ struct WarmEmptyState: View {
 
   private var title: String {
     switch style {
-    case .noPromises: return "아직 약속이 없어요"
-    case .noFilterResults: return "필터 결과가 없어요"
-    case .noGroups: return "그룹에 참여해보세요"
+    case .noPromises: return LocalizedStrings.Home.emptyNoPromisesTitle
+    case .noFilterResults: return LocalizedStrings.Home.emptyNoFilterTitle
+    case .noGroups: return LocalizedStrings.Home.emptyNoGroupsTitle
     }
   }
 
   private var message: String {
     switch style {
     case .noPromises:
-      return "친구들과 첫 약속을 만들어보세요\n함께하면 더 즐거워요"
+      return LocalizedStrings.Home.emptyNoPromisesMessage
     case .noFilterResults:
-      return "선택한 조건에 맞는 약속이 없어요\n필터를 변경해보세요"
+      return LocalizedStrings.Home.emptyNoFilterMessage
     case .noGroups:
-      return "그룹에 참여하면 친구들과\n약속을 만들 수 있어요"
+      return LocalizedStrings.Home.emptyNoGroupsMessage
     }
   }
 
@@ -125,17 +126,17 @@ struct WarmEmptyState: View {
 
   private var primaryButtonText: String {
     switch style {
-    case .noPromises: return "새 약속 만들기"
-    case .noFilterResults: return "필터 초기화"
-    case .noGroups: return "그룹 찾아보기"
+    case .noPromises: return LocalizedStrings.Home.createNewPromise
+    case .noFilterResults: return LocalizedStrings.Home.resetFilter
+    case .noGroups: return LocalizedStrings.Home.findGroups
     }
   }
 
   private var secondaryButtonText: String {
     switch style {
-    case .noPromises: return "나중에 하기"
+    case .noPromises: return LocalizedStrings.Common.laterAction
     case .noFilterResults: return ""
-    case .noGroups: return "초대 링크로 참여"
+    case .noGroups: return LocalizedStrings.Home.joinWithInviteLink
     }
   }
 }
@@ -145,8 +146,8 @@ struct WarmEmptyState: View {
 #Preview("약속 없음") {
   WarmEmptyState(
     style: .noPromises,
-    onPrimaryAction: { print("새 약속 만들기") },
-    onSecondaryAction: { print("나중에") }
+    onPrimaryAction: { },
+    onSecondaryAction: { }
   )
   .auroraBackground()
 }
@@ -154,7 +155,7 @@ struct WarmEmptyState: View {
 #Preview("필터 결과 없음") {
   WarmEmptyState(
     style: .noFilterResults,
-    onPrimaryAction: { print("필터 초기화") }
+    onPrimaryAction: { }
   )
   .auroraBackground()
 }
@@ -162,8 +163,8 @@ struct WarmEmptyState: View {
 #Preview("그룹 없음") {
   WarmEmptyState(
     style: .noGroups,
-    onPrimaryAction: { print("그룹 찾기") },
-    onSecondaryAction: { print("초대 링크") }
+    onPrimaryAction: { },
+    onSecondaryAction: { }
   )
   .auroraBackground()
 }

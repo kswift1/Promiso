@@ -427,11 +427,7 @@ private struct ToastPreviewContainer: View {
               type: .error,
               title: "삭제되었습니다",
               action: ToastAction(title: "실행 취소") {
-                toast = ToastMessage(
-                  type: .success,
-                  title: "복원 완료",
-                  position: position
-                )
+                // Preview 전용 액션: 상태 캡처로 인한 Sendable 경고를 피하기 위해 no-op
               },
               position: position
             )

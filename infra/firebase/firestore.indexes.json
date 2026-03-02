@@ -170,6 +170,20 @@
         }
       ],
       "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "promises",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "votes.accepted",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "startAt",
+          "order": "ASCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

@@ -1,4 +1,5 @@
 import SwiftUI
+import PromisoShared
 
 struct CurrentGroupCard: View {
   let group: CurrentGroup
@@ -19,14 +20,14 @@ struct CurrentGroupCard: View {
             .foregroundColor(.primary)
 
           HStack(spacing: 8) {
-            Text("\(group.activeCount)개 진행중")
+            Text(LocalizedStrings.GroupComponents.activeCount(group.activeCount))
               .font(.system(size: 14))
               .foregroundColor(.secondary)
 
             Text("·")
               .foregroundColor(.secondary)
 
-            Text("\(group.pendingCount)개 대기")
+            Text(LocalizedStrings.GroupComponents.pendingCount(group.pendingCount))
               .font(.system(size: 14))
               .foregroundColor(.secondary)
           }

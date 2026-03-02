@@ -50,7 +50,7 @@ public struct ImageAttachmentSection: View {
           .foregroundStyle(Color.pmindigo.n500)
           .frame(width: 24)
 
-        Text("사진")
+        Text(LocalizedStrings.Common.photo)
           .font(.body)
           .foregroundStyle(Color.pmtext.primary)
 
@@ -93,7 +93,7 @@ public struct ImageAttachmentSection: View {
         HStack(spacing: 8) {
           ProgressView()
             .scaleEffect(0.8)
-          Text("이미지 업로드 중...")
+          Text(LocalizedStrings.Shared.imageUploading)
             .font(.system(size: 13))
             .foregroundStyle(Color.pmtext.secondary)
         }

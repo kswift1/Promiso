@@ -52,9 +52,10 @@ struct FAQFeatureTests {
 
   @Test("onAppear 실패 시 에러 메시지 설정")
   func onAppear_failure_setsError() async {
+    let testError = FAQClientError.invalidConfiguration
     let store = makeStore {
       $0.faqClient.fetchFAQs = {
-        throw NSError(domain: "test", code: 1, userInfo: [NSLocalizedDescriptionKey: "서버 에러"])
+        throw testError
       }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
@@ -64,7 +65,7 @@ struct FAQFeatureTests {
     }
     await store.receive(\.internal.faqsLoadFailed) {
       $0.isLoading = false
-      $0.errorMessage = "서버 에러"
+      $0.errorMessage = testError.localizedMessage
     }
   }
 

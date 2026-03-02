@@ -28,25 +28,145 @@ struct CinematicHeroView: View {
 
     static func random() -> CardSet {
       let confirmedOptions: [(info: CardInfo, count: String)] = [
-        (CardInfo(emoji: "🎬", title: "대학 동기 모임", detail: "영화 보고 저녁!", location: "CGV 강남"), "4/4"),
-        (CardInfo(emoji: "🍖", title: "회식", detail: "분기 마무리 회식", location: "강남 고깃집"), "5/5"),
-        (CardInfo(emoji: "⚽️", title: "풋살 모임", detail: "이번 주 매치", location: "잠실 풋살장"), "6/6"),
-        (CardInfo(emoji: "🎤", title: "노래방 번개", detail: "스트레스 해소!", location: "홍대 코인노래방"), "3/3"),
-        (CardInfo(emoji: "🍻", title: "금요 치맥", detail: "한 주 고생했다", location: "을지로 호프집"), "4/4"),
+        (
+          CardInfo(
+            emoji: "🎬",
+            title: LocalizedStrings.Onboarding.introHeroConfirmedTitle(1),
+            detail: LocalizedStrings.Onboarding.introHeroConfirmedDetail(1),
+            location: LocalizedStrings.Onboarding.introHeroConfirmedLocation(1)
+          ),
+          "4/4"
+        ),
+        (
+          CardInfo(
+            emoji: "🍖",
+            title: LocalizedStrings.Onboarding.introHeroConfirmedTitle(2),
+            detail: LocalizedStrings.Onboarding.introHeroConfirmedDetail(2),
+            location: LocalizedStrings.Onboarding.introHeroConfirmedLocation(2)
+          ),
+          "5/5"
+        ),
+        (
+          CardInfo(
+            emoji: "⚽️",
+            title: LocalizedStrings.Onboarding.introHeroConfirmedTitle(3),
+            detail: LocalizedStrings.Onboarding.introHeroConfirmedDetail(3),
+            location: LocalizedStrings.Onboarding.introHeroConfirmedLocation(3)
+          ),
+          "6/6"
+        ),
+        (
+          CardInfo(
+            emoji: "🎤",
+            title: LocalizedStrings.Onboarding.introHeroConfirmedTitle(4),
+            detail: LocalizedStrings.Onboarding.introHeroConfirmedDetail(4),
+            location: LocalizedStrings.Onboarding.introHeroConfirmedLocation(4)
+          ),
+          "3/3"
+        ),
+        (
+          CardInfo(
+            emoji: "🍻",
+            title: LocalizedStrings.Onboarding.introHeroConfirmedTitle(5),
+            detail: LocalizedStrings.Onboarding.introHeroConfirmedDetail(5),
+            location: LocalizedStrings.Onboarding.introHeroConfirmedLocation(5)
+          ),
+          "4/4"
+        ),
       ]
       let upcomingOptions: [(info: CardInfo, time: String)] = [
-        (CardInfo(emoji: "🎂", title: "엄마 생신 저녁", detail: "선물 준비 완료", location: "한정식집"), "내일 오후 6시"),
-        (CardInfo(emoji: "☕️", title: "카페 스터디", detail: "중간고사 대비", location: "스타벅스 역삼점"), "토요일 오전 10시"),
-        (CardInfo(emoji: "🏔️", title: "등산 모임", detail: "북한산 코스", location: "북한산 입구"), "일요일 오전 7시"),
-        (CardInfo(emoji: "🎾", title: "테니스 레슨", detail: "초급반 3회차", location: "올림픽공원"), "수요일 오후 7시"),
-        (CardInfo(emoji: "🍜", title: "점심 약속", detail: "오랜만에 만남", location: "광화문 맛집"), "오늘 낮 12시"),
+        (
+          CardInfo(
+            emoji: "🎂",
+            title: LocalizedStrings.Onboarding.introHeroUpcomingTitle(1),
+            detail: LocalizedStrings.Onboarding.introHeroUpcomingDetail(1),
+            location: LocalizedStrings.Onboarding.introHeroUpcomingLocation(1)
+          ),
+          LocalizedStrings.Onboarding.introHeroUpcomingTime(1)
+        ),
+        (
+          CardInfo(
+            emoji: "☕️",
+            title: LocalizedStrings.Onboarding.introHeroUpcomingTitle(2),
+            detail: LocalizedStrings.Onboarding.introHeroUpcomingDetail(2),
+            location: LocalizedStrings.Onboarding.introHeroUpcomingLocation(2)
+          ),
+          LocalizedStrings.Onboarding.introHeroUpcomingTime(2)
+        ),
+        (
+          CardInfo(
+            emoji: "🏔️",
+            title: LocalizedStrings.Onboarding.introHeroUpcomingTitle(3),
+            detail: LocalizedStrings.Onboarding.introHeroUpcomingDetail(3),
+            location: LocalizedStrings.Onboarding.introHeroUpcomingLocation(3)
+          ),
+          LocalizedStrings.Onboarding.introHeroUpcomingTime(3)
+        ),
+        (
+          CardInfo(
+            emoji: "🎾",
+            title: LocalizedStrings.Onboarding.introHeroUpcomingTitle(4),
+            detail: LocalizedStrings.Onboarding.introHeroUpcomingDetail(4),
+            location: LocalizedStrings.Onboarding.introHeroUpcomingLocation(4)
+          ),
+          LocalizedStrings.Onboarding.introHeroUpcomingTime(4)
+        ),
+        (
+          CardInfo(
+            emoji: "🍜",
+            title: LocalizedStrings.Onboarding.introHeroUpcomingTitle(5),
+            detail: LocalizedStrings.Onboarding.introHeroUpcomingDetail(5),
+            location: LocalizedStrings.Onboarding.introHeroUpcomingLocation(5)
+          ),
+          LocalizedStrings.Onboarding.introHeroUpcomingTime(5)
+        ),
       ]
       let personalOptions: [(info: CardInfo, time: String)] = [
-        (CardInfo(emoji: "📚", title: "토익 시험", detail: "목표 900점", location: "서울대 시험장"), "오후 2시"),
-        (CardInfo(emoji: "💇", title: "미용실 예약", detail: "커트 + 염색", location: "헤어살롱"), "오후 3시"),
-        (CardInfo(emoji: "🏥", title: "건강검진", detail: "연례 종합검진", location: "서울병원"), "오전 9시"),
-        (CardInfo(emoji: "🦷", title: "치과 예약", detail: "스케일링", location: "연세치과"), "오후 4시"),
-        (CardInfo(emoji: "🏋️", title: "PT 수업", detail: "하체 운동 Day", location: "피트니스센터"), "오후 7시"),
+        (
+          CardInfo(
+            emoji: "📚",
+            title: LocalizedStrings.Onboarding.introHeroPersonalTitle(1),
+            detail: LocalizedStrings.Onboarding.introHeroPersonalDetail(1),
+            location: LocalizedStrings.Onboarding.introHeroPersonalLocation(1)
+          ),
+          LocalizedStrings.Onboarding.introHeroPersonalTime(1)
+        ),
+        (
+          CardInfo(
+            emoji: "💇",
+            title: LocalizedStrings.Onboarding.introHeroPersonalTitle(2),
+            detail: LocalizedStrings.Onboarding.introHeroPersonalDetail(2),
+            location: LocalizedStrings.Onboarding.introHeroPersonalLocation(2)
+          ),
+          LocalizedStrings.Onboarding.introHeroPersonalTime(2)
+        ),
+        (
+          CardInfo(
+            emoji: "🏥",
+            title: LocalizedStrings.Onboarding.introHeroPersonalTitle(3),
+            detail: LocalizedStrings.Onboarding.introHeroPersonalDetail(3),
+            location: LocalizedStrings.Onboarding.introHeroPersonalLocation(3)
+          ),
+          LocalizedStrings.Onboarding.introHeroPersonalTime(3)
+        ),
+        (
+          CardInfo(
+            emoji: "🦷",
+            title: LocalizedStrings.Onboarding.introHeroPersonalTitle(4),
+            detail: LocalizedStrings.Onboarding.introHeroPersonalDetail(4),
+            location: LocalizedStrings.Onboarding.introHeroPersonalLocation(4)
+          ),
+          LocalizedStrings.Onboarding.introHeroPersonalTime(4)
+        ),
+        (
+          CardInfo(
+            emoji: "🏋️",
+            title: LocalizedStrings.Onboarding.introHeroPersonalTitle(5),
+            detail: LocalizedStrings.Onboarding.introHeroPersonalDetail(5),
+            location: LocalizedStrings.Onboarding.introHeroPersonalLocation(5)
+          ),
+          LocalizedStrings.Onboarding.introHeroPersonalTime(5)
+        ),
       ]
 
       return CardSet(
@@ -112,25 +232,25 @@ struct CinematicHeroView: View {
   private var messagesView: some View {
     VStack(spacing: 16) {
       messageBubble(
-        text: "토요일 되는 사람? 🙋",
+        text: LocalizedStrings.Onboarding.introHeroBubble1,
         alignment: .leading,
         rotation: -3,
         visible: visibleBubbles >= 1
       )
       messageBubble(
-        text: "나 7시 이후만 돼",
+        text: LocalizedStrings.Onboarding.introHeroBubble2,
         alignment: .trailing,
         rotation: 2,
         visible: visibleBubbles >= 2
       )
       messageBubble(
-        text: "읽씹...",
+        text: LocalizedStrings.Onboarding.introHeroBubble3,
         alignment: .leading,
         rotation: -1,
         visible: visibleBubbles >= 3
       )
       messageBubble(
-        text: "결국 어떻게 된거야?",
+        text: LocalizedStrings.Onboarding.introHeroBubble4,
         alignment: .trailing,
         rotation: 1.5,
         visible: visibleBubbles >= 4
@@ -172,7 +292,7 @@ struct CinematicHeroView: View {
       // 1. 전원 확정 약속
       promiseCard(
         info: cardSet.confirmed.info,
-        groupName: "대학 동기",
+        groupName: LocalizedStrings.Onboarding.introHeroGroupClassmates,
         participantCount: cardSet.confirmed.count,
         badge: .confirmed
       )
@@ -180,10 +300,15 @@ struct CinematicHeroView: View {
 
       // 2. 확정 대기 약속
       promiseCard(
-        info: CardInfo(emoji: "🍟", title: "감튀 파티", detail: "케첩 필수 지참", location: "맥도날드"),
-        groupName: "감튀 그룹",
+        info: CardInfo(
+          emoji: "🍟",
+          title: LocalizedStrings.Onboarding.introHeroFriesTitle,
+          detail: LocalizedStrings.Onboarding.introHeroFriesDetail,
+          location: LocalizedStrings.Onboarding.introHeroFriesLocation
+        ),
+        groupName: LocalizedStrings.Onboarding.introHeroGroupFries,
         participantCount: "3/4",
-        badge: .pending("1명 남음")
+        badge: .pending(LocalizedStrings.Onboarding.introHeroPendingOneLeft)
       )
       .cascadeIn(visible: visibleCards >= 2)
 
@@ -249,7 +374,7 @@ struct CinematicHeroView: View {
                 .font(.system(size: 9))
               Text(groupName)
               if let participantCount {
-                Text("· \(participantCount)명")
+                Text(LocalizedStrings.Onboarding.introHeroGroupParticipantCount(participantCount))
               }
             }
             .font(.system(size: 11))
@@ -273,7 +398,7 @@ struct CinematicHeroView: View {
       HStack(spacing: 4) {
         Image(systemName: "checkmark.circle.fill")
           .font(.system(size: 12))
-        Text("확정")
+        Text(LocalizedStrings.Onboarding.introHeroConfirmedBadge)
           .font(.system(size: 12, weight: .semibold))
       }
       .foregroundStyle(Color.green)
@@ -346,7 +471,7 @@ struct CinematicHeroView: View {
 
       Spacer()
 
-      Text("개인")
+      Text(LocalizedStrings.Onboarding.introHeroPersonalBadge)
         .font(.system(size: 12, weight: .semibold))
         .foregroundStyle(Color.pmaurora.purple)
         .padding(.horizontal, 8)
@@ -363,10 +488,10 @@ struct CinematicHeroView: View {
 
   private var taglineView: some View {
     VStack(spacing: 8) {
-      Text("흩어진 약속,")
+      Text(LocalizedStrings.Onboarding.introHeroTaglineLine1)
         .font(.title2.bold())
         .foregroundStyle(Color.pmtext.primary)
-      Text("이제 Promiso가 챙길게요")
+      Text(LocalizedStrings.Onboarding.introHeroTaglineLine2)
         .font(.title2.bold())
         .foregroundStyle(
           LinearGradient(

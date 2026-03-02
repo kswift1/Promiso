@@ -2,8 +2,15 @@ import SwiftUI
 
 /// 약속 탭 모드 (그룹/개인)
 public enum PromiseMode: String, CaseIterable, Sendable {
-  case group = "그룹"
-  case personal = "개인"
+  case group
+  case personal
+
+  public var displayTitle: String {
+    switch self {
+    case .group: return LocalizedStrings.PromiseModeSegment.group
+    case .personal: return LocalizedStrings.PromiseModeSegment.personal
+    }
+  }
 }
 
 /// 약속 탭 공용 헤더 (타이틀 + 모드 Segment)
@@ -32,17 +39,17 @@ public struct PromiseTabHeader: View {
 
   public var body: some View {
     HStack {
-      Text("약속")
+      Text(LocalizedStrings.PromiseModeSegment.promiseTitle)
         .font(.system(size: 28, weight: .bold))
 
       Spacer()
 
-      Picker("모드", selection: Binding(
+      Picker(LocalizedStrings.PromiseModeSegment.modePickerLabel, selection: Binding(
         get: { selectedMode },
         set: { onModeChange($0) }
       )) {
         ForEach(orderedModes, id: \.self) { mode in
-          Text(mode.rawValue).tag(mode)
+          Text(mode.displayTitle).tag(mode)
         }
       }
       .pickerStyle(.segmented)

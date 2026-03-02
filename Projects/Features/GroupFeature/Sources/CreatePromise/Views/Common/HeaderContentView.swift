@@ -1,4 +1,5 @@
 import SwiftUI
+import PromisoShared
 
 struct HeaderContentView: View {
     let title: String
@@ -67,17 +68,17 @@ extension CreatePromiseStep {
 
     private var title: String {
         switch self {
-        case .first: "어떤 약속인가요?"
-        case .second: "언제, 어디서 만날까요?"
-        case .third: "추가 설정"
+        case .first: LocalizedStrings.CreatePromise.step1Title
+        case .second: LocalizedStrings.CreatePromise.step2Title
+        case .third: LocalizedStrings.CreatePromise.step3Title
         }
     }
 
     private var subtitle: String {
         switch self {
-        case .first: "기본 정보를 입력해주세요"
-        case .second: "날짜, 시간, 장소를 정해주세요"
-        case .third: "알림과 상세 설명을 설정하세요"
+        case .first: LocalizedStrings.CreatePromise.step1Subtitle
+        case .second: LocalizedStrings.CreatePromise.step2Subtitle
+        case .third: LocalizedStrings.CreatePromise.step3Subtitle
         }
     }
 }

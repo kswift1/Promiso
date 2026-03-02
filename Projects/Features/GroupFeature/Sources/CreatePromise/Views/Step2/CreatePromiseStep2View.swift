@@ -23,6 +23,12 @@ struct CreatePromiseStep2View: View {
           EndDateTimeSection(store: store, scrollProxy: proxy)
             .id("endDateTime")
 
+          // 일정 충돌 경고
+          ConflictWarningSection(
+            conflicts: store.conflicts,
+            isChecking: store.isCheckingConflicts
+          )
+
           // 장소 (선택)
           LocationSection(store: store)
         }
@@ -42,7 +48,7 @@ struct LocationSection: View {
 
   var body: some View {
     SectionPlaceHolder(
-      placeHolderTitle: "장소",
+      placeHolderTitle: LocalizedStrings.CreatePromise.locationSection,
       placeHolderAccessory: {
         Toggle("", isOn: Binding(
           get: { useLocation },
@@ -69,7 +75,7 @@ struct LocationSection: View {
                 HStack(spacing: 12) {
                   Image(systemName: "magnifyingglass")
                     .foregroundColor(Color.pmindigo.n500)
-                  Text("장소를 검색하세요")
+                  Text(LocalizedStrings.CreatePromise.searchLocation)
                     .font(.system(size: 16))
                     .foregroundColor(.secondary)
 
@@ -143,7 +149,7 @@ private struct LocationWithMapCard: View {
 
           Spacer()
 
-          Text("변경")
+          Text(LocalizedStrings.Common.change)
             .font(.system(size: 14, weight: .medium))
             .foregroundColor(Color.pmindigo.n500)
         }

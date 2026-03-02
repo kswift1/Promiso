@@ -18,7 +18,7 @@ extension CalendarFeature {
   // MARK: - Reducer
 
   @Reducer
-  public struct Feature: Sendable {
+  public struct Feature {
     public init() {}
 
     // MARK: - State
@@ -72,6 +72,12 @@ extension CalendarFeature {
 
       /// 숨김 처리된 캘린더 배너 타입들
       var hiddenCalendarBannerTypes: Set<CalendarAuthorizationStatus> = []
+
+      // MARK: - 날씨 관련
+
+      /// 날씨 캐시 (HomeFeature와 공유)
+      @Shared(.inMemory("weatherCache"))
+      var weatherCache: [String: WeatherInfo] = [:]
 
       // MARK: - 개인 일정 관련
 
@@ -217,9 +223,9 @@ extension CalendarFeature {
       /// 헤더 타이틀
       var headerTitle: String {
         if displayMode == .week {
-          return KoreanDateFormatters.monthWeek.string(from: currentWeekStart)
+          return LocalizedDateFormatters.monthWeek.string(from: currentWeekStart)
         } else {
-          return KoreanDateFormatters.yearMonth.string(from: currentMonth)
+          return LocalizedDateFormatters.yearMonth.string(from: currentMonth)
         }
       }
 
@@ -236,7 +242,7 @@ extension CalendarFeature {
 
     // MARK: - Path (Navigation)
 
-    @Reducer
+    @Reducer(state: .equatable)
     public enum Path {
       case promiseDetail(PromiseDetail.Feature)
       case personalEventDetail(PersonalEventDetail.Feature)
@@ -245,13 +251,13 @@ extension CalendarFeature {
     // MARK: - Action
 
     @CasePathable
-    public enum Action: Sendable {
+    public enum Action {
       case view(ViewAction)
       case `internal`(InternalAction)
       case path(StackActionOf<Path>)
 
       @CasePathable
-      public enum ViewAction: Sendable {
+      public enum ViewAction {
         case onAppear
         case toggleDisplayMode
         case selectDate(Date)
@@ -280,7 +286,7 @@ extension CalendarFeature {
       }
 
       @CasePathable
-      public enum InternalAction: Sendable {
+      public enum InternalAction {
         case transitionCompleted
         // 초기화 관련
         case loadInitialData              // 캐시 초기화 + 약속 로드
@@ -382,7 +388,7 @@ extension CalendarFeature {
 
         // 월간 모드로 전환 시 해당 월 데이터 로드
         let monthsToLoad = getMonthsToLoad(state: state).filter { !state.loadedMonths.contains($0) }
-        AppLogger.calendar.debugLog("🔄 모드 전환 - 로드 필요 월: \(monthsToLoad.map { KoreanDateFormatters.yearMonth.string(from: $0) })")
+        AppLogger.calendar.debugLog("🔄 모드 전환 - 로드 필요 월: \(monthsToLoad.map { LocalizedDateFormatters.yearMonth.string(from: $0) })")
 
         var effects: [Effect<Action>] = monthsToLoad.map { month in
           .send(.internal(.fetchPromisesForMonth(month)))
@@ -402,7 +408,7 @@ extension CalendarFeature {
 
         // 월이 바뀌면 데이터 로드
         if previousMonth != newMonth && !state.loadedMonths.contains(newMonth) {
-          AppLogger.calendar.debugLog("🔄 날짜 선택으로 월 변경 - 로드 필요: \(KoreanDateFormatters.yearMonth.string(from: newMonth))")
+          AppLogger.calendar.debugLog("🔄 날짜 선택으로 월 변경 - 로드 필요: \(LocalizedDateFormatters.yearMonth.string(from: newMonth))")
           return .send(.internal(.fetchPromisesForMonth(newMonth)))
         }
         return .none
@@ -417,7 +423,7 @@ extension CalendarFeature {
 
         // 월이 바뀌면 데이터 로드
         if previousMonth != newMonth && !state.loadedMonths.contains(newMonth) {
-          AppLogger.calendar.debugLog("🔄 오늘로 이동 - 로드 필요: \(KoreanDateFormatters.yearMonth.string(from: newMonth))")
+          AppLogger.calendar.debugLog("🔄 오늘로 이동 - 로드 필요: \(LocalizedDateFormatters.yearMonth.string(from: newMonth))")
           return .send(.internal(.fetchPromisesForMonth(newMonth)))
         }
         return .none
@@ -505,17 +511,17 @@ extension CalendarFeature {
         if !calendar.isDate(selectedWeekStart, inSameDayAs: newWeekStart) {
           state.selectedDate = newWeekStart
         }
-        AppLogger.calendar.debugLog("📆 weekPageChanged - 주 시작: \(KoreanDateFormatters.date.string(from: newWeekStart)), 선택된 날짜: \(KoreanDateFormatters.date.string(from: state.selectedDate))")
+        AppLogger.calendar.debugLog("📆 weekPageChanged - 주 시작: \(LocalizedDateFormatters.date.string(from: newWeekStart)), 선택된 날짜: \(LocalizedDateFormatters.date.string(from: state.selectedDate))")
 
         // 해당 월 로드 (캐시되지 않은 경우만)
         let monthStart = newWeekStart.startOfMonth
         var effects: [Effect<Action>] = []
 
         if !state.loadedMonths.contains(monthStart) {
-          AppLogger.calendar.debugLog("🔄 캐시 MISS - 로드 필요: \(KoreanDateFormatters.yearMonth.string(from: monthStart))")
+          AppLogger.calendar.debugLog("🔄 캐시 MISS - 로드 필요: \(LocalizedDateFormatters.yearMonth.string(from: monthStart))")
           effects.append(.send(.internal(.fetchPromisesForMonth(monthStart))))
         } else {
-          AppLogger.calendar.debugLog("✅ 캐시 HIT - 이미 로드됨: \(KoreanDateFormatters.yearMonth.string(from: monthStart))")
+          AppLogger.calendar.debugLog("✅ 캐시 HIT - 이미 로드됨: \(LocalizedDateFormatters.yearMonth.string(from: monthStart))")
         }
 
         // 캘린더 이벤트 로드
@@ -539,16 +545,16 @@ extension CalendarFeature {
         if !Calendar.current.isDate(selectedMonthStart, inSameDayAs: monthStart) {
           state.selectedDate = monthStart
         }
-        AppLogger.calendar.debugLog("📆 monthPageChanged - 월: \(KoreanDateFormatters.yearMonth.string(from: newMonth)), 선택된 날짜: \(KoreanDateFormatters.date.string(from: state.selectedDate))")
+        AppLogger.calendar.debugLog("📆 monthPageChanged - 월: \(LocalizedDateFormatters.yearMonth.string(from: newMonth)), 선택된 날짜: \(LocalizedDateFormatters.date.string(from: state.selectedDate))")
 
         // 해당 월 로드 (캐시되지 않은 경우만)
         var effects: [Effect<Action>] = []
 
         if !state.loadedMonths.contains(monthStart) {
-          AppLogger.calendar.debugLog("🔄 캐시 MISS - 로드 필요: \(KoreanDateFormatters.yearMonth.string(from: monthStart))")
+          AppLogger.calendar.debugLog("🔄 캐시 MISS - 로드 필요: \(LocalizedDateFormatters.yearMonth.string(from: monthStart))")
           effects.append(.send(.internal(.fetchPromisesForMonth(monthStart))))
         } else {
-          AppLogger.calendar.debugLog("✅ 캐시 HIT - 이미 로드됨: \(KoreanDateFormatters.yearMonth.string(from: monthStart))")
+          AppLogger.calendar.debugLog("✅ 캐시 HIT - 이미 로드됨: \(LocalizedDateFormatters.yearMonth.string(from: monthStart))")
         }
 
         // 캘린더 이벤트 로드
@@ -656,7 +662,7 @@ extension CalendarFeature {
 
         // 이미 로드된 월이면 스킵
         guard !state.loadedMonths.contains(monthStart) else {
-          AppLogger.calendar.debugLog("⏭️ fetchPromisesForMonth 스킵 - 이미 로드됨: \(KoreanDateFormatters.yearMonth.string(from: monthStart))")
+          AppLogger.calendar.debugLog("⏭️ fetchPromisesForMonth 스킵 - 이미 로드됨: \(LocalizedDateFormatters.yearMonth.string(from: monthStart))")
           return .none
         }
 
@@ -667,7 +673,7 @@ extension CalendarFeature {
         }
 
         state.isLoadingPromises = true
-        AppLogger.calendar.debugLog("🌐 API 요청 시작 - \(KoreanDateFormatters.yearMonth.string(from: monthStart))")
+        AppLogger.calendar.debugLog("🌐 API 요청 시작 - \(LocalizedDateFormatters.yearMonth.string(from: monthStart))")
 
         // 월의 시작과 끝 계산
         let calendar = Calendar.current
@@ -679,11 +685,11 @@ extension CalendarFeature {
           do {
             let promises = try await promiseClient.getPromisesByDateRange(groupIds, monthStart, endDate)
             let elapsed = Date().timeIntervalSince(startTime)
-            AppLogger.calendar.debugLog("✅ API 응답 성공 - \(KoreanDateFormatters.yearMonth.string(from: monthStart)): \(promises.count)개 약속, \(String(format: "%.2f", elapsed))초")
+            AppLogger.calendar.debugLog("✅ API 응답 성공 - \(LocalizedDateFormatters.yearMonth.string(from: monthStart)): \(promises.count)개 약속, \(String(format: "%.2f", elapsed))초")
             await send(.internal(.promisesResponseForMonth(month: monthStart, .success(promises))))
           } catch {
             let elapsed = Date().timeIntervalSince(startTime)
-            AppLogger.calendar.debugLog("❌ API 응답 실패 - \(KoreanDateFormatters.yearMonth.string(from: monthStart)): \(error.localizedDescription), \(String(format: "%.2f", elapsed))초", type: .error)
+            AppLogger.calendar.debugLog("❌ API 응답 실패 - \(LocalizedDateFormatters.yearMonth.string(from: monthStart)): \(error.localizedDescription), \(String(format: "%.2f", elapsed))초", type: .error)
             await send(.internal(.promisesResponseForMonth(month: monthStart, .failure(error))))
           }
         }
@@ -711,7 +717,7 @@ extension CalendarFeature {
           return .none
         }
 
-        AppLogger.calendar.debugLog("🔮 프리페치 시작 - \(monthsToFetch.map { KoreanDateFormatters.yearMonth.string(from: $0) })")
+        AppLogger.calendar.debugLog("🔮 프리페치 시작 - \(monthsToFetch.map { LocalizedDateFormatters.yearMonth.string(from: $0) })")
 
         // 프리페치는 백그라운드에서 조용히 실행 (로딩 표시 없음)
         return .merge(monthsToFetch.map { month in
@@ -746,11 +752,11 @@ extension CalendarFeature {
           }
           state.cachedPromisesByMonth[month] = promisesWithGroup
           state.loadedMonths.insert(month)
-          AppLogger.calendar.debugLog("💾 캐시 저장 완료 - \(KoreanDateFormatters.yearMonth.string(from: month)): \(promises.count)개 약속")
+          AppLogger.calendar.debugLog("💾 캐시 저장 완료 - \(LocalizedDateFormatters.yearMonth.string(from: month)): \(promises.count)개 약속")
 
         case .failure(let error):
           // 실패해도 재시도 가능하도록 loadedMonths에 추가하지 않음
-          AppLogger.calendar.debugLog("⚠️ 캐시 저장 실패 - \(KoreanDateFormatters.yearMonth.string(from: month)): \(error.localizedDescription)", type: .error)
+          AppLogger.calendar.debugLog("⚠️ 캐시 저장 실패 - \(LocalizedDateFormatters.yearMonth.string(from: month)): \(error.localizedDescription)", type: .error)
         }
         return .none
 
@@ -824,8 +830,3 @@ extension CalendarFeature {
     }
   }
 }
-
-// MARK: - Path Conformances
-
-extension CalendarFeature.Feature.Path.State: Equatable, Sendable {}
-extension CalendarFeature.Feature.Path.Action: Sendable {}

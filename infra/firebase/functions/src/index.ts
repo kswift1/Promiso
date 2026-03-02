@@ -103,3 +103,21 @@ export {getFAQs} from "./functions/faq";
 // ============================================================================
 export {searchPlaces} from "./functions/kakaoMap";
 
+// ============================================================================
+// Weather Functions (기상청 API 프록시)
+// ============================================================================
+export {getWeather} from "./functions/weather";
+
+// ============================================================================
+// Schedule Conflict Functions (일정 충돌 감지 + scheduleSlots 비정규화)
+// ============================================================================
+export {
+  checkScheduleConflicts,
+  onPromiseCreatedSlot,
+  onPromiseUpdatedSlot,
+  onPromiseDeletedSlot,
+  onPersonalEventCreatedSlot,
+  onPersonalEventUpdatedSlot,
+  onPersonalEventDeletedSlot,
+} from "./functions/scheduleConflicts";
+

@@ -76,15 +76,31 @@ extension PastPromises {
     }
 
     public enum StatusFilter: String, CaseIterable, Sendable, Equatable {
-      case all = "전체"
-      case confirmed = "완료"
-      case failed = "미성사"
+      case all
+      case confirmed
+      case failed
+
+      public var displayTitle: String {
+        switch self {
+        case .all: return LocalizedStrings.PastPromises.filterAll
+        case .confirmed: return LocalizedStrings.PastPromises.filterConfirmed
+        case .failed: return LocalizedStrings.PastPromises.filterFailed
+        }
+      }
     }
 
     public enum SortOption: String, CaseIterable, Sendable, Equatable {
-      case newest = "최신순"
-      case oldest = "오래된순"
-      case participants = "참여 인원순"
+      case newest
+      case oldest
+      case participants
+
+      public var displayTitle: String {
+        switch self {
+        case .newest: return LocalizedStrings.PastPromises.sortNewest
+        case .oldest: return LocalizedStrings.PastPromises.sortOldest
+        case .participants: return LocalizedStrings.PastPromises.sortParticipants
+        }
+      }
     }
 
     public enum Action: Sendable {

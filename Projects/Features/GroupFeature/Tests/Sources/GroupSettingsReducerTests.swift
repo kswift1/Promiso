@@ -358,7 +358,7 @@ struct GroupSettingsReducerTests {
     var state = makeState(currentUserId: "member-1")
     state.isLeavingGroup = true
 
-    let error = NSError(domain: "test", code: -1, userInfo: [NSLocalizedDescriptionKey: "탈퇴 실패"])
+    let error = GroupClientError.serverError
 
     let store = TestStore(initialState: state) {
       GroupSettings.Feature()
@@ -369,7 +369,7 @@ struct GroupSettingsReducerTests {
 
     await store.send(.internal(.leaveGroupResponse(.failure(error)))) {
       $0.isLeavingGroup = false
-      $0.leaveError = "탈퇴 실패"
+      $0.leaveError = error.localizedMessage
     }
   }
 
@@ -419,7 +419,7 @@ struct GroupSettingsReducerTests {
     var state = makeState()
     state.isDeletingGroup = true
 
-    let error = NSError(domain: "test", code: -1, userInfo: [NSLocalizedDescriptionKey: "삭제 실패"])
+    let error = GroupClientError.serverError
 
     let store = TestStore(initialState: state) {
       GroupSettings.Feature()
@@ -430,7 +430,7 @@ struct GroupSettingsReducerTests {
 
     await store.send(.internal(.deleteGroupResponse(.failure(error)))) {
       $0.isDeletingGroup = false
-      $0.deleteError = "삭제 실패"
+      $0.deleteError = error.localizedMessage
     }
   }
 
@@ -487,7 +487,7 @@ struct GroupSettingsReducerTests {
     var state = makeState()
     state.isTransferringHost = true
 
-    let error = NSError(domain: "test", code: -1, userInfo: [NSLocalizedDescriptionKey: "양도 실패"])
+    let error = GroupClientError.serverError
 
     let store = TestStore(initialState: state) {
       GroupSettings.Feature()
@@ -498,7 +498,7 @@ struct GroupSettingsReducerTests {
 
     await store.send(.internal(.transferHostResponse(.failure(error)))) {
       $0.isTransferringHost = false
-      $0.transferError = "양도 실패"
+      $0.transferError = error.localizedMessage
     }
   }
 }

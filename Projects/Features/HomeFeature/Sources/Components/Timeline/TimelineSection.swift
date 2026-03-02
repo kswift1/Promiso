@@ -1,10 +1,12 @@
 import SwiftUI
+import Clients
 import PromisoShared
 
 struct TimelineSectionView: View {
-  
+
   let section: HomeModels.TimelineSection
   let currentUserId: String
+  let weatherCache: [String: WeatherInfo]
   let onPromiseTap: (PromiseModel) -> Void
 
   var body: some View {
@@ -17,6 +19,7 @@ struct TimelineSectionView: View {
         PromiseGlassCard(
           promise: promise,
           currentUserId: currentUserId,
+          weather: weatherCache[promise.id],
           onTap: { onPromiseTap(promise) }
         )
       }

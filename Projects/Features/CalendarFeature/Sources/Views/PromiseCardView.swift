@@ -29,10 +29,10 @@ extension PromiseResponseStatus {
 
   var statusText: String {
     switch self {
-    case .needResponse: return "응답 대기"
-    case .responded:    return "투표중"
-    case .confirmed:    return "확정"
-    case .failed:       return "미성사"
+    case .needResponse: return LocalizedStrings.Calendar.statusWaiting
+    case .responded:    return LocalizedStrings.Calendar.statusVoting
+    case .confirmed:    return LocalizedStrings.Calendar.statusConfirmed
+    case .failed:       return LocalizedStrings.Calendar.statusFailed
     }
   }
 }
@@ -43,17 +43,20 @@ extension PromiseResponseStatus {
 struct PromiseCardView: View {
   let promise: PromiseModel
   let currentUserId: String
+  let weather: WeatherInfo?
   let onTap: () -> Void
   let onRespond: (() -> Void)?
 
   init(
     promise: PromiseModel,
     currentUserId: String,
+    weather: WeatherInfo? = nil,
     onTap: @escaping () -> Void,
     onRespond: (() -> Void)? = nil
   ) {
     self.promise = promise
     self.currentUserId = currentUserId
+    self.weather = weather
     self.onTap = onTap
     self.onRespond = onRespond
   }
@@ -68,14 +71,15 @@ struct PromiseCardView: View {
 
   var body: some View {
     Button(action: onTap) {
-      HStack(spacing: 12) {
-        // 왼쪽: 상태 컬러 바
-        RoundedRectangle(cornerRadius: 2)
-          .fill(responseStatus.color)
-          .frame(width: 4)
+      VStack(alignment: .leading, spacing: 0) {
+        HStack(spacing: 12) {
+          // 왼쪽: 상태 컬러 바
+          RoundedRectangle(cornerRadius: 2)
+            .fill(responseStatus.color)
+            .frame(width: 4)
 
-        // 메인 콘텐츠
-        VStack(alignment: .leading, spacing: 8) {
+          // 메인 콘텐츠
+          VStack(alignment: .leading, spacing: 8) {
           // 상단: 시간 + 상태 + 그룹 + 참여자
           HStack(spacing: 6) {
             Text(promise.timeText)
@@ -127,7 +131,7 @@ struct PromiseCardView: View {
               .lineLimit(1)
           }
 
-          // 위치 (있는 경우)
+          // 위치
           if let location = promise.location {
             HStack(spacing: 4) {
               Image(systemName: "location.fill")
@@ -144,7 +148,7 @@ struct PromiseCardView: View {
             HStack(spacing: 4) {
               Text("📡")
                 .font(.system(size: 10))
-              Text("\(minutes)분 전 실시간 공유 시작")
+              Text(LocalizedStrings.Shared.liveStartMinutes(minutes))
                 .font(.system(size: 13))
                 .lineLimit(1)
             }
@@ -155,6 +159,19 @@ struct PromiseCardView: View {
           if needsMyResponse, let onRespond = onRespond {
             respondButton(action: onRespond)
           }
+        }
+        }
+
+        // 날씨
+        if let weather = weather,
+           let forecast = weather.forecast(for: promise.startAt) {
+          WeatherCardStrip(
+            forecast: forecast,
+            rangeForecasts: weather.forecasts(from: promise.startAt, to: promise.endAt),
+            referenceTimeText: promise.startAt.formattedMonthDayTime,
+            forecastSource: weather.forecastSource(for: promise.startAt)
+          )
+          .padding(.top, 8)
         }
       }
       .padding(.horizontal, 12)
@@ -176,7 +193,7 @@ extension PromiseCardView {
       HStack(spacing: 8) {
         Image(systemName: "hand.tap.fill")
           .font(.system(size: 14, weight: .medium))
-        Text("응답하기")
+        Text(LocalizedStrings.Calendar.respondAction)
           .font(.system(size: 15, weight: .semibold))
       }
       .foregroundColor(.white)
@@ -262,7 +279,7 @@ struct CompactDayRow: View {
                     .lineLimit(1)
 
                   if promises.count > 1 {
-                    Text("외 \(promises.count - 1)건")
+                    Text(LocalizedStrings.Calendar.additionalItems(promises.count - 1))
                       .font(.system(size: 12))
                       .foregroundColor(.secondary)
                   }
@@ -289,7 +306,7 @@ struct CompactDayRow: View {
                   .lineLimit(1)
 
                 if personalEvents.count > 1 {
-                  Text("외 \(personalEvents.count - 1)건")
+                  Text(LocalizedStrings.Calendar.additionalItems(personalEvents.count - 1))
                     .font(.system(size: 11))
                     .foregroundColor(.secondary.opacity(0.7))
                 }
@@ -311,7 +328,7 @@ struct CompactDayRow: View {
                   .lineLimit(1)
 
                 if calendarEvents.count > 1 {
-                  Text("외 \(calendarEvents.count - 1)건")
+                  Text(LocalizedStrings.Calendar.additionalItems(calendarEvents.count - 1))
                     .font(.system(size: 11))
                     .foregroundColor(.secondary.opacity(0.7))
                 }
@@ -344,7 +361,7 @@ struct CompactDayRow: View {
   }
 
   private var weekday: String {
-    KoreanDateFormatters.weekday.string(from: date)
+    LocalizedDateFormatters.weekday.string(from: date)
   }
 
   private var isToday: Bool {
@@ -370,7 +387,7 @@ struct EmptyDayPlaceholder: View {
 
   var body: some View {
     HStack {
-      Text("약속이 없습니다")
+      Text(LocalizedStrings.Calendar.noPromises)
         .font(.system(size: 15))
         .foregroundColor(.secondary)
       Spacer()

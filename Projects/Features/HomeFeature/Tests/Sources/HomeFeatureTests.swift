@@ -82,7 +82,6 @@ struct HomeFeatureTests {
     } withDependencies: {
       $0.promiseClient.getHomePromises = { _, _ in [] }
       $0.notificationClient.getUnreadCount = { _ in 0 }
-      $0.notificationClient.setBadgeCount = { _ in }
       $0.personalEventClient.getActiveEvents = { _ in [] }
     }
 
@@ -294,7 +293,6 @@ struct HomeFeatureTests {
       Home.Feature()
     } withDependencies: {
       $0.notificationClient.getUnreadCount = { _ in 5 }
-      $0.notificationClient.setBadgeCount = { _ in }
     }
 
     await store.send(.view(.refreshNotificationBadge))
@@ -360,7 +358,6 @@ struct HomeFeatureTests {
     } withDependencies: {
       $0.promiseClient.getHomePromises = { _, _ in [testPromise] }
       $0.notificationClient.getUnreadCount = { _ in 3 }
-      $0.notificationClient.setBadgeCount = { _ in }
       $0.personalEventClient.getActiveEvents = { _ in [] }
     }
 
@@ -466,7 +463,6 @@ struct HomeFeatureTests {
       Home.Feature()
     } withDependencies: {
       $0.notificationClient.getUnreadCount = { _ in throw NSError(domain: "test", code: -1) }
-      $0.notificationClient.setBadgeCount = { _ in }
     }
 
     await store.send(.view(.refreshNotificationBadge))
@@ -530,7 +526,6 @@ struct HomeFeatureTests {
     } withDependencies: {
       $0.promiseClient.getHomePromises = { _, _ in [] }
       $0.notificationClient.getUnreadCount = { _ in 0 }
-      $0.notificationClient.setBadgeCount = { _ in }
       $0.personalEventClient.getActiveEvents = { _ in [] }
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
@@ -543,5 +538,44 @@ struct HomeFeatureTests {
 
     await store.receive(\.internal.promisesResponse.success)
     await store.finish()
+  }
+
+  @Test("중복 그룹 ID가 있어도 홈 조회는 고유 ID로만 요청")
+  func fetchPromises_withDuplicateGroupIds_deduplicatesRequestIds() async {
+    let groups = [
+      makeGroupInfo(id: "group-1", name: "그룹1"),
+      makeGroupInfo(id: "group-1", name: "그룹1-중복"),
+      makeGroupInfo(id: "group-2", name: "그룹2"),
+    ]
+    let user = makeCurrentUser(groups: groups)
+    @Shared(.inMemory("test-duplicate-groups")) var currentUser = user
+
+    let requestedGroupIds = LockIsolated<[String]>([])
+
+    let store = TestStore(
+      initialState: Home.Feature.State(currentUser: $currentUser)
+    ) {
+      Home.Feature()
+    } withDependencies: {
+      $0.promiseClient.getHomePromises = { groupIds, _ in
+        requestedGroupIds.setValue(groupIds)
+        return []
+      }
+      $0.notificationClient.getUnreadCount = { _ in 0 }
+      $0.personalEventClient.getActiveEvents = { _ in [] }
+    }
+    store.exhaustivity = .off(showSkippedAssertions: false)
+
+    await store.send(.view(.onAppear)) {
+      $0.hasLoadedOnce = true
+    }
+    await store.receive(\.internal.fetchPromises) {
+      $0.promisesState = .loading
+    }
+    await store.receive(\.internal.promisesResponse.success)
+    await store.finish()
+
+    #expect(requestedGroupIds.value.count == 2)
+    #expect(Set(requestedGroupIds.value) == Set(["group-1", "group-2"]))
   }
 }

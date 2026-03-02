@@ -14,7 +14,7 @@ private enum FirebaseConstants {
 // MARK: - Data Source
 
 /// Firebase Firestore를 통한 알림 관련 데이터 관리
-public final class NotificationRemoteDataSource: @unchecked Sendable {
+public actor NotificationRemoteDataSource {
   private let db: Firestore
 
   /// 현재 디바이스 ID (앱 설치 시 생성되는 고유 ID)
@@ -41,10 +41,11 @@ public final class NotificationRemoteDataSource: @unchecked Sendable {
   public func saveFCMToken(userId: String, token: String) async throws {
     let usersCollection = db.environmentCollection("users")
     let userRef = usersCollection.document(userId)
+    let platform = await MainActor.run { UIDevice.current.systemName.lowercased() }
 
     let deviceData: [String: Any] = [
       "fcmToken": token,
-      "platform": UIDevice.current.systemName.lowercased(),
+      "platform": platform,
       "lastActiveAt": FieldValue.serverTimestamp(),
       "createdAt": FieldValue.serverTimestamp()
     ]
@@ -319,4 +320,3 @@ public final class NotificationRemoteDataSource: @unchecked Sendable {
     AppLogger.notification.debug("전체 알림 삭제 (\(documents.count)개, userId: \(userId))")
   }
 }
-

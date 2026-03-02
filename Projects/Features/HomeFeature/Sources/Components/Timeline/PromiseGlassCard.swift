@@ -4,6 +4,7 @@ import PromisoShared
 struct PromiseGlassCard: View {
   let promise: PromiseModel
   let currentUserId: String
+  let weather: WeatherInfo?
   let onTap: () -> Void
 
   private var myVoteStatus: VoteStatus {
@@ -87,6 +88,17 @@ struct PromiseGlassCard: View {
               }
             }
           }
+
+          // 날씨
+          if let weather = weather,
+             let forecast = weather.forecast(for: promise.startAt) {
+            WeatherCardStrip(
+              forecast: forecast,
+              rangeForecasts: weather.forecasts(from: promise.startAt, to: promise.endAt),
+              referenceTimeText: promise.startAt.formattedMonthDayTime,
+              forecastSource: weather.forecastSource(for: promise.startAt)
+            )
+          }
         }
 
         Spacer()
@@ -116,11 +128,11 @@ struct PromiseGlassCard: View {
 
   private var statusText: String {
     if myVoteStatus == .pending {
-      let calendar = Calendar.current
+      let calendar = Calendar.promiseDisplay
       let daysLeft = calendar.dateComponents([.day], from: Date(), to: promise.votes.until).day ?? 0
       return "D-\(daysLeft)"
     } else {
-      return myVoteStatus == .accepted ? "참여" : "불참"
+      return myVoteStatus == .accepted ? LocalizedStrings.Home.accepted : LocalizedStrings.Home.declined
     }
   }
 

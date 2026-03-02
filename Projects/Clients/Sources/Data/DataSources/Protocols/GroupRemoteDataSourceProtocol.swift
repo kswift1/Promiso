@@ -39,6 +39,13 @@ public protocol GroupRemoteDataSourceProtocol {
     settings: GroupNotificationSettings
   ) async throws
 
+  /// 그룹 색상 업데이트 (개인별)
+  func updateGroupColor(
+    groupId: String,
+    userId: String,
+    color: GroupColor?
+  ) async throws
+
   // MARK: - Query Operations
 
   /// 사용자가 속한 그룹 목록 조회

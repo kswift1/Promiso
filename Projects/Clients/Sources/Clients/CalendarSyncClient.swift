@@ -38,21 +38,10 @@ public struct CalendarSyncResult: Equatable, Sendable {
 
 // MARK: - Sync Error
 
-public enum CalendarSyncError: Error, Equatable, LocalizedError {
+public enum CalendarSyncError: Error, Equatable {
   case noWritePermission
   case fetchFailed(String)
   case syncFailed(String)
-
-  public var errorDescription: String? {
-    switch self {
-    case .noWritePermission:
-      return "캘린더 쓰기 권한이 없습니다"
-    case .fetchFailed(let message):
-      return "약속 조회 실패: \(message)"
-    case .syncFailed(let message):
-      return "동기화 실패: \(message)"
-    }
-  }
 }
 
 // MARK: - Client

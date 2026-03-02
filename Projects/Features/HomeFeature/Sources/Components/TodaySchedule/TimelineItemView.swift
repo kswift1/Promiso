@@ -9,6 +9,7 @@ struct TimelineItemView: View {
   let promise: PromiseModel
   let isFirst: Bool
   let isLast: Bool
+  let weather: WeatherInfo?
   let onTap: () -> Void
 
   @State private var showLiveActivityInfo = false
@@ -32,6 +33,23 @@ struct TimelineItemView: View {
             Spacer(minLength: 0)
           }
           .padding(.vertical, 8)
+
+          // 날씨
+          if let weather = weather,
+             let forecast = weather.forecast(for: promise.startAt) {
+            WeatherCardStrip(
+              forecast: forecast,
+              rangeForecasts: weather.forecasts(from: promise.startAt, to: promise.endAt),
+              referenceTimeText: promise.startAt.formattedMonthDayTime,
+              forecastSource: weather.forecastSource(for: promise.startAt)
+            )
+            .padding(.horizontal, 8)
+            .padding(.bottom, 8)
+          } else if shouldShowWeatherSkeleton {
+            weatherLoadingPlaceholder
+              .padding(.horizontal, 8)
+              .padding(.bottom, 8)
+          }
 
           // Divider (마지막 아이템 제외)
           if !isLast {
@@ -110,12 +128,12 @@ struct TimelineItemView: View {
             .font(.pmCaption)
         }
 
-        Text("\(promise.votes.accepted.count)명 참여 확정")
+        Text(LocalizedStrings.Home.participantsConfirmed(promise.votes.accepted.count))
           .font(.pmCaption)
       }
       .foregroundStyle(.secondary)
 
-      // 장소
+      // 장소 + 날씨
       if let location = promise.location {
         HStack(spacing: 4) {
           ResourceKitAsset.locationIcon.swiftUIImage
@@ -194,13 +212,51 @@ struct TimelineItemView: View {
   }
 
   private func endTimeString(_ endAt: Date) -> String {
-    KoreanDateFormatters.endTimeString(from: endAt)
+    LocalizedDateFormatters.endTimeString(from: endAt)
+  }
+
+  /// 날씨 조회가 진행 중인 경우 스켈레톤 노출
+  private var shouldShowWeatherSkeleton: Bool {
+    guard weather == nil else { return false }
+    guard let location = promise.location,
+          location.latitude != nil,
+          location.longitude != nil else { return false }
+
+    let now = Date()
+    let maxDate = now.addingTimeInterval(10 * 24 * 3600)
+    return promise.startAt >= now && promise.startAt < maxDate
+  }
+
+  private var weatherLoadingPlaceholder: some View {
+    HStack(spacing: 8) {
+      Circle()
+        .fill(Color.pmgray.n300.opacity(0.45))
+        .frame(width: 16, height: 16)
+
+      RoundedRectangle(cornerRadius: 4)
+        .fill(Color.pmgray.n300.opacity(0.35))
+        .frame(width: 52, height: 10)
+
+      RoundedRectangle(cornerRadius: 4)
+        .fill(Color.pmgray.n300.opacity(0.30))
+        .frame(height: 10)
+    }
+    .padding(.horizontal, 12)
+    .padding(.vertical, 10)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(Color.pmgray.n100.opacity(0.55))
+    .clipShape(RoundedRectangle(cornerRadius: 12))
+    .overlay(
+      RoundedRectangle(cornerRadius: 12)
+        .stroke(Color.pmgray.n200.opacity(0.7), lineWidth: 1)
+    )
+    .shimmer()
   }
 
   /// 실시간 공유 시작 시간 문자열
   private func liveStartTimeString(minutes: Int) -> String {
     let liveStartTime = promise.startAt.addingTimeInterval(-Double(minutes * 60))
-    return "\(liveStartTime.formattedTime) 실시간 공유 시작"
+    return "\(liveStartTime.formattedTime) \(LocalizedStrings.Home.startLiveSharing)"
   }
 
   /// 현재 진행 중인 약속인지 (종료시간 없으면 단발성 = 시작 즉시 종료)
@@ -244,6 +300,7 @@ struct TimelineItemView: View {
       ),
       isFirst: true,
       isLast: false,
+      weather: nil,
       onTap: {}
     )
 
@@ -255,6 +312,7 @@ struct TimelineItemView: View {
       ),
       isFirst: false,
       isLast: true,
+      weather: nil,
       onTap: {}
     )
   }

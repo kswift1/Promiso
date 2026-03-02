@@ -1,6 +1,7 @@
 import SwiftUI
 import Clients
 import ComposableArchitecture
+import PromisoShared
 
 // MARK: - Step 1 Content View
 struct CreatePromiseStep1View: View {
@@ -31,7 +32,7 @@ struct CreatePromiseStep1View: View {
         }
 
         // 제목 입력
-        SectionPlaceHolder(placeHolderTitle: "제목") {
+        SectionPlaceHolder(placeHolderTitle: LocalizedStrings.CreatePromise.titleSection) {
             TitleInputTextField(
               title: store.promise.title,
               emoji: store.promise.emoji,
@@ -41,7 +42,7 @@ struct CreatePromiseStep1View: View {
             )
           }
 
-        SectionPlaceHolder(placeHolderTitle: "그룹 선택") {
+        SectionPlaceHolder(placeHolderTitle: LocalizedStrings.CreatePromise.groupSelection) {
             GroupListView(
               groupListState: store.groupListState,
               selectedGroupId: store.promise.group?.id,

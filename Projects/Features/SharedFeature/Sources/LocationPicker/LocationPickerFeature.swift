@@ -20,7 +20,7 @@ public enum LocationPicker {
     }
 
     @ObservableState
-    public struct State: Equatable {
+    public struct State: Equatable, Sendable {
       var searchText: String = ""
       var searchResults: [Place] = []
       var searchHistory: [SearchHistoryItem] = []
@@ -196,9 +196,9 @@ public enum LocationPicker {
             state.searchResults = places
             return .none
 
-          case .searchResponse(.failure(let error)):
+          case .searchResponse(.failure):
             state.isSearching = false
-            state.searchError = error.localizedDescription
+            state.searchError = LocalizedStrings.Error.unknownError
             return .none
 
           case .historyLoaded(let history):

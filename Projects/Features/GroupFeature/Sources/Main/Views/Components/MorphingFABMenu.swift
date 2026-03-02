@@ -200,13 +200,10 @@ struct MorphingFABMenu: View {
     MorphingFABMenu(
       items: [
         FABMenuItem(title: "새 약속", icon: "calendar.badge.plus", tintColor: .pmindigo.n500) {
-          print("New Promise")
         },
         FABMenuItem(title: "그룹 만들기", icon: "person.3.fill", tintColor: .pmindigo.n500) {
-          print("Create Group")
         },
         FABMenuItem(title: "그룹 참여", icon: "link", tintColor: .pmindigo.n500) {
-          print("Join Group")
         }
       ],
       bottomPadding: 20

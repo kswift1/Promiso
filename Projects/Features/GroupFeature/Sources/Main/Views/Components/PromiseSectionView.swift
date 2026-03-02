@@ -129,7 +129,7 @@ struct PromiseSectionView: View {
   private func moreButton(count: Int, action: @escaping () -> Void) -> some View {
     Button(action: action) {
       HStack(spacing: 4) {
-        Text("\(count)개 더 보기")
+        Text(LocalizedStrings.GroupComponents.seeMoreCount(count))
           .font(.system(size: 14, weight: .medium))
         Image(systemName: "chevron.right")
           .font(.system(size: 12, weight: .medium))
@@ -153,9 +153,9 @@ struct PromiseSectionView: View {
       maxDisplay: 2,
       currentUserId: PromiseModel.previewCurrentUserId,
       onPromiseTap: { _ in },
-      onMoreTap: { print("More tapped") },
-      onAccept: { _ in print("Accept") },
-      onReject: { _ in print("Reject") }
+      onMoreTap: { },
+      onAccept: { _ in },
+      onReject: { _ in }
     )
   }
   .background(Color(.systemGroupedBackground))

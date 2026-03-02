@@ -35,17 +35,19 @@ extension MapClient: DependencyKey {
         try await dataSource.searchPlaces(query: query)
       },
       openDirections: { coordinate, name in
-        // 카카오맵 앱 또는 웹으로 길찾기
-        let encodedName = name?.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-        guard let kakaoMapURL = URL(string: "kakaomap://route?ep=\(coordinate.latitude),\(coordinate.longitude)&by=CAR"),
-              let webURL = URL(string: "https://map.kakao.com/link/to/\(encodedName),\(coordinate.latitude),\(coordinate.longitude)") else {
-          return
-        }
+        Task { @MainActor in
+          // 카카오맵 앱 또는 웹으로 길찾기
+          let encodedName = name?.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+          guard let kakaoMapURL = URL(string: "kakaomap://route?ep=\(coordinate.latitude),\(coordinate.longitude)&by=CAR"),
+                let webURL = URL(string: "https://map.kakao.com/link/to/\(encodedName),\(coordinate.latitude),\(coordinate.longitude)") else {
+            return
+          }
 
-        if UIApplication.shared.canOpenURL(kakaoMapURL) {
-          UIApplication.shared.open(kakaoMapURL)
-        } else {
-          UIApplication.shared.open(webURL)
+          if UIApplication.shared.canOpenURL(kakaoMapURL) {
+            UIApplication.shared.open(kakaoMapURL)
+          } else {
+            UIApplication.shared.open(webURL)
+          }
         }
       }
     )

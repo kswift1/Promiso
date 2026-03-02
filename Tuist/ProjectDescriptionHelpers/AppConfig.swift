@@ -32,6 +32,21 @@ public enum AppConfig {
   
   public static func infoPlist(for environment: String = "prod") -> [String: Plist.Value] {
     // API Keys는 xcconfig 파일에서 환경별로 관리 (Config/*.xcconfig, gitignored)
+    // Deeplink는 비밀값이 아니므로 환경별 직접 설정
+    let deeplinkScheme: String
+    let deeplinkWebHost: String
+    switch environment {
+    case "dev":
+      deeplinkScheme = "promiso-dev"
+      deeplinkWebHost = "dev.promiso.app"
+    case "stage":
+      deeplinkScheme = "promiso-stage"
+      deeplinkWebHost = "stage.promiso.app"
+    default:
+      deeplinkScheme = "promiso"
+      deeplinkWebHost = "promiso.app"
+    }
+
     return [
       "CFBundleShortVersionString": .string(AppConfig.marketingNumber),
       "CFBundleVersion": .string(AppConfig.buildVersion(for: environment)),
@@ -49,10 +64,21 @@ public enum AppConfig {
         [
           "CFBundleTypeRole": "Editor",
           "CFBundleURLName": "com.promiso.deeplink",
-          "CFBundleURLSchemes": [.string("promiso")]
+          "CFBundleURLSchemes": [.string(deeplinkScheme)]
+        ],
+        [
+          "CFBundleTypeRole": "Editor",
+          "CFBundleURLName": "com.promiso.kakaolink",
+          "CFBundleURLSchemes": [.string("kakao$(KAKAO_NATIVE_APP_KEY)")]
         ]
       ],
+      "LSApplicationQueriesSchemes": .array([
+        .string("kakaolink"),
+        .string("kakaokompassauth")
+      ]),
       "GIDClientID": .string("$(GOOGLE_CLIENT_ID)"),
+      // Location permissions
+      "NSLocationWhenInUseUsageDescription": .string("현재 위치의 날씨 정보를 제공하기 위해 위치 접근 권한이 필요합니다."),
       // Calendar permissions
       "NSCalendarsUsageDescription": .string("캘린더 일정을 표시하려면 접근 권한이 필요합니다."),
       "NSCalendarsFullAccessUsageDescription": .string("캘린더 일정을 표시하려면 접근 권한이 필요합니다."),
@@ -65,7 +91,10 @@ public enum AppConfig {
       // Live Activity Support
       "NSSupportsLiveActivities": .boolean(true),
       "NSSupportsLiveActivitiesFrequentUpdates": .boolean(true),
-      // Kakao Maps SDK
+      // Deeplink
+      "DEEPLINK_SCHEME": .string(deeplinkScheme),
+      "DEEPLINK_WEB_HOST": .string(deeplinkWebHost),
+      // Kakao SDK
       "KAKAO_NATIVE_APP_KEY": .string("$(KAKAO_NATIVE_APP_KEY)"),
       // Microsoft Clarity
       "CLARITY_PROJECT_ID": .string("$(CLARITY_PROJECT_ID)"),
@@ -76,7 +105,12 @@ public enum AppConfig {
       // 세로 모드만 지원 (가로 모드 비활성화)
       "UISupportedInterfaceOrientations": .array([
         .string("UIInterfaceOrientationPortrait")
-      ])
+      ]),
+      "CFBundleLocalizations": .array([
+        .string("ko"),
+        .string("en")
+      ]),
+      "CFBundleDevelopmentRegion": .string("ko"),
     ]
   }
 }

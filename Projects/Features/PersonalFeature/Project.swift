@@ -5,6 +5,7 @@ private let feature: Feature = .personal
 
 let project = Project(
   name: feature.fullName,
+  options: .options(developmentRegion: "ko"),
   targets: [
 
     // Main Feature (TCA)

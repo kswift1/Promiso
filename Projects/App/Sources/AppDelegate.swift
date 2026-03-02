@@ -21,6 +21,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     configureAnalytics()
     configureCrashlytics()
     configureClaritySDK()
+    configureKakaoSDK()
     configureKakaoMapsSDK()
     configureRemoteNotifications(application)
 
@@ -58,6 +59,16 @@ class AppDelegate: NSObject, UIApplicationDelegate {
   func application(_ application: UIApplication,
                    didFailToRegisterForRemoteNotificationsWithError error: Error) {
     AppLogger.notification.error("Failed to register for remote notifications: \(error.localizedDescription)")
+  }
+
+  // MARK: - Kakao SDK (Share)
+  private func configureKakaoSDK() {
+    guard let kakaoAppKey = Bundle.main.object(forInfoDictionaryKey: "KAKAO_NATIVE_APP_KEY") as? String else {
+      AppLogger.general.error("Kakao Native App Key not found in Info.plist")
+      return
+    }
+    KakaoSDK.initSDK(appKey: kakaoAppKey)
+    AppLogger.general.debug("Kakao SDK initialized")
   }
 
   // MARK: - Kakao Maps SDK

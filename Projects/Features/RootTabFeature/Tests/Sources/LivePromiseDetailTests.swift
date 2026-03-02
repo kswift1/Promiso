@@ -159,16 +159,18 @@ struct LivePromiseDetailTests {
 
   @Test("directionsTapped 좌표 있으면 길찾기 실행")
   func directionsTapped_withCoordinates_opensDirections() async {
-    let flag = SyncFlag()
+    let flag = LockIsolated(false)
     let data = makeLiveData(latitude: 37.4979, longitude: 127.0276)
 
     let store = makeStore(data: data) {
-      $0.mapClient.openDirections = { _, _ in flag.set() }
+      $0.mapClient.openDirections = { _, _ in
+        flag.setValue(true)
+      }
     }
 
     await store.send(.view(.directionsTapped))
     await store.finish()
-    #expect(flag.called)
+    #expect(flag.value == true)
   }
 
   @Test("directionsTapped 좌표 없으면 아무 동작 안 함")
@@ -186,11 +188,6 @@ private extension LivePromiseDetailTests {
     private var count = 0
     func increment() { count += 1 }
     func value() -> Int { count }
-  }
-
-  final class SyncFlag: @unchecked Sendable {
-    private(set) var called = false
-    func set() { called = true }
   }
 
   func makeLiveData(

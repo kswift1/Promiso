@@ -5,7 +5,7 @@
 
 import CoreData
 
-public final class PersistenceController: @unchecked Sendable {
+public final class PersistenceController {
   public static let shared = PersistenceController()
 
   public let container: NSPersistentContainer
