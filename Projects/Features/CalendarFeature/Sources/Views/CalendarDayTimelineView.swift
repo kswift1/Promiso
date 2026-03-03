@@ -140,12 +140,10 @@ struct CalendarDayTimelineView: View {
 
           switch layout.severity {
           case .none, .layerable:
-            // 시간 레이블
             eventTimeLabel(item)
               .offset(y: yPos)
               .zIndex(Double(layout.zIndex))
 
-            // 일정 블록 (전체 너비)
             scheduleBlock(item, layout: layout)
               .frame(width: blockAreaWidth, alignment: .leading)
               .padding(.leading, timeLabelWidth + eventTimeLabelWidth + 8)

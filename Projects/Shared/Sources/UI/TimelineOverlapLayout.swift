@@ -22,7 +22,7 @@ public enum TimelineOverlapLayout {
 
   /// iOS HIG 최소 터치 타겟 = 44pt
   /// 타이틀(15pt) + 서브타이틀(11pt) + 패딩(18pt) = 최소 가독 높이
-  public static let minReadableHeight: CGFloat = 44
+  public static let minReadableHeight: CGFloat = 20
 
   /// 카드 간 수직 gap (같은 column 내)
   public static let cardGap: CGFloat = 2
