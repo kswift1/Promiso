@@ -26,6 +26,12 @@ struct CalendarDayTimelineView: View {
   @State private var dragAnchorStart: Int = 0        // 드래그 시작 시점 start
   @State private var dragAnchorEnd: Int = 0          // 드래그 시작 시점 end
 
+  // 줌 앵커링용 스크롤 추적
+  @State private var scrollOffset: CGFloat = 0
+  @State private var viewportHeight: CGFloat = 0
+  @State private var scrollPosition = ScrollPosition(edge: .top)
+  @State private var zoomScrollY: CGFloat? = nil
+
   // MARK: - Constants
 
   private let baseHourHeight: CGFloat = 52
@@ -85,14 +91,33 @@ struct CalendarDayTimelineView: View {
       .padding(.leading, 8)
       .padding(.trailing, 20)
     }
+    .scrollPosition($scrollPosition)
+    .onScrollGeometryChange(for: CGFloat.self, of: { $0.contentOffset.y }) { _, newValue in
+      scrollOffset = newValue
+    }
+    .onScrollGeometryChange(for: CGFloat.self, of: { $0.containerSize.height }) { _, newValue in
+      viewportHeight = newValue
+    }
     .simultaneousGesture(
       MagnifyGesture()
         .onChanged { value in
-          let newScale = zoomState.gestureScale * value.magnification
-          zoomState.scale = min(maxZoomScale, max(minZoomScale, newScale))
+          let oldScale = zoomState.scale
+          let newScale = min(maxZoomScale, max(minZoomScale, zoomState.gestureScale * value.magnification))
+          guard oldScale != newScale else { return }
+
+          // 화면 중앙 기준 앵커 줌
+          let currentY = zoomScrollY ?? scrollOffset
+          let centerY = currentY + viewportHeight / 2
+          let newCenterY = centerY * (newScale / oldScale)
+          let newY = max(0, newCenterY - viewportHeight / 2)
+
+          zoomState.scale = newScale
+          zoomScrollY = newY
+          scrollPosition.scrollTo(y: newY)
         }
         .onEnded { _ in
           zoomState.gestureScale = zoomState.scale
+          zoomScrollY = nil
         }
     )
     .onChange(of: displayDate) {
