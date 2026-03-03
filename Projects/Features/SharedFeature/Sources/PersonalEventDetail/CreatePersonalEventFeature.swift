@@ -72,8 +72,7 @@ extension CreatePersonalEvent {
       var isCheckingConflicts: Bool = false
 
       // 날씨 힌트 (보너스)
-      var weatherInfo: WeatherInfo? = nil
-      var isWeatherLoading: Bool = false
+      var weatherState: LoadingState<WeatherInfo> = .idle
       
       public init(event: PersonalEventModel = .empty, mode: Mode = .create) {
         self.event = event
@@ -250,8 +249,7 @@ extension CreatePersonalEvent {
 
           case .removeLocation:
             state.event.location = nil
-            state.weatherInfo = nil
-            state.isWeatherLoading = false
+            state.weatherState = .idle
             return .merge(
               .run { _ in await hapticFeedback.selection() },
               .cancel(id: CancelID.weatherFetchDebounce)
@@ -437,13 +435,11 @@ extension CreatePersonalEvent {
             return checkConflictsEffect(state: &state)
 
           case .weatherResponse(.success(let info)):
-            state.weatherInfo = info
-            state.isWeatherLoading = false
+            state.weatherState = .loaded(info)
             return .none
 
           case .weatherResponse(.failure):
-            state.weatherInfo = nil
-            state.isWeatherLoading = false
+            state.weatherState = .idle
             return .none
           }
 
@@ -500,28 +496,30 @@ extension CreatePersonalEvent {
 
     // MARK: - Schedule Conflict Check
 
+    private enum Constants {
+      static let weatherForecastMaxDays = 10
+      static let weatherFetchDebounceMilliseconds = 500
+    }
+
     private func fetchWeatherHintEffect(state: inout State, debounce: Bool = false) -> Effect<Action> {
       guard let location = state.event.location,
             let lat = location.latitude,
             let lng = location.longitude else {
-        state.weatherInfo = nil
-        state.isWeatherLoading = false
+        state.weatherState = .idle
         return .cancel(id: CancelID.weatherFetchDebounce)
       }
 
       let startAt = state.event.startAt
-      let maxForecastDate = Date().addingTimeInterval(10 * 24 * 3600)
+      let maxForecastDate = Date().addingTimeInterval(TimeInterval(Constants.weatherForecastMaxDays) * 24 * 3600)
       guard startAt > Date(), startAt < maxForecastDate else {
-        state.weatherInfo = nil
-        state.isWeatherLoading = false
+        state.weatherState = .idle
         return .cancel(id: CancelID.weatherFetchDebounce)
       }
 
-      state.weatherInfo = nil
-      state.isWeatherLoading = true
+      state.weatherState = .loading
       return .run { [weatherClient, clock] send in
         if debounce {
-          try await clock.sleep(for: .milliseconds(500))
+          try await clock.sleep(for: .milliseconds(Constants.weatherFetchDebounceMilliseconds))
         }
         do {
           let info = try await weatherClient.getWeather(lat, lng, startAt)

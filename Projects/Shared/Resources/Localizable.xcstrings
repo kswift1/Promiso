@@ -19841,6 +19841,24 @@
         }
       }
     },
+    "weather.hint.loading" : {
+      "comment" : "날씨 힌트 로딩 중 메시지",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loading weather for %@ %@"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ %@의 날씨를 불러오고 있어요"
+          }
+        }
+      }
+    },
     "weather.sectionTitle" : {
       "comment" : "날씨 섹션 제목",
       "extractionState" : "manual",

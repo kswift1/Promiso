@@ -65,8 +65,7 @@ public enum CreatePromise {
       var isCheckingConflicts: Bool = false
 
       // 날씨 힌트 (보너스)
-      var weatherInfo: WeatherInfo? = nil
-      var isWeatherLoading: Bool = false
+      var weatherState: LoadingState<WeatherInfo> = .idle
 
       // 장소 선택 sheet
       @Presents var locationPicker: LocationPicker.Feature.State?
@@ -90,8 +89,7 @@ public enum CreatePromise {
         currentUserId: String = "",
         locationPicker: LocationPicker.Feature.State? = nil,
         prefillInfo: PromiseExtractedInfo? = nil,
-        weatherInfo: WeatherInfo? = nil,
-        isWeatherLoading: Bool = false
+        weatherState: LoadingState<WeatherInfo> = .idle
       ) {
         self.currentStep = currentStep
         self.promise = promise
@@ -108,8 +106,7 @@ public enum CreatePromise {
         self.currentUserId = currentUserId
         self.locationPicker = locationPicker
         self.prefillInfo = prefillInfo
-        self.weatherInfo = weatherInfo
-        self.isWeatherLoading = isWeatherLoading
+        self.weatherState = weatherState
       }
 
       /// 그룹이 활성 약속 제한에 도달했는지 확인
@@ -381,8 +378,7 @@ public enum CreatePromise {
           case .setLocation(let location):
             state.promise.location = location
             if location == nil {
-              state.weatherInfo = nil
-              state.isWeatherLoading = false
+              state.weatherState = .idle
               return .cancel(id: CancelID.weatherFetchDebounce)
             }
             return .none
@@ -390,8 +386,7 @@ public enum CreatePromise {
           case .toggleUseLocation:
             state.useLocation.toggle()
             if !state.useLocation {
-              state.weatherInfo = nil
-              state.isWeatherLoading = false
+              state.weatherState = .idle
               return .cancel(id: CancelID.weatherFetchDebounce)
             }
             return .none
@@ -530,13 +525,11 @@ public enum CreatePromise {
             return .none
 
           case .weatherResponse(.success(let info)):
-            state.weatherInfo = info
-            state.isWeatherLoading = false
+            state.weatherState = .loaded(info)
             return .none
 
           case .weatherResponse(.failure):
-            state.weatherInfo = nil
-            state.isWeatherLoading = false
+            state.weatherState = .idle
             return .none
           }
           
@@ -569,29 +562,31 @@ public enum CreatePromise {
 
     // MARK: - Weather Hint
 
+    private enum Constants {
+      static let weatherForecastMaxDays = 10
+      static let weatherFetchDebounceMilliseconds = 500
+    }
+
     private func fetchWeatherHintEffect(state: inout State, debounce: Bool = false) -> Effect<Action> {
       guard state.useLocation,
             let location = state.promise.location,
             let lat = location.latitude,
             let lng = location.longitude else {
-        state.weatherInfo = nil
-        state.isWeatherLoading = false
+        state.weatherState = .idle
         return .cancel(id: CancelID.weatherFetchDebounce)
       }
 
       let startAt = state.promise.startAt
-      let maxForecastDate = Date().addingTimeInterval(10 * 24 * 3600)
+      let maxForecastDate = Date().addingTimeInterval(TimeInterval(Constants.weatherForecastMaxDays) * 24 * 3600)
       guard startAt > Date(), startAt < maxForecastDate else {
-        state.weatherInfo = nil
-        state.isWeatherLoading = false
+        state.weatherState = .idle
         return .cancel(id: CancelID.weatherFetchDebounce)
       }
 
-      state.weatherInfo = nil
-      state.isWeatherLoading = true
+      state.weatherState = .loading
       return .run { [weatherClient, clock] send in
         if debounce {
-          try await clock.sleep(for: .milliseconds(500))
+          try await clock.sleep(for: .milliseconds(Constants.weatherFetchDebounceMilliseconds))
         }
         do {
           let info = try await weatherClient.getWeather(lat, lng, startAt)
@@ -845,7 +840,7 @@ private struct WeatherHintBar: View {
 
   var body: some View {
     Group {
-      if let weatherInfo = store.weatherInfo,
+      if let weatherInfo = store.weatherState.value,
          let forecast = weatherHintForecast(weatherInfo: weatherInfo) {
         WeatherHintRow(
           forecast: forecast,
@@ -857,7 +852,7 @@ private struct WeatherHintBar: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
         .transition(.move(edge: .bottom).combined(with: .opacity))
-      } else if store.isWeatherLoading, let location = store.promise.location {
+      } else if store.weatherState.isLoading, let location = store.promise.location {
         WeatherHintRow.loading(
           dateText: store.promise.startAt.formattedMonthDayTime,
           locationName: location.name
@@ -867,14 +862,13 @@ private struct WeatherHintBar: View {
         .transition(.opacity)
       }
     }
-    .animation(.spring(response: 0.4, dampingFraction: 0.85), value: store.weatherInfo != nil)
-    .animation(.spring(response: 0.4, dampingFraction: 0.85), value: store.isWeatherLoading)
+    .animation(.spring(response: 0.4, dampingFraction: 0.85), value: store.weatherState)
   }
 
   private func weatherHintForecast(weatherInfo: WeatherInfo) -> HourlyForecast? {
     let startAt = store.promise.startAt
     let endAt = store.promise.endAt
-    if let endAt, endAt.timeIntervalSince(startAt) >= 7200 {
+    if let endAt, endAt.timeIntervalSince(startAt) >= 2 * 60 * 60 {
       return weatherInfo.worstCaseForecast(from: startAt, to: endAt)
     }
     return weatherInfo.forecast(for: startAt)

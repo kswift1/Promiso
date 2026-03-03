@@ -74,8 +74,8 @@ struct CreatePromiseWeatherTests {
   @Test("초기 상태에서 날씨 정보 nil")
   func initialState_weatherInfoIsNil() {
     let state = CreatePromise.Feature.State()
-    #expect(state.weatherInfo == nil)
-    #expect(state.isWeatherLoading == false)
+    #expect(state.weatherState.value == nil)
+    #expect(state.weatherState.isLoading == false)
   }
 
   // MARK: - toggleUseLocation 테스트
@@ -83,8 +83,7 @@ struct CreatePromiseWeatherTests {
   @Test("toggleUseLocation OFF 시 날씨 상태 클리어 + 페치 취소")
   func toggleUseLocation_off_clearsWeatherAndCancels() async {
     var state = makeStateWithLocation(useLocation: true)
-    state.weatherInfo = makeWeatherInfo()
-    state.isWeatherLoading = true
+    state.weatherState = .loaded(makeWeatherInfo())
 
     let store = TestStore(initialState: state) {
       CreatePromise.Feature()
@@ -92,8 +91,7 @@ struct CreatePromiseWeatherTests {
 
     await store.send(.view(.toggleUseLocation)) {
       $0.useLocation = false
-      $0.weatherInfo = nil
-      $0.isWeatherLoading = false
+      $0.weatherState = .idle
     }
   }
 
@@ -115,8 +113,7 @@ struct CreatePromiseWeatherTests {
   @Test("setLocation(nil) 시 날씨 상태 클리어 + 페치 취소")
   func setLocation_nil_clearsWeatherAndCancels() async {
     var state = makeStateWithLocation(useLocation: true)
-    state.weatherInfo = makeWeatherInfo()
-    state.isWeatherLoading = true
+    state.weatherState = .loaded(makeWeatherInfo())
 
     let store = TestStore(initialState: state) {
       CreatePromise.Feature()
@@ -124,8 +121,7 @@ struct CreatePromiseWeatherTests {
 
     await store.send(.view(.setLocation(nil))) {
       $0.promise.location = nil
-      $0.weatherInfo = nil
-      $0.isWeatherLoading = false
+      $0.weatherState = .idle
     }
   }
 
@@ -159,8 +155,7 @@ struct CreatePromiseWeatherTests {
 
     await store.send(.view(.setStartDate(forecastDate))) {
       $0.promise.startAt = forecastDate
-      $0.weatherInfo = nil
-      $0.isWeatherLoading = false
+      $0.weatherState = .idle
     }
   }
 
@@ -184,8 +179,7 @@ struct CreatePromiseWeatherTests {
 
     await store.send(.view(.setStartDate(forecastDate))) {
       $0.promise.startAt = forecastDate
-      $0.weatherInfo = nil
-      $0.isWeatherLoading = false
+      $0.weatherState = .idle
     }
   }
 
@@ -202,8 +196,7 @@ struct CreatePromiseWeatherTests {
 
     await store.send(.view(.setStartDate(pastDate))) {
       $0.promise.startAt = pastDate
-      $0.weatherInfo = nil
-      $0.isWeatherLoading = false
+      $0.weatherState = .idle
     }
   }
 
@@ -220,8 +213,7 @@ struct CreatePromiseWeatherTests {
 
     await store.send(.view(.setStartDate(farFutureDate))) {
       $0.promise.startAt = farFutureDate
-      $0.weatherInfo = nil
-      $0.isWeatherLoading = false
+      $0.weatherState = .idle
     }
   }
 
@@ -246,8 +238,7 @@ struct CreatePromiseWeatherTests {
 
     await store.send(.view(.setStartDate(tenDaysLater))) {
       $0.promise.startAt = tenDaysLater
-      $0.weatherInfo = nil
-      $0.isWeatherLoading = true
+      $0.weatherState = .loading
     }
   }
 
@@ -277,8 +268,7 @@ struct CreatePromiseWeatherTests {
     ) {
       $0.locationPicker = nil
       $0.promise.location = location
-      $0.weatherInfo = nil
-      $0.isWeatherLoading = true
+      $0.weatherState = .loading
     }
   }
 
@@ -287,7 +277,7 @@ struct CreatePromiseWeatherTests {
   @Test("weatherResponse 성공 시 weatherInfo 설정")
   func weatherResponse_success_setsWeatherInfo() async {
     var state = makeStateWithLocation()
-    state.isWeatherLoading = true
+    state.weatherState = .loading
 
     let weatherInfo = makeWeatherInfo()
 
@@ -296,15 +286,14 @@ struct CreatePromiseWeatherTests {
     }
 
     await store.send(.internal(.weatherResponse(.success(weatherInfo)))) {
-      $0.weatherInfo = weatherInfo
-      $0.isWeatherLoading = false
+      $0.weatherState = .loaded(weatherInfo)
     }
   }
 
   @Test("weatherResponse 성공 시 비오는 날씨 저장")
   func weatherResponse_success_rainyWeather() async {
     var state = makeStateWithLocation()
-    state.isWeatherLoading = true
+    state.weatherState = .loading
 
     let rainyForecast = HourlyForecast(
       dateTime: Date(),
@@ -327,18 +316,17 @@ struct CreatePromiseWeatherTests {
     }
 
     await store.send(.internal(.weatherResponse(.success(weatherInfo)))) {
-      $0.weatherInfo = weatherInfo
-      $0.isWeatherLoading = false
+      $0.weatherState = .loaded(weatherInfo)
     }
 
-    #expect(store.state.weatherInfo?.current?.condition == .rain)
-    #expect(store.state.weatherInfo?.current?.precipitationProbability == 80)
+    #expect(store.state.weatherState.value?.current?.condition == .rain)
+    #expect(store.state.weatherState.value?.current?.precipitationProbability == 80)
   }
 
   @Test("weatherResponse 성공 시 눈오는 날씨 저장")
   func weatherResponse_success_snowWeather() async {
     var state = makeStateWithLocation()
-    state.isWeatherLoading = true
+    state.weatherState = .loading
 
     let snowForecast = HourlyForecast(
       dateTime: Date(),
@@ -361,12 +349,11 @@ struct CreatePromiseWeatherTests {
     }
 
     await store.send(.internal(.weatherResponse(.success(weatherInfo)))) {
-      $0.weatherInfo = weatherInfo
-      $0.isWeatherLoading = false
+      $0.weatherState = .loaded(weatherInfo)
     }
 
-    #expect(store.state.weatherInfo?.current?.condition == .snow)
-    #expect(store.state.weatherInfo?.current?.temperature == -5)
+    #expect(store.state.weatherState.value?.current?.condition == .snow)
+    #expect(store.state.weatherState.value?.current?.temperature == -5)
   }
 
   // MARK: - weatherResponse 실패 테스트
@@ -374,8 +361,7 @@ struct CreatePromiseWeatherTests {
   @Test("weatherResponse 실패 시 날씨 정보 클리어")
   func weatherResponse_failure_clearsWeatherInfo() async {
     var state = makeStateWithLocation()
-    state.isWeatherLoading = true
-    state.weatherInfo = makeWeatherInfo()
+    state.weatherState = .loaded(makeWeatherInfo())
 
     enum TestError: Error { case networkFailed }
 
@@ -384,15 +370,14 @@ struct CreatePromiseWeatherTests {
     }
 
     await store.send(.internal(.weatherResponse(.failure(TestError.networkFailed)))) {
-      $0.weatherInfo = nil
-      $0.isWeatherLoading = false
+      $0.weatherState = .idle
     }
   }
 
   @Test("weatherResponse 실패 후 재시도 가능")
   func weatherResponse_failure_thenRetry() async {
     var state = makeStateWithLocation()
-    state.isWeatherLoading = true
+    state.weatherState = .loading
 
     enum TestError: Error { case networkFailed }
 
@@ -408,16 +393,14 @@ struct CreatePromiseWeatherTests {
 
     // 첫 실패
     await store.send(.internal(.weatherResponse(.failure(TestError.networkFailed)))) {
-      $0.weatherInfo = nil
-      $0.isWeatherLoading = false
+      $0.weatherState = .idle
     }
 
     // 재시도
     let newDate = Date().addingTimeInterval(48 * 3600)
     await store.send(.view(.setStartDate(newDate))) {
       $0.promise.startAt = newDate
-      $0.weatherInfo = nil
-      $0.isWeatherLoading = true
+      $0.weatherState = .loading
     }
   }
 
@@ -458,8 +441,7 @@ struct CreatePromiseWeatherTests {
 
     await store.send(.view(.setStartDate(oneSecondLater))) {
       $0.promise.startAt = oneSecondLater
-      $0.weatherInfo = nil
-      $0.isWeatherLoading = true
+      $0.weatherState = .loading
     }
   }
 
@@ -482,8 +464,7 @@ struct CreatePromiseWeatherTests {
 
     await store.send(.view(.setStartDate(newDate))) {
       $0.promise.startAt = newDate
-      $0.weatherInfo = nil
-      $0.isWeatherLoading = false
+      $0.weatherState = .idle
     }
   }
 
@@ -491,8 +472,7 @@ struct CreatePromiseWeatherTests {
 
   @Test("여러 번의 toggleUseLocation 후 최종 상태 확인")
   func multipleToggleUseLocation_finalState() async {
-    var state = makeStateWithLocation(useLocation: false)
-    state.weatherInfo = nil
+    let state = makeStateWithLocation(useLocation: false)
 
     let store = TestStore(initialState: state) {
       CreatePromise.Feature()
@@ -504,12 +484,11 @@ struct CreatePromiseWeatherTests {
 
     await store.send(.view(.toggleUseLocation)) {
       $0.useLocation = false
-      $0.weatherInfo = nil
-      $0.isWeatherLoading = false
+      $0.weatherState = .idle
     }
 
     #expect(store.state.useLocation == false)
-    #expect(store.state.weatherInfo == nil)
+    #expect(store.state.weatherState.value == nil)
   }
 
   @Test("setLocation + setStartDate 연속 호출")
@@ -537,16 +516,15 @@ struct CreatePromiseWeatherTests {
 
     await store.send(.view(.setStartDate(newDate))) {
       $0.promise.startAt = newDate
-      $0.weatherInfo = nil
-      $0.isWeatherLoading = true
+      $0.weatherState = .loading
     }
   }
 
   @Test("weatherInfo 상태 전환: nil → loading → success")
   func weatherStateTransition_nilToLoadingToSuccess() async {
-    var state = makeStateWithLocation()
-    #expect(state.weatherInfo == nil)
-    #expect(state.isWeatherLoading == false)
+    let state = makeStateWithLocation()
+    #expect(state.weatherState.value == nil)
+    #expect(state.weatherState.isLoading == false)
 
     let store = TestStore(initialState: state) {
       CreatePromise.Feature()
@@ -576,10 +554,9 @@ struct CreatePromiseWeatherTests {
 
     await store.send(.view(.setStartDate(newDate))) {
       $0.promise.startAt = newDate
-      $0.weatherInfo = nil
-      $0.isWeatherLoading = true
+      $0.weatherState = .loading
     }
 
-    #expect(store.state.isWeatherLoading == true)
+    #expect(store.state.weatherState.isLoading == true)
   }
 }

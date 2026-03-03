@@ -277,7 +277,7 @@ extension CreatePersonalEvent {
           }
 
           // 날씨 힌트 (보너스)
-          if let weatherInfo = store.weatherInfo,
+          if let weatherInfo = store.weatherState.value,
              let forecast = weatherHintForecast(weatherInfo: weatherInfo) {
             Divider()
               .padding(.horizontal, 16)
@@ -291,7 +291,7 @@ extension CreatePersonalEvent {
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
             .transition(.opacity.combined(with: .scale(scale: 0.95)))
-          } else if store.isWeatherLoading, let location = store.event.location {
+          } else if store.weatherState.isLoading, let location = store.event.location {
             Divider()
               .padding(.horizontal, 16)
             WeatherHintRow.loading(
@@ -330,8 +330,7 @@ extension CreatePersonalEvent {
           .padding(.vertical, 12)
         }
       }
-      .animation(.spring(response: 0.4, dampingFraction: 0.85), value: store.weatherInfo != nil)
-      .animation(.spring(response: 0.4, dampingFraction: 0.85), value: store.isWeatherLoading)
+      .animation(.spring(response: 0.4, dampingFraction: 0.85), value: store.weatherState)
       .adaptiveGlassCard()
     }
 
@@ -454,7 +453,7 @@ extension CreatePersonalEvent.RootView {
   private func weatherHintForecast(weatherInfo: WeatherInfo) -> HourlyForecast? {
     let startAt = store.event.startAt
     let endAt = store.event.endAt
-    if let endAt, endAt.timeIntervalSince(startAt) >= 7200 {
+    if let endAt, endAt.timeIntervalSince(startAt) >= 2 * 60 * 60 {
       return weatherInfo.worstCaseForecast(from: startAt, to: endAt)
     }
     return weatherInfo.forecast(for: startAt)

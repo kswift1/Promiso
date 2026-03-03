@@ -106,7 +106,7 @@ extension WeatherHintRow {
       ProgressView()
         .controlSize(.mini)
 
-      Text("\(dateText) \(locationName)의 날씨를 불러오고 있어요")
+      Text(LocalizedStrings.Weather.hintLoading(dateText, locationName))
         .font(.system(size: 12))
         .foregroundStyle(.secondary)
         .lineLimit(1)
