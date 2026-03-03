@@ -25,11 +25,13 @@ public enum CreatePromise {
     @Dependency(\.analyticsClient) var analyticsClient
     @Dependency(\.imageUploadClient) var imageUploadClient
     @Dependency(\.scheduleConflictClient) var scheduleConflictClient
+    @Dependency(\.weatherClient) var weatherClient
 
 
     private enum CancelID: Hashable {
       case emojiSuggestDebounce
       case conflictCheckDebounce
+      case weatherFetchDebounce
     }
     
     @ObservableState
@@ -61,7 +63,10 @@ public enum CreatePromise {
       var currentUserId: String = ""
       var conflicts: [ScheduleConflict] = []
       var isCheckingConflicts: Bool = false
-      
+
+      // 날씨 힌트 (보너스)
+      var weatherState: LoadingState<WeatherInfo> = .idle
+
       // 장소 선택 sheet
       @Presents var locationPicker: LocationPicker.Feature.State?
 
@@ -83,7 +88,8 @@ public enum CreatePromise {
         userPlan: UserPlan = .free,
         currentUserId: String = "",
         locationPicker: LocationPicker.Feature.State? = nil,
-        prefillInfo: PromiseExtractedInfo? = nil
+        prefillInfo: PromiseExtractedInfo? = nil,
+        weatherState: LoadingState<WeatherInfo> = .idle
       ) {
         self.currentStep = currentStep
         self.promise = promise
@@ -100,6 +106,7 @@ public enum CreatePromise {
         self.currentUserId = currentUserId
         self.locationPicker = locationPicker
         self.prefillInfo = prefillInfo
+        self.weatherState = weatherState
       }
 
       /// 그룹이 활성 약속 제한에 도달했는지 확인
@@ -194,6 +201,7 @@ public enum CreatePromise {
         case imageUploadCompleted(Result<[String], Error>)
         case liveActivityInfoSeenLoaded(Bool)
         case conflictsLoaded([ScheduleConflict])
+        case weatherResponse(Result<WeatherInfo, Error>)
       }
       
       // 상위 전달 이벤트 (네비/라우팅/완료 알림 등)
@@ -333,7 +341,10 @@ public enum CreatePromise {
             if let end = state.promise.endAt, end <= date {
               state.promise.endAt = date.addingTimeInterval(7200)
             }
-            return checkConflictsEffect(state: &state)
+            return .merge(
+              checkConflictsEffect(state: &state),
+              fetchWeatherHintEffect(state: &state, debounce: true)
+            )
 
           case .createGroupTapped:
             return .send(.delegate(.createGroupRequested))
@@ -366,10 +377,18 @@ public enum CreatePromise {
 
           case .setLocation(let location):
             state.promise.location = location
+            if location == nil {
+              state.weatherState = .idle
+              return .cancel(id: CancelID.weatherFetchDebounce)
+            }
             return .none
 
           case .toggleUseLocation:
             state.useLocation.toggle()
+            if !state.useLocation {
+              state.weatherState = .idle
+              return .cancel(id: CancelID.weatherFetchDebounce)
+            }
             return .none
 
           case .photosSelected(let items):
@@ -504,6 +523,14 @@ public enum CreatePromise {
             state.conflicts = conflicts
             state.isCheckingConflicts = false
             return .none
+
+          case .weatherResponse(.success(let info)):
+            state.weatherState = .loaded(info)
+            return .none
+
+          case .weatherResponse(.failure):
+            state.weatherState = .idle
+            return .none
           }
           
           // MARK: - Binding
@@ -518,7 +545,7 @@ public enum CreatePromise {
         case .locationPicker(.presented(.delegate(.locationSelected(let location)))):
           state.locationPicker = nil
           state.promise.location = location
-          return .none
+          return fetchWeatherHintEffect(state: &state, debounce: false)
 
         case .locationPicker(.presented(.delegate(.dismissed))):
           state.locationPicker = nil
@@ -531,6 +558,44 @@ public enum CreatePromise {
       .ifLet(\.$locationPicker, action: \.locationPicker) {
         LocationPicker.Feature()
       }
+    }
+
+    // MARK: - Weather Hint
+
+    private enum Constants {
+      static let weatherForecastMaxDays = 10
+      static let weatherFetchDebounceMilliseconds = 500
+    }
+
+    private func fetchWeatherHintEffect(state: inout State, debounce: Bool = false) -> Effect<Action> {
+      guard state.useLocation,
+            let location = state.promise.location,
+            let lat = location.latitude,
+            let lng = location.longitude else {
+        state.weatherState = .idle
+        return .cancel(id: CancelID.weatherFetchDebounce)
+      }
+
+      let startAt = state.promise.startAt
+      let maxForecastDate = Date().addingTimeInterval(TimeInterval(Constants.weatherForecastMaxDays) * 24 * 3600)
+      guard startAt > Date(), startAt < maxForecastDate else {
+        state.weatherState = .idle
+        return .cancel(id: CancelID.weatherFetchDebounce)
+      }
+
+      state.weatherState = .loading
+      return .run { [weatherClient, clock] send in
+        if debounce {
+          try await clock.sleep(for: .milliseconds(Constants.weatherFetchDebounceMilliseconds))
+        }
+        do {
+          let info = try await weatherClient.getWeather(lat, lng, startAt)
+          await send(.internal(.weatherResponse(.success(info))))
+        } catch {
+          await send(.internal(.weatherResponse(.failure(error))))
+        }
+      }
+      .cancellable(id: CancelID.weatherFetchDebounce, cancelInFlight: true)
     }
 
     // MARK: - Schedule Conflict Check
@@ -583,11 +648,16 @@ extension CreatePromise {
           store.currentStep.contentView(store: store)
           
           Spacer()
-          
+
+          // 날씨 힌트 (Step 2에서 하단 고정)
+          if store.currentStep == .second {
+            WeatherHintBar(store: store)
+          }
+
           // Bottom Buttons (키보드에 가려지지 않도록 고정)
           HStack(spacing: 12) {
             store.currentStep.leftButton(store: store)
-            
+
             store.currentStep.rightButton(store: store)
           }
           .padding(16)
@@ -760,6 +830,62 @@ extension CreatePromiseStep {
     case .third:
       CreatePromiseStep3View(store: store)
     }
+  }
+}
+
+// MARK: - Weather Hint Bar (하단 고정)
+
+private struct WeatherHintBar: View {
+  let store: StoreOf<CreatePromise.Feature>
+
+  var body: some View {
+    Group {
+      if let weatherInfo = store.weatherState.value,
+         let forecast = weatherHintForecast(weatherInfo: weatherInfo) {
+        WeatherHintRow(
+          forecast: forecast,
+          rangeForecasts: weatherInfo.forecasts(from: store.promise.startAt, to: store.promise.endAt),
+          forecastSource: weatherInfo.forecastSource(for: store.promise.startAt),
+          minTemperature: weatherHintMinTemp(weatherInfo: weatherInfo),
+          maxTemperature: weatherHintMaxTemp(weatherInfo: weatherInfo)
+        )
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .transition(.move(edge: .bottom).combined(with: .opacity))
+      } else if store.weatherState.isLoading, let location = store.promise.location {
+        WeatherHintRow.loading(
+          dateText: store.promise.startAt.formattedMonthDayTime,
+          locationName: location.name
+        )
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .transition(.opacity)
+      }
+    }
+    .animation(.spring(response: 0.4, dampingFraction: 0.85), value: store.weatherState)
+  }
+
+  private func weatherHintForecast(weatherInfo: WeatherInfo) -> HourlyForecast? {
+    let startAt = store.promise.startAt
+    let endAt = store.promise.endAt
+    if let endAt, endAt.timeIntervalSince(startAt) >= 2 * 60 * 60 {
+      return weatherInfo.worstCaseForecast(from: startAt, to: endAt)
+    }
+    return weatherInfo.forecast(for: startAt)
+  }
+
+  private func weatherHintMinTemp(weatherInfo: WeatherInfo) -> Double? {
+    let startAt = store.promise.startAt
+    guard weatherInfo.forecastSource(for: startAt) == .midTerm else { return nil }
+    let calendar = Calendar.current
+    return weatherInfo.dailyForecasts.first(where: { calendar.isDate($0.date, inSameDayAs: startAt) })?.minTemperature
+  }
+
+  private func weatherHintMaxTemp(weatherInfo: WeatherInfo) -> Double? {
+    let startAt = store.promise.startAt
+    guard weatherInfo.forecastSource(for: startAt) == .midTerm else { return nil }
+    let calendar = Calendar.current
+    return weatherInfo.dailyForecasts.first(where: { calendar.isDate($0.date, inSameDayAs: startAt) })?.maxTemperature
   }
 }
 

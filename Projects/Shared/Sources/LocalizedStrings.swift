@@ -1727,6 +1727,17 @@ public enum LocalizedStrings {
     public static var suggestDry: String { String(localized: "weather.suggest.dry", bundle: bundle) }
     public static var suggestUvWarning: String { String(localized: "weather.suggest.uvWarning", bundle: bundle) }
     public static var suggestNiceWeather: String { String(localized: "weather.suggest.niceWeather", bundle: bundle) }
+    // Hint Loading
+    public static func hintLoading(_ dateText: String, _ locationName: String) -> String {
+      var result = String(localized: "weather.hint.loading", bundle: bundle)
+      if let range = result.range(of: "%@") {
+        result = result.replacingCharacters(in: range, with: dateText)
+      }
+      if let range = result.range(of: "%@") {
+        result = result.replacingCharacters(in: range, with: locationName)
+      }
+      return result
+    }
   }
 
   // MARK: - DateFormat

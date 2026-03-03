@@ -67,6 +67,7 @@ struct LocationSection: View {
                 location: location,
                 onChangeTapped: { store.send(.view(.locationPickerTapped)) }
               )
+
             } else {
               // 장소 미선택: 검색 버튼
               Button {
@@ -95,6 +96,7 @@ struct LocationSection: View {
       LocationPicker.RootView(store: pickerStore)
     }
   }
+
 }
 
 // MARK: - Location With Map Card

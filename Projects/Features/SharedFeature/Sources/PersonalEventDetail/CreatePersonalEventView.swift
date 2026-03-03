@@ -275,6 +275,33 @@ extension CreatePersonalEvent {
           .onTapGesture {
             store.send(.view(.locationTapped))
           }
+
+          // 날씨 힌트 (보너스)
+          if let weatherInfo = store.weatherState.value,
+             let forecast = weatherHintForecast(weatherInfo: weatherInfo) {
+            Divider()
+              .padding(.horizontal, 16)
+            WeatherHintRow(
+              forecast: forecast,
+              rangeForecasts: weatherInfo.forecasts(from: store.event.startAt, to: store.event.endAt),
+              forecastSource: weatherInfo.forecastSource(for: store.event.startAt),
+              minTemperature: weatherHintMinTemp(weatherInfo: weatherInfo),
+              maxTemperature: weatherHintMaxTemp(weatherInfo: weatherInfo)
+            )
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .transition(.opacity.combined(with: .scale(scale: 0.95)))
+          } else if store.weatherState.isLoading, let location = store.event.location {
+            Divider()
+              .padding(.horizontal, 16)
+            WeatherHintRow.loading(
+              dateText: store.event.startAt.formattedMonthDayTime,
+              locationName: location.name
+            )
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .transition(.opacity)
+          }
         } else {
           // 장소 미선택
           Button {
@@ -303,6 +330,7 @@ extension CreatePersonalEvent {
           .padding(.vertical, 12)
         }
       }
+      .animation(.spring(response: 0.4, dampingFraction: 0.85), value: store.weatherState)
       .adaptiveGlassCard()
     }
 
@@ -416,6 +444,33 @@ extension CreatePersonalEvent {
           .padding(.trailing, 4)
       }
     }
+  }
+}
+
+// MARK: - Weather Hint Helpers
+
+extension CreatePersonalEvent.RootView {
+  private func weatherHintForecast(weatherInfo: WeatherInfo) -> HourlyForecast? {
+    let startAt = store.event.startAt
+    let endAt = store.event.endAt
+    if let endAt, endAt.timeIntervalSince(startAt) >= 2 * 60 * 60 {
+      return weatherInfo.worstCaseForecast(from: startAt, to: endAt)
+    }
+    return weatherInfo.forecast(for: startAt)
+  }
+
+  private func weatherHintMinTemp(weatherInfo: WeatherInfo) -> Double? {
+    let startAt = store.event.startAt
+    guard weatherInfo.forecastSource(for: startAt) == .midTerm else { return nil }
+    let calendar = Calendar.current
+    return weatherInfo.dailyForecasts.first(where: { calendar.isDate($0.date, inSameDayAs: startAt) })?.minTemperature
+  }
+
+  private func weatherHintMaxTemp(weatherInfo: WeatherInfo) -> Double? {
+    let startAt = store.event.startAt
+    guard weatherInfo.forecastSource(for: startAt) == .midTerm else { return nil }
+    let calendar = Calendar.current
+    return weatherInfo.dailyForecasts.first(where: { calendar.isDate($0.date, inSameDayAs: startAt) })?.maxTemperature
   }
 }
 

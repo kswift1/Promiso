@@ -24,6 +24,7 @@ extension CreatePersonalEvent {
     @Dependency(\.authClient) var authClient
     @Dependency(\.scheduleConflictClient) var scheduleConflictClient
     @Dependency(\.userSettingsClient) var userSettingsClient
+    @Dependency(\.weatherClient) var weatherClient
 
     public init() {}
 
@@ -32,6 +33,7 @@ extension CreatePersonalEvent {
     private enum CancelID {
       case emojiDebounce
       case conflictCheckDebounce
+      case weatherFetchDebounce
     }
 
     // MARK: - Mode
@@ -68,6 +70,9 @@ extension CreatePersonalEvent {
       var currentUserId: String = ""
       var conflicts: [ScheduleConflict] = []
       var isCheckingConflicts: Bool = false
+
+      // 날씨 힌트 (보너스)
+      var weatherState: LoadingState<WeatherInfo> = .idle
       
       public init(event: PersonalEventModel = .empty, mode: Mode = .create) {
         self.event = event
@@ -124,6 +129,7 @@ extension CreatePersonalEvent {
       case notificationStatusChecked(NotificationAuthorizationStatus)
       case conflictsLoaded([ScheduleConflict])
       case userPlanLoaded(UserPlan, String)
+      case weatherResponse(Result<WeatherInfo, Error>)
     }
 
     @CasePathable
@@ -144,15 +150,18 @@ extension CreatePersonalEvent {
         case let .view(viewAction):
           switch viewAction {
           case .onAppear:
-            return .run { [authClient, userSettingsClient] send in
-              guard let user = await authClient.currentUser() else { return }
-              do {
-                let settings = try await userSettingsClient.fetchSettings(user.uid)
-                await send(.internal(.userPlanLoaded(settings.plan, user.uid)))
-              } catch {
-                // 설정 로드 실패 시 무료 플랜으로 처리 (충돌 감지 비활성)
-              }
-            }
+            return .merge(
+              .run { [authClient, userSettingsClient] send in
+                guard let user = await authClient.currentUser() else { return }
+                do {
+                  let settings = try await userSettingsClient.fetchSettings(user.uid)
+                  await send(.internal(.userPlanLoaded(settings.plan, user.uid)))
+                } catch {
+                  // 설정 로드 실패 시 무료 플랜으로 처리 (충돌 감지 비활성)
+                }
+              },
+              fetchWeatherHintEffect(state: &state, debounce: false)
+            )
 
           case .titleChanged(let title):
             let oldTitle = state.event.title
@@ -183,7 +192,10 @@ extension CreatePersonalEvent {
                 state.reminderWarning = nil
               }
             }
-            return checkConflictsEffect(state: &state)
+            return .merge(
+              checkConflictsEffect(state: &state),
+              fetchWeatherHintEffect(state: &state, debounce: true)
+            )
 
           case .endDateChanged(let date):
             state.event.endAt = date
@@ -237,7 +249,11 @@ extension CreatePersonalEvent {
 
           case .removeLocation:
             state.event.location = nil
-            return .run { _ in await hapticFeedback.selection() }
+            state.weatherState = .idle
+            return .merge(
+              .run { _ in await hapticFeedback.selection() },
+              .cancel(id: CancelID.weatherFetchDebounce)
+            )
 
           case .saveTapped:
             guard state.canSave else { return .none }
@@ -417,6 +433,14 @@ extension CreatePersonalEvent {
             state.userPlan = plan
             state.currentUserId = userId
             return checkConflictsEffect(state: &state)
+
+          case .weatherResponse(.success(let info)):
+            state.weatherState = .loaded(info)
+            return .none
+
+          case .weatherResponse(.failure):
+            state.weatherState = .idle
+            return .none
           }
 
         // MARK: - LocationPicker
@@ -424,7 +448,7 @@ extension CreatePersonalEvent {
         case .locationPicker(.presented(.delegate(.locationSelected(let location)))):
           state.event.location = location
           state.locationPicker = nil
-          return .none
+          return fetchWeatherHintEffect(state: &state, debounce: false)
 
         case .locationPicker(.presented(.delegate(.dismissed))):
           state.locationPicker = nil
@@ -471,6 +495,41 @@ extension CreatePersonalEvent {
     }
 
     // MARK: - Schedule Conflict Check
+
+    private enum Constants {
+      static let weatherForecastMaxDays = 10
+      static let weatherFetchDebounceMilliseconds = 500
+    }
+
+    private func fetchWeatherHintEffect(state: inout State, debounce: Bool = false) -> Effect<Action> {
+      guard let location = state.event.location,
+            let lat = location.latitude,
+            let lng = location.longitude else {
+        state.weatherState = .idle
+        return .cancel(id: CancelID.weatherFetchDebounce)
+      }
+
+      let startAt = state.event.startAt
+      let maxForecastDate = Date().addingTimeInterval(TimeInterval(Constants.weatherForecastMaxDays) * 24 * 3600)
+      guard startAt > Date(), startAt < maxForecastDate else {
+        state.weatherState = .idle
+        return .cancel(id: CancelID.weatherFetchDebounce)
+      }
+
+      state.weatherState = .loading
+      return .run { [weatherClient, clock] send in
+        if debounce {
+          try await clock.sleep(for: .milliseconds(Constants.weatherFetchDebounceMilliseconds))
+        }
+        do {
+          let info = try await weatherClient.getWeather(lat, lng, startAt)
+          await send(.internal(.weatherResponse(.success(info))))
+        } catch {
+          await send(.internal(.weatherResponse(.failure(error))))
+        }
+      }
+      .cancellable(id: CancelID.weatherFetchDebounce, cancelInFlight: true)
+    }
 
     private func checkConflictsEffect(state: inout State) -> Effect<Action> {
       guard !state.currentUserId.isEmpty else { return .none }
