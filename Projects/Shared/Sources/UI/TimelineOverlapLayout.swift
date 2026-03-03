@@ -192,18 +192,6 @@ public enum TimelineOverlapLayout {
         continue
       }
 
-      // 컴포넌트 내 최대 severity 결정
-      var maxSeverity: OverlapSeverity = .layerable
-      for i in 0..<component.count {
-        for j in (i + 1)..<component.count {
-          if pairSeverity[component[i]][component[j]] == .colliding {
-            maxSeverity = .colliding
-            break
-          }
-        }
-        if maxSeverity == .colliding { break }
-      }
-
       // startTime 오름차순, 동일이면 duration 내림차순
       let sorted = component.sorted { a, b in
         if startMinutes[a] != startMinutes[b] {
@@ -212,39 +200,85 @@ public enum TimelineOverlapLayout {
         return durationMinutes[a] > durationMinutes[b]
       }
 
-      if maxSeverity == .layerable {
-        // Layerable: 전체 너비, z-index만 다르게
-        // 짧은 이벤트(duration 작은)가 높은 z-index
-        let byDuration = sorted.sorted { a, b in
-          durationMinutes[a] > durationMinutes[b]
+      // 아이템별 collider 여부 판별
+      // isCollider: pairSeverity[item][j] == .colliding 인 j가 하나라도 있으면 true
+      let isCollider: [Bool] = component.map { itemIdx in
+        component.contains { other in
+          other != itemIdx && pairSeverity[itemIdx][other] == .colliding
         }
-        for (zIdx, itemIdx) in byDuration.enumerated() {
-          results[itemIdx] = LayoutResult(
-            index: itemIdx, columnIndex: 0, columnCount: 1,
-            zIndex: zIdx, severity: .layerable
-          )
-        }
-      } else {
-        // Colliding: Column Split
-        let visibleCount = min(sorted.count, maxColumns)
-        let overflowCount = max(0, sorted.count - maxColumns)
+      }
 
-        for (colIdx, itemIdx) in sorted.prefix(maxColumns).enumerated() {
-          let overflow = (colIdx == visibleCount - 1) ? overflowCount : 0
-          results[itemIdx] = LayoutResult(
-            index: itemIdx, columnIndex: colIdx,
-            columnCount: visibleCount, zIndex: 0,
-            severity: .colliding, overflowCount: overflow
-          )
-        }
+      let colliderIndices = component.filter { itemIdx in
+        component.firstIndex(of: itemIdx).map { isCollider[$0] } ?? false
+      }
+      let nonColliderIndices = component.filter { itemIdx in
+        component.firstIndex(of: itemIdx).map { !isCollider[$0] } ?? false
+      }
 
-        // 숨겨진 이벤트 (maxColumns 초과)
-        for itemIdx in sorted.dropFirst(maxColumns) {
-          results[itemIdx] = LayoutResult(
-            index: itemIdx, columnIndex: -1,
-            columnCount: visibleCount, zIndex: -1,
-            severity: .colliding, overflowCount: 0
-          )
+      // non-collider: layerable, columnIndex=0, columnCount=1
+      // zIndex: duration 내림차순 (긴 이벤트=0)
+      let nonColliderSorted = nonColliderIndices.sorted { a, b in
+        durationMinutes[a] > durationMinutes[b]
+      }
+      for (zIdx, itemIdx) in nonColliderSorted.enumerated() {
+        results[itemIdx] = LayoutResult(
+          index: itemIdx, columnIndex: 0, columnCount: 1,
+          zIndex: zIdx, severity: .layerable
+        )
+      }
+      let layerableCount = nonColliderIndices.count
+
+      // collider: colliding edges만으로 BFS sub-cluster 추출 후 각각 column split
+      if !colliderIndices.isEmpty {
+        var subVisited = Set<Int>()
+        let sortedColliders = sorted.filter { colliderIndices.contains($0) }
+
+        for startNode in sortedColliders {
+          guard !subVisited.contains(startNode) else { continue }
+          // colliding edges만 사용한 BFS
+          var subQueue = [startNode]
+          var subCluster = [Int]()
+          subVisited.insert(startNode)
+          while !subQueue.isEmpty {
+            let node = subQueue.removeFirst()
+            subCluster.append(node)
+            for neighbor in component where neighbor != node
+              && !subVisited.contains(neighbor)
+              && pairSeverity[node][neighbor] == .colliding
+            {
+              subVisited.insert(neighbor)
+              subQueue.append(neighbor)
+            }
+          }
+
+          // sub-cluster를 startTime 오름차순, 동일이면 duration 내림차순으로 정렬
+          let subSorted = subCluster.sorted { a, b in
+            if startMinutes[a] != startMinutes[b] {
+              return startMinutes[a] < startMinutes[b]
+            }
+            return durationMinutes[a] > durationMinutes[b]
+          }
+
+          let visibleCount = min(subSorted.count, maxColumns)
+          let overflowCount = max(0, subSorted.count - maxColumns)
+
+          for (colIdx, itemIdx) in subSorted.prefix(maxColumns).enumerated() {
+            let overflow = (colIdx == visibleCount - 1) ? overflowCount : 0
+            results[itemIdx] = LayoutResult(
+              index: itemIdx, columnIndex: colIdx,
+              columnCount: visibleCount, zIndex: layerableCount,
+              severity: .colliding, overflowCount: overflow
+            )
+          }
+
+          // 숨겨진 이벤트 (maxColumns 초과)
+          for itemIdx in subSorted.dropFirst(maxColumns) {
+            results[itemIdx] = LayoutResult(
+              index: itemIdx, columnIndex: -1,
+              columnCount: visibleCount, zIndex: -1,
+              severity: .colliding, overflowCount: 0
+            )
+          }
         }
       }
     }

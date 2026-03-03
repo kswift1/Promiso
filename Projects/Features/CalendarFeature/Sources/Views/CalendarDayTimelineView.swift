@@ -151,19 +151,16 @@ struct CalendarDayTimelineView: View {
               .zIndex(Double(layout.zIndex))
 
           case .colliding:
-            // 시간 레이블 (첫 번째 column만 표시)
-            if layout.columnIndex == 0 {
-              eventTimeLabel(item)
-                .offset(y: yPos)
-            }
+            eventTimeLabel(item)
+              .offset(y: yPos)
 
-            // Column Split 블록
             let colWidth = (blockAreaWidth - TimelineOverlapLayout.columnGap * CGFloat(layout.columnCount - 1)) / CGFloat(layout.columnCount)
             let colX = CGFloat(layout.columnIndex) * (colWidth + TimelineOverlapLayout.columnGap)
 
             scheduleBlock(item, layout: layout)
               .frame(width: colWidth, alignment: .leading)
               .offset(x: timeLabelWidth + eventTimeLabelWidth + 8 + colX, y: yPos)
+              .zIndex(Double(layout.zIndex))
               .overlay(alignment: .topTrailing) {
                 if layout.overflowCount > 0 {
                   overflowBadge(count: layout.overflowCount)

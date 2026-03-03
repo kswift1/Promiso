@@ -151,10 +151,8 @@ struct DayTimelineView: View {
               .zIndex(Double(layout.zIndex))
 
           case .colliding:
-            if layout.columnIndex == 0 {
-              eventTimeLabel(item)
-                .offset(y: yPos)
-            }
+            eventTimeLabel(item)
+              .offset(y: yPos)
 
             let colWidth = (blockAreaWidth - TimelineOverlapLayout.columnGap * CGFloat(layout.columnCount - 1)) / CGFloat(layout.columnCount)
             let colX = CGFloat(layout.columnIndex) * (colWidth + TimelineOverlapLayout.columnGap)
@@ -162,6 +160,7 @@ struct DayTimelineView: View {
             scheduleBlock(item, layout: layout)
               .frame(width: colWidth, alignment: .leading)
               .offset(x: timeLabelWidth + eventTimeLabelWidth + 8 + colX, y: yPos)
+              .zIndex(Double(layout.zIndex))
               .overlay(alignment: .topTrailing) {
                 if layout.overflowCount > 0 {
                   overflowBadge(count: layout.overflowCount)
