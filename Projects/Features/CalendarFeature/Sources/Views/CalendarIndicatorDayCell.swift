@@ -101,22 +101,18 @@ struct CalendarIndicatorDayCell: View {
       .contentShape(Circle())
       .onTapGesture { onTap() }
       .contextMenu {
-        if showAllIndicators {
-          Button {
-            onDayCreatePersonalEvent?(date)
-          } label: {
-            Label(LocalizedStrings.Calendar.addPersonalEvent, systemImage: "plus.circle")
-          }
-          Button {
-            onDayCreatePromise?(date)
-          } label: {
-            Label(LocalizedStrings.Calendar.createPromise, systemImage: "person.2.circle")
-          }
+        Button {
+          onDayCreatePersonalEvent?(date)
+        } label: {
+          Label(LocalizedStrings.Calendar.addPersonalEvent, systemImage: "plus.circle")
+        }
+        Button {
+          onDayCreatePromise?(date)
+        } label: {
+          Label(LocalizedStrings.Calendar.createPromise, systemImage: "person.2.circle")
         }
       } preview: {
-        if showAllIndicators {
-          ExpandedDayPreviewView(date: date, indicators: scheduleIndicators)
-        }
+        ExpandedDayPreviewView(date: date, indicators: scheduleIndicators)
       }
 
       // Morphing 인디케이터 영역
@@ -203,22 +199,16 @@ struct CalendarIndicatorDayCell: View {
     )
     .contentShape(Rectangle())
     .onTapGesture {
-      if showAllIndicators {
-        onIndicatorTapped?(indicator)
-      }
+      onIndicatorTapped?(indicator)
     }
     .contextMenu {
-      if showAllIndicators {
-        Button {
-          onIndicatorTapped?(indicator)
-        } label: {
-          Label(LocalizedStrings.PromiseCard.viewDetail, systemImage: "info.circle")
-        }
+      Button {
+        onIndicatorTapped?(indicator)
+      } label: {
+        Label(LocalizedStrings.PromiseCard.viewDetail, systemImage: "info.circle")
       }
     } preview: {
-      if showAllIndicators {
-        IndicatorPreviewView(indicator: indicator)
-      }
+      IndicatorPreviewView(indicator: indicator)
     }
   }
 
