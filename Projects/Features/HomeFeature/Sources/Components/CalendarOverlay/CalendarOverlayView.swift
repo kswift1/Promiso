@@ -34,6 +34,8 @@ struct CalendarOverlayView: View {
   let weatherCache: [String: WeatherInfo]
   let groupColorMap: [String: Color]
 
+  @State private var timelineZoomState = TimelineZoomState()
+
   private var isWeekly: Bool { calendarMode == .weekly }
   private var isWeatherDetail: Bool { calendarMode == .weatherDetail }
 
@@ -350,7 +352,8 @@ struct CalendarOverlayView: View {
       calendarMode: calendarMode,
       currentUserId: currentUserId,
       weatherCache: weatherCache,
-      groupColorMap: groupColorMap
+      groupColorMap: groupColorMap,
+      zoomState: timelineZoomState
     )
   }
 

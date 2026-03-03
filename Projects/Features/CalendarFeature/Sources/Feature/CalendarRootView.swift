@@ -15,6 +15,7 @@ extension CalendarFeature {
   public struct RootView: View {
     @Bindable private var store: StoreOf<Feature>
     @Namespace private var calendarAnimation
+    @State private var timelineZoomState = TimelineZoomState()
 
     public init(store: StoreOf<Feature>) {
       self.store = store
@@ -210,7 +211,8 @@ extension CalendarFeature {
             },
             currentUserId: store.currentUserId,
             weatherCache: store.weatherCache,
-            groupColorMap: store.groupColorMap
+            groupColorMap: store.groupColorMap,
+            zoomState: timelineZoomState
           )
         }
       }

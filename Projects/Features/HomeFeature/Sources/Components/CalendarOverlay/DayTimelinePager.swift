@@ -19,6 +19,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
   let currentUserId: String
   let weatherCache: [String: WeatherInfo]
   let groupColorMap: [String: Color]
+  let zoomState: TimelineZoomState
 
   func makeCoordinator() -> Coordinator {
     Coordinator(pager: self)
@@ -28,6 +29,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
     let vc = PagerViewController()
     vc.coordinator = context.coordinator
     vc.calendarMode = calendarMode
+    vc.zoomState = zoomState
     context.coordinator.pagerVC = vc
     vc.setupPages(
       prevDayScheduleItems: prevDayScheduleItems,
@@ -245,7 +247,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
   final class PagerViewController: UIViewController {
     var coordinator: Coordinator?
     var calendarMode: CalendarMode = .weekly
-    let zoomState = TimelineZoomState()
+    var zoomState = TimelineZoomState()
     private let scrollView = UIScrollView()
     private let contentView = UIView()
     private var pageHostingControllers: [UIHostingController<DayTimelineView>] = []
