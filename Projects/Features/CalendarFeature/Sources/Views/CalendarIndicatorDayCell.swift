@@ -155,9 +155,7 @@ struct CalendarIndicatorDayCell: View {
   @ViewBuilder
   private func morphingIndicatorSection(isCompact: Bool) -> some View {
     if isCurrentMonth && !scheduleIndicators.isEmpty {
-      let displayCount = isCompact
-        ? min(3, scheduleIndicators.count)
-        : scheduleIndicators.count
+      let displayCount = scheduleIndicators.count
       let layout = isCompact
         ? AnyLayout(HStackLayout(spacing: 3))
         : AnyLayout(VStackLayout(spacing: 3))
