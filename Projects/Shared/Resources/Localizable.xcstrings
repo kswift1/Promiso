@@ -17,8 +17,21 @@
         }
       }
     },
+    "%@%%" : {
+
+    },
     "%@°" : {
 
+    },
+    "%@~%@°" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@~%2$@°"
+          }
+        }
+      }
     },
     "|" : {
       "localizations" : {
@@ -1074,6 +1087,150 @@
         }
       }
     },
+    "calendar.weather.denied.description" : {
+      "comment" : "위치 권한 거부 설명",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap to open Settings and enable location"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "설정에서 위치 권한을 허용해 주세요"
+          }
+        }
+      }
+    },
+    "calendar.weather.denied.title" : {
+      "comment" : "위치 권한 거부 타이틀",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Location Permission Denied"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "위치 권한이 꺼져 있어요"
+          }
+        }
+      }
+    },
+    "calendar.weather.detail.title" : {
+      "comment" : "날씨 상세 뷰 타이틀",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weather"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "날씨"
+          }
+        }
+      }
+    },
+    "calendar.weather.failed.description" : {
+      "comment" : "날씨 로드 실패 설명",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap to try again"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "탭하여 다시 시도해 주세요"
+          }
+        }
+      }
+    },
+    "calendar.weather.failed.title" : {
+      "comment" : "날씨 로드 실패 타이틀",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weather Unavailable"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "날씨를 불러올 수 없어요"
+          }
+        }
+      }
+    },
+    "calendar.weather.feelsLike" : {
+      "comment" : "체감 온도 레이블 (%@ = 온도)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feels %@"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "체감 %@"
+          }
+        }
+      }
+    },
+    "calendar.weather.hourly.title" : {
+      "comment" : "시간별 예보 섹션 타이틀",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hourly Forecast"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "시간별 예보"
+          }
+        }
+      }
+    },
+    "calendar.weather.minMax" : {
+      "comment" : "최저/최고 기온 (%1$@ = 최저, %2$@ = 최고)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ / %2$@"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ / %2$@"
+          }
+        }
+      }
+    },
     "calendar.weather.permission.description" : {
       "comment" : "날씨 위치 권한 설명",
       "extractionState" : "manual",
@@ -1110,78 +1267,6 @@
         }
       }
     },
-    "calendar.weather.denied.title" : {
-      "comment" : "위치 권한 거부 타이틀",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Location Permission Denied"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "위치 권한이 꺼져 있어요"
-          }
-        }
-      }
-    },
-    "calendar.weather.denied.description" : {
-      "comment" : "위치 권한 거부 설명",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tap to open Settings and enable location"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "설정에서 위치 권한을 허용해 주세요"
-          }
-        }
-      }
-    },
-    "calendar.weather.failed.title" : {
-      "comment" : "날씨 로드 실패 타이틀",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Weather Unavailable"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "날씨를 불러올 수 없어요"
-          }
-        }
-      }
-    },
-    "calendar.weather.failed.description" : {
-      "comment" : "날씨 로드 실패 설명",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tap to try again"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "탭하여 다시 시도해 주세요"
-          }
-        }
-      }
-    },
     "calendar.weather.reference" : {
       "comment" : "오버레이 날씨 - 기준 시간/위치",
       "extractionState" : "manual",
@@ -1196,60 +1281,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ 기준"
-          }
-        }
-      }
-    },
-    "calendar.weather.detail.title" : {
-      "comment" : "날씨 상세 뷰 타이틀",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Weather"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "날씨"
-          }
-        }
-      }
-    },
-    "calendar.weather.hourly.title" : {
-      "comment" : "시간별 예보 섹션 타이틀",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hourly Forecast"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "시간별 예보"
-          }
-        }
-      }
-    },
-    "calendar.weather.weekly.title" : {
-      "comment" : "주간 예보 섹션 타이틀",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Weekly Forecast"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "주간 예보"
           }
         }
       }
@@ -1308,38 +1339,20 @@
         }
       }
     },
-    "calendar.weather.minMax" : {
-      "comment" : "최저/최고 기온 (%1$@ = 최저, %2$@ = 최고)",
+    "calendar.weather.weekly.title" : {
+      "comment" : "주간 예보 섹션 타이틀",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ / %2$@"
+            "value" : "Weekly Forecast"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ / %2$@"
-          }
-        }
-      }
-    },
-    "calendar.weather.feelsLike" : {
-      "comment" : "체감 온도 레이블 (%@ = 온도)",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Feels %@"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "체감 %@"
+            "value" : "주간 예보"
           }
         }
       }
@@ -19733,6 +19746,24 @@
         }
       }
     },
+    "weather.hint.loading" : {
+      "comment" : "날씨 힌트 로딩 중 메시지",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loading weather for %@ %@"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ %@의 날씨를 불러오고 있어요"
+          }
+        }
+      }
+    },
     "weather.hourLabel" : {
       "comment" : "시간 레이블 (예: 15시)",
       "extractionState" : "manual",
@@ -19837,24 +19868,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "약속 시간 (%@)"
-          }
-        }
-      }
-    },
-    "weather.hint.loading" : {
-      "comment" : "날씨 힌트 로딩 중 메시지",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Loading weather for %@ %@"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ %@의 날씨를 불러오고 있어요"
           }
         }
       }
