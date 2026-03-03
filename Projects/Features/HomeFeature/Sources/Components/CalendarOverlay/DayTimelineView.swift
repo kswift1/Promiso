@@ -24,9 +24,7 @@ struct DayTimelineView: View {
   @State private var dragAnchorStart: Int = 0        // 드래그 시작 시점 start
   @State private var dragAnchorEnd: Int = 0          // 드래그 시작 시점 end
 
-  /// 핀치줌 스케일
-  @State private var zoomScale: CGFloat = 1.0
-  @State private var gestureScale: CGFloat = 1.0
+  var zoomState: TimelineZoomState
 
   // MARK: - Constants
 
@@ -39,11 +37,11 @@ struct DayTimelineView: View {
   private let totalHours: Int = 24
 
   private var hourHeight: CGFloat {
-    baseHourHeight * zoomScale
+    baseHourHeight * zoomState.scale
   }
 
   private var blockMinHeight: CGFloat {
-    max(36, 48 * zoomScale)
+    max(36, 48 * zoomState.scale)
   }
 
   private var totalHeight: CGFloat {
@@ -87,11 +85,11 @@ struct DayTimelineView: View {
     .simultaneousGesture(
       MagnifyGesture()
         .onChanged { value in
-          let newScale = gestureScale * value.magnification
-          zoomScale = min(maxZoomScale, max(minZoomScale, newScale))
+          let newScale = zoomState.gestureScale * value.magnification
+          zoomState.scale = min(maxZoomScale, max(minZoomScale, newScale))
         }
         .onEnded { _ in
-          gestureScale = zoomScale
+          zoomState.gestureScale = zoomState.scale
         }
     )
     .onChange(of: displayDate) {
@@ -811,7 +809,8 @@ struct DayTimelineView: View {
     calendarMode: .weekly,
     currentUserId: "host1",
     weatherCache: [:],
-    groupColorMap: ["g1": Color.pmindigo.n500, "g2": .orange]
+    groupColorMap: ["g1": Color.pmindigo.n500, "g2": .orange],
+    zoomState: TimelineZoomState()
   )
   .auroraBackground()
 }
@@ -826,7 +825,8 @@ struct DayTimelineView: View {
     calendarMode: .weekly,
     currentUserId: "preview",
     weatherCache: [:],
-    groupColorMap: [:]
+    groupColorMap: [:],
+    zoomState: TimelineZoomState()
   )
   .auroraBackground()
 }

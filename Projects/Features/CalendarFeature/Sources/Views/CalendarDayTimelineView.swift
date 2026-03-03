@@ -17,6 +17,7 @@ struct CalendarDayTimelineView: View {
   let currentUserId: String
   let weatherCache: [String: WeatherInfo]
   let groupColorMap: [String: Color]
+  var zoomState: TimelineZoomState
 
   // MARK: - State
 
@@ -24,10 +25,6 @@ struct CalendarDayTimelineView: View {
   @State private var creationEndSlot: Int = 0        // 하단 (1-48)
   @State private var dragAnchorStart: Int = 0        // 드래그 시작 시점 start
   @State private var dragAnchorEnd: Int = 0          // 드래그 시작 시점 end
-
-  /// 핀치줌 스케일 (1.0 = 기본, 0.5 = 축소, 2.0 = 확대)
-  @State private var zoomScale: CGFloat = 1.0
-  @State private var gestureScale: CGFloat = 1.0
 
   // MARK: - Constants
 
@@ -41,12 +38,12 @@ struct CalendarDayTimelineView: View {
 
   /// 현재 줌 레벨에 따른 시간당 높이
   private var hourHeight: CGFloat {
-    baseHourHeight * zoomScale
+    baseHourHeight * zoomState.scale
   }
 
   /// 블록 최소 높이 (줌 레벨 반영)
   private var blockMinHeight: CGFloat {
-    max(36, 48 * zoomScale)
+    max(36, 48 * zoomState.scale)
   }
 
   private var totalHeight: CGFloat {
@@ -91,11 +88,11 @@ struct CalendarDayTimelineView: View {
     .simultaneousGesture(
       MagnifyGesture()
         .onChanged { value in
-          let newScale = gestureScale * value.magnification
-          zoomScale = min(maxZoomScale, max(minZoomScale, newScale))
+          let newScale = zoomState.gestureScale * value.magnification
+          zoomState.scale = min(maxZoomScale, max(minZoomScale, newScale))
         }
         .onEnded { _ in
-          gestureScale = zoomScale
+          zoomState.gestureScale = zoomState.scale
         }
     )
     .onChange(of: displayDate) {
@@ -816,7 +813,8 @@ struct CalendarDayTimelineView: View {
     onCreatePromise: {},
     currentUserId: "host1",
     weatherCache: [:],
-    groupColorMap: ["g1": Color.pmindigo.n500]
+    groupColorMap: ["g1": Color.pmindigo.n500],
+    zoomState: TimelineZoomState()
   )
   .auroraBackground()
 }
@@ -830,7 +828,8 @@ struct CalendarDayTimelineView: View {
     onCreatePromise: {},
     currentUserId: "preview",
     weatherCache: [:],
-    groupColorMap: [:]
+    groupColorMap: [:],
+    zoomState: TimelineZoomState()
   )
   .auroraBackground()
 }

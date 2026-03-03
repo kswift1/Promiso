@@ -245,6 +245,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
   final class PagerViewController: UIViewController {
     var coordinator: Coordinator?
     var calendarMode: CalendarMode = .weekly
+    let zoomState = TimelineZoomState()
     private let scrollView = UIScrollView()
     private let contentView = UIView()
     private var pageHostingControllers: [UIHostingController<DayTimelineView>] = []
@@ -315,7 +316,8 @@ struct DayTimelinePager: UIViewControllerRepresentable {
           calendarMode: calendarMode,
           currentUserId: currentUserId,
           weatherCache: weatherCache,
-          groupColorMap: groupColorMap
+          groupColorMap: groupColorMap,
+          zoomState: zoomState
         )
         let hostingVC = UIHostingController(rootView: dayTimelineView)
         hostingVC.view.backgroundColor = .clear
@@ -372,7 +374,8 @@ struct DayTimelinePager: UIViewControllerRepresentable {
           calendarMode: calendarMode,
           currentUserId: currentUserId,
           weatherCache: weatherCache,
-          groupColorMap: groupColorMap
+          groupColorMap: groupColorMap,
+          zoomState: zoomState
         )
       }
     }
@@ -405,7 +408,8 @@ struct DayTimelinePager: UIViewControllerRepresentable {
         calendarMode: calendarMode,
         currentUserId: currentUserId,
         weatherCache: weatherCache,
-        groupColorMap: groupColorMap
+        groupColorMap: groupColorMap,
+        zoomState: zoomState
       )
     }
 

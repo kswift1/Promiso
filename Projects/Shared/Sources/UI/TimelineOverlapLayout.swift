@@ -1,4 +1,16 @@
 import Foundation
+import Observation
+
+// MARK: - Timeline Zoom State (페이저 간 공유)
+
+/// 페이저 내 모든 페이지가 동일한 줌 레벨을 공유하기 위한 Observable 상태
+@Observable
+public final class TimelineZoomState {
+  public var scale: CGFloat = 1.0
+  public var gestureScale: CGFloat = 1.0
+
+  public init() {}
+}
 
 // MARK: - Timeline Overlap Layout Engine
 
