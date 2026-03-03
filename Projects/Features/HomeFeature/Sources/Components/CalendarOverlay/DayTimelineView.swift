@@ -19,8 +19,8 @@ struct DayTimelineView: View {
 
   // MARK: - State
 
-  @State private var creationStartSlot: Int? = nil  // 상단 (0-47), nil = 비활성
-  @State private var creationEndSlot: Int = 0        // 하단 (1-48)
+  @State private var creationStartSlot: Int? = nil  // 상단 (0-95), nil = 비활성
+  @State private var creationEndSlot: Int = 0        // 하단 (1-96)
   @State private var dragAnchorStart: Int = 0        // 드래그 시작 시점 start
   @State private var dragAnchorEnd: Int = 0          // 드래그 시작 시점 end
 
@@ -209,17 +209,17 @@ struct DayTimelineView: View {
 
   private var interactionSlots: some View {
     VStack(spacing: 0) {
-      ForEach(0..<48, id: \.self) { slot in
+      ForEach(0..<96, id: \.self) { slot in
         Color.clear
-          .frame(height: hourHeight / 2)
+          .frame(height: hourHeight / 4)
           .contentShape(Rectangle())
           .onLongPressGesture(minimumDuration: 0.5) {
             let impactMedium = UIImpactFeedbackGenerator(style: .medium)
             impactMedium.impactOccurred()
             creationStartSlot = slot
-            creationEndSlot = min(48, slot + 2)
+            creationEndSlot = min(96, slot + 4)
             dragAnchorStart = slot
-            dragAnchorEnd = min(48, slot + 2)
+            dragAnchorEnd = min(96, slot + 4)
           }
       }
     }
@@ -232,12 +232,12 @@ struct DayTimelineView: View {
   private var creationBlockOverlay: some View {
     if let startSlot = creationStartSlot {
       let endSlot = creationEndSlot
-      let blockHeight = CGFloat(endSlot - startSlot) * (hourHeight / 2)
-      let blockY = CGFloat(startSlot) * (hourHeight / 2)
-      let startHour = startSlot / 2
-      let startMinute = (startSlot % 2) * 30
-      let endHour = endSlot / 2
-      let endMinute = (endSlot % 2) * 30
+      let blockHeight = CGFloat(endSlot - startSlot) * (hourHeight / 4)
+      let blockY = CGFloat(startSlot) * (hourHeight / 4)
+      let startHour = startSlot / 4
+      let startMinute = (startSlot % 4) * 15
+      let endHour = endSlot / 4
+      let endMinute = (endSlot % 4) * 15
 
       // Layer 4a: dismiss 배경
       Color.clear
@@ -298,12 +298,12 @@ struct DayTimelineView: View {
       .gesture(
         DragGesture(minimumDistance: 3, coordinateSpace: .named("timeline"))
           .onChanged { value in
-            let slot = Int(round(value.location.y / (hourHeight / 2)))
-            creationStartSlot = max(0, min(creationEndSlot - 2, slot))
+            let slot = Int(round(value.location.y / (hourHeight / 4)))
+            creationStartSlot = max(0, min(creationEndSlot - 4, slot))
           }
           .onEnded { value in
-            let slot = Int(round(value.location.y / (hourHeight / 2)))
-            dragAnchorStart = max(0, min(creationEndSlot - 2, slot))
+            let slot = Int(round(value.location.y / (hourHeight / 4)))
+            dragAnchorStart = max(0, min(creationEndSlot - 4, slot))
           }
       )
 
@@ -335,15 +335,15 @@ struct DayTimelineView: View {
         DragGesture(minimumDistance: 5, coordinateSpace: .named("timeline"))
           .onChanged { value in
             let duration = dragAnchorEnd - dragAnchorStart
-            let delta = Int(round((value.location.y - value.startLocation.y) / (hourHeight / 2)))
-            let newStart = max(0, min(48 - duration, dragAnchorStart + delta))
+            let delta = Int(round((value.location.y - value.startLocation.y) / (hourHeight / 4)))
+            let newStart = max(0, min(96 - duration, dragAnchorStart + delta))
             creationStartSlot = newStart
             creationEndSlot = newStart + duration
           }
           .onEnded { value in
             let duration = dragAnchorEnd - dragAnchorStart
-            let delta = Int(round((value.location.y - value.startLocation.y) / (hourHeight / 2)))
-            let newStart = max(0, min(48 - duration, dragAnchorStart + delta))
+            let delta = Int(round((value.location.y - value.startLocation.y) / (hourHeight / 4)))
+            let newStart = max(0, min(96 - duration, dragAnchorStart + delta))
             dragAnchorStart = newStart
             dragAnchorEnd = newStart + duration
           }
@@ -362,12 +362,12 @@ struct DayTimelineView: View {
       .gesture(
         DragGesture(minimumDistance: 3, coordinateSpace: .named("timeline"))
           .onChanged { value in
-            let slot = Int(round(value.location.y / (hourHeight / 2)))
-            creationEndSlot = max((creationStartSlot ?? 0) + 2, min(48, slot))
+            let slot = Int(round(value.location.y / (hourHeight / 4)))
+            creationEndSlot = max((creationStartSlot ?? 0) + 4, min(96, slot))
           }
           .onEnded { value in
-            let slot = Int(round(value.location.y / (hourHeight / 2)))
-            dragAnchorEnd = max((creationStartSlot ?? 0) + 2, min(48, slot))
+            let slot = Int(round(value.location.y / (hourHeight / 4)))
+            dragAnchorEnd = max((creationStartSlot ?? 0) + 4, min(96, slot))
           }
       )
     }
@@ -384,18 +384,18 @@ struct DayTimelineView: View {
 
   // MARK: - Slot Helpers
 
-  /// 일정 아이템의 시작 시간을 30분 슬롯으로 변환
+  /// 일정 아이템의 시작 시간을 15분 슬롯으로 변환
   private func slotForItem(_ item: HomeModels.ScheduleItem) -> Int {
     let start = clampedStartAt(for: item)
     let cal = Calendar.promiseDisplay
     let hour = cal.component(.hour, from: start)
     let minute = cal.component(.minute, from: start)
-    return hour * 2 + (minute >= 30 ? 1 : 0)
+    return hour * 4 + minute / 15
   }
 
   private func dateForSlot(_ slot: Int) -> Date {
-    let hour = slot / 2
-    let minute = (slot % 2) * 30
+    let hour = slot / 4
+    let minute = (slot % 4) * 15
     return Calendar.promiseDisplay.date(bySettingHour: hour, minute: minute, second: 0, of: displayDate) ?? displayDate
   }
 
@@ -556,9 +556,9 @@ struct DayTimelineView: View {
           UIImpactFeedbackGenerator(style: .medium).impactOccurred()
           let s = slotForItem(item)
           creationStartSlot = s
-          creationEndSlot = min(48, s + 2)
+          creationEndSlot = min(96, s + 4)
           dragAnchorStart = s
-          dragAnchorEnd = min(48, s + 2)
+          dragAnchorEnd = min(96, s + 4)
         }
     )
   }
