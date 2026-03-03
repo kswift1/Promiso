@@ -62,6 +62,8 @@ public struct WeatherTooltip: View {
 
   // MARK: - Timeline
 
+  private static let highPrecipitationThreshold = 50
+
   private var showTimeline: Bool {
     forecastSource == .shortTerm && rangeForecasts.count > 1
   }
@@ -69,13 +71,6 @@ public struct WeatherTooltip: View {
   private var sortedRangeForecasts: [HourlyForecast] {
     rangeForecasts.sorted { $0.dateTime < $1.dateTime }
   }
-
-  private static let hourFormatter: DateFormatter = {
-    let formatter = DateFormatter()
-    formatter.locale = Locale(identifier: "ko_KR")
-    formatter.dateFormat = "H시"
-    return formatter
-  }()
 
   // MARK: - Body
 
@@ -115,7 +110,7 @@ public struct WeatherTooltip: View {
 
           ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 0) {
-              ForEach(Array(sortedRangeForecasts.enumerated()), id: \.offset) { _, hourForecast in
+              ForEach(sortedRangeForecasts, id: \.dateTime) { hourForecast in
                 hourlyColumn(hourForecast)
               }
             }
@@ -232,11 +227,12 @@ public struct WeatherTooltip: View {
   }
 
   private func hourlyColumn(_ hourForecast: HourlyForecast) -> some View {
-    let isHighPrecip = hourForecast.precipitationProbability >= 50
+    let isHighPrecip = hourForecast.precipitationProbability >= Self.highPrecipitationThreshold
+    let hour = Calendar.current.component(.hour, from: hourForecast.dateTime)
 
     return VStack(spacing: 6) {
       // 시간
-      Text(Self.hourFormatter.string(from: hourForecast.dateTime))
+      Text(LocalizedStrings.Weather.hourLabel(hour))
         .font(.system(size: 11, weight: .medium))
         .foregroundStyle(.secondary)
 
