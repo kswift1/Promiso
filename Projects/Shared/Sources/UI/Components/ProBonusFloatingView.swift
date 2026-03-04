@@ -1,17 +1,39 @@
 import SwiftUI
 import ResourceKit
 
+// MARK: - Conflict Severity
+
+public enum ConflictSeverity: Equatable, Sendable {
+  case confirmed
+  case pending
+}
+
 // MARK: - Conflict Info
 
-/// 일정 충돌 표시용 경량 모델 (PromisoShared 내부 전용)
+/// 일정 충돌 표시용 모델 (PromisoShared 내부 전용)
 /// Clients.ScheduleConflict 를 Feature에서 변환하여 전달합니다.
 public struct ConflictInfo: Equatable, Sendable {
   public let title: String
   public let overlapMinutes: Int
+  public let startAt: Date
+  public let endAt: Date?
+  public let emoji: String?
+  public let severity: ConflictSeverity
 
-  public init(title: String, overlapMinutes: Int) {
+  public init(
+    title: String,
+    overlapMinutes: Int,
+    startAt: Date = .now,
+    endAt: Date? = nil,
+    emoji: String? = nil,
+    severity: ConflictSeverity = .confirmed
+  ) {
     self.title = title
     self.overlapMinutes = overlapMinutes
+    self.startAt = startAt
+    self.endAt = endAt
+    self.emoji = emoji
+    self.severity = severity
   }
 }
 
@@ -29,8 +51,13 @@ public struct ProBonusFloatingView: View {
   let weatherLocationName: String?
   let conflicts: [ConflictInfo]
   let isCheckingConflicts: Bool
+  let newEventTitle: String
+  let newEventEmoji: String?
+  let newEventStartAt: Date
+  let newEventEndAt: Date?
 
   @State private var showWeatherTooltip = false
+  @State private var showConflictTooltip = false
 
   public init(
     weatherForecast: HourlyForecast? = nil,
@@ -39,7 +66,11 @@ public struct ProBonusFloatingView: View {
     isLoadingWeather: Bool = false,
     weatherLocationName: String? = nil,
     conflicts: [ConflictInfo] = [],
-    isCheckingConflicts: Bool = false
+    isCheckingConflicts: Bool = false,
+    newEventTitle: String = "",
+    newEventEmoji: String? = nil,
+    newEventStartAt: Date = .now,
+    newEventEndAt: Date? = nil
   ) {
     self.weatherForecast = weatherForecast
     self.rangeForecasts = rangeForecasts
@@ -48,6 +79,10 @@ public struct ProBonusFloatingView: View {
     self.weatherLocationName = weatherLocationName
     self.conflicts = conflicts
     self.isCheckingConflicts = isCheckingConflicts
+    self.newEventTitle = newEventTitle
+    self.newEventEmoji = newEventEmoji
+    self.newEventStartAt = newEventStartAt
+    self.newEventEndAt = newEventEndAt
   }
 
   private var hasContent: Bool {
@@ -166,35 +201,57 @@ public struct ProBonusFloatingView: View {
 
   @ViewBuilder
   private var conflictRow: some View {
-    HStack(spacing: 6) {
-      if isCheckingConflicts {
+    if isCheckingConflicts {
+      HStack(spacing: 6) {
         ProgressView()
           .scaleEffect(0.7)
           .frame(width: 14, height: 14)
 
-        Text("확인 중...")
-          .font(.system(size: 13))
+        Text("겹치는 일정이 있는지 확인중이에요")
+          .font(.system(size: 12))
           .foregroundStyle(.secondary)
-      } else if conflicts.count == 1, let first = conflicts.first {
-        Image(systemName: "exclamationmark.triangle.fill")
-          .font(.system(size: 14))
-          .foregroundStyle(Color.pmwarning.n500)
 
-        Text("'\(first.title)'과(와) \(first.overlapMinutes)분 겹침")
-          .font(.system(size: 13))
-          .foregroundStyle(.primary)
-          .lineLimit(1)
-      } else if conflicts.count > 1 {
-        Image(systemName: "exclamationmark.triangle.fill")
-          .font(.system(size: 14))
-          .foregroundStyle(Color.pmwarning.n500)
-
-        Text("\(conflicts.count)건의 일정 겹침")
-          .font(.system(size: 13))
-          .foregroundStyle(.primary)
+        Spacer(minLength: 0)
       }
+    } else if !conflicts.isEmpty {
+      Button {
+        showConflictTooltip = true
+      } label: {
+        HStack(spacing: 6) {
+          Image(systemName: "exclamationmark.triangle.fill")
+            .font(.system(size: 14))
+            .foregroundStyle(Color.pmwarning.n500)
 
-      Spacer(minLength: 0)
+          if conflicts.count == 1, let first = conflicts.first {
+            Text("'\(first.title)'과(와) \(first.overlapMinutes)분 겹쳐요")
+              .font(.system(size: 12))
+              .foregroundStyle(.primary)
+              .lineLimit(1)
+          } else {
+            Text("\(conflicts.count)건의 일정이 겹쳐요")
+              .font(.system(size: 12))
+              .foregroundStyle(.primary)
+          }
+
+          Spacer(minLength: 0)
+
+          Image(systemName: "info.circle")
+            .font(.system(size: 12))
+            .foregroundStyle(.tertiary)
+        }
+        .contentShape(Rectangle())
+      }
+      .buttonStyle(.plain)
+      .popover(isPresented: $showConflictTooltip, arrowEdge: .bottom) {
+        ConflictTooltip(
+          newEventTitle: newEventTitle,
+          newEventEmoji: newEventEmoji,
+          newEventStartAt: newEventStartAt,
+          newEventEndAt: newEventEndAt,
+          conflicts: conflicts
+        )
+        .presentationCompactAdaptation(.popover)
+      }
     }
   }
 
