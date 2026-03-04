@@ -24,11 +24,9 @@ struct ZoomableImageView: UIViewRepresentable {
   }
 
   func updateUIView(_ container: ZoomableImageContainer, context: Context) {
-    container.updateCallbacks(
-      onZoomChanged: onZoomChanged,
-      onDismissDrag: onDismissDrag,
-      onDismissDragEnded: onDismissDragEnded
-    )
+    container.onZoomChanged = onZoomChanged
+    container.onDismissDrag = onDismissDrag
+    container.onDismissDragEnded = onDismissDragEnded
   }
 }
 
@@ -43,6 +41,7 @@ final class ZoomableImageContainer: UIView {
   var onDismissDrag: (CGFloat) -> Void
   var onDismissDragEnded: (CGFloat, CGFloat) -> Void
 
+  private let doubleTapZoomScale: CGFloat = 2.5
   private var lastBoundsSize: CGSize = .zero
 
   init(
@@ -63,16 +62,6 @@ final class ZoomableImageContainer: UIView {
   @available(*, unavailable)
   required init?(coder: NSCoder) {
     fatalError("init(coder:) has not been implemented")
-  }
-
-  func updateCallbacks(
-    onZoomChanged: @escaping (Bool) -> Void,
-    onDismissDrag: @escaping (CGFloat) -> Void,
-    onDismissDragEnded: @escaping (CGFloat, CGFloat) -> Void
-  ) {
-    self.onZoomChanged = onZoomChanged
-    self.onDismissDrag = onDismissDrag
-    self.onDismissDragEnded = onDismissDragEnded
   }
 
   // MARK: - Setup
@@ -164,7 +153,7 @@ final class ZoomableImageContainer: UIView {
       scrollView.setZoomScale(scrollView.minimumZoomScale, animated: true)
     } else {
       let point = gesture.location(in: imageView)
-      let targetScale: CGFloat = 2.5
+      let targetScale = doubleTapZoomScale
       let size = CGSize(
         width: scrollView.bounds.width / targetScale,
         height: scrollView.bounds.height / targetScale
@@ -204,15 +193,17 @@ extension ZoomableImageContainer: UIScrollViewDelegate {
 
   func scrollViewDidZoom(_ scrollView: UIScrollView) {
     centerImage()
-    let isZoomed = scrollView.zoomScale > scrollView.minimumZoomScale + 0.01
-    updateGestureState(isZoomed: isZoomed)
-    onZoomChanged(isZoomed)
+    updateZoomState(for: scrollView)
   }
 
   func scrollViewDidEndZooming(
     _ scrollView: UIScrollView, with view: UIView?, atScale scale: CGFloat
   ) {
-    let isZoomed = scale > scrollView.minimumZoomScale + 0.01
+    updateZoomState(for: scrollView)
+  }
+
+  private func updateZoomState(for scrollView: UIScrollView) {
+    let isZoomed = scrollView.zoomScale > scrollView.minimumZoomScale + 0.01
     updateGestureState(isZoomed: isZoomed)
     onZoomChanged(isZoomed)
   }
