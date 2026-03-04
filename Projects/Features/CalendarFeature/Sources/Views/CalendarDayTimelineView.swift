@@ -14,7 +14,7 @@ struct CalendarDayTimelineView: View {
   let onScheduleItemTapped: (CalendarFeature.ScheduleItem) -> Void
   let onEditScheduleItem: ((CalendarFeature.ScheduleItem) -> Void)?
   let onCreatePersonalEvent: (Date) -> Void
-  let onCreatePromise: () -> Void
+  let onCreatePromise: (Date) -> Void
   let onDeleteScheduleItem: ((CalendarFeature.ScheduleItem) -> Void)?
   let onShareScheduleItem: ((CalendarFeature.ScheduleItem) -> Void)?
   let currentUserId: String
@@ -28,6 +28,8 @@ struct CalendarDayTimelineView: View {
   @State private var creationEndSlot: Int = 0        // 하단 (1-144)
   @State private var dragAnchorStart: Int = 0        // 드래그 시작 시점 start
   @State private var dragAnchorEnd: Int = 0          // 드래그 시작 시점 end
+  @State private var showCreationDialog = false
+  @State private var creationTargetDate: Date?
 
   // 이미지 미리보기
   @State private var previewImageUrls: [String]? = nil
@@ -83,6 +85,18 @@ struct CalendarDayTimelineView: View {
           )
         }
       }
+  }
+
+  private var creationDialogBinding: Binding<Bool> {
+    Binding(
+      get: { showCreationDialog },
+      set: { isPresented in
+        showCreationDialog = isPresented
+        if !isPresented {
+          creationTargetDate = nil
+        }
+      }
+    )
   }
 
   // MARK: - Timeline Content
@@ -334,28 +348,39 @@ struct CalendarDayTimelineView: View {
           }
       )
 
-      // 중간 영역: 이동 드래그 + 액션 버튼
-      HStack(spacing: 12) {
-        Button {
-          onCreatePersonalEvent(dateForSlot(startSlot))
-          creationStartSlot = nil
-        } label: {
-          Label(LocalizedStrings.Calendar.addPersonalEvent, systemImage: "plus.circle.fill")
-            .font(.system(size: 11, weight: .semibold))
-            .foregroundStyle(Color.pminfo.n500)
-        }
-        .buttonStyle(.plain)
-
-        Button {
-          onCreatePromise()
-          creationStartSlot = nil
-        } label: {
-          Label(LocalizedStrings.Calendar.createPromise, systemImage: "person.2.circle.fill")
-            .font(.system(size: 11, weight: .semibold))
-            .foregroundStyle(Color.pmindigo.n500)
-        }
-        .buttonStyle(.plain)
+      // 중간 영역: 이동 드래그 + 일정 추가 버튼
+      Button {
+        creationTargetDate = dateForSlot(startSlot)
+        showCreationDialog = true
+      } label: {
+        Label(LocalizedStrings.Calendar.addSchedule, systemImage: "plus.circle.fill")
+          .font(.system(size: 12, weight: .semibold))
+          .foregroundStyle(Color.pmindigo.n500)
       }
+      .confirmationDialog(
+        LocalizedStrings.Calendar.addSchedule,
+        isPresented: creationDialogBinding,
+        titleVisibility: .hidden,
+        actions: {
+          Button(LocalizedStrings.Calendar.personalSchedule) {
+            guard let date = creationTargetDate else { return }
+            onCreatePersonalEvent(date)
+            creationTargetDate = nil
+            creationStartSlot = nil
+          }
+          Button(LocalizedStrings.Calendar.groupSchedule) {
+            guard let date = creationTargetDate else { return }
+            onCreatePromise(date)
+            creationTargetDate = nil
+            creationStartSlot = nil
+          }
+          Button(LocalizedStrings.Common.cancel, role: .cancel) {
+            creationTargetDate = nil
+            creationStartSlot = nil
+          }
+        }
+      )
+      .buttonStyle(.plain)
       .frame(maxWidth: .infinity, maxHeight: .infinity)
       .contentShape(Rectangle())
       .gesture(
@@ -1111,7 +1136,7 @@ private struct ScheduleItemThumbnail: View {
     onScheduleItemTapped: { _ in },
     onEditScheduleItem: nil,
     onCreatePersonalEvent: { _ in },
-    onCreatePromise: {},
+    onCreatePromise: { _ in },
     onDeleteScheduleItem: nil,
     onShareScheduleItem: nil,
     currentUserId: "host1",
@@ -1129,7 +1154,7 @@ private struct ScheduleItemThumbnail: View {
     onScheduleItemTapped: { _ in },
     onEditScheduleItem: nil,
     onCreatePersonalEvent: { _ in },
-    onCreatePromise: {},
+    onCreatePromise: { _ in },
     onDeleteScheduleItem: nil,
     onShareScheduleItem: nil,
     currentUserId: "preview",

@@ -6,6 +6,7 @@ import ComposableArchitecture
 import PromisoShared
 import Clients
 import SharedFeature
+import CreatePromiseFeature
 import ResourceKit
 
 // MARK: - Feature Namespace
@@ -107,6 +108,8 @@ extension CalendarFeature {
       @Presents var editPromise: EditPromise.Feature.State?
       /// 개인 일정 수정 시트
       @Presents var editPersonalEvent: CreatePersonalEvent.Feature.State?
+      /// 약속 생성 시트
+      @Presents var createPromise: CreatePromise.Feature.State?
       /// 약속 공유 시트용
       var sharePromise: PromiseModel?
       var isKakaoPromiseSharing: Bool = false
@@ -448,11 +451,11 @@ extension CalendarFeature {
     public enum Action {
       case view(ViewAction)
       case `internal`(InternalAction)
-      case delegate(Delegate)
       case path(StackActionOf<Path>)
       case deleteAlert(PresentationAction<DeleteAlertAction>)
       case editPromise(PresentationAction<EditPromise.Feature.Action>)
       case editPersonalEvent(PresentationAction<CreatePersonalEvent.Feature.Action>)
+      case createPromise(PresentationAction<CreatePromise.Feature.Action>)
 
       @CasePathable
       public enum ViewAction {
@@ -519,10 +522,6 @@ extension CalendarFeature {
         case kakaoPromiseShareResult(KakaoShareResult)
       }
 
-      @CasePathable
-      public enum Delegate: Equatable, Sendable {
-        case createPromiseWithExtractedInfo(PromiseExtractedInfo)
-      }
     }
 
     // MARK: - Cancellation IDs
@@ -610,6 +609,22 @@ extension CalendarFeature {
       case .editPersonalEvent:
         return .none
 
+      case .createPromise(.presented(.delegate(.promiseCreated))):
+        state.createPromise = nil
+        let currentMonth = state.selectedDate.startOfMonth
+        return .send(.internal(.fetchPromisesForMonth(currentMonth)))
+
+      case .createPromise(.presented(.delegate(.dismiss))):
+        state.createPromise = nil
+        return .none
+
+      case .createPromise(.presented(.delegate(.createGroupRequested))):
+        state.createPromise = nil
+        return .none
+
+      case .createPromise:
+        return .none
+
       case .deleteAlert(.presented(.confirmDelete)):
           guard let item = state.scheduleItemToDelete else { return .none }
           state.scheduleItemToDelete = nil
@@ -632,9 +647,6 @@ extension CalendarFeature {
         case .deleteAlert:
           state.scheduleItemToDelete = nil
           return .none
-
-        case .delegate:
-          return .none
         }
       }
       .ifLet(\.$deleteAlert, action: \.deleteAlert)
@@ -643,6 +655,9 @@ extension CalendarFeature {
       }
       .ifLet(\.$editPersonalEvent, action: \.editPersonalEvent) {
         CreatePersonalEvent.Feature()
+      }
+      .ifLet(\.$createPromise, action: \.createPromise) {
+        CreatePromise.Feature()
       }
       .forEach(\.path, action: \.path)
     }
@@ -962,9 +977,9 @@ extension CalendarFeature {
         return .none
 
       case let .createPromiseFromTimeline(date):
-        return .send(.delegate(.createPromiseWithExtractedInfo(
-          PromiseExtractedInfo(date: date, rawText: "", source: .text)
-        )))
+        let info = PromiseExtractedInfo(date: date, rawText: "", source: .text)
+        state.createPromise = CreatePromise.Feature.State(prefillInfo: info)
+        return .none
 
       case .deleteScheduleItem(let item):
         state.scheduleItemToDelete = item

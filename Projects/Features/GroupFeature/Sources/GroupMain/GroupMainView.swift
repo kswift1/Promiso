@@ -2,6 +2,7 @@ import SwiftUI
 import ComposableArchitecture
 import PromisoShared
 import ResourceKit
+import CreatePromiseFeature
 
 extension GroupMain {
   public struct RootView: View {

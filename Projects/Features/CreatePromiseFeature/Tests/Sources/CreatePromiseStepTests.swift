@@ -17,7 +17,7 @@
 //
 
 import Testing
-@testable import GroupFeature
+@testable import CreatePromiseFeature
 
 // MARK: - CreatePromiseStep Navigation Tests
 

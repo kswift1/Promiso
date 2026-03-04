@@ -17,7 +17,7 @@ struct CalendarDayTimelinePager: UIViewControllerRepresentable {
   let onPreviousDay: () -> Void
   let onNextDay: () -> Void
   let onCreatePersonalEvent: (Date) -> Void
-  let onCreatePromise: () -> Void
+  let onCreatePromise: (Date) -> Void
   let onDeleteScheduleItem: ((CalendarFeature.ScheduleItem) -> Void)?
   let onShareScheduleItem: ((CalendarFeature.ScheduleItem) -> Void)?
   let currentUserId: String
@@ -310,7 +310,7 @@ struct CalendarDayTimelinePager: UIViewControllerRepresentable {
       onScheduleItemTapped: @escaping (CalendarFeature.ScheduleItem) -> Void,
       onEditScheduleItem: ((CalendarFeature.ScheduleItem) -> Void)?,
       onCreatePersonalEvent: @escaping (Date) -> Void,
-      onCreatePromise: @escaping () -> Void,
+      onCreatePromise: @escaping (Date) -> Void,
       onDeleteScheduleItem: ((CalendarFeature.ScheduleItem) -> Void)?,
       onShareScheduleItem: ((CalendarFeature.ScheduleItem) -> Void)?,
       currentUserId: String,
@@ -376,7 +376,7 @@ struct CalendarDayTimelinePager: UIViewControllerRepresentable {
       onScheduleItemTapped: @escaping (CalendarFeature.ScheduleItem) -> Void,
       onEditScheduleItem: ((CalendarFeature.ScheduleItem) -> Void)?,
       onCreatePersonalEvent: @escaping (Date) -> Void,
-      onCreatePromise: @escaping () -> Void,
+      onCreatePromise: @escaping (Date) -> Void,
       onDeleteScheduleItem: ((CalendarFeature.ScheduleItem) -> Void)?,
       onShareScheduleItem: ((CalendarFeature.ScheduleItem) -> Void)?,
       currentUserId: String,
@@ -422,7 +422,7 @@ struct CalendarDayTimelinePager: UIViewControllerRepresentable {
       onScheduleItemTapped: @escaping (CalendarFeature.ScheduleItem) -> Void,
       onEditScheduleItem: ((CalendarFeature.ScheduleItem) -> Void)?,
       onCreatePersonalEvent: @escaping (Date) -> Void,
-      onCreatePromise: @escaping () -> Void,
+      onCreatePromise: @escaping (Date) -> Void,
       onDeleteScheduleItem: ((CalendarFeature.ScheduleItem) -> Void)?,
       onShareScheduleItem: ((CalendarFeature.ScheduleItem) -> Void)?,
       currentUserId: String,
