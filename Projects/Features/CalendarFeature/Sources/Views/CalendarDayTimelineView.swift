@@ -621,21 +621,16 @@ struct CalendarDayTimelineView: View {
     }
     .buttonStyle(.plain)
     .contextMenu {
-      Button {
-        onScheduleItemTapped(item)
-      } label: {
-        Label(LocalizedStrings.PromiseCard.viewDetail, systemImage: "info.circle")
-      }
-
       switch item {
       case .promise(let promise):
-        Button {
-          onShareScheduleItem?(item)
-        } label: {
-          Label(LocalizedStrings.PromiseCard.share, systemImage: "square.and.arrow.up")
-        }
-
+        // Host인 경우 수정/삭제 옵션 (PromiseCard 패턴)
         if promise.isHost(userId: currentUserId) {
+          Button {
+            onScheduleItemTapped(item)
+          } label: {
+            Label(LocalizedStrings.PromiseCard.editPromise, systemImage: "pencil")
+          }
+
           Button(role: .destructive) {
             onDeleteScheduleItem?(item)
           } label: {
@@ -643,7 +638,32 @@ struct CalendarDayTimelineView: View {
           }
         }
 
+        // 항상 표시
+        Button {
+          onScheduleItemTapped(item)
+        } label: {
+          Label(LocalizedStrings.PromiseCard.viewDetail, systemImage: "info.circle")
+        }
+
+        Button {
+          onShareScheduleItem?(item)
+        } label: {
+          Label(LocalizedStrings.PromiseCard.share, systemImage: "square.and.arrow.up")
+        }
+
       case .personalEvent:
+        Button {
+          onScheduleItemTapped(item)
+        } label: {
+          Label(LocalizedStrings.Personal.viewDetail, systemImage: "info.circle")
+        }
+
+        Button {
+          onScheduleItemTapped(item)
+        } label: {
+          Label("수정", systemImage: "pencil")
+        }
+
         Button(role: .destructive) {
           onDeleteScheduleItem?(item)
         } label: {
@@ -651,7 +671,11 @@ struct CalendarDayTimelineView: View {
         }
 
       case .calendarEvent:
-        EmptyView()
+        Button {
+          onScheduleItemTapped(item)
+        } label: {
+          Label(LocalizedStrings.PromiseCard.viewDetail, systemImage: "info.circle")
+        }
       }
     } preview: {
       contextMenuPreview(for: item)
