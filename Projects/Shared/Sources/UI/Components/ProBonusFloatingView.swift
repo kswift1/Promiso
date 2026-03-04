@@ -57,11 +57,12 @@ public struct ProBonusFloatingView: View {
     || !conflicts.isEmpty
   }
 
-  private let badgeHeight: CGFloat = 40
-
   public var body: some View {
     if hasContent {
-      VStack(alignment: .leading, spacing: 4) {
+      VStack(alignment: .leading, spacing: 2) {
+        // PRO 뱃지
+        proBadge
+
         // 날씨 로딩 행
         if isLoadingWeather && weatherForecast == nil {
           weatherLoadingRow
@@ -77,20 +78,18 @@ public struct ProBonusFloatingView: View {
           conflictRow
         }
       }
-      .padding(.horizontal, 12)
-      .padding(.vertical, 8)
+      .padding(.horizontal, 10)
+      .padding(.vertical, 6)
       .frame(maxWidth: .infinity, alignment: .leading)
       .adaptiveGlassCard(cornerRadius: 12)
-      .overlay(alignment: .topLeading) {
-        ResourceKitAsset.proBadge.swiftUIImage
-          .resizable()
-          .interpolation(.high)
-          .aspectRatio(contentMode: .fit)
-          .frame(height: badgeHeight)
-          .offset(x: 12, y: -badgeHeight / 2)
-      }
       .transition(.opacity.combined(with: .move(edge: .bottom)))
     }
+  }
+
+  // MARK: - Pro Badge
+
+  private var proBadge: some View {
+    ProBadge()
   }
 
   // MARK: - Weather Loading Row
