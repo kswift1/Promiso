@@ -84,11 +84,11 @@ struct CalendarFilterSheetView: View {
     return Button { onGroupToggled(group.id) } label: {
       HStack(spacing: 6) {
         // 그룹 이미지 + groupColor 링
-        GroupThumbnailView(imageUrl: group.imageUrl, name: group.name, size: 26)
+        GroupThumbnailView(imageUrl: group.imageUrl, name: group.name, size: 22)
           .overlay(
             Circle()
               .stroke(groupColor, lineWidth: 3.5)
-              .frame(width: 29.5, height: 29.5)
+              .frame(width: 25.5, height: 25.5)
           )
         Text(group.name)
           .font(.system(size: 14, weight: .medium))
@@ -111,18 +111,18 @@ struct CalendarFilterSheetView: View {
   // MARK: - Personal Event Toggle
 
   private var personalEventToggle: some View {
-    Button { onPersonalEventsToggled() } label: {
-      HStack(spacing: 10) {
-        Image(systemName: showPersonalEvents ? "checkmark.square.fill" : "square")
-          .font(.system(size: 20))
-          .foregroundColor(showPersonalEvents ? Color.pmindigo.n500 : Color(.systemGray3))
-        Text(LocalizedStrings.Calendar.filterShowPersonalEvents)
-          .font(.system(size: 15, weight: .medium))
-          .foregroundColor(.primary)
-        Spacer()
-      }
+    HStack {
+      Text(LocalizedStrings.Calendar.filterPersonal)
+        .font(.system(size: 15, weight: .semibold))
+        .foregroundColor(.secondary)
+      Spacer()
+      Toggle("", isOn: Binding(
+        get: { showPersonalEvents },
+        set: { _ in onPersonalEventsToggled() }
+      ))
+      .labelsHidden()
+      .tint(Color.pmindigo.n500)
     }
-    .buttonStyle(.plain)
   }
 }
 

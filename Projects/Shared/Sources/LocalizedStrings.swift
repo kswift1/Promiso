@@ -1260,7 +1260,7 @@ public enum LocalizedStrings {
     public static var filterTitle: String { String(localized: "calendar.filter.title", bundle: bundle) }
     public static var filterSelectAll: String { String(localized: "calendar.filter.selectAll", bundle: bundle) }
     public static var filterGroup: String { String(localized: "calendar.filter.group", bundle: bundle) }
-    public static var filterShowPersonalEvents: String { String(localized: "calendar.filter.showPersonalEvents", bundle: bundle) }
+    public static var filterPersonal: String { String(localized: "calendar.filter.personal", bundle: bundle) }
   }
 
   // MARK: - Personal

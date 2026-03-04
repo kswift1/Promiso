@@ -21198,18 +21198,18 @@
         }
       }
     },
-    "calendar.filter.showPersonalEvents": {
+    "calendar.filter.personal": {
       "localizations": {
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "개인 일정 표시"
+            "value": "개인"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Show Personal Events"
+            "value": "Personal"
           }
         }
       }
