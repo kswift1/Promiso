@@ -40,4 +40,22 @@ public enum WeatherHintHelper {
       .first(where: { calendar.isDate($0.date, inSameDayAs: startAt) })?
       .maxTemperature
   }
+
+  /// 약속 시간 구간 시간별 예보 목록 (팝오버 타임라인용)
+  public static func rangeForecasts(
+    from weatherInfo: WeatherInfo,
+    startAt: Date,
+    endAt: Date?
+  ) -> [HourlyForecast] {
+    guard let endAt else { return [] }
+    return weatherInfo.forecasts(from: startAt, to: endAt)
+  }
+
+  /// 예보 출처 (단기/중기)
+  public static func forecastSource(
+    from weatherInfo: WeatherInfo,
+    startAt: Date
+  ) -> ForecastSource {
+    weatherInfo.forecastSource(for: startAt)
+  }
 }

@@ -110,7 +110,10 @@ extension CreatePersonalEvent {
     private var floatingBonusView: some View {
       ProBonusFloatingView(
         weatherForecast: weatherForecast,
-        weatherAdvice: nil,
+        rangeForecasts: weatherRangeForecasts,
+        forecastSource: weatherForecastSource,
+        isLoadingWeather: store.weatherState.isLoading,
+        weatherLocationName: store.event.location?.name,
         conflicts: store.conflicts.map { ConflictInfo(title: $0.title, overlapMinutes: $0.overlapMinutes) },
         isCheckingConflicts: store.isCheckingConflicts
       )
@@ -120,6 +123,16 @@ extension CreatePersonalEvent {
     private var weatherForecast: HourlyForecast? {
       guard let info = store.weatherState.value else { return nil }
       return WeatherHintHelper.forecast(from: info, startAt: store.event.startAt, endAt: store.event.endAt)
+    }
+
+    private var weatherRangeForecasts: [HourlyForecast] {
+      guard let info = store.weatherState.value else { return [] }
+      return WeatherHintHelper.rangeForecasts(from: info, startAt: store.event.startAt, endAt: store.event.endAt)
+    }
+
+    private var weatherForecastSource: ForecastSource {
+      guard let info = store.weatherState.value else { return .shortTerm }
+      return WeatherHintHelper.forecastSource(from: info, startAt: store.event.startAt)
     }
 
     // MARK: - Bottom Bar

@@ -23,31 +23,50 @@ public struct ConflictInfo: Equatable, Sendable {
 /// 추후 Pro Plan 전용으로 변경될 수 있으므로 이름을 ProBonusFloatingView로 유지합니다.
 public struct ProBonusFloatingView: View {
   let weatherForecast: HourlyForecast?
-  let weatherAdvice: String?
+  let rangeForecasts: [HourlyForecast]
+  let forecastSource: ForecastSource
+  let isLoadingWeather: Bool
+  let weatherLocationName: String?
   let conflicts: [ConflictInfo]
   let isCheckingConflicts: Bool
 
+  @State private var showWeatherTooltip = false
+
   public init(
     weatherForecast: HourlyForecast? = nil,
-    weatherAdvice: String? = nil,
+    rangeForecasts: [HourlyForecast] = [],
+    forecastSource: ForecastSource = .shortTerm,
+    isLoadingWeather: Bool = false,
+    weatherLocationName: String? = nil,
     conflicts: [ConflictInfo] = [],
     isCheckingConflicts: Bool = false
   ) {
     self.weatherForecast = weatherForecast
-    self.weatherAdvice = weatherAdvice
+    self.rangeForecasts = rangeForecasts
+    self.forecastSource = forecastSource
+    self.isLoadingWeather = isLoadingWeather
+    self.weatherLocationName = weatherLocationName
     self.conflicts = conflicts
     self.isCheckingConflicts = isCheckingConflicts
   }
 
   private var hasContent: Bool {
     weatherForecast != nil
+    || isLoadingWeather
     || isCheckingConflicts
     || !conflicts.isEmpty
   }
 
+  private let badgeHeight: CGFloat = 40
+
   public var body: some View {
     if hasContent {
       VStack(alignment: .leading, spacing: 4) {
+        // 날씨 로딩 행
+        if isLoadingWeather && weatherForecast == nil {
+          weatherLoadingRow
+        }
+
         // 날씨 행
         if let forecast = weatherForecast {
           weatherRow(forecast: forecast)
@@ -57,14 +76,45 @@ public struct ProBonusFloatingView: View {
         if isCheckingConflicts || !conflicts.isEmpty {
           conflictRow
         }
-
-
       }
       .padding(.horizontal, 12)
       .padding(.vertical, 8)
       .frame(maxWidth: .infinity, alignment: .leading)
       .adaptiveGlassCard(cornerRadius: 12)
+      .overlay(alignment: .topLeading) {
+        ResourceKitAsset.proBadge.swiftUIImage
+          .resizable()
+          .interpolation(.high)
+          .aspectRatio(contentMode: .fit)
+          .frame(height: badgeHeight)
+          .offset(x: 12, y: -badgeHeight / 2)
+      }
       .transition(.opacity.combined(with: .move(edge: .bottom)))
+    }
+  }
+
+  // MARK: - Weather Loading Row
+
+  @ViewBuilder
+  private var weatherLoadingRow: some View {
+    HStack(spacing: 6) {
+      ProgressView()
+        .scaleEffect(0.7)
+        .frame(width: 14, height: 14)
+
+      if let name = weatherLocationName {
+        Text("\(name)의 약속시간대 날씨를 확인중이에요")
+          .font(.system(size: 12))
+          .foregroundStyle(.secondary)
+          .lineLimit(1)
+      } else {
+        Text("약속시간대 날씨를 확인중이에요")
+          .font(.system(size: 12))
+          .foregroundStyle(.secondary)
+          .lineLimit(1)
+      }
+
+      Spacer(minLength: 0)
     }
   }
 
@@ -72,23 +122,39 @@ public struct ProBonusFloatingView: View {
 
   @ViewBuilder
   private func weatherRow(forecast: HourlyForecast) -> some View {
-    HStack(spacing: 6) {
-      Image(systemName: forecast.condition.sfSymbolName)
-        .symbolRenderingMode(.multicolor)
-        .font(.system(size: 14))
+    Button {
+      showWeatherTooltip = true
+    } label: {
+      HStack(spacing: 6) {
+        Image(systemName: forecast.condition.sfSymbolName)
+          .symbolRenderingMode(.multicolor)
+          .font(.system(size: 14))
 
-      Text("\(Int(forecast.temperature.rounded()))°C")
-        .font(.system(size: 13, weight: .semibold))
-        .foregroundStyle(.primary)
+        Text("\(Int(forecast.temperature.rounded()))°")
+          .font(.system(size: 13, weight: .semibold))
+          .foregroundStyle(.primary)
 
-      if let advice = weatherAdvice {
-        Text("— \(advice)")
+        Text(adviceMessage(for: forecast))
           .font(.system(size: 12))
           .foregroundStyle(.secondary)
           .lineLimit(1)
-      }
 
-      Spacer(minLength: 0)
+        Spacer(minLength: 0)
+
+        Image(systemName: "info.circle")
+          .font(.system(size: 12))
+          .foregroundStyle(.tertiary)
+      }
+      .contentShape(Rectangle())
+    }
+    .buttonStyle(.plain)
+    .popover(isPresented: $showWeatherTooltip, arrowEdge: .bottom) {
+      WeatherTooltip(
+        forecast: forecast,
+        rangeForecasts: rangeForecasts,
+        forecastSource: forecastSource
+      )
+      .presentationCompactAdaptation(.popover)
     }
   }
 
@@ -128,9 +194,29 @@ public struct ProBonusFloatingView: View {
     }
   }
 
+  // MARK: - Helpers
+
+  private func adviceMessage(for forecast: HourlyForecast) -> String {
+    if let advice = WeatherAdvice.from(forecast: forecast).first {
+      return advice.message
+    }
+    return forecast.condition.description
+  }
 }
 
 // MARK: - Previews
+
+#Preview("날씨 로딩") {
+  VStack {
+    Spacer()
+    ProBonusFloatingView(
+      isLoadingWeather: true,
+      weatherLocationName: "강남역"
+    )
+    .padding(.horizontal, 16)
+    .padding(.bottom, 8)
+  }
+}
 
 #Preview("날씨") {
   VStack {
@@ -144,8 +230,7 @@ public struct ProBonusFloatingView: View {
         precipitationProbability: 60,
         humidity: 70,
         windSpeed: 3.5
-      ),
-      weatherAdvice: "우산 챙기세요",
+      )
     )
     .padding(.horizontal, 16)
     .padding(.bottom, 8)
@@ -203,10 +288,9 @@ public struct ProBonusFloatingView: View {
         humidity: 85,
         windSpeed: 6.0
       ),
-      weatherAdvice: "우산 필수",
       conflicts: [
         ConflictInfo(title: "스터디 모임", overlapMinutes: 45)
-      ],
+      ]
     )
     .padding(.horizontal, 16)
     .padding(.bottom, 8)
