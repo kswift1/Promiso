@@ -542,77 +542,97 @@ struct CalendarDayTimelineView: View {
     let cardShadow: Double = (layout?.severity == .layerable && (layout?.zIndex ?? 0) > 0)
       ? 0.15 : 0.08
 
+    // 높이 기반 표시 단계: compact(<64) → normal(64~) → detail(100~) → rich(140~)
+    let showDetails = blockHeight >= 100
+    let showRich = blockHeight >= 140
+
     return Button {
       onScheduleItemTapped(item)
     } label: {
-      HStack(spacing: 0) {
-        VStack(alignment: .leading, spacing: 2) {
-          // Row 1: 이모지 + 제목 + 상태
-          HStack(spacing: 5) {
-            Text(item.displayEmoji)
-              .font(.system(size: isCompact ? 14 : 16))
-
-            Text(item.title)
-              .font(.system(size: 13, weight: .semibold))
-              .foregroundStyle(.primary)
-              .lineLimit(1)
-          }
-
-          if !isCompact {
-            // Row 2: 그룹명 / 캘린더명 + 참여자수
+      VStack(alignment: .leading, spacing: 0) {
+        HStack(spacing: 0) {
+          VStack(alignment: .leading, spacing: 2) {
+            // Row 1: 이모지 + 제목
             HStack(spacing: 5) {
-              if let name = groupName(for: item) {
-                Text(name)
-                  .font(.system(size: 10))
-                  .foregroundStyle(.secondary)
-                  .lineLimit(1)
-              }
+              Text(item.displayEmoji)
+                .font(.system(size: isCompact ? 14 : 16))
 
+              Text(item.title)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.primary)
+                .lineLimit(1)
             }
 
-            // Row 3: 장소 (있을 때만)
-            if let location = itemLocation(for: item), !location.isEmpty {
-              HStack(spacing: 4) {
-                Image(systemName: "location.fill")
-                  .font(.system(size: 9))
-                  .foregroundStyle(Color.pmgray.n400)
-                Text(location)
+            if !isCompact {
+              // Row 2: 그룹명
+              HStack(spacing: 5) {
+                if let name = groupName(for: item) {
+                  Text(name)
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                }
+              }
+
+              // Row 3: 장소 (있을 때만)
+              if let location = itemLocation(for: item), !location.isEmpty {
+                HStack(spacing: 4) {
+                  Image(systemName: "location.fill")
+                    .font(.system(size: 9))
+                    .foregroundStyle(Color.pmgray.n400)
+                  Text(location)
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                }
+              }
+
+              // Row 4: 상세설명 (detail 이상에서 표시)
+              if showDetails, let desc = itemDescription(for: item), !desc.isEmpty {
+                Text(desc)
                   .font(.system(size: 10))
                   .foregroundStyle(.secondary)
-                  .lineLimit(1)
+                  .lineLimit(showRich ? 3 : 1)
               }
             }
           }
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
+          .padding(.horizontal, 10)
+          .padding(.vertical, 6)
 
-        Spacer(minLength: 0)
-      }
-      .frame(height: blockHeight, alignment: .top)
-      .background(.ultraThinMaterial, in: cardShape)
-      .overlay(cardShape.strokeBorder(.white.opacity(0.2), lineWidth: 1))
-      .shadow(color: .black.opacity(cardShadow), radius: 8, x: 0, y: 4)
-      .overlay(alignment: .topTrailing) {
-        if layout?.severity != .colliding {
-          weatherBadge(for: item)
-            .padding(.top, 4)
-            .padding(.trailing, 4)
+          Spacer(minLength: 0)
+        }
+
+        // 이미지 썸네일 (detail 이상, 하단에 배치)
+        if showDetails, let imageUrl = itemFirstImageUrl(for: item) {
+          ScheduleItemThumbnail(url: imageUrl, size: showRich ? 72 : 48)
+            .padding(.horizontal, 10)
+            .padding(.bottom, 6)
         }
       }
-      .overlay(alignment: .leading) {
-        UnevenRoundedRectangle(
-          topLeadingRadius: topRadius,
-          bottomLeadingRadius: bottomRadius,
-          bottomTrailingRadius: 0,
-          topTrailingRadius: 0
-        )
-        .fill(barColor(for: item).opacity(barOpacity))
-        .frame(width: colorBarWidth)
-      }
-      .clipShape(cardShape)
-      .contentShape(Rectangle())
     }
+    .frame(height: blockHeight, alignment: .top)
+    .background(.ultraThinMaterial, in: cardShape)
+    .overlay(cardShape.strokeBorder(.white.opacity(0.2), lineWidth: 1))
+    .shadow(color: .black.opacity(cardShadow), radius: 8, x: 0, y: 4)
+    .overlay(alignment: .topTrailing) {
+      if layout?.severity != .colliding {
+        weatherBadge(for: item)
+          .padding(.top, 4)
+          .padding(.trailing, 4)
+      }
+    }
+    .overlay(alignment: .leading) {
+      UnevenRoundedRectangle(
+        topLeadingRadius: topRadius,
+        bottomLeadingRadius: bottomRadius,
+        bottomTrailingRadius: 0,
+        topTrailingRadius: 0
+      )
+      .fill(barColor(for: item).opacity(barOpacity))
+      .frame(width: colorBarWidth)
+    }
+    .clipShape(cardShape)
+    .contentShape(Rectangle())
     .buttonStyle(.plain)
     .contextMenu {
       switch item {
@@ -871,6 +891,28 @@ struct CalendarDayTimelineView: View {
     }
   }
 
+  private func itemDescription(for item: CalendarFeature.ScheduleItem) -> String? {
+    switch item {
+    case .promise(let p):
+      return p.description
+    case .personalEvent(let e):
+      return e.description
+    case .calendarEvent:
+      return nil
+    }
+  }
+
+  private func itemFirstImageUrl(for item: CalendarFeature.ScheduleItem) -> URL? {
+    switch item {
+    case .promise(let p):
+      return p.imageUrls.first.flatMap { URL(string: $0) }
+    case .personalEvent(let e):
+      return e.imageUrls.first.flatMap { URL(string: $0) }
+    case .calendarEvent:
+      return nil
+    }
+  }
+
   // MARK: - Formatters
 
   private enum Formatters {
@@ -890,6 +932,33 @@ struct CalendarDayTimelineView: View {
       f.dateFormat = "M/d HH:mm"
       return f
     }()
+  }
+}
+
+// MARK: - Schedule Item Thumbnail
+
+/// 타임라인 카드용 이미지 썸네일 (Nuke ImageLoader 사용)
+private struct ScheduleItemThumbnail: View {
+  let url: URL
+  let size: CGFloat
+
+  @State private var loadedImage: UIImage?
+
+  var body: some View {
+    Group {
+      if let image = loadedImage {
+        Image(uiImage: image)
+          .resizable()
+          .scaledToFill()
+      } else {
+        Color.clear
+      }
+    }
+    .frame(width: size, height: size)
+    .clipShape(RoundedRectangle(cornerRadius: 8))
+    .task(id: url) {
+      loadedImage = await ImageLoader.loadImage(from: url, retryCount: 1)
+    }
   }
 }
 
