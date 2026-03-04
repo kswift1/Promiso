@@ -112,8 +112,7 @@ extension CreatePersonalEvent {
         weatherForecast: weatherForecast,
         weatherAdvice: nil,
         conflicts: store.conflicts.map { ConflictInfo(title: $0.title, overlapMinutes: $0.overlapMinutes) },
-        isCheckingConflicts: store.isCheckingConflicts,
-        locationName: store.event.location?.name
+        isCheckingConflicts: store.isCheckingConflicts
       )
       .animation(.spring(response: 0.4, dampingFraction: 0.85), value: store.weatherState)
     }

@@ -19,34 +19,30 @@ public struct ConflictInfo: Equatable, Sendable {
 
 /// Pro Plan 보너스 정보 플로팅 뷰
 ///
-/// 날씨, 일정 충돌, 위치 힌트를 하단 버튼 위에 표시합니다.
+/// 날씨, 일정 충돌 힌트를 하단 버튼 위에 표시합니다.
 /// 추후 Pro Plan 전용으로 변경될 수 있으므로 이름을 ProBonusFloatingView로 유지합니다.
 public struct ProBonusFloatingView: View {
   let weatherForecast: HourlyForecast?
   let weatherAdvice: String?
   let conflicts: [ConflictInfo]
   let isCheckingConflicts: Bool
-  let locationName: String?
 
   public init(
     weatherForecast: HourlyForecast? = nil,
     weatherAdvice: String? = nil,
     conflicts: [ConflictInfo] = [],
-    isCheckingConflicts: Bool = false,
-    locationName: String? = nil
+    isCheckingConflicts: Bool = false
   ) {
     self.weatherForecast = weatherForecast
     self.weatherAdvice = weatherAdvice
     self.conflicts = conflicts
     self.isCheckingConflicts = isCheckingConflicts
-    self.locationName = locationName
   }
 
   private var hasContent: Bool {
     weatherForecast != nil
     || isCheckingConflicts
     || !conflicts.isEmpty
-    || locationName != nil
   }
 
   public var body: some View {
@@ -62,10 +58,7 @@ public struct ProBonusFloatingView: View {
           conflictRow
         }
 
-        // 위치 행
-        if let location = locationName {
-          locationRow(name: location)
-        }
+
       }
       .padding(.horizontal, 12)
       .padding(.vertical, 8)
@@ -135,28 +128,11 @@ public struct ProBonusFloatingView: View {
     }
   }
 
-  // MARK: - Location Row
-
-  @ViewBuilder
-  private func locationRow(name: String) -> some View {
-    HStack(spacing: 6) {
-      Image(systemName: "mappin.circle.fill")
-        .font(.system(size: 14))
-        .foregroundStyle(Color.pmindigo.n500)
-
-      Text(name)
-        .font(.system(size: 13))
-        .foregroundStyle(.secondary)
-        .lineLimit(1)
-
-      Spacer(minLength: 0)
-    }
-  }
 }
 
 // MARK: - Previews
 
-#Preview("날씨 + 위치") {
+#Preview("날씨") {
   VStack {
     Spacer()
     ProBonusFloatingView(
@@ -170,21 +146,19 @@ public struct ProBonusFloatingView: View {
         windSpeed: 3.5
       ),
       weatherAdvice: "우산 챙기세요",
-      locationName: "강남역 2번 출구"
     )
     .padding(.horizontal, 16)
     .padding(.bottom, 8)
   }
 }
 
-#Preview("충돌 1건 + 위치") {
+#Preview("충돌 1건") {
   VStack {
     Spacer()
     ProBonusFloatingView(
       conflicts: [
         ConflictInfo(title: "팀 회의", overlapMinutes: 30)
-      ],
-      locationName: "판교역 1번 출구"
+      ]
     )
     .padding(.horizontal, 16)
     .padding(.bottom, 8)
@@ -233,7 +207,6 @@ public struct ProBonusFloatingView: View {
       conflicts: [
         ConflictInfo(title: "스터디 모임", overlapMinutes: 45)
       ],
-      locationName: "홍대입구역 9번 출구"
     )
     .padding(.horizontal, 16)
     .padding(.bottom, 8)
