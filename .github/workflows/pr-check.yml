@@ -19,7 +19,7 @@ jobs:
        github.event.issue.pull_request &&
        startsWith(github.event.comment.body, '/check'))
     runs-on: macos-15
-    timeout-minutes: 45
+    timeout-minutes: 30
     permissions:
       pull-requests: write
       issues: write
@@ -66,7 +66,7 @@ jobs:
             core.setOutput('pr_number', prNumber);
 
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      # 1. 체크아웃 및 환경 설정
+      # 1. 체크아웃
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
       - name: Checkout
@@ -74,15 +74,120 @@ jobs:
         with:
           ref: ${{ steps.pr-ref.outputs.ref }}
 
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # 2. 변경 감지 — 빌드 모드 결정
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+      - name: Detect Changes
+        id: changes
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = ${{ steps.pr-ref.outputs.pr_number }};
+            const isSlashCommand = '${{ github.event_name }}' === 'issue_comment';
+
+            // /check 명령어 → 항상 전체 빌드
+            if (isSlashCommand) {
+              core.setOutput('mode', 'full');
+              console.log('🔨 /check 명령어 → 전체 빌드');
+              return;
+            }
+
+            // PR 변경 파일 조회 (GitHub API)
+            const files = [];
+            let page = 1;
+            while (true) {
+              const { data } = await github.rest.pulls.listFiles({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber,
+                per_page: 100,
+                page,
+              });
+              files.push(...data.map(f => f.filename));
+              if (data.length < 100) break;
+              page++;
+            }
+
+            console.log(`총 변경 파일: ${files.length}개`);
+
+            // 빌드 관련 파일 필터링
+            const buildFiles = files.filter(f =>
+              f.endsWith('.swift') || f.endsWith('.xcconfig') ||
+              f.endsWith('.plist') || f.endsWith('.pbxproj') ||
+              f.startsWith('Tuist/') || f === 'Workspace.swift' ||
+              f.startsWith('Package')
+            );
+
+            if (buildFiles.length === 0) {
+              core.setOutput('mode', 'skip');
+              console.log('📄 빌드 대상 변경 없음 → 스킵');
+              return;
+            }
+
+            // 프로젝트 구조 변경 → 전체 빌드
+            const structureChanged = buildFiles.some(f =>
+              f.startsWith('Tuist/') || f === 'Workspace.swift' ||
+              f.endsWith('Project.swift') || f.startsWith('Package')
+            );
+            const appChanged = buildFiles.some(f => f.startsWith('Projects/App/'));
+            const resourceKitChanged = buildFiles.some(f => f.startsWith('Projects/ResourceKit/'));
+            const externalDepChanged = buildFiles.some(f => f.startsWith('Projects/ExternalDependency/'));
+
+            if (structureChanged || appChanged || resourceKitChanged || externalDepChanged) {
+              core.setOutput('mode', 'full');
+              const reason = structureChanged ? 'Tuist/프로젝트 구조' :
+                             appChanged ? 'App 모듈' :
+                             resourceKitChanged ? 'ResourceKit' : 'ExternalDependency';
+              console.log(`🏗️ ${reason} 변경 → 전체 빌드`);
+              return;
+            }
+
+            // 파일 → 모듈 매핑
+            const moduleSet = new Set();
+            for (const file of buildFiles) {
+              if (file.startsWith('Projects/Shared/')) {
+                moduleSet.add('PromisoShared');
+              } else if (file.startsWith('Projects/Clients/')) {
+                moduleSet.add('Clients');
+              } else {
+                const match = file.match(/^Projects\/Features\/([^/]+)\//);
+                if (match) moduleSet.add(match[1]);
+              }
+            }
+
+            if (moduleSet.size === 0) {
+              core.setOutput('mode', 'full');
+              console.log('⚠️ 모듈 매핑 불가 → 전체 빌드');
+              return;
+            }
+
+            // 의존성 전파: Shared → Clients
+            if (moduleSet.has('PromisoShared')) {
+              moduleSet.add('Clients');
+            }
+
+            const modules = [...moduleSet].sort().join(' ');
+            core.setOutput('mode', 'selective');
+            core.setOutput('modules', modules);
+            console.log(`🎯 선택적 빌드: ${modules}`);
+
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # 3. 환경 설정 (skip이 아닌 경우만)
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
       - name: Setup Xcode
+        if: steps.changes.outputs.mode != 'skip'
         uses: maxim-lobanov/setup-xcode@v1
         with:
           xcode-version: latest-stable
 
       - name: Setup Tuist
+        if: steps.changes.outputs.mode != 'skip'
         uses: jdx/mise-action@v2
 
       - name: Cache Tuist
+        if: steps.changes.outputs.mode != 'skip'
         uses: actions/cache@v4
         with:
           path: |
@@ -93,157 +198,204 @@ jobs:
             ${{ runner.os }}-tuist-
 
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      # 2. xcconfig 파일 생성 (API 키)
+      # 4. xcconfig 파일 생성 (API 키)
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
       - name: Generate xcconfig files
+        if: steps.changes.outputs.mode != 'skip'
         env:
-          # Dev 환경 (PR 체크용)
           GOOGLE_CLIENT_ID_DEV: ${{ secrets.GOOGLE_CLIENT_ID_DEV }}
           GOOGLE_REVERSED_CLIENT_ID_DEV: ${{ secrets.GOOGLE_REVERSED_CLIENT_ID_DEV }}
           KAKAO_NATIVE_APP_KEY_DEV: ${{ secrets.KAKAO_NATIVE_APP_KEY_DEV }}
-          # Stage 환경 (선택)
           GOOGLE_CLIENT_ID_STAGE: ${{ secrets.GOOGLE_CLIENT_ID_STAGE }}
           GOOGLE_REVERSED_CLIENT_ID_STAGE: ${{ secrets.GOOGLE_REVERSED_CLIENT_ID_STAGE }}
           KAKAO_NATIVE_APP_KEY_STAGE: ${{ secrets.KAKAO_NATIVE_APP_KEY_STAGE }}
-          # Prod 환경 (선택)
           GOOGLE_CLIENT_ID_PROD: ${{ secrets.GOOGLE_CLIENT_ID_PROD }}
           GOOGLE_REVERSED_CLIENT_ID_PROD: ${{ secrets.GOOGLE_REVERSED_CLIENT_ID_PROD }}
           KAKAO_NATIVE_APP_KEY_PROD: ${{ secrets.KAKAO_NATIVE_APP_KEY_PROD }}
-          # Microsoft Clarity (환경 공통)
           CLARITY_PROJECT_ID: ${{ secrets.CLARITY_PROJECT_ID }}
         run: |
           chmod +x ./scripts/generate-xcconfig.sh
           ./scripts/generate-xcconfig.sh
 
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      # 3. Firebase plist 파일 복사
+      # 5. Firebase plist 파일 복사
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
       - name: Setup Firebase plist (Dev)
+        if: steps.changes.outputs.mode != 'skip'
         run: |
           echo "${{ secrets.GOOGLE_SERVICE_INFO_DEV }}" | base64 --decode > \
             Projects/App/Resources-Dev/GoogleService-Info.plist
 
       - name: Setup Firebase plist (Stage)
+        if: steps.changes.outputs.mode != 'skip'
         run: |
           echo "${{ secrets.GOOGLE_SERVICE_INFO_STAGE }}" | base64 --decode > \
             Projects/App/Resources-Stage/GoogleService-Info.plist
 
       - name: Setup Firebase plist (Prod)
+        if: steps.changes.outputs.mode != 'skip'
         run: |
           echo "${{ secrets.GOOGLE_SERVICE_INFO_PROD }}" | base64 --decode > \
             Projects/App/Resources-Prod/GoogleService-Info.plist
 
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      # 4. 프로젝트 생성 및 의존성 설치
+      # 6. 프로젝트 생성 및 의존성 설치
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
       - name: Install Dependencies
+        if: steps.changes.outputs.mode != 'skip'
         run: tuist install
 
       - name: Generate Project
+        if: steps.changes.outputs.mode != 'skip'
         run: tuist generate --no-open
 
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      # 5. 빌드 (Dev 타겟)
+      # 7. 빌드
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-      - name: Build PromisoDev
+      - name: Build (Full)
+        if: steps.changes.outputs.mode == 'full'
         run: |
           tuist build PromisoDev -- \
             -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
             -skipPackagePluginValidation
 
+      - name: Build (Selective)
+        if: steps.changes.outputs.mode == 'selective'
+        run: |
+          set -eo pipefail
+          MODULES="${{ steps.changes.outputs.modules }}"
+          FAILED=""
+          for module in $MODULES; do
+            echo ""
+            echo "━━━ 🔨 빌드: $module ━━━"
+            if ! xcodebuild build-for-testing \
+              -scheme "$module" \
+              -workspace Promiso.xcworkspace \
+              -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+              -skipPackagePluginValidation \
+              2>&1 | grep -E '(Build Succeeded|Build Failed|error:|warning:.*error)'; then
+              FAILED="$FAILED $module"
+            fi
+          done
+          if [ -n "$FAILED" ]; then
+            echo "❌ 빌드 실패:$FAILED"
+            exit 1
+          fi
+
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      # 6. 테스트 실행 (커버리지 포함)
+      # 8. 테스트
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-      - name: Run Tests with Coverage
+      - name: Test (Full)
+        if: steps.changes.outputs.mode == 'full'
         run: |
           tuist test --result-bundle-path TestResults -- \
             -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
             -skipPackagePluginValidation \
             -enableCodeCoverage YES
 
+      - name: Test (Selective)
+        if: steps.changes.outputs.mode == 'selective'
+        run: |
+          set -eo pipefail
+          MODULES="${{ steps.changes.outputs.modules }}"
+          FAILED=""
+          for module in $MODULES; do
+            echo ""
+            echo "━━━ 🧪 테스트: $module ━━━"
+            if ! xcodebuild test \
+              -scheme "$module" \
+              -workspace Promiso.xcworkspace \
+              -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+              -skipPackagePluginValidation \
+              -enableCodeCoverage YES \
+              -resultBundlePath "TestResults-${module}.xcresult" \
+              2>&1; then
+              FAILED="$FAILED $module"
+            fi
+          done
+          if [ -n "$FAILED" ]; then
+            echo "❌ 테스트 실패:$FAILED"
+            exit 1
+          fi
+
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      # 7. 커버리지 리포트 추출
+      # 9. 커버리지 리포트 추출
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
       - name: Extract Coverage Report
         id: coverage
-        if: always()
+        if: always() && steps.changes.outputs.mode != 'skip'
         run: |
-          RESULT_BUNDLE="TestResults.xcresult"
+          # xcresult 번들 찾기 (full: TestResults.xcresult, selective: TestResults-*.xcresult)
+          BUNDLES=$(ls -d TestResults*.xcresult 2>/dev/null || true)
 
-          if [ ! -d "$RESULT_BUNDLE" ]; then
-            echo "report=커버리지 데이터 없음 (xcresult 번들을 찾을 수 없음)" >> "$GITHUB_OUTPUT"
+          if [ -z "$BUNDLES" ]; then
+            echo "report=커버리지 데이터 없음" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          # JSON 커버리지 리포트 추출
-          COVERAGE_JSON=$(xcrun xccov view --report --json "$RESULT_BUNDLE" 2>/dev/null || true)
-
-          if [ -z "$COVERAGE_JSON" ]; then
-            echo "report=커버리지 데이터를 추출할 수 없음" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          # 모듈별 커버리지 추출 (관심 대상 모듈만 필터링)
-          MODULES=("Clients" "PromisoShared" "HomeFeature" "AuthFeature" "GroupFeature" "CalendarFeature" "SettingsFeature" "RootTabFeature" "AppEntryFeature" "SharedFeature" "NotificationCenterFeature")
+          MODULES_LIST=("Clients" "PromisoShared" "HomeFeature" "AuthFeature" "GroupFeature" "CalendarFeature" "SettingsFeature" "RootTabFeature" "AppEntryFeature" "SharedFeature" "NotificationCenterFeature" "CreatePromiseFeature" "PersonalFeature")
 
           TABLE="| 모듈 | 커버리지 | 상태 |\n|------|---------|------|\n"
-
           TOTAL_COVERED=0
           TOTAL_LINES=0
 
-          for MODULE in "${MODULES[@]}"; do
-            # jq로 해당 모듈의 커버리지 추출
-            COVERAGE=$(echo "$COVERAGE_JSON" | jq -r --arg mod "$MODULE" '
-              .targets[]
-              | select(.name == ($mod + ".framework"))
-              | .lineCoverage * 100
-              | . * 10 | floor | . / 10
-            ' 2>/dev/null)
+          for BUNDLE in $BUNDLES; do
+            COVERAGE_JSON=$(xcrun xccov view --report --json "$BUNDLE" 2>/dev/null || true)
+            [ -z "$COVERAGE_JSON" ] && continue
 
-            COVERED=$(echo "$COVERAGE_JSON" | jq -r --arg mod "$MODULE" '
-              .targets[]
-              | select(.name == ($mod + ".framework"))
-              | .coveredLines
-            ' 2>/dev/null)
+            for MODULE in "${MODULES_LIST[@]}"; do
+              COVERAGE=$(echo "$COVERAGE_JSON" | jq -r --arg mod "$MODULE" '
+                .targets[]
+                | select(.name == ($mod + ".framework"))
+                | .lineCoverage * 100
+                | . * 10 | floor | . / 10
+              ' 2>/dev/null)
 
-            EXECUTABLE=$(echo "$COVERAGE_JSON" | jq -r --arg mod "$MODULE" '
-              .targets[]
-              | select(.name == ($mod + ".framework"))
-              | .executableLines
-            ' 2>/dev/null)
+              COVERED=$(echo "$COVERAGE_JSON" | jq -r --arg mod "$MODULE" '
+                .targets[]
+                | select(.name == ($mod + ".framework"))
+                | .coveredLines
+              ' 2>/dev/null)
 
-            if [ -n "$COVERAGE" ] && [ "$COVERAGE" != "null" ]; then
-              # 상태 아이콘 결정
-              STATUS="🟢"
-              COV_INT=${COVERAGE%.*}
-              if [ "${COV_INT:-0}" -lt 30 ]; then
-                STATUS="🔴"
-              elif [ "${COV_INT:-0}" -lt 50 ]; then
-                STATUS="🟡"
+              EXECUTABLE=$(echo "$COVERAGE_JSON" | jq -r --arg mod "$MODULE" '
+                .targets[]
+                | select(.name == ($mod + ".framework"))
+                | .executableLines
+              ' 2>/dev/null)
+
+              if [ -n "$COVERAGE" ] && [ "$COVERAGE" != "null" ]; then
+                STATUS="🟢"
+                COV_INT=${COVERAGE%.*}
+                if [ "${COV_INT:-0}" -lt 30 ]; then
+                  STATUS="🔴"
+                elif [ "${COV_INT:-0}" -lt 50 ]; then
+                  STATUS="🟡"
+                fi
+
+                # 중복 방지: 이미 테이블에 해당 모듈이 있으면 스킵
+                if ! echo -e "$TABLE" | grep -q "| ${MODULE} |"; then
+                  TABLE="${TABLE}| ${MODULE} | ${COVERAGE}% | ${STATUS} |\n"
+                fi
+
+                if [ -n "$COVERED" ] && [ "$COVERED" != "null" ] && [ -n "$EXECUTABLE" ] && [ "$EXECUTABLE" != "null" ]; then
+                  TOTAL_COVERED=$((TOTAL_COVERED + ${COVERED:-0}))
+                  TOTAL_LINES=$((TOTAL_LINES + ${EXECUTABLE:-0}))
+                fi
               fi
-
-              TABLE="${TABLE}| ${MODULE} | ${COVERAGE}% | ${STATUS} |\n"
-
-              if [ -n "$COVERED" ] && [ -n "$EXECUTABLE" ]; then
-                TOTAL_COVERED=$((TOTAL_COVERED + ${COVERED:-0}))
-                TOTAL_LINES=$((TOTAL_LINES + ${EXECUTABLE:-0}))
-              fi
-            fi
+            done
           done
 
-          # 전체 커버리지 계산
           if [ "$TOTAL_LINES" -gt 0 ]; then
             TOTAL_PCT=$(echo "scale=1; $TOTAL_COVERED * 100 / $TOTAL_LINES" | bc)
             TABLE="${TABLE}| **전체** | **${TOTAL_PCT}%** | |\n"
           fi
 
-          # GitHub Output에 저장 (멀티라인)
           {
             echo "report<<COVERAGE_EOF"
             echo -e "$TABLE"
@@ -251,7 +403,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      # 8. 테스트 결과 업로드 (실패 시)
+      # 10. 테스트 결과 업로드 (실패 시)
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
       - name: Upload Test Results
@@ -264,7 +416,7 @@ jobs:
             **/test_output/
 
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      # 9. PR 코멘트 (빌드/테스트 + 커버리지)
+      # 11. PR 코멘트
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
       - name: Comment PR
@@ -278,12 +430,33 @@ jobs:
             const status = '${{ job.status }}' === 'success' ? '✅' : '❌';
             const isSlashCommand = '${{ github.event_name }}' === 'issue_comment';
             const trigger = isSlashCommand ? '(`/check` 명령어)' : '';
+            const buildMode = '${{ steps.changes.outputs.mode }}';
+            const modules = '${{ steps.changes.outputs.modules }}';
             const coverageReport = `${{ steps.coverage.outputs.report }}`;
 
-            let message = `${status} **PR 체크 ${status === '✅' ? '성공' : '실패'}** ${trigger}
+            // 빌드 모드 라벨
+            let modeLabel = '';
+            if (buildMode === 'skip') {
+              modeLabel = '⚡ 스킵 (빌드 대상 변경 없음)';
+            } else if (buildMode === 'selective') {
+              modeLabel = `🎯 선택적 빌드 (${modules.split(' ').join(', ')})`;
+            } else {
+              modeLabel = '🔨 전체 빌드';
+            }
 
+            let message;
+
+            if (buildMode === 'skip') {
+              message = `✅ **PR 체크 스킵** ${trigger}
+
+            ⚡ 빌드 대상 코드 변경이 없어 빌드/테스트를 건너뛰었습니다.`;
+            } else {
+              message = `${status} **PR 체크 ${status === '✅' ? '성공' : '실패'}** ${trigger}
+
+            **모드**: ${modeLabel}
             **빌드**: ${status === '✅' ? '성공' : '실패'}
             **테스트**: ${status === '✅' ? '통과' : '실패'}`;
+            }
 
             if (coverageReport && coverageReport.trim() !== '') {
               message += `
@@ -306,6 +479,7 @@ jobs:
             - Workflow: ${{ github.workflow }}
             - Branch: ${branch}
             - Commit: ${sha}
+            - 빌드 모드: ${modeLabel}
 
             </details>`;
 
