@@ -13,8 +13,8 @@ struct CalendarDayTimelineView: View {
   let displayDate: Date
   let onScheduleItemTapped: (CalendarFeature.ScheduleItem) -> Void
   let onEditScheduleItem: ((CalendarFeature.ScheduleItem) -> Void)?
-  let onCreatePersonalEvent: (Date) -> Void
-  let onCreatePromise: (Date) -> Void
+  let onCreatePersonalEvent: (Date, Date) -> Void
+  let onCreatePromise: (Date, Date) -> Void
   let onDeleteScheduleItem: ((CalendarFeature.ScheduleItem) -> Void)?
   let onShareScheduleItem: ((CalendarFeature.ScheduleItem) -> Void)?
   let currentUserId: String
@@ -363,14 +363,16 @@ struct CalendarDayTimelineView: View {
         titleVisibility: .hidden,
         actions: {
           Button(LocalizedStrings.Calendar.personalSchedule) {
-            guard let date = creationTargetDate else { return }
-            onCreatePersonalEvent(date)
+            let startDate = dateForSlot(creationStartSlot ?? 0)
+            let endDate = dateForSlot(creationEndSlot)
+            onCreatePersonalEvent(startDate, endDate)
             creationTargetDate = nil
             creationStartSlot = nil
           }
           Button(LocalizedStrings.Calendar.groupSchedule) {
-            guard let date = creationTargetDate else { return }
-            onCreatePromise(date)
+            let startDate = dateForSlot(creationStartSlot ?? 0)
+            let endDate = dateForSlot(creationEndSlot)
+            onCreatePromise(startDate, endDate)
             creationTargetDate = nil
             creationStartSlot = nil
           }
@@ -1135,8 +1137,8 @@ private struct ScheduleItemThumbnail: View {
     displayDate: today,
     onScheduleItemTapped: { _ in },
     onEditScheduleItem: nil,
-    onCreatePersonalEvent: { _ in },
-    onCreatePromise: { _ in },
+    onCreatePersonalEvent: { _, _ in },
+    onCreatePromise: { _, _ in },
     onDeleteScheduleItem: nil,
     onShareScheduleItem: nil,
     currentUserId: "host1",
@@ -1153,8 +1155,8 @@ private struct ScheduleItemThumbnail: View {
     displayDate: Date(),
     onScheduleItemTapped: { _ in },
     onEditScheduleItem: nil,
-    onCreatePersonalEvent: { _ in },
-    onCreatePromise: { _ in },
+    onCreatePersonalEvent: { _, _ in },
+    onCreatePromise: { _, _ in },
     onDeleteScheduleItem: nil,
     onShareScheduleItem: nil,
     currentUserId: "preview",

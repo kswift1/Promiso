@@ -16,8 +16,8 @@ struct CalendarDayTimelinePager: UIViewControllerRepresentable {
   let onEditScheduleItem: ((CalendarFeature.ScheduleItem) -> Void)?
   let onPreviousDay: () -> Void
   let onNextDay: () -> Void
-  let onCreatePersonalEvent: (Date) -> Void
-  let onCreatePromise: (Date) -> Void
+  let onCreatePersonalEvent: (Date, Date) -> Void
+  let onCreatePromise: (Date, Date) -> Void
   let onDeleteScheduleItem: ((CalendarFeature.ScheduleItem) -> Void)?
   let onShareScheduleItem: ((CalendarFeature.ScheduleItem) -> Void)?
   let currentUserId: String
@@ -309,8 +309,8 @@ struct CalendarDayTimelinePager: UIViewControllerRepresentable {
       selectedDate: Date,
       onScheduleItemTapped: @escaping (CalendarFeature.ScheduleItem) -> Void,
       onEditScheduleItem: ((CalendarFeature.ScheduleItem) -> Void)?,
-      onCreatePersonalEvent: @escaping (Date) -> Void,
-      onCreatePromise: @escaping (Date) -> Void,
+      onCreatePersonalEvent: @escaping (Date, Date) -> Void,
+      onCreatePromise: @escaping (Date, Date) -> Void,
       onDeleteScheduleItem: ((CalendarFeature.ScheduleItem) -> Void)?,
       onShareScheduleItem: ((CalendarFeature.ScheduleItem) -> Void)?,
       currentUserId: String,
@@ -375,8 +375,8 @@ struct CalendarDayTimelinePager: UIViewControllerRepresentable {
       selectedDate: Date,
       onScheduleItemTapped: @escaping (CalendarFeature.ScheduleItem) -> Void,
       onEditScheduleItem: ((CalendarFeature.ScheduleItem) -> Void)?,
-      onCreatePersonalEvent: @escaping (Date) -> Void,
-      onCreatePromise: @escaping (Date) -> Void,
+      onCreatePersonalEvent: @escaping (Date, Date) -> Void,
+      onCreatePromise: @escaping (Date, Date) -> Void,
       onDeleteScheduleItem: ((CalendarFeature.ScheduleItem) -> Void)?,
       onShareScheduleItem: ((CalendarFeature.ScheduleItem) -> Void)?,
       currentUserId: String,
@@ -421,8 +421,8 @@ struct CalendarDayTimelinePager: UIViewControllerRepresentable {
       displayDate: Date,
       onScheduleItemTapped: @escaping (CalendarFeature.ScheduleItem) -> Void,
       onEditScheduleItem: ((CalendarFeature.ScheduleItem) -> Void)?,
-      onCreatePersonalEvent: @escaping (Date) -> Void,
-      onCreatePromise: @escaping (Date) -> Void,
+      onCreatePersonalEvent: @escaping (Date, Date) -> Void,
+      onCreatePromise: @escaping (Date, Date) -> Void,
       onDeleteScheduleItem: ((CalendarFeature.ScheduleItem) -> Void)?,
       onShareScheduleItem: ((CalendarFeature.ScheduleItem) -> Void)?,
       currentUserId: String,

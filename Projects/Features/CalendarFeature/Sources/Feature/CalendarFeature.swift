@@ -487,8 +487,8 @@ extension CalendarFeature {
         // 타임라인 일정 아이템 탭
         case scheduleItemTapped(CalendarFeature.ScheduleItem)
         case editScheduleItem(CalendarFeature.ScheduleItem)
-        case createPersonalEventFromTimeline(Date)
-        case createPromiseFromTimeline(Date)
+        case createPersonalEventFromTimeline(startDate: Date, endDate: Date)
+        case createPromiseFromTimeline(startDate: Date, endDate: Date)
         case deleteScheduleItem(CalendarFeature.ScheduleItem)
         case shareScheduleItem(CalendarFeature.ScheduleItem)
         case dismissPromiseShareSheet
@@ -971,14 +971,16 @@ extension CalendarFeature {
         }
         return .none
 
-      case let .createPersonalEventFromTimeline(date):
-        let newEvent = PersonalEventModel(startAt: date)
+      case let .createPersonalEventFromTimeline(startDate, endDate):
+        let newEvent = PersonalEventModel(startAt: startDate, endAt: endDate)
         state.editPersonalEvent = CreatePersonalEvent.Feature.State(event: newEvent, mode: .create)
         return .none
 
-      case let .createPromiseFromTimeline(date):
-        let info = PromiseExtractedInfo(date: date, rawText: "", source: .text)
-        state.createPromise = CreatePromise.Feature.State(prefillInfo: info)
+      case let .createPromiseFromTimeline(startDate, endDate):
+        var promise = PromiseModel.empty
+        promise.startAt = startDate
+        promise.endAt = endDate
+        state.createPromise = CreatePromise.Feature.State(promise: promise)
         return .none
 
       case .deleteScheduleItem(let item):
@@ -1081,10 +1083,12 @@ extension CalendarFeature {
         return .none
 
       case .dayLongPressCreatePersonalEvent(let date):
-        return .send(.view(.createPersonalEventFromTimeline(date)))
+        let endDate = date.addingTimeInterval(3600)
+        return .send(.view(.createPersonalEventFromTimeline(startDate: date, endDate: endDate)))
 
       case let .dayLongPressCreatePromise(date):
-        return .send(.view(.createPromiseFromTimeline(date)))
+        let endDate = date.addingTimeInterval(3600)
+        return .send(.view(.createPromiseFromTimeline(startDate: date, endDate: endDate)))
 
       case .toggleMonthExpansion:
         state.monthExpansionState = state.monthExpansionState == .collapsed ? .expanded : .collapsed
