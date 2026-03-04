@@ -175,7 +175,7 @@ struct PersonalEventTimelineItemView: View {
             .fixedSize(horizontal: false, vertical: true)
         }
       } else if isNow {
-        Text("NOW")
+        Text(LocalizedStrings.Home.timelineNow)
           .font(.pmCaption2Semibold)
           .foregroundStyle(Color.pmindigo.n500)
       }

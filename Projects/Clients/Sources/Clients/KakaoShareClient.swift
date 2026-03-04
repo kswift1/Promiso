@@ -132,7 +132,7 @@ extension KakaoShareClient: DependencyKey {
             titleImageCategory: "\(firstPromise.dateText) \(firstPromise.timeText)\(locationText)"
           ),
           buttons: [
-            Button(title: "참여하기", link: inviteLink)
+            Button(title: LocalizedStrings.KakaoShare.joinButton, link: inviteLink)
           ]
         )
 
@@ -146,7 +146,7 @@ extension KakaoShareClient: DependencyKey {
             link: inviteLink
           ),
           buttons: [
-            Button(title: "참여하기", link: inviteLink)
+            Button(title: LocalizedStrings.KakaoShare.joinButton, link: inviteLink)
           ]
         )
       }

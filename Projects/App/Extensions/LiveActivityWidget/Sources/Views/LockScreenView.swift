@@ -71,7 +71,7 @@ struct LockScreenBannerView: View {
 
       // 오른쪽: 약속 시간
       VStack(alignment: .trailing, spacing: 2) {
-        Text("약속 시간")
+        Text(LocalizedStrings.LivePromise.promiseTime)
           .font(.caption2)
           .foregroundStyle(.white.opacity(0.6))
 
@@ -194,7 +194,7 @@ struct ETASegmentedControl: View {
       // "직접 입력" 버튼 - 앱으로 이동 (항상 비선택 상태)
       if let url = AppConstants.Deeplink.url(path: "promise/\(attrs.promiseId)/eta") {
         Link(destination: url) {
-          Text("직접 입력")
+          Text(LocalizedStrings.LivePromise.manualInput)
             .font(.system(size: 11, weight: .medium))
             .frame(maxWidth: .infinity)
             .padding(.vertical, 8)

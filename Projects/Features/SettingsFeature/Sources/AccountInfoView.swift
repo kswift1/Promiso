@@ -145,7 +145,7 @@ extension AccountInfo {
             state.deleteAccountError = error
             state.toastMessage = ToastMessage(
               type: .error,
-              title: "회원 탈퇴에 실패했어요",
+              title: LocalizedStrings.Error.accountDeleteFailed,
               subtitle: error,
               position: .top
             )

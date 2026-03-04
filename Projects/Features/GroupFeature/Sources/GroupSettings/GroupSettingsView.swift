@@ -140,7 +140,7 @@ extension GroupSettings {
                 Text(groupColor.displayName)
                   .foregroundStyle(.secondary)
               } else {
-                Text("미설정")
+                Text(LocalizedStrings.GroupSettingsView.colorNotSet)
                   .foregroundStyle(.secondary)
               }
               Image(systemName: "chevron.right")

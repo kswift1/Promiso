@@ -107,7 +107,7 @@ struct PersonalEventCardView: View {
               Text("·")
                 .foregroundColor(.secondary.opacity(0.5))
 
-              Text("개인 일정")
+              Text(LocalizedStrings.Common.personalEvent)
                 .font(.system(size: 13, weight: .medium))
                 .foregroundColor(Color.pmindigo.n500)
 

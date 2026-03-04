@@ -677,13 +677,13 @@ extension CreatePromise {
         store.send(.view(.onAppear))
       }
       .alert(
-        "약속 생성 실패",
+        LocalizedStrings.Error.promiseCreationFailed,
         isPresented: Binding(
           get: { store.creationError != nil },
           set: { if !$0 { store.send(.view(.clearCreationError)) } }
         )
       ) {
-        Button("확인", role: .cancel) {
+        Button(LocalizedStrings.Common.confirm, role: .cancel) {
           store.send(.view(.clearCreationError))
         }
       } message: {

@@ -1326,7 +1326,7 @@ extension CalendarFeature {
           AppLogger.calendar.debugLog("⚠️ 캐시 저장 실패 - \(LocalizedDateFormatters.yearMonth.string(from: month)): \(error.localizedDescription)", type: .error)
           state.toastMessage = ToastMessage(
             type: .error,
-            title: "약속을 불러오지 못했습니다"
+            title: LocalizedStrings.Error.promiseFetchFailed
           )
         }
         return .none

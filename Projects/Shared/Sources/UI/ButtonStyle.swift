@@ -257,7 +257,7 @@ struct ButtonExamples: View {
         HStack(spacing: 8) {
           Image(systemName: "trash.fill")
             .font(.title3)
-          Text("삭제하기")
+          Text(LocalizedStrings.Common.deleteAction)
             .font(.headline)
         }
         .frame(maxWidth: .infinity)

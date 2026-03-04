@@ -382,7 +382,7 @@ private struct IndicatorPreviewView: View {
         Image(systemName: "person.fill")
           .font(.system(size: 8))
           .foregroundStyle(Color.pminfo.n500)
-        Text("개인")
+        Text(LocalizedStrings.Calendar.indicatorPersonal)
           .font(.system(size: 10, weight: .medium))
           .foregroundStyle(Color.pminfo.n500)
       }
@@ -395,7 +395,7 @@ private struct IndicatorPreviewView: View {
         Image(systemName: "calendar")
           .font(.system(size: 8))
           .foregroundStyle(.gray)
-        Text("캘린더")
+        Text(LocalizedStrings.Calendar.indicatorCalendar)
           .font(.system(size: 10, weight: .medium))
           .foregroundStyle(.gray)
       }
@@ -438,7 +438,7 @@ private struct ExpandedDayPreviewView: View {
           .foregroundStyle(.primary)
 
         if calendar.isDateInToday(date) {
-          Text("오늘")
+          Text(LocalizedStrings.Common.today)
             .font(.system(size: 12, weight: .semibold))
             .foregroundStyle(.white)
             .padding(.horizontal, 6)
@@ -449,7 +449,7 @@ private struct ExpandedDayPreviewView: View {
         Spacer()
 
         if !indicators.isEmpty {
-          Text("\(indicators.count)건")
+          Text(LocalizedStrings.Calendar.indicatorEventCount(indicators.count))
             .font(.system(size: 13, weight: .medium))
             .foregroundStyle(.secondary)
         }
@@ -590,7 +590,7 @@ private struct ExpandedDayPreviewView: View {
         Image(systemName: "person.fill")
           .font(.system(size: 8))
           .foregroundStyle(Color.pminfo.n500)
-        Text("개인")
+        Text(LocalizedStrings.Calendar.indicatorPersonal)
           .font(.system(size: 10, weight: .medium))
           .foregroundStyle(Color.pminfo.n500)
       }
@@ -603,7 +603,7 @@ private struct ExpandedDayPreviewView: View {
         Image(systemName: "calendar")
           .font(.system(size: 8))
           .foregroundStyle(.gray)
-        Text("캘린더")
+        Text(LocalizedStrings.Calendar.indicatorCalendar)
           .font(.system(size: 10, weight: .medium))
           .foregroundStyle(.gray)
       }
