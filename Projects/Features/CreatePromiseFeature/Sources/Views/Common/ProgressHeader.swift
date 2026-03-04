@@ -123,7 +123,7 @@ struct ProgressSegment: View {
     ProgressHeader(
         currentStep: 0,
         totalSteps: 3,
-        title: "약속 만들기"
+        title: LocalizedStrings.CreatePromise.navigationTitle
     ) { }
 }
 
@@ -131,7 +131,7 @@ struct ProgressSegment: View {
     ProgressHeader(
         currentStep: 1,
         totalSteps: 3,
-        title: "약속 만들기"
+        title: LocalizedStrings.CreatePromise.navigationTitle
     ) { }
 }
 
@@ -139,7 +139,7 @@ struct ProgressSegment: View {
     ProgressHeader(
         currentStep: 2,
         totalSteps: 3,
-        title: "약속 만들기"
+        title: LocalizedStrings.CreatePromise.navigationTitle
     ) { }
 }
 
@@ -184,19 +184,19 @@ struct ProgressSegment: View {
         ProgressHeader(
             currentStep: 0,
             totalSteps: 3,
-            title: "약속 만들기"
+            title: LocalizedStrings.CreatePromise.navigationTitle
         ) { }
-        
+
         ProgressHeader(
             currentStep: 1,
             totalSteps: 3,
-            title: "약속 만들기"
+            title: LocalizedStrings.CreatePromise.navigationTitle
         ) { }
-        
+
         ProgressHeader(
             currentStep: 2,
             totalSteps: 3,
-            title: "약속 만들기"
+            title: LocalizedStrings.CreatePromise.navigationTitle
         ) { }
     }
     .preferredColorScheme(.dark)
@@ -211,7 +211,7 @@ struct ProgressSegment: View {
                 ProgressHeader(
                     currentStep: currentStep,
                     totalSteps: 3,
-                    title: "약속 만들기"
+                    title: LocalizedStrings.CreatePromise.navigationTitle
                 ) {
                     currentStep = 0
                 }
@@ -264,7 +264,7 @@ struct ProgressSegment: View {
         ProgressHeader(
             currentStep: 1,
             totalSteps: 3,
-            title: "약속 만들기"
+            title: LocalizedStrings.CreatePromise.navigationTitle
         ) { }
         
         ScrollView {

@@ -213,12 +213,6 @@ struct ToastModifier: ViewModifier {
         .regular.interactive(),
         in: .rect(cornerRadius: 14)
       )
-      .shadow(
-        color: .black.opacity(0.12),
-        radius: 12,
-        x: 0,
-        y: position == .top ? 4 : -4
-      )
   }
 
   private func fallbackToastView(for message: ToastMessage) -> some View {

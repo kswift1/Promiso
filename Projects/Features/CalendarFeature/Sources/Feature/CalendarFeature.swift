@@ -17,6 +17,15 @@ public enum CalendarFeature {}
 
 extension CalendarFeature {
 
+  // MARK: - Status Filter
+
+  public enum StatusFilter: String, Equatable, CaseIterable, Sendable {
+    case all
+    case needResponse
+    case confirmed
+    case unconfirmed
+  }
+
   // MARK: - Reducer
 
   @Reducer
@@ -55,8 +64,11 @@ extension CalendarFeature {
       /// 이미 로드된 월 (중복 요청 방지)
       var loadedMonths: Set<Date> = []
 
-      /// 약속 로딩 중
-      var isLoadingPromises: Bool = false
+      /// 약속 로딩 중인 월 목록
+      var loadingMonths: Set<Date> = []
+
+      /// 약속 로딩 중 여부 (computed)
+      var isLoadingPromises: Bool { !loadingMonths.isEmpty }
 
       /// 주간 ↔ 월간 전환 애니메이션 진행 중
       var isTransitioning: Bool = false
@@ -89,7 +101,44 @@ extension CalendarFeature {
       /// 개인 일정 목록
       var personalEvents: [PersonalEventModel] = []
 
+      // MARK: - Filter
+
+      /// 선택된 그룹 ID (빈 Set = 전체, 필터 해제)
+      var selectedGroupIds: Set<String> = []
+
+      /// 선택된 상태 필터
+      var selectedStatusFilter: StatusFilter = .all
+
+      /// 개인 일정 표시 여부
+      var showPersonalEvents: Bool = true
+
+      /// 필터 시트 표시 여부
+      var isFilterSheetPresented: Bool = false
+
+      /// 그룹 정렬 옵션 (그룹 탭과 동일)
+      var groupSortOption: GroupSortOption = .joinedRecent
+
       // MARK: - Group 관련
+
+      /// 정렬된 그룹 목록 (필터 시트용)
+      var sortedGroups: [UserGroupInfo] {
+        switch groupSortOption {
+        case .joinedRecent:
+          return currentUser.groups.sorted { ($0.joinedAt ?? .distantPast) > ($1.joinedAt ?? .distantPast) }
+        case .joinedOldest:
+          return currentUser.groups.sorted { ($0.joinedAt ?? .distantPast) < ($1.joinedAt ?? .distantPast) }
+        case .nameAscending:
+          return currentUser.groups.sorted { $0.name < $1.name }
+        case .nameDescending:
+          return currentUser.groups.sorted { $0.name > $1.name }
+        case .custom(let order):
+          if order.isEmpty { return currentUser.groups }
+          let groupDict = Dictionary(uniqueKeysWithValues: currentUser.groups.map { ($0.id, $0) })
+          let ordered = order.compactMap { groupDict[$0] }
+          let remaining = currentUser.groups.filter { !Set(order).contains($0.id) }
+          return ordered + remaining
+        }
+      }
 
       /// 사용자 그룹 정보 조회용 (키: groupId)
       var userGroupsMap: [String: UserGroupInfo] {
@@ -152,9 +201,9 @@ extension CalendarFeature {
         let calendar = Calendar.current
         var grouped: [Date: [PromiseModel]] = [:]
 
-        // 선택된 날짜의 월 기준으로 캐시 조회
-        let currentMonthKey = selectedDate.startOfMonth
-        let allPromises = cachedPromisesByMonth[currentMonthKey] ?? []
+        // 월간 모드: currentMonth 기준 / 주간 모드: selectedDate 기준
+        let currentMonthKey = currentMonth.startOfMonth
+        let allPromises = filteredPromises(for: currentMonthKey)
 
         // 날짜별 그룹화
         for promise in allPromises {
@@ -198,6 +247,7 @@ extension CalendarFeature {
 
       /// 날짜별로 그룹화된 개인 일정
       var personalEventsByDate: [Date: [PersonalEventModel]] {
+        guard showPersonalEvents else { return [:] }
         let calendar = Calendar.current
         var grouped: [Date: [PersonalEventModel]] = [:]
 
@@ -258,6 +308,11 @@ extension CalendarFeature {
         isLoadingPromises && loadedMonths.isEmpty
       }
 
+      /// 필터 활성 여부 (헤더 뱃지용)
+      var isFilterActive: Bool {
+        selectedGroupIds != Set(currentUser.groups.map(\.id)) || !showPersonalEvents
+      }
+
       // MARK: - Group Color Map
 
       /// 그룹별 컬러 맵 (groupId → Color)
@@ -282,7 +337,7 @@ extension CalendarFeature {
         let currentMonthKey = currentMonth.startOfMonth
         let prevMonthKey = calendar.date(byAdding: .month, value: -1, to: currentMonthKey)?.startOfMonth
         let nextMonthKey = calendar.date(byAdding: .month, value: 1, to: currentMonthKey)?.startOfMonth
-        let allPromises: [PromiseModel] = [prevMonthKey, currentMonthKey, nextMonthKey].compactMap { $0 }.flatMap { cachedPromisesByMonth[$0] ?? [] }
+        let allPromises: [PromiseModel] = [prevMonthKey, currentMonthKey, nextMonthKey].compactMap { $0 }.flatMap { filteredPromises(for: $0) }
         // 중복 제거 (날짜 경계 약속이 여러 월에 걸칠 수 있음)
         let uniquePromises = Dictionary(grouping: allPromises, by: \.id).compactMap(\.value.first)
         for promise in uniquePromises {
@@ -310,23 +365,25 @@ extension CalendarFeature {
         }
 
         // 개인 일정
-        for event in personalEvents {
-          spreadIndicators(
-            startAt: event.startAt, endAt: event.effectiveEndAt, into: &indicators
-          ) { day, position in
-            .init(
-              id: "\(event.id)_\(day.timeIntervalSince1970)",
-              color: CalendarFeature.ScheduleIndicator.personalColor,
-              title: event.title,
-              spanPosition: position,
-              startAt: event.startAt,
-              endAt: event.endAt,
-              emoji: event.emoji,
-              sourceType: .personalEvent(id: event.id),
-              description: event.description,
-              locationName: event.location?.name,
-              imageUrls: event.imageUrls
-            )
+        if showPersonalEvents {
+          for event in personalEvents {
+            spreadIndicators(
+              startAt: event.startAt, endAt: event.effectiveEndAt, into: &indicators
+            ) { day, position in
+              .init(
+                id: "\(event.id)_\(day.timeIntervalSince1970)",
+                color: CalendarFeature.ScheduleIndicator.personalColor,
+                title: event.title,
+                spanPosition: position,
+                startAt: event.startAt,
+                endAt: event.endAt,
+                emoji: event.emoji,
+                sourceType: .personalEvent(id: event.id),
+                description: event.description,
+                locationName: event.location?.name,
+                imageUrls: event.imageUrls
+              )
+            }
           }
         }
 
@@ -387,17 +444,43 @@ extension CalendarFeature {
         cachedPromisesByMonth.values.lazy.flatMap { $0 }.first { $0.id == id }
       }
 
+      /// 필터가 적용된 약속 목록 (그룹 + 상태 필터)
+      func filteredPromises(for monthKey: Date) -> [PromiseModel] {
+        var promises = cachedPromisesByMonth[monthKey] ?? []
+
+        // 그룹 필터
+        promises = promises.filter { selectedGroupIds.contains($0.groupId) }
+
+        // 상태 필터
+        switch selectedStatusFilter {
+        case .all:
+          break
+        case .needResponse:
+          promises = promises.filter {
+            $0.myVoteStatus(userId: currentUserId) == .pending && !$0.isVotingClosed
+          }
+        case .confirmed:
+          promises = promises.filter { $0.isConfirmed }
+        case .unconfirmed:
+          promises = promises.filter { !$0.isConfirmed && !$0.isVotingClosed }
+        }
+
+        return promises
+      }
+
       private func buildScheduleItems(from start: Date, to end: Date) -> [CalendarFeature.ScheduleItem] {
         // start/end가 속한 월을 모두 포함하여 월 경계 누락 방지
         let monthKeys = Set([start.startOfMonth, end.startOfMonth, selectedDate.startOfMonth])
-        let allPromises = Array(Set(monthKeys.flatMap { cachedPromisesByMonth[$0] ?? [] }))
+        let allPromises = Array(Set(monthKeys.flatMap { filteredPromises(for: $0) }))
 
         let promiseItems = allPromises
           .filter { $0.startAt < end && $0.effectiveEndAt >= start }
           .map { CalendarFeature.ScheduleItem.promise($0) }
-        let personalItems = personalEvents
-          .filter { $0.startAt < end && $0.effectiveEndAt >= start }
-          .map { CalendarFeature.ScheduleItem.personalEvent($0) }
+        let personalItems: [CalendarFeature.ScheduleItem] = showPersonalEvents
+          ? personalEvents
+              .filter { $0.startAt < end && $0.effectiveEndAt >= start }
+              .map { CalendarFeature.ScheduleItem.personalEvent($0) }
+          : []
         let calendarItems = calendarEvents
           .filter { $0.startDate < end && $0.endDate >= start }
           .map { CalendarFeature.ScheduleItem.calendarEvent($0) }
@@ -499,6 +582,13 @@ extension CalendarFeature {
         case dayLongPressCreatePersonalEvent(Date)
         case dayLongPressCreatePromise(Date)
         case toggleMonthExpansion
+        // 필터 관련
+        case filterIconTapped
+        case filterGroupToggled(String)
+        case filterPersonalEventsToggled
+        case filterStatusChanged(StatusFilter)
+        case filterReset
+        case filterSheetDismissed
       }
 
       @CasePathable
@@ -518,6 +608,9 @@ extension CalendarFeature {
         // 개인 일정
         case fetchPersonalEvents
         case personalEventsResponse(Result<[PersonalEventModel], Error>)
+        // 설정
+        case fetchSettings
+        case settingsResponse(Result<UserSettings, Error>)
         // 공유
         case kakaoPromiseShareResult(KakaoShareResult)
       }
@@ -538,6 +631,7 @@ extension CalendarFeature {
     @Dependency(\.personalEventClient) var personalEventClient
     @Dependency(\.kakaoShareClient) var kakaoShareClient
     @Dependency(\.userDefaultsClient) var userDefaultsClient
+    @Dependency(\.userSettingsClient) var userSettingsClient
 
     // MARK: - Reducer Body
 
@@ -683,9 +777,14 @@ extension CalendarFeature {
             }
           }
         }
+        // 그룹 필터 초기화 (전체 선택)
+        if state.selectedGroupIds.isEmpty {
+          state.selectedGroupIds = Set(state.currentUser.groups.map(\.id))
+        }
         return .merge(
           .send(.internal(.checkCalendarPermission)),
-          .send(.internal(.loadInitialData))
+          .send(.internal(.loadInitialData)),
+          .send(.internal(.fetchSettings))
         )
 
       case .toggleDisplayMode:
@@ -1093,6 +1192,36 @@ extension CalendarFeature {
       case .toggleMonthExpansion:
         state.monthExpansionState = state.monthExpansionState == .collapsed ? .expanded : .collapsed
         return .none
+
+      case .filterIconTapped:
+        state.isFilterSheetPresented = true
+        return .none
+
+      case .filterGroupToggled(let groupId):
+        if state.selectedGroupIds.contains(groupId) {
+          state.selectedGroupIds.remove(groupId)
+        } else {
+          state.selectedGroupIds.insert(groupId)
+        }
+        return .none
+
+      case .filterPersonalEventsToggled:
+        state.showPersonalEvents.toggle()
+        return .none
+
+      case .filterStatusChanged(let filter):
+        state.selectedStatusFilter = filter
+        return .none
+
+      case .filterReset:
+        state.selectedGroupIds = Set(state.currentUser.groups.map(\.id))
+        state.showPersonalEvents = true
+        state.selectedStatusFilter = .all
+        return .none
+
+      case .filterSheetDismissed:
+        state.isFilterSheetPresented = false
+        return .none
       }
     }
 
@@ -1108,19 +1237,20 @@ extension CalendarFeature {
         return .none
 
       case .loadInitialData:
-        // 1. 캐시 초기화
-        state.loadedMonths.removeAll()
-        state.cachedPromisesByMonth.removeAll()
-        AppLogger.calendar.debugLog("📦 초기 데이터 로드 (캐시 초기화 완료, 그룹: \(state.userGroupIds.count)개)")
+        // 현재 보고 있는 월 + 인접 월만 선택적 무효화 (전체 캐시 삭제 X)
+        let monthsToLoad = getMonthsToLoad(state: state)
+        for month in monthsToLoad {
+          state.loadedMonths.remove(month)
+        }
+        AppLogger.calendar.debugLog("📦 데이터 로드 (선택적 무효화: \(monthsToLoad.count)개 월, 그룹: \(state.userGroupIds.count)개)")
 
-        // 2. 개인 일정은 항상 로드
+        // 개인 일정은 항상 로드
         var effects: [Effect<Action>] = [
           .send(.internal(.fetchPersonalEvents))
         ]
 
-        // 3. 그룹이 있으면 약속 로드
+        // 그룹이 있으면 약속 로드
         if !state.userGroupIds.isEmpty {
-          let monthsToLoad = getMonthsToLoad(state: state)
           effects.append(contentsOf: monthsToLoad.map { month in
             Effect<Action>.send(.internal(.fetchPromisesForMonth(month)))
           })
@@ -1143,7 +1273,7 @@ extension CalendarFeature {
           return .none
         }
 
-        state.isLoadingPromises = true
+        state.loadingMonths.insert(monthStart)
         AppLogger.calendar.debugLog("🌐 API 요청 시작 - \(LocalizedDateFormatters.yearMonth.string(from: monthStart))")
 
         // 월의 시작과 끝 계산
@@ -1196,7 +1326,7 @@ extension CalendarFeature {
         })
 
       case .promisesResponseForMonth(let month, let result):
-        state.isLoadingPromises = false
+        state.loadingMonths.remove(month)
 
         switch result {
         case .success(let promises):
@@ -1228,6 +1358,10 @@ extension CalendarFeature {
         case .failure(let error):
           // 실패해도 재시도 가능하도록 loadedMonths에 추가하지 않음
           AppLogger.calendar.debugLog("⚠️ 캐시 저장 실패 - \(LocalizedDateFormatters.yearMonth.string(from: month)): \(error.localizedDescription)", type: .error)
+          state.toastMessage = ToastMessage(
+            type: .error,
+            title: LocalizedStrings.Error.promiseFetchFailed
+          )
         }
         return .none
 
@@ -1267,7 +1401,8 @@ extension CalendarFeature {
         case .success(let events):
           state.calendarEvents = events
         case .failure:
-          state.calendarEvents = []
+          // 에러 시 기존 데이터 유지 (빈 배열로 덮어쓰지 않음)
+          break
         }
         return .none
 
@@ -1286,7 +1421,25 @@ extension CalendarFeature {
         case .success(let events):
           state.personalEvents = events
         case .failure:
-          state.personalEvents = []
+          // 에러 시 기존 데이터 유지 (빈 배열로 덮어쓰지 않음)
+          break
+        }
+        return .none
+
+      case .fetchSettings:
+        let userId = state.currentUserId
+        return .run { [userSettingsClient] send in
+          do {
+            let settings = try await userSettingsClient.fetchSettings(userId)
+            await send(.internal(.settingsResponse(.success(settings))))
+          } catch {
+            await send(.internal(.settingsResponse(.failure(error))))
+          }
+        }
+
+      case .settingsResponse(let result):
+        if case .success(let settings) = result {
+          state.groupSortOption = settings.groupSortOption
         }
         return .none
 
@@ -1311,8 +1464,11 @@ extension CalendarFeature {
 
     /// 현재 표시 범위에 필요한 월 목록 반환 (항상 월 단위로 관리)
     private func getMonthsToLoad(state: State) -> [Date] {
-      // 선택된 날짜 기준 현재 월
-      return [state.selectedDate.startOfMonth]
+      // 선택된 날짜 + 현재 보고 있는 월 모두 포함
+      var months = Set<Date>()
+      months.insert(state.selectedDate.startOfMonth)
+      months.insert(state.currentMonth.startOfMonth)
+      return Array(months)
     }
   }
 }

@@ -190,7 +190,7 @@ extension NotificationCenter {
               Image(systemName: "trash")
                 .font(.system(size: 14))
             }
-            Text("삭제")
+            Text(LocalizedStrings.Common.delete)
               .font(.subheadline.weight(.medium))
           }
           .foregroundStyle(store.selectedCount > 0 ? Color.pmerror.n500 : Color.pmgray.n400)
@@ -290,7 +290,7 @@ extension NotificationCenter {
         Button {
           store.send(.view(.refreshTriggered))
         } label: {
-          Text("다시 시도")
+          Text(LocalizedStrings.Common.retry)
             .font(.subheadline.weight(.medium))
             .foregroundStyle(Color.pmindigo.n500)
             .padding(.horizontal, 24)

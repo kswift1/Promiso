@@ -597,7 +597,6 @@ struct CalendarOverlayView: View {
             .clipShape(shape)
         }
         .clipShape(shape)
-          .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 4)
       } else {
         content
           .background(.ultraThinMaterial, in: shape)

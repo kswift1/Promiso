@@ -231,7 +231,7 @@ extension CalendarSettings {
           if !success {
             state.toastMessage = ToastMessage(
               type: .error,
-              title: "그룹 캘린더 동기화 저장에 실패했어요",
+              title: LocalizedStrings.Error.calendarSyncSaveFailed,
               position: .top
             )
           }

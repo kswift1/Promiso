@@ -40,7 +40,7 @@ struct PromiseLiveActivity: Widget {
 
             // 오른쪽: 약속 시간
             VStack(alignment: .trailing, spacing: 2) {
-              Text("약속 시간")
+              Text(LocalizedStrings.LivePromise.promiseTime)
                 .font(.caption2)
                 .foregroundStyle(.white.opacity(0.6))
 

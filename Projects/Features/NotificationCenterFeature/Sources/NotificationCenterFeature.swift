@@ -365,7 +365,7 @@ extension NotificationCenter {
               let message = (error as? NotificationClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError
               state.toastMessage = ToastMessage(
                 type: .error,
-                title: "읽음 처리에 실패했어요",
+                title: LocalizedStrings.Error.markAsReadFailed,
                 subtitle: message,
                 position: .top
               )
@@ -387,7 +387,7 @@ extension NotificationCenter {
               let message = (error as? NotificationClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError
               state.toastMessage = ToastMessage(
                 type: .error,
-                title: "알림 삭제에 실패했어요",
+                title: LocalizedStrings.Error.notificationDeleteFailed,
                 subtitle: message,
                 position: .top
               )

@@ -444,7 +444,7 @@ extension Settings {
             state.errorMessage = error.localizedMessage
             state.toastMessage = ToastMessage(
               type: .error,
-              title: "로그아웃에 실패했어요",
+              title: LocalizedStrings.Error.logoutFailed,
               subtitle: error.localizedMessage,
               position: .top
             )
@@ -475,7 +475,7 @@ extension Settings {
             state.errorMessage = errorMessage
             state.toastMessage = ToastMessage(
               type: .error,
-              title: "프로필 저장에 실패했어요",
+              title: LocalizedStrings.Error.profileSaveFailed,
               subtitle: errorMessage,
               position: .top
             )

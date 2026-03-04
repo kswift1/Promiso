@@ -480,7 +480,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
     return AsyncStream { continuation in
       let query = db.environmentCollection(collectionName)
         .whereField("groupId", isEqualTo: groupId)
-        .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: Date()))
+        .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: Calendar.current.startOfDay(for: Date())))
         .order(by: "startAt")
         .limit(to: limit)
 

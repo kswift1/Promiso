@@ -423,7 +423,7 @@ extension PromiseDetail {
             state.respondingState = .idle
             state.toastMessage = ToastMessage(
               type: .error,
-              title: "응답 전송에 실패했어요",
+              title: LocalizedStrings.Error.responseSendFailed,
               subtitle: error.message,
               position: .top
             )
@@ -448,7 +448,7 @@ extension PromiseDetail {
             state.isDeleting = false
             state.toastMessage = ToastMessage(
               type: .error,
-              title: "약속 삭제에 실패했어요",
+              title: LocalizedStrings.Error.promiseDeleteFailed,
               subtitle: error.message,
               position: .top
             )
