@@ -572,14 +572,6 @@ struct DayTimelineView: View {
                   .lineLimit(1)
               }
 
-              if case .promise(let p) = item {
-                Text("·")
-                  .font(.system(size: 10))
-                  .foregroundStyle(.tertiary)
-                Text("👤 \(p.votes.acceptedCount)/\(p.minimumParticipants)")
-                  .font(.system(size: 10))
-                  .foregroundStyle(.secondary)
-              }
             }
 
             // Row 3: 장소 (있을 때만)
@@ -630,21 +622,31 @@ struct DayTimelineView: View {
       Button {
         onScheduleItemTapped(item)
       } label: {
-        Label("수정", systemImage: "pencil")
+        Label(LocalizedStrings.PromiseCard.viewDetail, systemImage: "info.circle")
       }
 
-      Button {
-        onShareScheduleItem?(item)
-      } label: {
-        Label("공유", systemImage: "square.and.arrow.up")
-      }
+      switch item {
+      case .promise(let promise):
+        Button {
+          onShareScheduleItem?(item)
+        } label: {
+          Label(LocalizedStrings.PromiseCard.share, systemImage: "square.and.arrow.up")
+        }
 
-      Divider()
+        if promise.isHost(userId: currentUserId) {
+          Button(role: .destructive) {
+            onDeleteScheduleItem?(item)
+          } label: {
+            Label(LocalizedStrings.PromiseCard.deletePromise, systemImage: "trash")
+          }
+        }
 
-      Button(role: .destructive) {
-        onDeleteScheduleItem?(item)
-      } label: {
-        Label("삭제", systemImage: "trash")
+      case .personalEvent:
+        Button(role: .destructive) {
+          onDeleteScheduleItem?(item)
+        } label: {
+          Label(LocalizedStrings.Shared.deleteEvent, systemImage: "trash")
+        }
       }
     } preview: {
       contextMenuPreview(for: item)
