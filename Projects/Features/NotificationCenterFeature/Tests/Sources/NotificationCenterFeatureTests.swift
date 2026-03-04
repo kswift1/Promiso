@@ -447,7 +447,7 @@ struct NotificationCenterFeatureTests {
 
     // Toast 내용 검증
     #expect(store.state.toastMessage?.type == .error)
-    #expect(store.state.toastMessage?.title == "알림 삭제에 실패했어요")
+    #expect(store.state.toastMessage?.title == LocalizedStrings.Error.notificationDeleteFailed)
     #expect(store.state.toastMessage?.subtitle == LocalizedStrings.Error.unknownError)
     #expect(store.state.toastMessage?.position == .top)
   }
