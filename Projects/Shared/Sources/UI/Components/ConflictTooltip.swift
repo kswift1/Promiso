@@ -27,15 +27,45 @@ public struct ConflictTooltip: View {
 
   // MARK: - Timeline Computation
 
-  /// 타임라인 범위: 새 일정 기준 ± 30분 (장기 충돌 일정이 범위를 지배하지 않도록)
+  /// 타임라인 최대 표시 시간 (패딩 포함 6시간)
+  private static let maxTimelineHours = 6
+
+  /// 타임라인 범위: 실제 겹치는 구간의 합집합 ± 1시간 패딩
+  /// - 각 충돌 일정과 새 일정의 overlap 구간을 계산한 후 전체 합집합으로 범위를 결정
+  /// - overlap이 maxTimelineHours를 초과하면 첫 overlap 시작 기준으로 잘라냄
+  /// - 충돌이 없으면 새 일정 기준 ± 30분으로 fallback
   private var timelineRange: (start: Date, end: Date) {
     let calendar = Calendar.current
-    let earliest = newEventStartAt
-    let latest = newEventEndAt ?? newEventStartAt.addingTimeInterval(3600)
+    let newEnd = newEventEndAt ?? newEventStartAt.addingTimeInterval(3600)
 
-    // ±30분 여유
-    let start = calendar.date(byAdding: .minute, value: -30, to: earliest) ?? earliest
-    let end = calendar.date(byAdding: .minute, value: 30, to: latest) ?? latest
+    // 각 충돌 일정과 새 일정의 overlap 구간 계산
+    let overlapIntervals: [(start: Date, end: Date)] = conflicts.compactMap { conflict in
+      let conflictEnd = conflict.endAt ?? conflict.startAt.addingTimeInterval(3600)
+      let overlapStart = max(newEventStartAt, conflict.startAt)
+      let overlapEnd = min(newEnd, conflictEnd)
+      guard overlapStart < overlapEnd else { return nil }
+      return (overlapStart, overlapEnd)
+    }
+
+    if overlapIntervals.isEmpty {
+      let start = calendar.date(byAdding: .minute, value: -30, to: newEventStartAt) ?? newEventStartAt
+      let end = calendar.date(byAdding: .minute, value: 30, to: newEnd) ?? newEnd
+      return (start, end)
+    }
+
+    // 모든 overlap 구간의 합집합 (가장 이른 시작 ~ 가장 늦은 종료)
+    let unionStart = overlapIntervals.map(\.start).min() ?? newEventStartAt
+    let unionEnd = overlapIntervals.map(\.end).max() ?? newEnd
+
+    // ±1시간 패딩 추가
+    var start = calendar.date(byAdding: .hour, value: -1, to: unionStart) ?? unionStart
+    var end = calendar.date(byAdding: .hour, value: 1, to: unionEnd) ?? unionEnd
+
+    // 최대 표시 시간 초과 시 첫 overlap 기준으로 캡
+    let maxSeconds = TimeInterval(Self.maxTimelineHours * 3600)
+    if end.timeIntervalSince(start) > maxSeconds {
+      end = start.addingTimeInterval(maxSeconds)
+    }
 
     return (start, end)
   }
@@ -136,47 +166,66 @@ public struct ConflictTooltip: View {
   // MARK: - Timeline View
 
   private var timelineView: some View {
-    HStack(alignment: .top, spacing: 0) {
-      // 시간 눈금 (클램프된 영역 내)
-      ZStack(alignment: .topLeading) {
-        ForEach(hourLabels, id: \.self) { hour in
-          Text(Self.compactTimeFormatter.string(from: hour))
-            .font(.system(size: 10, weight: .medium, design: .monospaced))
-            .foregroundStyle(.tertiary)
-            .offset(y: yOffset(for: hour, in: timelineHeight) - 6)
-        }
-      }
-      .frame(width: 36)
+    VStack(spacing: 4) {
+      // 컬럼 제목
+      HStack(spacing: 0) {
+        Color.clear
+          .frame(width: 36)
 
-      // 타임라인 콘텐츠 (그리드 + 2컬럼 블록)
-      ZStack(alignment: .topLeading) {
-        // 시간 구분선 (전체 너비)
-        ForEach(hourLabels, id: \.self) { hour in
-          Rectangle()
-            .fill(Color.secondary.opacity(0.15))
-            .frame(height: 0.5)
-            .offset(y: yOffset(for: hour, in: timelineHeight))
-        }
-
-        // 2컬럼: 새 일정(좌) / 충돌 일정(우)
         HStack(spacing: 2) {
-          ZStack(alignment: .topLeading) {
-            Color.clear
-            newEventBlock
+          Text("새 일정")
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+          Text("기존 일정")
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .font(.system(size: 10, weight: .medium))
+        .foregroundStyle(.secondary)
+      }
+
+      // 타임라인
+      HStack(alignment: .top, spacing: 0) {
+        // 시간 눈금 (클램프된 영역 내)
+        ZStack(alignment: .topLeading) {
+          ForEach(hourLabels, id: \.self) { hour in
+            Text(Self.compactTimeFormatter.string(from: hour))
+              .font(.system(size: 10, weight: .medium, design: .monospaced))
+              .foregroundStyle(.tertiary)
+              .offset(y: yOffset(for: hour, in: timelineHeight) - 6)
+          }
+        }
+        .frame(width: 36)
+
+        // 타임라인 콘텐츠 (그리드 + 2컬럼 블록)
+        ZStack(alignment: .topLeading) {
+          // 시간 구분선 (전체 너비)
+          ForEach(hourLabels, id: \.self) { hour in
+            Rectangle()
+              .fill(Color.secondary.opacity(0.15))
+              .frame(height: 0.5)
+              .offset(y: yOffset(for: hour, in: timelineHeight))
           }
 
-          ZStack(alignment: .topLeading) {
-            Color.clear
-            ForEach(Array(conflicts.enumerated()), id: \.offset) { index, conflict in
-              conflictBlock(conflict, index: index)
+          // 2컬럼: 새 일정(좌) / 충돌 일정(우)
+          HStack(spacing: 2) {
+            ZStack(alignment: .topLeading) {
+              Color.clear
+              newEventBlock
+            }
+
+            ZStack(alignment: .topLeading) {
+              Color.clear
+              ForEach(Array(conflicts.enumerated()), id: \.offset) { index, conflict in
+                conflictBlock(conflict, index: index)
+              }
             }
           }
         }
+        .frame(height: timelineHeight)
+        .clipped()
       }
       .frame(height: timelineHeight)
-      .clipped()
     }
-    .frame(height: timelineHeight)
   }
 
   // MARK: - New Event Block
