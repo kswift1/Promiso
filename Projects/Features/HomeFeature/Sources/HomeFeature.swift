@@ -1070,10 +1070,9 @@ extension Home {
 
         case .overlayScheduleDetail(.delegate(.promiseResponseUpdated(let promise))):
           // 오버레이 캐시 업데이트
-          for month in state.overlayPromisesByMonth.keys {
-            if let index = state.overlayPromisesByMonth[month]?.firstIndex(where: { $0.id == promise.id }) {
-              state.overlayPromisesByMonth[month]?[index] = promise
-            }
+          let monthKey = promise.startAt.startOfMonth
+          if let index = state.overlayPromisesByMonth[monthKey]?.firstIndex(where: { $0.id == promise.id }) {
+            state.overlayPromisesByMonth[monthKey]?[index] = promise
           }
           // 홈 약속 목록도 업데이트
           if case .loaded(var promises) = state.promisesState,
@@ -1093,9 +1092,10 @@ extension Home {
           state.overlayCreatePromise = nil
           state.overlayCalendarMode = state.overlayCalendarModeBeforeFeature ?? .weekly
           state.overlayCalendarModeBeforeFeature = nil
+          // 약속이 어느 월에 생성되었을지 모르므로 전체 캐시 무효화
+          state.overlayLoadedMonths.removeAll()
+          state.overlayPromisesByMonth.removeAll()
           let month = state.overlaySelectedDate.startOfMonth
-          state.overlayLoadedMonths.remove(month)
-          state.overlayPromisesByMonth.removeValue(forKey: month)
           return .merge(
             .send(.internal(.fetchPromises)),
             .send(.internal(.fetchOverlaySchedules(month: month)))

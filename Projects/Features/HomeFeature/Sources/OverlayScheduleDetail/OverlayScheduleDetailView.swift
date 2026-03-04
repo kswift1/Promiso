@@ -72,7 +72,7 @@ extension OverlayScheduleDetail {
               .font(.system(size: 20, weight: .semibold))
               .foregroundStyle(.secondary)
           } else if store.personalEvent != nil {
-            Text("개인 일정")
+            Text(LocalizedStrings.OverlayScheduleDetail.personalEvent)
               .font(.system(size: 20, weight: .semibold))
               .foregroundStyle(.secondary)
           }
@@ -101,7 +101,7 @@ extension OverlayScheduleDetail {
               .font(.system(size: 28, weight: .bold, design: .rounded))
               .foregroundStyle(Color.pmindigo.n500)
               .contentTransition(.numericText())
-            Text("후 시작")
+            Text(LocalizedStrings.OverlayScheduleDetail.startsAfter)
               .font(.system(size: 14))
               .foregroundStyle(.secondary)
           }
@@ -115,7 +115,7 @@ extension OverlayScheduleDetail {
               .background(Color.pmindigo.n500)
               .foregroundStyle(.white)
               .clipShape(Capsule())
-            Text("진행 중")
+            Text(LocalizedStrings.OverlayScheduleDetail.inProgress)
               .font(.system(size: 15, weight: .medium))
               .foregroundStyle(.secondary)
           }
@@ -134,7 +134,7 @@ extension OverlayScheduleDetail {
           if store.promise != nil {
             PromiseDetailStatusBadgeView(status: store.responseStatus)
           } else {
-            Text("지난 일정")
+            Text(LocalizedStrings.OverlayScheduleDetail.pastEvent)
               .font(.system(size: 15, weight: .medium))
               .foregroundStyle(.secondary)
           }
@@ -171,7 +171,7 @@ extension OverlayScheduleDetail {
         if !promise.isPast {
           HStack(spacing: 10) {
             quickResponseButton(
-              title: "수락",
+              title: LocalizedStrings.OverlayScheduleDetail.accept,
               icon: "checkmark",
               color: .green,
               isSelected: store.myVoteStatus == .accepted,
@@ -181,7 +181,7 @@ extension OverlayScheduleDetail {
             }
 
             quickResponseButton(
-              title: "미정",
+              title: LocalizedStrings.OverlayScheduleDetail.pending,
               icon: "minus",
               color: Color(.systemGray),
               isSelected: store.myVoteStatus == .pending,
@@ -191,7 +191,7 @@ extension OverlayScheduleDetail {
             }
 
             quickResponseButton(
-              title: "거절",
+              title: LocalizedStrings.OverlayScheduleDetail.reject,
               icon: "xmark",
               color: .red,
               isSelected: store.myVoteStatus == .declined,
@@ -251,7 +251,7 @@ extension OverlayScheduleDetail {
             Circle()
               .fill(Color.green)
               .frame(width: 6, height: 6)
-            Text("참여 \(accepted)")
+            Text(LocalizedStrings.OverlayScheduleDetail.participationCount(accepted))
               .contentTransition(.numericText())
               .foregroundStyle(.green)
           }
@@ -263,7 +263,7 @@ extension OverlayScheduleDetail {
             Circle()
               .fill(Color.red.opacity(0.7))
               .frame(width: 6, height: 6)
-            Text("불참 \(declined)")
+            Text(LocalizedStrings.OverlayScheduleDetail.declinedCount(declined))
               .contentTransition(.numericText())
               .foregroundStyle(.red)
           }
@@ -275,7 +275,7 @@ extension OverlayScheduleDetail {
             RoundedRectangle(cornerRadius: 0.5)
               .fill(Color.pmindigo.n500)
               .frame(width: 2, height: 8)
-            Text("확정 \(confirm)")
+            Text(LocalizedStrings.OverlayScheduleDetail.confirmThreshold(confirm))
               .foregroundStyle(Color.pmindigo.n500)
           }
 
@@ -286,7 +286,7 @@ extension OverlayScheduleDetail {
             Circle()
               .fill(Color.gray.opacity(0.3))
               .frame(width: 6, height: 6)
-            Text("전체 \(store.totalMemberCount)")
+            Text(LocalizedStrings.OverlayScheduleDetail.totalCount(store.totalMemberCount))
               .foregroundStyle(.secondary)
           }
 
@@ -297,7 +297,7 @@ extension OverlayScheduleDetail {
               Circle()
                 .fill(store.myVoteStatus == .accepted ? Color.green : Color.red)
                 .frame(width: 5, height: 5)
-              Text(store.myVoteStatus == .accepted ? "참여함" : "불참함")
+              Text(store.myVoteStatus == .accepted ? LocalizedStrings.OverlayScheduleDetail.participated : LocalizedStrings.OverlayScheduleDetail.declined)
                 .foregroundStyle(store.myVoteStatus == .accepted ? .green : .red)
             }
             .transition(.opacity.combined(with: .scale(scale: 0.8)))
@@ -355,7 +355,7 @@ extension OverlayScheduleDetail {
     private var descriptionCard: some View {
       if let desc = store.personalEvent?.description, !desc.isEmpty {
         VStack(alignment: .leading, spacing: 8) {
-          Text("메모")
+          Text(LocalizedStrings.OverlayScheduleDetail.memo)
             .font(.system(size: 13, weight: .semibold))
             .foregroundStyle(.secondary)
           Text(desc)
@@ -435,7 +435,7 @@ extension OverlayScheduleDetail {
         store.send(.view(.openFullDetailTapped))
       } label: {
         HStack {
-          Text("전체 상세 보기")
+          Text(LocalizedStrings.OverlayScheduleDetail.viewFullDetail)
             .font(.system(size: 15, weight: .medium))
           Spacer()
           Image(systemName: "chevron.right")

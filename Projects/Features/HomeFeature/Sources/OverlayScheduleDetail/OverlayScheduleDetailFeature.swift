@@ -111,8 +111,7 @@ extension OverlayScheduleDetail {
             if let cached = state.weatherCache[cacheKey] {
               state.weatherInfo = cached
             }
-            let needsWeatherFetch = state.weatherInfo == nil
-              || isWeatherStale(state.weatherInfo)
+            let needsWeatherFetch = isWeatherStale(state.weatherInfo)
             let hasLocation = state.item.location != nil
             if needsWeatherFetch && hasLocation {
               return .send(.internal(.fetchWeather))
@@ -213,7 +212,7 @@ extension OverlayScheduleDetail {
             state.respondingState = .idle
             state.toastMessage = ToastMessage(
               type: .error,
-              title: "응답 전송에 실패했어요",
+              title: LocalizedStrings.OverlayScheduleDetail.respondFailed,
               subtitle: error.message,
               position: .top
             )
@@ -326,8 +325,8 @@ extension OverlayScheduleDetail.Feature.State {
   var confirmationProgress: String {
     guard let promise else { return "" }
     let needed = promise.minimumParticipants - acceptedCount
-    if needed <= 0 { return "확정됨" }
-    return "확정까지 \(needed)명 더 필요"
+    if needed <= 0 { return LocalizedStrings.OverlayScheduleDetail.confirmed }
+    return LocalizedStrings.OverlayScheduleDetail.confirmationRemaining(needed)
   }
 
   var responseStatus: PromiseResponseStatus {

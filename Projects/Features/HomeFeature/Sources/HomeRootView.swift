@@ -144,13 +144,11 @@ extension Home {
     // MARK: - Overlay Feature Content
 
     private var overlayFeatureContent: AnyView? {
-      if store.overlayScheduleDetail != nil,
-         let detailStore = store.scope(state: \.overlayScheduleDetail, action: \.overlayScheduleDetail) {
+      if let detailStore = store.scope(state: \.overlayScheduleDetail, action: \.overlayScheduleDetail) {
         return AnyView(
           OverlayScheduleDetail.RootView(store: detailStore)
         )
-      } else if store.overlayCreatePromise != nil,
-                let createStore = store.scope(state: \.overlayCreatePromise, action: \.overlayCreatePromise) {
+      } else if let createStore = store.scope(state: \.overlayCreatePromise, action: \.overlayCreatePromise) {
         return AnyView(
           CreatePromise.RootView(store: createStore)
         )

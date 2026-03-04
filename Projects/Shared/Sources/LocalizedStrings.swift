@@ -1889,6 +1889,43 @@ public enum LocalizedStrings {
     public static var statusFailed: String { String(localized: "promiseCard.status.failed", bundle: bundle) }
   }
 
+  // MARK: - OverlayScheduleDetail
+  public enum OverlayScheduleDetail {
+    public static var personalEvent: String { String(localized: "overlayScheduleDetail.personalEvent", bundle: bundle) }
+    public static var startsAfter: String { String(localized: "overlayScheduleDetail.startsAfter", bundle: bundle) }
+    public static var inProgress: String { String(localized: "overlayScheduleDetail.inProgress", bundle: bundle) }
+    public static var pastEvent: String { String(localized: "overlayScheduleDetail.pastEvent", bundle: bundle) }
+    public static var memo: String { String(localized: "overlayScheduleDetail.memo", bundle: bundle) }
+    public static var viewFullDetail: String { String(localized: "overlayScheduleDetail.viewFullDetail", bundle: bundle) }
+    public static var accept: String { String(localized: "overlayScheduleDetail.accept", bundle: bundle) }
+    public static var pending: String { String(localized: "overlayScheduleDetail.pending", bundle: bundle) }
+    public static var reject: String { String(localized: "overlayScheduleDetail.reject", bundle: bundle) }
+    public static var respondFailed: String { String(localized: "overlayScheduleDetail.respondFailed", bundle: bundle) }
+    public static var confirmed: String { String(localized: "overlayScheduleDetail.confirmed", bundle: bundle) }
+    public static func confirmationRemaining(_ count: Int) -> String {
+      String(localized: "overlayScheduleDetail.confirmationRemaining", bundle: bundle)
+        .replacingOccurrences(of: "%lld", with: "\(count)")
+    }
+    public static func participationCount(_ count: Int) -> String {
+      String(localized: "overlayScheduleDetail.participationCount", bundle: bundle)
+        .replacingOccurrences(of: "%lld", with: "\(count)")
+    }
+    public static func declinedCount(_ count: Int) -> String {
+      String(localized: "overlayScheduleDetail.declinedCount", bundle: bundle)
+        .replacingOccurrences(of: "%lld", with: "\(count)")
+    }
+    public static func confirmThreshold(_ count: Int) -> String {
+      String(localized: "overlayScheduleDetail.confirmThreshold", bundle: bundle)
+        .replacingOccurrences(of: "%lld", with: "\(count)")
+    }
+    public static func totalCount(_ count: Int) -> String {
+      String(localized: "overlayScheduleDetail.totalCount", bundle: bundle)
+        .replacingOccurrences(of: "%lld", with: "\(count)")
+    }
+    public static var participated: String { String(localized: "overlayScheduleDetail.participated", bundle: bundle) }
+    public static var declined: String { String(localized: "overlayScheduleDetail.declined", bundle: bundle) }
+  }
+
   // MARK: - GroupPromiseList
   public enum GroupPromiseList {
     public static func navigationTitle(_ groupName: String) -> String {

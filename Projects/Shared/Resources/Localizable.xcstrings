@@ -21200,6 +21200,330 @@
           }
         }
       }
+    },
+    "overlayScheduleDetail.personalEvent": {
+      "comment": "개인 일정 레이블",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Personal Event"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "개인 일정"
+          }
+        }
+      }
+    },
+    "overlayScheduleDetail.startsAfter": {
+      "comment": "카운트다운 후 시작 레이블",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "until start"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "후 시작"
+          }
+        }
+      }
+    },
+    "overlayScheduleDetail.inProgress": {
+      "comment": "진행 중 상태 레이블",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In Progress"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "진행 중"
+          }
+        }
+      }
+    },
+    "overlayScheduleDetail.pastEvent": {
+      "comment": "지난 일정 레이블",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Past Event"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지난 일정"
+          }
+        }
+      }
+    },
+    "overlayScheduleDetail.memo": {
+      "comment": "메모 섹션 레이블",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Memo"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "메모"
+          }
+        }
+      }
+    },
+    "overlayScheduleDetail.viewFullDetail": {
+      "comment": "전체 상세 보기 버튼",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View Full Detail"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "전체 상세 보기"
+          }
+        }
+      }
+    },
+    "overlayScheduleDetail.accept": {
+      "comment": "약속 수락 버튼",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accept"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "수락"
+          }
+        }
+      }
+    },
+    "overlayScheduleDetail.pending": {
+      "comment": "미정 상태 버튼",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Undecided"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "미정"
+          }
+        }
+      }
+    },
+    "overlayScheduleDetail.reject": {
+      "comment": "약속 거절 버튼",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Decline"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "거절"
+          }
+        }
+      }
+    },
+    "overlayScheduleDetail.respondFailed": {
+      "comment": "응답 전송 실패 토스트 제목",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Failed to send response"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "응답 전송에 실패했어요"
+          }
+        }
+      }
+    },
+    "overlayScheduleDetail.confirmed": {
+      "comment": "약속 확정 상태 텍스트",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirmed"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "확정됨"
+          }
+        }
+      }
+    },
+    "overlayScheduleDetail.confirmationRemaining": {
+      "comment": "확정까지 남은 인원 (예: 확정까지 3명 더 필요)",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld more needed to confirm"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "확정까지 %lld명 더 필요"
+          }
+        }
+      }
+    },
+    "overlayScheduleDetail.participationCount": {
+      "comment": "참여 인원 수 (예: 참여 3)",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Going %lld"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "참여 %lld"
+          }
+        }
+      }
+    },
+    "overlayScheduleDetail.declinedCount": {
+      "comment": "불참 인원 수 (예: 불참 2)",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not going %lld"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "불참 %lld"
+          }
+        }
+      }
+    },
+    "overlayScheduleDetail.confirmThreshold": {
+      "comment": "확정 기준 인원 수 (예: 확정 5)",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Threshold %lld"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "확정 %lld"
+          }
+        }
+      }
+    },
+    "overlayScheduleDetail.totalCount": {
+      "comment": "전체 인원 수 (예: 전체 10)",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Total %lld"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "전체 %lld"
+          }
+        }
+      }
+    },
+    "overlayScheduleDetail.participated": {
+      "comment": "내가 참여함 상태 레이블",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Going"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "참여함"
+          }
+        }
+      }
+    },
+    "overlayScheduleDetail.declined": {
+      "comment": "내가 불참함 상태 레이블",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not going"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "불참함"
+          }
+        }
+      }
     }
   },
   "version": "1.0"
