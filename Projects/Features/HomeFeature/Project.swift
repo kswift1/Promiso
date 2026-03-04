@@ -22,6 +22,7 @@ let project = Project(
         .project(target: "ExternalDependency", path: "../../ExternalDependency"),
         .project(target: "ResourceKit", path: "../../ResourceKit"),
         .project(target: "SharedFeature", path: "../SharedFeature"),
+        .project(target: "CreatePromiseFeature", path: "../CreatePromiseFeature"),
         .project(target: "NotificationCenterFeature", path: "../NotificationCenterFeature")
       ],
       settings: .standard()

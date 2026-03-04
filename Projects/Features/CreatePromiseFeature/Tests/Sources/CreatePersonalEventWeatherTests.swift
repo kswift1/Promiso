@@ -10,7 +10,7 @@
 //
 
 import Testing
-@testable import SharedFeature
+@testable import CreatePromiseFeature
 @testable import PromisoShared
 @testable import Clients
 
