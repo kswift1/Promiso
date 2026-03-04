@@ -537,6 +537,7 @@ extension CalendarFeature {
     @Dependency(\.eventKitClient) var eventKitClient
     @Dependency(\.personalEventClient) var personalEventClient
     @Dependency(\.kakaoShareClient) var kakaoShareClient
+    @Dependency(\.userDefaultsClient) var userDefaultsClient
 
     // MARK: - Reducer Body
 
@@ -649,6 +650,16 @@ extension CalendarFeature {
       switch action {
       case .onAppear:
         AppLogger.calendar.debugLog("🚀 onAppear - 캘린더 탭 진입")
+        // 영속 저장된 배너 숨김 상태 복원
+        if let saved = userDefaultsClient.stringForKey(AppConstants.UserDefaults.dismissedCalendarBannerTypes),
+           !saved.isEmpty {
+          let keys = saved.split(separator: ",").map(String.init)
+          for key in keys {
+            if let status = CalendarAuthorizationStatus(persistKey: key) {
+              state.hiddenCalendarBannerTypes.insert(status)
+            }
+          }
+        }
         return .merge(
           .send(.internal(.checkCalendarPermission)),
           .send(.internal(.loadInitialData))
@@ -880,6 +891,9 @@ extension CalendarFeature {
 
       case .dismissCalendarBanner(let status):
         state.hiddenCalendarBannerTypes.insert(status)
+        // UserDefaults에 영속 저장
+        let rawValues = state.hiddenCalendarBannerTypes.map { $0.persistKey }
+        userDefaultsClient.setString(rawValues.joined(separator: ","), AppConstants.UserDefaults.dismissedCalendarBannerTypes)
         return .none
 
       case .personalEventTapped(let event):

@@ -220,6 +220,8 @@ public enum AppConstants {
     public static let personalCalendarSync = "promisoPersonalCalendarSync"
     /// 앱 소개 온보딩 완료 여부
     public static let hasCompletedOnboarding = "promisoHasCompletedOnboarding"
+    /// 캘린더 권한 배너 다시 보지 않기
+    public static let dismissedCalendarBannerTypes = "promisoDismissedCalendarBannerTypes"
   }
 
   // MARK: - Shared State Keys (TCA @Shared inMemory)
