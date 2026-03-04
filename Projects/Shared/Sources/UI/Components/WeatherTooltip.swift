@@ -81,6 +81,11 @@ public struct WeatherTooltip: View {
         Image(systemName: forecast.condition.sfSymbolName)
           .symbolRenderingMode(.multicolor)
           .font(.system(size: 22))
+          .frame(width: 32, height: 32)
+          .background(
+            Circle()
+              .fill(Color.cyan.opacity(0.12))
+          )
 
         Text(forecast.condition.description)
           .font(.system(size: 15, weight: .medium))
@@ -240,7 +245,11 @@ public struct WeatherTooltip: View {
       Image(systemName: hourForecast.condition.sfSymbolName)
         .symbolRenderingMode(.multicolor)
         .font(.system(size: 16))
-        .frame(height: 20)
+        .frame(width: 24, height: 24)
+        .background(
+          Circle()
+            .fill(Color.cyan.opacity(0.12))
+        )
 
       // 온도
       Text("\(Int(hourForecast.temperature.rounded()))°")
