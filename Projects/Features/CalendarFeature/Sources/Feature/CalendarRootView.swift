@@ -53,6 +53,7 @@ extension CalendarFeature {
           }
         }
         .auroraBackground()
+        .alert(store: store.scope(state: \.$deleteAlert, action: \.deleteAlert))
         .toast(Binding(
           get: { store.toastMessage },
           set: { _ in store.send(.view(.toastDismissed)) }
@@ -208,6 +209,12 @@ extension CalendarFeature {
             },
             onCreatePromise: {
               store.send(.view(.createPromiseFromTimeline))
+            },
+            onDeleteScheduleItem: { item in
+              store.send(.view(.deleteScheduleItem(item)))
+            },
+            onShareScheduleItem: { item in
+              store.send(.view(.shareScheduleItem(item)))
             },
             currentUserId: store.currentUserId,
             weatherCache: store.weatherCache,

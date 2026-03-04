@@ -98,6 +98,10 @@ extension CalendarFeature {
 
       /// 네비게이션 경로 (약속 상세 등)
       var path = StackState<Path.State>()
+      /// 삭제 확인 알럿
+      @Presents var deleteAlert: AlertState<DeleteAlertAction>?
+      /// 삭제 대상 일정 아이템
+      var scheduleItemToDelete: CalendarFeature.ScheduleItem?
       /// 화면 토스트 메시지
       var toastMessage: ToastMessage?
 
@@ -427,6 +431,13 @@ extension CalendarFeature {
       case personalEventDetail(PersonalEventDetail.Feature)
     }
 
+    // MARK: - Alert
+
+    @CasePathable
+    public enum DeleteAlertAction: Equatable {
+      case confirmDelete
+    }
+
     // MARK: - Action
 
     @CasePathable
@@ -434,6 +445,7 @@ extension CalendarFeature {
       case view(ViewAction)
       case `internal`(InternalAction)
       case path(StackActionOf<Path>)
+      case deleteAlert(PresentationAction<DeleteAlertAction>)
 
       @CasePathable
       public enum ViewAction {
@@ -543,8 +555,32 @@ extension CalendarFeature {
           return .send(.internal(.fetchPersonalEvents))
         case .path:
           return .none
+
+        case .deleteAlert(.presented(.confirmDelete)):
+          guard let item = state.scheduleItemToDelete else { return .none }
+          state.scheduleItemToDelete = nil
+          switch item {
+          case .promise(let promise):
+            let currentMonth = state.selectedDate.startOfMonth
+            return .run { [promiseClient] send in
+              try await promiseClient.deletePromise(promise.id)
+              await send(.internal(.fetchPromisesForMonth(currentMonth)))
+            }
+          case .personalEvent(let event):
+            return .run { [personalEventClient] send in
+              try await personalEventClient.deleteEvent(event.id)
+              await send(.internal(.fetchPersonalEvents))
+            }
+          case .calendarEvent:
+            return .none
+          }
+
+        case .deleteAlert:
+          state.scheduleItemToDelete = nil
+          return .none
         }
       }
+      .ifLet(\.$deleteAlert, action: \.deleteAlert)
       .forEach(\.path, action: \.path)
     }
 
@@ -833,21 +869,38 @@ extension CalendarFeature {
         return .none
 
       case .deleteScheduleItem(let item):
+        state.scheduleItemToDelete = item
         switch item {
         case .promise(let promise):
-          let currentMonth = state.selectedDate.startOfMonth
-          return .run { [promiseClient] send in
-            try await promiseClient.deletePromise(promise.id)
-            await send(.internal(.fetchPromisesForMonth(currentMonth)))
+          state.deleteAlert = AlertState {
+            TextState(LocalizedStrings.GroupMain.deletePromiseTitle)
+          } actions: {
+            ButtonState(role: .cancel) {
+              TextState(LocalizedStrings.Common.cancel)
+            }
+            ButtonState(role: .destructive, action: .confirmDelete) {
+              TextState(LocalizedStrings.Common.delete)
+            }
+          } message: {
+            TextState(LocalizedStrings.GroupMain.deletePromiseConfirm(promise.title))
           }
         case .personalEvent(let event):
-          return .run { [personalEventClient] send in
-            try await personalEventClient.deleteEvent(event.id)
-            await send(.internal(.fetchPersonalEvents))
+          state.deleteAlert = AlertState {
+            TextState(LocalizedStrings.Shared.deleteEvent)
+          } actions: {
+            ButtonState(role: .cancel) {
+              TextState(LocalizedStrings.Common.cancel)
+            }
+            ButtonState(role: .destructive, action: .confirmDelete) {
+              TextState(LocalizedStrings.Common.delete)
+            }
+          } message: {
+            TextState(LocalizedStrings.Shared.deleteEventConfirm(event.title))
           }
         case .calendarEvent:
-          return .none
+          break
         }
+        return .none
 
       case .shareScheduleItem:
         // 공유는 View 레벨에서 UIActivityViewController 표시

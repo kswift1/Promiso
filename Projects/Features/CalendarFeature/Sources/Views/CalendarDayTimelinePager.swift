@@ -17,8 +17,8 @@ struct CalendarDayTimelinePager: UIViewControllerRepresentable {
   let onNextDay: () -> Void
   let onCreatePersonalEvent: (Date) -> Void
   let onCreatePromise: () -> Void
-  let onDeleteScheduleItem: ((CalendarFeature.ScheduleItem) -> Void)? = nil
-  let onShareScheduleItem: ((CalendarFeature.ScheduleItem) -> Void)? = nil
+  let onDeleteScheduleItem: ((CalendarFeature.ScheduleItem) -> Void)?
+  let onShareScheduleItem: ((CalendarFeature.ScheduleItem) -> Void)?
   let currentUserId: String
   let weatherCache: [String: WeatherInfo]
   let groupColorMap: [String: Color]
