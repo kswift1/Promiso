@@ -33,6 +33,8 @@ final class CalendarOverlayViewModel {
   let onScheduleItemTapped: (HomeModels.ScheduleItem) -> Void
   let onCreatePersonalEvent: (Date) -> Void
   let onCreatePromise: () -> Void
+  let onDeleteScheduleItem: ((HomeModels.ScheduleItem) -> Void)?
+  let onShareScheduleItem: ((HomeModels.ScheduleItem) -> Void)?
 
   init(
     currentMonth: Date,
@@ -59,7 +61,9 @@ final class CalendarOverlayViewModel {
     onBackToMonth: @escaping () -> Void,
     onScheduleItemTapped: @escaping (HomeModels.ScheduleItem) -> Void,
     onCreatePersonalEvent: @escaping (Date) -> Void,
-    onCreatePromise: @escaping () -> Void
+    onCreatePromise: @escaping () -> Void,
+    onDeleteScheduleItem: ((HomeModels.ScheduleItem) -> Void)?,
+    onShareScheduleItem: ((HomeModels.ScheduleItem) -> Void)?
   ) {
     self.currentMonth = currentMonth
     self.selectedDate = selectedDate
@@ -86,6 +90,8 @@ final class CalendarOverlayViewModel {
     self.onScheduleItemTapped = onScheduleItemTapped
     self.onCreatePersonalEvent = onCreatePersonalEvent
     self.onCreatePromise = onCreatePromise
+    self.onDeleteScheduleItem = onDeleteScheduleItem
+    self.onShareScheduleItem = onShareScheduleItem
   }
 }
 
@@ -235,6 +241,8 @@ private struct CalendarOverlayContentView: View {
         onScheduleItemTapped: viewModel.onScheduleItemTapped,
         onCreatePersonalEvent: viewModel.onCreatePersonalEvent,
         onCreatePromise: viewModel.onCreatePromise,
+        onDeleteScheduleItem: viewModel.onDeleteScheduleItem,
+        onShareScheduleItem: viewModel.onShareScheduleItem,
         currentUserId: viewModel.currentUserId,
         weatherCache: viewModel.weatherCache,
         groupColorMap: viewModel.groupColorMap

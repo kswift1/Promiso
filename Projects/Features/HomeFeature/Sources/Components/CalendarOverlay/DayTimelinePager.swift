@@ -15,6 +15,8 @@ struct DayTimelinePager: UIViewControllerRepresentable {
   let onNextDay: () -> Void
   let onCreatePersonalEvent: (Date) -> Void
   let onCreatePromise: () -> Void
+  let onDeleteScheduleItem: ((HomeModels.ScheduleItem) -> Void)?
+  let onShareScheduleItem: ((HomeModels.ScheduleItem) -> Void)?
   let calendarMode: CalendarMode
   let currentUserId: String
   let weatherCache: [String: WeatherInfo]
@@ -39,6 +41,8 @@ struct DayTimelinePager: UIViewControllerRepresentable {
       onScheduleItemTapped: onScheduleItemTapped,
       onCreatePersonalEvent: onCreatePersonalEvent,
       onCreatePromise: onCreatePromise,
+      onDeleteScheduleItem: onDeleteScheduleItem,
+      onShareScheduleItem: onShareScheduleItem,
       currentUserId: currentUserId,
       weatherCache: weatherCache,
       groupColorMap: groupColorMap
@@ -69,6 +73,8 @@ struct DayTimelinePager: UIViewControllerRepresentable {
         onScheduleItemTapped: onScheduleItemTapped,
         onCreatePersonalEvent: coordinator.pager.onCreatePersonalEvent,
         onCreatePromise: coordinator.pager.onCreatePromise,
+        onDeleteScheduleItem: coordinator.pager.onDeleteScheduleItem,
+        onShareScheduleItem: coordinator.pager.onShareScheduleItem,
         currentUserId: coordinator.pager.currentUserId,
         weatherCache: coordinator.pager.weatherCache,
         groupColorMap: coordinator.pager.groupColorMap
@@ -112,6 +118,8 @@ struct DayTimelinePager: UIViewControllerRepresentable {
           onScheduleItemTapped: onScheduleItemTapped,
           onCreatePersonalEvent: onCreatePersonalEvent,
           onCreatePromise: onCreatePromise,
+          onDeleteScheduleItem: onDeleteScheduleItem,
+          onShareScheduleItem: onShareScheduleItem,
           currentUserId: currentUserId,
           weatherCache: weatherCache,
           groupColorMap: groupColorMap
@@ -137,6 +145,8 @@ struct DayTimelinePager: UIViewControllerRepresentable {
           onScheduleItemTapped: onScheduleItemTapped,
           onCreatePersonalEvent: coordinator.pager.onCreatePersonalEvent,
           onCreatePromise: coordinator.pager.onCreatePromise,
+          onDeleteScheduleItem: coordinator.pager.onDeleteScheduleItem,
+          onShareScheduleItem: coordinator.pager.onShareScheduleItem,
           currentUserId: coordinator.pager.currentUserId,
           weatherCache: coordinator.pager.weatherCache,
           groupColorMap: coordinator.pager.groupColorMap
@@ -180,6 +190,8 @@ struct DayTimelinePager: UIViewControllerRepresentable {
         onScheduleItemTapped: pager.onScheduleItemTapped,
         onCreatePersonalEvent: pager.onCreatePersonalEvent,
         onCreatePromise: pager.onCreatePromise,
+        onDeleteScheduleItem: pager.onDeleteScheduleItem,
+        onShareScheduleItem: pager.onShareScheduleItem,
         currentUserId: pager.currentUserId,
         weatherCache: pager.weatherCache,
         groupColorMap: pager.groupColorMap
@@ -294,6 +306,8 @@ struct DayTimelinePager: UIViewControllerRepresentable {
       onScheduleItemTapped: @escaping (HomeModels.ScheduleItem) -> Void,
       onCreatePersonalEvent: @escaping (Date) -> Void,
       onCreatePromise: @escaping () -> Void,
+      onDeleteScheduleItem: ((HomeModels.ScheduleItem) -> Void)?,
+      onShareScheduleItem: ((HomeModels.ScheduleItem) -> Void)?,
       currentUserId: String,
       weatherCache: [String: WeatherInfo],
       groupColorMap: [String: Color]
@@ -315,6 +329,8 @@ struct DayTimelinePager: UIViewControllerRepresentable {
           onScheduleItemTapped: onScheduleItemTapped,
           onCreatePersonalEvent: onCreatePersonalEvent,
           onCreatePromise: onCreatePromise,
+          onDeleteScheduleItem: onDeleteScheduleItem,
+          onShareScheduleItem: onShareScheduleItem,
           calendarMode: calendarMode,
           currentUserId: currentUserId,
           weatherCache: weatherCache,
@@ -355,6 +371,8 @@ struct DayTimelinePager: UIViewControllerRepresentable {
       onScheduleItemTapped: @escaping (HomeModels.ScheduleItem) -> Void,
       onCreatePersonalEvent: @escaping (Date) -> Void,
       onCreatePromise: @escaping () -> Void,
+      onDeleteScheduleItem: ((HomeModels.ScheduleItem) -> Void)?,
+      onShareScheduleItem: ((HomeModels.ScheduleItem) -> Void)?,
       currentUserId: String,
       weatherCache: [String: WeatherInfo],
       groupColorMap: [String: Color]
@@ -373,6 +391,8 @@ struct DayTimelinePager: UIViewControllerRepresentable {
           onScheduleItemTapped: onScheduleItemTapped,
           onCreatePersonalEvent: onCreatePersonalEvent,
           onCreatePromise: onCreatePromise,
+          onDeleteScheduleItem: onDeleteScheduleItem,
+          onShareScheduleItem: onShareScheduleItem,
           calendarMode: calendarMode,
           currentUserId: currentUserId,
           weatherCache: weatherCache,
@@ -396,6 +416,8 @@ struct DayTimelinePager: UIViewControllerRepresentable {
       onScheduleItemTapped: @escaping (HomeModels.ScheduleItem) -> Void,
       onCreatePersonalEvent: @escaping (Date) -> Void,
       onCreatePromise: @escaping () -> Void,
+      onDeleteScheduleItem: ((HomeModels.ScheduleItem) -> Void)?,
+      onShareScheduleItem: ((HomeModels.ScheduleItem) -> Void)?,
       currentUserId: String,
       weatherCache: [String: WeatherInfo],
       groupColorMap: [String: Color]
@@ -407,6 +429,8 @@ struct DayTimelinePager: UIViewControllerRepresentable {
         onScheduleItemTapped: onScheduleItemTapped,
         onCreatePersonalEvent: onCreatePersonalEvent,
         onCreatePromise: onCreatePromise,
+        onDeleteScheduleItem: onDeleteScheduleItem,
+        onShareScheduleItem: onShareScheduleItem,
         calendarMode: calendarMode,
         currentUserId: currentUserId,
         weatherCache: weatherCache,

@@ -31,6 +31,8 @@ struct CalendarOverlayPresenter: UIViewControllerRepresentable {
   let onScheduleItemTapped: (HomeModels.ScheduleItem) -> Void
   let onCreatePersonalEvent: (Date) -> Void
   let onCreatePromise: () -> Void
+  let onDeleteScheduleItem: ((HomeModels.ScheduleItem) -> Void)?
+  let onShareScheduleItem: ((HomeModels.ScheduleItem) -> Void)?
 
   func makeCoordinator() -> Coordinator {
     Coordinator()
@@ -105,7 +107,9 @@ struct CalendarOverlayPresenter: UIViewControllerRepresentable {
           onBackToMonth: onBackToMonth,
           onScheduleItemTapped: onScheduleItemTapped,
           onCreatePersonalEvent: onCreatePersonalEvent,
-          onCreatePromise: onCreatePromise
+          onCreatePromise: onCreatePromise,
+          onDeleteScheduleItem: onDeleteScheduleItem,
+          onShareScheduleItem: onShareScheduleItem
         )
         coordinator.viewModel = viewModel
 

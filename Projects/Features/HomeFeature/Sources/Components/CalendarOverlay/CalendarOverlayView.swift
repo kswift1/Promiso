@@ -30,6 +30,8 @@ struct CalendarOverlayView: View {
   let onScheduleItemTapped: (HomeModels.ScheduleItem) -> Void
   let onCreatePersonalEvent: (Date) -> Void
   let onCreatePromise: () -> Void
+  let onDeleteScheduleItem: ((HomeModels.ScheduleItem) -> Void)?
+  let onShareScheduleItem: ((HomeModels.ScheduleItem) -> Void)?
   let currentUserId: String
   let weatherCache: [String: WeatherInfo]
   let groupColorMap: [String: Color]
@@ -349,6 +351,8 @@ struct CalendarOverlayView: View {
       },
       onCreatePersonalEvent: onCreatePersonalEvent,
       onCreatePromise: onCreatePromise,
+      onDeleteScheduleItem: onDeleteScheduleItem,
+      onShareScheduleItem: onShareScheduleItem,
       calendarMode: calendarMode,
       currentUserId: currentUserId,
       weatherCache: weatherCache,
@@ -943,6 +947,7 @@ private extension String {
     onClose: {}, onDateSelected: { _ in }, onPreviousMonth: {}, onNextMonth: {},
     onWeatherCardTapped: {}, onBackToMonth: {}, onScheduleItemTapped: { _ in },
     onCreatePersonalEvent: { _ in }, onCreatePromise: {},
+    onDeleteScheduleItem: nil, onShareScheduleItem: nil,
     currentUserId: "preview-user",
     weatherCache: [:],
     groupColorMap: [:]
@@ -971,6 +976,7 @@ private extension String {
     onClose: {}, onDateSelected: { _ in }, onPreviousMonth: {}, onNextMonth: {},
     onWeatherCardTapped: {}, onBackToMonth: {}, onScheduleItemTapped: { _ in },
     onCreatePersonalEvent: { _ in }, onCreatePromise: {},
+    onDeleteScheduleItem: nil, onShareScheduleItem: nil,
     currentUserId: "preview-user",
     weatherCache: [:],
     groupColorMap: [:]

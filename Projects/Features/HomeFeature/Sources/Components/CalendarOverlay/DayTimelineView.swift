@@ -12,6 +12,8 @@ struct DayTimelineView: View {
   let onScheduleItemTapped: (HomeModels.ScheduleItem) -> Void
   let onCreatePersonalEvent: (Date) -> Void
   let onCreatePromise: () -> Void
+  let onDeleteScheduleItem: ((HomeModels.ScheduleItem) -> Void)?
+  let onShareScheduleItem: ((HomeModels.ScheduleItem) -> Void)?
   let calendarMode: CalendarMode
   let currentUserId: String
   let weatherCache: [String: WeatherInfo]
@@ -382,6 +384,80 @@ struct DayTimelineView: View {
     .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
   }
 
+  // MARK: - Context Menu Preview
+
+  private func contextMenuPreview(for item: HomeModels.ScheduleItem) -> some View {
+    let color = barColor(for: item)
+    let cardShape = RoundedRectangle(cornerRadius: 10)
+
+    return HStack(alignment: .top, spacing: 8) {
+      // 시간 레이블
+      VStack(spacing: 0) {
+        Text(timeString(for: item.startAt))
+          .font(.system(size: 10, weight: .medium, design: .monospaced))
+          .foregroundStyle(color)
+        Spacer(minLength: 0)
+        if let endAt = item.endAt {
+          Text(timeString(for: endAt))
+            .font(.system(size: 10, weight: .medium, design: .monospaced))
+            .foregroundStyle(color.opacity(0.6))
+        }
+      }
+      .frame(width: 36, height: 72)
+
+      // 카드
+      HStack(spacing: 0) {
+        VStack(alignment: .leading, spacing: 4) {
+          HStack(spacing: 5) {
+            Text(item.displayEmoji)
+              .font(.system(size: 16))
+            Text(item.title)
+              .font(.system(size: 14, weight: .semibold))
+              .foregroundStyle(.primary)
+              .lineLimit(1)
+          }
+
+          if let name = groupName(for: item) {
+            Text(name)
+              .font(.system(size: 11))
+              .foregroundStyle(.secondary)
+              .lineLimit(1)
+          }
+
+          if let location = itemLocation(for: item), !location.isEmpty {
+            HStack(spacing: 3) {
+              Image(systemName: "location.fill")
+                .font(.system(size: 9))
+                .foregroundStyle(Color.pmgray.n400)
+              Text(location)
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            }
+          }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+
+        Spacer(minLength: 0)
+      }
+      .frame(height: 72)
+      .background(.ultraThinMaterial, in: cardShape)
+      .overlay(alignment: .leading) {
+        RoundedRectangle(cornerRadius: 10)
+          .fill(color)
+          .frame(width: 4)
+          .clipShape(UnevenRoundedRectangle(
+            topLeadingRadius: 10, bottomLeadingRadius: 10,
+            bottomTrailingRadius: 0, topTrailingRadius: 0
+          ))
+      }
+      .clipShape(cardShape)
+    }
+    .padding(12)
+    .frame(width: 280, alignment: .leading)
+  }
+
   // MARK: - Slot Helpers
 
   /// 일정 아이템의 시작 시간을 10분 슬롯으로 변환
@@ -550,17 +626,29 @@ struct DayTimelineView: View {
       .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
-    .simultaneousGesture(
-      LongPressGesture(minimumDuration: 0.5)
-        .onEnded { _ in
-          UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-          let s = slotForItem(item)
-          creationStartSlot = s
-          creationEndSlot = min(144, s + 6)
-          dragAnchorStart = s
-          dragAnchorEnd = min(144, s + 6)
-        }
-    )
+    .contextMenu {
+      Button {
+        onScheduleItemTapped(item)
+      } label: {
+        Label("수정", systemImage: "pencil")
+      }
+
+      Button {
+        onShareScheduleItem?(item)
+      } label: {
+        Label("공유", systemImage: "square.and.arrow.up")
+      }
+
+      Divider()
+
+      Button(role: .destructive) {
+        onDeleteScheduleItem?(item)
+      } label: {
+        Label("삭제", systemImage: "trash")
+      }
+    } preview: {
+      contextMenuPreview(for: item)
+    }
   }
 
   // MARK: - Event Time Label
@@ -830,6 +918,8 @@ struct DayTimelineView: View {
     onScheduleItemTapped: { _ in },
     onCreatePersonalEvent: { _ in },
     onCreatePromise: {},
+    onDeleteScheduleItem: nil,
+    onShareScheduleItem: nil,
     calendarMode: .weekly,
     currentUserId: "host1",
     weatherCache: [:],
@@ -846,6 +936,8 @@ struct DayTimelineView: View {
     onScheduleItemTapped: { _ in },
     onCreatePersonalEvent: { _ in },
     onCreatePromise: {},
+    onDeleteScheduleItem: nil,
+    onShareScheduleItem: nil,
     calendarMode: .weekly,
     currentUserId: "preview",
     weatherCache: [:],

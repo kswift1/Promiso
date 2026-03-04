@@ -103,7 +103,9 @@ extension Home {
               },
               onCreatePromise: {
                 store.send(.view(.overlayCreatePromiseTapped))
-              }
+              },
+              onDeleteScheduleItem: nil,
+              onShareScheduleItem: nil
             )
             .frame(width: 0, height: 0)
           )

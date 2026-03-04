@@ -466,6 +466,8 @@ extension CalendarFeature {
         case scheduleItemTapped(CalendarFeature.ScheduleItem)
         case createPersonalEventFromTimeline(Date)
         case createPromiseFromTimeline
+        case deleteScheduleItem(CalendarFeature.ScheduleItem)
+        case shareScheduleItem(CalendarFeature.ScheduleItem)
         case indicatorTapped(CalendarFeature.ScheduleIndicator)
         case dayLongPressCreatePersonalEvent(Date)
         case dayLongPressCreatePromise(Date)
@@ -828,6 +830,27 @@ extension CalendarFeature {
 
       case .createPromiseFromTimeline:
         // TODO: 약속 생성 플로우 연결
+        return .none
+
+      case .deleteScheduleItem(let item):
+        switch item {
+        case .promise(let promise):
+          let currentMonth = state.selectedDate.startOfMonth
+          return .run { [promiseClient] send in
+            try await promiseClient.deletePromise(promise.id)
+            await send(.internal(.fetchPromisesForMonth(currentMonth)))
+          }
+        case .personalEvent(let event):
+          return .run { [personalEventClient] send in
+            try await personalEventClient.deleteEvent(event.id)
+            await send(.internal(.fetchPersonalEvents))
+          }
+        case .calendarEvent:
+          return .none
+        }
+
+      case .shareScheduleItem:
+        // 공유는 View 레벨에서 UIActivityViewController 표시
         return .none
 
       case .indicatorTapped(let indicator):
