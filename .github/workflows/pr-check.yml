@@ -272,12 +272,14 @@ jobs:
           for module in $MODULES; do
             echo ""
             echo "━━━ 🔨 빌드: $module ━━━"
-            if ! xcodebuild build-for-testing \
+            BUILD_LOG=$(xcodebuild build-for-testing \
               -scheme "$module" \
               -workspace Promiso.xcworkspace \
               -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
               -skipPackagePluginValidation \
-              2>&1 | grep -E '(Build Succeeded|Build Failed|error:|warning:.*error)'; then
+              2>&1)
+            echo "$BUILD_LOG" | grep -iE '(BUILD SUCCEEDED|BUILD FAILED|error:)' | grep -v 'warning:' || true
+            if ! echo "$BUILD_LOG" | grep -qi 'BUILD SUCCEEDED'; then
               FAILED="$FAILED $module"
             fi
           done

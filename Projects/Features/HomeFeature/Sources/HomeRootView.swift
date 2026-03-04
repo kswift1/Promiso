@@ -107,7 +107,18 @@ extension Home {
                 store.send(.view(.overlayCreatePromiseTapped))
               },
               onDeleteScheduleItem: nil,
-              onShareScheduleItem: nil
+              onShareScheduleItem: nil,
+              overlayFeatureContent: overlayFeatureContent,
+              onFeatureBack: {
+                switch store.overlayCalendarMode {
+                case .promiseDetail:
+                  store.send(.view(.overlayScheduleDetailBackTapped), animation: .easeInOut(duration: 0.3))
+                case .promiseCreate:
+                  store.send(.view(.overlayCreatePromiseBackTapped), animation: .easeInOut(duration: 0.3))
+                default:
+                  break
+                }
+              }
             )
             .frame(width: 0, height: 0)
           )
@@ -128,6 +139,21 @@ extension Home {
           CreatePersonalEvent.RootView(store: createEventStore)
         }
       }
+    }
+
+    // MARK: - Overlay Feature Content
+
+    private var overlayFeatureContent: AnyView? {
+      if let detailStore = store.scope(state: \.overlayScheduleDetail, action: \.overlayScheduleDetail) {
+        return AnyView(
+          OverlayScheduleDetail.RootView(store: detailStore)
+        )
+      } else if let createStore = store.scope(state: \.overlayCreatePromise, action: \.overlayCreatePromise) {
+        return AnyView(
+          CreatePromise.RootView(store: createStore)
+        )
+      }
+      return nil
     }
 
     // MARK: - Home Header

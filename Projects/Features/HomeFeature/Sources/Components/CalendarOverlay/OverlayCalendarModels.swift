@@ -27,6 +27,10 @@ enum CalendarMode: Equatable, Sendable {
   case weekly
   /// 날씨 상세 (시간별 예보)
   case weatherDetail
+  /// 오버레이 내 일정 상세 (약속/개인 일정 공통)
+  case promiseDetail
+  /// 오버레이 내 약속 생성
+  case promiseCreate
 }
 
 // MARK: - Overlay Calendar Models

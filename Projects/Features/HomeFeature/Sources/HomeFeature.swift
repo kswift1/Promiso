@@ -100,9 +100,16 @@ extension Home {
       var overlayPersonalEventsByMonth: [Date: [PersonalEventModel]] = [:]
       /// 이미 로드된 오버레이 개인 일정 월 (중복 요청 방지)
       var overlayLoadedPersonalEventMonths: Set<Date> = []
+      /// 오버레이 Feature 진입 전 캘린더 모드 (뒤로가기 시 복귀용)
+      var overlayCalendarModeBeforeFeature: CalendarMode?
 
       /// 개인 일정 생성 모달
       @Presents var createPersonalEvent: CreatePersonalEvent.Feature.State?
+
+      /// 오버레이 내 일정 상세 (약속 + 개인 일정 통합)
+      var overlayScheduleDetail: OverlayScheduleDetail.Feature.State?
+      /// 오버레이 내 약속 생성
+      var overlayCreatePromise: CreatePromise.Feature.State?
 
       // MARK: Notification
       /// 안 읽은 알림 개수
@@ -161,6 +168,8 @@ extension Home {
       case delegate(Delegate)
       case path(StackActionOf<Path>)
       case createPersonalEvent(PresentationAction<CreatePersonalEvent.Feature.Action>)
+      case overlayScheduleDetail(OverlayScheduleDetail.Feature.Action)
+      case overlayCreatePromise(CreatePromise.Feature.Action)
       case quickPromise(QuickPromise.Feature.Action)
 
       @CasePathable
@@ -217,6 +226,10 @@ extension Home {
         case overlayCreatePersonalEventTapped(Date)
         /// 오버레이 약속 만들기 (context menu)
         case overlayCreatePromiseTapped
+        /// 오버레이 일정 상세에서 뒤로가기
+        case overlayScheduleDetailBackTapped
+        /// 오버레이 약속 생성에서 뒤로가기
+        case overlayCreatePromiseBackTapped
       }
 
       @CasePathable
@@ -255,6 +268,8 @@ extension Home {
         case overlayPersonalEventsResponse(month: Date, Result<[PersonalEventModel], Error>)
         /// 오버레이 인접 월 개인 일정 프리페치
         case prefetchOverlayAdjacentPersonalEvents
+        /// 오버레이 일정 상세 state 정리 (전환 애니메이션 완료 후)
+        case clearOverlayScheduleDetail
       }
 
       @CasePathable
@@ -427,6 +442,9 @@ extension Home {
             state.overlayWeatherLocationText = nil
             state.overlayWeatherInfo = nil
             state.overlayCalendarMode = .monthly
+            state.overlayCalendarModeBeforeFeature = nil
+            state.overlayScheduleDetail = nil
+            state.overlayCreatePromise = nil
             state.overlayPromisesByMonth.removeAll()
             state.overlayLoadedMonths.removeAll()
             state.overlayPersonalEventsByMonth.removeAll()
@@ -491,24 +509,27 @@ extension Home {
             return .none
 
           case .overlayScheduleItemTapped(let item):
-            // 일간 상세에서 일정 아이템 탭 → 오버레이 닫고 상세로 이동
-            state.showCalendarOverlay = false
-            state.overlayCalendarMode = .monthly
-            state.overlayWeatherState = .needsPermission
-            state.overlayWeatherLocationText = nil
-            state.overlayWeatherInfo = nil
             switch item {
             case .promise(let promise):
               let groupMembers = state.groupMembersCache[promise.groupId]
-              state.path.append(.promiseDetail(.init(
-                promise: promise,
+              state.overlayScheduleDetail = OverlayScheduleDetail.Feature.State(
+                item: item,
                 currentUserId: state.currentUser.userId,
                 groupMembers: groupMembers
-              )))
-            case .personalEvent(let event):
-              state.path.append(.personalEventDetail(.init(event: event)))
+              )
+              state.overlayCalendarModeBeforeFeature = state.overlayCalendarMode
+              state.overlayCalendarMode = .promiseDetail
+              return .none
+            case .personalEvent:
+              // 개인 일정도 오버레이 내에서 인라인 표시
+              state.overlayScheduleDetail = OverlayScheduleDetail.Feature.State(
+                item: item,
+                currentUserId: state.currentUser.userId
+              )
+              state.overlayCalendarModeBeforeFeature = state.overlayCalendarMode
+              state.overlayCalendarMode = .promiseDetail
+              return .none
             }
-            return .cancel(id: CancelID.overlayWeatherFetch)
 
           case .overlayCreatePersonalEventTapped(let date):
             // 오버레이 닫기
@@ -533,16 +554,29 @@ extension Home {
             return .cancel(id: CancelID.overlayWeatherFetch)
 
           case .overlayCreatePromiseTapped:
-            // 오버레이 닫기 + delegate로 위임
-            state.showCalendarOverlay = false
-            state.overlayCalendarMode = .monthly
-            state.overlayWeatherState = .needsPermission
-            state.overlayWeatherLocationText = nil
-            state.overlayWeatherInfo = nil
-            return .merge(
-              .cancel(id: CancelID.overlayWeatherFetch),
-              .send(.delegate(.navigateToCreatePromise))
+            // 오버레이 내에서 약속 생성 인라인 표시
+            state.overlayCreatePromise = CreatePromise.Feature.State(
+              groupSummaries: state.currentUser.groups.isEmpty ? nil : Array(state.currentUser.groups),
+              currentUserId: state.currentUser.userId
             )
+            state.overlayCalendarModeBeforeFeature = state.overlayCalendarMode
+            state.overlayCalendarMode = .promiseCreate
+            return .none
+
+          case .overlayScheduleDetailBackTapped:
+            // 모드만 먼저 전환 (전환 애니메이션 동안 콘텐츠 유지)
+            state.overlayCalendarMode = state.overlayCalendarModeBeforeFeature ?? .weekly
+            state.overlayCalendarModeBeforeFeature = nil
+            return .run { send in
+              try await Task.sleep(for: .milliseconds(500))
+              await send(.internal(.clearOverlayScheduleDetail))
+            }
+
+          case .overlayCreatePromiseBackTapped:
+            state.overlayCreatePromise = nil
+            state.overlayCalendarMode = state.overlayCalendarModeBeforeFeature ?? .weekly
+            state.overlayCalendarModeBeforeFeature = nil
+            return .none
 
           }
 
@@ -987,6 +1021,10 @@ extension Home {
             }
             return effects.isEmpty ? .none : .merge(effects)
 
+          case .clearOverlayScheduleDetail:
+            state.overlayScheduleDetail = nil
+            return .none
+
           }
 
         case .createPersonalEvent(.presented(.delegate(.eventCreated))):
@@ -998,6 +1036,91 @@ extension Home {
           return .none
 
         case .createPersonalEvent:
+          return .none
+
+        // MARK: - Overlay Schedule Detail Actions
+
+        case .overlayScheduleDetail(.delegate(.dismiss)):
+          // 모드만 먼저 전환 (전환 애니메이션 동안 콘텐츠 유지)
+          state.overlayCalendarMode = state.overlayCalendarModeBeforeFeature ?? .weekly
+          state.overlayCalendarModeBeforeFeature = nil
+          return .run { send in
+            try await Task.sleep(for: .milliseconds(500))
+            await send(.internal(.clearOverlayScheduleDetail))
+          }
+
+        case .overlayScheduleDetail(.delegate(.openFullDetail(let item))):
+          state.overlayScheduleDetail = nil
+          state.overlayCalendarMode = state.overlayCalendarModeBeforeFeature ?? .weekly
+          state.overlayCalendarModeBeforeFeature = nil
+          state.showCalendarOverlay = false
+          state.overlayWeatherState = .needsPermission
+          state.overlayWeatherLocationText = nil
+          state.overlayWeatherInfo = nil
+          switch item {
+          case .promise(let promise):
+            let groupMembers = state.groupMembersCache[promise.groupId]
+            state.path.append(.promiseDetail(.init(
+              promise: promise,
+              currentUserId: state.currentUser.userId,
+              groupMembers: groupMembers
+            )))
+          case .personalEvent(let event):
+            state.path.append(.personalEventDetail(.init(event: event)))
+          }
+          return .cancel(id: CancelID.overlayWeatherFetch)
+
+        case .overlayScheduleDetail(.delegate(.promiseResponseUpdated(let promise))):
+          // 오버레이 캐시 업데이트
+          let monthKey = promise.startAt.startOfMonth
+          if let index = state.overlayPromisesByMonth[monthKey]?.firstIndex(where: { $0.id == promise.id }) {
+            state.overlayPromisesByMonth[monthKey]?[index] = promise
+          }
+          // 홈 약속 목록도 업데이트
+          if case .loaded(var promises) = state.promisesState,
+             let index = promises.firstIndex(where: { $0.id == promise.id }) {
+            promises[index] = promise
+            state.promisesState = .loaded(promises)
+            state.refreshHomeContentSnapshot()
+          }
+          return .none
+
+        case .overlayScheduleDetail:
+          return .none
+
+        // MARK: - Overlay Create Promise Actions
+
+        case .overlayCreatePromise(.delegate(.promiseCreated)):
+          state.overlayCreatePromise = nil
+          state.overlayCalendarMode = state.overlayCalendarModeBeforeFeature ?? .weekly
+          state.overlayCalendarModeBeforeFeature = nil
+          // 약속이 어느 월에 생성되었을지 모르므로 전체 캐시 무효화
+          state.overlayLoadedMonths.removeAll()
+          state.overlayPromisesByMonth.removeAll()
+          let month = state.overlaySelectedDate.startOfMonth
+          return .merge(
+            .send(.internal(.fetchPromises)),
+            .send(.internal(.fetchOverlaySchedules(month: month)))
+          )
+
+        case .overlayCreatePromise(.delegate(.dismiss)):
+          state.overlayCreatePromise = nil
+          state.overlayCalendarMode = state.overlayCalendarModeBeforeFeature ?? .weekly
+          state.overlayCalendarModeBeforeFeature = nil
+          return .none
+
+        case .overlayCreatePromise(.delegate(.createGroupRequested)):
+          // 그룹 생성은 오버레이에서 불가 → 오버레이 닫고 기존 플로우로 위임
+          state.overlayCreatePromise = nil
+          state.overlayCalendarModeBeforeFeature = nil
+          state.showCalendarOverlay = false
+          state.overlayCalendarMode = .monthly
+          return .merge(
+            .cancel(id: CancelID.overlayWeatherFetch),
+            .send(.delegate(.navigateToCreatePromise))
+          )
+
+        case .overlayCreatePromise:
           return .none
 
         case .delegate:
@@ -1072,6 +1195,12 @@ extension Home {
       .forEach(\.path, action: \.path)
       .ifLet(\.$createPersonalEvent, action: \.createPersonalEvent) {
         CreatePersonalEvent.Feature()
+      }
+      .ifLet(\.overlayScheduleDetail, action: \.overlayScheduleDetail) {
+        OverlayScheduleDetail.Feature()
+      }
+      .ifLet(\.overlayCreatePromise, action: \.overlayCreatePromise) {
+        CreatePromise.Feature()
       }
 
       Scope(state: \.quickPromise, action: \.quickPromise) {

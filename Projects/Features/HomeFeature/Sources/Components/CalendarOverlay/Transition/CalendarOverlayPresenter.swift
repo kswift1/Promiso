@@ -34,6 +34,10 @@ struct CalendarOverlayPresenter: UIViewControllerRepresentable {
   let onCreatePromise: () -> Void
   let onDeleteScheduleItem: ((HomeModels.ScheduleItem) -> Void)?
   let onShareScheduleItem: ((HomeModels.ScheduleItem) -> Void)?
+  /// promiseDetail/promiseCreate 모드에서 표시할 뷰
+  let overlayFeatureContent: AnyView?
+  /// promiseDetail/promiseCreate 뒤로가기 클로저
+  let onFeatureBack: (() -> Void)?
 
   func makeCoordinator() -> Coordinator {
     Coordinator()
@@ -65,6 +69,8 @@ struct CalendarOverlayPresenter: UIViewControllerRepresentable {
         viewModel.currentUserId = currentUserId
         viewModel.weatherCache = weatherCache
         viewModel.groupColorMap = groupColorMap
+        viewModel.overlayFeatureContent = overlayFeatureContent
+        viewModel.onFeatureBack = onFeatureBack
       }
 
       // dismiss/transition 중에는 중복 present 방지
@@ -113,6 +119,8 @@ struct CalendarOverlayPresenter: UIViewControllerRepresentable {
           onDeleteScheduleItem: onDeleteScheduleItem,
           onShareScheduleItem: onShareScheduleItem
         )
+        viewModel.overlayFeatureContent = overlayFeatureContent
+        viewModel.onFeatureBack = onFeatureBack
         coordinator.viewModel = viewModel
 
         let calendarVC = CalendarOverlayHostingController(viewModel: viewModel)
