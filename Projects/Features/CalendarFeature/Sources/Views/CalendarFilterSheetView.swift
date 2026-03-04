@@ -74,24 +74,30 @@ struct CalendarFilterSheetView: View {
 
   private func groupChip(_ group: UserGroupInfo) -> some View {
     let isSelected = selectedGroupIds.contains(group.id)
-    let color = groupColorMap[group.id] ?? Color.pmindigo.n500
+    let groupColor = groupColorMap[group.id] ?? Color.pmindigo.n500
 
     return Button { onGroupToggled(group.id) } label: {
       HStack(spacing: 6) {
-        GroupThumbnailView(imageUrl: group.imageUrl, name: group.name, size: 28)
+        // 그룹 이미지 + groupColor 링
+        GroupThumbnailView(imageUrl: group.imageUrl, name: group.name, size: 26)
+          .overlay(
+            Circle()
+              .stroke(groupColor, lineWidth: 2.5)
+              .frame(width: 28.5, height: 28.5)
+          )
         Text(group.name)
           .font(.system(size: 14, weight: .medium))
           .lineLimit(1)
       }
-      .padding(.leading, 4)
+      .padding(.leading, 6)
       .padding(.trailing, 12)
-      .padding(.vertical, 4)
-      .background(isSelected ? color.opacity(0.15) : Color(.systemGray6))
-      .foregroundColor(isSelected ? color : .primary)
+      .padding(.vertical, 6)
+      .background(isSelected ? Color.pmindigo.n500.opacity(0.15) : Color(.systemGray6))
+      .foregroundColor(isSelected ? Color.pmindigo.n500 : .primary)
       .cornerRadius(20)
       .overlay(
         RoundedRectangle(cornerRadius: 20)
-          .stroke(isSelected ? color : Color.clear, lineWidth: 1.5)
+          .stroke(isSelected ? Color.pmindigo.n500 : Color(.systemGray4), lineWidth: 1.5)
       )
     }
     .buttonStyle(.plain)
