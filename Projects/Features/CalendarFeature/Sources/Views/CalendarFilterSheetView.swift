@@ -10,7 +10,9 @@ struct CalendarFilterSheetView: View {
   let groups: [UserGroupInfo]
   let groupColorMap: [String: Color]
   let selectedGroupIds: Set<String>
+  let showPersonalEvents: Bool
   let onGroupToggled: (String) -> Void
+  let onPersonalEventsToggled: () -> Void
   let onReset: () -> Void
 
   @State private var contentHeight: CGFloat = 200
@@ -22,6 +24,9 @@ struct CalendarFilterSheetView: View {
 
       // 그룹 필터 섹션
       groupFilterSection
+
+      // 개인 일정 필터
+      personalEventToggle
     }
     .padding(.horizontal, 20)
     .padding(.top, 24)
@@ -41,8 +46,8 @@ struct CalendarFilterSheetView: View {
       Text("필터")
         .font(.system(size: 20, weight: .bold))
       Spacer()
-      // 초기화 버튼 (전체 선택이 아닐 때만 표시)
-      if selectedGroupIds.count < groups.count {
+      // 초기화 버튼 (필터가 변경되었을 때만 표시)
+      if selectedGroupIds.count < groups.count || !showPersonalEvents {
         Button(action: onReset) {
           Text("초기화")
             .font(.system(size: 14, weight: .medium))
@@ -99,6 +104,23 @@ struct CalendarFilterSheetView: View {
         RoundedRectangle(cornerRadius: 20)
           .stroke(isSelected ? Color.pmindigo.n500 : Color(.systemGray4), lineWidth: 1.5)
       )
+    }
+    .buttonStyle(.plain)
+  }
+
+  // MARK: - Personal Event Toggle
+
+  private var personalEventToggle: some View {
+    Button { onPersonalEventsToggled() } label: {
+      HStack(spacing: 10) {
+        Image(systemName: showPersonalEvents ? "checkmark.square.fill" : "square")
+          .font(.system(size: 20))
+          .foregroundColor(showPersonalEvents ? Color.pmindigo.n500 : Color(.systemGray3))
+        Text("개인 일정 표시")
+          .font(.system(size: 15, weight: .medium))
+          .foregroundColor(.primary)
+        Spacer()
+      }
     }
     .buttonStyle(.plain)
   }

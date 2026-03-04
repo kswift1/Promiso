@@ -108,6 +108,9 @@ extension CalendarFeature {
       /// 선택된 상태 필터
       var selectedStatusFilter: StatusFilter = .all
 
+      /// 개인 일정 표시 여부
+      var showPersonalEvents: Bool = true
+
       /// 필터 시트 표시 여부
       var isFilterSheetPresented: Bool = false
 
@@ -241,6 +244,7 @@ extension CalendarFeature {
 
       /// 날짜별로 그룹화된 개인 일정
       var personalEventsByDate: [Date: [PersonalEventModel]] {
+        guard showPersonalEvents else { return [:] }
         let calendar = Calendar.current
         var grouped: [Date: [PersonalEventModel]] = [:]
 
@@ -303,7 +307,7 @@ extension CalendarFeature {
 
       /// 필터 활성 여부 (헤더 뱃지용)
       var isFilterActive: Bool {
-        selectedGroupIds != Set(currentUser.groups.map(\.id))
+        selectedGroupIds != Set(currentUser.groups.map(\.id)) || !showPersonalEvents
       }
 
       // MARK: - Group Color Map
@@ -358,23 +362,25 @@ extension CalendarFeature {
         }
 
         // 개인 일정
-        for event in personalEvents {
-          spreadIndicators(
-            startAt: event.startAt, endAt: event.effectiveEndAt, into: &indicators
-          ) { day, position in
-            .init(
-              id: "\(event.id)_\(day.timeIntervalSince1970)",
-              color: CalendarFeature.ScheduleIndicator.personalColor,
-              title: event.title,
-              spanPosition: position,
-              startAt: event.startAt,
-              endAt: event.endAt,
-              emoji: event.emoji,
-              sourceType: .personalEvent(id: event.id),
-              description: event.description,
-              locationName: event.location?.name,
-              imageUrls: event.imageUrls
-            )
+        if showPersonalEvents {
+          for event in personalEvents {
+            spreadIndicators(
+              startAt: event.startAt, endAt: event.effectiveEndAt, into: &indicators
+            ) { day, position in
+              .init(
+                id: "\(event.id)_\(day.timeIntervalSince1970)",
+                color: CalendarFeature.ScheduleIndicator.personalColor,
+                title: event.title,
+                spanPosition: position,
+                startAt: event.startAt,
+                endAt: event.endAt,
+                emoji: event.emoji,
+                sourceType: .personalEvent(id: event.id),
+                description: event.description,
+                locationName: event.location?.name,
+                imageUrls: event.imageUrls
+              )
+            }
           }
         }
 
@@ -467,9 +473,11 @@ extension CalendarFeature {
         let promiseItems = allPromises
           .filter { $0.startAt < end && $0.effectiveEndAt >= start }
           .map { CalendarFeature.ScheduleItem.promise($0) }
-        let personalItems = personalEvents
-          .filter { $0.startAt < end && $0.effectiveEndAt >= start }
-          .map { CalendarFeature.ScheduleItem.personalEvent($0) }
+        let personalItems: [CalendarFeature.ScheduleItem] = showPersonalEvents
+          ? personalEvents
+              .filter { $0.startAt < end && $0.effectiveEndAt >= start }
+              .map { CalendarFeature.ScheduleItem.personalEvent($0) }
+          : []
         let calendarItems = calendarEvents
           .filter { $0.startDate < end && $0.endDate >= start }
           .map { CalendarFeature.ScheduleItem.calendarEvent($0) }
@@ -573,6 +581,7 @@ extension CalendarFeature {
         // 필터 관련
         case filterIconTapped
         case filterGroupToggled(String)
+        case filterPersonalEventsToggled
         case filterStatusChanged(StatusFilter)
         case filterReset
         case filterSheetDismissed
@@ -1162,12 +1171,17 @@ extension CalendarFeature {
         }
         return .none
 
+      case .filterPersonalEventsToggled:
+        state.showPersonalEvents.toggle()
+        return .none
+
       case .filterStatusChanged(let filter):
         state.selectedStatusFilter = filter
         return .none
 
       case .filterReset:
         state.selectedGroupIds = Set(state.currentUser.groups.map(\.id))
+        state.showPersonalEvents = true
         state.selectedStatusFilter = .all
         return .none
 

@@ -99,8 +99,12 @@ extension CalendarFeature {
             groups: store.sortedGroups,
             groupColorMap: store.groupColorMap,
             selectedGroupIds: store.selectedGroupIds,
+            showPersonalEvents: store.showPersonalEvents,
             onGroupToggled: { groupId in
               store.send(.view(.filterGroupToggled(groupId)))
+            },
+            onPersonalEventsToggled: {
+              store.send(.view(.filterPersonalEventsToggled))
             },
             onReset: {
               store.send(.view(.filterReset))
