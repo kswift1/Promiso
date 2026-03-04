@@ -112,7 +112,7 @@ extension Home {
               onFeatureBack: {
                 switch store.overlayCalendarMode {
                 case .promiseDetail:
-                  store.send(.view(.overlayPromiseDetailBackTapped), animation: .easeInOut(duration: 0.3))
+                  store.send(.view(.overlayScheduleDetailBackTapped), animation: .easeInOut(duration: 0.3))
                 case .promiseCreate:
                   store.send(.view(.overlayCreatePromiseBackTapped), animation: .easeInOut(duration: 0.3))
                 default:
@@ -144,12 +144,10 @@ extension Home {
     // MARK: - Overlay Feature Content
 
     private var overlayFeatureContent: AnyView? {
-      if store.overlayPromiseDetail != nil,
-         let detailStore = store.scope(state: \.overlayPromiseDetail, action: \.overlayPromiseDetail) {
+      if store.overlayScheduleDetail != nil,
+         let detailStore = store.scope(state: \.overlayScheduleDetail, action: \.overlayScheduleDetail) {
         return AnyView(
-          NavigationStack {
-            PromiseDetail.RootView(store: detailStore)
-          }
+          OverlayScheduleDetail.RootView(store: detailStore)
         )
       } else if store.overlayCreatePromise != nil,
                 let createStore = store.scope(state: \.overlayCreatePromise, action: \.overlayCreatePromise) {

@@ -233,9 +233,13 @@ private struct CalendarOverlayContentView: View {
       let bottomPad: CGFloat = 16
       let availableHeight = proxy.size.height - topPad - bottomPad
 
-      Group {
+      ZStack {
         if isFeatureMode {
           overlayFeatureView
+            .transition(.asymmetric(
+              insertion: .move(edge: .top).combined(with: .opacity),
+              removal: .move(edge: .top).combined(with: .opacity)
+            ))
         } else {
           CalendarOverlayView(
             availableHeight: availableHeight,
@@ -268,6 +272,7 @@ private struct CalendarOverlayContentView: View {
             weatherCache: viewModel.weatherCache,
             groupColorMap: viewModel.groupColorMap
           )
+          .transition(.opacity)
         }
       }
       .padding(.top, topPad)

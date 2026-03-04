@@ -106,8 +106,8 @@ extension Home {
       /// 개인 일정 생성 모달
       @Presents var createPersonalEvent: CreatePersonalEvent.Feature.State?
 
-      /// 오버레이 내 약속 상세
-      var overlayPromiseDetail: PromiseDetail.Feature.State?
+      /// 오버레이 내 일정 상세 (약속 + 개인 일정 통합)
+      var overlayScheduleDetail: OverlayScheduleDetail.Feature.State?
       /// 오버레이 내 약속 생성
       var overlayCreatePromise: CreatePromise.Feature.State?
 
@@ -168,7 +168,7 @@ extension Home {
       case delegate(Delegate)
       case path(StackActionOf<Path>)
       case createPersonalEvent(PresentationAction<CreatePersonalEvent.Feature.Action>)
-      case overlayPromiseDetail(PromiseDetail.Feature.Action)
+      case overlayScheduleDetail(OverlayScheduleDetail.Feature.Action)
       case overlayCreatePromise(CreatePromise.Feature.Action)
       case quickPromise(QuickPromise.Feature.Action)
 
@@ -226,8 +226,8 @@ extension Home {
         case overlayCreatePersonalEventTapped(Date)
         /// 오버레이 약속 만들기 (context menu)
         case overlayCreatePromiseTapped
-        /// 오버레이 약속 상세에서 뒤로가기
-        case overlayPromiseDetailBackTapped
+        /// 오버레이 일정 상세에서 뒤로가기
+        case overlayScheduleDetailBackTapped
         /// 오버레이 약속 생성에서 뒤로가기
         case overlayCreatePromiseBackTapped
       }
@@ -268,6 +268,8 @@ extension Home {
         case overlayPersonalEventsResponse(month: Date, Result<[PersonalEventModel], Error>)
         /// 오버레이 인접 월 개인 일정 프리페치
         case prefetchOverlayAdjacentPersonalEvents
+        /// 오버레이 일정 상세 state 정리 (전환 애니메이션 완료 후)
+        case clearOverlayScheduleDetail
       }
 
       @CasePathable
@@ -441,7 +443,7 @@ extension Home {
             state.overlayWeatherInfo = nil
             state.overlayCalendarMode = .monthly
             state.overlayCalendarModeBeforeFeature = nil
-            state.overlayPromiseDetail = nil
+            state.overlayScheduleDetail = nil
             state.overlayCreatePromise = nil
             state.overlayPromisesByMonth.removeAll()
             state.overlayLoadedMonths.removeAll()
@@ -509,25 +511,24 @@ extension Home {
           case .overlayScheduleItemTapped(let item):
             switch item {
             case .promise(let promise):
-              // 오버레이 내에서 약속 상세 인라인 표시
               let groupMembers = state.groupMembersCache[promise.groupId]
-              state.overlayPromiseDetail = PromiseDetail.Feature.State(
-                promise: promise,
+              state.overlayScheduleDetail = OverlayScheduleDetail.Feature.State(
+                item: item,
                 currentUserId: state.currentUser.userId,
                 groupMembers: groupMembers
               )
               state.overlayCalendarModeBeforeFeature = state.overlayCalendarMode
               state.overlayCalendarMode = .promiseDetail
               return .none
-            case .personalEvent(let event):
-              // 개인 일정은 기존 동작 유지 (오버레이 닫고 path push)
-              state.showCalendarOverlay = false
-              state.overlayCalendarMode = .monthly
-              state.overlayWeatherState = .needsPermission
-              state.overlayWeatherLocationText = nil
-              state.overlayWeatherInfo = nil
-              state.path.append(.personalEventDetail(.init(event: event)))
-              return .cancel(id: CancelID.overlayWeatherFetch)
+            case .personalEvent:
+              // 개인 일정도 오버레이 내에서 인라인 표시
+              state.overlayScheduleDetail = OverlayScheduleDetail.Feature.State(
+                item: item,
+                currentUserId: state.currentUser.userId
+              )
+              state.overlayCalendarModeBeforeFeature = state.overlayCalendarMode
+              state.overlayCalendarMode = .promiseDetail
+              return .none
             }
 
           case .overlayCreatePersonalEventTapped(let date):
@@ -562,11 +563,14 @@ extension Home {
             state.overlayCalendarMode = .promiseCreate
             return .none
 
-          case .overlayPromiseDetailBackTapped:
-            state.overlayPromiseDetail = nil
+          case .overlayScheduleDetailBackTapped:
+            // 모드만 먼저 전환 (전환 애니메이션 동안 콘텐츠 유지)
             state.overlayCalendarMode = state.overlayCalendarModeBeforeFeature ?? .weekly
             state.overlayCalendarModeBeforeFeature = nil
-            return .none
+            return .run { send in
+              try await Task.sleep(for: .milliseconds(500))
+              await send(.internal(.clearOverlayScheduleDetail))
+            }
 
           case .overlayCreatePromiseBackTapped:
             state.overlayCreatePromise = nil
@@ -1015,6 +1019,10 @@ extension Home {
             }
             return effects.isEmpty ? .none : .merge(effects)
 
+          case .clearOverlayScheduleDetail:
+            state.overlayScheduleDetail = nil
+            return .none
+
           }
 
         case .createPersonalEvent(.presented(.delegate(.eventCreated))):
@@ -1028,36 +1036,55 @@ extension Home {
         case .createPersonalEvent:
           return .none
 
-        // MARK: - Overlay Promise Detail Actions
+        // MARK: - Overlay Schedule Detail Actions
 
-        case .overlayPromiseDetail(.delegate(.dismiss)):
-          state.overlayPromiseDetail = nil
+        case .overlayScheduleDetail(.delegate(.dismiss)):
+          // 모드만 먼저 전환 (전환 애니메이션 동안 콘텐츠 유지)
           state.overlayCalendarMode = state.overlayCalendarModeBeforeFeature ?? .weekly
           state.overlayCalendarModeBeforeFeature = nil
+          return .run { send in
+            try await Task.sleep(for: .milliseconds(500))
+            await send(.internal(.clearOverlayScheduleDetail))
+          }
+
+        case .overlayScheduleDetail(.delegate(.openFullDetail(let item))):
+          state.overlayScheduleDetail = nil
+          state.overlayCalendarMode = state.overlayCalendarModeBeforeFeature ?? .weekly
+          state.overlayCalendarModeBeforeFeature = nil
+          state.showCalendarOverlay = false
+          state.overlayWeatherState = .needsPermission
+          state.overlayWeatherLocationText = nil
+          state.overlayWeatherInfo = nil
+          switch item {
+          case .promise(let promise):
+            let groupMembers = state.groupMembersCache[promise.groupId]
+            state.path.append(.promiseDetail(.init(
+              promise: promise,
+              currentUserId: state.currentUser.userId,
+              groupMembers: groupMembers
+            )))
+          case .personalEvent(let event):
+            state.path.append(.personalEventDetail(.init(event: event)))
+          }
+          return .cancel(id: CancelID.overlayWeatherFetch)
+
+        case .overlayScheduleDetail(.delegate(.promiseResponseUpdated(let promise))):
+          // 오버레이 캐시 업데이트
+          for month in state.overlayPromisesByMonth.keys {
+            if let index = state.overlayPromisesByMonth[month]?.firstIndex(where: { $0.id == promise.id }) {
+              state.overlayPromisesByMonth[month]?[index] = promise
+            }
+          }
+          // 홈 약속 목록도 업데이트
+          if case .loaded(var promises) = state.promisesState,
+             let index = promises.firstIndex(where: { $0.id == promise.id }) {
+            promises[index] = promise
+            state.promisesState = .loaded(promises)
+            state.refreshHomeContentSnapshot()
+          }
           return .none
 
-        case .overlayPromiseDetail(.delegate(.promiseDeleted)):
-          state.overlayPromiseDetail = nil
-          state.overlayCalendarMode = state.overlayCalendarModeBeforeFeature ?? .weekly
-          state.overlayCalendarModeBeforeFeature = nil
-          let month = state.overlaySelectedDate.startOfMonth
-          state.overlayLoadedMonths.remove(month)
-          state.overlayPromisesByMonth.removeValue(forKey: month)
-          return .merge(
-            .send(.internal(.fetchPromises)),
-            .send(.internal(.fetchOverlaySchedules(month: month)))
-          )
-
-        case .overlayPromiseDetail(.delegate(.promiseUpdated)):
-          let month = state.overlaySelectedDate.startOfMonth
-          state.overlayLoadedMonths.remove(month)
-          state.overlayPromisesByMonth.removeValue(forKey: month)
-          return .merge(
-            .send(.internal(.fetchPromises)),
-            .send(.internal(.fetchOverlaySchedules(month: month)))
-          )
-
-        case .overlayPromiseDetail:
+        case .overlayScheduleDetail:
           return .none
 
         // MARK: - Overlay Create Promise Actions
@@ -1167,8 +1194,8 @@ extension Home {
       .ifLet(\.$createPersonalEvent, action: \.createPersonalEvent) {
         CreatePersonalEvent.Feature()
       }
-      .ifLet(\.overlayPromiseDetail, action: \.overlayPromiseDetail) {
-        PromiseDetail.Feature()
+      .ifLet(\.overlayScheduleDetail, action: \.overlayScheduleDetail) {
+        OverlayScheduleDetail.Feature()
       }
       .ifLet(\.overlayCreatePromise, action: \.overlayCreatePromise) {
         CreatePromise.Feature()
