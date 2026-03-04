@@ -278,8 +278,8 @@ jobs:
               -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
               -skipPackagePluginValidation \
               2>&1)
-            echo "$BUILD_LOG" | grep -E '(Build Succeeded|Build Failed|error:)' | grep -v 'warning:' || true
-            if ! echo "$BUILD_LOG" | grep -q 'Build Succeeded'; then
+            echo "$BUILD_LOG" | grep -iE '(BUILD SUCCEEDED|BUILD FAILED|error:)' | grep -v 'warning:' || true
+            if ! echo "$BUILD_LOG" | grep -qi 'BUILD SUCCEEDED'; then
               FAILED="$FAILED $module"
             fi
           done
