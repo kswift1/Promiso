@@ -146,8 +146,8 @@ public struct ConflictTooltip: View {
 
       // 충돌 목록 요약
       VStack(spacing: 6) {
-        ForEach(Array(conflicts.enumerated()), id: \.offset) { _, conflict in
-          conflictSummaryRow(conflict)
+        ForEach(Array(conflicts.enumerated()), id: \.offset) { index, conflict in
+          conflictSummaryRow(conflict, index: index)
         }
       }
     }
@@ -245,7 +245,8 @@ public struct ConflictTooltip: View {
         .lineLimit(1)
     }
     .padding(.horizontal, 6)
-    .frame(maxWidth: .infinity, alignment: .topLeading)
+    .padding(.top, 4)
+    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     .frame(height: h)
     .background(Color.pmerror.n500.opacity(0.06))
     .overlay(
@@ -263,10 +264,9 @@ public struct ConflictTooltip: View {
   private func conflictBlock(_ conflict: ConflictInfo, index: Int) -> some View {
     let endAt = conflict.endAt ?? conflict.startAt.addingTimeInterval(3600)
     let (y, h) = clampedBlock(start: conflict.startAt, end: endAt)
-    let color = blockColor(for: conflict.severity)
+    let color = blockColor(at: index)
 
     return HStack(spacing: 3) {
-      Spacer(minLength: 0)
       if let emoji = conflict.emoji {
         Text(emoji)
           .font(.system(size: 9))
@@ -277,7 +277,8 @@ public struct ConflictTooltip: View {
         .lineLimit(1)
     }
     .padding(.horizontal, 6)
-    .frame(maxWidth: .infinity, alignment: .top)
+    .padding(.top, 4)
+    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     .frame(height: h)
     .background(color.opacity(0.12))
     .clipShape(RoundedRectangle(cornerRadius: 4))
@@ -286,10 +287,12 @@ public struct ConflictTooltip: View {
 
   // MARK: - Conflict Summary Row
 
-  private func conflictSummaryRow(_ conflict: ConflictInfo) -> some View {
-    HStack(spacing: 8) {
+  private func conflictSummaryRow(_ conflict: ConflictInfo, index: Int) -> some View {
+    let color = blockColor(at: index)
+
+    return HStack(spacing: 8) {
       Circle()
-        .fill(blockColor(for: conflict.severity).opacity(0.15))
+        .fill(color.opacity(0.15))
         .frame(width: 24, height: 24)
         .overlay(
           Text(conflict.emoji ?? defaultEmoji(for: conflict))
@@ -299,7 +302,7 @@ public struct ConflictTooltip: View {
       VStack(alignment: .leading, spacing: 1) {
         Text(conflict.title)
           .font(.system(size: 12, weight: .medium))
-          .foregroundStyle(.primary)
+          .foregroundStyle(color)
           .lineLimit(1)
 
         Text(timeRangeText(for: conflict))
@@ -311,17 +314,23 @@ public struct ConflictTooltip: View {
 
       Text(overlapText(for: conflict))
         .font(.system(size: 11, weight: .medium))
-        .foregroundStyle(blockColor(for: conflict.severity))
+        .foregroundStyle(color)
     }
   }
 
   // MARK: - Helpers
 
-  private func blockColor(for severity: ConflictSeverity) -> Color {
-    switch severity {
-    case .confirmed: return Color.pmwarning.n600
-    case .pending: return Color.pmwarning.n500
-    }
+  /// 충돌 일정별 구분 색상 팔레트
+  private static let conflictColors: [Color] = [
+    Color.pmwarning.n500,
+    Color.pmindigo.n500,
+    Color.pmpurple.n500,
+    Color.pmsuccess.n500,
+    Color.pminfo.n500,
+  ]
+
+  private func blockColor(at index: Int) -> Color {
+    Self.conflictColors[index % Self.conflictColors.count]
   }
 
   private func defaultEmoji(for conflict: ConflictInfo) -> String {
