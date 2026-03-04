@@ -6,6 +6,7 @@ extension GroupMain {
   private enum CancelID: Hashable {
     case respond(String)
     case promiseSubscription
+    case needResponseShake  // 추가
   }
 
   enum RespondingState: Equatable {
@@ -109,6 +110,9 @@ extension GroupMain {
       /// 하이라이트할 약속 ID (목록에서 스크롤 및 강조 표시)
       var highlightedPromiseId: String?
 
+      /// 응답 필요 탭 진입 시 전체 흔들기 애니메이션 활성화
+      var isNeedResponseShaking: Bool = false
+
       /// 현재 실시간 공유 중인 약속 ID (nil이면 비활성)
       public var liveActivityPromiseId: String?
 
@@ -177,6 +181,7 @@ extension GroupMain {
         case groupTapped(String)  // 가로 바에서 그룹 선택
         case filterChanged(GroupMain.PromiseFilter)  // 필터 변경
         case clearHighlightedPromise  // 하이라이트 클리어
+        case needResponseShakeCompleted  // 응답 필요 흔들기 완료
         case moreNeedResponseTapped  // "N개 더 보기" - 응답 필요
         case moreConfirmedTapped  // "N개 더 보기" - 확정
         case allPromisesTapped  // "모든 약속 보기"
@@ -436,17 +441,38 @@ extension GroupMain {
 
           case .filterChanged(let filter):
             state.selectedFilter = filter
+            state.isNeedResponseShaking = false
+
+            if filter == .needResponse {
+              state.isNeedResponseShaking = true
+              // ShakeEffect: 0.5s delay + 3×0.3s animation = 1.4s
+              let shakeEffect: Effect<Action> = .run { send in
+                try await Task.sleep(for: .seconds(1.5))
+                await send(.view(.needResponseShakeCompleted))
+              }
+              .cancellable(id: CancelID.needResponseShake, cancelInFlight: true)
+              return shakeEffect
+            }
 
             // 과거 필터 선택 시 별도 fetch
             if filter == .past, let groupId = state.currentGroup?.id {
               // 이미 로드된 경우 재요청 안 함
-              guard !state.pastPromisesState.isLoaded else { return .none }
-              return .send(.internal(.fetchPastPromises(groupId: groupId)))
+              guard !state.pastPromisesState.isLoaded else {
+                return .cancel(id: CancelID.needResponseShake)
+              }
+              return .merge(
+                .cancel(id: CancelID.needResponseShake),
+                .send(.internal(.fetchPastPromises(groupId: groupId)))
+              )
             }
-            return .none
+            return .cancel(id: CancelID.needResponseShake)
 
           case .clearHighlightedPromise:
             state.highlightedPromiseId = nil
+            return .none
+
+          case .needResponseShakeCompleted:
+            state.isNeedResponseShaking = false
             return .none
 
           case .moreNeedResponseTapped:
