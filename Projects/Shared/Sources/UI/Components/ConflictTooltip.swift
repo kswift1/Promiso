@@ -62,7 +62,7 @@ public struct ConflictTooltip: View {
     let overlapStart = max(newEventStartAt, topConflict.startAt)
     let overlapEnd = min(newEnd, conflictEnd)
 
-    var start = calendar.date(byAdding: .hour, value: -1, to: overlapStart) ?? overlapStart
+    let start = calendar.date(byAdding: .hour, value: -1, to: overlapStart) ?? overlapStart
     var end = calendar.date(byAdding: .hour, value: 1, to: overlapEnd) ?? overlapEnd
 
     // 최대 12시간 윈도우
