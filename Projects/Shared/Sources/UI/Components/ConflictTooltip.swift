@@ -266,6 +266,7 @@ public struct ConflictTooltip: View {
     let color = blockColor(for: conflict.severity)
 
     return HStack(spacing: 3) {
+      Spacer(minLength: 0)
       if let emoji = conflict.emoji {
         Text(emoji)
           .font(.system(size: 9))
@@ -276,7 +277,7 @@ public struct ConflictTooltip: View {
         .lineLimit(1)
     }
     .padding(.horizontal, 6)
-    .frame(maxWidth: .infinity, alignment: .topLeading)
+    .frame(maxWidth: .infinity, alignment: .top)
     .frame(height: h)
     .background(color.opacity(0.12))
     .clipShape(RoundedRectangle(cornerRadius: 4))
@@ -327,10 +328,20 @@ public struct ConflictTooltip: View {
     "📅"
   }
 
+  private static let dateTimeFormatter: DateFormatter = {
+    let f = DateFormatter()
+    f.dateFormat = "M/d H:mm"
+    return f
+  }()
+
   private func timeRangeText(for conflict: ConflictInfo) -> String {
-    let startText = conflict.startAt.formattedTime
+    let startText = Self.dateTimeFormatter.string(from: conflict.startAt)
     if let endAt = conflict.endAt {
-      return "\(startText) ~ \(endAt.formattedTime)"
+      // 같은 날이면 종료 시간만, 다른 날이면 날짜 포함
+      if Calendar.current.isDate(conflict.startAt, inSameDayAs: endAt) {
+        return "\(startText) ~ \(Self.compactTimeFormatter.string(from: endAt))"
+      }
+      return "\(startText) ~ \(Self.dateTimeFormatter.string(from: endAt))"
     }
     return startText
   }
