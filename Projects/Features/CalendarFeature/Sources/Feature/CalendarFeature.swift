@@ -6,7 +6,6 @@ import ComposableArchitecture
 import PromisoShared
 import Clients
 import SharedFeature
-import GroupFeature
 import ResourceKit
 
 // MARK: - Feature Namespace
@@ -108,10 +107,6 @@ extension CalendarFeature {
       @Presents var editPromise: EditPromise.Feature.State?
       /// 개인 일정 수정 시트
       @Presents var editPersonalEvent: CreatePersonalEvent.Feature.State?
-      /// 약속 생성 시트
-      @Presents var createPromise: CreatePromise.Feature.State?
-      /// 일정 생성 선택 다이얼로그 (non-nil이면 표시)
-      var scheduleCreationDate: Date?
       /// 약속 공유 시트용
       var sharePromise: PromiseModel?
       var isKakaoPromiseSharing: Bool = false
@@ -453,11 +448,11 @@ extension CalendarFeature {
     public enum Action {
       case view(ViewAction)
       case `internal`(InternalAction)
+      case delegate(Delegate)
       case path(StackActionOf<Path>)
       case deleteAlert(PresentationAction<DeleteAlertAction>)
       case editPromise(PresentationAction<EditPromise.Feature.Action>)
       case editPersonalEvent(PresentationAction<CreatePersonalEvent.Feature.Action>)
-      case createPromise(PresentationAction<CreatePromise.Feature.Action>)
 
       @CasePathable
       public enum ViewAction {
@@ -491,8 +486,6 @@ extension CalendarFeature {
         case editScheduleItem(CalendarFeature.ScheduleItem)
         case createPersonalEventFromTimeline(Date)
         case createPromiseFromTimeline(Date)
-        case showScheduleCreationDialog(Date)
-        case scheduleCreationDialogDismissed
         case deleteScheduleItem(CalendarFeature.ScheduleItem)
         case shareScheduleItem(CalendarFeature.ScheduleItem)
         case dismissPromiseShareSheet
@@ -524,6 +517,11 @@ extension CalendarFeature {
         case personalEventsResponse(Result<[PersonalEventModel], Error>)
         // 공유
         case kakaoPromiseShareResult(KakaoShareResult)
+      }
+
+      @CasePathable
+      public enum Delegate: Equatable, Sendable {
+        case createPromiseWithExtractedInfo(PromiseExtractedInfo)
       }
     }
 
@@ -612,22 +610,6 @@ extension CalendarFeature {
       case .editPersonalEvent:
         return .none
 
-      case .createPromise(.presented(.delegate(.promiseCreated))):
-        state.createPromise = nil
-        let currentMonth = state.selectedDate.startOfMonth
-        return .send(.internal(.fetchPromisesForMonth(currentMonth)))
-
-      case .createPromise(.presented(.delegate(.dismiss))):
-        state.createPromise = nil
-        return .none
-
-      case .createPromise(.presented(.delegate(.createGroupRequested))):
-        state.createPromise = nil
-        return .none
-
-      case .createPromise:
-        return .none
-
       case .deleteAlert(.presented(.confirmDelete)):
           guard let item = state.scheduleItemToDelete else { return .none }
           state.scheduleItemToDelete = nil
@@ -650,6 +632,9 @@ extension CalendarFeature {
         case .deleteAlert:
           state.scheduleItemToDelete = nil
           return .none
+
+        case .delegate:
+          return .none
         }
       }
       .ifLet(\.$deleteAlert, action: \.deleteAlert)
@@ -658,9 +643,6 @@ extension CalendarFeature {
       }
       .ifLet(\.$editPersonalEvent, action: \.editPersonalEvent) {
         CreatePersonalEvent.Feature()
-      }
-      .ifLet(\.$createPromise, action: \.createPromise) {
-        CreatePromise.Feature()
       }
       .forEach(\.path, action: \.path)
     }
@@ -974,29 +956,15 @@ extension CalendarFeature {
         }
         return .none
 
-      case let .showScheduleCreationDialog(date):
-        state.scheduleCreationDate = date
-        return .none
-
-      case .scheduleCreationDialogDismissed:
-        state.scheduleCreationDate = nil
-        return .none
-
       case let .createPersonalEventFromTimeline(date):
-        state.scheduleCreationDate = nil
         let newEvent = PersonalEventModel(startAt: date)
         state.editPersonalEvent = CreatePersonalEvent.Feature.State(event: newEvent, mode: .create)
         return .none
 
       case let .createPromiseFromTimeline(date):
-        state.scheduleCreationDate = nil
-        let promise = PromiseModel(startAt: date)
-        let info = PromiseExtractedInfo(date: date, rawText: "", source: .text)
-        state.createPromise = CreatePromise.Feature.State(
-          promise: promise,
-          prefillInfo: info
-        )
-        return .none
+        return .send(.delegate(.createPromiseWithExtractedInfo(
+          PromiseExtractedInfo(date: date, rawText: "", source: .text)
+        )))
 
       case .deleteScheduleItem(let item):
         state.scheduleItemToDelete = item

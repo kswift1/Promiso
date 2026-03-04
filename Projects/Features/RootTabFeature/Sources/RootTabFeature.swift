@@ -339,6 +339,11 @@ extension RootTab {
         case .home:
           return .none
 
+        case .calendar(.delegate(.createPromiseWithExtractedInfo(let info))):
+          state.promiseMode = .group
+          state.selectedTab = .promise(.group)
+          return .send(.groupMain(.view(.openCreatePromiseWithExtractedInfo(info))))
+
         case .calendar:
           return .none
 

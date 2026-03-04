@@ -241,8 +241,8 @@ extension CalendarFeature {
             onCreatePersonalEvent: { date in
               store.send(.view(.createPersonalEventFromTimeline(date)))
             },
-            onCreatePromise: {
-              store.send(.view(.createPromiseFromTimeline))
+            onCreatePromise: { date in
+              store.send(.view(.createPromiseFromTimeline(date)))
             },
             onDeleteScheduleItem: { item in
               store.send(.view(.deleteScheduleItem(item)))
