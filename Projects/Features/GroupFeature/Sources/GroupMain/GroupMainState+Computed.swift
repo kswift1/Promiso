@@ -120,8 +120,9 @@ extension GroupMain.Feature.State {
       calendar.startOfDay(for: promise.startAt)
     }
 
+    let isDescending = selectedFilter == .past
     return grouped
-      .sorted { $0.key < $1.key }
+      .sorted { isDescending ? $0.key > $1.key : $0.key < $1.key }
       .map { day, promises in
         let title: String
         if calendar.isDateInToday(day) {
