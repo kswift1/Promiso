@@ -1255,6 +1255,12 @@ public enum LocalizedStrings {
     public static var viewSchedule: String { String(localized: "calendar.contextMenu.viewSchedule", bundle: bundle) }
     public static var addPersonalEvent: String { String(localized: "calendar.contextMenu.addPersonalEvent", bundle: bundle) }
     public static var createPromise: String { String(localized: "calendar.contextMenu.createPromise", bundle: bundle) }
+
+    // Filter
+    public static var filterTitle: String { String(localized: "calendar.filter.title", bundle: bundle) }
+    public static var filterSelectAll: String { String(localized: "calendar.filter.selectAll", bundle: bundle) }
+    public static var filterGroup: String { String(localized: "calendar.filter.group", bundle: bundle) }
+    public static var filterShowPersonalEvents: String { String(localized: "calendar.filter.showPersonalEvents", bundle: bundle) }
   }
 
   // MARK: - Personal

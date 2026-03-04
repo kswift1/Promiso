@@ -43,13 +43,13 @@ struct CalendarFilterSheetView: View {
 
   private var headerSection: some View {
     HStack {
-      Text("필터")
+      Text(LocalizedStrings.Calendar.filterTitle)
         .font(.system(size: 20, weight: .bold))
       Spacer()
       // 초기화 버튼 (필터가 변경되었을 때만 표시)
       if selectedGroupIds.count < groups.count || !showPersonalEvents {
         Button(action: onReset) {
-          Text("초기화")
+          Text(LocalizedStrings.Calendar.filterSelectAll)
             .font(.system(size: 14, weight: .medium))
             .foregroundColor(Color.pmindigo.n500)
         }
@@ -61,7 +61,7 @@ struct CalendarFilterSheetView: View {
 
   private var groupFilterSection: some View {
     VStack(alignment: .leading, spacing: 12) {
-      Text("그룹")
+      Text(LocalizedStrings.Calendar.filterGroup)
         .font(.system(size: 15, weight: .semibold))
         .foregroundColor(.secondary)
 
@@ -95,8 +95,8 @@ struct CalendarFilterSheetView: View {
           .lineLimit(1)
       }
       .padding(.leading, 6)
-      .padding(.trailing, 12)
-      .padding(.vertical, 6)
+      .padding(.trailing, 14)
+      .padding(.vertical, 8)
       .background(isSelected ? Color.pmindigo.n500.opacity(0.15) : Color(.systemGray6))
       .foregroundColor(isSelected ? Color.pmindigo.n500 : .primary)
       .cornerRadius(20)
@@ -116,7 +116,7 @@ struct CalendarFilterSheetView: View {
         Image(systemName: showPersonalEvents ? "checkmark.square.fill" : "square")
           .font(.system(size: 20))
           .foregroundColor(showPersonalEvents ? Color.pmindigo.n500 : Color(.systemGray3))
-        Text("개인 일정 표시")
+        Text(LocalizedStrings.Calendar.filterShowPersonalEvents)
           .font(.system(size: 15, weight: .medium))
           .foregroundColor(.primary)
         Spacer()
