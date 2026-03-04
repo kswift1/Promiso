@@ -726,7 +726,7 @@ extension GroupSettings {
             if !granted {
               state.toastMessage = ToastMessage(
                 type: .warning,
-                title: "알림 권한이 거부되었어요",
+                title: LocalizedStrings.Error.notificationPermissionDenied,
                 subtitle: "설정에서 변경할 수 있어요.",
                 position: .top
               )
@@ -744,7 +744,7 @@ extension GroupSettings {
             state.notificationError = message
             state.toastMessage = ToastMessage(
               type: .error,
-              title: "알림 설정 저장에 실패했어요",
+              title: LocalizedStrings.Error.notificationSettingSaveFailed,
               subtitle: message,
               position: .top
             )
@@ -817,7 +817,7 @@ extension GroupSettings {
             state.expelError = expelErrorMessage
             state.toastMessage = ToastMessage(
               type: .error,
-              title: "멤버 추방에 실패했어요",
+              title: LocalizedStrings.Error.memberExpelFailed,
               subtitle: expelErrorMessage,
               position: .top
             )
@@ -846,7 +846,7 @@ extension GroupSettings {
             state.groupColor = previousColor
             state.toastMessage = ToastMessage(
               type: .error,
-              title: "색상 변경에 실패했어요",
+              title: LocalizedStrings.Error.colorChangeFailed,
               subtitle: message,
               position: .top
             )

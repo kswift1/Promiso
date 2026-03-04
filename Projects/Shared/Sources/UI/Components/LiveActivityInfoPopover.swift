@@ -80,7 +80,7 @@ public struct LiveActivityInfoPopover: View {
         Image(systemName: "sparkles")
           .font(.system(size: 12))
           .foregroundColor(.purple)
-        Text("약속 시간 전에 자동으로 시작돼요")
+        Text(LocalizedStrings.LivePromise.autoStartDescription)
           .font(.system(size: 12))
           .foregroundColor(.secondary)
       }
@@ -174,7 +174,7 @@ public struct LiveActivityInfoPopover: View {
 
           // 오른쪽: 약속 시간
           VStack(alignment: .trailing, spacing: 1) {
-            Text("약속 시간")
+            Text(LocalizedStrings.LivePromise.promiseTime)
               .font(.system(size: 9))
               .foregroundColor(.white.opacity(0.6))
 

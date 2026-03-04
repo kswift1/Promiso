@@ -637,8 +637,10 @@ extension Home {
               // 개인 일정 날씨도 조회 (이미 캐시된 항목은 스킵)
               return .send(.internal(.fetchWeather))
             case .failure:
-              // 개인 일정 실패 시 빈 배열로 처리 (그룹 약속은 정상 표시)
-              state.personalEventsState = .loaded([])
+              // 개인 일정 실패 시 기존 데이터 유지 (이미 로드된 데이터가 있으면 보존)
+              if !state.personalEventsState.isLoaded {
+                state.personalEventsState = .loaded([])
+              }
               state.refreshHomeContentSnapshot()
             }
             return .none

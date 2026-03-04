@@ -29,7 +29,6 @@ extension View {
           .regular.tint(Color.pmindigo.n500.opacity(0.8)).interactive(),
           in: .rect(cornerRadius: 10)
         )
-        .shadow(color: Color.pmindigo.n500.opacity(0.3), radius: 8, y: 4)
     } else {
       self
         .background(

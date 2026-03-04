@@ -21200,6 +21200,736 @@
           }
         }
       }
+    },
+    "calendar.filter.title": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "필터"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filter"
+          }
+        }
+      }
+    },
+    "calendar.filter.selectAll": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "모두 선택"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select All"
+          }
+        }
+      }
+    },
+    "calendar.filter.group": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "그룹"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Groups"
+          }
+        }
+      }
+    },
+    "calendar.filter.personal": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "개인"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Personal"
+          }
+        }
+      }
+    },
+    "common.deleteAction": {
+      "comment": "삭제하기 버튼",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "삭제하기"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete"
+          }
+        }
+      }
+    },
+    "promiseCard.acceptedCount": {
+      "comment": "참여 인원 수",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "참여 %lld"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accepted %lld"
+          }
+        }
+      }
+    },
+    "promiseCard.declinedCount": {
+      "comment": "불참 인원 수",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "불참 %lld"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Declined %lld"
+          }
+        }
+      }
+    },
+    "promiseCard.confirmedCount": {
+      "comment": "확정 인원 수",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "확정 %lld"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirmed %lld"
+          }
+        }
+      }
+    },
+    "promiseCard.totalCount": {
+      "comment": "전체 인원 수",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "전체 %lld"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Total %lld"
+          }
+        }
+      }
+    },
+    "calendar.indicator.personal": {
+      "comment": "캘린더 인디케이터 개인 라벨",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "개인"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Personal"
+          }
+        }
+      }
+    },
+    "calendar.indicator.calendar": {
+      "comment": "캘린더 인디케이터 캘린더 라벨",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "캘린더"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Calendar"
+          }
+        }
+      }
+    },
+    "calendar.indicator.eventCount": {
+      "comment": "캘린더 인디케이터 이벤트 개수",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld건"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld"
+          }
+        }
+      }
+    },
+    "groupSettingsView.colorNotSet": {
+      "comment": "그룹 색상 미설정",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "미설정"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not set"
+          }
+        }
+      }
+    },
+    "groupSettingsView.colorPreview.barDescription": {
+      "comment": "그룹 바 색상 미리보기 설명",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "상단 그룹 바에 표시됩니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shown on the top group bar"
+          }
+        }
+      }
+    },
+    "groupSettingsView.colorPreview.cardDescription": {
+      "comment": "약속 카드 색상 미리보기 설명",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "약속 카드에 색상이 표시됩니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Color is shown on promise cards"
+          }
+        }
+      }
+    },
+    "groupSettingsView.colorPicker.title": {
+      "comment": "색상 선택 타이틀",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "색상 선택"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select Color"
+          }
+        }
+      }
+    },
+    "groupSettingsView.colorPreview.sampleTime": {
+      "comment": "색상 미리보기 샘플 시간",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오늘 12:00"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Today 12:00"
+          }
+        }
+      }
+    },
+    "groupSettingsView.colorPreview.sampleTitle": {
+      "comment": "색상 미리보기 샘플 타이틀",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "🍽️ 점심 약속"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "🍽️ Lunch Plan"
+          }
+        }
+      }
+    },
+    "shared.conflict.checking": {
+      "comment": "일정 충돌 확인 중",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "일정 확인 중..."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking schedule..."
+          }
+        }
+      }
+    },
+    "home.timeline.now": {
+      "comment": "현재 시간 마커",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NOW"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NOW"
+          }
+        }
+      }
+    },
+    "livePromise.promiseTime": {
+      "comment": "약속 시간 라벨",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "약속 시간"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Promise Time"
+          }
+        }
+      }
+    },
+    "livePromise.manualInput": {
+      "comment": "직접 입력 라벨",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "직접 입력"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Manual Input"
+          }
+        }
+      }
+    },
+    "livePromise.autoStartDescription": {
+      "comment": "라이브 활동 자동 시작 설명",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "약속 시간 전에 자동으로 시작돼요"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Starts automatically before the promise time"
+          }
+        }
+      }
+    },
+    "error.promiseCreationFailed": {
+      "comment": "약속 생성 실패 에러",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "약속 생성 실패"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Failed to create promise"
+          }
+        }
+      }
+    },
+    "error.eventDeleteFailed": {
+      "comment": "일정 삭제 실패 에러",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "일정 삭제에 실패했어요"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Failed to delete event"
+          }
+        }
+      }
+    },
+    "error.markAsReadFailed": {
+      "comment": "읽음 처리 실패 에러",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "읽음 처리에 실패했어요"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Failed to mark as read"
+          }
+        }
+      }
+    },
+    "error.notificationDeleteFailed": {
+      "comment": "알림 삭제 실패 에러",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "알림 삭제에 실패했어요"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Failed to delete notification"
+          }
+        }
+      }
+    },
+    "error.promiseFetchFailed": {
+      "comment": "약속 조회 실패 에러",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "약속을 불러오지 못했습니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Failed to load promises"
+          }
+        }
+      }
+    },
+    "error.logoutFailed": {
+      "comment": "로그아웃 실패 에러",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로그아웃에 실패했어요"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Failed to log out"
+          }
+        }
+      }
+    },
+    "error.profileSaveFailed": {
+      "comment": "프로필 저장 실패 에러",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "프로필 저장에 실패했어요"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Failed to save profile"
+          }
+        }
+      }
+    },
+    "error.calendarSyncSaveFailed": {
+      "comment": "캘린더 동기화 저장 실패",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "그룹 캘린더 동기화 저장에 실패했어요"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Failed to save calendar sync settings"
+          }
+        }
+      }
+    },
+    "error.notificationSettingSaveFailed": {
+      "comment": "알림 설정 저장 실패",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "알림 설정 저장에 실패했어요"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Failed to save notification settings"
+          }
+        }
+      }
+    },
+    "error.responseSendFailed": {
+      "comment": "응답 전송 실패",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "응답 전송에 실패했어요"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Failed to send response"
+          }
+        }
+      }
+    },
+    "error.promiseDeleteFailed": {
+      "comment": "약속 삭제 실패",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "약속 삭제에 실패했어요"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Failed to delete promise"
+          }
+        }
+      }
+    },
+    "error.accountDeleteFailed": {
+      "comment": "회원 탈퇴 실패",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "회원 탈퇴에 실패했어요"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Failed to delete account"
+          }
+        }
+      }
+    },
+    "error.notificationPermissionDenied": {
+      "comment": "알림 권한 거부",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "알림 권한이 거부되었어요"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notification permission denied"
+          }
+        }
+      }
+    },
+    "error.memberExpelFailed": {
+      "comment": "멤버 추방 실패",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "멤버 추방에 실패했어요"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Failed to expel member"
+          }
+        }
+      }
+    },
+    "error.colorChangeFailed": {
+      "comment": "색상 변경 실패",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "색상 변경에 실패했어요"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Failed to change color"
+          }
+        }
+      }
+    },
+    "error.settingSaveFailed": {
+      "comment": "설정 저장 실패",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "설정 저장에 실패했어요"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Failed to save settings"
+          }
+        }
+      }
+    },
+    "createPromise.navigationTitle": {
+      "comment": "약속 만들기 네비게이션 타이틀",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "약속 만들기"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create Promise"
+          }
+        }
+      }
+    },
+    "kakaoShare.joinButton": {
+      "comment": "카카오 공유 참여하기 버튼",
+      "extractionState": "manual",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "참여하기"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Join"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

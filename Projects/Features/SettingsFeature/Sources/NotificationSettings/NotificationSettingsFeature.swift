@@ -422,7 +422,7 @@ extension GroupNotificationDetail {
             state.group = state.group.withNotifications(previousSettings)
             state.toastMessage = ToastMessage(
               type: .error,
-              title: "알림 설정 저장에 실패했어요",
+              title: LocalizedStrings.Error.notificationSettingSaveFailed,
               subtitle: message,
               position: .top
             )

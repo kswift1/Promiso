@@ -30,6 +30,8 @@ extension CalendarFeature {
             title: store.headerTitle,
             displayMode: store.displayMode,
             isSelectedDateToday: store.isSelectedDateToday,
+            isFilterActive: store.isFilterActive,
+            onFilterTapped: { store.send(.view(.filterIconTapped)) },
             onToggleMode: { store.send(.view(.toggleDisplayMode), animation: .spring(response: 0.45, dampingFraction: 0.8)) },
             onMoveToToday: { store.send(.view(.moveToToday), animation: .spring(response: 0.35, dampingFraction: 0.85)) },
             onMovePrevious: { store.send(.view(.moveToPreviousPeriod), animation: .spring(response: 0.35, dampingFraction: 0.85)) },
@@ -89,6 +91,31 @@ extension CalendarFeature {
         )) { item in
           ShareSheet(items: [item.text])
         }
+        .sheet(isPresented: Binding(
+          get: { store.isFilterSheetPresented },
+          set: { newValue in
+            if !newValue {
+              store.send(.view(.filterSheetDismissed))
+            }
+          }
+        )) {
+          CalendarFilterSheetView(
+            groups: store.sortedGroups,
+            groupColorMap: store.groupColorMap,
+            selectedGroupIds: store.selectedGroupIds,
+            showPersonalEvents: store.showPersonalEvents,
+            onGroupToggled: { groupId in
+              store.send(.view(.filterGroupToggled(groupId)))
+            },
+            onPersonalEventsToggled: {
+              store.send(.view(.filterPersonalEventsToggled))
+            },
+            onReset: {
+              store.send(.view(.filterReset))
+            }
+          )
+          .presentationDragIndicator(.visible)
+        }
         .toast(Binding(
           get: { store.toastMessage },
           set: { _ in store.send(.view(.toastDismissed)) }
@@ -126,28 +153,10 @@ extension CalendarFeature {
         )
         .padding(.vertical, 14)
         .transition(.opacity.combined(with: .scale(scale: 0.98)).combined(with: .offset(y: -8)))
-      } else if store.monthExpansionState == .collapsed {
-        // Collapsed: UIKit 페이저 (compact dot cells)
-        PagingMonthGridView(
-          currentMonth: Binding(
-            get: { store.currentMonth },
-            set: { store.send(.view(.monthPageChanged($0))) }
-          ),
-          selectedDate: store.selectedDate,
-          scheduleIndicatorsByDate: store.scheduleIndicatorsByDate,
-          namespace: calendarAnimation,
-          isCompactMode: true,
-          onDateSelected: { date in
-            store.send(.view(.selectDate(date)), animation: .spring(response: 0.35, dampingFraction: 0.7))
-          },
-          onCollapseToWeek: { date in
-            store.send(.view(.collapseToWeek(date)), animation: .spring(response: 0.45, dampingFraction: 0.8))
-          }
-        )
-        .padding(.vertical, 12)
-        .transition(.opacity.combined(with: .scale(scale: 0.98)).combined(with: .offset(y: 8)))
       } else {
-        // Expanded: 고정 높이 3페이지 페이저 (각 페이지 내부 세로 스크롤)
+        let isExpanded = store.monthExpansionState == .expanded
+
+        // 월간 collapsed/expanded를 동일 페이저에서 전환해 6행 그리드를 유지
         PagingMonthGridView(
           currentMonth: Binding(
             get: { store.currentMonth },
@@ -156,8 +165,8 @@ extension CalendarFeature {
           selectedDate: store.selectedDate,
           scheduleIndicatorsByDate: store.scheduleIndicatorsByDate,
           namespace: calendarAnimation,
-          isCompactMode: false,
-          showAllIndicators: true,
+          isCompactMode: !isExpanded,
+          showAllIndicators: isExpanded,
           onDateSelected: { date in
             store.send(.view(.selectDate(date)), animation: .spring(response: 0.35, dampingFraction: 0.7))
           },
@@ -175,10 +184,13 @@ extension CalendarFeature {
           }
         )
         .padding(.top, 12)
-        .frame(maxHeight: .infinity)
+        .padding(.bottom, isExpanded ? 0 : 12)
+        .frame(maxHeight: isExpanded ? .infinity : nil)
         .overlay(alignment: .bottom) {
-          collapseToListButton
-            .padding(.bottom, 16)
+          if isExpanded {
+            collapseToListButton
+              .padding(.bottom, 16)
+          }
         }
         .transition(.opacity.combined(with: .scale(scale: 0.98)).combined(with: .offset(y: 8)))
       }

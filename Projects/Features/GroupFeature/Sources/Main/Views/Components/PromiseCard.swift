@@ -174,7 +174,7 @@ struct PromiseCard: View {
           Circle()
             .fill(Color.green)
             .frame(width: 6, height: 6)
-          Text("참여 \(accepted)")
+          Text(LocalizedStrings.PromiseCard.acceptedCount(accepted))
             .contentTransition(.numericText())
             .foregroundColor(.green)
         }
@@ -186,7 +186,7 @@ struct PromiseCard: View {
           Circle()
             .fill(Color.red.opacity(0.7))
             .frame(width: 6, height: 6)
-          Text("불참 \(declined)")
+          Text(LocalizedStrings.PromiseCard.declinedCount(declined))
             .contentTransition(.numericText())
             .foregroundColor(.red)
         }
@@ -198,7 +198,7 @@ struct PromiseCard: View {
           RoundedRectangle(cornerRadius: 0.5)
             .fill(Color.pmindigo.n500)
             .frame(width: 2, height: 8)
-          Text("확정 \(confirm)")
+          Text(LocalizedStrings.PromiseCard.confirmedCount(confirm))
             .foregroundColor(Color.pmindigo.n500)
         }
 
@@ -209,7 +209,7 @@ struct PromiseCard: View {
           Circle()
             .fill(Color.gray.opacity(0.3))
             .frame(width: 6, height: 6)
-          Text("전체 \(totalMembers)")
+          Text(LocalizedStrings.PromiseCard.totalCount(totalMembers))
             .foregroundColor(.secondary)
         }
 
@@ -221,7 +221,7 @@ struct PromiseCard: View {
             Circle()
               .fill(myVoteStatus == .accepted ? Color.green : Color.red)
               .frame(width: 5, height: 5)
-            Text(myVoteStatus == .accepted ? "참여함" : "불참함")
+            Text(myVoteStatus == .accepted ? LocalizedStrings.PromiseCard.responseAccepted : LocalizedStrings.PromiseCard.responseDeclined)
               .foregroundColor(myVoteStatus == .accepted ? .green : .red)
           }
           .transition(.opacity.combined(with: .scale(scale: 0.8)))
@@ -362,7 +362,7 @@ struct PromiseCard: View {
             HStack(spacing: 4) {
               Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
                 .font(.system(size: 12, weight: .semibold))
-              Text("길찾기")
+              Text(LocalizedStrings.Common.directions)
                 .font(.system(size: 12, weight: .semibold))
             }
             .foregroundColor(Color.pmindigo.n500)

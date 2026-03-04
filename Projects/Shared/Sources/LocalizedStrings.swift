@@ -58,6 +58,7 @@ public enum LocalizedStrings {
     public static var personalEvent: String { String(localized: "common.personalEvent", bundle: bundle) }
     public static var seeMore: String { String(localized: "common.seeMore", bundle: bundle) }
     public static var collapse: String { String(localized: "common.collapse", bundle: bundle) }
+    public static var deleteAction: String { String(localized: "common.deleteAction", bundle: bundle) }
   }
 
   // MARK: - Authentication
@@ -508,6 +509,23 @@ public enum LocalizedStrings {
     // Map
     public static var mapInvalidResponse: String { String(localized: "error.map.invalidResponse", bundle: bundle) }
     public static var mapHttpError: String { String(localized: "error.map.httpError", bundle: bundle) }
+
+    // Feature Error Messages (Toast/Alert)
+    public static var promiseCreationFailed: String { String(localized: "error.promiseCreationFailed", bundle: bundle) }
+    public static var eventDeleteFailed: String { String(localized: "error.eventDeleteFailed", bundle: bundle) }
+    public static var markAsReadFailed: String { String(localized: "error.markAsReadFailed", bundle: bundle) }
+    public static var promiseFetchFailed: String { String(localized: "error.promiseFetchFailed", bundle: bundle) }
+    public static var logoutFailed: String { String(localized: "error.logoutFailed", bundle: bundle) }
+    public static var profileSaveFailed: String { String(localized: "error.profileSaveFailed", bundle: bundle) }
+    public static var calendarSyncSaveFailed: String { String(localized: "error.calendarSyncSaveFailed", bundle: bundle) }
+    public static var notificationSettingSaveFailed: String { String(localized: "error.notificationSettingSaveFailed", bundle: bundle) }
+    public static var responseSendFailed: String { String(localized: "error.responseSendFailed", bundle: bundle) }
+    public static var promiseDeleteFailed: String { String(localized: "error.promiseDeleteFailed", bundle: bundle) }
+    public static var accountDeleteFailed: String { String(localized: "error.accountDeleteFailed", bundle: bundle) }
+    public static var notificationPermissionDenied: String { String(localized: "error.notificationPermissionDenied", bundle: bundle) }
+    public static var memberExpelFailed: String { String(localized: "error.memberExpelFailed", bundle: bundle) }
+    public static var colorChangeFailed: String { String(localized: "error.colorChangeFailed", bundle: bundle) }
+    public static var settingSaveFailed: String { String(localized: "error.settingSaveFailed", bundle: bundle) }
   }
 
   // MARK: - Tab Bar
@@ -1036,6 +1054,9 @@ public enum LocalizedStrings {
     public static var filterNeedResponse: String { String(localized: "home.filter.needResponse", bundle: bundle) }
     public static var filterConfirmed: String { String(localized: "home.filter.confirmed", bundle: bundle) }
     public static var filterInProgress: String { String(localized: "home.filter.inProgress", bundle: bundle) }
+
+    // Now label
+    public static var timelineNow: String { String(localized: "home.timeline.now", bundle: bundle) }
   }
 
   // MARK: - Shared (SharedFeature)
@@ -1168,6 +1189,9 @@ public enum LocalizedStrings {
 
     // Image Attachment
     public static var imageUploading: String { String(localized: "shared.image.uploading", bundle: bundle) }
+
+    // Conflict Warning
+    public static var conflictChecking: String { String(localized: "shared.conflict.checking", bundle: bundle) }
   }
 
   // MARK: - Calendar
@@ -1260,6 +1284,20 @@ public enum LocalizedStrings {
     public static var viewSchedule: String { String(localized: "calendar.contextMenu.viewSchedule", bundle: bundle) }
     public static var addPersonalEvent: String { String(localized: "calendar.contextMenu.addPersonalEvent", bundle: bundle) }
     public static var createPromise: String { String(localized: "calendar.contextMenu.createPromise", bundle: bundle) }
+
+    // Filter
+    public static var filterTitle: String { String(localized: "calendar.filter.title", bundle: bundle) }
+    public static var filterSelectAll: String { String(localized: "calendar.filter.selectAll", bundle: bundle) }
+    public static var filterGroup: String { String(localized: "calendar.filter.group", bundle: bundle) }
+    public static var filterPersonal: String { String(localized: "calendar.filter.personal", bundle: bundle) }
+
+    // Indicator
+    public static var indicatorPersonal: String { String(localized: "calendar.indicator.personal", bundle: bundle) }
+    public static var indicatorCalendar: String { String(localized: "calendar.indicator.calendar", bundle: bundle) }
+    public static func indicatorEventCount(_ count: Int) -> String {
+      String(localized: "calendar.indicator.eventCount", bundle: bundle)
+        .replacingOccurrences(of: "%lld", with: "\(count)")
+    }
   }
 
   // MARK: - Personal
@@ -1419,6 +1457,7 @@ public enum LocalizedStrings {
         .replacingOccurrences(of: "%lld", with: "\(count)")
     }
     public static var maxParticipantsWarning: String { String(localized: "createPromise.maxParticipantsWarning", bundle: bundle) }
+    public static var navigationTitle: String { String(localized: "createPromise.navigationTitle", bundle: bundle) }
   }
 
   // MARK: - ManageGroup
@@ -1575,6 +1614,14 @@ public enum LocalizedStrings {
     public static var groupColorGroupTab: String { String(localized: "groupSettingsView.groupColor.groupTab", bundle: bundle) }
     public static var groupColorPromiseCard: String { String(localized: "groupSettingsView.groupColor.promiseCard", bundle: bundle) }
     public static var groupColorReset: String { String(localized: "groupSettingsView.groupColor.reset", bundle: bundle) }
+
+    // Color Settings
+    public static var colorNotSet: String { String(localized: "groupSettingsView.colorNotSet", bundle: bundle) }
+    public static var colorPreviewBarDescription: String { String(localized: "groupSettingsView.colorPreview.barDescription", bundle: bundle) }
+    public static var colorPreviewCardDescription: String { String(localized: "groupSettingsView.colorPreview.cardDescription", bundle: bundle) }
+    public static var colorPickerTitle: String { String(localized: "groupSettingsView.colorPicker.title", bundle: bundle) }
+    public static var colorPreviewSampleTime: String { String(localized: "groupSettingsView.colorPreview.sampleTime", bundle: bundle) }
+    public static var colorPreviewSampleTitle: String { String(localized: "groupSettingsView.colorPreview.sampleTitle", bundle: bundle) }
   }
 
   // MARK: - GroupMain
@@ -1794,6 +1841,7 @@ public enum LocalizedStrings {
     public static var inviteLinkShared: String { String(localized: "kakaoShare.inviteLinkShared", bundle: bundle) }
     public static var promiseShared: String { String(localized: "kakaoShare.promiseShared", bundle: bundle) }
     public static var kakaoInviteButton: String { String(localized: "kakaoShare.kakaoInviteButton", bundle: bundle) }
+    public static var joinButton: String { String(localized: "kakaoShare.joinButton", bundle: bundle) }
   }
 
   // MARK: - GroupComponents
@@ -1887,6 +1935,22 @@ public enum LocalizedStrings {
     public static var statusResponded: String { String(localized: "promiseCard.status.responded", bundle: bundle) }
     public static var statusConfirmed: String { String(localized: "promiseCard.status.confirmed", bundle: bundle) }
     public static var statusFailed: String { String(localized: "promiseCard.status.failed", bundle: bundle) }
+    public static func acceptedCount(_ count: Int) -> String {
+      String(localized: "promiseCard.acceptedCount", bundle: bundle)
+        .replacingOccurrences(of: "%lld", with: "\(count)")
+    }
+    public static func declinedCount(_ count: Int) -> String {
+      String(localized: "promiseCard.declinedCount", bundle: bundle)
+        .replacingOccurrences(of: "%lld", with: "\(count)")
+    }
+    public static func confirmedCount(_ count: Int) -> String {
+      String(localized: "promiseCard.confirmedCount", bundle: bundle)
+        .replacingOccurrences(of: "%lld", with: "\(count)")
+    }
+    public static func totalCount(_ count: Int) -> String {
+      String(localized: "promiseCard.totalCount", bundle: bundle)
+        .replacingOccurrences(of: "%lld", with: "\(count)")
+    }
   }
 
   // MARK: - GroupPromiseList
@@ -1969,6 +2033,11 @@ public enum LocalizedStrings {
 
     // Fallback
     public static var groupFallback: String { String(localized: "livePromise.groupFallback", bundle: bundle) }
+
+    // LiveActivity
+    public static var promiseTime: String { String(localized: "livePromise.promiseTime", bundle: bundle) }
+    public static var manualInput: String { String(localized: "livePromise.manualInput", bundle: bundle) }
+    public static var autoStartDescription: String { String(localized: "livePromise.autoStartDescription", bundle: bundle) }
   }
 }
 

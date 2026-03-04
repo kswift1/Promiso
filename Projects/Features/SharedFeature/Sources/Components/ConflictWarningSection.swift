@@ -18,7 +18,7 @@ public struct ConflictWarningSection: View {
       HStack(spacing: 8) {
         ProgressView()
           .scaleEffect(0.8)
-        Text("일정 확인 중...")
+        Text(LocalizedStrings.Shared.conflictChecking)
           .font(.system(size: 14))
           .foregroundColor(.secondary)
       }
@@ -93,7 +93,7 @@ private struct ConflictItemRow: View {
             .lineLimit(1)
 
           if conflict.severity == .pending {
-            Text("미확정")
+            Text(LocalizedStrings.Shared.undetermined)
               .font(.system(size: 11, weight: .medium))
               .foregroundColor(Color.pmwarning.n500)
               .padding(.horizontal, 6)

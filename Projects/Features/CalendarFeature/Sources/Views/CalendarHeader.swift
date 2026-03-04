@@ -11,6 +11,8 @@ struct CalendarHeader: View {
   let title: String
   let displayMode: CalendarDisplayMode
   let isSelectedDateToday: Bool
+  let isFilterActive: Bool
+  let onFilterTapped: () -> Void
   let onToggleMode: () -> Void
   let onMoveToToday: () -> Void
   let onMovePrevious: () -> Void
@@ -55,6 +57,16 @@ struct CalendarHeader: View {
             .background(Color.pmindigo.n500.opacity(0.1))
             .cornerRadius(8)
         }
+      }
+
+      // 필터
+      Button(action: onFilterTapped) {
+        Image(systemName: isFilterActive
+          ? "line.3.horizontal.decrease.circle.fill"
+          : "line.3.horizontal.decrease.circle")
+          .font(.system(size: 18))
+          .foregroundColor(isFilterActive ? Color.pmindigo.n500 : .primary)
+          .frame(width: 36, height: 36)
       }
 
       // 주간/월간 토글
