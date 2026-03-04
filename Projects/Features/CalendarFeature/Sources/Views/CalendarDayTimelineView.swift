@@ -118,8 +118,8 @@ struct CalendarDayTimelineView: View {
       }
       .frame(width: nil, height: totalHeight)
       .coordinateSpace(name: "timeline")
-      .padding(.top, 10)
-      .padding(.bottom, 10)
+      .padding(.top, 16)
+      .padding(.bottom, 20)
       .padding(.leading, 8)
       .padding(.trailing, 20)
     }
