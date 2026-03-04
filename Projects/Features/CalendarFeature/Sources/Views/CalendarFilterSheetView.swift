@@ -10,10 +10,10 @@ struct CalendarFilterSheetView: View {
   let groups: [UserGroupInfo]
   let groupColorMap: [String: Color]
   let selectedGroupIds: Set<String>
-  let selectedStatus: CalendarFeature.StatusFilter
   let onGroupToggled: (String) -> Void
-  let onStatusChanged: (CalendarFeature.StatusFilter) -> Void
   let onReset: () -> Void
+
+  @State private var contentHeight: CGFloat = 200
 
   var body: some View {
     VStack(alignment: .leading, spacing: 24) {
@@ -22,14 +22,16 @@ struct CalendarFilterSheetView: View {
 
       // 그룹 필터 섹션
       groupFilterSection
-
-      // 상태 필터 섹션
-      statusFilterSection
-
-      Spacer()
     }
     .padding(.horizontal, 20)
     .padding(.top, 24)
+    .padding(.bottom, 24)
+    .onGeometryChange(for: CGFloat.self) { proxy in
+      proxy.size.height
+    } action: { height in
+      contentHeight = height
+    }
+    .presentationDetents([.height(contentHeight)])
   }
 
   // MARK: - Header Section
@@ -40,7 +42,7 @@ struct CalendarFilterSheetView: View {
         .font(.system(size: 20, weight: .bold))
       Spacer()
       // 초기화 버튼 (필터가 활성화되어 있을 때만 표시)
-      if !selectedGroupIds.isEmpty || selectedStatus != .all {
+      if !selectedGroupIds.isEmpty {
         Button(action: onReset) {
           Text("초기화")
             .font(.system(size: 14, weight: .medium))
@@ -58,35 +60,33 @@ struct CalendarFilterSheetView: View {
         .font(.system(size: 15, weight: .semibold))
         .foregroundColor(.secondary)
 
-      // 가로 스크롤 그룹 칩
-      ScrollView(.horizontal, showsIndicators: false) {
-        HStack(spacing: 8) {
-          ForEach(groups) { group in
-            groupChip(group)
-          }
+      // Flow Layout (줄바꿈) 그룹 칩
+      FlowLayout(spacing: 8) {
+        ForEach(groups) { group in
+          groupChip(group)
         }
-        .padding(.horizontal, 1) // shadow clipping 방지
       }
+      .padding(2) // stroke clipping 방지
     }
   }
 
   // MARK: - Group Chip
 
   private func groupChip(_ group: UserGroupInfo) -> some View {
-    let isSelected = selectedGroupIds.contains(group.id)
+    // 빈 Set = 전체 선택 → 모든 칩 하이라이트
+    let isSelected = selectedGroupIds.isEmpty || selectedGroupIds.contains(group.id)
     let color = groupColorMap[group.id] ?? Color.pmindigo.n500
 
     return Button { onGroupToggled(group.id) } label: {
       HStack(spacing: 6) {
-        Circle()
-          .fill(color)
-          .frame(width: 10, height: 10)
+        GroupThumbnailView(imageUrl: group.imageUrl, name: group.name, size: 28)
         Text(group.name)
           .font(.system(size: 14, weight: .medium))
           .lineLimit(1)
       }
-      .padding(.horizontal, 12)
-      .padding(.vertical, 8)
+      .padding(.leading, 4)
+      .padding(.trailing, 12)
+      .padding(.vertical, 4)
       .background(isSelected ? color.opacity(0.15) : Color(.systemGray6))
       .foregroundColor(isSelected ? color : .primary)
       .cornerRadius(20)
@@ -97,21 +97,53 @@ struct CalendarFilterSheetView: View {
     }
     .buttonStyle(.plain)
   }
+}
 
-  // MARK: - Status Filter Section
+// MARK: - Flow Layout
 
-  private var statusFilterSection: some View {
-    VStack(alignment: .leading, spacing: 12) {
-      Text("상태")
-        .font(.system(size: 15, weight: .semibold))
-        .foregroundColor(.secondary)
+private struct FlowLayout: Layout {
+  var spacing: CGFloat = 8
 
-      CategoryFilterBar(
-        selection: Binding(
-          get: { selectedStatus },
-          set: { onStatusChanged($0) }
-        )
-      )
+  func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+    let rows = computeRows(proposal: proposal, subviews: subviews)
+    var height: CGFloat = 0
+    for (index, row) in rows.enumerated() {
+      let rowHeight = row.map { $0.sizeThatFits(.unspecified).height }.max() ?? 0
+      height += rowHeight
+      if index < rows.count - 1 { height += spacing }
     }
+    return CGSize(width: proposal.width ?? 0, height: height)
+  }
+
+  func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+    let rows = computeRows(proposal: proposal, subviews: subviews)
+    var y = bounds.minY
+    for row in rows {
+      let rowHeight = row.map { $0.sizeThatFits(.unspecified).height }.max() ?? 0
+      var x = bounds.minX
+      for subview in row {
+        let size = subview.sizeThatFits(.unspecified)
+        subview.place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))
+        x += size.width + spacing
+      }
+      y += rowHeight + spacing
+    }
+  }
+
+  private func computeRows(proposal: ProposedViewSize, subviews: Subviews) -> [[LayoutSubviews.Element]] {
+    let maxWidth = proposal.width ?? .infinity
+    var rows: [[LayoutSubviews.Element]] = [[]]
+    var currentWidth: CGFloat = 0
+
+    for subview in subviews {
+      let size = subview.sizeThatFits(.unspecified)
+      if currentWidth + size.width > maxWidth && !rows[rows.count - 1].isEmpty {
+        rows.append([])
+        currentWidth = 0
+      }
+      rows[rows.count - 1].append(subview)
+      currentWidth += size.width + spacing
+    }
+    return rows
   }
 }

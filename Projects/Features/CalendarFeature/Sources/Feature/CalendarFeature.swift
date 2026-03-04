@@ -111,7 +111,30 @@ extension CalendarFeature {
       /// 필터 시트 표시 여부
       var isFilterSheetPresented: Bool = false
 
+      /// 그룹 정렬 옵션 (그룹 탭과 동일)
+      var groupSortOption: GroupSortOption = .joinedRecent
+
       // MARK: - Group 관련
+
+      /// 정렬된 그룹 목록 (필터 시트용)
+      var sortedGroups: [UserGroupInfo] {
+        switch groupSortOption {
+        case .joinedRecent:
+          return currentUser.groups.sorted { ($0.joinedAt ?? .distantPast) > ($1.joinedAt ?? .distantPast) }
+        case .joinedOldest:
+          return currentUser.groups.sorted { ($0.joinedAt ?? .distantPast) < ($1.joinedAt ?? .distantPast) }
+        case .nameAscending:
+          return currentUser.groups.sorted { $0.name < $1.name }
+        case .nameDescending:
+          return currentUser.groups.sorted { $0.name > $1.name }
+        case .custom(let order):
+          if order.isEmpty { return currentUser.groups }
+          let groupDict = Dictionary(uniqueKeysWithValues: currentUser.groups.map { ($0.id, $0) })
+          let ordered = order.compactMap { groupDict[$0] }
+          let remaining = currentUser.groups.filter { !Set(order).contains($0.id) }
+          return ordered + remaining
+        }
+      }
 
       /// 사용자 그룹 정보 조회용 (키: groupId)
       var userGroupsMap: [String: UserGroupInfo] {
@@ -280,7 +303,7 @@ extension CalendarFeature {
 
       /// 필터 활성 여부 (헤더 뱃지용)
       var isFilterActive: Bool {
-        !selectedGroupIds.isEmpty || selectedStatusFilter != .all
+        !selectedGroupIds.isEmpty
       }
 
       // MARK: - Group Color Map
@@ -574,6 +597,9 @@ extension CalendarFeature {
         // 개인 일정
         case fetchPersonalEvents
         case personalEventsResponse(Result<[PersonalEventModel], Error>)
+        // 설정
+        case fetchSettings
+        case settingsResponse(Result<UserSettings, Error>)
         // 공유
         case kakaoPromiseShareResult(KakaoShareResult)
       }
@@ -593,6 +619,7 @@ extension CalendarFeature {
     @Dependency(\.personalEventClient) var personalEventClient
     @Dependency(\.kakaoShareClient) var kakaoShareClient
     @Dependency(\.userDefaultsClient) var userDefaultsClient
+    @Dependency(\.userSettingsClient) var userSettingsClient
 
     // MARK: - Reducer Body
 
@@ -717,7 +744,8 @@ extension CalendarFeature {
         }
         return .merge(
           .send(.internal(.checkCalendarPermission)),
-          .send(.internal(.loadInitialData))
+          .send(.internal(.loadInitialData)),
+          .send(.internal(.fetchSettings))
         )
 
       case .toggleDisplayMode:
@@ -1125,10 +1153,19 @@ extension CalendarFeature {
         return .none
 
       case .filterGroupToggled(let groupId):
-        if state.selectedGroupIds.contains(groupId) {
+        if state.selectedGroupIds.isEmpty {
+          // 전체 선택 상태에서 탭 → 해당 그룹만 해제 (전체 - 1)
+          let allIds = Set(state.currentUser.groups.map(\.id))
+          state.selectedGroupIds = allIds.subtracting([groupId])
+        } else if state.selectedGroupIds.contains(groupId) {
           state.selectedGroupIds.remove(groupId)
+          // 마지막 그룹 해제 → 자동으로 "전체" (빈 Set)
         } else {
           state.selectedGroupIds.insert(groupId)
+          // 모두 선택되면 → "전체"로 복원 (빈 Set)
+          if state.selectedGroupIds == Set(state.currentUser.groups.map(\.id)) {
+            state.selectedGroupIds = []
+          }
         }
         return .none
 
@@ -1345,6 +1382,23 @@ extension CalendarFeature {
         case .failure:
           // 에러 시 기존 데이터 유지 (빈 배열로 덮어쓰지 않음)
           break
+        }
+        return .none
+
+      case .fetchSettings:
+        let userId = state.currentUserId
+        return .run { [userSettingsClient] send in
+          do {
+            let settings = try await userSettingsClient.fetchSettings(userId)
+            await send(.internal(.settingsResponse(.success(settings))))
+          } catch {
+            await send(.internal(.settingsResponse(.failure(error))))
+          }
+        }
+
+      case .settingsResponse(let result):
+        if case .success(let settings) = result {
+          state.groupSortOption = settings.groupSortOption
         }
         return .none
 

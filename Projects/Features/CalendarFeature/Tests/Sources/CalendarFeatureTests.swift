@@ -30,6 +30,7 @@ struct CalendarFeatureTests {
     await store.send(.view(.onAppear))
     await store.receive(\.internal.checkCalendarPermission)
     await store.receive(\.internal.loadInitialData)
+    await store.receive(\.internal.fetchSettings)
     await store.finish()
   }
 
@@ -74,6 +75,7 @@ struct CalendarFeatureTests {
 
     await store.send(.view(.selectDate(february))) {
       $0.selectedDate = february
+      $0.currentWeekStart = february.startOfWeek
     }
     await store.receive(\.internal.fetchPromisesForMonth)
   }
@@ -439,5 +441,10 @@ private extension CalendarFeatureTests {
     deps.eventKitClient.fetchEvents = { _, _ in [] }
     deps.promiseClient.getPromisesByDateRange = { _, _, _ in [] }
     deps.personalEventClient.getActiveEvents = { _ in [] }
+    deps.userSettingsClient.fetchSettings = { _ in
+      UserSettings(notificationEnabled: true, groupSortOption: .joinedRecent, plan: .free)
+    }
+    deps.userDefaultsClient.setString = { _, _ in }
+    deps.userDefaultsClient.stringForKey = { _ in nil }
   }
 }

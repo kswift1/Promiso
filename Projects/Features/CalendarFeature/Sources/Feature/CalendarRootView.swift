@@ -96,21 +96,16 @@ extension CalendarFeature {
           }
         )) {
           CalendarFilterSheetView(
-            groups: store.currentUser.groups,
+            groups: store.sortedGroups,
             groupColorMap: store.groupColorMap,
             selectedGroupIds: store.selectedGroupIds,
-            selectedStatus: store.selectedStatusFilter,
             onGroupToggled: { groupId in
               store.send(.view(.filterGroupToggled(groupId)))
-            },
-            onStatusChanged: { filter in
-              store.send(.view(.filterStatusChanged(filter)))
             },
             onReset: {
               store.send(.view(.filterReset))
             }
           )
-          .presentationDetents([.medium])
           .presentationDragIndicator(.visible)
         }
         .toast(Binding(
