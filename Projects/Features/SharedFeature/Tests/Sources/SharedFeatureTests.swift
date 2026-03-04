@@ -583,7 +583,7 @@ struct PromiseDetailFeatureTests {
     }
 
     #expect(store.state.toastMessage?.type == .error)
-    #expect(store.state.toastMessage?.title == "응답 전송에 실패했어요")
+    #expect(store.state.toastMessage?.title == LocalizedStrings.Error.responseSendFailed)
     #expect(store.state.toastMessage?.subtitle == "네트워크 오류")
     #expect(store.state.toastMessage?.position == .top)
   }
@@ -629,7 +629,7 @@ struct PromiseDetailFeatureTests {
     }
 
     #expect(store.state.toastMessage?.type == .error)
-    #expect(store.state.toastMessage?.title == "약속 삭제에 실패했어요")
+    #expect(store.state.toastMessage?.title == LocalizedStrings.Error.promiseDeleteFailed)
     #expect(store.state.toastMessage?.subtitle == "삭제 실패")
     #expect(store.state.toastMessage?.position == .top)
   }
