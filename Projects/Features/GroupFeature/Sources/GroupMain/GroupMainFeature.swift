@@ -6,7 +6,13 @@ extension GroupMain {
   private enum CancelID: Hashable {
     case respond(String)
     case promiseSubscription
-    case needResponseShake  // 추가
+    case needResponseShake
+  }
+
+  /// ShakeEffect 타이밍 상수
+  private enum ShakeConstants {
+    /// ShakeEffect delay(0.5s) + animation(0.3s × 3) + buffer(0.1s)
+    static let needResponseShakeDuration: TimeInterval = 0.5 + (0.3 * 3) + 0.1
   }
 
   enum RespondingState: Equatable {
@@ -445,9 +451,8 @@ extension GroupMain {
 
             if filter == .needResponse {
               state.isNeedResponseShaking = true
-              // ShakeEffect: 0.5s delay + 3×0.3s animation = 1.4s
               let shakeEffect: Effect<Action> = .run { send in
-                try await Task.sleep(for: .seconds(1.5))
+                try await Task.sleep(for: .seconds(ShakeConstants.needResponseShakeDuration))
                 await send(.view(.needResponseShakeCompleted))
               }
               .cancellable(id: CancelID.needResponseShake, cancelInFlight: true)
