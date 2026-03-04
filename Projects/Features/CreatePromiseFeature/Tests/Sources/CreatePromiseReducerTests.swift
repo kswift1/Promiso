@@ -10,7 +10,7 @@
 //
 
 import Testing
-@testable import GroupFeature
+@testable import CreatePromiseFeature
 
 // MARK: - CreatePromise Feature Tests
 

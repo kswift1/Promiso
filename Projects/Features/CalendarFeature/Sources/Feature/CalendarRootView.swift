@@ -7,6 +7,7 @@ import Clients
 import PromisoShared
 import ResourceKit
 import SharedFeature
+import CreatePromiseFeature
 
 // MARK: - Root View
 
@@ -63,6 +64,9 @@ extension CalendarFeature {
           NavigationStack {
             CreatePersonalEvent.RootView(store: editStore)
           }
+        }
+        .sheet(store: store.scope(state: \.$createPromise, action: \.createPromise)) { createStore in
+          CreatePromise.RootView(store: createStore)
         }
         .sheet(item: Binding(
           get: { store.sharePromise },
@@ -250,11 +254,11 @@ extension CalendarFeature {
                 store.send(.view(.selectDate(next)), animation: .spring(response: 0.35, dampingFraction: 0.7))
               }
             },
-            onCreatePersonalEvent: { date in
-              store.send(.view(.createPersonalEventFromTimeline(date)))
+            onCreatePersonalEvent: { startDate, endDate in
+              store.send(.view(.createPersonalEventFromTimeline(startDate: startDate, endDate: endDate)))
             },
-            onCreatePromise: {
-              store.send(.view(.createPromiseFromTimeline))
+            onCreatePromise: { startDate, endDate in
+              store.send(.view(.createPromiseFromTimeline(startDate: startDate, endDate: endDate)))
             },
             onDeleteScheduleItem: { item in
               store.send(.view(.deleteScheduleItem(item)))

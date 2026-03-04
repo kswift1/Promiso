@@ -5,6 +5,7 @@
 import SwiftUI
 import ComposableArchitecture
 import GroupFeature
+import CreatePromiseFeature
 import Clients
 import PromisoShared
 

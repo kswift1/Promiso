@@ -630,6 +630,57 @@
         }
       }
     },
+    "calendar.schedule.add": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add Schedule"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "일정 추가"
+          }
+        }
+      }
+    },
+    "calendar.schedule.group": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Group Schedule"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "그룹일정"
+          }
+        }
+      }
+    },
+    "calendar.schedule.personal": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Personal Schedule"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "개인일정"
+          }
+        }
+      }
+    },
     "calendar.contextMenu.createPromise": {
       "extractionState": "stale",
       "localizations": {
