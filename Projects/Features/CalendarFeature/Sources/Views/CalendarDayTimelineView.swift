@@ -556,13 +556,6 @@ struct CalendarDayTimelineView: View {
               .font(.system(size: 13, weight: .semibold))
               .foregroundStyle(.primary)
               .lineLimit(1)
-
-            if case .promise(let p) = item {
-              let status = promiseResponseStatus(p)
-              Text(statusText(for: status))
-                .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(statusColor(for: status))
-            }
           }
 
           if !isCompact {
