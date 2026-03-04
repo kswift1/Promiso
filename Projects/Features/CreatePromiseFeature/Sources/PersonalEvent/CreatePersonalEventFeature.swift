@@ -74,9 +74,6 @@ extension CreatePersonalEvent {
       // 날씨 힌트 (보너스)
       var weatherState: LoadingState<WeatherInfo> = .idle
 
-      // 2-step 플로우
-      var currentStep: CreatePersonalEventStep = .essential
-
       public init(event: PersonalEventModel = .empty, mode: Mode = .create) {
         self.event = event
         self.mode = mode
@@ -85,10 +82,6 @@ extension CreatePersonalEvent {
 
       var canSave: Bool {
         event.isTitleValid && !isSaving
-      }
-
-      var essentialStepComplete: Bool {
-        event.isTitleValid
       }
 
       var navigationTitle: String {
@@ -116,8 +109,6 @@ extension CreatePersonalEvent {
       case descriptionChanged(String)
       case locationTapped
       case removeLocation
-      case nextStep
-      case previousStep
       case saveTapped
       case dismissTapped
       case dismissError
@@ -264,14 +255,6 @@ extension CreatePersonalEvent {
               .run { _ in await hapticFeedback.selection() },
               .cancel(id: CancelID.weatherFetchDebounce)
             )
-
-          case .nextStep:
-            state.currentStep.next()
-            return .none
-
-          case .previousStep:
-            state.currentStep.previous()
-            return .none
 
           case .saveTapped:
             guard state.canSave else { return .none }

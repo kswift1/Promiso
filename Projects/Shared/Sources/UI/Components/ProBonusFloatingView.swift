@@ -94,7 +94,7 @@ public struct ProBonusFloatingView: View {
 
   public var body: some View {
     if hasContent {
-      VStack(alignment: .leading, spacing: 2) {
+      VStack(alignment: .leading, spacing: 4) {
         // PRO 뱃지
         proBadge
 

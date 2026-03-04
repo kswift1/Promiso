@@ -17,20 +17,13 @@ extension CreatePersonalEvent {
     public var body: some View {
       StepSheetContainer(
         title: store.navigationTitle,
-        currentStep: store.currentStep.rawValue,
-        totalSteps: CreatePersonalEventStep.allCases.count,
+        currentStep: 0,
+        totalSteps: 1,
         onDismiss: { store.send(.view(.dismissTapped)) }
       ) {
-        switch store.currentStep {
-        case .essential:
-          essentialStepContent
-        case .details:
-          detailsStepContent
-        }
+        singleStepContent
       } floatingContent: {
-        if store.currentStep == .details {
-          floatingBonusView
-        }
+        floatingBonusView
       } bottomContent: {
         bottomBar
       }
@@ -59,27 +52,14 @@ extension CreatePersonalEvent {
       }
     }
 
-    // MARK: - Step Content: Essential
+    // MARK: - Single Step Content
 
     @ViewBuilder
-    private var essentialStepContent: some View {
+    private var singleStepContent: some View {
       ScrollView {
         VStack(spacing: 16) {
           essentialSection
           endTimeSection
-        }
-        .padding(16)
-        .padding(.bottom, 24)
-      }
-      .auroraBackground()
-    }
-
-    // MARK: - Step Content: Details
-
-    @ViewBuilder
-    private var detailsStepContent: some View {
-      ScrollView {
-        VStack(spacing: 16) {
           locationSection
           reminderSection
           descriptionSection
@@ -152,28 +132,17 @@ extension CreatePersonalEvent {
 
     @ViewBuilder
     private var bottomBar: some View {
-      switch store.currentStep {
-      case .essential:
-        StepBottomBar(configuration: .navigation(
-          showPrevious: false,
-          previousAction: {},
-          nextTitle: LocalizedStrings.Common.next,
-          isNextDisabled: !store.essentialStepComplete,
-          nextAction: { store.send(.view(.nextStep), animation: .easeInOut(duration: 0.25)) }
-        ))
-      case .details:
-        StepBottomBar(configuration: .navigation(
-          showPrevious: true,
-          previousAction: { store.send(.view(.previousStep), animation: .default) },
-          nextTitle: store.mode == .create
-            ? LocalizedStrings.Common.save
-            : LocalizedStrings.Common.modify,
-          nextSystemImage: "checkmark.circle.fill",
-          isNextDisabled: !store.canSave,
-          isNextLoading: store.isSaving,
-          nextAction: { store.send(.view(.saveTapped)) }
-        ))
-      }
+      StepBottomBar(configuration: .navigation(
+        showPrevious: false,
+        previousAction: {},
+        nextTitle: store.mode == .create
+          ? LocalizedStrings.Common.save
+          : LocalizedStrings.Common.modify,
+        nextSystemImage: "checkmark.circle.fill",
+        isNextDisabled: !store.canSave,
+        isNextLoading: store.isSaving,
+        nextAction: { store.send(.view(.saveTapped)) }
+      ))
     }
 
     // MARK: - Essential Section (제목 + 시작 시간)

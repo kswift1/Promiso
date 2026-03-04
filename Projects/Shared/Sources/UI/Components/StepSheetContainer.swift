@@ -61,8 +61,10 @@ public struct StepSheetContainer<
         // 1. 상단 툴바
         sheetToolbar
 
-        // 2. 진행바
-        StepProgressBar(currentStep: currentStep, totalSteps: totalSteps)
+        // 2. 진행바 (totalSteps > 1일 때만 표시)
+        if totalSteps > 1 {
+          StepProgressBar(currentStep: currentStep, totalSteps: totalSteps)
+        }
 
         // 3. 콘텐츠 영역
         content()
@@ -133,23 +135,23 @@ public struct StepSheetContainer<
         .padding(.horizontal, 16)
 
       bottomContent()
+        .overlay(alignment: .top) {
+          // 그라디언트 페이드 (투명 → 배경색) — floatingContent 아래, 버튼 위
+          LinearGradient(
+            colors: [
+              Color(.systemBackground).opacity(0),
+              Color(.systemBackground)
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+          )
+          .frame(height: 24)
+          .offset(y: -24)
+          .allowsHitTesting(false)
+        }
     }
     .padding(.top, 8)
     .background(Color(.systemBackground))
-    .overlay(alignment: .top) {
-      // 상단 그라디언트 페이드 (투명 → 배경색)
-      LinearGradient(
-        colors: [
-          Color(.systemBackground).opacity(0),
-          Color(.systemBackground)
-        ],
-        startPoint: .top,
-        endPoint: .bottom
-      )
-      .frame(height: 24)
-      .offset(y: -24)
-      .allowsHitTesting(false)
-    }
   }
 }
 
