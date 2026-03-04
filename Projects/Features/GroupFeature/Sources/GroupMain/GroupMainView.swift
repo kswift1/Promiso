@@ -444,17 +444,19 @@ extension GroupMain {
         store.send(.view(.promiseTapped(promise)))
       }
       .modifier(ShakeEffect(
-        isShaking: store.highlightedPromiseId == promiseId,
+        isShaking: store.highlightedPromiseId == promiseId || store.isNeedResponseShaking,
         onComplete: {
-          store.send(.view(.clearHighlightedPromise))
+          if store.highlightedPromiseId == promiseId {
+            store.send(.view(.clearHighlightedPromise))
+          }
         }
       ))
       .listRowBackground(Color.clear)
       .listRowSeparator(.hidden)
       .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
       .swipeActions(edge: .leading, allowsFullSwipe: true) {
-        // 수락 / 되돌리기 (과거 약속은 제외)
-        if !promise.isPast {
+        // 수락 / 되돌리기 (과거 약속, 흔들기 애니메이션 중 제외)
+        if !promise.isPast && !store.isNeedResponseShaking {
           if myVoteStatus == .accepted {
             Button {
               store.send(.view(.responseChanged(promiseId, .pending)))
@@ -473,8 +475,8 @@ extension GroupMain {
         }
       }
       .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-        // 거절 / 되돌리기 (과거 약속은 제외)
-        if !promise.isPast {
+        // 거절 / 되돌리기 (과거 약속, 흔들기 애니메이션 중 제외)
+        if !promise.isPast && !store.isNeedResponseShaking {
           if myVoteStatus == .declined {
             Button {
               store.send(.view(.responseChanged(promiseId, .pending)))
