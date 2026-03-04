@@ -29,6 +29,9 @@ struct CalendarDayTimelineView: View {
   @State private var dragAnchorStart: Int = 0        // 드래그 시작 시점 start
   @State private var dragAnchorEnd: Int = 0          // 드래그 시작 시점 end
 
+  // 이미지 미리보기
+  @State private var previewImageUrls: [String]? = nil
+
   // 줌 앵커링용 스크롤 추적
   @State private var scrollOffset: CGFloat = 0
   @State private var viewportHeight: CGFloat = 0
@@ -68,6 +71,18 @@ struct CalendarDayTimelineView: View {
 
   var body: some View {
     timelineContent
+      .fullScreenCover(isPresented: Binding(
+        get: { previewImageUrls != nil },
+        set: { if !$0 { previewImageUrls = nil } }
+      )) {
+        if let urls = previewImageUrls {
+          PhotoGalleryViewer(
+            imageUrls: urls,
+            initialIndex: 0,
+            onDismiss: { previewImageUrls = nil }
+          )
+        }
+      }
   }
 
   // MARK: - Timeline Content
@@ -607,6 +622,9 @@ struct CalendarDayTimelineView: View {
           ScheduleItemThumbnail(url: imageUrl, size: showRich ? 72 : 48)
             .padding(.horizontal, 10)
             .padding(.bottom, 6)
+            .onTapGesture {
+              previewImageUrls = itemImageUrls(for: item)
+            }
         }
       }
     }
@@ -899,6 +917,17 @@ struct CalendarDayTimelineView: View {
       return e.description
     case .calendarEvent:
       return nil
+    }
+  }
+
+  private func itemImageUrls(for item: CalendarFeature.ScheduleItem) -> [String] {
+    switch item {
+    case .promise(let p):
+      return p.imageUrls
+    case .personalEvent(let e):
+      return e.imageUrls
+    case .calendarEvent:
+      return []
     }
   }
 
