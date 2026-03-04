@@ -127,7 +127,12 @@ public struct ProBonusFloatingView: View {
       HStack(spacing: 6) {
         Image(systemName: forecast.condition.sfSymbolName)
           .symbolRenderingMode(.multicolor)
-          .font(.system(size: 14))
+          .font(.system(size: 12))
+          .frame(width: 22, height: 22)
+          .background(
+            Circle()
+              .fill(Color.cyan.opacity(0.12))
+          )
 
         Text("\(Int(forecast.temperature.rounded()))°")
           .font(.system(size: 13, weight: .semibold))
@@ -305,5 +310,26 @@ public struct ProBonusFloatingView: View {
     Text("위에는 아무것도 렌더링되지 않아야 합니다")
       .font(.caption)
       .foregroundStyle(.secondary)
+  }
+}
+
+#Preview("날씨 아이콘 전체") {
+  ScrollView {
+    VStack(spacing: 8) {
+      ForEach(WeatherCondition.allCases, id: \.self) { condition in
+        ProBonusFloatingView(
+          weatherForecast: HourlyForecast(
+            dateTime: Date(),
+            temperature: 15,
+            feelsLikeTemperature: 12,
+            condition: condition,
+            precipitationProbability: 50,
+            humidity: 60,
+            windSpeed: 3.0
+          )
+        )
+      }
+    }
+    .padding(.horizontal, 16)
   }
 }
