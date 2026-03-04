@@ -23,14 +23,10 @@ extension OverlayScheduleDetail {
 
         ScrollView {
           VStack(spacing: 16) {
-            emojiBadge
             timeContextCard
 
             if let promise = store.promise {
-              if !promise.isPast {
-                quickResponseSection
-              }
-              participationSection
+              promiseStatusCard(promise)
             }
 
             if store.personalEvent != nil {
@@ -91,7 +87,13 @@ extension OverlayScheduleDetail {
 
     @ViewBuilder
     private var timeContextCard: some View {
-      HStack {
+      HStack(spacing: 12) {
+        let emoji = store.item.displayEmoji
+        if !emoji.isEmpty {
+          Text(emoji)
+            .font(.system(size: 36))
+        }
+
         switch store.timeContext {
         case .todayUpcoming:
           VStack(alignment: .leading, spacing: 4) {
@@ -155,54 +157,160 @@ extension OverlayScheduleDetail {
       .adaptiveGlassCard()
     }
 
-    // MARK: - Emoji Badge
+    // MARK: - Promise Status Card (응답 + 참여 현황 통합)
 
     @ViewBuilder
-    private var emojiBadge: some View {
-      let emoji = store.item.displayEmoji
-      if !emoji.isEmpty {
-        Text(emoji)
-          .font(.system(size: 40))
-          .frame(maxWidth: .infinity, alignment: .leading)
+    private func promiseStatusCard(_ promise: PromiseModel) -> some View {
+      let total = max(store.totalMemberCount, promise.minimumParticipants)
+      let accepted = store.acceptedCount
+      let declined = store.declinedCount
+      let confirm = promise.minimumParticipants
+
+      VStack(spacing: 12) {
+        // 빠른 응답 (미래 약속만)
+        if !promise.isPast {
+          HStack(spacing: 10) {
+            quickResponseButton(
+              title: "수락",
+              icon: "checkmark",
+              color: .green,
+              isSelected: store.myVoteStatus == .accepted,
+              isLoading: store.respondingState == .accepting
+            ) {
+              store.send(.view(.acceptTapped))
+            }
+
+            quickResponseButton(
+              title: "미정",
+              icon: "minus",
+              color: Color(.systemGray),
+              isSelected: store.myVoteStatus == .pending,
+              isLoading: store.respondingState == .resetting
+            ) {
+              store.send(.view(.resetTapped))
+            }
+
+            quickResponseButton(
+              title: "거절",
+              icon: "xmark",
+              color: .red,
+              isSelected: store.myVoteStatus == .declined,
+              isLoading: store.respondingState == .rejecting
+            ) {
+              store.send(.view(.rejectTapped))
+            }
+          }
+        }
+
+        // 프로그레스 바
+        GeometryReader { geometry in
+          let barWidth = geometry.size.width
+          let acceptedRatio = min(1.0, CGFloat(accepted) / CGFloat(max(total, 1)))
+          let declinedRatio = min(1.0 - acceptedRatio, CGFloat(declined) / CGFloat(max(total, 1)))
+          let confirmRatio = min(1.0, CGFloat(confirm) / CGFloat(max(total, 1)))
+
+          ZStack(alignment: .leading) {
+            Capsule()
+              .fill(Color.gray.opacity(0.15))
+
+            HStack(spacing: 0) {
+              Rectangle()
+                .fill(accepted >= confirm ? Color.green : Color.green.opacity(0.7))
+                .frame(width: max(0, barWidth * acceptedRatio))
+              Rectangle()
+                .fill(Color.red.opacity(0.5))
+                .frame(width: max(0, barWidth * declinedRatio))
+            }
+            .clipShape(Capsule())
+
+            if total > 1 {
+              ForEach(1..<total, id: \.self) { i in
+                let x = barWidth * CGFloat(i) / CGFloat(total)
+                RoundedRectangle(cornerRadius: 0.5)
+                  .fill(Color.gray.opacity(0.35))
+                  .frame(width: 1, height: 6)
+                  .offset(x: x - 0.5)
+              }
+            }
+
+            if confirm < total {
+              RoundedRectangle(cornerRadius: 1)
+                .fill(Color.pmindigo.n500)
+                .frame(width: 2, height: 10)
+                .offset(x: barWidth * confirmRatio - 1)
+            }
+          }
+          .animation(.easeInOut(duration: 0.35), value: accepted)
+          .animation(.easeInOut(duration: 0.35), value: declined)
+        }
+        .frame(height: 6)
+
+        // 범례
+        HStack(spacing: 0) {
+          HStack(spacing: 3) {
+            Circle()
+              .fill(Color.green)
+              .frame(width: 6, height: 6)
+            Text("참여 \(accepted)")
+              .contentTransition(.numericText())
+              .foregroundStyle(.green)
+          }
+
+          Text(" · ")
+            .foregroundStyle(.secondary.opacity(0.5))
+
+          HStack(spacing: 3) {
+            Circle()
+              .fill(Color.red.opacity(0.7))
+              .frame(width: 6, height: 6)
+            Text("불참 \(declined)")
+              .contentTransition(.numericText())
+              .foregroundStyle(.red)
+          }
+
+          Text(" · ")
+            .foregroundStyle(.secondary.opacity(0.5))
+
+          HStack(spacing: 3) {
+            RoundedRectangle(cornerRadius: 0.5)
+              .fill(Color.pmindigo.n500)
+              .frame(width: 2, height: 8)
+            Text("확정 \(confirm)")
+              .foregroundStyle(Color.pmindigo.n500)
+          }
+
+          Text(" · ")
+            .foregroundStyle(.secondary.opacity(0.5))
+
+          HStack(spacing: 3) {
+            Circle()
+              .fill(Color.gray.opacity(0.3))
+              .frame(width: 6, height: 6)
+            Text("전체 \(store.totalMemberCount)")
+              .foregroundStyle(.secondary)
+          }
+
+          Spacer()
+
+          if store.myVoteStatus != .pending {
+            HStack(spacing: 4) {
+              Circle()
+                .fill(store.myVoteStatus == .accepted ? Color.green : Color.red)
+                .frame(width: 5, height: 5)
+              Text(store.myVoteStatus == .accepted ? "참여함" : "불참함")
+                .foregroundStyle(store.myVoteStatus == .accepted ? .green : .red)
+            }
+            .transition(.opacity.combined(with: .scale(scale: 0.8)))
+          }
+        }
+        .font(.system(size: 11, weight: .medium))
+        .minimumScaleFactor(0.8)
+        .lineLimit(1)
+        .animation(.easeInOut(duration: 0.35), value: accepted)
+        .animation(.easeInOut(duration: 0.35), value: declined)
+        .animation(.easeInOut(duration: 0.3), value: store.myVoteStatus)
       }
-    }
-
-    // MARK: - Quick Response Section (약속 + 미래만)
-
-    @ViewBuilder
-    private var quickResponseSection: some View {
-      HStack(spacing: 10) {
-        quickResponseButton(
-          title: "수락",
-          icon: "checkmark",
-          color: .green,
-          isSelected: store.myVoteStatus == .accepted,
-          isLoading: store.respondingState == .accepting
-        ) {
-          store.send(.view(.acceptTapped))
-        }
-
-        quickResponseButton(
-          title: "미정",
-          icon: "minus",
-          color: Color(.systemGray),
-          isSelected: store.myVoteStatus == .pending,
-          isLoading: store.respondingState == .resetting
-        ) {
-          store.send(.view(.resetTapped))
-        }
-
-        quickResponseButton(
-          title: "거절",
-          icon: "xmark",
-          color: .red,
-          isSelected: store.myVoteStatus == .declined,
-          isLoading: store.respondingState == .rejecting
-        ) {
-          store.send(.view(.rejectTapped))
-        }
-      }
-      .padding(12)
+      .padding(16)
       .adaptiveGlassCard()
     }
 
@@ -239,67 +347,6 @@ extension OverlayScheduleDetail {
       .buttonStyle(.plain)
       .contentShape(Rectangle())
       .disabled(isLoading)
-    }
-
-    // MARK: - Participation Section (약속만)
-
-    @ViewBuilder
-    private var participationSection: some View {
-      if let promise = store.promise {
-        VStack(alignment: .leading, spacing: 10) {
-          HStack {
-            Text("참여 현황")
-              .font(.system(size: 13, weight: .semibold))
-              .foregroundStyle(.secondary)
-
-            Spacer()
-
-            CircularProgressView(
-              current: store.acceptedCount,
-              total: max(promise.minimumParticipants, store.totalMemberCount),
-              size: 28,
-              lineWidth: 2.5
-            )
-          }
-
-          // 프로그레스 바
-          GeometryReader { geo in
-            ZStack(alignment: .leading) {
-              Capsule()
-                .fill(Color(.systemGray5))
-              Capsule()
-                .fill(store.acceptedCount >= promise.minimumParticipants ? Color.green : Color.pmindigo.n500)
-                .frame(width: max(0, geo.size.width * progressRatio))
-                .animation(.spring(response: 0.4), value: store.acceptedCount)
-            }
-          }
-          .frame(height: 6)
-
-          HStack {
-            VoteDotsView(
-              accepted: promise.votes.accepted.count,
-              declined: promise.votes.declined.count,
-              pending: max(0, store.totalMemberCount - promise.votes.accepted.count - promise.votes.declined.count),
-              dotSize: 8
-            )
-
-            Spacer()
-
-            Text(store.confirmationProgress)
-              .font(.system(size: 12))
-              .foregroundStyle(.secondary)
-          }
-        }
-        .padding(16)
-        .adaptiveGlassCard()
-      }
-    }
-
-    private var progressRatio: Double {
-      guard let promise = store.promise else { return 0 }
-      let total = max(promise.minimumParticipants, store.totalMemberCount)
-      guard total > 0 else { return 0 }
-      return Double(store.acceptedCount) / Double(total)
     }
 
     // MARK: - Description Card (개인 일정)
@@ -367,30 +414,12 @@ extension OverlayScheduleDetail {
              let forecast = weather.forecast(for: store.item.startAt) {
             if hasLocation { Divider() }
 
-            HStack(spacing: 8) {
-              Image(systemName: forecast.condition.sfSymbolName)
-                .font(.system(size: 16))
-                .foregroundStyle(forecast.condition.iconColor)
-
-              Text("\(Int(forecast.temperature))°")
-                .font(.system(size: 14, weight: .semibold))
-
-              Text(forecast.condition.description)
-                .font(.system(size: 13))
-                .foregroundStyle(.secondary)
-
-              Spacer()
-
-              if forecast.precipitationProbability > 0 {
-                HStack(spacing: 2) {
-                  Image(systemName: "umbrella.fill")
-                    .font(.system(size: 11))
-                  Text("\(forecast.precipitationProbability)%")
-                    .font(.system(size: 12))
-                }
-                .foregroundStyle(.blue)
-              }
-            }
+            WeatherCardStrip(
+              forecast: forecast,
+              rangeForecasts: weather.forecasts(from: store.item.startAt, to: store.item.endAt),
+              referenceTimeText: store.item.startAt.formattedMonthDayTime,
+              forecastSource: weather.forecastSource(for: store.item.startAt)
+            )
           }
         }
         .padding(16)

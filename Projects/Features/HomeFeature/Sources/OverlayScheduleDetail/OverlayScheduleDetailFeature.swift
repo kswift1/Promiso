@@ -319,6 +319,7 @@ extension OverlayScheduleDetail.Feature.State {
   }
 
   var acceptedCount: Int { promise?.votes.accepted.count ?? 0 }
+  var declinedCount: Int { promise?.votes.declined.count ?? 0 }
 
   var totalMemberCount: Int { groupMembers?.count ?? promise?.minimumParticipants ?? 0 }
 
