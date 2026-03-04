@@ -11,6 +11,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
   let currentDayScheduleItems: [HomeModels.ScheduleItem]
   let nextDayScheduleItems: [HomeModels.ScheduleItem]
   let onScheduleItemTapped: (HomeModels.ScheduleItem) -> Void
+  let onEditScheduleItem: ((HomeModels.ScheduleItem) -> Void)?
   let onPreviousDay: () -> Void
   let onNextDay: () -> Void
   let onCreatePersonalEvent: (Date) -> Void
@@ -39,6 +40,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
       nextDayScheduleItems: nextDayScheduleItems,
       selectedDate: selectedDate,
       onScheduleItemTapped: onScheduleItemTapped,
+      onEditScheduleItem: onEditScheduleItem,
       onCreatePersonalEvent: onCreatePersonalEvent,
       onCreatePromise: onCreatePromise,
       onDeleteScheduleItem: onDeleteScheduleItem,
@@ -71,6 +73,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
         nextDayScheduleItems: nextDayScheduleItems,
         selectedDate: selectedDate,
         onScheduleItemTapped: onScheduleItemTapped,
+        onEditScheduleItem: coordinator.pager.onEditScheduleItem,
         onCreatePersonalEvent: coordinator.pager.onCreatePersonalEvent,
         onCreatePromise: coordinator.pager.onCreatePromise,
         onDeleteScheduleItem: coordinator.pager.onDeleteScheduleItem,
@@ -116,6 +119,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
           scheduleItems: currentDayScheduleItems,
           displayDate: selectedDay,
           onScheduleItemTapped: onScheduleItemTapped,
+          onEditScheduleItem: onEditScheduleItem,
           onCreatePersonalEvent: onCreatePersonalEvent,
           onCreatePromise: onCreatePromise,
           onDeleteScheduleItem: onDeleteScheduleItem,
@@ -143,6 +147,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
           nextDayScheduleItems: nextDayScheduleItems,
           selectedDate: selectedDate,
           onScheduleItemTapped: onScheduleItemTapped,
+          onEditScheduleItem: coordinator.pager.onEditScheduleItem,
           onCreatePersonalEvent: coordinator.pager.onCreatePersonalEvent,
           onCreatePromise: coordinator.pager.onCreatePromise,
           onDeleteScheduleItem: coordinator.pager.onDeleteScheduleItem,
@@ -188,6 +193,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
         nextDayScheduleItems: pager.nextDayScheduleItems,
         selectedDate: pager.selectedDate,
         onScheduleItemTapped: pager.onScheduleItemTapped,
+        onEditScheduleItem: pager.onEditScheduleItem,
         onCreatePersonalEvent: pager.onCreatePersonalEvent,
         onCreatePromise: pager.onCreatePromise,
         onDeleteScheduleItem: pager.onDeleteScheduleItem,
@@ -304,6 +310,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
       nextDayScheduleItems: [HomeModels.ScheduleItem],
       selectedDate: Date,
       onScheduleItemTapped: @escaping (HomeModels.ScheduleItem) -> Void,
+      onEditScheduleItem: ((HomeModels.ScheduleItem) -> Void)?,
       onCreatePersonalEvent: @escaping (Date) -> Void,
       onCreatePromise: @escaping () -> Void,
       onDeleteScheduleItem: ((HomeModels.ScheduleItem) -> Void)?,
@@ -327,6 +334,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
           scheduleItems: items,
           displayDate: displayDates[index],
           onScheduleItemTapped: onScheduleItemTapped,
+          onEditScheduleItem: onEditScheduleItem,
           onCreatePersonalEvent: onCreatePersonalEvent,
           onCreatePromise: onCreatePromise,
           onDeleteScheduleItem: onDeleteScheduleItem,
@@ -369,6 +377,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
       nextDayScheduleItems: [HomeModels.ScheduleItem],
       selectedDate: Date,
       onScheduleItemTapped: @escaping (HomeModels.ScheduleItem) -> Void,
+      onEditScheduleItem: ((HomeModels.ScheduleItem) -> Void)?,
       onCreatePersonalEvent: @escaping (Date) -> Void,
       onCreatePromise: @escaping () -> Void,
       onDeleteScheduleItem: ((HomeModels.ScheduleItem) -> Void)?,
@@ -389,6 +398,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
           scheduleItems: itemsArrays[index],
           displayDate: displayDates[index],
           onScheduleItemTapped: onScheduleItemTapped,
+          onEditScheduleItem: onEditScheduleItem,
           onCreatePersonalEvent: onCreatePersonalEvent,
           onCreatePromise: onCreatePromise,
           onDeleteScheduleItem: onDeleteScheduleItem,
@@ -414,6 +424,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
       scheduleItems: [HomeModels.ScheduleItem],
       displayDate: Date,
       onScheduleItemTapped: @escaping (HomeModels.ScheduleItem) -> Void,
+      onEditScheduleItem: ((HomeModels.ScheduleItem) -> Void)?,
       onCreatePersonalEvent: @escaping (Date) -> Void,
       onCreatePromise: @escaping () -> Void,
       onDeleteScheduleItem: ((HomeModels.ScheduleItem) -> Void)?,
@@ -427,6 +438,7 @@ struct DayTimelinePager: UIViewControllerRepresentable {
         scheduleItems: scheduleItems,
         displayDate: displayDate,
         onScheduleItemTapped: onScheduleItemTapped,
+        onEditScheduleItem: onEditScheduleItem,
         onCreatePersonalEvent: onCreatePersonalEvent,
         onCreatePromise: onCreatePromise,
         onDeleteScheduleItem: onDeleteScheduleItem,

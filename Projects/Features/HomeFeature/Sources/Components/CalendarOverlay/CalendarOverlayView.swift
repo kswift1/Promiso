@@ -28,6 +28,7 @@ struct CalendarOverlayView: View {
   let onWeatherCardTapped: () -> Void
   let onBackToMonth: () -> Void
   let onScheduleItemTapped: (HomeModels.ScheduleItem) -> Void
+  let onEditScheduleItem: ((HomeModels.ScheduleItem) -> Void)?
   let onCreatePersonalEvent: (Date) -> Void
   let onCreatePromise: () -> Void
   let onDeleteScheduleItem: ((HomeModels.ScheduleItem) -> Void)?
@@ -339,6 +340,7 @@ struct CalendarOverlayView: View {
       currentDayScheduleItems: scheduleItems,
       nextDayScheduleItems: nextDayScheduleItems,
       onScheduleItemTapped: onScheduleItemTapped,
+      onEditScheduleItem: onEditScheduleItem,
       onPreviousDay: {
         if let prev = Calendar.promiseDisplay.date(byAdding: .day, value: -1, to: selectedDate) {
           onDateSelected(prev)
@@ -946,6 +948,7 @@ private extension String {
     weekDays: [],
     onClose: {}, onDateSelected: { _ in }, onPreviousMonth: {}, onNextMonth: {},
     onWeatherCardTapped: {}, onBackToMonth: {}, onScheduleItemTapped: { _ in },
+    onEditScheduleItem: nil,
     onCreatePersonalEvent: { _ in }, onCreatePromise: {},
     onDeleteScheduleItem: nil, onShareScheduleItem: nil,
     currentUserId: "preview-user",
@@ -975,6 +978,7 @@ private extension String {
     weekDays: [],
     onClose: {}, onDateSelected: { _ in }, onPreviousMonth: {}, onNextMonth: {},
     onWeatherCardTapped: {}, onBackToMonth: {}, onScheduleItemTapped: { _ in },
+    onEditScheduleItem: nil,
     onCreatePersonalEvent: { _ in }, onCreatePromise: {},
     onDeleteScheduleItem: nil, onShareScheduleItem: nil,
     currentUserId: "preview-user",

@@ -54,6 +54,37 @@ extension CalendarFeature {
         }
         .auroraBackground()
         .alert(store: store.scope(state: \.$deleteAlert, action: \.deleteAlert))
+        .sheet(store: store.scope(state: \.$editPromise, action: \.editPromise)) { editStore in
+          EditPromise.RootView(store: editStore)
+        }
+        .sheet(store: store.scope(state: \.$editPersonalEvent, action: \.editPersonalEvent)) { editStore in
+          NavigationStack {
+            CreatePersonalEvent.RootView(store: editStore)
+          }
+        }
+        .sheet(item: Binding(
+          get: { store.sharePromise },
+          set: { _ in store.send(.view(.dismissPromiseShareSheet)) }
+        )) { promise in
+          PromiseShareSheet(
+            promise: promise,
+            isKakaoSharing: store.isKakaoPromiseSharing,
+            onKakaoShareTapped: {
+              store.send(.view(.kakaoPromiseShareTapped))
+            },
+            onSystemShareTapped: {
+              store.send(.view(.systemPromiseShareTapped))
+            }
+          )
+          .presentationDetents([.height(340)])
+          .presentationDragIndicator(.visible)
+        }
+        .sheet(item: Binding(
+          get: { store.systemShareText.map { ShareTextItem(text: $0) } },
+          set: { _ in store.send(.view(.systemShareSheetDismissed)) }
+        )) { item in
+          ShareSheet(items: [item.text])
+        }
         .toast(Binding(
           get: { store.toastMessage },
           set: { _ in store.send(.view(.toastDismissed)) }
@@ -193,6 +224,9 @@ extension CalendarFeature {
             nextDayScheduleItems: store.nextDayScheduleItems,
             onScheduleItemTapped: { item in
               store.send(.view(.scheduleItemTapped(item)))
+            },
+            onEditScheduleItem: { item in
+              store.send(.view(.editScheduleItem(item)))
             },
             onPreviousDay: {
               if let prev = Calendar.current.date(byAdding: .day, value: -1, to: store.selectedDate) {

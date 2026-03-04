@@ -98,6 +98,7 @@ extension Home {
               onScheduleItemTapped: { item in
                 store.send(.view(.overlayScheduleItemTapped(item)))
               },
+              onEditScheduleItem: nil,
               onCreatePersonalEvent: { date in
                 store.send(.view(.overlayCreatePersonalEventTapped(date)))
               },

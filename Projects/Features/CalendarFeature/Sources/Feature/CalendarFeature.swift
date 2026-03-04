@@ -6,6 +6,7 @@ import ComposableArchitecture
 import PromisoShared
 import Clients
 import SharedFeature
+import ResourceKit
 
 // MARK: - Feature Namespace
 
@@ -102,6 +103,14 @@ extension CalendarFeature {
       @Presents var deleteAlert: AlertState<DeleteAlertAction>?
       /// 삭제 대상 일정 아이템
       var scheduleItemToDelete: CalendarFeature.ScheduleItem?
+      /// 약속 수정 시트
+      @Presents var editPromise: EditPromise.Feature.State?
+      /// 개인 일정 수정 시트
+      @Presents var editPersonalEvent: CreatePersonalEvent.Feature.State?
+      /// 약속 공유 시트용
+      var sharePromise: PromiseModel?
+      var isKakaoPromiseSharing: Bool = false
+      var systemShareText: String?
       /// 화면 토스트 메시지
       var toastMessage: ToastMessage?
 
@@ -446,6 +455,8 @@ extension CalendarFeature {
       case `internal`(InternalAction)
       case path(StackActionOf<Path>)
       case deleteAlert(PresentationAction<DeleteAlertAction>)
+      case editPromise(PresentationAction<EditPromise.Feature.Action>)
+      case editPersonalEvent(PresentationAction<CreatePersonalEvent.Feature.Action>)
 
       @CasePathable
       public enum ViewAction {
@@ -476,10 +487,15 @@ extension CalendarFeature {
         case toastDismissed
         // 타임라인 일정 아이템 탭
         case scheduleItemTapped(CalendarFeature.ScheduleItem)
+        case editScheduleItem(CalendarFeature.ScheduleItem)
         case createPersonalEventFromTimeline(Date)
         case createPromiseFromTimeline
         case deleteScheduleItem(CalendarFeature.ScheduleItem)
         case shareScheduleItem(CalendarFeature.ScheduleItem)
+        case dismissPromiseShareSheet
+        case kakaoPromiseShareTapped
+        case systemPromiseShareTapped
+        case systemShareSheetDismissed
         case indicatorTapped(CalendarFeature.ScheduleIndicator)
         case dayLongPressCreatePersonalEvent(Date)
         case dayLongPressCreatePromise(Date)
@@ -503,6 +519,8 @@ extension CalendarFeature {
         // 개인 일정
         case fetchPersonalEvents
         case personalEventsResponse(Result<[PersonalEventModel], Error>)
+        // 공유
+        case kakaoPromiseShareResult(KakaoShareResult)
       }
     }
 
@@ -518,6 +536,7 @@ extension CalendarFeature {
     @Dependency(\.promiseClient) var promiseClient
     @Dependency(\.eventKitClient) var eventKitClient
     @Dependency(\.personalEventClient) var personalEventClient
+    @Dependency(\.kakaoShareClient) var kakaoShareClient
 
     // MARK: - Reducer Body
 
@@ -556,7 +575,36 @@ extension CalendarFeature {
         case .path:
           return .none
 
-        case .deleteAlert(.presented(.confirmDelete)):
+        case .editPromise(.presented(.delegate(.cancelled))):
+        state.editPromise = nil
+        return .none
+
+      case .editPromise(.presented(.delegate(.promiseUpdated(let promise)))):
+        state.editPromise = nil
+        let monthKey = promise.startAt.startOfMonth
+        if var monthPromises = state.cachedPromisesByMonth[monthKey] {
+          if let index = monthPromises.firstIndex(where: { $0.id == promise.id }) {
+            monthPromises[index] = promise
+            state.cachedPromisesByMonth[monthKey] = monthPromises
+          }
+        }
+        return .none
+
+      case .editPromise:
+        return .none
+
+      case .editPersonalEvent(.presented(.delegate(.eventUpdated))):
+        state.editPersonalEvent = nil
+        return .send(.internal(.fetchPersonalEvents))
+
+      case .editPersonalEvent(.presented(.delegate(.dismiss))):
+        state.editPersonalEvent = nil
+        return .none
+
+      case .editPersonalEvent:
+        return .none
+
+      case .deleteAlert(.presented(.confirmDelete)):
           guard let item = state.scheduleItemToDelete else { return .none }
           state.scheduleItemToDelete = nil
           switch item {
@@ -581,6 +629,12 @@ extension CalendarFeature {
         }
       }
       .ifLet(\.$deleteAlert, action: \.deleteAlert)
+      .ifLet(\.$editPromise, action: \.editPromise) {
+        EditPromise.Feature()
+      }
+      .ifLet(\.$editPersonalEvent, action: \.editPersonalEvent) {
+        CreatePersonalEvent.Feature()
+      }
       .forEach(\.path, action: \.path)
     }
 
@@ -860,6 +914,18 @@ extension CalendarFeature {
         }
         return .none
 
+      case .editScheduleItem(let item):
+        switch item {
+        case .promise(let promise):
+          let maxMembers = state.groupMembersCache[promise.groupId]?.count ?? promise.minimumParticipants
+          state.editPromise = EditPromise.Feature.State(promise: promise, maxMembers: maxMembers)
+        case .personalEvent(let event):
+          state.editPersonalEvent = CreatePersonalEvent.Feature.State(event: event, mode: .edit)
+        case .calendarEvent:
+          break
+        }
+        return .none
+
       case .createPersonalEventFromTimeline:
         // TODO: 개인 일정 생성 플로우 연결
         return .none
@@ -902,8 +968,47 @@ extension CalendarFeature {
         }
         return .none
 
-      case .shareScheduleItem:
-        // 공유는 View 레벨에서 UIActivityViewController 표시
+      case .shareScheduleItem(let item):
+        switch item {
+        case .promise(let promise):
+          state.sharePromise = promise
+        case .personalEvent, .calendarEvent:
+          break
+        }
+        return .none
+
+      case .dismissPromiseShareSheet:
+        state.sharePromise = nil
+        state.isKakaoPromiseSharing = false
+        return .none
+
+      case .kakaoPromiseShareTapped:
+        guard let promise = state.sharePromise else { return .none }
+        state.isKakaoPromiseSharing = true
+        return .run { [kakaoShareClient] send in
+          let result = await kakaoShareClient.sharePromise(
+            promise.title,
+            promise.displayEmoji,
+            promise.dateText,
+            promise.timeText,
+            promise.location?.name,
+            promise.location?.address,
+            promise.id,
+            promise.groupId,
+            promise.description,
+            promise.imageUrls.first
+          )
+          await send(.internal(.kakaoPromiseShareResult(result)))
+        }
+
+      case .systemPromiseShareTapped:
+        guard let promise = state.sharePromise else { return .none }
+        state.systemShareText = promise.shareText
+        state.sharePromise = nil
+        return .none
+
+      case .systemShareSheetDismissed:
+        state.systemShareText = nil
         return .none
 
       case .indicatorTapped(let indicator):
@@ -1131,6 +1236,21 @@ extension CalendarFeature {
           state.personalEvents = events
         case .failure:
           state.personalEvents = []
+        }
+        return .none
+
+      case .kakaoPromiseShareResult(let result):
+        state.isKakaoPromiseSharing = false
+        switch result {
+        case .shared, .webShared:
+          state.sharePromise = nil
+          state.toastMessage = ToastMessage(
+            type: .success,
+            title: LocalizedStrings.KakaoShare.promiseShared,
+            position: .top
+          )
+        case .fallbackToSystem:
+          break
         }
         return .none
       }

@@ -31,6 +31,7 @@ final class CalendarOverlayViewModel {
   let onWeatherCardTapped: () -> Void
   let onBackToMonth: () -> Void
   let onScheduleItemTapped: (HomeModels.ScheduleItem) -> Void
+  let onEditScheduleItem: ((HomeModels.ScheduleItem) -> Void)?
   let onCreatePersonalEvent: (Date) -> Void
   let onCreatePromise: () -> Void
   let onDeleteScheduleItem: ((HomeModels.ScheduleItem) -> Void)?
@@ -60,6 +61,7 @@ final class CalendarOverlayViewModel {
     onWeatherCardTapped: @escaping () -> Void,
     onBackToMonth: @escaping () -> Void,
     onScheduleItemTapped: @escaping (HomeModels.ScheduleItem) -> Void,
+    onEditScheduleItem: ((HomeModels.ScheduleItem) -> Void)?,
     onCreatePersonalEvent: @escaping (Date) -> Void,
     onCreatePromise: @escaping () -> Void,
     onDeleteScheduleItem: ((HomeModels.ScheduleItem) -> Void)?,
@@ -88,6 +90,7 @@ final class CalendarOverlayViewModel {
     self.onWeatherCardTapped = onWeatherCardTapped
     self.onBackToMonth = onBackToMonth
     self.onScheduleItemTapped = onScheduleItemTapped
+    self.onEditScheduleItem = onEditScheduleItem
     self.onCreatePersonalEvent = onCreatePersonalEvent
     self.onCreatePromise = onCreatePromise
     self.onDeleteScheduleItem = onDeleteScheduleItem
@@ -239,6 +242,7 @@ private struct CalendarOverlayContentView: View {
         onWeatherCardTapped: viewModel.onWeatherCardTapped,
         onBackToMonth: viewModel.onBackToMonth,
         onScheduleItemTapped: viewModel.onScheduleItemTapped,
+        onEditScheduleItem: viewModel.onEditScheduleItem,
         onCreatePersonalEvent: viewModel.onCreatePersonalEvent,
         onCreatePromise: viewModel.onCreatePromise,
         onDeleteScheduleItem: viewModel.onDeleteScheduleItem,

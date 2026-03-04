@@ -10,6 +10,7 @@ struct DayTimelineView: View {
   let scheduleItems: [HomeModels.ScheduleItem]
   let displayDate: Date
   let onScheduleItemTapped: (HomeModels.ScheduleItem) -> Void
+  let onEditScheduleItem: ((HomeModels.ScheduleItem) -> Void)?
   let onCreatePersonalEvent: (Date) -> Void
   let onCreatePromise: () -> Void
   let onDeleteScheduleItem: ((HomeModels.ScheduleItem) -> Void)?
@@ -624,7 +625,7 @@ struct DayTimelineView: View {
         // Host인 경우 수정/삭제 옵션 (PromiseCard 패턴)
         if promise.isHost(userId: currentUserId) {
           Button {
-            onScheduleItemTapped(item)
+            onEditScheduleItem?(item)
           } label: {
             Label(LocalizedStrings.PromiseCard.editPromise, systemImage: "pencil")
           }
@@ -657,7 +658,7 @@ struct DayTimelineView: View {
         }
 
         Button {
-          onScheduleItemTapped(item)
+          onEditScheduleItem?(item)
         } label: {
           Label("수정", systemImage: "pencil")
         }
@@ -938,6 +939,7 @@ struct DayTimelineView: View {
     scheduleItems: items,
     displayDate: today,
     onScheduleItemTapped: { _ in },
+    onEditScheduleItem: nil,
     onCreatePersonalEvent: { _ in },
     onCreatePromise: {},
     onDeleteScheduleItem: nil,
@@ -956,6 +958,7 @@ struct DayTimelineView: View {
     scheduleItems: [],
     displayDate: Date(),
     onScheduleItemTapped: { _ in },
+    onEditScheduleItem: nil,
     onCreatePersonalEvent: { _ in },
     onCreatePromise: {},
     onDeleteScheduleItem: nil,

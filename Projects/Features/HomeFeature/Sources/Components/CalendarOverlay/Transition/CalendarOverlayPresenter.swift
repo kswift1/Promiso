@@ -29,6 +29,7 @@ struct CalendarOverlayPresenter: UIViewControllerRepresentable {
   let onWeatherCardTapped: () -> Void
   let onBackToMonth: () -> Void
   let onScheduleItemTapped: (HomeModels.ScheduleItem) -> Void
+  let onEditScheduleItem: ((HomeModels.ScheduleItem) -> Void)?
   let onCreatePersonalEvent: (Date) -> Void
   let onCreatePromise: () -> Void
   let onDeleteScheduleItem: ((HomeModels.ScheduleItem) -> Void)?
@@ -106,6 +107,7 @@ struct CalendarOverlayPresenter: UIViewControllerRepresentable {
           onWeatherCardTapped: onWeatherCardTapped,
           onBackToMonth: onBackToMonth,
           onScheduleItemTapped: onScheduleItemTapped,
+          onEditScheduleItem: onEditScheduleItem,
           onCreatePersonalEvent: onCreatePersonalEvent,
           onCreatePromise: onCreatePromise,
           onDeleteScheduleItem: onDeleteScheduleItem,
