@@ -41,8 +41,8 @@ struct CalendarFilterSheetView: View {
       Text("필터")
         .font(.system(size: 20, weight: .bold))
       Spacer()
-      // 초기화 버튼 (필터가 활성화되어 있을 때만 표시)
-      if !selectedGroupIds.isEmpty {
+      // 초기화 버튼 (전체 선택이 아닐 때만 표시)
+      if selectedGroupIds.count < groups.count {
         Button(action: onReset) {
           Text("초기화")
             .font(.system(size: 14, weight: .medium))
@@ -73,8 +73,7 @@ struct CalendarFilterSheetView: View {
   // MARK: - Group Chip
 
   private func groupChip(_ group: UserGroupInfo) -> some View {
-    // 빈 Set = 전체 선택 → 모든 칩 하이라이트
-    let isSelected = selectedGroupIds.isEmpty || selectedGroupIds.contains(group.id)
+    let isSelected = selectedGroupIds.contains(group.id)
     let color = groupColorMap[group.id] ?? Color.pmindigo.n500
 
     return Button { onGroupToggled(group.id) } label: {

@@ -303,7 +303,7 @@ extension CalendarFeature {
 
       /// 필터 활성 여부 (헤더 뱃지용)
       var isFilterActive: Bool {
-        !selectedGroupIds.isEmpty
+        selectedGroupIds != Set(currentUser.groups.map(\.id))
       }
 
       // MARK: - Group Color Map
@@ -440,9 +440,7 @@ extension CalendarFeature {
         var promises = cachedPromisesByMonth[monthKey] ?? []
 
         // 그룹 필터
-        if !selectedGroupIds.isEmpty {
-          promises = promises.filter { selectedGroupIds.contains($0.groupId) }
-        }
+        promises = promises.filter { selectedGroupIds.contains($0.groupId) }
 
         // 상태 필터
         switch selectedStatusFilter {
@@ -741,6 +739,10 @@ extension CalendarFeature {
               state.hiddenCalendarBannerTypes.insert(status)
             }
           }
+        }
+        // 그룹 필터 초기화 (전체 선택)
+        if state.selectedGroupIds.isEmpty {
+          state.selectedGroupIds = Set(state.currentUser.groups.map(\.id))
         }
         return .merge(
           .send(.internal(.checkCalendarPermission)),
@@ -1153,19 +1155,10 @@ extension CalendarFeature {
         return .none
 
       case .filterGroupToggled(let groupId):
-        if state.selectedGroupIds.isEmpty {
-          // 전체 선택 상태에서 탭 → 해당 그룹만 해제 (전체 - 1)
-          let allIds = Set(state.currentUser.groups.map(\.id))
-          state.selectedGroupIds = allIds.subtracting([groupId])
-        } else if state.selectedGroupIds.contains(groupId) {
+        if state.selectedGroupIds.contains(groupId) {
           state.selectedGroupIds.remove(groupId)
-          // 마지막 그룹 해제 → 자동으로 "전체" (빈 Set)
         } else {
           state.selectedGroupIds.insert(groupId)
-          // 모두 선택되면 → "전체"로 복원 (빈 Set)
-          if state.selectedGroupIds == Set(state.currentUser.groups.map(\.id)) {
-            state.selectedGroupIds = []
-          }
         }
         return .none
 
@@ -1174,7 +1167,7 @@ extension CalendarFeature {
         return .none
 
       case .filterReset:
-        state.selectedGroupIds = []
+        state.selectedGroupIds = Set(state.currentUser.groups.map(\.id))
         state.selectedStatusFilter = .all
         return .none
 
