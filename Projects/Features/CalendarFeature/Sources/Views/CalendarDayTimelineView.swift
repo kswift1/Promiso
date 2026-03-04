@@ -94,6 +94,7 @@ struct CalendarDayTimelineView: View {
         showCreationDialog = isPresented
         if !isPresented {
           creationTargetDate = nil
+          creationStartSlot = nil
         }
       }
     )
@@ -363,23 +364,18 @@ struct CalendarDayTimelineView: View {
         titleVisibility: .hidden,
         actions: {
           Button(LocalizedStrings.Calendar.personalSchedule) {
-            let startDate = dateForSlot(creationStartSlot ?? 0)
+            guard let startSlot = creationStartSlot else { return }
+            let startDate = dateForSlot(startSlot)
             let endDate = dateForSlot(creationEndSlot)
             onCreatePersonalEvent(startDate, endDate)
-            creationTargetDate = nil
-            creationStartSlot = nil
           }
           Button(LocalizedStrings.Calendar.groupSchedule) {
-            let startDate = dateForSlot(creationStartSlot ?? 0)
+            guard let startSlot = creationStartSlot else { return }
+            let startDate = dateForSlot(startSlot)
             let endDate = dateForSlot(creationEndSlot)
             onCreatePromise(startDate, endDate)
-            creationTargetDate = nil
-            creationStartSlot = nil
           }
-          Button(LocalizedStrings.Common.cancel, role: .cancel) {
-            creationTargetDate = nil
-            creationStartSlot = nil
-          }
+          Button(LocalizedStrings.Common.cancel, role: .cancel) {}
         }
       )
       .buttonStyle(.plain)
@@ -884,6 +880,20 @@ struct CalendarDayTimelineView: View {
     item.effectiveEndAt > dayEnd
   }
 
+  // MARK: - Block Height Constants
+
+  private enum BlockHeight {
+    static let detailThreshold: CGFloat = 100
+    static let richThreshold: CGFloat = 140
+    static let baseContent: CGFloat = 52       // emoji + title + group + padding
+    static let locationRow: CGFloat = 18
+    static let richDescriptionRow: CGFloat = 44
+    static let compactDescriptionRow: CGFloat = 18
+    static let richImageSize: CGFloat = 72
+    static let compactImageSize: CGFloat = 48
+    static let imageSpacing: CGFloat = 8
+  }
+
   /// 일정 블록 높이 (duration 기반 + 콘텐츠 인식, 최소 blockMinHeight)
   private func blockHeight(for item: CalendarFeature.ScheduleItem) -> CGFloat {
     let start = clampedStartAt(for: item)
@@ -894,21 +904,21 @@ struct CalendarDayTimelineView: View {
     let timeBasedHeight = max(blockMinHeight, calculatedHeight)
 
     // 콘텐츠 인식: detail 표시 시 콘텐츠가 잘리지 않도록 최소 높이 보장
-    guard timeBasedHeight >= 100 else { return timeBasedHeight }
+    guard timeBasedHeight >= BlockHeight.detailThreshold else { return timeBasedHeight }
 
     let hasDesc = (itemDescription(for: item) ?? "").isEmpty == false
     let hasImage = itemFirstImageUrl(for: item) != nil
-    let isRich = timeBasedHeight >= 140
+    let isRich = timeBasedHeight >= BlockHeight.richThreshold
 
-    var contentMinHeight: CGFloat = 52  // emoji+title + group + padding
+    var contentMinHeight: CGFloat = BlockHeight.baseContent
     if let loc = itemLocation(for: item), !loc.isEmpty {
-      contentMinHeight += 18
+      contentMinHeight += BlockHeight.locationRow
     }
     if hasDesc {
-      contentMinHeight += isRich ? 44 : 18
+      contentMinHeight += isRich ? BlockHeight.richDescriptionRow : BlockHeight.compactDescriptionRow
     }
     if hasImage {
-      contentMinHeight += (isRich ? 72 : 48) + 8
+      contentMinHeight += (isRich ? BlockHeight.richImageSize : BlockHeight.compactImageSize) + BlockHeight.imageSpacing
     }
 
     return max(timeBasedHeight, contentMinHeight)
@@ -1065,10 +1075,11 @@ struct CalendarDayTimelineView: View {
 
 // MARK: - Schedule Item Thumbnail
 
-/// 타임라인 카드용 이미지 썸네일 (Nuke ImageLoader 사용)
-private struct ScheduleItemThumbnail: View {
+/// 일정 이미지 썸네일 (CalendarFeature 공통, Nuke ImageLoader 사용)
+struct ScheduleItemThumbnail: View {
   let url: URL
   let size: CGFloat
+  var placeholder: Color = .clear
 
   @State private var loadedImage: UIImage?
 
@@ -1079,7 +1090,7 @@ private struct ScheduleItemThumbnail: View {
           .resizable()
           .scaledToFill()
       } else {
-        Color.clear
+        placeholder
       }
     }
     .frame(width: size, height: size)

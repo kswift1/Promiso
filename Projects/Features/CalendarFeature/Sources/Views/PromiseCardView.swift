@@ -137,7 +137,7 @@ struct PromiseCardView: View {
               HStack(spacing: 6) {
                 ForEach(promise.imageUrls.prefix(4), id: \.self) { urlString in
                   if let url = URL(string: urlString) {
-                    PromiseImageThumbnail(url: url, size: 64)
+                    ScheduleItemThumbnail(url: url, size: 64, placeholder: Color.gray.opacity(0.15))
                   }
                 }
                 if promise.imageUrls.count > 4 {
@@ -225,31 +225,6 @@ extension PromiseCardView {
   }
 }
 
-// MARK: - Promise Image Thumbnail
-
-private struct PromiseImageThumbnail: View {
-  let url: URL
-  let size: CGFloat
-
-  @State private var loadedImage: UIImage?
-
-  var body: some View {
-    Group {
-      if let image = loadedImage {
-        Image(uiImage: image)
-          .resizable()
-          .scaledToFill()
-      } else {
-        Color.gray.opacity(0.15)
-      }
-    }
-    .frame(width: size, height: size)
-    .clipShape(RoundedRectangle(cornerRadius: 8))
-    .task(id: url) {
-      loadedImage = await ImageLoader.loadImage(from: url, retryCount: 1)
-    }
-  }
-}
 
 private let promiseViewCalendar = Calendar.current
 
