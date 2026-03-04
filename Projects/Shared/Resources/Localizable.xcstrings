@@ -1,6 +1,9 @@
 {
   "sourceLanguage" : "ko",
   "strings" : {
+    "'%@' 겹치는 구간 중심으로 표시" : {
+
+    },
     "'%@'과(와) %@분 겹쳐요" : {
       "localizations" : {
         "ko" : {

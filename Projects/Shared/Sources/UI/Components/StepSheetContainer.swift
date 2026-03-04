@@ -66,13 +66,11 @@ public struct StepSheetContainer<
           StepProgressBar(currentStep: currentStep, totalSteps: totalSteps)
         }
 
-        // 3. 콘텐츠 영역
+        // 3. 콘텐츠 영역 + 하단 고정 영역
         content()
-
-        Spacer(minLength: 0)
-
-        // 4. 하단 고정 영역 (그라디언트 페이드 + floating + buttons)
-        bottomFixedArea
+          .safeAreaInset(edge: .bottom) {
+            bottomFixedArea
+          }
       }
       .frame(height: geometry.size.height)
     }
@@ -130,11 +128,12 @@ public struct StepSheetContainer<
 
   @ViewBuilder
   private var bottomFixedArea: some View {
-    VStack(spacing: 8) {
+    VStack(spacing: 12) {
       floatingContent()
         .padding(.horizontal, 16)
 
       bottomContent()
+        .background(Color(.systemBackground))
         .overlay(alignment: .top) {
           // 그라디언트 페이드 (투명 → 배경색) — floatingContent 아래, 버튼 위
           LinearGradient(
@@ -151,7 +150,6 @@ public struct StepSheetContainer<
         }
     }
     .padding(.top, 8)
-    .background(Color(.systemBackground))
   }
 }
 
