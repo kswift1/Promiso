@@ -379,14 +379,9 @@ extension CalendarFeature {
         return buildScheduleItems(from: nextDay, to: dayAfter)
       }
 
-      /// 캐시된 약속에서 ID로 O(n) 검색 (월별 분산 캐시에서 단일 약속 조회)
+      /// 캐시된 약속에서 ID로 약속을 검색합니다. O(N) 복잡도를 가집니다. (N: 총 캐시된 약속 수)
       func findCachedPromise(id: String) -> PromiseModel? {
-        for promises in cachedPromisesByMonth.values {
-          if let found = promises.first(where: { $0.id == id }) {
-            return found
-          }
-        }
-        return nil
+        cachedPromisesByMonth.values.lazy.flatMap { $0 }.first { $0.id == id }
       }
 
       private func buildScheduleItems(from start: Date, to end: Date) -> [CalendarFeature.ScheduleItem] {
