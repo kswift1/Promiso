@@ -82,8 +82,8 @@ struct CalendarFilterSheetView: View {
         GroupThumbnailView(imageUrl: group.imageUrl, name: group.name, size: 26)
           .overlay(
             Circle()
-              .stroke(groupColor, lineWidth: 2.5)
-              .frame(width: 28.5, height: 28.5)
+              .stroke(groupColor, lineWidth: 3.5)
+              .frame(width: 29.5, height: 29.5)
           )
         Text(group.name)
           .font(.system(size: 14, weight: .medium))
