@@ -802,9 +802,9 @@ extension Home {
                     try await locationClient.getCurrentLocation()
                   }
                   group.addTask {
-                    // 권한 다이얼로그 대기 후 거부 감지
+                    // 권한 다이얼로그 대기 후 거부 감지 (최대 10초 타임아웃)
                     try await Task.sleep(for: .seconds(1))
-                    while true {
+                    for _ in 0..<18 { // 0.5초 * 18 = 9초
                       let status = locationClient.authorizationStatus()
                       if status == .denied {
                         throw LocationClientError.denied
@@ -816,6 +816,8 @@ extension Home {
                       }
                       try await Task.sleep(for: .milliseconds(500))
                     }
+                    // 타임아웃
+                    throw LocationClientError.unavailable
                   }
                   guard let result = try await group.next() else {
                     throw LocationClientError.unavailable

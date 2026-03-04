@@ -110,14 +110,6 @@ struct PromiseCardView: View {
                   .lineLimit(1)
               }
             }
-
-            HStack(spacing: 3) {
-              Image(systemName: "person.fill")
-                .font(.system(size: 11))
-              Text("\(promise.votes.acceptedCount)/\(promise.group?.memberIds.count ?? promise.minimumParticipants)")
-                .font(.system(size: 13))
-            }
-            .foregroundColor(.secondary)
           }
 
           // 제목 행

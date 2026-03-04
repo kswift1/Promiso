@@ -28,11 +28,16 @@ struct CalendarOverlayView: View {
   let onWeatherCardTapped: () -> Void
   let onBackToMonth: () -> Void
   let onScheduleItemTapped: (HomeModels.ScheduleItem) -> Void
+  let onEditScheduleItem: ((HomeModels.ScheduleItem) -> Void)?
   let onCreatePersonalEvent: (Date) -> Void
   let onCreatePromise: () -> Void
+  let onDeleteScheduleItem: ((HomeModels.ScheduleItem) -> Void)?
+  let onShareScheduleItem: ((HomeModels.ScheduleItem) -> Void)?
   let currentUserId: String
   let weatherCache: [String: WeatherInfo]
   let groupColorMap: [String: Color]
+
+  @State private var timelineZoomState = TimelineZoomState()
 
   private var isWeekly: Bool { calendarMode == .weekly }
   private var isWeatherDetail: Bool { calendarMode == .weatherDetail }
@@ -335,6 +340,7 @@ struct CalendarOverlayView: View {
       currentDayScheduleItems: scheduleItems,
       nextDayScheduleItems: nextDayScheduleItems,
       onScheduleItemTapped: onScheduleItemTapped,
+      onEditScheduleItem: onEditScheduleItem,
       onPreviousDay: {
         if let prev = Calendar.promiseDisplay.date(byAdding: .day, value: -1, to: selectedDate) {
           onDateSelected(prev)
@@ -347,10 +353,13 @@ struct CalendarOverlayView: View {
       },
       onCreatePersonalEvent: onCreatePersonalEvent,
       onCreatePromise: onCreatePromise,
+      onDeleteScheduleItem: onDeleteScheduleItem,
+      onShareScheduleItem: onShareScheduleItem,
       calendarMode: calendarMode,
       currentUserId: currentUserId,
       weatherCache: weatherCache,
-      groupColorMap: groupColorMap
+      groupColorMap: groupColorMap,
+      zoomState: timelineZoomState
     )
   }
 
@@ -939,7 +948,9 @@ private extension String {
     weekDays: [],
     onClose: {}, onDateSelected: { _ in }, onPreviousMonth: {}, onNextMonth: {},
     onWeatherCardTapped: {}, onBackToMonth: {}, onScheduleItemTapped: { _ in },
+    onEditScheduleItem: nil,
     onCreatePersonalEvent: { _ in }, onCreatePromise: {},
+    onDeleteScheduleItem: nil, onShareScheduleItem: nil,
     currentUserId: "preview-user",
     weatherCache: [:],
     groupColorMap: [:]
@@ -967,7 +978,9 @@ private extension String {
     weekDays: [],
     onClose: {}, onDateSelected: { _ in }, onPreviousMonth: {}, onNextMonth: {},
     onWeatherCardTapped: {}, onBackToMonth: {}, onScheduleItemTapped: { _ in },
+    onEditScheduleItem: nil,
     onCreatePersonalEvent: { _ in }, onCreatePromise: {},
+    onDeleteScheduleItem: nil, onShareScheduleItem: nil,
     currentUserId: "preview-user",
     weatherCache: [:],
     groupColorMap: [:]

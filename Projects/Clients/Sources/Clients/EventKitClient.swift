@@ -31,6 +31,31 @@ public enum CalendarAuthorizationStatus: Equatable, Sendable {
       return false
     }
   }
+
+  /// UserDefaults 영속화용 키
+  public var persistKey: String {
+    switch self {
+    case .notDetermined: return "notDetermined"
+    case .restricted: return "restricted"
+    case .denied: return "denied"
+    case .fullAccess: return "fullAccess"
+    case .writeOnly: return "writeOnly"
+    case .authorized: return "authorized"
+    }
+  }
+
+  /// persistKey로부터 복원
+  public init?(persistKey: String) {
+    switch persistKey {
+    case "notDetermined": self = .notDetermined
+    case "restricted": self = .restricted
+    case "denied": self = .denied
+    case "fullAccess": self = .fullAccess
+    case "writeOnly": self = .writeOnly
+    case "authorized": self = .authorized
+    default: return nil
+    }
+  }
 }
 
 // MARK: - Calendar Event Model

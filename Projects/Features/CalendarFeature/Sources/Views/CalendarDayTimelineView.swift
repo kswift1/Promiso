@@ -12,36 +12,77 @@ struct CalendarDayTimelineView: View {
   let scheduleItems: [CalendarFeature.ScheduleItem]
   let displayDate: Date
   let onScheduleItemTapped: (CalendarFeature.ScheduleItem) -> Void
+  let onEditScheduleItem: ((CalendarFeature.ScheduleItem) -> Void)?
   let onCreatePersonalEvent: (Date) -> Void
   let onCreatePromise: () -> Void
+  let onDeleteScheduleItem: ((CalendarFeature.ScheduleItem) -> Void)?
+  let onShareScheduleItem: ((CalendarFeature.ScheduleItem) -> Void)?
   let currentUserId: String
   let weatherCache: [String: WeatherInfo]
   let groupColorMap: [String: Color]
+  var zoomState: TimelineZoomState
 
   // MARK: - State
 
-  @State private var creationStartSlot: Int? = nil  // 상단 (0-47), nil = 비활성
-  @State private var creationEndSlot: Int = 0        // 하단 (1-48)
+  @State private var creationStartSlot: Int? = nil  // 상단 (0-143), nil = 비활성
+  @State private var creationEndSlot: Int = 0        // 하단 (1-144)
   @State private var dragAnchorStart: Int = 0        // 드래그 시작 시점 start
   @State private var dragAnchorEnd: Int = 0          // 드래그 시작 시점 end
 
+  // 이미지 미리보기
+  @State private var previewImageUrls: [String]? = nil
+
+  // 줌 앵커링용 스크롤 추적
+  @State private var scrollOffset: CGFloat = 0
+  @State private var viewportHeight: CGFloat = 0
+  @State private var scrollPosition = ScrollPosition(edge: .top)
+  @State private var zoomScrollY: CGFloat? = nil
+
   // MARK: - Constants
 
-  private let hourHeight: CGFloat = 52
+  private let baseHourHeight: CGFloat = 52
+  private let minZoomScale: CGFloat = 0.5
+  private let maxZoomScale: CGFloat = 3.0
   private let timeLabelWidth: CGFloat = 44
   private let eventTimeLabelWidth: CGFloat = 40
-  private let blockMinHeight: CGFloat = 48
   private let colorBarWidth: CGFloat = 4
   private let totalHours: Int = 24
 
+  /// 현재 줌 레벨에 따른 시간당 높이
+  private var hourHeight: CGFloat {
+    baseHourHeight * zoomState.scale
+  }
+
+  /// 블록 최소 높이 (줌 레벨 반영)
+  private var blockMinHeight: CGFloat {
+    max(36, 48 * zoomState.scale)
+  }
+
   private var totalHeight: CGFloat {
     CGFloat(totalHours) * hourHeight
+  }
+
+  /// 1분당 픽셀 수 (겹침 엔진용)
+  private var pixelsPerMinute: CGFloat {
+    hourHeight / 60.0
   }
 
   // MARK: - Body
 
   var body: some View {
     timelineContent
+      .fullScreenCover(isPresented: Binding(
+        get: { previewImageUrls != nil },
+        set: { if !$0 { previewImageUrls = nil } }
+      )) {
+        if let urls = previewImageUrls {
+          PhotoGalleryViewer(
+            imageUrls: urls,
+            initialIndex: 0,
+            onDismiss: { previewImageUrls = nil }
+          )
+        }
+      }
   }
 
   // MARK: - Timeline Content
@@ -55,20 +96,8 @@ struct CalendarDayTimelineView: View {
         // Layer 1.5: 상호작용 슬롯 (Long Press → 생성 블록)
         interactionSlots
 
-        // Layer 2: 이벤트 시간 레이블
-        ForEach(scheduleItems) { item in
-          eventTimeLabel(item)
-            .offset(y: yOffset(for: clampedStartAt(for: item)))
-        }
-
-        // Layer 3: 일정 블록들
-        ForEach(scheduleItems) { item in
-          scheduleBlock(item)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.leading, timeLabelWidth + eventTimeLabelWidth + 8)
-            .padding(.trailing, 4)
-            .offset(y: yOffset(for: clampedStartAt(for: item)))
-        }
+        // Layer 2 + 3: 겹침 레이아웃 엔진 기반 렌더링
+        overlapAwareScheduleBlocks
 
         // Layer 4: 생성 블록 오버레이 (creationSlot != nil일 때만)
         creationBlockOverlay
@@ -80,26 +109,137 @@ struct CalendarDayTimelineView: View {
       .padding(.leading, 8)
       .padding(.trailing, 20)
     }
+    .scrollPosition($scrollPosition)
+    .onScrollGeometryChange(for: CGFloat.self, of: { $0.contentOffset.y }) { _, newValue in
+      scrollOffset = newValue
+    }
+    .onScrollGeometryChange(for: CGFloat.self, of: { $0.containerSize.height }) { _, newValue in
+      viewportHeight = newValue
+    }
+    .simultaneousGesture(
+      MagnifyGesture()
+        .onChanged { value in
+          let oldScale = zoomState.scale
+          let newScale = min(maxZoomScale, max(minZoomScale, zoomState.gestureScale * value.magnification))
+          guard oldScale != newScale else { return }
+
+          // 화면 중앙 기준 앵커 줌
+          let currentY = zoomScrollY ?? scrollOffset
+          let centerY = currentY + viewportHeight / 2
+          let newCenterY = centerY * (newScale / oldScale)
+          let newY = max(0, newCenterY - viewportHeight / 2)
+
+          zoomState.scale = newScale
+          zoomScrollY = newY
+          scrollPosition.scrollTo(y: newY)
+        }
+        .onEnded { _ in
+          zoomState.gestureScale = zoomState.scale
+          zoomScrollY = nil
+        }
+    )
     .onChange(of: displayDate) {
       creationStartSlot = nil
     }
+  }
+
+  // MARK: - Overlap-Aware Schedule Blocks (Layer 2 + 3)
+
+  @ViewBuilder
+  private var overlapAwareScheduleBlocks: some View {
+    let layoutResults = computeOverlapLayout()
+
+    GeometryReader { geo in
+      let blockAreaWidth = geo.size.width - timeLabelWidth - eventTimeLabelWidth - 8 - 4
+
+      ForEach(Array(zip(scheduleItems.indices, scheduleItems)), id: \.1.id) { index, item in
+        if let layout = layoutResults[safe: index], layout.columnIndex >= 0 {
+          let yPos = yOffset(for: clampedStartAt(for: item))
+
+          switch layout.severity {
+          case .none, .layerable:
+            eventTimeLabel(item)
+              .offset(y: yPos)
+              .zIndex(Double(layout.zIndex))
+
+            scheduleBlock(item, layout: layout)
+              .frame(width: blockAreaWidth, alignment: .leading)
+              .padding(.leading, timeLabelWidth + eventTimeLabelWidth + 8)
+              .offset(y: yPos)
+              .zIndex(Double(layout.zIndex))
+
+          case .colliding:
+            eventTimeLabel(item)
+              .offset(y: yPos)
+
+            let colWidth = (blockAreaWidth - TimelineOverlapLayout.columnGap * CGFloat(layout.columnCount - 1)) / CGFloat(layout.columnCount)
+            let colX = CGFloat(layout.columnIndex) * (colWidth + TimelineOverlapLayout.columnGap)
+
+            scheduleBlock(item, layout: layout)
+              .frame(width: colWidth, alignment: .leading)
+              .offset(x: timeLabelWidth + eventTimeLabelWidth + 8 + colX, y: yPos)
+              .zIndex(Double(layout.zIndex))
+              .overlay(alignment: .topTrailing) {
+                if layout.overflowCount > 0 {
+                  overflowBadge(count: layout.overflowCount)
+                    .offset(x: timeLabelWidth + eventTimeLabelWidth + 8 + colX + colWidth - 8, y: yPos + 4)
+                }
+              }
+          }
+        }
+      }
+    }
+    .frame(height: totalHeight)
+  }
+
+  /// 겹침 레이아웃 계산
+  private func computeOverlapLayout() -> [TimelineOverlapLayout.LayoutResult] {
+    let dayStartDate = dayStart
+
+    let starts: [CGFloat] = scheduleItems.map { item in
+      let start = clampedStartAt(for: item)
+      return CGFloat(start.timeIntervalSince(dayStartDate)) / 60.0
+    }
+
+    let durations: [CGFloat] = scheduleItems.map { item in
+      let start = clampedStartAt(for: item)
+      let end = clampedEndAt(for: item)
+      let dur = CGFloat(end.timeIntervalSince(start)) / 60.0
+      return max(dur, CGFloat(blockMinHeight) / pixelsPerMinute)
+    }
+
+    return TimelineOverlapLayout.computeLayout(
+      startMinutes: starts,
+      durationMinutes: durations,
+      pixelsPerMinute: pixelsPerMinute
+    )
+  }
+
+  /// +N 오버플로우 뱃지
+  private func overflowBadge(count: Int) -> some View {
+    Text("+\(count)")
+      .font(.system(size: 10, weight: .bold))
+      .foregroundStyle(.white)
+      .padding(.horizontal, 6)
+      .padding(.vertical, 2)
+      .background(Color.pmgray.n500, in: Capsule())
   }
 
   // MARK: - Interaction Slots (Layer 1.5)
 
   private var interactionSlots: some View {
     VStack(spacing: 0) {
-      ForEach(0..<48, id: \.self) { slot in
+      ForEach(0..<144, id: \.self) { slot in
         Color.clear
-          .frame(height: hourHeight / 2)
+          .frame(height: hourHeight / 6)
           .contentShape(Rectangle())
           .onLongPressGesture(minimumDuration: 0.5) {
             let impactMedium = UIImpactFeedbackGenerator(style: .medium)
             impactMedium.impactOccurred()
             creationStartSlot = slot
-            creationEndSlot = min(48, slot + 2)
+            creationEndSlot = min(144, slot + 6)
             dragAnchorStart = slot
-            dragAnchorEnd = min(48, slot + 2)
+            dragAnchorEnd = min(144, slot + 6)
           }
       }
     }
@@ -112,12 +252,12 @@ struct CalendarDayTimelineView: View {
   private var creationBlockOverlay: some View {
     if let startSlot = creationStartSlot {
       let endSlot = creationEndSlot
-      let blockHeight = CGFloat(endSlot - startSlot) * (hourHeight / 2)
-      let blockY = CGFloat(startSlot) * (hourHeight / 2)
-      let startHour = startSlot / 2
-      let startMinute = (startSlot % 2) * 30
-      let endHour = endSlot / 2
-      let endMinute = (endSlot % 2) * 30
+      let blockHeight = CGFloat(endSlot - startSlot) * (hourHeight / 6)
+      let blockY = CGFloat(startSlot) * (hourHeight / 6)
+      let startHour = startSlot / 6
+      let startMinute = (startSlot % 6) * 10
+      let endHour = endSlot / 6
+      let endMinute = (endSlot % 6) * 10
 
       // Layer 4a: dismiss 배경
       Color.clear
@@ -178,12 +318,12 @@ struct CalendarDayTimelineView: View {
       .gesture(
         DragGesture(minimumDistance: 3, coordinateSpace: .named("timeline"))
           .onChanged { value in
-            let slot = Int(round(value.location.y / (hourHeight / 2)))
-            creationStartSlot = max(0, min(creationEndSlot - 2, slot))
+            let slot = Int(round(value.location.y / (hourHeight / 6)))
+            creationStartSlot = max(0, min(creationEndSlot - 6, slot))
           }
           .onEnded { value in
-            let slot = Int(round(value.location.y / (hourHeight / 2)))
-            dragAnchorStart = max(0, min(creationEndSlot - 2, slot))
+            let slot = Int(round(value.location.y / (hourHeight / 6)))
+            dragAnchorStart = max(0, min(creationEndSlot - 6, slot))
           }
       )
 
@@ -215,15 +355,15 @@ struct CalendarDayTimelineView: View {
         DragGesture(minimumDistance: 5, coordinateSpace: .named("timeline"))
           .onChanged { value in
             let duration = dragAnchorEnd - dragAnchorStart
-            let delta = Int(round((value.location.y - value.startLocation.y) / (hourHeight / 2)))
-            let newStart = max(0, min(48 - duration, dragAnchorStart + delta))
+            let delta = Int(round((value.location.y - value.startLocation.y) / (hourHeight / 6)))
+            let newStart = max(0, min(144 - duration, dragAnchorStart + delta))
             creationStartSlot = newStart
             creationEndSlot = newStart + duration
           }
           .onEnded { value in
             let duration = dragAnchorEnd - dragAnchorStart
-            let delta = Int(round((value.location.y - value.startLocation.y) / (hourHeight / 2)))
-            let newStart = max(0, min(48 - duration, dragAnchorStart + delta))
+            let delta = Int(round((value.location.y - value.startLocation.y) / (hourHeight / 6)))
+            let newStart = max(0, min(144 - duration, dragAnchorStart + delta))
             dragAnchorStart = newStart
             dragAnchorEnd = newStart + duration
           }
@@ -242,12 +382,12 @@ struct CalendarDayTimelineView: View {
       .gesture(
         DragGesture(minimumDistance: 3, coordinateSpace: .named("timeline"))
           .onChanged { value in
-            let slot = Int(round(value.location.y / (hourHeight / 2)))
-            creationEndSlot = max((creationStartSlot ?? 0) + 2, min(48, slot))
+            let slot = Int(round(value.location.y / (hourHeight / 6)))
+            creationEndSlot = max((creationStartSlot ?? 0) + 6, min(144, slot))
           }
           .onEnded { value in
-            let slot = Int(round(value.location.y / (hourHeight / 2)))
-            dragAnchorEnd = max((creationStartSlot ?? 0) + 2, min(48, slot))
+            let slot = Int(round(value.location.y / (hourHeight / 6)))
+            dragAnchorEnd = max((creationStartSlot ?? 0) + 6, min(144, slot))
           }
       )
     }
@@ -262,20 +402,94 @@ struct CalendarDayTimelineView: View {
     .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
   }
 
+  // MARK: - Context Menu Preview
+
+  private func contextMenuPreview(for item: CalendarFeature.ScheduleItem) -> some View {
+    let color = barColor(for: item)
+    let cardShape = RoundedRectangle(cornerRadius: 10)
+
+    return HStack(alignment: .top, spacing: 8) {
+      // 시간 레이블
+      VStack(spacing: 0) {
+        Text(timeString(for: item.startAt))
+          .font(.system(size: 10, weight: .medium, design: .monospaced))
+          .foregroundStyle(color)
+        Spacer(minLength: 0)
+        if let endAt = item.endAt {
+          Text(timeString(for: endAt))
+            .font(.system(size: 10, weight: .medium, design: .monospaced))
+            .foregroundStyle(color.opacity(0.6))
+        }
+      }
+      .frame(width: 36, height: 72)
+
+      // 카드
+      HStack(spacing: 0) {
+        VStack(alignment: .leading, spacing: 4) {
+          HStack(spacing: 5) {
+            Text(item.displayEmoji)
+              .font(.system(size: 16))
+            Text(item.title)
+              .font(.system(size: 14, weight: .semibold))
+              .foregroundStyle(.primary)
+              .lineLimit(1)
+          }
+
+          if let name = groupName(for: item) {
+            Text(name)
+              .font(.system(size: 11))
+              .foregroundStyle(.secondary)
+              .lineLimit(1)
+          }
+
+          if let location = itemLocation(for: item), !location.isEmpty {
+            HStack(spacing: 3) {
+              Image(systemName: "location.fill")
+                .font(.system(size: 9))
+                .foregroundStyle(Color.pmgray.n400)
+              Text(location)
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            }
+          }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+
+        Spacer(minLength: 0)
+      }
+      .frame(height: 72)
+      .background(.ultraThinMaterial, in: cardShape)
+      .overlay(alignment: .leading) {
+        RoundedRectangle(cornerRadius: 10)
+          .fill(color)
+          .frame(width: 4)
+          .clipShape(UnevenRoundedRectangle(
+            topLeadingRadius: 10, bottomLeadingRadius: 10,
+            bottomTrailingRadius: 0, topTrailingRadius: 0
+          ))
+      }
+      .clipShape(cardShape)
+    }
+    .padding(12)
+    .frame(width: 280, alignment: .leading)
+  }
+
   // MARK: - Slot Helpers
 
-  /// 일정 아이템의 시작 시간을 30분 슬롯으로 변환
+  /// 일정 아이템의 시작 시간을 10분 슬롯으로 변환
   private func slotForItem(_ item: CalendarFeature.ScheduleItem) -> Int {
     let start = clampedStartAt(for: item)
     let cal = Calendar.promiseDisplay
     let hour = cal.component(.hour, from: start)
     let minute = cal.component(.minute, from: start)
-    return hour * 2 + (minute >= 30 ? 1 : 0)
+    return hour * 6 + minute / 10
   }
 
   private func dateForSlot(_ slot: Int) -> Date {
-    let hour = slot / 2
-    let minute = (slot % 2) * 30
+    let hour = slot / 6
+    let minute = (slot % 6) * 10
     return Calendar.promiseDisplay.date(bySettingHour: hour, minute: minute, second: 0, of: displayDate) ?? displayDate
   }
 
@@ -294,8 +508,8 @@ struct CalendarDayTimelineView: View {
 
             // 정각 실선
             Rectangle()
-              .fill(Color(.separator).opacity(0.5))
-              .frame(height: 0.5)
+              .fill(Color(.separator).opacity(0.7))
+              .frame(height: 1)
           }
           .frame(height: 14, alignment: .center)
           .offset(y: -7)
@@ -321,7 +535,10 @@ struct CalendarDayTimelineView: View {
 
   // MARK: - Schedule Block
 
-  private func scheduleBlock(_ item: CalendarFeature.ScheduleItem) -> some View {
+  private func scheduleBlock(
+    _ item: CalendarFeature.ScheduleItem,
+    layout: TimelineOverlapLayout.LayoutResult? = nil
+  ) -> some View {
     let blockHeight = blockHeight(for: item)
     let isCompact = blockHeight < 64
     let fromPrev = continuesFromPreviousDay(item)
@@ -335,102 +552,166 @@ struct CalendarDayTimelineView: View {
       topTrailingRadius: topRadius
     )
 
+    let isLayerableBack = layout?.severity == .layerable && layout?.zIndex == 0
+    let barOpacity: Double = isLayerableBack ? 0.4 : 1.0
+    let cardShadow: Double = (layout?.severity == .layerable && (layout?.zIndex ?? 0) > 0)
+      ? 0.15 : 0.08
+
+    // 높이 기반 표시 단계: compact(<64) → normal(64~) → detail(100~) → rich(140~)
+    let showDetails = blockHeight >= 100
+    let showRich = blockHeight >= 140
+
     return Button {
       onScheduleItemTapped(item)
     } label: {
-      HStack(spacing: 0) {
-        VStack(alignment: .leading, spacing: 2) {
-          // Row 1: 이모지 + 제목 + 상태
-          HStack(spacing: 5) {
-            Text(item.displayEmoji)
-              .font(.system(size: isCompact ? 14 : 16))
-
-            Text(item.title)
-              .font(.system(size: 13, weight: .semibold))
-              .foregroundStyle(.primary)
-              .lineLimit(1)
-
-            if case .promise(let p) = item {
-              let status = promiseResponseStatus(p)
-              Text(statusText(for: status))
-                .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(statusColor(for: status))
-            }
-          }
-
-          if !isCompact {
-            // Row 2: 그룹명 / 캘린더명 + 참여자수
+      VStack(alignment: .leading, spacing: 0) {
+        HStack(spacing: 0) {
+          VStack(alignment: .leading, spacing: 2) {
+            // Row 1: 이모지 + 제목
             HStack(spacing: 5) {
-              if let name = groupName(for: item) {
-                Text(name)
-                  .font(.system(size: 10))
-                  .foregroundStyle(.secondary)
-                  .lineLimit(1)
-              }
+              Text(item.displayEmoji)
+                .font(.system(size: isCompact ? 14 : 16))
 
-              if case .promise(let p) = item {
-                Text("·")
-                  .font(.system(size: 10))
-                  .foregroundStyle(.tertiary)
-                Text("👤 \(p.votes.acceptedCount)/\(p.minimumParticipants)")
-                  .font(.system(size: 10))
-                  .foregroundStyle(.secondary)
-              }
+              Text(item.title)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.primary)
+                .lineLimit(1)
             }
 
-            // Row 3: 장소 (있을 때만)
-            if let location = itemLocation(for: item), !location.isEmpty {
-              HStack(spacing: 4) {
-                Image(systemName: "location.fill")
-                  .font(.system(size: 9))
-                  .foregroundStyle(Color.pmgray.n400)
-                Text(location)
+            if !isCompact {
+              // Row 2: 그룹명
+              HStack(spacing: 5) {
+                if let name = groupName(for: item) {
+                  Text(name)
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                }
+              }
+
+              // Row 3: 장소 (있을 때만)
+              if let location = itemLocation(for: item), !location.isEmpty {
+                HStack(spacing: 4) {
+                  Image(systemName: "location.fill")
+                    .font(.system(size: 9))
+                    .foregroundStyle(Color.pmgray.n400)
+                  Text(location)
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                }
+              }
+
+              // Row 4: 상세설명 (detail 이상에서 표시)
+              if showDetails, let desc = itemDescription(for: item), !desc.isEmpty {
+                Text(desc)
                   .font(.system(size: 10))
                   .foregroundStyle(.secondary)
-                  .lineLimit(1)
+                  .lineLimit(showRich ? 3 : 1)
               }
             }
           }
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
+          .padding(.horizontal, 10)
+          .padding(.vertical, 6)
 
-        Spacer(minLength: 0)
+          Spacer(minLength: 0)
+        }
+
+        // 이미지 썸네일 (detail 이상, 하단에 배치)
+        if showDetails, let imageUrl = itemFirstImageUrl(for: item) {
+          ScheduleItemThumbnail(url: imageUrl, size: showRich ? 72 : 48)
+            .padding(.horizontal, 10)
+            .padding(.bottom, 6)
+            .onTapGesture {
+              previewImageUrls = itemImageUrls(for: item)
+            }
+        }
       }
-      .frame(height: blockHeight, alignment: .top)
-      .background(.ultraThinMaterial, in: cardShape)
-      .overlay(cardShape.strokeBorder(.white.opacity(0.2), lineWidth: 1))
-      .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 4)
-      .overlay(alignment: .topTrailing) {
+    }
+    .frame(height: blockHeight, alignment: .top)
+    .background(.ultraThinMaterial, in: cardShape)
+    .overlay(cardShape.strokeBorder(.white.opacity(0.2), lineWidth: 1))
+    .shadow(color: .black.opacity(cardShadow), radius: 8, x: 0, y: 4)
+    .overlay(alignment: .topTrailing) {
+      if layout?.severity != .colliding {
         weatherBadge(for: item)
           .padding(.top, 4)
           .padding(.trailing, 4)
       }
-      .overlay(alignment: .leading) {
-        UnevenRoundedRectangle(
-          topLeadingRadius: topRadius,
-          bottomLeadingRadius: bottomRadius,
-          bottomTrailingRadius: 0,
-          topTrailingRadius: 0
-        )
-        .fill(barColor(for: item))
-        .frame(width: colorBarWidth)
-      }
-      .clipShape(cardShape)
-      .contentShape(Rectangle())
     }
+    .overlay(alignment: .leading) {
+      UnevenRoundedRectangle(
+        topLeadingRadius: topRadius,
+        bottomLeadingRadius: bottomRadius,
+        bottomTrailingRadius: 0,
+        topTrailingRadius: 0
+      )
+      .fill(barColor(for: item).opacity(barOpacity))
+      .frame(width: colorBarWidth)
+    }
+    .clipShape(cardShape)
+    .contentShape(Rectangle())
     .buttonStyle(.plain)
-    .simultaneousGesture(
-      LongPressGesture(minimumDuration: 0.5)
-        .onEnded { _ in
-          UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-          let s = slotForItem(item)
-          creationStartSlot = s
-          creationEndSlot = min(48, s + 2)
-          dragAnchorStart = s
-          dragAnchorEnd = min(48, s + 2)
+    .contextMenu {
+      switch item {
+      case .promise(let promise):
+        // Host인 경우 수정/삭제 옵션 (PromiseCard 패턴)
+        if promise.isHost(userId: currentUserId) {
+          Button {
+            onEditScheduleItem?(item)
+          } label: {
+            Label(LocalizedStrings.PromiseCard.editPromise, systemImage: "pencil")
+          }
+
+          Button(role: .destructive) {
+            onDeleteScheduleItem?(item)
+          } label: {
+            Label(LocalizedStrings.PromiseCard.deletePromise, systemImage: "trash")
+          }
         }
-    )
+
+        // 항상 표시
+        Button {
+          onScheduleItemTapped(item)
+        } label: {
+          Label(LocalizedStrings.PromiseCard.viewDetail, systemImage: "info.circle")
+        }
+
+        Button {
+          onShareScheduleItem?(item)
+        } label: {
+          Label(LocalizedStrings.PromiseCard.share, systemImage: "square.and.arrow.up")
+        }
+
+      case .personalEvent:
+        Button {
+          onScheduleItemTapped(item)
+        } label: {
+          Label(LocalizedStrings.Personal.viewDetail, systemImage: "info.circle")
+        }
+
+        Button {
+          onEditScheduleItem?(item)
+        } label: {
+          Label("수정", systemImage: "pencil")
+        }
+
+        Button(role: .destructive) {
+          onDeleteScheduleItem?(item)
+        } label: {
+          Label(LocalizedStrings.Shared.deleteEvent, systemImage: "trash")
+        }
+
+      case .calendarEvent:
+        Button {
+          onScheduleItemTapped(item)
+        } label: {
+          Label(LocalizedStrings.PromiseCard.viewDetail, systemImage: "info.circle")
+        }
+      }
+    } preview: {
+      contextMenuPreview(for: item)
+    }
   }
 
   // MARK: - Event Time Label
@@ -480,7 +761,7 @@ struct CalendarDayTimelineView: View {
         path.move(to: CGPoint(x: 0, y: 0))
         path.addLine(to: CGPoint(x: geo.size.width, y: 0))
       }
-      .stroke(Color(.separator).opacity(0.45), style: StrokeStyle(lineWidth: 0.5, dash: [4, 3]))
+      .stroke(Color(.separator).opacity(0.6), style: StrokeStyle(lineWidth: 0.75, dash: [4, 3]))
     }
     .frame(height: 0.5)
   }
@@ -628,6 +909,39 @@ struct CalendarDayTimelineView: View {
     }
   }
 
+  private func itemDescription(for item: CalendarFeature.ScheduleItem) -> String? {
+    switch item {
+    case .promise(let p):
+      return p.description
+    case .personalEvent(let e):
+      return e.description
+    case .calendarEvent:
+      return nil
+    }
+  }
+
+  private func itemImageUrls(for item: CalendarFeature.ScheduleItem) -> [String] {
+    switch item {
+    case .promise(let p):
+      return p.imageUrls
+    case .personalEvent(let e):
+      return e.imageUrls
+    case .calendarEvent:
+      return []
+    }
+  }
+
+  private func itemFirstImageUrl(for item: CalendarFeature.ScheduleItem) -> URL? {
+    switch item {
+    case .promise(let p):
+      return p.imageUrls.first.flatMap { URL(string: $0) }
+    case .personalEvent(let e):
+      return e.imageUrls.first.flatMap { URL(string: $0) }
+    case .calendarEvent:
+      return nil
+    }
+  }
+
   // MARK: - Formatters
 
   private enum Formatters {
@@ -647,6 +961,33 @@ struct CalendarDayTimelineView: View {
       f.dateFormat = "M/d HH:mm"
       return f
     }()
+  }
+}
+
+// MARK: - Schedule Item Thumbnail
+
+/// 타임라인 카드용 이미지 썸네일 (Nuke ImageLoader 사용)
+private struct ScheduleItemThumbnail: View {
+  let url: URL
+  let size: CGFloat
+
+  @State private var loadedImage: UIImage?
+
+  var body: some View {
+    Group {
+      if let image = loadedImage {
+        Image(uiImage: image)
+          .resizable()
+          .scaledToFill()
+      } else {
+        Color.clear
+      }
+    }
+    .frame(width: size, height: size)
+    .clipShape(RoundedRectangle(cornerRadius: 8))
+    .task(id: url) {
+      loadedImage = await ImageLoader.loadImage(from: url, retryCount: 1)
+    }
   }
 }
 
@@ -696,11 +1037,15 @@ struct CalendarDayTimelineView: View {
     scheduleItems: items,
     displayDate: today,
     onScheduleItemTapped: { _ in },
+    onEditScheduleItem: nil,
     onCreatePersonalEvent: { _ in },
     onCreatePromise: {},
+    onDeleteScheduleItem: nil,
+    onShareScheduleItem: nil,
     currentUserId: "host1",
     weatherCache: [:],
-    groupColorMap: ["g1": Color.pmindigo.n500]
+    groupColorMap: ["g1": Color.pmindigo.n500],
+    zoomState: TimelineZoomState()
   )
   .auroraBackground()
 }
@@ -710,11 +1055,15 @@ struct CalendarDayTimelineView: View {
     scheduleItems: [],
     displayDate: Date(),
     onScheduleItemTapped: { _ in },
+    onEditScheduleItem: nil,
     onCreatePersonalEvent: { _ in },
     onCreatePromise: {},
+    onDeleteScheduleItem: nil,
+    onShareScheduleItem: nil,
     currentUserId: "preview",
     weatherCache: [:],
-    groupColorMap: [:]
+    groupColorMap: [:],
+    zoomState: TimelineZoomState()
   )
   .auroraBackground()
 }

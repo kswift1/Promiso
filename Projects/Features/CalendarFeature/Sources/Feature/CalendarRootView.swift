@@ -15,6 +15,7 @@ extension CalendarFeature {
   public struct RootView: View {
     @Bindable private var store: StoreOf<Feature>
     @Namespace private var calendarAnimation
+    @State private var timelineZoomState = TimelineZoomState()
 
     public init(store: StoreOf<Feature>) {
       self.store = store
@@ -52,6 +53,38 @@ extension CalendarFeature {
           }
         }
         .auroraBackground()
+        .alert(store: store.scope(state: \.$deleteAlert, action: \.deleteAlert))
+        .sheet(store: store.scope(state: \.$editPromise, action: \.editPromise)) { editStore in
+          EditPromise.RootView(store: editStore)
+        }
+        .sheet(store: store.scope(state: \.$editPersonalEvent, action: \.editPersonalEvent)) { editStore in
+          NavigationStack {
+            CreatePersonalEvent.RootView(store: editStore)
+          }
+        }
+        .sheet(item: Binding(
+          get: { store.sharePromise },
+          set: { _ in store.send(.view(.dismissPromiseShareSheet)) }
+        )) { promise in
+          PromiseShareSheet(
+            promise: promise,
+            isKakaoSharing: store.isKakaoPromiseSharing,
+            onKakaoShareTapped: {
+              store.send(.view(.kakaoPromiseShareTapped))
+            },
+            onSystemShareTapped: {
+              store.send(.view(.systemPromiseShareTapped))
+            }
+          )
+          .presentationDetents([.height(340)])
+          .presentationDragIndicator(.visible)
+        }
+        .sheet(item: Binding(
+          get: { store.systemShareText.map { ShareTextItem(text: $0) } },
+          set: { _ in store.send(.view(.systemShareSheetDismissed)) }
+        )) { item in
+          ShareSheet(items: [item.text])
+        }
         .toast(Binding(
           get: { store.toastMessage },
           set: { _ in store.send(.view(.toastDismissed)) }
@@ -157,7 +190,7 @@ extension CalendarFeature {
           monthScrollView
         }
       }
-      .frame(maxWidth: .infinity, maxHeight: .infinity)
+      .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
       .background(Color(.systemBackground))
       .clipShape(RoundedCorner(radius: 24, corners: [.topLeft, .topRight]))
       .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: -4)
@@ -192,6 +225,9 @@ extension CalendarFeature {
             onScheduleItemTapped: { item in
               store.send(.view(.scheduleItemTapped(item)))
             },
+            onEditScheduleItem: { item in
+              store.send(.view(.editScheduleItem(item)))
+            },
             onPreviousDay: {
               if let prev = Calendar.current.date(byAdding: .day, value: -1, to: store.selectedDate) {
                 store.send(.view(.selectDate(prev)), animation: .spring(response: 0.35, dampingFraction: 0.7))
@@ -208,9 +244,16 @@ extension CalendarFeature {
             onCreatePromise: {
               store.send(.view(.createPromiseFromTimeline))
             },
+            onDeleteScheduleItem: { item in
+              store.send(.view(.deleteScheduleItem(item)))
+            },
+            onShareScheduleItem: { item in
+              store.send(.view(.shareScheduleItem(item)))
+            },
             currentUserId: store.currentUserId,
             weatherCache: store.weatherCache,
-            groupColorMap: store.groupColorMap
+            groupColorMap: store.groupColorMap,
+            zoomState: timelineZoomState
           )
         }
       }
