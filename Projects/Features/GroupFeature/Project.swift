@@ -20,6 +20,7 @@ let project = Project(
         .project(target: "Clients", path: "../../Clients"),
         .project(target: "PromisoShared", path: "../../Shared"),
         .project(target: "SharedFeature", path: "../SharedFeature"),
+        .project(target: "CreatePromiseFeature", path: "../CreatePromiseFeature"),
         .project(target: "ExternalDependency", path: "../../ExternalDependency")
       ],
       settings: .standard()
@@ -53,7 +54,8 @@ let project = Project(
       sources: ["Example/Sources/**"],
       resources: ["Example/Resources/**"],
       dependencies: [
-        .target(name: "GroupFeature")
+        .target(name: "GroupFeature"),
+        .project(target: "CreatePromiseFeature", path: "../CreatePromiseFeature")
       ],
       settings: .standard()
     )

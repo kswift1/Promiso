@@ -123,6 +123,34 @@ struct PromiseCardView: View {
               .lineLimit(1)
           }
 
+          // 설명
+          if let description = promise.description, !description.isEmpty {
+            Text(description)
+              .font(.system(size: 14))
+              .foregroundColor(.secondary)
+              .lineLimit(3)
+          }
+
+          // 이미지
+          if !promise.imageUrls.isEmpty {
+            ScrollView(.horizontal, showsIndicators: false) {
+              HStack(spacing: 6) {
+                ForEach(promise.imageUrls.prefix(4), id: \.self) { urlString in
+                  if let url = URL(string: urlString) {
+                    ScheduleItemThumbnail(url: url, size: 64, placeholder: Color.gray.opacity(0.15))
+                  }
+                }
+                if promise.imageUrls.count > 4 {
+                  Text("+\(promise.imageUrls.count - 4)")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.secondary)
+                    .frame(width: 64, height: 64)
+                    .background(Color.gray.opacity(0.15), in: RoundedRectangle(cornerRadius: 8))
+                }
+              }
+            }
+          }
+
           // 위치
           if let location = promise.location {
             HStack(spacing: 4) {
@@ -196,6 +224,7 @@ extension PromiseCardView {
     .buttonStyle(.plain)
   }
 }
+
 
 private let promiseViewCalendar = Calendar.current
 
@@ -407,6 +436,7 @@ struct EmptyDayPlaceholder: View {
     id: "1",
     title: "점심 약속",
     emoji: "🍽️",
+    description: "강남역 근처에서 점심 먹어요! 메뉴는 현장에서 정해요.",
     hostId: "user1",
     groupId: "group1",
     group: sampleGroup,
@@ -417,7 +447,8 @@ struct EmptyDayPlaceholder: View {
       until: Date()
     ),
     startAt: Date(),
-    location: LocationInfoModel(name: "강남역 맛집")
+    location: LocationInfoModel(name: "강남역 맛집"),
+    imageUrls: ["https://example.com/photo1.jpg", "https://example.com/photo2.jpg"]
   )
 
   PromiseCardView(

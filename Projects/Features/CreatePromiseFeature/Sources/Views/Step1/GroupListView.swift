@@ -499,3 +499,17 @@ private struct ScaleButtonStyle: ButtonStyle {
   )
   .padding()
 }
+
+// MARK: - GroupClientError Localization
+
+extension GroupClientError {
+  var localizedMessage: String {
+    switch self {
+    case .networkError: return LocalizedStrings.Error.networkError
+    case .unauthorized: return LocalizedStrings.Error.authInvalidCredentials
+    case .notFound: return LocalizedStrings.Error.notFoundError
+    case .serverError: return LocalizedStrings.Error.serverError
+    case .unknown: return LocalizedStrings.Error.unknownError
+    }
+  }
+}

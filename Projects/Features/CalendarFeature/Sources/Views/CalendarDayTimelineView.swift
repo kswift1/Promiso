@@ -13,8 +13,8 @@ struct CalendarDayTimelineView: View {
   let displayDate: Date
   let onScheduleItemTapped: (CalendarFeature.ScheduleItem) -> Void
   let onEditScheduleItem: ((CalendarFeature.ScheduleItem) -> Void)?
-  let onCreatePersonalEvent: (Date) -> Void
-  let onCreatePromise: () -> Void
+  let onCreatePersonalEvent: (Date, Date) -> Void
+  let onCreatePromise: (Date, Date) -> Void
   let onDeleteScheduleItem: ((CalendarFeature.ScheduleItem) -> Void)?
   let onShareScheduleItem: ((CalendarFeature.ScheduleItem) -> Void)?
   let currentUserId: String
@@ -28,6 +28,8 @@ struct CalendarDayTimelineView: View {
   @State private var creationEndSlot: Int = 0        // 하단 (1-144)
   @State private var dragAnchorStart: Int = 0        // 드래그 시작 시점 start
   @State private var dragAnchorEnd: Int = 0          // 드래그 시작 시점 end
+  @State private var showCreationDialog = false
+  @State private var creationTargetDate: Date?
 
   // 이미지 미리보기
   @State private var previewImageUrls: [String]? = nil
@@ -85,6 +87,19 @@ struct CalendarDayTimelineView: View {
       }
   }
 
+  private var creationDialogBinding: Binding<Bool> {
+    Binding(
+      get: { showCreationDialog },
+      set: { isPresented in
+        showCreationDialog = isPresented
+        if !isPresented {
+          creationTargetDate = nil
+          creationStartSlot = nil
+        }
+      }
+    )
+  }
+
   // MARK: - Timeline Content
 
   private var timelineContent: some View {
@@ -104,8 +119,8 @@ struct CalendarDayTimelineView: View {
       }
       .frame(width: nil, height: totalHeight)
       .coordinateSpace(name: "timeline")
-      .padding(.top, 10)
-      .padding(.bottom, 10)
+      .padding(.top, 16)
+      .padding(.bottom, 20)
       .padding(.leading, 8)
       .padding(.trailing, 20)
     }
@@ -140,6 +155,15 @@ struct CalendarDayTimelineView: View {
     )
     .onChange(of: displayDate) {
       creationStartSlot = nil
+      // 날짜 변경 시 첫 번째 일정 위치 또는 현재 시간으로 스크롤
+      let targetY: CGFloat
+      if let firstItem = scheduleItems.first {
+        targetY = max(0, yOffset(for: clampedStartAt(for: firstItem)) - 20)
+      } else {
+        let hour = Calendar.promiseDisplay.component(.hour, from: Date())
+        targetY = max(0, CGFloat(hour) * hourHeight - 20)
+      }
+      scrollPosition.scrollTo(y: targetY)
     }
   }
 
@@ -202,10 +226,8 @@ struct CalendarDayTimelineView: View {
     }
 
     let durations: [CGFloat] = scheduleItems.map { item in
-      let start = clampedStartAt(for: item)
-      let end = clampedEndAt(for: item)
-      let dur = CGFloat(end.timeIntervalSince(start)) / 60.0
-      return max(dur, CGFloat(blockMinHeight) / pixelsPerMinute)
+      // 콘텐츠 인식 블록 높이를 분 단위로 변환하여 겹침 감지 정확도 향상
+      return CGFloat(blockHeight(for: item)) / pixelsPerMinute
     }
 
     return TimelineOverlapLayout.computeLayout(
@@ -327,28 +349,36 @@ struct CalendarDayTimelineView: View {
           }
       )
 
-      // 중간 영역: 이동 드래그 + 액션 버튼
-      HStack(spacing: 12) {
-        Button {
-          onCreatePersonalEvent(dateForSlot(startSlot))
-          creationStartSlot = nil
-        } label: {
-          Label(LocalizedStrings.Calendar.addPersonalEvent, systemImage: "plus.circle.fill")
-            .font(.system(size: 11, weight: .semibold))
-            .foregroundStyle(Color.pminfo.n500)
-        }
-        .buttonStyle(.plain)
-
-        Button {
-          onCreatePromise()
-          creationStartSlot = nil
-        } label: {
-          Label(LocalizedStrings.Calendar.createPromise, systemImage: "person.2.circle.fill")
-            .font(.system(size: 11, weight: .semibold))
-            .foregroundStyle(Color.pmindigo.n500)
-        }
-        .buttonStyle(.plain)
+      // 중간 영역: 이동 드래그 + 일정 추가 버튼
+      Button {
+        creationTargetDate = dateForSlot(startSlot)
+        showCreationDialog = true
+      } label: {
+        Label(LocalizedStrings.Calendar.addSchedule, systemImage: "plus.circle.fill")
+          .font(.system(size: 12, weight: .semibold))
+          .foregroundStyle(Color.pmindigo.n500)
       }
+      .confirmationDialog(
+        LocalizedStrings.Calendar.addSchedule,
+        isPresented: creationDialogBinding,
+        titleVisibility: .hidden,
+        actions: {
+          Button(LocalizedStrings.Calendar.personalSchedule) {
+            guard let startSlot = creationStartSlot else { return }
+            let startDate = dateForSlot(startSlot)
+            let endDate = dateForSlot(creationEndSlot)
+            onCreatePersonalEvent(startDate, endDate)
+          }
+          Button(LocalizedStrings.Calendar.groupSchedule) {
+            guard let startSlot = creationStartSlot else { return }
+            let startDate = dateForSlot(startSlot)
+            let endDate = dateForSlot(creationEndSlot)
+            onCreatePromise(startDate, endDate)
+          }
+          Button(LocalizedStrings.Common.cancel, role: .cancel) {}
+        }
+      )
+      .buttonStyle(.plain)
       .frame(maxWidth: .infinity, maxHeight: .infinity)
       .contentShape(Rectangle())
       .gesture(
@@ -421,7 +451,7 @@ struct CalendarDayTimelineView: View {
             .foregroundStyle(color.opacity(0.6))
         }
       }
-      .frame(width: 36, height: 72)
+      .frame(width: 36)
 
       // 카드
       HStack(spacing: 0) {
@@ -453,13 +483,39 @@ struct CalendarDayTimelineView: View {
                 .lineLimit(1)
             }
           }
+
+          if let desc = itemDescription(for: item), !desc.isEmpty {
+            Text(desc)
+              .font(.system(size: 11))
+              .foregroundStyle(.secondary)
+              .lineLimit(2)
+          }
+
+          let imageUrls = itemImageUrls(for: item)
+          if !imageUrls.isEmpty {
+            ScrollView(.horizontal, showsIndicators: false) {
+              HStack(spacing: 6) {
+                ForEach(imageUrls.prefix(4), id: \.self) { urlString in
+                  if let url = URL(string: urlString) {
+                    ScheduleItemThumbnail(url: url, size: 56)
+                  }
+                }
+                if imageUrls.count > 4 {
+                  Text("+\(imageUrls.count - 4)")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 56, height: 56)
+                    .background(Color.gray.opacity(0.15), in: RoundedRectangle(cornerRadius: 8))
+                }
+              }
+            }
+          }
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
 
         Spacer(minLength: 0)
       }
-      .frame(height: 72)
       .background(.ultraThinMaterial, in: cardShape)
       .overlay(alignment: .leading) {
         RoundedRectangle(cornerRadius: 10)
@@ -618,13 +674,32 @@ struct CalendarDayTimelineView: View {
         }
 
         // 이미지 썸네일 (detail 이상, 하단에 배치)
-        if showDetails, let imageUrl = itemFirstImageUrl(for: item) {
-          ScheduleItemThumbnail(url: imageUrl, size: showRich ? 72 : 48)
+        if showDetails {
+          let imageUrls = itemImageUrls(for: item)
+          if !imageUrls.isEmpty {
+            let thumbSize: CGFloat = showRich ? 72 : 48
+            ScrollView(.horizontal, showsIndicators: false) {
+              HStack(spacing: 6) {
+                ForEach(imageUrls.prefix(4), id: \.self) { urlString in
+                  if let url = URL(string: urlString) {
+                    ScheduleItemThumbnail(url: url, size: thumbSize)
+                      .onTapGesture {
+                        previewImageUrls = imageUrls
+                      }
+                  }
+                }
+                if imageUrls.count > 4 {
+                  Text("+\(imageUrls.count - 4)")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: thumbSize, height: thumbSize)
+                    .background(Color.gray.opacity(0.15), in: RoundedRectangle(cornerRadius: 8))
+                }
+              }
+            }
             .padding(.horizontal, 10)
             .padding(.bottom, 6)
-            .onTapGesture {
-              previewImageUrls = itemImageUrls(for: item)
-            }
+          }
         }
       }
     }
@@ -805,14 +880,48 @@ struct CalendarDayTimelineView: View {
     item.effectiveEndAt > dayEnd
   }
 
-  /// 일정 블록 높이 (duration 기반, 최소 blockMinHeight)
+  // MARK: - Block Height Constants
+
+  private enum BlockHeight {
+    static let detailThreshold: CGFloat = 100
+    static let richThreshold: CGFloat = 140
+    static let baseContent: CGFloat = 52       // emoji + title + group + padding
+    static let locationRow: CGFloat = 18
+    static let richDescriptionRow: CGFloat = 44
+    static let compactDescriptionRow: CGFloat = 18
+    static let richImageSize: CGFloat = 72
+    static let compactImageSize: CGFloat = 48
+    static let imageSpacing: CGFloat = 8
+  }
+
+  /// 일정 블록 높이 (duration 기반 + 콘텐츠 인식, 최소 blockMinHeight)
   private func blockHeight(for item: CalendarFeature.ScheduleItem) -> CGFloat {
     let start = clampedStartAt(for: item)
     let end = clampedEndAt(for: item)
     let duration = end.timeIntervalSince(start)
     let hours = duration / 3600.0
     let calculatedHeight = CGFloat(hours) * hourHeight
-    return max(blockMinHeight, calculatedHeight)
+    let timeBasedHeight = max(blockMinHeight, calculatedHeight)
+
+    // 콘텐츠 인식: detail 표시 시 콘텐츠가 잘리지 않도록 최소 높이 보장
+    guard timeBasedHeight >= BlockHeight.detailThreshold else { return timeBasedHeight }
+
+    let hasDesc = (itemDescription(for: item) ?? "").isEmpty == false
+    let hasImage = itemFirstImageUrl(for: item) != nil
+    let isRich = timeBasedHeight >= BlockHeight.richThreshold
+
+    var contentMinHeight: CGFloat = BlockHeight.baseContent
+    if let loc = itemLocation(for: item), !loc.isEmpty {
+      contentMinHeight += BlockHeight.locationRow
+    }
+    if hasDesc {
+      contentMinHeight += isRich ? BlockHeight.richDescriptionRow : BlockHeight.compactDescriptionRow
+    }
+    if hasImage {
+      contentMinHeight += (isRich ? BlockHeight.richImageSize : BlockHeight.compactImageSize) + BlockHeight.imageSpacing
+    }
+
+    return max(timeBasedHeight, contentMinHeight)
   }
 
   private func barColor(for item: CalendarFeature.ScheduleItem) -> Color {
@@ -966,10 +1075,11 @@ struct CalendarDayTimelineView: View {
 
 // MARK: - Schedule Item Thumbnail
 
-/// 타임라인 카드용 이미지 썸네일 (Nuke ImageLoader 사용)
-private struct ScheduleItemThumbnail: View {
+/// 일정 이미지 썸네일 (CalendarFeature 공통, Nuke ImageLoader 사용)
+struct ScheduleItemThumbnail: View {
   let url: URL
   let size: CGFloat
+  var placeholder: Color = .clear
 
   @State private var loadedImage: UIImage?
 
@@ -980,7 +1090,7 @@ private struct ScheduleItemThumbnail: View {
           .resizable()
           .scaledToFill()
       } else {
-        Color.clear
+        placeholder
       }
     }
     .frame(width: size, height: size)
@@ -1038,8 +1148,8 @@ private struct ScheduleItemThumbnail: View {
     displayDate: today,
     onScheduleItemTapped: { _ in },
     onEditScheduleItem: nil,
-    onCreatePersonalEvent: { _ in },
-    onCreatePromise: {},
+    onCreatePersonalEvent: { _, _ in },
+    onCreatePromise: { _, _ in },
     onDeleteScheduleItem: nil,
     onShareScheduleItem: nil,
     currentUserId: "host1",
@@ -1056,8 +1166,8 @@ private struct ScheduleItemThumbnail: View {
     displayDate: Date(),
     onScheduleItemTapped: { _ in },
     onEditScheduleItem: nil,
-    onCreatePersonalEvent: { _ in },
-    onCreatePromise: {},
+    onCreatePersonalEvent: { _, _ in },
+    onCreatePromise: { _, _ in },
     onDeleteScheduleItem: nil,
     onShareScheduleItem: nil,
     currentUserId: "preview",

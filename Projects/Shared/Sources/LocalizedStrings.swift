@@ -1251,6 +1251,11 @@ public enum LocalizedStrings {
         .replacingOccurrences(of: "%lld", with: "\(count)")
     }
 
+    // Schedule Creation
+    public static var addSchedule: String { String(localized: "calendar.schedule.add", bundle: bundle) }
+    public static var personalSchedule: String { String(localized: "calendar.schedule.personal", bundle: bundle) }
+    public static var groupSchedule: String { String(localized: "calendar.schedule.group", bundle: bundle) }
+
     // Context Menu
     public static var viewSchedule: String { String(localized: "calendar.contextMenu.viewSchedule", bundle: bundle) }
     public static var addPersonalEvent: String { String(localized: "calendar.contextMenu.addPersonalEvent", bundle: bundle) }

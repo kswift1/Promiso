@@ -6,6 +6,7 @@ import ComposableArchitecture
 import PromisoShared
 import Clients
 import SharedFeature
+import CreatePromiseFeature
 import ResourceKit
 
 // MARK: - Feature Namespace
@@ -107,6 +108,8 @@ extension CalendarFeature {
       @Presents var editPromise: EditPromise.Feature.State?
       /// 개인 일정 수정 시트
       @Presents var editPersonalEvent: CreatePersonalEvent.Feature.State?
+      /// 약속 생성 시트
+      @Presents var createPromise: CreatePromise.Feature.State?
       /// 약속 공유 시트용
       var sharePromise: PromiseModel?
       var isKakaoPromiseSharing: Bool = false
@@ -452,6 +455,7 @@ extension CalendarFeature {
       case deleteAlert(PresentationAction<DeleteAlertAction>)
       case editPromise(PresentationAction<EditPromise.Feature.Action>)
       case editPersonalEvent(PresentationAction<CreatePersonalEvent.Feature.Action>)
+      case createPromise(PresentationAction<CreatePromise.Feature.Action>)
 
       @CasePathable
       public enum ViewAction {
@@ -483,8 +487,8 @@ extension CalendarFeature {
         // 타임라인 일정 아이템 탭
         case scheduleItemTapped(CalendarFeature.ScheduleItem)
         case editScheduleItem(CalendarFeature.ScheduleItem)
-        case createPersonalEventFromTimeline(Date)
-        case createPromiseFromTimeline
+        case createPersonalEventFromTimeline(startDate: Date, endDate: Date)
+        case createPromiseFromTimeline(startDate: Date, endDate: Date)
         case deleteScheduleItem(CalendarFeature.ScheduleItem)
         case shareScheduleItem(CalendarFeature.ScheduleItem)
         case dismissPromiseShareSheet
@@ -517,6 +521,7 @@ extension CalendarFeature {
         // 공유
         case kakaoPromiseShareResult(KakaoShareResult)
       }
+
     }
 
     // MARK: - Cancellation IDs
@@ -589,6 +594,10 @@ extension CalendarFeature {
       case .editPromise:
         return .none
 
+      case .editPersonalEvent(.presented(.delegate(.eventCreated))):
+        state.editPersonalEvent = nil
+        return .send(.internal(.fetchPersonalEvents))
+
       case .editPersonalEvent(.presented(.delegate(.eventUpdated))):
         state.editPersonalEvent = nil
         return .send(.internal(.fetchPersonalEvents))
@@ -598,6 +607,22 @@ extension CalendarFeature {
         return .none
 
       case .editPersonalEvent:
+        return .none
+
+      case .createPromise(.presented(.delegate(.promiseCreated))):
+        state.createPromise = nil
+        let currentMonth = state.selectedDate.startOfMonth
+        return .send(.internal(.fetchPromisesForMonth(currentMonth)))
+
+      case .createPromise(.presented(.delegate(.dismiss))):
+        state.createPromise = nil
+        return .none
+
+      case .createPromise(.presented(.delegate(.createGroupRequested))):
+        state.createPromise = nil
+        return .none
+
+      case .createPromise:
         return .none
 
       case .deleteAlert(.presented(.confirmDelete)):
@@ -630,6 +655,9 @@ extension CalendarFeature {
       }
       .ifLet(\.$editPersonalEvent, action: \.editPersonalEvent) {
         CreatePersonalEvent.Feature()
+      }
+      .ifLet(\.$createPromise, action: \.createPromise) {
+        CreatePromise.Feature()
       }
       .forEach(\.path, action: \.path)
     }
@@ -943,12 +971,16 @@ extension CalendarFeature {
         }
         return .none
 
-      case .createPersonalEventFromTimeline:
-        // TODO: 개인 일정 생성 플로우 연결
+      case let .createPersonalEventFromTimeline(startDate, endDate):
+        let newEvent = PersonalEventModel(startAt: startDate, endAt: endDate)
+        state.editPersonalEvent = CreatePersonalEvent.Feature.State(event: newEvent, mode: .create)
         return .none
 
-      case .createPromiseFromTimeline:
-        // TODO: 약속 생성 플로우 연결
+      case let .createPromiseFromTimeline(startDate, endDate):
+        var promise = PromiseModel.empty
+        promise.startAt = startDate
+        promise.endAt = endDate
+        state.createPromise = CreatePromise.Feature.State(promise: promise)
         return .none
 
       case .deleteScheduleItem(let item):
@@ -1051,10 +1083,12 @@ extension CalendarFeature {
         return .none
 
       case .dayLongPressCreatePersonalEvent(let date):
-        return .send(.view(.createPersonalEventFromTimeline(date)))
+        let endDate = date.addingTimeInterval(3600)
+        return .send(.view(.createPersonalEventFromTimeline(startDate: date, endDate: endDate)))
 
-      case .dayLongPressCreatePromise:
-        return .send(.view(.createPromiseFromTimeline))
+      case let .dayLongPressCreatePromise(date):
+        let endDate = date.addingTimeInterval(3600)
+        return .send(.view(.createPromiseFromTimeline(startDate: date, endDate: endDate)))
 
       case .toggleMonthExpansion:
         state.monthExpansionState = state.monthExpansionState == .collapsed ? .expanded : .collapsed

@@ -74,6 +74,7 @@ struct CalendarFeatureTests {
 
     await store.send(.view(.selectDate(february))) {
       $0.selectedDate = february
+      $0.currentWeekStart = february.startOfWeek
     }
     await store.receive(\.internal.fetchPromisesForMonth)
   }
@@ -432,5 +433,7 @@ private extension CalendarFeatureTests {
     deps.eventKitClient.fetchEvents = { _, _ in [] }
     deps.promiseClient.getPromisesByDateRange = { _, _, _ in [] }
     deps.personalEventClient.getActiveEvents = { _ in [] }
+    deps.userDefaultsClient.setString = { _, _ in }
+    deps.userDefaultsClient.stringForKey = { _ in nil }
   }
 }

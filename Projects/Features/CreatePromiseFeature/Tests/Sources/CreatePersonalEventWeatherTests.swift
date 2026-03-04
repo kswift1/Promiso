@@ -1,24 +1,24 @@
 //
-//  CreatePromiseWeatherTests.swift
-//  GroupFeature
+//  CreatePersonalEventWeatherTests.swift
+//  SharedFeature
 //
-//  CreatePromise.Feature 날씨 힌트 기능 테스트 (Swift Testing + TCA TestStore)
+//  CreatePersonalEvent.Feature 날씨 힌트 기능 테스트 (Swift Testing + TCA TestStore)
 //
 //  ## 테스트 대상
-//  - `GroupFeature/Sources/CreatePromise/Core/CreatePromiseFeature.swift`
-//  - Weather hint related actions: setStartDate, setLocation, toggleUseLocation, weatherResponse
+//  - `SharedFeature/Sources/PersonalEventDetail/CreatePersonalEventFeature.swift`
+//  - Weather hint related actions: startDateChanged, removeLocation, locationPicker.locationSelected, weatherResponse
 //
 
 import Testing
-@testable import GroupFeature
+@testable import CreatePromiseFeature
 @testable import PromisoShared
 @testable import Clients
 
-// MARK: - CreatePromise Weather Tests
+// MARK: - CreatePersonalEvent Weather Tests
 
-@Suite("CreatePromise.Feature 날씨 힌트 테스트")
+@Suite("CreatePersonalEvent.Feature 날씨 힌트 테스트")
 @MainActor
-struct CreatePromiseWeatherTests {
+struct CreatePersonalEventWeatherTests {
 
   // MARK: - Test Helpers
 
@@ -53,181 +53,126 @@ struct CreatePromiseWeatherTests {
     )
   }
 
-  nonisolated private func makeStateWithLocation(
-    useLocation: Bool = true,
+  nonisolated private func makeEventWithLocation(
     location: LocationInfoModel = LocationInfoModel(
       name: "테스트",
       address: "서울",
       latitude: 37.5,
       longitude: 127.0
+    ),
+    startAt: Date = Date().addingTimeInterval(24 * 3600)
+  ) -> PersonalEventModel {
+    var event = PersonalEventModel(
+      id: "event-1",
+      title: "테스트 일정",
+      startAt: startAt
     )
-  ) -> CreatePromise.Feature.State {
-    var state = CreatePromise.Feature.State()
-    state.useLocation = useLocation
-    state.promise.location = location
-    state.promise.startAt = Date().addingTimeInterval(24 * 3600)
-    return state
+    event.location = location
+    return event
   }
 
   // MARK: - 초기 상태 테스트
 
   @Test("초기 상태에서 날씨 정보 nil")
   func initialState_weatherInfoIsNil() {
-    let state = CreatePromise.Feature.State()
+    let event = PersonalEventModel(id: "event-1", title: "테스트", startAt: Date())
+    let state = CreatePersonalEvent.Feature.State(event: event)
     #expect(state.weatherState.value == nil)
     #expect(state.weatherState.isLoading == false)
   }
 
-  // MARK: - toggleUseLocation 테스트
+  // MARK: - removeLocation 테스트
 
-  @Test("toggleUseLocation OFF 시 날씨 상태 클리어 + 페치 취소")
-  func toggleUseLocation_off_clearsWeatherAndCancels() async {
-    var state = makeStateWithLocation(useLocation: true)
+  @Test("removeLocation 시 날씨 상태 클리어 + 페치 취소")
+  func removeLocation_clearsWeatherAndCancels() async {
+    let event = makeEventWithLocation()
+    var state = CreatePersonalEvent.Feature.State(event: event)
     state.weatherState = .loaded(makeWeatherInfo())
 
     let store = TestStore(initialState: state) {
-      CreatePromise.Feature()
+      CreatePersonalEvent.Feature()
+    } withDependencies: {
+      $0.hapticFeedback.selection = {}
     }
+    store.exhaustivity = .off(showSkippedAssertions: false)
 
-    await store.send(.view(.toggleUseLocation)) {
-      $0.useLocation = false
+    await store.send(.view(.removeLocation)) {
+      $0.event.location = nil
       $0.weatherState = .idle
     }
   }
 
-  @Test("toggleUseLocation ON 시 아무 일도 안 함")
-  func toggleUseLocation_on_doesNothing() async {
-    var state = makeStateWithLocation(useLocation: false)
+  // MARK: - startDateChanged 테스트
 
-    let store = TestStore(initialState: state) {
-      CreatePromise.Feature()
-    }
-
-    await store.send(.view(.toggleUseLocation)) {
-      $0.useLocation = true
-    }
-  }
-
-  // MARK: - setLocation 테스트
-
-  @Test("setLocation(nil) 시 날씨 상태 클리어 + 페치 취소")
-  func setLocation_nil_clearsWeatherAndCancels() async {
-    var state = makeStateWithLocation(useLocation: true)
-    state.weatherState = .loaded(makeWeatherInfo())
-
-    let store = TestStore(initialState: state) {
-      CreatePromise.Feature()
-    }
-
-    await store.send(.view(.setLocation(nil))) {
-      $0.promise.location = nil
-      $0.weatherState = .idle
-    }
-  }
-
-  @Test("setLocation 유효값 설정 시 위치 변경")
-  func setLocation_validLocation_setsLocation() async {
-    let location = makeLocation()
-    var state = makeStateWithLocation(useLocation: true)
-
-    let store = TestStore(initialState: state) {
-      CreatePromise.Feature()
-    }
-
-    await store.send(.view(.setLocation(location))) {
-      $0.promise.location = location
-    }
-  }
-
-  // MARK: - setStartDate 테스트
-
-  @Test("setStartDate useLocation=false 시 날씨 페치 안 함")
-  func setStartDate_noLocation_doesNotFetchWeather() async {
-    var state = CreatePromise.Feature.State()
-    state.useLocation = false
-    state.promise.startAt = Date()
-
-    let forecastDate = Date().addingTimeInterval(24 * 3600)
-
-    let store = TestStore(initialState: state) {
-      CreatePromise.Feature()
-    }
-
-    await store.send(.view(.setStartDate(forecastDate))) {
-      $0.promise.startAt = forecastDate
-      $0.weatherState = .idle
-    }
-  }
-
-  @Test("setStartDate 위치 좌표 없으면 날씨 페치 안 함")
-  func setStartDate_noCoordinates_doesNotFetchWeather() async {
-    var state = CreatePromise.Feature.State()
-    state.useLocation = true
-    state.promise.location = LocationInfoModel(
+  @Test("startDateChanged 위치 좌표 없으면 날씨 페치 안 함")
+  func startDateChanged_noCoordinates_doesNotFetchWeather() async {
+    var event = PersonalEventModel(id: "event-1", title: "테스트", startAt: Date())
+    event.location = LocationInfoModel(
       name: "장소명만",
       address: "주소만",
       latitude: nil,
       longitude: nil
     )
-    state.promise.startAt = Date()
+    let state = CreatePersonalEvent.Feature.State(event: event)
 
     let forecastDate = Date().addingTimeInterval(24 * 3600)
 
     let store = TestStore(initialState: state) {
-      CreatePromise.Feature()
+      CreatePersonalEvent.Feature()
     }
+    store.exhaustivity = .off(showSkippedAssertions: false)
 
-    await store.send(.view(.setStartDate(forecastDate))) {
-      $0.promise.startAt = forecastDate
+    await store.send(.view(.startDateChanged(forecastDate))) {
+      $0.event.startAt = forecastDate
       $0.weatherState = .idle
     }
   }
 
-  @Test("setStartDate 과거 날짜 시 날씨 페치 안 함")
-  func setStartDate_pastDate_doesNotFetchWeather() async {
-    var state = makeStateWithLocation()
-    state.promise.startAt = Date()
+  @Test("startDateChanged 과거 날짜 시 날씨 페치 안 함")
+  func startDateChanged_pastDate_doesNotFetchWeather() async {
+    var state = CreatePersonalEvent.Feature.State(event: makeEventWithLocation())
+    state.event.startAt = Date()
 
     let pastDate = Date().addingTimeInterval(-3600)
 
     let store = TestStore(initialState: state) {
-      CreatePromise.Feature()
+      CreatePersonalEvent.Feature()
     }
+    store.exhaustivity = .off(showSkippedAssertions: false)
 
-    await store.send(.view(.setStartDate(pastDate))) {
-      $0.promise.startAt = pastDate
+    await store.send(.view(.startDateChanged(pastDate))) {
+      $0.event.startAt = pastDate
       $0.weatherState = .idle
     }
   }
 
-  @Test("setStartDate 10일 초과 미래 시 날씨 페치 안 함")
-  func setStartDate_farFutureDate_doesNotFetchWeather() async {
-    var state = makeStateWithLocation()
-    state.promise.startAt = Date()
+  @Test("startDateChanged 10일 초과 미래 시 날씨 페치 안 함")
+  func startDateChanged_farFutureDate_doesNotFetchWeather() async {
+    var state = CreatePersonalEvent.Feature.State(event: makeEventWithLocation())
+    state.event.startAt = Date()
 
     let farFutureDate = Date().addingTimeInterval(11 * 24 * 3600)
 
     let store = TestStore(initialState: state) {
-      CreatePromise.Feature()
+      CreatePersonalEvent.Feature()
     }
+    store.exhaustivity = .off(showSkippedAssertions: false)
 
-    await store.send(.view(.setStartDate(farFutureDate))) {
-      $0.promise.startAt = farFutureDate
+    await store.send(.view(.startDateChanged(farFutureDate))) {
+      $0.event.startAt = farFutureDate
       $0.weatherState = .idle
     }
   }
 
-  @Test("setStartDate 정확히 10일 후 시 날씨 페치 함")
-  func setStartDate_tenDaysLater_fetchesWeather() async {
-    var state = CreatePromise.Feature.State()
-    state.useLocation = true
-    state.promise.location = makeLocation()
-    state.promise.startAt = Date()
+  @Test("startDateChanged 정확히 10일 후 시 날씨 페치 함")
+  func startDateChanged_tenDaysLater_fetchesWeather() async {
+    var state = CreatePersonalEvent.Feature.State(event: makeEventWithLocation())
+    state.event.startAt = Date()
 
     let tenDaysLater = Date().addingTimeInterval(10 * 24 * 3600 - 1)
 
     let store = TestStore(initialState: state) {
-      CreatePromise.Feature()
+      CreatePersonalEvent.Feature()
     } withDependencies: {
       $0.weatherClient.getWeather = { _, _, _ in
         self.makeWeatherInfo()
@@ -236,8 +181,8 @@ struct CreatePromiseWeatherTests {
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
-    await store.send(.view(.setStartDate(tenDaysLater))) {
-      $0.promise.startAt = tenDaysLater
+    await store.send(.view(.startDateChanged(tenDaysLater))) {
+      $0.event.startAt = tenDaysLater
       $0.weatherState = .loading
     }
   }
@@ -246,15 +191,14 @@ struct CreatePromiseWeatherTests {
 
   @Test("locationPicker.locationSelected 시 날씨 데이터 페치")
   func locationPickerLocationSelected_fetchesWeather() async {
-    var state = CreatePromise.Feature.State()
-    state.useLocation = true
-    state.promise.startAt = Date().addingTimeInterval(24 * 3600)
+    var event = PersonalEventModel(id: "event-1", title: "테스트", startAt: Date().addingTimeInterval(24 * 3600))
+    var state = CreatePersonalEvent.Feature.State(event: event)
     state.locationPicker = LocationPicker.Feature.State()
 
     let location = makeLocation()
 
     let store = TestStore(initialState: state) {
-      CreatePromise.Feature()
+      CreatePersonalEvent.Feature()
     } withDependencies: {
       $0.weatherClient.getWeather = { _, _, _ in
         self.makeWeatherInfo()
@@ -267,7 +211,7 @@ struct CreatePromiseWeatherTests {
       .locationPicker(.presented(.delegate(.locationSelected(location))))
     ) {
       $0.locationPicker = nil
-      $0.promise.location = location
+      $0.event.location = location
       $0.weatherState = .loading
     }
   }
@@ -276,13 +220,13 @@ struct CreatePromiseWeatherTests {
 
   @Test("weatherResponse 성공 시 weatherInfo 설정")
   func weatherResponse_success_setsWeatherInfo() async {
-    var state = makeStateWithLocation()
+    var state = CreatePersonalEvent.Feature.State(event: makeEventWithLocation())
     state.weatherState = .loading
 
     let weatherInfo = makeWeatherInfo()
 
     let store = TestStore(initialState: state) {
-      CreatePromise.Feature()
+      CreatePersonalEvent.Feature()
     }
 
     await store.send(.internal(.weatherResponse(.success(weatherInfo)))) {
@@ -292,7 +236,7 @@ struct CreatePromiseWeatherTests {
 
   @Test("weatherResponse 성공 시 비오는 날씨 저장")
   func weatherResponse_success_rainyWeather() async {
-    var state = makeStateWithLocation()
+    var state = CreatePersonalEvent.Feature.State(event: makeEventWithLocation())
     state.weatherState = .loading
 
     let rainyForecast = HourlyForecast(
@@ -312,7 +256,7 @@ struct CreatePromiseWeatherTests {
     )
 
     let store = TestStore(initialState: state) {
-      CreatePromise.Feature()
+      CreatePersonalEvent.Feature()
     }
 
     await store.send(.internal(.weatherResponse(.success(weatherInfo)))) {
@@ -325,7 +269,7 @@ struct CreatePromiseWeatherTests {
 
   @Test("weatherResponse 성공 시 눈오는 날씨 저장")
   func weatherResponse_success_snowWeather() async {
-    var state = makeStateWithLocation()
+    var state = CreatePersonalEvent.Feature.State(event: makeEventWithLocation())
     state.weatherState = .loading
 
     let snowForecast = HourlyForecast(
@@ -345,7 +289,7 @@ struct CreatePromiseWeatherTests {
     )
 
     let store = TestStore(initialState: state) {
-      CreatePromise.Feature()
+      CreatePersonalEvent.Feature()
     }
 
     await store.send(.internal(.weatherResponse(.success(weatherInfo)))) {
@@ -360,13 +304,13 @@ struct CreatePromiseWeatherTests {
 
   @Test("weatherResponse 실패 시 날씨 정보 클리어")
   func weatherResponse_failure_clearsWeatherInfo() async {
-    var state = makeStateWithLocation()
+    var state = CreatePersonalEvent.Feature.State(event: makeEventWithLocation())
     state.weatherState = .loaded(makeWeatherInfo())
 
     enum TestError: Error { case networkFailed }
 
     let store = TestStore(initialState: state) {
-      CreatePromise.Feature()
+      CreatePersonalEvent.Feature()
     }
 
     await store.send(.internal(.weatherResponse(.failure(TestError.networkFailed)))) {
@@ -376,13 +320,13 @@ struct CreatePromiseWeatherTests {
 
   @Test("weatherResponse 실패 후 재시도 가능")
   func weatherResponse_failure_thenRetry() async {
-    var state = makeStateWithLocation()
+    var state = CreatePersonalEvent.Feature.State(event: makeEventWithLocation())
     state.weatherState = .loading
 
     enum TestError: Error { case networkFailed }
 
     let store = TestStore(initialState: state) {
-      CreatePromise.Feature()
+      CreatePersonalEvent.Feature()
     } withDependencies: {
       $0.weatherClient.getWeather = { _, _, _ in
         self.makeWeatherInfo()
@@ -398,8 +342,8 @@ struct CreatePromiseWeatherTests {
 
     // 재시도
     let newDate = Date().addingTimeInterval(48 * 3600)
-    await store.send(.view(.setStartDate(newDate))) {
-      $0.promise.startAt = newDate
+    await store.send(.view(.startDateChanged(newDate))) {
+      $0.event.startAt = newDate
       $0.weatherState = .loading
     }
   }
@@ -409,28 +353,27 @@ struct CreatePromiseWeatherTests {
   @Test("현재 시간 기준 데이터는 페치 안 함")
   func startDate_exactly_now_doesNotFetch() async {
     let now = Date()
-    var state = makeStateWithLocation()
-    state.promise.startAt = now
+    var state = CreatePersonalEvent.Feature.State(event: makeEventWithLocation(startAt: now))
 
     let store = TestStore(initialState: state) {
-      CreatePromise.Feature()
+      CreatePersonalEvent.Feature()
     }
+    store.exhaustivity = .off(showSkippedAssertions: false)
 
     // 현재 시간을 그대로 설정하므로 상태 변경 없음
-    await store.send(.view(.setStartDate(now)))
+    await store.send(.view(.startDateChanged(now)))
   }
 
   @Test("1초 후 미래 데이터는 페치 함")
   func startDate_oneSecondLater_fetches() async {
-    var state = CreatePromise.Feature.State()
-    state.useLocation = true
-    state.promise.location = makeLocation()
-    state.promise.startAt = Date()
+    var event = PersonalEventModel(id: "event-1", title: "테스트", startAt: Date())
+    event.location = makeLocation()
+    var state = CreatePersonalEvent.Feature.State(event: event)
 
     let oneSecondLater = Date().addingTimeInterval(1)
 
     let store = TestStore(initialState: state) {
-      CreatePromise.Feature()
+      CreatePersonalEvent.Feature()
     } withDependencies: {
       $0.weatherClient.getWeather = { _, _, _ in
         self.makeWeatherInfo()
@@ -439,95 +382,71 @@ struct CreatePromiseWeatherTests {
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
-    await store.send(.view(.setStartDate(oneSecondLater))) {
-      $0.promise.startAt = oneSecondLater
+    await store.send(.view(.startDateChanged(oneSecondLater))) {
+      $0.event.startAt = oneSecondLater
       $0.weatherState = .loading
     }
   }
 
   @Test("위도/경도 부분만 nil인 경우 페치 안 함")
   func location_partialCoordinates_doesNotFetch() async {
-    var state = CreatePromise.Feature.State()
-    state.useLocation = true
-    state.promise.location = LocationInfoModel(
+    var event = PersonalEventModel(id: "event-1", title: "테스트", startAt: Date().addingTimeInterval(24 * 3600))
+    event.location = LocationInfoModel(
       name: "서울",
       address: "서울시",
       latitude: 37.5,
       longitude: nil
     )
-    state.promise.startAt = Date().addingTimeInterval(24 * 3600)
+    let state = CreatePersonalEvent.Feature.State(event: event)
 
     let newDate = Date().addingTimeInterval(48 * 3600)
     let store = TestStore(initialState: state) {
-      CreatePromise.Feature()
+      CreatePersonalEvent.Feature()
     }
+    store.exhaustivity = .off(showSkippedAssertions: false)
 
-    await store.send(.view(.setStartDate(newDate))) {
-      $0.promise.startAt = newDate
+    await store.send(.view(.startDateChanged(newDate))) {
+      $0.event.startAt = newDate
       $0.weatherState = .idle
     }
   }
 
   // MARK: - 상태 일관성 테스트
 
-  @Test("여러 번의 toggleUseLocation 후 최종 상태 확인")
-  func multipleToggleUseLocation_finalState() async {
-    let state = makeStateWithLocation(useLocation: false)
+  @Test("removeLocation + startDateChanged 연속 호출")
+  func removeLocation_then_startDateChanged_sequence() async {
+    var state = CreatePersonalEvent.Feature.State(event: makeEventWithLocation())
+    state.weatherState = .loaded(makeWeatherInfo())
 
     let store = TestStore(initialState: state) {
-      CreatePromise.Feature()
-    }
-
-    await store.send(.view(.toggleUseLocation)) {
-      $0.useLocation = true
-    }
-
-    await store.send(.view(.toggleUseLocation)) {
-      $0.useLocation = false
-      $0.weatherState = .idle
-    }
-
-    #expect(store.state.useLocation == false)
-    #expect(store.state.weatherState.value == nil)
-  }
-
-  @Test("setLocation + setStartDate 연속 호출")
-  func setLocation_then_setStartDate_sequence() async {
-    var state = CreatePromise.Feature.State()
-    state.useLocation = true
-    state.promise.startAt = Date()
-
-    let location = makeLocation()
-    let newDate = Date().addingTimeInterval(24 * 3600)
-
-    let store = TestStore(initialState: state) {
-      CreatePromise.Feature()
+      CreatePersonalEvent.Feature()
     } withDependencies: {
-      $0.weatherClient.getWeather = { _, _, _ in
-        self.makeWeatherInfo()
-      }
-      $0.continuousClock = ImmediateClock()
+      $0.hapticFeedback.selection = {}
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
-    await store.send(.view(.setLocation(location))) {
-      $0.promise.location = location
+    // 위치 제거
+    await store.send(.view(.removeLocation)) {
+      $0.event.location = nil
+      $0.weatherState = .idle
     }
 
-    await store.send(.view(.setStartDate(newDate))) {
-      $0.promise.startAt = newDate
-      $0.weatherState = .loading
+    // 시작일 변경 (위치 없으므로 페치 안 함)
+    let newDate = Date().addingTimeInterval(24 * 3600)
+    await store.send(.view(.startDateChanged(newDate))) {
+      $0.event.startAt = newDate
+      $0.weatherState = .idle
     }
   }
 
   @Test("weatherInfo 상태 전환: nil → loading → success")
   func weatherStateTransition_nilToLoadingToSuccess() async {
-    let state = makeStateWithLocation()
+    let state = CreatePersonalEvent.Feature.State(event: makeEventWithLocation())
     #expect(state.weatherState.value == nil)
     #expect(state.weatherState.isLoading == false)
 
     let store = TestStore(initialState: state) {
-      CreatePromise.Feature()
+      CreatePersonalEvent.Feature()
     } withDependencies: {
       $0.weatherClient.getWeather = { _, _, _ in
         let forecast = HourlyForecast(
@@ -552,8 +471,8 @@ struct CreatePromiseWeatherTests {
 
     let newDate = Date().addingTimeInterval(24 * 3600)
 
-    await store.send(.view(.setStartDate(newDate))) {
-      $0.promise.startAt = newDate
+    await store.send(.view(.startDateChanged(newDate))) {
+      $0.event.startAt = newDate
       $0.weatherState = .loading
     }
 
