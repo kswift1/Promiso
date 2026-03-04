@@ -698,6 +698,14 @@ extension CalendarFeature {
         state.selectedDate = date
         let newMonth = date.startOfMonth
 
+        // 주간 모드: 선택 날짜가 다른 주에 속하면 주간 스트립도 업데이트
+        if state.displayMode == .week {
+          let newWeekStart = date.startOfWeek
+          if newWeekStart != state.currentWeekStart {
+            state.currentWeekStart = newWeekStart
+          }
+        }
+
         // 월이 바뀌면 데이터 로드
         if previousMonth != newMonth && !state.loadedMonths.contains(newMonth) {
           AppLogger.calendar.debugLog("🔄 날짜 선택으로 월 변경 - 로드 필요: \(LocalizedDateFormatters.yearMonth.string(from: newMonth))")
