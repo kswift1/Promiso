@@ -536,6 +536,12 @@ extension CreatePersonalEvent {
 
     private func checkConflictsEffect(state: inout State) -> Effect<Action> {
       guard !state.currentUserId.isEmpty else { return .none }
+      // 충돌 감지 비활성화 (threshold == -1)
+      guard state.conflictDetectionThreshold >= 0 else {
+        state.isCheckingConflicts = false
+        state.conflicts = []
+        return .none
+      }
 
       state.isCheckingConflicts = true
 

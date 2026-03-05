@@ -782,6 +782,7 @@ extension ConflictThresholdSettings {
 
     @ObservableState
     public struct State: Equatable, Sendable {
+      var isEnabled: Bool = true
       var threshold: Int = 0
       var isLoading: Bool = true
       var isCustomMode: Bool = false
@@ -799,6 +800,7 @@ extension ConflictThresholdSettings {
     @CasePathable
     public enum View: Equatable, Sendable {
       case onAppear
+      case enabledToggled(Bool)
       case thresholdSelected(Int)
       case customModeTapped
       case customInputChanged(String)
@@ -832,6 +834,37 @@ extension ConflictThresholdSettings {
               } catch {
                 await send(.internal(.updateFailed))
               }
+            }
+
+          case .enabledToggled(let enabled):
+            state.isEnabled = enabled
+            if !enabled {
+              // 비활성화: 서버에 -1 저장
+              return .run { send in
+                await hapticFeedback.selection()
+                guard let userId = await authClient.currentUser()?.uid else { return }
+                do {
+                  try await userSettingsClient.updateConflictDetectionThreshold(userId, -1)
+                  await send(.internal(.updateCompleted))
+                } catch {
+                  await send(.internal(.updateFailed))
+                }
+              }
+              .cancellable(id: CancelID.thresholdUpdate, cancelInFlight: true)
+            } else {
+              // 활성화: 현재 threshold 값으로 서버 업데이트
+              let threshold = state.threshold
+              return .run { [threshold] send in
+                await hapticFeedback.selection()
+                guard let userId = await authClient.currentUser()?.uid else { return }
+                do {
+                  try await userSettingsClient.updateConflictDetectionThreshold(userId, threshold)
+                  await send(.internal(.updateCompleted))
+                } catch {
+                  await send(.internal(.updateFailed))
+                }
+              }
+              .cancellable(id: CancelID.thresholdUpdate, cancelInFlight: true)
             }
 
           case .thresholdSelected(let value):
@@ -884,12 +917,18 @@ extension ConflictThresholdSettings {
         case .internal(let internalAction):
           switch internalAction {
           case .settingsLoaded(let threshold):
-            state.threshold = threshold
-            state.isLoading = false
-            if !ConflictThresholdSettings.presets.contains(threshold) {
-              state.isCustomMode = true
-              state.customInputText = "\(threshold)"
+            if threshold < 0 {
+              state.isEnabled = false
+              state.threshold = 0
+            } else {
+              state.isEnabled = true
+              state.threshold = threshold
+              if !ConflictThresholdSettings.presets.contains(threshold) {
+                state.isCustomMode = true
+                state.customInputText = "\(threshold)"
+              }
             }
+            state.isLoading = false
             return .none
 
           case .updateCompleted:
@@ -922,8 +961,13 @@ extension ConflictThresholdSettings {
           ScrollView {
             VStack(spacing: 16) {
               headerDescription
-              exampleSection
+
               thresholdSection
+                .opacity(store.isEnabled ? 1 : 0.35)
+                .allowsHitTesting(store.isEnabled)
+
+              exampleSection
+                .opacity(store.isEnabled ? 1 : 0.35)
             }
             .padding(.horizontal, 16)
             .padding(.top, 12)
@@ -933,7 +977,7 @@ extension ConflictThresholdSettings {
       }
       .scrollDismissesKeyboard(.interactively)
       .auroraBackground()
-      .navigationTitle("약속 사이 여유 시간")
+      .navigationTitle("일정 충돌 감지")
       .navigationBarTitleDisplayMode(.inline)
       .onTapGesture {
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
@@ -974,11 +1018,29 @@ extension ConflictThresholdSettings {
     }
 
     private var headerDescription: some View {
-      Text("새 약속을 만들 때, 기존 일정과의 시간 간격이 설정한 여유 시간보다 짧으면 충돌로 알려드려요.")
-        .font(.system(size: 14))
-        .foregroundStyle(Color.pmtext.secondary)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 4)
+      VStack(alignment: .leading, spacing: 8) {
+        HStack(spacing: 6) {
+          ProBadge()
+
+          Text("추가 기능")
+            .font(.system(size: 14, weight: .medium))
+            .foregroundStyle(Color.pmtext.primary)
+
+          Spacer()
+
+          Toggle("", isOn: Binding(
+            get: { store.isEnabled },
+            set: { store.send(.view(.enabledToggled($0)), animation: .default) }
+          ))
+          .labelsHidden()
+          .tint(Color.pmindigo.n500)
+        }
+
+        Text("새 약속이 기존 일정과 설정한 여유 시간보다 가까우면 알려드려요.")
+          .font(.system(size: 14))
+          .foregroundStyle(Color.pmtext.secondary)
+      }
+      .padding(.horizontal, 4)
     }
 
     private var thresholdSection: some View {
@@ -989,11 +1051,6 @@ extension ConflictThresholdSettings {
 
         VStack(spacing: 0) {
           HStack {
-            Image(systemName: "exclamationmark.triangle")
-              .font(.body)
-              .foregroundStyle(Color.pmindigo.n500)
-              .frame(width: 24)
-
             Text("최소 여유 시간")
               .font(.body)
               .foregroundStyle(Color.pmtext.primary)
@@ -1071,26 +1128,20 @@ extension ConflictThresholdSettings {
         }
         .adaptiveGlassCard()
 
-        Text(thresholdDescription)
+        Text("설정한 여유 시간보다 가까운 일정은 충돌로 감지해요.")
           .font(.system(size: 12))
           .foregroundStyle(Color.pmtext.secondary)
           .padding(.horizontal, 4)
-          .animation(.default, value: store.threshold)
       }
     }
 
     private var exampleSection: some View {
       VStack(alignment: .leading, spacing: 10) {
-        Text("미리보기")
+        Text("예시")
           .font(.system(size: 16, weight: .semibold))
           .padding(.horizontal, 4)
 
         ConflictThresholdPreview(threshold: store.threshold)
-
-        Text("여유 시간 설정에 따라 충돌 여부가 달라져요.")
-          .font(.system(size: 12))
-          .foregroundStyle(Color.pmtext.secondary)
-          .padding(.horizontal, 4)
       }
     }
   }
@@ -1121,12 +1172,10 @@ extension ConflictThresholdSettings {
     // 점심 약속: 1:50~2:10, 내 약속(2~4시)과 10분 겹침
     // 팀 미팅: 4:10~5:00, 내 약속과 gap = 10분, 겹침 없음
     // 저녁 약속: 4:30~6:00, 내 약속과 gap = 30분, 겹침 없음
-    // 오전 운동: 12:00~1:30, 내 약속과 gap = 30분, 겹침 없음
     private let scenarios: [Scenario] = [
       .init(title: "점심 약속", emoji: "🍜",  start: 50,  end:  70, overlapMinutes: 10, gapMinutes: 0),
       .init(title: "팀 미팅",  emoji: "📌",  start: 190, end: 240, overlapMinutes: 0,  gapMinutes: 10),
       .init(title: "저녁 약속", emoji: "🍽️", start: 210, end: 300, overlapMinutes: 0,  gapMinutes: 30),
-      .init(title: "오전 운동", emoji: "🏃",  start: -60, end:  30, overlapMinutes: 0,  gapMinutes: 30),
     ]
 
     private func frac(_ m: CGFloat) -> CGFloat { m / totalMinutes }
@@ -1180,7 +1229,7 @@ extension ConflictThresholdSettings {
         // 충돌 알림 미리보기 (adaptive glass + popover)
         if !conflictScenarios.isEmpty {
           VStack(alignment: .leading, spacing: 6) {
-            Text("약속 생성 시 이렇게 알려드려요")
+            Text("약속 생성 시 이렇게 알려드려요. (탭하면 상세 정보를 볼 수 있어요)")
               .font(.system(size: 10, weight: .medium))
               .foregroundStyle(Color.pmtext.secondary)
 
