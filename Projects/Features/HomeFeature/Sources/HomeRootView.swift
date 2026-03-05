@@ -21,6 +21,7 @@ extension Home {
       NavigationStack(path: $store.scope(state: \.path, action: \.path)) {
         homeContent
           .auroraBackground()
+          .toolbarBackground(.hidden, for: .navigationBar)
           .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
               NotificationButton(

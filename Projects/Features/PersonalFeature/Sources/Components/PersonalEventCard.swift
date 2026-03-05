@@ -10,6 +10,8 @@ import PromisoShared
 public struct PersonalEventCard: View {
   let event: PersonalEventModel
   let weather: WeatherInfo?
+  let conflicts: [ConflictInfo]
+  let isCheckingConflicts: Bool
   let onTap: () -> Void
   let onEdit: () -> Void
   let onDelete: () -> Void
@@ -17,12 +19,16 @@ public struct PersonalEventCard: View {
   public init(
     event: PersonalEventModel,
     weather: WeatherInfo? = nil,
+    conflicts: [ConflictInfo] = [],
+    isCheckingConflicts: Bool = false,
     onTap: @escaping () -> Void,
     onEdit: @escaping () -> Void,
     onDelete: @escaping () -> Void
   ) {
     self.event = event
     self.weather = weather
+    self.conflicts = conflicts
+    self.isCheckingConflicts = isCheckingConflicts
     self.onTap = onTap
     self.onEdit = onEdit
     self.onDelete = onDelete
@@ -41,16 +47,16 @@ public struct PersonalEventCard: View {
           bottomSection
         }
 
-        // 날씨
-        if let weather = weather,
-           let forecast = weather.forecast(for: event.startAt) {
-          WeatherCardStrip(
-            forecast: forecast,
-            rangeForecasts: weather.forecasts(from: event.startAt, to: event.endAt),
-            referenceTimeText: event.startAt.formattedMonthDayTime,
-            forecastSource: weather.forecastSource(for: event.startAt)
-          )
-        }
+        // PRO 혜택 (날씨 + 충돌 통합)
+        ProBenefitCardView(
+          weather: weather,
+          eventStartAt: event.startAt,
+          eventEndAt: event.endAt,
+          conflicts: conflicts,
+          isCheckingConflicts: isCheckingConflicts,
+          eventTitle: event.title,
+          eventEmoji: event.emoji
+        )
       }
       .padding(16)
       .contentShape(Rectangle())

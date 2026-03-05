@@ -59,9 +59,6 @@ public struct ProBonusFloatingView: View {
   let newEventStartAt: Date
   let newEventEndAt: Date?
 
-  @State private var showWeatherTooltip = false
-  @State private var showConflictTooltip = false
-
   public init(
     weatherForecast: HourlyForecast? = nil,
     rangeForecasts: [HourlyForecast] = [],
@@ -108,18 +105,31 @@ public struct ProBonusFloatingView: View {
 
         // 날씨 행
         if let forecast = weatherForecast {
-          weatherRow(forecast: forecast)
+          ProWeatherRow(
+            forecast: forecast,
+            rangeForecasts: rangeForecasts,
+            forecastSource: forecastSource
+          )
         }
 
         // 충돌 행
         if isCheckingConflicts || !conflicts.isEmpty {
-          conflictRow
+          ProConflictRow(
+            conflicts: conflicts,
+            isChecking: isCheckingConflicts,
+            eventTitle: newEventTitle,
+            eventEmoji: newEventEmoji,
+            eventStartAt: newEventStartAt,
+            eventEndAt: newEventEndAt
+          )
         }
       }
       .padding(.horizontal, 10)
       .padding(.vertical, 6)
       .frame(maxWidth: .infinity, alignment: .leading)
+      .background(Color.pmindigo.n500.opacity(0.04), in: RoundedRectangle(cornerRadius: 12))
       .adaptiveGlassCard(cornerRadius: 12)
+      .padding(.bottom, 4)
       .transition(.opacity.combined(with: .move(edge: .bottom)))
     }
   }
@@ -155,126 +165,6 @@ public struct ProBonusFloatingView: View {
     }
   }
 
-  // MARK: - Weather Row
-
-  @ViewBuilder
-  private func weatherRow(forecast: HourlyForecast) -> some View {
-    Button {
-      showWeatherTooltip = true
-    } label: {
-      HStack(spacing: 6) {
-        Image(systemName: forecast.condition.sfSymbolName)
-          .symbolRenderingMode(.multicolor)
-          .font(.system(size: 12))
-          .frame(width: 22, height: 22)
-          .background(
-            Circle()
-              .fill(Color.cyan.opacity(0.12))
-          )
-
-        Text("\(Int(forecast.temperature.rounded()))°")
-          .font(.system(size: 13, weight: .semibold))
-          .foregroundStyle(.primary)
-
-        Text(adviceMessage(for: forecast))
-          .font(.system(size: 12))
-          .foregroundStyle(.secondary)
-          .lineLimit(1)
-
-        Spacer(minLength: 0)
-
-        Image(systemName: "info.circle")
-          .font(.system(size: 12))
-          .foregroundStyle(.tertiary)
-      }
-      .contentShape(Rectangle())
-    }
-    .buttonStyle(.plain)
-    .popover(isPresented: $showWeatherTooltip, arrowEdge: .bottom) {
-      WeatherTooltip(
-        forecast: forecast,
-        rangeForecasts: rangeForecasts,
-        forecastSource: forecastSource
-      )
-      .presentationCompactAdaptation(.popover)
-    }
-  }
-
-  // MARK: - Conflict Row
-
-  @ViewBuilder
-  private var conflictRow: some View {
-    if isCheckingConflicts {
-      HStack(spacing: 6) {
-        ProgressView()
-          .scaleEffect(0.7)
-          .frame(width: 14, height: 14)
-
-        Text(LocalizedStrings.Shared.conflictCheckingEvents)
-          .font(.system(size: 12))
-          .foregroundStyle(.secondary)
-
-        Spacer(minLength: 0)
-      }
-    } else if !conflicts.isEmpty {
-      Button {
-        showConflictTooltip = true
-      } label: {
-        HStack(spacing: 6) {
-          Image(systemName: "exclamationmark.triangle.fill")
-            .font(.system(size: 14))
-            .foregroundStyle(Color.pmwarning.n500)
-
-          if conflicts.count == 1, let first = conflicts.first {
-            let text: String = {
-              if first.overlapMinutes > 0 {
-                return "'\(first.title)'과(와) \(first.overlapMinutes)분 겹쳐요"
-              } else if first.gapMinutes > 0 {
-                return "'\(first.title)'과(와) 여유 \(first.gapMinutes)분이에요"
-              } else {
-                return "'\(first.title)'과(와) 일정이 겹쳐요"
-              }
-            }()
-            Text(text)
-              .font(.system(size: 12))
-              .foregroundStyle(.primary)
-              .lineLimit(1)
-          } else {
-            Text("\(conflicts.count)건의 일정이 겹쳐요")
-              .font(.system(size: 12))
-              .foregroundStyle(.primary)
-          }
-
-          Spacer(minLength: 0)
-
-          Image(systemName: "info.circle")
-            .font(.system(size: 12))
-            .foregroundStyle(.tertiary)
-        }
-        .contentShape(Rectangle())
-      }
-      .buttonStyle(.plain)
-      .popover(isPresented: $showConflictTooltip, arrowEdge: .bottom) {
-        ConflictTooltip(
-          newEventTitle: newEventTitle,
-          newEventEmoji: newEventEmoji,
-          newEventStartAt: newEventStartAt,
-          newEventEndAt: newEventEndAt,
-          conflicts: conflicts
-        )
-        .presentationCompactAdaptation(.popover)
-      }
-    }
-  }
-
-  // MARK: - Helpers
-
-  private func adviceMessage(for forecast: HourlyForecast) -> String {
-    if let advice = WeatherAdvice.from(forecast: forecast).first {
-      return advice.message
-    }
-    return forecast.condition.description
-  }
 }
 
 // MARK: - Previews

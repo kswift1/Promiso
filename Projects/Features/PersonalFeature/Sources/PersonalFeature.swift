@@ -57,6 +57,8 @@ extension PersonalMode {
     @Dependency(\.personalEventClient) var personalEventClient
     @Dependency(\.localNotificationClient) var localNotificationClient
     @Dependency(\.calendarSyncClient) var calendarSyncClient
+    @Dependency(\.scheduleConflictClient) var scheduleConflictClient
+    @Dependency(\.userSettingsClient) var userSettingsClient
 
     public init() {}
 
@@ -70,6 +72,9 @@ extension PersonalMode {
       @Shared(.inMemory("weatherCache"))
       var weatherCache: [String: WeatherInfo] = [:]
       var toastMessage: ToastMessage?
+      var conflictsByEventId: [String: [ScheduleConflict]] = [:]
+      var conflictCheckingIds: Set<String> = []
+      var conflictDetectionThreshold: Int = 0
 
       @Presents var createEvent: CreatePersonalEvent.Feature.State?
       @Presents var eventDetail: PersonalEventDetail.Feature.State?
@@ -204,11 +209,16 @@ extension PersonalMode {
         case eventDeleteFailed(String)
         case syncPersonalCalendar
         case ongoingEventsLoaded([PersonalEventModel])
+        case checkConflicts([PersonalEventModel])
+        case conflictsLoaded(eventId: String, [ScheduleConflict])
+        case conflictCheckFailed(eventId: String)
+        case conflictSettingsLoaded(Int)
       }
     }
 
     private enum CancelID {
       case eventSubscription
+      case conflictCheck
     }
 
     public var body: some ReducerOf<Self> {
@@ -218,9 +228,15 @@ extension PersonalMode {
           switch viewAction {
           case .onAppear:
             guard state.eventsState == .idle else { return .none }
+            let userId = state.currentUser.userId
             return .merge(
               .send(.internal(.subscribeToEvents)),
-              .send(.internal(.syncPersonalCalendar))
+              .send(.internal(.syncPersonalCalendar)),
+              .run { [userSettingsClient] send in
+                if let settings = try? await userSettingsClient.fetchSettings(userId) {
+                  await send(.internal(.conflictSettingsLoaded(settings.conflictDetectionThreshold)))
+                }
+              }
             )
 
           case .refreshEvents:
@@ -338,7 +354,7 @@ extension PersonalMode {
 
           case .eventsUpdated(let events):
             state.eventsState = .loaded(events)
-            return .run { [localNotificationClient] _ in
+            let notificationEffect: Effect<Action> = .run { [localNotificationClient] _ in
               let pendingIds = Set(
                 (await localNotificationClient.pendingIds())
                   .filter { $0.hasPrefix("personal_reminder_") }
@@ -363,6 +379,10 @@ extension PersonalMode {
                 }
               }
             }
+            return .merge(
+              notificationEffect,
+              .send(.internal(.checkConflicts(events)))
+            )
 
           case .eventsFailed(let message):
             state.eventsState = .failed(AppError(message: message))
@@ -379,6 +399,51 @@ extension PersonalMode {
               subtitle: message,
               position: .top
             )
+            return .none
+
+          case .checkConflicts(let events):
+            let userId = state.currentUser.userId
+            let threshold = state.conflictDetectionThreshold
+            guard threshold >= 0 else {
+              AppLogger.personal.debug("[ConflictCheck] threshold=\(threshold), 충돌 체크 스킵")
+              return .none
+            }
+            let futureEvents = events.filter { $0.startAt > Date() }
+            AppLogger.personal.debug("[ConflictCheck] 전체 \(events.count)건 중 미래 \(futureEvents.count)건")
+            guard !futureEvents.isEmpty else { return .none }
+            for event in futureEvents {
+              state.conflictCheckingIds.insert(event.id)
+            }
+            return .merge(futureEvents.map { event in
+              .run { [scheduleConflictClient] send in
+                do {
+                  let conflicts = try await scheduleConflictClient.checkConflicts(
+                    userId,
+                    event.startAt,
+                    event.endAt,
+                    Set([event.id]),
+                    threshold
+                  )
+                  await send(.internal(.conflictsLoaded(eventId: event.id, conflicts)))
+                } catch {
+                  AppLogger.personal.error("[ConflictCheck] CF 실패 eventId=\(event.id): \(error)")
+                  await send(.internal(.conflictCheckFailed(eventId: event.id)))
+                }
+              }
+            })
+            .cancellable(id: CancelID.conflictCheck, cancelInFlight: true)
+
+          case .conflictsLoaded(let eventId, let conflicts):
+            state.conflictCheckingIds.remove(eventId)
+            state.conflictsByEventId[eventId] = conflicts
+            return .none
+
+          case .conflictCheckFailed(let eventId):
+            state.conflictCheckingIds.remove(eventId)
+            return .none
+
+          case .conflictSettingsLoaded(let threshold):
+            state.conflictDetectionThreshold = threshold
             return .none
 
           case .syncPersonalCalendar:

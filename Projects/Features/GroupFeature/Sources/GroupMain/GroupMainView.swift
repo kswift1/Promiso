@@ -414,6 +414,18 @@ extension GroupMain {
         respondingState: store.proposalResponding[promiseId] ?? .idle,
         isLive: store.liveActivityPromiseId == promiseId,
         weather: store.weatherCache[promiseId],
+        conflicts: (store.conflictsByPromiseId[promiseId] ?? []).map { conflict in
+          ConflictInfo(
+            title: conflict.title,
+            overlapMinutes: conflict.overlapMinutes,
+            gapMinutes: conflict.gapMinutes,
+            startAt: conflict.startAt,
+            endAt: conflict.endAt,
+            emoji: conflict.emoji,
+            severity: conflict.severity == .confirmed ? .confirmed : .pending
+          )
+        },
+        isCheckingConflicts: store.conflictCheckingIds.contains(promiseId),
         onTap: {
           store.send(.view(.promiseTapped(promise)))
         },

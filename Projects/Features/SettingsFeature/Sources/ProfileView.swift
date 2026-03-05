@@ -438,6 +438,7 @@ extension Settings {
         .padding(.bottom, 24)
       }
       .auroraBackground()
+      .toolbarBackground(.hidden, for: .navigationBar)
       .navigationTitle(LocalizedStrings.SettingsStrings.title)
       .navigationBarTitleDisplayMode(.large)
       .sheet(
