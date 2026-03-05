@@ -448,10 +448,12 @@ struct CalendarDayTimelineView: View {
       let y = yOffset(for: context.date)
 
       HStack(spacing: 0) {
+        Color.clear
+          .frame(width: timeLabelWidth - 4, height: 8)
+
         Circle()
           .fill(Color.red)
           .frame(width: 8, height: 8)
-          .offset(x: timeLabelWidth - 4)
 
         Rectangle()
           .fill(Color.red)
@@ -459,7 +461,7 @@ struct CalendarDayTimelineView: View {
       }
       .offset(y: y - 4)
     }
-    .frame(height: totalHeight)
+    .frame(height: totalHeight, alignment: .top)
   }
 
   // MARK: - Context Menu Preview
