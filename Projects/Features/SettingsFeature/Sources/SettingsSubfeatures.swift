@@ -976,7 +976,7 @@ extension ConflictThresholdSettings {
       }
       .scrollDismissesKeyboard(.interactively)
       .auroraBackground()
-      .navigationTitle("일정 충돌 감지")
+      .navigationTitle(LocalizedStrings.SettingsStrings.conflictDetectionTitle)
       .navigationBarTitleDisplayMode(.inline)
       .onTapGesture {
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
@@ -986,34 +986,36 @@ extension ConflictThresholdSettings {
       }
     }
 
-    private let thresholdOptions: [(value: Int, label: String)] = [
-      (0,  "겹칠 때만"),
-      (15, "15분"),
-      (30, "30분"),
-      (60, "1시간"),
-    ]
+    private var thresholdOptions: [(value: Int, label: String)] {
+      [
+        (0,  LocalizedStrings.SettingsStrings.conflictDetectionOverlapOnly),
+        (15, "15분"),
+        (30, "30분"),
+        (60, "1시간"),
+      ]
+    }
 
     private var thresholdDescription: String {
       let t = store.threshold
       if t == 0 {
-        return "시간이 겹치는 일정만 충돌로 감지해요."
+        return LocalizedStrings.SettingsStrings.conflictDetectionOverlapOnlyHint
       }
       if t >= 60 {
         let hours = t / 60
         let mins = t % 60
         if mins == 0 {
-          return "약속 사이 최소 \(hours)시간의 여유 시간을 두고 충돌을 판단해요."
+          return LocalizedStrings.SettingsStrings.conflictDetectionThresholdDescriptionHours(hours)
         }
-        return "약속 사이 최소 \(hours)시간 \(mins)분의 여유 시간을 두고 충돌을 판단해요."
+        return LocalizedStrings.SettingsStrings.conflictDetectionThresholdDescriptionHoursMinutes(hours, mins)
       }
-      return "약속 사이 최소 \(t)분의 여유 시간을 두고 충돌을 판단해요."
+      return LocalizedStrings.SettingsStrings.conflictDetectionThresholdDescriptionMinutes(t)
     }
 
     private var currentThresholdLabel: String {
       if store.isCustomMode {
-        return "\(store.threshold)분"
+        return LocalizedStrings.SettingsStrings.conflictDetectionCurrentMinutes(store.threshold)
       }
-      return thresholdOptions.first { $0.value == store.threshold }?.label ?? "겹칠 때만"
+      return thresholdOptions.first { $0.value == store.threshold }?.label ?? LocalizedStrings.SettingsStrings.conflictDetectionOverlapOnly
     }
 
     private var headerDescription: some View {
@@ -1021,7 +1023,7 @@ extension ConflictThresholdSettings {
         HStack(spacing: 6) {
           ProBadge()
 
-          Text("추가 기능")
+          Text(LocalizedStrings.SettingsStrings.conflictDetectionAdditionalFeature)
             .font(.system(size: 14, weight: .medium))
             .foregroundStyle(Color.pmtext.primary)
 
@@ -1035,7 +1037,7 @@ extension ConflictThresholdSettings {
           .tint(Color.pmindigo.n500)
         }
 
-        Text("새 약속이 기존 일정과 설정한 여유 시간보다 가까우면 알려드려요.")
+        Text(LocalizedStrings.SettingsStrings.conflictDetectionDescription)
           .font(.system(size: 14))
           .foregroundStyle(Color.pmtext.secondary)
       }
@@ -1044,13 +1046,13 @@ extension ConflictThresholdSettings {
 
     private var thresholdSection: some View {
       VStack(alignment: .leading, spacing: 10) {
-        Text("여유 시간 설정")
+        Text(LocalizedStrings.SettingsStrings.conflictDetectionThresholdSection)
           .font(.system(size: 16, weight: .semibold))
           .padding(.horizontal, 4)
 
         VStack(spacing: 0) {
           HStack {
-            Text("최소 여유 시간")
+            Text(LocalizedStrings.SettingsStrings.conflictDetectionMinThreshold)
               .font(.body)
               .foregroundStyle(Color.pmtext.primary)
 
@@ -1075,9 +1077,9 @@ extension ConflictThresholdSettings {
                 store.send(.view(.customModeTapped), animation: .default)
               } label: {
                 if store.isCustomMode {
-                  Label("직접 설정", systemImage: "checkmark")
+                  Label(LocalizedStrings.SettingsStrings.conflictDetectionCustom, systemImage: "checkmark")
                 } else {
-                  Text("직접 설정")
+                  Text(LocalizedStrings.SettingsStrings.conflictDetectionCustom)
                 }
               }
             } label: {
@@ -1117,7 +1119,7 @@ extension ConflictThresholdSettings {
                     }
                   }
                 }
-              Text("분")
+              Text(LocalizedStrings.SettingsStrings.conflictDetectionMinuteUnit)
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(Color.pmtext.secondary)
             }
@@ -1127,7 +1129,7 @@ extension ConflictThresholdSettings {
         }
         .adaptiveGlassCard()
 
-        Text("설정한 여유 시간보다 가까운 일정은 충돌로 감지해요.")
+        Text(LocalizedStrings.SettingsStrings.conflictDetectionThresholdHint)
           .font(.system(size: 12))
           .foregroundStyle(Color.pmtext.secondary)
           .padding(.horizontal, 4)
@@ -1136,7 +1138,7 @@ extension ConflictThresholdSettings {
 
     private var exampleSection: some View {
       VStack(alignment: .leading, spacing: 10) {
-        Text("예시")
+        Text(LocalizedStrings.SettingsStrings.conflictDetectionExample)
           .font(.system(size: 16, weight: .semibold))
           .padding(.horizontal, 4)
 
@@ -1193,7 +1195,7 @@ extension ConflictThresholdSettings {
         VStack(alignment: .leading, spacing: 4) {
           timeAxis
 
-          Text("새로 만드는 약속")
+          Text(LocalizedStrings.SettingsStrings.conflictDetectionNewEvent)
             .font(.system(size: 11, weight: .bold))
             .foregroundStyle(Color.pmindigo.n500)
 
@@ -1203,7 +1205,7 @@ extension ConflictThresholdSettings {
         // 기존 일정 카드 (plain background)
         VStack(alignment: .leading, spacing: 8) {
           HStack(spacing: 4) {
-            Text("기존 일정")
+            Text(LocalizedStrings.SettingsStrings.conflictDetectionExistingEvents)
               .font(.system(size: 11, weight: .bold))
               .foregroundStyle(Color.pmtext.secondary)
             Rectangle()
@@ -1228,7 +1230,7 @@ extension ConflictThresholdSettings {
         // 충돌 알림 미리보기 (adaptive glass + popover)
         if !conflictScenarios.isEmpty {
           VStack(alignment: .leading, spacing: 6) {
-            Text("약속 생성 시 이렇게 알려드려요. (탭하면 상세 정보를 볼 수 있어요)")
+            Text(LocalizedStrings.SettingsStrings.conflictDetectionPreviewHint)
               .font(.system(size: 10, weight: .medium))
               .foregroundStyle(Color.pmtext.secondary)
 
@@ -1308,7 +1310,7 @@ extension ConflictThresholdSettings {
           )
         }
         ConflictTooltip(
-          newEventTitle: "새로 만드는 약속",
+          newEventTitle: LocalizedStrings.SettingsStrings.conflictDetectionNewEvent,
           newEventStartAt: scenarioToDate(myStart),
           newEventEndAt: scenarioToDate(myEnd),
           conflicts: conflictInfos
@@ -1403,11 +1405,11 @@ extension ConflictThresholdSettings {
           Spacer()
 
           if scenario.overlapMinutes > 0 {
-            Text("\(scenario.overlapMinutes)분 겹침")
+            Text(LocalizedStrings.Shared.conflictOverlapMinutes(scenario.overlapMinutes))
               .font(.system(size: 10))
               .foregroundStyle(Color.pmtext.secondary)
           } else {
-            Text("여유 \(scenario.gapMinutes)분")
+            Text(LocalizedStrings.Shared.conflictMarginMinutes(scenario.gapMinutes))
               .font(.system(size: 10))
               .foregroundStyle(Color.pmtext.secondary)
           }
@@ -1415,7 +1417,7 @@ extension ConflictThresholdSettings {
           HStack(spacing: 3) {
             Image(systemName: isConflict ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
               .font(.system(size: 11))
-            Text(isConflict ? "충돌" : "여유")
+            Text(isConflict ? LocalizedStrings.SettingsStrings.conflictDetectionConflict : LocalizedStrings.SettingsStrings.conflictDetectionMargin)
               .font(.system(size: 11, weight: .semibold))
           }
           .foregroundStyle(isConflict ? Color.pmwarning.n500 : Color.pmsuccess.n500)

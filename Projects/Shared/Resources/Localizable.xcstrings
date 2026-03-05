@@ -19036,6 +19036,636 @@
         }
       }
     },
+    "shared.conflict.checkingEvents" : {
+      "comment" : "겹치는 일정이 있는지 확인중",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Checking for schedule conflicts..."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "겹치는 일정이 있는지 확인중이에요"
+          }
+        }
+      }
+    },
+    "shared.conflict.count" : {
+      "comment" : "충돌 건수 (예: 2건)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld conflicts"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld건"
+          }
+        }
+      }
+    },
+    "shared.conflict.existingEvent" : {
+      "comment" : "기존 일정 레이블",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Existing Event"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "기존 일정"
+          }
+        }
+      }
+    },
+    "shared.conflict.focusedOn" : {
+      "comment" : "특정 일정 중심으로 표시 (예: '회의' 겹치는 구간 중심으로 표시)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Centered on overlap with '%@'"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "'%@' 겹치는 구간 중심으로 표시"
+          }
+        }
+      }
+    },
+    "shared.conflict.margin.hours" : {
+      "comment" : "여유 시간 (시간만, 예: 여유 2시간)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lldh margin"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "여유 %lld시간"
+          }
+        }
+      }
+    },
+    "shared.conflict.margin.hoursMinutes" : {
+      "comment" : "여유 시간 (시간+분, 예: 여유 1시간 30분)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lldh %2$lldm margin"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "여유 %1$lld시간 %2$lld분"
+          }
+        }
+      }
+    },
+    "shared.conflict.margin.minutes" : {
+      "comment" : "여유 시간 (분만, 예: 여유 30분)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lldm margin"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "여유 %lld분"
+          }
+        }
+      }
+    },
+    "shared.conflict.newEvent" : {
+      "comment" : "새 일정 레이블",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New Event"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "새 일정"
+          }
+        }
+      }
+    },
+    "shared.conflict.overlap" : {
+      "comment" : "일정 겹침 (여유 없음)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Overlap"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "일정 겹침"
+          }
+        }
+      }
+    },
+    "shared.conflict.overlap.hours" : {
+      "comment" : "겹침 시간 (시간만, 예: 2시간)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lldh"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld시간"
+          }
+        }
+      }
+    },
+    "shared.conflict.overlap.hoursMinutes" : {
+      "comment" : "겹침 시간 (시간+분, 예: 1시간 30분)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lldh %2$lldm"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld시간 %2$lld분"
+          }
+        }
+      }
+    },
+    "shared.conflict.overlap.minutes" : {
+      "comment" : "겹침 시간 (분만, 예: 30분)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lldm"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld분"
+          }
+        }
+      }
+    },
+    "shared.conflict.overlappingEvents" : {
+      "comment" : "겹치는 일정 헤더",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Overlapping Events"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "겹치는 일정"
+          }
+        }
+      }
+    },
+    "shared.weather.checking" : {
+      "comment" : "약속시간대 날씨 확인중 (위치 없음)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Checking weather for promise time..."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "약속시간대 날씨를 확인중이에요"
+          }
+        }
+      }
+    },
+    "shared.weather.checkingWithLocation" : {
+      "comment" : "약속시간대 날씨 확인중 (위치 이름 포함)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Checking weather for %@ promise time..."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@의 약속시간대 날씨를 확인중이에요"
+          }
+        }
+      }
+    },
+    "settings.conflictDetection.additionalFeature" : {
+      "comment" : "충돌 감지 추가 기능 레이블",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add-on"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "추가 기능"
+          }
+        }
+      }
+    },
+    "settings.conflictDetection.conflict" : {
+      "comment" : "충돌 상태 레이블",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conflict"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "충돌"
+          }
+        }
+      }
+    },
+    "settings.conflictDetection.currentMinutes" : {
+      "comment" : "현재 설정된 여유 시간 (분)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld min"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld분"
+          }
+        }
+      }
+    },
+    "settings.conflictDetection.custom" : {
+      "comment" : "직접 설정 옵션 레이블",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Custom"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "직접 설정"
+          }
+        }
+      }
+    },
+    "settings.conflictDetection.description" : {
+      "comment" : "충돌 감지 기능 설명",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "We'll notify you when a new promise is closer than your set margin to an existing event."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "새 약속이 기존 일정과 설정한 여유 시간보다 가까우면 알려드려요."
+          }
+        }
+      }
+    },
+    "settings.conflictDetection.example" : {
+      "comment" : "예시 섹션 제목",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Example"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "예시"
+          }
+        }
+      }
+    },
+    "settings.conflictDetection.existingEvents" : {
+      "comment" : "기존 일정 레이블 (설정 화면)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Existing Events"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "기존 일정"
+          }
+        }
+      }
+    },
+    "settings.conflictDetection.margin" : {
+      "comment" : "여유 상태 레이블",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Margin"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "여유"
+          }
+        }
+      }
+    },
+    "settings.conflictDetection.minThreshold" : {
+      "comment" : "최소 여유 시간 레이블",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Minimum Margin"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "최소 여유 시간"
+          }
+        }
+      }
+    },
+    "settings.conflictDetection.minuteUnit" : {
+      "comment" : "분 단위 레이블",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "min"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "분"
+          }
+        }
+      }
+    },
+    "settings.conflictDetection.newEvent" : {
+      "comment" : "새로 만드는 약속 레이블 (설정 화면 예시)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New Promise"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "새로 만드는 약속"
+          }
+        }
+      }
+    },
+    "settings.conflictDetection.overlapOnly" : {
+      "comment" : "겹칠 때만 옵션 레이블",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Overlap Only"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "겹칠 때만"
+          }
+        }
+      }
+    },
+    "settings.conflictDetection.overlapOnlyHint" : {
+      "comment" : "겹칠 때만 설명 힌트",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Only detects conflicts when schedules actually overlap."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "시간이 겹치는 일정만 충돌로 감지해요."
+          }
+        }
+      }
+    },
+    "settings.conflictDetection.previewHint" : {
+      "comment" : "충돌 감지 미리보기 힌트",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This is how we'll notify you when creating a promise. (Tap for details)"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "약속 생성 시 이렇게 알려드려요. (탭하면 상세 정보를 볼 수 있어요)"
+          }
+        }
+      }
+    },
+    "settings.conflictDetection.thresholdDesc.hours" : {
+      "comment" : "임계값 설명 - 시간만 (예: 최소 2시간)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Detects conflict when events are within %lld hour(s) of each other."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "약속 사이 최소 %lld시간의 여유 시간을 두고 충돌을 판단해요."
+          }
+        }
+      }
+    },
+    "settings.conflictDetection.thresholdDesc.hoursMinutes" : {
+      "comment" : "임계값 설명 - 시간+분 (예: 최소 1시간 30분)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Detects conflict when events are within %1$lld hour(s) %2$lld minute(s) of each other."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "약속 사이 최소 %1$lld시간 %2$lld분의 여유 시간을 두고 충돌을 판단해요."
+          }
+        }
+      }
+    },
+    "settings.conflictDetection.thresholdDesc.minutes" : {
+      "comment" : "임계값 설명 - 분만 (예: 최소 30분)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Detects conflict when events are within %lld minute(s) of each other."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "약속 사이 최소 %lld분의 여유 시간을 두고 충돌을 판단해요."
+          }
+        }
+      }
+    },
+    "settings.conflictDetection.thresholdHint" : {
+      "comment" : "여유 시간 설정 힌트",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Events closer than your set margin will be detected as conflicts."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "설정한 여유 시간보다 가까운 일정은 충돌로 감지해요."
+          }
+        }
+      }
+    },
+    "settings.conflictDetection.thresholdSection" : {
+      "comment" : "여유 시간 설정 섹션 제목",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Margin Settings"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "여유 시간 설정"
+          }
+        }
+      }
+    },
+    "settings.conflictDetection.title" : {
+      "comment" : "일정 충돌 감지 화면 제목",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schedule Conflict Detection"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "일정 충돌 감지"
+          }
+        }
+      }
+    },
     "shared.createEvent.edit" : {
       "comment" : "일정 수정",
       "extractionState" : "manual",

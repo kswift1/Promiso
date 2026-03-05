@@ -140,12 +140,12 @@ public struct ProBonusFloatingView: View {
         .frame(width: 14, height: 14)
 
       if let name = weatherLocationName {
-        Text("\(name)의 약속시간대 날씨를 확인중이에요")
+        Text(LocalizedStrings.Shared.weatherCheckingWithLocation(name))
           .font(.system(size: 12))
           .foregroundStyle(.secondary)
           .lineLimit(1)
       } else {
-        Text("약속시간대 날씨를 확인중이에요")
+        Text(LocalizedStrings.Shared.weatherChecking)
           .font(.system(size: 12))
           .foregroundStyle(.secondary)
           .lineLimit(1)
@@ -210,7 +210,7 @@ public struct ProBonusFloatingView: View {
           .scaleEffect(0.7)
           .frame(width: 14, height: 14)
 
-        Text("겹치는 일정이 있는지 확인중이에요")
+        Text(LocalizedStrings.Shared.conflictCheckingEvents)
           .font(.system(size: 12))
           .foregroundStyle(.secondary)
 

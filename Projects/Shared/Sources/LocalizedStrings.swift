@@ -447,6 +447,41 @@ public enum LocalizedStrings {
     public static var exampleDate: String { String(localized: "settings.timeFormat.example.date", bundle: bundle) }
     public static var exampleTitle: String { String(localized: "settings.timeFormat.example.title", bundle: bundle) }
     public static var exampleLocation: String { String(localized: "settings.timeFormat.example.location", bundle: bundle) }
+
+    // MARK: - Conflict Detection Settings
+    public static var conflictDetectionTitle: String { String(localized: "settings.conflictDetection.title", bundle: bundle) }
+    public static var conflictDetectionAdditionalFeature: String { String(localized: "settings.conflictDetection.additionalFeature", bundle: bundle) }
+    public static var conflictDetectionDescription: String { String(localized: "settings.conflictDetection.description", bundle: bundle) }
+    public static var conflictDetectionThresholdSection: String { String(localized: "settings.conflictDetection.thresholdSection", bundle: bundle) }
+    public static var conflictDetectionMinThreshold: String { String(localized: "settings.conflictDetection.minThreshold", bundle: bundle) }
+    public static var conflictDetectionOverlapOnly: String { String(localized: "settings.conflictDetection.overlapOnly", bundle: bundle) }
+    public static var conflictDetectionCustom: String { String(localized: "settings.conflictDetection.custom", bundle: bundle) }
+    public static var conflictDetectionMinuteUnit: String { String(localized: "settings.conflictDetection.minuteUnit", bundle: bundle) }
+    public static var conflictDetectionThresholdHint: String { String(localized: "settings.conflictDetection.thresholdHint", bundle: bundle) }
+    public static var conflictDetectionExample: String { String(localized: "settings.conflictDetection.example", bundle: bundle) }
+    public static var conflictDetectionNewEvent: String { String(localized: "settings.conflictDetection.newEvent", bundle: bundle) }
+    public static var conflictDetectionExistingEvents: String { String(localized: "settings.conflictDetection.existingEvents", bundle: bundle) }
+    public static var conflictDetectionPreviewHint: String { String(localized: "settings.conflictDetection.previewHint", bundle: bundle) }
+    public static var conflictDetectionConflict: String { String(localized: "settings.conflictDetection.conflict", bundle: bundle) }
+    public static var conflictDetectionMargin: String { String(localized: "settings.conflictDetection.margin", bundle: bundle) }
+    public static var conflictDetectionOverlapOnlyHint: String { String(localized: "settings.conflictDetection.overlapOnlyHint", bundle: bundle) }
+    public static func conflictDetectionThresholdDescriptionHours(_ hours: Int) -> String {
+      String(localized: "settings.conflictDetection.thresholdDesc.hours", bundle: bundle)
+        .replacingOccurrences(of: "%lld", with: "\(hours)")
+    }
+    public static func conflictDetectionThresholdDescriptionHoursMinutes(_ hours: Int, _ minutes: Int) -> String {
+      String(localized: "settings.conflictDetection.thresholdDesc.hoursMinutes", bundle: bundle)
+        .replacingOccurrences(of: "%1$lld", with: "\(hours)")
+        .replacingOccurrences(of: "%2$lld", with: "\(minutes)")
+    }
+    public static func conflictDetectionThresholdDescriptionMinutes(_ minutes: Int) -> String {
+      String(localized: "settings.conflictDetection.thresholdDesc.minutes", bundle: bundle)
+        .replacingOccurrences(of: "%lld", with: "\(minutes)")
+    }
+    public static func conflictDetectionCurrentMinutes(_ minutes: Int) -> String {
+      String(localized: "settings.conflictDetection.currentMinutes", bundle: bundle)
+        .replacingOccurrences(of: "%lld", with: "\(minutes)")
+    }
   }
 
   // MARK: - Errors
@@ -1192,6 +1227,52 @@ public enum LocalizedStrings {
 
     // Conflict Warning
     public static var conflictChecking: String { String(localized: "shared.conflict.checking", bundle: bundle) }
+    public static var conflictCheckingEvents: String { String(localized: "shared.conflict.checkingEvents", bundle: bundle) }
+    public static var conflictOverlappingEvents: String { String(localized: "shared.conflict.overlappingEvents", bundle: bundle) }
+    public static var conflictNewEvent: String { String(localized: "shared.conflict.newEvent", bundle: bundle) }
+    public static var conflictExistingEvent: String { String(localized: "shared.conflict.existingEvent", bundle: bundle) }
+    public static var conflictOverlap: String { String(localized: "shared.conflict.overlap", bundle: bundle) }
+    public static func conflictCount(_ count: Int) -> String {
+      String(localized: "shared.conflict.count", bundle: bundle)
+        .replacingOccurrences(of: "%lld", with: "\(count)")
+    }
+    public static func conflictFocusedOn(_ title: String) -> String {
+      String(localized: "shared.conflict.focusedOn", bundle: bundle)
+        .replacingOccurrences(of: "%@", with: title)
+    }
+    public static func conflictMarginHoursMinutes(_ hours: Int, _ remaining: Int) -> String {
+      String(localized: "shared.conflict.margin.hoursMinutes", bundle: bundle)
+        .replacingOccurrences(of: "%1$lld", with: "\(hours)")
+        .replacingOccurrences(of: "%2$lld", with: "\(remaining)")
+    }
+    public static func conflictMarginHours(_ hours: Int) -> String {
+      String(localized: "shared.conflict.margin.hours", bundle: bundle)
+        .replacingOccurrences(of: "%lld", with: "\(hours)")
+    }
+    public static func conflictMarginMinutes(_ minutes: Int) -> String {
+      String(localized: "shared.conflict.margin.minutes", bundle: bundle)
+        .replacingOccurrences(of: "%lld", with: "\(minutes)")
+    }
+    public static func conflictOverlapHoursMinutes(_ hours: Int, _ remaining: Int) -> String {
+      String(localized: "shared.conflict.overlap.hoursMinutes", bundle: bundle)
+        .replacingOccurrences(of: "%1$lld", with: "\(hours)")
+        .replacingOccurrences(of: "%2$lld", with: "\(remaining)")
+    }
+    public static func conflictOverlapHours(_ hours: Int) -> String {
+      String(localized: "shared.conflict.overlap.hours", bundle: bundle)
+        .replacingOccurrences(of: "%lld", with: "\(hours)")
+    }
+    public static func conflictOverlapMinutes(_ minutes: Int) -> String {
+      String(localized: "shared.conflict.overlap.minutes", bundle: bundle)
+        .replacingOccurrences(of: "%lld", with: "\(minutes)")
+    }
+
+    // Weather
+    public static func weatherCheckingWithLocation(_ name: String) -> String {
+      String(localized: "shared.weather.checkingWithLocation", bundle: bundle)
+        .replacingOccurrences(of: "%@", with: name)
+    }
+    public static var weatherChecking: String { String(localized: "shared.weather.checking", bundle: bundle) }
   }
 
   // MARK: - Calendar
