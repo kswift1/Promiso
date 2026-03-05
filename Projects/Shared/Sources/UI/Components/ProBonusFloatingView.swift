@@ -15,6 +15,7 @@ public enum ConflictSeverity: Equatable, Sendable {
 public struct ConflictInfo: Equatable, Sendable {
   public let title: String
   public let overlapMinutes: Int
+  public let gapMinutes: Int
   public let startAt: Date
   public let endAt: Date?
   public let emoji: String?
@@ -23,6 +24,7 @@ public struct ConflictInfo: Equatable, Sendable {
   public init(
     title: String,
     overlapMinutes: Int,
+    gapMinutes: Int = 0,
     startAt: Date = .now,
     endAt: Date? = nil,
     emoji: String? = nil,
@@ -30,6 +32,7 @@ public struct ConflictInfo: Equatable, Sendable {
   ) {
     self.title = title
     self.overlapMinutes = overlapMinutes
+    self.gapMinutes = gapMinutes
     self.startAt = startAt
     self.endAt = endAt
     self.emoji = emoji
@@ -223,7 +226,16 @@ public struct ProBonusFloatingView: View {
             .foregroundStyle(Color.pmwarning.n500)
 
           if conflicts.count == 1, let first = conflicts.first {
-            Text(first.overlapMinutes > 0 ? "'\(first.title)'과(와) \(first.overlapMinutes)분 겹쳐요" : "'\(first.title)'과(와) 일정이 겹쳐요")
+            let text: String = {
+              if first.overlapMinutes > 0 {
+                return "'\(first.title)'과(와) \(first.overlapMinutes)분 겹쳐요"
+              } else if first.gapMinutes > 0 {
+                return "'\(first.title)'과(와) 여유 \(first.gapMinutes)분이에요"
+              } else {
+                return "'\(first.title)'과(와) 일정이 겹쳐요"
+              }
+            }()
+            Text(text)
               .font(.system(size: 12))
               .foregroundStyle(.primary)
               .lineLimit(1)

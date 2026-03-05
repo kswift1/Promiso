@@ -4,16 +4,6 @@
     "'%@' 겹치는 구간 중심으로 표시" : {
 
     },
-    "'%@'과(와) %@분 겹쳐요" : {
-      "localizations" : {
-        "ko" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "'%1$@'과(와) %2$@분 겹쳐요"
-          }
-        }
-      }
-    },
     "* iPhone 14 Pro 이상부터 가능해요" : {
       "localizations" : {
         "en" : {

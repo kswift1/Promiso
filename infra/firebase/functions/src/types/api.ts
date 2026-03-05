@@ -1682,6 +1682,9 @@ export interface CheckScheduleConflictsRequest {
 
   /** 충돌 결과에서 제외할 일정 ID (편집 시 자기 자신 제외) */
   excludeIds?: string[];
+
+  /** 최소 여유 시간 (분). 기본값 0 = 겹침만 감지 */
+  minGapMinutes?: number;
 }
 
 /**
@@ -1711,6 +1714,9 @@ export interface ScheduleConflictItem {
 
   /** 겹치는 시간 (분) */
   overlapMinutes: number;
+
+  /** 두 일정 사이 여유 시간 (분). 겹치면 0, 겹치지 않으면 양수 */
+  gapMinutes: number;
 }
 
 /**

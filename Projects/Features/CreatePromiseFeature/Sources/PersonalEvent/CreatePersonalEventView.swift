@@ -98,6 +98,7 @@ extension CreatePersonalEvent {
           ConflictInfo(
             title: $0.title,
             overlapMinutes: $0.overlapMinutes,
+            gapMinutes: $0.gapMinutes,
             startAt: $0.startAt,
             endAt: $0.endAt,
             emoji: $0.emoji,

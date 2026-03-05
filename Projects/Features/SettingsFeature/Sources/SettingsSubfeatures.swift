@@ -764,7 +764,7 @@ extension PromiseTabModeSettings {
 public enum ConflictThresholdSettings {}
 
 extension ConflictThresholdSettings {
-  static let presets: [Int] = [0, 5, 15, 30, 60]
+  static let presets: [Int] = [0, 15, 30, 60]
   static let customRange: ClosedRange<Int> = 1...120
 }
 
@@ -943,26 +943,25 @@ extension ConflictThresholdSettings {
     }
 
     private let thresholdOptions: [(value: Int, label: String)] = [
-      (0, "모든 겹침"),
-      (5, "5분 초과"),
-      (15, "15분 초과"),
-      (30, "30분 초과"),
-      (60, "1시간 초과"),
+      (0,  "겹치는 일정만"),
+      (15, "여유 15분 미만"),
+      (30, "여유 30분 미만"),
+      (60, "여유 1시간 미만"),
     ]
 
     private var thresholdDescription: String {
       let t = store.threshold
       if t == 0 {
-        return "일정이 1분이라도 겹치면 충돌로 표시해요."
+        return "일정이 시간적으로 겹칠 때만 충돌로 표시해요."
       }
-      return "일정이 \(t)분 이하로 겹치면 충돌로 표시하지 않아요. \(t)분을 초과해야 충돌 경고가 나타나요."
+      return "일정 사이 여유가 \(t)분 미만이면 충돌로 표시해요."
     }
 
     private var currentThresholdLabel: String {
       if store.isCustomMode {
-        return "\(store.threshold)분 초과"
+        return "여유 \(store.threshold)분 미만"
       }
-      return thresholdOptions.first { $0.value == store.threshold }?.label ?? "모든 겹침"
+      return thresholdOptions.first { $0.value == store.threshold }?.label ?? "겹치는 일정만"
     }
 
     private var thresholdSection: some View {
@@ -1026,6 +1025,9 @@ extension ConflictThresholdSettings {
           if store.isCustomMode {
             Divider()
             HStack(spacing: 6) {
+              Text("여유")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(Color.pmtext.secondary)
               TextField("", text: $store.customInputText.sending(\.view.customInputChanged))
                 .keyboardType(.numberPad)
                 .font(.system(size: 20, weight: .semibold))
@@ -1045,7 +1047,7 @@ extension ConflictThresholdSettings {
                     }
                   }
                 }
-              Text("분 초과")
+              Text("분 미만")
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(Color.pmtext.secondary)
             }
@@ -1071,7 +1073,7 @@ extension ConflictThresholdSettings {
 
         ConflictThresholdPreview(threshold: store.threshold)
 
-        Text("오후 2시~4시의 내 약속 기준으로, 다른 일정의 겹침이 충돌로 표시되는지 확인할 수 있어요.")
+        Text("오후 2시~4시의 내 약속 기준으로, 다른 일정이 충돌로 표시되는지 확인할 수 있어요.")
           .font(.system(size: 12))
           .foregroundStyle(Color.pmtext.secondary)
           .padding(.horizontal, 4)
@@ -1084,12 +1086,12 @@ extension ConflictThresholdSettings {
   private struct ConflictThresholdPreview: View {
     let threshold: Int
 
-    // 타임라인: 0 = 오후 1시, 240 = 오후 5시
-    private let totalMinutes: CGFloat = 240
+    // 타임라인: 0 = 오후 1시, 300 = 오후 6시
+    private let totalMinutes: CGFloat = 300
     private let myStart: CGFloat = 60   // 오후 2시
     private let myEnd: CGFloat = 180    // 오후 4시
-    private let hourMinutes = [0, 60, 120, 180, 240]
-    private let hourLabels = ["1시", "2시", "3시", "4시", "5시"]
+    private let hourMinutes = [0, 60, 120, 180, 240, 300]
+    private let hourLabels = ["1시", "2시", "3시", "4시", "5시", "6시"]
 
     private struct Scenario {
       let title: String
@@ -1097,16 +1099,17 @@ extension ConflictThresholdSettings {
       let start: CGFloat
       let end: CGFloat
       let overlapMinutes: Int
+      let gapMinutes: Int
     }
 
-    // 겹침 계산:
-    // 팀 미팅: 3:50~4:40, 내 약속(2~4시)과 3:50~4:00 = 10분 겹침
-    // 저녁 약속: 3:35~4:45, 내 약속과 3:35~4:00 = 25분 겹침
-    // 오전 운동: 1:10~2:50, 내 약속과 2:00~2:50 = 50분 겹침
+    // gap 기반 시나리오:
+    // 팀 미팅: 4:10~5:00, 내 약속(2~4시)과 gap = 10분, 겹침 없음
+    // 저녁 약속: 4:30~6:00, 내 약속과 gap = 30분, 겹침 없음
+    // 오전 운동: 12:00~1:30, 내 약속과 gap = 30분, 겹침 없음
     private let scenarios: [Scenario] = [
-      .init(title: "팀 미팅", emoji: "📌", start: 170, end: 220, overlapMinutes: 10),
-      .init(title: "저녁 약속", emoji: "🍽️", start: 155, end: 225, overlapMinutes: 25),
-      .init(title: "오전 운동", emoji: "🏃", start: 10, end: 110, overlapMinutes: 50),
+      .init(title: "팀 미팅",  emoji: "📌",  start: 190, end: 240, overlapMinutes: 0, gapMinutes: 10),
+      .init(title: "저녁 약속", emoji: "🍽️", start: 210, end: 300, overlapMinutes: 0, gapMinutes: 30),
+      .init(title: "오전 운동", emoji: "🏃",  start: -60, end:  30, overlapMinutes: 0, gapMinutes: 30),
     ]
 
     private func frac(_ m: CGFloat) -> CGFloat { m / totalMinutes }
@@ -1114,7 +1117,7 @@ extension ConflictThresholdSettings {
     private func formatTime(_ m: CGFloat) -> String {
       let total = Int(m)
       let hour = 1 + total / 60
-      let min = total % 60
+      let min = ((total % 60) + 60) % 60
       return String(format: "%d:%02d", hour, min)
     }
 
@@ -1200,21 +1203,27 @@ extension ConflictThresholdSettings {
     // MARK: - Event Row
 
     private func eventRow(_ scenario: Scenario) -> some View {
-      let isConflict = scenario.overlapMinutes > threshold
-      let oStart = max(scenario.start, myStart)
-      let oEnd = min(scenario.end, myEnd)
+      let isConflict = scenario.overlapMinutes > 0 || (threshold > 0 && scenario.gapMinutes < threshold)
+      let barStart = max(scenario.start, 0)
+      let barEnd = min(scenario.end, totalMinutes)
 
       return VStack(alignment: .leading, spacing: 3) {
         HStack(spacing: 4) {
           Text(scenario.emoji)
             .font(.system(size: 12))
-          Text("\(scenario.title) (\(formatTime(scenario.start))~\(formatTime(scenario.end)))")
+          Text("\(scenario.title)")
             .font(.system(size: 12, weight: .medium))
             .foregroundStyle(Color.pmtext.primary)
 
-          Text("\(scenario.overlapMinutes)분 겹침")
-            .font(.system(size: 11))
-            .foregroundStyle(Color.pmtext.secondary)
+          if scenario.overlapMinutes > 0 {
+            Text("\(scenario.overlapMinutes)분 겹침")
+              .font(.system(size: 11))
+              .foregroundStyle(Color.pmtext.secondary)
+          } else {
+            Text("여유 \(scenario.gapMinutes)분")
+              .font(.system(size: 11))
+              .foregroundStyle(Color.pmtext.secondary)
+          }
 
           Spacer()
 
@@ -1230,22 +1239,15 @@ extension ConflictThresholdSettings {
 
         GeometryReader { geo in
           let w = geo.size.width
-          let barX = frac(scenario.start) * w
-          let barW = frac(scenario.end - scenario.start) * w
-          let overlapX = frac(oStart) * w
-          let overlapW = frac(oEnd - oStart) * w
-          let overlapColor = isConflict ? Color.pmwarning.n500 : Color.pmsuccess.n500
+          let barX = frac(barStart) * w
+          let barW = frac(barEnd - barStart) * w
+          let barColor = isConflict ? Color.pmwarning.n500 : Color.pmsuccess.n500
 
           ZStack(alignment: .leading) {
             RoundedRectangle(cornerRadius: 4)
-              .fill(Color.pmgray.n400.opacity(0.2))
+              .fill(barColor.opacity(isConflict ? 0.5 : 0.35))
               .frame(width: barW, height: 20)
               .offset(x: barX)
-
-            RoundedRectangle(cornerRadius: 4)
-              .fill(overlapColor.opacity(isConflict ? 0.5 : 0.35))
-              .frame(width: overlapW, height: 20)
-              .offset(x: overlapX)
               .animation(.easeInOut(duration: 0.2), value: isConflict)
           }
           .frame(maxHeight: .infinity, alignment: .center)

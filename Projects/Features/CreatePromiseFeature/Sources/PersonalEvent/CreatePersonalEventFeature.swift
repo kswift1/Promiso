@@ -425,10 +425,8 @@ extension CreatePersonalEvent {
             }
 
           case .conflictsLoaded(let conflicts):
-            let threshold = state.conflictDetectionThreshold
-            let filtered = threshold > 0 ? conflicts.filter { $0.overlapMinutes > threshold } : conflicts
-            AppLogger.personal.info("[ConflictCheck] 개인 일정 - 충돌 결과 수신: \(conflicts.count)건, 필터 후: \(filtered.count)건 (임계값: \(threshold)분)")
-            state.conflicts = filtered
+            AppLogger.personal.info("[ConflictCheck] 개인 일정 - 충돌 결과 수신: \(conflicts.count)건")
+            state.conflicts = conflicts
             state.isCheckingConflicts = false
             return .none
 
@@ -545,11 +543,12 @@ extension CreatePersonalEvent {
       let startAt = state.event.startAt
       let endAt = state.event.endAt
       let excludeIds: Set<String> = state.mode == .edit ? [state.event.id] : []
+      let minGapMinutes = state.conflictDetectionThreshold
 
       return .run { [scheduleConflictClient, clock] send in
         try await clock.sleep(for: .milliseconds(500))
         do {
-          let conflicts = try await scheduleConflictClient.checkConflicts(userId, startAt, endAt, excludeIds)
+          let conflicts = try await scheduleConflictClient.checkConflicts(userId, startAt, endAt, excludeIds, minGapMinutes)
           await send(.internal(.conflictsLoaded(conflicts)))
         } catch {
           await send(.internal(.conflictsLoaded([])))

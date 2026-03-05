@@ -528,10 +528,8 @@ public enum CreatePromise {
             return .none
 
           case .conflictsLoaded(let conflicts):
-            let threshold = state.conflictDetectionThreshold
-            let filtered = threshold > 0 ? conflicts.filter { $0.overlapMinutes > threshold } : conflicts
-            AppLogger.group.info("[ConflictCheck] 약속 생성 - 충돌 결과 수신: \(conflicts.count)건, 필터 후: \(filtered.count)건 (임계값: \(threshold)분)")
-            state.conflicts = filtered
+            AppLogger.group.info("[ConflictCheck] 약속 생성 - 충돌 결과 수신: \(conflicts.count)건")
+            state.conflicts = conflicts
             state.isCheckingConflicts = false
             return .none
 
@@ -623,11 +621,12 @@ public enum CreatePromise {
       let userId = state.currentUserId
       let startAt = state.promise.startAt
       let endAt = state.promise.endAt
+      let minGapMinutes = state.conflictDetectionThreshold
 
       return .run { [scheduleConflictClient, clock] send in
         try await clock.sleep(for: .milliseconds(500))
         do {
-          let conflicts = try await scheduleConflictClient.checkConflicts(userId, startAt, endAt, [])
+          let conflicts = try await scheduleConflictClient.checkConflicts(userId, startAt, endAt, [], minGapMinutes)
           await send(.internal(.conflictsLoaded(conflicts)))
         } catch {
           await send(.internal(.conflictsLoaded([])))
@@ -693,6 +692,7 @@ extension CreatePromise {
             ConflictInfo(
               title: $0.title,
               overlapMinutes: $0.overlapMinutes,
+              gapMinutes: $0.gapMinutes,
               startAt: $0.startAt,
               endAt: $0.endAt,
               emoji: $0.emoji,
