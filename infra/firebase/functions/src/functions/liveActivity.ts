@@ -26,7 +26,7 @@ import {
   APNS_BUNDLE_ID,
 } from "../config";
 import {getCurrentEnvironment} from "../utils/firestore";
-import {sendPushNotificationInternal} from "./notifications.js";
+import {sendPushNotificationInternal} from "./notifications";
 
 /**
  * APNs 환경 결정

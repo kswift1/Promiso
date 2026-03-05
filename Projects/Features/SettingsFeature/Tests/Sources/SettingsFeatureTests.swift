@@ -415,7 +415,7 @@ struct SettingsFeatureTests {
 
     // Toast 내용 검증
     #expect(store.state.toastMessage?.type == .error)
-    #expect(store.state.toastMessage?.title == "프로필 저장에 실패했어요")
+    #expect(store.state.toastMessage?.title == LocalizedStrings.Error.profileSaveFailed)
     #expect(store.state.toastMessage?.subtitle == "저장 실패")
     #expect(store.state.toastMessage?.position == .top)
   }
