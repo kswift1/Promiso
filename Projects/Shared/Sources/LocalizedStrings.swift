@@ -510,6 +510,11 @@ public enum LocalizedStrings {
     public static var mapInvalidResponse: String { String(localized: "error.map.invalidResponse", bundle: bundle) }
     public static var mapHttpError: String { String(localized: "error.map.httpError", bundle: bundle) }
 
+    // OCR
+    public static var ocrImageConversionFailed: String { String(localized: "error.ocr.imageConversionFailed", bundle: bundle) }
+    public static var ocrRecognitionFailed: String { String(localized: "error.ocr.recognitionFailed", bundle: bundle) }
+    public static var ocrNoTextFound: String { String(localized: "error.ocr.noTextFound", bundle: bundle) }
+
     // Feature Error Messages (Toast/Alert)
     public static var promiseCreationFailed: String { String(localized: "error.promiseCreationFailed", bundle: bundle) }
     public static var eventDeleteFailed: String { String(localized: "error.eventDeleteFailed", bundle: bundle) }
@@ -1658,6 +1663,9 @@ public enum LocalizedStrings {
     public static var joinGroupCard: String { String(localized: "groupMain.onboarding.joinGroup", bundle: bundle) }
     public static var joinGroupCardSubtitle: String { String(localized: "groupMain.onboarding.joinGroupSubtitle", bundle: bundle) }
     public static var onboardingGroupName: String { String(localized: "groupMain.onboarding.groupName", bundle: bundle) }
+    // Deeplink
+    public static var joinGroupRequiredForDeeplinkTitle: String { String(localized: "groupMain.deeplink.joinGroupRequired.title", bundle: bundle) }
+    public static var joinGroupRequiredForDeeplinkSubtitle: String { String(localized: "groupMain.deeplink.joinGroupRequired.subtitle", bundle: bundle) }
     // Delete alert
     public static var deletePromiseTitle: String { String(localized: "groupMain.deletePromise.title", bundle: bundle) }
     public static func deletePromiseConfirm(_ title: String) -> String {
@@ -2234,21 +2242,4 @@ extension LocalizedStrings {
     public static var modePickerLabel: String { String(localized: "promiseModeSegment.modePickerLabel", bundle: bundle) }
   }
 
-  // MARK: - QuickPromise
-  public enum QuickPromise {
-    public static var title: String { String(localized: "quickPromise.title", bundle: bundle) }
-    public static var textPlaceholder: String { String(localized: "quickPromise.textPlaceholder", bundle: bundle) }
-    public static var extractedInfo: String { String(localized: "quickPromise.extractedInfo", bundle: bundle) }
-    public static var labelTitle: String { String(localized: "quickPromise.label.title", bundle: bundle) }
-    public static var labelDateTime: String { String(localized: "quickPromise.label.dateTime", bundle: bundle) }
-    public static var labelLocation: String { String(localized: "quickPromise.label.location", bundle: bundle) }
-    public static var noInfoMessage: String { String(localized: "quickPromise.noInfoMessage", bundle: bundle) }
-    public static var createButton: String { String(localized: "quickPromise.createButton", bundle: bundle) }
-    public static var errorTextAnalysis: String { String(localized: "quickPromise.error.textAnalysis", bundle: bundle) }
-    public static var errorImageLoad: String { String(localized: "quickPromise.error.imageLoad", bundle: bundle) }
-    public static var errorImageExtraction: String { String(localized: "quickPromise.error.imageExtraction", bundle: bundle) }
-    public static var errorImageConversion: String { String(localized: "quickPromise.error.imageConversion", bundle: bundle) }
-    public static var errorRecognitionFailed: String { String(localized: "quickPromise.error.recognitionFailed", bundle: bundle) }
-    public static var errorNoTextFound: String { String(localized: "quickPromise.error.noTextFound", bundle: bundle) }
-  }
 }

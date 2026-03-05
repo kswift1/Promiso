@@ -114,6 +114,11 @@ struct CalendarDayTimelineView: View {
         // Layer 2 + 3: 겹침 레이아웃 엔진 기반 렌더링
         overlapAwareScheduleBlocks
 
+        // Layer 3.5: 현재 시간 인디케이터 (오늘만)
+        if isToday {
+          currentTimeIndicator
+        }
+
         // Layer 4: 생성 블록 오버레이 (creationSlot != nil일 때만)
         creationBlockOverlay
       }
@@ -153,6 +158,16 @@ struct CalendarDayTimelineView: View {
           zoomScrollY = nil
         }
     )
+    .onAppear {
+      if isToday {
+        let initialScrollOffset: CGFloat = 60
+        let components = Calendar.promiseDisplay.dateComponents([.hour, .minute], from: Date())
+        let hour = CGFloat(components.hour ?? 0)
+        let minute = CGFloat(components.minute ?? 0)
+        let targetY = max(0, (hour + minute / 60.0) * hourHeight - initialScrollOffset)
+        scrollPosition.scrollTo(y: targetY)
+      }
+    }
     .onChange(of: displayDate) {
       creationStartSlot = nil
       // 날짜 변경 시 첫 번째 일정 위치 또는 현재 시간으로 스크롤
@@ -430,6 +445,33 @@ struct CalendarDayTimelineView: View {
       )
     )
     .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
+  }
+
+  // MARK: - Current Time Indicator
+
+  private var isToday: Bool {
+    Calendar.promiseDisplay.isDateInToday(displayDate)
+  }
+
+  private var currentTimeIndicator: some View {
+    TimelineView(.periodic(from: .now, by: 60)) { context in
+      let y = yOffset(for: context.date)
+
+      HStack(spacing: 0) {
+        Color.clear
+          .frame(width: timeLabelWidth - 4, height: 8)
+
+        Circle()
+          .fill(Color.pmerror.n500)
+          .frame(width: 8, height: 8)
+
+        Rectangle()
+          .fill(Color.pmerror.n500)
+          .frame(height: 1)
+      }
+      .offset(y: y - 4)
+    }
+    .frame(height: totalHeight, alignment: .top)
   }
 
   // MARK: - Context Menu Preview

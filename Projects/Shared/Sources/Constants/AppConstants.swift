@@ -208,6 +208,8 @@ public enum AppConstants {
     public static let use24HourFormat = "promisoUse24HourFormat"
     /// 선호하는 테마 모드 (system/light/dark)
     public static let preferredThemeMode = "promisoPreferredThemeMode"
+    /// 캘린더 동기화 idempotency를 위한 해시 캐시
+    public static let calendarSyncWriteFingerprints = "promisoCalendarSyncWriteFingerprints"
     /// 캘린더 이벤트 매핑 (promiseId → eventIdentifier)
     public static let calendarEventMappings = "promisoCalendarEventMappings"
     /// 마지막 캘린더 동기화 날짜

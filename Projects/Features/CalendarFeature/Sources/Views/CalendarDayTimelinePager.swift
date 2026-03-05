@@ -521,6 +521,11 @@ struct CalendarDayTimelinePager: UIViewControllerRepresentable {
       applyInitialCurrentTimeOffsetsIfNeeded()
     }
 
+    override func viewDidAppear(_ animated: Bool) {
+      super.viewDidAppear(animated)
+      applyInitialCurrentTimeOffsetsIfNeeded()
+    }
+
     /// 최초 1회: 3페이지 모두 현재 시간 기준으로 동기 오프셋 적용
     private func applyInitialCurrentTimeOffsetsIfNeeded() {
       guard !didApplyInitialOffsets else { return }
