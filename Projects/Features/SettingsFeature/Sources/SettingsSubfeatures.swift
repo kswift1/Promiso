@@ -967,7 +967,6 @@ extension ConflictThresholdSettings {
                 .allowsHitTesting(store.isEnabled)
 
               exampleSection
-                .opacity(store.isEnabled ? 1 : 0.35)
             }
             .padding(.horizontal, 16)
             .padding(.top, 12)
@@ -1238,7 +1237,7 @@ extension ConflictThresholdSettings {
         }
       }
       .padding(16)
-      .adaptiveGlassBackground()
+      .staticGlassBackground()
       .animation(.easeInOut(duration: 0.2), value: threshold)
     }
 
