@@ -20,14 +20,16 @@ public struct ScheduleConflictClient: Sendable {
   /// - Parameters:
   ///   - userId: 현재 사용자 ID
   ///   - startAt: 새 약속/일정 시작 시간
-  ///   - endAt: 새 약속/일정 종료 시간 (nil이면 startAt + 2h)
+  ///   - endAt: 새 약속/일정 종료 시간 (nil이면 startAt과 동일)
   ///   - excludeIds: 충돌 결과에서 제외할 일정 ID (편집 시 자기 자신 제외)
+  ///   - minGapMinutes: 충돌로 감지할 최소 여유 시간 (분). 0이면 겹치는 일정만 감지
   /// - Returns: 겹치는 일정 목록
   public var checkConflicts: @Sendable (
     _ userId: String,
     _ startAt: Date,
     _ endAt: Date?,
-    _ excludeIds: Set<String>
+    _ excludeIds: Set<String>,
+    _ minGapMinutes: Int
   ) async throws -> [ScheduleConflict]
 }
 
@@ -37,7 +39,7 @@ extension ScheduleConflictClient: TestDependencyKey {
   public static let testValue = Self()
 
   public static let previewValue = Self(
-    checkConflicts: { _, _, _, _ in
+    checkConflicts: { _, _, _, _, _ in
       try await Task.sleep(for: .seconds(0.3))
       return []
     }
@@ -74,13 +76,14 @@ private struct ConflictItem: Decodable {
   let startAt: String
   let endAt: String?
   let overlapMinutes: Int
+  let gapMinutes: Int
 }
 
 // MARK: - Live Implementation
 
 extension ScheduleConflictClient: DependencyKey {
   public static let liveValue = ScheduleConflictClient(
-    checkConflicts: { _, startAt, endAt, excludeIds in
+    checkConflicts: { _, startAt, endAt, excludeIds, minGapMinutes in
       let functions = DefaultFunctionsProvider().functions
       let iso8601Formatter = conflictCheckISO8601Formatter
 
@@ -95,6 +98,7 @@ extension ScheduleConflictClient: DependencyKey {
       if !excludeIds.isEmpty {
         params["excludeIds"] = Array(excludeIds)
       }
+      params["minGapMinutes"] = minGapMinutes
 
       let result = try await functions.httpsCallable("checkScheduleConflicts").call(params)
 
@@ -119,7 +123,8 @@ extension ScheduleConflictClient: DependencyKey {
             emoji: item.emoji,
             startAt: itemStartAt,
             endAt: itemEndAt,
-            overlapMinutes: item.overlapMinutes
+            overlapMinutes: item.overlapMinutes,
+            gapMinutes: item.gapMinutes
           )
         }
 

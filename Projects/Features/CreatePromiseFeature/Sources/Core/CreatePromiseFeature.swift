@@ -25,6 +25,7 @@ public enum CreatePromise {
     @Dependency(\.analyticsClient) var analyticsClient
     @Dependency(\.imageUploadClient) var imageUploadClient
     @Dependency(\.scheduleConflictClient) var scheduleConflictClient
+    @Dependency(\.userSettingsClient) var userSettingsClient
     @Dependency(\.weatherClient) var weatherClient
 
 
@@ -63,6 +64,7 @@ public enum CreatePromise {
       var currentUserId: String = ""
       var conflicts: [ScheduleConflict] = []
       var isCheckingConflicts: Bool = false
+      var conflictDetectionThreshold: Int = 0
 
       // 날씨 힌트 (보너스)
       var weatherState: LoadingState<WeatherInfo> = .idle
@@ -201,6 +203,7 @@ public enum CreatePromise {
         case imageUploadCompleted(Result<[String], Error>)
         case liveActivityInfoSeenLoaded(Bool)
         case conflictsLoaded([ScheduleConflict])
+        case settingsLoaded(UserSettings)
         case weatherResponse(Result<WeatherInfo, Error>)
       }
       
@@ -225,7 +228,12 @@ public enum CreatePromise {
           case .onAppear:
             return .merge(
               .send(.internal(.fetchGroupList)),
-              checkConflictsEffect(state: &state)
+              .run { [userSettingsClient, state] send in
+                guard !state.currentUserId.isEmpty else { return }
+                if let settings = try? await userSettingsClient.fetchSettings(state.currentUserId) {
+                  await send(.internal(.settingsLoaded(settings)))
+                }
+              }
             )
             
           case .nextStep:
@@ -524,6 +532,10 @@ public enum CreatePromise {
             state.isCheckingConflicts = false
             return .none
 
+          case .settingsLoaded(let settings):
+            state.conflictDetectionThreshold = settings.conflictDetectionThreshold
+            return checkConflictsEffect(state: &state)
+
           case .weatherResponse(.success(let info)):
             state.weatherState = .loaded(info)
             return .none
@@ -602,17 +614,24 @@ public enum CreatePromise {
 
     private func checkConflictsEffect(state: inout State) -> Effect<Action> {
       guard !state.currentUserId.isEmpty else { return .none }
+      // 충돌 감지 비활성화 (threshold == -1)
+      guard state.conflictDetectionThreshold >= 0 else {
+        state.isCheckingConflicts = false
+        state.conflicts = []
+        return .none
+      }
 
       state.isCheckingConflicts = true
 
       let userId = state.currentUserId
       let startAt = state.promise.startAt
       let endAt = state.promise.endAt
+      let minGapMinutes = state.conflictDetectionThreshold
 
       return .run { [scheduleConflictClient, clock] send in
         try await clock.sleep(for: .milliseconds(500))
         do {
-          let conflicts = try await scheduleConflictClient.checkConflicts(userId, startAt, endAt, [])
+          let conflicts = try await scheduleConflictClient.checkConflicts(userId, startAt, endAt, [], minGapMinutes)
           await send(.internal(.conflictsLoaded(conflicts)))
         } catch {
           await send(.internal(.conflictsLoaded([])))
@@ -678,6 +697,7 @@ extension CreatePromise {
             ConflictInfo(
               title: $0.title,
               overlapMinutes: $0.overlapMinutes,
+              gapMinutes: $0.gapMinutes,
               startAt: $0.startAt,
               endAt: $0.endAt,
               emoji: $0.emoji,

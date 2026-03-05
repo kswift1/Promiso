@@ -33,11 +33,13 @@ public actor UserSettingsRemoteDataSource {
     let notificationEnabled = data["notificationEnabled"] as? Bool ?? true
     let groupSortOption = GroupSortOption.read(from: data["groupSortOption"] as? [String: Any])
     let plan = UserPlan(rawValue: data["plan"] as? String ?? "") ?? .free
+    let conflictDetectionThreshold = data["conflictDetectionThreshold"] as? Int ?? 0
 
     return UserSettings(
       notificationEnabled: notificationEnabled,
       groupSortOption: groupSortOption,
-      plan: plan
+      plan: plan,
+      conflictDetectionThreshold: conflictDetectionThreshold
     )
   }
 
@@ -53,6 +55,14 @@ public actor UserSettingsRemoteDataSource {
   public func updatePlan(userId: String, plan: UserPlan) async throws {
     try await settingsRef(userId: userId).setData(
       ["plan": plan.rawValue],
+      merge: true
+    )
+  }
+
+  /// 일정 충돌 감지 임계값 업데이트
+  public func updateConflictDetectionThreshold(userId: String, threshold: Int) async throws {
+    try await settingsRef(userId: userId).setData(
+      ["conflictDetectionThreshold": threshold],
       merge: true
     )
   }

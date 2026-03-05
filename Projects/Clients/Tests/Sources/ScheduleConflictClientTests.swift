@@ -29,7 +29,8 @@ struct ScheduleConflictClientTests {
     emoji: String? = nil,
     startAt: Date = baseDate,
     endAt: Date? = nil,
-    overlapMinutes: Int = 60
+    overlapMinutes: Int = 60,
+    gapMinutes: Int = 0
   ) -> ScheduleConflict {
     ScheduleConflict(
       id: id,
@@ -39,7 +40,8 @@ struct ScheduleConflictClientTests {
       emoji: emoji,
       startAt: startAt,
       endAt: endAt,
-      overlapMinutes: overlapMinutes
+      overlapMinutes: overlapMinutes,
+      gapMinutes: gapMinutes
     )
   }
 
@@ -48,10 +50,10 @@ struct ScheduleConflictClientTests {
   @Test("충돌 없으면 빈 배열 반환")
   func noConflictsReturnsEmpty() async throws {
     let client = ScheduleConflictClient(
-      checkConflicts: { _, _, _, _ in [] }
+      checkConflicts: { _, _, _, _, _ in [] }
     )
 
-    let result = try await client.checkConflicts("user1", Self.baseDate, nil, [])
+    let result = try await client.checkConflicts("user1", Self.baseDate, nil, [], 0)
     #expect(result.isEmpty)
   }
 
@@ -69,10 +71,10 @@ struct ScheduleConflictClientTests {
     )
 
     let client = ScheduleConflictClient(
-      checkConflicts: { _, _, _, _ in [expected] }
+      checkConflicts: { _, _, _, _, _ in [expected] }
     )
 
-    let result = try await client.checkConflicts("user1", Self.baseDate, nil, [])
+    let result = try await client.checkConflicts("user1", Self.baseDate, nil, [], 0)
     #expect(result.count == 1)
 
     let conflict = try #require(result.first)
@@ -95,10 +97,10 @@ struct ScheduleConflictClientTests {
     )
 
     let client = ScheduleConflictClient(
-      checkConflicts: { _, _, _, _ in [expected] }
+      checkConflicts: { _, _, _, _, _ in [expected] }
     )
 
-    let result = try await client.checkConflicts("user1", Self.baseDate, nil, [])
+    let result = try await client.checkConflicts("user1", Self.baseDate, nil, [], 0)
     let conflict = try #require(result.first)
     #expect(conflict.severity == .pending)
   }
@@ -116,10 +118,10 @@ struct ScheduleConflictClientTests {
     )
 
     let client = ScheduleConflictClient(
-      checkConflicts: { _, _, _, _ in [expected] }
+      checkConflicts: { _, _, _, _, _ in [expected] }
     )
 
-    let result = try await client.checkConflicts("user1", Self.baseDate, nil, [])
+    let result = try await client.checkConflicts("user1", Self.baseDate, nil, [], 0)
     let conflict = try #require(result.first)
     #expect(conflict.source == .personalEvent)
     #expect(conflict.severity == .confirmed)
@@ -133,13 +135,13 @@ struct ScheduleConflictClientTests {
     var receivedExcludeIds: Set<String>?
 
     let client = ScheduleConflictClient(
-      checkConflicts: { _, _, _, excludeIds in
+      checkConflicts: { _, _, _, excludeIds, _ in
         receivedExcludeIds = excludeIds
         return []
       }
     )
 
-    _ = try await client.checkConflicts("user1", Self.baseDate, nil, ["self-event", "other-event"])
+    _ = try await client.checkConflicts("user1", Self.baseDate, nil, ["self-event", "other-event"], 0)
     #expect(receivedExcludeIds == ["self-event", "other-event"])
   }
 
@@ -151,14 +153,14 @@ struct ScheduleConflictClientTests {
     var endAtWasCalled = false
 
     let client = ScheduleConflictClient(
-      checkConflicts: { _, _, endAt, _ in
+      checkConflicts: { _, _, endAt, _, _ in
         endAtWasCalled = true
         receivedEndAt = endAt
         return []
       }
     )
 
-    _ = try await client.checkConflicts("user1", Self.baseDate, nil, [])
+    _ = try await client.checkConflicts("user1", Self.baseDate, nil, [], 0)
     #expect(endAtWasCalled)
     #expect(receivedEndAt == nil)
   }
@@ -174,10 +176,10 @@ struct ScheduleConflictClientTests {
     ]
 
     let client = ScheduleConflictClient(
-      checkConflicts: { _, _, _, _ in conflicts }
+      checkConflicts: { _, _, _, _, _ in conflicts }
     )
 
-    let result = try await client.checkConflicts("user1", Self.baseDate, nil, [])
+    let result = try await client.checkConflicts("user1", Self.baseDate, nil, [], 0)
     #expect(result.count == 3)
 
     let promiseConflicts = result.filter { $0.source == .promise }
@@ -196,14 +198,14 @@ struct ScheduleConflictClientTests {
     let endDate = Self.baseDate.addingTimeInterval(2 * 3600)
 
     let client = ScheduleConflictClient(
-      checkConflicts: { _, startAt, endAt, _ in
+      checkConflicts: { _, startAt, endAt, _, _ in
         receivedStartAt = startAt
         receivedEndAt = endAt
         return []
       }
     )
 
-    _ = try await client.checkConflicts("user1", Self.baseDate, endDate, [])
+    _ = try await client.checkConflicts("user1", Self.baseDate, endDate, [], 0)
     #expect(receivedStartAt == Self.baseDate)
     #expect(receivedEndAt == endDate)
   }
@@ -220,7 +222,7 @@ struct ScheduleConflictClientTests {
 
   @Test("previewValue는 빈 배열 반환")
   func previewValueReturnsEmpty() async throws {
-    let result = try await ScheduleConflictClient.previewValue.checkConflicts("user1", Self.baseDate, nil, [])
+    let result = try await ScheduleConflictClient.previewValue.checkConflicts("user1", Self.baseDate, nil, [], 0)
     #expect(result.isEmpty)
   }
 }

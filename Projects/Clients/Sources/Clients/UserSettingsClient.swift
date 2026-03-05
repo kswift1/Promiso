@@ -15,6 +15,9 @@ public struct UserSettingsClient: Sendable {
 
   /// 사용자 플랜 업데이트
   public var updatePlan: @Sendable (_ userId: String, _ plan: UserPlan) async throws -> Void
+
+  /// 일정 충돌 감지 임계값 업데이트
+  public var updateConflictDetectionThreshold: @Sendable (_ userId: String, _ threshold: Int) async throws -> Void
 }
 
 // MARK: - Test & Preview Values
@@ -26,7 +29,8 @@ extension UserSettingsClient: TestDependencyKey {
       placeholder: UserSettings(notificationEnabled: true, groupSortOption: .joinedRecent, plan: .free)
     ),
     updateGroupSortOption: unimplemented("\\(Self.self).updateGroupSortOption"),
-    updatePlan: unimplemented("\\(Self.self).updatePlan")
+    updatePlan: unimplemented("\\(Self.self).updatePlan"),
+    updateConflictDetectionThreshold: unimplemented("\\(Self.self).updateConflictDetectionThreshold")
   )
 
   public static let previewValue = Self(
@@ -42,6 +46,9 @@ extension UserSettingsClient: TestDependencyKey {
       try await Task.sleep(for: .seconds(0.2))
     },
     updatePlan: { _, _ in
+      try await Task.sleep(for: .seconds(0.2))
+    },
+    updateConflictDetectionThreshold: { _, _ in
       try await Task.sleep(for: .seconds(0.2))
     }
   )
@@ -71,6 +78,9 @@ extension UserSettingsClient: DependencyKey {
       },
       updatePlan: { userId, plan in
         try await dataSource.updatePlan(userId: userId, plan: plan)
+      },
+      updateConflictDetectionThreshold: { userId, threshold in
+        try await dataSource.updateConflictDetectionThreshold(userId: userId, threshold: threshold)
       }
     )
   }()

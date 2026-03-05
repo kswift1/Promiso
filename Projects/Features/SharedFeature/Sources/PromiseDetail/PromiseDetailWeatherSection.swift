@@ -36,7 +36,7 @@ public struct PromiseDetailWeatherSection: View {
   }
 
   private var timeRangeForecasts: [HourlyForecast] {
-    let end = endAt ?? startAt.addingTimeInterval(7200)
+    let end = endAt ?? startAt
     let rangeStart = startAt.addingTimeInterval(-3600)
     return weatherInfo.hourlyForecasts.filter { forecast in
       forecast.dateTime >= rangeStart && forecast.dateTime <= end
@@ -439,7 +439,7 @@ public struct PromiseDetailWeatherSection: View {
   }
 
   private func isPromiseTime(_ date: Date) -> Bool {
-    let end = endAt ?? startAt.addingTimeInterval(7200)
+    let end = endAt ?? startAt
     return date >= startAt && date <= end
   }
 

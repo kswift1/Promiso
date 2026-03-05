@@ -33,7 +33,7 @@ public struct ConflictTooltip: View {
   /// - 48시간 초과: 가장 겹치는 충돌의 overlap 구간에 포커스 (±1시간, 최대 12시간)
   private var timelineRange: (start: Date, end: Date) {
     let calendar = Calendar.current
-    let newEnd = newEventEndAt ?? newEventStartAt.addingTimeInterval(3600)
+    let newEnd = newEventEndAt ?? newEventStartAt
 
     // 충돌이 없으면 fallback
     if conflicts.isEmpty {
@@ -58,7 +58,7 @@ public struct ConflictTooltip: View {
 
     // 초장기 일정: 가장 겹치는 충돌의 overlap 구간에 포커스
     let topConflict = conflicts[0] // overlapMinutes 내림차순 정렬
-    let conflictEnd = topConflict.endAt ?? topConflict.startAt.addingTimeInterval(3600)
+    let conflictEnd = topConflict.endAt ?? topConflict.startAt
     let overlapStart = max(newEventStartAt, topConflict.startAt)
     let overlapEnd = min(newEnd, conflictEnd)
 
@@ -76,7 +76,7 @@ public struct ConflictTooltip: View {
 
   /// 48시간 초과 일정에서 가장 겹치는 구간에 포커스 중인지 여부
   private var isFocusedTimeline: Bool {
-    let newEnd = newEventEndAt ?? newEventStartAt.addingTimeInterval(3600)
+    let newEnd = newEventEndAt ?? newEventStartAt
     return newEnd.timeIntervalSince(newEventStartAt) / 3600 > 48 && !conflicts.isEmpty
   }
 
@@ -168,13 +168,13 @@ public struct ConflictTooltip: View {
             .font(.system(size: 14))
             .foregroundStyle(Color.pmwarning.n500)
 
-          Text("겹치는 일정")
+          Text(LocalizedStrings.Shared.conflictOverlappingEvents)
             .font(.system(size: 15, weight: .semibold))
             .foregroundStyle(.primary)
 
           Spacer()
 
-          Text("\(conflicts.count)건")
+          Text(LocalizedStrings.Shared.conflictCount(conflicts.count))
             .font(.system(size: 13, weight: .medium))
             .foregroundStyle(.secondary)
         }
@@ -183,7 +183,7 @@ public struct ConflictTooltip: View {
 
         // 포커스 모드 안내
         if isFocusedTimeline, let topConflict = conflicts.first {
-          Text("'\(topConflict.title)' 겹치는 구간 중심으로 표시")
+          Text(LocalizedStrings.Shared.conflictFocusedOn(topConflict.title))
             .font(.system(size: 11))
             .foregroundStyle(.secondary)
         }
@@ -224,10 +224,10 @@ public struct ConflictTooltip: View {
           .frame(width: spansMultipleDays ? 44 : 36)
 
         HStack(spacing: 2) {
-          Text("새 일정")
+          Text(LocalizedStrings.Shared.conflictNewEvent)
             .frame(maxWidth: .infinity, alignment: .leading)
 
-          Text("기존 일정")
+          Text(LocalizedStrings.Shared.conflictExistingEvent)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .font(.system(size: 10, weight: .medium))
@@ -282,7 +282,7 @@ public struct ConflictTooltip: View {
   // MARK: - New Event Block
 
   private var newEventBlock: some View {
-    let endAt = newEventEndAt ?? newEventStartAt.addingTimeInterval(3600)
+    let endAt = newEventEndAt ?? newEventStartAt
     let (y, h) = clampedBlock(start: newEventStartAt, end: endAt)
 
     return HStack(spacing: 3) {
@@ -290,7 +290,7 @@ public struct ConflictTooltip: View {
         Text(emoji)
           .font(.system(size: 9))
       }
-      Text(newEventTitle.isEmpty ? "새 일정" : newEventTitle)
+      Text(newEventTitle.isEmpty ? LocalizedStrings.Shared.conflictNewEvent : newEventTitle)
         .font(.system(size: 10, weight: .medium))
         .foregroundStyle(Color.pmerror.n500)
         .lineLimit(1)
@@ -313,7 +313,7 @@ public struct ConflictTooltip: View {
   // MARK: - Conflict Block
 
   private func conflictBlock(_ conflict: ConflictInfo, index: Int) -> some View {
-    let endAt = conflict.endAt ?? conflict.startAt.addingTimeInterval(3600)
+    let endAt = conflict.endAt ?? conflict.startAt
     let (y, h) = clampedBlock(start: conflict.startAt, end: endAt)
     let color = blockColor(at: index)
 
@@ -408,15 +408,29 @@ public struct ConflictTooltip: View {
 
   private func overlapText(for conflict: ConflictInfo) -> String {
     let minutes = conflict.overlapMinutes
+    if minutes <= 0 {
+      if conflict.gapMinutes > 0 {
+        if conflict.gapMinutes >= 60 {
+          let hours = conflict.gapMinutes / 60
+          let remaining = conflict.gapMinutes % 60
+          if remaining > 0 {
+            return LocalizedStrings.Shared.conflictMarginHoursMinutes(hours, remaining)
+          }
+          return LocalizedStrings.Shared.conflictMarginHours(hours)
+        }
+        return LocalizedStrings.Shared.conflictMarginMinutes(conflict.gapMinutes)
+      }
+      return LocalizedStrings.Shared.conflictOverlap
+    }
     if minutes >= 60 {
       let hours = minutes / 60
       let remaining = minutes % 60
       if remaining > 0 {
-        return "\(hours)시간 \(remaining)분"
+        return LocalizedStrings.Shared.conflictOverlapHoursMinutes(hours, remaining)
       }
-      return "\(hours)시간"
+      return LocalizedStrings.Shared.conflictOverlapHours(hours)
     }
-    return "\(minutes)분"
+    return LocalizedStrings.Shared.conflictOverlapMinutes(minutes)
   }
 }
 

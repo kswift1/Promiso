@@ -27,8 +27,6 @@ import {
 // Constants
 // ============================================================================
 
-/** endAt이 null일 때 기본 지속 시간 (2시간, ms) */
-const DEFAULT_DURATION_MS = 2 * 60 * 60 * 1000;
 const MAX_SLOT_DATE_RANGE_DAYS = 31;
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -133,7 +131,7 @@ async function upsertSlot(
   const startAt = slotEntry.startAt.toDate();
   const endAt = slotEntry.endAt ?
     slotEntry.endAt.toDate() :
-    new Date(startAt.getTime() + DEFAULT_DURATION_MS);
+    startAt;
 
   const {keys: dateKeys, isTruncated} = getDateKeys(
     startAt,
@@ -184,8 +182,7 @@ async function removeSlot(
   endAt: Date | null,
 ): Promise<void> {
   const db = admin.firestore();
-  const effectiveEnd = endAt ??
-    new Date(startAt.getTime() + DEFAULT_DURATION_MS);
+  const effectiveEnd = endAt ?? startAt;
   const {keys: dateKeys, isTruncated} = getDateKeys(
     startAt,
     effectiveEnd,
@@ -262,14 +259,22 @@ export const checkScheduleConflicts =
       const startAt = new Date(data.startAt);
       const endAt = data.endAt ?
         new Date(data.endAt) :
-        new Date(startAt.getTime() + DEFAULT_DURATION_MS);
-      assertDateRangeWithinLimit(startAt, endAt);
+        new Date(startAt.getTime());
+      const minGapMinutes = typeof data.minGapMinutes === "number" ?
+        Math.max(0, Math.floor(data.minGapMinutes)) :
+        0;
+      const minGapMs = minGapMinutes * 60 * 1000;
       const excludeIds = new Set(data.excludeIds ?? []);
+
+      // dateKey 조회 범위를 minGap만큼 확장 (기존 일정이 gap 안에 있을 수 있으므로)
+      const queryStartAt = new Date(startAt.getTime() - minGapMs);
+      const queryEndAt = new Date(endAt.getTime() + minGapMs);
+      assertDateRangeWithinLimit(queryStartAt, queryEndAt);
 
       // 해당 날짜 범위의 scheduleSlots 조회
       const {keys: dateKeys, isTruncated} = getDateKeys(
-        startAt,
-        endAt,
+        queryStartAt,
+        queryEndAt,
         MAX_SLOT_DATE_RANGE_DAYS,
       );
       if (isTruncated) {
@@ -308,18 +313,53 @@ export const checkScheduleConflicts =
         const slotStart = slot.startAt.toDate();
         const slotEnd = slot.endAt ?
           slot.endAt.toDate() :
-          new Date(slotStart.getTime() + DEFAULT_DURATION_MS);
+          slotStart;
 
-        // 겹침 조건: slotStart < endAt && slotEnd > startAt
-        if (slotStart < endAt && slotEnd > startAt) {
-          const overlapStart = slotStart > startAt ? slotStart : startAt;
-          const overlapEnd = slotEnd < endAt ? slotEnd : endAt;
-          const overlapMinutes = Math.max(
-            0,
-            Math.floor(
-              (overlapEnd.getTime() - overlapStart.getTime()) / 60000,
-            ),
-          );
+        const slotStartMs = slotStart.getTime();
+        const slotEndMs = slotEnd.getTime();
+        const startAtMs = startAt.getTime();
+        const endAtMs = endAt.getTime();
+
+        // 겹침 조건: zero-duration(endAt 없는) 일정은 경계 포함 판정
+        let isOverlapping: boolean;
+        if (startAtMs === endAtMs && slotStartMs === slotEndMs) {
+          // 둘 다 zero-duration: 같은 시점이면 겹침
+          isOverlapping = startAtMs === slotStartMs;
+        } else if (startAtMs === endAtMs) {
+          // 새 일정이 zero-duration: 기존 일정 범위 내 포함 시 겹침
+          isOverlapping = startAtMs >= slotStartMs && startAtMs < slotEndMs;
+        } else if (slotStartMs === slotEndMs) {
+          // 기존 일정이 zero-duration: 새 일정 범위 내 포함 시 겹침
+          isOverlapping = slotStartMs >= startAtMs && slotStartMs < endAtMs;
+        } else {
+          // 둘 다 범위: 표준 겹침 조건
+          isOverlapping = slotStart < endAt && slotEnd > startAt;
+        }
+
+        // gap 계산: 두 일정 사이 여유 시간 (ms)
+        // 겹치면 음수, 접점이면 0, 떨어져있으면 양수
+        const rawGapMs = Math.max(slotStartMs - endAtMs, startAtMs - slotEndMs);
+
+        // 충돌 조건: 겹침 OR gap이 minGap 미만
+        const isConflict = isOverlapping ||
+          (minGapMs > 0 && rawGapMs >= 0 && rawGapMs < minGapMs);
+
+        if (isConflict) {
+          let overlapMinutes = 0;
+          let gapMinutes = 0;
+
+          if (isOverlapping) {
+            const overlapStart = Math.max(slotStartMs, startAtMs);
+            const overlapEnd = Math.min(slotEndMs, endAtMs);
+            overlapMinutes = Math.max(
+              0,
+              Math.floor((overlapEnd - overlapStart) / 60000),
+            );
+            gapMinutes = 0;
+          } else {
+            overlapMinutes = 0;
+            gapMinutes = Math.max(0, Math.floor(rawGapMs / 60000));
+          }
 
           conflicts.push({
             id: slot.id,
@@ -330,16 +370,23 @@ export const checkScheduleConflicts =
             startAt: slot.startAt.toDate().toISOString(),
             endAt: slot.endAt ? slot.endAt.toDate().toISOString() : null,
             overlapMinutes,
+            gapMinutes,
           });
         }
       }
 
-      // 겹침 시간 내림차순 정렬
-      conflicts.sort((a, b) => b.overlapMinutes - a.overlapMinutes);
+      // 겹침 있는 것 먼저 (overlapMinutes 내림차순), 같으면 gap이 작은 것 먼저 (gapMinutes 오름차순)
+      conflicts.sort((a, b) => {
+        if (a.overlapMinutes !== b.overlapMinutes) {
+          return b.overlapMinutes - a.overlapMinutes;
+        }
+        return a.gapMinutes - b.gapMinutes;
+      });
 
       console.log(
         `🔍 checkScheduleConflicts: userId=${userId}, ` +
-        `range=${dateKeys.join(",")}, conflicts=${conflicts.length}`,
+        `range=${dateKeys.join(",")}, minGap=${minGapMinutes}m, ` +
+        `conflicts=${conflicts.length}`,
       );
 
       return {conflicts};

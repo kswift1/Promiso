@@ -15,6 +15,7 @@ public enum ConflictSeverity: Equatable, Sendable {
 public struct ConflictInfo: Equatable, Sendable {
   public let title: String
   public let overlapMinutes: Int
+  public let gapMinutes: Int
   public let startAt: Date
   public let endAt: Date?
   public let emoji: String?
@@ -23,6 +24,7 @@ public struct ConflictInfo: Equatable, Sendable {
   public init(
     title: String,
     overlapMinutes: Int,
+    gapMinutes: Int = 0,
     startAt: Date = .now,
     endAt: Date? = nil,
     emoji: String? = nil,
@@ -30,6 +32,7 @@ public struct ConflictInfo: Equatable, Sendable {
   ) {
     self.title = title
     self.overlapMinutes = overlapMinutes
+    self.gapMinutes = gapMinutes
     self.startAt = startAt
     self.endAt = endAt
     self.emoji = emoji
@@ -137,12 +140,12 @@ public struct ProBonusFloatingView: View {
         .frame(width: 14, height: 14)
 
       if let name = weatherLocationName {
-        Text("\(name)의 약속시간대 날씨를 확인중이에요")
+        Text(LocalizedStrings.Shared.weatherCheckingWithLocation(name))
           .font(.system(size: 12))
           .foregroundStyle(.secondary)
           .lineLimit(1)
       } else {
-        Text("약속시간대 날씨를 확인중이에요")
+        Text(LocalizedStrings.Shared.weatherChecking)
           .font(.system(size: 12))
           .foregroundStyle(.secondary)
           .lineLimit(1)
@@ -207,7 +210,7 @@ public struct ProBonusFloatingView: View {
           .scaleEffect(0.7)
           .frame(width: 14, height: 14)
 
-        Text("겹치는 일정이 있는지 확인중이에요")
+        Text(LocalizedStrings.Shared.conflictCheckingEvents)
           .font(.system(size: 12))
           .foregroundStyle(.secondary)
 
@@ -223,7 +226,16 @@ public struct ProBonusFloatingView: View {
             .foregroundStyle(Color.pmwarning.n500)
 
           if conflicts.count == 1, let first = conflicts.first {
-            Text("'\(first.title)'과(와) \(first.overlapMinutes)분 겹쳐요")
+            let text: String = {
+              if first.overlapMinutes > 0 {
+                return "'\(first.title)'과(와) \(first.overlapMinutes)분 겹쳐요"
+              } else if first.gapMinutes > 0 {
+                return "'\(first.title)'과(와) 여유 \(first.gapMinutes)분이에요"
+              } else {
+                return "'\(first.title)'과(와) 일정이 겹쳐요"
+              }
+            }()
+            Text(text)
               .font(.system(size: 12))
               .foregroundStyle(.primary)
               .lineLimit(1)

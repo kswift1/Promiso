@@ -1064,7 +1064,11 @@ extension CalendarFeature {
         var promise = PromiseModel.empty
         promise.startAt = startDate
         promise.endAt = endDate
-        state.createPromise = CreatePromise.Feature.State(promise: promise)
+        state.createPromise = CreatePromise.Feature.State(
+          promise: promise,
+          groupSummaries: state.currentUser.groups.isEmpty ? nil : Array(state.currentUser.groups),
+          currentUserId: state.currentUserId
+        )
         return .none
 
       case .deleteScheduleItem(let item):

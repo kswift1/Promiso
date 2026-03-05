@@ -1,6 +1,36 @@
 {
   "sourceLanguage": "ko",
   "strings": {
+    "%@%%": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@%%"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@%%"
+          }
+        }
+      }
+    },
+    "%@~%@°": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@~%2$@°"
+          }
+        }
+      }
+    },
+    "%@°": {},
+    "%@건": {},
+    "%@건의 일정이 겹쳐요": {},
+    "%@의 약속시간대 날씨를 확인중이에요": {},
     "'%@' 겹치는 구간 중심으로 표시": {},
     "'%@'과(와) %@분 겹쳐요": {
       "localizations": {
@@ -28,100 +58,30 @@
         }
       }
     },
-    "%@%%": {
+    "Bottom": {},
+    "Error Toast": {},
+    "Info Toast": {},
+    "PRO": {},
+    "Page %@": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@%%"
+            "value": "Page %@"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@%%"
+            "value": "Page %@"
           }
         }
       }
     },
-    "%@°": {},
-    "%@~%@°": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "new",
-            "value": "%1$@~%2$@°"
-          }
-        }
-      }
-    },
-    "%@건": {},
-    "%@건의 일정이 겹쳐요": {},
-    "%@의 약속시간대 날씨를 확인중이에요": {},
-    "|": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "|"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "|"
-          }
-        }
-      }
-    },
-    "✓": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "✓"
-          }
-        }
-      }
-    },
-    "🏁": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "🏁"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "🏁"
-          }
-        }
-      }
-    },
-    "📍": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "📍"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "📍"
-          }
-        }
-      }
-    },
+    "Snackbar (Action)": {},
+    "Success Toast": {},
+    "Top": {},
+    "Warning Toast": {},
     "appEntry.update.action": {
       "comment": "업데이트 버튼",
       "extractionState": "manual",
@@ -626,7 +586,6 @@
         }
       }
     },
-    "Bottom": {},
     "calendar.contextMenu.addPersonalEvent": {
       "extractionState": "stale",
       "localizations": {
@@ -940,6 +899,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "약속을 불러오는 중..."
+          }
+        }
+      }
+    },
+    "calendar.mode.month": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "월간 리스트"
+          }
+        }
+      }
+    },
+    "calendar.mode.monthExpanded": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "월간 전체"
+          }
+        }
+      }
+    },
+    "calendar.mode.week": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "주간 타임라인"
           }
         }
       }
@@ -3551,7 +3540,6 @@
         }
       }
     },
-    "Error Toast": {},
     "error.accountDeleteFailed": {
       "comment": "회원 탈퇴 실패",
       "extractionState": "manual",
@@ -4074,14 +4062,14 @@
         }
       }
     },
-    "error.map.invalidResponse" : {
-      "comment" : "응답을 처리할 수 없습니다",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Unable to process response."
+    "error.map.invalidResponse": {
+      "comment": "응답을 처리할 수 없습니다",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unable to process response."
           }
         },
         "ko": {
@@ -5442,6 +5430,42 @@
         }
       }
     },
+    "groupMain.deeplink.joinGroupRequired.subtitle": {
+      "comment": "딥링크 그룹 미가입 토스트 부제목",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You need to be a member of the group to view the promise"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "약속을 확인하려면 해당 그룹의 멤버여야 합니다"
+          }
+        }
+      }
+    },
+    "groupMain.deeplink.joinGroupRequired.title": {
+      "comment": "딥링크 그룹 미가입 토스트 제목",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Please join the group first"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "그룹에 먼저 가입해주세요"
+          }
+        }
+      }
+    },
     "groupMain.deletePromise.confirm": {
       "comment": "약속 삭제 확인 메시지 (예: '저녁 약속' 약속을 삭제하시겠습니까?)",
       "extractionState": "manual",
@@ -5460,50 +5484,14 @@
         }
       }
     },
-    "groupMain.deeplink.joinGroupRequired.subtitle" : {
-      "comment" : "딥링크 그룹 미가입 토스트 부제목",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "You need to be a member of the group to view the promise"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "약속을 확인하려면 해당 그룹의 멤버여야 합니다"
-          }
-        }
-      }
-    },
-    "groupMain.deeplink.joinGroupRequired.title" : {
-      "comment" : "딥링크 그룹 미가입 토스트 제목",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Please join the group first"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "그룹에 먼저 가입해주세요"
-          }
-        }
-      }
-    },
-    "groupMain.deletePromise.title" : {
-      "comment" : "약속 삭제 알럿 타이틀",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Delete Promise"
+    "groupMain.deletePromise.title": {
+      "comment": "약속 삭제 알럿 타이틀",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete Promise"
           }
         },
         "ko": {
@@ -8553,6 +8541,114 @@
         }
       }
     },
+    "home.today.empty.random10.subtitle": {
+      "comment": "랜덤 메시지10 설명",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Take time to care for yourself"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자신을 돌보는 시간을 가져요"
+          }
+        }
+      }
+    },
+    "home.today.empty.random10.title": {
+      "comment": "랜덤 메시지10",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Time for me"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "나를 위한 시간이에요"
+          }
+        }
+      }
+    },
+    "home.today.empty.random11.subtitle": {
+      "comment": "랜덤 메시지11 설명",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A day to rest comfortably"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "편안하게 쉬어가는 하루"
+          }
+        }
+      }
+    },
+    "home.today.empty.random11.title": {
+      "comment": "랜덤 메시지11",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A relaxed today"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "여유있는 오늘이에요"
+          }
+        }
+      }
+    },
+    "home.today.empty.random12.subtitle": {
+      "comment": "랜덤 메시지12 설명",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Time flowing naturally"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자연스럽게 흐르는 시간"
+          }
+        }
+      }
+    },
+    "home.today.empty.random12.title": {
+      "comment": "랜덤 메시지12",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A peaceful day"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "평화로운 하루예요"
+          }
+        }
+      }
+    },
     "home.today.empty.random2.subtitle": {
       "comment": "랜덤 메시지2 설명",
       "extractionState": "manual",
@@ -8841,114 +8937,6 @@
         }
       }
     },
-    "home.today.empty.random10.subtitle": {
-      "comment": "랜덤 메시지10 설명",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Take time to care for yourself"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "자신을 돌보는 시간을 가져요"
-          }
-        }
-      }
-    },
-    "home.today.empty.random10.title": {
-      "comment": "랜덤 메시지10",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Time for me"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "나를 위한 시간이에요"
-          }
-        }
-      }
-    },
-    "home.today.empty.random11.subtitle": {
-      "comment": "랜덤 메시지11 설명",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "A day to rest comfortably"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "편안하게 쉬어가는 하루"
-          }
-        }
-      }
-    },
-    "home.today.empty.random11.title": {
-      "comment": "랜덤 메시지11",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "A relaxed today"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "여유있는 오늘이에요"
-          }
-        }
-      }
-    },
-    "home.today.empty.random12.subtitle": {
-      "comment": "랜덤 메시지12 설명",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Time flowing naturally"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "자연스럽게 흐르는 시간"
-          }
-        }
-      }
-    },
-    "home.today.empty.random12.title": {
-      "comment": "랜덤 메시지12",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "A peaceful day"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "평화로운 하루예요"
-          }
-        }
-      }
-    },
     "home.today.hoursMinutes": {
       "comment": "N시간 N분",
       "extractionState": "manual",
@@ -9147,7 +9135,6 @@
         }
       }
     },
-    "Info Toast": {},
     "joinGroup.checking": {
       "comment": "확인 중",
       "extractionState": "manual",
@@ -9593,23 +9580,6 @@
         }
       }
     },
-    "livePromise.eta.minutesUntilArrival": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "min until arrival"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "분 후 도착"
-          }
-        }
-      }
-    },
     "livePromise.eta.minuteUnit": {
       "extractionState": "manual",
       "localizations": {
@@ -9623,6 +9593,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "분"
+          }
+        }
+      }
+    },
+    "livePromise.eta.minutesUntilArrival": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "min until arrival"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "분 후 도착"
           }
         }
       }
@@ -12813,6 +12800,24 @@
         }
       }
     },
+    "overlayScheduleDetail.confirmThreshold": {
+      "comment": "확정 기준 인원 수 (예: 확정 5)",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Threshold %lld"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "확정 %lld"
+          }
+        }
+      }
+    },
     "overlayScheduleDetail.confirmationRemaining": {
       "comment": "확정까지 남은 인원 (예: 확정까지 3명 더 필요)",
       "extractionState": "manual",
@@ -12845,24 +12850,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "확정됨"
-          }
-        }
-      }
-    },
-    "overlayScheduleDetail.confirmThreshold": {
-      "comment": "확정 기준 인원 수 (예: 확정 5)",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Threshold %lld"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "확정 %lld"
           }
         }
       }
@@ -13115,22 +13102,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "전체 상세 보기"
-          }
-        }
-      }
-    },
-    "Page %@": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Page %@"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Page %@"
           }
         }
       }
@@ -13711,7 +13682,6 @@
         }
       }
     },
-    "PRO": {},
     "profile.error.nicknameCheckFailed": {
       "comment": "닉네임 확인 실패",
       "extractionState": "manual",
@@ -14810,24 +14780,6 @@
         }
       }
     },
-    "promiseCard.resetting": {
-      "comment": "되돌리는 중 (진행 상태)",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Resetting..."
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "되돌리는 중"
-          }
-        }
-      }
-    },
     "promiseCard.resetToPending": {
       "comment": "미정으로 되돌리기",
       "extractionState": "manual",
@@ -14842,6 +14794,24 @@
           "stringUnit": {
             "state": "translated",
             "value": "미정으로 되돌리기"
+          }
+        }
+      }
+    },
+    "promiseCard.resetting": {
+      "comment": "되돌리는 중 (진행 상태)",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resetting..."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "되돌리는 중"
           }
         }
       }
@@ -15690,6 +15660,366 @@
         }
       }
     },
+    "settings.conflictDetection.additionalFeature": {
+      "comment": "충돌 감지 추가 기능 레이블",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add-on"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "추가 기능"
+          }
+        }
+      }
+    },
+    "settings.conflictDetection.conflict": {
+      "comment": "충돌 상태 레이블",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conflict"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "충돌"
+          }
+        }
+      }
+    },
+    "settings.conflictDetection.currentMinutes": {
+      "comment": "현재 설정된 여유 시간 (분)",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld min"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld분"
+          }
+        }
+      }
+    },
+    "settings.conflictDetection.custom": {
+      "comment": "직접 설정 옵션 레이블",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Custom"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "직접 설정"
+          }
+        }
+      }
+    },
+    "settings.conflictDetection.description": {
+      "comment": "충돌 감지 기능 설명",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "We'll notify you when a new promise is closer than your set margin to an existing event."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "새 약속이 기존 일정과 설정한 여유 시간보다 가까우면 알려드려요."
+          }
+        }
+      }
+    },
+    "settings.conflictDetection.example": {
+      "comment": "예시 섹션 제목",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Example"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "예시"
+          }
+        }
+      }
+    },
+    "settings.conflictDetection.existingEvents": {
+      "comment": "기존 일정 레이블 (설정 화면)",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Existing Events"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "기존 일정"
+          }
+        }
+      }
+    },
+    "settings.conflictDetection.margin": {
+      "comment": "여유 상태 레이블",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Margin"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "여유"
+          }
+        }
+      }
+    },
+    "settings.conflictDetection.minThreshold": {
+      "comment": "최소 여유 시간 레이블",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Minimum Margin"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "최소 여유 시간"
+          }
+        }
+      }
+    },
+    "settings.conflictDetection.minuteUnit": {
+      "comment": "분 단위 레이블",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "min"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "분"
+          }
+        }
+      }
+    },
+    "settings.conflictDetection.newEvent": {
+      "comment": "새로 만드는 약속 레이블 (설정 화면 예시)",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New Promise"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "새로 만드는 약속"
+          }
+        }
+      }
+    },
+    "settings.conflictDetection.overlapOnly": {
+      "comment": "겹칠 때만 옵션 레이블",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Overlap Only"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "겹칠 때만"
+          }
+        }
+      }
+    },
+    "settings.conflictDetection.overlapOnlyHint": {
+      "comment": "겹칠 때만 설명 힌트",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only detects conflicts when schedules actually overlap."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "시간이 겹치는 일정만 충돌로 감지해요."
+          }
+        }
+      }
+    },
+    "settings.conflictDetection.previewHint": {
+      "comment": "충돌 감지 미리보기 힌트",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This is how we'll notify you when creating a promise. (Tap for details)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "약속 생성 시 이렇게 알려드려요. (탭하면 상세 정보를 볼 수 있어요)"
+          }
+        }
+      }
+    },
+    "settings.conflictDetection.thresholdDesc.hours": {
+      "comment": "임계값 설명 - 시간만 (예: 최소 2시간)",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detects conflict when events are within %lld hour(s) of each other."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "약속 사이 최소 %lld시간의 여유 시간을 두고 충돌을 판단해요."
+          }
+        }
+      }
+    },
+    "settings.conflictDetection.thresholdDesc.hoursMinutes": {
+      "comment": "임계값 설명 - 시간+분 (예: 최소 1시간 30분)",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detects conflict when events are within %1$lld hour(s) %2$lld minute(s) of each other."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "약속 사이 최소 %1$lld시간 %2$lld분의 여유 시간을 두고 충돌을 판단해요."
+          }
+        }
+      }
+    },
+    "settings.conflictDetection.thresholdDesc.minutes": {
+      "comment": "임계값 설명 - 분만 (예: 최소 30분)",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detects conflict when events are within %lld minute(s) of each other."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "약속 사이 최소 %lld분의 여유 시간을 두고 충돌을 판단해요."
+          }
+        }
+      }
+    },
+    "settings.conflictDetection.thresholdHint": {
+      "comment": "여유 시간 설정 힌트",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Events closer than your set margin will be detected as conflicts."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "설정한 여유 시간보다 가까운 일정은 충돌로 감지해요."
+          }
+        }
+      }
+    },
+    "settings.conflictDetection.thresholdSection": {
+      "comment": "여유 시간 설정 섹션 제목",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Margin Settings"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "여유 시간 설정"
+          }
+        }
+      }
+    },
+    "settings.conflictDetection.title": {
+      "comment": "일정 충돌 감지 화면 제목",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schedule Conflict Detection"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "일정 충돌 감지"
+          }
+        }
+      }
+    },
     "settings.contact": {
       "comment": "문의하기",
       "extractionState": "manual",
@@ -15834,24 +16164,6 @@
         }
       }
     },
-    "settings.developer.crashlyticsTest": {
-      "comment": "Crashlytics 테스트",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Crashlytics Test"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Crashlytics 테스트"
-          }
-        }
-      }
-    },
     "settings.developer.crashWillOccur": {
       "comment": "크래시 발생",
       "extractionState": "manual",
@@ -15866,6 +16178,24 @@
           "stringUnit": {
             "state": "translated",
             "value": "크래시 발생"
+          }
+        }
+      }
+    },
+    "settings.developer.crashlyticsTest": {
+      "comment": "Crashlytics 테스트",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Crashlytics Test"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Crashlytics 테스트"
           }
         }
       }
@@ -16621,24 +16951,6 @@
         }
       }
     },
-    "settings.liveActivityTest.ended": {
-      "comment": "종료됨",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ended"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "종료됨"
-          }
-        }
-      }
-    },
     "settings.liveActivityTest.endLiveActivity": {
       "comment": "라이브액티비티 종료",
       "extractionState": "manual",
@@ -16657,20 +16969,20 @@
         }
       }
     },
-    "settings.liveActivityTest.eta5Min": {
-      "comment": "5분",
+    "settings.liveActivityTest.ended": {
+      "comment": "종료됨",
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "5min"
+            "value": "Ended"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "5분"
+            "value": "종료됨"
           }
         }
       }
@@ -16725,6 +17037,24 @@
           "stringUnit": {
             "state": "translated",
             "value": "30분"
+          }
+        }
+      }
+    },
+    "settings.liveActivityTest.eta5Min": {
+      "comment": "5분",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "5min"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "5분"
           }
         }
       }
@@ -17071,24 +17401,6 @@
         }
       }
     },
-    "settings.liveActivityTest.started": {
-      "comment": "시작됨",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Started: "
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "시작됨: "
-          }
-        }
-      }
-    },
     "settings.liveActivityTest.startMockLiveActivity": {
       "comment": "목 라이브액티비티 시작",
       "extractionState": "manual",
@@ -17103,6 +17415,24 @@
           "stringUnit": {
             "state": "translated",
             "value": "목 라이브액티비티 시작"
+          }
+        }
+      }
+    },
+    "settings.liveActivityTest.started": {
+      "comment": "시작됨",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Started: "
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "시작됨: "
           }
         }
       }
@@ -17413,60 +17743,6 @@
         }
       }
     },
-    "settings.notifications": {
-      "comment": "알림 설정",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Notification Settings"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "알림 설정"
-          }
-        }
-      }
-    },
-    "settings.notifications.email": {
-      "comment": "이메일 알림",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Email Notifications"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "이메일 알림"
-          }
-        }
-      }
-    },
-    "settings.notifications.push": {
-      "comment": "푸시 알림",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Push Notifications"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "푸시 알림"
-          }
-        }
-      }
-    },
     "settings.notificationSettings.allow": {
       "comment": "알림 허용",
       "extractionState": "manual",
@@ -17503,6 +17779,24 @@
         }
       }
     },
+    "settings.notificationSettings.canToggle": {
+      "comment": "해당 알림을 켜고 끌 수 있어요",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You can toggle this notification on or off"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "해당 알림을 켜고 끌 수 있어요"
+          }
+        }
+      }
+    },
     "settings.notificationSettings.cancelled": {
       "comment": "영화 관람 약속 무산 😢",
       "extractionState": "manual",
@@ -17535,24 +17829,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "참여 인원이 부족해서 확정되지 않았어요"
-          }
-        }
-      }
-    },
-    "settings.notificationSettings.canToggle": {
-      "comment": "해당 알림을 켜고 끌 수 있어요",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "You can toggle this notification on or off"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "해당 알림을 켜고 끌 수 있어요"
           }
         }
       }
@@ -17895,6 +18171,60 @@
           "stringUnit": {
             "state": "translated",
             "value": "약속 정보가 수정됐어요. 확인해주세요!"
+          }
+        }
+      }
+    },
+    "settings.notifications": {
+      "comment": "알림 설정",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notification Settings"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "알림 설정"
+          }
+        }
+      }
+    },
+    "settings.notifications.email": {
+      "comment": "이메일 알림",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Email Notifications"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이메일 알림"
+          }
+        }
+      }
+    },
+    "settings.notifications.push": {
+      "comment": "푸시 알림",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Push Notifications"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "푸시 알림"
           }
         }
       }
@@ -19064,6 +19394,240 @@
         }
       }
     },
+    "shared.conflict.checkingEvents": {
+      "comment": "겹치는 일정이 있는지 확인중",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking for schedule conflicts..."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "겹치는 일정이 있는지 확인중이에요"
+          }
+        }
+      }
+    },
+    "shared.conflict.count": {
+      "comment": "충돌 건수 (예: 2건)",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld conflicts"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld건"
+          }
+        }
+      }
+    },
+    "shared.conflict.existingEvent": {
+      "comment": "기존 일정 레이블",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Existing Event"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "기존 일정"
+          }
+        }
+      }
+    },
+    "shared.conflict.focusedOn": {
+      "comment": "특정 일정 중심으로 표시 (예: '회의' 겹치는 구간 중심으로 표시)",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Centered on overlap with '%@'"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "'%@' 겹치는 구간 중심으로 표시"
+          }
+        }
+      }
+    },
+    "shared.conflict.margin.hours": {
+      "comment": "여유 시간 (시간만, 예: 여유 2시간)",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lldh margin"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "여유 %lld시간"
+          }
+        }
+      }
+    },
+    "shared.conflict.margin.hoursMinutes": {
+      "comment": "여유 시간 (시간+분, 예: 여유 1시간 30분)",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lldh %2$lldm margin"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "여유 %1$lld시간 %2$lld분"
+          }
+        }
+      }
+    },
+    "shared.conflict.margin.minutes": {
+      "comment": "여유 시간 (분만, 예: 여유 30분)",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lldm margin"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "여유 %lld분"
+          }
+        }
+      }
+    },
+    "shared.conflict.newEvent": {
+      "comment": "새 일정 레이블",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New Event"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "새 일정"
+          }
+        }
+      }
+    },
+    "shared.conflict.overlap": {
+      "comment": "일정 겹침 (여유 없음)",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Overlap"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "일정 겹침"
+          }
+        }
+      }
+    },
+    "shared.conflict.overlap.hours": {
+      "comment": "겹침 시간 (시간만, 예: 2시간)",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lldh"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld시간"
+          }
+        }
+      }
+    },
+    "shared.conflict.overlap.hoursMinutes": {
+      "comment": "겹침 시간 (시간+분, 예: 1시간 30분)",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lldh %2$lldm"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld시간 %2$lld분"
+          }
+        }
+      }
+    },
+    "shared.conflict.overlap.minutes": {
+      "comment": "겹침 시간 (분만, 예: 30분)",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lldm"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld분"
+          }
+        }
+      }
+    },
+    "shared.conflict.overlappingEvents": {
+      "comment": "겹치는 일정 헤더",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Overlapping Events"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "겹치는 일정"
+          }
+        }
+      }
+    },
     "shared.createEvent.edit": {
       "comment": "일정 수정",
       "extractionState": "manual",
@@ -19280,24 +19844,6 @@
         }
       }
     },
-    "shared.editPromise.minimumParticipants": {
-      "comment": "최소 참가 인원",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Minimum Participants"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "최소 참가 인원"
-          }
-        }
-      }
-    },
     "shared.editPromise.minMembersDescription": {
       "comment": "최소 인원 설명",
       "extractionState": "manual",
@@ -19312,6 +19858,24 @@
           "stringUnit": {
             "state": "translated",
             "value": "최소 %lld명이 참석하면 약속이 자동으로 확정됩니다"
+          }
+        }
+      }
+    },
+    "shared.editPromise.minimumParticipants": {
+      "comment": "최소 참가 인원",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Minimum Participants"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "최소 참가 인원"
           }
         }
       }
@@ -20252,6 +20816,42 @@
         }
       }
     },
+    "shared.reminder.10min": {
+      "comment": "10분 전",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "10 min before"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "10분 전"
+          }
+        }
+      }
+    },
+    "shared.reminder.15min": {
+      "comment": "15분 전",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "15 min before"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "15분 전"
+          }
+        }
+      }
+    },
     "shared.reminder.1day": {
       "comment": "1일 전",
       "extractionState": "manual",
@@ -20342,60 +20942,6 @@
         }
       }
     },
-    "shared.reminder.5min": {
-      "comment": "5분 전",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "5 min before"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "5분 전"
-          }
-        }
-      }
-    },
-    "shared.reminder.10min": {
-      "comment": "10분 전",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "10 min before"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "10분 전"
-          }
-        }
-      }
-    },
-    "shared.reminder.15min": {
-      "comment": "15분 전",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "15 min before"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "15분 전"
-          }
-        }
-      }
-    },
     "shared.reminder.30min": {
       "comment": "30분 전",
       "extractionState": "manual",
@@ -20410,6 +20956,24 @@
           "stringUnit": {
             "state": "translated",
             "value": "30분 전"
+          }
+        }
+      }
+    },
+    "shared.reminder.5min": {
+      "comment": "5분 전",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "5 min before"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "5분 전"
           }
         }
       }
@@ -20450,8 +21014,42 @@
         }
       }
     },
-    "Snackbar (Action)": {},
-    "Success Toast": {},
+    "shared.weather.checking": {
+      "comment": "약속시간대 날씨 확인중 (위치 없음)",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking weather for promise time..."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "약속시간대 날씨를 확인중이에요"
+          }
+        }
+      }
+    },
+    "shared.weather.checkingWithLocation": {
+      "comment": "약속시간대 날씨 확인중 (위치 이름 포함)",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking weather for %@ promise time..."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@의 약속시간대 날씨를 확인중이에요"
+          }
+        }
+      }
+    },
     "tab.calendar": {
       "comment": "달력",
       "extractionState": "manual",
@@ -20592,8 +21190,6 @@
         }
       }
     },
-    "Top": {},
-    "Warning Toast": {},
     "weather.advice.bringUmbrella": {
       "extractionState": "manual",
       "localizations": {
@@ -22134,6 +22730,38 @@
         }
       }
     },
+    "|": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "|"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "|"
+          }
+        }
+      }
+    },
+    "✓": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓"
+          }
+        }
+      }
+    },
     "겹치는 일정": {},
     "겹치는 일정이 있는지 확인중이에요": {},
     "그룹 만들기": {
@@ -22319,32 +22947,34 @@
         }
       }
     },
-    "calendar.mode.week": {
+    "🏁": {
       "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "🏁"
+          }
+        },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "주간 타임라인"
+            "value": "🏁"
           }
         }
       }
     },
-    "calendar.mode.month": {
+    "📍": {
       "localizations": {
-        "ko": {
+        "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "월간 리스트"
+            "value": "📍"
           }
-        }
-      }
-    },
-    "calendar.mode.monthExpanded": {
-      "localizations": {
+        },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "월간 전체"
+            "value": "📍"
           }
         }
       }

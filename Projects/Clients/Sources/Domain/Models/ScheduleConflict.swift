@@ -25,6 +25,7 @@ public struct ScheduleConflict: Equatable, Sendable, Identifiable {
   public let startAt: Date
   public let endAt: Date?
   public let overlapMinutes: Int
+  public let gapMinutes: Int  // 두 일정 사이 여유 시간 (분). 겹치면 0, 안 겹치면 양수
 
   public init(
     id: String,
@@ -34,7 +35,8 @@ public struct ScheduleConflict: Equatable, Sendable, Identifiable {
     emoji: String?,
     startAt: Date,
     endAt: Date?,
-    overlapMinutes: Int
+    overlapMinutes: Int,
+    gapMinutes: Int = 0
   ) {
     self.id = id
     self.source = source
@@ -44,5 +46,6 @@ public struct ScheduleConflict: Equatable, Sendable, Identifiable {
     self.startAt = startAt
     self.endAt = endAt
     self.overlapMinutes = overlapMinutes
+    self.gapMinutes = gapMinutes
   }
 }
