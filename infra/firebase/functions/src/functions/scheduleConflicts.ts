@@ -27,8 +27,6 @@ import {
 // Constants
 // ============================================================================
 
-/** endAt이 null일 때 기본 지속 시간 (2시간, ms) */
-const DEFAULT_DURATION_MS = 2 * 60 * 60 * 1000;
 const MAX_SLOT_DATE_RANGE_DAYS = 31;
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -133,7 +131,7 @@ async function upsertSlot(
   const startAt = slotEntry.startAt.toDate();
   const endAt = slotEntry.endAt ?
     slotEntry.endAt.toDate() :
-    new Date(startAt.getTime() + DEFAULT_DURATION_MS);
+    startAt;
 
   const {keys: dateKeys, isTruncated} = getDateKeys(
     startAt,
@@ -184,8 +182,7 @@ async function removeSlot(
   endAt: Date | null,
 ): Promise<void> {
   const db = admin.firestore();
-  const effectiveEnd = endAt ??
-    new Date(startAt.getTime() + DEFAULT_DURATION_MS);
+  const effectiveEnd = endAt ?? startAt;
   const {keys: dateKeys, isTruncated} = getDateKeys(
     startAt,
     effectiveEnd,
@@ -262,7 +259,7 @@ export const checkScheduleConflicts =
       const startAt = new Date(data.startAt);
       const endAt = data.endAt ?
         new Date(data.endAt) :
-        new Date(startAt.getTime() + DEFAULT_DURATION_MS);
+        new Date(startAt.getTime());
       assertDateRangeWithinLimit(startAt, endAt);
       const excludeIds = new Set(data.excludeIds ?? []);
 
@@ -308,7 +305,7 @@ export const checkScheduleConflicts =
         const slotStart = slot.startAt.toDate();
         const slotEnd = slot.endAt ?
           slot.endAt.toDate() :
-          new Date(slotStart.getTime() + DEFAULT_DURATION_MS);
+          slotStart;
 
         // 겹침 조건: slotStart < endAt && slotEnd > startAt
         if (slotStart < endAt && slotEnd > startAt) {

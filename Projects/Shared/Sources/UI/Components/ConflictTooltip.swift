@@ -33,7 +33,7 @@ public struct ConflictTooltip: View {
   /// - 48시간 초과: 가장 겹치는 충돌의 overlap 구간에 포커스 (±1시간, 최대 12시간)
   private var timelineRange: (start: Date, end: Date) {
     let calendar = Calendar.current
-    let newEnd = newEventEndAt ?? newEventStartAt.addingTimeInterval(3600)
+    let newEnd = newEventEndAt ?? newEventStartAt
 
     // 충돌이 없으면 fallback
     if conflicts.isEmpty {
@@ -58,7 +58,7 @@ public struct ConflictTooltip: View {
 
     // 초장기 일정: 가장 겹치는 충돌의 overlap 구간에 포커스
     let topConflict = conflicts[0] // overlapMinutes 내림차순 정렬
-    let conflictEnd = topConflict.endAt ?? topConflict.startAt.addingTimeInterval(3600)
+    let conflictEnd = topConflict.endAt ?? topConflict.startAt
     let overlapStart = max(newEventStartAt, topConflict.startAt)
     let overlapEnd = min(newEnd, conflictEnd)
 
@@ -76,7 +76,7 @@ public struct ConflictTooltip: View {
 
   /// 48시간 초과 일정에서 가장 겹치는 구간에 포커스 중인지 여부
   private var isFocusedTimeline: Bool {
-    let newEnd = newEventEndAt ?? newEventStartAt.addingTimeInterval(3600)
+    let newEnd = newEventEndAt ?? newEventStartAt
     return newEnd.timeIntervalSince(newEventStartAt) / 3600 > 48 && !conflicts.isEmpty
   }
 
@@ -282,7 +282,7 @@ public struct ConflictTooltip: View {
   // MARK: - New Event Block
 
   private var newEventBlock: some View {
-    let endAt = newEventEndAt ?? newEventStartAt.addingTimeInterval(3600)
+    let endAt = newEventEndAt ?? newEventStartAt
     let (y, h) = clampedBlock(start: newEventStartAt, end: endAt)
 
     return HStack(spacing: 3) {
@@ -313,7 +313,7 @@ public struct ConflictTooltip: View {
   // MARK: - Conflict Block
 
   private func conflictBlock(_ conflict: ConflictInfo, index: Int) -> some View {
-    let endAt = conflict.endAt ?? conflict.startAt.addingTimeInterval(3600)
+    let endAt = conflict.endAt ?? conflict.startAt
     let (y, h) = clampedBlock(start: conflict.startAt, end: endAt)
     let color = blockColor(at: index)
 
@@ -408,6 +408,9 @@ public struct ConflictTooltip: View {
 
   private func overlapText(for conflict: ConflictInfo) -> String {
     let minutes = conflict.overlapMinutes
+    if minutes <= 0 {
+      return "일정 겹침"
+    }
     if minutes >= 60 {
       let hours = minutes / 60
       let remaining = minutes % 60

@@ -223,7 +223,7 @@ public struct ProBonusFloatingView: View {
             .foregroundStyle(Color.pmwarning.n500)
 
           if conflicts.count == 1, let first = conflicts.first {
-            Text("'\(first.title)'과(와) \(first.overlapMinutes)분 겹쳐요")
+            Text(first.overlapMinutes > 0 ? "'\(first.title)'과(와) \(first.overlapMinutes)분 겹쳐요" : "'\(first.title)'과(와) 일정이 겹쳐요")
               .font(.system(size: 12))
               .foregroundStyle(.primary)
               .lineLimit(1)

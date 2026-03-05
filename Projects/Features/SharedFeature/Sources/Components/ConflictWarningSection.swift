@@ -144,6 +144,9 @@ private struct ConflictItemRow: View {
 
   private var overlapText: String {
     let minutes = conflict.overlapMinutes
+    if minutes <= 0 {
+      return "일정 겹침"
+    }
     if minutes >= 60 {
       let hours = minutes / 60
       let remainingMinutes = minutes % 60

@@ -20,7 +20,7 @@ public struct ScheduleConflictClient: Sendable {
   /// - Parameters:
   ///   - userId: 현재 사용자 ID
   ///   - startAt: 새 약속/일정 시작 시간
-  ///   - endAt: 새 약속/일정 종료 시간 (nil이면 startAt + 2h)
+  ///   - endAt: 새 약속/일정 종료 시간 (nil이면 startAt과 동일)
   ///   - excludeIds: 충돌 결과에서 제외할 일정 ID (편집 시 자기 자신 제외)
   /// - Returns: 겹치는 일정 목록
   public var checkConflicts: @Sendable (
