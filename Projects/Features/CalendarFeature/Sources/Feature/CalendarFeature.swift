@@ -30,6 +30,9 @@ extension CalendarFeature {
 
   @Reducer
   public struct Feature {
+    /// 모드 전환 애니메이션 대기 시간 (나노초)
+    private static let transitionAnimationDuration: UInt64 = 300_000_000
+
     public init() {}
 
     // MARK: - State
@@ -43,11 +46,8 @@ extension CalendarFeature {
       @Shared(.inMemory(AppConstants.SharedState.groupMembersCache))
       var groupMembersCache: [String: [UserPublicModel]] = [:]
 
-      /// 표시 모드 (주간/월간)
+      /// 표시 모드 (주간/월간/월간확장)
       var displayMode: CalendarDisplayMode = .week
-
-      /// 월간 뷰 확장 상태 (collapsed: dot + 시트, expanded: 바 + 스크롤)
-      var monthExpansionState: MonthViewExpansionState = .collapsed
 
       /// 현재 주의 시작일
       var currentWeekStart: Date
@@ -581,7 +581,7 @@ extension CalendarFeature {
         case indicatorTapped(CalendarFeature.ScheduleIndicator)
         case dayLongPressCreatePersonalEvent(Date)
         case dayLongPressCreatePromise(Date)
-        case toggleMonthExpansion
+        case setDisplayMode(CalendarDisplayMode)
         // 필터 관련
         case filterIconTapped
         case filterGroupToggled(String)
@@ -788,32 +788,11 @@ extension CalendarFeature {
         )
 
       case .toggleDisplayMode:
-        // 월간 확장 상태 리셋
-        state.monthExpansionState = .collapsed
-        state.isTransitioning = true
-        state.displayMode = state.displayMode == .week ? .month : .week
+        return applyDisplayModeChange(&state, to: state.displayMode.next)
 
-        // 모드 전환 시 현재 선택된 날짜 기준으로 동기화
-        if state.displayMode == .week {
-          state.currentWeekStart = state.selectedDate.startOfWeek
-        } else {
-          state.currentMonth = state.selectedDate.startOfMonth
-        }
-
-        // 월간 모드로 전환 시 해당 월 데이터 로드
-        let monthsToLoad = getMonthsToLoad(state: state).filter { !state.loadedMonths.contains($0) }
-        AppLogger.calendar.debugLog("🔄 모드 전환 - 로드 필요 월: \(monthsToLoad.map { LocalizedDateFormatters.yearMonth.string(from: $0) })")
-
-        var effects: [Effect<Action>] = monthsToLoad.map { month in
-          .send(.internal(.fetchPromisesForMonth(month)))
-        }
-
-        effects.append(.run { send in
-          try await Task.sleep(nanoseconds: 300_000_000)
-          await send(.internal(.transitionCompleted))
-        })
-
-        return .merge(effects)
+      case .setDisplayMode(let mode):
+        guard mode != state.displayMode else { return .none }
+        return applyDisplayModeChange(&state, to: mode)
 
       case .selectDate(let date):
         let previousMonth = state.selectedDate.startOfMonth
@@ -825,6 +804,10 @@ extension CalendarFeature {
           let newWeekStart = date.startOfWeek
           if newWeekStart != state.currentWeekStart {
             state.currentWeekStart = newWeekStart
+          }
+          // 월 그리드 동기화
+          if state.currentMonth.startOfMonth != newMonth {
+            state.currentMonth = newMonth
           }
         }
 
@@ -856,6 +839,7 @@ extension CalendarFeature {
           if let newWeekStart = calendar.date(byAdding: .weekOfYear, value: -1, to: state.currentWeekStart) {
             state.currentWeekStart = newWeekStart
             state.selectedDate = newWeekStart
+            state.currentMonth = newWeekStart.startOfMonth
           }
         } else {
           if let newMonth = calendar.date(byAdding: .month, value: -1, to: state.currentMonth) {
@@ -874,6 +858,7 @@ extension CalendarFeature {
           if let newWeekStart = calendar.date(byAdding: .weekOfYear, value: 1, to: state.currentWeekStart) {
             state.currentWeekStart = newWeekStart
             state.selectedDate = newWeekStart
+            state.currentMonth = newWeekStart.startOfMonth
           }
         } else {
           if let newMonth = calendar.date(byAdding: .month, value: 1, to: state.currentMonth) {
@@ -907,7 +892,7 @@ extension CalendarFeature {
         return .none
 
       case .collapseToWeek(let date):
-        guard state.displayMode == .month else { return .none }
+        guard state.displayMode.isMonthMode else { return .none }
         state.selectedDate = date
         state.currentWeekStart = date.startOfWeek
         state.displayMode = .week
@@ -918,7 +903,7 @@ extension CalendarFeature {
         state.scrolledID = targetDate
 
         return .run { send in
-          try await Task.sleep(nanoseconds: 300_000_000)
+          try await Task.sleep(nanoseconds: Self.transitionAnimationDuration)
           await send(.internal(.transitionCompleted))
         }
 
@@ -1189,10 +1174,6 @@ extension CalendarFeature {
         let endDate = date.addingTimeInterval(3600)
         return .send(.view(.createPromiseFromTimeline(startDate: date, endDate: endDate)))
 
-      case .toggleMonthExpansion:
-        state.monthExpansionState = state.monthExpansionState == .collapsed ? .expanded : .collapsed
-        return .none
-
       case .filterIconTapped:
         state.isFilterSheetPresented = true
         return .none
@@ -1458,6 +1439,33 @@ extension CalendarFeature {
         }
         return .none
       }
+    }
+
+    // MARK: - Display Mode Change
+
+    /// 디스플레이 모드 변경 공통 로직
+    private func applyDisplayModeChange(_ state: inout State, to newMode: CalendarDisplayMode) -> Effect<Action> {
+      state.isTransitioning = true
+      state.displayMode = newMode
+
+      // 모드 전환 시 현재 선택된 날짜 기준으로 양방향 동기화
+      state.currentWeekStart = state.selectedDate.startOfWeek
+      state.currentMonth = state.selectedDate.startOfMonth
+
+      // 월간 모드로 전환 시 해당 월 데이터 로드
+      let monthsToLoad = getMonthsToLoad(state: state).filter { !state.loadedMonths.contains($0) }
+      AppLogger.calendar.debugLog("🔄 모드 전환(\(newMode)) - 로드 필요 월: \(monthsToLoad.map { LocalizedDateFormatters.yearMonth.string(from: $0) })")
+
+      var effects: [Effect<Action>] = monthsToLoad.map { month in
+        .send(.internal(.fetchPromisesForMonth(month)))
+      }
+
+      effects.append(.run { send in
+        try await Task.sleep(nanoseconds: Self.transitionAnimationDuration)
+        await send(.internal(.transitionCompleted))
+      })
+
+      return .merge(effects)
     }
 
     // MARK: - Helper Functions

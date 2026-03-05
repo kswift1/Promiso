@@ -1296,6 +1296,11 @@ public enum LocalizedStrings {
     public static var filterGroup: String { String(localized: "calendar.filter.group", bundle: bundle) }
     public static var filterPersonal: String { String(localized: "calendar.filter.personal", bundle: bundle) }
 
+    // Display Mode
+    public static var modeWeek: String { String(localized: "calendar.mode.week", bundle: bundle) }
+    public static var modeMonth: String { String(localized: "calendar.mode.month", bundle: bundle) }
+    public static var modeMonthExpanded: String { String(localized: "calendar.mode.monthExpanded", bundle: bundle) }
+
     // Indicator
     public static var indicatorPersonal: String { String(localized: "calendar.indicator.personal", bundle: bundle) }
     public static var indicatorCalendar: String { String(localized: "calendar.indicator.calendar", bundle: bundle) }

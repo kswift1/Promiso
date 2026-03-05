@@ -14,12 +14,13 @@ struct CalendarHeader: View {
   let isFilterActive: Bool
   let onFilterTapped: () -> Void
   let onToggleMode: () -> Void
+  let onSetMode: (CalendarDisplayMode) -> Void
   let onMoveToToday: () -> Void
   let onMovePrevious: () -> Void
   let onMoveNext: () -> Void
 
   var body: some View {
-    HStack(spacing: 12) {
+    HStack(spacing: 8) {
       // < 타이틀 > 네비게이션
       HStack(spacing: 0) {
         Button(action: onMovePrevious) {
@@ -32,7 +33,7 @@ struct CalendarHeader: View {
         Text(title)
           .font(.system(size: 18, weight: .bold).monospacedDigit())
           .foregroundColor(.primary)
-          .frame(width: 120)
+          .fixedSize(horizontal: true, vertical: false)
           .contentTransition(.numericText())
           .animation(.spring(duration: 0.3), value: title)
 
@@ -44,19 +45,20 @@ struct CalendarHeader: View {
         }
       }
 
-      Spacer()
+      Spacer(minLength: 4)
 
       // 오늘 버튼
       if !isSelectedDateToday {
         Button(action: onMoveToToday) {
           Text(LocalizedStrings.Common.today)
-            .font(.system(size: 14, weight: .semibold))
+            .font(.system(size: 13, weight: .semibold))
             .foregroundColor(Color.pmindigo.n500)
-            .padding(.horizontal, 12)
+            .padding(.horizontal, 10)
             .padding(.vertical, 6)
             .background(Color.pmindigo.n500.opacity(0.1))
             .cornerRadius(8)
         }
+        .fixedSize()
       }
 
       // 필터
@@ -66,15 +68,27 @@ struct CalendarHeader: View {
           : "line.3.horizontal.decrease.circle")
           .font(.system(size: 18))
           .foregroundColor(isFilterActive ? Color.pmindigo.n500 : .primary)
-          .frame(width: 36, height: 36)
+          .frame(width: 32, height: 36)
       }
 
-      // 주간/월간 토글
-      Button(action: onToggleMode) {
-        Image(systemName: displayMode == .week ? "rectangle.grid.1x2" : "rectangle.grid.3x2")
+      // 모드 전환 (탭: 순환, 꾹 누르기: 메뉴)
+      Menu {
+        ForEach(CalendarDisplayMode.allCases, id: \.self) { mode in
+          Button {
+            onSetMode(mode)
+          } label: {
+            Label(mode.label, systemImage: mode.iconName)
+          }
+          .disabled(mode == displayMode)
+        }
+      } label: {
+        Image(systemName: displayMode.iconName)
           .font(.system(size: 18))
           .foregroundColor(.primary)
-          .frame(width: 36, height: 36)
+          .frame(width: 32, height: 36)
+          .contentShape(Rectangle())
+      } primaryAction: {
+        onToggleMode()
       }
     }
     .padding(.horizontal, 16)

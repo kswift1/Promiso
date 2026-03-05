@@ -56,7 +56,7 @@ struct CalendarIndicatorDayCell: View {
               .matchedGeometryEffect(id: selectionId, in: namespace)
           } else if isToday {
             Circle()
-              .stroke(Color.pmindigo.n500, lineWidth: 2)
+              .strokeBorder(Color.pmindigo.n500, lineWidth: 2)
           }
           Text(dayNumber)
             .font(.system(size: 14, weight: isSelected || isToday ? .bold : .regular))
@@ -90,7 +90,7 @@ struct CalendarIndicatorDayCell: View {
             .matchedGeometryEffect(id: selectionId, in: namespace)
         } else if isToday {
           Circle()
-            .stroke(Color.pmindigo.n500, lineWidth: 2)
+            .strokeBorder(Color.pmindigo.n500, lineWidth: 2)
         }
         Text(dayNumber)
           .font(.system(size: 14, weight: isSelected || isToday ? .bold : .regular))

@@ -47,16 +47,53 @@ struct CalendarFeatureTests {
 
   // MARK: - 디스플레이 모드 전환 테스트
 
-  @Test("toggleDisplayMode 시 주간에서 월간으로 전환 후 transition 종료")
-  func toggleDisplayMode_weekToMonth_completesTransition() async {
+  @Test("toggleDisplayMode 시 주간→월간→월간확장→주간 순환 전환")
+  func toggleDisplayMode_cyclesThroughAllModes() async {
     var state = makeState(key: "toggle-mode")
     state.loadedMonths.insert(state.selectedDate.startOfMonth)
 
     let store = makeStore(state: state)
 
+    // week → month
     await store.send(.view(.toggleDisplayMode)) {
       $0.isTransitioning = true
       $0.displayMode = .month
+    }
+    await store.receive(\.internal.transitionCompleted) {
+      $0.isTransitioning = false
+    }
+
+    // month → monthExpanded
+    await store.send(.view(.toggleDisplayMode)) {
+      $0.isTransitioning = true
+      $0.displayMode = .monthExpanded
+    }
+    await store.receive(\.internal.transitionCompleted) {
+      $0.isTransitioning = false
+    }
+
+    // monthExpanded → week
+    await store.send(.view(.toggleDisplayMode)) {
+      $0.isTransitioning = true
+      $0.displayMode = .week
+      $0.currentWeekStart = $0.selectedDate.startOfWeek
+    }
+    await store.receive(\.internal.transitionCompleted) {
+      $0.isTransitioning = false
+    }
+  }
+
+  @Test("setDisplayMode 시 직접 모드 지정")
+  func setDisplayMode_directlyChangesMode() async {
+    var state = makeState(key: "set-mode")
+    state.loadedMonths.insert(state.selectedDate.startOfMonth)
+
+    let store = makeStore(state: state)
+
+    // week → monthExpanded 직접 지정
+    await store.send(.view(.setDisplayMode(.monthExpanded))) {
+      $0.isTransitioning = true
+      $0.displayMode = .monthExpanded
     }
     await store.receive(\.internal.transitionCompleted) {
       $0.isTransitioning = false
@@ -76,6 +113,7 @@ struct CalendarFeatureTests {
     await store.send(.view(.selectDate(february))) {
       $0.selectedDate = february
       $0.currentWeekStart = february.startOfWeek
+      $0.currentMonth = february.startOfMonth
     }
     await store.receive(\.internal.fetchPromisesForMonth)
   }
