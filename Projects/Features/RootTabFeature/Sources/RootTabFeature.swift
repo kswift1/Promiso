@@ -155,6 +155,10 @@ extension RootTab {
       /// activityUpdateReceived에서 livePromise 생성 후 ETA 시트를 열기 위해 사용
       var pendingETASheetRequest: Bool = false
 
+      /// LivePromise 상세 딥링크 pending 플래그
+      /// Cold start 시 Activity 구독보다 딥링크가 먼저 도착하면 true로 설정
+      var pendingLivePromiseDetailRequest: Bool = false
+
       public init(currentUser: Shared<UserPrivateModel>) {
         self._currentUser = currentUser
         // UserDefaults에서 약속 탭 기본 모드 읽기
@@ -355,7 +359,7 @@ extension RootTab {
         case .personalMode(.view(.switchToGroupMode)):
           state.promiseMode = .group
           state.selectedTab = .promise(.group)
-          return .none
+          return .send(.groupMain(.view(.tabReturned)))
 
         case .personalMode:
           return .none
@@ -442,7 +446,7 @@ extension RootTab {
         case .openLivePromiseDetail:
           guard let livePromise = state.livePromise else {
             // Cold start: Activity 구독보다 딥링크가 먼저 도착 → pending 처리
-            // ETA 시트 없이 열리므로 pendingETASheetRequest는 false 유지
+            state.pendingLivePromiseDetailRequest = true
             return .none
           }
           state.livePromiseDetail = LivePromise.Detail.State(data: livePromise.$data)
@@ -538,6 +542,9 @@ extension RootTab {
               if state.pendingETASheetRequest {
                 state.pendingETASheetRequest = false
                 effects.append(.send(.openLiveActivityETASheet))
+              } else if state.pendingLivePromiseDetailRequest {
+                state.pendingLivePromiseDetailRequest = false
+                effects.append(.send(.openLivePromiseDetail))
               }
 
               // Activity 상태 변화 구독 시작 (dismissed/ended 감지용)

@@ -225,10 +225,12 @@ struct RootTabFeatureTests {
     await store.finish()
   }
 
-  @Test("openLivePromiseDetail 시 livePromise 없으면 아무 동작 안 함")
-  func openLivePromiseDetail_withoutLivePromise_doesNothing() async {
+  @Test("openLivePromiseDetail 시 livePromise 없으면 pending 플래그 설정")
+  func openLivePromiseDetail_withoutLivePromise_setsPending() async {
     let store = makeStore(state: makeState(key: "open-live-detail-nil"))
-    await store.send(.openLivePromiseDetail)
+    await store.send(.openLivePromiseDetail) {
+      $0.pendingLivePromiseDetailRequest = true
+    }
   }
 
   @Test("livePromise delegate showDetail 시 detail 생성")

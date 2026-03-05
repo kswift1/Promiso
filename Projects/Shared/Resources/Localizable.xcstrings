@@ -5474,6 +5474,42 @@
         }
       }
     },
+    "groupMain.deeplink.joinGroupRequired.subtitle" : {
+      "comment" : "딥링크 그룹 미가입 토스트 부제목",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You need to be a member of the group to view the promise"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "약속을 확인하려면 해당 그룹의 멤버여야 합니다"
+          }
+        }
+      }
+    },
+    "groupMain.deeplink.joinGroupRequired.title" : {
+      "comment" : "딥링크 그룹 미가입 토스트 제목",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Please join the group first"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "그룹에 먼저 가입해주세요"
+          }
+        }
+      }
+    },
     "groupMain.deletePromise.title" : {
       "comment" : "약속 삭제 알럿 타이틀",
       "extractionState" : "manual",
