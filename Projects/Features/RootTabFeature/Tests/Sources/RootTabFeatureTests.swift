@@ -51,6 +51,40 @@ struct RootTabFeatureTests {
     #expect(await syncRecorder.value() == Set<String>())
   }
 
+  @Test("onAppear 시 캘린더 동기화는 최초 1회만 예약")
+  func onAppear_schedulesCalendarSyncOnlyOnce() async {
+    let syncCounter = CallCounter()
+
+    let store = makeStore(state: makeState(key: "on-appear-once")) {
+      $0.calendarSyncClient.sync = { _ in
+        await syncCounter.increment()
+        return CalendarSyncResult()
+      }
+      $0.calendarSyncClient.syncPersonalEvents = { _ in
+        return CalendarSyncResult()
+      }
+    }
+    store.exhaustivity = .off(showSkippedAssertions: false)
+
+    await store.send(.onAppear) {
+      $0.hasInitialCalendarSyncBeenScheduled = true
+    }
+    await store.receive(\.internal.refreshWidgetAuthToken)
+    await store.receive(\.internal.requestWidgetToken)
+    await store.receive(\.internal.observePushToStartToken)
+    await store.receive(\.internal.observeActivityUpdates)
+    await store.receive(\.internal.syncCalendar)
+
+    await store.send(.onAppear)
+    await store.receive(\.internal.refreshWidgetAuthToken)
+    await store.receive(\.internal.requestWidgetToken)
+    await store.receive(\.internal.observePushToStartToken)
+    await store.receive(\.internal.observeActivityUpdates)
+
+    await store.finish()
+    #expect(await syncCounter.value() == 1)
+  }
+
   // MARK: - 탭 선택 테스트
 
   @Test("group 탭 선택 시 selectedTab 업데이트")
@@ -450,6 +484,56 @@ struct RootTabFeatureTests {
     #expect(await recorder.value() == Set(["group-enabled"]))
   }
 
+  @Test("syncCalendar 동시 호출 시 한 번만 실행")
+  func syncCalendar_calledTwiceConcurrently_runsOnce() async {
+    let counter = CallCounter()
+    let gate = SyncGate()
+
+    let store = makeStore(state: makeState(key: "sync-calendar-inflight")) {
+      $0.calendarSyncClient.sync = { _ in
+        await counter.increment()
+        await gate.start()
+        await gate.wait()
+        return CalendarSyncResult()
+      }
+      $0.calendarSyncClient.syncPersonalEvents = { _ in
+        return CalendarSyncResult()
+      }
+    }
+
+    await store.send(.internal(.syncCalendar))
+    await gate.waitForStart()
+    await store.send(.internal(.syncCalendar))
+
+    await gate.release()
+    await store.receive(\.internal.syncCalendarFinished)
+    #expect(await counter.value() == 1)
+  }
+
+  @Test("syncCalendar 동기화 실패 후에도 in-flight 플래그가 해제됨")
+  func syncCalendarError_alwaysFinishesAndAllowsRetry() async {
+    let counter = CallCounter()
+
+    let store = makeStore(state: makeState(key: "sync-calendar-error")) {
+      $0.calendarSyncClient.sync = { _ in
+        await counter.increment()
+        throw NSError(domain: "test", code: 1)
+      }
+      $0.calendarSyncClient.syncPersonalEvents = { _ in
+        return CalendarSyncResult()
+      }
+    }
+
+    await store.send(.internal(.syncCalendar))
+    await store.receive(\.internal.syncCalendarFinished)
+    #expect(await counter.value() == 1)
+
+    // in-flight 플래그가 해제되었으므로 다시 호출되면 재시도 호출됨
+    await store.send(.internal(.syncCalendar))
+    await store.receive(\.internal.syncCalendarFinished)
+    #expect(await counter.value() == 2)
+  }
+
   // MARK: - livePromiseDetail delegate 테스트
 
   @Test("livePromiseDetail updateETA 시 활성 Activity 없으면 무시")
@@ -515,6 +599,39 @@ private extension RootTabFeatureTests {
 
     func value() -> Int {
       count
+    }
+  }
+
+  actor SyncGate {
+    private var started = false
+    private var released = false
+    private var startContinuation: CheckedContinuation<Void, Never>?
+    private var releaseContinuation: CheckedContinuation<Void, Never>?
+
+    func start() {
+      started = true
+      startContinuation?.resume()
+      startContinuation = nil
+    }
+
+    func waitForStart() async {
+      guard !started else { return }
+      await withCheckedContinuation { continuation in
+        startContinuation = continuation
+      }
+    }
+
+    func wait() async {
+      guard !released else { return }
+      await withCheckedContinuation { continuation in
+        releaseContinuation = continuation
+      }
+    }
+
+    func release() {
+      released = true
+      releaseContinuation?.resume()
+      releaseContinuation = nil
     }
   }
 

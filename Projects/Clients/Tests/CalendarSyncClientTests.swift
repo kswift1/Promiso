@@ -616,7 +616,7 @@ struct RealTimeSyncTests {
 
 @Suite("캘린더 동기화 버그 수정 테스트")
 @MainActor
-struct CalendarSyncBugFixTests {
+  struct CalendarSyncBugFixTests {
 
   // MARK: - BUG 2: 중복 키 안전 처리
 
@@ -831,6 +831,67 @@ struct CalendarSyncBugFixTests {
 
       // 도달하지 않아야 함
       Issue.record("Should not reach here")
+    }
+  }
+
+  @Test("writeOnly 권한에서 동일 promise는 첫 동기화 이후 중복 추가하지 않음")
+  func syncWithWriteOnlySkipsDuplicateAdds() async throws {
+    let promiseId = "promise-\(UUID().uuidString)"
+    let promise = makePromise(id: promiseId, groupId: "group1")
+    var addedEventIds: [String] = []
+
+    try await withDependencies {
+      $0.eventKitClient.authorizationStatus = { .writeOnly }
+      $0.eventKitClient.addEvent = { event in
+        addedEventIds.append(event.promiseId)
+        return "event-\(event.promiseId)"
+      }
+      $0.eventKitClient.getPromisoEvents = {
+        throw EventKitClientError.accessDenied
+      }
+      $0.promiseClient.getConfirmedPromisesForCalendar = { [promise] }
+    } operation: {
+      @Dependency(\.calendarSyncClient) var calendarSyncClient
+
+      let first = try await calendarSyncClient.sync(["group1"])
+      let second = try await calendarSyncClient.sync(["group1"])
+
+      #expect(first.added == 1)
+      #expect(second.added == 0)
+      #expect(addedEventIds == [promiseId])
+    }
+  }
+
+  @Test("writeOnly 권한에서 hash 변경 시 중복 스킵 없이 재작성")
+  func syncWithWriteOnlyUpdatesHashAllowsReAdd() async throws {
+    let promiseId = "promise-\(UUID().uuidString)"
+    var firstPromise = makePromise(id: promiseId, title: "초기", groupId: "group1")
+    var secondPromise = makePromise(id: promiseId, title: "변경됨", groupId: "group1")
+    var addedEventIds: [String] = []
+    var callIndex = 0
+
+    try await withDependencies {
+      $0.eventKitClient.authorizationStatus = { .writeOnly }
+      $0.eventKitClient.addEvent = { event in
+        addedEventIds.append(event.promiseId)
+        return "event-\(event.promiseId)"
+      }
+      $0.eventKitClient.getPromisoEvents = {
+        throw EventKitClientError.accessDenied
+      }
+      $0.promiseClient.getConfirmedPromisesForCalendar = {
+        defer { callIndex += 1 }
+        return callIndex == 0 ? [firstPromise] : [secondPromise]
+      }
+    } operation: {
+      @Dependency(\.calendarSyncClient) var calendarSyncClient
+
+      let first = try await calendarSyncClient.sync(["group1"])
+      let second = try await calendarSyncClient.sync(["group1"])
+
+      #expect(first.added == 1)
+      #expect(second.added == 1)
+      #expect(addedEventIds == [promiseId, promiseId])
     }
   }
 }

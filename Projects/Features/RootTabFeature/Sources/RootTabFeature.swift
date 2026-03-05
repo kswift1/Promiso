@@ -117,6 +117,12 @@ extension RootTab {
       /// Promise 탭의 현재 모드 (탭 전환 시에도 유지)
       var promiseMode: Tab.PromiseTabMode
 
+      /// 최초 onAppear에서 캘린더 동기화가 예약되었는지 추적
+      var hasInitialCalendarSyncBeenScheduled: Bool = false
+
+      /// 캘린더 동기화 실행 중 상태
+      var isCalendarSyncInFlight: Bool = false
+
       /// Home Main State
       var home: Home.Feature.State
 
@@ -230,6 +236,8 @@ extension RootTab {
       case openETASheetAfterDelay
       /// 캘린더 동기화 (백그라운드)
       case syncCalendar
+      /// 캘린더 동기화 완료 처리
+      case syncCalendarFinished
     }
 
     @CasePathable
@@ -262,13 +270,19 @@ extension RootTab {
       Reduce { state, action in
         switch action {
         case .onAppear:
-          return .merge(
+          var effects: [Effect<Action>] = [
             .send(.internal(.refreshWidgetAuthToken)),
             .send(.internal(.requestWidgetToken)),
             .send(.internal(.observePushToStartToken)),
             .send(.internal(.observeActivityUpdates)),
-            .send(.internal(.syncCalendar))
-          )
+          ]
+
+          if !state.hasInitialCalendarSyncBeenScheduled {
+            state.hasInitialCalendarSyncBeenScheduled = true
+            effects.append(.send(.internal(.syncCalendar)))
+          }
+
+          return .merge(effects)
 
         case .tabSelected(let tab):
           let previousTab = state.selectedTab
@@ -576,6 +590,9 @@ extension RootTab {
             return .none
 
           case .syncCalendar:
+            guard !state.isCalendarSyncInFlight else { return .none }
+            state.isCalendarSyncInFlight = true
+
             // 앱 시작 시 캘린더 동기화 (백그라운드)
             let enabledGroupIds = Set(
               state.currentUser.groups
@@ -585,27 +602,38 @@ extension RootTab {
             let personalSyncEnabled = UserDefaults.standard.bool(
               forKey: AppConstants.UserDefaults.personalCalendarSync
             )
-            return .merge(
-              .run(priority: .background) { [calendarSyncClient] _ in
-                // 그룹 약속 동기화
-                AppLogger.calendar.debug("📅 [RootTab] syncCalendar 시작 - enabledGroupIds: \(enabledGroupIds)")
-                do {
-                  let result = try await calendarSyncClient.sync(enabledGroupIds)
-                  AppLogger.calendar.info("📅 [RootTab] syncCalendar 완료 - \(result.description)")
-                } catch {
-                  AppLogger.calendar.error("📅 [RootTab] syncCalendar 실패 - \(error.localizedDescription)")
+            return .run(priority: .background) { [calendarSyncClient] send in
+              defer {
+                Task { await send(.internal(.syncCalendarFinished)) }
+              }
+
+              await withTaskGroup(of: Void.self) { group in
+                group.addTask {
+                  // 그룹 약속 동기화
+                  AppLogger.calendar.debug("📅 [RootTab] syncCalendar 시작 - enabledGroupIds: \(enabledGroupIds)")
+                  do {
+                    let result = try await calendarSyncClient.sync(enabledGroupIds)
+                    AppLogger.calendar.info("📅 [RootTab] syncCalendar 완료 - \(result.description)")
+                  } catch {
+                    AppLogger.calendar.error("📅 [RootTab] syncCalendar 실패 - \(error.localizedDescription)")
+                  }
                 }
-              },
-              .run(priority: .background) { [calendarSyncClient] _ in
-                // 개인 일정 동기화
-                do {
-                  let personalResult = try await calendarSyncClient.syncPersonalEvents(personalSyncEnabled)
-                  AppLogger.calendar.info("📅 [RootTab] personalSync 완료 - \(personalResult.description)")
-                } catch {
-                  AppLogger.calendar.error("📅 [RootTab] personalSync 실패 - \(error.localizedDescription)")
+
+                group.addTask {
+                  // 개인 일정 동기화
+                  do {
+                    let personalResult = try await calendarSyncClient.syncPersonalEvents(personalSyncEnabled)
+                    AppLogger.calendar.info("📅 [RootTab] personalSync 완료 - \(personalResult.description)")
+                  } catch {
+                    AppLogger.calendar.error("📅 [RootTab] personalSync 실패 - \(error.localizedDescription)")
+                  }
                 }
               }
-            )
+            }
+
+          case .syncCalendarFinished:
+            state.isCalendarSyncInFlight = false
+            return .none
 
           }
 
