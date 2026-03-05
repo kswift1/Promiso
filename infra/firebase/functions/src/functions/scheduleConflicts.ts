@@ -307,8 +307,28 @@ export const checkScheduleConflicts =
           slot.endAt.toDate() :
           slotStart;
 
-        // 겹침 조건: slotStart < endAt && slotEnd > startAt
-        if (slotStart < endAt && slotEnd > startAt) {
+        const slotStartMs = slotStart.getTime();
+        const slotEndMs = slotEnd.getTime();
+        const startAtMs = startAt.getTime();
+        const endAtMs = endAt.getTime();
+
+        // 겹침 조건: zero-duration(endAt 없는) 일정은 경계 포함 판정
+        let isOverlapping: boolean;
+        if (startAtMs === endAtMs && slotStartMs === slotEndMs) {
+          // 둘 다 zero-duration: 같은 시점이면 겹침
+          isOverlapping = startAtMs === slotStartMs;
+        } else if (startAtMs === endAtMs) {
+          // 새 일정이 zero-duration: 기존 일정 범위 내 포함 시 겹침
+          isOverlapping = startAtMs >= slotStartMs && startAtMs < slotEndMs;
+        } else if (slotStartMs === slotEndMs) {
+          // 기존 일정이 zero-duration: 새 일정 범위 내 포함 시 겹침
+          isOverlapping = slotStartMs >= startAtMs && slotStartMs < endAtMs;
+        } else {
+          // 둘 다 범위: 표준 겹침 조건
+          isOverlapping = slotStart < endAt && slotEnd > startAt;
+        }
+
+        if (isOverlapping) {
           const overlapStart = slotStart > startAt ? slotStart : startAt;
           const overlapEnd = slotEnd < endAt ? slotEnd : endAt;
           const overlapMinutes = Math.max(
