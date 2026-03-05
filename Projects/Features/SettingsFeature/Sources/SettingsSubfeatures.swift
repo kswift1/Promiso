@@ -1189,7 +1189,7 @@ extension ConflictThresholdSettings {
         }
       }
       .padding(16)
-      .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+      .adaptiveGlassBackground()
       .animation(.easeInOut(duration: 0.2), value: threshold)
     }
 
