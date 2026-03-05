@@ -106,6 +106,22 @@ public actor PersonalEventRemoteDataSource: PersonalEventRemoteDataSourceProtoco
 
     let snapshot = try await query.getDocuments()
     return try snapshot.documents.compactMap { try convertDocumentToEvent($0) }
+      .filter { $0.isPast }
+  }
+
+  /// 진행 중인 일정 조회 (startAt < 오늘이지만 endAt >= 오늘인 일정)
+  public func getOngoingEvents() async throws -> [PersonalEventModel] {
+    let collection = try eventsCollection()
+    let startOfToday = Calendar.current.startOfDay(for: Date())
+
+    let query = collection
+      .whereField("endAt", isGreaterThanOrEqualTo: Timestamp(date: startOfToday))
+      .order(by: "endAt")
+      .limit(to: 20)
+
+    let snapshot = try await query.getDocuments()
+    return try snapshot.documents.compactMap { try convertDocumentToEvent($0) }
+      .filter { $0.isOngoing }
   }
 
   /// 날짜 범위로 개인 일정 조회 (일정 충돌 감지용)
