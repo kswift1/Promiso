@@ -51,6 +51,9 @@ public enum DeeplinkURLParser {
     case "personalEvent":
       return parsePersonalEvent(from: url)
 
+    case "pro":
+      return .proPlan
+
     default:
       return nil
     }

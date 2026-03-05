@@ -1365,6 +1365,7 @@ public enum LocalizedStrings {
     public static var addSchedule: String { String(localized: "calendar.schedule.add", bundle: bundle) }
     public static var personalSchedule: String { String(localized: "calendar.schedule.personal", bundle: bundle) }
     public static var groupSchedule: String { String(localized: "calendar.schedule.group", bundle: bundle) }
+    public static var cannotCreatePastSchedule: String { String(localized: "calendar.schedule.cannotCreatePast", bundle: bundle) }
 
     // Context Menu
     public static var viewSchedule: String { String(localized: "calendar.contextMenu.viewSchedule", bundle: bundle) }

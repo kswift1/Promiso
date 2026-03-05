@@ -132,7 +132,7 @@ extension GroupSettings {
       }
 
       var maxMembersUpperLimit: Int {
-        10
+        isProPlan ? 30 : 10
       }
     }
 

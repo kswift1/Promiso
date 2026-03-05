@@ -29,6 +29,7 @@ public enum AppFeatureDeps {
       .settings,
       .notificationCenter,
       .personal,
+      .proPlan,
     ]
     return allFeatures.map { feature($0) }
   }()

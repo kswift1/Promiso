@@ -87,6 +87,16 @@ service cloud.firestore {
                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['votes', 'updatedAt']);
     }
 
+    // Subscriptions - 서버 관리 구독 상태 (Cloud Functions에서만 쓰기)
+    match /subscriptions/{userId} {
+      // 본인 구독 상태만 읽기 가능
+      allow read: if request.auth != null
+                  && request.auth.uid == userId;
+
+      // 쓰기는 Cloud Functions (Admin SDK)에서만 가능
+      allow write: if false;
+    }
+
     // 그 외 모든 경로 차단
     match /{document=**} {
       allow read, write: if false;

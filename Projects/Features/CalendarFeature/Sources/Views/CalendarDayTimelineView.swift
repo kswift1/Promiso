@@ -17,6 +17,7 @@ struct CalendarDayTimelineView: View {
   let onCreatePromise: (Date, Date) -> Void
   let onDeleteScheduleItem: ((CalendarFeature.ScheduleItem) -> Void)?
   let onShareScheduleItem: ((CalendarFeature.ScheduleItem) -> Void)?
+  let onPastTimeBlocked: (() -> Void)?
   let currentUserId: String
   let weatherCache: [String: WeatherInfo]
   let groupColorMap: [String: Color]
@@ -366,6 +367,13 @@ struct CalendarDayTimelineView: View {
 
       // 중간 영역: 이동 드래그 + 일정 추가 버튼
       Button {
+        guard let startSlot = creationStartSlot else { return }
+        let startDate = dateForSlot(startSlot)
+        if startDate <= Date() {
+          creationStartSlot = nil
+          onPastTimeBlocked?()
+          return
+        }
         creationTargetDate = dateForSlot(startSlot)
         showCreationDialog = true
       } label: {
@@ -1194,6 +1202,7 @@ struct ScheduleItemThumbnail: View {
     onCreatePromise: { _, _ in },
     onDeleteScheduleItem: nil,
     onShareScheduleItem: nil,
+    onPastTimeBlocked: nil,
     currentUserId: "host1",
     weatherCache: [:],
     groupColorMap: ["g1": Color.pmindigo.n500],
@@ -1212,6 +1221,7 @@ struct ScheduleItemThumbnail: View {
     onCreatePromise: { _, _ in },
     onDeleteScheduleItem: nil,
     onShareScheduleItem: nil,
+    onPastTimeBlocked: nil,
     currentUserId: "preview",
     weatherCache: [:],
     groupColorMap: [:],

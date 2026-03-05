@@ -46,6 +46,9 @@
         }
       }
     },
+    "%@건의 일정이 겹쳐요" : {
+
+    },
     "|" : {
       "localizations" : {
         "en" : {
@@ -1106,6 +1109,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "일정 추가"
+          }
+        }
+      }
+    },
+    "calendar.schedule.cannotCreatePast" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Can't create events in the past"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "지난 시간에는 일정을 만들 수 없어요"
           }
         }
       }
