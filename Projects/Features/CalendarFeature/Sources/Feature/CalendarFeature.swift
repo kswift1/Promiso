@@ -479,14 +479,15 @@ extension CalendarFeature {
       private func buildScheduleItems(from start: Date, to end: Date) -> [CalendarFeature.ScheduleItem] {
         // start/end가 속한 월을 모두 포함하여 월 경계 누락 방지
         let monthKeys = Set([start.startOfMonth, end.startOfMonth, selectedDate.startOfMonth])
-        let allPromises = Array(Set(monthKeys.flatMap { filteredPromises(for: $0) }))
+        let allPromises = Dictionary(grouping: monthKeys.flatMap { filteredPromises(for: $0) }, by: \.id).compactMap(\.value.first)
 
         let promiseItems = allPromises
           .filter { $0.startAt < end && $0.effectiveEndAt >= start }
           .map { CalendarFeature.ScheduleItem.promise($0) }
         let personalItems: [CalendarFeature.ScheduleItem] = showPersonalEvents
           ? {
-            let relevantPersonalEvents = Array(Set(monthKeys.flatMap { cachedPersonalEventsByMonth[$0] ?? [] }))
+            let allPersonalEvents = monthKeys.flatMap { cachedPersonalEventsByMonth[$0] ?? [] }
+            let relevantPersonalEvents = Dictionary(grouping: allPersonalEvents, by: \.id).compactMap(\.value.first)
             return relevantPersonalEvents
               .filter { $0.startAt < end && $0.effectiveEndAt >= start }
               .map { CalendarFeature.ScheduleItem.personalEvent($0) }
@@ -841,15 +842,7 @@ extension CalendarFeature {
 
         // 월이 바뀌면 데이터 로드
         if previousMonth != newMonth {
-          var effects: [Effect<Action>] = []
-          if !state.loadedMonths.contains(newMonth) {
-            AppLogger.calendar.debugLog("🔄 날짜 선택으로 월 변경 - 로드 필요: \(LocalizedDateFormatters.yearMonth.string(from: newMonth))")
-            effects.append(.send(.internal(.fetchPromisesForMonth(newMonth))))
-          }
-          if !state.loadedPersonalEventMonths.contains(newMonth) {
-            effects.append(.send(.internal(.fetchPersonalEventsForMonth(newMonth))))
-          }
-          return effects.isEmpty ? .none : .merge(effects)
+          return loadDataForMonthIfNeeded(newMonth, state: state)
         }
         return .none
 
@@ -863,15 +856,7 @@ extension CalendarFeature {
 
         // 월이 바뀌면 데이터 로드
         if previousMonth != newMonth {
-          var effects: [Effect<Action>] = []
-          if !state.loadedMonths.contains(newMonth) {
-            AppLogger.calendar.debugLog("🔄 오늘로 이동 - 로드 필요: \(LocalizedDateFormatters.yearMonth.string(from: newMonth))")
-            effects.append(.send(.internal(.fetchPromisesForMonth(newMonth))))
-          }
-          if !state.loadedPersonalEventMonths.contains(newMonth) {
-            effects.append(.send(.internal(.fetchPersonalEventsForMonth(newMonth))))
-          }
-          return effects.isEmpty ? .none : .merge(effects)
+          return loadDataForMonthIfNeeded(newMonth, state: state)
         }
         return .none
 
@@ -890,14 +875,7 @@ extension CalendarFeature {
         }
         let newMonth = state.currentMonth.startOfMonth
         if previousMonth != newMonth {
-          var effects: [Effect<Action>] = []
-          if !state.loadedMonths.contains(newMonth) {
-            effects.append(.send(.internal(.fetchPromisesForMonth(newMonth))))
-          }
-          if !state.loadedPersonalEventMonths.contains(newMonth) {
-            effects.append(.send(.internal(.fetchPersonalEventsForMonth(newMonth))))
-          }
-          return effects.isEmpty ? .none : .merge(effects)
+          return loadDataForMonthIfNeeded(newMonth, state: state)
         }
         return .none
 
@@ -916,14 +894,7 @@ extension CalendarFeature {
         }
         let newMonth = state.currentMonth.startOfMonth
         if previousMonth != newMonth {
-          var effects: [Effect<Action>] = []
-          if !state.loadedMonths.contains(newMonth) {
-            effects.append(.send(.internal(.fetchPromisesForMonth(newMonth))))
-          }
-          if !state.loadedPersonalEventMonths.contains(newMonth) {
-            effects.append(.send(.internal(.fetchPersonalEventsForMonth(newMonth))))
-          }
-          return effects.isEmpty ? .none : .merge(effects)
+          return loadDataForMonthIfNeeded(newMonth, state: state)
         }
         return .none
 
@@ -1573,6 +1544,18 @@ extension CalendarFeature {
     }
 
     // MARK: - Helper Functions
+
+    /// 월이 변경될 때 미로드 약속/개인일정을 로드하는 Effect 반환
+    private func loadDataForMonthIfNeeded(_ month: Date, state: State) -> Effect<Action> {
+      var effects: [Effect<Action>] = []
+      if !state.loadedMonths.contains(month) {
+        effects.append(.send(.internal(.fetchPromisesForMonth(month))))
+      }
+      if !state.loadedPersonalEventMonths.contains(month) {
+        effects.append(.send(.internal(.fetchPersonalEventsForMonth(month))))
+      }
+      return effects.isEmpty ? .none : .merge(effects)
+    }
 
     /// 현재 표시 범위에 필요한 월 목록 반환 (항상 월 단위로 관리)
     private func getMonthsToLoad(state: State) -> [Date] {
