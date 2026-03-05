@@ -930,9 +930,13 @@ extension ConflictThresholdSettings {
           }
         }
       }
+      .scrollDismissesKeyboard(.interactively)
       .auroraBackground()
       .navigationTitle("충돌 감지 기준")
       .navigationBarTitleDisplayMode(.inline)
+      .onTapGesture {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+      }
       .onAppear {
         store.send(.view(.onAppear))
       }
@@ -945,6 +949,14 @@ extension ConflictThresholdSettings {
       (30, "30분 초과"),
       (60, "1시간 초과"),
     ]
+
+    private var thresholdDescription: String {
+      let t = store.threshold
+      if t == 0 {
+        return "일정이 1분이라도 겹치면 충돌로 표시해요."
+      }
+      return "일정이 \(t)분 이하로 겹치면 충돌로 표시하지 않아요. \(t)분을 초과해야 충돌 경고가 나타나요."
+    }
 
     private var currentThresholdLabel: String {
       if store.isCustomMode {
@@ -1023,6 +1035,16 @@ extension ConflictThresholdSettings {
                   RoundedRectangle(cornerRadius: 8)
                     .fill(Color.pmgray.n400.opacity(0.1))
                 )
+                .toolbar {
+                  ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button {
+                      UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    } label: {
+                      Image(systemName: "keyboard.chevron.compact.down")
+                    }
+                  }
+                }
               Text("분 초과")
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(Color.pmtext.secondary)
@@ -1033,9 +1055,10 @@ extension ConflictThresholdSettings {
         }
         .adaptiveGlassCard()
 
-        Text("약속이나 일정이 겹치더라도 설정한 시간보다 짧게 겹치면 충돌 경고를 표시하지 않아요.")
+        Text(thresholdDescription)
           .font(.system(size: 12))
           .foregroundStyle(Color.pmtext.secondary)
+          .animation(.default, value: store.threshold)
           .padding(.horizontal, 4)
       }
     }
