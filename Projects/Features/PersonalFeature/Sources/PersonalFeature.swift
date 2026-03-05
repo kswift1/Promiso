@@ -203,7 +203,6 @@ extension PersonalMode {
         case eventDeleted(String)
         case eventDeleteFailed(String)
         case syncPersonalCalendar
-        case fetchOngoingEvents
         case ongoingEventsLoaded([PersonalEventModel])
       }
     }
@@ -310,7 +309,7 @@ extension PersonalMode {
               .cancellable(id: CancelID.eventSubscription, cancelInFlight: true),
               .run { send in
                 do {
-                  let ongoing = try await personalEventClient.getOngoingEvents()
+                  let ongoing = try await personalEventClient.getOngoingEvents(20)
                   await send(.internal(.ongoingEventsLoaded(ongoing)))
                 } catch {
                   AppLogger.personal.error("📅 [PersonalEvent] 진행 중 일정 조회 실패: \(error.localizedDescription)")
@@ -390,16 +389,6 @@ extension PersonalMode {
               let result = try? await calendarSyncClient.syncPersonalEvents(enabled)
               if let result {
                 AppLogger.calendar.info("📅 [Personal] syncCalendar 완료 - \(result.description)")
-              }
-            }
-
-          case .fetchOngoingEvents:
-            return .run { send in
-              do {
-                let ongoing = try await personalEventClient.getOngoingEvents()
-                await send(.internal(.ongoingEventsLoaded(ongoing)))
-              } catch {
-                AppLogger.personal.error("📅 [PersonalEvent] 진행 중 일정 조회 실패: \(error.localizedDescription)")
               }
             }
 

@@ -110,14 +110,14 @@ public actor PersonalEventRemoteDataSource: PersonalEventRemoteDataSourceProtoco
   }
 
   /// 진행 중인 일정 조회 (startAt < 오늘이지만 endAt >= 오늘인 일정)
-  public func getOngoingEvents() async throws -> [PersonalEventModel] {
+  public func getOngoingEvents(limit: Int) async throws -> [PersonalEventModel] {
     let collection = try eventsCollection()
     let startOfToday = Calendar.current.startOfDay(for: Date())
 
     let query = collection
       .whereField("endAt", isGreaterThanOrEqualTo: Timestamp(date: startOfToday))
       .order(by: "endAt")
-      .limit(to: 20)
+      .limit(to: limit)
 
     let snapshot = try await query.getDocuments()
     return try snapshot.documents.compactMap { try convertDocumentToEvent($0) }
