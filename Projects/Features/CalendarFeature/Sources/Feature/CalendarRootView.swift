@@ -17,6 +17,8 @@ extension CalendarFeature {
     @Bindable private var store: StoreOf<Feature>
     @Namespace private var calendarAnimation
     @State private var timelineZoomState = TimelineZoomState()
+    @State private var sheetDragOffset: CGFloat = 0
+    @State private var sheetDragBaseOffset: CGFloat = 0
 
     public init(store: StoreOf<Feature>) {
       self.store = store
@@ -48,6 +50,10 @@ extension CalendarFeature {
           calendarGridSection
             .layoutPriority(1)
             .animation(.spring(response: 0.45, dampingFraction: 0.8), value: store.displayMode)
+            .onChange(of: store.displayMode) { _, _ in
+              sheetDragOffset = 0
+              sheetDragBaseOffset = 0
+            }
 
           // 약속 리스트 (시트 스타일) — monthExpanded일 때 숨김
           if store.displayMode == .week || store.displayMode == .month {
@@ -183,8 +189,8 @@ extension CalendarFeature {
             store.send(.view(.dayLongPressCreatePromise(date)))
           }
         )
-        // compact 모드: 6행 고정 높이 (6 * 46 + 5 * 6 = 306) — 소형 화면에서 리스트와 겹침 방지
-        .frame(height: isExpanded ? nil : 306)
+        // compact 모드: 드래그로 높이 조절 가능 (기본 306, 최소 200)
+        .frame(height: isExpanded ? nil : compactGridHeight)
         .frame(maxHeight: isExpanded ? .infinity : nil)
         .padding(.top, 12)
         .padding(.bottom, isExpanded ? 0 : 12)
@@ -296,6 +302,48 @@ extension CalendarFeature {
 
     // MARK: - Sheet Drag Handle
 
+    // MARK: - Sheet Drag Constants
+
+    private static let defaultGridHeight: CGFloat = 306
+    private static let minGridHeight: CGFloat = 150
+    private static let maxDrag: CGFloat = defaultGridHeight - minGridHeight // 106
+    private static let halfDragRatio: CGFloat = 0.5
+
+    private var compactGridHeight: CGFloat {
+      Self.defaultGridHeight - sheetDragOffset
+    }
+
+    private func clampedSheetOffset(_ offset: CGFloat) -> CGFloat {
+      max(0, min(Self.maxDrag, offset))
+    }
+
+    private var snapOffsets: [CGFloat] {
+      [0, Self.maxDrag * Self.halfDragRatio, Self.maxDrag]
+    }
+
+    private func nearestSnapOffset(for offset: CGFloat) -> CGFloat {
+      let clamped = clampedSheetOffset(offset)
+      return snapOffsets.min(by: {
+        abs($0 - clamped) < abs($1 - clamped)
+      }) ?? 0
+    }
+
+    private var sheetDragGesture: some Gesture {
+      DragGesture(minimumDistance: 5, coordinateSpace: .global)
+        .onChanged { value in
+          let proposedOffset = sheetDragBaseOffset - value.translation.height
+          sheetDragOffset = clampedSheetOffset(proposedOffset)
+        }
+        .onEnded { value in
+          let projectedOffset = sheetDragBaseOffset - value.predictedEndTranslation.height
+          let targetOffset = nearestSnapOffset(for: projectedOffset)
+          withAnimation(.spring(response: 0.24, dampingFraction: 0.88)) {
+            sheetDragOffset = targetOffset
+          }
+          sheetDragBaseOffset = targetOffset
+        }
+    }
+
     private var sheetDragHandle: some View {
       VStack(spacing: 0) {
         Capsule()
@@ -305,6 +353,8 @@ extension CalendarFeature {
           .padding(.bottom, 6)
       }
       .frame(maxWidth: .infinity)
+      .contentShape(Rectangle())
+      .gesture(sheetDragGesture)
     }
 
     // MARK: - Month Promise List Content
