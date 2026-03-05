@@ -565,6 +565,8 @@ extension CalendarFeature {
         case personalEventTapped(PersonalEventModel)
         // 탭 전환 시 데이터 새로고침
         case refresh
+        // 과거 시간 슬롯 일정 생성 차단
+        case pastTimeBlocked
         // 토스트 닫힘
         case toastDismissed
         // 타임라인 일정 아이템 탭
@@ -1022,6 +1024,13 @@ extension CalendarFeature {
           .send(.internal(.checkCalendarPermission)),
           .send(.internal(.loadInitialData))
         )
+
+      case .pastTimeBlocked:
+        state.toastMessage = ToastMessage(
+          type: .warning,
+          title: LocalizedStrings.Calendar.cannotCreatePastSchedule
+        )
+        return .none
 
       case .toastDismissed:
         state.toastMessage = nil

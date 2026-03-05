@@ -273,6 +273,9 @@ extension CalendarFeature {
             onShareScheduleItem: { item in
               store.send(.view(.shareScheduleItem(item)))
             },
+            onPastTimeBlocked: {
+              store.send(.view(.pastTimeBlocked))
+            },
             currentUserId: store.currentUserId,
             weatherCache: store.weatherCache,
             groupColorMap: store.groupColorMap,
