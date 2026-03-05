@@ -69,6 +69,11 @@ struct DayTimelineView: View {
 
         // Layer 2 + 3: 겹침 레이아웃 엔진 기반 렌더링
         overlapAwareScheduleBlocks
+
+        // Layer 3.5: 현재 시간 인디케이터 (오늘만)
+        if isToday {
+          currentTimeIndicator
+        }
       }
       .frame(width: nil, height: totalHeight)
       .coordinateSpace(name: "timeline")
@@ -188,6 +193,31 @@ struct DayTimelineView: View {
       .background(Color.pmgray.n500, in: Capsule())
   }
 
+
+  // MARK: - Current Time Indicator
+
+  private var isToday: Bool {
+    Calendar.promiseDisplay.isDateInToday(displayDate)
+  }
+
+  private var currentTimeIndicator: some View {
+    TimelineView(.periodic(from: .now, by: 60)) { context in
+      let y = yOffset(for: context.date)
+
+      HStack(spacing: 0) {
+        Circle()
+          .fill(Color.red)
+          .frame(width: 8, height: 8)
+          .offset(x: timeLabelWidth - 4)
+
+        Rectangle()
+          .fill(Color.red)
+          .frame(height: 1)
+      }
+      .offset(y: y - 4)
+    }
+    .frame(height: totalHeight)
+  }
 
   // MARK: - Context Menu Preview
 
