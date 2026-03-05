@@ -1653,6 +1653,9 @@ public enum LocalizedStrings {
     public static var joinGroupCard: String { String(localized: "groupMain.onboarding.joinGroup", bundle: bundle) }
     public static var joinGroupCardSubtitle: String { String(localized: "groupMain.onboarding.joinGroupSubtitle", bundle: bundle) }
     public static var onboardingGroupName: String { String(localized: "groupMain.onboarding.groupName", bundle: bundle) }
+    // Deeplink
+    public static var joinGroupRequiredForDeeplinkTitle: String { String(localized: "groupMain.deeplink.joinGroupRequired.title", bundle: bundle) }
+    public static var joinGroupRequiredForDeeplinkSubtitle: String { String(localized: "groupMain.deeplink.joinGroupRequired.subtitle", bundle: bundle) }
     // Delete alert
     public static var deletePromiseTitle: String { String(localized: "groupMain.deletePromise.title", bundle: bundle) }
     public static func deletePromiseConfirm(_ title: String) -> String {

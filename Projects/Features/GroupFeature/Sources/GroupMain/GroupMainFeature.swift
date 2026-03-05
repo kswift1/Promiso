@@ -765,8 +765,8 @@ extension GroupMain {
                 state.pendingDeeplink = nil
                 state.toastMessage = ToastMessage(
                   type: .info,
-                  title: "그룹에 먼저 가입해주세요",
-                  subtitle: "약속을 확인하려면 해당 그룹의 멤버여야 합니다"
+                  title: LocalizedStrings.GroupMain.joinGroupRequiredForDeeplinkTitle,
+                  subtitle: LocalizedStrings.GroupMain.joinGroupRequiredForDeeplinkSubtitle
                 )
               }
             }
