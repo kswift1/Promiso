@@ -32,6 +32,7 @@ extension GroupMain {
     @Dependency(\.kakaoShareClient) var kakaoShareClient
     @Dependency(\.hapticFeedback) var hapticFeedback
     @Dependency(\.analyticsClient) var analyticsClient
+    @Dependency(\.scheduleConflictClient) var scheduleConflictClient
 
     public init() {}
 
@@ -125,6 +126,13 @@ extension GroupMain {
 
       /// LiveActivity 활성화 여부 (FAB 위치 조정용)
       public var hasLiveActivity: Bool { liveActivityPromiseId != nil }
+
+      /// 약속별 충돌 결과 캐시 (promiseId → conflicts)
+      var conflictsByPromiseId: [String: [ScheduleConflict]] = [:]
+      /// 현재 충돌 확인 중인 약속 ID 집합
+      var conflictCheckingIds: Set<String> = []
+      /// 충돌 감지 임계값 (분). -1이면 비활성화
+      var conflictDetectionThreshold: Int = 0
 
       public init(currentUser: Shared<UserPrivateModel>) {
         self._currentUser = currentUser
@@ -239,6 +247,10 @@ extension GroupMain {
         case settingsResponse(Result<UserSettings, AppError>)
         case kakaoInviteShareResult(KakaoShareResult)
         case kakaoPromiseShareResult(KakaoShareResult)
+        case checkConflicts([PromiseModel])
+        case conflictsLoaded(promiseId: String, [ScheduleConflict])
+        case conflictCheckFailed(promiseId: String)
+        case conflictSettingsLoaded(Int)
       }
     }
 
@@ -908,7 +920,7 @@ extension GroupMain {
             case .group, .none:
               state.pendingDeeplink = nil
             }
-            return .none
+            return .send(.internal(.checkConflicts(promises)))
 
           case .proposalRespondDone(let id, _):
             state.proposalResponding[id] = nil
@@ -1024,6 +1036,7 @@ extension GroupMain {
           case .settingsResponse(.success(let settings)):
             state.groupSortOption = settings.groupSortOption
             state.userPlan = settings.plan
+            state.conflictDetectionThreshold = settings.conflictDetectionThreshold
             // 설정 로드 후 그룹 리스트 표시
             let summaries = state.sortedGroupsForSelection(state.currentUser.groups)
             state.allGroupSummaries = summaries
@@ -1090,6 +1103,46 @@ extension GroupMain {
             case .fallbackToSystem:
               return .none
             }
+
+          case .checkConflicts(let promises):
+            let userId = state.currentUser.userId
+            let threshold = state.conflictDetectionThreshold
+            guard threshold >= 0 else {
+              AppLogger.group.debug("[ConflictCheck] threshold=\(threshold), 충돌 체크 스킵")
+              return .none
+            }
+            let futurePromises = promises.filter { $0.startAt > Date() }
+            AppLogger.group.debug("[ConflictCheck] 전체 \(promises.count)건 중 미래 \(futurePromises.count)건")
+            guard !futurePromises.isEmpty else { return .none }
+            for promise in futurePromises {
+              state.conflictCheckingIds.insert(promise.id)
+            }
+            return .merge(futurePromises.map { promise in
+              .run { [scheduleConflictClient] send in
+                do {
+                  let conflicts = try await scheduleConflictClient.checkConflicts(
+                    userId, promise.startAt, promise.endAt, Set([promise.id]), threshold
+                  )
+                  await send(.internal(.conflictsLoaded(promiseId: promise.id, conflicts)))
+                } catch {
+                  AppLogger.group.error("[ConflictCheck] CF 실패 promiseId=\(promise.id): \(error)")
+                  await send(.internal(.conflictCheckFailed(promiseId: promise.id)))
+                }
+              }
+            })
+
+          case .conflictsLoaded(let promiseId, let conflicts):
+            state.conflictCheckingIds.remove(promiseId)
+            state.conflictsByPromiseId[promiseId] = conflicts
+            return .none
+
+          case .conflictCheckFailed(let promiseId):
+            state.conflictCheckingIds.remove(promiseId)
+            return .none
+
+          case .conflictSettingsLoaded(let threshold):
+            state.conflictDetectionThreshold = threshold
+            return .none
 
           }
 
