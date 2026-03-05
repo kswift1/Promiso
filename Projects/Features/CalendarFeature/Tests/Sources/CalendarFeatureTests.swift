@@ -359,12 +359,13 @@ struct CalendarFeatureTests {
   @Test("pastTimeBlocked 액션 시 경고 토스트 메시지 설정")
   func pastTimeBlocked_setsWarningToastMessage() async {
     let store = makeStore(state: makeState(key: "past-time-blocked"))
-    store.exhaustivity = .off(showSkippedAssertions: false)
 
-    await store.send(.view(.pastTimeBlocked))
-
-    #expect(store.state.toastMessage?.type == .warning)
-    #expect(store.state.toastMessage?.title == LocalizedStrings.Calendar.cannotCreatePastSchedule)
+    await store.send(.view(.pastTimeBlocked)) {
+      $0.toastMessage = ToastMessage(
+        type: .warning,
+        title: LocalizedStrings.Calendar.cannotCreatePastSchedule
+      )
+    }
   }
 
   @Test("dayLongPressCreatePersonalEvent 과거 날짜 시 pastTimeBlocked 트리거")
