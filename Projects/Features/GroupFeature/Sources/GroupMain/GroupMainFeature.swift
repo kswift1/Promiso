@@ -760,6 +760,14 @@ extension GroupMain {
               if let groupInfo = groupSummaries.first(where: { $0.id == groupId }) {
                 AppLogger.deeplink.debug("[GroupMain] Deeplink group found after fetch: \(groupInfo.name)")
                 return .send(.view(.groupChanged(groupInfo)))
+              } else {
+                AppLogger.deeplink.warning("[GroupMain] Deeplink group not found - user may not be a member: \(groupId)")
+                state.pendingDeeplink = nil
+                state.toastMessage = ToastMessage(
+                  type: .info,
+                  title: "그룹에 먼저 가입해주세요",
+                  subtitle: "약속을 확인하려면 해당 그룹의 멤버여야 합니다"
+                )
               }
             }
 
