@@ -131,8 +131,8 @@ extension CalendarFeature {
           isSelectedDateToday: store.isSelectedDateToday,
           isFilterActive: store.isFilterActive,
           onFilterTapped: { store.send(.view(.filterIconTapped)) },
-          onToggleMode: { store.send(.view(.toggleDisplayMode), animation: .spring(response: 0.45, dampingFraction: 0.8)) },
-          onSetMode: { mode in store.send(.view(.setDisplayMode(mode)), animation: .spring(response: 0.45, dampingFraction: 0.8)) },
+          onToggleMode: { store.send(.view(.toggleDisplayMode), animation: .smooth(duration: 0.35)) },
+          onSetMode: { mode in store.send(.view(.setDisplayMode(mode)), animation: .smooth(duration: 0.35)) },
           onMoveToToday: { store.send(.view(.moveToToday), animation: .spring(response: 0.35, dampingFraction: 0.85)) },
           onMovePrevious: { store.send(.view(.moveToPreviousPeriod), animation: .spring(response: 0.35, dampingFraction: 0.85)) },
           onMoveNext: { store.send(.view(.moveToNextPeriod), animation: .spring(response: 0.35, dampingFraction: 0.85)) }
@@ -146,9 +146,9 @@ extension CalendarFeature {
         // 캘린더 그리드 (주간/월간)
         calendarGridSection
           .layoutPriority(1)
-          .animation(.spring(response: 0.45, dampingFraction: 0.8), value: store.displayMode)
+          .animation(.smooth(duration: 0.35), value: store.displayMode)
           .onChange(of: store.displayMode) { _, _ in
-            withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) {
+            withAnimation(.smooth(duration: 0.35)) {
               sheetDragOffset = 0
             }
             sheetDragBaseOffset = 0
@@ -186,7 +186,7 @@ extension CalendarFeature {
           store.send(.view(.selectDate(date)), animation: .spring(response: 0.35, dampingFraction: 0.7))
         },
         onCollapseToWeek: { date in
-          store.send(.view(.collapseToWeek(date)), animation: .spring(response: 0.45, dampingFraction: 0.8))
+          store.send(.view(.collapseToWeek(date)), animation: .smooth(duration: 0.35))
         },
         onIndicatorTapped: { indicator in
           store.send(.view(.indicatorTapped(indicator)))
@@ -236,7 +236,7 @@ extension CalendarFeature {
             .transition(.move(edge: .bottom).combined(with: .opacity))
         }
       }
-      .animation(.spring(response: 0.45, dampingFraction: 0.8), value: store.displayMode)
+      .animation(.smooth(duration: 0.35), value: store.displayMode)
       .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
       .background(Color(.systemBackground))
       .clipShape(RoundedCorner(radius: 24, corners: [.topLeft, .topRight]))
@@ -444,7 +444,7 @@ extension CalendarFeature {
           isSelected: isSelected,
           currentUserId: store.currentUserId,
           onTap: {
-            store.send(.view(.collapseToWeek(date)), animation: .spring(response: 0.45, dampingFraction: 0.8))
+            store.send(.view(.collapseToWeek(date)), animation: .smooth(duration: 0.35))
           }
         )
         .id(date)
