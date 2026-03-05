@@ -97,7 +97,12 @@ private enum CalendarSyncWriteKey {
 private actor CalendarSyncWriteGuard {
   private static let storageKey = AppConstants.UserDefaults.calendarSyncWriteFingerprints
   private var inFlightKeys: Set<String> = []
-  private var knownHashes: [String: String] = [:]
+  private var knownHashes: [String: HashEntry] = [:]
+
+  private struct HashEntry: Codable {
+    let contentHash: String
+    var lastUsed: TimeInterval
+  }
 
   init() {
     loadFromStorage()
@@ -108,8 +113,10 @@ private actor CalendarSyncWriteGuard {
   func begin(_ key: String, contentHash: String, canReadEvents: Bool) -> Bool {
     if inFlightKeys.contains(key) { return false }
 
-    if !canReadEvents, knownHashes[key] != nil {
-      if knownHashes[key] == contentHash {
+    if !canReadEvents, let entry = knownHashes[key] {
+      if entry.contentHash == contentHash {
+        // 활성 약속의 lastUsed 갱신 (eviction 방지, persist는 다음 complete 시 함께 수행)
+        knownHashes[key] = HashEntry(contentHash: contentHash, lastUsed: Date().timeIntervalSince1970)
         return false
       }
     }
@@ -122,10 +129,16 @@ private actor CalendarSyncWriteGuard {
 
   func complete(_ key: String, contentHash: String) {
     inFlightKeys.remove(key)
-    knownHashes[key] = contentHash
+    knownHashes[key] = HashEntry(
+      contentHash: contentHash,
+      lastUsed: Date().timeIntervalSince1970
+    )
     if knownHashes.count > maxEntries {
-      let keysToRemove = Array(knownHashes.keys.prefix(knownHashes.count / 2))
-      for k in keysToRemove { knownHashes.removeValue(forKey: k) }
+      let sorted = knownHashes.sorted { $0.value.lastUsed < $1.value.lastUsed }
+      let removeCount = knownHashes.count / 2
+      for (key, _) in sorted.prefix(removeCount) {
+        knownHashes.removeValue(forKey: key)
+      }
     }
     persist()
   }
@@ -142,13 +155,24 @@ private actor CalendarSyncWriteGuard {
   }
 
   private func loadFromStorage() {
-    if let stored = UserDefaults.standard.dictionary(forKey: Self.storageKey) as? [String: String] {
-      knownHashes = stored
+    // 새 포맷 (JSON Data)
+    if let data = UserDefaults.standard.data(forKey: Self.storageKey),
+       let decoded = try? JSONDecoder().decode([String: HashEntry].self, from: data) {
+      knownHashes = decoded
+      return
+    }
+    // 레거시 포맷 마이그레이션 ([String: String] → [String: HashEntry])
+    if let legacy = UserDefaults.standard.dictionary(forKey: Self.storageKey) as? [String: String] {
+      let now = Date().timeIntervalSince1970
+      knownHashes = legacy.mapValues { HashEntry(contentHash: $0, lastUsed: now) }
+      persist()
     }
   }
 
   private func persist() {
-    UserDefaults.standard.set(knownHashes, forKey: Self.storageKey)
+    if let data = try? JSONEncoder().encode(knownHashes) {
+      UserDefaults.standard.set(data, forKey: Self.storageKey)
+    }
   }
 }
 
