@@ -230,7 +230,7 @@ extension Settings {
                     .foregroundStyle(Color.pmindigo.n500)
                     .frame(width: 24, height: 24)
 
-                  Text("일정 충돌 감지")
+                  Text(LocalizedStrings.SettingsStrings.conflictDetectionTitle)
                     .font(.body)
                     .foregroundStyle(Color.pmtext.primary)
 

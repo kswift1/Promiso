@@ -228,7 +228,6 @@ public enum CreatePromise {
           case .onAppear:
             return .merge(
               .send(.internal(.fetchGroupList)),
-              checkConflictsEffect(state: &state),
               .run { [userSettingsClient, state] send in
                 guard !state.currentUserId.isEmpty else { return }
                 if let settings = try? await userSettingsClient.fetchSettings(state.currentUserId) {
@@ -535,7 +534,7 @@ public enum CreatePromise {
 
           case .settingsLoaded(let settings):
             state.conflictDetectionThreshold = settings.conflictDetectionThreshold
-            return .none
+            return checkConflictsEffect(state: &state)
 
           case .weatherResponse(.success(let info)):
             state.weatherState = .loaded(info)
