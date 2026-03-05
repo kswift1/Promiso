@@ -14,11 +14,11 @@ public enum OCRError: Error, Equatable, Sendable {
   public var localizedDescription: String {
     switch self {
     case .imageConversionFailed:
-      return LocalizedStrings.QuickPromise.errorImageConversion
+      return LocalizedStrings.Error.ocrImageConversionFailed
     case .recognitionFailed(let message):
-      return "\(LocalizedStrings.QuickPromise.errorRecognitionFailed): \(message)"
+      return "\(LocalizedStrings.Error.ocrRecognitionFailed): \(message)"
     case .noTextFound:
-      return LocalizedStrings.QuickPromise.errorNoTextFound
+      return LocalizedStrings.Error.ocrNoTextFound
     }
   }
 }

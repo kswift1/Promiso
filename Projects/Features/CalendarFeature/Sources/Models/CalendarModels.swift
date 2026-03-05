@@ -11,16 +11,43 @@ import UIKit
 
 // MARK: - Calendar Display Mode
 
-/// 캘린더 표시 모드
-public enum CalendarDisplayMode: Equatable, Sendable {
-  case week
-  case month
-}
+/// 캘린더 표시 모드 (3가지 모드)
+public enum CalendarDisplayMode: Equatable, Sendable, CaseIterable {
+  case week           // 주간 뷰 + 24시간 타임라인
+  case month          // 월간 축약 (dot 인디케이터 + 하단 약속 리스트)
+  case monthExpanded  // 월간 확장 (풀 인디케이터 바 + 스크롤)
 
-/// 월간 뷰 확장 상태
-public enum MonthViewExpansionState: Equatable, Sendable {
-  case collapsed   // dot 인디케이터 + 하단 시트
-  case expanded    // 풀 인디케이터 바 + 스크롤
+  /// 다음 모드 (순환: week → month → monthExpanded → week)
+  public var next: CalendarDisplayMode {
+    switch self {
+    case .week: return .month
+    case .month: return .monthExpanded
+    case .monthExpanded: return .week
+    }
+  }
+
+  /// 모드별 SF Symbol 이름
+  public var iconName: String {
+    switch self {
+    case .week: return "calendar.day.timeline.left"
+    case .month: return "calendar"
+    case .monthExpanded: return "square.grid.3x3"
+    }
+  }
+
+  /// 모드 표시 이름
+  public var label: String {
+    switch self {
+    case .week: return LocalizedStrings.Calendar.modeWeek
+    case .month: return LocalizedStrings.Calendar.modeMonth
+    case .monthExpanded: return LocalizedStrings.Calendar.modeMonthExpanded
+    }
+  }
+
+  /// 월간 모드인지 여부
+  public var isMonthMode: Bool {
+    self == .month || self == .monthExpanded
+  }
 }
 
 // MARK: - Mock Promise Status

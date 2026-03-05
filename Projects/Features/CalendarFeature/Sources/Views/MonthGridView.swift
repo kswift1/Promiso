@@ -8,6 +8,26 @@ import UIKit
 
 private let monthGridCalendar = Calendar.current
 
+/// 주간 모드에서 주 오프셋에 해당하는 월과 행 인덱스를 계산
+private func weekPageInfo(for date: Date, weekOffset: Int) -> (month: Date, weekRow: Int) {
+  let calendar = Calendar.current
+  guard let targetDate = calendar.date(byAdding: .weekOfYear, value: weekOffset, to: date) else {
+    return (date.startOfMonth, 0)
+  }
+  let month = targetDate.startOfMonth
+  let firstWeekday = month.firstWeekdayOfMonth
+  let daysToSubtract = firstWeekday - 1
+  guard let calendarStart = calendar.date(byAdding: .day, value: -daysToSubtract, to: month) else {
+    return (month, 0)
+  }
+  let daysBetween = calendar.dateComponents(
+    [.day],
+    from: calendar.startOfDay(for: calendarStart),
+    to: calendar.startOfDay(for: targetDate)
+  ).day ?? 0
+  return (month, max(0, min(5, daysBetween / 7)))
+}
+
 // MARK: - Paging Month Grid View
 
 /// UIScrollView 기반 3페이지 월간 캘린더 (prev / current / next month)
@@ -18,11 +38,13 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
   let namespace: Namespace.ID
   let isCompactMode: Bool
   var showAllIndicators: Bool = false
+  var selectedWeekRow: Int? = nil
   let onDateSelected: (Date) -> Void
   let onCollapseToWeek: (Date) -> Void
   var onIndicatorTapped: ((CalendarFeature.ScheduleIndicator) -> Void)? = nil
   var onDayCreatePersonalEvent: ((Date) -> Void)? = nil
   var onDayCreatePromise: ((Date) -> Void)? = nil
+  var onWeekPageChanged: ((Int) -> Void)? = nil  // -1 (이전 주) or +1 (다음 주)
 
   func makeCoordinator() -> Coordinator {
     Coordinator(parent: self)
@@ -32,9 +54,11 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
     let vc = PagerViewController()
     vc.isCompactMode = isCompactMode
     vc.showAllIndicators = showAllIndicators
+    vc.selectedWeekRow = selectedWeekRow
     vc.coordinator = context.coordinator
     context.coordinator.pagerVC = vc
     context.coordinator.lastKnownMonth = currentMonth.startOfMonth
+    context.coordinator.lastKnownSelectedDate = selectedDate
     vc.setupPages(
       prevMonth: prevMonth,
       currentMonth: currentMonth.startOfMonth,
@@ -44,6 +68,7 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
       namespace: namespace,
       isCompactMode: isCompactMode,
       showAllIndicators: showAllIndicators,
+      selectedWeekRow: selectedWeekRow,
       onDateSelected: onDateSelected,
       onCollapseToWeek: onCollapseToWeek,
       onIndicatorTapped: onIndicatorTapped,
@@ -65,16 +90,35 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
       )
     }
 
+    // 주간 행 모드 변경 감지
+    if vc.selectedWeekRow != selectedWeekRow {
+      vc.updateWeekRowMode(selectedWeekRow: selectedWeekRow)
+    }
+
     let currentMonthStart = currentMonth.startOfMonth
 
     // 외부(화살표/오늘 버튼)에서 월 변경 감지 → 슬라이드 애니메이션
+    var monthChanged = false
     if !coordinator.needsRecenter,
        let lastMonth = coordinator.lastKnownMonth,
        lastMonth != currentMonthStart {
       let direction: Coordinator.SlideDirection = currentMonthStart > lastMonth ? .right : .left
       coordinator.pendingSlideDirection = direction
+      monthChanged = true
     }
     coordinator.lastKnownMonth = currentMonthStart
+
+    // 주간 모드: 같은 달 내 주 변경 감지 → 슬라이드 애니메이션
+    if selectedWeekRow != nil, !monthChanged, !coordinator.needsRecenter,
+       let lastDate = coordinator.lastKnownSelectedDate {
+      let lastWeek = lastDate.startOfWeek
+      let currentWeek = selectedDate.startOfWeek
+      if lastWeek != currentWeek {
+        let direction: Coordinator.SlideDirection = selectedDate > lastDate ? .right : .left
+        coordinator.pendingSlideDirection = direction
+      }
+    }
+    coordinator.lastKnownSelectedDate = selectedDate
 
     if coordinator.needsRecenter {
       // 스와이프 완료 후 리센터 (애니메이션 없음 — 이미 사용자가 스와이프함)
@@ -89,6 +133,7 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
         namespace: namespace,
         isCompactMode: isCompactMode,
         showAllIndicators: showAllIndicators,
+        selectedWeekRow: selectedWeekRow,
         onDateSelected: onDateSelected,
         onCollapseToWeek: onCollapseToWeek,
         onIndicatorTapped: onIndicatorTapped,
@@ -110,6 +155,7 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
           namespace: self.namespace,
           isCompactMode: self.isCompactMode,
           showAllIndicators: self.showAllIndicators,
+          selectedWeekRow: self.selectedWeekRow,
           onDateSelected: self.onDateSelected,
           onCollapseToWeek: self.onCollapseToWeek,
           onIndicatorTapped: self.onIndicatorTapped,
@@ -129,6 +175,7 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
         namespace: namespace,
         isCompactMode: isCompactMode,
         showAllIndicators: showAllIndicators,
+        selectedWeekRow: selectedWeekRow,
         onDateSelected: onDateSelected,
         onCollapseToWeek: onCollapseToWeek,
         onIndicatorTapped: onIndicatorTapped,
@@ -157,6 +204,7 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
     /// 외부(화살표/오늘 버튼)에서 월 변경 시 슬라이드 애니메이션 방향
     var pendingSlideDirection: SlideDirection?
     var lastKnownMonth: Date?
+    var lastKnownSelectedDate: Date?
 
     enum SlideDirection { case left, right }
 
@@ -170,15 +218,23 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
       let currentPage = Int(round(scrollView.contentOffset.x / pageWidth))
 
       if currentPage == 0 {
-        // 이전 월로 이동
         needsRecenter = true
-        let prev = monthGridCalendar.date(byAdding: .month, value: -1, to: parent.currentMonth.startOfMonth) ?? parent.currentMonth
-        parent.currentMonth = prev.startOfMonth
+        if parent.selectedWeekRow != nil {
+          // 주간 모드: 주 단위 탐색
+          parent.onWeekPageChanged?(-1)
+        } else {
+          // 월간 모드: 월 단위 탐색
+          let prev = monthGridCalendar.date(byAdding: .month, value: -1, to: parent.currentMonth.startOfMonth) ?? parent.currentMonth
+          parent.currentMonth = prev.startOfMonth
+        }
       } else if currentPage == 2 {
-        // 다음 월로 이동
         needsRecenter = true
-        let next = monthGridCalendar.date(byAdding: .month, value: 1, to: parent.currentMonth.startOfMonth) ?? parent.currentMonth
-        parent.currentMonth = next.startOfMonth
+        if parent.selectedWeekRow != nil {
+          parent.onWeekPageChanged?(1)
+        } else {
+          let next = monthGridCalendar.date(byAdding: .month, value: 1, to: parent.currentMonth.startOfMonth) ?? parent.currentMonth
+          parent.currentMonth = next.startOfMonth
+        }
       }
       // currentPage == 1 → 원래 위치, 아무것도 안 함
     }
@@ -197,9 +253,16 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
     // Grid layout constants
     var isCompactMode: Bool = false
     var showAllIndicators: Bool = false
+    var selectedWeekRow: Int? = nil
+    private var isWeekMode: Bool { selectedWeekRow != nil }
     private var rowHeight: CGFloat { isCompactMode ? 46 : 62 }
     private let gridSpacing: CGFloat = 6
-    private var fullGridHeight: CGFloat { 6 * rowHeight + 5 * gridSpacing }
+    private var fullGridHeight: CGFloat {
+      if isWeekMode {
+        return rowHeight
+      }
+      return 6 * rowHeight + 5 * gridSpacing
+    }
 
     override func viewDidLoad() {
       super.viewDidLoad()
@@ -242,6 +305,7 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
       namespace: Namespace.ID,
       isCompactMode: Bool,
       showAllIndicators: Bool = false,
+      selectedWeekRow: Int? = nil,
       onDateSelected: @escaping (Date) -> Void,
       onCollapseToWeek: @escaping (Date) -> Void,
       onIndicatorTapped: ((CalendarFeature.ScheduleIndicator) -> Void)? = nil,
@@ -250,17 +314,31 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
     ) {
       scrollView.delegate = coordinator
 
-      let months = [prevMonth, currentMonth, nextMonth]
+      // 주간 모드: 각 페이지에 이전/현재/다음 주의 월+행 설정
+      let pageMonths: [Date]
+      let pageWeekRows: [Int?]
+      if let weekRow = selectedWeekRow {
+        let prevInfo = weekPageInfo(for: selectedDate, weekOffset: -1)
+        let nextInfo = weekPageInfo(for: selectedDate, weekOffset: 1)
+        pageMonths = [prevInfo.month, currentMonth, nextInfo.month]
+        pageWeekRows = [prevInfo.weekRow, weekRow, nextInfo.weekRow]
+      } else {
+        pageMonths = [prevMonth, currentMonth, nextMonth]
+        pageWeekRows = [nil, nil, nil]
+      }
       let pageWidthMultiplier = 1.0 / 3.0
 
-      for (index, month) in months.enumerated() {
+      for (index, month) in pageMonths.enumerated() {
+        // 중앙 페이지(index 1)만 선택 표시 — matchedGeometryEffect 충돌 방지
+        let pageSelectedDate = index == 1 ? selectedDate : .distantPast
         let gridView = MonthGridContent(
           currentMonth: month,
-          selectedDate: selectedDate,
+          selectedDate: pageSelectedDate,
           scheduleIndicatorsByDate: scheduleIndicatorsByDate,
           namespace: namespace,
           isCompactMode: isCompactMode,
           showAllIndicators: showAllIndicators,
+          selectedWeekRow: pageWeekRows[index],
           onDateSelected: onDateSelected,
           onCollapseToWeek: onCollapseToWeek,
           onIndicatorTapped: onIndicatorTapped,
@@ -316,28 +394,60 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
       namespace: Namespace.ID,
       isCompactMode: Bool,
       showAllIndicators: Bool = false,
+      selectedWeekRow: Int? = nil,
       onDateSelected: @escaping (Date) -> Void,
       onCollapseToWeek: @escaping (Date) -> Void,
       onIndicatorTapped: ((CalendarFeature.ScheduleIndicator) -> Void)? = nil,
       onDayCreatePersonalEvent: ((Date) -> Void)? = nil,
       onDayCreatePromise: ((Date) -> Void)? = nil
     ) {
-      let months = [prevMonth, currentMonth, nextMonth]
+      // 주간 모드: 각 페이지에 이전/현재/다음 주의 월+행 설정
+      let pageMonths: [Date]
+      let pageWeekRows: [Int?]
+      if let weekRow = selectedWeekRow {
+        let prevInfo = weekPageInfo(for: selectedDate, weekOffset: -1)
+        let nextInfo = weekPageInfo(for: selectedDate, weekOffset: 1)
+        pageMonths = [prevInfo.month, currentMonth, nextInfo.month]
+        pageWeekRows = [prevInfo.weekRow, weekRow, nextInfo.weekRow]
+      } else {
+        pageMonths = [prevMonth, currentMonth, nextMonth]
+        pageWeekRows = [nil, nil, nil]
+      }
       for (index, vc) in pageHostingControllers.enumerated() {
-        guard index < months.count else { break }
+        guard index < pageMonths.count else { break }
+        // 중앙 페이지(index 1)만 선택 표시 — matchedGeometryEffect 충돌 방지
+        let pageSelectedDate = index == 1 ? selectedDate : .distantPast
         vc.rootView = MonthGridContent(
-          currentMonth: months[index],
-          selectedDate: selectedDate,
+          currentMonth: pageMonths[index],
+          selectedDate: pageSelectedDate,
           scheduleIndicatorsByDate: scheduleIndicatorsByDate,
           namespace: namespace,
           isCompactMode: isCompactMode,
           showAllIndicators: showAllIndicators,
+          selectedWeekRow: pageWeekRows[index],
           onDateSelected: onDateSelected,
           onCollapseToWeek: onCollapseToWeek,
           onIndicatorTapped: onIndicatorTapped,
           onDayCreatePersonalEvent: onDayCreatePersonalEvent,
           onDayCreatePromise: onDayCreatePromise
         )
+      }
+    }
+
+    func updateWeekRowMode(selectedWeekRow: Int?) {
+      let wasWeekMode = isWeekMode
+      self.selectedWeekRow = selectedWeekRow
+
+      // 주간 모드에서도 월 단위 페이징 유지 (주간 탐색은 헤더 화살표로)
+      scrollView.isScrollEnabled = true
+
+      updateHeightConstraintConstants()
+      UIView.animate(
+        withDuration: 0.28,
+        delay: 0,
+        options: [.curveEaseInOut, .beginFromCurrentState, .allowUserInteraction]
+      ) {
+        self.view.layoutIfNeeded()
       }
     }
 
@@ -466,6 +576,7 @@ struct MonthGridContent: View {
   let namespace: Namespace.ID
   let isCompactMode: Bool
   var showAllIndicators: Bool = false
+  var selectedWeekRow: Int? = nil
   let onDateSelected: (Date) -> Void
   let onCollapseToWeek: (Date) -> Void
   var onIndicatorTapped: ((CalendarFeature.ScheduleIndicator) -> Void)? = nil
@@ -475,8 +586,7 @@ struct MonthGridContent: View {
   // 애니메이션용 로컬 상태 — rootView 교체 시에도 보존됨 (root view의 @State)
   @State private var animCompact: Bool = true
   @State private var animShowAll: Bool = false
-
-  private let columns = Array(repeating: GridItem(.flexible(), spacing: 0), count: 7)
+  @State private var animWeekRow: Int? = nil
 
   var body: some View {
     ScrollView(.vertical, showsIndicators: false) {
@@ -486,6 +596,7 @@ struct MonthGridContent: View {
     .onAppear {
       animCompact = isCompactMode && !showAllIndicators
       animShowAll = showAllIndicators
+      animWeekRow = selectedWeekRow
     }
     .onChange(of: isCompactMode) { _, _ in
       withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
@@ -499,33 +610,49 @@ struct MonthGridContent: View {
         animShowAll = showAllIndicators
       }
     }
+    .onChange(of: selectedWeekRow) { oldValue, newValue in
+      // 모드 전환 (nil ↔ non-nil): 행 collapse/expand 애니메이션
+      if (oldValue == nil) != (newValue == nil) {
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+          animWeekRow = newValue
+        }
+      } else {
+        // 같은 모드 내 행 변경 (스와이프 후 리센터 등): 즉시 반영
+        animWeekRow = newValue
+      }
+    }
   }
 
   private var gridContent: some View {
-    VStack(spacing: 8) {
-      // 날짜 그리드
-      LazyVGrid(columns: columns, spacing: 6) {
-        ForEach(Array(calendarDates.enumerated()), id: \.offset) { _, date in
-          CalendarIndicatorDayCell(
-            date: date,
-            isSelected: isCurrentMonth(date) && monthGridCalendar.isDate(date, inSameDayAs: selectedDate),
-            isToday: monthGridCalendar.isDateInToday(date),
-            isCurrentMonth: isCurrentMonth(date),
-            scheduleIndicators: getScheduleIndicators(for: date),
-            namespace: namespace,
-            selectionId: "monthSelection",
-            isCompactMode: animCompact,
-            showAllIndicators: animShowAll,
-            onTap: { onDateSelected(date) },
-            onIndicatorTapped: onIndicatorTapped,
-            onDayCreatePersonalEvent: onDayCreatePersonalEvent,
-            onDayCreatePromise: onDayCreatePromise
-          )
+    let rowHeight: CGFloat = animCompact ? 46 : 62
+    return VStack(spacing: shouldShowAllRows ? 6 : 0) {
+      ForEach(0..<6, id: \.self) { rowIndex in
+        HStack(spacing: 0) {
+          ForEach(rowDates(for: rowIndex), id: \.self) { date in
+            CalendarIndicatorDayCell(
+              date: date,
+              isSelected: isCurrentMonth(date) && monthGridCalendar.isDate(date, inSameDayAs: selectedDate),
+              isToday: monthGridCalendar.isDateInToday(date),
+              isCurrentMonth: isCurrentMonth(date),
+              scheduleIndicators: getScheduleIndicators(for: date),
+              namespace: namespace,
+              selectionId: "monthSelection",
+              isCompactMode: animCompact,
+              showAllIndicators: animShowAll,
+              onTap: { onDateSelected(date) },
+              onIndicatorTapped: onIndicatorTapped,
+              onDayCreatePersonalEvent: onDayCreatePersonalEvent,
+              onDayCreatePromise: onDayCreatePromise
+            )
+            .frame(maxWidth: .infinity)
+          }
         }
+        .frame(height: shouldShowRow(rowIndex) ? (animShowAll ? nil : rowHeight) : 0)
+        .opacity(shouldShowRow(rowIndex) ? 1 : 0)
+        .clipped()
       }
     }
     .padding(.horizontal, 8)
-    .padding(.top, 4)
   }
 
   // MARK: - Computed Properties
@@ -548,6 +675,23 @@ struct MonthGridContent: View {
   }
 
   // MARK: - Helpers
+
+  private var shouldShowAllRows: Bool {
+    animWeekRow == nil
+  }
+
+  private func shouldShowRow(_ rowIndex: Int) -> Bool {
+    guard let weekRow = animWeekRow else { return true }
+    return rowIndex == weekRow
+  }
+
+  private func rowDates(for rowIndex: Int) -> [Date] {
+    let allDates = calendarDates
+    let start = rowIndex * 7
+    let end = min(start + 7, allDates.count)
+    guard start < allDates.count else { return [] }
+    return Array(allDates[start..<end])
+  }
 
   private func isCurrentMonth(_ date: Date) -> Bool {
     let dateMonth = monthGridCalendar.component(.month, from: date)

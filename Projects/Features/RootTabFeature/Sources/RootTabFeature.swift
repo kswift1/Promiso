@@ -117,6 +117,12 @@ extension RootTab {
       /// Promise 탭의 현재 모드 (탭 전환 시에도 유지)
       var promiseMode: Tab.PromiseTabMode
 
+      /// 최초 onAppear에서 캘린더 동기화가 예약되었는지 추적
+      var hasInitialCalendarSyncBeenScheduled: Bool = false
+
+      /// 캘린더 동기화 실행 중 상태
+      var isCalendarSyncInFlight: Bool = false
+
       /// Home Main State
       var home: Home.Feature.State
 
@@ -154,6 +160,10 @@ extension RootTab {
       /// Cold start 시 Activity 구독보다 딥링크가 먼저 도착하면 true로 설정,
       /// activityUpdateReceived에서 livePromise 생성 후 ETA 시트를 열기 위해 사용
       var pendingETASheetRequest: Bool = false
+
+      /// LivePromise 상세 딥링크 pending 플래그
+      /// Cold start 시 Activity 구독보다 딥링크가 먼저 도착하면 true로 설정
+      var pendingLivePromiseDetailRequest: Bool = false
 
       public init(currentUser: Shared<UserPrivateModel>) {
         self._currentUser = currentUser
@@ -230,6 +240,8 @@ extension RootTab {
       case openETASheetAfterDelay
       /// 캘린더 동기화 (백그라운드)
       case syncCalendar
+      /// 캘린더 동기화 완료 처리
+      case syncCalendarFinished(success: Bool)
     }
 
     @CasePathable
@@ -262,13 +274,18 @@ extension RootTab {
       Reduce { state, action in
         switch action {
         case .onAppear:
-          return .merge(
+          var effects: [Effect<Action>] = [
             .send(.internal(.refreshWidgetAuthToken)),
             .send(.internal(.requestWidgetToken)),
             .send(.internal(.observePushToStartToken)),
             .send(.internal(.observeActivityUpdates)),
-            .send(.internal(.syncCalendar))
-          )
+          ]
+
+          if !state.hasInitialCalendarSyncBeenScheduled {
+            effects.append(.send(.internal(.syncCalendar)))
+          }
+
+          return .merge(effects)
 
         case .tabSelected(let tab):
           let previousTab = state.selectedTab
@@ -355,7 +372,7 @@ extension RootTab {
         case .personalMode(.view(.switchToGroupMode)):
           state.promiseMode = .group
           state.selectedTab = .promise(.group)
-          return .none
+          return .send(.groupMain(.view(.tabReturned)))
 
         case .personalMode:
           return .none
@@ -442,7 +459,7 @@ extension RootTab {
         case .openLivePromiseDetail:
           guard let livePromise = state.livePromise else {
             // Cold start: Activity 구독보다 딥링크가 먼저 도착 → pending 처리
-            // ETA 시트 없이 열리므로 pendingETASheetRequest는 false 유지
+            state.pendingLivePromiseDetailRequest = true
             return .none
           }
           state.livePromiseDetail = LivePromise.Detail.State(data: livePromise.$data)
@@ -538,6 +555,9 @@ extension RootTab {
               if state.pendingETASheetRequest {
                 state.pendingETASheetRequest = false
                 effects.append(.send(.openLiveActivityETASheet))
+              } else if state.pendingLivePromiseDetailRequest {
+                state.pendingLivePromiseDetailRequest = false
+                effects.append(.send(.openLivePromiseDetail))
               }
 
               // Activity 상태 변화 구독 시작 (dismissed/ended 감지용)
@@ -576,6 +596,9 @@ extension RootTab {
             return .none
 
           case .syncCalendar:
+            guard !state.isCalendarSyncInFlight else { return .none }
+            state.isCalendarSyncInFlight = true
+
             // 앱 시작 시 캘린더 동기화 (백그라운드)
             let enabledGroupIds = Set(
               state.currentUser.groups
@@ -585,27 +608,41 @@ extension RootTab {
             let personalSyncEnabled = UserDefaults.standard.bool(
               forKey: AppConstants.UserDefaults.personalCalendarSync
             )
-            return .merge(
-              .run(priority: .background) { [calendarSyncClient] _ in
-                // 그룹 약속 동기화
-                AppLogger.calendar.debug("📅 [RootTab] syncCalendar 시작 - enabledGroupIds: \(enabledGroupIds)")
-                do {
-                  let result = try await calendarSyncClient.sync(enabledGroupIds)
-                  AppLogger.calendar.info("📅 [RootTab] syncCalendar 완료 - \(result.description)")
-                } catch {
-                  AppLogger.calendar.error("📅 [RootTab] syncCalendar 실패 - \(error.localizedDescription)")
+            return .run(priority: .utility) { [calendarSyncClient] send in
+              let allSucceeded = await withTaskGroup(of: Bool.self, returning: Bool.self) { group in
+                group.addTask {
+                  do {
+                    let result = try await calendarSyncClient.sync(enabledGroupIds)
+                    AppLogger.calendar.info("📅 [RootTab] syncCalendar 완료 - \(result.description)")
+                    return true
+                  } catch {
+                    AppLogger.calendar.error("📅 [RootTab] syncCalendar 실패 - \(error.localizedDescription)")
+                    return false
+                  }
                 }
-              },
-              .run(priority: .background) { [calendarSyncClient] _ in
-                // 개인 일정 동기화
-                do {
-                  let personalResult = try await calendarSyncClient.syncPersonalEvents(personalSyncEnabled)
-                  AppLogger.calendar.info("📅 [RootTab] personalSync 완료 - \(personalResult.description)")
-                } catch {
-                  AppLogger.calendar.error("📅 [RootTab] personalSync 실패 - \(error.localizedDescription)")
+
+                group.addTask {
+                  do {
+                    let personalResult = try await calendarSyncClient.syncPersonalEvents(personalSyncEnabled)
+                    AppLogger.calendar.info("📅 [RootTab] personalSync 완료 - \(personalResult.description)")
+                    return true
+                  } catch {
+                    AppLogger.calendar.error("📅 [RootTab] personalSync 실패 - \(error.localizedDescription)")
+                    return false
+                  }
                 }
+
+                return await group.reduce(true) { $0 && $1 }
               }
-            )
+              await send(.internal(.syncCalendarFinished(success: allSucceeded)))
+            }
+
+          case .syncCalendarFinished(let success):
+            state.isCalendarSyncInFlight = false
+            if success {
+              state.hasInitialCalendarSyncBeenScheduled = true
+            }
+            return .none
 
           }
 
