@@ -353,6 +353,74 @@ struct CalendarFeatureTests {
 
     #expect(store.state.calendarEvents == [existingEvent])
   }
+
+  // MARK: - 과거 시간 일정 생성 차단 테스트
+
+  @Test("pastTimeBlocked 액션 시 경고 토스트 메시지 설정")
+  func pastTimeBlocked_setsWarningToastMessage() async {
+    let store = makeStore(state: makeState(key: "past-time-blocked"))
+
+    await store.send(.view(.pastTimeBlocked)) {
+      $0.toastMessage = ToastMessage(
+        type: .warning,
+        title: LocalizedStrings.Calendar.cannotCreatePastSchedule
+      )
+    }
+  }
+
+  @Test("dayLongPressCreatePersonalEvent 과거 날짜 시 pastTimeBlocked 트리거")
+  func dayLongPressCreatePersonalEvent_pastDate_triggersPastTimeBlocked() async {
+    let pastDate = makeDate(year: 2024, month: 1, day: 1)
+    let store = makeStore(state: makeState(key: "past-personal"))
+    store.exhaustivity = .off(showSkippedAssertions: false)
+
+    await store.send(.view(.dayLongPressCreatePersonalEvent(pastDate)))
+    await store.receive(\.view.pastTimeBlocked)
+
+    // 개인 일정 생성 화면이 열리지 않음
+    #expect(store.state.editPersonalEvent == nil)
+    #expect(store.state.toastMessage?.type == .warning)
+  }
+
+  @Test("dayLongPressCreatePromise 과거 날짜 시 pastTimeBlocked 트리거")
+  func dayLongPressCreatePromise_pastDate_triggersPastTimeBlocked() async {
+    let pastDate = makeDate(year: 2024, month: 1, day: 1)
+    let store = makeStore(state: makeState(key: "past-promise"))
+    store.exhaustivity = .off(showSkippedAssertions: false)
+
+    await store.send(.view(.dayLongPressCreatePromise(pastDate)))
+    await store.receive(\.view.pastTimeBlocked)
+
+    // 약속 생성 화면이 열리지 않음
+    #expect(store.state.createPromise == nil)
+    #expect(store.state.toastMessage?.type == .warning)
+  }
+
+  @Test("dayLongPressCreatePersonalEvent 미래 날짜 시 createPersonalEventFromTimeline 전달")
+  func dayLongPressCreatePersonalEvent_futureDate_createsPersonalEvent() async {
+    let futureDate = makeDate(year: 2028, month: 6, day: 15)
+    let store = makeStore(state: makeState(key: "future-personal"))
+    store.exhaustivity = .off(showSkippedAssertions: false)
+
+    await store.send(.view(.dayLongPressCreatePersonalEvent(futureDate)))
+    await store.receive(\.view.createPersonalEventFromTimeline)
+
+    // 개인 일정 생성 화면이 열림
+    #expect(store.state.editPersonalEvent != nil)
+  }
+
+  @Test("dayLongPressCreatePromise 미래 날짜 시 createPromiseFromTimeline 전달")
+  func dayLongPressCreatePromise_futureDate_createsPromise() async {
+    let futureDate = makeDate(year: 2028, month: 6, day: 15)
+    let store = makeStore(state: makeState(key: "future-promise"))
+    store.exhaustivity = .off(showSkippedAssertions: false)
+
+    await store.send(.view(.dayLongPressCreatePromise(futureDate)))
+    await store.receive(\.view.createPromiseFromTimeline)
+
+    // 약속 생성 화면이 열림
+    #expect(store.state.createPromise != nil)
+  }
 }
 
 // MARK: - Helpers

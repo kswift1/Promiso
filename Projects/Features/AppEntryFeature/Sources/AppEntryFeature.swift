@@ -707,6 +707,9 @@ extension AppEntry.Feature {
     case .personalEvent(let eventId):
       // Widget 개인 일정 탭 → 홈 탭 이동 + 개인 일정 상세 열기
       return .send(.destination(.presented(.main(.openPersonalEventDetail(eventId: eventId)))))
+
+    case .proPlan:
+      return .send(.destination(.presented(.main(.openProPlan))))
     }
   }
 

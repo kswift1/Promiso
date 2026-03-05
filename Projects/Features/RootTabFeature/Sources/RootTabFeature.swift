@@ -106,6 +106,11 @@ extension RootTab {
     @Dependency(\.promiseClient) var promiseClient
     @Dependency(\.calendarSyncClient) var calendarSyncClient
     @Dependency(\.analyticsClient) var analyticsClient
+    @Dependency(\.subscriptionClient) var subscriptionClient
+
+    private enum CancelID: Hashable {
+      case subscriptionStatus
+    }
 
     public init() {}
 
@@ -161,6 +166,8 @@ extension RootTab {
       /// activityUpdateReceived에서 livePromise 생성 후 ETA 시트를 열기 위해 사용
       var pendingETASheetRequest: Bool = false
 
+      /// 현재 구독 상태 (앱 레벨 모니터링)
+      var subscriptionStatus: SubscriptionStatus = .none
       /// LivePromise 상세 딥링크 pending 플래그
       /// Cold start 시 Activity 구독보다 딥링크가 먼저 도착하면 true로 설정
       var pendingLivePromiseDetailRequest: Bool = false
@@ -214,6 +221,10 @@ extension RootTab {
       case openPersonalEventDetail(eventId: String)
       /// 온보딩에서 그룹 생성 열기
       case openCreateGroup
+      /// 딥링크에서 ProPlan 화면 열기
+      case openProPlan
+      /// Scene phase 변경 (포그라운드 복귀 시 구독 상태 갱신)
+      case scenePhaseChanged(ScenePhase)
       /// 내부 액션
       case `internal`(Internal)
     }
@@ -240,6 +251,12 @@ extension RootTab {
       case openETASheetAfterDelay
       /// 캘린더 동기화 (백그라운드)
       case syncCalendar
+      /// 구독 상태 모니터링 시작 (StoreKit + Firestore 통합)
+      case observeSubscriptionStatus
+      /// 구독 상태 변경 수신
+      case subscriptionStatusChanged(SubscriptionStatus)
+      /// 포그라운드 복귀 시 구독 상태 1회 갱신
+      case refreshSubscriptionStatus
       /// 캘린더 동기화 완료 처리
       case syncCalendarFinished(success: Bool)
     }
@@ -279,6 +296,9 @@ extension RootTab {
             .send(.internal(.requestWidgetToken)),
             .send(.internal(.observePushToStartToken)),
             .send(.internal(.observeActivityUpdates)),
+            .send(.internal(.syncCalendar)),
+            .send(.internal(.observeSubscriptionStatus))
+          )
           ]
 
           if !state.hasInitialCalendarSyncBeenScheduled {
@@ -379,6 +399,11 @@ extension RootTab {
 
         case .settings(.delegate(.didLogout)):
           return .send(.delegate(.logoutRequested))
+
+        case .settings(.delegate(.subscriptionStatusChanged(let status))):
+          state.subscriptionStatus = status
+          state.settings.subscriptionStatus = status
+          return .none
 
         case .settings:
           return .none
@@ -484,6 +509,10 @@ extension RootTab {
           state.promiseMode = .group
           state.selectedTab = .promise(.group)
           return .send(.groupMain(.view(.createGroup)))
+
+        case .openProPlan:
+          state.selectedTab = .settings
+          return .send(.settings(.view(.proPlanTapped)))
 
         case .internal(let internalAction):
           switch internalAction {
@@ -644,7 +673,36 @@ extension RootTab {
             }
             return .none
 
+          case .observeSubscriptionStatus:
+            return .run { [subscriptionClient] send in
+              if let status = try? await subscriptionClient.fetchStatus() {
+                await send(.internal(.subscriptionStatusChanged(status)))
+              }
+              for await status in subscriptionClient.unifiedStatusStream() {
+                await send(.internal(.subscriptionStatusChanged(status)))
+              }
+            }
+            .cancellable(id: CancelID.subscriptionStatus, cancelInFlight: true)
+
+          case .subscriptionStatusChanged(let status):
+            state.subscriptionStatus = status
+            state.settings.subscriptionStatus = status
+            return .none
+
+          case .refreshSubscriptionStatus:
+            return .run { [subscriptionClient] send in
+              if let status = try? await subscriptionClient.fetchStatus() {
+                await send(.internal(.subscriptionStatusChanged(status)))
+              }
+            }
+
           }
+
+        case .scenePhaseChanged(let phase):
+          if phase == .active {
+            return .send(.internal(.refreshSubscriptionStatus))
+          }
+          return .none
 
         case .delegate:
           return .none
@@ -674,6 +732,7 @@ extension RootTab {
     // SwiftUI transition 타이밍이 맞지 않아 zoom 애니메이션이 동작하지 않습니다.
     // 따라서 @State는 presentation 제어용, TCA는 상태/로직 관리용으로 분리합니다.
     @State private var expandLivePromise: Bool = false
+    @Environment(\.scenePhase) private var scenePhase
 
     // MARK: - Tab Animation State
     /// 탭 아이콘 애니메이션을 위한 UIImageView 캐시
@@ -709,6 +768,9 @@ extension RootTab {
         .preferredColorScheme(preferredColorScheme)
         .id("\(store.preferredLanguage)_\(store.use24HourFormat)")
         .onAppear { store.send(.onAppear) }
+        .onChange(of: scenePhase) { _, newPhase in
+          store.send(.scenePhaseChanged(newPhase))
+        }
         .fullScreenCover(isPresented: $expandLivePromise, onDismiss: {
           // 스와이프로 dismiss 시 TCA 상태 정리
           store.send(.livePromiseDetail(.dismiss))

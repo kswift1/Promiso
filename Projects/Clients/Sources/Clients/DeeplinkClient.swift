@@ -21,6 +21,8 @@ public enum DeeplinkDestination: Equatable, Sendable {
   case create
   /// 개인 일정 (Widget에서 탭 시 개인 모드 탭으로 이동 + 상세 push)
   case personalEvent(eventId: String)
+  /// 프로 플랜 화면 (마케팅/푸시에서 Paywall로 직접 진입)
+  case proPlan
 }
 
 // MARK: - Client
