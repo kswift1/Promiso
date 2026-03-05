@@ -199,8 +199,8 @@ extension SnapshotPromise {
   public var isOngoing: Bool {
     let now = Date()
     guard let endAt = endAtDate else {
-      // 종료 시간 없으면 시작 후 2시간까지 진행 중으로 판단
-      let defaultEndAt = startAtDate.addingTimeInterval(2 * 60 * 60)
+      // 종료 시간 없으면 시작 시점과 동일하게 처리
+      let defaultEndAt = startAtDate
       return startAtDate <= now && now < defaultEndAt
     }
     return startAtDate <= now && now < endAt
@@ -211,7 +211,7 @@ extension SnapshotPromise {
     guard isConfirmed else { return false }
     let now = Date()
     let shareStartTime = startAtDate.addingTimeInterval(-30 * 60)
-    let endTime = endAtDate ?? startAtDate.addingTimeInterval(2 * 60 * 60)
+    let endTime = endAtDate ?? startAtDate
     return now >= shareStartTime && now < endTime
   }
 }

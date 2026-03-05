@@ -8,19 +8,48 @@ import ResourceKit
 struct CalendarMonthGridView: View {
   let days: [OverlayCalendarModels.DayItem]
   let onDateSelected: (Date) -> Void
+  let onCreatePersonalEvent: (Date) -> Void
+  let onCreatePromise: () -> Void
 
   private let columns = Array(repeating: GridItem(.flexible(), spacing: 0), count: 7)
 
   var body: some View {
-    LazyVGrid(columns: columns, spacing: 6) {
+    LazyVGrid(columns: columns, spacing: 4) {
       ForEach(days) { day in
-        Button {
-          onDateSelected(day.date)
-        } label: {
+        if day.isCurrentMonth {
+          Button {
+            onDateSelected(day.date)
+          } label: {
+            OverlayCalendarDayCell(day: day)
+              .frame(maxHeight: .infinity, alignment: .top)
+              .contentShape(Rectangle())
+          }
+          .buttonStyle(.plain)
+          .contextMenu {
+            Button {
+              onDateSelected(day.date)
+            } label: {
+              Label(LocalizedStrings.Calendar.viewSchedule, systemImage: "calendar")
+            }
+
+            Button {
+              onCreatePersonalEvent(day.date)
+            } label: {
+              Label(LocalizedStrings.Calendar.addPersonalEvent, systemImage: "plus.circle")
+            }
+
+            Button {
+              onCreatePromise()
+            } label: {
+              Label(LocalizedStrings.Calendar.createPromise, systemImage: "person.2.circle")
+            }
+          } preview: {
+            DaySchedulePreviewView(day: day)
+          }
+        } else {
           OverlayCalendarDayCell(day: day)
+            .frame(maxHeight: .infinity, alignment: .top)
         }
-        .buttonStyle(.plain)
-        .disabled(!day.isCurrentMonth)
       }
     }
   }

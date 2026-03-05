@@ -113,6 +113,7 @@ extension Settings {
       case accountInfo(AccountInfo.Feature)
       case dateTimeSettings(DateTimeSettings.Feature)
       case promiseTabModeSettings(PromiseTabModeSettings.Feature)
+      case conflictThresholdSettings(ConflictThresholdSettings.Feature)
       case themeSettings(ThemeSettings.Feature)
       case languageSettings(LanguageSettings.Feature)
       case notificationSettings(NotificationSettings.Feature)
@@ -168,6 +169,8 @@ extension Settings {
       case dateTimeSettingsTapped
       /// 약속 탭 기본 모드 탭
       case promiseTabModeSettingsTapped
+      /// 일정 충돌 감지 설정 탭
+      case conflictThresholdSettingsTapped
       /// 화면 모드 탭
       case themeSettingsTapped
       /// 언어 설정 탭
@@ -292,6 +295,10 @@ extension Settings {
 
           case .promiseTabModeSettingsTapped:
             state.path.append(.promiseTabModeSettings(PromiseTabModeSettings.Feature.State()))
+            return .run { _ in await hapticFeedback.selection() }
+
+          case .conflictThresholdSettingsTapped:
+            state.path.append(.conflictThresholdSettings(ConflictThresholdSettings.Feature.State()))
             return .run { _ in await hapticFeedback.selection() }
 
           case .themeSettingsTapped:
@@ -460,7 +467,7 @@ extension Settings {
             state.errorMessage = error.localizedMessage
             state.toastMessage = ToastMessage(
               type: .error,
-              title: "로그아웃에 실패했어요",
+              title: LocalizedStrings.Error.logoutFailed,
               subtitle: error.localizedMessage,
               position: .top
             )
@@ -491,7 +498,7 @@ extension Settings {
             state.errorMessage = errorMessage
             state.toastMessage = ToastMessage(
               type: .error,
-              title: "프로필 저장에 실패했어요",
+              title: LocalizedStrings.Error.profileSaveFailed,
               subtitle: errorMessage,
               position: .top
             )
@@ -602,6 +609,8 @@ extension Settings {
           DateTimeSettings.RootView(store: store)
         case .promiseTabModeSettings(let store):
           PromiseTabModeSettings.RootView(store: store)
+        case .conflictThresholdSettings(let store):
+          ConflictThresholdSettings.RootView(store: store)
         case .themeSettings(let store):
           ThemeSettings.RootView(store: store)
         case .languageSettings(let store):

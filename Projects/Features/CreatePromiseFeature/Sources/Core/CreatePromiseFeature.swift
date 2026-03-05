@@ -25,11 +25,14 @@ public enum CreatePromise {
     @Dependency(\.analyticsClient) var analyticsClient
     @Dependency(\.imageUploadClient) var imageUploadClient
     @Dependency(\.scheduleConflictClient) var scheduleConflictClient
+    @Dependency(\.userSettingsClient) var userSettingsClient
+    @Dependency(\.weatherClient) var weatherClient
 
 
     private enum CancelID: Hashable {
       case emojiSuggestDebounce
       case conflictCheckDebounce
+      case weatherFetchDebounce
     }
     
     @ObservableState
@@ -56,14 +59,21 @@ public enum CreatePromise {
       var localImageData: [Data] = []
       var isUploadingImages: Bool = false
 
-      // 일정 충돌 감지 (Pro plan)
+      // 일정 충돌 감지
       var userPlan: UserPlan = .free
       var currentUserId: String = ""
       var conflicts: [ScheduleConflict] = []
       var isCheckingConflicts: Bool = false
-      
+      var conflictDetectionThreshold: Int = 0
+
+      // 날씨 힌트 (보너스)
+      var weatherState: LoadingState<WeatherInfo> = .idle
+
       // 장소 선택 sheet
       @Presents var locationPicker: LocationPicker.Feature.State?
+
+      // pre-fill 정보 (퀵 약속에서 전달)
+      var prefillInfo: PromiseExtractedInfo?
 
       public init(
         currentStep: CreatePromiseStep = .first,
@@ -79,7 +89,9 @@ public enum CreatePromise {
         useLocation: Bool = false,
         userPlan: UserPlan = .free,
         currentUserId: String = "",
-        locationPicker: LocationPicker.Feature.State? = nil
+        locationPicker: LocationPicker.Feature.State? = nil,
+        prefillInfo: PromiseExtractedInfo? = nil,
+        weatherState: LoadingState<WeatherInfo> = .idle
       ) {
         self.currentStep = currentStep
         self.promise = promise
@@ -95,6 +107,8 @@ public enum CreatePromise {
         self.userPlan = userPlan
         self.currentUserId = currentUserId
         self.locationPicker = locationPicker
+        self.prefillInfo = prefillInfo
+        self.weatherState = weatherState
       }
 
       /// 그룹이 활성 약속 제한에 도달했는지 확인
@@ -189,6 +203,8 @@ public enum CreatePromise {
         case imageUploadCompleted(Result<[String], Error>)
         case liveActivityInfoSeenLoaded(Bool)
         case conflictsLoaded([ScheduleConflict])
+        case settingsLoaded(UserSettings)
+        case weatherResponse(Result<WeatherInfo, Error>)
       }
       
       // 상위 전달 이벤트 (네비/라우팅/완료 알림 등)
@@ -212,7 +228,12 @@ public enum CreatePromise {
           case .onAppear:
             return .merge(
               .send(.internal(.fetchGroupList)),
-              checkConflictsEffect(state: &state)
+              .run { [userSettingsClient, state] send in
+                guard !state.currentUserId.isEmpty else { return }
+                if let settings = try? await userSettingsClient.fetchSettings(state.currentUserId) {
+                  await send(.internal(.settingsLoaded(settings)))
+                }
+              }
             )
             
           case .nextStep:
@@ -328,7 +349,10 @@ public enum CreatePromise {
             if let end = state.promise.endAt, end <= date {
               state.promise.endAt = date.addingTimeInterval(7200)
             }
-            return checkConflictsEffect(state: &state)
+            return .merge(
+              checkConflictsEffect(state: &state),
+              fetchWeatherHintEffect(state: &state, debounce: true)
+            )
 
           case .createGroupTapped:
             return .send(.delegate(.createGroupRequested))
@@ -361,10 +385,18 @@ public enum CreatePromise {
 
           case .setLocation(let location):
             state.promise.location = location
+            if location == nil {
+              state.weatherState = .idle
+              return .cancel(id: CancelID.weatherFetchDebounce)
+            }
             return .none
 
           case .toggleUseLocation:
             state.useLocation.toggle()
+            if !state.useLocation {
+              state.weatherState = .idle
+              return .cancel(id: CancelID.weatherFetchDebounce)
+            }
             return .none
 
           case .photosSelected(let items):
@@ -499,6 +531,18 @@ public enum CreatePromise {
             state.conflicts = conflicts
             state.isCheckingConflicts = false
             return .none
+
+          case .settingsLoaded(let settings):
+            state.conflictDetectionThreshold = settings.conflictDetectionThreshold
+            return checkConflictsEffect(state: &state)
+
+          case .weatherResponse(.success(let info)):
+            state.weatherState = .loaded(info)
+            return .none
+
+          case .weatherResponse(.failure):
+            state.weatherState = .idle
+            return .none
           }
           
           // MARK: - Binding
@@ -513,7 +557,7 @@ public enum CreatePromise {
         case .locationPicker(.presented(.delegate(.locationSelected(let location)))):
           state.locationPicker = nil
           state.promise.location = location
-          return .none
+          return fetchWeatherHintEffect(state: &state, debounce: false)
 
         case .locationPicker(.presented(.delegate(.dismissed))):
           state.locationPicker = nil
@@ -528,21 +572,66 @@ public enum CreatePromise {
       }
     }
 
+    // MARK: - Weather Hint
+
+    private enum Constants {
+      static let weatherForecastMaxDays = 10
+      static let weatherFetchDebounceMilliseconds = 500
+    }
+
+    private func fetchWeatherHintEffect(state: inout State, debounce: Bool = false) -> Effect<Action> {
+      guard state.useLocation,
+            let location = state.promise.location,
+            let lat = location.latitude,
+            let lng = location.longitude else {
+        state.weatherState = .idle
+        return .cancel(id: CancelID.weatherFetchDebounce)
+      }
+
+      let startAt = state.promise.startAt
+      let maxForecastDate = Date().addingTimeInterval(TimeInterval(Constants.weatherForecastMaxDays) * 24 * 3600)
+      guard startAt > Date(), startAt < maxForecastDate else {
+        state.weatherState = .idle
+        return .cancel(id: CancelID.weatherFetchDebounce)
+      }
+
+      state.weatherState = .loading
+      return .run { [weatherClient, clock] send in
+        if debounce {
+          try await clock.sleep(for: .milliseconds(Constants.weatherFetchDebounceMilliseconds))
+        }
+        do {
+          let info = try await weatherClient.getWeather(lat, lng, startAt)
+          await send(.internal(.weatherResponse(.success(info))))
+        } catch {
+          await send(.internal(.weatherResponse(.failure(error))))
+        }
+      }
+      .cancellable(id: CancelID.weatherFetchDebounce, cancelInFlight: true)
+    }
+
     // MARK: - Schedule Conflict Check
 
     private func checkConflictsEffect(state: inout State) -> Effect<Action> {
       guard !state.currentUserId.isEmpty else { return .none }
+      // 충돌 감지 비활성화 (threshold == -1)
+      guard state.conflictDetectionThreshold >= 0 else {
+        state.isCheckingConflicts = false
+        state.conflicts = []
+        return .none
+      }
 
       state.isCheckingConflicts = true
 
       let userId = state.currentUserId
       let startAt = state.promise.startAt
       let endAt = state.promise.endAt
+      let minGapMinutes = state.conflictDetectionThreshold
 
       return .run { [scheduleConflictClient, clock] send in
         try await clock.sleep(for: .milliseconds(500))
         do {
-          let conflicts = try await scheduleConflictClient.checkConflicts(userId, startAt, endAt)
+          let conflicts = try await scheduleConflictClient.checkConflicts(userId, startAt, endAt, [], minGapMinutes)
           await send(.internal(.conflictsLoaded(conflicts)))
         } catch {
           await send(.internal(.conflictsLoaded([])))
@@ -563,52 +652,29 @@ extension CreatePromise {
     }
 
     public var body: some View {
-      GeometryReader { geometry in
-        VStack(spacing: 0) {
-          
-          // Progress Header
-          ProgressHeader(
-            currentStep: store.currentStep.rawValue,
-            totalSteps: CreatePromiseStep.allCases.count,
-            title: "약속 만들기"
-          ) {
-            store.send(.delegate(.dismiss))
-          }
-          
-          store.currentStep.contentView(store: store)
-          
-          Spacer()
-          
-          // Bottom Buttons (키보드에 가려지지 않도록 고정)
-          HStack(spacing: 12) {
-            store.currentStep.leftButton(store: store)
-            
-            store.currentStep.rightButton(store: store)
-          }
-          .padding(16)
-          .background(Color(.systemBackground))
-          .overlay(
-            Rectangle()
-              .fill(Color(.systemGray5))
-              .frame(height: 1),
-            alignment: .top
-          )
-        }
-        .frame(height: geometry.size.height)
+      StepSheetContainer(
+        title: LocalizedStrings.CreatePromise.navigationTitle,
+        currentStep: store.currentStep.rawValue,
+        totalSteps: CreatePromiseStep.allCases.count,
+        onDismiss: { store.send(.delegate(.dismiss)) }
+      ) {
+        store.currentStep.contentView(store: store)
+      } floatingContent: {
+        floatingBonusView
+      } bottomContent: {
+        bottomBar
       }
-      .keyboardDismissToolbar(iconColor: .secondary)
-      .ignoresSafeArea(.keyboard, edges: .bottom)
       .onAppear {
         store.send(.view(.onAppear))
       }
       .alert(
-        "약속 생성 실패",
+        LocalizedStrings.Error.promiseCreationFailed,
         isPresented: Binding(
           get: { store.creationError != nil },
           set: { if !$0 { store.send(.view(.clearCreationError)) } }
         )
       ) {
-        Button("확인", role: .cancel) {
+        Button(LocalizedStrings.Common.confirm, role: .cancel) {
           store.send(.view(.clearCreationError))
         }
       } message: {
@@ -617,129 +683,83 @@ extension CreatePromise {
         }
       }
     }
-  }
-}
 
-extension CreatePromiseStep {
-  @ViewBuilder
-  func leftButton(store: StoreOf<CreatePromise.Feature>) -> some View {
-    switch self {
-    case .first:
-      EmptyView()
-
-    case .second, .third:
-      PreviousStepButton {
-        store.send(.view(.previousStep), animation: .default)
+    @ViewBuilder
+    private var floatingBonusView: some View {
+      if store.currentStep == .second {
+        ProBonusFloatingView(
+          weatherForecast: weatherForecast,
+          rangeForecasts: weatherRangeForecasts,
+          forecastSource: weatherForecastSource,
+          isLoadingWeather: store.weatherState.isLoading,
+          weatherLocationName: store.useLocation ? store.promise.location?.name : nil,
+          conflicts: store.conflicts.map {
+            ConflictInfo(
+              title: $0.title,
+              overlapMinutes: $0.overlapMinutes,
+              gapMinutes: $0.gapMinutes,
+              startAt: $0.startAt,
+              endAt: $0.endAt,
+              emoji: $0.emoji,
+              severity: $0.severity == .confirmed ? .confirmed : .pending
+            )
+          },
+          isCheckingConflicts: store.isCheckingConflicts,
+          newEventTitle: store.promise.title,
+          newEventEmoji: store.promise.emoji,
+          newEventStartAt: store.promise.startAt,
+          newEventEndAt: store.promise.endAt
+        )
+        .animation(.spring(response: 0.4, dampingFraction: 0.85), value: store.weatherState)
       }
     }
-  }
-  
-  /// 하단 오른쪽 버튼 (다음 or 완료 버튼)
-  @ViewBuilder
-  func rightButton(store: StoreOf<CreatePromise.Feature>) -> some View {
-    switch self {
-    case .first:
-      StepButton(
-        title: "다음",
-        disabled: store.state.firstButtonDisabled) {
-          store.send(
-            .view(.nextStep),
-            animation: .easeInOut(duration: 0.25)
-          )
-        }
-      
-    case .second:
-      StepButton(
-        title: "다음",
-        disabled: store.state.secondButtonDisabled) {
-          store.send(
-            .view(.nextStep),
-            animation: .easeInOut(duration: 0.25)
-          )
-        }
-      
-    case .third:
-      StepButton(
-        title: "약속 제안하기",
-        disabled: store.state.thirdButtonDisabled,
-        isLoading: store.state.isCreatingPromise) {
-          store.send(
-            .view(.requestCreatingPromise),
-            animation: .spring(response: 0.3, dampingFraction: 0.9)
-          )
-        }
+
+    private var weatherForecast: HourlyForecast? {
+      guard let info = store.weatherState.value else { return nil }
+      return WeatherHintHelper.forecast(from: info, startAt: store.promise.startAt, endAt: store.promise.endAt)
     }
-  }
-}
 
-fileprivate struct PreviousStepButton: View {
-  let action: () -> Void
-  @State private var isPressed = false
+    private var weatherRangeForecasts: [HourlyForecast] {
+      guard let info = store.weatherState.value else { return [] }
+      return WeatherHintHelper.rangeForecasts(from: info, startAt: store.promise.startAt, endAt: store.promise.endAt)
+    }
 
-  var body: some View {
-    Button(action: action) {
-      HStack(spacing: 8) {
-        Image(systemName: "chevron.left")
-          .font(.system(size: 14, weight: .semibold))
-        Text("이전")
-          .font(.system(size: 16, weight: .semibold))
+    private var weatherForecastSource: ForecastSource {
+      guard let info = store.weatherState.value else { return .shortTerm }
+      return WeatherHintHelper.forecastSource(from: info, startAt: store.promise.startAt)
+    }
+
+    @ViewBuilder
+    private var bottomBar: some View {
+      switch store.currentStep {
+      case .first:
+        StepBottomBar(configuration: .navigation(
+          showPrevious: false,
+          previousAction: {},
+          nextTitle: LocalizedStrings.Common.next,
+          isNextDisabled: store.firstButtonDisabled,
+          nextAction: { store.send(.view(.nextStep), animation: .easeInOut(duration: 0.25)) }
+        ))
+      case .second:
+        StepBottomBar(configuration: .navigation(
+          showPrevious: true,
+          previousAction: { store.send(.view(.previousStep), animation: .default) },
+          nextTitle: LocalizedStrings.Common.next,
+          isNextDisabled: store.secondButtonDisabled,
+          nextAction: { store.send(.view(.nextStep), animation: .easeInOut(duration: 0.25)) }
+        ))
+      case .third:
+        StepBottomBar(configuration: .navigation(
+          showPrevious: true,
+          previousAction: { store.send(.view(.previousStep), animation: .default) },
+          nextTitle: "약속 제안하기",
+          nextSystemImage: "checkmark.circle.fill",
+          isNextDisabled: store.thirdButtonDisabled,
+          isNextLoading: store.isCreatingPromise,
+          nextAction: { store.send(.view(.requestCreatingPromise), animation: .spring(response: 0.3, dampingFraction: 0.9)) }
+        ))
       }
-      .foregroundColor(.primary)
-      .frame(maxWidth: .infinity)
-      .frame(height: 56)
-      .background(Color(.systemGray5))
-      .clipShape(RoundedRectangle(cornerRadius: 16))
     }
-    .scaleEffect(isPressed ? 0.95 : 1.0)
-    .animation(.spring(response: 0.2, dampingFraction: 0.6), value: isPressed)
-    .sensoryFeedback(.impact(flexibility: .soft), trigger: isPressed)
-    .simultaneousGesture(
-      DragGesture(minimumDistance: 0)
-        .onChanged { _ in isPressed = true }
-        .onEnded { _ in isPressed = false }
-    )
-  }
-}
-
-fileprivate struct StepButton: View {
-  let title: String
-  var disabled: Bool
-  var isLoading: Bool = false
-  var action: () -> Void
-  @State private var isPressed = false
-
-  var body: some View {
-    Button(action: action) {
-      HStack(spacing: 8) {
-        if isLoading {
-          ProgressView()
-            .progressViewStyle(CircularProgressViewStyle(tint: .white))
-            .scaleEffect(0.8)
-        } else {
-          Image(systemName: title == "완료" ? "checkmark.circle.fill" : "arrow.right.circle.fill")
-            .font(.system(size: 18))
-        }
-
-        Text(title)
-          .font(.headline)
-      }
-      .frame(maxWidth: .infinity)
-      .frame(height: 56)
-      .background(disabled ? Color(.systemGray4) : Color.pmindigo.n500)
-      .foregroundStyle(.white)
-      .clipShape(RoundedRectangle(cornerRadius: 16))
-    }
-    .scaleEffect(isPressed && !disabled ? 0.95 : 1.0)
-    .animation(.spring(response: 0.2, dampingFraction: 0.6), value: isPressed)
-    .sensoryFeedback(.impact(flexibility: .soft), trigger: isPressed && !disabled)
-    .simultaneousGesture(
-      DragGesture(minimumDistance: 0)
-        .onChanged { _ in if !disabled { isPressed = true } }
-        .onEnded { _ in isPressed = false }
-    )
-    .disabled(disabled)
-    .animation(.easeInOut(duration: 0.2), value: disabled)
-    .animation(.easeInOut(duration: 0.2), value: isLoading)
   }
 }
 

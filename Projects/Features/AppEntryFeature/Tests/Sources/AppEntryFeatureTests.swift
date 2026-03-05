@@ -877,7 +877,6 @@ private extension AppEntryFeatureTests {
     await store.receive(\.internal.startSessionCheck)
     await store.receive(\.internal.subscribeFCMToken)
     await store.receive(\.internal.subscribePushNotificationTap)
-    await store.receive(\.internal.subscribeAppRestart)
     await store.receive(\.internal.sessionCheckResponse) {
       $0.destination = .auth(AuthFeature.Auth.Feature.State())
       $0.splash = .animatingOut

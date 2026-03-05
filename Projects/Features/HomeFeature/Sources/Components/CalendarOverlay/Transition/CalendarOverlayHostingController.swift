@@ -14,9 +14,16 @@ final class CalendarOverlayViewModel {
   var days: [OverlayCalendarModels.DayItem]
   var nextMonthDays: [OverlayCalendarModels.DayItem]
   var weatherState: OverlayWeatherState
-  var detailMode: Bool
+  var weatherLocationText: String?
+  var weatherInfo: WeatherInfo?
+  var calendarMode: CalendarMode
   var scheduleItems: [HomeModels.ScheduleItem]
+  var prevDayScheduleItems: [HomeModels.ScheduleItem]
+  var nextDayScheduleItems: [HomeModels.ScheduleItem]
   var weekDays: [OverlayCalendarModels.DayItem]
+  var currentUserId: String
+  var weatherCache: [String: WeatherInfo]
+  var groupColorMap: [String: Color]
   let onClose: () -> Void
   let onDateSelected: (Date) -> Void
   let onPreviousMonth: () -> Void
@@ -24,6 +31,15 @@ final class CalendarOverlayViewModel {
   let onWeatherCardTapped: () -> Void
   let onBackToMonth: () -> Void
   let onScheduleItemTapped: (HomeModels.ScheduleItem) -> Void
+  let onEditScheduleItem: ((HomeModels.ScheduleItem) -> Void)?
+  let onCreatePersonalEvent: (Date) -> Void
+  let onCreatePromise: () -> Void
+  let onDeleteScheduleItem: ((HomeModels.ScheduleItem) -> Void)?
+  let onShareScheduleItem: ((HomeModels.ScheduleItem) -> Void)?
+  /// promiseDetail/promiseCreate 모드에서 표시할 Feature 뷰
+  var overlayFeatureContent: AnyView?
+  /// promiseDetail/promiseCreate 모드에서 뒤로가기 클로저
+  var onFeatureBack: (() -> Void)?
 
   init(
     currentMonth: Date,
@@ -32,16 +48,28 @@ final class CalendarOverlayViewModel {
     days: [OverlayCalendarModels.DayItem],
     nextMonthDays: [OverlayCalendarModels.DayItem],
     weatherState: OverlayWeatherState,
-    detailMode: Bool,
+    weatherLocationText: String?,
+    weatherInfo: WeatherInfo?,
+    calendarMode: CalendarMode,
     scheduleItems: [HomeModels.ScheduleItem],
+    prevDayScheduleItems: [HomeModels.ScheduleItem],
+    nextDayScheduleItems: [HomeModels.ScheduleItem],
     weekDays: [OverlayCalendarModels.DayItem],
+    currentUserId: String,
+    weatherCache: [String: WeatherInfo],
+    groupColorMap: [String: Color],
     onClose: @escaping () -> Void,
     onDateSelected: @escaping (Date) -> Void,
     onPreviousMonth: @escaping () -> Void,
     onNextMonth: @escaping () -> Void,
     onWeatherCardTapped: @escaping () -> Void,
     onBackToMonth: @escaping () -> Void,
-    onScheduleItemTapped: @escaping (HomeModels.ScheduleItem) -> Void
+    onScheduleItemTapped: @escaping (HomeModels.ScheduleItem) -> Void,
+    onEditScheduleItem: ((HomeModels.ScheduleItem) -> Void)?,
+    onCreatePersonalEvent: @escaping (Date) -> Void,
+    onCreatePromise: @escaping () -> Void,
+    onDeleteScheduleItem: ((HomeModels.ScheduleItem) -> Void)?,
+    onShareScheduleItem: ((HomeModels.ScheduleItem) -> Void)?
   ) {
     self.currentMonth = currentMonth
     self.selectedDate = selectedDate
@@ -49,9 +77,16 @@ final class CalendarOverlayViewModel {
     self.days = days
     self.nextMonthDays = nextMonthDays
     self.weatherState = weatherState
-    self.detailMode = detailMode
+    self.weatherLocationText = weatherLocationText
+    self.weatherInfo = weatherInfo
+    self.calendarMode = calendarMode
     self.scheduleItems = scheduleItems
+    self.prevDayScheduleItems = prevDayScheduleItems
+    self.nextDayScheduleItems = nextDayScheduleItems
     self.weekDays = weekDays
+    self.currentUserId = currentUserId
+    self.weatherCache = weatherCache
+    self.groupColorMap = groupColorMap
     self.onClose = onClose
     self.onDateSelected = onDateSelected
     self.onPreviousMonth = onPreviousMonth
@@ -59,6 +94,11 @@ final class CalendarOverlayViewModel {
     self.onWeatherCardTapped = onWeatherCardTapped
     self.onBackToMonth = onBackToMonth
     self.onScheduleItemTapped = onScheduleItemTapped
+    self.onEditScheduleItem = onEditScheduleItem
+    self.onCreatePersonalEvent = onCreatePersonalEvent
+    self.onCreatePromise = onCreatePromise
+    self.onDeleteScheduleItem = onDeleteScheduleItem
+    self.onShareScheduleItem = onShareScheduleItem
   }
 }
 
@@ -164,6 +204,11 @@ final class CalendarOverlayHostingController: UIHostingController<AnyView> {
 extension CalendarOverlayHostingController: UIGestureRecognizerDelegate {
   nonisolated func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
     MainActor.assumeIsolated {
+      // Feature 모드(약속 상세/생성)에서는 dismiss pan 비활성화
+      let mode = viewModel.calendarMode
+      if mode == .promiseDetail || mode == .promiseCreate {
+        return false
+      }
       guard let pan = gestureRecognizer as? UIPanGestureRecognizer else { return true }
       let velocity = pan.velocity(in: view)
       // 수직 방향일 때만 dismiss pan 시작 (수평 드래그는 SwiftUI에 위임)
@@ -176,7 +221,11 @@ extension CalendarOverlayHostingController: UIGestureRecognizerDelegate {
 
 private struct CalendarOverlayContentView: View {
   var viewModel: CalendarOverlayViewModel
-  @State private var isCollapsed = false
+  @State private var animatedMode: CalendarMode = .monthly
+
+  private var isFeatureMode: Bool {
+    animatedMode == .promiseDetail || animatedMode == .promiseCreate
+  }
 
   var body: some View {
     GeometryReader { proxy in
@@ -184,36 +233,72 @@ private struct CalendarOverlayContentView: View {
       let bottomPad: CGFloat = 16
       let availableHeight = proxy.size.height - topPad - bottomPad
 
-      CalendarOverlayView(
-        availableHeight: availableHeight,
-        currentMonth: viewModel.currentMonth,
-        selectedDate: viewModel.selectedDate,
-        prevMonthDays: viewModel.prevMonthDays,
-        days: viewModel.days,
-        nextMonthDays: viewModel.nextMonthDays,
-        weatherState: viewModel.weatherState,
-        detailMode: isCollapsed,
-        scheduleItems: viewModel.scheduleItems,
-        weekDays: viewModel.weekDays,
-        onClose: viewModel.onClose,
-        onDateSelected: viewModel.onDateSelected,
-        onPreviousMonth: viewModel.onPreviousMonth,
-        onNextMonth: viewModel.onNextMonth,
-        onWeatherCardTapped: viewModel.onWeatherCardTapped,
-        onBackToMonth: viewModel.onBackToMonth,
-        onScheduleItemTapped: viewModel.onScheduleItemTapped
-      )
+      ZStack {
+        if isFeatureMode {
+          overlayFeatureView
+            .transition(.asymmetric(
+              insertion: .move(edge: .top).combined(with: .opacity),
+              removal: .move(edge: .top).combined(with: .opacity)
+            ))
+        } else {
+          CalendarOverlayView(
+            availableHeight: availableHeight,
+            currentMonth: viewModel.currentMonth,
+            selectedDate: viewModel.selectedDate,
+            prevMonthDays: viewModel.prevMonthDays,
+            days: viewModel.days,
+            nextMonthDays: viewModel.nextMonthDays,
+            weatherState: viewModel.weatherState,
+            weatherLocationText: viewModel.weatherLocationText,
+            weatherInfo: viewModel.weatherInfo,
+            calendarMode: animatedMode,
+            scheduleItems: viewModel.scheduleItems,
+            prevDayScheduleItems: viewModel.prevDayScheduleItems,
+            nextDayScheduleItems: viewModel.nextDayScheduleItems,
+            weekDays: viewModel.weekDays,
+            onClose: viewModel.onClose,
+            onDateSelected: viewModel.onDateSelected,
+            onPreviousMonth: viewModel.onPreviousMonth,
+            onNextMonth: viewModel.onNextMonth,
+            onWeatherCardTapped: viewModel.onWeatherCardTapped,
+            onBackToMonth: viewModel.onBackToMonth,
+            onScheduleItemTapped: viewModel.onScheduleItemTapped,
+            onEditScheduleItem: viewModel.onEditScheduleItem,
+            onCreatePersonalEvent: viewModel.onCreatePersonalEvent,
+            onCreatePromise: viewModel.onCreatePromise,
+            onDeleteScheduleItem: viewModel.onDeleteScheduleItem,
+            onShareScheduleItem: viewModel.onShareScheduleItem,
+            currentUserId: viewModel.currentUserId,
+            weatherCache: viewModel.weatherCache,
+            groupColorMap: viewModel.groupColorMap
+          )
+          .transition(.opacity)
+        }
+      }
       .padding(.top, topPad)
       .padding(.bottom, bottomPad)
     }
     .background(alignment: .top) {
-      Color(.systemBackground)
+      Color(isFeatureMode || animatedMode == .weatherDetail ? .secondarySystemBackground : .systemBackground)
         .frame(height: SafeArea.topInset + 16)
     }
-    .onChange(of: viewModel.detailMode) { _, newValue in
+    .background(Color(.secondarySystemBackground))
+    .onChange(of: viewModel.calendarMode) { _, newValue in
       withAnimation(.spring(duration: 0.45, bounce: 0.05)) {
-        isCollapsed = newValue
+        animatedMode = newValue
       }
     }
+  }
+
+  // MARK: - Feature View (약속 상세/생성)
+
+  private var overlayFeatureView: some View {
+    VStack(spacing: 0) {
+      // Feature 콘텐츠
+      if let content = viewModel.overlayFeatureContent {
+        content
+      }
+    }
+    .background(Color(.secondarySystemBackground))
   }
 }

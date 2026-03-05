@@ -18,7 +18,7 @@ public struct ConflictWarningSection: View {
       HStack(spacing: 8) {
         ProgressView()
           .scaleEffect(0.8)
-        Text("일정 확인 중...")
+        Text(LocalizedStrings.Shared.conflictChecking)
           .font(.system(size: 14))
           .foregroundColor(.secondary)
       }
@@ -93,7 +93,7 @@ private struct ConflictItemRow: View {
             .lineLimit(1)
 
           if conflict.severity == .pending {
-            Text("미확정")
+            Text(LocalizedStrings.Shared.undetermined)
               .font(.system(size: 11, weight: .medium))
               .foregroundColor(Color.pmwarning.n500)
               .padding(.horizontal, 6)
@@ -144,6 +144,20 @@ private struct ConflictItemRow: View {
 
   private var overlapText: String {
     let minutes = conflict.overlapMinutes
+    if minutes <= 0 {
+      if conflict.gapMinutes > 0 {
+        if conflict.gapMinutes >= 60 {
+          let hours = conflict.gapMinutes / 60
+          let remaining = conflict.gapMinutes % 60
+          if remaining > 0 {
+            return "여유 \(hours)시간 \(remaining)분"
+          }
+          return "여유 \(hours)시간"
+        }
+        return "여유 \(conflict.gapMinutes)분"
+      }
+      return "일정 겹침"
+    }
     if minutes >= 60 {
       let hours = minutes / 60
       let remainingMinutes = minutes % 60

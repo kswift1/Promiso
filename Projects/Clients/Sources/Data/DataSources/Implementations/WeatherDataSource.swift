@@ -128,7 +128,7 @@ final class WeatherDataSource: Sendable {
 
     let weatherInfo = WeatherInfo(
       fetchedAt: Date(),
-      current: forecasts.first(where: { abs($0.dateTime.timeIntervalSince(targetDate)) < 3600 }),
+      current: Self.selectCurrentForecast(from: forecasts, targetDate: targetDate),
       hourlyForecasts: forecasts,
       dailyForecasts: dailyForecasts
     )
@@ -147,6 +147,57 @@ final class WeatherDataSource: Sendable {
     let hour = calendar.component(.hour, from: date)
     let day = calendar.startOfDay(for: date)
     return "\(roundedLat)_\(roundedLng)_\(day.timeIntervalSince1970)_\(hour)"
+  }
+
+  /// 현재 표시용 예보 선택 규칙
+  /// 1) ±1시간 내 후보 중 절대 차이가 가장 작은 예보
+  /// 2) 절대 차이 동률이면 미래(+h) 예보 우선
+  /// 3) ±1시간 후보가 없으면 전체에서 가장 가까운 예보 fallback
+  static func selectCurrentForecast(
+    from forecasts: [HourlyForecast],
+    targetDate: Date
+  ) -> HourlyForecast? {
+    let threshold: TimeInterval = 3600
+    let nearby = forecasts.filter { abs($0.dateTime.timeIntervalSince(targetDate)) <= threshold }
+
+    if let preferredNearby = preferredForecast(in: nearby, targetDate: targetDate) {
+      return preferredNearby
+    }
+    return preferredForecast(in: forecasts, targetDate: targetDate)
+  }
+
+  private static func preferredForecast(
+    in forecasts: [HourlyForecast],
+    targetDate: Date
+  ) -> HourlyForecast? {
+    forecasts.reduce(nil) { best, candidate in
+      guard let best else { return candidate }
+      return isPreferred(candidate, over: best, targetDate: targetDate) ? candidate : best
+    }
+  }
+
+  private static func isPreferred(
+    _ lhs: HourlyForecast,
+    over rhs: HourlyForecast,
+    targetDate: Date
+  ) -> Bool {
+    let lhsDelta = lhs.dateTime.timeIntervalSince(targetDate)
+    let rhsDelta = rhs.dateTime.timeIntervalSince(targetDate)
+    let lhsAbs = abs(lhsDelta)
+    let rhsAbs = abs(rhsDelta)
+
+    if lhsAbs != rhsAbs {
+      return lhsAbs < rhsAbs
+    }
+
+    if lhsDelta >= 0, rhsDelta < 0 {
+      return true
+    }
+    if lhsDelta < 0, rhsDelta >= 0 {
+      return false
+    }
+
+    return lhsDelta > rhsDelta
   }
 }
 

@@ -631,7 +631,7 @@ struct GroupColorPickerView: View {
         Text(LocalizedStrings.GroupSettingsView.groupColorGroupTab)
           .font(.system(size: 13, weight: .semibold))
           .foregroundStyle(.secondary)
-        Text("상단 그룹 바에 표시됩니다")
+        Text(LocalizedStrings.GroupSettingsView.colorPreviewBarDescription)
           .font(.system(size: 11))
           .foregroundStyle(.tertiary)
       }
@@ -670,7 +670,7 @@ struct GroupColorPickerView: View {
         Text(LocalizedStrings.GroupSettingsView.groupColorPromiseCard)
           .font(.system(size: 13, weight: .semibold))
           .foregroundStyle(.secondary)
-        Text("약속 카드에 색상이 표시됩니다")
+        Text(LocalizedStrings.GroupSettingsView.colorPreviewCardDescription)
           .font(.system(size: 11))
           .foregroundStyle(.tertiary)
       }
@@ -686,12 +686,12 @@ struct GroupColorPickerView: View {
 
         // 카드 내용
         VStack(alignment: .leading, spacing: 4) {
-          Text("🍽️ 점심 약속")
+          Text(LocalizedStrings.GroupSettingsView.colorPreviewSampleTitle)
             .font(.system(size: 13, weight: .bold))
           HStack(spacing: 4) {
             Text("⏰")
               .font(.system(size: 11))
-            Text("오늘 12:00")
+            Text(LocalizedStrings.GroupSettingsView.colorPreviewSampleTime)
               .font(.system(size: 11, weight: .medium))
           }
           .foregroundStyle(.secondary)
@@ -710,7 +710,7 @@ struct GroupColorPickerView: View {
 
   private var colorGridSection: some View {
     VStack(alignment: .leading, spacing: 10) {
-      Text("색상 선택")
+      Text(LocalizedStrings.GroupSettingsView.colorPickerTitle)
         .font(.system(size: 16, weight: .semibold))
         .padding(.horizontal, 4)
 

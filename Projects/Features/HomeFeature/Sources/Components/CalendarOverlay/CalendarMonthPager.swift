@@ -10,9 +10,11 @@ struct CalendarMonthPager: UIViewControllerRepresentable {
   let currentDays: [OverlayCalendarModels.DayItem]
   let nextDays: [OverlayCalendarModels.DayItem]
   let onDateSelected: (Date) -> Void
+  let onCreatePersonalEvent: (Date) -> Void
+  let onCreatePromise: () -> Void
   let onPreviousMonth: () -> Void
   let onNextMonth: () -> Void
-  let detailMode: Bool
+  let calendarMode: CalendarMode
   let selectedRowIndex: Int
 
   func makeCoordinator() -> Coordinator {
@@ -27,7 +29,9 @@ struct CalendarMonthPager: UIViewControllerRepresentable {
       prevDays: prevDays,
       currentDays: currentDays,
       nextDays: nextDays,
-      onDateSelected: onDateSelected
+      onDateSelected: onDateSelected,
+      onCreatePersonalEvent: onCreatePersonalEvent,
+      onCreatePromise: onCreatePromise
     )
     return vc
   }
@@ -43,7 +47,9 @@ struct CalendarMonthPager: UIViewControllerRepresentable {
         prevDays: prevDays,
         currentDays: currentDays,
         nextDays: nextDays,
-        onDateSelected: onDateSelected
+        onDateSelected: onDateSelected,
+        onCreatePersonalEvent: onCreatePersonalEvent,
+        onCreatePromise: onCreatePromise
       )
       vc.recenterToCurrentPage(animated: false)
     } else {
@@ -52,15 +58,17 @@ struct CalendarMonthPager: UIViewControllerRepresentable {
         prevDays: prevDays,
         currentDays: currentDays,
         nextDays: nextDays,
-        onDateSelected: onDateSelected
+        onDateSelected: onDateSelected,
+        onCreatePersonalEvent: onCreatePersonalEvent,
+        onCreatePromise: onCreatePromise
       )
     }
 
-    // detailMode 변경 감지
-    let animated = coordinator.previousDetailMode != nil
-    if coordinator.previousDetailMode != detailMode {
-      coordinator.previousDetailMode = detailMode
-      vc.applyDetailMode(detailMode, selectedRowIndex: selectedRowIndex, animated: animated)
+    // calendarMode 변경 감지
+    let animated = coordinator.previousCalendarMode != nil
+    if coordinator.previousCalendarMode != calendarMode {
+      coordinator.previousCalendarMode = calendarMode
+      vc.applyCalendarMode(calendarMode, selectedRowIndex: selectedRowIndex, animated: animated)
     }
   }
 
@@ -70,14 +78,14 @@ struct CalendarMonthPager: UIViewControllerRepresentable {
     var pager: CalendarMonthPager
     weak var pagerVC: PagerViewController?
     var needsRecenter = false
-    var previousDetailMode: Bool?
+    var previousCalendarMode: CalendarMode?
 
     init(pager: CalendarMonthPager) {
       self.pager = pager
     }
 
     func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
-      if pager.detailMode { return }
+      if pager.calendarMode == .weekly { return }
       let pageWidth = scrollView.bounds.width
       guard pageWidth > 0 else { return }
       let currentPage = Int(round(scrollView.contentOffset.x / pageWidth))
@@ -104,8 +112,8 @@ struct CalendarMonthPager: UIViewControllerRepresentable {
     private var pageHostingControllers: [UIHostingController<CalendarMonthGridView>] = []
 
     // Grid layout constants
-    private let rowHeight: CGFloat = 44
-    private let gridSpacing: CGFloat = 6
+    private let rowHeight: CGFloat = 46
+    private let gridSpacing: CGFloat = 4
     private var rowUnit: CGFloat { rowHeight + gridSpacing }
     private var fullGridHeight: CGFloat { 6 * rowHeight + 5 * gridSpacing }
 
@@ -145,7 +153,9 @@ struct CalendarMonthPager: UIViewControllerRepresentable {
       prevDays: [OverlayCalendarModels.DayItem],
       currentDays: [OverlayCalendarModels.DayItem],
       nextDays: [OverlayCalendarModels.DayItem],
-      onDateSelected: @escaping (Date) -> Void
+      onDateSelected: @escaping (Date) -> Void,
+      onCreatePersonalEvent: @escaping (Date) -> Void,
+      onCreatePromise: @escaping () -> Void
     ) {
       scrollView.delegate = coordinator
 
@@ -153,7 +163,7 @@ struct CalendarMonthPager: UIViewControllerRepresentable {
       let daysArrays = [prevDays, currentDays, nextDays]
 
       for (index, days) in daysArrays.enumerated() {
-        let gridView = CalendarMonthGridView(days: days, onDateSelected: onDateSelected)
+        let gridView = CalendarMonthGridView(days: days, onDateSelected: onDateSelected, onCreatePersonalEvent: onCreatePersonalEvent, onCreatePromise: onCreatePromise)
         let hostingVC = UIHostingController(rootView: gridView)
         hostingVC.view.backgroundColor = .clear
         hostingVC.view.translatesAutoresizingMaskIntoConstraints = false
@@ -184,12 +194,14 @@ struct CalendarMonthPager: UIViewControllerRepresentable {
       prevDays: [OverlayCalendarModels.DayItem],
       currentDays: [OverlayCalendarModels.DayItem],
       nextDays: [OverlayCalendarModels.DayItem],
-      onDateSelected: @escaping (Date) -> Void
+      onDateSelected: @escaping (Date) -> Void,
+      onCreatePersonalEvent: @escaping (Date) -> Void,
+      onCreatePromise: @escaping () -> Void
     ) {
       let daysArrays = [prevDays, currentDays, nextDays]
       for (index, vc) in pageHostingControllers.enumerated() {
         guard index < daysArrays.count else { break }
-        vc.rootView = CalendarMonthGridView(days: daysArrays[index], onDateSelected: onDateSelected)
+        vc.rootView = CalendarMonthGridView(days: daysArrays[index], onDateSelected: onDateSelected, onCreatePersonalEvent: onCreatePersonalEvent, onCreatePromise: onCreatePromise)
       }
     }
 
@@ -199,13 +211,13 @@ struct CalendarMonthPager: UIViewControllerRepresentable {
       scrollView.setContentOffset(CGPoint(x: pageWidth, y: 0), animated: animated)
     }
 
-    // MARK: - Detail Mode
+    // MARK: - Calendar Mode
 
-    func applyDetailMode(_ detailMode: Bool, selectedRowIndex: Int, animated: Bool) {
+    func applyCalendarMode(_ calendarMode: CalendarMode, selectedRowIndex: Int, animated: Bool) {
       guard pageHostingControllers.count == 3 else { return }
       let centerPage = pageHostingControllers[1]
 
-      if detailMode {
+      if calendarMode == .weekly {
         scrollView.isScrollEnabled = false
         let offsetY = -CGFloat(selectedRowIndex) * rowUnit
         let targetTransform = CGAffineTransform(translationX: 0, y: offsetY)

@@ -18,4 +18,9 @@ public extension Array {
       Array(self[$0..<Swift.min($0 + size, count)])
     }
   }
+
+  /// 안전한 인덱스 접근 (범위 초과 시 nil 반환)
+  subscript(safe index: Index) -> Element? {
+    indices.contains(index) ? self[index] : nil
+  }
 }

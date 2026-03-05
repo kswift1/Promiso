@@ -759,6 +759,698 @@ extension PromiseTabModeSettings {
   }
 }
 
+// MARK: - ConflictThresholdSettings Namespace
+
+public enum ConflictThresholdSettings {}
+
+extension ConflictThresholdSettings {
+  static let presets: [Int] = [0, 15, 30, 60]
+  static let customRange: ClosedRange<Int> = 1...120
+}
+
+// MARK: - ConflictThresholdSettings Feature
+
+extension ConflictThresholdSettings {
+
+  @Reducer
+  public struct Feature {
+    @Dependency(\.authClient) var authClient
+    @Dependency(\.userSettingsClient) var userSettingsClient
+    @Dependency(\.hapticFeedback) var hapticFeedback
+
+    public init() {}
+
+    @ObservableState
+    public struct State: Equatable, Sendable {
+      var isEnabled: Bool = true
+      var threshold: Int = 0
+      var isLoading: Bool = true
+      var isCustomMode: Bool = false
+      var customInputText: String = ""
+
+      public init() {}
+    }
+
+    @CasePathable
+    public enum Action: Equatable, Sendable {
+      case view(View)
+      case `internal`(Internal)
+    }
+
+    @CasePathable
+    public enum View: Equatable, Sendable {
+      case onAppear
+      case enabledToggled(Bool)
+      case thresholdSelected(Int)
+      case customModeTapped
+      case customInputChanged(String)
+      case customInputCommitted
+    }
+
+    @CasePathable
+    public enum Internal: Equatable, Sendable {
+      case settingsLoaded(Int)
+      case updateCompleted
+      case updateFailed
+    }
+
+    private enum CancelID {
+      case thresholdUpdate
+      case debounce
+    }
+
+    public var body: some ReducerOf<Self> {
+      Reduce { state, action in
+        switch action {
+        case .view(let viewAction):
+          switch viewAction {
+          case .onAppear:
+            state.isLoading = true
+            return .run { send in
+              guard let userId = await authClient.currentUser()?.uid else { return }
+              do {
+                let settings = try await userSettingsClient.fetchSettings(userId)
+                await send(.internal(.settingsLoaded(settings.conflictDetectionThreshold)))
+              } catch {
+                await send(.internal(.updateFailed))
+              }
+            }
+
+          case .enabledToggled(let enabled):
+            state.isEnabled = enabled
+            if !enabled {
+              // 비활성화: 서버에 -1 저장
+              return .run { send in
+                await hapticFeedback.selection()
+                guard let userId = await authClient.currentUser()?.uid else { return }
+                do {
+                  try await userSettingsClient.updateConflictDetectionThreshold(userId, -1)
+                  await send(.internal(.updateCompleted))
+                } catch {
+                  await send(.internal(.updateFailed))
+                }
+              }
+              .cancellable(id: CancelID.thresholdUpdate, cancelInFlight: true)
+            } else {
+              // 활성화: 현재 threshold 값으로 서버 업데이트
+              let threshold = state.threshold
+              return .run { [threshold] send in
+                await hapticFeedback.selection()
+                guard let userId = await authClient.currentUser()?.uid else { return }
+                do {
+                  try await userSettingsClient.updateConflictDetectionThreshold(userId, threshold)
+                  await send(.internal(.updateCompleted))
+                } catch {
+                  await send(.internal(.updateFailed))
+                }
+              }
+              .cancellable(id: CancelID.thresholdUpdate, cancelInFlight: true)
+            }
+
+          case .thresholdSelected(let value):
+            state.isCustomMode = false
+            state.threshold = value
+            return .run { [threshold = value] send in
+              await hapticFeedback.selection()
+              guard let userId = await authClient.currentUser()?.uid else { return }
+              do {
+                try await userSettingsClient.updateConflictDetectionThreshold(userId, threshold)
+                await send(.internal(.updateCompleted))
+              } catch {
+                await send(.internal(.updateFailed))
+              }
+            }
+            .cancellable(id: CancelID.thresholdUpdate, cancelInFlight: true)
+
+          case .customModeTapped:
+            state.isCustomMode = true
+            state.customInputText = state.threshold > 0 ? "\(state.threshold)" : ""
+            return .none
+
+          case .customInputChanged(let text):
+            let filtered = text.filter { $0.isNumber }
+            state.customInputText = filtered
+            return .run { send in
+              try await Task.sleep(for: .milliseconds(500))
+              await send(.view(.customInputCommitted))
+            }
+            .cancellable(id: CancelID.debounce, cancelInFlight: true)
+
+          case .customInputCommitted:
+            guard let value = Int(state.customInputText) else { return .none }
+            let clamped = ConflictThresholdSettings.customRange.clamp(value)
+            state.threshold = clamped
+            state.customInputText = "\(clamped)"
+            return .run { [threshold = clamped] send in
+              await hapticFeedback.selection()
+              guard let userId = await authClient.currentUser()?.uid else { return }
+              do {
+                try await userSettingsClient.updateConflictDetectionThreshold(userId, threshold)
+                await send(.internal(.updateCompleted))
+              } catch {
+                await send(.internal(.updateFailed))
+              }
+            }
+            .cancellable(id: CancelID.thresholdUpdate, cancelInFlight: true)
+          }
+
+        case .internal(let internalAction):
+          switch internalAction {
+          case .settingsLoaded(let threshold):
+            if threshold < 0 {
+              state.isEnabled = false
+              state.threshold = 0
+            } else {
+              state.isEnabled = true
+              state.threshold = threshold
+              if !ConflictThresholdSettings.presets.contains(threshold) {
+                state.isCustomMode = true
+                state.customInputText = "\(threshold)"
+              }
+            }
+            state.isLoading = false
+            return .none
+
+          case .updateCompleted:
+            return .none
+
+          case .updateFailed:
+            state.isLoading = false
+            return .none
+          }
+        }
+      }
+    }
+  }
+
+  // MARK: - Root View
+
+  public struct RootView: View {
+    @Bindable private var store: StoreOf<Feature>
+
+    public init(store: StoreOf<Feature>) {
+      self.store = store
+    }
+
+    public var body: some View {
+      Group {
+        if store.isLoading {
+          ProgressView()
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+          ScrollView {
+            VStack(spacing: 16) {
+              headerDescription
+
+              thresholdSection
+                .opacity(store.isEnabled ? 1 : 0.35)
+                .allowsHitTesting(store.isEnabled)
+
+              exampleSection
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 12)
+            .padding(.bottom, 24)
+          }
+        }
+      }
+      .scrollDismissesKeyboard(.interactively)
+      .auroraBackground()
+      .navigationTitle(LocalizedStrings.SettingsStrings.conflictDetectionTitle)
+      .navigationBarTitleDisplayMode(.inline)
+      .onTapGesture {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+      }
+      .onAppear {
+        store.send(.view(.onAppear))
+      }
+    }
+
+    private var thresholdOptions: [(value: Int, label: String)] {
+      [
+        (0,  LocalizedStrings.SettingsStrings.conflictDetectionOverlapOnly),
+        (15, "15분"),
+        (30, "30분"),
+        (60, "1시간"),
+      ]
+    }
+
+    private var thresholdDescription: String {
+      let t = store.threshold
+      if t == 0 {
+        return LocalizedStrings.SettingsStrings.conflictDetectionOverlapOnlyHint
+      }
+      if t >= 60 {
+        let hours = t / 60
+        let mins = t % 60
+        if mins == 0 {
+          return LocalizedStrings.SettingsStrings.conflictDetectionThresholdDescriptionHours(hours)
+        }
+        return LocalizedStrings.SettingsStrings.conflictDetectionThresholdDescriptionHoursMinutes(hours, mins)
+      }
+      return LocalizedStrings.SettingsStrings.conflictDetectionThresholdDescriptionMinutes(t)
+    }
+
+    private var currentThresholdLabel: String {
+      if store.isCustomMode {
+        return LocalizedStrings.SettingsStrings.conflictDetectionCurrentMinutes(store.threshold)
+      }
+      return thresholdOptions.first { $0.value == store.threshold }?.label ?? LocalizedStrings.SettingsStrings.conflictDetectionOverlapOnly
+    }
+
+    private var headerDescription: some View {
+      VStack(alignment: .leading, spacing: 8) {
+        HStack(spacing: 6) {
+          ProBadge()
+
+          Text(LocalizedStrings.SettingsStrings.conflictDetectionAdditionalFeature)
+            .font(.system(size: 14, weight: .medium))
+            .foregroundStyle(Color.pmtext.primary)
+
+          Spacer()
+
+          Toggle("", isOn: Binding(
+            get: { store.isEnabled },
+            set: { store.send(.view(.enabledToggled($0)), animation: .default) }
+          ))
+          .labelsHidden()
+          .tint(Color.pmindigo.n500)
+        }
+
+        Text(LocalizedStrings.SettingsStrings.conflictDetectionDescription)
+          .font(.system(size: 14))
+          .foregroundStyle(Color.pmtext.secondary)
+      }
+      .padding(.horizontal, 4)
+    }
+
+    private var thresholdSection: some View {
+      VStack(alignment: .leading, spacing: 10) {
+        Text(LocalizedStrings.SettingsStrings.conflictDetectionThresholdSection)
+          .font(.system(size: 16, weight: .semibold))
+          .padding(.horizontal, 4)
+
+        VStack(spacing: 0) {
+          HStack {
+            Text(LocalizedStrings.SettingsStrings.conflictDetectionMinThreshold)
+              .font(.body)
+              .foregroundStyle(Color.pmtext.primary)
+
+            Spacer()
+
+            Menu {
+              ForEach(thresholdOptions, id: \.value) { option in
+                Button {
+                  store.send(.view(.thresholdSelected(option.value)), animation: .default)
+                } label: {
+                  if !store.isCustomMode && store.threshold == option.value {
+                    Label(option.label, systemImage: "checkmark")
+                  } else {
+                    Text(option.label)
+                  }
+                }
+              }
+
+              Divider()
+
+              Button {
+                store.send(.view(.customModeTapped), animation: .default)
+              } label: {
+                if store.isCustomMode {
+                  Label(LocalizedStrings.SettingsStrings.conflictDetectionCustom, systemImage: "checkmark")
+                } else {
+                  Text(LocalizedStrings.SettingsStrings.conflictDetectionCustom)
+                }
+              }
+            } label: {
+              HStack(spacing: 4) {
+                Text(currentThresholdLabel)
+                  .font(.system(size: 15))
+                  .foregroundStyle(Color.pmindigo.n500)
+
+                Image(systemName: "chevron.up.chevron.down")
+                  .font(.system(size: 11))
+                  .foregroundStyle(Color.pmtext.secondary)
+              }
+            }
+          }
+          .padding(.horizontal, 16)
+          .padding(.vertical, 12)
+
+          if store.isCustomMode {
+            Divider()
+            HStack(spacing: 6) {
+              TextField("", text: $store.customInputText.sending(\.view.customInputChanged))
+                .keyboardType(.numberPad)
+                .font(.system(size: 20, weight: .semibold))
+                .multilineTextAlignment(.center)
+                .frame(width: 64, height: 40)
+                .background(
+                  RoundedRectangle(cornerRadius: 8)
+                    .fill(Color.pmgray.n400.opacity(0.1))
+                )
+                .toolbar {
+                  ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button {
+                      UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    } label: {
+                      Image(systemName: "keyboard.chevron.compact.down")
+                    }
+                  }
+                }
+              Text(LocalizedStrings.SettingsStrings.conflictDetectionMinuteUnit)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(Color.pmtext.secondary)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+          }
+        }
+        .adaptiveGlassCard()
+
+        Text(LocalizedStrings.SettingsStrings.conflictDetectionThresholdHint)
+          .font(.system(size: 12))
+          .foregroundStyle(Color.pmtext.secondary)
+          .padding(.horizontal, 4)
+      }
+    }
+
+    private var exampleSection: some View {
+      VStack(alignment: .leading, spacing: 10) {
+        Text(LocalizedStrings.SettingsStrings.conflictDetectionExample)
+          .font(.system(size: 16, weight: .semibold))
+          .padding(.horizontal, 4)
+
+        ConflictThresholdPreview(threshold: store.threshold)
+      }
+    }
+  }
+
+  // MARK: - ConflictThresholdPreview (Timeline)
+
+  private struct ConflictThresholdPreview: View {
+    let threshold: Int
+    @State private var showConflictTooltip = false
+
+    // 타임라인: 0 = 오후 1시, 300 = 오후 6시
+    private let totalMinutes: CGFloat = 300
+    private let myStart: CGFloat = 60   // 오후 2시
+    private let myEnd: CGFloat = 180    // 오후 4시
+    private let hourMinutes = [0, 60, 120, 180, 240, 300]
+    private let hourLabels = ["1시", "2시", "3시", "4시", "5시", "6시"]
+
+    private struct Scenario {
+      let title: String
+      let emoji: String
+      let start: CGFloat
+      let end: CGFloat
+      let overlapMinutes: Int
+      let gapMinutes: Int
+    }
+
+    // 시나리오:
+    // 점심 약속: 1:50~2:10, 내 약속(2~4시)과 10분 겹침
+    // 팀 미팅: 4:10~5:00, 내 약속과 gap = 10분, 겹침 없음
+    // 저녁 약속: 4:30~6:00, 내 약속과 gap = 30분, 겹침 없음
+    private let scenarios: [Scenario] = [
+      .init(title: "점심 약속", emoji: "🍜",  start: 50,  end:  70, overlapMinutes: 10, gapMinutes: 0),
+      .init(title: "팀 미팅",  emoji: "📌",  start: 190, end: 240, overlapMinutes: 0,  gapMinutes: 10),
+      .init(title: "저녁 약속", emoji: "🍽️", start: 210, end: 300, overlapMinutes: 0,  gapMinutes: 30),
+    ]
+
+    private func frac(_ m: CGFloat) -> CGFloat { m / totalMinutes }
+
+    private func formatTimeLabel(_ m: CGFloat) -> String {
+      let totalFromNoon = Int(m) + 60
+      let hour = totalFromNoon / 60
+      let min = totalFromNoon % 60
+      let displayHour = hour == 0 ? 12 : hour
+      return String(format: "%d:%02d", displayHour, min)
+    }
+
+    var body: some View {
+      VStack(alignment: .leading, spacing: 8) {
+        // 타임라인 + 새로 만드는 약속 (카드 밖)
+        VStack(alignment: .leading, spacing: 4) {
+          timeAxis
+
+          Text(LocalizedStrings.SettingsStrings.conflictDetectionNewEvent)
+            .font(.system(size: 11, weight: .bold))
+            .foregroundStyle(Color.pmindigo.n500)
+
+          myEventBar
+        }
+
+        // 기존 일정 카드 (plain background)
+        VStack(alignment: .leading, spacing: 8) {
+          HStack(spacing: 4) {
+            Text(LocalizedStrings.SettingsStrings.conflictDetectionExistingEvents)
+              .font(.system(size: 11, weight: .bold))
+              .foregroundStyle(Color.pmtext.secondary)
+            Rectangle()
+              .fill(Color.pmgray.n400.opacity(0.3))
+              .frame(height: 0.5)
+          }
+
+          ForEach(Array(scenarios.enumerated()), id: \.offset) { index, scenario in
+            eventRow(scenario)
+            if index < scenarios.count - 1 {
+              Divider()
+                .padding(.leading, 24)
+            }
+          }
+        }
+        .padding(12)
+        .background(
+          RoundedRectangle(cornerRadius: 10)
+            .fill(Color.pmgray.n400.opacity(0.08))
+        )
+
+        // 충돌 알림 미리보기 (adaptive glass + popover)
+        if !conflictScenarios.isEmpty {
+          VStack(alignment: .leading, spacing: 6) {
+            Text(LocalizedStrings.SettingsStrings.conflictDetectionPreviewHint)
+              .font(.system(size: 10, weight: .medium))
+              .foregroundStyle(Color.pmtext.secondary)
+
+            conflictFloatingPreview
+          }
+        }
+      }
+      .padding(16)
+      .staticGlassBackground()
+      .animation(.easeInOut(duration: 0.2), value: threshold)
+    }
+
+    private var conflictScenarios: [Scenario] {
+      scenarios.filter { $0.overlapMinutes > 0 || (threshold > 0 && $0.gapMinutes < threshold) }
+    }
+
+    // MARK: - Conflict Floating Preview
+
+    private var conflictFloatingPreview: some View {
+      let conflicts = conflictScenarios
+
+      return Button {
+        showConflictTooltip = true
+      } label: {
+        VStack(alignment: .leading, spacing: 4) {
+          ProBadge()
+
+          HStack(spacing: 6) {
+            Image(systemName: "exclamationmark.triangle.fill")
+              .font(.system(size: 12))
+              .foregroundStyle(Color.pmwarning.n500)
+
+            if conflicts.count == 1, let first = conflicts.first {
+              let text: String = {
+                if first.overlapMinutes > 0 {
+                  return "'\(first.title)'과(와) \(first.overlapMinutes)분 겹쳐요"
+                } else if first.gapMinutes > 0 {
+                  return "'\(first.title)'과(와) 여유 \(first.gapMinutes)분이에요"
+                } else {
+                  return "'\(first.title)'과(와) 일정이 겹쳐요"
+                }
+              }()
+              Text(text)
+                .font(.system(size: 11))
+                .foregroundStyle(Color.pmtext.primary)
+                .lineLimit(1)
+            } else {
+              Text("\(conflicts.count)건의 일정이 겹쳐요")
+                .font(.system(size: 11))
+                .foregroundStyle(Color.pmtext.primary)
+            }
+
+            Spacer(minLength: 0)
+
+            Image(systemName: "info.circle")
+              .font(.system(size: 11))
+              .foregroundStyle(Color.pmtext.secondary)
+          }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .adaptiveGlassCard(cornerRadius: 10)
+        .contentShape(Rectangle())
+      }
+      .buttonStyle(.plain)
+      .popover(isPresented: $showConflictTooltip, arrowEdge: .bottom) {
+        let conflictInfos: [ConflictInfo] = conflicts.map { scenario in
+          ConflictInfo(
+            title: scenario.title,
+            overlapMinutes: scenario.overlapMinutes,
+            gapMinutes: scenario.gapMinutes,
+            startAt: scenarioToDate(scenario.start),
+            endAt: scenarioToDate(scenario.end),
+            emoji: scenario.emoji,
+            severity: .confirmed
+          )
+        }
+        ConflictTooltip(
+          newEventTitle: LocalizedStrings.SettingsStrings.conflictDetectionNewEvent,
+          newEventStartAt: scenarioToDate(myStart),
+          newEventEndAt: scenarioToDate(myEnd),
+          conflicts: conflictInfos
+        )
+        .presentationCompactAdaptation(.popover)
+      }
+    }
+
+    // MARK: - Date Helpers
+
+    private var baseDate: Date {
+      Calendar.current.date(bySettingHour: 13, minute: 0, second: 0, of: Date()) ?? Date()
+    }
+
+    private func scenarioToDate(_ minutes: CGFloat) -> Date {
+      baseDate.addingTimeInterval(TimeInterval(minutes) * 60)
+    }
+
+    // MARK: - Time Axis
+
+    private var timeAxis: some View {
+      GeometryReader { geo in
+        let w = geo.size.width
+
+        Path { p in
+          p.move(to: .init(x: 0, y: 16))
+          p.addLine(to: .init(x: w, y: 16))
+        }
+        .stroke(Color.pmgray.n400.opacity(0.4), lineWidth: 0.5)
+
+        ForEach(Array(hourMinutes.enumerated()), id: \.offset) { i, minutes in
+          let x = frac(CGFloat(minutes)) * w
+
+          Path { p in
+            p.move(to: .init(x: x, y: 12))
+            p.addLine(to: .init(x: x, y: 20))
+          }
+          .stroke(Color.pmgray.n400.opacity(0.4), lineWidth: 0.5)
+
+          Text(hourLabels[i])
+            .font(.system(size: 9, weight: .medium))
+            .foregroundStyle(Color.pmtext.secondary)
+            .position(x: x, y: 6)
+        }
+      }
+      .frame(height: 22)
+    }
+
+    // MARK: - My Event Bar
+
+    private var myEventBar: some View {
+      GeometryReader { geo in
+        let w = geo.size.width
+        let x = frac(myStart) * w
+        let barW = frac(myEnd - myStart) * w
+
+        ZStack(alignment: .leading) {
+          RoundedRectangle(cornerRadius: 5)
+            .fill(Color.pmindigo.n500)
+            .frame(width: barW, height: 26)
+            .offset(x: x)
+
+          Text("\(formatTimeLabel(myStart)) ~ \(formatTimeLabel(myEnd))")
+            .font(.system(size: 10, weight: .semibold))
+            .foregroundStyle(.white)
+            .offset(x: x + 6)
+        }
+        .frame(maxHeight: .infinity, alignment: .center)
+      }
+      .frame(height: 26)
+    }
+
+    // MARK: - Event Row
+
+    private func eventRow(_ scenario: Scenario) -> some View {
+      let isConflict = scenario.overlapMinutes > 0 || (threshold > 0 && scenario.gapMinutes < threshold)
+      let barStart = max(scenario.start, 0)
+      let barEnd = min(scenario.end, totalMinutes)
+
+      return VStack(alignment: .leading, spacing: 3) {
+        HStack(spacing: 4) {
+          Text(scenario.emoji)
+            .font(.system(size: 12))
+          Text(scenario.title)
+            .font(.system(size: 12, weight: .medium))
+            .foregroundStyle(Color.pmtext.primary)
+
+          Text("\(formatTimeLabel(scenario.start)) ~ \(formatTimeLabel(scenario.end))")
+            .font(.system(size: 10))
+            .foregroundStyle(Color.pmtext.secondary.opacity(0.7))
+
+          Spacer()
+
+          if scenario.overlapMinutes > 0 {
+            Text(LocalizedStrings.Shared.conflictOverlapMinutes(scenario.overlapMinutes))
+              .font(.system(size: 10))
+              .foregroundStyle(Color.pmtext.secondary)
+          } else {
+            Text(LocalizedStrings.Shared.conflictMarginMinutes(scenario.gapMinutes))
+              .font(.system(size: 10))
+              .foregroundStyle(Color.pmtext.secondary)
+          }
+
+          HStack(spacing: 3) {
+            Image(systemName: isConflict ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
+              .font(.system(size: 11))
+            Text(isConflict ? LocalizedStrings.SettingsStrings.conflictDetectionConflict : LocalizedStrings.SettingsStrings.conflictDetectionMargin)
+              .font(.system(size: 11, weight: .semibold))
+          }
+          .foregroundStyle(isConflict ? Color.pmwarning.n500 : Color.pmsuccess.n500)
+          .animation(.easeInOut(duration: 0.2), value: isConflict)
+        }
+
+        GeometryReader { geo in
+          let w = geo.size.width
+          let barX = frac(barStart) * w
+          let barW = frac(barEnd - barStart) * w
+          let barColor = isConflict ? Color.pmwarning.n500 : Color.pmsuccess.n500
+
+          ZStack(alignment: .leading) {
+            RoundedRectangle(cornerRadius: 4)
+              .fill(barColor.opacity(isConflict ? 0.5 : 0.35))
+              .frame(width: barW, height: 20)
+              .offset(x: barX)
+              .animation(.easeInOut(duration: 0.2), value: isConflict)
+          }
+          .frame(maxHeight: .infinity, alignment: .center)
+        }
+        .frame(height: 20)
+      }
+    }
+  }
+}
+
+extension ClosedRange where Bound == Int {
+  fileprivate func clamp(_ value: Bound) -> Bound {
+    return Swift.min(Swift.max(lowerBound, value), upperBound)
+  }
+}
+
 // MARK: - CalendarSyncError Localization
 
 extension CalendarSyncError {

@@ -5,8 +5,10 @@ import PromisoShared
 
 /// 캘린더 오버레이 하단 날씨 카드 상태
 enum OverlayWeatherState: Equatable, Sendable {
-  /// 위치 권한 미부여 (탭하면 권한 요청)
+  /// 위치 권한 미요청 (탭하면 권한 요청)
   case needsPermission
+  /// 위치 권한 거부됨 (탭하면 설정으로 이동)
+  case denied
   /// 날씨 로딩 중
   case loading
   /// 날씨 로드 완료
@@ -15,9 +17,62 @@ enum OverlayWeatherState: Equatable, Sendable {
   case failed
 }
 
+// MARK: - Calendar Mode
+
+/// 캘린더 오버레이 표시 모드
+enum CalendarMode: Equatable, Sendable {
+  /// 월간 달력 (6행 그리드 + 날씨 카드)
+  case monthly
+  /// 주간 달력 (선택된 주 1행 + 일정 리스트)
+  case weekly
+  /// 날씨 상세 (시간별 예보)
+  case weatherDetail
+  /// 오버레이 내 일정 상세 (약속/개인 일정 공통)
+  case promiseDetail
+  /// 오버레이 내 약속 생성
+  case promiseCreate
+}
+
 // MARK: - Overlay Calendar Models
 
 enum OverlayCalendarModels {
+  /// multi-day 일정에서 해당 날짜의 위치
+  enum SpanPosition: Equatable, Sendable {
+    /// 단일 날짜 일정
+    case single
+    /// multi-day 시작일
+    case start
+    /// multi-day 중간일
+    case middle
+    /// multi-day 종료일
+    case end
+  }
+
+  /// 날짜 셀에 표시할 일정 인디케이터
+  struct ScheduleIndicator: Equatable, Identifiable {
+    let id: String
+    let color: Color
+    let title: String
+    let spanPosition: SpanPosition
+    let startAt: Date
+    let endAt: Date?
+    let emoji: String?
+
+    init(id: String, color: Color, title: String, spanPosition: SpanPosition = .single,
+         startAt: Date = .distantPast, endAt: Date? = nil, emoji: String? = nil) {
+      self.id = id
+      self.color = color
+      self.title = title
+      self.spanPosition = spanPosition
+      self.startAt = startAt
+      self.endAt = endAt
+      self.emoji = emoji
+    }
+
+    /// 개인 일정용 기본 색상
+    static let personalColor = Color.pminfo.n500
+  }
+
   /// 오버레이 캘린더에서 표시할 날짜 셀 데이터
   struct DayItem: Identifiable, Equatable {
     let id: String
@@ -27,6 +82,7 @@ enum OverlayCalendarModels {
     let isSelected: Bool
     let isToday: Bool
     let scheduleCount: Int
+    let scheduleIndicators: [ScheduleIndicator]
 
     init(
       date: Date,
@@ -34,7 +90,8 @@ enum OverlayCalendarModels {
       isCurrentMonth: Bool = true,
       isSelected: Bool = false,
       isToday: Bool = false,
-      scheduleCount: Int = 0
+      scheduleCount: Int = 0,
+      scheduleIndicators: [ScheduleIndicator] = []
     ) {
       self.id = "\(dayNumber)-\(isCurrentMonth)"
       self.date = date
@@ -43,6 +100,7 @@ enum OverlayCalendarModels {
       self.isSelected = isSelected
       self.isToday = isToday
       self.scheduleCount = scheduleCount
+      self.scheduleIndicators = scheduleIndicators
     }
   }
 
@@ -54,9 +112,9 @@ enum OverlayCalendarModels {
 
     var displayTitle: String {
       switch self {
-      case .morning: return "Morning"
-      case .afternoon: return "Afternoon"
-      case .night: return "Night"
+      case .morning: return LocalizedStrings.Calendar.dayPeriodMorning
+      case .afternoon: return LocalizedStrings.Calendar.dayPeriodAfternoon
+      case .night: return LocalizedStrings.Calendar.dayPeriodNight
       }
     }
 
@@ -100,11 +158,57 @@ enum OverlayCalendarModels {
     return Array(monthDays[rowStart..<rowEnd])
   }
 
+  /// selectedDate 기준으로 해당 주의 7일 DayItem 배열 생성 (월요일 시작)
+  /// - Parameters:
+  ///   - date: 기준 날짜 (이 날짜가 포함된 주를 생성)
+  ///   - selectedDate: 현재 선택된 날짜 (isSelected 표시용)
+  ///   - currentMonth: 현재 표시 중인 월 (isCurrentMonth 판단용)
+  ///   - scheduleCountsByDate: 날짜별 일정 개수
+  static func generateWeekDays(
+    for date: Date,
+    selectedDate: Date,
+    currentMonth: Date,
+    scheduleCountsByDate: [Date: Int],
+    scheduleIndicatorsByDate: [Date: [ScheduleIndicator]] = [:]
+  ) -> [DayItem] {
+    let calendar = Calendar.promiseDisplay
+    let today = Date()
+
+    // 해당 주의 월요일 찾기
+    // weekday: 일=1, 월=2, ..., 토=7
+    let weekday = calendar.component(.weekday, from: date)
+    let daysFromMonday = (weekday - 2 + 7) % 7
+    guard let monday = calendar.date(byAdding: .day, value: -daysFromMonday, to: date) else {
+      return []
+    }
+
+    return (0..<7).compactMap { offset in
+      guard let dayDate = calendar.date(byAdding: .day, value: offset, to: monday) else {
+        return nil
+      }
+      let dayNumber = calendar.component(.day, from: dayDate)
+      let isCurrentMonth = calendar.isDate(dayDate, equalTo: currentMonth, toGranularity: .month)
+      let dateKey = calendar.startOfDay(for: dayDate)
+      let count = scheduleCountsByDate[dateKey] ?? 0
+
+      return DayItem(
+        date: dayDate,
+        dayNumber: dayNumber,
+        isCurrentMonth: isCurrentMonth,
+        isSelected: calendar.isDate(dayDate, inSameDayAs: selectedDate),
+        isToday: calendar.isDate(dayDate, inSameDayAs: today),
+        scheduleCount: count,
+        scheduleIndicators: scheduleIndicatorsByDate[dateKey] ?? []
+      )
+    }
+  }
+
   /// 현재 월의 날짜 배열을 생성
   static func generateMonthDays(
     for date: Date,
     selectedDate: Date,
-    scheduleCountsByDate: [Date: Int]
+    scheduleCountsByDate: [Date: Int],
+    scheduleIndicatorsByDate: [Date: [ScheduleIndicator]] = [:]
   ) -> [DayItem] {
     let calendar = Calendar.promiseDisplay
     let today = Date()
@@ -145,7 +249,8 @@ enum OverlayCalendarModels {
           isCurrentMonth: true,
           isSelected: calendar.isDate(dayDate, inSameDayAs: selectedDate),
           isToday: calendar.isDate(dayDate, inSameDayAs: today),
-          scheduleCount: count
+          scheduleCount: count,
+          scheduleIndicators: scheduleIndicatorsByDate[dateKey] ?? []
         ))
       }
     }

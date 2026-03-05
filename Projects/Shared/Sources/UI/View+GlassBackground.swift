@@ -20,6 +20,18 @@ extension View {
     }
   }
 
+  /// iOS 26+에서는 glassEffect(.regular), 이전 버전에서는 ultraThinMaterial (interactive 없음)
+  @ViewBuilder
+  public func staticGlassBackground(cornerRadius: CGFloat = 12) -> some View {
+    if #available(iOS 26.0, *) {
+      self
+        .glassEffect(.regular, in: .rect(cornerRadius: cornerRadius))
+    } else {
+      self
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: cornerRadius))
+    }
+  }
+
   /// 카드용 Glass Effect (shadow 포함)
   @ViewBuilder
   public func adaptiveGlassCard(cornerRadius: CGFloat = 16) -> some View {

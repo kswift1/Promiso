@@ -31,6 +31,31 @@ public enum CalendarAuthorizationStatus: Equatable, Sendable {
       return false
     }
   }
+
+  /// UserDefaults 영속화용 키
+  public var persistKey: String {
+    switch self {
+    case .notDetermined: return "notDetermined"
+    case .restricted: return "restricted"
+    case .denied: return "denied"
+    case .fullAccess: return "fullAccess"
+    case .writeOnly: return "writeOnly"
+    case .authorized: return "authorized"
+    }
+  }
+
+  /// persistKey로부터 복원
+  public init?(persistKey: String) {
+    switch persistKey {
+    case "notDetermined": self = .notDetermined
+    case "restricted": self = .restricted
+    case "denied": self = .denied
+    case "fullAccess": self = .fullAccess
+    case "writeOnly": self = .writeOnly
+    case "authorized": self = .authorized
+    default: return nil
+    }
+  }
 }
 
 // MARK: - Calendar Event Model
@@ -152,8 +177,12 @@ public struct EventKitClient: Sendable {
   /// 캘린더 이벤트 삭제
   public var deleteEvent: @Sendable (_ eventIdentifier: String) async throws -> Void
 
-  /// Promiso 태그가 있는 이벤트 조회 (미래 이벤트만)
+  /// Promiso 태그가 있는 이벤트 조회 (오늘 시작~1년 후)
   public var getPromisoEvents: @Sendable () async throws -> [PromisoCalendarEvent]
+
+  /// 과거 Promiso 이벤트 중복 정리 (마이그레이션용)
+  /// - Returns: 삭제된 중복 이벤트 수
+  public var cleanupPastDuplicates: @Sendable (_ daysBack: Int) async throws -> Int
 
   /// 캘린더 변경 관찰 (이벤트 추가/수정/삭제 감지)
   public var observeChanges: @Sendable () -> AsyncStream<Void> = { AsyncStream { _ in } }
@@ -199,6 +228,7 @@ extension EventKitClient: TestDependencyKey {
     updateEvent: { _, _, _ in },
     deleteEvent: { _ in },
     getPromisoEvents: { [] },
+    cleanupPastDuplicates: { _ in 0 },
     observeChanges: { AsyncStream { _ in } },
     openSettings: { }
   )
@@ -211,6 +241,7 @@ extension EventKitClient: TestDependencyKey {
     updateEvent: { _, _, _ in },
     deleteEvent: { _ in },
     getPromisoEvents: { [] },
+    cleanupPastDuplicates: { _ in 0 },
     observeChanges: { AsyncStream { _ in } },
     openSettings: { }
   )
@@ -358,12 +389,13 @@ extension EventKitClient: DependencyKey {
           throw EventKitClientError.accessDenied
         }
 
-        // 2. 미래 1년간의 이벤트 조회
-        let now = Date()
-        let oneYearLater = Calendar.current.date(byAdding: .year, value: 1, to: now) ?? now
+        // 2. 오늘 시작~1년 후 이벤트 조회
+        // Firestore getActiveEvents(startAt >= startOfToday)와 동일 기준
+        let startOfToday = Calendar.current.startOfDay(for: Date())
+        let oneYearLater = Calendar.current.date(byAdding: .year, value: 1, to: startOfToday) ?? startOfToday
 
         let predicate = eventStore.predicateForEvents(
-          withStart: now,
+          withStart: startOfToday,
           end: oneYearLater,
           calendars: nil
         )
@@ -385,6 +417,52 @@ extension EventKitClient: DependencyKey {
             isPersonal: parsed.isPersonal
           )
         }
+      },
+
+      cleanupPastDuplicates: { daysBack in
+        // 1. 읽기 권한 확인
+        let status = EKEventStore.authorizationStatus(for: .event)
+        guard status.toCalendarAuthorizationStatus().canReadEvents else {
+          throw EventKitClientError.accessDenied
+        }
+
+        // 2. 과거 N일 ~ 오늘 시작 범위 검색
+        let now = Date()
+        let startOfToday = Calendar.current.startOfDay(for: now)
+        guard let pastDate = Calendar.current.date(byAdding: .day, value: -daysBack, to: now) else {
+          return 0
+        }
+
+        let predicate = eventStore.predicateForEvents(
+          withStart: pastDate,
+          end: startOfToday,
+          calendars: nil
+        )
+        let events = eventStore.events(matching: predicate)
+
+        // 3. Promiso URL이 있는 이벤트를 promiseId별로 그룹핑
+        var grouped: [String: [EKEvent]] = [:]
+        for event in events {
+          guard let parsed = PromisoCalendarTag.parse(from: event.url) else { continue }
+          let key = "\(parsed.id)-\(parsed.isPersonal)"
+          grouped[key, default: []].append(event)
+        }
+
+        // 4. 중복 삭제 (그룹별 첫 번째만 유지)
+        var deletedCount = 0
+        for (_, duplicateEvents) in grouped where duplicateEvents.count > 1 {
+          for event in duplicateEvents.dropFirst() {
+            guard event.calendar?.allowsContentModifications == true else { continue }
+            do {
+              try eventStore.remove(event, span: .thisEvent)
+              deletedCount += 1
+            } catch {
+              AppLogger.calendar.error("🧹 [Cleanup] 중복 삭제 실패: \(error.localizedDescription)")
+            }
+          }
+        }
+
+        return deletedCount
       },
 
       observeChanges: {

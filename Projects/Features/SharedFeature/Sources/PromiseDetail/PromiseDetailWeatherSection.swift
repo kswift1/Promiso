@@ -4,13 +4,19 @@ import PromisoShared
 // MARK: - Promise Detail Weather Section (Level 3)
 
 /// 약속 상세보기 날씨 섹션 - 행동 추천 + 약속 시간 요약 + 시간대별 예보
-struct PromiseDetailWeatherSection: View {
+public struct PromiseDetailWeatherSection: View {
   let weatherInfo: WeatherInfo
   let startAt: Date
   let endAt: Date?
 
   @State private var selectedForecast: HourlyForecast?
   @State private var selectedDailyForecast: DailyForecast?
+
+  public init(weatherInfo: WeatherInfo, startAt: Date, endAt: Date?) {
+    self.weatherInfo = weatherInfo
+    self.startAt = startAt
+    self.endAt = endAt
+  }
 
   // MARK: - Short-term Computed Properties
 
@@ -30,7 +36,7 @@ struct PromiseDetailWeatherSection: View {
   }
 
   private var timeRangeForecasts: [HourlyForecast] {
-    let end = endAt ?? startAt.addingTimeInterval(7200)
+    let end = endAt ?? startAt
     let rangeStart = startAt.addingTimeInterval(-3600)
     return weatherInfo.hourlyForecasts.filter { forecast in
       forecast.dateTime >= rangeStart && forecast.dateTime <= end
@@ -66,7 +72,7 @@ struct PromiseDetailWeatherSection: View {
 
   // MARK: - Body
 
-  var body: some View {
+  public var body: some View {
     VStack(spacing: 0) {
       PromiseDetailSectionHeader(title: LocalizedStrings.Weather.sectionTitle)
 
@@ -433,7 +439,7 @@ struct PromiseDetailWeatherSection: View {
   }
 
   private func isPromiseTime(_ date: Date) -> Bool {
-    let end = endAt ?? startAt.addingTimeInterval(7200)
+    let end = endAt ?? startAt
     return date >= startAt && date <= end
   }
 

@@ -20,11 +20,11 @@ struct WeatherConditionTests {
     #expect(WeatherCondition.unknown.sfSymbolName == "questionmark.circle")
   }
 
-  @Test("한글 설명이 올바르게 매핑됨")
+  @Test("로컬라이즈된 설명이 올바르게 매핑됨")
   func descriptions() {
-    #expect(WeatherCondition.clear.description == "맑음")
-    #expect(WeatherCondition.rain.description == "비")
-    #expect(WeatherCondition.snow.description == "눈")
+    #expect(WeatherCondition.clear.description == LocalizedStrings.Weather.conditionClear)
+    #expect(WeatherCondition.rain.description == LocalizedStrings.Weather.conditionRain)
+    #expect(WeatherCondition.snow.description == LocalizedStrings.Weather.conditionSnow)
   }
 
   @Test("Codable 라운드트립")
@@ -447,5 +447,142 @@ struct WeatherDataSourceCacheKeyTests {
     if hour1 != hour2 {
       #expect(key1 != key2)
     }
+  }
+
+  @Test("현재 예보 선택: ±1시간 내 가장 가까운 예보 선택")
+  func selectCurrentForecastPrefersClosestWithinOneHour() {
+    let base = Date(timeIntervalSince1970: 1_700_000_000)
+    let forecasts = [
+      HourlyForecast(
+        dateTime: base.addingTimeInterval(-50 * 60),
+        temperature: 10,
+        feelsLikeTemperature: 10,
+        condition: .clear,
+        precipitationProbability: 0,
+        humidity: 0,
+        windSpeed: 0
+      ),
+      HourlyForecast(
+        dateTime: base.addingTimeInterval(20 * 60),
+        temperature: 20,
+        feelsLikeTemperature: 20,
+        condition: .clear,
+        precipitationProbability: 0,
+        humidity: 0,
+        windSpeed: 0
+      ),
+      HourlyForecast(
+        dateTime: base.addingTimeInterval(40 * 60),
+        temperature: 30,
+        feelsLikeTemperature: 30,
+        condition: .clear,
+        precipitationProbability: 0,
+        humidity: 0,
+        windSpeed: 0
+      ),
+    ]
+
+    let selected = WeatherDataSource.selectCurrentForecast(
+      from: forecasts,
+      targetDate: base
+    )
+
+    #expect(selected?.temperature == 20)
+  }
+
+  @Test("현재 예보 선택: 절대 차이 동률이면 미래 예보 우선")
+  func selectCurrentForecastPrefersFutureOnTie() {
+    let base = Date(timeIntervalSince1970: 1_700_000_000)
+    let forecasts = [
+      HourlyForecast(
+        dateTime: base.addingTimeInterval(-30 * 60),
+        temperature: 11,
+        feelsLikeTemperature: 11,
+        condition: .clear,
+        precipitationProbability: 0,
+        humidity: 0,
+        windSpeed: 0
+      ),
+      HourlyForecast(
+        dateTime: base.addingTimeInterval(30 * 60),
+        temperature: 22,
+        feelsLikeTemperature: 22,
+        condition: .clear,
+        precipitationProbability: 0,
+        humidity: 0,
+        windSpeed: 0
+      ),
+    ]
+
+    let selected = WeatherDataSource.selectCurrentForecast(
+      from: forecasts,
+      targetDate: base
+    )
+
+    #expect(selected?.temperature == 22)
+  }
+
+  @Test("현재 예보 선택: ±1시간 후보 없으면 전체 최근접 fallback")
+  func selectCurrentForecastFallsBackToClosestOverall() {
+    let base = Date(timeIntervalSince1970: 1_700_000_000)
+    let forecasts = [
+      HourlyForecast(
+        dateTime: base.addingTimeInterval(-2 * 3600),
+        temperature: 15,
+        feelsLikeTemperature: 15,
+        condition: .clear,
+        precipitationProbability: 0,
+        humidity: 0,
+        windSpeed: 0
+      ),
+      HourlyForecast(
+        dateTime: base.addingTimeInterval(3 * 3600),
+        temperature: 25,
+        feelsLikeTemperature: 25,
+        condition: .clear,
+        precipitationProbability: 0,
+        humidity: 0,
+        windSpeed: 0
+      ),
+    ]
+
+    let selected = WeatherDataSource.selectCurrentForecast(
+      from: forecasts,
+      targetDate: base
+    )
+
+    #expect(selected?.temperature == 15)
+  }
+
+  @Test("현재 예보 선택: fallback 동률도 미래 예보 우선")
+  func selectCurrentForecastFallbackTiePrefersFuture() {
+    let base = Date(timeIntervalSince1970: 1_700_000_000)
+    let forecasts = [
+      HourlyForecast(
+        dateTime: base.addingTimeInterval(-2 * 3600),
+        temperature: 13,
+        feelsLikeTemperature: 13,
+        condition: .clear,
+        precipitationProbability: 0,
+        humidity: 0,
+        windSpeed: 0
+      ),
+      HourlyForecast(
+        dateTime: base.addingTimeInterval(2 * 3600),
+        temperature: 24,
+        feelsLikeTemperature: 24,
+        condition: .clear,
+        precipitationProbability: 0,
+        humidity: 0,
+        windSpeed: 0
+      ),
+    ]
+
+    let selected = WeatherDataSource.selectCurrentForecast(
+      from: forecasts,
+      targetDate: base
+    )
+
+    #expect(selected?.temperature == 24)
   }
 }

@@ -50,21 +50,25 @@ public struct UserSettings: Equatable, Sendable {
   public var notificationEnabled: Bool
   public var groupSortOption: GroupSortOption
   public var plan: UserPlan
+  public var conflictDetectionThreshold: Int
 
   public init(
     notificationEnabled: Bool,
     groupSortOption: GroupSortOption = .joinedRecent,
-    plan: UserPlan = .free
+    plan: UserPlan = .free,
+    conflictDetectionThreshold: Int = 0
   ) {
     self.notificationEnabled = notificationEnabled
     self.groupSortOption = groupSortOption
     self.plan = plan
+    self.conflictDetectionThreshold = conflictDetectionThreshold
   }
 
   /// 기본 설정값
   public static let `default` = UserSettings(
     notificationEnabled: true,
     groupSortOption: .joinedRecent,
-    plan: .free
+    plan: .free,
+    conflictDetectionThreshold: 0
   )
 }

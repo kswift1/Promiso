@@ -34,6 +34,7 @@ struct UserDTO: Codable {
     let notifications: GroupNotificationSettings?
     let hasNewActivity: Bool?
     let imageUrl: String?
+    let groupColor: String?
 
     private enum CodingKeys: String, CodingKey {
       case groupName
@@ -43,6 +44,7 @@ struct UserDTO: Codable {
       case notificationPreferences
       case hasNewActivity
       case imageUrl
+      case groupColor
     }
 
     init(
@@ -51,7 +53,8 @@ struct UserDTO: Codable {
       joinedAt: FirebaseTimestampDTO,
       notifications: GroupNotificationSettings?,
       hasNewActivity: Bool?,
-      imageUrl: String?
+      imageUrl: String?,
+      groupColor: String? = nil
     ) {
       self.groupName = groupName
       self.role = role
@@ -59,6 +62,7 @@ struct UserDTO: Codable {
       self.notifications = notifications
       self.hasNewActivity = hasNewActivity
       self.imageUrl = imageUrl
+      self.groupColor = groupColor
     }
 
     init(from decoder: Decoder) throws {
@@ -68,6 +72,7 @@ struct UserDTO: Codable {
       joinedAt = try container.decode(FirebaseTimestampDTO.self, forKey: .joinedAt)
       hasNewActivity = try container.decodeIfPresent(Bool.self, forKey: .hasNewActivity)
       imageUrl = try container.decodeIfPresent(String.self, forKey: .imageUrl)
+      groupColor = try container.decodeIfPresent(String.self, forKey: .groupColor)
 
       if let settings = try? container.decode(GroupNotificationSettings.self, forKey: .notifications) {
         notifications = settings
@@ -90,6 +95,7 @@ struct UserDTO: Codable {
       try container.encodeIfPresent(notifications, forKey: .notifications)
       try container.encodeIfPresent(hasNewActivity, forKey: .hasNewActivity)
       try container.encodeIfPresent(imageUrl, forKey: .imageUrl)
+      try container.encodeIfPresent(groupColor, forKey: .groupColor)
     }
   }
 
@@ -125,7 +131,8 @@ extension UserDTO {
         joinedAt: dto.joinedAt.date,
         notifications: dto.notifications,
         hasNewActivity: dto.hasNewActivity ?? false,
-        imageUrl: dto.imageUrl
+        imageUrl: dto.imageUrl,
+        groupColor: dto.groupColor.flatMap { GroupColor(rawValue: $0) }
       )
     } ?? []
 

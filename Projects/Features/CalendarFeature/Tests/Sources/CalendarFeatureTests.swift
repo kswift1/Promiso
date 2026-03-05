@@ -30,6 +30,7 @@ struct CalendarFeatureTests {
     await store.send(.view(.onAppear))
     await store.receive(\.internal.checkCalendarPermission)
     await store.receive(\.internal.loadInitialData)
+    await store.receive(\.internal.fetchSettings)
     await store.finish()
   }
 
@@ -46,16 +47,53 @@ struct CalendarFeatureTests {
 
   // MARK: - 디스플레이 모드 전환 테스트
 
-  @Test("toggleDisplayMode 시 주간에서 월간으로 전환 후 transition 종료")
-  func toggleDisplayMode_weekToMonth_completesTransition() async {
+  @Test("toggleDisplayMode 시 주간→월간→월간확장→주간 순환 전환")
+  func toggleDisplayMode_cyclesThroughAllModes() async {
     var state = makeState(key: "toggle-mode")
     state.loadedMonths.insert(state.selectedDate.startOfMonth)
 
     let store = makeStore(state: state)
 
+    // week → month
     await store.send(.view(.toggleDisplayMode)) {
       $0.isTransitioning = true
       $0.displayMode = .month
+    }
+    await store.receive(\.internal.transitionCompleted, timeout: 5_000_000_000) {
+      $0.isTransitioning = false
+    }
+
+    // month → monthExpanded
+    await store.send(.view(.toggleDisplayMode)) {
+      $0.isTransitioning = true
+      $0.displayMode = .monthExpanded
+    }
+    await store.receive(\.internal.transitionCompleted) {
+      $0.isTransitioning = false
+    }
+
+    // monthExpanded → week
+    await store.send(.view(.toggleDisplayMode)) {
+      $0.isTransitioning = true
+      $0.displayMode = .week
+      $0.currentWeekStart = $0.selectedDate.startOfWeek
+    }
+    await store.receive(\.internal.transitionCompleted) {
+      $0.isTransitioning = false
+    }
+  }
+
+  @Test("setDisplayMode 시 직접 모드 지정")
+  func setDisplayMode_directlyChangesMode() async {
+    var state = makeState(key: "set-mode")
+    state.loadedMonths.insert(state.selectedDate.startOfMonth)
+
+    let store = makeStore(state: state)
+
+    // week → monthExpanded 직접 지정
+    await store.send(.view(.setDisplayMode(.monthExpanded))) {
+      $0.isTransitioning = true
+      $0.displayMode = .monthExpanded
     }
     await store.receive(\.internal.transitionCompleted) {
       $0.isTransitioning = false
@@ -74,6 +112,8 @@ struct CalendarFeatureTests {
 
     await store.send(.view(.selectDate(february))) {
       $0.selectedDate = february
+      $0.currentWeekStart = february.startOfWeek
+      $0.currentMonth = february.startOfMonth
     }
     await store.receive(\.internal.fetchPromisesForMonth)
   }
@@ -110,11 +150,12 @@ struct CalendarFeatureTests {
 
   // MARK: - 약속 데이터 로드 테스트
 
-  @Test("loadInitialData 시 캐시 초기화 후 현재 월 약속 로드")
-  func loadInitialData_withGroups_clearsCacheAndLoadsCurrentMonth() async {
+  @Test("loadInitialData 시 현재 월만 선택적 무효화 후 약속 로드")
+  func loadInitialData_withGroups_selectivelyInvalidatesAndLoadsCurrentMonth() async {
     let selectedDate = makeDate(year: 2026, month: 1, day: 20)
     let monthStart = selectedDate.startOfMonth
     let staleMonth = makeDate(year: 2025, month: 12, day: 1).startOfMonth
+    let stalePromise = makePromise(id: "stale", groupId: "group-1", startAt: staleMonth)
     let recorder = PromiseRangeRecorder()
 
     var state = makeState(
@@ -122,7 +163,7 @@ struct CalendarFeatureTests {
       key: "load-initial-data",
       selectedDate: selectedDate
     )
-    state.cachedPromisesByMonth[staleMonth] = [makePromise(id: "stale", groupId: "group-1", startAt: staleMonth)]
+    state.cachedPromisesByMonth[staleMonth] = [stalePromise]
     state.loadedMonths.insert(staleMonth)
 
     let loadedPromise = makePromise(id: "loaded-1", groupId: "group-1", startAt: selectedDate)
@@ -134,9 +175,10 @@ struct CalendarFeatureTests {
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
+    // 현재 월(2026-01)의 loadedMonths 항목만 제거, staleMonth(2025-12) 캐시는 유지됨
     await store.send(.internal(.loadInitialData)) {
-      $0.cachedPromisesByMonth = [:]
-      $0.loadedMonths = []
+      // loadedMonths에서 현재 월만 제거 (staleMonth는 그대로)
+      $0.loadedMonths = [staleMonth]
     }
     await store.receive(\.internal.fetchPromisesForMonth)
     await store.receive(\.internal.promisesResponseForMonth)
@@ -146,6 +188,8 @@ struct CalendarFeatureTests {
     #expect(requests.first?.groupIds == ["group-1"])
     #expect(requests.first?.startDate == monthStart)
     #expect(store.state.loadedMonths.contains(monthStart))
+    // staleMonth 캐시는 삭제되지 않음
+    #expect(store.state.cachedPromisesByMonth[staleMonth]?.count == 1)
     #expect(store.state.cachedPromisesByMonth[monthStart]?.count == 1)
     #expect(store.state.isLoadingPromises == false)
   }
@@ -285,26 +329,29 @@ struct CalendarFeatureTests {
     }
   }
 
-  @Test("calendarEventsResponse 실패 시 이벤트 초기화")
-  func calendarEventsResponse_failure_clearsEvents() async {
+  @Test("calendarEventsResponse 실패 시 기존 이벤트 유지")
+  func calendarEventsResponse_failure_preservesExistingEvents() async {
     enum TestError: Error { case failed }
+
+    let existingEvent = makeCalendarEvent(
+      id: "old-event",
+      startDate: makeDate(year: 2026, month: 1, day: 1),
+      endDate: makeDate(year: 2026, month: 1, day: 1, hour: 1)
+    )
 
     var state = makeState(key: "events-failure")
     state.isLoadingCalendarEvents = true
-    state.calendarEvents = [
-      makeCalendarEvent(
-        id: "old-event",
-        startDate: makeDate(year: 2026, month: 1, day: 1),
-        endDate: makeDate(year: 2026, month: 1, day: 1, hour: 1)
-      )
-    ]
+    state.calendarEvents = [existingEvent]
 
     let store = makeStore(state: state)
 
+    // 실패 시 기존 calendarEvents 유지 (빈 배열로 덮어쓰지 않음)
     await store.send(.internal(.calendarEventsResponse(.failure(TestError.failed)))) {
       $0.isLoadingCalendarEvents = false
-      $0.calendarEvents = []
+      // calendarEvents는 변경 없음
     }
+
+    #expect(store.state.calendarEvents == [existingEvent])
   }
 }
 
@@ -432,5 +479,10 @@ private extension CalendarFeatureTests {
     deps.eventKitClient.fetchEvents = { _, _ in [] }
     deps.promiseClient.getPromisesByDateRange = { _, _, _ in [] }
     deps.personalEventClient.getActiveEvents = { _ in [] }
+    deps.userSettingsClient.fetchSettings = { _ in
+      UserSettings(notificationEnabled: true, groupSortOption: .joinedRecent, plan: .free)
+    }
+    deps.userDefaultsClient.setString = { _, _ in }
+    deps.userDefaultsClient.stringForKey = { _ in nil }
   }
 }

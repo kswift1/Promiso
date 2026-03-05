@@ -7,6 +7,7 @@ import Clients
 import PromisoShared
 import ResourceKit
 import SharedFeature
+import CreatePromiseFeature
 
 // MARK: - Root View
 
@@ -15,6 +16,9 @@ extension CalendarFeature {
   public struct RootView: View {
     @Bindable private var store: StoreOf<Feature>
     @Namespace private var calendarAnimation
+    @State private var timelineZoomState = TimelineZoomState()
+    @State private var sheetDragOffset: CGFloat = 0
+    @State private var sheetDragBaseOffset: CGFloat = 0
 
     public init(store: StoreOf<Feature>) {
       self.store = store
@@ -28,7 +32,10 @@ extension CalendarFeature {
             title: store.headerTitle,
             displayMode: store.displayMode,
             isSelectedDateToday: store.isSelectedDateToday,
+            isFilterActive: store.isFilterActive,
+            onFilterTapped: { store.send(.view(.filterIconTapped)) },
             onToggleMode: { store.send(.view(.toggleDisplayMode), animation: .spring(response: 0.45, dampingFraction: 0.8)) },
+            onSetMode: { mode in store.send(.view(.setDisplayMode(mode)), animation: .spring(response: 0.45, dampingFraction: 0.8)) },
             onMoveToToday: { store.send(.view(.moveToToday), animation: .spring(response: 0.35, dampingFraction: 0.85)) },
             onMovePrevious: { store.send(.view(.moveToPreviousPeriod), animation: .spring(response: 0.35, dampingFraction: 0.85)) },
             onMoveNext: { store.send(.view(.moveToNextPeriod), animation: .spring(response: 0.35, dampingFraction: 0.85)) }
@@ -41,12 +48,82 @@ extension CalendarFeature {
 
           // 캘린더 그리드 (주간/월간)
           calendarGridSection
+            .layoutPriority(1)
             .animation(.spring(response: 0.45, dampingFraction: 0.8), value: store.displayMode)
+            .onChange(of: store.displayMode) { _, _ in
+              withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) {
+                sheetDragOffset = 0
+              }
+              sheetDragBaseOffset = 0
+            }
 
-          // 약속 리스트 (시트 스타일)
-          promiseListSection
+          // 약속 리스트 (시트 스타일) — monthExpanded일 때 숨김
+          if store.displayMode == .week || store.displayMode == .month {
+            promiseListSection
+              .transition(.move(edge: .bottom).combined(with: .opacity))
+          }
         }
         .auroraBackground()
+        .alert(store: store.scope(state: \.$deleteAlert, action: \.deleteAlert))
+        .sheet(store: store.scope(state: \.$editPromise, action: \.editPromise)) { editStore in
+          EditPromise.RootView(store: editStore)
+        }
+        .sheet(store: store.scope(state: \.$editPersonalEvent, action: \.editPersonalEvent)) { editStore in
+          NavigationStack {
+            CreatePersonalEvent.RootView(store: editStore)
+          }
+        }
+        .sheet(store: store.scope(state: \.$createPromise, action: \.createPromise)) { createStore in
+          CreatePromise.RootView(store: createStore)
+        }
+        .sheet(item: Binding(
+          get: { store.sharePromise },
+          set: { _ in store.send(.view(.dismissPromiseShareSheet)) }
+        )) { promise in
+          PromiseShareSheet(
+            promise: promise,
+            isKakaoSharing: store.isKakaoPromiseSharing,
+            onKakaoShareTapped: {
+              store.send(.view(.kakaoPromiseShareTapped))
+            },
+            onSystemShareTapped: {
+              store.send(.view(.systemPromiseShareTapped))
+            }
+          )
+          .presentationDetents([.height(340)])
+          .presentationDragIndicator(.visible)
+        }
+        .sheet(item: Binding(
+          get: { store.systemShareText.map { ShareTextItem(text: $0) } },
+          set: { _ in store.send(.view(.systemShareSheetDismissed)) }
+        )) { item in
+          ShareSheet(items: [item.text])
+        }
+        .sheet(isPresented: Binding(
+          get: { store.isFilterSheetPresented },
+          set: { newValue in
+            if !newValue {
+              store.send(.view(.filterSheetDismissed))
+            }
+          }
+        )) {
+          CalendarFilterSheetView(
+            groups: store.sortedGroups,
+            groupColorMap: store.groupColorMap,
+            selectedGroupIds: store.selectedGroupIds,
+            showPersonalEvents: store.showPersonalEvents,
+            onGroupToggled: { groupId in
+              store.send(.view(.filterGroupToggled(groupId)))
+            },
+            onPersonalEventsToggled: {
+              store.send(.view(.filterPersonalEventsToggled))
+            },
+            onReset: {
+              store.send(.view(.filterReset))
+            }
+          )
+          .presentationDragIndicator(.visible)
+        }
         .toast(Binding(
           get: { store.toastMessage },
           set: { _ in store.send(.view(.toastDismissed)) }
@@ -68,48 +145,60 @@ extension CalendarFeature {
 
     @ViewBuilder
     private var calendarGridSection: some View {
-      if store.displayMode == .week {
-        // TabView 기반 주간 뷰 (네이티브 페이징)
-        PagingWeekStripView(
-          currentWeekStart: Binding(
-            get: { store.currentWeekStart },
-            set: { store.send(.view(.weekPageChanged($0))) }
-          ),
-          selectedDate: store.selectedDate,
-          promisesByDate: store.promisesByDate,
-          calendarEventsByDate: store.calendarEventsByDate,
-          personalEventsByDate: store.personalEventsByDate,
-          currentUserId: store.currentUserId,
-          namespace: calendarAnimation,
-          onDateSelected: { date in
-            store.send(.view(.selectDate(date)), animation: .spring(response: 0.35, dampingFraction: 0.7))
+      let isExpanded = store.displayMode == .monthExpanded
+      let isWeek = store.displayMode == .week
+
+      PagingMonthGridView(
+        currentMonth: Binding(
+          get: { store.currentMonth },
+          set: { store.send(.view(.monthPageChanged($0))) }
+        ),
+        selectedDate: store.selectedDate,
+        scheduleIndicatorsByDate: store.scheduleIndicatorsByDate,
+        namespace: calendarAnimation,
+        isCompactMode: !isExpanded,
+        showAllIndicators: isExpanded,
+        selectedWeekRow: isWeek ? selectedWeekRowIndex : nil,
+        onDateSelected: { date in
+          store.send(.view(.selectDate(date)), animation: .spring(response: 0.35, dampingFraction: 0.7))
+        },
+        onCollapseToWeek: { date in
+          store.send(.view(.collapseToWeek(date)), animation: .spring(response: 0.45, dampingFraction: 0.8))
+        },
+        onIndicatorTapped: { indicator in
+          store.send(.view(.indicatorTapped(indicator)))
+        },
+        onDayCreatePersonalEvent: { date in
+          store.send(.view(.dayLongPressCreatePersonalEvent(date)))
+        },
+        onDayCreatePromise: { date in
+          store.send(.view(.dayLongPressCreatePromise(date)))
+        },
+        onWeekPageChanged: isWeek ? { direction in
+          if direction < 0 {
+            store.send(.view(.moveToPreviousPeriod), animation: .spring(response: 0.35, dampingFraction: 0.85))
+          } else {
+            store.send(.view(.moveToNextPeriod), animation: .spring(response: 0.35, dampingFraction: 0.85))
           }
-        )
-        .padding(.vertical, 14)
-        .transition(.opacity.combined(with: .scale(scale: 0.98)).combined(with: .offset(y: -8)))
-      } else {
-        // TabView 기반 월간 뷰 (네이티브 페이징)
-        PagingMonthGridView(
-          currentMonth: Binding(
-            get: { store.currentMonth },
-            set: { store.send(.view(.monthPageChanged($0))) }
-          ),
-          selectedDate: store.selectedDate,
-          promisesByDate: store.promisesByDate,
-          calendarEventsByDate: store.calendarEventsByDate,
-          personalEventsByDate: store.personalEventsByDate,
-          currentUserId: store.currentUserId,
-          namespace: calendarAnimation,
-          onDateSelected: { date in
-            store.send(.view(.selectDate(date)), animation: .spring(response: 0.35, dampingFraction: 0.7))
-          },
-          onCollapseToWeek: { date in
-            store.send(.view(.collapseToWeek(date)), animation: .spring(response: 0.45, dampingFraction: 0.8))
-          }
-        )
-        .padding(.vertical, 12)
-        .transition(.opacity.combined(with: .scale(scale: 0.98)).combined(with: .offset(y: 8)))
-      }
+        } : nil
+      )
+      // week: 1행 고정(46pt), month: 드래그 가능, expanded: 자유
+      .frame(height: isExpanded ? nil : (isWeek ? 46 : compactGridHeight))
+      .frame(maxHeight: isExpanded ? .infinity : nil)
+      .padding(.top, 12)
+      .padding(.bottom, isExpanded ? 0 : 12)
+    }
+
+    // MARK: - Selected Week Row Index
+
+    private var selectedWeekRowIndex: Int {
+      let calendar = Calendar.current
+      let startOfMonth = store.currentMonth.startOfMonth
+      let firstWeekday = store.currentMonth.firstWeekdayOfMonth
+      let daysToSubtract = firstWeekday - 1
+      guard let calendarStart = calendar.date(byAdding: .day, value: -daysToSubtract, to: startOfMonth) else { return 0 }
+      let daysBetween = calendar.dateComponents([.day], from: calendar.startOfDay(for: calendarStart), to: calendar.startOfDay(for: store.selectedDate)).day ?? 0
+      return max(0, min(5, daysBetween / 7))
     }
 
     // MARK: - Promise List Section
@@ -117,67 +206,26 @@ extension CalendarFeature {
     private var promiseListSection: some View {
       VStack(spacing: 0) {
         if store.displayMode == .week {
-          weekScrollView
+          weekTimelineView
+            .transition(.move(edge: .bottom).combined(with: .opacity))
         } else {
           monthScrollView
+            .transition(.move(edge: .bottom).combined(with: .opacity))
         }
       }
-      .frame(maxWidth: .infinity, maxHeight: .infinity)
+      .animation(.spring(response: 0.45, dampingFraction: 0.8), value: store.displayMode)
+      .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
       .background(Color(.systemBackground))
       .clipShape(RoundedCorner(radius: 24, corners: [.topLeft, .topRight]))
       .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: -4)
-      .ignoresSafeArea(edges: .bottom)
     }
 
-    // MARK: - Week Scroll View
+    // MARK: - Week Timeline View
 
-    private var weekScrollView: some View {
-      ScrollViewReader { proxy in
-        ScrollView {
-          weekPromiseListContent
-        }
-        .onAppear {
-          // 전환 시 scrolledID가 설정되어 있으면 즉시 해당 위치로 이동 (애니메이션 없음)
-          if let targetDate = store.scrolledID {
-            proxy.scrollTo(targetDate, anchor: .top)
-          }
-        }
-        .onChange(of: store.selectedDate) { _, newDate in
-          guard !store.isTransitioning else { return }
-          let calendar = Calendar.current
-          if let targetDate = store.sectionDates.first(where: { calendar.isDate($0, inSameDayAs: newDate) }) {
-            withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-              proxy.scrollTo(targetDate, anchor: .top)
-            }
-          }
-        }
-      }
-    }
-
-    // MARK: - Month Scroll View
-
-    private var monthScrollView: some View {
-      ScrollViewReader { proxy in
-        ScrollView {
-          monthPromiseListContent
-        }
-        .onChange(of: store.selectedDate) { _, newDate in
-          guard !store.isTransitioning else { return }
-          let calendar = Calendar.current
-          if let targetDate = store.sectionDates.first(where: { calendar.isDate($0, inSameDayAs: newDate) }) {
-            withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-              proxy.scrollTo(targetDate, anchor: .center)
-            }
-          }
-        }
-      }
-    }
-
-    // MARK: - Week Promise List Content
-
-    private var weekPromiseListContent: some View {
-      LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
-        // 캘린더 권한 배너
+    @ViewBuilder
+    private var weekTimelineView: some View {
+      VStack(spacing: 0) {
+        // 캘린더 권한 배너 (기존 유지)
         if !store.calendarPermissionStatus.canReadEvents
             && !store.hiddenCalendarBannerTypes.contains(store.calendarPermissionStatus) {
           CalendarPermissionBanner(
@@ -191,15 +239,128 @@ extension CalendarFeature {
 
         if store.isInitialLoading {
           loadingView
-        } else if store.sectionDates.isEmpty {
-          emptyStateView
         } else {
-          ForEach(store.sectionDates, id: \.self) { date in
-            weekModeSection(for: date)
+          CalendarDayTimelinePager(
+            selectedDate: store.selectedDate,
+            prevDayScheduleItems: store.prevDayScheduleItems,
+            currentDayScheduleItems: store.selectedDateScheduleItems,
+            nextDayScheduleItems: store.nextDayScheduleItems,
+            onScheduleItemTapped: { item in
+              store.send(.view(.scheduleItemTapped(item)))
+            },
+            onEditScheduleItem: { item in
+              store.send(.view(.editScheduleItem(item)))
+            },
+            onPreviousDay: {
+              if let prev = Calendar.current.date(byAdding: .day, value: -1, to: store.selectedDate) {
+                store.send(.view(.selectDate(prev)), animation: .spring(response: 0.35, dampingFraction: 0.7))
+              }
+            },
+            onNextDay: {
+              if let next = Calendar.current.date(byAdding: .day, value: 1, to: store.selectedDate) {
+                store.send(.view(.selectDate(next)), animation: .spring(response: 0.35, dampingFraction: 0.7))
+              }
+            },
+            onCreatePersonalEvent: { startDate, endDate in
+              store.send(.view(.createPersonalEventFromTimeline(startDate: startDate, endDate: endDate)))
+            },
+            onCreatePromise: { startDate, endDate in
+              store.send(.view(.createPromiseFromTimeline(startDate: startDate, endDate: endDate)))
+            },
+            onDeleteScheduleItem: { item in
+              store.send(.view(.deleteScheduleItem(item)))
+            },
+            onShareScheduleItem: { item in
+              store.send(.view(.shareScheduleItem(item)))
+            },
+            currentUserId: store.currentUserId,
+            weatherCache: store.weatherCache,
+            groupColorMap: store.groupColorMap,
+            zoomState: timelineZoomState
+          )
+        }
+      }
+    }
+
+    // MARK: - Month Scroll View
+
+    private var monthScrollView: some View {
+      VStack(spacing: 0) {
+        // 드래그 핸들 — 탭하면 expanded로 전환
+        sheetDragHandle
+
+        ScrollViewReader { proxy in
+          ScrollView {
+            monthPromiseListContent
+          }
+          .onChange(of: store.selectedDate) { _, newDate in
+            guard !store.isTransitioning else { return }
+            let calendar = Calendar.current
+            if let targetDate = store.sectionDates.first(where: { calendar.isDate($0, inSameDayAs: newDate) }) {
+              withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                proxy.scrollTo(targetDate, anchor: .center)
+              }
+            }
           }
         }
       }
-      .padding(.bottom, 500)
+    }
+
+    // MARK: - Sheet Drag Handle
+
+    // MARK: - Sheet Drag Constants
+
+    private static let defaultGridHeight: CGFloat = 306
+    private static let minGridHeight: CGFloat = 150
+    private static let maxDrag: CGFloat = defaultGridHeight - minGridHeight // 106
+    private static let halfDragRatio: CGFloat = 0.5
+
+    private var compactGridHeight: CGFloat {
+      Self.defaultGridHeight - sheetDragOffset
+    }
+
+    private func clampedSheetOffset(_ offset: CGFloat) -> CGFloat {
+      max(0, min(Self.maxDrag, offset))
+    }
+
+    private var snapOffsets: [CGFloat] {
+      [0, Self.maxDrag * Self.halfDragRatio, Self.maxDrag]
+    }
+
+    private func nearestSnapOffset(for offset: CGFloat) -> CGFloat {
+      let clamped = clampedSheetOffset(offset)
+      return snapOffsets.min(by: {
+        abs($0 - clamped) < abs($1 - clamped)
+      }) ?? 0
+    }
+
+    private var sheetDragGesture: some Gesture {
+      DragGesture(minimumDistance: 5, coordinateSpace: .global)
+        .onChanged { value in
+          let proposedOffset = sheetDragBaseOffset - value.translation.height
+          sheetDragOffset = clampedSheetOffset(proposedOffset)
+        }
+        .onEnded { value in
+          let projectedOffset = sheetDragBaseOffset - value.predictedEndTranslation.height
+          let targetOffset = nearestSnapOffset(for: projectedOffset)
+          withAnimation(.spring(response: 0.24, dampingFraction: 0.88)) {
+            sheetDragOffset = targetOffset
+          }
+          sheetDragBaseOffset = targetOffset
+        }
+    }
+
+    private var sheetDragHandle: some View {
+      VStack(spacing: 0) {
+        Capsule()
+          .fill(Color(.systemGray4))
+          .frame(width: 36, height: 5)
+          .padding(.top, 10)
+          .padding(.bottom, 6)
+      }
+      .frame(maxWidth: .infinity)
+      .contentShape(Rectangle())
+      .gesture(sheetDragGesture)
     }
 
     // MARK: - Month Promise List Content
@@ -218,78 +379,6 @@ extension CalendarFeature {
         }
       }
       .padding(.bottom, 200)
-    }
-
-    // MARK: - Week Mode Section (상세 카드)
-
-    @ViewBuilder
-    private func weekModeSection(for date: Date) -> some View {
-      Section {
-        let calendar = Calendar.current
-        let dateKey = calendar.startOfDay(for: date)
-        let dayPromises = store.promisesByDate[dateKey] ?? []
-        let dayEvents = store.calendarEventsByDate[dateKey] ?? []
-        let dayPersonalEvents = store.personalEventsByDate[dateKey] ?? []
-
-        if dayPromises.isEmpty && dayEvents.isEmpty && dayPersonalEvents.isEmpty {
-          EmptyDayPlaceholder(date: date)
-        } else {
-          // 약속, 개인 일정, 캘린더 이벤트를 시간순으로 통합 정렬
-          let sortedItems = mergeAndSortItems(promises: dayPromises, events: dayEvents, personalEvents: dayPersonalEvents)
-
-          ForEach(sortedItems) { item in
-            switch item {
-            case .promise(let promise):
-              PromiseCardView(
-                promise: promise,
-                currentUserId: store.currentUserId,
-                weather: store.weatherCache[promise.id],
-                onTap: { store.send(.view(.promiseTapped(promise))) },
-                onRespond: promise.responseStatus(currentUserId: store.currentUserId) == .needResponse
-                  ? { store.send(.view(.promiseRespondTapped(promise))) }
-                  : nil
-              )
-              .padding(.horizontal, 16)
-              .padding(.vertical, 6)
-
-            case .calendarEvent(let event):
-              CalendarEventCardView(
-                event: event,
-                onTap: {}
-              )
-              .padding(.horizontal, 16)
-              .padding(.vertical, 4)
-
-            case .personalEvent(let event):
-              PersonalEventCardView(
-                event: event,
-                weather: store.weatherCache[event.id],
-                onTap: { store.send(.view(.personalEventTapped(event))) }
-              )
-              .padding(.horizontal, 16)
-              .padding(.vertical, 4)
-            }
-          }
-        }
-      } header: {
-        DiaryStyleSectionHeader(date: date)
-        .id(date)
-      }
-    }
-
-    /// 약속, 개인 일정, 캘린더 이벤트를 시간순으로 통합 정렬
-    private func mergeAndSortItems(
-      promises: [PromiseModel],
-      events: [CalendarEvent],
-      personalEvents: [PersonalEventModel] = []
-    ) -> [CalendarListItem] {
-      var items: [CalendarListItem] = []
-
-      items.append(contentsOf: promises.map { CalendarListItem.promise($0) })
-      items.append(contentsOf: personalEvents.map { CalendarListItem.personalEvent($0) })
-      items.append(contentsOf: events.map { CalendarListItem.calendarEvent($0) })
-
-      return items.sorted { $0.startTime < $1.startTime }
     }
 
     // MARK: - Month Mode Header
@@ -403,5 +492,16 @@ extension CalendarFeature {
     CalendarFeature.Feature()
   }
 
+  CalendarFeature.RootView(store: store)
+}
+
+#Preview("Calendar Feature - Month Expanded") {
+  let store = Store(initialState: CalendarFeature.Feature.State(
+    currentUser: Shared(value: .exampleUser),
+    displayMode: .month
+  )) {
+    CalendarFeature.Feature()
+  }
+  // Note: displayMode 기본 .week
   CalendarFeature.RootView(store: store)
 }

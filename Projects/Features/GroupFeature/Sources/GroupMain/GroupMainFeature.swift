@@ -1,11 +1,19 @@
 import ComposableArchitecture
 import PromisoShared
 import Clients
+import CreatePromiseFeature
 
 extension GroupMain {
   private enum CancelID: Hashable {
     case respond(String)
     case promiseSubscription
+    case needResponseShake
+  }
+
+  /// ShakeEffect 타이밍 상수
+  private enum ShakeConstants {
+    /// ShakeEffect delay(0.5s) + animation(0.3s × 3) + buffer(0.1s)
+    static let needResponseShakeDuration: TimeInterval = 0.5 + (0.3 * 3) + 0.1
   }
 
   enum RespondingState: Equatable {
@@ -109,6 +117,9 @@ extension GroupMain {
       /// 하이라이트할 약속 ID (목록에서 스크롤 및 강조 표시)
       var highlightedPromiseId: String?
 
+      /// 응답 필요 탭 진입 시 전체 흔들기 애니메이션 활성화
+      var isNeedResponseShaking: Bool = false
+
       /// 현재 실시간 공유 중인 약속 ID (nil이면 비활성)
       public var liveActivityPromiseId: String?
 
@@ -177,6 +188,7 @@ extension GroupMain {
         case groupTapped(String)  // 가로 바에서 그룹 선택
         case filterChanged(GroupMain.PromiseFilter)  // 필터 변경
         case clearHighlightedPromise  // 하이라이트 클리어
+        case needResponseShakeCompleted  // 응답 필요 흔들기 완료
         case moreNeedResponseTapped  // "N개 더 보기" - 응답 필요
         case moreConfirmedTapped  // "N개 더 보기" - 확정
         case allPromisesTapped  // "모든 약속 보기"
@@ -184,8 +196,10 @@ extension GroupMain {
         case sortSettingsTapped  // "그룹 정렬"
         case directionsTapped(String)  // 길찾기 (promiseId)
         case openCreatePromiseIfPossible  // Widget 딥링크: 그룹 있으면 약속 생성
+        case openCreatePromiseWithExtractedInfo(PromiseExtractedInfo)  // 퀵 약속: 추출 정보 pre-fill
         case switchToPersonalMode  // 개인 모드로 전환 요청
         case toastDismissed
+        case tabReturned
         // Context Menu Actions
         case groupInviteTapped(String)  // 그룹 초대 (groupId)
         case groupContextSettingsTapped(String)  // 그룹 설정 (groupId)
@@ -240,6 +254,11 @@ extension GroupMain {
             state.isInitialized = true
             // 정렬 설정을 먼저 로드한 후 그룹 리스트 표시
             return .send(.internal(.fetchSettings))
+
+          case .tabReturned:
+            // 탭 복귀 시 그룹 목록만 갱신 (약속은 실시간 리스너로 처리)
+            guard state.isInitialized else { return .none }
+            return .send(.internal(.fetchGroupList))
 
           case .refreshTriggered:
             if !state.promisesState.isLoaded {
@@ -390,14 +409,29 @@ extension GroupMain {
             }
 
             // 현재 그룹이고 약속이 이미 로드된 경우 바로 적용
-            if case .promiseInList(let promiseId, _, let filter) = deeplink,
-               state.currentGroup?.id == groupId,
-               let promises = state.promisesState.value,
-               promises.contains(where: { $0.id == promiseId }) {
-              AppLogger.deeplink.debug("[GroupMain] Promise already loaded, applying highlight immediately")
-              state.selectedFilter = filter
-              state.highlightedPromiseId = promiseId
-              return .none
+            if state.currentGroup?.id == groupId,
+               let promises = state.promisesState.value {
+              switch deeplink {
+              case .promise(let promiseId, _):
+                if let promise = promises.first(where: { $0.id == promiseId }) {
+                  AppLogger.deeplink.debug("[GroupMain] Promise already loaded, navigating to detail immediately")
+                  state.path.append(.promiseDetail(.init(
+                    promise: promise,
+                    currentUserId: state.currentUser.userId,
+                    groupMembers: state.currentGroupMembers
+                  )))
+                  return .none
+                }
+              case .promiseInList(let promiseId, _, let filter):
+                if promises.contains(where: { $0.id == promiseId }) {
+                  AppLogger.deeplink.debug("[GroupMain] Promise already loaded, applying highlight immediately")
+                  state.selectedFilter = filter
+                  state.highlightedPromiseId = promiseId
+                  return .none
+                }
+              case .group:
+                break
+              }
             }
 
             // 그 외의 경우 pending으로 설정
@@ -435,17 +469,37 @@ extension GroupMain {
 
           case .filterChanged(let filter):
             state.selectedFilter = filter
+            state.isNeedResponseShaking = false
+
+            if filter == .needResponse {
+              state.isNeedResponseShaking = true
+              let shakeEffect: Effect<Action> = .run { send in
+                try await Task.sleep(for: .seconds(ShakeConstants.needResponseShakeDuration))
+                await send(.view(.needResponseShakeCompleted))
+              }
+              .cancellable(id: CancelID.needResponseShake, cancelInFlight: true)
+              return shakeEffect
+            }
 
             // 과거 필터 선택 시 별도 fetch
             if filter == .past, let groupId = state.currentGroup?.id {
               // 이미 로드된 경우 재요청 안 함
-              guard !state.pastPromisesState.isLoaded else { return .none }
-              return .send(.internal(.fetchPastPromises(groupId: groupId)))
+              guard !state.pastPromisesState.isLoaded else {
+                return .cancel(id: CancelID.needResponseShake)
+              }
+              return .merge(
+                .cancel(id: CancelID.needResponseShake),
+                .send(.internal(.fetchPastPromises(groupId: groupId)))
+              )
             }
-            return .none
+            return .cancel(id: CancelID.needResponseShake)
 
           case .clearHighlightedPromise:
             state.highlightedPromiseId = nil
+            return .none
+
+          case .needResponseShakeCompleted:
+            state.isNeedResponseShaking = false
             return .none
 
           case .moreNeedResponseTapped:
@@ -479,13 +533,49 @@ extension GroupMain {
             return .none
 
           case .openCreatePromiseIfPossible:
-            // Widget 딥링크: 그룹이 있으면 CreatePromise 열기, 없으면 그룹 탭만 표시
+            // onAppear 전이면 currentUser.groups에서 fallback 로드
+            if state.allGroupSummaries == nil {
+              let summaries = state.sortedGroupsForSelection(state.currentUser.groups)
+              state.allGroupSummaries = summaries
+            }
             guard let groups = state.allGroupSummaries, !groups.isEmpty else {
               // 그룹 없음 → 그룹 탭 화면 유지 (온보딩 모드)
               return .none
             }
             // 그룹 있음 → 약속 생성 화면 열기
             return .send(.view(.createNewPromise))
+
+          case .openCreatePromiseWithExtractedInfo(let info):
+            // 퀵 약속: 추출 정보로 CreatePromise 열기
+            guard let groups = state.allGroupSummaries, !groups.isEmpty else {
+              return .none
+            }
+            var promise = PromiseModel.empty
+            if let currentGroup = state.currentGroup {
+              promise.group = currentGroup
+              promise.groupId = currentGroup.id
+            }
+            // 추출 정보 적용
+            if let title = info.title {
+              promise.title = title
+            }
+            if let date = info.date {
+              promise.startAt = date
+            }
+            if let description = info.description {
+              promise.description = description
+            }
+            if let location = info.location {
+              promise.location = LocationInfoModel(name: location)
+            }
+            state.createPromise = CreatePromise.Feature.State(
+              promise: promise,
+              groupSummaries: state.allGroupSummaries,
+              userPlan: state.userPlan,
+              currentUserId: state.currentUser.userId,
+              prefillInfo: info
+            )
+            return .none
 
           case .switchToPersonalMode:
             // RootTabFeature에서 처리
@@ -670,6 +760,14 @@ extension GroupMain {
               if let groupInfo = groupSummaries.first(where: { $0.id == groupId }) {
                 AppLogger.deeplink.debug("[GroupMain] Deeplink group found after fetch: \(groupInfo.name)")
                 return .send(.view(.groupChanged(groupInfo)))
+              } else {
+                AppLogger.deeplink.warning("[GroupMain] Deeplink group not found - user may not be a member: \(groupId)")
+                state.pendingDeeplink = nil
+                state.toastMessage = ToastMessage(
+                  type: .info,
+                  title: LocalizedStrings.GroupMain.joinGroupRequiredForDeeplinkTitle,
+                  subtitle: LocalizedStrings.GroupMain.joinGroupRequiredForDeeplinkSubtitle
+                )
               }
             }
 
@@ -786,13 +884,15 @@ extension GroupMain {
               // 약속 상세 화면으로 바로 이동
               if let promise = promises.first(where: { $0.id == promiseId }) {
                 AppLogger.deeplink.debug("[GroupMain] Promise found, navigating to detail: \(promise.title)")
-                state.pendingDeeplink = nil
                 state.path.append(.promiseDetail(.init(
                   promise: promise,
                   currentUserId: state.currentUser.userId,
                   groupMembers: state.currentGroupMembers
                 )))
+              } else {
+                AppLogger.deeplink.warning("[GroupMain] Promise not found in loaded list: \(promiseId)")
               }
+              state.pendingDeeplink = nil
 
             case .promiseInList(let promiseId, _, let filter):
               // 필터 적용 후 목록에서 해당 약속으로 스크롤
@@ -800,8 +900,10 @@ extension GroupMain {
                 AppLogger.deeplink.debug("[GroupMain] Promise found in list, setting filter: \(filter.rawValue)")
                 state.selectedFilter = filter
                 state.highlightedPromiseId = promiseId
-                state.pendingDeeplink = nil
+              } else {
+                AppLogger.deeplink.warning("[GroupMain] Promise not found in list: \(promiseId)")
               }
+              state.pendingDeeplink = nil
 
             case .group, .none:
               state.pendingDeeplink = nil

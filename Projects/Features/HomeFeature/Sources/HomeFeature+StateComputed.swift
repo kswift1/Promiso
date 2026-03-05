@@ -1,5 +1,6 @@
 import Clients
 import PromisoShared
+import SwiftUI
 
 // MARK: - State Computed Properties
 
@@ -39,7 +40,7 @@ extension Home.Feature.State {
     var upcomingScheduleItems: [HomeModels.ScheduleItem] = []
 
     for promise in allPromises {
-      if promise.startAt >= startOfDay, promise.startAt < endOfDay, promise.isConfirmed {
+      if promise.startAt < endOfDay, promise.effectiveEndAt >= startOfDay, promise.isConfirmed {
         todayPromises.append(promise)
         todayScheduleItems.append(.promise(promise))
       }
@@ -57,7 +58,7 @@ extension Home.Feature.State {
     }
 
     for event in allPersonalEvents {
-      if event.startAt >= startOfDay, event.startAt < endOfDay {
+      if event.startAt < endOfDay, event.effectiveEndAt >= startOfDay {
         todayScheduleItems.append(.personalEvent(event))
       } else if event.startAt >= endOfDay {
         upcomingScheduleItems.append(.personalEvent(event))
@@ -149,10 +150,19 @@ extension Home.Feature.State {
     return nil
   }
 
-  /// Timeline 데이터 (날짜별 그룹화)
+  /// Timeline 데이터 (날짜별 그룹화, multi-day 약속 포함)
   var timelineData: [HomeModels.TimelineSection] {
-    let grouped = Dictionary(grouping: filteredPromises) { promise in
-      Calendar.promiseDisplay.startOfDay(for: promise.startAt)
+    var grouped: [Date: [PromiseModel]] = [:]
+    let calendar = Calendar.promiseDisplay
+    for promise in filteredPromises {
+      let startDay = calendar.startOfDay(for: promise.startAt)
+      let endDay = calendar.startOfDay(for: promise.effectiveEndAt)
+      var day = startDay
+      while day <= endDay {
+        grouped[day, default: []].append(promise)
+        guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
+        day = next
+      }
     }
 
     return grouped
@@ -182,12 +192,25 @@ extension Home.Feature.State {
 
   // MARK: - Calendar Overlay Computed
 
+  /// 오버레이용 전체 약속 (로드된 모든 월에서 합산, 중복 제거)
+  private var overlayAllPromises: [PromiseModel] {
+    var seen = Set<String>()
+    return overlayPromisesByMonth.values.flatMap { $0 }.filter { seen.insert($0.id).inserted }
+  }
+
+  /// 오버레이용 전체 개인 일정 (로드된 모든 월에서 합산, 중복 제거)
+  private var overlayAllPersonalEvents: [PersonalEventModel] {
+    var seen = Set<String>()
+    return overlayPersonalEventsByMonth.values.flatMap { $0 }.filter { seen.insert($0.id).inserted }
+  }
+
   /// 오버레이 캘린더에 표시할 날짜 셀 배열
   var overlayCalendarDays: [OverlayCalendarModels.DayItem] {
     OverlayCalendarModels.generateMonthDays(
       for: overlayCalendarMonth,
       selectedDate: overlaySelectedDate,
-      scheduleCountsByDate: overlayScheduleCountsByDate
+      scheduleCountsByDate: overlayScheduleCountsByDate,
+      scheduleIndicatorsByDate: overlayScheduleIndicatorsByDate
     )
   }
 
@@ -198,7 +221,8 @@ extension Home.Feature.State {
     return OverlayCalendarModels.generateMonthDays(
       for: prevMonth,
       selectedDate: overlaySelectedDate,
-      scheduleCountsByDate: overlayScheduleCountsByDate
+      scheduleCountsByDate: overlayScheduleCountsByDate,
+      scheduleIndicatorsByDate: overlayScheduleIndicatorsByDate
     )
   }
 
@@ -209,7 +233,8 @@ extension Home.Feature.State {
     return OverlayCalendarModels.generateMonthDays(
       for: nextMonth,
       selectedDate: overlaySelectedDate,
-      scheduleCountsByDate: overlayScheduleCountsByDate
+      scheduleCountsByDate: overlayScheduleCountsByDate,
+      scheduleIndicatorsByDate: overlayScheduleIndicatorsByDate
     )
   }
 
@@ -219,11 +244,40 @@ extension Home.Feature.State {
     let selectedDay = calendar.startOfDay(for: overlaySelectedDate)
     guard let nextDay = calendar.date(byAdding: .day, value: 1, to: selectedDay) else { return [] }
 
-    let promiseItems = allPromises
-      .filter { $0.startAt >= selectedDay && $0.startAt < nextDay }
+    let promiseItems = overlayAllPromises
+      .filter { $0.startAt < nextDay && $0.effectiveEndAt >= selectedDay }
       .map { HomeModels.ScheduleItem.promise($0) }
-    let eventItems = (personalEventsState.value ?? [])
-      .filter { $0.startAt >= selectedDay && $0.startAt < nextDay }
+    let eventItems = overlayAllPersonalEvents
+      .filter { $0.startAt < nextDay && $0.effectiveEndAt >= selectedDay }
+      .map { HomeModels.ScheduleItem.personalEvent($0) }
+    return (promiseItems + eventItems).sorted { $0.startAt < $1.startAt }
+  }
+
+  /// 선택된 날짜의 전일 일정 아이템
+  var overlayPrevDayScheduleItems: [HomeModels.ScheduleItem] {
+    let calendar = Calendar.promiseDisplay
+    guard let prevDay = calendar.date(byAdding: .day, value: -1, to: calendar.startOfDay(for: overlaySelectedDate)),
+          let nextDay = calendar.date(byAdding: .day, value: 1, to: prevDay) else { return [] }
+    let promiseItems = overlayAllPromises
+      .filter { $0.startAt < nextDay && $0.effectiveEndAt >= prevDay }
+      .map { HomeModels.ScheduleItem.promise($0) }
+    let eventItems = overlayAllPersonalEvents
+      .filter { $0.startAt < nextDay && $0.effectiveEndAt >= prevDay }
+      .map { HomeModels.ScheduleItem.personalEvent($0) }
+    return (promiseItems + eventItems).sorted { $0.startAt < $1.startAt }
+  }
+
+  /// 선택된 날짜의 다음일 일정 아이템
+  var overlayNextDayScheduleItems: [HomeModels.ScheduleItem] {
+    let calendar = Calendar.promiseDisplay
+    let selectedDay = calendar.startOfDay(for: overlaySelectedDate)
+    guard let nextDayStart = calendar.date(byAdding: .day, value: 1, to: selectedDay),
+          let nextDayEnd = calendar.date(byAdding: .day, value: 1, to: nextDayStart) else { return [] }
+    let promiseItems = overlayAllPromises
+      .filter { $0.startAt < nextDayEnd && $0.effectiveEndAt >= nextDayStart }
+      .map { HomeModels.ScheduleItem.promise($0) }
+    let eventItems = overlayAllPersonalEvents
+      .filter { $0.startAt < nextDayEnd && $0.effectiveEndAt >= nextDayStart }
       .map { HomeModels.ScheduleItem.personalEvent($0) }
     return (promiseItems + eventItems).sorted { $0.startAt < $1.startAt }
   }
@@ -236,21 +290,107 @@ extension Home.Feature.State {
     )
   }
 
+  /// 오버레이에서 사용하는 그룹 ID → GroupColor.color 매핑
+  var overlayGroupColorMap: [String: Color] {
+    Dictionary(
+      uniqueKeysWithValues: currentUser.groups.compactMap { group in
+        group.groupColor.map { (group.id, $0.color) }
+      }
+    )
+  }
+
+  /// 날짜별 일정 인디케이터 (그룹 컬러 + 제목)
+  private var overlayScheduleIndicatorsByDate: [Date: [OverlayCalendarModels.ScheduleIndicator]] {
+    let calendar = Calendar.promiseDisplay
+    let colorMap = overlayGroupColorMap
+    var indicators: [Date: [OverlayCalendarModels.ScheduleIndicator]] = [:]
+
+    for promise in overlayAllPromises {
+      let color = colorMap[promise.groupId] ?? Color.pmindigo.n500
+      let startDay = calendar.startOfDay(for: promise.startAt)
+      let endDay = calendar.startOfDay(for: promise.effectiveEndAt)
+      let isMultiDay = startDay != endDay
+      var day = startDay
+      while day <= endDay {
+        let position: OverlayCalendarModels.SpanPosition = {
+          if !isMultiDay { return .single }
+          if day == startDay { return .start }
+          if day == endDay { return .end }
+          return .middle
+        }()
+        indicators[day, default: []].append(
+          .init(id: "\(promise.id)_\(day.timeIntervalSince1970)", color: color, title: promise.title, spanPosition: position,
+                startAt: promise.startAt, endAt: promise.endAt, emoji: promise.emoji)
+        )
+        guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
+        day = next
+      }
+    }
+
+    for event in overlayAllPersonalEvents {
+      let startDay = calendar.startOfDay(for: event.startAt)
+      let endDay = calendar.startOfDay(for: event.effectiveEndAt)
+      let isMultiDay = startDay != endDay
+      var day = startDay
+      while day <= endDay {
+        let position: OverlayCalendarModels.SpanPosition = {
+          if !isMultiDay { return .single }
+          if day == startDay { return .start }
+          if day == endDay { return .end }
+          return .middle
+        }()
+        indicators[day, default: []].append(
+          .init(id: "\(event.id)_\(day.timeIntervalSince1970)", color: OverlayCalendarModels.ScheduleIndicator.personalColor, title: event.title, spanPosition: position,
+                startAt: event.startAt, endAt: event.endAt, emoji: event.emoji)
+        )
+        guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
+        day = next
+      }
+    }
+
+    // startAt 순 정렬
+    for (key, value) in indicators {
+      indicators[key] = value.sorted { lhs, rhs in
+        let lhsId = lhs.id.components(separatedBy: "_").first ?? lhs.id
+        let rhsId = rhs.id.components(separatedBy: "_").first ?? rhs.id
+        let lhsPromise = overlayAllPromises.first { $0.id == lhsId }
+        let rhsPromise = overlayAllPromises.first { $0.id == rhsId }
+        let lhsDate = lhsPromise?.startAt ?? overlayAllPersonalEvents.first { $0.id == lhsId }?.startAt ?? .distantFuture
+        let rhsDate = rhsPromise?.startAt ?? overlayAllPersonalEvents.first { $0.id == rhsId }?.startAt ?? .distantFuture
+        return lhsDate < rhsDate
+      }
+    }
+
+    return indicators
+  }
+
   /// 날짜별 일정 개수 (약속 + 개인 일정)
   private var overlayScheduleCountsByDate: [Date: Int] {
     let calendar = Calendar.promiseDisplay
     var counts: [Date: Int] = [:]
 
-    // 약속
-    for promise in allPromises {
-      let dateKey = calendar.startOfDay(for: promise.startAt)
-      counts[dateKey, default: 0] += 1
+    // 약속 (multi-day 포함)
+    for promise in overlayAllPromises {
+      let startDay = calendar.startOfDay(for: promise.startAt)
+      let endDay = calendar.startOfDay(for: promise.effectiveEndAt)
+      var day = startDay
+      while day <= endDay {
+        counts[day, default: 0] += 1
+        guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
+        day = next
+      }
     }
 
-    // 개인 일정
-    for event in (personalEventsState.value ?? []) {
-      let dateKey = calendar.startOfDay(for: event.startAt)
-      counts[dateKey, default: 0] += 1
+    // 개인 일정 (multi-day 포함)
+    for event in overlayAllPersonalEvents {
+      let startDay = calendar.startOfDay(for: event.startAt)
+      let endDay = calendar.startOfDay(for: event.effectiveEndAt)
+      var day = startDay
+      while day <= endDay {
+        counts[day, default: 0] += 1
+        guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
+        day = next
+      }
     }
 
     return counts

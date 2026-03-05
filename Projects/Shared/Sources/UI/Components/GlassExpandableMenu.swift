@@ -102,7 +102,6 @@ public struct GlassExpandableMenu<Content: View, Label: View>: View, Animatable 
       anchor: scaleAnchor
     )
     .offset(y: offset * blurProgress)
-    .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
   }
 
   // MARK: - Fallback (iOS 25 이하)

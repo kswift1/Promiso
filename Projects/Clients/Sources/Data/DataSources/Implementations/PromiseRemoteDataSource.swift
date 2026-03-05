@@ -457,6 +457,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
       .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: startDate))
       .whereField("startAt", isLessThan: Timestamp(date: endDate))
       .order(by: "startAt")
+      .limit(to: 50)
 
     let snapshot = try await query.getDocuments()
     return try snapshot.documents.compactMap { try convertDocumentToPromise($0) }
@@ -479,7 +480,7 @@ public class PromiseRemoteDataSource: PromiseRemoteDataSourceProtocol {
     return AsyncStream { continuation in
       let query = db.environmentCollection(collectionName)
         .whereField("groupId", isEqualTo: groupId)
-        .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: Date()))
+        .whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: Calendar.current.startOfDay(for: Date())))
         .order(by: "startAt")
         .limit(to: limit)
 

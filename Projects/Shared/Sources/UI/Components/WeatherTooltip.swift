@@ -60,6 +60,25 @@ public struct WeatherTooltip: View {
     return (vals.min() ?? 0, vals.max() ?? 0)
   }
 
+  // MARK: - Timeline
+
+  private static let highPrecipitationThreshold = 50
+
+  private var showTimeline: Bool {
+    forecastSource == .shortTerm && rangeForecasts.count > 1
+  }
+
+  private var sortedRangeForecasts: [HourlyForecast] {
+    rangeForecasts.sorted { $0.dateTime < $1.dateTime }
+  }
+
+  /// 타임라인이 여러 날에 걸치는지 여부
+  private var spansMultipleDays: Bool {
+    guard let first = sortedRangeForecasts.first,
+          let last = sortedRangeForecasts.last else { return false }
+    return !Calendar.current.isDate(first.dateTime, inSameDayAs: last.dateTime)
+  }
+
   // MARK: - Body
 
   public var body: some View {
@@ -69,6 +88,11 @@ public struct WeatherTooltip: View {
         Image(systemName: forecast.condition.sfSymbolName)
           .symbolRenderingMode(.multicolor)
           .font(.system(size: 22))
+          .frame(width: 32, height: 32)
+          .background(
+            Circle()
+              .fill(Color.cyan.opacity(0.12))
+          )
 
         Text(forecast.condition.description)
           .font(.system(size: 15, weight: .medium))
@@ -84,6 +108,25 @@ public struct WeatherTooltip: View {
           Text(LocalizedStrings.Weather.feelsLikeRange(intRangeText(feelsRange, suffix: "°")))
             .font(.system(size: 12, weight: .medium))
             .foregroundStyle(.secondary)
+        }
+      }
+
+      // 시간대별 타임라인
+      if showTimeline {
+        Divider()
+
+        VStack(alignment: .leading, spacing: 8) {
+          Text(LocalizedStrings.Weather.hourlyForecast)
+            .font(.system(size: 12, weight: .medium))
+            .foregroundStyle(.secondary)
+
+          ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 0) {
+              ForEach(sortedRangeForecasts, id: \.dateTime) { hourForecast in
+                hourlyColumn(hourForecast)
+              }
+            }
+          }
         }
       }
 
@@ -174,7 +217,7 @@ public struct WeatherTooltip: View {
       .minimumScaleFactor(0.8)
     }
     .padding(16)
-    .frame(width: 260)
+    .frame(width: 280)
   }
 
   // MARK: - Helpers
@@ -193,6 +236,51 @@ public struct WeatherTooltip: View {
       return "\(lo)m/s"
     }
     return "\(lo)~\(hi)m/s"
+  }
+
+  private func hourlyColumn(_ hourForecast: HourlyForecast) -> some View {
+    let isHighPrecip = hourForecast.precipitationProbability >= Self.highPrecipitationThreshold
+    let hour = Calendar.current.component(.hour, from: hourForecast.dateTime)
+
+    return VStack(spacing: 6) {
+      // 시간 (여러 날에 걸치면 날짜도 표시)
+      VStack(spacing: 1) {
+        if spansMultipleDays {
+          Text(hourForecast.dateTime.formatted(.dateTime.month(.defaultDigits).day()))
+            .font(.system(size: 9, weight: .medium))
+            .foregroundStyle(.tertiary)
+        }
+        Text(LocalizedStrings.Weather.hourLabel(hour))
+          .font(.system(size: 11, weight: .medium))
+          .foregroundStyle(.secondary)
+      }
+
+      // 날씨 아이콘
+      Image(systemName: hourForecast.condition.sfSymbolName)
+        .symbolRenderingMode(.multicolor)
+        .font(.system(size: 16))
+        .frame(width: 24, height: 24)
+        .background(
+          Circle()
+            .fill(Color.cyan.opacity(0.12))
+        )
+
+      // 온도
+      Text("\(Int(hourForecast.temperature.rounded()))°")
+        .font(.system(size: 13, weight: .semibold))
+        .foregroundStyle(.primary)
+
+      // 강수확률
+      Text("\(hourForecast.precipitationProbability)%")
+        .font(.system(size: 11, weight: isHighPrecip ? .semibold : .regular))
+        .foregroundStyle(isHighPrecip ? .blue : .secondary)
+    }
+    .frame(width: 48)
+    .padding(.vertical, 6)
+    .background(
+      RoundedRectangle(cornerRadius: 8)
+        .fill(isHighPrecip ? Color.blue.opacity(0.08) : .clear)
+    )
   }
 
   private func weatherStat(
@@ -236,16 +324,16 @@ public struct WeatherTooltip: View {
   )
 }
 
-#Preview("약속 구간 범위") {
+#Preview("약속 구간 타임라인") {
   WeatherTooltip(
     forecast: HourlyForecast(
       dateTime: Date(),
       temperature: 5,
       feelsLikeTemperature: 2,
-      condition: .clear,
-      precipitationProbability: 0,
-      humidity: 45,
-      windSpeed: 3.0
+      condition: .cloudy,
+      precipitationProbability: 30,
+      humidity: 55,
+      windSpeed: 4.0
     ),
     rangeForecasts: [
       HourlyForecast(
@@ -268,8 +356,28 @@ public struct WeatherTooltip: View {
       ),
       HourlyForecast(
         dateTime: Date().addingTimeInterval(7200),
-        temperature: 8,
-        feelsLikeTemperature: 5,
+        temperature: 4,
+        feelsLikeTemperature: 1,
+        condition: .rain,
+        precipitationProbability: 70,
+        humidity: 75,
+        windSpeed: 6.0,
+        precipitationAmount: "2mm"
+      ),
+      HourlyForecast(
+        dateTime: Date().addingTimeInterval(10800),
+        temperature: 3,
+        feelsLikeTemperature: 0,
+        condition: .rain,
+        precipitationProbability: 85,
+        humidity: 80,
+        windSpeed: 7.0,
+        precipitationAmount: "5mm"
+      ),
+      HourlyForecast(
+        dateTime: Date().addingTimeInterval(14400),
+        temperature: 5,
+        feelsLikeTemperature: 2,
         condition: .cloudy,
         precipitationProbability: 30,
         humidity: 60,

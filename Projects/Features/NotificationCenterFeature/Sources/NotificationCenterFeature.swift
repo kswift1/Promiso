@@ -123,6 +123,8 @@ extension NotificationCenter {
         case navigateToGroup(groupId: String)
         /// 닫기
         case dismiss
+        /// 뱃지 카운트 갱신 요청
+        case refreshBadgeCount
       }
     }
 
@@ -332,6 +334,7 @@ extension NotificationCenter {
               )
               notifications[index] = updated
               state.notificationsState = .loaded(notifications)
+              return .send(.delegate(.refreshBadgeCount))
             }
             return .none
 
@@ -357,16 +360,17 @@ extension NotificationCenter {
                 }
                 state.notificationsState = .loaded(notifications)
               }
+              return .send(.delegate(.refreshBadgeCount))
             case .failure(let error):
               let message = (error as? NotificationClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError
               state.toastMessage = ToastMessage(
                 type: .error,
-                title: "읽음 처리에 실패했어요",
+                title: LocalizedStrings.Error.markAsReadFailed,
                 subtitle: message,
                 position: .top
               )
+              return .none
             }
-            return .none
 
           case .deleteCompleted(let deletedIds, let result):
             state.isDeleting = false
@@ -378,16 +382,17 @@ extension NotificationCenter {
                 state.selectedNotificationIds = []
                 state.isEditMode = false
               }
+              return .send(.delegate(.refreshBadgeCount))
             case .failure(let error):
               let message = (error as? NotificationClientError)?.localizedMessage ?? LocalizedStrings.Error.unknownError
               state.toastMessage = ToastMessage(
                 type: .error,
-                title: "알림 삭제에 실패했어요",
+                title: LocalizedStrings.Error.notificationDeleteFailed,
                 subtitle: message,
                 position: .top
               )
+              return .none
             }
-            return .none
 
           case .clearBadge:
             return .run { [notificationClient] _ in

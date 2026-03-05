@@ -358,7 +358,7 @@ extension AuthClient: DependencyKey {
           return true
         } catch let error as NSError {
           if error.domain == NSURLErrorDomain {
-            await session.login(with: nil)
+            // 네트워크 에러 시 기존 세션 유지 (nil로 덮어쓰지 않음)
             return true
           }
 

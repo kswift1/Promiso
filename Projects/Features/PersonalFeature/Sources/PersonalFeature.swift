@@ -1,5 +1,6 @@
 import Clients
 import ComposableArchitecture
+import CreatePromiseFeature
 import PromisoShared
 import SharedFeature
 import SwiftUI
@@ -348,7 +349,7 @@ extension PersonalMode {
             state.eventsState = .failed(AppError(message: message))
             state.toastMessage = ToastMessage(
               type: .error,
-              title: "일정 삭제에 실패했어요",
+              title: LocalizedStrings.Error.eventDeleteFailed,
               subtitle: message,
               position: .top
             )
