@@ -921,8 +921,8 @@ extension ConflictThresholdSettings {
         } else {
           ScrollView {
             VStack(spacing: 16) {
-              thresholdSection
               exampleSection
+              thresholdSection
             }
             .padding(.horizontal, 16)
             .padding(.top, 12)
@@ -1117,6 +1117,7 @@ extension ConflictThresholdSettings {
         }
       }
       .padding(16)
+      .adaptiveGlassBackground()
     }
 
     // MARK: - Time Axis
