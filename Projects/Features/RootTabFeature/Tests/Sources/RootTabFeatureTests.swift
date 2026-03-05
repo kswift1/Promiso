@@ -41,9 +41,7 @@ struct RootTabFeatureTests {
       }
     }
 
-    await store.send(.onAppear) {
-      $0.hasInitialCalendarSyncBeenScheduled = true
-    }
+    await store.send(.onAppear)
     await store.receive(\.internal.refreshWidgetAuthToken)
     await store.receive(\.internal.requestWidgetToken)
     await store.receive(\.internal.observePushToStartToken)
@@ -53,6 +51,7 @@ struct RootTabFeatureTests {
     }
     await store.receive(\.internal.syncCalendarFinished) {
       $0.isCalendarSyncInFlight = false
+      $0.hasInitialCalendarSyncBeenScheduled = true
     }
     await store.finish()
 
@@ -76,14 +75,13 @@ struct RootTabFeatureTests {
     }
     store.exhaustivity = .off(showSkippedAssertions: false)
 
-    await store.send(.onAppear) {
-      $0.hasInitialCalendarSyncBeenScheduled = true
-    }
+    await store.send(.onAppear)
     await store.receive(\.internal.refreshWidgetAuthToken)
     await store.receive(\.internal.requestWidgetToken)
     await store.receive(\.internal.observePushToStartToken)
     await store.receive(\.internal.observeActivityUpdates)
     await store.receive(\.internal.syncCalendar)
+    await store.receive(\.internal.syncCalendarFinished)
 
     await store.send(.onAppear)
     await store.receive(\.internal.refreshWidgetAuthToken)
@@ -494,6 +492,7 @@ struct RootTabFeatureTests {
     }
     await store.receive(\.internal.syncCalendarFinished) {
       $0.isCalendarSyncInFlight = false
+      $0.hasInitialCalendarSyncBeenScheduled = true
     }
     await store.finish()
     #expect(await recorder.value() == Set(["group-enabled"]))
@@ -525,6 +524,7 @@ struct RootTabFeatureTests {
     await gate.release()
     await store.receive(\.internal.syncCalendarFinished) {
       $0.isCalendarSyncInFlight = false
+      $0.hasInitialCalendarSyncBeenScheduled = true
     }
     #expect(await counter.value() == 1)
   }

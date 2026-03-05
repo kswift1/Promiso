@@ -237,7 +237,7 @@ extension RootTab {
       /// 캘린더 동기화 (백그라운드)
       case syncCalendar
       /// 캘린더 동기화 완료 처리
-      case syncCalendarFinished
+      case syncCalendarFinished(success: Bool)
     }
 
     @CasePathable
@@ -278,7 +278,6 @@ extension RootTab {
           ]
 
           if !state.hasInitialCalendarSyncBeenScheduled {
-            state.hasInitialCalendarSyncBeenScheduled = true
             effects.append(.send(.internal(.syncCalendar)))
           }
 
@@ -603,33 +602,39 @@ extension RootTab {
               forKey: AppConstants.UserDefaults.personalCalendarSync
             )
             return .run(priority: .utility) { [calendarSyncClient] send in
-              await withTaskGroup(of: Void.self) { group in
+              let allSucceeded = await withTaskGroup(of: Bool.self, returning: Bool.self) { group in
                 group.addTask {
-                  // 그룹 약속 동기화
-                  AppLogger.calendar.debug("📅 [RootTab] syncCalendar 시작 - enabledGroupIds: \(enabledGroupIds)")
                   do {
                     let result = try await calendarSyncClient.sync(enabledGroupIds)
                     AppLogger.calendar.info("📅 [RootTab] syncCalendar 완료 - \(result.description)")
+                    return true
                   } catch {
                     AppLogger.calendar.error("📅 [RootTab] syncCalendar 실패 - \(error.localizedDescription)")
+                    return false
                   }
                 }
 
                 group.addTask {
-                  // 개인 일정 동기화
                   do {
                     let personalResult = try await calendarSyncClient.syncPersonalEvents(personalSyncEnabled)
                     AppLogger.calendar.info("📅 [RootTab] personalSync 완료 - \(personalResult.description)")
+                    return true
                   } catch {
                     AppLogger.calendar.error("📅 [RootTab] personalSync 실패 - \(error.localizedDescription)")
+                    return false
                   }
                 }
+
+                return await group.reduce(true) { $0 && $1 }
               }
-              await send(.internal(.syncCalendarFinished))
+              await send(.internal(.syncCalendarFinished(success: allSucceeded)))
             }
 
-          case .syncCalendarFinished:
+          case .syncCalendarFinished(let success):
             state.isCalendarSyncInFlight = false
+            if success {
+              state.hasInitialCalendarSyncBeenScheduled = true
+            }
             return .none
 
           }
