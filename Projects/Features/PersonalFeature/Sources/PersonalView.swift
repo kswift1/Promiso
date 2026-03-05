@@ -1,8 +1,9 @@
-import SwiftUI
+import Clients
 import ComposableArchitecture
 import CreatePromiseFeature
 import PromisoShared
 import SharedFeature
+import SwiftUI
 
 extension PersonalMode {
   public struct RootView: View {
@@ -220,6 +221,18 @@ extension PersonalMode {
               PersonalEventCard(
                 event: event,
                 weather: store.weatherCache[event.id],
+                conflicts: (store.conflictsByEventId[event.id] ?? []).map { conflict in
+                  ConflictInfo(
+                    title: conflict.title,
+                    overlapMinutes: conflict.overlapMinutes,
+                    gapMinutes: conflict.gapMinutes,
+                    startAt: conflict.startAt,
+                    endAt: conflict.endAt,
+                    emoji: conflict.emoji,
+                    severity: conflict.severity == .confirmed ? .confirmed : .pending
+                  )
+                },
+                isCheckingConflicts: store.conflictCheckingIds.contains(event.id),
                 onTap: {
                   store.send(.view(.eventTapped(event)))
                 },

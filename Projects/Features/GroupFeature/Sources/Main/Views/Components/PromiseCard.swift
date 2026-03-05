@@ -21,6 +21,8 @@ struct PromiseCard: View {
   let showsResponseDetails: Bool
 
   let weather: WeatherInfo?
+  let conflicts: [ConflictInfo]
+  let isCheckingConflicts: Bool
 
   init(
     promise: PromiseModel,
@@ -29,6 +31,8 @@ struct PromiseCard: View {
     respondingState: GroupMain.RespondingState,
     isLive: Bool = false,
     weather: WeatherInfo? = nil,
+    conflicts: [ConflictInfo] = [],
+    isCheckingConflicts: Bool = false,
     onTap: @escaping () -> Void,
     onAccept: @escaping () -> Void,
     onReject: @escaping () -> Void,
@@ -46,6 +50,8 @@ struct PromiseCard: View {
     self.respondingState = respondingState
     self.isLive = isLive
     self.weather = weather
+    self.conflicts = conflicts
+    self.isCheckingConflicts = isCheckingConflicts
     self.onTap = onTap
     self.onAccept = onAccept
     self.onReject = onReject
@@ -375,16 +381,16 @@ struct PromiseCard: View {
         }
       }
 
-      // 날씨
-      if let weather = weather,
-         let forecast = weather.forecast(for: promise.startAt) {
-        WeatherCardStrip(
-          forecast: forecast,
-          rangeForecasts: weather.forecasts(from: promise.startAt, to: promise.endAt),
-          referenceTimeText: promise.startAt.formattedMonthDayTime,
-          forecastSource: weather.forecastSource(for: promise.startAt)
-        )
-      }
+      // PRO 혜택 (날씨 + 충돌 통합)
+      ProBenefitCardView(
+        weather: weather,
+        eventStartAt: promise.startAt,
+        eventEndAt: promise.endAt,
+        conflicts: conflicts,
+        isCheckingConflicts: isCheckingConflicts,
+        eventTitle: promise.title,
+        eventEmoji: promise.displayEmoji
+      )
     }
     .padding(16)
     .adaptiveGlassCard()

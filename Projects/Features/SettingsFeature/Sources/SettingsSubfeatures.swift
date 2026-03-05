@@ -1151,8 +1151,6 @@ extension ConflictThresholdSettings {
 
   private struct ConflictThresholdPreview: View {
     let threshold: Int
-    @State private var showConflictTooltip = false
-
     // 타임라인: 0 = 오후 1시, 300 = 오후 6시
     private let totalMinutes: CGFloat = 300
     private let myStart: CGFloat = 60   // 오후 2시
@@ -1250,73 +1248,33 @@ extension ConflictThresholdSettings {
     // MARK: - Conflict Floating Preview
 
     private var conflictFloatingPreview: some View {
-      let conflicts = conflictScenarios
-
-      return Button {
-        showConflictTooltip = true
-      } label: {
-        VStack(alignment: .leading, spacing: 4) {
-          ProBadge()
-
-          HStack(spacing: 6) {
-            Image(systemName: "exclamationmark.triangle.fill")
-              .font(.system(size: 12))
-              .foregroundStyle(Color.pmwarning.n500)
-
-            if conflicts.count == 1, let first = conflicts.first {
-              let text: String = {
-                if first.overlapMinutes > 0 {
-                  return "'\(first.title)'과(와) \(first.overlapMinutes)분 겹쳐요"
-                } else if first.gapMinutes > 0 {
-                  return "'\(first.title)'과(와) 여유 \(first.gapMinutes)분이에요"
-                } else {
-                  return "'\(first.title)'과(와) 일정이 겹쳐요"
-                }
-              }()
-              Text(text)
-                .font(.system(size: 11))
-                .foregroundStyle(Color.pmtext.primary)
-                .lineLimit(1)
-            } else {
-              Text("\(conflicts.count)건의 일정이 겹쳐요")
-                .font(.system(size: 11))
-                .foregroundStyle(Color.pmtext.primary)
-            }
-
-            Spacer(minLength: 0)
-
-            Image(systemName: "info.circle")
-              .font(.system(size: 11))
-              .foregroundStyle(Color.pmtext.secondary)
-          }
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .adaptiveGlassCard(cornerRadius: 10)
-        .contentShape(Rectangle())
-      }
-      .buttonStyle(.plain)
-      .popover(isPresented: $showConflictTooltip, arrowEdge: .bottom) {
-        let conflictInfos: [ConflictInfo] = conflicts.map { scenario in
-          ConflictInfo(
-            title: scenario.title,
-            overlapMinutes: scenario.overlapMinutes,
-            gapMinutes: scenario.gapMinutes,
-            startAt: scenarioToDate(scenario.start),
-            endAt: scenarioToDate(scenario.end),
-            emoji: scenario.emoji,
-            severity: .confirmed
-          )
-        }
-        ConflictTooltip(
-          newEventTitle: LocalizedStrings.SettingsStrings.conflictDetectionNewEvent,
-          newEventStartAt: scenarioToDate(myStart),
-          newEventEndAt: scenarioToDate(myEnd),
-          conflicts: conflictInfos
+      let conflictInfos: [ConflictInfo] = conflictScenarios.map { scenario in
+        ConflictInfo(
+          title: scenario.title,
+          overlapMinutes: scenario.overlapMinutes,
+          gapMinutes: scenario.gapMinutes,
+          startAt: scenarioToDate(scenario.start),
+          endAt: scenarioToDate(scenario.end),
+          emoji: scenario.emoji,
+          severity: .confirmed
         )
-        .presentationCompactAdaptation(.popover)
       }
+
+      return VStack(alignment: .leading, spacing: 4) {
+        ProBadge()
+        ProConflictRow(
+          conflicts: conflictInfos,
+          isChecking: false,
+          eventTitle: LocalizedStrings.SettingsStrings.conflictDetectionNewEvent,
+          eventStartAt: scenarioToDate(myStart),
+          eventEndAt: scenarioToDate(myEnd)
+        )
+      }
+      .padding(.horizontal, 10)
+      .padding(.vertical, 6)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .background(Color.pmindigo.n500.opacity(0.04), in: RoundedRectangle(cornerRadius: 10))
+      .adaptiveGlassCard(cornerRadius: 10)
     }
 
     // MARK: - Date Helpers
