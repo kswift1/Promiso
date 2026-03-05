@@ -58,6 +58,7 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
     vc.coordinator = context.coordinator
     context.coordinator.pagerVC = vc
     context.coordinator.lastKnownMonth = currentMonth.startOfMonth
+    context.coordinator.lastKnownSelectedDate = selectedDate
     vc.setupPages(
       prevMonth: prevMonth,
       currentMonth: currentMonth.startOfMonth,
@@ -97,13 +98,27 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
     let currentMonthStart = currentMonth.startOfMonth
 
     // 외부(화살표/오늘 버튼)에서 월 변경 감지 → 슬라이드 애니메이션
+    var monthChanged = false
     if !coordinator.needsRecenter,
        let lastMonth = coordinator.lastKnownMonth,
        lastMonth != currentMonthStart {
       let direction: Coordinator.SlideDirection = currentMonthStart > lastMonth ? .right : .left
       coordinator.pendingSlideDirection = direction
+      monthChanged = true
     }
     coordinator.lastKnownMonth = currentMonthStart
+
+    // 주간 모드: 같은 달 내 주 변경 감지 → 슬라이드 애니메이션
+    if selectedWeekRow != nil, !monthChanged, !coordinator.needsRecenter,
+       let lastDate = coordinator.lastKnownSelectedDate {
+      let lastWeek = lastDate.startOfWeek
+      let currentWeek = selectedDate.startOfWeek
+      if lastWeek != currentWeek {
+        let direction: Coordinator.SlideDirection = selectedDate > lastDate ? .right : .left
+        coordinator.pendingSlideDirection = direction
+      }
+    }
+    coordinator.lastKnownSelectedDate = selectedDate
 
     if coordinator.needsRecenter {
       // 스와이프 완료 후 리센터 (애니메이션 없음 — 이미 사용자가 스와이프함)
@@ -189,6 +204,7 @@ struct PagingMonthGridView: UIViewControllerRepresentable {
     /// 외부(화살표/오늘 버튼)에서 월 변경 시 슬라이드 애니메이션 방향
     var pendingSlideDirection: SlideDirection?
     var lastKnownMonth: Date?
+    var lastKnownSelectedDate: Date?
 
     enum SlideDirection { case left, right }
 
