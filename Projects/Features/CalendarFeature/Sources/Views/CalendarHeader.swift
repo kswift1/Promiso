@@ -14,6 +14,7 @@ struct CalendarHeader: View {
   let isFilterActive: Bool
   let onFilterTapped: () -> Void
   let onToggleMode: () -> Void
+  let onSetMode: (CalendarDisplayMode) -> Void
   let onMoveToToday: () -> Void
   let onMovePrevious: () -> Void
   let onMoveNext: () -> Void
@@ -69,12 +70,24 @@ struct CalendarHeader: View {
           .frame(width: 36, height: 36)
       }
 
-      // 주간/월간 토글
-      Button(action: onToggleMode) {
-        Image(systemName: displayMode == .week ? "rectangle.grid.1x2" : "rectangle.grid.3x2")
+      // 모드 전환 (탭: 순환, 꾹 누르기: 메뉴)
+      Menu {
+        ForEach(CalendarDisplayMode.allCases, id: \.self) { mode in
+          Button {
+            onSetMode(mode)
+          } label: {
+            Label(mode.label, systemImage: mode.iconName)
+          }
+          .disabled(mode == displayMode)
+        }
+      } label: {
+        Image(systemName: displayMode.iconName)
           .font(.system(size: 18))
           .foregroundColor(.primary)
           .frame(width: 36, height: 36)
+          .contentShape(Rectangle())
+      } primaryAction: {
+        onToggleMode()
       }
     }
     .padding(.horizontal, 16)

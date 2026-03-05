@@ -33,6 +33,7 @@ extension CalendarFeature {
             isFilterActive: store.isFilterActive,
             onFilterTapped: { store.send(.view(.filterIconTapped)) },
             onToggleMode: { store.send(.view(.toggleDisplayMode), animation: .spring(response: 0.45, dampingFraction: 0.8)) },
+            onSetMode: { mode in store.send(.view(.setDisplayMode(mode)), animation: .spring(response: 0.45, dampingFraction: 0.8)) },
             onMoveToToday: { store.send(.view(.moveToToday), animation: .spring(response: 0.35, dampingFraction: 0.85)) },
             onMovePrevious: { store.send(.view(.moveToPreviousPeriod), animation: .spring(response: 0.35, dampingFraction: 0.85)) },
             onMoveNext: { store.send(.view(.moveToNextPeriod), animation: .spring(response: 0.35, dampingFraction: 0.85)) }
@@ -46,11 +47,9 @@ extension CalendarFeature {
           // 캘린더 그리드 (주간/월간)
           calendarGridSection
             .animation(.spring(response: 0.45, dampingFraction: 0.8), value: store.displayMode)
-            .animation(.spring(response: 0.45, dampingFraction: 0.8), value: store.monthExpansionState)
 
-          // 약속 리스트 (시트 스타일) — expanded 월간일 때 숨김
-          if store.displayMode == .week ||
-             (store.displayMode == .month && store.monthExpansionState == .collapsed) {
+          // 약속 리스트 (시트 스타일) — monthExpanded일 때 숨김
+          if store.displayMode == .week || store.displayMode == .month {
             promiseListSection
               .transition(.move(edge: .bottom).combined(with: .opacity))
           }
@@ -154,9 +153,9 @@ extension CalendarFeature {
         .padding(.vertical, 14)
         .transition(.opacity.combined(with: .scale(scale: 0.98)).combined(with: .offset(y: -8)))
       } else {
-        let isExpanded = store.monthExpansionState == .expanded
+        let isExpanded = store.displayMode == .monthExpanded
 
-        // 월간 collapsed/expanded를 동일 페이저에서 전환해 6행 그리드를 유지
+        // 월간 compact/expanded를 동일 페이저에서 전환해 6행 그리드를 유지
         PagingMonthGridView(
           currentMonth: Binding(
             get: { store.currentMonth },
@@ -312,7 +311,7 @@ extension CalendarFeature {
       .frame(maxWidth: .infinity)
       .contentShape(Rectangle())
       .onTapGesture {
-        store.send(.view(.toggleMonthExpansion), animation: .spring(response: 0.45, dampingFraction: 0.8))
+        store.send(.view(.setDisplayMode(.monthExpanded)), animation: .spring(response: 0.45, dampingFraction: 0.8))
       }
     }
 
@@ -320,7 +319,7 @@ extension CalendarFeature {
 
     private var collapseToListButton: some View {
       Button {
-        store.send(.view(.toggleMonthExpansion), animation: .spring(response: 0.45, dampingFraction: 0.8))
+        store.send(.view(.setDisplayMode(.month)), animation: .spring(response: 0.45, dampingFraction: 0.8))
       } label: {
         HStack(spacing: 6) {
           Image(systemName: "list.bullet")
@@ -479,6 +478,6 @@ extension CalendarFeature {
   )) {
     CalendarFeature.Feature()
   }
-  // Note: monthExpansionState는 기본 .collapsed
+  // Note: displayMode 기본 .week
   CalendarFeature.RootView(store: store)
 }
