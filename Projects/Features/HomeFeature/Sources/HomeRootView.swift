@@ -36,20 +36,6 @@ extension Home {
             get: { store.toastMessage },
             set: { _ in store.send(.view(.toastDismissed)) }
           ))
-          .sheet(isPresented: Binding(
-            get: { store.showQuickPromiseSheet },
-            set: { newValue in
-              if !newValue {
-                store.send(.view(.quickPromiseSheetDismissed))
-              }
-            }
-          )) {
-            QuickPromise.CardView(
-              store: store.scope(state: \.quickPromise, action: \.quickPromise)
-            )
-            .presentationDetents([.medium, .large])
-            .presentationDragIndicator(.visible)
-          }
           .onAppear {
             store.send(.view(.onAppear))
           }
@@ -195,10 +181,6 @@ extension Home {
           } else if let error = store.promisesState.error {
             errorView(error: error)
           } else {
-            // 빠른 약속 만들기 버튼
-            quickPromiseButton
-              .padding(.horizontal, 16)
-
             // 오늘의 일정 카드
             TodayScheduleCard(
               items: snapshot.todayScheduleItems,
@@ -254,44 +236,6 @@ extension Home {
       .refreshable {
         store.send(.view(.refreshTriggered))
       }
-    }
-
-    // MARK: - Quick Promise Button
-
-    @ViewBuilder
-    private var quickPromiseButton: some View {
-      Button {
-        store.send(.view(.quickPromiseButtonTapped))
-      } label: {
-        HStack(spacing: 8) {
-          Image(systemName: "sparkles")
-            .font(.system(size: 14, weight: .semibold))
-            .foregroundStyle(Color.pmindigo.n500)
-
-          Text(LocalizedStrings.QuickPromise.title)
-            .font(.system(size: 14, weight: .semibold))
-
-          Spacer()
-
-          Image(systemName: "chevron.right")
-            .font(.system(size: 12, weight: .semibold))
-            .foregroundStyle(.secondary)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .contentShape(Rectangle())
-        .background {
-          if #available(iOS 26.0, *) {
-            RoundedRectangle(cornerRadius: 14)
-              .fill(.clear)
-              .glassEffect(.regular, in: .rect(cornerRadius: 14))
-          } else {
-            RoundedRectangle(cornerRadius: 14)
-              .fill(.ultraThinMaterial)
-          }
-        }
-      }
-      .buttonStyle(.plain)
     }
 
     // MARK: - Loading View
