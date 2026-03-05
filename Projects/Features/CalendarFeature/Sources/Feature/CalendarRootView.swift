@@ -218,6 +218,7 @@ extension CalendarFeature {
       .background(Color(.systemBackground))
       .clipShape(RoundedCorner(radius: 24, corners: [.topLeft, .topRight]))
       .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: -4)
+      .background(Color(.systemBackground).ignoresSafeArea(edges: .bottom))
     }
 
     // MARK: - Week Timeline View
