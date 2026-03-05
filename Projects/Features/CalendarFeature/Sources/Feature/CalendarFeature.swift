@@ -98,8 +98,14 @@ extension CalendarFeature {
 
       // MARK: - 개인 일정 관련
 
-      /// 개인 일정 목록
-      var personalEvents: [PersonalEventModel] = []
+      /// 월별 개인 일정 캐시 (키: 월 시작일)
+      var cachedPersonalEventsByMonth: [Date: [PersonalEventModel]] = [:]
+
+      /// 이미 로드된 개인 일정 월 (중복 요청 방지)
+      var loadedPersonalEventMonths: Set<Date> = []
+
+      /// 개인 일정 로딩 중인 월 목록
+      var loadingPersonalEventMonths: Set<Date> = []
 
       // MARK: - Filter
 
@@ -249,15 +255,13 @@ extension CalendarFeature {
       var personalEventsByDate: [Date: [PersonalEventModel]] {
         guard showPersonalEvents else { return [:] }
         let calendar = Calendar.current
+        let currentMonthKey = currentMonth.startOfMonth
+        let monthEvents = cachedPersonalEventsByMonth[currentMonthKey] ?? []
         var grouped: [Date: [PersonalEventModel]] = [:]
 
-        for event in personalEvents {
+        for event in monthEvents {
           let dateKey = calendar.startOfDay(for: event.startAt)
-          if grouped[dateKey] != nil {
-            grouped[dateKey]?.append(event)
-          } else {
-            grouped[dateKey] = [event]
-          }
+          grouped[dateKey, default: []].append(event)
         }
 
         for (date, events) in grouped {
@@ -366,7 +370,11 @@ extension CalendarFeature {
 
         // 개인 일정
         if showPersonalEvents {
-          for event in personalEvents {
+          let allPersonalEvents: [PersonalEventModel] = [prevMonthKey, currentMonthKey, nextMonthKey]
+            .compactMap { $0 }
+            .flatMap { cachedPersonalEventsByMonth[$0] ?? [] }
+          let uniquePersonalEvents = Dictionary(grouping: allPersonalEvents, by: \.id).compactMap(\.value.first)
+          for event in uniquePersonalEvents {
             spreadIndicators(
               startAt: event.startAt, endAt: event.effectiveEndAt, into: &indicators
             ) { day, position in
@@ -477,9 +485,12 @@ extension CalendarFeature {
           .filter { $0.startAt < end && $0.effectiveEndAt >= start }
           .map { CalendarFeature.ScheduleItem.promise($0) }
         let personalItems: [CalendarFeature.ScheduleItem] = showPersonalEvents
-          ? personalEvents
+          ? {
+            let relevantPersonalEvents = Array(Set(monthKeys.flatMap { cachedPersonalEventsByMonth[$0] ?? [] }))
+            return relevantPersonalEvents
               .filter { $0.startAt < end && $0.effectiveEndAt >= start }
               .map { CalendarFeature.ScheduleItem.personalEvent($0) }
+          }()
           : []
         let calendarItems = calendarEvents
           .filter { $0.startDate < end && $0.endDate >= start }
@@ -608,8 +619,8 @@ extension CalendarFeature {
         case fetchCalendarEvents
         case calendarEventsResponse(Result<[CalendarEvent], Error>)
         // 개인 일정
-        case fetchPersonalEvents
-        case personalEventsResponse(Result<[PersonalEventModel], Error>)
+        case fetchPersonalEventsForMonth(Date)
+        case personalEventsResponseForMonth(month: Date, Result<[PersonalEventModel], Error>)
         // 설정
         case fetchSettings
         case settingsResponse(Result<UserSettings, Error>)
@@ -624,6 +635,7 @@ extension CalendarFeature {
     private enum CancelID: Hashable {
       case fetchPromisesForMonth(Date)
       case fetchCalendarEvents
+      case fetchPersonalEventsForMonth(Date)
     }
 
     // MARK: - Dependencies
@@ -666,9 +678,15 @@ extension CalendarFeature {
           return .none
         case .path(.element(id: _, action: .personalEventDetail(.delegate(.eventDeleted)))):
           _ = state.path.popLast()
-          return .send(.internal(.fetchPersonalEvents))
+          let eventMonth = state.selectedDate.startOfMonth
+          state.loadedPersonalEventMonths.remove(eventMonth)
+          state.cachedPersonalEventsByMonth.removeValue(forKey: eventMonth)
+          return .send(.internal(.fetchPersonalEventsForMonth(eventMonth)))
         case .path(.element(id: _, action: .personalEventDetail(.delegate(.eventUpdated)))):
-          return .send(.internal(.fetchPersonalEvents))
+          let eventMonth = state.selectedDate.startOfMonth
+          state.loadedPersonalEventMonths.remove(eventMonth)
+          state.cachedPersonalEventsByMonth.removeValue(forKey: eventMonth)
+          return .send(.internal(.fetchPersonalEventsForMonth(eventMonth)))
         case .path:
           return .none
 
@@ -692,11 +710,17 @@ extension CalendarFeature {
 
       case .editPersonalEvent(.presented(.delegate(.eventCreated))):
         state.editPersonalEvent = nil
-        return .send(.internal(.fetchPersonalEvents))
+        let createdMonth = state.selectedDate.startOfMonth
+        state.loadedPersonalEventMonths.remove(createdMonth)
+        state.cachedPersonalEventsByMonth.removeValue(forKey: createdMonth)
+        return .send(.internal(.fetchPersonalEventsForMonth(createdMonth)))
 
       case .editPersonalEvent(.presented(.delegate(.eventUpdated))):
         state.editPersonalEvent = nil
-        return .send(.internal(.fetchPersonalEvents))
+        let updatedMonth = state.selectedDate.startOfMonth
+        state.loadedPersonalEventMonths.remove(updatedMonth)
+        state.cachedPersonalEventsByMonth.removeValue(forKey: updatedMonth)
+        return .send(.internal(.fetchPersonalEventsForMonth(updatedMonth)))
 
       case .editPersonalEvent(.presented(.delegate(.dismiss))):
         state.editPersonalEvent = nil
@@ -732,9 +756,11 @@ extension CalendarFeature {
               await send(.internal(.fetchPromisesForMonth(currentMonth)))
             }
           case .personalEvent(let event):
+            let eventMonth = event.startAt.startOfMonth
+            state.loadedPersonalEventMonths.remove(eventMonth)
             return .run { [personalEventClient] send in
               try await personalEventClient.deleteEvent(event.id)
-              await send(.internal(.fetchPersonalEvents))
+              await send(.internal(.fetchPersonalEventsForMonth(eventMonth)))
             }
           case .calendarEvent:
             return .none
@@ -814,9 +840,16 @@ extension CalendarFeature {
         }
 
         // 월이 바뀌면 데이터 로드
-        if previousMonth != newMonth && !state.loadedMonths.contains(newMonth) {
-          AppLogger.calendar.debugLog("🔄 날짜 선택으로 월 변경 - 로드 필요: \(LocalizedDateFormatters.yearMonth.string(from: newMonth))")
-          return .send(.internal(.fetchPromisesForMonth(newMonth)))
+        if previousMonth != newMonth {
+          var effects: [Effect<Action>] = []
+          if !state.loadedMonths.contains(newMonth) {
+            AppLogger.calendar.debugLog("🔄 날짜 선택으로 월 변경 - 로드 필요: \(LocalizedDateFormatters.yearMonth.string(from: newMonth))")
+            effects.append(.send(.internal(.fetchPromisesForMonth(newMonth))))
+          }
+          if !state.loadedPersonalEventMonths.contains(newMonth) {
+            effects.append(.send(.internal(.fetchPersonalEventsForMonth(newMonth))))
+          }
+          return effects.isEmpty ? .none : .merge(effects)
         }
         return .none
 
@@ -829,9 +862,16 @@ extension CalendarFeature {
         let newMonth = today.startOfMonth
 
         // 월이 바뀌면 데이터 로드
-        if previousMonth != newMonth && !state.loadedMonths.contains(newMonth) {
-          AppLogger.calendar.debugLog("🔄 오늘로 이동 - 로드 필요: \(LocalizedDateFormatters.yearMonth.string(from: newMonth))")
-          return .send(.internal(.fetchPromisesForMonth(newMonth)))
+        if previousMonth != newMonth {
+          var effects: [Effect<Action>] = []
+          if !state.loadedMonths.contains(newMonth) {
+            AppLogger.calendar.debugLog("🔄 오늘로 이동 - 로드 필요: \(LocalizedDateFormatters.yearMonth.string(from: newMonth))")
+            effects.append(.send(.internal(.fetchPromisesForMonth(newMonth))))
+          }
+          if !state.loadedPersonalEventMonths.contains(newMonth) {
+            effects.append(.send(.internal(.fetchPersonalEventsForMonth(newMonth))))
+          }
+          return effects.isEmpty ? .none : .merge(effects)
         }
         return .none
 
@@ -849,8 +889,15 @@ extension CalendarFeature {
           }
         }
         let newMonth = state.currentMonth.startOfMonth
-        if previousMonth != newMonth && !state.loadedMonths.contains(newMonth) {
-          return .send(.internal(.fetchPromisesForMonth(newMonth)))
+        if previousMonth != newMonth {
+          var effects: [Effect<Action>] = []
+          if !state.loadedMonths.contains(newMonth) {
+            effects.append(.send(.internal(.fetchPromisesForMonth(newMonth))))
+          }
+          if !state.loadedPersonalEventMonths.contains(newMonth) {
+            effects.append(.send(.internal(.fetchPersonalEventsForMonth(newMonth))))
+          }
+          return effects.isEmpty ? .none : .merge(effects)
         }
         return .none
 
@@ -868,8 +915,15 @@ extension CalendarFeature {
           }
         }
         let newMonth = state.currentMonth.startOfMonth
-        if previousMonth != newMonth && !state.loadedMonths.contains(newMonth) {
-          return .send(.internal(.fetchPromisesForMonth(newMonth)))
+        if previousMonth != newMonth {
+          var effects: [Effect<Action>] = []
+          if !state.loadedMonths.contains(newMonth) {
+            effects.append(.send(.internal(.fetchPromisesForMonth(newMonth))))
+          }
+          if !state.loadedPersonalEventMonths.contains(newMonth) {
+            effects.append(.send(.internal(.fetchPersonalEventsForMonth(newMonth))))
+          }
+          return effects.isEmpty ? .none : .merge(effects)
         }
         return .none
 
@@ -935,7 +989,11 @@ extension CalendarFeature {
         if state.calendarPermissionStatus.canReadEvents {
           effects.append(.send(.internal(.fetchCalendarEvents)))
         }
-        effects.append(.send(.internal(.fetchPersonalEvents)))
+
+        // 개인 일정 로드 (캐시되지 않은 경우만)
+        if !state.loadedPersonalEventMonths.contains(monthStart) {
+          effects.append(.send(.internal(.fetchPersonalEventsForMonth(monthStart))))
+        }
 
         // 인접 월 프리페치
         effects.append(.send(.internal(.prefetchAdjacentMonths)))
@@ -964,7 +1022,11 @@ extension CalendarFeature {
         if state.calendarPermissionStatus.canReadEvents {
           effects.append(.send(.internal(.fetchCalendarEvents)))
         }
-        effects.append(.send(.internal(.fetchPersonalEvents)))
+
+        // 개인 일정 로드 (캐시되지 않은 경우만)
+        if !state.loadedPersonalEventMonths.contains(monthStart) {
+          effects.append(.send(.internal(.fetchPersonalEventsForMonth(monthStart))))
+        }
 
         // 인접 월 프리페치
         effects.append(.send(.internal(.prefetchAdjacentMonths)))
@@ -1170,7 +1232,7 @@ extension CalendarFeature {
             groupMembers: groupMembers
           )))
         case .personalEvent(let eventId):
-          guard let event = state.personalEvents.first(where: { $0.id == eventId }) else {
+          guard let event = state.cachedPersonalEventsByMonth.values.lazy.flatMap({ $0 }).first(where: { $0.id == eventId }) else {
             return .none
           }
           state.path.append(.personalEventDetail(.init(event: event)))
@@ -1241,13 +1303,14 @@ extension CalendarFeature {
         let monthsToLoad = getMonthsToLoad(state: state)
         for month in monthsToLoad {
           state.loadedMonths.remove(month)
+          state.loadedPersonalEventMonths.remove(month)
         }
         AppLogger.calendar.debugLog("📦 데이터 로드 (선택적 무효화: \(monthsToLoad.count)개 월, 그룹: \(state.userGroupIds.count)개)")
 
-        // 개인 일정은 항상 로드
-        var effects: [Effect<Action>] = [
-          .send(.internal(.fetchPersonalEvents))
-        ]
+        // 개인 일정은 월별로 로드
+        var effects: [Effect<Action>] = monthsToLoad.map { month in
+          Effect<Action>.send(.internal(.fetchPersonalEventsForMonth(month)))
+        }
 
         // 그룹이 있으면 약속 로드
         if !state.userGroupIds.isEmpty {
@@ -1301,29 +1364,35 @@ extension CalendarFeature {
         let calendar = Calendar.current
         let currentMonth = state.selectedDate.startOfMonth
 
-        var monthsToFetch: [Date] = []
+        let prevMonth = calendar.date(byAdding: .month, value: -1, to: currentMonth)?.startOfMonth
+        let nextMonth = calendar.date(byAdding: .month, value: 1, to: currentMonth)?.startOfMonth
 
-        if let prevMonth = calendar.date(byAdding: .month, value: -1, to: currentMonth)?.startOfMonth,
-           !state.loadedMonths.contains(prevMonth) {
-          monthsToFetch.append(prevMonth)
+        var promiseMonthsToFetch: [Date] = []
+        if let prevMonth = prevMonth, !state.loadedMonths.contains(prevMonth) {
+          promiseMonthsToFetch.append(prevMonth)
+        }
+        if let nextMonth = nextMonth, !state.loadedMonths.contains(nextMonth) {
+          promiseMonthsToFetch.append(nextMonth)
         }
 
-        if let nextMonth = calendar.date(byAdding: .month, value: 1, to: currentMonth)?.startOfMonth,
-           !state.loadedMonths.contains(nextMonth) {
-          monthsToFetch.append(nextMonth)
-        }
+        // 개인 일정 프리페치
+        let personalMonthsToFetch = [prevMonth, nextMonth].compactMap { $0 }.filter { !state.loadedPersonalEventMonths.contains($0) }
 
-        if monthsToFetch.isEmpty {
+        if promiseMonthsToFetch.isEmpty && personalMonthsToFetch.isEmpty {
           AppLogger.calendar.debugLog("⏭️ 프리페치 스킵 - 인접 월 모두 캐시됨")
           return .none
         }
 
-        AppLogger.calendar.debugLog("🔮 프리페치 시작 - \(monthsToFetch.map { LocalizedDateFormatters.yearMonth.string(from: $0) })")
+        AppLogger.calendar.debugLog("🔮 프리페치 시작 - \(promiseMonthsToFetch.map { LocalizedDateFormatters.yearMonth.string(from: $0) })")
 
         // 프리페치는 백그라운드에서 조용히 실행 (로딩 표시 없음)
-        return .merge(monthsToFetch.map { month in
+        var effects: [Effect<Action>] = promiseMonthsToFetch.map { month in
           .send(.internal(.fetchPromisesForMonth(month)))
+        }
+        effects.append(contentsOf: personalMonthsToFetch.map { month in
+          .send(.internal(.fetchPersonalEventsForMonth(month)))
         })
+        return .merge(effects)
 
       case .promisesResponseForMonth(let month, let result):
         state.loadingMonths.remove(month)
@@ -1406,22 +1475,33 @@ extension CalendarFeature {
         }
         return .none
 
-      case .fetchPersonalEvents:
+      case .fetchPersonalEventsForMonth(let month):
+        let monthStart = month.startOfMonth
+        guard !state.loadedPersonalEventMonths.contains(monthStart) else { return .none }
+
+        state.loadingPersonalEventMonths.insert(monthStart)
+
+        let calendar = Calendar.current
+        let endDate = calendar.date(byAdding: .month, value: 1, to: monthStart) ?? monthStart
+
         return .run { [personalEventClient] send in
           do {
-            let events = try await personalEventClient.getActiveEvents(AppConstants.Sync.personalEventFetchLimit)
-            await send(.internal(.personalEventsResponse(.success(events))))
+            let events = try await personalEventClient.getEventsByDateRange(monthStart, endDate)
+            await send(.internal(.personalEventsResponseForMonth(month: monthStart, .success(events))))
           } catch {
-            await send(.internal(.personalEventsResponse(.failure(error))))
+            await send(.internal(.personalEventsResponseForMonth(month: monthStart, .failure(error))))
           }
         }
+        .cancellable(id: CancelID.fetchPersonalEventsForMonth(monthStart), cancelInFlight: true)
 
-      case .personalEventsResponse(let result):
+      case .personalEventsResponseForMonth(let month, let result):
+        state.loadingPersonalEventMonths.remove(month)
         switch result {
         case .success(let events):
-          state.personalEvents = events
+          state.cachedPersonalEventsByMonth[month] = events
+          state.loadedPersonalEventMonths.insert(month)
         case .failure:
-          // 에러 시 기존 데이터 유지 (빈 배열로 덮어쓰지 않음)
+          // 에러 시 재시도 가능하도록 loadedPersonalEventMonths에 추가하지 않음
           break
         }
         return .none
@@ -1472,12 +1552,17 @@ extension CalendarFeature {
       state.currentMonth = state.selectedDate.startOfMonth
 
       // 월간 모드로 전환 시 해당 월 데이터 로드
-      let monthsToLoad = getMonthsToLoad(state: state).filter { !state.loadedMonths.contains($0) }
-      AppLogger.calendar.debugLog("🔄 모드 전환(\(newMode)) - 로드 필요 월: \(monthsToLoad.map { LocalizedDateFormatters.yearMonth.string(from: $0) })")
+      let allMonths = getMonthsToLoad(state: state)
+      let promiseMonthsToLoad = allMonths.filter { !state.loadedMonths.contains($0) }
+      let personalMonthsToLoad = allMonths.filter { !state.loadedPersonalEventMonths.contains($0) }
+      AppLogger.calendar.debugLog("🔄 모드 전환(\(newMode)) - 로드 필요 월: \(promiseMonthsToLoad.map { LocalizedDateFormatters.yearMonth.string(from: $0) })")
 
-      var effects: [Effect<Action>] = monthsToLoad.map { month in
+      var effects: [Effect<Action>] = promiseMonthsToLoad.map { month in
         .send(.internal(.fetchPromisesForMonth(month)))
       }
+      effects.append(contentsOf: personalMonthsToLoad.map { month in
+        .send(.internal(.fetchPersonalEventsForMonth(month)))
+      })
 
       effects.append(.run { send in
         try await Task.sleep(nanoseconds: Self.transitionAnimationDuration)
