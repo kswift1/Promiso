@@ -36,14 +36,24 @@ struct RootTabFeatureTests {
         await syncRecorder.record(ids)
         return CalendarSyncResult()
       }
+      $0.calendarSyncClient.syncPersonalEvents = { _ in
+        return CalendarSyncResult()
+      }
     }
 
-    await store.send(.onAppear)
+    await store.send(.onAppear) {
+      $0.hasInitialCalendarSyncBeenScheduled = true
+    }
     await store.receive(\.internal.refreshWidgetAuthToken)
     await store.receive(\.internal.requestWidgetToken)
     await store.receive(\.internal.observePushToStartToken)
     await store.receive(\.internal.observeActivityUpdates)
-    await store.receive(\.internal.syncCalendar)
+    await store.receive(\.internal.syncCalendar) {
+      $0.isCalendarSyncInFlight = true
+    }
+    await store.receive(\.internal.syncCalendarFinished) {
+      $0.isCalendarSyncInFlight = false
+    }
     await store.finish()
 
     #expect(await refreshCounter.value() == 1)
@@ -479,7 +489,12 @@ struct RootTabFeatureTests {
       }
     }
 
-    await store.send(.internal(.syncCalendar))
+    await store.send(.internal(.syncCalendar)) {
+      $0.isCalendarSyncInFlight = true
+    }
+    await store.receive(\.internal.syncCalendarFinished) {
+      $0.isCalendarSyncInFlight = false
+    }
     await store.finish()
     #expect(await recorder.value() == Set(["group-enabled"]))
   }
@@ -501,12 +516,16 @@ struct RootTabFeatureTests {
       }
     }
 
-    await store.send(.internal(.syncCalendar))
+    await store.send(.internal(.syncCalendar)) {
+      $0.isCalendarSyncInFlight = true
+    }
     await gate.waitForStart()
     await store.send(.internal(.syncCalendar))
 
     await gate.release()
-    await store.receive(\.internal.syncCalendarFinished)
+    await store.receive(\.internal.syncCalendarFinished) {
+      $0.isCalendarSyncInFlight = false
+    }
     #expect(await counter.value() == 1)
   }
 
@@ -524,13 +543,21 @@ struct RootTabFeatureTests {
       }
     }
 
-    await store.send(.internal(.syncCalendar))
-    await store.receive(\.internal.syncCalendarFinished)
+    await store.send(.internal(.syncCalendar)) {
+      $0.isCalendarSyncInFlight = true
+    }
+    await store.receive(\.internal.syncCalendarFinished) {
+      $0.isCalendarSyncInFlight = false
+    }
     #expect(await counter.value() == 1)
 
     // in-flight 플래그가 해제되었으므로 다시 호출되면 재시도 호출됨
-    await store.send(.internal(.syncCalendar))
-    await store.receive(\.internal.syncCalendarFinished)
+    await store.send(.internal(.syncCalendar)) {
+      $0.isCalendarSyncInFlight = true
+    }
+    await store.receive(\.internal.syncCalendarFinished) {
+      $0.isCalendarSyncInFlight = false
+    }
     #expect(await counter.value() == 2)
   }
 

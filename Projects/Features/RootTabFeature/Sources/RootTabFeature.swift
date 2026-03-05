@@ -602,11 +602,7 @@ extension RootTab {
             let personalSyncEnabled = UserDefaults.standard.bool(
               forKey: AppConstants.UserDefaults.personalCalendarSync
             )
-            return .run(priority: .background) { [calendarSyncClient] send in
-              defer {
-                Task { await send(.internal(.syncCalendarFinished)) }
-              }
-
+            return .run(priority: .utility) { [calendarSyncClient] send in
               await withTaskGroup(of: Void.self) { group in
                 group.addTask {
                   // 그룹 약속 동기화
@@ -629,6 +625,7 @@ extension RootTab {
                   }
                 }
               }
+              await send(.internal(.syncCalendarFinished))
             }
 
           case .syncCalendarFinished:

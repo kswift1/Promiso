@@ -103,6 +103,8 @@ private actor CalendarSyncWriteGuard {
     loadFromStorage()
   }
 
+  // canReadEvents가 true이면 EventKit에서 직접 기존 이벤트를 확인하므로
+  // knownHashes 비교는 canReadEvents가 false(writeOnly)일 때만 수행
   func begin(_ key: String, contentHash: String, canReadEvents: Bool) -> Bool {
     if inFlightKeys.contains(key) { return false }
 
@@ -116,9 +118,15 @@ private actor CalendarSyncWriteGuard {
     return true
   }
 
+  private let maxEntries = 500
+
   func complete(_ key: String, contentHash: String) {
     inFlightKeys.remove(key)
     knownHashes[key] = contentHash
+    if knownHashes.count > maxEntries {
+      let keysToRemove = Array(knownHashes.keys.prefix(knownHashes.count / 2))
+      for k in keysToRemove { knownHashes.removeValue(forKey: k) }
+    }
     persist()
   }
 
@@ -286,16 +294,6 @@ extension CalendarSyncClient: DependencyKey {
               AppLogger.calendar.error("Event update failed: \(error.localizedDescription)")
               await calendarSyncWriteGuard.fail(writeKey)
             }
-          } else {
-            let writeKey = CalendarSyncWriteKey.promiseEvent(promise.id)
-            let shouldTouch = await calendarSyncWriteGuard.begin(
-              writeKey,
-              contentHash: promise.contentHash,
-              canReadEvents: status.canReadEvents
-            )
-            if shouldTouch {
-              await calendarSyncWriteGuard.complete(writeKey, contentHash: promise.contentHash)
-            }
           }
           // 해시 같으면 skip
         } else {
@@ -323,18 +321,18 @@ extension CalendarSyncClient: DependencyKey {
       }
 
       // 8. 삭제 처리 (캘린더에 있지만 서버에 없는 것)
-        for existingEvent in existingEvents {
-          if serverPromiseMap[existingEvent.promiseId] == nil {
-            do {
-              try await eventKitClient.deleteEvent(existingEvent.eventIdentifier)
-              deletedCount += 1
-              await calendarSyncWriteGuard.remove(CalendarSyncWriteKey.promiseEvent(existingEvent.promiseId))
-            } catch {
-              AppLogger.calendar.error("Event delete failed: \(error.localizedDescription)")
-              await calendarSyncWriteGuard.remove(CalendarSyncWriteKey.promiseEvent(existingEvent.promiseId))
-            }
+      for existingEvent in existingEvents {
+        if serverPromiseMap[existingEvent.promiseId] == nil {
+          do {
+            try await eventKitClient.deleteEvent(existingEvent.eventIdentifier)
+            deletedCount += 1
+            await calendarSyncWriteGuard.remove(CalendarSyncWriteKey.promiseEvent(existingEvent.promiseId))
+          } catch {
+            AppLogger.calendar.error("Event delete failed: \(error.localizedDescription)")
+            await calendarSyncWriteGuard.remove(CalendarSyncWriteKey.promiseEvent(existingEvent.promiseId))
           }
         }
+      }
 
       let result = CalendarSyncResult(
         added: addedCount,
@@ -367,6 +365,7 @@ extension CalendarSyncClient: DependencyKey {
         }
 
         // 이미 추가되어 있는지 확인 (읽기 권한 있을 때만)
+        // Note: writeOnly 권한 시에는 CalendarSyncWriteGuard가 중복 방지를 담당
         if status.canReadEvents {
           let existingEvents = try await eventKitClient.getPromisoEvents()
           AppLogger.calendar.debug("➕ [AddPromise] 기존 이벤트 수: \(existingEvents.count)")
@@ -563,12 +562,8 @@ extension CalendarSyncClient: DependencyKey {
                 AppLogger.calendar.error("🔄 [PersonalSync] 업데이트 실패: \(error.localizedDescription)")
                 await calendarSyncWriteGuard.fail(writeKey)
               }
-            } else {
-              await calendarSyncWriteGuard.complete(
-                CalendarSyncWriteKey.personalEvent(personalEvent.id),
-                contentHash: personalEvent.contentHash
-              )
             }
+            // 해시 같으면 skip
           } else {
             let writeKey = CalendarSyncWriteKey.personalEvent(personalEvent.id)
             let shouldAdd = await calendarSyncWriteGuard.begin(

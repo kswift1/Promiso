@@ -54,27 +54,9 @@ struct CalendarSyncClientTests {
 
   @Test("권한 없으면 에러 발생")
   func syncWithoutPermissionThrowsError() async {
-    let client = CalendarSyncClient(
-      sync: { _ in
-        @Dependency(\.eventKitClient) var eventKitClient
-        let status = eventKitClient.authorizationStatus()
-        guard status.canWriteEvents else {
-          throw CalendarSyncError.noWritePermission
-        }
-        return CalendarSyncResult()
-      },
-      addPromise: { _, _ in },
-      removePromise: { _ in },
-      syncPersonalEvents: { _ in CalendarSyncResult() },
-      addPersonalEvent: { _, _ in },
-      removePersonalEvent: { _ in },
-      updatePersonalEvent: { _, _ in },
-      cleanupLegacyDuplicates: { 0 }
-    )
-
     await withDependencies {
+      $0.calendarSyncClient = .liveValue
       $0.eventKitClient.authorizationStatus = { .denied }
-      $0.calendarSyncClient = client
     } operation: {
       @Dependency(\.calendarSyncClient) var calendarSyncClient
 
@@ -95,6 +77,7 @@ struct CalendarSyncClientTests {
     var addedEvents: [NewCalendarEvent] = []
 
     try await withDependencies {
+      $0.calendarSyncClient = .liveValue
       $0.eventKitClient.authorizationStatus = { .fullAccess }
       $0.eventKitClient.getPromisoEvents = { [] }
       $0.eventKitClient.addEvent = { event in
@@ -103,44 +86,9 @@ struct CalendarSyncClientTests {
       }
       $0.promiseClient.getConfirmedPromisesForCalendar = { [promise] }
     } operation: {
-      // CalendarSyncClient.liveValue의 sync 로직을 직접 테스트
-      @Dependency(\.eventKitClient) var eventKitClient
-      @Dependency(\.promiseClient) var promiseClient
-
-      // 1. 권한 확인
-      let status = eventKitClient.authorizationStatus()
-      #expect(status.canWriteEvents)
-
-      // 2. 서버에서 약속 조회
-      let serverPromises = try await promiseClient.getConfirmedPromisesForCalendar()
-      #expect(serverPromises.count == 1)
-
-      // 3. 필터링
-      let enabledGroupIds: Set<String> = ["group1"]
-      let filteredPromises = serverPromises.filter { enabledGroupIds.contains($0.groupId) }
-      #expect(filteredPromises.count == 1)
-
-      // 4. 기존 이벤트 조회
-      let existingEvents = try await eventKitClient.getPromisoEvents()
-      #expect(existingEvents.isEmpty)
-
-      // 5. 추가
-      for promiseItem in filteredPromises {
-        let url = PromisoCalendarTag.createURL(
-          promiseId: promiseItem.id,
-          contentHash: promiseItem.contentHash
-        )
-        let newEvent = NewCalendarEvent(
-          promiseId: promiseItem.id,
-          title: promiseItem.calendarTitle,
-          startDate: promiseItem.startAt,
-          endDate: promiseItem.endAt,
-          location: promiseItem.location,
-          url: url
-        )
-        _ = try await eventKitClient.addEvent(newEvent)
-      }
-
+      @Dependency(\.calendarSyncClient) var calendarSyncClient
+      let result = try await calendarSyncClient.sync(["group1"])
+      #expect(result.added == 1)
       #expect(addedEvents.count == 1)
       #expect(addedEvents.first?.promiseId == "promise1")
     }
@@ -153,6 +101,7 @@ struct CalendarSyncClientTests {
     var addedEvents: [NewCalendarEvent] = []
 
     try await withDependencies {
+      $0.calendarSyncClient = .liveValue
       $0.eventKitClient.authorizationStatus = { .fullAccess }
       $0.eventKitClient.getPromisoEvents = { [] }
       $0.eventKitClient.addEvent = { event in
@@ -161,32 +110,9 @@ struct CalendarSyncClientTests {
       }
       $0.promiseClient.getConfirmedPromisesForCalendar = { [promise1, promise2] }
     } operation: {
-      @Dependency(\.eventKitClient) var eventKitClient
-      @Dependency(\.promiseClient) var promiseClient
-
-      let serverPromises = try await promiseClient.getConfirmedPromisesForCalendar()
-      let enabledGroupIds: Set<String> = ["group1"]  // group2는 비활성화
-      let filteredPromises = serverPromises.filter { enabledGroupIds.contains($0.groupId) }
-
-      #expect(filteredPromises.count == 1)
-      #expect(filteredPromises.first?.id == "promise1")
-
-      for promiseItem in filteredPromises {
-        let url = PromisoCalendarTag.createURL(
-          promiseId: promiseItem.id,
-          contentHash: promiseItem.contentHash
-        )
-        let newEvent = NewCalendarEvent(
-          promiseId: promiseItem.id,
-          title: promiseItem.calendarTitle,
-          startDate: promiseItem.startAt,
-          endDate: promiseItem.endAt,
-          location: promiseItem.location,
-          url: url
-        )
-        _ = try await eventKitClient.addEvent(newEvent)
-      }
-
+      @Dependency(\.calendarSyncClient) var calendarSyncClient
+      let result = try await calendarSyncClient.sync(["group1"])  // group2는 비활성화
+      #expect(result.added == 1)
       #expect(addedEvents.count == 1)
       #expect(addedEvents.first?.promiseId == "promise1")
     }
@@ -203,32 +129,20 @@ struct CalendarSyncClientTests {
     var addedCount = 0
 
     try await withDependencies {
+      $0.calendarSyncClient = .liveValue
       $0.eventKitClient.authorizationStatus = { .fullAccess }
       $0.eventKitClient.getPromisoEvents = { [existingEvent] }
       $0.eventKitClient.addEvent = { _ in
         addedCount += 1
         return "event-new"
       }
+      $0.eventKitClient.deleteEvent = { _ in }
       $0.promiseClient.getConfirmedPromisesForCalendar = { [promise] }
     } operation: {
-      @Dependency(\.eventKitClient) var eventKitClient
-      @Dependency(\.promiseClient) var promiseClient
-
-      let serverPromises = try await promiseClient.getConfirmedPromisesForCalendar()
-      let existingEvents = try await eventKitClient.getPromisoEvents()
-      let existingEventMap = Dictionary(existingEvents.map { ($0.promiseId, $0) }, uniquingKeysWith: { first, _ in first })
-
-      for promiseItem in serverPromises {
-        if let existing = existingEventMap[promiseItem.id] {
-          // 해시 같으면 skip
-          if existing.contentHash == promiseItem.contentHash {
-            continue
-          }
-        }
-        // 새 이벤트 추가 (이 테스트에서는 도달하지 않아야 함)
-        addedCount += 1
-      }
-
+      @Dependency(\.calendarSyncClient) var calendarSyncClient
+      let result = try await calendarSyncClient.sync(["group1"])
+      #expect(result.added == 0)
+      #expect(result.updated == 0)
       #expect(addedCount == 0)
     }
   }
@@ -244,45 +158,18 @@ struct CalendarSyncClientTests {
     var updatedEvents: [(String, NewCalendarEvent)] = []
 
     try await withDependencies {
+      $0.calendarSyncClient = .liveValue
       $0.eventKitClient.authorizationStatus = { .fullAccess }
       $0.eventKitClient.getPromisoEvents = { [existingEvent] }
       $0.eventKitClient.updateEvent = { eventId, event, _ in
         updatedEvents.append((eventId, event))
       }
+      $0.eventKitClient.deleteEvent = { _ in }
       $0.promiseClient.getConfirmedPromisesForCalendar = { [promise] }
     } operation: {
-      @Dependency(\.eventKitClient) var eventKitClient
-      @Dependency(\.promiseClient) var promiseClient
-
-      let serverPromises = try await promiseClient.getConfirmedPromisesForCalendar()
-      let existingEvents = try await eventKitClient.getPromisoEvents()
-      let existingEventMap = Dictionary(existingEvents.map { ($0.promiseId, $0) }, uniquingKeysWith: { first, _ in first })
-
-      for promiseItem in serverPromises {
-        if let existing = existingEventMap[promiseItem.id] {
-          // 해시 다르면 업데이트
-          if existing.contentHash != promiseItem.contentHash {
-            let updatedURL = PromisoCalendarTag.createURL(
-              promiseId: promiseItem.id,
-              contentHash: promiseItem.contentHash
-            )
-            let updatedEvent = NewCalendarEvent(
-              promiseId: promiseItem.id,
-              title: promiseItem.calendarTitle,
-              startDate: promiseItem.startAt,
-              endDate: promiseItem.endAt,
-              location: promiseItem.location,
-              url: updatedURL
-            )
-            try await eventKitClient.updateEvent(
-              existing.eventIdentifier,
-              updatedEvent,
-              existing.userNotes
-            )
-          }
-        }
-      }
-
+      @Dependency(\.calendarSyncClient) var calendarSyncClient
+      let result = try await calendarSyncClient.sync(["group1"])
+      #expect(result.updated == 1)
       #expect(updatedEvents.count == 1)
       #expect(updatedEvents.first?.0 == "event1")
     }
@@ -298,6 +185,7 @@ struct CalendarSyncClientTests {
     var deletedEventIds: [String] = []
 
     try await withDependencies {
+      $0.calendarSyncClient = .liveValue
       $0.eventKitClient.authorizationStatus = { .fullAccess }
       $0.eventKitClient.getPromisoEvents = { [existingEvent] }
       $0.eventKitClient.deleteEvent = { eventId in
@@ -305,20 +193,9 @@ struct CalendarSyncClientTests {
       }
       $0.promiseClient.getConfirmedPromisesForCalendar = { [] }  // 서버에 없음
     } operation: {
-      @Dependency(\.eventKitClient) var eventKitClient
-      @Dependency(\.promiseClient) var promiseClient
-
-      let serverPromises = try await promiseClient.getConfirmedPromisesForCalendar()
-      let serverPromiseMap = Dictionary(serverPromises.map { ($0.id, $0) }, uniquingKeysWith: { _, latest in latest })
-      let existingEvents = try await eventKitClient.getPromisoEvents()
-
-      // 서버에 없는 이벤트 삭제
-      for existingEvt in existingEvents {
-        if serverPromiseMap[existingEvt.promiseId] == nil {
-          try await eventKitClient.deleteEvent(existingEvt.eventIdentifier)
-        }
-      }
-
+      @Dependency(\.calendarSyncClient) var calendarSyncClient
+      let result = try await calendarSyncClient.sync(["group1"])
+      #expect(result.deleted == 1)
       #expect(deletedEventIds == ["event1"])
     }
   }
@@ -346,6 +223,7 @@ struct CalendarSyncClientTests {
     var deletedCount = 0
 
     try await withDependencies {
+      $0.calendarSyncClient = .liveValue
       $0.eventKitClient.authorizationStatus = { .fullAccess }
       $0.eventKitClient.getPromisoEvents = { [existingEvent2, existingEvent3] }
       $0.eventKitClient.addEvent = { _ in
@@ -360,57 +238,11 @@ struct CalendarSyncClientTests {
       }
       $0.promiseClient.getConfirmedPromisesForCalendar = { [promise1, promise2] }
     } operation: {
-      @Dependency(\.eventKitClient) var eventKitClient
-      @Dependency(\.promiseClient) var promiseClient
-
-      let serverPromises = try await promiseClient.getConfirmedPromisesForCalendar()
-      let enabledGroupIds: Set<String> = ["group1"]
-      let filteredPromises = serverPromises.filter { enabledGroupIds.contains($0.groupId) }
-      let serverPromiseMap = Dictionary(filteredPromises.map { ($0.id, $0) }, uniquingKeysWith: { _, latest in latest })
-
-      let existingEvents = try await eventKitClient.getPromisoEvents()
-      let existingEventMap = Dictionary(existingEvents.map { ($0.promiseId, $0) }, uniquingKeysWith: { first, _ in first })
-
-      // 추가/업데이트
-      for promiseItem in filteredPromises {
-        if let existing = existingEventMap[promiseItem.id] {
-          if existing.contentHash != promiseItem.contentHash {
-            let updateURL = PromisoCalendarTag.createURL(
-              promiseId: promiseItem.id,
-              contentHash: promiseItem.contentHash
-            )
-            try await eventKitClient.updateEvent(existing.eventIdentifier, NewCalendarEvent(
-              promiseId: promiseItem.id,
-              title: promiseItem.calendarTitle,
-              startDate: promiseItem.startAt,
-              endDate: promiseItem.endAt,
-              location: promiseItem.location,
-              url: updateURL
-            ), nil)
-          }
-        } else {
-          let addURL = PromisoCalendarTag.createURL(
-            promiseId: promiseItem.id,
-            contentHash: promiseItem.contentHash
-          )
-          _ = try await eventKitClient.addEvent(NewCalendarEvent(
-            promiseId: promiseItem.id,
-            title: promiseItem.calendarTitle,
-            startDate: promiseItem.startAt,
-            endDate: promiseItem.endAt,
-            location: promiseItem.location,
-            url: addURL
-          ))
-        }
-      }
-
-      // 삭제
-      for existingEvt in existingEvents {
-        if serverPromiseMap[existingEvt.promiseId] == nil {
-          try await eventKitClient.deleteEvent(existingEvt.eventIdentifier)
-        }
-      }
-
+      @Dependency(\.calendarSyncClient) var calendarSyncClient
+      let result = try await calendarSyncClient.sync(["group1"])
+      #expect(result.added == 1)
+      #expect(result.updated == 1)
+      #expect(result.deleted == 1)
       #expect(addedCount == 1)
       #expect(updatedCount == 1)
       #expect(deletedCount == 1)
@@ -841,6 +673,7 @@ struct RealTimeSyncTests {
     var addedEventIds: [String] = []
 
     try await withDependencies {
+      $0.calendarSyncClient = .liveValue
       $0.eventKitClient.authorizationStatus = { .writeOnly }
       $0.eventKitClient.addEvent = { event in
         addedEventIds.append(event.promiseId)
@@ -865,12 +698,13 @@ struct RealTimeSyncTests {
   @Test("writeOnly 권한에서 hash 변경 시 중복 스킵 없이 재작성")
   func syncWithWriteOnlyUpdatesHashAllowsReAdd() async throws {
     let promiseId = "promise-\(UUID().uuidString)"
-    var firstPromise = makePromise(id: promiseId, title: "초기", groupId: "group1")
-    var secondPromise = makePromise(id: promiseId, title: "변경됨", groupId: "group1")
+    let firstPromise = makePromise(id: promiseId, title: "초기", groupId: "group1")
+    let secondPromise = makePromise(id: promiseId, title: "변경됨", groupId: "group1")
     var addedEventIds: [String] = []
     var callIndex = 0
 
     try await withDependencies {
+      $0.calendarSyncClient = .liveValue
       $0.eventKitClient.authorizationStatus = { .writeOnly }
       $0.eventKitClient.addEvent = { event in
         addedEventIds.append(event.promiseId)
