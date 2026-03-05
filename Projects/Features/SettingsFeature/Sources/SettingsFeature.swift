@@ -5,6 +5,7 @@
 import Clients
 import ComposableArchitecture
 import PromisoShared
+import ProPlanFeature
 import SwiftUI
 
 // MARK: - Feature Namespace
@@ -80,13 +81,16 @@ extension Settings {
       @Shared(.appStorage(AppConstants.UserDefaults.use24HourFormat)) public var use24HourFormat: Bool = false
       /// 약속 탭 기본 모드 (group/own)
       @Shared(.appStorage(AppConstants.UserDefaults.defaultPromiseTabMode)) public var defaultPromiseTabMode: String = "group"
+      /// 구독 상태 (RootTab에서 전달)
+      public var subscriptionStatus: SubscriptionStatus = .none
 
       /// State를 위한 기본 initializer
       public init(
         currentUser: Shared<UserPrivateModel>,
         showLogoutAlert: Bool = false,
         isLoading: Bool = false,
-        isEditingProfile: Bool = false
+        isEditingProfile: Bool = false,
+        subscriptionStatus: SubscriptionStatus = .none
       ) {
         self._currentUser = currentUser
         self.showLogoutAlert = showLogoutAlert
@@ -98,6 +102,7 @@ extension Settings {
         self.isSavingProfile = false
         self.errorMessage = nil
         self.toastMessage = nil
+        self.subscriptionStatus = subscriptionStatus
       }
     }
 
@@ -119,6 +124,7 @@ extension Settings {
       case legalInfo(LegalInfo.Feature)
       case policyView(PolicyView.Feature)
       case appInfo(AppInfo.Feature)
+      case proPlan(ProPlan.Feature)
       #if DEBUG
       case developerSettings(DeveloperSettings.Feature)
       #endif
@@ -177,6 +183,8 @@ extension Settings {
       case supportTapped
       /// 약관 및 정책 탭
       case legalInfoTapped
+      /// 프로 플랜 탭
+      case proPlanTapped
       /// 앱 정보 탭
       case appInfoTapped
       #if DEBUG
@@ -230,6 +238,8 @@ extension Settings {
     public enum Delegate: Equatable, Sendable {
       /// 로그아웃 완료됨 (부모에서 화면 전환 처리)
       case didLogout
+      /// 구독 상태 변경됨 (ProPlan에서 전달)
+      case subscriptionStatusChanged(SubscriptionStatus)
     }
 
     // MARK: - Reducer Body
@@ -316,6 +326,12 @@ extension Settings {
           case .legalInfoTapped:
             state.path.append(.legalInfo(LegalInfo.Feature.State()))
             return .run { _ in await hapticFeedback.selection() }
+
+          case .proPlanTapped:
+            state.path.append(.proPlan(ProPlan.Feature.State()))
+            return .run { _ in
+              await hapticFeedback.selection()
+            }
 
           case .appInfoTapped:
             state.path.append(.appInfo(AppInfo.Feature.State()))
@@ -557,6 +573,12 @@ extension Settings {
             return .none
           }
 
+        case .path(.element(_, action: .proPlan(.delegate(let delegate)))):
+          switch delegate {
+          case .subscriptionStatusChanged(let status):
+            return .send(.delegate(.subscriptionStatusChanged(status)))
+          }
+
         case .path:
           return .none
         }
@@ -609,6 +631,8 @@ extension Settings {
           PolicyView.RootView(store: store)
         case .appInfo(let store):
           AppInfo.RootView(store: store)
+        case .proPlan(let store):
+          ProPlan.RootView(store: store)
         #if DEBUG
         case .developerSettings(let store):
           DeveloperSettings.RootView(store: store)

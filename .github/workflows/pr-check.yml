@@ -256,6 +256,10 @@ jobs:
       # 7. 빌드
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+      - name: Clean DerivedData
+        if: steps.changes.outputs.mode != 'skip'
+        run: rm -rf ~/Library/Developer/Xcode/DerivedData
+
       - name: Build (Full)
         if: steps.changes.outputs.mode == 'full'
         run: |

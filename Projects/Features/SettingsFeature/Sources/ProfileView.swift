@@ -46,6 +46,61 @@ extension Settings {
           }
           .buttonStyle(.plain)
 
+          // MARK: - 프로 플랜 섹션
+          Button {
+            store.send(.view(.proPlanTapped))
+          } label: {
+            HStack(spacing: 16) {
+              ZStack {
+                Circle()
+                  .fill(
+                    LinearGradient(
+                      colors: [Color.pmaurora.purple, Color.pmaurora.pink],
+                      startPoint: .topLeading,
+                      endPoint: .bottomTrailing
+                    )
+                  )
+                  .frame(width: 24, height: 24)
+
+                Image(systemName: "star.fill")
+                  .font(.caption2)
+                  .foregroundStyle(.white)
+              }
+
+              Text("프로 플랜")
+                .font(.body)
+                .foregroundStyle(Color.pmtext.primary)
+
+              if store.subscriptionStatus.isPro {
+                Text("PRO")
+                  .font(.caption2)
+                  .fontWeight(.bold)
+                  .foregroundStyle(.white)
+                  .padding(.horizontal, 6)
+                  .padding(.vertical, 2)
+                  .background(
+                    LinearGradient(
+                      colors: [Color.pmaurora.purple, Color.pmaurora.pink],
+                      startPoint: .leading,
+                      endPoint: .trailing
+                    ),
+                    in: Capsule()
+                  )
+              }
+
+              Spacer()
+
+              Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundStyle(Color.pmgray.n400)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .contentShape(Rectangle())
+          }
+          .buttonStyle(.plain)
+          .adaptiveGlassCard()
+
           // MARK: - 앱 설정 섹션
           VStack(alignment: .leading, spacing: 10) {
             Text(LocalizedStrings.SettingsStrings.appSettings)

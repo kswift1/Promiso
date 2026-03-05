@@ -109,6 +109,12 @@ export {searchPlaces} from "./functions/kakaoMap";
 export {getWeather} from "./functions/weather";
 
 // ============================================================================
+// Subscription Functions (구독 서버 검증)
+// ============================================================================
+export {
+  verifyPurchase,
+  appleServerNotification,
+} from "./functions/subscription";
 // Schedule Conflict Functions (일정 충돌 감지 + scheduleSlots 비정규화)
 // ============================================================================
 export {

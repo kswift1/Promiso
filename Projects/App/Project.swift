@@ -350,6 +350,57 @@ let targets: [Target] = {
   }
 }()
 
+// MARK: - Schemes (StoreKit Configuration 포함)
+
+let schemes: [Scheme] = {
+  switch environment {
+  case "dev":
+    return [
+      Scheme.scheme(
+        name: "PromisoDev",
+        shared: true,
+        buildAction: .buildAction(targets: [.target("PromisoDev")]),
+        runAction: .runAction(
+          configuration: .debug,
+          options: .options(
+            storeKitConfigurationPath: .relativeToRoot("Projects/App/ProPlan.storekit")
+          )
+        )
+      )
+    ]
+  case "stage":
+    return [
+      Scheme.scheme(
+        name: "PromisoStage",
+        shared: true,
+        buildAction: .buildAction(targets: [.target("PromisoStage")]),
+        runAction: .runAction(
+          configuration: .debug,
+          options: .options(
+            storeKitConfigurationPath: .relativeToRoot("Projects/App/ProPlan.storekit")
+          )
+        )
+      )
+    ]
+  case "prod":
+    return [
+      Scheme.scheme(
+        name: AppConfig.name,
+        shared: true,
+        buildAction: .buildAction(targets: [.target(AppConfig.name)]),
+        runAction: .runAction(
+          configuration: .debug,
+          options: .options(
+            storeKitConfigurationPath: .relativeToRoot("Projects/App/ProPlan.storekit")
+          )
+        )
+      )
+    ]
+  default:
+    return []
+  }
+}()
+
 // MARK: - Project
 
 let project = Project(
@@ -361,5 +412,6 @@ let project = Project(
       .release(name: "Release")
     ]
   ),
-  targets: targets
+  targets: targets,
+  schemes: schemes
 )
