@@ -298,7 +298,6 @@ extension RootTab {
             .send(.internal(.observeActivityUpdates)),
             .send(.internal(.syncCalendar)),
             .send(.internal(.observeSubscriptionStatus))
-          )
           ]
 
           if !state.hasInitialCalendarSyncBeenScheduled {
