@@ -30,6 +30,9 @@ extension CalendarFeature {
 
   @Reducer
   public struct Feature {
+    /// 모드 전환 애니메이션 대기 시간 (나노초)
+    private static let transitionAnimationDuration: UInt64 = 300_000_000
+
     public init() {}
 
     // MARK: - State
@@ -900,7 +903,7 @@ extension CalendarFeature {
         state.scrolledID = targetDate
 
         return .run { send in
-          try await Task.sleep(nanoseconds: 300_000_000)
+          try await Task.sleep(nanoseconds: Self.transitionAnimationDuration)
           await send(.internal(.transitionCompleted))
         }
 
@@ -1458,7 +1461,7 @@ extension CalendarFeature {
       }
 
       effects.append(.run { send in
-        try await Task.sleep(nanoseconds: 300_000_000)
+        try await Task.sleep(nanoseconds: Self.transitionAnimationDuration)
         await send(.internal(.transitionCompleted))
       })
 

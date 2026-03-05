@@ -38,9 +38,9 @@ public enum CalendarDisplayMode: Equatable, Sendable, CaseIterable {
   /// 모드 표시 이름
   public var label: String {
     switch self {
-    case .week: return "주간 타임라인"
-    case .month: return "월간 리스트"
-    case .monthExpanded: return "월간 전체"
+    case .week: return LocalizedStrings.Calendar.modeWeek
+    case .month: return LocalizedStrings.Calendar.modeMonth
+    case .monthExpanded: return LocalizedStrings.Calendar.modeMonthExpanded
     }
   }
 
