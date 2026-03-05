@@ -209,11 +209,11 @@ struct DayTimelineView: View {
           .frame(width: timeLabelWidth - 4, height: 8)
 
         Circle()
-          .fill(Color.red)
+          .fill(Color.pmerror.n500)
           .frame(width: 8, height: 8)
 
         Rectangle()
-          .fill(Color.red)
+          .fill(Color.pmerror.n500)
           .frame(height: 1)
       }
       .offset(y: y - 4)

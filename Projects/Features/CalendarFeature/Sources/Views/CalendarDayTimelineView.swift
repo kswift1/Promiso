@@ -160,9 +160,11 @@ struct CalendarDayTimelineView: View {
     )
     .onAppear {
       if isToday {
-        let hour = Calendar.promiseDisplay.component(.hour, from: Date())
-        let minute = Calendar.promiseDisplay.component(.minute, from: Date())
-        let targetY = max(0, (CGFloat(hour) + CGFloat(minute) / 60.0) * hourHeight - 60)
+        let initialScrollOffset: CGFloat = 60
+        let components = Calendar.promiseDisplay.dateComponents([.hour, .minute], from: Date())
+        let hour = CGFloat(components.hour ?? 0)
+        let minute = CGFloat(components.minute ?? 0)
+        let targetY = max(0, (hour + minute / 60.0) * hourHeight - initialScrollOffset)
         scrollPosition.scrollTo(y: targetY)
       }
     }
@@ -460,11 +462,11 @@ struct CalendarDayTimelineView: View {
           .frame(width: timeLabelWidth - 4, height: 8)
 
         Circle()
-          .fill(Color.red)
+          .fill(Color.pmerror.n500)
           .frame(width: 8, height: 8)
 
         Rectangle()
-          .fill(Color.red)
+          .fill(Color.pmerror.n500)
           .frame(height: 1)
       }
       .offset(y: y - 4)
