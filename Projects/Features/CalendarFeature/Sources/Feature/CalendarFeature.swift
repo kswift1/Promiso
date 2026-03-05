@@ -802,6 +802,10 @@ extension CalendarFeature {
           if newWeekStart != state.currentWeekStart {
             state.currentWeekStart = newWeekStart
           }
+          // 월 그리드 동기화
+          if state.currentMonth.startOfMonth != newMonth {
+            state.currentMonth = newMonth
+          }
         }
 
         // 월이 바뀌면 데이터 로드
@@ -832,6 +836,7 @@ extension CalendarFeature {
           if let newWeekStart = calendar.date(byAdding: .weekOfYear, value: -1, to: state.currentWeekStart) {
             state.currentWeekStart = newWeekStart
             state.selectedDate = newWeekStart
+            state.currentMonth = newWeekStart.startOfMonth
           }
         } else {
           if let newMonth = calendar.date(byAdding: .month, value: -1, to: state.currentMonth) {
@@ -850,6 +855,7 @@ extension CalendarFeature {
           if let newWeekStart = calendar.date(byAdding: .weekOfYear, value: 1, to: state.currentWeekStart) {
             state.currentWeekStart = newWeekStart
             state.selectedDate = newWeekStart
+            state.currentMonth = newWeekStart.startOfMonth
           }
         } else {
           if let newMonth = calendar.date(byAdding: .month, value: 1, to: state.currentMonth) {
@@ -1439,12 +1445,9 @@ extension CalendarFeature {
       state.isTransitioning = true
       state.displayMode = newMode
 
-      // 모드 전환 시 현재 선택된 날짜 기준으로 동기화
-      if newMode == .week {
-        state.currentWeekStart = state.selectedDate.startOfWeek
-      } else {
-        state.currentMonth = state.selectedDate.startOfMonth
-      }
+      // 모드 전환 시 현재 선택된 날짜 기준으로 양방향 동기화
+      state.currentWeekStart = state.selectedDate.startOfWeek
+      state.currentMonth = state.selectedDate.startOfMonth
 
       // 월간 모드로 전환 시 해당 월 데이터 로드
       let monthsToLoad = getMonthsToLoad(state: state).filter { !state.loadedMonths.contains($0) }

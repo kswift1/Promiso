@@ -113,6 +113,7 @@ struct CalendarFeatureTests {
     await store.send(.view(.selectDate(february))) {
       $0.selectedDate = february
       $0.currentWeekStart = february.startOfWeek
+      $0.currentMonth = february.startOfMonth
     }
     await store.receive(\.internal.fetchPromisesForMonth)
   }

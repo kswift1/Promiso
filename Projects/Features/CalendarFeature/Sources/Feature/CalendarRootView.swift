@@ -51,7 +51,9 @@ extension CalendarFeature {
             .layoutPriority(1)
             .animation(.spring(response: 0.45, dampingFraction: 0.8), value: store.displayMode)
             .onChange(of: store.displayMode) { _, _ in
-              sheetDragOffset = 0
+              withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) {
+                sheetDragOffset = 0
+              }
               sheetDragBaseOffset = 0
             }
 
@@ -143,59 +145,60 @@ extension CalendarFeature {
 
     @ViewBuilder
     private var calendarGridSection: some View {
-      if store.displayMode == .week {
-        // TabView 기반 주간 뷰 (네이티브 페이징)
-        PagingWeekStripView(
-          currentWeekStart: Binding(
-            get: { store.currentWeekStart },
-            set: { store.send(.view(.weekPageChanged($0))) }
-          ),
-          selectedDate: store.selectedDate,
-          scheduleIndicatorsByDate: store.scheduleIndicatorsByDate,
-          namespace: calendarAnimation,
-          onDateSelected: { date in
-            store.send(.view(.selectDate(date)), animation: .spring(response: 0.35, dampingFraction: 0.7))
-          }
-        )
-        .padding(.vertical, 14)
-        .transition(.opacity.combined(with: .scale(scale: 0.98)).combined(with: .offset(y: -8)))
-      } else {
-        let isExpanded = store.displayMode == .monthExpanded
+      let isExpanded = store.displayMode == .monthExpanded
+      let isWeek = store.displayMode == .week
 
-        // 월간 compact/expanded를 동일 페이저에서 전환해 6행 그리드를 유지
-        PagingMonthGridView(
-          currentMonth: Binding(
-            get: { store.currentMonth },
-            set: { store.send(.view(.monthPageChanged($0))) }
-          ),
-          selectedDate: store.selectedDate,
-          scheduleIndicatorsByDate: store.scheduleIndicatorsByDate,
-          namespace: calendarAnimation,
-          isCompactMode: !isExpanded,
-          showAllIndicators: isExpanded,
-          onDateSelected: { date in
-            store.send(.view(.selectDate(date)), animation: .spring(response: 0.35, dampingFraction: 0.7))
-          },
-          onCollapseToWeek: { date in
-            store.send(.view(.collapseToWeek(date)), animation: .spring(response: 0.45, dampingFraction: 0.8))
-          },
-          onIndicatorTapped: { indicator in
-            store.send(.view(.indicatorTapped(indicator)))
-          },
-          onDayCreatePersonalEvent: { date in
-            store.send(.view(.dayLongPressCreatePersonalEvent(date)))
-          },
-          onDayCreatePromise: { date in
-            store.send(.view(.dayLongPressCreatePromise(date)))
+      PagingMonthGridView(
+        currentMonth: Binding(
+          get: { store.currentMonth },
+          set: { store.send(.view(.monthPageChanged($0))) }
+        ),
+        selectedDate: store.selectedDate,
+        scheduleIndicatorsByDate: store.scheduleIndicatorsByDate,
+        namespace: calendarAnimation,
+        isCompactMode: !isExpanded,
+        showAllIndicators: isExpanded,
+        selectedWeekRow: isWeek ? selectedWeekRowIndex : nil,
+        onDateSelected: { date in
+          store.send(.view(.selectDate(date)), animation: .spring(response: 0.35, dampingFraction: 0.7))
+        },
+        onCollapseToWeek: { date in
+          store.send(.view(.collapseToWeek(date)), animation: .spring(response: 0.45, dampingFraction: 0.8))
+        },
+        onIndicatorTapped: { indicator in
+          store.send(.view(.indicatorTapped(indicator)))
+        },
+        onDayCreatePersonalEvent: { date in
+          store.send(.view(.dayLongPressCreatePersonalEvent(date)))
+        },
+        onDayCreatePromise: { date in
+          store.send(.view(.dayLongPressCreatePromise(date)))
+        },
+        onWeekPageChanged: isWeek ? { direction in
+          if direction < 0 {
+            store.send(.view(.moveToPreviousPeriod), animation: .spring(response: 0.35, dampingFraction: 0.85))
+          } else {
+            store.send(.view(.moveToNextPeriod), animation: .spring(response: 0.35, dampingFraction: 0.85))
           }
-        )
-        // compact 모드: 드래그로 높이 조절 가능 (기본 306, 최소 200)
-        .frame(height: isExpanded ? nil : compactGridHeight)
-        .frame(maxHeight: isExpanded ? .infinity : nil)
-        .padding(.top, 12)
-        .padding(.bottom, isExpanded ? 0 : 12)
-        .transition(.opacity.combined(with: .scale(scale: 0.98)).combined(with: .offset(y: 8)))
-      }
+        } : nil
+      )
+      // week: 1행 고정(46pt), month: 드래그 가능, expanded: 자유
+      .frame(height: isExpanded ? nil : (isWeek ? 46 : compactGridHeight))
+      .frame(maxHeight: isExpanded ? .infinity : nil)
+      .padding(.top, 12)
+      .padding(.bottom, isExpanded ? 0 : 12)
+    }
+
+    // MARK: - Selected Week Row Index
+
+    private var selectedWeekRowIndex: Int {
+      let calendar = Calendar.current
+      let startOfMonth = store.currentMonth.startOfMonth
+      let firstWeekday = store.currentMonth.firstWeekdayOfMonth
+      let daysToSubtract = firstWeekday - 1
+      guard let calendarStart = calendar.date(byAdding: .day, value: -daysToSubtract, to: startOfMonth) else { return 0 }
+      let daysBetween = calendar.dateComponents([.day], from: calendar.startOfDay(for: calendarStart), to: calendar.startOfDay(for: store.selectedDate)).day ?? 0
+      return max(0, min(5, daysBetween / 7))
     }
 
     // MARK: - Promise List Section
@@ -204,10 +207,13 @@ extension CalendarFeature {
       VStack(spacing: 0) {
         if store.displayMode == .week {
           weekTimelineView
+            .transition(.move(edge: .bottom).combined(with: .opacity))
         } else {
           monthScrollView
+            .transition(.move(edge: .bottom).combined(with: .opacity))
         }
       }
+      .animation(.spring(response: 0.45, dampingFraction: 0.8), value: store.displayMode)
       .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
       .background(Color(.systemBackground))
       .clipShape(RoundedCorner(radius: 24, corners: [.topLeft, .topRight]))
