@@ -1180,10 +1180,16 @@ extension CalendarFeature {
         return .none
 
       case .dayLongPressCreatePersonalEvent(let date):
+        guard date > Date() else {
+          return .send(.view(.pastTimeBlocked))
+        }
         let endDate = date.addingTimeInterval(3600)
         return .send(.view(.createPersonalEventFromTimeline(startDate: date, endDate: endDate)))
 
       case let .dayLongPressCreatePromise(date):
+        guard date > Date() else {
+          return .send(.view(.pastTimeBlocked))
+        }
         let endDate = date.addingTimeInterval(3600)
         return .send(.view(.createPromiseFromTimeline(startDate: date, endDate: endDate)))
 
