@@ -234,6 +234,8 @@ extension Settings {
                     .font(.body)
                     .foregroundStyle(Color.pmtext.primary)
 
+                  ProBadge()
+
                   Spacer()
 
                   Image(systemName: "chevron.right")
