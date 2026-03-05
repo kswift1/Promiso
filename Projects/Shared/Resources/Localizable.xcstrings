@@ -4074,60 +4074,6 @@
         }
       }
     },
-    "error.ocr.imageConversionFailed" : {
-      "comment" : "이미지 변환에 실패했습니다",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Failed to convert image. Please try again."
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "이미지 변환에 실패했습니다. 다시 시도해 주세요."
-          }
-        }
-      }
-    },
-    "error.ocr.noTextFound" : {
-      "comment" : "이미지에서 텍스트를 찾지 못했습니다",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No text found in the image."
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "이미지에서 텍스트를 찾지 못했습니다."
-          }
-        }
-      }
-    },
-    "error.ocr.recognitionFailed" : {
-      "comment" : "텍스트 인식에 실패했습니다",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Text recognition failed"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "텍스트 인식에 실패했습니다"
-          }
-        }
-      }
-    },
     "error.map.invalidResponse" : {
       "comment" : "응답을 처리할 수 없습니다",
       "extractionState" : "manual",
